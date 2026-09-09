@@ -53,7 +53,9 @@ public class PlayerPositionListener {
     private static void processMovement(Player player, Pos packetPosition, boolean onGround) {
         // Prevent the player from moving too far
         // Doubles close to max size can cause overflow, or simply have precision issues
+        // Yaw and pitch are raw floats on the wire and would poison every later angle computation
         if (!Double.isFinite(packetPosition.x()) || !Double.isFinite(packetPosition.y()) || !Double.isFinite(packetPosition.z()) ||
+                !Float.isFinite(packetPosition.yaw()) || !Float.isFinite(packetPosition.pitch()) ||
                 Math.abs(packetPosition.x()) > Entity.MAX_COORDINATE ||
                 Math.abs(packetPosition.y()) > Entity.MAX_COORDINATE ||
                 Math.abs(packetPosition.z()) > Entity.MAX_COORDINATE) {

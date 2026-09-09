@@ -17,7 +17,6 @@ import net.minestom.server.instance.block.BlockEntityType;
 import net.minestom.server.network.packet.server.play.BlockEntityDataPacket;
 import net.minestom.server.network.packet.server.play.MultiBlockChangePacket;
 import net.minestom.server.utils.block.BlockUtils;
-import net.minestom.server.utils.callback.OptionalCallback;
 import net.minestom.server.utils.chunk.ChunkCallback;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.UnknownNullability;
@@ -177,19 +176,12 @@ public class ChunkBatch implements Batch<ChunkCallback> {
                 return;
             }
 
-            if (this.options.isFullChunk()) {
-                // Clear the chunk
-                chunk.reset();
-            }
-
-            if (blocks.isEmpty()) {
-                // Nothing to flush
-                OptionalCallback.execute(callback, chunk);
-                return;
-            }
-
             chunk.lockWriteLock();
             try {
+                if (this.options.isFullChunk()) {
+                    // Clear the chunk
+                    chunk.reset();
+                }
                 synchronized (blocks) {
                     for (var entry : blocks.int2ObjectEntrySet()) {
                         final int position = entry.getIntKey();
@@ -201,10 +193,12 @@ public class ChunkBatch implements Batch<ChunkCallback> {
                 chunk.unlockWriteLock();
             }
 
-            if (inverse != null) inverse.readyLatch.countDown();
             updateChunk(instance, chunk, callback, safeCallback);
         } catch (Exception e) {
             MinecraftServer.getExceptionManager().handleException(e);
+        } finally {
+            // Release the inverse on every path, applying it waits on this latch
+            if (inverse != null) inverse.readyLatch.countDown();
         }
     }
 

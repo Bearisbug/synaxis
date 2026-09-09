@@ -1011,6 +1011,7 @@ public class Entity implements Viewable, Tickable, Schedulable, Snapshotable, Ev
      * @param velocity the new entity velocity
      */
     public void setVelocity(Vec velocity) {
+        this.acquirable.assertOwnership();
         EntityVelocityEvent entityVelocityEvent = new EntityVelocityEvent(this, velocity);
         EventDispatcher.callCancellable(entityVelocityEvent, () -> {
             this.velocity = entityVelocityEvent.getVelocity();
@@ -1105,6 +1106,7 @@ public class Entity implements Viewable, Tickable, Schedulable, Snapshotable, Ev
      * @throws IllegalStateException if {@link #getInstance()} returns null or the passenger cannot be added
      */
     public void addPassenger(Entity entity) {
+        this.acquirable.assertOwnership();
         final Instance currentInstance = this.instance;
         Check.stateCondition(currentInstance == null, "You need to set an instance using Entity#setInstance");
         Check.stateCondition(entity == getVehicle(), "Cannot add the entity vehicle as a passenger");
@@ -1129,6 +1131,7 @@ public class Entity implements Viewable, Tickable, Schedulable, Snapshotable, Ev
      * @throws IllegalStateException if {@link #getInstance()} returns null
      */
     public void removePassenger(Entity entity) {
+        this.acquirable.assertOwnership();
         Check.stateCondition(instance == null, "You need to set an instance using Entity#setInstance");
         if (!passengers.remove(entity)) return;
         entity.vehicle = null;
@@ -1635,6 +1638,7 @@ public class Entity implements Viewable, Tickable, Schedulable, Snapshotable, Ev
     }
 
     protected synchronized void remove(boolean permanent) {
+        this.acquirable.assertOwnership();
         if (isRemoved()) return;
         EventDispatcher.call(new EntityDespawnEvent(this));
         try {

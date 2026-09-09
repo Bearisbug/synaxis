@@ -423,6 +423,7 @@ public class LivingEntity extends Entity implements EquipmentHandler {
      * @param health the new entity health
      */
     public void setHealth(float health) {
+        acquirable().assertOwnership();
         this.health = Math.min(health, (float) getAttributeValue(Attribute.MAX_HEALTH));
         if (this.health <= 0 && !isDead) {
             kill();

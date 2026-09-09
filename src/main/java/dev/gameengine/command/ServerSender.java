@@ -1,0 +1,29 @@
+package dev.gameengine.command;
+
+import net.kyori.adventure.audience.Audience;
+import net.kyori.adventure.identity.Identity;
+import dev.gameengine.command.builder.CommandContext;
+import dev.gameengine.tag.TagHandler;
+
+/**
+ * Sender used in {@link CommandManager#executeServerCommand(String)}.
+ * <p>
+ * Although this class implemented {@link CommandSender} and thus {@link Audience}, no
+ * data can be sent to this sender because it's purpose is to process the data of
+ * {@link CommandContext#getReturnData()}.
+ */
+public class ServerSender implements CommandSender {
+
+    private final TagHandler tagHandler = TagHandler.newHandler();
+
+
+    @Override
+    public TagHandler tagHandler() {
+        return tagHandler;
+    }
+
+    @Override
+    public Identity identity() {
+        return Identity.nil();
+    }
+}

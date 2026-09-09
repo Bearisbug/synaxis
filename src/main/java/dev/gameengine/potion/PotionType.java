@@ -1,0 +1,37 @@
+package dev.gameengine.potion;
+
+import net.kyori.adventure.key.Key;
+import net.kyori.adventure.key.KeyPattern;
+import dev.gameengine.codec.Codec;
+import dev.gameengine.network.NetworkBuffer;
+import dev.gameengine.registry.Registry;
+import dev.gameengine.registry.StaticProtocolObject;
+import org.jetbrains.annotations.Nullable;
+
+import java.util.Collection;
+
+public sealed interface PotionType extends StaticProtocolObject<PotionType>, PotionTypes permits PotionTypeImpl {
+
+    NetworkBuffer.Type<PotionType> NETWORK_TYPE = NetworkBuffer.VAR_INT.transform(PotionType::fromId, PotionType::id);
+    Codec<PotionType> CODEC = Codec.KEY.transform(PotionType::fromKey, PotionType::key);
+
+    static Collection<PotionType> values() {
+        return PotionTypeImpl.REGISTRY.values();
+    }
+
+    static @Nullable PotionType fromKey(@KeyPattern String key) {
+        return fromKey(Key.key(key));
+    }
+
+    static @Nullable PotionType fromKey(Key key) {
+        return PotionTypeImpl.REGISTRY.get(key);
+    }
+
+    static @Nullable PotionType fromId(int id) {
+        return PotionTypeImpl.REGISTRY.get(id);
+    }
+
+    static Registry<PotionType> staticRegistry() {
+        return PotionTypeImpl.REGISTRY;
+    }
+}

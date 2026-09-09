@@ -8,7 +8,7 @@ val mcVersion = libs.versions.minecraft.get()
 
 publishing.publications.create<MavenPublication>("maven") {
     groupId = project.group.toString()
-    artifactId = project.name // eg "minestom" or "testing"
+    artifactId = project.name // eg "game-engine" or "testing"
     version = project.version.toString()
 
     from(project.components["java"])

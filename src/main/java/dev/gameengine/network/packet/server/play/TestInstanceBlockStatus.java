@@ -1,0 +1,31 @@
+package dev.gameengine.network.packet.server.play;
+
+import net.kyori.adventure.text.Component;
+import dev.gameengine.coordinate.Point;
+import dev.gameengine.network.NetworkBuffer;
+import dev.gameengine.network.NetworkBufferTemplate;
+import dev.gameengine.network.packet.server.ServerPacket;
+import org.jetbrains.annotations.Nullable;
+
+import java.util.List;
+import java.util.function.UnaryOperator;
+
+public record TestInstanceBlockStatus(
+        Component status,
+        @Nullable Point size
+) implements ServerPacket.Play, ServerPacket.ComponentHolding {
+    public static final NetworkBuffer.Type<TestInstanceBlockStatus> SERIALIZER = NetworkBufferTemplate.template(
+            NetworkBuffer.COMPONENT, TestInstanceBlockStatus::status,
+            NetworkBuffer.VECTOR3I.optional(), TestInstanceBlockStatus::size,
+            TestInstanceBlockStatus::new);
+
+    @Override
+    public List<Component> components() {
+        return List.of(status);
+    }
+
+    @Override
+    public ServerPacket copyWithOperator(UnaryOperator<Component> operator) {
+        return new TestInstanceBlockStatus(operator.apply(status), size);
+    }
+}

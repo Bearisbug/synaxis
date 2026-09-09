@@ -6,7 +6,7 @@ plugins {
 
 val javaVersion = System.getenv("JAVA_VERSION") ?: "25"
 
-group = "net.minestom"
+group = "dev.gameengine"
 version = System.getenv("MINESTOM_VERSION") ?: "dev"
 
 configurations.all {

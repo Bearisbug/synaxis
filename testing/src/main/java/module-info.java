@@ -1,9 +1,9 @@
-module net.minestom.testing {
-    requires transitive net.minestom.server;
+module dev.gameengine.testing {
+    requires transitive dev.gameengine;
     requires org.junit.jupiter.api; // Users can bring their own version.
 
-    exports net.minestom.testing;
-    exports net.minestom.testing.util;
+    exports dev.gameengine.testing;
+    exports dev.gameengine.testing.util;
 
-    opens net.minestom.testing to org.junit.platform.commons;
+    opens dev.gameengine.testing to org.junit.platform.commons;
 }

@@ -1,7 +1,7 @@
-module net.minestom.testing.test {
+module dev.gameengine.testing.test {
     requires org.junit.jupiter.api;
 
-    requires net.minestom.testing;
+    requires dev.gameengine.testing;
 
-    opens net.minestom.testing.test to org.junit.platform.commons;
+    opens dev.gameengine.testing.test to org.junit.platform.commons;
 }

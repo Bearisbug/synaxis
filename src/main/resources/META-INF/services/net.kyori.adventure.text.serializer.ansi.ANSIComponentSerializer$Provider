@@ -1,1 +1,1 @@
-net.minestom.server.adventure.provider.MinestomAnsiComponentSerializerProvider
+dev.gameengine.adventure.provider.MinestomAnsiComponentSerializerProvider

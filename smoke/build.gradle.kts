@@ -10,8 +10,8 @@ dependencies {
 }
 
 application {
-    mainClass.set("net.minestom.smoke.Main")
-    mainModule.set("net.minestom.smoke")
+    mainClass.set("dev.gameengine.smoke.Main")
+    mainModule.set("dev.gameengine.smoke")
 }
 
 tasks.named<JavaExec>("run") {

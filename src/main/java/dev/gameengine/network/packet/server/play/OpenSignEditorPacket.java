@@ -1,0 +1,16 @@
+package dev.gameengine.network.packet.server.play;
+
+import dev.gameengine.coordinate.Point;
+import dev.gameengine.network.NetworkBuffer;
+import dev.gameengine.network.NetworkBufferTemplate;
+import dev.gameengine.network.packet.server.ServerPacket;
+
+import static dev.gameengine.network.NetworkBuffer.BLOCK_POSITION;
+import static dev.gameengine.network.NetworkBuffer.BOOLEAN;
+
+public record OpenSignEditorPacket(Point position, boolean isFrontText) implements ServerPacket.Play {
+    public static final NetworkBuffer.Type<OpenSignEditorPacket> SERIALIZER = NetworkBufferTemplate.template(
+            BLOCK_POSITION, OpenSignEditorPacket::position,
+            BOOLEAN, OpenSignEditorPacket::isFrontText,
+            OpenSignEditorPacket::new);
+}

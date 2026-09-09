@@ -63,7 +63,7 @@ graalvmNative {
 
         metadataCopy {
             inputTaskNames.add("test")
-            outputDirectories.add("src/main/resources/META-INF/native-image/net.minestom/minestom")
+            outputDirectories.add("src/main/resources/META-INF/native-image/dev.gameengine/game-engine")
         }
     }
     binaries {

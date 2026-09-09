@@ -1,1 +1,1 @@
-net.minestom.server.adventure.provider.MinestomLegacyComponentSerializerProvider
+dev.gameengine.adventure.provider.MinestomLegacyComponentSerializerProvider

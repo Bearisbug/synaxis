@@ -48,7 +48,7 @@ public final class AttributeInstance {
         this.baseValueBits = new AtomicLong(Double.doubleToLongBits(baseValue));
 
         this.propertyChangeListener = listener;
-        refreshCachedValue(baseValue);
+        refreshCachedValue();
     }
 
     /**
@@ -80,7 +80,7 @@ public final class AttributeInstance {
         long newBits = Double.doubleToLongBits(baseValue);
         long oldBits = this.baseValueBits.getAndSet(newBits);
         if (oldBits != newBits) {
-            refreshCachedValue(baseValue);
+            refreshCachedValue();
         }
     }
 
@@ -102,7 +102,7 @@ public final class AttributeInstance {
      */
     public @Nullable AttributeModifier addModifier(AttributeModifier modifier) {
         final AttributeModifier previousModifier = modifiers.put(modifier.id(), modifier);
-        if (!modifier.equals(previousModifier)) refreshCachedValue(getBaseValue());
+        if (!modifier.equals(previousModifier)) refreshCachedValue();
         return previousModifier;
     }
 
@@ -122,7 +122,7 @@ public final class AttributeInstance {
      */
     public void clearModifiers() {
         this.modifiers.values().removeIf(modifier -> !LivingEntity.PROTECTED_MODIFIERS.contains(modifier.id()));
-        refreshCachedValue(getBaseValue());
+        refreshCachedValue();
     }
 
     /**
@@ -134,7 +134,7 @@ public final class AttributeInstance {
     public @Nullable AttributeModifier removeModifier(Key id) {
         final AttributeModifier removed = modifiers.remove(id);
         if (removed != null) {
-            refreshCachedValue(getBaseValue());
+            refreshCachedValue();
         }
 
         return removed;
@@ -181,9 +181,13 @@ public final class AttributeInstance {
 
     /**
      * Recalculate the value of this attribute instance using the modifiers.
+     * <p>
+     * Reading the state, computing and publishing has to be one critical section: the individual
+     * fields are thread-safe on their own, but two concurrent changes could otherwise interleave so
+     * that the slower one overwrites the cache (and broadcasts) a value missing the other's change.
      */
-    private void refreshCachedValue(double baseValue) {
-        this.cachedValue = computeValue(baseValue);
+    private synchronized void refreshCachedValue() {
+        this.cachedValue = computeValue(getBaseValue());
 
         // Signal entity
         if (propertyChangeListener != null) {

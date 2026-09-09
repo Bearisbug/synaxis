@@ -937,256 +937,256 @@
       "glob": "junit-platform.properties"
     },
     {
-      "glob": "net/minestom/data/attribute.json"
+      "glob": "data/attribute.json"
     },
     {
-      "glob": "net/minestom/data/banner_pattern.json"
+      "glob": "data/banner_pattern.json"
     },
     {
-      "glob": "net/minestom/data/block.json"
+      "glob": "data/block.json"
     },
     {
-      "glob": "net/minestom/data/block_entity_type.json"
+      "glob": "data/block_entity_type.json"
     },
     {
-      "glob": "net/minestom/data/block_sound_type.json"
+      "glob": "data/block_sound_type.json"
     },
     {
-      "glob": "net/minestom/data/cat_sound_variant.json"
+      "glob": "data/cat_sound_variant.json"
     },
     {
-      "glob": "net/minestom/data/cat_variant.json"
+      "glob": "data/cat_variant.json"
     },
     {
-      "glob": "net/minestom/data/chat_type.json"
+      "glob": "data/chat_type.json"
     },
     {
-      "glob": "net/minestom/data/chicken_sound_variant.json"
+      "glob": "data/chicken_sound_variant.json"
     },
     {
-      "glob": "net/minestom/data/chicken_variant.json"
+      "glob": "data/chicken_variant.json"
     },
     {
-      "glob": "net/minestom/data/cow_sound_variant.json"
+      "glob": "data/cow_sound_variant.json"
     },
     {
-      "glob": "net/minestom/data/cow_variant.json"
+      "glob": "data/cow_variant.json"
     },
     {
-      "glob": "net/minestom/data/damage_type.json"
+      "glob": "data/damage_type.json"
     },
     {
-      "glob": "net/minestom/data/dialog.json"
+      "glob": "data/dialog.json"
     },
     {
-      "glob": "net/minestom/data/dimension_type.json"
+      "glob": "data/dimension_type.json"
     },
     {
-      "glob": "net/minestom/data/enchantment.json"
+      "glob": "data/enchantment.json"
     },
     {
-      "glob": "net/minestom/data/entity_type.json"
+      "glob": "data/entity_type.json"
     },
     {
-      "glob": "net/minestom/data/feature_flag.json"
+      "glob": "data/feature_flag.json"
     },
     {
-      "glob": "net/minestom/data/fluid.json"
+      "glob": "data/fluid.json"
     },
     {
-      "glob": "net/minestom/data/frog_variant.json"
+      "glob": "data/frog_variant.json"
     },
     {
-      "glob": "net/minestom/data/game_event.json"
+      "glob": "data/game_event.json"
     },
     {
-      "glob": "net/minestom/data/game_rule.json"
+      "glob": "data/game_rule.json"
     },
     {
-      "glob": "net/minestom/data/instrument.json"
+      "glob": "data/instrument.json"
     },
     {
-      "glob": "net/minestom/data/item.json"
+      "glob": "data/item.json"
     },
     {
-      "glob": "net/minestom/data/jukebox_song.json"
+      "glob": "data/jukebox_song.json"
     },
     {
-      "glob": "net/minestom/data/mob_effect.json"
+      "glob": "data/mob_effect.json"
     },
     {
-      "glob": "net/minestom/data/painting_variant.json"
+      "glob": "data/painting_variant.json"
     },
     {
-      "glob": "net/minestom/data/particle_type.json"
+      "glob": "data/particle_type.json"
     },
     {
-      "glob": "net/minestom/data/pig_sound_variant.json"
+      "glob": "data/pig_sound_variant.json"
     },
     {
-      "glob": "net/minestom/data/pig_variant.json"
+      "glob": "data/pig_variant.json"
     },
     {
-      "glob": "net/minestom/data/potion.json"
+      "glob": "data/potion.json"
     },
     {
-      "glob": "net/minestom/data/sound_event.json"
+      "glob": "data/sound_event.json"
     },
     {
-      "glob": "net/minestom/data/sulfur_cube_archetype.json"
+      "glob": "data/sulfur_cube_archetype.json"
     },
     {
-      "glob": "net/minestom/data/tags/attribute.json"
+      "glob": "data/tags/attribute.json"
     },
     {
-      "glob": "net/minestom/data/tags/banner_pattern.json"
+      "glob": "data/tags/banner_pattern.json"
     },
     {
-      "glob": "net/minestom/data/tags/block.json"
+      "glob": "data/tags/block.json"
     },
     {
-      "glob": "net/minestom/data/tags/block_entity_type.json"
+      "glob": "data/tags/block_entity_type.json"
     },
     {
-      "glob": "net/minestom/data/tags/block_sound_type.json"
+      "glob": "data/tags/block_sound_type.json"
     },
     {
-      "glob": "net/minestom/data/tags/cat_sound_variant.json"
+      "glob": "data/tags/cat_sound_variant.json"
     },
     {
-      "glob": "net/minestom/data/tags/cat_variant.json"
+      "glob": "data/tags/cat_variant.json"
     },
     {
-      "glob": "net/minestom/data/tags/chat_type.json"
+      "glob": "data/tags/chat_type.json"
     },
     {
-      "glob": "net/minestom/data/tags/chicken_sound_variant.json"
+      "glob": "data/tags/chicken_sound_variant.json"
     },
     {
-      "glob": "net/minestom/data/tags/chicken_variant.json"
+      "glob": "data/tags/chicken_variant.json"
     },
     {
-      "glob": "net/minestom/data/tags/cow_sound_variant.json"
+      "glob": "data/tags/cow_sound_variant.json"
     },
     {
-      "glob": "net/minestom/data/tags/cow_variant.json"
+      "glob": "data/tags/cow_variant.json"
     },
     {
-      "glob": "net/minestom/data/tags/damage_type.json"
+      "glob": "data/tags/damage_type.json"
     },
     {
-      "glob": "net/minestom/data/tags/dialog.json"
+      "glob": "data/tags/dialog.json"
     },
     {
-      "glob": "net/minestom/data/tags/dimension_type.json"
+      "glob": "data/tags/dimension_type.json"
     },
     {
-      "glob": "net/minestom/data/tags/enchantment.json"
+      "glob": "data/tags/enchantment.json"
     },
     {
-      "glob": "net/minestom/data/tags/entity_type.json"
+      "glob": "data/tags/entity_type.json"
     },
     {
-      "glob": "net/minestom/data/tags/feature_flag.json"
+      "glob": "data/tags/feature_flag.json"
     },
     {
-      "glob": "net/minestom/data/tags/fluid.json"
+      "glob": "data/tags/fluid.json"
     },
     {
-      "glob": "net/minestom/data/tags/frog_variant.json"
+      "glob": "data/tags/frog_variant.json"
     },
     {
-      "glob": "net/minestom/data/tags/game_event.json"
+      "glob": "data/tags/game_event.json"
     },
     {
-      "glob": "net/minestom/data/tags/game_rule.json"
+      "glob": "data/tags/game_rule.json"
     },
     {
-      "glob": "net/minestom/data/tags/instrument.json"
+      "glob": "data/tags/instrument.json"
     },
     {
-      "glob": "net/minestom/data/tags/item.json"
+      "glob": "data/tags/item.json"
     },
     {
-      "glob": "net/minestom/data/tags/jukebox_song.json"
+      "glob": "data/tags/jukebox_song.json"
     },
     {
-      "glob": "net/minestom/data/tags/mob_effect.json"
+      "glob": "data/tags/mob_effect.json"
     },
     {
-      "glob": "net/minestom/data/tags/painting_variant.json"
+      "glob": "data/tags/painting_variant.json"
     },
     {
-      "glob": "net/minestom/data/tags/particle_type.json"
+      "glob": "data/tags/particle_type.json"
     },
     {
-      "glob": "net/minestom/data/tags/pig_sound_variant.json"
+      "glob": "data/tags/pig_sound_variant.json"
     },
     {
-      "glob": "net/minestom/data/tags/pig_variant.json"
+      "glob": "data/tags/pig_variant.json"
     },
     {
-      "glob": "net/minestom/data/tags/potion.json"
+      "glob": "data/tags/potion.json"
     },
     {
-      "glob": "net/minestom/data/tags/sound_event.json"
+      "glob": "data/tags/sound_event.json"
     },
     {
-      "glob": "net/minestom/data/tags/sulfur_cube_archetype.json"
+      "glob": "data/tags/sulfur_cube_archetype.json"
     },
     {
-      "glob": "net/minestom/data/tags/timeline.json"
+      "glob": "data/tags/timeline.json"
     },
     {
-      "glob": "net/minestom/data/tags/trim_material.json"
+      "glob": "data/tags/trim_material.json"
     },
     {
-      "glob": "net/minestom/data/tags/trim_pattern.json"
+      "glob": "data/tags/trim_pattern.json"
     },
     {
-      "glob": "net/minestom/data/tags/villager_profession.json"
+      "glob": "data/tags/villager_profession.json"
     },
     {
-      "glob": "net/minestom/data/tags/wolf_sound_variant.json"
+      "glob": "data/tags/wolf_sound_variant.json"
     },
     {
-      "glob": "net/minestom/data/tags/wolf_variant.json"
+      "glob": "data/tags/wolf_variant.json"
     },
     {
-      "glob": "net/minestom/data/tags/world_clock.json"
+      "glob": "data/tags/world_clock.json"
     },
     {
-      "glob": "net/minestom/data/tags/worldgen/biome.json"
+      "glob": "data/tags/worldgen/biome.json"
     },
     {
-      "glob": "net/minestom/data/tags/zombie_nautilus_variant.json"
+      "glob": "data/tags/zombie_nautilus_variant.json"
     },
     {
-      "glob": "net/minestom/data/timeline.json"
+      "glob": "data/timeline.json"
     },
     {
-      "glob": "net/minestom/data/trim_material.json"
+      "glob": "data/trim_material.json"
     },
     {
-      "glob": "net/minestom/data/trim_pattern.json"
+      "glob": "data/trim_pattern.json"
     },
     {
-      "glob": "net/minestom/data/villager_profession.json"
+      "glob": "data/villager_profession.json"
     },
     {
-      "glob": "net/minestom/data/wolf_sound_variant.json"
+      "glob": "data/wolf_sound_variant.json"
     },
     {
-      "glob": "net/minestom/data/wolf_variant.json"
+      "glob": "data/wolf_variant.json"
     },
     {
-      "glob": "net/minestom/data/world_clock.json"
+      "glob": "data/world_clock.json"
     },
     {
-      "glob": "net/minestom/data/worldgen/biome.json"
+      "glob": "data/worldgen/biome.json"
     },
     {
-      "glob": "net/minestom/data/zombie_nautilus_variant.json"
+      "glob": "data/zombie_nautilus_variant.json"
     },
     {
       "glob": "net/minestom/server/instance/lighting/region/r.0.0.mca"

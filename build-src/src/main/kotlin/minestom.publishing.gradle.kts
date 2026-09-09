@@ -4,9 +4,7 @@ plugins {
     alias(libs.plugins.nmcp)
 }
 
-val minestomDataVersion = libs.minestomData.get().version
-        ?: throw IllegalStateException("unable to determine Minecraft version")
-val mcVersion = minestomDataVersion.split("-")[0]
+val mcVersion = libs.versions.minecraft.get()
 
 publishing.publications.create<MavenPublication>("maven") {
     groupId = project.group.toString()

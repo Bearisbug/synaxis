@@ -3,7 +3,6 @@ package net.minestom.server.item.component;
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
-import net.minestom.data.MinestomData;
 import net.minestom.server.codec.Transcoder;
 import net.minestom.server.component.DataComponent;
 import net.minestom.server.network.NetworkBuffer;
@@ -44,7 +43,7 @@ public class ItemComponentReadWriteRegistriesTest {
     @SuppressWarnings("unchecked")
     public void testReadWrite(Registries registries) throws IOException {
         var componentEntries = new ArrayList<>(EXTRA_CASES.entrySet());
-        try (InputStream is = MinestomData.resource("item.json")) {
+        try (InputStream is = ItemComponentReadWriteRegistriesTest.class.getResourceAsStream("/data/item.json")) {
             Objects.requireNonNull(is, "item.json not found");
 
             var object = GSON.fromJson(new InputStreamReader(is, StandardCharsets.UTF_8), JsonObject.class);

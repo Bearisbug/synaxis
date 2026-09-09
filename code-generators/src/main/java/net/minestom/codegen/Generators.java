@@ -66,16 +66,16 @@ public final class Generators {
     );
 
     static void main(String[] args) {
-        if (args.length != 1) {
-            System.err.println("Usage: <target folder>");
+        if (args.length != 2) {
+            System.err.println("Usage: <registry data folder> <target folder>");
             return;
         }
-        generateAll(Path.of(args[0]));
+        generateAll(Path.of(args[0]), Path.of(args[1]));
         System.out.println("Finished generating code");
     }
 
-    public static void generateAll(Path outputFolder) {
-        Codegen codegen = new Codegen(outputFolder);
+    public static void generateAll(Path dataFolder, Path outputFolder) {
+        Codegen codegen = new Codegen(dataFolder, outputFolder);
 
         new DyeColorGenerator(codegen).generate();
         new ParticleGenerator(codegen).generate();

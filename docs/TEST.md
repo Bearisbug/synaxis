@@ -16,6 +16,7 @@
 | --- | --- | --- |
 | 2026-09-09 | 初稿，TC-001～TC-018，覆盖 REQ-001～REQ-012 | Bearisbug |
 | 2026-09-09 | TC-007 第 4 步增加 `snapshot` 目录检查（设计文档 v0.2） | Bearisbug |
+| 2026-09-09 | TC-001：前置与第 3 步按实际数据修正为 74 个 JSON、路径 `src/main/resources/data`、含子目录故改用 `find`（设计文档 v0.2.1）；第 4 步补上镜像 init 脚本 | Bearisbug |
 
 ## 2. 测试范围 / 不测什么
 
@@ -54,14 +55,14 @@
 
 #### `TC-001` 依赖冻结后离线构建 — 对应 `REQ-001` · 级别: 冒烟 · 执行者: AI
 
-前置：阶段 0 完成，`gradle/libs.versions.toml` 不含 `net.minestom:data`，`src/main/resources` 下有 85 个注册表 JSON。
+前置：阶段 0 完成，`gradle/libs.versions.toml` 不含 `net.minestom:data`，`src/main/resources/data` 下有 74 个注册表 JSON。
 
 | # | 操作 | 预期 |
 | --- | --- | --- |
 | 1 | `grep -rn "net.minestom:data\|minestomData" gradle/libs.versions.toml build.gradle.kts` | 退出码 1，无输出 |
 | 2 | `grep -n "requires net.minestom.data" src/main/java/module-info.java` | 退出码 1，无输出 |
-| 3 | `ls src/main/resources/data/*.json 2>/dev/null \| wc -l` | 输出 `85` |
-| 4 | 关闭本机代理后执行 `./gradlew check --offline --no-daemon` | stdout 含 `BUILD SUCCESSFUL`，退出码 0 |
+| 3 | `find src/main/resources/data -name '*.json' \| wc -l` | 输出 `74` |
+| 4 | `unset JAVA_TOOL_OPTIONS` 后执行 `./gradlew check --offline --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts` | stdout 含 `BUILD SUCCESSFUL`，退出码 0 |
 
 后置：恢复代理。
 

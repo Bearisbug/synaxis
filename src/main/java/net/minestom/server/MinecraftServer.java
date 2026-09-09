@@ -1,7 +1,6 @@
 package net.minestom.server;
 
 import net.kyori.adventure.text.logger.slf4j.ComponentLogger;
-import net.minestom.server.advancements.AdvancementManager;
 import net.minestom.server.adventure.ClickCallbackManager;
 import net.minestom.server.adventure.bossbar.BossBarManager;
 import net.minestom.server.codec.Codec;
@@ -264,10 +263,6 @@ public final class MinecraftServer implements MinecraftConstants {
     public static void setCompressionThreshold(int compressionThreshold) {
         Check.stateCondition(serverProcess != null && serverProcess.isAlive(), "The compression threshold cannot be changed after the server has been started.");
         MinecraftServer.compressionThreshold = compressionThreshold;
-    }
-
-    public static AdvancementManager getAdvancementManager() {
-        return serverProcess.advancement();
     }
 
     public static ClickCallbackManager getClickCallbackManager() {

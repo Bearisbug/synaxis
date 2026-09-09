@@ -8,7 +8,6 @@ import net.kyori.adventure.sound.SoundStop;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.title.TitlePart;
 import net.minestom.server.MinecraftServer;
-import net.minestom.server.advancements.Notification;
 import net.minestom.server.adventure.AdventurePacketConvertor;
 import net.minestom.server.coordinate.Point;
 import net.minestom.server.entity.Player;
@@ -123,15 +122,6 @@ public interface PacketGroupingAudience extends ForwardingAudience {
     @Override
     default void stopSound(SoundStop stop) {
         sendGroupedPacket(AdventurePacketConvertor.createSoundStopPacket(stop));
-    }
-
-    /**
-     * Send a {@link Notification} to the audience.
-     * @param notification the {@link Notification} to send
-     */
-    default void sendNotification(Notification notification) {
-        sendGroupedPacket(notification.buildAddPacket());
-        sendGroupedPacket(notification.buildRemovePacket());
     }
 
     @Override

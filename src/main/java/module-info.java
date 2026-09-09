@@ -33,7 +33,6 @@ module net.minestom.server {
 
     // EXPORTS
     exports net.minestom.server;
-    exports net.minestom.server.advancements;
     exports net.minestom.server.adventure;
     exports net.minestom.server.adventure.audience;
     exports net.minestom.server.adventure.bossbar;

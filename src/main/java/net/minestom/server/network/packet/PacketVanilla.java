@@ -112,7 +112,6 @@ import net.minestom.server.network.packet.server.login.LoginSuccessPacket;
 import net.minestom.server.network.packet.server.login.SetCompressionPacket;
 import net.minestom.server.network.packet.server.play.AcknowledgeBlockChangePacket;
 import net.minestom.server.network.packet.server.play.ActionBarPacket;
-import net.minestom.server.network.packet.server.play.AdvancementsPacket;
 import net.minestom.server.network.packet.server.play.AttachEntityPacket;
 import net.minestom.server.network.packet.server.play.BlockActionPacket;
 import net.minestom.server.network.packet.server.play.BlockBreakAnimationPacket;
@@ -188,7 +187,6 @@ import net.minestom.server.network.packet.server.play.RemoveEntityEffectPacket;
 import net.minestom.server.network.packet.server.play.ResetScorePacket;
 import net.minestom.server.network.packet.server.play.RespawnPacket;
 import net.minestom.server.network.packet.server.play.ScoreboardObjectivePacket;
-import net.minestom.server.network.packet.server.play.SelectAdvancementTabPacket;
 import net.minestom.server.network.packet.server.play.ServerDataPacket;
 import net.minestom.server.network.packet.server.play.ServerDifficultyPacket;
 import net.minestom.server.network.packet.server.play.SetCooldownPacket;
@@ -499,7 +497,6 @@ public final class PacketVanilla {
             entry(RespawnPacket.class, RespawnPacket.SERIALIZER),
             entry(EntityHeadLookPacket.class, EntityHeadLookPacket.SERIALIZER),
             entry(MultiBlockChangePacket.class, MultiBlockChangePacket.SERIALIZER),
-            entry(SelectAdvancementTabPacket.class, SelectAdvancementTabPacket.SERIALIZER),
             entry(ServerDataPacket.class, ServerDataPacket.SERIALIZER),
             entry(ActionBarPacket.class, ActionBarPacket.SERIALIZER),
             entry(WorldBorderCenterPacket.class, WorldBorderCenterPacket.SERIALIZER),
@@ -544,7 +541,6 @@ public final class PacketVanilla {
             entry(SetTickStatePacket.class, SetTickStatePacket.SERIALIZER),
             entry(TickStepPacket.class, TickStepPacket.SERIALIZER),
             entry(TransferPacket.class, TransferPacket.SERIALIZER),
-            entry(AdvancementsPacket.class, AdvancementsPacket.SERIALIZER),
             entry(EntityAttributesPacket.class, EntityAttributesPacket.SERIALIZER),
             entry(EntityEffectPacket.class, EntityEffectPacket.SERIALIZER),
             entry(DeclareRecipesPacket.class, DeclareRecipesPacket.SERIALIZER),

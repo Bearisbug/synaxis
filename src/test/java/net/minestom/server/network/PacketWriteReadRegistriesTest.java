@@ -10,7 +10,6 @@ import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.Style;
 import net.kyori.adventure.text.format.TextDecoration;
-import net.minestom.server.advancements.AdvancementAction;
 import net.minestom.server.color.TeamColor;
 import net.minestom.server.coordinate.Pos;
 import net.minestom.server.coordinate.Vec;
@@ -154,7 +153,6 @@ import net.minestom.server.network.packet.server.login.LoginSuccessPacket;
 import net.minestom.server.network.packet.server.login.SetCompressionPacket;
 import net.minestom.server.network.packet.server.play.AcknowledgeBlockChangePacket;
 import net.minestom.server.network.packet.server.play.ActionBarPacket;
-import net.minestom.server.network.packet.server.play.AdvancementsPacket;
 import net.minestom.server.network.packet.server.play.AttachEntityPacket;
 import net.minestom.server.network.packet.server.play.BlockActionPacket;
 import net.minestom.server.network.packet.server.play.BlockBreakAnimationPacket;
@@ -230,7 +228,6 @@ import net.minestom.server.network.packet.server.play.RemoveEntityEffectPacket;
 import net.minestom.server.network.packet.server.play.ResetScorePacket;
 import net.minestom.server.network.packet.server.play.RespawnPacket;
 import net.minestom.server.network.packet.server.play.ScoreboardObjectivePacket;
-import net.minestom.server.network.packet.server.play.SelectAdvancementTabPacket;
 import net.minestom.server.network.packet.server.play.ServerDataPacket;
 import net.minestom.server.network.packet.server.play.ServerDifficultyPacket;
 import net.minestom.server.network.packet.server.play.SetCooldownPacket;
@@ -602,7 +599,6 @@ public class PacketWriteReadRegistriesTest {
                 new ScoreboardObjectivePacket("objective", (byte) 2, COMPONENT, ScoreboardObjectivePacket.Type.HEARTS, Sidebar.NumberFormat.styled(Component.empty())),
                 new ScoreboardObjectivePacket("objective", (byte) 2, COMPONENT, ScoreboardObjectivePacket.Type.HEARTS, null)
         );
-        addServerPackets(new SelectAdvancementTabPacket("minecraft:story/root"));
         addServerPackets(new ServerDataPacket(COMPONENT, null));
         addServerPackets(new ServerDifficultyPacket(Difficulty.NORMAL, true));
         addServerPackets(new SetCooldownPacket("minecraft:ender_pearl", 5));
@@ -652,7 +648,6 @@ public class PacketWriteReadRegistriesTest {
         addServerPackets(new WorldBorderSizePacket(10.0));
         addServerPackets(new WorldBorderWarningDelayPacket(5));
         addServerPackets(new WorldBorderWarningReachPacket(5));
-        addServerPackets(new AdvancementsPacket(false, List.of(), List.of(), List.of(), true));
         // TODO, these chunk* skips important paths
         addServerPackets(new ChunkBatchStartPacket());
         addServerPackets(new ChunkBatchFinishedPacket(100));
@@ -852,7 +847,7 @@ public class PacketWriteReadRegistriesTest {
         addClientPackets(new ClientSetRecipeBookStatePacket(ClientSetRecipeBookStatePacket.BookType.CRAFTING, true, false), new ClientSetRecipeBookStatePacket(ClientSetRecipeBookStatePacket.BookType.FURNACE, false, true), new ClientSetRecipeBookStatePacket(ClientSetRecipeBookStatePacket.BookType.BLAST_FURNACE, true, true), new ClientSetRecipeBookStatePacket(ClientSetRecipeBookStatePacket.BookType.SMOKER, false, false));
         addClientPackets(new ClientNameItemPacket("Diamond Sword"), new ClientNameItemPacket(""), new ClientNameItemPacket("A".repeat(100)));
         addClientPackets(new ClientResourcePackStatusPacket(UUID.randomUUID(), ResourcePackStatus.ACCEPTED), new ClientResourcePackStatusPacket(UUID.randomUUID(), ResourcePackStatus.DECLINED));
-        addClientPackets(new ClientAdvancementTabPacket(AdvancementAction.OPENED_TAB, "minecraft:story/root"), new ClientAdvancementTabPacket(AdvancementAction.CLOSED_SCREEN, null));
+        addClientPackets(new ClientAdvancementTabPacket(ClientAdvancementTabPacket.Action.OPENED_TAB, "minecraft:story/root"), new ClientAdvancementTabPacket(ClientAdvancementTabPacket.Action.CLOSED_SCREEN, null));
         addClientPackets(new ClientSelectTradePacket(0), new ClientSelectTradePacket(5), new ClientSelectTradePacket(Integer.MAX_VALUE));
         addClientPackets(new ClientSetBeaconEffectPacket(PotionType.STRENGTH, PotionType.REGENERATION), new ClientSetBeaconEffectPacket(null, null), new ClientSetBeaconEffectPacket(PotionType.fromKey("strength"), null));
         addClientPackets(new ClientHeldItemChangePacket((short) 0), new ClientHeldItemChangePacket((short) 8), new ClientHeldItemChangePacket((short) 4));

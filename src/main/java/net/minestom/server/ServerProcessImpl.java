@@ -1,7 +1,6 @@
 package net.minestom.server;
 
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
-import net.minestom.server.advancements.AdvancementManager;
 import net.minestom.server.adventure.ClickCallbackManager;
 import net.minestom.server.adventure.bossbar.BossBarManager;
 import net.minestom.server.command.CommandManager;
@@ -69,7 +68,6 @@ final class ServerProcessImpl implements ServerProcess, Registries.Delegating {
     private final TeamManager team;
     private final GlobalEventHandler eventHandler;
     private final SchedulerManager scheduler;
-    private final AdvancementManager advancement;
     private final BossBarManager bossBar;
     private final ClickCallbackManager clickCallbackManager;
 
@@ -98,7 +96,6 @@ final class ServerProcessImpl implements ServerProcess, Registries.Delegating {
         this.team = new TeamManager();
         this.eventHandler = new GlobalEventHandler();
         this.scheduler = new SchedulerManager();
-        this.advancement = new AdvancementManager();
         this.bossBar = new BossBarManager();
         this.clickCallbackManager = new ClickCallbackManager();
 
@@ -162,11 +159,6 @@ final class ServerProcessImpl implements ServerProcess, Registries.Delegating {
     @Override
     public SchedulerManager scheduler() {
         return scheduler;
-    }
-
-    @Override
-    public AdvancementManager advancement() {
-        return advancement;
     }
 
     @Override

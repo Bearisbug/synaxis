@@ -23,8 +23,6 @@ import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import net.kyori.adventure.title.TitlePart;
 import net.minestom.server.MinecraftServer;
 import net.minestom.server.ServerFlag;
-import net.minestom.server.advancements.AdvancementTab;
-import net.minestom.server.advancements.Notification;
 import net.minestom.server.adventure.AdventurePacketConvertor;
 import net.minestom.server.adventure.audience.Audiences;
 import net.minestom.server.collision.BoundingBox;
@@ -156,7 +154,6 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
@@ -631,15 +628,6 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
         if (currentInventory != null) currentInventory.removeViewer(this);
 
         MinecraftServer.getBossBarManager().removeAllBossBars(this);
-        // Advancement tabs cache
-        {
-            Set<AdvancementTab> advancementTabs = AdvancementTab.getTabs(this);
-            if (advancementTabs != null) {
-                for (AdvancementTab advancementTab : advancementTabs) {
-                    advancementTab.removeViewer(this);
-                }
-            }
-        }
         final Pos position = this.position;
         final int chunkX = position.chunkX();
         final int chunkZ = position.chunkZ();
@@ -2550,16 +2538,6 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
     public CompletableFuture<Void> teleport(Pos position, long @Nullable [] chunks, int flags) {
         chunkUpdateLimitChecker.clearHistory();
         return super.teleport(position, chunks, flags);
-    }
-
-    /**
-     * Send a {@link Notification} to the player.
-     *
-     * @param notification the {@link Notification} to send
-     */
-    public void sendNotification(Notification notification) {
-        sendPacket(notification.buildAddPacket());
-        sendPacket(notification.buildRemovePacket());
     }
 
     /**

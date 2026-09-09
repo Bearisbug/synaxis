@@ -1,6 +1,5 @@
 package net.minestom.server;
 
-import net.minestom.server.advancements.AdvancementManager;
 import net.minestom.server.adventure.ClickCallbackManager;
 import net.minestom.server.adventure.bossbar.BossBarManager;
 import net.minestom.server.command.CommandManager;
@@ -78,11 +77,6 @@ public interface ServerProcess extends Registries, Snapshotable {
      * Main scheduler ticked at the server rate.
      */
     SchedulerManager scheduler();
-
-    /**
-     * Handles registered advancements.
-     */
-    AdvancementManager advancement();
 
     /**
      * Handles registered boss bars.

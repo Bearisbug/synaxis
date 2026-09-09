@@ -1,8 +1,10 @@
 package net.minestom.server.network.player;
 
+import net.minestom.server.ServerFlag;
 import net.minestom.server.network.NetworkBuffer;
 import org.junit.jupiter.api.Test;
 
+import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
@@ -78,6 +80,18 @@ class ProxyProtocolDecoderTest {
         assertEquals(ProxyProtocolDecoder.Status.PRESENT, result.status());
         assertEquals(ORIGINAL, result.clientAddress());
         assertEquals((byte) 1, buffer.read(NetworkBuffer.BYTE));
+    }
+
+    @Test
+    void rejectsV2HeaderLargerThanTheReadBuffer() {
+        final byte[] header = v2Header((byte) 0x21, (byte) 0x11, 0);
+        header[14] = (byte) 0xFF; // announce a 65535 byte payload without ever sending it
+        header[15] = (byte) 0xFF;
+
+        final NetworkBuffer buffer = NetworkBuffer.resizableBuffer(ServerFlag.POOLED_BUFFER_SIZE);
+        buffer.write(NetworkBuffer.RAW_BYTES, header);
+        // The read buffer can never hold 16 + 65535 bytes, asking for more would spin forever
+        assertThrows(IOException.class, () -> ProxyProtocolDecoder.parse(ORIGINAL, buffer));
     }
 
     private static byte[] v2Header(byte versionAndCommand, byte familyAndProtocol, int payloadLength) {

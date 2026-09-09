@@ -16,10 +16,26 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 @EnvTest
 public class InstanceBlockIntegrationTest {
+
+    // Condition.CACHED means "the cached block object or nothing", the miss is not an unloaded chunk
+    @Test
+    public void cachedConditionReturnsNullInsteadOfThrowing(Env env) {
+        var instance = env.createFlatInstance();
+        instance.loadChunk(0, 0).join();
+
+        assertNull(instance.getBlock(0, 39, 0, Block.Getter.Condition.CACHED));
+        instance.setBlock(0, 39, 0, Block.STONE.withTag(Tag.String("test"), "value"));
+        assertEquals(Block.STONE.withTag(Tag.String("test"), "value"),
+                instance.getBlock(0, 39, 0, Block.Getter.Condition.CACHED));
+        assertThrows(NullPointerException.class,
+                () -> instance.getBlock(1000, 39, 1000, Block.Getter.Condition.NONE),
+                "An unloaded chunk must still be reported");
+    }
 
     @Test
     public void basic(Env env) {

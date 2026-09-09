@@ -745,7 +745,9 @@ public abstract class Instance implements Block.Getter, Block.Setter, Biome.Gett
     @Override
     public @Nullable Block getBlock(int x, int y, int z, Condition condition) {
         final Block block = blockRetriever.getBlock(x, y, z, condition);
-        if (block == null) throw new NullPointerException("Unloaded chunk at " + x + "," + y + "," + z);
+        // Condition.CACHED asks for the cache entry alone, a missing one is a valid null answer
+        if (block == null && condition != Condition.CACHED)
+            throw new NullPointerException("Unloaded chunk at " + x + "," + y + "," + z);
         return block;
     }
 

@@ -40,53 +40,53 @@ import java.util.function.Supplier;
 import java.util.zip.DataFormatException;
 
 public sealed interface NetworkBuffer permits NetworkBufferImpl {
-    Type<Unit> UNIT = new NetworkBufferTypeImpl.UnitType();
-    Type<Boolean> BOOLEAN = new NetworkBufferTypeImpl.BooleanType();
-    Type<Byte> BYTE = new NetworkBufferTypeImpl.ByteType();
-    Type<Short> UNSIGNED_BYTE = new NetworkBufferTypeImpl.UnsignedByteType();
-    Type<Short> SHORT = new NetworkBufferTypeImpl.ShortType();
-    Type<Integer> UNSIGNED_SHORT = new NetworkBufferTypeImpl.UnsignedShortType();
-    Type<Integer> INT = new NetworkBufferTypeImpl.IntType();
-    Type<Long> UNSIGNED_INT = new NetworkBufferTypeImpl.UnsignedIntType();
-    Type<Long> LONG = new NetworkBufferTypeImpl.LongType();
-    Type<Float> FLOAT = new NetworkBufferTypeImpl.FloatType();
-    Type<Double> DOUBLE = new NetworkBufferTypeImpl.DoubleType();
-    Type<Integer> VAR_INT = new NetworkBufferTypeImpl.VarIntType();
-    Type<@Nullable Integer> OPTIONAL_VAR_INT = new NetworkBufferTypeImpl.OptionalVarIntType();
-    Type<Integer> VAR_INT_3 = new NetworkBufferTypeImpl.VarInt3Type();
-    Type<Long> VAR_LONG = new NetworkBufferTypeImpl.VarLongType();
-    Type<byte[]> RAW_BYTES = new NetworkBufferTypeImpl.RawBytesType(-1);
-    Type<short[]> RAW_SHORTS = new NetworkBufferTypeImpl.RawShortsType(-1);
-    Type<int[]> RAW_INTS = new NetworkBufferTypeImpl.RawIntsType(-1);
-    Type<long[]> RAW_LONGS = new NetworkBufferTypeImpl.RawLongsType(-1);
-    Type<float[]> RAW_FLOATS = new NetworkBufferTypeImpl.RawFloatsType(-1);
-    Type<double[]> RAW_DOUBLES = new NetworkBufferTypeImpl.RawDoublesType(-1);
-    Type<String> STRING = new NetworkBufferTypeImpl.StringType();
+    Type<Unit> UNIT = new NetworkBufferPrimitiveTypes.UnitType();
+    Type<Boolean> BOOLEAN = new NetworkBufferPrimitiveTypes.BooleanType();
+    Type<Byte> BYTE = new NetworkBufferPrimitiveTypes.ByteType();
+    Type<Short> UNSIGNED_BYTE = new NetworkBufferPrimitiveTypes.UnsignedByteType();
+    Type<Short> SHORT = new NetworkBufferPrimitiveTypes.ShortType();
+    Type<Integer> UNSIGNED_SHORT = new NetworkBufferPrimitiveTypes.UnsignedShortType();
+    Type<Integer> INT = new NetworkBufferPrimitiveTypes.IntType();
+    Type<Long> UNSIGNED_INT = new NetworkBufferPrimitiveTypes.UnsignedIntType();
+    Type<Long> LONG = new NetworkBufferPrimitiveTypes.LongType();
+    Type<Float> FLOAT = new NetworkBufferPrimitiveTypes.FloatType();
+    Type<Double> DOUBLE = new NetworkBufferPrimitiveTypes.DoubleType();
+    Type<Integer> VAR_INT = new NetworkBufferVarNumberTypes.VarIntType();
+    Type<@Nullable Integer> OPTIONAL_VAR_INT = new NetworkBufferVarNumberTypes.OptionalVarIntType();
+    Type<Integer> VAR_INT_3 = new NetworkBufferVarNumberTypes.VarInt3Type();
+    Type<Long> VAR_LONG = new NetworkBufferVarNumberTypes.VarLongType();
+    Type<byte[]> RAW_BYTES = new NetworkBufferRawTypes.RawBytesType(-1);
+    Type<short[]> RAW_SHORTS = new NetworkBufferRawTypes.RawShortsType(-1);
+    Type<int[]> RAW_INTS = new NetworkBufferRawTypes.RawIntsType(-1);
+    Type<long[]> RAW_LONGS = new NetworkBufferRawTypes.RawLongsType(-1);
+    Type<float[]> RAW_FLOATS = new NetworkBufferRawTypes.RawFloatsType(-1);
+    Type<double[]> RAW_DOUBLES = new NetworkBufferRawTypes.RawDoublesType(-1);
+    Type<String> STRING = new NetworkBufferStringTypes.StringType();
     Type<Key> KEY = STRING.transform(Key::key, Key::asString);
-    Type<String> STRING_TERMINATED = new NetworkBufferTypeImpl.StringTerminatedType();
-    Type<String> STRING_IO_UTF8 = new NetworkBufferTypeImpl.IOUTF8StringType();
+    Type<String> STRING_TERMINATED = new NetworkBufferStringTypes.StringTerminatedType();
+    Type<String> STRING_IO_UTF8 = new NetworkBufferStringTypes.IOUTF8StringType();
     Type<BinaryTag> NBT = BinaryTagTypeImpl.INSTANCE;
     Type<CompoundBinaryTag> NBT_COMPOUND = BinaryTagTypeImpl.INSTANCE_COMPOUND;
-    Type<Point> BLOCK_POSITION = new NetworkBufferTypeImpl.BlockPositionType();
+    Type<Point> BLOCK_POSITION = new NetworkBufferSpatialTypes.BlockPositionType();
     Type<Component> COMPONENT = new ComponentNetworkBufferTypeImpl();
-    Type<Component> JSON_COMPONENT = new NetworkBufferTypeImpl.JsonComponentType();
-    Type<java.util.UUID> UUID = new NetworkBufferTypeImpl.UUIDType();
-    Type<Pos> POS = new NetworkBufferTypeImpl.PosType();
+    Type<Component> JSON_COMPONENT = new NetworkBufferCodecTypes.JsonComponentType();
+    Type<java.util.UUID> UUID = new NetworkBufferPrimitiveTypes.UUIDType();
+    Type<Pos> POS = new NetworkBufferSpatialTypes.PosType();
 
-    Type<byte[]> BYTE_ARRAY = new NetworkBufferTypeImpl.ByteArrayType();
-    Type<long[]> LONG_ARRAY = new NetworkBufferTypeImpl.LongArrayType();
-    Type<int[]> VAR_INT_ARRAY = new NetworkBufferTypeImpl.VarIntArrayType();
-    Type<long[]> VAR_LONG_ARRAY = new NetworkBufferTypeImpl.VarLongArrayType();
+    Type<byte[]> BYTE_ARRAY = new NetworkBufferArrayTypes.ByteArrayType();
+    Type<long[]> LONG_ARRAY = new NetworkBufferArrayTypes.LongArrayType();
+    Type<int[]> VAR_INT_ARRAY = new NetworkBufferArrayTypes.VarIntArrayType();
+    Type<long[]> VAR_LONG_ARRAY = new NetworkBufferArrayTypes.VarLongArrayType();
 
     Type<BitSet> BITSET = LONG_ARRAY.transform(BitSet::valueOf, BitSet::toLongArray);
     Type<Instant> INSTANT_MS = LONG.transform(Instant::ofEpochMilli, Instant::toEpochMilli);
     Type<PublicKey> PUBLIC_KEY = BYTE_ARRAY.transform(KeyUtils::publicRSAKeyFrom, PublicKey::getEncoded);
 
-    Type<Point> VECTOR3 = new NetworkBufferTypeImpl.Vector3Type();
-    Type<Point> VECTOR3D = new NetworkBufferTypeImpl.Vector3DType();
-    Type<Point> VECTOR3I = new NetworkBufferTypeImpl.Vector3IType();
-    Type<Point> VECTOR3B = new NetworkBufferTypeImpl.Vector3BType();
-    Type<Vec> LP_VECTOR3 = new NetworkBufferTypeImpl.LpVector3Type();
+    Type<Point> VECTOR3 = new NetworkBufferSpatialTypes.Vector3Type();
+    Type<Point> VECTOR3D = new NetworkBufferSpatialTypes.Vector3DType();
+    Type<Point> VECTOR3I = new NetworkBufferSpatialTypes.Vector3IType();
+    Type<Point> VECTOR3B = new NetworkBufferSpatialTypes.Vector3BType();
+    Type<Vec> LP_VECTOR3 = new NetworkBufferSpatialTypes.LpVector3Type();
     Type<float[]> QUATERNION = FixedRawFloats(4);
 
     Type<@Nullable Component> OPT_CHAT = COMPONENT.optional();
@@ -108,7 +108,7 @@ public sealed interface NetworkBuffer permits NetworkBufferImpl {
 
     static <E extends Enum<E>> Type<EnumSet<E>> EnumSet(Class<E> enumClass) {
         final E[] values = enumClass.getEnumConstants();
-        return new NetworkBufferTypeImpl.EnumSetType<>(enumClass, values);
+        return new NetworkBufferCollectionTypes.EnumSetType<>(enumClass, values);
     }
 
     /**
@@ -119,7 +119,7 @@ public sealed interface NetworkBuffer permits NetworkBufferImpl {
      */
     static Type<BitSet> FixedBitSet(int length) {
         Check.argCondition(length < 0, "Length cannot be negative: {0}", length);
-        return new NetworkBufferTypeImpl.FixedBitSetType(length);
+        return new NetworkBufferCollectionTypes.FixedBitSetType(length);
     }
 
     /**
@@ -130,7 +130,7 @@ public sealed interface NetworkBuffer permits NetworkBufferImpl {
      */
     static Type<byte[]> FixedRawBytes(int length) {
         Check.argCondition(length < 0, "Length cannot be negative: {0}", length);
-        return new NetworkBufferTypeImpl.RawBytesType(length);
+        return new NetworkBufferRawTypes.RawBytesType(length);
     }
 
     /**
@@ -141,7 +141,7 @@ public sealed interface NetworkBuffer permits NetworkBufferImpl {
      */
     static Type<short[]> FixedRawShorts(int length) {
         Check.argCondition(length < 0, "Length cannot be negative: {0}", length);
-        return new NetworkBufferTypeImpl.RawShortsType(length);
+        return new NetworkBufferRawTypes.RawShortsType(length);
     }
 
     /**
@@ -152,7 +152,7 @@ public sealed interface NetworkBuffer permits NetworkBufferImpl {
      */
     static Type<int[]> FixedRawInts(int length) {
         Check.argCondition(length < 0, "Length cannot be negative: {0}", length);
-        return new NetworkBufferTypeImpl.RawIntsType(length);
+        return new NetworkBufferRawTypes.RawIntsType(length);
     }
 
     /**
@@ -163,7 +163,7 @@ public sealed interface NetworkBuffer permits NetworkBufferImpl {
      */
     static Type<long[]> FixedRawLongs(int length) {
         Check.argCondition(length < 0, "Length cannot be negative: {0}", length);
-        return new NetworkBufferTypeImpl.RawLongsType(length);
+        return new NetworkBufferRawTypes.RawLongsType(length);
     }
 
     /**
@@ -174,7 +174,7 @@ public sealed interface NetworkBuffer permits NetworkBufferImpl {
      */
     static Type<float[]> FixedRawFloats(int length) {
         Check.argCondition(length < 0, "Length cannot be negative: {0}", length);
-        return new NetworkBufferTypeImpl.RawFloatsType(length);
+        return new NetworkBufferRawTypes.RawFloatsType(length);
     }
 
     /**
@@ -185,29 +185,29 @@ public sealed interface NetworkBuffer permits NetworkBufferImpl {
      */
     static Type<double[]> FixedRawDoubles(int length) {
         Check.argCondition(length < 0, "Length cannot be negative: {0}", length);
-        return new NetworkBufferTypeImpl.RawDoublesType(length);
+        return new NetworkBufferRawTypes.RawDoublesType(length);
     }
 
     static <T> Type<T> Lazy(Supplier<Type<T>> supplier) {
-        return new NetworkBufferTypeImpl.LazyType<>(supplier);
+        return new NetworkBufferDeferredTypes.LazyType<>(supplier);
     }
 
     static <T> Type<T> TypedNBT(Codec<T> serializer) {
-        return new NetworkBufferTypeImpl.TypedNbtType<>(serializer);
+        return new NetworkBufferCodecTypes.TypedNbtType<>(serializer);
     }
 
     static <L, R> Type<Either<L, R>> Either(NetworkBuffer.Type<L> left, NetworkBuffer.Type<R> right) {
-        return new NetworkBufferTypeImpl.EitherType<>(left, right);
+        return new NetworkBufferCombinatorTypes.EitherType<>(left, right);
     }
 
     static <T> Type<T> Recursive(Function<Type<T>, Type<T>> func) {
-        return new NetworkBufferTypeImpl.RecursiveType<>(func).delegate;
+        return new NetworkBufferDeferredTypes.RecursiveType<>(func).delegate;
     }
 
     static <T, D> Type<T> Tagged(Type<D> discriminator, Function<? super T, ? extends D> discriminatorFromValue,
                                  Map<? super D, ? extends Type<? extends T>> serializerMap, @Nullable Type<? extends T> fallback) {
         // Map.copyOf does some trickery with the generic bounds here.
-        return new NetworkBufferTypeImpl.TaggedType<>(discriminator, discriminatorFromValue, Map.copyOf(serializerMap), fallback);
+        return new NetworkBufferCombinatorTypes.TaggedType<>(discriminator, discriminatorFromValue, Map.copyOf(serializerMap), fallback);
     }
 
     static <T, D> Type<T> Tagged(Type<D> discriminator, Function<? super T, ? extends D> discriminatorFromValue,
@@ -326,11 +326,11 @@ public sealed interface NetworkBuffer permits NetworkBufferImpl {
         }
 
         default <S> Type<S> transform(Function<T, S> to, Function<S, T> from) {
-            return new NetworkBufferTypeImpl.TransformType<>(this, to, from);
+            return new NetworkBufferCombinatorTypes.TransformType<>(this, to, from);
         }
 
         default <V> Type<Map<T, V>> mapValue(Type<V> valueType, int maxSize) {
-            return new NetworkBufferTypeImpl.MapType<>(this, valueType, maxSize);
+            return new NetworkBufferCollectionTypes.MapType<>(this, valueType, maxSize);
         }
 
         default <V> Type<Map<T, V>> mapValue(Type<V> valueType) {
@@ -338,7 +338,7 @@ public sealed interface NetworkBuffer permits NetworkBufferImpl {
         }
 
         default Type<List<T>> list(int maxSize) {
-            return new NetworkBufferTypeImpl.ListType<>(this, maxSize);
+            return new NetworkBufferCollectionTypes.ListType<>(this, maxSize);
         }
 
         default Type<List<T>> list() {
@@ -346,7 +346,7 @@ public sealed interface NetworkBuffer permits NetworkBufferImpl {
         }
 
         default Type<Set<T>> set(int maxSize) {
-            return new NetworkBufferTypeImpl.SetType<>(this, maxSize);
+            return new NetworkBufferCollectionTypes.SetType<>(this, maxSize);
         }
 
         default Type<Set<T>> set() {
@@ -354,19 +354,19 @@ public sealed interface NetworkBuffer permits NetworkBufferImpl {
         }
 
         default Type<@Nullable T> optional() {
-            return new NetworkBufferTypeImpl.OptionalType<>(this);
+            return new NetworkBufferCombinatorTypes.OptionalType<>(this);
         }
 
         default <R, TR extends R> Type<R> unionType(Function<T, NetworkBuffer.Type<TR>> serializers, Function<R, ? extends T> keyFunc) {
-            return new NetworkBufferTypeImpl.UnionType<>(this, keyFunc, serializers);
+            return new NetworkBufferCombinatorTypes.UnionType<>(this, keyFunc, serializers);
         }
 
         default Type<T> lengthPrefixed(int maxLength) {
-            return new NetworkBufferTypeImpl.LengthPrefixedType<>(this, maxLength);
+            return new NetworkBufferCombinatorTypes.LengthPrefixedType<>(this, maxLength);
         }
 
         default Type<T> maxLength(long maxLength) {
-            return new NetworkBufferTypeImpl.MaxLength<>(this, maxLength);
+            return new NetworkBufferCombinatorTypes.MaxLength<>(this, maxLength);
         }
     }
 

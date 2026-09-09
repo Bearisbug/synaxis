@@ -1,5 +1,6 @@
 package net.minestom.server.instance;
 
+import it.unimi.dsi.fastutil.ints.Int2ObjectMaps;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import net.kyori.adventure.nbt.CompoundBinaryTag;
 import net.kyori.adventure.nbt.LongArrayBinaryTag;
@@ -189,15 +190,32 @@ public class DynamicChunk extends Chunk {
 
     @Override
     public void tick(long time) {
-        if (tickableMap.isEmpty()) return;
-        tickableMap.int2ObjectEntrySet().fastForEach(entry -> {
-            final int index = entry.getIntKey();
-            final Block block = entry.getValue();
+        // Snapshot under the read-lock: setBlock writes tickableMap from any thread, and a handler
+        // making its own block non-tickable removes an entry, which makes an open hash map shift the
+        // following entries down and an in-flight iteration skip them
+        final int[] indexes;
+        final Block[] blocks;
+        lockReadLock();
+        try {
+            if (tickableMap.isEmpty()) return;
+            indexes = new int[tickableMap.size()];
+            blocks = new Block[indexes.length];
+            int i = 0;
+            for (var entry : Int2ObjectMaps.fastIterable(tickableMap)) {
+                indexes[i] = entry.getIntKey();
+                blocks[i] = entry.getValue();
+                i++;
+            }
+        } finally {
+            unlockReadLock();
+        }
+        for (int i = 0; i < indexes.length; i++) {
+            final Block block = blocks[i];
             final BlockHandler handler = block.handler();
-            if (handler == null) return;
-            final Point blockPosition = CoordConversion.chunkBlockIndexGetGlobal(index, chunkX, chunkZ);
+            if (handler == null) continue;
+            final Point blockPosition = CoordConversion.chunkBlockIndexGetGlobal(indexes[i], chunkX, chunkZ);
             handler.tick(new BlockHandler.Tick(block, instance, blockPosition));
-        });
+        }
     }
 
     @Override

@@ -4,9 +4,12 @@ import net.minestom.server.MinecraftServer;
 import net.minestom.server.ServerFlag;
 import net.minestom.server.network.packet.PacketParser;
 import net.minestom.server.network.packet.PacketVanilla;
+import net.minestom.server.network.DisconnectReasons;
 import net.minestom.server.network.player.PlayerSocketConnection;
 import org.jetbrains.annotations.ApiStatus;
 import org.jetbrains.annotations.UnknownNullability;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.EOFException;
 import java.io.IOException;
@@ -24,6 +27,8 @@ import java.util.Objects;
 import java.util.concurrent.atomic.AtomicReference;
 
 public final class Server {
+    private static final Logger LOGGER = LoggerFactory.getLogger(Server.class);
+
     private volatile boolean stop;
 
     private final PacketParser.Client packetParser;
@@ -75,6 +80,7 @@ public final class Server {
             // Use named thread builders for logging
             var readBuilder = Thread.ofVirtual().name("Ms-Socket-Reader-", 0);
             var writeBuilder = Thread.ofVirtual().name("Ms-Socket-Writer-", 0);
+            var loginTimeoutBuilder = Thread.ofVirtual().name("Ms-Login-Timeout-", 0);
             final var serverSocket = Objects.requireNonNull(this.serverSocket, "Not bound did you forget to call #init?");
             while (!stop) {
                 final SocketChannel client;
@@ -97,6 +103,7 @@ public final class Server {
                     reference.set(connection);
                     readThread.start();
                     writeThread.start();
+                    loginTimeoutBuilder.start(() -> loginTimeoutWatch(connection));
                 } catch (IOException e) {
                     if (!ServerFlag.SUPPRESS_CONNECTION_ACCEPT_ERRORS)
                         MinecraftServer.getExceptionManager().handleException(e);
@@ -108,6 +115,24 @@ public final class Server {
                 }
             }
         });
+    }
+
+    /**
+     * Closes a connection that never reached the configuration state, see the internal task
+     * {@code connection.login-timeout}. No disconnect packet is sent, the socket is simply closed.
+     */
+    private static void loginTimeoutWatch(PlayerSocketConnection connection) {
+        try {
+            Thread.sleep(ServerFlag.LOGIN_TIMEOUT);
+        } catch (InterruptedException _) {
+            Thread.currentThread().interrupt();
+            return;
+        }
+        if (!connection.loginTimedOut(System.currentTimeMillis())) return;
+        LOGGER.info("Login timeout: connection_id={} identifier={} reason={}",
+                connection.connectionId(), connection.getIdentifier(),
+                DisconnectReasons.LOGIN_TIMEOUT.key());
+        connection.disconnect();
     }
 
     private static void configureSocket(SocketChannel channel) throws IOException {

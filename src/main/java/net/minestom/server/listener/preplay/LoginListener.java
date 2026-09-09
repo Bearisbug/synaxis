@@ -9,6 +9,7 @@ import net.minestom.server.MinecraftServer;
 import net.minestom.server.entity.Player;
 import net.minestom.server.extras.mojangAuth.MojangCrypt;
 import net.minestom.server.network.ConnectionState;
+import net.minestom.server.network.DisconnectReasons;
 import net.minestom.server.network.NetworkBuffer;
 import net.minestom.server.network.packet.client.configuration.ClientFinishConfigurationPacket;
 import net.minestom.server.network.packet.client.configuration.ClientSelectKnownPacksPacket;
@@ -231,7 +232,7 @@ public final class LoginListener {
         if (connection.getServerState() != ConnectionState.CONFIGURATION) {
             // The server never sent StartConfigurationPacket, running the configuration phase
             // would send CONFIGURATION-only packets while the server state is still PLAY.
-            connection.disconnect();
+            connection.kick(DisconnectReasons.PROTOCOL_ERROR);
             return;
         }
         executeConfig(player, false);
@@ -246,7 +247,7 @@ public final class LoginListener {
         if (connection.getServerState() != ConnectionState.PLAY) {
             // The server has not written FinishConfigurationPacket yet, so the spawning instance
             // is not decided. Accepting the acknowledgement would spawn the player without one.
-            connection.disconnect();
+            connection.kick(DisconnectReasons.PROTOCOL_ERROR);
             return;
         }
         MinecraftServer.getConnectionManager().transitionConfigToPlay(player);

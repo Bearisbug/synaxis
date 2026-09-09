@@ -1,10 +1,12 @@
 package net.minestom.server.network;
 
+import net.kyori.adventure.text.TranslatableComponent;
 import net.minestom.server.coordinate.Pos;
 import net.minestom.server.entity.Player;
 import net.minestom.server.event.instance.InstanceTickEvent;
 import net.minestom.server.listener.preplay.LoginListener;
 import net.minestom.server.network.packet.client.configuration.ClientFinishConfigurationPacket;
+import net.minestom.server.network.packet.server.common.DisconnectPacket;
 import net.minestom.testing.Env;
 import net.minestom.testing.EnvTest;
 import org.junit.jupiter.api.Test;
@@ -26,13 +28,17 @@ public class PrematureFinishConfigurationIntegrationTest {
 
     @Test
     public void finishConfigurationBeforeTheServerIsReadyIsRejected(Env env) {
-        final Player player = env.createConnection().connect(env.createFlatInstance(), new Pos(0, 40, 0));
+        final var connection = env.createConnection();
+        final Player player = connection.connect(env.createFlatInstance(), new Pos(0, 40, 0));
+        final var disconnects = connection.trackIncoming(DisconnectPacket.class);
         // The server only accepts the acknowledgement once it wrote FinishConfigurationPacket
         player.getPlayerConnection().setServerState(ConnectionState.CONFIGURATION);
 
         LoginListener.finishConfigListener(new ClientFinishConfigurationPacket(), player);
 
         assertFalse(player.getPlayerConnection().isOnline(), "the connection must be dropped");
+        disconnects.assertSingle(disconnect -> assertEquals("engine:protocol-error",
+                assertInstanceOf(TranslatableComponent.class, disconnect.message()).key()));
         env.process().connection().updateWaitingPlayers();
     }
 

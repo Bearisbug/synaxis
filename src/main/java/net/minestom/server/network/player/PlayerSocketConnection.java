@@ -9,6 +9,7 @@ import net.minestom.server.event.ListenerHandle;
 import net.minestom.server.event.player.PlayerPacketOutEvent;
 import net.minestom.server.extras.mojangAuth.MojangCrypt;
 import net.minestom.server.network.ConnectionState;
+import net.minestom.server.network.DisconnectReasons;
 import net.minestom.server.network.NetworkBuffer;
 import net.minestom.server.network.packet.PacketParser;
 import net.minestom.server.network.packet.PacketReading;
@@ -159,7 +160,7 @@ public class PlayerSocketConnection extends PlayerConnection {
                 MinecraftServer.getExceptionManager().handleException(e);
             // The remaining packets of the batch are lost, disconnect to avoid
             // reading from an invalid state.
-            if (ServerFlag.REJECT_MALFORMED_PACKET) disconnect();
+            if (ServerFlag.REJECT_MALFORMED_PACKET) kick(DisconnectReasons.PROTOCOL_ERROR);
             return;
         }
         switch (result) {

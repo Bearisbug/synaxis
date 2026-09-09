@@ -2,7 +2,9 @@ package net.minestom.server.network.player;
 
 import net.kyori.adventure.key.Key;
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.TranslatableComponent;
 import net.minestom.server.MinecraftServer;
+import net.minestom.server.ServerFlag;
 import net.minestom.server.crypto.PlayerPublicKey;
 import net.minestom.server.entity.Entity;
 import net.minestom.server.entity.Player;
@@ -23,12 +25,15 @@ import net.minestom.server.network.plugin.LoginPluginMessageProcessor;
 import net.minestom.server.utils.validate.Check;
 import org.jetbrains.annotations.ApiStatus;
 import org.jetbrains.annotations.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.net.SocketAddress;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -37,6 +42,12 @@ import java.util.concurrent.ConcurrentHashMap;
  * It can be extended to create a new kind of player (NPC for instance).
  */
 public abstract class PlayerConnection {
+    private static final Logger LOGGER = LoggerFactory.getLogger(PlayerConnection.class);
+
+    // Correlation id of every log line and disconnect packet of this connection
+    private final UUID connectionId = UUID.randomUUID();
+    private final long connectedAtMillis = System.currentTimeMillis();
+
     private Player player;
 
     // Server & client states can differ during configuration.
@@ -62,6 +73,29 @@ public abstract class PlayerConnection {
         this.online = true;
         this.serverState = ConnectionState.HANDSHAKE;
         this.clientState = ConnectionState.HANDSHAKE;
+    }
+
+    /**
+     * Returns the correlation id assigned to this connection when the client was accepted.
+     *
+     * @return the process-unique connection id
+     */
+    public UUID connectionId() {
+        return connectionId;
+    }
+
+    /**
+     * Returns whether this connection is still waiting to reach the configuration state
+     * past the login timeout.
+     *
+     * @param nowMillis the current wall clock time in milliseconds
+     * @return true if the connection ran out of time to log in
+     */
+    @ApiStatus.Internal
+    public boolean loginTimedOut(long nowMillis) {
+        return online
+                && serverState.ordinal() < ConnectionState.CONFIGURATION.ordinal()
+                && nowMillis - connectedAtMillis > ServerFlag.LOGIN_TIMEOUT;
     }
 
     /**
@@ -150,6 +184,10 @@ public abstract class PlayerConnection {
      * @param component the reason
      */
     public void kick(Component component) {
+        // A translatable reason is an error code of the engine, log it against the connection id
+        if (component instanceof TranslatableComponent translatable)
+            LOGGER.info("Kicking connection_id={} identifier={} reason={}",
+                    connectionId, getIdentifier(), translatable.key());
         // Packet type depends on the current player connection state
         final ServerPacket disconnectPacket;
         if (serverState == ConnectionState.HANDSHAKE || serverState == ConnectionState.STATUS) {
@@ -168,7 +206,10 @@ public abstract class PlayerConnection {
      * Forcing the player to disconnect.
      */
     public void disconnect() {
+        final boolean wasOnline = this.online;
         this.online = false;
+        if (wasOnline)
+            LOGGER.info("Connection closed: connection_id={} identifier={}", connectionId, getIdentifier());
         final Player player = MinecraftServer.getConnectionManager().getPlayer(this);
         if (player != null) {
             MinecraftServer.getConnectionManager().removePlayer(this);

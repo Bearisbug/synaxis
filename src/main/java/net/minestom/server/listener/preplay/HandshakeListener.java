@@ -9,6 +9,7 @@ import net.kyori.adventure.text.format.NamedTextColor;
 import net.minestom.server.Auth;
 import net.minestom.server.MinecraftServer;
 import net.minestom.server.ServerFlag;
+import net.minestom.server.network.DisconnectReasons;
 import net.minestom.server.network.packet.client.handshake.ClientHandshakePacket;
 import net.minestom.server.network.player.GameProfile;
 import net.minestom.server.network.player.PlayerConnection;
@@ -25,11 +26,6 @@ import java.util.UUID;
 public final class HandshakeListener {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(HandshakeListener.class);
-
-    /**
-     * Text sent if a player tries to connect with an invalid version of the client
-     */
-    private static final Component INVALID_VERSION_TEXT = Component.text("Invalid Version, please use " + MinecraftServer.VERSION_NAME, NamedTextColor.RED);
 
     /**
      * Indicates that a BungeeGuard authentication was invalid due to missing, multiple, or invalid tokens.
@@ -64,7 +60,7 @@ public final class HandshakeListener {
             case LOGIN:
                 if (packet.protocolVersion() != MinecraftServer.PROTOCOL_VERSION) {
                     // Incorrect client version
-                    connection.kick(INVALID_VERSION_TEXT);
+                    connection.kick(DisconnectReasons.UNSUPPORTED_VERSION);
                     break;
                 }
 

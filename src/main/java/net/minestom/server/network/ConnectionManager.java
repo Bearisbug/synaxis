@@ -57,7 +57,6 @@ public final class ConnectionManager {
     private static final Logger LOGGER = LoggerFactory.getLogger(ConnectionManager.class);
 
     private static final Component TIMEOUT_TEXT = Component.text("Timeout", NamedTextColor.RED);
-    private static final Component SHUTDOWN_TEXT = Component.text("Server shutting down");
 
     private final CachedPacket cachedTagsPacket =
             new CachedPacket(() -> Registries.tagsPacket(MinecraftServer.getRegistries()));
@@ -231,6 +230,8 @@ public final class ConnectionManager {
         }
         // Send login success packet (and switch to configuration phase)
         connection.sendPacket(new LoginSuccessPacket(gameProfile, new UUID(0L, 0L)));
+        LOGGER.info("Login success: username={} connection_id={} remote_address={}",
+                gameProfile.name(), connection.connectionId(), connection.getRemoteAddress());
         return gameProfile;
     }
 
@@ -322,10 +323,10 @@ public final class ConnectionManager {
      */
     public synchronized void shutdown() {
         for (final PlayerConnection configPlayer : connectionPlayerMap.keySet())
-            configPlayer.kick(SHUTDOWN_TEXT);
+            configPlayer.kick(DisconnectReasons.SERVER_STOPPING);
         this.configurationPlayers.clear();
         for (final Player playPlayer : playPlayers)
-            playPlayer.kick(SHUTDOWN_TEXT);
+            playPlayer.kick(DisconnectReasons.SERVER_STOPPING);
         this.playPlayers.clear();
 
         this.keepAlivePlayers.clear();
@@ -369,6 +370,13 @@ public final class ConnectionManager {
 
             // Spawn the player at Player#getRespawnPoint
             CompletableFuture<Void> spawnFuture = player.UNSAFE_init();
+            // A failed spawn (e.g. the spawn chunks could not be loaded) would otherwise leave
+            // the client waiting on the join screen forever.
+            var _ = spawnFuture.exceptionally(throwable -> {
+                LOGGER.error("Failed to spawn player {}", player.getUsername(), throwable);
+                player.kick(DisconnectReasons.INTERNAL_ERROR);
+                return null;
+            });
 
             // Required to get the exact moment the player spawns
             if (ServerFlag.INSIDE_TEST) spawnFuture.join();

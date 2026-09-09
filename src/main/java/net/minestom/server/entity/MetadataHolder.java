@@ -43,8 +43,6 @@ import net.minestom.server.entity.metadata.cube.SulfurCubeMeta;
 import net.minestom.server.entity.metadata.display.BlockDisplayMeta;
 import net.minestom.server.entity.metadata.display.ItemDisplayMeta;
 import net.minestom.server.entity.metadata.display.TextDisplayMeta;
-import net.minestom.server.entity.metadata.flying.GhastMeta;
-import net.minestom.server.entity.metadata.flying.PhantomMeta;
 import net.minestom.server.entity.metadata.golem.CopperGolemMeta;
 import net.minestom.server.entity.metadata.golem.IronGolemMeta;
 import net.minestom.server.entity.metadata.golem.ShulkerMeta;
@@ -373,7 +371,6 @@ public final class MetadataHolder {
             entry(EntityType.FIREWORK_ROCKET, FireworkRocketMeta::new),
             entry(EntityType.FOX, FoxMeta::new),
             entry(EntityType.FROG, FrogMeta::new),
-            entry(EntityType.GHAST, GhastMeta::new),
             entry(EntityType.GIANT, GiantMeta::new),
             entry(EntityType.GLOW_ITEM_FRAME, GlowItemFrameMeta::new),
             entry(EntityType.GLOW_SQUID, GlowSquidMeta::new),
@@ -422,7 +419,6 @@ public final class MetadataHolder {
             entry(EntityType.PANDA, PandaMeta::new),
             entry(EntityType.PARROT, ParrotMeta::new),
             entry(EntityType.PARCHED, ParchedMeta::new),
-            entry(EntityType.PHANTOM, PhantomMeta::new),
             entry(EntityType.PIG, PigMeta::new),
             entry(EntityType.PIGLIN, PiglinMeta::new),
             entry(EntityType.PIGLIN_BRUTE, PiglinBruteMeta::new),

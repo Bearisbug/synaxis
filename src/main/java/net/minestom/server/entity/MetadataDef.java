@@ -662,14 +662,6 @@ public sealed class MetadataDef {
         public static final Entry<Integer> DRAGON_PHASE = index(0, Metadata::VarInt, 10);
     }
 
-    public static final class Ghast extends Mob {
-        public static final Entry<Boolean> IS_ATTACKING = index(0, Metadata::Boolean, false);
-    }
-
-    public static final class Phantom extends Mob {
-        public static final Entry<Integer> SIZE = index(0, Metadata::VarInt, 0);
-    }
-
     public static final class Slime extends AbstractCubeMob {
     }
 

@@ -71,7 +71,6 @@ module net.minestom.server {
     exports net.minestom.server.entity.metadata.avatar;
     exports net.minestom.server.entity.metadata.cube;
     exports net.minestom.server.entity.metadata.display;
-    exports net.minestom.server.entity.metadata.flying;
     exports net.minestom.server.entity.metadata.golem;
     exports net.minestom.server.entity.metadata.item;
     exports net.minestom.server.entity.metadata.minecart;

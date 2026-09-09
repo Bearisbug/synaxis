@@ -1,6 +1,7 @@
 package dev.gameengine.timer;
 
 import java.util.concurrent.Executor;
+import java.util.function.Consumer;
 import java.util.function.Supplier;
 
 /**
@@ -10,8 +11,8 @@ import java.util.function.Supplier;
  * Tasks are by default executed in the caller thread.
  */
 public sealed interface Scheduler extends Executor permits SchedulerImpl, SchedulerManager {
-    static Scheduler newScheduler() {
-        return new SchedulerImpl();
+    static Scheduler newScheduler(Consumer<Throwable> exceptionHandler) {
+        return new SchedulerImpl(exceptionHandler);
     }
 
     /**

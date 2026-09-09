@@ -1,6 +1,5 @@
 package dev.gameengine.thread;
 
-import dev.gameengine.MinecraftServer;
 import dev.gameengine.ServerFlag;
 import dev.gameengine.ServerProcess;
 import org.jetbrains.annotations.ApiStatus;
@@ -9,6 +8,8 @@ import java.util.Locale;
 
 @ApiStatus.Internal
 public final class TickSchedulerThread extends MinestomThread {
+    public static final String THREAD_NAME_TICK_SCHEDULER = "Ms-TickScheduler";
+
     private static final long TICK_TIME_NANOS = 1_000_000_000L / ServerFlag.SERVER_TICKS_PER_SECOND;
     // Windows has an issue with periodically being unable to sleep for < ~16ms at a time
     private static final long SLEEP_THRESHOLD = System.getProperty("os.name", "")
@@ -17,7 +18,7 @@ public final class TickSchedulerThread extends MinestomThread {
     private final ServerProcess serverProcess;
 
     public TickSchedulerThread(ServerProcess serverProcess) {
-        super(MinecraftServer.THREAD_NAME_TICK_SCHEDULER);
+        super(THREAD_NAME_TICK_SCHEDULER);
         this.serverProcess = serverProcess;
     }
 

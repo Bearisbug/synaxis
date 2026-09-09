@@ -1,7 +1,6 @@
 package dev.gameengine.timer;
 
 import it.unimi.dsi.fastutil.ints.Int2ObjectAVLTreeMap;
-import dev.gameengine.MinecraftServer;
 import dev.gameengine.utils.collection.ConcurrentMessageQueues;
 import org.jctools.queues.MessagePassingQueue;
 
@@ -13,6 +12,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.function.Consumer;
 import java.util.function.Supplier;
 
 final class SchedulerImpl implements Scheduler {
@@ -22,6 +22,12 @@ final class SchedulerImpl implements Scheduler {
         thread.setDaemon(true);
         return thread;
     });
+
+    private final Consumer<Throwable> exceptionHandler;
+
+    SchedulerImpl(Consumer<Throwable> exceptionHandler) {
+        this.exceptionHandler = exceptionHandler;
+    }
 
     private final MessagePassingQueue<TaskImpl> tasksToExecute = ConcurrentMessageQueues.mpscUnboundedArrayQueue(64);
     private final MessagePassingQueue<TaskImpl> tickEndTasksToExecute = ConcurrentMessageQueues.mpscUnboundedArrayQueue(64);
@@ -120,7 +126,7 @@ final class SchedulerImpl implements Scheduler {
         try {
             schedule = task.task().get();
         } catch (Throwable t) {
-            MinecraftServer.getExceptionManager().handleException(new RuntimeException("Exception in scheduled task", t));
+            exceptionHandler.accept(new RuntimeException("Exception in scheduled task", t));
             schedule = TaskSchedule.stop();
         }
 

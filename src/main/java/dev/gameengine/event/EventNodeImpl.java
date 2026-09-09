@@ -2,7 +2,6 @@ package dev.gameengine.event;
 
 import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
-import dev.gameengine.MinecraftServer;
 import dev.gameengine.ServerFlag;
 import dev.gameengine.event.trait.AsyncEvent;
 import dev.gameengine.event.trait.RecursiveEvent;
@@ -51,6 +50,16 @@ non-sealed class EventNodeImpl<T extends Event> implements EventNode<T> {
     final Class<T> eventType;
     volatile int priority;
     volatile @Nullable EventNodeImpl<? super T> parent;
+
+    /**
+     * Reports an exception thrown by a listener to the process owning the root of this tree. A tree
+     * that has not been attached to a {@link GlobalEventHandler} has no process to report to.
+     */
+    void handleException(Throwable throwable) {
+        final EventNodeImpl<? super T> parent = this.parent;
+        if (parent != null) parent.handleException(throwable);
+        else throwable.printStackTrace();
+    }
 
     EventNodeImpl(String name,
                   EventFilter<T, ?> filter,
@@ -386,7 +395,7 @@ non-sealed class EventNodeImpl<T extends Event> implements EventNode<T> {
             try {
                 listener.accept(event);
             } catch (Throwable e) {
-                MinecraftServer.getExceptionManager().handleException(e);
+                handleException(e);
             }
         }
 

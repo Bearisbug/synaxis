@@ -6,6 +6,7 @@ import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.Unmodifiable;
 
 import java.util.List;
+import java.util.function.Consumer;
 import java.util.function.IntFunction;
 
 /**
@@ -16,7 +17,7 @@ import java.util.function.IntFunction;
  * It is recommended that {@link Tickable}s being added to a dispatcher also implement {@link AcquirableSource}, as
  * doing so will allow the user to synchronize external access to them using the {@link Acquirable} API.
  * <p>
- * Instances of this class can be obtained by calling {@link ThreadDispatcher#dispatcher(ThreadProvider, int)}, or a similar
+ * Instances of this class can be obtained by calling {@link ThreadDispatcher#dispatcher(ThreadProvider, int, Consumer)}, or a similar
  * overload.
  *
  * @see Acquirable
@@ -27,14 +28,16 @@ public sealed interface ThreadDispatcher<P, E extends Tickable> permits ThreadDi
      * Creates a new ThreadDispatcher using default thread names (ex. Ms-Tick-n).
      * <p>Remember to start the dispatcher using {@link #start()}</p>
      *
-     * @param provider    the {@link ThreadProvider} instance to be used for defining thread IDs
-     * @param threadCount the number of threads to create for this dispatcher
-     * @param <P>         the dispatcher partition type
+     * @param provider         the {@link ThreadProvider} instance to be used for defining thread IDs
+     * @param threadCount      the number of threads to create for this dispatcher
+     * @param exceptionHandler where the exceptions thrown while ticking are reported
+     * @param <P>              the dispatcher partition type
      * @return a new ThreadDispatcher instance
      */
     @Contract(pure = true)
-    static <P, E extends Tickable> ThreadDispatcher<P, E> dispatcher(ThreadProvider<P> provider, int threadCount) {
-        return new ThreadDispatcherImpl<>(provider, threadCount, TickThread::new);
+    static <P, E extends Tickable> ThreadDispatcher<P, E> dispatcher(ThreadProvider<P> provider, int threadCount,
+                                                                     Consumer<Throwable> exceptionHandler) {
+        return new ThreadDispatcherImpl<>(provider, threadCount, index -> new TickThread(index, exceptionHandler));
     }
 
     /**
@@ -42,28 +45,32 @@ public sealed interface ThreadDispatcher<P, E extends Tickable> permits ThreadDi
      * useful to disambiguate custom ThreadDispatcher instances from ones used in core Minestom code.
      * <p>Remember to start the dispatcher using {@link #start()}</p>
      *
-     * @param provider      the {@link ThreadProvider} instance to be used for defining thread IDs
-     * @param nameGenerator a function that should return unique names, given a thread index
-     * @param threadCount   the number of threads to create for this dispatcher
-     * @param <P>           the dispatcher partition type
+     * @param provider         the {@link ThreadProvider} instance to be used for defining thread IDs
+     * @param nameGenerator    a function that should return unique names, given a thread index
+     * @param threadCount      the number of threads to create for this dispatcher
+     * @param exceptionHandler where the exceptions thrown while ticking are reported
+     * @param <P>              the dispatcher partition type
      * @return a new ThreadDispatcher instance
      */
     @Contract(pure = true)
     static <P, E extends Tickable> ThreadDispatcher<P, E> dispatcher(ThreadProvider<P> provider,
-                                                                              IntFunction<String> nameGenerator, int threadCount) {
-        return new ThreadDispatcherImpl<>(provider, threadCount, index -> new TickThread(nameGenerator.apply(index)));
+                                                                     IntFunction<String> nameGenerator, int threadCount,
+                                                                     Consumer<Throwable> exceptionHandler) {
+        return new ThreadDispatcherImpl<>(provider, threadCount,
+                index -> new TickThread(nameGenerator.apply(index), exceptionHandler));
     }
 
     /**
      * Creates a single-threaded dispatcher that uses default thread names.
      * <p>Remember to start the dispatcher using {@link #start()}</p>
      *
-     * @param <P> the dispatcher partition type
+     * @param exceptionHandler where the exceptions thrown while ticking are reported
+     * @param <P>              the dispatcher partition type
      * @return a new ThreadDispatcher instance
      */
     @Contract(pure = true)
-    static <P, E extends Tickable> ThreadDispatcher<P, E> singleThread() {
-        return dispatcher(ThreadProvider.counter(), 1);
+    static <P, E extends Tickable> ThreadDispatcher<P, E> singleThread(Consumer<Throwable> exceptionHandler) {
+        return dispatcher(ThreadProvider.counter(), 1, exceptionHandler);
     }
 
     /**

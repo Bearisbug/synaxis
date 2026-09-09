@@ -1,11 +1,11 @@
 package dev.gameengine.event.trait;
 
 import dev.gameengine.event.Event;
-import dev.gameengine.event.EventDispatcher;
+import dev.gameengine.event.EventNode;
 
 /**
  * Represents an {@link Event} which can be cancelled.
- * Called using {@link EventDispatcher#callCancellable(CancellableEvent, Runnable)}.
+ * Called using {@link EventNode#callCancellable(Event, Runnable)}.
  */
 public interface CancellableEvent extends Event {
 

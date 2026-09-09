@@ -1,12 +1,18 @@
 package dev.gameengine.timer;
 
+import dev.gameengine.exception.ExceptionManager;
 import dev.gameengine.utils.collection.ConcurrentMessageQueues;
 import org.jctools.queues.MessagePassingQueue;
 
 import java.util.function.Supplier;
 
 public final class SchedulerManager implements Scheduler {
-    private final Scheduler scheduler = Scheduler.newScheduler();
+    private final Scheduler scheduler;
+
+    public SchedulerManager(ExceptionManager exception) {
+        this.scheduler = Scheduler.newScheduler(exception::handleException);
+    }
+
     private final MessagePassingQueue<Runnable> shutdownTasks = ConcurrentMessageQueues.mpscUnboundedArrayQueue(1024);
     @Override
     public void process() {

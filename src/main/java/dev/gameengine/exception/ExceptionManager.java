@@ -1,6 +1,6 @@
 package dev.gameengine.exception;
 
-import dev.gameengine.MinecraftServer;
+import dev.gameengine.ServerProcess;
 import org.jetbrains.annotations.Nullable;
 
 /**
@@ -8,7 +8,12 @@ import org.jetbrains.annotations.Nullable;
  */
 public final class ExceptionManager {
 
+    private final ServerProcess process;
     private @Nullable ExceptionHandler exceptionHandler;
+
+    public ExceptionManager(ServerProcess process) {
+        this.process = process;
+    }
 
     /**
      * Handles an exception, if no {@link ExceptionHandler} is set, it just prints the stack trace.
@@ -19,7 +24,7 @@ public final class ExceptionManager {
         if (e instanceof OutOfMemoryError) {
             // OOM should be handled manually
             e.printStackTrace();
-            MinecraftServer.stopCleanly();
+            process.stop();
             return;
         }
         this.getExceptionHandler().handleException(e);

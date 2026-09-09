@@ -1,6 +1,5 @@
 package dev.gameengine.thread;
 
-import dev.gameengine.MinecraftServer;
 import dev.gameengine.Tickable;
 import dev.gameengine.entity.Entity;
 import dev.gameengine.instance.Chunk;
@@ -13,6 +12,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.LockSupport;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.function.Consumer;
 
 /**
  * Thread responsible for ticking {@link Chunk chunks} and {@link Entity entities}.
@@ -21,6 +21,9 @@ import java.util.concurrent.locks.ReentrantLock;
  */
 @ApiStatus.Internal
 public class TickThread extends MinestomThread {
+    public static final String THREAD_NAME_TICK = "Ms-Tick";
+
+    private final Consumer<Throwable> exceptionHandler;
     private final ReentrantLock lock = new ReentrantLock();
     private volatile boolean stop;
 
@@ -30,12 +33,13 @@ public class TickThread extends MinestomThread {
     private long tickNum = 0;
     final List<ThreadDispatcherImpl.Partition> entries = new ArrayList<>();
 
-    public TickThread(int number) {
-        super(MinecraftServer.THREAD_NAME_TICK + "-" + number);
+    public TickThread(int number, Consumer<Throwable> exceptionHandler) {
+        this(THREAD_NAME_TICK + "-" + number, exceptionHandler);
     }
 
-    public TickThread(String name) {
+    public TickThread(String name, Consumer<Throwable> exceptionHandler) {
         super(name);
+        this.exceptionHandler = exceptionHandler;
     }
 
     @Override
@@ -53,7 +57,7 @@ public class TickThread extends MinestomThread {
             try {
                 tick();
             } catch (Exception e) {
-                MinecraftServer.getExceptionManager().handleException(e);
+                exceptionHandler.accept(e);
             } finally {
                 lock.unlock();
                 // #acquire() callbacks
@@ -81,7 +85,7 @@ public class TickThread extends MinestomThread {
                     assert assertElement(element);
                     element.tick(tickTime);
                 } catch (Throwable e) {
-                    MinecraftServer.getExceptionManager().handleException(e);
+                    exceptionHandler.accept(e);
                 }
             }
         }

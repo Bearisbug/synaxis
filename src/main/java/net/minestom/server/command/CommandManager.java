@@ -12,7 +12,6 @@ import net.minestom.server.utils.callback.CommandCallback;
 import net.minestom.server.utils.validate.Check;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Locale;
@@ -58,7 +57,7 @@ public final class CommandManager {
         }
         commands.add(command);
         for (String name : command.getNames()) {
-            commandMap.put(name, command);
+            commandMap.put(name.toLowerCase(Locale.ROOT), command);
         }
 
         invalidateGraphCache();
@@ -82,10 +81,10 @@ public final class CommandManager {
      *
      * @param command the command to remove
      */
-    public void unregister(Command command) {
+    public synchronized void unregister(Command command) {
         commands.remove(command);
         for (String name : command.getNames()) {
-            commandMap.remove(name);
+            commandMap.remove(name.toLowerCase(Locale.ROOT));
         }
 
         invalidateGraphCache();
@@ -97,7 +96,7 @@ public final class CommandManager {
      * @param commandName the command name
      * @return the command associated with the name, null if not any
      */
-    public @Nullable Command getCommand(String commandName) {
+    public synchronized @Nullable Command getCommand(String commandName) {
         return commandMap.get(commandName.toLowerCase(Locale.ROOT));
     }
 
@@ -195,8 +194,9 @@ public final class CommandManager {
         return GraphConverter.createPacket(this, getGraph(), player);
     }
 
-    public Set<Command> getCommands() {
-        return Collections.unmodifiableSet(commands);
+    public synchronized Set<Command> getCommands() {
+        // A snapshot: the live set is guarded by this monitor and callers iterate outside of it
+        return Set.copyOf(commands);
     }
 
     /**

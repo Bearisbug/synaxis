@@ -8,6 +8,9 @@ import org.junit.jupiter.api.Test;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -30,6 +33,28 @@ public class CommandManagerTest {
         assertFalse(manager.commandExists("name1"));
         assertFalse(manager.commandExists("name2"));
         assertFalse(manager.commandExists("name3"));
+    }
+
+    /**
+     * Names are stored as given but looked up lower-cased, so a command declared with an upper-case letter could
+     * neither be found nor detected as a duplicate.
+     */
+    @Test
+    public void testMixedCaseCommandRegistration() {
+        var manager = new CommandManager();
+
+        var command = new Command("Foo");
+        manager.register(command);
+
+        assertSame(command, manager.getCommand("Foo"));
+        assertSame(command, manager.getCommand("foo"));
+        assertTrue(manager.commandExists("FOO"));
+        assertThrows(IllegalStateException.class, () -> manager.register(new Command("Foo")));
+
+        manager.unregister(command);
+
+        assertNull(manager.getCommand("foo"));
+        assertFalse(manager.commandExists("Foo"));
     }
 
     @Test

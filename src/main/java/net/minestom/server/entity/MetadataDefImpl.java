@@ -50,7 +50,8 @@ final class MetadataDefImpl {
         } catch (ClassNotFoundException e) {
             throw new RuntimeException(e);
         }
-        final int classIndex = MAX_INDEX.get(name);
+        // A class without its own entries has no key, its own contribution is zero
+        final int classIndex = MAX_INDEX.getOrDefault(name, -1);
         final int superIndex = findSuperIndex(name);
         return classIndex + superIndex + 1;
     }
@@ -72,7 +73,7 @@ final class MetadataDefImpl {
 
             int index = 0;
             do {
-                index += MAX_INDEX.get(superclass.getName()) + 1;
+                index += MAX_INDEX.getOrDefault(superclass.getName(), -1) + 1;
                 superclass = superclass.getSuperclass();
             } while (superclass != Object.class);
 

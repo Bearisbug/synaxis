@@ -2,6 +2,7 @@ package net.minestom.server.instance.anvil;
 
 import it.unimi.dsi.fastutil.ints.IntArrayList;
 import it.unimi.dsi.fastutil.ints.IntList;
+import it.unimi.dsi.fastutil.longs.Long2IntOpenHashMap;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import it.unimi.dsi.fastutil.longs.LongSet;
@@ -59,7 +60,6 @@ public class AnvilLoader implements ChunkLoader {
     private final static Logger LOGGER = LoggerFactory.getLogger(AnvilLoader.class);
     private static final CompoundBinaryTag[] BLOCK_STATE_ID_2_OBJECT_CACHE = new CompoundBinaryTag[Block.statesCount()];
 
-    private final ReentrantLock fileCreationLock = new ReentrantLock();
     private final Map<String, RegionFile> alreadyLoaded = new ConcurrentHashMap<>();
     private final Path path;
     private final Path levelPath;
@@ -72,6 +72,16 @@ public class AnvilLoader implements ChunkLoader {
      */
     private final Long2ObjectOpenHashMap<LongSet> perRegionLoadedChunks = new Long2ObjectOpenHashMap<>();
     private final ReentrantLock perRegionLoadedChunksLock = new ReentrantLock();
+
+    /**
+     * Number of loads and saves currently using a region file, keyed by region index.
+     * <p>
+     * A region file is only closed once this reaches zero, so an unload can never close the file
+     * while another thread is still reading or writing a chunk through it.
+     * <p>
+     * Guarded by {@link #perRegionLoadedChunksLock}.
+     */
+    private final Long2IntOpenHashMap perRegionUsage = new Long2IntOpenHashMap();
 
     /**
      * Creates a new AnvilLoader for the given world path and dimension.
@@ -133,8 +143,16 @@ public class AnvilLoader implements ChunkLoader {
     }
 
     private @Nullable Chunk loadMCA(Instance instance, int chunkX, int chunkZ) throws IOException {
-        final RegionFile mcaFile = getMCAFile(chunkX, chunkZ);
+        final RegionFile mcaFile = acquireRegionFile(chunkX, chunkZ, false);
         if (mcaFile == null) return null;
+        try {
+            return loadMCA(instance, mcaFile, chunkX, chunkZ);
+        } finally {
+            releaseRegionFile(chunkX, chunkZ);
+        }
+    }
+
+    private @Nullable Chunk loadMCA(Instance instance, RegionFile mcaFile, int chunkX, int chunkZ) throws IOException {
         final CompoundBinaryTag chunkData = mcaFile.readChunkData(chunkX, chunkZ);
         if (chunkData == null) return null;
 
@@ -179,23 +197,27 @@ public class AnvilLoader implements ChunkLoader {
         return chunk;
     }
 
-    private @Nullable RegionFile getMCAFile(int chunkX, int chunkZ) {
+    /**
+     * Returns the region file holding the given chunk and marks it as in use, creating it when
+     * missing if {@code createIfMissing} is set. Every non-null result must be given back with
+     * {@link #releaseRegionFile(int, int)}, until then the file will not be closed by an unload.
+     */
+    private @Nullable RegionFile acquireRegionFile(int chunkX, int chunkZ, boolean createIfMissing) {
         final int regionX = chunkToRegion(chunkX), regionZ = chunkToRegion(chunkZ);
-        final String fileName = RegionFile.getFileName(regionX, regionZ);
-
-        final RegionFile loadedFile = alreadyLoaded.get(fileName);
-        if (loadedFile != null) return loadedFile;
-
+        final long regionIndex = regionIndex(regionX, regionZ);
+        // A single creation path under a single lock, otherwise two threads can end up with two
+        // RegionFile objects for the same file, each handing the same free sectors to a different
+        // chunk and writing its own copy of the header over the other's.
         perRegionLoadedChunksLock.lock();
         try {
-            return alreadyLoaded.computeIfAbsent(fileName, n -> {
+            final RegionFile regionFile = alreadyLoaded.computeIfAbsent(RegionFile.getFileName(regionX, regionZ), n -> {
                 final Path regionPath = this.regionPath.resolve(n);
-                if (!Files.exists(regionPath)) {
-                    return null;
-                }
-
                 try {
-                    final long regionIndex = regionIndex(regionX, regionZ);
+                    if (!Files.exists(regionPath)) {
+                        if (!createIfMissing) return null;
+                        Files.createDirectories(regionPath.getParent());
+                        Files.createFile(regionPath);
+                    }
                     LongSet previousVersion = perRegionLoadedChunks.put(regionIndex, new LongOpenHashSet());
                     assert previousVersion == null : "The AnvilLoader cache should not already have data for this region.";
                     return new RegionFile(regionPath);
@@ -204,8 +226,37 @@ public class AnvilLoader implements ChunkLoader {
                     return null;
                 }
             });
+            if (regionFile != null) perRegionUsage.addTo(regionIndex, 1);
+            return regionFile;
         } finally {
             perRegionLoadedChunksLock.unlock();
+        }
+    }
+
+    private void releaseRegionFile(int chunkX, int chunkZ) {
+        final int regionX = chunkToRegion(chunkX), regionZ = chunkToRegion(chunkZ);
+        final long regionIndex = regionIndex(regionX, regionZ);
+        perRegionLoadedChunksLock.lock();
+        try {
+            if (perRegionUsage.addTo(regionIndex, -1) != 1) return; // Another load/save is still running
+            perRegionUsage.remove(regionIndex);
+            final LongSet chunks = perRegionLoadedChunks.get(regionIndex);
+            // An unload emptied the region while this operation was running, close the file now
+            if (chunks == null || chunks.isEmpty()) closeRegionFile(regionX, regionZ);
+        } finally {
+            perRegionLoadedChunksLock.unlock();
+        }
+    }
+
+    // Must be called while holding perRegionLoadedChunksLock
+    private void closeRegionFile(int regionX, int regionZ) {
+        perRegionLoadedChunks.remove(regionIndex(regionX, regionZ));
+        final RegionFile regionFile = alreadyLoaded.remove(RegionFile.getFileName(regionX, regionZ));
+        if (regionFile == null) return;
+        try {
+            regionFile.close();
+        } catch (IOException e) {
+            MinecraftServer.getExceptionManager().handleException(e);
         }
     }
 
@@ -362,31 +413,13 @@ public class AnvilLoader implements ChunkLoader {
         final long regionIndex = regionIndex(regionX, regionZ);
 
         // Find the region file or create an empty one if missing
-        RegionFile mcaFile;
-        fileCreationLock.lock();
+        final RegionFile mcaFile = acquireRegionFile(chunkX, chunkZ, true);
+        if (mcaFile == null) {
+            LOGGER.error("Failed to create region file for {}, {}", chunkX, chunkZ);
+            return;
+        }
+
         try {
-            mcaFile = getMCAFile(chunkX, chunkZ);
-
-            if (mcaFile == null) {
-                final String regionFileName = RegionFile.getFileName(regionX, regionZ);
-                try {
-                    Path regionFile = regionPath.resolve(regionFileName);
-                    if (!Files.exists(regionFile)) {
-                        Files.createDirectories(regionFile.getParent());
-                        Files.createFile(regionFile);
-                    }
-
-                    mcaFile = new RegionFile(regionFile);
-                    alreadyLoaded.put(regionFileName, mcaFile);
-                } catch (IOException e) {
-                    LOGGER.error("Failed to create region file for {}, {}", chunkX, chunkZ, e);
-                    MinecraftServer.getExceptionManager().handleException(e);
-                    return;
-                }
-            }
-        } finally {
-            fileCreationLock.unlock();
-
             this.perRegionLoadedChunksLock.lock();
             try {
                 this.perRegionLoadedChunks.computeIfAbsent(regionIndex, _ -> new LongOpenHashSet())
@@ -394,9 +427,7 @@ public class AnvilLoader implements ChunkLoader {
             } finally {
                 this.perRegionLoadedChunksLock.unlock();
             }
-        }
 
-        try {
             final CompoundBinaryTag.Builder chunkData = CompoundBinaryTag.builder();
 
             chunkData.put(chunk.tagHandler().asCompound());
@@ -414,6 +445,8 @@ public class AnvilLoader implements ChunkLoader {
         } catch (IOException e) {
             LOGGER.error("Failed to save chunk {}, {}", chunkX, chunkZ, e);
             MinecraftServer.getExceptionManager().handleException(e);
+        } finally {
+            releaseRegionFile(chunkX, chunkZ);
         }
     }
 
@@ -580,16 +613,9 @@ public class AnvilLoader implements ChunkLoader {
                 final long chunkIndex = chunkIndex(chunk.getChunkX(), chunk.getChunkZ());
                 chunks.remove(chunkIndex);
 
-                if (chunks.isEmpty()) {
-                    perRegionLoadedChunks.remove(regionIndex);
-                    RegionFile regionFile = alreadyLoaded.remove(RegionFile.getFileName(regionX, regionZ));
-                    if (regionFile != null) {
-                        try {
-                            regionFile.close();
-                        } catch (IOException e) {
-                            MinecraftServer.getExceptionManager().handleException(e);
-                        }
-                    }
+                // A load or save still using the file closes it when it releases the region
+                if (chunks.isEmpty() && perRegionUsage.get(regionIndex) == 0) {
+                    closeRegionFile(regionX, regionZ);
                 }
             }
         } finally {

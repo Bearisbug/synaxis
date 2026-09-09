@@ -136,7 +136,14 @@ final class RegionFile implements AutoCloseable {
 
     @Override
     public void close() throws IOException {
-        file.close();
+        // Taken so that a close can never cut a chunk write in half, which would leave the sector
+        // bitmap and the on-disk header disagreeing about where the chunk lives.
+        lock.lock();
+        try {
+            file.close();
+        } finally {
+            lock.unlock();
+        }
     }
 
     private static int getChunkIndex(int chunkX, int chunkZ) {

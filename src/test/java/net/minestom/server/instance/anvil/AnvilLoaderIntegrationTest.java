@@ -32,6 +32,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
 @EnvTest
@@ -85,6 +86,46 @@ public class AnvilLoaderIntegrationTest {
         });
         instance.saveChunksToStorage().join();
         assertNull(exception.get());
+    }
+
+    // A region file must never be closed while another thread is writing a chunk into it:
+    // the write would be cut in half, leaving the sector bitmap out of sync with the on-disk header.
+    @Test
+    public void saveWhileUnloadingKeepsRegionReadable(Env env) throws Exception {
+        var worldFolder = Files.createTempDirectory("minestom-test-world-concurrent-save");
+        AnvilLoader chunkLoader = new AnvilLoader(worldFolder);
+        Instance instance = env.createFlatInstance(chunkLoader);
+        Chunk chunk = instance.loadChunk(0, 0).join();
+        instance.setBlock(0, 41, 0, Block.DIAMOND_BLOCK);
+
+        AtomicReference<Throwable> exception = new AtomicReference<>();
+        env.process().exception().setExceptionHandler(throwable -> exception.compareAndSet(null, throwable));
+
+        Thread saver = Thread.ofVirtual().start(() -> {
+            try {
+                for (int i = 0; i < 100; i++) chunkLoader.saveChunk(chunk);
+            } catch (Throwable throwable) {
+                exception.compareAndSet(null, throwable);
+            }
+        });
+        while (saver.isAlive()) {
+            chunkLoader.unloadChunk(chunk);
+            Thread.sleep(1);
+        }
+        saver.join();
+        chunkLoader.saveChunk(chunk);
+        chunkLoader.unloadChunk(chunk);
+        assertNull(exception.get());
+
+        AnvilLoader reopened = new AnvilLoader(worldFolder);
+        Chunk reloaded = reopened.loadChunk(instance, 0, 0);
+        assertNotNull(reloaded, "the region file was corrupted by a concurrent unload");
+        reloaded.lockReadLock();
+        try {
+            assertEquals(Block.DIAMOND_BLOCK, reloaded.getBlock(0, 41, 0));
+        } finally {
+            reloaded.unlockReadLock();
+        }
     }
 
     @Test

@@ -30,6 +30,12 @@ public class WindowListener {
         // Prevent some invalid packets
         if (inventory == null || packet.slot() == -1) return;
 
+        // A click carrying the id of an inventory that is no longer open must not be applied to the one that is
+        if (!playerInventory && windowId != (int) inventory.getWindowId()) {
+            inventory.update(player);
+            return;
+        }
+
         // Process the click
         @Nullable Integer size = playerInventory ? null : inventory.getSize();
         Click click = player.getClickPreprocessor().processClick(packet, size);

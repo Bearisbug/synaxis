@@ -17,6 +17,7 @@
 | 2026-09-09 | 初稿，TC-001～TC-018，覆盖 REQ-001～REQ-012 | Bearisbug |
 | 2026-09-09 | TC-007 第 4 步增加 `snapshot` 目录检查（设计文档 v0.2） | Bearisbug |
 | 2026-09-09 | TC-001：前置与第 3 步按实际数据修正为 74 个 JSON、路径 `src/main/resources/data`、含子目录故改用 `find`（设计文档 v0.2.1）；第 4 步补上镜像 init 脚本 | Bearisbug |
+| 2026-09-09 | 新增 TC-024（REQ-015 分层严格规则与依赖矩阵） | Bearisbug |
 | 2026-09-09 | 废弃 TC-022，新增 TC-023（第 1 步只计静态访问器） | Bearisbug |
 | 2026-09-09 | 新增 TC-022（REQ-013 并行测试与单跑） | Bearisbug |
 | 2026-09-09 | 废弃 TC-005，新增 TC-021（CI 变红即可，不限定 jcstress）；TC-006 补「开草稿 PR」步骤说明 | Bearisbug |
@@ -387,10 +388,24 @@
 
 后置：`git status` 确认 `junit-platform.properties` 未改动。
 
+#### `TC-024` 底层包不依赖上层且规则严格 — 对应 `REQ-015` · 级别: 回归 · 执行者: AI
+
+前置：`main` 分支，REQ-015 已合入；`tools/pkgdeps.py` 在仓库内。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | `python3 tools/pkgdeps.py` | 输出含 `lower layer edges into the rest of the engine: 0` |
+| 2 | `grep -rn "FreezingArchRule\|archunit_store" src/test` | 退出码 1，无输出（规则已是严格规则，冻结存储已删除） |
+| 3 | `./gradlew :test --tests '*ArchitectureTest*' --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts` | `BUILD SUCCESSFUL` |
+| 4 | `ls src/main/java/dev/gameengine/utils/` | 只剩通用工具类，不含 `chunk`、`block`、`entity`、`inventory`、`time`、`identity`、`location`、`position`、`callback`、`crypto` 子目录 |
+| 5 | 在 `coordinate` 包任一类临时加 `import dev.gameengine.entity.Entity;` 并引用，重跑第 3 步，然后撤销 | 第 3 步失败，日志含 `ArchitectureTest`；撤销后 `git status` 干净 |
+
+后置：无。
+
 ## 5. 回归策略
 
 - **全量轮**（全部用例）：首次成稿、每个阶段 gate（0、2、3）、跨功能域改动、地基变更（JDK、Gradle、镜像、协议版本）。
-- **局部轮**（受影响用例 + 全部冒烟级）：单一需求改动。受影响用例 = 本次改动触及的 `REQ-*` 所对应的 TC；无 REQ 变更的改动（纯 bug 修、重构）按触及的功能域圈定：构建与仓库 → TC-001、TC-002、TC-003、TC-004、TC-006、TC-021，删除与注册表 → TC-008、TC-009、TC-020，命名与合规 → TC-010～011，协议 → TC-012、TC-014、TC-017、TC-018、TC-019，卫生 → TC-015～016，门面与配置 → TC-023；影响面不确定时升级为全量轮。
+- **局部轮**（受影响用例 + 全部冒烟级）：单一需求改动。受影响用例 = 本次改动触及的 `REQ-*` 所对应的 TC；无 REQ 变更的改动（纯 bug 修、重构）按触及的功能域圈定：构建与仓库 → TC-001、TC-002、TC-003、TC-004、TC-006、TC-021，删除与注册表 → TC-008、TC-009、TC-020，命名与合规 → TC-010～011，协议 → TC-012、TC-014、TC-017、TC-018、TC-019，卫生 → TC-015～016，门面与配置 → TC-023，分层 → TC-024；影响面不确定时升级为全量轮。
 - **复测轮**（上轮失败用例 + 全部冒烟级）：修复失败项之后。
 - **人工收口轮**（仅上轮「待人工」用例）：AI 轮之后由人工补测 TC-012、TC-016，不要求冒烟级。
 

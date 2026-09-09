@@ -302,11 +302,6 @@ public sealed class MetadataDef {
                 ArmadilloMeta.State.IDLE);
     }
 
-    public static final class Bat extends Mob {
-        public static final Entry<Byte> BAT_FLAGS = index(0, Metadata::Byte, (byte) 0);
-        public static final Entry<Boolean> IS_HANGING = bitMask(0, (byte) 0x01, false);
-    }
-
     public static final class Dolphin extends AgeableMob {
         public static final Entry<Boolean> HAS_FISH = index(0, Metadata::Boolean, false);
         public static final Entry<Integer> MOISTURE_LEVEL = index(1, Metadata::VarInt, 2400);

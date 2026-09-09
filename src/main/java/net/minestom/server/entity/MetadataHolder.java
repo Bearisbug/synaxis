@@ -3,7 +3,6 @@ package net.minestom.server.entity;
 import it.unimi.dsi.fastutil.ints.Int2ObjectArrayMap;
 import net.minestom.server.entity.metadata.EntityMeta;
 import net.minestom.server.entity.metadata.LivingEntityMeta;
-import net.minestom.server.entity.metadata.ambient.BatMeta;
 import net.minestom.server.entity.metadata.animal.ArmadilloMeta;
 import net.minestom.server.entity.metadata.animal.BeeMeta;
 import net.minestom.server.entity.metadata.animal.CamelHuskMeta;
@@ -334,7 +333,6 @@ public final class MetadataHolder {
             entry(EntityType.AXOLOTL, AxolotlMeta::new),
             entry(EntityType.BAMBOO_RAFT, BoatMeta::new),
             entry(EntityType.BAMBOO_CHEST_RAFT, BoatMeta::new),
-            entry(EntityType.BAT, BatMeta::new),
             entry(EntityType.BEE, BeeMeta::new),
             entry(EntityType.BIRCH_BOAT, BoatMeta::new),
             entry(EntityType.BIRCH_CHEST_BOAT, BoatMeta::new),

@@ -397,9 +397,10 @@ public class PlayerSocketConnection extends PlayerConnection {
             return switch (packet) {
                 case ServerPacket serverPacket -> {
                     var nextState = PacketVanilla.nextServerState(serverPacket, state);
-                    if (nextState != state) setServerState(nextState);
-
                     PacketWriting.writeFramedPacket(buffer, state, serverPacket, compressionThreshold);
+                    // Only after the packet is written, a rejected packet is retried next flush
+                    // and would then be looked up in the registry of the new state.
+                    if (nextState != state) setServerState(nextState);
                     yield true;
                 }
                 case FramedPacket framedPacket -> {

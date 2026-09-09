@@ -571,10 +571,12 @@ public class LivingEntity extends Entity implements EquipmentHandler {
     @Override
     public void updateNewViewer(Player player) {
         super.updateNewViewer(player);
-        player.sendPacket(this.getEquipmentsPacket());
-
-        if (shouldSendAttributes())
+        // set_equipment and the attributes are only valid for living entity types, sending them for a
+        // LivingEntity carrying a non-living type is a protocol error on the client
+        if (shouldSendAttributes()) {
+            player.sendPacket(this.getEquipmentsPacket());
             player.sendPacket(this.getPropertiesPacket());
+        }
     }
 
     @Override

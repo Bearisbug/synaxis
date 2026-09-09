@@ -1061,7 +1061,7 @@ interface NetworkBufferTypeImpl<T> extends NetworkBuffer.Type<T> {
         @Override
         public Map<K, V> read(NetworkBuffer buffer) {
             final int size = buffer.read(VAR_INT);
-            Check.argCondition(size > maxSize, "Map size ({0}) is higher than the maximum allowed size ({1})", size, maxSize);
+            Check.argCondition(size < 0 || size > maxSize, "Map size ({0}) is out of the allowed range (0..{1})", size, maxSize);
             K[] keys = (K[]) new Object[size];
             V[] values = (V[]) new Object[size];
             for (int i = 0; i < size; i++) {
@@ -1087,7 +1087,7 @@ interface NetworkBufferTypeImpl<T> extends NetworkBuffer.Type<T> {
         @Override
         public List<T> read(NetworkBuffer buffer) {
             final int size = buffer.read(VAR_INT);
-            Check.argCondition(size > maxSize, "Collection size ({0}) is higher than the maximum allowed size ({1})", size, maxSize);
+            Check.argCondition(size < 0 || size > maxSize, "Collection size ({0}) is out of the allowed range (0..{1})", size, maxSize);
             T[] values = (T[]) new Object[size];
             for (int i = 0; i < size; i++) values[i] = buffer.read(parent);
             return List.of(values);
@@ -1109,7 +1109,7 @@ interface NetworkBufferTypeImpl<T> extends NetworkBuffer.Type<T> {
         @Override
         public Set<T> read(NetworkBuffer buffer) {
             final int size = buffer.read(VAR_INT);
-            Check.argCondition(size > maxSize, "Collection size ({0}) is higher than the maximum allowed size ({1})", size, maxSize);
+            Check.argCondition(size < 0 || size > maxSize, "Collection size ({0}) is out of the allowed range (0..{1})", size, maxSize);
             T[] values = (T[]) new Object[size];
             for (int i = 0; i < size; i++) values[i] = buffer.read(parent);
             return Set.of(values);

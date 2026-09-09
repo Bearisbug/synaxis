@@ -7,6 +7,7 @@ import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class NetworkBufferTypeWrapperTest {
 
@@ -28,5 +29,19 @@ class NetworkBufferTypeWrapperTest {
 
         assertDoesNotThrow(() -> buffer.write(type, Unit.INSTANCE));
         assertEquals(Unit.INSTANCE, buffer.read(type));
+    }
+
+    @Test
+    void negativeCollectionSizesAreRejected() {
+        assertThrows(IllegalArgumentException.class, () -> sizedBuffer().read(NetworkBuffer.VAR_INT.list(4)));
+        assertThrows(IllegalArgumentException.class, () -> sizedBuffer().read(NetworkBuffer.VAR_INT.set(4)));
+        assertThrows(IllegalArgumentException.class,
+                () -> sizedBuffer().read(NetworkBuffer.VAR_INT.mapValue(NetworkBuffer.VAR_INT, 4)));
+    }
+
+    private static NetworkBuffer sizedBuffer() {
+        final NetworkBuffer buffer = NetworkBuffer.resizableBuffer(64);
+        buffer.write(NetworkBuffer.VAR_INT, -1);
+        return buffer;
     }
 }

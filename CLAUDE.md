@@ -7,7 +7,7 @@
 - JDK 25（Homebrew `openjdk@25`）：`export JAVA_HOME=/opt/homebrew/opt/openjdk@25/libexec/openjdk.jdk/Contents/Home`
 - 依赖解析必须带镜像脚本：`./gradlew check --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts`（Maven Central 直连不稳，且 Gradle 不读 `http_proxy`）
 - Error Prone 开着 `-Werror`：禁止通配导入，未用的 lambda 参数写 `_`
-- 测试套件在 `$TMPDIR` 留下 `minestom-test-world-*`，REQ-012 完成前跑完手动清理
+- 冷启动、命令、目录地图、升版本 checklist 见 `docs/ENGINE.md`
 - commit message 只描述代码变更，禁止任何 AI 署名或 co-author trailer
 
 ## 功能开发纪律

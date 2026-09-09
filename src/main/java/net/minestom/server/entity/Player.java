@@ -649,6 +649,11 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
         // Remove from the tab-list
         PacketSendingUtils.broadcastPlayPacket(getRemovePlayerToList());
 
+        // Manual viewers are only tracked on the viewed entity, so nothing else would ever drop this
+        // player from the entities it was manually added to, keeping it (and its connection) alive
+        final Instance currentInstance = this.instance;
+        if (currentInstance != null) currentInstance.getEntities().forEach(entity -> entity.removeViewer(this));
+
         super.remove(permanent);
         // Prevent the player from being stuck in loading screen, or just unable to interact with the server
         // This should be considered as a bug, since the player will ultimately time out anyway.

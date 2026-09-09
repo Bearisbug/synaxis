@@ -273,6 +273,7 @@ final class TagHandlerImpl implements TagHandler {
             }
             // Value must be parsed from nbt if the tag is different
             final BinaryTag nbt = entry.updatedNbt();
+            if (nbt == null) return tag.createDefault(); // Transient values have no nbt representation
             final Serializers.Entry<T, BinaryTag> serializerEntry = tagImpl.entry();
             final BinaryTagType<BinaryTag> type = serializerEntry.nbtType();
             return type == null || type.equals(nbt.type()) ? serializerEntry.read(nbt) : tag.createDefault();

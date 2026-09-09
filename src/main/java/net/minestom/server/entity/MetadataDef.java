@@ -548,7 +548,8 @@ public sealed class MetadataDef {
     }
 
     public static final class SnowGolem extends Mob {
-        public static final Entry<Byte> SNOW_GOLEM_FLAGS = index(0, Metadata::Byte, (byte) 0);
+        // Vanilla defaults this byte to 0x10, matching PUMPKIN_HAT defaulting to true
+        public static final Entry<Byte> SNOW_GOLEM_FLAGS = index(0, Metadata::Byte, (byte) 0x10);
         public static final Entry<Boolean> PUMPKIN_HAT = bitMask(0, (byte) 0x10, true);
     }
 

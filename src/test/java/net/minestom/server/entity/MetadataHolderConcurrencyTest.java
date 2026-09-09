@@ -1,6 +1,7 @@
 package net.minestom.server.entity;
 
 import net.minestom.server.entity.metadata.avatar.MannequinMeta;
+import net.minestom.server.entity.metadata.golem.SnowGolemMeta;
 import org.junit.jupiter.api.Test;
 
 import java.util.concurrent.CountDownLatch;
@@ -49,6 +50,14 @@ public class MetadataHolderConcurrencyTest {
         assertFalse(meta.isHatEnabled());
         assertTrue(meta.isCapeEnabled(), "disabling the hat cleared every other model part");
         assertEquals((byte) 0x3F, meta.getDisplayedSkinParts());
+    }
+
+    @Test
+    public void snowGolemFlagsDefaultToTheHatBeingOn() {
+        var snowGolem = new Entity(EntityType.SNOW_GOLEM);
+        var meta = (SnowGolemMeta) snowGolem.getEntityMeta();
+        assertTrue(meta.isHasPumpkinHat());
+        assertEquals((byte) 0x10, (byte) snowGolem.metadata.get(MetadataDef.SnowGolem.SNOW_GOLEM_FLAGS));
     }
 
     private static void await(CountDownLatch latch) {

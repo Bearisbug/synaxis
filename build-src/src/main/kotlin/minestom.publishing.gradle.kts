@@ -16,41 +16,36 @@ publishing.publications.create<MavenPublication>("maven") {
     pom {
         name.set(this@create.artifactId)
         description.set("$mcVersion Lightweight Minecraft server")
-        url.set("https://github.com/minestom/minestom")
+        url.set("https://github.com/Bearisbug/game-engine")
 
         licenses {
             license {
                 name.set("Apache 2.0")
-                url.set("https://github.com/minestom/minestom/blob/main/LICENSE")
+                url.set("https://github.com/Bearisbug/game-engine/blob/main/LICENSE")
             }
         }
 
         developers {
             developer {
-                id.set("TheMode")
-            }
-            developer {
-                id.set("mworzala")
-                name.set("Matt Worzala")
-                email.set("matt@hollowcube.dev")
+                id.set("Bearisbug")
             }
         }
 
         issueManagement {
             system.set("GitHub")
-            url.set("https://github.com/minestom/minestom/issues")
+            url.set("https://github.com/Bearisbug/game-engine/issues")
         }
 
         scm {
-            connection.set("scm:git:git://github.com/minestom/minestom.git")
-            developerConnection.set("scm:git:git@github.com:minestom/minestom.git")
-            url.set("https://github.com/minestom/minestom")
+            connection.set("scm:git:git://github.com/Bearisbug/game-engine.git")
+            developerConnection.set("scm:git:git@github.com:Bearisbug/game-engine.git")
+            url.set("https://github.com/Bearisbug/game-engine")
             tag.set("HEAD")
         }
 
         ciManagement {
             system.set("Github Actions")
-            url.set("https://github.com/minestom/minestom/actions")
+            url.set("https://github.com/Bearisbug/game-engine/actions")
         }
     }
 }

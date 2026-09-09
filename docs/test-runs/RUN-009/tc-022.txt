@@ -1,0 +1,5 @@
+[1] 8
+[2] serial: BUILD SUCCESSFUL in 58s wall=59s
+[3] parallel: BUILD SUCCESSFUL in 37s wall=38s
+[4] standalone: BUILD SUCCESSFUL in 6s
+注：本轮与两个并行 agent 的 Gradle 任务共享 CPU，耗时含争用噪声

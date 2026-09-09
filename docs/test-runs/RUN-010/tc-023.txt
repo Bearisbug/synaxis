@@ -1,0 +1,5 @@
+[023-1] 0
+[023-2] serial BUILD SUCCESSFUL in 49s wall=50s
+[023-3] parallel BUILD SUCCESSFUL in 38s wall=39s
+[023-4] BUILD SUCCESSFUL in 2s
+[023-后置] props diff: 0

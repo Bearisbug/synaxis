@@ -1,0 +1,7 @@
+[001] grep1=1 grep2=1 json=39 nbt=23
+[002] https://github.com/Bearisbug/game-engine.git isFork=false old=exit1 origin=1 branch=main
+[010] grep=0 ignore=1 cfg=.git-blame-ignore-revs blame=5bbf4642e8 5f9a3a3e50 7ed55778f4  native=dev.gameengine
+[020-3] 1115
+[020-4] 3/3
+[020-5] AbstractVehicleMeta.java AgeableMobMeta.java EntityMeta.java LivingEntityMeta.java MobMeta.java ObjectDataProvider.java PathfinderMobMeta.java avatar display item other package-info.java projectile | other: ArmorStandMeta.java InteractionMeta.java package-info.java 
+[001-4 offline] exit=0 BUILD SUCCESSFUL in 4s

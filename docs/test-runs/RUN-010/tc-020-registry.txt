@@ -1,0 +1,46 @@
+probe target=127.0.0.1:25565 protocol=776 command=record-registry
+sent Handshake protocol=776 intent=login
+sent LoginStart username=probe
+recv SetCompressionPacket
+     compression threshold=256
+recv LoginSuccessPacket
+     LoginSuccess username=probe uuid=a0d7d0d3-bb61-3352-b332-52bfa31d6c0e
+sent LoginAcknowledged
+recv PluginMessagePacket
+recv SelectKnownPacksPacket
+sent KnownPacks entries=1
+recv UpdateEnabledFeaturesPacket
+recv RegistryDataPacket
+recv RegistryDataPacket
+recv RegistryDataPacket
+recv RegistryDataPacket
+recv RegistryDataPacket
+recv RegistryDataPacket
+recv RegistryDataPacket
+recv RegistryDataPacket
+recv RegistryDataPacket
+recv RegistryDataPacket
+recv RegistryDataPacket
+recv RegistryDataPacket
+recv RegistryDataPacket
+recv RegistryDataPacket
+recv RegistryDataPacket
+recv RegistryDataPacket
+recv RegistryDataPacket
+recv RegistryDataPacket
+recv RegistryDataPacket
+recv RegistryDataPacket
+recv RegistryDataPacket
+recv RegistryDataPacket
+recv RegistryDataPacket
+recv RegistryDataPacket
+recv RegistryDataPacket
+recv RegistryDataPacket
+recv RegistryDataPacket
+recv TagsPacket
+recv FinishConfigurationPacket
+sent FinishConfiguration
+state=play
+registry_data_packets=27 bytes=9063 out=/tmp/r.bin
+exit code: 0
+[020-1/2] identical 9063 bytes

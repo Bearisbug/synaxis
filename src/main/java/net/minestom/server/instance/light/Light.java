@@ -58,7 +58,7 @@ public interface Light {
 
             Chunk foundChunk = chunk.getInstance().getChunk(x, z);
             if (foundChunk == null) continue;
-            if (y - foundChunk.getMinSection() > foundChunk.getMaxSection() || y - foundChunk.getMinSection() < 0)
+            if (y >= foundChunk.getMaxSection() || y < foundChunk.getMinSection())
                 continue;
 
             links[direction.ordinal()] = new BlockVec(foundChunk.getChunkX(), y, foundChunk.getChunkZ());

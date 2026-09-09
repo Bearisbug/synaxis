@@ -21,8 +21,11 @@ public final class ConcurrentMessageQueues {
         return ServerFlag.UNSAFE_COLLECTIONS ? new MpscUnboundedXaddArrayQueue<>(chunkSize) : new MpscUnboundedVarHandleArrayQueue<>(chunkSize);
     }
 
-    // Atomic is bounded; no unbounded atomic variant exists that is MPMC.
-    public static <T> MessagePassingQueue<T> mpmcSpecialUnboundedArrayQueue(int value) {
-        return ServerFlag.UNSAFE_COLLECTIONS ? new MpmcUnboundedXaddArrayQueue<>(value) : new MpmcVarHandleArrayQueue<>(value);
+    /**
+     * There is no unbounded MPMC variant without Unsafe, so {@code capacity} is a chunk size on the
+     * unsafe path and a hard capacity on the safe one, where offers are rejected once it is full.
+     */
+    public static <T> MessagePassingQueue<T> mpmcArrayQueue(int capacity) {
+        return ServerFlag.UNSAFE_COLLECTIONS ? new MpmcUnboundedXaddArrayQueue<>(capacity) : new MpmcVarHandleArrayQueue<>(capacity);
     }
 }

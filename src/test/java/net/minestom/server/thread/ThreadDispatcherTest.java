@@ -2,20 +2,26 @@ package net.minestom.server.thread;
 
 import net.minestom.server.Tickable;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
 
+import java.lang.ref.WeakReference;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
+import static net.minestom.testing.TestUtils.waitUntilCleared;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNotSame;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -283,6 +289,122 @@ public class ThreadDispatcherTest {
             final Thread thread2 = threads2.get(entry.getKey());
             assertNotEquals(thread1, thread2);
         }
+
+        dispatcher.shutdown();
+    }
+
+    @Test
+    @Timeout(30)
+    public void shutdownFromTickThread() throws InterruptedException {
+        // Shutting down from a TickThread must not deadlock against the thread awaiting the tick.
+        ThreadDispatcher<World, Tickable> dispatcher = ThreadDispatcher.singleThread();
+        World world = new World();
+        CountDownLatch shutdownCalled = new CountDownLatch(1);
+        Tickable element = _ -> {
+            dispatcher.shutdown();
+            shutdownCalled.countDown();
+        };
+        dispatcher.createPartition(world);
+        dispatcher.updateElement(element, world);
+        dispatcher.start();
+
+        Thread ticker = new Thread(() -> dispatcher.updateAndAwait(0), "test-ticker");
+        ticker.start();
+        assertTrue(shutdownCalled.await(5, TimeUnit.SECONDS), "shutdown() from a TickThread deadlocked");
+        ticker.join(5_000);
+        assertFalse(ticker.isAlive(), "updateAndAwait never returned");
+    }
+
+    @Test
+    @Timeout(30)
+    public void refreshThreadsReassignsAcquirableOwner() {
+        final class Counter extends Element {
+            @Override
+            public void tick(long time) {
+            }
+        }
+        ThreadDispatcher<World, Counter> dispatcher = ThreadDispatcher.dispatcher(new ThreadProvider<>() {
+            private int counter;
+
+            @Override
+            public int findThread(World partition) {
+                return counter++;
+            }
+
+            @Override
+            public RefreshType refreshType() {
+                return RefreshType.ALWAYS;
+            }
+        }, 2);
+        World world = new World();
+        Counter element = new Counter();
+        dispatcher.createPartition(world);
+        dispatcher.updateElement(element, world);
+        dispatcher.start();
+        dispatcher.updateAndAwait(0);
+
+        final TickThread before = element.acquirable().assignedThread();
+        assertNotNull(before);
+        dispatcher.refreshThreads();
+        dispatcher.updateAndAwait(0);
+        assertNotSame(before, element.acquirable().assignedThread(),
+                "assignedThread was not updated after the partition moved to another thread");
+
+        dispatcher.shutdown();
+    }
+
+    @Test
+    @Timeout(30)
+    public void removedElementIsReleased() {
+        final class Idle implements Tickable {
+            @Override
+            public void tick(long time) {
+            }
+        }
+        ThreadDispatcher<World, Tickable> dispatcher = ThreadDispatcher.singleThread();
+        World world = new World();
+        Tickable element = new Idle();
+        dispatcher.createPartition(world);
+        dispatcher.updateElement(element, world);
+        dispatcher.start();
+        dispatcher.updateAndAwait(0);
+
+        var ref = new WeakReference<>(element);
+        dispatcher.removeElement(element);
+        //noinspection UnusedAssignment
+        element = null;
+        dispatcher.updateAndAwait(0);
+        waitUntilCleared(ref);
+
+        dispatcher.shutdown();
+    }
+
+    @Test
+    @Timeout(30)
+    public void deletedPartitionIsReleased() {
+        final class Idle implements Tickable {
+            @Override
+            public void tick(long time) {
+            }
+        }
+        ThreadDispatcher<World, Tickable> dispatcher = ThreadDispatcher.singleThread();
+        World world = new World();
+        Tickable element = new Idle();
+        dispatcher.createPartition(world);
+        dispatcher.updateElement(element, world);
+        dispatcher.start();
+        dispatcher.updateAndAwait(0);
+
+        var worldRef = new WeakReference<>(world);
+        var elementRef = new WeakReference<>(element);
+        dispatcher.deletePartition(world);
+        //noinspection UnusedAssignment
+        world = null;
+        //noinspection UnusedAssignment
+        element = null;
+        dispatcher.updateAndAwait(0);
+        waitUntilCleared(worldRef);
+        waitUntilCleared(elementRef);
 
         dispatcher.shutdown();
     }

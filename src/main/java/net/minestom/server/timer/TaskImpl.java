@@ -7,11 +7,18 @@ import java.lang.invoke.VarHandle;
 import java.util.function.Supplier;
 
 final class TaskImpl implements Task {
-    private static final VarHandle PARKED;
+    private static final int RUNNING = 0;
+    private static final int PARKED = 1;
+    /**
+     * Unparked while still running, the scheduler must not park it when it comes back.
+     */
+    private static final int UNPARK_SIGNALLED = 2;
+
+    private static final VarHandle PARK_STATE;
 
     static {
         try {
-            PARKED = MethodHandles.lookup().findVarHandle(TaskImpl.class, "parked", boolean.class);
+            PARK_STATE = MethodHandles.lookup().findVarHandle(TaskImpl.class, "parkState", int.class);
         } catch (NoSuchFieldException | IllegalAccessException e) {
             throw new IllegalStateException(e);
         }
@@ -23,7 +30,7 @@ final class TaskImpl implements Task {
     private final SchedulerImpl owner;
 
     volatile boolean alive;
-    volatile boolean parked;
+    volatile int parkState;
 
     TaskImpl(int id,
              Supplier<TaskSchedule> task,
@@ -41,13 +48,39 @@ final class TaskImpl implements Task {
         this.owner.unparkTask(this);
     }
 
+    /**
+     * Consumes the park state on behalf of {@link #unpark()}.
+     *
+     * @return true if the task was parked and must therefore be queued again by the caller
+     */
     boolean tryUnpark() {
-        return PARKED.compareAndSet(this, true, false);
+        while (true) {
+            final int state = parkState;
+            if (state == UNPARK_SIGNALLED) return false;
+            final int next = state == PARKED ? RUNNING : UNPARK_SIGNALLED;
+            if (PARK_STATE.compareAndSet(this, state, next)) return state == PARKED;
+        }
+    }
+
+    /**
+     * Parks the task unless an unpark was signalled while it was still running.
+     *
+     * @return true if the task is now parked, false if the caller must queue it again
+     */
+    boolean tryPark() {
+        while (true) {
+            final int state = parkState;
+            if (state == UNPARK_SIGNALLED) {
+                if (PARK_STATE.compareAndSet(this, UNPARK_SIGNALLED, RUNNING)) return false;
+            } else if (PARK_STATE.compareAndSet(this, state, PARKED)) {
+                return true;
+            }
+        }
     }
 
     @Override
     public boolean isParked() {
-        return parked;
+        return parkState == PARKED;
     }
 
     @Override

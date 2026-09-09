@@ -17,7 +17,7 @@ public sealed interface Scheduler extends Executor permits SchedulerImpl, Schedu
     /**
      * Process scheduled tasks based on time to increase scheduling precision.
      * <p>
-     * This method is not thread-safe.
+     * Tasks are consumed by a single caller at a time, so concurrent calls are safe.
      */
     void process();
 

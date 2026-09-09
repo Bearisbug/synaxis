@@ -9,9 +9,9 @@ import org.jetbrains.annotations.Unmodifiable;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.WeakHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.function.IntFunction;
 
@@ -21,9 +21,12 @@ final class ThreadDispatcherImpl<P, E extends Tickable> implements ThreadDispatc
 
     // Partition -> dispatching context
     // Defines how computation is dispatched to the threads
-    private final Map<P, Partition> partitions = new WeakHashMap<>();
+    // Entries live and die with the PartitionLoad/PartitionUnload signals, never with the garbage
+    // collector: the keys are kept alive by partitionUpdateQueue anyway.
+    private final Map<P, Partition> partitions = new HashMap<>();
     // Cache to retrieve the threading context from a tickable element
-    private final Map<Tickable, Partition> elements = new WeakHashMap<>();
+    // Same as above, entries are driven by the ElementUpdate/ElementRemove signals.
+    private final Map<Tickable, Partition> elements = new HashMap<>();
     // Queue to update partition linked thread
     private final ArrayDeque<P> partitionUpdateQueue = new ArrayDeque<>();
 
@@ -91,6 +94,13 @@ final class ThreadDispatcherImpl<P, E extends Tickable> implements ThreadDispatc
                         partitionEntry.thread = next;
                         previous.entries.remove(partitionEntry);
                         next.entries.add(partitionEntry);
+                        // Acquirable ownership must follow the partition, otherwise sync() would lock
+                        // the thread that no longer ticks the element.
+                        for (Tickable element : partitionEntry.elements) {
+                            if (element instanceof AcquirableSource<?> acquirableSource) {
+                                ((AcquirableImpl<?>) acquirableSource.acquirable()).assign(next);
+                            }
+                        }
                     }
                     this.partitionUpdateQueue.addLast(partition);
                     if (--counter <= 0 || System.nanoTime() - currentTime >= nanoTimeout) {
@@ -120,7 +130,10 @@ final class ThreadDispatcherImpl<P, E extends Tickable> implements ThreadDispatc
     }
 
     @Override
-    public synchronized void shutdown() {
+    public void shutdown() {
+        // Must not lock on the dispatcher monitor: updateAndAwait holds it while awaiting the tick threads,
+        // so a shutdown requested from a TickThread would deadlock the whole server (upstream issue #2907).
+        // TickThread#shutdown only flips a volatile flag and unparks, no dispatcher state is involved.
         this.threads.forEach(TickThread::shutdown);
     }
 
@@ -152,6 +165,7 @@ final class ThreadDispatcherImpl<P, E extends Tickable> implements ThreadDispatc
         if (partitionEntry != null) {
             TickThread thread = partitionEntry.thread;
             thread.entries.remove(partitionEntry);
+            for (Tickable element : partitionEntry.elements) this.elements.remove(element);
         }
         this.partitionUpdateQueue.remove(partition);
         if (partition instanceof Tickable tickable) {
@@ -160,22 +174,20 @@ final class ThreadDispatcherImpl<P, E extends Tickable> implements ThreadDispatc
     }
 
     private void processRemovedElement(Tickable tickable) {
-        Partition partition = elements.get(tickable);
+        final Partition partition = elements.remove(tickable);
         if (partition != null) {
             partition.elements.remove(tickable);
         }
     }
 
     private void processUpdatedElement(Tickable tickable, P partition) {
-        Partition partitionEntry;
-
-        partitionEntry = elements.get(tickable);
         // Remove from previous list
-        if (partitionEntry != null) {
-            partitionEntry.elements.remove(tickable);
+        final Partition previousEntry = elements.remove(tickable);
+        if (previousEntry != null) {
+            previousEntry.elements.remove(tickable);
         }
         // Add to new list
-        partitionEntry = partitions.get(partition);
+        final Partition partitionEntry = partitions.get(partition);
         if (partitionEntry != null) {
             this.elements.put(tickable, partitionEntry);
             partitionEntry.elements.add(tickable);

@@ -1,5 +1,7 @@
 package net.minestom.server.event;
 
+import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
+import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import net.minestom.server.MinecraftServer;
 import net.minestom.server.ServerFlag;
 import net.minestom.server.event.trait.AsyncEvent;
@@ -177,10 +179,11 @@ non-sealed class EventNodeImpl<T extends Event> implements EventNode<T> {
             node = new EventNodeLazyImpl<>(this, value, filter);
             Check.stateCondition(node.parent != null, "Node already has a parent");
             Check.stateCondition(Objects.equals(parent, node), "Cannot map to self");
-            WeakReference<EventNodeLazyImpl<T>> previousRef = this.mappedNodeCache.putIfAbsent(value,
-                    new WeakReference<>((EventNodeLazyImpl<T>) node));
+            WeakReference<EventNodeLazyImpl<T>> previousRef = this.mappedNodeCache.get(value);
             EventNodeImpl<T> previous;
             if (previousRef != null && (previous = previousRef.get()) != null) return (EventNode<E>) previous;
+            // Either no entry at all, or one whose node has been collected and must be replaced
+            this.mappedNodeCache.put(value, new WeakReference<>((EventNodeLazyImpl<T>) node));
             node.parent = this;
         }
         return node;
@@ -195,6 +198,8 @@ non-sealed class EventNodeImpl<T extends Event> implements EventNode<T> {
             EventNodeLazyImpl<T> mappedNode;
             if (mappedNodeRef != null && (mappedNode = mappedNodeRef.get()) != null) {
                 mappedNode.invalidateEventsFor(this);
+                // The node stays in mappedNodeCache, so a later listener has to map it again
+                mappedNode.resetMapped();
             }
         }
     }
@@ -218,7 +223,7 @@ non-sealed class EventNodeImpl<T extends Event> implements EventNode<T> {
         synchronized (GLOBAL_CHILD_LOCK) {
             for (var eventType : binding.eventTypes()) {
                 ListenerEntry<T> entry = listenerMap.get(eventType);
-                if (entry == null) return;
+                if (entry == null) continue; // No listener with such type, the other types still have to be unbound
                 final boolean removed = entry.bindingConsumers.remove(binding.consumer(eventType));
                 if (removed) invalidateEvent((Class<? extends T>) eventType);
             }
@@ -349,11 +354,24 @@ non-sealed class EventNodeImpl<T extends Event> implements EventNode<T> {
         final Set<Consumer<T>> bindingConsumers = new CopyOnWriteArraySet<>();
     }
 
+    /**
+     * Compiled listener of a {@link Handle}, published as a whole so that a concurrent reader can
+     * never observe the "is up to date" flag and the listener itself out of sync.
+     */
+    private record Cached<E>(@Nullable Consumer<E> listener) {
+    }
+
+    /**
+     * A mapped node handle, weakly referencing both its owner and the handle itself.
+     */
+    private record MappedHandler<E extends Event>(WeakReference<Object> owner,
+                                                  WeakReference<ListenerHandle<E>> handle) {
+    }
+
     @SuppressWarnings("unchecked")
     final class Handle<E extends Event> implements ListenerHandle<E> {
         private final Class<E> eventType;
-        private @Nullable Consumer<E> listener = null;
-        private volatile boolean updated;
+        private volatile @Nullable Cached<E> cached;
 
         Handle(Class<E> eventType) {
             this.eventType = eventType;
@@ -378,17 +396,18 @@ non-sealed class EventNodeImpl<T extends Event> implements EventNode<T> {
         }
 
         void invalidate() {
-            this.updated = false;
-            this.listener = null;
+            assert Thread.holdsLock(GLOBAL_CHILD_LOCK);
+            this.cached = null;
         }
 
         @Nullable Consumer<E> updatedListener() {
-            if (updated) return listener;
+            Cached<E> cached = this.cached;
+            if (cached != null) return cached.listener();
             synchronized (GLOBAL_CHILD_LOCK) {
-                if (updated) return listener;
+                cached = this.cached;
+                if (cached != null) return cached.listener();
                 final Consumer<E> listener = createConsumer();
-                this.listener = listener;
-                this.updated = true;
+                this.cached = new Cached<>(listener);
                 return listener;
             }
         }
@@ -489,7 +508,11 @@ non-sealed class EventNodeImpl<T extends Event> implements EventNode<T> {
             final var mappedNodeCache = node.registeredMappedNode;
             if (mappedNodeCache.isEmpty()) return null;
             Set<EventFilter<E, ?>> filters = new HashSet<>(mappedNodeCache.size());
-            Map<Object, WeakReference<Handle<E>>> handlers = new WeakHashMap<>(mappedNodeCache.size());
+            // Bucketed by owner hash code instead of being a Map keyed by the owner itself: the lookup
+            // below runs on every dispatch without any lock, which rules out WeakHashMap (its get()
+            // structurally modifies the map through expungeStaleEntries) while owners must still be
+            // referenced weakly so that a mapped node never keeps its owner alive.
+            Int2ObjectMap<List<MappedHandler<E>>> handlers = new Int2ObjectOpenHashMap<>(mappedNodeCache.size());
 
             // Retrieve all filters used to retrieve potential handlers
             for (var mappedEntry : mappedNodeCache.entrySet()) {
@@ -499,7 +522,9 @@ non-sealed class EventNodeImpl<T extends Event> implements EventNode<T> {
                 final Handle<E> handle = (Handle<E>) mappedNode.getHandle(eventType);
                 if (!handle.hasListener()) continue; // Implicit update
                 filters.add(mappedNode.filter);
-                handlers.put(mappedEntry.getKey(), new WeakReference<>(handle));
+                final Object owner = mappedEntry.getKey();
+                handlers.computeIfAbsent(owner.hashCode(), (int _) -> new ArrayList<>(1))
+                        .add(new MappedHandler<>(new WeakReference<>(owner), new WeakReference<>(handle)));
             }
             // If at least one mapped node listen to this handle type,
             // loop through them and forward to mapped node if there is a match
@@ -507,9 +532,16 @@ non-sealed class EventNodeImpl<T extends Event> implements EventNode<T> {
             final EventFilter<E, ?>[] filterList = filters.toArray(EventFilter[]::new);
             final BiConsumer<EventFilter<E, ?>, E> mapper = (filter, event) -> {
                 final Object handler = filter.castHandler(event);
-                final WeakReference<Handle<E>> handleRef = handlers.get(handler);
-                final Handle<E> handle = handleRef != null ? handleRef.get() : null;
-                if (handle != null) handle.call(event);
+                if (handler == null) return;
+                final List<MappedHandler<E>> candidates = handlers.get(handler.hashCode());
+                if (candidates == null) return;
+                for (MappedHandler<E> candidate : candidates) {
+                    final Object owner = candidate.owner().get();
+                    if (owner == null || !handler.equals(owner)) continue;
+                    final ListenerHandle<E> handle = candidate.handle().get();
+                    if (handle != null) handle.call(event);
+                    return;
+                }
             };
             // Specialize the consumer depending on the number of filters to avoid looping
             return switch (filterList.length) {
@@ -534,10 +566,8 @@ non-sealed class EventNodeImpl<T extends Event> implements EventNode<T> {
         void callListener(EventListener<E> listener, E event) {
             var node = (EventNodeImpl<E>) EventNodeImpl.this;
             EventListener.Result result = listener.run(event);
-            if (result == EventListener.Result.EXPIRED) {
-                node.removeListener(listener);
-                invalidate();
-            }
+            // removeListener already invalidates this node and its parents while holding the global lock
+            if (result == EventListener.Result.EXPIRED) node.removeListener(listener);
         }
     }
 }

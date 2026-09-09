@@ -122,7 +122,10 @@ public class AcquirableCollection<E> implements Collection<Acquirable<E>> {
         for (var element : collection) {
             final T value = element.unwrap();
             final TickThread elementThread = element.assignedThread();
-            if (Thread.currentThread() == elementThread) {
+            if (elementThread == null) {
+                // The element has never been dispatched, Acquirable#sync falls back to its init thread
+                element.sync(consumer);
+            } else if (Thread.currentThread() == elementThread) {
                 // The element is managed in the current thread, consumer can be immediately called
                 consumer.accept(value);
             } else {

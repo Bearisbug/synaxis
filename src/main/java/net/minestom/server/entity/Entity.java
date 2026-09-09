@@ -116,6 +116,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.function.UnaryOperator;
@@ -1791,12 +1792,17 @@ public class Entity implements Viewable, Tickable, Schedulable, Snapshotable, Ev
 
     @Override
     public EntitySnapshot updateSnapshot(SnapshotUpdater updater) {
+        // Both are null before the entity spawns and are cleared again by remove(), which may run
+        // on another thread while the snapshot is being taken
+        final Instance instance = this.instance;
         final Chunk chunk = currentChunk;
         final int[] viewersId = this.viewEngine.viewableOption.bitSet.toIntArray();
         final int[] passengersId = ArrayUtils.mapToIntArray(passengers, Entity::getEntityId);
         final Entity vehicle = this.vehicle;
         return new SnapshotImpl.Entity(entityType, uuid, id, position, velocity,
-                updater.reference(instance), chunk.getChunkX(), chunk.getChunkZ(),
+                instance != null ? updater.reference(instance) : new AtomicReference<>(),
+                chunk != null ? chunk.getChunkX() : CoordConversion.globalToChunk(position.x()),
+                chunk != null ? chunk.getChunkZ() : CoordConversion.globalToChunk(position.z()),
                 viewersId, passengersId, vehicle == null ? -1 : vehicle.getEntityId(),
                 tagHandler.readableCopy());
     }

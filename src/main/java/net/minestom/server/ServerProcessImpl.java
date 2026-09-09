@@ -32,10 +32,13 @@ import net.minestom.server.snapshot.SnapshotUpdater;
 import net.minestom.server.thread.Acquirable;
 import net.minestom.server.thread.ThreadDispatcher;
 import net.minestom.server.thread.ThreadProvider;
+import net.minestom.server.thread.TickSchedulerThread;
+import net.minestom.server.thread.TickThread;
 import net.minestom.server.timer.SchedulerManager;
 import net.minestom.server.utils.PacketViewableUtils;
 import net.minestom.server.utils.collection.MappedCollection;
 import net.minestom.server.utils.time.Tick;
+import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -49,6 +52,7 @@ import java.util.concurrent.atomic.AtomicReference;
 
 final class ServerProcessImpl implements ServerProcess, Registries.Delegating {
     private static final Logger LOGGER = LoggerFactory.getLogger(ServerProcessImpl.class);
+    private static final long SHUTDOWN_JOIN_TIMEOUT_MS = 5_000;
 
     private final Auth auth;
 
@@ -76,6 +80,8 @@ final class ServerProcessImpl implements ServerProcess, Registries.Delegating {
 
     private final AtomicBoolean started = new AtomicBoolean();
     private final AtomicBoolean stopped = new AtomicBoolean();
+    // Set by the ticker itself, so that stop() can wait for the in-flight tick to complete.
+    private volatile @Nullable TickSchedulerThread tickSchedulerThread;
 
     public ServerProcessImpl(Auth auth) {
         this.auth = auth;
@@ -240,14 +246,42 @@ final class ServerProcessImpl implements ServerProcess, Registries.Delegating {
     @Override
     public void stop() {
         if (!stopped.compareAndSet(false, true)) return;
+        // The shutdown sequence waits for every tick thread to exit, which can never happen while the
+        // caller is one of them (e.g. a /stop command running on a TickThread, upstream issue #2907).
+        final Thread caller = Thread.currentThread();
+        if (caller instanceof TickThread || caller instanceof TickSchedulerThread) {
+            new Thread(this::shutdownProcess, "Ms-Shutdown").start();
+        } else {
+            shutdownProcess();
+        }
+    }
+
+    private void shutdownProcess() {
         final String brand = MinecraftServer.getBrandName();
         LOGGER.info("Stopping {} server.", brand);
+        // `stopped` is already set, so the ticker loop exits once the tick in flight is over.
+        // Wait for it before touching anything else, otherwise the shutdown races with ticking.
+        joinThread(tickSchedulerThread);
+        LOGGER.info("Shutting down all thread pools.");
+        dispatcher.shutdown();
+        for (TickThread tickThread : dispatcher.threads()) joinThread(tickThread);
+        // Nothing is ticking anymore, user shutdown tasks can safely run before players are kicked.
         scheduler.shutdown();
         connection.shutdown();
         server.stop();
-        LOGGER.info("Shutting down all thread pools.");
-        dispatcher.shutdown();
         LOGGER.info("{} server stopped successfully.", brand);
+    }
+
+    private static void joinThread(@Nullable Thread thread) {
+        if (thread == null || thread == Thread.currentThread() || !thread.isAlive()) return;
+        try {
+            thread.join(SHUTDOWN_JOIN_TIMEOUT_MS);
+        } catch (InterruptedException _) {
+            Thread.currentThread().interrupt();
+            return;
+        }
+        if (thread.isAlive())
+            LOGGER.warn("Thread {} did not stop within {}ms.", thread.getName(), SHUTDOWN_JOIN_TIMEOUT_MS);
     }
 
     @Override
@@ -271,6 +305,7 @@ final class ServerProcessImpl implements ServerProcess, Registries.Delegating {
     private final class TickerImpl implements Ticker {
         @Override
         public void tick(long nanoTime) {
+            if (Thread.currentThread() instanceof TickSchedulerThread self) tickSchedulerThread = self;
             var serverTickEvent = EventsJFR.newServerTick();
             serverTickEvent.begin();
             scheduler().processTick();
@@ -318,9 +353,9 @@ final class ServerProcessImpl implements ServerProcess, Registries.Delegating {
             dispatcher().updateAndAwait(nanoStart);
 
             // Clear removed entities & update threads
-            final long tickDuration = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - nanoStart);
-            final long remainingTickDuration = Tick.SERVER_TICKS.getDuration().toNanos() - tickDuration;
             // the nanoTimeout for refreshThreads is the remaining tick duration
+            final long tickDuration = System.nanoTime() - nanoStart;
+            final long remainingTickDuration = Math.max(0, Tick.SERVER_TICKS.getDuration().toNanos() - tickDuration);
             dispatcher().refreshThreads(remainingTickDuration);
         }
     }

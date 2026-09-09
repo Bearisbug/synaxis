@@ -12,6 +12,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Supplier;
 
 final class SchedulerImpl implements Scheduler {
@@ -27,6 +28,8 @@ final class SchedulerImpl implements Scheduler {
     // Tasks scheduled on a certain tick/tick end
     private final Int2ObjectAVLTreeMap<List<TaskImpl>> tickStartTaskQueue = new Int2ObjectAVLTreeMap<>();
     private final Int2ObjectAVLTreeMap<List<TaskImpl>> tickEndTaskQueue = new Int2ObjectAVLTreeMap<>();
+    // Enforces the single consumer contract of the queues above
+    private final ReentrantLock consumerLock = new ReentrantLock();
 
     private int tickState;
 
@@ -62,12 +65,21 @@ final class SchedulerImpl implements Scheduler {
     }
 
     private void runTasks(MessagePassingQueue<TaskImpl> targetQueue) {
-        // Run all tasks lock-free, either in the current thread or pool
-        if (!targetQueue.isEmpty()) {
-            targetQueue.drain(task -> {
-                if (!task.isAlive()) return;
-                handleTask(task);
-            });
+        // The queues are single consumer, yet process() is reachable from any thread
+        // (Player#setInstance(...).join() drives the global scheduler from the calling thread).
+        consumerLock.lock();
+        try {
+            // Only consume what was already queued when entering: a task repeating on
+            // TaskSchedule.immediate() re-queues itself here, which would otherwise turn this
+            // into an endless loop on the queue implementations whose drain is unbounded.
+            int budget = targetQueue.size();
+            while (budget-- > 0) {
+                final TaskImpl task = targetQueue.relaxedPoll();
+                if (task == null) break;
+                if (task.isAlive()) handleTask(task);
+            }
+        } finally {
+            consumerLock.unlock();
         }
     }
 
@@ -81,8 +93,17 @@ final class SchedulerImpl implements Scheduler {
     }
 
     void unparkTask(TaskImpl task) {
-        if (task.tryUnpark())
-            this.tasksToExecute.relaxedOffer(task);
+        if (task.tryUnpark()) queueTask(task);
+    }
+
+    /**
+     * Queues a task for the next processing of its own execution type.
+     */
+    private void queueTask(TaskImpl task) {
+        switch (task.executionType()) {
+            case TICK_START -> tasksToExecute.relaxedOffer(task);
+            case TICK_END -> tickEndTasksToExecute.relaxedOffer(task);
+        }
     }
 
     private void safeExecute(TaskImpl task) {
@@ -121,13 +142,12 @@ final class SchedulerImpl implements Scheduler {
             case TaskScheduleImpl.FutureSchedule futureSchedule -> {
                 var _ = futureSchedule.future().thenRun(() -> safeExecute(task));
             }
-            case TaskScheduleImpl.Park _ -> task.parked = true;
-            case TaskScheduleImpl.Stop _ -> task.cancel();
-            case TaskScheduleImpl.Immediate _ -> {
-                if (task.executionType() == ExecutionType.TICK_END) {
-                    tickEndTasksToExecute.relaxedOffer(task);
-                } else tasksToExecute.relaxedOffer(task);
+            // An unpark received while the task was still running must not be lost
+            case TaskScheduleImpl.Park _ -> {
+                if (!task.tryPark()) queueTask(task);
             }
+            case TaskScheduleImpl.Stop _ -> task.cancel();
+            case TaskScheduleImpl.Immediate _ -> queueTask(task);
         }
     }
 

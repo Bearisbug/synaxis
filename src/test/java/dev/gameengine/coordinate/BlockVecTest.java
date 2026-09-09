@@ -1,6 +1,5 @@
 package dev.gameengine.coordinate;
 
-import dev.gameengine.instance.block.BlockFace;
 import org.junit.jupiter.api.Test;
 
 import java.util.Random;

@@ -1,6 +1,5 @@
 package dev.gameengine.coordinate;
 
-import dev.gameengine.utils.Direction;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;

@@ -6,7 +6,7 @@ import dev.gameengine.event.entity.EntityTickEvent;
 import dev.gameengine.item.ItemStack;
 import dev.gameengine.item.Material;
 import dev.gameengine.network.packet.server.play.DestroyEntitiesPacket;
-import dev.gameengine.utils.time.TimeUnit;
+import dev.gameengine.timer.TimeUnit;
 import dev.gameengine.testing.Env;
 import dev.gameengine.testing.EnvTest;
 import org.junit.jupiter.api.Test;

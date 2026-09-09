@@ -5,7 +5,7 @@ import dev.gameengine.command.CommandSender;
 import dev.gameengine.command.builder.arguments.Argument;
 import dev.gameengine.command.builder.exception.ArgumentSyntaxException;
 import dev.gameengine.instance.block.Block;
-import dev.gameengine.utils.block.BlockUtils;
+import dev.gameengine.instance.block.BlockUtils;
 
 public class ArgumentBlockState extends Argument<Block> {
 

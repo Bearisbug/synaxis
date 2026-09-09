@@ -18,7 +18,7 @@ import dev.gameengine.network.socket.Server;
 import dev.gameengine.registry.Registries;
 import dev.gameengine.thread.ThreadDispatcher;
 import dev.gameengine.timer.SchedulerManager;
-import dev.gameengine.utils.PacketViewableUtils;
+import dev.gameengine.network.PacketViewableUtils;
 import dev.gameengine.world.Difficulty;
 import org.jetbrains.annotations.ApiStatus;
 

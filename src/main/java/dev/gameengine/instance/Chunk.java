@@ -1,7 +1,7 @@
 package dev.gameengine.instance;
 
 import net.kyori.adventure.nbt.CompoundBinaryTag;
-import dev.gameengine.Tickable;
+import dev.gameengine.thread.Tickable;
 import dev.gameengine.Viewable;
 import dev.gameengine.coordinate.CoordConversion;
 import dev.gameengine.coordinate.Point;
@@ -14,7 +14,6 @@ import dev.gameengine.instance.heightmap.Heightmap;
 import dev.gameengine.network.packet.server.SendablePacket;
 import dev.gameengine.tag.TagHandler;
 import dev.gameengine.tag.Taggable;
-import dev.gameengine.utils.chunk.ChunkSupplier;
 import dev.gameengine.world.DimensionType;
 import dev.gameengine.world.biome.Biome;
 import org.jetbrains.annotations.ApiStatus;

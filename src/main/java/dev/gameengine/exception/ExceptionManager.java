@@ -1,6 +1,5 @@
 package dev.gameengine.exception;
 
-import dev.gameengine.ServerProcess;
 import org.jetbrains.annotations.Nullable;
 
 /**
@@ -8,11 +7,14 @@ import org.jetbrains.annotations.Nullable;
  */
 public final class ExceptionManager {
 
-    private final ServerProcess process;
+    private final Runnable shutdown;
     private @Nullable ExceptionHandler exceptionHandler;
 
-    public ExceptionManager(ServerProcess process) {
-        this.process = process;
+    /**
+     * @param shutdown stops the owning process, called when the JVM runs out of memory
+     */
+    public ExceptionManager(Runnable shutdown) {
+        this.shutdown = shutdown;
     }
 
     /**
@@ -24,7 +26,7 @@ public final class ExceptionManager {
         if (e instanceof OutOfMemoryError) {
             // OOM should be handled manually
             e.printStackTrace();
-            process.stop();
+            shutdown.run();
             return;
         }
         this.getExceptionHandler().handleException(e);

@@ -16,7 +16,7 @@ package dev.gameengine;
 public final class JvmFlags {
 
     /**
-     * The server tick rate. JVM-wide because {@code utils.time.Tick#SERVER_TICKS} is a
+     * The server tick rate. JVM-wide because {@code timer.Tick#SERVER_TICKS} is a
      * {@link java.time.temporal.TemporalUnit} constant derived from it.
      */
     public static final int SERVER_TICKS_PER_SECOND = intProperty("gameengine.tps", 20);

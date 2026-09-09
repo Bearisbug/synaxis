@@ -2,7 +2,7 @@ package dev.gameengine.entity;
 
 import dev.gameengine.event.entity.EntityAttackEvent;
 import dev.gameengine.thread.Acquirable;
-import dev.gameengine.utils.time.TimeUnit;
+import dev.gameengine.timer.TimeUnit;
 import org.jetbrains.annotations.ApiStatus;
 import org.jetbrains.annotations.Nullable;
 

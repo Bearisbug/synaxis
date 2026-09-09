@@ -5,7 +5,7 @@ import net.kyori.adventure.nbt.CompoundBinaryTag;
 import dev.gameengine.instance.block.Block;
 import dev.gameengine.instance.block.BlockHandler;
 import dev.gameengine.tag.Tag;
-import dev.gameengine.utils.block.BlockUtils;
+import dev.gameengine.instance.block.BlockUtils;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;

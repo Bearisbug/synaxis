@@ -2,7 +2,7 @@ package dev.gameengine.instance.light;
 
 import dev.gameengine.collision.Shape;
 import dev.gameengine.instance.block.Block;
-import dev.gameengine.instance.block.BlockFace;
+import dev.gameengine.coordinate.BlockFace;
 import org.junit.jupiter.api.Test;
 
 import java.util.Map;

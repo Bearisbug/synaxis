@@ -3,7 +3,7 @@ package dev.gameengine.message;
 import net.kyori.adventure.text.format.Style;
 import net.kyori.adventure.translation.Translatable;
 import dev.gameengine.codec.Codec;
-import dev.gameengine.codec.ComponentCodecs;
+import dev.gameengine.adventure.ComponentCodecs;
 import dev.gameengine.codec.StructCodec;
 
 import java.util.List;

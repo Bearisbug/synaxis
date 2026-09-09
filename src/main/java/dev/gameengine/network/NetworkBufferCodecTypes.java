@@ -3,6 +3,7 @@ package dev.gameengine.network;
 import com.google.gson.JsonElement;
 import net.kyori.adventure.nbt.BinaryTag;
 import net.kyori.adventure.text.Component;
+import dev.gameengine.adventure.ComponentCodecs;
 import dev.gameengine.codec.Codec;
 import dev.gameengine.codec.Result;
 import dev.gameengine.codec.Transcoder;
@@ -23,7 +24,7 @@ final class NetworkBufferCodecTypes {
             final Transcoder<JsonElement> coder = registries != null
                     ? new RegistryTranscoder<>(Transcoder.JSON, registries)
                     : Transcoder.JSON;
-            final String json = JsonUtil.toJson(Codec.COMPONENT.encode(coder, value).orElseThrow());
+            final String json = JsonUtil.toJson(ComponentCodecs.COMPONENT.encode(coder, value).orElseThrow());
             buffer.write(STRING, json);
         }
 
@@ -34,7 +35,7 @@ final class NetworkBufferCodecTypes {
                     ? new RegistryTranscoder<>(Transcoder.JSON, registries)
                     : Transcoder.JSON;
             final JsonElement json = JsonUtil.fromJson(buffer.read(STRING));
-            return Codec.COMPONENT.decode(coder, json).orElseThrow();
+            return ComponentCodecs.COMPONENT.decode(coder, json).orElseThrow();
         }
     }
 

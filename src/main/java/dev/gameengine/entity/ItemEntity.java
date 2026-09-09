@@ -6,8 +6,8 @@ import dev.gameengine.instance.EntityTracker;
 import dev.gameengine.item.ItemStack;
 import dev.gameengine.thread.Acquirable;
 import dev.gameengine.utils.MathUtils;
-import dev.gameengine.utils.time.Cooldown;
-import dev.gameengine.utils.time.TimeUnit;
+import dev.gameengine.timer.Cooldown;
+import dev.gameengine.timer.TimeUnit;
 import org.jetbrains.annotations.ApiStatus;
 import org.jetbrains.annotations.Nullable;
 

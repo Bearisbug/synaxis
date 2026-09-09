@@ -5,7 +5,7 @@ import dev.gameengine.coordinate.BlockVec;
 import dev.gameengine.coordinate.Vec;
 import dev.gameengine.entity.PlayerHand;
 import dev.gameengine.instance.block.Block;
-import dev.gameengine.instance.block.BlockFace;
+import dev.gameengine.coordinate.BlockFace;
 import dev.gameengine.instance.block.BlockHandler;
 import dev.gameengine.network.packet.client.play.ClientPlayerBlockPlacementPacket;
 import dev.gameengine.testing.Env;

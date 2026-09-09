@@ -4,7 +4,7 @@ import org.junit.jupiter.api.Test;
 
 import java.util.Map;
 
-import static dev.gameengine.utils.block.BlockUtils.parseProperties;
+import static dev.gameengine.instance.block.BlockUtils.parseProperties;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 public class BlockPropertiesTest {

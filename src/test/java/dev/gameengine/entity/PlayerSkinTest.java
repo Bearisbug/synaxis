@@ -1,7 +1,7 @@
 package dev.gameengine.entity;
 
 import net.kyori.adventure.nbt.CompoundBinaryTag;
-import dev.gameengine.codec.Codec;
+import dev.gameengine.adventure.ComponentCodecs;
 import dev.gameengine.codec.Transcoder;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
@@ -29,7 +29,7 @@ public class PlayerSkinTest {
 
     @Test
     void patchModelCodec() {
-        var _ = Codec.COMPONENT; // init sucks here
+        var _ = ComponentCodecs.COMPONENT; // init sucks here
 
         final var slimInput = CompoundBinaryTag.builder().putString("model", "slim").build();
         final var wideInput = CompoundBinaryTag.builder().putString("model", "wide").build();

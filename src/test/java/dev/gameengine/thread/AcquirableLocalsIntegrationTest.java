@@ -16,7 +16,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 public class AcquirableLocalsIntegrationTest {
     @Test
     public void empty(Env env) {
-        assertEquals(0, Acquirable.localEntities().count());
+        assertEquals(0, Acquirable.localElements().count());
     }
 
     @Test
@@ -26,7 +26,9 @@ public class AcquirableLocalsIntegrationTest {
             @Override
             public void tick(long time) {
                 super.tick(time);
-                assertEquals(Set.of(this), Acquirable.localEntities().collect(Collectors.toUnmodifiableSet()));
+                assertEquals(Set.of(this), Acquirable.localElements()
+                        .filter(Entity.class::isInstance)
+                        .collect(Collectors.toUnmodifiableSet()));
             }
         };
         zombie.setInstance(instance, new Pos(1, 41, 1)).join();

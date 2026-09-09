@@ -14,7 +14,7 @@ import dev.gameengine.registry.BuiltinRegistries;
 import dev.gameengine.registry.Registries;
 import dev.gameengine.registry.Registry;
 import dev.gameengine.registry.RegistryKey;
-import dev.gameengine.utils.Direction;
+import dev.gameengine.coordinate.Direction;
 import dev.gameengine.utils.collection.ObjectArray;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.UnknownNullability;

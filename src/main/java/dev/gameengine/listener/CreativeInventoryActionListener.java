@@ -6,7 +6,7 @@ import dev.gameengine.event.inventory.CreativeInventoryActionEvent;
 import dev.gameengine.inventory.PlayerInventory;
 import dev.gameengine.item.ItemStack;
 import dev.gameengine.network.packet.client.play.ClientCreativeInventoryActionPacket;
-import dev.gameengine.utils.inventory.PlayerInventoryUtils;
+import dev.gameengine.inventory.PlayerInventoryUtils;
 
 import java.util.Objects;
 

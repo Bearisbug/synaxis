@@ -13,7 +13,7 @@ import net.kyori.adventure.nbt.LongBinaryTag;
 import net.kyori.adventure.nbt.ShortBinaryTag;
 import net.kyori.adventure.nbt.StringBinaryTag;
 import net.kyori.adventure.text.Component;
-import dev.gameengine.codec.Codec;
+import dev.gameengine.adventure.ComponentCodecs;
 import dev.gameengine.codec.Transcoder;
 import dev.gameengine.item.ItemStack;
 import dev.gameengine.registry.Registries;
@@ -46,9 +46,9 @@ final class Serializers {
 
     static Entry<Component, BinaryTag> component(Registries registries) {
         return new Entry<>(null,
-                input -> Codec.COMPONENT.decode(
+                input -> ComponentCodecs.COMPONENT.decode(
                         new RegistryTranscoder<>(Transcoder.NBT, registries), input).orElse(null),
-                component -> Codec.COMPONENT.encode(
+                component -> ComponentCodecs.COMPONENT.encode(
                         new RegistryTranscoder<>(Transcoder.NBT, registries), component).orElse(null)
         );
     }

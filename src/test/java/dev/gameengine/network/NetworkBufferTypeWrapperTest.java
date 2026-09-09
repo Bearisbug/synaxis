@@ -2,7 +2,7 @@ package dev.gameengine.network;
 
 import dev.gameengine.codec.Codec;
 import dev.gameengine.registry.Registries;
-import dev.gameengine.utils.Direction;
+import dev.gameengine.coordinate.Direction;
 import dev.gameengine.utils.Unit;
 import org.junit.jupiter.api.Test;
 

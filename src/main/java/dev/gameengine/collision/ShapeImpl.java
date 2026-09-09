@@ -4,7 +4,7 @@ import it.unimi.dsi.fastutil.doubles.DoubleArrayList;
 import it.unimi.dsi.fastutil.doubles.DoubleList;
 import dev.gameengine.coordinate.Point;
 import dev.gameengine.coordinate.Vec;
-import dev.gameengine.instance.block.BlockFace;
+import dev.gameengine.coordinate.BlockFace;
 import org.jetbrains.annotations.Unmodifiable;
 
 import java.util.ArrayList;

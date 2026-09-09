@@ -14,7 +14,6 @@ import dev.gameengine.network.packet.server.play.SetCursorItemPacket;
 import dev.gameengine.network.packet.server.play.SetPlayerInventorySlotPacket;
 import dev.gameengine.network.packet.server.play.SetSlotPacket;
 import dev.gameengine.network.packet.server.play.WindowItemsPacket;
-import dev.gameengine.utils.inventory.PlayerInventoryUtils;
 import dev.gameengine.testing.Env;
 import dev.gameengine.testing.EnvTest;
 import org.junit.jupiter.api.Test;

@@ -1,6 +1,5 @@
 package dev.gameengine.thread;
 
-import dev.gameengine.Tickable;
 import org.openjdk.jcstress.annotations.Actor;
 import org.openjdk.jcstress.annotations.Arbiter;
 import org.openjdk.jcstress.annotations.JCStressTest;

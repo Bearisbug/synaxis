@@ -2,9 +2,9 @@ package dev.gameengine.event.entity;
 
 import dev.gameengine.coordinate.Pos;
 import dev.gameengine.entity.Entity;
-import dev.gameengine.entity.RelativeFlags;
+import dev.gameengine.coordinate.RelativeFlags;
 import dev.gameengine.event.trait.EntityEvent;
-import dev.gameengine.utils.position.PositionUtils;
+import dev.gameengine.coordinate.PositionUtils;
 import org.intellij.lang.annotations.MagicConstant;
 
 /**

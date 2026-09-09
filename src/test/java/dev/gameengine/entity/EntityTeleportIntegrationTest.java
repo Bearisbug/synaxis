@@ -1,6 +1,7 @@
 package dev.gameengine.entity;
 
 import dev.gameengine.coordinate.Pos;
+import dev.gameengine.coordinate.RelativeFlags;
 import dev.gameengine.network.packet.server.ServerPacket;
 import dev.gameengine.network.packet.server.play.EntityHeadLookPacket;
 import dev.gameengine.network.packet.server.play.EntityPositionSyncPacket;

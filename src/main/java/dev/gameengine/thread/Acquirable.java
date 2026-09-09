@@ -1,6 +1,5 @@
 package dev.gameengine.thread;
 
-import dev.gameengine.entity.Entity;
 import org.jetbrains.annotations.ApiStatus;
 import org.jetbrains.annotations.UnknownNullability;
 
@@ -13,20 +12,19 @@ import java.util.stream.Stream;
 public sealed interface Acquirable<T> permits AcquirableImpl {
 
     /**
-     * Gets all the {@link Entity entities} being ticked in the current thread.
+     * Gets everything being ticked in the current thread, the partitions as well as the elements
+     * assigned to them.
      * <p>
      * Useful when you want to ensure that no acquisition is ever done.
      * <p>
-     * Be aware that the entity stream is only updated at the beginning of the thread tick.
+     * Be aware that the stream is only updated at the beginning of the thread tick.
      *
-     * @return the entities ticked in the current thread
+     * @return the tickables of the current thread
      */
-    static Stream<Entity> localEntities() {
+    static Stream<Tickable> localElements() {
         if (!(Thread.currentThread() instanceof TickThread tickThread)) return Stream.empty();
         return tickThread.entries.stream()
-                .flatMap(partitionEntry -> partitionEntry.elements().stream())
-                .filter(tickable -> tickable instanceof Entity)
-                .map(tickable -> (Entity) tickable);
+                .flatMap(partitionEntry -> partitionEntry.elements().stream());
     }
 
     /**

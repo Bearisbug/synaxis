@@ -150,8 +150,12 @@ public final class PacketReading {
         try {
             packetLength = buffer.read(VAR_INT);
         } catch (IndexOutOfBoundsException _) {
-            // Couldn't read a single var-int
-            return new Result.Failure<>(MAX_VAR_INT_SIZE);
+            // Either the segment ends before a complete var-int, or the var-int is malformed.
+            // The buffer can only be at fault if a full var-int does not fit past the read index.
+            final long requiredCapacity = beginMark + MAX_VAR_INT_SIZE;
+            if (requiredCapacity <= buffer.capacity())
+                throw new DataFormatException("Packet length is not a valid var-int");
+            return new Result.Failure<>(requiredCapacity);
         }
         final long readerStart = buffer.readIndex();
         if (readerStart > buffer.writeIndex()) {

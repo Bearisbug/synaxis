@@ -29,7 +29,7 @@ public class EntityCreature extends LivingEntity implements NavigableEntity, Ent
     @SuppressWarnings("this-escape") // deliberate self registration during construction
     private final Navigator navigator = new Navigator(this);
 
-    private Entity target;
+    private @Nullable Entity target;
 
     /**
      * Constructor which allows to specify an UUID. Only use if you know what you are doing!
@@ -107,6 +107,13 @@ public class EntityCreature extends LivingEntity implements NavigableEntity, Ent
      */
     @Nullable
     public Entity getTarget() {
+        final Entity target = this.target;
+        // Nothing clears the target when it is removed, holding on to it would keep the whole
+        // entity (a Player and its connection for instance) reachable for this creature's lifetime
+        if (target != null && target.isRemoved()) {
+            this.target = null;
+            return null;
+        }
         return target;
     }
 

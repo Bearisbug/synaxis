@@ -71,7 +71,7 @@ public final class Navigator {
     public synchronized boolean setPathTo(@Nullable Point point, double minimumDistance, double maxDistance, double pathVariance, @Nullable Runnable onComplete) {
         final Instance instance = entity.getInstance();
         if (point == null) {
-            this.path = null;
+            reset();
             return false;
         }
 

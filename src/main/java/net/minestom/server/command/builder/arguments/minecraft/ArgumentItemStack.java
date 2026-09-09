@@ -56,14 +56,14 @@ public class ArgumentItemStack extends Argument<ItemStack> {
     public static ItemStack staticParse(String input) throws ArgumentSyntaxException {
         var reader = new StringReader(input);
 
-        final Material material = Material.fromKey(reader.readKey());
+        final Material material = Material.fromKey(reader.readKey(INVALID_MATERIAL));
         if (material == null)
             throw new ArgumentSyntaxException("Material is invalid", input, INVALID_MATERIAL);
         if (!reader.hasMore()) {
             return ItemStack.of(material); // Nothing else, we have our item
         }
 
-        DataComponentMap.Builder components = DataComponentMap.builder();
+        DataComponentMap.PatchBuilder components = DataComponentMap.patchBuilder();
 
         // Parse the declared components
         if (reader.peek() == '[') {
@@ -71,15 +71,25 @@ public class ArgumentItemStack extends Argument<ItemStack> {
             final Transcoder<BinaryTag> coder = new RegistryTranscoder<>(
                     Transcoder.NBT, MinecraftServer.getRegistries());
             do {
-                final Key componentId = reader.readKey();
+                // A leading '!' removes the component instead of setting it
+                final boolean remove = reader.peek() == '!';
+                if (remove) reader.consume('!');
+
+                final Key componentId = reader.readKey(INVALID_COMPONENT);
                 final DataComponent<?> component = DataComponent.fromKey(componentId);
                 if (component == null)
                     throw new ArgumentSyntaxException("Unknown item component", input, INVALID_COMPONENT);
 
-                reader.consume('=');
+                if (remove) {
+                    components.remove(component);
+                } else {
+                    reader.consume('=');
 
-                final Result<Object> componentValueResult = (Result<Object>) component.decode(coder, reader.readTag());
-                components.set((DataComponent<Object>) component, componentValueResult.orElseThrow());
+                    final Result<Object> componentValueResult = (Result<Object>) component.decode(coder, reader.readTag());
+                    if (!(componentValueResult instanceof Result.Ok(Object componentValue)))
+                        throw new ArgumentSyntaxException("Invalid item component value", input, INVALID_COMPONENT);
+                    components.set((DataComponent<Object>) component, componentValue);
+                }
 
                 if (reader.peek() != ']')
                     reader.consume(',');
@@ -139,13 +149,16 @@ public class ArgumentItemStack extends Argument<ItemStack> {
             index++;
         }
 
-        Key readKey() {
+        Key readKey(int errorCode) {
             char c;
             int start = index;
-            while (hasMore() && (c = peek()) != '{' && c != '[' && c != '=') {
+            while (hasMore() && (c = peek()) != '{' && c != '[' && c != '=' && c != ']' && c != ',') {
                 index++;
             }
-            return Key.key(input.substring(start, index));
+            final String key = input.substring(start, index);
+            if (!Key.parseable(key))
+                throw new ArgumentSyntaxException("Invalid key '" + key + "'", input, errorCode);
+            return Key.key(key);
         }
 
         BinaryTag readTag() {

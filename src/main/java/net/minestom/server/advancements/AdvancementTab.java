@@ -15,6 +15,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArraySet;
 
 /**
@@ -28,7 +29,8 @@ import java.util.concurrent.CopyOnWriteArraySet;
  */
 public class AdvancementTab implements Viewable {
 
-    private static final Map<UUID, Set<AdvancementTab>> PLAYER_TAB_MAP = new HashMap<>();
+    // Shared by every instance, while the mutating methods only hold their own instance's monitor
+    private static final Map<UUID, Set<AdvancementTab>> PLAYER_TAB_MAP = new ConcurrentHashMap<>();
 
     private final Set<Player> viewers = new HashSet<>();
 
@@ -174,13 +176,13 @@ public class AdvancementTab implements Viewable {
      */
     private void removePlayer(Player player) {
         final UUID uuid = player.getUuid();
-        if (!PLAYER_TAB_MAP.containsKey(uuid)) {
+        final Set<AdvancementTab> tabs = PLAYER_TAB_MAP.get(uuid);
+        if (tabs == null) {
             return;
         }
-        Set<AdvancementTab> tabs = PLAYER_TAB_MAP.get(uuid);
         tabs.remove(this);
         if (tabs.isEmpty()) {
-            PLAYER_TAB_MAP.remove(uuid);
+            PLAYER_TAB_MAP.remove(uuid, tabs);
         }
     }
 

@@ -176,17 +176,19 @@ record DataComponentMapImpl(Int2ObjectMap<@Nullable Object> components) implemen
         @Override
         public void write(NetworkBuffer buffer, DataComponentMap value) {
             final DataComponentMapImpl patch = (DataComponentMapImpl) value;
-            int added = 0;
-            for (Object o : patch.components.values()) {
-                if (o != null) added++;
+            int added = 0, removed = 0;
+            for (var entry : patch.components.int2ObjectEntrySet()) {
+                if (isNotSynced(entry.getIntKey())) continue;
+                if (entry.getValue() != null) added++;
+                else removed++;
             }
 
             buffer.write(NetworkBuffer.VAR_INT, added);
             if (isPatch) {
-                buffer.write(NetworkBuffer.VAR_INT, patch.components.size() - added);
+                buffer.write(NetworkBuffer.VAR_INT, removed);
             }
             for (var entry : patch.components.int2ObjectEntrySet()) {
-                if (entry.getValue() == null) continue;
+                if (entry.getValue() == null || isNotSynced(entry.getIntKey())) continue;
 
                 buffer.write(NetworkBuffer.VAR_INT, entry.getIntKey());
                 @SuppressWarnings("unchecked")
@@ -202,11 +204,20 @@ record DataComponentMapImpl(Int2ObjectMap<@Nullable Object> components) implemen
             }
             if (isPatch) {
                 for (var entry : patch.components.int2ObjectEntrySet()) {
-                    if (entry.getValue() != null) continue;
+                    if (entry.getValue() != null || isNotSynced(entry.getIntKey())) continue;
 
                     buffer.write(NetworkBuffer.VAR_INT, entry.getIntKey());
                 }
             }
+        }
+
+        /**
+         * Components registered without a network type never reach the client, so they must not be counted or
+         * written. Unknown ids are left in so that the write loop still reports them.
+         */
+        private boolean isNotSynced(int id) {
+            final DataComponent<?> type = this.idToType.apply(id);
+            return type != null && !type.isSynced();
         }
 
         @Override
@@ -289,6 +300,8 @@ record DataComponentMapImpl(Int2ObjectMap<@Nullable Object> components) implemen
                 @SuppressWarnings("unchecked")
                 DataComponent<Object> type = (DataComponent<@NotNull Object>) this.idToType.apply(entry.getIntKey());
                 if (type == null) return new Result.Error<>("unknown data component id: " + entry.getIntKey());
+                // Components registered without a codec cannot be serialized
+                if (!type.isSerialized()) continue;
                 if (entry.getValue() == null) {
                     if (isPatch) map.put(REMOVAL_PREFIX + type.name(), coder.createMap().build());
                     // Removing a component in an absolute (non-patch) builder is a noop because it is not yet present.

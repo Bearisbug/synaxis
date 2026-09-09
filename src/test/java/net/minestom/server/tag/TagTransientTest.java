@@ -40,6 +40,19 @@ public class TagTransientTest {
         assertEquals("abcdef", result);
     }
 
+    /**
+     * A transient value has no nbt representation, so reading the same key through a different tag type has to
+     * fall back to the default instead of dereferencing a null tag.
+     */
+    @Test
+    public void readingTransientValueThroughAnotherTagType() {
+        var tagHandler = TagHandler.newHandler();
+        tagHandler.setTag(Tag.Transient("a"), "abcdef");
+
+        assertNull(tagHandler.getTag(Tag.Integer("a")));
+        assertNull(tagHandler.getTag(Tag.String("a")));
+    }
+
     @Test
     public void asCompoundDoesNotPreserveTransient() {
         var tagHandler = TagHandler.newHandler();

@@ -31,6 +31,8 @@ import net.minestom.server.utils.collection.ObjectArray;
 import net.minestom.server.utils.validate.Check;
 import org.jetbrains.annotations.ApiStatus;
 import org.jetbrains.annotations.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.jetbrains.annotations.Unmodifiable;
 
 import java.io.IOException;
@@ -41,10 +43,12 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiFunction;
 import java.util.function.Function;
@@ -58,6 +62,8 @@ import java.util.function.Supplier;
  */
 @Deprecated(forRemoval = true)
 public final class RegistryData {
+    private static final Logger LOGGER = LoggerFactory.getLogger(RegistryData.class);
+
     static final Gson GSON = new GsonBuilder().disableHtmlEscaping().disableJdkUnsafe().create();
 
     @ApiStatus.Internal
@@ -134,21 +140,29 @@ public final class RegistryData {
 
     @ApiStatus.Internal
     public static Properties load(String resourcePath, boolean required) {
-        try (InputStream resourceStream = loadRegistryFile(resourcePath)) {
-            if (resourceStream != null) {
-                final Map<String, Object> map = new HashMap<>();
-                try (JsonReader reader = new JsonReader(new InputStreamReader(resourceStream, StandardCharsets.UTF_8))) {
-                    reader.beginObject();
-                    while (reader.hasNext()) map.put(reader.nextName(), readObject(reader));
-                    reader.endObject();
-                }
-                return Properties.fromMap(map);
-            }
+        final InputStream resourceStream;
+        try {
+            resourceStream = loadRegistryFile(resourcePath);
         } catch (IOException e) {
             MinecraftServer.getExceptionManager().handleException(e);
+            if (required) Check.fail("Failed to load required registry file: {0}", resourcePath);
+            return Properties.fromMap(Map.of());
         }
-        if (required) Check.fail("Failed to load required registry file: {0}", resourcePath);
-        return Properties.fromMap(Map.of());
+        if (resourceStream == null) {
+            if (required) Check.fail("Failed to load required registry file: {0}", resourcePath);
+            return Properties.fromMap(Map.of());
+        }
+        // The file is there: a parse failure is a real error, not an optional file that happens to be absent.
+        // Reporting it as "no data" boots the server with, for example, zero tags.
+        try (resourceStream; JsonReader reader = new JsonReader(new InputStreamReader(resourceStream, StandardCharsets.UTF_8))) {
+            final Map<String, Object> map = new HashMap<>();
+            reader.beginObject();
+            while (reader.hasNext()) map.put(reader.nextName(), readObject(reader));
+            reader.endObject();
+            return Properties.fromMap(map);
+        } catch (IOException | IllegalStateException e) {
+            throw new IllegalStateException("Failed to parse registry file: " + resourcePath, e);
+        }
     }
 
     /**
@@ -191,11 +205,24 @@ public final class RegistryData {
     }
 
     private static <T> void getTagValues(RegistryTagImpl.Backed<T> tag, Properties main, String value) {
-        Properties section = main.section(value);
+        getTagValues(tag, main, value, new HashSet<>());
+    }
+
+    private static <T> void getTagValues(RegistryTagImpl.Backed<T> tag, Properties main, String value, Set<String> visited) {
+        // Tag files may reference each other, and nothing stops them from forming a cycle
+        if (!visited.add(value)) {
+            LOGGER.warn("Cyclic tag reference to {} while loading tag {}", value, tag.key().key().asString());
+            return;
+        }
+        final Properties section = main.section(value);
+        if (section == null) {
+            LOGGER.warn("Tag {} references unknown tag {}", tag.key().key().asString(), value);
+            return;
+        }
         final List<String> tagValues = section.getList("values");
         tagValues.forEach(tagString -> {
             if (tagString.startsWith("#")) {
-                getTagValues(tag, main, tagString.substring(1));
+                getTagValues(tag, main, tagString.substring(1), visited);
             } else {
                 tag.add(RegistryKey.unsafeOf(tagString));
             }

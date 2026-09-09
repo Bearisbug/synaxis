@@ -12,7 +12,7 @@ import org.intellij.lang.annotations.Subst;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
-import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
@@ -139,7 +139,9 @@ final class RegistryCodecs {
             }
             final Result<List<D>> entriesResult = coder.getList(value);
             if (entriesResult instanceof Result.Ok(List<D> entries)) {
-                final Set<RegistryKey<T>> keys = new HashSet<>(entries.size());
+                // Order matters: RegistryTagImpl.Direct#equals is order sensitive so that a tag decoded here
+                // compares equal to the same tag read from the network, which preserves the declared order
+                final Set<RegistryKey<T>> keys = new LinkedHashSet<>(entries.size());
                 for (D entry : entries) {
                     final Result<String> keyResult = coder.getString(entry);
                     if (!(keyResult instanceof Result.Ok(@Subst("a")String key)))

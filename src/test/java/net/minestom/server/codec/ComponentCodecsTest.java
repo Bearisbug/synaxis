@@ -16,8 +16,25 @@ import java.io.IOException;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 
 class ComponentCodecsTest {
+
+    /**
+     * A Decoder must report a failure as Result.Error. An unknown action name arrives straight from the client, so
+     * letting an unchecked exception out breaks every caller that expects a Result.
+     */
+    @Test
+    void unknownClickEventActionIsAnError() throws Exception {
+        var input = MinestomAdventure.tagStringIO().asTag("{text:\"a\",click_event:{action:\"bogus\"}}");
+        assertInstanceOf(Result.Error.class, ComponentCodecs.COMPONENT.decode(Transcoder.NBT, input));
+    }
+
+    @Test
+    void unknownHoverEventActionIsAnError() throws Exception {
+        var input = MinestomAdventure.tagStringIO().asTag("{text:\"a\",hover_event:{action:\"bogus\"}}");
+        assertInstanceOf(Result.Error.class, ComponentCodecs.COMPONENT.decode(Transcoder.NBT, input));
+    }
 
     @Test
     void readExpandFromStringInList() throws Exception {

@@ -20,12 +20,15 @@ import net.minestom.server.utils.validate.Check;
 import org.jetbrains.annotations.ApiStatus;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.jetbrains.annotations.UnknownNullability;
 
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
@@ -37,6 +40,8 @@ import java.util.concurrent.ConcurrentHashMap;
 
 @ApiStatus.Internal
 final class DynamicRegistryImpl<T> implements DynamicRegistry<T> {
+    private static final Logger LOGGER = LoggerFactory.getLogger(DynamicRegistryImpl.class);
+
     private static final String UNSAFE_REMOVE_MESSAGE = "Unsafe remove is disabled. Enable by setting the system property 'minestom.registry.unsafe-ops' to 'true'";
     // Could also just use `this`, but this is a good candidate for identityless classes.
     // Also, what use case requires you to mutate registries faster than one monitor?
@@ -180,6 +185,11 @@ final class DynamicRegistryImpl<T> implements DynamicRegistry<T> {
             valueToKey.remove(value);
             packById.remove(id);
 
+            // The lists were compacted, so every entry after the removed one now sits one index lower
+            for (int i = id; i < idToKey.size(); i++) {
+                keyToId.put(idToKey.get(i), i);
+            }
+
             // Remove all references from tags
             for (final var tag : tags.values()) {
                 tag.remove(registryKey);
@@ -257,11 +267,23 @@ final class DynamicRegistryImpl<T> implements DynamicRegistry<T> {
     public TagsPacket.Registry tagRegistry() {
         final List<TagsPacket.Tag> tagList = new ArrayList<>(tags.size());
         for (final RegistryTagImpl.Backed<T> tag : tags.values()) {
-            final int[] entries = new int[tag.size()];
+            // Snapshot first: the tag is a concurrent set, so its size can change while it is iterated
+            final List<RegistryKey<T>> tagKeys = new ArrayList<>();
+            for (var registryKey : tag) tagKeys.add(registryKey);
+
+            final int[] entries = new int[tagKeys.size()];
             int i = 0;
-            for (var registryKey : tag)
-                entries[i++] = keyToId.get(registryKey);
-            tagList.add(new TagsPacket.Tag(tag.key().key().asString(), entries));
+            for (var registryKey : tagKeys) {
+                final Integer id = keyToId.get(registryKey);
+                if (id == null) {
+                    LOGGER.warn("Tag {} of registry {} references unknown entry {}",
+                            tag.key().key().asString(), key().asString(), registryKey.key().asString());
+                    continue;
+                }
+                entries[i++] = id;
+            }
+            tagList.add(new TagsPacket.Tag(tag.key().key().asString(),
+                    i == entries.length ? entries : Arrays.copyOf(entries, i)));
         }
         return new TagsPacket.Registry(key().asString(), tagList);
     }

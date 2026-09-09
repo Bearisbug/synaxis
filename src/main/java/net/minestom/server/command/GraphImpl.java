@@ -149,6 +149,30 @@ record GraphImpl(NodeImpl root) implements Graph {
             return new ExecutionImpl(commandSender -> condition == null || condition.canUse(commandSender, null),
                                      null, null, executor, condition);
         }
+
+        /**
+         * The gate of an intermediate node of a syntax: it carries the syntax condition so the node can be filtered
+         * out, but no executor, since the syntax does not terminate there.
+         */
+        static ExecutionImpl fromSyntaxPath(CommandSyntax syntax) {
+            final CommandCondition condition = syntax.getCommandCondition();
+            return new ExecutionImpl(commandSender -> condition == null || condition.canUse(commandSender, null),
+                                     null, null, null, null);
+        }
+
+        /**
+         * A node can be shared by several syntaxes. It stays visible as long as one of them accepts the sender, and
+         * it keeps the first executor installed on it.
+         */
+        static ExecutionImpl merge(@Nullable ExecutionImpl current, ExecutionImpl added) {
+            if (current == null) return added;
+            return new ExecutionImpl(
+                    commandSender -> current.test(commandSender) || added.test(commandSender),
+                    current.defaultExecutor() != null ? current.defaultExecutor() : added.defaultExecutor(),
+                    current.globalListener() != null ? current.globalListener() : added.globalListener(),
+                    current.executor() != null ? current.executor() : added.executor(),
+                    current.condition() != null ? current.condition() : added.condition());
+        }
     }
 
     private static final class ConversionNode {
@@ -182,11 +206,14 @@ record GraphImpl(NodeImpl root) implements Graph {
             // Syntaxes
             for (CommandSyntax syntax : command.getSyntaxes()) {
                 ConversionNode syntaxNode = root;
-                for (Argument<?> arg : syntax.getArguments()) {
-                    boolean last = arg == syntax.getArguments()[syntax.getArguments().length - 1];
-                    var ex = last ? ExecutionImpl.fromSyntax(syntax) : null;
+                final Argument<?>[] arguments = syntax.getArguments();
+                for (int i = 0; i < arguments.length; i++) {
+                    final Argument<?> arg = arguments[i];
+                    // Compare by index: the same Argument instance may legitimately appear twice in one syntax
+                    final boolean last = i == arguments.length - 1;
+                    final ExecutionImpl ex = last ? ExecutionImpl.fromSyntax(syntax) : ExecutionImpl.fromSyntaxPath(syntax);
                     syntaxNode = syntaxNode.nextMap.computeIfAbsent(arg, argument -> new ConversionNode(argument, ex));
-                    if (syntaxNode.execution == null) syntaxNode.execution = ex;
+                    syntaxNode.execution = ExecutionImpl.merge(syntaxNode.execution, ex);
                 }
             }
             return root;

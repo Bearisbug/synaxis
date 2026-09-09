@@ -49,6 +49,33 @@ public class CommandSuggestionIntegrationTest {
         });
     }
 
+    /**
+     * The first syntax swallows "5" as a word but then fails on its own child. That partial match must not stop the
+     * parser from visiting the sibling syntax, which is the one holding the suggestion callback.
+     */
+    @Test
+    public void suggestionFromSiblingSyntax(Env env) {
+        var instance = env.createFlatInstance();
+        var connection = env.createConnection();
+        var player = connection.connect(instance, new Pos(0, 42, 0));
+
+        var command = new Command("cmd");
+        command.addSyntax((_, _) -> {
+        }, Word("word"), Literal("foo"));
+        command.addSyntax((_, _) -> {
+        }, Integer("number"), Word("target").setSuggestionCallback(
+                (_, _, suggestion) -> suggestion.addEntry(new SuggestionEntry("suggested"))));
+
+        env.process().command().register(command);
+
+        var listener = connection.trackIncoming(TabCompletePacket.class);
+        player.addPacketToQueue(new ClientTabCompletePacket(1, "cmd 5 "));
+        player.interpretPacketQueue();
+
+        listener.assertSingle(tabCompletePacket ->
+                assertEquals(List.of(new TabCompletePacket.Match("suggested", null)), tabCompletePacket.matches()));
+    }
+
     @Test
     public void suggestionWithDefaults(Env env) {
         var instance = env.createFlatInstance();

@@ -239,7 +239,7 @@ final class CommandParserImpl implements CommandParser {
         NodeResult error = null;
         for (Node child : node.next()) {
             NodeResult childResult = parseNode(sender, child, chain, reader);
-            if (childResult.argumentResult instanceof ArgumentResult.Success<Object>) {
+            if (childResult.terminal() && childResult.argumentResult instanceof ArgumentResult.Success<Object>) {
                 // Assume that there is only one successful node for a given chain of arguments
                 return childResult;
             } else {
@@ -268,7 +268,7 @@ final class CommandParserImpl implements CommandParser {
                                     lastSuccess.callback()
                             );
                         }
-                        error = lastSuccess;
+                        error = lastSuccess.asPartial();
                     }
                 }
                 reader.cursor(start);
@@ -303,7 +303,7 @@ final class CommandParserImpl implements CommandParser {
                     new ArgumentResult.SyntaxError<>("Command has trailing data", "", -1),
                     suggestionCallback
             );
-            chain.suggestionCallback = suggestionCallback;
+            if (suggestionCallback != null) chain.suggestionCallback = suggestionCallback;
             // prevent duplicates from being added (Fixes CommandParseTest#singleCommandWithMultipleSyntax() failure)
             if (chain.getArgs().stream().noneMatch(arg -> arg.getId().equals(argument.getId()))) {
                 chain.append(nodeResult);
@@ -476,8 +476,21 @@ final class CommandParserImpl implements CommandParser {
         static final ExecutableCommand.Result INVALID_SYNTAX = new ExecutionResultImpl(Type.INVALID_SYNTAX, null);
     }
 
+    /**
+     * @param terminal whether this result really parsed to the end of a branch. A partial result only carries the
+     *                 deepest successful node of a branch that failed further down, so it must not be mistaken for a
+     *                 branch that matched, otherwise the sibling branches are never visited.
+     */
     private record NodeResult(Node node, Chain chain, ArgumentResult<Object> argumentResult,
-                              SuggestionCallback callback) {
+                              SuggestionCallback callback, boolean terminal) {
+        NodeResult(Node node, Chain chain, ArgumentResult<Object> argumentResult, SuggestionCallback callback) {
+            this(node, chain, argumentResult, callback, true);
+        }
+
+        NodeResult asPartial() {
+            return terminal ? new NodeResult(node, chain, argumentResult, callback, false) : this;
+        }
+
         String name() {
             return node.argument().getId();
         }

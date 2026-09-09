@@ -87,7 +87,7 @@ public final class ComponentCodecs {
     }
 
     public static final StructCodec<ClickEvent<?>> CLICK_EVENT = new StructCodec<>() {
-        private static final Codec<ClickEvent.Action<?>> ACTION_CODEC = Codec.STRING.transform(ClickEvent.Action.NAMES::value, ClickEvent.Action::name);
+        private static final Codec<ClickEvent.Action<?>> ACTION_CODEC = Codec.STRING.transform(ClickEvent.Action.NAMES::valueOrThrow, ClickEvent.Action::name);
 
         @Override
         public <D> Result<ClickEvent<?>> decodeFromMap(Transcoder<D> coder, MapLike<D> map) {
@@ -178,7 +178,7 @@ public final class ComponentCodecs {
         }
     };
 
-    private static final Codec<HoverEvent.Action<?>> HOVER_EVENT_ACTION = Codec.STRING.transform(HoverEvent.Action.NAMES::value, HoverEvent.Action::toString);
+    private static final Codec<HoverEvent.Action<?>> HOVER_EVENT_ACTION = Codec.STRING.transform(HoverEvent.Action.NAMES::valueOrThrow, HoverEvent.Action::toString);
     private static final Codec<HoverEvent<?>> HOVER_EVENT = HOVER_EVENT_ACTION.unionType("action", ComponentCodecs::hoverEventCodec, HoverEvent::action);
 
     private static final StructCodec<HoverEvent<Component>> SHOW_TEXT = StructCodec.struct(
@@ -194,11 +194,11 @@ public final class ComponentCodecs {
             "name", COMPONENT_FORWARD.optional(), hoverEvent -> hoverEvent.value().name(),
             HoverEvent::showEntity);
 
-    private static StructCodec<? extends HoverEvent<?>> hoverEventCodec(HoverEvent.Action<?> action) {
+    private static @Nullable StructCodec<? extends HoverEvent<?>> hoverEventCodec(HoverEvent.Action<?> action) {
         if (action == HoverEvent.Action.SHOW_TEXT) return SHOW_TEXT;
         if (action == HoverEvent.Action.SHOW_ITEM) return SHOW_ITEM;
         if (action == HoverEvent.Action.SHOW_ENTITY) return SHOW_ENTITY;
-        throw new IllegalStateException("Unknown hover event action: " + action);
+        return null; // Reported as a Result.Error by the union codec
     }
 
     public static final StructCodec<Style> STYLE = StructCodec.struct(

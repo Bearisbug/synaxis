@@ -26,11 +26,14 @@ public sealed interface DialogInput {
     StructCodec<DialogInput> CODEC = Codec.RegistryTaggedUnion(REGISTRY, DialogInput::codec);
 
     static void validateKey(String key) {
-        for (int i = 0; i < key.length(); i++) {
+        // Character#isLetterOrDigit is Unicode aware, which does not match the [a-zA-Z0-9_]+ this claims to enforce
+        boolean valid = !key.isEmpty();
+        for (int i = 0; valid && i < key.length(); i++) {
             final char c = key.charAt(i);
-            if (!Character.isLetterOrDigit(c) && c != '_')
-                throw new IllegalArgumentException(MessageFormat.format("Invalid input key: {0}. Must match [a-zA-Z0-9_]+", key));
+            valid = (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '_';
         }
+        if (!valid)
+            throw new IllegalArgumentException(MessageFormat.format("Invalid input key: {0}. Must match [a-zA-Z0-9_]+", key));
     }
 
     record Boolean(

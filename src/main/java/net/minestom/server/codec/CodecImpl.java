@@ -20,6 +20,7 @@ import org.jetbrains.annotations.ApiStatus;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.Unmodifiable;
 
+import java.util.Collections;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -117,7 +118,10 @@ final class CodecImpl {
 
         @Override
         public <D> Result<T> decode(Transcoder<D> coder, D value) {
-            return new Result.Ok<>(inner.decode(coder, value).orElse(defaultValue));
+            // Only an absent value falls back to the default. A value that is present but rejected by the inner
+            // codec is a real failure and has to be reported, otherwise orElse and Either become unreachable.
+            if (Objects.equals(value, coder.createNull())) return new Result.Ok<>(defaultValue);
+            return inner.decode(coder, value);
         }
 
         @Override
@@ -156,7 +160,8 @@ final class CodecImpl {
             try {
                 return inner.encode(coder, from.apply(value));
             } catch (Exception e) {
-                return new Result.Error<>(e.getMessage());
+                // Result.Error rejects a null message, which getMessage() is for plenty of exceptions
+                return new Result.Error<>(e.getClass().getSimpleName() + ": " + e.getMessage());
             }
         }
     }
@@ -181,20 +186,22 @@ final class CodecImpl {
                     return decodedItem.cast();
                 decodedList.add(valueItem);
             }
-            return new Result.Ok<>(List.copyOf(decodedList));
+            // Not List#copyOf: an optional element codec legitimately produces nulls
+            return new Result.Ok<>(Collections.unmodifiableList(decodedList));
         }
 
         @Override
         public <D> Result<D> encode(Transcoder<D> coder, @Nullable List<T> value) {
             if (value == null) return new Result.Error<>("null");
             if (value.size() > maxSize)
-                throw new IllegalArgumentException("List size exceeds maximum allowed size: " + maxSize);
+                return new Result.Error<>("List size exceeds maximum allowed size: " + maxSize);
             final ListBuilder<D> encodedList = coder.createList(value.size());
             for (T item : value) {
                 final Result<D> itemResult = inner.encode(coder, item);
                 if (!(itemResult instanceof Result.Ok(D encodedItem)))
                     return itemResult.cast();
-                if (encodedItem != null)
+                // The coder's null is not always Java null (NBT uses EndBinaryTag), and no list can hold it
+                if (encodedItem != null && !encodedItem.equals(coder.createNull()))
                     encodedList.add(encodedItem);
             }
             return new Result.Ok<>(encodedList.build());
@@ -221,20 +228,23 @@ final class CodecImpl {
                     return decodedItem.cast();
                 decodedSet.add(valueItem);
             }
-            return new Result.Ok<>(Set.copyOf(decodedSet));
+            // Not Set#copyOf: an optional element codec legitimately produces nulls
+            return new Result.Ok<>(Collections.unmodifiableSet(decodedSet));
         }
 
         @Override
         public <D> Result<D> encode(Transcoder<D> coder, @Nullable Set<T> value) {
             if (value == null) return new Result.Error<>("null");
             if (value.size() > maxSize)
-                throw new IllegalArgumentException("List size exceeds maximum allowed size: " + maxSize);
+                return new Result.Error<>("Set size exceeds maximum allowed size: " + maxSize);
             ListBuilder<D> encodedList = coder.createList(value.size());
             for (T item : value) {
                 final Result<D> itemResult = inner.encode(coder, item);
                 if (!(itemResult instanceof Result.Ok(D encodedItem)))
                     return itemResult.cast();
-                encodedList.add(encodedItem);
+                // The coder's null is not always Java null (NBT uses EndBinaryTag), and no list can hold it
+                if (encodedItem != null && !encodedItem.equals(coder.createNull()))
+                    encodedList.add(encodedItem);
             }
             return new Result.Ok<>(encodedList.build());
         }
@@ -288,7 +298,12 @@ final class CodecImpl {
                 final Result<D> valueResult = valueCodec.encode(coder, entry.getValue());
                 if (!(valueResult instanceof Result.Ok(D encodedValue)))
                     return valueResult.cast();
-                map.put(encodedKey, encodedValue);
+                // A transcoder map can only be keyed by strings, and the NBT and Java builders drop anything else
+                // without a word, which turns the whole map into an empty one
+                final Result<String> keyStringResult = coder.getString(encodedKey);
+                if (!(keyStringResult instanceof Result.Ok(String keyString)))
+                    return new Result.Error<>("Map key must encode to a string: " + encodedKey);
+                map.put(keyString, encodedValue);
             }
 
             return new Result.Ok<>(map.build());

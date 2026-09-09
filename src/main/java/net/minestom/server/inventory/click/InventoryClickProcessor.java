@@ -139,6 +139,15 @@ public final class InventoryClickProcessor {
 
     public @Nullable ItemStack dragging(Player player, AbstractInventory inventory,
                                         List<Integer> slots, int button, ItemStack cursor) {
+        // Validate every slot before writing anything: a write that is interrupted halfway through leaves the
+        // items in place while the cursor is never debited, which duplicates them.
+        for (int slot : slots) {
+            final boolean isInWindow = slot < inventory.getSize();
+            final AbstractInventory inv = isInWindow ? inventory : player.getInventory();
+            final int s = isInWindow ? slot : slot - inventory.getSize();
+            if (s < 0 || s >= inv.getSize()) return null;
+        }
+
         // Drag instruction
         if (button == 2) {
             // End left
@@ -226,17 +235,11 @@ public final class InventoryClickProcessor {
             return clickResult;
         }
         final BiFunction<AbstractInventory, ItemStack, ItemStack> func = (inv, rest) -> {
-            var pair = TransactionType.TAKE.process(inv, rest, (index, _) -> {
-                // Prevent item loss/duplication
-                return index != slot || clickedInventory != inv;
-            });
-            final ItemStack itemResult = pair.left();
-            var itemChangesMap = pair.right();
-            itemChangesMap.forEach((Integer s, ItemStack itemStack) -> {
-                inv.setItemStack(s, itemStack);
-                callClickEvent(player, inv, s, ClickType.DOUBLE_CLICK, itemStack, cursor);
-            });
-            return itemResult;
+            // Vanilla scans twice: the first pass may only draw from stacks that are not already full,
+            // so scattered items are collected before an untouched stack is broken up.
+            rest = take(player, inv, clickedInventory, slot, cursor, rest, true);
+            if (rest.isAir()) return rest;
+            return take(player, inv, clickedInventory, slot, cursor, rest, false);
         };
 
         ItemStack remain = cursor.withAmount(remainingAmount);
@@ -268,6 +271,20 @@ public final class InventoryClickProcessor {
             clickResult.setCursor(cursor.withAmount(amount + tookAmount));
         }
         return clickResult;
+    }
+
+    private static ItemStack take(Player player, AbstractInventory inventory, AbstractInventory clickedInventory,
+                                  int slot, ItemStack cursor, ItemStack rest, boolean partialStacksOnly) {
+        var pair = TransactionType.TAKE.process(inventory, rest, (index, itemStack) -> {
+            // Prevent item loss/duplication
+            if (index == slot && clickedInventory == inventory) return false;
+            return !partialStacksOnly || itemStack.amount() < itemStack.maxStackSize();
+        });
+        pair.right().forEach((Integer s, ItemStack itemStack) -> {
+            inventory.setItemStack(s, itemStack);
+            callClickEvent(player, inventory, s, ClickType.DOUBLE_CLICK, itemStack, cursor);
+        });
+        return pair.left();
     }
 
     public InventoryClickResult drop(Player player,

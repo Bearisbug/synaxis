@@ -180,6 +180,8 @@ public final class PlayerActionListener {
             player.setItemInMainHand(swapItemEvent.getMainHandItem());
             player.setItemInOffHand(swapItemEvent.getOffHandItem());
         });
+        // The client swaps locally before asking, so a refusal has to be sent back
+        if (swapItemEvent.isCancelled()) player.getInventory().update();
     }
 
     private static DiggingResult breakBlock(Instance instance,

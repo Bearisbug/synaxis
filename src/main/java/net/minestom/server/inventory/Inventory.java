@@ -163,7 +163,7 @@ public non-sealed class Inventory extends AbstractInventory {
             playerInventory.setItemStack(clickSlot, clickResult.getClicked());
         }
         playerInventory.setCursorItem(clickResult.getCursor());
-        callClickEvent(player, clickedInventory, slot, ClickType.LEFT_CLICK, clicked, cursor);
+        callClickEvent(player, clickedInventory, clickSlot, ClickType.LEFT_CLICK, clicked, cursor);
         return true;
     }
 
@@ -186,7 +186,7 @@ public non-sealed class Inventory extends AbstractInventory {
             playerInventory.setItemStack(clickSlot, clickResult.getClicked());
         }
         playerInventory.setCursorItem(clickResult.getCursor());
-        callClickEvent(player, clickedInventory, slot, ClickType.RIGHT_CLICK, clicked, cursor);
+        callClickEvent(player, clickedInventory, clickSlot, ClickType.RIGHT_CLICK, clicked, cursor);
         return true;
     }
 
@@ -207,16 +207,18 @@ public non-sealed class Inventory extends AbstractInventory {
                     8, -1, -1,
                     player, clickSlot, clicked, cursor);
 
-            if (clickResult.isCancel()) {
-                clickResult = clickProcessor.shiftClick(
+            if (!clickResult.getClicked().isAir()) {
+                // Keep filling with whatever the hotbar could not take
+                final InventoryClickResult rest = clickProcessor.shiftClick(
                         this, playerInventory,
-                        playerInventory.getInnerSize() - 1, -1, -1,
-                        player, clickSlot, clicked, cursor);
+                        playerInventory.getInnerSize() - 1, 8, -1,
+                        player, clickSlot, clickResult.getClicked(), cursor);
+                if (!rest.isCancel()) clickResult = rest;
             }
         } else {
             clickResult = clickProcessor.shiftClick(
                     playerInventory, this,
-                    0, getInnerSize(), 1,
+                    inventoryType.getInputSlotStart(), inventoryType.getInputSlotEnd(), 1,
                     player, clickSlot, clicked, cursor);
         }
 
@@ -256,7 +258,7 @@ public non-sealed class Inventory extends AbstractInventory {
             playerInventory.setItemStack(clickSlot, clickResult.getClicked());
         }
         playerInventory.setItemStack(convertedKey, clickResult.getCursor());
-        callClickEvent(player, clickedInventory, slot, ClickType.CHANGE_HELD, clicked, playerInventory.getCursorItem());
+        callClickEvent(player, clickedInventory, clickSlot, ClickType.CHANGE_HELD, clicked, playerInventory.getCursorItem());
         return true;
     }
 

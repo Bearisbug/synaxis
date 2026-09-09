@@ -30,6 +30,12 @@ public class WindowListener {
         // Prevent some invalid packets
         if (inventory == null || packet.slot() == -1) return;
 
+        // A click carrying the id of an inventory that is no longer open must not be applied to the one that is
+        if (!playerInventory && windowId != (int) inventory.getWindowId()) {
+            inventory.update(player);
+            return;
+        }
+
         // Process the click
         @Nullable Integer size = playerInventory ? null : inventory.getSize();
         Click click = player.getClickPreprocessor().processClick(packet, size);
@@ -43,9 +49,8 @@ public class WindowListener {
                 break check;
             }
 
-            // Reset the didCloseInventory field
-            // Wait for events to possibly close the inventory
-            player.UNSAFE_changeDidCloseInventory(false);
+            // Remember what was open so that a listener closing (or replacing) it cancels the click
+            final AbstractInventory openBeforeEvent = player.getOpenInventory();
 
             Click.Window window = Click.toWindow(click, size);
             // Call InventoryPreClickEvent
@@ -54,9 +59,8 @@ public class WindowListener {
 
             click = Click.fromWindow(new Click.Window(window.inOpened(), inventoryPreClickEvent.getClick()), size);
 
-            if (player.didCloseInventory()) {
-                // Cancel the click if the inventory has been closed by Player#closeInventory
-                player.UNSAFE_changeDidCloseInventory(false);
+            if (player.getOpenInventory() != openBeforeEvent) {
+                // Cancel the click if a listener closed or replaced the inventory it was aimed at
                 successful = false;
             } else if (inventoryPreClickEvent.isCancelled()) {
                 // Cancel it if the event is cancelled and we haven't already done that

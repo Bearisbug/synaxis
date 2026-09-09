@@ -20,6 +20,8 @@ final class ItemStackHashImpl {
         final Map<DataComponent<?>, Integer> addedComponents = new HashMap<>();
         final Set<DataComponent<?>> removedComponents = new HashSet<>();
         for (var entry : itemStack.componentPatch().entrySet()) {
+            // The hash is computed with the codec, so components without one have to be left out
+            if (!entry.component().isSerialized()) continue;
             if (entry.value() != null) {
                 addedComponents.put(entry.component(), ((DataComponent<Object>) entry.component()).encode(hashCoder, entry.value()).orElseThrow());
             } else {

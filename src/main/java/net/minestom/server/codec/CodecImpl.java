@@ -194,7 +194,7 @@ final class CodecImpl {
         public <D> Result<D> encode(Transcoder<D> coder, @Nullable List<T> value) {
             if (value == null) return new Result.Error<>("null");
             if (value.size() > maxSize)
-                throw new IllegalArgumentException("List size exceeds maximum allowed size: " + maxSize);
+                return new Result.Error<>("List size exceeds maximum allowed size: " + maxSize);
             final ListBuilder<D> encodedList = coder.createList(value.size());
             for (T item : value) {
                 final Result<D> itemResult = inner.encode(coder, item);
@@ -236,7 +236,7 @@ final class CodecImpl {
         public <D> Result<D> encode(Transcoder<D> coder, @Nullable Set<T> value) {
             if (value == null) return new Result.Error<>("null");
             if (value.size() > maxSize)
-                throw new IllegalArgumentException("List size exceeds maximum allowed size: " + maxSize);
+                return new Result.Error<>("Set size exceeds maximum allowed size: " + maxSize);
             ListBuilder<D> encodedList = coder.createList(value.size());
             for (T item : value) {
                 final Result<D> itemResult = inner.encode(coder, item);

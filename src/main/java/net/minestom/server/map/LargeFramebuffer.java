@@ -30,13 +30,15 @@ public interface LargeFramebuffer {
      * Prepares the packet to render a 128x128 sub view of this framebuffer
      */
     default MapDataPacket preparePacket(int mapId, int left, int top) {
-        byte[] colors = new byte[Framebuffer.WIDTH * Framebuffer.WIDTH];
         final int width = Math.min(width(), left + Framebuffer.WIDTH) - left;
         final int height = Math.min(height(), top + Framebuffer.HEIGHT) - top;
+        // The packet declares width x height, so the rows have to be packed with that stride, not with the
+        // full framebuffer width
+        byte[] colors = new byte[width * height];
         for (int y = top; y < top+height; y++) {
             for (int x = left; x < left+width; x++) {
                 final byte color = getMapColor(x, y);
-                colors[Framebuffer.index(x - left, y - top)] = color;
+                colors[Framebuffer.index(x - left, y - top, width)] = color;
             }
         }
         return new MapDataPacket(mapId, (byte) 0, false,

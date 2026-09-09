@@ -1,0 +1,24 @@
+game-engine
+Copyright 2026 Bearisbug
+
+This product is derived from Minestom (https://github.com/Minestom/Minestom),
+Copyright the Minestom contributors, licensed under the Apache License,
+Version 2.0. A verbatim copy of that license is distributed with this work in
+the LICENSE file.
+
+Fork point: upstream commit 16842f1954. This repository is maintained
+independently from that commit onwards and does not track upstream.
+
+NOTICE OF MODIFICATION
+This repository contains extensive modifications to the original source.
+Unless a file states otherwise, every file inherited from Minestom has been
+modified. The changes include, but are not limited to:
+
+  - removal of the vanilla gameplay subsystems and of the upstream code
+    generation chain;
+  - renaming of the package namespace net.minestom.server to dev.gameengine;
+  - pinning the supported Minecraft version to 26.2 (protocol 776);
+  - replacement of the build, publishing and verification setup.
+
+Portions of this work are Copyright 2026 Bearisbug and are likewise licensed
+under the Apache License, Version 2.0.

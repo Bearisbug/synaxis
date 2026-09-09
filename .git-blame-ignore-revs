@@ -1,0 +1,5 @@
+# Revisions to skip in `git blame`. Enable with:
+#   git config blame.ignoreRevsFile .git-blame-ignore-revs
+
+# refactor: rename package namespace net.minestom.server -> dev.gameengine (REQ-009)
+e7eac031aba79997132b4532fec76d92a2770ff5

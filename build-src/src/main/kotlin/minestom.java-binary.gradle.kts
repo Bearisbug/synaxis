@@ -6,7 +6,7 @@ plugins {
 
 val javaVersion = System.getenv("JAVA_VERSION") ?: "25"
 
-group = "net.minestom"
+group = "dev.gameengine"
 
 repositories {
     val adventureVersion = libs.adventure.api.get().version ?: ""

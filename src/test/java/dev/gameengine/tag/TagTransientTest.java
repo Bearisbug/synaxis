@@ -1,0 +1,66 @@
+package dev.gameengine.tag;
+
+import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
+
+public class TagTransientTest {
+
+    @Test
+    public void twoTransientTags() {
+        var tagHandler = TagHandler.newHandler();
+        Tag<String> tag1 = Tag.Transient("a");
+        Tag<String> tag2 = Tag.Transient("b");
+
+        tagHandler.setTag(tag1, "abcdef");
+        var result = tagHandler.getTag(tag2);
+        assertNull(result);
+    }
+
+    @Test
+    public void twoTransientTagsEqual() {
+        var tagHandler = TagHandler.newHandler();
+        Tag<String> tag1 = Tag.Transient("a");
+        Tag<String> tag2 = Tag.Transient("a");
+
+        tagHandler.setTag(tag1, "abcdef");
+        var result = tagHandler.getTag(tag2);
+        assertEquals("abcdef", result);
+    }
+
+    @Test
+    public void tagHandlerCopyPreservesTransient() {
+        var tagHandler = TagHandler.newHandler();
+        Tag<String> tag = Tag.Transient("a");
+        tagHandler.setTag(tag, "abcdef");
+
+        var copyHandler = tagHandler.copy();
+        var result = copyHandler.getTag(tag);
+        assertEquals("abcdef", result);
+    }
+
+    /**
+     * A transient value has no nbt representation, so reading the same key through a different tag type has to
+     * fall back to the default instead of dereferencing a null tag.
+     */
+    @Test
+    public void readingTransientValueThroughAnotherTagType() {
+        var tagHandler = TagHandler.newHandler();
+        tagHandler.setTag(Tag.Transient("a"), "abcdef");
+
+        assertNull(tagHandler.getTag(Tag.Integer("a")));
+        assertNull(tagHandler.getTag(Tag.String("a")));
+    }
+
+    @Test
+    public void asCompoundDoesNotPreserveTransient() {
+        var tagHandler = TagHandler.newHandler();
+        Tag<String> tag = Tag.Transient("a");
+        tagHandler.setTag(tag, "abcdef");
+
+        var compound = tagHandler.asCompound();
+        assertNull(compound.get("a"));
+    }
+
+}

@@ -1,1 +1,1 @@
-net.minestom.server.adventure.provider.MinestomPlainTextComponentSerializerProvider
+dev.gameengine.adventure.provider.MinestomPlainTextComponentSerializerProvider

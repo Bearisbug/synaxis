@@ -4,9 +4,9 @@
 Standard library only, no third party packages.
 
 Packet ids are never hardcoded: they are the index of the packet class inside the
-registry lists of ``src/main/java/net/minestom/server/network/packet/PacketVanilla.java``
+registry lists of ``src/main/java/dev/gameengine/network/packet/PacketVanilla.java``
 (see ``PacketRegistryImpl``), and data component ids are the declaration order of
-``src/main/java/net/minestom/server/component/DataComponents.java``. Both files are parsed
+``src/main/java/dev/gameengine/component/DataComponents.java``. Both files are parsed
 at start-up, so the probe follows the repository instead of a remembered protocol dump.
 
 Subcommands, see docs/TEST.md section 3:
@@ -37,8 +37,8 @@ from pathlib import Path
 PROTOCOL_VERSION = 776
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-PACKET_VANILLA = REPO_ROOT / "src/main/java/net/minestom/server/network/packet/PacketVanilla.java"
-DATA_COMPONENTS = REPO_ROOT / "src/main/java/net/minestom/server/component/DataComponents.java"
+PACKET_VANILLA = REPO_ROOT / "src/main/java/dev/gameengine/network/packet/PacketVanilla.java"
+DATA_COMPONENTS = REPO_ROOT / "src/main/java/dev/gameengine/component/DataComponents.java"
 
 
 # --------------------------------------------------------------------------------------

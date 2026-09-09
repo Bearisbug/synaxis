@@ -1,1 +1,1 @@
-net.minestom.server.adventure.provider.MinestomGsonComponentSerializerProvider
+dev.gameengine.adventure.provider.MinestomGsonComponentSerializerProvider

@@ -3,13 +3,9 @@ package net.minestom.server.entity;
 import net.kyori.adventure.text.Component;
 import net.minestom.server.coordinate.Point;
 import net.minestom.server.coordinate.Vec;
-import net.minestom.server.entity.metadata.animal.ArmadilloMeta;
-import net.minestom.server.entity.metadata.animal.SnifferMeta;
-import net.minestom.server.entity.metadata.golem.CopperGolemMeta;
-import net.minestom.server.entity.metadata.villager.VillagerMeta;
-import net.minestom.server.entity.metadata.water.fish.SalmonMeta;
 import net.minestom.server.instance.block.Block;
 import net.minestom.server.item.ItemStack;
+import net.minestom.server.item.component.SalmonSize;
 import net.minestom.server.network.player.ResolvableProfile;
 import net.minestom.server.particle.Particle;
 import org.jetbrains.annotations.Nullable;
@@ -219,8 +215,8 @@ public sealed class MetadataDef {
     }
 
     public static final class Armadillo extends AgeableMob {
-        public static final Entry<ArmadilloMeta.State> STATE = index(0, Metadata::ArmadilloState,
-                ArmadilloMeta.State.IDLE);
+        public static final Entry<ArmadilloState> STATE = index(0, Metadata::ArmadilloState,
+                ArmadilloState.IDLE);
     }
 
     public static sealed class AbstractFish extends Mob {
@@ -228,7 +224,7 @@ public sealed class MetadataDef {
     }
 
     public static final class Salmon extends AbstractFish {
-        public static final Entry<Integer> SIZE = index(0, Metadata::VarInt, SalmonMeta.Size.MEDIUM.ordinal());
+        public static final Entry<Integer> SIZE = index(0, Metadata::VarInt, SalmonSize.MEDIUM.ordinal());
     }
 
     public static final class TropicalFish extends AbstractFish {
@@ -241,7 +237,7 @@ public sealed class MetadataDef {
     }
 
     public static final class Sniffer extends AgeableMob {
-        public static final Entry<SnifferMeta.State> STATE = index(0, Metadata::SnifferState, SnifferMeta.State.IDLING);
+        public static final Entry<SnifferState> STATE = index(0, Metadata::SnifferState, SnifferState.IDLING);
         public static final Entry<Integer> DROP_SEED_AT_TICK = index(1, Metadata::VarInt, 0);
     }
 
@@ -312,16 +308,16 @@ public sealed class MetadataDef {
     }
 
     public static final class Villager extends AbstractVillager {
-        public static final Entry<VillagerMeta.VillagerData> VARIANT = index(0, Metadata::VillagerData,
-                VillagerMeta.VillagerData.DEFAULT);
+        public static final Entry<VillagerData> VARIANT = index(0, Metadata::VillagerData,
+                VillagerData.DEFAULT);
         public static final Entry<Boolean> IS_FINALIZED = index(1, Metadata::Boolean, false);
     }
 
     public static final class CopperGolem extends Mob {
-        public static final Entry<CopperGolemMeta.WeatherState> WEATHER_STATE = index(0, Metadata::WeatherState,
-                CopperGolemMeta.WeatherState.UNAFFECTED);
-        public static final Entry<CopperGolemMeta.State> STATE = index(1, Metadata::CopperGolemState,
-                CopperGolemMeta.State.IDLE);
+        public static final Entry<CopperGolemWeatherState> WEATHER_STATE = index(0, Metadata::WeatherState,
+                CopperGolemWeatherState.UNAFFECTED);
+        public static final Entry<CopperGolemState> STATE = index(1, Metadata::CopperGolemState,
+                CopperGolemState.IDLE);
     }
 
     public static final class Wither extends Mob {

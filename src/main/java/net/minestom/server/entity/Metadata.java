@@ -4,10 +4,6 @@ import net.kyori.adventure.nbt.BinaryTag;
 import net.kyori.adventure.text.Component;
 import net.minestom.server.coordinate.Point;
 import net.minestom.server.coordinate.Vec;
-import net.minestom.server.entity.metadata.animal.ArmadilloMeta;
-import net.minestom.server.entity.metadata.animal.SnifferMeta;
-import net.minestom.server.entity.metadata.golem.CopperGolemMeta;
-import net.minestom.server.entity.metadata.villager.VillagerMeta;
 import net.minestom.server.instance.block.Block;
 import net.minestom.server.item.ItemStack;
 import net.minestom.server.network.NetworkBuffer;
@@ -100,7 +96,7 @@ public final class Metadata {
         return PARTICLE_LIST.entry(particles);
     }
 
-    public static Entry<VillagerMeta.VillagerData> VillagerData(VillagerMeta.VillagerData data) {
+    public static Entry<VillagerData> VillagerData(VillagerData data) {
         return VILLAGER_DATA.entry(data);
     }
 
@@ -168,19 +164,19 @@ public final class Metadata {
         return PAINTING_VARIANT.entry(value);
     }
 
-    public static Entry<SnifferMeta.State> SnifferState(SnifferMeta.State value) {
+    public static Entry<SnifferState> SnifferState(SnifferState value) {
         return SNIFFER_STATE.entry(value);
     }
 
-    public static Entry<ArmadilloMeta.State> ArmadilloState(ArmadilloMeta.State value) {
+    public static Entry<ArmadilloState> ArmadilloState(ArmadilloState value) {
         return ARMADILLO_STATE.entry(value);
     }
 
-    public static Entry<CopperGolemMeta.State> CopperGolemState(CopperGolemMeta.State value) {
+    public static Entry<CopperGolemState> CopperGolemState(CopperGolemState value) {
         return COPPER_GOLEM_STATE.entry(value);
     }
 
-    public static Entry<CopperGolemMeta.WeatherState> WeatherState(CopperGolemMeta.WeatherState value) {
+    public static Entry<CopperGolemWeatherState> WeatherState(CopperGolemWeatherState value) {
         return WEATHER_STATE.entry(value);
     }
 
@@ -236,7 +232,7 @@ public final class Metadata {
     }, null);
     private static final Type<Particle> PARTICLE = type(Particle.NETWORK_TYPE, Particle.DUST);
     private static final Type<List<Particle>> PARTICLE_LIST = type(Particle.NETWORK_TYPE.list(Short.MAX_VALUE), List.of());
-    private static final Type<VillagerMeta.VillagerData> VILLAGER_DATA = type(VillagerMeta.VillagerData.NETWORK_TYPE, VillagerMeta.VillagerData.DEFAULT);
+    private static final Type<VillagerData> VILLAGER_DATA = type(VillagerData.NETWORK_TYPE, VillagerData.DEFAULT);
     private static final Type<@Nullable Integer> OPT_VAR_INT = type(NetworkBuffer.OPTIONAL_VAR_INT, null);
     private static final Type<EntityPose> POSE = type(NetworkBuffer.POSE, EntityPose.STANDING);
     private static final Type<RegistryKey<BinaryTag>> CAT_VARIANT = type(RegistryKey.networkType(opaque(BuiltinRegistries.CAT_VARIANT)), RegistryKey.unsafeOf("minecraft:tabby"));
@@ -253,10 +249,10 @@ public final class Metadata {
     private static final Type<RegistryKey<BinaryTag>> ZOMBIE_NAUTILUS_VARIANT = type(RegistryKey.networkType(opaque(BuiltinRegistries.ZOMBIE_NAUTILUS_VARIANT)), RegistryKey.unsafeOf("minecraft:temperate"));
     private static final Type<@Nullable WorldPos> OPT_GLOBAL_POSITION = type(WorldPos.NETWORK_TYPE.optional(), null);
     private static final Type<RegistryKey<BinaryTag>> PAINTING_VARIANT = type(RegistryKey.holderNetworkType(opaque(BuiltinRegistries.PAINTING_VARIANT)), RegistryKey.unsafeOf("minecraft:kebab"));
-    private static final Type<SnifferMeta.State> SNIFFER_STATE = type(SnifferMeta.State.NETWORK_TYPE, SnifferMeta.State.IDLING);
-    private static final Type<ArmadilloMeta.State> ARMADILLO_STATE = type(ArmadilloMeta.State.NETWORK_TYPE, ArmadilloMeta.State.IDLE);
-    private static final Type<CopperGolemMeta.State> COPPER_GOLEM_STATE = type(CopperGolemMeta.State.NETWORK_TYPE, CopperGolemMeta.State.IDLE);
-    private static final Type<CopperGolemMeta.WeatherState> WEATHER_STATE = type(CopperGolemMeta.WeatherState.NETWORK_TYPE, CopperGolemMeta.WeatherState.UNAFFECTED);
+    private static final Type<SnifferState> SNIFFER_STATE = type(SnifferState.NETWORK_TYPE, SnifferState.IDLING);
+    private static final Type<ArmadilloState> ARMADILLO_STATE = type(ArmadilloState.NETWORK_TYPE, ArmadilloState.IDLE);
+    private static final Type<CopperGolemState> COPPER_GOLEM_STATE = type(CopperGolemState.NETWORK_TYPE, CopperGolemState.IDLE);
+    private static final Type<CopperGolemWeatherState> WEATHER_STATE = type(CopperGolemWeatherState.NETWORK_TYPE, CopperGolemWeatherState.UNAFFECTED);
     private static final Type<Point> VECTOR3 = type(NetworkBuffer.VECTOR3, Vec.ZERO);
     private static final Type<float[]> QUATERNION = type(NetworkBuffer.QUATERNION, new float[]{0, 0, 0, 0});
     private static final Type<ResolvableProfile> RESOLVABLE_PROFILE = type(ResolvableProfile.NETWORK_TYPE, ResolvableProfile.EMPTY);

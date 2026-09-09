@@ -60,17 +60,11 @@ module net.minestom.server {
     exports net.minestom.server.entity.attribute;
     exports net.minestom.server.entity.damage;
     exports net.minestom.server.entity.metadata;
-    exports net.minestom.server.entity.metadata.animal;
-    exports net.minestom.server.entity.metadata.animal.tameable;
     exports net.minestom.server.entity.metadata.avatar;
     exports net.minestom.server.entity.metadata.display;
-    exports net.minestom.server.entity.metadata.golem;
     exports net.minestom.server.entity.metadata.item;
     exports net.minestom.server.entity.metadata.other;
     exports net.minestom.server.entity.metadata.projectile;
-    exports net.minestom.server.entity.metadata.villager;
-    exports net.minestom.server.entity.metadata.water;
-    exports net.minestom.server.entity.metadata.water.fish;
     exports net.minestom.server.event;
     exports net.minestom.server.event.book;
     exports net.minestom.server.event.entity;

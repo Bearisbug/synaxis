@@ -51,18 +51,36 @@ public class RabbitMeta extends AnimalMeta {
     }
 
     public enum Variant {
-        BROWN,
-        WHITE,
-        BLACK,
-        BLACK_AND_WHITE,
-        GOLD,
-        SALT_AND_PEPPER,
-        KILLER_BUNNY;
+        BROWN("brown"),
+        WHITE("white"),
+        BLACK("black"),
+        BLACK_AND_WHITE("white_splotched"),
+        GOLD("gold"),
+        SALT_AND_PEPPER("salt"),
+        KILLER_BUNNY("evil");
+
+        // Three constant names differ from the vanilla registry, so the name cannot be used as the key
+        private final String key;
+
+        Variant(String key) {
+            this.key = key;
+        }
+
+        public String key() {
+            return key;
+        }
 
         public static final NetworkBuffer.Type<Variant> NETWORK_TYPE = NetworkBuffer.Enum(Variant.class);
-        public static final Codec<Variant> CODEC = Codec.Enum(Variant.class);
+        public static final Codec<Variant> CODEC = Codec.STRING.transform(Variant::fromKey, Variant::key);
 
         private final static Variant[] VALUES = values();
+
+        private static Variant fromKey(String key) {
+            for (Variant variant : VALUES) {
+                if (variant.key.equals(key)) return variant;
+            }
+            throw new IllegalArgumentException("Unknown rabbit variant: " + key);
+        }
     }
 
 }

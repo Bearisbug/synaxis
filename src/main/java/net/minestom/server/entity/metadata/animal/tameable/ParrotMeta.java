@@ -46,16 +46,34 @@ public class ParrotMeta extends TameableAnimalMeta {
     }
 
     public enum Color {
-        RED_BLUE,
-        BLUE,
-        GREEN,
-        YELLOW_BLUE,
-        GREY;
+        RED_BLUE("red_blue"),
+        BLUE("blue"),
+        GREEN("green"),
+        YELLOW_BLUE("yellow_blue"),
+        GREY("gray");
+
+        // GREY is spelled "gray" in the vanilla registry, so the name cannot be used as the key
+        private final String key;
+
+        Color(String key) {
+            this.key = key;
+        }
+
+        public String key() {
+            return key;
+        }
 
         public static final NetworkBuffer.Type<Color> NETWORK_TYPE = NetworkBuffer.Enum(Color.class);
-        public static final Codec<Color> CODEC = Codec.Enum(Color.class);
+        public static final Codec<Color> CODEC = Codec.STRING.transform(Color::fromKey, Color::key);
 
         private final static Color[] VALUES = values();
+
+        private static Color fromKey(String key) {
+            for (Color color : VALUES) {
+                if (color.key.equals(key)) return color;
+            }
+            throw new IllegalArgumentException("Unknown parrot variant: " + key);
+        }
     }
 
 }

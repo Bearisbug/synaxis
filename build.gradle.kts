@@ -26,13 +26,11 @@ sourceSets {
 }
 
 tasks.register<Task>("determineMinecraftVersion") {
-    description = "Determines the Minecraft version form the data generation"
+    description = "Prints the pinned Minecraft version"
 
-    val minestomDataVersion = libs.minestomData.get().version
-    if (minestomDataVersion == null || "-" !in minestomDataVersion)
-        throw IllegalStateException("Unable to determine Minecraft version from minestomData dependency")
+    val minecraftVersion = libs.versions.minecraft.get()
     doLast {
-        println(minestomDataVersion.split("-")[0])
+        println(minecraftVersion)
     }
 }
 
@@ -40,7 +38,6 @@ dependencies {
     // Core dependencies
     api(libs.bundles.adventure)
     implementation(libs.slf4j)
-    implementation(libs.minestomData)
 
     // Performance/data structures
     implementation(libs.fastutil)

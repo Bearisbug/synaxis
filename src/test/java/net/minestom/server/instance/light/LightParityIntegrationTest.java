@@ -11,6 +11,7 @@ import net.minestom.server.world.DimensionType;
 import net.minestom.testing.Env;
 import net.minestom.testing.EnvTest;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 import java.io.IOException;
 import java.net.URISyntaxException;
@@ -31,6 +32,10 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 @SuppressWarnings("removal")
 public class LightParityIntegrationTest {
     private static final int REGION_SIZE = 3;
+
+    // The extracted region file lives under a per-test directory that JUnit deletes on teardown
+    @TempDir
+    Path scratchRoot;
 
     @Test
     public void test(Env env) throws URISyntaxException, IOException {
@@ -131,8 +136,8 @@ public class LightParityIntegrationTest {
     record SectionEntry(Palette blocks, byte[] sky, byte[] block) {
     }
 
-    private static Map<Vec, SectionEntry> retrieveSections() throws IOException, URISyntaxException {
-        var worldDir = Files.createTempDirectory("minestom-light-parity-test");
+    private Map<Vec, SectionEntry> retrieveSections() throws IOException, URISyntaxException {
+        var worldDir = Files.createTempDirectory(scratchRoot, "light-parity");
         var mcaFile = worldDir.resolve("region").resolve("r.0.0.mca");
         Files.createDirectories(mcaFile.getParent());
         try (var is = LightParityIntegrationTest.class.getResourceAsStream("/net/minestom/server/instance/lighting/region/r.0.0.mca")) {

@@ -10,7 +10,6 @@ import com.palantir.javapoet.ClassName;
 import com.palantir.javapoet.CodeBlock;
 import com.palantir.javapoet.JavaFile;
 import com.palantir.javapoet.TypeSpec;
-import net.minestom.data.MinestomData;
 import org.jetbrains.annotations.Nullable;
 
 import javax.lang.model.SourceVersion;
@@ -31,9 +30,11 @@ import java.util.stream.StreamSupport;
 final class Codegen {
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().disableHtmlEscaping().create();
 
+    private final Path dataFolder;
     private final Path outputFolder;
 
-    Codegen(Path outputFolder) {
+    Codegen(Path dataFolder, Path outputFolder) {
+        this.dataFolder = Objects.requireNonNull(dataFolder, "Data folder cannot be null");
         this.outputFolder = Objects.requireNonNull(outputFolder, "Output folder cannot be null");
     }
 
@@ -42,7 +43,7 @@ final class Codegen {
     }
 
     InputStream resource(String name) {
-        return Objects.requireNonNull(MinestomData.resource(name + ".json"), "Cannot find resource: %s.json".formatted(name));
+        return Objects.requireNonNull(optionalResource(name), "Cannot find resource: %s.json".formatted(name));
     }
 
     JsonObject objectResource(String name) {
@@ -50,8 +51,18 @@ final class Codegen {
     }
 
     @Nullable JsonObject optionalObjectResource(String name) {
-        final InputStream resource = MinestomData.resource(name + ".json");
+        final InputStream resource = optionalResource(name);
         return resource != null ? parse(resource, JsonObject.class) : null;
+    }
+
+    private @Nullable InputStream optionalResource(String name) {
+        final Path file = dataFolder.resolve(name + ".json");
+        if (!Files.isRegularFile(file)) return null;
+        try {
+            return Files.newInputStream(file);
+        } catch (IOException e) {
+            throw new IllegalStateException("Failed to open generator input: " + file, e);
+        }
     }
 
     JsonArray arrayResource(String name) {

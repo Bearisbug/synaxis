@@ -18,6 +18,7 @@ import net.minestom.testing.Env;
 import net.minestom.testing.EnvTest;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
@@ -44,6 +45,10 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 @SuppressWarnings("removal")
 public class AnvilLoaderIntegrationTest {
     private static final Path WORLD_RESOURCES = Path.of("src", "test", "resources", "net", "minestom", "server", "instance");
+
+    // Scratch worlds live under a per-test directory that JUnit deletes on teardown
+    @TempDir
+    Path scratchRoot;
 
     @Test
     public void loadVanillaRegion(Env env) throws IOException {
@@ -73,7 +78,7 @@ public class AnvilLoaderIntegrationTest {
 
     @Test
     public void parallelSaveNonexistentFiles(Env env) throws Exception {
-        var worldFolder = Files.createTempDirectory("minestom-test-world-parallel-save");
+        var worldFolder = Files.createTempDirectory(scratchRoot, "parallel-save");
         AnvilLoader chunkLoader = new AnvilLoader(worldFolder);
         Instance instance = env.createFlatInstance(chunkLoader);
 
@@ -96,7 +101,7 @@ public class AnvilLoaderIntegrationTest {
     // the write would be cut in half, leaving the sector bitmap out of sync with the on-disk header.
     @Test
     public void saveWhileUnloadingKeepsRegionReadable(Env env) throws Exception {
-        var worldFolder = Files.createTempDirectory("minestom-test-world-concurrent-save");
+        var worldFolder = Files.createTempDirectory(scratchRoot, "concurrent-save");
         AnvilLoader chunkLoader = new AnvilLoader(worldFolder);
         Instance instance = env.createFlatInstance(chunkLoader);
         Chunk chunk = instance.loadChunk(0, 0).join();
@@ -135,7 +140,7 @@ public class AnvilLoaderIntegrationTest {
     // A chunk length read straight from the file allocates a negative or arbitrarily large array
     @Test
     public void corruptedChunkLengthIsReportedAsIO(Env env) throws IOException {
-        var worldFolder = Files.createTempDirectory("minestom-test-world-corrupt-length");
+        var worldFolder = Files.createTempDirectory(scratchRoot, "corrupt-length");
         AnvilLoader chunkLoader = new AnvilLoader(worldFolder);
         Instance instance = env.createFlatInstance(chunkLoader);
         Chunk chunk = instance.loadChunk(0, 0).join();
@@ -161,7 +166,7 @@ public class AnvilLoaderIntegrationTest {
     // and vanilla tools expect the heightmaps to come back out of the file
     @Test
     public void saveKeepsBlockEntitiesOfUniformSections(Env env) throws IOException {
-        var worldFolder = Files.createTempDirectory("minestom-test-world-uniform-section");
+        var worldFolder = Files.createTempDirectory(scratchRoot, "uniform-section");
         AnvilLoader chunkLoader = new AnvilLoader(worldFolder);
         Instance instance = env.createEmptyInstance(chunkLoader);
         instance.setGenerator(unit -> unit.modifier().fillHeight(0, 16, Block.STONE));
@@ -424,7 +429,7 @@ public class AnvilLoaderIntegrationTest {
     @Test
     public void saveChunks(Env env) throws IOException {
         // load a full vanilla region, not checking any content just making sure it loads without issues.
-        var worldFolder = Files.createTempDirectory("minestom-test-world-save-chunks");
+        var worldFolder = Files.createTempDirectory(scratchRoot, "save-chunks");
         AnvilLoader chunkLoader = new AnvilLoader(worldFolder) {
             // Force loads inside current thread
             @Override
@@ -483,8 +488,8 @@ public class AnvilLoaderIntegrationTest {
         }
     }
 
-    private static Path extractWorld(String resourceName) throws IOException {
-        final Path worldFolder = Files.createTempDirectory("minestom-test-world-" + resourceName);
+    private Path extractWorld(String resourceName) throws IOException {
+        final Path worldFolder = Files.createTempDirectory(scratchRoot, resourceName);
 
         // https://stackoverflow.com/a/60621544
         Files.walkFileTree(WORLD_RESOURCES.resolve(resourceName), new SimpleFileVisitor<>() {

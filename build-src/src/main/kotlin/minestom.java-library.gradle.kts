@@ -17,9 +17,6 @@ configurations.all {
 val adventureVersion = libs.adventure.api.get().version ?: ""
 
 repositories {
-    val dataVersion = libs.minestomData.get().version ?: ""
-    if (dataVersion.endsWith("-dev"))
-        mavenLocal()
     if (adventureVersion.endsWith("-SNAPSHOT"))
         maven(url = "https://central.sonatype.com/repository/maven-snapshots/")
 

@@ -1,0 +1,26 @@
+# TC-015 测试不留临时目录 (REQ-012)
+被测版本: 6f7c627da8 + 工作区 REQ-001/REQ-012 改动
+日期: 2026-09-09 15:30:16
+
+## 步骤 1  ls -d $TMPDIR/minestom-* 2>/dev/null | wc -l
+0
+
+
+## 步骤 2  ./gradlew :test --rerun-tasks --no-build-cache --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts
+> Task :test
+Picked up JAVA_TOOL_OPTIONS: -Dhttps.proxyHost=127.0.0.1 -Dhttps.proxyPort=7897 -Dhttp.proxyHost=127.0.0.1 -Dhttp.proxyPort=7897 -Dhttp.nonProxyHosts=maven.aliyun.com|*.aliyun.com
+
+BUILD SUCCESSFUL in 39s
+9 actionable tasks: 9 executed
+Configuration cache entry reused.
+汇总 build/test-results/test/*.xml: tests=2659 failures=0 errors=0 skipped=17
+
+## 步骤 3  ls -d $TMPDIR/minestom-* 2>/dev/null | wc -l
+0
+
+
+## 附  $TMPDIR 下 junit-* 与 minestom-light-parity-test* 残留数
+0
+
+0
+

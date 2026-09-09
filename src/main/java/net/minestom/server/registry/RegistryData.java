@@ -5,7 +5,6 @@ import com.google.gson.GsonBuilder;
 import com.google.gson.ToNumberPolicy;
 import com.google.gson.stream.JsonReader;
 import net.kyori.adventure.key.Key;
-import net.minestom.data.MinestomData;
 import net.minestom.server.MinecraftServer;
 import net.minestom.server.codec.Result;
 import net.minestom.server.codec.Transcoder;
@@ -65,6 +64,7 @@ public final class RegistryData {
     private static final Logger LOGGER = LoggerFactory.getLogger(RegistryData.class);
 
     static final Gson GSON = new GsonBuilder().disableHtmlEscaping().disableJdkUnsafe().create();
+    private static final String DATA_RESOURCE_ROOT = "/data/";
 
     @ApiStatus.Internal
     public static BlockEntry block(String namespace, Properties main) {
@@ -120,13 +120,14 @@ public final class RegistryData {
     }
 
     /**
-     * Loads a registry file from the data resources, falling back to the working directory.
+     * Loads a registry file from the vendored registry data under the {@code /data} classpath root,
+     * falling back to the working directory.
      *
      * @param path The path without a leading slash, e.g. "blocks.json"
      */
     public static @Nullable InputStream loadRegistryFile(String path) throws IOException {
         // 1. Try to load from data resources
-        InputStream resourceStream = MinestomData.resource(path);
+        InputStream resourceStream = RegistryData.class.getResourceAsStream(DATA_RESOURCE_ROOT + path);
 
         // 2. Try to load from working directory
         final Path filesystemPath = Path.of(path);

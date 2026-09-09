@@ -406,7 +406,7 @@ public class LightingChunk extends DynamicChunk {
             };
 
             final Palette blockPalette = section.blockPalette();
-            CompletableFuture<Void> task = CompletableFuture.runAsync(() -> {
+            final Runnable computation = () -> {
                 try {
                     final Set<Point> toAdd;
                     lightingChunk.lockReadLock();
@@ -431,9 +431,17 @@ public class LightingChunk extends DynamicChunk {
                 } catch (Exception e) {
                     MinecraftServer.getExceptionManager().handleException(e);
                 }
-            }, pool);
+            };
 
-            tasks.add(task);
+            if (lightingChunk.holdsWriteLock()) {
+                // The caller already owns this chunk's write-lock (a BlockHandler reading light from
+                // within Chunk#setBlock does). Handing the section to the pool would deadlock: the pool
+                // thread blocks on the read-lock while the caller blocks in join() below. The write-lock
+                // grants read access, so compute it on the calling thread instead.
+                computation.run();
+            } else {
+                tasks.add(CompletableFuture.runAsync(computation, pool));
+            }
         }
 
         tasks.forEach(CompletableFuture::join);

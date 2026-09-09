@@ -1173,8 +1173,9 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
 
     @Override
     public void setHealth(float health) {
-        sendPacket(new UpdateHealthPacket(health, food, foodSaturation));
+        // Clamp first, otherwise the client keeps showing the raw value with nothing to correct it
         super.setHealth(health);
+        sendPacket(new UpdateHealthPacket(getHealth(), food, foodSaturation));
     }
 
     /**

@@ -2,7 +2,7 @@ package dev.gameengine.event;
 
 import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
-import dev.gameengine.ServerFlag;
+import dev.gameengine.JvmFlags;
 import dev.gameengine.event.trait.AsyncEvent;
 import dev.gameengine.event.trait.RecursiveEvent;
 import dev.gameengine.utils.validate.Check;
@@ -136,7 +136,7 @@ non-sealed class EventNodeImpl<T extends Event> implements EventNode<T> {
     public EventNode<T> addChild(EventNode<? extends T> child) {
         synchronized (GLOBAL_CHILD_LOCK) {
             final var childImpl = (EventNodeImpl<? extends T>) child;
-            Check.stateCondition(!ServerFlag.EVENT_NODE_ALLOW_MULTIPLE_PARENTS && childImpl.parent != null, "Node already has a parent");
+            Check.stateCondition(!JvmFlags.EVENT_NODE_ALLOW_MULTIPLE_PARENTS && childImpl.parent != null, "Node already has a parent");
             Check.stateCondition(Objects.equals(parent, child), "Cannot have a child as parent");
             if (!children.add((EventNodeImpl<T>) childImpl)) return this; // Couldn't add the child (already present?)
             childImpl.parent = this;
@@ -262,7 +262,7 @@ non-sealed class EventNodeImpl<T extends Event> implements EventNode<T> {
 
     @Override
     public @Nullable EventNode<? super T> getParent() {
-        Check.stateCondition(ServerFlag.EVENT_NODE_ALLOW_MULTIPLE_PARENTS, "Cannot use getParent when multiple parents are allowed");
+        Check.stateCondition(JvmFlags.EVENT_NODE_ALLOW_MULTIPLE_PARENTS, "Cannot use getParent when multiple parents are allowed");
         return parent;
     }
 

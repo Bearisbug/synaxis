@@ -25,7 +25,7 @@ import java.util.function.IntFunction;
  */
 public sealed interface ThreadDispatcher<P, E extends Tickable> permits ThreadDispatcherImpl {
     /**
-     * Creates a new ThreadDispatcher using default thread names (ex. Ms-Tick-n).
+     * Creates a new ThreadDispatcher using default thread names (ex. Ge-Tick-n).
      * <p>Remember to start the dispatcher using {@link #start()}</p>
      *
      * @param provider         the {@link ThreadProvider} instance to be used for defining thread IDs

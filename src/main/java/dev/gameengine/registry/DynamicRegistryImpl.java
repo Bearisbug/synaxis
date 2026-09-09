@@ -7,7 +7,6 @@ import net.kyori.adventure.nbt.BinaryTag;
 import net.kyori.adventure.nbt.BinaryTagIO;
 import net.kyori.adventure.nbt.BinaryTagTypes;
 import net.kyori.adventure.nbt.CompoundBinaryTag;
-import dev.gameengine.ServerFlag;
 import dev.gameengine.codec.Codec;
 import dev.gameengine.codec.Result;
 import dev.gameengine.codec.Transcoder;
@@ -45,8 +44,8 @@ import java.util.concurrent.ConcurrentHashMap;
 final class DynamicRegistryImpl<T> implements DynamicRegistry<T> {
     private static final Logger LOGGER = LoggerFactory.getLogger(DynamicRegistryImpl.class);
 
-    private static final String FROZEN_MESSAGE = "The registry is frozen once the server has started. Enable writes by setting the system property 'minestom.registry.unsafe-ops' to 'true'";
-    private static final String UNSAFE_REMOVE_MESSAGE = "Unsafe remove is disabled. Enable by setting the system property 'minestom.registry.unsafe-ops' to 'true'";
+    private static final String FROZEN_MESSAGE = "The registry is frozen once the server has started. Enable writes by starting the process with registryUnsafeOps set on its ServerConfig";
+    private static final String UNSAFE_REMOVE_MESSAGE = "Unsafe remove is disabled. Enable it by starting the process with registryUnsafeOps set on its ServerConfig";
     // Could also just use `this`, but this is a good candidate for identityless classes.
     // Also, what use case requires you to mutate registries faster than one monitor?
     private static final Object REGISTRY_LOCK = new Object();
@@ -302,7 +301,7 @@ final class DynamicRegistryImpl<T> implements DynamicRegistry<T> {
         // Copy to avoid concurrent modification issues while iterating, as we are not synchronized on the registry
         final List<T> idToValue;
         final List<DataPack> packById;
-        if (!canFreeze()) {
+        if (!frozen) {
             synchronized (REGISTRY_LOCK) {
                 idToValue = List.copyOf(this.idToValue);
                 packById = List.copyOf(this.packById);
@@ -366,11 +365,7 @@ final class DynamicRegistryImpl<T> implements DynamicRegistry<T> {
     }
 
     private boolean isFrozen() {
-        return canFreeze() && frozen;
-    }
-
-    static boolean canFreeze() {
-        return !ServerFlag.REGISTRY_UNSAFE_OPS && !ServerFlag.INSIDE_TEST;
+        return frozen;
     }
 
     /**

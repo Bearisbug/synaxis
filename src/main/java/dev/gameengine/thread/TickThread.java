@@ -21,7 +21,7 @@ import java.util.function.Consumer;
  */
 @ApiStatus.Internal
 public class TickThread extends MinestomThread {
-    public static final String THREAD_NAME_TICK = "Ms-Tick";
+    public static final String THREAD_NAME_TICK = "Ge-Tick";
 
     private final Consumer<Throwable> exceptionHandler;
     private final ReentrantLock lock = new ReentrantLock();

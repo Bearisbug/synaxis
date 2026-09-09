@@ -22,8 +22,8 @@ import java.util.function.Consumer;
  * Implementations are expected to be thread-safe.
  */
 public sealed interface EntityTracker permits EntityTrackerImpl {
-    static EntityTracker newTracker() {
-        return new EntityTrackerImpl();
+    static EntityTracker newTracker(int entityViewDistance) {
+        return new EntityTrackerImpl(entityViewDistance);
     }
 
     /**

@@ -1,6 +1,6 @@
 package dev.gameengine.collision;
 
-import dev.gameengine.ServerFlag;
+import dev.gameengine.JvmFlags;
 import dev.gameengine.coordinate.Point;
 import dev.gameengine.coordinate.Pos;
 import dev.gameengine.coordinate.Vec;
@@ -33,7 +33,7 @@ public class EntityProjectileCollisionIntegrationTest {
     @Test
     public void blockShootAndBlockRemoval(Env env) {
         final Instance instance = env.createFlatInstance();
-        instance.setWorldBorder(WorldBorder.DEFAULT_BORDER.withDiameter(1000));
+        instance.setWorldBorder(WorldBorder.defaultBorder().withDiameter(1000));
 
         final Entity shooter = new Entity(EntityType.SKELETON);
         shooter.setInstance(instance, new Pos(0, 40, 0)).join();
@@ -50,7 +50,7 @@ public class EntityProjectileCollisionIntegrationTest {
         env.process().eventHandler().addListener(ProjectileCollideWithBlockEvent.class, eventRef::set);
 
         final long tick = TimeUnit.SERVER_TICK.getDuration().toMillis();
-        for (int i = 0; i < ServerFlag.SERVER_TICKS_PER_SECOND; ++i) {
+        for (int i = 0; i < JvmFlags.SERVER_TICKS_PER_SECOND; ++i) {
             projectile.tick(i * tick);
         }
 
@@ -64,8 +64,8 @@ public class EntityProjectileCollisionIntegrationTest {
         eventRef.set(null);
         instance.setBlock(blockPosition, Block.AIR);
 
-        for (int i = 0; i < ServerFlag.SERVER_TICKS_PER_SECOND; ++i) {
-            projectile.tick((ServerFlag.SERVER_TICKS_PER_SECOND + i) * tick);
+        for (int i = 0; i < JvmFlags.SERVER_TICKS_PER_SECOND; ++i) {
+            projectile.tick((JvmFlags.SERVER_TICKS_PER_SECOND + i) * tick);
         }
         event = eventRef.get();
         final var event2 = eventRef2.get();
@@ -77,7 +77,7 @@ public class EntityProjectileCollisionIntegrationTest {
     @Test
     public void entityShoot(Env env) {
         final Instance instance = env.createFlatInstance();
-        instance.setWorldBorder(WorldBorder.DEFAULT_BORDER.withDiameter(1000));
+        instance.setWorldBorder(WorldBorder.defaultBorder().withDiameter(1000));
 
         final Entity shooter = new Entity(EntityType.SKELETON);
         shooter.setInstance(instance, new Pos(0, 40, 0)).join();
@@ -110,7 +110,7 @@ public class EntityProjectileCollisionIntegrationTest {
         env.process().eventHandler().addChild(eventNode);
 
         final long tick = TimeUnit.SERVER_TICK.getDuration().toMillis();
-        for (int i = 0; i < ServerFlag.SERVER_TICKS_PER_SECOND; ++i) {
+        for (int i = 0; i < JvmFlags.SERVER_TICKS_PER_SECOND; ++i) {
             if (!projectile.isRemoved()) {
                 projectile.tick(i * tick);
             }
@@ -126,7 +126,7 @@ public class EntityProjectileCollisionIntegrationTest {
     @Test
     public void entitySelfShoot(Env env) {
         final Instance instance = env.createFlatInstance();
-        instance.setWorldBorder(WorldBorder.DEFAULT_BORDER.withDiameter(1000));
+        instance.setWorldBorder(WorldBorder.defaultBorder().withDiameter(1000));
 
         final LivingEntity shooter = new LivingEntity(EntityType.SKELETON);
         shooter.setInstance(instance, new Pos(0, 40, 0)).join();
@@ -143,7 +143,7 @@ public class EntityProjectileCollisionIntegrationTest {
         });
 
         final long tick = TimeUnit.SERVER_TICK.getDuration().toMillis();
-        for (int i = 0; i < ServerFlag.SERVER_TICKS_PER_SECOND * 5; ++i) {
+        for (int i = 0; i < JvmFlags.SERVER_TICKS_PER_SECOND * 5; ++i) {
             if (!projectile.isRemoved()) {
                 projectile.tick(i * tick);
             }

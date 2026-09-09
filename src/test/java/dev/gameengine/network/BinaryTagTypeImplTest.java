@@ -30,7 +30,7 @@ import java.util.List;
 import java.util.Random;
 import java.util.function.Consumer;
 
-import static dev.gameengine.ServerFlag.NBT_MAX_DEPTH;
+import static dev.gameengine.JvmFlags.NBT_MAX_DEPTH;
 import static dev.gameengine.network.BinaryTagTypeImpl.TAG_BYTE_ARRAY;
 import static dev.gameengine.network.BinaryTagTypeImpl.TAG_COMPOUND;
 import static dev.gameengine.network.BinaryTagTypeImpl.TAG_END;

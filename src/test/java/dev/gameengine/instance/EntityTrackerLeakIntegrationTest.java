@@ -1,5 +1,6 @@
 package dev.gameengine.instance;
 
+import dev.gameengine.ServerConfig;
 import dev.gameengine.coordinate.Vec;
 import dev.gameengine.entity.Entity;
 import dev.gameengine.entity.EntityType;
@@ -14,7 +15,7 @@ public class EntityTrackerLeakIntegrationTest {
 
     @Test
     public void emptyChunkBucketsAreReleased() {
-        var tracker = (EntityTrackerImpl) EntityTracker.newTracker();
+        var tracker = (EntityTrackerImpl) EntityTracker.newTracker(ServerConfig.defaults().entityViewDistance());
         var entry = tracker.targetEntries[EntityTracker.Target.ENTITIES.ordinal()];
         var entity = new Entity(EntityType.ZOMBIE);
         for (int x = 0; x < 100; x++) {
@@ -26,7 +27,7 @@ public class EntityTrackerLeakIntegrationTest {
 
     @Test
     public void queryingAnEmptyChunkDoesNotCreateABucket() {
-        var tracker = (EntityTrackerImpl) EntityTracker.newTracker();
+        var tracker = (EntityTrackerImpl) EntityTracker.newTracker(ServerConfig.defaults().entityViewDistance());
         var entry = tracker.targetEntries[EntityTracker.Target.ENTITIES.ordinal()];
         for (int x = 0; x < 100; x++) {
             assertEquals(0, tracker.chunkEntities(x, 0, EntityTracker.Target.ENTITIES).size());

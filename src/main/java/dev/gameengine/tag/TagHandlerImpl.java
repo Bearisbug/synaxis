@@ -4,7 +4,6 @@ import net.kyori.adventure.nbt.BinaryTag;
 import net.kyori.adventure.nbt.BinaryTagType;
 import net.kyori.adventure.nbt.BinaryTagTypes;
 import net.kyori.adventure.nbt.CompoundBinaryTag;
-import dev.gameengine.ServerFlag;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.UnknownNullability;
@@ -295,12 +294,12 @@ final class TagHandlerImpl implements TagHandler {
 
         CompoundBinaryTag compound() {
             CompoundBinaryTag compound;
-            if (!ServerFlag.TAG_HANDLER_CACHE_ENABLED || (compound = this.compound) == null) {
+            if (!TagFlags.TAG_HANDLER_CACHE_ENABLED || (compound = this.compound) == null) {
                 CompoundBinaryTag.Builder tmp = CompoundBinaryTag.builder();
                 this.entries.forValues(entry -> {
                     final TagImpl<?> tag = entry.tag;
                     final BinaryTag nbt = entry.updatedNbt();
-                    if (nbt != null && (!tag.entry().isPath() || ServerFlag.SERIALIZE_EMPTY_COMPOUND || !((CompoundBinaryTag) nbt).isEmpty())) {
+                    if (nbt != null && (!tag.entry().isPath() || TagFlags.SERIALIZE_EMPTY_COMPOUND || !((CompoundBinaryTag) nbt).isEmpty())) {
                         tmp.put(tag.key(), nbt);
                     }
                 });
@@ -335,7 +334,7 @@ final class TagHandlerImpl implements TagHandler {
                 entries.put(tag.index(), valueToEntry(result, (Tag<Object>) tag, value));
             });
             var compound = tmp.build();
-            if (!ServerFlag.SERIALIZE_EMPTY_COMPOUND && compound.isEmpty() && parent != null)
+            if (!TagFlags.SERIALIZE_EMPTY_COMPOUND && compound.isEmpty() && parent != null)
                 return null; // Empty child node
             result.compound = compound;
             return result;

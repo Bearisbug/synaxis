@@ -1,6 +1,5 @@
 package dev.gameengine.entity.player;
 
-import dev.gameengine.ServerFlag;
 import dev.gameengine.coordinate.ChunkRange;
 import dev.gameengine.coordinate.CoordConversion;
 import dev.gameengine.coordinate.Pos;
@@ -72,7 +71,7 @@ public class PlayerMovementIntegrationTest {
     @Test
     public void chunkUpdateDebounceTest(Env env) {
         final Instance flatInstance = env.createFlatInstance();
-        final int viewDiameter = (ServerFlag.CHUNK_VIEW_DISTANCE + 1) * 2 + 1;
+        final int viewDiameter = (env.process().config().chunkViewDistance() + 1) * 2 + 1;
         // Preload all possible chunks to avoid issues due to async loading
         Set<CompletableFuture<Chunk>> chunks = new HashSet<>();
         ChunkRange.chunksInRange(0, 0, viewDiameter + 2, (x, z) -> chunks.add(flatInstance.loadChunk(x, z)));
@@ -362,7 +361,7 @@ public class PlayerMovementIntegrationTest {
         final TestConnection connection = env.createConnection();
         final Player player = connection.connect(oldInstance, oldPosition);
         final int oldViewDistance = player.effectiveViewDistance();
-        final int newViewDistance = Math.min(ClientSettings.DEFAULT.viewDistance(), newInstanceViewDistance) + 1;
+        final int newViewDistance = Math.min(env.process().config().chunkViewDistance(), newInstanceViewDistance) + 1;
 
         final Set<Long> expectedUnloads = new HashSet<>();
         ChunkRange.chunksInRange(oldPosition.chunkX(), oldPosition.chunkZ(), oldViewDistance, (chunkX, chunkZ) -> {

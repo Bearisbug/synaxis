@@ -1,6 +1,5 @@
 package dev.gameengine.network;
 
-import dev.gameengine.ServerFlag;
 import dev.gameengine.network.packet.PacketWriting;
 import dev.gameengine.network.packet.server.ServerPacket;
 import dev.gameengine.network.packet.server.common.PluginMessagePacket;
@@ -38,8 +37,8 @@ public class SocketWriteStateTransitionIntegrationTest {
     public void aRejectedStateChangingPacketDoesNotAdvanceTheServerState(Env env) throws IOException {
         // Leave two free bytes in the pooled buffer, less than the smallest frame header
         final int overhead = framedSize(env, new PluginMessagePacket("ch", new byte[0]));
-        final var filler = new PluginMessagePacket("ch", new byte[ServerFlag.POOLED_BUFFER_SIZE - 2 - overhead]);
-        assertEquals(ServerFlag.POOLED_BUFFER_SIZE - 2, framedSize(env, filler));
+        final var filler = new PluginMessagePacket("ch", new byte[env.process().config().pooledBufferSize() - 2 - overhead]);
+        assertEquals(env.process().config().pooledBufferSize() - 2, framedSize(env, filler));
 
         try (ServerSocketChannel server = ServerSocketChannel.open()) {
             server.bind(new InetSocketAddress(InetAddress.getLoopbackAddress(), 0));

@@ -18,6 +18,7 @@ import dev.gameengine.network.socket.Server;
 import dev.gameengine.registry.Registries;
 import dev.gameengine.thread.ThreadDispatcher;
 import dev.gameengine.timer.SchedulerManager;
+import dev.gameengine.utils.PacketViewableUtils;
 import dev.gameengine.world.Difficulty;
 import org.jetbrains.annotations.ApiStatus;
 
@@ -133,6 +134,12 @@ public interface ServerProcess extends Registries {
      * Dispatcher for tickable game objects.
      */
     ThreadDispatcher<Chunk, Entity> dispatcher();
+
+    /**
+     * Buffers the packets sent to every viewer of a {@link Viewable} until the end of the tick.
+     */
+    @ApiStatus.Internal
+    PacketViewableUtils viewablePackets();
 
     /**
      * Handles the server ticks.

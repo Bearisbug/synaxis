@@ -3,7 +3,7 @@ package dev.gameengine.adventure.provider;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.TranslatableComponent;
 import net.kyori.adventure.text.flattener.ComponentFlattener;
-import dev.gameengine.ServerFlag;
+import dev.gameengine.JvmFlags;
 import dev.gameengine.adventure.MinestomAdventure;
 
 final class MinestomFlattenerProvider {
@@ -13,7 +13,7 @@ final class MinestomFlattenerProvider {
 
         // handle server-side translations if needed
         builder.complexMapper(TranslatableComponent.class, (component, consumer) -> {
-            if (ServerFlag.AUTOMATIC_COMPONENT_TRANSLATION) {
+            if (JvmFlags.AUTOMATIC_COMPONENT_TRANSLATION) {
                 final Component translated = MinestomAdventure.COMPONENT_TRANSLATOR.apply(component, MinestomAdventure.getDefaultLocale());
 
                 // In case the translated component is also a translatable component, we just leave the key to avoid infinite recursion

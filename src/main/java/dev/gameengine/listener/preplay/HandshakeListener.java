@@ -8,7 +8,7 @@ import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import dev.gameengine.Auth;
 import dev.gameengine.MinecraftServer;
-import dev.gameengine.ServerFlag;
+import dev.gameengine.ServerConfig;
 import dev.gameengine.network.DisconnectReasons;
 import dev.gameengine.network.packet.client.handshake.ClientHandshakePacket;
 import dev.gameengine.network.player.GameProfile;
@@ -33,7 +33,7 @@ public final class HandshakeListener {
     private static final Component INVALID_BUNGEE_FORWARDING = Component.text("Invalid connection, please connect through the BungeeCord proxy. If you believe this is an error, contact a server administrator.", NamedTextColor.RED);
 
     /**
-     * Text sent if a player was transferred to this server but the {@link ServerFlag#ACCEPT_TRANSFERS} server flag is not enabled.
+     * Text sent if a player was transferred to this server but the {@link ServerConfig#acceptTransfers()} setting is not enabled.
      */
     private static final Component TRANSFERS_DISABLED_TEXT = Component.translatable("multiplayer.disconnect.transfers_disabled");
 
@@ -53,7 +53,7 @@ public final class HandshakeListener {
             case TRANSFER:
                 connection.markTransferred(true);
 
-                if (!ServerFlag.ACCEPT_TRANSFERS) {
+                if (!connection.process().config().acceptTransfers()) {
                     connection.kick(TRANSFERS_DISABLED_TEXT);
                     return;
                 }

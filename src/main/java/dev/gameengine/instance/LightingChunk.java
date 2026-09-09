@@ -1,7 +1,6 @@
 package dev.gameengine.instance;
 
 import net.kyori.adventure.key.Key;
-import dev.gameengine.ServerFlag;
 import dev.gameengine.collision.Shape;
 import dev.gameengine.coordinate.CoordConversion;
 import dev.gameengine.coordinate.Point;
@@ -52,7 +51,6 @@ public class LightingChunk extends DynamicChunk {
 
     private final ReentrantLock packetGenerationLock = new ReentrantLock();
     private final AtomicInteger resendTimer = new AtomicInteger(-1);
-    private static final int resendDelay = ServerFlag.SEND_LIGHT_AFTER_BLOCK_PLACEMENT_DELAY;
 
     private boolean doneInit = false;
 
@@ -155,7 +153,7 @@ public class LightingChunk extends DynamicChunk {
             for (int j = -1; j <= 1; j++) {
                 Chunk neighborChunk = instance.getChunk(chunkX + i, chunkZ + j);
                 if (neighborChunk instanceof LightingChunk light) {
-                    light.resendTimer.set(resendDelay);
+                    light.resendTimer.set(instance.process().config().sendLightAfterBlockPlacementDelay());
                 }
             }
         }

@@ -4,7 +4,7 @@ import net.kyori.adventure.key.Key;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.translation.GlobalTranslator;
 import net.kyori.adventure.translation.Translator;
-import dev.gameengine.ServerFlag;
+import dev.gameengine.JvmFlags;
 import dev.gameengine.adventure.MinestomAdventure;
 import dev.gameengine.component.DataComponents;
 import dev.gameengine.coordinate.Pos;
@@ -48,7 +48,7 @@ public class TranslationIntegrationTest {
 
     @Test
     public void testTranslationEnabled(final Env env) {
-        Assumptions.assumeTrue(ServerFlag.AUTOMATIC_COMPONENT_TRANSLATION);
+        Assumptions.assumeTrue(JvmFlags.AUTOMATIC_COMPONENT_TRANSLATION);
         final var instance = env.createFlatInstance();
         final var connection = env.createConnection();
         final var player = connection.connect(instance, new Pos(0, 40, 0));
@@ -65,7 +65,7 @@ public class TranslationIntegrationTest {
 
     @Test
     public void testTranslationDisabled(final Env env) {
-        Assumptions.assumeTrue(ServerFlag.AUTOMATIC_COMPONENT_TRANSLATION);
+        Assumptions.assumeTrue(JvmFlags.AUTOMATIC_COMPONENT_TRANSLATION);
         final var instance = env.createFlatInstance();
         final var connection = env.createConnection();
         final var player = connection.connect(instance, new Pos(0, 40, 0));
@@ -80,7 +80,7 @@ public class TranslationIntegrationTest {
 
     @Test
     public void testItemStackTranslation(final Env env) {
-        Assumptions.assumeTrue(ServerFlag.AUTOMATIC_COMPONENT_TRANSLATION);
+        Assumptions.assumeTrue(JvmFlags.AUTOMATIC_COMPONENT_TRANSLATION);
         final var instance = env.createFlatInstance();
         final var connection = env.createConnection();
         final var player = connection.connect(instance, new Pos(0, 40, 0));

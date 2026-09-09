@@ -34,7 +34,7 @@ public class BlockPlaceIntegrationTest {
     @Test
     void testPlacementOutOfBorder(Env env) {
         Instance instance = env.createFlatInstance();
-        instance.setWorldBorder(WorldBorder.DEFAULT_BORDER.withDiameter(1));
+        instance.setWorldBorder(WorldBorder.defaultBorder().withDiameter(1));
         var player = env.createPlayer(instance, new Pos(0, 40, 0));
         player.setItemInHand(PlayerHand.MAIN, ItemStack.of(Material.STONE, 5));
 

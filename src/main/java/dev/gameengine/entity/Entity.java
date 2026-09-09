@@ -10,7 +10,8 @@ import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.HoverEvent;
 import net.kyori.adventure.text.event.HoverEvent.ShowEntity;
 import net.kyori.adventure.text.event.HoverEventSource;
-import dev.gameengine.ServerFlag;
+import dev.gameengine.JvmFlags;
+import dev.gameengine.ServerConfig;
 import dev.gameengine.ServerProcess;
 import dev.gameengine.Tickable;
 import dev.gameengine.Viewable;
@@ -81,7 +82,6 @@ import dev.gameengine.timer.Schedulable;
 import dev.gameengine.timer.Scheduler;
 import dev.gameengine.timer.TaskSchedule;
 import dev.gameengine.utils.MathUtils;
-import dev.gameengine.utils.PacketViewableUtils;
 import dev.gameengine.utils.async.AsyncUtils;
 import dev.gameengine.utils.block.BlockIterator;
 import dev.gameengine.utils.chunk.ChunkCache;
@@ -219,9 +219,10 @@ public class Entity implements Viewable, Tickable, Schedulable, EventHandler<Ent
 
     protected EntityType entityType; // UNSAFE to change, modify at your own risk
 
-    // Network synchronization, send the absolute position of the entity every n ticks
-    private long synchronizationTicks = ServerFlag.ENTITY_SYNCHRONIZATION_TICKS;
-    private long nextSynchronizationTick = synchronizationTicks;
+    // Network synchronization, send the absolute position of the entity every n ticks.
+    // Both are set from the process configuration once the entity is bound to a process.
+    private long synchronizationTicks;
+    private long nextSynchronizationTick;
 
     @SuppressWarnings("this-escape") // deliberate self registration, entities are not usable until spawned
     protected MetadataHolder metadata = new MetadataHolder(this::notifyMetadataChanges);
@@ -284,6 +285,8 @@ public class Entity implements Viewable, Tickable, Schedulable, EventHandler<Ent
         Check.stateCondition(this.process != null, "Entity is already bound to another server process");
         this.eventNode = process.eventHandler().map(this, EventFilter.ENTITY);
         this.process = process;
+        this.synchronizationTicks = process.config().entitySynchronizationTicks();
+        this.nextSynchronizationTick = this.synchronizationTicks;
     }
 
     /**
@@ -775,14 +778,14 @@ public class Entity implements Viewable, Tickable, Schedulable, EventHandler<Ent
         boolean entityIsPlayer = this instanceof Player;
         boolean entityFlying = entityIsPlayer && ((Player) this).isFlying();
         final Block.Getter chunkCache = new ChunkCache(instance, currentChunk, Block.STONE);
-        PhysicsResult physicsResult = PhysicsUtils.simulateMovement(position, velocity.div(ServerFlag.SERVER_TICKS_PER_SECOND), boundingBox,
+        PhysicsResult physicsResult = PhysicsUtils.simulateMovement(position, velocity.div(JvmFlags.SERVER_TICKS_PER_SECOND), boundingBox,
                 instance.getWorldBorder(), chunkCache, aerodynamics, hasNoGravity(), hasPhysics, onGround, entityFlying, previousPhysicsResult);
         this.previousPhysicsResult = physicsResult;
 
         Chunk finalChunk = ChunkUtils.retrieve(instance, currentChunk, physicsResult.newPosition());
         if (!ChunkUtils.isLoaded(finalChunk)) return;
 
-        velocity = physicsResult.newVelocity().mul(ServerFlag.SERVER_TICKS_PER_SECOND);
+        velocity = physicsResult.newVelocity().mul(JvmFlags.SERVER_TICKS_PER_SECOND);
         if (!(this instanceof Player)) {
             onGround = physicsResult.isOnGround();
             refreshPosition(physicsResult.newPosition(), true, !SYNCHRONIZE_ONLY_ENTITIES.contains(entityType));
@@ -1503,22 +1506,22 @@ public class Entity implements Viewable, Tickable, Schedulable, EventHandler<Ent
         assert chunk != null;
         if (distanceX > 8 || distanceY > 8 || distanceZ > 8) {
             // Send relative 0 velocity to avoid affecting it in this case
-            PacketViewableUtils.prepareViewablePacket(process(), chunk, new EntityTeleportPacket(getEntityId(), position,
+            process().viewablePackets().prepareViewablePacket(chunk, new EntityTeleportPacket(getEntityId(), position,
                     Vec.ZERO, RelativeFlags.DELTA_COORD, isOnGround()), this);
             nextSynchronizationTick = ticks + synchronizationTicks;
         } else if (positionChange && viewChange) {
-            PacketViewableUtils.prepareViewablePacket(process(), chunk, EntityPositionAndRotationPacket.getPacket(getEntityId(), position,
+            process().viewablePackets().prepareViewablePacket(chunk, EntityPositionAndRotationPacket.getPacket(getEntityId(), position,
                     lastSyncedPosition, isOnGround()), this);
             // Fix head rotation
-            PacketViewableUtils.prepareViewablePacket(process(), chunk, new EntityHeadLookPacket(getEntityId(), headRotation), this);
+            process().viewablePackets().prepareViewablePacket(chunk, new EntityHeadLookPacket(getEntityId(), headRotation), this);
         } else if (positionChange) {
             // This is a confusing fix for a confusing issue. If rotation is only sent when the entity actually changes, then spawning an entity
             // on the ground causes the entity not to update its rotation correctly. It works fine if the entity is spawned in the air. Very weird.
-            PacketViewableUtils.prepareViewablePacket(process(), chunk, EntityPositionAndRotationPacket.getPacket(getEntityId(), position,
+            process().viewablePackets().prepareViewablePacket(chunk, EntityPositionAndRotationPacket.getPacket(getEntityId(), position,
                     lastSyncedPosition, onGround), this);
         } else if (viewChange) {
-            PacketViewableUtils.prepareViewablePacket(process(), chunk, new EntityHeadLookPacket(getEntityId(), headRotation), this);
-            PacketViewableUtils.prepareViewablePacket(process(), chunk, EntityPositionAndRotationPacket.getPacket(getEntityId(), position,
+            process().viewablePackets().prepareViewablePacket(chunk, new EntityHeadLookPacket(getEntityId(), headRotation), this);
+            process().viewablePackets().prepareViewablePacket(chunk, EntityPositionAndRotationPacket.getPacket(getEntityId(), position,
                     lastSyncedPosition, isOnGround()), this);
         }
         this.lastSyncedPosition = position;
@@ -1785,7 +1788,7 @@ public class Entity implements Viewable, Tickable, Schedulable, EventHandler<Ent
     }
 
     protected Vec getVelocityForPacket() {
-        return this.velocity.div(ServerFlag.SERVER_TICKS_PER_SECOND);
+        return this.velocity.div(JvmFlags.SERVER_TICKS_PER_SECOND);
     }
 
     protected SpawnEntityPacket getSpawnPacket() {
@@ -1837,7 +1840,7 @@ public class Entity implements Viewable, Tickable, Schedulable, EventHandler<Ent
     protected void synchronizePosition() {
         final Pos posCache = this.position;
         final Pos delta = posCache.sub(lastSyncedPosition);
-        PacketViewableUtils.prepareViewablePacket(process(), currentChunk, new EntityPositionSyncPacket(getEntityId(), posCache, delta, posCache.yaw(), posCache.pitch(), isOnGround()), this);
+        process().viewablePackets().prepareViewablePacket(currentChunk, new EntityPositionSyncPacket(getEntityId(), posCache, delta, posCache.yaw(), posCache.pitch(), isOnGround()), this);
         nextSynchronizationTick = ticks + synchronizationTicks;
         this.lastSyncedPosition = posCache;
     }
@@ -1860,7 +1863,7 @@ public class Entity implements Viewable, Tickable, Schedulable, EventHandler<Ent
     }
 
     /**
-     * Returns the current synchronization interval. The default value is {@link ServerFlag#ENTITY_SYNCHRONIZATION_TICKS}
+     * Returns the current synchronization interval. The default value is {@link ServerConfig#entitySynchronizationTicks()}
      * but can be overridden per entity with {@link #setSynchronizationTicks(long)}.
      *
      * @return The current synchronization ticks
@@ -1928,9 +1931,9 @@ public class Entity implements Viewable, Tickable, Schedulable, EventHandler<Ent
     public void takeKnockback(float strength, final double x, final double z) {
         if (strength > 0) {
             //TODO check possible side effects of unnatural TPS (other than 20TPS)
-            strength *= ServerFlag.SERVER_TICKS_PER_SECOND;
+            strength *= JvmFlags.SERVER_TICKS_PER_SECOND;
             final Vec velocityModifier = new Vec(x, z).normalize().mul(strength);
-            final double verticalLimit = .4d * ServerFlag.SERVER_TICKS_PER_SECOND;
+            final double verticalLimit = .4d * JvmFlags.SERVER_TICKS_PER_SECOND;
 
             setVelocity(new Vec(velocity.x() / 2d - velocityModifier.x(),
                     onGround ? Math.min(verticalLimit, velocity.y() / 2d + strength) : velocity.y(),

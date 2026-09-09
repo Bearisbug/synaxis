@@ -29,7 +29,7 @@ final class NetworkBufferDeferredTypes {
 
     static final class RecursiveType<T> implements NetworkBufferTypeImpl<T> {
         // The nesting depth of a recursive type is decided by whoever wrote the bytes, so it has
-        // to be bounded before the recursive read runs the java stack out (see ServerFlag#NBT_MAX_DEPTH).
+        // to be bounded before the recursive read runs the java stack out (see JvmFlags#NBT_MAX_DEPTH).
         private static final int MAX_READ_DEPTH = 64;
 
         final NetworkBuffer.Type<T> delegate;

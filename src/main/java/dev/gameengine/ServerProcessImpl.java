@@ -67,6 +67,7 @@ final class ServerProcessImpl implements ServerProcess, Registries.Delegating {
     private final Server server;
 
     private final ThreadDispatcher<Chunk, Entity> dispatcher;
+    private final PacketViewableUtils viewablePackets;
     private final Ticker ticker;
 
     private final AtomicBoolean started = new AtomicBoolean();
@@ -101,6 +102,7 @@ final class ServerProcessImpl implements ServerProcess, Registries.Delegating {
 
         this.dispatcher = ThreadDispatcher.dispatcher(ThreadProvider.counter(), config.dispatcherThreads(),
                 exception::handleException);
+        this.viewablePackets = new PacketViewableUtils(this, config.viewablePacket(), config.pooledBufferSize());
         this.ticker = new TickerImpl();
     }
 
@@ -181,6 +183,11 @@ final class ServerProcessImpl implements ServerProcess, Registries.Delegating {
     }
 
     @Override
+    public PacketViewableUtils viewablePackets() {
+        return viewablePackets;
+    }
+
+    @Override
     public Ticker ticker() {
         return ticker;
     }
@@ -257,8 +264,9 @@ final class ServerProcessImpl implements ServerProcess, Registries.Delegating {
             throw new RuntimeException(e);
         }
 
-        // Registries are part of the handshake answer, they must not change once clients can connect
-        Registries.freeze(registries);
+        // Registries are part of the handshake answer, they must not change once clients can connect.
+        // Tests keep them writable, they register their own entries after starting a process.
+        if (!config.registryUnsafeOps() && !config.insideTest()) Registries.freeze(registries);
 
         // Start server
         server.start();
@@ -276,7 +284,7 @@ final class ServerProcessImpl implements ServerProcess, Registries.Delegating {
         // caller is one of them (e.g. a /stop command running on a TickThread, upstream issue #2907).
         final Thread caller = Thread.currentThread();
         if (caller instanceof TickThread || caller instanceof TickSchedulerThread) {
-            new Thread(this::shutdownProcess, "Ms-Shutdown").start();
+            new Thread(this::shutdownProcess, "Ge-Shutdown").start();
         } else {
             shutdownProcess();
         }
@@ -340,7 +348,7 @@ final class ServerProcessImpl implements ServerProcess, Registries.Delegating {
             scheduler().processTickEnd();
 
             // Flush all waiting packets
-            PacketViewableUtils.flush();
+            viewablePackets.flush();
 
             // Monitoring
             {

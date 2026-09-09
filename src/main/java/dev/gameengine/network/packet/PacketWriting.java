@@ -1,6 +1,6 @@
 package dev.gameengine.network.packet;
 
-import dev.gameengine.ServerFlag;
+import dev.gameengine.JvmFlags;
 import dev.gameengine.network.ConnectionState;
 import dev.gameengine.network.NetworkBuffer;
 import dev.gameengine.registry.Registries;
@@ -170,7 +170,7 @@ public final class PacketWriting {
             return tmpBuffer.copy(0, tmpBuffer.writeIndex());
         } catch (IndexOutOfBoundsException _) {
             final long sizeOf = serializer.sizeOf(packet, tmpBuffer.registries());
-            if (sizeOf > ServerFlag.MAX_PACKET_SIZE) {
+            if (sizeOf > JvmFlags.MAX_PACKET_SIZE) {
                 throw new IllegalStateException("Packet too large: " + sizeOf);
             }
             // Add 15 bytes to account for the 3 potential varints in the packet header
@@ -209,7 +209,7 @@ public final class PacketWriting {
                 buffer.writeIndex(index);
                 if (written < minWrite) {
                     // Try again with a bigger buffer
-                    final long newSize = Math.min(buffer.capacity() * 2, ServerFlag.MAX_PACKET_SIZE);
+                    final long newSize = Math.min(buffer.capacity() * 2, JvmFlags.MAX_PACKET_SIZE);
                     if (newSize == buffer.capacity()) {
                         // The buffer is at the maximum packet size, retrying would spin the write
                         // thread forever on a packet that can never be written.

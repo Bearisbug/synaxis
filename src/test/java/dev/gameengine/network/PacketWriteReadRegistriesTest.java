@@ -670,7 +670,7 @@ public class PacketWriteReadRegistriesTest {
         );
         // Configuration
         addClientPackets(
-                new ClientSettingsPacket(ClientSettings.DEFAULT),
+                new ClientSettingsPacket(ClientSettings.defaultSettings(8)),
                 new ClientSettingsPacket(new ClientSettings(
                         Locale.UK, (byte) 2, ChatMessageType.FULL, false,
                         (byte) 0x01, MainHand.LEFT,

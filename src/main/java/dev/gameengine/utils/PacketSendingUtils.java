@@ -2,22 +2,14 @@ package dev.gameengine.utils;
 
 import net.kyori.adventure.audience.Audience;
 import net.kyori.adventure.audience.ForwardingAudience;
-import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.TranslatableComponent;
-import net.kyori.adventure.text.event.HoverEvent;
-import dev.gameengine.ServerFlag;
 import dev.gameengine.ServerProcess;
-import dev.gameengine.adventure.ComponentHolder;
 import dev.gameengine.adventure.audience.PacketGroupingAudience;
 import dev.gameengine.entity.Player;
-import dev.gameengine.network.ConnectionState;
 import dev.gameengine.network.packet.server.CachedPacket;
 import dev.gameengine.network.packet.server.SendablePacket;
 import dev.gameengine.network.packet.server.ServerPacket;
-import dev.gameengine.registry.Registries;
 
 import java.util.Collection;
-import java.util.List;
 import java.util.function.Predicate;
 
 public final class PacketSendingUtils {
@@ -66,7 +58,7 @@ public final class PacketSendingUtils {
      */
     public static <T extends Player> void sendGroupedPacket(Collection<T> players, ServerPacket packet,
                                          Predicate<? super T> predicate) {
-        final SendablePacket sendablePacket = groupedPacket(packet);
+        final SendablePacket sendablePacket = CachedPacket.grouped(packet);
         players.forEach(player -> {
             if (predicate.test(player)) player.sendPacket(sendablePacket);
         });
@@ -79,47 +71,11 @@ public final class PacketSendingUtils {
      * @see #sendGroupedPacket(Collection, ServerPacket, Predicate)
      */
     public static void sendGroupedPacket(Collection<? extends Player> players, ServerPacket packet) {
-        final SendablePacket sendablePacket = groupedPacket(packet);
+        final SendablePacket sendablePacket = CachedPacket.grouped(packet);
         players.forEach(player -> player.sendPacket(sendablePacket));
     }
 
     public static void broadcastPlayPacket(ServerProcess process, ServerPacket packet) {
         sendGroupedPacket(process.connection().getOnlinePlayers(), packet);
-    }
-
-    private static SendablePacket groupedPacket(ServerPacket packet) {
-        return ServerFlag.GROUPED_PACKET && shouldUseCachePacket(packet) ? new CachedPacket(packet) : packet;
-    }
-
-    /**
-     * Checks if the {@link ServerPacket} is suitable to be wrapped into a {@link CachedPacket}.
-     * Note: {@link ServerPacket.ComponentHolding}s are not translated inside a {@link CachedPacket}.
-     *
-     * @see CachedPacket#body(ConnectionState, Registries, int)
-     */
-    private static boolean shouldUseCachePacket(final ServerPacket packet) {
-        if (!ServerFlag.AUTOMATIC_COMPONENT_TRANSLATION) return true;
-        if (!(packet instanceof ServerPacket.ComponentHolding holder)) return true;
-        return !containsTranslatableComponents(holder);
-    }
-
-    private static boolean containsTranslatableComponents(final ComponentHolder<?> holder) {
-        for (final Component component : holder.components()) {
-            if (isTranslatable(component)) return true;
-        }
-        return false;
-    }
-
-    private static boolean isTranslatable(final Component component) {
-        if (component instanceof TranslatableComponent) return true;
-        final HoverEvent<?> hoverEvent = component.hoverEvent();
-        if (hoverEvent != null && hoverEvent.value() instanceof Component hoverComponent && isTranslatable(hoverComponent))
-            return true;
-        final List<Component> children = component.children();
-        if (children.isEmpty()) return false;
-        for (final Component child : children) {
-            if (isTranslatable(child)) return true;
-        }
-        return false;
     }
 }

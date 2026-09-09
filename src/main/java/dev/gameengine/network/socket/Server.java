@@ -1,6 +1,6 @@
 package dev.gameengine.network.socket;
 
-import dev.gameengine.ServerFlag;
+import dev.gameengine.ServerConfig;
 import dev.gameengine.ServerProcess;
 import dev.gameengine.network.packet.PacketParser;
 import dev.gameengine.network.DisconnectReasons;
@@ -73,11 +73,11 @@ public final class Server {
 
     @ApiStatus.Internal
     public void start() {
-        Thread.ofVirtual().name("Ms-Socket-Server").start(() -> {
+        Thread.ofVirtual().name("Ge-Socket-Server").start(() -> {
             // Use named thread builders for logging
-            var readBuilder = Thread.ofVirtual().name("Ms-Socket-Reader-", 0);
-            var writeBuilder = Thread.ofVirtual().name("Ms-Socket-Writer-", 0);
-            var loginTimeoutBuilder = Thread.ofVirtual().name("Ms-Login-Timeout-", 0);
+            var readBuilder = Thread.ofVirtual().name("Ge-Socket-Reader-", 0);
+            var writeBuilder = Thread.ofVirtual().name("Ge-Socket-Writer-", 0);
+            var loginTimeoutBuilder = Thread.ofVirtual().name("Ge-Login-Timeout-", 0);
             final var serverSocket = Objects.requireNonNull(this.serverSocket, "Not bound did you forget to call #init?");
             while (!stop) {
                 final SocketChannel client;
@@ -86,7 +86,7 @@ public final class Server {
                 } catch (ClosedChannelException _) {
                     break; // We are exiting, bye bye!
                 } catch (IOException e) {
-                    if (!ServerFlag.SUPPRESS_CONNECTION_ACCEPT_ERRORS)
+                    if (!process.config().suppressConnectionAcceptErrors())
                         process.exception().handleException(e);
                     continue;
                 }
@@ -102,7 +102,7 @@ public final class Server {
                     writeThread.start();
                     loginTimeoutBuilder.start(() -> loginTimeoutWatch(connection));
                 } catch (IOException e) {
-                    if (!ServerFlag.SUPPRESS_CONNECTION_ACCEPT_ERRORS)
+                    if (!process.config().suppressConnectionAcceptErrors())
                         process.exception().handleException(e);
                     try {
                         client.close();
@@ -120,7 +120,7 @@ public final class Server {
      */
     private static void loginTimeoutWatch(PlayerSocketConnection connection) {
         try {
-            Thread.sleep(ServerFlag.LOGIN_TIMEOUT);
+            Thread.sleep(connection.process().config().loginTimeout());
         } catch (InterruptedException _) {
             Thread.currentThread().interrupt();
             return;
@@ -132,13 +132,14 @@ public final class Server {
         connection.disconnect();
     }
 
-    private static void configureSocket(SocketChannel channel) throws IOException {
+    private void configureSocket(SocketChannel channel) throws IOException {
         if (channel.getLocalAddress() instanceof InetSocketAddress) {
+            final ServerConfig config = process.config();
             Socket socket = channel.socket();
-            socket.setSendBufferSize(ServerFlag.SOCKET_SEND_BUFFER_SIZE);
-            socket.setReceiveBufferSize(ServerFlag.SOCKET_RECEIVE_BUFFER_SIZE);
-            socket.setTcpNoDelay(ServerFlag.SOCKET_NO_DELAY);
-            socket.setSoTimeout(ServerFlag.SOCKET_TIMEOUT);
+            socket.setSendBufferSize(config.socketSendBufferSize());
+            socket.setReceiveBufferSize(config.socketReceiveBufferSize());
+            socket.setTcpNoDelay(config.socketNoDelay());
+            socket.setSoTimeout(config.socketTimeout());
         }
     }
 
@@ -152,7 +153,7 @@ public final class Server {
                 connection.disconnect(); // We closed the socket during read, just exit.
                 break;
             } catch (IOException e) {
-                if (!ServerFlag.SUPPRESS_CONNECTION_IO_ERRORS)
+                if (!process.config().suppressConnectionIoErrors())
                     process.exception().handleException(e);
                 connection.disconnect();
                 break;
@@ -173,7 +174,7 @@ public final class Server {
                 } catch (ClosedChannelException | EOFException _) {
                     connection.disconnect();
                 } catch (IOException e) {
-                    if (!ServerFlag.SUPPRESS_CONNECTION_IO_ERRORS)
+                    if (!process.config().suppressConnectionIoErrors())
                         process.exception().handleException(e);
                     connection.disconnect();
                 } catch (Throwable e) {

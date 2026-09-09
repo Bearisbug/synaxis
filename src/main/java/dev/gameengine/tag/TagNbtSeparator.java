@@ -15,7 +15,6 @@ import net.kyori.adventure.nbt.LongArrayBinaryTag;
 import net.kyori.adventure.nbt.LongBinaryTag;
 import net.kyori.adventure.nbt.ShortBinaryTag;
 import net.kyori.adventure.nbt.StringBinaryTag;
-import dev.gameengine.ServerFlag;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -69,7 +68,7 @@ final class TagNbtSeparator {
             consumer.accept(makeEntry(path, (Tag<Object>) tag, nbtValueFromTag(nbt)));
         } else if (nbt instanceof CompoundBinaryTag nbtCompound) {
             if (nbtCompound.isEmpty()) {
-                if (ServerFlag.SERIALIZE_EMPTY_COMPOUND || path.isEmpty()) {
+                if (TagFlags.SERIALIZE_EMPTY_COMPOUND || path.isEmpty()) {
                     consumer.accept(makeEntry(path, Tag.NBT(key), nbt));
                 }
             } else {

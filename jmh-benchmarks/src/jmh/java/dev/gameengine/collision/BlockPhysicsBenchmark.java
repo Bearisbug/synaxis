@@ -51,7 +51,7 @@ public class BlockPhysicsBenchmark {
     private static final BoundingBox PLAYER_BB = new BoundingBox(0.6, 1.8, 0.6);
     // Representative player aerodynamics (gravity, horizontal drag, vertical drag)
     private static final Aerodynamics AERO = new Aerodynamics(0.08, 0.91, 0.98);
-    private static final WorldBorder BORDER = WorldBorder.DEFAULT_BORDER;
+    private static final WorldBorder BORDER = WorldBorder.defaultBorder();
     // Walls at +-1, so walking +x from x=0.6 crosses the wall at x=1 (entity-relative 0.7).
     private static final WorldBorder NEAR_BORDER = new WorldBorder(2, 0, 0, 0, 0);
 

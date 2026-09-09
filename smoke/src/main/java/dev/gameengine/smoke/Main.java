@@ -2,6 +2,7 @@ package dev.gameengine.smoke;
 
 import net.kyori.adventure.text.Component;
 import dev.gameengine.Auth;
+import dev.gameengine.JvmFlags;
 import dev.gameengine.MinecraftServer;
 import dev.gameengine.ServerProcess;
 import dev.gameengine.command.builder.Command;
@@ -48,6 +49,11 @@ public class Main {
         final int port = Integer.getInteger(PORT_PROPERTY, DEFAULT_PORT);
         final MinecraftServer server = MinecraftServer.init(new Auth.Offline());
         final ServerProcess process = server.process();
+
+        // Boot self-check: the effective settings go in the log, so a launch argument that did not
+        // land is visible here instead of at the first symptom.
+        LOGGER.info("Effective {}", process.config());
+        LOGGER.info("Effective {}", JvmFlags.describe());
 
         final InstanceContainer instance = process.instance().createInstanceContainer();
         instance.setGenerator(unit -> unit.modifier().fillHeight(0, GROUND_HEIGHT, Block.STONE));

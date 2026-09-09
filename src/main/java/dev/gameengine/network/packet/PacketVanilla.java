@@ -1,6 +1,7 @@
 package dev.gameengine.network.packet;
 
-import dev.gameengine.ServerFlag;
+import dev.gameengine.JvmFlags;
+import dev.gameengine.ServerConfig;
 import dev.gameengine.network.ConnectionState;
 import dev.gameengine.network.NetworkBuffer;
 import dev.gameengine.network.packet.client.ClientPacket;
@@ -232,10 +233,12 @@ public final class PacketVanilla {
     /**
      * Pool containing a buffer able to hold the largest packet.
      * <p>
-     * Size starts with {@link ServerFlag#POOLED_BUFFER_SIZE} and doubles until {@link ServerFlag#MAX_PACKET_SIZE}.
+     * Size starts with {@link ServerConfig#DEFAULT_POOLED_BUFFER_SIZE} and doubles until
+     * {@link JvmFlags#MAX_PACKET_SIZE}. The pool is shared by every process in the JVM, so it uses the
+     * default size rather than the size configured on one of them.
      */
     public static final ObjectPool<NetworkBuffer> PACKET_POOL = ObjectPool.pool(
-            () -> NetworkBuffer.builder(ServerFlag.POOLED_BUFFER_SIZE).build(),
+            () -> NetworkBuffer.builder(ServerConfig.DEFAULT_POOLED_BUFFER_SIZE).build(),
             buffer -> {
                 // Buffers travel between processes, whoever writes types that resolve registry
                 // entries has to bind its own registries first.

@@ -15,7 +15,7 @@ import net.kyori.adventure.pointer.Pointers;
 import net.kyori.adventure.pointer.PointersSupplier;
 import net.kyori.adventure.sound.Sound;
 import dev.gameengine.MinecraftServer;
-import dev.gameengine.ServerFlag;
+import dev.gameengine.ServerConfig;
 import dev.gameengine.ServerProcess;
 import dev.gameengine.Tickable;
 import dev.gameengine.adventure.AdventurePacketConvertor;
@@ -120,12 +120,12 @@ public abstract class Instance implements Block.Getter, Block.Setter, Biome.Gett
     // Field for tick events
     private long lastTickAge = TimeUnit.NANOSECONDS.toMillis(System.nanoTime());
 
-    private final EntityTracker entityTracker = new EntityTrackerImpl();
+    private final EntityTracker entityTracker;
 
     @SuppressWarnings("this-escape") // deliberate self registration during construction
     private final ChunkCache blockRetriever = new ChunkCache(this, null, null);
 
-    protected int chunkViewDistance = ServerFlag.CHUNK_VIEW_DISTANCE;
+    protected int chunkViewDistance;
 
     // the uuid of this instance
     protected UUID uuid;
@@ -160,6 +160,9 @@ public abstract class Instance implements Block.Getter, Block.Setter, Biome.Gett
     @SuppressWarnings("this-escape") // deliberate self registration during construction
     public Instance(ServerProcess process, UUID uuid, RegistryKey<DimensionType> dimensionType, Key dimensionName) {
         this.process = process;
+        final ServerConfig config = process.config();
+        this.entityTracker = new EntityTrackerImpl(config.entityViewDistance());
+        this.chunkViewDistance = config.chunkViewDistance();
         this.scheduler = Scheduler.newScheduler(process.exception()::handleException);
         final Registries registries = process.registries();
         this.uuid = uuid;
@@ -172,7 +175,7 @@ public abstract class Instance implements Block.Getter, Block.Setter, Biome.Gett
         for (var worldClock : registries.opaque(BuiltinRegistries.WORLD_CLOCK).keys())
             this.clocks.put(worldClock, new ClockInstance(worldClock));
 
-        this.worldBorder = WorldBorder.DEFAULT_BORDER;
+        this.worldBorder = WorldBorder.defaultBorder();
         targetBorderDiameter = this.worldBorder.diameter();
 
         this.eventNode = process.eventHandler().map(this, EventFilter.INSTANCE);
@@ -894,7 +897,7 @@ public abstract class Instance implements Block.Getter, Block.Setter, Biome.Gett
     }
 
     /**
-     * Gets the chunk view distance of this instance, which defaults to {@link ServerFlag#CHUNK_VIEW_DISTANCE}.
+     * Gets the chunk view distance of this instance, which defaults to {@link ServerConfig#chunkViewDistance()}.
      *
      * @return The chunk view distance of this instance
      */

@@ -17,12 +17,12 @@ public final class MinecraftServer implements MinecraftConstants {
     public static final ComponentLogger LOGGER = ComponentLogger.logger(MinecraftServer.class);
 
     // Threads
-    public static final String THREAD_NAME_BENCHMARK = "Ms-Benchmark";
+    public static final String THREAD_NAME_BENCHMARK = "Ge-Benchmark";
 
     // Config
     // Can be modified at performance cost when increased
     @Deprecated
-    public static final int TICK_PER_SECOND = ServerFlag.SERVER_TICKS_PER_SECOND;
+    public static final int TICK_PER_SECOND = JvmFlags.SERVER_TICKS_PER_SECOND;
     public static final int TICK_MS = 1000 / TICK_PER_SECOND;
 
     private final ServerProcess process;
@@ -59,7 +59,8 @@ public final class MinecraftServer implements MinecraftConstants {
     public void start(SocketAddress address) {
         process.start(address);
         process.dispatcher().start();
-        new TickSchedulerThread(process).start();
+        new TickSchedulerThread(process, 1_000_000_000L / TICK_PER_SECOND,
+                process.config().maxTickCatchUp()).start();
     }
 
     public void start(String address, int port) {

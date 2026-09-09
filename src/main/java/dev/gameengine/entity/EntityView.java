@@ -4,7 +4,6 @@ import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntIterator;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import it.unimi.dsi.fastutil.ints.IntSet;
-import dev.gameengine.ServerFlag;
 import dev.gameengine.coordinate.Point;
 import dev.gameengine.instance.EntityTracker;
 import dev.gameengine.instance.Instance;
@@ -23,7 +22,6 @@ import java.util.function.Consumer;
 import java.util.function.Predicate;
 
 final class EntityView {
-    private static final int RANGE = ServerFlag.ENTITY_VIEW_DISTANCE;
     private final Entity entity;
     private final Set<Player> manualViewers = new HashSet<>();
 
@@ -284,7 +282,7 @@ final class EntityView {
             final Point point = trackedLocation.point();
 
             Int2ObjectOpenHashMap<T> entityMap = new Int2ObjectOpenHashMap<>(lastSize);
-            instance.getEntityTracker().nearbyEntitiesByChunkRange(point, RANGE, target,
+            instance.getEntityTracker().nearbyEntitiesByChunkRange(point, instance.process().config().entityViewDistance(), target,
                     (entity) -> entityMap.putIfAbsent(entity.getEntityId(), entity));
             this.lastSize = entityMap.size();
             return entityMap.values();

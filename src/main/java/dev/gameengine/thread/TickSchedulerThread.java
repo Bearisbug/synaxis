@@ -1,6 +1,5 @@
 package dev.gameengine.thread;
 
-import dev.gameengine.ServerFlag;
 import dev.gameengine.ServerProcess;
 import org.jetbrains.annotations.ApiStatus;
 
@@ -8,18 +7,25 @@ import java.util.Locale;
 
 @ApiStatus.Internal
 public final class TickSchedulerThread extends MinestomThread {
-    public static final String THREAD_NAME_TICK_SCHEDULER = "Ms-TickScheduler";
+    public static final String THREAD_NAME_TICK_SCHEDULER = "Ge-TickScheduler";
 
-    private static final long TICK_TIME_NANOS = 1_000_000_000L / ServerFlag.SERVER_TICKS_PER_SECOND;
     // Windows has an issue with periodically being unable to sleep for < ~16ms at a time
     private static final long SLEEP_THRESHOLD = System.getProperty("os.name", "")
             .toLowerCase(Locale.ROOT).startsWith("windows") ? 17 : 2;
 
     private final ServerProcess serverProcess;
+    private final long tickTimeNanos;
+    private final int maxTickCatchUp;
 
-    public TickSchedulerThread(ServerProcess serverProcess) {
+    /**
+     * @param tickTimeNanos  the wanted duration of a tick
+     * @param maxTickCatchUp how many ticks the loop may fall behind before it gives up catching up
+     */
+    public TickSchedulerThread(ServerProcess serverProcess, long tickTimeNanos, int maxTickCatchUp) {
         super(THREAD_NAME_TICK_SCHEDULER);
         this.serverProcess = serverProcess;
+        this.tickTimeNanos = tickTimeNanos;
+        this.maxTickCatchUp = maxTickCatchUp;
     }
 
     @Override
@@ -35,12 +41,12 @@ public final class TickSchedulerThread extends MinestomThread {
             }
 
             ticks++;
-            long nextTickTime = baseTime + ticks * TICK_TIME_NANOS;
+            long nextTickTime = baseTime + ticks * tickTimeNanos;
             waitUntilNextTick(nextTickTime);
             // Check if the server can not keep up with the tickrate
             // if it gets too far behind, reset the ticks & baseTime
             // to avoid running too many ticks at once
-            if (System.nanoTime() > nextTickTime + TICK_TIME_NANOS * ServerFlag.SERVER_MAX_TICK_CATCH_UP) {
+            if (System.nanoTime() > nextTickTime + tickTimeNanos * maxTickCatchUp) {
                 baseTime = System.nanoTime();
                 ticks = 0;
             }

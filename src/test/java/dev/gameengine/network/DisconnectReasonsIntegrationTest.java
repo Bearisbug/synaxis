@@ -2,7 +2,6 @@ package dev.gameengine.network;
 
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.TranslatableComponent;
-import dev.gameengine.ServerFlag;
 import dev.gameengine.coordinate.Pos;
 import dev.gameengine.entity.Player;
 import dev.gameengine.instance.Chunk;
@@ -81,11 +80,11 @@ public class DisconnectReasonsIntegrationTest {
 
     @Test
     public void aConnectionStuckBeforeConfigurationTimesOut(Env env) throws IOException {
-        assertEquals(30_000, ServerFlag.LOGIN_TIMEOUT, "the login timeout is 30 seconds");
+        assertEquals(30_000, env.process().config().loginTimeout(), "the login timeout is 30 seconds");
         try (SocketPair pair = SocketPair.open(env)) {
             final PlayerSocketConnection connection = pair.connection();
             connection.setClientState(ConnectionState.LOGIN);
-            final long expiry = System.currentTimeMillis() + ServerFlag.LOGIN_TIMEOUT + 1;
+            final long expiry = System.currentTimeMillis() + env.process().config().loginTimeout() + 1;
 
             assertFalse(connection.loginTimedOut(System.currentTimeMillis()), "the connection still has time");
             assertTrue(connection.loginTimedOut(expiry), "a connection stuck in login must time out");

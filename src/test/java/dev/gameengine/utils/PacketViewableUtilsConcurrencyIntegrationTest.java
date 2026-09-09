@@ -23,6 +23,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * {@link PacketViewableUtils#prepareViewablePacket} runs on the dispatcher threads while
  * {@link PacketViewableUtils#flush()} walks the same storages in parallel, so the storage map
  * has to tolerate concurrent lookups and traversals.
+ * <p>
+ * The fixture process disables viewable packets, so the test drives its own instance with them on.
  */
 @EnvTest
 public class PacketViewableUtilsConcurrencyIntegrationTest {
@@ -33,6 +35,8 @@ public class PacketViewableUtilsConcurrencyIntegrationTest {
     @Test
     public void concurrentPrepareAndFlushDoNotCorruptTheStorageMap(Env env) throws InterruptedException {
         assertNotNull(env.process().registries());
+        final PacketViewableUtils viewablePackets = new PacketViewableUtils(env.process(), true,
+                env.process().config().pooledBufferSize());
         final ServerPacket packet = new PluginMessagePacket("ch", new byte[8]);
         final List<CountingViewable> viewables = new ArrayList<>(VIEWABLES);
         for (int i = 0; i < VIEWABLES; i++) viewables.add(new CountingViewable());
@@ -45,10 +49,10 @@ public class PacketViewableUtilsConcurrencyIntegrationTest {
                 try {
                     for (int round = 0; round < ROUNDS; round++) {
                         for (CountingViewable viewable : viewables) {
-                            PacketViewableUtils.prepareViewablePacket(env.process(), viewable, packet);
+                            viewablePackets.prepareViewablePacket(viewable, packet);
                         }
                         // Short lived viewables leave stale weak entries behind
-                        PacketViewableUtils.prepareViewablePacket(env.process(), new CountingViewable(), packet);
+                        viewablePackets.prepareViewablePacket(new CountingViewable(), packet);
                         if (round % 25 == 0) System.gc();
                     }
                 } catch (Throwable t) {
@@ -58,7 +62,7 @@ public class PacketViewableUtilsConcurrencyIntegrationTest {
         }
         final Thread flusher = Thread.ofPlatform().unstarted(() -> {
             try {
-                while (writing.get()) PacketViewableUtils.flush();
+                while (writing.get()) viewablePackets.flush();
             } catch (Throwable t) {
                 failure.compareAndSet(null, t);
             }
@@ -69,7 +73,7 @@ public class PacketViewableUtilsConcurrencyIntegrationTest {
         for (Thread thread : threads) thread.join();
         writing.set(false);
         flusher.join();
-        PacketViewableUtils.flush();
+        viewablePackets.flush();
 
         assertNull(failure.get(), () -> "storage map access failed: " + failure.get());
         for (CountingViewable viewable : viewables) {

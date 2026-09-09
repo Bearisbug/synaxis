@@ -174,7 +174,7 @@ public sealed interface Acquirable<T> permits AcquirableImpl {
      * Throws an {@link AcquirableOwnershipException} if not owned.
      * <p>
      * This method is only enabled when assertions are enabled or
-     * {@link dev.gameengine.ServerFlag#ACQUIRABLE_STRICT} is set to true.
+     * the {@code gameengine.acquirable-strict} system property is set to true.
      *
      * @throws AcquirableOwnershipException if the current thread does not own the acquirable element
      */

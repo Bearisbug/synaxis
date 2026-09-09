@@ -439,6 +439,7 @@
 | RUN-008 | 2026-09-09 | `15616dede0`（代码与 RUN-007 相同，仅文档变更） | AI（Claude Code，GitHub Actions） | 复测（RUN-007：TC-021 + 冒烟级 TC-001、TC-002、TC-003、TC-010、TC-012、TC-020） | 通过 1/7 · 跳过 5 · 待人工 1 |
 | RUN-009 | 2026-09-09 | `6dc0003213`（REQ-013 合入） | AI（Claude Code，Gradle / 探针） | 局部（REQ-013→TC-022 + 冒烟级 TC-001、TC-002、TC-003、TC-010、TC-012、TC-020） | 通过 1/7 · 失败 1 · 跳过 4 · 待人工 1 |
 | RUN-010 | 2026-09-09 | `6dc0003213`（代码与 RUN-009 相同） | AI（Claude Code，Gradle / 探针） | 复测（RUN-009：TC-023 + 冒烟级 TC-001、TC-002、TC-003、TC-010、TC-012、TC-020） | 通过 6/7 · 待人工 1 |
+| RUN-011 | 2026-09-09 | `c2f5ad80da`（REQ-014、REQ-015、命名残留清理合入，M1.5 完成） | AI（Claude Code，Gradle / 探针） | 局部（REQ-014→TC-025，REQ-015→TC-024 + 冒烟级 TC-001、TC-002、TC-003、TC-010、TC-012、TC-020；另加回归 TC-004、TC-014、TC-015、TC-017、TC-018、TC-019、TC-023） | 通过 14/15 · 待人工 1 |
 
 明细（仅登非「通过」项）：
 
@@ -509,6 +510,10 @@ TC-002 证据：`docs/test-runs/RUN-002/tc-002.txt`（5 步实际输出）（2,6
 | RUN-009 | TC-012 | 待人工 | 需原版客户端 | 人工收口轮 |
 
 | RUN-010 | TC-012 | 待人工 | 需原版客户端 | 人工收口轮 |
+
+| RUN-011 | TC-012 | 待人工 | 需原版客户端 | 人工收口轮 |
+
+RUN-011 证据：`docs/test-runs/RUN-011/`（`tc-003.txt`：干净 `check --rerun-tasks` 2,576 测试 0 失败；`tc-015.txt`：前后均 0；`static-checks.txt`：TC-023 第 1 步 0 处、TC-024 五步（`pkgdeps.py` 底层出向上层 0 边、无冻结存储、`utils/` 只剩通用工具、严格规则通过、临时违规后 `ArchitectureTest` 红且撤销后工作区干净）、TC-025 四步（`ServerFlag` 0 处、测试 JVM 无注入开关、两测试通过、启动日志各 1 行 `ServerConfig[...]` 与 `JvmFlags[...]`）、TC-001 四步含离线 `check`、TC-002、TC-010、TC-020 第 3～5 步（主源码 1,108）；`tc-020-registry.txt`：9,063 字节一致；`tc-014.txt`、`tc-019*.txt`、`tc-017.txt`、`tc-018-*.txt`、`echo.txt`、`smoke-server.log`）。通过项：TC-001、TC-002、TC-003、TC-004、TC-010、TC-014、TC-015、TC-017、TC-018、TC-019、TC-020、TC-023、TC-024、TC-025。
 
 RUN-010 证据：`docs/test-runs/RUN-010/`（`tc-023.txt`：访问器 0 处、串行 50 s、并行 39 s、单跑通过、属性文件未改动；`static-checks.txt`：TC-001 四步（含离线 `check`）、TC-002、TC-010 五步、TC-020 第 3～5 步，主源码 1,115；`tc-020-registry.txt`：9,063 字节一致）。TC-003 以本轮 TC-023 第 2、3 步的两次 `:test --rerun-tasks` 全绿为据（`tc-003.txt` 只留下了最后一次单跑的 16 个用例结果，属证据采集顺序失误，测试数以 RUN-009 同版本干净 `check` 的 2,571 为准）。通过项：TC-023、TC-001、TC-002、TC-003、TC-010、TC-020。
 

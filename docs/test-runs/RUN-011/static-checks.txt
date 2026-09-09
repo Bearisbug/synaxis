@@ -1,0 +1,19 @@
+[023-1] 0
+[024-1] lower layer: codec, condition, coordinate, exception, gamedata, monitoring, thread, timer, utils
+lower layer edges into the rest of the engine: 0 (0 imports)
+mutual dependencies inside the lower layer: 2
+[024-2] grep exit=1
+[024-4] utils/: ArrayUtils.java Ease.java EaseFunction.java Either.java MajorMinorVersion.java MathUtils.java ObjectPool.java Range.java StringUtils.java ThrowingFunction.java TickUtils.java UUIDUtils.java Unit.java WeightedList.java async collection json mojang package-info.java url validate 
+[025-1] 0
+[025-2] grep exit=1
+[001] grep1=1 grep2=1 json=39 nbt=23
+[002] https://github.com/Bearisbug/game-engine.git isFork=false old=exit1 origin=1 branch=main
+[010] grep=0 ignore=1 native=dev.gameengine
+[020-3] 1108
+[020-4] 3/3
+[020-5] AbstractVehicleMeta.java AgeableMobMeta.java EntityMeta.java LivingEntityMeta.java MobMeta.java ObjectDataProvider.java PathfinderMobMeta.java avatar display item other package-info.java projectile | other: ArmorStandMeta.java InteractionMeta.java package-info.java 
+[024-3/025-3] BUILD SUCCESSFUL in 7s
+[024-5] BUILD FAILED in 12s; ArchitectureTest mentioned: 3
+[024-5 撤销] status: 1 files
+[001-4 offline] exit=0 BUILD SUCCESSFUL in 5s
+[025-4] ServerConfig lines=1 JvmFlags lines=1

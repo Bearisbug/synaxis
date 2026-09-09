@@ -19,6 +19,9 @@ import net.minestom.server.network.player.PlayerSocketConnection;
 import org.jetbrains.annotations.ApiStatus;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.WeakHashMap;
@@ -26,7 +29,10 @@ import java.util.WeakHashMap;
 @ApiStatus.Internal
 public final class PacketViewableUtils {
     // Viewable packets
-    private static volatile Map<Viewable, ViewableStorage> storageMap = new WeakHashMap<>();
+    // Weak keys let a storage disappear with its chunk, but WeakHashMap expunges stale entries
+    // on read as well as on write, so every access has to go through the mutex.
+    private static final Map<Viewable, ViewableStorage> storageMap =
+            Collections.synchronizedMap(new WeakHashMap<>());
 
     public static void prepareViewablePacket(Viewable viewable, ServerPacket serverPacket,
                                              @Nullable Entity entity) {
@@ -45,28 +51,15 @@ public final class PacketViewableUtils {
     }
 
     private static ViewableStorage retrieveStorage(Viewable viewable) {
-        Map<Viewable, ViewableStorage> map = storageMap;
-        ViewableStorage storage = map.get(viewable);
-        if (storage == null) {
-            synchronized (PacketViewableUtils.class) {
-                map = storageMap;
-                storage = map.get(viewable);
-                if (storage == null) {
-                    storage = new ViewableStorage();
-                    map = new WeakHashMap<>(map);
-                    map.put(viewable, storage);
-                    storageMap = map;
-                }
-            }
-        }
-        return storage;
+        return storageMap.computeIfAbsent(viewable, _ -> new ViewableStorage());
     }
 
     public static void flush() {
         if (!ServerFlag.VIEWABLE_PACKET) return;
-        Map<Viewable, ViewableStorage> map = storageMap;
-        map.entrySet().parallelStream().forEach(entry ->
-                entry.getValue().process(entry.getKey()));
+        // Snapshot under the mutex, the parallel traversal must not touch the map itself
+        final List<Map.Entry<Viewable, ViewableStorage>> entries = new ArrayList<>();
+        storageMap.forEach((viewable, storage) -> entries.add(Map.entry(viewable, storage)));
+        entries.parallelStream().forEach(entry -> entry.getValue().process(entry.getKey()));
     }
 
     public static void prepareViewablePacket(Viewable viewable, ServerPacket serverPacket) {

@@ -104,6 +104,10 @@ public abstract class Heightmap {
 
         final int entriesPerLong = 64 / bitsPerEntry;
 
+        // ceil(HeightsCount / entriesPerLong), a shorter array comes from a world saved with a
+        // different dimension height: keep needsRefresh set and recompute rather than read past it
+        if (data.length < (heights.length + entriesPerLong - 1) / entriesPerLong) return;
+
         final int maxPossibleIndexInContainer = entriesPerLong - 1;
         final int entryMask = (1 << bitsPerEntry) - 1;
 

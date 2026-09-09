@@ -163,7 +163,7 @@ public non-sealed class Inventory extends AbstractInventory {
             playerInventory.setItemStack(clickSlot, clickResult.getClicked());
         }
         playerInventory.setCursorItem(clickResult.getCursor());
-        callClickEvent(player, clickedInventory, slot, ClickType.LEFT_CLICK, clicked, cursor);
+        callClickEvent(player, clickedInventory, clickSlot, ClickType.LEFT_CLICK, clicked, cursor);
         return true;
     }
 
@@ -186,7 +186,7 @@ public non-sealed class Inventory extends AbstractInventory {
             playerInventory.setItemStack(clickSlot, clickResult.getClicked());
         }
         playerInventory.setCursorItem(clickResult.getCursor());
-        callClickEvent(player, clickedInventory, slot, ClickType.RIGHT_CLICK, clicked, cursor);
+        callClickEvent(player, clickedInventory, clickSlot, ClickType.RIGHT_CLICK, clicked, cursor);
         return true;
     }
 
@@ -258,7 +258,7 @@ public non-sealed class Inventory extends AbstractInventory {
             playerInventory.setItemStack(clickSlot, clickResult.getClicked());
         }
         playerInventory.setItemStack(convertedKey, clickResult.getCursor());
-        callClickEvent(player, clickedInventory, slot, ClickType.CHANGE_HELD, clicked, playerInventory.getCursorItem());
+        callClickEvent(player, clickedInventory, clickSlot, ClickType.CHANGE_HELD, clicked, playerInventory.getCursorItem());
         return true;
     }
 

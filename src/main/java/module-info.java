@@ -132,8 +132,6 @@ module net.minestom.server {
     exports net.minestom.server.message;
     exports net.minestom.server.monitoring;
     exports net.minestom.server.network;
-    exports net.minestom.server.network.debug;
-    exports net.minestom.server.network.debug.info;
     exports net.minestom.server.network.packet;
     exports net.minestom.server.network.packet.client;
     exports net.minestom.server.network.packet.client.common;

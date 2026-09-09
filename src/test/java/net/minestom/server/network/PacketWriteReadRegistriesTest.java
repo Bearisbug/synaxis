@@ -37,17 +37,12 @@ import net.minestom.server.entity.PlayerSkin;
 import net.minestom.server.entity.RelativeFlags;
 import net.minestom.server.entity.damage.DamageType;
 import net.minestom.server.extras.mojangAuth.MojangCrypt;
-import net.minestom.server.instance.block.Block;
 import net.minestom.server.instance.block.BlockEntityType;
 import net.minestom.server.instance.block.BlockFace;
 import net.minestom.server.instance.gamerule.GameRule;
 import net.minestom.server.item.ItemStack;
 import net.minestom.server.item.Material;
 import net.minestom.server.message.ChatMessageType;
-import net.minestom.server.network.debug.DebugSubscription;
-import net.minestom.server.network.debug.info.DebugHiveInfo;
-import net.minestom.server.network.debug.info.DebugPathInfo;
-import net.minestom.server.network.debug.info.DebugPoiInfo;
 import net.minestom.server.network.packet.PacketParser;
 import net.minestom.server.network.packet.PacketRegistry;
 import net.minestom.server.network.packet.PacketVanilla;
@@ -179,11 +174,6 @@ import net.minestom.server.network.packet.server.play.CollectItemPacket;
 import net.minestom.server.network.packet.server.play.CustomChatCompletionPacket;
 import net.minestom.server.network.packet.server.play.DamageEventPacket;
 import net.minestom.server.network.packet.server.play.DeathCombatEventPacket;
-import net.minestom.server.network.packet.server.play.DebugBlockValuePacket;
-import net.minestom.server.network.packet.server.play.DebugChunkValuePacket;
-import net.minestom.server.network.packet.server.play.DebugEntityValuePacket;
-import net.minestom.server.network.packet.server.play.DebugEventPacket;
-import net.minestom.server.network.packet.server.play.DebugSamplePacket;
 import net.minestom.server.network.packet.server.play.DeclareCommandsPacket;
 import net.minestom.server.network.packet.server.play.DeclareRecipesPacket;
 import net.minestom.server.network.packet.server.play.DeleteChatPacket;
@@ -673,11 +663,6 @@ public class PacketWriteReadRegistriesTest {
                 new DamageEventPacket(50, registries.damageType().getId(DamageType.WITHER), 0, 0, null));
         addServerPackets(new DeclareCommandsPacket(List.of(), 0));
         addServerPackets(new BundlePacket());
-        addServerPackets(new DebugBlockValuePacket(Vec.ONE, new DebugSubscription.Update<>(DebugSubscription.BEE_HIVES, new DebugHiveInfo(Block.BEEHIVE, 1, 0, true))));
-        addServerPackets(new DebugChunkValuePacket(1, new DebugSubscription.Update<>(DebugSubscription.POIS, new DebugPoiInfo(BLOCK_VEC, DebugPoiInfo.Type.BUTCHER, 1))));
-        addServerPackets(new DebugEntityValuePacket(0, new DebugSubscription.Update<>(DebugSubscription.ENTITY_PATHS, new DebugPathInfo(new DebugPathInfo.Path(true, 0, BLOCK_VEC, List.of(), new DebugPathInfo.Data(Set.of(), List.of(), List.of())), 1))));
-        addServerPackets(new DebugEventPacket(new DebugSubscription.Event<>(DebugSubscription.NEIGHBOR_UPDATES, Vec.ZERO)));
-        addServerPackets(new DebugSamplePacket(new long[0], DebugSamplePacket.Type.TICK_TIME)); // Legacy debug wrapper, maybe it will change.
         addServerPackets(new DeleteChatPacket(new MessageSignature(new byte[256])));
         addServerPackets(new DisguisedChatPacket(Component.text("Hey"), 0, Component.text("Message"), null));
         addServerPackets(new EntityPositionSyncPacket(1, VEC, VEC, 1f, 1f, false));
@@ -832,7 +817,7 @@ public class PacketWriteReadRegistriesTest {
         addClientPackets(new ClientWindowSlotStatePacket(25, 25, true), new ClientWindowSlotStatePacket(Integer.MAX_VALUE, Integer.MAX_VALUE, true), new ClientWindowSlotStatePacket(Integer.MIN_VALUE, Integer.MAX_VALUE, false));
         //Cookie
         //Plugin message
-        addClientPackets(new ClientDebugSubscriptionRequestPacket(Set.of(DebugSubscription.DEDICATED_SERVER_TICK_TIME, DebugSubscription.ENTITY_PATHS)));
+        addClientPackets(new ClientDebugSubscriptionRequestPacket(Set.of(0, 5)));
         addClientPackets(new ClientEditBookPacket(14, List.of("page1", "page2"), "Wrath of nothing"), new ClientEditBookPacket(15, List.of(), null), new ClientEditBookPacket(12, List.of("hi".repeat(99).split("h")), "What is this book?"));
         addClientPackets(new ClientQueryEntityNbtPacket(1325, 25), new ClientQueryEntityNbtPacket(-15, Integer.MAX_VALUE));
         addClientPackets(

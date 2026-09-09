@@ -11,7 +11,6 @@ import net.minestom.server.listener.BookListener;
 import net.minestom.server.listener.ChatMessageListener;
 import net.minestom.server.listener.ChunkBatchListener;
 import net.minestom.server.listener.CreativeInventoryActionListener;
-import net.minestom.server.listener.DebugSubscriptionListener;
 import net.minestom.server.listener.EditSignListener;
 import net.minestom.server.listener.EntityActionListener;
 import net.minestom.server.listener.PlayPingListener;
@@ -72,7 +71,6 @@ import net.minestom.server.network.packet.client.play.ClientCloseWindowPacket;
 import net.minestom.server.network.packet.client.play.ClientCommandChatPacket;
 import net.minestom.server.network.packet.client.play.ClientConfigurationAckPacket;
 import net.minestom.server.network.packet.client.play.ClientCreativeInventoryActionPacket;
-import net.minestom.server.network.packet.client.play.ClientDebugSubscriptionRequestPacket;
 import net.minestom.server.network.packet.client.play.ClientEditBookPacket;
 import net.minestom.server.network.packet.client.play.ClientEntityActionPacket;
 import net.minestom.server.network.packet.client.play.ClientHeldItemChangePacket;
@@ -198,7 +196,6 @@ public final class PacketListenerManager {
         setPlayListener(ClientSignedCommandChatPacket.class, ChatMessageListener::signedCommandChatListener);
         setPlayListener(ClientCustomClickActionPacket.class, CustomClickListener::listener);
         setPlayListener(ClientUpdateSignPacket.class, EditSignListener::listener);
-        setPlayListener(ClientDebugSubscriptionRequestPacket.class, DebugSubscriptionListener::requestListener);
         setPlayListener(ClientSetGameRulesPacket.class, PlayerSettingsMenuListener::setGameRules);
     }
 

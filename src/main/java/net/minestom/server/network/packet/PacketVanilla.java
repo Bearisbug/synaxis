@@ -132,11 +132,6 @@ import net.minestom.server.network.packet.server.play.CollectItemPacket;
 import net.minestom.server.network.packet.server.play.CustomChatCompletionPacket;
 import net.minestom.server.network.packet.server.play.DamageEventPacket;
 import net.minestom.server.network.packet.server.play.DeathCombatEventPacket;
-import net.minestom.server.network.packet.server.play.DebugBlockValuePacket;
-import net.minestom.server.network.packet.server.play.DebugChunkValuePacket;
-import net.minestom.server.network.packet.server.play.DebugEntityValuePacket;
-import net.minestom.server.network.packet.server.play.DebugEventPacket;
-import net.minestom.server.network.packet.server.play.DebugSamplePacket;
 import net.minestom.server.network.packet.server.play.DeclareCommandsPacket;
 import net.minestom.server.network.packet.server.play.DeclareRecipesPacket;
 import net.minestom.server.network.packet.server.play.DeleteChatPacket;
@@ -450,11 +445,6 @@ public final class PacketVanilla {
             entry(CustomChatCompletionPacket.class, CustomChatCompletionPacket.SERIALIZER),
             entry(PluginMessagePacket.class, PluginMessagePacket.SERIALIZER),
             entry(DamageEventPacket.class, DamageEventPacket.SERIALIZER),
-            entry(DebugBlockValuePacket.class, DebugBlockValuePacket.SERIALIZER),
-            entry(DebugChunkValuePacket.class, DebugChunkValuePacket.SERIALIZER),
-            entry(DebugEntityValuePacket.class, DebugEntityValuePacket.SERIALIZER),
-            entry(DebugEventPacket.class, DebugEventPacket.SERIALIZER),
-            entry(DebugSamplePacket.class, DebugSamplePacket.SERIALIZER),
             entry(DeleteChatPacket.class, DeleteChatPacket.SERIALIZER),
             entry(DisconnectPacket.class, DisconnectPacket.SERIALIZER),
             entry(DisguisedChatPacket.class, DisguisedChatPacket.SERIALIZER),

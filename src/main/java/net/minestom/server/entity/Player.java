@@ -132,6 +132,7 @@ import net.minestom.server.timer.Scheduler;
 import net.minestom.server.utils.MathUtils;
 import net.minestom.server.utils.PacketSendingUtils;
 import net.minestom.server.utils.async.AsyncUtils;
+import net.minestom.server.utils.chunk.ChunkCache;
 import net.minestom.server.utils.chunk.ChunkUpdateLimitChecker;
 import net.minestom.server.utils.collection.ConcurrentMessageQueues;
 import net.minestom.server.utils.identity.NamedAndIdentified;
@@ -928,6 +929,7 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
 
         // Figure out their expected state
         var meta = getEntityMeta();
+        meta.setSwimming(shouldSwim(meta.isSwimming()));
         if (meta.isFlyingWithElytra()) {
             newPose = EntityPose.FALL_FLYING;
         } else if (meta instanceof LivingEntityMeta livingMeta && livingMeta.getBedInWhichSleepingPosition() != null) {
@@ -955,6 +957,39 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
         }
 
         if (newPose != oldPose) setPose(newPose);
+    }
+
+    /**
+     * Nothing else in the server ever calls {@code setSwimming}, so the swimming pose was unreachable.
+     * Vanilla starts swimming when sprinting with the eyes submerged and keeps it while the body still
+     * touches water.
+     *
+     * @param swimming whether the player is currently swimming
+     * @return whether the player should be swimming
+     */
+    private boolean shouldSwim(boolean swimming) {
+        final Instance instance = this.instance;
+        if (instance == null) return false;
+        if (!isSprinting() || getVehicle() != null || isFlying() || getGameMode() == GameMode.SPECTATOR) return false;
+        final Block.Getter getter = new ChunkCache(instance, getChunk(), Block.AIR);
+        final Pos position = getPosition();
+        if (!swimming) {
+            // Starting to swim additionally requires the eyes to be submerged
+            final int eyeY = (int) Math.floor(position.y() + getEyeHeight());
+            if (!isWater(getter.getBlock(position.blockX(), eyeY, position.blockZ()))) return false;
+        }
+        var iterator = getBoundingBox().getBlocks(position);
+        while (iterator.hasNext()) {
+            final var blockPosition = iterator.next();
+            if (isWater(getter.getBlock(blockPosition.blockX(), blockPosition.blockY(), blockPosition.blockZ()))) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static boolean isWater(Block block) {
+        return block.compare(Block.WATER) || "true".equals(block.getProperty("waterlogged"));
     }
 
     /**

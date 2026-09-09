@@ -77,6 +77,14 @@ final class EventNodeLazyImpl<E extends Event> extends EventNodeImpl<E> {
         }
     }
 
+    /**
+     * Called when the node is unmapped, so that a listener added later maps it again.
+     */
+    void resetMapped() {
+        assert Thread.holdsLock(GLOBAL_CHILD_LOCK);
+        MAPPED.setVolatile(this, false);
+    }
+
     private Object retrieveOwner() {
         final Object owner = this.owner.get();
         if (owner == null) {

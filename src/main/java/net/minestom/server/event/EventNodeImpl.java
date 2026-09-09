@@ -179,10 +179,11 @@ non-sealed class EventNodeImpl<T extends Event> implements EventNode<T> {
             node = new EventNodeLazyImpl<>(this, value, filter);
             Check.stateCondition(node.parent != null, "Node already has a parent");
             Check.stateCondition(Objects.equals(parent, node), "Cannot map to self");
-            WeakReference<EventNodeLazyImpl<T>> previousRef = this.mappedNodeCache.putIfAbsent(value,
-                    new WeakReference<>((EventNodeLazyImpl<T>) node));
+            WeakReference<EventNodeLazyImpl<T>> previousRef = this.mappedNodeCache.get(value);
             EventNodeImpl<T> previous;
             if (previousRef != null && (previous = previousRef.get()) != null) return (EventNode<E>) previous;
+            // Either no entry at all, or one whose node has been collected and must be replaced
+            this.mappedNodeCache.put(value, new WeakReference<>((EventNodeLazyImpl<T>) node));
             node.parent = this;
         }
         return node;
@@ -197,6 +198,8 @@ non-sealed class EventNodeImpl<T extends Event> implements EventNode<T> {
             EventNodeLazyImpl<T> mappedNode;
             if (mappedNodeRef != null && (mappedNode = mappedNodeRef.get()) != null) {
                 mappedNode.invalidateEventsFor(this);
+                // The node stays in mappedNodeCache, so a later listener has to map it again
+                mappedNode.resetMapped();
             }
         }
     }
@@ -220,7 +223,7 @@ non-sealed class EventNodeImpl<T extends Event> implements EventNode<T> {
         synchronized (GLOBAL_CHILD_LOCK) {
             for (var eventType : binding.eventTypes()) {
                 ListenerEntry<T> entry = listenerMap.get(eventType);
-                if (entry == null) return;
+                if (entry == null) continue; // No listener with such type, the other types still have to be unbound
                 final boolean removed = entry.bindingConsumers.remove(binding.consumer(eventType));
                 if (removed) invalidateEvent((Class<? extends T>) eventType);
             }

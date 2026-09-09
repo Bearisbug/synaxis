@@ -120,4 +120,41 @@ public class EventNodeMapTest {
         item = null;
         waitUntilCleared(ref);
     }
+
+    @Test
+    public void remapAfterUnmap() {
+        var item = ItemStack.of(Material.DIAMOND);
+        var node = EventNode.all("main");
+        AtomicBoolean result = new AtomicBoolean(false);
+
+        var itemNode = node.map(item, EventFilter.ITEM);
+        itemNode.addListener(EventNodeTest.ItemTestEvent.class, _ -> result.set(true));
+        node.call(new EventNodeTest.ItemTestEvent(item));
+        assertTrue(result.get());
+
+        node.unmap(item);
+        result.set(false);
+        node.call(new EventNodeTest.ItemTestEvent(item));
+        assertFalse(result.get(), "An unmapped node should not receive events anymore");
+
+        // The cache still returns the very same node, adding a listener to it must map it again
+        assertSame(itemNode, node.map(item, EventFilter.ITEM));
+        itemNode.addListener(EventNodeTest.ItemTestEvent.class, _ -> result.set(true));
+        node.call(new EventNodeTest.ItemTestEvent(item));
+        assertTrue(result.get(), "A listener added after unmap should map the node again");
+    }
+
+    @Test
+    public void mapAfterNodeCollected() {
+        var item = ItemStack.of(Material.DIAMOND);
+        var node = EventNode.all("main");
+
+        var ref = new WeakReference<>(node.map(item, EventFilter.ITEM));
+        waitUntilCleared(ref);
+
+        // The stale cache entry must be replaced, otherwise every call creates yet another node
+        var first = node.map(item, EventFilter.ITEM);
+        var second = node.map(item, EventFilter.ITEM);
+        assertSame(first, second);
+    }
 }

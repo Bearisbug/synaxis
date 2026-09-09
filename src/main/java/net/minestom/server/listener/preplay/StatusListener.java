@@ -15,6 +15,11 @@ import net.minestom.server.ping.ServerListPingType;
 public final class StatusListener {
 
     public static void requestListener(StatusRequestPacket packet, PlayerConnection connection) {
+        if (!connection.acquireStatusRequest()) {
+            // Like vanilla, a connection only gets one status response
+            connection.disconnect();
+            return;
+        }
         final ServerListPingType pingVersion = ServerListPingType.fromModernProtocolVersion(connection.getProtocolVersion());
         final ServerListPingEvent serverListPingEvent = new ServerListPingEvent(connection, pingVersion);
         EventDispatcher.callCancellable(serverListPingEvent, () ->

@@ -47,6 +47,7 @@ public abstract class PlayerConnection {
     private volatile ConnectionState serverState, clientState;
 
     private @Nullable PlayerPublicKey playerPublicKey;
+    private boolean statusRequested;
     volatile boolean online;
     private volatile boolean wasTransferred;
 
@@ -130,6 +131,18 @@ public abstract class PlayerConnection {
         return MinecraftServer.getServer().getPort();
     }
 
+
+    /**
+     * Claims the single status request a connection is allowed to make.
+     *
+     * @return false if a status request was already answered on this connection
+     */
+    @ApiStatus.Internal
+    public boolean acquireStatusRequest() {
+        if (statusRequested) return false;
+        this.statusRequested = true;
+        return true;
+    }
 
     /**
      * Kicks the player with a reason.

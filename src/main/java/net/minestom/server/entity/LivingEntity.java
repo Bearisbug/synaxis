@@ -110,8 +110,14 @@ public class LivingEntity extends Entity implements EquipmentHandler {
     /**
      * Constructor which allows to specify an UUID. Only use if you know what you are doing!
      */
+    @SuppressWarnings("this-escape") // Same pattern as EntityCreature, the entity is not usable until spawned
     public LivingEntity(EntityType entityType, UUID uuid) {
         super(entityType, uuid);
+        // Without this a bare LivingEntity spawns with the 1 HP field default and its health metadata
+        // is never written; EntityCreature and Player were the only ones healing themselves
+        this.health = (float) getAttributeValue(Attribute.MAX_HEALTH);
+        final LivingEntityMeta meta = getLivingEntityMeta();
+        if (meta != null) meta.setHealth(this.health);
     }
 
     public LivingEntity(EntityType entityType) {

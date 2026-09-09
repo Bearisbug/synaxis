@@ -81,9 +81,6 @@ module net.minestom.server {
     exports net.minestom.server.entity.metadata.villager;
     exports net.minestom.server.entity.metadata.water;
     exports net.minestom.server.entity.metadata.water.fish;
-    exports net.minestom.server.entity.pathfinding;
-    exports net.minestom.server.entity.pathfinding.followers;
-    exports net.minestom.server.entity.pathfinding.generators;
     exports net.minestom.server.event;
     exports net.minestom.server.event.book;
     exports net.minestom.server.event.entity;

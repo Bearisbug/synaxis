@@ -30,7 +30,15 @@ public interface ServerProcess extends Registries {
      * nothing but the static registries.
      */
     static ServerProcess of(Auth auth) {
-        return new ServerProcessImpl(auth);
+        return of(auth, ServerConfig.fromSystemProperties());
+    }
+
+    /**
+     * Creates a new server process with an explicit configuration. Processes sharing a JVM keep
+     * their own settings.
+     */
+    static ServerProcess of(Auth auth, ServerConfig config) {
+        return new ServerProcessImpl(auth, config);
     }
 
     /**
@@ -39,6 +47,18 @@ public interface ServerProcess extends Registries {
     static ServerProcess of() {
         return of(new Auth.Offline());
     }
+
+    /**
+     * Creates a new server process running in offline mode with an explicit configuration.
+     */
+    static ServerProcess of(ServerConfig config) {
+        return of(new Auth.Offline(), config);
+    }
+
+    /**
+     * The settings of this process.
+     */
+    ServerConfig config();
 
     /**
      * Gets the registries owned by this process.

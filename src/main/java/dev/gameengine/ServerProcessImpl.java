@@ -47,6 +47,7 @@ final class ServerProcessImpl implements ServerProcess, Registries.Delegating {
     private static final long SHUTDOWN_JOIN_TIMEOUT_MS = 5_000;
 
     private final Auth auth;
+    private final ServerConfig config;
 
     private final ExceptionManager exception;
     private final Registries registries;
@@ -77,8 +78,9 @@ final class ServerProcessImpl implements ServerProcess, Registries.Delegating {
     // Set by the ticker itself, so that stop() can wait for the in-flight tick to complete.
     private volatile @Nullable TickSchedulerThread tickSchedulerThread;
 
-    public ServerProcessImpl(Auth auth) {
+    public ServerProcessImpl(Auth auth, ServerConfig config) {
         this.auth = auth;
+        this.config = config;
         this.exception = new ExceptionManager(this);
         this.registries = Registries.vanilla();
 
@@ -97,7 +99,7 @@ final class ServerProcessImpl implements ServerProcess, Registries.Delegating {
         this.server = new Server(this, packetParser);
         Registries.tagChangeListener(registries, connection::invalidateTags);
 
-        this.dispatcher = ThreadDispatcher.dispatcher(ThreadProvider.counter(), ServerFlag.DISPATCHER_THREADS,
+        this.dispatcher = ThreadDispatcher.dispatcher(ThreadProvider.counter(), config.dispatcherThreads(),
                 exception::handleException);
         this.ticker = new TickerImpl();
     }
@@ -105,6 +107,11 @@ final class ServerProcessImpl implements ServerProcess, Registries.Delegating {
     @Override
     public Auth auth() {
         return auth;
+    }
+
+    @Override
+    public ServerConfig config() {
+        return config;
     }
 
     @Override
@@ -259,7 +266,7 @@ final class ServerProcessImpl implements ServerProcess, Registries.Delegating {
         LOGGER.info("{} server started successfully.", brand);
 
         // Stop the server on SIGINT
-        if (ServerFlag.SHUTDOWN_ON_SIGNAL) Runtime.getRuntime().addShutdownHook(new Thread(this::stop));
+        if (config.shutdownOnSignal()) Runtime.getRuntime().addShutdownHook(new Thread(this::stop));
     }
 
     @Override

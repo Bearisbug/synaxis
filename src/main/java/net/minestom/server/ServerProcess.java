@@ -14,7 +14,6 @@ import net.minestom.server.listener.manager.PacketListenerManager;
 import net.minestom.server.network.ConnectionManager;
 import net.minestom.server.network.packet.PacketParser;
 import net.minestom.server.network.socket.Server;
-import net.minestom.server.recipe.RecipeManager;
 import net.minestom.server.registry.Registries;
 import net.minestom.server.scoreboard.TeamManager;
 import net.minestom.server.snapshot.Snapshotable;
@@ -55,11 +54,6 @@ public interface ServerProcess extends Registries, Snapshotable {
      * Handles registered commands.
      */
     CommandManager command();
-
-    /**
-     * Handles registered recipes shown to clients.
-     */
-    RecipeManager recipe();
 
     /**
      * Handles registered teams.

@@ -20,7 +20,6 @@ import net.minestom.server.network.ConnectionManager;
 import net.minestom.server.network.packet.PacketParser;
 import net.minestom.server.network.packet.PacketVanilla;
 import net.minestom.server.network.socket.Server;
-import net.minestom.server.recipe.RecipeManager;
 import net.minestom.server.registry.Registries;
 import net.minestom.server.scoreboard.TeamManager;
 import net.minestom.server.snapshot.EntitySnapshot;
@@ -64,7 +63,6 @@ final class ServerProcessImpl implements ServerProcess, Registries.Delegating {
     private final InstanceManager instance;
     private final BlockManager block;
     private final CommandManager command;
-    private final RecipeManager recipe;
     private final TeamManager team;
     private final GlobalEventHandler eventHandler;
     private final SchedulerManager scheduler;
@@ -92,7 +90,6 @@ final class ServerProcessImpl implements ServerProcess, Registries.Delegating {
         this.instance = new InstanceManager(this);
         this.block = new BlockManager();
         this.command = new CommandManager();
-        this.recipe = new RecipeManager();
         this.team = new TeamManager();
         this.eventHandler = new GlobalEventHandler();
         this.scheduler = new SchedulerManager();
@@ -139,11 +136,6 @@ final class ServerProcessImpl implements ServerProcess, Registries.Delegating {
     @Override
     public CommandManager command() {
         return command;
-    }
-
-    @Override
-    public RecipeManager recipe() {
-        return recipe;
     }
 
     @Override

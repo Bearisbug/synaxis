@@ -8,10 +8,6 @@ import java.util.function.UnaryOperator;
 public final class Generators {
 
     private static final List<EnumSpec> ENUMS = List.of(
-            new EnumSpec("recipe_types", "net.minestom.server.recipe", "RecipeType", true, name -> name.replace("CRAFTING_", ""), "RecipeTypeGenerator"),
-            new EnumSpec("recipe_display_types", "net.minestom.server.recipe.display", "RecipeDisplayType"),
-            new EnumSpec("slot_display_types", "net.minestom.server.recipe.display", "SlotDisplayType"),
-            new EnumSpec("recipe_book_categories", "net.minestom.server.recipe", "RecipeBookCategory"),
             new EnumSpec("consume_effects", "net.minestom.server.item.component", "ConsumeEffectType", false, UnaryOperator.identity(), "GenericEnumGenerator"),
             new EnumSpec("command_arguments", "net.minestom.server.command", "ArgumentParserType"),
             new EnumSpec("villager_types", "net.minestom.server.entity", "VillagerType")

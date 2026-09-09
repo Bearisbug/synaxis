@@ -146,8 +146,6 @@ module net.minestom.server {
     exports net.minestom.server.particle;
     exports net.minestom.server.ping;
     exports net.minestom.server.potion;
-    exports net.minestom.server.recipe;
-    exports net.minestom.server.recipe.display;
     exports net.minestom.server.registry;
     exports net.minestom.server.scoreboard;
     exports net.minestom.server.snapshot;

@@ -114,7 +114,6 @@ import net.minestom.server.network.packet.server.play.data.WorldPos;
 import net.minestom.server.network.player.ClientSettings;
 import net.minestom.server.network.player.GameProfile;
 import net.minestom.server.network.player.PlayerConnection;
-import net.minestom.server.recipe.RecipeManager;
 import net.minestom.server.registry.DynamicRegistry;
 import net.minestom.server.registry.RegistryKey;
 import net.minestom.server.scoreboard.BelowNameTag;
@@ -394,9 +393,6 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
         // Commands
         refreshCommands();
 
-        // Recipes
-        refreshRecipes();
-
         // Some client updates
         sendPacket(getPropertiesPacket()); // Send default properties
         triggerStatus((byte) (EntityStatuses.Player.PERMISSION_LEVEL_0 + permissionLevel)); // Set permission level
@@ -596,17 +592,6 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
      */
     public void refreshCommands() {
         sendPacket(MinecraftServer.getCommandManager().createDeclareCommandsPacket(this));
-    }
-
-    /**
-     * Refreshes the recipes and recipe book for this player, testing recipe predicates again.
-     */
-    public void refreshRecipes() {
-        RecipeManager recipeManager = MinecraftServer.getRecipeManager();
-        sendPackets(
-                recipeManager.getDeclareRecipesPacket(),
-                recipeManager.createRecipeBookResetPacket(this)
-        );
     }
 
     @Override

@@ -25,7 +25,6 @@ import net.minestom.server.listener.PlayerSettingsMenuListener;
 import net.minestom.server.listener.PlayerSpectatorListener;
 import net.minestom.server.listener.PlayerTickListener;
 import net.minestom.server.listener.PlayerVehicleListener;
-import net.minestom.server.listener.RecipeListener;
 import net.minestom.server.listener.TabCompleteListener;
 import net.minestom.server.listener.UseEntityListener;
 import net.minestom.server.listener.UseItemListener;
@@ -77,7 +76,6 @@ import net.minestom.server.network.packet.client.play.ClientInteractEntityPacket
 import net.minestom.server.network.packet.client.play.ClientNameItemPacket;
 import net.minestom.server.network.packet.client.play.ClientPickItemFromBlockPacket;
 import net.minestom.server.network.packet.client.play.ClientPickItemFromEntityPacket;
-import net.minestom.server.network.packet.client.play.ClientPlaceRecipePacket;
 import net.minestom.server.network.packet.client.play.ClientPlayerAbilitiesPacket;
 import net.minestom.server.network.packet.client.play.ClientPlayerActionPacket;
 import net.minestom.server.network.packet.client.play.ClientPlayerBlockPlacementPacket;
@@ -174,7 +172,6 @@ public final class PacketListenerManager {
         setPlayListener(ClientSettingsPacket.class, SettingsListener::listener);
         setPlayListener(ClientCreativeInventoryActionPacket.class, CreativeInventoryActionListener::listener);
         setPlayListener(ClientSetRecipeBookStatePacket.class, (_, _) -> {/* empty */});
-        setPlayListener(ClientPlaceRecipePacket.class, RecipeListener::listener);
         setPlayListener(ClientTabCompletePacket.class, TabCompleteListener::listener);
         setPlayListener(ClientPluginMessagePacket.class, PluginMessageListener::listener);
         setPlayListener(ClientPlayerAbilitiesPacket.class, AbilitiesListener::listener);

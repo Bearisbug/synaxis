@@ -132,7 +132,6 @@ import net.minestom.server.network.packet.server.play.CustomChatCompletionPacket
 import net.minestom.server.network.packet.server.play.DamageEventPacket;
 import net.minestom.server.network.packet.server.play.DeathCombatEventPacket;
 import net.minestom.server.network.packet.server.play.DeclareCommandsPacket;
-import net.minestom.server.network.packet.server.play.DeclareRecipesPacket;
 import net.minestom.server.network.packet.server.play.DeleteChatPacket;
 import net.minestom.server.network.packet.server.play.DestroyEntitiesPacket;
 import net.minestom.server.network.packet.server.play.DisguisedChatPacket;
@@ -171,7 +170,6 @@ import net.minestom.server.network.packet.server.play.OpenHorseWindowPacket;
 import net.minestom.server.network.packet.server.play.OpenSignEditorPacket;
 import net.minestom.server.network.packet.server.play.OpenWindowPacket;
 import net.minestom.server.network.packet.server.play.ParticlePacket;
-import net.minestom.server.network.packet.server.play.PlaceGhostRecipePacket;
 import net.minestom.server.network.packet.server.play.PlayerAbilitiesPacket;
 import net.minestom.server.network.packet.server.play.PlayerChatMessagePacket;
 import net.minestom.server.network.packet.server.play.PlayerInfoRemovePacket;
@@ -180,9 +178,6 @@ import net.minestom.server.network.packet.server.play.PlayerListHeaderAndFooterP
 import net.minestom.server.network.packet.server.play.PlayerPositionAndLookPacket;
 import net.minestom.server.network.packet.server.play.PlayerRotationPacket;
 import net.minestom.server.network.packet.server.play.ProjectilePowerPacket;
-import net.minestom.server.network.packet.server.play.RecipeBookAddPacket;
-import net.minestom.server.network.packet.server.play.RecipeBookRemovePacket;
-import net.minestom.server.network.packet.server.play.RecipeBookSettingsPacket;
 import net.minestom.server.network.packet.server.play.RemoveEntityEffectPacket;
 import net.minestom.server.network.packet.server.play.ResetScorePacket;
 import net.minestom.server.network.packet.server.play.RespawnPacket;
@@ -475,7 +470,6 @@ public final class PacketVanilla {
             entry(OpenSignEditorPacket.class, OpenSignEditorPacket.SERIALIZER),
             entry(PingPacket.class, PingPacket.SERIALIZER),
             entry(PingResponsePacket.class, PingResponsePacket.SERIALIZER),
-            entry(PlaceGhostRecipePacket.class, PlaceGhostRecipePacket.SERIALIZER),
             entry(PlayerAbilitiesPacket.class, PlayerAbilitiesPacket.SERIALIZER),
             entry(PlayerChatMessagePacket.class, PlayerChatMessagePacket.SERIALIZER),
             entry(EndCombatEventPacket.class, EndCombatEventPacket.SERIALIZER),
@@ -486,9 +480,6 @@ public final class PacketVanilla {
             entry(FacePlayerPacket.class, FacePlayerPacket.SERIALIZER),
             entry(PlayerPositionAndLookPacket.class, PlayerPositionAndLookPacket.SERIALIZER),
             entry(PlayerRotationPacket.class, PlayerRotationPacket.SERIALIZER),
-            entry(RecipeBookAddPacket.class, RecipeBookAddPacket.SERIALIZER),
-            entry(RecipeBookRemovePacket.class, RecipeBookRemovePacket.SERIALIZER),
-            entry(RecipeBookSettingsPacket.class, RecipeBookSettingsPacket.SERIALIZER),
             entry(DestroyEntitiesPacket.class, DestroyEntitiesPacket.SERIALIZER),
             entry(RemoveEntityEffectPacket.class, RemoveEntityEffectPacket.SERIALIZER),
             entry(ResetScorePacket.class, ResetScorePacket.SERIALIZER),
@@ -543,7 +534,6 @@ public final class PacketVanilla {
             entry(TransferPacket.class, TransferPacket.SERIALIZER),
             entry(EntityAttributesPacket.class, EntityAttributesPacket.SERIALIZER),
             entry(EntityEffectPacket.class, EntityEffectPacket.SERIALIZER),
-            entry(DeclareRecipesPacket.class, DeclareRecipesPacket.SERIALIZER),
             entry(TagsPacket.class, TagsPacket.SERIALIZER),
             entry(ProjectilePowerPacket.class, ProjectilePowerPacket.SERIALIZER),
             entry(CustomReportDetailsPacket.class, CustomReportDetailsPacket.SERIALIZER),

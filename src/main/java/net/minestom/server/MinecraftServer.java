@@ -40,7 +40,6 @@ import net.minestom.server.network.packet.PacketParser;
 import net.minestom.server.network.packet.server.common.PluginMessagePacket;
 import net.minestom.server.network.packet.server.play.ServerDifficultyPacket;
 import net.minestom.server.network.socket.Server;
-import net.minestom.server.recipe.RecipeManager;
 import net.minestom.server.registry.DynamicRegistry;
 import net.minestom.server.registry.Registries;
 import net.minestom.server.scoreboard.TeamManager;
@@ -181,10 +180,6 @@ public final class MinecraftServer implements MinecraftConstants {
 
     public static CommandManager getCommandManager() {
         return serverProcess.command();
-    }
-
-    public static RecipeManager getRecipeManager() {
-        return serverProcess.recipe();
     }
 
     public static TeamManager getTeamManager() {

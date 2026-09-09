@@ -173,7 +173,6 @@ import net.minestom.server.network.packet.server.play.CustomChatCompletionPacket
 import net.minestom.server.network.packet.server.play.DamageEventPacket;
 import net.minestom.server.network.packet.server.play.DeathCombatEventPacket;
 import net.minestom.server.network.packet.server.play.DeclareCommandsPacket;
-import net.minestom.server.network.packet.server.play.DeclareRecipesPacket;
 import net.minestom.server.network.packet.server.play.DeleteChatPacket;
 import net.minestom.server.network.packet.server.play.DestroyEntitiesPacket;
 import net.minestom.server.network.packet.server.play.DisguisedChatPacket;
@@ -212,7 +211,6 @@ import net.minestom.server.network.packet.server.play.OpenHorseWindowPacket;
 import net.minestom.server.network.packet.server.play.OpenSignEditorPacket;
 import net.minestom.server.network.packet.server.play.OpenWindowPacket;
 import net.minestom.server.network.packet.server.play.ParticlePacket;
-import net.minestom.server.network.packet.server.play.PlaceGhostRecipePacket;
 import net.minestom.server.network.packet.server.play.PlayerAbilitiesPacket;
 import net.minestom.server.network.packet.server.play.PlayerChatMessagePacket;
 import net.minestom.server.network.packet.server.play.PlayerInfoRemovePacket;
@@ -221,9 +219,6 @@ import net.minestom.server.network.packet.server.play.PlayerListHeaderAndFooterP
 import net.minestom.server.network.packet.server.play.PlayerPositionAndLookPacket;
 import net.minestom.server.network.packet.server.play.PlayerRotationPacket;
 import net.minestom.server.network.packet.server.play.ProjectilePowerPacket;
-import net.minestom.server.network.packet.server.play.RecipeBookAddPacket;
-import net.minestom.server.network.packet.server.play.RecipeBookRemovePacket;
-import net.minestom.server.network.packet.server.play.RecipeBookSettingsPacket;
 import net.minestom.server.network.packet.server.play.RemoveEntityEffectPacket;
 import net.minestom.server.network.packet.server.play.ResetScorePacket;
 import net.minestom.server.network.packet.server.play.RespawnPacket;
@@ -280,11 +275,6 @@ import net.minestom.server.particle.Particle;
 import net.minestom.server.potion.Potion;
 import net.minestom.server.potion.PotionEffect;
 import net.minestom.server.potion.PotionType;
-import net.minestom.server.recipe.Ingredient;
-import net.minestom.server.recipe.RecipeBookCategory;
-import net.minestom.server.recipe.RecipeProperty;
-import net.minestom.server.recipe.display.RecipeDisplay;
-import net.minestom.server.recipe.display.SlotDisplay;
 import net.minestom.server.registry.Registries;
 import net.minestom.server.scoreboard.Sidebar;
 import net.minestom.server.sound.SoundEvent;
@@ -464,28 +454,7 @@ public class PacketWriteReadRegistriesTest {
         addServerPackets(new ClearTitlesPacket(false));
         addServerPackets(new CloseWindowPacket((byte) 2));
         addServerPackets(new CollectItemPacket(5, 5, 5));
-        var recipeDisplay = new RecipeDisplay.CraftingShapeless(
-                List.of(new SlotDisplay.Item(Material.STONE)),
-                new SlotDisplay.Item(Material.STONE_BRICKS),
-                new SlotDisplay.Item(Material.CRAFTING_TABLE)
-        );
-        addServerPackets(new PlaceGhostRecipePacket(0, recipeDisplay));
         addServerPackets(new DeathCombatEventPacket(5, COMPONENT));
-        addServerPackets(new DeclareRecipesPacket(Map.of(
-                RecipeProperty.SMITHING_BASE, List.of(Material.STONE),
-                RecipeProperty.SMITHING_TEMPLATE, List.of(Material.STONE),
-                RecipeProperty.SMITHING_ADDITION, List.of(Material.STONE),
-                RecipeProperty.FURNACE_INPUT, List.of(Material.STONE),
-                RecipeProperty.BLAST_FURNACE_INPUT, List.of(Material.IRON_HOE, Material.DANDELION),
-                RecipeProperty.SMOKER_INPUT, List.of(Material.STONE),
-                RecipeProperty.CAMPFIRE_INPUT, List.of(Material.STONE)),
-                List.of(new DeclareRecipesPacket.StonecutterRecipe(new Ingredient(Material.DIAMOND),
-                        new SlotDisplay.ItemStack(ItemStack.of(Material.GOLD_BLOCK))))
-        ));
-        addServerPackets(new RecipeBookAddPacket(List.of(new RecipeBookAddPacket.Entry(1, recipeDisplay, null,
-                RecipeBookCategory.CRAFTING_MISC, List.of(new Ingredient(Material.STONE)), true, true)), false));
-        addServerPackets(new RecipeBookRemovePacket(List.of(1)));
-
         addServerPackets(new DestroyEntitiesPacket(List.of(5, 5, 5)));
         addServerPackets(new DisconnectPacket(COMPONENT));
         addServerPackets(new DisplayScoreboardPacket((byte) 5, "scoreboard"));
@@ -665,7 +634,6 @@ public class PacketWriteReadRegistriesTest {
         addServerPackets(new UpdateLightPacket(0, 0, new LightData(new BitSet(), new BitSet(), new BitSet(), new BitSet(), List.of(), List.of())));
         addServerPackets(new MoveMinecartPacket(1, List.of(new MoveMinecartPacket.LerpStep(VEC, Vec.ZERO, 1f, 1f, 1f))));
         addServerPackets(new PlayerChatMessagePacket(0, UUID.randomUUID(), 0, new MessageSignature(new byte[256]), new SignedMessageBody.Packed("hey", Instant.EPOCH, 0L, new LastSeenMessages.Packed(List.of())), null, new FilterMask(FilterMask.Type.FULLY_FILTERED, new BitSet()), 1, Component.text("hey"), null));
-        addServerPackets(new RecipeBookSettingsPacket(false, false, true, false, false, false, false, false));
         addServerPackets(new RemoveEntityEffectPacket(0, PotionEffect.BAD_OMEN));
         addServerPackets(new ResetScorePacket("dummy_score", null), new ResetScorePacket("duoka", "testObjective"));
         addServerPackets(new TestInstanceBlockStatus(Component.text("Minestom is cool"), null), new TestInstanceBlockStatus(Component.text("Where is season 5 william?"), BLOCK_VEC));

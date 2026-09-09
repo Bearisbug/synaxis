@@ -87,7 +87,6 @@ module net.minestom.server {
     exports net.minestom.server.entity.pathfinding;
     exports net.minestom.server.entity.pathfinding.followers;
     exports net.minestom.server.entity.pathfinding.generators;
-    exports net.minestom.server.entity.vehicle;
     exports net.minestom.server.event;
     exports net.minestom.server.event.book;
     exports net.minestom.server.event.entity;

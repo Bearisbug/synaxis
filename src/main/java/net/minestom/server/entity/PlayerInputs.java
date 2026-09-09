@@ -1,4 +1,4 @@
-package net.minestom.server.entity.vehicle;
+package net.minestom.server.entity;
 
 public class PlayerInputs {
 

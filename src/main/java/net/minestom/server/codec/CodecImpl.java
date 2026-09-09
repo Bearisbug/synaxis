@@ -298,7 +298,12 @@ final class CodecImpl {
                 final Result<D> valueResult = valueCodec.encode(coder, entry.getValue());
                 if (!(valueResult instanceof Result.Ok(D encodedValue)))
                     return valueResult.cast();
-                map.put(encodedKey, encodedValue);
+                // A transcoder map can only be keyed by strings, and the NBT and Java builders drop anything else
+                // without a word, which turns the whole map into an empty one
+                final Result<String> keyStringResult = coder.getString(encodedKey);
+                if (!(keyStringResult instanceof Result.Ok(String keyString)))
+                    return new Result.Error<>("Map key must encode to a string: " + encodedKey);
+                map.put(keyString, encodedValue);
             }
 
             return new Result.Ok<>(map.build());

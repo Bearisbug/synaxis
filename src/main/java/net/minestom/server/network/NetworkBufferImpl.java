@@ -318,6 +318,11 @@ final class NetworkBufferImpl implements NetworkBuffer {
             deflater.setInput(input);
             deflater.finish();
             final int bytes = deflater.deflate(outputBuffer);
+            if (!deflater.finished()) {
+                // Deflater#deflate stops at the end of the output without reporting it,
+                // publishing the partial stream would produce a self-consistent but broken frame
+                throw new IndexOutOfBoundsException("Compressed payload exceeds output capacity");
+            }
             output.advanceWrite(bytes);
             return bytes;
         } finally {

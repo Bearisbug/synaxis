@@ -169,7 +169,8 @@ public final class PacketWriting {
             }
             // Add 15 bytes to account for the 3 potential varints in the packet header
             // Packet Length - Data Length - Packet ID
-            tmpBuffer.resize(sizeOf + 15);
+            // Plus zlib's compressBound margin, deflate grows incompressible payloads
+            tmpBuffer.resize(sizeOf + 15 + (sizeOf >> 12) + (sizeOf >> 14) + (sizeOf >> 25) + 13);
             tmpBuffer.writeIndex(0);
             writeFramedPacket(tmpBuffer, serializer, id, packet, compressionThreshold);
             return tmpBuffer.copy(0, tmpBuffer.writeIndex());

@@ -49,6 +49,7 @@ dependencies {
     implementation(libs.jcTools)
 
     testImplementation(project(":testing"))
+    testImplementation("com.tngtech.archunit:archunit-junit5:1.5.0")
 }
 
 tasks.withType<JavaCompile> {

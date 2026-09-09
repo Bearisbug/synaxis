@@ -1,5 +1,7 @@
 package net.minestom.server.event;
 
+import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
+import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import net.minestom.server.MinecraftServer;
 import net.minestom.server.ServerFlag;
 import net.minestom.server.event.trait.AsyncEvent;
@@ -356,6 +358,13 @@ non-sealed class EventNodeImpl<T extends Event> implements EventNode<T> {
     private record Cached<E>(@Nullable Consumer<E> listener) {
     }
 
+    /**
+     * A mapped node handle, weakly referencing both its owner and the handle itself.
+     */
+    private record MappedHandler<E extends Event>(WeakReference<Object> owner,
+                                                  WeakReference<ListenerHandle<E>> handle) {
+    }
+
     @SuppressWarnings("unchecked")
     final class Handle<E extends Event> implements ListenerHandle<E> {
         private final Class<E> eventType;
@@ -496,7 +505,11 @@ non-sealed class EventNodeImpl<T extends Event> implements EventNode<T> {
             final var mappedNodeCache = node.registeredMappedNode;
             if (mappedNodeCache.isEmpty()) return null;
             Set<EventFilter<E, ?>> filters = new HashSet<>(mappedNodeCache.size());
-            Map<Object, WeakReference<Handle<E>>> handlers = new WeakHashMap<>(mappedNodeCache.size());
+            // Bucketed by owner hash code instead of being a Map keyed by the owner itself: the lookup
+            // below runs on every dispatch without any lock, which rules out WeakHashMap (its get()
+            // structurally modifies the map through expungeStaleEntries) while owners must still be
+            // referenced weakly so that a mapped node never keeps its owner alive.
+            Int2ObjectMap<List<MappedHandler<E>>> handlers = new Int2ObjectOpenHashMap<>(mappedNodeCache.size());
 
             // Retrieve all filters used to retrieve potential handlers
             for (var mappedEntry : mappedNodeCache.entrySet()) {
@@ -506,7 +519,9 @@ non-sealed class EventNodeImpl<T extends Event> implements EventNode<T> {
                 final Handle<E> handle = (Handle<E>) mappedNode.getHandle(eventType);
                 if (!handle.hasListener()) continue; // Implicit update
                 filters.add(mappedNode.filter);
-                handlers.put(mappedEntry.getKey(), new WeakReference<>(handle));
+                final Object owner = mappedEntry.getKey();
+                handlers.computeIfAbsent(owner.hashCode(), (int _) -> new ArrayList<>(1))
+                        .add(new MappedHandler<>(new WeakReference<>(owner), new WeakReference<>(handle)));
             }
             // If at least one mapped node listen to this handle type,
             // loop through them and forward to mapped node if there is a match
@@ -514,9 +529,16 @@ non-sealed class EventNodeImpl<T extends Event> implements EventNode<T> {
             final EventFilter<E, ?>[] filterList = filters.toArray(EventFilter[]::new);
             final BiConsumer<EventFilter<E, ?>, E> mapper = (filter, event) -> {
                 final Object handler = filter.castHandler(event);
-                final WeakReference<Handle<E>> handleRef = handlers.get(handler);
-                final Handle<E> handle = handleRef != null ? handleRef.get() : null;
-                if (handle != null) handle.call(event);
+                if (handler == null) return;
+                final List<MappedHandler<E>> candidates = handlers.get(handler.hashCode());
+                if (candidates == null) return;
+                for (MappedHandler<E> candidate : candidates) {
+                    final Object owner = candidate.owner().get();
+                    if (owner == null || !handler.equals(owner)) continue;
+                    final ListenerHandle<E> handle = candidate.handle().get();
+                    if (handle != null) handle.call(event);
+                    return;
+                }
             };
             // Specialize the consumer depending on the number of filters to avoid looping
             return switch (filterList.length) {

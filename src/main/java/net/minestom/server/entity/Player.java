@@ -723,8 +723,14 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
         };
 
         var _ = CompletableFuture.allOf(futures.toArray(CompletableFuture[]::new))
-                .thenRun(() -> {
+                .whenComplete((_, throwable) -> {
+                    // A failing chunk must still release the latch, otherwise a caller joining from
+                    // the calling thread would wait on it forever.
                     scheduler.scheduleNextProcess(() -> {
+                        if (throwable != null) {
+                            future.completeExceptionally(throwable);
+                            return;
+                        }
                         runnable.accept(instance);
                         future.complete(null);
                     });

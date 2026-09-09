@@ -10,6 +10,7 @@ import net.minestom.server.event.EventHandler;
 import net.minestom.server.event.EventNode;
 import net.minestom.server.event.inventory.InventoryItemChangeEvent;
 import net.minestom.server.event.trait.InventoryEvent;
+import net.minestom.server.inventory.click.Click;
 import net.minestom.server.inventory.click.InventoryClickProcessor;
 import net.minestom.server.item.ItemStack;
 import net.minestom.server.network.packet.server.play.CloseWindowPacket;
@@ -113,6 +114,18 @@ public sealed abstract class AbstractInventory implements InventoryClickHandler,
     }
 
     /**
+     * A click is a read-modify-write cycle over the clicked slots, so it has to run inside the same monitor as
+     * {@link #setItemStack(int, ItemStack)} and {@link #processItemStack(ItemStack, TransactionType, TransactionOption)}.
+     * Otherwise two viewers of the same inventory can read the same slot and each of them takes a copy of it.
+     */
+    @Override
+    public boolean handleClick(Player player, Click click) {
+        synchronized (this) {
+            return InventoryClickHandler.super.handleClick(player, click);
+        }
+    }
+
+    /**
      * Sets an {@link ItemStack} at the specified slot and send relevant update to the viewer(s).
      *
      * @param slot      the slot to set the item
@@ -143,7 +156,7 @@ public sealed abstract class AbstractInventory implements InventoryClickHandler,
     }
 
     protected void UNSAFE_itemInsert(int slot, ItemStack item, ItemStack previous, boolean sendPacket) {
-        itemStacks[slot] = item;
+        ITEM_UPDATER.setVolatile(itemStacks, slot, item);
         if (sendPacket) sendSlotRefresh(slot, item);
     }
 

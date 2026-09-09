@@ -114,15 +114,6 @@ import net.minestom.server.entity.metadata.projectile.SpectralArrowMeta;
 import net.minestom.server.entity.metadata.projectile.ThrownTridentMeta;
 import net.minestom.server.entity.metadata.projectile.WindChargeMeta;
 import net.minestom.server.entity.metadata.projectile.WitherSkullMeta;
-import net.minestom.server.entity.metadata.water.AxolotlMeta;
-import net.minestom.server.entity.metadata.water.DolphinMeta;
-import net.minestom.server.entity.metadata.water.GlowSquidMeta;
-import net.minestom.server.entity.metadata.water.SquidMeta;
-import net.minestom.server.entity.metadata.water.fish.CodMeta;
-import net.minestom.server.entity.metadata.water.fish.PufferfishMeta;
-import net.minestom.server.entity.metadata.water.fish.SalmonMeta;
-import net.minestom.server.entity.metadata.water.fish.TadpoleMeta;
-import net.minestom.server.entity.metadata.water.fish.TropicalFishMeta;
 import org.jetbrains.annotations.ApiStatus;
 import org.jetbrains.annotations.CheckReturnValue;
 import org.jetbrains.annotations.Nullable;
@@ -312,7 +303,6 @@ public final class MetadataHolder {
             entry(EntityType.ARMADILLO, ArmadilloMeta::new),
             entry(EntityType.ARMOR_STAND, ArmorStandMeta::new),
             entry(EntityType.ARROW, ArrowMeta::new),
-            entry(EntityType.AXOLOTL, AxolotlMeta::new),
             entry(EntityType.BAMBOO_RAFT, BoatMeta::new),
             entry(EntityType.BAMBOO_CHEST_RAFT, BoatMeta::new),
             entry(EntityType.BEE, BeeMeta::new),
@@ -330,13 +320,11 @@ public final class MetadataHolder {
             entry(EntityType.CHERRY_BOAT, BoatMeta::new),
             entry(EntityType.CHERRY_CHEST_BOAT, BoatMeta::new),
             entry(EntityType.CHICKEN, ChickenMeta::new),
-            entry(EntityType.COD, CodMeta::new),
             entry(EntityType.COW, CowMeta::new),
             entry(EntityType.CREAKING, CreakingMeta::new),
             entry(EntityType.CREEPER, CreeperMeta::new),
             entry(EntityType.DARK_OAK_BOAT, BoatMeta::new),
             entry(EntityType.DARK_OAK_CHEST_BOAT, BoatMeta::new),
-            entry(EntityType.DOLPHIN, DolphinMeta::new),
             entry(EntityType.DONKEY, DonkeyMeta::new),
             entry(EntityType.DRAGON_FIREBALL, DragonFireballMeta::new),
             entry(EntityType.DROWNED, DrownedMeta::new),
@@ -356,7 +344,6 @@ public final class MetadataHolder {
             entry(EntityType.FROG, FrogMeta::new),
             entry(EntityType.GIANT, GiantMeta::new),
             entry(EntityType.GLOW_ITEM_FRAME, GlowItemFrameMeta::new),
-            entry(EntityType.GLOW_SQUID, GlowSquidMeta::new),
             entry(EntityType.GOAT, GoatMeta::new),
             entry(EntityType.GUARDIAN, GuardianMeta::new),
             entry(EntityType.HAPPY_GHAST, HappyGhastMeta::new),
@@ -399,10 +386,8 @@ public final class MetadataHolder {
             entry(EntityType.PILLAGER, PillagerMeta::new),
             entry(EntityType.POLAR_BEAR, PolarBearMeta::new),
             entry(EntityType.TNT, PrimedTntMeta::new),
-            entry(EntityType.PUFFERFISH, PufferfishMeta::new),
             entry(EntityType.RABBIT, RabbitMeta::new),
             entry(EntityType.RAVAGER, RavagerMeta::new),
-            entry(EntityType.SALMON, SalmonMeta::new),
             entry(EntityType.SHEEP, SheepMeta::new),
             entry(EntityType.SHULKER_BULLET, ShulkerBulletMeta::new),
             entry(EntityType.SILVERFISH, SilverfishMeta::new),
@@ -416,16 +401,13 @@ public final class MetadataHolder {
             entry(EntityType.SPLASH_POTION, SplashPotionMeta::new),
             entry(EntityType.SPRUCE_BOAT, BoatMeta::new),
             entry(EntityType.SPRUCE_CHEST_BOAT, BoatMeta::new),
-            entry(EntityType.SQUID, SquidMeta::new),
             entry(EntityType.STRAY, StrayMeta::new),
             entry(EntityType.STRIDER, StriderMeta::new),
-            entry(EntityType.TADPOLE, TadpoleMeta::new),
             entry(EntityType.EGG, ThrownEggMeta::new),
             entry(EntityType.ENDER_PEARL, ThrownEnderPearlMeta::new),
             entry(EntityType.EXPERIENCE_BOTTLE, ThrownExperienceBottleMeta::new),
             entry(EntityType.TRIDENT, ThrownTridentMeta::new),
             entry(EntityType.TRADER_LLAMA, TraderLlamaMeta::new),
-            entry(EntityType.TROPICAL_FISH, TropicalFishMeta::new),
             entry(EntityType.TURTLE, TurtleMeta::new),
             entry(EntityType.VEX, VexMeta::new),
             entry(EntityType.VINDICATOR, VindicatorMeta::new),

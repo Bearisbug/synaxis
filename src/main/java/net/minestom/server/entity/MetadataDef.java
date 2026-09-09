@@ -288,17 +288,8 @@ public sealed class MetadataDef {
                 ArmadilloMeta.State.IDLE);
     }
 
-    public static final class Dolphin extends AgeableMob {
-        public static final Entry<Boolean> HAS_FISH = index(0, Metadata::Boolean, false);
-        public static final Entry<Integer> MOISTURE_LEVEL = index(1, Metadata::VarInt, 2400);
-    }
-
     public static sealed class AbstractFish extends Mob {
         public static final Entry<Boolean> FROM_BUCKET = index(0, Metadata::Boolean, false);
-    }
-
-    public static final class PufferFish extends AbstractFish {
-        public static final Entry<Integer> PUFF_STATE = index(0, Metadata::VarInt, 0);
     }
 
     public static final class Salmon extends AbstractFish {
@@ -307,10 +298,6 @@ public sealed class MetadataDef {
 
     public static final class TropicalFish extends AbstractFish {
         public static final Entry<Integer> VARIANT = index(0, Metadata::VarInt, 0);
-    }
-
-    public static final class Tadpole extends AbstractFish {
-        public static final Entry<Boolean> AGE_LOCKED = index(0, Metadata::Boolean, false);
     }
 
     public static sealed class AgeableMob extends Mob {
@@ -363,10 +350,6 @@ public sealed class MetadataDef {
         public static final Entry<Boolean> HAS_STUNG = bitMask(0, (byte) 0x04, false);
         public static final Entry<Boolean> HAS_NECTAR = bitMask(0, (byte) 0x08, false);
         public static final Entry<Long> ANGER_END_TIME = index(1, Metadata::VarLong, -1L);
-    }
-
-    public static final class GlowSquid extends AgeableMob {
-        public static final Entry<Integer> DARK_TICKS_REMAINING = index(0, Metadata::VarInt, 0);
     }
 
     public static final class Fox extends AgeableMob {

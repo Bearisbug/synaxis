@@ -44,10 +44,13 @@ gradle-app.setting
 .windsurf/
 .zed/
 .github/copilot/
-CLAUDE.md
-AGENTS.md
 GEMINI.md
 
 # JFR
 /.profileconfig.json
 
+
+# 运行时密钥只进 .env，仓内只放 .env.example
+.env
+.env.*
+!.env.example

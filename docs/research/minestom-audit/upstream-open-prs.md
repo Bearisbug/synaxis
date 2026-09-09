@@ -1,0 +1,60 @@
+- #3359 [2026-09-06] chore: bump the non-breaking group with 2 updates
+- #3356 [2026-08-29] fix: match vanilla's neighbor update order
+- #3354 [2026-08-29] feat: server property API
+- #3348 [2026-08-23] Fix Palette#compare between single-value and indirect palettes
+- #3347 [2026-08-23] feat: network error handling behind server flags
+- #3346 [2026-08-22] fix: Player#sendPackets(Collection) generic bound covariance
+- #3342 [2026-08-17] Scratch status fix
+- #3341 [2026-08-16] refactor: Delete Map API
+- #3324 [2026-08-07] refactor!: rework palette storage
+- #3316 [2026-08-01] Rename resource location argument
+- #3304 [2026-07-20] refactor: Do breaking changes from errorprone
+- #3302 [2026-07-20] Add hashed seed setter
+- #3298 [2026-07-18] feat: Extract block placement and digging pipelines over a world interface
+- #3297 [2026-07-18] feat: Per-entity block placement rule
+- #3296 [2026-07-18] fix: Replace replaceable blocks in place when clicked
+- #3295 [2026-07-18] feat: Extract a public LightEngine for lighting arbitrary worlds
+- #3288 [2026-07-12] Match vanilla/Paper registry tag ordering
+- #3286 [2026-07-12] Entity external ticking
+- #3280 [2026-07-10] Scoreboard rework
+- #3271 [2026-07-07] Eliminate exception manager static usage in networking
+- #3262 [2026-07-02] Collision speedup
+- #3252 [2026-06-25] Add tab completion for commands
+- #3249 [2026-06-25] skip empty equipment slots (like vanilla)
+- #3208 [2026-05-31] Allow uuid deserialization from dashless string
+- #3207 [2026-05-31] fix: detect eye level fluid in updatepose to enable swimming pose
+- #3194 [2026-05-27] WIP PointIndex API
+- #3184 [2026-05-18] Add applyRegistryDataPacket
+- #3172 [2026-05-15] Add more packet reading/writing utils
+- #3169 [2026-05-14] Make auth code more testable and isolated
+- #3162 [2026-05-13] Collision speedup
+- #3159 [2026-05-12] Add ProtocolSession
+- #3151 [2026-05-11] Improve component nbt binary writer
+- #3144 [2026-05-11] Builtin network templates
+- #3129 [2026-05-02] fix: propagate suggestion callback when argument parsing fails
+- #3119 [2026-04-24] fix: ArgumentItemStack parsing
+- #3092 [2026-04-07] refactor: Make PlayerUseItemOnBlock implement BlockEvent for consistency.
+- #3058 [2026-03-06] Fix/command suggestions
+- #3056 [2026-03-04] Fix/groundnodegerator npe
+- #3048 [2026-02-28] Add logic to discard echoed player input
+- #3046 [2026-02-27] feat: typed block properties
+- #3033 [2026-02-15] Add module class for better integration for external modules
+- #3006 [2025-12-27] feat: pathfinding rewrite with step-up support
+- #2994 [2025-12-11] feat: area entity lookup
+- #2984 [2025-11-26] feat: per-instance entity view distance
+- #2982 [2025-11-25] feat: extensive batch API improvements
+- #2980 [2025-11-24] feat: add `PlayerInfoUpdateEvent` to control tab list contents
+- #2967 [2025-11-04] Raycasting API
+- #2947 [2025-10-18] Fix: Use instance view distance
+- #2935 [2025-10-05] Update the section API
+- #2916 [2025-09-20] Add horse inventory
+- #2902 [2025-08-30] Entity AI overhaul
+- #2891 [2025-08-20] Accessible block entities
+- #2791 [2025-06-25] Block batch API rework
+- #2715 [2025-04-14] feat: ThreadDispatcher handlers
+- #2689 [2025-03-17] Added #isReplaceable() check to BlockPlacementListener
+- #2674 [2025-03-06] Send AcknowledgeBlockChangePacket in all cases
+- #2655 [2025-02-06] Entity Query API
+- #2654 [2025-02-05] ChunkSystem
+- #2653 [2025-02-05] Support Entity serializing
+- #2646 [2025-02-02] Rework Entity AI

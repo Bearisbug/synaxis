@@ -105,7 +105,6 @@ import net.minestom.server.network.packet.server.configuration.RegistryDataPacke
 import net.minestom.server.network.packet.server.configuration.ResetChatPacket;
 import net.minestom.server.network.packet.server.configuration.SelectKnownPacksPacket;
 import net.minestom.server.network.packet.server.configuration.UpdateEnabledFeaturesPacket;
-import net.minestom.server.network.packet.server.login.EncryptionRequestPacket;
 import net.minestom.server.network.packet.server.login.LoginDisconnectPacket;
 import net.minestom.server.network.packet.server.login.LoginPluginRequestPacket;
 import net.minestom.server.network.packet.server.login.LoginSuccessPacket;
@@ -377,7 +376,6 @@ public final class PacketVanilla {
 
     static final PacketRegistry<ServerPacket.Login> SERVER_LOGIN = registry(ConnectionState.LOGIN, PacketRegistry.ConnectionSide.SERVER,
             entry(LoginDisconnectPacket.class, LoginDisconnectPacket.SERIALIZER),
-            entry(EncryptionRequestPacket.class, EncryptionRequestPacket.SERIALIZER),
             entry(LoginSuccessPacket.class, LoginSuccessPacket.SERIALIZER),
             entry(SetCompressionPacket.class, SetCompressionPacket.SERIALIZER),
             entry(LoginPluginRequestPacket.class, LoginPluginRequestPacket.SERIALIZER),

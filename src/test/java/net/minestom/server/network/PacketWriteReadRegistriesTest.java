@@ -34,7 +34,6 @@ import net.minestom.server.entity.PlayerHand;
 import net.minestom.server.entity.PlayerSkin;
 import net.minestom.server.entity.RelativeFlags;
 import net.minestom.server.entity.damage.DamageType;
-import net.minestom.server.extras.mojangAuth.MojangCrypt;
 import net.minestom.server.instance.block.BlockEntityType;
 import net.minestom.server.instance.block.BlockFace;
 import net.minestom.server.instance.gamerule.GameRule;
@@ -145,7 +144,6 @@ import net.minestom.server.network.packet.server.configuration.RegistryDataPacke
 import net.minestom.server.network.packet.server.configuration.ResetChatPacket;
 import net.minestom.server.network.packet.server.configuration.SelectKnownPacksPacket;
 import net.minestom.server.network.packet.server.configuration.UpdateEnabledFeaturesPacket;
-import net.minestom.server.network.packet.server.login.EncryptionRequestPacket;
 import net.minestom.server.network.packet.server.login.LoginDisconnectPacket;
 import net.minestom.server.network.packet.server.login.LoginPluginRequestPacket;
 import net.minestom.server.network.packet.server.login.LoginSuccessPacket;
@@ -282,6 +280,9 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
+import java.security.KeyPairGenerator;
+import java.security.NoSuchAlgorithmException;
+import java.security.PublicKey;
 import java.time.Instant;
 import java.util.BitSet;
 import java.util.Collection;
@@ -324,6 +325,16 @@ public class PacketWriteReadRegistriesTest {
             assertTrue(set.add(packet), "Found duplicate server packet in %s with `%s`".formatted(packet.getClass().getSimpleName(), packet));
     }
 
+    private static PublicKey testPublicKey() {
+        try {
+            KeyPairGenerator generator = KeyPairGenerator.getInstance("RSA");
+            generator.initialize(1024);
+            return generator.generateKeyPair().getPublic();
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException(e);
+        }
+    }
+
     @SafeVarargs
     private static <T extends ClientPacket> void addClientPackets(T... packets) {
         assertNotEquals(0, packets.length);
@@ -343,11 +354,6 @@ public class PacketWriteReadRegistriesTest {
         addServerPackets(
                 new LoginDisconnectPacket(COMPONENT.append(Component.text(" your Disconnected!", NamedTextColor.BLUE))),
                 new LoginDisconnectPacket(COMPONENT.appendNewline().appendSpace().append(Component.text("Disconnected!", NamedTextColor.RED)))
-        );
-        addServerPackets(
-                new EncryptionRequestPacket("abvcr3ujt324joi32aaa", new byte[124], new byte[65], true), // max test
-                new EncryptionRequestPacket("server", new byte[64], new byte[235], false),
-                new EncryptionRequestPacket("", new byte[54], new byte[23], true) // default
         );
         addServerPackets(
                 new LoginSuccessPacket(new GameProfile(UUID.randomUUID(), OG), UUID.randomUUID()),
@@ -747,7 +753,7 @@ public class PacketWriteReadRegistriesTest {
         addClientPackets(new ClientSignedCommandChatPacket("helloworld", Long.MAX_VALUE, 0L, new ArgumentSignatures(List.of(new ArgumentSignatures.Entry("hey", new MessageSignature(new byte[256])))), new LastSeenMessages.Update(100, new BitSet(20)), (byte) 0));
         addClientPackets(new ClientChatMessagePacket("My name is bob", Long.MAX_VALUE, 0L, new MessageSignature(new byte[256]), 100, new BitSet(), (byte) 100), new ClientChatMessagePacket("hello", 0L, 0L, null, 0, new BitSet(), (byte) 42));
         //TODO (signed) use a key for tests
-        addClientPackets(new ClientChatSessionUpdatePacket(new ChatSession(UUID.randomUUID(), new PlayerPublicKey(Instant.EPOCH, Objects.requireNonNull(MojangCrypt.generateKeyPair()).getPublic(), new byte[4096]))));
+        addClientPackets(new ClientChatSessionUpdatePacket(new ChatSession(UUID.randomUUID(), new PlayerPublicKey(Instant.EPOCH, testPublicKey(), new byte[4096]))));
         addClientPackets(new ClientChunkBatchReceivedPacket(0.5f));
         addClientPackets(new ClientStatusPacket(ClientStatusPacket.Action.PERFORM_RESPAWN), new ClientStatusPacket(ClientStatusPacket.Action.REQUEST_STATS));
         addClientPackets(new ClientTickEndPacket());

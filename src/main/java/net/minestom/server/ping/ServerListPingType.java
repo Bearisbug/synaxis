@@ -3,10 +3,8 @@ package net.minestom.server.ping;
 import com.google.gson.JsonObject;
 import net.kyori.adventure.text.serializer.gson.GsonComponentSerializer;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
-import net.minestom.server.MinecraftServer;
 import net.minestom.server.codec.Transcoder;
 import net.minestom.server.event.server.ServerListPingEvent;
-import net.minestom.server.extras.lan.OpenToLAN;
 
 import java.util.function.Function;
 
@@ -35,14 +33,7 @@ public enum ServerListPingType {
     /**
      * The client is on version 1.3.2 or lower and supports a description and the player count.
      */
-    LEGACY_UNVERSIONED(data -> getLegacyPingResponse(data, false)),
-
-    /**
-     * The ping that is sent when {@link OpenToLAN} is enabled and sending packets.
-     * Only the description formatted as a legacy string is sent.
-     * Ping events with this ping version are <b>not</b> cancellable.
-     */
-    OPEN_TO_LAN(ServerListPingType::getOpenToLANPing);
+    LEGACY_UNVERSIONED(data -> getLegacyPingResponse(data, false));
 
     private final Function<Status, String> pingResponseCreator;
 
@@ -61,17 +52,6 @@ public enum ServerListPingType {
     }
 
     private static final LegacyComponentSerializer SECTION = LegacyComponentSerializer.legacySection();
-
-    /**
-     * Creates a ping sent when the server is sending {@link OpenToLAN} packets.
-     *
-     * @param status the response data
-     * @return the ping
-     * @see OpenToLAN
-     */
-    public static String getOpenToLANPing(Status status) {
-        return String.format("[MOTD]%s[/MOTD][AD]%s[/AD]", SECTION.serialize(status.description()), MinecraftServer.getServer().getPort());
-    }
 
     /**
      * Creates a legacy ping response for client versions below the Netty rewrite (1.6-).

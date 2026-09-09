@@ -240,51 +240,21 @@ public non-sealed class PlayerInventory extends AbstractInventory {
             // CASE: shift-clicking equipped armor or your off-hand item
             // we want to go through the inventory slots first
             // and then through the hotbar going left to right
-            clickResult = clickProcessor.shiftClick(
-                    this, this,
+            clickResult = shiftClickChained(player, slot, clicked, cursor,
                     9, INNER_INVENTORY_SIZE, 1,
-                    player, slot, clicked, cursor
-            );
-
-            if (clickResult.isCancel()) {
-                clickResult = clickProcessor.shiftClick(
-                        this, this,
-                        0, 9, 1,
-                        player, slot, clicked, cursor
-                );
-            }
+                    0, 9, 1);
         } else if (craftingGridClick) {
             // CASE: shift-clicking an item from the crafting grid into your inventory
             // we want to prioritize the inventory from left-to-right and then the hotbar from left-to-right
-            clickResult = clickProcessor.shiftClick(
-                    this, this,
+            clickResult = shiftClickChained(player, slot, clicked, cursor,
                     9, INNER_INVENTORY_SIZE, 1,
-                    player, slot, clicked, cursor
-            );
-
-            if (clickResult.isCancel()) {
-                clickResult = clickProcessor.shiftClick(
-                        this, this,
-                        0, 9, 1,
-                        player, slot, clicked, cursor
-                );
-            }
+                    0, 9, 1);
         } else if (craftingResultClick) {
             // CASE: shift-clicking an item from the crafting grid result into your inventory
             // we want to prioritize the hotbar from right-to-left and then the inventory from right-to-left
-            clickResult = clickProcessor.shiftClick(
-                    this, this,
+            clickResult = shiftClickChained(player, slot, clicked, cursor,
                     8, -1, -1,
-                    player, slot, clicked, cursor
-            );
-
-            if (clickResult.isCancel()) {
-                clickResult = clickProcessor.shiftClick(
-                        this, this,
-                        INNER_INVENTORY_SIZE - 1, 8, -1,
-                        player, slot, clicked, cursor
-                );
-            }
+                    INNER_INVENTORY_SIZE - 1, 8, -1);
         } else {
             // CASE: shift-clicking an item in the hotbar or inventory
             clickResult = clickProcessor.shiftClick(
@@ -303,6 +273,22 @@ public non-sealed class PlayerInventory extends AbstractInventory {
         setCursorItem(clickResult.getCursor());
         update(); // FIXME: currently not properly client-predicted
         return true;
+    }
+
+    /**
+     * Runs the two shift-click passes in sequence: whatever the first range could not take is offered to the second
+     * one instead of being written back into the clicked slot.
+     */
+    private InventoryClickResult shiftClickChained(Player player, int slot, ItemStack clicked, ItemStack cursor,
+                                                   int firstStart, int firstEnd, int firstStep,
+                                                   int secondStart, int secondEnd, int secondStep) {
+        final InventoryClickResult first = clickProcessor.shiftClick(this, this,
+                firstStart, firstEnd, firstStep, player, slot, clicked, cursor);
+        if (first.getClicked().isAir()) return first;
+
+        final InventoryClickResult second = clickProcessor.shiftClick(this, this,
+                secondStart, secondEnd, secondStep, player, slot, first.getClicked(), cursor);
+        return second.isCancel() ? first : second;
     }
 
     @Override

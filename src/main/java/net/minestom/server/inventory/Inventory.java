@@ -207,11 +207,13 @@ public non-sealed class Inventory extends AbstractInventory {
                     8, -1, -1,
                     player, clickSlot, clicked, cursor);
 
-            if (clickResult.isCancel()) {
-                clickResult = clickProcessor.shiftClick(
+            if (!clickResult.getClicked().isAir()) {
+                // Keep filling with whatever the hotbar could not take
+                final InventoryClickResult rest = clickProcessor.shiftClick(
                         this, playerInventory,
-                        playerInventory.getInnerSize() - 1, -1, -1,
-                        player, clickSlot, clicked, cursor);
+                        playerInventory.getInnerSize() - 1, 8, -1,
+                        player, clickSlot, clickResult.getClicked(), cursor);
+                if (!rest.isCancel()) clickResult = rest;
             }
         } else {
             clickResult = clickProcessor.shiftClick(

@@ -4,6 +4,7 @@ import net.minestom.server.Tickable;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
 
+import java.lang.ref.WeakReference;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -14,6 +15,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
+import static net.minestom.testing.TestUtils.waitUntilCleared;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
@@ -347,6 +349,62 @@ public class ThreadDispatcherTest {
         dispatcher.updateAndAwait(0);
         assertNotSame(before, element.acquirable().assignedThread(),
                 "assignedThread was not updated after the partition moved to another thread");
+
+        dispatcher.shutdown();
+    }
+
+    @Test
+    @Timeout(30)
+    public void removedElementIsReleased() {
+        final class Idle implements Tickable {
+            @Override
+            public void tick(long time) {
+            }
+        }
+        ThreadDispatcher<World, Tickable> dispatcher = ThreadDispatcher.singleThread();
+        World world = new World();
+        Tickable element = new Idle();
+        dispatcher.createPartition(world);
+        dispatcher.updateElement(element, world);
+        dispatcher.start();
+        dispatcher.updateAndAwait(0);
+
+        var ref = new WeakReference<>(element);
+        dispatcher.removeElement(element);
+        //noinspection UnusedAssignment
+        element = null;
+        dispatcher.updateAndAwait(0);
+        waitUntilCleared(ref);
+
+        dispatcher.shutdown();
+    }
+
+    @Test
+    @Timeout(30)
+    public void deletedPartitionIsReleased() {
+        final class Idle implements Tickable {
+            @Override
+            public void tick(long time) {
+            }
+        }
+        ThreadDispatcher<World, Tickable> dispatcher = ThreadDispatcher.singleThread();
+        World world = new World();
+        Tickable element = new Idle();
+        dispatcher.createPartition(world);
+        dispatcher.updateElement(element, world);
+        dispatcher.start();
+        dispatcher.updateAndAwait(0);
+
+        var worldRef = new WeakReference<>(world);
+        var elementRef = new WeakReference<>(element);
+        dispatcher.deletePartition(world);
+        //noinspection UnusedAssignment
+        world = null;
+        //noinspection UnusedAssignment
+        element = null;
+        dispatcher.updateAndAwait(0);
+        waitUntilCleared(worldRef);
+        waitUntilCleared(elementRef);
 
         dispatcher.shutdown();
     }

@@ -927,6 +927,12 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
         EntityPose oldPose = getPose();
         EntityPose newPose;
 
+        if (isDead()) {
+            // The dying pose must survive the per-tick pose refresh until the player respawns
+            if (oldPose != EntityPose.DYING) setPose(EntityPose.DYING);
+            return;
+        }
+
         // Figure out their expected state
         var meta = getEntityMeta();
         meta.setSwimming(shouldSwim(meta.isSwimming()));

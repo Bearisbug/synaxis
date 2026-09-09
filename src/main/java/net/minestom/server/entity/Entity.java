@@ -1348,8 +1348,12 @@ public class Entity implements Viewable, Tickable, Schedulable, Snapshotable, Ev
     }
 
     protected void updatePose() {
-        if (entityMeta.isFlyingWithElytra()) {
+        if (this instanceof LivingEntity living && living.isDead()) {
+            setPose(EntityPose.DYING);
+        } else if (entityMeta.isFlyingWithElytra()) {
             setPose(EntityPose.FALL_FLYING);
+        } else if (entityMeta instanceof LivingEntityMeta livingMeta && livingMeta.getBedInWhichSleepingPosition() != null) {
+            setPose(EntityPose.SLEEPING);
         } else if (entityMeta.isSwimming()) {
             setPose(EntityPose.SWIMMING);
         } else if (entityMeta instanceof LivingEntityMeta livingMeta && livingMeta.isInRiptideSpinAttack()) {

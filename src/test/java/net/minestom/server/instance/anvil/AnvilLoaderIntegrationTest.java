@@ -9,6 +9,7 @@ import net.minestom.server.instance.Instance;
 import net.minestom.server.instance.Section;
 import net.minestom.server.instance.block.Block;
 import net.minestom.server.instance.block.BlockHandler;
+import net.minestom.server.instance.palette.Palette;
 import net.minestom.server.network.NetworkBuffer;
 import net.minestom.server.network.packet.server.play.data.ChunkData;
 import net.minestom.server.registry.RegistryKey;
@@ -34,6 +35,7 @@ import java.util.function.Consumer;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
@@ -153,6 +155,42 @@ public class AnvilLoaderIntegrationTest {
         AnvilLoader reopened = new AnvilLoader(worldFolder);
         assertNull(reopened.loadChunk(instance, 0, 0));
         assertInstanceOf(IOException.class, exception.get());
+    }
+
+    // A section whose blocks all share one state id still has per-block NBT and handlers,
+    // and vanilla tools expect the heightmaps to come back out of the file
+    @Test
+    public void saveKeepsBlockEntitiesOfUniformSections(Env env) throws IOException {
+        var worldFolder = Files.createTempDirectory("minestom-test-world-uniform-section");
+        AnvilLoader chunkLoader = new AnvilLoader(worldFolder);
+        Instance instance = env.createEmptyInstance(chunkLoader);
+        instance.setGenerator(unit -> unit.modifier().fillHeight(0, 16, Block.STONE));
+        Chunk chunk = instance.loadChunk(0, 0).join();
+
+        var nbt = CompoundBinaryTag.builder().putString("hello", "world").build();
+        var block = Block.STONE.withNbt(nbt);
+        instance.setBlock(0, 5, 0, block);
+        chunk.lockWriteLock();
+        try {
+            chunk.getSection(0).blockPalette().optimize(Palette.Optimization.SIZE);
+        } finally {
+            chunk.unlockWriteLock();
+        }
+        assertEquals(Block.STONE.stateId(), chunk.getSection(0).blockPalette().singleValue(),
+                "the section must be on a single value palette for this test to mean anything");
+
+        chunkLoader.saveChunk(chunk);
+        instance.unloadChunk(chunk);
+        assertNull(instance.getChunk(0, 0));
+
+        instance.loadChunk(0, 0).join();
+        assertEquals(block, instance.getBlock(0, 5, 0));
+
+        try (RegionFile regionFile = new RegionFile(worldFolder.resolve("region").resolve("r.0.0.mca"))) {
+            CompoundBinaryTag chunkData = regionFile.readChunkData(0, 0);
+            assertNotNull(chunkData);
+            assertTrue(chunkData.keySet().contains("Heightmaps"), "the heightmaps were not written back");
+        }
     }
 
     @Test

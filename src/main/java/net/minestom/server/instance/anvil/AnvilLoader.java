@@ -22,6 +22,7 @@ import net.minestom.server.instance.Instance;
 import net.minestom.server.instance.Section;
 import net.minestom.server.instance.block.Block;
 import net.minestom.server.instance.block.BlockHandler;
+import net.minestom.server.instance.heightmap.Heightmap;
 import net.minestom.server.instance.palette.Palettes;
 import net.minestom.server.registry.DynamicRegistry;
 import net.minestom.server.registry.RegistryKey;
@@ -440,6 +441,7 @@ public class AnvilLoader implements ChunkLoader {
             chunkData.putLong("LastUpdate", chunk.getInstance().getWorldAge());
 
             saveSectionData(chunk, chunkData);
+            saveHeightmaps(chunk, chunkData);
 
             mcaFile.writeChunkData(chunkX, chunkZ, chunkData.build());
         } catch (IOException e) {
@@ -484,6 +486,16 @@ public class AnvilLoader implements ChunkLoader {
                     assert block != null;
                     final CompoundBinaryTag blockState = blockStateNbt(block);
                     blockPaletteEntries.add(blockState);
+                    // Every block of the section shares one state id, but handlers and NBT live in
+                    // the chunk's cache rather than in the palette and must still be written out
+                    for (int y = 0; y < 16; y++) {
+                        for (int z = 0; z < CHUNK_SIZE_Z; z++) {
+                            for (int x = 0; x < CHUNK_SIZE_X; x++) {
+                                final Block cached = chunk.getBlock(x, globalSectionY + y, z, Block.Getter.Condition.CACHED);
+                                if (cached != null) collectBlockEntity(blockEntities, chunk, cached, x, globalSectionY + y, z);
+                            }
+                        }
+                    }
                 } else {
                     section.blockPalette().getAll((x, y, z, value) -> {
                         Block block = chunk.getBlock(x, globalSectionY + y, z, Block.Getter.Condition.CACHED);
@@ -499,19 +511,7 @@ public class AnvilLoader implements ChunkLoader {
                         final int blockIndex = x + y * 16 * 16 + z * 16;
                         blockIndices[blockIndex] = blockPaletteIndex;
 
-                        // Add block entity if present
-                        final BlockHandler handler = block.handler();
-                        final CompoundBinaryTag originalNBT = block.nbt();
-                        if (originalNBT != null || handler != null) {
-                            CompoundBinaryTag.Builder blockEntityTag = CompoundBinaryTag.builder();
-                            if (originalNBT != null) blockEntityTag.put(originalNBT);
-                            if (handler != null) blockEntityTag.putString("id", handler.getKey().asString());
-                            blockEntityTag.putInt("x", x + CHUNK_SIZE_X * chunk.getChunkX());
-                            blockEntityTag.putInt("y", y + globalSectionY);
-                            blockEntityTag.putInt("z", z + CHUNK_SIZE_Z * chunk.getChunkZ());
-                            blockEntityTag.putByte("keepPacked", (byte) 0);
-                            blockEntities.add(blockEntityTag.build());
-                        }
+                        collectBlockEntity(blockEntities, chunk, block, x, y + globalSectionY, z);
                     });
                 }
                 // Retrieve biome data
@@ -567,6 +567,32 @@ public class AnvilLoader implements ChunkLoader {
 
         chunkData.put("sections", sections.build());
         chunkData.put("block_entities", blockEntities.build());
+    }
+
+    private static void collectBlockEntity(ListBinaryTag.Builder<CompoundBinaryTag> blockEntities, Chunk chunk,
+                                           Block block, int x, int y, int z) {
+        final BlockHandler handler = block.handler();
+        final CompoundBinaryTag originalNBT = block.nbt();
+        if (originalNBT == null && handler == null) return;
+        CompoundBinaryTag.Builder blockEntityTag = CompoundBinaryTag.builder();
+        if (originalNBT != null) blockEntityTag.put(originalNBT);
+        if (handler != null) blockEntityTag.putString("id", handler.getKey().asString());
+        blockEntityTag.putInt("x", x + CHUNK_SIZE_X * chunk.getChunkX());
+        blockEntityTag.putInt("y", y);
+        blockEntityTag.putInt("z", z + CHUNK_SIZE_Z * chunk.getChunkZ());
+        blockEntityTag.putByte("keepPacked", (byte) 0);
+        blockEntities.add(blockEntityTag.build());
+    }
+
+    // Minestom recomputes the heightmaps it needs, vanilla clients and tools read them from the file
+    private static void saveHeightmaps(Chunk chunk, CompoundBinaryTag.Builder chunkData) {
+        final int startY = Heightmap.getHighestBlockSection(chunk);
+        final CompoundBinaryTag.Builder heightmaps = CompoundBinaryTag.builder();
+        for (Heightmap heightmap : List.of(chunk.motionBlockingHeightmap(), chunk.worldSurfaceHeightmap())) {
+            heightmap.refresh(startY);
+            heightmaps.putLongArray(heightmap.type().name(), heightmap.getNBT());
+        }
+        chunkData.put("Heightmaps", heightmaps.build());
     }
 
     private static CompoundBinaryTag blockStateNbt(final Block block) {

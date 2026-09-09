@@ -41,6 +41,13 @@ class NetworkBufferTypeWrapperTest {
     }
 
     @Test
+    void terminatedStringRoundTrips() {
+        final NetworkBuffer buffer = NetworkBuffer.resizableBuffer(64);
+        buffer.write(NetworkBuffer.STRING_TERMINATED, "abc");
+        assertEquals("abc", buffer.read(NetworkBuffer.STRING_TERMINATED));
+    }
+
+    @Test
     void enumTypeRejectsOutOfRangeOrdinals() {
         final NetworkBuffer.Type<Direction> type = NetworkBuffer.Enum(Direction.class);
         assertThrows(IllegalArgumentException.class, () -> ordinalBuffer(-1).read(type));

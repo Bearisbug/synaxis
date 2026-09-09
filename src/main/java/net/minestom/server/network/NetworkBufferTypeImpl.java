@@ -533,7 +533,7 @@ interface NetworkBufferTypeImpl<T> extends NetworkBuffer.Type<T> {
             while ((b = buffer.read(BYTE)) != 0) {
                 bytes.add(b);
             }
-            return new String(bytes.elements(), StandardCharsets.UTF_8);
+            return new String(bytes.toByteArray(), StandardCharsets.UTF_8);
         }
     }
 

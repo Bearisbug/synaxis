@@ -59,9 +59,6 @@ module net.minestom.server {
     exports net.minestom.server.crypto;
     exports net.minestom.server.dialog;
     exports net.minestom.server.entity;
-    exports net.minestom.server.entity.ai;
-    exports net.minestom.server.entity.ai.goal;
-    exports net.minestom.server.entity.ai.target;
     exports net.minestom.server.entity.attribute;
     exports net.minestom.server.entity.damage;
     exports net.minestom.server.entity.metadata;

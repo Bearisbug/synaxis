@@ -1,6 +1,7 @@
 package dev.gameengine.world.attribute;
 
 import net.kyori.adventure.text.Component;
+import dev.gameengine.adventure.ComponentCodecs;
 import dev.gameengine.codec.Codec;
 import dev.gameengine.codec.StructCodec;
 import org.jetbrains.annotations.Nullable;
@@ -21,7 +22,7 @@ public record BedRule(
             "can_sleep", Rule.CODEC, BedRule::canSleep,
             "can_set_spawn", Rule.CODEC, BedRule::canSetSpawn,
             "explodes", Codec.BOOLEAN.optional(false), BedRule::explodes,
-            "error_message", Codec.COMPONENT.optional(), BedRule::errorMessage,
+            "error_message", ComponentCodecs.COMPONENT.optional(), BedRule::errorMessage,
             BedRule::new);
 
     public enum Rule {

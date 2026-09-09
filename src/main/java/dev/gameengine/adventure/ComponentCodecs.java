@@ -1,4 +1,4 @@
-package dev.gameengine.codec;
+package dev.gameengine.adventure;
 
 import net.kyori.adventure.key.Key;
 import net.kyori.adventure.nbt.BinaryTag;
@@ -22,9 +22,12 @@ import net.kyori.adventure.text.format.TextDecoration;
 import net.kyori.adventure.text.object.ObjectContents;
 import net.kyori.adventure.text.object.PlayerHeadObjectContents;
 import net.kyori.adventure.text.object.SpriteObjectContents;
-import dev.gameengine.adventure.MinestomAdventure;
+import dev.gameengine.codec.Codec;
+import dev.gameengine.codec.Result;
+import dev.gameengine.codec.StructCodec;
 import dev.gameengine.codec.Transcoder.MapBuilder;
 import dev.gameengine.codec.Transcoder.MapLike;
+import dev.gameengine.codec.Transcoder;
 import dev.gameengine.network.player.ResolvableProfile;
 import org.jetbrains.annotations.ApiStatus;
 import org.jetbrains.annotations.Nullable;
@@ -38,7 +41,7 @@ import java.util.List;
 public final class ComponentCodecs {
     private ComponentCodecs() {}
     // Very gross :|
-    private static final Codec<Component> COMPONENT_FORWARD = Codec.ForwardRef(() -> Codec.COMPONENT);
+    private static final Codec<Component> COMPONENT_FORWARD = Codec.ForwardRef(() -> ComponentCodecs.COMPONENT);
 
     public static final Codec<TextColor> TEXT_COLOR = new Codec<>() {
         @Override

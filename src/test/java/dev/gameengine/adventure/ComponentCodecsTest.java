@@ -1,4 +1,4 @@
-package dev.gameengine.codec;
+package dev.gameengine.adventure;
 
 import net.kyori.adventure.key.Key;
 import net.kyori.adventure.nbt.CompoundBinaryTag;
@@ -9,6 +9,8 @@ import net.kyori.adventure.text.event.HoverEvent;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.object.ObjectContents;
 import dev.gameengine.adventure.MinestomAdventure;
+import dev.gameengine.codec.Result;
+import dev.gameengine.codec.Transcoder;
 import dev.gameengine.network.player.GameProfile;
 import org.junit.jupiter.api.Test;
 

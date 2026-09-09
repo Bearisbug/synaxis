@@ -1,6 +1,7 @@
 package dev.gameengine.item.component;
 
 import net.kyori.adventure.text.Component;
+import dev.gameengine.adventure.ComponentCodecs;
 import dev.gameengine.codec.Codec;
 import dev.gameengine.codec.StructCodec;
 import dev.gameengine.entity.EquipmentSlotGroup;
@@ -93,7 +94,7 @@ public record AttributeList(List<Modifier> modifiers) {
                     NetworkBuffer.COMPONENT, Override::component,
                     Override::new);
             public static final StructCodec<Override> CODEC = StructCodec.struct(
-                    "value", Codec.COMPONENT, Override::component,
+                    "value", ComponentCodecs.COMPONENT, Override::component,
                     Override::new);
         }
 

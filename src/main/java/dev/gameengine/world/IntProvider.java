@@ -1,10 +1,13 @@
-package dev.gameengine.utils;
+package dev.gameengine.world;
 
 import net.kyori.adventure.key.Key;
 import dev.gameengine.codec.Codec;
 import dev.gameengine.codec.StructCodec;
 import dev.gameengine.registry.DynamicRegistry;
 import dev.gameengine.registry.Registry;
+import dev.gameengine.registry.RegistryCodecs;
+import dev.gameengine.utils.Either;
+import dev.gameengine.utils.WeightedList;
 
 import java.util.Map;
 import java.util.Random;
@@ -20,7 +23,7 @@ public sealed interface IntProvider {
             Map.entry(Key.key("clamped_normal"), ClampedNormal.CODEC),
             Map.entry(Key.key("trapezoid"), Trapezoid.CODEC)
     );
-    StructCodec<IntProvider> REGISTRY_CODEC = Codec.RegistryTaggedUnion(REGISTRY, IntProvider::codec);
+    StructCodec<IntProvider> REGISTRY_CODEC = RegistryCodecs.RegistryTaggedUnion(REGISTRY, IntProvider::codec);
 
     Codec<IntProvider> CODEC = Codec.Either(Codec.INT, REGISTRY_CODEC).transform(
             it -> it.unify(Constant::new, Function.identity()),

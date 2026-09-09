@@ -4,6 +4,7 @@ import net.kyori.adventure.key.Key;
 import net.kyori.adventure.nbt.BinaryTag;
 import net.kyori.adventure.nbt.CompoundBinaryTag;
 import net.kyori.adventure.text.Component;
+import dev.gameengine.adventure.ComponentCodecs;
 import dev.gameengine.codec.Codec;
 import dev.gameengine.codec.StructCodec;
 import dev.gameengine.component.DataComponent;
@@ -509,7 +510,7 @@ public sealed interface DataComponentPredicate extends Predicate<DataComponent.H
         }
 
         public record PagePredicate(Component contents) implements Predicate<FilteredText<Component>> {
-            public static final Codec<PagePredicate> CODEC = Codec.COMPONENT.transform(PagePredicate::new, PagePredicate::contents);
+            public static final Codec<PagePredicate> CODEC = ComponentCodecs.COMPONENT.transform(PagePredicate::new, PagePredicate::contents);
 
             @Override
             public boolean test(FilteredText<Component> text) {

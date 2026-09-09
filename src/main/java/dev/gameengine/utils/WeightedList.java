@@ -2,8 +2,6 @@ package dev.gameengine.utils;
 
 import dev.gameengine.codec.Codec;
 import dev.gameengine.codec.StructCodec;
-import dev.gameengine.network.NetworkBuffer;
-import dev.gameengine.network.NetworkBufferTemplate;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Iterator;
@@ -12,9 +10,6 @@ import java.util.Objects;
 import java.util.Random;
 
 public final class WeightedList<T> implements Iterable<T> {
-    public static <T> NetworkBuffer.Type<WeightedList<T>> networkType(NetworkBuffer.Type<T> valueType) {
-        return Entry.networkType(valueType).list().transform(WeightedList::new, WeightedList::entries);
-    }
     public static <T> Codec<WeightedList<T>> codec(StructCodec<T> valueCodec) {
         return Entry.codec(valueCodec).list().transform(WeightedList::new, WeightedList::entries);
     }
@@ -75,12 +70,6 @@ public final class WeightedList<T> implements Iterable<T> {
     }
 
     public record Entry<T>(T value, int weight) {
-        public static <T> NetworkBuffer.Type<Entry<T>> networkType(NetworkBuffer.Type<T> valueType) {
-            return NetworkBufferTemplate.template(
-                    valueType, Entry::value,
-                    NetworkBuffer.VAR_INT, Entry::weight,
-                    Entry::new);
-        }
         public static <T> StructCodec<Entry<T>> codec(StructCodec<T> valueCodec) {
             return StructCodec.struct(
                     StructCodec.INLINE, valueCodec, Entry::value,

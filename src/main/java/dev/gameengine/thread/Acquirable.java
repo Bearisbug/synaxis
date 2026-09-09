@@ -12,13 +12,14 @@ import java.util.stream.Stream;
 public sealed interface Acquirable<T> permits AcquirableImpl {
 
     /**
-     * Gets all the elements being ticked in the current thread.
+     * Gets everything being ticked in the current thread, the partitions as well as the elements
+     * assigned to them.
      * <p>
      * Useful when you want to ensure that no acquisition is ever done.
      * <p>
      * Be aware that the stream is only updated at the beginning of the thread tick.
      *
-     * @return the elements ticked in the current thread
+     * @return the tickables of the current thread
      */
     static Stream<Tickable> localElements() {
         if (!(Thread.currentThread() instanceof TickThread tickThread)) return Stream.empty();

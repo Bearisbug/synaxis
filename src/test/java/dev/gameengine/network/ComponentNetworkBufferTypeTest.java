@@ -4,7 +4,7 @@ import net.kyori.adventure.key.Key;
 import net.kyori.adventure.nbt.CompoundBinaryTag;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.object.ObjectContents;
-import dev.gameengine.codec.Codec;
+import dev.gameengine.adventure.ComponentCodecs;
 import dev.gameengine.codec.Transcoder;
 import org.junit.jupiter.api.Test;
 
@@ -108,12 +108,12 @@ public class ComponentNetworkBufferTypeTest {
 
         final CompoundBinaryTag written = write(comp);
         assertInstanceOf(CompoundBinaryTag.class, written.get("fallback"));
-        assertEquals(comp, Codec.COMPONENT.decode(Transcoder.NBT, written).orElseThrow());
+        assertEquals(comp, ComponentCodecs.COMPONENT.decode(Transcoder.NBT, written).orElseThrow());
     }
 
     private static void assertWriteReadEquality(Component comp) {
         final CompoundBinaryTag written = write(comp);
-        final Component actual = Codec.COMPONENT.decode(Transcoder.NBT, written).orElseThrow();
+        final Component actual = ComponentCodecs.COMPONENT.decode(Transcoder.NBT, written).orElseThrow();
         assertEquals(comp, actual);
     }
 

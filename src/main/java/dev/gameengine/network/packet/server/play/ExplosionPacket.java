@@ -24,8 +24,16 @@ public record ExplosionPacket(
             VECTOR3D.optional(), ExplosionPacket::playerKnockback,
             Particle.NETWORK_TYPE, ExplosionPacket::particle,
             SoundEvent.NETWORK_TYPE, ExplosionPacket::sound,
-            WeightedList.networkType(BlockParticleInfo.SERIALIZER), ExplosionPacket::blockParticles,
+            weightedList(BlockParticleInfo.SERIALIZER), ExplosionPacket::blockParticles,
             ExplosionPacket::new);
+
+    private static <T> NetworkBuffer.Type<WeightedList<T>> weightedList(NetworkBuffer.Type<T> valueType) {
+        final NetworkBuffer.Type<WeightedList.Entry<T>> entry = NetworkBufferTemplate.template(
+                valueType, WeightedList.Entry::value,
+                NetworkBuffer.VAR_INT, WeightedList.Entry::weight,
+                WeightedList.Entry::new);
+        return entry.list().transform(WeightedList::new, WeightedList::entries);
+    }
 
     public record BlockParticleInfo(Particle particle, float scaling, float speed) {
         public static final NetworkBuffer.Type<BlockParticleInfo> SERIALIZER = NetworkBufferTemplate.template(

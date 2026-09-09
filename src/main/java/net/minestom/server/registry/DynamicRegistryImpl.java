@@ -180,6 +180,11 @@ final class DynamicRegistryImpl<T> implements DynamicRegistry<T> {
             valueToKey.remove(value);
             packById.remove(id);
 
+            // The lists were compacted, so every entry after the removed one now sits one index lower
+            for (int i = id; i < idToKey.size(); i++) {
+                keyToId.put(idToKey.get(i), i);
+            }
+
             // Remove all references from tags
             for (final var tag : tags.values()) {
                 tag.remove(registryKey);

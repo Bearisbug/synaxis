@@ -15,7 +15,6 @@ import net.minestom.server.network.ConnectionManager;
 import net.minestom.server.network.packet.PacketParser;
 import net.minestom.server.network.socket.Server;
 import net.minestom.server.registry.Registries;
-import net.minestom.server.scoreboard.TeamManager;
 import net.minestom.server.thread.ThreadDispatcher;
 import net.minestom.server.timer.SchedulerManager;
 import org.jetbrains.annotations.ApiStatus;
@@ -53,11 +52,6 @@ public interface ServerProcess extends Registries {
      * Handles registered commands.
      */
     CommandManager command();
-
-    /**
-     * Handles registered teams.
-     */
-    TeamManager team();
 
     /**
      * Gets the global event handler.

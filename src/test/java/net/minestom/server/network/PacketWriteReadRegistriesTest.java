@@ -10,7 +10,6 @@ import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.Style;
 import net.kyori.adventure.text.format.TextDecoration;
-import net.minestom.server.color.TeamColor;
 import net.minestom.server.coordinate.Pos;
 import net.minestom.server.coordinate.Vec;
 import net.minestom.server.crypto.ArgumentSignatures;
@@ -176,7 +175,6 @@ import net.minestom.server.network.packet.server.play.DeclareCommandsPacket;
 import net.minestom.server.network.packet.server.play.DeleteChatPacket;
 import net.minestom.server.network.packet.server.play.DestroyEntitiesPacket;
 import net.minestom.server.network.packet.server.play.DisguisedChatPacket;
-import net.minestom.server.network.packet.server.play.DisplayScoreboardPacket;
 import net.minestom.server.network.packet.server.play.EndCombatEventPacket;
 import net.minestom.server.network.packet.server.play.EnterCombatEventPacket;
 import net.minestom.server.network.packet.server.play.EntityAnimationPacket;
@@ -220,9 +218,7 @@ import net.minestom.server.network.packet.server.play.PlayerPositionAndLookPacke
 import net.minestom.server.network.packet.server.play.PlayerRotationPacket;
 import net.minestom.server.network.packet.server.play.ProjectilePowerPacket;
 import net.minestom.server.network.packet.server.play.RemoveEntityEffectPacket;
-import net.minestom.server.network.packet.server.play.ResetScorePacket;
 import net.minestom.server.network.packet.server.play.RespawnPacket;
-import net.minestom.server.network.packet.server.play.ScoreboardObjectivePacket;
 import net.minestom.server.network.packet.server.play.ServerDataPacket;
 import net.minestom.server.network.packet.server.play.ServerDifficultyPacket;
 import net.minestom.server.network.packet.server.play.SetCooldownPacket;
@@ -243,7 +239,6 @@ import net.minestom.server.network.packet.server.play.StartConfigurationPacket;
 import net.minestom.server.network.packet.server.play.StopSoundPacket;
 import net.minestom.server.network.packet.server.play.SystemChatPacket;
 import net.minestom.server.network.packet.server.play.TabCompletePacket;
-import net.minestom.server.network.packet.server.play.TeamsPacket;
 import net.minestom.server.network.packet.server.play.TestInstanceBlockStatus;
 import net.minestom.server.network.packet.server.play.TickStepPacket;
 import net.minestom.server.network.packet.server.play.TrackedWaypointPacket;
@@ -251,7 +246,6 @@ import net.minestom.server.network.packet.server.play.TradeListPacket;
 import net.minestom.server.network.packet.server.play.UnloadChunkPacket;
 import net.minestom.server.network.packet.server.play.UpdateHealthPacket;
 import net.minestom.server.network.packet.server.play.UpdateLightPacket;
-import net.minestom.server.network.packet.server.play.UpdateScorePacket;
 import net.minestom.server.network.packet.server.play.UpdateSimulationDistancePacket;
 import net.minestom.server.network.packet.server.play.UpdateViewDistancePacket;
 import net.minestom.server.network.packet.server.play.UpdateViewPositionPacket;
@@ -276,7 +270,6 @@ import net.minestom.server.potion.Potion;
 import net.minestom.server.potion.PotionEffect;
 import net.minestom.server.potion.PotionType;
 import net.minestom.server.registry.Registries;
-import net.minestom.server.scoreboard.Sidebar;
 import net.minestom.server.sound.SoundEvent;
 import net.minestom.server.utils.Either;
 import net.minestom.server.utils.Rotation;
@@ -457,7 +450,6 @@ public class PacketWriteReadRegistriesTest {
         addServerPackets(new DeathCombatEventPacket(5, COMPONENT));
         addServerPackets(new DestroyEntitiesPacket(List.of(5, 5, 5)));
         addServerPackets(new DisconnectPacket(COMPONENT));
-        addServerPackets(new DisplayScoreboardPacket((byte) 5, "scoreboard"));
         addServerPackets(new WorldEventPacket(5, BLOCK_VEC, 5, false));
         addServerPackets(new EndCombatEventPacket(5));
         addServerPackets(new EnterCombatEventPacket());
@@ -561,13 +553,6 @@ public class PacketWriteReadRegistriesTest {
                 new PlayerSpawnInfo(0, "overworld", 0L, GameMode.CREATIVE, GameMode.SURVIVAL, false, false, null, 5, 63),
                 (byte) RespawnPacket.COPY_METADATA)
         );
-        addServerPackets(
-                new ScoreboardObjectivePacket("objective", (byte) 0, COMPONENT, ScoreboardObjectivePacket.Type.HEARTS, Sidebar.NumberFormat.blank()),
-                new ScoreboardObjectivePacket("objective", (byte) 0, COMPONENT, ScoreboardObjectivePacket.Type.HEARTS, null),
-                new ScoreboardObjectivePacket("objective", (byte) 1, null, null, null),
-                new ScoreboardObjectivePacket("objective", (byte) 2, COMPONENT, ScoreboardObjectivePacket.Type.HEARTS, Sidebar.NumberFormat.styled(Component.empty())),
-                new ScoreboardObjectivePacket("objective", (byte) 2, COMPONENT, ScoreboardObjectivePacket.Type.HEARTS, null)
-        );
         addServerPackets(new ServerDataPacket(COMPONENT, null));
         addServerPackets(new ServerDifficultyPacket(Difficulty.NORMAL, true));
         addServerPackets(new SetCooldownPacket("minecraft:ender_pearl", 5));
@@ -591,10 +576,6 @@ public class PacketWriteReadRegistriesTest {
                 new StopSoundPacket((byte) 3, Sound.Source.BLOCK, "block.amethyst_block.break")
         );
         addServerPackets(new TabCompletePacket(5, 0, 0, List.of()));
-        addServerPackets(new TeamsPacket("team", new TeamsPacket.CreateTeamAction(
-                new TeamsPacket.Settings(COMPONENT, COMPONENT, COMPONENT, TeamsPacket.NameTagVisibility.ALWAYS, TeamsPacket.CollisionRule.ALWAYS, TeamColor.RED, (byte) 0),
-                List.of("player1")
-        )));
         addServerPackets(new TickStepPacket(20));
         addServerPackets(
                 new SetTimePacket(1000L, Map.of()),
@@ -605,7 +586,6 @@ public class PacketWriteReadRegistriesTest {
         addServerPackets(new TradeListPacket(5, List.of(), 5, 5, true, true));
         addServerPackets(new UnloadChunkPacket(0, 0));
         addServerPackets(new UpdateHealthPacket(20.0f, 20, 5.0f));
-        addServerPackets(new UpdateScorePacket("player", "objective", 100, COMPONENT, null));
         addServerPackets(new UpdateSimulationDistancePacket(8));
         addServerPackets(new UpdateViewDistancePacket(10));
         addServerPackets(new UpdateViewPositionPacket(0, 0));
@@ -635,7 +615,6 @@ public class PacketWriteReadRegistriesTest {
         addServerPackets(new MoveMinecartPacket(1, List.of(new MoveMinecartPacket.LerpStep(VEC, Vec.ZERO, 1f, 1f, 1f))));
         addServerPackets(new PlayerChatMessagePacket(0, UUID.randomUUID(), 0, new MessageSignature(new byte[256]), new SignedMessageBody.Packed("hey", Instant.EPOCH, 0L, new LastSeenMessages.Packed(List.of())), null, new FilterMask(FilterMask.Type.FULLY_FILTERED, new BitSet()), 1, Component.text("hey"), null));
         addServerPackets(new RemoveEntityEffectPacket(0, PotionEffect.BAD_OMEN));
-        addServerPackets(new ResetScorePacket("dummy_score", null), new ResetScorePacket("duoka", "testObjective"));
         addServerPackets(new TestInstanceBlockStatus(Component.text("Minestom is cool"), null), new TestInstanceBlockStatus(Component.text("Where is season 5 william?"), BLOCK_VEC));
         addServerPackets(new EntityEffectPacket(0, new Potion(PotionEffect.ABSORPTION, 1, 150)));
         addServerPackets(new TrackedWaypointPacket(TrackedWaypointPacket.Operation.UNTRACK, new TrackedWaypointPacket.Waypoint(Either.right("test"), TrackedWaypointPacket.Icon.DEFAULT, new TrackedWaypointPacket.Target.Empty())));

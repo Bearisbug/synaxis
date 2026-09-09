@@ -42,7 +42,6 @@ import net.minestom.server.network.packet.server.play.ServerDifficultyPacket;
 import net.minestom.server.network.socket.Server;
 import net.minestom.server.registry.DynamicRegistry;
 import net.minestom.server.registry.Registries;
-import net.minestom.server.scoreboard.TeamManager;
 import net.minestom.server.thread.TickSchedulerThread;
 import net.minestom.server.timer.SchedulerManager;
 import net.minestom.server.utils.PacketSendingUtils;
@@ -180,10 +179,6 @@ public final class MinecraftServer implements MinecraftConstants {
 
     public static CommandManager getCommandManager() {
         return serverProcess.command();
-    }
-
-    public static TeamManager getTeamManager() {
-        return serverProcess.team();
     }
 
     public static SchedulerManager getSchedulerManager() {

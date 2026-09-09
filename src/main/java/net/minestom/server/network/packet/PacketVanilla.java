@@ -135,7 +135,6 @@ import net.minestom.server.network.packet.server.play.DeclareCommandsPacket;
 import net.minestom.server.network.packet.server.play.DeleteChatPacket;
 import net.minestom.server.network.packet.server.play.DestroyEntitiesPacket;
 import net.minestom.server.network.packet.server.play.DisguisedChatPacket;
-import net.minestom.server.network.packet.server.play.DisplayScoreboardPacket;
 import net.minestom.server.network.packet.server.play.EndCombatEventPacket;
 import net.minestom.server.network.packet.server.play.EnterCombatEventPacket;
 import net.minestom.server.network.packet.server.play.EntityAnimationPacket;
@@ -179,9 +178,7 @@ import net.minestom.server.network.packet.server.play.PlayerPositionAndLookPacke
 import net.minestom.server.network.packet.server.play.PlayerRotationPacket;
 import net.minestom.server.network.packet.server.play.ProjectilePowerPacket;
 import net.minestom.server.network.packet.server.play.RemoveEntityEffectPacket;
-import net.minestom.server.network.packet.server.play.ResetScorePacket;
 import net.minestom.server.network.packet.server.play.RespawnPacket;
-import net.minestom.server.network.packet.server.play.ScoreboardObjectivePacket;
 import net.minestom.server.network.packet.server.play.ServerDataPacket;
 import net.minestom.server.network.packet.server.play.ServerDifficultyPacket;
 import net.minestom.server.network.packet.server.play.SetCooldownPacket;
@@ -202,7 +199,6 @@ import net.minestom.server.network.packet.server.play.StartConfigurationPacket;
 import net.minestom.server.network.packet.server.play.StopSoundPacket;
 import net.minestom.server.network.packet.server.play.SystemChatPacket;
 import net.minestom.server.network.packet.server.play.TabCompletePacket;
-import net.minestom.server.network.packet.server.play.TeamsPacket;
 import net.minestom.server.network.packet.server.play.TestInstanceBlockStatus;
 import net.minestom.server.network.packet.server.play.TickStepPacket;
 import net.minestom.server.network.packet.server.play.TrackedWaypointPacket;
@@ -210,7 +206,6 @@ import net.minestom.server.network.packet.server.play.TradeListPacket;
 import net.minestom.server.network.packet.server.play.UnloadChunkPacket;
 import net.minestom.server.network.packet.server.play.UpdateHealthPacket;
 import net.minestom.server.network.packet.server.play.UpdateLightPacket;
-import net.minestom.server.network.packet.server.play.UpdateScorePacket;
 import net.minestom.server.network.packet.server.play.UpdateSimulationDistancePacket;
 import net.minestom.server.network.packet.server.play.UpdateViewDistancePacket;
 import net.minestom.server.network.packet.server.play.UpdateViewPositionPacket;
@@ -482,7 +477,6 @@ public final class PacketVanilla {
             entry(PlayerRotationPacket.class, PlayerRotationPacket.SERIALIZER),
             entry(DestroyEntitiesPacket.class, DestroyEntitiesPacket.SERIALIZER),
             entry(RemoveEntityEffectPacket.class, RemoveEntityEffectPacket.SERIALIZER),
-            entry(ResetScorePacket.class, ResetScorePacket.SERIALIZER),
             entry(ResourcePackPopPacket.class, ResourcePackPopPacket.SERIALIZER),
             entry(ResourcePackPushPacket.class, ResourcePackPushPacket.SERIALIZER),
             entry(RespawnPacket.class, RespawnPacket.SERIALIZER),
@@ -500,7 +494,6 @@ public final class PacketVanilla {
             entry(UpdateViewDistancePacket.class, UpdateViewDistancePacket.SERIALIZER),
             entry(SetCursorItemPacket.class, SetCursorItemPacket.SERIALIZER),
             entry(SpawnPositionPacket.class, SpawnPositionPacket.SERIALIZER),
-            entry(DisplayScoreboardPacket.class, DisplayScoreboardPacket.SERIALIZER),
             entry(EntityMetaDataPacket.class, EntityMetaDataPacket.SERIALIZER),
             entry(AttachEntityPacket.class, AttachEntityPacket.SERIALIZER),
             entry(EntityVelocityPacket.class, EntityVelocityPacket.SERIALIZER),
@@ -508,11 +501,8 @@ public final class PacketVanilla {
             entry(SetExperiencePacket.class, SetExperiencePacket.SERIALIZER),
             entry(UpdateHealthPacket.class, UpdateHealthPacket.SERIALIZER),
             entry(HeldItemChangePacket.class, HeldItemChangePacket.SERIALIZER),
-            entry(ScoreboardObjectivePacket.class, ScoreboardObjectivePacket.SERIALIZER),
             entry(SetPassengersPacket.class, SetPassengersPacket.SERIALIZER),
             entry(SetPlayerInventorySlotPacket.class, SetPlayerInventorySlotPacket.SERIALIZER),
-            entry(TeamsPacket.class, TeamsPacket.SERIALIZER),
-            entry(UpdateScorePacket.class, UpdateScorePacket.SERIALIZER),
             entry(UpdateSimulationDistancePacket.class, UpdateSimulationDistancePacket.SERIALIZER),
             entry(SetTitleSubTitlePacket.class, SetTitleSubTitlePacket.SERIALIZER),
             entry(SetTimePacket.class, SetTimePacket.SERIALIZER),

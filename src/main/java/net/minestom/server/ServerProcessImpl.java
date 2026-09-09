@@ -20,7 +20,6 @@ import net.minestom.server.network.packet.PacketParser;
 import net.minestom.server.network.packet.PacketVanilla;
 import net.minestom.server.network.socket.Server;
 import net.minestom.server.registry.Registries;
-import net.minestom.server.scoreboard.TeamManager;
 import net.minestom.server.thread.Acquirable;
 import net.minestom.server.thread.ThreadDispatcher;
 import net.minestom.server.thread.ThreadProvider;
@@ -53,7 +52,6 @@ final class ServerProcessImpl implements ServerProcess, Registries.Delegating {
     private final InstanceManager instance;
     private final BlockManager block;
     private final CommandManager command;
-    private final TeamManager team;
     private final GlobalEventHandler eventHandler;
     private final SchedulerManager scheduler;
     private final BossBarManager bossBar;
@@ -80,7 +78,6 @@ final class ServerProcessImpl implements ServerProcess, Registries.Delegating {
         this.instance = new InstanceManager(this);
         this.block = new BlockManager();
         this.command = new CommandManager();
-        this.team = new TeamManager();
         this.eventHandler = new GlobalEventHandler();
         this.scheduler = new SchedulerManager();
         this.bossBar = new BossBarManager();
@@ -126,11 +123,6 @@ final class ServerProcessImpl implements ServerProcess, Registries.Delegating {
     @Override
     public CommandManager command() {
         return command;
-    }
-
-    @Override
-    public TeamManager team() {
-        return team;
     }
 
     @Override

@@ -116,8 +116,6 @@ import net.minestom.server.network.player.GameProfile;
 import net.minestom.server.network.player.PlayerConnection;
 import net.minestom.server.registry.DynamicRegistry;
 import net.minestom.server.registry.RegistryKey;
-import net.minestom.server.scoreboard.BelowNameTag;
-import net.minestom.server.scoreboard.Team;
 import net.minestom.server.thread.Acquirable;
 import net.minestom.server.timer.Scheduler;
 import net.minestom.server.utils.MathUtils;
@@ -256,8 +254,6 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
     // Experience orb pickup
     protected Cooldown experiencePickupCooldown = new Cooldown(Duration.of(10, TimeUnit.SERVER_TICK));
 
-    private BelowNameTag belowNameTag;
-
     private int permissionLevel;
 
     private boolean reducedDebugScreenInformation;
@@ -379,11 +375,6 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
             if (player != this) {
                 sendPacket(player.getAddPlayerToList());
             }
-        }
-
-        //Teams
-        for (Team team : MinecraftServer.getTeamManager().getTeams()) {
-            sendPacket(team.createTeamsCreationPacket());
         }
 
         // Commands
@@ -1889,21 +1880,6 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
      */
     public byte getHeldSlot() {
         return heldSlot;
-    }
-
-    /**
-     * Changes the tag below the name.
-     *
-     * @param belowNameTag The new below name tag
-     */
-    public void setBelowNameTag(BelowNameTag belowNameTag) {
-        if (this.belowNameTag == belowNameTag) return;
-
-        if (this.belowNameTag != null) {
-            this.belowNameTag.removeViewer(this);
-        }
-
-        this.belowNameTag = belowNameTag;
     }
 
     public ClickPreprocessor getClickPreprocessor() {

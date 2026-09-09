@@ -97,6 +97,15 @@ public sealed interface EntityTracker permits EntityTrackerImpl {
     }
 
     /**
+     * Releases a {@link Viewable} previously obtained from {@link #viewable(List, int, int)},
+     * so that it stops being retained by this tracker.
+     *
+     * @param viewable the viewable to unregister
+     */
+    @ApiStatus.Internal
+    void unregisterViewable(Viewable viewable);
+
+    /**
      * Represents the type of entity you want to retrieve.
      *
      * @param <E> the entity type

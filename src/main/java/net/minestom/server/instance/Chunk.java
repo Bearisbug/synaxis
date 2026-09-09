@@ -56,7 +56,7 @@ public abstract class Chunk implements Block.Getter, Block.Setter, Biome.Getter,
     private boolean readOnly;
 
     protected volatile boolean loaded = true;
-    private final Viewable viewable;
+    final Viewable viewable;
 
     // Data
     private final TagHandler tagHandler = TagHandler.newHandler();

@@ -11,6 +11,7 @@ import org.jetbrains.annotations.UnknownNullability;
 
 import java.lang.invoke.VarHandle;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.UnaryOperator;
 
 final class TagHandlerImpl implements TagHandler {
@@ -18,6 +19,8 @@ final class TagHandlerImpl implements TagHandler {
 
     private final Node root;
     private volatile @Nullable Node copy;
+    // Bumped by every invalidation so readableCopy can tell whether the snapshot it just built is already stale
+    private final AtomicInteger invalidations = new AtomicInteger();
 
     TagHandlerImpl(Node root) {
         this.root = root;
@@ -146,12 +149,17 @@ final class TagHandlerImpl implements TagHandler {
     @Override
     public TagReadable readableCopy() {
         Node copy = this.copy;
-        if (copy == null) {
-            synchronized (this) {
-                this.copy = copy = root.copy(null);
-            }
+        if (copy != null) return copy;
+        synchronized (this) {
+            copy = this.copy;
+            if (copy != null) return copy;
+            // setTag's fast path mutates and invalidates without holding this monitor, so caching a snapshot
+            // unconditionally can overwrite an invalidation and keep serving stale tags forever
+            final int stamp = invalidations.get();
+            final Node snapshot = root.copy(null);
+            if (invalidations.get() == stamp) this.copy = snapshot;
+            return snapshot;
         }
-        return copy;
     }
 
     @Override
@@ -337,6 +345,7 @@ final class TagHandlerImpl implements TagHandler {
             Node tmp = this;
             do tmp.compound = null;
             while ((tmp = tmp.parent) != null);
+            TagHandlerImpl.this.invalidations.incrementAndGet();
             TagHandlerImpl.this.copy = null;
         }
 

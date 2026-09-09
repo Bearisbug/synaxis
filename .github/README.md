@@ -86,8 +86,7 @@ To pin the snapshot version to a specific release you can reference the exact bu
 </details>
 
 # Usage
-An example of how to use the Minestom library is available [here](/demo).
-Alternatively you can check the official [wiki](https://wiki.minestom.net/) or the [javadocs](https://minestom.github.io/Minestom/).
+You can check the official [wiki](https://wiki.minestom.net/) or the [javadocs](https://minestom.github.io/Minestom/).
 
 # Why Minestom?
 Minecraft has evolved a lot since its release, most of the servers today do not take advantage of vanilla features and even have to struggle because of them.

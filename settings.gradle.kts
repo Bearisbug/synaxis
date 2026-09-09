@@ -8,6 +8,4 @@ include("testing")
 include("jmh-benchmarks")
 include("jcstress-tests")
 
-include("demo")
-
 enableFeaturePreview("ENHANCED_GRAPH_ORDERING")

@@ -3,8 +3,12 @@ package net.minestom.server.timer;
 import net.minestom.server.MinecraftServer;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
@@ -251,5 +255,52 @@ public class TestScheduler {
         scheduler.process();
         assertEquals(3, runs.get(), "the unpark sent while the task was running was lost");
         assertFalse(task.isParked());
+    }
+
+    @Test
+    public void immediateRepeatRunsOncePerProcess() {
+        Scheduler scheduler = Scheduler.newScheduler();
+        AtomicInteger counter = new AtomicInteger();
+        Task task = scheduler.scheduleTask(counter::incrementAndGet, TaskSchedule.immediate(), TaskSchedule.immediate());
+        assertEquals(0, counter.get(), "the delay is consumed first");
+        scheduler.process();
+        assertEquals(1, counter.get(), "an immediate repeat must not be consumed again by the drain that queued it");
+        scheduler.process();
+        assertEquals(2, counter.get());
+        task.cancel();
+    }
+
+    @Test
+    @Timeout(120)
+    public void concurrentProcess() throws InterruptedException {
+        final int taskCount = 512;
+        final int threadCount = 4;
+        for (int attempt = 0; attempt < 100; attempt++) {
+            Scheduler scheduler = Scheduler.newScheduler();
+            AtomicInteger runs = new AtomicInteger();
+            for (int i = 0; i < taskCount; i++) scheduler.scheduleNextProcess(runs::incrementAndGet);
+
+            CountDownLatch start = new CountDownLatch(1);
+            List<Thread> threads = new ArrayList<>();
+            for (int i = 0; i < threadCount; i++) {
+                Thread thread = new Thread(() -> {
+                    try {
+                        start.await();
+                    } catch (InterruptedException e) {
+                        throw new RuntimeException(e);
+                    }
+                    scheduler.process();
+                }, "scheduler-consumer-" + i);
+                thread.setDaemon(true);
+                thread.start();
+                threads.add(thread);
+            }
+            start.countDown();
+            for (Thread thread : threads) thread.join();
+            scheduler.process();
+
+            assertEquals(taskCount, runs.get(),
+                    "concurrent process() calls dropped or duplicated tasks of the single consumer queue");
+        }
     }
 }

@@ -1189,9 +1189,6 @@
       "glob": "data/zombie_nautilus_variant.json"
     },
     {
-      "glob": "net/minestom/server/instance/lighting/region/r.0.0.mca"
-    },
-    {
       "glob": "org/slf4j/impl/StaticLoggerBinder.class"
     }
   ]

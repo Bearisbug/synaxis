@@ -146,7 +146,6 @@ module net.minestom.server {
     exports net.minestom.server.potion;
     exports net.minestom.server.registry;
     exports net.minestom.server.scoreboard;
-    exports net.minestom.server.snapshot;
     exports net.minestom.server.sound;
     exports net.minestom.server.tag;
     exports net.minestom.server.thread;

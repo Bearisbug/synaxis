@@ -6,7 +6,6 @@ import net.kyori.adventure.nbt.CompoundBinaryTag;
 import net.kyori.adventure.nbt.LongArrayBinaryTag;
 import net.minestom.server.coordinate.CoordConversion;
 import net.minestom.server.coordinate.Point;
-import net.minestom.server.entity.Entity;
 import net.minestom.server.instance.block.Block;
 import net.minestom.server.instance.block.BlockHandler;
 import net.minestom.server.instance.heightmap.Heightmap;
@@ -21,10 +20,6 @@ import net.minestom.server.network.packet.server.play.UpdateLightPacket;
 import net.minestom.server.network.packet.server.play.data.ChunkData;
 import net.minestom.server.network.packet.server.play.data.LightData;
 import net.minestom.server.registry.RegistryKey;
-import net.minestom.server.snapshot.ChunkSnapshot;
-import net.minestom.server.snapshot.SnapshotImpl;
-import net.minestom.server.snapshot.SnapshotUpdater;
-import net.minestom.server.utils.ArrayUtils;
 import net.minestom.server.utils.validate.Check;
 import net.minestom.server.world.DimensionType;
 import net.minestom.server.world.biome.Biome;
@@ -379,17 +374,5 @@ public class DynamicChunk extends Chunk {
         this.motionBlocking.refresh(startY);
         this.worldSurface.refresh(startY);
         this.needsCompleteHeightmapRefresh = false;
-    }
-
-    @Override
-    public ChunkSnapshot updateSnapshot(SnapshotUpdater updater) {
-        Section[] clonedSections = new Section[sections.size()];
-        for (int i = 0; i < clonedSections.length; i++)
-            clonedSections[i] = sections.get(i).clone();
-        var entities = instance.getEntityTracker().chunkEntities(chunkX, chunkZ, EntityTracker.Target.ENTITIES);
-        final int[] entityIds = ArrayUtils.mapToIntArray(entities, Entity::getEntityId);
-        return new SnapshotImpl.Chunk(minSection, chunkX, chunkZ,
-                clonedSections, entries.clone(), entityIds, updater.reference(instance),
-                instance.registries().biome(), tagHandler().readableCopy());
     }
 }

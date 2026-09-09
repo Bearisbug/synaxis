@@ -118,10 +118,6 @@ import net.minestom.server.registry.DynamicRegistry;
 import net.minestom.server.registry.RegistryKey;
 import net.minestom.server.scoreboard.BelowNameTag;
 import net.minestom.server.scoreboard.Team;
-import net.minestom.server.snapshot.EntitySnapshot;
-import net.minestom.server.snapshot.PlayerSnapshot;
-import net.minestom.server.snapshot.SnapshotImpl;
-import net.minestom.server.snapshot.SnapshotUpdater;
 import net.minestom.server.thread.Acquirable;
 import net.minestom.server.timer.Scheduler;
 import net.minestom.server.utils.MathUtils;
@@ -2465,12 +2461,6 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
     @Override
     public void setEquipment(EquipmentSlot slot, ItemStack itemStack) {
         inventory.setEquipment(slot, heldSlot, itemStack);
-    }
-
-    @Override
-    public PlayerSnapshot updateSnapshot(SnapshotUpdater updater) {
-        final EntitySnapshot snapshot = super.updateSnapshot(updater);
-        return new SnapshotImpl.Player(snapshot, username, gameMode);
     }
 
     public Locale getLocale() {

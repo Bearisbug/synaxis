@@ -12,7 +12,6 @@ import net.minestom.server.instance.block.BlockHandler;
 import net.minestom.server.instance.generator.Generator;
 import net.minestom.server.instance.heightmap.Heightmap;
 import net.minestom.server.network.packet.server.SendablePacket;
-import net.minestom.server.snapshot.Snapshotable;
 import net.minestom.server.tag.TagHandler;
 import net.minestom.server.tag.Taggable;
 import net.minestom.server.utils.chunk.ChunkSupplier;
@@ -39,7 +38,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
  * You generally want to avoid storing references of this object as this could lead to a huge memory leak,
  * you should store the chunk coordinates instead.
  */
-public abstract class Chunk implements Block.Getter, Block.Setter, Biome.Getter, Biome.Setter, Viewable, Tickable, Taggable, Snapshotable {
+public abstract class Chunk implements Block.Getter, Block.Setter, Biome.Getter, Biome.Setter, Viewable, Tickable, Taggable {
     public static final int CHUNK_SIZE_X = 16;
     public static final int CHUNK_SIZE_Z = 16;
     public static final int CHUNK_SECTION_SIZE = 16;

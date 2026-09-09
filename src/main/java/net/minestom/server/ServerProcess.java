@@ -16,7 +16,6 @@ import net.minestom.server.network.packet.PacketParser;
 import net.minestom.server.network.socket.Server;
 import net.minestom.server.registry.Registries;
 import net.minestom.server.scoreboard.TeamManager;
-import net.minestom.server.snapshot.Snapshotable;
 import net.minestom.server.thread.ThreadDispatcher;
 import net.minestom.server.timer.SchedulerManager;
 import org.jetbrains.annotations.ApiStatus;
@@ -24,7 +23,7 @@ import org.jetbrains.annotations.ApiStatus;
 import java.net.SocketAddress;
 
 @ApiStatus.NonExtendable
-public interface ServerProcess extends Registries, Snapshotable {
+public interface ServerProcess extends Registries {
     /**
      * Gets the registries owned by this process.
      *

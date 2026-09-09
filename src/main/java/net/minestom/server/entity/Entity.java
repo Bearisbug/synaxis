@@ -73,10 +73,6 @@ import net.minestom.server.network.packet.server.play.SpawnEntityPacket;
 import net.minestom.server.potion.Potion;
 import net.minestom.server.potion.PotionEffect;
 import net.minestom.server.potion.TimedPotion;
-import net.minestom.server.snapshot.EntitySnapshot;
-import net.minestom.server.snapshot.SnapshotImpl;
-import net.minestom.server.snapshot.SnapshotUpdater;
-import net.minestom.server.snapshot.Snapshotable;
 import net.minestom.server.tag.TagHandler;
 import net.minestom.server.tag.Taggable;
 import net.minestom.server.thread.Acquirable;
@@ -84,7 +80,6 @@ import net.minestom.server.thread.AcquirableSource;
 import net.minestom.server.timer.Schedulable;
 import net.minestom.server.timer.Scheduler;
 import net.minestom.server.timer.TaskSchedule;
-import net.minestom.server.utils.ArrayUtils;
 import net.minestom.server.utils.MathUtils;
 import net.minestom.server.utils.PacketViewableUtils;
 import net.minestom.server.utils.async.AsyncUtils;
@@ -117,7 +112,6 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.function.UnaryOperator;
@@ -127,7 +121,7 @@ import java.util.function.UnaryOperator;
  * <p>
  * To create your own entity you probably want to extend {@link LivingEntity} or {@link EntityCreature} instead.
  */
-public class Entity implements Viewable, Tickable, Schedulable, Snapshotable, EventHandler<EntityEvent>, Taggable,
+public class Entity implements Viewable, Tickable, Schedulable, EventHandler<EntityEvent>, Taggable,
         HoverEventSource<ShowEntity>, Sound.Emitter, Shape, AcquirableSource<Entity>, DataComponent.Holder, Pointered, Identified {
     // This is somewhat arbitrary, but we don't want to hit the max int ever because it is very easy to
     // overflow while working with a position at the max int (for example, looping over a bounding box)
@@ -1858,23 +1852,6 @@ public class Entity implements Viewable, Tickable, Schedulable, Snapshotable, Ev
     @Override
     public Scheduler scheduler() {
         return scheduler;
-    }
-
-    @Override
-    public EntitySnapshot updateSnapshot(SnapshotUpdater updater) {
-        // Both are null before the entity spawns and are cleared again by remove(), which may run
-        // on another thread while the snapshot is being taken
-        final Instance instance = this.instance;
-        final Chunk chunk = currentChunk;
-        final int[] viewersId = this.viewEngine.viewableOption.bitSet.toIntArray();
-        final int[] passengersId = ArrayUtils.mapToIntArray(passengers, Entity::getEntityId);
-        final Entity vehicle = this.vehicle;
-        return new SnapshotImpl.Entity(entityType, uuid, id, position, velocity,
-                instance != null ? updater.reference(instance) : new AtomicReference<>(),
-                chunk != null ? chunk.getChunkX() : CoordConversion.globalToChunk(position.x()),
-                chunk != null ? chunk.getChunkZ() : CoordConversion.globalToChunk(position.z()),
-                viewersId, passengersId, vehicle == null ? -1 : vehicle.getEntityId(),
-                tagHandler.readableCopy());
     }
 
     @Override

@@ -20,9 +20,6 @@ jmh = "1.37"
 jcstress = "0.16"
 errorprone = "2.50.0"
 
-# Code Generation
-javaPoet = "0.19.0"
-
 # Log impl (for demo)
 logback = "1.6.3"
 
@@ -67,9 +64,6 @@ jmh-core = { group = "org.openjdk.jmh", name = "jmh-core", version.ref = "jmh" }
 jmh-annotationprocessor = { group = "org.openjdk.jmh", name = "jmh-generator-annprocess", version.ref = "jmh" }
 jcstress-core = { group = "org.openjdk.jcstress", name = "jcstress-core", version.ref = "jcstress" }
 errorprone-core = { group = "com.google.errorprone", name = "error_prone_core", version.ref = "errorprone" }
-
-# Code Generation
-javaPoet = { group = "com.palantir.javapoet", name = "javapoet", version.ref = "javaPoet" }
 
 # Log impl (for demo)
 logback-core = { group = "ch.qos.logback", name = "logback-core", version.ref = "logback" }

@@ -160,7 +160,8 @@ final class CodecImpl {
             try {
                 return inner.encode(coder, from.apply(value));
             } catch (Exception e) {
-                return new Result.Error<>(e.getMessage());
+                // Result.Error rejects a null message, which getMessage() is for plenty of exceptions
+                return new Result.Error<>(e.getClass().getSimpleName() + ": " + e.getMessage());
             }
         }
     }

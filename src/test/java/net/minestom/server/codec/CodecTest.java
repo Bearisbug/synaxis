@@ -21,6 +21,38 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 public final class CodecTest {
 
     /**
+     * Result.Error requires a non-null message, so building one from a bare getMessage() throws NPE inside the
+     * catch block for any exception without a message.
+     */
+    @Test
+    public void transformEncodeFailureWithoutMessageIsAnError() {
+        final Codec<String> codec = Codec.STRING.transform(value -> value, _ -> {
+            throw new IllegalStateException();
+        });
+        Assertions.assertInstanceOf(Result.Error.class, codec.encode(Transcoder.NBT, "a"));
+    }
+
+    /**
+     * Every sibling combinator reports an oversized collection as a Result.Error, so encode must not throw.
+     */
+    @Test
+    public void collectionEncodeOverMaxSizeIsAnError() {
+        Assertions.assertInstanceOf(Result.Error.class,
+                Codec.STRING.list(1).encode(Transcoder.NBT, List.of("a", "b")));
+        Assertions.assertInstanceOf(Result.Error.class,
+                Codec.STRING.set(1).encode(Transcoder.NBT, Set.of("a", "b")));
+    }
+
+    /**
+     * A transcoder map can only be keyed by strings, and dropping the entries silently produced an empty map.
+     */
+    @Test
+    public void mapWithNonStringKeysIsAnError() {
+        Assertions.assertInstanceOf(Result.Error.class,
+                Codec.INT.mapValue(Codec.STRING).encode(Transcoder.NBT, Map.of(1, "a")));
+    }
+
+    /**
      * Codec's own class documentation advertises {@code Codec.STRING.optional().set()}, so an optional nested in a
      * collection has to round trip instead of throwing out of encode and decode.
      */

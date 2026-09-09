@@ -28,7 +28,6 @@ import net.minestom.demo.commands.HealthCommand;
 import net.minestom.demo.commands.HorseCommand;
 import net.minestom.demo.commands.KillCommand;
 import net.minestom.demo.commands.LegacyCommand;
-import net.minestom.demo.commands.MinecartCommand;
 import net.minestom.demo.commands.NotificationCommand;
 import net.minestom.demo.commands.PlayersCommand;
 import net.minestom.demo.commands.PotionCommand;
@@ -135,7 +134,6 @@ public class Main {
         commandManager.register(new AttributeCommand());
         commandManager.register(new PrimedTNTCommand());
         commandManager.register(new SleepCommand());
-        commandManager.register(new MinecartCommand());
         commandManager.register(new BelowNameCommand());
         commandManager.register(new TestBiomeAmbientParticleCommand());
 

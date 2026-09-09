@@ -169,20 +169,6 @@ public sealed class MetadataDef {
         public static final Entry<Integer> SPLASH_TIMER = index(2, Metadata::VarInt, 0);
     }
 
-    public static sealed class AbstractMinecart extends AbstractVehicle {
-        public static final Entry<@Nullable Block> CUSTOM_BLOCK_STATE = index(0, Metadata::OptBlockState, null);
-        public static final Entry<Integer> CUSTOM_BLOCK_Y_POSITION = index(1, Metadata::VarInt, 6);
-    }
-
-    public static final class MinecartFurnace extends AbstractMinecart {
-        public static final Entry<Boolean> HAS_FUEL = index(0, Metadata::Boolean, false);
-    }
-
-    public static final class MinecartCommandBlock extends AbstractMinecart {
-        public static final Entry<String> COMMAND = index(0, Metadata::String, "");
-        public static final Entry<Component> LAST_OUTPUT = index(1, Metadata::Component, Component.empty());
-    }
-
     public static final class EndCrystal extends MetadataDef {
         public static final Entry<@Nullable Point> BEAM_TARGET = index(0, Metadata::OptBlockPosition, null);
         public static final Entry<Boolean> SHOW_BOTTOM = index(1, Metadata::Boolean, true);

@@ -57,13 +57,6 @@ import net.minestom.server.entity.metadata.item.SplashPotionMeta;
 import net.minestom.server.entity.metadata.item.ThrownEggMeta;
 import net.minestom.server.entity.metadata.item.ThrownEnderPearlMeta;
 import net.minestom.server.entity.metadata.item.ThrownExperienceBottleMeta;
-import net.minestom.server.entity.metadata.minecart.ChestMinecartMeta;
-import net.minestom.server.entity.metadata.minecart.CommandBlockMinecartMeta;
-import net.minestom.server.entity.metadata.minecart.FurnaceMinecartMeta;
-import net.minestom.server.entity.metadata.minecart.HopperMinecartMeta;
-import net.minestom.server.entity.metadata.minecart.MinecartMeta;
-import net.minestom.server.entity.metadata.minecart.SpawnerMinecartMeta;
-import net.minestom.server.entity.metadata.minecart.TntMinecartMeta;
 import net.minestom.server.entity.metadata.monster.BlazeMeta;
 import net.minestom.server.entity.metadata.monster.BreezeMeta;
 import net.minestom.server.entity.metadata.monster.CaveSpiderMeta;
@@ -398,15 +391,8 @@ public final class MetadataHolder {
             entry(EntityType.MANGROVE_CHEST_BOAT, BoatMeta::new),
             entry(EntityType.MANNEQUIN, MannequinMeta::new),
             entry(EntityType.MARKER, MarkerMeta::new),
-            entry(EntityType.MINECART, MinecartMeta::new),
             entry(EntityType.NAUTILUS, NautilusMeta::new),
-            entry(EntityType.CHEST_MINECART, ChestMinecartMeta::new),
-            entry(EntityType.COMMAND_BLOCK_MINECART, CommandBlockMinecartMeta::new),
-            entry(EntityType.FURNACE_MINECART, FurnaceMinecartMeta::new),
-            entry(EntityType.HOPPER_MINECART, HopperMinecartMeta::new),
-            entry(EntityType.SPAWNER_MINECART, SpawnerMinecartMeta::new),
             entry(EntityType.TEXT_DISPLAY, TextDisplayMeta::new),
-            entry(EntityType.TNT_MINECART, TntMinecartMeta::new),
             entry(EntityType.MOOSHROOM, MooshroomMeta::new),
             entry(EntityType.MULE, MuleMeta::new),
             entry(EntityType.OAK_BOAT, BoatMeta::new),

@@ -73,7 +73,6 @@ module net.minestom.server {
     exports net.minestom.server.entity.metadata.display;
     exports net.minestom.server.entity.metadata.golem;
     exports net.minestom.server.entity.metadata.item;
-    exports net.minestom.server.entity.metadata.minecart;
     exports net.minestom.server.entity.metadata.monster;
     exports net.minestom.server.entity.metadata.monster.raider;
     exports net.minestom.server.entity.metadata.monster.skeleton;

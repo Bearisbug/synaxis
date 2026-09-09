@@ -32,7 +32,7 @@ public final class ObjectPool<T> {
     }
 
     private ObjectPool(Supplier<T> supplier, UnaryOperator<T> sanitizer) {
-        this.pool = ConcurrentMessageQueues.mpmcSpecialUnboundedArrayQueue(QUEUE_SIZE);
+        this.pool = ConcurrentMessageQueues.mpmcArrayQueue(QUEUE_SIZE);
         this.supplier = supplier;
         this.sanitizer = sanitizer;
     }

@@ -130,6 +130,7 @@ final class AcquirableImpl<T> implements Acquirable<T> {
         if (Thread.currentThread() instanceof TickThread tickThread && tickThread.lock().isHeldByCurrentThread()) {
             while (!GLOBAL_LOCK.tryLock()) {
                 tickThread.lock().unlock();
+                Thread.onSpinWait();
                 tickThread.lock().lock();
             }
         } else {

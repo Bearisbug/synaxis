@@ -110,6 +110,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 public final class PacketListenerManager {
@@ -118,6 +119,7 @@ public final class PacketListenerManager {
 
     @SuppressWarnings({"unchecked", "rawtypes"}) // generic array creation
     private final Map<Class<? extends ClientPacket>, PacketPrePlayListenerConsumer>[] listeners = new Map[ConnectionState.values().length];
+    private final Set<Class<?>> missingListenerWarnings = ConcurrentHashMap.newKeySet();
 
     public PacketListenerManager() {
         for (int i = 0; i < listeners.length; i++) {
@@ -222,7 +224,10 @@ public final class PacketListenerManager {
 
         // Listener can be null if none has been set before, call PacketConsumer anyway
         if (packetListenerConsumer == null) {
-            LOGGER.warn("Packet {}:{} does not have any default listener! (The issue likely comes from Minestom)", clazz, currState);
+            // A registered packet without a listener is a static defect: warn once, otherwise a
+            // client spamming such a packet turns it into a log flood.
+            if (missingListenerWarnings.add(clazz))
+                LOGGER.warn("Packet {}:{} does not have any default listener! (The issue likely comes from Minestom)", clazz, currState);
             return;
         }
 

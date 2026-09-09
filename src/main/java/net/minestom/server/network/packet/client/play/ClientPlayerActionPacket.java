@@ -5,6 +5,7 @@ import net.minestom.server.instance.block.BlockFace;
 import net.minestom.server.network.NetworkBuffer;
 import net.minestom.server.network.NetworkBufferTemplate;
 import net.minestom.server.network.packet.client.ClientPacket;
+import net.minestom.server.utils.validate.Check;
 
 import static net.minestom.server.network.NetworkBuffer.BLOCK_POSITION;
 import static net.minestom.server.network.NetworkBuffer.BYTE;
@@ -17,9 +18,15 @@ public record ClientPlayerActionPacket(
     public static final NetworkBuffer.Type<ClientPlayerActionPacket> SERIALIZER = NetworkBufferTemplate.template(
             NetworkBuffer.Enum(Status.class), ClientPlayerActionPacket::status,
             BLOCK_POSITION, ClientPlayerActionPacket::blockPosition,
-            BYTE.transform(aByte -> BlockFace.values()[aByte], blockFace1 -> (byte) blockFace1.ordinal()), ClientPlayerActionPacket::blockFace,
+            BYTE.transform(ClientPlayerActionPacket::blockFace, blockFace1 -> (byte) blockFace1.ordinal()), ClientPlayerActionPacket::blockFace,
             VAR_INT, ClientPlayerActionPacket::sequence,
             ClientPlayerActionPacket::new);
+
+    private static BlockFace blockFace(byte index) {
+        final BlockFace[] faces = BlockFace.values();
+        Check.argCondition(index < 0 || index >= faces.length, "Invalid block face: {0}", index);
+        return faces[index];
+    }
 
     public enum Status {
         STARTED_DIGGING,

@@ -2,6 +2,7 @@ package net.minestom.server.network;
 
 import net.minestom.server.codec.Codec;
 import net.minestom.server.registry.Registries;
+import net.minestom.server.utils.Direction;
 import net.minestom.server.utils.Unit;
 import org.junit.jupiter.api.Test;
 
@@ -37,6 +38,19 @@ class NetworkBufferTypeWrapperTest {
         assertThrows(IllegalArgumentException.class, () -> sizedBuffer().read(NetworkBuffer.VAR_INT.set(4)));
         assertThrows(IllegalArgumentException.class,
                 () -> sizedBuffer().read(NetworkBuffer.VAR_INT.mapValue(NetworkBuffer.VAR_INT, 4)));
+    }
+
+    @Test
+    void enumTypeRejectsOutOfRangeOrdinals() {
+        final NetworkBuffer.Type<Direction> type = NetworkBuffer.Enum(Direction.class);
+        assertThrows(IllegalArgumentException.class, () -> ordinalBuffer(-1).read(type));
+        assertThrows(IllegalArgumentException.class, () -> ordinalBuffer(99).read(type));
+    }
+
+    private static NetworkBuffer ordinalBuffer(int ordinal) {
+        final NetworkBuffer buffer = NetworkBuffer.resizableBuffer(64);
+        buffer.write(NetworkBuffer.VAR_INT, ordinal);
+        return buffer;
     }
 
     private static NetworkBuffer sizedBuffer() {

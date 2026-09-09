@@ -99,7 +99,11 @@ public sealed interface NetworkBuffer permits NetworkBufferImpl {
 
     static <E extends Enum<E>> Type<E> Enum(Class<E> enumClass) {
         final E[] values = enumClass.getEnumConstants();
-        return VAR_INT.transform(integer -> values[integer], Enum::ordinal);
+        return VAR_INT.transform(integer -> {
+            Check.argCondition(integer < 0 || integer >= values.length,
+                    "Invalid {0} ordinal: {1}", enumClass.getSimpleName(), integer);
+            return values[integer];
+        }, Enum::ordinal);
     }
 
     static <E extends Enum<E>> Type<EnumSet<E>> EnumSet(Class<E> enumClass) {

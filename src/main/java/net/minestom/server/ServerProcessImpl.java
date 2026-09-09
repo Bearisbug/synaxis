@@ -276,7 +276,12 @@ final class ServerProcessImpl implements ServerProcess, Registries.Delegating {
             scheduler().processTick();
 
             // Connection tick (let waiting clients in, send keep alives, handle configuration players packets)
-            connection().tick(nanoTime);
+            try {
+                connection().tick(nanoTime);
+            } catch (Exception e) {
+                // A single misbehaving connection must not skip the rest of the tick
+                exception().handleException(e);
+            }
 
             // Server tick (chunks/entities)
             serverTick(nanoTime);

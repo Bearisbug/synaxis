@@ -338,6 +338,8 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
     @ApiStatus.Internal
     public CompletableFuture<Void> UNSAFE_init() {
         final Instance spawnInstance = this.pendingInstance;
+        if (spawnInstance == null)
+            throw new IllegalStateException("Player " + getUsername() + " has no pending instance, the configuration phase did not complete");
         this.pendingInstance = null;
 
         this.removed = false;

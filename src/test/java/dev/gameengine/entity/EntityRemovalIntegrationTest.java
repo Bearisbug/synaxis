@@ -1,7 +1,10 @@
 package dev.gameengine.entity;
 
 import dev.gameengine.coordinate.Pos;
+import dev.gameengine.coordinate.Vec;
 import dev.gameengine.event.entity.EntityTickEvent;
+import dev.gameengine.item.ItemStack;
+import dev.gameengine.item.Material;
 import dev.gameengine.network.packet.server.play.DestroyEntitiesPacket;
 import dev.gameengine.utils.time.TimeUnit;
 import dev.gameengine.testing.Env;
@@ -13,12 +16,25 @@ import java.time.temporal.TemporalUnit;
 import java.util.List;
 
 import static dev.gameengine.testing.TestUtils.waitUntilCleared;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @EnvTest
 public class EntityRemovalIntegrationTest {
+
+    @Test
+    public void entityNeverPlacedInAnInstanceStaysUsable() {
+        // Such an entity belongs to no server process, so its events reach no listener; that must
+        // not stop it from being equipped, pushed around or thrown away.
+        var entity = new LivingEntity(EntityType.ZOMBIE);
+        assertDoesNotThrow(() -> entity.setEquipment(EquipmentSlot.HELMET, ItemStack.of(Material.DIAMOND_HELMET)));
+        assertEquals(ItemStack.of(Material.DIAMOND_HELMET), entity.getEquipment(EquipmentSlot.HELMET));
+        assertDoesNotThrow(() -> entity.setVelocity(new Vec(1, 0, 0)));
+        assertDoesNotThrow(() -> entity.remove());
+        assertTrue(entity.isRemoved());
+    }
 
     @Test
     public void destructionPacket(Env env) {

@@ -81,7 +81,7 @@ N/A — 画像:内部系统，本里程碑无产品指标与埋点事件；工�
 | REQ-013 | M1.5 · 静态门面实例化：`MinecraftServer` 静态访问（182 调用点 / 66 文件）改为顺着构造函数传递的 `ServerProcess` 实例；`@EnvTest` 可并行 | 可维护、可测 | P2 |
 | REQ-014 | M1.5 · 配置对象：`ServerFlag` 54 个系统属性开关改为挂在 `ServerProcess` 上的配置对象，测试与生产用同一份默认值 | 可维护 | P2 |
 | REQ-015 | M1.5 · 分层：`coordinate/codec/utils/registry/tag/component/thread/timer/exception/color/sound/condition/gamedata/crypto` 等底层包不得依赖上层（消除 39 条边 335 条 import），`utils` 内 20 个错放类归位，ArchUnit 由「冻结」改为「禁止」 | 可读、可扩展 | P2 |
-| REQ-016 | M1.5 · 拆 `NetworkBufferTypeImpl`（1,284 行）为按类型分文件的实现，零 API 影响 | 可读 | P3 |
+| REQ-016 | M1.5 · 拆 `NetworkBufferTypeImpl`（拆前 1,297 行）为按类型族分文件的实现，零 API 影响。已完成：枢纽剩 15 行，10 个 package-private 持有类 | 可读 | P3 |
 
 ## 6. 总体架构
 
@@ -611,5 +611,6 @@ N/A — M1 尚未完成；完成后按 §26 退出条件逐项对照并记录实
 | 风险 | Apache-2.0 §4(b) 修改声明采用 NOTICE 加 README 集中声明而非逐文件头，需法务确认 | Bearisbug | 阶段 3 |
 | 风险 | `assertOwnership()` 对未分配线程的实体一律拒绝，`setInstance` / `teleport` 三处仍未接线；接线需先放宽未分配态语义 | Bearisbug | 阶段 4 前 |
 | 风险 | jcstress Gradle 插件与 isolated-projects / configuration cache 不兼容，CI 需单独 job 并关闭这两项 | Bearisbug | 阶段 0 |
+| 技术债 | `network` 包三处小缺陷（拆分时发现，未改）：`IOUTF8StringType` javadoc 含 `${@link ...}` 坏标签；`ListType`/`SetType` 的 `write` 空值分支写 `BYTE 0` 而 `read` 读 `VAR_INT`，仅因同为单字节 0 而巧合往返；`RawBytesType.write` 局部变量遮蔽记录组件 `length` | Bearisbug | M1.5 阶段 7 补测试时修 |
 | 技术债 | `CommandPacketFilteringTest` 依赖其他 `@EnvTest` 先初始化静态 `serverProcess`，单跑必挂 | Bearisbug | 阶段 4 门面改造时消失 |
 | 技术债 | 上游未修的 `ObjectPoolTest` 在 jcstress pre-test 阶段 NPE | Bearisbug | 阶段 0 CI 接入时处理 |

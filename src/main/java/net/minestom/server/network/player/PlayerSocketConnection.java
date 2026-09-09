@@ -456,6 +456,12 @@ public class PlayerSocketConnection extends PlayerConnection {
         }
         // Consume queued packets
         var packetQueue = this.packetQueue;
+        if (ServerFlag.FASTER_SOCKET_WRITES) {
+            assert this.writeThread == Thread.currentThread(): "writeThread should be the current thread";
+            // Clear the signal before looking at the queue, otherwise a packet offered in
+            // between is seen by neither the check below nor unlockWriteThread.
+            this.writeSignaled.set(false);
+        }
         if (packetQueue.isEmpty()) {
             if (!ServerFlag.FASTER_SOCKET_WRITES) {
                 try {
@@ -466,8 +472,6 @@ public class PlayerSocketConnection extends PlayerConnection {
                     throw new RuntimeException(e);
                 }
             } else {
-                assert this.writeThread == Thread.currentThread(): "writeThread should be the current thread";
-                this.writeSignaled.set(false);
                 if (!isOnline()) return; // already offline, don't park
                 LockSupport.park(this);
                 if (packetQueue.isEmpty()) return; // woken by disconnect signal, not by packets

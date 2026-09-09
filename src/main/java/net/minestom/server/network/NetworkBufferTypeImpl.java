@@ -952,7 +952,12 @@ interface NetworkBufferTypeImpl<T> extends NetworkBuffer.Type<T> {
     }
 
     final class RecursiveType<T> implements NetworkBufferTypeImpl<T> {
+        // The nesting depth of a recursive type is decided by whoever wrote the bytes, so it has
+        // to be bounded before the recursive read runs the java stack out (see ServerFlag#NBT_MAX_DEPTH).
+        private static final int MAX_READ_DEPTH = 64;
+
         final NetworkBuffer.Type<T> delegate;
+        private final ThreadLocal<int[]> readDepth = ThreadLocal.withInitial(() -> new int[1]);
 
         public RecursiveType(Function<NetworkBuffer.Type<T>, NetworkBuffer.Type<T>> self) {
             Objects.requireNonNull(self, "self");
@@ -966,7 +971,15 @@ interface NetworkBufferTypeImpl<T> extends NetworkBuffer.Type<T> {
 
         @Override
         public T read(NetworkBuffer buffer) {
-            return delegate.read(buffer);
+            final int[] depth = readDepth.get();
+            if (depth[0] >= MAX_READ_DEPTH)
+                throw new IllegalStateException("Recursive type nested deeper than " + MAX_READ_DEPTH + " levels");
+            depth[0]++;
+            try {
+                return delegate.read(buffer);
+            } finally {
+                depth[0]--;
+            }
         }
     }
 

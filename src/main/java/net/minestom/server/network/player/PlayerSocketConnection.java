@@ -151,6 +151,7 @@ public class PlayerSocketConnection extends PlayerConnection {
                     compression()
             );
         } catch (Throwable e) {
+            rethrowFatal(e);
             // Errors thrown while still in the starting state are usually garbage
             // from scanners. A packet that errors after a state change within the
             // same batch is still checked against the starting state.
@@ -178,6 +179,7 @@ public class PlayerSocketConnection extends PlayerConnection {
                             player.addPacketToQueue(packet);
                         }
                     } catch (Throwable e) {
+                        rethrowFatal(e);
                         if (startingState.ordinal() > ServerFlag.SUPPRESS_MISUSED_PACKET_ERROR_LEVEL)
                             MinecraftServer.getExceptionManager().handleException(e);
                         // Packets already in the queue are unaffected.
@@ -198,6 +200,14 @@ public class PlayerSocketConnection extends PlayerConnection {
                 readBuffer.resize(requiredCapacity);
             }
         }
+    }
+
+    /**
+     * Catching {@link Throwable} keeps a malformed packet from killing the read thread, but an
+     * exhausted heap is not a per-connection problem and must not become a quiet disconnect.
+     */
+    private static void rethrowFatal(Throwable throwable) {
+        if (throwable instanceof OutOfMemoryError error) throw error;
     }
 
     /**

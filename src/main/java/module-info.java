@@ -180,7 +180,6 @@ module net.minestom.server {
     exports net.minestom.server.utils.json;
     exports net.minestom.server.utils.location;
     exports net.minestom.server.utils.mojang;
-    exports net.minestom.server.utils.nbt;
     exports net.minestom.server.utils.position;
     exports net.minestom.server.utils.time;
     exports net.minestom.server.utils.url;

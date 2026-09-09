@@ -184,7 +184,7 @@ public class PlayerIntegrationTest {
     @Test
     public void refreshPlayerTest(Env env) {
         final int TEST_PERMISSION_LEVEL = 2;
-        final var testDimension = env.process().dimensionType().register(Key.key("minestom:test_dimension"), DimensionType.builder().build());
+        final var testDimension = env.process().dimensionType().register(Key.key("gameengine:test_dimension"), DimensionType.builder().build());
 
         var instance = env.createFlatInstance();
         var instance2 = env.process().instance().createInstanceContainer(testDimension);
@@ -218,7 +218,7 @@ public class PlayerIntegrationTest {
 
     @Test
     public void deathLocationTest(Env env) {
-        String dimensionNamespace = "minestom:test_dimension";
+        String dimensionNamespace = "gameengine:test_dimension";
         final var testDimension = env.process().dimensionType().register(Key.key(dimensionNamespace), DimensionType.builder().build());
 
         var instance = env.process().instance().createInstanceContainer(testDimension);

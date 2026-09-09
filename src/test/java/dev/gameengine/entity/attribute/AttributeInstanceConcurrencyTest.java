@@ -16,8 +16,8 @@ public class AttributeInstanceConcurrencyTest {
     public void concurrentModifiersAreAllReflected() throws InterruptedException {
         for (int attempt = 0; attempt < 500; attempt++) {
             var instance = new AttributeInstance(Attribute.MAX_HEALTH, 20, List.of(), null);
-            var first = new AttributeModifier("minestom:first", 1, AttributeOperation.ADD_VALUE);
-            var second = new AttributeModifier("minestom:second", 2, AttributeOperation.ADD_VALUE);
+            var first = new AttributeModifier("gameengine:first", 1, AttributeOperation.ADD_VALUE);
+            var second = new AttributeModifier("gameengine:second", 2, AttributeOperation.ADD_VALUE);
 
             var start = new CountDownLatch(1);
             var done = new CountDownLatch(2);

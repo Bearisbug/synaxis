@@ -859,7 +859,7 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
             // After sending the first chunk we always send a synchronize position to the client. This is to prevent
             // cases where the client falls through the floor slightly while loading the first chunk.
             // In the vanilla server they have an anticheat which teleports the client back if they enter the floor,
-            // but since Minestom does not have an anticheat this provides a similar effect.
+            // but since the engine does not have an anticheat this provides a similar effect.
             if (needsChunkPositionSync) {
                 synchronizePositionAfterTeleport(getPosition(), Vec.ZERO, RelativeFlags.NONE, true);
                 needsChunkPositionSync = false;
@@ -981,7 +981,7 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
             if (block == null) continue;
 
             // For now just ignore scaffolding. It seems to have a dynamic bounding box, or is just parsed
-            // incorrectly in MinestomDataGenerator.
+            // incorrectly in the generated block data.
             if (block.id() == Block.SCAFFOLDING.id()) continue;
 
             boolean hit = block.collisionShape()

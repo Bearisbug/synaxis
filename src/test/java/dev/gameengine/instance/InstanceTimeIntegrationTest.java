@@ -60,7 +60,7 @@ public class InstanceTimeIntegrationTest {
 
     @Test
     void multipleClocks(Env env) {
-        var myOtherClock = env.process().opaque(BuiltinRegistries.WORLD_CLOCK).register(Key.key("minestom:clock"), CompoundBinaryTag.empty());
+        var myOtherClock = env.process().opaque(BuiltinRegistries.WORLD_CLOCK).register(Key.key("gameengine:clock"), CompoundBinaryTag.empty());
 
         var instance = env.createEmptyInstance();
         var defaultClock = Objects.requireNonNull(instance.defaultClock());

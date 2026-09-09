@@ -28,7 +28,7 @@ public class NetworkBufferIOUTFStringBenchmark {
     private static final String ASCII_LONG = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. ".repeat(20);
 
     private static final String UNICODE_SHORT = "Hello 世界! 🌍";
-    private static final String UNICODE_MEDIUM = "Minestom supports: English, 中文, 日本語, 한국어, العربية, Русский! 🎮🚀".repeat(3);
+    private static final String UNICODE_MEDIUM = "game-engine supports: English, 中文, 日本語, 한국어, العربية, Русский! 🎮🚀".repeat(3);
     private static final String UNICODE_LONG = "🎮 Gaming server with emoji 🚀 and Unicode ©®™ symbols ∑∏√∫ ".repeat(15);
 
     private static final String MIXED_SHORT = "Player123 joined!";

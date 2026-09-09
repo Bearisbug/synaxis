@@ -217,7 +217,7 @@ public final class PacketListenerManager {
             // A registered packet without a listener is a static defect: warn once, otherwise a
             // client spamming such a packet turns it into a log flood.
             if (missingListenerWarnings.add(clazz))
-                LOGGER.warn("Packet {}:{} does not have any default listener! (The issue likely comes from Minestom)", clazz, currState);
+                LOGGER.warn("Packet {}:{} does not have any default listener! (The issue likely comes from the engine)", clazz, currState);
             return;
         }
 
@@ -237,7 +237,7 @@ public final class PacketListenerManager {
     /**
      * Sets the listener of a packet.
      * <p>
-     * WARNING: this will overwrite the default minestom listener, this is not reversible.
+     * WARNING: this will overwrite the default engine listener, this is not reversible.
      *
      * @param state       the state of the packet
      * @param packetClass the class of the packet
@@ -251,7 +251,7 @@ public final class PacketListenerManager {
     /**
      * Sets the listener of a packet.
      * <p>
-     * WARNING: this will overwrite the default minestom listener, this is not reversible.
+     * WARNING: this will overwrite the default engine listener, this is not reversible.
      *
      * @param packetClass the class of the packet
      * @param consumer    the new packet's listener
@@ -268,7 +268,7 @@ public final class PacketListenerManager {
     /**
      * Sets the listener of a packet.
      * <p>
-     * WARNING: this will overwrite the default minestom listener, this is not reversible.
+     * WARNING: this will overwrite the default engine listener, this is not reversible.
      *
      * @param packetClass the class of the packet
      * @param consumer    the new packet's listener

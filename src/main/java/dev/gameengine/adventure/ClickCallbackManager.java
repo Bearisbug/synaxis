@@ -20,6 +20,9 @@ import java.util.concurrent.atomic.AtomicInteger;
  * Manager for Adventure click callbacks.
  */
 public final class ClickCallbackManager implements Tickable {
+    // Kept on the upstream namespace on purpose: this id travels to the client inside the
+    // click_event of every callback component and comes back in ClientCustomClickActionPacket,
+    // so changing it changes the wire bytes.
     private static final Key KEY = Key.key("minestom", "click_callback");
 
     private final Map<UUID, ClickCallback<Audience>> permanent = new ConcurrentHashMap<>(0);

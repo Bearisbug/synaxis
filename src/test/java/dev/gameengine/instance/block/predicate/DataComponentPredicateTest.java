@@ -381,16 +381,16 @@ public class DataComponentPredicateTest {
 
         var attributeModifiers = new DataComponentPredicate.AttributeModifiers(
                 CollectionPredicate.<AttributeList.Modifier, DataComponentPredicate.AttributeModifierPredicate>builder()
-                        .mustContain(new DataComponentPredicate.AttributeModifierPredicate(Attribute.ATTACK_SPEED, Key.key("minestom:extra_attack_speed"), new Range.Double(0.0, 5.0), AttributeOperation.ADD_MULTIPLIED_BASE, EquipmentSlotGroup.MAIN_HAND))
+                        .mustContain(new DataComponentPredicate.AttributeModifierPredicate(Attribute.ATTACK_SPEED, Key.key("gameengine:extra_attack_speed"), new Range.Double(0.0, 5.0), AttributeOperation.ADD_MULTIPLIED_BASE, EquipmentSlotGroup.MAIN_HAND))
                         .build()
         );
 
-        assertPass(attributeModifiers, DataComponents.ATTRIBUTE_MODIFIERS, new AttributeList(new AttributeList.Modifier(Attribute.ATTACK_SPEED, new AttributeModifier(Key.key("minestom:extra_attack_speed"), 2.0, AttributeOperation.ADD_MULTIPLIED_BASE), EquipmentSlotGroup.MAIN_HAND)));
-        assertFail(attributeModifiers, DataComponents.ATTRIBUTE_MODIFIERS, new AttributeList(new AttributeList.Modifier(Attribute.ARMOR_TOUGHNESS, new AttributeModifier(Key.key("minestom:extra_attack_speed"), 2.0, AttributeOperation.ADD_MULTIPLIED_BASE), EquipmentSlotGroup.MAIN_HAND)));
-        assertFail(attributeModifiers, DataComponents.ATTRIBUTE_MODIFIERS, new AttributeList(new AttributeList.Modifier(Attribute.ATTACK_DAMAGE, new AttributeModifier(Key.key("minestom:different_key"), 2.0, AttributeOperation.ADD_MULTIPLIED_BASE), EquipmentSlotGroup.MAIN_HAND)));
-        assertFail(attributeModifiers, DataComponents.ATTRIBUTE_MODIFIERS, new AttributeList(new AttributeList.Modifier(Attribute.ATTACK_DAMAGE, new AttributeModifier(Key.key("minestom:extra_attack_speed"), 10.0, AttributeOperation.ADD_MULTIPLIED_BASE), EquipmentSlotGroup.MAIN_HAND)));
-        assertFail(attributeModifiers, DataComponents.ATTRIBUTE_MODIFIERS, new AttributeList(new AttributeList.Modifier(Attribute.ATTACK_DAMAGE, new AttributeModifier(Key.key("minestom:extra_attack_speed"), 2.0, AttributeOperation.ADD_VALUE), EquipmentSlotGroup.MAIN_HAND)));
-        assertFail(attributeModifiers, DataComponents.ATTRIBUTE_MODIFIERS, new AttributeList(new AttributeList.Modifier(Attribute.ATTACK_DAMAGE, new AttributeModifier(Key.key("minestom:extra_attack_speed"), 2.0, AttributeOperation.ADD_MULTIPLIED_BASE), EquipmentSlotGroup.OFF_HAND)));
+        assertPass(attributeModifiers, DataComponents.ATTRIBUTE_MODIFIERS, new AttributeList(new AttributeList.Modifier(Attribute.ATTACK_SPEED, new AttributeModifier(Key.key("gameengine:extra_attack_speed"), 2.0, AttributeOperation.ADD_MULTIPLIED_BASE), EquipmentSlotGroup.MAIN_HAND)));
+        assertFail(attributeModifiers, DataComponents.ATTRIBUTE_MODIFIERS, new AttributeList(new AttributeList.Modifier(Attribute.ARMOR_TOUGHNESS, new AttributeModifier(Key.key("gameengine:extra_attack_speed"), 2.0, AttributeOperation.ADD_MULTIPLIED_BASE), EquipmentSlotGroup.MAIN_HAND)));
+        assertFail(attributeModifiers, DataComponents.ATTRIBUTE_MODIFIERS, new AttributeList(new AttributeList.Modifier(Attribute.ATTACK_DAMAGE, new AttributeModifier(Key.key("gameengine:different_key"), 2.0, AttributeOperation.ADD_MULTIPLIED_BASE), EquipmentSlotGroup.MAIN_HAND)));
+        assertFail(attributeModifiers, DataComponents.ATTRIBUTE_MODIFIERS, new AttributeList(new AttributeList.Modifier(Attribute.ATTACK_DAMAGE, new AttributeModifier(Key.key("gameengine:extra_attack_speed"), 10.0, AttributeOperation.ADD_MULTIPLIED_BASE), EquipmentSlotGroup.MAIN_HAND)));
+        assertFail(attributeModifiers, DataComponents.ATTRIBUTE_MODIFIERS, new AttributeList(new AttributeList.Modifier(Attribute.ATTACK_DAMAGE, new AttributeModifier(Key.key("gameengine:extra_attack_speed"), 2.0, AttributeOperation.ADD_VALUE), EquipmentSlotGroup.MAIN_HAND)));
+        assertFail(attributeModifiers, DataComponents.ATTRIBUTE_MODIFIERS, new AttributeList(new AttributeList.Modifier(Attribute.ATTACK_DAMAGE, new AttributeModifier(Key.key("gameengine:extra_attack_speed"), 2.0, AttributeOperation.ADD_MULTIPLIED_BASE), EquipmentSlotGroup.OFF_HAND)));
     }
 
     @Test

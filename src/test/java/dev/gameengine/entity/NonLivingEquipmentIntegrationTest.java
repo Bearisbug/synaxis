@@ -17,7 +17,7 @@ public class NonLivingEquipmentIntegrationTest {
         var connection = env.createConnection();
         var viewer = connection.connect(instance, new Pos(0, 42, 0));
 
-        // A LivingEntity with a non-living type is legal in Minestom and used for custom entities
+        // A LivingEntity with a non-living type is legal in the engine and used for custom entities
         var arrow = new LivingEntity(EntityType.ARROW);
         arrow.setInstance(instance, new Pos(0, 42, 5000)).join();
 

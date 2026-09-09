@@ -33,7 +33,7 @@ public record BlockVec(int blockX, int blockY, int blockZ) implements Point {
     /**
      * Narrows an assumed global coordinate to a block coordinate by flooring the value.
      * <br>
-     * Developer Note: Minestom should not call this constructor without explicit warnings.
+     * Developer Note: the engine should not call this constructor without explicit warnings.
      *
      * @param x the global x coordinate
      * @param y the global y coordinate

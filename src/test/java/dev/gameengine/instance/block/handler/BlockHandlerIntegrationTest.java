@@ -35,7 +35,7 @@ class BlockHandlerIntegrationTest {
 
             @Override
             public Key getKey() {
-                return Key.key("minestom:test");
+                return Key.key("gameengine:test");
             }
         };
 
@@ -55,7 +55,7 @@ class BlockHandlerIntegrationTest {
 
             @Override
             public Key getKey() {
-                return Key.key("minestom:test");
+                return Key.key("gameengine:test");
             }
         };
 
@@ -79,7 +79,7 @@ class BlockHandlerIntegrationTest {
 
             @Override
             public Key getKey() {
-                return Key.key("minestom:test");
+                return Key.key("gameengine:test");
             }
         };
 
@@ -106,7 +106,7 @@ class BlockHandlerIntegrationTest {
 
             @Override
             public Key getKey() {
-                return Key.key("minestom:test");
+                return Key.key("gameengine:test");
             }
 
             @Override
@@ -139,7 +139,7 @@ class BlockHandlerIntegrationTest {
 
             @Override
             public Key getKey() {
-                return Key.key("minestom:test");
+                return Key.key("gameengine:test");
             }
 
             @Override

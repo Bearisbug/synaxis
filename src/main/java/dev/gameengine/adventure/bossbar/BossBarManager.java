@@ -14,7 +14,7 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Manages all boss bars known to this Minestom instance. Although this class can be used
+ * Manages all boss bars known to this engine instance. Although this class can be used
  * to show boss bars to players, it is preferable to use the boss bar methods in the
  * {@link Audience} class instead.
  *

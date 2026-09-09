@@ -18,7 +18,7 @@ public class SharedInstanceIntegrationTest {
     @Test
     public void keepsTheContainerDimensionName(Env env) {
         var container = new InstanceContainer(env.process(), UUID.randomUUID(),
-                DimensionType.OVERWORLD, null, Key.key("minestom:lobby"));
+                DimensionType.OVERWORLD, null, Key.key("gameengine:lobby"));
         var shared = new SharedInstance(UUID.randomUUID(), container);
         assertEquals(container.getDimensionName(), shared.getDimensionName());
     }

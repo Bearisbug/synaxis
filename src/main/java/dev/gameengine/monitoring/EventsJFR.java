@@ -32,19 +32,19 @@ public final class EventsJFR {
         }
     }
 
-    public static final String SERVER_PING = "minestom.ServerPing";
-    public static final String SERVER_TICK = "minestom.ServerTickTime";
+    public static final String SERVER_PING = "gameengine.ServerPing";
+    public static final String SERVER_TICK = "gameengine.ServerTickTime";
 
-    public static final String CHUNK_GENERATION = "minestom.ChunkGeneration";
-    public static final String CHUNK_LOADING = "minestom.ChunkLoading";
+    public static final String CHUNK_GENERATION = "gameengine.ChunkGeneration";
+    public static final String CHUNK_LOADING = "gameengine.ChunkLoading";
 
-    public static final String INSTANCE_JOIN = "minestom.InstanceJoin";
-    public static final String INSTANCE_LEAVE = "minestom.InstanceLeave";
+    public static final String INSTANCE_JOIN = "gameengine.InstanceJoin";
+    public static final String INSTANCE_LEAVE = "gameengine.InstanceLeave";
 
-    public static final String PLAYER_JOIN = "minestom.PlayerJoin";
-    public static final String PLAYER_LEAVE = "minestom.PlayerLeave";
-    public static final String PLAYER_COMMAND = "minestom.PlayerCommand";
-    public static final String PLAYER_CHAT = "minestom.PlayerChat";
+    public static final String PLAYER_JOIN = "gameengine.PlayerJoin";
+    public static final String PLAYER_LEAVE = "gameengine.PlayerLeave";
+    public static final String PLAYER_COMMAND = "gameengine.PlayerCommand";
+    public static final String PLAYER_CHAT = "gameengine.PlayerChat";
 
     public static EventMarker newServerPing(String remoteAddress) {
         return JFR_AVAILABLE ? new ServerPing(remoteAddress) : NO_OP;

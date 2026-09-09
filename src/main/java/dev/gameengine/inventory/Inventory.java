@@ -133,7 +133,6 @@ public non-sealed class Inventory extends AbstractInventory {
      * Gets the cursor item of a player.
      *
      * @deprecated normal inventories no longer store cursor items
-     * @see <a href="https://github.com/Minestom/Minestom/pull/2294">the relevant PR</a>
      */
     @Deprecated
     public ItemStack getCursorItem(Player player) {
@@ -144,7 +143,6 @@ public non-sealed class Inventory extends AbstractInventory {
      * Changes the cursor item of a player.
      *
      * @deprecated normal inventories no longer store cursor items
-     * @see <a href="https://github.com/Minestom/Minestom/pull/2294">the relevant PR</a>
      */
     @Deprecated
     public void setCursorItem(Player player, ItemStack cursorItem) {

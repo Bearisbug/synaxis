@@ -1557,7 +1557,7 @@ public class Entity implements Viewable, Tickable, Schedulable, EventHandler<Ent
      * - update the viewable chunks (load and unload)
      * - add/remove players from the viewers list if {@link #isAutoViewable()} is enabled
      * <p>
-     * WARNING: unsafe, should only be used internally in Minestom. Use {@link #teleport(Pos)} instead.
+     * WARNING: unsafe, should only be used internally in the engine. Use {@link #teleport(Pos)} instead.
      *
      * @param newPosition the new position
      */

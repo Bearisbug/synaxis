@@ -32,8 +32,8 @@ public class PlayerPacketQueueIntegrationTest {
                     if (handled.getAndIncrement() == 0) throw new IllegalStateException("handler failure");
                 });
 
-        player.addPacketToQueue(new ClientPluginMessagePacket("minestom:test", new byte[0]));
-        player.addPacketToQueue(new ClientPluginMessagePacket("minestom:test", new byte[0]));
+        player.addPacketToQueue(new ClientPluginMessagePacket("gameengine:test", new byte[0]));
+        player.addPacketToQueue(new ClientPluginMessagePacket("gameengine:test", new byte[0]));
         assertDoesNotThrow(player::interpretPacketQueue);
 
         // Play state is above the default suppression level, the failure is reported

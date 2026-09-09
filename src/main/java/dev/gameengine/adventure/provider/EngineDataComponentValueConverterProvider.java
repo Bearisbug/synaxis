@@ -23,7 +23,7 @@ public final class EngineDataComponentValueConverterProvider implements DataComp
 
     @Override
     public Key id() {
-        return Key.key("minestom", "data_component_value_converter");
+        return Key.key("gameengine", "data_component_value_converter");
     }
 
     @Override

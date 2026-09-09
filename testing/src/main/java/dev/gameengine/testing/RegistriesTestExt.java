@@ -9,7 +9,7 @@ import org.junit.jupiter.api.extension.ParameterResolver;
 final class RegistriesTestExt implements BeforeAllCallback, ParameterResolver {
     private static final ExtensionContext.Namespace NAMESPACE =
             ExtensionContext.Namespace.create(RegistriesTestExt.class);
-    private static final String REGISTRIES_KEY = "minestom.registries";
+    private static final String REGISTRIES_KEY = "gameengine.registries";
 
     @Override
     public void beforeAll(ExtensionContext context) {

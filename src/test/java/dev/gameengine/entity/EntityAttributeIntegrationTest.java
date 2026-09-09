@@ -36,7 +36,7 @@ public class EntityAttributeIntegrationTest {
 
         ItemStack itemStack = ItemStack.builder(Material.DIAMOND).set(DataComponents.ATTRIBUTE_MODIFIERS,
                 new AttributeList(new AttributeList.Modifier(Attribute.MAX_HEALTH,
-                        new AttributeModifier(Key.key("minestom:health"), addition, AttributeOperation.ADD_VALUE), EquipmentSlotGroup.HEAD))).build();
+                        new AttributeModifier(Key.key("gameengine:health"), addition, AttributeOperation.ADD_VALUE), EquipmentSlotGroup.HEAD))).build();
 
         entity.setBoots(itemStack);
         assertEquals(0, Double.compare(entity.getAttribute(Attribute.MAX_HEALTH).getValue(), baseHealth)); // No change since we are in the wrong slot
@@ -59,7 +59,7 @@ public class EntityAttributeIntegrationTest {
 
         ItemStack itemStack = ItemStack.builder(Material.DIAMOND).set(DataComponents.ATTRIBUTE_MODIFIERS,
                 new AttributeList(new AttributeList.Modifier(Attribute.MAX_HEALTH,
-                        new AttributeModifier(Key.key("minestom:health"), addition, AttributeOperation.ADD_VALUE), EquipmentSlotGroup.MAIN_HAND))).build();
+                        new AttributeModifier(Key.key("gameengine:health"), addition, AttributeOperation.ADD_VALUE), EquipmentSlotGroup.MAIN_HAND))).build();
 
         player.setBoots(itemStack);
         assertEquals(0, Double.compare(player.getAttribute(Attribute.MAX_HEALTH).getValue(), baseHealth)); // No change since we are in the wrong slot
@@ -85,7 +85,7 @@ public class EntityAttributeIntegrationTest {
 
         ItemStack itemStack = ItemStack.builder(Material.DIAMOND).set(DataComponents.ATTRIBUTE_MODIFIERS,
                 new AttributeList(new AttributeList.Modifier(Attribute.MAX_HEALTH,
-                        new AttributeModifier(Key.key("minestom:health"), addition, AttributeOperation.ADD_VALUE), EquipmentSlotGroup.MAIN_HAND))).build();
+                        new AttributeModifier(Key.key("gameengine:health"), addition, AttributeOperation.ADD_VALUE), EquipmentSlotGroup.MAIN_HAND))).build();
 
         player.setItemInMainHand(itemStack);
         assertEquals(0, Double.compare(player.getAttribute(Attribute.MAX_HEALTH).getValue(), baseHealth + addition));

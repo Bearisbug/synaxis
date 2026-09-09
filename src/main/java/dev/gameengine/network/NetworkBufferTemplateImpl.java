@@ -93,7 +93,7 @@ final class NetworkBufferTemplateImpl {
             final MethodHandle constructor = lookup.findConstructor(lookup.lookupClass(), MethodType.methodType(void.class));
             return (NetworkBuffer.Type<T>) constructor.invoke();
         } catch (Throwable throwable) {
-            throw new IllegalStateException("Failed to generate network type template, if this continues to be an issue consider disabling compiled templates by setting the property `minestom.template-compiler` to `false`", throwable);
+            throw new IllegalStateException("Failed to generate network type template, if this continues to be an issue consider disabling compiled templates by setting the property `gameengine.template-compiler` to `false`", throwable);
         }
     }
 

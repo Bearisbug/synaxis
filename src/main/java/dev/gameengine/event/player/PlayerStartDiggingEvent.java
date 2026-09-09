@@ -15,7 +15,7 @@ import dev.gameengine.coordinate.BlockFace;
  * <p>
  * Be aware that cancelling this event does not necessary prevent the player from breaking the block
  * (could be because of high latency or a modified client) so cancelling {@link PlayerBlockBreakEvent} is also necessary.
- * Could be fixed in future Minestom version.
+ * Could be fixed in a future engine version.
  */
 public class PlayerStartDiggingEvent implements PlayerInstanceEvent, BlockEvent, CancellableEvent {
 

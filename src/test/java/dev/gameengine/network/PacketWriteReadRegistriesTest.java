@@ -368,7 +368,7 @@ public class PacketWriteReadRegistriesTest {
         addServerPackets(
                 new CookieRequestPacket("cookieKey"),
                 new CookieRequestPacket(""),
-                new CookieRequestPacket("minestom:cookie"),
+                new CookieRequestPacket("gameengine:cookie"),
                 new CookieRequestPacket("iam/cookie")
         );
         // Configuration
@@ -409,7 +409,7 @@ public class PacketWriteReadRegistriesTest {
         addServerPackets(new TagsPacket(List.of(new TagsPacket.Registry("test", List.of(new TagsPacket.Tag("#cool", new int[]{1, 2, 23, 123}))))), new TagsPacket(List.of()));
         addServerPackets(new SelectKnownPacksPacket(List.of(new SelectKnownPacksPacket.Entry("test", "id", "randomversion"))));
         addServerPackets(new CustomReportDetailsPacket(Map.of("key", "value", "key1", "value1")));
-        addServerPackets(new ServerLinksPacket(new ServerLinksPacket.Entry(ServerLinksPacket.KnownLinkType.BUG_REPORT, "https://minestom.net"), new ServerLinksPacket.Entry(ServerLinksPacket.KnownLinkType.ANNOUNCEMENTS, "https://minestom.net")));
+        addServerPackets(new ServerLinksPacket(new ServerLinksPacket.Entry(ServerLinksPacket.KnownLinkType.BUG_REPORT, "https://example.com"), new ServerLinksPacket.Entry(ServerLinksPacket.KnownLinkType.ANNOUNCEMENTS, "https://example.com")));
         addServerPackets(new ClearDialogPacket());
         // Only inline dialogs round trip through both serializers, the configuration one has no registry yet
         addServerPackets(
@@ -609,7 +609,7 @@ public class PacketWriteReadRegistriesTest {
         addServerPackets(new MoveMinecartPacket(1, List.of(new MoveMinecartPacket.LerpStep(VEC, Vec.ZERO, 1f, 1f, 1f))));
         addServerPackets(new PlayerChatMessagePacket(0, UUID.randomUUID(), 0, new MessageSignature(new byte[256]), new SignedMessageBody.Packed("hey", Instant.EPOCH, 0L, new LastSeenMessages.Packed(List.of())), null, new FilterMask(FilterMask.Type.FULLY_FILTERED, new BitSet()), 1, Component.text("hey"), null));
         addServerPackets(new RemoveEntityEffectPacket(0, PotionEffect.BAD_OMEN));
-        addServerPackets(new TestInstanceBlockStatus(Component.text("Minestom is cool"), null), new TestInstanceBlockStatus(Component.text("Where is season 5 william?"), BLOCK_VEC));
+        addServerPackets(new TestInstanceBlockStatus(Component.text("game-engine is cool"), null), new TestInstanceBlockStatus(Component.text("Where is season 5 william?"), BLOCK_VEC));
         addServerPackets(new EntityEffectPacket(0, new Potion(PotionEffect.ABSORPTION, 1, 150)));
         addServerPackets(new TrackedWaypointPacket(TrackedWaypointPacket.Operation.UNTRACK, new TrackedWaypointPacket.Waypoint(Either.right("test"), TrackedWaypointPacket.Icon.DEFAULT, new TrackedWaypointPacket.Target.Empty())));
         addServerPackets(new GameRuleValuesPacket(Map.of()), new GameRuleValuesPacket(Map.of(
@@ -663,7 +663,7 @@ public class PacketWriteReadRegistriesTest {
         );
         addClientPackets(new ClientLoginAcknowledgedPacket());
         addClientPackets(
-                new ClientCookieResponsePacket("minestom:cookie", new byte[123]),
+                new ClientCookieResponsePacket("gameengine:cookie", new byte[123]),
                 new ClientCookieResponsePacket("cookie", new byte[0]),
                 new ClientCookieResponsePacket("cookie/packet", new byte[]{1, 22, 36, 42, -51, 6}),
                 new ClientCookieResponsePacket("cookie/max", new byte[5120]) // max length

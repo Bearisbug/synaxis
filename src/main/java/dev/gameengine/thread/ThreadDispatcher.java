@@ -41,7 +41,7 @@ public sealed interface ThreadDispatcher<P, E extends Tickable> permits ThreadDi
 
     /**
      * Creates a new ThreadDispatcher using the caller-provided thread name generator {@code nameGenerator}. This is
-     * useful to disambiguate custom ThreadDispatcher instances from ones used in core Minestom code.
+     * useful to disambiguate custom ThreadDispatcher instances from ones used in core engine code.
      * <p>Remember to start the dispatcher using {@link #start()}</p>
      *
      * @param provider         the {@link ThreadProvider} instance to be used for defining thread IDs

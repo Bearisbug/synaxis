@@ -35,7 +35,7 @@ public class BlockClientNbtTest {
 
             @Override
             public Key getKey() {
-                return Key.key("minestom:test");
+                return Key.key("gameengine:test");
             }
         };
 

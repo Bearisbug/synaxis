@@ -58,7 +58,7 @@ public class ServerAddressTest {
         // These like to fail on github actions
         assumeTrue(System.getenv("GITHUB_ACTIONS") == null);
 
-        UnixDomainSocketAddress address = UnixDomainSocketAddress.of("minestom.sock");
+        UnixDomainSocketAddress address = UnixDomainSocketAddress.of("gameengine.sock");
         var server = new Server(ServerProcess.of(), PacketVanilla.CLIENT_PACKET_PARSER);
         server.init(address);
         assertTrue(Files.exists(address.getPath()));

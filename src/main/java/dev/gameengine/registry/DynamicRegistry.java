@@ -113,7 +113,7 @@ public sealed interface DynamicRegistry<T> extends Registry<T> permits DynamicRe
      *
      * <p><b>WARNING:</b> Updating an existing entry is an inherently unsafe operation as it may cause desync with
      * existing structures. <b>This behavior is disabled by default, and must be enabled by setting the system
-     * property <code>minestom.registry.unsafe-ops</code> to <code>true</code>.</b></p>
+     * property <code>gameengine.registry.unsafe-ops</code> to <code>true</code>.</b></p>
      *
      * @param object The entry to register
      * @return The new ID of the registered object
@@ -141,14 +141,14 @@ public sealed interface DynamicRegistry<T> extends Registry<T> permits DynamicRe
      * with existing IDs may be incorrect. For example, loading a world with 0=plains, 1=desert, 2=badlands would store
      * those IDs in the palette. If you then deleted entry 1 (desert), any desert biomes in the loaded world would
      * become badlands, and any badlands would become invalid. <b>This behavior is disabled by default, and must be
-     * enabled by setting the system property <code>minestom.registry.unsafe-ops</code> to <code>true</code>.</b></p>
+     * enabled by setting the system property <code>gameengine.registry.unsafe-ops</code> to <code>true</code>.</b></p>
      *
      * <p>Note: the new registry will not be sent to existing players. They must be returned to
      * the configuration phase to receive new registry data. See {@link Player#startConfigurationPhase()}.</p>
      *
      * @param key The id of the entry to remove
      * @return True if the object was removed, false if it was not present
-     * @throws UnsupportedOperationException If the system property <code>minestom.registry.unsafe-remove</code> is not set to <code>true</code>
+     * @throws UnsupportedOperationException If the system property <code>gameengine.registry.unsafe-ops</code> is not set to <code>true</code>
      */
     boolean remove(Key key) throws UnsupportedOperationException;
 

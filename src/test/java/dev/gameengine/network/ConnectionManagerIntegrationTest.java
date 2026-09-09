@@ -31,7 +31,7 @@ public class ConnectionManagerIntegrationTest {
     @BeforeEach
     public void setup(Env env) {
         profiles = new GameProfile[]{
-                new GameProfile(UUID.randomUUID(), "Minestom"),
+                new GameProfile(UUID.randomUUID(), "GameEngine"),
                 new GameProfile(UUID.randomUUID(), "Notch")};
     }
 
@@ -41,12 +41,12 @@ public class ConnectionManagerIntegrationTest {
         Player enginePlayer = env.createConnection(profiles[0]).connect(instance, Pos.ZERO);
         ConnectionManager connectionManager = env.process().connection();
 
-        assertEquals(enginePlayer, connectionManager.findOnlinePlayer("Mine"));
+        assertEquals(enginePlayer, connectionManager.findOnlinePlayer("Game"));
         assertNull(connectionManager.findOnlinePlayer("No"));
 
         Player notchPlayer = env.createConnection(profiles[1]).connect(instance, Pos.ZERO);
 
-        assertEquals(enginePlayer, connectionManager.findOnlinePlayer("Mine"));
+        assertEquals(enginePlayer, connectionManager.findOnlinePlayer("Game"));
         assertEquals(notchPlayer, connectionManager.findOnlinePlayer("No"));
         assertNull(connectionManager.findOnlinePlayer("leo"));
     }

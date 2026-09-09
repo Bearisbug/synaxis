@@ -78,7 +78,7 @@ public class ClientPingServerEvent implements CancellableEvent, AsyncEvent {
     }
 
     /**
-     * Gets the delay until minestom will send the ping response packet.
+     * Gets the delay until the engine will send the ping response packet.
      *
      * @return the delay
      */
@@ -87,7 +87,7 @@ public class ClientPingServerEvent implements CancellableEvent, AsyncEvent {
     }
 
     /**
-     * Adds to the delay until minestom will send the ping response packet.
+     * Adds to the delay until the engine will send the ping response packet.
      *
      * @param delay the delay
      */
@@ -96,7 +96,7 @@ public class ClientPingServerEvent implements CancellableEvent, AsyncEvent {
     }
 
     /**
-     * Sets the delay until minestom will send the ping response packet.
+     * Sets the delay until the engine will send the ping response packet.
      *
      * @param delay the delay
      */
@@ -105,7 +105,7 @@ public class ClientPingServerEvent implements CancellableEvent, AsyncEvent {
     }
 
     /**
-     * Clears the delay until minestom will send the ping response packet.
+     * Clears the delay until the engine will send the ping response packet.
      */
     public void noDelay() {
         this.delay = DEFAULT_DELAY;

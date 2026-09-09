@@ -112,7 +112,7 @@ public interface ChunkLoader {
 
     /**
      * Called when a chunk is unloaded, so that this chunk loader can unload any resource it is holding.
-     * Note: Minestom currently has no way to determine whether the chunk comes from this loader, so you may get
+     * Note: the engine currently has no way to determine whether the chunk comes from this loader, so you may get
      * unload requests for chunks not created by the loader.
      *
      * @param chunk the chunk to unload

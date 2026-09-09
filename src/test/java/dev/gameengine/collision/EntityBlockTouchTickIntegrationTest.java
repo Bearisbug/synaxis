@@ -33,7 +33,7 @@ public class EntityBlockTouchTickIntegrationTest {
 
             @Override
             public Key getKey() {
-                return Key.key("minestom:test");
+                return Key.key("gameengine:test");
             }
         };
 
@@ -72,7 +72,7 @@ public class EntityBlockTouchTickIntegrationTest {
 
             @Override
             public Key getKey() {
-                return Key.key("minestom:test");
+                return Key.key("gameengine:test");
             }
         };
 
@@ -112,7 +112,7 @@ public class EntityBlockTouchTickIntegrationTest {
 
             @Override
             public Key getKey() {
-                return Key.key("minestom:test");
+                return Key.key("gameengine:test");
             }
         };
 
@@ -160,7 +160,7 @@ public class EntityBlockTouchTickIntegrationTest {
 
             @Override
             public Key getKey() {
-                return Key.key("minestom:test");
+                return Key.key("gameengine:test");
             }
         };
 

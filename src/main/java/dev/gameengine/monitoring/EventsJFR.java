@@ -10,7 +10,7 @@ import org.jetbrains.annotations.ApiStatus;
 import java.util.UUID;
 
 /**
- * JFR events for monitoring Minestom server activities.
+ * JFR events for monitoring game-engine server activities.
  */
 @ApiStatus.Internal
 @SuppressWarnings({"ALL", "unused"})
@@ -88,7 +88,7 @@ public final class EventsJFR {
 
     @Name(SERVER_PING)
     @Label("Server Ping")
-    @Category({"Minestom", "Server"})
+    @Category({"game-engine", "Server"})
     @Description("A server ping (status query) was received")
     private static final class ServerPing extends JFREventWrapper {
         @Label("Remote Address")
@@ -101,14 +101,14 @@ public final class EventsJFR {
 
     @Name(SERVER_TICK)
     @Label("Server Tick")
-    @Category({"Minestom", "Server"})
+    @Category({"game-engine", "Server"})
     @Description("Time spent ticking the server once")
     private static final class ServerTick extends JFREventWrapper {
     }
 
     @Name(CHUNK_GENERATION)
     @Label("Chunk Generation")
-    @Category({"Minestom", "World"})
+    @Category({"game-engine", "World"})
     @Description("Chunk generation from instances' Generator")
     private static final class ChunkGeneration extends JFREventWrapper {
         @Label("Instance UUID")
@@ -127,7 +127,7 @@ public final class EventsJFR {
 
     @Name(CHUNK_LOADING)
     @Label("Chunk Loading")
-    @Category({"Minestom", "World"})
+    @Category({"game-engine", "World"})
     @Description("Chunk loading from the instances' ChunkLoader")
     private static final class ChunkLoading extends JFREventWrapper {
         @Label("Instance UUID")
@@ -149,7 +149,7 @@ public final class EventsJFR {
 
     @Name(INSTANCE_JOIN)
     @Label("Instance Join")
-    @Category({"Minestom", "Instance"})
+    @Category({"game-engine", "Instance"})
     @Description("An Entity has joined an instance")
     private static final class InstanceJoin extends JFREventWrapper {
         @Label("Entity UUID")
@@ -165,7 +165,7 @@ public final class EventsJFR {
 
     @Name(INSTANCE_LEAVE)
     @Label("Instance Leave")
-    @Category({"Minestom", "Instance"})
+    @Category({"game-engine", "Instance"})
     @Description("An Entity has left an instance")
     private static final class InstanceLeave extends JFREventWrapper {
         @Label("Entity UUID")
@@ -181,7 +181,7 @@ public final class EventsJFR {
 
     @Name(PLAYER_JOIN)
     @Label("Player Join")
-    @Category({"Minestom", "Player"})
+    @Category({"game-engine", "Player"})
     @Description("A player joined the server")
     private static final class PlayerJoin extends JFREventWrapper {
         @Label("Player UUID")
@@ -194,7 +194,7 @@ public final class EventsJFR {
 
     @Name(PLAYER_LEAVE)
     @Label("Player Leave")
-    @Category({"Minestom", "Player"})
+    @Category({"game-engine", "Player"})
     @Description("A player left the server")
     private static final class PlayerLeave extends JFREventWrapper {
         @Label("Player UUID")
@@ -207,7 +207,7 @@ public final class EventsJFR {
 
     @Name(PLAYER_COMMAND)
     @Label("Player Command")
-    @Category({"Minestom", "Player"})
+    @Category({"game-engine", "Player"})
     @Description("A player executed a command")
     private static final class PlayerCommand extends JFREventWrapper {
         @Label("Player UUID")
@@ -223,7 +223,7 @@ public final class EventsJFR {
 
     @Name(PLAYER_CHAT)
     @Label("Player Chat")
-    @Category({"Minestom", "Player"})
+    @Category({"game-engine", "Player"})
     @Description("A player sent a chat message")
     private static final class PlayerChat extends JFREventWrapper {
         @Label("Player UUID")

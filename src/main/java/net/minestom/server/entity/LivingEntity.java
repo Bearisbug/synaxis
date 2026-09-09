@@ -39,6 +39,7 @@ import net.minestom.server.registry.RegistryKey;
 import net.minestom.server.scoreboard.Team;
 import net.minestom.server.sound.SoundEvent;
 import net.minestom.server.thread.Acquirable;
+import net.minestom.server.utils.MathUtils;
 import net.minestom.server.utils.block.BlockIterator;
 import net.minestom.server.utils.time.Cooldown;
 import net.minestom.server.utils.time.TimeUnit;
@@ -271,6 +272,7 @@ public class LivingEntity extends Entity implements EquipmentHandler {
      * Kills the entity, trigger the {@link EntityDeathEvent} event.
      */
     public void kill() {
+        if (isDead()) return;
         refreshIsDead(true); // So the entity isn't killed over and over again
         triggerStatus((byte) EntityStatuses.LivingEntity.PLAY_DEATH_SOUND); // Start death animation status
         setPose(EntityPose.DYING);
@@ -424,9 +426,13 @@ public class LivingEntity extends Entity implements EquipmentHandler {
      */
     public void setHealth(float health) {
         acquirable().assertOwnership();
-        this.health = Math.min(health, (float) getAttributeValue(Attribute.MAX_HEALTH));
-        if (this.health <= 0 && !isDead) {
-            kill();
+        this.health = MathUtils.clamp(health, 0, (float) getAttributeValue(Attribute.MAX_HEALTH));
+        if (this.health <= 0) {
+            if (!isDead) kill();
+        } else if (isDead) {
+            // Healing back above zero revives the entity. Without this, cancelling a death by healing
+            // in EntityDeathEvent leaves isDead latched and damage() rejects everything afterwards.
+            refreshIsDead(false);
         }
         LivingEntityMeta meta = getLivingEntityMeta();
         if (meta != null) {

@@ -2,7 +2,7 @@ package dev.gameengine.inventory.click;
 
 import dev.gameengine.inventory.PlayerInventory;
 import dev.gameengine.network.packet.client.play.ClientClickWindowPacket;
-import dev.gameengine.utils.inventory.PlayerInventoryUtils;
+import dev.gameengine.inventory.PlayerInventoryUtils;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.LinkedHashSet;

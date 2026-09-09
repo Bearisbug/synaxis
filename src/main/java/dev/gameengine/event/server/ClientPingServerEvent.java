@@ -3,7 +3,7 @@ package dev.gameengine.event.server;
 import dev.gameengine.event.trait.AsyncEvent;
 import dev.gameengine.event.trait.CancellableEvent;
 import dev.gameengine.network.player.PlayerConnection;
-import dev.gameengine.utils.time.TimeUnit;
+import dev.gameengine.timer.TimeUnit;
 
 import java.time.Duration;
 

@@ -15,7 +15,7 @@ import dev.gameengine.network.NetworkBufferTemplate;
 import dev.gameengine.registry.Registries;
 import dev.gameengine.registry.RegistryTag;
 import dev.gameengine.registry.RegistryTranscoder;
-import dev.gameengine.utils.block.BlockUtils;
+import dev.gameengine.instance.block.BlockUtils;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Arrays;

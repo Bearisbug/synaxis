@@ -3,7 +3,7 @@ package dev.gameengine.adventure.bossbar;
 import net.kyori.adventure.audience.Audience;
 import net.kyori.adventure.bossbar.BossBar;
 import net.kyori.adventure.text.Component;
-import dev.gameengine.utils.PacketSendingUtils;
+import dev.gameengine.network.PacketSendingUtils;
 
 import java.util.Set;
 import java.util.function.Consumer;

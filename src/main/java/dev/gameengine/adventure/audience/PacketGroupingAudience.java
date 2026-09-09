@@ -16,7 +16,7 @@ import dev.gameengine.network.packet.server.ServerPacket;
 import dev.gameengine.network.packet.server.play.ActionBarPacket;
 import dev.gameengine.network.packet.server.play.ClearTitlesPacket;
 import dev.gameengine.network.packet.server.play.PlayerListHeaderAndFooterPacket;
-import dev.gameengine.utils.PacketSendingUtils;
+import dev.gameengine.network.PacketSendingUtils;
 
 import java.util.Collection;
 

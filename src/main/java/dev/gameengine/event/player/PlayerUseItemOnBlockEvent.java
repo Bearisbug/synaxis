@@ -5,7 +5,7 @@ import dev.gameengine.entity.Player;
 import dev.gameengine.entity.PlayerHand;
 import dev.gameengine.event.trait.ItemEvent;
 import dev.gameengine.event.trait.PlayerInstanceEvent;
-import dev.gameengine.instance.block.BlockFace;
+import dev.gameengine.coordinate.BlockFace;
 import dev.gameengine.item.ItemStack;
 
 /**

@@ -2,7 +2,7 @@ package dev.gameengine.network.packet.server.play;
 
 import dev.gameengine.coordinate.Point;
 import dev.gameengine.coordinate.Pos;
-import dev.gameengine.entity.RelativeFlags;
+import dev.gameengine.coordinate.RelativeFlags;
 import dev.gameengine.network.NetworkBuffer;
 import dev.gameengine.network.NetworkBufferTemplate;
 import dev.gameengine.network.packet.server.ServerPacket;

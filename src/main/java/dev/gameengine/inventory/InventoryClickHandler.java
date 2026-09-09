@@ -5,7 +5,6 @@ import dev.gameengine.event.inventory.InventoryClickEvent;
 import dev.gameengine.inventory.click.Click;
 import dev.gameengine.inventory.click.ClickType;
 import dev.gameengine.item.ItemStack;
-import dev.gameengine.utils.inventory.PlayerInventoryUtils;
 
 import java.util.List;
 

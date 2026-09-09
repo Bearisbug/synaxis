@@ -26,8 +26,7 @@ import dev.gameengine.item.component.CustomData;
 import dev.gameengine.particle.Particle;
 import dev.gameengine.tag.Tag;
 import dev.gameengine.utils.Range;
-import dev.gameengine.utils.location.RelativeVec;
-import dev.gameengine.utils.time.TimeUnit;
+import dev.gameengine.timer.TimeUnit;
 import org.junit.jupiter.api.Test;
 
 import java.time.Duration;

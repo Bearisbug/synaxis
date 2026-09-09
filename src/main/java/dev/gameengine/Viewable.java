@@ -5,7 +5,7 @@ import dev.gameengine.adventure.audience.PacketGroupingAudience;
 import dev.gameengine.entity.Player;
 import dev.gameengine.network.packet.server.SendablePacket;
 import dev.gameengine.network.packet.server.ServerPacket;
-import dev.gameengine.utils.PacketSendingUtils;
+import dev.gameengine.network.PacketSendingUtils;
 import org.jetbrains.annotations.Unmodifiable;
 
 import java.util.Collection;

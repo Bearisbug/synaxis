@@ -1,7 +1,6 @@
 package dev.gameengine;
 
 import net.kyori.adventure.text.logger.slf4j.ComponentLogger;
-import dev.gameengine.thread.TickSchedulerThread;
 
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;

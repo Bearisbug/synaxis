@@ -4,7 +4,7 @@ import dev.gameengine.coordinate.Pos;
 import dev.gameengine.coordinate.Vec;
 import dev.gameengine.event.EventFilter;
 import dev.gameengine.event.player.PlayerStabEvent;
-import dev.gameengine.instance.block.BlockFace;
+import dev.gameengine.coordinate.BlockFace;
 import dev.gameengine.item.ItemStack;
 import dev.gameengine.item.Material;
 import dev.gameengine.network.packet.client.play.ClientPlayerActionPacket;

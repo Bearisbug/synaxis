@@ -4,10 +4,9 @@ import net.kyori.adventure.key.Key;
 import dev.gameengine.coordinate.Point;
 import dev.gameengine.entity.Player;
 import dev.gameengine.instance.block.Block;
-import dev.gameengine.instance.block.BlockFace;
+import dev.gameengine.coordinate.BlockFace;
 import dev.gameengine.instance.block.BlockHandler;
 import dev.gameengine.instance.generator.Generator;
-import dev.gameengine.utils.chunk.ChunkSupplier;
 import org.jetbrains.annotations.ApiStatus;
 import org.jetbrains.annotations.Nullable;
 

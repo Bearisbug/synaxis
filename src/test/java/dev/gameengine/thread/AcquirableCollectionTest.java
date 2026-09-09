@@ -1,6 +1,5 @@
 package dev.gameengine.thread;
 
-import dev.gameengine.Tickable;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;

@@ -1,6 +1,5 @@
 package dev.gameengine.thread;
 
-import dev.gameengine.Tickable;
 import dev.gameengine.utils.collection.ConcurrentMessageQueues;
 import org.jctools.queues.MessagePassingQueue;
 import org.jetbrains.annotations.ApiStatus;

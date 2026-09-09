@@ -5,7 +5,7 @@ import net.kyori.adventure.key.Key;
 import net.kyori.adventure.nbt.IntArrayBinaryTag;
 import net.kyori.adventure.text.event.ClickCallback;
 import net.kyori.adventure.text.event.ClickEvent;
-import dev.gameengine.Tickable;
+import dev.gameengine.thread.Tickable;
 import dev.gameengine.entity.Player;
 import dev.gameengine.network.packet.client.common.ClientCustomClickActionPacket;
 import dev.gameengine.utils.UUIDUtils;

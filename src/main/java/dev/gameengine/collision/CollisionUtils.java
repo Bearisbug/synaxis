@@ -8,7 +8,7 @@ import dev.gameengine.instance.Chunk;
 import dev.gameengine.instance.Instance;
 import dev.gameengine.instance.WorldBorder;
 import dev.gameengine.instance.block.Block;
-import dev.gameengine.utils.chunk.ChunkCache;
+import dev.gameengine.instance.ChunkCache;
 import org.jetbrains.annotations.ApiStatus;
 import org.jetbrains.annotations.Nullable;
 

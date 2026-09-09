@@ -10,7 +10,7 @@ import dev.gameengine.instance.heightmap.Heightmap;
 import dev.gameengine.instance.palette.Palette;
 import dev.gameengine.network.NetworkBuffer;
 import dev.gameengine.network.NetworkBufferTemplate;
-import dev.gameengine.utils.block.BlockUtils;
+import dev.gameengine.instance.block.BlockUtils;
 
 import java.util.Arrays;
 import java.util.HashMap;

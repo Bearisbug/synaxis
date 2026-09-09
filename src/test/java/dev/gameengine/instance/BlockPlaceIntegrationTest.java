@@ -6,7 +6,7 @@ import dev.gameengine.entity.PlayerHand;
 import dev.gameengine.event.EventFilter;
 import dev.gameengine.event.player.PlayerBlockPlaceEvent;
 import dev.gameengine.instance.block.Block;
-import dev.gameengine.instance.block.BlockFace;
+import dev.gameengine.coordinate.BlockFace;
 import dev.gameengine.item.ItemStack;
 import dev.gameengine.item.Material;
 import dev.gameengine.item.component.ItemBlockState;

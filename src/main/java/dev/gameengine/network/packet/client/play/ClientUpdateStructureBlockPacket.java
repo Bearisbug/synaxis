@@ -4,7 +4,7 @@ import dev.gameengine.coordinate.Point;
 import dev.gameengine.network.NetworkBuffer;
 import dev.gameengine.network.NetworkBufferTemplate;
 import dev.gameengine.network.packet.client.ClientPacket;
-import dev.gameengine.utils.Rotation;
+import dev.gameengine.coordinate.Rotation;
 import dev.gameengine.utils.validate.Check;
 
 import static dev.gameengine.network.NetworkBuffer.BLOCK_POSITION;

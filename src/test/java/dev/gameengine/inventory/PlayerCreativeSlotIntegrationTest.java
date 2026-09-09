@@ -6,7 +6,6 @@ import dev.gameengine.item.ItemStack;
 import dev.gameengine.item.Material;
 import dev.gameengine.listener.CreativeInventoryActionListener;
 import dev.gameengine.network.packet.client.play.ClientCreativeInventoryActionPacket;
-import dev.gameengine.utils.inventory.PlayerInventoryUtils;
 import dev.gameengine.testing.Env;
 import dev.gameengine.testing.EnvTest;
 import org.junit.jupiter.api.Test;

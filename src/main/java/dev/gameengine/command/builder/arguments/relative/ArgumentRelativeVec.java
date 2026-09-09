@@ -5,13 +5,13 @@ import dev.gameengine.command.builder.arguments.Argument;
 import dev.gameengine.command.builder.exception.ArgumentSyntaxException;
 import dev.gameengine.coordinate.Vec;
 import dev.gameengine.utils.StringUtils;
-import dev.gameengine.utils.location.RelativeVec;
+import dev.gameengine.command.RelativeVec;
 
 import java.util.function.Function;
 
-import static dev.gameengine.utils.location.RelativeVec.CoordinateType.ABSOLUTE;
-import static dev.gameengine.utils.location.RelativeVec.CoordinateType.LOCAL;
-import static dev.gameengine.utils.location.RelativeVec.CoordinateType.RELATIVE;
+import static dev.gameengine.command.RelativeVec.CoordinateType.ABSOLUTE;
+import static dev.gameengine.command.RelativeVec.CoordinateType.LOCAL;
+import static dev.gameengine.command.RelativeVec.CoordinateType.RELATIVE;
 
 /**
  * Common interface for all the relative location arguments.

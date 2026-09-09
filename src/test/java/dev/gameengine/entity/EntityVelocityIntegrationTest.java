@@ -7,7 +7,7 @@ import dev.gameengine.instance.Instance;
 import dev.gameengine.instance.WorldBorder;
 import dev.gameengine.instance.block.Block;
 import dev.gameengine.network.packet.server.play.EntityVelocityPacket;
-import dev.gameengine.utils.chunk.ChunkUtils;
+import dev.gameengine.instance.ChunkUtils;
 import dev.gameengine.testing.Env;
 import dev.gameengine.testing.EnvTest;
 import org.junit.jupiter.api.Test;

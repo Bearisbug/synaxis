@@ -7,7 +7,7 @@ import dev.gameengine.coordinate.CoordConversion;
 import dev.gameengine.coordinate.Point;
 import dev.gameengine.coordinate.Vec;
 import dev.gameengine.instance.block.Block;
-import dev.gameengine.instance.block.BlockFace;
+import dev.gameengine.coordinate.BlockFace;
 import dev.gameengine.instance.block.BlockHandler;
 import dev.gameengine.instance.heightmap.Heightmap;
 import dev.gameengine.instance.light.Light;

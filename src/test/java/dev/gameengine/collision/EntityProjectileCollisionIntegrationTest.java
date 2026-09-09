@@ -15,7 +15,7 @@ import dev.gameengine.event.entity.projectile.ProjectileUncollideEvent;
 import dev.gameengine.instance.Instance;
 import dev.gameengine.instance.WorldBorder;
 import dev.gameengine.instance.block.Block;
-import dev.gameengine.utils.time.TimeUnit;
+import dev.gameengine.timer.TimeUnit;
 import dev.gameengine.testing.Env;
 import dev.gameengine.testing.EnvTest;
 import org.junit.jupiter.api.Test;

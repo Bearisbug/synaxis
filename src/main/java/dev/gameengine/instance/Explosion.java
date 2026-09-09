@@ -6,7 +6,7 @@ import dev.gameengine.instance.block.Block;
 import dev.gameengine.network.packet.server.play.ExplosionPacket;
 import dev.gameengine.particle.Particle;
 import dev.gameengine.sound.SoundEvent;
-import dev.gameengine.utils.PacketSendingUtils;
+import dev.gameengine.network.PacketSendingUtils;
 import dev.gameengine.utils.WeightedList;
 
 import java.util.List;

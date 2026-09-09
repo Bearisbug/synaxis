@@ -9,7 +9,7 @@ import dev.gameengine.event.EventFilter;
 import dev.gameengine.event.player.PlayerBlockInteractEvent;
 import dev.gameengine.instance.WorldBorder;
 import dev.gameengine.instance.block.Block;
-import dev.gameengine.instance.block.BlockFace;
+import dev.gameengine.coordinate.BlockFace;
 import dev.gameengine.instance.block.BlockKeys;
 import dev.gameengine.instance.block.predicate.BlockPredicate;
 import dev.gameengine.instance.block.predicate.PropertiesPredicate;

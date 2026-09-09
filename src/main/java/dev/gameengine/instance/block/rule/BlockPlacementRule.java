@@ -3,7 +3,7 @@ package dev.gameengine.instance.block.rule;
 import dev.gameengine.coordinate.Point;
 import dev.gameengine.coordinate.Pos;
 import dev.gameengine.instance.block.Block;
-import dev.gameengine.instance.block.BlockFace;
+import dev.gameengine.coordinate.BlockFace;
 import dev.gameengine.item.ItemStack;
 import dev.gameengine.item.Material;
 import org.jetbrains.annotations.Nullable;

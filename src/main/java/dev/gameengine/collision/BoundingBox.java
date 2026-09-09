@@ -4,7 +4,7 @@ import dev.gameengine.coordinate.Point;
 import dev.gameengine.coordinate.Pos;
 import dev.gameengine.coordinate.Vec;
 import dev.gameengine.entity.EntityPose;
-import dev.gameengine.instance.block.BlockFace;
+import dev.gameengine.coordinate.BlockFace;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.Nullable;
 

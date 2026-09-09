@@ -1,5 +1,6 @@
 package dev.gameengine.utils;
 
+import dev.gameengine.coordinate.Direction;
 import dev.gameengine.utils.validate.Check;
 import org.jetbrains.annotations.ApiStatus;
 

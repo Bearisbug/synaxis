@@ -2,7 +2,7 @@ package dev.gameengine.collision;
 
 import dev.gameengine.coordinate.Point;
 import dev.gameengine.entity.Entity;
-import dev.gameengine.instance.block.BlockFace;
+import dev.gameengine.coordinate.BlockFace;
 
 public interface Shape {
     boolean isOccluded(Shape shape, BlockFace face);

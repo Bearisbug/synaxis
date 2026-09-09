@@ -16,14 +16,14 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
 
-import static dev.gameengine.utils.inventory.PlayerInventoryUtils.BOOTS_SLOT;
-import static dev.gameengine.utils.inventory.PlayerInventoryUtils.CHESTPLATE_SLOT;
-import static dev.gameengine.utils.inventory.PlayerInventoryUtils.HELMET_SLOT;
-import static dev.gameengine.utils.inventory.PlayerInventoryUtils.LEGGINGS_SLOT;
-import static dev.gameengine.utils.inventory.PlayerInventoryUtils.OFFHAND_SLOT;
-import static dev.gameengine.utils.inventory.PlayerInventoryUtils.convertMinestomSlotToPlayerInventorySlot;
-import static dev.gameengine.utils.inventory.PlayerInventoryUtils.convertMinestomSlotToWindowSlot;
-import static dev.gameengine.utils.inventory.PlayerInventoryUtils.isPlayerInventorySlot;
+import static dev.gameengine.inventory.PlayerInventoryUtils.BOOTS_SLOT;
+import static dev.gameengine.inventory.PlayerInventoryUtils.CHESTPLATE_SLOT;
+import static dev.gameengine.inventory.PlayerInventoryUtils.HELMET_SLOT;
+import static dev.gameengine.inventory.PlayerInventoryUtils.LEGGINGS_SLOT;
+import static dev.gameengine.inventory.PlayerInventoryUtils.OFFHAND_SLOT;
+import static dev.gameengine.inventory.PlayerInventoryUtils.convertMinestomSlotToPlayerInventorySlot;
+import static dev.gameengine.inventory.PlayerInventoryUtils.convertMinestomSlotToWindowSlot;
+import static dev.gameengine.inventory.PlayerInventoryUtils.isPlayerInventorySlot;
 
 /**
  * Represents the inventory of a {@link Player}, retrieved with {@link Player#getInventory()}.

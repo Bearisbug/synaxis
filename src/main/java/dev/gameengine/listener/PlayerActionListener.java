@@ -15,15 +15,15 @@ import dev.gameengine.event.player.PlayerStartDiggingEvent;
 import dev.gameengine.event.player.PlayerSwapItemEvent;
 import dev.gameengine.instance.Instance;
 import dev.gameengine.instance.block.Block;
-import dev.gameengine.instance.block.BlockFace;
+import dev.gameengine.coordinate.BlockFace;
 import dev.gameengine.item.ItemStack;
 import dev.gameengine.item.component.BlockPredicates;
 import dev.gameengine.item.component.Tool;
 import dev.gameengine.network.packet.client.play.ClientPlayerActionPacket;
 import dev.gameengine.network.packet.server.play.AcknowledgeBlockChangePacket;
 import dev.gameengine.network.packet.server.play.BlockEntityDataPacket;
-import dev.gameengine.utils.block.BlockBreakCalculation;
-import dev.gameengine.utils.block.BlockUtils;
+import dev.gameengine.instance.block.BlockBreakCalculation;
+import dev.gameengine.instance.block.BlockUtils;
 
 public final class PlayerActionListener {
 

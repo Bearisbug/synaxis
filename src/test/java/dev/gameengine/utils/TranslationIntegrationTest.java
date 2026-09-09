@@ -10,6 +10,7 @@ import dev.gameengine.component.DataComponents;
 import dev.gameengine.coordinate.Pos;
 import dev.gameengine.item.ItemStack;
 import dev.gameengine.item.Material;
+import dev.gameengine.network.PacketSendingUtils;
 import dev.gameengine.network.packet.server.play.SetSlotPacket;
 import dev.gameengine.network.packet.server.play.SystemChatPacket;
 import dev.gameengine.testing.Env;

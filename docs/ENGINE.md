@@ -111,7 +111,6 @@ ls -d "$TMPDIR"minestom-* 2>/dev/null | wc -l   # 期望 0
   --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts
 ```
 
-`--tests` 支持通配，例如 `--tests '*AnvilLoader*'`。注意：`CommandPacketFilteringTest` 单跑必挂（依赖别的 `@EnvTest` 先初始化静态 `serverProcess`），只在全量运行下有效，见 `docs/TEST.md` §7。
 
 ### 3.4 启动服务端
 

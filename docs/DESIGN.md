@@ -16,6 +16,7 @@
 | 日期 | 版本 | 改动 | 作者 |
 | --- | --- | --- | --- |
 | 2026-09-09 | v0.1 | 初稿：里程碑 M1 范围、实体、协议契约、状态机、阶段计划 | Bearisbug |
+| 2026-09-09 | v0.11 | REQ-013 完成；§28 记录门面改造的四处偏离；`CommandPacketFilteringTest` 技术债关闭 | Bearisbug |
 | 2026-09-09 | v0.10 | §26 阶段 0～3 标记完成状态；M1 仅剩两条人工用例 | Bearisbug |
 | 2026-09-09 | v0.9 | M1 gate（RUN-007）：代码侧全部通过；REQ-004 并发拦截场景措辞改为「回归单测或 jcstress」 | Bearisbug |
 | 2026-09-09 | v0.8 | 阶段 3 完成：包名 `dev.gameengine`、品牌 `game-engine`、NOTICE / README / pom；文档路径同步 | Bearisbug |
@@ -84,7 +85,7 @@ N/A — 画像:内部系统，本里程碑无产品指标与埋点事件；工�
 | REQ-010 | Apache-2.0 合规：`LICENSE` 原样保留；新建 `NOTICE` 声明派生自 Minestom 与起点 commit；README 顶部显著变更声明；pom 元数据换成我们的 | 合法分发 | P0 |
 | REQ-011 | 冒烟：原版 26.2 客户端走完 login → configuration → play 进入世界，并通过自定义负载通道完成一次 echo 往返 | 证明仍可用 | P0 |
 | REQ-012 | 运行手册：`docs/ENGINE.md` 写清 JDK、镜像脚本、分支策略、升版本 checklist；集成测试基类 teardown 清理 `$TMPDIR/minestom-test-world-*` | 冷启动可用 | P1 |
-| REQ-013 | M1.5 · 静态门面实例化：`MinecraftServer` 静态访问（182 调用点 / 66 文件）改为顺着构造函数传递的 `ServerProcess` 实例；`@EnvTest` 可并行 | 可维护、可测 | P2 |
+| REQ-013 | M1.5 · 静态门面实例化：`MinecraftServer` 静态访问（实测 142 调用点 / 56 文件）改为 `ServerProcess` 实例（`ServerProcess.of(auth)` 工厂，`Instance`/`Entity`/`PlayerConnection`/`CommandSender` 暴露 `process()`，`EventDispatcher` 删除）；`@EnvTest` 类级并行。已完成 | 可维护、可测 | P2 |
 | REQ-014 | M1.5 · 配置对象：`ServerFlag` 54 个系统属性开关改为挂在 `ServerProcess` 上的配置对象，测试与生产用同一份默认值 | 可维护 | P2 |
 | REQ-015 | M1.5 · 分层：`coordinate/codec/utils/registry/tag/component/thread/timer/exception/color/sound/condition/gamedata/crypto` 等底层包不得依赖上层（消除 39 条边 335 条 import），`utils` 内 20 个错放类归位，ArchUnit 由「冻结」改为「禁止」 | 可读、可扩展 | P2 |
 | REQ-016 | M1.5 · 拆 `NetworkBufferTypeImpl`（拆前 1,297 行）为按类型族分文件的实现，零 API 影响。已完成：枢纽剩 15 行，10 个 package-private 持有类 | 可读 | P3 |
@@ -595,7 +596,7 @@ N/A — 无 schema 变更，M1 不落盘任何持久数据。
 | 1 止血 | REQ-003 | 已完成：133 个提交合入，2,659 个测试 0 失败 | 已完成 |
 | 2 删除 | REQ-005、REQ-006、REQ-007、REQ-008 | 字节对比通过，主源码 ≤ 1,150 文件（含 49 个并入的原生成文件），冒烟通过 | 已完成（RUN-006，主源码 1,116） |
 | 3 改名与合规 | REQ-009、REQ-010、REQ-011 | grep 零命中，NOTICE 就位，原版客户端冒烟与 echo 往返通过 | 代码侧完成（RUN-007/008）；待人工 TC-012、TC-016 |
-| 4 门面（M1.5） | REQ-013 | 测试并行开启后全量绿且总耗时下降 | 5 到 8 人日 |
+| 4 门面（M1.5） | REQ-013 | 测试并行开启后全量绿且总耗时下降 | 已完成（串行 30.1 s → 并行 20 s） |
 | 5 配置（M1.5） | REQ-014 | `DISPATCHER_THREADS=2` 下全量绿 | 3 人日 |
 | 6 分层（M1.5） | REQ-015、REQ-016 | ArchUnit 禁止规则绿，依赖矩阵底层出向上层边为 0 | 8 到 11 人日 |
 
@@ -622,5 +623,8 @@ N/A — M1 尚未完成；完成后按 §26 退出条件逐项对照并记录实
 | 技术债 | `Auth.Velocity` / `Auth.Bungee` 代理转发模式暂留（单机单区用不到，但不是 Mojang 会话鉴权）；`MojangUtils.authenticateSession` 已零调用，随 REQ-014 一起清理 | Bearisbug | 阶段 5 |
 | 技术债 | ArchUnit 冻结存储在纯删除后需要手动剪枝（临时 `allowStoreUpdate=true` 跑一次再改回，核对 diff 只有删除）；每轮删除都要做 | Bearisbug | 每轮删除 |
 | 技术债 | 协议错误断线（零长帧、递归超深）目前以完整异常堆栈记日志（RUN-006 smoke 日志 289 行堆栈），应改为单行 WARN 带 `connection_id`，避免恶意连接刷日志 | Bearisbug | 阶段 7 |
-| 技术债 | `CommandPacketFilteringTest` 依赖其他 `@EnvTest` 先初始化静态 `serverProcess`，单跑必挂 | Bearisbug | 阶段 4 门面改造时消失 |
+| Open Question | Adventure `ClickCallback.Provider` SPI 是 JVM 全局的，无法选择进程，REQ-013 后未注册；`ClickEvent.callback()` 退化为「不支持」，可用入口是 `process.clickCallbackManager().createClickEvent(...)`。要决定：接受实例入口，还是用「当前进程」线程局部桥接 | Bearisbug | M2 设计前 |
+| 技术债 | Adventure 数据组件转换 SPI 与 `NbtComponentSerializer` 用惰性构建的原版 `Registries` 快照，看不到服务端注册的条目 | Bearisbug | M2 |
+| 技术债 | `Tag.Structure` 不再接受含 `ItemStack`/`Component` 组件的记录（REQ-013 副作用） | Bearisbug | M2 |
+| 技术债 | `PacketViewableUtils.storageMap` 仍是静态弱引用表，多进程时任一进程的 tick 会 flush 全部进程的待发包（包仍送达正确玩家） | Bearisbug | 阶段 5 |
 | 技术债 | 上游未修的 `ObjectPoolTest` 在 jcstress pre-test 阶段 NPE | Bearisbug | 阶段 0 CI 接入时处理 |

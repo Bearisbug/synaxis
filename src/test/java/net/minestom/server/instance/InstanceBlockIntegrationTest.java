@@ -37,6 +37,18 @@ public class InstanceBlockIntegrationTest {
                 "An unloaded chunk must still be reported");
     }
 
+    // Light is queried with arbitrary coordinates, out of world ones have no section to look up
+    @Test
+    public void lightOutsideTheWorldIsZero(Env env) {
+        var instance = env.createFlatInstance();
+        instance.loadChunk(0, 0).join();
+
+        assertEquals(0, instance.getBlockLight(0, -100, 0));
+        assertEquals(0, instance.getSkyLight(0, -100, 0));
+        assertEquals(0, instance.getBlockLight(0, 400, 0));
+        assertEquals(0, instance.getSkyLight(0, 400, 0));
+    }
+
     @Test
     public void basic(Env env) {
         var instance = env.createFlatInstance();

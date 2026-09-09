@@ -1072,9 +1072,16 @@ public abstract class Instance implements Block.Getter, Block.Setter, Biome.Gett
         return Identity.identity(this.uuid); // Warning, do not pull up until this.uuid is final
     }
 
+    // No section holds a Y outside of the world, looking one up throws IndexOutOfBoundsException
+    private boolean isOutsideWorld(int blockY) {
+        final DimensionType dimension = getCachedDimensionType();
+        return blockY < dimension.minY() || blockY >= dimension.maxY();
+    }
+
     public int getBlockLight(int blockX, int blockY, int blockZ) {
         var chunk = getChunkAt(blockX, blockZ);
         if (chunk == null) return 0;
+        if (isOutsideWorld(blockY)) return 0;
         Section section = chunk.getSectionAt(blockY);
         Light light = section.blockLight();
         int sectionCoordinate = CoordConversion.globalToChunk(blockY);
@@ -1091,6 +1098,7 @@ public abstract class Instance implements Block.Getter, Block.Setter, Biome.Gett
     public int getSkyLight(int blockX, int blockY, int blockZ) {
         var chunk = getChunkAt(blockX, blockZ);
         if (chunk == null) return 0;
+        if (isOutsideWorld(blockY)) return 0;
         Section section = chunk.getSectionAt(blockY);
         Light light = section.skyLight();
         int sectionCoordinate = CoordConversion.globalToChunk(blockY);

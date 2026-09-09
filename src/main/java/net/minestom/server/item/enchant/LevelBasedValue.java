@@ -147,7 +147,8 @@ public interface LevelBasedValue {
 
         @Override
         public float calc(int level) {
-            if (level < 0 || level > values.size()) return fallback.calc(level);
+            // Levels are 1-based here: level 0 would read values.get(-1)
+            if (level <= 0 || level > values.size()) return fallback.calc(level);
             return values.get(level - 1);
         }
 

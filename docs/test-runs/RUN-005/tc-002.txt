@@ -1,0 +1,6 @@
+origin	https://github.com/Bearisbug/game-engine.git (fetch)
+origin	https://github.com/Bearisbug/game-engine.git (push)
+false
+old repo exit=1
+1
+main

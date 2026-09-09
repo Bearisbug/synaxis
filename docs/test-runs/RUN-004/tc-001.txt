@@ -1,0 +1,8 @@
+TC-001 · main e6b8dcaa36
+[1] grep libs/build for data dep
+exit=1
+[2] module-info requires
+exit=1
+[3] json count
+      74
+BUILD SUCCESSFUL in 57s

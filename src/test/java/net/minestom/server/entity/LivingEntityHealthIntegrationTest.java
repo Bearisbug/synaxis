@@ -1,6 +1,7 @@
 package net.minestom.server.entity;
 
 import net.minestom.server.coordinate.Pos;
+import net.minestom.server.entity.attribute.Attribute;
 import net.minestom.server.network.packet.server.play.UpdateHealthPacket;
 import net.minestom.testing.Env;
 import net.minestom.testing.EnvTest;
@@ -28,5 +29,14 @@ public class LivingEntityHealthIntegrationTest {
         player.setHealth(1000f);
         tracker.assertAllMatch(packet -> packet.health() == 20f);
         assertEquals(20f, player.getHealth());
+    }
+
+    @Test
+    public void loweringMaxHealthClampsCurrentHealth() {
+        var zombie = new LivingEntity(EntityType.ZOMBIE);
+        assertEquals(20f, zombie.getHealth());
+
+        zombie.getAttribute(Attribute.MAX_HEALTH).setBaseValue(5);
+        assertEquals(5f, zombie.getHealth(), "current health was left above the new maximum");
     }
 }

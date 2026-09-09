@@ -494,6 +494,10 @@ public class LivingEntity extends Entity implements EquipmentHandler {
      * @param attributeInstance the modified attribute instance
      */
     protected void onAttributeChanged(AttributeInstance attributeInstance) {
+        // Lowering the maximum leaves the current health above it until the next setHealth otherwise
+        if (attributeInstance.attribute() == Attribute.MAX_HEALTH && getHealth() > attributeInstance.getValue()) {
+            setHealth((float) attributeInstance.getValue());
+        }
         if (!shouldSendAttributes()) return;
 
         boolean self = false;

@@ -4,8 +4,8 @@ import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.longs.LongArrayList;
 import it.unimi.dsi.fastutil.longs.LongList;
-import dev.gameengine.MinecraftServer;
 import dev.gameengine.ServerFlag;
+import dev.gameengine.ServerProcess;
 import dev.gameengine.Viewable;
 import dev.gameengine.entity.Entity;
 import dev.gameengine.entity.Player;
@@ -34,7 +34,7 @@ public final class PacketViewableUtils {
     private static final Map<Viewable, ViewableStorage> storageMap =
             Collections.synchronizedMap(new WeakHashMap<>());
 
-    public static void prepareViewablePacket(Viewable viewable, ServerPacket serverPacket,
+    public static void prepareViewablePacket(ServerProcess process, Viewable viewable, ServerPacket serverPacket,
                                              @Nullable Entity entity) {
         if (entity != null && !entity.hasPredictableViewers()) {
             // Operation cannot be optimized
@@ -47,7 +47,7 @@ public final class PacketViewableUtils {
         }
         final Player exception = entity instanceof Player player ? player : null;
         ViewableStorage storage = retrieveStorage(viewable);
-        storage.append(serverPacket, exception);
+        storage.append(process, serverPacket, exception);
     }
 
     private static ViewableStorage retrieveStorage(Viewable viewable) {
@@ -62,23 +62,23 @@ public final class PacketViewableUtils {
         entries.parallelStream().forEach(entry -> entry.getValue().process(entry.getKey()));
     }
 
-    public static void prepareViewablePacket(Viewable viewable, ServerPacket serverPacket) {
-        prepareViewablePacket(viewable, serverPacket, null);
+    public static void prepareViewablePacket(ServerProcess process, Viewable viewable, ServerPacket serverPacket) {
+        prepareViewablePacket(process, viewable, serverPacket, null);
     }
 
     private static final class ViewableStorage {
         private static final ObjectPool<NetworkBuffer> POOL = ObjectPool.pool(
-                () -> NetworkBuffer.resizableBuffer(
-                        ServerFlag.POOLED_BUFFER_SIZE, MinecraftServer.getRegistries()),
+                () -> NetworkBuffer.resizableBuffer(ServerFlag.POOLED_BUFFER_SIZE, null),
                 NetworkBuffer::clear);
         // Player id -> list of offsets to ignore (32:32 bits)
         private final Int2ObjectMap<LongArrayList> entityIdMap = new Int2ObjectOpenHashMap<>();
         private final NetworkBuffer buffer = POOL.getAndRegister(this);
 
-        private synchronized void append(ServerPacket serverPacket, @Nullable Player exception) {
+        private synchronized void append(ServerProcess process, ServerPacket serverPacket, @Nullable Player exception) {
             final long start = buffer.writeIndex();
             // Viewable storage is only used for play packets, so fine to assume this.
-            PacketWriting.writeFramedPacket(buffer, ConnectionState.PLAY, serverPacket, MinecraftServer.getCompressionThreshold());
+            buffer.registries(process.registries());
+            PacketWriting.writeFramedPacket(buffer, ConnectionState.PLAY, serverPacket, process.compressionThreshold());
             final long end = buffer.writeIndex();
             if (exception != null) {
                 final long offsets = (start << 32) | (end & 0xFFFFFFFFL);

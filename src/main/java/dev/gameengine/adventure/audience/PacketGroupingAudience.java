@@ -7,7 +7,6 @@ import net.kyori.adventure.sound.Sound;
 import net.kyori.adventure.sound.SoundStop;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.title.TitlePart;
-import dev.gameengine.MinecraftServer;
 import dev.gameengine.adventure.AdventurePacketConvertor;
 import dev.gameengine.coordinate.Point;
 import dev.gameengine.entity.Player;
@@ -85,12 +84,16 @@ public interface PacketGroupingAudience extends ForwardingAudience {
 
     @Override
     default void showBossBar(BossBar bar) {
-        MinecraftServer.getBossBarManager().addBossBar(this.getPlayers(), bar);
+        final Collection<? extends Player> players = this.getPlayers();
+        if (players.isEmpty()) return;
+        players.iterator().next().process().bossBar().addBossBar(players, bar);
     }
 
     @Override
     default void hideBossBar(BossBar bar) {
-        MinecraftServer.getBossBarManager().removeBossBar(this.getPlayers(), bar);
+        final Collection<? extends Player> players = this.getPlayers();
+        if (players.isEmpty()) return;
+        players.iterator().next().process().bossBar().removeBossBar(players, bar);
     }
 
     /**

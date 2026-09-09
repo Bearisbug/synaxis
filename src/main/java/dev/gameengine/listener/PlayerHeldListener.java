@@ -2,7 +2,6 @@ package dev.gameengine.listener;
 
 import dev.gameengine.entity.Player;
 import dev.gameengine.entity.PlayerHand;
-import dev.gameengine.event.EventDispatcher;
 import dev.gameengine.event.player.PlayerChangeHeldSlotEvent;
 import dev.gameengine.network.packet.client.play.ClientHeldItemChangePacket;
 import dev.gameengine.utils.MathUtils;
@@ -19,7 +18,7 @@ public class PlayerHeldListener {
         final byte oldSlot = player.getHeldSlot();
 
         PlayerChangeHeldSlotEvent changeHeldSlotEvent = new PlayerChangeHeldSlotEvent(player, oldSlot, newSlot);
-        EventDispatcher.call(changeHeldSlotEvent);
+        player.process().eventHandler().call(changeHeldSlotEvent);
 
         if (!changeHeldSlotEvent.isCancelled()) {
             // Event hasn't been canceled, process it

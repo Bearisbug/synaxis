@@ -3,6 +3,7 @@ package dev.gameengine.command;
 import net.kyori.adventure.audience.Audience;
 import net.kyori.adventure.identity.Identity;
 import dev.gameengine.command.builder.CommandContext;
+import dev.gameengine.ServerProcess;
 import dev.gameengine.tag.TagHandler;
 
 /**
@@ -13,6 +14,17 @@ import dev.gameengine.tag.TagHandler;
  * {@link CommandContext#getReturnData()}.
  */
 public class ServerSender implements CommandSender {
+    private final ServerProcess process;
+
+    public ServerSender(ServerProcess process) {
+        this.process = process;
+    }
+
+    @Override
+    public ServerProcess process() {
+        return process;
+    }
+
 
     private final TagHandler tagHandler = TagHandler.newHandler();
 

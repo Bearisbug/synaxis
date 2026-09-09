@@ -3,7 +3,6 @@ package dev.gameengine.command.builder.arguments.minecraft;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonParseException;
 import net.kyori.adventure.text.Component;
-import dev.gameengine.MinecraftServer;
 import dev.gameengine.codec.Codec;
 import dev.gameengine.codec.Result;
 import dev.gameengine.codec.Transcoder;
@@ -25,7 +24,7 @@ public class ArgumentComponent extends Argument<Component> {
     public Component parse(CommandSender sender, String input) throws ArgumentSyntaxException {
         try {
             final Transcoder<JsonElement> coder = new RegistryTranscoder<>(
-                    Transcoder.JSON, MinecraftServer.getRegistries());
+                    Transcoder.JSON, sender.process().registries());
             final Result<Component> result = Codec.COMPONENT.decode(coder, JsonUtil.fromJson(input));
             return switch (result) {
                 case Result.Ok(var component) -> component;

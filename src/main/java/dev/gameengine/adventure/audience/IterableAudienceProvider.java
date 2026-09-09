@@ -2,7 +2,7 @@ package dev.gameengine.adventure.audience;
 
 import net.kyori.adventure.audience.Audience;
 import net.kyori.adventure.key.Key;
-import dev.gameengine.MinecraftServer;
+import dev.gameengine.ServerProcess;
 import dev.gameengine.command.ConsoleSender;
 import dev.gameengine.entity.Player;
 
@@ -17,10 +17,13 @@ import java.util.stream.StreamSupport;
  * A provider of iterable audiences.
  */
 class IterableAudienceProvider implements AudienceProvider<Iterable<? extends Audience>> {
-    private final List<ConsoleSender> console = List.of(MinecraftServer.getCommandManager().getConsoleSender());
+    private final ServerProcess process;
+    private final List<ConsoleSender> console;
     private final AudienceRegistry registry = new AudienceRegistry(new ConcurrentHashMap<>(), CopyOnWriteArrayList::new);
 
-    protected IterableAudienceProvider() {
+    protected IterableAudienceProvider(ServerProcess process) {
+        this.process = process;
+        this.console = List.of(process.command().getConsoleSender());
     }
 
     @Override
@@ -34,12 +37,12 @@ class IterableAudienceProvider implements AudienceProvider<Iterable<? extends Au
 
     @Override
     public Iterable<? extends Audience> players() {
-        return MinecraftServer.getConnectionManager().getOnlinePlayers();
+        return process.connection().getOnlinePlayers();
     }
 
     @Override
     public Iterable<? extends Audience> players(Predicate<? super Player> filter) {
-        return MinecraftServer.getConnectionManager().getOnlinePlayers().stream().filter(filter).toList();
+        return process.connection().getOnlinePlayers().stream().filter(filter).toList();
     }
 
     @Override

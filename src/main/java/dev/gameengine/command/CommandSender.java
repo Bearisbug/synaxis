@@ -3,6 +3,7 @@ package dev.gameengine.command;
 import net.kyori.adventure.audience.Audience;
 import net.kyori.adventure.identity.Identified;
 import net.kyori.adventure.text.Component;
+import dev.gameengine.ServerProcess;
 import dev.gameengine.entity.Player;
 import dev.gameengine.tag.Taggable;
 
@@ -12,6 +13,13 @@ import dev.gameengine.tag.Taggable;
  * Main implementations are {@link Player} and {@link ConsoleSender}.
  */
 public interface CommandSender extends Audience, Taggable, Identified {
+
+    /**
+     * Gets the server process this sender belongs to.
+     *
+     * @return the server process
+     */
+    ServerProcess process();
 
     /**
      * Sends a raw string message.

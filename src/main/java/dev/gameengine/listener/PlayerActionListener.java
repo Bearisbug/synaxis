@@ -7,7 +7,6 @@ import dev.gameengine.coordinate.Pos;
 import dev.gameengine.entity.Player;
 import dev.gameengine.entity.PlayerHand;
 import dev.gameengine.entity.metadata.LivingEntityMeta;
-import dev.gameengine.event.EventDispatcher;
 import dev.gameengine.event.item.PlayerCancelItemUseEvent;
 import dev.gameengine.event.player.PlayerCancelDiggingEvent;
 import dev.gameengine.event.player.PlayerFinishDiggingEvent;
@@ -81,7 +80,7 @@ public final class PlayerActionListener {
         final boolean instantBreak = breakTicks == 0;
         if (!instantBreak) {
             PlayerStartDiggingEvent playerStartDiggingEvent = new PlayerStartDiggingEvent(player, instance, block, blockPosition.asBlockVec(), blockFace);
-            EventDispatcher.call(playerStartDiggingEvent);
+            player.process().eventHandler().call(playerStartDiggingEvent);
             return new DiggingResult(block, !playerStartDiggingEvent.isCancelled());
         }
         // Client only sends a single STARTED_DIGGING when insta-break is enabled
@@ -92,7 +91,7 @@ public final class PlayerActionListener {
         final Block block = instance.getBlock(blockPosition);
 
         PlayerCancelDiggingEvent playerCancelDiggingEvent = new PlayerCancelDiggingEvent(player, instance, block, blockPosition.asBlockVec());
-        EventDispatcher.call(playerCancelDiggingEvent);
+        player.process().eventHandler().call(playerCancelDiggingEvent);
         return new DiggingResult(block, true);
     }
 
@@ -108,14 +107,14 @@ public final class PlayerActionListener {
         // If the block is unbreakable, prevent a hacked client from breaking it!
         if (breakTicks == BlockBreakCalculation.UNBREAKABLE) {
             PlayerCancelDiggingEvent playerCancelDiggingEvent = new PlayerCancelDiggingEvent(player, instance, block, blockPosition.asBlockVec());
-            EventDispatcher.call(playerCancelDiggingEvent);
+            player.process().eventHandler().call(playerCancelDiggingEvent);
             return new DiggingResult(block, false);
         }
         // TODO maybe add a check if the player has spent enough time mining the block.
         //   a hacked client could send START_DIGGING and FINISH_DIGGING to instamine any block
 
         PlayerFinishDiggingEvent playerFinishDiggingEvent = new PlayerFinishDiggingEvent(player, instance, block, blockPosition.asBlockVec());
-        EventDispatcher.call(playerFinishDiggingEvent);
+        player.process().eventHandler().call(playerFinishDiggingEvent);
 
         return breakBlock(instance, player, blockPosition, playerFinishDiggingEvent.getBlock(), blockFace);
     }
@@ -129,7 +128,7 @@ public final class PlayerActionListener {
             // Check if the currently held item can break the block
             case ADVENTURE -> !itemInMainHand
                     .get(DataComponents.CAN_BREAK, BlockPredicates.NEVER)
-                    .test(block);
+                    .test(player.process().registries(), block);
             // Certain tools (swords, tridents, maces) can't break blocks in creative
             case CREATIVE -> {
                 final Tool tool = itemInMainHand.get(DataComponents.TOOL);
@@ -164,7 +163,7 @@ public final class PlayerActionListener {
         final PlayerHand hand = meta.getActiveHand();
 
         PlayerCancelItemUseEvent cancelUseEvent = new PlayerCancelItemUseEvent(player, hand, player.getItemInHand(hand), player.getCurrentItemUseTime());
-        EventDispatcher.call(cancelUseEvent);
+        player.process().eventHandler().call(cancelUseEvent);
 
         // Reset server state
         final boolean isOffHand = hand == PlayerHand.OFF;
@@ -176,7 +175,7 @@ public final class PlayerActionListener {
         final ItemStack mainHand = player.getItemInMainHand();
         final ItemStack offHand = player.getItemInOffHand();
         PlayerSwapItemEvent swapItemEvent = new PlayerSwapItemEvent(player, offHand, mainHand);
-        EventDispatcher.callCancellable(swapItemEvent, () -> {
+        player.process().eventHandler().callCancellable(swapItemEvent, () -> {
             player.setItemInMainHand(swapItemEvent.getMainHandItem());
             player.setItemInOffHand(swapItemEvent.getOffHandItem());
         });
@@ -215,7 +214,7 @@ public final class PlayerActionListener {
         final ItemStack itemInMainHand = player.getItemInMainHand();
         if (!itemInMainHand.has(DataComponents.PIERCING_WEAPON))
             return;
-        EventDispatcher.call(new PlayerStabEvent(player));
+        player.process().eventHandler().call(new PlayerStabEvent(player));
     }
 
     private record DiggingResult(Block block, boolean success) {

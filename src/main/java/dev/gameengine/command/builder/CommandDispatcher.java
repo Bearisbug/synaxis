@@ -1,5 +1,6 @@
 package dev.gameengine.command.builder;
 
+import dev.gameengine.ServerProcess;
 import dev.gameengine.command.CommandManager;
 import dev.gameengine.command.CommandParser;
 import dev.gameengine.command.CommandSender;
@@ -17,8 +18,8 @@ public class CommandDispatcher {
         this.manager = manager;
     }
 
-    public CommandDispatcher() {
-        this(new CommandManager());
+    public CommandDispatcher(ServerProcess process) {
+        this(new CommandManager(process));
     }
 
     /**

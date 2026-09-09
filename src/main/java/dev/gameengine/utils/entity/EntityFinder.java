@@ -2,7 +2,7 @@ package dev.gameengine.utils.entity;
 
 import it.unimi.dsi.fastutil.objects.Object2BooleanMaps;
 import it.unimi.dsi.fastutil.objects.Object2BooleanOpenHashMap;
-import dev.gameengine.MinecraftServer;
+import dev.gameengine.ServerProcess;
 import dev.gameengine.command.CommandSender;
 import dev.gameengine.coordinate.Point;
 import dev.gameengine.coordinate.Vec;
@@ -11,7 +11,6 @@ import dev.gameengine.entity.EntityType;
 import dev.gameengine.entity.GameMode;
 import dev.gameengine.entity.Player;
 import dev.gameengine.instance.Instance;
-import dev.gameengine.network.ConnectionManager;
 import dev.gameengine.utils.MathUtils;
 import dev.gameengine.utils.Range;
 import org.jetbrains.annotations.Nullable;
@@ -31,8 +30,6 @@ import java.util.concurrent.ThreadLocalRandom;
  * It is based on the target selectors used in commands.
  */
 public class EntityFinder {
-    private static final ConnectionManager CONNECTION_MANAGER = MinecraftServer.getConnectionManager();
-
     private TargetSelector targetSelector;
 
     private EntitySort entitySort;
@@ -130,10 +127,10 @@ public class EntityFinder {
      * @param self     the source of the query, null if not any
      * @return all entities validating the conditions, can be empty
      */
-    public List<Entity> find(@Nullable Instance instance, @Nullable Entity self) {
+    public List<Entity> find(ServerProcess process, @Nullable Instance instance, @Nullable Entity self) {
         if (targetSelector == TargetSelector.MINESTOM_USERNAME) {
             Objects.requireNonNull(constantName, "The player name should not be null when searching for it");
-            final Player player = MinecraftServer.getConnectionManager().getOnlinePlayerByUsername(constantName);
+            final Player player = process.connection().getOnlinePlayerByUsername(constantName);
             return player != null ? List.of(player) : List.of();
         } else if (targetSelector == TargetSelector.MINESTOM_UUID) {
             Objects.requireNonNull(constantUuid, "The UUID should not be null when searching for it");
@@ -144,7 +141,7 @@ public class EntityFinder {
 
         final Point pos = startPosition != null ? startPosition : (self != null ? self.getPosition() : Vec.ZERO);
 
-        List<Entity> result = findTarget(instance, targetSelector, self);
+        List<Entity> result = findTarget(process, instance, targetSelector, self);
         // Fast exit if there is nothing to process
         if (result.isEmpty())
             return result;
@@ -271,9 +268,13 @@ public class EntityFinder {
         return result;
     }
 
+    public List<Entity> find(Instance instance, @Nullable Entity self) {
+        return find(instance.process(), instance, self);
+    }
+
     public List<Entity> find(CommandSender sender) {
         return sender instanceof Player player ?
-                find(player.getInstance(), player) : find(null, null);
+                find(sender.process(), player.getInstance(), player) : find(sender.process(), null, null);
     }
 
     /**
@@ -283,8 +284,8 @@ public class EntityFinder {
      * @return the first player returned by {@link #find(Instance, Entity)}
      * @see #find(Instance, Entity)
      */
-    public @Nullable Player findFirstPlayer(@Nullable Instance instance, @Nullable Entity self) {
-        final List<Entity> entities = find(instance, self);
+    public @Nullable Player findFirstPlayer(ServerProcess process, @Nullable Instance instance, @Nullable Entity self) {
+        final List<Entity> entities = find(process, instance, self);
         for (Entity entity : entities) {
             if (entity instanceof Player player) {
                 return player;
@@ -295,18 +296,19 @@ public class EntityFinder {
 
     public @Nullable Player findFirstPlayer(CommandSender sender) {
         return sender instanceof Player player ?
-                findFirstPlayer(player.getInstance(), player) :
-                findFirstPlayer(null, null);
+                findFirstPlayer(sender.process(), player.getInstance(), player) :
+                findFirstPlayer(sender.process(), null, null);
     }
 
-    public @Nullable Entity findFirstEntity(@Nullable Instance instance, @Nullable Entity self) {
-        final List<Entity> entities = find(instance, self);
+    public @Nullable Entity findFirstEntity(ServerProcess process, @Nullable Instance instance, @Nullable Entity self) {
+        final List<Entity> entities = find(process, instance, self);
         return entities.isEmpty() ? null : entities.getFirst();
     }
 
     public @Nullable Entity findFirstEntity(CommandSender sender) {
         return sender instanceof Player player ?
-                findFirstEntity(player.getInstance(), player) : findFirstEntity(null, null);
+                findFirstEntity(sender.process(), player.getInstance(), player) :
+                findFirstEntity(sender.process(), null, null);
     }
 
     public enum TargetSelector {
@@ -335,10 +337,10 @@ public class EntityFinder {
     private static class ToggleableMap<T> extends Object2BooleanOpenHashMap<T> {
     }
 
-    private static List<Entity> findTarget(@Nullable Instance instance,
+    private static List<Entity> findTarget(ServerProcess process, @Nullable Instance instance,
                                            TargetSelector targetSelector,
                                            @Nullable Entity self) {
-        final var players = instance != null ? instance.getPlayers() : CONNECTION_MANAGER.getOnlinePlayers();
+        final var players = instance != null ? instance.getPlayers() : process.connection().getOnlinePlayers();
         if (targetSelector == TargetSelector.NEAREST_PLAYER || targetSelector == TargetSelector.RANDOM_PLAYER || targetSelector == TargetSelector.ALL_PLAYERS) {
             return List.copyOf(players);
         } else if (targetSelector == TargetSelector.NEAREST_ENTITY || targetSelector == TargetSelector.ALL_ENTITIES) {
@@ -346,7 +348,7 @@ public class EntityFinder {
                 return List.copyOf(instance.getEntities());
             }
             // Get entities from every instance
-            var instances = MinecraftServer.getInstanceManager().getInstances();
+            var instances = process.instance().getInstances();
             List<Entity> entities = new ArrayList<>();
             for (Instance inst : instances) {
                 entities.addAll(inst.getEntities());

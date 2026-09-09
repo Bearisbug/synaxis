@@ -5,8 +5,8 @@ import net.kyori.adventure.audience.ForwardingAudience;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.TranslatableComponent;
 import net.kyori.adventure.text.event.HoverEvent;
-import dev.gameengine.MinecraftServer;
 import dev.gameengine.ServerFlag;
+import dev.gameengine.ServerProcess;
 import dev.gameengine.adventure.ComponentHolder;
 import dev.gameengine.adventure.audience.PacketGroupingAudience;
 import dev.gameengine.entity.Player;
@@ -14,6 +14,7 @@ import dev.gameengine.network.ConnectionState;
 import dev.gameengine.network.packet.server.CachedPacket;
 import dev.gameengine.network.packet.server.SendablePacket;
 import dev.gameengine.network.packet.server.ServerPacket;
+import dev.gameengine.registry.Registries;
 
 import java.util.Collection;
 import java.util.List;
@@ -82,8 +83,8 @@ public final class PacketSendingUtils {
         players.forEach(player -> player.sendPacket(sendablePacket));
     }
 
-    public static void broadcastPlayPacket(ServerPacket packet) {
-        sendGroupedPacket(MinecraftServer.getConnectionManager().getOnlinePlayers(), packet);
+    public static void broadcastPlayPacket(ServerProcess process, ServerPacket packet) {
+        sendGroupedPacket(process.connection().getOnlinePlayers(), packet);
     }
 
     private static SendablePacket groupedPacket(ServerPacket packet) {
@@ -94,7 +95,7 @@ public final class PacketSendingUtils {
      * Checks if the {@link ServerPacket} is suitable to be wrapped into a {@link CachedPacket}.
      * Note: {@link ServerPacket.ComponentHolding}s are not translated inside a {@link CachedPacket}.
      *
-     * @see CachedPacket#body(ConnectionState)
+     * @see CachedPacket#body(ConnectionState, Registries, int)
      */
     private static boolean shouldUseCachePacket(final ServerPacket packet) {
         if (!ServerFlag.AUTOMATIC_COMPONENT_TRANSLATION) return true;

@@ -1,6 +1,5 @@
 package dev.gameengine.listener;
 
-import dev.gameengine.MinecraftServer;
 import dev.gameengine.collision.CollisionUtils;
 import dev.gameengine.component.DataComponents;
 import dev.gameengine.coordinate.Point;
@@ -9,7 +8,6 @@ import dev.gameengine.entity.Entity;
 import dev.gameengine.entity.GameMode;
 import dev.gameengine.entity.Player;
 import dev.gameengine.entity.PlayerHand;
-import dev.gameengine.event.EventDispatcher;
 import dev.gameengine.event.player.PlayerBlockInteractEvent;
 import dev.gameengine.event.player.PlayerBlockPlaceEvent;
 import dev.gameengine.event.player.PlayerUseItemOnBlockEvent;
@@ -18,7 +16,6 @@ import dev.gameengine.instance.Instance;
 import dev.gameengine.instance.block.Block;
 import dev.gameengine.instance.block.BlockFace;
 import dev.gameengine.instance.block.BlockHandler;
-import dev.gameengine.instance.block.BlockManager;
 import dev.gameengine.instance.block.rule.BlockPlacementRule;
 import dev.gameengine.item.ItemStack;
 import dev.gameengine.item.Material;
@@ -32,8 +29,6 @@ import dev.gameengine.utils.inventory.PlayerInventoryUtils;
 import dev.gameengine.world.DimensionType;
 
 public class BlockPlacementListener {
-    private static final BlockManager BLOCK_MANAGER = MinecraftServer.getBlockManager();
-
     public static void listener(ClientPlayerBlockPlacementPacket packet, Player player) {
         final PlayerHand hand = packet.hand();
         final BlockFace blockFace = packet.blockFace();
@@ -74,7 +69,7 @@ public class BlockPlacementListener {
         // Interact at block
         // FIXME: onUseOnBlock
         PlayerBlockInteractEvent playerBlockInteractEvent = new PlayerBlockInteractEvent(player, hand, instance, interactedBlock, blockPosition.asBlockVec(), cursorPosition, blockFace);
-        EventDispatcher.call(playerBlockInteractEvent);
+        player.process().eventHandler().call(playerBlockInteractEvent);
         boolean blockUse = playerBlockInteractEvent.isBlockingItemUse();
         if (!playerBlockInteractEvent.isCancelled()) {
             final var handler = interactedBlock.handler();
@@ -94,7 +89,7 @@ public class BlockPlacementListener {
         if (useMaterial.block() == null) {
             // Player didn't try to place a block but interacted with one
             PlayerUseItemOnBlockEvent event = new PlayerUseItemOnBlockEvent(player, hand, usedItem, blockPosition, cursorPosition, blockFace);
-            EventDispatcher.call(event);
+            player.process().eventHandler().call(event);
             // Ack the block change. This is required to reset the client prediction to the server state.
             player.sendPacket(new AcknowledgeBlockChangePacket(packet.sequence()));
             return;
@@ -108,14 +103,14 @@ public class BlockPlacementListener {
         } else if (player.getGameMode() == GameMode.ADVENTURE) {
             //Check if the block can be placed on the block
             BlockPredicates placePredicate = usedItem.get(DataComponents.CAN_PLACE_ON, BlockPredicates.NEVER);
-            canPlaceBlock = placePredicate.test(interactedBlock);
+            canPlaceBlock = placePredicate.test(instance.registries(), interactedBlock);
         }
 
 
         // Get the newly placed block position
         //todo it feels like it should be possible to have better replacement rules than this, feels pretty scuffed.
         Point placementPosition = blockPosition;
-        var interactedPlacementRule = BLOCK_MANAGER.getBlockPlacementRule(interactedBlock);
+        var interactedPlacementRule = player.process().block().getBlockPlacementRule(interactedBlock);
         // A replaceable clicked block (grass, snow layers, water) is replaced in place, like vanilla
         // and the client's own prediction; the same check the neighbor position gets below
         final boolean placeAdjacent = !interactedBlock.air() && !interactedBlock.replaceable()
@@ -134,7 +129,7 @@ public class BlockPlacementListener {
 
         if (placeAdjacent) {
             var placementBlock = instance.getBlock(placementPosition);
-            var placementRule = BLOCK_MANAGER.getBlockPlacementRule(placementBlock);
+            var placementRule = player.process().block().getBlockPlacementRule(placementBlock);
             if (!placementBlock.replaceable() && !(placementRule != null && placementRule.isSelfReplaceable(
                     new BlockPlacementRule.Replacement(placementBlock, blockFace, cursorPosition, true, useMaterial)))) {
                 // If the block is still not replaceable, cancel the placement
@@ -181,7 +176,7 @@ public class BlockPlacementListener {
         PlayerBlockPlaceEvent playerBlockPlaceEvent = new PlayerBlockPlaceEvent(player, instance, placedBlock, blockFace, placementPosition.asBlockVec(), cursorPosition, packet.hand());
         playerBlockPlaceEvent.consumeBlock(player.getGameMode() != GameMode.CREATIVE);
         playerBlockPlaceEvent.setDoBlockUpdates(blockState.equals(useMaterial.prototype().get(DataComponents.BLOCK_STATE, ItemBlockState.EMPTY)));
-        EventDispatcher.call(playerBlockPlaceEvent);
+        player.process().eventHandler().call(playerBlockPlaceEvent);
         if (playerBlockPlaceEvent.isCancelled()) {
             rollback(player, hand, placementPosition, instance.getBlock(placementPosition), packet.sequence());
             return;

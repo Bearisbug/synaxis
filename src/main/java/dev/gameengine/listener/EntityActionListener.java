@@ -1,7 +1,6 @@
 package dev.gameengine.listener;
 
 import dev.gameengine.entity.Player;
-import dev.gameengine.event.EventDispatcher;
 import dev.gameengine.event.player.PlayerLeaveBedEvent;
 import dev.gameengine.event.player.PlayerStartFlyingWithElytraEvent;
 import dev.gameengine.event.player.PlayerStartSprintingEvent;
@@ -29,21 +28,21 @@ public class EntityActionListener {
 
         if (oldState != sprinting) {
             if (sprinting) {
-                EventDispatcher.call(new PlayerStartSprintingEvent(player));
+                player.process().eventHandler().call(new PlayerStartSprintingEvent(player));
             } else {
-                EventDispatcher.call(new PlayerStopSprintingEvent(player));
+                player.process().eventHandler().call(new PlayerStopSprintingEvent(player));
             }
         }
     }
 
     private static void startFlyingElytra(Player player) {
         player.setFlyingWithElytra(true);
-        EventDispatcher.call(new PlayerStartFlyingWithElytraEvent(player));
+        player.process().eventHandler().call(new PlayerStartFlyingWithElytraEvent(player));
     }
 
     private static void onLeaveBed(Player player) {
         var event = new PlayerLeaveBedEvent(player);
-        EventDispatcher.callCancellable(event, () -> {
+        player.process().eventHandler().callCancellable(event, () -> {
             player.getLivingEntityMeta().setBedInWhichSleepingPosition(null);
             player.leaveBed();
         });

@@ -2,7 +2,6 @@ package dev.gameengine.inventory.type;
 
 import net.kyori.adventure.nbt.BinaryTag;
 import net.kyori.adventure.text.Component;
-import dev.gameengine.MinecraftServer;
 import dev.gameengine.inventory.Inventory;
 import dev.gameengine.inventory.InventoryProperty;
 import dev.gameengine.inventory.InventoryType;
@@ -12,12 +11,14 @@ import dev.gameengine.registry.RegistryKey;
 import org.jetbrains.annotations.Nullable;
 
 public class EnchantmentTableInventory extends Inventory {
-    private static final DynamicRegistry<BinaryTag> ENCHANTMENT_REGISTRY = MinecraftServer.getOpaqueRegistry(BuiltinRegistries.ENCHANTMENT);
-
     private final short[] levelRequirements = new short[EnchantmentSlot.values().length];
     private short seed;
     private final short[] enchantmentShown = new short[EnchantmentSlot.values().length];
     private final short[] enchantmentLevel = new short[EnchantmentSlot.values().length];
+
+    private DynamicRegistry<BinaryTag> enchantmentRegistry() {
+        return process().opaque(BuiltinRegistries.ENCHANTMENT);
+    }
 
     public EnchantmentTableInventory(Component title) {
         super(InventoryType.ENCHANTMENT, title);
@@ -80,7 +81,7 @@ public class EnchantmentTableInventory extends Inventory {
     public @Nullable RegistryKey<BinaryTag> getEnchantmentShown(EnchantmentSlot enchantmentSlot) {
         final int id = enchantmentShown[enchantmentSlot.ordinal()];
         if (id == -1) return null;
-        return ENCHANTMENT_REGISTRY.getKey(id);
+        return enchantmentRegistry().getKey(id);
     }
 
     /**
@@ -92,7 +93,7 @@ public class EnchantmentTableInventory extends Inventory {
      * @param enchantment     the enchantment
      */
     public void setEnchantmentShown(EnchantmentSlot enchantmentSlot, @Nullable RegistryKey<BinaryTag> enchantment) {
-        final short id = enchantment == null ? -1 : (short) ENCHANTMENT_REGISTRY.getId(enchantment);
+        final short id = enchantment == null ? -1 : (short) enchantmentRegistry().getId(enchantment);
         switch (enchantmentSlot) {
             case TOP -> sendProperty(InventoryProperty.ENCHANTMENT_TABLE_ENCH_ID_TOP, id);
             case MIDDLE -> sendProperty(InventoryProperty.ENCHANTMENT_TABLE_ENCH_ID_MIDDLE, id);

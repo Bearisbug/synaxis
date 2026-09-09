@@ -2,7 +2,6 @@ package dev.gameengine.inventory;
 
 import dev.gameengine.entity.EquipmentSlot;
 import dev.gameengine.entity.Player;
-import dev.gameengine.event.EventDispatcher;
 import dev.gameengine.event.item.EntityEquipEvent;
 import dev.gameengine.inventory.click.ClickType;
 import dev.gameengine.inventory.click.InventoryClickResult;
@@ -131,7 +130,7 @@ public non-sealed class PlayerInventory extends AbstractInventory {
             if (equipmentSlot == null) continue;
 
             EntityEquipEvent entityEquipEvent = new EntityEquipEvent(player, item, equipmentSlot);
-            EventDispatcher.call(entityEquipEvent);
+            player.process().eventHandler().call(entityEquipEvent);
             item = entityEquipEvent.getEquippedItem();
 
             player.updateEquipmentAttributes(previous, item, equipmentSlot);

@@ -1,6 +1,5 @@
 package dev.gameengine.command.builder.arguments;
 
-import dev.gameengine.MinecraftServer;
 import dev.gameengine.command.ArgumentParserType;
 import dev.gameengine.command.CommandSender;
 import dev.gameengine.command.builder.CommandDispatcher;
@@ -25,7 +24,7 @@ public class ArgumentCommand extends Argument<CommandResult> {
         final String commandString = !shortcut.isEmpty() ?
                 shortcut + StringUtils.SPACE + input
                 : input;
-        CommandDispatcher dispatcher = MinecraftServer.getCommandManager().getDispatcher();
+        CommandDispatcher dispatcher = sender.process().command().getDispatcher();
         CommandResult result = dispatcher.parse(sender, commandString);
 
         if (onlyCorrect && result.getType() != CommandResult.Type.SUCCESS)

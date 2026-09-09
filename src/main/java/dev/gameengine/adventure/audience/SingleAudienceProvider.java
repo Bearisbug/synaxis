@@ -2,7 +2,7 @@ package dev.gameengine.adventure.audience;
 
 import net.kyori.adventure.audience.Audience;
 import net.kyori.adventure.key.Key;
-import dev.gameengine.MinecraftServer;
+import dev.gameengine.ServerProcess;
 import dev.gameengine.entity.Player;
 
 import java.util.function.Predicate;
@@ -13,11 +13,16 @@ import java.util.function.Predicate;
  */
 class SingleAudienceProvider implements AudienceProvider<Audience> {
 
-    protected final IterableAudienceProvider collection = new IterableAudienceProvider();
-    protected final Audience players = PacketGroupingAudience.of(MinecraftServer.getConnectionManager().getOnlinePlayers());
-    protected final Audience server = Audience.audience(this.players, MinecraftServer.getCommandManager().getConsoleSender());
+    private final ServerProcess process;
+    protected final IterableAudienceProvider collection;
+    protected final Audience players;
+    protected final Audience server;
 
-    protected SingleAudienceProvider() {
+    protected SingleAudienceProvider(ServerProcess process) {
+        this.process = process;
+        this.collection = new IterableAudienceProvider(process);
+        this.players = PacketGroupingAudience.of(process.connection().getOnlinePlayers());
+        this.server = Audience.audience(this.players, process.command().getConsoleSender());
     }
 
     /**
@@ -41,12 +46,12 @@ class SingleAudienceProvider implements AudienceProvider<Audience> {
 
     @Override
     public Audience players(Predicate<? super Player> filter) {
-        return PacketGroupingAudience.of(MinecraftServer.getConnectionManager().getOnlinePlayers().stream().filter(filter).toList());
+        return PacketGroupingAudience.of(process.connection().getOnlinePlayers().stream().filter(filter).toList());
     }
 
     @Override
     public Audience console() {
-        return MinecraftServer.getCommandManager().getConsoleSender();
+        return process.command().getConsoleSender();
     }
 
     @Override

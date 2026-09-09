@@ -1,7 +1,6 @@
 package dev.gameengine.inventory;
 
 import dev.gameengine.entity.Player;
-import dev.gameengine.event.EventDispatcher;
 import dev.gameengine.event.inventory.InventoryClickEvent;
 import dev.gameengine.inventory.click.Click;
 import dev.gameengine.inventory.click.ClickType;
@@ -117,6 +116,6 @@ public sealed interface InventoryClickHandler permits AbstractInventory {
 
     default void callClickEvent(Player player, AbstractInventory inventory, int slot,
                                 ClickType clickType, ItemStack clicked, ItemStack cursor) {
-        EventDispatcher.call(new InventoryClickEvent(inventory, player, slot, clickType, clicked, cursor));
+        player.process().eventHandler().call(new InventoryClickEvent(inventory, player, slot, clickType, clicked, cursor));
     }
 }

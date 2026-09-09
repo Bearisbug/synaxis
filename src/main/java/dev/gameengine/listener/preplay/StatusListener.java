@@ -1,7 +1,5 @@
 package dev.gameengine.listener.preplay;
 
-import dev.gameengine.MinecraftServer;
-import dev.gameengine.event.EventDispatcher;
 import dev.gameengine.event.server.ClientPingServerEvent;
 import dev.gameengine.monitoring.EventsJFR;
 import dev.gameengine.network.StatusResponse;
@@ -19,13 +17,13 @@ public final class StatusListener {
             connection.disconnect();
             return;
         }
-        connection.sendPacket(new ResponsePacket(StatusResponse.json()));
+        connection.sendPacket(new ResponsePacket(StatusResponse.json(connection.process())));
         EventsJFR.newServerPing(connection.getRemoteAddress().toString()).commit();
     }
 
     public static void pingRequestListener(ClientPingRequestPacket packet, PlayerConnection connection) {
         final ClientPingServerEvent clientPingEvent = new ClientPingServerEvent(connection, packet.number());
-        EventDispatcher.call(clientPingEvent);
+        connection.process().eventHandler().call(clientPingEvent);
 
         if (clientPingEvent.isCancelled()) {
             connection.disconnect();
@@ -34,7 +32,7 @@ public final class StatusListener {
                 connection.sendPacket(new PingResponsePacket(clientPingEvent.getPayload()));
                 connection.disconnect();
             } else {
-                MinecraftServer.getSchedulerManager().buildTask(() -> {
+                connection.process().scheduler().buildTask(() -> {
                     connection.sendPacket(new PingResponsePacket(clientPingEvent.getPayload()));
                     connection.disconnect();
                 }).delay(clientPingEvent.getDelay()).schedule();

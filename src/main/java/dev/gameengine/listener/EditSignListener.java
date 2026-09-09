@@ -2,7 +2,6 @@ package dev.gameengine.listener;
 
 import dev.gameengine.coordinate.BlockVec;
 import dev.gameengine.entity.Player;
-import dev.gameengine.event.EventDispatcher;
 import dev.gameengine.event.player.PlayerEditSignEvent;
 import dev.gameengine.instance.Instance;
 import dev.gameengine.instance.block.Block;
@@ -15,7 +14,7 @@ public class EditSignListener {
         BlockVec position = packet.blockPosition().asBlockVec();
         if (!instance.isChunkLoaded(position)) return;
         Block block = instance.getBlock(position);
-        EventDispatcher.call(new PlayerEditSignEvent(
+        player.process().eventHandler().call(new PlayerEditSignEvent(
                 player,
                 instance,
                 block,

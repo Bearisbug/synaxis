@@ -1,10 +1,8 @@
 package dev.gameengine.inventory;
 
-import dev.gameengine.MinecraftServer;
 import dev.gameengine.ServerProcess;
 import dev.gameengine.Viewable;
 import dev.gameengine.entity.Player;
-import dev.gameengine.event.EventDispatcher;
 import dev.gameengine.event.EventFilter;
 import dev.gameengine.event.EventHandler;
 import dev.gameengine.event.EventNode;
@@ -20,7 +18,9 @@ import dev.gameengine.tag.TagHandler;
 import dev.gameengine.tag.Taggable;
 import dev.gameengine.utils.MathUtils;
 import dev.gameengine.utils.validate.Check;
+import org.jetbrains.annotations.ApiStatus;
 import org.jetbrains.annotations.Nullable;
+import org.jetbrains.annotations.UnknownNullability;
 
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
@@ -53,21 +53,36 @@ public sealed abstract class AbstractInventory implements InventoryClickHandler,
     protected final Set<Player> viewers = new CopyOnWriteArraySet<>();
     protected final Set<Player> unmodifiableViewers = Collections.unmodifiableSet(viewers);
 
+    // Bound to a process when the inventory is first shown to a player.
+    private volatile @Nullable ServerProcess process;
     // the local event node filtered to this inventory
-    private final @Nullable EventNode<InventoryEvent> eventNode;
+    private volatile @Nullable EventNode<InventoryEvent> eventNode;
 
     protected AbstractInventory(int size) {
         this.size = size;
         this.itemStacks = new ItemStack[getSize()];
         Arrays.fill(itemStacks, ItemStack.AIR);
-        // Setup event node
-        final ServerProcess process = MinecraftServer.process();
-        if (process != null) {
-            this.eventNode = process.eventHandler().map(this, EventFilter.INVENTORY);
-        } else {
-            // Local nodes require a server process
-            this.eventNode = null;
-        }
+    }
+
+    /**
+     * Binds this inventory to a server process, creating its local event node. An inventory is bound
+     * to the process of the first player it is shown to.
+     */
+    @ApiStatus.Internal
+    protected synchronized void bindProcess(ServerProcess process) {
+        if (this.process == process) return;
+        Check.stateCondition(this.process != null, "Inventory is already bound to another server process");
+        this.process = process;
+        this.eventNode = process.eventHandler().map(this, EventFilter.INVENTORY);
+    }
+
+    /**
+     * Gets the server process this inventory belongs to, {@code null} until it is shown to a player.
+     *
+     * @return the server process
+     */
+    public @UnknownNullability ServerProcess process() {
+        return process;
     }
 
     /**
@@ -86,6 +101,7 @@ public sealed abstract class AbstractInventory implements InventoryClickHandler,
 
     @Override
     public boolean addViewer(Player player) {
+        bindProcess(player.process());
         if (!this.viewers.add(player)) return false;
 
         update(player);
@@ -154,7 +170,11 @@ public sealed abstract class AbstractInventory implements InventoryClickHandler,
             if (itemStack.equals(previous)) return; // Avoid sending updates if the item has not changed
             UNSAFE_itemInsert(slot, itemStack, previous, sendPacket);
         }
-        EventDispatcher.call(new InventoryItemChangeEvent(this, slot, previous, itemStack));
+        // An inventory that has never been shown to a player belongs to no process, so there is
+        // nowhere to dispatch the event to.
+        final ServerProcess process = this.process;
+        if (process != null)
+            process.eventHandler().call(new InventoryItemChangeEvent(this, slot, previous, itemStack));
     }
 
     protected void UNSAFE_itemInsert(int slot, ItemStack item, ItemStack previous, boolean sendPacket) {

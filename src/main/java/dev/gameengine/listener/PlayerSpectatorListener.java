@@ -1,10 +1,8 @@
 package dev.gameengine.listener;
 
-import dev.gameengine.MinecraftServer;
 import dev.gameengine.entity.Entity;
 import dev.gameengine.entity.GameMode;
 import dev.gameengine.entity.Player;
-import dev.gameengine.event.EventDispatcher;
 import dev.gameengine.event.player.PlayerSpectateEntityEvent;
 import dev.gameengine.event.player.PlayerTeleportToEntityEvent;
 import dev.gameengine.instance.Instance;
@@ -32,7 +30,7 @@ public class PlayerSpectatorListener {
             return;
         }
 
-        EventDispatcher.call(new PlayerSpectateEntityEvent(player, target));
+        player.process().eventHandler().call(new PlayerSpectateEntityEvent(player, target));
     }
 
     public static void listener(ClientTeleportToEntityPacket packet, Player player) {
@@ -48,7 +46,7 @@ public class PlayerSpectatorListener {
 
         // If the target is not found, try to find it in other instances
         if (target == null) {
-            for (Instance instance : MinecraftServer.getInstanceManager().getInstances()) {
+            for (Instance instance : player.process().instance().getInstances()) {
                 if (instance == playerInstance) continue;
                 target = instance.getEntityByUuid(targetUuid);
                 if (target != null) break;
@@ -60,6 +58,6 @@ public class PlayerSpectatorListener {
             return;
         }
 
-        EventDispatcher.call(new PlayerTeleportToEntityEvent(player, target));
+        player.process().eventHandler().call(new PlayerTeleportToEntityEvent(player, target));
     }
 }

@@ -1,7 +1,6 @@
 package dev.gameengine.listener;
 
 import dev.gameengine.entity.Player;
-import dev.gameengine.event.EventDispatcher;
 import dev.gameengine.event.book.EditBookEvent;
 import dev.gameengine.item.ItemStack;
 import dev.gameengine.network.packet.client.play.ClientEditBookPacket;
@@ -14,7 +13,7 @@ public class BookListener {
         if (!PlayerInventoryUtils.isHotbarOrOffHandSlot(minestomSlot)) return;
 
         final ItemStack itemStack = player.getInventory().getItemStack(minestomSlot);
-        EventDispatcher.call(new EditBookEvent(player, itemStack, packet.pages(), packet.title()));
+        player.process().eventHandler().call(new EditBookEvent(player, itemStack, packet.pages(), packet.title()));
     }
 
 }

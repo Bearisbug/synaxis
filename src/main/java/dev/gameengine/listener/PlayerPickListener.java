@@ -2,7 +2,6 @@ package dev.gameengine.listener;
 
 import dev.gameengine.entity.Entity;
 import dev.gameengine.entity.Player;
-import dev.gameengine.event.EventDispatcher;
 import dev.gameengine.event.player.PlayerPickBlockEvent;
 import dev.gameengine.event.player.PlayerPickEntityEvent;
 import dev.gameengine.instance.Instance;
@@ -20,7 +19,7 @@ public class PlayerPickListener {
         final boolean includeData = packet.includeData();
 
         PlayerPickBlockEvent playerPickBlockEvent = new PlayerPickBlockEvent(player, instance, block, packet.pos().asBlockVec(), includeData);
-        EventDispatcher.call(playerPickBlockEvent);
+        player.process().eventHandler().call(playerPickBlockEvent);
     }
 
     public static void playerPickEntityListener(ClientPickItemFromEntityPacket packet, Player player) {
@@ -30,6 +29,6 @@ public class PlayerPickListener {
         final boolean includeData = packet.includeData();
 
         PlayerPickEntityEvent playerPickEntityEvent = new PlayerPickEntityEvent(player, entity, includeData);
-        EventDispatcher.call(playerPickEntityEvent);
+        player.process().eventHandler().call(playerPickEntityEvent);
     }
 }

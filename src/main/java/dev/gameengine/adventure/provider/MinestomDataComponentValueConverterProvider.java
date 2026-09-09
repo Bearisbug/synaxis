@@ -7,7 +7,7 @@ import net.kyori.adventure.nbt.BinaryTag;
 import net.kyori.adventure.text.event.DataComponentValue;
 import net.kyori.adventure.text.event.DataComponentValueConverterRegistry;
 import net.kyori.adventure.text.serializer.gson.GsonDataComponentValue;
-import dev.gameengine.MinecraftServer;
+import dev.gameengine.adventure.AdventureRegistries;
 import dev.gameengine.adventure.MinestomDataComponentValue;
 import dev.gameengine.adventure.serializer.nbt.NbtDataComponentValue;
 import dev.gameengine.codec.Transcoder;
@@ -37,7 +37,7 @@ public final class MinestomDataComponentValueConverterProvider implements DataCo
                     final DataComponent<Object> component = (DataComponent<Object>) DataComponent.fromKey(key);
                     if (component == null) throw new IllegalArgumentException("Unknown data component: " + key);
                     final Object value = component.decode(new RegistryTranscoder<>(Transcoder.JSON,
-                            MinecraftServer.getRegistries()), gsonValue.element()).orElseThrow("failed to decode " + key);
+                            AdventureRegistries.vanilla()), gsonValue.element()).orElseThrow("failed to decode " + key);
                     return MinestomDataComponentValue.dataComponentValue(value);
                 }),
                 convert(MinestomDataComponentValue.class, GsonDataComponentValue.class, (key, minestomValue) -> {
@@ -46,7 +46,7 @@ public final class MinestomDataComponentValueConverterProvider implements DataCo
                     final DataComponent<Object> component = (DataComponent<Object>) DataComponent.fromKey(key);
                     if (component == null) throw new IllegalArgumentException("Unknown data component: " + key);
                     final JsonElement value = component.encode(new RegistryTranscoder<>(Transcoder.JSON,
-                            MinecraftServer.getRegistries()), minestomValue.value()).orElseThrow("failed to encode " + key);
+                            AdventureRegistries.vanilla()), minestomValue.value()).orElseThrow("failed to encode " + key);
                     return GsonDataComponentValue.gsonDataComponentValue(value);
                 }),
 
@@ -57,7 +57,7 @@ public final class MinestomDataComponentValueConverterProvider implements DataCo
                     final DataComponent<Object> component = (DataComponent<Object>) DataComponent.fromKey(key);
                     if (component == null) throw new IllegalArgumentException("Unknown data component: " + key);
                     final Object value = component.decode(new RegistryTranscoder<>(Transcoder.NBT,
-                            MinecraftServer.getRegistries()), nbtValue.value()).orElseThrow("failed to decode " + key);
+                            AdventureRegistries.vanilla()), nbtValue.value()).orElseThrow("failed to decode " + key);
                     return MinestomDataComponentValue.dataComponentValue(value);
                 }),
                 convert(MinestomDataComponentValue.class, NbtDataComponentValue.class, (key, minestomValue) -> {
@@ -66,7 +66,7 @@ public final class MinestomDataComponentValueConverterProvider implements DataCo
                     final DataComponent<Object> component = (DataComponent<Object>) DataComponent.fromKey(key);
                     if (component == null) throw new IllegalArgumentException("Unknown data component: " + key);
                     final BinaryTag value = component.encode(new RegistryTranscoder<>(Transcoder.NBT,
-                            MinecraftServer.getRegistries()), minestomValue.value()).orElseThrow("failed to encode " + key);
+                            AdventureRegistries.vanilla()), minestomValue.value()).orElseThrow("failed to encode " + key);
                     return NbtDataComponentValue.nbtDataComponentValue(value);
                 })
         );

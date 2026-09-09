@@ -3,7 +3,6 @@ package dev.gameengine.listener.preplay;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import dev.gameengine.Auth;
-import dev.gameengine.MinecraftServer;
 import dev.gameengine.entity.Player;
 import dev.gameengine.network.ConnectionState;
 import dev.gameengine.network.DisconnectReasons;
@@ -20,6 +19,8 @@ import dev.gameengine.network.player.PlayerSocketConnection;
 import dev.gameengine.network.plugin.LoginPlugin;
 import dev.gameengine.network.plugin.LoginPluginMessageProcessor;
 import dev.gameengine.utils.StringUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
@@ -29,6 +30,8 @@ import java.net.UnknownHostException;
 import static dev.gameengine.network.NetworkBuffer.STRING;
 
 public final class LoginListener {
+    private static final Logger LOGGER = LoggerFactory.getLogger(LoginListener.class);
+
     private static final Component ERROR_DURING_LOGIN = Component.text("Error during login!", NamedTextColor.RED);
     private static final Component ERROR_MALFORMED_USERNAME = Component.text("Malformed username!", NamedTextColor.RED);
 
@@ -40,7 +43,7 @@ public final class LoginListener {
             return;
         }
 
-        final Auth auth = MinecraftServer.process().auth();
+        final Auth auth = connection.process().auth();
         final boolean isSocketConnection = connection instanceof PlayerSocketConnection;
         // Proxy support (only for socket clients) and cache the login username
         if (isSocketConnection) {
@@ -70,7 +73,7 @@ public final class LoginListener {
     }
 
     private static void handleVelocityProxyResponse(PlayerSocketConnection socketConnection, LoginPlugin.Response response) {
-        if (!(MinecraftServer.process().auth() instanceof Auth.Velocity velocity)) {
+        if (!(socketConnection.process().auth() instanceof Auth.Velocity velocity)) {
             socketConnection.kick(Component.text("Login plugin response is not supported in this auth mode", NamedTextColor.RED));
             return;
         }
@@ -89,7 +92,7 @@ public final class LoginListener {
                     address = InetAddress.getByName(buffer.read(STRING));
                 } catch (UnknownHostException e) {
                     socketConnection.kick(INVALID_PROXY_RESPONSE);
-                    MinecraftServer.getExceptionManager().handleException(e);
+                    socketConnection.process().exception().handleException(e);
                     return;
                 }
                 final int port = ((InetSocketAddress) socketConnection.getRemoteAddress()).getPort();
@@ -111,8 +114,8 @@ public final class LoginListener {
             messageProcessor.handleResponse(packet.messageId(), packet.data());
         } catch (Throwable t) {
             connection.kick(ERROR_DURING_LOGIN);
-            MinecraftServer.LOGGER.error("Error handling Login Plugin Response", t);
-            MinecraftServer.getExceptionManager().handleException(t);
+            LOGGER.error("Error handling Login Plugin Response", t);
+            connection.process().exception().handleException(t);
         }
     }
 
@@ -122,10 +125,10 @@ public final class LoginListener {
         final GameProfile gameProfile = socketConnection.gameProfile();
         assert gameProfile != null;
         try {
-            final Player player = MinecraftServer.getConnectionManager().createPlayer(connection, gameProfile);
+            final Player player = connection.process().connection().createPlayer(connection, gameProfile);
             executeConfig(player, true);
         } catch (Throwable t) {
-            MinecraftServer.getExceptionManager().handleException(t);
+            connection.process().exception().handleException(t);
             connection.kick(ERROR_DURING_LOGIN);
         }
     }
@@ -153,15 +156,15 @@ public final class LoginListener {
             connection.kick(DisconnectReasons.PROTOCOL_ERROR);
             return;
         }
-        MinecraftServer.getConnectionManager().transitionConfigToPlay(player);
+        connection.process().connection().transitionConfigToPlay(player);
     }
 
     private static void enterConfig(PlayerConnection connection, GameProfile gameProfile) {
         Thread.startVirtualThread(() -> {
             try {
-                MinecraftServer.getConnectionManager().transitionLoginToConfig(connection, gameProfile);
+                connection.process().connection().transitionLoginToConfig(connection, gameProfile);
             } catch (Throwable t) {
-                MinecraftServer.getExceptionManager().handleException(t);
+                connection.process().exception().handleException(t);
             }
         });
     }
@@ -172,9 +175,9 @@ public final class LoginListener {
         // Which mean that we have to free up the current thread to continue reading the socket.
         Thread.startVirtualThread(() -> {
             try {
-                MinecraftServer.getConnectionManager().doConfiguration(player, isFirstConfig);
+                player.process().connection().doConfiguration(player, isFirstConfig);
             } catch (Throwable t) {
-                MinecraftServer.getExceptionManager().handleException(t);
+                player.process().exception().handleException(t);
                 player.kick(ERROR_DURING_LOGIN);
             }
         });

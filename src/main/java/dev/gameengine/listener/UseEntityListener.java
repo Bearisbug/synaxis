@@ -7,7 +7,6 @@ import dev.gameengine.entity.Entity;
 import dev.gameengine.entity.LivingEntity;
 import dev.gameengine.entity.Player;
 import dev.gameengine.entity.attribute.Attribute;
-import dev.gameengine.event.EventDispatcher;
 import dev.gameengine.event.entity.EntityAttackEvent;
 import dev.gameengine.event.player.PlayerEntityInteractEvent;
 import dev.gameengine.instance.Instance;
@@ -22,7 +21,7 @@ public class UseEntityListener {
         final Entity entity = instance.getEntityById(packet.targetId());
         if (entity == null || invalidUse(player, entity))
             return;
-        EventDispatcher.call(new PlayerEntityInteractEvent(player, entity, packet.hand(), packet.location()));
+        player.process().eventHandler().call(new PlayerEntityInteractEvent(player, entity, packet.hand(), packet.location()));
     }
 
     public static void attackEntityListener(ClientAttackPacket packet, Player player) {
@@ -33,7 +32,7 @@ public class UseEntityListener {
             return;
         if (entity instanceof LivingEntity livingEntity && livingEntity.isDead()) // Can't attack dead entities
             return;
-        EventDispatcher.call(new EntityAttackEvent(player, entity));
+        player.process().eventHandler().call(new EntityAttackEvent(player, entity));
     }
 
     static boolean invalidUse(Player player, Entity entity) {

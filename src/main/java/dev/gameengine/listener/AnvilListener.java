@@ -1,7 +1,6 @@
 package dev.gameengine.listener;
 
 import dev.gameengine.entity.Player;
-import dev.gameengine.event.EventDispatcher;
 import dev.gameengine.event.player.PlayerAnvilInputEvent;
 import dev.gameengine.inventory.Inventory;
 import dev.gameengine.inventory.InventoryType;
@@ -15,7 +14,7 @@ public final class AnvilListener {
         if (openInventory.getInventoryType() != InventoryType.ANVIL)
             return;
 
-        EventDispatcher.call(new PlayerAnvilInputEvent(player, openInventory, packet.itemName()));
+        player.process().eventHandler().call(new PlayerAnvilInputEvent(player, openInventory, packet.itemName()));
     }
 
     private AnvilListener() {

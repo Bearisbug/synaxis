@@ -6,7 +6,6 @@ import dev.gameengine.coordinate.Vec;
 import dev.gameengine.entity.Entity;
 import dev.gameengine.entity.Player;
 import dev.gameengine.entity.RelativeFlags;
-import dev.gameengine.event.EventDispatcher;
 import dev.gameengine.event.player.PlayerMoveEvent;
 import dev.gameengine.instance.Instance;
 import dev.gameengine.network.packet.client.play.ClientPlayerPositionAndRotationPacket;
@@ -84,7 +83,7 @@ public class PlayerPositionListener {
         }
 
         PlayerMoveEvent playerMoveEvent = new PlayerMoveEvent(player, packetPosition, onGround);
-        EventDispatcher.call(playerMoveEvent);
+        player.process().eventHandler().call(playerMoveEvent);
         if (!currentPosition.equals(player.getPosition())) {
             // Player has been teleported in the event
             return;

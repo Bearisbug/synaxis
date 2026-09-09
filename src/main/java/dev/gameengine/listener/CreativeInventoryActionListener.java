@@ -2,7 +2,6 @@ package dev.gameengine.listener;
 
 import dev.gameengine.entity.GameMode;
 import dev.gameengine.entity.Player;
-import dev.gameengine.event.EventDispatcher;
 import dev.gameengine.event.inventory.CreativeInventoryActionEvent;
 import dev.gameengine.inventory.PlayerInventory;
 import dev.gameengine.item.ItemStack;
@@ -19,7 +18,7 @@ public final class CreativeInventoryActionListener {
         if (slot == -1) {
             // Drop item
             CreativeInventoryActionEvent event = new CreativeInventoryActionEvent(player, slot, sentItem);
-            EventDispatcher.call(event);
+            player.process().eventHandler().call(event);
             if (event.isCancelled()) return;
             player.dropItem(event.getClickedItem());
             return;
@@ -34,7 +33,7 @@ public final class CreativeInventoryActionListener {
         PlayerInventory inventory = player.getInventory();
 
         CreativeInventoryActionEvent event = new CreativeInventoryActionEvent(player, slot, sentItem);
-        EventDispatcher.call(event);
+        player.process().eventHandler().call(event);
         final ItemStack setItem = event.getClickedItem();
         final ItemStack previousItem = inventory.getItemStack(slot);
 

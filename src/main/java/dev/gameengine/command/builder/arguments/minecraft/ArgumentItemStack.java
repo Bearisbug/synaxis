@@ -3,7 +3,6 @@ package dev.gameengine.command.builder.arguments.minecraft;
 import net.kyori.adventure.key.Key;
 import net.kyori.adventure.nbt.BinaryTag;
 import net.kyori.adventure.nbt.CompoundBinaryTag;
-import dev.gameengine.MinecraftServer;
 import dev.gameengine.adventure.MinestomAdventure;
 import dev.gameengine.codec.Result;
 import dev.gameengine.codec.Transcoder;
@@ -15,6 +14,7 @@ import dev.gameengine.component.DataComponent;
 import dev.gameengine.component.DataComponentMap;
 import dev.gameengine.component.DataComponents;
 import dev.gameengine.item.ItemStack;
+import dev.gameengine.registry.Registries;
 import dev.gameengine.item.Material;
 import dev.gameengine.item.component.CustomData;
 import dev.gameengine.registry.RegistryTranscoder;
@@ -41,7 +41,7 @@ public class ArgumentItemStack extends Argument<ItemStack> {
 
     @Override
     public ItemStack parse(CommandSender sender, String input) throws ArgumentSyntaxException {
-        return staticParse(input);
+        return staticParse(sender.process().registries(), input);
     }
 
     @Override
@@ -53,7 +53,7 @@ public class ArgumentItemStack extends Argument<ItemStack> {
      * @deprecated use {@link Argument#parse(CommandSender, Argument)}
      */
     @SuppressWarnings("unchecked") @Deprecated
-    public static ItemStack staticParse(String input) throws ArgumentSyntaxException {
+    public static ItemStack staticParse(Registries registries, String input) throws ArgumentSyntaxException {
         var reader = new StringReader(input);
 
         final Material material = Material.fromKey(reader.readKey(INVALID_MATERIAL));
@@ -69,7 +69,7 @@ public class ArgumentItemStack extends Argument<ItemStack> {
         if (reader.peek() == '[') {
             reader.consume('[');
             final Transcoder<BinaryTag> coder = new RegistryTranscoder<>(
-                    Transcoder.NBT, MinecraftServer.getRegistries());
+                    Transcoder.NBT, registries);
             do {
                 // A leading '!' removes the component instead of setting it
                 final boolean remove = reader.peek() == '!';

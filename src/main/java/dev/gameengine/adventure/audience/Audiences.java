@@ -3,23 +3,30 @@ package dev.gameengine.adventure.audience;
 import net.kyori.adventure.audience.Audience;
 import net.kyori.adventure.key.Key;
 import net.kyori.adventure.key.Keyed;
-import dev.gameengine.MinecraftServer;
+import dev.gameengine.ServerProcess;
 import dev.gameengine.entity.Player;
+
+import org.jetbrains.annotations.ApiStatus;
 
 import java.util.function.Predicate;
 
 /**
- * Utility class to access Adventure audiences.
+ * Access to the Adventure audiences of a {@link ServerProcess}.
  */
-public class Audiences {
-    private static final SingleAudienceProvider audience = new SingleAudienceProvider();
+public final class Audiences {
+    private final SingleAudienceProvider audience;
+
+    @ApiStatus.Internal
+    public Audiences(ServerProcess process) {
+        this.audience = new SingleAudienceProvider(process);
+    }
 
     /**
      * Gets the {@link AudienceProvider} that provides forwarding audiences.
      *
      * @return the instance
      */
-    public static AudienceProvider<Audience> single() {
+    public AudienceProvider<Audience> single() {
         return audience;
     }
 
@@ -28,7 +35,7 @@ public class Audiences {
      *
      * @return the instance
      */
-    public static AudienceProvider<Iterable<? extends Audience>> iterable() {
+    public AudienceProvider<Iterable<? extends Audience>> iterable() {
         return audience.collection;
     }
 
@@ -39,7 +46,7 @@ public class Audiences {
      *
      * @return all audience members
      */
-    public static Audience all() {
+    public Audience all() {
         return Audience.audience(audience.server, audience.customs());
     }
 
@@ -48,7 +55,7 @@ public class Audiences {
      *
      * @return all players
      */
-    public static Audience players() {
+    public Audience players() {
         return audience.players;
     }
 
@@ -58,8 +65,8 @@ public class Audiences {
      * @param filter the predicate
      * @return all players matching the predicate
      */
-    public static Audience players(Predicate<? super Player> filter) {
-        return PacketGroupingAudience.of(MinecraftServer.getConnectionManager().getOnlinePlayers().stream().filter(filter).toList());
+    public Audience players(Predicate<? super Player> filter) {
+        return audience.players(filter);
     }
 
     /**
@@ -67,8 +74,8 @@ public class Audiences {
      *
      * @return the console
      */
-    public static Audience console() {
-        return MinecraftServer.getCommandManager().getConsoleSender();
+    public Audience console() {
+        return audience.console();
     }
 
     /**
@@ -76,7 +83,7 @@ public class Audiences {
      *
      * @return the audience of all players and the console
      */
-    public static Audience server() {
+    public Audience server() {
         return audience.server;
     }
 
@@ -85,7 +92,7 @@ public class Audiences {
      *
      * @return all custom audience members
      */
-    public static Audience customs() {
+    public Audience customs() {
         return Audience.audience(audience.iterable().customs());
     }
 
@@ -95,7 +102,7 @@ public class Audiences {
      * @param keyed the keyed object
      * @return all custom audience members stored using the key of the object
      */
-    public static Audience custom(Keyed keyed) {
+    public Audience custom(Keyed keyed) {
         return custom(keyed.key());
     }
 
@@ -105,7 +112,7 @@ public class Audiences {
      * @param key the key
      * @return all custom audience members stored using the key
      */
-    public static Audience custom(Key key) {
+    public Audience custom(Key key) {
         return Audience.audience(audience.iterable().custom(key));
     }
 
@@ -117,7 +124,7 @@ public class Audiences {
      * @param filter the predicate
      * @return all custom audience members stored using the key
      */
-    public static Audience custom(Keyed keyed, Predicate<? super Audience> filter) {
+    public Audience custom(Keyed keyed, Predicate<? super Audience> filter) {
         return custom(keyed.key(), filter);
     }
 
@@ -129,7 +136,7 @@ public class Audiences {
      * @param filter the predicate
      * @return all custom audience members stored using the key
      */
-    public static Audience custom(Key key, Predicate<? super Audience> filter) {
+    public Audience custom(Key key, Predicate<? super Audience> filter) {
         return Audience.audience(audience.iterable().custom(key, filter));
     }
 
@@ -139,7 +146,7 @@ public class Audiences {
      * @param filter the predicate
      * @return all matching custom audience members
      */
-    public static Audience customs(Predicate<? super Audience> filter) {
+    public Audience customs(Predicate<? super Audience> filter) {
         return Audience.audience(audience.iterable().customs(filter));
     }
 
@@ -149,7 +156,7 @@ public class Audiences {
      * @param filter the predicate
      * @return all matching audience members
      */
-    public static Audience all(Predicate<? super Audience> filter) {
+    public Audience all(Predicate<? super Audience> filter) {
         return Audience.audience(audience.iterable().all(filter));
     }
 
@@ -158,7 +165,7 @@ public class Audiences {
      *
      * @return the registry
      */
-    public static AudienceRegistry registry() {
+    public AudienceRegistry registry() {
         return audience.iterable().registry();
     }
 }

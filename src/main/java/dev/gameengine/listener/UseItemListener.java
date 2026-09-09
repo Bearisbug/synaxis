@@ -3,7 +3,6 @@ package dev.gameengine.listener;
 import dev.gameengine.component.DataComponents;
 import dev.gameengine.entity.Player;
 import dev.gameengine.entity.PlayerHand;
-import dev.gameengine.event.EventDispatcher;
 import dev.gameengine.event.item.PlayerBeginItemUseEvent;
 import dev.gameengine.event.player.PlayerUseItemEvent;
 import dev.gameengine.inventory.PlayerInventory;
@@ -65,7 +64,7 @@ public class UseItemListener {
         boolean usingMainHand = player.getItemUseHand() == PlayerHand.MAIN && hand == PlayerHand.OFF;
         PlayerUseItemEvent useItemEvent = new PlayerUseItemEvent(player, hand, itemStack,
                 usingMainHand ? 0 : useItemTime);
-        EventDispatcher.call(useItemEvent);
+        player.process().eventHandler().call(useItemEvent);
 
         player.sendPacket(new AcknowledgeBlockChangePacket(packet.sequence()));
         final PlayerInventory playerInventory = player.getInventory();
@@ -77,7 +76,7 @@ public class UseItemListener {
         useItemTime = useItemEvent.getItemUseTime();
         if (useItemTime != 0) {
             final PlayerBeginItemUseEvent beginUseEvent = new PlayerBeginItemUseEvent(player, hand, itemStack, useAnimation, useItemTime);
-            EventDispatcher.callCancellable(beginUseEvent, () -> {
+            player.process().eventHandler().callCancellable(beginUseEvent, () -> {
                 if (beginUseEvent.getItemUseDuration() <= 0) return;
 
                 player.refreshItemUse(hand, beginUseEvent.getItemUseDuration());

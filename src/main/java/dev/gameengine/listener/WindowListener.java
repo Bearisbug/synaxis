@@ -1,9 +1,7 @@
 package dev.gameengine.listener;
 
-import dev.gameengine.MinecraftServer;
 import dev.gameengine.entity.GameMode;
 import dev.gameengine.entity.Player;
-import dev.gameengine.event.EventDispatcher;
 import dev.gameengine.event.inventory.InventoryBundleItemSelectEvent;
 import dev.gameengine.event.inventory.InventoryButtonClickEvent;
 import dev.gameengine.event.inventory.InventoryPreClickEvent;
@@ -55,7 +53,7 @@ public class WindowListener {
             Click.Window window = Click.toWindow(click, size);
             // Call InventoryPreClickEvent
             InventoryPreClickEvent inventoryPreClickEvent = new InventoryPreClickEvent(window.inOpened() ? inventory : player.getInventory(), player, window.click());
-            EventDispatcher.call(inventoryPreClickEvent);
+            player.process().eventHandler().call(inventoryPreClickEvent);
 
             click = Click.fromWindow(new Click.Window(window.inOpened(), inventoryPreClickEvent.getClick()), size);
 
@@ -80,7 +78,7 @@ public class WindowListener {
 
         // Resync in case the client sent item does not match what we think it should be.
         ItemStack cursorItem = player.getInventory().getCursorItem();
-        if (!ItemStack.Hash.of(cursorItem, MinecraftServer.process()).equals(packet.clickedItem()))
+        if (!ItemStack.Hash.of(cursorItem, player.process()).equals(packet.clickedItem()))
             player.sendPacket(new SetCursorItemPacket(cursorItem));
     }
 
@@ -101,7 +99,7 @@ public class WindowListener {
         // Can't press a button if the inventory is different from the packet's window id
         if (packet.windowId() != (int) inventory.getWindowId()) return;
 
-        EventDispatcher.call(new InventoryButtonClickEvent(player, inventory, packet.buttonId()));
+        player.process().eventHandler().call(new InventoryButtonClickEvent(player, inventory, packet.buttonId()));
     }
 
     public static void selectBundleItemListener(ClientSelectBundleItemPacket packet, Player player) {
@@ -145,6 +143,6 @@ public class WindowListener {
                 translatedSlot,
                 selectedItemIndex
         );
-        EventDispatcher.call(event);
+        player.process().eventHandler().call(event);
     }
 }

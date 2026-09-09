@@ -4,7 +4,6 @@ import dev.gameengine.component.DataComponents;
 import dev.gameengine.entity.EntityType;
 import dev.gameengine.entity.EquipmentSlot;
 import dev.gameengine.entity.Player;
-import dev.gameengine.event.EventDispatcher;
 import dev.gameengine.event.inventory.InventoryClickEvent;
 import dev.gameengine.inventory.AbstractInventory;
 import dev.gameengine.inventory.PlayerInventory;
@@ -345,6 +344,6 @@ public final class InventoryClickProcessor {
 
     private static void callClickEvent(Player player, AbstractInventory inventory, int slot,
                                 ClickType clickType, ItemStack clicked, ItemStack cursor) {
-        EventDispatcher.call(new InventoryClickEvent(inventory, player, slot, clickType, clicked, cursor));
+        player.process().eventHandler().call(new InventoryClickEvent(inventory, player, slot, clickType, clicked, cursor));
     }
 }

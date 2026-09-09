@@ -1,11 +1,11 @@
 package dev.gameengine.command;
 
+import dev.gameengine.ServerProcess;
 import dev.gameengine.command.builder.Command;
 import dev.gameengine.command.builder.CommandDispatcher;
 import dev.gameengine.command.builder.CommandResult;
 import dev.gameengine.command.builder.ParsedCommand;
 import dev.gameengine.entity.Player;
-import dev.gameengine.event.EventDispatcher;
 import dev.gameengine.event.player.PlayerCommandEvent;
 import dev.gameengine.network.packet.server.play.DeclareCommandsPacket;
 import dev.gameengine.utils.callback.CommandCallback;
@@ -27,8 +27,9 @@ public final class CommandManager {
 
     public static final String COMMAND_PREFIX = "/";
 
-    private final ServerSender serverSender = new ServerSender();
-    private final ConsoleSender consoleSender = new ConsoleSender();
+    private final ServerSender serverSender;
+    private final ServerProcess process;
+    private final ConsoleSender consoleSender;
     private final CommandParser parser = CommandParser.parser();
     private final CommandDispatcher dispatcher = new CommandDispatcher(this);
     private final Map<String, Command> commandMap = new HashMap<>();
@@ -37,7 +38,10 @@ public final class CommandManager {
     private CommandCallback unknownCommandCallback;
     private volatile @Nullable Graph cachedGraph;
 
-    public CommandManager() {
+    public CommandManager(ServerProcess process) {
+        this.process = process;
+        this.serverSender = new ServerSender(process);
+        this.consoleSender = new ConsoleSender(process);
     }
 
     /**
@@ -122,7 +126,7 @@ public final class CommandManager {
         // Command event
         if (sender instanceof Player player) {
             PlayerCommandEvent playerCommandEvent = new PlayerCommandEvent(player, command);
-            EventDispatcher.call(playerCommandEvent);
+            process.eventHandler().call(playerCommandEvent);
             if (playerCommandEvent.isCancelled())
                 return CommandResult.of(CommandResult.Type.CANCELLED, command);
             command = playerCommandEvent.getCommand();

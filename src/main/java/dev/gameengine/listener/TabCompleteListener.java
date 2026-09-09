@@ -1,6 +1,6 @@
 package dev.gameengine.listener;
 
-import dev.gameengine.MinecraftServer;
+import dev.gameengine.ServerProcess;
 import dev.gameengine.command.CommandSender;
 import dev.gameengine.command.builder.suggestion.Suggestion;
 import dev.gameengine.entity.Player;
@@ -12,7 +12,7 @@ public class TabCompleteListener {
 
     public static void listener(ClientTabCompletePacket packet, Player player) {
         final String text = packet.text();
-        final Suggestion suggestion = getSuggestion(player, text);
+        final Suggestion suggestion = getSuggestion(player.process(), player, text);
         if (suggestion != null) {
             player.sendPacket(new TabCompletePacket(
                     packet.transactionId(),
@@ -25,7 +25,7 @@ public class TabCompleteListener {
         }
     }
 
-    public static @Nullable Suggestion getSuggestion(CommandSender commandSender, String text) {
+    public static @Nullable Suggestion getSuggestion(ServerProcess process, CommandSender commandSender, String text) {
         if (text.startsWith("/")) {
             text = text.substring(1);
         }
@@ -35,6 +35,6 @@ public class TabCompleteListener {
             // it works as intended :)
             text = text + '\00';
         }
-        return MinecraftServer.getCommandManager().parseCommand(commandSender, text).suggestion(commandSender);
+        return process.command().parseCommand(commandSender, text).suggestion(commandSender);
     }
 }

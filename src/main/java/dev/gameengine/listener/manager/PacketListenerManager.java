@@ -1,6 +1,6 @@
 package dev.gameengine.listener.manager;
 
-import dev.gameengine.event.EventDispatcher;
+import dev.gameengine.ServerProcess;
 import dev.gameengine.event.player.PlayerPacketEvent;
 import dev.gameengine.listener.AbilitiesListener;
 import dev.gameengine.listener.AnimationListener;
@@ -109,11 +109,14 @@ public final class PacketListenerManager {
 
     private final static Logger LOGGER = LoggerFactory.getLogger(PacketListenerManager.class);
 
+    private final ServerProcess process;
+
     @SuppressWarnings({"unchecked", "rawtypes"}) // generic array creation
     private final Map<Class<? extends ClientPacket>, PacketPrePlayListenerConsumer>[] listeners = new Map[ConnectionState.values().length];
     private final Set<Class<?>> missingListenerWarnings = ConcurrentHashMap.newKeySet();
 
-    public PacketListenerManager() {
+    public PacketListenerManager(ServerProcess process) {
+        this.process = process;
         for (int i = 0; i < listeners.length; i++) {
             listeners[i] = new ConcurrentHashMap<>();
         }
@@ -221,7 +224,7 @@ public final class PacketListenerManager {
         // Event
         if (currState == ConnectionState.PLAY) {
             PlayerPacketEvent playerPacketEvent = new PlayerPacketEvent(connection.getPlayer(), packet);
-            EventDispatcher.call(playerPacketEvent);
+            process.eventHandler().call(playerPacketEvent);
             if (playerPacketEvent.isCancelled()) {
                 return;
             }

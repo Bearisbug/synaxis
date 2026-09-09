@@ -4,12 +4,24 @@ import net.kyori.adventure.identity.Identity;
 import net.kyori.adventure.pointer.Pointers;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.logger.slf4j.ComponentLogger;
+import dev.gameengine.ServerProcess;
 import dev.gameengine.tag.TagHandler;
 
 /**
  * Represents the console when sending a command to the server.
  */
 public class ConsoleSender implements CommandSender {
+    private final ServerProcess process;
+
+    public ConsoleSender(ServerProcess process) {
+        this.process = process;
+    }
+
+    @Override
+    public ServerProcess process() {
+        return process;
+    }
+
     private static final ComponentLogger LOGGER = ComponentLogger.logger(ConsoleSender.class);
 
     private final TagHandler tagHandler = TagHandler.newHandler();

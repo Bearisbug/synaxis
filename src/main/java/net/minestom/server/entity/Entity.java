@@ -571,6 +571,8 @@ public class Entity implements Viewable, Tickable, Schedulable, Snapshotable, Ev
         Check.stateCondition(!isActive(), "Entities must be in an instance before adding viewers");
         if (!viewEngine.manualAdd(player)) return false;
         updateNewViewer(player);
+        // The automatic path sends this from EntityView, without it the passengers show up dismounted
+        if (hasPassenger()) player.sendPacket(getPassengersPacket());
         return true;
     }
 

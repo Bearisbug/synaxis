@@ -574,6 +574,7 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
                     // Skip refreshing self with a new viewer
                     if (!entity.getUuid().equals(getUuid()) && entity.isViewer(this)) {
                         entity.updateNewViewer(this);
+                        if (entity.hasPassenger()) sendPacket(entity.getPassengersPacket());
                     }
                 });
         teleport(respawnPosition).thenRun(this::refreshAfterTeleport).join();

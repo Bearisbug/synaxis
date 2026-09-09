@@ -23,7 +23,9 @@ final class TranscoderJsonImpl implements Transcoder<JsonElement> {
 
     @Override
     public Result<Boolean> getBoolean(JsonElement value) {
-        if (!(value instanceof JsonPrimitive primitive))
+        // JsonPrimitive#getAsBoolean falls back to Boolean.parseBoolean(getAsString()), which never fails and
+        // silently turns anything that is not "true" into false
+        if (!(value instanceof JsonPrimitive primitive) || !primitive.isBoolean())
             return new Result.Error<>("Not a boolean: " + value);
         return new Result.Ok<>(primitive.getAsBoolean());
     }
@@ -119,7 +121,7 @@ final class TranscoderJsonImpl implements Transcoder<JsonElement> {
 
     @Override
     public Result<String> getString(JsonElement value) {
-        if (!(value instanceof JsonPrimitive primitive))
+        if (!(value instanceof JsonPrimitive primitive) || !primitive.isString())
             return new Result.Error<>("Not a string: " + value);
         return new Result.Ok<>(primitive.getAsString());
     }

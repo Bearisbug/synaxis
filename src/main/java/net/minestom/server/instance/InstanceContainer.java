@@ -302,7 +302,8 @@ public class InstanceContainer extends Instance {
         // and the contract of Instance#unloadChunk is to leave them alone
         for (Entity entity : getEntityTracker().chunkEntities(chunkX, chunkZ, EntityTracker.Target.ENTITIES)) {
             if (entity instanceof Player) continue;
-            entity.remove();
+            // unloadChunk may run on any thread; removal must own the entity's tick thread
+            entity.acquirable().sync(Entity::remove);
         }
         // Clear cache
         this.chunks.remove(CoordConversion.chunkIndex(chunkX, chunkZ));

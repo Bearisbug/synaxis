@@ -6,6 +6,7 @@ import net.kyori.adventure.nbt.IntBinaryTag;
 import net.kyori.adventure.nbt.ListBinaryTag;
 import net.kyori.adventure.nbt.LongArrayBinaryTag;
 import net.kyori.adventure.nbt.LongBinaryTag;
+import net.kyori.adventure.util.TriState;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -18,6 +19,45 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 
 public class TranscoderTest {
+
+    /**
+     * gson's JsonPrimitive#getAsBoolean falls back to Boolean.parseBoolean(getAsString()), so it never fails and
+     * turns any non-"true" value into false. Without a type guard Codec.TRI_STATE can never reach its string branch
+     * and NOT_SET decodes as FALSE.
+     */
+    @Test
+    public void jsonBooleanAccessorRejectsNonBooleans() {
+        assertInstanceOf(Result.Error.class, Transcoder.JSON.getBoolean(Transcoder.JSON.createString("default")));
+        assertInstanceOf(Result.Error.class, Transcoder.JSON.getBoolean(Transcoder.JSON.createInt(5)));
+        assertEquals(true, assertOk(Transcoder.JSON.getBoolean(Transcoder.JSON.createBoolean(true))));
+    }
+
+    @Test
+    public void triStateRoundTripsInJson() {
+        for (TriState state : TriState.values()) {
+            final var encoded = assertOk(Codec.TRI_STATE.encode(Transcoder.JSON, state));
+            assertEquals(state, assertOk(Codec.TRI_STATE.decode(Transcoder.JSON, encoded)));
+        }
+    }
+
+    /**
+     * Transcoder.createNumber is meaningless if every JSON number is widened to a double on the way out: an integer
+     * in a plugin's custom_data would reach the client as a double.
+     */
+    @Test
+    public void jsonToNbtKeepsIntegerTypes() {
+        final var json = Transcoder.JSON.createMap()
+                .put("i", Transcoder.JSON.createInt(5))
+                .put("l", Transcoder.JSON.createLong(9007199254740993L))
+                .put("d", Transcoder.JSON.createDouble(1.5))
+                .build();
+        final var nbt = assertOk(Transcoder.JSON.convertTo(Transcoder.NBT, json));
+        final var map = assertOk(Transcoder.NBT.getMap(nbt));
+
+        assertEquals(IntBinaryTag.intBinaryTag(5), assertOk(map.getValue("i")));
+        assertEquals(LongBinaryTag.longBinaryTag(9007199254740993L), assertOk(map.getValue("l")));
+        assertEquals(1.5d, assertOk(Transcoder.NBT.getDouble(assertOk(map.getValue("d")))));
+    }
 
     private static List<Transcoder<?>> nonDestructiveTranscoders() {
         return List.of(Transcoder.NBT, Transcoder.JSON, Transcoder.JAVA);

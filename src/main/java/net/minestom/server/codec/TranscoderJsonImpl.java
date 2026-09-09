@@ -258,8 +258,22 @@ final class TranscoderJsonImpl implements Transcoder<JsonElement> {
             }
             case JsonPrimitive primitive when primitive.isBoolean() ->
                     new Result.Ok<>(coder.createBoolean(primitive.getAsBoolean()));
-            case JsonPrimitive primitive when primitive.isNumber() ->
-                    new Result.Ok<>(coder.createDouble(primitive.getAsDouble()));
+            case JsonPrimitive primitive when primitive.isNumber() -> {
+                // JSON has a single number type, but the target may not: widening everything to double loses the
+                // integer types the NBT side distinguishes, and precision past 2^53
+                final String literal = primitive.getAsString();
+                if (literal.indexOf('.') < 0 && literal.indexOf('e') < 0 && literal.indexOf('E') < 0) {
+                    try {
+                        final long asLong = Long.parseLong(literal);
+                        yield new Result.Ok<>((int) asLong == asLong
+                                ? coder.createInt((int) asLong)
+                                : coder.createLong(asLong));
+                    } catch (NumberFormatException _) {
+                        // Falls through to double
+                    }
+                }
+                yield new Result.Ok<>(coder.createDouble(primitive.getAsDouble()));
+            }
             case JsonPrimitive primitive when primitive.isString() ->
                     new Result.Ok<>(coder.createString(primitive.getAsString()));
             case JsonNull _ -> new Result.Ok<>(coder.createNull());

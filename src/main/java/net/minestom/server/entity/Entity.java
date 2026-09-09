@@ -444,16 +444,16 @@ public class Entity implements Viewable, Tickable, Schedulable, Snapshotable, Ev
 
         if (chunks != null && chunks.length > 0) {
             // Chunks need to be loaded before the teleportation can happen
-            return ChunkUtils.optionalLoadAll(instance, chunks, null).thenRun(endCallback);
+            return ChunkUtils.optionalLoadAll(instance, chunks, null).thenRun(() -> runOwned(endCallback));
         }
         // Assumes globalPosition is already clamped
         final Pos currentPosition = this.position;
         if (!currentPosition.sameChunk(globalPosition)) {
             // Ensure that the chunk is loaded
-            return instance.loadOptionalChunk(globalPosition).thenRun(endCallback);
+            return instance.loadOptionalChunk(globalPosition).thenRun(() -> runOwned(endCallback));
         } else {
             // Position is in the same chunk, keep it sync
-            endCallback.run();
+            runOwned(endCallback);
             return AsyncUtils.empty();
         }
     }
@@ -888,6 +888,19 @@ public class Entity implements Viewable, Tickable, Schedulable, Snapshotable, Ev
         return currentChunk;
     }
 
+    /**
+     * Runs {@code callback} while owning this entity.
+     * <p>
+     * The continuations of {@link #setInstance(Instance, Pos)} and {@link #teleport(Pos)} run on the
+     * (virtual) thread that loaded the chunk, they must not write the entity state while its own
+     * {@link net.minestom.server.thread.TickThread} is ticking it.
+     */
+    private void runOwned(Runnable callback) {
+        // No tick thread owns the entity yet, nothing can be racing with us
+        if (acquirable.assignedThread() == null) callback.run();
+        else acquirable.sync(_ -> callback.run());
+    }
+
     @ApiStatus.Internal
     protected void refreshCurrentChunk(Chunk currentChunk) {
         this.currentChunk = currentChunk;
@@ -935,7 +948,7 @@ public class Entity implements Viewable, Tickable, Schedulable, Snapshotable, Ev
         this.lastSyncedPosition = spawnPosition;
         this.previousPhysicsResult = null;
         this.instance = instance;
-        return instance.loadOptionalChunk(spawnPosition).thenAccept(chunk -> {
+        return instance.loadOptionalChunk(spawnPosition).thenAccept(chunk -> runOwned(() -> {
             try {
                 // The entity may have been removed while the spawn chunk was loading, registering it
                 // now would leave a ghost entity that #remove can never reach again
@@ -953,7 +966,7 @@ public class Entity implements Viewable, Tickable, Schedulable, Snapshotable, Ev
             } catch (Exception e) {
                 MinecraftServer.getExceptionManager().handleException(e);
             }
-        });
+        }));
     }
 
     public CompletableFuture<Void> setInstance(Instance instance, Point spawnPosition) {

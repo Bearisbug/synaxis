@@ -258,7 +258,6 @@ import net.minestom.server.network.packet.server.play.SoundEffectPacket;
 import net.minestom.server.network.packet.server.play.SpawnEntityPacket;
 import net.minestom.server.network.packet.server.play.SpawnPositionPacket;
 import net.minestom.server.network.packet.server.play.StartConfigurationPacket;
-import net.minestom.server.network.packet.server.play.StatisticsPacket;
 import net.minestom.server.network.packet.server.play.StopSoundPacket;
 import net.minestom.server.network.packet.server.play.SystemChatPacket;
 import net.minestom.server.network.packet.server.play.TabCompletePacket;
@@ -302,7 +301,6 @@ import net.minestom.server.recipe.display.SlotDisplay;
 import net.minestom.server.registry.Registries;
 import net.minestom.server.scoreboard.Sidebar;
 import net.minestom.server.sound.SoundEvent;
-import net.minestom.server.statistic.StatisticCategory;
 import net.minestom.server.utils.Either;
 import net.minestom.server.utils.Rotation;
 import net.minestom.server.utils.WeightedList;
@@ -631,7 +629,6 @@ public class PacketWriteReadRegistriesTest {
         addServerPackets(new SpawnEntityPacket(5, UUID.randomUUID(), EntityType.ZOMBIE, new Pos(0, 64, 0, 0, 0), 9.84375f, 0, Vec.ONE));
         addServerPackets(new SpawnPositionPacket(new WorldPos("overworld", BLOCK_VEC), 0f, 1f));
         addServerPackets(new StartConfigurationPacket());
-        addServerPackets(new StatisticsPacket(List.of(new StatisticsPacket.Statistic(StatisticCategory.BROKEN, 5, 100))));
         addServerPackets(
                 new StopSoundPacket((byte) 0, null, null),
                 new StopSoundPacket((byte) 1, Sound.Source.BLOCK, null),

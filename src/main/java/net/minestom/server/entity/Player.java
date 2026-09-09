@@ -125,7 +125,6 @@ import net.minestom.server.snapshot.EntitySnapshot;
 import net.minestom.server.snapshot.PlayerSnapshot;
 import net.minestom.server.snapshot.SnapshotImpl;
 import net.minestom.server.snapshot.SnapshotUpdater;
-import net.minestom.server.statistic.PlayerStatistic;
 import net.minestom.server.thread.Acquirable;
 import net.minestom.server.timer.Scheduler;
 import net.minestom.server.utils.MathUtils;
@@ -160,7 +159,6 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReentrantLock;
@@ -279,8 +277,6 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
     private boolean instantBreak;
     private float flyingSpeed = 0.05f;
     private float fieldViewModifier = 0.1f;
-
-    private final Map<PlayerStatistic, Integer> statisticValueMap = new ConcurrentHashMap<>();
 
     private final PlayerInputs inputs = new PlayerInputs();
 
@@ -2284,16 +2280,6 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
     public void setFieldViewModifier(float fieldViewModifier) {
         this.fieldViewModifier = fieldViewModifier;
         refreshAbilities();
-    }
-
-    /**
-     * This is the map used to send the statistic packet.
-     * It is possible to add/remove/change statistic value directly into it.
-     *
-     * @return the modifiable statistic map
-     */
-    public Map<PlayerStatistic, Integer> getStatisticValueMap() {
-        return statisticValueMap;
     }
 
     /**

@@ -24,7 +24,6 @@ public final class Generators {
             new StaticRegistrySpec("mob_effect", "net.minestom.server.potion", "PotionEffect", "PotionEffectImpl", "PotionEffects"),
             new StaticRegistrySpec("potion", "net.minestom.server.potion", "PotionType", "PotionTypeImpl", "PotionTypes"),
             new StaticRegistrySpec("sound_event", "net.minestom.server.sound", "SoundEvent", "BuiltinSoundEvent", "SoundEvents", "BuiltinSoundEvent"),
-            new StaticRegistrySpec("custom_stat", "net.minestom.server.statistic", "StatisticType", "StatisticTypeImpl", "StatisticTypes"),
             new StaticRegistrySpec("attribute", "net.minestom.server.entity.attribute", "Attribute", "AttributeImpl", "Attributes"),
             new StaticRegistrySpec("feature_flag", "net.minestom.server", "FeatureFlag", "FeatureFlagImpl", "FeatureFlags"),
             new StaticRegistrySpec("fluid", "net.minestom.server.instance.fluid", "Fluid", "FluidImpl", "Fluids"),

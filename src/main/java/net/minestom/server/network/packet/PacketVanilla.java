@@ -211,7 +211,6 @@ import net.minestom.server.network.packet.server.play.SoundEffectPacket;
 import net.minestom.server.network.packet.server.play.SpawnEntityPacket;
 import net.minestom.server.network.packet.server.play.SpawnPositionPacket;
 import net.minestom.server.network.packet.server.play.StartConfigurationPacket;
-import net.minestom.server.network.packet.server.play.StatisticsPacket;
 import net.minestom.server.network.packet.server.play.StopSoundPacket;
 import net.minestom.server.network.packet.server.play.SystemChatPacket;
 import net.minestom.server.network.packet.server.play.TabCompletePacket;
@@ -429,7 +428,6 @@ public final class PacketVanilla {
             entry(BundlePacket.class, BundlePacket.SERIALIZER),
             entry(SpawnEntityPacket.class, SpawnEntityPacket.SERIALIZER),
             entry(EntityAnimationPacket.class, EntityAnimationPacket.SERIALIZER),
-            entry(StatisticsPacket.class, StatisticsPacket.SERIALIZER),
             entry(AcknowledgeBlockChangePacket.class, AcknowledgeBlockChangePacket.SERIALIZER),
             entry(BlockBreakAnimationPacket.class, BlockBreakAnimationPacket.SERIALIZER),
             entry(BlockEntityDataPacket.class, BlockEntityDataPacket.SERIALIZER),

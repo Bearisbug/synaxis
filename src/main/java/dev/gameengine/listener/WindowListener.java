@@ -14,7 +14,7 @@ import dev.gameengine.network.packet.client.play.ClientClickWindowPacket;
 import dev.gameengine.network.packet.client.play.ClientCloseWindowPacket;
 import dev.gameengine.network.packet.client.play.ClientSelectBundleItemPacket;
 import dev.gameengine.network.packet.server.play.SetCursorItemPacket;
-import dev.gameengine.utils.inventory.PlayerInventoryUtils;
+import dev.gameengine.inventory.PlayerInventoryUtils;
 import org.jetbrains.annotations.Nullable;
 
 public class WindowListener {

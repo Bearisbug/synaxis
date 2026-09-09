@@ -8,7 +8,6 @@ import dev.gameengine.command.builder.ParsedCommand;
 import dev.gameengine.entity.Player;
 import dev.gameengine.event.player.PlayerCommandEvent;
 import dev.gameengine.network.packet.server.play.DeclareCommandsPacket;
-import dev.gameengine.utils.callback.CommandCallback;
 import dev.gameengine.utils.validate.Check;
 import org.jetbrains.annotations.Nullable;
 

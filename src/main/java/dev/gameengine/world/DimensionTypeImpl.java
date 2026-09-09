@@ -3,7 +3,6 @@ package dev.gameengine.world;
 import net.kyori.adventure.nbt.BinaryTag;
 import dev.gameengine.registry.RegistryKey;
 import dev.gameengine.registry.RegistryTag;
-import dev.gameengine.utils.IntProvider;
 import dev.gameengine.world.attribute.EnvironmentAttributeMap;
 import org.jetbrains.annotations.Nullable;
 

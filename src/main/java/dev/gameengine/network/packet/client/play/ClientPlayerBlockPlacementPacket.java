@@ -2,7 +2,7 @@ package dev.gameengine.network.packet.client.play;
 
 import dev.gameengine.coordinate.Point;
 import dev.gameengine.entity.PlayerHand;
-import dev.gameengine.instance.block.BlockFace;
+import dev.gameengine.coordinate.BlockFace;
 import dev.gameengine.network.NetworkBuffer;
 import dev.gameengine.network.NetworkBufferTemplate;
 import dev.gameengine.network.packet.client.ClientPacket;

@@ -1,7 +1,5 @@
 package dev.gameengine.coordinate;
 
-import dev.gameengine.instance.block.BlockFace;
-import dev.gameengine.utils.Direction;
 import dev.gameengine.utils.validate.Check;
 import org.jetbrains.annotations.Contract;
 

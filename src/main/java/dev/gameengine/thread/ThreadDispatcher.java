@@ -1,6 +1,5 @@
 package dev.gameengine.thread;
 
-import dev.gameengine.Tickable;
 import org.jetbrains.annotations.ApiStatus;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.Unmodifiable;

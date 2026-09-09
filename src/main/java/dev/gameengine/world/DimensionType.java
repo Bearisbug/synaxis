@@ -8,7 +8,6 @@ import dev.gameengine.registry.DynamicRegistry;
 import dev.gameengine.registry.Registries;
 import dev.gameengine.registry.RegistryKey;
 import dev.gameengine.registry.RegistryTag;
-import dev.gameengine.utils.IntProvider;
 import dev.gameengine.utils.validate.Check;
 import dev.gameengine.world.attribute.EnvironmentAttribute;
 import dev.gameengine.world.attribute.EnvironmentAttributeMap;

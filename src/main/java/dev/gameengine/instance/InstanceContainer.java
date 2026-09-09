@@ -18,7 +18,7 @@ import dev.gameengine.event.instance.InstanceChunkUnloadEvent;
 import dev.gameengine.event.player.PlayerBlockBreakEvent;
 import dev.gameengine.instance.block.Block;
 import dev.gameengine.instance.block.BlockEntityType;
-import dev.gameengine.instance.block.BlockFace;
+import dev.gameengine.coordinate.BlockFace;
 import dev.gameengine.instance.block.BlockHandler;
 import dev.gameengine.instance.block.rule.BlockPlacementRule;
 import dev.gameengine.instance.generator.Generator;
@@ -31,11 +31,9 @@ import dev.gameengine.network.packet.server.play.MultiBlockChangePacket;
 import dev.gameengine.network.packet.server.play.UnloadChunkPacket;
 import dev.gameengine.network.packet.server.play.WorldEventPacket;
 import dev.gameengine.registry.RegistryKey;
-import dev.gameengine.utils.PacketSendingUtils;
+import dev.gameengine.network.PacketSendingUtils;
 import dev.gameengine.utils.async.AsyncUtils;
-import dev.gameengine.utils.block.BlockUtils;
-import dev.gameengine.utils.chunk.ChunkCache;
-import dev.gameengine.utils.chunk.ChunkSupplier;
+import dev.gameengine.instance.block.BlockUtils;
 import dev.gameengine.utils.validate.Check;
 import dev.gameengine.world.DimensionType;
 import dev.gameengine.worldevent.WorldEvent;
@@ -61,7 +59,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
-import static dev.gameengine.utils.chunk.ChunkUtils.isLoaded;
+import static dev.gameengine.instance.ChunkUtils.isLoaded;
 
 /**
  * InstanceContainer is an instance that contains chunks in contrary to SharedInstance.

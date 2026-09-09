@@ -4,7 +4,7 @@ import dev.gameengine.coordinate.BlockVec;
 import dev.gameengine.coordinate.Point;
 import dev.gameengine.instance.Chunk;
 import dev.gameengine.instance.palette.Palette;
-import dev.gameengine.utils.Direction;
+import dev.gameengine.coordinate.Direction;
 import org.jetbrains.annotations.ApiStatus;
 import org.jetbrains.annotations.Nullable;
 

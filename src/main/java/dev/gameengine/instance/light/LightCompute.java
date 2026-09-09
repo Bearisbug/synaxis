@@ -4,9 +4,9 @@ import it.unimi.dsi.fastutil.shorts.ShortArrayFIFOQueue;
 import dev.gameengine.collision.Shape;
 import dev.gameengine.coordinate.Point;
 import dev.gameengine.instance.block.Block;
-import dev.gameengine.instance.block.BlockFace;
+import dev.gameengine.coordinate.BlockFace;
 import dev.gameengine.instance.palette.Palette;
-import dev.gameengine.utils.Direction;
+import dev.gameengine.coordinate.Direction;
 
 import java.util.Arrays;
 import java.util.Objects;

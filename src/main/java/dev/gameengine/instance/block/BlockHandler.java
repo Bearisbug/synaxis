@@ -1,6 +1,7 @@
 package dev.gameengine.instance.block;
 
 import net.kyori.adventure.key.Key;
+import dev.gameengine.coordinate.BlockFace;
 import dev.gameengine.coordinate.Point;
 import dev.gameengine.entity.Entity;
 import dev.gameengine.entity.Player;

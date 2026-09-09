@@ -3,7 +3,7 @@ package dev.gameengine.instance.light;
 import it.unimi.dsi.fastutil.shorts.ShortArrayFIFOQueue;
 import dev.gameengine.coordinate.BlockVec;
 import dev.gameengine.coordinate.Point;
-import dev.gameengine.instance.block.BlockFace;
+import dev.gameengine.coordinate.BlockFace;
 import dev.gameengine.instance.palette.Palette;
 import org.jetbrains.annotations.ApiStatus;
 import org.jetbrains.annotations.Nullable;

@@ -8,10 +8,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-import static dev.gameengine.utils.inventory.PlayerInventoryUtils.BOOTS_SLOT;
-import static dev.gameengine.utils.inventory.PlayerInventoryUtils.CHESTPLATE_SLOT;
-import static dev.gameengine.utils.inventory.PlayerInventoryUtils.HELMET_SLOT;
-import static dev.gameengine.utils.inventory.PlayerInventoryUtils.LEGGINGS_SLOT;
+import static dev.gameengine.inventory.PlayerInventoryUtils.BOOTS_SLOT;
+import static dev.gameengine.inventory.PlayerInventoryUtils.CHESTPLATE_SLOT;
+import static dev.gameengine.inventory.PlayerInventoryUtils.HELMET_SLOT;
+import static dev.gameengine.inventory.PlayerInventoryUtils.LEGGINGS_SLOT;
 
 public enum EquipmentSlot {
     MAIN_HAND(0, 0, "mainhand", false, -1),

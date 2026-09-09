@@ -1,6 +1,7 @@
 package dev.gameengine.item.component;
 
 import net.kyori.adventure.text.Component;
+import dev.gameengine.adventure.ComponentCodecs;
 import dev.gameengine.codec.Codec;
 import dev.gameengine.codec.StructCodec;
 import dev.gameengine.network.NetworkBuffer;
@@ -17,7 +18,7 @@ public record FilteredText<T>(T text, @Nullable T filtered) {
     @SuppressWarnings("ConstantField") // kept not final for binary compatibility until the next breaking release
     public static NetworkBuffer.Type<FilteredText<Component>> COMPONENT_NETWORK_TYPE = createNetworkType(NetworkBuffer.COMPONENT);
     @SuppressWarnings("ConstantField") // kept not final for binary compatibility until the next breaking release
-    public static Codec<FilteredText<Component>> COMPONENT_CODEC = createCodec(Codec.COMPONENT);
+    public static Codec<FilteredText<Component>> COMPONENT_CODEC = createCodec(ComponentCodecs.COMPONENT);
 
     private static <T> NetworkBuffer.Type<FilteredText<T>> createNetworkType(NetworkBuffer.Type<T> inner) {
         return NetworkBufferTemplate.template(

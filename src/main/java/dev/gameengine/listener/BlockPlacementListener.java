@@ -14,7 +14,7 @@ import dev.gameengine.event.player.PlayerUseItemOnBlockEvent;
 import dev.gameengine.instance.Chunk;
 import dev.gameengine.instance.Instance;
 import dev.gameengine.instance.block.Block;
-import dev.gameengine.instance.block.BlockFace;
+import dev.gameengine.coordinate.BlockFace;
 import dev.gameengine.instance.block.BlockHandler;
 import dev.gameengine.instance.block.rule.BlockPlacementRule;
 import dev.gameengine.item.ItemStack;
@@ -24,8 +24,8 @@ import dev.gameengine.item.component.ItemBlockState;
 import dev.gameengine.network.packet.client.play.ClientPlayerBlockPlacementPacket;
 import dev.gameengine.network.packet.server.play.AcknowledgeBlockChangePacket;
 import dev.gameengine.network.packet.server.play.BlockChangePacket;
-import dev.gameengine.utils.chunk.ChunkUtils;
-import dev.gameengine.utils.inventory.PlayerInventoryUtils;
+import dev.gameengine.instance.ChunkUtils;
+import dev.gameengine.inventory.PlayerInventoryUtils;
 import dev.gameengine.world.DimensionType;
 
 public class BlockPlacementListener {

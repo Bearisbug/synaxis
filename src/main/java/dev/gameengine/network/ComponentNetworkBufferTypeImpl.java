@@ -20,9 +20,9 @@ import net.kyori.adventure.text.format.TextColor;
 import net.kyori.adventure.text.format.TextDecoration;
 import net.kyori.adventure.text.object.PlayerHeadObjectContents;
 import net.kyori.adventure.text.object.SpriteObjectContents;
+import dev.gameengine.adventure.ComponentCodecs;
 import dev.gameengine.adventure.MinestomAdventure;
 import dev.gameengine.adventure.serializer.nbt.NbtDataComponentValue;
-import dev.gameengine.codec.Codec;
 import dev.gameengine.codec.Transcoder;
 import dev.gameengine.registry.Registries;
 import dev.gameengine.registry.RegistryTranscoder;
@@ -61,7 +61,7 @@ record ComponentNetworkBufferTypeImpl() implements NetworkBufferTypeImpl<Compone
         final Transcoder<BinaryTag> coder = registries != null
                 ? new RegistryTranscoder<>(Transcoder.NBT, registries)
                 : Transcoder.NBT;
-        return Codec.COMPONENT.decode(coder, buffer.read(NBT)).orElseThrow();
+        return ComponentCodecs.COMPONENT.decode(coder, buffer.read(NBT)).orElseThrow();
     }
 
     // WRITING IMPL, pretty gross. Would not recommend reading.

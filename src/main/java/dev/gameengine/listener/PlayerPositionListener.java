@@ -5,7 +5,7 @@ import dev.gameengine.coordinate.Pos;
 import dev.gameengine.coordinate.Vec;
 import dev.gameengine.entity.Entity;
 import dev.gameengine.entity.Player;
-import dev.gameengine.entity.RelativeFlags;
+import dev.gameengine.coordinate.RelativeFlags;
 import dev.gameengine.event.player.PlayerMoveEvent;
 import dev.gameengine.instance.Instance;
 import dev.gameengine.network.packet.client.play.ClientPlayerPositionAndRotationPacket;
@@ -14,7 +14,7 @@ import dev.gameengine.network.packet.client.play.ClientPlayerPositionStatusPacke
 import dev.gameengine.network.packet.client.play.ClientPlayerRotationPacket;
 import dev.gameengine.network.packet.client.play.ClientTeleportConfirmPacket;
 import dev.gameengine.network.packet.server.play.PlayerPositionAndLookPacket;
-import dev.gameengine.utils.chunk.ChunkUtils;
+import dev.gameengine.instance.ChunkUtils;
 import org.jetbrains.annotations.ApiStatus;
 
 public class PlayerPositionListener {

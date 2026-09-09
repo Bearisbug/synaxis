@@ -2,17 +2,17 @@ package dev.gameengine.inventory;
 
 import org.junit.jupiter.api.Test;
 
-import static dev.gameengine.utils.inventory.PlayerInventoryUtils.BOOTS_SLOT;
-import static dev.gameengine.utils.inventory.PlayerInventoryUtils.CHESTPLATE_SLOT;
-import static dev.gameengine.utils.inventory.PlayerInventoryUtils.CRAFT_RESULT;
-import static dev.gameengine.utils.inventory.PlayerInventoryUtils.CRAFT_SLOT_1;
-import static dev.gameengine.utils.inventory.PlayerInventoryUtils.CRAFT_SLOT_2;
-import static dev.gameengine.utils.inventory.PlayerInventoryUtils.CRAFT_SLOT_3;
-import static dev.gameengine.utils.inventory.PlayerInventoryUtils.CRAFT_SLOT_4;
-import static dev.gameengine.utils.inventory.PlayerInventoryUtils.HELMET_SLOT;
-import static dev.gameengine.utils.inventory.PlayerInventoryUtils.LEGGINGS_SLOT;
-import static dev.gameengine.utils.inventory.PlayerInventoryUtils.OFFHAND_SLOT;
-import static dev.gameengine.utils.inventory.PlayerInventoryUtils.convertWindow0SlotToMinestomSlot;
+import static dev.gameengine.inventory.PlayerInventoryUtils.BOOTS_SLOT;
+import static dev.gameengine.inventory.PlayerInventoryUtils.CHESTPLATE_SLOT;
+import static dev.gameengine.inventory.PlayerInventoryUtils.CRAFT_RESULT;
+import static dev.gameengine.inventory.PlayerInventoryUtils.CRAFT_SLOT_1;
+import static dev.gameengine.inventory.PlayerInventoryUtils.CRAFT_SLOT_2;
+import static dev.gameengine.inventory.PlayerInventoryUtils.CRAFT_SLOT_3;
+import static dev.gameengine.inventory.PlayerInventoryUtils.CRAFT_SLOT_4;
+import static dev.gameengine.inventory.PlayerInventoryUtils.HELMET_SLOT;
+import static dev.gameengine.inventory.PlayerInventoryUtils.LEGGINGS_SLOT;
+import static dev.gameengine.inventory.PlayerInventoryUtils.OFFHAND_SLOT;
+import static dev.gameengine.inventory.PlayerInventoryUtils.convertWindow0SlotToMinestomSlot;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**

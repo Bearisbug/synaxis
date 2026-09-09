@@ -2,7 +2,6 @@ package dev.gameengine.crypto;
 
 import dev.gameengine.entity.Player;
 import dev.gameengine.network.NetworkBuffer;
-import dev.gameengine.utils.crypto.KeyUtils;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

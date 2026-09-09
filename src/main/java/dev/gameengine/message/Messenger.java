@@ -4,7 +4,7 @@ import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import dev.gameengine.entity.Player;
 import dev.gameengine.network.packet.server.play.SystemChatPacket;
-import dev.gameengine.utils.PacketSendingUtils;
+import dev.gameengine.network.PacketSendingUtils;
 
 import java.util.Collection;
 import java.util.Objects;

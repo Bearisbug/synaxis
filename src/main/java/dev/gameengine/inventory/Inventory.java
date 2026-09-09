@@ -8,7 +8,6 @@ import dev.gameengine.inventory.click.InventoryClickResult;
 import dev.gameengine.item.ItemStack;
 import dev.gameengine.network.packet.server.play.OpenWindowPacket;
 import dev.gameengine.network.packet.server.play.WindowPropertyPacket;
-import dev.gameengine.utils.inventory.PlayerInventoryUtils;
 
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;

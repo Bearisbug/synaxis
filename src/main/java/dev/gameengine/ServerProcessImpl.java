@@ -23,14 +23,13 @@ import dev.gameengine.registry.Registries;
 import dev.gameengine.thread.Acquirable;
 import dev.gameengine.thread.ThreadDispatcher;
 import dev.gameengine.thread.ThreadProvider;
-import dev.gameengine.thread.TickSchedulerThread;
 import dev.gameengine.thread.TickThread;
 import dev.gameengine.timer.SchedulerManager;
 import dev.gameengine.network.packet.server.common.PluginMessagePacket;
 import dev.gameengine.network.packet.server.play.ServerDifficultyPacket;
-import dev.gameengine.utils.PacketSendingUtils;
-import dev.gameengine.utils.PacketViewableUtils;
-import dev.gameengine.utils.time.Tick;
+import dev.gameengine.network.PacketSendingUtils;
+import dev.gameengine.network.PacketViewableUtils;
+import dev.gameengine.timer.Tick;
 import dev.gameengine.utils.validate.Check;
 import dev.gameengine.world.Difficulty;
 import org.jetbrains.annotations.Nullable;
@@ -82,7 +81,7 @@ final class ServerProcessImpl implements ServerProcess, Registries.Delegating {
     public ServerProcessImpl(Auth auth, ServerConfig config) {
         this.auth = auth;
         this.config = config;
-        this.exception = new ExceptionManager(this);
+        this.exception = new ExceptionManager(this::stop);
         this.registries = Registries.vanilla();
 
         this.connection = new ConnectionManager(this);

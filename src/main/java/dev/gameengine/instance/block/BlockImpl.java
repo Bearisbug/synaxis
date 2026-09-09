@@ -10,7 +10,6 @@ import dev.gameengine.registry.Registry;
 import dev.gameengine.registry.RegistryData;
 import dev.gameengine.registry.RegistryKey;
 import dev.gameengine.tag.Tag;
-import dev.gameengine.utils.block.BlockUtils;
 import dev.gameengine.utils.collection.ObjectArray;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.UnknownNullability;

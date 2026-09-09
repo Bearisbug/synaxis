@@ -9,7 +9,7 @@ import dev.gameengine.entity.GameMode;
 import dev.gameengine.network.NetworkBuffer;
 import dev.gameengine.utils.Range;
 import dev.gameengine.utils.StringUtils;
-import dev.gameengine.utils.entity.EntityFinder;
+import dev.gameengine.entity.EntityFinder;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Arrays;

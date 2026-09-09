@@ -1,7 +1,5 @@
 package dev.gameengine.codec;
 
-import net.kyori.adventure.key.Key;
-import net.kyori.adventure.key.KeyPattern;
 import net.kyori.adventure.nbt.BinaryTag;
 import net.kyori.adventure.nbt.CompoundBinaryTag;
 import net.kyori.adventure.util.TriState;
@@ -10,10 +8,6 @@ import dev.gameengine.codec.Transcoder.MapBuilder;
 import dev.gameengine.codec.Transcoder.MapLike;
 import dev.gameengine.coordinate.Point;
 import dev.gameengine.coordinate.Vec;
-import dev.gameengine.gamedata.DataPack;
-import dev.gameengine.registry.Registries;
-import dev.gameengine.registry.RegistryKey;
-import dev.gameengine.registry.RegistryTranscoder;
 import dev.gameengine.utils.Either;
 import dev.gameengine.utils.ThrowingFunction;
 import org.jetbrains.annotations.ApiStatus;
@@ -415,50 +409,6 @@ final class CodecImpl {
 
             map.put(keyField, keyValue);
             return serializer.encodeToMap(coder, value, map);
-        }
-    }
-
-    @SuppressWarnings("unchecked")
-    record RegistryTaggedUnionImpl<T>(
-            String key,
-            Registries.Selector<StructCodec<? extends T>> registrySelector,
-            Function<T, StructCodec<? extends T>> valueToCodec
-    ) implements StructCodec<T> {
-        RegistryTaggedUnionImpl {
-            Objects.requireNonNull(key, "key");
-            Objects.requireNonNull(registrySelector, "registrySelector");
-            Objects.requireNonNull(valueToCodec, "valueToCodec");
-        }
-
-        @Override
-        public <D> Result<T> decodeFromMap(Transcoder<D> coder, MapLike<D> map) {
-            if (!(coder instanceof RegistryTranscoder<D> context))
-                return new Result.Error<>("Missing registries in transcoder");
-            final var registry = registrySelector.select(context.registries());
-
-            final Result<String> type = map.getValue(key).map(coder::getString);
-            if (!(type instanceof Result.Ok(@KeyPattern String tag)))
-                return type.mapError(e -> key + ": " + e).cast();
-            final StructCodec<T> innerCodec = (StructCodec<T>) registry.get(Key.key(tag));
-            if (innerCodec == null) return new Result.Error<>("No such key: " + tag);
-
-            return innerCodec.decodeFromMap(coder, map);
-        }
-
-        @Override
-        public <D> Result<@Nullable D> encodeToMap(Transcoder<D> coder, T value, MapBuilder<D> map) {
-            if (!(coder instanceof RegistryTranscoder<D> context))
-                return new Result.Error<>("Missing registries in transcoder");
-            final var registry = registrySelector.select(context.registries());
-
-            final StructCodec<T> innerCodec = (StructCodec<T>) valueToCodec.apply(value);
-            final RegistryKey<StructCodec<? extends T>> type = registry.getKey(innerCodec);
-            if (type == null) return new Result.Error<>("Unregistered serializer for: " + value);
-            if (context.forClient() && registry.getPack(type) != DataPack.MINECRAFT_CORE)
-                return new Result.Ok<>(null);
-
-            map.put(key, coder.createString(type.key().asString()));
-            return innerCodec.encodeToMap(coder, value, map);
         }
     }
 

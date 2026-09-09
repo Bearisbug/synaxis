@@ -1,6 +1,5 @@
 package dev.gameengine.coordinate;
 
-import dev.gameengine.instance.block.BlockFace;
 import org.jetbrains.annotations.Contract;
 
 import java.util.function.DoubleUnaryOperator;

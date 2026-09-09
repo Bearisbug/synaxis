@@ -4,7 +4,7 @@ import dev.gameengine.entity.Player;
 import dev.gameengine.event.book.EditBookEvent;
 import dev.gameengine.item.ItemStack;
 import dev.gameengine.network.packet.client.play.ClientEditBookPacket;
-import dev.gameengine.utils.inventory.PlayerInventoryUtils;
+import dev.gameengine.inventory.PlayerInventoryUtils;
 
 public class BookListener {
 

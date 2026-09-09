@@ -1,8 +1,5 @@
 package dev.gameengine.thread;
 
-import dev.gameengine.Tickable;
-import dev.gameengine.entity.Entity;
-import dev.gameengine.instance.Chunk;
 import org.jetbrains.annotations.ApiStatus;
 
 import java.util.ArrayList;
@@ -15,7 +12,7 @@ import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Consumer;
 
 /**
- * Thread responsible for ticking {@link Chunk chunks} and {@link Entity entities}.
+ * Thread responsible for ticking the partitions and elements it was handed.
  * <p>
  * Created in {@link ThreadDispatcher}, and awaken every tick with a task to execute.
  */

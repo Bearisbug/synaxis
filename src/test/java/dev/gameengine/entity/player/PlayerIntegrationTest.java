@@ -12,7 +12,7 @@ import dev.gameengine.entity.GameMode;
 import dev.gameengine.entity.MainHand;
 import dev.gameengine.entity.MetadataDef;
 import dev.gameengine.entity.Player;
-import dev.gameengine.entity.RelativeFlags;
+import dev.gameengine.coordinate.RelativeFlags;
 import dev.gameengine.entity.damage.DamageType;
 import dev.gameengine.event.EventFilter;
 import dev.gameengine.event.player.PlayerChunkUnloadEvent;

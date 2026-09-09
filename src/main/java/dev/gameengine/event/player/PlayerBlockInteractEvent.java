@@ -9,7 +9,7 @@ import dev.gameengine.event.trait.CancellableEvent;
 import dev.gameengine.event.trait.PlayerInstanceEvent;
 import dev.gameengine.instance.Instance;
 import dev.gameengine.instance.block.Block;
-import dev.gameengine.instance.block.BlockFace;
+import dev.gameengine.coordinate.BlockFace;
 
 /**
  * Called when a player interacts with a block (right-click).

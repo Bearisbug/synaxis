@@ -707,10 +707,23 @@ public sealed class MetadataDef {
                                                            T defaultValue) implements Entry<T> {
         }
 
-        record BitMask(int index, byte bitMask, Boolean defaultValue) implements Entry<Boolean> {
+        /**
+         * A single bit of a byte-typed metadata entry.
+         *
+         * @param containerDefault the default value of the whole byte this mask lives in, used as the
+         *                         seed when the byte has not been written yet
+         */
+        record BitMask(int index, byte bitMask, Boolean defaultValue, byte containerDefault) implements Entry<Boolean> {
         }
 
-        record ByteMask(int index, byte byteMask, int offset, Byte defaultValue) implements Entry<Byte> {
+        /**
+         * A sub-range of bits of a byte-typed metadata entry.
+         *
+         * @param containerDefault the default value of the whole byte this mask lives in, used as the
+         *                         seed when the byte has not been written yet
+         */
+        record ByteMask(int index, byte byteMask, int offset, Byte defaultValue,
+                        byte containerDefault) implements Entry<Byte> {
         }
     }
 }

@@ -8,26 +8,38 @@ import java.util.function.Function;
 
 final class MetadataDefImpl {
     static final Map<String, Integer> MAX_INDEX = new HashMap<>();
+    // Default value of every byte-typed entry, so the masks sharing that byte can seed themselves with it
+    private static final Map<String, Byte> BYTE_DEFAULTS = new HashMap<>();
 
     static <T extends @UnknownNullability Object> MetadataDef.Entry.Index<T> index(int index, Function<T, Metadata.Entry<T>> function, T defaultValue) {
         final String caller = caller();
         storeMaxIndex(caller, index);
         final int superIndex = findSuperIndex(caller);
-        return new MetadataDef.Entry.Index<>(superIndex + index, function, defaultValue);
+        final int absoluteIndex = superIndex + index;
+        if (defaultValue instanceof Byte value) BYTE_DEFAULTS.put(caller + "#" + absoluteIndex, value);
+        return new MetadataDef.Entry.Index<>(absoluteIndex, function, defaultValue);
     }
 
     static MetadataDef.Entry.BitMask bitMask(int index, byte bitMask, boolean defaultValue) {
         final String caller = caller();
         storeMaxIndex(caller, index);
         final int superIndex = findSuperIndex(caller);
-        return new MetadataDef.Entry.BitMask(superIndex + index, bitMask, defaultValue);
+        final int absoluteIndex = superIndex + index;
+        return new MetadataDef.Entry.BitMask(absoluteIndex, bitMask, defaultValue, byteDefault(caller, absoluteIndex));
     }
 
     static MetadataDef.Entry.ByteMask byteMask(int index, byte byteMask, int offset, byte defaultValue) {
         final String caller = caller();
         storeMaxIndex(caller, index);
         final int superIndex = findSuperIndex(caller);
-        return new MetadataDef.Entry.ByteMask(superIndex + index, byteMask, offset, defaultValue);
+        final int absoluteIndex = superIndex + index;
+        return new MetadataDef.Entry.ByteMask(absoluteIndex, byteMask, offset, defaultValue,
+                byteDefault(caller, absoluteIndex));
+    }
+
+    // The byte holding the masks is always declared before them in the same class
+    private static byte byteDefault(String caller, int absoluteIndex) {
+        return BYTE_DEFAULTS.getOrDefault(caller + "#" + absoluteIndex, (byte) 0);
     }
 
     static <T extends MetadataDef> int count(Class<T> clazz) {

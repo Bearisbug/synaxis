@@ -168,7 +168,10 @@ public final class MetadataHolder {
     }
 
     private final Consumer<Map<Integer, Metadata.Entry<?>>> changesListener;
-    private Metadata.@Nullable Entry<?>[] entries = new Metadata.Entry<?>[0]; // indexed by metadata id, resized on demand
+    // Indexed by metadata id, resized on demand. Copy-on-write and published through the volatile
+    // reference, so a reader always observes a fully built array and concurrent writers to different
+    // ids cannot drop each other's value while growing it.
+    private volatile Metadata.@Nullable Entry<?>[] entries = new Metadata.Entry<?>[0];
 
     @SuppressWarnings("FieldMayBeFinal")
     private volatile boolean notifyAboutChanges = true;
@@ -210,33 +213,39 @@ public final class MetadataHolder {
     public <T extends @UnknownNullability Object> void set(MetadataDef.Entry<T> entry, T value) {
         final int id = entry.index();
 
-        T current = get(entry);
+        final Metadata.Entry<?> result;
+        // Masks are a read-modify-write of a shared byte, the whole sequence has to be atomic
+        synchronized (this) {
+            T current = get(entry);
 
-        // If a metadata value is unchanged we should not send it. In particular we need to be careful with
-        //  sending bitmasks which will overwrite client-predicted values. See PR 3089 for more info.
-        // However, interpolation delay is expected to be sent regularly with the same value to begin
-        //  interpolation so we always send it for now.
-        if (Objects.equals(current, value) && entry != MetadataDef.Display.INTERPOLATION_DELAY) {
-            return;
+            // If a metadata value is unchanged we should not send it. In particular we need to be careful with
+            //  sending bitmasks which will overwrite client-predicted values. See PR 3089 for more info.
+            // However, interpolation delay is expected to be sent regularly with the same value to begin
+            //  interpolation so we always send it for now.
+            if (Objects.equals(current, value) && entry != MetadataDef.Display.INTERPOLATION_DELAY) {
+                return;
+            }
+
+            result = switch (entry) {
+                case MetadataDef.Entry.Index<T> v -> v.function().apply(value);
+                case MetadataDef.Entry.BitMask bitMask -> {
+                    Metadata.Entry<?> currentEntry = entryAt(id);
+                    // An unset mask byte holds its declared default, not 0, otherwise writing one bit
+                    // resets every sibling bit of the same byte
+                    byte maskValue = currentEntry != null ? (byte) currentEntry.value() : bitMask.containerDefault();
+                    maskValue = setMaskBit(maskValue, bitMask.bitMask(), (Boolean) value);
+                    yield Metadata.Byte(maskValue);
+                }
+                case MetadataDef.Entry.ByteMask byteMask -> {
+                    Metadata.Entry<?> currentEntry = entryAt(id);
+                    byte maskValue = currentEntry != null ? (byte) currentEntry.value() : byteMask.containerDefault();
+                    maskValue = setMaskByte(maskValue, byteMask.byteMask(), byteMask.offset(), (Byte) value);
+                    yield Metadata.Byte(maskValue);
+                }
+            };
+
+            putEntry(id, result);
         }
-
-        Metadata.Entry<?> result = switch (entry) {
-            case MetadataDef.Entry.Index<T> v -> v.function().apply(value);
-            case MetadataDef.Entry.BitMask bitMask -> {
-                Metadata.Entry<?> currentEntry = entryAt(id);
-                byte maskValue = currentEntry != null ? (byte) currentEntry.value() : 0;
-                maskValue = setMaskBit(maskValue, bitMask.bitMask(), (Boolean) value);
-                yield Metadata.Byte(maskValue);
-            }
-            case MetadataDef.Entry.ByteMask byteMask -> {
-                Metadata.Entry<?> currentEntry = entryAt(id);
-                byte maskValue = currentEntry != null ? (byte) currentEntry.value() : 0;
-                maskValue = setMaskByte(maskValue, byteMask.byteMask(), byteMask.offset(), (Byte) value);
-                yield Metadata.Byte(maskValue);
-            }
-        };
-
-        putEntry(id, result);
 
         if (!this.notifyAboutChanges) {
             synchronized (this.notNotifiedChanges) {
@@ -285,9 +294,9 @@ public final class MetadataHolder {
     }
 
     private void putEntry(int id, Metadata.Entry<?> entry) {
-        var entries = this.entries;
-        if (id >= entries.length) this.entries = entries = Arrays.copyOf(entries, id + 1);
-        entries[id] = entry;
+        final var copy = Arrays.copyOf(this.entries, Math.max(this.entries.length, id + 1));
+        copy[id] = entry;
+        this.entries = copy;
     }
 
     public Map<Integer, Metadata.Entry<?>> getEntries() {

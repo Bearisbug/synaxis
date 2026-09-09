@@ -16,6 +16,7 @@
 | 日期 | 版本 | 改动 | 作者 |
 | --- | --- | --- | --- |
 | 2026-09-09 | v0.1 | 初稿：里程碑 M1 范围、实体、协议契约、状态机、阶段计划 | Bearisbug |
+| 2026-09-09 | v0.5 | 阶段 2 第一轮完成（REQ-005 波次 1 除注册表相关包、REQ-006、`demo` 删除）；补三条技术债 | Bearisbug |
 | 2026-09-09 | v0.4 | REQ-009 补服务端品牌字符串；`net.minestom.data` 依赖已随 REQ-001 移除 | Bearisbug |
 | 2026-09-09 | v0.3 | `monitoring` 改为保留；M1.5 按用户指示视为确认；vendoring 实测 74 个 JSON（由 freeze-data 同步） | Bearisbug |
 | 2026-09-09 | v0.2 | 用户确认 M1；`snapshot` 纳入删除波次 1；`command` 保留至 M2 评估；包名改名后置为阶段 3 的一次性操作；新增 M1.5 草案 REQ-013～016 与 §26 阶段 4～6（待确认） | Bearisbug |
@@ -612,5 +613,8 @@ N/A — M1 尚未完成；完成后按 §26 退出条件逐项对照并记录实
 | 风险 | `assertOwnership()` 对未分配线程的实体一律拒绝，`setInstance` / `teleport` 三处仍未接线；接线需先放宽未分配态语义 | Bearisbug | 阶段 4 前 |
 | 风险 | jcstress Gradle 插件与 isolated-projects / configuration cache 不兼容，CI 需单独 job 并关闭这两项 | Bearisbug | 阶段 0 |
 | 技术债 | `network` 包三处小缺陷（拆分时发现，未改）：`IOUTF8StringType` javadoc 含 `${@link ...}` 坏标签；`ListType`/`SetType` 的 `write` 空值分支写 `BYTE 0` 而 `read` 读 `VAR_INT`，仅因同为单字节 0 而巧合往返；`RawBytesType.write` 局部变量遮蔽记录组件 `length` | Bearisbug | M1.5 阶段 7 补测试时修 |
+| 技术债 | 删除 `instance/anvil` 连带删掉了 `LightParityIntegrationTest`（对原版光照逐值比对），光照引擎暂无 parity 测试；M2 决定光照去留时一并处理 | Bearisbug | M2 |
+| 技术债 | `Auth.Velocity` / `Auth.Bungee` 代理转发模式暂留（单机单区用不到，但不是 Mojang 会话鉴权）；`MojangUtils.authenticateSession` 已零调用，随 REQ-014 一起清理 | Bearisbug | 阶段 5 |
+| 技术债 | ArchUnit 冻结存储在纯删除后需要手动剪枝（临时 `allowStoreUpdate=true` 跑一次再改回，核对 diff 只有删除）；每轮删除都要做 | Bearisbug | 每轮删除 |
 | 技术债 | `CommandPacketFilteringTest` 依赖其他 `@EnvTest` 先初始化静态 `serverProcess`，单跑必挂 | Bearisbug | 阶段 4 门面改造时消失 |
 | 技术债 | 上游未修的 `ObjectPoolTest` 在 jcstress pre-test 阶段 NPE | Bearisbug | 阶段 0 CI 接入时处理 |

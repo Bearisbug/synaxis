@@ -18,6 +18,7 @@
 | 2026-09-09 | TC-007 第 4 步增加 `snapshot` 目录检查（设计文档 v0.2） | Bearisbug |
 | 2026-09-09 | TC-001：前置与第 3 步按实际数据修正为 74 个 JSON、路径 `src/main/resources/data`、含子目录故改用 `find`（设计文档 v0.2.1）；第 4 步补上镜像 init 脚本 | Bearisbug |
 | 2026-09-09 | TC-015 第 2 步补 `--rerun-tasks --no-build-cache`：不加时 `:test` 命中构建缓存不真正执行，用例测不到任何东西 | Bearisbug |
+| 2026-09-09 | §3 补记实测的就绪判定日志行、`smoke` 启动方式与探针子命令用法，去掉三处「未验证」标记 | Bearisbug |
 
 ## 2. 测试范围 / 不测什么
 
@@ -34,19 +35,33 @@
 
 ## 3. 环境与前置
 
-本节在设计确认后起草，系统尚未到达阶段 2 与 3 的状态，标「未验证」的条目须在首轮执行前补验。
-
-- 启动：`export JAVA_HOME=/opt/homebrew/opt/openjdk@25/libexec/openjdk.jdk/Contents/Home && ./gradlew :smoke:run --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts`（阶段 2 完成前用 `:demo:run` 代替，`demo` 模块在阶段 2 被 `smoke` 取代）；就绪判定：`nc -z 127.0.0.1 25565` 退出码为 0，且 stdout 出现进程启动日志行（未验证：具体日志文本在阶段 0 补记）。
-- 入口：TCP `127.0.0.1:25565`；离线模式，任意用户名。
+- 启动：`export JAVA_HOME=/opt/homebrew/opt/openjdk@25/libexec/openjdk.jdk/Contents/Home && ./gradlew :smoke:run --no-daemon --console=plain --init-script gradle/init/aliyun-mirror.init.gradle.kts`（`smoke` 模块随 `REQ-008` 提前落地，`demo` 仍在仓内，阶段 2 才删除）。默认绑定 `0.0.0.0:25565`，端口用 `-Dsmoke.port=<port>` 覆盖。TC-004 与 TC-018 要往服务端 stdin 写 `stop`，因此运行期间必须保持 stdin 打开（`:smoke:run` 已把 Gradle 进程的 stdin 转给应用；后台运行时用 FIFO 喂入）。
+- 就绪判定：stdout 出现 `game-engine smoke listening on 0.0.0.0:25565`，且 `nc -z 127.0.0.1 25565` 退出码为 0。
+- 日志关联：与连接相关的服务端日志行统一带 `connection_id=<uuid>` —— `Login success: username=… connection_id=… remote_address=…`、`Kicking connection_id=… identifier=… reason=engine:…`、`Connection closed: connection_id=… identifier=…`，`smoke` 的 echo 行为 `Echo: connection_id=… channel=game:main bytes=…`。
+- 入口：TCP `127.0.0.1:25565`；离线模式（`Auth.Offline`），任意用户名；压缩阈值 256 字节。
 - 测试账号：
 
 | 角色 | 账号 | 获取方式 |
 | --- | --- | --- |
 | ROLE-Client | 原版 Minecraft 26.2 客户端，用户名 `tester1` | 官方启动器新建 26.2 配置，多人游戏直连 `127.0.0.1` |
-| ROLE-Client（脚本） | 裸 socket 探针 `tools/protocol-probe/probe.py`，用户名 `probe` | 阶段 0 随仓库提交（未验证）；支持子命令 `login`、`premature-finish`、`bad-version`、`zero-frame`、`echo` |
+| ROLE-Client（脚本） | 裸 socket 探针 `tools/protocol-probe/probe.py`，用户名 `probe` | 随仓库提交；Python 3.10+，仅用标准库 |
 | ROLE-GameApp / ROLE-Operator | 本机 shell | 仓库 clone 即有 |
 
-- 种子数据与重置：无持久数据；每条用例前重启进程即为基线。`RegistryDataPacket` 参考样本 `src/test/resources/protocol/registry-data-26.2.bin` 在阶段 2 开始前由 `tools/protocol-probe/probe.py record-registry` 录制（未验证）。
+- 探针用法：`python3 tools/protocol-probe/probe.py [全局参数] <子命令> [子命令参数]`。全局参数 `--host`（默认 `127.0.0.1`）、`--port`（默认 `25565`）、`--username`（默认 `probe`）、`--timeout`（默认 10 秒）**必须写在子命令之前**。
+
+| 子命令 | 参数 | 行为 | 退出码 0 的条件 |
+| --- | --- | --- | --- |
+| `login` | `--hold N`、`--protocol N`（默认 776） | 走完 login → configuration → play，保持 N 秒并应答 KeepAlive | 进入 play 状态；保持期间被服务端断线则退 1 并打印原因键 |
+| `premature-finish` | — | 在服务端发出 FinishConfiguration 之前抢跑应答 | 收到 `Disconnect reason=engine:protocol-error` |
+| `bad-version` | `--protocol N`（必填） | 用非 776 的协议版本握手 | 收到 `LoginDisconnect reason=engine:unsupported-version` |
+| `zero-frame` | — | 进入 play 后发单字节 `0x00` | 收到 `Disconnect reason=engine:protocol-error` |
+| `deep-recursion` | `--depth N`（默认 200） | 创造模式设槽包携带 N 层自嵌套 `CustomPotionEffect.Settings` | 收到 `Disconnect reason=engine:protocol-error`，或连接被服务端关闭 |
+| `echo` | `--payload TEXT`（必填） | 走 `game:main` 通道做一次自定义负载往返 | 回发负载与发出的完全一致 |
+| `record-registry` | `--out FILE`（必填） | 按收到顺序写出全部 `RegistryData` 包的解压后字节（含包 ID varint） | 至少收到一个 `RegistryData` 包 |
+
+  探针每次启动时从 `network/packet/PacketVanilla.java` 的注册表顺序推导包 ID、从 `component/DataComponents.java` 的注册顺序推导数据组件 ID，不写死协议常量；注册表顺序变化时探针自动跟随。stdout 逐条打印收到的包名、断线原因键与末行 `exit code: <n>`。
+
+- 种子数据与重置：无持久数据；每条用例前重启进程即为基线。`RegistryDataPacket` 参考样本 `src/test/resources/protocol/registry-data-26.2.bin` 在阶段 2 开始前由 `tools/protocol-probe/probe.py record-registry --out <file>` 录制（同一进程连续两次录制字节完全一致，已实测）。
 - 工具：`git`、`gh`（已登录 Bearisbug）、`nc`、Python 3.10+（探针）、原版 26.2 客户端、`grep`。
 - 证据目录：`docs/test-runs/`（按 `RUN-*` 分子目录，文中引用以项目根为基准的相对路径）。
 

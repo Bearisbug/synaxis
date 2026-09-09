@@ -18,14 +18,13 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 
 /**
- * The status response carries the full server list JSON, favicon included, so a
- * connection must not be able to ask for it repeatedly.
+ * Like vanilla, a connection must not be able to ask for the server list JSON repeatedly.
  */
 @EnvTest
 public class StatusRequestGuardIntegrationTest {
 
     @Test
-    public void onlyTheFirstStatusRequestIsAnswered(Env env) throws InterruptedException {
+    public void onlyTheFirstStatusRequestIsAnswered(Env env) {
         final List<SendablePacket> sent = new ArrayList<>();
         final PlayerConnection connection = new PlayerConnection() {
             @Override
@@ -39,18 +38,11 @@ public class StatusRequestGuardIntegrationTest {
             }
         };
 
-        requestStatus(connection);
+        StatusListener.requestListener(new StatusRequestPacket(), connection);
         assertEquals(1, sent.size());
 
-        requestStatus(connection);
+        StatusListener.requestListener(new StatusRequestPacket(), connection);
         assertEquals(1, sent.size(), "a repeated status request must not be answered");
         assertFalse(connection.isOnline(), "the connection must be dropped");
-    }
-
-    // ServerListPingEvent is an async event, it has to be dispatched from a virtual thread
-    private static void requestStatus(PlayerConnection connection) throws InterruptedException {
-        Thread.ofVirtual()
-                .start(() -> StatusListener.requestListener(new StatusRequestPacket(), connection))
-                .join();
     }
 }

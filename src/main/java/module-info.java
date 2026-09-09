@@ -140,7 +140,6 @@ module net.minestom.server {
     exports net.minestom.server.network.plugin;
     exports net.minestom.server.network.socket;
     exports net.minestom.server.particle;
-    exports net.minestom.server.ping;
     exports net.minestom.server.potion;
     exports net.minestom.server.registry;
     exports net.minestom.server.sound;

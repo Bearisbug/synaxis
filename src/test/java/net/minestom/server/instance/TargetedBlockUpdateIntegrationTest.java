@@ -4,7 +4,6 @@ import net.kyori.adventure.nbt.CompoundBinaryTag;
 import net.minestom.server.coordinate.BlockVec;
 import net.minestom.server.coordinate.Point;
 import net.minestom.server.coordinate.Pos;
-import net.minestom.server.instance.batch.ChunkBatch;
 import net.minestom.server.instance.block.Block;
 import net.minestom.server.instance.block.BlockEntityType;
 import net.minestom.server.network.packet.server.play.BlockEntityDataPacket;
@@ -15,40 +14,12 @@ import net.minestom.testing.Env;
 import net.minestom.testing.EnvTest;
 import org.junit.jupiter.api.Test;
 
-import java.time.Duration;
-import java.util.concurrent.CountDownLatch;
-
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
 @EnvTest
 public class TargetedBlockUpdateIntegrationTest {
-
-    // A localized ChunkBatch (not a full chunk) must correct viewers with a MultiBlockChangePacket
-    // instead of resending the whole chunk.
-    @Test
-    public void chunkBatchSendsMultiBlockChange(Env env) {
-        var instance = env.createFlatInstance();
-        instance.loadChunk(0, 0).join();
-
-        var connection = env.createConnection();
-        connection.connect(instance, new Pos(8, 42, 8)); // viewer of chunk (0, 0)
-
-        Collector<MultiBlockChangePacket> multiBlock = connection.trackIncoming(MultiBlockChangePacket.class);
-        Collector<ChunkDataPacket> chunkData = connection.trackIncoming(ChunkDataPacket.class);
-
-        // Two blocks within the same section -> a single MultiBlockChangePacket.
-        var batch = new ChunkBatch();
-        batch.setBlock(1, 40, 1, Block.STONE);
-        batch.setBlock(2, 42, 2, Block.STONE);
-        CountDownLatch latch = new CountDownLatch(1);
-        batch.apply(instance, 0, 0, _ -> latch.countDown());
-        env.tickWhile(() -> latch.getCount() > 0, Duration.ofSeconds(1));
-
-        multiBlock.assertCount(1);
-        chunkData.assertCount(0);
-    }
 
     // A generator fork applied to an already-loaded, viewed chunk must push a MultiBlockChangePacket
     // to that chunk's viewers instead of resending the whole chunk.
@@ -84,35 +55,6 @@ public class TargetedBlockUpdateIntegrationTest {
 
         multiBlock.assertCount(1);
         chunkData.assertCount(0);
-    }
-
-    // A localized ChunkBatch containing a block entity must send a BlockEntityDataPacket
-    // to viewers with the correct block entity type and NBT data.
-    @Test
-    public void chunkBatchSendsBlockEntityData(Env env) {
-        var instance = env.createFlatInstance();
-        instance.loadChunk(0, 0).join();
-
-        var connection = env.createConnection();
-        connection.connect(instance, new Pos(8, 42, 8)); // viewer of chunk (0, 0)
-
-        Collector<BlockEntityDataPacket> blockEntityCollector = connection.trackIncoming(BlockEntityDataPacket.class);
-
-        var nbt = CompoundBinaryTag.builder().putString("custom_key", "custom_value").build();
-        var chestBlock = Block.CHEST.withNbt(nbt);
-
-        var batch = new ChunkBatch();
-        batch.setBlock(1, 40, 1, chestBlock);
-        CountDownLatch latch = new CountDownLatch(1);
-        batch.apply(instance, 0, 0, _ -> latch.countDown());
-        env.tickWhile(() -> latch.getCount() > 0, Duration.ofSeconds(1));
-
-        blockEntityCollector.assertCount(1);
-        var packet = blockEntityCollector.collect().getFirst();
-        assertEquals(new BlockVec(1, 40, 1), packet.blockPosition());
-        assertEquals(BlockEntityType.CHEST, packet.type());
-        assertNotNull(packet.data());
-        assertEquals("custom_value", packet.data().getString("custom_key"));
     }
 
     // A generator fork applied to an already loaded, viewed chunk containing a block entity

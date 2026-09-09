@@ -80,7 +80,7 @@ public abstract class Chunk implements Block.Getter, Block.Setter, Biome.Getter,
      * <p>
      * This is used when the previous block has to be destroyed/replaced, meaning that it clears the previous data and update method.
      * <p>
-     * WARNING: this method is not thread-safe (in order to bring performance improvement with {@link net.minestom.server.instance.batch.Batch batches})
+     * WARNING: this method is not thread-safe.
      * The thread-safe version is {@link Instance#setBlock(int, int, int, Block)} (or any similar instance methods)
      * Otherwise, remember to have this chunk {@link #lockWriteLock() locked} when this is called.
      *

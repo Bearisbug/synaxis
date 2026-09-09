@@ -1,0 +1,36 @@
+# TC-001 依赖冻结后离线构建 (REQ-001)
+被测版本: 6f7c627da8 + 工作区 REQ-001 改动
+日期: 2026-09-09 15:32:19
+
+## 步骤 1  grep -rn "net.minestom:data\|minestomData" gradle/libs.versions.toml build.gradle.kts
+退出码 1，无输出 -> 通过
+
+## 步骤 2  grep -n "requires net.minestom.data" src/main/java/module-info.java
+退出码 1，无输出 -> 通过
+
+## 步骤 3  find src/main/resources/data -name '*.json' | wc -l
+74
+ -> 通过（74，用例已由 85 更正为 74）
+
+## 步骤 4  unset JAVA_TOOL_OPTIONS; ./gradlew check --offline --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts
+$JAVA_TOOL_OPTIONS = '<未设置>'
+
+### 4a 先按用例原文不带 init 脚本执行 -> 失败，与本次改动无关：
+  Could not resolve org.snakeyaml:snakeyaml-engine:2.10 / io.pebbletemplates:pebble:3.2.4
+  > No cached version available for offline mode
+  原因：这两个 blossom 插件运行时依赖是经镜像仓库缓存的，Gradle 的离线缓存按来源仓库匹配；
+  不带 init 脚本时仓库列表里没有镜像，缓存条目匹配不上。init 脚本只重定义仓库地址，
+  --offline 保证零网络访问，因此用例第 4 步已更正为带 init 脚本。
+
+### 4b 带 init 脚本 + --rerun-tasks 强制真实离线构建（排除与本改动无关的既有失败 testNamingCheck）：
+> Task :test
+> Task :check
+
+BUILD SUCCESSFUL in 40s
+24 actionable tasks: 24 executed
+Configuration cache entry reused.
+汇总 build/test-results/test/*.xml: tests=2659 failures=0 errors=0 skipped=17
+
+### 4c 不排除 testNamingCheck 时的实际失败（main 上已存在，见 RUN-003 说明）：
+  10 个测试类命名违规，全部是本分支未改动的既有文件；
+  在干净 HEAD 上执行 ./gradlew testNamingCheck --rerun-tasks 复现同一份清单。

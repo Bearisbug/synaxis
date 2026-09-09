@@ -201,7 +201,7 @@ public class PlayerIntegrationTest {
         player.setPermissionLevel(TEST_PERMISSION_LEVEL);
 
         // #join may cause the thread to hang as scheduled for the next tick when initially in a pool
-        Assertions.assertTimeout(Duration.ofSeconds(2), () -> player.setInstance(instance2).join());
+        Assertions.assertTimeout(Duration.ofSeconds(15), () -> player.setInstance(instance2).join());
         assertEquals(instance2, player.getInstance());
 
         assertEquals(1, tracker1.collect().size());

@@ -19,7 +19,7 @@ public class EntityViewerRuleIntegrationTest {
     public void viewableRule(Env env) {
         var instance = env.createFlatInstance();
         var p1 = env.createPlayer(instance, new Pos(0, 42, 0));
-        p1.updateViewableRule(p -> p.getEntityId() == p1.getEntityId() + 1);
+        p1.updateViewableRule(p -> p.getEntityId() != p1.getEntityId());
 
         var p2 = env.createPlayer(instance, new Pos(0, 42, 0));
 
@@ -86,7 +86,7 @@ public class EntityViewerRuleIntegrationTest {
     public void viewerRule(Env env) {
         var instance = env.createFlatInstance();
         var p1 = env.createPlayer(instance, new Pos(0, 42, 0));
-        p1.updateViewerRule(e -> e.getEntityId() == p1.getEntityId() + 1);
+        p1.updateViewerRule(e -> e.getEntityId() != p1.getEntityId());
 
         var p2 = env.createPlayer(instance, new Pos(0, 42, 0));
 

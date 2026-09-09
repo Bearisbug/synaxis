@@ -20,7 +20,7 @@ import java.util.function.BiFunction;
  * `RegistryKey Biome`, as opposed to `Biome` directly.</p>
  *
  * <p>Builtin registries should be accessed via a {@link Registries} instance (currently implemented by
- * {@link dev.gameengine.ServerProcess}, or from {@link dev.gameengine.MinecraftServer} static methods.</p>
+ * {@link dev.gameengine.ServerProcess}.</p>
  *
  * @param <T> The type of the registry entries
  * @see Registries

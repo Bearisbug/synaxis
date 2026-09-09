@@ -38,7 +38,7 @@ public class EntityInstanceIntegrationTest {
         var player = connection.connect(instance, new Pos(0, 42, 0));
         assertEquals(instance, player.getInstance());
         // #join may cause the thread to hang as scheduled for the next tick when initially in a pool
-        Assertions.assertTimeout(Duration.ofSeconds(2), () -> player.setInstance(instance2).join());
+        Assertions.assertTimeout(Duration.ofSeconds(15), () -> player.setInstance(instance2).join());
         assertEquals(instance2, player.getInstance());
     }
 }

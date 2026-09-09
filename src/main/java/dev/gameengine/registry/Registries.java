@@ -26,7 +26,7 @@ import java.util.List;
  * <p>Provides access to all the dynamic registries. {@link dev.gameengine.ServerProcess} is the most relevant
  * implementation of this interface.</p>
  *
- * @see dev.gameengine.MinecraftServer for static access to these
+ * @see dev.gameengine.ServerProcess for the process owned registries
  */
 public interface Registries {
     static Registries vanilla() {

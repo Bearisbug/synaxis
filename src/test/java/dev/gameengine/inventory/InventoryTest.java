@@ -1,7 +1,6 @@
 package dev.gameengine.inventory;
 
 import net.kyori.adventure.text.Component;
-import dev.gameengine.MinecraftServer;
 import dev.gameengine.component.DataComponents;
 import dev.gameengine.item.ItemStack;
 import dev.gameengine.item.Material;
@@ -13,11 +12,6 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class InventoryTest {
-
-    static {
-        // Required to prevent initialization error during event call
-        MinecraftServer.init();
-    }
 
     @Test
     public void testCreation() {

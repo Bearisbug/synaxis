@@ -74,23 +74,19 @@ public class PassengerIntegrationTest {
 
         connection.connect(instance, new Pos(0, 40, 0));
 
-        int startingId = passenger3.getEntityId();
+        // Passenger packet order will be sent backwards down the chain of passenger vehicles
         passengerTracker.assertCount(3);
         var passengerPackets = passengerTracker.collect();
-        for (int i = 0; i < passengerPackets.size(); i++) {
-            // Passenger packet order will be sent backwards down the chain of passenger vehicles
-            assertEquals(startingId - i, passengerPackets.get(i).passengersId().getFirst());
-        }
+        assertEquals(List.of(passenger3.getEntityId(), passenger2.getEntityId(), passenger1.getEntityId()),
+                passengerPackets.stream().map(packet -> packet.passengersId().getFirst()).toList());
 
-        // Ensure spawn packets are never sent more than once per entity
-        startingId = vehicle.getEntityId();
+        // Ensure spawn packets are never sent more than once per entity, and that
+        // Entity#updateNewViewer walked the chain in order
         spawnTracker.assertCount(4);
         var spawnPackets = spawnTracker.collect();
-        for (int i = 0; i < spawnPackets.size(); i++) {
-            // If the passenger spawn packets are sent in order we know that
-            // Entity#updateNewViewer ran as it should
-            assertEquals(startingId + i, spawnPackets.get(i).entityId());
-        }
+        assertEquals(List.of(vehicle.getEntityId(), passenger1.getEntityId(),
+                        passenger2.getEntityId(), passenger3.getEntityId()),
+                spawnPackets.stream().map(SpawnEntityPacket::entityId).toList());
     }
 
     @Test

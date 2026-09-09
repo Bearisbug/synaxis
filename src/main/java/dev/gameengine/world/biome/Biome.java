@@ -46,7 +46,7 @@ public sealed interface Biome extends Biomes permits BiomeImpl {
     /**
      * <p>Creates a new registry for biomes, loading the vanilla trim biomes.</p>
      *
-     * @see dev.gameengine.MinecraftServer to get an existing instance of the registry
+     * @see dev.gameengine.ServerProcess to get an existing instance of the registry
      */
     @ApiStatus.Internal
     static DynamicRegistry<Biome> createDefaultRegistry() {

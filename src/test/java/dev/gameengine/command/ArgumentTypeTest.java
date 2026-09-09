@@ -11,7 +11,6 @@ import net.kyori.adventure.text.format.Style;
 import net.kyori.adventure.text.format.TextDecoration;
 import net.kyori.adventure.text.serializer.gson.GsonComponentSerializer;
 import dev.gameengine.ServerProcess;
-import dev.gameengine.MinecraftServer;
 import dev.gameengine.color.TeamColor;
 import dev.gameengine.command.builder.arguments.Argument;
 import dev.gameengine.command.builder.arguments.ArgumentEnum;
@@ -42,11 +41,6 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 public class ArgumentTypeTest {
     private static final ServerProcess PROCESS = ServerProcess.of();
-
-
-    static {
-        MinecraftServer.init(); // TODO, some args require a ServerProcess.
-    }
 
     @Test
     public void testArgumentEntityType() {

@@ -29,7 +29,7 @@ public sealed interface ChatType extends Holder.Direct<ChatType>, ChatTypes perm
     /**
      * <p>Creates a new registry for chat types, loading the vanilla chat types.</p>
      *
-     * @see dev.gameengine.MinecraftServer to get an existing instance of the registry
+     * @see dev.gameengine.ServerProcess to get an existing instance of the registry
      */
     @ApiStatus.Internal
     static DynamicRegistry<ChatType> createDefaultRegistry() {

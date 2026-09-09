@@ -39,7 +39,7 @@ public sealed interface DamageType extends DamageTypes permits DamageTypeImpl {
     /**
      * <p>Creates a new registry for damage types, loading the vanilla damage types.</p>
      *
-     * @see dev.gameengine.MinecraftServer to get an existing instance of the registry
+     * @see dev.gameengine.ServerProcess to get an existing instance of the registry
      */
     @ApiStatus.Internal
     static DynamicRegistry<DamageType> createDefaultRegistry() {

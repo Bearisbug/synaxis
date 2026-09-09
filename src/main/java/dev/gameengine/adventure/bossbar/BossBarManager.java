@@ -2,7 +2,6 @@ package dev.gameengine.adventure.bossbar;
 
 import net.kyori.adventure.audience.Audience;
 import net.kyori.adventure.bossbar.BossBar;
-import dev.gameengine.MinecraftServer;
 import dev.gameengine.entity.Player;
 import dev.gameengine.utils.PacketSendingUtils;
 
@@ -31,14 +30,6 @@ public class BossBarManager {
     private final BossBarListener listener = new BossBarListener(this);
     private final Map<UUID, Set<BossBarHolder>> playerBars = new ConcurrentHashMap<>();
     final Map<BossBar, BossBarHolder> bars = new ConcurrentHashMap<>();
-
-    /**
-     * Creates a new boss bar manager.
-     *
-     * @see MinecraftServer#getBossBarManager()
-     */
-    public BossBarManager() {
-    }
 
     /**
      * Adds the specified player to the boss bar's viewers and spawns the boss bar, registering the

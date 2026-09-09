@@ -204,7 +204,12 @@ public final class PacketWriting {
                 if (written < minWrite) {
                     // Try again with a bigger buffer
                     final long newSize = Math.min(buffer.capacity() * 2, ServerFlag.MAX_PACKET_SIZE);
-                    if (newSize == buffer.capacity()) break; // We reached the maximum size
+                    if (newSize == buffer.capacity()) {
+                        // The buffer is at the maximum packet size, retrying would spin the write
+                        // thread forever on a packet that can never be written.
+                        queue.poll();
+                        throw new IllegalStateException("Packet too large to be written: " + packet);
+                    }
                     buffer.resize(newSize);
                 } else {
                     // At least one packet has been written

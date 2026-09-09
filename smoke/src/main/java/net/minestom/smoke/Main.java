@@ -68,7 +68,9 @@ public class Main {
         server.start(BIND_ADDRESS, port);
         LOGGER.info("game-engine smoke listening on {}:{}", BIND_ADDRESS, port);
 
-        Thread.ofPlatform().name("smoke-console").daemon().start(Main::readConsole);
+        // Not a daemon: the shutdown sequence runs on this thread, and the JVM must not
+        // exit out from under it once the tick threads are gone.
+        Thread.ofPlatform().name("smoke-console").start(Main::readConsole);
     }
 
     /**

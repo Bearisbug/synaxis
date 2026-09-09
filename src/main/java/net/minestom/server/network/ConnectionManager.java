@@ -33,6 +33,7 @@ import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
@@ -57,6 +58,7 @@ public final class ConnectionManager {
     private static final Logger LOGGER = LoggerFactory.getLogger(ConnectionManager.class);
 
     private static final Component TIMEOUT_TEXT = Component.text("Timeout", NamedTextColor.RED);
+    private static final long DISCONNECT_FLUSH_TIMEOUT = 1_000;
 
     private final CachedPacket cachedTagsPacket =
             new CachedPacket(() -> Registries.tagsPacket(MinecraftServer.getRegistries()));
@@ -322,8 +324,11 @@ public final class ConnectionManager {
      * Shutdowns the connection manager by kicking all the currently connected players.
      */
     public synchronized void shutdown() {
-        for (final PlayerConnection configPlayer : connectionPlayerMap.keySet())
+        final List<PlayerSocketConnection> kicked = new ArrayList<>();
+        for (final PlayerConnection configPlayer : connectionPlayerMap.keySet()) {
             configPlayer.kick(DisconnectReasons.SERVER_STOPPING);
+            if (configPlayer instanceof PlayerSocketConnection socketConnection) kicked.add(socketConnection);
+        }
         this.configurationPlayers.clear();
         for (final Player playPlayer : playPlayers)
             playPlayer.kick(DisconnectReasons.SERVER_STOPPING);
@@ -331,6 +336,20 @@ public final class ConnectionManager {
 
         this.keepAlivePlayers.clear();
         this.connectionPlayerMap.clear();
+
+        // A disconnect packet is written by the connection own write thread. Without waiting for
+        // those threads the process exits first and the client only sees a closed socket.
+        final long deadline = System.currentTimeMillis() + DISCONNECT_FLUSH_TIMEOUT;
+        for (PlayerSocketConnection connection : kicked) {
+            final long remaining = deadline - System.currentTimeMillis();
+            if (remaining <= 0) break;
+            try {
+                connection.writeThread().join(remaining);
+            } catch (InterruptedException _) {
+                Thread.currentThread().interrupt();
+                return;
+            }
+        }
     }
 
     public void tick(long tickStart) {

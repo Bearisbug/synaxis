@@ -48,7 +48,7 @@ public class EntityFinderIntegrationTest {
         var finder = createFinder(EntityFinder.TargetSelector.NEAREST_PLAYER)
                 .setGameMode(GameMode.CREATIVE, EntityFinder.ToggleableType.INCLUDE);
 
-        assertEquals(List.of(farCreative), finder.find(instance, null));
+        assertEquals(List.of(farCreative), finder.find(env.process(), instance, null));
     }
 
     @Test
@@ -64,11 +64,11 @@ public class EntityFinderIntegrationTest {
                 .setTargetSelector(EntityFinder.TargetSelector.RANDOM_PLAYER)
                 .setGameMode(GameMode.CREATIVE, EntityFinder.ToggleableType.INCLUDE);
 
-        assertTrue(finder.find(instance, null).isEmpty());
+        assertTrue(finder.find(env.process(), instance, null).isEmpty());
         creative.setGameMode(GameMode.CREATIVE);
 
         for (int attempt = 0; attempt < 20; attempt++) {
-            assertEquals(List.of(creative), finder.find(instance, null));
+            assertEquals(List.of(creative), finder.find(env.process(), instance, null));
         }
     }
 
@@ -78,7 +78,7 @@ public class EntityFinderIntegrationTest {
         var finder = new EntityFinder()
                 .setTargetSelector(EntityFinder.TargetSelector.RANDOM_PLAYER);
 
-        assertTrue(finder.find(instance, null).isEmpty());
+        assertTrue(finder.find(env.process(), instance, null).isEmpty());
     }
 
     @Test
@@ -90,7 +90,7 @@ public class EntityFinderIntegrationTest {
         var finder = createFinder(EntityFinder.TargetSelector.ALL_ENTITIES)
                 .setDistance(new Range.Double(5.0, (double) Float.MAX_VALUE));
 
-        assertEquals(List.of(far), finder.find(instance, null));
+        assertEquals(List.of(far), finder.find(env.process(), instance, null));
     }
 
     @Test
@@ -102,7 +102,7 @@ public class EntityFinderIntegrationTest {
         var finder = new ArgumentEntity("selector").parse(new ServerSender(env.process()), "@e[distance=..1.5]");
         finder.setStartPosition(ORIGIN);
 
-        assertEquals(List.of(near), finder.find(instance, null));
+        assertEquals(List.of(near), finder.find(env.process(), instance, null));
     }
 
     @Test
@@ -114,7 +114,7 @@ public class EntityFinderIntegrationTest {
         var finder = createFinder(EntityFinder.TargetSelector.ALL_ENTITIES)
                 .setDistance(new Range.Double(-10.0, 5.0));
 
-        assertEquals(List.of(near), finder.find(instance, null));
+        assertEquals(List.of(near), finder.find(env.process(), instance, null));
     }
 
     @Test
@@ -127,12 +127,12 @@ public class EntityFinderIntegrationTest {
         assertEquals(List.of(first, second, third),
                 createFinder(EntityFinder.TargetSelector.ALL_ENTITIES)
                         .setEntitySort(EntityFinder.EntitySort.NEAREST)
-                        .find(instance, null));
+                        .find(env.process(), instance, null));
 
         assertEquals(List.of(third, second, first),
                 createFinder(EntityFinder.TargetSelector.ALL_ENTITIES)
                         .setEntitySort(EntityFinder.EntitySort.FURTHEST)
-                        .find(instance, null));
+                        .find(env.process(), instance, null));
     }
 
     @Test
@@ -146,7 +146,7 @@ public class EntityFinderIntegrationTest {
                 .setEntitySort(EntityFinder.EntitySort.RANDOM)
                 .setLimit(2);
 
-        assertEquals(2, finder.find(instance, null).size());
+        assertEquals(2, finder.find(env.process(), instance, null).size());
     }
 
     @Test
@@ -158,7 +158,7 @@ public class EntityFinderIntegrationTest {
         var finder = createFinder(EntityFinder.TargetSelector.NEAREST_PLAYER)
                 .setEntitySort(EntityFinder.EntitySort.FURTHEST);
 
-        assertEquals(List.of(far), finder.find(instance, null));
+        assertEquals(List.of(far), finder.find(env.process(), instance, null));
     }
 
     @Test
@@ -169,7 +169,7 @@ public class EntityFinderIntegrationTest {
         var near = spawnZombie(instance, 1);
 
         var finder = createFinder(EntityFinder.TargetSelector.NEAREST_ENTITY);
-        assertEquals(List.of(near), finder.find(instance, null));
+        assertEquals(List.of(near), finder.find(env.process(), instance, null));
     }
 
     @Test
@@ -181,7 +181,7 @@ public class EntityFinderIntegrationTest {
         var finder = createFinder(EntityFinder.TargetSelector.NEAREST_ENTITY)
                 .setEntity(EntityType.PIG, EntityFinder.ToggleableType.INCLUDE);
 
-        assertEquals(List.of(farPig), finder.find(instance, null));
+        assertEquals(List.of(farPig), finder.find(env.process(), instance, null));
     }
 
     @Test
@@ -193,7 +193,7 @@ public class EntityFinderIntegrationTest {
         var finder = createFinder(EntityFinder.TargetSelector.NEAREST_ENTITY)
                 .setEntitySort(EntityFinder.EntitySort.FURTHEST);
 
-        assertEquals(List.of(far), finder.find(instance, null));
+        assertEquals(List.of(far), finder.find(env.process(), instance, null));
     }
 
     @Test
@@ -208,7 +208,7 @@ public class EntityFinderIntegrationTest {
                 .setEntitySort(EntityFinder.EntitySort.NEAREST)
                 .setLimit(2);
 
-        assertEquals(List.of(first, second), finder.find(instance, null));
+        assertEquals(List.of(first, second), finder.find(env.process(), instance, null));
     }
 
     @Test
@@ -223,6 +223,6 @@ public class EntityFinderIntegrationTest {
                 .setEntitySort(EntityFinder.EntitySort.FURTHEST)
                 .setLimit(2);
 
-        assertEquals(List.of(fourth, third), finder.find(instance, null));
+        assertEquals(List.of(fourth, third), finder.find(env.process(), instance, null));
     }
 }

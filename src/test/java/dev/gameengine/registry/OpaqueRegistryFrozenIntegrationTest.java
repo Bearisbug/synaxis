@@ -6,6 +6,8 @@ import dev.gameengine.ServerFlag;
 import dev.gameengine.testing.Env;
 import dev.gameengine.testing.EnvTest;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.parallel.ResourceLock;
+import org.junit.jupiter.api.parallel.Resources;
 
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
@@ -13,6 +15,8 @@ import java.net.InetSocketAddress;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 @EnvTest
+// ServerFlag.INSIDE_TEST is a process wide switch this test flips, no other test may run meanwhile.
+@ResourceLock(Resources.GLOBAL)
 class OpaqueRegistryFrozenIntegrationTest {
     @Test
     void writeAfterStartIsRejected(Env env) {

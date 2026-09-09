@@ -525,7 +525,9 @@ public final class RegistryData {
         private final int id;
         private final String translationKey;
         private final Supplier<Block> blockSupplier;
-        private @Nullable Either<Properties, DataComponentMap> prototype;
+        // Material is a static registry shared by every process, so several of them can bind the
+        // prototype of the same entry at once.
+        private volatile @Nullable Either<Properties, DataComponentMap> prototype;
 
         private MaterialEntry(String namespace, Properties main) {
             this.prototype = Either.left(main.section("components"));
@@ -568,7 +570,7 @@ public final class RegistryData {
          * @param registries the registries used during decode
          */
         @ApiStatus.Internal
-        void bindComponents(Registries registries) {
+        synchronized void bindComponents(Registries registries) {
             if (!(prototype instanceof Either.Left(var components))) return;
             final Transcoder<Object> coder = new RegistryTranscoder<>(Transcoder.JAVA, registries);
             DataComponentMap.Builder builder = DataComponentMap.builder();

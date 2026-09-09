@@ -94,14 +94,14 @@ public class Damage implements Taggable {
      *
      * @return The source position
      */
+    public @Nullable Point getSourcePosition() {
+        return sourcePosition;
+    }
+
     private DamageType type(Registries registries) {
         final DamageType type = registries.damageType().get(typeKey);
         Check.argCondition(type == null, "Damage type is not registered: {0}", typeKey);
         return type;
-    }
-
-    public @Nullable Point getSourcePosition() {
-        return sourcePosition;
     }
 
     /**

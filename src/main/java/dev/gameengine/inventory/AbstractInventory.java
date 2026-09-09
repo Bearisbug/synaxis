@@ -358,7 +358,7 @@ public sealed abstract class AbstractInventory implements InventoryClickHandler,
     }
 
     @Override
-    public EventNode<InventoryEvent> eventNode() {
+    public @UnknownNullability EventNode<InventoryEvent> eventNode() {
         return eventNode;
     }
 }

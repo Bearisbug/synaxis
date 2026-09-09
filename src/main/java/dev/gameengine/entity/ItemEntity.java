@@ -87,7 +87,7 @@ public class ItemEntity extends Entity {
                         if (!MathUtils.isBetween(totalAmount, 0, itemStack.maxStackSize())) return;
                         final ItemStack result = itemStack.withAmount(totalAmount);
                         EntityItemMergeEvent entityItemMergeEvent = new EntityItemMergeEvent(this, itemEntity, result);
-                        process().eventHandler().callCancellable(entityItemMergeEvent, () -> {
+                        callCancellableEvent(entityItemMergeEvent, () -> {
                             setItemStack(entityItemMergeEvent.getResult());
                             itemEntity.remove();
                         });

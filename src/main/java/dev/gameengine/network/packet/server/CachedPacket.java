@@ -100,11 +100,10 @@ public final class CachedPacket implements SendablePacket {
     /**
      * Returns the packet represented by this cached value.
      *
-     * <p>When caching is enabled, this method may initialize or reuse the cached
-     * framed packet. Supplier invocation and cache computation are serialized.
-     *
-     * <p>When caching is disabled, the packet supplier is invoked directly and
-     * may be invoked concurrently by multiple callers.
+     * <p>The cached value is reused when one is present, otherwise the supplier is
+     * invoked directly without populating the cache, since framing needs the registries
+     * and compression threshold of the sending process. The supplier may therefore be
+     * invoked concurrently by multiple callers.
      *
      * @return the packet value
      */

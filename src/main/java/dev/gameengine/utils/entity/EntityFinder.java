@@ -268,21 +268,17 @@ public class EntityFinder {
         return result;
     }
 
-    public List<Entity> find(Instance instance, @Nullable Entity self) {
-        return find(instance.process(), instance, self);
-    }
-
     public List<Entity> find(CommandSender sender) {
         return sender instanceof Player player ?
                 find(sender.process(), player.getInstance(), player) : find(sender.process(), null, null);
     }
 
     /**
-     * Shortcut of {@link #find(Instance, Entity)} to retrieve the first
+     * Shortcut of {@link #find(ServerProcess, Instance, Entity)} to retrieve the first
      * player element in the list.
      *
-     * @return the first player returned by {@link #find(Instance, Entity)}
-     * @see #find(Instance, Entity)
+     * @return the first player returned by {@link #find(ServerProcess, Instance, Entity)}
+     * @see #find(ServerProcess, Instance, Entity)
      */
     public @Nullable Player findFirstPlayer(ServerProcess process, @Nullable Instance instance, @Nullable Entity self) {
         final List<Entity> entities = find(process, instance, self);

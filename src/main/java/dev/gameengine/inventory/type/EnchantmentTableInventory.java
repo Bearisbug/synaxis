@@ -2,6 +2,7 @@ package dev.gameengine.inventory.type;
 
 import net.kyori.adventure.nbt.BinaryTag;
 import net.kyori.adventure.text.Component;
+import dev.gameengine.ServerProcess;
 import dev.gameengine.inventory.Inventory;
 import dev.gameengine.inventory.InventoryProperty;
 import dev.gameengine.inventory.InventoryType;
@@ -26,6 +27,14 @@ public class EnchantmentTableInventory extends Inventory {
 
     public EnchantmentTableInventory(String title) {
         super(InventoryType.ENCHANTMENT, title);
+    }
+
+    public EnchantmentTableInventory(ServerProcess process, Component title) {
+        super(process, InventoryType.ENCHANTMENT, title);
+    }
+
+    public EnchantmentTableInventory(ServerProcess process, String title) {
+        super(process, InventoryType.ENCHANTMENT, title);
     }
 
     /**

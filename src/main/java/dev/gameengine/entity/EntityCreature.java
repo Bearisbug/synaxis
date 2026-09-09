@@ -97,7 +97,7 @@ public class EntityCreature extends LivingEntity {
         if (swingHand)
             swingMainHand();
         EntityAttackEvent attackEvent = new EntityAttackEvent(this, target);
-        process().eventHandler().call(attackEvent);
+        callEvent(attackEvent);
     }
 
     /**

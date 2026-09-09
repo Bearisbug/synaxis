@@ -180,7 +180,7 @@ public class LivingEntity extends Entity implements EquipmentHandler {
 
     private ItemStack slotChangeEvent(ItemStack itemStack, EquipmentSlot slot) {
         EntityEquipEvent entityEquipEvent = new EntityEquipEvent(this, itemStack, slot);
-        process().eventHandler().call(entityEquipEvent);
+        callEvent(entityEquipEvent);
         return entityEquipEvent.getEquippedItem();
     }
 
@@ -221,7 +221,7 @@ public class LivingEntity extends Entity implements EquipmentHandler {
     public void update(long time) {
         // Fire
         if (remainingFireTicks > 0 && --remainingFireTicks == 0) {
-            process().eventHandler().callCancellable(new EntityFireExtinguishEvent(this, true), () -> entityMeta.setOnFire(false));
+            callCancellableEvent(new EntityFireExtinguishEvent(this, true), () -> entityMeta.setOnFire(false));
         }
 
         // Items picking
@@ -233,7 +233,7 @@ public class LivingEntity extends Entity implements EquipmentHandler {
                         if (!itemEntity.isPickable()) return;
                         if (!expandedBoundingBox.intersectEntity(position, itemEntity)) return;
                         final PickupItemEvent pickupItemEvent = new PickupItemEvent(this, itemEntity);
-                        process().eventHandler().callCancellable(pickupItemEvent, () -> {
+                        callCancellableEvent(pickupItemEvent, () -> {
                             final ItemStack item = itemEntity.getItemStack();
                             sendPacketToViewersAndSelf(new CollectItemPacket(itemEntity.getEntityId(), getEntityId(), item.amount()));
                             itemEntity.remove();
@@ -301,7 +301,7 @@ public class LivingEntity extends Entity implements EquipmentHandler {
         }
 
         EntityDeathEvent entityDeathEvent = new EntityDeathEvent(this);
-        process().eventHandler().call(entityDeathEvent);
+        callEvent(entityDeathEvent);
     }
 
     /**
@@ -322,7 +322,7 @@ public class LivingEntity extends Entity implements EquipmentHandler {
         int fireTicks = Math.max(0, ticks);
         if (fireTicks > 0) {
             EntitySetFireEvent entitySetFireEvent = new EntitySetFireEvent(this, ticks);
-            process().eventHandler().call(entitySetFireEvent);
+            callEvent(entitySetFireEvent);
             if (entitySetFireEvent.isCancelled()) return;
 
             fireTicks = Math.max(0, entitySetFireEvent.getFireTicks());
@@ -335,7 +335,7 @@ public class LivingEntity extends Entity implements EquipmentHandler {
 
         if (remainingFireTicks != 0) {
             EntityFireExtinguishEvent entityFireExtinguishEvent = new EntityFireExtinguishEvent(this, false);
-            process().eventHandler().callCancellable(entityFireExtinguishEvent, () -> entityMeta.setOnFire(false));
+            callCancellableEvent(entityFireExtinguishEvent, () -> entityMeta.setOnFire(false));
         }
 
         remainingFireTicks = fireTicks;
@@ -359,7 +359,7 @@ public class LivingEntity extends Entity implements EquipmentHandler {
         }
 
         EntityDamageEvent entityDamageEvent = new EntityDamageEvent(this, damage, damage.getSound(this));
-        process().eventHandler().callCancellable(entityDamageEvent, () -> {
+        callCancellableEvent(entityDamageEvent, () -> {
             // Set the last damage type since the event is not cancelled
             this.lastDamage = entityDamageEvent.getDamage();
 

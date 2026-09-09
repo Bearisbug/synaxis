@@ -1,5 +1,6 @@
 package dev.gameengine;
 
+import net.kyori.adventure.text.logger.slf4j.ComponentLogger;
 import dev.gameengine.thread.TickSchedulerThread;
 
 import java.net.InetSocketAddress;
@@ -12,6 +13,11 @@ import java.net.SocketAddress;
  * {@link ServerProcess#of()} when the caller wants to hold several of them in the same JVM.
  */
 public final class MinecraftServer implements MinecraftConstants {
+
+    public static final ComponentLogger LOGGER = ComponentLogger.logger(MinecraftServer.class);
+
+    // Threads
+    public static final String THREAD_NAME_BENCHMARK = "Ms-Benchmark";
 
     // Config
     // Can be modified at performance cost when increased

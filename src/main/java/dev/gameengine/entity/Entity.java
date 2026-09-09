@@ -31,8 +31,8 @@ import dev.gameengine.entity.metadata.EntityMeta;
 import dev.gameengine.entity.metadata.LivingEntityMeta;
 import dev.gameengine.entity.metadata.ObjectDataProvider;
 import dev.gameengine.entity.metadata.other.ArmorStandMeta;
+import dev.gameengine.event.Event;
 import dev.gameengine.event.EventFilter;
-import dev.gameengine.event.GlobalEventHandler;
 import dev.gameengine.event.EventHandler;
 import dev.gameengine.event.EventNode;
 import dev.gameengine.event.entity.EntityDeathEvent;
@@ -45,6 +45,7 @@ import dev.gameengine.event.entity.EntityTickEvent;
 import dev.gameengine.event.entity.EntityVelocityEvent;
 import dev.gameengine.event.instance.AddEntityToInstanceEvent;
 import dev.gameengine.event.instance.RemoveEntityFromInstanceEvent;
+import dev.gameengine.event.trait.CancellableEvent;
 import dev.gameengine.event.trait.EntityEvent;
 import dev.gameengine.instance.Chunk;
 import dev.gameengine.instance.EntityTracker;
@@ -270,6 +271,10 @@ public class Entity implements Viewable, Tickable, Schedulable, EventHandler<Ent
         updateCollisions();
     }
 
+    public Entity(EntityType entityType) {
+        this(entityType, UUID.randomUUID());
+    }
+
     /**
      * Binds this entity to a server process, creating its local event node. Called by the constructor
      * taking a process, and by {@link #setInstance(Instance, Pos)} for entities created without one.
@@ -277,8 +282,8 @@ public class Entity implements Viewable, Tickable, Schedulable, EventHandler<Ent
     private synchronized void bindProcess(ServerProcess process) {
         if (this.process == process) return;
         Check.stateCondition(this.process != null, "Entity is already bound to another server process");
-        this.process = process;
         this.eventNode = process.eventHandler().map(this, EventFilter.ENTITY);
+        this.process = process;
     }
 
     /**
@@ -295,10 +300,6 @@ public class Entity implements Viewable, Tickable, Schedulable, EventHandler<Ent
         final ServerProcess process = this.process;
         if (process != null) process.exception().handleException(throwable);
         else throwable.printStackTrace();
-    }
-
-    public Entity(EntityType entityType) {
-        this(entityType, UUID.randomUUID());
     }
 
     /// Clamps position to {@link Entity#MAX_COORDINATE}
@@ -456,7 +457,7 @@ public class Entity implements Viewable, Tickable, Schedulable, EventHandler<Ent
         Check.stateCondition(instance == null, "You need to use Entity#setInstance before teleporting an entity!");
 
         EntityTeleportEvent event = new EntityTeleportEvent(this, position, flags);
-        eventHandler().call(event);
+        callEvent(event);
 
         final Pos globalPosition = clampPosition(PositionUtils.getPositionWithRelativeFlags(this.position, position, flags));
         final Vec globalVelocity = PositionUtils.getVelocityWithRelativeFlags(this.velocity, velocity, flags);
@@ -747,7 +748,7 @@ public class Entity implements Viewable, Tickable, Schedulable, EventHandler<Ent
             update(time);
 
             ticks++;
-            eventHandler().call(new EntityTickEvent(this));
+            callEvent(new EntityTickEvent(this));
 
             // remove expired effects
             effectTick();
@@ -833,7 +834,7 @@ public class Entity implements Viewable, Tickable, Schedulable, EventHandler<Ent
             if (getAliveTicks() >= timedPotion.startingTicks() + duration) {
                 // Send the packet that the potion should no longer be applied
                 timedPotion.potion().sendRemovePacket(this);
-                eventHandler().call(new EntityPotionRemoveEvent(this, timedPotion.potion()));
+                callEvent(new EntityPotionRemoveEvent(this, timedPotion.potion()));
                 return true;
             }
             return false;
@@ -997,7 +998,7 @@ public class Entity implements Viewable, Tickable, Schedulable, EventHandler<Ent
         }
         bindProcess(instance.process());
         AddEntityToInstanceEvent event = new AddEntityToInstanceEvent(instance, this);
-        eventHandler().call(event);
+        callEvent(event);
         if (event.isCancelled()) {
             // The instance has not been set, callers chaining on the future must not proceed as if it had
             return CompletableFuture.failedFuture(
@@ -1030,7 +1031,7 @@ public class Entity implements Viewable, Tickable, Schedulable, EventHandler<Ent
                 }
                 instance.getEntityTracker().register(this, position, trackingTarget, trackingUpdate);
                 spawn();
-                eventHandler().call(new EntitySpawnEvent(this, instance));
+                callEvent(new EntitySpawnEvent(this, instance));
             } catch (Exception e) {
                 handleException(e);
             }
@@ -1055,7 +1056,7 @@ public class Entity implements Viewable, Tickable, Schedulable, EventHandler<Ent
     }
 
     private void removeFromInstance(Instance instance) {
-        eventHandler().call(new RemoveEntityFromInstanceEvent(instance, this));
+        callEvent(new RemoveEntityFromInstanceEvent(instance, this));
         if (this instanceof Player player) instance.bossBars().forEach(player::hideBossBar);
         instance.getEntityTracker().unregister(this, trackingTarget, trackingUpdate);
         this.viewEngine.forManuals(this::removeViewer);
@@ -1081,7 +1082,7 @@ public class Entity implements Viewable, Tickable, Schedulable, EventHandler<Ent
     public void setVelocity(Vec velocity) {
         this.acquirable.assertOwnership();
         EntityVelocityEvent entityVelocityEvent = new EntityVelocityEvent(this, velocity);
-        eventHandler().callCancellable(entityVelocityEvent, () -> {
+        callCancellableEvent(entityVelocityEvent, () -> {
             this.velocity = entityVelocityEvent.getVelocity();
             sendPacketToViewersAndSelf(getVelocityPacket());
         });
@@ -1638,7 +1639,7 @@ public class Entity implements Viewable, Tickable, Schedulable, EventHandler<Ent
      * @param potion The potion to add
      */
     public void addEffect(Potion potion) {
-        eventHandler().callCancellable(new EntityPotionAddEvent(this, potion), () -> {
+        callCancellableEvent(new EntityPotionAddEvent(this, potion), () -> {
             removeEffect(potion.effect());
             this.effects.add(new TimedPotion(potion, getAliveTicks()));
             potion.sendAddPacket(this);
@@ -1654,7 +1655,7 @@ public class Entity implements Viewable, Tickable, Schedulable, EventHandler<Ent
         this.effects.removeIf(timedPotion -> {
             if (timedPotion.potion().effect() == effect) {
                 timedPotion.potion().sendRemovePacket(this);
-                eventHandler().call(new EntityPotionRemoveEvent(this, timedPotion.potion()));
+                callEvent(new EntityPotionRemoveEvent(this, timedPotion.potion()));
                 return true;
             }
             return false;
@@ -1697,7 +1698,7 @@ public class Entity implements Viewable, Tickable, Schedulable, EventHandler<Ent
     public void clearEffects() {
         for (TimedPotion timedPotion : effects) {
             timedPotion.potion().sendRemovePacket(this);
-            eventHandler().call(new EntityPotionRemoveEvent(this, timedPotion.potion()));
+            callEvent(new EntityPotionRemoveEvent(this, timedPotion.potion()));
         }
         this.effects.clear();
     }
@@ -1714,7 +1715,7 @@ public class Entity implements Viewable, Tickable, Schedulable, EventHandler<Ent
     protected synchronized void remove(boolean permanent) {
         this.acquirable.assertOwnership();
         if (isRemoved()) return;
-        eventHandler().call(new EntityDespawnEvent(this));
+        callEvent(new EntityDespawnEvent(this));
         try {
             despawn();
         } catch (Throwable t) {
@@ -1898,10 +1899,23 @@ public class Entity implements Viewable, Tickable, Schedulable, EventHandler<Ent
     }
 
     /**
-     * The global event handler of the process owning this entity.
+     * Calls an event about this entity on the process owning it. An entity that has not been placed
+     * in an instance yet belongs to no process, so it has no event tree anything could observe it
+     * through and the event is dropped.
      */
-    private GlobalEventHandler eventHandler() {
-        return Objects.requireNonNull(process, "entity process").eventHandler();
+    void callEvent(Event event) {
+        final ServerProcess process = this.process;
+        if (process != null) process.eventHandler().call(event);
+    }
+
+    /**
+     * Same as {@link #callEvent(Event)}, running {@code successCallback} unless a listener cancelled
+     * the event. An unbound entity has no listener, so the callback always runs.
+     */
+    void callCancellableEvent(CancellableEvent event, Runnable successCallback) {
+        final ServerProcess process = this.process;
+        if (process != null) process.eventHandler().callCancellable(event, successCallback);
+        else successCallback.run();
     }
 
     /**

@@ -63,6 +63,7 @@ public final class RecipeManager {
         for (RecipeBookAddPacket.Entry entry : recipeBookEntries) {
             recipeBookEntryIdMap.put(entry.displayId(), Map.entry(entry, predicate));
         }
+        declareRecipesPacket.invalidate();
     }
 
     public void removeRecipe(Recipe recipe) {
@@ -72,6 +73,7 @@ public final class RecipeManager {
                 recipeBookEntryIdMap.remove(entry.displayId());
             }
         }
+        declareRecipesPacket.invalidate();
     }
 
     public Set<Recipe> getRecipes() {
@@ -128,7 +130,12 @@ public final class RecipeManager {
 
         // Collect the stonecutter recipes for the client
         final List<DeclareRecipesPacket.StonecutterRecipe> stonecutterRecipes = new ArrayList<>();
-        for (var recipeBookEntry : recipeBookEntryIdMap.values()) {
+        // fastutil's synchronized wrapper requires manual synchronization while iterating
+        final List<Map.Entry<RecipeBookAddPacket.Entry, Predicate<Player>>> recipeBookEntries;
+        synchronized (recipeBookEntryIdMap) {
+            recipeBookEntries = new ArrayList<>(recipeBookEntryIdMap.values());
+        }
+        for (var recipeBookEntry : recipeBookEntries) {
             if (!(recipeBookEntry.getKey().display() instanceof RecipeDisplay.Stonecutter stonecutterDisplay))
                 continue;
 

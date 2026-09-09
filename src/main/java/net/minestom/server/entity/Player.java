@@ -803,6 +803,8 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
         if (dimensionChange) sendDimension(instance.getDimensionType(), instance.getDimensionName());
 
         var _ = super.setInstance(instance, spawnPosition);
+        // AddEntityToInstanceEvent may have been cancelled, do not continue with a half-spawned player
+        if (this.instance != instance) return;
 
         if (updateChunks) {
             final int chunkX = spawnPosition.chunkX();

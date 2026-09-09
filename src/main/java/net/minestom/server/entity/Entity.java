@@ -960,7 +960,11 @@ public class Entity implements Viewable, Tickable, Schedulable, Snapshotable, Ev
         }
         AddEntityToInstanceEvent event = new AddEntityToInstanceEvent(instance, this);
         EventDispatcher.call(event);
-        if (event.isCancelled()) return null; // TODO what to return?
+        if (event.isCancelled()) {
+            // The instance has not been set, callers chaining on the future must not proceed as if it had
+            return CompletableFuture.failedFuture(
+                    new IllegalStateException("AddEntityToInstanceEvent has been cancelled"));
+        }
 
         if (previousInstance != null) removeFromInstance(previousInstance);
         if (this instanceof Player player) instance.bossBars().forEach(player::showBossBar);

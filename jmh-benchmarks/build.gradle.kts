@@ -1,5 +1,5 @@
 plugins {
-    id("minestom.java-library")
+    id("gameengine.java-library")
     alias(libs.plugins.jmh.plugin)
 }
 

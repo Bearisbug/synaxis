@@ -1,13 +1,13 @@
 plugins {
     `java-library`
     jacoco
-    id("minestom.style")
+    id("gameengine.style")
 }
 
 val javaVersion = System.getenv("JAVA_VERSION") ?: "25"
 
 group = "dev.gameengine"
-version = System.getenv("MINESTOM_VERSION") ?: "dev"
+version = System.getenv("GAME_ENGINE_VERSION") ?: "dev"
 
 configurations.all {
     // We only use Jetbrains Annotations

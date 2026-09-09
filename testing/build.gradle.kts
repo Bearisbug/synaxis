@@ -1,6 +1,6 @@
 plugins {
-    id("minestom.java-library")
-    id("minestom.publishing")
+    id("gameengine.java-library")
+    id("gameengine.publishing")
 }
 
 dependencies {

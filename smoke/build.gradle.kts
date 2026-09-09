@@ -1,5 +1,5 @@
 plugins {
-    id("minestom.java-binary")
+    id("gameengine.java-binary")
 }
 
 dependencies {

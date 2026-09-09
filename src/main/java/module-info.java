@@ -122,7 +122,6 @@ module net.minestom.server {
     exports net.minestom.server.inventory.type;
     exports net.minestom.server.item;
     exports net.minestom.server.item.armor;
-    exports net.minestom.server.item.book;
     exports net.minestom.server.item.component;
     exports net.minestom.server.item.crossbow;
     exports net.minestom.server.item.enchant;

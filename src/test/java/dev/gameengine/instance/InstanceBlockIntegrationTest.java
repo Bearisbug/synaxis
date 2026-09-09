@@ -145,7 +145,8 @@ public class InstanceBlockIntegrationTest {
     public void handlerPresentInPlacementRuleUpdate(Env env) {
 
         AtomicReference<Block> currentBlock = new AtomicReference<>();
-        env.process().block().registerHandler(SuspiciousGravelBlockHandler.INSTANCE.getKey(), () -> SuspiciousGravelBlockHandler.INSTANCE);
+        final var handler = new SuspiciousGravelBlockHandler(env.process(), true);
+        env.process().block().registerHandler(handler.getKey(), () -> handler);
         env.process().block().registerBlockPlacementRule(new BlockPlacementRule(Block.SUSPICIOUS_GRAVEL) {
             @Override
             public @Nullable Block blockPlace(PlacementState placementState) {
@@ -160,7 +161,7 @@ public class InstanceBlockIntegrationTest {
         });
 
         var instance = env.createFlatInstance();
-        var theBlock = Block.SUSPICIOUS_GRAVEL.withHandler(SuspiciousGravelBlockHandler.INSTANCE);
+        var theBlock = Block.SUSPICIOUS_GRAVEL.withHandler(handler);
         instance.setBlock(0, 50, 0, theBlock);
         instance.setBlock(1, 50, 0, theBlock);
 

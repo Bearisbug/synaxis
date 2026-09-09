@@ -1,5 +1,6 @@
 package dev.gameengine.command;
 
+import dev.gameengine.ServerProcess;
 import dev.gameengine.command.builder.Command;
 import dev.gameengine.command.builder.arguments.Argument;
 import org.jetbrains.annotations.Nullable;
@@ -17,6 +18,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.fail;
 
 public class CommandSyntaxMultiTest {
+    private static final ServerProcess PROCESS = ServerProcess.of();
+
 
     @Test
     public void integerFloat() {
@@ -50,7 +53,7 @@ public class CommandSyntaxMultiTest {
     private static void assertSyntax(List<List<Argument<?>>> args, String input, ExpectedExecution expectedExecution, @Nullable Map<String, Object> expectedValues) {
         final String commandName = "name";
 
-        var manager = new CommandManager();
+        var manager = new CommandManager(PROCESS);
         var command = new Command(commandName);
         manager.register(command);
 

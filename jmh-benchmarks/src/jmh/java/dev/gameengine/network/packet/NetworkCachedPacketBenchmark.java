@@ -1,7 +1,5 @@
 package dev.gameengine.network.packet;
 
-import dev.gameengine.MinecraftServer;
-import dev.gameengine.network.ConnectionState;
 import dev.gameengine.network.packet.server.CachedPacket;
 import dev.gameengine.network.packet.server.ServerPacket;
 import dev.gameengine.network.packet.server.common.KeepAlivePacket;
@@ -32,10 +30,6 @@ import java.util.concurrent.TimeUnit;
 @State(Scope.Group)
 @OutputTimeUnit(TimeUnit.NANOSECONDS)
 public class NetworkCachedPacketBenchmark {
-    static {
-        MinecraftServer.init();
-    }
-
     @Param({"1", "1000", "100000"})
     private int packetTime;
 
@@ -57,7 +51,7 @@ public class NetworkCachedPacketBenchmark {
     @Group("shared")
     @GroupThreads(3)
     public void packet(Blackhole blackhole) {
-        blackhole.consume(cachedPacket.packet(ConnectionState.PLAY));
+        blackhole.consume(cachedPacket.packet());
     }
 
     @Benchmark

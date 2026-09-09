@@ -38,12 +38,13 @@ public class PacketCompressionIntegrationTest {
     }
 
     @Test
-    public void incompressiblePacketSurvivesTheCompressedFrame() throws DataFormatException {
+    public void incompressiblePacketSurvivesTheCompressedFrame(Env env) throws DataFormatException {
         final byte[] payload = new byte[200_000];
         new Random(42).nextBytes(payload);
         final PluginMessagePacket packet = new PluginMessagePacket("ch", payload);
 
-        final NetworkBuffer framed = PacketWriting.allocateTrimmedPacket(ConnectionState.PLAY, packet, 256);
+        final NetworkBuffer framed = PacketWriting.allocateTrimmedPacket(ConnectionState.PLAY, packet,
+                env.process().registries(), 256);
         final var result = PacketReading.readServers(framed, ConnectionState.PLAY, true);
 
         if (!(result instanceof PacketReading.Result.Success<ServerPacket>(

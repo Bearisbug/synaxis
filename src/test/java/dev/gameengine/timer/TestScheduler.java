@@ -1,6 +1,5 @@
 package dev.gameengine.timer;
 
-import dev.gameengine.MinecraftServer;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
@@ -22,9 +21,13 @@ import static org.junit.jupiter.api.Assertions.fail;
 
 public class TestScheduler {
 
+    private static void rethrow(Throwable throwable) {
+        throw new AssertionError("Scheduler reported an exception", throwable);
+    }
+
     @Test
     public void tickTask() {
-        Scheduler scheduler = Scheduler.newScheduler();
+        Scheduler scheduler = Scheduler.newScheduler(TestScheduler::rethrow);
         AtomicBoolean result = new AtomicBoolean(false);
         Task task = scheduler.scheduleNextTick(() -> result.set(true));
         assertEquals(ExecutionType.TICK_START, task.executionType(), "Tasks default execution type should be tick start");
@@ -41,7 +44,7 @@ public class TestScheduler {
 
     @Test
     public void durationTask() throws InterruptedException {
-        Scheduler scheduler = Scheduler.newScheduler();
+        Scheduler scheduler = Scheduler.newScheduler(TestScheduler::rethrow);
         AtomicBoolean result = new AtomicBoolean(false);
         scheduler.buildTask(() -> result.set(true))
                 .delay(TaskSchedule.seconds(1))
@@ -56,7 +59,7 @@ public class TestScheduler {
 
     @Test
     public void immediateTask() {
-        Scheduler scheduler = Scheduler.newScheduler();
+        Scheduler scheduler = Scheduler.newScheduler(TestScheduler::rethrow);
         AtomicBoolean result = new AtomicBoolean(false);
         scheduler.scheduleNextProcess(() -> result.set(true));
         assertFalse(result.get());
@@ -72,7 +75,7 @@ public class TestScheduler {
 
     @Test
     public void cancelTask() {
-        Scheduler scheduler = Scheduler.newScheduler();
+        Scheduler scheduler = Scheduler.newScheduler(TestScheduler::rethrow);
         AtomicBoolean result = new AtomicBoolean(false);
         var task = scheduler.buildTask(() -> result.set(true))
                 .schedule();
@@ -85,7 +88,7 @@ public class TestScheduler {
 
     @Test
     public void parkTask() {
-        Scheduler scheduler = Scheduler.newScheduler();
+        Scheduler scheduler = Scheduler.newScheduler(TestScheduler::rethrow);
         // Ignored parked task
         scheduler.buildTask(() -> fail("This parked task should never be executed"))
                 .executionType(ExecutionType.TICK_START)
@@ -109,7 +112,7 @@ public class TestScheduler {
 
     @Test
     public void futureTask() {
-        Scheduler scheduler = Scheduler.newScheduler();
+        Scheduler scheduler = Scheduler.newScheduler(TestScheduler::rethrow);
         CompletableFuture<Void> future = new CompletableFuture<>();
         AtomicBoolean result = new AtomicBoolean(false);
         scheduler.buildTask(() -> result.set(true))
@@ -124,9 +127,7 @@ public class TestScheduler {
 
     @Test
     public void exceptionTask() {
-        MinecraftServer.init();
-        MinecraftServer.getExceptionManager().setExceptionHandler(Assertions::assertNotNull);
-        Scheduler scheduler = Scheduler.newScheduler();
+        Scheduler scheduler = Scheduler.newScheduler(Assertions::assertNotNull);
         scheduler.scheduleNextTick(() -> {
             throw new RuntimeException("Test exception");
         });
@@ -145,7 +146,7 @@ public class TestScheduler {
 
     @Test
     public void scheduleEndOfTick() {
-        Scheduler scheduler = Scheduler.newScheduler();
+        Scheduler scheduler = Scheduler.newScheduler(TestScheduler::rethrow);
         AtomicBoolean result = new AtomicBoolean(false);
         scheduler.scheduleEndOfTick(() -> result.set(true));
         assertFalse(result.get(), "End of tick tasks should not be executed immediately upon submission");
@@ -162,7 +163,7 @@ public class TestScheduler {
 
     @Test
     public void delayedEndOfTick() {
-        Scheduler scheduler = Scheduler.newScheduler();
+        Scheduler scheduler = Scheduler.newScheduler(TestScheduler::rethrow);
         AtomicBoolean result = new AtomicBoolean(false);
         scheduler.buildTask(() -> result.set(true)).delay(TaskSchedule.tick(1))
                 .executionType(ExecutionType.TICK_END).schedule();
@@ -176,7 +177,7 @@ public class TestScheduler {
 
     @Test
     public void repeatingEndOfTick() {
-        Scheduler scheduler = Scheduler.newScheduler();
+        Scheduler scheduler = Scheduler.newScheduler(TestScheduler::rethrow);
         AtomicInteger result = new AtomicInteger(0);
         Task task = scheduler.scheduleTask(result::getAndIncrement, TaskSchedule.immediate(), TaskSchedule.tick(1), ExecutionType.TICK_END);
         assertEquals(0, result.get(), "TICK_END tasks should not be executed immediately upon submission");
@@ -197,7 +198,7 @@ public class TestScheduler {
 
     @Test
     public void durationEndOfTick() throws InterruptedException {
-        Scheduler scheduler = Scheduler.newScheduler();
+        Scheduler scheduler = Scheduler.newScheduler(TestScheduler::rethrow);
         AtomicBoolean result = new AtomicBoolean(false);
         scheduler.buildTask(() -> result.set(true))
                 .delay(TaskSchedule.seconds(1))
@@ -216,7 +217,7 @@ public class TestScheduler {
 
     @Test
     public void unparkTickEndTask() {
-        Scheduler scheduler = Scheduler.newScheduler();
+        Scheduler scheduler = Scheduler.newScheduler(TestScheduler::rethrow);
         AtomicBoolean result = new AtomicBoolean(false);
         Task task = scheduler.buildTask(() -> result.set(true))
                 .executionType(ExecutionType.TICK_END)
@@ -232,7 +233,7 @@ public class TestScheduler {
 
     @Test
     public void unparkWhileTaskIsStillRunning() {
-        Scheduler scheduler = Scheduler.newScheduler();
+        Scheduler scheduler = Scheduler.newScheduler(TestScheduler::rethrow);
         AtomicReference<Task> ref = new AtomicReference<>();
         AtomicInteger runs = new AtomicInteger();
         Task task = scheduler.submitTask(new Supplier<>() {
@@ -259,7 +260,7 @@ public class TestScheduler {
 
     @Test
     public void immediateRepeatRunsOncePerProcess() {
-        Scheduler scheduler = Scheduler.newScheduler();
+        Scheduler scheduler = Scheduler.newScheduler(TestScheduler::rethrow);
         AtomicInteger counter = new AtomicInteger();
         Task task = scheduler.scheduleTask(counter::incrementAndGet, TaskSchedule.immediate(), TaskSchedule.immediate());
         assertEquals(0, counter.get(), "the delay is consumed first");
@@ -276,7 +277,7 @@ public class TestScheduler {
         final int taskCount = 512;
         final int threadCount = 4;
         for (int attempt = 0; attempt < 100; attempt++) {
-            Scheduler scheduler = Scheduler.newScheduler();
+            Scheduler scheduler = Scheduler.newScheduler(TestScheduler::rethrow);
             AtomicInteger runs = new AtomicInteger();
             for (int i = 0; i < taskCount; i++) scheduler.scheduleNextProcess(runs::incrementAndGet);
 

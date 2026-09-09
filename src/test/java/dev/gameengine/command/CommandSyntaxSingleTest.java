@@ -1,5 +1,6 @@
 package dev.gameengine.command;
 
+import dev.gameengine.ServerProcess;
 import dev.gameengine.command.builder.Command;
 import dev.gameengine.command.builder.CommandContext;
 import dev.gameengine.command.builder.arguments.Argument;
@@ -22,6 +23,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.fail;
 
 public class CommandSyntaxSingleTest {
+    private static final ServerProcess PROCESS = ServerProcess.of();
+
     @Test
     public void singleInteger() {
         List<Argument<?>> args = List.of(Integer("number"));
@@ -154,7 +157,7 @@ public class CommandSyntaxSingleTest {
     private static void assertSyntax(List<Argument<?>> args, String input, ExpectedExecution expectedExecution, @Nullable Map<String, Object> expectedValues) {
         final String commandName = "name";
 
-        var manager = new CommandManager();
+        var manager = new CommandManager(PROCESS);
         var command = new Command(commandName);
         manager.register(command);
 

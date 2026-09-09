@@ -237,7 +237,7 @@ public class InventoryIntegrationTest {
         var player = connection.connect(instance, new Pos(0, 42, 0));
         assertEquals(instance, player.getInstance());
 
-        Inventory inventory = new Inventory(InventoryType.CHEST_6_ROW, Component.empty());
+        Inventory inventory = new Inventory(env.process(), InventoryType.CHEST_6_ROW, Component.empty());
         AtomicBoolean called = new AtomicBoolean(false);
         inventory.eventNode().addListener(
                 InventoryOpenEvent.class,

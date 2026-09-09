@@ -1,6 +1,7 @@
 package dev.gameengine.network;
 
 import dev.gameengine.coordinate.Pos;
+import dev.gameengine.ServerProcess;
 import dev.gameengine.entity.Player;
 import dev.gameengine.instance.Instance;
 import dev.gameengine.network.packet.server.SendablePacket;
@@ -55,7 +56,7 @@ public class ConnectionManagerIntegrationTest {
         final GameProfile profile = profiles[0];
 
         try (SocketChannel channel = SocketChannel.open()) {
-            final var connection = new ProfileCapturingConnection(channel);
+            final var connection = new ProfileCapturingConnection(env.process(), channel);
             connection.setClientState(ConnectionState.LOGIN);
 
             final CompletableFuture<GameProfile> future = new CompletableFuture<>();
@@ -77,8 +78,8 @@ public class ConnectionManagerIntegrationTest {
     private static final class ProfileCapturingConnection extends PlayerSocketConnection {
         private final CompletableFuture<GameProfile> profileWhenLoginSuccessSent = new CompletableFuture<>();
 
-        private ProfileCapturingConnection(SocketChannel channel) {
-            super(channel, new InetSocketAddress("localhost", 25565),
+        private ProfileCapturingConnection(ServerProcess process, SocketChannel channel) {
+            super(process, channel, new InetSocketAddress("localhost", 25565),
                     Thread.currentThread(), Thread.currentThread());
         }
 

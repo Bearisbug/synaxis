@@ -281,7 +281,7 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
 
         setRespawnPoint(Pos.ZERO);
 
-        this.inventory = new PlayerInventory();
+        this.inventory = new PlayerInventory(playerConnection.process());
 
         setCanPickupItem(true); // By default
 

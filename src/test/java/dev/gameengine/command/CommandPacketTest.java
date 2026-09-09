@@ -1,5 +1,6 @@
 package dev.gameengine.command;
 
+import dev.gameengine.ServerProcess;
 import dev.gameengine.command.builder.Command;
 import dev.gameengine.command.builder.CommandContext;
 import dev.gameengine.command.builder.arguments.ArgumentType;
@@ -11,13 +12,15 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class CommandPacketTest {
+    private static final ServerProcess PROCESS = ServerProcess.of();
+
 
     @Test
     public void singleCommandWithOneSyntax() {
         final Command foo = new Command("foo");
         foo.addSyntax(CommandPacketTest::dummyExecutor, ArgumentType.Integer("bar"));
 
-        final DeclareCommandsPacket packet = GraphConverter.createPacket(new CommandManager(), Graph.merge(Graph.fromCommand(foo)), null);
+        final DeclareCommandsPacket packet = GraphConverter.createPacket(new CommandManager(PROCESS), Graph.merge(Graph.fromCommand(foo)), null);
         assertEquals(3, packet.nodes().size());
         final DeclareCommandsPacket.Node root = packet.nodes().get(packet.rootIndex());
         assertNotNull(root);
@@ -231,7 +234,7 @@ public class CommandPacketTest {
     }
 
     static void assertPacketGraph(String expected, Graph... graphs) {
-        var packet = GraphConverter.createPacket(new CommandManager(), Graph.merge(graphs), null);
+        var packet = GraphConverter.createPacket(new CommandManager(PROCESS), Graph.merge(graphs), null);
         CommandTestUtils.assertPacket(packet, expected);
     }
 

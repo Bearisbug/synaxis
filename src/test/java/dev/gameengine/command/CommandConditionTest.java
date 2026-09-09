@@ -1,6 +1,7 @@
 package dev.gameengine.command;
 
 import net.kyori.adventure.identity.Identity;
+import dev.gameengine.ServerProcess;
 import dev.gameengine.command.builder.Command;
 import dev.gameengine.command.builder.CommandDispatcher;
 import dev.gameengine.tag.TagHandler;
@@ -18,10 +19,12 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class CommandConditionTest {
+    private static final ServerProcess PROCESS = ServerProcess.of();
+
 
     @Test
     public void mainCondition() {
-        var dispatcher = new CommandDispatcher();
+        var dispatcher = new CommandDispatcher(PROCESS);
         assertNull(dispatcher.findCommand("name"));
         var sender = new Sender();
         var sender2 = new Sender();
@@ -44,7 +47,7 @@ public class CommandConditionTest {
 
     @Test
     public void subCondition() {
-        var dispatcher = new CommandDispatcher();
+        var dispatcher = new CommandDispatcher(PROCESS);
         assertNull(dispatcher.findCommand("name"));
         var sender = new Sender();
         var sender2 = new Sender();
@@ -88,7 +91,7 @@ public class CommandConditionTest {
 
     @Test
     public void subConditionOverride() {
-        var dispatcher = new CommandDispatcher();
+        var dispatcher = new CommandDispatcher(PROCESS);
         assertNull(dispatcher.findCommand("name"));
         var sender = new Sender();
         var sender2 = new Sender();
@@ -131,7 +134,7 @@ public class CommandConditionTest {
 
     @Test
     public void conditionBypassedByZeroArgSyntax() {
-        var dispatcher = new CommandDispatcher();
+        var dispatcher = new CommandDispatcher(PROCESS);
         var adminSender = new Sender();
         var normalSender = new Sender();
 
@@ -153,7 +156,7 @@ public class CommandConditionTest {
 
     @Test
     public void bothCommandAndSyntaxConditionsChecked() {
-        var dispatcher = new CommandDispatcher();
+        var dispatcher = new CommandDispatcher(PROCESS);
         var sender1 = new Sender();
         var sender2 = new Sender();
         var sender3 = new Sender();
@@ -181,7 +184,7 @@ public class CommandConditionTest {
 
     @Test
     public void multipleZeroArgSyntaxesWithConditions() {
-        var dispatcher = new CommandDispatcher();
+        var dispatcher = new CommandDispatcher(PROCESS);
         var sender1 = new Sender();
         var sender2 = new Sender();
         var sender3 = new Sender();
@@ -213,7 +216,7 @@ public class CommandConditionTest {
 
     @Test
     public void defaultExecutorWithConditionAndSyntaxes() {
-        var dispatcher = new CommandDispatcher();
+        var dispatcher = new CommandDispatcher(PROCESS);
         var adminSender = new Sender();
         var normalSender = new Sender();
 
@@ -250,7 +253,7 @@ public class CommandConditionTest {
 
     @Test
     public void deeplyNestedSubcommandConditions() {
-        var dispatcher = new CommandDispatcher();
+        var dispatcher = new CommandDispatcher(PROCESS);
         var adminSender = new Sender();
         var normalSender = new Sender();
 
@@ -282,7 +285,7 @@ public class CommandConditionTest {
 
     @Test
     public void syntaxConditionOnlyNoCommandCondition() {
-        var dispatcher = new CommandDispatcher();
+        var dispatcher = new CommandDispatcher(PROCESS);
         var sender1 = new Sender();
         var sender2 = new Sender();
 
@@ -307,7 +310,7 @@ public class CommandConditionTest {
 
     @Test
     public void mixedSyntaxConditions() {
-        var dispatcher = new CommandDispatcher();
+        var dispatcher = new CommandDispatcher(PROCESS);
         var sender1 = new Sender();
         var sender2 = new Sender();
         var sender3 = new Sender();
@@ -353,7 +356,7 @@ public class CommandConditionTest {
 
     @Test
     public void subcommandWithOwnConditionRequiresBoth() {
-        var dispatcher = new CommandDispatcher();
+        var dispatcher = new CommandDispatcher(PROCESS);
         var sender1 = new Sender();
         var sender2 = new Sender();
         var sender3 = new Sender();
@@ -386,7 +389,7 @@ public class CommandConditionTest {
 
     @Test
     public void zeroArgSyntaxAndDefaultExecutorWithCondition() {
-        var dispatcher = new CommandDispatcher();
+        var dispatcher = new CommandDispatcher(PROCESS);
         var adminSender = new Sender();
         var normalSender = new Sender();
 
@@ -470,6 +473,11 @@ public class CommandConditionTest {
     }
 
     private static final class Sender implements CommandSender {
+        @Override
+        public ServerProcess process() {
+            return PROCESS;
+        }
+
         @Override
         public TagHandler tagHandler() {
             return null;

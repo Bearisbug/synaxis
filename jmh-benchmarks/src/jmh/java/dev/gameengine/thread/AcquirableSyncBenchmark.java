@@ -40,7 +40,7 @@ public class AcquirableSyncBenchmark {
 
     @Setup(Level.Invocation)
     public void setup() {
-        this.mainThread = new TickThread(0) {
+        this.mainThread = new TickThread(0, Throwable::printStackTrace) {
             @Override
             public void run() {
                 this.lock().lock();
@@ -57,7 +57,7 @@ public class AcquirableSyncBenchmark {
         {
             this.tickThreads = new ArrayList<>(THREAD_COUNT);
             for (int i = 0; i < THREAD_COUNT; i++) {
-                TickThread thread = new TickThread(i + 1) {
+                TickThread thread = new TickThread(i + 1, Throwable::printStackTrace) {
                     @Override
                     public void run() {
                         this.lock().lock();

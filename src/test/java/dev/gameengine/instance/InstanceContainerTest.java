@@ -1,5 +1,6 @@
 package dev.gameengine.instance;
 
+import dev.gameengine.ServerProcess;
 import dev.gameengine.tag.Tag;
 import dev.gameengine.world.DimensionType;
 import org.junit.jupiter.api.Test;
@@ -13,7 +14,7 @@ public class InstanceContainerTest {
     @Test
     public void copyPreservesTag() {
         var tag = Tag.String("test");
-        var instance = new InstanceContainer(UUID.randomUUID(), DimensionType.OVERWORLD);
+        var instance = new InstanceContainer(ServerProcess.of(), UUID.randomUUID(), DimensionType.OVERWORLD);
         instance.setTag(tag, "123");
 
         var copyInstance = instance.copy();

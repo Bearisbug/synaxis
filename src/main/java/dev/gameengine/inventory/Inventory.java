@@ -1,6 +1,7 @@
 package dev.gameengine.inventory;
 
 import net.kyori.adventure.text.Component;
+import dev.gameengine.ServerProcess;
 import dev.gameengine.entity.Player;
 import dev.gameengine.inventory.click.ClickType;
 import dev.gameengine.inventory.click.InventoryClickResult;
@@ -39,6 +40,24 @@ public non-sealed class Inventory extends AbstractInventory {
 
     public Inventory(InventoryType inventoryType, String title) {
         this(inventoryType, Component.text(title));
+    }
+
+    /**
+     * Creates an inventory already bound to a server process, see
+     * {@link AbstractInventory#AbstractInventory(ServerProcess, int)}.
+     */
+    @SuppressWarnings("this-escape") // deliberate self registration during construction
+    public Inventory(ServerProcess process, InventoryType inventoryType, Component title) {
+        super(process, inventoryType.getSize());
+        this.id = generateId();
+        this.inventoryType = inventoryType;
+        this.title = title;
+
+        this.offset = getSize();
+    }
+
+    public Inventory(ServerProcess process, InventoryType inventoryType, String title) {
+        this(process, inventoryType, Component.text(title));
     }
 
     private static byte generateId() {

@@ -1,6 +1,5 @@
 package dev.gameengine.entity.player;
 
-import dev.gameengine.MinecraftServer;
 import dev.gameengine.coordinate.Pos;
 import dev.gameengine.network.packet.client.common.ClientPluginMessagePacket;
 import dev.gameengine.testing.Env;
@@ -28,7 +27,7 @@ public class PlayerPacketQueueIntegrationTest {
         List<Throwable> reported = new ArrayList<>();
         env.process().exception().setExceptionHandler(reported::add);
         AtomicInteger handled = new AtomicInteger();
-        MinecraftServer.getPacketListenerManager().setPlayListener(ClientPluginMessagePacket.class,
+        env.process().packetListener().setPlayListener(ClientPluginMessagePacket.class,
                 (_, _) -> {
                     if (handled.getAndIncrement() == 0) throw new IllegalStateException("handler failure");
                 });

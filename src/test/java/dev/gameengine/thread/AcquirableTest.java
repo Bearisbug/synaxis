@@ -11,6 +11,10 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 public class AcquirableTest {
 
+    private static void rethrow(Throwable throwable) {
+        throw new AssertionError("Dispatcher reported an exception", throwable);
+    }
+
     @Test
     public void assignation() {
         AtomicReference<TickThread> tickThread = new AtomicReference<>();
@@ -24,7 +28,7 @@ public class AcquirableTest {
         Object first = new Object();
         Object second = new Object();
 
-        ThreadDispatcher<Object, Entity> dispatcher = ThreadDispatcher.dispatcher(ThreadProvider.counter(), 2);
+        ThreadDispatcher<Object, Entity> dispatcher = ThreadDispatcher.dispatcher(ThreadProvider.counter(), 2, AcquirableTest::rethrow);
         dispatcher.start();
         dispatcher.createPartition(first);
         dispatcher.createPartition(second);

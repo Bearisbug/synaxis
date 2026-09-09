@@ -22,12 +22,12 @@ public class BlockPredicateIntegrationTest {
                 .put("item", itemNbt)
                 .build());
         var block = Block.SUSPICIOUS_GRAVEL
-                .withHandler(SuspiciousGravelBlockHandler.INSTANCE)
+                .withHandler(new SuspiciousGravelBlockHandler(env.process(), true))
                 .withNbt(CompoundBinaryTag.builder()
                 .putString("LootTable", "minecraft:test")
                 .put("item", itemNbt)
                 .build());
-        assertTrue(predicate.test(block));
+        assertTrue(predicate.test(env.process(), block));
     }
 
     @Test
@@ -39,11 +39,11 @@ public class BlockPredicateIntegrationTest {
                 .put("item", itemNbt1)
                 .build());
         var block = Block.SUSPICIOUS_GRAVEL
-                .withHandler(SuspiciousGravelBlockHandler.INSTANCE)
+                .withHandler(new SuspiciousGravelBlockHandler(env.process(), true))
                 .withNbt(CompoundBinaryTag.builder()
                 .putString("LootTable", "minecraft:test")
                 .put("item", itemNbt2)
                 .build());
-        assertFalse(predicate.test(block));
+        assertFalse(predicate.test(env.process(), block));
     }
 }

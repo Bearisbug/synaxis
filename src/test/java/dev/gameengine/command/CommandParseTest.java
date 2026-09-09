@@ -1,5 +1,6 @@
 package dev.gameengine.command;
 
+import dev.gameengine.ServerProcess;
 import dev.gameengine.command.builder.arguments.ArgumentType;
 import org.junit.jupiter.api.Test;
 
@@ -13,6 +14,8 @@ import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class CommandParseTest {
+    private static final ServerProcess PROCESS = ServerProcess.of();
+
 
     @Test
     public void emptyCommand() {
@@ -154,7 +157,7 @@ public class CommandParseTest {
     }
 
     private static CommandParser.Result parseCommand(Graph graph, String input) {
-        return CommandParser.parser().parse(new ServerSender(), graph, input);
+        return CommandParser.parser().parse(new ServerSender(PROCESS), graph, input);
     }
 
     private static Graph.Execution createExecutor(AtomicBoolean atomicBoolean) {

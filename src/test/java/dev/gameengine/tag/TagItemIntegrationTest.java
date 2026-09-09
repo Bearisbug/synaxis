@@ -17,9 +17,9 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 public class TagItemIntegrationTest {
 
     @Test
-    public void get() {
+    public void get(Env env) {
         var item = ItemStack.of(Material.DIAMOND);
-        var tag = Tag.ItemStack("item");
+        var tag = Tag.ItemStack("item", env.process());
         var handler = TagHandler.newHandler();
         handler.setTag(tag, item);
 
@@ -27,18 +27,18 @@ public class TagItemIntegrationTest {
     }
 
     @Test
-    public void getDifferentObject() {
+    public void getDifferentObject(Env env) {
         var item = ItemStack.of(Material.DIAMOND);
         var handler = TagHandler.newHandler();
-        handler.setTag(Tag.ItemStack("item"), item);
+        handler.setTag(Tag.ItemStack("item", env.process()), item);
 
-        assertEquals(item, handler.getTag(Tag.ItemStack("item")));
+        assertEquals(item, handler.getTag(Tag.ItemStack("item", env.process())));
     }
 
     @Test
-    public void remove() {
+    public void remove(Env env) {
         var item = ItemStack.of(Material.DIAMOND);
-        var tag = Tag.ItemStack("item");
+        var tag = Tag.ItemStack("item", env.process());
         var handler = TagHandler.newHandler();
         handler.setTag(tag, item);
         assertEquals(item, handler.getTag(tag));
@@ -48,9 +48,9 @@ public class TagItemIntegrationTest {
     }
 
     @Test
-    public void gc() {
+    public void gc(Env env) {
         var item = ItemStack.of(Material.DIAMOND);
-        var tag = Tag.ItemStack("item");
+        var tag = Tag.ItemStack("item", env.process());
         var handler = TagHandler.newHandler();
         handler.setTag(tag, item);
         assertEquals(item, handler.getTag(tag));
@@ -63,12 +63,12 @@ public class TagItemIntegrationTest {
     }
 
     @Test
-    public void invalidation() {
+    public void invalidation(Env env) {
         var item = ItemStack.of(Material.DIAMOND);
         var item2 = ItemStack.of(Material.DIAMOND, 2);
         var handler = TagHandler.newHandler();
 
-        var tag = Tag.ItemStack("item");
+        var tag = Tag.ItemStack("item", env.process());
         handler.setTag(tag, item);
         assertEquals(item, handler.getTag(tag));
         handler.setTag(tag, item2);
@@ -82,26 +82,26 @@ public class TagItemIntegrationTest {
         var item2 = ItemStack.of(Material.DIAMOND, 2);
         var handler = TagHandler.newHandler();
 
-        var itemTag = Tag.ItemStack("item");
+        var itemTag = Tag.ItemStack("item", env.process());
         var nbtTag = Tag.NBT("item");
         // Write the item using the ItemStack tag
         {
             handler.setTag(itemTag, item);
             assertEquals(item, handler.getTag(itemTag));
-            assertEquals(item.toItemNBT(), handler.getTag(nbtTag));
+            assertEquals(item.toItemNBT(env.process()), handler.getTag(nbtTag));
         }
         // Override it with an NBT tag
         {
-            handler.setTag(nbtTag, item2.toItemNBT());
+            handler.setTag(nbtTag, item2.toItemNBT(env.process()));
             assertEquals(item2, handler.getTag(itemTag));
-            assertEquals(item2.toItemNBT(), handler.getTag(nbtTag));
+            assertEquals(item2.toItemNBT(env.process()), handler.getTag(nbtTag));
         }
     }
 
     @Test
     public void snbt(Env env) {
         var handler = TagHandler.newHandler();
-        var tag = Tag.ItemStack("item");
+        var tag = Tag.ItemStack("item", env.process());
         handler.setTag(tag, ItemStack.of(Material.DIAMOND));
         assertEqualsSNBT("""
                 {

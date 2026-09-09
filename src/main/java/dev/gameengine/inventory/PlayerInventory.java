@@ -1,5 +1,6 @@
 package dev.gameengine.inventory;
 
+import dev.gameengine.ServerProcess;
 import dev.gameengine.entity.EquipmentSlot;
 import dev.gameengine.entity.Player;
 import dev.gameengine.event.item.EntityEquipEvent;
@@ -33,8 +34,8 @@ public non-sealed class PlayerInventory extends AbstractInventory {
 
     private ItemStack cursorItem = ItemStack.AIR;
 
-    public PlayerInventory() {
-        super(INVENTORY_SIZE);
+    public PlayerInventory(ServerProcess process) {
+        super(process, INVENTORY_SIZE);
     }
 
     @Override

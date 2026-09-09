@@ -10,6 +10,10 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 public class AcquirableCollectionTest {
+
+    private static void rethrow(Throwable throwable) {
+        throw new AssertionError("Dispatcher reported an exception", throwable);
+    }
     record World() {
     }
 
@@ -38,7 +42,7 @@ public class AcquirableCollectionTest {
 
     @Test
     public void acquireSyncMixedElements() {
-        ThreadDispatcher<World, Element> dispatcher = ThreadDispatcher.singleThread();
+        ThreadDispatcher<World, Element> dispatcher = ThreadDispatcher.singleThread(AcquirableCollectionTest::rethrow);
         World world = new World();
         Element assigned = new Element();
         dispatcher.createPartition(world);

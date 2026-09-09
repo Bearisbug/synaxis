@@ -1,5 +1,7 @@
 package dev.gameengine.network.socket;
 
+import dev.gameengine.ServerProcess;
+import dev.gameengine.network.packet.PacketVanilla;
 import dev.gameengine.testing.TestUtils;
 import org.junit.jupiter.api.Test;
 
@@ -25,7 +27,7 @@ public class ServerAddressTest {
 
         int port = TestUtils.findFreePort();
         InetSocketAddress address = new InetSocketAddress("localhost", port);
-        var server = new Server();
+        var server = new Server(ServerProcess.of(), PacketVanilla.CLIENT_PACKET_PARSER);
         server.init(address);
         assertSame(address, server.socketAddress());
         assertEquals(address.getHostString(), server.getAddress());
@@ -41,7 +43,7 @@ public class ServerAddressTest {
         assumeTrue(System.getenv("GITHUB_ACTIONS") == null);
 
         InetSocketAddress address = new InetSocketAddress("localhost", 0);
-        var server = new Server();
+        var server = new Server(ServerProcess.of(), PacketVanilla.CLIENT_PACKET_PARSER);
         server.init(address);
         assertSame(address, server.socketAddress());
         assertEquals(address.getHostString(), server.getAddress());
@@ -57,7 +59,7 @@ public class ServerAddressTest {
         assumeTrue(System.getenv("GITHUB_ACTIONS") == null);
 
         UnixDomainSocketAddress address = UnixDomainSocketAddress.of("minestom.sock");
-        var server = new Server();
+        var server = new Server(ServerProcess.of(), PacketVanilla.CLIENT_PACKET_PARSER);
         server.init(address);
         assertTrue(Files.exists(address.getPath()));
         assertSame(address, server.socketAddress());
@@ -71,7 +73,7 @@ public class ServerAddressTest {
 
     @Test
     public void noAddressTest() {
-        var server = new Server();
+        var server = new Server(ServerProcess.of(), PacketVanilla.CLIENT_PACKET_PARSER);
         assertDoesNotThrow(server::stop);
     }
 }

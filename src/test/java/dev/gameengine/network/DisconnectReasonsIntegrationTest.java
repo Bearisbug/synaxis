@@ -173,7 +173,7 @@ public class DisconnectReasonsIntegrationTest {
             final SocketChannel peer = SocketChannel.open(server.getLocalAddress());
             final SocketChannel accepted = server.accept();
             // The current thread stands in for both socket threads, nothing is parked in these tests
-            final var connection = new PlayerSocketConnection(accepted, accepted.getRemoteAddress(),
+            final var connection = new PlayerSocketConnection(env.process(), accepted, accepted.getRemoteAddress(),
                     Thread.currentThread(), Thread.currentThread());
             return new SocketPair(server, peer, accepted, connection, env.process().registries());
         }

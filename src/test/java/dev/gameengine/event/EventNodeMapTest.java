@@ -1,6 +1,6 @@
 package dev.gameengine.event;
 
-import dev.gameengine.MinecraftServer;
+import dev.gameengine.ServerProcess;
 import dev.gameengine.entity.Entity;
 import dev.gameengine.entity.EntityType;
 import dev.gameengine.item.ItemStack;
@@ -81,9 +81,9 @@ public class EventNodeMapTest {
 
     @Test
     public void entityLocal() {
-        var process = MinecraftServer.updateProcess();
+        var process = ServerProcess.of();
         var node = process.eventHandler();
-        var entity = new Entity(EntityType.ZOMBIE);
+        var entity = new Entity(process, EntityType.ZOMBIE);
 
         AtomicBoolean result = new AtomicBoolean(false);
         var listener = EventListener.of(EventNodeTest.EntityTestEvent.class, _ -> result.set(true));

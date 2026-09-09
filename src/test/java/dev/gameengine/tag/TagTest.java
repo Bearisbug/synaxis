@@ -4,6 +4,7 @@ import net.kyori.adventure.nbt.CompoundBinaryTag;
 import dev.gameengine.adventure.MinestomAdventure;
 import dev.gameengine.item.ItemStack;
 import dev.gameengine.item.Material;
+import dev.gameengine.registry.Registries;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
@@ -16,6 +17,8 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class TagTest {
+    private static final Registries REGISTRIES = Registries.vanilla();
+
 
     @Test
     public void intGet() {
@@ -114,7 +117,7 @@ public class TagTest {
     @Test
     public void item() {
         var item = ItemStack.of(Material.DIAMOND);
-        var tag = Tag.ItemStack("item");
+        var tag = Tag.ItemStack("item", REGISTRIES);
         var handler = TagHandler.newHandler();
         handler.setTag(tag, item);
         assertEquals(item, handler.getTag(tag));

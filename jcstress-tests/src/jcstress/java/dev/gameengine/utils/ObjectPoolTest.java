@@ -14,9 +14,8 @@ import static org.openjdk.jcstress.annotations.Expect.ACCEPTABLE;
 @Outcome(id = "2", expect = ACCEPTABLE)
 @State
 public class ObjectPoolTest {
-    // A plain supplier keeps the state self-contained: the shared PacketVanilla.PACKET_POOL
-    // builds its buffers from MinecraftServer.getRegistries(), which has no server process
-    // behind it here and fails the whole test during the jcstress pre-test phase.
+    // A plain supplier keeps the state self-contained, the shared PacketVanilla.PACKET_POOL
+    // would tie this test to the packet layer.
     private final ObjectPool<Object> pool = ObjectPool.pool(Object::new);
 
     @Actor

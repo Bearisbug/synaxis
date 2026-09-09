@@ -1,7 +1,6 @@
 package dev.gameengine.network;
 
 import net.kyori.adventure.text.Component;
-import dev.gameengine.MinecraftServer;
 import dev.gameengine.entity.PlayerHand;
 import dev.gameengine.network.packet.PacketReading;
 import dev.gameengine.network.packet.PacketWriting;
@@ -25,24 +24,23 @@ public class SendablePacketTest {
     public void cached() {
         var packet = new SystemChatPacket(Component.text("Hello World!"), false);
         var cached = new CachedPacket(packet);
-        assertSame(packet, cached.packet(ConnectionState.PLAY));
+        assertSame(packet, cached.packet());
 
-        var buffer = PacketWriting.allocateTrimmedPacket(ConnectionState.PLAY, packet,
-                MinecraftServer.getCompressionThreshold()); // TODO required because CachedPacket internally uses process.
-        var cachedBuffer = cached.body(ConnectionState.PLAY);
+        var buffer = PacketWriting.allocateTrimmedPacket(ConnectionState.PLAY, packet, null, 256);
+        var cachedBuffer = cached.body(ConnectionState.PLAY, null, 256);
         assertTrue(NetworkBuffer.equals(buffer, cachedBuffer));
         // May fail in the very unlikely case where soft references are cleared
         // Rare enough to make this test worth it
-        assertSame(cached.body(ConnectionState.PLAY), cachedBuffer);
+        assertSame(cached.body(ConnectionState.PLAY, null, 256), cachedBuffer);
 
-        assertSame(packet, cached.packet(ConnectionState.PLAY));
+        assertSame(packet, cached.packet());
     }
 
     @Test
     public void trimmed() throws DataFormatException {
         var packet = new ClientAnimationPacket(PlayerHand.MAIN);
 
-        var buffer = PacketWriting.allocateTrimmedPacket(ConnectionState.PLAY, packet, 0);
+        var buffer = PacketWriting.allocateTrimmedPacket(ConnectionState.PLAY, packet, null, 0);
 
         var result = PacketReading.readClient(buffer, ConnectionState.PLAY, false);
         if (!(result instanceof PacketReading.Result.Success<ClientPacket>(

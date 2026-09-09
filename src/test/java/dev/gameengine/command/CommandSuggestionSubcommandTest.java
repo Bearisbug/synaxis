@@ -1,5 +1,6 @@
 package dev.gameengine.command;
 
+import dev.gameengine.ServerProcess;
 import dev.gameengine.command.builder.Command;
 import org.junit.jupiter.api.Test;
 
@@ -7,6 +8,8 @@ import static dev.gameengine.command.builder.arguments.ArgumentType.Word;
 import static org.junit.jupiter.api.Assertions.fail;
 
 public class CommandSuggestionSubcommandTest {
+    private static final ServerProcess PROCESS = ServerProcess.of();
+
 
     /**
      * Make sure that when we have a {@code /foo bar} and {@code /foo baz}, we use the correct default executor within
@@ -14,7 +17,7 @@ public class CommandSuggestionSubcommandTest {
      */
     @Test
     public void useProperDefaultExecutor() {
-        var manager = new CommandManager();
+        var manager = new CommandManager(PROCESS);
         var command = new Command("foo");
         var barCommand = new Command("bar");
         var bazCommand = new Command("baz");
@@ -52,7 +55,7 @@ public class CommandSuggestionSubcommandTest {
      */
     @Test
     public void useCorrectDefaultExecutor() {
-        var manager = new CommandManager();
+        var manager = new CommandManager(PROCESS);
         var command = new Command("foo");
         var barCommand = new Command("bar");
         var bazCommand = new Command("baz", "qux");

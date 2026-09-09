@@ -30,7 +30,7 @@ public class PlayerConnectionKickIntegrationTest {
             try (SocketChannel peer = SocketChannel.open(server.getLocalAddress());
                  SocketChannel accepted = server.accept()) {
                 assertTrue(peer.isConnected());
-                final var connection = new PlayerSocketConnection(accepted, accepted.getRemoteAddress(),
+                final var connection = new PlayerSocketConnection(env.process(), accepted, accepted.getRemoteAddress(),
                         Thread.currentThread(), Thread.currentThread());
                 connection.setClientState(ConnectionState.STATUS);
 

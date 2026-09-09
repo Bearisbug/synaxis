@@ -26,7 +26,7 @@ public class StatusRequestGuardIntegrationTest {
     @Test
     public void onlyTheFirstStatusRequestIsAnswered(Env env) {
         final List<SendablePacket> sent = new ArrayList<>();
-        final PlayerConnection connection = new PlayerConnection() {
+        final PlayerConnection connection = new PlayerConnection(env.process()) {
             @Override
             public void sendPacket(SendablePacket packet) {
                 sent.add(packet);

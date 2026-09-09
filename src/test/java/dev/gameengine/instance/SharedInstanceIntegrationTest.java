@@ -17,7 +17,7 @@ public class SharedInstanceIntegrationTest {
     // a mismatch makes Player#setInstance believe it is a dimension change
     @Test
     public void keepsTheContainerDimensionName(Env env) {
-        var container = new InstanceContainer(env.process().registries(), UUID.randomUUID(),
+        var container = new InstanceContainer(env.process(), UUID.randomUUID(),
                 DimensionType.OVERWORLD, null, Key.key("minestom:lobby"));
         var shared = new SharedInstance(UUID.randomUUID(), container);
         assertEquals(container.getDimensionName(), shared.getDimensionName());

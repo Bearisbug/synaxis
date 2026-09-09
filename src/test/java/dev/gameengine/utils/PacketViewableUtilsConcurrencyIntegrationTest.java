@@ -45,10 +45,10 @@ public class PacketViewableUtilsConcurrencyIntegrationTest {
                 try {
                     for (int round = 0; round < ROUNDS; round++) {
                         for (CountingViewable viewable : viewables) {
-                            PacketViewableUtils.prepareViewablePacket(viewable, packet);
+                            PacketViewableUtils.prepareViewablePacket(env.process(), viewable, packet);
                         }
                         // Short lived viewables leave stale weak entries behind
-                        PacketViewableUtils.prepareViewablePacket(new CountingViewable(), packet);
+                        PacketViewableUtils.prepareViewablePacket(env.process(), new CountingViewable(), packet);
                         if (round % 25 == 0) System.gc();
                     }
                 } catch (Throwable t) {

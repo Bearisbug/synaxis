@@ -28,6 +28,10 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
 public class ThreadDispatcherTest {
+
+    private static void rethrow(Throwable throwable) {
+        throw new AssertionError("Dispatcher reported an exception", throwable);
+    }
     record World() {
     }
 
@@ -53,7 +57,7 @@ public class ThreadDispatcherTest {
         World world = new World();
         Counter element = new Counter();
 
-        ThreadDispatcher<World, Counter> dispatcher = ThreadDispatcher.singleThread();
+        ThreadDispatcher<World, Counter> dispatcher = ThreadDispatcher.singleThread(ThreadDispatcherTest::rethrow);
         dispatcher.createPartition(world);
         dispatcher.updateElement(element, world);
         dispatcher.start();
@@ -74,7 +78,7 @@ public class ThreadDispatcherTest {
             }
         };
 
-        ThreadDispatcher<World, Element> dispatcher = ThreadDispatcher.singleThread();
+        ThreadDispatcher<World, Element> dispatcher = ThreadDispatcher.singleThread(ThreadDispatcherTest::rethrow);
         dispatcher.createPartition(world);
         dispatcher.updateElement(element, world);
         dispatcher.start();
@@ -89,10 +93,10 @@ public class ThreadDispatcherTest {
     @Test
     public void elementTick() {
         final AtomicInteger counter = new AtomicInteger();
-        ThreadDispatcher<World, Tickable> dispatcher = ThreadDispatcher.singleThread();
+        ThreadDispatcher<World, Tickable> dispatcher = ThreadDispatcher.singleThread(ThreadDispatcherTest::rethrow);
         dispatcher.start();
         assertEquals(1, dispatcher.threads().size());
-        assertThrows(Exception.class, () -> dispatcher.threads().add(new TickThread(1)));
+        assertThrows(Exception.class, () -> dispatcher.threads().add(new TickThread(1, ThreadDispatcherTest::rethrow)));
 
         var partition = new World();
         Tickable element = (_) -> counter.incrementAndGet();
@@ -118,7 +122,7 @@ public class ThreadDispatcherTest {
     @Test
     public void elementTickLoop() {
         final AtomicInteger counter = new AtomicInteger();
-        ThreadDispatcher<World, Tickable> dispatcher = ThreadDispatcher.singleThread();
+        ThreadDispatcher<World, Tickable> dispatcher = ThreadDispatcher.singleThread(ThreadDispatcherTest::rethrow);
         dispatcher.start();
 
         var partition = new World();
@@ -138,7 +142,7 @@ public class ThreadDispatcherTest {
     @Test
     public void elementTickLoopAsync() {
         final AtomicInteger counter = new AtomicInteger();
-        ThreadDispatcher<World, Tickable> dispatcher = ThreadDispatcher.singleThread();
+        ThreadDispatcher<World, Tickable> dispatcher = ThreadDispatcher.singleThread(ThreadDispatcherTest::rethrow);
         dispatcher.start();
 
         var partition = new World();
@@ -171,7 +175,7 @@ public class ThreadDispatcherTest {
         // Partitions implementing Tickable should be ticked same as elements
         final AtomicInteger counter1 = new AtomicInteger();
         final AtomicInteger counter2 = new AtomicInteger();
-        ThreadDispatcher<Tickable, Tickable> dispatcher = ThreadDispatcher.singleThread();
+        ThreadDispatcher<Tickable, Tickable> dispatcher = ThreadDispatcher.singleThread(ThreadDispatcherTest::rethrow);
         dispatcher.start();
         assertEquals(1, dispatcher.threads().size());
 
@@ -200,7 +204,7 @@ public class ThreadDispatcherTest {
     public void uniqueThread() {
         // Ensure that partitions are properly dispatched across threads
         final int threadCount = 10;
-        ThreadDispatcher<Tickable, Tickable> dispatcher = ThreadDispatcher.dispatcher(ThreadProvider.counter(), threadCount);
+        ThreadDispatcher<Tickable, Tickable> dispatcher = ThreadDispatcher.dispatcher(ThreadProvider.counter(), threadCount, ThreadDispatcherTest::rethrow);
         assertEquals(threadCount, dispatcher.threads().size());
         dispatcher.start();
 
@@ -245,7 +249,7 @@ public class ThreadDispatcherTest {
             public RefreshType refreshType() {
                 return RefreshType.ALWAYS;
             }
-        }, threadCount);
+        }, threadCount, ThreadDispatcherTest::rethrow);
         assertEquals(threadCount, dispatcher.threads().size());
         dispatcher.start();
 
@@ -297,7 +301,7 @@ public class ThreadDispatcherTest {
     @Timeout(30)
     public void shutdownFromTickThread() throws InterruptedException {
         // Shutting down from a TickThread must not deadlock against the thread awaiting the tick.
-        ThreadDispatcher<World, Tickable> dispatcher = ThreadDispatcher.singleThread();
+        ThreadDispatcher<World, Tickable> dispatcher = ThreadDispatcher.singleThread(ThreadDispatcherTest::rethrow);
         World world = new World();
         CountDownLatch shutdownCalled = new CountDownLatch(1);
         Tickable element = _ -> {
@@ -335,7 +339,7 @@ public class ThreadDispatcherTest {
             public RefreshType refreshType() {
                 return RefreshType.ALWAYS;
             }
-        }, 2);
+        }, 2, ThreadDispatcherTest::rethrow);
         World world = new World();
         Counter element = new Counter();
         dispatcher.createPartition(world);
@@ -361,7 +365,7 @@ public class ThreadDispatcherTest {
             public void tick(long time) {
             }
         }
-        ThreadDispatcher<World, Tickable> dispatcher = ThreadDispatcher.singleThread();
+        ThreadDispatcher<World, Tickable> dispatcher = ThreadDispatcher.singleThread(ThreadDispatcherTest::rethrow);
         World world = new World();
         Tickable element = new Idle();
         dispatcher.createPartition(world);
@@ -387,7 +391,7 @@ public class ThreadDispatcherTest {
             public void tick(long time) {
             }
         }
-        ThreadDispatcher<World, Tickable> dispatcher = ThreadDispatcher.singleThread();
+        ThreadDispatcher<World, Tickable> dispatcher = ThreadDispatcher.singleThread(ThreadDispatcherTest::rethrow);
         World world = new World();
         Tickable element = new Idle();
         dispatcher.createPartition(world);

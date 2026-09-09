@@ -11,6 +11,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertNotSame;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -20,8 +21,9 @@ public class ServerProcessTest {
 
     @Test
     public void registries() {
-        var process = MinecraftServer.updateProcess();
-        assertSame(process.registries(), MinecraftServer.getRegistries());
+        var process = ServerProcess.of();
+        assertSame(process.registries(), process.registries());
+        assertNotSame(process.registries(), ServerProcess.of().registries());
     }
 
     @Test
@@ -31,7 +33,7 @@ public class ServerProcessTest {
 
         int port = TestUtils.findFreePort();
         AtomicReference<ServerProcess> process = new AtomicReference<>();
-        assertDoesNotThrow(() -> process.set(MinecraftServer.updateProcess()));
+        assertDoesNotThrow(() -> process.set(ServerProcess.of()));
         assertDoesNotThrow(() -> process.get().start(new InetSocketAddress("localhost", port)));
         assertThrows(Exception.class, () -> process.get().start(new InetSocketAddress("localhost", port)));
         assertDoesNotThrow(() -> process.get().stop());
@@ -42,7 +44,7 @@ public class ServerProcessTest {
         // These like to fail on github actions
         assumeTrue(System.getenv("GITHUB_ACTIONS") == null);
 
-        var process = MinecraftServer.updateProcess();
+        var process = ServerProcess.of();
         process.start(new InetSocketAddress("localhost", TestUtils.findFreePort()));
         var ticker = process.ticker();
         assertDoesNotThrow(() -> ticker.tick(System.nanoTime()));
@@ -53,11 +55,11 @@ public class ServerProcessTest {
     @Timeout(30)
     public void stopFromTickThread() throws InterruptedException {
         // Stopping from a tick thread must hand the blocking shutdown over to another thread (#2907)
-        var process = MinecraftServer.updateProcess();
+        var process = ServerProcess.of();
         CountDownLatch returned = new CountDownLatch(1);
         CountDownLatch shutdownTaskRan = new CountDownLatch(1);
         process.scheduler().buildShutdownTask(shutdownTaskRan::countDown);
-        Thread thread = new TickThread("Ms-Tick-stop-test") {
+        Thread thread = new TickThread("Ms-Tick-stop-test", process.exception()::handleException) {
             @Override
             public void run() {
                 process.stop();

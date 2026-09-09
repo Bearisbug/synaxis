@@ -20,7 +20,7 @@ public class ArgumentItemStackIntegrationTest {
     @Test
     public void plainMaterial(Env env) {
         var argument = ArgumentType.ItemStack("item");
-        var result = assertDoesNotThrow(() -> argument.parse(null, "cooked_beef"));
+        var result = assertDoesNotThrow(() -> argument.parse(new ServerSender(env.process()), "cooked_beef"));
         assertEquals(Material.COOKED_BEEF, result.material());
     }
 
@@ -30,7 +30,7 @@ public class ArgumentItemStackIntegrationTest {
         assertNotNull(Material.COOKED_BEEF.prototype().get(DataComponents.CONSUMABLE),
                 "the test relies on cooked beef being consumable by default");
 
-        var result = assertDoesNotThrow(() -> argument.parse(null, "cooked_beef[!consumable]"));
+        var result = assertDoesNotThrow(() -> argument.parse(new ServerSender(env.process()), "cooked_beef[!consumable]"));
         assertEquals(Material.COOKED_BEEF, result.material());
         assertNull(result.get(DataComponents.CONSUMABLE));
     }
@@ -38,7 +38,7 @@ public class ArgumentItemStackIntegrationTest {
     @Test
     public void componentValueSyntax(Env env) {
         var argument = ArgumentType.ItemStack("item");
-        var result = assertDoesNotThrow(() -> argument.parse(null, "stone[minecraft:damage=5]"));
+        var result = assertDoesNotThrow(() -> argument.parse(new ServerSender(env.process()), "stone[minecraft:damage=5]"));
         assertEquals(5, result.get(DataComponents.DAMAGE));
     }
 
@@ -49,8 +49,8 @@ public class ArgumentItemStackIntegrationTest {
     @Test
     public void invalidInputThrowsArgumentSyntaxException(Env env) {
         var argument = ArgumentType.ItemStack("item");
-        assertThrows(ArgumentSyntaxException.class, () -> argument.parse(null, "stone[minecraft:damage=notanint]"));
-        assertThrows(ArgumentSyntaxException.class, () -> argument.parse(null, "Diamond_Sword"));
-        assertThrows(ArgumentSyntaxException.class, () -> argument.parse(null, "stone[not a component]"));
+        assertThrows(ArgumentSyntaxException.class, () -> argument.parse(new ServerSender(env.process()), "stone[minecraft:damage=notanint]"));
+        assertThrows(ArgumentSyntaxException.class, () -> argument.parse(new ServerSender(env.process()), "Diamond_Sword"));
+        assertThrows(ArgumentSyntaxException.class, () -> argument.parse(new ServerSender(env.process()), "stone[not a component]"));
     }
 }

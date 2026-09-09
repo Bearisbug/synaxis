@@ -12,6 +12,7 @@ import dev.gameengine.instance.block.BlockKeys;
 import dev.gameengine.instance.block.predicate.BlockPredicate;
 import dev.gameengine.instance.block.predicate.ComponentPredicateSet;
 import dev.gameengine.instance.block.predicate.DataComponentPredicate;
+import dev.gameengine.registry.Registries;
 import dev.gameengine.registry.RegistryKey;
 import dev.gameengine.registry.RegistryTag;
 import org.jetbrains.annotations.NotNull;
@@ -58,10 +59,10 @@ public class BlockPredicatesTest extends AbstractItemComponentRegistriesTest<Blo
     }
 
     @Test
-    public void testMultiMatch() {
+    public void testMultiMatch(Registries registries) {
         // Just sanity check that it actually runs both of the predicates
         var predicate = new BlockPredicates(List.of(BlockPredicate.NONE, BlockPredicate.ALL));
-        assertTrue(predicate.test(Block.AIR));
+        assertTrue(predicate.test(registries, Block.AIR));
     }
 
 }

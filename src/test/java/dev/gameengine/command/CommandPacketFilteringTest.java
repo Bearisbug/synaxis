@@ -1,18 +1,35 @@
 package dev.gameengine.command;
 
+import dev.gameengine.ServerProcess;
 import dev.gameengine.command.builder.Command;
 import dev.gameengine.command.builder.arguments.ArgumentType;
 import dev.gameengine.entity.Player;
 import dev.gameengine.network.packet.server.play.DeclareCommandsPacket;
+import dev.gameengine.network.packet.server.SendablePacket;
 import dev.gameengine.network.player.GameProfile;
+import dev.gameengine.network.player.PlayerConnection;
 import org.junit.jupiter.api.Test;
 
+import java.net.InetAddress;
+import java.net.InetSocketAddress;
+import java.net.SocketAddress;
 import java.util.Set;
 import java.util.UUID;
 
 @SuppressWarnings("ConstantConditions")
 public class CommandPacketFilteringTest {
-    private static final Player PLAYER = new Player(null, new GameProfile(UUID.randomUUID(), "Test"));
+    private static final ServerProcess PROCESS = ServerProcess.of();
+
+    private static final Player PLAYER = new Player(new PlayerConnection(PROCESS) {
+        @Override
+        public void sendPacket(SendablePacket packet) {
+        }
+
+        @Override
+        public SocketAddress getRemoteAddress() {
+            return new InetSocketAddress(InetAddress.getLoopbackAddress(), 25565);
+        }
+    }, new GameProfile(UUID.randomUUID(), "Test"));
 
     @Test
     public void singleCommandFilteredFalse() {
@@ -200,7 +217,7 @@ public class CommandPacketFilteringTest {
     }
 
     private static void assertFiltering(Command command, String expectedStructure) {
-        final DeclareCommandsPacket packet = GraphConverter.createPacket(new CommandManager(), Graph.merge(Set.of(command)), PLAYER);
+        final DeclareCommandsPacket packet = GraphConverter.createPacket(new CommandManager(PROCESS), Graph.merge(Set.of(command)), PLAYER);
         CommandTestUtils.assertPacket(packet, expectedStructure);
     }
 }

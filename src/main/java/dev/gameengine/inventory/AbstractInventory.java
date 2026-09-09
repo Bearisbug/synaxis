@@ -65,6 +65,16 @@ public sealed abstract class AbstractInventory implements InventoryClickHandler,
     }
 
     /**
+     * Creates an inventory already bound to a server process, so that its local event node exists
+     * before the inventory is shown to anyone.
+     */
+    @SuppressWarnings("this-escape") // the inventory is fully sized before it registers itself
+    protected AbstractInventory(ServerProcess process, int size) {
+        this(size);
+        bindProcess(process);
+    }
+
+    /**
      * Binds this inventory to a server process, creating its local event node. An inventory is bound
      * to the process of the first player it is shown to.
      */

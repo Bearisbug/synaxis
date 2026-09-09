@@ -15,7 +15,7 @@ import static org.openjdk.jcstress.annotations.Expect.ACCEPTABLE;
 @State
 public class AcquirableSyncTest {
 
-    private final ThreadDispatcher<World, Element> dispatcher = ThreadDispatcher.singleThread();
+    private final ThreadDispatcher<World, Element> dispatcher = ThreadDispatcher.singleThread(Throwable::printStackTrace);
     private final World world = new World();
     private final Element element = new Element();
 
@@ -69,7 +69,7 @@ public class AcquirableSyncTest {
 
     @Actor
     public void actor1() {
-        TickThread tickThread = new TickThread(1) {
+        TickThread tickThread = new TickThread(1, Throwable::printStackTrace) {
             @Override
             public void run() {
                 loop();
@@ -85,7 +85,7 @@ public class AcquirableSyncTest {
 
     @Actor
     public void actor2() {
-        TickThread tickThread = new TickThread(2) {
+        TickThread tickThread = new TickThread(2, Throwable::printStackTrace) {
             @Override
             public void run() {
                 loop();
@@ -101,7 +101,7 @@ public class AcquirableSyncTest {
 
     @Actor
     public void actor3() {
-        TickThread tickThread = new TickThread(3) {
+        TickThread tickThread = new TickThread(3, Throwable::printStackTrace) {
             @Override
             public void run() {
                 loop();

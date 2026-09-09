@@ -1,5 +1,6 @@
 package dev.gameengine.command;
 
+import dev.gameengine.ServerProcess;
 import dev.gameengine.command.builder.Command;
 import dev.gameengine.command.builder.CommandResult;
 import dev.gameengine.command.builder.arguments.ArgumentType;
@@ -15,10 +16,12 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class CommandManagerTest {
+    private static final ServerProcess PROCESS = ServerProcess.of();
+
 
     @Test
     public void testCommandRegistration() {
-        var manager = new CommandManager();
+        var manager = new CommandManager(PROCESS);
 
         var command = new Command("name1", "name2");
 
@@ -41,7 +44,7 @@ public class CommandManagerTest {
      */
     @Test
     public void testMixedCaseCommandRegistration() {
-        var manager = new CommandManager();
+        var manager = new CommandManager(PROCESS);
 
         var command = new Command("Foo");
         manager.register(command);
@@ -59,7 +62,7 @@ public class CommandManagerTest {
 
     @Test
     public void testUnknownCommandCallback() {
-        var manager = new CommandManager();
+        var manager = new CommandManager(PROCESS);
 
         AtomicBoolean check = new AtomicBoolean(false);
         manager.setUnknownCommandCallback((_, _) -> check.set(true));
@@ -75,7 +78,7 @@ public class CommandManagerTest {
 
     @Test
     public void testSharedArgumentSyntaxABFirst() {
-        var manager = new CommandManager();
+        var manager = new CommandManager(PROCESS);
 
         var checkA = new AtomicBoolean(false);
         var checkAB = new AtomicBoolean(false);
@@ -103,7 +106,7 @@ public class CommandManagerTest {
 
     @Test
     public void testSharedArgumentSyntaxAFirst() {
-        var manager = new CommandManager();
+        var manager = new CommandManager(PROCESS);
 
         var checkA = new AtomicBoolean(false);
         var checkAB = new AtomicBoolean(false);

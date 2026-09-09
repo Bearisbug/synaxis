@@ -1,6 +1,5 @@
 package dev.gameengine.network;
 
-import dev.gameengine.MinecraftServer;
 import dev.gameengine.ServerFlag;
 import dev.gameengine.network.packet.PacketWriting;
 import dev.gameengine.network.packet.server.ServerPacket;
@@ -24,12 +23,12 @@ public class PacketWriteQueueIntegrationTest {
     }
 
     @Test
-    public void aPacketTooLargeToEverFitIsDroppedNotRetried() {
+    public void aPacketTooLargeToEverFitIsDroppedNotRetried(Env env) {
         final var queue = ConcurrentMessageQueues.<ServerPacket>mpscUnboundedArrayQueue(16);
         queue.relaxedOffer(new PluginMessagePacket("t", new byte[ServerFlag.MAX_PACKET_SIZE + 1]));
 
         final NetworkBuffer buffer = NetworkBuffer.staticBuffer(
-                ServerFlag.POOLED_BUFFER_SIZE, MinecraftServer.getRegistries());
+                ServerFlag.POOLED_BUFFER_SIZE, env.process().registries());
         assertThrows(IllegalStateException.class, () -> PacketWriting.writeQueue(buffer, queue, 1, (b, packet) -> {
             PacketWriting.writeFramedPacket(b, ConnectionState.PLAY, packet, 0);
             return true;

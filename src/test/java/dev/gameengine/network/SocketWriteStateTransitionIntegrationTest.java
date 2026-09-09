@@ -1,6 +1,5 @@
 package dev.gameengine.network;
 
-import dev.gameengine.MinecraftServer;
 import dev.gameengine.ServerFlag;
 import dev.gameengine.network.packet.PacketWriting;
 import dev.gameengine.network.packet.server.ServerPacket;
@@ -36,18 +35,18 @@ public class SocketWriteStateTransitionIntegrationTest {
     }
 
     @Test
-    public void aRejectedStateChangingPacketDoesNotAdvanceTheServerState() throws IOException {
+    public void aRejectedStateChangingPacketDoesNotAdvanceTheServerState(Env env) throws IOException {
         // Leave two free bytes in the pooled buffer, less than the smallest frame header
-        final int overhead = framedSize(new PluginMessagePacket("ch", new byte[0]));
+        final int overhead = framedSize(env, new PluginMessagePacket("ch", new byte[0]));
         final var filler = new PluginMessagePacket("ch", new byte[ServerFlag.POOLED_BUFFER_SIZE - 2 - overhead]);
-        assertEquals(ServerFlag.POOLED_BUFFER_SIZE - 2, framedSize(filler));
+        assertEquals(ServerFlag.POOLED_BUFFER_SIZE - 2, framedSize(env, filler));
 
         try (ServerSocketChannel server = ServerSocketChannel.open()) {
             server.bind(new InetSocketAddress(InetAddress.getLoopbackAddress(), 0));
             try (SocketChannel peer = SocketChannel.open(server.getLocalAddress());
                  SocketChannel accepted = server.accept()) {
                 assertTrue(peer.isConnected());
-                final var connection = new PlayerSocketConnection(accepted, accepted.getRemoteAddress(),
+                final var connection = new PlayerSocketConnection(env.process(), accepted, accepted.getRemoteAddress(),
                         Thread.currentThread(), Thread.currentThread());
                 connection.setClientState(ConnectionState.CONFIGURATION);
                 assertEquals(ConnectionState.CONFIGURATION, connection.getServerState());
@@ -65,8 +64,8 @@ public class SocketWriteStateTransitionIntegrationTest {
         }
     }
 
-    private static int framedSize(ServerPacket packet) {
-        final NetworkBuffer buffer = NetworkBuffer.resizableBuffer(64, MinecraftServer.getRegistries());
+    private static int framedSize(Env env, ServerPacket packet) {
+        final NetworkBuffer buffer = NetworkBuffer.resizableBuffer(64, env.process().registries());
         PacketWriting.writeFramedPacket(buffer, ConnectionState.CONFIGURATION, packet, 0);
         return (int) buffer.writeIndex();
     }

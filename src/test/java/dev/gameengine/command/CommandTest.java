@@ -1,5 +1,6 @@
 package dev.gameengine.command;
 
+import dev.gameengine.ServerProcess;
 import dev.gameengine.command.builder.Command;
 import dev.gameengine.command.builder.CommandContext;
 import org.junit.jupiter.api.Test;
@@ -12,6 +13,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class CommandTest {
+    private static final ServerProcess PROCESS = ServerProcess.of();
+
 
     @Test
     public void testNames() {
@@ -29,7 +32,7 @@ public class CommandTest {
 
     @Test
     public void testGlobalListener() {
-        var manager = new CommandManager();
+        var manager = new CommandManager(PROCESS);
 
         AtomicBoolean hasRun = new AtomicBoolean(false);
 

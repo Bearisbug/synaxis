@@ -1,5 +1,6 @@
 package dev.gameengine.command;
 
+import dev.gameengine.ServerProcess;
 import dev.gameengine.command.builder.Command;
 import org.junit.jupiter.api.Test;
 
@@ -12,7 +13,7 @@ public class SubcommandTest {
 
     @Test
     public void testSubCommands() {
-        var manager = new CommandManager();
+        var manager = new CommandManager(ServerProcess.of());
 
         var parent = new Command("parent");
         var child = new Command("child");
@@ -34,7 +35,7 @@ public class SubcommandTest {
 
     @Test
     public void testSubCommandConditions() {
-        var manager = new CommandManager();
+        var manager = new CommandManager(ServerProcess.of());
 
         var parent = new Command("parent");
         var child = new Command("child");

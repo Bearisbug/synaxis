@@ -3,6 +3,7 @@ package dev.gameengine.command;
 import net.kyori.adventure.identity.Identity;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
+import dev.gameengine.ServerProcess;
 import dev.gameengine.tag.TagHandler;
 import org.jetbrains.annotations.Nullable;
 import org.junit.jupiter.api.Test;
@@ -31,6 +32,11 @@ public class CommandSenderTest {
     private static final class SenderTest implements CommandSender {
 
         private final TagHandler handler = TagHandler.newHandler();
+
+        @Override
+        public ServerProcess process() {
+            throw new UnsupportedOperationException("this sender is not attached to a process");
+        }
 
         private @Nullable Component mostRecentMessage = null;
 

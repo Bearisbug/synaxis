@@ -29,7 +29,7 @@ public class SchedulerTickBenchmark {
 
     @Setup
     public void setup() {
-        this.scheduler = Scheduler.newScheduler();
+        this.scheduler = Scheduler.newScheduler(Throwable::printStackTrace);
         for (int i = 0; i < this.tickTasks; i++) {
             this.scheduler.scheduleTask(() -> {
             }, TaskSchedule.nextTick(), TaskSchedule.nextTick());

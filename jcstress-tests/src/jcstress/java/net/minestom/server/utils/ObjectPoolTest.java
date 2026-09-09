@@ -1,7 +1,5 @@
 package net.minestom.server.utils;
 
-import net.minestom.server.network.NetworkBuffer;
-import net.minestom.server.network.packet.PacketVanilla;
 import org.openjdk.jcstress.annotations.Actor;
 import org.openjdk.jcstress.annotations.Arbiter;
 import org.openjdk.jcstress.annotations.JCStressTest;
@@ -16,18 +14,21 @@ import static org.openjdk.jcstress.annotations.Expect.ACCEPTABLE;
 @Outcome(id = "2", expect = ACCEPTABLE)
 @State
 public class ObjectPoolTest {
-    private final ObjectPool<NetworkBuffer> pool = PacketVanilla.PACKET_POOL;
+    // A plain supplier keeps the state self-contained: the shared PacketVanilla.PACKET_POOL
+    // builds its buffers from MinecraftServer.getRegistries(), which has no server process
+    // behind it here and fails the whole test during the jcstress pre-test phase.
+    private final ObjectPool<Object> pool = ObjectPool.pool(Object::new);
 
     @Actor
     public void actor1() {
-        var buffer = pool.get();
-        pool.add(buffer);
+        var pooled = pool.get();
+        pool.add(pooled);
     }
 
     @Actor
     public void actor2() {
-        var buffer = pool.get();
-        pool.add(buffer);
+        var pooled = pool.get();
+        pool.add(pooled);
     }
 
     @Arbiter

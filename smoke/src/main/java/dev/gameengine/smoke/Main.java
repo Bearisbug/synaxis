@@ -3,6 +3,7 @@ package dev.gameengine.smoke;
 import net.kyori.adventure.text.Component;
 import dev.gameengine.Auth;
 import dev.gameengine.MinecraftServer;
+import dev.gameengine.ServerProcess;
 import dev.gameengine.command.builder.Command;
 import dev.gameengine.command.builder.arguments.ArgumentStringArray;
 import dev.gameengine.command.builder.arguments.ArgumentType;
@@ -46,12 +47,13 @@ public class Main {
     static void main(String[] args) {
         final int port = Integer.getInteger(PORT_PROPERTY, DEFAULT_PORT);
         final MinecraftServer server = MinecraftServer.init(new Auth.Offline());
+        final ServerProcess process = server.process();
 
-        final InstanceContainer instance = MinecraftServer.getInstanceManager().createInstanceContainer();
+        final InstanceContainer instance = process.instance().createInstanceContainer();
         instance.setGenerator(unit -> unit.modifier().fillHeight(0, GROUND_HEIGHT, Block.STONE));
         instance.setChunkSupplier(LightingChunk::new);
 
-        final GlobalEventHandler eventHandler = MinecraftServer.getGlobalEventHandler();
+        final GlobalEventHandler eventHandler = process.eventHandler();
         eventHandler.addListener(AsyncPlayerConfigurationEvent.class, event -> {
             event.setSpawningInstance(instance);
             event.getPlayer().setRespawnPoint(SPAWN);
@@ -63,14 +65,14 @@ public class Main {
             if (response != null) player.sendPluginMessage(ECHO_CHANNEL, response);
         });
 
-        MinecraftServer.getCommandManager().register(echoCommand());
+        process.command().register(echoCommand());
 
         server.start(BIND_ADDRESS, port);
         LOGGER.info("game-engine smoke listening on {}:{}", BIND_ADDRESS, port);
 
         // Not a daemon: the shutdown sequence runs on this thread, and the JVM must not
         // exit out from under it once the tick threads are gone.
-        Thread.ofPlatform().name("smoke-console").start(Main::readConsole);
+        Thread.ofPlatform().name("smoke-console").start(() -> readConsole(process));
     }
 
     /**
@@ -107,13 +109,13 @@ public class Main {
         return command;
     }
 
-    private static void readConsole() {
+    private static void readConsole(ServerProcess process) {
         try (BufferedReader reader = new BufferedReader(new InputStreamReader(System.in, StandardCharsets.UTF_8))) {
             String line;
             while ((line = reader.readLine()) != null) {
                 if (!"stop".equals(line.strip())) continue;
                 LOGGER.info("Console requested a shutdown.");
-                MinecraftServer.stopCleanly();
+                process.stop();
                 return;
             }
         } catch (IOException e) {

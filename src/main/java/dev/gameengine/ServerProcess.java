@@ -1,6 +1,7 @@
 package dev.gameengine;
 
 import dev.gameengine.adventure.ClickCallbackManager;
+import dev.gameengine.adventure.audience.Audiences;
 import dev.gameengine.adventure.bossbar.BossBarManager;
 import dev.gameengine.command.CommandManager;
 import dev.gameengine.entity.Entity;
@@ -17,12 +18,28 @@ import dev.gameengine.network.socket.Server;
 import dev.gameengine.registry.Registries;
 import dev.gameengine.thread.ThreadDispatcher;
 import dev.gameengine.timer.SchedulerManager;
+import dev.gameengine.world.Difficulty;
 import org.jetbrains.annotations.ApiStatus;
 
 import java.net.SocketAddress;
 
 @ApiStatus.NonExtendable
 public interface ServerProcess extends Registries {
+    /**
+     * Creates a new server process. Several processes can coexist in the same JVM, they share
+     * nothing but the static registries.
+     */
+    static ServerProcess of(Auth auth) {
+        return new ServerProcessImpl(auth);
+    }
+
+    /**
+     * Creates a new server process running in offline mode.
+     */
+    static ServerProcess of() {
+        return of(new Auth.Offline());
+    }
+
     /**
      * Gets the registries owned by this process.
      *
@@ -106,6 +123,43 @@ public interface ServerProcess extends Registries {
      * The click callback manager.
      */
     ClickCallbackManager clickCallbackManager();
+
+    /**
+     * Adventure audiences backed by this process.
+     */
+    Audiences audiences();
+
+    /**
+     * The server brand name shown by the client (F3 screen).
+     */
+    String brandName();
+
+    /**
+     * Changes the server brand name and sends the change to all connected players.
+     */
+    void setBrandName(String brandName);
+
+    /**
+     * The server difficulty shown in the game options.
+     */
+    Difficulty difficulty();
+
+    /**
+     * Changes the server difficulty and sends the appropriate packet to all connected clients.
+     */
+    void setDifficulty(Difficulty difficulty);
+
+    /**
+     * The packet compression threshold, {@code 0} means that compression is disabled.
+     */
+    int compressionThreshold();
+
+    /**
+     * Changes the compression threshold. Must be called before {@link #start(SocketAddress)}.
+     *
+     * @throws IllegalStateException if the process has already been started
+     */
+    void setCompressionThreshold(int compressionThreshold);
 
     void start(SocketAddress socketAddress);
 

@@ -1,10 +1,10 @@
 package dev.gameengine;
 
 import dev.gameengine.adventure.ClickCallbackManager;
+import dev.gameengine.adventure.audience.Audiences;
 import dev.gameengine.adventure.bossbar.BossBarManager;
 import dev.gameengine.command.CommandManager;
 import dev.gameengine.entity.Entity;
-import dev.gameengine.event.EventDispatcher;
 import dev.gameengine.event.GlobalEventHandler;
 import dev.gameengine.event.server.ServerTickMonitorEvent;
 import dev.gameengine.exception.ExceptionManager;
@@ -26,8 +26,13 @@ import dev.gameengine.thread.ThreadProvider;
 import dev.gameengine.thread.TickSchedulerThread;
 import dev.gameengine.thread.TickThread;
 import dev.gameengine.timer.SchedulerManager;
+import dev.gameengine.network.packet.server.common.PluginMessagePacket;
+import dev.gameengine.network.packet.server.play.ServerDifficultyPacket;
+import dev.gameengine.utils.PacketSendingUtils;
 import dev.gameengine.utils.PacketViewableUtils;
 import dev.gameengine.utils.time.Tick;
+import dev.gameengine.utils.validate.Check;
+import dev.gameengine.world.Difficulty;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -56,6 +61,7 @@ final class ServerProcessImpl implements ServerProcess, Registries.Delegating {
     private final SchedulerManager scheduler;
     private final BossBarManager bossBar;
     private final ClickCallbackManager clickCallbackManager;
+    private final Audiences audiences;
 
     private final Server server;
 
@@ -64,28 +70,35 @@ final class ServerProcessImpl implements ServerProcess, Registries.Delegating {
 
     private final AtomicBoolean started = new AtomicBoolean();
     private final AtomicBoolean stopped = new AtomicBoolean();
+
+    private volatile String brandName = "game-engine";
+    private volatile Difficulty difficulty = Difficulty.NORMAL;
+    private volatile int compressionThreshold = 256;
     // Set by the ticker itself, so that stop() can wait for the in-flight tick to complete.
     private volatile @Nullable TickSchedulerThread tickSchedulerThread;
 
     public ServerProcessImpl(Auth auth) {
         this.auth = auth;
-        this.exception = new ExceptionManager();
+        this.exception = new ExceptionManager(this);
         this.registries = Registries.vanilla();
 
-        this.connection = new ConnectionManager();
-        this.packetListener = new PacketListenerManager();
+        this.connection = new ConnectionManager(this);
+        this.packetListener = new PacketListenerManager(this);
         this.packetParser = PacketVanilla.CLIENT_PACKET_PARSER;
         this.instance = new InstanceManager(this);
         this.block = new BlockManager();
-        this.command = new CommandManager();
-        this.eventHandler = new GlobalEventHandler();
-        this.scheduler = new SchedulerManager();
+        this.command = new CommandManager(this);
+        this.eventHandler = new GlobalEventHandler(exception);
+        this.scheduler = new SchedulerManager(exception);
         this.bossBar = new BossBarManager();
         this.clickCallbackManager = new ClickCallbackManager();
+        this.audiences = new Audiences(this);
 
-        this.server = new Server(packetParser);
+        this.server = new Server(this, packetParser);
+        Registries.tagChangeListener(registries, connection::invalidateTags);
 
-        this.dispatcher = ThreadDispatcher.dispatcher(ThreadProvider.counter(), ServerFlag.DISPATCHER_THREADS);
+        this.dispatcher = ThreadDispatcher.dispatcher(ThreadProvider.counter(), ServerFlag.DISPATCHER_THREADS,
+                exception::handleException);
         this.ticker = new TickerImpl();
     }
 
@@ -171,12 +184,50 @@ final class ServerProcessImpl implements ServerProcess, Registries.Delegating {
     }
 
     @Override
+    public Audiences audiences() {
+        return audiences;
+    }
+
+    @Override
+    public String brandName() {
+        return brandName;
+    }
+
+    @Override
+    public void setBrandName(String brandName) {
+        this.brandName = brandName;
+        PacketSendingUtils.broadcastPlayPacket(this, PluginMessagePacket.brandPacket(brandName));
+    }
+
+    @Override
+    public Difficulty difficulty() {
+        return difficulty;
+    }
+
+    @Override
+    public void setDifficulty(Difficulty difficulty) {
+        this.difficulty = difficulty;
+        PacketSendingUtils.broadcastPlayPacket(this, new ServerDifficultyPacket(difficulty, true));
+    }
+
+    @Override
+    public int compressionThreshold() {
+        return compressionThreshold;
+    }
+
+    @Override
+    public void setCompressionThreshold(int compressionThreshold) {
+        Check.stateCondition(isAlive(), "The compression threshold cannot be changed after the server has been started.");
+        this.compressionThreshold = compressionThreshold;
+    }
+
+    @Override
     public void start(SocketAddress socketAddress) {
         if (!started.compareAndSet(false, true)) {
             throw new IllegalStateException("Server already started");
         }
 
-        final String brand = MinecraftServer.getBrandName();
+        final String brand = brandName;
         LOGGER.info("Starting {} ({}) server.", brand, Git.version());
         switch (auth) {
             case Auth.Offline _ ->
@@ -198,6 +249,9 @@ final class ServerProcessImpl implements ServerProcess, Registries.Delegating {
             exception.handleException(e);
             throw new RuntimeException(e);
         }
+
+        // Registries are part of the handshake answer, they must not change once clients can connect
+        Registries.freeze(registries);
 
         // Start server
         server.start();
@@ -222,7 +276,7 @@ final class ServerProcessImpl implements ServerProcess, Registries.Delegating {
     }
 
     private void shutdownProcess() {
-        final String brand = MinecraftServer.getBrandName();
+        final String brand = brandName;
         LOGGER.info("Stopping {} server.", brand);
         // `stopped` is already set, so the ticker loop exits once the tick in flight is over.
         // Wait for it before touching anything else, otherwise the shutdown races with ticking.
@@ -286,7 +340,7 @@ final class ServerProcessImpl implements ServerProcess, Registries.Delegating {
                 final double acquisitionTimeMs = Acquirable.resetAcquiringTime() / 1e6D;
                 final double tickTimeMs = (System.nanoTime() - nanoTime) / 1e6D;
                 final TickMonitor tickMonitor = new TickMonitor(tickTimeMs, acquisitionTimeMs);
-                EventDispatcher.call(new ServerTickMonitorEvent(tickMonitor));
+                eventHandler().call(new ServerTickMonitorEvent(tickMonitor));
             }
             serverTickEvent.commit();
         }

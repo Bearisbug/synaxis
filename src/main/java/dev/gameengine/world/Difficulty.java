@@ -3,7 +3,7 @@ package dev.gameengine.world;
 /**
  * Those are all the difficulties which can be displayed in the player menu.
  * <p>
- * Sets with {@link dev.gameengine.MinecraftServer#setDifficulty(Difficulty)}.
+ * Sets with {@link dev.gameengine.ServerProcess#setDifficulty(Difficulty)}.
  */
 public enum Difficulty {
 

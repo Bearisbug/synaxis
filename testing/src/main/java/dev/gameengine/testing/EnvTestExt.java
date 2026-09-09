@@ -1,6 +1,6 @@
 package dev.gameengine.testing;
 
-import dev.gameengine.MinecraftServer;
+import dev.gameengine.ServerProcess;
 import org.junit.jupiter.api.extension.AfterEachCallback;
 import org.junit.jupiter.api.extension.BeforeEachCallback;
 import org.junit.jupiter.api.extension.ExtensionContext;
@@ -24,7 +24,7 @@ final class EnvTestExt implements
                                 ExtensionContext extensionContext) {
         return extensionContext.getStore(ExtensionContext.Namespace.create(getClass()))
                 .computeIfAbsent(ENV_KEY,
-                        _ -> new EnvImpl(MinecraftServer.updateProcess()),
+                        _ -> new EnvImpl(ServerProcess.of()),
                         EnvImpl.class);
     }
 

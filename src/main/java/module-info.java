@@ -1,4 +1,3 @@
-import net.kyori.adventure.text.event.ClickCallback;
 import net.kyori.adventure.text.event.DataComponentValueConverterRegistry;
 import net.kyori.adventure.text.logger.slf4j.ComponentLoggerProvider;
 import net.kyori.adventure.text.serializer.ansi.ANSIComponentSerializer;
@@ -6,7 +5,6 @@ import net.kyori.adventure.text.serializer.gson.GsonComponentSerializer;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import dev.gameengine.adventure.provider.MinestomAnsiComponentSerializerProvider;
-import dev.gameengine.adventure.provider.MinestomClickCallbackProvider;
 import dev.gameengine.adventure.provider.MinestomComponentLoggerProvider;
 import dev.gameengine.adventure.provider.MinestomDataComponentValueConverterProvider;
 import dev.gameengine.adventure.provider.MinestomGsonComponentSerializerProvider;
@@ -149,7 +147,6 @@ module dev.gameengine {
 
     provides ComponentLoggerProvider with MinestomComponentLoggerProvider;
     provides ANSIComponentSerializer.Provider with MinestomAnsiComponentSerializerProvider;
-    provides ClickCallback.Provider with MinestomClickCallbackProvider;
     provides PlainTextComponentSerializer.Provider with MinestomPlainTextComponentSerializerProvider;
     provides LegacyComponentSerializer.Provider with MinestomLegacyComponentSerializerProvider;
     provides GsonComponentSerializer.Provider with MinestomGsonComponentSerializerProvider;

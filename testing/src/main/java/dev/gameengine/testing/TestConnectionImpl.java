@@ -26,7 +26,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 final class TestConnectionImpl implements TestConnection {
     private final ServerProcess process;
     private final GameProfile gameProfile;
-    private final PlayerConnectionImpl playerConnection = new PlayerConnectionImpl();
+    private final PlayerConnectionImpl playerConnection;
 
     private final AtomicBoolean connected = new AtomicBoolean(false);
 
@@ -35,6 +35,7 @@ final class TestConnectionImpl implements TestConnection {
     TestConnectionImpl(Env env, GameProfile gameProfile) {
         this.process = env.process();
         this.gameProfile = gameProfile;
+        this.playerConnection = new PlayerConnectionImpl(process);
     }
 
     @Override
@@ -76,6 +77,10 @@ final class TestConnectionImpl implements TestConnection {
 
     final class PlayerConnectionImpl extends PlayerConnection {
         private boolean online = true;
+
+        PlayerConnectionImpl(ServerProcess process) {
+            super(process);
+        }
 
         @Override
         public void sendPacket(SendablePacket packet) {

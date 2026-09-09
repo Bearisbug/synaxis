@@ -25,7 +25,6 @@ import net.minestom.demo.commands.FindCommand;
 import net.minestom.demo.commands.GamemodeCommand;
 import net.minestom.demo.commands.GiveCommand;
 import net.minestom.demo.commands.HealthCommand;
-import net.minestom.demo.commands.HorseCommand;
 import net.minestom.demo.commands.KillCommand;
 import net.minestom.demo.commands.LegacyCommand;
 import net.minestom.demo.commands.NotificationCommand;
@@ -105,7 +104,6 @@ public class Main {
         commandManager.register(new TitleCommand());
         commandManager.register(new BookCommand());
         commandManager.register(new ShootCommand());
-        commandManager.register(new HorseCommand());
         commandManager.register(new EchoCommand());
         commandManager.register(new SummonCommand());
         commandManager.register(new RemoveCommand());

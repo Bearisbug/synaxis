@@ -3,38 +3,6 @@ package net.minestom.server.entity;
 import it.unimi.dsi.fastutil.ints.Int2ObjectArrayMap;
 import net.minestom.server.entity.metadata.EntityMeta;
 import net.minestom.server.entity.metadata.LivingEntityMeta;
-import net.minestom.server.entity.metadata.animal.ArmadilloMeta;
-import net.minestom.server.entity.metadata.animal.BeeMeta;
-import net.minestom.server.entity.metadata.animal.CamelHuskMeta;
-import net.minestom.server.entity.metadata.animal.CamelMeta;
-import net.minestom.server.entity.metadata.animal.ChickenMeta;
-import net.minestom.server.entity.metadata.animal.CowMeta;
-import net.minestom.server.entity.metadata.animal.DonkeyMeta;
-import net.minestom.server.entity.metadata.animal.FoxMeta;
-import net.minestom.server.entity.metadata.animal.FrogMeta;
-import net.minestom.server.entity.metadata.animal.GoatMeta;
-import net.minestom.server.entity.metadata.animal.HappyGhastMeta;
-import net.minestom.server.entity.metadata.animal.HoglinMeta;
-import net.minestom.server.entity.metadata.animal.HorseMeta;
-import net.minestom.server.entity.metadata.animal.LlamaMeta;
-import net.minestom.server.entity.metadata.animal.MooshroomMeta;
-import net.minestom.server.entity.metadata.animal.MuleMeta;
-import net.minestom.server.entity.metadata.animal.NautilusMeta;
-import net.minestom.server.entity.metadata.animal.OcelotMeta;
-import net.minestom.server.entity.metadata.animal.PandaMeta;
-import net.minestom.server.entity.metadata.animal.PigMeta;
-import net.minestom.server.entity.metadata.animal.PolarBearMeta;
-import net.minestom.server.entity.metadata.animal.RabbitMeta;
-import net.minestom.server.entity.metadata.animal.SheepMeta;
-import net.minestom.server.entity.metadata.animal.SkeletonHorseMeta;
-import net.minestom.server.entity.metadata.animal.SnifferMeta;
-import net.minestom.server.entity.metadata.animal.StriderMeta;
-import net.minestom.server.entity.metadata.animal.TurtleMeta;
-import net.minestom.server.entity.metadata.animal.ZombieHorseMeta;
-import net.minestom.server.entity.metadata.animal.ZombieNautilusMeta;
-import net.minestom.server.entity.metadata.animal.tameable.CatMeta;
-import net.minestom.server.entity.metadata.animal.tameable.ParrotMeta;
-import net.minestom.server.entity.metadata.animal.tameable.WolfMeta;
 import net.minestom.server.entity.metadata.avatar.MannequinMeta;
 import net.minestom.server.entity.metadata.avatar.PlayerMeta;
 import net.minestom.server.entity.metadata.display.BlockDisplayMeta;
@@ -266,26 +234,18 @@ public final class MetadataHolder {
             entry(EntityType.ACACIA_CHEST_BOAT, BoatMeta::new),
             entry(EntityType.ALLAY, AllayMeta::new),
             entry(EntityType.AREA_EFFECT_CLOUD, AreaEffectCloudMeta::new),
-            entry(EntityType.ARMADILLO, ArmadilloMeta::new),
             entry(EntityType.ARMOR_STAND, ArmorStandMeta::new),
             entry(EntityType.ARROW, ArrowMeta::new),
             entry(EntityType.BAMBOO_RAFT, BoatMeta::new),
             entry(EntityType.BAMBOO_CHEST_RAFT, BoatMeta::new),
-            entry(EntityType.BEE, BeeMeta::new),
             entry(EntityType.BIRCH_BOAT, BoatMeta::new),
             entry(EntityType.BIRCH_CHEST_BOAT, BoatMeta::new),
             entry(EntityType.BLOCK_DISPLAY, BlockDisplayMeta::new),
             entry(EntityType.BREEZE_WIND_CHARGE, BreezeWindChargeMeta::new),
-            entry(EntityType.CAMEL, CamelMeta::new),
-            entry(EntityType.CAMEL_HUSK, CamelHuskMeta::new),
-            entry(EntityType.CAT, CatMeta::new),
             entry(EntityType.CHERRY_BOAT, BoatMeta::new),
             entry(EntityType.CHERRY_CHEST_BOAT, BoatMeta::new),
-            entry(EntityType.CHICKEN, ChickenMeta::new),
-            entry(EntityType.COW, CowMeta::new),
             entry(EntityType.DARK_OAK_BOAT, BoatMeta::new),
             entry(EntityType.DARK_OAK_CHEST_BOAT, BoatMeta::new),
-            entry(EntityType.DONKEY, DonkeyMeta::new),
             entry(EntityType.DRAGON_FIREBALL, DragonFireballMeta::new),
             entry(EntityType.END_CRYSTAL, EndCrystalMeta::new),
             entry(EntityType.ENDER_DRAGON, EnderDragonMeta::new),
@@ -295,13 +255,7 @@ public final class MetadataHolder {
             entry(EntityType.FALLING_BLOCK, FallingBlockMeta::new),
             entry(EntityType.FIREBALL, FireballMeta::new),
             entry(EntityType.FIREWORK_ROCKET, FireworkRocketMeta::new),
-            entry(EntityType.FOX, FoxMeta::new),
-            entry(EntityType.FROG, FrogMeta::new),
             entry(EntityType.GLOW_ITEM_FRAME, GlowItemFrameMeta::new),
-            entry(EntityType.GOAT, GoatMeta::new),
-            entry(EntityType.HAPPY_GHAST, HappyGhastMeta::new),
-            entry(EntityType.HOGLIN, HoglinMeta::new),
-            entry(EntityType.HORSE, HorseMeta::new),
             entry(EntityType.INTERACTION, InteractionMeta::new),
             entry(EntityType.ITEM, ItemEntityMeta::new),
             entry(EntityType.ITEM_DISPLAY, ItemDisplayMeta::new),
@@ -311,51 +265,33 @@ public final class MetadataHolder {
             entry(EntityType.LEASH_KNOT, LeashKnotMeta::new),
             entry(EntityType.LIGHTNING_BOLT, LightningBoltMeta::new),
             entry(EntityType.LINGERING_POTION, LingeringPotionMeta::new),
-            entry(EntityType.LLAMA, LlamaMeta::new),
             entry(EntityType.LLAMA_SPIT, LlamaSpitMeta::new),
             entry(EntityType.MANGROVE_BOAT, BoatMeta::new),
             entry(EntityType.MANGROVE_CHEST_BOAT, BoatMeta::new),
             entry(EntityType.MANNEQUIN, MannequinMeta::new),
             entry(EntityType.MARKER, MarkerMeta::new),
-            entry(EntityType.NAUTILUS, NautilusMeta::new),
             entry(EntityType.TEXT_DISPLAY, TextDisplayMeta::new),
-            entry(EntityType.MOOSHROOM, MooshroomMeta::new),
-            entry(EntityType.MULE, MuleMeta::new),
             entry(EntityType.OAK_BOAT, BoatMeta::new),
             entry(EntityType.OAK_CHEST_BOAT, BoatMeta::new),
-            entry(EntityType.OCELOT, OcelotMeta::new),
             entry(EntityType.OMINOUS_ITEM_SPAWNER, OminousItemSpawnerMeta::new),
             entry(EntityType.PAINTING, PaintingMeta::new),
             entry(EntityType.PALE_OAK_BOAT, BoatMeta::new),
             entry(EntityType.PALE_OAK_CHEST_BOAT, BoatMeta::new),
-            entry(EntityType.PANDA, PandaMeta::new),
-            entry(EntityType.PARROT, ParrotMeta::new),
-            entry(EntityType.PIG, PigMeta::new),
-            entry(EntityType.POLAR_BEAR, PolarBearMeta::new),
             entry(EntityType.TNT, PrimedTntMeta::new),
-            entry(EntityType.RABBIT, RabbitMeta::new),
-            entry(EntityType.SHEEP, SheepMeta::new),
             entry(EntityType.SHULKER_BULLET, ShulkerBulletMeta::new),
-            entry(EntityType.SKELETON_HORSE, SkeletonHorseMeta::new),
             entry(EntityType.SMALL_FIREBALL, SmallFireballMeta::new),
-            entry(EntityType.SNIFFER, SnifferMeta::new),
             entry(EntityType.SNOWBALL, SnowballMeta::new),
             entry(EntityType.SPECTRAL_ARROW, SpectralArrowMeta::new),
             entry(EntityType.SPLASH_POTION, SplashPotionMeta::new),
             entry(EntityType.SPRUCE_BOAT, BoatMeta::new),
             entry(EntityType.SPRUCE_CHEST_BOAT, BoatMeta::new),
-            entry(EntityType.STRIDER, StriderMeta::new),
             entry(EntityType.EGG, ThrownEggMeta::new),
             entry(EntityType.ENDER_PEARL, ThrownEnderPearlMeta::new),
             entry(EntityType.EXPERIENCE_BOTTLE, ThrownExperienceBottleMeta::new),
             entry(EntityType.TRIDENT, ThrownTridentMeta::new),
             entry(EntityType.TRADER_LLAMA, TraderLlamaMeta::new),
-            entry(EntityType.TURTLE, TurtleMeta::new),
             entry(EntityType.WIND_CHARGE, WindChargeMeta::new),
             entry(EntityType.WITHER_SKULL, WitherSkullMeta::new),
-            entry(EntityType.WOLF, WolfMeta::new),
-            entry(EntityType.ZOMBIE_HORSE, ZombieHorseMeta::new),
-            entry(EntityType.ZOMBIE_NAUTILUS, ZombieNautilusMeta::new),
             entry(EntityType.PLAYER, PlayerMeta::new),
             entry(EntityType.FISHING_BOBBER, FishingHookMeta::new)
     );

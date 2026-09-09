@@ -4,19 +4,7 @@ import net.kyori.adventure.text.Component;
 import net.minestom.server.coordinate.Point;
 import net.minestom.server.coordinate.Vec;
 import net.minestom.server.entity.metadata.animal.ArmadilloMeta;
-import net.minestom.server.entity.metadata.animal.ChickenSoundVariant;
-import net.minestom.server.entity.metadata.animal.ChickenVariant;
-import net.minestom.server.entity.metadata.animal.CowSoundVariant;
-import net.minestom.server.entity.metadata.animal.CowVariant;
-import net.minestom.server.entity.metadata.animal.FrogVariant;
-import net.minestom.server.entity.metadata.animal.PigSoundVariant;
-import net.minestom.server.entity.metadata.animal.PigVariant;
 import net.minestom.server.entity.metadata.animal.SnifferMeta;
-import net.minestom.server.entity.metadata.animal.ZombieNautilusVariant;
-import net.minestom.server.entity.metadata.animal.tameable.CatSoundVariant;
-import net.minestom.server.entity.metadata.animal.tameable.CatVariant;
-import net.minestom.server.entity.metadata.animal.tameable.WolfSoundVariant;
-import net.minestom.server.entity.metadata.animal.tameable.WolfVariant;
 import net.minestom.server.entity.metadata.golem.CopperGolemMeta;
 import net.minestom.server.entity.metadata.other.PaintingVariant;
 import net.minestom.server.entity.metadata.villager.VillagerMeta;
@@ -26,7 +14,6 @@ import net.minestom.server.item.ItemStack;
 import net.minestom.server.network.player.ResolvableProfile;
 import net.minestom.server.particle.Particle;
 import net.minestom.server.registry.Holder;
-import net.minestom.server.registry.RegistryKey;
 import net.minestom.server.utils.Direction;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.UnknownNullability;
@@ -324,11 +311,6 @@ public sealed class MetadataDef {
         public static final Entry<Integer> VARIANT = index(0, Metadata::VarInt, 0);
     }
 
-    public static final class Camel extends AbstractHorse {
-        public static final Entry<Boolean> DASHING = index(0, Metadata::Boolean, false);
-        public static final Entry<Long> LAST_POSE_CHANGE_TICK = index(1, Metadata::VarLong, 0L);
-    }
-
     public static sealed class ChestedHorse extends AbstractHorse {
         public static final Entry<Boolean> HAS_CHEST = index(0, Metadata::Boolean, false);
     }
@@ -342,14 +324,6 @@ public sealed class MetadataDef {
         public static final Entry<Integer> VARIANT = index(0, Metadata::VarInt, 0);
         public static final Entry<Boolean> IS_PLAYING_DEAD = index(1, Metadata::Boolean, false);
         public static final Entry<Boolean> IS_FROM_BUCKET = index(2, Metadata::Boolean, false);
-    }
-
-    public static final class Bee extends AgeableMob {
-        public static final Entry<Byte> BEE_FLAGS = index(0, Metadata::Byte, (byte) 0);
-        public static final Entry<Boolean> IS_ROLLING = bitMask(0, (byte) 0x02, false);
-        public static final Entry<Boolean> HAS_STUNG = bitMask(0, (byte) 0x04, false);
-        public static final Entry<Boolean> HAS_NECTAR = bitMask(0, (byte) 0x08, false);
-        public static final Entry<Long> ANGER_END_TIME = index(1, Metadata::VarLong, -1L);
     }
 
     public static final class Fox extends AgeableMob {
@@ -366,84 +340,12 @@ public sealed class MetadataDef {
         public static final Entry<@Nullable UUID> SECOND_UUID = index(3, Metadata::OptUUID, null);
     }
 
-    public static final class Frog extends AgeableMob {
-        public static final Entry<RegistryKey<FrogVariant>> VARIANT = index(0, Metadata::FrogVariant,
-                FrogVariant.TEMPERATE);
-        public static final Entry<@Nullable Integer> TONGUE_TARGET = index(1, Metadata::OptVarInt, null);
-    }
-
-    public static final class Ocelot extends AgeableMob {
-        public static final Entry<Boolean> IS_TRUSTING = index(0, Metadata::Boolean, false);
-    }
-
-    public static final class Panda extends AgeableMob {
-        public static final Entry<Integer> BREED_TIMER = index(0, Metadata::VarInt, 0);
-        public static final Entry<Integer> SNEEZE_TIMER = index(1, Metadata::VarInt, 0);
-        public static final Entry<Integer> EAT_TIMER = index(2, Metadata::VarInt, 0);
-        public static final Entry<Byte> MAIN_GENE = index(3, Metadata::Byte, (byte) 0);
-        public static final Entry<Byte> HIDDEN_GENE = index(4, Metadata::Byte, (byte) 0);
-        public static final Entry<Byte> PANDA_FLAGS = index(5, Metadata::Byte, (byte) 0);
-        public static final Entry<Boolean> IS_SNEEZING = bitMask(5, (byte) 0x02, false);
-        public static final Entry<Boolean> IS_ROLLING = bitMask(5, (byte) 0x04, false);
-        public static final Entry<Boolean> IS_SITTING = bitMask(5, (byte) 0x08, false);
-        public static final Entry<Boolean> IS_ON_BACK = bitMask(5, (byte) 0x10, false);
-    }
-
-    public static final class Chicken extends AgeableMob {
-        public static final Entry<RegistryKey<ChickenVariant>> VARIANT = index(0, Metadata::ChickenVariant,
-                ChickenVariant.TEMPERATE);
-        public static final Entry<RegistryKey<ChickenSoundVariant>> SOUND_VARIANT = index(1, Metadata::ChickenSoundVariant, ChickenSoundVariant.CLASSIC);
-    }
-
-    public static final class Cow extends AgeableMob {
-        public static final Entry<RegistryKey<CowVariant>> VARIANT = index(0, Metadata::CowVariant,
-                CowVariant.TEMPERATE);
-        public static final Entry<RegistryKey<CowSoundVariant>> SOUND_VARIANT = index(1, Metadata::CowSoundVariant, CowSoundVariant.CLASSIC);
-    }
-
-    public static final class Pig extends AgeableMob {
-        public static final Entry<Integer> BOOST_TIME = index(0, Metadata::VarInt, 0);
-        public static final Entry<RegistryKey<PigVariant>> VARIANT = index(1, Metadata::PigVariant,
-                PigVariant.TEMPERATE);
-        public static final Entry<RegistryKey<PigSoundVariant>> SOUND_VARIANT = index(2, Metadata::PigSoundVariant, PigSoundVariant.CLASSIC);
-    }
-
     public static final class Rabbit extends AgeableMob {
         public static final Entry<Integer> TYPE = index(0, Metadata::VarInt, 0);
     }
 
-    public static final class Turtle extends AgeableMob {
-        public static final Entry<Boolean> HAS_EGG = index(0, Metadata::Boolean, false);
-        public static final Entry<Boolean> IS_LAYING_EGG = index(1, Metadata::Boolean, false);
-    }
-
-    public static final class PolarBear extends AgeableMob {
-        public static final Entry<Boolean> IS_STANDING_UP = index(0, Metadata::Boolean, false);
-    }
-
     public static final class Mooshroom extends AgeableMob {
         public static final Entry<Integer> VARIANT = index(0, Metadata::VarInt, 0);
-    }
-
-    public static final class Hoglin extends AgeableMob {
-        public static final Entry<Boolean> IMMUNE_ZOMBIFICATION = index(0, Metadata::Boolean, false);
-    }
-
-    public static final class Sheep extends AgeableMob {
-        public static final Entry<Byte> SHEEP_FLAGS = index(0, Metadata::Byte, (byte) 0);
-        public static final Entry<Byte> COLOR_ID = byteMask(0, (byte) 0x0F, 0, (byte) 0);
-        public static final Entry<Boolean> IS_SHEARED = bitMask(0, (byte) 0x10, false);
-    }
-
-    public static final class Strider extends AgeableMob {
-        public static final Entry<Integer> FUNGUS_BOOST = index(0, Metadata::VarInt, 0);
-        public static final Entry<Boolean> IS_SHAKING = index(1, Metadata::Boolean, false);
-    }
-
-    public static final class Goat extends AgeableMob {
-        public static final Entry<Boolean> IS_SCREAMING_GOAT = index(0, Metadata::Boolean, false);
-        public static final Entry<Boolean> HAS_LEFT_HORN = index(1, Metadata::Boolean, true);
-        public static final Entry<Boolean> HAS_RIGHT_HORN = index(2, Metadata::Boolean, true);
     }
 
     public static sealed class TameableAnimal extends AgeableMob {
@@ -453,33 +355,8 @@ public sealed class MetadataDef {
         public static final Entry<@Nullable UUID> OWNER = index(1, Metadata::OptUUID, null);
     }
 
-    public static final class Cat extends TameableAnimal {
-        public static final Entry<RegistryKey<CatVariant>> VARIANT = index(0, Metadata::CatVariant, CatVariant.BLACK);
-        public static final Entry<Boolean> IS_LYING = index(1, Metadata::Boolean, false);
-        public static final Entry<Boolean> IS_RELAXED = index(2, Metadata::Boolean, false);
-        public static final Entry<Integer> COLLAR_COLOR = index(3, Metadata::VarInt, 14);
-        public static final Entry<RegistryKey<CatSoundVariant>> SOUND_VARIANT = index(4, Metadata::CatSoundVariant, CatSoundVariant.CLASSIC);
-    }
-
-    public static final class Wolf extends TameableAnimal {
-        public static final Entry<Boolean> IS_BEGGING = index(0, Metadata::Boolean, false);
-        public static final Entry<Integer> COLLAR_COLOR = index(1, Metadata::VarInt, 14);
-        public static final Entry<Long> ANGER_TIME = index(2, Metadata::VarLong, -1L);
-        public static final Entry<RegistryKey<WolfVariant>> VARIANT = index(3, Metadata::WolfVariant, WolfVariant.PALE);
-        public static final Entry<RegistryKey<WolfSoundVariant>> SOUND_VARIANT = index(4, Metadata::WolfSoundVariant,
-                WolfSoundVariant.CLASSIC);
-    }
-
     public static final class Parrot extends TameableAnimal {
         public static final Entry<Integer> VARIANT = index(0, Metadata::VarInt, 0);
-    }
-
-    public static sealed class AbstractNautilus extends TameableAnimal {
-        public static final Entry<Boolean> DASH = index(0, Metadata::Boolean, false);
-    }
-
-    public static final class ZombieNautilus extends AbstractNautilus {
-        public static final Entry<RegistryKey<ZombieNautilusVariant>> VARIANT = index(0, Metadata::ZombieNautilusVariant, ZombieNautilusVariant.TEMPERATE);
     }
 
     public static sealed class AbstractVillager extends AgeableMob {
@@ -490,11 +367,6 @@ public sealed class MetadataDef {
         public static final Entry<VillagerMeta.VillagerData> VARIANT = index(0, Metadata::VillagerData,
                 VillagerMeta.VillagerData.DEFAULT);
         public static final Entry<Boolean> IS_FINALIZED = index(1, Metadata::Boolean, false);
-    }
-
-    public static final class HappyGhast extends AgeableMob {
-        public static final Entry<Boolean> IS_LEASH_HOLDER = index(0, Metadata::Boolean, false);
-        public static final Entry<Boolean> STAYS_STILL = index(1, Metadata::Boolean, false);
     }
 
     public static final class CopperGolem extends Mob {
@@ -509,12 +381,6 @@ public sealed class MetadataDef {
         public static final Entry<Integer> LEFT_HEAD_TARGET = index(1, Metadata::VarInt, 0);
         public static final Entry<Integer> RIGHT_HEAD_TARGET = index(2, Metadata::VarInt, 0);
         public static final Entry<Integer> INVULNERABLE_TIME = index(3, Metadata::VarInt, 0);
-    }
-
-    public static final class Zombie extends Mob {
-        public static final Entry<Boolean> IS_BABY = index(0, Metadata::Boolean, false);
-        public static final Entry<Integer> SPECIAL_TYPE = index(1, Metadata::VarInt, 0);
-        public static final Entry<Boolean> IS_BECOMING_DROWNED = index(2, Metadata::Boolean, false);
     }
 
     public static final class EnderDragon extends Mob {

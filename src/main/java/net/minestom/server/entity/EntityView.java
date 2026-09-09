@@ -223,8 +223,11 @@ final class EntityView {
             final boolean previous = UPDATER.getAndSet(this, autoViewable ? 1 : 0) == 1;
             if (previous != autoViewable) {
                 synchronized (mutex) {
-                    if (autoViewable) update(loopPredicate, addition);
-                    else update(this::isRegistered, removal);
+                    final Consumer<T> action = autoViewable ? addition : removal;
+                    // Non-players have no viewer consumers, there is nothing to send
+                    if (action == null) return;
+                    if (autoViewable) update(loopPredicate, action);
+                    else update(this::isRegistered, action);
                 }
             }
         }
@@ -243,6 +246,10 @@ final class EntityView {
         }
 
         void updateRule0(@Nullable Predicate<? super T> predicate) {
+            final Consumer<T> addition = this.addition;
+            final Consumer<T> removal = this.removal;
+            // Non-players have no viewer consumers, there is nothing to send
+            if (addition == null || removal == null) return;
             if (predicate == null) {
                 update(loopPredicate, entity -> {
                     if (!isRegistered(entity)) addition.accept(entity);

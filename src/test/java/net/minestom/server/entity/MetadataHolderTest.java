@@ -98,4 +98,22 @@ public class MetadataHolderTest {
         assertDoesNotThrow(() -> new MetadataHolder((Entity) null));
         assertThrows(NullPointerException.class, () -> new MetadataHolder((Consumer<Map<Integer, Metadata.Entry<?>>>) null));
     }
+
+    @Test
+    public void nestedNotifySuppressionKeepsOneBatch() {
+        List<Map<Integer, Metadata.Entry<?>>> received = new ArrayList<>();
+        MetadataHolder holder = new MetadataHolder(received::add);
+
+        holder.setNotifyAboutChanges(false);
+        holder.set(MetadataDef.CUSTOM_NAME_VISIBLE, true);
+        holder.setNotifyAboutChanges(false); // Nested batch
+        holder.set(MetadataDef.AIR_TICKS, 42);
+        holder.setNotifyAboutChanges(true); // Inner batch ends, the outer one is still open
+        assertTrue(received.isEmpty(), "the inner batch flushed the outer one");
+
+        holder.set(MetadataDef.IS_SILENT, true);
+        holder.setNotifyAboutChanges(true);
+        assertEquals(1, received.size());
+        assertEquals(3, received.getFirst().size());
+    }
 }

@@ -37,10 +37,10 @@ public class EntityTrackerTest {
         assertTrue(chunkEntities.isEmpty());
 
         tracker.register(ent1, Vec.ZERO, EntityTracker.Target.ENTITIES, updater);
-        assertEquals(1, chunkEntities.size());
+        assertEquals(1, tracker.chunkEntities(Vec.ZERO, EntityTracker.Target.ENTITIES).size());
 
         tracker.unregister(ent1, EntityTracker.Target.ENTITIES, updater);
-        assertEquals(0, chunkEntities.size());
+        assertEquals(0, tracker.chunkEntities(Vec.ZERO, EntityTracker.Target.ENTITIES).size());
     }
 
     @Test
@@ -245,7 +245,8 @@ public class EntityTrackerTest {
         assertTrue(chunkEntities.isEmpty());
         tracker.register(ent1, Vec.ZERO, EntityTracker.Target.ENTITIES, updater);
         assertEquals(1, entities.size());
-        assertEquals(1, chunkEntities.size());
+        // An empty chunk has no bucket to view, the collection has to be queried again once populated
+        assertEquals(1, tracker.chunkEntities(Vec.ZERO, EntityTracker.Target.ENTITIES).size());
 
         assertThrows(Exception.class, () -> entities.add(new Entity(EntityType.ZOMBIE)));
         assertThrows(Exception.class, () -> chunkEntities.add(new Entity(EntityType.ZOMBIE)));

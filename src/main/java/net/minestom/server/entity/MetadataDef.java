@@ -548,7 +548,8 @@ public sealed class MetadataDef {
     }
 
     public static final class SnowGolem extends Mob {
-        public static final Entry<Byte> SNOW_GOLEM_FLAGS = index(0, Metadata::Byte, (byte) 0);
+        // Vanilla defaults this byte to 0x10, matching PUMPKIN_HAT defaulting to true
+        public static final Entry<Byte> SNOW_GOLEM_FLAGS = index(0, Metadata::Byte, (byte) 0x10);
         public static final Entry<Boolean> PUMPKIN_HAT = bitMask(0, (byte) 0x10, true);
     }
 
@@ -707,10 +708,23 @@ public sealed class MetadataDef {
                                                            T defaultValue) implements Entry<T> {
         }
 
-        record BitMask(int index, byte bitMask, Boolean defaultValue) implements Entry<Boolean> {
+        /**
+         * A single bit of a byte-typed metadata entry.
+         *
+         * @param containerDefault the default value of the whole byte this mask lives in, used as the
+         *                         seed when the byte has not been written yet
+         */
+        record BitMask(int index, byte bitMask, Boolean defaultValue, byte containerDefault) implements Entry<Boolean> {
         }
 
-        record ByteMask(int index, byte byteMask, int offset, Byte defaultValue) implements Entry<Byte> {
+        /**
+         * A sub-range of bits of a byte-typed metadata entry.
+         *
+         * @param containerDefault the default value of the whole byte this mask lives in, used as the
+         *                         seed when the byte has not been written yet
+         */
+        record ByteMask(int index, byte byteMask, int offset, Byte defaultValue,
+                        byte containerDefault) implements Entry<Byte> {
         }
     }
 }

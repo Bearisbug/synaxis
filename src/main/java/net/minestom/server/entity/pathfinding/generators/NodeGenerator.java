@@ -56,7 +56,9 @@ public interface NodeGenerator {
     default boolean canMoveTowards(Block.Getter getter, Point start, Point end, BoundingBox boundingBox) {
         final Point diff = end.sub(start);
 
-        if (getter.getBlock(end) != Block.AIR) return false;
+        // Whether the destination is reachable is decided by the swept collision below. A block type
+        // check cannot answer it: it rejects every non-collidable block (crops, carpets, torches,
+        // water) and, being a reference comparison, even CAVE_AIR and VOID_AIR.
         PhysicsResult res = CollisionUtils.handlePhysics(getter, boundingBox,
                 start.asPos(), diff.asVec(), null, false);
         return !res.collisionZ() && !res.collisionY() && !res.collisionX();

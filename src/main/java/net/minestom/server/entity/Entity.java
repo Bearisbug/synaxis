@@ -59,6 +59,7 @@ import net.minestom.server.monitoring.EventsJFR;
 import net.minestom.server.network.packet.server.CachedPacket;
 import net.minestom.server.network.packet.server.play.AttachEntityPacket;
 import net.minestom.server.network.packet.server.play.DestroyEntitiesPacket;
+import net.minestom.server.network.packet.server.play.EntityEffectPacket;
 import net.minestom.server.network.packet.server.play.EntityHeadLookPacket;
 import net.minestom.server.network.packet.server.play.EntityMetaDataPacket;
 import net.minestom.server.network.packet.server.play.EntityPositionAndRotationPacket;
@@ -445,16 +446,16 @@ public class Entity implements Viewable, Tickable, Schedulable, Snapshotable, Ev
 
         if (chunks != null && chunks.length > 0) {
             // Chunks need to be loaded before the teleportation can happen
-            return ChunkUtils.optionalLoadAll(instance, chunks, null).thenRun(endCallback);
+            return ChunkUtils.optionalLoadAll(instance, chunks, null).thenRun(() -> runOwned(endCallback));
         }
         // Assumes globalPosition is already clamped
         final Pos currentPosition = this.position;
         if (!currentPosition.sameChunk(globalPosition)) {
             // Ensure that the chunk is loaded
-            return instance.loadOptionalChunk(globalPosition).thenRun(endCallback);
+            return instance.loadOptionalChunk(globalPosition).thenRun(() -> runOwned(endCallback));
         } else {
             // Position is in the same chunk, keep it sync
-            endCallback.run();
+            runOwned(endCallback);
             return AsyncUtils.empty();
         }
     }
@@ -571,6 +572,8 @@ public class Entity implements Viewable, Tickable, Schedulable, Snapshotable, Ev
         Check.stateCondition(!isActive(), "Entities must be in an instance before adding viewers");
         if (!viewEngine.manualAdd(player)) return false;
         updateNewViewer(player);
+        // The automatic path sends this from EntityView, without it the passengers show up dismounted
+        if (hasPassenger()) player.sendPacket(getPassengersPacket());
         return true;
     }
 
@@ -605,6 +608,31 @@ public class Entity implements Viewable, Tickable, Schedulable, Snapshotable, Ev
         }
         // Head position
         player.sendPacket(new EntityHeadLookPacket(getEntityId(), headRotation));
+        // Effects, only sent once on #addEffect otherwise
+        player.sendPackets(getEffectPackets());
+    }
+
+    /**
+     * Builds the packets re-applying every currently active effect of this entity, carrying the
+     * remaining duration rather than the original one.
+     *
+     * @return the effect packets, empty if the entity has no active effect
+     */
+    @ApiStatus.Internal
+    public List<EntityEffectPacket> getEffectPackets() {
+        final List<TimedPotion> effects = this.effects;
+        if (effects.isEmpty()) return List.of();
+        final long aliveTicks = getAliveTicks();
+        List<EntityEffectPacket> packets = new ArrayList<>(effects.size());
+        for (TimedPotion timedPotion : effects) {
+            final Potion potion = timedPotion.potion();
+            final int duration = potion.duration();
+            final int remaining = duration == Potion.INFINITE_DURATION ? duration
+                    : (int) Math.max(0, timedPotion.startingTicks() + duration - aliveTicks);
+            packets.add(new EntityEffectPacket(getEntityId(),
+                    new Potion(potion.effect(), potion.amplifier(), remaining, potion.flags())));
+        }
+        return packets;
     }
 
     /**
@@ -643,8 +671,12 @@ public class Entity implements Viewable, Tickable, Schedulable, Snapshotable, Ev
      * @param entityType the new entity type
      */
     public synchronized void switchEntityType(EntityType entityType) {
+        final MetadataHolder previousMetadata = this.metadata;
         this.entityType = entityType;
         this.metadata = new MetadataHolder(this::notifyMetadataChanges);
+        // The type specific indices cannot be carried over, but the shared entity ones (glowing,
+        // invisible, custom name, gravity, ...) have the same meaning for every type
+        this.metadata.copySharedEntries(previousMetadata);
         this.entityMeta = MetadataHolder.createMeta(entityType, this, this.metadata);
 
         this.aerodynamics = aerodynamics.withAirResistance(
@@ -889,6 +921,19 @@ public class Entity implements Viewable, Tickable, Schedulable, Snapshotable, Ev
         return currentChunk;
     }
 
+    /**
+     * Runs {@code callback} while owning this entity.
+     * <p>
+     * The continuations of {@link #setInstance(Instance, Pos)} and {@link #teleport(Pos)} run on the
+     * (virtual) thread that loaded the chunk, they must not write the entity state while its own
+     * {@link net.minestom.server.thread.TickThread} is ticking it.
+     */
+    private void runOwned(Runnable callback) {
+        // No tick thread owns the entity yet, nothing can be racing with us
+        if (acquirable.assignedThread() == null) callback.run();
+        else acquirable.sync(_ -> callback.run());
+    }
+
     @ApiStatus.Internal
     protected void refreshCurrentChunk(Chunk currentChunk) {
         this.currentChunk = currentChunk;
@@ -922,7 +967,11 @@ public class Entity implements Viewable, Tickable, Schedulable, Snapshotable, Ev
         }
         AddEntityToInstanceEvent event = new AddEntityToInstanceEvent(instance, this);
         EventDispatcher.call(event);
-        if (event.isCancelled()) return null; // TODO what to return?
+        if (event.isCancelled()) {
+            // The instance has not been set, callers chaining on the future must not proceed as if it had
+            return CompletableFuture.failedFuture(
+                    new IllegalStateException("AddEntityToInstanceEvent has been cancelled"));
+        }
 
         if (previousInstance != null) removeFromInstance(previousInstance);
         if (this instanceof Player player) instance.bossBars().forEach(player::showBossBar);
@@ -936,8 +985,11 @@ public class Entity implements Viewable, Tickable, Schedulable, Snapshotable, Ev
         this.lastSyncedPosition = spawnPosition;
         this.previousPhysicsResult = null;
         this.instance = instance;
-        return instance.loadOptionalChunk(spawnPosition).thenAccept(chunk -> {
+        return instance.loadOptionalChunk(spawnPosition).thenAccept(chunk -> runOwned(() -> {
             try {
+                // The entity may have been removed while the spawn chunk was loading, registering it
+                // now would leave a ghost entity that #remove can never reach again
+                if (isRemoved()) return;
                 Objects.requireNonNull(chunk, "Entity has been placed in an unloaded chunk!");
                 refreshCurrentChunk(chunk);
                 if (this instanceof Player player) {
@@ -951,7 +1003,7 @@ public class Entity implements Viewable, Tickable, Schedulable, Snapshotable, Ev
             } catch (Exception e) {
                 MinecraftServer.getExceptionManager().handleException(e);
             }
-        });
+        }));
     }
 
     public CompletableFuture<Void> setInstance(Instance instance, Point spawnPosition) {
@@ -996,6 +1048,7 @@ public class Entity implements Viewable, Tickable, Schedulable, Snapshotable, Ev
      * @param velocity the new entity velocity
      */
     public void setVelocity(Vec velocity) {
+        this.acquirable.assertOwnership();
         EntityVelocityEvent entityVelocityEvent = new EntityVelocityEvent(this, velocity);
         EventDispatcher.callCancellable(entityVelocityEvent, () -> {
             this.velocity = entityVelocityEvent.getVelocity();
@@ -1090,6 +1143,7 @@ public class Entity implements Viewable, Tickable, Schedulable, Snapshotable, Ev
      * @throws IllegalStateException if {@link #getInstance()} returns null or the passenger cannot be added
      */
     public void addPassenger(Entity entity) {
+        this.acquirable.assertOwnership();
         final Instance currentInstance = this.instance;
         Check.stateCondition(currentInstance == null, "You need to set an instance using Entity#setInstance");
         Check.stateCondition(entity == getVehicle(), "Cannot add the entity vehicle as a passenger");
@@ -1114,6 +1168,7 @@ public class Entity implements Viewable, Tickable, Schedulable, Snapshotable, Ev
      * @throws IllegalStateException if {@link #getInstance()} returns null
      */
     public void removePassenger(Entity entity) {
+        this.acquirable.assertOwnership();
         Check.stateCondition(instance == null, "You need to set an instance using Entity#setInstance");
         if (!passengers.remove(entity)) return;
         entity.vehicle = null;
@@ -1300,8 +1355,12 @@ public class Entity implements Viewable, Tickable, Schedulable, Snapshotable, Ev
     }
 
     protected void updatePose() {
-        if (entityMeta.isFlyingWithElytra()) {
+        if (this instanceof LivingEntity living && living.isDead()) {
+            setPose(EntityPose.DYING);
+        } else if (entityMeta.isFlyingWithElytra()) {
             setPose(EntityPose.FALL_FLYING);
+        } else if (entityMeta instanceof LivingEntityMeta livingMeta && livingMeta.getBedInWhichSleepingPosition() != null) {
+            setPose(EntityPose.SLEEPING);
         } else if (entityMeta.isSwimming()) {
             setPose(EntityPose.SWIMMING);
         } else if (entityMeta instanceof LivingEntityMeta livingMeta && livingMeta.isInRiptideSpinAttack()) {
@@ -1390,7 +1449,9 @@ public class Entity implements Viewable, Tickable, Schedulable, Snapshotable, Ev
         final var previousPosition = this.position;
         final Pos position = clampPosition(ignoreView ? previousPosition.withCoord(newPosition) : newPosition);
         final Pos lastSyncedPosition = this.lastSyncedPosition;
-        if (position.equals(lastSyncedPosition)) return;
+        // The synced position lags behind the real one whenever packets are skipped, so it alone
+        // cannot tell whether the entity actually has to move
+        if (position.equals(lastSyncedPosition) && position.equals(previousPosition)) return;
         setPositionInternal(position, ignoreView ? headRotation : position.yaw());
         this.previousPosition = previousPosition;
         if (!position.samePoint(previousPosition)) refreshCoordinate(position);
@@ -1412,7 +1473,7 @@ public class Entity implements Viewable, Tickable, Schedulable, Snapshotable, Ev
             // Send relative 0 velocity to avoid affecting it in this case
             PacketViewableUtils.prepareViewablePacket(chunk, new EntityTeleportPacket(getEntityId(), position,
                     Vec.ZERO, RelativeFlags.DELTA_COORD, isOnGround()), this);
-            nextSynchronizationTick = synchronizationTicks + 1;
+            nextSynchronizationTick = ticks + synchronizationTicks;
         } else if (positionChange && viewChange) {
             PacketViewableUtils.prepareViewablePacket(chunk, EntityPositionAndRotationPacket.getPacket(getEntityId(), position,
                     lastSyncedPosition, isOnGround()), this);
@@ -1619,7 +1680,8 @@ public class Entity implements Viewable, Tickable, Schedulable, Snapshotable, Ev
         remove(true);
     }
 
-    protected void remove(boolean permanent) {
+    protected synchronized void remove(boolean permanent) {
+        this.acquirable.assertOwnership();
         if (isRemoved()) return;
         EventDispatcher.call(new EntityDespawnEvent(this));
         try {
@@ -1723,7 +1785,15 @@ public class Entity implements Viewable, Tickable, Schedulable, Snapshotable, Ev
     // Currently file-private so it can be used in MetadataHolder, planned to be private.
     void notifyMetadataChanges(Map<Integer, Metadata.Entry<?>> changes) {
         if (!isActive()) return;
-        sendPacketToViewersAndSelf(new EntityMetaDataPacket(getEntityId(), changes));
+        final EntityMetaDataPacket packet = new EntityMetaDataPacket(getEntityId(), changes);
+        if (this instanceof Player && entityType != EntityType.PLAYER) {
+            // A player is never its own viewer, so its client never received the destroy/spawn pair
+            // sent by #switchEntityType and still reads its own entity with the player layout.
+            // Sending the new layout to it is a protocol error and disconnects the player (#3057).
+            sendPacketToViewers(packet);
+            return;
+        }
+        sendPacketToViewersAndSelf(packet);
     }
 
     /**

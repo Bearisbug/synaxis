@@ -308,6 +308,7 @@ public class InstanceContainer extends Instance {
         this.chunks.remove(CoordConversion.chunkIndex(chunkX, chunkZ));
         chunk.unload();
         chunkLoader.unloadChunk(chunk);
+        getEntityTracker().unregisterViewable(chunk.viewable);
         var dispatcher = MinecraftServer.process().dispatcher();
         dispatcher.deletePartition(chunk);
     }

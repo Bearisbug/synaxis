@@ -39,6 +39,7 @@ import net.minestom.server.registry.RegistryKey;
 import net.minestom.server.scoreboard.Team;
 import net.minestom.server.sound.SoundEvent;
 import net.minestom.server.thread.Acquirable;
+import net.minestom.server.utils.MathUtils;
 import net.minestom.server.utils.block.BlockIterator;
 import net.minestom.server.utils.time.Cooldown;
 import net.minestom.server.utils.time.TimeUnit;
@@ -109,8 +110,14 @@ public class LivingEntity extends Entity implements EquipmentHandler {
     /**
      * Constructor which allows to specify an UUID. Only use if you know what you are doing!
      */
+    @SuppressWarnings("this-escape") // Same pattern as EntityCreature, the entity is not usable until spawned
     public LivingEntity(EntityType entityType, UUID uuid) {
         super(entityType, uuid);
+        // Without this a bare LivingEntity spawns with the 1 HP field default and its health metadata
+        // is never written; EntityCreature and Player were the only ones healing themselves
+        this.health = (float) getAttributeValue(Attribute.MAX_HEALTH);
+        final LivingEntityMeta meta = getLivingEntityMeta();
+        if (meta != null) meta.setHealth(this.health);
     }
 
     public LivingEntity(EntityType entityType) {
@@ -271,6 +278,7 @@ public class LivingEntity extends Entity implements EquipmentHandler {
      * Kills the entity, trigger the {@link EntityDeathEvent} event.
      */
     public void kill() {
+        if (isDead()) return;
         refreshIsDead(true); // So the entity isn't killed over and over again
         triggerStatus((byte) EntityStatuses.LivingEntity.PLAY_DEATH_SOUND); // Start death animation status
         setPose(EntityPose.DYING);
@@ -423,9 +431,14 @@ public class LivingEntity extends Entity implements EquipmentHandler {
      * @param health the new entity health
      */
     public void setHealth(float health) {
-        this.health = Math.min(health, (float) getAttributeValue(Attribute.MAX_HEALTH));
-        if (this.health <= 0 && !isDead) {
-            kill();
+        acquirable().assertOwnership();
+        this.health = MathUtils.clamp(health, 0, (float) getAttributeValue(Attribute.MAX_HEALTH));
+        if (this.health <= 0) {
+            if (!isDead) kill();
+        } else if (isDead) {
+            // Healing back above zero revives the entity. Without this, cancelling a death by healing
+            // in EntityDeathEvent leaves isDead latched and damage() rejects everything afterwards.
+            refreshIsDead(false);
         }
         LivingEntityMeta meta = getLivingEntityMeta();
         if (meta != null) {
@@ -481,6 +494,10 @@ public class LivingEntity extends Entity implements EquipmentHandler {
      * @param attributeInstance the modified attribute instance
      */
     protected void onAttributeChanged(AttributeInstance attributeInstance) {
+        // Lowering the maximum leaves the current health above it until the next setHealth otherwise
+        if (attributeInstance.attribute() == Attribute.MAX_HEALTH && getHealth() > attributeInstance.getValue()) {
+            setHealth((float) attributeInstance.getValue());
+        }
         if (!shouldSendAttributes()) return;
 
         boolean self = false;
@@ -554,10 +571,12 @@ public class LivingEntity extends Entity implements EquipmentHandler {
     @Override
     public void updateNewViewer(Player player) {
         super.updateNewViewer(player);
-        player.sendPacket(this.getEquipmentsPacket());
-
-        if (shouldSendAttributes())
+        // set_equipment and the attributes are only valid for living entity types, sending them for a
+        // LivingEntity carrying a non-living type is a protocol error on the client
+        if (shouldSendAttributes()) {
+            player.sendPacket(this.getEquipmentsPacket());
             player.sendPacket(this.getPropertiesPacket());
+        }
     }
 
     @Override

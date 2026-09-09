@@ -50,7 +50,7 @@ public class EntityVelocityIntegrationTest {
         entity.setInstance(instance, new Pos(0, 40, 0)).join();
         env.tick();
         env.tick(); // Ensures the entity is onGround
-        entity.takeKnockback(0.4f, 0, -1);
+        entity.acquirable().sync(_ -> entity.takeKnockback(0.4f, 0, -1));
 
         testMovement(env, entity, new Vec(0.0, 40.0, 0.0),
                 new Vec(0.0, 40.360800005197525, 0.4000000059604645),
@@ -81,8 +81,10 @@ public class EntityVelocityIntegrationTest {
         entity.setInstance(instance, new Pos(0, 40, 0)).join();
         env.tick();
         env.tick(); // Ensures the entity is onGround
-        entity.takeKnockback(0.4f, 0, -1);
-        entity.takeKnockback(0.5f, 0, -1);
+        entity.acquirable().sync(_ -> {
+            entity.takeKnockback(0.4f, 0, -1);
+            entity.takeKnockback(0.5f, 0, -1);
+        });
 
         assertTrue(entity.hasVelocity());
 
@@ -186,7 +188,7 @@ public class EntityVelocityIntegrationTest {
         AtomicInteger i = new AtomicInteger();
         BooleanSupplier tickLoopCondition = () -> i.getAndIncrement() < Math.max(entity.getSynchronizationTicks() - 1, 19);
 
-        entity.setVelocity(new Vec(0, 5, 0));
+        entity.acquirable().sync(_ -> entity.setVelocity(new Vec(0, 5, 0)));
         var tracker = viewerConnection.trackIncoming(EntityVelocityPacket.class);
         i.set(0);
         env.tickWhile(tickLoopCondition, null);
@@ -208,7 +210,7 @@ public class EntityVelocityIntegrationTest {
         env.tick(); // Ensure the entity is onGround
 
         var initialVelocity = new Vec(10, 0, 25);
-        entity.setVelocity(initialVelocity);
+        entity.acquirable().sync(_ -> entity.setVelocity(initialVelocity));
         env.tick();
 
         double horizontalAirResistance = entity.getAerodynamics().horizontalAirResistance();

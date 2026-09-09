@@ -146,6 +146,7 @@ final class EntityTrackerImpl implements EntityTracker {
         final TargetEntry<Entity> entry = targetEntries[target.ordinal()];
         @SuppressWarnings("unchecked")
         var chunkEntities = (List<T>) entry.chunkEntities(CoordConversion.chunkIndex(chunkX, chunkZ));
+        if (chunkEntities == null) return List.of();
         return Collections.unmodifiableList(chunkEntities);
     }
 
@@ -211,7 +212,15 @@ final class EntityTrackerImpl implements EntityTracker {
     @Override
     public Viewable viewable(List<SharedInstance> sharedInstances, int chunkX, int chunkZ) {
         var entry = targetEntries[Target.PLAYERS.ordinal()];
-        return entry.viewers.computeIfAbsent(new ChunkViewKey(sharedInstances, chunkX, chunkZ), ChunkView::new);
+        return entry.viewers.computeIfAbsent(new ChunkViewKey(chunkX, chunkZ), key -> new ChunkView(key, sharedInstances));
+    }
+
+    @Override
+    public void unregisterViewable(Viewable viewable) {
+        if (!(viewable instanceof ChunkView chunkView))
+            throw new IllegalArgumentException("Viewable is not a chunk view");
+        var entry = targetEntries[Target.PLAYERS.ordinal()];
+        entry.viewers.remove(chunkView.key, chunkView);
     }
 
     private static class EntityTrackerEntry {
@@ -255,15 +264,9 @@ final class EntityTrackerImpl implements EntityTracker {
                 });
     }
 
-    record ChunkViewKey(List<SharedInstance> sharedInstances, int chunkX, int chunkZ) {
-        @Override
-        public boolean equals(Object obj) {
-            if (this == obj) return true;
-            if (!(obj instanceof ChunkViewKey(List<SharedInstance> instances, int x, int z))) return false;
-            return sharedInstances == instances &&
-                    chunkX == x &&
-                    chunkZ == z;
-        }
+    // The shared instances are deliberately not part of the key: InstanceContainer#getSharedInstances
+    // hands out a new wrapper on every call, so keying on it makes every view unique and unreusable.
+    record ChunkViewKey(int chunkX, int chunkZ) {
     }
 
     static final class TargetEntry<T extends Entity> {
@@ -278,28 +281,43 @@ final class EntityTrackerImpl implements EntityTracker {
             this.target = target;
         }
 
-        List<T> chunkEntities(long index) {
-            return chunkEntities.computeIfAbsent(index, _ -> new CopyOnWriteArrayList<>());
+        @Nullable List<T> chunkEntities(long index) {
+            return chunkEntities.get(index);
         }
 
         void addToChunk(long index, T entity) {
-            chunkEntities(index).add(entity);
+            while (true) {
+                List<T> entities = chunkEntities.computeIfAbsent(index, _ -> new CopyOnWriteArrayList<>());
+                // The bucket monitor makes the "became empty" and "is being filled" decisions mutually
+                // exclusive, so a concurrent removal cannot drop a bucket we just added an entity to.
+                synchronized (entities) {
+                    if (chunkEntities.get(index) != entities) continue; // Bucket got dropped, retry
+                    entities.add(entity);
+                    return;
+                }
+            }
         }
 
         void removeFromChunk(long index, T entity) {
             List<T> entities = chunkEntities.get(index);
-            if (entities != null) entities.remove(entity);
+            if (entities == null) return;
+            synchronized (entities) {
+                entities.remove(entity);
+                if (entities.isEmpty()) chunkEntities.remove(index, entities);
+            }
         }
     }
 
     private final class ChunkView implements Viewable {
         private final ChunkViewKey key;
+        private final List<SharedInstance> sharedInstances;
         private final int chunkX, chunkZ;
         final Set<Player> set = new SetImpl();
         private int lastReferenceCount;
 
-        private ChunkView(ChunkViewKey key) {
+        private ChunkView(ChunkViewKey key, List<SharedInstance> sharedInstances) {
             this.key = key;
+            this.sharedInstances = sharedInstances;
 
             this.chunkX = key.chunkX;
             this.chunkZ = key.chunkZ;
@@ -323,8 +341,8 @@ final class EntityTrackerImpl implements EntityTracker {
         private Collection<Player> references() {
             Int2ObjectOpenHashMap<Player> entityMap = new Int2ObjectOpenHashMap<>(lastReferenceCount);
             collectPlayers(EntityTrackerImpl.this, entityMap);
-            if (!key.sharedInstances.isEmpty()) {
-                for (SharedInstance instance : key.sharedInstances) {
+            if (!sharedInstances.isEmpty()) {
+                for (SharedInstance instance : sharedInstances) {
                     collectPlayers(instance.getEntityTracker(), entityMap);
                 }
             }

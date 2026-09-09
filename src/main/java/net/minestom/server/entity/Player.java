@@ -132,6 +132,7 @@ import net.minestom.server.timer.Scheduler;
 import net.minestom.server.utils.MathUtils;
 import net.minestom.server.utils.PacketSendingUtils;
 import net.minestom.server.utils.async.AsyncUtils;
+import net.minestom.server.utils.chunk.ChunkCache;
 import net.minestom.server.utils.chunk.ChunkUpdateLimitChecker;
 import net.minestom.server.utils.collection.ConcurrentMessageQueues;
 import net.minestom.server.utils.identity.NamedAndIdentified;
@@ -575,6 +576,7 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
                     // Skip refreshing self with a new viewer
                     if (!entity.getUuid().equals(getUuid()) && entity.isViewer(this)) {
                         entity.updateNewViewer(this);
+                        if (entity.hasPassenger()) sendPacket(entity.getPassengersPacket());
                     }
                 });
         teleport(respawnPosition).thenRun(this::refreshAfterTeleport).join();
@@ -591,6 +593,8 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
         triggerStatus((byte) (EntityStatuses.Player.PERMISSION_LEVEL_0 + permissionLevel)); // Set permission level
         refreshAbilities();
         sendPacket(instance.createTimePacket());
+        // The client drops its own effect list when it processes the respawn packet
+        sendPackets(getEffectPackets());
     }
 
     /**
@@ -619,7 +623,7 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
     }
 
     @Override
-    public void remove(boolean permanent) {
+    public synchronized void remove(boolean permanent) {
         if (isRemoved()) return;
 
         if (permanent) {
@@ -650,6 +654,11 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
 
         // Remove from the tab-list
         PacketSendingUtils.broadcastPlayPacket(getRemovePlayerToList());
+
+        // Manual viewers are only tracked on the viewed entity, so nothing else would ever drop this
+        // player from the entities it was manually added to, keeping it (and its connection) alive
+        final Instance currentInstance = this.instance;
+        if (currentInstance != null) currentInstance.getEntities().forEach(entity -> entity.removeViewer(this));
 
         super.remove(permanent);
         // Prevent the player from being stuck in loading screen, or just unable to interact with the server
@@ -725,8 +734,14 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
         };
 
         var _ = CompletableFuture.allOf(futures.toArray(CompletableFuture[]::new))
-                .thenRun(() -> {
+                .whenComplete((_, throwable) -> {
+                    // A failing chunk must still release the latch, otherwise a caller joining from
+                    // the calling thread would wait on it forever.
                     scheduler.scheduleNextProcess(() -> {
+                        if (throwable != null) {
+                            future.completeExceptionally(throwable);
+                            return;
+                        }
                         runnable.accept(instance);
                         future.complete(null);
                     });
@@ -792,6 +807,8 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
         if (dimensionChange) sendDimension(instance.getDimensionType(), instance.getDimensionName());
 
         var _ = super.setInstance(instance, spawnPosition);
+        // AddEntityToInstanceEvent may have been cancelled, do not continue with a half-spawned player
+        if (this.instance != instance) return;
 
         if (updateChunks) {
             final int chunkX = spawnPosition.chunkX();
@@ -913,8 +930,15 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
         EntityPose oldPose = getPose();
         EntityPose newPose;
 
+        if (isDead()) {
+            // The dying pose must survive the per-tick pose refresh until the player respawns
+            if (oldPose != EntityPose.DYING) setPose(EntityPose.DYING);
+            return;
+        }
+
         // Figure out their expected state
         var meta = getEntityMeta();
+        meta.setSwimming(shouldSwim(meta.isSwimming()));
         if (meta.isFlyingWithElytra()) {
             newPose = EntityPose.FALL_FLYING;
         } else if (meta instanceof LivingEntityMeta livingMeta && livingMeta.getBedInWhichSleepingPosition() != null) {
@@ -942,6 +966,39 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
         }
 
         if (newPose != oldPose) setPose(newPose);
+    }
+
+    /**
+     * Nothing else in the server ever calls {@code setSwimming}, so the swimming pose was unreachable.
+     * Vanilla starts swimming when sprinting with the eyes submerged and keeps it while the body still
+     * touches water.
+     *
+     * @param swimming whether the player is currently swimming
+     * @return whether the player should be swimming
+     */
+    private boolean shouldSwim(boolean swimming) {
+        final Instance instance = this.instance;
+        if (instance == null) return false;
+        if (!isSprinting() || getVehicle() != null || isFlying() || getGameMode() == GameMode.SPECTATOR) return false;
+        final Block.Getter getter = new ChunkCache(instance, getChunk(), Block.AIR);
+        final Pos position = getPosition();
+        if (!swimming) {
+            // Starting to swim additionally requires the eyes to be submerged
+            final int eyeY = (int) Math.floor(position.y() + getEyeHeight());
+            if (!isWater(getter.getBlock(position.blockX(), eyeY, position.blockZ()))) return false;
+        }
+        var iterator = getBoundingBox().getBlocks(position);
+        while (iterator.hasNext()) {
+            final var blockPosition = iterator.next();
+            if (isWater(getter.getBlock(blockPosition.blockX(), blockPosition.blockY(), blockPosition.blockZ()))) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static boolean isWater(Block block) {
+        return block.compare(Block.WATER) || "true".equals(block.getProperty("waterlogged"));
     }
 
     /**
@@ -1119,43 +1176,42 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
 
     @Override
     public void setHealth(float health) {
-        sendPacket(new UpdateHealthPacket(health, food, foodSaturation));
+        // Clamp first, otherwise the client keeps showing the raw value with nothing to correct it
         super.setHealth(health);
+        sendPacket(new UpdateHealthPacket(getHealth(), food, foodSaturation));
     }
 
     /**
      * Gets the entity meta for the player.
      *
-     * <p>Note that this method will throw an exception if the player's entity type has
-     * been changed with {@link #switchEntityType(EntityType)}. It is wise to check
-     * {@link #getEntityType()} first.</p>
+     * @return the player meta, null if the player's entity type has been changed
+     * with {@link #switchEntityType(EntityType)}
      */
-    public PlayerMeta getPlayerMeta() {
-        return (PlayerMeta) super.getEntityMeta();
+    public @Nullable PlayerMeta getPlayerMeta() {
+        return super.getEntityMeta() instanceof PlayerMeta playerMeta ? playerMeta : null;
     }
 
     /**
      * Gets the player additional hearts.
      *
-     * <p>Note that this function is uncallable if the player has their entity type switched
-     * with {@link #switchEntityType(EntityType)}.</p>
-     *
-     * @return the player additional hearts
+     * @return the player additional hearts, 0 if the player's entity type has been switched
+     * with {@link #switchEntityType(EntityType)}
      */
     public float getAdditionalHearts() {
-        return getPlayerMeta().getAdditionalHearts();
+        final PlayerMeta meta = getPlayerMeta();
+        return meta == null ? 0 : meta.getAdditionalHearts();
     }
 
     /**
      * Changes the amount of additional hearts shown.
-     *
-     * <p>Note that this function is uncallable if the player has their entity type switched
-     * with {@link #switchEntityType(EntityType)}.</p>
+     * <p>
+     * Ignored if the player's entity type has been switched with {@link #switchEntityType(EntityType)}.
      *
      * @param additionalHearts the count of additional hearts
      */
     public void setAdditionalHearts(float additionalHearts) {
-        getPlayerMeta().setAdditionalHearts(additionalHearts);
+        final PlayerMeta meta = getPlayerMeta();
+        if (meta != null) meta.setAdditionalHearts(additionalHearts);
     }
 
     /**
@@ -1693,10 +1749,12 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
         this.settings = settings;
         boolean isInPlayState = getPlayerConnection().getClientState() == ConnectionState.PLAY;
         PlayerMeta playerMeta = getPlayerMeta();
-        if (isInPlayState) playerMeta.setNotifyAboutChanges(false);
-        playerMeta.setDisplayedSkinParts(settings.displayedSkinParts());
-        playerMeta.setMainHand(settings.mainHand());
-        if (isInPlayState) playerMeta.setNotifyAboutChanges(true);
+        if (playerMeta != null) {
+            if (isInPlayState) playerMeta.setNotifyAboutChanges(false);
+            playerMeta.setDisplayedSkinParts(settings.displayedSkinParts());
+            playerMeta.setMainHand(settings.mainHand());
+            if (isInPlayState) playerMeta.setNotifyAboutChanges(true);
+        }
         // Update view distance
         final Instance instance = this.instance;
         if (instance == null) return;

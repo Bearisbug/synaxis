@@ -160,7 +160,9 @@ public final class PacketReading {
             return emptyResult();
         }
         final int maxPacketSize = maxPacketSize(state);
-        if (packetLength < 0) throw new DataFormatException("Packet length negative: " + packetLength);
+        // A frame always contains at least the packet id var-int, a zero length would
+        // produce an empty slice and make the payload read run past its own segment.
+        if (packetLength <= 0) throw new DataFormatException("Packet length must be positive: " + packetLength);
         if (packetLength > maxPacketSize) throw new DataFormatException("Packet too large: " + packetLength);
         // READ PAYLOAD https://minecraft.wiki/w/Minecraft_Wiki:Projects/wiki.vg_merge/Protocol#Packet_format
         if (buffer.readableBytes() < packetLength) {
@@ -215,9 +217,15 @@ public final class PacketReading {
         }
     }
 
-    private static <T> T readPayload(NetworkBuffer buffer, PacketRegistry<T> registry) {
+    private static <T> T readPayload(NetworkBuffer buffer, PacketRegistry<T> registry) throws DataFormatException {
         final int packetId = buffer.read(VAR_INT);
-        final PacketRegistry.PacketInfo<T> packetInfo = registry.packetInfo(packetId);
+        final PacketRegistry.PacketInfo<T> packetInfo;
+        try {
+            packetInfo = registry.packetInfo(packetId);
+        } catch (IllegalStateException e) {
+            // An unknown id is the peer sending garbage, not an internal error
+            throw new DataFormatException(e.getMessage());
+        }
         final NetworkBuffer.Type<T> serializer = packetInfo.serializer();
         try {
             final T packet = serializer.read(buffer);

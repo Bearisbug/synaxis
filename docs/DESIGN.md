@@ -503,6 +503,26 @@ N/A — 无前端。客户端 Fabric 模组与其界面属于 M2。
   When next=2 进入登录
   Then 收到 LoginDisconnect engine:unsupported-version
 
+场景: M1.5 待确认 · 静态门面实例化后测试可并行 (REQ-013)
+  Given 引擎源码中不再有 MinecraftServer 静态访问器
+  When 开启 JUnit 并行执行运行全量测试
+  Then 0 失败，且总耗时低于串行基线
+
+场景: M1.5 待确认 · 配置对象取代全局开关 (REQ-014)
+  Given 两个 ServerProcess 实例分别配置 dispatcher 线程数 1 与 2
+  When 同一 JVM 内同时启动
+  Then 各自按自己的线程数分区 tick，互不影响
+
+场景: M1.5 待确认 · 底层包不依赖上层 (REQ-015)
+  Given ArchUnit 分层规则由冻结改为禁止
+  When 运行 ./gradlew check
+  Then 规则通过，依赖矩阵脚本显示底层集合出向上层的边为 0
+
+场景: M1.5 待确认 · 拆分 NetworkBufferTypeImpl (REQ-016)
+  Given 拆分完成
+  When 运行全部 network 包往返测试
+  Then 0 失败，且 NetworkBufferTypeImpl 单文件不超过 300 行
+
 场景: 测试不留临时目录 (REQ-012)
   Given 全量测试运行完毕
   When 列出 $TMPDIR 下 minestom-test-world-* 目录

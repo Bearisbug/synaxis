@@ -140,21 +140,29 @@ public final class RegistryData {
 
     @ApiStatus.Internal
     public static Properties load(String resourcePath, boolean required) {
-        try (InputStream resourceStream = loadRegistryFile(resourcePath)) {
-            if (resourceStream != null) {
-                final Map<String, Object> map = new HashMap<>();
-                try (JsonReader reader = new JsonReader(new InputStreamReader(resourceStream, StandardCharsets.UTF_8))) {
-                    reader.beginObject();
-                    while (reader.hasNext()) map.put(reader.nextName(), readObject(reader));
-                    reader.endObject();
-                }
-                return Properties.fromMap(map);
-            }
+        final InputStream resourceStream;
+        try {
+            resourceStream = loadRegistryFile(resourcePath);
         } catch (IOException e) {
             MinecraftServer.getExceptionManager().handleException(e);
+            if (required) Check.fail("Failed to load required registry file: {0}", resourcePath);
+            return Properties.fromMap(Map.of());
         }
-        if (required) Check.fail("Failed to load required registry file: {0}", resourcePath);
-        return Properties.fromMap(Map.of());
+        if (resourceStream == null) {
+            if (required) Check.fail("Failed to load required registry file: {0}", resourcePath);
+            return Properties.fromMap(Map.of());
+        }
+        // The file is there: a parse failure is a real error, not an optional file that happens to be absent.
+        // Reporting it as "no data" boots the server with, for example, zero tags.
+        try (resourceStream; JsonReader reader = new JsonReader(new InputStreamReader(resourceStream, StandardCharsets.UTF_8))) {
+            final Map<String, Object> map = new HashMap<>();
+            reader.beginObject();
+            while (reader.hasNext()) map.put(reader.nextName(), readObject(reader));
+            reader.endObject();
+            return Properties.fromMap(map);
+        } catch (IOException | IllegalStateException e) {
+            throw new IllegalStateException("Failed to parse registry file: " + resourcePath, e);
+        }
     }
 
     /**

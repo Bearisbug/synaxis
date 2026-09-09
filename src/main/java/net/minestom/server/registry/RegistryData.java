@@ -31,6 +31,8 @@ import net.minestom.server.utils.collection.ObjectArray;
 import net.minestom.server.utils.validate.Check;
 import org.jetbrains.annotations.ApiStatus;
 import org.jetbrains.annotations.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.jetbrains.annotations.Unmodifiable;
 
 import java.io.IOException;
@@ -41,10 +43,12 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiFunction;
 import java.util.function.Function;
@@ -58,6 +62,8 @@ import java.util.function.Supplier;
  */
 @Deprecated(forRemoval = true)
 public final class RegistryData {
+    private static final Logger LOGGER = LoggerFactory.getLogger(RegistryData.class);
+
     static final Gson GSON = new GsonBuilder().disableHtmlEscaping().disableJdkUnsafe().create();
 
     @ApiStatus.Internal
@@ -191,11 +197,24 @@ public final class RegistryData {
     }
 
     private static <T> void getTagValues(RegistryTagImpl.Backed<T> tag, Properties main, String value) {
-        Properties section = main.section(value);
+        getTagValues(tag, main, value, new HashSet<>());
+    }
+
+    private static <T> void getTagValues(RegistryTagImpl.Backed<T> tag, Properties main, String value, Set<String> visited) {
+        // Tag files may reference each other, and nothing stops them from forming a cycle
+        if (!visited.add(value)) {
+            LOGGER.warn("Cyclic tag reference to {} while loading tag {}", value, tag.key().key().asString());
+            return;
+        }
+        final Properties section = main.section(value);
+        if (section == null) {
+            LOGGER.warn("Tag {} references unknown tag {}", tag.key().key().asString(), value);
+            return;
+        }
         final List<String> tagValues = section.getList("values");
         tagValues.forEach(tagString -> {
             if (tagString.startsWith("#")) {
-                getTagValues(tag, main, tagString.substring(1));
+                getTagValues(tag, main, tagString.substring(1), visited);
             } else {
                 tag.add(RegistryKey.unsafeOf(tagString));
             }

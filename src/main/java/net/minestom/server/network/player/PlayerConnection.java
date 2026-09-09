@@ -152,12 +152,15 @@ public abstract class PlayerConnection {
     public void kick(Component component) {
         // Packet type depends on the current player connection state
         final ServerPacket disconnectPacket;
-        if (serverState == ConnectionState.LOGIN) {
+        if (serverState == ConnectionState.HANDSHAKE || serverState == ConnectionState.STATUS) {
+            // Neither registry holds a disconnect packet, queueing one would throw on the write thread
+            disconnectPacket = null;
+        } else if (serverState == ConnectionState.LOGIN) {
             disconnectPacket = new LoginDisconnectPacket(component);
         } else {
             disconnectPacket = new DisconnectPacket(component);
         }
-        sendPacket(disconnectPacket);
+        if (disconnectPacket != null) sendPacket(disconnectPacket);
         disconnect();
     }
 

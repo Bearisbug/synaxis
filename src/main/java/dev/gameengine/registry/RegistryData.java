@@ -5,7 +5,6 @@ import com.google.gson.GsonBuilder;
 import com.google.gson.ToNumberPolicy;
 import com.google.gson.stream.JsonReader;
 import net.kyori.adventure.key.Key;
-import dev.gameengine.MinecraftServer;
 import dev.gameengine.codec.Result;
 import dev.gameengine.codec.Transcoder;
 import dev.gameengine.collision.BoundingBox;
@@ -145,7 +144,7 @@ public final class RegistryData {
         try {
             resourceStream = loadRegistryFile(resourcePath);
         } catch (IOException e) {
-            MinecraftServer.getExceptionManager().handleException(e);
+            LOGGER.error("Failed to read registry file {}", resourcePath, e);
             if (required) Check.fail("Failed to load required registry file: {0}", resourcePath);
             return Properties.fromMap(Map.of());
         }

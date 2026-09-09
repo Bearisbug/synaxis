@@ -48,6 +48,28 @@ final class RegistriesImpl {
         return packets;
     }
 
+    /**
+     * Freezes every dynamic registry, called by the process owning them when it starts.
+     */
+    static void freeze(Registries registries) {
+        for (DynamicRegistry<?> registry : ownedRegistries(registries))
+            if (registry instanceof DynamicRegistryImpl<?> impl) impl.freeze();
+    }
+
+    /**
+     * Registers the callback fired when the tags of one of these registries change.
+     */
+    static void tagChangeListener(Registries registries, Runnable listener) {
+        for (DynamicRegistry<?> registry : ownedRegistries(registries))
+            if (registry instanceof DynamicRegistryImpl<?> impl) impl.tagChangeListener(listener);
+    }
+
+    private static List<DynamicRegistry<?>> ownedRegistries(Registries registries) {
+        final List<DynamicRegistry<?>> all = new ArrayList<>(configurationRegistries(registries));
+        all.add(registries.componentPredicateTypes());
+        return all;
+    }
+
     static TagsPacket tagsPacket(Registries registries) {
         final List<TagsPacket.Registry> entries = new ArrayList<>();
         for (Registry<?> registry : tagRegistries(registries)) {

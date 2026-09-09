@@ -2,8 +2,6 @@ package dev.gameengine.tag;
 
 import net.kyori.adventure.nbt.BinaryTag;
 import net.kyori.adventure.nbt.CompoundBinaryTag;
-import net.kyori.adventure.text.Component;
-import dev.gameengine.item.ItemStack;
 import org.jetbrains.annotations.Nullable;
 
 import java.lang.reflect.Constructor;
@@ -27,9 +25,7 @@ final class TagRecord {
             entry(Double.class, Tag::Double), entry(double.class, Tag::Double),
             entry(String.class, Tag::String),
 
-            entry(UUID.class, Tag::UUID),
-            entry(ItemStack.class, Tag::ItemStack),
-            entry(Component.class, Tag::Component));
+            entry(UUID.class, Tag::UUID));
 
     static final ClassValue<Serializer<? extends Record>> serializers = new ClassValue<>() {
         @Override

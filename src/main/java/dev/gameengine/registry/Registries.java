@@ -18,6 +18,8 @@ import dev.gameengine.potion.PotionType;
 import dev.gameengine.world.DimensionType;
 import dev.gameengine.world.biome.Biome;
 
+import org.jetbrains.annotations.ApiStatus;
+
 import java.util.List;
 
 /**
@@ -37,6 +39,22 @@ public interface Registries {
 
     static TagsPacket tagsPacket(Registries registries) {
         return RegistriesImpl.tagsPacket(registries);
+    }
+
+    /**
+     * Freezes every dynamic registry so later writes throw, called when the owning process starts.
+     */
+    @ApiStatus.Internal
+    static void freeze(Registries registries) {
+        RegistriesImpl.freeze(registries);
+    }
+
+    /**
+     * Registers the callback fired when the tags of one of these registries change.
+     */
+    @ApiStatus.Internal
+    static void tagChangeListener(Registries registries, Runnable listener) {
+        RegistriesImpl.tagChangeListener(registries, listener);
     }
 
     // Static registries

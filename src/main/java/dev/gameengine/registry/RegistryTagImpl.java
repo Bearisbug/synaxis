@@ -1,6 +1,5 @@
 package dev.gameengine.registry;
 
-import dev.gameengine.MinecraftServer;
 import org.jetbrains.annotations.ApiStatus;
 import org.jetbrains.annotations.Nullable;
 
@@ -68,21 +67,13 @@ final class RegistryTagImpl {
         }
 
         @ApiStatus.Internal
-        void add(RegistryKey<T> key) {
-            if (entries.add(key))
-                invalidate();
+        boolean add(RegistryKey<T> key) {
+            return entries.add(key);
         }
 
         @ApiStatus.Internal
-        void remove(RegistryKey<T> key) {
-            if (entries.remove(key))
-                invalidate();
-        }
-
-        private static void invalidate() {
-            var process = MinecraftServer.process();
-            if (process == null) return;
-            process.connection().invalidateTags();
+        boolean remove(RegistryKey<T> key) {
+            return entries.remove(key);
         }
     }
 

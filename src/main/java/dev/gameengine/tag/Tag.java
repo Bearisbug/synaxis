@@ -4,6 +4,7 @@ import net.kyori.adventure.nbt.BinaryTag;
 import net.kyori.adventure.nbt.CompoundBinaryTag;
 import net.kyori.adventure.text.Component;
 import dev.gameengine.item.ItemStack;
+import dev.gameengine.registry.Registries;
 import org.jetbrains.annotations.ApiStatus;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.Nullable;
@@ -58,12 +59,12 @@ public sealed interface Tag<T extends @UnknownNullability Object> permits TagImp
         return TagImpl.tag(key, Serializers.UUID);
     }
 
-    static Tag<ItemStack> ItemStack(String key) {
-        return TagImpl.tag(key, Serializers.ITEM);
+    static Tag<ItemStack> ItemStack(String key, Registries registries) {
+        return TagImpl.tag(key, Serializers.item(registries));
     }
 
-    static Tag<Component> Component(String key) {
-        return TagImpl.tag(key, Serializers.COMPONENT);
+    static Tag<Component> Component(String key, Registries registries) {
+        return TagImpl.tag(key, Serializers.component(registries));
     }
 
     /**

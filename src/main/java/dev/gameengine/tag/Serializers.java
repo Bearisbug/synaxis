@@ -13,11 +13,11 @@ import net.kyori.adventure.nbt.LongBinaryTag;
 import net.kyori.adventure.nbt.ShortBinaryTag;
 import net.kyori.adventure.nbt.StringBinaryTag;
 import net.kyori.adventure.text.Component;
-import dev.gameengine.MinecraftServer;
 import dev.gameengine.ServerFlag;
 import dev.gameengine.codec.Codec;
 import dev.gameengine.codec.Transcoder;
 import dev.gameengine.item.ItemStack;
+import dev.gameengine.registry.Registries;
 import dev.gameengine.registry.RegistryTranscoder;
 import dev.gameengine.utils.UUIDUtils;
 import org.jetbrains.annotations.Nullable;
@@ -39,15 +39,20 @@ final class Serializers {
     static final Entry<BinaryTag, BinaryTag> NBT_ENTRY = new Entry<>(null, Function.identity(), Function.identity());
 
     static final Entry<java.util.UUID, IntArrayBinaryTag> UUID = new Entry<>(BinaryTagTypes.INT_ARRAY, UUIDUtils::fromNbt, UUIDUtils::toNbt);
-    static final Entry<ItemStack, CompoundBinaryTag> ITEM = new Entry<>(BinaryTagTypes.COMPOUND,
-            input -> ItemStack.fromItemNBT(input, MinecraftServer.getRegistries()),
-            itemStack -> itemStack.toItemNBT(MinecraftServer.getRegistries()));
-    static final Entry<Component, BinaryTag> COMPONENT = new Entry<>(null,
-            input -> Codec.COMPONENT.decode(
-                    new RegistryTranscoder<>(Transcoder.NBT, MinecraftServer.getRegistries()), input).orElse(null),
-            component -> Codec.COMPONENT.encode(
-                    new RegistryTranscoder<>(Transcoder.NBT, MinecraftServer.getRegistries()), component).orElse(null)
-    );
+    static Entry<ItemStack, CompoundBinaryTag> item(Registries registries) {
+        return new Entry<>(BinaryTagTypes.COMPOUND,
+                input -> ItemStack.fromItemNBT(input, registries),
+                itemStack -> itemStack.toItemNBT(registries));
+    }
+
+    static Entry<Component, BinaryTag> component(Registries registries) {
+        return new Entry<>(null,
+                input -> Codec.COMPONENT.decode(
+                        new RegistryTranscoder<>(Transcoder.NBT, registries), input).orElse(null),
+                component -> Codec.COMPONENT.encode(
+                        new RegistryTranscoder<>(Transcoder.NBT, registries), component).orElse(null)
+        );
+    }
 
     static final Entry<Object, ByteBinaryTag> EMPTY = new Entry<>(BinaryTagTypes.BYTE, _ -> null, _ -> null);
 

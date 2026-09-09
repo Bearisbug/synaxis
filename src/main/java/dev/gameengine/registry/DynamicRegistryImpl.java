@@ -7,7 +7,6 @@ import net.kyori.adventure.nbt.BinaryTag;
 import net.kyori.adventure.nbt.BinaryTagIO;
 import net.kyori.adventure.nbt.BinaryTagTypes;
 import net.kyori.adventure.nbt.CompoundBinaryTag;
-import dev.gameengine.MinecraftServer;
 import dev.gameengine.ServerFlag;
 import dev.gameengine.codec.Codec;
 import dev.gameengine.codec.Result;
@@ -53,6 +52,10 @@ final class DynamicRegistryImpl<T> implements DynamicRegistry<T> {
     private static final Object REGISTRY_LOCK = new Object();
 
     private volatile @Nullable Registries registries = null;
+    private volatile boolean frozen = false;
+    // Set by the process owning these registries so it can drop its cached tags packet.
+    private volatile Runnable tagChangeListener = () -> {
+    };
     private final CachedPacket vanillaRegistryDataPacket = new CachedPacket(() -> createRegistryDataPacket(registries, true));
 
     private final List<T> idToValue;
@@ -197,7 +200,7 @@ final class DynamicRegistryImpl<T> implements DynamicRegistry<T> {
 
             // Remove all references from tags
             for (final var tag : tags.values()) {
-                tag.remove(registryKey);
+                if (tag.remove(registryKey)) tagChangeListener.run();
             }
 
             vanillaRegistryDataPacket.invalidate();
@@ -354,8 +357,16 @@ final class DynamicRegistryImpl<T> implements DynamicRegistry<T> {
         );
     }
 
-    static boolean isFrozen() {
-        return canFreeze() && MinecraftServer.process() != null && MinecraftServer.isStarted();
+    void freeze() {
+        this.frozen = true;
+    }
+
+    void tagChangeListener(Runnable listener) {
+        this.tagChangeListener = listener;
+    }
+
+    private boolean isFrozen() {
+        return canFreeze() && frozen;
     }
 
     static boolean canFreeze() {

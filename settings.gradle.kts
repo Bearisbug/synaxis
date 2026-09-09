@@ -9,5 +9,6 @@ include("jmh-benchmarks")
 include("jcstress-tests")
 
 include("demo")
+include("smoke")
 
 enableFeaturePreview("ENHANCED_GRAPH_ORDERING")

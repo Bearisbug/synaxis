@@ -67,6 +67,8 @@ signing {
     sign(publishing.publications)
 }
 
+// Not part of CI yet: -PbaselineJarDir must point at the jars of our own previous tag, and no
+// such tag exists before M1 ships. Wire it into the CI workflow once the first one does.
 tasks.register<CheckAbiTask>("checkBinaryCompatibility") {
     group = "verification"
     description = "Checks binary compatibility against the baseline released version."

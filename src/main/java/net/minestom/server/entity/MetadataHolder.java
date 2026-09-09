@@ -40,10 +40,6 @@ import net.minestom.server.entity.metadata.avatar.PlayerMeta;
 import net.minestom.server.entity.metadata.display.BlockDisplayMeta;
 import net.minestom.server.entity.metadata.display.ItemDisplayMeta;
 import net.minestom.server.entity.metadata.display.TextDisplayMeta;
-import net.minestom.server.entity.metadata.golem.CopperGolemMeta;
-import net.minestom.server.entity.metadata.golem.IronGolemMeta;
-import net.minestom.server.entity.metadata.golem.ShulkerMeta;
-import net.minestom.server.entity.metadata.golem.SnowGolemMeta;
 import net.minestom.server.entity.metadata.item.EyeOfEnderMeta;
 import net.minestom.server.entity.metadata.item.FireballMeta;
 import net.minestom.server.entity.metadata.item.ItemEntityMeta;
@@ -337,7 +333,6 @@ public final class MetadataHolder {
             entry(EntityType.CHERRY_CHEST_BOAT, BoatMeta::new),
             entry(EntityType.CHICKEN, ChickenMeta::new),
             entry(EntityType.COD, CodMeta::new),
-            entry(EntityType.COPPER_GOLEM, CopperGolemMeta::new),
             entry(EntityType.COW, CowMeta::new),
             entry(EntityType.CREAKING, CreakingMeta::new),
             entry(EntityType.CREEPER, CreeperMeta::new),
@@ -372,7 +367,6 @@ public final class MetadataHolder {
             entry(EntityType.HUSK, HuskMeta::new),
             entry(EntityType.ILLUSIONER, IllusionerMeta::new),
             entry(EntityType.INTERACTION, InteractionMeta::new),
-            entry(EntityType.IRON_GOLEM, IronGolemMeta::new),
             entry(EntityType.ITEM, ItemEntityMeta::new),
             entry(EntityType.ITEM_DISPLAY, ItemDisplayMeta::new),
             entry(EntityType.ITEM_FRAME, ItemFrameMeta::new),
@@ -412,14 +406,12 @@ public final class MetadataHolder {
             entry(EntityType.RAVAGER, RavagerMeta::new),
             entry(EntityType.SALMON, SalmonMeta::new),
             entry(EntityType.SHEEP, SheepMeta::new),
-            entry(EntityType.SHULKER, ShulkerMeta::new),
             entry(EntityType.SHULKER_BULLET, ShulkerBulletMeta::new),
             entry(EntityType.SILVERFISH, SilverfishMeta::new),
             entry(EntityType.SKELETON, SkeletonMeta::new),
             entry(EntityType.SKELETON_HORSE, SkeletonHorseMeta::new),
             entry(EntityType.SMALL_FIREBALL, SmallFireballMeta::new),
             entry(EntityType.SNIFFER, SnifferMeta::new),
-            entry(EntityType.SNOW_GOLEM, SnowGolemMeta::new),
             entry(EntityType.SNOWBALL, SnowballMeta::new),
             entry(EntityType.SPECTRAL_ARROW, SpectralArrowMeta::new),
             entry(EntityType.SPIDER, SpiderMeta::new),

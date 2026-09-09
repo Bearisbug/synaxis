@@ -514,23 +514,6 @@ public sealed class MetadataDef {
         public static final Entry<Boolean> STAYS_STILL = index(1, Metadata::Boolean, false);
     }
 
-    public static final class IronGolem extends Mob {
-        public static final Entry<Byte> IRON_GOLEM_FLAGS = index(0, Metadata::Byte, (byte) 0);
-        public static final Entry<Boolean> IS_PLAYER_CREATED = bitMask(0, (byte) 0x01, false);
-    }
-
-    public static final class SnowGolem extends Mob {
-        // Vanilla defaults this byte to 0x10, matching PUMPKIN_HAT defaulting to true
-        public static final Entry<Byte> SNOW_GOLEM_FLAGS = index(0, Metadata::Byte, (byte) 0x10);
-        public static final Entry<Boolean> PUMPKIN_HAT = bitMask(0, (byte) 0x10, true);
-    }
-
-    public static final class Shulker extends Mob {
-        public static final Entry<Direction> ATTACH_FACE = index(0, Metadata::Direction, Direction.DOWN);
-        public static final Entry<Byte> SHIELD_HEIGHT = index(1, Metadata::Byte, (byte) 0);
-        public static final Entry<Byte> COLOR = index(2, Metadata::Byte, (byte) 16);
-    }
-
     public static final class CopperGolem extends Mob {
         public static final Entry<CopperGolemMeta.WeatherState> WEATHER_STATE = index(0, Metadata::WeatherState,
                 CopperGolemMeta.WeatherState.UNAFFECTED);

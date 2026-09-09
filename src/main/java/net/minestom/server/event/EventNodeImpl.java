@@ -349,11 +349,17 @@ non-sealed class EventNodeImpl<T extends Event> implements EventNode<T> {
         final Set<Consumer<T>> bindingConsumers = new CopyOnWriteArraySet<>();
     }
 
+    /**
+     * Compiled listener of a {@link Handle}, published as a whole so that a concurrent reader can
+     * never observe the "is up to date" flag and the listener itself out of sync.
+     */
+    private record Cached<E>(@Nullable Consumer<E> listener) {
+    }
+
     @SuppressWarnings("unchecked")
     final class Handle<E extends Event> implements ListenerHandle<E> {
         private final Class<E> eventType;
-        private @Nullable Consumer<E> listener = null;
-        private volatile boolean updated;
+        private volatile @Nullable Cached<E> cached;
 
         Handle(Class<E> eventType) {
             this.eventType = eventType;
@@ -378,17 +384,18 @@ non-sealed class EventNodeImpl<T extends Event> implements EventNode<T> {
         }
 
         void invalidate() {
-            this.updated = false;
-            this.listener = null;
+            assert Thread.holdsLock(GLOBAL_CHILD_LOCK);
+            this.cached = null;
         }
 
         @Nullable Consumer<E> updatedListener() {
-            if (updated) return listener;
+            Cached<E> cached = this.cached;
+            if (cached != null) return cached.listener();
             synchronized (GLOBAL_CHILD_LOCK) {
-                if (updated) return listener;
+                cached = this.cached;
+                if (cached != null) return cached.listener();
                 final Consumer<E> listener = createConsumer();
-                this.listener = listener;
-                this.updated = true;
+                this.cached = new Cached<>(listener);
                 return listener;
             }
         }
@@ -534,10 +541,8 @@ non-sealed class EventNodeImpl<T extends Event> implements EventNode<T> {
         void callListener(EventListener<E> listener, E event) {
             var node = (EventNodeImpl<E>) EventNodeImpl.this;
             EventListener.Result result = listener.run(event);
-            if (result == EventListener.Result.EXPIRED) {
-                node.removeListener(listener);
-                invalidate();
-            }
+            // removeListener already invalidates this node and its parents while holding the global lock
+            if (result == EventListener.Result.EXPIRED) node.removeListener(listener);
         }
     }
 }

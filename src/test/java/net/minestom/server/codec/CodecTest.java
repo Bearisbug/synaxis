@@ -20,6 +20,45 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 public final class CodecTest {
 
+    /**
+     * Codec's own class documentation advertises {@code Codec.STRING.optional().set()}, so an optional nested in a
+     * collection has to round trip instead of throwing out of encode and decode.
+     */
+    @Test
+    public void optionalInsideListRoundTrips() {
+        final Codec<List<String>> codec = Codec.STRING.optional().list();
+        final var encoded = Assertions.assertDoesNotThrow(
+                () -> CodecAssertions.assertOk(codec.encode(Transcoder.NBT, Arrays.asList("a", null))));
+        assertEquals(List.of("a"), Assertions.assertDoesNotThrow(
+                () -> CodecAssertions.assertOk(codec.decode(Transcoder.NBT, encoded))));
+    }
+
+    @Test
+    public void optionalInsideSetRoundTrips() {
+        final Codec<Set<String>> codec = Codec.STRING.optional().set();
+        final var encoded = Assertions.assertDoesNotThrow(
+                () -> CodecAssertions.assertOk(codec.encode(Transcoder.NBT, new HashSet<>(Arrays.asList("a", null)))));
+        assertEquals(Set.of("a"), Assertions.assertDoesNotThrow(
+                () -> CodecAssertions.assertOk(codec.decode(Transcoder.NBT, encoded))));
+    }
+
+    /**
+     * An optional must fall back to its default when the value is absent, not when the inner codec rejects a value
+     * that is really there. Swallowing the inner error makes orElse unreachable.
+     */
+    @Test
+    public void optionalDoesNotSwallowInnerDecodeErrors() {
+        final Codec<Integer> codec = Codec.INT.optional(7);
+        Assertions.assertInstanceOf(Result.Error.class, codec.decode(Transcoder.NBT, Transcoder.NBT.createString("nope")));
+        assertEquals(7, CodecAssertions.assertOk(codec.decode(Transcoder.NBT, Transcoder.NBT.createNull())));
+    }
+
+    @Test
+    public void optionalFallsThroughToOrElse() {
+        final Codec<Integer> codec = Codec.INT.optional().orElse(Codec.STRING.transform(Integer::parseInt, String::valueOf));
+        assertEquals(12, CodecAssertions.assertOk(codec.decode(Transcoder.NBT, Transcoder.NBT.createString("12"))));
+    }
+
     private static List<Arguments> optionalResults() {
         return nonDestructiveTranscoders().stream().flatMap(transcoder -> Stream.of(
                 Arguments.of(transcoder, Codec.BOOLEAN, false),

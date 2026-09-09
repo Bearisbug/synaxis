@@ -227,6 +227,13 @@ public final class LoginListener {
     }
 
     public static void configAckListener(ClientConfigurationAckPacket packet, Player player) {
+        final PlayerConnection connection = player.getPlayerConnection();
+        if (connection.getServerState() != ConnectionState.CONFIGURATION) {
+            // The server never sent StartConfigurationPacket, running the configuration phase
+            // would send CONFIGURATION-only packets while the server state is still PLAY.
+            connection.disconnect();
+            return;
+        }
         executeConfig(player, false);
     }
 

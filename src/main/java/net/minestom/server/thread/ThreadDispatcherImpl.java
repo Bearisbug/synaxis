@@ -91,6 +91,13 @@ final class ThreadDispatcherImpl<P, E extends Tickable> implements ThreadDispatc
                         partitionEntry.thread = next;
                         previous.entries.remove(partitionEntry);
                         next.entries.add(partitionEntry);
+                        // Acquirable ownership must follow the partition, otherwise sync() would lock
+                        // the thread that no longer ticks the element.
+                        for (Tickable element : partitionEntry.elements) {
+                            if (element instanceof AcquirableSource<?> acquirableSource) {
+                                ((AcquirableImpl<?>) acquirableSource.acquirable()).assign(next);
+                            }
+                        }
                     }
                     this.partitionUpdateQueue.addLast(partition);
                     if (--counter <= 0 || System.nanoTime() - currentTime >= nanoTimeout) {

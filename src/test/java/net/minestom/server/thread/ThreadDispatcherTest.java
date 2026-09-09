@@ -19,6 +19,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNotSame;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -310,5 +311,43 @@ public class ThreadDispatcherTest {
         assertTrue(shutdownCalled.await(5, TimeUnit.SECONDS), "shutdown() from a TickThread deadlocked");
         ticker.join(5_000);
         assertFalse(ticker.isAlive(), "updateAndAwait never returned");
+    }
+
+    @Test
+    @Timeout(30)
+    public void refreshThreadsReassignsAcquirableOwner() {
+        final class Counter extends Element {
+            @Override
+            public void tick(long time) {
+            }
+        }
+        ThreadDispatcher<World, Counter> dispatcher = ThreadDispatcher.dispatcher(new ThreadProvider<>() {
+            private int counter;
+
+            @Override
+            public int findThread(World partition) {
+                return counter++;
+            }
+
+            @Override
+            public RefreshType refreshType() {
+                return RefreshType.ALWAYS;
+            }
+        }, 2);
+        World world = new World();
+        Counter element = new Counter();
+        dispatcher.createPartition(world);
+        dispatcher.updateElement(element, world);
+        dispatcher.start();
+        dispatcher.updateAndAwait(0);
+
+        final TickThread before = element.acquirable().assignedThread();
+        assertNotNull(before);
+        dispatcher.refreshThreads();
+        dispatcher.updateAndAwait(0);
+        assertNotSame(before, element.acquirable().assignedThread(),
+                "assignedThread was not updated after the partition moved to another thread");
+
+        dispatcher.shutdown();
     }
 }

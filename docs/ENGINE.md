@@ -10,7 +10,7 @@
 
 ### 1.1 安装 JDK 25
 
-引擎钉死 JDK 25（`build-src/src/main/kotlin/minestom.java-library.gradle.kts` 里的 toolchain），低版本编译不过。
+引擎钉死 JDK 25（`build-src/src/main/kotlin/gameengine.java-library.gradle.kts` 里的 toolchain），低版本编译不过。
 
 ```bash
 brew install openjdk@25

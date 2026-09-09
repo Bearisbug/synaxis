@@ -5,7 +5,7 @@ import net.minestom.server.coordinate.Vec;
 import net.minestom.server.entity.Entity;
 import net.minestom.server.entity.EntityPose;
 import net.minestom.server.entity.EntityType;
-import net.minestom.server.entity.metadata.animal.CamelMeta;
+import net.minestom.server.entity.metadata.AgeableMobMeta;
 
 import java.util.List;
 import java.util.Set;
@@ -27,7 +27,7 @@ public final class EntityUtils {
             Vec vehicleOffset = firstAttachmentOrDefault(passenger.getEntityType(), "VEHICLE", Vec.ZERO);
             // Check pose
             boolean isSitting = vehicle.getPose() == EntityPose.SITTING;
-            boolean isBaby = vehicle.getEntityMeta() instanceof CamelMeta camelMeta && camelMeta.isBaby();
+            boolean isBaby = vehicle.getEntityMeta() instanceof AgeableMobMeta ageableMeta && ageableMeta.isBaby();
             // Calculate height
             double yOffset = isBaby ? 0.09375 : 0.375;
             double height = isBaby ? 1.4 : vehicleType.height() - yOffset;

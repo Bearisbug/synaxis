@@ -1,23 +1,30 @@
 package net.minestom.server.entity;
 
+import net.minestom.server.entity.metadata.EntityMeta;
+import net.minestom.server.entity.metadata.LivingEntityMeta;
+import net.minestom.server.network.NetworkBuffer;
+import net.minestom.server.network.packet.server.play.EntityMetaDataPacket;
+import net.minestom.server.registry.Registries;
 import org.junit.jupiter.api.Test;
 
-import java.util.ArrayList;
-import java.util.List;
-
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 public class EntityMetaTest {
 
     @Test
-    public void ensureRegistration() throws IllegalAccessException {
-        List<String> list = new ArrayList<>();
-        for (var field : EntityTypes.class.getDeclaredFields()) {
-            final EntityType entityType = (EntityType) field.get(this);
-            if (MetadataHolder.ENTITY_META_SUPPLIER.get(entityType) == null) {
-                list.add(entityType.name());
+    public void everyEntityTypeIsCreatableAndSerializable() {
+        for (EntityType entityType : EntityType.values()) {
+            final Entity entity = new Entity(entityType);
+            final EntityMeta meta = entity.getEntityMeta();
+            assertNotNull(meta, entityType.name());
+            if (entityType.shouldSendAttributes()) {
+                assertInstanceOf(LivingEntityMeta.class, meta, entityType.name());
             }
+            meta.setInvisible(true);
+
+            final NetworkBuffer buffer = NetworkBuffer.resizableBuffer(64, Registries.vanilla());
+            EntityMetaDataPacket.SERIALIZER.write(buffer, entity.getMetadataPacket());
         }
-        assertTrue(list.isEmpty(), "Missing meta for: " + list);
     }
 }

@@ -50,40 +50,6 @@ import net.minestom.server.entity.metadata.item.SplashPotionMeta;
 import net.minestom.server.entity.metadata.item.ThrownEggMeta;
 import net.minestom.server.entity.metadata.item.ThrownEnderPearlMeta;
 import net.minestom.server.entity.metadata.item.ThrownExperienceBottleMeta;
-import net.minestom.server.entity.metadata.monster.BlazeMeta;
-import net.minestom.server.entity.metadata.monster.BreezeMeta;
-import net.minestom.server.entity.metadata.monster.CaveSpiderMeta;
-import net.minestom.server.entity.metadata.monster.CreakingMeta;
-import net.minestom.server.entity.metadata.monster.CreeperMeta;
-import net.minestom.server.entity.metadata.monster.ElderGuardianMeta;
-import net.minestom.server.entity.metadata.monster.EndermanMeta;
-import net.minestom.server.entity.metadata.monster.EndermiteMeta;
-import net.minestom.server.entity.metadata.monster.GiantMeta;
-import net.minestom.server.entity.metadata.monster.GuardianMeta;
-import net.minestom.server.entity.metadata.monster.PiglinBruteMeta;
-import net.minestom.server.entity.metadata.monster.PiglinMeta;
-import net.minestom.server.entity.metadata.monster.SilverfishMeta;
-import net.minestom.server.entity.metadata.monster.SpiderMeta;
-import net.minestom.server.entity.metadata.monster.VexMeta;
-import net.minestom.server.entity.metadata.monster.WardenMeta;
-import net.minestom.server.entity.metadata.monster.WitherMeta;
-import net.minestom.server.entity.metadata.monster.ZoglinMeta;
-import net.minestom.server.entity.metadata.monster.raider.EvokerMeta;
-import net.minestom.server.entity.metadata.monster.raider.IllusionerMeta;
-import net.minestom.server.entity.metadata.monster.raider.PillagerMeta;
-import net.minestom.server.entity.metadata.monster.raider.RavagerMeta;
-import net.minestom.server.entity.metadata.monster.raider.VindicatorMeta;
-import net.minestom.server.entity.metadata.monster.raider.WitchMeta;
-import net.minestom.server.entity.metadata.monster.skeleton.BoggedMeta;
-import net.minestom.server.entity.metadata.monster.skeleton.ParchedMeta;
-import net.minestom.server.entity.metadata.monster.skeleton.SkeletonMeta;
-import net.minestom.server.entity.metadata.monster.skeleton.StrayMeta;
-import net.minestom.server.entity.metadata.monster.skeleton.WitherSkeletonMeta;
-import net.minestom.server.entity.metadata.monster.zombie.DrownedMeta;
-import net.minestom.server.entity.metadata.monster.zombie.HuskMeta;
-import net.minestom.server.entity.metadata.monster.zombie.ZombieMeta;
-import net.minestom.server.entity.metadata.monster.zombie.ZombieVillagerMeta;
-import net.minestom.server.entity.metadata.monster.zombie.ZombifiedPiglinMeta;
 import net.minestom.server.entity.metadata.other.AllayMeta;
 import net.minestom.server.entity.metadata.other.AreaEffectCloudMeta;
 import net.minestom.server.entity.metadata.other.ArmorStandMeta;
@@ -308,32 +274,21 @@ public final class MetadataHolder {
             entry(EntityType.BEE, BeeMeta::new),
             entry(EntityType.BIRCH_BOAT, BoatMeta::new),
             entry(EntityType.BIRCH_CHEST_BOAT, BoatMeta::new),
-            entry(EntityType.BLAZE, BlazeMeta::new),
             entry(EntityType.BLOCK_DISPLAY, BlockDisplayMeta::new),
-            entry(EntityType.BOGGED, BoggedMeta::new),
-            entry(EntityType.BREEZE, BreezeMeta::new),
             entry(EntityType.BREEZE_WIND_CHARGE, BreezeWindChargeMeta::new),
             entry(EntityType.CAMEL, CamelMeta::new),
             entry(EntityType.CAMEL_HUSK, CamelHuskMeta::new),
             entry(EntityType.CAT, CatMeta::new),
-            entry(EntityType.CAVE_SPIDER, CaveSpiderMeta::new),
             entry(EntityType.CHERRY_BOAT, BoatMeta::new),
             entry(EntityType.CHERRY_CHEST_BOAT, BoatMeta::new),
             entry(EntityType.CHICKEN, ChickenMeta::new),
             entry(EntityType.COW, CowMeta::new),
-            entry(EntityType.CREAKING, CreakingMeta::new),
-            entry(EntityType.CREEPER, CreeperMeta::new),
             entry(EntityType.DARK_OAK_BOAT, BoatMeta::new),
             entry(EntityType.DARK_OAK_CHEST_BOAT, BoatMeta::new),
             entry(EntityType.DONKEY, DonkeyMeta::new),
             entry(EntityType.DRAGON_FIREBALL, DragonFireballMeta::new),
-            entry(EntityType.DROWNED, DrownedMeta::new),
-            entry(EntityType.ELDER_GUARDIAN, ElderGuardianMeta::new),
             entry(EntityType.END_CRYSTAL, EndCrystalMeta::new),
             entry(EntityType.ENDER_DRAGON, EnderDragonMeta::new),
-            entry(EntityType.ENDERMAN, EndermanMeta::new),
-            entry(EntityType.ENDERMITE, EndermiteMeta::new),
-            entry(EntityType.EVOKER, EvokerMeta::new),
             entry(EntityType.EVOKER_FANGS, EvokerFangsMeta::new),
             entry(EntityType.EXPERIENCE_ORB, ExperienceOrbMeta::new),
             entry(EntityType.EYE_OF_ENDER, EyeOfEnderMeta::new),
@@ -342,15 +297,11 @@ public final class MetadataHolder {
             entry(EntityType.FIREWORK_ROCKET, FireworkRocketMeta::new),
             entry(EntityType.FOX, FoxMeta::new),
             entry(EntityType.FROG, FrogMeta::new),
-            entry(EntityType.GIANT, GiantMeta::new),
             entry(EntityType.GLOW_ITEM_FRAME, GlowItemFrameMeta::new),
             entry(EntityType.GOAT, GoatMeta::new),
-            entry(EntityType.GUARDIAN, GuardianMeta::new),
             entry(EntityType.HAPPY_GHAST, HappyGhastMeta::new),
             entry(EntityType.HOGLIN, HoglinMeta::new),
             entry(EntityType.HORSE, HorseMeta::new),
-            entry(EntityType.HUSK, HuskMeta::new),
-            entry(EntityType.ILLUSIONER, IllusionerMeta::new),
             entry(EntityType.INTERACTION, InteractionMeta::new),
             entry(EntityType.ITEM, ItemEntityMeta::new),
             entry(EntityType.ITEM_DISPLAY, ItemDisplayMeta::new),
@@ -379,29 +330,20 @@ public final class MetadataHolder {
             entry(EntityType.PALE_OAK_CHEST_BOAT, BoatMeta::new),
             entry(EntityType.PANDA, PandaMeta::new),
             entry(EntityType.PARROT, ParrotMeta::new),
-            entry(EntityType.PARCHED, ParchedMeta::new),
             entry(EntityType.PIG, PigMeta::new),
-            entry(EntityType.PIGLIN, PiglinMeta::new),
-            entry(EntityType.PIGLIN_BRUTE, PiglinBruteMeta::new),
-            entry(EntityType.PILLAGER, PillagerMeta::new),
             entry(EntityType.POLAR_BEAR, PolarBearMeta::new),
             entry(EntityType.TNT, PrimedTntMeta::new),
             entry(EntityType.RABBIT, RabbitMeta::new),
-            entry(EntityType.RAVAGER, RavagerMeta::new),
             entry(EntityType.SHEEP, SheepMeta::new),
             entry(EntityType.SHULKER_BULLET, ShulkerBulletMeta::new),
-            entry(EntityType.SILVERFISH, SilverfishMeta::new),
-            entry(EntityType.SKELETON, SkeletonMeta::new),
             entry(EntityType.SKELETON_HORSE, SkeletonHorseMeta::new),
             entry(EntityType.SMALL_FIREBALL, SmallFireballMeta::new),
             entry(EntityType.SNIFFER, SnifferMeta::new),
             entry(EntityType.SNOWBALL, SnowballMeta::new),
             entry(EntityType.SPECTRAL_ARROW, SpectralArrowMeta::new),
-            entry(EntityType.SPIDER, SpiderMeta::new),
             entry(EntityType.SPLASH_POTION, SplashPotionMeta::new),
             entry(EntityType.SPRUCE_BOAT, BoatMeta::new),
             entry(EntityType.SPRUCE_CHEST_BOAT, BoatMeta::new),
-            entry(EntityType.STRAY, StrayMeta::new),
             entry(EntityType.STRIDER, StriderMeta::new),
             entry(EntityType.EGG, ThrownEggMeta::new),
             entry(EntityType.ENDER_PEARL, ThrownEnderPearlMeta::new),
@@ -409,21 +351,11 @@ public final class MetadataHolder {
             entry(EntityType.TRIDENT, ThrownTridentMeta::new),
             entry(EntityType.TRADER_LLAMA, TraderLlamaMeta::new),
             entry(EntityType.TURTLE, TurtleMeta::new),
-            entry(EntityType.VEX, VexMeta::new),
-            entry(EntityType.VINDICATOR, VindicatorMeta::new),
-            entry(EntityType.WARDEN, WardenMeta::new),
             entry(EntityType.WIND_CHARGE, WindChargeMeta::new),
-            entry(EntityType.WITCH, WitchMeta::new),
-            entry(EntityType.WITHER, WitherMeta::new),
-            entry(EntityType.WITHER_SKELETON, WitherSkeletonMeta::new),
             entry(EntityType.WITHER_SKULL, WitherSkullMeta::new),
             entry(EntityType.WOLF, WolfMeta::new),
-            entry(EntityType.ZOGLIN, ZoglinMeta::new),
-            entry(EntityType.ZOMBIE, ZombieMeta::new),
             entry(EntityType.ZOMBIE_HORSE, ZombieHorseMeta::new),
             entry(EntityType.ZOMBIE_NAUTILUS, ZombieNautilusMeta::new),
-            entry(EntityType.ZOMBIE_VILLAGER, ZombieVillagerMeta::new),
-            entry(EntityType.ZOMBIFIED_PIGLIN, ZombifiedPiglinMeta::new),
             entry(EntityType.PLAYER, PlayerMeta::new),
             entry(EntityType.FISHING_BOBBER, FishingHookMeta::new)
     );

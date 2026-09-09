@@ -22,7 +22,7 @@ public class MetadataHolderConcurrencyTest {
             var done = new CountDownLatch(2);
             Thread.startVirtualThread(() -> {
                 await(start);
-                holder.set(MetadataDef.Zombie.IS_BABY, true);
+                holder.set(MetadataDef.ArmorStand.IS_SMALL, true);
                 done.countDown();
             });
             Thread.startVirtualThread(() -> {
@@ -33,7 +33,7 @@ public class MetadataHolderConcurrencyTest {
             start.countDown();
             assertTrue(done.await(5, TimeUnit.SECONDS));
 
-            assertTrue(holder.get(MetadataDef.Zombie.IS_BABY), "attempt " + attempt);
+            assertTrue(holder.get(MetadataDef.ArmorStand.IS_SMALL), "attempt " + attempt);
             assertEquals(42, holder.get(MetadataDef.AIR_TICKS), "attempt " + attempt);
         }
     }

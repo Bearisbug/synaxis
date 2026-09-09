@@ -504,73 +504,6 @@ public sealed class MetadataDef {
                 CopperGolemMeta.State.IDLE);
     }
 
-    public static sealed class BasePiglin extends Mob {
-        public static final Entry<Boolean> IMMUNE_ZOMBIFICATION = index(0, Metadata::Boolean, false);
-    }
-
-    public static final class Piglin extends BasePiglin {
-        public static final Entry<Boolean> IS_BABY = index(0, Metadata::Boolean, false);
-        public static final Entry<Boolean> IS_CHARGING_CROSSBOW = index(1, Metadata::Boolean, false);
-        public static final Entry<Boolean> IS_DANCING = index(2, Metadata::Boolean, false);
-    }
-
-    public static final class Blaze extends Mob {
-        public static final Entry<Byte> BLAZE_FLAGS = index(0, Metadata::Byte, (byte) 0);
-        public static final Entry<Boolean> IS_ON_FIRE = bitMask(0, (byte) 0x01, false);
-    }
-
-    public static final class Bogged extends Mob {
-        public static final Entry<Boolean> IS_SHEARED = index(0, Metadata::Boolean, false);
-    }
-
-    public static final class Creaking extends Mob {
-        public static final Entry<Boolean> CAN_MOVE = index(0, Metadata::Boolean, true);
-        public static final Entry<Boolean> IS_ACTIVE = index(1, Metadata::Boolean, false);
-        public static final Entry<Boolean> IS_TEARING_DOWN = index(2, Metadata::Boolean, false);
-        public static final Entry<@Nullable Point> HOME_POS = index(3, Metadata::OptBlockPosition, null);
-    }
-
-    public static final class Creeper extends Mob {
-        public static final Entry<Integer> STATE = index(0, Metadata::VarInt, -1);
-        public static final Entry<Boolean> IS_CHARGED = index(1, Metadata::Boolean, false);
-        public static final Entry<Boolean> IS_IGNITED = index(2, Metadata::Boolean, false);
-    }
-
-    public static final class Guardian extends Mob {
-        public static final Entry<Boolean> IS_RETRACTING_SPIKES = index(0, Metadata::Boolean, false);
-        public static final Entry<Integer> TARGET_EID = index(1, Metadata::VarInt, 0);
-    }
-
-    public static sealed class Raider extends Mob {
-        public static final Entry<Boolean> IS_CELEBRATING = index(0, Metadata::Boolean, false);
-    }
-
-    public static final class Pillager extends Raider {
-        public static final Entry<Boolean> IS_CHARGING = index(0, Metadata::Boolean, false);
-    }
-
-    public static final class SpellcasterIllager extends Raider {
-        public static final Entry<Byte> SPELL = index(0, Metadata::Byte, (byte) 0);
-    }
-
-    public static final class Witch extends Raider {
-        public static final Entry<Boolean> IS_DRINKING_POTION = index(0, Metadata::Boolean, false);
-    }
-
-    public static final class Spider extends Mob {
-        public static final Entry<Byte> SPIDER_FLAGS = index(0, Metadata::Byte, (byte) 0);
-        public static final Entry<Boolean> IS_CLIMBING = bitMask(0, (byte) 0x01, false);
-    }
-
-    public static final class Vex extends Mob {
-        public static final Entry<Byte> VEX_FLAGS = index(0, Metadata::Byte, (byte) 0);
-        public static final Entry<Boolean> IS_ATTACKING = bitMask(0, (byte) 0x01, false);
-    }
-
-    public static final class Warden extends Mob {
-        public static final Entry<Integer> ANGER_LEVEL = index(0, Metadata::VarInt, 0);
-    }
-
     public static final class Wither extends Mob {
         public static final Entry<Integer> CENTER_HEAD_TARGET = index(0, Metadata::VarInt, 0);
         public static final Entry<Integer> LEFT_HEAD_TARGET = index(1, Metadata::VarInt, 0);
@@ -578,27 +511,10 @@ public sealed class MetadataDef {
         public static final Entry<Integer> INVULNERABLE_TIME = index(3, Metadata::VarInt, 0);
     }
 
-    public static final class Zoglin extends Mob {
-        public static final Entry<Boolean> IS_BABY = index(0, Metadata::Boolean, false);
-    }
-
-    public static sealed class Zombie extends Mob {
+    public static final class Zombie extends Mob {
         public static final Entry<Boolean> IS_BABY = index(0, Metadata::Boolean, false);
         public static final Entry<Integer> SPECIAL_TYPE = index(1, Metadata::VarInt, 0);
         public static final Entry<Boolean> IS_BECOMING_DROWNED = index(2, Metadata::Boolean, false);
-    }
-
-    public static final class ZombieVillager extends Zombie {
-        public static final Entry<Boolean> IS_CONVERTING = index(0, Metadata::Boolean, false);
-        public static final Entry<VillagerMeta.VillagerData> VILLAGER_DATA = index(1, Metadata::VillagerData,
-                VillagerMeta.VillagerData.DEFAULT);
-        public static final Entry<Boolean> IS_FINALIZED = index(2, Metadata::Boolean, false);
-    }
-
-    public static final class Enderman extends Mob {
-        public static final Entry<@Nullable Block> CARRIED_BLOCK = index(0, Metadata::OptBlockState, null);
-        public static final Entry<Boolean> IS_SCREAMING = index(1, Metadata::Boolean, false);
-        public static final Entry<Boolean> IS_STARING = index(2, Metadata::Boolean, false);
     }
 
     public static final class EnderDragon extends Mob {

@@ -38,15 +38,15 @@ public class ConnectionManagerIntegrationTest {
     @Test
     public void testPartialFind(Env env) {
         Instance instance = env.createEmptyInstance();
-        Player minestomPlayer = env.createConnection(profiles[0]).connect(instance, Pos.ZERO);
+        Player enginePlayer = env.createConnection(profiles[0]).connect(instance, Pos.ZERO);
         ConnectionManager connectionManager = env.process().connection();
 
-        assertEquals(minestomPlayer, connectionManager.findOnlinePlayer("Mine"));
+        assertEquals(enginePlayer, connectionManager.findOnlinePlayer("Mine"));
         assertNull(connectionManager.findOnlinePlayer("No"));
 
         Player notchPlayer = env.createConnection(profiles[1]).connect(instance, Pos.ZERO);
 
-        assertEquals(minestomPlayer, connectionManager.findOnlinePlayer("Mine"));
+        assertEquals(enginePlayer, connectionManager.findOnlinePlayer("Mine"));
         assertEquals(notchPlayer, connectionManager.findOnlinePlayer("No"));
         assertNull(connectionManager.findOnlinePlayer("leo"));
     }

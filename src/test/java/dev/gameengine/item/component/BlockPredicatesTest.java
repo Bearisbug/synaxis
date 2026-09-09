@@ -2,7 +2,7 @@ package dev.gameengine.item.component;
 
 import net.kyori.adventure.nbt.CompoundBinaryTag;
 import net.kyori.adventure.nbt.IntBinaryTag;
-import dev.gameengine.adventure.MinestomAdventure;
+import dev.gameengine.adventure.EngineAdventure;
 import dev.gameengine.codec.Transcoder;
 import dev.gameengine.component.DataComponent;
 import dev.gameengine.component.DataComponentMap;
@@ -50,7 +50,7 @@ public class BlockPredicatesTest extends AbstractItemComponentRegistriesTest<Blo
 
     @Test
     public void testSingleBlockNbtInput() throws IOException {
-        var tag = MinestomAdventure.tagStringIO().asTag("{blocks:'minecraft:stone'}");
+        var tag = EngineAdventure.tagStringIO().asTag("{blocks:'minecraft:stone'}");
         var component = assertOk(DataComponents.CAN_PLACE_ON.decode(Transcoder.NBT, tag));
         var expected = new BlockPredicates(new BlockPredicate(RegistryTag.direct(RegistryKey.unsafeOf("minecraft:stone"))));
         assertEquals(expected, component);

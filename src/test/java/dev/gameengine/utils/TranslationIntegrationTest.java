@@ -5,7 +5,7 @@ import net.kyori.adventure.text.Component;
 import net.kyori.adventure.translation.GlobalTranslator;
 import net.kyori.adventure.translation.Translator;
 import dev.gameengine.JvmFlags;
-import dev.gameengine.adventure.MinestomAdventure;
+import dev.gameengine.adventure.EngineAdventure;
 import dev.gameengine.component.DataComponents;
 import dev.gameengine.coordinate.Pos;
 import dev.gameengine.item.ItemStack;
@@ -40,7 +40,7 @@ public class TranslationIntegrationTest {
             @Override
             public MessageFormat translate(String key, Locale locale) {
                 if (!"test.key".equals(key)) return null;
-                return new MessageFormat("This is a test message", MinestomAdventure.getDefaultLocale());
+                return new MessageFormat("This is a test message", EngineAdventure.getDefaultLocale());
             }
         };
 

@@ -9,10 +9,10 @@ import dev.gameengine.inventory.PlayerInventoryUtils;
 public class BookListener {
 
     public static void listener(ClientEditBookPacket packet, Player player) {
-        int minestomSlot = PlayerInventoryUtils.convertPlayerInventorySlotToMinestomSlot(packet.slot());
-        if (!PlayerInventoryUtils.isHotbarOrOffHandSlot(minestomSlot)) return;
+        int engineSlot = PlayerInventoryUtils.convertPlayerInventorySlotToEngineSlot(packet.slot());
+        if (!PlayerInventoryUtils.isHotbarOrOffHandSlot(engineSlot)) return;
 
-        final ItemStack itemStack = player.getInventory().getItemStack(minestomSlot);
+        final ItemStack itemStack = player.getInventory().getItemStack(engineSlot);
         player.process().eventHandler().call(new EditBookEvent(player, itemStack, packet.pages(), packet.title()));
     }
 

@@ -125,13 +125,13 @@
       "type": "jdk.internal.misc.Unsafe"
     },
     {
-      "type": "dev.gameengine.adventure.provider.MinestomAnsiComponentSerializerProvider"
+      "type": "dev.gameengine.adventure.provider.EngineAnsiComponentSerializerProvider"
     },
     {
-      "type": "dev.gameengine.adventure.provider.MinestomComponentLoggerProvider"
+      "type": "dev.gameengine.adventure.provider.EngineComponentLoggerProvider"
     },
     {
-      "type": "dev.gameengine.adventure.provider.MinestomGsonComponentSerializerProvider"
+      "type": "dev.gameengine.adventure.provider.EngineGsonComponentSerializerProvider"
     },
     {
       "type": "dev.gameengine.coordinate.Vec",

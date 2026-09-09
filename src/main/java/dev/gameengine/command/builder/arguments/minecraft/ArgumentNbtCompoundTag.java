@@ -1,7 +1,7 @@
 package dev.gameengine.command.builder.arguments.minecraft;
 
 import net.kyori.adventure.nbt.CompoundBinaryTag;
-import dev.gameengine.adventure.MinestomAdventure;
+import dev.gameengine.adventure.EngineAdventure;
 import dev.gameengine.command.ArgumentParserType;
 import dev.gameengine.command.CommandSender;
 import dev.gameengine.command.builder.arguments.Argument;
@@ -25,7 +25,7 @@ public class ArgumentNbtCompoundTag extends Argument<CompoundBinaryTag> {
     @Override
     public CompoundBinaryTag parse(CommandSender sender, String input) throws ArgumentSyntaxException {
         try {
-            return MinestomAdventure.tagStringIO().asCompound(input);
+            return EngineAdventure.tagStringIO().asCompound(input);
         } catch (IOException _) {
             throw new ArgumentSyntaxException("NBTCompound is invalid", input, INVALID_NBT);
         }

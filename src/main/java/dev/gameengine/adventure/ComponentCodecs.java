@@ -126,7 +126,7 @@ public final class ComponentCodecs {
                         payload = rawValue;
                     }
 
-                    yield new Result.Ok<>(ClickEvent.custom(id, MinestomAdventure.wrapNbt(payload)));
+                    yield new Result.Ok<>(ClickEvent.custom(id, EngineAdventure.wrapNbt(payload)));
                 }
             };
         }
@@ -163,7 +163,7 @@ public final class ComponentCodecs {
                         new Result.Error<>("show_dialog: the dialog registry has no server-side type");
                 case ClickEvent.Payload.Custom custom -> {
                     map.put("id", coder.createString(custom.key().asString()));
-                    final RawValue payloadRawValue = RawValue.of(Transcoder.NBT, MinestomAdventure.unwrapNbt(custom.nbt()));
+                    final RawValue payloadRawValue = RawValue.of(Transcoder.NBT, EngineAdventure.unwrapNbt(custom.nbt()));
                     final Result<D> payloadResult = Codec.RAW_VALUE.encode(coder, payloadRawValue);
                     if (!(payloadResult instanceof Result.Ok(D customPayload)))
                         yield payloadResult.cast();

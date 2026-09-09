@@ -3,11 +3,11 @@ package dev.gameengine.inventory;
 public final class PlayerInventoryUtils {
     /*
     There are 3 different slot mappings discussed in this file:
-    - Minestom slots
+    - Engine slots
     - Player inventory slots
     - Window slots
 
-    *Minestom slots* represent all inventory slots, including items and player inventory specifics
+    *Engine slots* represent all inventory slots, including items and player inventory specifics
       like the crafting grid, armor, and off hand. Those ids are specific to PlayerInventory and
       are mapped as follows:
       0-8: Hotbar
@@ -55,19 +55,19 @@ public final class PlayerInventoryUtils {
     }
 
     /**
-     * Returns true if the given minestom slot is on the hotbar or offhand, false otherwise.
+     * Returns true if the given engine slot is on the hotbar or offhand, false otherwise.
      */
-    public static boolean isHotbarOrOffHandSlot(int minestomSlot) {
-        return (minestomSlot >= 0 && minestomSlot < 9) || minestomSlot == OFFHAND_SLOT;
+    public static boolean isHotbarOrOffHandSlot(int engineSlot) {
+        return (engineSlot >= 0 && engineSlot < 9) || engineSlot == OFFHAND_SLOT;
     }
 
     /**
-     * Converts a window packet slot to a Minestom one.
+     * Converts a window packet slot to an engine one.
      *
      * @param slot   the packet slot
-     * @return a slot which can be use internally with Minestom
+     * @return a slot which can be use internally with the engine
      */
-    public static int convertWindow0SlotToMinestomSlot(int slot) {
+    public static int convertWindow0SlotToEngineSlot(int slot) {
         return switch (slot) {
             case 0 -> CRAFT_RESULT;
             case 1 -> CRAFT_SLOT_1;
@@ -78,11 +78,11 @@ public final class PlayerInventoryUtils {
             case 6 -> CHESTPLATE_SLOT;
             case 7 -> LEGGINGS_SLOT;
             case 8 -> BOOTS_SLOT;
-            default -> convertWindowSlotToMinestomSlot(slot, WINDOW_0_OFFSET);
+            default -> convertWindowSlotToEngineSlot(slot, WINDOW_0_OFFSET);
         };
     }
 
-    public static int convertWindowSlotToMinestomSlot(int slot, int offset) {
+    public static int convertWindowSlotToEngineSlot(int slot, int offset) {
         final int rowSize = 9;
         slot -= offset;
         if (slot >= rowSize * 3 && slot < rowSize * 4) {
@@ -94,24 +94,24 @@ public final class PlayerInventoryUtils {
     }
 
     /**
-     * Returns true if the given Minestom slot is valid as a Player inventory slot (ie is it not a crafting grid slot)
+     * Returns true if the given engine slot is valid as a Player inventory slot (ie is it not a crafting grid slot)
      */
-    public static boolean isPlayerInventorySlot(int minestomSlot) {
-        return !(minestomSlot >= CRAFT_RESULT && minestomSlot <= CRAFT_SLOT_4);
+    public static boolean isPlayerInventorySlot(int engineSlot) {
+        return !(engineSlot >= CRAFT_RESULT && engineSlot <= CRAFT_SLOT_4);
     }
 
     /**
-     * Used to convert a Minestom slot to a player inventory slot. Only valid for some slots, should be tested
+     * Used to convert an engine slot to a player inventory slot. Only valid for some slots, should be tested
      * with {@link #isPlayerInventorySlot(int)} first.
      */
-    public static int convertMinestomSlotToPlayerInventorySlot(int minestomSlot) {
-        if (minestomSlot >= HELMET_SLOT && minestomSlot <= BOOTS_SLOT) {
-            // Armor is in the reverse order Minestom tracks it, and immediately after the main inventory
-            return (3 - (minestomSlot - HELMET_SLOT)) + 36;
-        } else if (minestomSlot == OFFHAND_SLOT) {
+    public static int convertEngineSlotToPlayerInventorySlot(int engineSlot) {
+        if (engineSlot >= HELMET_SLOT && engineSlot <= BOOTS_SLOT) {
+            // Armor is in the reverse order the engine tracks it, and immediately after the main inventory
+            return (3 - (engineSlot - HELMET_SLOT)) + 36;
+        } else if (engineSlot == OFFHAND_SLOT) {
             return 40;
         }
-        return minestomSlot;
+        return engineSlot;
     }
 
     /**
@@ -120,7 +120,7 @@ public final class PlayerInventoryUtils {
      * @param slot the internal slot
      * @return a slot id which can be used for packets
      */
-    public static int convertMinestomSlotToWindowSlot(int slot) {
+    public static int convertEngineSlotToWindowSlot(int slot) {
         if (slot > -1 && slot < 9) { // Held bar 0-8
             return slot + 36;
         } else if (slot >= CRAFT_RESULT && slot <= CRAFT_SLOT_4) { // Crafting 36-40
@@ -133,15 +133,15 @@ public final class PlayerInventoryUtils {
     }
 
     /**
-     * Used to convert a player inventory slot from a client to a Minestom slot.
+     * Used to convert a player inventory slot from a client to an engine slot.
      * See above for description
      *
      * @param slot the client slot
-     * @return a slot which can be used internally with Minestom
+     * @return a slot which can be used internally with the engine
      */
-    public static int convertPlayerInventorySlotToMinestomSlot(int slot) {
+    public static int convertPlayerInventorySlotToEngineSlot(int slot) {
         if (slot < 0 || slot > 40) return -1; // Sanity
-        // Armor slots are reversed in Minestom, and off hand is a different slot
+        // Armor slots are reversed in the engine, and off hand is a different slot
         if (slot == 36) return BOOTS_SLOT;
         if (slot == 37) return LEGGINGS_SLOT;
         if (slot == 38) return CHESTPLATE_SLOT;

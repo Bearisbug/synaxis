@@ -3,7 +3,7 @@ package dev.gameengine.instance.block.predicate;
 import net.kyori.adventure.nbt.BinaryTag;
 import net.kyori.adventure.nbt.CompoundBinaryTag;
 import net.kyori.adventure.nbt.ListBinaryTag;
-import dev.gameengine.adventure.MinestomAdventure;
+import dev.gameengine.adventure.EngineAdventure;
 import dev.gameengine.codec.Codec;
 import dev.gameengine.network.NetworkBuffer;
 import org.jetbrains.annotations.Nullable;
@@ -15,12 +15,12 @@ public record NbtPredicate(@Nullable CompoundBinaryTag nbt) implements Predicate
     public static final Codec<NbtPredicate> CODEC = Codec.NBT_COMPOUND.orElse(Codec.STRING.transform(
             string -> {
                 try {
-                    return MinestomAdventure.tagStringIO().asCompound(string);
+                    return EngineAdventure.tagStringIO().asCompound(string);
                 } catch (IOException e) {
                     throw new IllegalArgumentException(e);
                 }
             },
-            MinestomAdventure.tagStringIO()::asString
+            EngineAdventure.tagStringIO()::asString
     )).transform(NbtPredicate::new, NbtPredicate::nbt);
     public static final NetworkBuffer.Type<NbtPredicate> NETWORK_TYPE = NetworkBuffer.NBT_COMPOUND.transform(NbtPredicate::new, NbtPredicate::nbt);
 

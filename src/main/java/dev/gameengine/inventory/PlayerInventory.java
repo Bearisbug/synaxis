@@ -21,8 +21,8 @@ import static dev.gameengine.inventory.PlayerInventoryUtils.CHESTPLATE_SLOT;
 import static dev.gameengine.inventory.PlayerInventoryUtils.HELMET_SLOT;
 import static dev.gameengine.inventory.PlayerInventoryUtils.LEGGINGS_SLOT;
 import static dev.gameengine.inventory.PlayerInventoryUtils.OFFHAND_SLOT;
-import static dev.gameengine.inventory.PlayerInventoryUtils.convertMinestomSlotToPlayerInventorySlot;
-import static dev.gameengine.inventory.PlayerInventoryUtils.convertMinestomSlotToWindowSlot;
+import static dev.gameengine.inventory.PlayerInventoryUtils.convertEngineSlotToPlayerInventorySlot;
+import static dev.gameengine.inventory.PlayerInventoryUtils.convertEngineSlotToWindowSlot;
 import static dev.gameengine.inventory.PlayerInventoryUtils.isPlayerInventorySlot;
 
 /**
@@ -148,8 +148,8 @@ public non-sealed class PlayerInventory extends AbstractInventory {
         // See note in PlayerInventoryUtils about why we do this conversion
         boolean isPlayerInventorySlot = isPlayerInventorySlot(slot);
         int packetSlot = isPlayerInventorySlot
-                ? convertMinestomSlotToPlayerInventorySlot(slot)
-                : convertMinestomSlotToWindowSlot(slot);
+                ? convertEngineSlotToPlayerInventorySlot(slot)
+                : convertEngineSlotToWindowSlot(slot);
 
         sendPacketToViewers(isPlayerInventorySlot
                 ? new SetPlayerInventorySlotPacket(packetSlot, item)
@@ -164,7 +164,7 @@ public non-sealed class PlayerInventory extends AbstractInventory {
     private WindowItemsPacket createWindowItemsPacket() {
         ItemStack[] convertedSlots = new ItemStack[INVENTORY_SIZE];
         for (int i = 0; i < itemStacks.length; i++) {
-            final int slot = convertMinestomSlotToWindowSlot(i);
+            final int slot = convertEngineSlotToWindowSlot(i);
             convertedSlots[slot] = itemStacks[i];
         }
         return new WindowItemsPacket(0, 0, List.of(convertedSlots), cursorItem);

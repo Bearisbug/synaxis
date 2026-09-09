@@ -1,12 +1,12 @@
 package dev.gameengine;
 
-import dev.gameengine.thread.MinestomThread;
+import dev.gameengine.thread.EngineThread;
 import org.jetbrains.annotations.ApiStatus;
 
 import java.util.Locale;
 
 @ApiStatus.Internal
-public final class TickSchedulerThread extends MinestomThread {
+public final class TickSchedulerThread extends EngineThread {
     public static final String THREAD_NAME_TICK_SCHEDULER = "Ge-TickScheduler";
 
     // Windows has an issue with periodically being unable to sleep for < ~16ms at a time

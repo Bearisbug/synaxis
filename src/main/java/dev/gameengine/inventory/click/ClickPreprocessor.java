@@ -52,9 +52,9 @@ public final class ClickPreprocessor {
     public @Nullable Click processClick(ClientClickWindowPacket packet, @Nullable Integer containerSize) {
         final int slot;
         if (containerSize == null) {
-            slot = PlayerInventoryUtils.convertWindow0SlotToMinestomSlot(packet.slot());
+            slot = PlayerInventoryUtils.convertWindow0SlotToEngineSlot(packet.slot());
         } else if (packet.slot() >= containerSize) {
-            slot = containerSize + PlayerInventoryUtils.convertWindowSlotToMinestomSlot(packet.slot(), containerSize);
+            slot = containerSize + PlayerInventoryUtils.convertWindowSlotToEngineSlot(packet.slot(), containerSize);
         } else {
             slot = packet.slot();
         }

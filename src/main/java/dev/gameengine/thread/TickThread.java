@@ -17,7 +17,7 @@ import java.util.function.Consumer;
  * Created in {@link ThreadDispatcher}, and awaken every tick with a task to execute.
  */
 @ApiStatus.Internal
-public class TickThread extends MinestomThread {
+public class TickThread extends EngineThread {
     public static final String THREAD_NAME_TICK = "Ge-Tick";
 
     private final Consumer<Throwable> exceptionHandler;

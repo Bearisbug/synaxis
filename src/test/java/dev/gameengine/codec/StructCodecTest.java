@@ -2,7 +2,7 @@ package dev.gameengine.codec;
 
 import com.google.gson.JsonParser;
 import net.kyori.adventure.nbt.BinaryTag;
-import dev.gameengine.adventure.MinestomAdventure;
+import dev.gameengine.adventure.EngineAdventure;
 import org.jetbrains.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 
@@ -151,7 +151,7 @@ public class StructCodecTest {
     }
 
     private static BinaryTag snbt(String snbt) {
-        return assertDoesNotThrow(() -> MinestomAdventure.tagStringIO().asTag(snbt));
+        return assertDoesNotThrow(() -> EngineAdventure.tagStringIO().asTag(snbt));
     }
 
 

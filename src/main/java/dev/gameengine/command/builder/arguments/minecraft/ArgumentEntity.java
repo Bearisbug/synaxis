@@ -103,7 +103,7 @@ public class ArgumentEntity extends Argument<EntityFinder> {
             try {
                 final UUID uuid = UUID.fromString(input);
                 return new EntityFinder()
-                        .setTargetSelector(EntityFinder.TargetSelector.MINESTOM_UUID)
+                        .setTargetSelector(EntityFinder.TargetSelector.ENGINE_UUID)
                         .setConstantUuid(uuid);
             } catch (IllegalArgumentException _) {
                 // Not a UUID, fall through to the other input formats
@@ -112,7 +112,7 @@ public class ArgumentEntity extends Argument<EntityFinder> {
             // Check if the input is a valid player name
             if (USERNAME_PATTERN.matcher(input).matches()) {
                 return new EntityFinder()
-                        .setTargetSelector(EntityFinder.TargetSelector.MINESTOM_USERNAME)
+                        .setTargetSelector(EntityFinder.TargetSelector.ENGINE_USERNAME)
                         .setConstantName(input);
             }
         }

@@ -346,7 +346,7 @@ public class LeftClickIntegrationTest {
             // Do not touch slot
         } else {
             int offset = openInventory != null ? openInventory.getInnerSize() : 0;
-            slot = PlayerInventoryUtils.convertMinestomSlotToWindowSlot(slot);
+            slot = PlayerInventoryUtils.convertEngineSlotToWindowSlot(slot);
             if (openInventory != null) {
                 slot = slot - 9 + offset;
             }

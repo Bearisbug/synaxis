@@ -17,9 +17,9 @@ import java.util.function.BiFunction;
 /**
  * Adventure related constants, etc.
  */
-public final class MinestomAdventure {
+public final class EngineAdventure {
     /**
-     * See {@link MinestomAdventure#tagStringIO()}
+     * See {@link EngineAdventure#tagStringIO()}
      */
     private static final TagStringIO tagStringIO = TagStringIO.builder()
             .emitHeterogeneousLists(true)
@@ -38,7 +38,7 @@ public final class MinestomAdventure {
 
     private static Locale defaultLocale = Locale.getDefault();
 
-    private MinestomAdventure() {
+    private EngineAdventure() {
     }
 
     /**
@@ -67,7 +67,7 @@ public final class MinestomAdventure {
      * @param defaultLocale the new default, or {@code null} to return to {@link Locale#getDefault()}
      */
     public static void setDefaultLocale(@Nullable Locale defaultLocale) {
-        MinestomAdventure.defaultLocale = Objects.requireNonNullElseGet(defaultLocale, Locale::getDefault);
+        EngineAdventure.defaultLocale = Objects.requireNonNullElseGet(defaultLocale, Locale::getDefault);
     }
 
     public static BinaryTagHolder wrapNbt(BinaryTag nbt) {
@@ -78,7 +78,7 @@ public final class MinestomAdventure {
         if (holder instanceof BinaryTagHolderImpl(BinaryTag nbt))
             return nbt;
         try {
-            return holder.get(MinestomAdventure.NBT_CODEC);
+            return holder.get(EngineAdventure.NBT_CODEC);
         } catch (IOException e) {
             throw new RuntimeException("Failed to unwrap BinaryTagHolder", e);
         }

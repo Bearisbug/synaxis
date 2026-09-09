@@ -11,7 +11,7 @@ public record BinaryTagHolderImpl(BinaryTag nbt) implements BinaryTagHolder {
     @Override
     public String string() {
         try {
-            return MinestomAdventure.tagStringIO().asString(nbt);
+            return EngineAdventure.tagStringIO().asString(nbt);
         } catch (IOException e) {
             throw new RuntimeException("Failed to convert BinaryTag to String", e);
         }

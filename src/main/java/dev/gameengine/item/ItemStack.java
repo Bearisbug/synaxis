@@ -8,7 +8,7 @@ import net.kyori.adventure.text.event.DataComponentValue;
 import net.kyori.adventure.text.event.HoverEvent;
 import net.kyori.adventure.text.event.HoverEventSource;
 import net.kyori.adventure.util.RGBLike;
-import dev.gameengine.adventure.MinestomDataComponentValue;
+import dev.gameengine.adventure.EngineDataComponentValue;
 import dev.gameengine.codec.Codec;
 import dev.gameengine.codec.Result;
 import dev.gameengine.codec.StructCodec;
@@ -313,7 +313,7 @@ public sealed interface ItemStack extends TagReadable, DataComponent.Holder, Hov
 
         final Map<Key, DataComponentValue> dataComponents = new HashMap<>();
         for (final DataComponent.Value entry : componentPatch().entrySet())
-            dataComponents.put(entry.component().key(), MinestomDataComponentValue.dataComponentValue(entry.value()));
+            dataComponents.put(entry.component().key(), EngineDataComponentValue.dataComponentValue(entry.value()));
         return HoverEvent.showItem(op.apply(HoverEvent.ShowItem.showItem(material(), amount(), dataComponents)));
     }
 

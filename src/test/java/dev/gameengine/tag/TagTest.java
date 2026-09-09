@@ -1,7 +1,7 @@
 package dev.gameengine.tag;
 
 import net.kyori.adventure.nbt.CompoundBinaryTag;
-import dev.gameengine.adventure.MinestomAdventure;
+import dev.gameengine.adventure.EngineAdventure;
 import dev.gameengine.item.ItemStack;
 import dev.gameengine.item.Material;
 import dev.gameengine.registry.Registries;
@@ -67,7 +67,7 @@ public class TagTest {
     public void snbt() throws IOException {
         var compound = CompoundBinaryTag.builder().putInt("key", 5).build();
         var reader = TagHandler.fromCompound(compound);
-        assertEquals(MinestomAdventure.tagStringIO().asString(reader.asCompound()), MinestomAdventure.tagStringIO().asString(compound), "SNBT is not the same");
+        assertEquals(EngineAdventure.tagStringIO().asString(reader.asCompound()), EngineAdventure.tagStringIO().asString(compound), "SNBT is not the same");
     }
 
     @Test

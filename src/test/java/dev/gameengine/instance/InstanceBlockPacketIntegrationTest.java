@@ -2,7 +2,7 @@ package dev.gameengine.instance;
 
 import net.kyori.adventure.key.Key;
 import net.kyori.adventure.nbt.CompoundBinaryTag;
-import dev.gameengine.adventure.MinestomAdventure;
+import dev.gameengine.adventure.EngineAdventure;
 import dev.gameengine.coordinate.Pos;
 import dev.gameengine.coordinate.Vec;
 import dev.gameengine.instance.block.Block;
@@ -67,7 +67,7 @@ public class InstanceBlockPacketIntegrationTest {
         final Block block;
         final CompoundBinaryTag data;
         try {
-            data = MinestomAdventure.tagStringIO().asCompound("{\"is_waxed\":1B}");
+            data = EngineAdventure.tagStringIO().asCompound("{\"is_waxed\":1B}");
             block = Block.OAK_SIGN.withHandler(signHandler).withNbt(data);
         } catch (Exception ex) {
             throw new RuntimeException(ex);

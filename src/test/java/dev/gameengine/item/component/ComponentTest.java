@@ -1,7 +1,7 @@
 package dev.gameengine.item.component;
 
 import net.kyori.adventure.text.Component;
-import dev.gameengine.adventure.MinestomAdventure;
+import dev.gameengine.adventure.EngineAdventure;
 import dev.gameengine.codec.Transcoder;
 import dev.gameengine.component.DataComponent;
 import dev.gameengine.component.DataComponents;
@@ -36,7 +36,7 @@ public class ComponentTest extends AbstractItemComponentRegistriesTest<Component
 
     @Test
     void testItemNameParseRegression() throws Exception {
-        var nbt = MinestomAdventure.tagStringIO().asTag("{translate: \"item.minecraft.diamond\"}");
+        var nbt = EngineAdventure.tagStringIO().asTag("{translate: \"item.minecraft.diamond\"}");
         var component = DataComponents.ITEM_NAME.decode(Transcoder.NBT, nbt);
         assertOk(component);
     }

@@ -4,12 +4,12 @@ import net.kyori.adventure.text.serializer.ansi.ANSIComponentSerializer;
 import net.kyori.adventure.text.serializer.gson.GsonComponentSerializer;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
-import dev.gameengine.adventure.provider.MinestomAnsiComponentSerializerProvider;
-import dev.gameengine.adventure.provider.MinestomComponentLoggerProvider;
-import dev.gameengine.adventure.provider.MinestomDataComponentValueConverterProvider;
-import dev.gameengine.adventure.provider.MinestomGsonComponentSerializerProvider;
-import dev.gameengine.adventure.provider.MinestomLegacyComponentSerializerProvider;
-import dev.gameengine.adventure.provider.MinestomPlainTextComponentSerializerProvider;
+import dev.gameengine.adventure.provider.EngineAnsiComponentSerializerProvider;
+import dev.gameengine.adventure.provider.EngineComponentLoggerProvider;
+import dev.gameengine.adventure.provider.EngineDataComponentValueConverterProvider;
+import dev.gameengine.adventure.provider.EngineGsonComponentSerializerProvider;
+import dev.gameengine.adventure.provider.EngineLegacyComponentSerializerProvider;
+import dev.gameengine.adventure.provider.EnginePlainTextComponentSerializerProvider;
 
 @SuppressWarnings({"UnstableApiUsage"}) // We are allowed to implement these
 module dev.gameengine {
@@ -135,10 +135,10 @@ module dev.gameengine {
     exports dev.gameengine.world.attribute;
     exports dev.gameengine.world.biome;
 
-    provides ComponentLoggerProvider with MinestomComponentLoggerProvider;
-    provides ANSIComponentSerializer.Provider with MinestomAnsiComponentSerializerProvider;
-    provides PlainTextComponentSerializer.Provider with MinestomPlainTextComponentSerializerProvider;
-    provides LegacyComponentSerializer.Provider with MinestomLegacyComponentSerializerProvider;
-    provides GsonComponentSerializer.Provider with MinestomGsonComponentSerializerProvider;
-    provides DataComponentValueConverterRegistry.Provider with MinestomDataComponentValueConverterProvider;
+    provides ComponentLoggerProvider with EngineComponentLoggerProvider;
+    provides ANSIComponentSerializer.Provider with EngineAnsiComponentSerializerProvider;
+    provides PlainTextComponentSerializer.Provider with EnginePlainTextComponentSerializerProvider;
+    provides LegacyComponentSerializer.Provider with EngineLegacyComponentSerializerProvider;
+    provides GsonComponentSerializer.Provider with EngineGsonComponentSerializerProvider;
+    provides DataComponentValueConverterRegistry.Provider with EngineDataComponentValueConverterProvider;
 }

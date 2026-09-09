@@ -22,9 +22,9 @@ public class RegistryIntegrationTest {
         DimensionType dimensionType = DimensionType.builder()
                 .ambientLight(2f)
                 .build();
-        var registryKey = dimensionRegistry.register(Key.key("toocool:fortests"), dimensionType, DataPack.MINESTOM_UNNAMED);
+        var registryKey = dimensionRegistry.register(Key.key("toocool:fortests"), dimensionType, DataPack.ENGINE_UNNAMED);
         assertEquals(dimensionType, dimensionRegistry.get(registryKey));
-        assertEquals(DataPack.MINESTOM_UNNAMED, dimensionRegistry.getPack(registryKey));
+        assertEquals(DataPack.ENGINE_UNNAMED, dimensionRegistry.getPack(registryKey));
         assertDoesNotThrow(() -> {
             dimensionRegistry.registryDataPacket(env.process(), false);
         }, "Registry data packet should not throw for null pack");
@@ -59,7 +59,7 @@ public class RegistryIntegrationTest {
         DimensionType dimensionType = DimensionType.builder()
                 .ambientLight(2f)
                 .build();
-        assertDoesNotThrow(()-> dimensionRegistry.register(Key.key("toocool:fortests"), dimensionType, DataPack.MINESTOM_UNNAMED));
+        assertDoesNotThrow(()-> dimensionRegistry.register(Key.key("toocool:fortests"), dimensionType, DataPack.ENGINE_UNNAMED));
         assertDoesNotThrow(() -> dimensionRegistry.register(Key.key("toocool:fortests2"), dimensionType, DataPack.MINECRAFT_CORE));
     }
 }

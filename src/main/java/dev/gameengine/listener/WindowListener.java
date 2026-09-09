@@ -118,7 +118,7 @@ public class WindowListener {
         final int translatedSlot;
 
         if (openInventory == null) {
-            translatedSlot = PlayerInventoryUtils.convertWindow0SlotToMinestomSlot(rawSlot);
+            translatedSlot = PlayerInventoryUtils.convertWindow0SlotToEngineSlot(rawSlot);
             if (translatedSlot > player.getInventory().getSize() || translatedSlot < 0) {
                 throw new IllegalArgumentException("Slot index " + rawSlot + " is out of bounds for player inventory");
             }
@@ -129,7 +129,7 @@ public class WindowListener {
                 targetInventory = openInventory;
                 translatedSlot = rawSlot;
             } else {
-                translatedSlot = PlayerInventoryUtils.convertWindowSlotToMinestomSlot(rawSlot, containerSize);
+                translatedSlot = PlayerInventoryUtils.convertWindowSlotToEngineSlot(rawSlot, containerSize);
                 if (translatedSlot > player.getInventory().getSize() || translatedSlot < 0) {
                     throw new IllegalArgumentException("Slot index " + rawSlot + " is out of bounds for player inventory");
                 }

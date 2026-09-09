@@ -5,7 +5,7 @@ import net.kyori.adventure.text.serializer.ansi.ANSIComponentSerializer;
 import java.util.function.Consumer;
 
 @SuppressWarnings("UnstableApiUsage") // we are permitted to provide this
-public final class MinestomAnsiComponentSerializerProvider implements ANSIComponentSerializer.Provider {
+public final class EngineAnsiComponentSerializerProvider implements ANSIComponentSerializer.Provider {
     @Override
     public ANSIComponentSerializer ansi() {
         final ANSIComponentSerializer.Builder builder = ANSIComponentSerializer.builder();
@@ -15,6 +15,6 @@ public final class MinestomAnsiComponentSerializerProvider implements ANSICompon
 
     @Override
     public Consumer<ANSIComponentSerializer.Builder> builder() {
-        return builder -> builder.flattener(MinestomFlattenerProvider.INSTANCE);
+        return builder -> builder.flattener(EngineFlattenerProvider.INSTANCE);
     }
 }

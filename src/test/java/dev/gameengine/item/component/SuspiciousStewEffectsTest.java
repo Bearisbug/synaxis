@@ -1,6 +1,6 @@
 package dev.gameengine.item.component;
 
-import dev.gameengine.adventure.MinestomAdventure;
+import dev.gameengine.adventure.EngineAdventure;
 import dev.gameengine.codec.Transcoder;
 import dev.gameengine.component.DataComponent;
 import dev.gameengine.component.DataComponents;
@@ -34,7 +34,7 @@ public class SuspiciousStewEffectsTest extends AbstractItemComponentRegistriesTe
 
     @Test
     void nbtReadDefaultDuration() throws Exception {
-        var value = assertOk(DataComponents.SUSPICIOUS_STEW_EFFECTS.decode(Transcoder.NBT, MinestomAdventure.tagStringIO().asTag("""
+        var value = assertOk(DataComponents.SUSPICIOUS_STEW_EFFECTS.decode(Transcoder.NBT, EngineAdventure.tagStringIO().asTag("""
                 [{"id": "minecraft:strength"}]
                 """)));
         var expected = new SuspiciousStewEffects(new SuspiciousStewEffects.Effect(PotionEffect.STRENGTH, 160));

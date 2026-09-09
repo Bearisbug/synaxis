@@ -277,7 +277,7 @@ public class InventoryIntegrationTest {
         player.openInventory(inventory);
 
         var listener = env.trackEvent(InventoryBundleItemSelectEvent.class, EventFilter.PLAYER, player);
-        // Window slot 27 (27 + 0) corresponds to player inventory main slot 9 in Minestom
+        // Window slot 27 (27 + 0) corresponds to player inventory main slot 9 in the engine
         player.addPacketToQueue(new ClientSelectBundleItemPacket(27, 42));
         player.interpretPacketQueue();
 
@@ -294,7 +294,7 @@ public class InventoryIntegrationTest {
         var player = connection.connect(instance, new Pos(0, 42, 0));
 
         var listener = env.trackEvent(InventoryBundleItemSelectEvent.class, EventFilter.PLAYER, player);
-        // Window slot 36 corresponds to hotbar slot 0 in Minestom (when openInventory == null)
+        // Window slot 36 corresponds to hotbar slot 0 in the engine (when openInventory == null)
         player.addPacketToQueue(new ClientSelectBundleItemPacket(36, 42));
         player.interpretPacketQueue();
 

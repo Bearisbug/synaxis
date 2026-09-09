@@ -98,7 +98,7 @@ public class ShiftClickIntegrationTest {
         inventory.setItemStack(35, ItemStack.of(Material.DIAMOND, 63));
         inventory.setItemStack(37, ItemStack.of(Material.DIAMOND, 64)); // First crafting grid slot
 
-        // Minestom slot 37 is window slot 1 of window 0
+        // Engine slot 37 is window slot 1 of window 0
         player.addPacketToQueue(clickPacket(QUICK_MOVE, 0, 0, 1));
         player.interpretPacketQueue();
 

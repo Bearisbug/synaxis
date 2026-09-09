@@ -2,7 +2,7 @@ package dev.gameengine.network.player;
 
 import dev.gameengine.JvmFlags;
 import dev.gameengine.ServerProcess;
-import dev.gameengine.adventure.MinestomAdventure;
+import dev.gameengine.adventure.EngineAdventure;
 import dev.gameengine.entity.Player;
 import dev.gameengine.event.ListenerHandle;
 import dev.gameengine.event.player.PlayerPacketOutEvent;
@@ -347,7 +347,7 @@ public class PlayerSocketConnection extends PlayerConnection {
             // Translation
             if (JvmFlags.AUTOMATIC_COMPONENT_TRANSLATION && packet instanceof ServerPacket.ComponentHolding translatablePacket) {
                 packet = translatablePacket.copyWithOperator(component ->
-                        MinestomAdventure.COMPONENT_TRANSLATOR.apply(component, Objects.requireNonNullElseGet(player.getLocale(), MinestomAdventure::getDefaultLocale)));
+                        EngineAdventure.COMPONENT_TRANSLATOR.apply(component, Objects.requireNonNullElseGet(player.getLocale(), EngineAdventure::getDefaultLocale)));
             }
         }
         // Write packet

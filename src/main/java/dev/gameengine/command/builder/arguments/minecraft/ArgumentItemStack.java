@@ -3,7 +3,7 @@ package dev.gameengine.command.builder.arguments.minecraft;
 import net.kyori.adventure.key.Key;
 import net.kyori.adventure.nbt.BinaryTag;
 import net.kyori.adventure.nbt.CompoundBinaryTag;
-import dev.gameengine.adventure.MinestomAdventure;
+import dev.gameengine.adventure.EngineAdventure;
 import dev.gameengine.codec.Result;
 import dev.gameengine.codec.Transcoder;
 import dev.gameengine.command.ArgumentParserType;
@@ -164,7 +164,7 @@ public class ArgumentItemStack extends Argument<ItemStack> {
         BinaryTag readTag() {
             try {
                 StringBuilder remainder = new StringBuilder();
-                final BinaryTag result = MinestomAdventure.tagStringIO().asTag(input.substring(index), remainder);
+                final BinaryTag result = EngineAdventure.tagStringIO().asTag(input.substring(index), remainder);
                 this.input = remainder.toString();
                 this.index = 0;
 

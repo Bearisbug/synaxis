@@ -31,7 +31,7 @@ public sealed interface DynamicRegistry<T> extends Registry<T> permits DynamicRe
     static <T> DynamicRegistry<T> fromMap(Key key, Map.Entry<Key, T>... entries) {
         var registry = new DynamicRegistryImpl<T>(key, null);
         for (var entry : entries)
-            registry.register(entry.getKey(), entry.getValue(), DataPack.MINESTOM_UNNAMED);
+            registry.register(entry.getKey(), entry.getValue(), DataPack.ENGINE_UNNAMED);
         return registry.compact();
     }
 
@@ -119,11 +119,11 @@ public sealed interface DynamicRegistry<T> extends Registry<T> permits DynamicRe
      * @return The new ID of the registered object
      */
     default RegistryKey<T> register(String id, T object) {
-        return register(Key.key(id), object, DataPack.MINESTOM_UNNAMED);
+        return register(Key.key(id), object, DataPack.ENGINE_UNNAMED);
     }
 
     default RegistryKey<T> register(Key id, T object) {
-        return register(id, object, DataPack.MINESTOM_UNNAMED);
+        return register(id, object, DataPack.ENGINE_UNNAMED);
     }
 
     @ApiStatus.Internal

@@ -1,6 +1,6 @@
 package dev.gameengine.item.component;
 
-import dev.gameengine.adventure.MinestomAdventure;
+import dev.gameengine.adventure.EngineAdventure;
 import dev.gameengine.codec.Transcoder;
 import dev.gameengine.component.DataComponent;
 import dev.gameengine.component.DataComponents;
@@ -43,7 +43,7 @@ public class EnchantmentListTest extends AbstractItemComponentRegistriesTest<Enc
 
     @Test
     void testShorthandNbtSyntax(Registries registries) throws Exception {
-        var tag = MinestomAdventure.tagStringIO().asTag("""
+        var tag = EngineAdventure.tagStringIO().asTag("""
                 {
                     "sharpness": 1,
                     "punch": 2,

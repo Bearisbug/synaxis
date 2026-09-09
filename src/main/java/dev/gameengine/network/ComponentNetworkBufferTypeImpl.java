@@ -21,7 +21,7 @@ import net.kyori.adventure.text.format.TextDecoration;
 import net.kyori.adventure.text.object.PlayerHeadObjectContents;
 import net.kyori.adventure.text.object.SpriteObjectContents;
 import dev.gameengine.adventure.ComponentCodecs;
-import dev.gameengine.adventure.MinestomAdventure;
+import dev.gameengine.adventure.EngineAdventure;
 import dev.gameengine.adventure.serializer.nbt.NbtDataComponentValue;
 import dev.gameengine.codec.Transcoder;
 import dev.gameengine.registry.Registries;
@@ -373,7 +373,7 @@ record ComponentNetworkBufferTypeImpl() implements NetworkBufferTypeImpl<Compone
                 buffer.write(STRING_IO_UTF8, "id");
                 buffer.write(STRING_IO_UTF8, payload.key().asString());
 
-                BinaryTagTypeImpl.writeNamed(buffer, "payload", MinestomAdventure.unwrapNbt(payload.nbt()));
+                BinaryTagTypeImpl.writeNamed(buffer, "payload", EngineAdventure.unwrapNbt(payload.nbt()));
             }
             default -> throw new UnsupportedOperationException("Unknown click event action: " + clickEvent.action());
         }

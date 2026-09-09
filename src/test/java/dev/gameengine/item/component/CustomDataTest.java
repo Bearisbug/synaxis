@@ -1,7 +1,7 @@
 package dev.gameengine.item.component;
 
 import net.kyori.adventure.nbt.CompoundBinaryTag;
-import dev.gameengine.adventure.MinestomAdventure;
+import dev.gameengine.adventure.EngineAdventure;
 import dev.gameengine.codec.Transcoder;
 import dev.gameengine.component.DataComponent;
 import dev.gameengine.component.DataComponents;
@@ -48,7 +48,7 @@ public class CustomDataTest extends AbstractItemComponentRegistriesTest<CustomDa
         final ItemStack item = ItemStack.builder(Material.STICK)
                 .set(Tag.Integer("num").path("test"), 5)
                 .build();
-        final String snbt = MinestomAdventure.tagStringIO().asString(item.get(DataComponents.CUSTOM_DATA).nbt());
+        final String snbt = EngineAdventure.tagStringIO().asString(item.get(DataComponents.CUSTOM_DATA).nbt());
         assertEquals("{test:{num:5}}", snbt);
     }
 
@@ -56,7 +56,7 @@ public class CustomDataTest extends AbstractItemComponentRegistriesTest<CustomDa
     void typedCustomDataWrite() throws IOException {
         var component = new TypedCustomData<>(EntityType.COD, CompoundBinaryTag.builder().putFloat("Health", 1.5f).build());
         var nbt = TypedCustomData.codec(EntityType.CODEC).encode(Transcoder.NBT, component).orElseThrow();
-        final String snbt = MinestomAdventure.tagStringIO().asString(nbt);
+        final String snbt = EngineAdventure.tagStringIO().asString(nbt);
         assertEquals("{Health:1.5f,id:\"minecraft:cod\"}", snbt);
     }
 }

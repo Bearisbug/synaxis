@@ -135,11 +135,11 @@ public final class AdventurePacketConvertor {
      * @return the sound packet
      */
     public static ServerPacket createSoundPacket(Sound sound, double x, double y, double z) {
-        SoundEvent minestomSound = SoundEvent.fromKey(sound.name());
-        if (minestomSound == null) minestomSound = SoundEvent.of(sound.name(), null);
+        SoundEvent soundEvent = SoundEvent.fromKey(sound.name());
+        if (soundEvent == null) soundEvent = SoundEvent.of(sound.name(), null);
 
         final long seed = sound.seed().orElse(ThreadLocalRandom.current().nextLong());
-        return new SoundEffectPacket(minestomSound, sound.source(), new Vec(x, y, z), sound.volume(), sound.pitch(), seed);
+        return new SoundEffectPacket(soundEvent, sound.source(), new Vec(x, y, z), sound.volume(), sound.pitch(), seed);
     }
 
     /**
@@ -156,11 +156,11 @@ public final class AdventurePacketConvertor {
         if (!(emitter instanceof Entity entity))
             throw new IllegalArgumentException("you can only call this method with entities");
 
-        SoundEvent minestomSound = SoundEvent.fromKey(sound.name());
-        if (minestomSound == null) minestomSound = SoundEvent.of(sound.name(), null);
+        SoundEvent soundEvent = SoundEvent.fromKey(sound.name());
+        if (soundEvent == null) soundEvent = SoundEvent.of(sound.name(), null);
 
         final long seed = sound.seed().orElse(ThreadLocalRandom.current().nextLong());
-        return new EntitySoundEffectPacket(minestomSound, sound.source(), entity.getEntityId(), sound.volume(), sound.pitch(), seed);
+        return new EntitySoundEffectPacket(soundEvent, sound.source(), entity.getEntityId(), sound.volume(), sound.pitch(), seed);
     }
 
     /**

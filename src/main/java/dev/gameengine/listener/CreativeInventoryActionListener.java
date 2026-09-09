@@ -29,7 +29,7 @@ public final class CreativeInventoryActionListener {
             return;
         }
         // Set item
-        slot = (short) PlayerInventoryUtils.convertWindow0SlotToMinestomSlot(slot);
+        slot = (short) PlayerInventoryUtils.convertWindow0SlotToEngineSlot(slot);
         PlayerInventory inventory = player.getInventory();
 
         CreativeInventoryActionEvent event = new CreativeInventoryActionEvent(player, slot, sentItem);

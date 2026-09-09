@@ -3,7 +3,7 @@ package dev.gameengine.item;
 import dev.gameengine.registry.RegistryKey;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
-import dev.gameengine.adventure.MinestomAdventure;
+import dev.gameengine.adventure.EngineAdventure;
 import dev.gameengine.component.DataComponent;
 import dev.gameengine.component.DataComponents;
 import dev.gameengine.entity.EntityType;
@@ -102,8 +102,8 @@ public class ItemRegistriesTest {
         var itemStack = ItemStack.of(Material.LAPIS_BLOCK)
                 .withLore(Component.text("Hey!", NamedTextColor.RED), Component.empty(), Component.text("hello"))
                 .with(DataComponents.ITEM_MODEL, "unknown");
-        var tagOut = MinestomAdventure.tagStringIO().asString(itemStack.toItemNBT(registries));
-        var tagIn = MinestomAdventure.tagStringIO().asCompound(tagOut);
+        var tagOut = EngineAdventure.tagStringIO().asString(itemStack.toItemNBT(registries));
+        var tagIn = EngineAdventure.tagStringIO().asCompound(tagOut);
         assertEquals(itemStack, ItemStack.fromItemNBT(tagIn, registries));
     }
 

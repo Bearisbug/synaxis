@@ -1,7 +1,7 @@
 package dev.gameengine.testing;
 
 import net.kyori.adventure.nbt.BinaryTag;
-import dev.gameengine.adventure.MinestomAdventure;
+import dev.gameengine.adventure.EngineAdventure;
 import dev.gameengine.coordinate.Point;
 
 import java.io.IOException;
@@ -47,7 +47,7 @@ public final class TestUtils {
 
     public static void assertEqualsSNBT(String snbt, BinaryTag compound) {
         try {
-            final var converted = MinestomAdventure.tagStringIO().asTag(snbt);
+            final var converted = EngineAdventure.tagStringIO().asTag(snbt);
             assertEquals(converted, compound);
         } catch (IOException e) {
             fail(e);

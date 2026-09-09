@@ -128,11 +128,11 @@ public class EntityFinder {
      * @return all entities validating the conditions, can be empty
      */
     public List<Entity> find(ServerProcess process, @Nullable Instance instance, @Nullable Entity self) {
-        if (targetSelector == TargetSelector.MINESTOM_USERNAME) {
+        if (targetSelector == TargetSelector.ENGINE_USERNAME) {
             Objects.requireNonNull(constantName, "The player name should not be null when searching for it");
             final Player player = process.connection().getOnlinePlayerByUsername(constantName);
             return player != null ? List.of(player) : List.of();
-        } else if (targetSelector == TargetSelector.MINESTOM_UUID) {
+        } else if (targetSelector == TargetSelector.ENGINE_UUID) {
             Objects.requireNonNull(constantUuid, "The UUID should not be null when searching for it");
             Objects.requireNonNull(instance, "The instance should not be null when searching by UUID");
             final Entity entity = instance.getEntityByUuid(constantUuid);
@@ -308,7 +308,7 @@ public class EntityFinder {
     }
 
     public enum TargetSelector {
-        NEAREST_PLAYER, RANDOM_PLAYER, ALL_PLAYERS, ALL_ENTITIES, SELF, MINESTOM_USERNAME, MINESTOM_UUID, NEAREST_ENTITY
+        NEAREST_PLAYER, RANDOM_PLAYER, ALL_PLAYERS, ALL_ENTITIES, SELF, ENGINE_USERNAME, ENGINE_UUID, NEAREST_ENTITY
     }
 
     public enum EntitySort {

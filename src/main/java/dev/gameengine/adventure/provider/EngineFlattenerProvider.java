@@ -4,9 +4,9 @@ import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.TranslatableComponent;
 import net.kyori.adventure.text.flattener.ComponentFlattener;
 import dev.gameengine.JvmFlags;
-import dev.gameengine.adventure.MinestomAdventure;
+import dev.gameengine.adventure.EngineAdventure;
 
-final class MinestomFlattenerProvider {
+final class EngineFlattenerProvider {
     static final ComponentFlattener INSTANCE;
     static {
         final ComponentFlattener.Builder builder = ComponentFlattener.basic().toBuilder();
@@ -14,7 +14,7 @@ final class MinestomFlattenerProvider {
         // handle server-side translations if needed
         builder.complexMapper(TranslatableComponent.class, (component, consumer) -> {
             if (JvmFlags.AUTOMATIC_COMPONENT_TRANSLATION) {
-                final Component translated = MinestomAdventure.COMPONENT_TRANSLATOR.apply(component, MinestomAdventure.getDefaultLocale());
+                final Component translated = EngineAdventure.COMPONENT_TRANSLATOR.apply(component, EngineAdventure.getDefaultLocale());
 
                 // In case the translated component is also a translatable component, we just leave the key to avoid infinite recursion
                 if (translated instanceof TranslatableComponent translatable) {

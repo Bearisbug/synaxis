@@ -54,7 +54,7 @@ public class DragClickIntegrationTest {
         var big = new Inventory(InventoryType.CHEST_6_ROW, Component.empty()); // 54
         player.openInventory(big);
 
-        // Start a left drag over window slot 0 (minestom 0) and window slot 80 (minestom 89)
+        // Start a left drag over window slot 0 (engine 0) and window slot 80 (engine 89)
         player.addPacketToQueue(clickPacket(QUICK_CRAFT, big.getWindowId(), 0, -999));
         player.addPacketToQueue(clickPacket(QUICK_CRAFT, big.getWindowId(), 1, 0));
         player.addPacketToQueue(clickPacket(QUICK_CRAFT, big.getWindowId(), 1, 80));
@@ -123,7 +123,7 @@ public class DragClickIntegrationTest {
         player.openInventory(inventory);
         player.getInventory().setCursorItem(ItemStack.of(Material.DIAMOND, 4));
 
-        // Window slot 9 is the first player inventory slot, which maps to minestom slot 9 + 9 = 18
+        // Window slot 9 is the first player inventory slot, which maps to engine slot 9 + 9 = 18
         drag(player, inventory, 0, 9);
 
         assertEquals(ItemStack.of(Material.DIAMOND, 2), inventory.getItemStack(0));

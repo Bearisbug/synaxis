@@ -8,7 +8,7 @@ public sealed interface DataPack permits DataPackImpl {
 
     DataPack MINECRAFT_CORE = new DataPackImpl(Key.key("core"), true);
 
-    DataPack MINESTOM_UNNAMED = new DataPackImpl(Key.key("minestom", "unnamed"), false);
+    DataPack ENGINE_UNNAMED = new DataPackImpl(Key.key("minestom", "unnamed"), false);
 
     /**
      * <p>Returns true if this data pack is synced with the client. The null data pack is never synced.</p>

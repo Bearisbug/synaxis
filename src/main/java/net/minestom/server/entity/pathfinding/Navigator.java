@@ -12,6 +12,8 @@ import net.minestom.server.entity.pathfinding.generators.NodeGenerator;
 import net.minestom.server.instance.Chunk;
 import net.minestom.server.instance.Instance;
 import net.minestom.server.instance.WorldBorder;
+import net.minestom.server.instance.block.Block;
+import net.minestom.server.utils.chunk.ChunkCache;
 import net.minestom.server.utils.chunk.ChunkUtils;
 import org.jetbrains.annotations.ApiStatus;
 import org.jetbrains.annotations.Nullable;
@@ -103,7 +105,7 @@ public final class Navigator {
 
         if (this.computingPath != null) this.computingPath.setState(PPath.State.TERMINATING);
 
-        this.computingPath = PathGenerator.generate(instance,
+        this.computingPath = PathGenerator.generate(blockGetter(instance),
                 this.entity.getPosition(),
                 point,
                 minimumDistance, maxDistance,
@@ -159,7 +161,7 @@ public final class Navigator {
         if (currentTarget == null || path.getCurrentType() == PNode.Type.REPATH || path.getCurrentType() == null) {
             if (computingPath != null && computingPath.getState() == PPath.State.CALCULATING) return;
 
-            computingPath = PathGenerator.generate(entity.getInstance(),
+            computingPath = PathGenerator.generate(blockGetter(entity.getInstance()),
                     entity.getPosition(),
                     goalPosition.asPos(),
                     minimumDistance, path.maxDistance(),
@@ -228,6 +230,15 @@ public final class Navigator {
 
     public void setNodeGenerator(Supplier<NodeGenerator> nodeGenerator) {
         this.nodeGenerator = nodeGenerator.get();
+    }
+
+    /**
+     * A* expands well past the goal chunk, and {@link Instance#getBlock(int, int, int, Block.Getter.Condition)}
+     * throws on an unloaded chunk instead of returning null. Treat unloaded chunks as solid, exactly like
+     * the entity physics path does.
+     */
+    private Block.Getter blockGetter(Instance instance) {
+        return new ChunkCache(instance, entity.getChunk(), Block.STONE);
     }
 
     private static boolean isSameBlock(PNode pNode, Pos position) {

@@ -1,10 +1,9 @@
 package dev.gameengine.network.player;
 
-import dev.gameengine.MinecraftServer;
 import dev.gameengine.ServerFlag;
+import dev.gameengine.ServerProcess;
 import dev.gameengine.adventure.MinestomAdventure;
 import dev.gameengine.entity.Player;
-import dev.gameengine.event.EventDispatcher;
 import dev.gameengine.event.ListenerHandle;
 import dev.gameengine.event.player.PlayerPacketOutEvent;
 import dev.gameengine.network.ConnectionState;
@@ -81,8 +80,7 @@ public class PlayerSocketConnection extends PlayerConnection {
     private int serverPort;
     private int protocolVersion;
 
-    private final NetworkBuffer readBuffer = NetworkBuffer.resizableBuffer(
-            ServerFlag.POOLED_BUFFER_SIZE, MinecraftServer.getRegistries());
+    private final NetworkBuffer readBuffer;
     private final MessagePassingQueue<SendablePacket> packetQueue = ConcurrentMessageQueues.mpscUnboundedArrayQueue(1024);
     private final Thread readThread, writeThread;
 
@@ -95,10 +93,12 @@ public class PlayerSocketConnection extends PlayerConnection {
     // Requires ServerFlag.FASTER_SOCKET_WRITES to be enabled
     private final AtomicBoolean writeSignaled = new AtomicBoolean(false);
 
-    private final ListenerHandle<PlayerPacketOutEvent> outgoing = EventDispatcher.getHandle(PlayerPacketOutEvent.class);
+    private final ListenerHandle<PlayerPacketOutEvent> outgoing;
 
-    public PlayerSocketConnection(SocketChannel channel, SocketAddress remoteAddress, Thread readThread, Thread writeThread) {
-        super();
+    public PlayerSocketConnection(ServerProcess process, SocketChannel channel, SocketAddress remoteAddress, Thread readThread, Thread writeThread) {
+        super(process);
+        this.readBuffer = NetworkBuffer.resizableBuffer(ServerFlag.POOLED_BUFFER_SIZE, process.registries());
+        this.outgoing = process.eventHandler().getHandle(PlayerPacketOutEvent.class);
         this.channel = channel;
         this.remoteAddress = remoteAddress;
         this.writeThread = writeThread;
@@ -144,7 +144,7 @@ public class PlayerSocketConnection extends PlayerConnection {
             // from scanners. A packet that errors after a state change within the
             // same batch is still checked against the starting state.
             if (startingState.ordinal() > ServerFlag.SUPPRESS_MALFORMED_PACKET_ERROR_LEVEL)
-                MinecraftServer.getExceptionManager().handleException(e);
+                process().exception().handleException(e);
             // The remaining packets of the batch are lost, disconnect to avoid
             // reading from an invalid state.
             if (ServerFlag.REJECT_MALFORMED_PACKET) kick(DisconnectReasons.PROTOCOL_ERROR);
@@ -159,7 +159,7 @@ public class PlayerSocketConnection extends PlayerConnection {
                         final boolean processImmediately = IMMEDIATE_PROCESS_PACKETS.contains(packet.getClass());
                         if (processImmediately) {
                             // Interpret the packet using the connection state we received it.
-                            MinecraftServer.getPacketListenerManager().processClientPacket(packet, this);
+                            process().packetListener().processClientPacket(packet, this);
                         } else {
                             // To be processed during the next player tick
                             final Player player = getPlayer();
@@ -169,7 +169,7 @@ public class PlayerSocketConnection extends PlayerConnection {
                     } catch (Throwable e) {
                         rethrowFatal(e);
                         if (startingState.ordinal() > ServerFlag.SUPPRESS_MISUSED_PACKET_ERROR_LEVEL)
-                            MinecraftServer.getExceptionManager().handleException(e);
+                            process().exception().handleException(e);
                         // Packets already in the queue are unaffected.
                         if (ServerFlag.REJECT_MISUSED_PACKET) disconnect();
                     }
@@ -206,7 +206,7 @@ public class PlayerSocketConnection extends PlayerConnection {
     public void startCompression() {
         Check.stateCondition(compression(), "Compression is already enabled!");
         this.compressionStart = sentPacketCounter.get();
-        final int threshold = MinecraftServer.getCompressionThreshold();
+        final int threshold = process().compressionThreshold();
         Check.stateCondition(threshold == 0, "Compression cannot be enabled because the threshold is equal to 0");
         sendPacket(new SetCompressionPacket(threshold));
     }
@@ -352,7 +352,7 @@ public class PlayerSocketConnection extends PlayerConnection {
         }
         // Write packet
         final long start = buffer.writeIndex();
-        final int compressionThreshold = compressed ? MinecraftServer.getCompressionThreshold() : 0;
+        final int compressionThreshold = compressed ? process().compressionThreshold() : 0;
         try {
             return switch (packet) {
                 case ServerPacket serverPacket -> {
@@ -368,11 +368,11 @@ public class PlayerSocketConnection extends PlayerConnection {
                     yield writeBuffer(buffer, body, 0, body.capacity());
                 }
                 case CachedPacket cachedPacket -> {
-                    final NetworkBuffer body = cachedPacket.body(state);
+                    final NetworkBuffer body = cachedPacket.body(state, process().registries(), compressionThreshold);
                     if (body != null) {
                         yield writeBuffer(buffer, body, 0, body.capacity());
                     } else {
-                        PacketWriting.writeFramedPacket(buffer, state, cachedPacket.packet(state), compressionThreshold);
+                        PacketWriting.writeFramedPacket(buffer, state, cachedPacket.packet(), compressionThreshold);
                         yield true;
                     }
                 }

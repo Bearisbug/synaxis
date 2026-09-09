@@ -1,6 +1,7 @@
 package dev.gameengine.network;
 
 import dev.gameengine.MinecraftServer;
+import dev.gameengine.ServerProcess;
 
 /**
  * Builds the server list JSON answered in the {@code status} connection state.
@@ -17,8 +18,8 @@ public final class StatusResponse {
      *
      * @return the server list JSON
      */
-    public static String json() {
-        final int online = MinecraftServer.getConnectionManager().getOnlinePlayerCount();
+    public static String json(ServerProcess process) {
+        final int online = process.connection().getOnlinePlayerCount();
         return """
                 {"version":{"name":"%s","protocol":%d},\
                 "players":{"online":%d,"max":%d},\

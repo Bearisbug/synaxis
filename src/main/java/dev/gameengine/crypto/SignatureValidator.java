@@ -1,10 +1,11 @@
 package dev.gameengine.crypto;
 
-import dev.gameengine.MinecraftServer;
 import dev.gameengine.entity.Player;
 import dev.gameengine.network.NetworkBuffer;
 import dev.gameengine.utils.crypto.KeyUtils;
 import org.jetbrains.annotations.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
@@ -28,6 +29,8 @@ import java.util.function.Consumer;
  */
 @FunctionalInterface
 public interface SignatureValidator {
+    Logger LOGGER = LoggerFactory.getLogger(SignatureValidator.class);
+
     SignatureValidator PASS = (_, _) -> true;
     SignatureValidator FAIL = (_, _) -> false;
     SignatureValidator YGGDRASIL = createYggdrasilValidator();
@@ -72,12 +75,12 @@ public interface SignatureValidator {
     private static SignatureValidator createYggdrasilValidator() {
         try (var stream = SignatureValidator.class.getResourceAsStream("/yggdrasil_session_pubkey.der")) {
             if (stream == null) {
-                MinecraftServer.LOGGER.error("Couldn't find Yggdrasil public key, falling back to prohibiting validator!");
+                LOGGER.error("Couldn't find Yggdrasil public key, falling back to prohibiting validator!");
                 return FAIL;
             }
             return from(KeyUtils.publicRSAKeyFrom(stream.readAllBytes()), KeyUtils.SignatureAlgorithm.SHA1withRSA);
         } catch (Exception e) {
-            MinecraftServer.LOGGER.error("Exception while reading Yggdrasil public key, falling back to prohibiting validator!", e);
+            LOGGER.error("Exception while reading Yggdrasil public key, falling back to prohibiting validator!", e);
             return FAIL;
         }
     }

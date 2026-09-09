@@ -1,6 +1,5 @@
 package dev.gameengine.network.packet;
 
-import dev.gameengine.MinecraftServer;
 import dev.gameengine.ServerFlag;
 import dev.gameengine.network.ConnectionState;
 import dev.gameengine.network.NetworkBuffer;
@@ -236,7 +235,7 @@ public final class PacketVanilla {
      * Size starts with {@link ServerFlag#POOLED_BUFFER_SIZE} and doubles until {@link ServerFlag#MAX_PACKET_SIZE}.
      */
     public static final ObjectPool<NetworkBuffer> PACKET_POOL = ObjectPool.pool(
-            () -> NetworkBuffer.staticBuffer(ServerFlag.POOLED_BUFFER_SIZE, MinecraftServer.getRegistries()),
+            () -> NetworkBuffer.builder(ServerFlag.POOLED_BUFFER_SIZE).build(),
             NetworkBuffer::clear);
 
     public static ConnectionState nextClientState(ClientPacket packet, ConnectionState currentState) {

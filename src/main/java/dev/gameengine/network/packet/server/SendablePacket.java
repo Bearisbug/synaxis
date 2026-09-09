@@ -13,7 +13,7 @@ public sealed interface SendablePacket
     static @Nullable ServerPacket extractServerPacket(ConnectionState state, SendablePacket packet) {
         return switch (packet) {
             case ServerPacket serverPacket -> serverPacket;
-            case CachedPacket cachedPacket -> cachedPacket.packet(state);
+            case CachedPacket cachedPacket -> cachedPacket.packet();
             case FramedPacket framedPacket -> framedPacket.packet();
             case BufferedPacket _ -> null;
         };

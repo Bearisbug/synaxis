@@ -2,10 +2,9 @@ package dev.gameengine.network;
 
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
-import dev.gameengine.MinecraftServer;
 import dev.gameengine.ServerFlag;
+import dev.gameengine.ServerProcess;
 import dev.gameengine.entity.Player;
-import dev.gameengine.event.EventDispatcher;
 import dev.gameengine.event.player.AsyncPlayerConfigurationEvent;
 import dev.gameengine.event.player.AsyncPlayerPreLoginEvent;
 import dev.gameengine.instance.Instance;
@@ -60,8 +59,13 @@ public final class ConnectionManager {
     private static final Component TIMEOUT_TEXT = Component.text("Timeout", NamedTextColor.RED);
     private static final long DISCONNECT_FLUSH_TIMEOUT = 1_000;
 
-    private final CachedPacket cachedTagsPacket =
-            new CachedPacket(() -> Registries.tagsPacket(MinecraftServer.getRegistries()));
+    private final ServerProcess process;
+    private final CachedPacket cachedTagsPacket;
+
+    public ConnectionManager(ServerProcess process) {
+        this.process = process;
+        this.cachedTagsPacket = new CachedPacket(() -> Registries.tagsPacket(process.registries()));
+    }
 
     // All players once their Player object has been instantiated.
     private final Map<PlayerConnection, Player> connectionPlayerMap = new ConcurrentHashMap<>();
@@ -209,13 +213,13 @@ public final class ConnectionManager {
         assert ServerFlag.INSIDE_TEST || Thread.currentThread().isVirtual();
         // Compression
         if (connection instanceof PlayerSocketConnection socketConnection) {
-            final int threshold = MinecraftServer.getCompressionThreshold();
+            final int threshold = process.compressionThreshold();
             if (threshold > 0) socketConnection.startCompression();
         }
         // Call pre login event
         LoginPluginMessageProcessor pluginMessageProcessor = connection.loginPluginMessageProcessor();
         AsyncPlayerPreLoginEvent asyncPlayerPreLoginEvent = new AsyncPlayerPreLoginEvent(connection, gameProfile, pluginMessageProcessor);
-        EventDispatcher.call(asyncPlayerPreLoginEvent);
+        process.eventHandler().call(asyncPlayerPreLoginEvent);
         if (!connection.isOnline()) return gameProfile; // Player has been kicked
         // Change UUID/Username based on the event
         gameProfile = asyncPlayerPreLoginEvent.getGameProfile();
@@ -252,12 +256,12 @@ public final class ConnectionManager {
             configurationPlayers.add(player);
             keepAlivePlayers.add(player);
         }
-        player.sendPacket(PluginMessagePacket.brandPacket(MinecraftServer.getBrandName()));
+        player.sendPacket(PluginMessagePacket.brandPacket(process.brandName()));
         // Request known packs immediately, but don't wait for the response until required (sending registry data).
         final var knownPacksFuture = player.getPlayerConnection().requestKnownPacks(List.of(SelectKnownPacksPacket.MINECRAFT_CORE));
 
         var event = new AsyncPlayerConfigurationEvent(player, isFirstConfig);
-        EventDispatcher.call(event);
+        process.eventHandler().call(event);
         if (!player.isOnline()) return; // Player was kicked during config.
 
         // send player features that were enabled or disabled during async config event
@@ -282,7 +286,7 @@ public final class ConnectionManager {
             }
             boolean excludeVanilla = knownPacks.contains(SelectKnownPacksPacket.MINECRAFT_CORE);
 
-            Registries registries = MinecraftServer.getRegistries();
+            Registries registries = process.registries();
             player.sendPackets(Registries.registryDataPackets(registries, excludeVanilla));
             // TODO: TEST_ENVIRONMENT, TEST_INSTANCE
 

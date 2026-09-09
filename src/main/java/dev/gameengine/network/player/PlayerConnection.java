@@ -4,11 +4,11 @@ import net.kyori.adventure.key.Key;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.TranslatableComponent;
 import dev.gameengine.MinecraftServer;
+import dev.gameengine.ServerProcess;
 import dev.gameengine.ServerFlag;
 import dev.gameengine.crypto.PlayerPublicKey;
 import dev.gameengine.entity.Entity;
 import dev.gameengine.entity.Player;
-import dev.gameengine.event.EventDispatcher;
 import dev.gameengine.event.player.OutgoingTransferEvent;
 import dev.gameengine.event.player.PlayerDisconnectEvent;
 import dev.gameengine.monitoring.EventsJFR;
@@ -69,7 +69,10 @@ public abstract class PlayerConnection {
 
     private final Map<Key, CompletableFuture<byte @Nullable []>> pendingCookieRequests = new ConcurrentHashMap<>();
 
-    public PlayerConnection() {
+    private final ServerProcess process;
+
+    public PlayerConnection(ServerProcess process) {
+        this.process = process;
         this.online = true;
         this.serverState = ConnectionState.HANDSHAKE;
         this.clientState = ConnectionState.HANDSHAKE;
@@ -143,6 +146,15 @@ public abstract class PlayerConnection {
     }
 
     /**
+     * Gets the server process this connection belongs to.
+     *
+     * @return the server process
+     */
+    public ServerProcess process() {
+        return process;
+    }
+
+    /**
      * Gets the server address that the client used to connect.
      * <p>
      * WARNING: it is given by the client, it is possible for it to be wrong.
@@ -150,7 +162,7 @@ public abstract class PlayerConnection {
      * @return the server address used
      */
     public @Nullable String getServerAddress() {
-        return MinecraftServer.getServer().getAddress();
+        return process.server().getAddress();
     }
 
 
@@ -162,7 +174,7 @@ public abstract class PlayerConnection {
      * @return the server port used
      */
     public int getServerPort() {
-        return MinecraftServer.getServer().getPort();
+        return process.server().getPort();
     }
 
 
@@ -210,13 +222,13 @@ public abstract class PlayerConnection {
         this.online = false;
         if (wasOnline)
             LOGGER.info("Connection closed: connection_id={} identifier={}", connectionId, getIdentifier());
-        final Player player = MinecraftServer.getConnectionManager().getPlayer(this);
+        final Player player = process.connection().getPlayer(this);
         if (player != null) {
-            MinecraftServer.getConnectionManager().removePlayer(this);
+            process.connection().removePlayer(this);
             if (serverState == ConnectionState.PLAY && !player.isRemoved())
                 player.scheduleNextTick(Entity::remove);
             else {
-                EventDispatcher.call(new PlayerDisconnectEvent(player));
+                process.eventHandler().call(new PlayerDisconnectEvent(player));
                 EventsJFR.newPlayerLeave(player.getUuid()).commit();
             }
         }
@@ -352,7 +364,7 @@ public abstract class PlayerConnection {
      */
     public void transfer(String host, int port) {
         OutgoingTransferEvent event = new OutgoingTransferEvent(this.player, host, port);
-        EventDispatcher.callCancellable(event, () -> this.sendPacket(new TransferPacket(event.getHost(), event.getPort())));
+        process.eventHandler().callCancellable(event, () -> this.sendPacket(new TransferPacket(event.getHost(), event.getPort())));
     }
 
     /**

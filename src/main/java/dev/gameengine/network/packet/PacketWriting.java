@@ -3,9 +3,11 @@ package dev.gameengine.network.packet;
 import dev.gameengine.ServerFlag;
 import dev.gameengine.network.ConnectionState;
 import dev.gameengine.network.NetworkBuffer;
+import dev.gameengine.registry.Registries;
 import dev.gameengine.network.packet.client.ClientPacket;
 import dev.gameengine.network.packet.server.ServerPacket;
 import org.jctools.queues.MessagePassingQueue;
+import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.ApiStatus;
 
 import java.util.function.BiPredicate;
@@ -117,25 +119,32 @@ public final class PacketWriting {
 
     public static NetworkBuffer allocateTrimmedPacket(ConnectionState state,
                                                       ClientPacket packet,
+                                                      @Nullable Registries registries,
                                                       int compressionThreshold) {
-        return allocateTrimmedPacket(PacketVanilla.CLIENT_PACKET_PARSER, state, packet, compressionThreshold);
+        return allocateTrimmedPacket(PacketVanilla.CLIENT_PACKET_PARSER, state, packet, registries, compressionThreshold);
     }
 
     public static NetworkBuffer allocateTrimmedPacket(ConnectionState state,
                                                       ServerPacket packet,
+                                                      @Nullable Registries registries,
                                                       int compressionThreshold) {
-        return allocateTrimmedPacket(PacketVanilla.SERVER_PACKET_PARSER, state, packet, compressionThreshold);
+        return allocateTrimmedPacket(PacketVanilla.SERVER_PACKET_PARSER, state, packet, registries, compressionThreshold);
     }
 
     public static <T> NetworkBuffer allocateTrimmedPacket(
             PacketParser<T> parser,
             ConnectionState state,
             T packet,
+            @Nullable Registries registries,
             int compressionThreshold) {
+        // Buffers are pooled across processes, the registries of the writing process have to be bound
+        // for every use, the same way PacketReading rebinds them on the decompression slice.
         NetworkBuffer buffer = PacketVanilla.PACKET_POOL.get();
+        buffer.registries(registries);
         try {
             return allocateTrimmedPacket(buffer, parser, state, packet, compressionThreshold);
         } finally {
+            buffer.registries(null);
             PacketVanilla.PACKET_POOL.add(buffer);
         }
     }

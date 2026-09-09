@@ -1,9 +1,8 @@
 package dev.gameengine.network.socket;
 
-import dev.gameengine.MinecraftServer;
 import dev.gameengine.ServerFlag;
+import dev.gameengine.ServerProcess;
 import dev.gameengine.network.packet.PacketParser;
-import dev.gameengine.network.packet.PacketVanilla;
 import dev.gameengine.network.DisconnectReasons;
 import dev.gameengine.network.player.PlayerSocketConnection;
 import org.jetbrains.annotations.ApiStatus;
@@ -31,6 +30,7 @@ public final class Server {
 
     private volatile boolean stop;
 
+    private final ServerProcess process;
     private final PacketParser.Client packetParser;
 
     private @UnknownNullability ServerSocketChannel serverSocket;
@@ -38,12 +38,9 @@ public final class Server {
     private @UnknownNullability String address;
     private int port;
 
-    public Server(PacketParser.Client packetParser) {
+    public Server(ServerProcess process, PacketParser.Client packetParser) {
+        this.process = process;
         this.packetParser = packetParser;
-    }
-
-    public Server() {
-        this(PacketVanilla.CLIENT_PACKET_PARSER);
     }
 
     @ApiStatus.Internal
@@ -90,7 +87,7 @@ public final class Server {
                     break; // We are exiting, bye bye!
                 } catch (IOException e) {
                     if (!ServerFlag.SUPPRESS_CONNECTION_ACCEPT_ERRORS)
-                        MinecraftServer.getExceptionManager().handleException(e);
+                        process.exception().handleException(e);
                     continue;
                 }
 
@@ -99,14 +96,14 @@ public final class Server {
                     configureSocket(client);
                     Thread readThread = readBuilder.unstarted(() -> playerReadLoop(reference.get()));
                     Thread writeThread = writeBuilder.unstarted(() -> playerWriteLoop(reference.get()));
-                    PlayerSocketConnection connection = new PlayerSocketConnection(client, client.getRemoteAddress(), readThread, writeThread);
+                    PlayerSocketConnection connection = new PlayerSocketConnection(process, client, client.getRemoteAddress(), readThread, writeThread);
                     reference.set(connection);
                     readThread.start();
                     writeThread.start();
                     loginTimeoutBuilder.start(() -> loginTimeoutWatch(connection));
                 } catch (IOException e) {
                     if (!ServerFlag.SUPPRESS_CONNECTION_ACCEPT_ERRORS)
-                        MinecraftServer.getExceptionManager().handleException(e);
+                        process.exception().handleException(e);
                     try {
                         client.close();
                     } catch (IOException _) {
@@ -156,11 +153,11 @@ public final class Server {
                 break;
             } catch (IOException e) {
                 if (!ServerFlag.SUPPRESS_CONNECTION_IO_ERRORS)
-                    MinecraftServer.getExceptionManager().handleException(e);
+                    process.exception().handleException(e);
                 connection.disconnect();
                 break;
             } catch (Throwable e) {
-                MinecraftServer.getExceptionManager().handleException(e);
+                process.exception().handleException(e);
                 connection.disconnect();
                 break;
             }
@@ -177,10 +174,10 @@ public final class Server {
                     connection.disconnect();
                 } catch (IOException e) {
                     if (!ServerFlag.SUPPRESS_CONNECTION_IO_ERRORS)
-                        MinecraftServer.getExceptionManager().handleException(e);
+                        process.exception().handleException(e);
                     connection.disconnect();
                 } catch (Throwable e) {
-                    MinecraftServer.getExceptionManager().handleException(e);
+                    process.exception().handleException(e);
                     connection.disconnect();
                 }
                 if (!connection.isOnline()) {
@@ -219,7 +216,7 @@ public final class Server {
                 Files.deleteIfExists(unixDomainSocketAddress.getPath());
             }
         } catch (IOException e) {
-            MinecraftServer.getExceptionManager().handleException(e);
+            process.exception().handleException(e);
         }
     }
 

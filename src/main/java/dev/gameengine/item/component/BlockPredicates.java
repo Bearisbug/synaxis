@@ -4,11 +4,11 @@ import dev.gameengine.codec.Codec;
 import dev.gameengine.instance.block.Block;
 import dev.gameengine.instance.block.predicate.BlockPredicate;
 import dev.gameengine.network.NetworkBuffer;
+import dev.gameengine.registry.Registries;
 
 import java.util.List;
-import java.util.function.Predicate;
 
-public record BlockPredicates(List<BlockPredicate> predicates) implements Predicate<Block> {
+public record BlockPredicates(List<BlockPredicate> predicates) {
     /**
      * Will never match any block.
      */
@@ -27,10 +27,9 @@ public record BlockPredicates(List<BlockPredicate> predicates) implements Predic
         this(List.of(predicate));
     }
 
-    @Override
-    public boolean test(Block block) {
+    public boolean test(Registries registries, Block block) {
         for (BlockPredicate predicate : predicates) {
-            if (predicate.test(block)) {
+            if (predicate.test(registries, block)) {
                 return true;
             }
         }

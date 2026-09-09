@@ -1,10 +1,10 @@
 package dev.gameengine.network.packet.server;
 
-import dev.gameengine.MinecraftServer;
 import dev.gameengine.ServerFlag;
 import dev.gameengine.network.ConnectionState;
 import dev.gameengine.network.NetworkBuffer;
 import dev.gameengine.network.packet.PacketWriting;
+import dev.gameengine.registry.Registries;
 import org.jetbrains.annotations.ApiStatus;
 import org.jetbrains.annotations.Nullable;
 
@@ -26,7 +26,7 @@ import java.util.function.Supplier;
  * thread invokes the packet supplier and computes a replacement value at a
  * time. Cache reads and publication use acquire and release memory semantics.
  *
- * <p>When caching is disabled, calls to {@link #packet(ConnectionState)} invoke
+ * <p>When caching is disabled, calls to {@link #packet()} invoke
  * the packet supplier directly. The supplier must therefore be thread safe if
  * this object may be accessed concurrently while caching is disabled.
  *
@@ -106,11 +106,10 @@ public final class CachedPacket implements SendablePacket {
      * <p>When caching is disabled, the packet supplier is invoked directly and
      * may be invoked concurrently by multiple callers.
      *
-     * @param state the connection state used when framing the packet
      * @return the packet value
      */
-    public ServerPacket packet(ConnectionState state) {
-        final FramedPacket cache = updatedCache(state);
+    public ServerPacket packet() {
+        final FramedPacket cache = cachedPacket();
         return cache != null ? cache.packet() : packetSupplier.get();
     }
 
@@ -123,25 +122,15 @@ public final class CachedPacket implements SendablePacket {
      * <p>If caching is disabled, no framed body is created and {@code null} is
      * returned.
      *
-     * @param state the connection state used when framing the packet
+     * @param state                the connection state used when framing the packet
+     * @param registries           the registries of the owning process
+     * @param compressionThreshold the compression threshold of the owning process
      * @return the framed packet body, or {@code null} when caching is disabled
      */
-    public @Nullable NetworkBuffer body(ConnectionState state) {
-        final FramedPacket cache = updatedCache(state);
-        return cache != null ? cache.body() : null;
-    }
-
-    /**
-     * Returns the current cached value, computing it when absent.
-     *
-     * @param state the connection state used when framing the packet
-     * @return the cached framed packet, or {@code null} when caching is disabled
-     */
-    private @Nullable FramedPacket updatedCache(ConnectionState state) {
+    public @Nullable NetworkBuffer body(ConnectionState state, @Nullable Registries registries, int compressionThreshold) {
         if (!ServerFlag.CACHED_PACKET) return null;
-
         final FramedPacket cache = cachedPacket();
-        return cache != null ? cache : computeCache(state);
+        return (cache != null ? cache : computeCache(state, registries, compressionThreshold)).body();
     }
 
     /**
@@ -159,12 +148,12 @@ public final class CachedPacket implements SendablePacket {
      * @param state the connection state used when framing the packet
      * @return the existing or newly computed framed packet
      */
-    private synchronized FramedPacket computeCache(ConnectionState state) {
+    private synchronized FramedPacket computeCache(ConnectionState state, @Nullable Registries registries, int compressionThreshold) {
         final FramedPacket cache = cachedPacket();
         if (cache != null) return cache;
 
         final ServerPacket packet = packetSupplier.get();
-        final NetworkBuffer buffer = PacketWriting.allocateTrimmedPacket(state, packet, MinecraftServer.getCompressionThreshold());
+        final NetworkBuffer buffer = PacketWriting.allocateTrimmedPacket(state, packet, registries, compressionThreshold);
 
         final FramedPacket updated = new FramedPacket(packet, buffer);
         PACKET.setRelease(this, new SoftReference<>(updated));

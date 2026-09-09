@@ -1,0 +1,41 @@
+name: Concurrency
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  jcstress:
+    name: jcstress
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Set up JDK 25
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: 25
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          cache-read-only: ${{ github.ref != 'refs/heads/main' }}
+
+      # The jcstress plugin supports neither isolated projects nor the configuration
+      # cache, so this job runs in its own workflow with both switched off.
+      - name: Run jcstress
+        run: ./gradlew :jcstress-tests:jcstress -Dorg.gradle.isolated-projects=false -Dorg.gradle.configuration-cache=false
+
+      - name: Upload jcstress report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: jcstress-report
+          path: jcstress-tests/build/reports/jcstress/
+          retention-days: 14

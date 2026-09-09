@@ -114,8 +114,6 @@ import net.minestom.server.entity.metadata.projectile.SpectralArrowMeta;
 import net.minestom.server.entity.metadata.projectile.ThrownTridentMeta;
 import net.minestom.server.entity.metadata.projectile.WindChargeMeta;
 import net.minestom.server.entity.metadata.projectile.WitherSkullMeta;
-import net.minestom.server.entity.metadata.villager.VillagerMeta;
-import net.minestom.server.entity.metadata.villager.WanderingTraderMeta;
 import net.minestom.server.entity.metadata.water.AxolotlMeta;
 import net.minestom.server.entity.metadata.water.DolphinMeta;
 import net.minestom.server.entity.metadata.water.GlowSquidMeta;
@@ -430,9 +428,7 @@ public final class MetadataHolder {
             entry(EntityType.TROPICAL_FISH, TropicalFishMeta::new),
             entry(EntityType.TURTLE, TurtleMeta::new),
             entry(EntityType.VEX, VexMeta::new),
-            entry(EntityType.VILLAGER, VillagerMeta::new),
             entry(EntityType.VINDICATOR, VindicatorMeta::new),
-            entry(EntityType.WANDERING_TRADER, WanderingTraderMeta::new),
             entry(EntityType.WARDEN, WardenMeta::new),
             entry(EntityType.WIND_CHARGE, WindChargeMeta::new),
             entry(EntityType.WITCH, WitchMeta::new),

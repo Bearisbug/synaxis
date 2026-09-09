@@ -59,6 +59,7 @@ import net.minestom.server.monitoring.EventsJFR;
 import net.minestom.server.network.packet.server.CachedPacket;
 import net.minestom.server.network.packet.server.play.AttachEntityPacket;
 import net.minestom.server.network.packet.server.play.DestroyEntitiesPacket;
+import net.minestom.server.network.packet.server.play.EntityEffectPacket;
 import net.minestom.server.network.packet.server.play.EntityHeadLookPacket;
 import net.minestom.server.network.packet.server.play.EntityMetaDataPacket;
 import net.minestom.server.network.packet.server.play.EntityPositionAndRotationPacket;
@@ -604,6 +605,31 @@ public class Entity implements Viewable, Tickable, Schedulable, Snapshotable, Ev
         }
         // Head position
         player.sendPacket(new EntityHeadLookPacket(getEntityId(), headRotation));
+        // Effects, only sent once on #addEffect otherwise
+        player.sendPackets(getEffectPackets());
+    }
+
+    /**
+     * Builds the packets re-applying every currently active effect of this entity, carrying the
+     * remaining duration rather than the original one.
+     *
+     * @return the effect packets, empty if the entity has no active effect
+     */
+    @ApiStatus.Internal
+    public List<EntityEffectPacket> getEffectPackets() {
+        final List<TimedPotion> effects = this.effects;
+        if (effects.isEmpty()) return List.of();
+        final long aliveTicks = getAliveTicks();
+        List<EntityEffectPacket> packets = new ArrayList<>(effects.size());
+        for (TimedPotion timedPotion : effects) {
+            final Potion potion = timedPotion.potion();
+            final int duration = potion.duration();
+            final int remaining = duration == Potion.INFINITE_DURATION ? duration
+                    : (int) Math.max(0, timedPotion.startingTicks() + duration - aliveTicks);
+            packets.add(new EntityEffectPacket(getEntityId(),
+                    new Potion(potion.effect(), potion.amplifier(), remaining, potion.flags())));
+        }
+        return packets;
     }
 
     /**

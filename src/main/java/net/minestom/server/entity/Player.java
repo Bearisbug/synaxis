@@ -589,6 +589,8 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
         triggerStatus((byte) (EntityStatuses.Player.PERMISSION_LEVEL_0 + permissionLevel)); // Set permission level
         refreshAbilities();
         sendPacket(instance.createTimePacket());
+        // The client drops its own effect list when it processes the respawn packet
+        sendPackets(getEffectPackets());
     }
 
     /**

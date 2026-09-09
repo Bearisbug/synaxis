@@ -30,34 +30,10 @@ public final class Generators {
     );
 
     private static final List<DynamicRegistrySpec> DYNAMIC_REGISTRIES = List.of(
-            new DynamicRegistrySpec("dialog", "net.minestom.server.dialog", "Dialog"),
             new DynamicRegistrySpec("chat_type", "net.minestom.server.message", "ChatType"),
             new DynamicRegistrySpec("dimension_type", "net.minestom.server.world", "DimensionType"),
             new DynamicRegistrySpec("damage_type", "net.minestom.server.entity.damage", "DamageType"),
-            new DynamicRegistrySpec("trim_material", "net.minestom.server.item.armor", "TrimMaterial"),
-            new DynamicRegistrySpec("trim_pattern", "net.minestom.server.item.armor", "TrimPattern"),
-            new DynamicRegistrySpec("banner_pattern", "net.minestom.server.instance.block.banner", "BannerPattern"),
-            new DynamicRegistrySpec("enchantment", "net.minestom.server.item.enchant", "Enchantment"),
-            new DynamicRegistrySpec("painting_variant", "net.minestom.server.entity.metadata.other", "PaintingVariant"),
-            new DynamicRegistrySpec("jukebox_song", "net.minestom.server.instance.block.jukebox", "JukeboxSong"),
-            new DynamicRegistrySpec("instrument", "net.minestom.server.item.instrument", "Instrument"),
-            new DynamicRegistrySpec("wolf_variant", "net.minestom.server.entity.metadata.animal.tameable", "WolfVariant"),
-            new DynamicRegistrySpec("wolf_sound_variant", "net.minestom.server.entity.metadata.animal.tameable", "WolfSoundVariant"),
-            new DynamicRegistrySpec("cat_variant", "net.minestom.server.entity.metadata.animal.tameable", "CatVariant"),
-            new DynamicRegistrySpec("cat_sound_variant", "net.minestom.server.entity.metadata.animal.tameable", "CatSoundVariant"),
-            new DynamicRegistrySpec("chicken_variant", "net.minestom.server.entity.metadata.animal", "ChickenVariant"),
-            new DynamicRegistrySpec("chicken_sound_variant", "net.minestom.server.entity.metadata.animal", "ChickenSoundVariant"),
-            new DynamicRegistrySpec("cow_variant", "net.minestom.server.entity.metadata.animal", "CowVariant"),
-            new DynamicRegistrySpec("cow_sound_variant", "net.minestom.server.entity.metadata.animal", "CowSoundVariant"),
-            new DynamicRegistrySpec("frog_variant", "net.minestom.server.entity.metadata.animal", "FrogVariant"),
-            new DynamicRegistrySpec("pig_variant", "net.minestom.server.entity.metadata.animal", "PigVariant"),
-            new DynamicRegistrySpec("pig_sound_variant", "net.minestom.server.entity.metadata.animal", "PigSoundVariant"),
-            new DynamicRegistrySpec("zombie_nautilus_variant", "net.minestom.server.entity.metadata.animal", "ZombieNautilusVariant"),
-            new DynamicRegistrySpec("worldgen/biome", "net.minestom.server.world.biome", "Biome"),
-            new DynamicRegistrySpec("timeline", "net.minestom.server.world.timeline", "Timeline"),
-            new DynamicRegistrySpec("world_clock", "net.minestom.server.world.clock", "WorldClock"),
-            new DynamicRegistrySpec("clock_time_marker", "net.minestom.server.world.clock", "ClockTimeMarker"),
-            new DynamicRegistrySpec("sulfur_cube_archetype", "net.minestom.server.entity.metadata.cube", "SulfurCubeArchetype")
+            new DynamicRegistrySpec("worldgen/biome", "net.minestom.server.world.biome", "Biome")
     );
 
     static void main(String[] args) {

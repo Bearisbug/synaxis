@@ -278,6 +278,23 @@ public final class MetadataHolder {
         this.changesListener.accept(entries);
     }
 
+    /**
+     * Copies the entries shared by every entity type, the {@link MetadataDef} base indices, from
+     * {@code source}. Used by {@link Entity#switchEntityType(EntityType)}, which otherwise drops them.
+     *
+     * @param source the holder to copy the shared entries from
+     */
+    void copySharedEntries(MetadataHolder source) {
+        final var sourceEntries = source.entries;
+        final int length = Math.min(MetadataDef.count(MetadataDef.class), sourceEntries.length);
+        if (length <= 0) return;
+        synchronized (this) {
+            final var copy = Arrays.copyOf(this.entries, Math.max(this.entries.length, length));
+            System.arraycopy(sourceEntries, 0, copy, 0, length);
+            this.entries = copy;
+        }
+    }
+
     private Metadata.@Nullable Entry<?> entryAt(int id) {
         final var entries = this.entries;
         return id >= 0 && id < entries.length ? entries[id] : null;

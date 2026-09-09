@@ -670,8 +670,12 @@ public class Entity implements Viewable, Tickable, Schedulable, Snapshotable, Ev
      * @param entityType the new entity type
      */
     public synchronized void switchEntityType(EntityType entityType) {
+        final MetadataHolder previousMetadata = this.metadata;
         this.entityType = entityType;
         this.metadata = new MetadataHolder(this::notifyMetadataChanges);
+        // The type specific indices cannot be carried over, but the shared entity ones (glowing,
+        // invisible, custom name, gravity, ...) have the same meaning for every type
+        this.metadata.copySharedEntries(previousMetadata);
         this.entityMeta = MetadataHolder.createMeta(entityType, this, this.metadata);
 
         this.aerodynamics = aerodynamics.withAirResistance(

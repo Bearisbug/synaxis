@@ -11,6 +11,7 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @EnvTest
 public class SwitchEntityTypeIntegrationTest {
@@ -54,5 +55,17 @@ public class SwitchEntityTypeIntegrationTest {
         player.switchEntityType(EntityType.ZOMBIE);
         assertNull(player.getPlayerMeta());
         assertDoesNotThrow(() -> player.refreshSettings(player.getSettings()));
+    }
+
+    @Test
+    public void switchKeepsTheSharedMetadata() {
+        var entity = new Entity(EntityType.ZOMBIE);
+        entity.setGlowing(true);
+        entity.setNoGravity(true);
+
+        entity.switchEntityType(EntityType.SHEEP);
+
+        assertTrue(entity.isGlowing(), "switchEntityType dropped the shared entity metadata");
+        assertTrue(entity.hasNoGravity());
     }
 }

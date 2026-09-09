@@ -2,17 +2,20 @@ package net.minestom.server.thread;
 
 import net.minestom.server.Tickable;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
 
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -285,5 +288,27 @@ public class ThreadDispatcherTest {
         }
 
         dispatcher.shutdown();
+    }
+
+    @Test
+    @Timeout(30)
+    public void shutdownFromTickThread() throws InterruptedException {
+        // Shutting down from a TickThread must not deadlock against the thread awaiting the tick.
+        ThreadDispatcher<World, Tickable> dispatcher = ThreadDispatcher.singleThread();
+        World world = new World();
+        CountDownLatch shutdownCalled = new CountDownLatch(1);
+        Tickable element = _ -> {
+            dispatcher.shutdown();
+            shutdownCalled.countDown();
+        };
+        dispatcher.createPartition(world);
+        dispatcher.updateElement(element, world);
+        dispatcher.start();
+
+        Thread ticker = new Thread(() -> dispatcher.updateAndAwait(0), "test-ticker");
+        ticker.start();
+        assertTrue(shutdownCalled.await(5, TimeUnit.SECONDS), "shutdown() from a TickThread deadlocked");
+        ticker.join(5_000);
+        assertFalse(ticker.isAlive(), "updateAndAwait never returned");
     }
 }

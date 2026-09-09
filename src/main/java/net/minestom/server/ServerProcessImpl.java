@@ -348,9 +348,9 @@ final class ServerProcessImpl implements ServerProcess, Registries.Delegating {
             dispatcher().updateAndAwait(nanoStart);
 
             // Clear removed entities & update threads
-            final long tickDuration = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - nanoStart);
-            final long remainingTickDuration = Tick.SERVER_TICKS.getDuration().toNanos() - tickDuration;
             // the nanoTimeout for refreshThreads is the remaining tick duration
+            final long tickDuration = System.nanoTime() - nanoStart;
+            final long remainingTickDuration = Math.max(0, Tick.SERVER_TICKS.getDuration().toNanos() - tickDuration);
             dispatcher().refreshThreads(remainingTickDuration);
         }
     }

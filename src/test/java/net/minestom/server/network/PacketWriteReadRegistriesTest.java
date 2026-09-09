@@ -10,8 +10,6 @@ import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.Style;
 import net.kyori.adventure.text.format.TextDecoration;
-import net.minestom.server.advancements.AdvancementAction;
-import net.minestom.server.color.TeamColor;
 import net.minestom.server.coordinate.Pos;
 import net.minestom.server.coordinate.Vec;
 import net.minestom.server.crypto.ArgumentSignatures;
@@ -36,18 +34,12 @@ import net.minestom.server.entity.PlayerHand;
 import net.minestom.server.entity.PlayerSkin;
 import net.minestom.server.entity.RelativeFlags;
 import net.minestom.server.entity.damage.DamageType;
-import net.minestom.server.extras.mojangAuth.MojangCrypt;
-import net.minestom.server.instance.block.Block;
 import net.minestom.server.instance.block.BlockEntityType;
 import net.minestom.server.instance.block.BlockFace;
 import net.minestom.server.instance.gamerule.GameRule;
 import net.minestom.server.item.ItemStack;
 import net.minestom.server.item.Material;
 import net.minestom.server.message.ChatMessageType;
-import net.minestom.server.network.debug.DebugSubscription;
-import net.minestom.server.network.debug.info.DebugHiveInfo;
-import net.minestom.server.network.debug.info.DebugPathInfo;
-import net.minestom.server.network.debug.info.DebugPoiInfo;
 import net.minestom.server.network.packet.PacketParser;
 import net.minestom.server.network.packet.PacketRegistry;
 import net.minestom.server.network.packet.PacketVanilla;
@@ -152,14 +144,12 @@ import net.minestom.server.network.packet.server.configuration.RegistryDataPacke
 import net.minestom.server.network.packet.server.configuration.ResetChatPacket;
 import net.minestom.server.network.packet.server.configuration.SelectKnownPacksPacket;
 import net.minestom.server.network.packet.server.configuration.UpdateEnabledFeaturesPacket;
-import net.minestom.server.network.packet.server.login.EncryptionRequestPacket;
 import net.minestom.server.network.packet.server.login.LoginDisconnectPacket;
 import net.minestom.server.network.packet.server.login.LoginPluginRequestPacket;
 import net.minestom.server.network.packet.server.login.LoginSuccessPacket;
 import net.minestom.server.network.packet.server.login.SetCompressionPacket;
 import net.minestom.server.network.packet.server.play.AcknowledgeBlockChangePacket;
 import net.minestom.server.network.packet.server.play.ActionBarPacket;
-import net.minestom.server.network.packet.server.play.AdvancementsPacket;
 import net.minestom.server.network.packet.server.play.AttachEntityPacket;
 import net.minestom.server.network.packet.server.play.BlockActionPacket;
 import net.minestom.server.network.packet.server.play.BlockBreakAnimationPacket;
@@ -179,17 +169,10 @@ import net.minestom.server.network.packet.server.play.CollectItemPacket;
 import net.minestom.server.network.packet.server.play.CustomChatCompletionPacket;
 import net.minestom.server.network.packet.server.play.DamageEventPacket;
 import net.minestom.server.network.packet.server.play.DeathCombatEventPacket;
-import net.minestom.server.network.packet.server.play.DebugBlockValuePacket;
-import net.minestom.server.network.packet.server.play.DebugChunkValuePacket;
-import net.minestom.server.network.packet.server.play.DebugEntityValuePacket;
-import net.minestom.server.network.packet.server.play.DebugEventPacket;
-import net.minestom.server.network.packet.server.play.DebugSamplePacket;
 import net.minestom.server.network.packet.server.play.DeclareCommandsPacket;
-import net.minestom.server.network.packet.server.play.DeclareRecipesPacket;
 import net.minestom.server.network.packet.server.play.DeleteChatPacket;
 import net.minestom.server.network.packet.server.play.DestroyEntitiesPacket;
 import net.minestom.server.network.packet.server.play.DisguisedChatPacket;
-import net.minestom.server.network.packet.server.play.DisplayScoreboardPacket;
 import net.minestom.server.network.packet.server.play.EndCombatEventPacket;
 import net.minestom.server.network.packet.server.play.EnterCombatEventPacket;
 import net.minestom.server.network.packet.server.play.EntityAnimationPacket;
@@ -224,7 +207,6 @@ import net.minestom.server.network.packet.server.play.OpenHorseWindowPacket;
 import net.minestom.server.network.packet.server.play.OpenSignEditorPacket;
 import net.minestom.server.network.packet.server.play.OpenWindowPacket;
 import net.minestom.server.network.packet.server.play.ParticlePacket;
-import net.minestom.server.network.packet.server.play.PlaceGhostRecipePacket;
 import net.minestom.server.network.packet.server.play.PlayerAbilitiesPacket;
 import net.minestom.server.network.packet.server.play.PlayerChatMessagePacket;
 import net.minestom.server.network.packet.server.play.PlayerInfoRemovePacket;
@@ -233,14 +215,8 @@ import net.minestom.server.network.packet.server.play.PlayerListHeaderAndFooterP
 import net.minestom.server.network.packet.server.play.PlayerPositionAndLookPacket;
 import net.minestom.server.network.packet.server.play.PlayerRotationPacket;
 import net.minestom.server.network.packet.server.play.ProjectilePowerPacket;
-import net.minestom.server.network.packet.server.play.RecipeBookAddPacket;
-import net.minestom.server.network.packet.server.play.RecipeBookRemovePacket;
-import net.minestom.server.network.packet.server.play.RecipeBookSettingsPacket;
 import net.minestom.server.network.packet.server.play.RemoveEntityEffectPacket;
-import net.minestom.server.network.packet.server.play.ResetScorePacket;
 import net.minestom.server.network.packet.server.play.RespawnPacket;
-import net.minestom.server.network.packet.server.play.ScoreboardObjectivePacket;
-import net.minestom.server.network.packet.server.play.SelectAdvancementTabPacket;
 import net.minestom.server.network.packet.server.play.ServerDataPacket;
 import net.minestom.server.network.packet.server.play.ServerDifficultyPacket;
 import net.minestom.server.network.packet.server.play.SetCooldownPacket;
@@ -258,11 +234,9 @@ import net.minestom.server.network.packet.server.play.SoundEffectPacket;
 import net.minestom.server.network.packet.server.play.SpawnEntityPacket;
 import net.minestom.server.network.packet.server.play.SpawnPositionPacket;
 import net.minestom.server.network.packet.server.play.StartConfigurationPacket;
-import net.minestom.server.network.packet.server.play.StatisticsPacket;
 import net.minestom.server.network.packet.server.play.StopSoundPacket;
 import net.minestom.server.network.packet.server.play.SystemChatPacket;
 import net.minestom.server.network.packet.server.play.TabCompletePacket;
-import net.minestom.server.network.packet.server.play.TeamsPacket;
 import net.minestom.server.network.packet.server.play.TestInstanceBlockStatus;
 import net.minestom.server.network.packet.server.play.TickStepPacket;
 import net.minestom.server.network.packet.server.play.TrackedWaypointPacket;
@@ -270,7 +244,6 @@ import net.minestom.server.network.packet.server.play.TradeListPacket;
 import net.minestom.server.network.packet.server.play.UnloadChunkPacket;
 import net.minestom.server.network.packet.server.play.UpdateHealthPacket;
 import net.minestom.server.network.packet.server.play.UpdateLightPacket;
-import net.minestom.server.network.packet.server.play.UpdateScorePacket;
 import net.minestom.server.network.packet.server.play.UpdateSimulationDistancePacket;
 import net.minestom.server.network.packet.server.play.UpdateViewDistancePacket;
 import net.minestom.server.network.packet.server.play.UpdateViewPositionPacket;
@@ -294,15 +267,8 @@ import net.minestom.server.particle.Particle;
 import net.minestom.server.potion.Potion;
 import net.minestom.server.potion.PotionEffect;
 import net.minestom.server.potion.PotionType;
-import net.minestom.server.recipe.Ingredient;
-import net.minestom.server.recipe.RecipeBookCategory;
-import net.minestom.server.recipe.RecipeProperty;
-import net.minestom.server.recipe.display.RecipeDisplay;
-import net.minestom.server.recipe.display.SlotDisplay;
 import net.minestom.server.registry.Registries;
-import net.minestom.server.scoreboard.Sidebar;
 import net.minestom.server.sound.SoundEvent;
-import net.minestom.server.statistic.StatisticCategory;
 import net.minestom.server.utils.Either;
 import net.minestom.server.utils.Rotation;
 import net.minestom.server.utils.WeightedList;
@@ -314,6 +280,9 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
+import java.security.KeyPairGenerator;
+import java.security.NoSuchAlgorithmException;
+import java.security.PublicKey;
 import java.time.Instant;
 import java.util.BitSet;
 import java.util.Collection;
@@ -356,6 +325,16 @@ public class PacketWriteReadRegistriesTest {
             assertTrue(set.add(packet), "Found duplicate server packet in %s with `%s`".formatted(packet.getClass().getSimpleName(), packet));
     }
 
+    private static PublicKey testPublicKey() {
+        try {
+            KeyPairGenerator generator = KeyPairGenerator.getInstance("RSA");
+            generator.initialize(1024);
+            return generator.generateKeyPair().getPublic();
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException(e);
+        }
+    }
+
     @SafeVarargs
     private static <T extends ClientPacket> void addClientPackets(T... packets) {
         assertNotEquals(0, packets.length);
@@ -375,11 +354,6 @@ public class PacketWriteReadRegistriesTest {
         addServerPackets(
                 new LoginDisconnectPacket(COMPONENT.append(Component.text(" your Disconnected!", NamedTextColor.BLUE))),
                 new LoginDisconnectPacket(COMPONENT.appendNewline().appendSpace().append(Component.text("Disconnected!", NamedTextColor.RED)))
-        );
-        addServerPackets(
-                new EncryptionRequestPacket("abvcr3ujt324joi32aaa", new byte[124], new byte[65], true), // max test
-                new EncryptionRequestPacket("server", new byte[64], new byte[235], false),
-                new EncryptionRequestPacket("", new byte[54], new byte[23], true) // default
         );
         addServerPackets(
                 new LoginSuccessPacket(new GameProfile(UUID.randomUUID(), OG), UUID.randomUUID()),
@@ -479,31 +453,9 @@ public class PacketWriteReadRegistriesTest {
         addServerPackets(new ClearTitlesPacket(false));
         addServerPackets(new CloseWindowPacket((byte) 2));
         addServerPackets(new CollectItemPacket(5, 5, 5));
-        var recipeDisplay = new RecipeDisplay.CraftingShapeless(
-                List.of(new SlotDisplay.Item(Material.STONE)),
-                new SlotDisplay.Item(Material.STONE_BRICKS),
-                new SlotDisplay.Item(Material.CRAFTING_TABLE)
-        );
-        addServerPackets(new PlaceGhostRecipePacket(0, recipeDisplay));
         addServerPackets(new DeathCombatEventPacket(5, COMPONENT));
-        addServerPackets(new DeclareRecipesPacket(Map.of(
-                RecipeProperty.SMITHING_BASE, List.of(Material.STONE),
-                RecipeProperty.SMITHING_TEMPLATE, List.of(Material.STONE),
-                RecipeProperty.SMITHING_ADDITION, List.of(Material.STONE),
-                RecipeProperty.FURNACE_INPUT, List.of(Material.STONE),
-                RecipeProperty.BLAST_FURNACE_INPUT, List.of(Material.IRON_HOE, Material.DANDELION),
-                RecipeProperty.SMOKER_INPUT, List.of(Material.STONE),
-                RecipeProperty.CAMPFIRE_INPUT, List.of(Material.STONE)),
-                List.of(new DeclareRecipesPacket.StonecutterRecipe(new Ingredient(Material.DIAMOND),
-                        new SlotDisplay.ItemStack(ItemStack.of(Material.GOLD_BLOCK))))
-        ));
-        addServerPackets(new RecipeBookAddPacket(List.of(new RecipeBookAddPacket.Entry(1, recipeDisplay, null,
-                RecipeBookCategory.CRAFTING_MISC, List.of(new Ingredient(Material.STONE)), true, true)), false));
-        addServerPackets(new RecipeBookRemovePacket(List.of(1)));
-
         addServerPackets(new DestroyEntitiesPacket(List.of(5, 5, 5)));
         addServerPackets(new DisconnectPacket(COMPONENT));
-        addServerPackets(new DisplayScoreboardPacket((byte) 5, "scoreboard"));
         addServerPackets(new WorldEventPacket(5, BLOCK_VEC, 5, false));
         addServerPackets(new EndCombatEventPacket(5));
         addServerPackets(new EnterCombatEventPacket());
@@ -607,14 +559,6 @@ public class PacketWriteReadRegistriesTest {
                 new PlayerSpawnInfo(0, "overworld", 0L, GameMode.CREATIVE, GameMode.SURVIVAL, false, false, null, 5, 63),
                 (byte) RespawnPacket.COPY_METADATA)
         );
-        addServerPackets(
-                new ScoreboardObjectivePacket("objective", (byte) 0, COMPONENT, ScoreboardObjectivePacket.Type.HEARTS, Sidebar.NumberFormat.blank()),
-                new ScoreboardObjectivePacket("objective", (byte) 0, COMPONENT, ScoreboardObjectivePacket.Type.HEARTS, null),
-                new ScoreboardObjectivePacket("objective", (byte) 1, null, null, null),
-                new ScoreboardObjectivePacket("objective", (byte) 2, COMPONENT, ScoreboardObjectivePacket.Type.HEARTS, Sidebar.NumberFormat.styled(Component.empty())),
-                new ScoreboardObjectivePacket("objective", (byte) 2, COMPONENT, ScoreboardObjectivePacket.Type.HEARTS, null)
-        );
-        addServerPackets(new SelectAdvancementTabPacket("minecraft:story/root"));
         addServerPackets(new ServerDataPacket(COMPONENT, null));
         addServerPackets(new ServerDifficultyPacket(Difficulty.NORMAL, true));
         addServerPackets(new SetCooldownPacket("minecraft:ender_pearl", 5));
@@ -631,7 +575,6 @@ public class PacketWriteReadRegistriesTest {
         addServerPackets(new SpawnEntityPacket(5, UUID.randomUUID(), EntityType.ZOMBIE, new Pos(0, 64, 0, 0, 0), 9.84375f, 0, Vec.ONE));
         addServerPackets(new SpawnPositionPacket(new WorldPos("overworld", BLOCK_VEC), 0f, 1f));
         addServerPackets(new StartConfigurationPacket());
-        addServerPackets(new StatisticsPacket(List.of(new StatisticsPacket.Statistic(StatisticCategory.BROKEN, 5, 100))));
         addServerPackets(
                 new StopSoundPacket((byte) 0, null, null),
                 new StopSoundPacket((byte) 1, Sound.Source.BLOCK, null),
@@ -639,10 +582,6 @@ public class PacketWriteReadRegistriesTest {
                 new StopSoundPacket((byte) 3, Sound.Source.BLOCK, "block.amethyst_block.break")
         );
         addServerPackets(new TabCompletePacket(5, 0, 0, List.of()));
-        addServerPackets(new TeamsPacket("team", new TeamsPacket.CreateTeamAction(
-                new TeamsPacket.Settings(COMPONENT, COMPONENT, COMPONENT, TeamsPacket.NameTagVisibility.ALWAYS, TeamsPacket.CollisionRule.ALWAYS, TeamColor.RED, (byte) 0),
-                List.of("player1")
-        )));
         addServerPackets(new TickStepPacket(20));
         addServerPackets(
                 new SetTimePacket(1000L, Map.of()),
@@ -653,7 +592,6 @@ public class PacketWriteReadRegistriesTest {
         addServerPackets(new TradeListPacket(5, List.of(), 5, 5, true, true));
         addServerPackets(new UnloadChunkPacket(0, 0));
         addServerPackets(new UpdateHealthPacket(20.0f, 20, 5.0f));
-        addServerPackets(new UpdateScorePacket("player", "objective", 100, COMPONENT, null));
         addServerPackets(new UpdateSimulationDistancePacket(8));
         addServerPackets(new UpdateViewDistancePacket(10));
         addServerPackets(new UpdateViewPositionPacket(0, 0));
@@ -665,7 +603,6 @@ public class PacketWriteReadRegistriesTest {
         addServerPackets(new WorldBorderSizePacket(10.0));
         addServerPackets(new WorldBorderWarningDelayPacket(5));
         addServerPackets(new WorldBorderWarningReachPacket(5));
-        addServerPackets(new AdvancementsPacket(false, List.of(), List.of(), List.of(), true));
         // TODO, these chunk* skips important paths
         addServerPackets(new ChunkBatchStartPacket());
         addServerPackets(new ChunkBatchFinishedPacket(100));
@@ -676,11 +613,6 @@ public class PacketWriteReadRegistriesTest {
                 new DamageEventPacket(50, registries.damageType().getId(DamageType.WITHER), 0, 0, null));
         addServerPackets(new DeclareCommandsPacket(List.of(), 0));
         addServerPackets(new BundlePacket());
-        addServerPackets(new DebugBlockValuePacket(Vec.ONE, new DebugSubscription.Update<>(DebugSubscription.BEE_HIVES, new DebugHiveInfo(Block.BEEHIVE, 1, 0, true))));
-        addServerPackets(new DebugChunkValuePacket(1, new DebugSubscription.Update<>(DebugSubscription.POIS, new DebugPoiInfo(BLOCK_VEC, DebugPoiInfo.Type.BUTCHER, 1))));
-        addServerPackets(new DebugEntityValuePacket(0, new DebugSubscription.Update<>(DebugSubscription.ENTITY_PATHS, new DebugPathInfo(new DebugPathInfo.Path(true, 0, BLOCK_VEC, List.of(), new DebugPathInfo.Data(Set.of(), List.of(), List.of())), 1))));
-        addServerPackets(new DebugEventPacket(new DebugSubscription.Event<>(DebugSubscription.NEIGHBOR_UPDATES, Vec.ZERO)));
-        addServerPackets(new DebugSamplePacket(new long[0], DebugSamplePacket.Type.TICK_TIME)); // Legacy debug wrapper, maybe it will change.
         addServerPackets(new DeleteChatPacket(new MessageSignature(new byte[256])));
         addServerPackets(new DisguisedChatPacket(Component.text("Hey"), 0, Component.text("Message"), null));
         addServerPackets(new EntityPositionSyncPacket(1, VEC, VEC, 1f, 1f, false));
@@ -688,9 +620,7 @@ public class PacketWriteReadRegistriesTest {
         addServerPackets(new UpdateLightPacket(0, 0, new LightData(new BitSet(), new BitSet(), new BitSet(), new BitSet(), List.of(), List.of())));
         addServerPackets(new MoveMinecartPacket(1, List.of(new MoveMinecartPacket.LerpStep(VEC, Vec.ZERO, 1f, 1f, 1f))));
         addServerPackets(new PlayerChatMessagePacket(0, UUID.randomUUID(), 0, new MessageSignature(new byte[256]), new SignedMessageBody.Packed("hey", Instant.EPOCH, 0L, new LastSeenMessages.Packed(List.of())), null, new FilterMask(FilterMask.Type.FULLY_FILTERED, new BitSet()), 1, Component.text("hey"), null));
-        addServerPackets(new RecipeBookSettingsPacket(false, false, true, false, false, false, false, false));
         addServerPackets(new RemoveEntityEffectPacket(0, PotionEffect.BAD_OMEN));
-        addServerPackets(new ResetScorePacket("dummy_score", null), new ResetScorePacket("duoka", "testObjective"));
         addServerPackets(new TestInstanceBlockStatus(Component.text("Minestom is cool"), null), new TestInstanceBlockStatus(Component.text("Where is season 5 william?"), BLOCK_VEC));
         addServerPackets(new EntityEffectPacket(0, new Potion(PotionEffect.ABSORPTION, 1, 150)));
         addServerPackets(new TrackedWaypointPacket(TrackedWaypointPacket.Operation.UNTRACK, new TrackedWaypointPacket.Waypoint(Either.right("test"), TrackedWaypointPacket.Icon.DEFAULT, new TrackedWaypointPacket.Target.Empty())));
@@ -823,7 +753,7 @@ public class PacketWriteReadRegistriesTest {
         addClientPackets(new ClientSignedCommandChatPacket("helloworld", Long.MAX_VALUE, 0L, new ArgumentSignatures(List.of(new ArgumentSignatures.Entry("hey", new MessageSignature(new byte[256])))), new LastSeenMessages.Update(100, new BitSet(20)), (byte) 0));
         addClientPackets(new ClientChatMessagePacket("My name is bob", Long.MAX_VALUE, 0L, new MessageSignature(new byte[256]), 100, new BitSet(), (byte) 100), new ClientChatMessagePacket("hello", 0L, 0L, null, 0, new BitSet(), (byte) 42));
         //TODO (signed) use a key for tests
-        addClientPackets(new ClientChatSessionUpdatePacket(new ChatSession(UUID.randomUUID(), new PlayerPublicKey(Instant.EPOCH, Objects.requireNonNull(MojangCrypt.generateKeyPair()).getPublic(), new byte[4096]))));
+        addClientPackets(new ClientChatSessionUpdatePacket(new ChatSession(UUID.randomUUID(), new PlayerPublicKey(Instant.EPOCH, testPublicKey(), new byte[4096]))));
         addClientPackets(new ClientChunkBatchReceivedPacket(0.5f));
         addClientPackets(new ClientStatusPacket(ClientStatusPacket.Action.PERFORM_RESPAWN), new ClientStatusPacket(ClientStatusPacket.Action.REQUEST_STATS));
         addClientPackets(new ClientTickEndPacket());
@@ -835,7 +765,7 @@ public class PacketWriteReadRegistriesTest {
         addClientPackets(new ClientWindowSlotStatePacket(25, 25, true), new ClientWindowSlotStatePacket(Integer.MAX_VALUE, Integer.MAX_VALUE, true), new ClientWindowSlotStatePacket(Integer.MIN_VALUE, Integer.MAX_VALUE, false));
         //Cookie
         //Plugin message
-        addClientPackets(new ClientDebugSubscriptionRequestPacket(Set.of(DebugSubscription.DEDICATED_SERVER_TICK_TIME, DebugSubscription.ENTITY_PATHS)));
+        addClientPackets(new ClientDebugSubscriptionRequestPacket(Set.of(0, 5)));
         addClientPackets(new ClientEditBookPacket(14, List.of("page1", "page2"), "Wrath of nothing"), new ClientEditBookPacket(15, List.of(), null), new ClientEditBookPacket(12, List.of("hi".repeat(99).split("h")), "What is this book?"));
         addClientPackets(new ClientQueryEntityNbtPacket(1325, 25), new ClientQueryEntityNbtPacket(-15, Integer.MAX_VALUE));
         addClientPackets(
@@ -870,7 +800,7 @@ public class PacketWriteReadRegistriesTest {
         addClientPackets(new ClientSetRecipeBookStatePacket(ClientSetRecipeBookStatePacket.BookType.CRAFTING, true, false), new ClientSetRecipeBookStatePacket(ClientSetRecipeBookStatePacket.BookType.FURNACE, false, true), new ClientSetRecipeBookStatePacket(ClientSetRecipeBookStatePacket.BookType.BLAST_FURNACE, true, true), new ClientSetRecipeBookStatePacket(ClientSetRecipeBookStatePacket.BookType.SMOKER, false, false));
         addClientPackets(new ClientNameItemPacket("Diamond Sword"), new ClientNameItemPacket(""), new ClientNameItemPacket("A".repeat(100)));
         addClientPackets(new ClientResourcePackStatusPacket(UUID.randomUUID(), ResourcePackStatus.ACCEPTED), new ClientResourcePackStatusPacket(UUID.randomUUID(), ResourcePackStatus.DECLINED));
-        addClientPackets(new ClientAdvancementTabPacket(AdvancementAction.OPENED_TAB, "minecraft:story/root"), new ClientAdvancementTabPacket(AdvancementAction.CLOSED_SCREEN, null));
+        addClientPackets(new ClientAdvancementTabPacket(ClientAdvancementTabPacket.Action.OPENED_TAB, "minecraft:story/root"), new ClientAdvancementTabPacket(ClientAdvancementTabPacket.Action.CLOSED_SCREEN, null));
         addClientPackets(new ClientSelectTradePacket(0), new ClientSelectTradePacket(5), new ClientSelectTradePacket(Integer.MAX_VALUE));
         addClientPackets(new ClientSetBeaconEffectPacket(PotionType.STRENGTH, PotionType.REGENERATION), new ClientSetBeaconEffectPacket(null, null), new ClientSetBeaconEffectPacket(PotionType.fromKey("strength"), null));
         addClientPackets(new ClientHeldItemChangePacket((short) 0), new ClientHeldItemChangePacket((short) 8), new ClientHeldItemChangePacket((short) 4));

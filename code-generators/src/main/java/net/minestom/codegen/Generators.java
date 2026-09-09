@@ -8,10 +8,6 @@ import java.util.function.UnaryOperator;
 public final class Generators {
 
     private static final List<EnumSpec> ENUMS = List.of(
-            new EnumSpec("recipe_types", "net.minestom.server.recipe", "RecipeType", true, name -> name.replace("CRAFTING_", ""), "RecipeTypeGenerator"),
-            new EnumSpec("recipe_display_types", "net.minestom.server.recipe.display", "RecipeDisplayType"),
-            new EnumSpec("slot_display_types", "net.minestom.server.recipe.display", "SlotDisplayType"),
-            new EnumSpec("recipe_book_categories", "net.minestom.server.recipe", "RecipeBookCategory"),
             new EnumSpec("consume_effects", "net.minestom.server.item.component", "ConsumeEffectType", false, UnaryOperator.identity(), "GenericEnumGenerator"),
             new EnumSpec("command_arguments", "net.minestom.server.command", "ArgumentParserType"),
             new EnumSpec("villager_types", "net.minestom.server.entity", "VillagerType")
@@ -24,7 +20,6 @@ public final class Generators {
             new StaticRegistrySpec("mob_effect", "net.minestom.server.potion", "PotionEffect", "PotionEffectImpl", "PotionEffects"),
             new StaticRegistrySpec("potion", "net.minestom.server.potion", "PotionType", "PotionTypeImpl", "PotionTypes"),
             new StaticRegistrySpec("sound_event", "net.minestom.server.sound", "SoundEvent", "BuiltinSoundEvent", "SoundEvents", "BuiltinSoundEvent"),
-            new StaticRegistrySpec("custom_stat", "net.minestom.server.statistic", "StatisticType", "StatisticTypeImpl", "StatisticTypes"),
             new StaticRegistrySpec("attribute", "net.minestom.server.entity.attribute", "Attribute", "AttributeImpl", "Attributes"),
             new StaticRegistrySpec("feature_flag", "net.minestom.server", "FeatureFlag", "FeatureFlagImpl", "FeatureFlags"),
             new StaticRegistrySpec("fluid", "net.minestom.server.instance.fluid", "Fluid", "FluidImpl", "Fluids"),

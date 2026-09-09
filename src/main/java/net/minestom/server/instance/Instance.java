@@ -42,17 +42,11 @@ import net.minestom.server.network.packet.server.play.InitializeWorldBorderPacke
 import net.minestom.server.network.packet.server.play.SetTimePacket;
 import net.minestom.server.registry.Registries;
 import net.minestom.server.registry.RegistryKey;
-import net.minestom.server.snapshot.ChunkSnapshot;
-import net.minestom.server.snapshot.InstanceSnapshot;
-import net.minestom.server.snapshot.SnapshotImpl;
-import net.minestom.server.snapshot.SnapshotUpdater;
-import net.minestom.server.snapshot.Snapshotable;
 import net.minestom.server.tag.TagHandler;
 import net.minestom.server.tag.Taggable;
 import net.minestom.server.thread.ThreadDispatcher;
 import net.minestom.server.timer.Schedulable;
 import net.minestom.server.timer.Scheduler;
-import net.minestom.server.utils.ArrayUtils;
 import net.minestom.server.utils.PacketSendingUtils;
 import net.minestom.server.utils.chunk.ChunkCache;
 import net.minestom.server.utils.chunk.ChunkSupplier;
@@ -78,7 +72,6 @@ import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
@@ -93,7 +86,7 @@ import java.util.stream.Collectors;
  * you need to be sure to signal the {@link ThreadDispatcher} of every partition/element changes.
  */
 public abstract class Instance implements Block.Getter, Block.Setter, Biome.Getter, Biome.Setter,
-        Tickable, Schedulable, Snapshotable, EventHandler<InstanceEvent>, Taggable, PacketGroupingAudience, Pointered, Identified {
+        Tickable, Schedulable, EventHandler<InstanceEvent>, Taggable, PacketGroupingAudience, Pointered, Identified {
 
     // Adventure pointers
     protected static final PointersSupplier<Instance> INSTANCE_POINTERS_SUPPLIER = PointersSupplier.<Instance>builder()
@@ -969,16 +962,6 @@ public abstract class Instance implements Block.Getter, Block.Setter, Biome.Gett
     @ApiStatus.Experimental
     public EventNode<InstanceEvent> eventNode() {
         return eventNode;
-    }
-
-    @Override
-    public InstanceSnapshot updateSnapshot(SnapshotUpdater updater) {
-        final Map<Long, AtomicReference<ChunkSnapshot>> chunksMap = updater.referencesMapLong(getChunks(),
-                value -> CoordConversion.chunkIndex(value.getChunkX(), value.getChunkZ()));
-        final int[] entities = ArrayUtils.mapToIntArray(entityTracker.entities(), Entity::getEntityId);
-        return new SnapshotImpl.Instance(updater.reference(MinecraftServer.process()),
-                getDimensionType(), getWorldAge(), getTime(), chunksMap, entities,
-                tagHandler.readableCopy());
     }
 
     /**

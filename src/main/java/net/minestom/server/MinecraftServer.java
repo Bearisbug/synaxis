@@ -1,7 +1,6 @@
 package net.minestom.server;
 
 import net.kyori.adventure.text.logger.slf4j.ComponentLogger;
-import net.minestom.server.advancements.AdvancementManager;
 import net.minestom.server.adventure.ClickCallbackManager;
 import net.minestom.server.adventure.bossbar.BossBarManager;
 import net.minestom.server.codec.Codec;
@@ -41,10 +40,8 @@ import net.minestom.server.network.packet.PacketParser;
 import net.minestom.server.network.packet.server.common.PluginMessagePacket;
 import net.minestom.server.network.packet.server.play.ServerDifficultyPacket;
 import net.minestom.server.network.socket.Server;
-import net.minestom.server.recipe.RecipeManager;
 import net.minestom.server.registry.DynamicRegistry;
 import net.minestom.server.registry.Registries;
-import net.minestom.server.scoreboard.TeamManager;
 import net.minestom.server.thread.TickSchedulerThread;
 import net.minestom.server.timer.SchedulerManager;
 import net.minestom.server.utils.PacketSendingUtils;
@@ -184,14 +181,6 @@ public final class MinecraftServer implements MinecraftConstants {
         return serverProcess.command();
     }
 
-    public static RecipeManager getRecipeManager() {
-        return serverProcess.recipe();
-    }
-
-    public static TeamManager getTeamManager() {
-        return serverProcess.team();
-    }
-
     public static SchedulerManager getSchedulerManager() {
         return serverProcess.scheduler();
     }
@@ -264,10 +253,6 @@ public final class MinecraftServer implements MinecraftConstants {
     public static void setCompressionThreshold(int compressionThreshold) {
         Check.stateCondition(serverProcess != null && serverProcess.isAlive(), "The compression threshold cannot be changed after the server has been started.");
         MinecraftServer.compressionThreshold = compressionThreshold;
-    }
-
-    public static AdvancementManager getAdvancementManager() {
-        return serverProcess.advancement();
     }
 
     public static ClickCallbackManager getClickCallbackManager() {

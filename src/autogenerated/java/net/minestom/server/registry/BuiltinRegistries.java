@@ -38,7 +38,6 @@ import net.minestom.server.particle.Particle;
 import net.minestom.server.potion.PotionEffect;
 import net.minestom.server.potion.PotionType;
 import net.minestom.server.sound.BuiltinSoundEvent;
-import net.minestom.server.statistic.StatisticType;
 import net.minestom.server.world.DimensionType;
 import net.minestom.server.world.biome.Biome;
 import net.minestom.server.world.clock.ClockTimeMarker;
@@ -118,11 +117,6 @@ public interface BuiltinRegistries {
      * The registry key for {@link CowVariant}.
      */
     RegistryKey<Registry<CowVariant>> COW_VARIANT = RegistryKey.unsafeOf("cow_variant");
-
-    /**
-     * The registry key for {@link StatisticType}.
-     */
-    RegistryKey<Registry<StatisticType>> CUSTOM_STAT = RegistryKey.unsafeOf("custom_stat");
 
     /**
      * The registry key for {@link DamageType}.

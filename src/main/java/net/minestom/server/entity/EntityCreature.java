@@ -1,33 +1,18 @@
 package net.minestom.server.entity;
 
-import net.minestom.server.coordinate.Pos;
-import net.minestom.server.entity.ai.EntityAI;
-import net.minestom.server.entity.ai.EntityAIGroup;
-import net.minestom.server.entity.pathfinding.NavigableEntity;
-import net.minestom.server.entity.pathfinding.Navigator;
 import net.minestom.server.event.EventDispatcher;
 import net.minestom.server.event.entity.EntityAttackEvent;
-import net.minestom.server.instance.Instance;
 import net.minestom.server.thread.Acquirable;
 import net.minestom.server.utils.time.TimeUnit;
 import org.jetbrains.annotations.ApiStatus;
 import org.jetbrains.annotations.Nullable;
 
 import java.time.Duration;
-import java.util.Collection;
-import java.util.Set;
 import java.util.UUID;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CopyOnWriteArraySet;
 
-public class EntityCreature extends LivingEntity implements NavigableEntity, EntityAI {
+public class EntityCreature extends LivingEntity {
 
     private int removalAnimationDelay = 1000;
-
-    private final Set<EntityAIGroup> aiGroups = new CopyOnWriteArraySet<>();
-
-    @SuppressWarnings("this-escape") // deliberate self registration during construction
-    private final Navigator navigator = new Navigator(this);
 
     private @Nullable Entity target;
 
@@ -42,24 +27,6 @@ public class EntityCreature extends LivingEntity implements NavigableEntity, Ent
 
     public EntityCreature(EntityType entityType) {
         this(entityType, UUID.randomUUID());
-    }
-
-    @Override
-    public void update(long time) {
-        // AI
-        aiTick(time);
-
-        // Path finding
-        this.navigator.tick();
-
-        // Fire, item pickup, ...
-        super.update(time);
-    }
-
-    @Override
-    public CompletableFuture<Void> setInstance(Instance instance, Pos spawnPosition) {
-        this.navigator.reset();
-        return super.setInstance(instance, spawnPosition);
     }
 
     @Override
@@ -95,11 +62,6 @@ public class EntityCreature extends LivingEntity implements NavigableEntity, Ent
         this.removalAnimationDelay = removalAnimationDelay;
     }
 
-    @Override
-    public Collection<EntityAIGroup> getAIGroups() {
-        return aiGroups;
-    }
-
     /**
      * Gets the entity target.
      *
@@ -124,11 +86,6 @@ public class EntityCreature extends LivingEntity implements NavigableEntity, Ent
      */
     public void setTarget(@Nullable Entity target) {
         this.target = target;
-    }
-
-    @Override
-    public Navigator getNavigator() {
-        return navigator;
     }
 
     /**

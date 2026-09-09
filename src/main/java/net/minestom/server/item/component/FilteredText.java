@@ -1,4 +1,4 @@
-package net.minestom.server.item.book;
+package net.minestom.server.item.component;
 
 import net.kyori.adventure.text.Component;
 import net.minestom.server.codec.Codec;

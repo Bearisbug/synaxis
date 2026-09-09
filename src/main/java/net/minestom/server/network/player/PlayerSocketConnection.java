@@ -7,7 +7,6 @@ import net.minestom.server.entity.Player;
 import net.minestom.server.event.EventDispatcher;
 import net.minestom.server.event.ListenerHandle;
 import net.minestom.server.event.player.PlayerPacketOutEvent;
-import net.minestom.server.extras.mojangAuth.MojangCrypt;
 import net.minestom.server.network.ConnectionState;
 import net.minestom.server.network.DisconnectReasons;
 import net.minestom.server.network.NetworkBuffer;
@@ -39,8 +38,6 @@ import org.jctools.queues.MessagePassingQueue;
 import org.jetbrains.annotations.ApiStatus;
 import org.jetbrains.annotations.Nullable;
 
-import javax.crypto.Cipher;
-import javax.crypto.SecretKey;
 import java.io.EOFException;
 import java.io.IOException;
 import java.net.SocketAddress;
@@ -77,10 +74,6 @@ public class PlayerSocketConnection extends PlayerConnection {
     private SocketAddress remoteAddress;
     private boolean attemptedProxyProtocolDetection = false;
 
-    //Could be null. Only used for Mojang Auth
-    private volatile @Nullable EncryptionContext encryptionContext;
-    private byte[] nonce = new byte[4];
-
     // Data from client packets
     private @Nullable String loginUsername;
     private volatile @Nullable GameProfile gameProfile;
@@ -114,8 +107,7 @@ public class PlayerSocketConnection extends PlayerConnection {
 
     public void read(PacketParser<ClientPacket> packetParser) throws IOException {
         NetworkBuffer readBuffer = this.readBuffer;
-        final long writeIndex = readBuffer.writeIndex();
-        final int length = readBuffer.readChannel(channel);
+        readBuffer.readChannel(channel);
 
         if (ServerFlag.PROXY_PROTOCOL && !attemptedProxyProtocolDetection) {
             final ProxyProtocolDecoder.Result result = ProxyProtocolDecoder.parse(remoteAddress, readBuffer);
@@ -128,11 +120,6 @@ public class PlayerSocketConnection extends PlayerConnection {
             }
         }
 
-        // Decrypt newly read data
-        final EncryptionContext encryptionContext = this.encryptionContext;
-        if (encryptionContext != null) {
-            readBuffer.cipher(encryptionContext.decrypt(), writeIndex, length);
-        }
         // Process packets
         processPackets(readBuffer, packetParser);
     }
@@ -209,17 +196,6 @@ public class PlayerSocketConnection extends PlayerConnection {
      */
     private static void rethrowFatal(Throwable throwable) {
         if (throwable instanceof OutOfMemoryError error) throw error;
-    }
-
-    /**
-     * Sets the encryption key and add the codecs to the pipeline.
-     *
-     * @param secretKey the secret key to use in the encryption
-     * @throws IllegalStateException if encryption is already enabled for this connection
-     */
-    public void setEncryptionKey(SecretKey secretKey) {
-        Check.stateCondition(encryptionContext != null, "Encryption is already enabled!");
-        this.encryptionContext = new EncryptionContext(MojangCrypt.getCipher(1, secretKey), MojangCrypt.getCipher(2, secretKey));
     }
 
     /**
@@ -351,25 +327,8 @@ public class PlayerSocketConnection extends PlayerConnection {
         this.protocolVersion = protocolVersion;
     }
 
-    public byte[] getNonce() {
-        return nonce;
-    }
-
-    public void setNonce(byte[] nonce) {
-        this.nonce = nonce;
-    }
-
     private boolean writeSendable(NetworkBuffer buffer, SendablePacket sendable, boolean compressed) {
-        final long start = buffer.writeIndex();
-        final boolean result = writePacketSync(buffer, sendable, compressed);
-        if (!result) return false;
-        // Encrypt data
-        final long length = buffer.writeIndex() - start;
-        final EncryptionContext encryptionContext = this.encryptionContext;
-        if (encryptionContext != null && length > 0) { // Encryption support
-            buffer.cipher(encryptionContext.encrypt(), start, length);
-        }
-        return true;
+        return writePacketSync(buffer, sendable, compressed);
     }
 
     private boolean writePacketSync(NetworkBuffer buffer, SendablePacket packet, boolean compressed) {
@@ -515,8 +474,5 @@ public class PlayerSocketConnection extends PlayerConnection {
             PacketVanilla.PACKET_POOL.add(writeLeftover);
             this.writeLeftover = null;
         }
-    }
-
-    record EncryptionContext(Cipher encrypt, Cipher decrypt) {
     }
 }

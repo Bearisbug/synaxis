@@ -23,8 +23,6 @@ import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import net.kyori.adventure.title.TitlePart;
 import net.minestom.server.MinecraftServer;
 import net.minestom.server.ServerFlag;
-import net.minestom.server.advancements.AdvancementTab;
-import net.minestom.server.advancements.Notification;
 import net.minestom.server.adventure.AdventurePacketConvertor;
 import net.minestom.server.adventure.audience.Audiences;
 import net.minestom.server.collision.BoundingBox;
@@ -38,7 +36,6 @@ import net.minestom.server.coordinate.Vec;
 import net.minestom.server.dialog.Dialog;
 import net.minestom.server.entity.metadata.LivingEntityMeta;
 import net.minestom.server.entity.metadata.avatar.PlayerMeta;
-import net.minestom.server.entity.vehicle.PlayerInputs;
 import net.minestom.server.event.EventDispatcher;
 import net.minestom.server.event.inventory.InventoryCloseEvent;
 import net.minestom.server.event.inventory.InventoryOpenEvent;
@@ -117,16 +114,8 @@ import net.minestom.server.network.packet.server.play.data.WorldPos;
 import net.minestom.server.network.player.ClientSettings;
 import net.minestom.server.network.player.GameProfile;
 import net.minestom.server.network.player.PlayerConnection;
-import net.minestom.server.recipe.RecipeManager;
 import net.minestom.server.registry.DynamicRegistry;
 import net.minestom.server.registry.RegistryKey;
-import net.minestom.server.scoreboard.BelowNameTag;
-import net.minestom.server.scoreboard.Team;
-import net.minestom.server.snapshot.EntitySnapshot;
-import net.minestom.server.snapshot.PlayerSnapshot;
-import net.minestom.server.snapshot.SnapshotImpl;
-import net.minestom.server.snapshot.SnapshotUpdater;
-import net.minestom.server.statistic.PlayerStatistic;
 import net.minestom.server.thread.Acquirable;
 import net.minestom.server.timer.Scheduler;
 import net.minestom.server.utils.MathUtils;
@@ -158,10 +147,8 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReentrantLock;
@@ -267,8 +254,6 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
     // Experience orb pickup
     protected Cooldown experiencePickupCooldown = new Cooldown(Duration.of(10, TimeUnit.SERVER_TICK));
 
-    private BelowNameTag belowNameTag;
-
     private int permissionLevel;
 
     private boolean reducedDebugScreenInformation;
@@ -280,8 +265,6 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
     private boolean instantBreak;
     private float flyingSpeed = 0.05f;
     private float fieldViewModifier = 0.1f;
-
-    private final Map<PlayerStatistic, Integer> statisticValueMap = new ConcurrentHashMap<>();
 
     private final PlayerInputs inputs = new PlayerInputs();
 
@@ -394,16 +377,8 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
             }
         }
 
-        //Teams
-        for (Team team : MinecraftServer.getTeamManager().getTeams()) {
-            sendPacket(team.createTeamsCreationPacket());
-        }
-
         // Commands
         refreshCommands();
-
-        // Recipes
-        refreshRecipes();
 
         // Some client updates
         sendPacket(getPropertiesPacket()); // Send default properties
@@ -606,17 +581,6 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
         sendPacket(MinecraftServer.getCommandManager().createDeclareCommandsPacket(this));
     }
 
-    /**
-     * Refreshes the recipes and recipe book for this player, testing recipe predicates again.
-     */
-    public void refreshRecipes() {
-        RecipeManager recipeManager = MinecraftServer.getRecipeManager();
-        sendPackets(
-                recipeManager.getDeclareRecipesPacket(),
-                recipeManager.createRecipeBookResetPacket(this)
-        );
-    }
-
     @Override
     public boolean isOnGround() {
         return onGround;
@@ -636,15 +600,6 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
         if (currentInventory != null) currentInventory.removeViewer(this);
 
         MinecraftServer.getBossBarManager().removeAllBossBars(this);
-        // Advancement tabs cache
-        {
-            Set<AdvancementTab> advancementTabs = AdvancementTab.getTabs(this);
-            if (advancementTabs != null) {
-                for (AdvancementTab advancementTab : advancementTabs) {
-                    advancementTab.removeViewer(this);
-                }
-            }
-        }
         final Pos position = this.position;
         final int chunkX = position.chunkX();
         final int chunkZ = position.chunkZ();
@@ -1927,21 +1882,6 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
         return heldSlot;
     }
 
-    /**
-     * Changes the tag below the name.
-     *
-     * @param belowNameTag The new below name tag
-     */
-    public void setBelowNameTag(BelowNameTag belowNameTag) {
-        if (this.belowNameTag == belowNameTag) return;
-
-        if (this.belowNameTag != null) {
-            this.belowNameTag.removeViewer(this);
-        }
-
-        this.belowNameTag = belowNameTag;
-    }
-
     public ClickPreprocessor getClickPreprocessor() {
         return clickPreprocessor;
     }
@@ -2288,16 +2228,6 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
     }
 
     /**
-     * This is the map used to send the statistic packet.
-     * It is possible to add/remove/change statistic value directly into it.
-     *
-     * @return the modifiable statistic map
-     */
-    public Map<PlayerStatistic, Integer> getStatisticValueMap() {
-        return statisticValueMap;
-    }
-
-    /**
      * Gets the last reported set of player inputs.
      *
      * <p>This information comes from the client so should be considered as such.</p>
@@ -2509,12 +2439,6 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
         inventory.setEquipment(slot, heldSlot, itemStack);
     }
 
-    @Override
-    public PlayerSnapshot updateSnapshot(SnapshotUpdater updater) {
-        final EntitySnapshot snapshot = super.updateSnapshot(updater);
-        return new SnapshotImpl.Player(snapshot, username, gameMode);
-    }
-
     public Locale getLocale() {
         return settings.locale();
     }
@@ -2565,16 +2489,6 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
     public CompletableFuture<Void> teleport(Pos position, long @Nullable [] chunks, int flags) {
         chunkUpdateLimitChecker.clearHistory();
         return super.teleport(position, chunks, flags);
-    }
-
-    /**
-     * Send a {@link Notification} to the player.
-     *
-     * @param notification the {@link Notification} to send
-     */
-    public void sendNotification(Notification notification) {
-        sendPacket(notification.buildAddPacket());
-        sendPacket(notification.buildRemovePacket());
     }
 
     /**

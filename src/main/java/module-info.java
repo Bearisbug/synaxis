@@ -30,11 +30,9 @@ module net.minestom.server {
     requires org.slf4j;
     requires org.jctools.core.jdk11;
     requires jdk.jfr;
-    requires java.desktop;
 
     // EXPORTS
     exports net.minestom.server;
-    exports net.minestom.server.advancements;
     exports net.minestom.server.adventure;
     exports net.minestom.server.adventure.audience;
     exports net.minestom.server.adventure.bossbar;
@@ -60,9 +58,6 @@ module net.minestom.server {
     exports net.minestom.server.crypto;
     exports net.minestom.server.dialog;
     exports net.minestom.server.entity;
-    exports net.minestom.server.entity.ai;
-    exports net.minestom.server.entity.ai.goal;
-    exports net.minestom.server.entity.ai.target;
     exports net.minestom.server.entity.attribute;
     exports net.minestom.server.entity.damage;
     exports net.minestom.server.entity.metadata;
@@ -78,10 +73,6 @@ module net.minestom.server {
     exports net.minestom.server.entity.metadata.villager;
     exports net.minestom.server.entity.metadata.water;
     exports net.minestom.server.entity.metadata.water.fish;
-    exports net.minestom.server.entity.pathfinding;
-    exports net.minestom.server.entity.pathfinding.followers;
-    exports net.minestom.server.entity.pathfinding.generators;
-    exports net.minestom.server.entity.vehicle;
     exports net.minestom.server.event;
     exports net.minestom.server.event.book;
     exports net.minestom.server.event.entity;
@@ -93,13 +84,9 @@ module net.minestom.server {
     exports net.minestom.server.event.server;
     exports net.minestom.server.event.trait;
     exports net.minestom.server.exception;
-    exports net.minestom.server.extras.lan;
-    exports net.minestom.server.extras.mojangAuth;
     exports net.minestom.server.game;
     exports net.minestom.server.gamedata;
     exports net.minestom.server.instance;
-    exports net.minestom.server.instance.anvil;
-    exports net.minestom.server.instance.batch;
     exports net.minestom.server.instance.block;
     exports net.minestom.server.instance.block.banner;
     exports net.minestom.server.instance.block.jukebox;
@@ -116,7 +103,6 @@ module net.minestom.server {
     exports net.minestom.server.inventory.type;
     exports net.minestom.server.item;
     exports net.minestom.server.item.armor;
-    exports net.minestom.server.item.book;
     exports net.minestom.server.item.component;
     exports net.minestom.server.item.crossbow;
     exports net.minestom.server.item.enchant;
@@ -125,13 +111,9 @@ module net.minestom.server {
     exports net.minestom.server.listener.common;
     exports net.minestom.server.listener.manager;
     exports net.minestom.server.listener.preplay;
-    exports net.minestom.server.map;
-    exports net.minestom.server.map.framebuffers;
     exports net.minestom.server.message;
     exports net.minestom.server.monitoring;
     exports net.minestom.server.network;
-    exports net.minestom.server.network.debug;
-    exports net.minestom.server.network.debug.info;
     exports net.minestom.server.network.packet;
     exports net.minestom.server.network.packet.client;
     exports net.minestom.server.network.packet.client.common;
@@ -151,15 +133,9 @@ module net.minestom.server {
     exports net.minestom.server.network.plugin;
     exports net.minestom.server.network.socket;
     exports net.minestom.server.particle;
-    exports net.minestom.server.ping;
     exports net.minestom.server.potion;
-    exports net.minestom.server.recipe;
-    exports net.minestom.server.recipe.display;
     exports net.minestom.server.registry;
-    exports net.minestom.server.scoreboard;
-    exports net.minestom.server.snapshot;
     exports net.minestom.server.sound;
-    exports net.minestom.server.statistic;
     exports net.minestom.server.tag;
     exports net.minestom.server.thread;
     exports net.minestom.server.timer;
@@ -176,7 +152,6 @@ module net.minestom.server {
     exports net.minestom.server.utils.json;
     exports net.minestom.server.utils.location;
     exports net.minestom.server.utils.mojang;
-    exports net.minestom.server.utils.nbt;
     exports net.minestom.server.utils.position;
     exports net.minestom.server.utils.time;
     exports net.minestom.server.utils.url;

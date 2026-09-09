@@ -1,6 +1,5 @@
 package net.minestom.server;
 
-import net.minestom.server.advancements.AdvancementManager;
 import net.minestom.server.adventure.ClickCallbackManager;
 import net.minestom.server.adventure.bossbar.BossBarManager;
 import net.minestom.server.command.CommandManager;
@@ -15,10 +14,7 @@ import net.minestom.server.listener.manager.PacketListenerManager;
 import net.minestom.server.network.ConnectionManager;
 import net.minestom.server.network.packet.PacketParser;
 import net.minestom.server.network.socket.Server;
-import net.minestom.server.recipe.RecipeManager;
 import net.minestom.server.registry.Registries;
-import net.minestom.server.scoreboard.TeamManager;
-import net.minestom.server.snapshot.Snapshotable;
 import net.minestom.server.thread.ThreadDispatcher;
 import net.minestom.server.timer.SchedulerManager;
 import org.jetbrains.annotations.ApiStatus;
@@ -26,7 +22,7 @@ import org.jetbrains.annotations.ApiStatus;
 import java.net.SocketAddress;
 
 @ApiStatus.NonExtendable
-public interface ServerProcess extends Registries, Snapshotable {
+public interface ServerProcess extends Registries {
     /**
      * Gets the registries owned by this process.
      *
@@ -58,16 +54,6 @@ public interface ServerProcess extends Registries, Snapshotable {
     CommandManager command();
 
     /**
-     * Handles registered recipes shown to clients.
-     */
-    RecipeManager recipe();
-
-    /**
-     * Handles registered teams.
-     */
-    TeamManager team();
-
-    /**
      * Gets the global event handler.
      * <p>
      * Used to register event callback at a global scale.
@@ -78,11 +64,6 @@ public interface ServerProcess extends Registries, Snapshotable {
      * Main scheduler ticked at the server rate.
      */
     SchedulerManager scheduler();
-
-    /**
-     * Handles registered advancements.
-     */
-    AdvancementManager advancement();
 
     /**
      * Handles registered boss bars.

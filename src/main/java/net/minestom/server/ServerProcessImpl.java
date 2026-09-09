@@ -1,7 +1,5 @@
 package net.minestom.server;
 
-import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
-import net.minestom.server.advancements.AdvancementManager;
 import net.minestom.server.adventure.ClickCallbackManager;
 import net.minestom.server.adventure.bossbar.BossBarManager;
 import net.minestom.server.command.CommandManager;
@@ -21,14 +19,7 @@ import net.minestom.server.network.ConnectionManager;
 import net.minestom.server.network.packet.PacketParser;
 import net.minestom.server.network.packet.PacketVanilla;
 import net.minestom.server.network.socket.Server;
-import net.minestom.server.recipe.RecipeManager;
 import net.minestom.server.registry.Registries;
-import net.minestom.server.scoreboard.TeamManager;
-import net.minestom.server.snapshot.EntitySnapshot;
-import net.minestom.server.snapshot.InstanceSnapshot;
-import net.minestom.server.snapshot.ServerSnapshot;
-import net.minestom.server.snapshot.SnapshotImpl;
-import net.minestom.server.snapshot.SnapshotUpdater;
 import net.minestom.server.thread.Acquirable;
 import net.minestom.server.thread.ThreadDispatcher;
 import net.minestom.server.thread.ThreadProvider;
@@ -36,7 +27,6 @@ import net.minestom.server.thread.TickSchedulerThread;
 import net.minestom.server.thread.TickThread;
 import net.minestom.server.timer.SchedulerManager;
 import net.minestom.server.utils.PacketViewableUtils;
-import net.minestom.server.utils.collection.MappedCollection;
 import net.minestom.server.utils.time.Tick;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
@@ -44,11 +34,8 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.net.SocketAddress;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicReference;
 
 final class ServerProcessImpl implements ServerProcess, Registries.Delegating {
     private static final Logger LOGGER = LoggerFactory.getLogger(ServerProcessImpl.class);
@@ -65,11 +52,8 @@ final class ServerProcessImpl implements ServerProcess, Registries.Delegating {
     private final InstanceManager instance;
     private final BlockManager block;
     private final CommandManager command;
-    private final RecipeManager recipe;
-    private final TeamManager team;
     private final GlobalEventHandler eventHandler;
     private final SchedulerManager scheduler;
-    private final AdvancementManager advancement;
     private final BossBarManager bossBar;
     private final ClickCallbackManager clickCallbackManager;
 
@@ -94,11 +78,8 @@ final class ServerProcessImpl implements ServerProcess, Registries.Delegating {
         this.instance = new InstanceManager(this);
         this.block = new BlockManager();
         this.command = new CommandManager();
-        this.recipe = new RecipeManager();
-        this.team = new TeamManager();
         this.eventHandler = new GlobalEventHandler();
         this.scheduler = new SchedulerManager();
-        this.advancement = new AdvancementManager();
         this.bossBar = new BossBarManager();
         this.clickCallbackManager = new ClickCallbackManager();
 
@@ -145,16 +126,6 @@ final class ServerProcessImpl implements ServerProcess, Registries.Delegating {
     }
 
     @Override
-    public RecipeManager recipe() {
-        return recipe;
-    }
-
-    @Override
-    public TeamManager team() {
-        return team;
-    }
-
-    @Override
     public GlobalEventHandler eventHandler() {
         return eventHandler;
     }
@@ -162,11 +133,6 @@ final class ServerProcessImpl implements ServerProcess, Registries.Delegating {
     @Override
     public SchedulerManager scheduler() {
         return scheduler;
-    }
-
-    @Override
-    public AdvancementManager advancement() {
-        return advancement;
     }
 
     @Override
@@ -215,7 +181,6 @@ final class ServerProcessImpl implements ServerProcess, Registries.Delegating {
         switch (auth) {
             case Auth.Offline _ ->
                     LOGGER.info("Running in offline mode. Beware that this is not secure and players can impersonate each other.");
-            case Auth.Online _ -> LOGGER.info("Running in online mode with Mojang's authentication.");
             case Auth.Velocity _ -> LOGGER.info("Running in Velocity mode with modern IP forwarding.");
             case Auth.Bungee bungee -> {
                 if (bungee.guard()) {
@@ -287,19 +252,6 @@ final class ServerProcessImpl implements ServerProcess, Registries.Delegating {
     @Override
     public boolean isAlive() {
         return started.get() && !stopped.get();
-    }
-
-    @Override
-    public ServerSnapshot updateSnapshot(SnapshotUpdater updater) {
-        List<AtomicReference<InstanceSnapshot>> instanceRefs = new ArrayList<>();
-        Int2ObjectOpenHashMap<AtomicReference<EntitySnapshot>> entityRefs = new Int2ObjectOpenHashMap<>();
-        for (Instance instance : instance.getInstances()) {
-            instanceRefs.add(updater.reference(instance));
-            for (Entity entity : instance.getEntities()) {
-                entityRefs.put(entity.getEntityId(), updater.reference(entity));
-            }
-        }
-        return new SnapshotImpl.Server(MappedCollection.plainReferences(instanceRefs), entityRefs);
     }
 
     private final class TickerImpl implements Ticker {

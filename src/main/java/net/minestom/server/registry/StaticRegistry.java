@@ -6,8 +6,11 @@ import net.minestom.server.network.packet.server.common.TagsPacket;
 import net.minestom.server.utils.collection.ObjectArray;
 import org.jetbrains.annotations.ApiStatus;
 import org.jetbrains.annotations.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -21,6 +24,8 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 @ApiStatus.Internal
 final class StaticRegistry<T extends StaticProtocolObject<T>> implements Registry<T> {
+    private static final Logger LOGGER = LoggerFactory.getLogger(StaticRegistry.class);
+
     private final Key key;
     private final Map<Key, T> keyToValue;
     private final Map<T, RegistryKey<T>> valueToKey;
@@ -130,10 +135,19 @@ final class StaticRegistry<T extends StaticProtocolObject<T>> implements Registr
             final int[] entries = new int[tag.size()];
             int i = 0;
             for (var staticEntry : tag) {
-                entries[i++] = staticEntry instanceof StaticProtocolObject<T> po
+                final int id = staticEntry instanceof StaticProtocolObject<T> po
                         ? po.id() : getId(staticEntry);
+                if (id < 0) {
+                    // getId returns -1 for a key that is not in the registry, which would go on the wire as a
+                    // registry index and desynchronise the client
+                    LOGGER.warn("Tag {} of registry {} references unknown entry {}",
+                            tag.key().key().asString(), key.asString(), staticEntry.key().asString());
+                    continue;
+                }
+                entries[i++] = id;
             }
-            tagList.add(new TagsPacket.Tag(tag.key().key().asString(), entries));
+            tagList.add(new TagsPacket.Tag(tag.key().key().asString(),
+                    i == entries.length ? entries : Arrays.copyOf(entries, i)));
         }
         return new TagsPacket.Registry(key().asString(), tagList);
     }

@@ -1444,7 +1444,9 @@ public class Entity implements Viewable, Tickable, Schedulable, Snapshotable, Ev
         final var previousPosition = this.position;
         final Pos position = clampPosition(ignoreView ? previousPosition.withCoord(newPosition) : newPosition);
         final Pos lastSyncedPosition = this.lastSyncedPosition;
-        if (position.equals(lastSyncedPosition)) return;
+        // The synced position lags behind the real one whenever packets are skipped, so it alone
+        // cannot tell whether the entity actually has to move
+        if (position.equals(lastSyncedPosition) && position.equals(previousPosition)) return;
         setPositionInternal(position, ignoreView ? headRotation : position.yaw());
         this.previousPosition = previousPosition;
         if (!position.samePoint(previousPosition)) refreshCoordinate(position);

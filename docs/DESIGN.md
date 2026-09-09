@@ -16,6 +16,7 @@
 | 日期 | 版本 | 改动 | 作者 |
 | --- | --- | --- | --- |
 | 2026-09-09 | v0.1 | 初稿：里程碑 M1 范围、实体、协议契约、状态机、阶段计划 | Bearisbug |
+| 2026-09-09 | v0.14 | REQ-015 合入；阶段 6 完成 | Bearisbug |
 | 2026-09-09 | v0.13 | REQ-015 按实际交付改写（9 包底层集合、移出 6 包及理由、`JvmFlags` 豁免）；§24 规则描述同步 | Bearisbug |
 | 2026-09-09 | v0.12 | REQ-014 完成；`PacketViewableUtils` 改为进程级（技术债关闭）；记录 JVM 级开关的归属决定 | Bearisbug |
 | 2026-09-09 | v0.11 | REQ-013 完成；§28 记录门面改造的四处偏离；`CommandPacketFilteringTest` 技术债关闭 | Bearisbug |
@@ -89,7 +90,7 @@ N/A — 画像:内部系统，本里程碑无产品指标与埋点事件；工�
 | REQ-012 | 运行手册：`docs/ENGINE.md` 写清 JDK、镜像脚本、分支策略、升版本 checklist；集成测试基类 teardown 清理 `$TMPDIR/minestom-test-world-*` | 冷启动可用 | P1 |
 | REQ-013 | M1.5 · 静态门面实例化：`MinecraftServer` 静态访问（实测 142 调用点 / 56 文件）改为 `ServerProcess` 实例（`ServerProcess.of(auth)` 工厂，`Instance`/`Entity`/`PlayerConnection`/`CommandSender` 暴露 `process()`，`EventDispatcher` 删除）；`@EnvTest` 类级并行。已完成 | 可维护、可测 | P2 |
 | REQ-014 | M1.5 · 配置对象：`ServerFlag`（实测 55 个开关）删除；37 个进程级开关进 `ServerConfig`（`process.config()`，系统属性键 `gameengine.*` 同默认值），10 个结构上 JVM 级的进 `JvmFlags` 并逐条注明原因，4 个归各自的包，4 个死开关删除；测试与生产同一份默认值（`ServerConfigTest` 断言 `defaults() == fromSystemProperties()`）。已完成 | 可维护 | P2 |
-| REQ-015 | M1.5 · 分层：底层集合最终为 `codec、condition、coordinate、exception、gamedata、monitoring、thread、timer、utils` 9 个包，不得依赖集合之外的引擎包（实测起点 35 条边 260 条 import，终点 0）；`registry`、`color`、`component`、`crypto`、`sound`、`tag` 因各自声明 `NetworkBuffer.Type` 或直接产协议包而移出集合（理由在 `ArchitectureTest` javadoc）；`utils` 内 22 个错放类归位；ArchUnit 由「冻结」改为「禁止」，冻结存储删除；根包 `JvmFlags` 为唯一豁免；`tools/pkgdeps.py` 入库复核。已完成，待合并 | 可读、可扩展 | P2 |
+| REQ-015 | M1.5 · 分层：底层集合最终为 `codec、condition、coordinate、exception、gamedata、monitoring、thread、timer、utils` 9 个包，不得依赖集合之外的引擎包（实测起点 35 条边 260 条 import，终点 0）；`registry`、`color`、`component`、`crypto`、`sound`、`tag` 因各自声明 `NetworkBuffer.Type` 或直接产协议包而移出集合（理由在 `ArchitectureTest` javadoc）；`utils` 内 22 个错放类归位；ArchUnit 由「冻结」改为「禁止」，冻结存储删除；根包 `JvmFlags` 为唯一豁免；`tools/pkgdeps.py` 入库复核。已完成并合入 | 可读、可扩展 | P2 |
 | REQ-016 | M1.5 · 拆 `NetworkBufferTypeImpl`（拆前 1,297 行）为按类型族分文件的实现，零 API 影响。已完成：枢纽剩 15 行，10 个 package-private 持有类 | 可读 | P3 |
 
 ## 6. 总体架构
@@ -600,7 +601,7 @@ N/A — 无 schema 变更，M1 不落盘任何持久数据。
 | 3 改名与合规 | REQ-009、REQ-010、REQ-011 | grep 零命中，NOTICE 就位，原版客户端冒烟与 echo 往返通过 | 代码侧完成（RUN-007/008）；待人工 TC-012、TC-016 |
 | 4 门面（M1.5） | REQ-013 | 测试并行开启后全量绿且总耗时下降 | 已完成（串行 30.1 s → 并行 20 s） |
 | 5 配置（M1.5） | REQ-014 | `DISPATCHER_THREADS=2` 下全量绿 | 已完成（2,576 测试，线程数 2 全绿两次后恢复默认 1） |
-| 6 分层（M1.5） | REQ-015、REQ-016 | ArchUnit 禁止规则绿，依赖矩阵底层出向上层边为 0 | REQ-016 已完成；REQ-015 已交付待合并（与 REQ-014 的语义冲突由合并轮处理） |
+| 6 分层（M1.5） | REQ-015、REQ-016 | ArchUnit 禁止规则绿，依赖矩阵底层出向上层边为 0 | 已完成（2,576 测试；`pkgdeps.py` 底层出向上层边 0） |
 
 阶段 0 到 3 必须连续完成（`ADR-004`）。阶段 2 的删除必须在阶段 1 的实体层与 instance 层修复合入之后开始，否则复现测试会随被删代码丢失。
 

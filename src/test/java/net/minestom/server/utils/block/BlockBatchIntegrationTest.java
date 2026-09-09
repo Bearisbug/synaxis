@@ -36,6 +36,22 @@ public class BlockBatchIntegrationTest {
     }
 
     @Test
+    public void emptyBatchStillCompletes(Env env) {
+        Instance instance = env.createFlatInstance();
+        instance.loadChunk(0, 0).join();
+
+        AbsoluteBlockBatch blockBatch = new AbsoluteBlockBatch(new BatchOption().setCalculateInverse(true));
+
+        CountDownLatch latch = new CountDownLatch(1);
+        AbsoluteBlockBatch inverse = blockBatch.apply(instance, _ -> latch.countDown());
+        env.tickWhile(() -> latch.getCount() > 0, Duration.ofSeconds(1));
+        Assertions.assertDoesNotThrow(() -> Assertions.assertTrue(latch.await(1, TimeUnit.SECONDS),
+                "an empty batch never ran its callback"));
+        Assertions.assertNotNull(inverse);
+        Assertions.assertTrue(inverse.isReady(), "the inverse of an empty batch is never released");
+    }
+
+    @Test
     public void fullChunkBatchRewritesTheChunk(Env env) throws InterruptedException {
         Instance instance = env.createFlatInstance();
         instance.loadChunk(0, 0).join();

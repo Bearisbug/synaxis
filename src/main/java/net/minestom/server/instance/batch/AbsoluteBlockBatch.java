@@ -128,6 +128,13 @@ public class AbsoluteBlockBatch implements Batch<Consumer<AbsoluteBlockBatch>> {
 
         final AbsoluteBlockBatch inverse = this.options.shouldCalculateInverse() ? new AbsoluteBlockBatch(inverseOption) : null;
         synchronized (chunkBatchesMap) {
+            if (chunkBatchesMap.isEmpty()) {
+                // Nothing to apply, the loop below would never run and leave both the callback
+                // and the inverse batch waiting forever
+                complete(instance, inverse, callback, safeCallback);
+                return inverse;
+            }
+
             AtomicInteger counter = new AtomicInteger();
             Set<Chunk> updated = ConcurrentHashMap.newKeySet();
 
@@ -136,28 +143,18 @@ public class AbsoluteBlockBatch implements Batch<Consumer<AbsoluteBlockBatch>> {
                 final int chunkX = CoordConversion.chunkIndexGetX(chunkIndex);
                 final int chunkZ = CoordConversion.chunkIndexGetZ(chunkIndex);
                 final ChunkBatch batch = entry.getValue();
-                ChunkBatch chunkInverse = batch.apply(instance, chunkX, chunkZ, _ -> {
+                ChunkBatch chunkInverse = batch.apply(instance, chunkX, chunkZ, chunk -> {
+                    updated.add(chunk);
                     final boolean isLast = counter.incrementAndGet() == chunkBatchesMap.size();
                     // Execute the callback if this was the last chunk to process
                     if (isLast) {
-                        if (inverse != null) inverse.readyLatch.countDown();
-                        if (instance instanceof InstanceContainer container) {
-                            // FIXME: put method in Instance instead
-                            container.refreshLastBlockChangeTime();
-                        }
-                        if (callback != null) {
-                            if (safeCallback) {
-                                instance.scheduleNextTick(_ -> callback.accept(inverse));
-                            } else {
-                                callback.accept(inverse);
-                            }
-                        }
+                        complete(instance, inverse, callback, safeCallback);
 
                         Set<Chunk> expanded = new HashSet<>();
-                        for (Chunk chunk : updated) {
+                        for (Chunk updatedChunk : updated) {
                             for (int i = -1; i <= 1; ++i) {
                                 for (int j = -1; j <= 1; ++j) {
-                                    Chunk toAdd = instance.getChunk(chunk.getChunkX() + i, chunk.getChunkZ() + j);
+                                    Chunk toAdd = instance.getChunk(updatedChunk.getChunkX() + i, updatedChunk.getChunkZ() + j);
                                     if (toAdd != null) {
                                         expanded.add(toAdd);
                                     }
@@ -166,18 +163,35 @@ public class AbsoluteBlockBatch implements Batch<Consumer<AbsoluteBlockBatch>> {
                         }
 
                         // Update the chunk's light
-                        for (Chunk chunk : expanded) {
-                            if (chunk instanceof LightingChunk dc) {
+                        for (Chunk lightingChunk : expanded) {
+                            if (lightingChunk instanceof LightingChunk dc) {
                                 dc.sendLighting();
                             }
                         }
                     }
                 });
-                if (inverse != null) inverse.chunkBatchesMap.put(chunkIndex, chunkInverse);
+                // A batch targeting an unloaded chunk has no inverse, storing null makes applying
+                // the inverse fail with a NullPointerException
+                if (inverse != null && chunkInverse != null) inverse.chunkBatchesMap.put(chunkIndex, chunkInverse);
             }
         }
 
         return inverse;
+    }
+
+    private static void complete(Instance instance, @Nullable AbsoluteBlockBatch inverse,
+                          @Nullable Consumer<@UnknownNullability AbsoluteBlockBatch> callback, boolean safeCallback) {
+        if (inverse != null) inverse.readyLatch.countDown();
+        if (instance instanceof InstanceContainer container) {
+            // FIXME: put method in Instance instead
+            container.refreshLastBlockChangeTime();
+        }
+        if (callback == null) return;
+        if (safeCallback) {
+            instance.scheduleNextTick(_ -> callback.accept(inverse));
+        } else {
+            callback.accept(inverse);
+        }
     }
 
     public BatchOption getInverseOption() {

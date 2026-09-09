@@ -65,10 +65,8 @@ tasks.withType<Javadoc> {
 tasks.withType<Test> {
     useJUnitPlatform()
 
-    // Viewable packets make tracking harder. Could be re-enabled later.
-    jvmArgs("-Dminestom.viewable-packet=false")
-    jvmArgs("-Dminestom.inside-test=true")
-    jvmArgs("-Dminestom.acquirable-strict=true")
+    // Engine settings do not belong in the test JVM: a test that needs a different one builds
+    // its own ServerConfig, which keeps the test defaults equal to the production ones (REQ-014).
     minHeapSize = "512m"
     maxHeapSize = "1024m"
 }

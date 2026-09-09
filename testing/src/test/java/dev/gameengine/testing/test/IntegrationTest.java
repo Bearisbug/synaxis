@@ -13,4 +13,9 @@ public class IntegrationTest {
         Assertions.assertNotNull(env);
         Assertions.assertNotNull(env.process());
     }
+
+    @Test
+    void insideTest(Env env) {
+        Assertions.assertTrue(env.process().config().insideTest());
+    }
 }

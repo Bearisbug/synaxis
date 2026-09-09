@@ -236,7 +236,12 @@ public final class PacketVanilla {
      */
     public static final ObjectPool<NetworkBuffer> PACKET_POOL = ObjectPool.pool(
             () -> NetworkBuffer.builder(ServerFlag.POOLED_BUFFER_SIZE).build(),
-            NetworkBuffer::clear);
+            buffer -> {
+                // Buffers travel between processes, whoever writes types that resolve registry
+                // entries has to bind its own registries first.
+                buffer.registries(null);
+                return buffer.clear();
+            });
 
     public static ConnectionState nextClientState(ClientPacket packet, ConnectionState currentState) {
         return switch (packet) {

@@ -137,14 +137,11 @@ public final class PacketWriting {
             T packet,
             @Nullable Registries registries,
             int compressionThreshold) {
-        // Buffers are pooled across processes, the registries of the writing process have to be bound
-        // for every use, the same way PacketReading rebinds them on the decompression slice.
         NetworkBuffer buffer = PacketVanilla.PACKET_POOL.get();
         buffer.registries(registries);
         try {
             return allocateTrimmedPacket(buffer, parser, state, packet, compressionThreshold);
         } finally {
-            buffer.registries(null);
             PacketVanilla.PACKET_POOL.add(buffer);
         }
     }

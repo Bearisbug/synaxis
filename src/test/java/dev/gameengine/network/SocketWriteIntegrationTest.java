@@ -1,6 +1,7 @@
 package dev.gameengine.network;
 
 import dev.gameengine.network.packet.PacketVanilla;
+import dev.gameengine.network.player.PlayerSocketConnection;
 import dev.gameengine.network.packet.PacketWriting;
 import dev.gameengine.network.packet.server.ServerPacket;
 import dev.gameengine.testing.Env;
@@ -9,12 +10,19 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
+import java.io.IOException;
+import java.net.InetAddress;
+import java.net.InetSocketAddress;
+import java.nio.channels.ServerSocketChannel;
+import java.nio.channels.SocketChannel;
 import java.nio.charset.StandardCharsets;
 
 import static dev.gameengine.network.NetworkBuffer.INT;
 import static dev.gameengine.network.NetworkBuffer.STRING;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @EnvTest
 public class SocketWriteIntegrationTest {
@@ -100,6 +108,26 @@ public class SocketWriteIntegrationTest {
         // 3 bytes packet length [var-int] + 3 bytes data length [var-int] + 1 byte packet id [var-int] + 4 bytes int
         // The 3 bytes var-int length is hardcoded for performance purpose, could change in the future
         assertEquals((3 + 3 + 1 + 4) * 2, buffer.writeIndex(), "Invalid buffer position");
+    }
+
+    @Test
+    public void flushWritesAPacketResolvingRegistryEntries(Env env) throws IOException {
+        // The socket buffer comes from a pool shared between processes and carries no registries
+        // of its own, so the flush has to bind the ones of the connection before writing.
+        final var instance = env.createFlatInstance();
+        try (ServerSocketChannel server = ServerSocketChannel.open()) {
+            server.bind(new InetSocketAddress(InetAddress.getLoopbackAddress(), 0));
+            try (SocketChannel peer = SocketChannel.open(server.getLocalAddress());
+                 SocketChannel accepted = server.accept()) {
+                assertTrue(peer.isConnected());
+                final var connection = new PlayerSocketConnection(env.process(), accepted, accepted.getRemoteAddress(),
+                        Thread.currentThread(), Thread.currentThread());
+                connection.setClientState(ConnectionState.PLAY);
+
+                connection.sendPacket(instance.createTimePacket());
+                assertDoesNotThrow(connection::flushSync);
+            }
+        }
     }
 
     private static int getVarIntSize(int input) {

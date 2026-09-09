@@ -23,7 +23,9 @@ public class PlayerSpectatorListener {
 
         final Integer targetId = packet.targetId();
         if (targetId == null) return;
-        final Entity target = player.getInstance().getEntityById(targetId);
+        final Instance instance = player.getInstance();
+        if (instance == null) return;
+        final Entity target = instance.getEntityById(targetId);
 
         // Check if the target is valid, and the use is allowed
         if (target == null || target == player || UseEntityListener.invalidUse(player, target)) {
@@ -41,6 +43,7 @@ public class PlayerSpectatorListener {
 
         final UUID targetUuid = packet.target();
         final Instance playerInstance = player.getInstance();
+        if (playerInstance == null) return;
         Entity target = playerInstance.getEntityByUuid(targetUuid);
 
         // If the target is not found, try to find it in other instances

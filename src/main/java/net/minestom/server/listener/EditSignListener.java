@@ -11,7 +11,9 @@ import net.minestom.server.network.packet.client.play.ClientUpdateSignPacket;
 public class EditSignListener {
     public static void listener(ClientUpdateSignPacket packet, Player player) {
         Instance instance = player.getInstance();
+        if (instance == null) return;
         BlockVec position = packet.blockPosition().asBlockVec();
+        if (!instance.isChunkLoaded(position)) return;
         Block block = instance.getBlock(position);
         EventDispatcher.call(new PlayerEditSignEvent(
                 player,

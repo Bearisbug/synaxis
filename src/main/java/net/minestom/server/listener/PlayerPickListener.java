@@ -15,6 +15,7 @@ public class PlayerPickListener {
     public static void playerPickBlockListener(ClientPickItemFromBlockPacket packet, Player player) {
         final Instance instance = player.getInstance();
         if (instance == null) return;
+        if (!instance.isChunkLoaded(packet.pos())) return;
         final Block block = instance.getBlock(packet.pos());
         final boolean includeData = packet.includeData();
 

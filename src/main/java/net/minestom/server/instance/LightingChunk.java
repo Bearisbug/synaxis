@@ -367,7 +367,6 @@ public class LightingChunk extends DynamicChunk {
     }
 
     private static Set<Chunk> flushQueue(Instance instance, Set<Point> queue, LightType type, QueueType queueType) {
-        Set<Light> sections = ConcurrentHashMap.newKeySet();
         Set<Point> newQueue = ConcurrentHashMap.newKeySet();
 
         Set<Chunk> responseChunks = ConcurrentHashMap.newKeySet();
@@ -423,8 +422,6 @@ public class LightingChunk extends DynamicChunk {
                     } finally {
                         lightingChunk.unlockReadLock();
                     }
-
-                    sections.add(light);
 
                     light.flip();
                     newQueue.addAll(toAdd);

@@ -72,6 +72,14 @@ final class RegionFile implements AutoCloseable {
             int location = locations[getChunkIndex(chunkX, chunkZ)];
             file.seek((long) (location >> 8) * SECTOR_SIZE); // Move to start of first sector
             int length = file.readInt();
+            // The length is read straight from the file: unchecked it either allocates a negative
+            // array or an arbitrarily large one, and the resulting OutOfMemoryError is an Error,
+            // which escapes the loader's catch instead of degrading to "no data for this chunk"
+            final int maxLength = (location & 0xFF) * SECTOR_SIZE - 4;
+            if (length < 1 || length > maxLength) {
+                throw new IOException("Chunk " + chunkX + ", " + chunkZ + " declares a length of "
+                        + length + ", outside of its " + (location & 0xFF) + " allocated sector(s)");
+            }
             int compressionType = file.readByte();
             BinaryTagIO.Compression compression = switch (compressionType) {
                 case 1 -> BinaryTagIO.Compression.GZIP;
@@ -82,7 +90,7 @@ final class RegionFile implements AutoCloseable {
 
             // Read the raw content
             byte[] data = new byte[length - 1];
-            file.read(data);
+            file.readFully(data); // A short read would silently zero-pad the tag
 
             // Parse it as a compound tag
             return TAG_READER.read(new ByteArrayInputStream(data), compression);
@@ -136,7 +144,14 @@ final class RegionFile implements AutoCloseable {
 
     @Override
     public void close() throws IOException {
-        file.close();
+        // Taken so that a close can never cut a chunk write in half, which would leave the sector
+        // bitmap and the on-disk header disagreeing about where the chunk lives.
+        lock.lock();
+        try {
+            file.close();
+        } finally {
+            lock.unlock();
+        }
     }
 
     private static int getChunkIndex(int chunkX, int chunkZ) {

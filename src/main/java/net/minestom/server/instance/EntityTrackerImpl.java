@@ -6,7 +6,6 @@ import net.minestom.server.Viewable;
 import net.minestom.server.coordinate.ChunkRange;
 import net.minestom.server.coordinate.CoordConversion;
 import net.minestom.server.coordinate.Point;
-import net.minestom.server.coordinate.Vec;
 import net.minestom.server.entity.Entity;
 import net.minestom.server.entity.Player;
 import net.minestom.server.utils.validate.Check;
@@ -31,9 +30,6 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 import java.util.function.Function;
-
-import static net.minestom.server.instance.Chunk.CHUNK_SIZE_X;
-import static net.minestom.server.instance.Chunk.CHUNK_SIZE_Z;
 
 final class EntityTrackerImpl implements EntityTracker {
     private static final Logger LOGGER = LoggerFactory.getLogger(EntityTrackerImpl.class);
@@ -299,7 +295,6 @@ final class EntityTrackerImpl implements EntityTracker {
     private final class ChunkView implements Viewable {
         private final ChunkViewKey key;
         private final int chunkX, chunkZ;
-        private final Point point;
         final Set<Player> set = new SetImpl();
         private int lastReferenceCount;
 
@@ -308,8 +303,6 @@ final class EntityTrackerImpl implements EntityTracker {
 
             this.chunkX = key.chunkX;
             this.chunkZ = key.chunkZ;
-
-            this.point = new Vec(CHUNK_SIZE_X * chunkX, 0, CHUNK_SIZE_Z * chunkZ);
         }
 
         @Override
@@ -340,8 +333,14 @@ final class EntityTrackerImpl implements EntityTracker {
         }
 
         private void collectPlayers(EntityTracker tracker, Int2ObjectOpenHashMap<Player> map) {
-            tracker.nearbyEntitiesByChunkRange(point, ServerFlag.CHUNK_VIEW_DISTANCE,
-                    EntityTracker.Target.PLAYERS, (player) -> map.putIfAbsent(player.getEntityId(), player));
+            // Each player has its own view distance (client setting, capped by the instance, plus one:
+            // see Player#effectiveViewDistance). A single server-wide radius left the outermost ring of
+            // chunks the player was sent without any viewer, so block updates never reached it.
+            for (Player player : tracker.entities(Target.PLAYERS)) {
+                final Point position = player.getPosition();
+                final int distance = Math.max(Math.abs(position.chunkX() - chunkX), Math.abs(position.chunkZ() - chunkZ));
+                if (distance <= player.effectiveViewDistance()) map.putIfAbsent(player.getEntityId(), player);
+            }
         }
 
         final class SetImpl extends AbstractSet<Player> {

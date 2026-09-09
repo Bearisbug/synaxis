@@ -9,6 +9,7 @@ import net.minestom.server.instance.Instance;
 import net.minestom.server.instance.Section;
 import net.minestom.server.instance.block.Block;
 import net.minestom.server.instance.block.BlockHandler;
+import net.minestom.server.instance.palette.Palette;
 import net.minestom.server.network.NetworkBuffer;
 import net.minestom.server.network.packet.server.play.data.ChunkData;
 import net.minestom.server.registry.RegistryKey;
@@ -21,6 +22,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
 import java.io.IOException;
+import java.io.RandomAccessFile;
 import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -32,6 +34,9 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
 @EnvTest
@@ -85,6 +90,107 @@ public class AnvilLoaderIntegrationTest {
         });
         instance.saveChunksToStorage().join();
         assertNull(exception.get());
+    }
+
+    // A region file must never be closed while another thread is writing a chunk into it:
+    // the write would be cut in half, leaving the sector bitmap out of sync with the on-disk header.
+    @Test
+    public void saveWhileUnloadingKeepsRegionReadable(Env env) throws Exception {
+        var worldFolder = Files.createTempDirectory("minestom-test-world-concurrent-save");
+        AnvilLoader chunkLoader = new AnvilLoader(worldFolder);
+        Instance instance = env.createFlatInstance(chunkLoader);
+        Chunk chunk = instance.loadChunk(0, 0).join();
+        instance.setBlock(0, 41, 0, Block.DIAMOND_BLOCK);
+
+        AtomicReference<Throwable> exception = new AtomicReference<>();
+        env.process().exception().setExceptionHandler(throwable -> exception.compareAndSet(null, throwable));
+
+        Thread saver = Thread.ofVirtual().start(() -> {
+            try {
+                for (int i = 0; i < 100; i++) chunkLoader.saveChunk(chunk);
+            } catch (Throwable throwable) {
+                exception.compareAndSet(null, throwable);
+            }
+        });
+        while (saver.isAlive()) {
+            chunkLoader.unloadChunk(chunk);
+            Thread.sleep(1);
+        }
+        saver.join();
+        chunkLoader.saveChunk(chunk);
+        chunkLoader.unloadChunk(chunk);
+        assertNull(exception.get());
+
+        AnvilLoader reopened = new AnvilLoader(worldFolder);
+        Chunk reloaded = reopened.loadChunk(instance, 0, 0);
+        assertNotNull(reloaded, "the region file was corrupted by a concurrent unload");
+        reloaded.lockReadLock();
+        try {
+            assertEquals(Block.DIAMOND_BLOCK, reloaded.getBlock(0, 41, 0));
+        } finally {
+            reloaded.unlockReadLock();
+        }
+    }
+
+    // A chunk length read straight from the file allocates a negative or arbitrarily large array
+    @Test
+    public void corruptedChunkLengthIsReportedAsIO(Env env) throws IOException {
+        var worldFolder = Files.createTempDirectory("minestom-test-world-corrupt-length");
+        AnvilLoader chunkLoader = new AnvilLoader(worldFolder);
+        Instance instance = env.createFlatInstance(chunkLoader);
+        Chunk chunk = instance.loadChunk(0, 0).join();
+        chunkLoader.saveChunk(chunk);
+        chunkLoader.unloadChunk(chunk);
+
+        Path regionFile = worldFolder.resolve("region").resolve("r.0.0.mca");
+        try (RandomAccessFile file = new RandomAccessFile(regionFile.toFile(), "rw")) {
+            file.seek(0);
+            final int location = file.readInt();
+            file.seek((long) (location >> 8) * 4096);
+            file.writeInt(0);
+        }
+
+        AtomicReference<Throwable> exception = new AtomicReference<>();
+        env.process().exception().setExceptionHandler(throwable -> exception.compareAndSet(null, throwable));
+        AnvilLoader reopened = new AnvilLoader(worldFolder);
+        assertNull(reopened.loadChunk(instance, 0, 0));
+        assertInstanceOf(IOException.class, exception.get());
+    }
+
+    // A section whose blocks all share one state id still has per-block NBT and handlers,
+    // and vanilla tools expect the heightmaps to come back out of the file
+    @Test
+    public void saveKeepsBlockEntitiesOfUniformSections(Env env) throws IOException {
+        var worldFolder = Files.createTempDirectory("minestom-test-world-uniform-section");
+        AnvilLoader chunkLoader = new AnvilLoader(worldFolder);
+        Instance instance = env.createEmptyInstance(chunkLoader);
+        instance.setGenerator(unit -> unit.modifier().fillHeight(0, 16, Block.STONE));
+        Chunk chunk = instance.loadChunk(0, 0).join();
+
+        var nbt = CompoundBinaryTag.builder().putString("hello", "world").build();
+        var block = Block.STONE.withNbt(nbt);
+        instance.setBlock(0, 5, 0, block);
+        chunk.lockWriteLock();
+        try {
+            chunk.getSection(0).blockPalette().optimize(Palette.Optimization.SIZE);
+        } finally {
+            chunk.unlockWriteLock();
+        }
+        assertEquals(Block.STONE.stateId(), chunk.getSection(0).blockPalette().singleValue(),
+                "the section must be on a single value palette for this test to mean anything");
+
+        chunkLoader.saveChunk(chunk);
+        instance.unloadChunk(chunk);
+        assertNull(instance.getChunk(0, 0));
+
+        instance.loadChunk(0, 0).join();
+        assertEquals(block, instance.getBlock(0, 5, 0));
+
+        try (RegionFile regionFile = new RegionFile(worldFolder.resolve("region").resolve("r.0.0.mca"))) {
+            CompoundBinaryTag chunkData = regionFile.readChunkData(0, 0);
+            assertNotNull(chunkData);
+            assertTrue(chunkData.keySet().contains("Heightmaps"), "the heightmaps were not written back");
+        }
     }
 
     @Test

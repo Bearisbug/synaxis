@@ -367,7 +367,6 @@ public class LightingChunk extends DynamicChunk {
     }
 
     private static Set<Chunk> flushQueue(Instance instance, Set<Point> queue, LightType type, QueueType queueType) {
-        Set<Light> sections = ConcurrentHashMap.newKeySet();
         Set<Point> newQueue = ConcurrentHashMap.newKeySet();
 
         Set<Chunk> responseChunks = ConcurrentHashMap.newKeySet();
@@ -406,7 +405,7 @@ public class LightingChunk extends DynamicChunk {
             };
 
             final Palette blockPalette = section.blockPalette();
-            CompletableFuture<Void> task = CompletableFuture.runAsync(() -> {
+            final Runnable computation = () -> {
                 try {
                     final Set<Point> toAdd;
                     lightingChunk.lockReadLock();
@@ -424,16 +423,22 @@ public class LightingChunk extends DynamicChunk {
                         lightingChunk.unlockReadLock();
                     }
 
-                    sections.add(light);
-
                     light.flip();
                     newQueue.addAll(toAdd);
                 } catch (Exception e) {
                     MinecraftServer.getExceptionManager().handleException(e);
                 }
-            }, pool);
+            };
 
-            tasks.add(task);
+            if (lightingChunk.holdsWriteLock()) {
+                // The caller already owns this chunk's write-lock (a BlockHandler reading light from
+                // within Chunk#setBlock does). Handing the section to the pool would deadlock: the pool
+                // thread blocks on the read-lock while the caller blocks in join() below. The write-lock
+                // grants read access, so compute it on the calling thread instead.
+                computation.run();
+            } else {
+                tasks.add(CompletableFuture.runAsync(computation, pool));
+            }
         }
 
         tasks.forEach(CompletableFuture::join);
@@ -527,7 +532,7 @@ public class LightingChunk extends DynamicChunk {
 
                 for (int y = point.blockY() - 1; y <= point.blockY() + 1; y++) {
                     Point sectionPosition = new Vec(x, y, z);
-                    int sectionHeight = instance.getCachedDimensionType().minY() + 16 * y;
+                    int sectionHeight = 16 * y;
                     if ((sectionHeight + 16) > highestRegionPoint && type == LightType.SKY) continue;
 
                     if (sectionPosition.blockY() < chunkCheck.getMaxSection() && sectionPosition.blockY() >= chunkCheck.getMinSection()) {
@@ -592,6 +597,7 @@ public class LightingChunk extends DynamicChunk {
         var sections = this.sections.stream().map(Section::clone).toList();
         LightingChunk lightingChunk = new LightingChunk(instance, chunkX, chunkZ, sections);
         lightingChunk.entries.putAll(entries);
+        lightingChunk.tickableMap.putAll(tickableMap);
         return lightingChunk;
     }
 

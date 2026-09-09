@@ -3,6 +3,8 @@ package net.minestom.server.instance;
 import net.minestom.server.ServerFlag;
 import net.minestom.server.coordinate.ChunkRange;
 import net.minestom.server.coordinate.Pos;
+import net.minestom.server.instance.block.Block;
+import net.minestom.server.network.packet.server.play.BlockChangePacket;
 import net.minestom.server.network.packet.server.play.ChunkDataPacket;
 import net.minestom.testing.Env;
 import net.minestom.testing.EnvTest;
@@ -45,6 +47,25 @@ public class ChunkViewerIntegrationTest {
         Chunk chunk = instance.loadChunk(0, 0).join();
         Chunk retrieved = instance.retrieveChunk(0, 0).join();
         assertSame(chunk, retrieved);
+    }
+
+    // Players receive one more ring of chunks than the instance view distance (see
+    // Player#effectiveViewDistance), that ring must still get its block updates.
+    @Test
+    public void outermostChunkStillReceivesBlockChange(Env env) {
+        var instance = env.createFlatInstance();
+        var connection = env.createConnection();
+        var player = connection.connect(instance, new Pos(0, 42, 0));
+        env.tick();
+
+        final int edgeChunkX = player.effectiveViewDistance();
+        assertEquals(ServerFlag.CHUNK_VIEW_DISTANCE + 1, edgeChunkX);
+        var chunk = instance.loadChunk(edgeChunkX, 0).join();
+        assertEquals(1, chunk.getViewers().size(), "the outermost chunk has no viewer");
+
+        var tracker = connection.trackIncoming(BlockChangePacket.class);
+        instance.setBlock(edgeChunkX * 16, 41, 0, Block.STONE);
+        tracker.assertSingle(packet -> assertEquals(Block.STONE.stateId(), packet.blockStateId()));
     }
 
     @Test

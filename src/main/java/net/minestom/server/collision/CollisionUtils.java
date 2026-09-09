@@ -181,8 +181,11 @@ public final class CollisionUtils {
         final Shape cachedShape = (Shape) internCache.get(shape);
         if (cachedShape != null) return cachedShape;
         final Shape parsedShape = ShapeImpl.parseShapeFromRegistry(shape, (byte) 0);
-        internCache.put(shape, parsedShape);
-        return (Shape) internCache.computeIfAbsent(parsedShape, _ -> parsedShape);
+        // Cache the interned instance, not the parsed one, otherwise this string keeps returning a
+        // duplicate of a shape that is already interned under a differently spelled string
+        final Shape internedShape = (Shape) internCache.computeIfAbsent(parsedShape, _ -> parsedShape);
+        internCache.put(shape, internedShape);
+        return internedShape;
     }
 
     @ApiStatus.Internal
@@ -192,8 +195,9 @@ public final class CollisionUtils {
         final Shape cachedShape = (Shape) internCache.get(entry);
         if (cachedShape != null) return cachedShape;
         final Shape parsedShape = occludes ? ShapeImpl.parseShapeFromRegistry(shape, lightEmission) : ShapeImpl.emptyShape(lightEmission);
-        internCache.put(entry, parsedShape);
-        return (Shape) internCache.computeIfAbsent(parsedShape, _ -> parsedShape);
+        final Shape internedShape = (Shape) internCache.computeIfAbsent(parsedShape, _ -> parsedShape);
+        internCache.put(entry, internedShape);
+        return internedShape;
     }
 
     /**

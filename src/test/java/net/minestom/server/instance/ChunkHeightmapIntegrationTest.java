@@ -5,6 +5,7 @@ import net.minestom.testing.Env;
 import net.minestom.testing.EnvTest;
 import org.junit.jupiter.api.Test;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 @EnvTest
@@ -17,6 +18,20 @@ public class ChunkHeightmapIntegrationTest {
 
         int heightmap = chunk.motionBlockingHeightmap().getHeight(0, 0);
         assertEquals(39, heightmap);
+    }
+
+    // A world saved with a different dimension height packs its heightmap into fewer longs than
+    // this dimension needs, that must degrade to a recomputation instead of throwing and
+    // taking the whole chunk down with it
+    @Test
+    public void tooShortHeightmapDataIsRecomputed(Env env) {
+        var instance = env.createFlatInstance();
+        instance.loadChunk(0, 0).join();
+        var chunk = instance.getChunk(0, 0);
+        var heightmap = chunk.motionBlockingHeightmap();
+
+        assertDoesNotThrow(() -> heightmap.loadFrom(new long[1]));
+        assertEquals(39, heightmap.getHeight(0, 0));
     }
 
     @Test

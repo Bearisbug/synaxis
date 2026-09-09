@@ -16,6 +16,7 @@
 | 日期 | 版本 | 改动 | 作者 |
 | --- | --- | --- | --- |
 | 2026-09-09 | v0.1 | 初稿：里程碑 M1 范围、实体、协议契约、状态机、阶段计划 | Bearisbug |
+| 2026-09-09 | v0.9 | M1 gate（RUN-007）：代码侧全部通过；REQ-004 并发拦截场景措辞改为「回归单测或 jcstress」 | Bearisbug |
 | 2026-09-09 | v0.8 | 阶段 3 完成：包名 `dev.gameengine`、品牌 `game-engine`、NOTICE / README / pom；文档路径同步 | Bearisbug |
 | 2026-09-09 | v0.7 | 阶段 2 完成；主源码阈值改为 ≤ 1,150（REQ-008 把 49 个生成文件并入主源码后口径变化，等价手写 ≤ 1,100） | Bearisbug |
 | 2026-09-09 | v0.6 | REQ-001 / REQ-007 按实测改写（黄金 NBT、精简形式基线、39 JSON + 23 NBT）；REQ-006 补 13 个协议枚举宿主类的处理 | Bearisbug |
@@ -463,7 +464,7 @@ N/A — 无前端。客户端 Fabric 模组与其界面属于 M2。
 场景: CI 门禁拦截并发回归 (REQ-004)
   Given 一个故意重新引入 ThreadDispatcher.shutdown synchronized 的提交
   When CI 运行 jcstress 场景
-  Then 出现 FORBIDDEN 结果，流水线红
+  Then 流水线红：并发回归单测失败（如 ThreadDispatcherTest）或 jcstress 出现 FORBIDDEN
 
 场景: CI 门禁拦截分层违规 (REQ-004)
   Given 一个在 coordinate 包里 import entity 包的提交

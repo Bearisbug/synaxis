@@ -1,0 +1,1 @@
+TC-008 step2: minecraft:enchantment entries = 43

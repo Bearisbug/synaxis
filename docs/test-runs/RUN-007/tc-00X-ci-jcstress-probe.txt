@@ -1,0 +1,4 @@
+Check	Run checks and coverage report	2026-09-09T10:33:24.5853861Z ThreadDispatcherTest > shutdownFromTickThread() FAILED
+Check	Run checks and coverage report	2026-09-09T10:33:29.2889781Z 2566 tests completed, 1 failed, 20 skipped
+Check	Run checks and coverage report	2026-09-09T10:33:29.9878664Z > Task :test FAILED
+Check	Run checks and coverage report	2026-09-09T10:33:30.1118365Z BUILD FAILED in 3m 37s

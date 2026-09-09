@@ -318,15 +318,6 @@ public sealed class MetadataDef {
         public static final Entry<Boolean> AGE_LOCKED = index(1, Metadata::Boolean, false);
     }
 
-    public static sealed class AbstractCubeMob extends AgeableMob {
-        public static final Entry<Integer> SIZE = index(0, Metadata::VarInt, 1); // 1 through 127
-    }
-
-    public static final class SulfurCube extends AbstractCubeMob {
-        public static final Entry<Integer> MAX_FUSE = index(0, Metadata::VarInt, -1);
-        public static final Entry<Boolean> FROM_BUCKET = index(1, Metadata::Boolean, false);
-    }
-
     public static final class Sniffer extends AgeableMob {
         public static final Entry<SnifferMeta.State> STATE = index(0, Metadata::SnifferState, SnifferMeta.State.IDLING);
         public static final Entry<Integer> DROP_SEED_AT_TICK = index(1, Metadata::VarInt, 0);
@@ -646,12 +637,6 @@ public sealed class MetadataDef {
 
     public static final class EnderDragon extends Mob {
         public static final Entry<Integer> DRAGON_PHASE = index(0, Metadata::VarInt, 10);
-    }
-
-    public static final class Slime extends AbstractCubeMob {
-    }
-
-    public static final class MagmaCube extends AbstractCubeMob {
     }
 
     public static final class PrimedTnt extends MetadataDef {

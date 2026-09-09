@@ -6,7 +6,6 @@ import net.minestom.server.coordinate.Pos;
 import net.minestom.server.coordinate.Vec;
 import net.minestom.server.entity.Entity;
 import net.minestom.server.entity.EntityType;
-import net.minestom.server.entity.metadata.cube.SlimeMeta;
 import net.minestom.server.instance.WorldBorder;
 import net.minestom.server.instance.block.Block;
 import net.minestom.testing.Env;
@@ -373,8 +372,8 @@ public class EntityBlockPhysicsIntegrationTest {
         instance.setBlock(8, 42, 8, Block.STONE);
 
         var entity = new Entity(EntityType.SLIME);
-        SlimeMeta meta = (SlimeMeta) entity.getEntityMeta();
-        meta.setSize(20);
+        final double boxSize = 0.51000005f * 20;
+        entity.setBoundingBox(boxSize, boxSize, boxSize);
 
         entity.setInstance(instance, new Pos(5, 50, 5)).join();
 
@@ -395,8 +394,8 @@ public class EntityBlockPhysicsIntegrationTest {
         instance.setBlock(8, 42, 8, Block.LANTERN);
 
         var entity = new Entity(EntityType.SLIME);
-        SlimeMeta meta = (SlimeMeta) entity.getEntityMeta();
-        meta.setSize(20);
+        final double boxSize = 0.51000005f * 20;
+        entity.setBoundingBox(boxSize, boxSize, boxSize);
 
         entity.setInstance(instance, new Pos(5, 42.8, 5)).join();
 
@@ -413,8 +412,8 @@ public class EntityBlockPhysicsIntegrationTest {
         instance.setBlock(11, 43, 11, Block.STONE);
 
         var entity = new Entity(EntityType.SLIME);
-        SlimeMeta meta = (SlimeMeta) entity.getEntityMeta();
-        meta.setSize(5);
+        final double boxSize = 0.51000005f * 5;
+        entity.setBoundingBox(boxSize, boxSize, boxSize);
 
         entity.setInstance(instance, new Pos(5, 44, 5)).join();
         assertEquals(instance, entity.getInstance());

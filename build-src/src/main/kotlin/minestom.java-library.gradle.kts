@@ -1,5 +1,6 @@
 plugins {
     `java-library`
+    jacoco
     id("minestom.style")
 }
 
@@ -73,6 +74,17 @@ tasks.withType<Test> {
     jvmArgs("-Dminestom.acquirable-strict=true")
     minHeapSize = "512m"
     maxHeapSize = "1024m"
+}
+
+tasks.jacocoTestReport {
+    dependsOn(tasks.test)
+
+    // The XML report is what the CI coverage gate reads.
+    reports {
+        xml.required = true
+        html.required = true
+        csv.required = false
+    }
 }
 
 tasks.withType<Zip> {

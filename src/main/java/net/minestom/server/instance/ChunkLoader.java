@@ -1,7 +1,6 @@
 package net.minestom.server.instance;
 
 import net.minestom.server.MinecraftServer;
-import net.minestom.server.instance.anvil.AnvilLoader;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.Nullable;
 
@@ -11,7 +10,7 @@ import java.util.concurrent.Phaser;
 /**
  * Interface implemented to change the way chunks are loaded/saved.
  * <p>
- * See {@link AnvilLoader} for the default implementation used in {@link InstanceContainer}.
+ * {@link InstanceContainer} defaults to {@link #noop()}.
  */
 public interface ChunkLoader {
 

@@ -96,7 +96,6 @@ module net.minestom.server {
     exports net.minestom.server.game;
     exports net.minestom.server.gamedata;
     exports net.minestom.server.instance;
-    exports net.minestom.server.instance.anvil;
     exports net.minestom.server.instance.batch;
     exports net.minestom.server.instance.block;
     exports net.minestom.server.instance.block.banner;

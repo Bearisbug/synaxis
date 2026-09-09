@@ -776,7 +776,7 @@ public class InstanceContainer extends Instance {
             final int neighborX = blockPosition.blockX() + direction.normalX();
             final int neighborY = blockPosition.blockY() + direction.normalY();
             final int neighborZ = blockPosition.blockZ() + direction.normalZ();
-            if (neighborY < getCachedDimensionType().minY() || neighborY > getCachedDimensionType().height())
+            if (neighborY < getCachedDimensionType().minY() || neighborY >= getCachedDimensionType().maxY())
                 continue;
             final Block neighborBlock = cache.getBlock(neighborX, neighborY, neighborZ, Condition.NONE);
             if (neighborBlock == null || neighborBlock.air())

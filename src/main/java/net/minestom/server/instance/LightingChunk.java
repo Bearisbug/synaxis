@@ -600,6 +600,7 @@ public class LightingChunk extends DynamicChunk {
         var sections = this.sections.stream().map(Section::clone).toList();
         LightingChunk lightingChunk = new LightingChunk(instance, chunkX, chunkZ, sections);
         lightingChunk.entries.putAll(entries);
+        lightingChunk.tickableMap.putAll(tickableMap);
         return lightingChunk;
     }
 

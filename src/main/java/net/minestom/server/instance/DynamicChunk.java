@@ -244,6 +244,7 @@ public class DynamicChunk extends Chunk {
         var sections = this.sections.stream().map(Section::clone).toList();
         DynamicChunk dynamicChunk = new DynamicChunk(instance, chunkX, chunkZ, sections);
         dynamicChunk.entries.putAll(entries);
+        dynamicChunk.tickableMap.putAll(tickableMap);
         return dynamicChunk;
     }
 

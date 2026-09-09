@@ -620,20 +620,34 @@ public class InstanceContainer extends Instance {
      * <p>
      * Chunks are copied with {@link Chunk#copy(Instance, int, int)},
      * {@link UUID} is randomized and {@link DimensionType} is passed over.
+     * The copy also inherits the chunk supplier, the {@link Generator} and the dimension name,
+     * so chunks loaded afterwards match the copied ones. Its {@link ChunkLoader} is left at the
+     * default, a copy must not write into the storage of its source.
      *
      * @return an {@link InstanceContainer} with the exact same chunks as 'this'
      * @see #getSrcInstance() to retrieve the "creation source" of the copied instance
      */
     public synchronized InstanceContainer copy() {
-        InstanceContainer copiedInstance = new InstanceContainer(UUID.randomUUID(), getDimensionType());
+        InstanceContainer copiedInstance = new InstanceContainer(registries(), UUID.randomUUID(),
+                getDimensionType(), null, Key.key(getDimensionName()));
         copiedInstance.srcInstance = this;
         copiedInstance.tagHandler = this.tagHandler.copy();
         copiedInstance.lastBlockChangeTime = this.lastBlockChangeTime;
+        copiedInstance.setChunkSupplier(this.chunkSupplier);
+        copiedInstance.setGenerator(this.generator);
         for (Chunk chunk : chunks.values()) {
             final int chunkX = chunk.getChunkX();
             final int chunkZ = chunk.getChunkZ();
-            final Chunk copiedChunk = chunk.copy(copiedInstance, chunkX, chunkZ);
+            final Chunk copiedChunk;
+            chunk.lockReadLock();
+            try {
+                copiedChunk = chunk.copy(copiedInstance, chunkX, chunkZ);
+            } finally {
+                chunk.unlockReadLock();
+            }
             copiedInstance.cacheChunk(copiedChunk);
+            // Chunks are handed over already loaded, a LightingChunk stays unusable without it
+            copiedChunk.onLoad();
         }
         return copiedInstance;
     }

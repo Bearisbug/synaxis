@@ -4,7 +4,6 @@ import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.longs.LongArrayList;
 import it.unimi.dsi.fastutil.longs.LongList;
-import dev.gameengine.ServerFlag;
 import dev.gameengine.ServerProcess;
 import dev.gameengine.Viewable;
 import dev.gameengine.entity.Entity;
@@ -26,55 +25,67 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.WeakHashMap;
 
+/**
+ * Buffers the packets sent to the viewers of a {@link Viewable} until the end of the tick.
+ * <p>
+ * One instance per {@link ServerProcess}, reachable with {@link ServerProcess#viewablePackets()},
+ * so that ticking a process never flushes the packets another process is still filling.
+ */
 @ApiStatus.Internal
 public final class PacketViewableUtils {
-    // Viewable packets
     // Weak keys let a storage disappear with its chunk, but WeakHashMap expunges stale entries
     // on read as well as on write, so every access has to go through the mutex.
-    private static final Map<Viewable, ViewableStorage> storageMap =
+    private final Map<Viewable, ViewableStorage> storageMap =
             Collections.synchronizedMap(new WeakHashMap<>());
+    private final ServerProcess process;
+    private final boolean viewablePacket;
+    private final ObjectPool<NetworkBuffer> pool;
 
-    public static void prepareViewablePacket(ServerProcess process, Viewable viewable, ServerPacket serverPacket,
-                                             @Nullable Entity entity) {
+    public PacketViewableUtils(ServerProcess process, boolean viewablePacket, int pooledBufferSize) {
+        this.process = process;
+        this.viewablePacket = viewablePacket;
+        this.pool = ObjectPool.pool(
+                () -> NetworkBuffer.resizableBuffer(pooledBufferSize, null),
+                NetworkBuffer::clear);
+    }
+
+    public void prepareViewablePacket(Viewable viewable, ServerPacket serverPacket, @Nullable Entity entity) {
         if (entity != null && !entity.hasPredictableViewers()) {
             // Operation cannot be optimized
             entity.sendPacketToViewers(serverPacket);
             return;
         }
-        if (!ServerFlag.VIEWABLE_PACKET) {
+        if (!viewablePacket) {
             PacketSendingUtils.sendGroupedPacket(viewable.getViewers(), serverPacket, value -> !Objects.equals(value, entity));
             return;
         }
         final Player exception = entity instanceof Player player ? player : null;
         ViewableStorage storage = retrieveStorage(viewable);
-        storage.append(process, serverPacket, exception);
+        storage.append(serverPacket, exception);
     }
 
-    private static ViewableStorage retrieveStorage(Viewable viewable) {
+    private ViewableStorage retrieveStorage(Viewable viewable) {
         return storageMap.computeIfAbsent(viewable, _ -> new ViewableStorage());
     }
 
-    public static void flush() {
-        if (!ServerFlag.VIEWABLE_PACKET) return;
+    public void flush() {
+        if (!viewablePacket) return;
         // Snapshot under the mutex, the parallel traversal must not touch the map itself
         final List<Map.Entry<Viewable, ViewableStorage>> entries = new ArrayList<>();
         storageMap.forEach((viewable, storage) -> entries.add(Map.entry(viewable, storage)));
         entries.parallelStream().forEach(entry -> entry.getValue().process(entry.getKey()));
     }
 
-    public static void prepareViewablePacket(ServerProcess process, Viewable viewable, ServerPacket serverPacket) {
-        prepareViewablePacket(process, viewable, serverPacket, null);
+    public void prepareViewablePacket(Viewable viewable, ServerPacket serverPacket) {
+        prepareViewablePacket(viewable, serverPacket, null);
     }
 
-    private static final class ViewableStorage {
-        private static final ObjectPool<NetworkBuffer> POOL = ObjectPool.pool(
-                () -> NetworkBuffer.resizableBuffer(ServerFlag.POOLED_BUFFER_SIZE, null),
-                NetworkBuffer::clear);
+    private final class ViewableStorage {
         // Player id -> list of offsets to ignore (32:32 bits)
         private final Int2ObjectMap<LongArrayList> entityIdMap = new Int2ObjectOpenHashMap<>();
-        private final NetworkBuffer buffer = POOL.getAndRegister(this);
+        private final NetworkBuffer buffer = pool.getAndRegister(this);
 
-        private synchronized void append(ServerProcess process, ServerPacket serverPacket, @Nullable Player exception) {
+        private synchronized void append(ServerPacket serverPacket, @Nullable Player exception) {
             final long start = buffer.writeIndex();
             // Viewable storage is only used for play packets, so fine to assume this.
             buffer.registries(process.registries());

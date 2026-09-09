@@ -3,17 +3,12 @@ package dev.gameengine.utils.mojang;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
-import dev.gameengine.ServerFlag;
 import dev.gameengine.utils.StringUtils;
 import dev.gameengine.utils.url.URLUtils;
-import org.jetbrains.annotations.ApiStatus;
 import org.jetbrains.annotations.Blocking;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
-import java.net.InetAddress;
-import java.net.InetSocketAddress;
-import java.net.SocketAddress;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.UUID;
@@ -24,10 +19,6 @@ import java.util.UUID;
 public final class MojangUtils {
     private static final String FROM_UUID_URL = "https://sessionserver.mojang.com/session/minecraft/profile/%s?unsigned=false";
     private static final String FROM_USERNAME_URL = "https://api.minecraftservices.com/minecraft/profile/lookup/name/%s";
-
-    // Auth
-    private static final String BASE_AUTH_URL = ServerFlag.AUTH_URL.concat("?username=%s&serverId=%s");
-    private static final String PREVENT_PROXY_CONNECTIONS_AUTH_URL = BASE_AUTH_URL.concat("&ip=%s");
 
     /**
      * Gets a player's UUID from their username
@@ -102,26 +93,6 @@ public final class MojangUtils {
         } catch (IOException _) {
             return null;
         }
-    }
-
-    @Blocking
-    @ApiStatus.Internal
-    public static JsonObject authenticateSession(String loginUsername, String serverId, @Nullable SocketAddress userSocket) throws IOException {
-        final String username = encode(loginUsername);
-        final String encodedServerId = encode(serverId);
-
-        final String url;
-        // getAddress() is null for unresolved addresses, fall back to the base URL then
-        final InetAddress address = ServerFlag.AUTH_PREVENT_PROXY_CONNECTIONS
-                && userSocket instanceof InetSocketAddress inetSocketAddress
-                ? inetSocketAddress.getAddress() : null;
-        if (address != null) {
-            url = String.format(PREVENT_PROXY_CONNECTIONS_AUTH_URL, username, encodedServerId, encode(address.getHostAddress()));
-        } else {
-            url = String.format(BASE_AUTH_URL, username, encodedServerId);
-        }
-
-        return retrieve(url);
     }
 
     private static String formatUUID(String uuid) {

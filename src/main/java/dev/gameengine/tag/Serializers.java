@@ -13,7 +13,6 @@ import net.kyori.adventure.nbt.LongBinaryTag;
 import net.kyori.adventure.nbt.ShortBinaryTag;
 import net.kyori.adventure.nbt.StringBinaryTag;
 import net.kyori.adventure.text.Component;
-import dev.gameengine.ServerFlag;
 import dev.gameengine.codec.Codec;
 import dev.gameengine.codec.Transcoder;
 import dev.gameengine.item.ItemStack;
@@ -59,7 +58,7 @@ final class Serializers {
     static <T> Entry<T, CompoundBinaryTag> fromTagSerializer(TagSerializer<T> serializer) {
         return new Serializers.Entry<>(BinaryTagTypes.COMPOUND,
                 (CompoundBinaryTag compound) -> {
-                    if (!ServerFlag.SERIALIZE_EMPTY_COMPOUND && compound.isEmpty()) return null;
+                    if (!TagFlags.SERIALIZE_EMPTY_COMPOUND && compound.isEmpty()) return null;
                     return serializer.read(TagHandler.fromCompound(compound));
                 },
                 (value) -> {

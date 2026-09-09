@@ -1,7 +1,7 @@
 package dev.gameengine.testing;
 
 import net.kyori.adventure.translation.GlobalTranslator;
-import dev.gameengine.ServerFlag;
+import dev.gameengine.JvmFlags;
 import dev.gameengine.ServerProcess;
 import dev.gameengine.adventure.MinestomAdventure;
 import dev.gameengine.coordinate.Pos;
@@ -97,7 +97,7 @@ final class TestConnectionImpl implements TestConnection {
             final Player player = getPlayer();
             if (player == null) return serverPacket;
 
-            if (ServerFlag.AUTOMATIC_COMPONENT_TRANSLATION && serverPacket instanceof ServerPacket.ComponentHolding) {
+            if (JvmFlags.AUTOMATIC_COMPONENT_TRANSLATION && serverPacket instanceof ServerPacket.ComponentHolding) {
                 serverPacket = ((ServerPacket.ComponentHolding) serverPacket).copyWithOperator(component ->
                         GlobalTranslator.render(component, Objects.requireNonNullElseGet(player.getLocale(), MinestomAdventure::getDefaultLocale)));
             }

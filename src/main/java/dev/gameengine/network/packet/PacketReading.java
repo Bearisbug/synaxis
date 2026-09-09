@@ -1,6 +1,6 @@
 package dev.gameengine.network.packet;
 
-import dev.gameengine.ServerFlag;
+import dev.gameengine.JvmFlags;
 import dev.gameengine.network.ConnectionState;
 import dev.gameengine.network.NetworkBuffer;
 import dev.gameengine.network.packet.client.ClientPacket;
@@ -233,7 +233,7 @@ public final class PacketReading {
         final NetworkBuffer.Type<T> serializer = packetInfo.serializer();
         try {
             final T packet = serializer.read(buffer);
-            if (ServerFlag.WARN_UNREAD_BYTES_PACKET && buffer.readableBytes() != 0) {
+            if (JvmFlags.WARN_UNREAD_BYTES_PACKET && buffer.readableBytes() != 0) {
                 LOGGER.warn("WARNING: Packet ({}) 0x{} not fully read ({})",
                         packetInfo.packetClass().getSimpleName(), Integer.toHexString(packetId), buffer);
             }
@@ -245,8 +245,8 @@ public final class PacketReading {
 
     public static int maxPacketSize(ConnectionState state) {
         return switch (state) {
-            case HANDSHAKE, LOGIN -> ServerFlag.MAX_PACKET_SIZE_PRE_AUTH;
-            default -> ServerFlag.MAX_PACKET_SIZE;
+            case HANDSHAKE, LOGIN -> JvmFlags.MAX_PACKET_SIZE_PRE_AUTH;
+            default -> JvmFlags.MAX_PACKET_SIZE;
         };
     }
 }

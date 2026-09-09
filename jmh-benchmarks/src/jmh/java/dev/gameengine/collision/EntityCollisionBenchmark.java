@@ -1,5 +1,6 @@
 package dev.gameengine.collision;
 
+import dev.gameengine.ServerConfig;
 import dev.gameengine.coordinate.Pos;
 import dev.gameengine.coordinate.Vec;
 import dev.gameengine.entity.Entity;
@@ -55,7 +56,7 @@ public class EntityCollisionBenchmark {
     @Setup
     public void setup() {
         final Random rnd = new Random(1234567);
-        tracker = EntityTracker.newTracker();
+        tracker = EntityTracker.newTracker(ServerConfig.defaults().entityViewDistance());
         for (int i = 0; i < entityCount; i++) {
             final double angle = rnd.nextDouble() * 2 * Math.PI;
             final double dist = rnd.nextDouble() * PACK_RADIUS;

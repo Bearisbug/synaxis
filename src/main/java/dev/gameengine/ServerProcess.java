@@ -18,6 +18,7 @@ import dev.gameengine.network.socket.Server;
 import dev.gameengine.registry.Registries;
 import dev.gameengine.thread.ThreadDispatcher;
 import dev.gameengine.timer.SchedulerManager;
+import dev.gameengine.utils.PacketViewableUtils;
 import dev.gameengine.world.Difficulty;
 import org.jetbrains.annotations.ApiStatus;
 
@@ -30,7 +31,15 @@ public interface ServerProcess extends Registries {
      * nothing but the static registries.
      */
     static ServerProcess of(Auth auth) {
-        return new ServerProcessImpl(auth);
+        return of(auth, ServerConfig.fromSystemProperties());
+    }
+
+    /**
+     * Creates a new server process with an explicit configuration. Processes sharing a JVM keep
+     * their own settings.
+     */
+    static ServerProcess of(Auth auth, ServerConfig config) {
+        return new ServerProcessImpl(auth, config);
     }
 
     /**
@@ -39,6 +48,18 @@ public interface ServerProcess extends Registries {
     static ServerProcess of() {
         return of(new Auth.Offline());
     }
+
+    /**
+     * Creates a new server process running in offline mode with an explicit configuration.
+     */
+    static ServerProcess of(ServerConfig config) {
+        return of(new Auth.Offline(), config);
+    }
+
+    /**
+     * The settings of this process.
+     */
+    ServerConfig config();
 
     /**
      * Gets the registries owned by this process.
@@ -113,6 +134,12 @@ public interface ServerProcess extends Registries {
      * Dispatcher for tickable game objects.
      */
     ThreadDispatcher<Chunk, Entity> dispatcher();
+
+    /**
+     * Buffers the packets sent to every viewer of a {@link Viewable} until the end of the tick.
+     */
+    @ApiStatus.Internal
+    PacketViewableUtils viewablePackets();
 
     /**
      * Handles the server ticks.

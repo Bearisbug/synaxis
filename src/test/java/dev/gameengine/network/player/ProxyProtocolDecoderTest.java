@@ -1,6 +1,6 @@
 package dev.gameengine.network.player;
 
-import dev.gameengine.ServerFlag;
+import dev.gameengine.ServerConfig;
 import dev.gameengine.network.NetworkBuffer;
 import org.junit.jupiter.api.Test;
 
@@ -88,7 +88,7 @@ class ProxyProtocolDecoderTest {
         header[14] = (byte) 0xFF; // announce a 65535 byte payload without ever sending it
         header[15] = (byte) 0xFF;
 
-        final NetworkBuffer buffer = NetworkBuffer.resizableBuffer(ServerFlag.POOLED_BUFFER_SIZE);
+        final NetworkBuffer buffer = NetworkBuffer.resizableBuffer(ServerConfig.DEFAULT_POOLED_BUFFER_SIZE);
         buffer.write(NetworkBuffer.RAW_BYTES, header);
         // The read buffer can never hold 16 + 65535 bytes, asking for more would spin forever
         assertThrows(IOException.class, () -> ProxyProtocolDecoder.parse(ORIGINAL, buffer));

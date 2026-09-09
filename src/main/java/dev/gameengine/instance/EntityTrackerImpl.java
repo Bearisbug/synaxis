@@ -1,7 +1,6 @@
 package dev.gameengine.instance;
 
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
-import dev.gameengine.ServerFlag;
 import dev.gameengine.Viewable;
 import dev.gameengine.coordinate.ChunkRange;
 import dev.gameengine.coordinate.CoordConversion;
@@ -41,6 +40,12 @@ final class EntityTrackerImpl implements EntityTracker {
     @SuppressWarnings("unchecked")
     final TargetEntry<Entity>[] targetEntries = EntityTracker.Target.TARGETS.stream().map((Function<Target<?>, TargetEntry<?>>) TargetEntry::new).toArray(TargetEntry[]::new);
 
+    private final int entityViewDistance;
+
+    EntityTrackerImpl(int entityViewDistance) {
+        this.entityViewDistance = entityViewDistance;
+    }
+
     private final Int2ObjectSyncMap<EntityTrackerEntry> entriesByEntityId = Int2ObjectSyncMap.hashmap();
     private final Map<UUID, EntityTrackerEntry> entriesByEntityUuid = new ConcurrentHashMap<>();
 
@@ -63,7 +68,7 @@ final class EntityTrackerImpl implements EntityTracker {
         }
         if (update != null) {
             update.referenceUpdate(point, this);
-            nearbyEntitiesByChunkRange(point, ServerFlag.ENTITY_VIEW_DISTANCE, target, newEntity -> {
+            nearbyEntitiesByChunkRange(point, entityViewDistance, target, newEntity -> {
                 if (newEntity == entity) return;
                 update.add(newEntity);
             });
@@ -87,7 +92,7 @@ final class EntityTrackerImpl implements EntityTracker {
         }
         if (update != null) {
             update.referenceUpdate(point, null);
-            nearbyEntitiesByChunkRange(point, ServerFlag.ENTITY_VIEW_DISTANCE, target, newEntity -> {
+            nearbyEntitiesByChunkRange(point, entityViewDistance, target, newEntity -> {
                 if (newEntity == entity) return;
                 update.remove(newEntity);
             });
@@ -251,7 +256,7 @@ final class EntityTrackerImpl implements EntityTracker {
                                                Target<T> target, Update<T> update) {
         final TargetEntry<Entity> entry = targetEntries[target.ordinal()];
         ChunkRange.chunksInRangeDiffering(newPoint.chunkX(), newPoint.chunkZ(), oldPoint.chunkX(), oldPoint.chunkZ(),
-                ServerFlag.ENTITY_VIEW_DISTANCE, (chunkX, chunkZ) -> {
+                entityViewDistance, (chunkX, chunkZ) -> {
                     // Add
                     final List<Entity> entities = entry.chunkEntities.get(CoordConversion.chunkIndex(chunkX, chunkZ));
                     if (entities == null || entities.isEmpty()) return;

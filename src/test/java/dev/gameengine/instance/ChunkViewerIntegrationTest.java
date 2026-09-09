@@ -1,6 +1,5 @@
 package dev.gameengine.instance;
 
-import dev.gameengine.ServerFlag;
 import dev.gameengine.coordinate.ChunkRange;
 import dev.gameengine.coordinate.Pos;
 import dev.gameengine.instance.block.Block;
@@ -59,7 +58,7 @@ public class ChunkViewerIntegrationTest {
         env.tick();
 
         final int edgeChunkX = player.effectiveViewDistance();
-        assertEquals(ServerFlag.CHUNK_VIEW_DISTANCE + 1, edgeChunkX);
+        assertEquals(env.process().config().chunkViewDistance() + 1, edgeChunkX);
         var chunk = instance.loadChunk(edgeChunkX, 0).join();
         assertEquals(1, chunk.getViewers().size(), "the outermost chunk has no viewer");
 
@@ -70,7 +69,7 @@ public class ChunkViewerIntegrationTest {
 
     @Test
     public void renderDistance(Env env) {
-        final int viewRadius = ServerFlag.CHUNK_VIEW_DISTANCE;
+        final int viewRadius = env.process().config().chunkViewDistance();
         var instance = env.createFlatInstance();
         var connection = env.createConnection();
         // Check initial load

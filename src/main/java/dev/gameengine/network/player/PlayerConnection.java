@@ -5,7 +5,6 @@ import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.TranslatableComponent;
 import dev.gameengine.MinecraftServer;
 import dev.gameengine.ServerProcess;
-import dev.gameengine.ServerFlag;
 import dev.gameengine.crypto.PlayerPublicKey;
 import dev.gameengine.entity.Entity;
 import dev.gameengine.entity.Player;
@@ -98,7 +97,7 @@ public abstract class PlayerConnection {
     public boolean loginTimedOut(long nowMillis) {
         return online
                 && serverState.ordinal() < ConnectionState.CONFIGURATION.ordinal()
-                && nowMillis - connectedAtMillis > ServerFlag.LOGIN_TIMEOUT;
+                && nowMillis - connectedAtMillis > process.config().loginTimeout();
     }
 
     /**

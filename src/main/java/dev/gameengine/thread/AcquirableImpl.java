@@ -1,6 +1,5 @@
 package dev.gameengine.thread;
 
-import dev.gameengine.ServerFlag;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.UnknownNullability;
 
@@ -11,6 +10,11 @@ import java.util.function.Consumer;
 
 final class AcquirableImpl<T> implements Acquirable<T> {
     private static final boolean ASSERTIONS_ENABLED = AcquirableImpl.class.desiredAssertionStatus();
+    /**
+     * Turns the ownership assertions on without {@code -ea}. JVM-wide because an acquirable is created
+     * in the field initializer of an entity, before the entity is bound to a server process.
+     */
+    private static final boolean ACQUIRABLE_STRICT = Boolean.getBoolean("gameengine.acquirable-strict");
     static final AtomicLong WAIT_COUNTER_NANO = new AtomicLong();
 
     /**
@@ -105,7 +109,7 @@ final class AcquirableImpl<T> implements Acquirable<T> {
 
     @Override
     public void assertOwnership() {
-        if (!ASSERTIONS_ENABLED && !ServerFlag.ACQUIRABLE_STRICT) return;
+        if (!ASSERTIONS_ENABLED && !ACQUIRABLE_STRICT) return;
         if (isOwned()) return;
         TickThread assignedThread = this.assignedThread;
         Thread initThread = this.initThread;

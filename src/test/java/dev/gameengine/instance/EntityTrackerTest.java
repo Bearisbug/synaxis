@@ -1,5 +1,6 @@
 package dev.gameengine.instance;
 
+import dev.gameengine.ServerConfig;
 import dev.gameengine.coordinate.Vec;
 import dev.gameengine.entity.Entity;
 import dev.gameengine.entity.EntityType;
@@ -32,7 +33,7 @@ public class EntityTrackerTest {
                 fail("No other entity should be registered yet");
             }
         };
-        EntityTracker tracker = EntityTracker.newTracker();
+        EntityTracker tracker = EntityTracker.newTracker(ServerConfig.defaults().entityViewDistance());
         var chunkEntities = tracker.chunkEntities(Vec.ZERO, EntityTracker.Target.ENTITIES);
         assertTrue(chunkEntities.isEmpty());
 
@@ -58,7 +59,7 @@ public class EntityTrackerTest {
             }
         };
 
-        EntityTracker tracker = EntityTracker.newTracker();
+        EntityTracker tracker = EntityTracker.newTracker(ServerConfig.defaults().entityViewDistance());
 
         tracker.register(ent1, Vec.ZERO, EntityTracker.Target.ENTITIES, updater);
         assertEquals(1, tracker.chunkEntities(Vec.ZERO, EntityTracker.Target.ENTITIES).size());
@@ -73,7 +74,7 @@ public class EntityTrackerTest {
         var ent1 = new Entity(EntityType.ZOMBIE);
         var ent2 = new Entity(EntityType.ZOMBIE);
 
-        EntityTracker tracker = EntityTracker.newTracker();
+        EntityTracker tracker = EntityTracker.newTracker(ServerConfig.defaults().entityViewDistance());
         tracker.register(ent1, Vec.ZERO, EntityTracker.Target.ENTITIES, new EntityTracker.Update<>() {
             @Override
             public void add(Entity entity) {
@@ -144,7 +145,7 @@ public class EntityTrackerTest {
             }
         };
 
-        EntityTracker tracker = EntityTracker.newTracker();
+        EntityTracker tracker = EntityTracker.newTracker(ServerConfig.defaults().entityViewDistance());
         tracker.register(ent2, new Vec(5, 0, 0), EntityTracker.Target.ENTITIES, updater);
         tracker.register(ent3, new Vec(50, 0, 0), EntityTracker.Target.ENTITIES, updater);
 
@@ -197,7 +198,7 @@ public class EntityTrackerTest {
             }
         };
 
-        EntityTracker tracker = EntityTracker.newTracker();
+        EntityTracker tracker = EntityTracker.newTracker(ServerConfig.defaults().entityViewDistance());
         tracker.register(ent1, new Vec(5, 0, 5), EntityTracker.Target.ENTITIES, updater);
         tracker.register(ent2, new Vec(8, 0, 8), EntityTracker.Target.ENTITIES, updater);
         tracker.register(ent3, new Vec(17, 0, 17), EntityTracker.Target.ENTITIES, updater);
@@ -237,7 +238,7 @@ public class EntityTrackerTest {
             }
         };
 
-        EntityTracker tracker = EntityTracker.newTracker();
+        EntityTracker tracker = EntityTracker.newTracker(ServerConfig.defaults().entityViewDistance());
         var entities = tracker.entities();
         var chunkEntities = tracker.chunkEntities(Vec.ZERO, EntityTracker.Target.ENTITIES);
 

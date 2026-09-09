@@ -2,7 +2,6 @@ package dev.gameengine.network;
 
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
-import dev.gameengine.ServerFlag;
 import dev.gameengine.ServerProcess;
 import dev.gameengine.entity.Player;
 import dev.gameengine.event.player.AsyncPlayerConfigurationEvent;
@@ -192,7 +191,7 @@ public final class ConnectionManager {
 
     @ApiStatus.Internal
     public Player createPlayer(PlayerConnection connection, GameProfile gameProfile) {
-        assert ServerFlag.INSIDE_TEST || Thread.currentThread().isVirtual();
+        assert process.config().insideTest() || Thread.currentThread().isVirtual();
         final Player player = playerProvider.createPlayer(connection, gameProfile);
         this.connectionPlayerMap.put(connection, player);
         return player;
@@ -210,7 +209,7 @@ public final class ConnectionManager {
     }
 
     public GameProfile transitionLoginToConfig(PlayerConnection connection, GameProfile gameProfile) {
-        assert ServerFlag.INSIDE_TEST || Thread.currentThread().isVirtual();
+        assert process.config().insideTest() || Thread.currentThread().isVirtual();
         // Compression
         if (connection instanceof PlayerSocketConnection socketConnection) {
             final int threshold = process.compressionThreshold();
@@ -225,7 +224,7 @@ public final class ConnectionManager {
         gameProfile = asyncPlayerPreLoginEvent.getGameProfile();
         // Wait for pending login plugin messages
         try {
-            pluginMessageProcessor.awaitReplies(ServerFlag.LOGIN_PLUGIN_MESSAGE_TIMEOUT, TimeUnit.MILLISECONDS);
+            pluginMessageProcessor.awaitReplies(process.config().loginPluginMessageTimeout(), TimeUnit.MILLISECONDS);
         } catch (Throwable t) {
             connection.kick(LoginListener.INVALID_PROXY_RESPONSE);
             throw new RuntimeException("Error getting replies for login plugin messages", t);
@@ -251,7 +250,7 @@ public final class ConnectionManager {
      */
     @ApiStatus.Internal
     public void doConfiguration(Player player, boolean isFirstConfig) {
-        assert ServerFlag.INSIDE_TEST || Thread.currentThread().isVirtual();
+        assert process.config().insideTest() || Thread.currentThread().isVirtual();
         if (isFirstConfig) {
             configurationPlayers.add(player);
             keepAlivePlayers.add(player);
@@ -276,7 +275,7 @@ public final class ConnectionManager {
         if (event.willSendRegistryData()) {
             List<SelectKnownPacksPacket.Entry> knownPacks;
             try {
-                knownPacks = knownPacksFuture.get(ServerFlag.KNOWN_PACKS_RESPONSE_TIMEOUT, TimeUnit.MILLISECONDS);
+                knownPacks = knownPacksFuture.get(process.config().knownPacksResponseTimeout(), TimeUnit.MILLISECONDS);
             } catch (InterruptedException | TimeoutException _) {
                 LOGGER.warn("Player {} failed to respond to known packs query", player.getUsername());
                 player.getPlayerConnection().disconnect();
@@ -402,7 +401,7 @@ public final class ConnectionManager {
             });
 
             // Required to get the exact moment the player spawns
-            if (ServerFlag.INSIDE_TEST) spawnFuture.join();
+            if (process.config().insideTest()) spawnFuture.join();
         });
     }
 
@@ -411,14 +410,14 @@ public final class ConnectionManager {
      *
      * @param tickStart the time of the update in nanoseconds, forwarded to the packet
      */
-    private static void handleKeepAlive(Collection<Player> playerGroup, long tickStart) {
+    private void handleKeepAlive(Collection<Player> playerGroup, long tickStart) {
         final KeepAlivePacket keepAlivePacket = new KeepAlivePacket(tickStart);
         for (Player player : playerGroup) {
             final long lastKeepAlive = tickStart - player.getLastKeepAlive();
-            if (lastKeepAlive > TimeUnit.MILLISECONDS.toNanos(ServerFlag.KEEP_ALIVE_DELAY) && player.didAnswerKeepAlive()) {
+            if (lastKeepAlive > TimeUnit.MILLISECONDS.toNanos(process.config().keepAliveDelay()) && player.didAnswerKeepAlive()) {
                 player.refreshKeepAlive(tickStart);
                 player.sendPacket(keepAlivePacket);
-            } else if (lastKeepAlive >= TimeUnit.MILLISECONDS.toNanos(ServerFlag.KEEP_ALIVE_KICK)) {
+            } else if (lastKeepAlive >= TimeUnit.MILLISECONDS.toNanos(process.config().keepAliveKick())) {
                 player.kick(TIMEOUT_TEXT);
             }
         }

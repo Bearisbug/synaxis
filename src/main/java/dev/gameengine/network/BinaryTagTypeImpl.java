@@ -20,7 +20,7 @@ import org.jetbrains.annotations.ApiStatus;
 import java.util.Arrays;
 import java.util.Map;
 
-import static dev.gameengine.ServerFlag.NBT_MAX_DEPTH;
+import static dev.gameengine.JvmFlags.NBT_MAX_DEPTH;
 import static dev.gameengine.network.NetworkBuffer.BYTE;
 import static dev.gameengine.network.NetworkBuffer.DOUBLE;
 import static dev.gameengine.network.NetworkBuffer.FLOAT;

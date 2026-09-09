@@ -1,6 +1,5 @@
 package dev.gameengine.listener;
 
-import dev.gameengine.ServerFlag;
 import dev.gameengine.collision.BoundingBox;
 import dev.gameengine.coordinate.Pos;
 import dev.gameengine.entity.Entity;
@@ -39,7 +38,7 @@ public class UseEntityListener {
         if (!entity.isViewer(player))
             return true;
 
-        if (ServerFlag.ENFORCE_INTERACTION_LIMIT) {
+        if (player.process().config().enforceInteractionLimit()) {
             final double maxDistanceSquared = Math.pow(player.getAttributeValue(Attribute.ENTITY_INTERACTION_RANGE) + 1, 2);
 
             final double distSquared = getDistSquared(player, entity);

@@ -47,6 +47,7 @@ final class ServerProcessImpl implements ServerProcess, Registries.Delegating {
     private static final long SHUTDOWN_JOIN_TIMEOUT_MS = 5_000;
 
     private final Auth auth;
+    private final ServerConfig config;
 
     private final ExceptionManager exception;
     private final Registries registries;
@@ -66,6 +67,7 @@ final class ServerProcessImpl implements ServerProcess, Registries.Delegating {
     private final Server server;
 
     private final ThreadDispatcher<Chunk, Entity> dispatcher;
+    private final PacketViewableUtils viewablePackets;
     private final Ticker ticker;
 
     private final AtomicBoolean started = new AtomicBoolean();
@@ -77,8 +79,9 @@ final class ServerProcessImpl implements ServerProcess, Registries.Delegating {
     // Set by the ticker itself, so that stop() can wait for the in-flight tick to complete.
     private volatile @Nullable TickSchedulerThread tickSchedulerThread;
 
-    public ServerProcessImpl(Auth auth) {
+    public ServerProcessImpl(Auth auth, ServerConfig config) {
         this.auth = auth;
+        this.config = config;
         this.exception = new ExceptionManager(this);
         this.registries = Registries.vanilla();
 
@@ -97,14 +100,20 @@ final class ServerProcessImpl implements ServerProcess, Registries.Delegating {
         this.server = new Server(this, packetParser);
         Registries.tagChangeListener(registries, connection::invalidateTags);
 
-        this.dispatcher = ThreadDispatcher.dispatcher(ThreadProvider.counter(), ServerFlag.DISPATCHER_THREADS,
+        this.dispatcher = ThreadDispatcher.dispatcher(ThreadProvider.counter(), config.dispatcherThreads(),
                 exception::handleException);
+        this.viewablePackets = new PacketViewableUtils(this, config.viewablePacket(), config.pooledBufferSize());
         this.ticker = new TickerImpl();
     }
 
     @Override
     public Auth auth() {
         return auth;
+    }
+
+    @Override
+    public ServerConfig config() {
+        return config;
     }
 
     @Override
@@ -171,6 +180,11 @@ final class ServerProcessImpl implements ServerProcess, Registries.Delegating {
     @Override
     public ThreadDispatcher<Chunk, Entity> dispatcher() {
         return dispatcher;
+    }
+
+    @Override
+    public PacketViewableUtils viewablePackets() {
+        return viewablePackets;
     }
 
     @Override
@@ -250,8 +264,9 @@ final class ServerProcessImpl implements ServerProcess, Registries.Delegating {
             throw new RuntimeException(e);
         }
 
-        // Registries are part of the handshake answer, they must not change once clients can connect
-        Registries.freeze(registries);
+        // Registries are part of the handshake answer, they must not change once clients can connect.
+        // Tests keep them writable, they register their own entries after starting a process.
+        if (!config.registryUnsafeOps() && !config.insideTest()) Registries.freeze(registries);
 
         // Start server
         server.start();
@@ -259,7 +274,7 @@ final class ServerProcessImpl implements ServerProcess, Registries.Delegating {
         LOGGER.info("{} server started successfully.", brand);
 
         // Stop the server on SIGINT
-        if (ServerFlag.SHUTDOWN_ON_SIGNAL) Runtime.getRuntime().addShutdownHook(new Thread(this::stop));
+        if (config.shutdownOnSignal()) Runtime.getRuntime().addShutdownHook(new Thread(this::stop));
     }
 
     @Override
@@ -269,7 +284,7 @@ final class ServerProcessImpl implements ServerProcess, Registries.Delegating {
         // caller is one of them (e.g. a /stop command running on a TickThread, upstream issue #2907).
         final Thread caller = Thread.currentThread();
         if (caller instanceof TickThread || caller instanceof TickSchedulerThread) {
-            new Thread(this::shutdownProcess, "Ms-Shutdown").start();
+            new Thread(this::shutdownProcess, "Ge-Shutdown").start();
         } else {
             shutdownProcess();
         }
@@ -333,7 +348,7 @@ final class ServerProcessImpl implements ServerProcess, Registries.Delegating {
             scheduler().processTickEnd();
 
             // Flush all waiting packets
-            PacketViewableUtils.flush();
+            viewablePackets.flush();
 
             // Monitoring
             {

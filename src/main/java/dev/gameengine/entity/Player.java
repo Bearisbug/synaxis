@@ -20,7 +20,7 @@ import net.kyori.adventure.text.event.HoverEventSource;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import net.kyori.adventure.title.TitlePart;
-import dev.gameengine.ServerFlag;
+import dev.gameengine.ServerConfig;
 import dev.gameengine.adventure.AdventurePacketConvertor;
 import dev.gameengine.collision.BoundingBox;
 import dev.gameengine.command.CommandSender;
@@ -191,7 +191,7 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
 
     /**
      * Keeps track of what chunks are sent to the client, this defines the center of the loaded area
-     * in the range of {@link ServerFlag#CHUNK_VIEW_DISTANCE}
+     * in the range of {@link ServerConfig#chunkViewDistance()}
      */
     private Vec chunksLoadedByClient = Vec.ZERO;
     private final ReentrantLock chunkQueueLock = new ReentrantLock();
@@ -215,9 +215,9 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
     private final AtomicInteger teleportId = new AtomicInteger();
     private int receivedTeleportId;
 
-    private final MessagePassingQueue<ClientPacket> packets = ConcurrentMessageQueues.mpscArrayQueue(ServerFlag.PLAYER_PACKET_QUEUE_SIZE);
+    private final MessagePassingQueue<ClientPacket> packets;
     private final boolean levelFlat;
-    private ClientSettings settings = ClientSettings.DEFAULT;
+    private ClientSettings settings;
     private float exp;
     private int level;
     private int portalCooldown = 0;
@@ -241,7 +241,7 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
 
     // Game state (https://minecraft.wiki/w/Minecraft_Wiki:Projects/wiki.vg_merge/Protocol#Game_Event)
     private boolean enableRespawnScreen;
-    private final ChunkUpdateLimitChecker chunkUpdateLimitChecker = new ChunkUpdateLimitChecker(ServerFlag.PLAYER_CHUNK_UPDATE_LIMITER_HISTORY_SIZE);
+    private final ChunkUpdateLimitChecker chunkUpdateLimitChecker;
 
     // Experience orb pickup
     protected Cooldown experiencePickupCooldown = new Cooldown(Duration.of(10, TimeUnit.SERVER_TICK));
@@ -273,6 +273,10 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
     @SuppressWarnings("this-escape") // deliberate self registration during construction
     public Player(PlayerConnection playerConnection, GameProfile gameProfile) {
         super(playerConnection.process(), EntityType.PLAYER, gameProfile.uuid());
+        final ServerConfig config = playerConnection.process().config();
+        this.packets = ConcurrentMessageQueues.mpscArrayQueue(config.playerPacketQueueSize());
+        this.settings = ClientSettings.defaultSettings(config.chunkViewDistance());
+        this.chunkUpdateLimitChecker = new ChunkUpdateLimitChecker(config.playerChunkUpdateLimiterHistorySize());
         this.dimensionTypeRegistry = playerConnection.process().dimensionType();
         this.gameProfile = gameProfile;
         this.username = gameProfile.name();
@@ -326,7 +330,7 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
 
         final JoinGamePacket joinGamePacket = new JoinGamePacket(
                 getEntityId(), this.hardcore, List.of(), 0,
-                ServerFlag.CHUNK_VIEW_DISTANCE, ServerFlag.CHUNK_VIEW_DISTANCE,
+                process().config().chunkViewDistance(), process().config().chunkViewDistance(),
                 false, true, false,
                 new PlayerSpawnInfo(dimensionTypeId, spawnInstance.getDimensionName(), 0,
                         gameMode, null, false, levelFlat,
@@ -799,9 +803,10 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
     public void onChunkBatchReceived(float newTargetChunksPerTick) {
 //        logger.debug("chunk batch received player={} chunks/tick={} lead={}", username, newTargetChunksPerTick, chunkBatchLead);
         chunkBatchLead = Math.max(0, chunkBatchLead - 1);
-        newTargetChunksPerTick = newTargetChunksPerTick * ServerFlag.CHUNKS_PER_TICK_MULTIPLIER;
-        targetChunksPerTick = Float.isNaN(newTargetChunksPerTick) ? ServerFlag.MIN_CHUNKS_PER_TICK : MathUtils.clamp(
-                newTargetChunksPerTick, ServerFlag.MIN_CHUNKS_PER_TICK, ServerFlag.MAX_CHUNKS_PER_TICK);
+        final ServerConfig config = process().config();
+        newTargetChunksPerTick = newTargetChunksPerTick * config.chunksPerTickMultiplier();
+        targetChunksPerTick = Float.isNaN(newTargetChunksPerTick) ? config.minChunksPerTick() : MathUtils.clamp(
+                newTargetChunksPerTick, config.minChunksPerTick(), config.maxChunksPerTick());
 
         // Beyond the first batch we can preemptively send up to 10 (matching mojang server)
         if (maxChunkBatchLead == 1) maxChunkBatchLead = 10;
@@ -827,7 +832,7 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
         if (chunkQueue.isEmpty() || chunkBatchLead >= maxChunkBatchLead) return;
 
         // Increment the pending chunk count by the target chunks per tick
-        pendingChunkCount = Math.min(pendingChunkCount + targetChunksPerTick, ServerFlag.MAX_CHUNKS_PER_TICK);
+        pendingChunkCount = Math.min(pendingChunkCount + targetChunksPerTick, process().config().maxChunksPerTick());
         if (pendingChunkCount < 1) return; // Cant send anything
 
         chunkQueueLock.lock();
@@ -2259,17 +2264,18 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
     @ApiStatus.Internal
     public void interpretPacketQueue() {
         final PacketListenerManager manager = process().packetListener();
+        final ServerConfig config = process().config();
         // This method is NOT thread-safe
         this.packets.drain(packet -> { // drain cannot throw
             try {
                 manager.processClientPacket(packet, playerConnection);
             } catch (Throwable e) {
-                if (playerConnection.getClientState().ordinal() > ServerFlag.SUPPRESS_MISUSED_PACKET_ERROR_LEVEL)
+                if (playerConnection.getClientState().ordinal() > config.suppressMisusedPacketErrorLevel())
                     process().exception().handleException(e);
-                if (ServerFlag.REJECT_MISUSED_PACKET)
+                if (config.rejectMisusedPacket())
                     kick(Component.translatable("multiplayer.disconnect.invalid_packet", "Invalid Packet", NamedTextColor.RED));
             }
-        }, ServerFlag.PLAYER_PACKET_PER_TICK);
+        }, config.playerPacketPerTick());
     }
 
     /**
@@ -2518,7 +2524,7 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
     }
 
     private int effectiveViewDistance(@Nullable Instance instance) {
-        int maxViewDistance = instance != null ? instance.viewDistance() : ServerFlag.CHUNK_VIEW_DISTANCE;
+        int maxViewDistance = instance != null ? instance.viewDistance() : process().config().chunkViewDistance();
         return Math.min(settings.viewDistance(), maxViewDistance) + 1;
     }
 

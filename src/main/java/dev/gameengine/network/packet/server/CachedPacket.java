@@ -1,6 +1,10 @@
 package dev.gameengine.network.packet.server;
 
-import dev.gameengine.ServerFlag;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.TranslatableComponent;
+import net.kyori.adventure.text.event.HoverEvent;
+import dev.gameengine.JvmFlags;
+import dev.gameengine.adventure.ComponentHolder;
 import dev.gameengine.network.ConnectionState;
 import dev.gameengine.network.NetworkBuffer;
 import dev.gameengine.network.packet.PacketWriting;
@@ -11,6 +15,7 @@ import org.jetbrains.annotations.Nullable;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
 import java.lang.ref.SoftReference;
+import java.util.List;
 import java.util.Objects;
 import java.util.function.Supplier;
 
@@ -45,6 +50,44 @@ public final class CachedPacket implements SendablePacket {
         } catch (ReflectiveOperationException e) {
             throw new ExceptionInInitializerError(e);
         }
+    }
+
+    /**
+     * Wraps a packet meant for several players into a cached packet, unless caching is disabled or the
+     * packet holds components that have to be translated per player.
+     * <p>
+     * Note: {@link ServerPacket.ComponentHolding}s are not translated inside a {@code CachedPacket}.
+     *
+     * @see #body(ConnectionState, Registries, int)
+     */
+    public static SendablePacket grouped(ServerPacket packet) {
+        return JvmFlags.GROUPED_PACKET && shouldCache(packet) ? new CachedPacket(packet) : packet;
+    }
+
+    private static boolean shouldCache(ServerPacket packet) {
+        if (!JvmFlags.AUTOMATIC_COMPONENT_TRANSLATION) return true;
+        if (!(packet instanceof ServerPacket.ComponentHolding holder)) return true;
+        return !containsTranslatableComponents(holder);
+    }
+
+    private static boolean containsTranslatableComponents(ComponentHolder<?> holder) {
+        for (final Component component : holder.components()) {
+            if (isTranslatable(component)) return true;
+        }
+        return false;
+    }
+
+    private static boolean isTranslatable(Component component) {
+        if (component instanceof TranslatableComponent) return true;
+        final HoverEvent<?> hoverEvent = component.hoverEvent();
+        if (hoverEvent != null && hoverEvent.value() instanceof Component hoverComponent && isTranslatable(hoverComponent))
+            return true;
+        final List<Component> children = component.children();
+        if (children.isEmpty()) return false;
+        for (final Component child : children) {
+            if (isTranslatable(child)) return true;
+        }
+        return false;
     }
 
     private final Supplier<ServerPacket> packetSupplier;
@@ -93,7 +136,7 @@ public final class CachedPacket implements SendablePacket {
      * computation may publish a value after this method returns.
      */
     public void invalidate() {
-        if (!ServerFlag.CACHED_PACKET) return;
+        if (!JvmFlags.CACHED_PACKET) return;
         PACKET.setRelease(this, null);
     }
 
@@ -127,7 +170,7 @@ public final class CachedPacket implements SendablePacket {
      * @return the framed packet body, or {@code null} when caching is disabled
      */
     public @Nullable NetworkBuffer body(ConnectionState state, @Nullable Registries registries, int compressionThreshold) {
-        if (!ServerFlag.CACHED_PACKET) return null;
+        if (!JvmFlags.CACHED_PACKET) return null;
         final FramedPacket cache = cachedPacket();
         return (cache != null ? cache : computeCache(state, registries, compressionThreshold)).body();
     }
@@ -185,7 +228,7 @@ public final class CachedPacket implements SendablePacket {
      * available
      */
     public boolean isValid() {
-        return ServerFlag.CACHED_PACKET && cachedPacket() != null;
+        return JvmFlags.CACHED_PACKET && cachedPacket() != null;
     }
 
     /**

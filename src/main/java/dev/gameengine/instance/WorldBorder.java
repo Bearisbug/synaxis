@@ -1,6 +1,5 @@
 package dev.gameengine.instance;
 
-import dev.gameengine.ServerFlag;
 import dev.gameengine.collision.BoundingBox;
 import dev.gameengine.coordinate.Point;
 import dev.gameengine.entity.Entity;
@@ -30,7 +29,18 @@ import org.jetbrains.annotations.Contract;
  */
 public record WorldBorder(double diameter, double centerX, double centerZ, int warningDistance, int warningTime,
                           int dimensionTeleportBoundary) {
-    public static final WorldBorder DEFAULT_BORDER = new WorldBorder(ServerFlag.WORLD_BORDER_SIZE * 2, 0, 0, 5, 15, ServerFlag.WORLD_BORDER_SIZE);
+    /**
+     * The vanilla world border limit, used as the default {@code dimensionTeleportBoundary} and as the
+     * radius of the border a fresh {@link Instance} starts with. A protocol constant, not a setting.
+     */
+    public static final int DEFAULT_SIZE = 29999984;
+
+    /**
+     * The border a fresh {@link Instance} starts with.
+     */
+    public static WorldBorder defaultBorder() {
+        return new WorldBorder(DEFAULT_SIZE * 2d, 0, 0, 5, 15, DEFAULT_SIZE);
+    }
 
     /**
      * @throws IllegalArgumentException if {@code diameter} is less than 0 or NaN, or if a center coordinate is NaN
@@ -41,7 +51,7 @@ public record WorldBorder(double diameter, double centerX, double centerZ, int w
     }
 
     public WorldBorder(double diameter, double centerX, double centerZ, int warningDistance, int warningTime) {
-        this(diameter, centerX, centerZ, warningDistance, warningTime, ServerFlag.WORLD_BORDER_SIZE);
+        this(diameter, centerX, centerZ, warningDistance, warningTime, DEFAULT_SIZE);
     }
 
     @Contract(pure = true)

@@ -1,6 +1,6 @@
 package dev.gameengine.item.component;
 
-import dev.gameengine.ServerFlag;
+import dev.gameengine.JvmFlags;
 import dev.gameengine.codec.Codec;
 import dev.gameengine.codec.StructCodec;
 import dev.gameengine.item.ItemAnimation;
@@ -39,6 +39,6 @@ public record Consumable(
     }
 
     public int consumeTicks() {
-        return (int) (consumeSeconds * ServerFlag.SERVER_TICKS_PER_SECOND);
+        return (int) (consumeSeconds * JvmFlags.SERVER_TICKS_PER_SECOND);
     }
 }

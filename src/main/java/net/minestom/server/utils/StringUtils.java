@@ -152,9 +152,16 @@ public class StringUtils {
                             ch = 'u';
                             break;
                         }
-                        int code = Integer.parseInt(
-                                "" + st.charAt(i + 2) + st.charAt(i + 3)
-                                        + st.charAt(i + 4) + st.charAt(i + 5), 16);
+                        final int code;
+                        try {
+                            code = Integer.parseInt(
+                                    "" + st.charAt(i + 2) + st.charAt(i + 3)
+                                            + st.charAt(i + 4) + st.charAt(i + 5), 16);
+                        } catch (NumberFormatException _) {
+                            // Not a hex escape after all, treat it like any other unknown escape
+                            ch = 'u';
+                            break;
+                        }
                         sb.append(Character.toChars(code));
                         i += 5;
                         continue;

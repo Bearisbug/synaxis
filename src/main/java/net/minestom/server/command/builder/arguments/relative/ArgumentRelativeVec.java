@@ -50,6 +50,8 @@ abstract class ArgumentRelativeVec extends Argument<RelativeVec> {
 
         for (int i = 0; i < split.length; i++) {
             final String element = split[i];
+            if (element.isEmpty())
+                throw new ArgumentSyntaxException("Coordinate cannot be empty", input, INVALID_NUMBER_COUNT_ERROR);
             try {
                 final char modifierChar = element.charAt(0);
 

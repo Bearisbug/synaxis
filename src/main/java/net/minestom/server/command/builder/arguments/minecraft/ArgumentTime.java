@@ -38,6 +38,8 @@ public class ArgumentTime extends Argument<Duration> {
 
     @Override
     public Duration parse(CommandSender sender, String input) throws ArgumentSyntaxException {
+        if (input.isEmpty())
+            throw new ArgumentSyntaxException("Time cannot be empty", input, NO_NUMBER);
         final char lastChar = input.charAt(input.length() - 1);
 
         TemporalUnit timeUnit;

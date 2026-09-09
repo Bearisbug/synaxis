@@ -107,7 +107,7 @@ ls -d "$TMPDIR"minestom-* 2>/dev/null | wc -l   # 期望 0
 ### 3.3 只跑单个测试类
 
 ```bash
-./gradlew :test --tests 'net.minestom.server.instance.anvil.AnvilLoaderIntegrationTest' \
+./gradlew :test --tests 'dev.gameengine.instance.UnloadChunkIntegrationTest' \
   --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts
 ```
 
@@ -159,7 +159,7 @@ unset JAVA_TOOL_OPTIONS
 
 | 路径 | 内容 |
 | --- | --- |
-| `src/main/java/` | 引擎主源码（`net.minestom.server`，`REQ-009` 会整体改名到我们的包名） |
+| `src/main/java/` | 引擎主源码，包名 `dev.gameengine`（占位名，REQ-009 已改；再改一次同样是一次性脚本操作） |
 | `src/main/java/.../registry`、`EntityType`、`Block` 等常量表 | 原为生成物，自 REQ-008 起作为普通源码维护；文件头有说明 |
 | `src/main/resources/data/` | **vendoring 的注册表数据**：39 个 JSON + `opaque/` 下 23 个黄金 NBT（REQ-007）；运行时由 `RegistryData.loadRegistryFile` 按 `/data/<路径>` 从 classpath 读取 |
 | `src/main/resources/META-INF/native-image/` | GraalVM 可达性元数据（资源 glob 指向 `data/*.json`） |

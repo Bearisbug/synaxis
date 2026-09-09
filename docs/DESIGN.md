@@ -16,6 +16,7 @@
 | 日期 | 版本 | 改动 | 作者 |
 | --- | --- | --- | --- |
 | 2026-09-09 | v0.1 | 初稿：里程碑 M1 范围、实体、协议契约、状态机、阶段计划 | Bearisbug |
+| 2026-09-09 | v0.8 | 阶段 3 完成：包名 `dev.gameengine`、品牌 `game-engine`、NOTICE / README / pom；文档路径同步 | Bearisbug |
 | 2026-09-09 | v0.7 | 阶段 2 完成；主源码阈值改为 ≤ 1,150（REQ-008 把 49 个生成文件并入主源码后口径变化，等价手写 ≤ 1,100） | Bearisbug |
 | 2026-09-09 | v0.6 | REQ-001 / REQ-007 按实测改写（黄金 NBT、精简形式基线、39 JSON + 23 NBT）；REQ-006 补 13 个协议枚举宿主类的处理 | Bearisbug |
 | 2026-09-09 | v0.5 | 阶段 2 第一轮完成（REQ-005 波次 1 除注册表相关包、REQ-006、`demo` 删除）；补三条技术债 | Bearisbug |
@@ -388,7 +389,7 @@ N/A — 无前端。客户端 Fabric 模组与其界面属于 M2。
 | JDK 25（Homebrew `openjdk@25`） | 编译与运行 | 本机安装 | — | 无法构建 | 无；`docs/ENGINE.md` 写明安装 |
 | Gradle 9.7.1 + 阿里云镜像 init 脚本 | 依赖解析 | 镜像可用性由阿里云保证 | Gradle 默认 3 次重试 | 无法构建 | 回退 Maven Central 直连（经本机代理，不稳） |
 | Adventure 5.2、fastutil 8.5、JCTools 4.0 | 文本、集合、并发队列 | Maven Central 存量 | — | 无法构建 | 版本钉死在 `libs.versions.toml` |
-| vendoring 的 74 个注册表 JSON | 运行时注册表 | 随仓库 | — | 进程无法启动 | 无外部链，`REQ-001` 后不再依赖 `net.minestom:data` |
+| vendoring 的注册表数据（39 个 JSON + 23 个黄金 NBT） | 运行时注册表 | 随仓库 | — | 进程无法启动 | 无外部链，`REQ-001` 后不再依赖 `net.minestom:data` |
 | GitHub `Bearisbug/game-engine` | 代码托管与 CI | GitHub SLA | — | CI 不跑 | 本地 `./gradlew check` 等价 |
 | 原版 Minecraft 26.2 客户端 | 冒烟验收 | Mojang 分发 | — | 无法冒烟 | 钉死版本，启动器离线可用 |
 
@@ -445,7 +446,7 @@ N/A — 无前端。客户端 Fabric 模组与其界面属于 M2。
 
 ```gherkin
 场景: 依赖冻结后离线构建 (REQ-001)
-  Given 仓库不含对 net.minestom:data 的依赖，src/main/resources/data 含 74 个注册表 JSON
+  Given 仓库不含对 net.minestom:data 的依赖，src/main/resources/data 含 39 个注册表 JSON 与 opaque/ 下 23 个黄金 NBT
   When 断开外网只保留阿里云镜像执行 ./gradlew check
   Then 构建成功，且 module-info 不再 requires net.minestom.data
 

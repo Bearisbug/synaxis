@@ -1738,7 +1738,15 @@ public class Entity implements Viewable, Tickable, Schedulable, Snapshotable, Ev
     // Currently file-private so it can be used in MetadataHolder, planned to be private.
     void notifyMetadataChanges(Map<Integer, Metadata.Entry<?>> changes) {
         if (!isActive()) return;
-        sendPacketToViewersAndSelf(new EntityMetaDataPacket(getEntityId(), changes));
+        final EntityMetaDataPacket packet = new EntityMetaDataPacket(getEntityId(), changes);
+        if (this instanceof Player && entityType != EntityType.PLAYER) {
+            // A player is never its own viewer, so its client never received the destroy/spawn pair
+            // sent by #switchEntityType and still reads its own entity with the player layout.
+            // Sending the new layout to it is a protocol error and disconnects the player (#3057).
+            sendPacketToViewers(packet);
+            return;
+        }
+        sendPacketToViewersAndSelf(packet);
     }
 
     /**

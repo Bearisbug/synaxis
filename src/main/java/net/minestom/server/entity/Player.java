@@ -1130,36 +1130,34 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
     /**
      * Gets the entity meta for the player.
      *
-     * <p>Note that this method will throw an exception if the player's entity type has
-     * been changed with {@link #switchEntityType(EntityType)}. It is wise to check
-     * {@link #getEntityType()} first.</p>
+     * @return the player meta, null if the player's entity type has been changed
+     * with {@link #switchEntityType(EntityType)}
      */
-    public PlayerMeta getPlayerMeta() {
-        return (PlayerMeta) super.getEntityMeta();
+    public @Nullable PlayerMeta getPlayerMeta() {
+        return super.getEntityMeta() instanceof PlayerMeta playerMeta ? playerMeta : null;
     }
 
     /**
      * Gets the player additional hearts.
      *
-     * <p>Note that this function is uncallable if the player has their entity type switched
-     * with {@link #switchEntityType(EntityType)}.</p>
-     *
-     * @return the player additional hearts
+     * @return the player additional hearts, 0 if the player's entity type has been switched
+     * with {@link #switchEntityType(EntityType)}
      */
     public float getAdditionalHearts() {
-        return getPlayerMeta().getAdditionalHearts();
+        final PlayerMeta meta = getPlayerMeta();
+        return meta == null ? 0 : meta.getAdditionalHearts();
     }
 
     /**
      * Changes the amount of additional hearts shown.
-     *
-     * <p>Note that this function is uncallable if the player has their entity type switched
-     * with {@link #switchEntityType(EntityType)}.</p>
+     * <p>
+     * Ignored if the player's entity type has been switched with {@link #switchEntityType(EntityType)}.
      *
      * @param additionalHearts the count of additional hearts
      */
     public void setAdditionalHearts(float additionalHearts) {
-        getPlayerMeta().setAdditionalHearts(additionalHearts);
+        final PlayerMeta meta = getPlayerMeta();
+        if (meta != null) meta.setAdditionalHearts(additionalHearts);
     }
 
     /**
@@ -1697,10 +1695,12 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
         this.settings = settings;
         boolean isInPlayState = getPlayerConnection().getClientState() == ConnectionState.PLAY;
         PlayerMeta playerMeta = getPlayerMeta();
-        if (isInPlayState) playerMeta.setNotifyAboutChanges(false);
-        playerMeta.setDisplayedSkinParts(settings.displayedSkinParts());
-        playerMeta.setMainHand(settings.mainHand());
-        if (isInPlayState) playerMeta.setNotifyAboutChanges(true);
+        if (playerMeta != null) {
+            if (isInPlayState) playerMeta.setNotifyAboutChanges(false);
+            playerMeta.setDisplayedSkinParts(settings.displayedSkinParts());
+            playerMeta.setMainHand(settings.mainHand());
+            if (isInPlayState) playerMeta.setNotifyAboutChanges(true);
+        }
         // Update view distance
         final Instance instance = this.instance;
         if (instance == null) return;

@@ -130,7 +130,7 @@ final class ThreadDispatcherImpl<P, E extends Tickable> implements ThreadDispatc
     }
 
     @Override
-    public void shutdown() {
+    public synchronized void shutdown() {
         // Must not lock on the dispatcher monitor: updateAndAwait holds it while awaiting the tick threads,
         // so a shutdown requested from a TickThread would deadlock the whole server (upstream issue #2907).
         // TickThread#shutdown only flips a volatile flag and unparks, no dispatcher state is involved.

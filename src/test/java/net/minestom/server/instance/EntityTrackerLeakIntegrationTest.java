@@ -10,7 +10,7 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 @EnvTest
-public class EntityTrackerLeakTest {
+public class EntityTrackerLeakIntegrationTest {
 
     @Test
     public void emptyChunkBucketsAreReleased() {

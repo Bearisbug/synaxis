@@ -28,7 +28,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * retried on the next flush, so the state must only move once the packet is really written.
  */
 @EnvTest
-public class SocketWriteStateTransitionTest {
+public class SocketWriteStateTransitionIntegrationTest {
 
     @BeforeAll
     public static void setup(Env env) { // PACKET_POOL

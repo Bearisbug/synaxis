@@ -17,7 +17,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
  * read back from the network, which preserves the declared order. The codec has to preserve it too.
  */
 @RegistriesTest
-public class RegistryTagCodecTest {
+public class RegistryTagCodecRegistriesTest {
 
     @Test
     public void directTagCodecPreservesEntryOrder(Registries registries) {

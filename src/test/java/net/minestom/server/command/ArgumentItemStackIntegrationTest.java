@@ -15,7 +15,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 @EnvTest
-public class ArgumentItemStackTest {
+public class ArgumentItemStackIntegrationTest {
 
     @Test
     public void plainMaterial(Env env) {

@@ -15,7 +15,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
 @RegistriesTest
-public class ItemStackTemplateTest {
+public class ItemStackTemplateRegistriesTest {
 
     /**
      * Nested items are written with {@link net.minestom.server.component.DataComponent#PATCH_NETWORK_TYPE}, so they

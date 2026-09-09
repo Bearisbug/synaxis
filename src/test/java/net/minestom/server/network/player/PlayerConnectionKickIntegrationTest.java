@@ -21,7 +21,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * those states must not queue one.
  */
 @EnvTest
-public class PlayerConnectionKickTest {
+public class PlayerConnectionKickIntegrationTest {
 
     @Test
     public void kickingAStatusConnectionDoesNotQueueADisconnectPacket(Env env) throws IOException {

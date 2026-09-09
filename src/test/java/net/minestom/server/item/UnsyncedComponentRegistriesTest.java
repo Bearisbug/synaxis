@@ -19,7 +19,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
  * DataComponent#isSerialized exist to filter them, so neither serialization path may blow up on them.
  */
 @RegistriesTest
-public class UnsyncedComponentTest {
+public class UnsyncedComponentRegistriesTest {
 
     @Test
     public void componentWithoutNetworkTypeIsNotSent(Registries registries) {

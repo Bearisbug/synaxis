@@ -18,7 +18,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 @EnvTest
-public class PacketCompressionTest {
+public class PacketCompressionIntegrationTest {
 
     @BeforeAll
     public static void setup(Env env) { // PACKET_POOL

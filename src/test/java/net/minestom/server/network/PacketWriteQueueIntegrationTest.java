@@ -16,7 +16,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @EnvTest
-public class PacketWriteQueueTest {
+public class PacketWriteQueueIntegrationTest {
 
     @BeforeAll
     public static void setup(Env env) {

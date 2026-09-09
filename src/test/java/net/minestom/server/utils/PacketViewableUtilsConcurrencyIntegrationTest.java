@@ -25,7 +25,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * has to tolerate concurrent lookups and traversals.
  */
 @EnvTest
-public class PacketViewableUtilsConcurrencyTest {
+public class PacketViewableUtilsConcurrencyIntegrationTest {
 
     private static final int VIEWABLES = 128;
     private static final int ROUNDS = 50;

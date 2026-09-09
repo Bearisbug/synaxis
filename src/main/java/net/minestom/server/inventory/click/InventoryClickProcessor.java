@@ -139,6 +139,15 @@ public final class InventoryClickProcessor {
 
     public @Nullable ItemStack dragging(Player player, AbstractInventory inventory,
                                         List<Integer> slots, int button, ItemStack cursor) {
+        // Validate every slot before writing anything: a write that is interrupted halfway through leaves the
+        // items in place while the cursor is never debited, which duplicates them.
+        for (int slot : slots) {
+            final boolean isInWindow = slot < inventory.getSize();
+            final AbstractInventory inv = isInWindow ? inventory : player.getInventory();
+            final int s = isInWindow ? slot : slot - inventory.getSize();
+            if (s < 0 || s >= inv.getSize()) return null;
+        }
+
         // Drag instruction
         if (button == 2) {
             // End left

@@ -1,5 +1,7 @@
 package dev.gameengine.coordinate;
 
+import dev.gameengine.entity.Entity;
+
 public final class CoordConversion {
     public static final int REGION_SIZE = 512;
     public static final int SECTION_SIZE = 16;
@@ -306,5 +308,9 @@ public final class CoordConversion {
 
     public static String formatBlockCoord(Point point) {
         return formatBlockCoord(point.blockX(), point.blockY(), point.blockZ());
+    }
+
+    static double archProbe(Entity entity) {
+        return entity.getPosition().x();
     }
 }

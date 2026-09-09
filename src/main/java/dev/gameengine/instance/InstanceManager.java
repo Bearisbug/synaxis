@@ -1,11 +1,9 @@
 package dev.gameengine.instance;
 
-import dev.gameengine.MinecraftServer;
+import dev.gameengine.ServerProcess;
 import dev.gameengine.entity.Player;
-import dev.gameengine.event.EventDispatcher;
 import dev.gameengine.event.instance.InstanceRegisterEvent;
 import dev.gameengine.event.instance.InstanceUnregisterEvent;
-import dev.gameengine.registry.Registries;
 import dev.gameengine.registry.RegistryKey;
 import dev.gameengine.utils.validate.Check;
 import dev.gameengine.world.DimensionType;
@@ -23,11 +21,11 @@ import java.util.concurrent.CopyOnWriteArraySet;
  */
 public final class InstanceManager {
 
-    private final Registries registries;
+    private final ServerProcess process;
     private final Set<Instance> instances = new CopyOnWriteArraySet<>();
 
-    public InstanceManager(Registries registries) {
-        this.registries = registries;
+    public InstanceManager(ServerProcess process) {
+        this.process = process;
     }
 
     /**
@@ -52,7 +50,7 @@ public final class InstanceManager {
      * @return the created {@link InstanceContainer}
      */
     public InstanceContainer createInstanceContainer(RegistryKey<DimensionType> dimensionType, @Nullable ChunkLoader loader) {
-        final InstanceContainer instanceContainer = new InstanceContainer(registries, UUID.randomUUID(), dimensionType, loader, dimensionType.key());
+        final InstanceContainer instanceContainer = new InstanceContainer(process, UUID.randomUUID(), dimensionType, loader, dimensionType.key());
         registerInstance(instanceContainer);
         return instanceContainer;
     }
@@ -119,12 +117,12 @@ public final class InstanceManager {
         Check.stateCondition(onlinePlayers > 0, "You cannot unregister an instance with players inside.");
         synchronized (instance) {
             InstanceUnregisterEvent event = new InstanceUnregisterEvent(instance);
-            EventDispatcher.call(event);
+            process.eventHandler().call(event);
 
             // Unload all chunks
             if (instance instanceof InstanceContainer) {
                 instance.getChunks().forEach(instance::unloadChunk);
-                var dispatcher = MinecraftServer.process().dispatcher();
+                var dispatcher = process.dispatcher();
                 instance.getChunks().forEach(dispatcher::deletePartition);
             }
             if (instance instanceof SharedInstance sharedInstance) {
@@ -169,9 +167,9 @@ public final class InstanceManager {
     private void UNSAFE_registerInstance(Instance instance) {
         instance.setRegistered(true);
         this.instances.add(instance);
-        var dispatcher = MinecraftServer.process().dispatcher();
+        var dispatcher = process.dispatcher();
         instance.getChunks().forEach(dispatcher::createPartition);
         InstanceRegisterEvent event = new InstanceRegisterEvent(instance);
-        EventDispatcher.call(event);
+        process.eventHandler().call(event);
     }
 }

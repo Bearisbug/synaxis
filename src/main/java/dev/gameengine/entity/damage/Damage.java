@@ -1,12 +1,11 @@
 package dev.gameengine.entity.damage;
 
 import net.kyori.adventure.text.Component;
-import dev.gameengine.MinecraftServer;
 import dev.gameengine.coordinate.Point;
 import dev.gameengine.entity.Entity;
 import dev.gameengine.entity.LivingEntity;
 import dev.gameengine.entity.Player;
-import dev.gameengine.registry.DynamicRegistry;
+import dev.gameengine.registry.Registries;
 import dev.gameengine.registry.RegistryKey;
 import dev.gameengine.sound.SoundEvent;
 import dev.gameengine.tag.TagHandler;
@@ -21,10 +20,7 @@ import org.jetbrains.annotations.Nullable;
  * This class can be extended if you need to include custom fields and/or methods.
  */
 public class Damage implements Taggable {
-    private static final DynamicRegistry<DamageType> DAMAGE_TYPE_REGISTRY = MinecraftServer.getDamageTypeRegistry();
-
     private final RegistryKey<DamageType> typeKey;
-    private final DamageType type;
     private final Entity source;
     private final Entity attacker;
     private final Point sourcePosition;
@@ -43,8 +39,6 @@ public class Damage implements Taggable {
      */
     public Damage(RegistryKey<DamageType> type, @Nullable Entity source, @Nullable Entity attacker, @Nullable Point sourcePosition, float amount) {
         this.typeKey = type;
-        this.type = DAMAGE_TYPE_REGISTRY.get(type);
-        Check.argCondition(this.type == null, "Damage type is not registered: {0}", type);
         this.source = source;
         this.attacker = attacker;
         this.sourcePosition = sourcePosition;
@@ -65,10 +59,13 @@ public class Damage implements Taggable {
     /**
      * Gets the integer id of the damage type that has been set
      *
+     * @param registries the registries of the process the damage is applied in
      * @return The integer id of the damage type
      */
-    public int getTypeId() {
-        return DAMAGE_TYPE_REGISTRY.getId(typeKey);
+    public int getTypeId(Registries registries) {
+        final int id = registries.damageType().getId(typeKey);
+        Check.argCondition(id == -1, "Damage type is not registered: {0}", typeKey);
+        return id;
     }
 
     /**
@@ -97,6 +94,12 @@ public class Damage implements Taggable {
      *
      * @return The source position
      */
+    private DamageType type(Registries registries) {
+        final DamageType type = registries.damageType().get(typeKey);
+        Check.argCondition(type == null, "Damage type is not registered: {0}", typeKey);
+        return type;
+    }
+
     public @Nullable Point getSourcePosition() {
         return sourcePosition;
     }
@@ -110,7 +113,8 @@ public class Damage implements Taggable {
      * @return the death message, null to do not send anything
      */
     public @Nullable Component buildDeathMessage(Player killed) {
-        return Component.translatable("death.attack." + type.messageId(), Component.text(killed.getUsername()));
+        return Component.translatable("death.attack." + type(killed.process()).messageId(),
+                Component.text(killed.getUsername()));
     }
 
     /**
@@ -158,7 +162,7 @@ public class Damage implements Taggable {
      * @return the death screen text, null to do not send anything
      */
     public @Nullable Component buildDeathScreenText(Player killed) {
-        return Component.translatable("death.attack." + type.messageId());
+        return Component.translatable("death.attack." + type(killed.process()).messageId());
     }
 
     /**

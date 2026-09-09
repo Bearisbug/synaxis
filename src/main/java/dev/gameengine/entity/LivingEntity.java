@@ -9,6 +9,7 @@ import dev.gameengine.component.DataComponents;
 import dev.gameengine.coordinate.Point;
 import dev.gameengine.coordinate.Pos;
 import dev.gameengine.coordinate.Vec;
+import dev.gameengine.ServerProcess;
 import dev.gameengine.entity.attribute.Attribute;
 import dev.gameengine.entity.attribute.AttributeInstance;
 import dev.gameengine.entity.attribute.AttributeModifier;
@@ -17,7 +18,6 @@ import dev.gameengine.entity.damage.Damage;
 import dev.gameengine.entity.damage.DamageType;
 import dev.gameengine.entity.metadata.EntityMeta;
 import dev.gameengine.entity.metadata.LivingEntityMeta;
-import dev.gameengine.event.EventDispatcher;
 import dev.gameengine.event.entity.EntityDamageEvent;
 import dev.gameengine.event.entity.EntityDeathEvent;
 import dev.gameengine.event.entity.EntityFireExtinguishEvent;
@@ -105,6 +105,17 @@ public class LivingEntity extends Entity implements EquipmentHandler {
     private ItemStack saddleEquipment = ItemStack.AIR;
 
     /**
+     * Constructor which binds the entity to a process right away, see {@link Entity#Entity(ServerProcess, EntityType, UUID)}.
+     */
+    @SuppressWarnings("this-escape") // Same pattern as EntityCreature, the entity is not usable until spawned
+    public LivingEntity(ServerProcess process, EntityType entityType, UUID uuid) {
+        super(process, entityType, uuid);
+        this.health = (float) getAttributeValue(Attribute.MAX_HEALTH);
+        final LivingEntityMeta livingMeta = getLivingEntityMeta();
+        if (livingMeta != null) livingMeta.setHealth(this.health);
+    }
+
+    /**
      * Constructor which allows to specify an UUID. Only use if you know what you are doing!
      */
     @SuppressWarnings("this-escape") // Same pattern as EntityCreature, the entity is not usable until spawned
@@ -169,7 +180,7 @@ public class LivingEntity extends Entity implements EquipmentHandler {
 
     private ItemStack slotChangeEvent(ItemStack itemStack, EquipmentSlot slot) {
         EntityEquipEvent entityEquipEvent = new EntityEquipEvent(this, itemStack, slot);
-        EventDispatcher.call(entityEquipEvent);
+        process().eventHandler().call(entityEquipEvent);
         return entityEquipEvent.getEquippedItem();
     }
 
@@ -210,7 +221,7 @@ public class LivingEntity extends Entity implements EquipmentHandler {
     public void update(long time) {
         // Fire
         if (remainingFireTicks > 0 && --remainingFireTicks == 0) {
-            EventDispatcher.callCancellable(new EntityFireExtinguishEvent(this, true), () -> entityMeta.setOnFire(false));
+            process().eventHandler().callCancellable(new EntityFireExtinguishEvent(this, true), () -> entityMeta.setOnFire(false));
         }
 
         // Items picking
@@ -222,7 +233,7 @@ public class LivingEntity extends Entity implements EquipmentHandler {
                         if (!itemEntity.isPickable()) return;
                         if (!expandedBoundingBox.intersectEntity(position, itemEntity)) return;
                         final PickupItemEvent pickupItemEvent = new PickupItemEvent(this, itemEntity);
-                        EventDispatcher.callCancellable(pickupItemEvent, () -> {
+                        process().eventHandler().callCancellable(pickupItemEvent, () -> {
                             final ItemStack item = itemEntity.getItemStack();
                             sendPacketToViewersAndSelf(new CollectItemPacket(itemEntity.getEntityId(), getEntityId(), item.amount()));
                             itemEntity.remove();
@@ -290,7 +301,7 @@ public class LivingEntity extends Entity implements EquipmentHandler {
         }
 
         EntityDeathEvent entityDeathEvent = new EntityDeathEvent(this);
-        EventDispatcher.call(entityDeathEvent);
+        process().eventHandler().call(entityDeathEvent);
     }
 
     /**
@@ -311,7 +322,7 @@ public class LivingEntity extends Entity implements EquipmentHandler {
         int fireTicks = Math.max(0, ticks);
         if (fireTicks > 0) {
             EntitySetFireEvent entitySetFireEvent = new EntitySetFireEvent(this, ticks);
-            EventDispatcher.call(entitySetFireEvent);
+            process().eventHandler().call(entitySetFireEvent);
             if (entitySetFireEvent.isCancelled()) return;
 
             fireTicks = Math.max(0, entitySetFireEvent.getFireTicks());
@@ -324,7 +335,7 @@ public class LivingEntity extends Entity implements EquipmentHandler {
 
         if (remainingFireTicks != 0) {
             EntityFireExtinguishEvent entityFireExtinguishEvent = new EntityFireExtinguishEvent(this, false);
-            EventDispatcher.callCancellable(entityFireExtinguishEvent, () -> entityMeta.setOnFire(false));
+            process().eventHandler().callCancellable(entityFireExtinguishEvent, () -> entityMeta.setOnFire(false));
         }
 
         remainingFireTicks = fireTicks;
@@ -348,7 +359,7 @@ public class LivingEntity extends Entity implements EquipmentHandler {
         }
 
         EntityDamageEvent entityDamageEvent = new EntityDamageEvent(this, damage, damage.getSound(this));
-        EventDispatcher.callCancellable(entityDamageEvent, () -> {
+        process().eventHandler().callCancellable(entityDamageEvent, () -> {
             // Set the last damage type since the event is not cancelled
             this.lastDamage = entityDamageEvent.getDamage();
 
@@ -356,7 +367,7 @@ public class LivingEntity extends Entity implements EquipmentHandler {
 
             if (entityDamageEvent.shouldAnimate()) {
                 sendPacketToViewersAndSelf(new DamageEventPacket(
-                        getEntityId(), damage.getTypeId(),
+                        getEntityId(), damage.getTypeId(process().registries()),
                         damage.getAttacker() == null ? 0 : damage.getAttacker().getEntityId() + 1,
                         damage.getSource() == null ? 0 : damage.getSource().getEntityId() + 1,
                         damage.getSourcePosition()

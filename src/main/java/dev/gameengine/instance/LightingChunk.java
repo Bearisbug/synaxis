@@ -1,7 +1,6 @@
 package dev.gameengine.instance;
 
 import net.kyori.adventure.key.Key;
-import dev.gameengine.MinecraftServer;
 import dev.gameengine.ServerFlag;
 import dev.gameengine.collision.Shape;
 import dev.gameengine.coordinate.CoordConversion;
@@ -426,7 +425,7 @@ public class LightingChunk extends DynamicChunk {
                     light.flip();
                     newQueue.addAll(toAdd);
                 } catch (Exception e) {
-                    MinecraftServer.getExceptionManager().handleException(e);
+                    lightingChunk.getInstance().process().exception().handleException(e);
                 }
             };
 

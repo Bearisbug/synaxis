@@ -2,7 +2,6 @@ package dev.gameengine.instance.block.predicate;
 
 import net.kyori.adventure.nbt.BinaryTag;
 import net.kyori.adventure.nbt.CompoundBinaryTag;
-import dev.gameengine.MinecraftServer;
 import dev.gameengine.codec.Codec;
 import dev.gameengine.codec.Result;
 import dev.gameengine.codec.StructCodec;
@@ -22,7 +21,6 @@ import org.jetbrains.annotations.Nullable;
 import java.util.Arrays;
 import java.util.Map;
 import java.util.Objects;
-import java.util.function.Predicate;
 
 /**
  * <p>A predicate to filter blocks based on their name, properties, and/or nbt.</p>
@@ -44,7 +42,7 @@ public record BlockPredicate(
         @Nullable PropertiesPredicate state,
         @Nullable NbtPredicate nbt,
         DataComponentPredicates components
-) implements Predicate<Block> {
+) {
     /**
      * Matches all blocks.
      */
@@ -112,8 +110,7 @@ public record BlockPredicate(
         Objects.requireNonNull(components, "Component predicates cannot be null");
     }
 
-    @Override
-    public boolean test(Block block) {
+    public boolean test(Registries registries, Block block) {
         if (blocks != null && !blocks.contains(block.registryKey()))
             return false;
         if (state != null && !state.test(block))
@@ -126,7 +123,7 @@ public record BlockPredicate(
             return false; // If a block has no NBT (it's not a block entity), any component predicates must return false
 
         CompoundBinaryTag componentsTag = block.nbt().getCompound("components");
-        final Transcoder<BinaryTag> coder = new RegistryTranscoder<>(Transcoder.NBT, MinecraftServer.getRegistries());
+        final Transcoder<BinaryTag> coder = new RegistryTranscoder<>(Transcoder.NBT, registries);
         final var componentMapResult = DataComponent.MAP_NBT_TYPE.decode(coder, componentsTag);
         return componentMapResult instanceof Result.Ok(DataComponentMap componentMap) && components.test(componentMap);
     }

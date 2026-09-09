@@ -1,6 +1,5 @@
 package dev.gameengine.instance;
 
-import dev.gameengine.MinecraftServer;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.Nullable;
 
@@ -76,7 +75,7 @@ public interface ChunkLoader {
                         saveChunk(chunk);
                         phaser.arriveAndDeregister();
                     } catch (Throwable e) {
-                        MinecraftServer.getExceptionManager().handleException(e);
+                        chunk.getInstance().process().exception().handleException(e);
                     }
                 });
             }

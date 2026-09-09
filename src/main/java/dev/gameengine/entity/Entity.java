@@ -10,7 +10,6 @@ import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.HoverEvent;
 import net.kyori.adventure.text.event.HoverEvent.ShowEntity;
 import net.kyori.adventure.text.event.HoverEventSource;
-import dev.gameengine.MinecraftServer;
 import dev.gameengine.ServerFlag;
 import dev.gameengine.ServerProcess;
 import dev.gameengine.Tickable;
@@ -32,8 +31,8 @@ import dev.gameengine.entity.metadata.EntityMeta;
 import dev.gameengine.entity.metadata.LivingEntityMeta;
 import dev.gameengine.entity.metadata.ObjectDataProvider;
 import dev.gameengine.entity.metadata.other.ArmorStandMeta;
-import dev.gameengine.event.EventDispatcher;
 import dev.gameengine.event.EventFilter;
+import dev.gameengine.event.GlobalEventHandler;
 import dev.gameengine.event.EventHandler;
 import dev.gameengine.event.EventNode;
 import dev.gameengine.event.entity.EntityDeathEvent;
@@ -202,8 +201,11 @@ public class Entity implements Viewable, Tickable, Schedulable, EventHandler<Ent
     protected final EntityView viewEngine = new EntityView(this);
     protected final Set<Player> viewers = viewEngine.set;
     private final TagHandler tagHandler = TagHandler.newHandler();
-    private final Scheduler scheduler = Scheduler.newScheduler();
-    private final @Nullable EventNode<EntityEvent> eventNode;
+    @SuppressWarnings("this-escape") // deliberate self registration, entities are not usable until spawned
+    private final Scheduler scheduler = Scheduler.newScheduler(this::handleException);
+    // Both are bound either at construction or when the entity first enters an instance.
+    private volatile @Nullable ServerProcess process;
+    private volatile @Nullable EventNode<EntityEvent> eventNode;
 
     private final UUID uuid;
     private boolean isActive; // False if entity has only been instanced without being added somewhere
@@ -232,6 +234,20 @@ public class Entity implements Viewable, Tickable, Schedulable, EventHandler<Ent
     @SuppressWarnings("this-escape") // deliberate self registration, entities are not usable until spawned
     private final Acquirable<Entity> acquirable = Acquirable.unassigned(this);
 
+    /**
+     * Creates an entity already bound to a server process. Entities created without one are bound
+     * to the process of the first {@link #setInstance(Instance) instance} they are placed in.
+     */
+    @SuppressWarnings("this-escape") // deliberate self registration, entities are not usable until spawned
+    public Entity(ServerProcess process, EntityType entityType, UUID uuid) {
+        this(entityType, uuid);
+        bindProcess(process);
+    }
+
+    public Entity(ServerProcess process, EntityType entityType) {
+        this(process, entityType, UUID.randomUUID());
+    }
+
     @SuppressWarnings("this-escape") // deliberate self registration, entities are not usable until spawned
     public Entity(EntityType entityType, UUID uuid) {
         this.id = generateId();
@@ -251,14 +267,34 @@ public class Entity implements Viewable, Tickable, Schedulable, EventHandler<Ent
                 entityType.horizontalAirResistance(),
                 entityType.verticalAirResistance());
 
-        final ServerProcess process = MinecraftServer.process();
-        if (process != null) {
-            this.eventNode = process.eventHandler().map(this, EventFilter.ENTITY);
-        } else {
-            // Local nodes require a server process
-            this.eventNode = null;
-        }
         updateCollisions();
+    }
+
+    /**
+     * Binds this entity to a server process, creating its local event node. Called by the constructor
+     * taking a process, and by {@link #setInstance(Instance, Pos)} for entities created without one.
+     */
+    private synchronized void bindProcess(ServerProcess process) {
+        if (this.process == process) return;
+        Check.stateCondition(this.process != null, "Entity is already bound to another server process");
+        this.process = process;
+        this.eventNode = process.eventHandler().map(this, EventFilter.ENTITY);
+    }
+
+    /**
+     * Gets the server process this entity belongs to, {@code null} until the entity is placed in an
+     * instance for the first time.
+     *
+     * @return the server process
+     */
+    public @UnknownNullability ServerProcess process() {
+        return process;
+    }
+
+    private void handleException(Throwable throwable) {
+        final ServerProcess process = this.process;
+        if (process != null) process.exception().handleException(throwable);
+        else throwable.printStackTrace();
     }
 
     public Entity(EntityType entityType) {
@@ -420,7 +456,7 @@ public class Entity implements Viewable, Tickable, Schedulable, EventHandler<Ent
         Check.stateCondition(instance == null, "You need to use Entity#setInstance before teleporting an entity!");
 
         EntityTeleportEvent event = new EntityTeleportEvent(this, position, flags);
-        EventDispatcher.call(event);
+        eventHandler().call(event);
 
         final Pos globalPosition = clampPosition(PositionUtils.getPositionWithRelativeFlags(this.position, position, flags));
         final Vec globalVelocity = PositionUtils.getVelocityWithRelativeFlags(this.velocity, velocity, flags);
@@ -711,7 +747,7 @@ public class Entity implements Viewable, Tickable, Schedulable, EventHandler<Ent
             update(time);
 
             ticks++;
-            EventDispatcher.call(new EntityTickEvent(this));
+            eventHandler().call(new EntityTickEvent(this));
 
             // remove expired effects
             effectTick();
@@ -797,7 +833,7 @@ public class Entity implements Viewable, Tickable, Schedulable, EventHandler<Ent
             if (getAliveTicks() >= timedPotion.startingTicks() + duration) {
                 // Send the packet that the potion should no longer be applied
                 timedPotion.potion().sendRemovePacket(this);
-                EventDispatcher.call(new EntityPotionRemoveEvent(this, timedPotion.potion()));
+                eventHandler().call(new EntityPotionRemoveEvent(this, timedPotion.potion()));
                 return true;
             }
             return false;
@@ -931,7 +967,7 @@ public class Entity implements Viewable, Tickable, Schedulable, EventHandler<Ent
     @ApiStatus.Internal
     protected void refreshCurrentChunk(Chunk currentChunk) {
         this.currentChunk = currentChunk;
-        MinecraftServer.process().dispatcher().updateElement(this, currentChunk);
+        Objects.requireNonNull(process, "entity process").dispatcher().updateElement(this, currentChunk);
     }
 
     /**
@@ -959,8 +995,9 @@ public class Entity implements Viewable, Tickable, Schedulable, EventHandler<Ent
         if (Objects.equals(previousInstance, instance)) {
             return teleport(spawnPosition); // Already in the instance, teleport to spawn point
         }
+        bindProcess(instance.process());
         AddEntityToInstanceEvent event = new AddEntityToInstanceEvent(instance, this);
-        EventDispatcher.call(event);
+        eventHandler().call(event);
         if (event.isCancelled()) {
             // The instance has not been set, callers chaining on the future must not proceed as if it had
             return CompletableFuture.failedFuture(
@@ -993,9 +1030,9 @@ public class Entity implements Viewable, Tickable, Schedulable, EventHandler<Ent
                 }
                 instance.getEntityTracker().register(this, position, trackingTarget, trackingUpdate);
                 spawn();
-                EventDispatcher.call(new EntitySpawnEvent(this, instance));
+                eventHandler().call(new EntitySpawnEvent(this, instance));
             } catch (Exception e) {
-                MinecraftServer.getExceptionManager().handleException(e);
+                handleException(e);
             }
         }));
     }
@@ -1018,7 +1055,7 @@ public class Entity implements Viewable, Tickable, Schedulable, EventHandler<Ent
     }
 
     private void removeFromInstance(Instance instance) {
-        EventDispatcher.call(new RemoveEntityFromInstanceEvent(instance, this));
+        eventHandler().call(new RemoveEntityFromInstanceEvent(instance, this));
         if (this instanceof Player player) instance.bossBars().forEach(player::hideBossBar);
         instance.getEntityTracker().unregister(this, trackingTarget, trackingUpdate);
         this.viewEngine.forManuals(this::removeViewer);
@@ -1044,7 +1081,7 @@ public class Entity implements Viewable, Tickable, Schedulable, EventHandler<Ent
     public void setVelocity(Vec velocity) {
         this.acquirable.assertOwnership();
         EntityVelocityEvent entityVelocityEvent = new EntityVelocityEvent(this, velocity);
-        EventDispatcher.callCancellable(entityVelocityEvent, () -> {
+        eventHandler().callCancellable(entityVelocityEvent, () -> {
             this.velocity = entityVelocityEvent.getVelocity();
             sendPacketToViewersAndSelf(getVelocityPacket());
         });
@@ -1465,22 +1502,22 @@ public class Entity implements Viewable, Tickable, Schedulable, EventHandler<Ent
         assert chunk != null;
         if (distanceX > 8 || distanceY > 8 || distanceZ > 8) {
             // Send relative 0 velocity to avoid affecting it in this case
-            PacketViewableUtils.prepareViewablePacket(chunk, new EntityTeleportPacket(getEntityId(), position,
+            PacketViewableUtils.prepareViewablePacket(process(), chunk, new EntityTeleportPacket(getEntityId(), position,
                     Vec.ZERO, RelativeFlags.DELTA_COORD, isOnGround()), this);
             nextSynchronizationTick = ticks + synchronizationTicks;
         } else if (positionChange && viewChange) {
-            PacketViewableUtils.prepareViewablePacket(chunk, EntityPositionAndRotationPacket.getPacket(getEntityId(), position,
+            PacketViewableUtils.prepareViewablePacket(process(), chunk, EntityPositionAndRotationPacket.getPacket(getEntityId(), position,
                     lastSyncedPosition, isOnGround()), this);
             // Fix head rotation
-            PacketViewableUtils.prepareViewablePacket(chunk, new EntityHeadLookPacket(getEntityId(), headRotation), this);
+            PacketViewableUtils.prepareViewablePacket(process(), chunk, new EntityHeadLookPacket(getEntityId(), headRotation), this);
         } else if (positionChange) {
             // This is a confusing fix for a confusing issue. If rotation is only sent when the entity actually changes, then spawning an entity
             // on the ground causes the entity not to update its rotation correctly. It works fine if the entity is spawned in the air. Very weird.
-            PacketViewableUtils.prepareViewablePacket(chunk, EntityPositionAndRotationPacket.getPacket(getEntityId(), position,
+            PacketViewableUtils.prepareViewablePacket(process(), chunk, EntityPositionAndRotationPacket.getPacket(getEntityId(), position,
                     lastSyncedPosition, onGround), this);
         } else if (viewChange) {
-            PacketViewableUtils.prepareViewablePacket(chunk, new EntityHeadLookPacket(getEntityId(), headRotation), this);
-            PacketViewableUtils.prepareViewablePacket(chunk, EntityPositionAndRotationPacket.getPacket(getEntityId(), position,
+            PacketViewableUtils.prepareViewablePacket(process(), chunk, new EntityHeadLookPacket(getEntityId(), headRotation), this);
+            PacketViewableUtils.prepareViewablePacket(process(), chunk, EntityPositionAndRotationPacket.getPacket(getEntityId(), position,
                     lastSyncedPosition, isOnGround()), this);
         }
         this.lastSyncedPosition = position;
@@ -1601,7 +1638,7 @@ public class Entity implements Viewable, Tickable, Schedulable, EventHandler<Ent
      * @param potion The potion to add
      */
     public void addEffect(Potion potion) {
-        EventDispatcher.callCancellable(new EntityPotionAddEvent(this, potion), () -> {
+        eventHandler().callCancellable(new EntityPotionAddEvent(this, potion), () -> {
             removeEffect(potion.effect());
             this.effects.add(new TimedPotion(potion, getAliveTicks()));
             potion.sendAddPacket(this);
@@ -1617,7 +1654,7 @@ public class Entity implements Viewable, Tickable, Schedulable, EventHandler<Ent
         this.effects.removeIf(timedPotion -> {
             if (timedPotion.potion().effect() == effect) {
                 timedPotion.potion().sendRemovePacket(this);
-                EventDispatcher.call(new EntityPotionRemoveEvent(this, timedPotion.potion()));
+                eventHandler().call(new EntityPotionRemoveEvent(this, timedPotion.potion()));
                 return true;
             }
             return false;
@@ -1660,7 +1697,7 @@ public class Entity implements Viewable, Tickable, Schedulable, EventHandler<Ent
     public void clearEffects() {
         for (TimedPotion timedPotion : effects) {
             timedPotion.potion().sendRemovePacket(this);
-            EventDispatcher.call(new EntityPotionRemoveEvent(this, timedPotion.potion()));
+            eventHandler().call(new EntityPotionRemoveEvent(this, timedPotion.potion()));
         }
         this.effects.clear();
     }
@@ -1677,11 +1714,11 @@ public class Entity implements Viewable, Tickable, Schedulable, EventHandler<Ent
     protected synchronized void remove(boolean permanent) {
         this.acquirable.assertOwnership();
         if (isRemoved()) return;
-        EventDispatcher.call(new EntityDespawnEvent(this));
+        eventHandler().call(new EntityDespawnEvent(this));
         try {
             despawn();
         } catch (Throwable t) {
-            MinecraftServer.getExceptionManager().handleException(t);
+            handleException(t);
         }
 
         // Remove passengers if any (also done with LivingEntity#kill)
@@ -1693,7 +1730,8 @@ public class Entity implements Viewable, Tickable, Schedulable, EventHandler<Ent
         Set<Entity> leashedEntities = getLeashedEntities();
         leashedEntities.forEach(entity -> entity.setLeashHolder(null));
 
-        MinecraftServer.process().dispatcher().removeElement(this);
+        final ServerProcess process = this.process;
+        if (process != null) process.dispatcher().removeElement(this);
         this.removed = true;
         if (!permanent) {
             // Reset some state to be ready for re-use
@@ -1798,7 +1836,7 @@ public class Entity implements Viewable, Tickable, Schedulable, EventHandler<Ent
     protected void synchronizePosition() {
         final Pos posCache = this.position;
         final Pos delta = posCache.sub(lastSyncedPosition);
-        PacketViewableUtils.prepareViewablePacket(currentChunk, new EntityPositionSyncPacket(getEntityId(), posCache, delta, posCache.yaw(), posCache.pitch(), isOnGround()), this);
+        PacketViewableUtils.prepareViewablePacket(process(), currentChunk, new EntityPositionSyncPacket(getEntityId(), posCache, delta, posCache.yaw(), posCache.pitch(), isOnGround()), this);
         nextSynchronizationTick = ticks + synchronizationTicks;
         this.lastSyncedPosition = posCache;
     }
@@ -1855,8 +1893,15 @@ public class Entity implements Viewable, Tickable, Schedulable, EventHandler<Ent
     }
 
     @Override
-    public EventNode<EntityEvent> eventNode() {
+    public @UnknownNullability EventNode<EntityEvent> eventNode() {
         return eventNode;
+    }
+
+    /**
+     * The global event handler of the process owning this entity.
+     */
+    private GlobalEventHandler eventHandler() {
+        return Objects.requireNonNull(process, "entity process").eventHandler();
     }
 
     /**

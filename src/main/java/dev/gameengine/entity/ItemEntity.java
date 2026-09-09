@@ -1,7 +1,6 @@
 package dev.gameengine.entity;
 
 import dev.gameengine.entity.metadata.item.ItemEntityMeta;
-import dev.gameengine.event.EventDispatcher;
 import dev.gameengine.event.entity.EntityItemMergeEvent;
 import dev.gameengine.instance.EntityTracker;
 import dev.gameengine.item.ItemStack;
@@ -88,7 +87,7 @@ public class ItemEntity extends Entity {
                         if (!MathUtils.isBetween(totalAmount, 0, itemStack.maxStackSize())) return;
                         final ItemStack result = itemStack.withAmount(totalAmount);
                         EntityItemMergeEvent entityItemMergeEvent = new EntityItemMergeEvent(this, itemEntity, result);
-                        EventDispatcher.callCancellable(entityItemMergeEvent, () -> {
+                        process().eventHandler().callCancellable(entityItemMergeEvent, () -> {
                             setItemStack(entityItemMergeEvent.getResult());
                             itemEntity.remove();
                         });

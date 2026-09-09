@@ -26,7 +26,6 @@ import dev.gameengine.entity.Entity;
 import dev.gameengine.entity.EntityCreature;
 import dev.gameengine.entity.ExperienceOrb;
 import dev.gameengine.entity.Player;
-import dev.gameengine.event.EventDispatcher;
 import dev.gameengine.event.EventFilter;
 import dev.gameengine.event.EventHandler;
 import dev.gameengine.event.EventNode;
@@ -133,9 +132,9 @@ public abstract class Instance implements Block.Getter, Block.Setter, Biome.Gett
 
     // instance custom data
     protected TagHandler tagHandler = TagHandler.newHandler();
-    private final Scheduler scheduler = Scheduler.newScheduler();
-    private final @Nullable EventNode<InstanceEvent> eventNode;
-    private final Registries registries;
+    private final Scheduler scheduler;
+    private final EventNode<InstanceEvent> eventNode;
+    private final ServerProcess process;
 
     // the explosion supplier
     private ExplosionSupplier explosionSupplier;
@@ -143,36 +142,30 @@ public abstract class Instance implements Block.Getter, Block.Setter, Biome.Gett
     /**
      * Creates a new instance.
      *
+     * @param process       the server process owning the instance
      * @param uuid          the {@link UUID} of the instance
      * @param dimensionType the {@link DimensionType} of the instance
      */
-    public Instance(UUID uuid, RegistryKey<DimensionType> dimensionType) {
-        this(uuid, dimensionType, dimensionType.key());
+    public Instance(ServerProcess process, UUID uuid, RegistryKey<DimensionType> dimensionType) {
+        this(process, uuid, dimensionType, dimensionType.key());
     }
 
     /**
      * Creates a new instance.
      *
-     * @param uuid          the {@link UUID} of the instance
-     * @param dimensionType the {@link DimensionType} of the instance
-     */
-    public Instance(UUID uuid, RegistryKey<DimensionType> dimensionType, Key dimensionName) {
-        this(MinecraftServer.getRegistries(), uuid, dimensionType, dimensionName);
-    }
-
-    /**
-     * Creates a new instance.
-     *
+     * @param process       the server process owning the instance
      * @param uuid          the {@link UUID} of the instance
      * @param dimensionType the {@link DimensionType} of the instance
      */
     @SuppressWarnings("this-escape") // deliberate self registration during construction
-    public Instance(Registries registries, UUID uuid, RegistryKey<DimensionType> dimensionType, Key dimensionName) {
-        this.registries = registries;
+    public Instance(ServerProcess process, UUID uuid, RegistryKey<DimensionType> dimensionType, Key dimensionName) {
+        this.process = process;
+        this.scheduler = Scheduler.newScheduler(process.exception()::handleException);
+        final Registries registries = process.registries();
         this.uuid = uuid;
         this.dimensionType = dimensionType;
         this.cachedDimensionType = registries.dimensionType().get(dimensionType);
-        Check.argCondition(cachedDimensionType == null, "The dimension " + dimensionType + " is not registered! Please add it to the registry (`MinecraftServer.getDimensionTypeRegistry().registry(dimensionType)`).");
+        Check.argCondition(cachedDimensionType == null, "The dimension " + dimensionType + " is not registered! Please add it to the registry (`process.dimensionType().register(...)`).");
         this.dimensionName = dimensionName.asString();
 
         this.clocks = new Object2ObjectArrayMap<>();
@@ -182,13 +175,16 @@ public abstract class Instance implements Block.Getter, Block.Setter, Biome.Gett
         this.worldBorder = WorldBorder.DEFAULT_BORDER;
         targetBorderDiameter = this.worldBorder.diameter();
 
-        final ServerProcess process = MinecraftServer.process();
-        if (process != null) {
-            this.eventNode = process.eventHandler().map(this, EventFilter.INSTANCE);
-        } else {
-            // Local nodes require a server process
-            this.eventNode = null;
-        }
+        this.eventNode = process.eventHandler().map(this, EventFilter.INSTANCE);
+    }
+
+    /**
+     * Gets the server process owning this instance.
+     *
+     * @return the server process
+     */
+    public ServerProcess process() {
+        return process;
     }
 
     /**
@@ -197,7 +193,7 @@ public abstract class Instance implements Block.Getter, Block.Setter, Biome.Gett
      * @return the registries
      */
     public Registries registries() {
-        return registries;
+        return process.registries();
     }
 
     /**
@@ -331,7 +327,7 @@ public abstract class Instance implements Block.Getter, Block.Setter, Biome.Gett
             Section section = chunk.getSection(sectionY);
             section.invalidate();
             chunk.invalidate();
-            EventDispatcher.call(new InstanceSectionInvalidateEvent(this, sectionX, sectionY, sectionZ));
+            process.eventHandler().call(new InstanceSectionInvalidateEvent(this, sectionX, sectionY, sectionZ));
         }
     }
 
@@ -833,7 +829,7 @@ public abstract class Instance implements Block.Getter, Block.Setter, Biome.Gett
         // Tick event
         {
             // Process tick events
-            EventDispatcher.call(new InstanceTickEvent(this, time, lastTickAge));
+            process.eventHandler().call(new InstanceTickEvent(this, time, lastTickAge));
             // Set last tick age
             this.lastTickAge = time;
         }

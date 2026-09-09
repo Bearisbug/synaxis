@@ -1,6 +1,5 @@
 package dev.gameengine.entity;
 
-import dev.gameengine.event.EventDispatcher;
 import dev.gameengine.event.entity.EntityAttackEvent;
 import dev.gameengine.thread.Acquirable;
 import dev.gameengine.utils.time.TimeUnit;
@@ -98,7 +97,7 @@ public class EntityCreature extends LivingEntity {
         if (swingHand)
             swingMainHand();
         EntityAttackEvent attackEvent = new EntityAttackEvent(this, target);
-        EventDispatcher.call(attackEvent);
+        process().eventHandler().call(attackEvent);
     }
 
     /**

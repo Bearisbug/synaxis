@@ -5,14 +5,13 @@ import it.unimi.dsi.fastutil.longs.LongArrayList;
 import it.unimi.dsi.fastutil.longs.LongList;
 import net.kyori.adventure.key.Key;
 import net.kyori.adventure.nbt.CompoundBinaryTag;
-import dev.gameengine.MinecraftServer;
+import dev.gameengine.ServerProcess;
 import dev.gameengine.coordinate.BlockVec;
 import dev.gameengine.coordinate.CoordConversion;
 import dev.gameengine.coordinate.Point;
 import dev.gameengine.coordinate.Vec;
 import dev.gameengine.entity.Entity;
 import dev.gameengine.entity.Player;
-import dev.gameengine.event.EventDispatcher;
 import dev.gameengine.event.instance.InstanceBlockUpdateEvent;
 import dev.gameengine.event.instance.InstanceChunkLoadEvent;
 import dev.gameengine.event.instance.InstanceChunkUnloadEvent;
@@ -31,7 +30,6 @@ import dev.gameengine.network.packet.server.play.BlockEntityDataPacket;
 import dev.gameengine.network.packet.server.play.MultiBlockChangePacket;
 import dev.gameengine.network.packet.server.play.UnloadChunkPacket;
 import dev.gameengine.network.packet.server.play.WorldEventPacket;
-import dev.gameengine.registry.Registries;
 import dev.gameengine.registry.RegistryKey;
 import dev.gameengine.utils.PacketSendingUtils;
 import dev.gameengine.utils.async.AsyncUtils;
@@ -104,32 +102,27 @@ public class InstanceContainer extends Instance {
     protected InstanceContainer srcInstance; // only present if this instance has been created using a copy
     private volatile long lastBlockChangeTime; // Time at which the last block change happened (#setBlock)
 
-    public InstanceContainer(UUID uuid, RegistryKey<DimensionType> dimensionType) {
-        this(uuid, dimensionType, null, dimensionType.key());
+    public InstanceContainer(ServerProcess process, UUID uuid, RegistryKey<DimensionType> dimensionType) {
+        this(process, uuid, dimensionType, null, dimensionType.key());
     }
 
-    public InstanceContainer(UUID uuid, RegistryKey<DimensionType> dimensionType, Key dimensionName) {
-        this(uuid, dimensionType, null, dimensionName);
+    public InstanceContainer(ServerProcess process, UUID uuid, RegistryKey<DimensionType> dimensionType, Key dimensionName) {
+        this(process, uuid, dimensionType, null, dimensionName);
     }
 
-    public InstanceContainer(UUID uuid, RegistryKey<DimensionType> dimensionType, @Nullable ChunkLoader loader) {
-        this(uuid, dimensionType, loader, dimensionType.key());
-    }
-
-    @SuppressWarnings("this-escape") // deliberate self registration during construction
-    public InstanceContainer(UUID uuid, RegistryKey<DimensionType> dimensionType, @Nullable ChunkLoader loader, Key dimensionName) {
-        this(MinecraftServer.getRegistries(), uuid, dimensionType, loader, dimensionName);
+    public InstanceContainer(ServerProcess process, UUID uuid, RegistryKey<DimensionType> dimensionType, @Nullable ChunkLoader loader) {
+        this(process, uuid, dimensionType, loader, dimensionType.key());
     }
 
     @SuppressWarnings("this-escape") // deliberate self registration during construction
     public InstanceContainer(
-            Registries registries,
+            ServerProcess process,
             UUID uuid,
             RegistryKey<DimensionType> dimensionType,
             @Nullable ChunkLoader loader,
             Key dimensionName
     ) {
-        super(registries, uuid, dimensionType, dimensionName);
+        super(process, uuid, dimensionType, dimensionName);
         setChunkSupplier(DynamicChunk::new);
         setChunkLoader(Objects.requireNonNullElse(loader, DEFAULT_LOADER));
         this.chunkLoader.loadInstance(this);
@@ -182,7 +175,7 @@ public class InstanceContainer extends Instance {
             this.currentlyChangingBlocks.put(blockPosition, block);
 
             // Change id based on neighbors
-            final BlockPlacementRule blockPlacementRule = MinecraftServer.getBlockManager().getBlockPlacementRule(block);
+            final BlockPlacementRule blockPlacementRule = process().block().getBlockPlacementRule(block);
             if (placement != null && blockPlacementRule != null && doBlockUpdates) {
                 BlockPlacementRule.PlacementState rulePlacement;
                 if (placement instanceof BlockHandler.PlayerPlacement pp) {
@@ -222,7 +215,7 @@ public class InstanceContainer extends Instance {
                     chunk.sendPacketToViewers(new BlockEntityDataPacket(blockPosition, blockEntityType, data));
                 }
             }
-            EventDispatcher.call(new InstanceBlockUpdateEvent(this, blockPosition, block));
+            process().eventHandler().call(new InstanceBlockUpdateEvent(this, blockPosition, block));
         } finally {
             chunk.unlockWriteLock();
         }
@@ -255,7 +248,7 @@ public class InstanceContainer extends Instance {
             return false;
         }
         PlayerBlockBreakEvent blockBreakEvent = new PlayerBlockBreakEvent(player, this, block, Block.AIR, blockPosition.asBlockVec(), blockFace);
-        EventDispatcher.call(blockBreakEvent);
+        process().eventHandler().call(blockBreakEvent);
         final boolean allowed = !blockBreakEvent.isCancelled();
         if (allowed) {
             // Break or change the broken block based on event result
@@ -297,7 +290,7 @@ public class InstanceContainer extends Instance {
         final int chunkX = chunk.getChunkX();
         final int chunkZ = chunk.getChunkZ();
         chunk.sendPacketToViewers(new UnloadChunkPacket(chunkX, chunkZ));
-        EventDispatcher.call(new InstanceChunkUnloadEvent(this, chunk));
+        process().eventHandler().call(new InstanceChunkUnloadEvent(this, chunk));
         // Remove all entities in chunk, except players: removing one disconnects it,
         // and the contract of Instance#unloadChunk is to leave them alone
         for (Entity entity : getEntityTracker().chunkEntities(chunkX, chunkZ, EntityTracker.Target.ENTITIES)) {
@@ -310,7 +303,7 @@ public class InstanceContainer extends Instance {
         chunk.unload();
         chunkLoader.unloadChunk(chunk);
         getEntityTracker().unregisterViewable(chunk.viewable);
-        var dispatcher = MinecraftServer.process().dispatcher();
+        var dispatcher = process().dispatcher();
         dispatcher.deletePartition(chunk);
     }
 
@@ -337,13 +330,13 @@ public class InstanceContainer extends Instance {
         return optionalAsync(chunkLoader.supportsParallelSaving(), () -> chunkLoader.saveChunks(getChunks()));
     }
 
-    private static CompletableFuture<Void> optionalAsync(boolean async, Runnable runnable) {
+    private CompletableFuture<Void> optionalAsync(boolean async, Runnable runnable) {
         if (!async) {
             runnable.run();
             return AsyncUtils.empty();
         }
         return CompletableFuture.runAsync(runnable, Thread::startVirtualThread).whenComplete((_, e) -> {
-            if (e != null) MinecraftServer.getExceptionManager().handleException(e);
+            if (e != null) process().exception().handleException(e);
         });
     }
 
@@ -391,9 +384,9 @@ public class InstanceContainer extends Instance {
             // The chain never completes inside the mapping, this callback is always async
             var _ = chain.whenComplete((chunk, e) -> {
                 if (e != null) {
-                    MinecraftServer.getExceptionManager().handleException(e instanceof CompletionException ce ? ce.getCause() : e);
+                    process().exception().handleException(e instanceof CompletionException ce ? ce.getCause() : e);
                 } else {
-                    EventDispatcher.call(new InstanceChunkLoadEvent(this, chunk));
+                    process().eventHandler().call(new InstanceChunkLoadEvent(this, chunk));
                 }
             });
             return chain;
@@ -465,7 +458,7 @@ public class InstanceContainer extends Instance {
             // Apply awaiting forks
             processFork(chunk);
         } catch (Throwable e) {
-            MinecraftServer.getExceptionManager().handleException(e);
+            process().exception().handleException(e);
         } finally {
             // End generation
             refreshLastBlockChangeTime();
@@ -630,7 +623,7 @@ public class InstanceContainer extends Instance {
      * @see #getSrcInstance() to retrieve the "creation source" of the copied instance
      */
     public synchronized InstanceContainer copy() {
-        InstanceContainer copiedInstance = new InstanceContainer(registries(), UUID.randomUUID(),
+        InstanceContainer copiedInstance = new InstanceContainer(process(), UUID.randomUUID(),
                 getDimensionType(), null, Key.key(getDimensionName()));
         copiedInstance.srcInstance = this;
         copiedInstance.tagHandler = this.tagHandler.copy();
@@ -707,7 +700,7 @@ public class InstanceContainer extends Instance {
             }
             chunk.sendChunk();
         }, Thread::startVirtualThread).whenComplete((_, e) -> {
-            if (e != null) MinecraftServer.getExceptionManager().handleException(e);
+            if (e != null) process().exception().handleException(e);
         });
     }
 
@@ -783,7 +776,7 @@ public class InstanceContainer extends Instance {
             final Block neighborBlock = cache.getBlock(neighborX, neighborY, neighborZ, Condition.NONE);
             if (neighborBlock == null || neighborBlock.air())
                 continue;
-            final BlockPlacementRule neighborBlockPlacementRule = MinecraftServer.getBlockManager().getBlockPlacementRule(neighborBlock);
+            final BlockPlacementRule neighborBlockPlacementRule = process().block().getBlockPlacementRule(neighborBlock);
             if (neighborBlockPlacementRule == null || updateDistance >= neighborBlockPlacementRule.maxUpdateDistance())
                 continue;
 
@@ -805,7 +798,7 @@ public class InstanceContainer extends Instance {
 
     private void cacheChunk(Chunk chunk) {
         this.chunks.put(CoordConversion.chunkIndex(chunk.getChunkX(), chunk.getChunkZ()), chunk);
-        var dispatcher = MinecraftServer.process().dispatcher();
+        var dispatcher = process().dispatcher();
         dispatcher.createPartition(chunk);
     }
 }

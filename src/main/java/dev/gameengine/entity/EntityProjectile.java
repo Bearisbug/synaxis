@@ -5,7 +5,6 @@ import dev.gameengine.coordinate.Point;
 import dev.gameengine.coordinate.Pos;
 import dev.gameengine.coordinate.Vec;
 import dev.gameengine.entity.metadata.projectile.ProjectileMeta;
-import dev.gameengine.event.EventDispatcher;
 import dev.gameengine.event.entity.EntityShootEvent;
 import dev.gameengine.event.entity.projectile.ProjectileCollideWithBlockEvent;
 import dev.gameengine.event.entity.projectile.ProjectileCollideWithEntityEvent;
@@ -54,7 +53,7 @@ public class EntityProjectile extends Entity {
 
     public void shoot(Point to, double power, double spread) {
         final EntityShootEvent shootEvent = new EntityShootEvent(this.shooter, this, to, power, spread);
-        EventDispatcher.call(shootEvent);
+        process().eventHandler().call(shootEvent);
         if (shootEvent.isCancelled()) {
             remove();
             return;
@@ -113,7 +112,7 @@ public class EntityProjectile extends Entity {
             wasStuck = false;
             setNoGravity(super.onGround);
             super.onGround = false;
-            EventDispatcher.call(new ProjectileUncollideEvent(this));
+            process().eventHandler().call(new ProjectileUncollideEvent(this));
         }
     }
 
@@ -155,7 +154,7 @@ public class EntityProjectile extends Entity {
             }
             if (block.solid()) {
                 final ProjectileCollideWithBlockEvent event = new ProjectileCollideWithBlockEvent(this, pos, block);
-                EventDispatcher.call(event);
+                process().eventHandler().call(event);
                 if (isRemoved()) return true;
                 if (!event.isCancelled()) {
                     teleport(pos).join();
@@ -184,7 +183,7 @@ public class EntityProjectile extends Entity {
             if (victimOptional.isPresent()) {
                 final LivingEntity target = victimOptional.get();
                 final ProjectileCollideWithEntityEvent event = new ProjectileCollideWithEntityEvent(this, pos, target);
-                EventDispatcher.call(event);
+                process().eventHandler().call(event);
                 if (!event.isCancelled()) {
                     return super.onGround;
                 }

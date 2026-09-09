@@ -6,15 +6,12 @@ import net.minestom.server.coordinate.Vec;
 import net.minestom.server.entity.metadata.animal.ArmadilloMeta;
 import net.minestom.server.entity.metadata.animal.SnifferMeta;
 import net.minestom.server.entity.metadata.golem.CopperGolemMeta;
-import net.minestom.server.entity.metadata.other.PaintingVariant;
 import net.minestom.server.entity.metadata.villager.VillagerMeta;
 import net.minestom.server.entity.metadata.water.fish.SalmonMeta;
 import net.minestom.server.instance.block.Block;
 import net.minestom.server.item.ItemStack;
 import net.minestom.server.network.player.ResolvableProfile;
 import net.minestom.server.particle.Particle;
-import net.minestom.server.registry.Holder;
-import net.minestom.server.utils.Direction;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.UnknownNullability;
 
@@ -100,31 +97,12 @@ public sealed class MetadataDef {
         public static final Entry<Boolean> ALIGN_RIGHT = bitMask(4, (byte) 0x10, false);
     }
 
-    public static final class ExperienceOrb extends MetadataDef {
-        public static final Entry<Integer> VALUE = index(0, Metadata::VarInt, 0);
-    }
-
     public static final class ThrownItemProjectile extends MetadataDef {
         public static final Entry<ItemStack> ITEM = index(0, Metadata::ItemStack, ItemStack.AIR);
     }
 
     public static final class EyeOfEnder extends MetadataDef {
         public static final Entry<ItemStack> ITEM = index(0, Metadata::ItemStack, ItemStack.AIR);
-    }
-
-    public static final class FallingBlock extends MetadataDef {
-        public static final Entry<Point> SPAWN_POSITION = index(0, Metadata::BlockPosition, Vec.ZERO);
-    }
-
-    public static final class AreaEffectCloud extends MetadataDef {
-        public static final Entry<Float> RADIUS = index(0, Metadata::Float, 3f);
-        public static final Entry<Boolean> WAITING = index(1, Metadata::Boolean, false);
-        public static final Entry<Particle> PARTICLE = index(2, Metadata::Particle, Particle.ENTITY_EFFECT);
-    }
-
-    public static final class FishingHook extends MetadataDef {
-        public static final Entry<Integer> HOOKED = index(0, Metadata::VarInt, 0);
-        public static final Entry<Boolean> IS_CATCHABLE = index(1, Metadata::Boolean, false);
     }
 
     public static sealed class AbstractArrow extends MetadataDef {
@@ -144,21 +122,10 @@ public sealed class MetadataDef {
         public static final Entry<Boolean> HAS_ENCHANTMENT_GLINT = index(1, Metadata::Boolean, false);
     }
 
-    public static sealed class AbstractVehicle extends MetadataDef {
+    public static final class AbstractVehicle extends MetadataDef {
         public static final Entry<Integer> SHAKING_POWER = index(0, Metadata::VarInt, 0);
         public static final Entry<Integer> SHAKING_DIRECTION = index(1, Metadata::VarInt, 1);
         public static final Entry<Float> SHAKING_MULTIPLIER = index(2, Metadata::Float, 0f);
-    }
-
-    public static final class Boat extends AbstractVehicle {
-        public static final Entry<Boolean> IS_LEFT_PADDLE_TURNING = index(0, Metadata::Boolean, false);
-        public static final Entry<Boolean> IS_RIGHT_PADDLE_TURNING = index(1, Metadata::Boolean, false);
-        public static final Entry<Integer> SPLASH_TIMER = index(2, Metadata::VarInt, 0);
-    }
-
-    public static final class EndCrystal extends MetadataDef {
-        public static final Entry<@Nullable Point> BEAM_TARGET = index(0, Metadata::OptBlockPosition, null);
-        public static final Entry<Boolean> SHOW_BOTTOM = index(1, Metadata::Boolean, true);
     }
 
     public static final class SmartFireball extends MetadataDef {
@@ -177,20 +144,6 @@ public sealed class MetadataDef {
         public static final Entry<ItemStack> ITEM = index(0, Metadata::ItemStack, ItemStack.AIR);
         public static final Entry<@Nullable Integer> SHOOTER_ENTITY_ID = index(1, Metadata::OptVarInt, null);
         public static final Entry<Boolean> IS_SHOT_AT_ANGLE = index(2, Metadata::Boolean, false);
-    }
-
-    public static sealed class Hanging extends MetadataDef {
-        public static final Entry<Direction> DIRECTION = index(0, Metadata::Direction, Direction.SOUTH);
-    }
-
-    public static final class ItemFrame extends Hanging {
-        public static final Entry<ItemStack> ITEM = index(0, Metadata::ItemStack, ItemStack.AIR);
-        public static final Entry<Integer> ROTATION = index(1, Metadata::VarInt, 0);
-    }
-
-    public static final class Painting extends Hanging {
-        public static final Entry<Holder<PaintingVariant>> VARIANT = index(0, Metadata::PaintingVariant,
-                PaintingVariant.KEBAB);
     }
 
     public static final class ItemEntity extends MetadataDef {
@@ -263,11 +216,6 @@ public sealed class MetadataDef {
         public static final Entry<Boolean> NO_AI = bitMask(0, (byte) 0x01, false);
         public static final Entry<Boolean> IS_LEFT_HANDED = bitMask(0, (byte) 0x02, false);
         public static final Entry<Boolean> IS_AGGRESSIVE = bitMask(0, (byte) 0x04, false);
-    }
-
-    public static final class Allay extends Mob {
-        public static final Entry<Boolean> IS_DANCING = index(0, Metadata::Boolean, false);
-        public static final Entry<Boolean> CAN_DUPLICATE = index(1, Metadata::Boolean, true);
     }
 
     public static final class Armadillo extends AgeableMob {
@@ -381,19 +329,6 @@ public sealed class MetadataDef {
         public static final Entry<Integer> LEFT_HEAD_TARGET = index(1, Metadata::VarInt, 0);
         public static final Entry<Integer> RIGHT_HEAD_TARGET = index(2, Metadata::VarInt, 0);
         public static final Entry<Integer> INVULNERABLE_TIME = index(3, Metadata::VarInt, 0);
-    }
-
-    public static final class EnderDragon extends Mob {
-        public static final Entry<Integer> DRAGON_PHASE = index(0, Metadata::VarInt, 10);
-    }
-
-    public static final class PrimedTnt extends MetadataDef {
-        public static final Entry<Integer> FUSE_TIME = index(0, Metadata::VarInt, 80);
-        public static final Entry<Block> BLOCK_STATE = index(1, Metadata::BlockState, Block.TNT);
-    }
-
-    public static final class OminousItemSpawner extends MetadataDef {
-        public static final Entry<ItemStack> ITEM = index(0, Metadata::ItemStack, ItemStack.AIR);
     }
 
     /**

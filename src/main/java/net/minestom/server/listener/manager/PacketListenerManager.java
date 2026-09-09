@@ -96,7 +96,6 @@ import net.minestom.server.network.packet.client.play.ClientSetRecipeBookStatePa
 import net.minestom.server.network.packet.client.play.ClientSignedCommandChatPacket;
 import net.minestom.server.network.packet.client.play.ClientSpectatorActionPacket;
 import net.minestom.server.network.packet.client.play.ClientStatusPacket;
-import net.minestom.server.network.packet.client.play.ClientSteerBoatPacket;
 import net.minestom.server.network.packet.client.play.ClientTabCompletePacket;
 import net.minestom.server.network.packet.client.play.ClientTeleportConfirmPacket;
 import net.minestom.server.network.packet.client.play.ClientTeleportToEntityPacket;
@@ -161,7 +160,6 @@ public final class PacketListenerManager {
         setPlayListener(ClientInputPacket.class, PlayerInputListener::listener);
         setPlayListener(ClientChangeGameModePacket.class, PlayerGameModeChangeListener::listener);
         setPlayListener(ClientVehicleMovePacket.class, PlayerVehicleListener::vehicleMoveListener);
-        setPlayListener(ClientSteerBoatPacket.class, PlayerVehicleListener::boatSteerListener);
         setPlayListener(ClientPlayerPositionStatusPacket.class, PlayerPositionListener::playerPacketListener);
         setPlayListener(ClientPlayerRotationPacket.class, PlayerPositionListener::playerLookListener);
         setPlayListener(ClientPlayerPositionPacket.class, PlayerPositionListener::playerPositionListener);

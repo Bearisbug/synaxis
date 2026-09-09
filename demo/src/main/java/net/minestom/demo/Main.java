@@ -30,7 +30,6 @@ import net.minestom.demo.commands.LegacyCommand;
 import net.minestom.demo.commands.NotificationCommand;
 import net.minestom.demo.commands.PlayersCommand;
 import net.minestom.demo.commands.PotionCommand;
-import net.minestom.demo.commands.PrimedTNTCommand;
 import net.minestom.demo.commands.RedirectTestCommand;
 import net.minestom.demo.commands.RelightCommand;
 import net.minestom.demo.commands.RemoveCommand;
@@ -130,7 +129,6 @@ public class Main {
         commandManager.register(new TransferCommand());
         commandManager.register(new TestInstabreakCommand());
         commandManager.register(new AttributeCommand());
-        commandManager.register(new PrimedTNTCommand());
         commandManager.register(new SleepCommand());
         commandManager.register(new BelowNameCommand());
         commandManager.register(new TestBiomeAmbientParticleCommand());

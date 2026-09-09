@@ -298,8 +298,12 @@ public class InstanceContainer extends Instance {
         final int chunkZ = chunk.getChunkZ();
         chunk.sendPacketToViewers(new UnloadChunkPacket(chunkX, chunkZ));
         EventDispatcher.call(new InstanceChunkUnloadEvent(this, chunk));
-        // Remove all entities in chunk
-        getEntityTracker().chunkEntities(chunkX, chunkZ, EntityTracker.Target.ENTITIES).forEach(Entity::remove);
+        // Remove all entities in chunk, except players: removing one disconnects it,
+        // and the contract of Instance#unloadChunk is to leave them alone
+        for (Entity entity : getEntityTracker().chunkEntities(chunkX, chunkZ, EntityTracker.Target.ENTITIES)) {
+            if (entity instanceof Player) continue;
+            entity.remove();
+        }
         // Clear cache
         this.chunks.remove(CoordConversion.chunkIndex(chunkX, chunkZ));
         chunk.unload();

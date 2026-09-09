@@ -11,7 +11,7 @@ import org.jetbrains.annotations.Nullable;
 import java.util.List;
 
 public class LivingEntityMeta extends EntityMeta {
-    protected LivingEntityMeta(@Nullable Entity entity, MetadataHolder metadata) {
+    public LivingEntityMeta(@Nullable Entity entity, MetadataHolder metadata) {
         super(entity, metadata);
     }
 

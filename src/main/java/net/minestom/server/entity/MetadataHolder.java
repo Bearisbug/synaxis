@@ -2,6 +2,7 @@ package net.minestom.server.entity;
 
 import it.unimi.dsi.fastutil.ints.Int2ObjectArrayMap;
 import net.minestom.server.entity.metadata.EntityMeta;
+import net.minestom.server.entity.metadata.LivingEntityMeta;
 import net.minestom.server.entity.metadata.ambient.BatMeta;
 import net.minestom.server.entity.metadata.animal.ArmadilloMeta;
 import net.minestom.server.entity.metadata.animal.BeeMeta;
@@ -485,6 +486,13 @@ public final class MetadataHolder {
 
     @ApiStatus.Internal
     public static EntityMeta createMeta(EntityType entityType, @Nullable Entity entity, MetadataHolder metadata) {
-        return ENTITY_META_SUPPLIER.get(entityType).apply(entity, metadata);
+        final var supplier = ENTITY_META_SUPPLIER.get(entityType);
+        if (supplier != null) return supplier.apply(entity, metadata);
+        // Types without a dedicated meta still have to answer getEntityMeta(). The entity registry marks
+        // the LIVING and PLAYER packet types (EntityType#shouldSendAttributes), and only those own the
+        // LivingEntityMeta indices; everything else only owns the shared EntityMeta ones.
+        return entityType.shouldSendAttributes()
+                ? new LivingEntityMeta(entity, metadata)
+                : new EntityMeta(entity, metadata);
     }
 }

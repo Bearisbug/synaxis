@@ -216,7 +216,7 @@ public non-sealed class Inventory extends AbstractInventory {
         } else {
             clickResult = clickProcessor.shiftClick(
                     playerInventory, this,
-                    0, getInnerSize(), 1,
+                    inventoryType.getInputSlotStart(), inventoryType.getInputSlotEnd(), 1,
                     player, clickSlot, clicked, cursor);
         }
 

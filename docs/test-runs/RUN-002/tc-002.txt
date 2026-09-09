@@ -1,0 +1,12 @@
+RUN-002 · 2026-09-09 · commit 7d7e956ada · TC-002
+[1] git remote -v
+origin	https://github.com/Bearisbug/game-engine.git (fetch)
+origin	https://github.com/Bearisbug/game-engine.git (push)
+[2] gh repo view Bearisbug/game-engine --json isFork --jq .isFork
+false
+[3] gh repo view Bearisbug/Minestom -> exit=1
+GraphQL: Could not resolve to a Repository with the name 'Bearisbug/Minestom'. (repository)
+[4] git log --format=%h | grep -c 16842f1954
+1
+[5] git branch --show-current
+main

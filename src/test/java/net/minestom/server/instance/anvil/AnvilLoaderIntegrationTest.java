@@ -21,6 +21,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
 import java.io.IOException;
+import java.io.RandomAccessFile;
 import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -32,6 +33,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
@@ -126,6 +128,31 @@ public class AnvilLoaderIntegrationTest {
         } finally {
             reloaded.unlockReadLock();
         }
+    }
+
+    // A chunk length read straight from the file allocates a negative or arbitrarily large array
+    @Test
+    public void corruptedChunkLengthIsReportedAsIO(Env env) throws IOException {
+        var worldFolder = Files.createTempDirectory("minestom-test-world-corrupt-length");
+        AnvilLoader chunkLoader = new AnvilLoader(worldFolder);
+        Instance instance = env.createFlatInstance(chunkLoader);
+        Chunk chunk = instance.loadChunk(0, 0).join();
+        chunkLoader.saveChunk(chunk);
+        chunkLoader.unloadChunk(chunk);
+
+        Path regionFile = worldFolder.resolve("region").resolve("r.0.0.mca");
+        try (RandomAccessFile file = new RandomAccessFile(regionFile.toFile(), "rw")) {
+            file.seek(0);
+            final int location = file.readInt();
+            file.seek((long) (location >> 8) * 4096);
+            file.writeInt(0);
+        }
+
+        AtomicReference<Throwable> exception = new AtomicReference<>();
+        env.process().exception().setExceptionHandler(throwable -> exception.compareAndSet(null, throwable));
+        AnvilLoader reopened = new AnvilLoader(worldFolder);
+        assertNull(reopened.loadChunk(instance, 0, 0));
+        assertInstanceOf(IOException.class, exception.get());
     }
 
     @Test

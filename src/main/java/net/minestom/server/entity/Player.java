@@ -3,7 +3,6 @@ package net.minestom.server.entity;
 import it.unimi.dsi.fastutil.longs.LongArrayPriorityQueue;
 import it.unimi.dsi.fastutil.longs.LongPriorityQueue;
 import net.kyori.adventure.bossbar.BossBar;
-import net.kyori.adventure.dialog.DialogLike;
 import net.kyori.adventure.identity.Identity;
 import net.kyori.adventure.inventory.Book;
 import net.kyori.adventure.pointer.Pointers;
@@ -33,7 +32,6 @@ import net.minestom.server.coordinate.CoordConversion;
 import net.minestom.server.coordinate.Point;
 import net.minestom.server.coordinate.Pos;
 import net.minestom.server.coordinate.Vec;
-import net.minestom.server.dialog.Dialog;
 import net.minestom.server.entity.metadata.LivingEntityMeta;
 import net.minestom.server.entity.metadata.avatar.PlayerMeta;
 import net.minestom.server.event.EventDispatcher;
@@ -80,7 +78,6 @@ import net.minestom.server.network.packet.server.common.KeepAlivePacket;
 import net.minestom.server.network.packet.server.common.PluginMessagePacket;
 import net.minestom.server.network.packet.server.common.ResourcePackPopPacket;
 import net.minestom.server.network.packet.server.common.ResourcePackPushPacket;
-import net.minestom.server.network.packet.server.common.ShowDialogPacket;
 import net.minestom.server.network.packet.server.play.ActionBarPacket;
 import net.minestom.server.network.packet.server.play.CameraPacket;
 import net.minestom.server.network.packet.server.play.ChangeGameStatePacket;
@@ -1117,11 +1114,6 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
         sendPacket(new OpenBookPacket(PlayerHand.OFF));
         // Restore the item in offhand
         sendPacket(new SetSlotPacket((byte) 0, 0, (short) PlayerInventoryUtils.OFFHAND_SLOT, getItemInOffHand()));
-    }
-
-    @Override
-    public void showDialog(DialogLike dialog) {
-        sendPacket(new ShowDialogPacket(Dialog.unwrap(dialog)));
     }
 
     @Override

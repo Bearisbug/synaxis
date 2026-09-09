@@ -19,12 +19,6 @@ import net.minestom.server.crypto.LastSeenMessages;
 import net.minestom.server.crypto.MessageSignature;
 import net.minestom.server.crypto.PlayerPublicKey;
 import net.minestom.server.crypto.SignedMessageBody;
-import net.minestom.server.dialog.Dialog;
-import net.minestom.server.dialog.DialogAction;
-import net.minestom.server.dialog.DialogActionButton;
-import net.minestom.server.dialog.DialogAfterAction;
-import net.minestom.server.dialog.DialogInput;
-import net.minestom.server.dialog.DialogMetadata;
 import net.minestom.server.entity.EntityType;
 import net.minestom.server.entity.EquipmentSlot;
 import net.minestom.server.entity.GameMode;
@@ -268,12 +262,12 @@ import net.minestom.server.potion.Potion;
 import net.minestom.server.potion.PotionEffect;
 import net.minestom.server.potion.PotionType;
 import net.minestom.server.registry.Registries;
+import net.minestom.server.registry.RegistryKey;
 import net.minestom.server.sound.SoundEvent;
 import net.minestom.server.utils.Either;
 import net.minestom.server.utils.Rotation;
 import net.minestom.server.utils.WeightedList;
 import net.minestom.server.world.Difficulty;
-import net.minestom.server.world.clock.WorldClock;
 import net.minestom.testing.RegistriesTest;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -417,19 +411,13 @@ public class PacketWriteReadRegistriesTest {
         addServerPackets(new CustomReportDetailsPacket(Map.of("key", "value", "key1", "value1")));
         addServerPackets(new ServerLinksPacket(new ServerLinksPacket.Entry(ServerLinksPacket.KnownLinkType.BUG_REPORT, "https://minestom.net"), new ServerLinksPacket.Entry(ServerLinksPacket.KnownLinkType.ANNOUNCEMENTS, "https://minestom.net")));
         addServerPackets(new ClearDialogPacket());
-        addServerPackets(new ShowDialogPacket(
-                new Dialog.MultiAction(
-                        new DialogMetadata(COMPONENT, COMPONENT, true, false, DialogAfterAction.WAIT_FOR_RESPONSE, List.of(), List.of(new DialogInput.Text("heyt", 12, COMPONENT, true, "", 10, null))),
-                        List.of(),
-                        null,
-                        10
-                )));
-        addServerPackets(new ShowDialogPacket(
-                new Dialog.Confirmation(
-                        new DialogMetadata(COMPONENT, COMPONENT.append(Component.text(OG)), true, false, DialogAfterAction.WAIT_FOR_RESPONSE, List.of(), List.of(new DialogInput.Text("heyt", 12, COMPONENT, true, "", 10, null))),
-                        new DialogActionButton(COMPONENT.appendNewline(), COMPONENT, DialogActionButton.DEFAULT_WIDTH, new DialogAction.OpenUrl("https://minestom.net")),
-                        new DialogActionButton(COMPONENT.appendNewline(), COMPONENT, 10, new DialogAction.CopyToClipboard("https://minestom.net"))
-                )));
+        // Only inline dialogs round trip through both serializers, the configuration one has no registry yet
+        addServerPackets(
+                new ShowDialogPacket(Either.right(CompoundBinaryTag.builder().putString("type", "minecraft:notice").build())),
+                new ShowDialogPacket(Either.right(CompoundBinaryTag.builder()
+                        .putString("type", "minecraft:confirmation")
+                        .putString("title", OG)
+                        .build())));
         addServerPackets(new CodeOfConductPacket("You need to be a nice person, i think?"));
         // Play
         addServerPackets(new AcknowledgeBlockChangePacket(0));
@@ -585,9 +573,9 @@ public class PacketWriteReadRegistriesTest {
         addServerPackets(new TickStepPacket(20));
         addServerPackets(
                 new SetTimePacket(1000L, Map.of()),
-                new SetTimePacket(1000L, Map.of(WorldClock.OVERWORLD, new SetTimePacket.ClockState(1000L, 0.6f, 1f))),
-                new SetTimePacket(Long.MIN_VALUE, Map.of(WorldClock.OVERWORLD, new SetTimePacket.ClockState(1000L, 0.6f, 1f),
-                        WorldClock.THE_END, new SetTimePacket.ClockState(Long.MAX_VALUE, 0f, 0f)))
+                new SetTimePacket(1000L, Map.of(RegistryKey.unsafeOf("minecraft:overworld"), new SetTimePacket.ClockState(1000L, 0.6f, 1f))),
+                new SetTimePacket(Long.MIN_VALUE, Map.of(RegistryKey.unsafeOf("minecraft:overworld"), new SetTimePacket.ClockState(1000L, 0.6f, 1f),
+                        RegistryKey.unsafeOf("minecraft:the_end"), new SetTimePacket.ClockState(Long.MAX_VALUE, 0f, 0f)))
         );
         addServerPackets(new TradeListPacket(5, List.of(), 5, 5, true, true));
         addServerPackets(new UnloadChunkPacket(0, 0));

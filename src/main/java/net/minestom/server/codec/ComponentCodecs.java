@@ -25,7 +25,6 @@ import net.kyori.adventure.text.object.SpriteObjectContents;
 import net.minestom.server.adventure.MinestomAdventure;
 import net.minestom.server.codec.Transcoder.MapBuilder;
 import net.minestom.server.codec.Transcoder.MapLike;
-import net.minestom.server.dialog.Dialog;
 import net.minestom.server.network.player.ResolvableProfile;
 import org.jetbrains.annotations.ApiStatus;
 import org.jetbrains.annotations.Nullable;
@@ -108,8 +107,7 @@ public final class ComponentCodecs {
                         .mapResult(ClickEvent::changePage);
                 case ClickEvent.Action.CopyToClipboard _ -> map.getValue("value").map(value -> Codec.STRING.decode(coder, value))
                         .mapResult(ClickEvent::copyToClipboard);
-                case ClickEvent.Action.ShowDialog _ -> map.getValue("dialog").map(value -> Dialog.CODEC.decode(coder, value))
-                        .mapResult(dialog -> ClickEvent.showDialog(Dialog.wrap(dialog)));
+                case ClickEvent.Action.ShowDialog _ -> new Result.Error<>("show_dialog: the dialog registry has no server-side type");
                 case ClickEvent.Action.Custom _ -> {
                     final Result<Key> idResult = map.getValue("id").map(value -> Codec.KEY.decode(coder, value));
                     if (!(idResult instanceof Result.Ok(Key id)))
@@ -158,13 +156,8 @@ public final class ComponentCodecs {
                     map.put(name, coder.createInt(integer.integer()));
                     yield new Result.Ok<>(map.build());
                 }
-                case ClickEvent.Payload.Dialog dialog -> {
-                    final Result<D> dialogResult = Dialog.CODEC.encode(coder, Dialog.unwrap(dialog.dialog()));
-                    if (!(dialogResult instanceof Result.Ok(D dialogValue)))
-                        yield dialogResult.cast();
-                    map.put(name, dialogValue);
-                    yield new Result.Ok<>(map.build());
-                }
+                case ClickEvent.Payload.Dialog _ ->
+                        new Result.Error<>("show_dialog: the dialog registry has no server-side type");
                 case ClickEvent.Payload.Custom custom -> {
                     map.put("id", coder.createString(custom.key().asString()));
                     final RawValue payloadRawValue = RawValue.of(Transcoder.NBT, MinestomAdventure.unwrapNbt(custom.nbt()));

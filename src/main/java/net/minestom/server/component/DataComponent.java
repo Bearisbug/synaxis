@@ -5,7 +5,6 @@ import net.kyori.adventure.key.KeyPattern;
 import net.minestom.server.codec.Codec;
 import net.minestom.server.codec.Decoder;
 import net.minestom.server.codec.Encoder;
-import net.minestom.server.item.enchant.EffectComponent;
 import net.minestom.server.network.NetworkBuffer;
 import net.minestom.server.registry.StaticProtocolObject;
 import org.jetbrains.annotations.ApiStatus;
@@ -20,7 +19,6 @@ import java.util.function.UnaryOperator;
  *
  * @param <T> The value type of the component
  * @see net.minestom.server.component.DataComponent
- * @see EffectComponent
  */
 public sealed interface DataComponent<T> extends StaticProtocolObject<DataComponent<T>>, Encoder<T>, Decoder<T> permits DataComponentImpl {
 

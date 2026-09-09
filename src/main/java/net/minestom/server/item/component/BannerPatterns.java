@@ -1,12 +1,14 @@
 package net.minestom.server.item.component;
 
+import net.kyori.adventure.nbt.BinaryTag;
 import net.minestom.server.codec.Codec;
 import net.minestom.server.codec.StructCodec;
 import net.minestom.server.color.DyeColor;
-import net.minestom.server.instance.block.banner.BannerPattern;
 import net.minestom.server.network.NetworkBuffer;
 import net.minestom.server.network.NetworkBufferTemplate;
-import net.minestom.server.registry.Holder;
+import net.minestom.server.registry.BuiltinRegistries;
+import net.minestom.server.registry.Registries;
+import net.minestom.server.registry.RegistryKey;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -17,13 +19,15 @@ public record BannerPatterns(List<Layer> layers) {
     public static final NetworkBuffer.Type<BannerPatterns> NETWORK_TYPE = Layer.NETWORK_TYPE.list(MAX_LAYERS).transform(BannerPatterns::new, BannerPatterns::layers);
     public static final Codec<BannerPatterns> CODEC = Layer.CODEC.list().transform(BannerPatterns::new, BannerPatterns::layers);
 
-    public record Layer(Holder<BannerPattern> pattern, DyeColor color) {
+    public record Layer(RegistryKey<BinaryTag> pattern, DyeColor color) {
+        private static final Registries.Selector<BinaryTag> REGISTRY = registries -> registries.opaque(BuiltinRegistries.BANNER_PATTERN);
+
         public static final NetworkBuffer.Type<Layer> NETWORK_TYPE = NetworkBufferTemplate.template(
-                BannerPattern.HOLDER_NETWORK_TYPE, Layer::pattern,
+                RegistryKey.holderNetworkType(REGISTRY), Layer::pattern,
                 DyeColor.NETWORK_TYPE, Layer::color,
                 Layer::new);
         public static final Codec<Layer> CODEC = StructCodec.struct(
-                "pattern", BannerPattern.HOLDER_CODEC, Layer::pattern,
+                "pattern", RegistryKey.codec(REGISTRY), Layer::pattern,
                 "color", DyeColor.CODEC, Layer::color,
                 Layer::new);
     }
@@ -36,7 +40,7 @@ public record BannerPatterns(List<Layer> layers) {
         this(List.of(layer));
     }
 
-    public BannerPatterns(Holder<BannerPattern> pattern, DyeColor color) {
+    public BannerPatterns(RegistryKey<BinaryTag> pattern, DyeColor color) {
         this(new Layer(pattern, color));
     }
 

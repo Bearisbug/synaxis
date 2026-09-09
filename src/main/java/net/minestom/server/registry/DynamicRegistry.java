@@ -1,6 +1,7 @@
 package net.minestom.server.registry;
 
 import net.kyori.adventure.key.Key;
+import net.kyori.adventure.nbt.BinaryTag;
 import net.minestom.server.codec.Codec;
 import net.minestom.server.entity.Player;
 import net.minestom.server.gamedata.DataPack;
@@ -89,6 +90,18 @@ public sealed interface DynamicRegistry<T> extends Registry<T> permits DynamicRe
         final DynamicRegistryImpl<T> registry = new DynamicRegistryImpl<>(key.key(), codec);
         final Registries effectiveRegistries = loadingRegistries.apply(registries, registry);
         registry.loadStaticJsonRegistry(effectiveRegistries, null, codec);
+        return registry.compact();
+    }
+
+    /**
+     * Creates a registry whose entries are kept as the raw NBT the client receives, with no server-side type.
+     *
+     * @see Registries#opaque(RegistryKey)
+     */
+    @ApiStatus.Internal
+    static DynamicRegistry<BinaryTag> createOpaque(RegistryKey<Registry<BinaryTag>> key) {
+        final DynamicRegistryImpl<BinaryTag> registry = new DynamicRegistryImpl<>(key.key(), Codec.NBT);
+        registry.loadOpaqueRegistry();
         return registry.compact();
     }
 

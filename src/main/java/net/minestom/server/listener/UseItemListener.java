@@ -1,6 +1,5 @@
 package net.minestom.server.listener;
 
-import net.minestom.server.MinecraftServer;
 import net.minestom.server.component.DataComponents;
 import net.minestom.server.entity.Player;
 import net.minestom.server.entity.PlayerHand;
@@ -13,10 +12,8 @@ import net.minestom.server.item.ItemStack;
 import net.minestom.server.item.Material;
 import net.minestom.server.item.component.Consumable;
 import net.minestom.server.item.component.Equippable;
-import net.minestom.server.item.instrument.Instrument;
 import net.minestom.server.network.packet.client.play.ClientUseItemPacket;
 import net.minestom.server.network.packet.server.play.AcknowledgeBlockChangePacket;
-import net.minestom.server.registry.Holder;
 
 public class UseItemListener {
 
@@ -50,9 +47,6 @@ public class UseItemListener {
         } else if (material == Material.SPYGLASS) {
             useItemTime = 1200;
             useAnimation = ItemAnimation.SPYGLASS;
-        } else if (material == Material.GOAT_HORN) {
-            useItemTime = getInstrumentTime(itemStack);
-            useAnimation = ItemAnimation.TOOT_HORN;
         } else if (material == Material.BRUSH) {
             useItemTime = 200;
             useAnimation = ItemAnimation.BRUSH;
@@ -102,13 +96,4 @@ public class UseItemListener {
         }
     }
 
-    private static int getInstrumentTime(ItemStack itemStack) {
-        final Holder<Instrument> holder = itemStack.get(DataComponents.INSTRUMENT);
-        if (holder == null) return 0;
-
-        final Instrument instrument = holder.resolve(MinecraftServer.getInstrumentRegistry());
-        if (instrument == null) return 0;
-
-        return instrument.useDurationTicks();
-    }
 }

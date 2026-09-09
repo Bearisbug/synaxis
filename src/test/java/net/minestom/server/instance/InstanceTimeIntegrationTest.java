@@ -1,7 +1,8 @@
 package net.minestom.server.instance;
 
 import net.kyori.adventure.key.Key;
-import net.minestom.server.world.clock.WorldClock;
+import net.kyori.adventure.nbt.CompoundBinaryTag;
+import net.minestom.server.registry.BuiltinRegistries;
 import net.minestom.testing.Env;
 import net.minestom.testing.EnvTest;
 import org.junit.jupiter.api.Test;
@@ -59,7 +60,7 @@ public class InstanceTimeIntegrationTest {
 
     @Test
     void multipleClocks(Env env) {
-        var myOtherClock = env.process().worldClock().register(Key.key("minestom:clock"), WorldClock.create());
+        var myOtherClock = env.process().opaque(BuiltinRegistries.WORLD_CLOCK).register(Key.key("minestom:clock"), CompoundBinaryTag.empty());
 
         var instance = env.createEmptyInstance();
         var defaultClock = Objects.requireNonNull(instance.defaultClock());

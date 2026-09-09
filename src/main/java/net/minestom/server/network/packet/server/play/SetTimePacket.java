@@ -1,10 +1,11 @@
 package net.minestom.server.network.packet.server.play;
 
+import net.minestom.server.registry.BuiltinRegistries;
+import net.kyori.adventure.nbt.BinaryTag;
 import net.minestom.server.network.NetworkBuffer;
 import net.minestom.server.network.NetworkBufferTemplate;
 import net.minestom.server.network.packet.server.ServerPacket;
 import net.minestom.server.registry.RegistryKey;
-import net.minestom.server.world.clock.WorldClock;
 
 import java.util.Map;
 
@@ -13,10 +14,10 @@ import static net.minestom.server.network.NetworkBuffer.LONG;
 import static net.minestom.server.network.NetworkBuffer.VAR_LONG;
 
 public record SetTimePacket(long gameTime,
-                            Map<RegistryKey<WorldClock>, ClockState> clocks) implements ServerPacket.Play {
+                            Map<RegistryKey<BinaryTag>, ClockState> clocks) implements ServerPacket.Play {
     public static final NetworkBuffer.Type<SetTimePacket> SERIALIZER = NetworkBufferTemplate.template(
             LONG, SetTimePacket::gameTime,
-            WorldClock.NETWORK_TYPE.mapValue(ClockState.NETWORK_TYPE), SetTimePacket::clocks,
+            RegistryKey.<BinaryTag>networkType(registries -> registries.opaque(BuiltinRegistries.WORLD_CLOCK)).mapValue(ClockState.NETWORK_TYPE), SetTimePacket::clocks,
             SetTimePacket::new);
 
     public SetTimePacket {

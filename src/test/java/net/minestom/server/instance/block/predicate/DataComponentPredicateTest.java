@@ -1,5 +1,6 @@
 package net.minestom.server.instance.block.predicate;
 
+import net.kyori.adventure.nbt.BinaryTag;
 import net.kyori.adventure.key.Key;
 import net.kyori.adventure.nbt.CompoundBinaryTag;
 import net.kyori.adventure.nbt.IntBinaryTag;
@@ -13,11 +14,8 @@ import net.minestom.server.entity.EquipmentSlotGroup;
 import net.minestom.server.entity.attribute.Attribute;
 import net.minestom.server.entity.attribute.AttributeModifier;
 import net.minestom.server.entity.attribute.AttributeOperation;
-import net.minestom.server.instance.block.jukebox.JukeboxSong;
 import net.minestom.server.item.ItemStack;
 import net.minestom.server.item.Material;
-import net.minestom.server.item.armor.TrimMaterial;
-import net.minestom.server.item.armor.TrimPattern;
 import net.minestom.server.item.component.ArmorTrim;
 import net.minestom.server.item.component.AttributeList;
 import net.minestom.server.item.component.CustomData;
@@ -28,10 +26,10 @@ import net.minestom.server.item.component.FireworkList;
 import net.minestom.server.item.component.PotionContents;
 import net.minestom.server.item.component.WritableBookContent;
 import net.minestom.server.item.component.WrittenBookContent;
-import net.minestom.server.item.enchant.Enchantment;
 import net.minestom.server.item.predicate.ItemPredicate;
 import net.minestom.server.potion.PotionType;
 import net.minestom.server.potion.PotionTypeKeys;
+import net.minestom.server.registry.RegistryKey;
 import net.minestom.server.registry.RegistryTag;
 import net.minestom.server.utils.Range;
 import org.jetbrains.annotations.Nullable;
@@ -44,6 +42,10 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class DataComponentPredicateTest {
+    private static RegistryKey<BinaryTag> key(String id) {
+        return RegistryKey.unsafeOf(id);
+    }
+
     private static <T> DataComponent.Holder holderOf(DataComponent<T> component, T value) {
         return DataComponentMap.builder().set(component, value);
     }
@@ -122,35 +124,35 @@ public class DataComponentPredicateTest {
     void testEnchantments() {
         // Enchantments and StoredEnchantments work the same way, so this test covers both of them
 
-        var enchOnly = new DataComponentPredicate.Enchantments(List.of(new DataComponentPredicate.EnchantmentListPredicate(RegistryTag.direct(Enchantment.SHARPNESS), null)));
-        assertPass(enchOnly, DataComponents.ENCHANTMENTS, new EnchantmentList(Enchantment.SHARPNESS, 2));
-        assertPass(enchOnly, DataComponents.ENCHANTMENTS, new EnchantmentList(Map.of(Enchantment.SHARPNESS, 2, Enchantment.PROTECTION, 2)));
-        assertFail(enchOnly, DataComponents.ENCHANTMENTS, new EnchantmentList(Enchantment.PROTECTION, 2));
+        var enchOnly = new DataComponentPredicate.Enchantments(List.of(new DataComponentPredicate.EnchantmentListPredicate(RegistryTag.direct(key("minecraft:sharpness")), null)));
+        assertPass(enchOnly, DataComponents.ENCHANTMENTS, new EnchantmentList(key("minecraft:sharpness"), 2));
+        assertPass(enchOnly, DataComponents.ENCHANTMENTS, new EnchantmentList(Map.of(key("minecraft:sharpness"), 2, key("minecraft:protection"), 2)));
+        assertFail(enchOnly, DataComponents.ENCHANTMENTS, new EnchantmentList(key("minecraft:protection"), 2));
 
         var levelOnly = new DataComponentPredicate.Enchantments(List.of(new DataComponentPredicate.EnchantmentListPredicate(null, new Range.Int(2, 3))));
-        assertPass(levelOnly, DataComponents.ENCHANTMENTS, new EnchantmentList(Enchantment.SHARPNESS, 2));
-        assertPass(levelOnly, DataComponents.ENCHANTMENTS, new EnchantmentList(Map.of(Enchantment.SHARPNESS, 2, Enchantment.PROTECTION, 4)));
-        assertFail(levelOnly, DataComponents.ENCHANTMENTS, new EnchantmentList(Enchantment.PROTECTION, 1));
+        assertPass(levelOnly, DataComponents.ENCHANTMENTS, new EnchantmentList(key("minecraft:sharpness"), 2));
+        assertPass(levelOnly, DataComponents.ENCHANTMENTS, new EnchantmentList(Map.of(key("minecraft:sharpness"), 2, key("minecraft:protection"), 4)));
+        assertFail(levelOnly, DataComponents.ENCHANTMENTS, new EnchantmentList(key("minecraft:protection"), 1));
         assertFail(levelOnly, DataComponents.ENCHANTMENTS, EnchantmentList.EMPTY);
 
         var none = new DataComponentPredicate.EnchantmentListPredicate(null, null);
         // `none` should pass if the item has any enchantments
         assertFail(new DataComponentPredicate.Enchantments(List.of(none)), EMPTY_HOLDER);
         assertFail(new DataComponentPredicate.Enchantments(List.of(none)), DataComponents.ENCHANTMENTS, EnchantmentList.EMPTY);
-        assertPass(new DataComponentPredicate.Enchantments(List.of(none)), DataComponents.ENCHANTMENTS, new EnchantmentList(Enchantment.PROTECTION, 1));
+        assertPass(new DataComponentPredicate.Enchantments(List.of(none)), DataComponents.ENCHANTMENTS, new EnchantmentList(key("minecraft:protection"), 1));
 
-        var both = new DataComponentPredicate.Enchantments(List.of(new DataComponentPredicate.EnchantmentListPredicate(RegistryTag.direct(Enchantment.SHARPNESS), new Range.Int(2, 3))));
+        var both = new DataComponentPredicate.Enchantments(List.of(new DataComponentPredicate.EnchantmentListPredicate(RegistryTag.direct(key("minecraft:sharpness")), new Range.Int(2, 3))));
 
-        assertPass(both, DataComponents.ENCHANTMENTS, new EnchantmentList(Enchantment.SHARPNESS, 2)); // matching enchantment and level
-        assertFail(both, DataComponents.ENCHANTMENTS, new EnchantmentList(Map.of(Enchantment.SHARPNESS, 4, Enchantment.PROTECTION, 2))); // matching level on a different enchantment
-        assertFail(both, DataComponents.ENCHANTMENTS, new EnchantmentList(Enchantment.PROTECTION, 2)); // matching level on the wrong enchantment
+        assertPass(both, DataComponents.ENCHANTMENTS, new EnchantmentList(key("minecraft:sharpness"), 2)); // matching enchantment and level
+        assertFail(both, DataComponents.ENCHANTMENTS, new EnchantmentList(Map.of(key("minecraft:sharpness"), 4, key("minecraft:protection"), 2))); // matching level on a different enchantment
+        assertFail(both, DataComponents.ENCHANTMENTS, new EnchantmentList(key("minecraft:protection"), 2)); // matching level on the wrong enchantment
         assertFail(both, DataComponents.ENCHANTMENTS, EnchantmentList.EMPTY);
 
-        var multiple = new DataComponentPredicate.Enchantments(List.of(new DataComponentPredicate.EnchantmentListPredicate(RegistryTag.direct(Enchantment.SHARPNESS), new Range.Int(2, 3)), new DataComponentPredicate.EnchantmentListPredicate(RegistryTag.direct(Enchantment.PROTECTION), null)));
+        var multiple = new DataComponentPredicate.Enchantments(List.of(new DataComponentPredicate.EnchantmentListPredicate(RegistryTag.direct(key("minecraft:sharpness")), new Range.Int(2, 3)), new DataComponentPredicate.EnchantmentListPredicate(RegistryTag.direct(key("minecraft:protection")), null)));
 
         // If multiple predicates are specified, all of them must return true for the parent to return true
-        assertPass(multiple, DataComponents.ENCHANTMENTS, new EnchantmentList(Map.of(Enchantment.SHARPNESS, 2, Enchantment.PROTECTION, 4)));
-        assertFail(multiple, DataComponents.ENCHANTMENTS, new EnchantmentList(Map.of(Enchantment.SHARPNESS, 2))); // second predicate doesn't pass
+        assertPass(multiple, DataComponents.ENCHANTMENTS, new EnchantmentList(Map.of(key("minecraft:sharpness"), 2, key("minecraft:protection"), 4)));
+        assertFail(multiple, DataComponents.ENCHANTMENTS, new EnchantmentList(Map.of(key("minecraft:sharpness"), 2))); // second predicate doesn't pass
     }
 
     @Test
@@ -394,39 +396,39 @@ public class DataComponentPredicateTest {
     @Test
     void testTrim() {
         var empty = new DataComponentPredicate.ArmorTrim(null, null);
-        var materialOnly = new DataComponentPredicate.ArmorTrim(RegistryTag.direct(TrimMaterial.AMETHYST), null);
-        var patternOnly = new DataComponentPredicate.ArmorTrim(null, RegistryTag.direct(TrimPattern.BOLT));
-        var both = new DataComponentPredicate.ArmorTrim(RegistryTag.direct(TrimMaterial.AMETHYST), RegistryTag.direct(TrimPattern.BOLT));
+        var materialOnly = new DataComponentPredicate.ArmorTrim(RegistryTag.direct(key("minecraft:amethyst")), null);
+        var patternOnly = new DataComponentPredicate.ArmorTrim(null, RegistryTag.direct(key("minecraft:bolt")));
+        var both = new DataComponentPredicate.ArmorTrim(RegistryTag.direct(key("minecraft:amethyst")), RegistryTag.direct(key("minecraft:bolt")));
 
         assertFail(empty, EMPTY_HOLDER);
-        assertPass(empty, DataComponents.TRIM, new ArmorTrim(TrimMaterial.COPPER, TrimPattern.FLOW));
+        assertPass(empty, DataComponents.TRIM, new ArmorTrim(key("minecraft:copper"), key("minecraft:flow")));
 
-        assertPass(materialOnly, DataComponents.TRIM, new ArmorTrim(TrimMaterial.AMETHYST, TrimPattern.FLOW));
-        assertFail(materialOnly, DataComponents.TRIM, new ArmorTrim(TrimMaterial.COPPER, TrimPattern.FLOW));
+        assertPass(materialOnly, DataComponents.TRIM, new ArmorTrim(key("minecraft:amethyst"), key("minecraft:flow")));
+        assertFail(materialOnly, DataComponents.TRIM, new ArmorTrim(key("minecraft:copper"), key("minecraft:flow")));
 
-        assertPass(patternOnly, DataComponents.TRIM, new ArmorTrim(TrimMaterial.AMETHYST, TrimPattern.BOLT));
-        assertFail(patternOnly, DataComponents.TRIM, new ArmorTrim(TrimMaterial.AMETHYST, TrimPattern.FLOW));
+        assertPass(patternOnly, DataComponents.TRIM, new ArmorTrim(key("minecraft:amethyst"), key("minecraft:bolt")));
+        assertFail(patternOnly, DataComponents.TRIM, new ArmorTrim(key("minecraft:amethyst"), key("minecraft:flow")));
 
-        assertPass(both, DataComponents.TRIM, new ArmorTrim(TrimMaterial.AMETHYST, TrimPattern.BOLT));
-        assertFail(both, DataComponents.TRIM, new ArmorTrim(TrimMaterial.AMETHYST, TrimPattern.FLOW));
-        assertFail(both, DataComponents.TRIM, new ArmorTrim(TrimMaterial.COPPER, TrimPattern.BOLT));
+        assertPass(both, DataComponents.TRIM, new ArmorTrim(key("minecraft:amethyst"), key("minecraft:bolt")));
+        assertFail(both, DataComponents.TRIM, new ArmorTrim(key("minecraft:amethyst"), key("minecraft:flow")));
+        assertFail(both, DataComponents.TRIM, new ArmorTrim(key("minecraft:copper"), key("minecraft:bolt")));
     }
 
     @Test
     void testJukeboxPlayable() {
         var none = new DataComponentPredicate.JukeboxPlayable(null);
-        var single = new DataComponentPredicate.JukeboxPlayable(RegistryTag.direct(JukeboxSong.CAT));
-        var multiple = new DataComponentPredicate.JukeboxPlayable(RegistryTag.direct(JukeboxSong.CAT, JukeboxSong.STAL, JukeboxSong.WAIT));
+        var single = new DataComponentPredicate.JukeboxPlayable(RegistryTag.direct(key("minecraft:cat")));
+        var multiple = new DataComponentPredicate.JukeboxPlayable(RegistryTag.direct(key("minecraft:cat"), key("minecraft:stal"), key("minecraft:wait")));
 
         assertFail(none, EMPTY_HOLDER);
-        assertPass(none, DataComponents.JUKEBOX_PLAYABLE, JukeboxSong.PIGSTEP);
+        assertPass(none, DataComponents.JUKEBOX_PLAYABLE, key("minecraft:pigstep"));
 
-        assertPass(single, DataComponents.JUKEBOX_PLAYABLE, JukeboxSong.CAT);
-        assertFail(single, DataComponents.JUKEBOX_PLAYABLE, JukeboxSong.BLOCKS);
+        assertPass(single, DataComponents.JUKEBOX_PLAYABLE, key("minecraft:cat"));
+        assertFail(single, DataComponents.JUKEBOX_PLAYABLE, key("minecraft:blocks"));
 
-        assertPass(multiple, DataComponents.JUKEBOX_PLAYABLE, JukeboxSong.CAT);
-        assertPass(multiple, DataComponents.JUKEBOX_PLAYABLE, JukeboxSong.STAL);
-        assertPass(multiple, DataComponents.JUKEBOX_PLAYABLE, JukeboxSong.WAIT);
-        assertFail(multiple, DataComponents.JUKEBOX_PLAYABLE, JukeboxSong.BLOCKS);
+        assertPass(multiple, DataComponents.JUKEBOX_PLAYABLE, key("minecraft:cat"));
+        assertPass(multiple, DataComponents.JUKEBOX_PLAYABLE, key("minecraft:stal"));
+        assertPass(multiple, DataComponents.JUKEBOX_PLAYABLE, key("minecraft:wait"));
+        assertFail(multiple, DataComponents.JUKEBOX_PLAYABLE, key("minecraft:blocks"));
     }
 }

@@ -1,38 +1,18 @@
 package net.minestom.server.registry;
 
+import net.kyori.adventure.nbt.BinaryTag;
 import net.minestom.server.FeatureFlag;
-import net.minestom.server.dialog.Dialog;
 import net.minestom.server.entity.EntityType;
 import net.minestom.server.entity.VillagerProfession;
 import net.minestom.server.entity.attribute.Attribute;
 import net.minestom.server.entity.damage.DamageType;
-import net.minestom.server.entity.metadata.animal.ChickenSoundVariant;
-import net.minestom.server.entity.metadata.animal.ChickenVariant;
-import net.minestom.server.entity.metadata.animal.CowSoundVariant;
-import net.minestom.server.entity.metadata.animal.CowVariant;
-import net.minestom.server.entity.metadata.animal.FrogVariant;
-import net.minestom.server.entity.metadata.animal.PigSoundVariant;
-import net.minestom.server.entity.metadata.animal.PigVariant;
-import net.minestom.server.entity.metadata.animal.ZombieNautilusVariant;
-import net.minestom.server.entity.metadata.animal.tameable.CatSoundVariant;
-import net.minestom.server.entity.metadata.animal.tameable.CatVariant;
-import net.minestom.server.entity.metadata.animal.tameable.WolfSoundVariant;
-import net.minestom.server.entity.metadata.animal.tameable.WolfVariant;
-import net.minestom.server.entity.metadata.cube.SulfurCubeArchetype;
-import net.minestom.server.entity.metadata.other.PaintingVariant;
 import net.minestom.server.game.GameEvent;
 import net.minestom.server.instance.block.Block;
 import net.minestom.server.instance.block.BlockEntityType;
 import net.minestom.server.instance.block.BlockSoundType;
-import net.minestom.server.instance.block.banner.BannerPattern;
-import net.minestom.server.instance.block.jukebox.JukeboxSong;
 import net.minestom.server.instance.fluid.Fluid;
 import net.minestom.server.instance.gamerule.GameRule;
 import net.minestom.server.item.Material;
-import net.minestom.server.item.armor.TrimMaterial;
-import net.minestom.server.item.armor.TrimPattern;
-import net.minestom.server.item.enchant.Enchantment;
-import net.minestom.server.item.instrument.Instrument;
 import net.minestom.server.message.ChatType;
 import net.minestom.server.particle.Particle;
 import net.minestom.server.potion.PotionEffect;
@@ -40,9 +20,6 @@ import net.minestom.server.potion.PotionType;
 import net.minestom.server.sound.BuiltinSoundEvent;
 import net.minestom.server.world.DimensionType;
 import net.minestom.server.world.biome.Biome;
-import net.minestom.server.world.clock.ClockTimeMarker;
-import net.minestom.server.world.clock.WorldClock;
-import net.minestom.server.world.timeline.Timeline;
 import org.jetbrains.annotations.ApiStatus;
 
 /**
@@ -59,9 +36,9 @@ public interface BuiltinRegistries {
     RegistryKey<Registry<Attribute>> ATTRIBUTE = RegistryKey.unsafeOf("attribute");
 
     /**
-     * The registry key for {@link BannerPattern}.
+     * The registry key for the opaque {@code minecraft:banner_pattern} registry.
      */
-    RegistryKey<Registry<BannerPattern>> BANNER_PATTERN = RegistryKey.unsafeOf("banner_pattern");
+    RegistryKey<Registry<BinaryTag>> BANNER_PATTERN = RegistryKey.unsafeOf("banner_pattern");
 
     /**
      * The registry key for {@link Block}.
@@ -79,14 +56,14 @@ public interface BuiltinRegistries {
     RegistryKey<Registry<BlockSoundType>> BLOCK_SOUND_TYPE = RegistryKey.unsafeOf("block_sound_type");
 
     /**
-     * The registry key for {@link CatSoundVariant}.
+     * The registry key for the opaque {@code minecraft:cat_sound_variant} registry.
      */
-    RegistryKey<Registry<CatSoundVariant>> CAT_SOUND_VARIANT = RegistryKey.unsafeOf("cat_sound_variant");
+    RegistryKey<Registry<BinaryTag>> CAT_SOUND_VARIANT = RegistryKey.unsafeOf("cat_sound_variant");
 
     /**
-     * The registry key for {@link CatVariant}.
+     * The registry key for the opaque {@code minecraft:cat_variant} registry.
      */
-    RegistryKey<Registry<CatVariant>> CAT_VARIANT = RegistryKey.unsafeOf("cat_variant");
+    RegistryKey<Registry<BinaryTag>> CAT_VARIANT = RegistryKey.unsafeOf("cat_variant");
 
     /**
      * The registry key for {@link ChatType}.
@@ -94,29 +71,24 @@ public interface BuiltinRegistries {
     RegistryKey<Registry<ChatType>> CHAT_TYPE = RegistryKey.unsafeOf("chat_type");
 
     /**
-     * The registry key for {@link ChickenSoundVariant}.
+     * The registry key for the opaque {@code minecraft:chicken_sound_variant} registry.
      */
-    RegistryKey<Registry<ChickenSoundVariant>> CHICKEN_SOUND_VARIANT = RegistryKey.unsafeOf("chicken_sound_variant");
+    RegistryKey<Registry<BinaryTag>> CHICKEN_SOUND_VARIANT = RegistryKey.unsafeOf("chicken_sound_variant");
 
     /**
-     * The registry key for {@link ChickenVariant}.
+     * The registry key for the opaque {@code minecraft:chicken_variant} registry.
      */
-    RegistryKey<Registry<ChickenVariant>> CHICKEN_VARIANT = RegistryKey.unsafeOf("chicken_variant");
+    RegistryKey<Registry<BinaryTag>> CHICKEN_VARIANT = RegistryKey.unsafeOf("chicken_variant");
 
     /**
-     * The registry key for {@link ClockTimeMarker}.
+     * The registry key for the opaque {@code minecraft:cow_sound_variant} registry.
      */
-    RegistryKey<Registry<ClockTimeMarker>> CLOCK_TIME_MARKER = RegistryKey.unsafeOf("clock_time_marker");
+    RegistryKey<Registry<BinaryTag>> COW_SOUND_VARIANT = RegistryKey.unsafeOf("cow_sound_variant");
 
     /**
-     * The registry key for {@link CowSoundVariant}.
+     * The registry key for the opaque {@code minecraft:cow_variant} registry.
      */
-    RegistryKey<Registry<CowSoundVariant>> COW_SOUND_VARIANT = RegistryKey.unsafeOf("cow_sound_variant");
-
-    /**
-     * The registry key for {@link CowVariant}.
-     */
-    RegistryKey<Registry<CowVariant>> COW_VARIANT = RegistryKey.unsafeOf("cow_variant");
+    RegistryKey<Registry<BinaryTag>> COW_VARIANT = RegistryKey.unsafeOf("cow_variant");
 
     /**
      * The registry key for {@link DamageType}.
@@ -124,9 +96,9 @@ public interface BuiltinRegistries {
     RegistryKey<Registry<DamageType>> DAMAGE_TYPE = RegistryKey.unsafeOf("damage_type");
 
     /**
-     * The registry key for {@link Dialog}.
+     * The registry key for the opaque {@code minecraft:dialog} registry.
      */
-    RegistryKey<Registry<Dialog>> DIALOG = RegistryKey.unsafeOf("dialog");
+    RegistryKey<Registry<BinaryTag>> DIALOG = RegistryKey.unsafeOf("dialog");
 
     /**
      * The registry key for {@link DimensionType}.
@@ -134,9 +106,9 @@ public interface BuiltinRegistries {
     RegistryKey<Registry<DimensionType>> DIMENSION_TYPE = RegistryKey.unsafeOf("dimension_type");
 
     /**
-     * The registry key for {@link Enchantment}.
+     * The registry key for the opaque {@code minecraft:enchantment} registry.
      */
-    RegistryKey<Registry<Enchantment>> ENCHANTMENT = RegistryKey.unsafeOf("enchantment");
+    RegistryKey<Registry<BinaryTag>> ENCHANTMENT = RegistryKey.unsafeOf("enchantment");
 
     /**
      * The registry key for {@link EntityType}.
@@ -154,9 +126,9 @@ public interface BuiltinRegistries {
     RegistryKey<Registry<Fluid>> FLUID = RegistryKey.unsafeOf("fluid");
 
     /**
-     * The registry key for {@link FrogVariant}.
+     * The registry key for the opaque {@code minecraft:frog_variant} registry.
      */
-    RegistryKey<Registry<FrogVariant>> FROG_VARIANT = RegistryKey.unsafeOf("frog_variant");
+    RegistryKey<Registry<BinaryTag>> FROG_VARIANT = RegistryKey.unsafeOf("frog_variant");
 
     /**
      * The registry key for {@link GameEvent}.
@@ -164,9 +136,9 @@ public interface BuiltinRegistries {
     RegistryKey<Registry<GameEvent>> GAME_EVENT = RegistryKey.unsafeOf("game_event");
 
     /**
-     * The registry key for {@link Instrument}.
+     * The registry key for the opaque {@code minecraft:instrument} registry.
      */
-    RegistryKey<Registry<Instrument>> INSTRUMENT = RegistryKey.unsafeOf("instrument");
+    RegistryKey<Registry<BinaryTag>> INSTRUMENT = RegistryKey.unsafeOf("instrument");
 
     /**
      * The registry key for {@link Material}.
@@ -174,9 +146,9 @@ public interface BuiltinRegistries {
     RegistryKey<Registry<Material>> ITEM = RegistryKey.unsafeOf("item");
 
     /**
-     * The registry key for {@link JukeboxSong}.
+     * The registry key for the opaque {@code minecraft:jukebox_song} registry.
      */
-    RegistryKey<Registry<JukeboxSong>> JUKEBOX_SONG = RegistryKey.unsafeOf("jukebox_song");
+    RegistryKey<Registry<BinaryTag>> JUKEBOX_SONG = RegistryKey.unsafeOf("jukebox_song");
 
     /**
      * The registry key for {@link PotionEffect}.
@@ -184,19 +156,19 @@ public interface BuiltinRegistries {
     RegistryKey<Registry<PotionEffect>> MOB_EFFECT = RegistryKey.unsafeOf("mob_effect");
 
     /**
-     * The registry key for {@link PaintingVariant}.
+     * The registry key for the opaque {@code minecraft:painting_variant} registry.
      */
-    RegistryKey<Registry<PaintingVariant>> PAINTING_VARIANT = RegistryKey.unsafeOf("painting_variant");
+    RegistryKey<Registry<BinaryTag>> PAINTING_VARIANT = RegistryKey.unsafeOf("painting_variant");
 
     /**
-     * The registry key for {@link PigSoundVariant}.
+     * The registry key for the opaque {@code minecraft:pig_sound_variant} registry.
      */
-    RegistryKey<Registry<PigSoundVariant>> PIG_SOUND_VARIANT = RegistryKey.unsafeOf("pig_sound_variant");
+    RegistryKey<Registry<BinaryTag>> PIG_SOUND_VARIANT = RegistryKey.unsafeOf("pig_sound_variant");
 
     /**
-     * The registry key for {@link PigVariant}.
+     * The registry key for the opaque {@code minecraft:pig_variant} registry.
      */
-    RegistryKey<Registry<PigVariant>> PIG_VARIANT = RegistryKey.unsafeOf("pig_variant");
+    RegistryKey<Registry<BinaryTag>> PIG_VARIANT = RegistryKey.unsafeOf("pig_variant");
 
     /**
      * The registry key for {@link PotionType}.
@@ -209,24 +181,24 @@ public interface BuiltinRegistries {
     RegistryKey<Registry<BuiltinSoundEvent>> SOUND_EVENT = RegistryKey.unsafeOf("sound_event");
 
     /**
-     * The registry key for {@link SulfurCubeArchetype}.
+     * The registry key for the opaque {@code minecraft:sulfur_cube_archetype} registry.
      */
-    RegistryKey<Registry<SulfurCubeArchetype>> SULFUR_CUBE_ARCHETYPE = RegistryKey.unsafeOf("sulfur_cube_archetype");
+    RegistryKey<Registry<BinaryTag>> SULFUR_CUBE_ARCHETYPE = RegistryKey.unsafeOf("sulfur_cube_archetype");
 
     /**
-     * The registry key for {@link Timeline}.
+     * The registry key for the opaque {@code minecraft:timeline} registry.
      */
-    RegistryKey<Registry<Timeline>> TIMELINE = RegistryKey.unsafeOf("timeline");
+    RegistryKey<Registry<BinaryTag>> TIMELINE = RegistryKey.unsafeOf("timeline");
 
     /**
-     * The registry key for {@link TrimMaterial}.
+     * The registry key for the opaque {@code minecraft:trim_material} registry.
      */
-    RegistryKey<Registry<TrimMaterial>> TRIM_MATERIAL = RegistryKey.unsafeOf("trim_material");
+    RegistryKey<Registry<BinaryTag>> TRIM_MATERIAL = RegistryKey.unsafeOf("trim_material");
 
     /**
-     * The registry key for {@link TrimPattern}.
+     * The registry key for the opaque {@code minecraft:trim_pattern} registry.
      */
-    RegistryKey<Registry<TrimPattern>> TRIM_PATTERN = RegistryKey.unsafeOf("trim_pattern");
+    RegistryKey<Registry<BinaryTag>> TRIM_PATTERN = RegistryKey.unsafeOf("trim_pattern");
 
     /**
      * The registry key for {@link VillagerProfession}.
@@ -234,19 +206,19 @@ public interface BuiltinRegistries {
     RegistryKey<Registry<VillagerProfession>> VILLAGER_PROFESSION = RegistryKey.unsafeOf("villager_profession");
 
     /**
-     * The registry key for {@link WolfSoundVariant}.
+     * The registry key for the opaque {@code minecraft:wolf_sound_variant} registry.
      */
-    RegistryKey<Registry<WolfSoundVariant>> WOLF_SOUND_VARIANT = RegistryKey.unsafeOf("wolf_sound_variant");
+    RegistryKey<Registry<BinaryTag>> WOLF_SOUND_VARIANT = RegistryKey.unsafeOf("wolf_sound_variant");
 
     /**
-     * The registry key for {@link WolfVariant}.
+     * The registry key for the opaque {@code minecraft:wolf_variant} registry.
      */
-    RegistryKey<Registry<WolfVariant>> WOLF_VARIANT = RegistryKey.unsafeOf("wolf_variant");
+    RegistryKey<Registry<BinaryTag>> WOLF_VARIANT = RegistryKey.unsafeOf("wolf_variant");
 
     /**
-     * The registry key for {@link WorldClock}.
+     * The registry key for the opaque {@code minecraft:world_clock} registry.
      */
-    RegistryKey<Registry<WorldClock>> WORLD_CLOCK = RegistryKey.unsafeOf("world_clock");
+    RegistryKey<Registry<BinaryTag>> WORLD_CLOCK = RegistryKey.unsafeOf("world_clock");
 
     /**
      * The registry key for {@link Biome}.
@@ -264,9 +236,9 @@ public interface BuiltinRegistries {
     RegistryKey<Registry<Biome>> WORLDGEN_BIOME = BIOME;
 
     /**
-     * The registry key for {@link ZombieNautilusVariant}.
+     * The registry key for the opaque {@code minecraft:zombie_nautilus_variant} registry.
      */
-    RegistryKey<Registry<ZombieNautilusVariant>> ZOMBIE_NAUTILUS_VARIANT = RegistryKey.unsafeOf("zombie_nautilus_variant");
+    RegistryKey<Registry<BinaryTag>> ZOMBIE_NAUTILUS_VARIANT = RegistryKey.unsafeOf("zombie_nautilus_variant");
 
     /**
      * The registry key for {@link Particle}.

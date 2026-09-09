@@ -4,7 +4,6 @@ import net.minestom.server.network.NetworkBuffer;
 import net.minestom.server.registry.RegistryTagImpl.Backed;
 import net.minestom.server.registry.RegistryTagImpl.Direct;
 import net.minestom.server.registry.RegistryTagImpl.Empty;
-import net.minestom.server.utils.Either;
 import net.minestom.server.utils.validate.Check;
 
 import java.util.ArrayList;
@@ -13,57 +12,29 @@ import java.util.Objects;
 
 final class RegistryNetworkTypes {
 
-    record RegistryKeyImpl<T>(Registries.Selector<T> selector) implements NetworkBuffer.Type<RegistryKey<T>> {
+    /**
+     * @param holder whether the reference uses the vanilla holder framing, where the id is offset by one and zero
+     *               marks an inline value. Registries without a server-side type cannot decode an inline value.
+     */
+    record RegistryKeyImpl<T>(Registries.Selector<T> selector, boolean holder) implements NetworkBuffer.Type<RegistryKey<T>> {
         @Override
         public void write(NetworkBuffer buffer, RegistryKey<T> value) {
             final var registries = Objects.requireNonNull(buffer.registries(), "Buffer is missing registries");
             final var registry = selector.select(registries);
             final int id = registry.getId(value);
             Check.stateCondition(id == -1, "Key {0} is not registered in registry {1}", value, registry.key());
-            buffer.write(NetworkBuffer.VAR_INT, id);
+            buffer.write(NetworkBuffer.VAR_INT, holder ? id + 1 : id);
         }
 
         @Override
         public RegistryKey<T> read(NetworkBuffer buffer) {
             final var registries = Objects.requireNonNull(buffer.registries(), "Buffer is missing registries");
             final var registry = selector.select(registries);
-            final int id = buffer.read(NetworkBuffer.VAR_INT);
+            final int raw = buffer.read(NetworkBuffer.VAR_INT);
+            Check.stateCondition(holder && raw == 0, "Inline values are not supported for registry {0}", registry.key());
+            final int id = holder ? raw - 1 : raw;
             final var key = registry.getKey(id);
-            Check.stateCondition(key == null, "Unknown id {0} for registry {1}", id - 1, registry.key());
-            return key;
-        }
-    }
-
-    record HolderNetworkTypeImpl<T extends Holder<T>>(
-            Registries.Selector<T> selector,
-            NetworkBuffer.Type<T> registryNetworkType
-    ) implements NetworkBuffer.Type<Holder<T>> {
-        @Override
-        public void write(NetworkBuffer buffer, Holder<T> value) {
-            final var registries = Objects.requireNonNull(buffer.registries(), "Buffer is missing registries");
-            switch (value.unwrap()) {
-                case Either.Left(RegistryKey<T> key) -> {
-                    final var registry = selector.select(registries);
-                    final int id = registry.getId(key);
-                    Check.stateCondition(id == -1, "Key {0} is not registered in registry {1}", key, registry.key());
-                    buffer.write(NetworkBuffer.VAR_INT, id + 1);
-                }
-                case Either.Right(T direct) -> {
-                    buffer.write(NetworkBuffer.VAR_INT, 0);
-                    buffer.write(registryNetworkType, direct);
-                }
-            }
-        }
-
-        @Override
-        public Holder<T> read(NetworkBuffer buffer) {
-            final var registries = Objects.requireNonNull(buffer.registries(), "Buffer is missing registries");
-            final int id = buffer.read(NetworkBuffer.VAR_INT);
-            if (id == 0)
-                return buffer.read(registryNetworkType);
-            final var registry = selector.select(registries);
-            final var key = registry.getKey(id - 1);
-            Check.stateCondition(key == null, "Unknown id {0} for registry {1}", id - 1, registry.key());
+            Check.stateCondition(key == null, "Unknown id {0} for registry {1}", id, registry.key());
             return key;
         }
     }

@@ -1,5 +1,6 @@
 package net.minestom.server.world;
 
+import net.kyori.adventure.nbt.BinaryTag;
 import net.minestom.server.codec.Codec;
 import net.minestom.server.codec.StructCodec;
 import net.minestom.server.registry.BuiltinRegistries;
@@ -11,8 +12,6 @@ import net.minestom.server.utils.IntProvider;
 import net.minestom.server.utils.validate.Check;
 import net.minestom.server.world.attribute.EnvironmentAttribute;
 import net.minestom.server.world.attribute.EnvironmentAttributeMap;
-import net.minestom.server.world.clock.WorldClock;
-import net.minestom.server.world.timeline.Timeline;
 import org.jetbrains.annotations.ApiStatus;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.Nullable;
@@ -40,8 +39,8 @@ public sealed interface DimensionType extends DimensionTypes permits DimensionTy
             "skybox", Skybox.CODEC.optional(Skybox.OVERWORLD), DimensionType::skybox,
             "cardinal_light", CardinalLight.CODEC.optional(CardinalLight.DEFAULT), DimensionType::cardinalLight,
             "attributes", EnvironmentAttributeMap.CODEC.optional(EnvironmentAttributeMap.EMPTY), DimensionType::attributes,
-            "timelines", RegistryTag.codec(Registries::timeline).optional(RegistryTag.empty()), DimensionType::timelines,
-            "default_clock", WorldClock.CODEC.optional(), DimensionType::defaultClock,
+            "timelines", RegistryTag.<BinaryTag>codec(registries -> registries.opaque(BuiltinRegistries.TIMELINE)).optional(RegistryTag.empty()), DimensionType::timelines,
+            "default_clock", RegistryKey.<BinaryTag>codec(registries -> registries.opaque(BuiltinRegistries.WORLD_CLOCK)).optional(), DimensionType::defaultClock,
             DimensionType::create);
 
     static DimensionType create(
@@ -50,7 +49,7 @@ public sealed interface DimensionType extends DimensionTypes permits DimensionTy
             String infiniburn, float ambientLight,
             IntProvider monsterSpawnLightLevel, int monsterSpawnBlockLightLimit,
             Skybox skybox, CardinalLight cardinalLight,
-            EnvironmentAttributeMap attributes, RegistryTag<Timeline> timelines, RegistryKey<WorldClock> defaultClock
+            EnvironmentAttributeMap attributes, RegistryTag<BinaryTag> timelines, RegistryKey<BinaryTag> defaultClock
     ) {
         return new DimensionTypeImpl(hasFixedTime, hasSkyLight, hasCeiling, hasEnderDragonFight,
                 coordinateScale, minY, height, logicalHeight, infiniburn,
@@ -111,9 +110,9 @@ public sealed interface DimensionType extends DimensionTypes permits DimensionTy
 
     EnvironmentAttributeMap attributes();
 
-    RegistryTag<Timeline> timelines();
+    RegistryTag<BinaryTag> timelines();
 
-    RegistryKey<WorldClock> defaultClock();
+    RegistryKey<BinaryTag> defaultClock();
 
     default int totalHeight() {
         return minY() + height();
@@ -150,8 +149,8 @@ public sealed interface DimensionType extends DimensionTypes permits DimensionTy
         private Skybox skybox = Skybox.OVERWORLD;
         private CardinalLight cardinalLight = CardinalLight.DEFAULT;
         private final EnvironmentAttributeMap.Builder attributes;
-        private RegistryTag<Timeline> timelines = RegistryTag.empty();
-        private @Nullable RegistryKey<WorldClock> defaultClock = null;
+        private RegistryTag<BinaryTag> timelines = RegistryTag.empty();
+        private @Nullable RegistryKey<BinaryTag> defaultClock = null;
 
         private Builder() {
             attributes = EnvironmentAttributeMap.builder();
@@ -282,13 +281,13 @@ public sealed interface DimensionType extends DimensionTypes permits DimensionTy
         }
 
         @Contract(value = "_ -> this")
-        public Builder timelines(RegistryTag<Timeline> timelines) {
+        public Builder timelines(RegistryTag<BinaryTag> timelines) {
             this.timelines = timelines;
             return this;
         }
 
         @Contract(value = "_ -> this")
-        public Builder defaultClock(RegistryKey<WorldClock> defaultClock) {
+        public Builder defaultClock(RegistryKey<BinaryTag> defaultClock) {
             this.defaultClock = defaultClock;
             return this;
         }

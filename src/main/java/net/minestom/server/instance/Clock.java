@@ -1,11 +1,11 @@
 package net.minestom.server.instance;
 
+import net.kyori.adventure.nbt.BinaryTag;
 import net.minestom.server.registry.RegistryKey;
-import net.minestom.server.world.clock.WorldClock;
 
 public sealed interface Clock permits Instance.ClockInstance {
 
-    RegistryKey<WorldClock> clock();
+    RegistryKey<BinaryTag> clock();
 
     /// Gets the rate at which the clock advances per tick, in partial ticks.
     ///

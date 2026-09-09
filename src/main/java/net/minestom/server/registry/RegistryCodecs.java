@@ -7,7 +7,6 @@ import net.minestom.server.codec.Transcoder;
 import net.minestom.server.registry.RegistryTagImpl.Backed;
 import net.minestom.server.registry.RegistryTagImpl.Direct;
 import net.minestom.server.registry.RegistryTagImpl.Empty;
-import net.minestom.server.utils.Either;
 import org.intellij.lang.annotations.Subst;
 import org.jetbrains.annotations.Nullable;
 
@@ -43,44 +42,6 @@ final class RegistryCodecs {
             if (!(coder instanceof RegistryTranscoder<D>))
                 return new Result.Error<>("Missing registries in transcoder");
             return new Result.Ok<>(coder.createString(value.key().asString()));
-        }
-    }
-
-    record HolderCodec<T>(
-            Registries.Selector<T> selector,
-            Codec<T> registryCodec
-    ) implements Codec<Holder<T>> {
-        HolderCodec {
-            Objects.requireNonNull(selector, "selector");
-            Objects.requireNonNull(registryCodec, "registryCodec");
-        }
-
-        @Override
-        @SuppressWarnings("unchecked")
-        public <D> Result<Holder<T>> decode(Transcoder<D> coder, D value) {
-            if (!(coder instanceof RegistryTranscoder<D> context))
-                return new Result.Error<>("Missing registries in transcoder");
-            final var registry = selector.select(context.registries());
-            final Result<T> directResult = registryCodec.decode(coder, value);
-            if (directResult instanceof Result.Ok(T direct))
-                return new Result.Ok<>((Holder<T>) direct);
-            final Result<String> referenceResult = coder.getString(value);
-            if (!(referenceResult instanceof Result.Ok(@Subst("a")String reference)))
-                return referenceResult.cast();
-            final RegistryKey<T> key = registry.getKey(Key.key(reference));
-            if (key == null) return new Result.Error<>("Unknown key " + reference + " for registry " + registry.key());
-            return new Result.Ok<>(key);
-        }
-
-        @Override
-        public <D> Result<D> encode(Transcoder<D> coder, @Nullable Holder<T> value) {
-            if (value == null) return new Result.Error<>("null");
-            if (!(coder instanceof RegistryTranscoder<D>))
-                return new Result.Error<>("Missing registries in transcoder");
-            return switch (value.unwrap()) {
-                case Either.Left(RegistryKey<T> key) -> new Result.Ok<>(coder.createString(key.key().asString()));
-                case Either.Right(T direct) -> registryCodec.encode(coder, direct);
-            };
         }
     }
 

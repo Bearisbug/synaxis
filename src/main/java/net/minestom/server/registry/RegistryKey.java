@@ -15,11 +15,22 @@ import org.jetbrains.annotations.ApiStatus;
 public non-sealed interface RegistryKey<T> extends Holder<T>, Keyed {
 
     static <T> NetworkBuffer.Type<RegistryKey<T>> networkType(Registries.Selector<T> selector) {
-        return new RegistryNetworkTypes.RegistryKeyImpl<>(selector);
+        return new RegistryNetworkTypes.RegistryKeyImpl<>(selector, false);
     }
 
     static <T> Codec<RegistryKey<T>> codec(Registries.Selector<T> selector) {
         return new RegistryCodecs.RegistryKeyImpl<>(selector);
+    }
+
+    /**
+     * <p>The network type of a registry reference framed as a vanilla holder: the id is written offset by one, and
+     * zero marks an inline value.</p>
+     *
+     * <p>Registries without a server-side type cannot decode an inline value, so reading a zero fails the packet.
+     * Nothing in the engine writes one.</p>
+     */
+    static <T> NetworkBuffer.Type<RegistryKey<T>> holderNetworkType(Registries.Selector<T> selector) {
+        return new RegistryNetworkTypes.RegistryKeyImpl<>(selector, true);
     }
 
     static <T> NetworkBuffer.Type<RegistryKey<T>> uncheckedNetworkType() {

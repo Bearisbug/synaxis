@@ -56,7 +56,6 @@ module net.minestom.server {
     exports net.minestom.server.condition;
     exports net.minestom.server.coordinate;
     exports net.minestom.server.crypto;
-    exports net.minestom.server.dialog;
     exports net.minestom.server.entity;
     exports net.minestom.server.entity.attribute;
     exports net.minestom.server.entity.damage;
@@ -64,7 +63,6 @@ module net.minestom.server {
     exports net.minestom.server.entity.metadata.animal;
     exports net.minestom.server.entity.metadata.animal.tameable;
     exports net.minestom.server.entity.metadata.avatar;
-    exports net.minestom.server.entity.metadata.cube;
     exports net.minestom.server.entity.metadata.display;
     exports net.minestom.server.entity.metadata.golem;
     exports net.minestom.server.entity.metadata.item;
@@ -88,8 +86,6 @@ module net.minestom.server {
     exports net.minestom.server.gamedata;
     exports net.minestom.server.instance;
     exports net.minestom.server.instance.block;
-    exports net.minestom.server.instance.block.banner;
-    exports net.minestom.server.instance.block.jukebox;
     exports net.minestom.server.instance.block.predicate;
     exports net.minestom.server.instance.block.rule;
     exports net.minestom.server.instance.fluid;
@@ -102,11 +98,7 @@ module net.minestom.server {
     exports net.minestom.server.inventory.click;
     exports net.minestom.server.inventory.type;
     exports net.minestom.server.item;
-    exports net.minestom.server.item.armor;
     exports net.minestom.server.item.component;
-    exports net.minestom.server.item.crossbow;
-    exports net.minestom.server.item.enchant;
-    exports net.minestom.server.item.instrument;
     exports net.minestom.server.listener;
     exports net.minestom.server.listener.common;
     exports net.minestom.server.listener.manager;
@@ -160,8 +152,6 @@ module net.minestom.server {
     exports net.minestom.server.worldevent;
     exports net.minestom.server.world.attribute;
     exports net.minestom.server.world.biome;
-    exports net.minestom.server.world.timeline;
-    exports net.minestom.server.world.clock;
 
     provides ComponentLoggerProvider with MinestomComponentLoggerProvider;
     provides ANSIComponentSerializer.Provider with MinestomAnsiComponentSerializerProvider;

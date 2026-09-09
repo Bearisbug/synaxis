@@ -1,5 +1,6 @@
 package net.minestom.server.component;
 
+import net.kyori.adventure.nbt.BinaryTag;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.util.RGBLike;
 import net.minestom.server.codec.Codec;
@@ -9,35 +10,19 @@ import net.minestom.server.color.DyeColor;
 import net.minestom.server.entity.EntityType;
 import net.minestom.server.entity.VillagerType;
 import net.minestom.server.entity.damage.DamageType;
-import net.minestom.server.entity.metadata.animal.ChickenSoundVariant;
-import net.minestom.server.entity.metadata.animal.ChickenVariant;
-import net.minestom.server.entity.metadata.animal.CowSoundVariant;
-import net.minestom.server.entity.metadata.animal.CowVariant;
 import net.minestom.server.entity.metadata.animal.FoxMeta;
-import net.minestom.server.entity.metadata.animal.FrogVariant;
 import net.minestom.server.entity.metadata.animal.HorseMeta;
 import net.minestom.server.entity.metadata.animal.LlamaMeta;
 import net.minestom.server.entity.metadata.animal.MooshroomMeta;
-import net.minestom.server.entity.metadata.animal.PigSoundVariant;
-import net.minestom.server.entity.metadata.animal.PigVariant;
 import net.minestom.server.entity.metadata.animal.RabbitMeta;
-import net.minestom.server.entity.metadata.animal.ZombieNautilusVariant;
-import net.minestom.server.entity.metadata.animal.tameable.CatSoundVariant;
-import net.minestom.server.entity.metadata.animal.tameable.CatVariant;
 import net.minestom.server.entity.metadata.animal.tameable.ParrotMeta;
-import net.minestom.server.entity.metadata.animal.tameable.WolfSoundVariant;
-import net.minestom.server.entity.metadata.animal.tameable.WolfVariant;
-import net.minestom.server.entity.metadata.other.PaintingVariant;
 import net.minestom.server.entity.metadata.water.AxolotlMeta;
 import net.minestom.server.entity.metadata.water.fish.SalmonMeta;
 import net.minestom.server.entity.metadata.water.fish.TropicalFishMeta;
 import net.minestom.server.instance.block.BlockEntityType;
-import net.minestom.server.instance.block.banner.BannerPattern;
-import net.minestom.server.instance.block.jukebox.JukeboxSong;
 import net.minestom.server.item.ItemStack;
 import net.minestom.server.item.ItemStackTemplate;
 import net.minestom.server.item.Material;
-import net.minestom.server.item.armor.TrimMaterial;
 import net.minestom.server.item.component.ArmorTrim;
 import net.minestom.server.item.component.AttackRange;
 import net.minestom.server.item.component.AttributeList;
@@ -76,15 +61,16 @@ import net.minestom.server.item.component.UseEffects;
 import net.minestom.server.item.component.Weapon;
 import net.minestom.server.item.component.WritableBookContent;
 import net.minestom.server.item.component.WrittenBookContent;
-import net.minestom.server.item.instrument.Instrument;
 import net.minestom.server.item.predicate.ItemPredicate;
 import net.minestom.server.network.NetworkBuffer;
 import net.minestom.server.network.player.ResolvableProfile;
-import net.minestom.server.registry.Holder;
+import net.minestom.server.registry.BuiltinRegistries;
 import net.minestom.server.registry.Registries;
+import net.minestom.server.registry.Registry;
 import net.minestom.server.registry.RegistryKey;
 import net.minestom.server.registry.RegistryTag;
 import net.minestom.server.sound.SoundEvent;
+import net.minestom.server.utils.Either;
 import net.minestom.server.utils.Unit;
 
 import java.util.List;
@@ -154,11 +140,16 @@ public class DataComponents {
     public static final DataComponent<TypedCustomData<EntityType>> ENTITY_DATA = register("entity_data", TypedCustomData.networkType(EntityType.NETWORK_TYPE), TypedCustomData.codec(EntityType.CODEC));
     public static final DataComponent<CustomData> BUCKET_ENTITY_DATA = register("bucket_entity_data", CustomData.NETWORK_TYPE, CustomData.CODEC);
     public static final DataComponent<TypedCustomData<BlockEntityType>> BLOCK_ENTITY_DATA = register("block_entity_data", TypedCustomData.networkType(BlockEntityType.NETWORK_TYPE), TypedCustomData.codec(BlockEntityType.CODEC));
-    public static final DataComponent<Holder<Instrument>> INSTRUMENT = register("instrument", Holder.networkType(Registries::instrument, Instrument.REGISTRY_NETWORK_TYPE), Holder.codec(Registries::instrument, Instrument.REGISTRY_CODEC));
-    public static final DataComponent<Holder<TrimMaterial>> PROVIDES_TRIM_MATERIAL = register("provides_trim_material", Holder.networkType(Registries::trimMaterial, TrimMaterial.REGISTRY_NETWORK_TYPE), Holder.codec(Registries::trimMaterial, TrimMaterial.REGISTRY_CODEC));
+    public static final DataComponent<RegistryKey<BinaryTag>> INSTRUMENT = register("instrument", RegistryKey.holderNetworkType(opaque(BuiltinRegistries.INSTRUMENT)), RegistryKey.codec(opaque(BuiltinRegistries.INSTRUMENT)));
+    public static final DataComponent<RegistryKey<BinaryTag>> PROVIDES_TRIM_MATERIAL = register("provides_trim_material", RegistryKey.holderNetworkType(opaque(BuiltinRegistries.TRIM_MATERIAL)), RegistryKey.codec(opaque(BuiltinRegistries.TRIM_MATERIAL)));
     public static final DataComponent<Integer> OMINOUS_BOTTLE_AMPLIFIER = register("ominous_bottle_amplifier", NetworkBuffer.VAR_INT, Codec.INT);
-    public static final DataComponent<RegistryKey<JukeboxSong>> JUKEBOX_PLAYABLE = register("jukebox_playable", JukeboxSong.JUKEBOX_PLAYABLE_NETWORK_TYPE, JukeboxSong.CODEC);
-    public static final DataComponent<RegistryTag<BannerPattern>> PROVIDES_BANNER_PATTERNS = register("provides_banner_patterns", RegistryTag.networkType(Registries::bannerPattern), RegistryTag.codec(Registries::bannerPattern));
+    // The wire type of jukebox_playable is an either-holder, but both branches are the same registry reference here.
+    @SuppressWarnings("unchecked")
+    public static final DataComponent<RegistryKey<BinaryTag>> JUKEBOX_PLAYABLE = register("jukebox_playable",
+            NetworkBuffer.Either(RegistryKey.holderNetworkType(opaque(BuiltinRegistries.JUKEBOX_SONG)), RegistryKey.<BinaryTag>holderNetworkType(opaque(BuiltinRegistries.JUKEBOX_SONG)))
+                    .transform(e -> ((Either.Left<RegistryKey<BinaryTag>, RegistryKey<BinaryTag>>) e).value(), Either::left),
+            RegistryKey.codec(opaque(BuiltinRegistries.JUKEBOX_SONG)));
+    public static final DataComponent<RegistryTag<BinaryTag>> PROVIDES_BANNER_PATTERNS = register("provides_banner_patterns", RegistryTag.networkType(opaque(BuiltinRegistries.BANNER_PATTERN)), RegistryTag.codec(opaque(BuiltinRegistries.BANNER_PATTERN)));
     public static final DataComponent<List<String>> RECIPES = register("recipes", NetworkBuffer.STRING.list(Short.MAX_VALUE), Codec.STRING.list(Short.MAX_VALUE), List::copyOf);
     public static final DataComponent<LodestoneTracker> LODESTONE_TRACKER = register("lodestone_tracker", LodestoneTracker.NETWORK_TYPE, LodestoneTracker.CODEC);
     public static final DataComponent<FireworkExplosion> FIREWORK_EXPLOSION = register("firework_explosion", FireworkExplosion.NETWORK_TYPE, FireworkExplosion.CODEC);
@@ -176,8 +167,8 @@ public class DataComponents {
     public static final DataComponent<SeededContainerLoot> CONTAINER_LOOT = register("container_loot", null, SeededContainerLoot.CODEC);
     public static final DataComponent<SoundEvent> BREAK_SOUND = register("break_sound", SoundEvent.NETWORK_TYPE, SoundEvent.CODEC);
     public static final DataComponent<VillagerType> VILLAGER_VARIANT = register("villager/variant", VillagerType.NETWORK_TYPE, VillagerType.CODEC);
-    public static final DataComponent<RegistryKey<WolfVariant>> WOLF_VARIANT = register("wolf/variant", WolfVariant.NETWORK_TYPE, WolfVariant.CODEC);
-    public static final DataComponent<RegistryKey<WolfSoundVariant>> WOLF_SOUND_VARIANT = register("wolf/sound_variant", WolfSoundVariant.NETWORK_TYPE, WolfSoundVariant.CODEC);
+    public static final DataComponent<RegistryKey<BinaryTag>> WOLF_VARIANT = register("wolf/variant", RegistryKey.networkType(opaque(BuiltinRegistries.WOLF_VARIANT)), RegistryKey.codec(opaque(BuiltinRegistries.WOLF_VARIANT)));
+    public static final DataComponent<RegistryKey<BinaryTag>> WOLF_SOUND_VARIANT = register("wolf/sound_variant", RegistryKey.networkType(opaque(BuiltinRegistries.WOLF_SOUND_VARIANT)), RegistryKey.codec(opaque(BuiltinRegistries.WOLF_SOUND_VARIANT)));
     public static final DataComponent<DyeColor> WOLF_COLLAR = register("wolf/collar", DyeColor.NETWORK_TYPE, DyeColor.CODEC);
     public static final DataComponent<FoxMeta.Variant> FOX_VARIANT = register("fox/variant", FoxMeta.Variant.NETWORK_TYPE, FoxMeta.Variant.CODEC);
     public static final DataComponent<SalmonMeta.Size> SALMON_SIZE = register("salmon/size", SalmonMeta.Size.NETWORK_TYPE, SalmonMeta.Size.CODEC);
@@ -187,20 +178,20 @@ public class DataComponents {
     public static final DataComponent<DyeColor> TROPICAL_FISH_PATTERN_COLOR = register("tropical_fish/pattern_color", DyeColor.NETWORK_TYPE, DyeColor.CODEC);
     public static final DataComponent<MooshroomMeta.Variant> MOOSHROOM_VARIANT = register("mooshroom/variant", MooshroomMeta.Variant.NETWORK_TYPE, MooshroomMeta.Variant.CODEC);
     public static final DataComponent<RabbitMeta.Variant> RABBIT_VARIANT = register("rabbit/variant", RabbitMeta.Variant.NETWORK_TYPE, RabbitMeta.Variant.CODEC);
-    public static final DataComponent<RegistryKey<PigVariant>> PIG_VARIANT = register("pig/variant", PigVariant.NETWORK_TYPE, PigVariant.CODEC);
-    public static final DataComponent<RegistryKey<PigSoundVariant>> PIG_SOUND_VARIANT = register("pig/sound_variant", PigSoundVariant.NETWORK_TYPE, PigSoundVariant.CODEC);
-    public static final DataComponent<RegistryKey<CowVariant>> COW_VARIANT = register("cow/variant", CowVariant.NETWORK_TYPE, CowVariant.CODEC);
-    public static final DataComponent<RegistryKey<CowSoundVariant>> COW_SOUND_VARIANT = register("cow/sound_variant", CowSoundVariant.NETWORK_TYPE, CowSoundVariant.CODEC);
-    public static final DataComponent<RegistryKey<ChickenVariant>> CHICKEN_VARIANT = register("chicken/variant", ChickenVariant.NETWORK_TYPE, ChickenVariant.CODEC);
-    public static final DataComponent<RegistryKey<ChickenSoundVariant>> CHICKEN_SOUND_VARIANT = register("chicken/sound_variant", ChickenSoundVariant.NETWORK_TYPE, ChickenSoundVariant.CODEC);
-    public static final DataComponent<RegistryKey<ZombieNautilusVariant>> ZOMBIE_NAUTILUS_VARIANT = register("zombie_nautilus/variant", ZombieNautilusVariant.NETWORK_TYPE, ZombieNautilusVariant.CODEC);
-    public static final DataComponent<RegistryKey<FrogVariant>> FROG_VARIANT = register("frog/variant", FrogVariant.NETWORK_TYPE, FrogVariant.CODEC);
+    public static final DataComponent<RegistryKey<BinaryTag>> PIG_VARIANT = register("pig/variant", RegistryKey.networkType(opaque(BuiltinRegistries.PIG_VARIANT)), RegistryKey.codec(opaque(BuiltinRegistries.PIG_VARIANT)));
+    public static final DataComponent<RegistryKey<BinaryTag>> PIG_SOUND_VARIANT = register("pig/sound_variant", RegistryKey.networkType(opaque(BuiltinRegistries.PIG_SOUND_VARIANT)), RegistryKey.codec(opaque(BuiltinRegistries.PIG_SOUND_VARIANT)));
+    public static final DataComponent<RegistryKey<BinaryTag>> COW_VARIANT = register("cow/variant", RegistryKey.networkType(opaque(BuiltinRegistries.COW_VARIANT)), RegistryKey.codec(opaque(BuiltinRegistries.COW_VARIANT)));
+    public static final DataComponent<RegistryKey<BinaryTag>> COW_SOUND_VARIANT = register("cow/sound_variant", RegistryKey.networkType(opaque(BuiltinRegistries.COW_SOUND_VARIANT)), RegistryKey.codec(opaque(BuiltinRegistries.COW_SOUND_VARIANT)));
+    public static final DataComponent<RegistryKey<BinaryTag>> CHICKEN_VARIANT = register("chicken/variant", RegistryKey.networkType(opaque(BuiltinRegistries.CHICKEN_VARIANT)), RegistryKey.codec(opaque(BuiltinRegistries.CHICKEN_VARIANT)));
+    public static final DataComponent<RegistryKey<BinaryTag>> CHICKEN_SOUND_VARIANT = register("chicken/sound_variant", RegistryKey.networkType(opaque(BuiltinRegistries.CHICKEN_SOUND_VARIANT)), RegistryKey.codec(opaque(BuiltinRegistries.CHICKEN_SOUND_VARIANT)));
+    public static final DataComponent<RegistryKey<BinaryTag>> ZOMBIE_NAUTILUS_VARIANT = register("zombie_nautilus/variant", RegistryKey.networkType(opaque(BuiltinRegistries.ZOMBIE_NAUTILUS_VARIANT)), RegistryKey.codec(opaque(BuiltinRegistries.ZOMBIE_NAUTILUS_VARIANT)));
+    public static final DataComponent<RegistryKey<BinaryTag>> FROG_VARIANT = register("frog/variant", RegistryKey.networkType(opaque(BuiltinRegistries.FROG_VARIANT)), RegistryKey.codec(opaque(BuiltinRegistries.FROG_VARIANT)));
     public static final DataComponent<HorseMeta.Variant> HORSE_VARIANT = register("horse/variant", HorseMeta.Variant.NETWORK_TYPE, HorseMeta.Variant.CODEC);
-    public static final DataComponent<Holder<PaintingVariant>> PAINTING_VARIANT = register("painting/variant", PaintingVariant.NETWORK_TYPE, PaintingVariant.CODEC);
+    public static final DataComponent<RegistryKey<BinaryTag>> PAINTING_VARIANT = register("painting/variant", RegistryKey.holderNetworkType(opaque(BuiltinRegistries.PAINTING_VARIANT)), RegistryKey.codec(opaque(BuiltinRegistries.PAINTING_VARIANT)));
     public static final DataComponent<LlamaMeta.Variant> LLAMA_VARIANT = register("llama/variant", LlamaMeta.Variant.NETWORK_TYPE, LlamaMeta.Variant.CODEC);
     public static final DataComponent<AxolotlMeta.Variant> AXOLOTL_VARIANT = register("axolotl/variant", AxolotlMeta.Variant.NETWORK_TYPE, AxolotlMeta.Variant.CODEC);
-    public static final DataComponent<RegistryKey<CatVariant>> CAT_VARIANT = register("cat/variant", CatVariant.NETWORK_TYPE, CatVariant.NBT_TYPE);
-    public static final DataComponent<RegistryKey<CatSoundVariant>> CAT_SOUND_VARIANT = register("cat/sound_variant", CatSoundVariant.NETWORK_TYPE, CatSoundVariant.CODEC);
+    public static final DataComponent<RegistryKey<BinaryTag>> CAT_VARIANT = register("cat/variant", RegistryKey.networkType(opaque(BuiltinRegistries.CAT_VARIANT)), RegistryKey.codec(opaque(BuiltinRegistries.CAT_VARIANT)));
+    public static final DataComponent<RegistryKey<BinaryTag>> CAT_SOUND_VARIANT = register("cat/sound_variant", RegistryKey.networkType(opaque(BuiltinRegistries.CAT_SOUND_VARIANT)), RegistryKey.codec(opaque(BuiltinRegistries.CAT_SOUND_VARIANT)));
     public static final DataComponent<DyeColor> CAT_COLLAR = register("cat/collar", DyeColor.NETWORK_TYPE, DyeColor.CODEC);
     public static final DataComponent<DyeColor> SHEEP_COLOR = register("sheep/color", DyeColor.NETWORK_TYPE, DyeColor.CODEC);
     public static final DataComponent<DyeColor> SHULKER_COLOR = register("shulker/color", DyeColor.NETWORK_TYPE, DyeColor.CODEC);
@@ -208,5 +199,9 @@ public class DataComponents {
     // There are some components that are serialized to codec as an object containing a single field, for now we just inline them here.
     private static <T> Codec<T> wrapObject(String fieldName, Codec<T> serializer) {
         return StructCodec.struct(fieldName, serializer, t -> t, t -> t);
+    }
+
+    private static Registries.Selector<BinaryTag> opaque(RegistryKey<Registry<BinaryTag>> key) {
+        return registries -> registries.opaque(key);
     }
 }

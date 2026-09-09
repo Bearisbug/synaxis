@@ -1,11 +1,10 @@
 package net.minestom.server.world;
 
+import net.kyori.adventure.nbt.BinaryTag;
 import net.minestom.server.registry.RegistryKey;
 import net.minestom.server.registry.RegistryTag;
 import net.minestom.server.utils.IntProvider;
 import net.minestom.server.world.attribute.EnvironmentAttributeMap;
-import net.minestom.server.world.clock.WorldClock;
-import net.minestom.server.world.timeline.Timeline;
 import org.jetbrains.annotations.Nullable;
 
 record DimensionTypeImpl(
@@ -24,7 +23,7 @@ record DimensionTypeImpl(
         Skybox skybox,
         CardinalLight cardinalLight,
         EnvironmentAttributeMap attributes,
-        RegistryTag<Timeline> timelines,
-        @Nullable RegistryKey<WorldClock> defaultClock
+        RegistryTag<BinaryTag> timelines,
+        @Nullable RegistryKey<BinaryTag> defaultClock
 ) implements DimensionType {
 }

@@ -1,5 +1,7 @@
 package net.minestom.server.instance;
 
+import net.minestom.server.registry.BuiltinRegistries;
+import net.kyori.adventure.nbt.BinaryTag;
 import it.unimi.dsi.fastutil.objects.Object2ObjectArrayMap;
 import it.unimi.dsi.fastutil.objects.ObjectArraySet;
 import net.kyori.adventure.audience.Audience;
@@ -53,7 +55,6 @@ import net.minestom.server.utils.chunk.ChunkSupplier;
 import net.minestom.server.utils.validate.Check;
 import net.minestom.server.world.DimensionType;
 import net.minestom.server.world.biome.Biome;
-import net.minestom.server.world.clock.WorldClock;
 import org.jetbrains.annotations.ApiStatus;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.Nullable;
@@ -106,7 +107,7 @@ public abstract class Instance implements Block.Getter, Block.Setter, Biome.Gett
 
     // Time
     private long worldAge;
-    private final Map<RegistryKey<WorldClock>, ClockInstance> clocks;
+    private final Map<RegistryKey<BinaryTag>, ClockInstance> clocks;
 
     // Weather of the instance
     private Weather weather = Weather.CLEAR;
@@ -175,7 +176,7 @@ public abstract class Instance implements Block.Getter, Block.Setter, Biome.Gett
         this.dimensionName = dimensionName.asString();
 
         this.clocks = new Object2ObjectArrayMap<>();
-        for (var worldClock : registries.worldClock().keys())
+        for (var worldClock : registries.opaque(BuiltinRegistries.WORLD_CLOCK).keys())
             this.clocks.put(worldClock, new ClockInstance(worldClock));
 
         this.worldBorder = WorldBorder.DEFAULT_BORDER;
@@ -520,7 +521,7 @@ public abstract class Instance implements Block.Getter, Block.Setter, Biome.Gett
     /// Returns the current time (in ticks) of the given clock.
     ///
     /// @throws IllegalArgumentException if the clock was not registered when the instance was created.
-    public long getTime(RegistryKey<WorldClock> clock) {
+    public long getTime(RegistryKey<BinaryTag> clock) {
         return clock(clock).time();
     }
 
@@ -533,7 +534,7 @@ public abstract class Instance implements Block.Getter, Block.Setter, Biome.Gett
     /// Sets the current time (in ticks) of the given clock.
     ///
     /// @throws IllegalArgumentException if the clock was not registered when the instance was created.
-    public void setTime(RegistryKey<WorldClock> clock, long time) {
+    public void setTime(RegistryKey<BinaryTag> clock, long time) {
         clock(clock).time(time);
     }
 
@@ -541,7 +542,7 @@ public abstract class Instance implements Block.Getter, Block.Setter, Biome.Gett
         return clocks.get(getCachedDimensionType().defaultClock());
     }
 
-    public Clock clock(RegistryKey<WorldClock> clock) {
+    public Clock clock(RegistryKey<BinaryTag> clock) {
         var clockInstance = clocks.get(clock);
         Check.argCondition(clockInstance == null, "Clock {0} is not registered in this instance", clock);
         return clockInstance;
@@ -553,7 +554,7 @@ public abstract class Instance implements Block.Getter, Block.Setter, Biome.Gett
      * @return the {@link SetTimePacket} with this instance data
      */
     public SetTimePacket createTimePacket() {
-        var entries = new HashMap<RegistryKey<WorldClock>, SetTimePacket.ClockState>();
+        var entries = new HashMap<RegistryKey<BinaryTag>, SetTimePacket.ClockState>();
         for (var clockInstance : this.clocks.values()) {
             entries.put(clockInstance.clock(), new SetTimePacket.ClockState(
                     clockInstance.time(),
@@ -1096,18 +1097,18 @@ public abstract class Instance implements Block.Getter, Block.Setter, Biome.Gett
     }
 
     final class ClockInstance implements Clock {
-        private final RegistryKey<WorldClock> clock;
+        private final RegistryKey<BinaryTag> clock;
         private boolean paused = false;
         private float rate = 1f;
         private float partialTick = 0f;
         private long time;
 
-        private ClockInstance(RegistryKey<WorldClock> clock) {
+        private ClockInstance(RegistryKey<BinaryTag> clock) {
             this.clock = clock;
         }
 
         @Override
-        public RegistryKey<WorldClock> clock() {
+        public RegistryKey<BinaryTag> clock() {
             return this.clock;
         }
 

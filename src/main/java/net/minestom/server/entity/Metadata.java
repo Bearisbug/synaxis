@@ -1,24 +1,12 @@
 package net.minestom.server.entity;
 
+import net.kyori.adventure.nbt.BinaryTag;
 import net.kyori.adventure.text.Component;
 import net.minestom.server.coordinate.Point;
 import net.minestom.server.coordinate.Vec;
 import net.minestom.server.entity.metadata.animal.ArmadilloMeta;
-import net.minestom.server.entity.metadata.animal.ChickenSoundVariant;
-import net.minestom.server.entity.metadata.animal.ChickenVariant;
-import net.minestom.server.entity.metadata.animal.CowSoundVariant;
-import net.minestom.server.entity.metadata.animal.CowVariant;
-import net.minestom.server.entity.metadata.animal.FrogVariant;
-import net.minestom.server.entity.metadata.animal.PigSoundVariant;
-import net.minestom.server.entity.metadata.animal.PigVariant;
 import net.minestom.server.entity.metadata.animal.SnifferMeta;
-import net.minestom.server.entity.metadata.animal.ZombieNautilusVariant;
-import net.minestom.server.entity.metadata.animal.tameable.CatSoundVariant;
-import net.minestom.server.entity.metadata.animal.tameable.CatVariant;
-import net.minestom.server.entity.metadata.animal.tameable.WolfSoundVariant;
-import net.minestom.server.entity.metadata.animal.tameable.WolfVariant;
 import net.minestom.server.entity.metadata.golem.CopperGolemMeta;
-import net.minestom.server.entity.metadata.other.PaintingVariant;
 import net.minestom.server.entity.metadata.villager.VillagerMeta;
 import net.minestom.server.instance.block.Block;
 import net.minestom.server.item.ItemStack;
@@ -26,7 +14,9 @@ import net.minestom.server.network.NetworkBuffer;
 import net.minestom.server.network.packet.server.play.data.WorldPos;
 import net.minestom.server.network.player.ResolvableProfile;
 import net.minestom.server.particle.Particle;
-import net.minestom.server.registry.Holder;
+import net.minestom.server.registry.BuiltinRegistries;
+import net.minestom.server.registry.Registries;
+import net.minestom.server.registry.Registry;
 import net.minestom.server.registry.RegistryKey;
 import net.minestom.server.utils.Direction;
 import net.minestom.server.utils.collection.ObjectArray;
@@ -122,51 +112,51 @@ public final class Metadata {
         return POSE.entry(value);
     }
 
-    public static Entry<RegistryKey<CatVariant>> CatVariant(RegistryKey<CatVariant> value) {
+    public static Entry<RegistryKey<BinaryTag>> CatVariant(RegistryKey<BinaryTag> value) {
         return CAT_VARIANT.entry(value);
     }
 
-    public static Entry<RegistryKey<CatSoundVariant>> CatSoundVariant(RegistryKey<CatSoundVariant> value) {
+    public static Entry<RegistryKey<BinaryTag>> CatSoundVariant(RegistryKey<BinaryTag> value) {
         return CAT_SOUND_VARIANT.entry(value);
     }
 
-    public static Entry<RegistryKey<CowVariant>> CowVariant(RegistryKey<CowVariant> value) {
+    public static Entry<RegistryKey<BinaryTag>> CowVariant(RegistryKey<BinaryTag> value) {
         return COW_VARIANT.entry(value);
     }
 
-    public static Entry<RegistryKey<CowSoundVariant>> CowSoundVariant(RegistryKey<CowSoundVariant> value) {
+    public static Entry<RegistryKey<BinaryTag>> CowSoundVariant(RegistryKey<BinaryTag> value) {
         return COW_SOUND_VARIANT.entry(value);
     }
 
-    public static Entry<RegistryKey<WolfVariant>> WolfVariant(RegistryKey<WolfVariant> value) {
+    public static Entry<RegistryKey<BinaryTag>> WolfVariant(RegistryKey<BinaryTag> value) {
         return WOLF_VARIANT.entry(value);
     }
 
-    public static Entry<RegistryKey<WolfSoundVariant>> WolfSoundVariant(RegistryKey<WolfSoundVariant> value) {
+    public static Entry<RegistryKey<BinaryTag>> WolfSoundVariant(RegistryKey<BinaryTag> value) {
         return WOLF_SOUND_VARIANT.entry(value);
     }
 
-    public static Entry<RegistryKey<FrogVariant>> FrogVariant(RegistryKey<FrogVariant> value) {
+    public static Entry<RegistryKey<BinaryTag>> FrogVariant(RegistryKey<BinaryTag> value) {
         return FROG_VARIANT.entry(value);
     }
 
-    public static Entry<RegistryKey<PigVariant>> PigVariant(RegistryKey<PigVariant> value) {
+    public static Entry<RegistryKey<BinaryTag>> PigVariant(RegistryKey<BinaryTag> value) {
         return PIG_VARIANT.entry(value);
     }
 
-    public static Entry<RegistryKey<PigSoundVariant>> PigSoundVariant(RegistryKey<PigSoundVariant> value) {
+    public static Entry<RegistryKey<BinaryTag>> PigSoundVariant(RegistryKey<BinaryTag> value) {
         return PIG_SOUND_VARIANT.entry(value);
     }
 
-    public static Entry<RegistryKey<ChickenVariant>> ChickenVariant(RegistryKey<ChickenVariant> value) {
+    public static Entry<RegistryKey<BinaryTag>> ChickenVariant(RegistryKey<BinaryTag> value) {
         return CHICKEN_VARIANT.entry(value);
     }
 
-    public static Entry<RegistryKey<ChickenSoundVariant>> ChickenSoundVariant(RegistryKey<ChickenSoundVariant> value) {
+    public static Entry<RegistryKey<BinaryTag>> ChickenSoundVariant(RegistryKey<BinaryTag> value) {
         return CHICKEN_SOUND_VARIANT.entry(value);
     }
 
-    public static Entry<RegistryKey<ZombieNautilusVariant>> ZombieNautilusVariant(RegistryKey<ZombieNautilusVariant> value) {
+    public static Entry<RegistryKey<BinaryTag>> ZombieNautilusVariant(RegistryKey<BinaryTag> value) {
         return ZOMBIE_NAUTILUS_VARIANT.entry(value);
     }
 
@@ -174,7 +164,7 @@ public final class Metadata {
         return OPT_GLOBAL_POSITION.entry(value);
     }
 
-    public static Entry<Holder<PaintingVariant>> PaintingVariant(Holder<PaintingVariant> value) {
+    public static Entry<RegistryKey<BinaryTag>> PaintingVariant(RegistryKey<BinaryTag> value) {
         return PAINTING_VARIANT.entry(value);
     }
 
@@ -208,6 +198,10 @@ public final class Metadata {
 
     public static Entry<MainHand> MainHand(MainHand value) {
         return MAIN_HAND.entry(value);
+    }
+
+    private static Registries.Selector<BinaryTag> opaque(RegistryKey<Registry<BinaryTag>> key) {
+        return registries -> registries.opaque(key);
     }
 
     private static final AtomicInteger NEXT_ID = new AtomicInteger(0);
@@ -245,20 +239,20 @@ public final class Metadata {
     private static final Type<VillagerMeta.VillagerData> VILLAGER_DATA = type(VillagerMeta.VillagerData.NETWORK_TYPE, VillagerMeta.VillagerData.DEFAULT);
     private static final Type<@Nullable Integer> OPT_VAR_INT = type(NetworkBuffer.OPTIONAL_VAR_INT, null);
     private static final Type<EntityPose> POSE = type(NetworkBuffer.POSE, EntityPose.STANDING);
-    private static final Type<RegistryKey<CatVariant>> CAT_VARIANT = type(CatVariant.NETWORK_TYPE, CatVariant.TABBY);
-    private static final Type<RegistryKey<CatSoundVariant>> CAT_SOUND_VARIANT = type(CatSoundVariant.NETWORK_TYPE, CatSoundVariant.CLASSIC);
-    private static final Type<RegistryKey<CowVariant>> COW_VARIANT = type(CowVariant.NETWORK_TYPE, CowVariant.TEMPERATE);
-    private static final Type<RegistryKey<CowSoundVariant>> COW_SOUND_VARIANT = type(CowSoundVariant.NETWORK_TYPE, CowSoundVariant.CLASSIC);
-    private static final Type<RegistryKey<WolfVariant>> WOLF_VARIANT = type(WolfVariant.NETWORK_TYPE, WolfVariant.PALE);
-    private static final Type<RegistryKey<WolfSoundVariant>> WOLF_SOUND_VARIANT = type(WolfSoundVariant.NETWORK_TYPE, WolfSoundVariant.CLASSIC);
-    private static final Type<RegistryKey<FrogVariant>> FROG_VARIANT = type(FrogVariant.NETWORK_TYPE, FrogVariant.TEMPERATE);
-    private static final Type<RegistryKey<PigVariant>> PIG_VARIANT = type(PigVariant.NETWORK_TYPE, PigVariant.TEMPERATE);
-    private static final Type<RegistryKey<PigSoundVariant>> PIG_SOUND_VARIANT = type(PigSoundVariant.NETWORK_TYPE, PigSoundVariant.CLASSIC);
-    private static final Type<RegistryKey<ChickenVariant>> CHICKEN_VARIANT = type(ChickenVariant.NETWORK_TYPE, ChickenVariant.TEMPERATE);
-    private static final Type<RegistryKey<ChickenSoundVariant>> CHICKEN_SOUND_VARIANT = type(ChickenSoundVariant.NETWORK_TYPE, ChickenSoundVariant.CLASSIC);
-    private static final Type<RegistryKey<ZombieNautilusVariant>> ZOMBIE_NAUTILUS_VARIANT = type(ZombieNautilusVariant.NETWORK_TYPE, ZombieNautilusVariant.TEMPERATE);
+    private static final Type<RegistryKey<BinaryTag>> CAT_VARIANT = type(RegistryKey.networkType(opaque(BuiltinRegistries.CAT_VARIANT)), RegistryKey.unsafeOf("minecraft:tabby"));
+    private static final Type<RegistryKey<BinaryTag>> CAT_SOUND_VARIANT = type(RegistryKey.networkType(opaque(BuiltinRegistries.CAT_SOUND_VARIANT)), RegistryKey.unsafeOf("minecraft:classic"));
+    private static final Type<RegistryKey<BinaryTag>> COW_VARIANT = type(RegistryKey.networkType(opaque(BuiltinRegistries.COW_VARIANT)), RegistryKey.unsafeOf("minecraft:temperate"));
+    private static final Type<RegistryKey<BinaryTag>> COW_SOUND_VARIANT = type(RegistryKey.networkType(opaque(BuiltinRegistries.COW_SOUND_VARIANT)), RegistryKey.unsafeOf("minecraft:classic"));
+    private static final Type<RegistryKey<BinaryTag>> WOLF_VARIANT = type(RegistryKey.networkType(opaque(BuiltinRegistries.WOLF_VARIANT)), RegistryKey.unsafeOf("minecraft:pale"));
+    private static final Type<RegistryKey<BinaryTag>> WOLF_SOUND_VARIANT = type(RegistryKey.networkType(opaque(BuiltinRegistries.WOLF_SOUND_VARIANT)), RegistryKey.unsafeOf("minecraft:classic"));
+    private static final Type<RegistryKey<BinaryTag>> FROG_VARIANT = type(RegistryKey.networkType(opaque(BuiltinRegistries.FROG_VARIANT)), RegistryKey.unsafeOf("minecraft:temperate"));
+    private static final Type<RegistryKey<BinaryTag>> PIG_VARIANT = type(RegistryKey.networkType(opaque(BuiltinRegistries.PIG_VARIANT)), RegistryKey.unsafeOf("minecraft:temperate"));
+    private static final Type<RegistryKey<BinaryTag>> PIG_SOUND_VARIANT = type(RegistryKey.networkType(opaque(BuiltinRegistries.PIG_SOUND_VARIANT)), RegistryKey.unsafeOf("minecraft:classic"));
+    private static final Type<RegistryKey<BinaryTag>> CHICKEN_VARIANT = type(RegistryKey.networkType(opaque(BuiltinRegistries.CHICKEN_VARIANT)), RegistryKey.unsafeOf("minecraft:temperate"));
+    private static final Type<RegistryKey<BinaryTag>> CHICKEN_SOUND_VARIANT = type(RegistryKey.networkType(opaque(BuiltinRegistries.CHICKEN_SOUND_VARIANT)), RegistryKey.unsafeOf("minecraft:classic"));
+    private static final Type<RegistryKey<BinaryTag>> ZOMBIE_NAUTILUS_VARIANT = type(RegistryKey.networkType(opaque(BuiltinRegistries.ZOMBIE_NAUTILUS_VARIANT)), RegistryKey.unsafeOf("minecraft:temperate"));
     private static final Type<@Nullable WorldPos> OPT_GLOBAL_POSITION = type(WorldPos.NETWORK_TYPE.optional(), null);
-    private static final Type<Holder<PaintingVariant>> PAINTING_VARIANT = type(PaintingVariant.NETWORK_TYPE, PaintingVariant.KEBAB);
+    private static final Type<RegistryKey<BinaryTag>> PAINTING_VARIANT = type(RegistryKey.holderNetworkType(opaque(BuiltinRegistries.PAINTING_VARIANT)), RegistryKey.unsafeOf("minecraft:kebab"));
     private static final Type<SnifferMeta.State> SNIFFER_STATE = type(SnifferMeta.State.NETWORK_TYPE, SnifferMeta.State.IDLING);
     private static final Type<ArmadilloMeta.State> ARMADILLO_STATE = type(ArmadilloMeta.State.NETWORK_TYPE, ArmadilloMeta.State.IDLE);
     private static final Type<CopperGolemMeta.State> COPPER_GOLEM_STATE = type(CopperGolemMeta.State.NETWORK_TYPE, CopperGolemMeta.State.IDLE);

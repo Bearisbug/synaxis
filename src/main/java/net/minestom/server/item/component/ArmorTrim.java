@@ -1,25 +1,28 @@
 package net.minestom.server.item.component;
 
+import net.kyori.adventure.nbt.BinaryTag;
 import net.minestom.server.codec.Codec;
 import net.minestom.server.codec.StructCodec;
-import net.minestom.server.item.armor.TrimMaterial;
-import net.minestom.server.item.armor.TrimPattern;
 import net.minestom.server.network.NetworkBuffer;
 import net.minestom.server.network.NetworkBufferTemplate;
-import net.minestom.server.registry.Holder;
+import net.minestom.server.registry.BuiltinRegistries;
+import net.minestom.server.registry.Registries;
+import net.minestom.server.registry.RegistryKey;
 
 public record ArmorTrim(
-        Holder<TrimMaterial> material,
-        Holder<TrimPattern> pattern
+        RegistryKey<BinaryTag> material,
+        RegistryKey<BinaryTag> pattern
 ) {
+    private static final Registries.Selector<BinaryTag> MATERIAL = registries -> registries.opaque(BuiltinRegistries.TRIM_MATERIAL);
+    private static final Registries.Selector<BinaryTag> PATTERN = registries -> registries.opaque(BuiltinRegistries.TRIM_PATTERN);
 
     public static final NetworkBuffer.Type<ArmorTrim> NETWORK_TYPE = NetworkBufferTemplate.template(
-            TrimMaterial.NETWORK_TYPE, ArmorTrim::material,
-            TrimPattern.NETWORK_TYPE, ArmorTrim::pattern,
+            RegistryKey.holderNetworkType(MATERIAL), ArmorTrim::material,
+            RegistryKey.holderNetworkType(PATTERN), ArmorTrim::pattern,
             ArmorTrim::new);
     public static final Codec<ArmorTrim> CODEC = StructCodec.struct(
-            "material", TrimMaterial.CODEC, ArmorTrim::material,
-            "pattern", TrimPattern.CODEC, ArmorTrim::pattern,
+            "material", RegistryKey.codec(MATERIAL), ArmorTrim::material,
+            "pattern", RegistryKey.codec(PATTERN), ArmorTrim::pattern,
             ArmorTrim::new);
 
 }

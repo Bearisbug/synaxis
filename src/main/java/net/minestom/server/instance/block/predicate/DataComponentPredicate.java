@@ -12,10 +12,7 @@ import net.minestom.server.entity.EquipmentSlotGroup;
 import net.minestom.server.entity.VillagerType;
 import net.minestom.server.entity.attribute.Attribute;
 import net.minestom.server.entity.attribute.AttributeOperation;
-import net.minestom.server.instance.block.jukebox.JukeboxSong;
 import net.minestom.server.item.ItemStack;
-import net.minestom.server.item.armor.TrimMaterial;
-import net.minestom.server.item.armor.TrimPattern;
 import net.minestom.server.item.component.AttributeList;
 import net.minestom.server.item.component.EnchantmentList;
 import net.minestom.server.item.component.FilteredText;
@@ -23,11 +20,12 @@ import net.minestom.server.item.component.FireworkExplosion.Shape;
 import net.minestom.server.item.component.FireworkList;
 import net.minestom.server.item.component.WritableBookContent;
 import net.minestom.server.item.component.WrittenBookContent;
-import net.minestom.server.item.enchant.Enchantment;
 import net.minestom.server.item.predicate.ItemPredicate;
 import net.minestom.server.potion.PotionType;
+import net.minestom.server.registry.BuiltinRegistries;
 import net.minestom.server.registry.DynamicRegistry;
 import net.minestom.server.registry.Registries;
+import net.minestom.server.registry.Registry;
 import net.minestom.server.registry.RegistryKey;
 import net.minestom.server.registry.RegistryTag;
 import net.minestom.server.utils.Range;
@@ -129,6 +127,10 @@ public sealed interface DataComponentPredicate extends Predicate<DataComponent.H
         }
     }
 
+    private static Registries.Selector<BinaryTag> opaque(RegistryKey<Registry<BinaryTag>> key) {
+        return registries -> registries.opaque(key);
+    }
+
     /**
      * Tests enchantments. Possible cases:
      * <ol>
@@ -141,11 +143,11 @@ public sealed interface DataComponentPredicate extends Predicate<DataComponent.H
      * @param enchantments The enchantments to search for
      * @param levels       The acceptable range of enchantment levels
      */
-    record EnchantmentListPredicate(@Nullable RegistryTag<Enchantment> enchantments,
+    record EnchantmentListPredicate(@Nullable RegistryTag<BinaryTag> enchantments,
                                     @Nullable Range.Int levels) implements Predicate<EnchantmentList> {
 
         public static final Codec<EnchantmentListPredicate> CODEC = StructCodec.struct(
-                "enchantments", RegistryTag.codec(Registries::enchantment).optional(), EnchantmentListPredicate::enchantments,
+                "enchantments", RegistryTag.<BinaryTag>codec(opaque(BuiltinRegistries.ENCHANTMENT)).optional(), EnchantmentListPredicate::enchantments,
                 "levels", Range.Int.CODEC.optional(), EnchantmentListPredicate::levels,
                 EnchantmentListPredicate::new
         );
@@ -153,7 +155,7 @@ public sealed interface DataComponentPredicate extends Predicate<DataComponent.H
         @Override
         public boolean test(EnchantmentList enchantmentList) {
             if (enchantments != null) {
-                for (RegistryKey<Enchantment> key : enchantments) {
+                for (RegistryKey<BinaryTag> key : enchantments) {
                     if (enchantmentList.has(key) && (levels == null || levels.inRange(enchantmentList.level(key)))) {
                         return true;
                     }
@@ -187,7 +189,7 @@ public sealed interface DataComponentPredicate extends Predicate<DataComponent.H
             children = List.copyOf(children);
         }
 
-        public Enchantments(@Nullable RegistryTag<Enchantment> enchantments,
+        public Enchantments(@Nullable RegistryTag<BinaryTag> enchantments,
                             @Nullable Range.Int levels) {
             this(List.of(new EnchantmentListPredicate(enchantments, levels)));
         }
@@ -224,7 +226,7 @@ public sealed interface DataComponentPredicate extends Predicate<DataComponent.H
             children = List.copyOf(children);
         }
 
-        public StoredEnchantments(@Nullable RegistryTag<Enchantment> enchantments,
+        public StoredEnchantments(@Nullable RegistryTag<BinaryTag> enchantments,
                                   @Nullable Range.Int levels) {
             this(List.of(new EnchantmentListPredicate(enchantments, levels)));
         }
@@ -591,12 +593,12 @@ public sealed interface DataComponentPredicate extends Predicate<DataComponent.H
      * @param material The trim material to match, or null to ignore
      * @param pattern  The trim pattern to match, or null to ignore
      */
-    record ArmorTrim(@Nullable RegistryTag<TrimMaterial> material,
-                     @Nullable RegistryTag<TrimPattern> pattern) implements Registered {
+    record ArmorTrim(@Nullable RegistryTag<BinaryTag> material,
+                     @Nullable RegistryTag<BinaryTag> pattern) implements Registered {
 
         public static final Codec<ArmorTrim> CODEC = StructCodec.struct(
-                "material", RegistryTag.codec(Registries::trimMaterial).optional(), ArmorTrim::material,
-                "pattern", RegistryTag.codec(Registries::trimPattern).optional(), ArmorTrim::pattern,
+                "material", RegistryTag.<BinaryTag>codec(opaque(BuiltinRegistries.TRIM_MATERIAL)).optional(), ArmorTrim::material,
+                "pattern", RegistryTag.<BinaryTag>codec(opaque(BuiltinRegistries.TRIM_PATTERN)).optional(), ArmorTrim::pattern,
                 ArmorTrim::new
         );
 
@@ -604,9 +606,8 @@ public sealed interface DataComponentPredicate extends Predicate<DataComponent.H
         public boolean test(DataComponent.Holder holder) {
             var trim = holder.get(DataComponents.TRIM);
             if (trim == null) return false;
-            if (material != null && (trim.material().asKey() == null || !material.contains(trim.material().asKey())))
-                return false;
-            return pattern == null || (trim.pattern().asKey() != null && pattern.contains(trim.pattern().asKey()));
+            if (material != null && !material.contains(trim.material())) return false;
+            return pattern == null || pattern.contains(trim.pattern());
         }
 
         @Override
@@ -620,10 +621,10 @@ public sealed interface DataComponentPredicate extends Predicate<DataComponent.H
      *
      * @param songs The songs to accept, or null to ignore.
      */
-    record JukeboxPlayable(@Nullable RegistryTag<JukeboxSong> songs) implements Registered {
+    record JukeboxPlayable(@Nullable RegistryTag<BinaryTag> songs) implements Registered {
 
         public static final Codec<JukeboxPlayable> CODEC = StructCodec.struct(
-                "song", RegistryTag.codec(Registries::jukeboxSong).optional(), JukeboxPlayable::songs,
+                "song", RegistryTag.<BinaryTag>codec(opaque(BuiltinRegistries.JUKEBOX_SONG)).optional(), JukeboxPlayable::songs,
                 JukeboxPlayable::new
         );
 

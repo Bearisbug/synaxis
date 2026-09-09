@@ -1,38 +1,17 @@
 package net.minestom.server;
 
+import net.kyori.adventure.nbt.BinaryTag;
 import net.kyori.adventure.text.logger.slf4j.ComponentLogger;
 import net.minestom.server.adventure.ClickCallbackManager;
 import net.minestom.server.adventure.bossbar.BossBarManager;
 import net.minestom.server.codec.Codec;
-import net.minestom.server.codec.StructCodec;
 import net.minestom.server.command.CommandManager;
-import net.minestom.server.dialog.Dialog;
 import net.minestom.server.entity.damage.DamageType;
-import net.minestom.server.entity.metadata.animal.ChickenVariant;
-import net.minestom.server.entity.metadata.animal.CowVariant;
-import net.minestom.server.entity.metadata.animal.FrogVariant;
-import net.minestom.server.entity.metadata.animal.PigVariant;
-import net.minestom.server.entity.metadata.animal.ZombieNautilusVariant;
-import net.minestom.server.entity.metadata.animal.tameable.CatVariant;
-import net.minestom.server.entity.metadata.animal.tameable.WolfSoundVariant;
-import net.minestom.server.entity.metadata.animal.tameable.WolfVariant;
-import net.minestom.server.entity.metadata.cube.SulfurCubeArchetype;
-import net.minestom.server.entity.metadata.other.PaintingVariant;
 import net.minestom.server.event.GlobalEventHandler;
 import net.minestom.server.exception.ExceptionManager;
 import net.minestom.server.instance.InstanceManager;
 import net.minestom.server.instance.block.BlockManager;
-import net.minestom.server.instance.block.banner.BannerPattern;
-import net.minestom.server.instance.block.jukebox.JukeboxSong;
 import net.minestom.server.instance.block.predicate.DataComponentPredicate;
-import net.minestom.server.item.armor.TrimMaterial;
-import net.minestom.server.item.armor.TrimPattern;
-import net.minestom.server.item.enchant.Enchantment;
-import net.minestom.server.item.enchant.EntityEffect;
-import net.minestom.server.item.enchant.LevelBasedValue;
-import net.minestom.server.item.enchant.LocationEffect;
-import net.minestom.server.item.enchant.ValueEffect;
-import net.minestom.server.item.instrument.Instrument;
 import net.minestom.server.listener.manager.PacketListenerManager;
 import net.minestom.server.message.ChatType;
 import net.minestom.server.network.ConnectionManager;
@@ -42,6 +21,8 @@ import net.minestom.server.network.packet.server.play.ServerDifficultyPacket;
 import net.minestom.server.network.socket.Server;
 import net.minestom.server.registry.DynamicRegistry;
 import net.minestom.server.registry.Registries;
+import net.minestom.server.registry.Registry;
+import net.minestom.server.registry.RegistryKey;
 import net.minestom.server.thread.TickSchedulerThread;
 import net.minestom.server.timer.SchedulerManager;
 import net.minestom.server.utils.PacketSendingUtils;
@@ -49,8 +30,6 @@ import net.minestom.server.utils.validate.Check;
 import net.minestom.server.world.Difficulty;
 import net.minestom.server.world.DimensionType;
 import net.minestom.server.world.biome.Biome;
-import net.minestom.server.world.clock.WorldClock;
-import net.minestom.server.world.timeline.Timeline;
 import org.jetbrains.annotations.ApiStatus;
 import org.jetbrains.annotations.UnknownNullability;
 
@@ -263,10 +242,6 @@ public final class MinecraftServer implements MinecraftConstants {
         return serverProcess.chatType();
     }
 
-    public static DynamicRegistry<Dialog> getDialogRegistry() {
-        return serverProcess.dialog();
-    }
-
     public static DynamicRegistry<DimensionType> getDimensionTypeRegistry() {
         return serverProcess.dimensionType();
     }
@@ -279,92 +254,8 @@ public final class MinecraftServer implements MinecraftConstants {
         return serverProcess.damageType();
     }
 
-    public static DynamicRegistry<TrimMaterial> getTrimMaterialRegistry() {
-        return serverProcess.trimMaterial();
-    }
-
-    public static DynamicRegistry<TrimPattern> getTrimPatternRegistry() {
-        return serverProcess.trimPattern();
-    }
-
-    public static DynamicRegistry<BannerPattern> getBannerPatternRegistry() {
-        return serverProcess.bannerPattern();
-    }
-
-    public static DynamicRegistry<WolfVariant> getWolfVariantRegistry() {
-        return serverProcess.wolfVariant();
-    }
-
-    public static DynamicRegistry<WolfSoundVariant> getWolfSoundVariantRegistry() {
-        return serverProcess.wolfSoundVariant();
-    }
-
-    public static DynamicRegistry<CatVariant> getCatVariantRegistry() {
-        return serverProcess.catVariant();
-    }
-
-    public static DynamicRegistry<ChickenVariant> getChickenVariantRegistry() {
-        return serverProcess.chickenVariant();
-    }
-
-    public static DynamicRegistry<CowVariant> getCowVariantRegistry() {
-        return serverProcess.cowVariant();
-    }
-
-    public static DynamicRegistry<FrogVariant> getFrogVariantRegistry() {
-        return serverProcess.frogVariant();
-    }
-
-    public static DynamicRegistry<PigVariant> getPigVariantRegistry() {
-        return serverProcess.pigVariant();
-    }
-
-    public static DynamicRegistry<ZombieNautilusVariant> getZombieNautilusVariantRegistry() {
-        return serverProcess.zombieNautilusVariant();
-    }
-
-    public static DynamicRegistry<Enchantment> getEnchantmentRegistry() {
-        return serverProcess.enchantment();
-    }
-
-    public static DynamicRegistry<PaintingVariant> getPaintingVariantRegistry() {
-        return serverProcess.paintingVariant();
-    }
-
-    public static DynamicRegistry<JukeboxSong> getJukeboxSongRegistry() {
-        return serverProcess.jukeboxSong();
-    }
-
-    public static DynamicRegistry<Instrument> getInstrumentRegistry() {
-        return serverProcess.instrument();
-    }
-
-    public static DynamicRegistry<Timeline> getTimelineRegistry() {
-        return serverProcess.timeline();
-    }
-
-    public static DynamicRegistry<WorldClock> getWorldClockRegistry() {
-        return serverProcess.worldClock();
-    }
-
-    public static DynamicRegistry<SulfurCubeArchetype> getSulfurCubeArchetypeRegistry() {
-        return serverProcess.sulfurCubeArchetype();
-    }
-
-    public static DynamicRegistry<StructCodec<? extends LevelBasedValue>> enchantmentLevelBasedValues() {
-        return serverProcess.enchantmentLevelBasedValues();
-    }
-
-    public static DynamicRegistry<StructCodec<? extends ValueEffect>> enchantmentValueEffects() {
-        return serverProcess.enchantmentValueEffects();
-    }
-
-    public static DynamicRegistry<StructCodec<? extends EntityEffect>> enchantmentEntityEffects() {
-        return serverProcess.enchantmentEntityEffects();
-    }
-
-    public static DynamicRegistry<StructCodec<? extends LocationEffect>> enchantmentLocationEffects() {
-        return serverProcess.enchantmentLocationEffects();
+    public static DynamicRegistry<BinaryTag> getOpaqueRegistry(RegistryKey<Registry<BinaryTag>> key) {
+        return serverProcess.opaque(key);
     }
 
     public static DynamicRegistry<Codec<? extends DataComponentPredicate>> componentPredicateTypes() {

@@ -24,7 +24,6 @@ import net.minestom.server.adventure.MinestomAdventure;
 import net.minestom.server.adventure.serializer.nbt.NbtDataComponentValue;
 import net.minestom.server.codec.Codec;
 import net.minestom.server.codec.Transcoder;
-import net.minestom.server.dialog.Dialog;
 import net.minestom.server.registry.Registries;
 import net.minestom.server.registry.RegistryTranscoder;
 
@@ -367,16 +366,6 @@ record ComponentNetworkBufferTypeImpl() implements NetworkBufferTypeImpl<Compone
                 buffer.write(BYTE, TAG_STRING);
                 buffer.write(STRING_IO_UTF8, "value");
                 buffer.write(STRING_IO_UTF8, payload.value());
-            }
-            case ClickEvent.Action.ShowDialog _ -> {
-                final ClickEvent.Payload.Dialog payload = checkPayload(clickEvent, ClickEvent.Payload.Dialog.class);
-
-                final Registries registries = buffer.registries();
-                final Transcoder<BinaryTag> coder = registries != null
-                        ? new RegistryTranscoder<>(Transcoder.NBT, registries)
-                        : Transcoder.NBT;
-                final BinaryTag dialog = Dialog.CODEC.encode(coder, Dialog.unwrap(payload.dialog())).orElseThrow();
-                BinaryTagTypeImpl.writeNamed(buffer, "dialog", dialog);
             }
             case ClickEvent.Action.Custom _ -> {
                 final ClickEvent.Payload.Custom payload = checkPayload(clickEvent, ClickEvent.Payload.Custom.class);

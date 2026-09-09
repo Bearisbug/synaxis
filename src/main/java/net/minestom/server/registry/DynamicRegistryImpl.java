@@ -4,6 +4,8 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import net.kyori.adventure.key.Key;
 import net.kyori.adventure.nbt.BinaryTag;
+import net.kyori.adventure.nbt.BinaryTagIO;
+import net.kyori.adventure.nbt.BinaryTagTypes;
 import net.kyori.adventure.nbt.CompoundBinaryTag;
 import net.minestom.server.MinecraftServer;
 import net.minestom.server.ServerFlag;
@@ -24,8 +26,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.jetbrains.annotations.UnknownNullability;
 
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -42,6 +46,7 @@ import java.util.concurrent.ConcurrentHashMap;
 final class DynamicRegistryImpl<T> implements DynamicRegistry<T> {
     private static final Logger LOGGER = LoggerFactory.getLogger(DynamicRegistryImpl.class);
 
+    private static final String FROZEN_MESSAGE = "The registry is frozen once the server has started. Enable writes by setting the system property 'minestom.registry.unsafe-ops' to 'true'";
     private static final String UNSAFE_REMOVE_MESSAGE = "Unsafe remove is disabled. Enable by setting the system property 'minestom.registry.unsafe-ops' to 'true'";
     // Could also just use `this`, but this is a good candidate for identityless classes.
     // Also, what use case requires you to mutate registries faster than one monitor?
@@ -139,7 +144,7 @@ final class DynamicRegistryImpl<T> implements DynamicRegistry<T> {
 
     @Override
     public RegistryKey<T> register(Key key, T object, DataPack pack) {
-        if (isFrozen()) throw new UnsupportedOperationException(UNSAFE_REMOVE_MESSAGE);
+        if (isFrozen()) throw new IllegalStateException(FROZEN_MESSAGE);
         Objects.requireNonNull(key, "Key cannot be null");
         Objects.requireNonNull(object, "Object cannot be null");
         Objects.requireNonNull(pack, "Pack cannot be null");
@@ -355,6 +360,26 @@ final class DynamicRegistryImpl<T> implements DynamicRegistry<T> {
 
     static boolean canFreeze() {
         return !ServerFlag.REGISTRY_UNSAFE_OPS && !ServerFlag.INSIDE_TEST;
+    }
+
+    /**
+     * Loads the entries of an opaque registry from the pre-encoded NBT under {@code /data/opaque}.
+     * The tag is stored exactly as the client receives it, so no server-side type is needed.
+     */
+    @SuppressWarnings({"removal", "unchecked"})
+    void loadOpaqueRegistry() {
+        tags.putAll(RegistryData.loadTags(key()));
+        final String path = String.format("opaque/%s.nbt", key().value());
+        try (InputStream resourceStream = RegistryData.loadRegistryFile(path)) {
+            Check.notNull(resourceStream, "Opaque registry resource {0} does not exist!", path);
+            final CompoundBinaryTag root = BinaryTagIO.reader().read(resourceStream, BinaryTagIO.Compression.NONE);
+            for (BinaryTag entry : root.getList("entries", BinaryTagTypes.COMPOUND)) {
+                final CompoundBinaryTag compound = (CompoundBinaryTag) entry;
+                register(compound.getString("id"), (T) compound.getCompound("data"), DataPack.MINECRAFT_CORE);
+            }
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
     }
 
     @SuppressWarnings("removal")

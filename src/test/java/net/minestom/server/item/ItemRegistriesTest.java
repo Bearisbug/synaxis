@@ -1,14 +1,13 @@
 package net.minestom.server.item;
 
+import net.minestom.server.registry.RegistryKey;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.minestom.server.adventure.MinestomAdventure;
 import net.minestom.server.component.DataComponent;
 import net.minestom.server.component.DataComponents;
 import net.minestom.server.entity.EntityType;
-import net.minestom.server.instance.block.jukebox.JukeboxSong;
 import net.minestom.server.item.component.EnchantmentList;
-import net.minestom.server.item.enchant.Enchantment;
 import net.minestom.server.registry.Registries;
 import net.minestom.testing.RegistriesTest;
 import org.junit.jupiter.api.Test;
@@ -93,7 +92,7 @@ public class ItemRegistriesTest {
     @Test
     public void testEqualityComponents() {
         var item1 = ItemStack.of(Material.MUSIC_DISC_STAL);
-        var item2 = ItemStack.of(Material.MUSIC_DISC_STAL).with(DataComponents.JUKEBOX_PLAYABLE, JukeboxSong.STAL);
+        var item2 = ItemStack.of(Material.MUSIC_DISC_STAL).with(DataComponents.JUKEBOX_PLAYABLE, RegistryKey.unsafeOf("minecraft:stal"));
         assertTrue(item1.isSimilar(item2));
     }
 
@@ -201,7 +200,7 @@ public class ItemRegistriesTest {
         return ItemStack.builder(Material.STONE)
                 .set(DataComponents.CUSTOM_NAME, Component.text("Display name!", NamedTextColor.GREEN))
                 .set(DataComponents.LORE, List.of(Component.text("Line 1"), Component.text("Line 2")))
-                .set(DataComponents.ENCHANTMENTS, new EnchantmentList(Map.of(Enchantment.EFFICIENCY, 10)))
+                .set(DataComponents.ENCHANTMENTS, new EnchantmentList(Map.of(RegistryKey.unsafeOf("minecraft:efficiency"), 10)))
                 .build();
     }
 }

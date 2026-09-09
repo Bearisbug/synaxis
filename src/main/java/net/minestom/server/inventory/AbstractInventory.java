@@ -101,8 +101,10 @@ public sealed abstract class AbstractInventory implements InventoryClickHandler,
         player.getInventory().setCursorItem(ItemStack.AIR);
 
         if (!cursorItem.isAir()) {
-            if (!player.dropItem(cursorItem)) {
-                player.getInventory().addItemStack(cursorItem);
+            // ALL_OR_NOTHING: keep the item on the cursor when it can neither be dropped nor stored,
+            // rather than destroying it
+            if (!player.dropItem(cursorItem) && !player.getInventory().addItemStack(cursorItem)) {
+                player.getInventory().setCursorItem(cursorItem);
             }
         }
 

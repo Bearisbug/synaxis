@@ -618,5 +618,6 @@ N/A — M1 尚未完成；完成后按 §26 退出条件逐项对照并记录实
 | 技术债 | 删除 `instance/anvil` 连带删掉了 `LightParityIntegrationTest`（对原版光照逐值比对），光照引擎暂无 parity 测试；M2 决定光照去留时一并处理 | Bearisbug | M2 |
 | 技术债 | `Auth.Velocity` / `Auth.Bungee` 代理转发模式暂留（单机单区用不到，但不是 Mojang 会话鉴权）；`MojangUtils.authenticateSession` 已零调用，随 REQ-014 一起清理 | Bearisbug | 阶段 5 |
 | 技术债 | ArchUnit 冻结存储在纯删除后需要手动剪枝（临时 `allowStoreUpdate=true` 跑一次再改回，核对 diff 只有删除）；每轮删除都要做 | Bearisbug | 每轮删除 |
+| 技术债 | 协议错误断线（零长帧、递归超深）目前以完整异常堆栈记日志（RUN-006 smoke 日志 289 行堆栈），应改为单行 WARN 带 `connection_id`，避免恶意连接刷日志 | Bearisbug | 阶段 7 |
 | 技术债 | `CommandPacketFilteringTest` 依赖其他 `@EnvTest` 先初始化静态 `serverProcess`，单跑必挂 | Bearisbug | 阶段 4 门面改造时消失 |
 | 技术债 | 上游未修的 `ObjectPoolTest` 在 jcstress pre-test 阶段 NPE | Bearisbug | 阶段 0 CI 接入时处理 |

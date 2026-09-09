@@ -1,5 +1,6 @@
 package net.minestom.server.utils.mojang;
 
+import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import net.minestom.server.ServerFlag;
@@ -154,7 +155,15 @@ public final class MojangUtils {
         // If our response is "", that means the url did not get a proper object from the url
         // So the username or UUID was invalid, and therefore we return null
         if (response.isEmpty()) throw new IOException("The Mojang API is down");
-        JsonObject jsonObject = JsonParser.parseString(response).getAsJsonObject();
+        final JsonElement element;
+        try {
+            element = JsonParser.parseString(response);
+        } catch (RuntimeException e) {
+            // Not JSON at all, an HTML error page for instance
+            throw new IOException("Malformed response from the Mojang API", e);
+        }
+        if (!element.isJsonObject()) throw new IOException("Unexpected response from the Mojang API: " + response);
+        JsonObject jsonObject = element.getAsJsonObject();
         if (jsonObject.has("errorMessage")) {
             throw new IOException(jsonObject.get("errorMessage").getAsString());
         }

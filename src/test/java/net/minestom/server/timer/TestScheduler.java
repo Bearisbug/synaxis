@@ -7,6 +7,8 @@ import org.junit.jupiter.api.Test;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Supplier;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -206,5 +208,48 @@ public class TestScheduler {
         assertFalse(result.get(), "process() should never execute TICK_END tasks");
         scheduler.processTickEnd();
         assertTrue(result.get(), "Tick end task must be executed after 1 second");
+    }
+
+    @Test
+    public void unparkTickEndTask() {
+        Scheduler scheduler = Scheduler.newScheduler();
+        AtomicBoolean result = new AtomicBoolean(false);
+        Task task = scheduler.buildTask(() -> result.set(true))
+                .executionType(ExecutionType.TICK_END)
+                .delay(TaskSchedule.park())
+                .schedule();
+        assertTrue(task.isParked());
+        task.unpark();
+        scheduler.processTick();
+        assertFalse(result.get(), "processTick() should never execute TICK_END tasks");
+        scheduler.processTickEnd();
+        assertTrue(result.get(), "Unparked TICK_END task should be executed at the end of the tick");
+    }
+
+    @Test
+    public void unparkWhileTaskIsStillRunning() {
+        Scheduler scheduler = Scheduler.newScheduler();
+        AtomicReference<Task> ref = new AtomicReference<>();
+        AtomicInteger runs = new AtomicInteger();
+        Task task = scheduler.submitTask(new Supplier<>() {
+            @Override
+            public TaskSchedule get() {
+                final int run = runs.getAndIncrement();
+                if (run == 0) return TaskSchedule.immediate();
+                if (run == 1) {
+                    // The unpark signal is sent before the scheduler had a chance to record the park
+                    ref.get().unpark();
+                    return TaskSchedule.park();
+                }
+                return TaskSchedule.stop();
+            }
+        });
+        ref.set(task);
+        assertEquals(1, runs.get(), "submitTask executes the task once in the calling thread");
+
+        scheduler.process();
+        scheduler.process();
+        assertEquals(3, runs.get(), "the unpark sent while the task was running was lost");
+        assertFalse(task.isParked());
     }
 }

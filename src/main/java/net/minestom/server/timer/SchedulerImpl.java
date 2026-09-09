@@ -81,8 +81,17 @@ final class SchedulerImpl implements Scheduler {
     }
 
     void unparkTask(TaskImpl task) {
-        if (task.tryUnpark())
-            this.tasksToExecute.relaxedOffer(task);
+        if (task.tryUnpark()) queueTask(task);
+    }
+
+    /**
+     * Queues a task for the next processing of its own execution type.
+     */
+    private void queueTask(TaskImpl task) {
+        switch (task.executionType()) {
+            case TICK_START -> tasksToExecute.relaxedOffer(task);
+            case TICK_END -> tickEndTasksToExecute.relaxedOffer(task);
+        }
     }
 
     private void safeExecute(TaskImpl task) {
@@ -121,13 +130,12 @@ final class SchedulerImpl implements Scheduler {
             case TaskScheduleImpl.FutureSchedule futureSchedule -> {
                 var _ = futureSchedule.future().thenRun(() -> safeExecute(task));
             }
-            case TaskScheduleImpl.Park _ -> task.parked = true;
-            case TaskScheduleImpl.Stop _ -> task.cancel();
-            case TaskScheduleImpl.Immediate _ -> {
-                if (task.executionType() == ExecutionType.TICK_END) {
-                    tickEndTasksToExecute.relaxedOffer(task);
-                } else tasksToExecute.relaxedOffer(task);
+            // An unpark received while the task was still running must not be lost
+            case TaskScheduleImpl.Park _ -> {
+                if (!task.tryPark()) queueTask(task);
             }
+            case TaskScheduleImpl.Stop _ -> task.cancel();
+            case TaskScheduleImpl.Immediate _ -> queueTask(task);
         }
     }
 

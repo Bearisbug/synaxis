@@ -617,7 +617,7 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
     }
 
     @Override
-    public void remove(boolean permanent) {
+    public synchronized void remove(boolean permanent) {
         if (isRemoved()) return;
 
         if (permanent) {

@@ -937,6 +937,9 @@ public class Entity implements Viewable, Tickable, Schedulable, Snapshotable, Ev
         this.instance = instance;
         return instance.loadOptionalChunk(spawnPosition).thenAccept(chunk -> {
             try {
+                // The entity may have been removed while the spawn chunk was loading, registering it
+                // now would leave a ghost entity that #remove can never reach again
+                if (isRemoved()) return;
                 Objects.requireNonNull(chunk, "Entity has been placed in an unloaded chunk!");
                 refreshCurrentChunk(chunk);
                 if (this instanceof Player player) {
@@ -1618,7 +1621,7 @@ public class Entity implements Viewable, Tickable, Schedulable, Snapshotable, Ev
         remove(true);
     }
 
-    protected void remove(boolean permanent) {
+    protected synchronized void remove(boolean permanent) {
         if (isRemoved()) return;
         EventDispatcher.call(new EntityDespawnEvent(this));
         try {

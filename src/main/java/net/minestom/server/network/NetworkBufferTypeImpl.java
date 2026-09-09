@@ -333,7 +333,7 @@ interface NetworkBufferTypeImpl<T> extends NetworkBuffer.Type<T> {
                 value |= (long) (currentByte & SEGMENT_BITS) << position;
                 if ((currentByte & CONTINUE_BIT) == 0) break;
                 position += 7;
-                if (position >= 64) throw new RuntimeException("VarLong is too big");
+                if (position >= 64) throw new IndexOutOfBoundsException("VarLong is too big");
             }
             buffer.advanceRead(length);
             return value;

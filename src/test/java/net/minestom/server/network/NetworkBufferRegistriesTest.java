@@ -666,7 +666,7 @@ public class NetworkBufferRegistriesTest {
 
         assertThrows(IndexOutOfBoundsException.class, () -> buffer.read(VAR_INT));
         buffer.readIndex(0);
-        assertThrows(Exception.class, () -> buffer.read(VAR_LONG)); //todo: convert from runtime to index out of bounds
+        assertThrows(IndexOutOfBoundsException.class, () -> buffer.read(VAR_LONG));
         buffer.readIndex(0);
     }
 

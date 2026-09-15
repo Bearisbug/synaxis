@@ -159,6 +159,27 @@ public class EventNodeMapTest {
     }
 
     @Test
+    public void listenAfterRegisteredNodeCollected() {
+        var item = ItemStack.of(Material.DIAMOND);
+        var node = EventNode.all("main");
+        AtomicBoolean result = new AtomicBoolean(false);
+
+        // Register a first node, then let it be collected while the owner stays alive
+        var first = node.map(item, EventFilter.ITEM);
+        first.addListener(EventNodeTest.ItemTestEvent.class, _ -> {
+        });
+        var ref = new WeakReference<>(first);
+        //noinspection UnusedAssignment
+        first = null;
+        waitUntilCleared(ref);
+
+        var second = node.map(item, EventFilter.ITEM);
+        second.addListener(EventNodeTest.ItemTestEvent.class, _ -> result.set(true));
+        node.call(new EventNodeTest.ItemTestEvent(item));
+        assertTrue(result.get(), "A node mapped again after the previous one was collected must receive events");
+    }
+
+    @Test
     public void mappedOnlyChildAdded() {
         var item = ItemStack.of(Material.DIAMOND);
         var parent = EventNode.all("parent");

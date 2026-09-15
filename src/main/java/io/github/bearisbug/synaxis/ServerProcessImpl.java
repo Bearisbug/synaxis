@@ -298,20 +298,32 @@ final class ServerProcessImpl implements ServerProcess, Registries.Delegating {
     private void shutdownProcess() {
         final String brand = brandName;
         LOGGER.info("Stopping {} server.", brand);
-        // `stopped` is already set, so the ticker loop exits once the tick in flight is over.
-        // Wait for it before touching anything else, otherwise the shutdown races with ticking.
-        joinThread(tickSchedulerThread);
-        // Nothing is ticking anymore, user shutdown tasks can safely run before players are kicked.
-        scheduler.shutdown();
-        connection.shutdown();
-        // Kicking a PLAY player only schedules Entity#remove on its next tick, which is where
-        // PlayerDisconnectEvent is fired. The tick threads are still up for that one last tick.
-        if (dispatcher.isAlive()) dispatcher.updateAndAwait(System.nanoTime());
-        LOGGER.info("Shutting down all thread pools.");
-        dispatcher.shutdown();
-        for (TickThread tickThread : dispatcher.threads()) joinThread(tickThread);
-        server.stop();
-        removeShutdownHook();
+        try {
+            // `stopped` is already set, so the ticker loop exits once the tick in flight is over.
+            // Wait for it before touching anything else, otherwise the shutdown races with ticking.
+            joinThread(tickSchedulerThread);
+            // No tick is in flight anymore, user shutdown tasks can safely run before players are kicked.
+            scheduler.shutdown();
+            connection.shutdown();
+            // Kicking a PLAY player only schedules Entity#remove on its next tick, which is where
+            // PlayerDisconnectEvent is fired. The tick threads are still up for that one last tick.
+            // It runs arbitrary user code, so it is bounded like every other wait here: a wedged
+            // element must not keep stop() from returning.
+            if (dispatcher.isAlive()) {
+                final Thread lastTick = new Thread(() -> dispatcher.updateAndAwait(System.nanoTime()),
+                        "Syn-Shutdown-Tick");
+                lastTick.setDaemon(true);
+                lastTick.start();
+                joinThread(lastTick);
+            }
+            LOGGER.info("Shutting down all thread pools.");
+            dispatcher.shutdown();
+            for (TickThread tickThread : dispatcher.threads()) joinThread(tickThread);
+            server.stop();
+        } finally {
+            // Whatever happened above, the JVM must stop referencing this process through the hook.
+            removeShutdownHook();
+        }
         LOGGER.info("{} server stopped successfully.", brand);
     }
 

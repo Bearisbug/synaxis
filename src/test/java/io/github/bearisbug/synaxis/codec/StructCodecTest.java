@@ -7,6 +7,8 @@ import io.github.bearisbug.synaxis.adventure.EngineAdventure;
 import org.jetbrains.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 
+import java.util.Map;
+
 import static io.github.bearisbug.synaxis.codec.CodecAssertions.assertError;
 import static io.github.bearisbug.synaxis.codec.CodecAssertions.assertOk;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
@@ -170,6 +172,22 @@ public class StructCodecTest {
 
         var encodeResult = codec.encode(TranscoderNbtImpl.INSTANCE, new TheObject("test", new InnerObject("innerValue")));
         assertEquals(snbt("{name: \"test\", value: \"innerValue\"}"), assertOk(encodeResult));
+    }
+
+    @Test
+    void unionTypeKeyDecodedToNull() {
+        record Leaf(String name) {
+        }
+
+        // A discriminator codec that maps an unregistered key to null, like ConsumeEffectType.CODEC does.
+        var keyCodec = Codec.STRING.transform(Map.of("leaf", "leaf")::get, name -> name);
+        var codec = keyCodec.unionType(
+                type -> type.equals("leaf")
+                        ? StructCodec.struct("name", Codec.STRING, Leaf::name, Leaf::new) : null,
+                Leaf::name);
+
+        var result = codec.decode(TranscoderNbtImpl.INSTANCE, snbt("{type: \"unknown\", name: \"test\"}"));
+        assertError("no union value: null", result);
     }
 
     private static BinaryTag snbt(String snbt) {

@@ -390,7 +390,9 @@ final class CodecImpl {
                 keyResult = new Result.Ok<>(defaultValue);
             if (!(keyResult instanceof Result.Ok(T key)))
                 return keyResult.cast();
-            final StructCodec<? extends R> serializer = serializers.apply(key);
+            // A key codec may decode an unregistered value to null, which is an unknown type rather than
+            // something the serializer lookup has to cope with.
+            final StructCodec<? extends R> serializer = key == null ? null : serializers.apply(key);
             if (serializer == null) return new Result.Error<>("no union value: " + key);
             return (Result<R>) serializer.decodeFromMap(coder, map);
         }

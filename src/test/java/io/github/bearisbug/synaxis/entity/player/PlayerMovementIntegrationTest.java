@@ -161,13 +161,14 @@ public class PlayerMovementIntegrationTest {
         int maxEffective = Math.min(12, instance.viewDistance()) + 1;
         ChunkRange.chunksInRange(0, 0, maxEffective, (chunkX, chunkZ) -> instance.loadChunk(chunkX, chunkZ).join());
 
-        // Expand the client view distance
+        // Expand the client view distance. The settings packet is interpreted by the player tick,
+        // which is also where the new view distance is applied
         int beforeExpand = player.effectiveViewDistance();
         var added = connection.trackIncoming(ChunkDataPacket.class);
         player.addPacketToQueue(new ClientSettingsPacket(new ClientSettings(Locale.US, (byte) 12,
                 ChatMessageType.FULL, false, (byte) 0, MainHand.RIGHT,
                 false, true, ClientSettings.ParticleSetting.ALL)));
-        player.interpretPacketQueue();
+        env.tick();
         added.assertCount(ChunkRange.chunksCount(player.effectiveViewDistance()) - ChunkRange.chunksCount(beforeExpand));
 
         // Shrink the client view distance
@@ -176,7 +177,7 @@ public class PlayerMovementIntegrationTest {
         player.addPacketToQueue(new ClientSettingsPacket(new ClientSettings(Locale.US, (byte) 10,
                 ChatMessageType.FULL, false, (byte) 0, MainHand.RIGHT,
                 false, true, ClientSettings.ParticleSetting.ALL)));
-        player.interpretPacketQueue();
+        env.tick();
         removed.assertCount(ChunkRange.chunksCount(beforeShrink) - ChunkRange.chunksCount(player.effectiveViewDistance()));
     }
 
@@ -196,12 +197,13 @@ public class PlayerMovementIntegrationTest {
 
         // Expand settings view distance to 12. Since it is capped by instance view distance 4,
         // the effective view distance remains 5. No chunk packets should be sent.
+        // The settings packet is interpreted by the player tick, which is also where the new view distance is applied.
         var added = connection.trackIncoming(ChunkDataPacket.class);
         var removed = connection.trackIncoming(UnloadChunkPacket.class);
         player.addPacketToQueue(new ClientSettingsPacket(new ClientSettings(Locale.US, (byte) 12,
                 ChatMessageType.FULL, false, (byte) 0, MainHand.RIGHT,
                 false, true, ClientSettings.ParticleSetting.ALL)));
-        player.interpretPacketQueue();
+        env.tick();
         assertEquals(5, player.effectiveViewDistance());
         added.assertCount(0);
         removed.assertCount(0);
@@ -213,7 +215,7 @@ public class PlayerMovementIntegrationTest {
         player.addPacketToQueue(new ClientSettingsPacket(new ClientSettings(Locale.US, (byte) 3,
                 ChatMessageType.FULL, false, (byte) 0, MainHand.RIGHT,
                 false, true, ClientSettings.ParticleSetting.ALL)));
-        player.interpretPacketQueue();
+        env.tick();
         assertEquals(4, player.effectiveViewDistance());
         removed2.assertCount(ChunkRange.chunksCount(beforeShrink) - ChunkRange.chunksCount(player.effectiveViewDistance()));
 
@@ -224,7 +226,7 @@ public class PlayerMovementIntegrationTest {
         player.addPacketToQueue(new ClientSettingsPacket(new ClientSettings(Locale.US, (byte) 2,
                 ChatMessageType.FULL, false, (byte) 0, MainHand.RIGHT,
                 false, true, ClientSettings.ParticleSetting.ALL)));
-        player.interpretPacketQueue();
+        env.tick();
         assertEquals(3, player.effectiveViewDistance());
         removed3.assertCount(ChunkRange.chunksCount(beforeShrink2) - ChunkRange.chunksCount(player.effectiveViewDistance()));
 
@@ -235,7 +237,7 @@ public class PlayerMovementIntegrationTest {
         player.addPacketToQueue(new ClientSettingsPacket(new ClientSettings(Locale.US, (byte) 8,
                 ChatMessageType.FULL, false, (byte) 0, MainHand.RIGHT,
                 false, true, ClientSettings.ParticleSetting.ALL)));
-        player.interpretPacketQueue();
+        env.tick();
         assertEquals(5, player.effectiveViewDistance());
         added2.assertCount(ChunkRange.chunksCount(player.effectiveViewDistance()) - ChunkRange.chunksCount(beforeExpand));
     }

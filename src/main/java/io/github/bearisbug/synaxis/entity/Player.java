@@ -224,6 +224,11 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
     private final MessagePassingQueue<ClientPacket> packets;
     private final boolean levelFlat;
     private ClientSettings settings;
+    // A client may send a settings packet every tick and each view distance change recomputes the whole
+    // chunk ring, so the recomputation is applied at most once per tick, from the latest settings
+    private boolean viewDistanceUpdatePending;
+    // View distance the chunks currently sent to the client were computed from, while an update is pending
+    private int pendingViewDistanceBaseline;
     private float exp;
     private int level;
     private int portalCooldown = 0;
@@ -426,6 +431,12 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
         interpretPacketQueue();
         // It is possible to be removed during packet processing, if thats the case exit immediately.
         if (isRemoved()) return;
+
+        // Apply the view distance the client ended up with, see #refreshSettings(ClientSettings)
+        if (viewDistanceUpdatePending) {
+            final int instanceViewDistance = instance.viewDistance();
+            updateViewDistance(instanceViewDistance, instanceViewDistance);
+        }
 
         // Send any available queued chunks
         sendPendingChunks();
@@ -887,6 +898,8 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
     }
 
     private void resetChunkQueue() {
+        // The chunk ring is resent from the current settings, so any recorded baseline is obsolete
+        viewDistanceUpdatePending = false;
         chunkQueueLock.lock();
         try {
             chunkQueue.clear();
@@ -1738,6 +1751,8 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
      * Changes the player settings internally.
      * <p>
      * WARNING: the player will not be noticed by this change, probably unsafe.
+     * <p>
+     * A new view distance takes effect on the next player tick, everything else takes effect immediately.
      */
     public void refreshSettings(ClientSettings settings) {
         final ClientSettings previous = this.settings;
@@ -1750,16 +1765,28 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
             playerMeta.setMainHand(settings.mainHand());
             if (isInPlayState) playerMeta.setNotifyAboutChanges(true);
         }
-        // Update view distance
-        final Instance instance = this.instance;
-        if (instance == null) return;
-        final int viewDistance = instance.viewDistance();
-        updateViewDistance(previous.viewDistance(), viewDistance, viewDistance);
+        // Update view distance, applied by the player tick so a client toggling its view distance
+        // recomputes the chunk ring once per tick instead of once per packet
+        if (this.instance == null) return;
+        if (!viewDistanceUpdatePending) {
+            this.viewDistanceUpdatePending = true;
+            this.pendingViewDistanceBaseline = previous.viewDistance();
+        }
     }
 
     @ApiStatus.Internal
     public void updateViewDistance(int oldInstanceViewDistance, int newInstanceViewDistance) {
-        updateViewDistance(settings.viewDistance(), oldInstanceViewDistance, newInstanceViewDistance);
+        updateViewDistance(takeViewDistanceBaseline(), oldInstanceViewDistance, newInstanceViewDistance);
+    }
+
+    /**
+     * Returns the settings view distance the chunks currently sent to the client were computed from,
+     * and consumes the pending settings change, if any.
+     */
+    private int takeViewDistanceBaseline() {
+        if (!viewDistanceUpdatePending) return settings.viewDistance();
+        this.viewDistanceUpdatePending = false;
+        return pendingViewDistanceBaseline;
     }
 
     private void updateViewDistance(int oldSettingsViewDistance, int oldInstanceViewDistance, int newInstanceViewDistance) {

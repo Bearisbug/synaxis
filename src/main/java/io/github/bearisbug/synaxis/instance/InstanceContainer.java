@@ -806,7 +806,12 @@ public class InstanceContainer extends Instance {
 
     private void cacheChunk(Chunk chunk) {
         this.chunks.put(CoordConversion.chunkIndex(chunk.getChunkX(), chunk.getChunkZ()), chunk);
-        var dispatcher = process().dispatcher();
-        dispatcher.createPartition(chunk);
+        // Only a registered instance may hand chunks to the dispatcher: partitions are released on
+        // unregistration, so an unregistered instance would leak them. InstanceManager#registerInstance
+        // creates the partitions of the chunks cached before registration.
+        if (isRegistered()) {
+            var dispatcher = process().dispatcher();
+            dispatcher.createPartition(chunk);
+        }
     }
 }

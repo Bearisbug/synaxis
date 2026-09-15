@@ -96,11 +96,15 @@ public final class Server {
                     configureSocket(client);
                     Thread readThread = readBuilder.unstarted(() -> playerReadLoop(reference.get()));
                     Thread writeThread = writeBuilder.unstarted(() -> playerWriteLoop(reference.get()));
+                    Thread loginTimeoutThread = loginTimeoutBuilder.unstarted(() -> loginTimeoutWatch(reference.get()));
                     PlayerSocketConnection connection = new PlayerSocketConnection(process, client, client.getRemoteAddress(), readThread, writeThread);
                     reference.set(connection);
+                    // Handed over before the socket threads run, so a connection dying right away
+                    // still cancels the watchdog instead of being held for the whole login timeout.
+                    connection.watchLoginTimeout(loginTimeoutThread);
                     readThread.start();
                     writeThread.start();
-                    loginTimeoutBuilder.start(() -> loginTimeoutWatch(connection));
+                    loginTimeoutThread.start();
                 } catch (IOException e) {
                     if (!process.config().suppressConnectionAcceptErrors())
                         process.exception().handleException(e);

@@ -48,7 +48,7 @@ public final class CollisionUtils {
      * @param extendRadius the largest entity bounding box we can collide with
      *                     Measured from bottom center to top corner
      *                     This is used to extend the search radius for entities we collide with
-     *                     For players this is (0.3^2 + 0.3^2 + 1.8^2) ^ (1/3) ~= 1.51
+     *                     For players this is sqrt(0.3^2 + 0.3^2 + 1.8^2) ~= 1.85
      */
     public static List<EntityCollisionResult> checkEntityCollisions(Instance instance, BoundingBox boundingBox, Point pos, Vec velocity, double extendRadius, Function<Entity, Boolean> entityFilter, @Nullable PhysicsResult physicsResult) {
         return EntityCollision.checkCollision(instance.getEntityTracker(), boundingBox, pos, velocity, extendRadius, entityFilter, physicsResult);

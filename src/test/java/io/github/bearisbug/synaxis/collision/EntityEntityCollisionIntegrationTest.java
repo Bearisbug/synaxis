@@ -79,4 +79,22 @@ public class EntityEntityCollisionIntegrationTest {
         assertEquals(expectedPoint, result.direction());
         assertEquals(stillEntity, result.entity());
     }
+
+    @Test
+    public void entityCollisionAtBoxDiagonalTest(Env env) {
+        var instance = env.createFlatInstance();
+        instance.loadChunk(0, 0).join();
+
+        var movingEntity = new Entity(EntityType.ZOMBIE);
+        var stillEntity = new Entity(EntityType.ZOMBIE);
+        movingEntity.setInstance(instance, new Vec(8, 42, 8)).join();
+        // 1.8 blocks up is inside the bottom center to top corner distance of a zombie box
+        // (sqrt(1.95^2 + 0.3^2 + 0.3^2) ~= 1.996), the two boxes overlap.
+        stillEntity.setInstance(instance, new Vec(8, 43.8, 8)).join();
+
+        var result = CollisionUtils.checkEntityCollisions(movingEntity, Vec.ZERO, 0, entity -> entity != movingEntity, null);
+
+        assertEquals(1, result.size());
+        assertEquals(stillEntity, result.getFirst().entity());
+    }
 }

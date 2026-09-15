@@ -1,0 +1,35 @@
+RUN-015 static checks · version 6c86fb18d9 · 2026-09-16 · python=.venv/bin/python
+== TC-001 ==
+[1] exit=1
+[2] exit=1
+[3] json=39 nbt=23
+[4] see tc-001-offline.txt
+== TC-002 ==
+[1]
+origin	https://github.com/Bearisbug/synaxis.git (fetch)
+origin	https://github.com/Bearisbug/synaxis.git (push)
+[2] isFork=false
+[3] GraphQL: Could not resolve to a Repository with the name 'Bearisbug/Minestom'. (repository) exit=1
+[4] 1
+[5] main
+== TC-020 ==
+[3] 1109
+[4]
+ls: src/main/java/io/github/bearisbug/synaxis/entity/ai: No such file or directory
+ls: src/main/java/io/github/bearisbug/synaxis/entity/pathfinding: No such file or directory
+ls: src/main/java/io/github/bearisbug/synaxis/snapshot: No such file or directory
+[5] metadata/: AbstractVehicleMeta.java AgeableMobMeta.java EntityMeta.java LivingEntityMeta.java MobMeta.java ObjectDataProvider.java PathfinderMobMeta.java avatar display item other package-info.java projectile 
+    other/: ArmorStandMeta.java InteractionMeta.java package-info.java 
+== TC-028 ==
+[1] 0
+[2]
+e7eac031aba79997132b4532fec76d92a2770ff5
+15f619f46d9810a26f7df5c5680f0918ddd16cf0
+[3] .git-blame-ignore-revs
+[4]
+5bbf4642e8e src/main/java/net/minestom/server/ServerProcess.java          package io.githu
+*15f619f46d src/main/java/io/github/bearisbug/synaxis/ServerProcess.java  
+5f9a3a3e50d src/main/java/net/minestom/server/ServerProcess.java          import io.github
+7ed55778f44 src/main/java/dev/gameengine/ServerProcess.java               import io.github
+5bbf4642e8e src/main/java/net/minestom/server/ServerProcess.java          import io.github
+[5] io.github.bearisbug.synaxis 

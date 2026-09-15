@@ -8,7 +8,7 @@
 | 项目画像 | 内部系统（引擎只被本团队的游戏工程消费，不对公网；§3/§20 降为按需，§23 简化为「直接放量 + 回滚预案」。游戏本身对外发布时另立设计文档，画像为生产产品） |
 | Owner | Bearisbug |
 | 评审人 | Bearisbug |
-| 最后更新 | 2026-09-15 |
+| 最后更新 | 2026-09-16 |
 | 关联 | 仓库 `https://github.com/Bearisbug/synaxis` · 审计与架构评审 `docs/research/minestom-audit/`（00 总结、07 架构评审第八章） · 测试文档 `docs/TEST.md` |
 
 变更记录：
@@ -16,6 +16,7 @@
 | 日期 | 版本 | 改动 | 作者 |
 | --- | --- | --- | --- |
 | 2026-09-09 | v0.1 | 初稿：里程碑 M1 范围、实体、协议契约、状态机、阶段计划 | Bearisbug |
+| 2026-09-16 | v0.20 | 审计修复第二轮：F29、F49、F11 按用户拍板修复合入（§28 三条改为已决），并发表「非 tick 线程卸载区块」行随新契约更新；§28 新增四条修复员与审查员发现的同源残留 | Bearisbug |
 | 2026-09-15 | v0.19 | 审计修复轮：2026-09-15 审计的 60 条发现修复 57 条并合入 main（台账 `docs/research/audit-2026-09-15/fixes.md`，RUN-014 全量通过）；§28 新增三条待拍板项（F29、F49、F11 剩余半边） | Bearisbug |
 | 2026-09-15 | v0.18 | 项目定名 Synaxis：包名 `io.github.bearisbug.synaxis`、品牌 `synaxis`、系统属性键 `synaxis.*`、断线原因键与负载通道命名空间 `synaxis:`、仓库 `Bearisbug/synaxis`；§28 包名问题关闭 | Bearisbug |
 | 2026-09-13 | v0.17 | REQ-017 完成；协议错误日志技术债关闭；`deep-recursion` 语义随创造包跳过而变 | Bearisbug |
@@ -384,7 +385,7 @@ N/A — 无前端。客户端 Fabric 模组与其界面属于 M2。
 | 竞态场景 | 参与方 | 期望结果 | 依据（约束/守卫） |
 | --- | --- | --- | --- |
 | tick 线程内调用 `stop()` | tick 线程 × `API-003` | 立即返回，关闭序列在另一线程完成，不死锁 | §11.2 守卫「调用线程是 tick 线程」；`ThreadDispatcher.shutdown` 不再持 monitor |
-| 非 tick 线程卸载区块，区块内有实体 | 调用线程 × 实体所属 tick 线程 | 逐个实体通过 `Acquirable.sync` 获取所有权后移除，玩家不被移除 | `InstanceContainer.unloadChunk` 改为 `acquirable().sync(remove)`；`assertOwnership` 在测试 JVM 强制开启 |
+| 非 tick 线程卸载区块，区块内有实体 | 调用线程 × 实体所属 tick 线程 | 区块内有在线玩家时整个卸载被拒绝（`IllegalStateException`，状态零变更）；否则在实例监视器内清缓存、监视器外逐个实体通过 `Acquirable.sync` 获取所有权后移除 | `InstanceContainer.unloadChunk`（审计 F27、F29）；`assertOwnership` 在测试 JVM 强制开启 |
 | 两个线程同时首次触发同一事件类型的监听器重建 | tick 线程 × 虚拟线程 | 只重建一次，之后不丢事件 | `EventNodeImpl.Handle` 缓存合并为一个 volatile 不可变记录 |
 | 区块加载 future 异常完成时玩家 `setInstance().join()` | 加载线程 × 调用线程 | `join` 在 5 秒内抛出，不永久阻塞 | `whenComplete` 两条路径都 countDown |
 | 同一客户端连续两次 StatusRequest | 客户端 × 网络线程 | 第二次直接关闭 | §11.1 守卫「已应答一次」 |
@@ -630,9 +631,13 @@ N/A — M1 尚未完成；完成后按 §26 退出条件逐项对照并记录实
 
 | 类型 | 描述 | 负责人 | 何时需拍板 |
 | --- | --- | --- | --- |
-| Open Question | 审计 F29：`Instance#unloadChunk` 对站在区块里的玩家的契约。现状是跳过玩家但仍 `chunk.unload()` + `deletePartition`，玩家从此不再被 tick。修复员给出三种方案（区块内有在线玩家时拒绝卸载 / 卸载前把玩家移出 / 卸载后为玩家重新加载），倾向第一种；需改 Javadoc 与 `UnloadChunkIntegrationTest` 断言 | Bearisbug | M2 世界管理设计前 |
-| Open Question | 审计 F49：`TagImpl.INDEX_MAP` 是 JVM 级静态、只增不减，客户端 `custom_data` 的 NBT 键名经 `TagHandler.fromCompound` 会永久登记。索引被 `StaticIntMap` 当数组下标且烙进已发出的 `Tag` 实例，无法在类内淘汰；候选：限制不可信 NBT 进入 tag 系统 / 给不可信来源单独的非索引路径 / 每进程索引表 | Bearisbug | M2 自定义数据模型定型前 |
-| Open Question | 审计 F11 剩余半边：`chunkQueue` 已去重，但每个 `ClientSettingsPacket` 仍整圈重算并在收缩时构造约 312 个 `UnloadChunkPacket`，50 包/tick 仍可压垮 tick 线程。要堵需给视距变更加节流（每 tick 只应用一次），会改变 `refreshSettings` 立即生效的语义 | Bearisbug | 对外开放前 |
+| 已决 | 审计 F29：`Instance#unloadChunk` 对区块内有在线玩家的调用抛 `IllegalStateException` 且不做任何卸载动作，与 `InstanceManager.unregisterInstance` 对称；Javadoc 与 `UnloadChunkIntegrationTest` 已随之更新 | Bearisbug | 已于 2026-09-16 决定并实施 |
+| 已决 | 审计 F49：客户端 NBT 不进 tag 系统。`CustomData` / `TypedCustomData` 的 getTag / withTag 经内部 `TagNbtAccess` 直接对 compound 读写单个 tag，不再整包 `TagHandler.fromCompound`，客户端键名不再登记进 `TagImpl.INDEX_MAP` | Bearisbug | 已于 2026-09-16 决定并实施 |
+| Open Question | 审计 F49 残留：`Serializers.fromTagSerializer` 读 `Tag.Structure` / `Tag.View` 时仍对子 compound 调 `TagHandler.fromCompound`，游戏侧若对客户端物品用这两类 tag，其子树键名仍会被登记。候选：给这两类 tag 也走 `TagNbtAccess` 路径，或在 `TagHandler.fromCompound` Javadoc 上标明不可用于不可信数据并加 ArchUnit 规则 | Bearisbug | M2 自定义数据模型定型前 |
+| 已决 | 审计 F11：视距变更按 tick 节流。`Player` 记录「客户端区块环所依据的视距」`clientViewDistance`，`effectiveViewDistance()` 由它计算，settings 包只改设置，`update()` 每 tick 最多追平一次并按最终值重算一圈；`refreshSettings` 对视距不再立即生效（其它设置仍即时） | Bearisbug | 已于 2026-09-16 决定并实施 |
+| Open Question | 审计 F29 残留：`SharedInstance#unloadChunk` 委托给容器，而 shared 实例的玩家在自己的 `EntityTracker` 里，容器的在线玩家检查看不到它们，站在 shared 实例里的玩家仍会随卸载冻结。最小改法是容器检查时连 `getSharedInstances()` 的 tracker 一起查 | Bearisbug | M2 世界管理设计前 |
+| Open Question | 审计 F29 残留：`PlayerConnection.disconnect()` 对 PLAY 态玩家先 `online=false` 再 `scheduleNextTick(Entity::remove)`，若在这一 tick 之间该区块被卸载（`unregisterInstance` 逐块卸载最易命中），已下线玩家挡不住卸载、分区被删后排队的 remove 永不执行，成为 tracker 幽灵 | Bearisbug | M2 世界管理设计前 |
+| Open Question | 审计 F11 残留：视距收缩直接发 `UnloadChunkPacket`，但不会把该区块从 `chunkQueue` 摘掉（优先队列无按值删除），同一 tick 内「卸载后又被 `sendPendingChunks` 发出」的区块会留在客户端而服务端认为已卸；另 `updateViewDistance` 以 `position` 为中心而客户端环记账中心是 `chunksLoadedByClient`，跨区块抖动时可能错位一列 | Bearisbug | 对外开放前 |
 | 已决 | 正式名字 Synaxis（用户 2026-09-15 拍板）：包名 `io.github.bearisbug.synaxis`，仓库 `Bearisbug/synaxis`，品牌 `synaxis`；原占位名 `dev.gameengine` / `game-engine` 的改名提交登记在 `.git-blame-ignore-revs` | Bearisbug | 已于 2026-09-15 决定 |
 | 已决 | M1.5（REQ-013～016，阶段 4～6）按用户 2026-09-09「按重构计划并行推进」指示视为确认，M1 阶段 3 完成后开工 | Bearisbug | 已决 |
 | 已决 | `command` 包（83 文件）M1 保留：耦合低，开发期调试与运维指令依赖它；M2 自定义协议成型后再评估 | Bearisbug | 已于 2026-09-09 决定 |

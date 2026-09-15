@@ -1,0 +1,4 @@
+TC-018 · stop sent at 1789488293, process exit line: smoke exit=0 at 1789488294, elapsed=1s
+holda: 2 server-stopping, exit code: 1
+holdb: 2 server-stopping, exit code: 1
+holdc: 2 server-stopping, exit code: 1

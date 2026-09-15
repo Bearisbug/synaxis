@@ -1,0 +1,8 @@
+[023-1] 0
+[001] grep1=1 grep2=1 json=39 nbt=23
+[002] https://github.com/Bearisbug/game-engine.git isFork=false old=exit1 origin=1 branch=main
+[010] grep=0 ignore=1
+[020-3] 1108
+[020-4] 3/3
+[020-5] other: ArmorStandMeta.java InteractionMeta.java package-info.java 
+[001-4 offline] exit=0 BUILD SUCCESSFUL in 4s

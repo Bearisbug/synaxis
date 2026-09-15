@@ -1,0 +1,106 @@
+probe target=127.0.0.1:25565 protocol=776 command=login
+sent Handshake protocol=776 intent=login
+sent LoginStart username=holdc
+recv SetCompressionPacket
+     compression threshold=256
+recv LoginSuccessPacket
+     LoginSuccess username=holdc uuid=ac344fbd-f9c8-3af4-b36b-639ca94881a6
+sent LoginAcknowledged
+recv PluginMessagePacket
+recv SelectKnownPacksPacket
+sent KnownPacks entries=1
+recv UpdateEnabledFeaturesPacket
+recv KeepAlivePacket
+sent KeepAlive #1 at 11:32:20
+recv RegistryDataPacket
+recv RegistryDataPacket
+recv RegistryDataPacket
+recv RegistryDataPacket
+recv RegistryDataPacket
+recv RegistryDataPacket
+recv RegistryDataPacket
+recv RegistryDataPacket
+recv RegistryDataPacket
+recv RegistryDataPacket
+recv RegistryDataPacket
+recv RegistryDataPacket
+recv RegistryDataPacket
+recv RegistryDataPacket
+recv RegistryDataPacket
+recv RegistryDataPacket
+recv RegistryDataPacket
+recv RegistryDataPacket
+recv RegistryDataPacket
+recv RegistryDataPacket
+recv RegistryDataPacket
+recv RegistryDataPacket
+recv RegistryDataPacket
+recv RegistryDataPacket
+recv RegistryDataPacket
+recv RegistryDataPacket
+recv RegistryDataPacket
+recv TagsPacket
+recv FinishConfigurationPacket
+sent FinishConfiguration
+state=play
+holding the connection for 40.0s
+recv JoinGamePacket
+recv WindowItemsPacket
+recv ServerDifficultyPacket
+recv SpawnPositionPacket
+recv EntityMetaDataPacket
+recv PlayerInfoUpdatePacket
+recv PlayerInfoUpdatePacket
+recv PlayerInfoUpdatePacket
+recv DeclareCommandsPacket
+recv EntityAttributesPacket
+recv EntityStatusPacket
+recv UpdateHealthPacket
+recv PlayerAbilitiesPacket
+recv InitializeWorldBorderPacket
+recv SetTimePacket
+recv ChangeGameStatePacket
+recv ChangeGameStatePacket
+recv ChangeGameStatePacket
+recv SpawnEntityPacket
+recv EntityMetaDataPacket
+recv EntityHeadLookPacket
+recv EntityEquipmentPacket
+recv EntityAttributesPacket
+recv SpawnEntityPacket
+recv EntityMetaDataPacket
+recv EntityHeadLookPacket
+recv EntityEquipmentPacket
+recv EntityAttributesPacket
+recv UpdateViewPositionPacket
+recv ChunkBatchStartPacket
+recv ChunkDataPacket
+recv ChunkDataPacket
+recv ChunkDataPacket
+recv ChunkDataPacket
+recv ChunkDataPacket
+recv ChunkDataPacket
+recv ChunkDataPacket
+recv ChunkDataPacket
+recv ChunkDataPacket
+recv ChunkBatchFinishedPacket
+recv PlayerPositionAndLookPacket
+recv PlayerPositionAndLookPacket
+recv WindowItemsPacket
+recv HeldItemChangePacket
+recv ChangeGameStatePacket
+recv EntityPositionSyncPacket
+recv EntityPositionSyncPacket
+recv EntityPositionSyncPacket
+recv EntityPositionSyncPacket
+recv EntityVelocityPacket
+recv EntityVelocityPacket
+recv EntityPositionSyncPacket
+recv EntityPositionSyncPacket
+recv EntityVelocityPacket
+recv EntityVelocityPacket
+recv EntityPositionSyncPacket
+recv EntityPositionSyncPacket
+recv Disconnect reason=engine:server-stopping
+unexpected disconnect: Disconnect reason=engine:server-stopping
+exit code: 1

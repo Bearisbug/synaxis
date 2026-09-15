@@ -10,8 +10,17 @@ import org.jetbrains.annotations.Nullable;
 
 public class TabCompleteListener {
 
+    /**
+     * A space-allowing argument makes the command parser retry once per remaining word, so parsing cost grows
+     * quadratically with the input length. {@link ClientTabCompletePacket#MAX_TEXT_LENGTH} is far above the 256
+     * characters a command can ever be, and suggestions for text which could never be executed are worthless,
+     * so anything longer is dropped instead of parsed on the tick thread.
+     */
+    private static final int MAX_SUGGESTION_LENGTH = 256;
+
     public static void listener(ClientTabCompletePacket packet, Player player) {
         final String text = packet.text();
+        if (text.length() > MAX_SUGGESTION_LENGTH) return;
         final Suggestion suggestion = getSuggestion(player.process(), player, text);
         if (suggestion != null) {
             player.sendPacket(new TabCompletePacket(

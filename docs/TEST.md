@@ -14,6 +14,7 @@
 
 | 日期 | 改动 | 作者 |
 | --- | --- | --- |
+| 2026-09-16 | 跟进 `docs/DESIGN-M2.md` v0.4（评审第 3 轮收口）：新增 TC-GAME-050（`REQ-M2-024` 准入回调与握手跨线程交接）、TC-GAME-051（`REQ-M2-025` 公开的 `Entity#moveTo` 位置推进入口）；**废弃 TC-GAME-037，新增 TC-GAME-052**（`setViewRange` 的期望值从写死的 ≥ 1.6 改为按 `archetype_view_range=4.0` 配置，并补「实体距离」倍率 50% 档——阈值与判据都变了，按惯例换 ID）；TC-GAME-029 补第 6 步（就绪后 dispatcher 与 `TickSchedulerThread` 都在跑、且载入期间零 tick）；TC-GAME-032 补准入回调缺失与重复注册两档；TC-GAME-043 补来回推镜头 5 个来回不丢区块（区块更新限流器已关）；TC-GAME-047 补 50% 实体距离档；§2 覆盖区间改到 `REQ-M2-025`、Gherkin 场景数改 48、REQ↔TC 表补三行；§3 系统属性补 `synaxis.player.chunk-update-limiter-history-size=0`；§5 回归映射补新 ID | Bearisbug |
 | 2026-09-16 | M2 用例评审第 1 轮修订（4 条必改 + 11 条建议）：TC-GAME-001 只判四模块与构建绿，smoke 删除由 TC-GAME-048 独占（与 §3 过渡期口径、设计文档 §26 的阶段划分对齐，阶段 1 gate 不再必然假失败）；TC-GAME-002 第 4 步的 grep 钉到 `docs/DESIGN-M2.md`；§3 种子清单补对方队伍单位、距出生点 ≥ 200 格的单位与 9 个本方单位；TC-GAME-024 第 4 步补令牌回填等待并写明前 8 条 / 第 9 条各回什么；TC-GAME-030 三步补进程非零码退出与端口未 bind；TC-GAME-037 第 5 步归因改服务端 `entity-view-distance`；TC-GAME-042 第 3 步改按结果码分布判定、第 5 步收窄到「无 tick 超时告警行」；TC-GAME-012 的熔断阈值挪进前置；TC-GAME-013 补触发手段；TC-GAME-049 点名的七条存量 TC 归并进 §5 范围列；§2 不测表把并发回归场景的归属改为 TC-021 并补 `docs/DESIGN.md` `REQ-016` 一行；RUN-003 明细的结果标签归入枚举并补证据引用 | Bearisbug |
 | 2026-09-16 | 新增游戏域（M2）用例 TC-GAME-001～TC-GAME-049，覆盖 `docs/DESIGN-M2.md` 的 REQ-M2-001～REQ-M2-023 与其 42 个 Gherkin 场景；§2 补 M2 范围、REQ↔TC 对照表与不测项（并删去「Fabric 客户端模组 → 里程碑 M2」一行，M2 已进本文档范围），§3 补 M2 启动 / 地图与对局种子 / 探针 / 客户端模组前置（标「未验证」，首轮执行前补冷启动实测），§5 补 M2 功能域回归映射。存量 TC-001～TC-029 一条未改——M2 是第二个功能域，新 ID 一律带 `GAME` 域段 | Bearisbug |
 | 2026-09-16 | 预告（实现前**不改**语义）：`REQ-M2-021`「server-app 取代 smoke」合入时，§3 的启动命令 / 就绪日志串 / 端口属性 / 日志文件名属**环境前置**，语义未变的 TC 保留原 ID 只改环境段（TC-004、TC-018、TC-025 第 4 步、TC-029）；语义实质变更的按惯例废旧 ID 换新 ID——已知的是 TC-012（前置「原版客户端」在强制模组后不再成立，第 2 步又依赖 smoke 的 `/echo`）。本轮不动它们：smoke 仍是唯一启动入口，提前改会把台账改成不可执行 | Bearisbug |
@@ -38,8 +39,8 @@
 ## 2. 测试范围 / 不测什么
 
 - 覆盖（引擎域 · M1 / M1.5）：里程碑 M1 的 12 条需求的黑盒与半黑盒验收——构建产物与仓库元数据（命令、退出码、文件）、Minecraft 协议行为（裸 socket 与原版客户端可观察的包与断线原因）、文档与合规文件。
-- 覆盖（游戏域 · M2）：`docs/DESIGN-M2.md` 的 `REQ-M2-001`～`REQ-M2-023` 的黑盒与半黑盒验收——工程门禁的可观察结论（模块树、构建红绿、CI 结论）、插件宿主的生命周期与隔离行为（启停日志、退出码、回调有无、事件 JSONL）、自定义负载协议行为（探针可见的消息、结果码与断线原因键）、地图包与对局生命周期、单位 / 寻路 / 镜头的服务端权威行为，以及客户端模组的安装与 RTS 切片的端到端人工验收。
-- Gherkin 覆盖口径：`docs/DESIGN-M2.md` §19 的 42 个 Gherkin 场景**全部**由本文档的 TC 可操作化，没有转交自动化测试的场景；逐条对照见下方 REQ ↔ TC 表与各用例标题行。
+- 覆盖（游戏域 · M2）：`docs/DESIGN-M2.md` 的 `REQ-M2-001`～`REQ-M2-025` 的黑盒与半黑盒验收——工程门禁的可观察结论（模块树、构建红绿、CI 结论）、插件宿主的生命周期与隔离行为（启停日志、退出码、回调有无、事件 JSONL）、自定义负载协议行为（探针可见的消息、结果码与断线原因键）、地图包与对局生命周期、单位 / 寻路 / 镜头的服务端权威行为，以及客户端模组的安装与 RTS 切片的端到端人工验收。
+- Gherkin 覆盖口径：`docs/DESIGN-M2.md` §19 的 48 个 Gherkin 场景**全部**由本文档的 TC 可操作化，没有转交自动化测试的场景；逐条对照见下方 REQ ↔ TC 表与各用例标题行。
 - 机械校验盲区（必须知道，否则会把绿灯当成已核）：test-doc 的 `check.sh` 里 ID 正则是 `REQ-([A-Z]+-)?[0-9]+`，域段只允许字母，**匹配不上带数字的 `M2` 域段**——因此 `REQ-M2-*` 一条都进不了「REQ 双向联检」，联检实际只覆盖引擎域的 `REQ-001`～`REQ-017`（这与 `docs/DESIGN-M2.md` §24 记录的 design-doc 侧盲区是同一个正则）。M2 侧的「每条 REQ 至少一条 TC」只能靠下表手工核。后续里程碑若把域段取成纯字母（如 `REQ-GAME-*`），机械联检就能重新覆盖游戏域，手工表可以退役。
 
 REQ-M2 ↔ TC 对照（手工维护）：
@@ -61,7 +62,7 @@ REQ-M2 ↔ TC 对照（手工维护）：
 | REQ-M2-013 断线幽灵修复 | TC-GAME-034 |
 | REQ-M2-014 视距收缩修复 | TC-GAME-035 |
 | REQ-M2-015 F49 处置 | TC-GAME-036 |
-| REQ-M2-016 单位模型与表现 | TC-GAME-037、TC-GAME-038 |
+| REQ-M2-016 单位模型与表现 | TC-GAME-052、TC-GAME-038（TC-GAME-037 已废弃） |
 | REQ-M2-017 服务端寻路 | TC-GAME-028、TC-GAME-040、TC-GAME-041、TC-GAME-042、TC-GAME-047 |
 | REQ-M2-018 RTS 镜头 | TC-GAME-043、TC-GAME-044、TC-GAME-047 |
 | REQ-M2-019 客户端选中与下令 | TC-GAME-038、TC-GAME-039、TC-GAME-047 |
@@ -69,6 +70,8 @@ REQ-M2 ↔ TC 对照（手工维护）：
 | REQ-M2-021 server-app 取代 smoke | TC-GAME-048、TC-GAME-049 |
 | REQ-M2-022 CI 门禁扩展 | TC-GAME-004、TC-GAME-005、TC-GAME-006 |
 | REQ-M2-023 社区上手 | TC-GAME-016 |
+| REQ-M2-024 宿主准入链 | TC-GAME-050、TC-GAME-032 |
+| REQ-M2-025 公开的位置推进入口 | TC-GAME-051 |
 
 - 不测：
 
@@ -79,7 +82,7 @@ REQ-M2 ↔ TC 对照（手工维护）：
 | M2 新增自动化（`:protocol` 双端向量测试、宿主的加载顺序 / 环检测 / 通道路由单测、ArchUnit 规则对合成 `JavaClasses` 的自测、F29 与 F11 的复现测试、jacoco 与 diff-cover 本身） | 代码仓测试套件，策略见 `docs/DESIGN-M2.md` §19；本文档只在 TC 步骤里调用它们并判读可观察输出，不复制其断言 |
 | 50 连接 + 1,000 单位的全量压测与 `docs/DESIGN-M2.md` §15 的整表性能阈值（tick P99、出站带宽、进程内存、客户端 ≥ 60 FPS） | `docs/DESIGN-M2.md` §23 上线前检查单的专项脚本，当前无归属——已知风险（本文档只在 TC-GAME-042 打到 Gherkin 写明的「64 条并发指令」这一档） |
 | 安全渗透（畸形包模糊测试之外的攻击面） | 无归属——已知风险 |
-| `docs/DESIGN-M2.md` §26 阶段 0 的四个 spike（`:protocol` 的 JiJ 消费、相机形态、地图载入实测、Fabric 在 configuration 阶段能否发包） | 设计文档 §26，结论回写设计文档；spike 不是验收，不进本文档 |
+| `docs/DESIGN-M2.md` §26 阶段 0 的四个 spike（`:protocol` 的 JiJ 消费、相机形态、地图载入实测、Fabric 在 configuration 阶段能否发包） | 设计文档 §26，结论回写设计文档；spike 不是验收，不进本文档。**同阶段的客户端模组最小骨架（`REQ-M2-020a`）不属此列**——它是交付物，由 TC-GAME-045 覆盖（阶段 0 时只跑得到该用例的第 1、2、4、5 步，资源与 `:protocol` 打包要等 `REQ-M2-020b`） |
 | 客户端渲染观感（相机形态、选中框样式、HUD 文案、动效） | 无用例——主观项；只在 TC-GAME-047 的录屏与截图里留证据供人评判 |
 | 设计文档 §19 中「CI 门禁拦截并发回归 / 分层违规」两个场景 | 由 TC-021、TC-006 以「故意提交坏改动到临时分支」方式可操作化，见 §4 |
 
@@ -123,7 +126,7 @@ REQ-M2 ↔ TC 对照（手工维护）：
 
 - 启动（`REQ-M2-021` 合入后**取代**上面的 `:smoke:run`）：`export JAVA_HOME=/opt/homebrew/opt/openjdk@25/libexec/openjdk.jdk/Contents/Home && ./gradlew :server-app:run --no-daemon --console=plain --init-script gradle/init/aliyun-mirror.init.gradle.kts`。就绪判定：stdout 出现 `synaxis server-app listening on 0.0.0.0:25565`，且 `nc -z 127.0.0.1 25565` 退出码为 0。停机同 smoke：控制台 `stop` 或 SIGINT，运行期间必须保持 stdin 打开。
 - **过渡期口径（重要）**：`REQ-M2-021` 合入**之前**，`smoke` 仍是唯一启动入口，TC-001～TC-029 继续按上面的 smoke 段执行，`TC-GAME-*` 里凡以 `server-app` 为前置的用例一律登记「阻塞」；合入**之后**，smoke 段整体作废，全部用例按本段执行，受影响的存量用例按 §1 变更记录里的预告处理（语义未变只改环境段，语义变了的废旧 ID 换新 ID）。
-- 系统属性：`synaxis.app.port`（监听端口）、`synaxis.app.plugins`（启用的插件 id 列表，空为全部）、`synaxis.app.map`（地图包路径）、`synaxis.app.plugin.trip-threshold`（熔断阈值覆盖），另沿用引擎的 `synaxis.*`（含 `synaxis.entity-view-distance=8`、`synaxis.chunk-view-distance=10`，见设计文档 §15「可见范围」）。**默认值与日志文件名待 `REQ-M2-021` 实现后填**。
+- 系统属性：`synaxis.app.port`（监听端口）、`synaxis.app.plugins`（启用的插件 id 列表，空为全部）、`synaxis.app.map`（地图包路径）、`synaxis.app.plugin.trip-threshold`（熔断阈值覆盖），另沿用引擎的 `synaxis.*`（含 `synaxis.entity-view-distance=8`、`synaxis.chunk-view-distance=10`、**`synaxis.player.chunk-update-limiter-history-size=0`**——最后一项是 RTS 镜头能来回推的前置条件，不是调优，见设计文档 §15「可见范围」与 `ADR-M2-013`）。**默认值与日志文件名待 `REQ-M2-021` 实现后填**。
 - 事件台账：`logs/events-YYYYMMDD.jsonl`，一行一个 JSON，事件名与属性见设计文档 §20。多条用例以它为观察面，步骤里统一写「`grep <事件名> logs/events-*.jsonl`」。**JSON 的事件名字段键待 `REQ-M2-021` 实现后填**（写 grep 时只匹配事件名字面量，不依赖键名）。
 - 地图种子：由 `REQ-M2-010` 的**程序化生成器**产出 `.synx`（M2 没有离线烘焙器）。测试地图固定用同一个 seed，必须含：512×512 / 高度 64、若干障碍、**一块被墙完全围住的可站立区域**（TC-GAME-041 依赖）、可站立的空旷区（TC-GAME-040 依赖）。**生成命令待 `REQ-M2-010` 实现后填**；基线重置 = 删掉生成物重跑生成器。
 - 对局与单位种子：进程启动即有一个 `running` 对局（对局在 bind 之前创建，见设计文档 `API-M2-010` 启动序列）。玩家加入后由 `:game-rts` 分配 `team=1` 与 N 个本方单位；测试对局另需：≥ 1 个 `team=0` 的中立单位与 ≥ 1 个 `team` 非 0 且不等于玩家队伍的对方单位（如 `team=2`；两者 TC-GAME-039 依赖）；≥ 1 个距出生点 ≥ 200 格的单位（TC-GAME-043 依赖）；≥ 9 个本方单位（TC-GAME-024 依赖，组内包数上限是 8，第 9 个单位才测得到越界档）；≥ 64 个本方单位的压测预设（TC-GAME-042 依赖）。**单位数量、`unit_id` 分配与预设的开启方式待 `REQ-M2-016` 实现后填**。
@@ -936,6 +939,9 @@ REQ-M2 ↔ TC 对照（手工维护）：
 | 3 | 打印该实例的 `autoChunkLoad`（运维/调试入口待 `REQ-M2-011` 实现后填） | 值为 `false` |
 | 4 | 用探针握手登录进入 play | 进入世界并收到区块包，未出现 `synaxis:internal-error` 或 `synaxis:match-unavailable` |
 | 5 | 检查就绪日志与 `match_started` 的先后 | `match_started` 的时间戳早于就绪日志（对局在 bind 之前就已 running，见 `API-M2-010` 启动序列） |
+| 6 | 在 `match_created` 与 `match_started` 之间的日志区间里查 tick 计数（tick 计数的打印入口待 `REQ-M2-021` 实现后填） | 全程为 `0`——地图载入跑在启动线程上、不经 `SchedulerManager`（若它被写成 `Scheduler` 任务，tick 线程尚未启动，进程会停在这里不再往下走） |
+| 7 | 就绪之后 `jcmd <pid> Thread.print \| grep -c Syn-TickScheduler` 与 `\| grep -c Syn-Tick-` | 两者都 ≥ 1（启动序列第 ⑥ 步已起 `TickSchedulerThread` 与 dispatcher 的 tick 线程） |
+| 8 | 就绪日志出现后立刻用探针连接并发 `C2S_HELLO` | 3 秒内收到 `S2C_HELLO`（configuration 阶段的入站包只在 tick 里被解释；tick 没起来这一步必然超时成 `synaxis:client-mod-required`） |
 
 后置：`stop`。
 
@@ -972,7 +978,7 @@ REQ-M2 ↔ TC 对照（手工维护）：
 
 | # | 操作 | 预期 |
 | --- | --- | --- |
-| 1 | 用 `synaxis.app.plugins` 排除掉唯一创建对局的插件后启动 | 进程以非零码退出，日志说明没有 `running` 对局；`nc -z 127.0.0.1 25565` 退出码非 0（不是 bind 之后让玩家撞 NPE） |
+| 1 | 用 `synaxis.app.plugins` 排除掉唯一创建对局的插件后启动 | 进程以非零码退出，日志同时说明「没有准入回调」与「没有 `running` 对局」（启动序列第 ⑤ 步的两条断言）；`nc -z 127.0.0.1 25565` 退出码非 0（不是 bind 之后让玩家撞 NPE） |
 | 2 | 正常启动，让唯一对局结束（入口待 `REQ-M2-011` 实现后填），再用探针握手 | 探针收到 `S2C_HELLO` 之后被断开，原因键 `synaxis:match-unavailable` |
 | 3 | `grep client_rejected logs/events-*.jsonl \| tail -1` | `reason` 为 `match-unavailable` |
 | 4 | 查看服务端 stdout | 无 `spawningInstance` 相关的 `NullPointerException`，无 `synaxis:internal-error` |
@@ -1037,6 +1043,8 @@ REQ-M2 ↔ TC 对照（手工维护）：
 
 #### `TC-GAME-037` 单位建模五条硬规则生效 — 对应 `REQ-M2-016` · 级别: 回归 · 执行者: AI
 
+**已废弃，被 `TC-GAME-052` 取代**（设计文档 v0.4：第 5 条建模规则的期望值从写死的 `setViewRange ≥ 1.6` 改为按 `archetype_view_range` 配置且取 4.0——客户端剔除半径还要乘「实体距离」视频选项的 0.5×～5× 全局倍率，50% 档下 1.6 只有 51 格有效半径，撑不到 97 格；第 5 步的判据也随之要分服务端跟踪与客户端渲染两层写。阈值与判据都变了，按惯例换 ID）。
+
 前置：对局 `running` 且至少有一个单位；建模断言测试名待 `REQ-M2-016` 实现后填。
 
 | # | 操作 | 预期 |
@@ -1046,6 +1054,22 @@ REQ-M2 ↔ TC 对照（手工维护）：
 | 3 | 让一个单位移动 10 秒，用探针记录它的实体位置包 | 位置包按每 2 tick 一条到达，不是每 20 tick 一次的跳变 |
 | 4 | 在同一段记录里统计周期性位置重同步包 | 约每 100 tick 一条（重同步被调大而不是关掉，保留纠正通道） |
 | 5 | 把锚点推到让该单位落在离玩家实体约 97 格处 | 探针未收到该实体的 `DestroyEntities`（服务端 `synaxis.entity-view-distance=8` 即 128 格，97 格仍在跟踪范围内；display 专属的客户端剔除半径 `view_range × 64` 只管客户端渲染，探针观察不到，屏幕上是否真渲染由 TC-GAME-047 人工判定） |
+
+后置：无。
+
+#### `TC-GAME-052` 单位建模五条硬规则生效（`view_range` 按 archetype 配置） — 对应 `REQ-M2-016` · 级别: 回归 · 执行者: AI
+
+前置：对局 `running` 且至少有一个单位；建模断言测试名待 `REQ-M2-016` 实现后填。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 运行单位建模断言测试 | `BUILD SUCCESSFUL`；报告中能点名五条断言——`hasPhysics=false`、`noGravity=true`、spawn 时 `setPosRotInterpolationDuration(2)`、`synchronizationTicks=100`、`setViewRange(archetype_view_range)` 且 `setWidth` / `setHeight` 按 `archetype_box` 为非 0 |
+| 2 | 在断言测试里查 `setViewRange` 的入参来源 | 取自该原型的 `archetype_view_range` 配置项、当前值为 `4.0`；**测试里不得出现写死的 `1.6` 或 `4.0` 字面量与实体元数据直接比对**（写死临界数正是本用例取代 TC-GAME-037 的原因） |
+| 3 | `grep -rn "setTransformationInterpolationDuration" game-rts/src/main/java` | 退出码 1、无输出（位置插值不得错设成变换插值） |
+| 4 | 让一个单位移动 10 秒，用探针记录它的实体位置包 | 位置包按每 2 tick 一条到达，不是每 20 tick 一次的跳变 |
+| 5 | 在同一段记录里统计周期性位置重同步包 | 约每 100 tick 一条（重同步被调大而不是关掉，保留纠正通道） |
+| 6 | 把锚点推到让该单位落在离玩家实体约 97 格处 | 探针未收到该实体的 `DestroyEntities`（服务端 `synaxis.entity-view-distance=8` 即 128 格，97 格仍在跟踪范围内）——这一步只判**服务端跟踪**这一层 |
+| 7 | 计算该原型在「实体距离」50% 档下的客户端有效剔除半径（`archetype_view_range × 64 × 0.5`） | ≥ 97 格（4.0 → 128 格，有余量）；**客户端是否真渲染由 TC-GAME-047 第 3、4 步人工判定**，探针观察不到 |
 
 后置：无。
 
@@ -1130,8 +1154,10 @@ REQ-M2 ↔ TC 对照（手工维护）：
 | 3 | 观察 5 秒新收到的 `ChunkData` | 目标区域的区块出现在集合里 |
 | 4 | 观察同期的 `S2C_UNIT_SPAWN` / `S2C_UNIT_DESPAWN` | 目标区域的单位通过 `S2C_UNIT_SPAWN` 进入；离开兴趣集的单位有对应 `S2C_UNIT_DESPAWN`（不出现「实体已销毁、快照还在发它」） |
 | 5 | 查看服务端 stdout | 无 `IllegalArgumentException`（锚点夹取保证落点在已载入区块内），无 ERROR |
+| 6 | 把锚点在出生点与 200 格外之间**来回推 5 个来回**（每次方向切换后观察 2 秒），全程 5 Hz 上报 | 每一次方向切换后 2 秒内都至少收到一批新的 `ChunkData`；不出现「第二个来回起再也收不到区块」 |
+| 7 | 把 `synaxis.player.chunk-update-limiter-history-size` 改回默认 `5` 重启，重跑第 6 步 | 从第二个来回起收不到新区块——**这一步是用来证明第 6 步不是自动成立的**；确认后立刻把该属性改回 `0`（§3 的标准前置） |
 
-后置：无。
+后置：确认 `synaxis.player.chunk-update-limiter-history-size` 已改回 `0`。
 
 #### `TC-GAME-044` 镜头超频、越界锚点与 `zoom` 夹取 — 对应 `REQ-M2-018` · 级别: 回归 · 执行者: AI
 
@@ -1185,11 +1211,13 @@ REQ-M2 ↔ TC 对照（手工维护）：
 | 1 | 多人游戏直连 `127.0.0.1` | 5 秒内进入对局，看到 RTS 俯视镜头与地面，屏幕上有本方单位 |
 | 2 | 把镜头锚点推到 200 格外 | 该区域的地形与单位都被渲染出来（不是空白地形、也不是「有地形没单位」） |
 | 3 | 缩放到最远（`zoom=48`） | 屏幕角落（离锚点约 97 格）的单位仍然可见，地形无大面积不渲染 |
-| 4 | 左键点中一个本方单位 | 该单位出现选中框；`grep unit_selected logs/events-*.jsonl \| tail -1` 出现对应记录 |
-| 5 | 右键点 20 格外一处可站立地面 | 落点出现绿色标记；单位在 300 ms 内起步，平滑走过去（不是瞬移、不是每秒一跳），到达后停下 |
-| 6 | 在它移动途中再次点中它 | 能点中（拾取盒取自同一实体的渲染插值位置，看到的与点得中的同源），不出现「看着在这儿点不中」 |
-| 7 | 右键点地图边界外 | 落点标记变红且单位保持原状态（不是没有任何反馈） |
-| 8 | 把录屏与第 1～7 步的关键截图归档到 `docs/test-runs/RUN-<本轮>/` | 证据文件存在，能看清上述每一步的现象 |
+| 4 | 在视频设置里把「实体距离」调到 **50%**（剔除半径全局倍率的下限），回到游戏重复第 3 步 | 屏幕角落的单位**仍然**可见（`archetype_view_range=4.0` 的余量 + 模组对该倍率的覆盖，见设计文档 §15「可见范围」④⑥）；若不可见，按 `ADR-M2-013` 先查模组是否真的覆盖了该选项，再查 `archetype_view_range` |
+| 5 | 把镜头在出生点与 200 格外之间来回推 3 个来回 | 每次推过去那一侧的地形与单位都重新出现（区块更新限流器已关，见 TC-GAME-043 第 6 步） |
+| 6 | 左键点中一个本方单位 | 该单位出现选中框；`grep unit_selected logs/events-*.jsonl \| tail -1` 出现对应记录 |
+| 7 | 右键点 20 格外一处可站立地面 | 落点出现绿色标记；单位在 300 ms 内起步，平滑走过去（不是瞬移、不是每秒一跳），到达后停下 |
+| 8 | 在它移动途中再次点中它 | 能点中（拾取盒取自同一实体的渲染插值位置，看到的与点得中的同源），不出现「看着在这儿点不中」 |
+| 9 | 右键点地图边界外 | 落点标记变红且单位保持原状态（不是没有任何反馈） |
+| 10 | 把录屏与第 1～9 步的关键截图归档到 `docs/test-runs/RUN-<本轮>/` | 证据文件存在，能看清上述每一步的现象 |
 
 后置：客户端退出；`stop` 关闭服务端。
 
@@ -1209,6 +1237,38 @@ REQ-M2 ↔ TC 对照（手工维护）：
 
 后置：无。
 
+#### `TC-GAME-050` 准入回调与握手跨线程交接 — 对应 `REQ-M2-024` · 级别: 冒烟 · 执行者: AI
+
+前置：`REQ-M2-024` 第 ① 半（阶段 2）与第 ② 半（阶段 4）均已合入；进程就绪且有一个 `running` 对局；探针可控制「发不发 `C2S_HELLO`」与「发几次」。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 用探针正常握手一次 | 收到 `S2C_HELLO` 后进入 play；`grep client_verified logs/events-*.jsonl \| tail -1` 出现该连接的一行；日志里能看到这条连接调过一次准入回调（回调的日志入口待 `REQ-M2-024` 实现后填） |
+| 2 | 用一个**故意等 2.5 秒才发 `C2S_HELLO`** 的探针连接 | 仍然握手成功（3 秒有界等待未超时），不出现半成品状态 |
+| 3 | 用「登录后不发 `C2S_HELLO`」的探针连接 | 3.0～3.5 秒被断开，原因键 `synaxis:client-mod-required`；服务端 stdout 里**没有** `spawningInstance` 相关的 `NullPointerException`（失败路径 kick 后直接 return，不设 `spawningInstance`） |
+| 4 | 用探针握手成功后**再发一次 `C2S_HELLO`** | 被断开，原因键 `synaxis:protocol-error`（`complete` 返回 false 判为重复握手） |
+| 5 | 用探针进入 configuration 后在 1 秒时主动断开 TCP | 服务端在 1 秒左右就释放该连接的等待（日志里该 `connection_id` 的最后一行早于 3 秒），不是干等满 3 秒 |
+| 6 | 让插件的准入回调返回 `Reject("synaxis:match-unavailable")`（注入方式待 `REQ-M2-024` 实现后填），再用探针握手 | 探针收到 `S2C_HELLO` 之后被断开，原因键 `synaxis:match-unavailable`；`grep client_rejected logs/events-*.jsonl \| tail -1` 的 `reason` 为 `match-unavailable`；无 `synaxis:internal-error` |
+| 7 | 让准入回调抛异常或睡 500 毫秒（超过 200 毫秒预算），再用探针握手 | 同样以 `synaxis:match-unavailable` 断开；日志里有一行带 `plugin_id` 的 ERROR |
+| 8 | 让第二个插件也调用 `admission().register(...)` 后启动 | 第二次注册抛 `IllegalStateException`，进程以非零码退出并点名两个 `plugin_id`；端口未 bind |
+
+后置：撤掉第 6～8 步的注入，`stop`。
+
+#### `TC-GAME-051` 单位位置推进走公开入口 — 对应 `REQ-M2-025` · 级别: 回归 · 执行者: AI
+
+前置：`REQ-M2-025` 已合入（引擎提供公开的 `Entity#moveTo(Pos)`）；`REQ-M2-017` 已合入可下令。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | `grep -rn "refreshPosition" game-rts/src/main/java plugin-api/src/main/java server-app/src/main/java` | 退出码 1、无输出（游戏侧与稳定面零命中内部 API） |
+| 2 | 查 `Entity#moveTo` 的声明 | 是 `public` 且**没有** `@ApiStatus.Internal`；三个 `refreshPosition` 重载仍然标着 `@ApiStatus.Internal`（新入口是提升原语，不是放宽既有 API） |
+| 3 | 运行 `moveTo` 与 `refreshPosition(pos, false, true)` 的等价性对照测试（测试名待 `REQ-M2-025` 实现后填） | `BUILD SUCCESSFUL`；两条路径对同一组输入产出逐包相同的出站序列（零行为变更） |
+| 4 | 下一条移动指令让单位走 20 格，用探针记账这段时间内的 `EntityTeleportEvent`（计数入口待 `REQ-M2-025` 实现后填） | 计数为 `0`（推进不派发传送事件） |
+| 5 | 在同一段里观察推进是否产生跨 tick 的异步回调（JFR 采样 tick 线程） | 推进在 tick 线程上同步完成，没有 `loadOptionalChunk(...).thenRun(...)` 一类的异步链 |
+| 6 | 让单位沿航点走到一个**未载入**区块的方向（构造方式：临时把航点指到地图边界外一格） | 抛 `IllegalArgumentException` 并被寻路侧的守卫拦下、记 ERROR，单位不进入不一致状态（越界不静默失败，见 `ADR-M2-013`） |
+
+后置：还原第 6 步的构造。
+
 #### `TC-GAME-049` 强制握手后协议探针的存量回归跑通 — 对应 `REQ-M2-008`、`REQ-M2-021` · 级别: 回归 · 执行者: AI
 
 前置：`REQ-M2-008` 已合入且 `tools/protocol-probe/probe.py` 已在同一交付里实现 `C2S_HELLO`。
@@ -1227,8 +1287,8 @@ REQ-M2 ↔ TC 对照（手工维护）：
 - **全量轮**（全部用例）：首次成稿、每个阶段 gate（引擎域阶段 0、2、3；游戏域 `docs/DESIGN-M2.md` §26 的阶段 1～6b）、跨功能域改动、地基变更（JDK、Gradle、镜像、协议版本、模块拆分、启动入口）。
 - **局部轮**（受影响用例 + 全部冒烟级）：单一需求改动。受影响用例 = 本次改动触及的 `REQ-*` / `REQ-M2-*` 所对应的 TC（M2 侧的对照表在 §2，机械校验查不到它）；无 REQ 变更的改动（纯 bug 修、重构）按触及的功能域圈定：
   - 引擎域：构建与仓库 → TC-001、TC-002、TC-004、TC-006、TC-021、TC-029，删除与注册表 → TC-008、TC-009、TC-020，命名与合规 → TC-011、TC-028，协议 → TC-012、TC-014、TC-018、TC-019、TC-026、TC-027，卫生 → TC-015、TC-016，门面与配置 → TC-023、TC-025，分层 → TC-024。
-  - 游戏域：模块与门禁 → TC-GAME-001～TC-GAME-006，插件宿主 → TC-GAME-007～TC-GAME-016，协议与握手 → TC-GAME-017～TC-GAME-028、TC-GAME-049，世界与对局 → TC-GAME-029～TC-GAME-036，单位与寻路 → TC-GAME-037、TC-GAME-039～TC-GAME-042，镜头 → TC-GAME-043、TC-GAME-044，客户端模组 → TC-GAME-038、TC-GAME-045～TC-GAME-047，启动器 → TC-GAME-048、TC-GAME-049。
-  - 跨域牵连（必须一起跑）：动了启动入口或就绪日志 → 加 TC-GAME-048 与全部以进程为前置的引擎域用例；动了握手或探针 → 加 TC-GAME-049 与 TC-004、TC-014、TC-018、TC-019、TC-020、TC-026、TC-027 七条存量 TC；动了 `:protocol` 消息布局 → 加 TC-GAME-017 与客户端侧同一份向量。
+  - 游戏域：模块与门禁 → TC-GAME-001～TC-GAME-006，插件宿主 → TC-GAME-007～TC-GAME-016，协议与握手 → TC-GAME-017～TC-GAME-028、TC-GAME-049、TC-GAME-050，世界与对局 → TC-GAME-029～TC-GAME-036，单位与寻路 → TC-GAME-052、TC-GAME-039～TC-GAME-042、TC-GAME-051，镜头 → TC-GAME-043、TC-GAME-044，客户端模组 → TC-GAME-038、TC-GAME-045～TC-GAME-047，启动器 → TC-GAME-048、TC-GAME-049、TC-GAME-050。
+  - 跨域牵连（必须一起跑）：动了启动入口或就绪日志 → 加 TC-GAME-048、TC-GAME-029、TC-GAME-032 与全部以进程为前置的引擎域用例（启动序列一变，「对局在 bind 之前就绪、tick 在 bind 之后才起」这条口径就要重验）；动了握手、准入回调或探针 → 加 TC-GAME-049、TC-GAME-050 与 TC-004、TC-014、TC-018、TC-019、TC-020、TC-026、TC-027 七条存量 TC；动了 `:protocol` 消息布局 → 加 TC-GAME-017 与客户端侧同一份向量；动了引擎 `Entity` 的位置推进入口 → 加 TC-GAME-051 与 TC-GAME-040。
   - 影响面不确定时升级为全量轮。
 - **复测轮**（上轮失败用例 + 全部冒烟级）：修复失败项之后。
 - **人工收口轮**（仅上轮「待人工」用例）：AI 轮之后由人工补测 TC-012、TC-016、TC-GAME-020、TC-GAME-038、TC-GAME-046、TC-GAME-047，不要求冒烟级。

@@ -3,8 +3,12 @@ package io.github.bearisbug.synaxis.entity.player;
 import io.github.bearisbug.synaxis.coordinate.ChunkRange;
 import io.github.bearisbug.synaxis.coordinate.CoordConversion;
 import io.github.bearisbug.synaxis.coordinate.Pos;
+import io.github.bearisbug.synaxis.coordinate.Vec;
 import io.github.bearisbug.synaxis.entity.Player;
+import io.github.bearisbug.synaxis.event.player.AsyncPlayerConfigurationEvent;
 import io.github.bearisbug.synaxis.network.packet.client.common.ClientSettingsPacket;
+import io.github.bearisbug.synaxis.network.packet.client.play.ClientPlayerPositionPacket;
+import io.github.bearisbug.synaxis.network.packet.client.play.ClientTeleportConfirmPacket;
 import io.github.bearisbug.synaxis.network.packet.server.play.ChunkDataPacket;
 import io.github.bearisbug.synaxis.network.packet.server.play.UnloadChunkPacket;
 import io.github.bearisbug.synaxis.network.player.ClientSettings;
@@ -12,7 +16,9 @@ import io.github.bearisbug.synaxis.testing.Env;
 import io.github.bearisbug.synaxis.testing.EnvTest;
 import org.junit.jupiter.api.Test;
 
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -69,8 +75,54 @@ public class PlayerChunkQueueIntegrationTest {
         // The last packet of the batch is the one that counts, and it is applied once
         assertEquals(2, player.getSettings().viewDistance());
         final int rangeAfter = player.effectiveViewDistance();
+        assertEquals(3, rangeAfter, "the view distance of the last packet must be the one applied");
         assertTrue(rangeAfter < rangeBefore, "the view distance must have shrunk");
         assertEquals(ChunkRange.chunksCount(rangeBefore) - ChunkRange.chunksCount(rangeAfter),
                 unloaded.collect().size(), "the chunk ring must be recomputed once per tick");
+    }
+
+    @Test
+    public void viewDistanceShrinkUnloadsTheRingTheClientHas(Env env) {
+        var instance = env.createFlatInstance();
+        var connection = env.createConnection();
+        Player player = connection.connect(instance, new Pos(0.5, 40, 0.5));
+        final int rangeBefore = player.effectiveViewDistance();
+
+        var unloaded = connection.trackIncoming(UnloadChunkPacket.class);
+        player.addPacketToQueue(new ClientTeleportConfirmPacket(player.getLastSentTeleportId()));
+        // Shrink the view distance and cross a chunk border in the same tick: the movement happens before the
+        // new view distance is applied, so it must move the ring the client actually has, at its own radius
+        player.addPacketToQueue(new ClientSettingsPacket(ClientSettings.defaultSettings(2)));
+        player.addPacketToQueue(new ClientPlayerPositionPacket(new Vec(16.5, 40, 0.5), true, false));
+        env.tick();
+
+        final int rangeAfter = player.effectiveViewDistance();
+        assertEquals(3, rangeAfter);
+        List<Long> unloadedChunks = new ArrayList<>();
+        for (UnloadChunkPacket packet : unloaded.collect()) {
+            unloadedChunks.add(CoordConversion.chunkIndex(packet.chunkX(), packet.chunkZ()));
+        }
+        // The ring follows the player at its old radius, then shrinks around the new center: every chunk the
+        // client was sent and is now out of range must be unloaded, and no other one may be
+        Set<Long> expected = new HashSet<>();
+        ChunkRange.chunksInRange(0, 0, rangeBefore, (x, z) -> expected.add(CoordConversion.chunkIndex(x, z)));
+        ChunkRange.chunksInRange(1, 0, rangeBefore, (x, z) -> expected.add(CoordConversion.chunkIndex(x, z)));
+        ChunkRange.chunksInRange(1, 0, rangeAfter, (x, z) -> expected.remove(CoordConversion.chunkIndex(x, z)));
+        assertEquals(expected, new HashSet<>(unloadedChunks),
+                "the unloaded chunks must be exactly the ones the client has and no longer needs");
+        assertEquals(expected.size(), unloadedChunks.size(), "a chunk must not be unloaded twice");
+    }
+
+    @Test
+    public void viewDistanceSentBeforeSpawnBuildsTheFirstRing(Env env) {
+        var instance = env.createFlatInstance();
+        // A client sends its settings during configuration, when it has no chunk yet: the first ring must be
+        // built from them rather than from the server default and resized on the first tick
+        env.process().eventHandler().addListener(AsyncPlayerConfigurationEvent.class,
+                event -> event.getPlayer().refreshSettings(ClientSettings.defaultSettings(4)));
+        var connection = env.createConnection();
+        Player player = connection.connect(instance, new Pos(0, 40, 0));
+
+        assertEquals(5, player.effectiveViewDistance());
     }
 }

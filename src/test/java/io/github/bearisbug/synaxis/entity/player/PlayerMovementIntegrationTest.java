@@ -138,6 +138,7 @@ public class PlayerMovementIntegrationTest {
                 false, true,
                 ClientSettings.ParticleSetting.ALL
         ));
+        env.tick(); // The new view distance is applied by the player tick
 
         Collector<ChunkDataPacket> chunkDataPacketCollector = connection.trackIncoming(ChunkDataPacket.class);
         player.addPacketToQueue(new ClientTeleportConfirmPacket(player.getLastSentTeleportId()));

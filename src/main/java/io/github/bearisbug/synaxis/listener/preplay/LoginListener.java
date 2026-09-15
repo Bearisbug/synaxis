@@ -38,6 +38,12 @@ public final class LoginListener {
     public static final Component INVALID_PROXY_RESPONSE = Component.text("Invalid proxy response!", NamedTextColor.RED);
 
     public static void loginStartListener(ClientLoginStartPacket packet, PlayerConnection connection) {
+        if (!connection.claimLoginStart()) {
+            // A client sends this packet once. Every repeat runs the whole login again on a new
+            // virtual thread, and none of it requires the peer to be authenticated.
+            connection.kick(DisconnectReasons.PROTOCOL_ERROR);
+            return;
+        }
         if (!StringUtils.isValidUsername(packet.username())) {
             connection.kick(ERROR_MALFORMED_USERNAME);
             return;

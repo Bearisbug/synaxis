@@ -108,8 +108,10 @@ final class ProxyProtocolDecoder {
         final int headerLength = V2_HEADER_LENGTH + payloadLength;
         // The header is never fragmented past the buffer, and the read loop has no way to grow it
         // while the detection is pending, so waiting for more would spin on an empty channel read.
-        if (headerLength > buffer.capacity())
-            throw new IOException("PROXY protocol v2 header of " + headerLength + " bytes exceeds the read buffer");
+        // A header filling the buffer exactly is just as unusable: consuming it leaves the buffer
+        // with nothing to read and nowhere to write, which spins on empty channel reads too.
+        if (headerLength >= buffer.capacity())
+            throw new IOException("PROXY protocol v2 header of " + headerLength + " bytes does not fit the read buffer");
         if (buffer.readableBytes() < headerLength) return new Result(Status.NEED_MORE, originalAddress);
 
         if (versionAndCommand >>> 4 != 2) throw new IOException("Invalid PROXY protocol v2 version");

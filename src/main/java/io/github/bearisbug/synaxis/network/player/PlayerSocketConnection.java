@@ -89,6 +89,7 @@ public class PlayerSocketConnection extends PlayerConnection {
     private final NetworkBuffer readBuffer;
     private final MessagePassingQueue<SendablePacket> packetQueue = ConcurrentMessageQueues.mpscUnboundedArrayQueue(1024);
     private final Thread readThread, writeThread;
+    private volatile @Nullable Thread loginTimeoutThread;
 
     private final AtomicLong sentPacketCounter = new AtomicLong();
     // Index where compression starts, linked to `sentPacketCounter`
@@ -128,6 +129,11 @@ public class PlayerSocketConnection extends PlayerConnection {
 
         // Process packets
         processPackets(readBuffer, packetParser);
+    }
+
+    /** The size of the read buffer, which the peer can make grow by sending large packets. */
+    long readBufferCapacity() {
+        return readBuffer.capacity();
     }
 
     private boolean compression() {
@@ -191,7 +197,12 @@ public class PlayerSocketConnection extends PlayerConnection {
             case PacketReading.Result.Failure<ClientPacket> failure -> {
                 readBuffer.compact(); // Drop the complete frames already read before growing
                 final long requiredCapacity = failure.requiredCapacity();
-                if (requiredCapacity > readBuffer.capacity()) readBuffer.resize(requiredCapacity);
+                // The required capacity is the length the peer announced, not what it sent: growing
+                // to it right away turns a handful of bytes into megabytes of off-heap memory. The
+                // buffer only has to grow once the peer left it nowhere to write, and then only
+                // enough to keep reading, so its size follows the bytes actually received.
+                if (requiredCapacity > readBuffer.capacity() && readBuffer.writableBytes() == 0)
+                    readBuffer.resize(Math.min(requiredCapacity, readBuffer.capacity() * 2));
             }
         }
     }
@@ -502,10 +513,27 @@ public class PlayerSocketConnection extends PlayerConnection {
         else this.writeLeftover = buffer;
     }
 
+    /**
+     * Hands over the watchdog closing this connection if it never reaches the configuration state,
+     * so that it can be cancelled once the connection is gone. Sleeping the login timeout out would
+     * keep this connection and its read buffer alive long after the socket died.
+     *
+     * @param thread the watchdog thread, cancelled by an interrupt
+     */
+    @ApiStatus.Internal
+    public void watchLoginTimeout(Thread thread) {
+        this.loginTimeoutThread = thread;
+    }
+
     @Override
     public void disconnect() {
         super.disconnect();
         LockSupport.unpark(writeThread);
+        final Thread loginTimeoutThread = this.loginTimeoutThread;
+        if (loginTimeoutThread != null && loginTimeoutThread != Thread.currentThread()) {
+            this.loginTimeoutThread = null;
+            loginTimeoutThread.interrupt();
+        }
     }
 
     public Thread readThread() {

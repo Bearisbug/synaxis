@@ -35,6 +35,7 @@ import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * A PlayerConnection is an object needed for all created {@link Player}.
@@ -57,6 +58,7 @@ public abstract class PlayerConnection {
     private volatile ConnectionState serverState, clientState;
 
     private @Nullable PlayerPublicKey playerPublicKey;
+    private final AtomicBoolean loginStarted = new AtomicBoolean();
     private boolean statusRequested;
     volatile boolean online;
     private volatile boolean wasTransferred;
@@ -95,9 +97,23 @@ public abstract class PlayerConnection {
      */
     @ApiStatus.Internal
     public boolean loginTimedOut(long nowMillis) {
+        // The watchdog sleeps exactly one login timeout before asking, so the deadline itself has
+        // to count as expired: milliseconds are integers and it only ever asks once.
         return online
                 && serverState.ordinal() < ConnectionState.CONFIGURATION.ordinal()
-                && nowMillis - connectedAtMillis > process.config().loginTimeout();
+                && nowMillis - connectedAtMillis >= process.config().loginTimeout();
+    }
+
+    /**
+     * Claims the single login this connection is allowed to start. Repeating the login start packet
+     * does not change the connection state, so without this the peer can run the whole login again
+     * for every copy of it.
+     *
+     * @return true the first time it is called, false for every repeat
+     */
+    @ApiStatus.Internal
+    public boolean claimLoginStart() {
+        return loginStarted.compareAndSet(false, true);
     }
 
     /**

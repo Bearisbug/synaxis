@@ -3,6 +3,7 @@ package dev.gameengine.network.player;
 import dev.gameengine.JvmFlags;
 import dev.gameengine.ServerProcess;
 import dev.gameengine.adventure.EngineAdventure;
+import dev.gameengine.entity.GameMode;
 import dev.gameengine.entity.Player;
 import dev.gameengine.event.ListenerHandle;
 import dev.gameengine.event.player.PlayerPacketOutEvent;
@@ -11,6 +12,7 @@ import dev.gameengine.network.DisconnectReasons;
 import dev.gameengine.network.NetworkBuffer;
 import dev.gameengine.network.packet.PacketParser;
 import dev.gameengine.network.packet.PacketReading;
+import dev.gameengine.network.packet.PacketRegistry;
 import dev.gameengine.network.packet.PacketVanilla;
 import dev.gameengine.network.packet.PacketWriting;
 import dev.gameengine.network.packet.client.ClientPacket;
@@ -24,6 +26,7 @@ import dev.gameengine.network.packet.client.login.ClientEncryptionResponsePacket
 import dev.gameengine.network.packet.client.login.ClientLoginAcknowledgedPacket;
 import dev.gameengine.network.packet.client.login.ClientLoginPluginResponsePacket;
 import dev.gameengine.network.packet.client.login.ClientLoginStartPacket;
+import dev.gameengine.network.packet.client.play.ClientCreativeInventoryActionPacket;
 import dev.gameengine.network.packet.client.status.StatusRequestPacket;
 import dev.gameengine.network.packet.server.BufferedPacket;
 import dev.gameengine.network.packet.server.CachedPacket;
@@ -132,11 +135,12 @@ public class PlayerSocketConnection extends PlayerConnection {
         final ConnectionState startingState = getClientState();
         final PacketReading.Result<ClientPacket> result;
         try {
-            result = PacketReading.readPackets(
+            result = PacketReading.<ClientPacket>readPackets(
                     readBuffer,
                     packetParser,
                     startingState, PacketVanilla::nextClientState,
-                    compression()
+                    compression(),
+                    this::readClientPacket
             );
         } catch (Throwable e) {
             rethrowFatal(e);
@@ -180,14 +184,31 @@ public class PlayerSocketConnection extends PlayerConnection {
             case PacketReading.Result.Empty<ClientPacket> _ -> {
                 // Empty
             }
+            case PacketReading.Result.Skipped<ClientPacket> _ -> readBuffer.compact();
             case PacketReading.Result.Failure<ClientPacket> failure -> {
-                // Resize for next read
+                readBuffer.compact(); // Drop the complete frames already read before growing
                 final long requiredCapacity = failure.requiredCapacity();
-                assert requiredCapacity > readBuffer.capacity() :
-                        "New capacity should be greater than the current one: " + requiredCapacity + " <= " + readBuffer.capacity();
-                readBuffer.resize(requiredCapacity);
+                if (requiredCapacity > readBuffer.capacity()) readBuffer.resize(requiredCapacity);
             }
         }
+    }
+
+    /**
+     * Decides whether a framed payload is worth decoding.
+     *
+     * <p>A creative set slot packet carries a full item, components included, which is by far the
+     * most expensive thing a client can ask the server to decode. Only a player in creative mode is
+     * allowed to send one, and that check does not need the decoded packet, so it happens first.</p>
+     *
+     * @return the decoded packet, or {@code null} to skip the rest of the frame
+     */
+    @Nullable ClientPacket readClientPacket(PacketRegistry.PacketInfo<? extends ClientPacket> packetInfo,
+                                            NetworkBuffer buffer) {
+        if (packetInfo.packetClass() == ClientCreativeInventoryActionPacket.class) {
+            final Player player = getPlayer();
+            if (player == null || player.getGameMode() != GameMode.CREATIVE) return null;
+        }
+        return packetInfo.serializer().read(buffer);
     }
 
     /**

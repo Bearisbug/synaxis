@@ -17,7 +17,8 @@ Subcommands, see docs/TEST.md section 3:
     zero-frame                    send a single 0x00 byte while in the play state
     alloc-bomb [--declared N]     edit book packet declaring N pages but sending ten bytes
     nbt-bomb [--mib N]            custom click action whose NBT decodes to about N MiB of objects
-    deep-recursion [--depth N]    creative set slot packet with N nested potion effects
+    deep-recursion [--depth N]    creative set slot packet with N nested potion effects; a
+                                  non-creative player has the packet dropped before decoding
     echo --payload TEXT           round trip TEXT over the game:main custom payload channel
     record-registry --out FILE    dump every received RegistryData packet to FILE
 """
@@ -693,8 +694,10 @@ def cmd_deep_recursion(args: argparse.Namespace) -> int:
         except ClosedByServer:
             session.log("connection closed by the server")
             return 0
-        session.log("no disconnect received")
-        return 1
+        # The probe logs in as a survival player, so the server drops the frame without decoding it.
+        # Surviving is the expected outcome; what would fail here is a crash or a stalled connection.
+        session.log("no disconnect received, the creative packet was skipped before decoding")
+        return 0
     finally:
         session.close()
 

@@ -16,6 +16,7 @@ Subcommands, see docs/TEST.md section 3:
     bad-version --protocol N      handshake with an unsupported protocol version
     zero-frame                    send a single 0x00 byte while in the play state
     alloc-bomb [--declared N]     edit book packet declaring N pages but sending ten bytes
+    nbt-bomb [--mib N]            custom click action whose NBT decodes to about N MiB of objects
     deep-recursion [--depth N]    creative set slot packet with N nested potion effects
     echo --payload TEXT           round trip TEXT over the game:main custom payload channel
     record-registry --out FILE    dump every received RegistryData packet to FILE
@@ -36,6 +37,8 @@ import zlib
 from pathlib import Path
 
 PROTOCOL_VERSION = 776
+# Approximate decoded cost of one empty compound inside a list, see BinaryTagTypeImpl.ReadLimiter
+COST_PER_EMPTY_COMPOUND = 52
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 PACKET_VANILLA = REPO_ROOT / "src/main/java/dev/gameengine/network/packet/PacketVanilla.java"
@@ -429,6 +432,23 @@ def alloc_bomb_payload(declared: int) -> bytes:
             .bytes())
 
 
+def nbt_bomb_payload(mib: float) -> bytes:
+    """A custom click action whose binary tag decodes to roughly ``mib`` MiB of objects.
+
+    One list entry holding an empty compound is a single encoded byte and about 52 bytes of
+    decoded objects, so the encoded payload stays inside the packet's own 64 KiB length prefix
+    while the decoded estimate goes well past the server's limit.
+    """
+    entries = int(mib * 1024 * 1024 / COST_PER_EMPTY_COMPOUND)
+    nbt = (Writer()
+           .raw(b"\x09")  # TAG_List
+           .raw(b"\x0a")  # of TAG_Compound
+           .raw(struct.pack(">i", entries))
+           .raw(b"\x00" * entries)  # every compound is a lone TAG_End
+           .bytes())
+    return Writer().string("game:probe").byte_array(nbt).bytes()
+
+
 def disconnect_reason(packet: str, reader: Reader) -> str:
     """Extracts the translate key, LoginDisconnect uses json and Disconnect uses nbt."""
     if packet == "LoginDisconnectPacket":
@@ -639,6 +659,27 @@ def cmd_alloc_bomb(args: argparse.Namespace) -> int:
         session.close()
 
 
+def cmd_nbt_bomb(args: argparse.Namespace) -> int:
+    session = Session(args)
+    try:
+        session.enter_play()
+        payload = nbt_bomb_payload(args.mib)
+        session.connection.send("ClientCustomClickActionPacket", payload)
+        session.log(f"sent CustomClickAction with NBT decoding to about {args.mib} MiB "
+                    f"({len(payload)} encoded bytes)")
+        try:
+            session.pump(args.timeout)
+        except Disconnected as disconnected:
+            return 0 if disconnected.reason == "engine:protocol-error" else 1
+        except ClosedByServer:
+            session.log("connection closed by the server")
+            return 0
+        session.log("no disconnect received")
+        return 1
+    finally:
+        session.close()
+
+
 def cmd_deep_recursion(args: argparse.Namespace) -> int:
     session = Session(args)
     try:
@@ -733,6 +774,11 @@ def build_parser() -> argparse.ArgumentParser:
     alloc = subparsers.add_parser("alloc-bomb", help="declare a huge collection length with almost no payload")
     alloc.add_argument("--declared", type=int, default=65535)
     alloc.set_defaults(run=cmd_alloc_bomb)
+
+    nbt = subparsers.add_parser("nbt-bomb", help="send NBT that decodes far past the server limit")
+    nbt.add_argument("--mib", type=float, default=3.0,
+                     help="approximate decoded size in MiB, capped near 3.2 by the packet length prefix")
+    nbt.set_defaults(run=cmd_nbt_bomb)
 
     deep = subparsers.add_parser("deep-recursion", help="send a deeply nested item component")
     deep.add_argument("--depth", type=int, default=200)

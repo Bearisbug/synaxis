@@ -67,6 +67,10 @@ public sealed interface NetworkBuffer permits NetworkBufferImpl {
     Type<String> STRING_IO_UTF8 = new NetworkBufferStringTypes.IOUTF8StringType();
     Type<BinaryTag> NBT = BinaryTagTypeImpl.INSTANCE;
     Type<CompoundBinaryTag> NBT_COMPOUND = BinaryTagTypeImpl.INSTANCE_COMPOUND;
+    /** Same wire format as {@link #NBT}, but with the decoded size limited by {@code JvmFlags.NBT_MAX_BYTES}. */
+    Type<BinaryTag> UNTRUSTED_NBT = BinaryTagTypeImpl.UNTRUSTED_INSTANCE;
+    /** Same wire format as {@link #NBT_COMPOUND}, but with the decoded size limited by {@code JvmFlags.NBT_MAX_BYTES}. */
+    Type<CompoundBinaryTag> UNTRUSTED_NBT_COMPOUND = BinaryTagTypeImpl.UNTRUSTED_INSTANCE_COMPOUND;
     Type<Point> BLOCK_POSITION = new NetworkBufferSpatialTypes.BlockPositionType();
     Type<Component> COMPONENT = new ComponentNetworkBufferTypeImpl();
     Type<Component> JSON_COMPONENT = new NetworkBufferCodecTypes.JsonComponentType();

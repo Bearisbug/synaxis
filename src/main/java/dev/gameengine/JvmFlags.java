@@ -65,6 +65,14 @@ public final class JvmFlags {
     public static final int NBT_MAX_DEPTH = intProperty("gameengine.nbt.max-depth", 512, 1, Integer.MAX_VALUE);
 
     /**
+     * Largest decoded binary tag accepted from a client, in approximate heap bytes rather than in
+     * encoded bytes: a compact encoding can expand into far more objects than it occupies on the
+     * wire. JVM-wide for the same reason as {@link #NBT_MAX_DEPTH}. Only untrusted reads are
+     * charged against it; what the server writes and reads back is never limited.
+     */
+    public static final int NBT_MAX_BYTES = intProperty("gameengine.nbt.max-bytes", 2_097_152, 1, Integer.MAX_VALUE);
+
+    /**
      * Renders every flag as {@code name=value}, for the boot log of a launcher.
      */
     public static String describe() {
@@ -78,6 +86,7 @@ public final class JvmFlags {
                 + ", eventNodeAllowMultipleParents=" + EVENT_NODE_ALLOW_MULTIPLE_PARENTS
                 + ", templateCompiler=" + TEMPLATE_COMPILER
                 + ", nbtMaxDepth=" + NBT_MAX_DEPTH
+                + ", nbtMaxBytes=" + NBT_MAX_BYTES
                 + ']';
     }
 

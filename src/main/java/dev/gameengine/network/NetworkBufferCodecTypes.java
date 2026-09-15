@@ -14,6 +14,7 @@ import dev.gameengine.utils.validate.Check;
 
 import static dev.gameengine.network.NetworkBuffer.NBT;
 import static dev.gameengine.network.NetworkBuffer.STRING;
+import static dev.gameengine.network.NetworkBuffer.UNTRUSTED_NBT;
 
 final class NetworkBufferCodecTypes {
 
@@ -55,7 +56,7 @@ final class NetworkBufferCodecTypes {
         public T read(NetworkBuffer buffer) {
             final Registries registries = buffer.registries();
             Check.stateCondition(registries == null, "Buffer does not have registries");
-            final Result<T> result = nbtType.decode(new RegistryTranscoder<>(Transcoder.NBT, registries), buffer.read(NBT));
+            final Result<T> result = nbtType.decode(new RegistryTranscoder<>(Transcoder.NBT, registries), buffer.read(UNTRUSTED_NBT));
             return switch (result) {
                 case Result.Ok(T value) -> value;
                 case Result.Error(String message) -> throw new IllegalArgumentException("Invalid NBT tag: " + message);

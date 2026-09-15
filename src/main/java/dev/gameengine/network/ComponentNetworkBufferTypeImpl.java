@@ -42,7 +42,7 @@ import static dev.gameengine.network.BinaryTagTypeImpl.TAG_LIST;
 import static dev.gameengine.network.BinaryTagTypeImpl.TAG_STRING;
 import static dev.gameengine.network.NetworkBuffer.BYTE;
 import static dev.gameengine.network.NetworkBuffer.INT;
-import static dev.gameengine.network.NetworkBuffer.NBT;
+import static dev.gameengine.network.NetworkBuffer.UNTRUSTED_NBT;
 import static dev.gameengine.network.NetworkBuffer.STRING_IO_UTF8;
 
 record ComponentNetworkBufferTypeImpl() implements NetworkBufferTypeImpl<Component> {
@@ -61,7 +61,7 @@ record ComponentNetworkBufferTypeImpl() implements NetworkBufferTypeImpl<Compone
         final Transcoder<BinaryTag> coder = registries != null
                 ? new RegistryTranscoder<>(Transcoder.NBT, registries)
                 : Transcoder.NBT;
-        return ComponentCodecs.COMPONENT.decode(coder, buffer.read(NBT)).orElseThrow();
+        return ComponentCodecs.COMPONENT.decode(coder, buffer.read(UNTRUSTED_NBT)).orElseThrow();
     }
 
     // WRITING IMPL, pretty gross. Would not recommend reading.

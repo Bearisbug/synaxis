@@ -2,6 +2,7 @@ package dev.gameengine.codec;
 
 import com.google.gson.JsonParser;
 import net.kyori.adventure.nbt.BinaryTag;
+import net.kyori.adventure.nbt.BinaryTagTypes;
 import dev.gameengine.adventure.EngineAdventure;
 import org.jetbrains.annotations.Nullable;
 import org.junit.jupiter.api.Test;
@@ -12,6 +13,10 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 public class StructCodecTest {
+
+    private static final String INT_TYPE = BinaryTagTypes.INT.toString();
+    private static final String STRING_TYPE = BinaryTagTypes.STRING.toString();
+    private static final String LIST_TYPE = BinaryTagTypes.LIST.toString();
 
     @Test
     void emptyObject() {
@@ -81,7 +86,24 @@ public class StructCodecTest {
                 TheObject::new
         );
         var result = codec.decode(TranscoderNbtImpl.INSTANCE, snbt("{\"name\": 2}"));
-        assertError("name: Not a string: IntBinaryTagImpl[value=2]", result);
+        assertError("name: Expected string NBT, found " + INT_TYPE + " 2", result);
+    }
+
+    /** A mismatched tag can come from a client, so the error may only carry a bounded preview of it. */
+    @Test
+    void incorrectTypeDiagnosticIsTruncated() {
+        record TheObject(int value) {
+        }
+
+        var codec = StructCodec.struct(
+                "value", Codec.INT, TheObject::value,
+                TheObject::new
+        );
+        var result = codec.decode(TranscoderNbtImpl.INSTANCE, snbt("{value: \"" + "a".repeat(100) + "\"}"));
+        assertError("value: Expected int NBT, found " + STRING_TYPE + " \"" + "a".repeat(64) + "\"...", result);
+
+        result = codec.decode(TranscoderNbtImpl.INSTANCE, snbt("{value: [1, 2, 3]}"));
+        assertError("value: Expected int NBT, found " + LIST_TYPE + " [3 entries]", result);
     }
 
     @Test

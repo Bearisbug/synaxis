@@ -9,6 +9,6 @@ import dev.gameengine.network.packet.client.ClientPacket;
 public record ClientCustomClickActionPacket(Key key, BinaryTag payload) implements ClientPacket.Configuration, ClientPacket.Play {
     public static final NetworkBuffer.Type<ClientCustomClickActionPacket> SERIALIZER = NetworkBufferTemplate.template(
             NetworkBuffer.KEY, ClientCustomClickActionPacket::key,
-            NetworkBuffer.NBT.lengthPrefixed(65536), ClientCustomClickActionPacket::payload,
+            NetworkBuffer.UNTRUSTED_NBT.lengthPrefixed(65536), ClientCustomClickActionPacket::payload,
             ClientCustomClickActionPacket::new);
 }

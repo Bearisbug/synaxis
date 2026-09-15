@@ -364,4 +364,33 @@ public class InventoryIntegrationTest {
         assertEquals(3, event.getSlot());
         assertEquals(MAGIC_STACK, event.getNewItem());
     }
+
+    @Test
+    public void bundleActivateTestInvalidPacketIgnored(Env env) {
+        var instance = env.createFlatInstance();
+        var connection = env.createConnection();
+        var player = connection.connect(instance, new Pos(0, 42, 0));
+
+        var listener = env.trackEvent(InventoryBundleItemSelectEvent.class, EventFilter.PLAYER, player);
+        player.addPacketToQueue(new ClientSelectBundleItemPacket(0, -2)); // Selected index below -1
+        player.addPacketToQueue(new ClientSelectBundleItemPacket(-1, 0)); // Negative slot
+        player.addPacketToQueue(new ClientSelectBundleItemPacket(100, 0)); // Outside of the player inventory
+        player.interpretPacketQueue();
+
+        listener.assertEmpty();
+    }
+
+    @Test
+    public void bundleActivateTestInvalidPacketIgnoredContainer(Env env) {
+        var instance = env.createFlatInstance();
+        var connection = env.createConnection();
+        var player = connection.connect(instance, new Pos(0, 42, 0));
+        player.openInventory(new Inventory(InventoryType.CHEST_3_ROW, "title"));
+
+        var listener = env.trackEvent(InventoryBundleItemSelectEvent.class, EventFilter.PLAYER, player);
+        player.addPacketToQueue(new ClientSelectBundleItemPacket(100, 0)); // Outside of the player inventory
+        player.interpretPacketQueue();
+
+        listener.assertEmpty();
+    }
 }

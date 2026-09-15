@@ -103,15 +103,13 @@ public class WindowListener {
     }
 
     public static void selectBundleItemListener(ClientSelectBundleItemPacket packet, Player player) {
+        // Both fields are unvalidated client input: an invalid packet is dropped, throwing here would only
+        // print a stack trace on the tick thread for every packet the client cares to send.
         final int selectedItemIndex = packet.selectedIndex();
-        if (selectedItemIndex < -1) {
-            throw new IllegalArgumentException("Selected item index cannot be less than -1: " + selectedItemIndex);
-        }
+        if (selectedItemIndex < -1) return;
 
         final int rawSlot = packet.slot();
-        if (rawSlot < 0) {
-            throw new IllegalArgumentException("Slot index cannot be negative: " + rawSlot);
-        }
+        if (rawSlot < 0) return;
 
         final AbstractInventory openInventory = player.getOpenInventory();
         final AbstractInventory targetInventory;
@@ -119,9 +117,7 @@ public class WindowListener {
 
         if (openInventory == null) {
             translatedSlot = PlayerInventoryUtils.convertWindow0SlotToEngineSlot(rawSlot);
-            if (translatedSlot > player.getInventory().getSize() || translatedSlot < 0) {
-                throw new IllegalArgumentException("Slot index " + rawSlot + " is out of bounds for player inventory");
-            }
+            if (translatedSlot > player.getInventory().getSize() || translatedSlot < 0) return;
             targetInventory = player.getInventory();
         } else {
             final int containerSize = openInventory.getSize();
@@ -130,9 +126,7 @@ public class WindowListener {
                 translatedSlot = rawSlot;
             } else {
                 translatedSlot = PlayerInventoryUtils.convertWindowSlotToEngineSlot(rawSlot, containerSize);
-                if (translatedSlot > player.getInventory().getSize() || translatedSlot < 0) {
-                    throw new IllegalArgumentException("Slot index " + rawSlot + " is out of bounds for player inventory");
-                }
+                if (translatedSlot > player.getInventory().getSize() || translatedSlot < 0) return;
                 targetInventory = player.getInventory();
             }
         }

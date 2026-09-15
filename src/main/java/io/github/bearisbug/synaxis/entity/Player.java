@@ -1,7 +1,9 @@
 package io.github.bearisbug.synaxis.entity;
 
 import it.unimi.dsi.fastutil.longs.LongArrayPriorityQueue;
+import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import it.unimi.dsi.fastutil.longs.LongPriorityQueue;
+import it.unimi.dsi.fastutil.longs.LongSet;
 import net.kyori.adventure.bossbar.BossBar;
 import net.kyori.adventure.identity.Identity;
 import net.kyori.adventure.inventory.Book;
@@ -197,6 +199,9 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
     private Vec chunksLoadedByClient = Vec.ZERO;
     private final ReentrantLock chunkQueueLock = new ReentrantLock();
     private final LongPriorityQueue chunkQueue = new LongArrayPriorityQueue(this::compareChunkDistance);
+    // Content of chunkQueue, a chunk already waiting to be sent must not be queued a second time:
+    // a client changing its view distance back and forth would grow the queue without bound
+    private final LongSet queuedChunks = new LongOpenHashSet();
     private boolean needsChunkPositionSync = true;
     private float targetChunksPerTick = 9f; // Always send 9 chunks immediately
     private float pendingChunkCount = 0f; // Number of chunks to send on the current tick (ie 0.5 means we cannot send a chunk yet, 1.5 would send a single chunk with a 0.5 remainder)
@@ -265,6 +270,9 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
     record PendingResourcePack(boolean required, ResourcePackCallback callback) {
     }
 
+    // Guards the two fields below: packs are pushed from the configuration thread while the client
+    // answers are interpreted by the ticker thread.
+    private final Object resourcePackLock = new Object();
     private final Map<UUID, PendingResourcePack> pendingResourcePacks = new HashMap<>();
     // The future is non-null when a resource pack is in-flight, and completed when all statuses have been received.
     private @Nullable CompletableFuture<Void> resourcePackFuture = null;
@@ -521,6 +529,8 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
     /**
      * Respawns the player by sending a {@link RespawnPacket} to the player and teleporting him
      * to {@link #getRespawnPoint()}. It also resets fire and health.
+     * <p>
+     * The teleport to the respawn point finishes asynchronously when its chunk still has to be loaded.
      */
     public void respawn() {
         if (!isDead())
@@ -554,7 +564,9 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
                         if (entity.hasPassenger()) sendPacket(entity.getPassengersPacket());
                     }
                 });
-        teleport(respawnPosition).thenRun(this::refreshAfterTeleport).join();
+        // Waiting here would deadlock: respawn() runs on the player tick thread, while the teleport
+        // continuation needs that very thread to own the player before it can run.
+        var _ = teleport(respawnPosition).thenRun(() -> runOwned(this::refreshAfterTeleport));
     }
 
     /**
@@ -592,6 +604,9 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
 
         if (permanent) {
             this.packets.clear();
+            // Drop the player first, otherwise the kick below makes the disconnect handling
+            // call the event a second time
+            process().connection().removePlayer(playerConnection);
             process().eventHandler().call(new PlayerDisconnectEvent(this));
             EventsJFR.newPlayerLeave(getUuid()).commit();
         }
@@ -820,9 +835,10 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
      */
     public void sendChunk(Chunk chunk) {
         if (!chunk.isLoaded()) return;
+        final long chunkIndex = CoordConversion.chunkIndex(chunk.getChunkX(), chunk.getChunkZ());
         chunkQueueLock.lock();
         try {
-            chunkQueue.enqueue(CoordConversion.chunkIndex(chunk.getChunkX(), chunk.getChunkZ()));
+            if (queuedChunks.add(chunkIndex)) chunkQueue.enqueue(chunkIndex);
         } finally {
             chunkQueueLock.unlock();
         }
@@ -842,6 +858,7 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
             sendPacket(new ChunkBatchStartPacket());
             while (!chunkQueue.isEmpty() && pendingChunkCount >= 1f) {
                 long chunkIndex = chunkQueue.dequeueLong();
+                queuedChunks.remove(chunkIndex);
                 int chunkX = CoordConversion.chunkIndexGetX(chunkIndex), chunkZ = CoordConversion.chunkIndexGetZ(chunkIndex);
                 var chunk = instance.getChunk(chunkX, chunkZ);
                 if (chunk == null || !chunk.isLoaded()) continue;
@@ -873,6 +890,7 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
         chunkQueueLock.lock();
         try {
             chunkQueue.clear();
+            queuedChunks.clear();
             needsChunkPositionSync = true;
             targetChunksPerTick = 9f;
             pendingChunkCount = 0f;
@@ -1448,11 +1466,14 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
         if (request.replace()) clearResourcePacks();
 
         for (final ResourcePackInfo pack : request.packs()) {
-            sendPacket(new ResourcePackPushPacket(pack, request.required(), request.prompt()));
-            pendingResourcePacks.put(pack.id(), new PendingResourcePack(request.required(), request.callback()));
-            if (resourcePackFuture == null) {
-                resourcePackFuture = new CompletableFuture<>();
+            synchronized (resourcePackLock) {
+                // Registered before the push, the client answer can be interpreted before it returns
+                pendingResourcePacks.put(pack.id(), new PendingResourcePack(request.required(), request.callback()));
+                if (resourcePackFuture == null) {
+                    resourcePackFuture = new CompletableFuture<>();
+                }
             }
+            sendPacket(new ResourcePackPushPacket(pack, request.required(), request.prompt()));
         }
     }
 
@@ -1471,33 +1492,56 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
 
     /**
      * If there are resource packs in-flight, a future is returned which will be completed when
-     * all resource packs have been responded to by the client. Otherwise null is returned.
+     * all resource packs have been responded to by the client, or when the player leaves.
+     * Otherwise null is returned.
      */
     @ApiStatus.Internal
     public @Nullable CompletableFuture<Void> getResourcePackFuture() {
-        return resourcePackFuture;
+        synchronized (resourcePackLock) {
+            return resourcePackFuture;
+        }
+    }
+
+    /**
+     * Completes {@link #getResourcePackFuture()} without a client answer. A player who left can never
+     * answer the packs in-flight, and whoever waits for them must not wait forever.
+     */
+    @ApiStatus.Internal
+    public void releaseResourcePackWait() {
+        final CompletableFuture<Void> future;
+        synchronized (resourcePackLock) {
+            pendingResourcePacks.clear();
+            future = resourcePackFuture;
+            resourcePackFuture = null;
+        }
+        if (future != null) future.complete(null);
     }
 
     @ApiStatus.Internal
     public void onResourcePackStatus(UUID id, ResourcePackStatus status) {
-        var pendingPack = pendingResourcePacks.get(id);
+        final PendingResourcePack pendingPack;
+        synchronized (resourcePackLock) {
+            pendingPack = pendingResourcePacks.get(id);
+        }
         if (pendingPack == null) return;
 
         pendingPack.callback().packEventReceived(id, status, this);
-        if (!status.intermediate()) {
-            // Remove the callback and finish the future if relevant
-            pendingResourcePacks.remove(id);
+        if (status.intermediate()) return;
 
-            // If the resource pack is required and failed to load, bye bye!
-            if (pendingPack.required() && status != ResourcePackStatus.SUCCESSFULLY_LOADED) {
-                kick(MISSING_REQUIRED_RESOURCE_PACK);
-            }
-
-            if (pendingResourcePacks.isEmpty() && resourcePackFuture != null) {
-                resourcePackFuture.complete(null);
-                resourcePackFuture = null;
-            }
+        // If the resource pack is required and failed to load, bye bye!
+        if (pendingPack.required() && status != ResourcePackStatus.SUCCESSFULLY_LOADED) {
+            kick(MISSING_REQUIRED_RESOURCE_PACK);
         }
+
+        // Remove the callback and finish the future if relevant
+        final CompletableFuture<Void> future;
+        synchronized (resourcePackLock) {
+            pendingResourcePacks.remove(id);
+            if (!pendingResourcePacks.isEmpty()) return;
+            future = resourcePackFuture;
+            resourcePackFuture = null;
+        }
+        if (future != null) future.complete(null);
     }
 
     /**

@@ -321,6 +321,8 @@ public final class ConnectionManager {
         this.configurationPlayers.remove(player);
         this.playPlayers.remove(player);
         this.keepAlivePlayers.remove(player);
+        // The client is gone and will never answer the resource packs #doConfiguration waits for
+        player.releaseResourcePackWait();
     }
 
     /**

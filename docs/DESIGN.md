@@ -16,6 +16,7 @@
 | 日期 | 版本 | 改动 | 作者 |
 | --- | --- | --- | --- |
 | 2026-09-09 | v0.1 | 初稿：里程碑 M1 范围、实体、协议契约、状态机、阶段计划 | Bearisbug |
+| 2026-09-13 | v0.16 | §15 增加输入分配上限（移植上游 2026-09-12 的三个加固 PR）；REQ-017 | Bearisbug |
 | 2026-09-09 | v0.15 | M1.5 全部完成（RUN-011）：命名残留清理，主源码 1,108 文件，2,576 测试；§1 状态更新 | Bearisbug |
 | 2026-09-09 | v0.14 | REQ-015 合入；阶段 6 完成 | Bearisbug |
 | 2026-09-09 | v0.13 | REQ-015 按实际交付改写（9 包底层集合、移出 6 包及理由、`JvmFlags` 豁免）；§24 规则描述同步 | Bearisbug |
@@ -92,6 +93,7 @@ N/A — 画像:内部系统，本里程碑无产品指标与埋点事件；工�
 | REQ-013 | M1.5 · 静态门面实例化：`MinecraftServer` 静态访问（实测 142 调用点 / 56 文件）改为 `ServerProcess` 实例（`ServerProcess.of(auth)` 工厂，`Instance`/`Entity`/`PlayerConnection`/`CommandSender` 暴露 `process()`，`EventDispatcher` 删除）；`@EnvTest` 类级并行。已完成 | 可维护、可测 | P2 |
 | REQ-014 | M1.5 · 配置对象：`ServerFlag`（实测 55 个开关）删除；37 个进程级开关进 `ServerConfig`（`process.config()`，系统属性键 `gameengine.*` 同默认值），10 个结构上 JVM 级的进 `JvmFlags` 并逐条注明原因，4 个归各自的包，4 个死开关删除；测试与生产同一份默认值（`ServerConfigTest` 断言 `defaults() == fromSystemProperties()`）。已完成 | 可维护 | P2 |
 | REQ-015 | M1.5 · 分层：底层集合最终为 `codec、condition、coordinate、exception、gamedata、monitoring、thread、timer、utils` 9 个包，不得依赖集合之外的引擎包（实测起点 35 条边 260 条 import，终点 0）；`registry`、`color`、`component`、`crypto`、`sound`、`tag` 因各自声明 `NetworkBuffer.Type` 或直接产协议包而移出集合（理由在 `ArchitectureTest` javadoc）；`utils` 内 22 个错放类归位；ArchUnit 由「冻结」改为「禁止」，冻结存储删除；根包 `JvmFlags` 为唯一豁免；`tools/pkgdeps.py` 入库复核。已完成并合入 | 可读、可扩展 | P2 |
+| REQ-017 | 上游加固移植：按可读字节限定集合预分配、不可信 NBT 解码限额与错误信息截断、非创造玩家跳过创造包解码、`DataComponentMap` 与注册表标签读取校验、`ArgumentNumber` 去 radix、依赖升级；协议错误改单行 WARN 日志 | 抗恶意客户端 | P1 |
 | REQ-016 | M1.5 · 拆 `NetworkBufferTypeImpl`（拆前 1,297 行）为按类型族分文件的实现，零 API 影响。已完成：枢纽剩 15 行，10 个 package-private 持有类 | 可读 | P3 |
 
 ## 6. 总体架构
@@ -368,6 +370,7 @@ N/A — 无前端。客户端 Fabric 模组与其界面属于 M2。
 | 入站包 | 50 玩家峰值 | 5,000 包/秒无丢包（追溯 §2 请求量） |
 | 内存 | 进程常驻，1 个世界实例 100 MB 地图 | 堆 < 2 GB（追溯 §2 数据量假设） |
 | 限流 | 单连接 | 每秒 > 500 包或单包 > 2 MB 断线 `engine:protocol-error`；不做 429 类退避 |
+| 输入分配上限 | 单个客户端包 | 客户端提供的 NBT 解码后估算堆占用 ≤ 2 MiB（`JvmFlags.NBT_MAX_BYTES`），集合与映射的预分配按可读字节数而非声明长度，注册表标签条目数 ≤ 注册表大小，创造模式背包包对非创造玩家不解码；超限断线 `engine:protocol-error`（学习上游 PR #3361/#3362/#3364） |
 | 数据增长 | 12 个月 | M1 不落盘任何持久数据，无需清理；世界持久化由 M2 设计 |
 | 构建 | 全量测试 | 本机 < 3 分钟，CI < 10 分钟 |
 | 规模 | 主源码文件数 | 删除完成后 ≤ 1,150，其中含 REQ-008 并入的 49 个原生成文件，即手写源码 ≤ 1,100（起点 1,412 + 生成物 85 分置） |
@@ -516,6 +519,16 @@ N/A — 无前端。客户端 Fabric 模组与其界面属于 M2。
   Given 握手声明协议版本 775
   When next=2 进入登录
   Then 收到 LoginDisconnect engine:unsupported-version
+
+场景: 分配攻击被拒绝 (REQ-017)
+  Given 一个已登录的裸 socket 客户端
+  When 发送声明 65,535 个元素但只含 10 字节负载的集合包，或自定义数据组件里估算超过 2 MiB 的 NBT
+  Then 收到 Disconnect engine:protocol-error，服务端堆没有按声明长度分配，日志为单行 WARN 带 connection_id
+
+场景: 非创造玩家的创造包不被解码 (REQ-017)
+  Given 一个生存模式玩家
+  When 发送 ClientCreativeInventoryActionPacket
+  Then 包被整体跳过，连接保持，后续 KeepAlive 正常
 
 场景: M1.5 · 静态门面实例化后测试可并行 (REQ-013)
   Given 引擎源码中不再有 MinecraftServer 静态访问器

@@ -97,7 +97,9 @@ public class TickThread extends EngineThread {
         try {
             exceptionHandler.accept(throwable);
         } catch (Throwable handlerFailure) {
-            if (handlerFailure != throwable) handlerFailure.addSuppressed(throwable);
+            // Handlers usually rethrow the original as the cause, suppressing it too would print it twice.
+            if (handlerFailure != throwable && handlerFailure.getCause() != throwable)
+                handlerFailure.addSuppressed(throwable);
             handlerFailure.printStackTrace();
         }
     }

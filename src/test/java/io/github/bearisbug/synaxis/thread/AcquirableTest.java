@@ -74,6 +74,7 @@ public class AcquirableTest {
             // The global lock is shared by the whole JVM, another test class may hold it for a moment.
             boolean acquired = false;
             for (int i = 0; i < 100 && !acquired; i++) {
+                if (i > 0) Thread.sleep(1); // Spread the retries, a contention window can outlive a spin
                 acquired = acquirable.trySync(_ -> globalLockHeld.set(AcquirableImpl.GLOBAL_LOCK.isHeldByCurrentThread()));
             }
             assertTrue(acquired, "trySync never acquired an idle element");

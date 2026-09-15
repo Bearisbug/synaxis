@@ -77,6 +77,39 @@ public class ItemEntityClaimIntegrationTest {
         assertTrue(second.isRemoved());
     }
 
+    @Test
+    public void cancelledMergeLeavesBothItemsClaimable(Env env) {
+        var instance = env.createFlatInstance();
+        var spawn = new Pos(0, 42, 0);
+        var first = spawnItem(instance, spawn, 1);
+        var second = spawnItem(instance, spawn, 1);
+
+        env.process().eventHandler().addListener(EntityItemMergeEvent.class, event -> event.setCancelled(true));
+        first.update(TIME);
+
+        assertFalse(first.isRemoved());
+        assertFalse(second.isRemoved());
+        assertTrue(first.claim(), "the cancelled merge kept the claim on the merging item");
+        assertTrue(second.claim(), "the cancelled merge kept the claim on the other item");
+    }
+
+    @Test
+    public void claimedNeighbourIsNotMerged(Env env) {
+        var instance = env.createFlatInstance();
+        var spawn = new Pos(0, 42, 0);
+        var first = spawnItem(instance, spawn, 1);
+        var second = spawnItem(instance, spawn, 1);
+
+        var merges = new AtomicInteger();
+        env.process().eventHandler().addListener(EntityItemMergeEvent.class, _ -> merges.incrementAndGet());
+        assertTrue(second.claim());
+        first.update(TIME);
+
+        assertEquals(0, merges.get(), "an item already claimed by someone else was merged away");
+        assertFalse(second.isRemoved());
+        assertTrue(first.claim(), "the skipped merge left a claim on the scanning item");
+    }
+
     private static LivingEntity picker(Instance instance, Pos spawn) {
         var entity = new LivingEntity(EntityType.ZOMBIE);
         entity.setCanPickupItem(true);

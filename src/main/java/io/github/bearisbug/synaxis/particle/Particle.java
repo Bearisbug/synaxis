@@ -1,5 +1,6 @@
 package io.github.bearisbug.synaxis.particle;
 
+import net.kyori.adventure.key.InvalidKeyException;
 import net.kyori.adventure.key.Key;
 import net.kyori.adventure.key.KeyPattern;
 import net.kyori.adventure.util.RGBLike;
@@ -71,7 +72,11 @@ public sealed interface Particle extends StaticProtocolObject<Particle>, Particl
     }
 
     static @Nullable Particle fromKey(@KeyPattern String key) {
-        return fromKey(Key.key(key));
+        try {
+            return fromKey(Key.key(key));
+        } catch (InvalidKeyException _) {
+            return null;
+        }
     }
 
     static @Nullable Particle fromKey(Key key) {

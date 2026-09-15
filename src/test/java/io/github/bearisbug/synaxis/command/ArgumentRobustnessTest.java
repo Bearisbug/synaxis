@@ -25,7 +25,22 @@ public class ArgumentRobustnessTest {
     }
 
     @Test
+    public void relativeVecWithLocalAfterWorldCoordinates() {
+        assertThrows(ArgumentSyntaxException.class, () -> ArgumentType.RelativeVec3("vec").parse(null, "1 2 ^3"));
+        assertThrows(ArgumentSyntaxException.class, () -> ArgumentType.RelativeVec3("vec").parse(null, "~1 ~2 ^3"));
+        assertThrows(ArgumentSyntaxException.class, () -> ArgumentType.RelativeVec2("vec").parse(null, "-3 ^14.25"));
+    }
+
+    @Test
+    public void registryArgumentsWithAnUnparseableKey() {
+        assertThrows(ArgumentSyntaxException.class, () -> ArgumentType.Entity("entity").parse(null, "@e[type=Pig]"));
+        assertThrows(ArgumentSyntaxException.class, () -> ArgumentType.EntityType("type").parse(null, "Pig"));
+        assertThrows(ArgumentSyntaxException.class, () -> ArgumentType.Particle("particle").parse(null, "Flame"));
+    }
+
+    @Test
     public void stringWithAMalformedUnicodeEscape() {
         assertDoesNotThrow(() -> ArgumentType.String("string").parse(null, "\"\\uZZZZ\""));
+        assertDoesNotThrow(() -> ArgumentType.String("string").parse(null, "\"\\u-123\""));
     }
 }

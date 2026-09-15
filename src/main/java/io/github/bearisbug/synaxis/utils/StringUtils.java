@@ -152,13 +152,16 @@ public class StringUtils {
                             ch = 'u';
                             break;
                         }
-                        final int code;
+                        int code;
                         try {
                             code = Integer.parseInt(
                                     "" + st.charAt(i + 2) + st.charAt(i + 3)
                                             + st.charAt(i + 4) + st.charAt(i + 5), 16);
                         } catch (NumberFormatException _) {
-                            // Not a hex escape after all, treat it like any other unknown escape
+                            code = -1;
+                        }
+                        if (!Character.isValidCodePoint(code)) {
+                            // Not hex at all, or a signed value such as "-123", treat it like any other unknown escape
                             ch = 'u';
                             break;
                         }

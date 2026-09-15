@@ -39,8 +39,10 @@ public sealed interface Palette permits PaletteImpl {
     int BIOME_DIMENSION = 4;
     int BIOME_PALETTE_MIN_BITS = 1;
     int BIOME_PALETTE_MAX_BITS = 3;
+    // Storage width, it must hold any registered biome id. The width expected by the client depends
+    // on the biome registry size and is applied when writing, see #biomeSerializer(int).
     @ApiStatus.Internal
-    int BIOME_PALETTE_DIRECT_BITS = 6; // Vary based on biome count, this is just a sensible default
+    int BIOME_PALETTE_DIRECT_BITS = 15;
 
     static Palette blocks(int bitsPerEntry) {
         return sized(BLOCK_DIMENSION, BLOCK_PALETTE_MIN_BITS, BLOCK_PALETTE_MAX_BITS, BLOCK_PALETTE_DIRECT_BITS, bitsPerEntry);
@@ -227,7 +229,9 @@ public sealed interface Palette permits PaletteImpl {
     NetworkBuffer.Type<Palette> BLOCK_SERIALIZER = serializer(BLOCK_DIMENSION, BLOCK_PALETTE_MIN_BITS, BLOCK_PALETTE_MAX_BITS, BLOCK_PALETTE_DIRECT_BITS);
 
     static NetworkBuffer.Type<Palette> biomeSerializer(int biomeCount) {
-        final int directBits = MathUtils.bitsToRepresent(biomeCount);
+        // The client rebuilds a direct biome palette with ceil(log2(biomeCount)) bits and derives the
+        // long array length from it, the written width has to match exactly
+        final int directBits = MathUtils.bitsToRepresent(Math.max(1, biomeCount - 1));
         return serializer(BIOME_DIMENSION, BIOME_PALETTE_MIN_BITS, BIOME_PALETTE_MAX_BITS, directBits);
     }
 

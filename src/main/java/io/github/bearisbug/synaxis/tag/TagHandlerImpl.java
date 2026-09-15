@@ -21,12 +21,13 @@ final class TagHandlerImpl implements TagHandler {
     // Bumped by every invalidation so readableCopy can tell whether the snapshot it just built is already stale
     private final AtomicInteger invalidations = new AtomicInteger();
 
-    TagHandlerImpl(Node root) {
-        this.root = root;
-    }
-
     TagHandlerImpl() {
         this.root = new Node();
+    }
+
+    private TagHandlerImpl(TagHandlerImpl source) {
+        // The copied nodes must belong to this handler so that their invalidations reach it
+        this.root = source.root.copy(this, null);
     }
 
     private static <T> Entry<T> makeNbtEntry(TagNbtSeparator.Entry<T> nbtEntry) {
@@ -35,8 +36,7 @@ final class TagHandlerImpl implements TagHandler {
 
     static TagHandlerImpl fromCompound(CompoundBinaryTag compound) {
         TagHandlerImpl handler = new TagHandlerImpl();
-        TagNbtSeparator.separate(compound, entry -> entry.write(handler));
-        handler.root.compound = compound;
+        handler.root.updateContent(compound);
         return handler;
     }
 
@@ -48,6 +48,16 @@ final class TagHandlerImpl implements TagHandler {
 
     @Override
     public <T> void setTag(Tag<T> tag, @Nullable T value) {
+        final Node node = setTag0(root, tag, value);
+        if (node != null) node.invalidate();
+    }
+
+    /**
+     * Writes into the tree rooted at {@code root} and returns the node that changed, or {@code null}
+     * if nothing did. Invalidation is left to the caller so that a node can be filled before being
+     * attached to a tree.
+     */
+    private <T> @Nullable Node setTag0(Node root, Tag<T> tag, @Nullable T value) {
         TagImpl<T> tagImpl = (TagImpl<T>) tag;
         // Handle view tags
         if (tag.isView()) {
@@ -55,17 +65,16 @@ final class TagHandlerImpl implements TagHandler {
                 Node syncNode = traversePathWrite(root, tag, value != null);
                 if (syncNode != null) {
                     syncNode.updateContent(value != null ? (CompoundBinaryTag) tagImpl.entry().write(value) : CompoundBinaryTag.empty());
-                    syncNode.invalidate();
                 }
+                return syncNode;
             }
-            return;
         }
         // Normal tag
         final int tagIndex = tagImpl.index();
         VarHandle.fullFence();
         Node node = traversePathWrite(root, tag, value != null);
         if (node == null)
-            return; // Tried to remove an absent tag. Do nothing
+            return null; // Tried to remove an absent tag. Do nothing
         StaticIntMap<Entry<?>> entries = node.entries;
         if (value != null) {
             Entry<?> previous = entries.get(tagIndex);
@@ -82,11 +91,11 @@ final class TagHandlerImpl implements TagHandler {
         } else {
             synchronized (this) {
                 node = traversePathWrite(root, tag, false);
-                if (node == null) return;
+                if (node == null) return null;
                 node.entries.remove(tagIndex);
             }
         }
-        node.invalidate();
+        return node;
     }
 
     @Override
@@ -155,7 +164,7 @@ final class TagHandlerImpl implements TagHandler {
             // setTag's fast path mutates and invalidates without holding this monitor, so caching a snapshot
             // unconditionally can overwrite an invalidation and keep serving stale tags forever
             final int stamp = invalidations.get();
-            final Node snapshot = root.copy(null);
+            final Node snapshot = root.copy(this, null);
             if (invalidations.get() == stamp) this.copy = snapshot;
             return snapshot;
         }
@@ -163,7 +172,7 @@ final class TagHandlerImpl implements TagHandler {
 
     @Override
     public synchronized TagHandler copy() {
-        return new TagHandlerImpl(root.copy(null));
+        return new TagHandlerImpl(this);
     }
 
     @Override
@@ -232,8 +241,9 @@ final class TagHandlerImpl implements TagHandler {
     private <T> Entry<?> valueToEntry(Node parent, Tag<T> tag, T value) {
         if (value instanceof BinaryTag nbt) {
             if (nbt instanceof CompoundBinaryTag compound) {
-                final TagHandlerImpl handler = fromCompound(compound);
-                return Entry.makePathEntry(tag, new Node(parent, handler.root.entries));
+                final Node node = new Node(parent);
+                node.updateEntries(compound);
+                return Entry.makePathEntry(tag, node);
             } else {
                 return makeNbtEntry(TagNbtSeparator.separateSingle(tag.key(), nbt));
             }
@@ -287,9 +297,23 @@ final class TagHandlerImpl implements TagHandler {
         }
 
         void updateContent(CompoundBinaryTag compound) {
-            final TagHandlerImpl converted = fromCompound(compound);
-            this.entries.updateContent(converted.root.entries);
+            updateEntries(compound);
             this.compound = compound;
+        }
+
+        /**
+         * Replaces the entries of this node with the separated form of {@code compound} without
+         * caching it, the conversion being allowed to drop entries such as empty compounds.
+         */
+        void updateEntries(CompoundBinaryTag compound) {
+            // Written into this node directly: nodes converted elsewhere would keep pointing at the
+            // tree they were built in, breaking the parent chain invalidation walks
+            this.entries.updateContent(new StaticIntMap.Array<>());
+            TagNbtSeparator.separate(compound, this::write);
+        }
+
+        private <T> void write(TagNbtSeparator.Entry<T> entry) {
+            setTag0(this, entry.tag(), entry.value());
         }
 
         CompoundBinaryTag compound() {
@@ -308,18 +332,18 @@ final class TagHandlerImpl implements TagHandler {
             return compound;
         }
 
-        @Contract("null -> !null")
+        @Contract("_, null -> !null")
         @SuppressWarnings("unchecked")
-        @Nullable Node copy(@Nullable Node parent) {
+        @Nullable Node copy(TagHandlerImpl owner, @Nullable Node parent) {
             CompoundBinaryTag.Builder tmp = CompoundBinaryTag.builder();
-            Node result = new Node(parent, new StaticIntMap.Array<>());
+            Node result = owner.new Node(parent, new StaticIntMap.Array<>());
             StaticIntMap<Entry<?>> entries = result.entries;
             this.entries.forValues(entry -> {
                 TagImpl<?> tag = entry.tag;
                 Object value = entry.value;
                 BinaryTag nbt;
                 if (value instanceof Node node) {
-                    Node copy = node.copy(result);
+                    Node copy = node.copy(owner, result);
                     if (copy == null)
                         return; // Empty node
                     value = copy;
@@ -331,7 +355,7 @@ final class TagHandlerImpl implements TagHandler {
 
                 if (nbt != null)
                     tmp.put(tag.key(), nbt);
-                entries.put(tag.index(), valueToEntry(result, (Tag<Object>) tag, value));
+                entries.put(tag.index(), owner.valueToEntry(result, (Tag<Object>) tag, value));
             });
             var compound = tmp.build();
             if (!TagFlags.SERIALIZE_EMPTY_COMPOUND && compound.isEmpty() && parent != null)

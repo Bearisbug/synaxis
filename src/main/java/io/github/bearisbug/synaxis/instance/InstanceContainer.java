@@ -289,6 +289,11 @@ public class InstanceContainer extends Instance {
             if (!isLoaded(chunk)) return;
             final int chunkX = chunk.getChunkX();
             final int chunkZ = chunk.getChunkZ();
+            // An unloaded chunk loses its dispatcher partition, and with it every player standing in
+            // it: nothing would ever tick them again, so the chunk has to stay
+            final boolean onlinePlayer = getEntityTracker().chunkEntities(chunkX, chunkZ, EntityTracker.Target.PLAYERS)
+                    .stream().anyMatch(Player::isOnline);
+            Check.stateCondition(onlinePlayer, "You cannot unload a chunk with players inside.");
             chunk.sendPacketToViewers(new UnloadChunkPacket(chunkX, chunkZ));
             process().eventHandler().call(new InstanceChunkUnloadEvent(this, chunk));
             // Collect all entities in chunk, except players: removing one disconnects it,

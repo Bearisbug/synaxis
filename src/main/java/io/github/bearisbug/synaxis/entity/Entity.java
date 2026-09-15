@@ -962,7 +962,7 @@ public class Entity implements Viewable, Tickable, Schedulable, EventHandler<Ent
      * (virtual) thread that loaded the chunk, they must not write the entity state while its own
      * {@link io.github.bearisbug.synaxis.thread.TickThread} is ticking it.
      */
-    private void runOwned(Runnable callback) {
+    void runOwned(Runnable callback) {
         // No tick thread owns the entity yet, nothing can be racing with us
         if (acquirable.assignedThread() == null) callback.run();
         else acquirable.sync(_ -> callback.run());
@@ -1737,6 +1737,9 @@ public class Entity implements Viewable, Tickable, Schedulable, EventHandler<Ent
         final ServerProcess process = this.process;
         if (process != null) process.dispatcher().removeElement(this);
         this.removed = true;
+        // Counterpart of #setInstance: the entity is not spawned anywhere anymore, packets guarded
+        // by isActive() must wait until it is added to an instance again.
+        this.isActive = false;
         if (!permanent) {
             // Reset some state to be ready for re-use
             setPositionInternal(Pos.ZERO, 0);

@@ -3,9 +3,14 @@ package io.github.bearisbug.synaxis.entity.player;
 import io.github.bearisbug.synaxis.coordinate.ChunkRange;
 import io.github.bearisbug.synaxis.coordinate.Pos;
 import io.github.bearisbug.synaxis.entity.Player;
+import io.github.bearisbug.synaxis.instance.Chunk;
+import io.github.bearisbug.synaxis.instance.ChunkLoader;
+import io.github.bearisbug.synaxis.instance.Instance;
 import io.github.bearisbug.synaxis.network.packet.client.play.ClientStatusPacket;
 import io.github.bearisbug.synaxis.network.packet.server.play.ChunkDataPacket;
 import io.github.bearisbug.synaxis.network.packet.server.play.UnloadChunkPacket;
+import io.github.bearisbug.synaxis.network.player.GameProfile;
+import io.github.bearisbug.synaxis.network.player.PlayerConnection;
 import io.github.bearisbug.synaxis.testing.Env;
 import io.github.bearisbug.synaxis.testing.EnvTest;
 import org.junit.jupiter.api.Test;
@@ -13,6 +18,8 @@ import org.junit.jupiter.api.Test;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -50,6 +57,60 @@ public class PlayerRespawnChunkIntegrationTest {
     }
 
     @Test
+    public void respawnDoesNotWaitForTheRespawnChunk(Env env) throws InterruptedException {
+        final Pos respawnPosition = new Pos(5000, 42, 5000);
+        final CountDownLatch release = new CountDownLatch(1);
+        // Only the respawn area is held back, the player still spawns around the origin
+        final ChunkLoader blockingLoader = new ChunkLoader() {
+            @Override
+            public Chunk loadChunk(Instance instance, int chunkX, int chunkZ) {
+                if (chunkX >= 100) {
+                    try {
+                        release.await();
+                    } catch (InterruptedException _) {
+                        Thread.currentThread().interrupt();
+                    }
+                }
+                return null;
+            }
+
+            @Override
+            public void saveChunk(Chunk chunk) {
+            }
+
+            @Override
+            public boolean supportsParallelLoading() {
+                return true;
+            }
+        };
+        // Releases the loader if respawn() blocks, so a regression fails the assertion instead of hanging
+        final Thread watchdog = Thread.ofPlatform().daemon().name("respawn-watchdog").start(() -> {
+            try {
+                Thread.sleep(3_000);
+            } catch (InterruptedException _) {
+                Thread.currentThread().interrupt();
+            }
+            release.countDown();
+        });
+
+        env.process().connection().setPlayerProvider(RespawnProbePlayer::new);
+        var instance = env.createFlatInstance(blockingLoader);
+        var player = (RespawnProbePlayer) env.createConnection().connect(instance, new Pos(0, 40, 0));
+        player.setRespawnPoint(respawnPosition);
+
+        player.setHealth(0);
+        player.respawn();
+        final boolean returnedWhileLoading = release.getCount() == 1;
+        release.countDown();
+        watchdog.interrupt();
+        final boolean teleported = player.respawnTeleport.await(10, TimeUnit.SECONDS);
+
+        assertTrue(returnedWhileLoading,
+                "respawn() waited for the respawn chunk, on a tick thread that blocks the whole server");
+        assertTrue(teleported, "the respawn teleport must still happen once the chunk is loaded");
+    }
+
+    @Test
     public void testPlayerTryRespawn(Env env) {
         var instance = env.createFlatInstance();
         var connection = env.createConnection();
@@ -67,6 +128,20 @@ public class PlayerRespawnChunkIntegrationTest {
             assertFalse(duplicateCheck.contains(packet));
             duplicateCheck.add(packet);
             assertTrue(Math.abs(packet.chunkX()) <= player.effectiveViewDistance() && Math.abs(packet.chunkZ()) <= player.effectiveViewDistance());
+        }
+    }
+
+    private static final class RespawnProbePlayer extends Player {
+        private final CountDownLatch respawnTeleport = new CountDownLatch(1);
+
+        RespawnProbePlayer(PlayerConnection playerConnection, GameProfile gameProfile) {
+            super(playerConnection, gameProfile);
+        }
+
+        @Override
+        protected void refreshAfterTeleport() {
+            super.refreshAfterTeleport();
+            respawnTeleport.countDown();
         }
     }
 }

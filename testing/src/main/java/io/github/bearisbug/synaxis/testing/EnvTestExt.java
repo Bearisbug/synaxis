@@ -2,12 +2,14 @@ package io.github.bearisbug.synaxis.testing;
 
 import io.github.bearisbug.synaxis.ServerConfig;
 import io.github.bearisbug.synaxis.ServerProcess;
+import org.junit.jupiter.api.extension.AfterAllCallback;
 import org.junit.jupiter.api.extension.AfterEachCallback;
 import org.junit.jupiter.api.extension.ExtensionContext;
 import org.junit.jupiter.api.extension.ParameterContext;
 import org.junit.jupiter.api.extension.ParameterResolver;
 
 final class EnvTestExt implements
+        AfterAllCallback,
         AfterEachCallback,
         ParameterResolver {
 
@@ -36,6 +38,19 @@ final class EnvTestExt implements
 
     @Override
     public void afterEach(ExtensionContext context) {
+        cleanup(context);
+    }
+
+    /**
+     * An {@link Env} injected into a {@code @BeforeAll} method is created in the class level store,
+     * which {@link #afterEach} cannot take it out of: removal never walks up to the parent store.
+     */
+    @Override
+    public void afterAll(ExtensionContext context) {
+        cleanup(context);
+    }
+
+    private void cleanup(ExtensionContext context) {
         ExtensionContext.Store store = context.getStore(ExtensionContext.Namespace.create(getClass()));
         EnvImpl env = store.remove(ENV_KEY, EnvImpl.class);
         if (env != null) env.cleanup();

@@ -94,16 +94,6 @@ class ProxyProtocolDecoderTest {
         assertThrows(IOException.class, () -> ProxyProtocolDecoder.parse(ORIGINAL, buffer));
     }
 
-    @Test
-    void rejectsV2HeaderExactlyFillingTheReadBuffer() {
-        final NetworkBuffer buffer = NetworkBuffer.resizableBuffer(ServerConfig.DEFAULT_POOLED_BUFFER_SIZE);
-        final byte[] header = v2Header((byte) 0x20, (byte) 0x00, (int) buffer.capacity() - 16);
-        buffer.write(NetworkBuffer.RAW_BYTES, header);
-        // Consuming it would leave the buffer with nothing to read and nowhere to write, and the
-        // read loop would spin on zero length channel reads forever
-        assertThrows(IOException.class, () -> ProxyProtocolDecoder.parse(ORIGINAL, buffer));
-    }
-
     private static byte[] v2Header(byte versionAndCommand, byte familyAndProtocol, int payloadLength) {
         final byte[] bytes = new byte[16 + payloadLength];
         final byte[] signature = {0x0D, 0x0A, 0x0D, 0x0A, 0x00, 0x0D, 0x0A, 0x51, 0x55, 0x49, 0x54, 0x0A};

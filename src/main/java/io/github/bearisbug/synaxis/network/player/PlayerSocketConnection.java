@@ -122,6 +122,10 @@ public class PlayerSocketConnection extends PlayerConnection {
             attemptedProxyProtocolDetection = true;
             if (result.status() == ProxyProtocolDecoder.Status.PRESENT) {
                 this.remoteAddress = result.clientAddress();
+                // Every read starts at index zero, the packet reader compacts what it leaves behind.
+                // Keeping the consumed header in front of the first packet would cost the buffer
+                // that much room to write, down to none at all for a header that nearly fills it.
+                readBuffer.compact();
             } else if (process().config().proxyProtocolRequired()) {
                 throw new IOException("Missing required PROXY protocol header");
             }
@@ -530,10 +534,10 @@ public class PlayerSocketConnection extends PlayerConnection {
         super.disconnect();
         LockSupport.unpark(writeThread);
         final Thread loginTimeoutThread = this.loginTimeoutThread;
-        if (loginTimeoutThread != null && loginTimeoutThread != Thread.currentThread()) {
-            this.loginTimeoutThread = null;
+        this.loginTimeoutThread = null;
+        // The watchdog closing the connection itself is already done, only the other one is waiting
+        if (loginTimeoutThread != null && loginTimeoutThread != Thread.currentThread())
             loginTimeoutThread.interrupt();
-        }
     }
 
     public Thread readThread() {

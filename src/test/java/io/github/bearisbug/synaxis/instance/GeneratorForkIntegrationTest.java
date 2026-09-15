@@ -96,6 +96,21 @@ public class GeneratorForkIntegrationTest {
         }
     }
 
+    // A fork reaching outside the world height cannot be applied, dropping it must not abort
+    // the forks behind it
+    @Test
+    public void outsideWorldHeight(Env env) {
+        var manager = env.process().instance();
+        var instance = manager.createInstanceContainer();
+        instance.setGenerator(unit -> {
+            final int aboveWorld = unit.absoluteEnd().blockY() + 5;
+            unit.fork(setter -> setter.setBlock(0, aboveWorld, 0, Block.STONE));
+            unit.fork(setter -> setter.setBlock(1, 0, 1, Block.GLASS));
+        });
+        instance.loadChunk(0, 0).join();
+        assertEquals(Block.GLASS, instance.getBlock(1, 0, 1), "an out of bounds fork aborted the generation");
+    }
+
     @Test
     public void biome(Env env) {
         var manager = env.process().instance();

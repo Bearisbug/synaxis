@@ -445,6 +445,13 @@ public class InstanceContainer extends Instance {
                         if (sectionModifier.genSection().blocks().count() == 0)
                             continue;
                         final Point start = section.absoluteStart();
+                        final DimensionType dim = getCachedDimensionType();
+                        if (start.blockY() < dim.minY() || start.blockY() >= dim.maxY()) {
+                            // No chunk has such a section, applying it would abort the whole generation
+                            LOGGER.warn("tried to fork a section outside the world bounds, should be within [{}, {}): {}",
+                                    dim.minY(), dim.maxY(), start.blockY());
+                            continue;
+                        }
                         final Chunk forkChunk = start.chunkX() == chunkX && start.chunkZ() == chunkZ ? chunk : getChunkAt(start);
                         if (forkChunk != null) {
                             applyFork(forkChunk, sectionModifier);

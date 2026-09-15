@@ -6,7 +6,7 @@ import io.github.bearisbug.synaxis.codec.StructCodec;
 import io.github.bearisbug.synaxis.network.NetworkBuffer;
 import io.github.bearisbug.synaxis.network.NetworkBufferTemplate;
 import io.github.bearisbug.synaxis.tag.Tag;
-import io.github.bearisbug.synaxis.tag.TagHandler;
+import io.github.bearisbug.synaxis.tag.TagNbtAccess;
 import io.github.bearisbug.synaxis.tag.TagReadable;
 import org.jetbrains.annotations.UnknownNullability;
 
@@ -35,13 +35,10 @@ public record TypedCustomData<T>(T type, CompoundBinaryTag nbt) implements TagRe
 
     @Override
     public <TT> @UnknownNullability TT getTag(Tag<TT> tag) {
-        final TagHandler tagHandler = TagHandler.fromCompound(nbt);
-        return tagHandler.getTag(tag);
+        return TagNbtAccess.read(nbt, tag);
     }
 
     public <TT> TypedCustomData<T> withTag(Tag<TT> tag, TT value) {
-        TagHandler tagHandler = TagHandler.fromCompound(nbt);
-        tagHandler.setTag(tag, value);
-        return new TypedCustomData<>(type, tagHandler.asCompound());
+        return new TypedCustomData<>(type, TagNbtAccess.write(nbt, tag, value));
     }
 }

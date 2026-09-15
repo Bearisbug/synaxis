@@ -14,6 +14,7 @@
 
 | 日期 | 改动 | 作者 |
 | --- | --- | --- |
+| 2026-09-16 | M2 用例评审第 1 轮修订（4 条必改 + 11 条建议）：TC-GAME-001 只判四模块与构建绿，smoke 删除由 TC-GAME-048 独占（与 §3 过渡期口径、设计文档 §26 的阶段划分对齐，阶段 1 gate 不再必然假失败）；TC-GAME-002 第 4 步的 grep 钉到 `docs/DESIGN-M2.md`；§3 种子清单补对方队伍单位、距出生点 ≥ 200 格的单位与 9 个本方单位；TC-GAME-024 第 4 步补令牌回填等待并写明前 8 条 / 第 9 条各回什么；TC-GAME-030 三步补进程非零码退出与端口未 bind；TC-GAME-037 第 5 步归因改服务端 `entity-view-distance`；TC-GAME-042 第 3 步改按结果码分布判定、第 5 步收窄到「无 tick 超时告警行」；TC-GAME-012 的熔断阈值挪进前置；TC-GAME-013 补触发手段；TC-GAME-049 点名的七条存量 TC 归并进 §5 范围列；§2 不测表把并发回归场景的归属改为 TC-021 并补 `docs/DESIGN.md` `REQ-016` 一行；RUN-003 明细的结果标签归入枚举并补证据引用 | Bearisbug |
 | 2026-09-16 | 新增游戏域（M2）用例 TC-GAME-001～TC-GAME-049，覆盖 `docs/DESIGN-M2.md` 的 REQ-M2-001～REQ-M2-023 与其 42 个 Gherkin 场景；§2 补 M2 范围、REQ↔TC 对照表与不测项（并删去「Fabric 客户端模组 → 里程碑 M2」一行，M2 已进本文档范围），§3 补 M2 启动 / 地图与对局种子 / 探针 / 客户端模组前置（标「未验证」，首轮执行前补冷启动实测），§5 补 M2 功能域回归映射。存量 TC-001～TC-029 一条未改——M2 是第二个功能域，新 ID 一律带 `GAME` 域段 | Bearisbug |
 | 2026-09-16 | 预告（实现前**不改**语义）：`REQ-M2-021`「server-app 取代 smoke」合入时，§3 的启动命令 / 就绪日志串 / 端口属性 / 日志文件名属**环境前置**，语义未变的 TC 保留原 ID 只改环境段（TC-004、TC-018、TC-025 第 4 步、TC-029）；语义实质变更的按惯例废旧 ID 换新 ID——已知的是 TC-012（前置「原版客户端」在强制模组后不再成立，第 2 步又依赖 smoke 的 `/echo`）。本轮不动它们：smoke 仍是唯一启动入口，提前改会把台账改成不可执行 | Bearisbug |
 | 2026-09-15 | 项目定名 Synaxis（设计文档 v0.18）：TC-002、TC-005、TC-010、TC-012、TC-013、TC-014、TC-017、TC-018、TC-019、TC-020、TC-021、TC-024、TC-025、TC-026、TC-027 与 §1、§3 中的仓库名、包路径、品牌、原因键、通道名字面量随改名更新；用例语义不变，ID 不变 | Bearisbug |
@@ -39,7 +40,7 @@
 - 覆盖（引擎域 · M1 / M1.5）：里程碑 M1 的 12 条需求的黑盒与半黑盒验收——构建产物与仓库元数据（命令、退出码、文件）、Minecraft 协议行为（裸 socket 与原版客户端可观察的包与断线原因）、文档与合规文件。
 - 覆盖（游戏域 · M2）：`docs/DESIGN-M2.md` 的 `REQ-M2-001`～`REQ-M2-023` 的黑盒与半黑盒验收——工程门禁的可观察结论（模块树、构建红绿、CI 结论）、插件宿主的生命周期与隔离行为（启停日志、退出码、回调有无、事件 JSONL）、自定义负载协议行为（探针可见的消息、结果码与断线原因键）、地图包与对局生命周期、单位 / 寻路 / 镜头的服务端权威行为，以及客户端模组的安装与 RTS 切片的端到端人工验收。
 - Gherkin 覆盖口径：`docs/DESIGN-M2.md` §19 的 42 个 Gherkin 场景**全部**由本文档的 TC 可操作化，没有转交自动化测试的场景；逐条对照见下方 REQ ↔ TC 表与各用例标题行。
-- 机械校验盲区（必须知道，否则会把绿灯当成已核）：test-doc 的 `check.sh` 里 ID 正则是 `REQ-([A-Z]+-)?[0-9]+`，域段只允许字母，**匹配不上带数字的 `M2` 域段**——因此 `REQ-M2-*` 一条都进不了「REQ 双向联检」，联检实际只覆盖引擎域的 `REQ-001`～`REQ-017`（这与 `docs/DESIGN-M2.md` §24 记录的 design-doc 侧盲区是同一个正则）。M2 侧的「每条 REQ 至少一条 TC」只能靠下表手工核。
+- 机械校验盲区（必须知道，否则会把绿灯当成已核）：test-doc 的 `check.sh` 里 ID 正则是 `REQ-([A-Z]+-)?[0-9]+`，域段只允许字母，**匹配不上带数字的 `M2` 域段**——因此 `REQ-M2-*` 一条都进不了「REQ 双向联检」，联检实际只覆盖引擎域的 `REQ-001`～`REQ-017`（这与 `docs/DESIGN-M2.md` §24 记录的 design-doc 侧盲区是同一个正则）。M2 侧的「每条 REQ 至少一条 TC」只能靠下表手工核。后续里程碑若把域段取成纯字母（如 `REQ-GAME-*`），机械联检就能重新覆盖游戏域，手工表可以退役。
 
 REQ-M2 ↔ TC 对照（手工维护）：
 
@@ -74,12 +75,13 @@ REQ-M2 ↔ TC 对照（手工维护）：
 | 不测项 | 归属 |
 | --- | --- |
 | 单元 / 集成自动化（M1 的 2,602 个 JUnit 用例、jcstress 场景、ArchUnit 规则本身） | 代码仓测试套件，`./gradlew check` 与 CI，策略见 `docs/DESIGN.md` §19 |
+| `docs/DESIGN.md` 的 `REQ-016`（拆 `NetworkBufferTypeImpl` 为按类型族分文件的实现，零 API 影响） | 纯重构，对外行为与 API 均不变，没有可单独黑盒观察的结论——由 `./gradlew check` 的既有单测覆盖，测试总数与 0 失败由 TC-029 判 |
 | M2 新增自动化（`:protocol` 双端向量测试、宿主的加载顺序 / 环检测 / 通道路由单测、ArchUnit 规则对合成 `JavaClasses` 的自测、F29 与 F11 的复现测试、jacoco 与 diff-cover 本身） | 代码仓测试套件，策略见 `docs/DESIGN-M2.md` §19；本文档只在 TC 步骤里调用它们并判读可观察输出，不复制其断言 |
 | 50 连接 + 1,000 单位的全量压测与 `docs/DESIGN-M2.md` §15 的整表性能阈值（tick P99、出站带宽、进程内存、客户端 ≥ 60 FPS） | `docs/DESIGN-M2.md` §23 上线前检查单的专项脚本，当前无归属——已知风险（本文档只在 TC-GAME-042 打到 Gherkin 写明的「64 条并发指令」这一档） |
 | 安全渗透（畸形包模糊测试之外的攻击面） | 无归属——已知风险 |
 | `docs/DESIGN-M2.md` §26 阶段 0 的四个 spike（`:protocol` 的 JiJ 消费、相机形态、地图载入实测、Fabric 在 configuration 阶段能否发包） | 设计文档 §26，结论回写设计文档；spike 不是验收，不进本文档 |
 | 客户端渲染观感（相机形态、选中框样式、HUD 文案、动效） | 无用例——主观项；只在 TC-GAME-047 的录屏与截图里留证据供人评判 |
-| 设计文档 §19 中「CI 门禁拦截并发回归 / 分层违规」两个场景 | 由 TC-005、TC-006 以「故意提交坏改动到临时分支」方式可操作化，见 §4 |
+| 设计文档 §19 中「CI 门禁拦截并发回归 / 分层违规」两个场景 | 由 TC-021、TC-006 以「故意提交坏改动到临时分支」方式可操作化，见 §4 |
 
 ## 3. 环境与前置
 
@@ -124,7 +126,7 @@ REQ-M2 ↔ TC 对照（手工维护）：
 - 系统属性：`synaxis.app.port`（监听端口）、`synaxis.app.plugins`（启用的插件 id 列表，空为全部）、`synaxis.app.map`（地图包路径）、`synaxis.app.plugin.trip-threshold`（熔断阈值覆盖），另沿用引擎的 `synaxis.*`（含 `synaxis.entity-view-distance=8`、`synaxis.chunk-view-distance=10`，见设计文档 §15「可见范围」）。**默认值与日志文件名待 `REQ-M2-021` 实现后填**。
 - 事件台账：`logs/events-YYYYMMDD.jsonl`，一行一个 JSON，事件名与属性见设计文档 §20。多条用例以它为观察面，步骤里统一写「`grep <事件名> logs/events-*.jsonl`」。**JSON 的事件名字段键待 `REQ-M2-021` 实现后填**（写 grep 时只匹配事件名字面量，不依赖键名）。
 - 地图种子：由 `REQ-M2-010` 的**程序化生成器**产出 `.synx`（M2 没有离线烘焙器）。测试地图固定用同一个 seed，必须含：512×512 / 高度 64、若干障碍、**一块被墙完全围住的可站立区域**（TC-GAME-041 依赖）、可站立的空旷区（TC-GAME-040 依赖）。**生成命令待 `REQ-M2-010` 实现后填**；基线重置 = 删掉生成物重跑生成器。
-- 对局与单位种子：进程启动即有一个 `running` 对局（对局在 bind 之前创建，见设计文档 `API-M2-010` 启动序列）。玩家加入后由 `:game-rts` 分配 `team=1` 与 N 个本方单位；测试对局另需 ≥ 1 个 `team=0` 的中立单位（TC-GAME-039 依赖）与 ≥ 64 个本方单位的压测预设（TC-GAME-042 依赖）。**单位数量、`unit_id` 分配与预设的开启方式待 `REQ-M2-016` 实现后填**。
+- 对局与单位种子：进程启动即有一个 `running` 对局（对局在 bind 之前创建，见设计文档 `API-M2-010` 启动序列）。玩家加入后由 `:game-rts` 分配 `team=1` 与 N 个本方单位；测试对局另需：≥ 1 个 `team=0` 的中立单位与 ≥ 1 个 `team` 非 0 且不等于玩家队伍的对方单位（如 `team=2`；两者 TC-GAME-039 依赖）；≥ 1 个距出生点 ≥ 200 格的单位（TC-GAME-043 依赖）；≥ 9 个本方单位（TC-GAME-024 依赖，组内包数上限是 8，第 9 个单位才测得到越界档）；≥ 64 个本方单位的压测预设（TC-GAME-042 依赖）。**单位数量、`unit_id` 分配与预设的开启方式待 `REQ-M2-016` 实现后填**。
 - 探针（复用 M1 的 `tools/protocol-probe/probe.py`，不另起工具）：`REQ-M2-008` 的强制握手一上线，探针必须同一交付实现 `C2S_HELLO`（设计文档 `API-M2-002` 的连带影响），否则上表六个子命令在 configuration 阶段 3 秒被踢、依赖它们的七条存量 TC 整块失效。M2 另需的能力：发 `C2S_HELLO` / `C2S_CAMERA` / `C2S_SELECT` / `C2S_MOVE_ORDER`，打印收到的 `S2C_*` 消息与断线原因键，按指定速率发包，以及记账收到的区块与实体位置包。**子命令名与参数待 `REQ-M2-008` / `REQ-M2-009` / `REQ-M2-018` 实现后填**——因此 `TC-GAME-*` 的步骤统一写成「用探针发送 `<消息>{字段…}`」而不写死命令行；执行时按当时的探针帮助文本翻译成命令，并把实际命令记进证据文件。
 - 客户端模组：Minecraft **26.2** profile（不是 26.3）+ Fabric Loader 0.19.5 + Fabric API 0.160.0+26.2 + 本仓库 `client-fabric/` 产出的模组 jar。构建：`./gradlew publishToMavenLocal` 后 `cd client-fabric && ./gradlew build`（独立 Gradle 构建，不进 `settings.gradle.kts`）。安装：把 jar 放进该 profile 的 `mods/`。**jar 名、整合包安装步骤与当前 `schema_version` 值待 `REQ-M2-020` 实现后填**。
 - 测试账号（在上表基础上新增）：
@@ -540,18 +542,17 @@ REQ-M2 ↔ TC 对照（手工维护）：
 
 ### M2 · 模块拆分与工程门禁
 
-#### `TC-GAME-001` 四模块拆分与 smoke 删除后构建绿 — 对应 `REQ-M2-001` · 级别: 冒烟 · 执行者: AI
+#### `TC-GAME-001` 四模块拆分后构建绿 — 对应 `REQ-M2-001` · 级别: 冒烟 · 执行者: AI
 
 前置：`REQ-M2-001` 已合入；JDK 25；`git status --porcelain` 无输出。
 
 | # | 操作 | 预期 |
 | --- | --- | --- |
-| 1 | `./gradlew projects --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts` | 项目树含 `:protocol`、`:plugin-api`、`:server-app`、`:game-rts` 四个子项目，且不含 `:smoke` |
-| 2 | `ls smoke 2>&1` 与 `grep -n "smoke" settings.gradle.kts` | 前者输出 `No such file or directory`；后者退出码 1、无输出 |
-| 3 | `find src/main/java -name '*.java' \| wc -l` | 输出 `1109`（与 RUN-015 记录的基线相同——根模块仍是引擎且一个文件不动；数量变化必须能追溯到设计文档登记的改动） |
-| 4 | `ls protocol/src/main/java/io/github/bearisbug/synaxis/game/protocol plugin-api/src/main/java/io/github/bearisbug/synaxis/plugin server-app/src/main/java/io/github/bearisbug/synaxis/app game-rts/src/main/java/io/github/bearisbug/synaxis/game/rts` | 四个目录都存在，各至少含一个 `.java` 文件 |
-| 5 | `cat protocol/src/main/java/module-info.java` 与 `ls server-app/src/main/java/module-info.java game-rts/src/main/java/module-info.java 2>&1` | 前者只有 `exports`、无任何 `requires`（零第三方依赖）；后两者均 `No such file or directory`（宿主与插件跑 classpath，见 `ADR-M2-005`） |
-| 6 | `./gradlew check --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts` | stdout 含 `BUILD SUCCESSFUL`，退出码 0 |
+| 1 | `./gradlew projects --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts` | 项目树含 `:protocol`、`:plugin-api`、`:server-app`、`:game-rts` 四个子项目（`:smoke` 的删除在阶段 2 随 `REQ-M2-021` 发生，由 TC-GAME-048 判定，本用例不管它的去留） |
+| 2 | `find src/main/java -name '*.java' \| wc -l` | 输出 `1109`（与 RUN-015 记录的基线相同——根模块仍是引擎且一个文件不动；数量变化必须能追溯到设计文档登记的改动） |
+| 3 | `ls protocol/src/main/java/io/github/bearisbug/synaxis/game/protocol plugin-api/src/main/java/io/github/bearisbug/synaxis/plugin server-app/src/main/java/io/github/bearisbug/synaxis/app game-rts/src/main/java/io/github/bearisbug/synaxis/game/rts` | 四个目录都存在，各至少含一个 `.java` 文件 |
+| 4 | `cat protocol/src/main/java/module-info.java` 与 `ls server-app/src/main/java/module-info.java game-rts/src/main/java/module-info.java 2>&1` | 前者只有 `exports`、无任何 `requires`（零第三方依赖）；后两者均 `No such file or directory`（宿主与插件跑 classpath，见 `ADR-M2-005`） |
+| 5 | `./gradlew check --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts` | stdout 含 `BUILD SUCCESSFUL`，退出码 0 |
 
 后置：无。
 
@@ -564,7 +565,7 @@ REQ-M2 ↔ TC 对照（手工维护）：
 | 1 | 在根 `build.gradle.kts` 加一行 `implementation(project(":game-rts"))`，并在引擎任一类里加 `import io.github.bearisbug.synaxis.game.rts.Unit;` 并引用它 | `git status --porcelain` 输出 2 行（两处改动都落盘） |
 | 2 | `./gradlew :compileJava --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts` | 构建失败、退出码非 0，输出含循环依赖提示（第一强制点是 Gradle 主源集循环依赖，ArchUnit 是第二道闸，见设计文档 §24） |
 | 3 | `git checkout -- build.gradle.kts <被改的引擎类>`，再 `./gradlew check --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts` | `git status --porcelain` 无输出；stdout 含 `BUILD SUCCESSFUL` |
-| 4 | `grep -rn 'implementation(project(":game-rts"))' docs/` | 至少一处命中（该演练命令已记进文档，见设计文档 §26 阶段 1 退出条件） |
+| 4 | `grep -n 'implementation(project(":game-rts"))' docs/DESIGN-M2.md` | 至少一处命中（演练命令记在设计文档侧：§19 Gherkin 与 §26 阶段 1 退出条件行）。扫描范围不得放宽到 `docs/`——那会命中本用例第 1 步自己写的同一串字面量，断言恒真 |
 
 后置：确认工作区干净。
 
@@ -692,12 +693,12 @@ REQ-M2 ↔ TC 对照（手工维护）：
 
 #### `TC-GAME-012` 插件禁用后零回调 — 对应 `REQ-M2-004` · 级别: 回归 · 执行者: AI
 
-前置：探测插件 a 已 enabled，注册了一个事件监听器（玩家加入时打印一行）、一个每 100 tick 打印一行的任务、一条通道 `a:probe`。
+前置：以 `-Dsynaxis.app.plugin.trip-threshold=1` 启动（该属性是启动期系统属性，见 §3，运行中改不了）；探测插件 a 已 enabled，注册了一个事件监听器（玩家加入时打印一行，用户名为 `trip` 时改为抛 `RuntimeException`）、一个每 100 tick 打印一行的任务、一条通道 `a:probe`。
 
 | # | 操作 | 预期 |
 | --- | --- | --- |
 | 1 | 启动后观察 30 秒，并用探针登录一次 | 任务日志行每 5 秒左右出现一次；探针登录时事件监听器的日志行出现 |
-| 2 | 触发禁用 a（把 `synaxis.app.plugin.trip-threshold` 设为 1 后让它抛一次异常；运维侧的显式禁用入口待 `REQ-M2-004` 实现后填） | 日志出现 a 的 `onDisable` 行与状态变更行（`failed` 或 `disabled`） |
+| 2 | 用探针以用户名 `trip` 登录一次，触发 a 的监听器抛异常（阈值已是 1，一次即熔断；运维侧的显式禁用入口待 `REQ-M2-004` 实现后填） | 日志出现 a 的 `onDisable` 行与状态变更行（`failed` 或 `disabled`） |
 | 3 | 再观察 30 秒 | a 的任务日志行出现 0 次（提交的 `Task` 已全部 cancel） |
 | 4 | 用探针再登录一次 | a 的事件监听器日志行不再出现（事件子节点已 `removeChild`）；登录本身仍成功（收到 `S2C_HELLO`） |
 | 5 | 用探针向 `a:probe` 发一条负载 | 连接不断线；服务端记一行带 `connection_id` 的 WARN，无异常堆栈 |
@@ -706,15 +707,15 @@ REQ-M2 ↔ TC 对照（手工维护）：
 
 #### `TC-GAME-013` 持续抛异常触发熔断而进程继续 — 对应 `REQ-M2-005` · 级别: 回归 · 执行者: AI
 
-前置：探测插件 a 的事件监听器每次调用都抛 `RuntimeException`；熔断阈值取默认（滑窗 60 s、20 次）。
+前置：探测插件 a 监听玩家加入事件，监听器每次调用都抛 `RuntimeException`（因此一次探针 `login` 即触发一次）；熔断阈值取默认（滑窗 60 s、20 次）。
 
 | # | 操作 | 预期 |
 | --- | --- | --- |
-| 1 | 启动后在 60 秒内触发该监听器 19 次 | a 仍在工作（日志无熔断行）；日志已有 19 行带 `plugin_id=a` 的异常 |
-| 2 | 在同一滑窗内触发第 20 次 | 日志出现熔断行与 a 的 `onDisable`；状态变为 `failed` |
+| 1 | 启动后在 60 秒内用探针 `login --hold 0` 登录 19 次（每次触发该监听器一次） | a 仍在工作（日志无熔断行）；日志已有 19 行带 `plugin_id=a` 的异常 |
+| 2 | 在同一滑窗内再登录一次（第 20 次触发） | 日志出现熔断行与 a 的 `onDisable`；状态变为 `failed` |
 | 3 | `grep plugin_tripped logs/events-*.jsonl` | 至少一行，`plugin_id` 为 a 且带 `cause` 与 `exception_count` |
 | 4 | `nc -z 127.0.0.1 25565`，并用探针登录 | 退出码 0；探针能进入 play 并收到 `S2C_UNIT_SPAWN`（进程与其它插件不受影响） |
-| 5 | 再触发该监听器 5 次 | stdout 不再出现带 `plugin_id=a` 的异常行（节点已摘干净） |
+| 5 | 再登录 5 次 | stdout 不再出现带 `plugin_id=a` 的异常行（节点已摘干净） |
 
 后置：`stop`；移除探测插件。
 
@@ -857,14 +858,14 @@ REQ-M2 ↔ TC 对照（手工维护）：
 
 #### `TC-GAME-024` 同一 `order_group` 的多包只扣一个令牌 — 对应 `REQ-M2-009` · 级别: 回归 · 执行者: AI
 
-前置：探针已 in_game，持有 8 个本方单位。
+前置：探针已 in_game，持有 9 个本方单位（§3 对局种子）。
 
 | # | 操作 | 预期 |
 | --- | --- | --- |
 | 1 | 一次性发 8 条 `order_group` 相同、`unit_id` 各异、`order_seq` 递增的 `C2S_MOVE_ORDER` | 收到 8 条 `S2C_ORDER_RESULT`，`code` 全为 `ok`（令牌只扣 1 个，按操作计不按包计） |
 | 2 | 同一秒内再发 10 组，每组 1 条、`order_group` 互不相同 | 前 9 组回 `ok`（本秒累计 10 个 `order_group`），第 10 组回 `rate-limited` |
 | 3 | 检查连接状态 | 未断线（8 包突发远低于 `synaxis:game-flood` 的 300 包/秒阈值） |
-| 4 | 发一组 `order_group` 相同但包数为 9 的指令（组内上限是 8） | 超出的那一条回 `code=rate-limited`，连接不断线 |
+| 4 | 等 1 秒让令牌桶回填（第 2 步已把本秒的桶打空），再发一组 `order_group` 相同、`unit_id` 各异、共 9 条的 `C2S_MOVE_ORDER`（组内包数上限是 8） | 按发出顺序前 8 条回 `code=ok`、第 9 条回 `code=rate-limited`（超出组内上限的部分按超频处理）；连接不断线 |
 
 后置：无。
 
@@ -944,10 +945,10 @@ REQ-M2 ↔ TC 对照（手工维护）：
 
 | # | 操作 | 预期 |
 | --- | --- | --- |
-| 1 | 把 `.synx` 头 4 字节改成 `XXXX` 后启动 | 日志含 ERROR 与 `magic`；`grep match_ended logs/events-*.jsonl \| tail -1` 的 `reason` 为 `map-invalid` |
+| 1 | 把 `.synx` 头 4 字节改成 `XXXX` 后启动 | 日志含 ERROR 与 `magic`；`grep match_ended logs/events-*.jsonl \| tail -1` 的 `reason` 为 `map-invalid`；进程随即以非零码退出、端口未 bind（`API-M2-010` 启动序列第 ⑤ 步：没有 `running` 对局即退出） |
 | 2 | 在同一次启动的日志里查区块载入与 `match_started` | 无区块载入行；`grep match_started logs/events-*.jsonl` 在本次启动区间内 0 行（不创建任何区块） |
-| 3 | 把 `header.version` 改成「当前支持版本 + 1」后启动 | 同样 `reason=map-invalid`，日志打印读到的版本号（读到更高版本直接拒绝，不做向前兼容） |
-| 4 | 把文件从中间截断一半后启动 | 对局进入 `ended`，`reason` 为 `map-invalid` 或 `load-failed`；本次启动区间内 `match_started` 0 行 |
+| 3 | 把 `header.version` 改成「当前支持版本 + 1」后启动 | 同样 `reason=map-invalid`，日志打印读到的版本号（读到更高版本直接拒绝，不做向前兼容）；进程同样以非零码退出、端口未 bind |
+| 4 | 把文件从中间截断一半后启动 | 对局进入 `ended`，`reason` 为 `map-invalid` 或 `load-failed`；本次启动区间内 `match_started` 0 行；进程以非零码退出、端口未 bind |
 | 5 | 把 `synaxis.app.map` 指向一个不存在的路径后启动 | 进程以非零码退出并打印该路径；`nc -z 127.0.0.1 25565` 退出码非 0（端口未 bind） |
 
 后置：用副本还原 `.synx`，确认第 1 步的地图能正常载入。
@@ -1044,7 +1045,7 @@ REQ-M2 ↔ TC 对照（手工维护）：
 | 2 | `grep -rn "setTransformationInterpolationDuration" game-rts/src/main/java` | 退出码 1、无输出（位置插值不得错设成变换插值） |
 | 3 | 让一个单位移动 10 秒，用探针记录它的实体位置包 | 位置包按每 2 tick 一条到达，不是每 20 tick 一次的跳变 |
 | 4 | 在同一段记录里统计周期性位置重同步包 | 约每 100 tick 一条（重同步被调大而不是关掉，保留纠正通道） |
-| 5 | 把锚点推到让该单位落在离玩家实体约 97 格处 | 探针未收到该实体的 `DestroyEntities`（客户端剔除半径 `view_range × 64` 已抬到 ≥ 97 格；屏幕上是否真渲染由 TC-GAME-047 人工判定） |
+| 5 | 把锚点推到让该单位落在离玩家实体约 97 格处 | 探针未收到该实体的 `DestroyEntities`（服务端 `synaxis.entity-view-distance=8` 即 128 格，97 格仍在跟踪范围内；display 专属的客户端剔除半径 `view_range × 64` 只管客户端渲染，探针观察不到，屏幕上是否真渲染由 TC-GAME-047 人工判定） |
 
 后置：无。
 
@@ -1110,11 +1111,11 @@ REQ-M2 ↔ TC 对照（手工维护）：
 
 | # | 操作 | 预期 |
 | --- | --- | --- |
-| 1 | 同一 tick 内发 64 条合法移动指令（每组 `order_group` 不超过 8 条包，共 8 组） | 64 条各收到一条 `S2C_ORDER_RESULT` |
+| 1 | 同一 tick 内发 64 条合法移动指令（每组 `order_group` 不超过 8 条包，共 8 组） | 64 条各收到一条 `S2C_ORDER_RESULT`，且一条 `code=rate-limited` 都没有（8 组只扣 8 个令牌，未到 10 操作/秒） |
 | 2 | 按 `unit_order_issued` 事件的时间戳分桶统计 | 每 tick 被真正处理的请求 ≤ 4 条，其余排队 |
-| 3 | 继续加压直到队列深度 > 32 | 新指令回 `code=busy` |
+| 3 | 按接收顺序统计第 1 步这 64 条结果的 `code` | 至少 32 条 `code=ok`，其余全为 `code=busy`（队列深度上限 32，见设计文档 §11.4 `ACCEPT` 的短路顺序），两者条数之和为 64 |
 | 4 | 采样 60 秒内 `unit_order_issued` 的 `path_ms` 与 `path_nodes` | `path_ms` P99 < 2 ms；`path_nodes` 单次 ≤ 4,000 |
-| 5 | 同期观察引擎 tick 日志 | 单 tick P99 < 50 ms，无 tick 超时告警行 |
+| 5 | 同期观察引擎 tick 日志 | 无 tick 超时告警行（tick P99 的量化档按 §2 不测表归 `docs/DESIGN-M2.md` §23 的专项脚本，本用例不判） |
 
 后置：无。
 
@@ -1218,7 +1219,6 @@ REQ-M2 ↔ TC 对照（手工维护）：
 | 2 | `grep -rn "bypass\|skip-handshake\|no-handshake\|test-mode" tools/protocol-probe/probe.py server-app/src/main/java` | 退出码 1、无输出（没有可绕过准入的旁路开关） |
 | 3 | 依次执行探针的 `login`、`zero-frame`、`deep-recursion`、`premature-finish`、`record-registry` 子命令 | 每个都能进入 play 态并完成各自原有断言，退出码符合 §3 探针表 |
 | 4 | 执行探针的 `echo` 子命令（其宿主通道在 smoke 删除后由谁提供，见 §7 遗留问题） | 要么按 §3 探针表回发一致负载，要么按 §7 的处置结论登记为不适用——两者都必须有书面结论，不得默认跳过 |
-| 5 | 按 §5 跑 TC-004、TC-014、TC-018、TC-019、TC-020、TC-026、TC-027 七条 | 七条全部通过，结果登记进本轮 RUN |
 
 后置：无。
 
@@ -1228,7 +1228,7 @@ REQ-M2 ↔ TC 对照（手工维护）：
 - **局部轮**（受影响用例 + 全部冒烟级）：单一需求改动。受影响用例 = 本次改动触及的 `REQ-*` / `REQ-M2-*` 所对应的 TC（M2 侧的对照表在 §2，机械校验查不到它）；无 REQ 变更的改动（纯 bug 修、重构）按触及的功能域圈定：
   - 引擎域：构建与仓库 → TC-001、TC-002、TC-004、TC-006、TC-021、TC-029，删除与注册表 → TC-008、TC-009、TC-020，命名与合规 → TC-011、TC-028，协议 → TC-012、TC-014、TC-018、TC-019、TC-026、TC-027，卫生 → TC-015、TC-016，门面与配置 → TC-023、TC-025，分层 → TC-024。
   - 游戏域：模块与门禁 → TC-GAME-001～TC-GAME-006，插件宿主 → TC-GAME-007～TC-GAME-016，协议与握手 → TC-GAME-017～TC-GAME-028、TC-GAME-049，世界与对局 → TC-GAME-029～TC-GAME-036，单位与寻路 → TC-GAME-037、TC-GAME-039～TC-GAME-042，镜头 → TC-GAME-043、TC-GAME-044，客户端模组 → TC-GAME-038、TC-GAME-045～TC-GAME-047，启动器 → TC-GAME-048、TC-GAME-049。
-  - 跨域牵连（必须一起跑）：动了启动入口或就绪日志 → 加 TC-GAME-048 与全部以进程为前置的引擎域用例；动了握手或探针 → 加 TC-GAME-049 与它点名的七条存量 TC；动了 `:protocol` 消息布局 → 加 TC-GAME-017 与客户端侧同一份向量。
+  - 跨域牵连（必须一起跑）：动了启动入口或就绪日志 → 加 TC-GAME-048 与全部以进程为前置的引擎域用例；动了握手或探针 → 加 TC-GAME-049 与 TC-004、TC-014、TC-018、TC-019、TC-020、TC-026、TC-027 七条存量 TC；动了 `:protocol` 消息布局 → 加 TC-GAME-017 与客户端侧同一份向量。
   - 影响面不确定时升级为全量轮。
 - **复测轮**（上轮失败用例 + 全部冒烟级）：修复失败项之后。
 - **人工收口轮**（仅上轮「待人工」用例）：AI 轮之后由人工补测 TC-012、TC-016、TC-GAME-020、TC-GAME-038、TC-GAME-046、TC-GAME-047，不要求冒烟级。
@@ -1242,7 +1242,7 @@ REQ-M2 ↔ TC 对照（手工维护）：
 | --- | --- | --- | --- | --- | --- |
 | RUN-001 | 2026-09-09 | `c77b723235` | AI（Claude Code，Gradle 9.7.1 / JDK 25.0.4.1） | 局部（REQ-003→TC-003；冒烟级 TC-001、TC-002、TC-007、TC-010、TC-012 因阶段 0～3 未开始而跳过） | 通过 1/6 · 跳过 5 |
 | RUN-002 | 2026-09-09 | `7d7e956ada` | AI（Claude Code，gh 2.x / git） | 局部（REQ-002→TC-002；冒烟级 TC-001、TC-003、TC-007、TC-010、TC-012 按 RUN-001 同理跳过） | 通过 1/6 · 跳过 5 |
-| RUN-003 | 2026-09-09 | `6f7c627da8` + 分支 `freeze-data` 的 REQ-001 / REQ-012 改动（Gradle 9.7.1 / JDK 25） | AI（Claude Code） | 局部（REQ-001→TC-001，REQ-012→TC-015、TC-016；冒烟级 TC-002、TC-003、TC-007、TC-010、TC-012） | 通过 2/8 · 未通过 1 · 跳过 4 · 待人工 1 |
+| RUN-003 | 2026-09-09 | `6f7c627da8` + 分支 `freeze-data` 的 REQ-001 / REQ-012 改动（Gradle 9.7.1 / JDK 25） | AI（Claude Code） | 局部（REQ-001→TC-001，REQ-012→TC-015、TC-016；冒烟级 TC-002、TC-003、TC-007、TC-010、TC-012） | 通过 2/8 · 失败 1 · 跳过 4 · 待人工 1 |
 | RUN-004 | 2026-09-09 | `e6b8dcaa36`（阶段 1 全部合入 `main`） | AI（Claude Code，Gradle 9.7.1 / JDK 25 / 探针） | 全量（阶段 1 gate） | 通过 7/18 · 失败 1 · 待人工 2 · 跳过 8 |
 | RUN-005 | 2026-09-09 | `e6b8dcaa36`（代码与 RUN-004 相同，仅文档变更） | AI（Claude Code，探针） | 复测（RUN-004：TC-019 + 冒烟级 TC-001、TC-002、TC-003、TC-007、TC-010、TC-012） | 通过 2/7 · 跳过 4 · 待人工 1 |
 | RUN-006 | 2026-09-09 | `2cbd57ae85`（阶段 2 全部合入） | AI（Claude Code，Gradle 9.7.1 / JDK 25 / 探针） | 全量（阶段 2 gate） | 通过 12/18 · 待人工 2 · 跳过 4 |
@@ -1272,7 +1272,7 @@ REQ-M2 ↔ TC 对照（手工维护）：
 | RUN-002 | TC-010 | 跳过 | 阶段 3 未开始 | 阶段 3 gate 全量轮 |
 | RUN-002 | TC-012 | 跳过 | 执行者为人工且 `smoke` 启动器未就绪 | 阶段 3 gate 人工收口轮 |
 
-| RUN-003 | TC-001 | 未通过 | 第 1～3 步通过（两条 grep 均无命中、`find` 输出 74）。第 4 步离线 `check` 在 `testNamingCheck` 上失败：10 个测试类命名违规，全部是本分支未改动的既有文件；排除该任务后离线全量构建 `BUILD SUCCESSFUL`，2,659 测试 0 失败 0 错误 | 见 §7 遗留问题最后一条，随 `REQ-004`（CI 门禁）一并修 |
+| RUN-003 | TC-001 | 失败 | 第 1～3 步通过（两条 grep 均无命中、`find` 输出 74）。第 4 步离线 `check` 在 `testNamingCheck` 上失败：10 个测试类命名违规，全部是本分支未改动的既有文件；排除该任务后离线全量构建 `BUILD SUCCESSFUL`，2,659 测试 0 失败 0 错误；证据 `docs/test-runs/RUN-003/tc-001.txt` | 见 §7 遗留问题最后一条，随 `REQ-004`（CI 门禁）一并修 |
 | RUN-003 | TC-002 | 跳过 | 本轮在功能分支 `freeze-data` 上执行，第 5 步要求当前分支为 `main`；RUN-002 已在 `7d7e956ada` 通过 | 合入 `main` 后的阶段 0 gate 全量轮 |
 | RUN-003 | TC-007 | 跳过 | 阶段 2 未开始 | 阶段 2 gate 全量轮 |
 | RUN-003 | TC-010 | 跳过 | 阶段 3 未开始 | 阶段 3 gate 全量轮 |

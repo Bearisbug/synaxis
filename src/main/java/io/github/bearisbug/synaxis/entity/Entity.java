@@ -1182,9 +1182,13 @@ public class Entity implements Viewable, Tickable, Schedulable, EventHandler<Ent
         this.acquirable.assertOwnership();
         final Instance currentInstance = this.instance;
         Check.stateCondition(currentInstance == null, "You need to set an instance using Entity#setInstance");
-        Check.stateCondition(entity == getVehicle(), "Cannot add the entity vehicle as a passenger");
+        // The whole ride chain must be checked, not just the direct vehicle: a cycle anywhere in it
+        // makes refreshCoordinate and updatePassengerPosition recurse into each other forever
+        for (Entity rider = this; rider != null; rider = rider.getVehicle()) {
+            Check.stateCondition(rider == entity, "Cannot add a vehicle of this entity as a passenger");
+        }
         final Entity vehicle = entity.getVehicle();
-        if (vehicle != null) vehicle.removePassenger(entity);
+        if (vehicle != null) vehicle.detachPassenger(entity);
         if (this.passengers.contains(entity)) return;
         if (!currentInstance.equals(entity.getInstance()))
             entity.setInstance(currentInstance, position).join();
@@ -1205,6 +1209,15 @@ public class Entity implements Viewable, Tickable, Schedulable, EventHandler<Ent
      */
     public void removePassenger(Entity entity) {
         this.acquirable.assertOwnership();
+        detachPassenger(entity);
+    }
+
+    /**
+     * Same as {@link #removePassenger(Entity)}, for the callers that own the passenger rather than the
+     * vehicle: an entity leaving a vehicle ticked by another thread must be able to detach itself, and
+     * only the passenger state is written here, the vehicle side being a {@link CopyOnWriteArrayList}.
+     */
+    private void detachPassenger(Entity entity) {
         Check.stateCondition(instance == null, "You need to set an instance using Entity#setInstance");
         if (!passengers.remove(entity)) return;
         entity.vehicle = null;
@@ -1730,7 +1743,7 @@ public class Entity implements Viewable, Tickable, Schedulable, EventHandler<Ent
         final List<Entity> passengers = getPassengers();
         if (!passengers.isEmpty()) passengers.forEach(this::removePassenger);
         final Entity vehicle = this.vehicle;
-        if (vehicle != null) vehicle.removePassenger(this);
+        if (vehicle != null) vehicle.detachPassenger(this);
 
         Set<Entity> leashedEntities = getLeashedEntities();
         leashedEntities.forEach(entity -> entity.setLeashHolder(null));

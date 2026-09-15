@@ -4,9 +4,11 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
 
 import java.lang.ref.WeakReference;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -316,6 +318,75 @@ public class ThreadDispatcherTest {
         assertTrue(shutdownCalled.await(5, TimeUnit.SECONDS), "shutdown() from a TickThread deadlocked");
         ticker.join(5_000);
         assertFalse(ticker.isAlive(), "updateAndAwait never returned");
+    }
+
+    @Test
+    @Timeout(30)
+    public void tickThreadSurvivesAFailingExceptionHandler() throws InterruptedException {
+        // A handler that throws (the testing module installs Assertions#fail) used to escape run(),
+        // killing the thread before it could count the tick latch down: every later tick hung forever.
+        ThreadDispatcher<World, Tickable> dispatcher = ThreadDispatcher.singleThread(throwable -> {
+            throw new AssertionError("handler failure", throwable);
+        });
+        World world = new World();
+        AtomicInteger ticks = new AtomicInteger();
+        Tickable element = _ -> {
+            ticks.incrementAndGet();
+            throw new IllegalStateException("element failure");
+        };
+        dispatcher.createPartition(world);
+        dispatcher.updateElement(element, world);
+        dispatcher.start();
+        try {
+            awaitTick(dispatcher, "updateAndAwait hung after the exception handler threw");
+            assertEquals(1, ticks.get());
+
+            awaitTick(dispatcher, "the tick thread did not survive the failing handler");
+            assertEquals(2, ticks.get());
+        } finally {
+            dispatcher.shutdown();
+        }
+    }
+
+    @Test
+    @Timeout(30)
+    public void tickThreadSurvivesAnErrorEscapingTheTickLoop() throws InterruptedException {
+        // Same contract one level up: whatever escapes tick() must still be reported and counted down.
+        List<Throwable> reported = new CopyOnWriteArrayList<>();
+        ThreadDispatcher<World, Tickable> dispatcher = new ThreadDispatcherImpl<>(ThreadProvider.counter(), 1,
+                index -> new TickThread(index, reported::add) {
+                    @Override
+                    protected void tick() {
+                        throw new AssertionError("tick loop failure");
+                    }
+                });
+        World world = new World();
+        Tickable element = _ -> {
+        };
+        dispatcher.createPartition(world);
+        dispatcher.updateElement(element, world);
+        dispatcher.start();
+        try {
+            awaitTick(dispatcher, "updateAndAwait hung after an Error escaped tick()");
+            assertEquals(1, reported.size());
+
+            awaitTick(dispatcher, "the tick thread did not survive the Error");
+            assertEquals(2, reported.size());
+        } finally {
+            dispatcher.shutdown();
+        }
+    }
+
+    /**
+     * Ticks once from a daemon thread: a tick that never completes fails the test instead of blocking
+     * the JUnit thread, which no timeout would interrupt.
+     */
+    private static void awaitTick(ThreadDispatcher<?, ?> dispatcher, String message) throws InterruptedException {
+        Thread ticker = new Thread(() -> dispatcher.updateAndAwait(0), "test-ticker");
+        ticker.setDaemon(true);
+        ticker.start();
+        ticker.join(5_000);
+        assertFalse(ticker.isAlive(), message);
     }
 
     @Test

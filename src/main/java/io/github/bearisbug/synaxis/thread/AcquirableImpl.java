@@ -80,13 +80,22 @@ final class AcquirableImpl<T> implements Acquirable<T> {
         }
         TickThread assignedThread = this.assignedThread;
         if (assignedThread != null) {
-            ReentrantLock lock = assignedThread.lock();
-            if (lock.tryLock()) {
+            // Taking a foreign tick thread lock is ordered by the global lock, see enter(). Grabbing
+            // it directly would invert the order against sync() and deadlock, both locks are given up
+            // instead: losing either of them is the contention this method reports.
+            if (GLOBAL_LOCK.tryLock()) {
                 try {
-                    consumer.accept(unwrap());
-                    return true;
+                    ReentrantLock lock = assignedThread.lock();
+                    if (lock.tryLock()) {
+                        try {
+                            consumer.accept(unwrap());
+                            return true;
+                        } finally {
+                            lock.unlock();
+                        }
+                    }
                 } finally {
-                    lock.unlock();
+                    GLOBAL_LOCK.unlock();
                 }
             }
         }

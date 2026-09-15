@@ -28,11 +28,13 @@ import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 import java.util.List;
 import java.util.concurrent.CompletionException;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -61,9 +63,10 @@ public class DisconnectReasonsIntegrationTest {
 
     @Test
     public void aZeroLengthFrameIsRejectedWithAProtocolError(Env env) throws IOException {
-        // A malformed frame is reported to the exception handler, which would otherwise fail the test
-        env.process().exception().setExceptionHandler(_ -> {
-        });
+        // A frame the peer got wrong is a log line about that connection, not an engine failure.
+        // Reporting it as one would print a full stack trace for every hostile frame received.
+        final AtomicReference<Throwable> reported = new AtomicReference<>();
+        env.process().exception().setExceptionHandler(reported::set);
         try (SocketPair pair = SocketPair.open(env)) {
             final PlayerSocketConnection connection = pair.connection();
             connection.setClientState(ConnectionState.PLAY);
@@ -75,6 +78,7 @@ public class DisconnectReasonsIntegrationTest {
             final ServerPacket packet = pair.readServerPacket(ConnectionState.PLAY);
             final DisconnectPacket disconnect = assertInstanceOf(DisconnectPacket.class, packet);
             assertEquals("engine:protocol-error", translateKey(disconnect.message()));
+            assertNull(reported.get(), "a malformed frame must not be reported as an engine exception");
         }
     }
 

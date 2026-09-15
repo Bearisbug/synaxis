@@ -39,6 +39,8 @@ import dev.gameengine.utils.validate.Check;
 import org.jctools.queues.MessagePassingQueue;
 import org.jetbrains.annotations.ApiStatus;
 import org.jetbrains.annotations.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.EOFException;
 import java.io.IOException;
@@ -58,6 +60,7 @@ import java.util.concurrent.locks.LockSupport;
  */
 @ApiStatus.Internal
 public class PlayerSocketConnection extends PlayerConnection {
+    private static final Logger LOGGER = LoggerFactory.getLogger(PlayerSocketConnection.class);
     private static final Set<Class<? extends ClientPacket>> IMMEDIATE_PROCESS_PACKETS = Set.of(
             ClientHandshakePacket.class, // First received packet
             ClientCookieResponsePacket.class,
@@ -148,7 +151,7 @@ public class PlayerSocketConnection extends PlayerConnection {
             // from scanners. A packet that errors after a state change within the
             // same batch is still checked against the starting state.
             if (startingState.ordinal() > process().config().suppressMalformedPacketErrorLevel())
-                process().exception().handleException(e);
+                logProtocolError(e);
             // The remaining packets of the batch are lost, disconnect to avoid
             // reading from an invalid state.
             if (process().config().rejectMalformedPacket()) kick(DisconnectReasons.PROTOCOL_ERROR);
@@ -209,6 +212,30 @@ public class PlayerSocketConnection extends PlayerConnection {
             if (player == null || player.getGameMode() != GameMode.CREATIVE) return null;
         }
         return packetInfo.serializer().read(buffer);
+    }
+
+    /**
+     * Reports a frame this connection got wrong: a zero length frame, a payload nested too deeply, a
+     * binary tag or a collection over its limit.
+     *
+     * <p>All of these are peer driven and can be produced as fast as a socket can be written, so
+     * they are one WARN line carrying the connection id and the reason. The stack trace only names
+     * the point in the decoder where the input stopped making sense, which is worth having while
+     * debugging and not worth thousands of lines in a production log, so it goes to DEBUG.</p>
+     */
+    private void logProtocolError(Throwable error) {
+        LOGGER.warn("Protocol error: connection_id={} identifier={} state={} reason={}",
+                connectionId(), getIdentifier(), getClientState(), describeCause(error));
+        LOGGER.debug("Protocol error stack trace: connection_id={}", connectionId(), error);
+    }
+
+    /** Renders the innermost cause of {@code error} as a single {@code Type: message} line. */
+    private static String describeCause(Throwable error) {
+        Throwable cause = error;
+        while (cause.getCause() != null) cause = cause.getCause();
+        final String message = cause.getMessage();
+        return message != null ? cause.getClass().getSimpleName() + ": " + message
+                : cause.getClass().getSimpleName();
     }
 
     /**

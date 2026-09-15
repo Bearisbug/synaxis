@@ -187,6 +187,8 @@ public final class PacketWriting {
                                       BiPredicate<NetworkBuffer, T> writer) {
         // The goal of this method is to write at the very least `minWrite` packets if the queue permits it.
         // The buffer is resized if it cannot hold this minimum.
+        // A packet that does not fit stays in the queue and is handed to the writer again, which must
+        // therefore repeat no side effect of a previous attempt.
         final int size = queue.size();
         minWrite = Math.min(minWrite, size);
         T packet;

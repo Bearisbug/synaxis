@@ -73,9 +73,11 @@ public interface ChunkLoader {
                 Thread.startVirtualThread(() -> {
                     try {
                         saveChunk(chunk);
-                        phaser.arriveAndDeregister();
                     } catch (Throwable e) {
                         chunk.getInstance().process().exception().handleException(e);
+                    } finally {
+                        // The party must be released even on failure, the caller awaits the phase
+                        phaser.arriveAndDeregister();
                     }
                 });
             }

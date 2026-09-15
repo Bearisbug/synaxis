@@ -7,7 +7,8 @@ import org.jetbrains.annotations.Contract;
 @ApiStatus.Internal
 public final class AutoIncrementMap<K> {
     private final Object2IntOpenHashMap<K> write = new Object2IntOpenHashMap<>();
-    private Object2IntOpenHashMap<K> read;
+    // Read without holding the lock, so the table it points at has to be published safely
+    private volatile Object2IntOpenHashMap<K> read;
     private int lastIndex;
 
     public AutoIncrementMap() {

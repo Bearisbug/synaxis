@@ -155,14 +155,17 @@ final class DynamicRegistryImpl<T> implements DynamicRegistry<T> {
         synchronized (REGISTRY_LOCK) {
             Integer id = keyToId.get(registryKey); // Array set at home
             keyToValue.put(key, object);
-            valueToKey.put(object, registryKey);
             if (id == null) {
+                valueToKey.put(object, registryKey);
                 idToValue.add(object);
                 idToKey.add(registryKey);
                 keyToId.put(registryKey, idToValue.size() - 1);
                 packById.add(pack);
             } else {
-                idToValue.set(id, object);
+                final T previous = idToValue.set(id, object);
+                // The replaced value is no longer registered, so it must not resolve to a key anymore
+                valueToKey.remove(previous);
+                valueToKey.put(object, registryKey);
                 idToKey.set(id, registryKey);
                 keyToId.put(registryKey, id);
                 packById.set(id, pack);
@@ -199,8 +202,11 @@ final class DynamicRegistryImpl<T> implements DynamicRegistry<T> {
 
             // Remove all references from tags
             for (final var tag : tags.values()) {
-                if (tag.remove(registryKey)) tagChangeListener.run();
+                tag.remove(registryKey);
             }
+            // Tags are sent as ids, and every entry after the removed one now sits one id lower,
+            // so a cached tags packet is stale even when the removed entry was in no tag
+            tagChangeListener.run();
 
             vanillaRegistryDataPacket.invalidate();
             return true;
@@ -300,14 +306,17 @@ final class DynamicRegistryImpl<T> implements DynamicRegistry<T> {
         Transcoder<BinaryTag> transcoder = new RegistryTranscoder<>(Transcoder.NBT, registries);
         // Copy to avoid concurrent modification issues while iterating, as we are not synchronized on the registry
         final List<T> idToValue;
+        final List<RegistryKey<T>> idToKey;
         final List<DataPack> packById;
         if (!frozen) {
             synchronized (REGISTRY_LOCK) {
                 idToValue = List.copyOf(this.idToValue);
+                idToKey = List.copyOf(this.idToKey);
                 packById = List.copyOf(this.packById);
             }
         } else {
             idToValue = this.idToValue;
+            idToKey = this.idToKey;
             packById = this.packById;
         }
         List<RegistryDataPacket.Entry> entries = new ArrayList<>(idToValue.size());
@@ -328,11 +337,10 @@ final class DynamicRegistryImpl<T> implements DynamicRegistry<T> {
                 if (entryResult instanceof Result.Ok(BinaryTag tag)) {
                     data = (CompoundBinaryTag) tag;
                 } else {
-                    throw new IllegalStateException("Failed to encode registry entry " + i + " (" + getKey(i) + ") for registry " + key);
+                    throw new IllegalStateException("Failed to encode registry entry " + i + " (" + idToKey.get(i) + ") for registry " + key);
                 }
             }
-            //noinspection DataFlowIssue
-            entries.add(new RegistryDataPacket.Entry(getKey(i).key().asString(), data));
+            entries.add(new RegistryDataPacket.Entry(idToKey.get(i).key().asString(), data));
         }
         return new RegistryDataPacket(key.asString(), entries);
     }

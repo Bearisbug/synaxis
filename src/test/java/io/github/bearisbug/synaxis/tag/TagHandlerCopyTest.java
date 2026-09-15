@@ -71,6 +71,18 @@ public class TagHandlerCopyTest {
     }
 
     @Test
+    public void copyOwnsItsReadableCopyCache() {
+        var tag = Tag.Integer("key").path("path");
+        var handler = TagHandler.newHandler();
+        handler.setTag(tag, 1);
+
+        var copy = handler.copy();
+        assertEquals(1, copy.readableCopy().getTag(tag));
+        copy.setTag(tag, 2);
+        assertEquals(2, copy.readableCopy().getTag(tag));
+    }
+
+    @Test
     public void copyRehashing() {
         var handler = TagHandler.newHandler();
         TagHandler handlerCopy;

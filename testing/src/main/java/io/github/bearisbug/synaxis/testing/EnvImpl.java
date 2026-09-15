@@ -5,10 +5,10 @@ import io.github.bearisbug.synaxis.event.Event;
 import io.github.bearisbug.synaxis.event.EventFilter;
 import io.github.bearisbug.synaxis.event.EventListener;
 import io.github.bearisbug.synaxis.network.player.GameProfile;
-import org.junit.jupiter.api.Assertions;
 
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -17,11 +17,12 @@ import static org.junit.jupiter.api.Assertions.fail;
 final class EnvImpl implements Env {
     private final ServerProcess process;
     private final List<FlexibleListenerImpl<?>> listeners = new CopyOnWriteArrayList<>();
+    private final AtomicReference<Throwable> caught = new AtomicReference<>();
 
     public EnvImpl(ServerProcess process) {
         this.process = process;
         // If exceptions reach the exception handler, by default fail the test.
-        process().exception().setExceptionHandler(EnvImpl::handleException);
+        process().exception().setExceptionHandler(this::handleException);
 
         // Start the dispatcher threads if not already started.
         process().dispatcher().start();
@@ -31,13 +32,29 @@ final class EnvImpl implements Env {
         process.connection().setPlayerProvider(TestConnectionImpl.TestPlayerImpl::new);
     }
 
-    static void handleException(Throwable exception) {
-        Assertions.fail("Server threw exception", exception);
+    /**
+     * The engine calls its exception handler from catch blocks it never expects to throw: a tick
+     * thread that gets a throwable back dies before counting its tick latch down, and every later
+     * tick blocks forever. So the failure is only recorded here, and reported on the test thread.
+     */
+    void handleException(Throwable exception) {
+        this.caught.compareAndSet(null, exception);
+    }
+
+    private void reportCaughtException() {
+        final Throwable exception = this.caught.getAndSet(null);
+        if (exception != null) fail("Server threw exception", exception);
     }
 
     @Override
     public ServerProcess process() {
         return process;
+    }
+
+    @Override
+    public void tick() {
+        Env.super.tick();
+        reportCaughtException();
     }
 
     @Override
@@ -63,8 +80,12 @@ final class EnvImpl implements Env {
     }
 
     void cleanup() {
-        this.listeners.forEach(FlexibleListenerImpl::check);
-        this.process.stop();
+        try {
+            reportCaughtException();
+            this.listeners.forEach(FlexibleListenerImpl::check);
+        } finally {
+            this.process.stop();
+        }
     }
 
     final class EventCollector<E extends Event> implements Collector<E> {

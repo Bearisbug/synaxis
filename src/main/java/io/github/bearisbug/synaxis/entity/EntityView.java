@@ -220,27 +220,26 @@ final class EntityView {
         public void updateAuto(boolean autoViewable) {
             final boolean previous = UPDATER.getAndSet(this, autoViewable ? 1 : 0) == 1;
             if (previous != autoViewable) {
-                synchronized (mutex) {
-                    final Consumer<T> action = autoViewable ? addition : removal;
-                    // Non-players have no viewer consumers, there is nothing to send
-                    if (action == null) return;
-                    if (autoViewable) update(loopPredicate, action);
-                    else update(this::isRegistered, action);
-                }
+                final Consumer<T> action = autoViewable ? addition : removal;
+                // Non-players have no viewer consumers, there is nothing to send
+                if (action == null) return;
+                select(autoViewable ? loopPredicate : this::isRegistered).forEach(action);
             }
         }
 
         public void updateRule(@Nullable Predicate<? super T> predicate) {
             synchronized (mutex) {
                 this.predicate = predicate;
-                updateRule0(predicate);
             }
+            updateRule0(predicate);
         }
 
         public void updateRule() {
+            final Predicate<? super T> predicate;
             synchronized (mutex) {
-                updateRule0(predicate);
+                predicate = this.predicate;
             }
+            updateRule0(predicate);
         }
 
         void updateRule0(@Nullable Predicate<? super T> predicate) {
@@ -248,29 +247,35 @@ final class EntityView {
             final Consumer<T> removal = this.removal;
             // Non-players have no viewer consumers, there is nothing to send
             if (addition == null || removal == null) return;
-            if (predicate == null) {
-                update(loopPredicate, entity -> {
-                    if (!isRegistered(entity)) addition.accept(entity);
-                });
-            } else {
-                update(loopPredicate, entity -> {
-                    final boolean result = predicate.test(entity);
-                    if (result != isRegistered(entity)) {
-                        if (result) addition.accept(entity);
-                        else removal.accept(entity);
-                    }
-                });
+            final List<T> additions = new ArrayList<>();
+            final List<T> removals = new ArrayList<>();
+            synchronized (mutex) {
+                for (T entity : select(loopPredicate)) {
+                    final boolean visible = predicate == null || predicate.test(entity);
+                    if (visible != isRegistered(entity)) (visible ? additions : removals).add(entity);
+                }
             }
+            additions.forEach(addition);
+            removals.forEach(removal);
         }
 
-        private void update(Predicate<? super T> visibilityPredicate,
-                            Consumer<T> action) {
-            references().forEach(entity -> {
-                if (entity == EntityView.this.entity || !visibilityPredicate.test(entity)) return;
-                if (entity instanceof Player player && manualViewers.contains(player)) return;
-                if (entity.getVehicle() != null) return;
-                action.accept(entity);
-            });
+        /**
+         * Collects the entities an addition or removal applies to. The consumers are deliberately left
+         * to the caller to run once this mutex is released: they take both view mutexes ordered by
+         * entity id, and entering that region while already holding one of them reverses the order
+         * against every caller coming from the tracker.
+         */
+        private List<T> select(Predicate<? super T> visibilityPredicate) {
+            final List<T> selected = new ArrayList<>();
+            synchronized (mutex) {
+                references().forEach(entity -> {
+                    if (entity == EntityView.this.entity || !visibilityPredicate.test(entity)) return;
+                    if (entity instanceof Player player && manualViewers.contains(player)) return;
+                    if (entity.getVehicle() != null) return;
+                    selected.add(entity);
+                });
+            }
+            return selected;
         }
 
         private int lastSize;

@@ -12,7 +12,10 @@ public class PlayerVehicleListener {
             return;
 
         final var position = packet.position();
+        // Yaw and pitch are raw floats on the wire and the passenger offset is rotated around the
+        // vehicle yaw, so a non finite view would poison the position of every rider
         if (!Double.isFinite(position.x()) || !Double.isFinite(position.y()) || !Double.isFinite(position.z()) ||
+                !Float.isFinite(position.yaw()) || !Float.isFinite(position.pitch()) ||
                 Math.abs(position.x()) > Entity.MAX_COORDINATE ||
                 Math.abs(position.y()) > Entity.MAX_COORDINATE ||
                 Math.abs(position.z()) > Entity.MAX_COORDINATE) {

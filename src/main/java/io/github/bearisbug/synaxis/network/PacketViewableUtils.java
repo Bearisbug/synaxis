@@ -90,7 +90,13 @@ public final class PacketViewableUtils {
             final long start = buffer.writeIndex();
             // Viewable storage is only used for play packets, so fine to assume this.
             buffer.registries(process.registries());
-            PacketWriting.writeFramedPacket(buffer, ConnectionState.PLAY, serverPacket, process.compressionThreshold());
+            try {
+                PacketWriting.writeFramedPacket(buffer, ConnectionState.PLAY, serverPacket, process.compressionThreshold());
+            } catch (RuntimeException | Error e) {
+                // The whole buffer is copied to every viewer, a half written frame would desync them all
+                buffer.writeIndex(start);
+                throw e;
+            }
             final long end = buffer.writeIndex();
             if (exception != null) {
                 final long offsets = (start << 32) | (end & 0xFFFFFFFFL);

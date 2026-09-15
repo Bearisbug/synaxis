@@ -394,30 +394,48 @@ public class PlayerSocketConnection extends PlayerConnection {
         return writePacketSync(buffer, sendable, compressed);
     }
 
+    // A packet that did not fit is written again on a bigger buffer, or on the next flush.
+    // The outgoing event and the translation belong to the queued packet rather than to the
+    // attempt, so their result is kept until it leaves the queue. Only the write thread reads this.
+    private record PendingWrite(SendablePacket queued, SendablePacket prepared) {
+    }
+
+    private @Nullable PendingWrite pendingWrite = null;
+
     private boolean writePacketSync(NetworkBuffer buffer, SendablePacket packet, boolean compressed) {
-        final Player player = getPlayer();
+        final SendablePacket queued = packet;
         final ConnectionState state = getServerState();
-        if (player != null) {
-            // Outgoing event
-            if (outgoing.hasListener()) {
-                final ServerPacket serverPacket = SendablePacket.extractServerPacket(state, packet);
-                if (serverPacket != null) { // Events are not called for buffered packets
-                    PlayerPacketOutEvent event = new PlayerPacketOutEvent(player, serverPacket);
-                    outgoing.call(event);
-                    if (event.isCancelled()) return true;
+        final PendingWrite pending = this.pendingWrite;
+        if (pending != null && pending.queued() == queued) {
+            // New attempt at a packet whose event and translation already ran
+            packet = pending.prepared();
+        } else {
+            final Player player = getPlayer();
+            if (player != null) {
+                // Outgoing event
+                if (outgoing.hasListener()) {
+                    final ServerPacket serverPacket = SendablePacket.extractServerPacket(state, packet);
+                    if (serverPacket != null) { // Events are not called for buffered packets
+                        PlayerPacketOutEvent event = new PlayerPacketOutEvent(player, serverPacket);
+                        outgoing.call(event);
+                        if (event.isCancelled()) {
+                            this.pendingWrite = null;
+                            return true;
+                        }
+                    }
                 }
-            }
-            // Translation
-            if (JvmFlags.AUTOMATIC_COMPONENT_TRANSLATION && packet instanceof ServerPacket.ComponentHolding translatablePacket) {
-                packet = translatablePacket.copyWithOperator(component ->
-                        EngineAdventure.COMPONENT_TRANSLATOR.apply(component, Objects.requireNonNullElseGet(player.getLocale(), EngineAdventure::getDefaultLocale)));
+                // Translation
+                if (JvmFlags.AUTOMATIC_COMPONENT_TRANSLATION && packet instanceof ServerPacket.ComponentHolding translatablePacket) {
+                    packet = translatablePacket.copyWithOperator(component ->
+                            EngineAdventure.COMPONENT_TRANSLATOR.apply(component, Objects.requireNonNullElseGet(player.getLocale(), EngineAdventure::getDefaultLocale)));
+                }
             }
         }
         // Write packet
         final long start = buffer.writeIndex();
         final int compressionThreshold = compressed ? process().compressionThreshold() : 0;
         try {
-            return switch (packet) {
+            final boolean success = switch (packet) {
                 case ServerPacket serverPacket -> {
                     var nextState = PacketVanilla.nextServerState(serverPacket, state);
                     PacketWriting.writeFramedPacket(buffer, state, serverPacket, compressionThreshold);
@@ -446,8 +464,11 @@ public class PlayerSocketConnection extends PlayerConnection {
                     yield writeBuffer(buffer, rawBuffer, index, length);
                 }
             };
+            this.pendingWrite = success ? null : new PendingWrite(queued, packet);
+            return success;
         } catch (IndexOutOfBoundsException _) {
             buffer.writeIndex(start);
+            this.pendingWrite = new PendingWrite(queued, packet);
             return false;
         }
     }

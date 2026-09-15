@@ -19,6 +19,7 @@ import java.util.function.Function;
 @ApiStatus.Internal
 final class NetworkBufferTemplateImpl {
     private static final String PACKAGE = "io.github.bearisbug.synaxis.network";
+    private static final String CTOR_PACKAGE = "io.github.bearisbug.synaxis.codec";
     private static final ClassDesc CD_OBJECT = ConstantDescs.CD_Object;
     private static final ClassDesc CD_STRING = ConstantDescs.CD_String;
     private static final ClassDesc CD_CLASS = ConstantDescs.CD_Class;
@@ -136,7 +137,7 @@ final class NetworkBufferTemplateImpl {
     }
 
     private static ClassDesc constructorInterface(int fieldCount) {
-        return ClassDesc.of(PACKAGE, "NetworkBufferTemplate$F" + fieldCount);
+        return ClassDesc.of(CTOR_PACKAGE, "Ctor$F" + fieldCount);
     }
 
     private static MethodTypeDesc constructorApplyType(int fieldCount) {

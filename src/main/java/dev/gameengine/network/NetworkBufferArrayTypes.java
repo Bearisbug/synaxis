@@ -1,5 +1,9 @@
 package dev.gameengine.network;
 
+import dev.gameengine.utils.validate.Check;
+
+import java.util.Arrays;
+
 import static dev.gameengine.network.NetworkBuffer.FixedRawBytes;
 import static dev.gameengine.network.NetworkBuffer.FixedRawLongs;
 import static dev.gameengine.network.NetworkBuffer.RAW_BYTES;
@@ -47,8 +51,14 @@ final class NetworkBufferArrayTypes {
         @Override
         public int[] read(NetworkBuffer buffer) {
             final int length = buffer.read(VAR_INT);
-            final int[] ints = new int[length];
-            for (int i = 0; i < length; i++) ints[i] = buffer.read(VAR_INT);
+            Check.argCondition(length < 0, "Array length cannot be negative: {0}", length);
+            int[] ints = new int[NetworkBufferTypeImpl.initialCollectionSize(buffer, length)];
+            for (int i = 0; i < length; i++) {
+                if (i == ints.length) {
+                    ints = Arrays.copyOf(ints, NetworkBufferTypeImpl.grownCollectionSize(ints.length, length));
+                }
+                ints[i] = buffer.read(VAR_INT);
+            }
             return ints;
         }
     }
@@ -63,8 +73,14 @@ final class NetworkBufferArrayTypes {
         @Override
         public long[] read(NetworkBuffer buffer) {
             final int length = buffer.read(VAR_INT);
-            final long[] longs = new long[length];
-            for (int i = 0; i < length; i++) longs[i] = buffer.read(VAR_LONG);
+            Check.argCondition(length < 0, "Array length cannot be negative: {0}", length);
+            long[] longs = new long[NetworkBufferTypeImpl.initialCollectionSize(buffer, length)];
+            for (int i = 0; i < length; i++) {
+                if (i == longs.length) {
+                    longs = Arrays.copyOf(longs, NetworkBufferTypeImpl.grownCollectionSize(longs.length, length));
+                }
+                longs[i] = buffer.read(VAR_LONG);
+            }
             return longs;
         }
     }

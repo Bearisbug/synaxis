@@ -1,5 +1,6 @@
 package dev.gameengine.network;
 
+import dev.gameengine.JvmFlags;
 import dev.gameengine.network.packet.PacketReading;
 import org.junit.jupiter.api.Test;
 
@@ -21,6 +22,17 @@ class PacketReadingMalformedTest {
         buffer.write(NetworkBuffer.VAR_INT, 0); // single 0x00 byte
         assertThrows(DataFormatException.class,
                 () -> PacketReading.readClients(buffer, ConnectionState.HANDSHAKE, false));
+    }
+
+    /** A status exchange happens before any authentication, so it gets the smaller pre-auth budget. */
+    @Test
+    void statusFramesUseThePreAuthPacketSizeLimit() {
+        assertEquals(JvmFlags.MAX_PACKET_SIZE_PRE_AUTH, PacketReading.maxPacketSize(ConnectionState.STATUS));
+
+        final NetworkBuffer buffer = NetworkBuffer.resizableBuffer(64);
+        buffer.write(NetworkBuffer.VAR_INT, JvmFlags.MAX_PACKET_SIZE_PRE_AUTH + 1);
+        assertThrows(DataFormatException.class,
+                () -> PacketReading.readClients(buffer, ConnectionState.STATUS, false));
     }
 
     @Test

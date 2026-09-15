@@ -15,6 +15,7 @@ Subcommands, see docs/TEST.md section 3:
     premature-finish              acknowledge configuration before the server finished it
     bad-version --protocol N      handshake with an unsupported protocol version
     zero-frame                    send a single 0x00 byte while in the play state
+    alloc-bomb [--declared N]     edit book packet declaring N pages but sending ten bytes
     deep-recursion [--depth N]    creative set slot packet with N nested potion effects
     echo --payload TEXT           round trip TEXT over the game:main custom payload channel
     record-registry --out FILE    dump every received RegistryData packet to FILE
@@ -419,6 +420,15 @@ def deep_recursion_payload(depth: int) -> bytes:
     return Writer().short(36).raw(item).bytes()
 
 
+def alloc_bomb_payload(declared: int) -> bytes:
+    """An edit book packet that declares ``declared`` pages but sends almost no input."""
+    return (Writer()
+            .varint(0)  # slot
+            .varint(declared)  # page count, far more than the input can back
+            .raw(b"\x00" * 10)
+            .bytes())
+
+
 def disconnect_reason(packet: str, reader: Reader) -> str:
     """Extracts the translate key, LoginDisconnect uses json and Disconnect uses nbt."""
     if packet == "LoginDisconnectPacket":
@@ -610,6 +620,25 @@ def cmd_zero_frame(args: argparse.Namespace) -> int:
         session.close()
 
 
+def cmd_alloc_bomb(args: argparse.Namespace) -> int:
+    session = Session(args)
+    try:
+        session.enter_play()
+        session.connection.send("ClientEditBookPacket", alloc_bomb_payload(args.declared))
+        session.log(f"sent EditBook declaring {args.declared} pages with 10 bytes of payload")
+        try:
+            session.pump(args.timeout)
+        except Disconnected as disconnected:
+            return 0 if disconnected.reason == "engine:protocol-error" else 1
+        except ClosedByServer:
+            session.log("connection closed by the server")
+            return 0
+        session.log("no disconnect received")
+        return 1
+    finally:
+        session.close()
+
+
 def cmd_deep_recursion(args: argparse.Namespace) -> int:
     session = Session(args)
     try:
@@ -700,6 +729,10 @@ def build_parser() -> argparse.ArgumentParser:
 
     zero_frame = subparsers.add_parser("zero-frame", help="send a zero length frame in the play state")
     zero_frame.set_defaults(run=cmd_zero_frame)
+
+    alloc = subparsers.add_parser("alloc-bomb", help="declare a huge collection length with almost no payload")
+    alloc.add_argument("--declared", type=int, default=65535)
+    alloc.set_defaults(run=cmd_alloc_bomb)
 
     deep = subparsers.add_parser("deep-recursion", help="send a deeply nested item component")
     deep.add_argument("--depth", type=int, default=200)

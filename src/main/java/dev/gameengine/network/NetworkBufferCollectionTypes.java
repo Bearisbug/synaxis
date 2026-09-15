@@ -98,9 +98,15 @@ final class NetworkBufferCollectionTypes {
         public Map<K, V> read(NetworkBuffer buffer) {
             final int size = buffer.read(VAR_INT);
             Check.argCondition(size < 0 || size > maxSize, "Map size ({0}) is out of the allowed range (0..{1})", size, maxSize);
-            K[] keys = (K[]) new Object[size];
-            V[] values = (V[]) new Object[size];
+            final int initialSize = NetworkBufferTypeImpl.initialCollectionSize(buffer, size);
+            K[] keys = (K[]) new Object[initialSize];
+            V[] values = (V[]) new Object[initialSize];
             for (int i = 0; i < size; i++) {
+                if (i == keys.length) {
+                    final int newSize = NetworkBufferTypeImpl.grownCollectionSize(keys.length, size);
+                    keys = Arrays.copyOf(keys, newSize);
+                    values = Arrays.copyOf(values, newSize);
+                }
                 keys[i] = buffer.read(parent);
                 values[i] = buffer.read(valueType);
             }
@@ -124,8 +130,13 @@ final class NetworkBufferCollectionTypes {
         public List<T> read(NetworkBuffer buffer) {
             final int size = buffer.read(VAR_INT);
             Check.argCondition(size < 0 || size > maxSize, "Collection size ({0}) is out of the allowed range (0..{1})", size, maxSize);
-            T[] values = (T[]) new Object[size];
-            for (int i = 0; i < size; i++) values[i] = buffer.read(parent);
+            T[] values = (T[]) new Object[NetworkBufferTypeImpl.initialCollectionSize(buffer, size)];
+            for (int i = 0; i < size; i++) {
+                if (i == values.length) {
+                    values = Arrays.copyOf(values, NetworkBufferTypeImpl.grownCollectionSize(values.length, size));
+                }
+                values[i] = buffer.read(parent);
+            }
             return List.of(values);
         }
     }
@@ -146,8 +157,13 @@ final class NetworkBufferCollectionTypes {
         public Set<T> read(NetworkBuffer buffer) {
             final int size = buffer.read(VAR_INT);
             Check.argCondition(size < 0 || size > maxSize, "Collection size ({0}) is out of the allowed range (0..{1})", size, maxSize);
-            T[] values = (T[]) new Object[size];
-            for (int i = 0; i < size; i++) values[i] = buffer.read(parent);
+            T[] values = (T[]) new Object[NetworkBufferTypeImpl.initialCollectionSize(buffer, size)];
+            for (int i = 0; i < size; i++) {
+                if (i == values.length) {
+                    values = Arrays.copyOf(values, NetworkBufferTypeImpl.grownCollectionSize(values.length, size));
+                }
+                values[i] = buffer.read(parent);
+            }
             return Set.of(values);
         }
     }

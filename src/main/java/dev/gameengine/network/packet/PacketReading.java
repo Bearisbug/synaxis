@@ -245,7 +245,7 @@ public final class PacketReading {
 
     public static int maxPacketSize(ConnectionState state) {
         return switch (state) {
-            case HANDSHAKE, LOGIN -> JvmFlags.MAX_PACKET_SIZE_PRE_AUTH;
+            case HANDSHAKE, STATUS, LOGIN -> JvmFlags.MAX_PACKET_SIZE_PRE_AUTH;
             default -> JvmFlags.MAX_PACKET_SIZE;
         };
     }

@@ -173,6 +173,9 @@ record DataComponentMapImpl(Int2ObjectMap<@Nullable Object> components) implemen
             IntFunction<@Nullable DataComponent<?>> idToType,
             boolean isPatch, boolean isTrusted
     ) implements NetworkBuffer.Type<DataComponentMap> {
+        /** Vanilla never sends more than this many added or removed components in one patch. */
+        private static final int MAX_COMPONENTS = 256;
+
         @Override
         public void write(NetworkBuffer buffer, DataComponentMap value) {
             final DataComponentMapImpl patch = (DataComponentMapImpl) value;
@@ -222,26 +225,36 @@ record DataComponentMapImpl(Int2ObjectMap<@Nullable Object> components) implemen
 
         @Override
         public DataComponentMap read(NetworkBuffer buffer) {
-            int added = buffer.read(NetworkBuffer.VAR_INT);
-            int removed = isPatch ? buffer.read(NetworkBuffer.VAR_INT) : 0;
-            Check.stateCondition(added + removed > 256, "Data component map too large: {0}", added + removed);
+            final int added = buffer.read(NetworkBuffer.VAR_INT);
+            final int removed = isPatch ? buffer.read(NetworkBuffer.VAR_INT) : 0;
+            Check.stateCondition(added < 0 || added > MAX_COMPONENTS, "Invalid added component count: {0}", added);
+            Check.stateCondition(removed < 0 || removed > MAX_COMPONENTS, "Invalid removed component count: {0}", removed);
             Int2ObjectMap<@Nullable Object> patch = new Int2ObjectArrayMap<>(added + removed);
             for (int i = 0; i < added; i++) {
-                int id = buffer.read(NetworkBuffer.VAR_INT);
+                final int id = buffer.read(NetworkBuffer.VAR_INT);
                 @SuppressWarnings("unchecked")
                 DataComponent<Object> type = (DataComponent<@NotNull Object>) this.idToType.apply(id);
                 Check.notNull(type, "Unknown component: {0}", id);
+                Check.stateCondition(patch.containsKey(type.id()), "Duplicate component: {0}", id);
                 if (isTrusted) {
                     patch.put(type.id(), type.read(buffer));
                 } else {
-                    final byte[] array = buffer.read(NetworkBuffer.BYTE_ARRAY);
-                    final NetworkBuffer tempBuffer = NetworkBuffer.wrap(array, 0, array.length, buffer.registries());
-                    patch.put(type.id(), type.read(tempBuffer));
+                    // A view over the declared range, so a component cannot read past its own data
+                    // and a declared length cannot make the server copy bytes it never received.
+                    final int length = buffer.read(NetworkBuffer.VAR_INT);
+                    Check.argCondition(length < 0, "Component data length cannot be negative: {0}", length);
+                    buffer.ensureReadable(length);
+                    final long offset = buffer.advanceRead(length);
+                    final NetworkBuffer componentData = buffer.slice(offset, length, 0, length).readOnly();
+                    patch.put(type.id(), type.read(componentData));
                 }
             }
             for (int i = 0; i < removed; i++) {
-                int id = buffer.read(NetworkBuffer.VAR_INT);
-                patch.put(id, null);
+                final int id = buffer.read(NetworkBuffer.VAR_INT);
+                final DataComponent<?> type = this.idToType.apply(id);
+                Check.notNull(type, "Unknown component: {0}", id);
+                Check.stateCondition(patch.containsKey(type.id()), "Duplicate component: {0}", id);
+                patch.put(type.id(), null);
             }
             return new DataComponentMapImpl(patch);
         }

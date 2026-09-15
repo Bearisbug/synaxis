@@ -1,15 +1,46 @@
 package dev.gameengine.component;
 
 import net.kyori.adventure.text.Component;
+import dev.gameengine.network.NetworkBuffer;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class DataComponentMapTest {
+
+    private static NetworkBuffer patch(int added, int removed, int... ids) {
+        final NetworkBuffer buffer = NetworkBuffer.resizableBuffer();
+        buffer.write(NetworkBuffer.VAR_INT, added);
+        buffer.write(NetworkBuffer.VAR_INT, removed);
+        for (int id : ids) buffer.write(NetworkBuffer.VAR_INT, id);
+        return buffer;
+    }
+
+    @Test
+    void networkPatchRejectsInvalidCounts() {
+        assertThrows(RuntimeException.class, () -> patch(-1, 0).read(DataComponent.PATCH_NETWORK_TYPE));
+        assertThrows(RuntimeException.class, () -> patch(0, -1).read(DataComponent.PATCH_NETWORK_TYPE));
+        assertThrows(RuntimeException.class, () -> patch(257, 0).read(DataComponent.PATCH_NETWORK_TYPE));
+        assertThrows(RuntimeException.class, () -> patch(0, 257).read(DataComponent.PATCH_NETWORK_TYPE));
+    }
+
+    @Test
+    void networkPatchRejectsUnknownRemovedComponent() {
+        assertThrows(RuntimeException.class,
+                () -> patch(0, 1, Integer.MAX_VALUE).read(DataComponent.PATCH_NETWORK_TYPE));
+    }
+
+    @Test
+    void networkPatchRejectsDuplicateRemovedComponent() {
+        final int id = DataComponents.CUSTOM_NAME.id();
+        assertThrows(RuntimeException.class,
+                () -> patch(0, 2, id, id).read(DataComponent.PATCH_NETWORK_TYPE));
+    }
 
     @Test
     void testBasicGet() {

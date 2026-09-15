@@ -119,18 +119,19 @@ public final class InstanceManager {
             InstanceUnregisterEvent event = new InstanceUnregisterEvent(instance);
             process.eventHandler().call(event);
 
-            // Unload all chunks
-            if (instance instanceof InstanceContainer) {
-                instance.getChunks().forEach(instance::unloadChunk);
-                var dispatcher = process.dispatcher();
-                instance.getChunks().forEach(dispatcher::deletePartition);
-            }
             if (instance instanceof SharedInstance sharedInstance) {
                 sharedInstance.getInstanceContainer().removeSharedInstance(sharedInstance);
             }
             // Unregister
             instance.setRegistered(false);
             this.instances.remove(instance);
+        }
+        // Unload all chunks, outside the instance monitor: unloading takes the tick thread of every
+        // entity it removes, and a tick thread takes the instance monitor of its own accord
+        if (instance instanceof InstanceContainer) {
+            instance.getChunks().forEach(instance::unloadChunk);
+            var dispatcher = process.dispatcher();
+            instance.getChunks().forEach(dispatcher::deletePartition);
         }
     }
 

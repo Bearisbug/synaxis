@@ -1,0 +1,15 @@
+f14: env.tick() still running after 5s = true
+--- thread audit-ticker state=WAITING
+    at java.base@25.0.4.1/jdk.internal.misc.Unsafe.park(Native Method)
+    at java.base@25.0.4.1/java.util.concurrent.locks.LockSupport.park(LockSupport.java:223)
+    at java.base@25.0.4.1/java.util.concurrent.locks.AbstractQueuedSynchronizer.acquire(AbstractQueuedSynchronizer.java:790)
+    at java.base@25.0.4.1/java.util.concurrent.locks.AbstractQueuedSynchronizer.acquireSharedInterruptibly(AbstractQueuedSynchronizer.java:1139)
+    at java.base@25.0.4.1/java.util.concurrent.CountDownLatch.await(CountDownLatch.java:230)
+    at app//io.github.bearisbug.synaxis.thread.ThreadDispatcherImpl.updateAndAwait(ThreadDispatcherImpl.java:69)
+    at app//io.github.bearisbug.synaxis.ServerProcessImpl$TickerImpl.serverTick(ServerProcessImpl.java:373)
+    at app//io.github.bearisbug.synaxis.ServerProcessImpl$TickerImpl.tick(ServerProcessImpl.java:342)
+    at app//io.github.bearisbug.synaxis.testing.Env.tick(Env.java:32)
+    at app//io.github.bearisbug.synaxis.AuditReproIntegrationTest$$Lambda/0x00007fc001472bd8.run(Unknown Source)
+    at java.base@25.0.4.1/java.lang.Thread.runWith(Thread.java:1487)
+    at java.base@25.0.4.1/java.lang.Thread.run(Thread.java:1474)
+live Syn-Tick threads: 0

@@ -1,0 +1,95 @@
+package io.github.bearisbug.synaxis;
+
+import io.github.bearisbug.synaxis.coordinate.Pos;
+import io.github.bearisbug.synaxis.entity.Entity;
+import io.github.bearisbug.synaxis.entity.EntityType;
+import io.github.bearisbug.synaxis.entity.Player;
+import io.github.bearisbug.synaxis.event.player.PlayerRespawnEvent;
+import io.github.bearisbug.synaxis.instance.Chunk;
+import io.github.bearisbug.synaxis.instance.ChunkLoader;
+import io.github.bearisbug.synaxis.instance.Instance;
+import io.github.bearisbug.synaxis.testing.Env;
+import io.github.bearisbug.synaxis.testing.EnvTest;
+import org.junit.jupiter.api.Test;
+
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.Map;
+
+@EnvTest
+public class AuditReproIntegrationTest {
+
+    // Temporary reproduction of audit findings F23 and F14. Each test writes what it observed to
+    // $TMPDIR/synaxis-<id>.txt and then halts the JVM, because the reproduced defect leaves the
+    // tick loop hung and Env cleanup would never return.
+
+    @Test
+    public void f23RespawnIntoUnloadedChunk(Env env) throws Exception {
+        // A loader slow enough that the respawn chunk is still loading when teleport attaches its continuation
+        ChunkLoader slowLoader = new ChunkLoader() {
+            @Override
+            public Chunk loadChunk(Instance instance, int chunkX, int chunkZ) {
+                try {
+                    Thread.sleep(200);
+                } catch (InterruptedException _) {
+                    Thread.currentThread().interrupt();
+                }
+                return null;
+            }
+
+            @Override
+            public void saveChunk(Chunk chunk) {
+            }
+
+            @Override
+            public boolean supportsParallelLoading() {
+                return true;
+            }
+        };
+        var instance = env.createFlatInstance(slowLoader);
+        Player player = env.createPlayer(instance, new Pos(0, 42, 0));
+        env.process().eventHandler().addListener(PlayerRespawnEvent.class,
+                event -> event.setRespawnPosition(new Pos(5000, 42, 5000)));
+        player.setHealth(0);
+        // PlayStatusListener calls respawn() from inside the player's tick, do the same
+        player.scheduleNextTick(entity -> ((Player) entity).respawn());
+        observeTick(env, "f23");
+    }
+
+    @Test
+    public void f14TickExceptionHangsDispatcher(Env env) throws Exception {
+        var instance = env.createFlatInstance();
+        Entity entity = new Entity(EntityType.ZOMBIE) {
+            @Override
+            public void tick(long time) {
+                throw new IllegalStateException("boom from tick");
+            }
+        };
+        entity.setInstance(instance, new Pos(0, 42, 0)).join();
+        observeTick(env, "f14");
+    }
+
+    private static void observeTick(Env env, String id) throws IOException, InterruptedException {
+        Thread ticker = new Thread(env::tick, "audit-ticker");
+        ticker.start();
+        ticker.join(5_000);
+        StringBuilder out = new StringBuilder();
+        out.append(id).append(": env.tick() still running after 5s = ").append(ticker.isAlive()).append('\n');
+        for (Map.Entry<Thread, StackTraceElement[]> e : Thread.getAllStackTraces().entrySet()) {
+            String name = e.getKey().getName();
+            if (!name.startsWith("Syn-Tick") && !name.equals("audit-ticker")) continue;
+            out.append("--- thread ").append(name).append(" state=").append(e.getKey().getState()).append('\n');
+            int n = 0;
+            for (StackTraceElement frame : e.getValue()) {
+                out.append("    at ").append(frame).append('\n');
+                if (++n == 12) break;
+            }
+        }
+        long tickThreads = Thread.getAllStackTraces().keySet().stream().filter(t -> t.getName().startsWith("Syn-Tick")).count();
+        out.append("live Syn-Tick threads: ").append(tickThreads).append('\n');
+        Files.writeString(Path.of(System.getProperty("java.io.tmpdir"), "synaxis-" + id + ".txt"), out.toString());
+        System.out.println(out);
+        Runtime.getRuntime().halt(3);
+    }
+}

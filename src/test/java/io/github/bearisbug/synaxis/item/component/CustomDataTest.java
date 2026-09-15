@@ -9,6 +9,7 @@ import io.github.bearisbug.synaxis.entity.EntityType;
 import io.github.bearisbug.synaxis.item.ItemStack;
 import io.github.bearisbug.synaxis.item.Material;
 import io.github.bearisbug.synaxis.tag.Tag;
+import io.github.bearisbug.synaxis.tag.TagSerializer;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
@@ -50,6 +51,26 @@ public class CustomDataTest extends AbstractItemComponentRegistriesTest<CustomDa
                 .build();
         final String snbt = EngineAdventure.tagStringIO().asString(item.get(DataComponents.CUSTOM_DATA).nbt());
         assertEquals("{test:{num:5}}", snbt);
+    }
+
+    @Test
+    void customDataTagPathRemoval() throws IOException {
+        final ItemStack item = ItemStack.builder(Material.STICK)
+                .set(Tag.Integer("num").path("test"), 5)
+                .build();
+        final ItemStack removed = item.withTag(Tag.Integer("num").path("test"), null);
+        final String snbt = EngineAdventure.tagStringIO().asString(removed.get(DataComponents.CUSTOM_DATA).nbt());
+        assertEquals("{}", snbt);
+    }
+
+    @Test
+    void customDataViewTagOverwrite() throws IOException {
+        final ItemStack item = ItemStack.builder(Material.STICK)
+                .set(Tag.String("old"), "value")
+                .set(Tag.View(TagSerializer.COMPOUND), CompoundBinaryTag.builder().putString("new", "value").build())
+                .build();
+        final String snbt = EngineAdventure.tagStringIO().asString(item.get(DataComponents.CUSTOM_DATA).nbt());
+        assertEquals("{new:\"value\"}", snbt);
     }
 
     @Test

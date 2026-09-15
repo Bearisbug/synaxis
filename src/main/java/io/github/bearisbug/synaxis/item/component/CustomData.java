@@ -4,7 +4,7 @@ import net.kyori.adventure.nbt.CompoundBinaryTag;
 import io.github.bearisbug.synaxis.codec.Codec;
 import io.github.bearisbug.synaxis.network.NetworkBuffer;
 import io.github.bearisbug.synaxis.tag.Tag;
-import io.github.bearisbug.synaxis.tag.TagHandler;
+import io.github.bearisbug.synaxis.tag.TagNbtAccess;
 import io.github.bearisbug.synaxis.tag.TagReadable;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.UnknownNullability;
@@ -20,13 +20,10 @@ public record CustomData(CompoundBinaryTag nbt) implements TagReadable {
 
     @Override
     public <T> @UnknownNullability T getTag(Tag<T> tag) {
-        final TagHandler tagHandler = TagHandler.fromCompound(nbt);
-        return tagHandler.getTag(tag);
+        return TagNbtAccess.read(nbt, tag);
     }
 
     public <T> CustomData withTag(Tag<T> tag, @Nullable T value) {
-        TagHandler tagHandler = TagHandler.fromCompound(nbt);
-        tagHandler.setTag(tag, value);
-        return new CustomData(tagHandler.asCompound());
+        return new CustomData(TagNbtAccess.write(nbt, tag, value));
     }
 }

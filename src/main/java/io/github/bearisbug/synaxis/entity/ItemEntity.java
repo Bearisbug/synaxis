@@ -13,6 +13,7 @@ import org.jetbrains.annotations.Nullable;
 
 import java.time.Duration;
 import java.time.temporal.TemporalUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Represents an item on the ground.
@@ -40,6 +41,10 @@ public class ItemEntity extends Entity {
     private long spawnTime;
     // pickup delay in nanos
     private long pickupDelay;
+    // Taken by whoever is about to consume this item. #isPickable and #remove alone are not enough:
+    // the pickup and merge paths fire a cancellable event between the check and the removal, so two
+    // tick threads scanning the same item would both get to hand out its stack.
+    private final AtomicBoolean claimed = new AtomicBoolean();
 
     @SuppressWarnings("this-escape") // deliberate self registration during construction
     public ItemEntity(ItemStack itemStack) {
@@ -85,12 +90,24 @@ public class ItemEntity extends Entity {
                         if (!canStack) return;
                         final int totalAmount = itemStack.amount() + itemStackEntity.amount();
                         if (!MathUtils.isBetween(totalAmount, 0, itemStack.maxStackSize())) return;
+                        // Both sides are consumed by the merge, and both sides scan each other. Claiming
+                        // them in a fixed order stops two neighbours from each absorbing the other.
+                        final ItemEntity lowest = getEntityId() < itemEntity.getEntityId() ? this : itemEntity;
+                        final ItemEntity highest = lowest == this ? itemEntity : this;
+                        if (!lowest.claim()) return;
+                        if (!highest.claim()) {
+                            lowest.releaseClaim();
+                            return;
+                        }
                         final ItemStack result = itemStack.withAmount(totalAmount);
                         EntityItemMergeEvent entityItemMergeEvent = new EntityItemMergeEvent(this, itemEntity, result);
                         callCancellableEvent(entityItemMergeEvent, () -> {
                             setItemStack(entityItemMergeEvent.getResult());
                             itemEntity.remove();
                         });
+                        // This entity survives the merge, the absorbed one stays claimed for good
+                        releaseClaim();
+                        if (entityItemMergeEvent.isCancelled()) itemEntity.releaseClaim();
                     });
         }
     }
@@ -146,6 +163,24 @@ public class ItemEntity extends Entity {
      */
     public boolean isPickable() {
         return pickable && getTimeSinceSpawn() >= pickupDelay && !isRemoved();
+    }
+
+    /**
+     * Claims this item for the caller, so that nothing else may consume it until the claim is released.
+     *
+     * @return true if the claim was taken, false if someone else already holds it
+     */
+    @ApiStatus.Internal
+    public boolean claim() {
+        return claimed.compareAndSet(false, true);
+    }
+
+    /**
+     * Releases a claim taken by {@link #claim()} because the consumption did not happen.
+     */
+    @ApiStatus.Internal
+    public void releaseClaim() {
+        this.claimed.set(false);
     }
 
     /**

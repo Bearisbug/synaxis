@@ -2,14 +2,17 @@ package io.github.bearisbug.synaxis.entity;
 
 import org.jetbrains.annotations.UnknownNullability;
 
-import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 
 final class MetadataDefImpl {
-    static final Map<String, Integer> MAX_INDEX = new HashMap<>();
+    // Sibling MetadataDef subclasses have no class initialization order between them, so these tables
+    // are written and read from several threads at once whenever two entity types are first touched
+    // concurrently
+    static final Map<String, Integer> MAX_INDEX = new ConcurrentHashMap<>();
     // Default value of every byte-typed entry, so the masks sharing that byte can seed themselves with it
-    private static final Map<String, Byte> BYTE_DEFAULTS = new HashMap<>();
+    private static final Map<String, Byte> BYTE_DEFAULTS = new ConcurrentHashMap<>();
 
     static <T extends @UnknownNullability Object> MetadataDef.Entry.Index<T> index(int index, Function<T, Metadata.Entry<T>> function, T defaultValue) {
         final String caller = caller();
@@ -61,8 +64,7 @@ final class MetadataDefImpl {
     }
 
     static void storeMaxIndex(String caller, int index) {
-        final int currentMax = MAX_INDEX.getOrDefault(caller, 0);
-        MAX_INDEX.put(caller, Math.max(currentMax, index));
+        MAX_INDEX.merge(caller, Math.max(0, index), Math::max);
     }
 
     static int findSuperIndex(String caller) {

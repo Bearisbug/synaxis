@@ -1,0 +1,85 @@
+probe target=127.0.0.1:25565 protocol=776 command=deep-recursion
+sent Handshake protocol=776 intent=login
+sent LoginStart username=probe
+recv SetCompressionPacket
+     compression threshold=256
+recv LoginSuccessPacket
+     LoginSuccess username=probe uuid=a0d7d0d3-bb61-3352-b332-52bfa31d6c0e
+sent LoginAcknowledged
+recv PluginMessagePacket
+recv SelectKnownPacksPacket
+sent KnownPacks entries=1
+recv UpdateEnabledFeaturesPacket
+recv KeepAlivePacket
+sent KeepAlive #1 at 15:26:00
+recv RegistryDataPacket
+recv RegistryDataPacket
+recv RegistryDataPacket
+recv RegistryDataPacket
+recv RegistryDataPacket
+recv RegistryDataPacket
+recv RegistryDataPacket
+recv RegistryDataPacket
+recv RegistryDataPacket
+recv RegistryDataPacket
+recv RegistryDataPacket
+recv RegistryDataPacket
+recv RegistryDataPacket
+recv RegistryDataPacket
+recv RegistryDataPacket
+recv RegistryDataPacket
+recv RegistryDataPacket
+recv RegistryDataPacket
+recv RegistryDataPacket
+recv RegistryDataPacket
+recv RegistryDataPacket
+recv RegistryDataPacket
+recv RegistryDataPacket
+recv RegistryDataPacket
+recv RegistryDataPacket
+recv RegistryDataPacket
+recv RegistryDataPacket
+recv TagsPacket
+recv FinishConfigurationPacket
+sent FinishConfiguration
+state=play
+sent CreativeInventoryAction with 200 nested CustomPotionEffect.Settings
+recv JoinGamePacket
+recv WindowItemsPacket
+recv ServerDifficultyPacket
+recv SpawnPositionPacket
+recv EntityMetaDataPacket
+recv PlayerInfoUpdatePacket
+recv DeclareCommandsPacket
+recv EntityAttributesPacket
+recv EntityStatusPacket
+recv UpdateHealthPacket
+recv PlayerAbilitiesPacket
+recv InitializeWorldBorderPacket
+recv SetTimePacket
+recv ChangeGameStatePacket
+recv ChangeGameStatePacket
+recv ChangeGameStatePacket
+recv UpdateViewPositionPacket
+recv ChunkBatchStartPacket
+recv ChunkDataPacket
+recv ChunkDataPacket
+recv ChunkDataPacket
+recv ChunkDataPacket
+recv ChunkDataPacket
+recv ChunkDataPacket
+recv ChunkDataPacket
+recv ChunkDataPacket
+recv ChunkDataPacket
+recv ChunkBatchFinishedPacket
+recv PlayerPositionAndLookPacket
+recv PlayerPositionAndLookPacket
+recv WindowItemsPacket
+recv HeldItemChangePacket
+recv ChangeGameStatePacket
+recv KeepAlivePacket
+sent KeepAlive #2 at 15:26:10
+recv PlayerInfoUpdatePacket
+no disconnect received, the creative packet was skipped before decoding
+exit code: 0
+exit=0

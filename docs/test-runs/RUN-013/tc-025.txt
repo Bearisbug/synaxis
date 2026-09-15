@@ -1,0 +1,5 @@
+TC-025 step 3 on 15f619f46d · exit=0
+BUILD SUCCESSFUL in 7s
+TC-025 step 4 · startup log lines:
+15:25:23.618 [main] INFO  i.g.bearisbug.synaxis.smoke.Main - Effective ServerConfig[shutdownOnSignal=true, maxTickCatchUp=5, chunkViewDistance=8, entityViewDist
+15:25:23.630 [main] INFO  i.g.bearisbug.synaxis.smoke.Main - Effective JvmFlags[serverTicksPerSecond=20, automaticComponentTranslation=false, groupedPacket=true

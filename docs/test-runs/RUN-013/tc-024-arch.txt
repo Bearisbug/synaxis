@@ -1,0 +1,7 @@
+TC-024 step 3 · ArchitectureTest on 15f619f46d · exit=0
+BUILD SUCCESSFUL in 7s
+TC-024 step 5 · with temporary coordinate->entity import · exit=1
+ArchitectureTest > lowerLevelPackagesDoNotDependOnTheRestOfTheEngine() FAILED
+    java.lang.AssertionError at ArchitectureTest.java:68
+BUILD FAILED in 23s
+after revert: git status --short -- src => []

@@ -15,6 +15,7 @@
 | 日期 | 改动 | 作者 |
 | --- | --- | --- |
 | 2026-09-15 | 项目定名 Synaxis（设计文档 v0.18）：TC-002、TC-005、TC-010、TC-012、TC-013、TC-014、TC-017、TC-018、TC-019、TC-020、TC-021、TC-024、TC-025、TC-026、TC-027 与 §1、§3 中的仓库名、包路径、品牌、原因键、通道名字面量随改名更新；用例语义不变，ID 不变 | Bearisbug |
+| 2026-09-15 | 废弃 TC-003，新增 TC-029（第 2 步阈值改为 RUN-012 基线 2,602）；废弃 TC-010，新增 TC-028（第 4 步只要求非空行不指向改名提交） | Bearisbug |
 | 2026-09-09 | 初稿，TC-001～TC-018，覆盖 REQ-001～REQ-012 | Bearisbug |
 | 2026-09-09 | TC-007 第 4 步增加 `snapshot` 目录检查（设计文档 v0.2） | Bearisbug |
 | 2026-09-09 | TC-001：前置与第 3 步按实际数据修正为 74 个 JSON、路径 `src/main/resources/data`、含子目录故改用 `find`（设计文档 v0.2.1）；第 4 步补上镜像 init 脚本 | Bearisbug |
@@ -38,7 +39,7 @@
 
 | 不测项 | 归属 |
 | --- | --- |
-| 单元 / 集成自动化（2,659 个 JUnit 用例、jcstress 场景、ArchUnit 规则本身） | 代码仓测试套件，`./gradlew check` 与 CI，策略见设计文档 §19 |
+| 单元 / 集成自动化（2,602 个 JUnit 用例、jcstress 场景、ArchUnit 规则本身） | 代码仓测试套件，`./gradlew check` 与 CI，策略见设计文档 §19 |
 | 50 连接压测（设计文档 §15 tick 预算与入站包目标） | 阶段 3 结束前专项脚本，当前无归属——已知风险 |
 | 安全渗透（畸形包模糊测试之外的攻击面） | 无归属——已知风险 |
 | Fabric 客户端模组 | 里程碑 M2 |
@@ -111,6 +112,8 @@
 
 #### `TC-003` 止血基线全量测试 — 对应 `REQ-003` · 级别: 冒烟 · 执行者: AI
 
+**已废弃，被 `TC-029` 取代**（RUN-013 暴露第 2 步阈值 2,659 是阶段 0 的数量，阶段 2 按 REQ-005 删除子系统连带删除其测试后为 2,602，RUN-008 起各轮只按 0 失败判定而未对照阈值；阈值改为 2,602 基线属语义修正故换 ID）。
+
 前置：`main` 分支，JDK 25。
 
 | # | 操作 | 预期 |
@@ -119,6 +122,17 @@
 | 2 | 统计 `build/test-results/test/*.xml` 的 `failures` 与 `errors` 属性之和 | 为 `0`，`tests` 之和 ≥ 2,659 |
 
 后置：`rm -rf $TMPDIR/minestom-test-world-*`（阶段 0 完成 REQ-012 后不再需要）。
+
+#### `TC-029` 止血基线全量测试 — 对应 `REQ-003` · 级别: 冒烟 · 执行者: AI
+
+前置：`main` 分支，JDK 25。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | `./gradlew :test --continue --rerun-tasks --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts` | stdout 含 `BUILD SUCCESSFUL` |
+| 2 | 统计 `build/test-results/test/*.xml` 的 `failures` 与 `errors` 属性之和 | 为 `0`，`tests` 之和 ≥ 2,599（根模块基线；RUN-012 记录的 2,602 含 `testing` 模块 3 个，第 1 步的 `:test` 不跑该模块。数量减少必须能追溯到设计文档登记的删除项） |
+
+后置：无。
 
 #### `TC-004` 从 tick 线程停服不死锁 — 对应 `REQ-003` · 级别: 回归 · 执行者: AI
 
@@ -234,6 +248,8 @@
 
 #### `TC-010` 命名空间改名完整 — 对应 `REQ-009` · 级别: 冒烟 · 执行者: AI
 
+**已废弃，被 `TC-028` 取代**（RUN-013 暴露第 4 步预期「5 行中无一行指向改名提交」过严：git 对无法映射到父提交的行会归到被忽略的提交，本次第 2 行的空行即如此，内容行全部正确穿透；预期改为「非空行不指向改名提交」属语义修正故换 ID）。
+
 前置：阶段 3 改名提交已合入。
 
 | # | 操作 | 预期 |
@@ -243,6 +259,20 @@
 | 3 | `git config blame.ignoreRevsFile` | 输出 `.git-blame-ignore-revs` |
 | 4 | `git blame -L 1,5 src/main/java/io/github/bearisbug/synaxis/ServerProcess.java`（包名以设计文档 §28 拍板为准） | 5 行中无一行指向改名提交 |
 | 5 | `ls src/main/resources/META-INF/native-image/` | 目录名已改为新坐标，不含 `net.minestom` |
+
+后置：无。
+
+#### `TC-028` 命名空间改名完整 — 对应 `REQ-009` · 级别: 冒烟 · 执行者: AI
+
+前置：改名提交已合入（`net.minestom.server` → `dev.gameengine` → `io.github.bearisbug.synaxis`）。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | `grep -rn "net\.minestom" --include='*.java' --include='*.kts' --include='*.toml' . \| grep -v "net\.minestom\.data" \| wc -l` | 输出 `0` |
+| 2 | `cat .git-blame-ignore-revs` | 含 `e7eac031ab` 与 `15f619f46d` 两次改名提交的完整 SHA |
+| 3 | `git config blame.ignoreRevsFile` | 输出 `.git-blame-ignore-revs` |
+| 4 | `git -c blame.markUnblamableLines=true blame -L 1,5 src/main/java/io/github/bearisbug/synaxis/ServerProcess.java` | 非空行无一行指向任一改名提交；空行允许带 `*`（git 无法把该行映射到父提交时归到被忽略的提交，属固有行为） |
+| 5 | `ls src/main/resources/META-INF/native-image/` | 目录名为 `io.github.bearisbug.synaxis`，不含 `net.minestom`、`dev.gameengine` |
 
 后置：无。
 
@@ -474,6 +504,7 @@
 | RUN-010 | 2026-09-09 | `6dc0003213`（代码与 RUN-009 相同） | AI（Claude Code，Gradle / 探针） | 复测（RUN-009：TC-023 + 冒烟级 TC-001、TC-002、TC-003、TC-010、TC-012、TC-020） | 通过 6/7 · 待人工 1 |
 | RUN-011 | 2026-09-09 | `c2f5ad80da`（REQ-014、REQ-015、命名残留清理合入，M1.5 完成） | AI（Claude Code，Gradle / 探针） | 局部（REQ-014→TC-025，REQ-015→TC-024 + 冒烟级 TC-001、TC-002、TC-003、TC-010、TC-012、TC-020；另加回归 TC-004、TC-014、TC-015、TC-017、TC-018、TC-019、TC-023） | 通过 14/15 · 待人工 1 |
 | RUN-012 | 2026-09-13 | `5dbe193b2c`（REQ-017 上游加固移植合入） | AI（Claude Code，Gradle / 探针） | 局部（REQ-017→TC-026、TC-027 + 冒烟级 TC-001、TC-002、TC-003、TC-010、TC-012、TC-020；另加回归 TC-004、TC-014、TC-015、TC-018、TC-019、TC-023） | 通过 14/15 · 待人工 1 |
+| RUN-013 | 2026-09-15 | `15f619f46d`（项目定名 Synaxis 改名提交） | AI（Claude Code，Gradle / 探针） | 局部（改名字面量→TC-002、TC-010、TC-012、TC-014、TC-018、TC-019、TC-020、TC-021、TC-024、TC-025、TC-026、TC-027 + 冒烟级 TC-001、TC-003；本轮新启用的 TC-028、TC-029 一并执行） | 通过 12/16 · 失败 2 · 待人工 1 · 跳过 1 |
 
 明细（仅登非「通过」项）：
 
@@ -548,6 +579,13 @@ TC-002 证据：`docs/test-runs/RUN-002/tc-002.txt`（5 步实际输出）（2,6
 | RUN-011 | TC-012 | 待人工 | 需原版客户端 | 人工收口轮 |
 
 | RUN-012 | TC-012 | 待人工 | 需原版客户端 | 人工收口轮 |
+
+| RUN-013 | TC-003 | 失败 | 第 2 步 `tests` 之和 2,599 < 阈值 2,659，0 失败 0 错误（证据 `docs/test-runs/RUN-013/tc-003.txt`）；阈值是阶段 0 的数量，REQ-005 删除子系统后已不适用 | 预期过时：废弃 TC-003，改 TC-029（根模块基线 2,599），TC-029 本轮通过 |
+| RUN-013 | TC-010 | 失败 | 第 4 步 5 行中第 2 行（空行）指向改名提交 `15f619f46d`：git 无法把该行映射到父提交，内容行全部穿透（证据 `docs/test-runs/RUN-013/static-checks.txt`） | 预期过严：废弃 TC-010，改 TC-028（非空行不指向改名提交），TC-028 本轮通过 |
+| RUN-013 | TC-012 | 待人工 | 需原版客户端；品牌已改为 `synaxis`（smoke 日志），`synaxis:main` 探针往返见 `docs/test-runs/RUN-013/echo.txt` | 人工收口轮 |
+| RUN-013 | TC-021 | 跳过 | 边缘级；本次只改了仓库名字面量，CI 门禁逻辑未动，`main` 上改名提交的 CI 结果作为旁证（见证据段） | 下次全量轮 |
+
+RUN-013 证据：`docs/test-runs/RUN-013/`（`static-checks.txt`：TC-001 第 1～3 步、TC-002 五步、TC-010 五步与 TC-028 第 4 步、TC-020 第 3～5 步、TC-024 第 1、2、4 步、TC-025 第 1、2 步；`tc-001-offline.txt`：离线 `check` 通过；`tc-003.txt`：`:test --rerun-tasks` 根模块 2,599 测试 0 失败；`tc-020-registry.txt`：注册表 9,063 字节与基线一致；`tc-020-check.txt`：`check` 通过；`tc-024-arch.txt`：ArchitectureTest 通过，临时加 `coordinate→entity` 导入后失败于 `lowerLevelPackagesDoNotDependOnTheRestOfTheEngine`，撤销后 `src` 干净；`tc-025.txt`：两个测试类通过，启动日志含 `ServerConfig[` 与 `JvmFlags[`；`tc-014.txt`：775 / 777 均 `synaxis:unsupported-version`，776 `LoginSuccess`；`tc-019.txt` / `tc-019-holder.txt`：抢跑得 `synaxis:protocol-error`，holder 2 次 KeepAlive 往返、退出码 0；`tc-027-*.txt`：零长帧 `synaxis:protocol-error`、深递归退出码 0 且 2 次 KeepAlive、再登成功，服务端无 `StackOverflowError`；`tc-026-*.txt`：两次 `Disconnect reason=synaxis:protocol-error`，再登成功；`tc-018*.txt`：3 个探针均收到 `synaxis:server-stopping`，进程 1 秒内退出码 0；`echo.txt`：`synaxis:main` 往返 `ping`；`smoke-server.log`：3 行 `WARN` 均带 `connection_id`，堆栈行 0；探针用 `.venv/bin/python`）。GitHub `Bearisbug/synaxis` 上 `15f619f46d` 的 `CI` 与 `Concurrency` 工作流均 success。通过项：TC-001、TC-002、TC-014、TC-018、TC-019、TC-020、TC-024、TC-025、TC-026、TC-027、TC-028、TC-029。
 
 RUN-012 证据：`docs/test-runs/RUN-012/`（`tc-003.txt`：干净 `check --rerun-tasks` 2,602 测试 0 失败；`tc-026-alloc.txt` / `tc-026-nbt.txt`：两次 `Disconnect reason=engine:protocol-error`，`tc-026-login.txt` 再登成功；`tc-027-zero.txt`：`engine:protocol-error`，`tc-027-deep.txt`：退出码 0 且收到 4 次 KeepAlive，`tc-027-login.txt` 再登成功，服务端无 `StackOverflowError`；`smoke-server.log`：3 行 `WARN` 均带 `connection_id`，堆栈行 0；`static-checks.txt`：TC-001 四步含离线 `check`、TC-002、TC-010、TC-020 第 3～5 步、TC-023 第 1 步；`tc-020-registry.txt`：9,063 字节一致；`tc-014.txt`、`tc-019*.txt`、`tc-018-*.txt`、`echo.txt`、`tc-015.txt`）。通过项：TC-001、TC-002、TC-003、TC-004、TC-010、TC-014、TC-015、TC-018、TC-019、TC-020、TC-023、TC-026、TC-027。
 

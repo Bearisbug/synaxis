@@ -1,0 +1,15 @@
+probe target=127.0.0.1:25565 protocol=776 command=premature-finish
+sent Handshake protocol=776 intent=login
+sent LoginStart username=probe
+recv SetCompressionPacket
+     compression threshold=256
+recv LoginSuccessPacket
+     LoginSuccess username=probe uuid=a0d7d0d3-bb61-3352-b332-52bfa31d6c0e
+sent LoginAcknowledged
+sent FinishConfiguration (premature, server has not finished configuration)
+recv PluginMessagePacket
+recv SelectKnownPacksPacket
+recv UpdateEnabledFeaturesPacket
+recv Disconnect reason=synaxis:protocol-error
+exit code: 0
+exit=0

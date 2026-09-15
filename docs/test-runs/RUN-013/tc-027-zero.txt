@@ -1,0 +1,47 @@
+probe target=127.0.0.1:25565 protocol=776 command=zero-frame
+sent Handshake protocol=776 intent=login
+sent LoginStart username=probe
+recv SetCompressionPacket
+     compression threshold=256
+recv LoginSuccessPacket
+     LoginSuccess username=probe uuid=a0d7d0d3-bb61-3352-b332-52bfa31d6c0e
+sent LoginAcknowledged
+recv PluginMessagePacket
+recv SelectKnownPacksPacket
+sent KnownPacks entries=1
+recv UpdateEnabledFeaturesPacket
+recv RegistryDataPacket
+recv RegistryDataPacket
+recv RegistryDataPacket
+recv RegistryDataPacket
+recv RegistryDataPacket
+recv RegistryDataPacket
+recv RegistryDataPacket
+recv RegistryDataPacket
+recv RegistryDataPacket
+recv RegistryDataPacket
+recv RegistryDataPacket
+recv RegistryDataPacket
+recv RegistryDataPacket
+recv RegistryDataPacket
+recv RegistryDataPacket
+recv RegistryDataPacket
+recv RegistryDataPacket
+recv RegistryDataPacket
+recv RegistryDataPacket
+recv RegistryDataPacket
+recv RegistryDataPacket
+recv RegistryDataPacket
+recv RegistryDataPacket
+recv RegistryDataPacket
+recv RegistryDataPacket
+recv RegistryDataPacket
+recv RegistryDataPacket
+recv TagsPacket
+recv FinishConfigurationPacket
+sent FinishConfiguration
+state=play
+sent a zero length frame (single 0x00 byte)
+recv Disconnect reason=synaxis:protocol-error
+exit code: 0
+exit=0

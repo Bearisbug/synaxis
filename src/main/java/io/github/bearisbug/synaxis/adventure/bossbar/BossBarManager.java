@@ -127,6 +127,7 @@ public class BossBarManager {
         if (holders != null) {
             for (BossBarHolder holder : holders) {
                 holder.removeViewer(player);
+                this.dropIfUnused(holder);
             }
         }
     }
@@ -184,6 +185,24 @@ public class BossBarManager {
         this.playerBars.computeIfPresent(player.getUuid(), (_, holders) -> {
             holders.remove(holder);
             return holders.isEmpty() ? null : holders;
+        });
+        this.dropIfUnused(holder);
+    }
+
+    /**
+     * Forgets a holder once its last viewer is gone. Adventure boss bars are compared by identity,
+     * so holders kept past their last viewer accumulate for the lifetime of the process.
+     *
+     * @param holder the holder to drop
+     */
+    private void dropIfUnused(BossBarHolder holder) {
+        if (!holder.players.isEmpty()) return;
+        this.bars.computeIfPresent(holder.bar, (bar, current) -> {
+            // Re-checked under the map lock: a viewer may have been added since the check above,
+            // and that viewer's holder must stay reachable for updates and removal packets.
+            if (current != holder || !current.players.isEmpty()) return current;
+            bar.removeListener(this.listener);
+            return null;
         });
     }
 }

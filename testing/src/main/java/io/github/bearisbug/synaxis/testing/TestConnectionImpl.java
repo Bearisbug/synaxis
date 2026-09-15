@@ -53,12 +53,18 @@ final class TestConnectionImpl implements TestConnection {
         // Force the player through the entirety of the login process manually
         CompletableFuture<Player> future = new CompletableFuture<>();
         Thread.startVirtualThread(() -> {
-            // `isFirstConfig` is set to false in order to not block the thread
-            // waiting for known packs.
-            // The consequence is that registry packets cannot be listened to.
-            process.connection().doConfiguration(player, false);
-            process.connection().transitionConfigToPlay(player);
-            future.complete(player);
+            try {
+                // `isFirstConfig` is set to false in order to not block the thread
+                // waiting for known packs.
+                // The consequence is that registry packets cannot be listened to.
+                process.connection().doConfiguration(player, false);
+                process.connection().transitionConfigToPlay(player);
+                future.complete(player);
+            } catch (Throwable t) {
+                // The login sequence has several throwing paths; reporting them to the waiting
+                // caller is the only way out of the join below.
+                future.completeExceptionally(t);
+            }
         });
         future.join();
         playerConnection.setClientState(ConnectionState.PLAY);

@@ -1022,9 +1022,10 @@ public class Entity implements Viewable, Tickable, Schedulable, EventHandler<Ent
         this.instance = instance;
         return instance.loadOptionalChunk(spawnPosition).thenAccept(chunk -> runOwned(() -> {
             try {
-                // The entity may have been removed while the spawn chunk was loading, registering it
-                // now would leave a ghost entity that #remove can never reach again
-                if (isRemoved()) return;
+                // The entity may have been removed, or sent to another instance, while the spawn chunk
+                // was loading; registering it now would leave a ghost entity that #remove can never
+                // reach again, since it only ever unregisters from the instance the entity ended up in
+                if (isRemoved() || this.instance != instance) return;
                 Objects.requireNonNull(chunk, "Entity has been placed in an unloaded chunk!");
                 refreshCurrentChunk(chunk);
                 if (this instanceof Player player) {

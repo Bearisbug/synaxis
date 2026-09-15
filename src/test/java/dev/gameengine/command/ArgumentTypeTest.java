@@ -264,6 +264,7 @@ public class ArgumentTypeTest {
         assertArg(arg, -591.981d, "-591.981");
         assertInvalidArg(arg, "-5.5.52");
         assertInvalidArg(arg, "++2.99");
+        assertInvalidArg(arg, "0x1f");
     }
 
     @Test
@@ -281,6 +282,10 @@ public class ArgumentTypeTest {
         assertArg(arg, 2564, "2564");
         assertInvalidArg(arg, "256.4");
         assertInvalidArg(arg, "2147483648");
+        // Brigadier has no notion of a base prefix, so these are plain syntax errors
+        assertInvalidArg(arg, "0x1f");
+        assertInvalidArg(arg, "0b1010");
+        assertInvalidArg(arg, "1e3");
     }
 
     @Test

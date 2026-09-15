@@ -6,8 +6,7 @@ import dev.gameengine.network.NetworkBuffer;
 public class ArgumentInteger extends ArgumentNumber<Integer> {
 
     public ArgumentInteger(String id) {
-        super(id, ArgumentParserType.INTEGER, Integer::parseInt, Integer::parseInt,
-                NetworkBuffer.INT, Integer::compare);
+        super(id, ArgumentParserType.INTEGER, Integer::parseInt, NetworkBuffer.INT, Integer::compare);
     }
 
     @Override

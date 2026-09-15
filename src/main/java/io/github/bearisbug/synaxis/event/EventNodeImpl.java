@@ -312,6 +312,11 @@ non-sealed class EventNodeImpl<T extends Event> implements EventNode<T> {
             node.invalidateEvent(eventType);
         }
         // TODO bindings?
+        // Mapped nodes are not part of children, their listeners must be invalidated too
+        for (WeakReference<EventNodeLazyImpl<T>> mappedNodeRef : registeredMappedNode.values()) {
+            final EventNodeLazyImpl<T> mappedNode = mappedNodeRef.get();
+            if (mappedNode != null) mappedNode.invalidateEventsFor(node);
+        }
         for (EventNodeImpl<T> child : children) {
             child.invalidateEventsFor(node);
         }

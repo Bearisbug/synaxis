@@ -69,10 +69,13 @@ final class EventNodeLazyImpl<E extends Event> extends EventNodeImpl<E> {
         if (MAPPED.compareAndSet(this, false, true)) {
             synchronized (GLOBAL_CHILD_LOCK) {
                 Map registered = new WeakHashMap<>(this.holder.registeredMappedNode);
-                var previous = registered.putIfAbsent(retrieveOwner(),
-                        new WeakReference<>(EventNodeLazyImpl.class.cast(this)));
+                final Object owner = retrieveOwner();
+                final var previousRef = (WeakReference<?>) registered.get(owner);
+                // Either no entry at all, or one whose node has been collected and must be replaced
+                final boolean register = previousRef == null || previousRef.get() == null;
+                if (register) registered.put(owner, new WeakReference<>(EventNodeLazyImpl.class.cast(this)));
                 this.holder.registeredMappedNode = registered;
-                if (previous == null) invalidateEventsFor(holder);
+                if (register) invalidateEventsFor(holder);
             }
         }
     }

@@ -1,9 +1,9 @@
-module dev.gameengine.testing {
-    requires transitive dev.gameengine;
+module io.github.bearisbug.synaxis.testing {
+    requires transitive io.github.bearisbug.synaxis;
     requires org.junit.jupiter.api; // Users can bring their own version.
 
-    exports dev.gameengine.testing;
-    exports dev.gameengine.testing.util;
+    exports io.github.bearisbug.synaxis.testing;
+    exports io.github.bearisbug.synaxis.testing.util;
 
-    opens dev.gameengine.testing to org.junit.platform.commons;
+    opens io.github.bearisbug.synaxis.testing to org.junit.platform.commons;
 }

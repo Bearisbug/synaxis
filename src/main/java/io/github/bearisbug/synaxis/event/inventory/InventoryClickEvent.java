@@ -1,0 +1,84 @@
+package io.github.bearisbug.synaxis.event.inventory;
+
+import io.github.bearisbug.synaxis.entity.Player;
+import io.github.bearisbug.synaxis.event.trait.InventoryEvent;
+import io.github.bearisbug.synaxis.event.trait.PlayerInstanceEvent;
+import io.github.bearisbug.synaxis.inventory.AbstractInventory;
+import io.github.bearisbug.synaxis.inventory.click.ClickType;
+import io.github.bearisbug.synaxis.item.ItemStack;
+
+/**
+ * Called after {@link InventoryPreClickEvent}, this event cannot be cancelled and items related to the click
+ * are already moved.
+ */
+public class InventoryClickEvent implements InventoryEvent, PlayerInstanceEvent {
+
+    private final AbstractInventory inventory;
+    private final Player player;
+    private final int slot;
+    private final ClickType clickType;
+    private final ItemStack clickedItem;
+    private final ItemStack cursorItem;
+
+    public InventoryClickEvent(AbstractInventory inventory, Player player,
+                               int slot, ClickType clickType,
+                               ItemStack clicked, ItemStack cursor) {
+        this.inventory = inventory;
+        this.player = player;
+        this.slot = slot;
+        this.clickType = clickType;
+        this.clickedItem = clicked;
+        this.cursorItem = cursor;
+    }
+
+    /**
+     * Gets the player who clicked in the inventory.
+     *
+     * @return the player who clicked in the inventory
+     */
+    @Override
+    public Player getPlayer() {
+        return player;
+    }
+
+    /**
+     * Gets the clicked slot number.
+     *
+     * @return the clicked slot number
+     */
+    public int getSlot() {
+        return slot;
+    }
+
+    /**
+     * Gets the click type.
+     *
+     * @return the click type
+     */
+    public ClickType getClickType() {
+        return clickType;
+    }
+
+    /**
+     * Gets the clicked item.
+     *
+     * @return the clicked item
+     */
+    public ItemStack getClickedItem() {
+        return clickedItem;
+    }
+
+    /**
+     * Gets the item in the player cursor.
+     *
+     * @return the cursor item
+     */
+    public ItemStack getCursorItem() {
+        return cursorItem;
+    }
+
+    @Override
+    public AbstractInventory getInventory() {
+        return inventory;
+    }
+}

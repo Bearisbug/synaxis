@@ -1,1 +1,1 @@
-dev.gameengine.adventure.provider.EngineGsonComponentSerializerProvider
+io.github.bearisbug.synaxis.adventure.provider.EngineGsonComponentSerializerProvider

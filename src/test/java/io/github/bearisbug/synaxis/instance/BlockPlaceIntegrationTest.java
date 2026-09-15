@@ -1,0 +1,102 @@
+package io.github.bearisbug.synaxis.instance;
+
+import io.github.bearisbug.synaxis.component.DataComponents;
+import io.github.bearisbug.synaxis.coordinate.Pos;
+import io.github.bearisbug.synaxis.entity.PlayerHand;
+import io.github.bearisbug.synaxis.event.EventFilter;
+import io.github.bearisbug.synaxis.event.player.PlayerBlockPlaceEvent;
+import io.github.bearisbug.synaxis.instance.block.Block;
+import io.github.bearisbug.synaxis.coordinate.BlockFace;
+import io.github.bearisbug.synaxis.item.ItemStack;
+import io.github.bearisbug.synaxis.item.Material;
+import io.github.bearisbug.synaxis.item.component.ItemBlockState;
+import io.github.bearisbug.synaxis.listener.BlockPlacementListener;
+import io.github.bearisbug.synaxis.network.packet.client.play.ClientPlayerBlockPlacementPacket;
+import io.github.bearisbug.synaxis.testing.Env;
+import io.github.bearisbug.synaxis.testing.EnvTest;
+import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+@EnvTest
+public class BlockPlaceIntegrationTest {
+
+    @Test
+    void testPlacementOutOfLimit(Env env) {
+        Instance instance = env.createFlatInstance();
+        assertDoesNotThrow(() -> instance.setBlock(0, instance.getCachedDimensionType().maxY() + 1, 0, Block.STONE));
+        assertDoesNotThrow(() -> instance.setBlock(0, instance.getCachedDimensionType().minY() - 1, 0, Block.STONE));
+    }
+
+    @Test
+    void testPlacementOutOfBorder(Env env) {
+        Instance instance = env.createFlatInstance();
+        instance.setWorldBorder(WorldBorder.defaultBorder().withDiameter(1));
+        var player = env.createPlayer(instance, new Pos(0, 40, 0));
+        player.setItemInHand(PlayerHand.MAIN, ItemStack.of(Material.STONE, 5));
+
+        // Should be air, then we place (this is outside the border)
+        assertEquals(Block.AIR, instance.getBlock(3, 40, 0));
+        var placePacket = new ClientPlayerBlockPlacementPacket(PlayerHand.MAIN, new Pos(3, 39, 0), BlockFace.TOP, 0.5f, 0.5f, 0.5f, false, false, 1);
+        BlockPlacementListener.listener(placePacket, player);
+
+        // Should still be air
+        var placedBlock = instance.getBlock(3, 40, 0);
+        assertEquals(Block.AIR, placedBlock);
+    }
+
+    @Test
+    void testPlacementAtMinus64(Env env) {
+        Instance instance = env.createFlatInstance();
+        var player = env.createPlayer(instance, new Pos(0, -64, 0));
+        player.setItemInHand(PlayerHand.MAIN, ItemStack.of(Material.STONE, 5));
+        env.tick(); // World border tick to update distance
+
+        // Should be air, then we place
+        assertEquals(Block.AIR, instance.getBlock(3, -64, 0));
+        var placePacket = new ClientPlayerBlockPlacementPacket(PlayerHand.MAIN, new Pos(3, -64, 0), BlockFace.TOP, 0.5f, 0.5f, 0.5f, false, false, 1);
+        BlockPlacementListener.listener(placePacket, player);
+
+        // Should be stone.
+        var placedBlock = instance.getBlock(3, -64, 0);
+        assertEquals(Block.STONE, placedBlock);
+    }
+
+    @Test
+    void testPlaceNoUpdateWithItemBlockStateComponent(Env env) {
+        Instance instance = env.createFlatInstance();
+        var player = env.createPlayer(instance, new Pos(0, -64, 0));
+        player.setItemInHand(PlayerHand.MAIN, ItemStack.of(Material.STONE_STAIRS, 5)
+                .with(DataComponents.BLOCK_STATE, new ItemBlockState("facing", "west")));
+
+        var placeCollector = env.trackEvent(PlayerBlockPlaceEvent.class, EventFilter.PLAYER, player);
+
+        var placePacket = new ClientPlayerBlockPlacementPacket(PlayerHand.MAIN, new Pos(3, -64, 0), BlockFace.TOP, 0.5f, 0.5f, 0.5f, false, false, 1);
+        BlockPlacementListener.listener(placePacket, player);
+
+        // Should default to no updates because of the BLOCK_STATE component
+        placeCollector.assertSingle(event -> assertFalse(event.shouldDoBlockUpdates()));
+    }
+
+    @Test
+    void testPlaceNoUpdateBlockStateComponentBeeHiveRegression(Env env) {
+        // We originally compared to an empty block state but some blocks (like bee hive)
+        // have a default value, so we only should trigger no updates if the block state is
+        // different from the default.
+        Instance instance = env.createFlatInstance();
+        var player = env.createPlayer(instance, new Pos(0, -64, 0));
+        player.setItemInHand(PlayerHand.MAIN, ItemStack.of(Material.BEEHIVE, 5));
+
+        var placeCollector = env.trackEvent(PlayerBlockPlaceEvent.class, EventFilter.PLAYER, player);
+
+        var placePacket = new ClientPlayerBlockPlacementPacket(PlayerHand.MAIN, new Pos(3, -64, 0), BlockFace.TOP, 0.5f, 0.5f, 0.5f, false, false, 1);
+        BlockPlacementListener.listener(placePacket, player);
+
+        // Should have updates because we only have the default BLOCK_STATE value
+        placeCollector.assertSingle(event -> assertTrue(event.shouldDoBlockUpdates()));
+    }
+
+}

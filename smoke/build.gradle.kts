@@ -1,5 +1,5 @@
 plugins {
-    id("gameengine.java-binary")
+    id("synaxis.java-binary")
 }
 
 dependencies {
@@ -10,8 +10,8 @@ dependencies {
 }
 
 application {
-    mainClass.set("dev.gameengine.smoke.Main")
-    mainModule.set("dev.gameengine.smoke")
+    mainClass.set("io.github.bearisbug.synaxis.smoke.Main")
+    mainModule.set("io.github.bearisbug.synaxis.smoke")
 }
 
 tasks.named<JavaExec>("run") {

@@ -1,0 +1,82 @@
+package io.github.bearisbug.synaxis.collision;
+
+import io.github.bearisbug.synaxis.coordinate.Vec;
+import io.github.bearisbug.synaxis.entity.Entity;
+import io.github.bearisbug.synaxis.entity.EntityType;
+import io.github.bearisbug.synaxis.testing.Env;
+import io.github.bearisbug.synaxis.testing.EnvTest;
+import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+@EnvTest
+public class EntityEntityCollisionIntegrationTest {
+    @Test
+    public void entitySingleCollisionTest(Env env) {
+        var instance = env.createFlatInstance();
+
+        for (int i = -2; i <= 2; ++i)
+            for (int j = -2; j <= 2; ++j)
+                instance.loadChunk(i, j).join();
+
+        var movingEntity = new Entity(EntityType.ZOMBIE);
+        var stillEntity = new Entity(EntityType.ZOMBIE);
+        var doNotHitEntity = new Entity(EntityType.ZOMBIE);
+
+        movingEntity.setInstance(instance, new Vec(0, 42, 0)).join();
+        stillEntity.setInstance(instance, new Vec(0, 42, 1)).join();
+        doNotHitEntity.setInstance(instance, new Vec(0, 42, 2)).join();
+
+        var result = CollisionUtils.checkEntityCollisions(movingEntity, new Vec(0, 0, 1), 1.51, entity -> entity != movingEntity, null);
+
+        assertEquals(1, result.size());
+        assertEquals(stillEntity, result.iterator().next().entity());
+    }
+
+    @Test
+    public void entityMultipleCollisionTest(Env env) {
+        var instance = env.createFlatInstance();
+
+        for (int i = -2; i <= 2; ++i)
+            for (int j = -2; j <= 2; ++j)
+                instance.loadChunk(i, j).join();
+
+        var movingEntity = new Entity(EntityType.ZOMBIE);
+        var stillEntity = new Entity(EntityType.ZOMBIE);
+        var stillEntity2 = new Entity(EntityType.ZOMBIE);
+        var doNotHitEntity = new Entity(EntityType.ZOMBIE);
+
+        movingEntity.setInstance(instance, new Vec(0, 42, 0)).join();
+        stillEntity.setInstance(instance, new Vec(0, 42, 1)).join();
+        stillEntity2.setInstance(instance, new Vec(0, 42, 2)).join();
+        doNotHitEntity.setInstance(instance, new Vec(0, 42, 3)).join();
+
+        var result = CollisionUtils.checkEntityCollisions(movingEntity, new Vec(0, 0, 2), 1.51, entity -> entity != movingEntity, null);
+
+        assertEquals(2, result.size());
+    }
+
+    @Test
+    public void entityCollisionDetailsTest(Env env) {
+        var instance = env.createFlatInstance();
+        instance.loadChunk(0, 0).join();
+
+        var movingEntity = new Entity(EntityType.ZOMBIE);
+        var stillEntity = new Entity(EntityType.ZOMBIE);
+        movingEntity.setInstance(instance, new Vec(0, 42, 0)).join();
+        stillEntity.setInstance(instance, new Vec(0, 42, 2)).join();
+
+        var results = CollisionUtils.checkEntityCollisions(
+                movingEntity, new Vec(0, 0, 4), 1.51, entity -> entity != movingEntity, null);
+
+        assertEquals(1, results.size());
+        final var result = results.getFirst();
+        final double expectedPercentage = 0.35 * 0.99999;
+        final var expectedPoint = new Vec(0, 42, 4 * expectedPercentage);
+        assertEquals(expectedPercentage, result.percentage());
+        assertTrue(expectedPoint.samePoint(result.collisionPoint()));
+        assertEquals(expectedPoint, result.direction());
+        assertEquals(stillEntity, result.entity());
+    }
+}

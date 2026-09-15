@@ -1,4 +1,4 @@
-# game-engine 运行手册
+# Synaxis 运行手册
 
 面向一台**只装了 git 与 Homebrew 的 macOS 机器**：照本文从上到下执行，就能拿到一个可构建、可测试、可启动的引擎。每一步都是可直接粘贴的命令，不需要问任何人。
 
@@ -10,7 +10,7 @@
 
 ### 1.1 安装 JDK 25
 
-引擎钉死 JDK 25（`build-src/src/main/kotlin/gameengine.java-library.gradle.kts` 里的 toolchain），低版本编译不过。
+引擎钉死 JDK 25（`build-src/src/main/kotlin/synaxis.java-library.gradle.kts` 里的 toolchain），低版本编译不过。
 
 ```bash
 brew install openjdk@25
@@ -44,8 +44,8 @@ Gradle 不需要单独安装，仓库自带 wrapper（`./gradlew`，版本钉在
 ### 1.3 克隆仓库
 
 ```bash
-git clone https://github.com/Bearisbug/game-engine.git
-cd game-engine
+git clone https://github.com/Bearisbug/synaxis.git
+cd synaxis
 ```
 
 ---
@@ -107,7 +107,7 @@ ls -d "$TMPDIR"minestom-* 2>/dev/null | wc -l   # 期望 0
 ### 3.3 只跑单个测试类
 
 ```bash
-./gradlew :test --tests 'dev.gameengine.instance.UnloadChunkIntegrationTest' \
+./gradlew :test --tests 'io.github.bearisbug.synaxis.instance.UnloadChunkIntegrationTest' \
   --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts
 ```
 
@@ -118,7 +118,7 @@ ls -d "$TMPDIR"minestom-* 2>/dev/null | wc -l   # 期望 0
 ./gradlew :smoke:run --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts
 ```
 
-`smoke` 是最小启动器：起进程、开一个平坦世界、注册 `game:main` 自定义负载通道的 echo 处理器。监听 `127.0.0.1:25565`，离线模式，任意用户名可进。
+`smoke` 是最小启动器：起进程、开一个平坦世界、注册 `synaxis:main` 自定义负载通道的 echo 处理器。监听 `127.0.0.1:25565`，离线模式，任意用户名可进。
 
 另开一个终端探活：
 
@@ -146,7 +146,7 @@ unset JAVA_TOOL_OPTIONS
 ## 4. 分支策略
 
 - **`main` 是唯一主干**，永远可构建、可测试。
-- 本仓库是 Minestom 的**硬 fork**，已经和上游断开：没有 `upstream` 远程，不 rebase 上游，不接受上游 PR。`git remote -v` 只应该看到 `origin`（`https://github.com/Bearisbug/game-engine.git`）。
+- 本仓库是 Minestom 的**硬 fork**，已经和上游断开：没有 `upstream` 远程，不 rebase 上游，不接受上游 PR。`git remote -v` 只应该看到 `origin`（`https://github.com/Bearisbug/synaxis.git`）。
 - 干活开功能分支（例如 `freeze-data`、`fix/entity`），完成后合回 `main`。
 - 合并前必须本地 `./gradlew check` 全绿（§3.1）。
 - commit message 只描述代码变更本身，**禁止任何 AI 署名 / co-author trailer**（见根目录 `CLAUDE.md`）。
@@ -158,7 +158,7 @@ unset JAVA_TOOL_OPTIONS
 
 | 路径 | 内容 |
 | --- | --- |
-| `src/main/java/` | 引擎主源码，包名 `dev.gameengine`（占位名，REQ-009 已改；再改一次同样是一次性脚本操作） |
+| `src/main/java/` | 引擎主源码，包名 `io.github.bearisbug.synaxis`（2026-09-15 定名；两次改名提交都登记在 `.git-blame-ignore-revs`） |
 | `src/main/java/.../registry`、`EntityType`、`Block` 等常量表 | 原为生成物，自 REQ-008 起作为普通源码维护；文件头有说明 |
 | `src/main/resources/data/` | **vendoring 的注册表数据**：39 个 JSON + `opaque/` 下 23 个黄金 NBT（REQ-007）；运行时由 `RegistryData.loadRegistryFile` 按 `/data/<路径>` 从 classpath 读取 |
 | `src/main/resources/META-INF/native-image/` | GraalVM 可达性元数据（资源 glob 指向 `data/*.json`） |

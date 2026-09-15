@@ -1,5 +1,5 @@
 plugins {
-    id("gameengine.java-library")
+    id("synaxis.java-library")
     alias(libs.plugins.jcstress.plugin)
 }
 

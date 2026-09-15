@@ -1,0 +1,49 @@
+package io.github.bearisbug.synaxis.thread;
+
+import io.github.bearisbug.synaxis.entity.Entity;
+import io.github.bearisbug.synaxis.entity.EntityType;
+import org.junit.jupiter.api.Test;
+
+import java.util.concurrent.atomic.AtomicReference;
+
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+
+public class AcquirableTest {
+
+    private static void rethrow(Throwable throwable) {
+        throw new AssertionError("Dispatcher reported an exception", throwable);
+    }
+
+    @Test
+    public void assignation() {
+        AtomicReference<TickThread> tickThread = new AtomicReference<>();
+        Entity entity = new Entity(EntityType.ZOMBIE) {
+            @Override
+            public void tick(long time) {
+                super.tick(time);
+                tickThread.set(acquirable().assignedThread());
+            }
+        };
+        Object first = new Object();
+        Object second = new Object();
+
+        ThreadDispatcher<Object, Entity> dispatcher = ThreadDispatcher.dispatcher(ThreadProvider.counter(), 2, AcquirableTest::rethrow);
+        dispatcher.start();
+        dispatcher.createPartition(first);
+        dispatcher.createPartition(second);
+
+        dispatcher.updateElement(entity, first);
+        dispatcher.updateAndAwait(System.nanoTime());
+        TickThread firstThread = tickThread.get();
+        assertNotNull(firstThread);
+
+        tickThread.set(null);
+        dispatcher.updateElement(entity, second);
+        dispatcher.updateAndAwait(System.nanoTime());
+        TickThread secondThread = tickThread.get();
+        assertNotNull(secondThread);
+
+        assertNotEquals(firstThread, secondThread);
+    }
+}

@@ -1,4 +1,4 @@
-game-engine
+Synaxis
 Copyright 2026 Bearisbug
 
 This product is derived from Minestom (https://github.com/Minestom/Minestom),
@@ -16,7 +16,7 @@ modified. The changes include, but are not limited to:
 
   - removal of the vanilla gameplay subsystems and of the upstream code
     generation chain;
-  - renaming of the package namespace net.minestom.server to dev.gameengine;
+  - renaming of the package namespace net.minestom.server to io.github.bearisbug.synaxis;
   - pinning the supported Minecraft version to 26.2 (protocol 776);
   - replacement of the build, publishing and verification setup.
 

@@ -1,0 +1,79 @@
+package io.github.bearisbug.synaxis.network.socket;
+
+import io.github.bearisbug.synaxis.ServerProcess;
+import io.github.bearisbug.synaxis.network.packet.PacketVanilla;
+import io.github.bearisbug.synaxis.testing.TestUtils;
+import org.junit.jupiter.api.Test;
+
+import java.io.IOException;
+import java.net.InetSocketAddress;
+import java.net.UnixDomainSocketAddress;
+import java.nio.file.Files;
+
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
+
+public class ServerAddressTest {
+
+    @Test
+    public void inetAddressTest() throws IOException {
+        // These like to fail on github actions
+        assumeTrue(System.getenv("GITHUB_ACTIONS") == null);
+
+        int port = TestUtils.findFreePort();
+        InetSocketAddress address = new InetSocketAddress("localhost", port);
+        var server = new Server(ServerProcess.of(), PacketVanilla.CLIENT_PACKET_PARSER);
+        server.init(address);
+        assertSame(address, server.socketAddress());
+        assertEquals(address.getHostString(), server.getAddress());
+        assertEquals(port, server.getPort());
+
+        assertDoesNotThrow(server::start);
+        assertDoesNotThrow(server::stop);
+    }
+
+    @Test
+    public void inetAddressDynamicTest() throws IOException {
+        // These like to fail on github actions
+        assumeTrue(System.getenv("GITHUB_ACTIONS") == null);
+
+        InetSocketAddress address = new InetSocketAddress("localhost", 0);
+        var server = new Server(ServerProcess.of(), PacketVanilla.CLIENT_PACKET_PARSER);
+        server.init(address);
+        assertSame(address, server.socketAddress());
+        assertEquals(address.getHostString(), server.getAddress());
+        assertNotEquals(address.getPort(), server.getPort());
+
+        assertDoesNotThrow(server::start);
+        assertDoesNotThrow(server::stop);
+    }
+
+    @Test
+    public void unixAddressTest() throws IOException {
+        // These like to fail on github actions
+        assumeTrue(System.getenv("GITHUB_ACTIONS") == null);
+
+        UnixDomainSocketAddress address = UnixDomainSocketAddress.of("synaxis.sock");
+        var server = new Server(ServerProcess.of(), PacketVanilla.CLIENT_PACKET_PARSER);
+        server.init(address);
+        assertTrue(Files.exists(address.getPath()));
+        assertSame(address, server.socketAddress());
+        assertEquals("unix://" + address.getPath(), server.getAddress());
+        assertEquals(0, server.getPort());
+
+        assertDoesNotThrow(server::start);
+        assertDoesNotThrow(server::stop);
+        assertFalse(Files.exists(address.getPath()), "The socket file should be deleted");
+    }
+
+    @Test
+    public void noAddressTest() {
+        var server = new Server(ServerProcess.of(), PacketVanilla.CLIENT_PACKET_PARSER);
+        assertDoesNotThrow(server::stop);
+    }
+}

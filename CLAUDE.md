@@ -1,4 +1,4 @@
-# game-engine
+# Synaxis
 
 由 Minestom（Apache-2.0，起点 commit `16842f1954`）硬 fork 而来、独立维护的 Minecraft Java 版服务端引擎。不跟随上游，Minecraft 版本钉死 26.2（协议 776）。不含任何游戏玩法；游戏规则在 M2 起的游戏模块里，引擎禁止依赖游戏。
 

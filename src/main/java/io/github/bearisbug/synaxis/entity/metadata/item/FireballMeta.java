@@ -1,0 +1,48 @@
+package io.github.bearisbug.synaxis.entity.metadata.item;
+
+import io.github.bearisbug.synaxis.entity.Entity;
+import io.github.bearisbug.synaxis.entity.MetadataDef;
+import io.github.bearisbug.synaxis.entity.MetadataHolder;
+import io.github.bearisbug.synaxis.entity.metadata.EntityMeta;
+import io.github.bearisbug.synaxis.entity.metadata.ObjectDataProvider;
+import io.github.bearisbug.synaxis.entity.metadata.projectile.ProjectileMeta;
+import io.github.bearisbug.synaxis.item.ItemStack;
+import org.jetbrains.annotations.Nullable;
+
+public class FireballMeta extends EntityMeta implements ObjectDataProvider, ProjectileMeta {
+    private Entity shooter;
+
+    public FireballMeta(@Nullable Entity entity, MetadataHolder metadata) {
+        super(entity, metadata);
+    }
+
+    public ItemStack getItem() {
+        return metadata.get(MetadataDef.Fireball.ITEM);
+    }
+
+    public void setItem(ItemStack value) {
+        metadata.set(MetadataDef.Fireball.ITEM, value);
+    }
+
+    @Override
+    @Nullable
+    public Entity getShooter() {
+        return shooter;
+    }
+
+    @Override
+    public void setShooter(@Nullable Entity shooter) {
+        this.shooter = shooter;
+    }
+
+    @Override
+    public int getObjectData() {
+        return this.shooter == null ? 0 : this.shooter.getEntityId();
+    }
+
+    @Override
+    public boolean requiresVelocityPacketAtSpawn() {
+        return true;
+    }
+
+}

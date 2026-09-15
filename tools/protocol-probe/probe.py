@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-"""Minimal Minecraft 26.2 (protocol 776) client used to smoke test game-engine.
+"""Minimal Minecraft 26.2 (protocol 776) client used to smoke test synaxis.
 
 Standard library only, no third party packages.
 
 Packet ids are never hardcoded: they are the index of the packet class inside the
-registry lists of ``src/main/java/dev/gameengine/network/packet/PacketVanilla.java``
+registry lists of ``src/main/java/io/github/bearisbug/synaxis/network/packet/PacketVanilla.java``
 (see ``PacketRegistryImpl``), and data component ids are the declaration order of
-``src/main/java/dev/gameengine/component/DataComponents.java``. Both files are parsed
+``src/main/java/io/github/bearisbug/synaxis/component/DataComponents.java``. Both files are parsed
 at start-up, so the probe follows the repository instead of a remembered protocol dump.
 
 Subcommands, see docs/TEST.md section 3:
@@ -19,7 +19,7 @@ Subcommands, see docs/TEST.md section 3:
     nbt-bomb [--mib N]            custom click action whose NBT decodes to about N MiB of objects
     deep-recursion [--depth N]    creative set slot packet with N nested potion effects; a
                                   non-creative player has the packet dropped before decoding
-    echo --payload TEXT           round trip TEXT over the game:main custom payload channel
+    echo --payload TEXT           round trip TEXT over the synaxis:main custom payload channel
     record-registry --out FILE    dump every received RegistryData packet to FILE
 """
 
@@ -42,8 +42,8 @@ PROTOCOL_VERSION = 776
 COST_PER_EMPTY_COMPOUND = 52
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-PACKET_VANILLA = REPO_ROOT / "src/main/java/dev/gameengine/network/packet/PacketVanilla.java"
-DATA_COMPONENTS = REPO_ROOT / "src/main/java/dev/gameengine/component/DataComponents.java"
+PACKET_VANILLA = REPO_ROOT / "src/main/java/io/github/bearisbug/synaxis/network/packet/PacketVanilla.java"
+DATA_COMPONENTS = REPO_ROOT / "src/main/java/io/github/bearisbug/synaxis/component/DataComponents.java"
 
 
 # --------------------------------------------------------------------------------------
@@ -593,7 +593,7 @@ def cmd_premature_finish(args: argparse.Namespace) -> int:
         try:
             session.pump(args.timeout)
         except Disconnected as disconnected:
-            return 0 if disconnected.reason == "engine:protocol-error" else 1
+            return 0 if disconnected.reason == "synaxis:protocol-error" else 1
         except ClosedByServer:
             session.log("connection closed without a disconnect packet")
             return 1
@@ -610,7 +610,7 @@ def cmd_bad_version(args: argparse.Namespace) -> int:
             session.handshake(args.protocol)
             session.pump(args.timeout)
         except Disconnected as disconnected:
-            if disconnected.packet == "LoginDisconnect" and disconnected.reason == "engine:unsupported-version":
+            if disconnected.packet == "LoginDisconnect" and disconnected.reason == "synaxis:unsupported-version":
                 return 0
             return 1
         except ClosedByServer:
@@ -631,7 +631,7 @@ def cmd_zero_frame(args: argparse.Namespace) -> int:
         try:
             session.pump(args.timeout)
         except Disconnected as disconnected:
-            return 0 if disconnected.reason == "engine:protocol-error" else 1
+            return 0 if disconnected.reason == "synaxis:protocol-error" else 1
         except ClosedByServer:
             session.log("connection closed without a disconnect packet")
             return 1
@@ -650,7 +650,7 @@ def cmd_alloc_bomb(args: argparse.Namespace) -> int:
         try:
             session.pump(args.timeout)
         except Disconnected as disconnected:
-            return 0 if disconnected.reason == "engine:protocol-error" else 1
+            return 0 if disconnected.reason == "synaxis:protocol-error" else 1
         except ClosedByServer:
             session.log("connection closed by the server")
             return 0
@@ -671,7 +671,7 @@ def cmd_nbt_bomb(args: argparse.Namespace) -> int:
         try:
             session.pump(args.timeout)
         except Disconnected as disconnected:
-            return 0 if disconnected.reason == "engine:protocol-error" else 1
+            return 0 if disconnected.reason == "synaxis:protocol-error" else 1
         except ClosedByServer:
             session.log("connection closed by the server")
             return 0
@@ -690,7 +690,7 @@ def cmd_deep_recursion(args: argparse.Namespace) -> int:
         try:
             session.pump(args.timeout)
         except Disconnected as disconnected:
-            return 0 if disconnected.reason == "engine:protocol-error" else 1
+            return 0 if disconnected.reason == "synaxis:protocol-error" else 1
         except ClosedByServer:
             session.log("connection closed by the server")
             return 0
@@ -707,8 +707,8 @@ def cmd_echo(args: argparse.Namespace) -> int:
     try:
         session.enter_play()
         payload = args.payload.encode("utf-8")
-        session.connection.send("ClientPluginMessagePacket", plugin_message_payload("game:main", payload))
-        session.log(f"sent CustomPayload game:main bytes={len(payload)}")
+        session.connection.send("ClientPluginMessagePacket", plugin_message_payload("synaxis:main", payload))
+        session.log(f"sent CustomPayload synaxis:main bytes={len(payload)}")
         deadline = time.monotonic() + args.timeout
         session.connection.socket.settimeout(0.5)
         while time.monotonic() < deadline:
@@ -721,7 +721,7 @@ def cmd_echo(args: argparse.Namespace) -> int:
             elif packet == "PluginMessagePacket":
                 channel = reader.string()
                 data = reader.raw(reader.remaining())
-                if channel != "game:main":
+                if channel != "synaxis:main":
                     continue
                 session.log(f"     echo channel={channel} payload={data.decode('utf-8', 'replace')}")
                 if data == payload:
@@ -787,7 +787,7 @@ def build_parser() -> argparse.ArgumentParser:
     deep.add_argument("--depth", type=int, default=200)
     deep.set_defaults(run=cmd_deep_recursion)
 
-    echo = subparsers.add_parser("echo", help="round trip a payload over game:main")
+    echo = subparsers.add_parser("echo", help="round trip a payload over synaxis:main")
     echo.add_argument("--payload", required=True)
     echo.set_defaults(run=cmd_echo)
 

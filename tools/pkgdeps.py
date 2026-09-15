@@ -2,7 +2,7 @@
 """Top level package dependency matrix for the engine sources.
 
 Reads every ``.java`` file under the given source roots, folds each
-``import dev.gameengine.…`` statement onto the top level package it belongs to
+``import io.github.bearisbug.synaxis.…`` statement onto the top level package it belongs to
 and prints the resulting matrix, the fan in / fan out table and — the number the
 layering gate cares about — the edges that leave the lower layer.
 
@@ -12,7 +12,7 @@ Usage::
     python3 tools/pkgdeps.py --detail        # also list the offending files
 
 The lower layer is the same set the ArchUnit rule in
-``src/test/java/dev/gameengine/ArchitectureTest.java`` enforces; keep the two in
+``src/test/java/io/github/bearisbug/synaxis/ArchitectureTest.java`` enforces; keep the two in
 sync. Standard library only, no virtualenv needed.
 """
 
@@ -24,13 +24,13 @@ import pathlib
 import re
 import sys
 
-ROOT_PACKAGE = "dev.gameengine"
+ROOT_PACKAGE = "io.github.bearisbug.synaxis"
 
 # Classes that sit directly in the root package and therefore fold onto <root>,
 # but that carry no engine dependency of their own, so the lower layer may use
 # them. Keep in sync with ArchitectureTest#LOWER_LEVEL_ROOT_CLASSES.
 LOWER_LEVEL_ROOT_CLASSES = frozenset({
-    "dev.gameengine.JvmFlags",
+    "io.github.bearisbug.synaxis.JvmFlags",
 })
 
 LOWER_LEVEL_PACKAGES = (

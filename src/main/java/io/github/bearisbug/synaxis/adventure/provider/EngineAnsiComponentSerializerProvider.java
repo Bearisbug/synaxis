@@ -1,0 +1,20 @@
+package io.github.bearisbug.synaxis.adventure.provider;
+
+import net.kyori.adventure.text.serializer.ansi.ANSIComponentSerializer;
+
+import java.util.function.Consumer;
+
+@SuppressWarnings("UnstableApiUsage") // we are permitted to provide this
+public final class EngineAnsiComponentSerializerProvider implements ANSIComponentSerializer.Provider {
+    @Override
+    public ANSIComponentSerializer ansi() {
+        final ANSIComponentSerializer.Builder builder = ANSIComponentSerializer.builder();
+        this.builder().accept(builder);
+        return builder.build();
+    }
+
+    @Override
+    public Consumer<ANSIComponentSerializer.Builder> builder() {
+        return builder -> builder.flattener(EngineFlattenerProvider.INSTANCE);
+    }
+}

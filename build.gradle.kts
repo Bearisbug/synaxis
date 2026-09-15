@@ -1,6 +1,6 @@
 plugins {
-    id("gameengine.java-library")
-    id("gameengine.publishing")
+    id("synaxis.java-library")
+    id("synaxis.publishing")
     alias(libs.plugins.blossom)
 
     alias(libs.plugins.nmcp.aggregation)
@@ -63,7 +63,7 @@ graalvmNative {
 
         metadataCopy {
             inputTaskNames.add("test")
-            outputDirectories.add("src/main/resources/META-INF/native-image/dev.gameengine/game-engine")
+            outputDirectories.add("src/main/resources/META-INF/native-image/io.github.bearisbug.synaxis/synaxis")
         }
     }
     binaries {

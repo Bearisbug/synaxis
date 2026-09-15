@@ -1,7 +1,7 @@
-module dev.gameengine.testing.test {
+module io.github.bearisbug.synaxis.testing.test {
     requires org.junit.jupiter.api;
 
-    requires dev.gameengine.testing;
+    requires io.github.bearisbug.synaxis.testing;
 
-    opens dev.gameengine.testing.test to org.junit.platform.commons;
+    opens io.github.bearisbug.synaxis.testing.test to org.junit.platform.commons;
 }

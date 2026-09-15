@@ -1,0 +1,1195 @@
+{
+  "reflection": [
+    {
+      "type": "byte[]",
+      "serializable": true
+    },
+    {
+      "type": "com.google.gson.internal.bind.JavaTimeTypeAdapters",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "java.lang.Boolean",
+      "jniAccessible": true,
+      "methods": [
+        {
+          "name": "getBoolean",
+          "parameterTypes": [
+            "java.lang.String"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "java.lang.Class"
+    },
+    {
+      "type": "java.lang.ClassLoader",
+      "fields": [
+        {
+          "name": "classLoaderValueMap"
+        }
+      ]
+    },
+    {
+      "type": "java.lang.Enum",
+      "serializable": true
+    },
+    {
+      "type": "java.lang.Exception",
+      "serializable": true
+    },
+    {
+      "type": "java.lang.Object[]",
+      "serializable": true
+    },
+    {
+      "type": "java.lang.RuntimeException",
+      "serializable": true
+    },
+    {
+      "type": "java.lang.StackTraceElement",
+      "serializable": true
+    },
+    {
+      "type": "java.lang.StackTraceElement[]",
+      "serializable": true
+    },
+    {
+      "type": "java.lang.String",
+      "serializable": true
+    },
+    {
+      "type": "java.lang.String[]"
+    },
+    {
+      "type": "java.lang.Throwable",
+      "serializable": true
+    },
+    {
+      "type": "java.lang.reflect.RecordComponent"
+    },
+    {
+      "type": "java.sql.Date"
+    },
+    {
+      "type": "java.util.ArrayList",
+      "serializable": true
+    },
+    {
+      "type": "java.util.Collections$EmptyList",
+      "serializable": true
+    },
+    {
+      "type": "java.util.HashSet",
+      "serializable": true
+    },
+    {
+      "type": "java.util.LinkedHashSet",
+      "serializable": true
+    },
+    {
+      "type": "java.util.concurrent.ArrayBlockingQueue",
+      "serializable": true
+    },
+    {
+      "type": "java.util.concurrent.locks.AbstractOwnableSynchronizer",
+      "serializable": true
+    },
+    {
+      "type": "java.util.concurrent.locks.AbstractQueuedSynchronizer",
+      "serializable": true
+    },
+    {
+      "type": "java.util.concurrent.locks.AbstractQueuedSynchronizer$ConditionObject",
+      "serializable": true
+    },
+    {
+      "type": "java.util.concurrent.locks.ReentrantLock",
+      "serializable": true
+    },
+    {
+      "type": "java.util.concurrent.locks.ReentrantLock$NonfairSync",
+      "serializable": true
+    },
+    {
+      "type": "java.util.concurrent.locks.ReentrantLock$Sync",
+      "serializable": true
+    },
+    {
+      "type": "jdk.internal.misc.Unsafe"
+    },
+    {
+      "type": "io.github.bearisbug.synaxis.adventure.provider.EngineAnsiComponentSerializerProvider"
+    },
+    {
+      "type": "io.github.bearisbug.synaxis.adventure.provider.EngineComponentLoggerProvider"
+    },
+    {
+      "type": "io.github.bearisbug.synaxis.adventure.provider.EngineGsonComponentSerializerProvider"
+    },
+    {
+      "type": "io.github.bearisbug.synaxis.coordinate.Vec",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": [
+            "double",
+            "double",
+            "double"
+          ]
+        },
+        {
+          "name": "x",
+          "parameterTypes": []
+        },
+        {
+          "name": "y",
+          "parameterTypes": []
+        },
+        {
+          "name": "z",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "io.github.bearisbug.synaxis.entity.EntityTypes",
+      "fields": [
+        {
+          "name": "ACACIA_BOAT"
+        },
+        {
+          "name": "ACACIA_CHEST_BOAT"
+        },
+        {
+          "name": "ALLAY"
+        },
+        {
+          "name": "AREA_EFFECT_CLOUD"
+        },
+        {
+          "name": "ARMADILLO"
+        },
+        {
+          "name": "ARMOR_STAND"
+        },
+        {
+          "name": "ARROW"
+        },
+        {
+          "name": "AXOLOTL"
+        },
+        {
+          "name": "BAMBOO_CHEST_RAFT"
+        },
+        {
+          "name": "BAMBOO_RAFT"
+        },
+        {
+          "name": "BAT"
+        },
+        {
+          "name": "BEE"
+        },
+        {
+          "name": "BIRCH_BOAT"
+        },
+        {
+          "name": "BIRCH_CHEST_BOAT"
+        },
+        {
+          "name": "BLAZE"
+        },
+        {
+          "name": "BLOCK_DISPLAY"
+        },
+        {
+          "name": "BOGGED"
+        },
+        {
+          "name": "BREEZE"
+        },
+        {
+          "name": "BREEZE_WIND_CHARGE"
+        },
+        {
+          "name": "CAMEL"
+        },
+        {
+          "name": "CAMEL_HUSK"
+        },
+        {
+          "name": "CAT"
+        },
+        {
+          "name": "CAVE_SPIDER"
+        },
+        {
+          "name": "CHERRY_BOAT"
+        },
+        {
+          "name": "CHERRY_CHEST_BOAT"
+        },
+        {
+          "name": "CHEST_MINECART"
+        },
+        {
+          "name": "CHICKEN"
+        },
+        {
+          "name": "COD"
+        },
+        {
+          "name": "COMMAND_BLOCK_MINECART"
+        },
+        {
+          "name": "COPPER_GOLEM"
+        },
+        {
+          "name": "COW"
+        },
+        {
+          "name": "CREAKING"
+        },
+        {
+          "name": "CREEPER"
+        },
+        {
+          "name": "DARK_OAK_BOAT"
+        },
+        {
+          "name": "DARK_OAK_CHEST_BOAT"
+        },
+        {
+          "name": "DOLPHIN"
+        },
+        {
+          "name": "DONKEY"
+        },
+        {
+          "name": "DRAGON_FIREBALL"
+        },
+        {
+          "name": "DROWNED"
+        },
+        {
+          "name": "EGG"
+        },
+        {
+          "name": "ELDER_GUARDIAN"
+        },
+        {
+          "name": "ENDERMAN"
+        },
+        {
+          "name": "ENDERMITE"
+        },
+        {
+          "name": "ENDER_DRAGON"
+        },
+        {
+          "name": "ENDER_PEARL"
+        },
+        {
+          "name": "END_CRYSTAL"
+        },
+        {
+          "name": "EVOKER"
+        },
+        {
+          "name": "EVOKER_FANGS"
+        },
+        {
+          "name": "EXPERIENCE_BOTTLE"
+        },
+        {
+          "name": "EXPERIENCE_ORB"
+        },
+        {
+          "name": "EYE_OF_ENDER"
+        },
+        {
+          "name": "FALLING_BLOCK"
+        },
+        {
+          "name": "FIREBALL"
+        },
+        {
+          "name": "FIREWORK_ROCKET"
+        },
+        {
+          "name": "FISHING_BOBBER"
+        },
+        {
+          "name": "FOX"
+        },
+        {
+          "name": "FROG"
+        },
+        {
+          "name": "FURNACE_MINECART"
+        },
+        {
+          "name": "GHAST"
+        },
+        {
+          "name": "GIANT"
+        },
+        {
+          "name": "GLOW_ITEM_FRAME"
+        },
+        {
+          "name": "GLOW_SQUID"
+        },
+        {
+          "name": "GOAT"
+        },
+        {
+          "name": "GUARDIAN"
+        },
+        {
+          "name": "HAPPY_GHAST"
+        },
+        {
+          "name": "HOGLIN"
+        },
+        {
+          "name": "HOPPER_MINECART"
+        },
+        {
+          "name": "HORSE"
+        },
+        {
+          "name": "HUSK"
+        },
+        {
+          "name": "ILLUSIONER"
+        },
+        {
+          "name": "INTERACTION"
+        },
+        {
+          "name": "IRON_GOLEM"
+        },
+        {
+          "name": "ITEM"
+        },
+        {
+          "name": "ITEM_DISPLAY"
+        },
+        {
+          "name": "ITEM_FRAME"
+        },
+        {
+          "name": "JUNGLE_BOAT"
+        },
+        {
+          "name": "JUNGLE_CHEST_BOAT"
+        },
+        {
+          "name": "LEASH_KNOT"
+        },
+        {
+          "name": "LIGHTNING_BOLT"
+        },
+        {
+          "name": "LINGERING_POTION"
+        },
+        {
+          "name": "LLAMA"
+        },
+        {
+          "name": "LLAMA_SPIT"
+        },
+        {
+          "name": "MAGMA_CUBE"
+        },
+        {
+          "name": "MANGROVE_BOAT"
+        },
+        {
+          "name": "MANGROVE_CHEST_BOAT"
+        },
+        {
+          "name": "MANNEQUIN"
+        },
+        {
+          "name": "MARKER"
+        },
+        {
+          "name": "MINECART"
+        },
+        {
+          "name": "MOOSHROOM"
+        },
+        {
+          "name": "MULE"
+        },
+        {
+          "name": "NAUTILUS"
+        },
+        {
+          "name": "OAK_BOAT"
+        },
+        {
+          "name": "OAK_CHEST_BOAT"
+        },
+        {
+          "name": "OCELOT"
+        },
+        {
+          "name": "OMINOUS_ITEM_SPAWNER"
+        },
+        {
+          "name": "PAINTING"
+        },
+        {
+          "name": "PALE_OAK_BOAT"
+        },
+        {
+          "name": "PALE_OAK_CHEST_BOAT"
+        },
+        {
+          "name": "PANDA"
+        },
+        {
+          "name": "PARCHED"
+        },
+        {
+          "name": "PARROT"
+        },
+        {
+          "name": "PHANTOM"
+        },
+        {
+          "name": "PIG"
+        },
+        {
+          "name": "PIGLIN"
+        },
+        {
+          "name": "PIGLIN_BRUTE"
+        },
+        {
+          "name": "PILLAGER"
+        },
+        {
+          "name": "PLAYER"
+        },
+        {
+          "name": "POLAR_BEAR"
+        },
+        {
+          "name": "PUFFERFISH"
+        },
+        {
+          "name": "RABBIT"
+        },
+        {
+          "name": "RAVAGER"
+        },
+        {
+          "name": "SALMON"
+        },
+        {
+          "name": "SHEEP"
+        },
+        {
+          "name": "SHULKER"
+        },
+        {
+          "name": "SHULKER_BULLET"
+        },
+        {
+          "name": "SILVERFISH"
+        },
+        {
+          "name": "SKELETON"
+        },
+        {
+          "name": "SKELETON_HORSE"
+        },
+        {
+          "name": "SLIME"
+        },
+        {
+          "name": "SMALL_FIREBALL"
+        },
+        {
+          "name": "SNIFFER"
+        },
+        {
+          "name": "SNOWBALL"
+        },
+        {
+          "name": "SNOW_GOLEM"
+        },
+        {
+          "name": "SPAWNER_MINECART"
+        },
+        {
+          "name": "SPECTRAL_ARROW"
+        },
+        {
+          "name": "SPIDER"
+        },
+        {
+          "name": "SPLASH_POTION"
+        },
+        {
+          "name": "SPRUCE_BOAT"
+        },
+        {
+          "name": "SPRUCE_CHEST_BOAT"
+        },
+        {
+          "name": "SQUID"
+        },
+        {
+          "name": "STRAY"
+        },
+        {
+          "name": "STRIDER"
+        },
+        {
+          "name": "SULFUR_CUBE"
+        },
+        {
+          "name": "TADPOLE"
+        },
+        {
+          "name": "TEXT_DISPLAY"
+        },
+        {
+          "name": "TNT"
+        },
+        {
+          "name": "TNT_MINECART"
+        },
+        {
+          "name": "TRADER_LLAMA"
+        },
+        {
+          "name": "TRIDENT"
+        },
+        {
+          "name": "TROPICAL_FISH"
+        },
+        {
+          "name": "TURTLE"
+        },
+        {
+          "name": "VEX"
+        },
+        {
+          "name": "VILLAGER"
+        },
+        {
+          "name": "VINDICATOR"
+        },
+        {
+          "name": "WANDERING_TRADER"
+        },
+        {
+          "name": "WARDEN"
+        },
+        {
+          "name": "WIND_CHARGE"
+        },
+        {
+          "name": "WITCH"
+        },
+        {
+          "name": "WITHER"
+        },
+        {
+          "name": "WITHER_SKELETON"
+        },
+        {
+          "name": "WITHER_SKULL"
+        },
+        {
+          "name": "WOLF"
+        },
+        {
+          "name": "ZOGLIN"
+        },
+        {
+          "name": "ZOMBIE"
+        },
+        {
+          "name": "ZOMBIE_HORSE"
+        },
+        {
+          "name": "ZOMBIE_NAUTILUS"
+        },
+        {
+          "name": "ZOMBIE_VILLAGER"
+        },
+        {
+          "name": "ZOMBIFIED_PIGLIN"
+        }
+      ]
+    },
+    {
+      "type": "io.github.bearisbug.synaxis.entity.EntityView$Option"
+    },
+    {
+      "type": "io.github.bearisbug.synaxis.entity.MetadataDef"
+    },
+    {
+      "type": "io.github.bearisbug.synaxis.entity.MetadataDef$AbstractCubeMob"
+    },
+    {
+      "type": "io.github.bearisbug.synaxis.entity.MetadataDef$AgeableMob"
+    },
+    {
+      "type": "io.github.bearisbug.synaxis.entity.MetadataDef$AreaEffectCloud"
+    },
+    {
+      "type": "io.github.bearisbug.synaxis.entity.MetadataDef$Avatar"
+    },
+    {
+      "type": "io.github.bearisbug.synaxis.entity.MetadataDef$Display"
+    },
+    {
+      "type": "io.github.bearisbug.synaxis.entity.MetadataDef$Frog"
+    },
+    {
+      "type": "io.github.bearisbug.synaxis.entity.MetadataDef$ItemEntity"
+    },
+    {
+      "type": "io.github.bearisbug.synaxis.entity.MetadataDef$LivingEntity"
+    },
+    {
+      "type": "io.github.bearisbug.synaxis.entity.MetadataDef$Mannequin"
+    },
+    {
+      "type": "io.github.bearisbug.synaxis.entity.MetadataDef$Mob"
+    },
+    {
+      "type": "io.github.bearisbug.synaxis.entity.MetadataDef$Player"
+    },
+    {
+      "type": "io.github.bearisbug.synaxis.entity.MetadataHolder",
+      "fields": [
+        {
+          "name": "notifyAboutChanges"
+        }
+      ]
+    },
+    {
+      "type": "io.github.bearisbug.synaxis.event.EventNodeLazyImpl",
+      "fields": [
+        {
+          "name": "mapped"
+        }
+      ]
+    },
+    {
+      "type": "io.github.bearisbug.synaxis.network.packet.server.CachedPacket",
+      "fields": [
+        {
+          "name": "packet"
+        }
+      ]
+    },
+    {
+      "type": "io.github.bearisbug.synaxis.tag.TagRecordTest$1ArrayRecord"
+    },
+    {
+      "type": "io.github.bearisbug.synaxis.tag.TagRecordTest$1CompoundRecord",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": [
+            "net.kyori.adventure.nbt.CompoundBinaryTag"
+          ]
+        },
+        {
+          "name": "compound",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "io.github.bearisbug.synaxis.tag.TagRecordTest$1ListRecord"
+    },
+    {
+      "type": "io.github.bearisbug.synaxis.tag.TagUpdateTest$1Coin",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": [
+            "int"
+          ]
+        },
+        {
+          "name": "coin",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "io.github.bearisbug.synaxis.tag.TagUpdateTest$1Structure",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": [
+            "io.github.bearisbug.synaxis.tag.TagUpdateTest$3Coin"
+          ]
+        },
+        {
+          "name": "test",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "io.github.bearisbug.synaxis.tag.TagUpdateTest$2Coin",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": [
+            "int"
+          ]
+        },
+        {
+          "name": "coin",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "io.github.bearisbug.synaxis.tag.TagUpdateTest$3Coin",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": [
+            "int"
+          ]
+        },
+        {
+          "name": "coin",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "io.github.bearisbug.synaxis.tag.TagUpdateTest$4Coin",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": [
+            "int"
+          ]
+        },
+        {
+          "name": "coin",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "io.github.bearisbug.synaxis.timer.TaskImpl",
+      "fields": [
+        {
+          "name": "parked"
+        }
+      ]
+    },
+    {
+      "type": "org.graalvm.nativeimage.VMRuntime"
+    },
+    {
+      "type": "org.jctools.queues.atomic.BaseMpscLinkedAtomicArrayQueueColdProducerFields"
+    },
+    {
+      "type": "org.jctools.queues.atomic.BaseMpscLinkedAtomicArrayQueueConsumerFields"
+    },
+    {
+      "type": "org.jctools.queues.atomic.BaseMpscLinkedAtomicArrayQueueProducerFields"
+    },
+    {
+      "type": "org.jctools.queues.atomic.MpmcAtomicArrayQueueConsumerIndexField"
+    },
+    {
+      "type": "org.jctools.queues.atomic.MpmcAtomicArrayQueueProducerIndexField"
+    },
+    {
+      "type": "org.jctools.queues.atomic.MpscAtomicArrayQueueConsumerIndexField"
+    },
+    {
+      "type": "org.jctools.queues.atomic.MpscAtomicArrayQueueProducerIndexField"
+    },
+    {
+      "type": "org.jctools.queues.atomic.MpscAtomicArrayQueueProducerLimitField"
+    },
+    {
+      "type": "org.opentest4j.IncompleteExecutionException",
+      "serializable": true
+    },
+    {
+      "type": "org.opentest4j.TestAbortedException",
+      "serializable": true
+    },
+    {
+      "type": "space.vectrix.flare.fastutil.Int2ObjectSyncMapImpl$ExpungingEntryImpl"
+    },
+    {
+      "type": "space.vectrix.flare.fastutil.Long2ObjectSyncMapImpl$ExpungingEntryImpl"
+    },
+    {
+      "type": "sun.security.provider.NativePRNG",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": [
+            "java.security.SecureRandomParameters"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "sun.security.provider.SHA",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "sun.security.rsa.RSAKeyFactory$Legacy",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "sun.security.rsa.RSAKeyPairGenerator$Legacy",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "sun.text.resources.cldr.FormatData"
+    },
+    {
+      "type": "sun.text.resources.cldr.FormatData_en"
+    },
+    {
+      "type": "sun.util.resources.cldr.CalendarData"
+    }
+  ],
+  "resources": [
+    {
+      "glob": "META-INF/services/java.net.spi.InetAddressResolverProvider"
+    },
+    {
+      "glob": "META-INF/services/java.nio.channels.spi.SelectorProvider"
+    },
+    {
+      "glob": "META-INF/services/net.kyori.adventure.internal.properties.AdventureProperties$DefaultOverrideProvider"
+    },
+    {
+      "glob": "META-INF/services/net.kyori.adventure.text.logger.slf4j.ComponentLoggerProvider"
+    },
+    {
+      "glob": "META-INF/services/net.kyori.adventure.text.serializer.ansi.ANSIComponentSerializer$Provider"
+    },
+    {
+      "glob": "META-INF/services/net.kyori.adventure.text.serializer.gson.GsonComponentSerializer$Provider"
+    },
+    {
+      "glob": "META-INF/services/org.junit.platform.commons.support.scanning.ClasspathScanner"
+    },
+    {
+      "glob": "META-INF/services/org.junit.platform.engine.TestEngine"
+    },
+    {
+      "glob": "META-INF/services/org.junit.platform.launcher.LauncherDiscoveryListener"
+    },
+    {
+      "glob": "META-INF/services/org.junit.platform.launcher.LauncherSessionListener"
+    },
+    {
+      "glob": "META-INF/services/org.junit.platform.launcher.PostDiscoveryFilter"
+    },
+    {
+      "glob": "META-INF/services/org.junit.platform.launcher.TestExecutionListener"
+    },
+    {
+      "glob": "META-INF/services/org.slf4j.spi.SLF4JServiceProvider"
+    },
+    {
+      "glob": "junit-platform.properties"
+    },
+    {
+      "glob": "data/attribute.json"
+    },
+    {
+      "glob": "data/banner_pattern.json"
+    },
+    {
+      "glob": "data/block.json"
+    },
+    {
+      "glob": "data/block_entity_type.json"
+    },
+    {
+      "glob": "data/block_sound_type.json"
+    },
+    {
+      "glob": "data/cat_sound_variant.json"
+    },
+    {
+      "glob": "data/cat_variant.json"
+    },
+    {
+      "glob": "data/chat_type.json"
+    },
+    {
+      "glob": "data/chicken_sound_variant.json"
+    },
+    {
+      "glob": "data/chicken_variant.json"
+    },
+    {
+      "glob": "data/cow_sound_variant.json"
+    },
+    {
+      "glob": "data/cow_variant.json"
+    },
+    {
+      "glob": "data/damage_type.json"
+    },
+    {
+      "glob": "data/dialog.json"
+    },
+    {
+      "glob": "data/dimension_type.json"
+    },
+    {
+      "glob": "data/enchantment.json"
+    },
+    {
+      "glob": "data/entity_type.json"
+    },
+    {
+      "glob": "data/feature_flag.json"
+    },
+    {
+      "glob": "data/fluid.json"
+    },
+    {
+      "glob": "data/frog_variant.json"
+    },
+    {
+      "glob": "data/game_event.json"
+    },
+    {
+      "glob": "data/game_rule.json"
+    },
+    {
+      "glob": "data/instrument.json"
+    },
+    {
+      "glob": "data/item.json"
+    },
+    {
+      "glob": "data/jukebox_song.json"
+    },
+    {
+      "glob": "data/mob_effect.json"
+    },
+    {
+      "glob": "data/painting_variant.json"
+    },
+    {
+      "glob": "data/particle_type.json"
+    },
+    {
+      "glob": "data/pig_sound_variant.json"
+    },
+    {
+      "glob": "data/pig_variant.json"
+    },
+    {
+      "glob": "data/potion.json"
+    },
+    {
+      "glob": "data/sound_event.json"
+    },
+    {
+      "glob": "data/sulfur_cube_archetype.json"
+    },
+    {
+      "glob": "data/tags/attribute.json"
+    },
+    {
+      "glob": "data/tags/banner_pattern.json"
+    },
+    {
+      "glob": "data/tags/block.json"
+    },
+    {
+      "glob": "data/tags/block_entity_type.json"
+    },
+    {
+      "glob": "data/tags/block_sound_type.json"
+    },
+    {
+      "glob": "data/tags/cat_sound_variant.json"
+    },
+    {
+      "glob": "data/tags/cat_variant.json"
+    },
+    {
+      "glob": "data/tags/chat_type.json"
+    },
+    {
+      "glob": "data/tags/chicken_sound_variant.json"
+    },
+    {
+      "glob": "data/tags/chicken_variant.json"
+    },
+    {
+      "glob": "data/tags/cow_sound_variant.json"
+    },
+    {
+      "glob": "data/tags/cow_variant.json"
+    },
+    {
+      "glob": "data/tags/damage_type.json"
+    },
+    {
+      "glob": "data/tags/dialog.json"
+    },
+    {
+      "glob": "data/tags/dimension_type.json"
+    },
+    {
+      "glob": "data/tags/enchantment.json"
+    },
+    {
+      "glob": "data/tags/entity_type.json"
+    },
+    {
+      "glob": "data/tags/feature_flag.json"
+    },
+    {
+      "glob": "data/tags/fluid.json"
+    },
+    {
+      "glob": "data/tags/frog_variant.json"
+    },
+    {
+      "glob": "data/tags/game_event.json"
+    },
+    {
+      "glob": "data/tags/game_rule.json"
+    },
+    {
+      "glob": "data/tags/instrument.json"
+    },
+    {
+      "glob": "data/tags/item.json"
+    },
+    {
+      "glob": "data/tags/jukebox_song.json"
+    },
+    {
+      "glob": "data/tags/mob_effect.json"
+    },
+    {
+      "glob": "data/tags/painting_variant.json"
+    },
+    {
+      "glob": "data/tags/particle_type.json"
+    },
+    {
+      "glob": "data/tags/pig_sound_variant.json"
+    },
+    {
+      "glob": "data/tags/pig_variant.json"
+    },
+    {
+      "glob": "data/tags/potion.json"
+    },
+    {
+      "glob": "data/tags/sound_event.json"
+    },
+    {
+      "glob": "data/tags/sulfur_cube_archetype.json"
+    },
+    {
+      "glob": "data/tags/timeline.json"
+    },
+    {
+      "glob": "data/tags/trim_material.json"
+    },
+    {
+      "glob": "data/tags/trim_pattern.json"
+    },
+    {
+      "glob": "data/tags/villager_profession.json"
+    },
+    {
+      "glob": "data/tags/wolf_sound_variant.json"
+    },
+    {
+      "glob": "data/tags/wolf_variant.json"
+    },
+    {
+      "glob": "data/tags/world_clock.json"
+    },
+    {
+      "glob": "data/tags/worldgen/biome.json"
+    },
+    {
+      "glob": "data/tags/zombie_nautilus_variant.json"
+    },
+    {
+      "glob": "data/timeline.json"
+    },
+    {
+      "glob": "data/trim_material.json"
+    },
+    {
+      "glob": "data/trim_pattern.json"
+    },
+    {
+      "glob": "data/villager_profession.json"
+    },
+    {
+      "glob": "data/wolf_sound_variant.json"
+    },
+    {
+      "glob": "data/wolf_variant.json"
+    },
+    {
+      "glob": "data/world_clock.json"
+    },
+    {
+      "glob": "data/worldgen/biome.json"
+    },
+    {
+      "glob": "data/zombie_nautilus_variant.json"
+    },
+    {
+      "glob": "org/slf4j/impl/StaticLoggerBinder.class"
+    }
+  ]
+}

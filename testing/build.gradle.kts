@@ -1,6 +1,6 @@
 plugins {
-    id("gameengine.java-library")
-    id("gameengine.publishing")
+    id("synaxis.java-library")
+    id("synaxis.publishing")
 }
 
 dependencies {

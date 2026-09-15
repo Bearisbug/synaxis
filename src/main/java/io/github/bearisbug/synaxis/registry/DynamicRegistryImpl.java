@@ -1,0 +1,417 @@
+package io.github.bearisbug.synaxis.registry;
+
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import net.kyori.adventure.key.Key;
+import net.kyori.adventure.nbt.BinaryTag;
+import net.kyori.adventure.nbt.BinaryTagIO;
+import net.kyori.adventure.nbt.BinaryTagTypes;
+import net.kyori.adventure.nbt.CompoundBinaryTag;
+import io.github.bearisbug.synaxis.codec.Codec;
+import io.github.bearisbug.synaxis.codec.Result;
+import io.github.bearisbug.synaxis.codec.Transcoder;
+import io.github.bearisbug.synaxis.gamedata.DataPack;
+import io.github.bearisbug.synaxis.network.packet.server.CachedPacket;
+import io.github.bearisbug.synaxis.network.packet.server.SendablePacket;
+import io.github.bearisbug.synaxis.network.packet.server.common.TagsPacket;
+import io.github.bearisbug.synaxis.network.packet.server.configuration.RegistryDataPacket;
+import io.github.bearisbug.synaxis.utils.json.JsonUtil;
+import io.github.bearisbug.synaxis.utils.validate.Check;
+import org.jetbrains.annotations.ApiStatus;
+import org.jetbrains.annotations.Contract;
+import org.jetbrains.annotations.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.jetbrains.annotations.UnknownNullability;
+
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.UncheckedIOException;
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.concurrent.ConcurrentHashMap;
+
+@ApiStatus.Internal
+final class DynamicRegistryImpl<T> implements DynamicRegistry<T> {
+    private static final Logger LOGGER = LoggerFactory.getLogger(DynamicRegistryImpl.class);
+
+    private static final String FROZEN_MESSAGE = "The registry is frozen once the server has started. Enable writes by starting the process with registryUnsafeOps set on its ServerConfig";
+    private static final String UNSAFE_REMOVE_MESSAGE = "Unsafe remove is disabled. Enable it by starting the process with registryUnsafeOps set on its ServerConfig";
+    // Could also just use `this`, but this is a good candidate for identityless classes.
+    // Also, what use case requires you to mutate registries faster than one monitor?
+    private static final Object REGISTRY_LOCK = new Object();
+
+    private volatile @Nullable Registries registries = null;
+    private volatile boolean frozen = false;
+    // Set by the process owning these registries so it can drop its cached tags packet.
+    private volatile Runnable tagChangeListener = () -> {
+    };
+    private final CachedPacket vanillaRegistryDataPacket = new CachedPacket(() -> createRegistryDataPacket(registries, true));
+
+    private final List<T> idToValue;
+    private final List<RegistryKey<T>> idToKey;
+    private final Map<RegistryKey<T>, Integer> keyToId;
+    private final Map<Key, T> keyToValue;
+    private final Map<T, RegistryKey<T>> valueToKey;
+    private final List<DataPack> packById;
+
+    private final Map<TagKey<T>, RegistryTagImpl.Backed<T>> tags;
+
+    private final Key key;
+    private final Codec<T> codec;
+
+    DynamicRegistryImpl(Key key, @Nullable Codec<T> codec) {
+        this.key = key;
+        this.codec = codec;
+        // Expect stale data possibilities with unsafe ops.
+        this.idToValue = new ArrayList<>();
+        this.idToKey = new ArrayList<>();
+        this.keyToId = new HashMap<>();
+        this.keyToValue = new HashMap<>();
+        this.valueToKey = new HashMap<>();
+        this.packById = new ArrayList<>();
+        // Tags are always mutable across the lock.
+        this.tags = new ConcurrentHashMap<>();
+    }
+
+    // Used to create compressed registries
+    DynamicRegistryImpl(Key key, @Nullable Codec<T> codec, List<T> idToValue,
+                        Map<RegistryKey<T>, Integer> keyToId, List<RegistryKey<T>> idToKey,
+                        Map<Key, T> keyToValue, Map<T, RegistryKey<T>> valueToKey,
+                        List<DataPack> packById, Map<TagKey<T>, RegistryTagImpl.Backed<T>> tags) {
+        this.key = key;
+        this.codec = codec;
+        this.idToValue = idToValue;
+        this.idToKey = idToKey;
+        this.keyToId = keyToId;
+        this.keyToValue = keyToValue;
+        this.valueToKey = valueToKey;
+        this.packById = packById;
+        this.tags = tags;
+    }
+
+    @Override
+    public Key key() {
+        return this.key;
+    }
+
+    public @UnknownNullability Codec<T> codec() {
+        return codec;
+    }
+
+    @Override
+    public @Nullable T get(int id) {
+        if (id < 0 || id >= idToValue.size())
+            return null;
+        return idToValue.get(id);
+    }
+
+    @Override
+    public @Nullable T get(Key key) {
+        return keyToValue.get(key);
+    }
+
+    @Override
+    public @Nullable RegistryKey<T> getKey(int id) {
+        if (id < 0 || id >= idToKey.size())
+            return null;
+        return idToKey.get(id);
+    }
+
+    @Override
+    public @Nullable RegistryKey<T> getKey(T value) {
+        return valueToKey.get(value);
+    }
+
+    @Override
+    public @Nullable RegistryKey<T> getKey(Key key) {
+        if (!keyToValue.containsKey(key))
+            return null;
+        return new RegistryKeyImpl<>(key);
+    }
+
+    @Override
+    public int getId(RegistryKey<T> key) {
+        return keyToId.getOrDefault(key, -1);
+    }
+
+    @Override
+    public RegistryKey<T> register(Key key, T object, DataPack pack) {
+        if (isFrozen()) throw new IllegalStateException(FROZEN_MESSAGE);
+        Objects.requireNonNull(key, "Key cannot be null");
+        Objects.requireNonNull(object, "Object cannot be null");
+        Objects.requireNonNull(pack, "Pack cannot be null");
+
+        final RegistryKey<T> registryKey = new RegistryKeyImpl<>(key);
+        synchronized (REGISTRY_LOCK) {
+            Integer id = keyToId.get(registryKey); // Array set at home
+            keyToValue.put(key, object);
+            valueToKey.put(object, registryKey);
+            if (id == null) {
+                idToValue.add(object);
+                idToKey.add(registryKey);
+                keyToId.put(registryKey, idToValue.size() - 1);
+                packById.add(pack);
+            } else {
+                idToValue.set(id, object);
+                idToKey.set(id, registryKey);
+                keyToId.put(registryKey, id);
+                packById.set(id, pack);
+            }
+
+            vanillaRegistryDataPacket.invalidate();
+            return registryKey;
+        }
+    }
+
+    @Override
+    public boolean remove(Key key) throws UnsupportedOperationException {
+        if (isFrozen()) throw new UnsupportedOperationException(UNSAFE_REMOVE_MESSAGE);
+        Objects.requireNonNull(key, "Key cannot be null");
+
+        final RegistryKey<T> registryKey = new RegistryKeyImpl<>(key);
+        synchronized (REGISTRY_LOCK) {
+            Integer idObject = keyToId.get(registryKey);
+            if (idObject == null) return false;
+            int id = idObject;
+
+            // Remove value from all mappings (shifting down indices)
+            idToValue.remove(id);
+            idToKey.remove(registryKey);
+            keyToId.remove(registryKey);
+            var value = keyToValue.remove(key);
+            valueToKey.remove(value);
+            packById.remove(id);
+
+            // The lists were compacted, so every entry after the removed one now sits one index lower
+            for (int i = id; i < idToKey.size(); i++) {
+                keyToId.put(idToKey.get(i), i);
+            }
+
+            // Remove all references from tags
+            for (final var tag : tags.values()) {
+                if (tag.remove(registryKey)) tagChangeListener.run();
+            }
+
+            vanillaRegistryDataPacket.invalidate();
+            return true;
+        }
+    }
+
+    @Override
+    public @Nullable DataPack getPack(int id) {
+        if (id < 0 || id >= packById.size())
+            return null;
+        return packById.get(id);
+    }
+
+    @Override
+    public int size() {
+        return idToValue.size();
+    }
+
+    @Override
+    public Collection<RegistryKey<T>> keys() {
+        return Collections.unmodifiableCollection(idToKey);
+    }
+
+    @Override
+    public Collection<T> values() {
+        return Collections.unmodifiableCollection(idToValue);
+    }
+
+    // Tags
+
+    @Override
+    public @Nullable RegistryTag<T> getTag(TagKey<T> key) {
+        return this.tags.get(key);
+    }
+
+    @Override
+    public RegistryTag<T> getOrCreateTag(TagKey<T> key) {
+        return this.tags.computeIfAbsent(key, RegistryTagImpl.Backed::new);
+    }
+
+    @Override
+    public boolean removeTag(TagKey<T> key) {
+        return this.tags.remove(key) != null;
+    }
+
+    @Override
+    public Collection<RegistryTag<T>> tags() {
+        return Collections.unmodifiableCollection(this.tags.values());
+    }
+
+    @Override // This method is called by a virtual thread in the configuration phase
+    public SendablePacket registryDataPacket(Registries registries, boolean excludeVanilla) {
+        // We cache the vanilla packet because that is by far the most common case. If some client claims not to have
+        // the vanilla datapack we can compute the entire thing.
+        if (excludeVanilla) {
+            if (this.registries != registries) {
+                synchronized (REGISTRY_LOCK) { // Bootleg off the static lock for this mutation
+                    if (this.registries != registries) {
+                        this.registries = registries;
+                        vanillaRegistryDataPacket.invalidate();
+                    }
+                }
+            }
+            return vanillaRegistryDataPacket;
+        }
+
+        return createRegistryDataPacket(registries, false);
+    }
+
+    @Override
+    public TagsPacket.Registry tagRegistry() {
+        final List<TagsPacket.Tag> tagList = new ArrayList<>(tags.size());
+        for (final RegistryTagImpl.Backed<T> tag : tags.values()) {
+            // Snapshot first: the tag is a concurrent set, so its size can change while it is iterated
+            final List<RegistryKey<T>> tagKeys = new ArrayList<>();
+            for (var registryKey : tag) tagKeys.add(registryKey);
+
+            final int[] entries = new int[tagKeys.size()];
+            int i = 0;
+            for (var registryKey : tagKeys) {
+                final Integer id = keyToId.get(registryKey);
+                if (id == null) {
+                    LOGGER.warn("Tag {} of registry {} references unknown entry {}",
+                            tag.key().key().asString(), key().asString(), registryKey.key().asString());
+                    continue;
+                }
+                entries[i++] = id;
+            }
+            tagList.add(new TagsPacket.Tag(tag.key().key().asString(),
+                    i == entries.length ? entries : Arrays.copyOf(entries, i)));
+        }
+        return new TagsPacket.Registry(key().asString(), tagList);
+    }
+
+    private RegistryDataPacket createRegistryDataPacket(Registries registries, boolean excludeVanilla) {
+        Objects.requireNonNull(codec, "Cannot create registry data packet for server-only registry");
+        Transcoder<BinaryTag> transcoder = new RegistryTranscoder<>(Transcoder.NBT, registries);
+        // Copy to avoid concurrent modification issues while iterating, as we are not synchronized on the registry
+        final List<T> idToValue;
+        final List<DataPack> packById;
+        if (!frozen) {
+            synchronized (REGISTRY_LOCK) {
+                idToValue = List.copyOf(this.idToValue);
+                packById = List.copyOf(this.packById);
+            }
+        } else {
+            idToValue = this.idToValue;
+            packById = this.packById;
+        }
+        List<RegistryDataPacket.Entry> entries = new ArrayList<>(idToValue.size());
+        for (int i = 0; i < idToValue.size(); i++) {
+            CompoundBinaryTag data = null;
+            // sorta todo, sorta just a note:
+            // Right now we very much only support the minecraft:core (vanilla) 'pack'. Any entry which was not loaded
+            // from static data will be treated as non vanilla and always sent completely. However, we really should
+            // support arbitrary packs and associate all registry data with a datapack. Additionally, we should generate
+            // all data for the experimental datapacks built in to vanilla such as the next update experimental (1.21 at
+            // the time of writing). Datagen currently behaves kind of badly in that the registry inspecting generators
+            // like material, block, etc generate entries which are behind feature flags, whereas the ones which inspect
+            // static assets (the traditionally dynamic registries), do not generate those assets.
+            T entry = idToValue.get(i);
+            DataPack pack = packById.get(i);
+            if (!excludeVanilla || pack != DataPack.MINECRAFT_CORE) {
+                final Result<BinaryTag> entryResult = codec.encode(transcoder, entry);
+                if (entryResult instanceof Result.Ok(BinaryTag tag)) {
+                    data = (CompoundBinaryTag) tag;
+                } else {
+                    throw new IllegalStateException("Failed to encode registry entry " + i + " (" + getKey(i) + ") for registry " + key);
+                }
+            }
+            //noinspection DataFlowIssue
+            entries.add(new RegistryDataPacket.Entry(getKey(i).key().asString(), data));
+        }
+        return new RegistryDataPacket(key.asString(), entries);
+    }
+
+    /**
+     * Attempts to create a copy with compressed data structures.
+     *
+     * @return A safe copy of this registry
+     */
+    @Contract(pure = true)
+    DynamicRegistryImpl<T> compact() {
+        // Create new instances so they are trimmed to size without downcasting.
+        return new DynamicRegistryImpl<>(key, codec,
+                new ArrayList<>(idToValue),
+                new HashMap<>(keyToId),
+                new ArrayList<>(idToKey),
+                new HashMap<>(keyToValue),
+                new HashMap<>(valueToKey),
+                new ArrayList<>(packById),
+                new ConcurrentHashMap<>(tags)
+        );
+    }
+
+    void freeze() {
+        this.frozen = true;
+    }
+
+    void tagChangeListener(Runnable listener) {
+        this.tagChangeListener = listener;
+    }
+
+    private boolean isFrozen() {
+        return frozen;
+    }
+
+    /**
+     * Loads the entries of an opaque registry from the pre-encoded NBT under {@code /data/opaque}.
+     * The tag is stored exactly as the client receives it, so no server-side type is needed.
+     */
+    @SuppressWarnings({"removal", "unchecked"})
+    void loadOpaqueRegistry() {
+        tags.putAll(RegistryData.loadTags(key()));
+        final String path = String.format("opaque/%s.nbt", key().value());
+        try (InputStream resourceStream = RegistryData.loadRegistryFile(path)) {
+            Check.notNull(resourceStream, "Opaque registry resource {0} does not exist!", path);
+            final CompoundBinaryTag root = BinaryTagIO.reader().read(resourceStream, BinaryTagIO.Compression.NONE);
+            for (BinaryTag entry : root.getList("entries", BinaryTagTypes.COMPOUND)) {
+                final CompoundBinaryTag compound = (CompoundBinaryTag) entry;
+                register(compound.getString("id"), (T) compound.getCompound("data"), DataPack.MINECRAFT_CORE);
+            }
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
+    }
+
+    @SuppressWarnings("removal")
+    void loadStaticJsonRegistry(@Nullable Registries registries, @Nullable Comparator<String> idComparator, Codec<T> codec) {
+        // Tags must exist before entries are decoded because registry codecs can resolve tags while loading values.
+        tags.putAll(RegistryData.loadTags(key()));
+        try (InputStream resourceStream = RegistryData.loadRegistryFile(String.format("%s.json", key().value()))) {
+            Check.notNull(resourceStream, "Registry resource {0}.json does not exist!", key().value());
+            final JsonElement json = JsonUtil.fromJson(new InputStreamReader(resourceStream, StandardCharsets.UTF_8));
+            if (!(json instanceof JsonObject root))
+                throw new IllegalStateException("Failed to load registry " + key() + ": expected a JSON object, got " + json);
+
+            final Transcoder<JsonElement> transcoder = registries != null ? new RegistryTranscoder<>(Transcoder.JSON, registries) : Transcoder.JSON;
+            List<Map.Entry<String, JsonElement>> entries = new ArrayList<>(root.entrySet());
+            if (idComparator != null) entries.sort(Map.Entry.comparingByKey(idComparator));
+            for (Map.Entry<String, JsonElement> entry : entries) {
+                final String namespace = entry.getKey();
+                final Result<T> valueResult = codec.decode(transcoder, entry.getValue());
+                if (valueResult instanceof Result.Ok(T value)) {
+                    register(namespace, value, DataPack.MINECRAFT_CORE);
+                } else {
+                    throw new IllegalStateException("Failed to decode registry entry " + namespace + " for registry " + key() + ": " + valueResult);
+                }
+            }
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+}

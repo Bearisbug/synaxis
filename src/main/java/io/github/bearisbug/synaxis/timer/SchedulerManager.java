@@ -1,0 +1,45 @@
+package io.github.bearisbug.synaxis.timer;
+
+import io.github.bearisbug.synaxis.exception.ExceptionManager;
+import io.github.bearisbug.synaxis.utils.collection.ConcurrentMessageQueues;
+import org.jctools.queues.MessagePassingQueue;
+
+import java.util.function.Supplier;
+
+public final class SchedulerManager implements Scheduler {
+    private final Scheduler scheduler;
+
+    public SchedulerManager(ExceptionManager exception) {
+        this.scheduler = Scheduler.newScheduler(exception::handleException);
+    }
+
+    private final MessagePassingQueue<Runnable> shutdownTasks = ConcurrentMessageQueues.mpscUnboundedArrayQueue(1024);
+    @Override
+    public void process() {
+        this.scheduler.process();
+    }
+
+    @Override
+    public void processTick() {
+        this.scheduler.processTick();
+    }
+
+    @Override
+    public void processTickEnd() {
+        this.scheduler.processTickEnd();
+    }
+
+    @Override
+    public Task submitTask(Supplier<TaskSchedule> task,
+                                    ExecutionType executionType) {
+        return scheduler.submitTask(task, executionType);
+    }
+
+    public void shutdown() {
+        this.shutdownTasks.drain(Runnable::run);
+    }
+
+    public void buildShutdownTask(Runnable runnable) {
+        this.shutdownTasks.relaxedOffer(runnable);
+    }
+}

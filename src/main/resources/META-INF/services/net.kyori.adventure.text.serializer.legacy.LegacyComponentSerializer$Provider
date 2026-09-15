@@ -1,1 +1,1 @@
-dev.gameengine.adventure.provider.EngineLegacyComponentSerializerProvider
+io.github.bearisbug.synaxis.adventure.provider.EngineLegacyComponentSerializerProvider

@@ -1,0 +1,35 @@
+package io.github.bearisbug.synaxis.network.packet.client.login;
+
+import io.github.bearisbug.synaxis.network.NetworkBuffer;
+import io.github.bearisbug.synaxis.network.NetworkBufferTemplate;
+import io.github.bearisbug.synaxis.network.packet.client.ClientPacket;
+
+import java.util.Arrays;
+
+import static io.github.bearisbug.synaxis.network.NetworkBuffer.BYTE_ARRAY;
+
+public record ClientEncryptionResponsePacket(byte[] sharedSecret,
+                                             byte[] encryptedVerifyToken) implements ClientPacket.Login {
+    public static final NetworkBuffer.Type<ClientEncryptionResponsePacket> SERIALIZER = NetworkBufferTemplate.template(
+            BYTE_ARRAY, ClientEncryptionResponsePacket::sharedSecret,
+            BYTE_ARRAY, ClientEncryptionResponsePacket::encryptedVerifyToken,
+            ClientEncryptionResponsePacket::new);
+
+    public ClientEncryptionResponsePacket {
+        sharedSecret = sharedSecret.clone();
+        encryptedVerifyToken = encryptedVerifyToken.clone();
+    }
+
+    @Override
+    public boolean equals(Object object) {
+        if (!(object instanceof ClientEncryptionResponsePacket(byte[] secret, byte[] verifyToken))) return false;
+        return Arrays.equals(sharedSecret(), secret) && Arrays.equals(encryptedVerifyToken(), verifyToken);
+    }
+
+    @Override
+    public int hashCode() {
+        int result = Arrays.hashCode(sharedSecret());
+        result = 31 * result + Arrays.hashCode(encryptedVerifyToken());
+        return result;
+    }
+}

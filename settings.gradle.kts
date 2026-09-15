@@ -1,4 +1,4 @@
-rootProject.name = "game-engine"
+rootProject.name = "synaxis"
 
 includeBuild("build-src")
 

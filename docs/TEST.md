@@ -1,4 +1,4 @@
-# game-engine 测试文档 · 里程碑 M1「引擎独立化」
+# Synaxis 测试文档 · 里程碑 M1「引擎独立化」
 
 ## 1. 元信息 / 变更记录
 
@@ -7,13 +7,14 @@
 | 状态 | 草稿 |
 | Owner | Bearisbug |
 | 关联设计文档 | `docs/DESIGN.md` |
-| 被测系统 | 仓库 `Bearisbug/game-engine`，分支 `main` |
-| 最后更新 | 2026-09-09 |
+| 被测系统 | 仓库 `Bearisbug/synaxis`，分支 `main` |
+| 最后更新 | 2026-09-15 |
 
 变更记录（登用例增改，不登执行轮次）：
 
 | 日期 | 改动 | 作者 |
 | --- | --- | --- |
+| 2026-09-15 | 项目定名 Synaxis（设计文档 v0.18）：TC-002、TC-005、TC-010、TC-012、TC-013、TC-014、TC-017、TC-018、TC-019、TC-020、TC-021、TC-024、TC-025、TC-026、TC-027 与 §1、§3 中的仓库名、包路径、品牌、原因键、通道名字面量随改名更新；用例语义不变，ID 不变 | Bearisbug |
 | 2026-09-09 | 初稿，TC-001～TC-018，覆盖 REQ-001～REQ-012 | Bearisbug |
 | 2026-09-09 | TC-007 第 4 步增加 `snapshot` 目录检查（设计文档 v0.2） | Bearisbug |
 | 2026-09-09 | TC-001：前置与第 3 步按实际数据修正为 74 个 JSON、路径 `src/main/resources/data`、含子目录故改用 `find`（设计文档 v0.2.1）；第 4 步补上镜像 init 脚本 | Bearisbug |
@@ -46,8 +47,8 @@
 ## 3. 环境与前置
 
 - 启动：`export JAVA_HOME=/opt/homebrew/opt/openjdk@25/libexec/openjdk.jdk/Contents/Home && ./gradlew :smoke:run --no-daemon --console=plain --init-script gradle/init/aliyun-mirror.init.gradle.kts`（`smoke` 模块随 `REQ-008` 提前落地，`demo` 仍在仓内，阶段 2 才删除）。默认绑定 `0.0.0.0:25565`，端口用 `-Dsmoke.port=<port>` 覆盖。TC-004 与 TC-018 要往服务端 stdin 写 `stop`，因此运行期间必须保持 stdin 打开（`:smoke:run` 已把 Gradle 进程的 stdin 转给应用；后台运行时用 FIFO 喂入）。
-- 就绪判定：stdout 出现 `game-engine smoke listening on 0.0.0.0:25565`，且 `nc -z 127.0.0.1 25565` 退出码为 0。
-- 日志关联：与连接相关的服务端日志行统一带 `connection_id=<uuid>` —— `Login success: username=… connection_id=… remote_address=…`、`Kicking connection_id=… identifier=… reason=engine:…`、`Connection closed: connection_id=… identifier=…`，`smoke` 的 echo 行为 `Echo: connection_id=… channel=game:main bytes=…`。
+- 就绪判定：stdout 出现 `synaxis smoke listening on 0.0.0.0:25565`，且 `nc -z 127.0.0.1 25565` 退出码为 0。
+- 日志关联：与连接相关的服务端日志行统一带 `connection_id=<uuid>` —— `Login success: username=… connection_id=… remote_address=…`、`Kicking connection_id=… identifier=… reason=synaxis:…`、`Connection closed: connection_id=… identifier=…`，`smoke` 的 echo 行为 `Echo: connection_id=… channel=synaxis:main bytes=…`。
 - 入口：TCP `127.0.0.1:25565`；离线模式（`Auth.Offline`），任意用户名；压缩阈值 256 字节。
 - 测试账号：
 
@@ -62,13 +63,13 @@
 | 子命令 | 参数 | 行为 | 退出码 0 的条件 |
 | --- | --- | --- | --- |
 | `login` | `--hold N`、`--protocol N`（默认 776） | 走完 login → configuration → play，保持 N 秒并应答 KeepAlive | 进入 play 状态；保持期间被服务端断线则退 1 并打印原因键 |
-| `premature-finish` | — | 在服务端发出 FinishConfiguration 之前抢跑应答 | 收到 `Disconnect reason=engine:protocol-error` |
-| `bad-version` | `--protocol N`（必填） | 用非 776 的协议版本握手 | 收到 `LoginDisconnect reason=engine:unsupported-version` |
-| `zero-frame` | — | 进入 play 后发单字节 `0x00` | 收到 `Disconnect reason=engine:protocol-error` |
+| `premature-finish` | — | 在服务端发出 FinishConfiguration 之前抢跑应答 | 收到 `Disconnect reason=synaxis:protocol-error` |
+| `bad-version` | `--protocol N`（必填） | 用非 776 的协议版本握手 | 收到 `LoginDisconnect reason=synaxis:unsupported-version` |
+| `zero-frame` | — | 进入 play 后发单字节 `0x00` | 收到 `Disconnect reason=synaxis:protocol-error` |
 | `deep-recursion` | `--depth N`（默认 200） | 创造模式设槽包携带 N 层自嵌套 `CustomPotionEffect.Settings` | REQ-017 后非创造玩家的创造包整包跳过：连接保持、随后 KeepAlive 正常即为成功（递归深度守卫由 `NetworkBufferRecursiveDepthTest` 覆盖） |
-| `alloc-bomb` | — | 登录后发送声明 65,535 个元素但只含少量字节的集合包 | 收到 `Disconnect reason=engine:protocol-error` |
-| `nbt-bomb` | `--mib N`（默认 3） | 通过 `ClientCustomClickActionPacket` 携带解码后估算 N MiB 的 NBT | 收到 `Disconnect reason=engine:protocol-error` |
-| `echo` | `--payload TEXT`（必填） | 走 `game:main` 通道做一次自定义负载往返 | 回发负载与发出的完全一致 |
+| `alloc-bomb` | — | 登录后发送声明 65,535 个元素但只含少量字节的集合包 | 收到 `Disconnect reason=synaxis:protocol-error` |
+| `nbt-bomb` | `--mib N`（默认 3） | 通过 `ClientCustomClickActionPacket` 携带解码后估算 N MiB 的 NBT | 收到 `Disconnect reason=synaxis:protocol-error` |
+| `echo` | `--payload TEXT`（必填） | 走 `synaxis:main` 通道做一次自定义负载往返 | 回发负载与发出的完全一致 |
 | `record-registry` | `--out FILE`（必填） | 按收到顺序写出全部 `RegistryData` 包的解压后字节（含包 ID varint） | 至少收到一个 `RegistryData` 包 |
 
   探针每次启动时从 `network/packet/PacketVanilla.java` 的注册表顺序推导包 ID、从 `component/DataComponents.java` 的注册顺序推导数据组件 ID，不写死协议常量；注册表顺序变化时探针自动跟随。stdout 逐条打印收到的包名、断线原因键与末行 `exit code: <n>`。
@@ -96,12 +97,12 @@
 
 #### `TC-002` 仓库独立 — 对应 `REQ-002` · 级别: 冒烟 · 执行者: AI
 
-前置：本地仓库位于 `game-engine/`。
+前置：本地仓库位于 `synaxis/`。
 
 | # | 操作 | 预期 |
 | --- | --- | --- |
-| 1 | `git remote -v` | 只有 `origin`，两行均为 `https://github.com/Bearisbug/game-engine.git` |
-| 2 | `gh repo view Bearisbug/game-engine --json isFork --jq .isFork` | 输出 `false` |
+| 1 | `git remote -v` | 只有 `origin`，两行均为 `https://github.com/Bearisbug/synaxis.git` |
+| 2 | `gh repo view Bearisbug/synaxis --json isFork --jq .isFork` | 输出 `false` |
 | 3 | `gh repo view Bearisbug/Minestom 2>&1` | stderr 含 `Could not resolve to a Repository`，退出码非 0 |
 | 4 | `git log --format=%h \| grep -c 16842f1954` | 输出 `1` |
 | 5 | `git branch --show-current` | 输出 `main` |
@@ -141,7 +142,7 @@
 | --- | --- | --- |
 | 1 | 新建分支 `tmp/ci-jcstress-probe`，把 `ThreadDispatcherImpl.shutdown()` 改回 `synchronized`，提交并推送 | 推送成功 |
 | 2 | `gh run watch` 等待该分支的 CI | jcstress job 状态为 `failure`，日志含 `FORBIDDEN` |
-| 3 | 删除远端与本地临时分支 | `gh api repos/Bearisbug/game-engine/branches/tmp/ci-jcstress-probe` 返回 404 |
+| 3 | 删除远端与本地临时分支 | `gh api repos/Bearisbug/synaxis/branches/tmp/ci-jcstress-probe` 返回 404 |
 
 后置：确认 `main` 未被改动。
 
@@ -153,7 +154,7 @@
 | --- | --- | --- |
 | 1 | 新建分支 `tmp/ci-jcstress-probe`，把 `ThreadDispatcherImpl.shutdown()` 改回 `synchronized`，提交推送，并为该分支开一个草稿 PR | PR 创建成功，两个工作流开始运行 |
 | 2 | 等待该分支的两个工作流完成 | 至少一个工作流结论为 `failure`；失败日志含并发回归测试名（如 `ThreadDispatcherTest > shutdownFromTickThread() FAILED`）或 jcstress 的 `FORBIDDEN` |
-| 3 | 关闭 PR 并删除远端与本地临时分支 | `gh api repos/Bearisbug/game-engine/branches/tmp/ci-jcstress-probe` 返回 404 |
+| 3 | 关闭 PR 并删除远端与本地临时分支 | `gh api repos/Bearisbug/synaxis/branches/tmp/ci-jcstress-probe` 返回 404 |
 
 后置：确认 `main` 未被改动。
 
@@ -198,8 +199,8 @@
 | 1 | `python3 tools/protocol-probe/probe.py record-registry --out /tmp/registry-now.bin` | 退出码 0，文件生成 |
 | 2 | `cmp src/test/resources/protocol/registry-data-26.2.bin /tmp/registry-now.bin` | 无输出，退出码 0 |
 | 3 | `find src/main/java -name '*.java' \| wc -l` | ≤ 1,150（含 49 个由 REQ-008 并入的原生成文件） |
-| 4 | `ls src/main/java/dev/gameengine/entity/pathfinding src/main/java/dev/gameengine/entity/ai src/main/java/dev/gameengine/snapshot 2>&1` | 三个目录均 `No such file or directory` |
-| 5 | `ls src/main/java/dev/gameengine/entity/metadata/` 与 `ls src/main/java/dev/gameengine/entity/metadata/other/` | 前者只含根基类文件、`package-info.java` 与 `avatar`、`display`、`item`、`projectile`、`other` 五个子目录；后者只含 `ArmorStandMeta.java`、`InteractionMeta.java`、`package-info.java` |
+| 4 | `ls src/main/java/io/github/bearisbug/synaxis/entity/pathfinding src/main/java/io/github/bearisbug/synaxis/entity/ai src/main/java/io/github/bearisbug/synaxis/snapshot 2>&1` | 三个目录均 `No such file or directory` |
+| 5 | `ls src/main/java/io/github/bearisbug/synaxis/entity/metadata/` 与 `ls src/main/java/io/github/bearisbug/synaxis/entity/metadata/other/` | 前者只含根基类文件、`package-info.java` 与 `avatar`、`display`、`item`、`projectile`、`other` 五个子目录；后者只含 `ArmorStandMeta.java`、`InteractionMeta.java`、`package-info.java` |
 | 6 | `./gradlew check --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts` | `BUILD SUCCESSFUL` |
 
 后置：`rm /tmp/registry-now.bin`。
@@ -240,7 +241,7 @@
 | 1 | `grep -rn "net\.minestom" --include='*.java' --include='*.kts' --include='*.toml' . \| grep -v "net\.minestom\.data" \| wc -l` | 输出 `0` |
 | 2 | `cat .git-blame-ignore-revs` | 含改名提交的完整 SHA |
 | 3 | `git config blame.ignoreRevsFile` | 输出 `.git-blame-ignore-revs` |
-| 4 | `git blame -L 1,5 src/main/java/dev/gameengine/ServerProcess.java`（包名以设计文档 §28 拍板为准） | 5 行中无一行指向改名提交 |
+| 4 | `git blame -L 1,5 src/main/java/io/github/bearisbug/synaxis/ServerProcess.java`（包名以设计文档 §28 拍板为准） | 5 行中无一行指向改名提交 |
 | 5 | `ls src/main/resources/META-INF/native-image/` | 目录名已改为新坐标，不含 `net.minestom` |
 
 后置：无。
@@ -267,7 +268,7 @@
 | # | 操作 | 预期 |
 | --- | --- | --- |
 | 1 | 多人游戏直连 `127.0.0.1` | 5 秒内进入世界，看到平坦地面，F3 显示服务端品牌为我们的名称 |
-| 2 | 在聊天框输入 `/echo ping`（`smoke` 启动器把该命令转成 `game:main` echo 负载） | 1 秒内聊天框出现 `echo: ping` |
+| 2 | 在聊天框输入 `/echo ping`（`smoke` 启动器把该命令转成 `synaxis:main` echo 负载） | 1 秒内聊天框出现 `echo: ping` |
 | 3 | 查看服务端 stdout | 含一行带 `connection_id` 的登录日志和一行 echo 日志，两者 `connection_id` 相同 |
 | 4 | 客户端断开 | 服务端 stdout 出现同一 `connection_id` 的断开日志，进程继续运行 |
 
@@ -282,7 +283,7 @@
 
 | # | 操作 | 预期 |
 | --- | --- | --- |
-| 1 | `python3 tools/protocol-probe/probe.py premature-finish` | stdout 含 `Disconnect` 且原因键为 `engine:protocol-error` |
+| 1 | `python3 tools/protocol-probe/probe.py premature-finish` | stdout 含 `Disconnect` 且原因键为 `synaxis:protocol-error` |
 | 2 | 观察正常玩家的探针连续 3 秒的 KeepAlive 往返 | 每秒收到 KeepAlive，无中断 |
 | 3 | 查看服务端 stdout | 含该连接 `connection_id` 的 `protocol-error` 日志，无异常堆栈 |
 
@@ -294,9 +295,9 @@
 
 | # | 操作 | 预期 |
 | --- | --- | --- |
-| 1 | `python3 tools/protocol-probe/probe.py premature-finish` | stdout 含 `Disconnect reason=engine:protocol-error`，退出码 0 |
+| 1 | `python3 tools/protocol-probe/probe.py premature-finish` | stdout 含 `Disconnect reason=synaxis:protocol-error`，退出码 0 |
 | 2 | 等 holder 探针的 14 秒保持期结束，查看其 stdout | 至少一次 `recv KeepAlivePacket` 与对应的 `sent KeepAlive`，无 `unexpected disconnect`，`exit code: 0` |
-| 3 | 查看服务端 stdout | 含抢跑连接 `connection_id` 的 `reason=engine:protocol-error` 日志，无异常堆栈 |
+| 3 | 查看服务端 stdout | 含抢跑连接 `connection_id` 的 `reason=synaxis:protocol-error` 日志，无异常堆栈 |
 
 后置：无。
 
@@ -306,7 +307,7 @@
 
 | # | 操作 | 预期 |
 | --- | --- | --- |
-| 1 | `python3 tools/protocol-probe/probe.py bad-version --protocol 775` | stdout 含 `LoginDisconnect` 且原因键为 `engine:unsupported-version` |
+| 1 | `python3 tools/protocol-probe/probe.py bad-version --protocol 775` | stdout 含 `LoginDisconnect` 且原因键为 `synaxis:unsupported-version` |
 | 2 | `python3 tools/protocol-probe/probe.py bad-version --protocol 777` | 同上 |
 | 3 | `python3 tools/protocol-probe/probe.py login --protocol 776` | stdout 含 `LoginSuccess` |
 
@@ -321,7 +322,7 @@
 
 | # | 操作 | 预期 |
 | --- | --- | --- |
-| 1 | `python3 tools/protocol-probe/probe.py zero-frame`（登录后发送单字节 `0x00`） | 连接被服务端关闭，stdout 含 `engine:protocol-error` |
+| 1 | `python3 tools/protocol-probe/probe.py zero-frame`（登录后发送单字节 `0x00`） | 连接被服务端关闭，stdout 含 `synaxis:protocol-error` |
 | 2 | `python3 tools/protocol-probe/probe.py deep-recursion --depth 200`（创造模式设槽包携带 200 层自嵌套药水效果） | 连接被关闭，服务端 stdout 无 `StackOverflowError` |
 | 3 | 探针 `login` 再连一次 | `LoginSuccess`，进程仍在运行 |
 
@@ -333,7 +334,7 @@
 
 | # | 操作 | 预期 |
 | --- | --- | --- |
-| 1 | `python3 tools/protocol-probe/probe.py zero-frame` | 连接被服务端关闭，stdout 含 `engine:protocol-error` |
+| 1 | `python3 tools/protocol-probe/probe.py zero-frame` | 连接被服务端关闭，stdout 含 `synaxis:protocol-error` |
 | 2 | `python3 tools/protocol-probe/probe.py deep-recursion --depth 200` | 探针退出码 0：连接保持并收到后续 KeepAlive；服务端 stdout 无 `StackOverflowError` |
 | 3 | 探针 `login --hold 1` 再连一次 | `LoginSuccess`，进程仍在运行 |
 | 4 | 查看服务端 stdout 中第 1 步的记录 | 一行 `WARN` 带 `connection_id` 与原因，无堆栈行（以 `at ` 开头的行为 0） |
@@ -346,8 +347,8 @@
 
 | # | 操作 | 预期 |
 | --- | --- | --- |
-| 1 | `python3 tools/protocol-probe/probe.py alloc-bomb` | stdout 含 `Disconnect reason=engine:protocol-error` |
-| 2 | `python3 tools/protocol-probe/probe.py nbt-bomb --mib 3` | stdout 含 `Disconnect reason=engine:protocol-error` |
+| 1 | `python3 tools/protocol-probe/probe.py alloc-bomb` | stdout 含 `Disconnect reason=synaxis:protocol-error` |
+| 2 | `python3 tools/protocol-probe/probe.py nbt-bomb --mib 3` | stdout 含 `Disconnect reason=synaxis:protocol-error` |
 | 3 | 查看服务端 stdout | 两次断线各一行 `WARN` 带 `connection_id`，无堆栈行 |
 | 4 | 探针 `login --hold 1` | `LoginSuccess`，进程仍在运行 |
 
@@ -359,7 +360,7 @@
 
 | # | 操作 | 预期 |
 | --- | --- | --- |
-| 1 | 记录时间，向服务端 stdin 输入 `stop` | 三个探针均收到原因键 `engine:server-stopping` 的 Disconnect |
+| 1 | 记录时间，向服务端 stdin 输入 `stop` | 三个探针均收到原因键 `synaxis:server-stopping` 的 Disconnect |
 | 2 | 等待进程退出并记录时间 | 用时 < 10 秒，退出码 0 |
 
 后置：无。
@@ -430,8 +431,8 @@
 | 1 | `python3 tools/pkgdeps.py` | 输出含 `lower layer edges into the rest of the engine: 0` |
 | 2 | `grep -rn "FreezingArchRule\|archunit_store" src/test` | 退出码 1，无输出（规则已是严格规则，冻结存储已删除） |
 | 3 | `./gradlew :test --tests '*ArchitectureTest*' --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts` | `BUILD SUCCESSFUL` |
-| 4 | `ls src/main/java/dev/gameengine/utils/` | 只剩通用工具类，不含 `chunk`、`block`、`entity`、`inventory`、`time`、`identity`、`location`、`position`、`callback`、`crypto` 子目录 |
-| 5 | 在 `coordinate` 包任一类临时加 `import dev.gameengine.entity.Entity;` 并引用，重跑第 3 步，然后撤销 | 第 3 步失败，日志含 `ArchitectureTest`；撤销后 `git status` 干净 |
+| 4 | `ls src/main/java/io/github/bearisbug/synaxis/utils/` | 只剩通用工具类，不含 `chunk`、`block`、`entity`、`inventory`、`time`、`identity`、`location`、`position`、`callback`、`crypto` 子目录 |
+| 5 | 在 `coordinate` 包任一类临时加 `import io.github.bearisbug.synaxis.entity.Entity;` 并引用，重跑第 3 步，然后撤销 | 第 3 步失败，日志含 `ArchitectureTest`；撤销后 `git status` 干净 |
 
 后置：无。
 

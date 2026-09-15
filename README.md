@@ -1,4 +1,4 @@
-# game-engine
+# Synaxis
 
 > **本项目派生自 Minestom**（[Minestom/Minestom](https://github.com/Minestom/Minestom)，Apache-2.0），
 > 起点 commit `16842f1954`，并**已做大量修改**：除另有注明外，所有承自上游的文件均已被修改。
@@ -9,7 +9,7 @@
 自研 Minecraft Java 版服务端引擎。不含任何原版玩法：原版玩法子系统已整体删除，
 游戏规则属于引擎之上的游戏模块，引擎不依赖游戏。客户端强制安装配套 Fabric 模组。
 
-包名 `dev.gameengine`，产物坐标 `dev.gameengine:game-engine`，与上游的 Maven 坐标不兼容，
+包名 `io.github.bearisbug.synaxis`，产物坐标 `io.github.bearisbug.synaxis:synaxis`，与上游的 Maven 坐标不兼容，
 也不互为替代。
 
 ## 构建
@@ -26,7 +26,7 @@ JDK 25 / Gradle 9.7.1。冷启动、常用命令、目录地图、升 Minecraft 
 
 | 路径 | 内容 |
 | --- | --- |
-| `src/` | 引擎主源码（`dev.gameengine`）与测试 |
+| `src/` | 引擎主源码（`io.github.bearisbug.synaxis`）与测试 |
 | `testing/` | `@EnvTest` 测试夹具模块 |
 | `smoke/` | 冒烟启动器，协议验收用的最小服务端 |
 | `jmh-benchmarks/`、`jcstress-tests/` | 基准与并发压力测试 |

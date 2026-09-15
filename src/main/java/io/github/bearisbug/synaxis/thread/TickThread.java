@@ -53,14 +53,16 @@ public class TickThread extends EngineThread {
             lock.lock();
             try {
                 tick();
-            } catch (Exception e) {
-                exceptionHandler.accept(e);
+            } catch (Throwable e) {
+                handleException(e);
             } finally {
                 lock.unlock();
                 // #acquire() callbacks
+                // The latch is counted down whatever happened: a tick thread dying here would leave
+                // every ThreadDispatcher#updateAndAwait blocked on it forever.
+                this.latchRef.set(null);
+                latch.countDown();
             }
-            this.latchRef.set(null);
-            latch.countDown();
             LockSupport.park(this);
         }
     }
@@ -82,9 +84,21 @@ public class TickThread extends EngineThread {
                     assert assertElement(element);
                     element.tick(tickTime);
                 } catch (Throwable e) {
-                    exceptionHandler.accept(e);
+                    handleException(e);
                 }
             }
+        }
+    }
+
+    /**
+     * Reports an exception without ever letting the handler's own failure escape the tick loop.
+     */
+    private void handleException(Throwable throwable) {
+        try {
+            exceptionHandler.accept(throwable);
+        } catch (Throwable handlerFailure) {
+            if (handlerFailure != throwable) handlerFailure.addSuppressed(throwable);
+            handlerFailure.printStackTrace();
         }
     }
 

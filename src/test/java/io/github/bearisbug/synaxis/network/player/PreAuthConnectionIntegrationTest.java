@@ -59,6 +59,24 @@ public class PreAuthConnectionIntegrationTest {
     }
 
     /**
+     * The server moves itself to the configuration state as soon as it writes the login success,
+     * which a peer buys with a single login start before going silent. Only the state the peer has
+     * to reach by itself can call the watchdog off.
+     */
+    @Test
+    public void aLoginTheClientNeverAcknowledgesStillTimesOut(Env env) throws IOException {
+        try (SocketPair pair = SocketPair.open(env)) {
+            final PlayerSocketConnection connection = pair.connection();
+            connection.setClientState(ConnectionState.LOGIN);
+            connection.setServerState(ConnectionState.CONFIGURATION); // the login success has been written
+            final long expiry = System.currentTimeMillis() + env.process().config().loginTimeout();
+
+            assertTrue(connection.loginTimedOut(expiry),
+                    "a peer that never acknowledges the login must still run out of time");
+        }
+    }
+
+    /**
      * The watchdog holds the connection and its read buffer for the whole login timeout. A
      * connection that is already gone has to release it instead of sleeping the timeout out.
      */

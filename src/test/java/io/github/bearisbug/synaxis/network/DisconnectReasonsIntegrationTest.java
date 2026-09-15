@@ -93,7 +93,7 @@ public class DisconnectReasonsIntegrationTest {
             assertFalse(connection.loginTimedOut(System.currentTimeMillis()), "the connection still has time");
             assertTrue(connection.loginTimedOut(expiry), "a connection stuck in login must time out");
 
-            connection.setServerState(ConnectionState.CONFIGURATION);
+            connection.setClientState(ConnectionState.CONFIGURATION);
             assertFalse(connection.loginTimedOut(expiry), "a configured connection never times out");
             assertEquals("synaxis:login-timeout", DisconnectReasons.LOGIN_TIMEOUT.key());
         }

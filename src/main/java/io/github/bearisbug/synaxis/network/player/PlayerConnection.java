@@ -99,8 +99,11 @@ public abstract class PlayerConnection {
     public boolean loginTimedOut(long nowMillis) {
         // The watchdog sleeps exactly one login timeout before asking, so the deadline itself has
         // to count as expired: milliseconds are integers and it only ever asks once.
+        // The client state is the one the peer has to reach itself, by acknowledging the login. The
+        // server reaches configuration on its own the moment it writes the login success, which a
+        // peer that goes silent right after its login start would get for free.
         return online
-                && serverState.ordinal() < ConnectionState.CONFIGURATION.ordinal()
+                && clientState.ordinal() < ConnectionState.CONFIGURATION.ordinal()
                 && nowMillis - connectedAtMillis >= process.config().loginTimeout();
     }
 

@@ -43,10 +43,13 @@ import java.util.function.Supplier;
 @ApiStatus.Internal
 public final class CachedPacket implements SendablePacket {
     private static final VarHandle PACKET;
+    private static final VarHandle INVALIDATIONS;
 
     static {
         try {
-            PACKET = MethodHandles.lookup().findVarHandle(CachedPacket.class, "packet", SoftReference.class);
+            final MethodHandles.Lookup lookup = MethodHandles.lookup();
+            PACKET = lookup.findVarHandle(CachedPacket.class, "packet", SoftReference.class);
+            INVALIDATIONS = lookup.findVarHandle(CachedPacket.class, "invalidations", long.class);
         } catch (ReflectiveOperationException e) {
             throw new ExceptionInInitializerError(e);
         }
@@ -96,6 +99,10 @@ public final class CachedPacket implements SendablePacket {
     @SuppressWarnings("unused")
     private @Nullable SoftReference<FramedPacket> packet;
 
+    // Accessed through INVALIDATIONS, counts the invalidations to detect the ones racing a computation.
+    @SuppressWarnings("unused")
+    private volatile long invalidations;
+
     /**
      * Creates a cached packet backed by the given packet supplier.
      *
@@ -132,11 +139,13 @@ public final class CachedPacket implements SendablePacket {
      * This method has no effect when caching is disabled.
      *
      * @implSpec This method clears the cached reference using release semantics.
-     * Cache computation is not synchronized with invalidation, so an in progress
-     * computation may publish a value after this method returns.
+     * Cache computation is not synchronized with invalidation, but a computation
+     * that started before this method was called discards its result instead of
+     * publishing it.
      */
     public void invalidate() {
         if (!JvmFlags.CACHED_PACKET) return;
+        INVALIDATIONS.getAndAdd(this, 1L);
         PACKET.setRelease(this, null);
     }
 
@@ -183,9 +192,11 @@ public final class CachedPacket implements SendablePacket {
      * checked again after acquiring this object's monitor because another thread
      * may have populated it while the current thread was waiting.
      *
-     * <p>Invalidation does not acquire this monitor. An invalidation occurring
-     * during computation may therefore be followed by publication of the
-     * in progress result.
+     * <p>Invalidation does not acquire this monitor. The invalidation count is
+     * read before the supplier is invoked and checked again before publication,
+     * so an invalidation occurring during the computation drops the result
+     * instead of being overwritten by it. The caller still gets that result,
+     * which is no older than its own request.
      *
      * @param state the connection state used when framing the packet
      * @return the existing or newly computed framed packet
@@ -194,11 +205,14 @@ public final class CachedPacket implements SendablePacket {
         final FramedPacket cache = cachedPacket();
         if (cache != null) return cache;
 
+        final long invalidations = (long) INVALIDATIONS.getAcquire(this);
         final ServerPacket packet = packetSupplier.get();
         final NetworkBuffer buffer = PacketWriting.allocateTrimmedPacket(state, packet, registries, compressionThreshold);
 
         final FramedPacket updated = new FramedPacket(packet, buffer);
-        PACKET.setRelease(this, new SoftReference<>(updated));
+        if ((long) INVALIDATIONS.getAcquire(this) == invalidations) {
+            PACKET.setRelease(this, new SoftReference<>(updated));
+        }
         return updated;
     }
 

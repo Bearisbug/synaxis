@@ -107,6 +107,7 @@ public non-sealed class Inventory extends AbstractInventory {
      */
     @Override
     public boolean addViewer(Player player) {
+        bindProcess(player.process());
         if (!this.viewers.add(player)) return false;
 
         // Also send the open window packet

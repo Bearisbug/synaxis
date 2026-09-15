@@ -1200,7 +1200,7 @@ flowchart LR
   Then 玩家被断开且原因键是 synaxis:match-unavailable
   And 服务端日志里没有 spawningInstance 相关的 NullPointerException，也没有 synaxis:internal-error
   And AdmissionProvider 抛异常时走同样的 Reject 路径，并记一行带 plugin_id 的 ERROR
-  And AdmissionProvider 慢于 200 ms 返回时它的返回值照常生效（内联调用中止不了它），只多一行带 plugin_id 与实测耗时的 WARN，该连接的握手被拖慢而其他连接不受影响
+  And AdmissionProvider 慢于 200 ms 返回时它的返回值照常生效（内联调用中止不了它），只多一行带 plugin_id 与实测耗时的 WARN，该连接的握手被拖慢，而并发的其他连接各自独立承担这段耗时、不被它串行阻塞
 
 场景: 单位位置推进走公开入口而不是引擎内部 API (REQ-M2-025)
   Given 引擎已提供公开的 Entity#moveTo(Pos)，语义等同 refreshPosition(pos, false, true)

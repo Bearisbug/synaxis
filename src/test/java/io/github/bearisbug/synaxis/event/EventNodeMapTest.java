@@ -157,4 +157,41 @@ public class EventNodeMapTest {
         var second = node.map(item, EventFilter.ITEM);
         assertSame(first, second);
     }
+
+    @Test
+    public void mappedOnlyChildAdded() {
+        var item = ItemStack.of(Material.DIAMOND);
+        var parent = EventNode.all("parent");
+        var child = EventNode.all("child");
+        AtomicBoolean result = new AtomicBoolean(false);
+        var itemNode = child.map(item, EventFilter.ITEM);
+        itemNode.addListener(EventNodeTest.ItemTestEvent.class, _ -> result.set(true));
+
+        // Compile and cache the parent handle before the subtree gets attached
+        parent.call(new EventNodeTest.ItemTestEvent(item));
+        assertFalse(result.get());
+
+        parent.addChild(child);
+        parent.call(new EventNodeTest.ItemTestEvent(item));
+        assertTrue(result.get(), "A child whose only listeners are mapped must receive events once added");
+    }
+
+    @Test
+    public void mappedOnlyChildRemoved() {
+        var item = ItemStack.of(Material.DIAMOND);
+        var parent = EventNode.all("parent");
+        var child = EventNode.all("child");
+        AtomicBoolean result = new AtomicBoolean(false);
+        var itemNode = child.map(item, EventFilter.ITEM);
+        itemNode.addListener(EventNodeTest.ItemTestEvent.class, _ -> result.set(true));
+
+        parent.addChild(child);
+        parent.call(new EventNodeTest.ItemTestEvent(item));
+        assertTrue(result.get());
+
+        result.set(false);
+        parent.removeChild(child);
+        parent.call(new EventNodeTest.ItemTestEvent(item));
+        assertFalse(result.get(), "A removed child whose only listeners are mapped must not receive events anymore");
+    }
 }

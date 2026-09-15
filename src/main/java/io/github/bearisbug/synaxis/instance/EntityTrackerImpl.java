@@ -57,6 +57,8 @@ final class EntityTrackerImpl implements EntityTracker {
         EntityTrackerEntry prevEntryWithId = entriesByEntityId.putIfAbsent(entity.getEntityId(), newEntry);
         Check.isTrue(prevEntryWithId == null, "There is already an entity registered with id {0}", entity.getEntityId());
         EntityTrackerEntry prevEntryWithUuid = entriesByEntityUuid.putIfAbsent(entity.getUuid(), newEntry);
+        // A rejected registration must leave no trace, the entity is never unregistered to clean it up
+        if (prevEntryWithUuid != null) entriesByEntityId.remove(entity.getEntityId(), newEntry);
         Check.isTrue(prevEntryWithUuid == null, "There is already an entity registered with uuid {0}", entity.getUuid());
 
         final long index = CoordConversion.chunkIndex(point);
@@ -79,7 +81,8 @@ final class EntityTrackerImpl implements EntityTracker {
     public <T extends Entity> void unregister(Entity entity,
                                               Target<T> target, @Nullable Update<T> update) {
         EntityTrackerEntry entry = entriesByEntityId.remove(entity.getEntityId());
-        entriesByEntityUuid.remove(entity.getUuid());
+        // Only drop the uuid index when it points at this entity, another one may own that uuid
+        if (entry != null) entriesByEntityUuid.remove(entity.getUuid(), entry);
         final Point point = entry == null ? null : entry.getLastPosition();
         if (point == null) return;
 

@@ -77,6 +77,8 @@ final class ServerProcessImpl implements ServerProcess, Registries.Delegating {
     private volatile int compressionThreshold = 256;
     // Set by the ticker itself, so that stop() can wait for the in-flight tick to complete.
     private volatile @Nullable TickSchedulerThread tickSchedulerThread;
+    // Kept so that stop() can unregister it, the JVM strongly references every registered hook.
+    volatile @Nullable Thread shutdownHook;
 
     public ServerProcessImpl(Auth auth, ServerConfig config) {
         this.auth = auth;
@@ -273,7 +275,11 @@ final class ServerProcessImpl implements ServerProcess, Registries.Delegating {
         LOGGER.info("{} server started successfully.", brand);
 
         // Stop the server on SIGINT
-        if (config.shutdownOnSignal()) Runtime.getRuntime().addShutdownHook(new Thread(this::stop));
+        if (config.shutdownOnSignal()) {
+            final Thread hook = new Thread(this::stop);
+            Runtime.getRuntime().addShutdownHook(hook);
+            this.shutdownHook = hook;
+        }
     }
 
     @Override
@@ -295,14 +301,29 @@ final class ServerProcessImpl implements ServerProcess, Registries.Delegating {
         // `stopped` is already set, so the ticker loop exits once the tick in flight is over.
         // Wait for it before touching anything else, otherwise the shutdown races with ticking.
         joinThread(tickSchedulerThread);
-        LOGGER.info("Shutting down all thread pools.");
-        dispatcher.shutdown();
-        for (TickThread tickThread : dispatcher.threads()) joinThread(tickThread);
         // Nothing is ticking anymore, user shutdown tasks can safely run before players are kicked.
         scheduler.shutdown();
         connection.shutdown();
+        // Kicking a PLAY player only schedules Entity#remove on its next tick, which is where
+        // PlayerDisconnectEvent is fired. The tick threads are still up for that one last tick.
+        if (dispatcher.isAlive()) dispatcher.updateAndAwait(System.nanoTime());
+        LOGGER.info("Shutting down all thread pools.");
+        dispatcher.shutdown();
+        for (TickThread tickThread : dispatcher.threads()) joinThread(tickThread);
         server.stop();
+        removeShutdownHook();
         LOGGER.info("{} server stopped successfully.", brand);
+    }
+
+    private void removeShutdownHook() {
+        final Thread hook = this.shutdownHook;
+        if (hook == null) return;
+        this.shutdownHook = null;
+        try {
+            Runtime.getRuntime().removeShutdownHook(hook);
+        } catch (IllegalStateException _) {
+            // The JVM is already shutting down, which is exactly when the hook runs this method.
+        }
     }
 
     private static void joinThread(@Nullable Thread thread) {

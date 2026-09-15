@@ -11,6 +11,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNotSame;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -49,6 +51,21 @@ public class ServerProcessTest {
         var ticker = process.ticker();
         assertDoesNotThrow(() -> ticker.tick(System.nanoTime()));
         assertDoesNotThrow(process::stop);
+    }
+
+    @Test
+    public void shutdownHookIsUnregisteredOnStop() {
+        // These like to fail on github actions
+        assumeTrue(System.getenv("GITHUB_ACTIONS") == null);
+
+        // A registered hook is strongly referenced by the JVM, keeping the whole process (and its
+        // world) alive for as long as the JVM runs.
+        var process = ServerProcess.of(ServerConfig.builder().insideTest(true).shutdownOnSignal(true).build());
+        process.start(new InetSocketAddress("localhost", TestUtils.findFreePort()));
+        Thread hook = ((ServerProcessImpl) process).shutdownHook;
+        assertNotNull(hook, "start() must register a shutdown hook when shutdownOnSignal is set");
+        process.stop();
+        assertFalse(Runtime.getRuntime().removeShutdownHook(hook), "the shutdown hook outlived the process");
     }
 
     @Test

@@ -270,6 +270,9 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
     record PendingResourcePack(boolean required, ResourcePackCallback callback) {
     }
 
+    // Guards the two fields below: packs are pushed from the configuration thread while the client
+    // answers are interpreted by the ticker thread.
+    private final Object resourcePackLock = new Object();
     private final Map<UUID, PendingResourcePack> pendingResourcePacks = new HashMap<>();
     // The future is non-null when a resource pack is in-flight, and completed when all statuses have been received.
     private @Nullable CompletableFuture<Void> resourcePackFuture = null;
@@ -1463,11 +1466,14 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
         if (request.replace()) clearResourcePacks();
 
         for (final ResourcePackInfo pack : request.packs()) {
-            sendPacket(new ResourcePackPushPacket(pack, request.required(), request.prompt()));
-            pendingResourcePacks.put(pack.id(), new PendingResourcePack(request.required(), request.callback()));
-            if (resourcePackFuture == null) {
-                resourcePackFuture = new CompletableFuture<>();
+            synchronized (resourcePackLock) {
+                // Registered before the push, the client answer can be interpreted before it returns
+                pendingResourcePacks.put(pack.id(), new PendingResourcePack(request.required(), request.callback()));
+                if (resourcePackFuture == null) {
+                    resourcePackFuture = new CompletableFuture<>();
+                }
             }
+            sendPacket(new ResourcePackPushPacket(pack, request.required(), request.prompt()));
         }
     }
 
@@ -1486,33 +1492,56 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
 
     /**
      * If there are resource packs in-flight, a future is returned which will be completed when
-     * all resource packs have been responded to by the client. Otherwise null is returned.
+     * all resource packs have been responded to by the client, or when the player leaves.
+     * Otherwise null is returned.
      */
     @ApiStatus.Internal
     public @Nullable CompletableFuture<Void> getResourcePackFuture() {
-        return resourcePackFuture;
+        synchronized (resourcePackLock) {
+            return resourcePackFuture;
+        }
+    }
+
+    /**
+     * Completes {@link #getResourcePackFuture()} without a client answer. A player who left can never
+     * answer the packs in-flight, and whoever waits for them must not wait forever.
+     */
+    @ApiStatus.Internal
+    public void releaseResourcePackWait() {
+        final CompletableFuture<Void> future;
+        synchronized (resourcePackLock) {
+            pendingResourcePacks.clear();
+            future = resourcePackFuture;
+            resourcePackFuture = null;
+        }
+        if (future != null) future.complete(null);
     }
 
     @ApiStatus.Internal
     public void onResourcePackStatus(UUID id, ResourcePackStatus status) {
-        var pendingPack = pendingResourcePacks.get(id);
+        final PendingResourcePack pendingPack;
+        synchronized (resourcePackLock) {
+            pendingPack = pendingResourcePacks.get(id);
+        }
         if (pendingPack == null) return;
 
         pendingPack.callback().packEventReceived(id, status, this);
-        if (!status.intermediate()) {
-            // Remove the callback and finish the future if relevant
-            pendingResourcePacks.remove(id);
+        if (status.intermediate()) return;
 
-            // If the resource pack is required and failed to load, bye bye!
-            if (pendingPack.required() && status != ResourcePackStatus.SUCCESSFULLY_LOADED) {
-                kick(MISSING_REQUIRED_RESOURCE_PACK);
-            }
-
-            if (pendingResourcePacks.isEmpty() && resourcePackFuture != null) {
-                resourcePackFuture.complete(null);
-                resourcePackFuture = null;
-            }
+        // If the resource pack is required and failed to load, bye bye!
+        if (pendingPack.required() && status != ResourcePackStatus.SUCCESSFULLY_LOADED) {
+            kick(MISSING_REQUIRED_RESOURCE_PACK);
         }
+
+        // Remove the callback and finish the future if relevant
+        final CompletableFuture<Void> future;
+        synchronized (resourcePackLock) {
+            pendingResourcePacks.remove(id);
+            if (!pendingResourcePacks.isEmpty()) return;
+            future = resourcePackFuture;
+            resourcePackFuture = null;
+        }
+        if (future != null) future.complete(null);
     }
 
     /**

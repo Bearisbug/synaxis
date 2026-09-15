@@ -1,6 +1,8 @@
 package io.github.bearisbug.synaxis.command;
 
 import io.github.bearisbug.synaxis.command.builder.Command;
+import io.github.bearisbug.synaxis.command.builder.arguments.ArgumentString;
+import io.github.bearisbug.synaxis.command.builder.exception.ArgumentSyntaxException;
 import io.github.bearisbug.synaxis.command.builder.suggestion.SuggestionEntry;
 import io.github.bearisbug.synaxis.coordinate.Pos;
 import io.github.bearisbug.synaxis.network.packet.client.play.ClientTabCompletePacket;
@@ -10,6 +12,7 @@ import io.github.bearisbug.synaxis.testing.EnvTest;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static io.github.bearisbug.synaxis.command.builder.arguments.ArgumentType.Integer;
 import static io.github.bearisbug.synaxis.command.builder.arguments.ArgumentType.Literal;
@@ -196,6 +199,36 @@ public class CommandSuggestionIntegrationTest {
         // "nope" fails to parse as secondIntArg, which has no suggestion callback of its
         // own. It must not inherit the "42" suggestion attached to the unrelated intArg
         // from the other syntax.
+        listener.assertEmpty();
+    }
+
+    /**
+     * A space-allowing argument makes the parser retry once per remaining word, so the cost of a suggestion request
+     * grows quadratically with its length. The tab-complete packet allows 32500 characters where a command can only
+     * ever be 256, so an oversized request must be dropped before it reaches the parser.
+     */
+    @Test
+    public void oversizedSuggestionRequestIsNotParsed(Env env) {
+        var instance = env.createFlatInstance();
+        var connection = env.createConnection();
+        var player = connection.connect(instance, new Pos(0, 42, 0));
+
+        var parseAttempts = new AtomicInteger();
+        var command = new Command("foo");
+        command.addSyntax((_, _) -> {}, new ArgumentString("text") {
+            @Override
+            public String parse(CommandSender sender, String input) throws ArgumentSyntaxException {
+                parseAttempts.incrementAndGet();
+                throw new ArgumentSyntaxException("Never matches", input, QUOTE_ERROR);
+            }
+        });
+        env.process().command().register(command);
+
+        var listener = connection.trackIncoming(TabCompletePacket.class);
+        player.addPacketToQueue(new ClientTabCompletePacket(1, "foo \"" + "a ".repeat(16_000)));
+        player.interpretPacketQueue();
+
+        assertEquals(0, parseAttempts.get());
         listener.assertEmpty();
     }
 }

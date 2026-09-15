@@ -47,6 +47,7 @@ abstract class ArgumentRelativeVec extends Argument<RelativeVec> {
         double[] coordinates = new double[split.length];
         boolean[] isRelative = new boolean[split.length];
         boolean isLocalType = false;
+        boolean isWorldType = false;
 
         for (int i = 0; i < split.length; i++) {
             final String element = split[i];
@@ -55,9 +56,11 @@ abstract class ArgumentRelativeVec extends Argument<RelativeVec> {
             try {
                 final char modifierChar = element.charAt(0);
 
-                if (isLocalType && modifierChar != LOCAL_CHAR) {
+                final boolean local = modifierChar == LOCAL_CHAR;
+                if (local ? isWorldType : isLocalType) {
                     throw new ArgumentSyntaxException("Cannot mix world & local coordinates (everything must either use ^ or not)", input, MIXED_TYPE_ERROR);
                 }
+                if (!local) isWorldType = true;
 
                 switch (modifierChar) {
                     case LOCAL_CHAR: {

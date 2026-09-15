@@ -1,5 +1,6 @@
 package io.github.bearisbug.synaxis.entity;
 
+import net.kyori.adventure.key.InvalidKeyException;
 import net.kyori.adventure.key.Key;
 import net.kyori.adventure.key.KeyPattern;
 import net.kyori.adventure.translation.Translatable;
@@ -192,7 +193,11 @@ public sealed interface EntityType extends StaticProtocolObject<EntityType>, Ent
     }
 
     static @Nullable EntityType fromKey(@KeyPattern String key) {
-        return fromKey(Key.key(key));
+        try {
+            return fromKey(Key.key(key));
+        } catch (InvalidKeyException _) {
+            return null;
+        }
     }
 
     static @Nullable EntityType fromKey(Key key) {

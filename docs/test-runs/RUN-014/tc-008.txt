@@ -1,0 +1,4 @@
+TC-008 step 1 · OpaqueRegistryFrozenTest on 70e86ba348 · exit=0
+BUILD SUCCESSFUL in 7s
+TC-008 step2: occurrences of 0x15'minecraft:enchantment' (offset, following varint): [(4664, 43)]
+TC-008 step2: minecraft:enchantment entries = 43

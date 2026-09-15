@@ -1,0 +1,5 @@
+TC-023 on 70e86ba348
+[2] serial: exit=0 BUILD SUCCESSFUL in 1m 1s elapsed=62s
+[3] parallel: exit=0 BUILD SUCCESSFUL in 47s elapsed=47s
+[4] single CommandPacketFilteringTest: exit=0 BUILD SUCCESSFUL in 8s
+post: junit-platform.properties status => []

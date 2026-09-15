@@ -1,0 +1,2 @@
+TC-001 step 4 · check --offline (JAVA_TOOL_OPTIONS unset) on 70e86ba348 · exit=0
+BUILD SUCCESSFUL in 5s

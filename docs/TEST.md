@@ -505,6 +505,7 @@
 | RUN-011 | 2026-09-09 | `c2f5ad80da`（REQ-014、REQ-015、命名残留清理合入，M1.5 完成） | AI（Claude Code，Gradle / 探针） | 局部（REQ-014→TC-025，REQ-015→TC-024 + 冒烟级 TC-001、TC-002、TC-003、TC-010、TC-012、TC-020；另加回归 TC-004、TC-014、TC-015、TC-017、TC-018、TC-019、TC-023） | 通过 14/15 · 待人工 1 |
 | RUN-012 | 2026-09-13 | `5dbe193b2c`（REQ-017 上游加固移植合入） | AI（Claude Code，Gradle / 探针） | 局部（REQ-017→TC-026、TC-027 + 冒烟级 TC-001、TC-002、TC-003、TC-010、TC-012、TC-020；另加回归 TC-004、TC-014、TC-015、TC-018、TC-019、TC-023） | 通过 14/15 · 待人工 1 |
 | RUN-013 | 2026-09-15 | `15f619f46d`（项目定名 Synaxis 改名提交） | AI（Claude Code，Gradle / 探针） | 局部（改名字面量→TC-002、TC-010、TC-012、TC-014、TC-018、TC-019、TC-020、TC-021、TC-024、TC-025、TC-026、TC-027 + 冒烟级 TC-001、TC-003；本轮新启用的 TC-028、TC-029 一并执行） | 通过 12/16 · 失败 2 · 待人工 1 · 跳过 1 |
+| RUN-014 | 2026-09-15 | `70e86ba348`（2026-09-15 审计修复 13 个分支合入 main，57 条修复） | AI（Claude Code，Gradle / 探针） | 全量 | 通过 18/22 · 待人工 2 · 跳过 2 |
 
 明细（仅登非「通过」项）：
 
@@ -584,6 +585,13 @@ TC-002 证据：`docs/test-runs/RUN-002/tc-002.txt`（5 步实际输出）（2,6
 | RUN-013 | TC-010 | 失败 | 第 4 步 5 行中第 2 行（空行）指向改名提交 `15f619f46d`：git 无法把该行映射到父提交，内容行全部穿透（证据 `docs/test-runs/RUN-013/static-checks.txt`） | 预期过严：废弃 TC-010，改 TC-028（非空行不指向改名提交），TC-028 本轮通过 |
 | RUN-013 | TC-012 | 待人工 | 需原版客户端；品牌已改为 `synaxis`（smoke 日志），`synaxis:main` 探针往返见 `docs/test-runs/RUN-013/echo.txt` | 人工收口轮 |
 | RUN-013 | TC-021 | 跳过 | 边缘级；本次只改了仓库名字面量，CI 门禁逻辑未动，`main` 上改名提交的 CI 结果作为旁证（见证据段） | 下次全量轮 |
+
+| RUN-014 | TC-012 | 待人工 | 需原版客户端；品牌 `synaxis`、`synaxis:main` 探针往返见 `docs/test-runs/RUN-014/echo.txt` | 人工收口轮 |
+| RUN-014 | TC-016 | 待人工 | 需一台未装 JDK 25 的 macOS | 人工收口轮 |
+| RUN-014 | TC-006 | 跳过 | 边缘级；本轮改动不触及 CI 工作流、ArchUnit 规则与 jcstress 配置，门禁机制未变；`main` 上修复提交的 CI 结果作为旁证 | 下次门禁改动时 |
+| RUN-014 | TC-021 | 跳过 | 同上 | 下次门禁改动时 |
+
+RUN-014 证据：`docs/test-runs/RUN-014/`（`static-checks.txt`：TC-001 第 1～3 步、TC-002 五步、TC-009 第 1～4 步、TC-011 四步、TC-020 第 3～5 步、TC-023 第 1 步、TC-024 第 1、2、4 步、TC-025 第 1、2 步、TC-028 五步；`tc-001-offline.txt`：离线 `check` 通过；`tc-004.txt` / `tc-004-login.txt`：登录后 `stop` 1 秒退出码 0，末 20 行无 deadlock 与线程转储；`tc-008.txt`：OpaqueRegistryFrozenTest 通过，注册表数据里 `minecraft:enchantment` 43 条；`tc-015.txt`：前后均 0；`tc-029.txt`：`:test --rerun-tasks` 根模块 2,673 测试 0 失败；`tc-023.txt`：串行 62 秒、并行 47 秒、单跑通过、属性文件已还原；`tc-024-arch.txt`：ArchitectureTest 通过，临时越层导入后失败于 `lowerLevelPackagesDoNotDependOnTheRestOfTheEngine`；`tc-025.txt`：两个测试类通过，启动日志含 `ServerConfig[` 与 `JvmFlags[`；`tc-020-registry.txt`：9,063 字节与基线一致；`tc-020-check.txt`：`check` 通过；`tc-014.txt`：775 / 777 均 `synaxis:unsupported-version`，776 `LoginSuccess`；`tc-019.txt` / `tc-019-holder.txt`：抢跑得 `synaxis:protocol-error`，holder 2 次 KeepAlive、退出码 0；`tc-027-*.txt`：零长帧断线、深递归退出码 0 且 2 次 KeepAlive、再登成功，无 `StackOverflowError`；`tc-026-*.txt`：两次 `Disconnect reason=synaxis:protocol-error`，再登成功；`tc-018*.txt`：3 个探针均收到 `synaxis:server-stopping`，进程 1 秒退出码 0；`echo.txt`：`synaxis:main` 往返 `ping`；`smoke-server.log`：3 行 `WARN` 均带 `connection_id`，堆栈行 0；探针用 `.venv/bin/python`）。另：审计复现测试（`docs/research/audit-2026-09-15/evidence/`）对修复后代码重跑，F23 与 F14 的 `env.tick()` 均在 5 秒内返回、tick 线程存活。通过项：TC-001、TC-002、TC-004、TC-008、TC-009、TC-011、TC-014、TC-015、TC-018、TC-019、TC-020、TC-023、TC-024、TC-025、TC-026、TC-027、TC-028、TC-029。
 
 RUN-013 证据：`docs/test-runs/RUN-013/`（`static-checks.txt`：TC-001 第 1～3 步、TC-002 五步、TC-010 五步与 TC-028 第 4 步、TC-020 第 3～5 步、TC-024 第 1、2、4 步、TC-025 第 1、2 步；`tc-001-offline.txt`：离线 `check` 通过；`tc-003.txt`：`:test --rerun-tasks` 根模块 2,599 测试 0 失败；`tc-020-registry.txt`：注册表 9,063 字节与基线一致；`tc-020-check.txt`：`check` 通过；`tc-024-arch.txt`：ArchitectureTest 通过，临时加 `coordinate→entity` 导入后失败于 `lowerLevelPackagesDoNotDependOnTheRestOfTheEngine`，撤销后 `src` 干净；`tc-025.txt`：两个测试类通过，启动日志含 `ServerConfig[` 与 `JvmFlags[`；`tc-014.txt`：775 / 777 均 `synaxis:unsupported-version`，776 `LoginSuccess`；`tc-019.txt` / `tc-019-holder.txt`：抢跑得 `synaxis:protocol-error`，holder 2 次 KeepAlive 往返、退出码 0；`tc-027-*.txt`：零长帧 `synaxis:protocol-error`、深递归退出码 0 且 2 次 KeepAlive、再登成功，服务端无 `StackOverflowError`；`tc-026-*.txt`：两次 `Disconnect reason=synaxis:protocol-error`，再登成功；`tc-018*.txt`：3 个探针均收到 `synaxis:server-stopping`，进程 1 秒内退出码 0；`echo.txt`：`synaxis:main` 往返 `ping`；`smoke-server.log`：3 行 `WARN` 均带 `connection_id`，堆栈行 0；探针用 `.venv/bin/python`）。GitHub `Bearisbug/synaxis` 上 `15f619f46d` 的 `CI` 与 `Concurrency` 工作流均 success。通过项：TC-001、TC-002、TC-014、TC-018、TC-019、TC-020、TC-024、TC-025、TC-026、TC-027、TC-028、TC-029。
 

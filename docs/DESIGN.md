@@ -16,6 +16,7 @@
 | 日期 | 版本 | 改动 | 作者 |
 | --- | --- | --- | --- |
 | 2026-09-09 | v0.1 | 初稿：里程碑 M1 范围、实体、协议契约、状态机、阶段计划 | Bearisbug |
+| 2026-09-15 | v0.19 | 审计修复轮：2026-09-15 审计的 60 条发现修复 57 条并合入 main（台账 `docs/research/audit-2026-09-15/fixes.md`，RUN-014 全量通过）；§28 新增三条待拍板项（F29、F49、F11 剩余半边） | Bearisbug |
 | 2026-09-15 | v0.18 | 项目定名 Synaxis：包名 `io.github.bearisbug.synaxis`、品牌 `synaxis`、系统属性键 `synaxis.*`、断线原因键与负载通道命名空间 `synaxis:`、仓库 `Bearisbug/synaxis`；§28 包名问题关闭 | Bearisbug |
 | 2026-09-13 | v0.17 | REQ-017 完成；协议错误日志技术债关闭；`deep-recursion` 语义随创造包跳过而变 | Bearisbug |
 | 2026-09-13 | v0.16 | §15 增加输入分配上限（移植上游 2026-09-12 的三个加固 PR）；REQ-017 | Bearisbug |
@@ -629,6 +630,9 @@ N/A — M1 尚未完成；完成后按 §26 退出条件逐项对照并记录实
 
 | 类型 | 描述 | 负责人 | 何时需拍板 |
 | --- | --- | --- | --- |
+| Open Question | 审计 F29：`Instance#unloadChunk` 对站在区块里的玩家的契约。现状是跳过玩家但仍 `chunk.unload()` + `deletePartition`，玩家从此不再被 tick。修复员给出三种方案（区块内有在线玩家时拒绝卸载 / 卸载前把玩家移出 / 卸载后为玩家重新加载），倾向第一种；需改 Javadoc 与 `UnloadChunkIntegrationTest` 断言 | Bearisbug | M2 世界管理设计前 |
+| Open Question | 审计 F49：`TagImpl.INDEX_MAP` 是 JVM 级静态、只增不减，客户端 `custom_data` 的 NBT 键名经 `TagHandler.fromCompound` 会永久登记。索引被 `StaticIntMap` 当数组下标且烙进已发出的 `Tag` 实例，无法在类内淘汰；候选：限制不可信 NBT 进入 tag 系统 / 给不可信来源单独的非索引路径 / 每进程索引表 | Bearisbug | M2 自定义数据模型定型前 |
+| Open Question | 审计 F11 剩余半边：`chunkQueue` 已去重，但每个 `ClientSettingsPacket` 仍整圈重算并在收缩时构造约 312 个 `UnloadChunkPacket`，50 包/tick 仍可压垮 tick 线程。要堵需给视距变更加节流（每 tick 只应用一次），会改变 `refreshSettings` 立即生效的语义 | Bearisbug | 对外开放前 |
 | 已决 | 正式名字 Synaxis（用户 2026-09-15 拍板）：包名 `io.github.bearisbug.synaxis`，仓库 `Bearisbug/synaxis`，品牌 `synaxis`；原占位名 `dev.gameengine` / `game-engine` 的改名提交登记在 `.git-blame-ignore-revs` | Bearisbug | 已于 2026-09-15 决定 |
 | 已决 | M1.5（REQ-013～016，阶段 4～6）按用户 2026-09-09「按重构计划并行推进」指示视为确认，M1 阶段 3 完成后开工 | Bearisbug | 已决 |
 | 已决 | `command` 包（83 文件）M1 保留：耦合低，开发期调试与运维指令依赖它；M2 自定义协议成型后再评估 | Bearisbug | 已于 2026-09-09 决定 |

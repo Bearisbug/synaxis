@@ -99,7 +99,7 @@ public non-sealed class PlayerInventory extends AbstractInventory {
      *
      * @return the cursor item
      */
-    public ItemStack getCursorItem() {
+    public synchronized ItemStack getCursorItem() {
         return cursorItem;
     }
 
@@ -118,7 +118,7 @@ public non-sealed class PlayerInventory extends AbstractInventory {
      * @param cursorItem the new cursor item
      * @param sendPacket true to send the update packet to the client, false otherwise
      */
-    public void setCursorItem(ItemStack cursorItem, boolean sendPacket) {
+    public synchronized void setCursorItem(ItemStack cursorItem, boolean sendPacket) {
         if (this.cursorItem.equals(cursorItem)) return;
         this.cursorItem = cursorItem;
         if (sendPacket) sendPacketToViewers(new SetCursorItemPacket(cursorItem));
@@ -167,7 +167,7 @@ public non-sealed class PlayerInventory extends AbstractInventory {
             final int slot = convertEngineSlotToWindowSlot(i);
             convertedSlots[slot] = itemStacks[i];
         }
-        return new WindowItemsPacket(0, 0, List.of(convertedSlots), cursorItem);
+        return new WindowItemsPacket(0, 0, List.of(convertedSlots), getCursorItem());
     }
 
     @Override

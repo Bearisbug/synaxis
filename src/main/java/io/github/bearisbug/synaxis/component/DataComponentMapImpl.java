@@ -175,6 +175,13 @@ record DataComponentMapImpl(Int2ObjectMap<@Nullable Object> components) implemen
     ) implements NetworkBuffer.Type<DataComponentMap> {
         /** Vanilla never sends more than this many added or removed components in one patch. */
         private static final int MAX_COMPONENTS = 256;
+        /**
+         * Components nest through each other (a container holds items, which carry components again), so the
+         * nesting depth is decided by whoever wrote the bytes and has to be bounded before the recursive read
+         * runs the java stack out.
+         */
+        private static final int MAX_READ_DEPTH = 64;
+        private static final ThreadLocal<int[]> READ_DEPTH = ThreadLocal.withInitial(() -> new int[1]);
 
         @Override
         public void write(NetworkBuffer buffer, DataComponentMap value) {
@@ -225,6 +232,17 @@ record DataComponentMapImpl(Int2ObjectMap<@Nullable Object> components) implemen
 
         @Override
         public DataComponentMap read(NetworkBuffer buffer) {
+            final int[] depth = READ_DEPTH.get();
+            Check.stateCondition(depth[0] >= MAX_READ_DEPTH, "Components nested deeper than {0} levels", MAX_READ_DEPTH);
+            depth[0]++;
+            try {
+                return readComponents(buffer);
+            } finally {
+                depth[0]--;
+            }
+        }
+
+        private DataComponentMap readComponents(NetworkBuffer buffer) {
             final int added = buffer.read(NetworkBuffer.VAR_INT);
             final int removed = isPatch ? buffer.read(NetworkBuffer.VAR_INT) : 0;
             Check.stateCondition(added < 0 || added > MAX_COMPONENTS, "Invalid added component count: {0}", added);
@@ -292,7 +310,12 @@ record DataComponentMapImpl(Int2ObjectMap<@Nullable Object> components) implemen
                     // Removing a component in an absolute (non-patch) builder is a noop because it is not yet present.
                 } else {
                     switch (map.getValue(key).map(v -> type.decode(coder, v))) {
-                        case Result.Ok(Object componentData) -> patch.put(type.id(), componentData);
+                        // A null value means "component removed" in this map, so a codec decoding to null is a
+                        // failure rather than a silent removal.
+                        case Result.Ok(Object componentData) -> {
+                            if (componentData == null) return new Result.Error<>(type.name() + ": null");
+                            patch.put(type.id(), componentData);
+                        }
                         case Result.Error<?>(String message) -> {
                             return new Result.Error<>(type.name() + ": " + message);
                         }

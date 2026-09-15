@@ -1,11 +1,18 @@
 package io.github.bearisbug.synaxis.component;
 
 import net.kyori.adventure.text.Component;
+import io.github.bearisbug.synaxis.codec.Result;
+import io.github.bearisbug.synaxis.codec.Transcoder;
+import io.github.bearisbug.synaxis.item.Material;
 import io.github.bearisbug.synaxis.network.NetworkBuffer;
 import org.junit.jupiter.api.Test;
 
+import java.util.Map;
+
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -18,6 +25,24 @@ public class DataComponentMapTest {
         buffer.write(NetworkBuffer.VAR_INT, added);
         buffer.write(NetworkBuffer.VAR_INT, removed);
         for (int id : ids) buffer.write(NetworkBuffer.VAR_INT, id);
+        return buffer;
+    }
+
+    /**
+     * A patch holding a container of items, each of which carries a patch again, nested {@code depth} times.
+     */
+    private static NetworkBuffer nestedContainerPatch(int depth) {
+        final NetworkBuffer buffer = NetworkBuffer.resizableBuffer();
+        for (int i = 0; i < depth; i++) {
+            buffer.write(NetworkBuffer.VAR_INT, 1); // added
+            buffer.write(NetworkBuffer.VAR_INT, 0); // removed
+            buffer.write(NetworkBuffer.VAR_INT, DataComponents.CONTAINER.id());
+            buffer.write(NetworkBuffer.VAR_INT, 1); // container size
+            buffer.write(NetworkBuffer.VAR_INT, Material.STONE.id());
+            buffer.write(NetworkBuffer.VAR_INT, 1); // item amount
+        }
+        buffer.write(NetworkBuffer.VAR_INT, 0); // added
+        buffer.write(NetworkBuffer.VAR_INT, 0); // removed
         return buffer;
     }
 
@@ -40,6 +65,24 @@ public class DataComponentMapTest {
         final int id = DataComponents.CUSTOM_NAME.id();
         assertThrows(RuntimeException.class,
                 () -> patch(0, 2, id, id).read(DataComponent.PATCH_NETWORK_TYPE));
+    }
+
+    @Test
+    void networkPatchRejectsDeeplyNestedComponents() {
+        final var error = assertThrows(IllegalStateException.class,
+                () -> nestedContainerPatch(128).read(DataComponent.PATCH_NETWORK_TYPE));
+        assertEquals("Components nested deeper than 64 levels", error.getMessage());
+        // The rejected read must not leave the depth accounting behind for the next read on this thread.
+        assertDoesNotThrow(() -> patch(0, 0).read(DataComponent.PATCH_NETWORK_TYPE));
+    }
+
+    @Test
+    void codecRejectsComponentDecodedToNull() {
+        // ItemRarity.CODEC maps an unknown name to null, which must not be read as "remove rarity".
+        final Map<String, Object> input = Map.of(DataComponents.RARITY.name(), "legendary");
+        final Result<DataComponentMap> result = DataComponent.PATCH_CODEC.decode(Transcoder.JAVA, input);
+
+        assertEquals("minecraft:rarity: null", assertInstanceOf(Result.Error.class, result).message());
     }
 
     @Test

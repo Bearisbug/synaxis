@@ -123,8 +123,12 @@ public sealed abstract class AbstractInventory implements InventoryClickHandler,
         if (!this.viewers.remove(player)) return false;
 
         // Drop cursor item when closing inventory
-        ItemStack cursorItem = player.getInventory().getCursorItem();
-        player.getInventory().setCursorItem(ItemStack.AIR);
+        final ItemStack cursorItem;
+        final PlayerInventory playerInventory = player.getInventory();
+        synchronized (playerInventory) {
+            cursorItem = playerInventory.getCursorItem();
+            playerInventory.setCursorItem(ItemStack.AIR);
+        }
 
         if (!cursorItem.isAir()) {
             // ALL_OR_NOTHING: keep the item on the cursor when it can neither be dropped nor stored,
@@ -145,11 +149,16 @@ public sealed abstract class AbstractInventory implements InventoryClickHandler,
      * A click is a read-modify-write cycle over the clicked slots, so it has to run inside the same monitor as
      * {@link #setItemStack(int, ItemStack)} and {@link #processItemStack(ItemStack, TransactionType, TransactionOption)}.
      * Otherwise two viewers of the same inventory can read the same slot and each of them takes a copy of it.
+     * A click on a container reads and writes the clicking player's inventory as well (cursor, shift-click
+     * target), so that monitor is held for the whole cycle too: a container is always locked before a player
+     * inventory, never the other way around.
      */
     @Override
     public boolean handleClick(Player player, Click click) {
         synchronized (this) {
-            return InventoryClickHandler.super.handleClick(player, click);
+            synchronized (player.getInventory()) {
+                return InventoryClickHandler.super.handleClick(player, click);
+            }
         }
     }
 

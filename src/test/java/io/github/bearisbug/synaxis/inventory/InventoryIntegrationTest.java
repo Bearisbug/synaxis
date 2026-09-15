@@ -4,6 +4,7 @@ import net.kyori.adventure.text.Component;
 import io.github.bearisbug.synaxis.coordinate.Pos;
 import io.github.bearisbug.synaxis.event.EventFilter;
 import io.github.bearisbug.synaxis.event.inventory.InventoryBundleItemSelectEvent;
+import io.github.bearisbug.synaxis.event.inventory.InventoryItemChangeEvent;
 import io.github.bearisbug.synaxis.event.inventory.InventoryOpenEvent;
 import io.github.bearisbug.synaxis.event.item.ItemDropEvent;
 import io.github.bearisbug.synaxis.item.ItemStack;
@@ -19,8 +20,10 @@ import io.github.bearisbug.synaxis.testing.EnvTest;
 import org.junit.jupiter.api.Test;
 
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -338,5 +341,56 @@ public class InventoryIntegrationTest {
             assertEquals(player.getInventory().getSize(), event.getSlot());
             assertEquals(player.getInventory(), event.getInventory());
         });
+    }
+
+    @Test
+    public void containerInventoryIsBoundWhenOpened(Env env) {
+        var instance = env.createFlatInstance();
+        var connection = env.createConnection();
+        var player = connection.connect(instance, new Pos(0, 42, 0));
+
+        Inventory inventory = new Inventory(InventoryType.CHEST_6_ROW, "title");
+        assertNull(inventory.process(), "an inventory never shown to a player belongs to no process");
+
+        player.openInventory(inventory);
+        assertSame(env.process(), inventory.process());
+
+        AtomicReference<InventoryItemChangeEvent> received = new AtomicReference<>();
+        inventory.eventNode().addListener(InventoryItemChangeEvent.class, received::set);
+        inventory.setItemStack(3, MAGIC_STACK);
+
+        InventoryItemChangeEvent event = received.get();
+        assertNotNull(event, "InventoryItemChangeEvent has not been fired");
+        assertEquals(3, event.getSlot());
+        assertEquals(MAGIC_STACK, event.getNewItem());
+    }
+
+    @Test
+    public void bundleActivateTestInvalidPacketIgnored(Env env) {
+        var instance = env.createFlatInstance();
+        var connection = env.createConnection();
+        var player = connection.connect(instance, new Pos(0, 42, 0));
+
+        var listener = env.trackEvent(InventoryBundleItemSelectEvent.class, EventFilter.PLAYER, player);
+        player.addPacketToQueue(new ClientSelectBundleItemPacket(0, -2)); // Selected index below -1
+        player.addPacketToQueue(new ClientSelectBundleItemPacket(-1, 0)); // Negative slot
+        player.addPacketToQueue(new ClientSelectBundleItemPacket(100, 0)); // Outside of the player inventory
+        player.interpretPacketQueue();
+
+        listener.assertEmpty();
+    }
+
+    @Test
+    public void bundleActivateTestInvalidPacketIgnoredContainer(Env env) {
+        var instance = env.createFlatInstance();
+        var connection = env.createConnection();
+        var player = connection.connect(instance, new Pos(0, 42, 0));
+        player.openInventory(new Inventory(InventoryType.CHEST_3_ROW, "title"));
+
+        var listener = env.trackEvent(InventoryBundleItemSelectEvent.class, EventFilter.PLAYER, player);
+        player.addPacketToQueue(new ClientSelectBundleItemPacket(100, 0)); // Outside of the player inventory
+        player.interpretPacketQueue();
+
+        listener.assertEmpty();
     }
 }

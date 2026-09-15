@@ -18,6 +18,7 @@
 | 日期 | 版本 | 改动 | 作者 |
 | --- | --- | --- | --- |
 | 2026-09-16 | v0.1 | 初稿：M2 范围、模块拆分、插件宿主、自定义协议、单位模型、寻路、世界管理与四条审计残留处置、垂直切片验收、阶段计划 | Bearisbug |
+| 2026-09-16 | v0.2 | 评审第 1 轮修订（16 条必改）：§3 四条指标改为可由事件算出的分母并补 4 个埋点；§11.4 补 `moving → moving` 拒绝转移并把守卫统一成 `ACCEPT(order)`；`C2S_CAMERA` 的 `yaw` 更名 `camera_yaw`；对局改为 bind 之前创建、`DimensionType` 全进程只注册一次、§11.1 补 `verified → rejected`（match-unavailable）与 `verified → closed`；ArchUnit 禁止列表改完整前缀（`..plugin..` 会命中引擎 `network.plugin`）；快照改逐人编码（`CachedPacket` 前提不成立）；选中框改客户端本地绘制（发光元数据是实体全局的）；新增「可见范围」契约并把 `zoom` 上限压到 48；地图改由程序化生成器产出、真烘焙器推 M3；ABI 门加 baseline 引导规则；阶段 4／6 的向量验收拆开；F49 规则改无条件禁止；`probe.py` 同步握手列为阶段 4 交付物；移动指令改单单位。同轮在 `docs/DESIGN.md` §1／§26 与 `CLAUDE.md` 登记本分册 | Bearisbug |
 
 ## 2. 背景 / 目标 / 非目标
 
@@ -31,7 +32,8 @@
   - 不做插件热加载 / 热卸载（见 `ADR-M2-007`）。改插件 = 重启进程。
   - 不做每插件一个 `URLClassLoader` 的隔离加载器、不做注解处理器生成 descriptor、不做插件市场（形态已按 Paper 设计好，实现留到真有第三方插件时；见 `ADR-M2-006`）。
   - 不做分布式、多进程、跨区同步、代理层、大厅与对局分服。单机单进程。
-  - 不做战斗、技能、经济、背包、存档、排行榜；切片只有「选中」与「移动」。
+  - 不做战斗、技能、经济、背包、存档、排行榜；切片只有「选中」与「移动」，且**一条移动指令只带一个单位**（多选下令留到 M3，见 `API-M2-005`）。
+  - 不做从 MC 存档转换的离线地图烘焙器（要先复活一个 Anvil 读取器，`instance/anvil` 已在 `74592d8fdf` 删除）。M2 的 `.synx` 由 `REQ-M2-010` 的**程序化生成器**产出，真烘焙器推到 M3。
   - 不做自定义实体类型（协议上不可行，见 `ADR-M2-002`）。
   - 不把引擎下沉到 `engine/` 子目录（见 `ADR-M2-005`）。
   - 不升 Minecraft 版本（26.2 / 协议 776 继续钉死，但「是否提前跟到 26.3」是签字项，见 `ADR-M2-016`）。
@@ -49,14 +51,16 @@
 
 ## 3. 成功指标 / 验收阈值
 
-指标只用来判「切片是不是真的成立」，全部由 §20 的 `EVT:*` 事件计算，事件写进 server-app 的本地 JSONL 文件（`logs/events-YYYYMMDD.jsonl`），用一条离线脚本聚合。接口可用性类 SLI 在 §21，不混入本表。
+指标只用来判「切片是不是真的成立」，全部由 §20 的 `EVT:*` 事件计算，事件写进 server-app 的本地 JSONL 文件（`logs/events-YYYYMMDD.jsonl`），用一条离线脚本聚合。**每条指标的分子分母都必须是 §20 里实际存在的事件计数，不允许出现「需要人工判断」的排除项**——否则指标算不出来。接口可用性类 SLI 在 §21，不混入本表。
 
-| 指标 | 定义 | 当前 | 目标 | 由哪些事件算 |
+| 指标 | 定义（分子 ÷ 分母，全部是事件计数） | 当前 | 目标 | 由哪些事件算 |
 | --- | --- | --- | --- | --- |
-| 客户端接入成功率 | 握手成功会话数 ÷ 进入 configuration 的会话数 | 无（M2 前无客户端） | ≥ 98%（排除故意用无模组客户端试连的） | 见 `EVT:client_verified`、`EVT:client_rejected` |
-| 移动指令达成率 | `code=ok` 且单位在 30 s 内到达终点的指令数 ÷ 指令总数 | 无 | ≥ 95% | 见 `EVT:unit_order_issued`、`EVT:unit_order_completed` |
-| 首次上手完成率 | 一次会话内完成过「选中 ≥ 1 个单位并下达 ≥ 1 条移动指令」的玩家数 ÷ 进入 play 的玩家数 | 无 | ≥ 90% | 见 `EVT:unit_selected`、`EVT:unit_order_issued` |
-| 对局完成率 | 正常结束的对局数 ÷ 开局数（异常结束 = 载入失败或进程崩溃） | 无 | ≥ 95% | 见 `EVT:match_started`、`EVT:match_ended` |
+| 客户端接入成功率 | `EVT:client_verified` 计数 ÷ `EVT:session_entered_configuration` 计数（分母覆盖「进了 configuration 但自行断开」的会话，故分母 ≥ verified + rejected） | 无（M2 前无客户端） | ≥ 98% | 见 `EVT:session_entered_configuration`、`EVT:client_verified` |
+| 移动指令达成率 | `EVT:unit_order_completed` 计数 ÷（`EVT:unit_order_issued` + `EVT:unit_order_rejected`）计数 | 无 | ≥ 95% | 见 `EVT:unit_order_issued`、`EVT:unit_order_rejected`、`EVT:unit_order_completed` |
+| 首次上手完成率 | 一次会话内既出现过 `EVT:unit_selected` 又出现过 `EVT:unit_order_issued` 的 `connection_id` 数 ÷ `EVT:player_entered_play` 计数 | 无 | ≥ 90% | 见 `EVT:player_entered_play`、`EVT:unit_selected`、`EVT:unit_order_issued` |
+| 对局完成率 | `EVT:match_ended`（reason=normal）计数 ÷ `EVT:match_created` 计数（分母覆盖 `creating → ended` 的 map-invalid 对局——它们从不发 `EVT:match_started`） | 无 | ≥ 95% | 见 `EVT:match_created`、`EVT:match_ended` |
+
+「客户端接入成功率」同时作为 §21 的「握手成功率」SLI，两处是同一个数值口径（分母同为 `EVT:session_entered_configuration`），告警阈值见 §21。
 
 ## 4. 术语表 / 统一语言
 
@@ -65,8 +69,8 @@
 | 术语 | 定义 | 代码/字段标识 | 对应实体 |
 | --- | --- | --- | --- |
 | 插件 | 一份玩法实现，由宿主发现并加载；引擎与宿主都不知道它的内容 | `SynaxisPlugin` | `ENT-Plugin` |
-| 插件宿主 | `server-app` 模块：装配服务进程、发现并驱动插件生命周期、路由自定义负载、承接冒烟职责 | `server-app` | — |
-| 插件 API | `:plugin-api` 模块导出的包，唯一稳定面；引擎内部 API 不承诺兼容 | `plugin-api` | — |
+| 插件宿主 | `server-app` 模块：装配服务进程、发现并驱动插件生命周期、路由自定义负载、承接冒烟职责 | 模块 `:server-app`，包 `io.github.bearisbug.synaxis.app` | — |
+| 插件 API | `:plugin-api` 模块导出的包，唯一稳定面；引擎内部 API 不承诺兼容 | 模块 `:plugin-api`，包 `io.github.bearisbug.synaxis.plugin`（**与引擎既有的 `...network.plugin` 深度不同，ArchUnit 规则用完整前缀区分，见 §24**） | — |
 | 通道命名空间 | 一个插件独占的自定义负载通道前缀，等于它的插件 id；宿主保留 `synaxis` 前缀 | `channel_namespace` | `ENT-Plugin` |
 | 消息 id | 单个通道内的消息判别字节（VarInt），作用域只在该通道内 | `msg_id` | — |
 | schema 版本 | 两端协议定义的整数版本，握手时必须严格相等 | `schema_version` | `ENT-ClientSession` |
@@ -83,32 +87,32 @@
 
 ## 5. 功能清单与需求 ID
 
-工程门禁类需求（`REQ-M2-001`、`REQ-M2-002`、`REQ-M2-015`、`REQ-M2-021`、`REQ-M2-022`）没有对外接口，按 §5 规则显式标注锚点为 §24 的可执行门禁与 §26 的阶段退出条件，不悬空。
+工程门禁类需求（`REQ-M2-002`、`REQ-M2-012`、`REQ-M2-013`、`REQ-M2-014`、`REQ-M2-015`、`REQ-M2-021`、`REQ-M2-022`）没有对外接口，按 §5 规则显式标注锚点为 §24 的可执行门禁、§26 的阶段退出条件或 §11 / §16 的具体条目，不悬空。`REQ-M2-001` 虽然也是工程性的，但它承载 `API-M2-007` / `API-M2-008` / `API-M2-010` 三个对外接口，不属此列。
 
 | ID | 功能 | 对应目标 | 优先级 | 锚点 |
 | --- | --- | --- | --- | --- |
 | REQ-M2-001 | 模块拆分：新增 `:protocol`、`:plugin-api`、`:server-app`、`:game-rts` 四个子项目，删除 `:smoke`；根模块仍是引擎且一个文件不动 | 目标 1 | P0 | 承载 `API-M2-007`、`API-M2-008`、`API-M2-010`；门禁见 §24 |
-| REQ-M2-002 | 引擎 `io.github.bearisbug.synaxis.game` 包改名为 `gameevent`；新增 ArchUnit 规则「引擎不得依赖 `..game..` / `..plugin..` / `..app..`」 | 目标 1 | P0 | 无对外 API，见 §24 ArchUnit 条目与 §26 阶段 1 退出条件 |
+| REQ-M2-002 | 引擎 `io.github.bearisbug.synaxis.game` 包改名为 `gameevent`；新增 ArchUnit 规则「引擎不得依赖 `io.github.bearisbug.synaxis.game..` / `.plugin..` / `.app..`」（**必须写完整前缀**，写 `..plugin..` 会命中引擎自己的 `network.plugin`，见 §24） | 目标 1 | P0 | 无对外 API，见 §24 ArchUnit 条目与 §26 阶段 1 退出条件 |
 | REQ-M2-003 | 插件发现与生命周期：`ServiceLoader` 发现、descriptor 校验、`depends` 拓扑排序与环检测、construct / onEnable / onDisable 三段 | 目标 2 | P0 | `API-M2-007`；状态机见 §11.2 |
 | REQ-M2-004 | 插件能力边界：`PluginContext` 六项能力全部组合包装，禁用时事件节点、任务、通道一次性摘干净 | 目标 2 | P0 | `API-M2-008` |
 | REQ-M2-005 | 插件异常归因与熔断：三个包装层各打一次 `plugin_id`，滑窗内异常超阈值自动禁用该插件，进程继续 | 目标 2 | P0 | `API-M2-008`；状态机见 §11.2 `enabled → failed` |
 | REQ-M2-006 | 通道命名空间：通道 id 强制 `<plugin_id>:<name>`，宿主单监听器前缀路由，未注册通道丢弃并记 WARN；`synaxis` 前缀为宿主保留 | 目标 2 | P0 | `API-M2-001` |
 | REQ-M2-007 | `:protocol` 模块：零第三方依赖的手写编解码（`MsgBuf` + record 的静态 read/write），测试向量两端各跑一遍 | 目标 3 | P0 | `API-M2-001` |
-| REQ-M2-008 | 握手与客户端模组校验：configuration 阶段等 `C2S_HELLO`，超时或 schema 不等即踢，新增两个 `synaxis:*` 原因键 | 目标 3 | P0 | `API-M2-002`；状态机见 §11.1 |
+| REQ-M2-008 | 握手与客户端模组校验：configuration 阶段等 `C2S_HELLO`，超时或 schema 不等即踢，新增两个 `synaxis:*` 原因键；**同一交付内让 `tools/protocol-probe/probe.py` 实现 `C2S_HELLO`**，否则依赖它的七条 TC 整块失效 | 目标 3 | P0 | `API-M2-002`；状态机见 §11.1 |
 | REQ-M2-009 | 切片消息集：`rts:game` 通道 7 条消息（镜头 / 选中 / 下令 / 生成 / 快照 / 移除 / 指令结果）与每类消息的服务端权威校验与速率限制 | 目标 3 | P0 | `API-M2-003`、`API-M2-004`、`API-M2-005`、`API-M2-006` |
-| REQ-M2-010 | 地图包 `.synx`：单文件只读二进制格式与 `ChunkLoader` 实现；`saveChunk` / `saveInstance` 空实现，地图不回写 | 目标 4 | P0 | `API-M2-009` |
+| REQ-M2-010 | 地图包 `.synx`：单文件只读二进制格式与 `ChunkLoader` 实现；`saveChunk` / `saveInstance` 空实现，地图不回写；**外加一个程序化测试地图生成器**（纯代码产出 `.synx`，含障碍与一块不可达区域，供 §26 阶段 3 与阶段 5 使用——M2 没有离线烘焙器，见 §2 非目标） | 目标 4 | P0 | `API-M2-009` |
 | REQ-M2-011 | 对局生命周期：一局一个 `InstanceContainer`（唯一 dimensionName、浅 `DimensionType`）、整图预载后关闭自动区块加载、边界约束、局末整实例丢弃；修 `enableAutoChunkLoad(false)` 下 `chunkAdder` 的空 future NPE | 目标 4 | P0 | `API-M2-010`；状态机见 §11.3 |
 | REQ-M2-012 | 删除 `SharedInstance`（含 `EntityTracker#viewable` 的多态参数、`Chunk` 的 shared 列表、`Player#setInstance` 的 areLinked 快路径、`InstanceManager` 的两个 shared 工厂）——处置 `docs/DESIGN.md` §28 的 F29 残留（a） | 目标 4 | P0 | 无对外 API，见 §11.3 `running → ended` 动作与 §24 |
 | REQ-M2-013 | 断线幽灵修复：卸载区块时把「已下线但未 remove 的玩家」当普通实体走 `Acquirable.sync(Entity::remove)` 同步移除——处置 F29 残留（b） | 目标 4 | P0 | 无对外 API，见 §11.3 `running → ended` 动作与 §16 竞态表 |
 | REQ-M2-014 | 视距收缩修复：`sendPendingChunks` 出队时按 `chunksLoadedByClient` + `effectiveViewDistance()` 惰性丢弃越界区块；`updateViewDistance` 的中心统一为 `chunksLoadedByClient`——处置 F11 残留 | 目标 4 | P1 | 无对外 API，见 §16 竞态表 |
-| REQ-M2-015 | F49 残留处置（降级不修）：`Tag.Structure` / `Tag.View` 与 `TagHandler.fromCompound` 的 Javadoc 标明「不可用于不可信数据」，并加一条 ArchUnit 规则禁止游戏侧对客户端来源 compound 使用这两类 tag | 目标 4 | P1 | 无对外 API，见 §24 ArchUnit 条目 |
-| REQ-M2-016 | 单位数据模型与表现：自有 `Unit` 模型 + 一个 `ITEM_DISPLAY` 实体做可见物；四条建模硬规则（关重力、关物理、spawn 时定死插值时长、调大位置重同步周期）；选中高亮用发光元数据 | 目标 3 | P0 | `API-M2-006`；状态机见 §11.4 |
+| REQ-M2-015 | F49 残留处置（降级不修）：`Tag.Structure` / `Tag.View` 与 `TagHandler.fromCompound` 的 Javadoc 标明「不可用于不可信数据」，并加一条 ArchUnit 规则**无条件禁止游戏侧使用**这三者（不是「禁止用于客户端来源 compound」——「来源」是运行期污点属性，静态字节码分析判断不了，那样写等于一条形同虚设的规则） | 目标 4 | P1 | 无对外 API，见 §24 ArchUnit 条目 |
+| REQ-M2-016 | 单位数据模型与表现：自有 `Unit` 模型 + 一个 `ITEM_DISPLAY` 实体做可见物；四条建模硬规则（关重力、关物理、spawn 时定死插值时长、把位置重同步周期调到 100 tick）；**选中框由客户端模组本地绘制**，服务端不下发任何选中相关的元数据 | 目标 3 | P0 | `API-M2-006`；状态机见 §11.4 |
 | REQ-M2-017 | 服务端寻路：启动时烘焙的不可变网格 + 8 邻接 A* + 拉绳平滑，跑在实例 tick 线程内并带节点 / 次数 / 耗时三重预算，超预算排队或拒绝 | 目标 3 | P0 | `API-M2-005`（`ORDER_RESULT` 的 `no-path` / `busy` 分支） |
 | REQ-M2-018 | RTS 镜头：客户端正交投影 + 固定俯角 + 缩放 + 自由光标；镜头锚点上报，服务端把玩家实体传送到锚点以驱动区块流送与单位可见性 | 目标 3 | P0 | `API-M2-003` |
 | REQ-M2-019 | 客户端选中与下令：模组自持单位包围盒与自定义射线拾取，不用 `interaction` 实体；点地面产生移动指令，服务端做权威校验 | 目标 3 | P0 | `API-M2-004`、`API-M2-005` |
 | REQ-M2-020 | 客户端模组工程：独立 Gradle 构建、`fabric.mod.json` 的 minecraft 依赖钉死 `26.2`、资源打进模组 jar、`:protocol` 以 jar 形式共享 | 目标 3 | P0 | `API-M2-001`（两端共享同一份编解码） |
 | REQ-M2-021 | `server-app` 承接冒烟职责并删除 `smoke`：启动命令、就绪日志、端口属性、日志文件名同步改写，`docs/TEST.md` 受影响用例按其既有惯例更新 | 目标 1 | P1 | 无对外 API，见 §24 文档同步条目与 §26 阶段 2 退出条件 |
-| REQ-M2-022 | CI 门禁扩展：jacoco 覆盖率与 diff-cover 覆盖新增四个模块；`:plugin-api` 与 `:protocol` 接 `checkBinaryCompatibility` 并断言 baseline 存在；ArchUnit 依赖挪进版本目录 | 目标 1 | P1 | 无对外 API，见 §24 与 §26 阶段 1 退出条件 |
+| REQ-M2-022 | CI 门禁扩展：jacoco 覆盖率与 diff-cover 覆盖新增四个模块；`:plugin-api` 与 `:protocol` 接 `checkBinaryCompatibility` 并按 §24 的**引导规则**处理 baseline（首个 tag 之前显式 `SKIPPED`、之后缺失即失败）；ArchUnit 依赖挪进版本目录 | 目标 1 | P1 | 无对外 API，见 §24 与 §26 阶段 1／2 退出条件 |
 | REQ-M2-023 | 社区上手：一个最小示例插件（打印生命周期、注册一条通道消息、注册一个事件监听器）与一页插件开发说明 | 目标 2 | P2 | `API-M2-007`、`API-M2-008` |
 
 ## 6. 总体架构
@@ -127,8 +131,8 @@ flowchart LR
     proto_s[protocol<br/>零依赖消息定义]
     engine[引擎 · 根模块<br/>见 docs/DESIGN.md §6]
   end
-  subgraph offline[离线工具链 · 不进运行时]
-    baker[地图烘焙器<br/>区块 + 导航网格 → .synx]
+  subgraph offline[地图产出 · 不进运行时]
+    baker[M2: 程序化生成器<br/>区块 + 导航网格 → .synx<br/>M3 才有离线烘焙器]
   end
   mc --> mod
   mod --> proto_c
@@ -159,7 +163,7 @@ erDiagram
   MATCH ||--o{ CLIENT_SESSION : hosts
   CLIENT_SESSION ||--|| CAMERA_ANCHOR : has
   CLIENT_SESSION ||--o{ MOVE_ORDER : issues
-  MOVE_ORDER }o--o{ UNIT : targets
+  MOVE_ORDER }o--|| UNIT : targets
   PLUGIN {
     string plugin_id PK
     string version
@@ -206,11 +210,14 @@ erDiagram
     float anchor_z
   }
   MOVE_ORDER {
+    uuid connection_id PK
     int order_seq PK
-    uuid connection_id FK
+    int unit_id FK
     float target_x
   }
 ```
+
+主键口径：`MOVE_ORDER` 的主键是 (`connection_id`, `order_seq`) 复合键——`order_seq` 只保证**每连接**单调递增，不是全局唯一；`UNIT.unit_id` 同理是**局内**唯一，跨对局可重号。M2 一条 `MOVE_ORDER` 只指向一个 `UNIT`（见 `API-M2-005`）。
 
 ## 8. 接口契约 (API-first)
 
@@ -240,9 +247,10 @@ M2 的对外契约有三类，都不是 HTTP：① 两端共享的**自定义负
   - 响应：`schema_version` 相等 → 回 `S2C_HELLO` 并放行；不等 → `synaxis:protocol-version-mismatch` 断线；3 s 超时未收到 → `synaxis:client-mod-required` 断线（见 §14）。
   - 幂等：一个连接只接受一次 `C2S_HELLO`，第二次视为协议错误断线。
   - 缓存与超时：握手超时 3 s（内部任务 `handshake.timeout`，见 §17）。
+  - **连带影响（必须与本接口同一阶段交付）**：握手上线即对**所有**非模组客户端生效，包括 `tools/protocol-probe/probe.py`——它的 `login` / `echo` / `zero-frame` / `deep-recursion` / `premature-finish` / `record-registry` 六个子命令全部要进 play 态，`docs/TEST.md` 的 TC-004 / TC-014 / TC-018 / TC-019 / TC-020 / TC-026 / TC-027 都靠它，不改就会在 configuration 3 s 被踢、整块回归台账失效。处置是**让探针实现 `C2S_HELLO`**（它本来就是手写协议实现，加一条负载即可），**不开测试旁路开关**——旁路开关会变成一个能绕过准入的生产开关，代价远大于收益。
 
 - **`API-M2-003` 镜头锚点上报** — 实现 `REQ-M2-018`
-  - 方法/路径：通道 `rts:game`，`C2S_CAMERA{msg_id=0x01, anchor_x:f32, anchor_z:f32, zoom:f32, yaw:f32}`，17 字节，5 Hz。
+  - 方法/路径：通道 `rts:game`，`C2S_CAMERA{msg_id=0x01, anchor_x:f32, anchor_z:f32, zoom:f32, camera_yaw:f32}`，17 字节，5 Hz。字段名与 §9、§12.2 一致——**不要写成 `yaw`**，§9 里 `yaw` 是单位朝向（u8，256 分度），同名不同类型正是 §24 要防的两端漂移点。
   - 鉴权/权限：`ROLE-Player`，仅 `session_state=in_game`。
   - 服务端动作：夹取到地图边界内，把该玩家（旁观模式、不可见）的实体传送到锚点对应的地面点，从而让引擎原生的区块流送与 `EntityTracker` 自动跟上（见 `ADR-M2-013`）。
   - 幂等：幂等，后到覆盖先到；同 tick 内多条只取最后一条。
@@ -256,20 +264,22 @@ M2 的对外契约有三类，都不是 HTTP：① 两端共享的**自定义负
   - 缓存与超时：不缓存；超过 10 条/秒的部分丢弃。
 
 - **`API-M2-005` 移动指令与指令结果** — 实现 `REQ-M2-009`、`REQ-M2-017`、`REQ-M2-019`
-  - 方法/路径：通道 `rts:game`。请求 `C2S_MOVE_ORDER{msg_id=0x03, order_seq:varint, count:varint, unit_ids:varint[], target_x:f32, target_y:f32, target_z:f32, mods:u8}`；响应 `S2C_ORDER_RESULT{msg_id=0x84, order_seq:varint, code:u8, snapped_x:f32, snapped_y:f32, snapped_z:f32}`。
-  - 鉴权/权限：`ROLE-Player`，仅 `session_state=in_game`。服务端权威校验四项：单位归属、目标点在地图边界内、目标格可站立、寻路队列未满。
-  - 响应：`code` 取值见 §9 `order_result_code`；`ok` 时 `snapped_*` 是吸附后的实际终点，客户端据它画落点标记。**每条请求必回一条结果**，这是「点了地面但去不了」的唯一反馈路径。
+  - 方法/路径：通道 `rts:game`。请求 `C2S_MOVE_ORDER{msg_id=0x03, order_seq:varint, unit_id:varint, target_x:f32, target_y:f32, target_z:f32, mods:u8}`；响应 `S2C_ORDER_RESULT{msg_id=0x84, order_seq:varint, code:u8, snapped_x:f32, snapped_y:f32, snapped_z:f32}`。
+  - **M2 一条指令只带一个 `unit_id`**（不是列表）。理由：`S2C_ORDER_RESULT` 只有一个 `code` 和一组 `snapped_*`，多单位下「部分成功」没有任何表达方式，§11.4 的 `path ≠ ∅` 守卫也会变成「全部有解还是至少一个有解」的歧义，而 `EVT:unit_order_completed`（全部单位到达）在有一个单位卡住时永不触发，会让 §3 的「移动指令达成率」恒假。多选下令留到 M3，届时 `ORDER_RESULT` 改成按 `unit_id` 携带逐单位结果并同步改 §3 的口径。客户端选中多个单位时，按每个单位各发一条指令（各自的 `order_seq`）。
+  - 鉴权/权限：`ROLE-Player`，仅 `session_state=in_game`。服务端权威校验见 §11.4 的 `ACCEPT(order)` 合取式（序号、令牌桶、归属、边界、可站立、队列、有解六类）。
+  - 响应：`code` 取值见 §9 `order_result_code`；`ok` 时 `snapped_*` 是吸附后的实际终点，客户端据它画落点标记。**每条请求必回一条结果**，这是「点了地面但去不了」的唯一反馈路径；单位当前是 `idle` 还是 `moving` 都一样要回（§11.4 为此在两个态上各挂了一条拒绝转移）。
   - 幂等：**非幂等**。`order_seq` 每连接单调递增；服务端只接受严格大于已接受最大值的 seq，重复或回退的 seq 直接回 `code=stale`，不重复下令。
   - 缓存与超时：不缓存；超过 10 条/秒的部分回 `code=rate-limited`（不静默丢，否则客户端会一直等结果）。
 
 - **`API-M2-006` 单位可见性与状态快照** — 实现 `REQ-M2-009`、`REQ-M2-016`
   - 方法/路径：通道 `rts:game`，三条下行消息：
     - `S2C_UNIT_SPAWN{msg_id=0x81, unit_id:varint, entity_id:varint, archetype:varint, team:u8, x:f32, y:f32, z:f32, yaw:u8, hp:varint, max_hp:varint, flags:u8}`——单位进入兴趣集时发一次，把 `unit_id` 与 `entity_id` 绑上，客户端据此挂包围盒、血条、选中框。
-    - `S2C_UNIT_STATE{msg_id=0x82, server_tick:varint, count:varint, [unit_id:varint, x:f32, y:f32, z:f32, yaw:u8, state:u8] × count}`——每 2 tick（10 Hz）一条批量快照；50 单位约 805 字节。另每 5 s 发一条含兴趣集全量的对账快照。
+    - `S2C_UNIT_STATE{msg_id=0x82, server_tick:varint, count:varint, [unit_id:varint, x:f32, y:f32, z:f32, yaw:u8, unit_state:u8] × count}`——每 2 tick（10 Hz）一条批量快照，内容是该玩家兴趣集内**全部**单位的绝对坐标（不是增量），因此每一条都自带对账语义，不另设第二条对账路径；50 单位约 805 字节。
     - `S2C_UNIT_DESPAWN{msg_id=0x83, count:varint, unit_ids:varint[]}`——单位离开兴趣集或被移除时发。
   - 鉴权/权限：`ROLE-Player`；兴趣集按**镜头锚点**决定（锚点驱动玩家实体位置，见 `API-M2-003`），一个玩家只收到自己兴趣集内的单位。
   - 幂等：幂等，绝对坐标全量覆盖语义（不做增量编码——增量要两端维护状态机，一次错位就永久漂移）。
-  - 缓存与超时：不缓存；多玩家同一条快照必须用引擎的 `CachedPacket` 与 `sendGroupedPacket` 一次序列化多次发送，禁止逐人重新编码。
+  - 缓存与超时：不缓存。**快照按兴趣集逐玩家编码**——兴趣集逐人不同，包内容就逐人不同，引擎的 `CachedPacket` / `sendGroupedPacket`「一次序列化多次发送」的前提（所有接收者收到同一串字节）在这里不成立，不能用。允许的优化只有一种：同一对局内兴趣集**完全相同**的玩家共用一个已编码的 `byte[]`（`PluginMessagePacket` 只持有引用，不复制）。编码预算见 §15 与 §17 的 `unit.snapshot`。`S2C_UNIT_SPAWN` / `S2C_UNIT_DESPAWN` 同样逐人，它们本来就只在单个玩家的兴趣集增删时触发。
+  - 顺序：`S2C_UNIT_SPAWN`（插件发的自定义负载）与引擎 `EntityTracker` 自己发的实体 spawn 包由两条代码路径在不同时机触发，客户端**必须容忍两种到达顺序**（先收到 `unit_id → entity_id` 绑定、后收到实体，或反过来），按延迟绑定处理，收到未知 `unit_id` 的 `S2C_UNIT_STATE` 条目时静默忽略而不是报错。
 
 - **`API-M2-007` 插件生命周期 Java API** — 实现 `REQ-M2-003`、`REQ-M2-023`
   - 方法：`interface SynaxisPlugin { PluginDescriptor descriptor(); void onEnable(PluginContext ctx); default void onDisable() {} }`；`record PluginDescriptor(String id, String version, int apiVersion, List<String> depends, List<String> softDepends)`。
@@ -296,6 +306,7 @@ M2 的对外契约有三类，都不是 HTTP：① 两端共享的**自定义负
 
 - **`API-M2-010` server-app 启动与运维契约** — 实现 `REQ-M2-001`、`REQ-M2-011`、`REQ-M2-021`
   - 方法：`./gradlew :server-app:run`，或 `java -jar server-app.jar`；配置沿用引擎的 `synaxis.*` 系统属性（见 `docs/DESIGN.md` §8 的进程生命周期契约与 `ServerConfig`），新增 `synaxis.app.port`、`synaxis.app.plugins`（启用的插件 id 列表，空为全部）、`synaxis.app.map`（地图包路径）。
+  - **启动序列（顺序是契约的一部分，不可重排）**：① 读 `synaxis.*` 配置并设定 §15 的可见范围三项（`entity-view-distance` 在 `Instance` 构造时就固化进 `EntityTracker`，建实例之后再改无效）→ ② `ServerProcess.of(auth, config)` → ③ **注册唯一的浅 `DimensionType`**（M2 只有一个；`dimension_type` 是动态注册表，只在 configuration 阶段随 `RegistryDataPacket` 下发一次，**绝不允许在 bind 之后按局注册**，否则已在线玩家的维度下标会对不上，见 §11.3）→ ④ 拓扑序 `onEnable` 全部插件；插件在此创建对局并推进到 `running`（`API-M2-009` 载入地图包）→ ⑤ 断言至少有一个 `running` 对局，没有则以非零码退出（而不是 bind 之后让玩家撞 `spawningInstance` 的 NPE）→ ⑥ bind 监听端口并打印就绪日志。
   - 就绪判定：标准输出出现 `synaxis server-app listening on <host>:<port>`（承接 smoke 的就绪日志职责，日志文本变更会让 `docs/TEST.md` 按其惯例废旧 ID 换新 ID，见 §24）。
   - 停机：控制台 `stop` 或 SIGINT，逆序 `onDisable` 全部插件后 `ServerProcess.stop()`。
   - 鉴权/权限：`ROLE-Operator`，见 §10。
@@ -320,12 +331,13 @@ M2 的对外契约有三类，都不是 HTTP：① 两端共享的**自定义负
 | 模组版本 | `mod_version` | — | int | 是 | ≥ 1；仅用于日志与遥测，不参与放行判定 | — | 否 |
 | 会话状态 | `session_state` | — | enum | 是 | awaiting_hello / verified / in_game / rejected / closed（见 §11.1） | — | 否 |
 | 插件 id | `plugin_id` | — | string | 是 | `[a-z0-9][a-z0-9_-]{0,63}`，不得为 `synaxis`；同时是通道命名空间 | — | 否 |
+| 插件版本 | `version` | — | string | 是 | 插件自报的版本串，仅用于日志与 `EVT:plugin_enabled`，不参与任何判定 | — | 否 |
 | 插件 API 版本 | `api_version` | — | int | 是 | ≥ 1；与宿主不等则拒绝加载并阻止启动 | — | 否 |
 | 插件状态 | `plugin_state` | — | enum | 是 | constructed / enabled / disabled / failed（见 §11.2） | — | 否 |
 | 通道 id | `channel_id` | — | string | 是 | `<plugin_id>:<name>`，≤ 256 字符；`synaxis:*` 为宿主保留 | — | 否 |
 | 对局 id | `match_id` | — | uuid | 是 | 进程内唯一 | — | 否 |
 | 对局状态 | `match_state` | — | enum | 是 | creating / loading / running / ended（见 §11.3） | — | 否 |
-| 维度名 | `dimension_name` | — | string | 是 | 每局唯一（强制客户端走 dimensionChange，彻底重建世界） | — | 否 |
+| 维度名 | `dimension_name` | — | string | 是 | 每局唯一（强制客户端走 dimensionChange，彻底重建世界）。它是 `Instance` 的 `Key`，**自由取值、不进任何注册表**——每局的唯一性只靠它，`DimensionType` 全进程只注册一个且在 bind 之前注册（见 §11.3） | — | 否 |
 | 地图 id | `map_id` | — | string | 是 | 地图包文件名（不含扩展名） | — | 否 |
 | 地图尺寸 | `size_x` / `size_z` | — | int | 是 | ≤ 512（§2 假设）；必须是 16 的倍数 | 方块 | 否 |
 | 世界高度 | `height` | — | int | 是 | 必须是 16 的倍数且 ≥ 16；M2 取 64 | 方块 | 否 |
@@ -334,18 +346,22 @@ M2 的对外契约有三类，都不是 HTTP：① 两端共享的**自定义负
 | 单位 id | `unit_id` | — | int | 是 | 局内唯一，自 1 递增；与 `entity_id` 是两个号，不可混用 | — | 否 |
 | 单位原型 | `archetype` | — | varint | 是 | 自有数据模型的原型号，不注册进任何 MC 注册表；客户端遇未知值按占位模型渲染并 WARN | — | 否 |
 | 队伍 | `team` | — | u8 | 是 | 0 为中立，1..N 为队伍；M2 只用 0 与 1 | — | 否 |
+| 目标点 | `target_x` / `target_y` / `target_z` | — | f32 | 是 | 世界绝对坐标；服务端夹取并吸附到最近可站立格 | 方块 | 否 |
+| 吸附终点 | `snapped_x` / `snapped_y` / `snapped_z` | — | f32 | 是 | `code=ok` 时是吸附后的实际终点；其余 `code` 时回请求原值 | 方块 | 否 |
+| tick 率 | `tick_rate` | — | u8 | 是 | 服务端每秒 tick 数；M2 固定 20 | tick/s | 否 |
 | 单位状态 | `unit_state` | — | enum | 是 | idle / moving / removed（见 §11.4） | — | 否 |
 | 生命值 | `hp` / `max_hp` | — | varint | 是 | ≥ 0；M2 只显示不消耗 | 点 | 否 |
-| 单位标志位 | `flags` | — | u8 | 是 | bit0 可被本玩家选中，bit1 当前选中；其余保留位必须写 0，读到非 0 忽略 | — | 否 |
+| 单位标志位 | `flags` | — | u8 | 是 | bit0 可被本玩家选中；其余保留位必须写 0，读到非 0 忽略。**没有「当前选中」位**——选中是每连接的客户端本地态，不进线协议（见 `REQ-M2-016`） | — | 否 |
 | 指令序号 | `order_seq` | — | varint | 是 | 每连接单调递增；服务端只接受严格大于已接受最大值的 | — | 否 |
-| 指令结果码 | `order_result_code` | — | enum | 是 | ok / no-path / not-owner / out-of-bounds / busy / rate-limited / stale。**它是结果码不是生命周期状态**，是 §11.4 转移守卫的取值来源，按 §11 三类出口中的「纯派生」显式免建机 | — | 否 |
+| 指令结果码 | `order_result_code` | — | enum | 是 | ok / stale / rate-limited / not-owner / out-of-bounds / busy / no-path。**它是结果码不是生命周期状态**，是 §11.4 `ACCEPT(order)` 合取式逐项求值的投影（取值顺序 = 短路求值顺序），按 §11 三类出口中的「纯派生」显式免建机 | — | 否 |
 | 指令修饰位 | `mods` | — | u8 | 是 | bit0 追加到队列（M2 忽略，必须写 0） | — | 否 |
+| 单位状态位 | `unit_state`（`S2C_UNIT_STATE` 的逐条目字段） | — | u8 | 是 | 与本表「单位状态」同一枚举的线上编码：0=idle，1=moving（`removed` 不下发，走 `S2C_UNIT_DESPAWN`） | — | 否 |
 | 镜头锚点 | `anchor_x` / `anchor_z` | — | f32 | 是 | 服务端夹取到地图边界内 | 方块 | 否 |
-| 镜头缩放 | `zoom` | — | f32 | 是 | 客户端权威，服务端只记录用于遥测；取值 [8, 96] | 方块（正交视口半高） | 否 |
+| 镜头缩放 | `zoom` | — | f32 | 是 | 客户端权威，服务端只记录用于遥测；取值 **[8, 48]**（上限由 §15 的可见范围契约反推：半高 48 格、16:9 时屏幕角落离锚点约 97 格，仍在 `entity-view-distance` 的 128 格内。放宽上限必须同步放宽视距，否则边缘单位与地形根本没被发送） | 方块（正交视口半高） | 否 |
 | 镜头方位角 | `camera_yaw` | — | f32 | 是 | [0, 360) | 度 | 否 |
 | 单位朝向 | `yaw` | — | u8 | 是 | 256 分度，`deg = yaw * 360 / 256` | 度 | 否 |
 | 服务端 tick | `server_tick` | — | varint | 是 | 快照时间戳，客户端据此做插值对齐 | tick（50 ms） | 否 |
-| 批量条目数 | `count` | — | varint | 是 | `S2C_UNIT_STATE` ≤ 512；`C2S_SELECT` 与 `C2S_MOVE_ORDER` ≤ 64，超限即协议错误 | — | 否 |
+| 批量条目数 | `count` | — | varint | 是 | `S2C_UNIT_STATE` ≤ 512；`C2S_SELECT` ≤ 64，超限即协议错误。`C2S_MOVE_ORDER` **没有** `count` 字段——M2 一条指令只带一个 `unit_id`（见 `API-M2-005`） | — | 否 |
 
 ## 10. 权限与角色
 
@@ -363,7 +379,7 @@ M2 的对外契约有三类，都不是 HTTP：① 两端共享的**自定义负
 | 端点 | 行级规则 | 强制点 |
 | --- | --- | --- |
 | `API-M2-004` 选中 | 只能选中 `team` 等于本玩家队伍的单位，其余静默剔除 | 服务端通道 handler 内校验 |
-| `API-M2-005` 下令 | 只能对自己拥有的单位下令；含他人单位时整条指令回 `not-owner` | 服务端校验，见 §11.4 守卫 |
+| `API-M2-005` 下令 | 只能对自己拥有的单位下令；`unit_id` 不属于本玩家时回 `not-owner` | 服务端校验，见 §11.4 的 `ACCEPT(order)` |
 | `API-M2-006` 快照 | 只下发本玩家兴趣集内的单位，兴趣集由镜头锚点决定 | 引擎 `EntityTracker` 加插件侧兴趣集计算 |
 | `API-M2-001` 通道 | 插件只能注册与收发自己命名空间的通道 | `PluginContext#channels()` 包装层前缀校验 |
 
@@ -373,7 +389,7 @@ M2 的对外契约有三类，都不是 HTTP：① 两端共享的**自定义负
 
 引擎侧的连接协议状态机与进程生命周期状态机见 `docs/DESIGN.md` §11.1、§11.2，M2 不改它们；本节的 `ENT-ClientSession` 是**叠在**引擎协议状态机之上的一层游戏侧会话状态，两者的对应关系在 §11.1 正文里写明。
 
-建机前置核对（§9 中取值 ≥ 2 的枚举字段逐一核到）：`session_state` → §11.1；`plugin_state` → §11.2；`match_state` → §11.3；`unit_state` → §11.4；`order_result_code` → **显式免建**，理由是三类出口中的「纯派生/投影态」——它不是任何实体的生命周期，只是 §11.4 两条转移守卫求值后的投影，其每个取值都由 §11.4 的 `idle → moving` 与 `idle → idle` 两条转移产生（`ok` 由前者产生，其余六个取值由后者产生），不存在无转移可达的取值。
+建机前置核对（§9 中取值 ≥ 2 的枚举字段逐一核到）：`session_state` → §11.1；`plugin_state` → §11.2；`match_state` → §11.3；`unit_state` → §11.4；`order_result_code` → **显式免建**，理由是三类出口中的「纯派生/投影态」——它不是任何实体的生命周期，只是 §11.4 那一条接受守卫 `ACCEPT(order)` 求值后的投影：`ok` 由两条**接受**转移（`idle → moving`、`moving → moving` 接受分支）产生，其余六个取值由两条**拒绝**转移（`idle → idle`、`moving → moving` 拒绝分支）产生，不存在无转移可达的取值。
 
 ### 11.1 客户端会话 `ENT-ClientSession`
 
@@ -383,23 +399,29 @@ stateDiagram-v2
   awaiting_hello --> verified : 收到 C2S_HELLO(玩家) [schema_version 相等]
   awaiting_hello --> rejected : 收到 C2S_HELLO(玩家) [schema_version 不等]
   awaiting_hello --> rejected : 握手超时(内部任务 handshake.timeout) [3 s 内未收到 C2S_HELLO]
-  verified --> in_game : 进入 play(引擎) [configuration 已放行]
+  verified --> in_game : 进入 play(引擎) [configuration 已放行 且 存在 running 态对局]
+  verified --> rejected : 无可用对局(宿主) [不存在 running 态对局]
+  verified --> closed : 断线(玩家或服务端) [FinishConfiguration 之前]
   in_game --> closed : 断线(玩家或服务端)
   rejected --> [*]
   closed --> [*]
 ```
 
-`awaiting_hello` 对应引擎协议状态 `configuration`，`in_game` 对应 `play`（见 `docs/DESIGN.md` §11.1）。**`rejected` 是显式的 error 终态**：它同时覆盖「没装模组」（超时）与「版本不对」（schema 不等）两条失败路径，两者的断线原因键不同（见 §14）。
+`awaiting_hello` 对应引擎协议状态 `configuration`，`in_game` 对应 `play`（见 `docs/DESIGN.md` §11.1）。**`rejected` 是显式的 error 终态**：它覆盖「没装模组」（超时）、「版本不对」（schema 不等）、「没有可用对局」三条失败路径，三者的断线原因键不同（见 §14）。
+
+`verified → rejected` 这条边不是防御性冗余，它对着引擎的一条硬约束：`ConnectionManager` 在 configuration 阶段**必须**拿到一个 `spawningInstance`（`Objects.requireNonNull(spawningInstance, ...)`），拿不到就在虚拟线程里抛 NPE，玩家看到的会是 `synaxis:internal-error` 而不是设计好的文案。正常路径下这条边走不到——按 §11.3 与 `API-M2-010`，对局在**监听端口之前**就已进入 `running`；它只在「唯一的对局已 `ended`（正常结束或载入失败）而进程还在跑」时命中。
 
 迁移表：
 
 | 源 → 目标 | 事件 | 守卫（纯布尔） | 动作（副作用） | 谁触发 | 接口/事件 |
 | --- | --- | --- | --- | --- | --- |
-| [*] → awaiting_hello | 进入 configuration | `protocol_version = 776` | 起 3 s 握手定时器 | 引擎 | `API-M2-002` |
+| [*] → awaiting_hello | 进入 configuration | `protocol_version = 776` | 起 3 s 握手定时器；记 `EVT:session_entered_configuration` | 引擎 | `API-M2-002` |
 | awaiting_hello → verified | 收到 C2S_HELLO | `schema_version = 服务端值` | 撤销定时器；回 `S2C_HELLO`；记 `EVT:client_verified` | 玩家 | `API-M2-002`（收; msg_id=0x01） |
 | awaiting_hello → rejected | 收到 C2S_HELLO | `schema_version ≠ 服务端值` | 断线 `synaxis:protocol-version-mismatch`；记 `EVT:client_rejected` | 玩家 | `API-M2-002`（收; msg_id=0x01） |
 | awaiting_hello → rejected | 握手超时 | `now > hello_deadline` | 断线 `synaxis:client-mod-required`；记 `EVT:client_rejected` | 系统定时器 | 内部任务 `handshake.timeout`（无对外 API） |
-| verified → in_game | 进入 play | `configuration 已 finish` | 放进对局、发 `S2C_UNIT_SPAWN` 初始批 | 引擎 | `API-M2-006` |
+| verified → in_game | 进入 play | `configuration 已 finish ∧ ∃ 对局 match_state = running` | 设 `spawningInstance` 为该对局实例、放进对局、发 `S2C_UNIT_SPAWN` 初始批；记 `EVT:player_entered_play` | 引擎 | `API-M2-006` |
+| verified → rejected | 无可用对局 | `¬∃ 对局 match_state = running` | 断线 `synaxis:match-unavailable`；记 `EVT:client_rejected`（reason=match-unavailable） | 宿主 | `API-M2-010` |
+| verified → closed | 断线 | `FinishConfiguration 尚未完成` | 撤销该连接的握手记账，不进对局 | 玩家或服务端 | 引擎断线（无对外 API） |
 | in_game → closed | 断线 | — | 摘兴趣集、移除该玩家的选中记账 | 玩家或服务端 | `API-M2-010`（stop）或引擎断线 |
 
 ### 11.2 插件 `ENT-Plugin`
@@ -431,7 +453,7 @@ stateDiagram-v2
 
 ```mermaid
 stateDiagram-v2
-  [*] --> creating : 开局(插件)
+  [*] --> creating : 开局(宿主调用插件) [进程尚未 bind 监听端口]
   creating --> loading : 提交地图包(插件) [地图包 magic 与 version 可识别]
   creating --> ended : 地图包校验失败(插件) [magic 或 version 不可识别]
   loading --> running : 全部区块载入完成(内部任务 map.load) [已载入区块数 = 地图包声明数]
@@ -440,13 +462,15 @@ stateDiagram-v2
   ended --> [*]
 ```
 
+**对局在 server-app 启动序列里、`bind` 监听端口之前创建并推进到 `running`**（见 `API-M2-010` 的启动序列）。这一条同时解决两件事：① 引擎在 configuration 阶段硬性要求 `spawningInstance`，端口开之前就有 `running` 对局，玩家永远不会撞上「没有对局可进」的正常路径；② **`DimensionType` 绝不能按局在运行时注册**——`JoinGame` / `Respawn` 里维度是 `VarInt` 下标（`PlayerSpawnInfo.dimensionType`），而 `dimension_type` 这个动态注册表只在 configuration 阶段随 `RegistryDataPacket` 发一次，已经过了 configuration 的在线玩家不可能知道之后新注册的条目，运行时注册会直接打死他们。M2 只需要**一个**浅 `DimensionType`，在 bind 之前注册好；每局的唯一性只用 `dimension_name`（它是 `Instance` 的 `Key`，自由取值、不进注册表，本身就足以逼客户端走 dimensionChange）。
+
 `ended` 兼作正常终态与 error 终态，靠 `EVT:match_ended` 的 `reason` 属性区分（`normal` / `map-invalid` / `load-failed`）。**局末 `ended` 的动作是本设计处置两条 F29 残留的落点**：`unregisterInstance` 逐块卸载是「断线幽灵」的最高频触发场景（`REQ-M2-013`），而 `SharedInstance` 的删除（`REQ-M2-012`）让「shared 实例玩家看不见」这条残留直接消失。
 
 迁移表：
 
 | 源 → 目标 | 事件 | 守卫（纯布尔） | 动作（副作用） | 谁触发 | 接口/事件 |
 | --- | --- | --- | --- | --- | --- |
-| [*] → creating | 开局 | — | 分配 `match_id` 与唯一 `dimension_name`；建浅 `DimensionType` | 插件 | `API-M2-010` |
+| [*] → creating | 开局 | `进程尚未 bind 监听端口` | 分配 `match_id` 与唯一 `dimension_name`（浅 `DimensionType` 已在 bind 之前一次性注册，**不按局注册**，见下方警告与 `API-M2-010`）；记 `EVT:match_created` | 宿主调用插件 | `API-M2-010` |
 | creating → loading | 提交地图包 | `magic = SYNX ∧ header.version ≤ 当前支持版本` | 读整个 `.synx` 进不可变快照；建 `InstanceContainer` | 插件 | `API-M2-009` |
 | creating → ended | 地图包校验失败 | `magic ≠ SYNX ∨ header.version > 当前支持版本` | 记 ERROR；记 `EVT:match_ended`（reason=map-invalid） | 插件 | `API-M2-009` |
 | loading → running | 全部区块载入完成 | `已载入区块数 = 地图包声明数` | `enableAutoChunkLoad(false)`；注册进 `InstanceManager`；记 `EVT:match_started` | 系统任务 | 内部任务 `map.load`（无对外 API） |
@@ -458,26 +482,41 @@ stateDiagram-v2
 ```mermaid
 stateDiagram-v2
   [*] --> idle : 生成(插件)
-  idle --> moving : 移动指令(玩家) [下令者拥有全部目标单位 且 终点在边界内且可站立 且 寻路队列未满且有解]
-  idle --> idle : 移动指令被拒(玩家) [上述合取式为假]
-  moving --> moving : 新移动指令(玩家) [order_seq > 已接受最大值 且 有解]
+  idle --> moving : 移动指令(玩家) [ACCEPT(order) 为真]
+  idle --> idle : 移动指令被拒(玩家) [ACCEPT(order) 为假]
+  moving --> moving : 新移动指令(玩家) [ACCEPT(order) 为真]
+  moving --> moving : 移动指令被拒(玩家) [ACCEPT(order) 为假]
   moving --> idle : 到达终点(内部任务 unit.snapshot) [到最后一个航点距离 < 0.1 格]
   moving --> removed : 单位移除(插件)
   idle --> removed : 单位移除(插件)
   removed --> [*]
 ```
 
-`idle → idle` 这条自转移是**指令被拒**路径，它存在的唯一理由是：`S2C_ORDER_RESULT` 必须每条请求都回一条，否则客户端会无限等待落点反馈。`order_result_code` 的七个取值全部由这两条转移产生（见 §11 前置核对）。
+两条自转移（`idle → idle` 与 `moving → moving` 的拒绝分支）都是**指令被拒**路径，它们存在的唯一理由是 `API-M2-005` 的「**每条请求必回一条结果**」：单位正在 `moving` 时同样可能收到 `stale` / `no-path` / `out-of-bounds` / `busy` / `rate-limited` / `not-owner`，服务端要回包，就必须有一条转移可走，否则客户端会无限等待落点反馈。
+
+两条**接受**转移（`idle → moving`、`moving → moving`）与两条**拒绝**转移用同一个合取式判定，记作 `ACCEPT(order)`，逐项与 `order_result_code` 的取值一一对应（这保证了 §11 前置核对里「每个取值都可达」的断言）：
+
+```
+ACCEPT(order) ≡ order_seq > 该连接已接受最大值   -- 否则 stale
+              ∧ 本秒下令令牌桶未耗尽              -- 否则 rate-limited
+              ∧ owner(unit) = sender              -- 否则 not-owner
+              ∧ inBounds(target) ∧ walkable(target) -- 否则 out-of-bounds
+              ∧ queueDepth < 32                   -- 否则 busy
+              ∧ path ≠ ∅                          -- 否则 no-path
+```
+
+求值按上表自上而下短路，第一个为假的项决定回哪个 `code`；全真则回 `ok`。`path ≠ ∅` 在 M2 是良定义的，因为一条 `C2S_MOVE_ORDER` 只带**一个** `unit_id`（多选下令留到 M3，见 `API-M2-005`），不存在「部分单位有解」这种没法用单个 `code` 表达的状态。
 
 迁移表：
 
 | 源 → 目标 | 事件 | 守卫（纯布尔） | 动作（副作用） | 谁触发 | 接口/事件 |
 | --- | --- | --- | --- | --- | --- |
 | [*] → idle | 生成 | — | 建 display 实体并按 `REQ-M2-016` 四条规则配置；发 `S2C_UNIT_SPAWN` | 插件 | `API-M2-006` |
-| idle → moving | 移动指令 | `owner(units) = sender ∧ inBounds(target) ∧ walkable(target) ∧ queueDepth < 32 ∧ path ≠ ∅` | 存路径与航点；回 `code=ok` 与吸附终点；记 `EVT:unit_order_issued` | 玩家 | `API-M2-005`（收; msg_id=0x03） |
-| idle → idle | 移动指令被拒 | `¬(owner ∧ inBounds ∧ walkable ∧ queueDepth<32 ∧ path≠∅)` | 回 `code` ∈ {not-owner, out-of-bounds, busy, no-path, rate-limited, stale}；不改单位 | 玩家 | `API-M2-005`（收; msg_id=0x03） |
-| moving → moving | 新移动指令 | `order_seq > 已接受最大值 ∧ path ≠ ∅` | 整条替换旧路径；回 `code=ok`；记 `EVT:unit_order_issued` | 玩家 | `API-M2-005`（收; msg_id=0x03） |
-| moving → idle | 到达终点 | `distance(pos, 最后航点) < 0.1` | 清路径；下一条快照的 `state` 改为 idle；记 `EVT:unit_order_completed` | 系统任务 | 内部任务 `unit.snapshot`（无对外 API） |
+| idle → moving | 移动指令 | `ACCEPT(order)` | 存路径与航点；回 `code=ok` 与吸附终点；记 `EVT:unit_order_issued` | 玩家 | `API-M2-005`（收; msg_id=0x03） |
+| idle → idle | 移动指令被拒 | `¬ACCEPT(order)` | 回首个为假项对应的 `code` ∈ {stale, rate-limited, not-owner, out-of-bounds, busy, no-path}；不改单位；记 `EVT:unit_order_rejected` | 玩家 | `API-M2-005`（收; msg_id=0x03） |
+| moving → moving | 新移动指令 | `ACCEPT(order)` | 整条替换旧路径；回 `code=ok`；记 `EVT:unit_order_issued` | 玩家 | `API-M2-005`（收; msg_id=0x03） |
+| moving → moving | 移动指令被拒 | `¬ACCEPT(order)` | 回首个为假项对应的 `code`；**保留原路径继续移动**；记 `EVT:unit_order_rejected` | 玩家 | `API-M2-005`（收; msg_id=0x03） |
+| moving → idle | 到达终点 | `distance(pos, 最后航点) < 0.1` | 清路径；下一条快照的 `unit_state` 改为 idle；记 `EVT:unit_order_completed` | 系统任务 | 内部任务 `unit.snapshot`（无对外 API） |
 | moving → removed | 单位移除 | — | `entity.remove()`；发 `S2C_UNIT_DESPAWN`；从全部玩家选中集合里摘掉 | 插件 | `API-M2-006` |
 | idle → removed | 单位移除 | — | `entity.remove()`；发 `S2C_UNIT_DESPAWN`；从全部玩家选中集合里摘掉 | 插件 | `API-M2-006` |
 
@@ -501,11 +540,17 @@ sequenceDiagram
     alt schema_version 相等
       H-->>C: S2C_HELLO{schema_version, tick_rate, server_tick} (API-M2-002)
       Note over H: session_state → verified (见 11.1)
-      E->>C: FinishConfiguration 与 JoinGame
-      H->>P: onPlayerJoin(玩家)
-      P->>P: 分配队伍与初始单位
-      P-->>C: S2C_UNIT_SPAWN × N (API-M2-006)
-      Note over P: session_state → in_game
+      alt 存在 running 态对局(正常路径: 对局在 bind 之前就已 running)
+        H->>E: 设 spawningInstance 为该对局实例 (API-M2-010)
+        E->>C: FinishConfiguration 与 JoinGame
+        H->>P: onPlayerJoin(玩家) (API-M2-008 的 events 子节点派发)
+        P->>P: 分配队伍与初始单位
+        P-->>C: S2C_UNIT_SPAWN × N (API-M2-006)
+        Note over P: session_state → in_game (见 11.1)
+      else 无 running 态对局(唯一对局已 ended)
+        H-->>C: Disconnect synaxis:match-unavailable (见 §14)
+        Note over H: session_state → rejected (见 11.1)
+      end
     else schema_version 不等
       H-->>C: Disconnect synaxis:protocol-version-mismatch (见 §14)
     end
@@ -527,22 +572,21 @@ sequenceDiagram
   participant EN as 引擎(实体与区块)
   loop 每 200 ms
     M-->>H: C2S_CAMERA{anchor_x, anchor_z, zoom, camera_yaw} (API-M2-003) 异步
-    H->>P: 路由到 rts 通道
-    P->>EN: 把该玩家(旁观态)实体传送到锚点地面
-    EN-->>M: 区块流送与 display 实体的 spawn/destroy 包
+    H->>P: 路由到 rts 通道 (API-M2-001 的前缀路由)
+    P->>EN: 把该玩家(旁观态)实体静默传送到锚点地面 (API-M2-003)
+    EN-->>M: 区块流送与 display 实体的 spawn/destroy 包 (引擎既有契约, 见 docs/DESIGN.md 第 8 节 原版协议会话)
     P-->>M: S2C_UNIT_SPAWN / S2C_UNIT_DESPAWN (API-M2-006) 异步
   end
   U->>M: 左键点单位
   M->>M: 屏幕坐标转世界射线，命中自持包围盒
+  M->>M: 本地绘制选中框(仅本客户端可见, 见 REQ-M2-016)
   M-->>H: C2S_SELECT{unit_ids} (API-M2-004) 异步
-  H->>P: 路由
-  P->>P: 校验归属与队伍，记账选中集合
-  P->>EN: 置发光元数据(选中高亮)
-  EN-->>M: EntityMetaDataPacket
+  H->>P: 路由 (API-M2-001)
+  P->>P: 校验归属与队伍，记账选中集合(不下发任何元数据)
   U->>M: 右键点地面
   M->>M: 射线与地形求交，得到目标点
-  M-->>H: C2S_MOVE_ORDER{order_seq, unit_ids, target} (API-M2-005) 异步
-  H->>P: 路由
+  M-->>H: C2S_MOVE_ORDER{order_seq, unit_id, target} (API-M2-005) 异步
+  H->>P: 路由 (API-M2-001)
   alt 校验通过且寻路有解
     P->>P: A* 求路径并拉绳平滑(预算见 §15)
     P-->>M: S2C_ORDER_RESULT{code=ok, snapped} (API-M2-005) 异步
@@ -554,9 +598,9 @@ sequenceDiagram
     end
     Note over P: 到达后 moving → idle，记 EVT:unit_order_completed
   else 校验不过或无解
-    P-->>M: S2C_ORDER_RESULT{code=no-path/not-owner/out-of-bounds/busy} (API-M2-005) 异步
+    P-->>M: S2C_ORDER_RESULT{code=stale/rate-limited/not-owner/out-of-bounds/busy/no-path} (API-M2-005) 异步
     M->>U: 落点标记变红并提示原因
-    Note over P: ENT-Unit 停在 idle(自转移，见 11.4)
+    Note over P: ENT-Unit 走拒绝自转移(idle→idle 或 moving→moving，见 11.4)
   end
 ```
 
@@ -589,7 +633,7 @@ flowchart LR
 
 无 HTTP，不用 RFC 9457。沿用 `docs/DESIGN.md` §14 的统一信封：断线走 Minecraft 协议的 `Disconnect` 包，原因文本是 Adventure `Component`，其 `translate` 键即稳定错误码；排障关联 ID 仍是 `connection_id`（见 `docs/DESIGN.md` §9），由网络层在 TCP 接入时生成，该连接的每一行日志与断线文本末尾都携带。M2 新增的错误分两层：**断线级**（沿用 `synaxis:*` 键体系）与**带内结果码**（不断线，走 `S2C_ORDER_RESULT` 的 `code`）。
 
-断线级（新增，M1 的五个键继续有效）：
+断线级（新增，M1 的五个键继续有效）。**这四个键住在游戏侧**：`synaxis:` 只是引擎与游戏共用的 `translate` 前缀（与「`synaxis` 是宿主保留的**通道**命名空间」是两回事），键本身由 `plugin-api` 的常量类持有，**不得加进引擎的 `DisconnectReasons`**——否则引擎就知道了「模组」「对局」这些概念，违背 §6 的依赖方向：
 
 | 错误码（type） | 协议动作 | 语义 | 客户端处理约定 |
 | --- | --- | --- | --- |
@@ -606,7 +650,7 @@ flowchart LR
 | --- | --- | --- |
 | `ok` | 指令被接受 | 在 `snapped_*` 处画绿色落点标记 |
 | `no-path` | 目标可站立但无连通路径 | 红色标记 + 「到不了那里」 |
-| `not-owner` | 指令里含不属于本玩家的单位 | 红色标记 + 「不是你的单位」；客户端应同步修正本地选中集合 |
+| `not-owner` | `unit_id` 不属于本玩家 | 红色标记 + 「不是你的单位」；客户端应同步修正本地选中集合 |
 | `out-of-bounds` | 目标点在地图边界外或不可站立 | 红色标记，无文字（高频，避免刷屏） |
 | `busy` | 寻路队列已满（深度 ≥ 32） | 黄色标记 + 「服务器忙，请重试」 |
 | `rate-limited` | 该连接下令超过 10 条/秒 | 黄色标记，不提示（客户端自己该节流） |
@@ -622,7 +666,8 @@ flowchart LR
 | --- | --- | --- |
 | tick 预算 | 50 玩家、4 局并行、全服 1,000 单位 | 单 tick P99 < 50 ms（沿用 `docs/DESIGN.md` §15，M2 不放宽） |
 | 寻路开销 | 同上 | 寻路在单 tick 内占用 P99 < 2 ms（tick 预算的 4%）；单次请求节点展开 ≤ 4,000；每 tick 处理请求 ≤ 4；队列深度 > 32 时回 `busy` |
-| 单位快照 | 单玩家视野 50 单位 | 每条 `S2C_UNIT_STATE` ≤ 1 KiB，10 Hz，即 ≤ 8 KB/s/玩家；50 玩家出站 ≤ 400 KB/s（追溯 §2 出站带宽） |
+| 单位快照 | 单玩家视野 50 单位 | 每条 `S2C_UNIT_STATE` ≤ 1 KiB，10 Hz，即 ≤ 8 KB/s/玩家；50 玩家出站 ≤ 400 KB/s（追溯 §2 出站带宽）。**这是逐人编码口径**（兴趣集逐人不同，`CachedPacket` 用不上，见 `API-M2-006`）：50 人 × 10 Hz = 500 次编码/秒、每次 ≤ 1 KiB，纯手写 `MsgBuf` 写入，编码 CPU 预算 ≤ 0.5 ms/tick（含在下方 `unit.snapshot` 的单批 5 ms 内） |
+| 可见范围 | RTS 镜头推到 `zoom` 上限时屏幕边缘的地形与单位 | **三项必须显式设定，默认值撑不住 RTS 视口**：`synaxis.entity-view-distance = 8`（128 格；它在 `Instance` 构造时就固化进 `EntityTracker`，**建 `InstanceContainer` 之前必须设好**，之后改无效，见 `API-M2-010` 启动序列）、`synaxis.chunk-view-distance = 10`、`instance.viewDistance() = 10`；客户端模组把渲染距离强制 ≥ 12（服务端的 `effectiveViewDistance` 被 `min(clientViewDistance, instance.viewDistance())` 卡死，客户端报小了服务端补不上）。`zoom` 上限 48 是由这组值反推的（§9），两者必须一起改 |
 | 端到端延迟 | 点地面到客户端看见单位起步 | P99 < 300 ms（= 上行 RTT + ≤ 1 tick 服务端处理 + 100 ms 客户端插值缓冲）；超过 500 ms 视为 SLO 违约（见 §21） |
 | 地图载入 | 512×512、高度 64（1,024 个区块） | 冷启动载入 < 3 s，堆增量 < 50 MB（**待 §26 阶段 0 的 spike 实测确认**，达不到再谈并行载入或格式优化） |
 | 内存 | 4 局并行常驻 | 地图数据 < 140 MB，进程堆 < 2 GB（沿用 `docs/DESIGN.md` §15） |
@@ -644,16 +689,16 @@ flowchart LR
 | 插件正在 `onDisable`（熔断或停机），tick 线程仍有回调进来 | 宿主线程 × tick 线程 | 回调被丢弃，不抛给引擎；禁用完成后该插件零回调 | `API-M2-008` 包装层在 `plugin_state ≠ enabled` 时直接 return；事件子节点 `removeChild` 与 `Task.cancel()` 各自幂等 |
 | 同一连接连续两条 `C2S_MOVE_ORDER`，`order_seq` 乱序到达 | 客户端 × 网络线程 | 小于等于已接受最大值的一条回 `stale`，不产生第二条路径 | §11.4 守卫 `order_seq > 已接受最大值`；单调计数器只在该玩家的 tick 线程内改 |
 | 寻路结果回填时单位已被移除 | 寻路（tick 线程内）× 插件移除逻辑 | 结果被丢弃，不复活已移除单位 | 回填前检查 `unit_state = removed` 与 `entity.isRemoved()` |
-| 两个玩家同时选中同一个中立单位 | 两条连接 | 各自的本地选中集合互不影响；下令时按 §11.4 `owner` 守卫判定，中立单位对双方都是 `not-owner` | §10 行级可见性；选中是每连接独立记账 |
+| 两个玩家同时选中同一个中立单位 | 两条连接 | 各自的本地选中集合与选中框互不影响；下令时按 §11.4 `ACCEPT(order)` 的 `owner` 项判定，中立单位对双方都是 `not-owner` | §10 行级可见性；选中是每连接独立记账，选中框由客户端本地绘制（`REQ-M2-016`）——这正是不能用发光元数据的原因：`HAS_GLOWING_EFFECT` 是实体全局元数据，一个玩家选中会让所有 viewer 都看见亮 |
 | 握手定时器与 `C2S_HELLO` 同时到达 | 定时器线程 × 网络线程 | 只有一条生效（CAS 翻 `session_state`），不会既回 `S2C_HELLO` 又断线 | §11.1：`awaiting_hello` 出边互斥，用一次 `compareAndSet` 决出 |
-| 地图载入中玩家试图进入该对局 | 加载线程 × 网络线程 | 玩家排队等待或被拒 `synaxis:match-unavailable`，不会进入半载入世界 | §11.3：只有 `running` 态的对局接收玩家 |
+| 玩家握手通过（`verified`）时没有 `running` 态的对局 | 网络线程 × 对局生命周期 | 玩家被拒 `synaxis:match-unavailable`，不会进入半载入世界，也不会撞上引擎的 `spawningInstance` NPE | §11.1 的 `verified → rejected` 边；正常路径下走不到——`API-M2-010` 的启动序列保证 bind 之前已有 `running` 对局 |
 
 一致性承诺：
 
 - **服务端是单位状态的唯一权威，客户端不做预测**。客户端权威的只有镜头（`zoom` / `camera_yaw` 服务端不校正）。点地面后客户端最多画一个落点标记，单位的实际移动一律等 `S2C_UNIT_STATE`。
 - read-after-write：同一 tick 线程内写后立即可见；跨 tick 线程仍需 `Acquirable`（见 `docs/DESIGN.md` §16）。玩家看到自己下令的效果最迟在 ≤ 2 tick 后的下一条快照里。
 - 客户端渲染故意落后一个快照间隔（100 ms）做插值缓冲；超时未收到快照时外推 ≤ 200 ms，然后冻结并淡出。底层是 TCP，不会真丢包，只会队头阻塞造成突发延迟——「丢包处理」的全部内容就是这个有界缓冲。
-- 对账：每 5 s 一条全量快照（兴趣集内全部单位），客户端以它为准覆盖本地状态，杜绝长期漂移。
+- 对账：不需要单独的对账通道——10 Hz 的 `S2C_UNIT_STATE` 本身就是兴趣集内的**绝对坐标全量覆盖**，每一条都是对账，再加一条 5 s 的第二路径只是多一份要维护的代码。
 - 异步投递：自定义负载是 at-most-once（TCP 有序，断线即丢弃，不重传应用层消息）；所有消息按幂等设计，唯一例外 `C2S_MOVE_ORDER` 用 `order_seq` 去重。
 
 ## 17. 依赖与外部系统 / SLA
@@ -677,7 +722,7 @@ flowchart LR
 | --- | --- | --- | --- | --- | --- |
 | `handshake.timeout` | 连接进入 configuration 后 3 s | 每连接一个定时器 | — | 断线 `synaxis:client-mod-required` | 见 `RB-M2-001` |
 | `map.load` | 对局 `creating → loading` 时一次 | 每对局一次；同一 `.synx` 的内存快照全进程共享一份 | 30 s | 丢弃半成品实例，对局转 `ended`（reason=load-failed） | 见 `RB-M2-004` |
-| `unit.snapshot` | 每 2 tick（10 Hz） | 每对局一批；用 `CachedPacket` 合并广播 | 单批 < 5 ms | 记 WARN 并跳过本批，下一批补齐（快照幂等） | 见 `RB-M2-003` |
+| `unit.snapshot` | 每 2 tick（10 Hz） | 每对局一批；**逐玩家按兴趣集编码**（`CachedPacket` 的前提不成立，见 `API-M2-006`），兴趣集完全相同的玩家共用同一个已编码 `byte[]` | 单批 < 5 ms（含该对局全部玩家的编码与入队） | 记 WARN 并跳过本批，下一批补齐（快照幂等） | 见 `RB-M2-003` |
 | `pathfind.queue` | 每 tick | 每实例一个队列，单实例 tick 线程内串行；每 tick ≤ 4 个请求 | 单次 ≤ 4,000 节点展开 | 超预算即中止该次搜索并回 `no-path`；队列满回 `busy` | 见 `RB-M2-003` |
 | `plugin.circuit-breaker` | 每秒滑窗结算 | 全进程一个 | — | 达阈值禁用插件（`enabled → failed`），进程继续 | 见 `RB-M2-002` |
 | `match.teardown` | 对局转 `ended` 时一次 | 每对局一次，与 `map.load` 互斥 | 10 s | 超时记 ERROR 并强制 `unregisterInstance` | 见 `RB-M2-004` |
@@ -695,7 +740,7 @@ flowchart LR
   - Context：需要给单位一个客户端可见物。
   - Decision：每个单位配一个 `ITEM_DISPLAY` 实体作为可见物，模型由 `minecraft:item_model` 数据组件指向模组 jar 内 `assets/` 的自定义模型。
   - Alternatives：① **自定义实体类型——协议上不可行**：`entity_type` 在引擎里是静态注册表（`RegistryData.createStaticRegistry`），不在 `RegistryDataPacket` 的下发范围内（只有 `chatType` / `dimensionType` / `biome` / `damageType` 四个动态注册表会同步），没有任何协议通道能告诉客户端新类型；靠客户端模组自己注册一份会导致数值 id 漂移。这条比「display 更省事」硬得多，是本决策的真正论据。② 完全不发实体、由模组按自定义负载全自绘（走 `LevelRenderEvents`）——表现自由，但要自己实现剔除、排序、光照、性能预算，工作量把切片推后至少一个里程碑。
-  - Consequences：正——两端编号天然一致，零协议风险，选中高亮可以用现成的 `HAS_GLOWING_EFFECT` + `GLOW_COLOR_OVERRIDE` 元数据实现、第一天就有可见反馈；负——表现受 vanilla 渲染管线约束；display 实体没有碰撞箱，点选必须靠客户端自持包围盒（见 `ADR-M2-012`）；规模代价在跟踪与包量而非 tick。**若用户改主意走全自绘，受影响的是 `REQ-M2-016`、§11.4 的动作列、`API-M2-006` 的 `entity_id` 字段（会变成无意义）与客户端渲染层**；反之本决策不阻挡将来把某些单位改成自绘——协议里单位与实体是两个号，天然解耦。
+  - Consequences：正——两端编号天然一致，零协议风险，display 实体的 `teleport_duration` 插值让「平滑移动」在第一天就有可见效果、不需要客户端写任何插值代码；负——表现受 vanilla 渲染管线约束；**选中高亮不能用 display 的 `HAS_GLOWING_EFFECT` / `GLOW_COLOR_OVERRIDE`**（那是实体全局元数据，一个玩家选中全场都会亮，见 `REQ-M2-016`），选中框只能由客户端本地绘制；display 实体没有碰撞箱，点选必须靠客户端自持包围盒（见 `ADR-M2-012`）；规模代价在跟踪与包量而非 tick。**若用户改主意走全自绘，受影响的是 `REQ-M2-016`、§11.4 的动作列、`API-M2-006` 的 `entity_id` 字段（会变成无意义）与客户端渲染层**；反之本决策不阻挡将来把某些单位改成自绘——协议里单位与实体是两个号，天然解耦。
 - **`ADR-M2-003`（假设 A3）server-app 取代 smoke** — Status: **Proposed · 待用户签字**
   - Context：`smoke` 是 M1 的最小启动器（平坦世界 + `synaxis:main` 的 echo），职责与「插件宿主 + 启动器」重叠。
   - Decision：新建 `:server-app` 承接冒烟职责，删除 `:smoke`；`docs/TEST.md` 里以 smoke 为环境前置的用例随之更新。
@@ -708,7 +753,7 @@ flowchart LR
   - Consequences：改名影响面极小（6 个文件搬家 + `Registries.java` 与 `BuiltinRegistries.java` 两处 import + `module-info.java` 一行 export），但**必须作为 M2 的第 0 个提交单独做并登记 `.git-blame-ignore-revs`**。`tools/pkgdeps.py` 的顶层包折叠也会因此不再把引擎的 `game` 与插件的 `game.*` 混到同一个桶。
 - **`ADR-M2-005` 最小模块拆法：根模块继续是引擎，只做加法** — Status: Accepted
   - Context：需要切开引擎 / 稳定面 / 协议 / 宿主 / 玩法。
-  - Decision：`settings.gradle.kts` 改 5 行——新增 `:protocol`、`:plugin-api`、`:server-app`、`:game-rts`，删除 `:smoke`；根模块（引擎 1,109 个文件）一个不动。Gradle 落地：`:protocol` 与 `:plugin-api` 用 `synaxis.java-library` + `synaxis.publishing`；`:server-app` 用 `synaxis.java-library` + `application`（**不用 `synaxis.java-binary`**——它不带 JUnit 也不带 jacoco，而宿主的加载顺序 / 环检测 / 通道路由必须有单测并进覆盖率门）；`:game-rts` 用 `synaxis.java-library`。`module-info` 落地：`:protocol` 零 `requires`（纯 JDK）只 `exports`；`:plugin-api` `requires transitive` 引擎与 protocol；**`:server-app` 与 `:game-rts` 不写 `module-info`、跑 classpath**（与 smoke 的 `mainModule` 相反）——将来若换成每插件一个 `URLClassLoader`，模块路径会和自定义加载器打架。同时把 `docs/DESIGN.md` §8 与 `ADR-007` 里的「`platform-api` 是唯一稳定面」改称为 **`plugin-api`**，这是一次显式的决策改名，不是悄悄换词。
+  - Decision：`settings.gradle.kts` 改 5 行——新增 `:protocol`、`:plugin-api`、`:server-app`、`:game-rts`，删除 `:smoke`；根模块（引擎 1,109 个文件）一个不动。Gradle 落地：`:protocol` 与 `:plugin-api` 用 `synaxis.java-library` + `synaxis.publishing`；`:server-app` 用 `synaxis.java-library` + `application`（**不用 `synaxis.java-binary`**——它不带 JUnit 也不带 jacoco，而宿主的加载顺序 / 环检测 / 通道路由必须有单测并进覆盖率门）；`:game-rts` 用 `synaxis.java-library`。包名落地（ArchUnit 规则要逐个写完整前缀，见 §24）：`:protocol` → `io.github.bearisbug.synaxis.game.protocol`；`:plugin-api` → `io.github.bearisbug.synaxis.plugin`；`:server-app` → `io.github.bearisbug.synaxis.app`；`:game-rts` → `io.github.bearisbug.synaxis.game.rts`。`module-info` 落地：`:protocol` 零 `requires`（纯 JDK）只 `exports`；`:plugin-api` `requires transitive` 引擎与 protocol；**`:server-app` 与 `:game-rts` 不写 `module-info`、跑 classpath**（与 smoke 的 `mainModule` 相反）——将来若换成每插件一个 `URLClassLoader`，模块路径会和自定义加载器打架。同时把 `docs/DESIGN.md` §8 与 `ADR-007` 里的「`platform-api` 是唯一稳定面」改称为 **`plugin-api`**，这是一次显式的决策改名，不是悄悄换词。
   - Alternatives：① 审计 07 §8.6 的 `platform-api` / `platform-fake` / `platform-engine` 三件套——它的立论是「起真 `ServerProcess` 比假实现慢一到两个数量级」，但 M1.5 的门面实例化 + 测试并行已经把这笔削掉大半（串行 30.1 s → 并行 20 s）；等 game 侧真出现「测一条技能要起服务器」的痛点再补。② 引擎下沉到 `engine/` 子目录——要 `git mv` 1,109 个主源码与全部测试、改至少 14 处硬编码路径（`build.gradle.kts` 的 metadataCopy、`ci.yml` 的 `--src-roots`、`tools/pkgdeps.py`、`tools/protocol-probe/probe.py`、`docs/ENGINE.md` 目录地图、`docs/TEST.md` 十几条 TC 步骤），还要显式覆盖 `artifactId` 免得 Maven 坐标从 `synaxis` 变成 `engine`——在只有一个引擎模块时收益为零。
   - Consequences：正——零文件搬迁、可逆性好；负——`plugin-api` 是「引擎类型的受控再导出」而不是零引擎依赖的窄接口，稳定面实际等于引擎大部分 API，靠 `@ApiStatus` 与 ABI 门约束。**这是本次拆分里可逆性最差的一条**：选了受控再导出，以后再想收窄，所有已发布的插件都要改（见 §28 签字项）。
 - **`ADR-M2-006` 插件宿主：形态照 Paper，实现先落编译期插件** — Status: Accepted
@@ -750,7 +795,7 @@ flowchart LR
   - Context：引擎的实体可见性（`EntityView` 的 `nearbyEntitiesByChunkRange`）与区块流送（`Player.updateViewDistance`）**都以玩家实体位置为中心**。RTS 镜头一旦脱离玩家实体，就会出现「镜头推过去了，但那边的单位和地形没发给你」。
   - Decision：玩家实体设为旁观态且不可见，服务端收到 `C2S_CAMERA` 后把它传送到镜头锚点对应的地面点；客户端模组在 RTS 模式下吃掉 WASD 与鼠标转身，不发移动包。
   - Alternatives：① 给引擎加「区块中心与实体位置解耦」的概念——要触及 `chunkAdder` / `chunkRemover` / `chunksLoadedByClient` / `ChunkView.collectPlayers` 全链，是引擎为游戏让步；② 完全不发实体、单位纯自定义负载渲染并自己算兴趣集——客户端工作量大得多，见 `ADR-M2-002` 的备选②。
-  - Consequences：正——零引擎改动，区块流送与实体跟踪原生可用；负——玩家实体的移动包校验与落地判定要一并处理（客户端模组必须真的不发移动包，否则服务端会不断被拉回）；**客户端的渲染距离必须拉到足够大**——服务端的 `effectiveViewDistance` 被 `min(clientViewDistance, instance.viewDistance())` 卡死，客户端报小了服务端补不上。还有一条**必须实跑才能确定**的未知：MC 客户端是按玩家实体还是按渲染相机做实体剔除？若按玩家实体，本决策之外的所有路线里 display 实体都会被剔除掉（见 §28）。
+  - Consequences：正——零引擎改动，区块流送与实体跟踪原生可用；负——玩家实体的移动包校验与落地判定要一并处理（客户端模组必须真的不发移动包，否则服务端会不断被拉回）；**客户端的渲染距离必须拉到足够大**——服务端的 `effectiveViewDistance` 被 `min(clientViewDistance, instance.viewDistance())` 卡死，客户端报小了服务端补不上；**服务端侧的三项可见范围也必须显式设定**（引擎默认的 `entityViewDistance=5` 只有 80 格，撑不住 RTS 视口；且它在实例构造时固化，建实例之后改无效），数值与 `zoom` 上限的对应关系见 §15「可见范围」行与 `API-M2-010` 的启动序列。另注意玩家实体的传送必须走**静默路径**（不确认、不派发 `EntityTeleportEvent` 的完整链路），5 Hz × 50 人是 250 次/秒，走 `Player` 的带 `teleportId` 确认流程会让服务端持续等确认。还有一条**必须实跑才能确定**的未知：MC 客户端是按玩家实体还是按渲染相机做实体剔除？若按玩家实体，本决策之外的所有路线里 display 实体都会被剔除掉（见 §28）。
 - **`ADR-M2-014` 寻路：启动时烘焙的不可变网格 + 8 邻接 A*，跑在 tick 线程内** — Status: Accepted
   - Context：引擎里一点寻路都不剩（只有一个叫 `PathfinderMobMeta` 的元数据类），必须自研；但原料齐全（`blocksMotion` / `collisionShape` / `Heightmap` / `Palette.getAll`）。
   - Decision：地图烘焙时一次性产出 `walkable` 位集与 `surface_y`（与区块数据同文件，见 `API-M2-009`），运行时**只读不可变**；8 邻接网格 A* + octile 启发式 + 台阶高度 ≤ 1 约束，出路径后做视线拉绳平滑压成几个航点；跑在实例 tick 线程内，带 §15 的三重预算。
@@ -776,7 +821,8 @@ flowchart LR
 
 场景: 引擎里出现对游戏包的引用时 CI 必须红 (REQ-M2-001, REQ-M2-002)
   Given 引擎源码里已把 io.github.bearisbug.synaxis.game 改名为 gameevent
-  And ArchitectureTest 已加入「引擎不得依赖 ..game.. / ..plugin.. / ..app..」规则
+  And ArchitectureTest 已加入「引擎不得依赖 io.github.bearisbug.synaxis.game.. / .plugin.. / .app..」规则（完整前缀，不是 ..plugin..）
+  And 该规则在引擎现状下是绿的（不会误命中引擎自己的 network.plugin 包）
   When 有人在引擎的任意类里 import io.github.bearisbug.synaxis.game.rts.Unit
   Then ./gradlew check 失败并指出违规的类与被引用的包
   And 删除该 import 后 check 恢复通过
@@ -787,10 +833,16 @@ flowchart LR
   Then CI 因新增行覆盖率低于 80% 而失败
 
 场景: 稳定面发生破坏性变更时 ABI 门必须红 (REQ-M2-022)
-  Given :plugin-api 已接入 checkBinaryCompatibility 且 CI 断言 baseline 存在
+  Given 仓库已打出 M2 的第一个 tag 并把它的 jar 作为 :plugin-api 的 ABI baseline
   When 有人删除 PluginContext 的一个公开方法
   Then CI 报告 ABI 破坏并失败
-  And 若 baseline 目录缺失，CI 同样失败而不是静默跳过
+
+场景: 首个 tag 之前 ABI 门显式跳过而不是静默假绿 (REQ-M2-022)
+  Given 仓库尚未打出 M2 的第一个 tag，因此不存在 baseline jar
+  When CI 执行 checkBinaryCompatibility
+  Then 该步骤以 SKIPPED 结束并在日志里打印「无 baseline，ABI 门未生效」
+  And 构建整体仍然是绿的
+  And 打出第一个 tag 之后，同样的 baseline 缺失将使 CI 失败
 ```
 
 ```gherkin
@@ -898,7 +950,7 @@ flowchart LR
 功能: 世界管理与审计残留
 
 场景: 地图包整图载入并关闭自动加载 (REQ-M2-010, REQ-M2-011)
-  Given 一个 512x512、高度 64 的 .synx 地图包
+  Given 一个由程序化生成器产出的 512x512、高度 64 的 .synx 地图包（M2 没有离线烘焙器）
   When 新建对局并载入
   Then 1024 个区块全部载入完成后对局才进入 running
   And 载入耗时小于 3 秒、堆增量小于 50 MB
@@ -934,10 +986,11 @@ flowchart LR
   Then 已判定卸载的区块不会被发出
   And 客户端持有的区块集合与服务端记账的 chunksLoadedByClient 完全一致
 
-场景: 不可信 compound 不得进入 tag 系统 (REQ-M2-015)
-  Given ArchUnit 已加入禁止规则
-  When 游戏侧代码对客户端来源的 compound 使用 Tag.Structure 或 Tag.View
+场景: 游戏侧一律不得使用结构化 tag (REQ-M2-015)
+  Given ArchUnit 已加入「io.github.bearisbug.synaxis.game.. 不得依赖 Tag.Structure / Tag.View / TagHandler.fromCompound」的无条件禁止规则
+  When 游戏侧任意一个类使用 Tag.Structure 或 Tag.View
   Then ./gradlew check 失败并指向该调用点
+  And 无论那个 compound 是不是客户端来源的，规则都一样失败（静态分析判断不了「来源」）
   And Tag.Structure / Tag.View / TagHandler.fromCompound 的 Javadoc 已写明「不可用于不可信数据」
 ```
 
@@ -948,15 +1001,17 @@ flowchart LR
   Given 一个刚生成的单位
   Then 它的 display 实体 hasPhysics=false 且 noGravity=true
   And 它的 teleport_duration 在 spawn 时就被设为 2 tick 且之后不再改
-  And 它的 synchronizationTicks 大于一局的最大 tick 数
+  And 它的 synchronizationTicks 被设为 100 tick（调大而不是关掉——引擎的周期性重同步存在的理由是修正增量位置包的累积量化误差，display 实体没有别的纠正通道）
   When 服务端每 2 tick 推进它的位置
   Then 客户端看到的是连续插值而不是每 20 tick 一次的位置跳变
 
-场景: 选中单位得到可见反馈 (REQ-M2-019)
-  Given 玩家拥有一个单位
-  When 玩家点中它
-  Then 该 display 实体的发光元数据被置上且颜色为本队颜色
-  And 服务端的选中集合里只有该单位
+场景: 选中单位得到可见反馈且只有本人看得见 (REQ-M2-016, REQ-M2-019)
+  Given 玩家 A 与玩家 B 都能看见同一个单位，该单位属于 A
+  When A 点中它
+  Then A 的客户端本地绘制出选中框
+  And B 的客户端上该单位没有任何视觉变化
+  And 服务端没有为此下发任何实体元数据包
+  And 服务端为 A 记账的选中集合里只有该单位
 
 场景: 点中不属于自己的单位时被服务端剔除 (REQ-M2-019)
   Given 玩家点中一个属于对手的单位
@@ -968,8 +1023,8 @@ flowchart LR
   Given 玩家已选中一个单位，镜头锚点在单位附近
   When 玩家右键点击 20 格外一处可站立的地面
   Then 客户端在 300 ms 内收到 code=ok 与吸附后的终点
-  And 单位在后续的 S2C_UNIT_STATE 里 state 变为 moving 并沿路径前进
-  And 到达后 state 变回 idle 且距终点小于 0.1 格
+  And 单位在后续的 S2C_UNIT_STATE 里 unit_state 变为 moving 并沿路径前进
+  And 到达后 unit_state 变回 idle 且距终点小于 0.1 格
 
 场景: 目标点不可达时得到明确拒绝 (REQ-M2-017)
   Given 玩家点击一处被墙完全围住的可站立地面
@@ -993,6 +1048,20 @@ flowchart LR
   Given 服务端已接受该连接的 order_seq=5
   When 客户端再发一条 order_seq=5 的指令
   Then 返回 code=stale 且不产生第二条路径
+  And 该单位正在 moving 时同样返回 code=stale 并保持原路径继续移动
+
+场景: 正在移动的单位收到被拒指令也必须收到结果 (REQ-M2-009, REQ-M2-017)
+  Given 一个正在 moving 的单位
+  When 玩家对它下达一条目标在地图外的移动指令
+  Then 客户端收到一条 S2C_ORDER_RESULT 且 code=out-of-bounds
+  And 单位保持原路径继续移动，不回到 idle
+
+场景: 镜头上报超频与越界锚点被服务端处理 (REQ-M2-018)
+  Given 一个 in_game 的会话
+  When 它在 1 秒内发送 30 条 C2S_CAMERA
+  Then 前 10 条被处理，其余被丢弃且不回错
+  And 上报一个在地图边界外的锚点时，服务端把它夹取到边界内再传送玩家实体
+  And 上报的 zoom 超出 [8, 48] 时被夹取到区间内后再记入遥测
 ```
 
 ```gherkin
@@ -1004,6 +1073,13 @@ flowchart LR
   Then 标准输出出现 "synaxis server-app listening on 0.0.0.0:25565"
   And docs/TEST.md 里原先依赖 smoke 的环境前置已改写为 server-app
   And 就绪日志串这类语义变更已按该文档惯例废旧用例 ID 换新 ID
+
+场景: 强制握手上线后协议探针仍能跑通全部回归 (REQ-M2-008, REQ-M2-021)
+  Given 服务端已启用 configuration 阶段的强制模组握手
+  And tools/protocol-probe/probe.py 已实现 C2S_HELLO
+  When 执行 probe.py 的 login / echo / zero-frame / deep-recursion / premature-finish / record-registry 六个子命令
+  Then 每个都能进入 play 态并完成原有断言
+  And 没有为此引入任何可绕过准入的旁路开关
 ```
 
 ## 20. 埋点 / 分析事件
@@ -1012,13 +1088,17 @@ flowchart LR
 
 | 事件（ID=事件名） | 触发时机 | 关键属性 | 对应指标 |
 | --- | --- | --- | --- |
+| `EVT:session_entered_configuration` | 连接进入 configuration（§11.1 `[*] → awaiting_hello`），无论后续是否握手 | `protocol_version` | 客户端接入成功率（分母）、§21 握手成功率 |
 | `EVT:client_verified` | 握手通过、`session_state → verified` | `mod_version`, `schema_version` | 客户端接入成功率 |
-| `EVT:client_rejected` | 握手失败（超时或版本不符） | `reason`（mod-missing / version-mismatch）, `schema_version` | 客户端接入成功率 |
+| `EVT:client_rejected` | 会话以 `rejected` 终态结束（§11.1 的三条入边） | `reason`（mod-missing / version-mismatch / match-unavailable）, `schema_version` | 客户端接入成功率（分子的补集，不直接进分母） |
+| `EVT:player_entered_play` | `session_state → in_game`（§11.1 `verified → in_game`） | `match_id` | 首次上手完成率（分母） |
 | `EVT:unit_selected` | 服务端接受一条 `C2S_SELECT` 后 | `count`, `rejected_count` | 首次上手完成率 |
-| `EVT:unit_order_issued` | 一条移动指令被接受（`code=ok`） | `order_seq`, `unit_count`, `path_nodes`, `path_ms` | 移动指令达成率、首次上手完成率 |
-| `EVT:unit_order_completed` | 该指令的全部单位到达终点 | `order_seq`, `elapsed_ms` | 移动指令达成率 |
+| `EVT:unit_order_issued` | 一条移动指令被接受（`code=ok`） | `order_seq`, `unit_id`, `path_nodes`, `path_ms` | 移动指令达成率、首次上手完成率 |
+| `EVT:unit_order_rejected` | 一条移动指令被拒（§11.4 的两条拒绝转移，`code ≠ ok`） | `order_seq`, `code` | 移动指令达成率（分母） |
+| `EVT:unit_order_completed` | 该指令的单位到达终点 | `order_seq`, `elapsed_ms` | 移动指令达成率 |
 | `EVT:plugin_enabled` | 插件 `constructed → enabled` | `plugin_id`, `version`, `enable_ms` | 见 §21 插件可用性 SLI |
 | `EVT:plugin_tripped` | 插件进入 `failed`（熔断或 onEnable 抛异常） | `plugin_id`, `cause`, `exception_count` | 见 §21 插件可用性 SLI |
+| `EVT:match_created` | 对局 `[*] → creating`（§11.3），在监听端口之前 | `map_id`, `dimension_name` | 对局完成率（分母） |
 | `EVT:match_started` | 对局 `loading → running` | `map_id`, `chunk_count`, `load_ms`, `heap_delta_mb` | 对局完成率 |
 | `EVT:match_ended` | 对局进入 `ended` | `reason`（normal / map-invalid / load-failed）, `duration_s` | 对局完成率 |
 
@@ -1028,7 +1108,7 @@ flowchart LR
 
 | SLI | SLO | 告警阈值 | 对应 Runbook |
 | --- | --- | --- | --- |
-| 握手成功率（`EVT:client_verified` ÷ 进入 configuration 的会话，与 §3 同一数值口径） | ≥ 98% | 10 分钟内 < 90% | 见 `RB-M2-001` |
+| 握手成功率（`EVT:client_verified` ÷ `EVT:session_entered_configuration`，与 §3「客户端接入成功率」同一数值口径，无排除项） | ≥ 98% | 10 分钟内 < 90% | 见 `RB-M2-001` |
 | 插件可用性（`enabled` 状态时长 ÷ 进程运行时长，由 `EVT:plugin_enabled` / `EVT:plugin_tripped` 算） | ≥ 99.9%（即一轮内测最多熔断一次） | 任意一次熔断即告警 | 见 `RB-M2-002` |
 | 下令端到端延迟 P99（服务端收到 `C2S_MOVE_ORDER` 到发出对应 `S2C_ORDER_RESULT`） | < 50 ms（客户端侧 300 ms 目标的服务端分段，见 §15） | 5 分钟 P99 > 100 ms | 见 `RB-M2-003` |
 | 寻路 tick 占用 P99 | < 2 ms | 连续 60 s > 5 ms | 见 `RB-M2-003` |
@@ -1072,12 +1152,13 @@ Feature flag：只有一个，就是**插件开关** `synaxis.app.plugins`（own
 
 ## 24. 契约同步与防漂移机制
 
-- **线协议**：唯一事实源是 `:protocol` 的 record 定义。测试向量 `protocol/src/test/resources/vectors/*.bin`（每条消息一个 `.bin` + 一份期望值的文本描述），**服务端与客户端各跑一遍同一份向量**——这正是 `docs/DESIGN.md` §24 已经预告的「M2 的 protocol 模块同一份向量两端各跑一遍」，本文档把它落到具体路径。客户端侧的那一遍必须进客户端模组的 CI，否则只有单边保证。
+- **线协议**：唯一事实源是 `:protocol` 的 record 定义。测试向量 `protocol/src/test/resources/vectors/*.bin`（每条消息一个 `.bin` + 一份期望值的文本描述），**服务端与客户端各跑一遍同一份向量**——这正是 `docs/DESIGN.md` §24 已经预告的「M2 的 protocol 模块同一份向量两端各跑一遍」，本文档把它落到具体路径。客户端侧的那一遍必须进客户端模组的 CI，否则只有单边保证——但客户端模组工程在 §26 阶段 6 才建，所以**阶段 4 的退出条件只到「服务端侧向量绿 + 向量文件冻结」，客户端侧同一份向量绿是阶段 6 的退出条件**，两个阶段分别验收，不允许把阶段 4 的验收挂在阶段 6 的产物上。
 - **`schema_version` 严格相等**：这是线协议唯一的兼容机制，也是它不需要弃用期的原因（见 §8 演进与弃用）。改任何消息布局都必须同一个 PR 里把两端的 `schema_version` 一起加 1，向量一起更新。
-- **ArchUnit 规则**（都写在引擎自己的 `ArchitectureTest` 里，不需要新建同时依赖两边的测试模块——ArchUnit 从字节码常量池读依赖，目标类不在 classpath 上也会建 stub）：① 沿用 M1 的「底层 9 包不得依赖集合之外的引擎包」；② 新增「引擎不得依赖 `..game..` / `..plugin..` / `..app..`」（`REQ-M2-002`）；③ 新增「游戏侧不得对客户端来源 compound 使用 `Tag.Structure` / `Tag.View`」（`REQ-M2-015`）。**两个盲区必须知道并写在规则的 javadoc 里**：反射与字符串拼出来的类名完全看不见（引擎里已有 4 处 `Class.forName`）；反方向规则（游戏不得依赖引擎内部包）在引擎模块里表达不了，需要一个把所有模块当 `testImplementation` 的聚合项目才能查——M2 不做，列入 §28。
-- **ABI 门 = 稳定面的定义**：给 `:plugin-api` 与 `:protocol` 应用 `synaxis.publishing` 并把 `checkBinaryCompatibility` 接进 CI；**根模块（引擎）不接这道门**——用「谁接 ABI 门谁就是稳定面」把 §8 的承诺变成可执行门禁，而不是一句 javadoc。注意它**没有 baseline 时静默跳过**会给假绿，CI 必须显式断言 baseline 目录存在（`REQ-M2-022`）。
+- **ArchUnit 规则**（都写在引擎自己的 `ArchitectureTest` 里，不需要新建同时依赖两边的测试模块——ArchUnit 从字节码常量池读依赖，目标类不在 classpath 上也会建 stub）：① 沿用 M1 的「底层 9 包不得依赖集合之外的引擎包」；② 新增「引擎不得依赖游戏侧、稳定面与宿主」（`REQ-M2-002`），**禁止列表必须写完整前缀**：`io.github.bearisbug.synaxis.game..`、`io.github.bearisbug.synaxis.plugin..`、`io.github.bearisbug.synaxis.app..`、`io.github.bearisbug.synaxis.game.protocol..`（最后一项已被第一项覆盖，列出只为可读）。**绝不能写成 `..plugin..`**——ArchUnit 的 `..x..` 匹配任意名为 `x` 的包段，会直接命中引擎自己的 `io.github.bearisbug.synaxis.network.plugin`（`LoginPlugin` / `LoginPluginMessageProcessor`，被 `ConnectionManager` / `LoginListener` / `PlayerConnection` / `AsyncPlayerPreLoginEvent` 共 6 处 import），规则一写就红，而且红的是引擎自己。用完整前缀后 `network.plugin` 不在匹配范围内，`:plugin-api` 的包名可以照常用 `io.github.bearisbug.synaxis.plugin`（包名登记见 §4 术语表与 `ADR-M2-005`）；`network.plugin` 的命名歧义因此只剩可读性问题，处置见 §28 技术债。③ 新增「游戏侧（`io.github.bearisbug.synaxis.game..`）不得依赖 `Tag.Structure` / `Tag.View` / `TagHandler.fromCompound`」（`REQ-M2-015`）——**是无条件禁止，不是「禁止用于客户端来源的 compound」**：ArchUnit 是静态字节码依赖分析，能判断「谁引用了 `Tag.Structure`」，判断不了「传进去的 compound 是不是客户端来的」（那是运行期污点属性），按来源写等于一条形同虚设的规则。代价是游戏侧一律不能用这两类 tag——可接受，因为玩法本来就走自有数据模型 + 自定义负载，不该用 tag 系统读 compound。**两个盲区必须知道并写在规则的 javadoc 里**：反射与字符串拼出来的类名完全看不见（引擎里已有 4 处 `Class.forName`）；反方向规则（游戏不得依赖引擎内部包）在引擎模块里表达不了，需要一个把所有模块当 `testImplementation` 的聚合项目才能查——M2 不做，列入 §28。
+- **ABI 门 = 稳定面的定义**：给 `:plugin-api` 与 `:protocol` 应用 `synaxis.publishing` 并把 `checkBinaryCompatibility` 接进 CI；**根模块（引擎）不接这道门**——用「谁接 ABI 门谁就是稳定面」把 §8 的承诺变成可执行门禁，而不是一句 javadoc。注意它**没有 baseline 时静默跳过**会给假绿。但 `:plugin-api` / `:protocol` 是 M2 全新模块，M2 期间一度**根本不存在任何 baseline**（`checkBinaryCompatibility` 需要 `-PbaselineJarDir` 指向上一个 tag 的 jar），「baseline 缺失即失败」与「门能跑」在第一个 tag 之前不可兼得。因此定一条**引导规则**（`REQ-M2-022`）：第一个 tag 之前，门禁以**显式 `SKIPPED`** 结束并打印「无 baseline，ABI 门未生效」——不静默、构建仍绿；§26 阶段 2 结束时打出 M2 的第一个 tag 并把它的 jar 归档为 baseline；**自阶段 3 起**，baseline 缺失即 CI 失败。
 - **依赖矩阵**：`tools/pkgdeps.py` 加 `--root-package` 与 `--skip-lower-layer` 两个开关，按模块分别跑；`docs/ENGINE.md` 里「改动包结构后先跑它」那句补一句「按模块分别跑」。
-- **文档**：本文档与 `docs/TEST.md` 按 `CLAUDE.md` 的功能开发纪律随代码同步。`REQ-M2-021` 的影响面按「面」处理而不是按用例：`docs/TEST.md` §3 的启动命令、就绪日志串、端口属性、日志文件名是**环境前置**，被多条 TC 共同依赖；语义未变的 TC 保留原 ID 只改环境段，语义变了的（如就绪日志串、依赖 smoke `/echo` 的往返用例、以「原版客户端」为前置的用例——强制模组后这个前置本身不再成立）按该文档惯例**废旧 ID 换新 ID**，历史 RUN 记录只增不改。
+- **工具链**：`tools/protocol-probe/probe.py` 是 `docs/TEST.md` 七条 TC（TC-004 / TC-014 / TC-018 / TC-019 / TC-020 / TC-026 / TC-027）的执行载体。`REQ-M2-008` 的强制握手一上线，探针会在 configuration 阶段 3 s 被踢、这七条整块失效，因此**探针实现 `C2S_HELLO` 与握手实现必须同一阶段交付**（§26 阶段 4），且不引入任何测试旁路开关。
+- **文档**：本文档与 `docs/TEST.md` 按 `CLAUDE.md` 的功能开发纪律随代码同步。本文档是 `docs/DESIGN.md` 的**里程碑分册**：`docs/DESIGN.md` §1 的「关联」行与 §26 里程碑表均回指本文档，`CLAUDE.md` 的单一事实源表述写作「`docs/DESIGN.md` + 里程碑分册」——三处缺一，按纪律干活的人只会更新 `docs/DESIGN.md`，本文档必然腐坏。`REQ-M2-021` 的影响面按「面」处理而不是按用例：`docs/TEST.md` §3 的启动命令、就绪日志串、端口属性、日志文件名是**环境前置**，被多条 TC 共同依赖；语义未变的 TC 保留原 ID 只改环境段，语义变了的（如就绪日志串、依赖 smoke `/echo` 的往返用例、以「原版客户端」为前置的用例——强制模组后这个前置本身不再成立）按该文档惯例**废旧 ID 换新 ID**，历史 RUN 记录只增不改。
 
 ## 25. 迁移 / 数据回填
 
@@ -1088,12 +1169,12 @@ N/A — 无 schema 变更、无持久数据。M2 仍然不落盘任何运行时�
 | 阶段 | 内容 | 退出条件（可验证） | 预估 |
 | --- | --- | --- | --- |
 | 0 签字与 spike | A1～A4 与 §28 不可逆决策签字；三个 spike：① `:protocol` 的 jar 被 Fabric JiJ / 跨构建消费（含带 `module-info` 时的坑）；② 客户端正交相机 + 自由光标出一张图给用户选「正交 vs 带俯角透视」，并实测「MC 客户端按玩家实体还是按渲染相机剔除实体」；③ 1,024 个区块从 `.synx` 载入的墙钟时间与堆增量 | 签字结果写进 §1 变更记录；三个 spike 各有一段结论（含截图或数字）并回写本文档相应条目；`ADR-M2-016` 的版本选择落定 | 3～5 天 |
-| 1 模块骨架 | `REQ-M2-001`、`REQ-M2-002`、`REQ-M2-022` | 引擎 `game` 包改名单独成一个提交并登记 `.git-blame-ignore-revs`；`./gradlew check` 绿；故意加一条引擎→game 的 import 能让 CI 变红；四个新模块的新增行进覆盖率门；`:plugin-api` 的 ABI 门在 baseline 缺失时报错而不是跳过 | 3 天 |
-| 2 插件宿主 | `REQ-M2-003`～`REQ-M2-006`、`REQ-M2-021`、`REQ-M2-023` | server-app 起服并打印就绪日志；示例插件 enable / disable 全流程；环检测、非法 id、熔断、通道前缀四组单测绿；`smoke` 删除且 `docs/TEST.md` 同步完成并登记一轮 RUN | 5 天 |
-| 3 世界与残留 | `REQ-M2-010`～`REQ-M2-015` | 512×512 地图包载入达标（§15 数字）；损坏地图包不产生半载入世界；`SharedInstance` 全库零命中；断线幽灵与视距收缩各有一条复现测试**先红后绿**；F49 的 Javadoc 与 ArchUnit 规则就位 | 6 天 |
-| 4 协议与握手 | `REQ-M2-007`～`REQ-M2-009` | 双端向量测试绿；原版客户端被 `synaxis:client-mod-required` 拒；版本不符被 `synaxis:protocol-version-mismatch` 拒；速率与体积超限的四条边界用例绿 | 5 天 |
+| 1 模块骨架 | `REQ-M2-001`、`REQ-M2-002`、`REQ-M2-022` | 引擎 `game` 包改名单独成一个提交并登记 `.git-blame-ignore-revs`；`./gradlew check` 绿；故意加一条引擎→game 的 import 能让 CI 变红，且规则在改名后的引擎现状下不误命中 `network.plugin`；四个新模块的新增行进覆盖率门；`:plugin-api` 的 ABI 门以**显式 `SKIPPED`** 结束并打印「无 baseline」（按 §24 引导规则，此时还没有 tag） | 3 天 |
+| 2 插件宿主 | `REQ-M2-003`～`REQ-M2-006`、`REQ-M2-021`、`REQ-M2-023` | server-app 起服并打印就绪日志；示例插件 enable / disable 全流程；环检测、非法 id、熔断、通道前缀四组单测绿；`smoke` 删除且 `docs/TEST.md` 同步完成并登记一轮 RUN；**打出 M2 的第一个 tag 并把 `:plugin-api` / `:protocol` 的 jar 归档为 ABI baseline**（自阶段 3 起 baseline 缺失即 CI 失败） | 5 天 |
+| 3 世界与残留 | `REQ-M2-010`～`REQ-M2-015` | 由**程序化生成器**产出的 512×512 地图包载入达标（§15 数字，M2 没有离线烘焙器）；损坏地图包不产生半载入世界；`SharedInstance` 全库零命中；断线幽灵与视距收缩各有一条复现测试**先红后绿**；F49 的 Javadoc 与无条件禁止的 ArchUnit 规则就位；ABI 门在 baseline 缺失时失败 | 6 天 |
+| 4 协议与握手 | `REQ-M2-007`～`REQ-M2-009` | **服务端侧**向量测试绿且向量 `.bin` 冻结进版本库（此后改布局必须同 PR 升 `schema_version`）；原版客户端被 `synaxis:client-mod-required` 拒；版本不符被 `synaxis:protocol-version-mismatch` 拒；速率与体积超限的四条边界用例绿；**`tools/protocol-probe/probe.py` 已实现 `C2S_HELLO`，依赖它的七条 TC 全部重新跑通并登记一轮 RUN** | 5 天 |
 | 5 单位与寻路 | `REQ-M2-016`、`REQ-M2-017` | 用一条服务端脚本（无客户端）下令，单位按路径移动并在到达后转 idle；四条建模规则各有断言；寻路三重预算在 64 条并发指令下达标 | 5 天 |
-| 6 客户端与切片验收 | `REQ-M2-018`～`REQ-M2-020` | **端到端人工验收**：装模组的客户端登录 → RTS 镜头推到 200 格外能看见地形与单位 → 点中一个单位（高亮）→ 点地面 → 单位平滑走过去并停下；录屏 + 截图归档；`docs/TEST.md` 登记该轮 RUN；有余力则把这条链路做成 `fabric-client-gametest` 自动回归 | 8 天 |
+| 6 客户端与切片验收 | `REQ-M2-018`～`REQ-M2-020` | 客户端模组工程与其 CI 就位，**客户端侧跑同一份阶段 4 冻结的向量全绿**（补齐 §24 的双端保证）；**端到端人工验收**：装模组的客户端登录 → RTS 镜头推到 200 格外能看见地形与单位 → 点中一个单位（客户端本地选中框，且他人看不见）→ 点地面 → 单位平滑走过去并停下；录屏 + 截图归档；`docs/TEST.md` 登记该轮 RUN；有余力则把这条链路做成 `fabric-client-gametest` 自动回归 | 8 天 |
 
 阶段 0 的签字是硬门：未签字不得进入阶段 1（A4 决定包名、A1 决定协议载体、A2 决定单位表现，三者任何一条改变都会让阶段 1～6 的产物大面积作废）。阶段 3 必须在阶段 5 之前——寻路依赖地图包烘焙出的导航网格。阶段 4 与阶段 5 可并行（一个在协议侧、一个在玩法侧，接口已由 §8 冻结）。
 
@@ -1126,7 +1207,7 @@ A3（server-app 取代 smoke，`ADR-M2-003`）是可逆的，不进本表，但�
 | Open Question | **Minecraft 版本：继续钉 26.2 还是 M2 开工前就跟到 26.3**。26.3 已 stable、Fabric 已跟进，玩家启动器默认下载 26.3；越早跟代价越小，因为 M2 的所有客户端代码都会被 26.x 的渲染与输入 API 变更影响 | Bearisbug | 阶段 0（见 `ADR-M2-016`） |
 | Open Question | **RTS 相机形态：正交（真 RTS 手感）还是带俯角的透视（更接近 MC 原生观感，剔除/阴影/雾效问题少）**。两者的 mixin 代价不同，需要 spike 出图给用户选 | Bearisbug | 阶段 0 spike ② |
 | Open Question | **地图尺寸与世界高度**：本文档按 512×512、高度 64 假设。浅世界省内存、省包体、省 tick，但永久限制垂直维度（地下城、多层地图）。地图到 4096×4096 时「整图常驻」模型不成立，要换流式 | Bearisbug | 阶段 0（影响 §15 全部内存数字） |
-| Open Question | **地图预处理工具链的输入**：从现有 MC 存档离线转换（要写一个离线 Anvil 读取器——引擎的 `instance/anvil` 已在 `74592d8fdf` 删除，只能从 git 历史复活或另写），还是用自研编辑器直接产出 `.synx`？ | Bearisbug | 阶段 3 前 |
+| Open Question | **真地图从哪来（M3 议题，不阻塞 M2）**：从现有 MC 存档离线转换（要写一个离线 Anvil 读取器——引擎的 `instance/anvil` 已在 `74592d8fdf` 删除，只能从 git 历史复活或另写），还是用自研编辑器直接产出 `.synx`？M2 已用 `REQ-M2-010` 的程序化生成器把阶段 3 的退出条件解耦，本问题不再是阶段 3 的前置 | Bearisbug | M3 开工前 |
 | Open Question | **光照要不要**：预烘焙光照能省掉整个光照引擎（默认 `DynamicChunk` 直接读 Section 的 nibble 数组就能发出去，不需要 `LightingChunk`），但需要离线烘焙器；第一版干脆全图 full-bright 就连烘焙器都不用写。取决于美术方向 | Bearisbug | 阶段 3 前 |
 | Open Question | **同屏单位数上限**：只有「5 万级别明显拖累客户端」这种量级参考，没有我们场景的数据。display 实体与全自绘的性能分界点同样未知，需要一次压测 spike 才能给出单区单位数上限与 §15 帧率目标的依据 | Bearisbug | 阶段 5 前 |
 | 风险 | **MC 客户端按玩家实体还是按渲染相机做实体剔除**——若按玩家实体，`ADR-M2-013` 之外的所有镜头路线里 display 实体都会被剔除掉。必须实跑确认，不能从文档推断 | Bearisbug | 阶段 0 spike ② |
@@ -1136,7 +1217,7 @@ A3（server-app 取代 smoke，`ADR-M2-003`）是可逆的，不进本表，但�
 | 风险 | **参考实现的许可证**：OrthoCamera / ShoulderSurfing / Free Cursor / Polar 的代码只作为思路参考；任何**复制代码片段**前必须逐个确认许可证并在 `NOTICE` 登记，否则重演一次 Apache-2.0 §4(b) 的合规问题 | Bearisbug | 阶段 6 前 |
 | 技术债 | **`ThreadProvider` 硬编码**：`ServerProcessImpl` 里写死 `ThreadProvider.counter()`（轮询），同一局的区块会被打散到不同 tick 线程。`dispatcherThreads` 默认 1 时看不出来，一旦为几十人开多线程就会变成到处 `Acquirable` 跨线程同步。多局并行的前置条件，M2 不做 | Bearisbug | 并行对局 > 1 局且 `dispatcherThreads` > 1 时 |
 | 技术债 | **反方向 ArchUnit 规则缺失**：「游戏不得依赖引擎内部包（`@ApiStatus.Internal`）」在引擎模块里表达不了，需要一个把所有模块当 `testImplementation` 的聚合项目。M2 只靠 code review 与 `@ApiStatus` 注解约束 | Bearisbug | 有第三方插件时 |
-| 技术债 | **引擎 `network.plugin` 包名歧义**：它装的是 login plugin message（代理转发），与「插件宿主」毫无关系，但 `import ...synaxis.plugin.*` 与 `import ...synaxis.network.plugin.*` 并存会让人读错。`docs/DESIGN.md` §28 已把 `Auth.Velocity` / `Auth.Bungee` 标为技术债，清掉它们时顺带解决 | Bearisbug | 清理代理链路时 |
+| 技术债 | **引擎 `network.plugin` 包名歧义（纯可读性，不影响门禁）**：它装的是 login plugin message（代理转发），与「插件宿主」毫无关系。门禁侧已用完整前缀规避（§24 规则②），不会误命中；剩下的只是 `import ...synaxis.plugin.*` 与 `import ...synaxis.network.plugin.*` 并存会让人读错。`docs/DESIGN.md` §28 已把 `Auth.Velocity` / `Auth.Bungee` 标为技术债，清掉它们时顺带解决 | Bearisbug | 清理代理链路时 |
 | 技术债 | **`docs/DESIGN.md` §8「自定义负载通道」条目的描述与实现不符**：它写「仅 play 状态的连接可用，其他状态收到即断线」，但引擎在 configuration 状态同样派发 `PlayerPluginMessageEvent`——而 `ADR-M2-010` 恰恰依赖这一点。该句要在 M2 阶段 4 随实现一起更正（本文档不改 M1 文档） | Bearisbug | 阶段 4 |
 | 技术债 | **`docs/DESIGN.md` §15 的限流行是未实现的目标**：「单连接每秒 > 500 包断线」在代码里没有对应实现，实际只有 `playerPacketPerTick=50`（超出的延后而非拒绝）与 `playerPacketQueueSize=1000`（溢出才踢）。M2 的按消息类型限速因此必须由插件自己做令牌桶（已写进 §15） | Bearisbug | 阶段 4 |
 | 技术债 | 引擎 `InstanceContainer#copy()` 会 `Section::clone` 全量复制调色板与光照，多局并行时是 N 倍内存。本设计用「不可变地图快照 + 每局由 loader 重新灌入」绕开它，但 `copy()` 本身仍在 API 里，容易被后来者误用——应在其 Javadoc 上加一句警告 | Bearisbug | 阶段 3 |

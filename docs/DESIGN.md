@@ -9,7 +9,7 @@
 | Owner | Bearisbug |
 | 评审人 | Bearisbug |
 | 最后更新 | 2026-09-16 |
-| 关联 | 仓库 `https://github.com/Bearisbug/synaxis` · 审计与架构评审 `docs/research/minestom-audit/`（00 总结、07 架构评审第八章） · 测试文档 `docs/TEST.md` |
+| 关联 | 仓库 `https://github.com/Bearisbug/synaxis` · **里程碑分册 `docs/DESIGN-M2.md`（M2「游戏工程骨架与 RTS 垂直切片」，M2 范围内的需求 / 接口 / 状态机 / ADR 一律以该分册为准）** · 审计与架构评审 `docs/research/minestom-audit/`（00 总结、07 架构评审第八章） · 测试文档 `docs/TEST.md` |
 
 变更记录：
 
@@ -621,7 +621,11 @@ N/A — 无 schema 变更，M1 不落盘任何持久数据。
 | 5 配置（M1.5） | REQ-014 | `DISPATCHER_THREADS=2` 下全量绿 | 已完成（2,576 测试，线程数 2 全绿两次后恢复默认 1） |
 | 6 分层（M1.5） | REQ-015、REQ-016 | ArchUnit 禁止规则绿，依赖矩阵底层出向上层边为 0 | 已完成（2,576 测试；`pkgdeps.py` 底层出向上层边 0） |
 
+| M2 游戏工程与 RTS 垂直切片 | 见 **`docs/DESIGN-M2.md`**（独立分册） | 见该分册 §26 | 见该分册 §26 |
+
 阶段 0 到 3 必须连续完成（`ADR-004`）。阶段 2 的删除必须在阶段 1 的实体层与 instance 层修复合入之后开始，否则复现测试会随被删代码丢失。
+
+本文档只覆盖 M1 与 M1.5。**M2 起，每个里程碑一份分册**：M2 的需求、接口契约、状态机、ADR、里程碑与风险全在 `docs/DESIGN-M2.md`，本文档只在被它引用时作为引擎侧的背景事实源；改 M2 范围内的东西要改分册，不要改本文档。
 
 ## 27. 上线后度量与复盘
 

@@ -283,26 +283,36 @@ public class InstanceContainer extends Instance {
     }
 
     @Override
-    public synchronized void unloadChunk(Chunk chunk) {
-        if (!isLoaded(chunk)) return;
-        final int chunkX = chunk.getChunkX();
-        final int chunkZ = chunk.getChunkZ();
-        chunk.sendPacketToViewers(new UnloadChunkPacket(chunkX, chunkZ));
-        process().eventHandler().call(new InstanceChunkUnloadEvent(this, chunk));
-        // Remove all entities in chunk, except players: removing one disconnects it,
-        // and the contract of Instance#unloadChunk is to leave them alone
-        for (Entity entity : getEntityTracker().chunkEntities(chunkX, chunkZ, EntityTracker.Target.ENTITIES)) {
-            if (entity instanceof Player) continue;
-            // unloadChunk may run on any thread; removal must own the entity's tick thread
-            entity.acquirable().sync(Entity::remove);
+    public void unloadChunk(Chunk chunk) {
+        final List<Entity> entities = new ArrayList<>();
+        synchronized (this) {
+            if (!isLoaded(chunk)) return;
+            final int chunkX = chunk.getChunkX();
+            final int chunkZ = chunk.getChunkZ();
+            chunk.sendPacketToViewers(new UnloadChunkPacket(chunkX, chunkZ));
+            process().eventHandler().call(new InstanceChunkUnloadEvent(this, chunk));
+            // Collect all entities in chunk, except players: removing one disconnects it,
+            // and the contract of Instance#unloadChunk is to leave them alone
+            for (Entity entity : getEntityTracker().chunkEntities(chunkX, chunkZ, EntityTracker.Target.ENTITIES)) {
+                if (!(entity instanceof Player)) entities.add(entity);
+            }
+            // Clear cache
+            this.chunks.remove(CoordConversion.chunkIndex(chunkX, chunkZ));
+            chunk.unload();
+            chunkLoader.unloadChunk(chunk);
+            getEntityTracker().unregisterViewable(chunk.viewable);
+            var dispatcher = process().dispatcher();
+            dispatcher.deletePartition(chunk);
         }
-        // Clear cache
-        this.chunks.remove(CoordConversion.chunkIndex(chunkX, chunkZ));
-        chunk.unload();
-        chunkLoader.unloadChunk(chunk);
-        getEntityTracker().unregisterViewable(chunk.viewable);
-        var dispatcher = process().dispatcher();
-        dispatcher.deletePartition(chunk);
+        // unloadChunk may run on any thread; removal must own the entity's tick thread. That lock is
+        // taken outside the instance monitor: a tick thread holds its own lock while entering
+        // UNSAFE_setBlock, so taking them in the other order here would deadlock both.
+        for (Entity entity : entities) {
+            var acquirable = entity.acquirable();
+            // No tick thread owns the entity yet, nothing can be racing with us
+            if (acquirable.assignedThread() == null) entity.remove();
+            else acquirable.sync(Entity::remove);
+        }
     }
 
     @Override
@@ -435,6 +445,13 @@ public class InstanceContainer extends Instance {
                         if (sectionModifier.genSection().blocks().count() == 0)
                             continue;
                         final Point start = section.absoluteStart();
+                        final DimensionType dim = getCachedDimensionType();
+                        if (start.blockY() < dim.minY() || start.blockY() >= dim.maxY()) {
+                            // No chunk has such a section, applying it would abort the whole generation
+                            LOGGER.warn("tried to fork a section outside the world bounds, should be within [{}, {}): {}",
+                                    dim.minY(), dim.maxY(), start.blockY());
+                            continue;
+                        }
                         final Chunk forkChunk = start.chunkX() == chunkX && start.chunkZ() == chunkZ ? chunk : getChunkAt(start);
                         if (forkChunk != null) {
                             applyFork(forkChunk, sectionModifier);
@@ -796,7 +813,12 @@ public class InstanceContainer extends Instance {
 
     private void cacheChunk(Chunk chunk) {
         this.chunks.put(CoordConversion.chunkIndex(chunk.getChunkX(), chunk.getChunkZ()), chunk);
-        var dispatcher = process().dispatcher();
-        dispatcher.createPartition(chunk);
+        // Only a registered instance may hand chunks to the dispatcher: partitions are released on
+        // unregistration, so an unregistered instance would leak them. InstanceManager#registerInstance
+        // creates the partitions of the chunks cached before registration.
+        if (isRegistered()) {
+            var dispatcher = process().dispatcher();
+            dispatcher.createPartition(chunk);
+        }
     }
 }

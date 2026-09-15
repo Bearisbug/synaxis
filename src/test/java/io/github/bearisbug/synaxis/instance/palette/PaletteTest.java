@@ -698,12 +698,53 @@ public class PaletteTest {
         NetworkBuffer buffer = NetworkBuffer.resizableBuffer();
         Palette palette = Palette.biomes();
         Random random = new Random(12345);
-        palette.setAll((_, _, _) -> random.nextInt(2048));
+        palette.setAll((_, _, _) -> random.nextInt(128));
 
         buffer.write(serializer, palette);
 
         Palette deserialized = buffer.read(serializer);
         assertTrue(palette.compare(deserialized));
+    }
+
+    @Test
+    public void biomeDirectKeepsIdsAboveSixBits() {
+        // Vanilla registers more than 64 biomes, a direct biome palette must store those ids
+        // without truncating them or spilling into the neighboring entry
+        Palette palette = Palette.biomes();
+        int[] expected = new int[64];
+        int index = 0;
+        for (int y = 0; y < 4; y++) {
+            for (int z = 0; z < 4; z++) {
+                for (int x = 0; x < 4; x++) {
+                    final int value = index + 2; // 2..65, more than 8 values forces the direct mode
+                    expected[index++] = value;
+                    palette.set(x, y, z, value);
+                }
+            }
+        }
+        index = 0;
+        for (int y = 0; y < 4; y++) {
+            for (int z = 0; z < 4; z++) {
+                for (int x = 0; x < 4; x++) {
+                    assertEquals(expected[index++], palette.get(x, y, z),
+                            "Mismatch at (" + x + "," + y + "," + z + ")");
+                }
+            }
+        }
+    }
+
+    @Test
+    public void serializationBiomeDirectBitsFollowRegistrySize() {
+        // 64 biomes fit in ceil(log2(64)) = 6 bits, the long array length follows from that width
+        final var serializer = Palette.biomeSerializer(64);
+        NetworkBuffer buffer = NetworkBuffer.resizableBuffer();
+        Palette palette = Palette.biomes();
+        palette.setAll((x, y, z) -> x + y * 4 + z * 16); // 64 distinct values, one per entry
+
+        buffer.write(serializer, palette);
+
+        assertEquals((byte) 6, buffer.read(NetworkBuffer.BYTE));
+        assertEquals(7L * Long.BYTES, buffer.readableBytes());
     }
 
     @Test

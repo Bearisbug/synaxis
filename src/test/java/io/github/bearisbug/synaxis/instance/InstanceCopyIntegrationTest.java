@@ -67,4 +67,36 @@ public class InstanceCopyIntegrationTest {
         copiedChunk.tick(0);
         assertEquals(1, ticks.get(), "the copied chunk lost its tickable blocks");
     }
+
+    // A copy is not registered, its chunks must stay out of the dispatcher: nothing would ever
+    // remove them from it, and they would be ticked forever
+    @Test
+    public void copiedInstanceChunksAreNotDispatched(Env env) {
+        var copyTicks = new AtomicInteger();
+        var instance = (InstanceContainer) env.createFlatInstance();
+        BlockHandler handler = new BlockHandler() {
+            @Override
+            public Key getKey() {
+                return Key.key("test:copy_ticking");
+            }
+
+            @Override
+            public boolean isTickable() {
+                return true;
+            }
+
+            @Override
+            public void tick(Tick tick) {
+                if (tick.getInstance() != instance) copyTicks.incrementAndGet();
+            }
+        };
+        instance.loadChunk(0, 0).join();
+        instance.setBlock(0, 41, 0, Block.DIRT.withHandler(handler));
+
+        var copy = instance.copy();
+        assertNotNull(copy.getChunk(0, 0));
+        env.tick();
+        env.tick();
+        assertEquals(0, copyTicks.get(), "the chunks of an unregistered copy are ticked by the dispatcher");
+    }
 }

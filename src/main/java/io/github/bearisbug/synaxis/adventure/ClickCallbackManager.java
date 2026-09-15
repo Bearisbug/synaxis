@@ -35,14 +35,18 @@ public final class ClickCallbackManager implements Tickable {
         }
 
         boolean isExpired(final long time) {
-            return this.uses.get() <= 0 || time >= this.expiry;
+            return !hasUsesLeft(this.uses.get()) || time >= this.expiry;
         }
 
         void consume(final Audience audience) {
             final int remaining = this.uses.getAndUpdate(current -> current > 0 ? current - 1 : current);
-            if (remaining > 0 && this.expiry > System.nanoTime()) {
+            if (hasUsesLeft(remaining) && this.expiry > System.nanoTime()) {
                 this.callback.accept(audience);
             }
+        }
+
+        private static boolean hasUsesLeft(final int uses) {
+            return uses > 0 || uses == ClickCallback.UNLIMITED_USES;
         }
     }
 
@@ -103,9 +107,10 @@ public final class ClickCallbackManager implements Tickable {
             expiry = Long.MAX_VALUE;
         }
 
-        if (expiry == Long.MAX_VALUE && uses == ClickCallback.UNLIMITED_USES) {
+        final boolean unlimited = uses == ClickCallback.UNLIMITED_USES;
+        if (expiry == Long.MAX_VALUE && unlimited) {
             this.permanent.put(uuid, callback);
-        } else if (uses > 0 && expiry > System.nanoTime()) {
+        } else if ((unlimited || uses > 0) && expiry > System.nanoTime()) {
             this.temporary.put(uuid, new CallbackData(callback, expiry, new AtomicInteger(uses)));
         }
 

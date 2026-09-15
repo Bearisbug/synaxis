@@ -232,12 +232,16 @@ public class LivingEntity extends Entity implements EquipmentHandler {
                         if (this instanceof Player player && !itemEntity.isViewer(player)) return;
                         if (!itemEntity.isPickable()) return;
                         if (!expandedBoundingBox.intersectEntity(position, itemEntity)) return;
+                        // The event and the removal are not one step, so the item must be claimed first:
+                        // another picker would otherwise pass isPickable() and be handed the same stack
+                        if (!itemEntity.claim()) return;
                         final PickupItemEvent pickupItemEvent = new PickupItemEvent(this, itemEntity);
                         callCancellableEvent(pickupItemEvent, () -> {
                             final ItemStack item = itemEntity.getItemStack();
                             sendPacketToViewersAndSelf(new CollectItemPacket(itemEntity.getEntityId(), getEntityId(), item.amount()));
                             itemEntity.remove();
                         });
+                        if (pickupItemEvent.isCancelled()) itemEntity.releaseClaim();
                     });
         }
     }

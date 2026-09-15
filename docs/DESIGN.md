@@ -16,6 +16,7 @@
 | 日期 | 版本 | 改动 | 作者 |
 | --- | --- | --- | --- |
 | 2026-09-09 | v0.1 | 初稿：里程碑 M1 范围、实体、协议契约、状态机、阶段计划 | Bearisbug |
+| 2026-09-13 | v0.17 | REQ-017 完成；协议错误日志技术债关闭；`deep-recursion` 语义随创造包跳过而变 | Bearisbug |
 | 2026-09-13 | v0.16 | §15 增加输入分配上限（移植上游 2026-09-12 的三个加固 PR）；REQ-017 | Bearisbug |
 | 2026-09-09 | v0.15 | M1.5 全部完成（RUN-011）：命名残留清理，主源码 1,108 文件，2,576 测试；§1 状态更新 | Bearisbug |
 | 2026-09-09 | v0.14 | REQ-015 合入；阶段 6 完成 | Bearisbug |
@@ -93,7 +94,7 @@ N/A — 画像:内部系统，本里程碑无产品指标与埋点事件；工�
 | REQ-013 | M1.5 · 静态门面实例化：`MinecraftServer` 静态访问（实测 142 调用点 / 56 文件）改为 `ServerProcess` 实例（`ServerProcess.of(auth)` 工厂，`Instance`/`Entity`/`PlayerConnection`/`CommandSender` 暴露 `process()`，`EventDispatcher` 删除）；`@EnvTest` 类级并行。已完成 | 可维护、可测 | P2 |
 | REQ-014 | M1.5 · 配置对象：`ServerFlag`（实测 55 个开关）删除；37 个进程级开关进 `ServerConfig`（`process.config()`，系统属性键 `gameengine.*` 同默认值），10 个结构上 JVM 级的进 `JvmFlags` 并逐条注明原因，4 个归各自的包，4 个死开关删除；测试与生产同一份默认值（`ServerConfigTest` 断言 `defaults() == fromSystemProperties()`）。已完成 | 可维护 | P2 |
 | REQ-015 | M1.5 · 分层：底层集合最终为 `codec、condition、coordinate、exception、gamedata、monitoring、thread、timer、utils` 9 个包，不得依赖集合之外的引擎包（实测起点 35 条边 260 条 import，终点 0）；`registry`、`color`、`component`、`crypto`、`sound`、`tag` 因各自声明 `NetworkBuffer.Type` 或直接产协议包而移出集合（理由在 `ArchitectureTest` javadoc）；`utils` 内 22 个错放类归位；ArchUnit 由「冻结」改为「禁止」，冻结存储删除；根包 `JvmFlags` 为唯一豁免；`tools/pkgdeps.py` 入库复核。已完成并合入 | 可读、可扩展 | P2 |
-| REQ-017 | 上游加固移植：按可读字节限定集合预分配、不可信 NBT 解码限额与错误信息截断、非创造玩家跳过创造包解码、`DataComponentMap` 与注册表标签读取校验、`ArgumentNumber` 去 radix、依赖升级；协议错误改单行 WARN 日志 | 抗恶意客户端 | P1 |
+| REQ-017 | 上游加固移植：按可读字节限定集合预分配、不可信 NBT 解码限额与错误信息截断、非创造玩家跳过创造包解码、`DataComponentMap` 与注册表标签读取校验、`ArgumentNumber` 去 radix、依赖升级；协议错误改单行 WARN 日志。已完成（2026-09-13，+26 测试） | 抗恶意客户端 | P1 |
 | REQ-016 | M1.5 · 拆 `NetworkBufferTypeImpl`（拆前 1,297 行）为按类型族分文件的实现，零 API 影响。已完成：枢纽剩 15 行，10 个 package-private 持有类 | 可读 | P3 |
 
 ## 6. 总体架构
@@ -639,7 +640,6 @@ N/A — M1 尚未完成；完成后按 §26 退出条件逐项对照并记录实
 | 技术债 | 删除 `instance/anvil` 连带删掉了 `LightParityIntegrationTest`（对原版光照逐值比对），光照引擎暂无 parity 测试；M2 决定光照去留时一并处理 | Bearisbug | M2 |
 | 技术债 | `Auth.Velocity` / `Auth.Bungee` 代理转发模式暂留（单机单区用不到，但不是 Mojang 会话鉴权）；`MojangUtils.authenticateSession` 已零调用，随 REQ-014 一起清理 | Bearisbug | 阶段 5 |
 | 技术债 | ArchUnit 冻结存储在纯删除后需要手动剪枝（临时 `allowStoreUpdate=true` 跑一次再改回，核对 diff 只有删除）；每轮删除都要做 | Bearisbug | 每轮删除 |
-| 技术债 | 协议错误断线（零长帧、递归超深）目前以完整异常堆栈记日志（RUN-006 smoke 日志 289 行堆栈），应改为单行 WARN 带 `connection_id`，避免恶意连接刷日志 | Bearisbug | 阶段 7 |
 | Open Question | Adventure `ClickCallback.Provider` SPI 是 JVM 全局的，无法选择进程，REQ-013 后未注册；`ClickEvent.callback()` 退化为「不支持」，可用入口是 `process.clickCallbackManager().createClickEvent(...)`。要决定：接受实例入口，还是用「当前进程」线程局部桥接 | Bearisbug | M2 设计前 |
 | 技术债 | Adventure 数据组件转换 SPI 与 `NbtComponentSerializer` 用惰性构建的原版 `Registries` 快照，看不到服务端注册的条目 | Bearisbug | M2 |
 | 技术债 | `Tag.Structure` 不再接受含 `ItemStack`/`Component` 组件的记录（REQ-013 副作用） | Bearisbug | M2 |

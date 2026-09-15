@@ -17,6 +17,7 @@
 | 2026-09-09 | 初稿，TC-001～TC-018，覆盖 REQ-001～REQ-012 | Bearisbug |
 | 2026-09-09 | TC-007 第 4 步增加 `snapshot` 目录检查（设计文档 v0.2） | Bearisbug |
 | 2026-09-09 | TC-001：前置与第 3 步按实际数据修正为 74 个 JSON、路径 `src/main/resources/data`、含子目录故改用 `find`（设计文档 v0.2.1）；第 4 步补上镜像 init 脚本 | Bearisbug |
+| 2026-09-13 | 废弃 TC-017，新增 TC-027（创造包整包跳过）与 TC-026（分配攻击 / NBT 炸弹）；§3 探针表补 `alloc-bomb`、`nbt-bomb` 并改写 `deep-recursion` 行（设计文档 v0.17） | Bearisbug |
 | 2026-09-09 | 新增 TC-025（REQ-014 配置对象） | Bearisbug |
 | 2026-09-09 | 新增 TC-024（REQ-015 分层严格规则与依赖矩阵） | Bearisbug |
 | 2026-09-09 | 废弃 TC-022，新增 TC-023（第 1 步只计静态访问器） | Bearisbug |
@@ -64,7 +65,9 @@
 | `premature-finish` | — | 在服务端发出 FinishConfiguration 之前抢跑应答 | 收到 `Disconnect reason=engine:protocol-error` |
 | `bad-version` | `--protocol N`（必填） | 用非 776 的协议版本握手 | 收到 `LoginDisconnect reason=engine:unsupported-version` |
 | `zero-frame` | — | 进入 play 后发单字节 `0x00` | 收到 `Disconnect reason=engine:protocol-error` |
-| `deep-recursion` | `--depth N`（默认 200） | 创造模式设槽包携带 N 层自嵌套 `CustomPotionEffect.Settings` | 收到 `Disconnect reason=engine:protocol-error`，或连接被服务端关闭 |
+| `deep-recursion` | `--depth N`（默认 200） | 创造模式设槽包携带 N 层自嵌套 `CustomPotionEffect.Settings` | REQ-017 后非创造玩家的创造包整包跳过：连接保持、随后 KeepAlive 正常即为成功（递归深度守卫由 `NetworkBufferRecursiveDepthTest` 覆盖） |
+| `alloc-bomb` | — | 登录后发送声明 65,535 个元素但只含少量字节的集合包 | 收到 `Disconnect reason=engine:protocol-error` |
+| `nbt-bomb` | `--mib N`（默认 3） | 通过 `ClientCustomClickActionPacket` 携带解码后估算 N MiB 的 NBT | 收到 `Disconnect reason=engine:protocol-error` |
 | `echo` | `--payload TEXT`（必填） | 走 `game:main` 通道做一次自定义负载往返 | 回发负载与发出的完全一致 |
 | `record-registry` | `--out FILE`（必填） | 按收到顺序写出全部 `RegistryData` 包的解压后字节（含包 ID varint） | 至少收到一个 `RegistryData` 包 |
 
@@ -311,6 +314,9 @@
 
 #### `TC-017` 零长帧与超深递归被断线 — 对应 `REQ-011` · 级别: 边缘 · 执行者: AI
 
+**已废弃，被 `TC-027` 取代**（REQ-017 让非创造玩家的创造包整包跳过，第 2 步「连接被关闭」不再成立；递归深度守卫改由单元测试覆盖）。
+
+
 前置：进程已就绪。
 
 | # | 操作 | 预期 |
@@ -318,6 +324,32 @@
 | 1 | `python3 tools/protocol-probe/probe.py zero-frame`（登录后发送单字节 `0x00`） | 连接被服务端关闭，stdout 含 `engine:protocol-error` |
 | 2 | `python3 tools/protocol-probe/probe.py deep-recursion --depth 200`（创造模式设槽包携带 200 层自嵌套药水效果） | 连接被关闭，服务端 stdout 无 `StackOverflowError` |
 | 3 | 探针 `login` 再连一次 | `LoginSuccess`，进程仍在运行 |
+
+后置：无。
+
+#### `TC-027` 零长帧断线、创造包被跳过 — 对应 `REQ-011`、`REQ-017` · 级别: 边缘 · 执行者: AI
+
+前置：进程已就绪。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | `python3 tools/protocol-probe/probe.py zero-frame` | 连接被服务端关闭，stdout 含 `engine:protocol-error` |
+| 2 | `python3 tools/protocol-probe/probe.py deep-recursion --depth 200` | 探针退出码 0：连接保持并收到后续 KeepAlive；服务端 stdout 无 `StackOverflowError` |
+| 3 | 探针 `login --hold 1` 再连一次 | `LoginSuccess`，进程仍在运行 |
+| 4 | 查看服务端 stdout 中第 1 步的记录 | 一行 `WARN` 带 `connection_id` 与原因，无堆栈行（以 `at ` 开头的行为 0） |
+
+后置：无。
+
+#### `TC-026` 分配攻击与 NBT 炸弹被拒绝 — 对应 `REQ-017` · 级别: 回归 · 执行者: AI
+
+前置：进程已就绪。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | `python3 tools/protocol-probe/probe.py alloc-bomb` | stdout 含 `Disconnect reason=engine:protocol-error` |
+| 2 | `python3 tools/protocol-probe/probe.py nbt-bomb --mib 3` | stdout 含 `Disconnect reason=engine:protocol-error` |
+| 3 | 查看服务端 stdout | 两次断线各一行 `WARN` 带 `connection_id`，无堆栈行 |
+| 4 | 探针 `login --hold 1` | `LoginSuccess`，进程仍在运行 |
 
 后置：无。
 
@@ -419,7 +451,7 @@
 ## 5. 回归策略
 
 - **全量轮**（全部用例）：首次成稿、每个阶段 gate（0、2、3）、跨功能域改动、地基变更（JDK、Gradle、镜像、协议版本）。
-- **局部轮**（受影响用例 + 全部冒烟级）：单一需求改动。受影响用例 = 本次改动触及的 `REQ-*` 所对应的 TC；无 REQ 变更的改动（纯 bug 修、重构）按触及的功能域圈定：构建与仓库 → TC-001、TC-002、TC-003、TC-004、TC-006、TC-021，删除与注册表 → TC-008、TC-009、TC-020，命名与合规 → TC-010～011，协议 → TC-012、TC-014、TC-017、TC-018、TC-019，卫生 → TC-015～016，门面与配置 → TC-023、TC-025，分层 → TC-024；影响面不确定时升级为全量轮。
+- **局部轮**（受影响用例 + 全部冒烟级）：单一需求改动。受影响用例 = 本次改动触及的 `REQ-*` 所对应的 TC；无 REQ 变更的改动（纯 bug 修、重构）按触及的功能域圈定：构建与仓库 → TC-001、TC-002、TC-003、TC-004、TC-006、TC-021，删除与注册表 → TC-008、TC-009、TC-020，命名与合规 → TC-010～011，协议 → TC-012、TC-014、TC-018、TC-019、TC-026、TC-027，卫生 → TC-015～016，门面与配置 → TC-023、TC-025，分层 → TC-024；影响面不确定时升级为全量轮。
 - **复测轮**（上轮失败用例 + 全部冒烟级）：修复失败项之后。
 - **人工收口轮**（仅上轮「待人工」用例）：AI 轮之后由人工补测 TC-012、TC-016，不要求冒烟级。
 

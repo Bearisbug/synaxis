@@ -9,18 +9,22 @@ import org.junit.jupiter.api.Test;
 
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @EnvTest
 public class UnloadChunkIntegrationTest {
 
-    // Instance#unloadChunk documents that everything but players is removed
+    // Instance#unloadChunk refuses a chunk with an online player inside: nothing is unloaded and no
+    // entity is removed
     @Test
-    public void unloadingChunkRemovesEntitiesButKeepsPlayers(Env env) {
+    public void unloadingChunkWithPlayerInsideIsRejected(Env env) {
         var instance = env.createFlatInstance();
         instance.loadChunk(0, 0).join();
 
@@ -29,9 +33,46 @@ public class UnloadChunkIntegrationTest {
         entity.setInstance(instance, new Pos(0, 42, 0)).join();
         env.tick();
 
+        assertThrows(IllegalStateException.class, () -> instance.unloadChunk(0, 0));
+
+        assertNotNull(instance.getChunk(0, 0), "the chunk was unloaded with a player inside");
+        assertFalse(player.isRemoved(), "unloadChunk disconnected a player standing in the chunk");
+        assertFalse(entity.isRemoved(), "the rejected unloadChunk removed an entity anyway");
+    }
+
+    // Unloading the chunk deletes its dispatcher partition, which takes the player out of the tick
+    // loop for good: nothing ever registers it again, so it must keep being ticked instead
+    @Test
+    public void playerKeepsTickingAfterRejectedUnload(Env env) {
+        var instance = env.createFlatInstance();
+        instance.loadChunk(0, 0).join();
+
+        var player = env.createPlayer(instance, new Pos(0, 42, 0));
+        env.tick();
+
+        assertThrows(IllegalStateException.class, () -> instance.unloadChunk(0, 0));
+
+        var ticked = new AtomicBoolean();
+        player.scheduleNextTick(_ -> ticked.set(true));
+        env.tick();
+        assertTrue(ticked.get(), "the player was no longer ticked after unloadChunk");
+    }
+
+    @Test
+    public void unloadingChunkOnceItsPlayerLeftRemovesEntities(Env env) {
+        var instance = env.createFlatInstance();
+        instance.loadChunk(0, 0).join();
+
+        var player = env.createPlayer(instance, new Pos(0, 42, 0));
+        var entity = new Entity(EntityType.ZOMBIE);
+        entity.setInstance(instance, new Pos(0, 42, 0)).join();
+        env.tick();
+
+        player.acquirable().sync(Entity::remove);
+
         instance.unloadChunk(0, 0);
 
-        assertFalse(player.isRemoved(), "unloadChunk disconnected a player standing in the chunk");
+        assertNull(instance.getChunk(0, 0), "the chunk stayed loaded after its last player left");
         assertTrue(entity.isRemoved(), "unloadChunk left a non-player entity behind");
     }
 

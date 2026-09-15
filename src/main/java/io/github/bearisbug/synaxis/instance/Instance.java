@@ -304,9 +304,13 @@ public abstract class Instance implements Block.Getter, Block.Setter, Biome.Gett
     /**
      * Schedules the removal of a {@link Chunk}, this method does not promise when it will be done.
      * <p>
+     * A chunk with an online {@link Player} inside is not unloaded at all: an unloaded chunk is no
+     * longer ticked, and the player would never be ticked again either.
+     * <p>
      * WARNING: during unloading, all entities other than {@link Player} will be removed.
      *
      * @param chunk the chunk to unload
+     * @throws IllegalStateException if an online {@link Player} is inside the chunk
      */
     public abstract void unloadChunk(Chunk chunk);
 

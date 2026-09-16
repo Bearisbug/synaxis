@@ -37,9 +37,21 @@ public final class Main {
     }
 
     public static void main(String[] args) {
+        try {
+            start();
+        } catch (IllegalArgumentException e) {
+            // A refused launch argument or a refused descriptor is a decision, not a crash: it gets
+            // the same ERROR line and non zero exit as the missing admission provider below,
+            // rather than a bare stack trace on stderr.
+            LOGGER.error("Refusing to start: {}", e.getMessage(), e);
+            System.exit(1);
+        }
+    }
+
+    private static void start() {
         // (1) Process level configuration. The engine reads its own synaxis.* properties while the
         // process is being created, which is why this comes before init.
-        final int port = Integer.getInteger(PORT_PROPERTY, DEFAULT_PORT);
+        final int port = port();
         final Set<String> selectedPlugins = selectedPlugins();
 
         // (2) The engine facade, not a bare ServerProcess: MinecraftServer#start is the only public
@@ -81,7 +93,23 @@ public final class Main {
         Thread.ofPlatform().name("server-app-console").start(() -> readConsole(process, host));
     }
 
-    private static Set<String> selectedPlugins() {
+    /**
+     * @return the port to bind, {@value #DEFAULT_PORT} when the property is not set
+     * @throws IllegalArgumentException if the property is set to something that is not a number
+     */
+    static int port() {
+        final String property = System.getProperty(PORT_PROPERTY);
+        if (property == null) return DEFAULT_PORT;
+        try {
+            return Integer.parseInt(property.strip());
+        } catch (NumberFormatException _) {
+            // Integer.getInteger would fall back to the default here, and the process would come up
+            // on a port nobody asked for (docs/TEST.md §3 reads this one back as a precondition).
+            throw new IllegalArgumentException(PORT_PROPERTY + "=" + property + " is not a port number");
+        }
+    }
+
+    static Set<String> selectedPlugins() {
         final String property = System.getProperty(PLUGINS_PROPERTY, "");
         return Arrays.stream(property.split(","))
                 .map(String::strip)

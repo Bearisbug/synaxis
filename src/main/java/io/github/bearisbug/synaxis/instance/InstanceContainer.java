@@ -46,7 +46,6 @@ import space.vectrix.flare.fastutil.Long2ObjectSyncMap;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -55,14 +54,13 @@ import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
 import static io.github.bearisbug.synaxis.instance.ChunkUtils.isLoaded;
 
 /**
- * InstanceContainer is an instance that contains chunks in contrary to SharedInstance.
+ * An instance that owns its chunks.
  */
 public class InstanceContainer extends Instance {
     private static final Logger LOGGER = LoggerFactory.getLogger(InstanceContainer.class);
@@ -73,9 +71,6 @@ public class InstanceContainer extends Instance {
     private static final BlockFace[] BLOCK_UPDATE_FACES = new BlockFace[]{
             BlockFace.WEST, BlockFace.EAST, BlockFace.BOTTOM, BlockFace.TOP, BlockFace.NORTH, BlockFace.SOUTH
     };
-
-    // the shared instances assigned to this instance
-    private final List<SharedInstance> sharedInstances = new CopyOnWriteArrayList<>();
 
     // the chunk generator used, can be null
     private volatile @Nullable Generator generator;
@@ -296,10 +291,13 @@ public class InstanceContainer extends Instance {
             Check.stateCondition(onlinePlayer, "You cannot unload a chunk with players inside.");
             chunk.sendPacketToViewers(new UnloadChunkPacket(chunkX, chunkZ));
             process().eventHandler().call(new InstanceChunkUnloadEvent(this, chunk));
-            // Collect all entities in chunk, except players: removing one disconnects it,
-            // and the contract of Instance#unloadChunk is to leave them alone
+            // Collect all entities in chunk, except online players: removing one disconnects it,
+            // and the contract of Instance#unloadChunk is to leave them alone. A player whose
+            // connection is already gone is not one of them: its removal is only queued for the next
+            // tick, and deleting the partition below would cancel it for good, leaving a ghost in
+            // the tracker. It is removed here like any other entity (REQ-M2-013).
             for (Entity entity : getEntityTracker().chunkEntities(chunkX, chunkZ, EntityTracker.Target.ENTITIES)) {
-                if (!(entity instanceof Player)) entities.add(entity);
+                if (!(entity instanceof Player player) || !player.isOnline()) entities.add(entity);
             }
             // Clear cache
             this.chunks.remove(CoordConversion.chunkIndex(chunkX, chunkZ));
@@ -598,39 +596,6 @@ public class InstanceContainer extends Instance {
     }
 
     /**
-     * Gets all the {@link SharedInstance} linked to this container.
-     *
-     * @return an unmodifiable {@link List} containing all the {@link SharedInstance} linked to this container
-     */
-    public List<SharedInstance> getSharedInstances() {
-        return Collections.unmodifiableList(sharedInstances);
-    }
-
-    /**
-     * Gets if this instance has {@link SharedInstance} linked to it.
-     *
-     * @return true if {@link #getSharedInstances()} is not empty
-     */
-    public boolean hasSharedInstances() {
-        return !sharedInstances.isEmpty();
-    }
-
-    /**
-     * Assigns a {@link SharedInstance} to this container.
-     * <p>
-     * Only used by {@link InstanceManager}, mostly unsafe.
-     *
-     * @param sharedInstance the shared instance to assign to this container
-     */
-    protected void addSharedInstance(SharedInstance sharedInstance) {
-        this.sharedInstances.add(sharedInstance);
-    }
-
-    void removeSharedInstance(SharedInstance sharedInstance) {
-        this.sharedInstances.remove(sharedInstance);
-    }
-
-    /**
      * Copies all the chunks of this instance and create a new instance container with all of them.
      * <p>
      * Chunks are copied with {@link Chunk#copy(Instance, int, int)},
@@ -638,6 +603,11 @@ public class InstanceContainer extends Instance {
      * The copy also inherits the chunk supplier, the {@link Generator} and the dimension name,
      * so chunks loaded afterwards match the copied ones. Its {@link ChunkLoader} is left at the
      * default, a copy must not write into the storage of its source.
+     * <p>
+     * <b>A copy costs as much memory as its source.</b> Every section is cloned, palettes and light
+     * data included, so copying one instance per game of a big world multiplies the resident heap
+     * by the number of copies. Generating the world again from the same generator is usually
+     * cheaper than copying it.
      *
      * @return an {@link InstanceContainer} with the exact same chunks as 'this'
      * @see #getSrcInstance() to retrieve the "creation source" of the copied instance

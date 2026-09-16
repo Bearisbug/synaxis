@@ -16,6 +16,8 @@
 | 日期 | 版本 | 改动 | 作者 |
 | --- | --- | --- | --- |
 | 2026-09-09 | v0.1 | 初稿：里程碑 M1 范围、实体、协议契约、状态机、阶段计划 | Bearisbug |
+| 2026-09-16 | v0.23 | §28 的四条审计残留全部转「已决」，由 `docs/DESIGN-M2.md` 的阶段 3 处置并在每条里注明去向：F29 残留（a）`SharedInstance` 整块删除（`REQ-M2-012`）、F29 残留（b）卸载区块时同步移除已下线玩家（`REQ-M2-013`）、F11 残留视距收缩的两半（`REQ-M2-014`）、F49 残留按「降级不修」处置（Javadoc + `:game-rts` 测试源集里的无条件 ArchUnit 规则，`REQ-M2-015`）。同批把 `InstanceContainer#copy()` 的内存警告写进该方法 Javadoc（登记在 M2 分册 §28.2，行为不变）。本文档其余章节未动——引擎侧契约没有变化 | Bearisbug |
+| 2026-09-16 | v0.22 | §8 演进与弃用与 `ADR-007` 里的「唯一稳定面」由 `platform-api` 改称 `plugin-api`——M2 实际落地的稳定面模块是 `:plugin-api`（谁接 ABI 门谁就是稳定面），`platform-api` 这个模块名不会存在；这是 `docs/DESIGN-M2.md` `ADR-M2-005` 要求的显式决策改名 | Bearisbug |
 | 2026-09-16 | v0.21 | 登记里程碑分册 `docs/DESIGN-M2.md`：§1「关联」行加分册指引，§26 里程碑表加 M2 一行并补「M2 起每个里程碑一份分册」的规则段 | Bearisbug |
 | 2026-09-16 | v0.20 | 审计修复第二轮：F29、F49、F11 按用户拍板修复合入（§28 三条改为已决），并发表「非 tick 线程卸载区块」行随新契约更新；§28 新增四条修复员与审查员发现的同源残留 | Bearisbug |
 | 2026-09-15 | v0.19 | 审计修复轮：2026-09-15 审计的 60 条发现修复 57 条并合入 main（台账 `docs/research/audit-2026-09-15/fixes.md`，RUN-014 全量通过）；§28 新增三条待拍板项（F29、F49、F11 剩余半边） | Bearisbug |
@@ -217,7 +219,7 @@ erDiagram
 演进与弃用：
 
 - 版本方案：日期版本 `YYYY.MM.DD-26.2`（沿用上游格式，MC 版本后缀固定） · 当前：M1 完成时打 `2026.xx.xx-26.2`
-- 弃用期：Java API 无外部消费者，M1 内允许直接破坏；M2 起 `platform-api` 成为唯一稳定面，引擎内部 API 不承诺兼容
+- 弃用期：Java API 无外部消费者，M1 内允许直接破坏；M2 起 `plugin-api` 成为唯一稳定面，引擎内部 API 不承诺兼容
 - 兼容承诺对象：仅本仓库内的游戏工程
 - 当前 deprecated 清单：无
 
@@ -453,7 +455,7 @@ N/A — 无前端。客户端 Fabric 模组与其界面属于 M2。
   - Context：`entity` 包测试密度 0.12，`event` 0.03；删除只让 `Entity` 少 1 条 import。
   - Decision：先补测试到密度 ≥ 0.3（M1 后阶段 7），再按需求驱动拆分；门面与配置改造排在阶段 4 与 5。
   - Alternatives：M1 一起做（无安全网作业，回归面极大）。
-  - Consequences：M2 游戏工程通过 `platform-api` 六个接口隔离引擎，不直接依赖上帝类。
+  - Consequences：M2 游戏工程通过 `plugin-api` 六个接口隔离引擎，不直接依赖上帝类。
 
 ## 19. 验收 / 测试
 
@@ -637,11 +639,11 @@ N/A — M1 尚未完成；完成后按 §26 退出条件逐项对照并记录实
 | --- | --- | --- | --- |
 | 已决 | 审计 F29：`Instance#unloadChunk` 对区块内有在线玩家的调用抛 `IllegalStateException` 且不做任何卸载动作，与 `InstanceManager.unregisterInstance` 对称；Javadoc 与 `UnloadChunkIntegrationTest` 已随之更新 | Bearisbug | 已于 2026-09-16 决定并实施 |
 | 已决 | 审计 F49：客户端 NBT 不进 tag 系统。`CustomData` / `TypedCustomData` 的 getTag / withTag 经内部 `TagNbtAccess` 直接对 compound 读写单个 tag，不再整包 `TagHandler.fromCompound`，客户端键名不再登记进 `TagImpl.INDEX_MAP` | Bearisbug | 已于 2026-09-16 决定并实施 |
-| Open Question | 审计 F49 残留：`Serializers.fromTagSerializer` 读 `Tag.Structure` / `Tag.View` 时仍对子 compound 调 `TagHandler.fromCompound`，游戏侧若对客户端物品用这两类 tag，其子树键名仍会被登记。候选：给这两类 tag 也走 `TagNbtAccess` 路径，或在 `TagHandler.fromCompound` Javadoc 上标明不可用于不可信数据并加 ArchUnit 规则 | Bearisbug | M2 自定义数据模型定型前 |
+| 已决 | 审计 F49 残留：按「降级不修」处置——`Tag.Structure` / `Tag.View` / `TagHandler.fromCompound` 的 Javadoc 标明不可用于不可信数据，并由 `:game-rts` 自己的测试源集里一条 ArchUnit 规则**无条件**禁止游戏侧使用这三者（「来源」是运行期污点属性，静态分析判断不了，按来源写等于规则形同虚设）；引擎自身的读取路径不变 | Bearisbug | 已于 2026-09-16 由 `docs/DESIGN-M2.md` 的 `REQ-M2-015` 处置 |
 | 已决 | 审计 F11：视距变更按 tick 节流。`Player` 记录「客户端区块环所依据的视距」`clientViewDistance`，`effectiveViewDistance()` 由它计算，settings 包只改设置，`update()` 每 tick 最多追平一次并按最终值重算一圈；`refreshSettings` 对视距不再立即生效（其它设置仍即时） | Bearisbug | 已于 2026-09-16 决定并实施 |
-| Open Question | 审计 F29 残留：`SharedInstance#unloadChunk` 委托给容器，而 shared 实例的玩家在自己的 `EntityTracker` 里，容器的在线玩家检查看不到它们，站在 shared 实例里的玩家仍会随卸载冻结。最小改法是容器检查时连 `getSharedInstances()` 的 tracker 一起查 | Bearisbug | M2 世界管理设计前 |
-| Open Question | 审计 F29 残留：`PlayerConnection.disconnect()` 对 PLAY 态玩家先 `online=false` 再 `scheduleNextTick(Entity::remove)`，若在这一 tick 之间该区块被卸载（`unregisterInstance` 逐块卸载最易命中），已下线玩家挡不住卸载、分区被删后排队的 remove 永不执行，成为 tracker 幽灵 | Bearisbug | M2 世界管理设计前 |
-| Open Question | 审计 F11 残留：视距收缩直接发 `UnloadChunkPacket`，但不会把该区块从 `chunkQueue` 摘掉（优先队列无按值删除），同一 tick 内「卸载后又被 `sendPendingChunks` 发出」的区块会留在客户端而服务端认为已卸；另 `updateViewDistance` 以 `position` 为中心而客户端环记账中心是 `chunksLoadedByClient`，跨区块抖动时可能错位一列 | Bearisbug | 对外开放前 |
+| 已决 | 审计 F29 残留：`SharedInstance` 整块删除（含 `EntityTracker#viewable` 的多态参数、`Chunk` 的 shared 列表、`Player#setInstance` 的 areLinked 快路径、`InstanceManager` 的两个 shared 工厂），「shared 实例的玩家挡不住容器卸载」随之不复存在 | Bearisbug | 已于 2026-09-16 由 `docs/DESIGN-M2.md` 的 `REQ-M2-012` 处置 |
+| 已决 | 审计 F29 残留：`InstanceContainer#unloadChunk` 收集待移除实体时，把「连接已下线但实体尚未 remove」的玩家当普通实体一并走 `Acquirable.sync(Entity::remove)` 同步移除；分区被删前它已经不在 tracker 里，幽灵不再产生 | Bearisbug | 已于 2026-09-16 由 `docs/DESIGN-M2.md` 的 `REQ-M2-013` 处置 |
+| 已决 | 审计 F11 残留：`sendPendingChunks` 出队时按 `chunksLoadedByClient` 与 `effectiveViewDistance()` 惰性丢弃越界区块（优先队列没有按值删除，惰性丢弃是正解）；`updateViewDistance` 的中心一并改为 `chunksLoadedByClient`，与客户端环记账同源 | Bearisbug | 已于 2026-09-16 由 `docs/DESIGN-M2.md` 的 `REQ-M2-014` 处置 |
 | 已决 | 正式名字 Synaxis（用户 2026-09-15 拍板）：包名 `io.github.bearisbug.synaxis`，仓库 `Bearisbug/synaxis`，品牌 `synaxis`；原占位名 `dev.gameengine` / `game-engine` 的改名提交登记在 `.git-blame-ignore-revs` | Bearisbug | 已于 2026-09-15 决定 |
 | 已决 | M1.5（REQ-013～016，阶段 4～6）按用户 2026-09-09「按重构计划并行推进」指示视为确认，M1 阶段 3 完成后开工 | Bearisbug | 已决 |
 | 已决 | `command` 包（83 文件）M1 保留：耦合低，开发期调试与运维指令依赖它；M2 自定义协议成型后再评估 | Bearisbug | 已于 2026-09-09 决定 |

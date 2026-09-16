@@ -1,9 +1,7 @@
 package io.github.bearisbug.synaxis.instance;
 
-import io.github.bearisbug.synaxis.coordinate.Pos;
 import io.github.bearisbug.synaxis.event.instance.InstanceTickEvent;
 import io.github.bearisbug.synaxis.event.player.PlayerMoveEvent;
-import io.github.bearisbug.synaxis.event.player.PlayerTickEvent;
 import io.github.bearisbug.synaxis.world.DimensionType;
 import io.github.bearisbug.synaxis.testing.Env;
 import io.github.bearisbug.synaxis.testing.EnvTest;
@@ -11,51 +9,12 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
 import java.lang.ref.WeakReference;
-import java.util.List;
 import java.util.UUID;
 
 import static io.github.bearisbug.synaxis.testing.TestUtils.waitUntilCleared;
 
 @EnvTest
 public class InstanceUnregisterIntegrationTest {
-
-    @Test
-    public void sharedInstance(Env env) {
-        // Ensure that unregistering a shared instance does not unload the container chunks
-        var instanceManager = env.process().instance();
-        var instance = instanceManager.createInstanceContainer();
-        var shared1 = instanceManager.createSharedInstance(instance);
-        var connection = env.createConnection();
-        var player = connection.connect(shared1, new Pos(0, 40, 0));
-
-        var listener = env.listen(PlayerTickEvent.class);
-        listener.followup();
-        env.tick();
-
-        var acquired = player.acquirable().lock();
-        var shared2 = instanceManager.createSharedInstance(instance);
-        player.setInstance(shared2).join();
-        acquired.unlock();
-        listener.followup();
-        env.tick();
-
-        instanceManager.unregisterInstance(shared1);
-        Assertions.assertEquals(List.of(shared2), instance.getSharedInstances());
-        listener.followup();
-        env.tick();
-    }
-
-    @Test
-    public void sharedInstanceGC(Env env) {
-        var instanceManager = env.process().instance();
-        var instance = instanceManager.createInstanceContainer();
-        var shared = instanceManager.createSharedInstance(instance);
-        var ref = new WeakReference<>(shared);
-        instanceManager.unregisterInstance(shared);
-
-        shared = null;
-        waitUntilCleared(ref);
-    }
 
     @Test
     public void instanceGC(Env env) {

@@ -80,6 +80,12 @@ public sealed interface Tag<T extends @UnknownNullability Object> permits TagImp
      * Creates a tag containing multiple fields.
      * <p>
      * Those fields cannot be modified from an outside tag. (This is to prevent the backed object from becoming out of sync)
+     * <p>
+     * <b>Must not be used with untrusted data.</b> Reading this tag runs the whole sub compound
+     * through {@link TagHandler#fromCompound(net.kyori.adventure.nbt.CompoundBinaryTag)}, which
+     * registers every key it finds in a process wide, never shrinking index: a compound coming from
+     * a client can grow that index without bound (audit F49). Read client NBT key by key instead,
+     * the way the item components do.
      *
      * @param key        the tag key
      * @param serializer the tag serializer
@@ -93,7 +99,8 @@ public sealed interface Tag<T extends @UnknownNullability Object> permits TagImp
     /**
      * Specialized Structure tag affecting the src of the handler (i.e. overwrite all its data).
      * <p>
-     * Must be used with care.
+     * Must be used with care, and like {@link #Structure(String, TagSerializer)}
+     * <b>must not be used with untrusted data</b>.
      */
     static <T> Tag<T> View(TagSerializer<T> serializer) {
         return Structure("", serializer);

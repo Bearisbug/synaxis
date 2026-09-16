@@ -74,6 +74,11 @@ tasks.withType<Test> {
 tasks.jacocoTestReport {
     dependsOn(tasks.test)
 
+    // Report even when the module has no test of its own yet. The jacoco plugin skips the task
+    // when there is no execution data, which would hide that module's new lines from the CI
+    // coverage gate instead of reporting them as uncovered (REQ-M2-022).
+    setOnlyIf { true }
+
     // The XML report is what the CI coverage gate reads.
     reports {
         xml.required = true

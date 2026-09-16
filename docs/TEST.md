@@ -14,6 +14,13 @@
 
 | 日期 | 改动 | 作者 |
 | --- | --- | --- |
+| 2026-09-16 | 验收收口：`TC-GAME-008` 第 6 步改判据（插件禁用由引擎 `scheduler.shutdown()` 驱动，不再是「排在它之前」，与 `API-M2-007` 同轮改写对齐）；`TC-GAME-032` 新增一步（对局在拆世界之前就置 `ENDED`）。另补登阶段 2 遗漏的用例改动：`TC-GAME-001` 第 7 步、`TC-GAME-016` 第 4 步、`TC-GAME-048` 第 4 步、`TC-GAME-050` 第 9 步与 §3 的两行宿主日志 | Bearisbug |
+| 2026-09-16 | 阶段 3 评审第 2 轮修订，**ID 全部保留，只改步骤与后置**：TC-GAME-034 与 TC-GAME-035 的「先红后绿」两步改成**只回退实现文件、保留测试文件**（`git checkout <修复提交>^ -- src/main/java/.../InstanceContainer.java` 与 `.../entity/Player.java`）——复现测试与修复在同一个提交里，整树 `git checkout <修复提交>^` 之后那些测试方法根本不存在，`--tests` 会跑剩下的老方法并给出 `BUILD SUCCESSFUL`，按字面执行得到的是「没红」；两条的第 2 步与后置随之改为 `git checkout HEAD -- <同一文件>`。TC-GAME-034 第 1 步的失败断言改为实际先红的那条（`assertTrue(player.isRemoved())`，消息 `the disconnected player survived the unload of its chunk`），`getEntityByUuid` 那条排在它后面。TC-GAME-036 第 1 步由两条方法改为三条：规则自测拆成 `theRuleRejectsAGameClassCallingTheTagIndex` 与 `theRuleRejectsAGameClassReferencingTheTagIndex`（方法引用形态；规则改用 `accessTargetWhere` 才拦得住，见 `docs/DESIGN-M2.md` §1 v0.17） | Bearisbug |
+| 2026-09-16 | 阶段 3（世界与审计残留，`REQ-M2-010`～`REQ-M2-015`）落地同步，**用例 ID 全部保留，只改步骤、前置与判据**：§3 填掉三处占位——`synaxis.app.map` 的默认值 `rts-512` 与另一个可用预设 `rts-128`、地图预设与 seed 的配置方式（`game-rts` 的 `MapPreset` 常量）、事件台账已落地的事件（补 `match_created` / `match_started` / `match_ended`）；§3 同时写明 `synaxis.entity-view-distance` / `synaxis.chunk-view-distance` / `synaxis.player.chunk-update-limiter-history-size` 三项**自本阶段起由 `server-app` 自己设**、命令行显式给的值优先。TC-GAME-029 第 3 步、TC-GAME-031 第 4 步、TC-GAME-033 第 3 步、TC-GAME-034 与 TC-GAME-035 的前置、TC-GAME-035 第 4 步、TC-GAME-036 第 1 步各填上真实的测试类与方法名；TC-GAME-033 第 4 步的「删除 12 个文件」按实际改动改写；TC-GAME-036 第 4 步的 grep 串由中文「不可用于不可信数据」改为英文 `untrusted data`（引擎源码的注释与 Javadoc 一律英文，判据按原文写）；TC-GAME-032 第 1 步的日志判据钉成实测两行、第 2 步写明 M2 没有运维侧结束对局的入口（对局随 `onDisable` 结束＝停机，真机档随阶段 4 探针一起补）；TC-GAME-056 的前置填上参数改写方式、第 1 步钉成实测日志 | Bearisbug |
+| 2026-09-16 | 补上 `TC-012` → `TC-030` 换 ID 的两处遗漏：§5 回归策略的引擎域「协议」行与人工收口轮仍圈着已废弃的 `TC-012`，替代用例 `TC-030` 则一轮都进不了范围（同一惯例的 `TC-003` → `TC-029`、`TC-010` → `TC-028` 当时已同步改过这两处）。只改 §5，用例正文与执行记录不动 | Bearisbug |
+| 2026-09-16 | `REQ-M2-021` 合入（`smoke` 删除，`server-app` 承接冒烟职责）与阶段 2 落地同步。**环境段改写**：§3 启动命令改 `:server-app:run`、就绪日志串改 `synaxis server-app listening on …`、端口属性改 `-Dsynaxis.app.port`，新增「运行时产物」一条（仓库根的 `plugins/<plugin_id>/` 与 `logs/events-YYYYMMDD.jsonl`，均已 gitignore）并补宿主日志行格式；M2 段删掉过渡期口径（两段现在是同一个入口），填掉「系统属性默认值 / 日志文件名 / 事件 JSON 键名」三处占位（**没有服务端日志文件，日志只走 stdout**），「未验证」标记收窄到尚未落地的四条。**语义未变、只改环境段**：TC-009 第 4 步（启动器路径）、TC-025 第 1、4 步与后置、TC-004 / TC-018 / TC-029（只依赖环境段，正文一字未改）。**废旧 ID 换新 ID**：TC-012 → **TC-030**（第 2 步依赖 smoke 的 `/echo`，该通道随 smoke 消失；替代用例去掉 echo 那一档，只判登录、日志关联与断开，并写明 `REQ-M2-008` 合入后本用例随前置一起废弃）。**填占位**：TC-GAME-016 的说明路径 `docs/PLUGINS.md` 与示例插件 `example-plugin/`、TC-GAME-055 第 5 步的宿主单测名与方法名。§7 的 echo 归属条目按 smoke 已删除的事实改写 | Bearisbug |
+| 2026-09-16 | 跟进 `docs/DESIGN-M2.md` v0.8（阶段 1 模块骨架落地），只改步骤与判据、ID 全部保留：TC-GAME-002 第 2 步把「输出含循环依赖提示」钉成实测字面量 `Circular dependency between the following tasks:` 与那条环，并写明失败发生在编译之前；TC-GAME-003 第 2 步的 grep **改用词边界** `grep -rEn "synaxis\.game\b"`——原来的裸 `synaxis\.game` 同时命中 `synaxis.gamedata`，判据永远到不了 `0`；第 5 步填上两条规则自测的真实方法名（`theGameSideRuleRejectsADependencyOnTheGameSide` / `theGameSideRuleAcceptsTheEngineOwnNetworkPluginPackage`）；第 6 步的扫描从裸串收窄到 Java 字符串字面量 `"..plugin.."`——规则 javadoc 会点名这个错误写法并解释它为什么会命中引擎自己的 `network.plugin`，那段警告应当留着，不能被这条机械扫描逼走；TC-GAME-001 **新增第 5 步**（`./gradlew :protocol:generatePomFileForMavenPublication` 后 `grep -c '<dependency>'` 输出 `0`——`:protocol` 发布出去的坐标里没有任何第三方依赖，判的是 `ADR-M2-008`；约定插件 `synaxis.java-library` 给每个模块加的 `api(libs.jetbrainsAnnotations)` 由该模块摘掉，不摘这里是 `1`），原第 5 步（`./gradlew check` 绿）顺延为第 6 步，ID 保留；TC-GAME-003 第 5 步补上规则自测的**消息断言**（违规消息必须点名合成类与 `GameSideFixture`，否则规则退化成空规则时 `failOnEmptyShould` 抛的 `AssertionError` 会被当成通过） | Bearisbug |
+| 2026-09-16 | 跟进 `docs/DESIGN-M2.md` v0.6（用户签字与三条范围裁剪）：**废弃 TC-GAME-007 / TC-GAME-008 / TC-GAME-012 / TC-GAME-013**——依赖拓扑序与环检测（007、008）、熔断触发的禁用（012）与滑窗熔断（013）随「插件宿主砍半」整块推到第二个插件出现时，四条整条不再适用，ID 保留不复用；**新增 TC-GAME-053**（单插件三段生命周期与数据目录，接替 007 的冒烟位）、**TC-GAME-054**（事件 / 任务 / 通道三层异常各带 `plugin_id` 归因且进程继续，接替 013）、**TC-GAME-055**（停机时插件被一次性摘干净且零后续回调，接替 012 —— M2 没有熔断，禁用的唯一触发路径是停机）；**废弃 TC-GAME-030、新增 TC-GAME-056**（`.synx` 推 M3 后没有地图文件可损坏，判据从「改文件字节」改成「未知预设 id / 非法生成参数」，语义实质变更故换 ID）；TC-GAME-011 第 3 步的 `plugin_tripped` 改判 `plugin_enabled` 缺该插件（埋点已删）；TC-GAME-029 前置与第 1 步改为进程内程序化生成、并补「全程不读写任何地图文件」；§2 覆盖描述、Gherkin 场景数（48 → 47）、REQ ↔ TC 表与不测项同步；§3 系统属性去掉 `synaxis.app.plugin.trip-threshold`、`synaxis.app.map` 改为地图预设 id、地图种子改为进程内生成、ROLE-PluginAuthor 去掉「依赖成环 / 持续抛异常」两类探测插件；§5 游戏域回归映射补新 ID | Bearisbug |
 | 2026-09-16 | 跟进 `docs/DESIGN-M2.md` v0.5（评审第 4 轮收尾）：TC-GAME-043 第 6／7 步改成在**相邻两个区块 A／B** 之间来回推并按跨区块次数逐次记账（反证判据改为「把限流器配置改回 5 后，至多前两次跨区块还收得到 `ChunkData`，从第三次起再也收不到」，与 `addToHistory` 的滑动窗口语义一致），前置补 A／B 两个锚点；TC-GAME-050 第 7 步拆成两步——抛异常（仍以 `synaxis:match-unavailable` 断开并记 ERROR）与慢返回 500 毫秒（照常放行、只多一行带耗时的 WARN、只拖慢本连接），原第 8 步顺延为第 9 步，前置补并发两条探针；TC-GAME-043 第 5 步与 TC-GAME-051 第 6 步的异常类型由 `IllegalArgumentException` 改为 `NullPointerException`（`Check.notNull` 抛的是 NPE） | Bearisbug |
 | 2026-09-16 | 跟进 `docs/DESIGN-M2.md` v0.4（评审第 3 轮收口）：新增 TC-GAME-050（`REQ-M2-024` 准入回调与握手跨线程交接）、TC-GAME-051（`REQ-M2-025` 公开的 `Entity#moveTo` 位置推进入口）；**废弃 TC-GAME-037，新增 TC-GAME-052**（`setViewRange` 的期望值从写死的 ≥ 1.6 改为按 `archetype_view_range=4.0` 配置，并补「实体距离」倍率 50% 档——阈值与判据都变了，按惯例换 ID）；TC-GAME-029 补第 6 步（就绪后 dispatcher 与 `TickSchedulerThread` 都在跑、且载入期间零 tick）；TC-GAME-032 补准入回调缺失与重复注册两档；TC-GAME-043 补来回推镜头 5 个来回不丢区块（区块更新限流器已关）；TC-GAME-047 补 50% 实体距离档；§2 覆盖区间改到 `REQ-M2-025`、Gherkin 场景数改 48、REQ↔TC 表补三行；§3 系统属性补 `synaxis.player.chunk-update-limiter-history-size=0`；§5 回归映射补新 ID | Bearisbug |
 | 2026-09-16 | M2 用例评审第 1 轮修订（4 条必改 + 11 条建议）：TC-GAME-001 只判四模块与构建绿，smoke 删除由 TC-GAME-048 独占（与 §3 过渡期口径、设计文档 §26 的阶段划分对齐，阶段 1 gate 不再必然假失败）；TC-GAME-002 第 4 步的 grep 钉到 `docs/DESIGN-M2.md`；§3 种子清单补对方队伍单位、距出生点 ≥ 200 格的单位与 9 个本方单位；TC-GAME-024 第 4 步补令牌回填等待并写明前 8 条 / 第 9 条各回什么；TC-GAME-030 三步补进程非零码退出与端口未 bind；TC-GAME-037 第 5 步归因改服务端 `entity-view-distance`；TC-GAME-042 第 3 步改按结果码分布判定、第 5 步收窄到「无 tick 超时告警行」；TC-GAME-012 的熔断阈值挪进前置；TC-GAME-013 补触发手段；TC-GAME-049 点名的七条存量 TC 归并进 §5 范围列；§2 不测表把并发回归场景的归属改为 TC-021 并补 `docs/DESIGN.md` `REQ-016` 一行；RUN-003 明细的结果标签归入枚举并补证据引用 | Bearisbug |
@@ -40,8 +47,8 @@
 ## 2. 测试范围 / 不测什么
 
 - 覆盖（引擎域 · M1 / M1.5）：里程碑 M1 的 12 条需求的黑盒与半黑盒验收——构建产物与仓库元数据（命令、退出码、文件）、Minecraft 协议行为（裸 socket 与原版客户端可观察的包与断线原因）、文档与合规文件。
-- 覆盖（游戏域 · M2）：`docs/DESIGN-M2.md` 的 `REQ-M2-001`～`REQ-M2-025` 的黑盒与半黑盒验收——工程门禁的可观察结论（模块树、构建红绿、CI 结论）、插件宿主的生命周期与隔离行为（启停日志、退出码、回调有无、事件 JSONL）、自定义负载协议行为（探针可见的消息、结果码与断线原因键）、地图包与对局生命周期、单位 / 寻路 / 镜头的服务端权威行为，以及客户端模组的安装与 RTS 切片的端到端人工验收。
-- Gherkin 覆盖口径：`docs/DESIGN-M2.md` §19 的 48 个 Gherkin 场景**全部**由本文档的 TC 可操作化，没有转交自动化测试的场景；逐条对照见下方 REQ ↔ TC 表与各用例标题行。
+- 覆盖（游戏域 · M2）：`docs/DESIGN-M2.md` 的 `REQ-M2-001`～`REQ-M2-025` 的黑盒与半黑盒验收——工程门禁的可观察结论（模块树、构建红绿、CI 结论）、插件宿主的生命周期与隔离行为（启停日志、退出码、回调有无、事件 JSONL）、自定义负载协议行为（探针可见的消息、结果码与断线原因键）、程序化地图生成与对局生命周期、单位 / 寻路 / 镜头的服务端权威行为，以及客户端模组的安装与 RTS 切片的端到端人工验收。
+- Gherkin 覆盖口径：`docs/DESIGN-M2.md` §19 的 47 个 Gherkin 场景**全部**由本文档的 TC 可操作化，没有转交自动化测试的场景；逐条对照见下方 REQ ↔ TC 表与各用例标题行。
 - 机械校验盲区（必须知道，否则会把绿灯当成已核）：test-doc 的 `check.sh` 里 ID 正则是 `REQ-([A-Z]+-)?[0-9]+`，域段只允许字母，**匹配不上带数字的 `M2` 域段**——因此 `REQ-M2-*` 一条都进不了「REQ 双向联检」，联检实际只覆盖引擎域的 `REQ-001`～`REQ-017`（这与 `docs/DESIGN-M2.md` §24 记录的 design-doc 侧盲区是同一个正则）。M2 侧的「每条 REQ 至少一条 TC」只能靠下表手工核。后续里程碑若把域段取成纯字母（如 `REQ-GAME-*`），机械联检就能重新覆盖游戏域，手工表可以退役。
 
 REQ-M2 ↔ TC 对照（手工维护）：
@@ -50,14 +57,14 @@ REQ-M2 ↔ TC 对照（手工维护）：
 | --- | --- |
 | REQ-M2-001 模块拆分 | TC-GAME-001、TC-GAME-002 |
 | REQ-M2-002 `game` 改名与依赖方向规则 | TC-GAME-002、TC-GAME-003 |
-| REQ-M2-003 插件发现与生命周期 | TC-GAME-007、TC-GAME-008、TC-GAME-009、TC-GAME-010、TC-GAME-011 |
-| REQ-M2-004 插件能力边界 | TC-GAME-012 |
-| REQ-M2-005 异常归因与熔断 | TC-GAME-011、TC-GAME-013 |
+| REQ-M2-003 插件发现与生命周期 | TC-GAME-053、TC-GAME-009、TC-GAME-010、TC-GAME-011（TC-GAME-007、TC-GAME-008 已废弃：依赖拓扑序与环检测随范围裁剪推到 M3） |
+| REQ-M2-004 插件能力边界 | TC-GAME-055（TC-GAME-012 已废弃：M2 没有熔断，禁用只由停机触发） |
+| REQ-M2-005 异常归因 | TC-GAME-011、TC-GAME-054（TC-GAME-013 已废弃：滑窗熔断随范围裁剪推到 M3） |
 | REQ-M2-006 通道命名空间 | TC-GAME-014、TC-GAME-015 |
 | REQ-M2-007 `:protocol` 编解码 | TC-GAME-017、TC-GAME-018 |
 | REQ-M2-008 握手与模组校验 | TC-GAME-019、TC-GAME-020、TC-GAME-021、TC-GAME-022、TC-GAME-049 |
 | REQ-M2-009 切片消息集与限流 | TC-GAME-023、TC-GAME-024、TC-GAME-025、TC-GAME-026、TC-GAME-027、TC-GAME-028 |
-| REQ-M2-010 地图包 `.synx` | TC-GAME-029、TC-GAME-030 |
+| REQ-M2-010 程序化地图生成器 | TC-GAME-029、TC-GAME-056（TC-GAME-030 已废弃：`.synx` 推 M3 后没有地图文件可损坏） |
 | REQ-M2-011 对局生命周期 | TC-GAME-029、TC-GAME-031、TC-GAME-032 |
 | REQ-M2-012 删除 `SharedInstance` | TC-GAME-033 |
 | REQ-M2-013 断线幽灵修复 | TC-GAME-034 |
@@ -80,18 +87,19 @@ REQ-M2 ↔ TC 对照（手工维护）：
 | --- | --- |
 | 单元 / 集成自动化（M1 的 2,602 个 JUnit 用例、jcstress 场景、ArchUnit 规则本身） | 代码仓测试套件，`./gradlew check` 与 CI，策略见 `docs/DESIGN.md` §19 |
 | `docs/DESIGN.md` 的 `REQ-016`（拆 `NetworkBufferTypeImpl` 为按类型族分文件的实现，零 API 影响） | 纯重构，对外行为与 API 均不变，没有可单独黑盒观察的结论——由 `./gradlew check` 的既有单测覆盖，测试总数与 0 失败由 TC-029 判 |
-| M2 新增自动化（`:protocol` 双端向量测试、宿主的加载顺序 / 环检测 / 通道路由单测、ArchUnit 规则对合成 `JavaClasses` 的自测、F29 与 F11 的复现测试、jacoco 与 diff-cover 本身） | 代码仓测试套件，策略见 `docs/DESIGN-M2.md` §19；本文档只在 TC 步骤里调用它们并判读可观察输出，不复制其断言 |
+| M2 新增自动化（`:protocol` 双端向量测试、宿主的 descriptor 校验 / 生命周期 / 通道路由单测、ArchUnit 规则对合成 `JavaClasses` 的自测、F29 与 F11 的复现测试、jacoco 与 diff-cover 本身） | 代码仓测试套件，策略见 `docs/DESIGN-M2.md` §19；本文档只在 TC 步骤里调用它们并判读可观察输出，不复制其断言 |
 | 50 连接 + 1,000 单位的全量压测与 `docs/DESIGN-M2.md` §15 的整表性能阈值（tick P99、出站带宽、进程内存、客户端 ≥ 60 FPS） | `docs/DESIGN-M2.md` §23 上线前检查单的专项脚本，当前无归属——已知风险（本文档只在 TC-GAME-042 打到 Gherkin 写明的「64 条并发指令」这一档） |
 | 安全渗透（畸形包模糊测试之外的攻击面） | 无归属——已知风险 |
-| `docs/DESIGN-M2.md` §26 阶段 0 的四个 spike（`:protocol` 的 JiJ 消费、相机形态、地图载入实测、Fabric 在 configuration 阶段能否发包） | 设计文档 §26，结论回写设计文档；spike 不是验收，不进本文档。**同阶段的客户端模组最小骨架（`REQ-M2-020a`）不属此列**——它是交付物，由 TC-GAME-045 覆盖（阶段 0 时只跑得到该用例的第 1、2、4、5 步，资源与 `:protocol` 打包要等 `REQ-M2-020b`） |
+| `docs/DESIGN-M2.md` §26 阶段 0 的四个 spike（`:protocol` 的 JiJ 消费、相机形态、地图生成与载入实测、Fabric 在 configuration 阶段能否发包） | 设计文档 §26，结论回写设计文档；spike 不是验收，不进本文档。**同阶段的客户端模组最小骨架（`REQ-M2-020a`）不属此列**——它是交付物，由 TC-GAME-045 覆盖（阶段 0 时只跑得到该用例的第 1、2、4、5 步，资源与 `:protocol` 打包要等 `REQ-M2-020b`） |
 | 客户端渲染观感（相机形态、选中框样式、HUD 文案、动效） | 无用例——主观项；只在 TC-GAME-047 的录屏与截图里留证据供人评判 |
 | 设计文档 §19 中「CI 门禁拦截并发回归 / 分层违规」两个场景 | 由 TC-021、TC-006 以「故意提交坏改动到临时分支」方式可操作化，见 §4 |
 
 ## 3. 环境与前置
 
-- 启动：`export JAVA_HOME=/opt/homebrew/opt/openjdk@25/libexec/openjdk.jdk/Contents/Home && ./gradlew :smoke:run --no-daemon --console=plain --init-script gradle/init/aliyun-mirror.init.gradle.kts`（`smoke` 模块随 `REQ-008` 提前落地，`demo` 仍在仓内，阶段 2 才删除）。默认绑定 `0.0.0.0:25565`，端口用 `-Dsmoke.port=<port>` 覆盖。TC-004 与 TC-018 要往服务端 stdin 写 `stop`，因此运行期间必须保持 stdin 打开（`:smoke:run` 已把 Gradle 进程的 stdin 转给应用；后台运行时用 FIFO 喂入）。
-- 就绪判定：stdout 出现 `synaxis smoke listening on 0.0.0.0:25565`，且 `nc -z 127.0.0.1 25565` 退出码为 0。
-- 日志关联：与连接相关的服务端日志行统一带 `connection_id=<uuid>` —— `Login success: username=… connection_id=… remote_address=…`、`Kicking connection_id=… identifier=… reason=synaxis:…`、`Connection closed: connection_id=… identifier=…`，`smoke` 的 echo 行为 `Echo: connection_id=… channel=synaxis:main bytes=…`。
+- 启动：`export JAVA_HOME=/opt/homebrew/opt/openjdk@25/libexec/openjdk.jdk/Contents/Home && ./gradlew :server-app:run --no-daemon --console=plain --init-script gradle/init/aliyun-mirror.init.gradle.kts`（`REQ-M2-021` 起 `server-app` 是唯一启动入口，`smoke` 已删除）。默认绑定 `0.0.0.0:25565`，端口用 `-Dsynaxis.app.port=<port>` 覆盖（`run` 任务把 `synaxis.*` 系统属性转给 fork 出来的 JVM）。TC-004 与 TC-018 要往服务端 stdin 写 `stop`，因此运行期间必须保持 stdin 打开（`:server-app:run` 已把 Gradle 进程的 stdin 转给应用；后台运行时用 FIFO 喂入或 `( sleep N; echo stop ) | ./gradlew :server-app:run …`）。
+- 就绪判定：stdout 出现 `synaxis server-app listening on 0.0.0.0:25565`，且 `nc -z 127.0.0.1 25565` 退出码为 0。
+- 运行时产物：进程在**仓库根**写 `plugins/<plugin_id>/`（插件数据目录）与 `logs/events-YYYYMMDD.jsonl`（事件台账），两者均已 gitignore；基线重置 = `rm -rf plugins logs` 后重启。**没有服务端日志文件**，日志只走 stdout（`server-app/src/main/resources/logback.xml` 只配了 ConsoleAppender），要留证据就重定向 stdout。
+- 日志关联：与连接相关的服务端日志行统一带 `connection_id=<uuid>` —— `Login success: username=… connection_id=… remote_address=…`、`Kicking connection_id=… identifier=… reason=synaxis:…`、`Connection closed: connection_id=… identifier=…`；宿主侧的行带 `plugin_id=<id>`——`Plugin enabled: plugin_id=… version=… enable_ms=…`、`Registered channel: plugin_id=… channel=…`、`Dropped a payload on an unregistered channel: connection_id=… channel=… bytes=…`、`Refusing a connection: connection_id=… reason=… cause=…`、`Admission provider is over its 200 ms budget: plugin_id=… connection_id=… admit_ms=…`。启动被拒时的那一行没有这两个 id：`Refusing to start: <原因>`（非法端口属性或非法 descriptor，退出码 1，见 TC-GAME-009 / TC-GAME-010）。
 - 入口：TCP `127.0.0.1:25565`；离线模式（`Auth.Offline`），任意用户名；压缩阈值 256 字节。
 - 测试账号：
 
@@ -112,7 +120,7 @@ REQ-M2 ↔ TC 对照（手工维护）：
 | `deep-recursion` | `--depth N`（默认 200） | 创造模式设槽包携带 N 层自嵌套 `CustomPotionEffect.Settings` | REQ-017 后非创造玩家的创造包整包跳过：连接保持、随后 KeepAlive 正常即为成功（递归深度守卫由 `NetworkBufferRecursiveDepthTest` 覆盖） |
 | `alloc-bomb` | — | 登录后发送声明 65,535 个元素但只含少量字节的集合包 | 收到 `Disconnect reason=synaxis:protocol-error` |
 | `nbt-bomb` | `--mib N`（默认 3） | 通过 `ClientCustomClickActionPacket` 携带解码后估算 N MiB 的 NBT | 收到 `Disconnect reason=synaxis:protocol-error` |
-| `echo` | `--payload TEXT`（必填） | 走 `synaxis:main` 通道做一次自定义负载往返 | 回发负载与发出的完全一致 |
+| `echo` | `--payload TEXT`（必填） | 走 `synaxis:main` 通道做一次自定义负载往返。**`smoke` 删除后该通道已无提供方**（`synaxis` 是宿主保留的通道命名空间，通道归插件所有），归属见 §7 遗留问题 | 在有提供方之前不适用 |
 | `record-registry` | `--out FILE`（必填） | 按收到顺序写出全部 `RegistryData` 包的解压后字节（含包 ID varint） | 至少收到一个 `RegistryData` 包 |
 
   探针每次启动时从 `network/packet/PacketVanilla.java` 的注册表顺序推导包 ID、从 `component/DataComponents.java` 的注册顺序推导数据组件 ID，不写死协议常量；注册表顺序变化时探针自动跟随。stdout 逐条打印收到的包名、断线原因键与末行 `exit code: <n>`。
@@ -123,14 +131,13 @@ REQ-M2 ↔ TC 对照（手工维护）：
 
 ### M2（游戏域）环境 —— 未验证
 
-> 本段在 `docs/DESIGN-M2.md` 的实现落地**之前**写就，尚未做过冷启动实测。按 test-doc 纪律：首轮执行任何 `TC-GAME-*` 之前，必须照本段从零把系统带到就绪走通一次，走不通先修本段，并在那时去掉本「未验证」标记。凡是现在还不存在的入口，一律写成「待 `REQ-M2-xxx` 实现后填」，不编造命令。
+> 启动、就绪判定、运行时产物与系统属性四条已随 `REQ-M2-021` 实跑核对过（起服到就绪、`nc -z` 通、`stop` 退出码 0、`-Dsynaxis.app.port` 生效、无准入回调时非零码退出且端口未 bind）。**地图种子与对局种子的「一局一图」那半随 `REQ-M2-010` / `REQ-M2-011` 实跑核对过**（`-Dsynaxis.app.map=rts-512` / `rts-128` / 未知 id 三档各起一次：整图 1,024 区块 137 ms 载入完成、`match_started` 早于就绪日志、未知 id 时两行 ERROR + 非零码退出 + 端口未 bind、事件台账四行齐全）。**单位种子、探针的 M2 子命令、客户端模组三条仍未验证**，它们依赖尚未落地的 REQ。按 test-doc 纪律：首轮执行依赖这三条的 `TC-GAME-*` 之前，必须照本段从零走通一次，走不通先修本段并在那时去掉对应的「待 `REQ-M2-xxx` 实现后填」。不编造命令。
 
-- 启动（`REQ-M2-021` 合入后**取代**上面的 `:smoke:run`）：`export JAVA_HOME=/opt/homebrew/opt/openjdk@25/libexec/openjdk.jdk/Contents/Home && ./gradlew :server-app:run --no-daemon --console=plain --init-script gradle/init/aliyun-mirror.init.gradle.kts`。就绪判定：stdout 出现 `synaxis server-app listening on 0.0.0.0:25565`，且 `nc -z 127.0.0.1 25565` 退出码为 0。停机同 smoke：控制台 `stop` 或 SIGINT，运行期间必须保持 stdin 打开。
-- **过渡期口径（重要）**：`REQ-M2-021` 合入**之前**，`smoke` 仍是唯一启动入口，TC-001～TC-029 继续按上面的 smoke 段执行，`TC-GAME-*` 里凡以 `server-app` 为前置的用例一律登记「阻塞」；合入**之后**，smoke 段整体作废，全部用例按本段执行，受影响的存量用例按 §1 变更记录里的预告处理（语义未变只改环境段，语义变了的废旧 ID 换新 ID）。
-- 系统属性：`synaxis.app.port`（监听端口）、`synaxis.app.plugins`（启用的插件 id 列表，空为全部）、`synaxis.app.map`（地图包路径）、`synaxis.app.plugin.trip-threshold`（熔断阈值覆盖），另沿用引擎的 `synaxis.*`（含 `synaxis.entity-view-distance=8`、`synaxis.chunk-view-distance=10`、**`synaxis.player.chunk-update-limiter-history-size=0`**——最后一项是 RTS 镜头能来回推的前置条件，不是调优，见设计文档 §15「可见范围」与 `ADR-M2-013`）。**默认值与日志文件名待 `REQ-M2-021` 实现后填**。
-- 事件台账：`logs/events-YYYYMMDD.jsonl`，一行一个 JSON，事件名与属性见设计文档 §20。多条用例以它为观察面，步骤里统一写「`grep <事件名> logs/events-*.jsonl`」。**JSON 的事件名字段键待 `REQ-M2-021` 实现后填**（写 grep 时只匹配事件名字面量，不依赖键名）。
-- 地图种子：由 `REQ-M2-010` 的**程序化生成器**产出 `.synx`（M2 没有离线烘焙器）。测试地图固定用同一个 seed，必须含：512×512 / 高度 64、若干障碍、**一块被墙完全围住的可站立区域**（TC-GAME-041 依赖）、可站立的空旷区（TC-GAME-040 依赖）。**生成命令待 `REQ-M2-010` 实现后填**；基线重置 = 删掉生成物重跑生成器。
-- 对局与单位种子：进程启动即有一个 `running` 对局（对局在 bind 之前创建，见设计文档 `API-M2-010` 启动序列）。玩家加入后由 `:game-rts` 分配 `team=1` 与 N 个本方单位；测试对局另需：≥ 1 个 `team=0` 的中立单位与 ≥ 1 个 `team` 非 0 且不等于玩家队伍的对方单位（如 `team=2`；两者 TC-GAME-039 依赖）；≥ 1 个距出生点 ≥ 200 格的单位（TC-GAME-043 依赖）；≥ 9 个本方单位（TC-GAME-024 依赖，组内包数上限是 8，第 9 个单位才测得到越界档）；≥ 64 个本方单位的压测预设（TC-GAME-042 依赖）。**单位数量、`unit_id` 分配与预设的开启方式待 `REQ-M2-016` 实现后填**。
+- 启动、就绪判定与运行时产物：同上面的引擎域环境段（`REQ-M2-021` 起两者是同一个入口）。停机：控制台 `stop` 或 SIGINT，运行期间必须保持 stdin 打开。
+- 系统属性：`synaxis.app.port`（监听端口，默认 `25565`）、`synaxis.app.plugins`（启用的插件 id 列表，逗号分隔，**默认空串 = 全部**；去掉 `rts` 会让进程以非零码退出、端口不 bind，因为它是唯一注册准入回调的插件）、`synaxis.app.map`（**地图预设 id**，不是文件路径——地图在进程内程序化生成，见设计文档 `REQ-M2-010`；默认 `rts-512`，另一个可用预设是 `rts-128`，未知 id 即 `map-invalid`），另沿用引擎的 `synaxis.*`。**`synaxis.entity-view-distance=8`、`synaxis.chunk-view-distance=10`、`synaxis.player.chunk-update-limiter-history-size=0` 三项自 `REQ-M2-011` 起由 `server-app` 在建进程之前自己设好，命令行不写也生效**；命令行显式给的值优先（排障时可以单独摘掉某一项）。最后一项是 RTS 镜头能来回推的前置条件，不是调优，见设计文档 §15「可见范围」与 `ADR-M2-013`。
+- 事件台账：`logs/events-YYYYMMDD.jsonl`（相对进程工作目录，`:server-app:run` 下即仓库根），一行一个 JSON，事件名与属性见设计文档 §20。每行形如 `{"ts":"…","event":"plugin_enabled","plugin_id":"rts","version":"0.1.0","enable_ms":16}`——事件名的键是 `event`，属性平铺在同一层。多条用例以它为观察面，步骤里统一写「`grep <事件名> logs/events-*.jsonl`」。当前落地的是 `plugin_enabled` 与对局三条（`match_created` / `match_started` / `match_ended`，见 `REQ-M2-011`），其余随各自的 REQ 补。
+- 地图种子：由 `REQ-M2-010` 的**程序化生成器**在**进程内**生成，不落文件也不读文件（`.synx` 已随范围裁剪推到 M3，见设计文档 §28.3）。测试地图固定用同一个预设 id + seed，必须含：512×512 / 高度 64、若干障碍、**一块被墙完全围住的可站立区域**（TC-GAME-041 依赖）、可站立的空旷区（TC-GAME-040 依赖）。预设由 `synaxis.app.map` 选（默认 `rts-512` = 512×512 / 高度 64 / 1,024 区块，另有 `rts-128` = 128×128 / 64 区块供回滚演练与快跑用）；seed 固定在预设里（`game-rts` 的 `MapPreset`），同一预设每次启动生成同一张图。基线重置 = 重启进程（每次启动重新生成，没有需要清理的产物）。
+- 对局与单位种子：进程启动即有**唯一一个** `running` 对局（M2 写死单局，且对局在 bind 之前创建，见设计文档 `API-M2-010` 启动序列）。玩家加入后由 `:game-rts` 分配 `team=1` 与 N 个本方单位；测试对局另需：≥ 1 个 `team=0` 的中立单位与 ≥ 1 个 `team` 非 0 且不等于玩家队伍的对方单位（如 `team=2`；两者 TC-GAME-039 依赖）；≥ 1 个距出生点 ≥ 200 格的单位（TC-GAME-043 依赖）；≥ 9 个本方单位（TC-GAME-024 依赖，组内包数上限是 8，第 9 个单位才测得到越界档）；≥ 64 个本方单位的压测预设（TC-GAME-042 依赖）。**单位数量、`unit_id` 分配与预设的开启方式待 `REQ-M2-016` 实现后填**。
 - 探针（复用 M1 的 `tools/protocol-probe/probe.py`，不另起工具）：`REQ-M2-008` 的强制握手一上线，探针必须同一交付实现 `C2S_HELLO`（设计文档 `API-M2-002` 的连带影响），否则上表六个子命令在 configuration 阶段 3 秒被踢、依赖它们的七条存量 TC 整块失效。M2 另需的能力：发 `C2S_HELLO` / `C2S_CAMERA` / `C2S_SELECT` / `C2S_MOVE_ORDER`，打印收到的 `S2C_*` 消息与断线原因键，按指定速率发包，以及记账收到的区块与实体位置包。**子命令名与参数待 `REQ-M2-008` / `REQ-M2-009` / `REQ-M2-018` 实现后填**——因此 `TC-GAME-*` 的步骤统一写成「用探针发送 `<消息>{字段…}`」而不写死命令行；执行时按当时的探针帮助文本翻译成命令，并把实际命令记进证据文件。
 - 客户端模组：Minecraft **26.2** profile（不是 26.3）+ Fabric Loader 0.19.5 + Fabric API 0.160.0+26.2 + 本仓库 `client-fabric/` 产出的模组 jar。构建：`./gradlew publishToMavenLocal` 后 `cd client-fabric && ./gradlew build`（独立 Gradle 构建，不进 `settings.gradle.kts`）。安装：把 jar 放进该 profile 的 `mods/`。**jar 名、整合包安装步骤与当前 `schema_version` 值待 `REQ-M2-020` 实现后填**。
 - 测试账号（在上表基础上新增）：
@@ -139,7 +146,7 @@ REQ-M2 ↔ TC 对照（手工维护）：
 | --- | --- | --- |
 | ROLE-Player | 装了模组的 26.2 客户端，用户名 `tester1`、`tester2`（TC-GAME-038 需要同时两个） | 按上一条装模组后多人游戏直连 `127.0.0.1` |
 | ROLE-Player（脚本） | 探针，用户名 `probe` | 同上表；M2 起必须先发 `C2S_HELLO` 才能过 configuration |
-| ROLE-PluginAuthor | 仓内示例插件 + 临时探测插件（构造非法 id / 依赖成环 / `onEnable` 抛异常 / 持续抛异常等场景） | 以 `REQ-M2-023` 的示例插件为模板，临时插件写在 `:server-app` 的测试源集或一个临时模块里，用完删除并确认 `git status` 干净 |
+| ROLE-PluginAuthor | 仓内示例插件 + 临时探测插件（构造非法 id / `api_version` 不匹配 / `onEnable` 抛异常 / 事件·任务·通道三层各抛一次异常等场景；**不再需要「依赖成环」与「持续抛异常触发熔断」两类**——依赖解析与熔断器已随范围裁剪推到 M3） | 以 `REQ-M2-023` 的示例插件为模板，临时插件写在 `:server-app` 的测试源集或一个临时模块里，用完删除并确认 `git status` 干净 |
 | ROLE-Operator | 本机 shell + `synaxis.app.*` 系统属性 + 控制台 `stop` | 仓库 clone 即有 |
 
 - 工具（在上表基础上新增）：`jcmd` / JFR（堆与 tick 采样）、`unzip`（查模组 jar 内容）、独立的 `client-fabric` Gradle 构建、录屏工具（TC-GAME-047）。
@@ -304,7 +311,7 @@ REQ-M2 ↔ TC 对照（手工维护）：
 | 1 | `ls code-generators demo 2>&1` | 两者均 `No such file or directory` |
 | 2 | `ls src/autogenerated 2>&1` | `No such file or directory` |
 | 3 | `grep -n "autogenerated" build.gradle.kts` | 退出码 1，无输出 |
-| 4 | `ls smoke/src/main/java` | 存在至少一个含 `main` 方法的类 |
+| 4 | `ls server-app/src/main/java/io/github/bearisbug/synaxis/app/Main.java` | 文件存在（最小启动器；`REQ-M2-021` 起由 `server-app` 承接，`smoke` 已删除） |
 | 5 | `./gradlew check --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts` | `BUILD SUCCESSFUL` |
 
 后置：无。
@@ -358,6 +365,8 @@ REQ-M2 ↔ TC 对照（手工维护）：
 
 #### `TC-012` 原版客户端登录与 echo 往返 — 对应 `REQ-011` · 级别: 冒烟 · 执行者: 人工
 
+**已废弃，被 `TC-030` 取代**（`REQ-M2-021` 删除了 `smoke`，第 2 步依赖的 `/echo` 命令与 `synaxis:main` 通道一起消失——`synaxis` 是宿主保留的通道命名空间，通道归插件所有，见 `REQ-M2-006` 与 §7 遗留问题；替代用例去掉 echo 那一档，只判登录、日志关联与断开。步骤实质变更，按惯例换 ID）。
+
 前置：进程已就绪；原版 26.2 客户端已安装；客户端开启 F3 调试界面。
 
 | # | 操作 | 预期 |
@@ -368,6 +377,19 @@ REQ-M2 ↔ TC 对照（手工维护）：
 | 4 | 客户端断开 | 服务端 stdout 出现同一 `connection_id` 的断开日志，进程继续运行 |
 
 后置：无。
+
+#### `TC-030` 原版客户端登录与断开 — 对应 `REQ-011` · 级别: 冒烟 · 执行者: 人工
+
+前置：`server-app` 已就绪（`:game-rts` 的平坦对局）；原版 26.2 客户端已安装；客户端开启 F3 调试界面。**本用例的前置在 `REQ-M2-008`（强制客户端模组握手）合入后不再成立**，届时由 M2 客户端模组侧的用例接替，本用例随之废弃。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 多人游戏直连 `127.0.0.1` | 5 秒内进入世界，看到平坦地面，F3 显示服务端品牌为我们的名称 |
+| 2 | 查看服务端 stdout | 含一行带 `connection_id` 的登录日志；该连接没有 `Refusing a connection` 行，也没有 `spawningInstance` 相关的 `NullPointerException`（准入回调放行，见设计文档 `API-M2-011`） |
+| 3 | 客户端断开 | 服务端 stdout 出现同一 `connection_id` 的断开日志，进程继续运行 |
+| 4 | 向服务端 stdin 输入 `stop` | 进程 15 秒内退出、退出码 0；停机日志里 `Disabling plugin: plugin_id=rts` 出现在引擎的 `synaxis server stopped successfully.` 之前 |
+
+后置：`rm -rf plugins logs`。
 
 #### `TC-013` 抢跑 FinishConfiguration 被拒绝 — 对应 `REQ-011` · 级别: 回归 · 执行者: AI
 
@@ -537,12 +559,12 @@ REQ-M2 ↔ TC 对照（手工维护）：
 
 | # | 操作 | 预期 |
 | --- | --- | --- |
-| 1 | `grep -rn "ServerFlag" src testing smoke jmh-benchmarks jcstress-tests --include='*.java' --include='*.kts' \| wc -l` | 输出 `0` |
+| 1 | `grep -rn "ServerFlag" src testing protocol plugin-api server-app game-rts jmh-benchmarks jcstress-tests --include='*.java' --include='*.kts' \| wc -l` | 输出 `0` |
 | 2 | `grep -n "minestom\." build-src/src/main/kotlin/*.gradle.kts \| grep -i "jvmArgs\|systemProperty"` | 退出码 1，无输出（测试 JVM 不再注入与生产不同的开关） |
 | 3 | `./gradlew :test --tests '*ServerConfigTest*' --tests '*ServerProcessDispatcherTest*' --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts` | `BUILD SUCCESSFUL`：默认值与系统属性读取一致；两个进程分别按 1 与 2 个 tick 线程分区 |
-| 4 | 启动 `smoke`，查看启动日志 | 含一行生效配置（`ServerConfig[...]`）与一行 `JvmFlags[...]` |
+| 4 | 启动 `server-app`，查看启动日志 | 含一行生效配置（`ServerConfig[...]`）与一行 `JvmFlags[...]` |
 
-后置：`stop` 关闭 `smoke`。
+后置：`stop` 关闭 `server-app`，`rm -rf plugins logs`。
 
 ### M2 · 模块拆分与工程门禁
 
@@ -556,7 +578,9 @@ REQ-M2 ↔ TC 对照（手工维护）：
 | 2 | `find src/main/java -name '*.java' \| wc -l` | 输出 `1109`（与 RUN-015 记录的基线相同——根模块仍是引擎且一个文件不动；数量变化必须能追溯到设计文档登记的改动） |
 | 3 | `ls protocol/src/main/java/io/github/bearisbug/synaxis/game/protocol plugin-api/src/main/java/io/github/bearisbug/synaxis/plugin server-app/src/main/java/io/github/bearisbug/synaxis/app game-rts/src/main/java/io/github/bearisbug/synaxis/game/rts` | 四个目录都存在，各至少含一个 `.java` 文件 |
 | 4 | `cat protocol/src/main/java/module-info.java` 与 `ls server-app/src/main/java/module-info.java game-rts/src/main/java/module-info.java 2>&1` | 前者只有 `exports`、无任何 `requires`（零第三方依赖）；后两者均 `No such file or directory`（宿主与插件跑 classpath，见 `ADR-M2-005`） |
-| 5 | `./gradlew check --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts` | stdout 含 `BUILD SUCCESSFUL`，退出码 0 |
+| 5 | `./gradlew :protocol:generatePomFileForMavenPublication --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts`，再 `grep -c '<dependency>' protocol/build/publications/maven/pom-default.xml` | 输出 `0`：`:protocol` 发布出去的坐标里没有任何第三方依赖（`ADR-M2-008`、§6）。约定插件 `synaxis.java-library` 给每个模块加的 `api(libs.jetbrainsAnnotations)` 由 `protocol/build.gradle.kts` 摘掉；不摘这里是 `1`，而这个 jar 既要随 Fabric 模组发给客户端、又要在阶段 2 归档成 ABI baseline |
+| 6 | `./gradlew check --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts` | stdout 含 `BUILD SUCCESSFUL`，退出码 0 |
+| 7 | 按 `docs/ENGINE.md` §3.6 的五条命令逐个跑 `tools/pkgdeps.py`（引擎一条，四个新模块各一条，带 `--root-package` 与 `--skip-lower-layer`） | 五条都退出码 0；引擎那条含 `lower layer edges into the rest of the engine: 0`，四个新模块各打印自己的 `root package:` 与 `edges: 0`（当前各只有一个扁平包）。一次扫全仓不算数——包名同前缀，会把四个模块折叠进引擎的桶里 |
 
 后置：无。
 
@@ -567,7 +591,7 @@ REQ-M2 ↔ TC 对照（手工维护）：
 | # | 操作 | 预期 |
 | --- | --- | --- |
 | 1 | 在根 `build.gradle.kts` 加一行 `implementation(project(":game-rts"))`，并在引擎任一类里加 `import io.github.bearisbug.synaxis.game.rts.Unit;` 并引用它 | `git status --porcelain` 输出 2 行（两处改动都落盘） |
-| 2 | `./gradlew :compileJava --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts` | 构建失败、退出码非 0，输出含循环依赖提示（第一强制点是 Gradle 主源集循环依赖，ArchUnit 是第二道闸，见设计文档 §24） |
+| 2 | `./gradlew :compileJava --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts` | 构建失败、退出码非 0，输出含 `Circular dependency between the following tasks:` 与 `:compileJava` → `:game-rts:jar` → `:game-rts:compileJava` → `:compileJava` 的环；失败发生在编译之前，第 1 步那行 `import` 根本没被编译到（第一强制点是 Gradle 主源集循环依赖，ArchUnit 是第二道闸，见设计文档 §24） |
 | 3 | `git checkout -- build.gradle.kts <被改的引擎类>`，再 `./gradlew check --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts` | `git status --porcelain` 无输出；stdout 含 `BUILD SUCCESSFUL` |
 | 4 | `grep -n 'implementation(project(":game-rts"))' docs/DESIGN-M2.md` | 至少一处命中（演练命令记在设计文档侧：§19 Gherkin 与 §26 阶段 1 退出条件行）。扫描范围不得放宽到 `docs/`——那会命中本用例第 1 步自己写的同一串字面量，断言恒真 |
 
@@ -580,11 +604,11 @@ REQ-M2 ↔ TC 对照（手工维护）：
 | # | 操作 | 预期 |
 | --- | --- | --- |
 | 1 | `ls src/main/java/io/github/bearisbug/synaxis/game 2>&1` 与 `ls src/main/java/io/github/bearisbug/synaxis/gameevent` | 前者 `No such file or directory`；后者含 `GameEvent.java`、`GameEventImpl.java`、`GameEventKeys.java`、`GameEventTags.java`、`GameEvents.java`、`package-info.java` 共 6 个文件 |
-| 2 | `grep -rn "synaxis\.game" src/main/java --include='*.java' \| wc -l` | 输出 `0`（引擎主源码不再有 `...synaxis.game` 前缀的引用） |
+| 2 | `grep -rEn "synaxis\.game\b" src/main/java --include='*.java' \| wc -l` | 输出 `0`（引擎主源码不再有 `...synaxis.game` 前缀的引用）。词边界 `\b` 不能省——`synaxis.gamedata` 里也含 `synaxis.game` 这个子串，省掉它这一步永远判不到 `0` |
 | 3 | `cat .git-blame-ignore-revs` | 含该改名提交的完整 SHA |
 | 4 | `./gradlew :test --tests '*ArchitectureTest*' --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts` | `BUILD SUCCESSFUL`；「引擎不得依赖游戏侧、稳定面与宿主」规则通过（现状下不误命中 `io.github.bearisbug.synaxis.network.plugin`） |
-| 5 | 运行 ArchUnit 规则自测（对合成 `JavaClasses` 的单测，测试名待 `REQ-M2-002` 实现后填） | `BUILD SUCCESSFUL`；用例里能点名两条断言——引用 `...game.rts` 判违规、引用 `...network.plugin` 判通过 |
-| 6 | `grep -rn '\.\.plugin\.\.' src/test --include='*.java'` | 退出码 1、无输出（禁止列表必须写完整前缀，不得用 `..plugin..`） |
+| 5 | 在第 4 步同一次运行的测试报告里看 `ArchitectureTest` 的四条用例 | 含规则自测两条且均通过：`theGameSideRuleRejectsADependencyOnTheGameSide`（合成 `JavaClasses` = 引擎侧类 + 测试源集里的 `io.github.bearisbug.synaxis.game.rts.GameSideFixture`，断言规则判违规**且违规消息里点名这两个类**——ArchUnit 的 `failOnEmptyShould` 在 `that()` 一个类都选不中时抛的也是 `AssertionError`，只判异常类型会把「规则退化成空规则」也判成通过）与 `theGameSideRuleAcceptsTheEngineOwnNetworkPluginPackage`（把被引用类换成 `network.plugin` 的 `LoginPlugin`，断言规则通过） |
+| 6 | `grep -rn '"\.\.plugin\.\."' src/test --include='*.java'` | 退出码 1、无输出（禁止列表必须写完整前缀，不得用 `..plugin..`）。扫的是 Java 字符串字面量而不是裸串——规则的 javadoc 会点名这个错误写法并解释它为什么会命中引擎自己的 `network.plugin`，那段警告应当留着 |
 
 后置：无。
 
@@ -629,6 +653,8 @@ REQ-M2 ↔ TC 对照（手工维护）：
 
 #### `TC-GAME-007` 插件按拓扑序启用、逆序禁用 — 对应 `REQ-M2-003` · 级别: 冒烟 · 执行者: AI
 
+**已废弃（M2 范围裁剪，随第二个插件补回），冒烟位由 `TC-GAME-053` 接替**（设计文档 v0.6：M2 只有一个编译期插件，`depends` 拓扑排序与环检测整块推到第二个插件出现时，descriptor 里连 `depends` 字段都没有，本用例的前置构造不出来；见设计文档 §28.3 第 ① 条。补回时仍用本 ID）。
+
 前置：`REQ-M2-003` 已合入；两个探测插件 a（`depends=[b]`）与 b（无依赖）可被 `ServiceLoader` 发现（构造方式见 §3 ROLE-PluginAuthor），两者的 `onEnable` / `onDisable` 各打印一行带自身 id 的日志。
 
 | # | 操作 | 预期 |
@@ -642,6 +668,8 @@ REQ-M2 ↔ TC 对照（手工维护）：
 后置：删除本次生成的 `plugins/a`、`plugins/b`，移除探测插件并确认 `git status --porcelain` 无输出。
 
 #### `TC-GAME-008` 依赖成环时整体拒绝启动 — 对应 `REQ-M2-003` · 级别: 回归 · 执行者: AI
+
+**已废弃（M2 范围裁剪，随第二个插件补回）**（设计文档 v0.6：环检测随依赖解析整块推到第二个插件出现时；M2 的 descriptor 没有 `depends`，构造不出环。见设计文档 §28.3 第 ① 条。补回时仍用本 ID，无替代用例——该行为在 M2 不存在）。
 
 前置：探测插件 a（`depends=[b]`）与 b（`depends=[a]`）。
 
@@ -689,13 +717,15 @@ REQ-M2 ↔ TC 对照（手工维护）：
 | --- | --- | --- |
 | 1 | 启动 `server-app` | 进程仍进入就绪（端口 bind、就绪日志出现）——a 被摘干净但进程继续 |
 | 2 | 查看 stdout | 有一行 ERROR 带 `plugin_id=a` 与异常堆栈 |
-| 3 | `grep plugin_tripped logs/events-*.jsonl` | 至少一行，其 `plugin_id` 为 a |
+| 3 | `grep plugin_enabled logs/events-*.jsonl` | 有 `plugin_id` 为 `rts` 的一行，**没有** `plugin_id` 为 a 的行（a 从未进入 `enabled`；M2 已无 `plugin_tripped` 埋点，见设计文档 §28.3） |
 | 4 | 用探针发 `C2S_HELLO` 登录并进入 play | 收到 `S2C_HELLO` 与至少一条 `S2C_UNIT_SPAWN`（其它插件不受影响） |
 | 5 | 观察 30 秒 stdout | 无 a 的任何后续回调日志（事件、任务、通道都已摘掉） |
 
 后置：`stop` 关闭进程；移除探测插件。
 
 #### `TC-GAME-012` 插件禁用后零回调 — 对应 `REQ-M2-004` · 级别: 回归 · 执行者: AI
+
+**已废弃，被 `TC-GAME-055` 取代**（设计文档 v0.6：M2 没有熔断器，`-Dsynaxis.app.plugin.trip-threshold=1` 这个前置与「抛一次异常即禁用」这条触发路径都不存在了，禁用的唯一触发路径改为停机；触发手段与可观察窗口都变了，按惯例换 ID。熔断触发那一档随熔断器一起补回，见设计文档 §28.3 第 ① 条）。
 
 前置：以 `-Dsynaxis.app.plugin.trip-threshold=1` 启动（该属性是启动期系统属性，见 §3，运行中改不了）；探测插件 a 已 enabled，注册了一个事件监听器（玩家加入时打印一行，用户名为 `trip` 时改为抛 `RuntimeException`）、一个每 100 tick 打印一行的任务、一条通道 `a:probe`。
 
@@ -710,6 +740,8 @@ REQ-M2 ↔ TC 对照（手工维护）：
 后置：`stop`；移除探测插件。
 
 #### `TC-GAME-013` 持续抛异常触发熔断而进程继续 — 对应 `REQ-M2-005` · 级别: 回归 · 执行者: AI
+
+**已废弃，被 `TC-GAME-054` 取代**（设计文档 v0.6：滑窗熔断器整块推到第二个插件出现时，`REQ-M2-005` 只剩「三个包装层各打一次 `plugin_id` 的归因」；「第 20 次触发即 `failed`」这条判据不再成立，替代用例改判三层各一行归因且插件保持 `enabled`。见设计文档 §28.3 第 ① 条，补回时仍用本 ID）。
 
 前置：探测插件 a 监听玩家加入事件，监听器每次调用都抛 `RuntimeException`（因此一次探针 `login` 即触发一次）；熔断阈值取默认（滑窗 60 s、20 次）。
 
@@ -752,17 +784,60 @@ REQ-M2 ↔ TC 对照（手工维护）：
 
 #### `TC-GAME-016` 示例插件按说明跑通 — 对应 `REQ-M2-023` · 级别: 回归 · 执行者: 皆可
 
-前置：`REQ-M2-023` 的示例插件与插件开发说明已合入（说明路径待 `REQ-M2-023` 实现后填）；执行者只读该说明，不查阅其它资料。
+前置：`REQ-M2-023` 的示例插件（`example-plugin/`）与插件开发说明（`docs/PLUGINS.md`）已合入；执行者只读 `docs/PLUGINS.md`，不查阅其它资料。
 
 | # | 操作 | 预期 |
 | --- | --- | --- |
 | 1 | 通读说明并按它新建一个只实现 `SynaxisPlugin` 的模块 | 说明每一步都有可执行命令，无「问一下」类表述；开篇即写明「不支持热加载，改插件 = 重启进程」 |
 | 2 | 执行说明给出的构建命令 | stdout 含 `BUILD SUCCESSFUL` |
 | 3 | 执行说明给出的启动命令 | 进程进入就绪；stdout 含该插件 `onEnable` 的打印 |
-| 4 | 按说明从客户端（或探针）向它的通道发一条消息 | 收到回显负载，内容与发出的完全一致 |
+| 4 | 按说明第 8 节给出的命令 `python3 tools/protocol-probe/probe.py echo --channel hello:echo --payload hi` 向它的通道发一条消息 | 退出码 0，探针打印的回显负载与发出的完全一致；服务端 stdout 含 `echoing 2 bytes back to probe` |
 | 5 | `stop` 后查看日志 | 含该插件 `onDisable` 的打印，进程退出码 0 |
 
 后置：删除新建的示例模块目录，确认 `git status --porcelain` 无输出。
+
+#### `TC-GAME-053` 单插件三段生命周期与数据目录 — 对应 `REQ-M2-003` · 级别: 冒烟 · 执行者: AI
+
+前置：`REQ-M2-003` 已合入；一个探测插件 a 可被 `ServiceLoader` 发现（构造方式见 §3 ROLE-PluginAuthor），其 `onEnable` / `onDisable` 各打印一行带自身 id 的日志；descriptor 里**没有** `depends` 字段（M2 范围裁剪，见设计文档 §28.3 第 ① 条）。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 启动 `server-app` 并等待就绪 | stdout 出现 `synaxis server-app listening on 0.0.0.0:25565` |
+| 2 | 在 stdout 中定位 a 的 `onEnable` 行与就绪日志行 | 两行都存在，且 `onEnable` 的行号小于就绪日志的行号（插件在 bind 之前启用） |
+| 3 | `grep plugin_enabled logs/events-*.jsonl` | 有一行 `plugin_id` 为 a，带 `version` 与 `enable_ms` |
+| 4 | `ls plugins/a` | 数据目录已由宿主创建 |
+| 5 | 向 stdin 输入 `stop` 并等待退出 | 进程退出码 0；stdout 出现 a 的 `onDisable` 行 |
+| 6 | 在停机日志里比较 a 的 `onDisable` 行与进程退出行的先后 | `onDisable` 行在前，且晚于「开始停机」那一行——插件禁用由引擎 `scheduler.shutdown()` 驱动（见设计文档 `API-M2-007`），控制台 `stop` 与 SIGINT 两条路径的日志顺序一致 |
+
+后置：删除本次生成的 `plugins/a`，移除探测插件并确认 `git status --porcelain` 无输出。
+
+#### `TC-GAME-054` 三层异常各带 plugin_id 归因且进程继续 — 对应 `REQ-M2-005` · 级别: 回归 · 执行者: AI
+
+前置：探测插件 a 已 enabled，并在三处各留一条必抛 `RuntimeException` 的路径：① 一个玩家加入事件的监听器；② 一个每 100 tick 执行的任务；③ 一条通道 `a:probe` 的 handler。M2 **没有熔断器**（设计文档 §28.3 第 ① 条），因此抛异常不改变插件状态。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 启动 `server-app` 并等待就绪 | 进入就绪；a 的 `onEnable` 行出现 |
+| 2 | 用探针 `login --hold 0` 登录一次，触发事件监听器抛异常 | stdout 恰多一行带 `plugin_id=a` 的 ERROR 与堆栈；探针本次登录仍成功进入 play |
+| 3 | 等待任务至少执行一次（约 5 秒），查看 stdout | 每次任务执行各多一行带 `plugin_id=a` 的 ERROR；tick 未中断（无 tick 超时告警行） |
+| 4 | 用探针向 `a:probe` 发一条负载 | 连接不断线；stdout 多一行带 `plugin_id=a` 的 ERROR |
+| 5 | 在 60 秒内把第 2 步重复 20 次后查看插件状态与事件台账 | a 仍在工作（第 21 次仍打出同样的 ERROR）；`grep plugin_tripped logs/events-*.jsonl` 无输出（该埋点在 M2 不存在）；进程仍 `nc -z 127.0.0.1 25565` 退出码 0 |
+
+后置：`stop`；移除探测插件，确认 `git status --porcelain` 无输出。
+
+#### `TC-GAME-055` 停机时插件被一次性摘干净 — 对应 `REQ-M2-004` · 级别: 回归 · 执行者: AI
+
+前置：探测插件 a 已 enabled，注册了一个事件监听器（玩家加入时打印一行）、一个每 100 tick 打印一行的任务、一条通道 `a:probe`，并注册了一个准入回调；`:game-rts` 正常启用。M2 里插件被禁用的**唯一**触发路径是停机（没有熔断，见设计文档 §28.3 第 ① 条），因此本用例走停机路径，并用宿主单测补齐停机后不可观察的部分。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 启动后观察 30 秒，并用探针登录一次 | 任务日志行每 5 秒左右出现一次；探针登录时事件监听器的日志行出现 |
+| 2 | 向 stdin 输入 `stop`，记录停机日志 | 出现 a 的 `onDisable` 行；其后直到进程退出，a 的任务日志行与事件监听器日志行各出现 0 次 |
+| 3 | 在停机日志里查 a 注册的准入回调 | 有一行说明该准入回调已被摘掉（宿主随插件禁用一并注销，见设计文档 `API-M2-008`） |
+| 4 | 查看进程退出码与 stdout | 退出码 0；无异常堆栈（以 `at ` 开头的行为 0） |
+| 5 | 运行宿主的「禁用后零回调」单测：`./gradlew :server-app:test --tests 'io.github.bearisbug.synaxis.app.PluginHostIntegrationTest' --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts`（方法 `disablingTakesBackEventsTasksChannelsAndAdmission`） | `BUILD SUCCESSFUL`；该方法断言禁用后事件子节点已 `removeChild`、提交的 `Task` 不再 `isAlive`、准入回调已摘掉、向其通道发消息被丢弃并恰记一行带通道名的 WARN |
+
+后置：移除探测插件，确认 `git status --porcelain` 无输出。
 
 ### M2 · 协议与握手
 
@@ -929,24 +1004,27 @@ REQ-M2 ↔ TC 对照（手工维护）：
 
 ### M2 · 世界管理与审计残留
 
-#### `TC-GAME-029` 地图包整图载入并关闭自动加载 — 对应 `REQ-M2-010`、`REQ-M2-011` · 级别: 冒烟 · 执行者: AI
+#### `TC-GAME-029` 程序化生成的整图载入并关闭自动加载 — 对应 `REQ-M2-010`、`REQ-M2-011` · 级别: 冒烟 · 执行者: AI
 
-前置：由 `REQ-M2-010` 的程序化生成器产出的 512×512、高度 64 的 `.synx`（1,024 个区块），路径填进 `synaxis.app.map`。
+前置：`synaxis.app.map` 填 512×512、高度 64（1,024 个区块）的测试地图**预设 id**（见 §3 地图种子）；地图由 `REQ-M2-010` 的程序化生成器在进程内生成，不读也不写任何地图文件。
 
 | # | 操作 | 预期 |
 | --- | --- | --- |
-| 1 | 以该地图启动 `server-app` | 进入就绪；`grep match_created logs/events-*.jsonl` 与 `grep match_started logs/events-*.jsonl` 各恰有一行，`match_id` 相同 |
-| 2 | 查看 `match_started` 事件的属性 | `chunk_count` 为 `1024`（全部载入完成才进 running）、`load_ms` < 3000、`heap_delta_mb` < 50 |
-| 3 | 打印该实例的 `autoChunkLoad`（运维/调试入口待 `REQ-M2-011` 实现后填） | 值为 `false` |
+| 1 | 以该预设启动 `server-app` | 进入就绪；`grep match_created logs/events-*.jsonl` 与 `grep match_started logs/events-*.jsonl` **各恰有一行**（M2 单局），`match_id` 相同 |
+| 2 | 查看 `match_started` 事件的属性 | `chunk_count` 为 `1024`（全部生成完成才进 running）、`load_ms` < 3000、`heap_delta_mb` < 50 |
+| 3 | 跑 `./gradlew :game-rts:test --tests 'io.github.bearisbug.synaxis.game.rts.MatchIntegrationTest' --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts`（进程内没有打印 `autoChunkLoad` 的运维入口，该断言由 `theWholeMapIsGeneratedBeforeTheMatchRuns` 覆盖） | `BUILD SUCCESSFUL`；该方法断言整图区块数到齐、`hasEnabledAutoChunkLoad()` 为 `false`、实例已注册 |
 | 4 | 用探针握手登录进入 play | 进入世界并收到区块包，未出现 `synaxis:internal-error` 或 `synaxis:match-unavailable` |
 | 5 | 检查就绪日志与 `match_started` 的先后 | `match_started` 的时间戳早于就绪日志（对局在 bind 之前就已 running，见 `API-M2-010` 启动序列） |
 | 6 | 在 `match_created` 与 `match_started` 之间的日志区间里查 tick 计数（tick 计数的打印入口待 `REQ-M2-021` 实现后填） | 全程为 `0`——地图载入跑在启动线程上、不经 `SchedulerManager`（若它被写成 `Scheduler` 任务，tick 线程尚未启动，进程会停在这里不再往下走） |
 | 7 | 就绪之后 `jcmd <pid> Thread.print \| grep -c Syn-TickScheduler` 与 `\| grep -c Syn-Tick-` | 两者都 ≥ 1（启动序列第 ⑥ 步已起 `TickSchedulerThread` 与 dispatcher 的 tick 线程） |
 | 8 | 就绪日志出现后立刻用探针连接并发 `C2S_HELLO` | 3 秒内收到 `S2C_HELLO`（configuration 阶段的入站包只在 tick 里被解释；tick 没起来这一步必然超时成 `synaxis:client-mod-required`） |
+| 9 | 全程用 `lsof -p <pid> \| grep -i 'synx\|\.map'` 或等价手段查地图文件句柄，并在停机后 `git status --porcelain` | 无任何地图文件被打开或写出（M2 不落盘，`.synx` 已推 M3，见设计文档 §28.3 第 ② 条）；工作区干净 |
 
 后置：`stop`。
 
 #### `TC-GAME-030` 损坏或缺失的地图包不产生半载入世界 — 对应 `REQ-M2-010` · 级别: 回归 · 执行者: AI
+
+**已废弃，被 `TC-GAME-056` 取代**（设计文档 v0.6：`.synx` 文件格式整块推到 M3，M2 的地图在进程内生成，既没有 `magic` / `header.version` 可改、也没有文件可截断或指错路径；`creating → ended`（reason=map-invalid）的触发条件改成「未知预设 id / 非法生成参数」。判据与前置都变了，按惯例换 ID。补回 `.synx` 时仍用本 ID，见设计文档 §28.3 第 ② 条）。
 
 前置：有一份可用 `.synx` 的副本可随时还原。
 
@@ -960,6 +1038,21 @@ REQ-M2 ↔ TC 对照（手工维护）：
 
 后置：用副本还原 `.synx`，确认第 1 步的地图能正常载入。
 
+#### `TC-GAME-056` 非法地图参数不产生半载入世界 — 对应 `REQ-M2-010` · 级别: 回归 · 执行者: AI
+
+前置：`REQ-M2-010` 已合入；已知一个可用的地图预设 id（见 §3 地图种子）。生成参数的改写方式：预设是 `game-rts` 的 `MapPreset` 常量，第 3、4 步临时改那里的数字重新构建，跑完还原（第 6 步与后置查工作区干净）。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 把 `synaxis.app.map` 设为一个不存在的预设 id（如 `no-such-map`）后启动 | 日志含 `ERROR plugin.rts - Unknown map preset: map_id=no-such-map, known presets are [...]`；`grep match_ended logs/events-*.jsonl \| tail -1` 的 `reason` 为 `map-invalid`；随后两行 ERROR 分别说明没有准入回调与没有 `running` 对局，进程以非零码退出（启动序列第 ⑤ 步） |
+| 2 | 在同一次启动的日志里查区块生成与 `match_started` | 无区块生成行；本次启动区间内 `grep match_started logs/events-*.jsonl` 为 0 行（不创建任何区块） |
+| 3 | 把预设的 `size_x` 改成 500（不是 16 的倍数）后启动 | 同样 `reason=map-invalid`，日志打印该非法参数与约束「必须是 16 的倍数」；进程以非零码退出 |
+| 4 | 把预设的 `height` 改成 0 后启动 | 同样 `reason=map-invalid`，日志指向「必须是 16 的倍数且 ≥ 16」；进程以非零码退出 |
+| 5 | 对第 1、3、4 三次启动各执行 `nc -z 127.0.0.1 25565` | 三次退出码都非 0（端口从未 bind，不是 bind 之后让玩家撞 `spawningInstance` 的 NPE） |
+| 6 | 把预设 id 与参数改回可用值后启动 | 进入就绪；`match_started` 恰一行，`chunk_count` 为 `1024` |
+
+后置：确认 `git status --porcelain` 无输出（参数改写如果落在仓内文件上，必须还原）。
+
 #### `TC-GAME-031` 边界外的区块列不入队也不报错 — 对应 `REQ-M2-011` · 级别: 回归 · 执行者: AI
 
 前置：对局 `running`，`autoChunkLoad=false`；探针 in_game。
@@ -969,7 +1062,7 @@ REQ-M2 ↔ TC 对照（手工维护）：
 | 1 | 用探针上报一个远超地图边界的镜头锚点（如 `anchor_x=99999`） | 玩家实体被夹取到地图内：随后的实体位置包坐标不超出地图边界 |
 | 2 | 查看服务端 stdout | 无 ERROR 行、无 `NullPointerException`、无 `IllegalArgumentException` |
 | 3 | 把锚点贴着边界来回移动 60 秒，记录探针收到的区块坐标 | 收到的区块全部落在地图范围内；不出现「请求过但永远收不到」的区块（对照第 4 步的记账） |
-| 4 | 运行 `chunkAdder` 越界列的复现测试（测试名待 `REQ-M2-011` 实现后填） | `BUILD SUCCESSFUL`；断言越界列不入 `chunkQueue`、不写 ERROR 日志，且 `sendChunk(null)` 的 NPE 不再发生 |
+| 4 | 运行 `./gradlew :test --tests 'io.github.bearisbug.synaxis.entity.player.PlayerChunkQueueIntegrationTest' --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts` | `BUILD SUCCESSFUL`；`aColumnOutsideTheLoadedMapIsNeverHandedOverAsNull` 断言越界列既不被交给 `sendChunk`（即 `sendChunk(null)` 的 NPE 不再发生）也不进区块包，地图内的列照常送达 |
 
 后置：无。
 
@@ -979,10 +1072,11 @@ REQ-M2 ↔ TC 对照（手工维护）：
 
 | # | 操作 | 预期 |
 | --- | --- | --- |
-| 1 | 用 `synaxis.app.plugins` 排除掉唯一创建对局的插件后启动 | 进程以非零码退出，日志同时说明「没有准入回调」与「没有 `running` 对局」（启动序列第 ⑤ 步的两条断言）；`nc -z 127.0.0.1 25565` 退出码非 0（不是 bind 之后让玩家撞 NPE） |
-| 2 | 正常启动，让唯一对局结束（入口待 `REQ-M2-011` 实现后填），再用探针握手 | 探针收到 `S2C_HELLO` 之后被断开，原因键 `synaxis:match-unavailable` |
+| 1 | 用 `synaxis.app.plugins` 排除掉唯一创建对局的插件后启动 | 进程以非零码退出，日志两行分别为 `No admission provider: …` 与 `No running match: …（found 0）`，随后 `Not binding 0.0.0.0:<port>.`（启动序列第 ⑤ 步的两条断言各报各的）；`nc -z 127.0.0.1 25565` 退出码非 0（不是 bind 之后让玩家撞 NPE） |
+| 2 | 正常启动，让唯一对局结束，再用探针握手。**M2 没有运维侧的结束入口**——对局随插件 `onDisable` 结束，等同停机，所以本步骤在 M2 只能由「准入回调在 `match_state ≠ running` 时回 `Reject`」这条代码路径保证，真机档等阶段 4 探针实现 `C2S_HELLO` 后连同「运维结束对局」的入口一起补 | 探针收到 `S2C_HELLO` 之后被断开，原因键 `synaxis:match-unavailable` |
 | 3 | `grep client_rejected logs/events-*.jsonl \| tail -1` | `reason` 为 `match-unavailable` |
 | 4 | 查看服务端 stdout | 无 `spawningInstance` 相关的 `NullPointerException`，无 `synaxis:internal-error` |
+| 5 | `./gradlew :game-rts:test --tests '*MatchIntegrationTest.endMarksTheMatchEndedBeforeItTearsTheInstanceDown'` | `BUILD SUCCESSFUL`：对局在拆掉自己的世界**之前**就已经是 `ENDED`，逐块卸载期间采样到的状态没有一次是 `RUNNING`（准入回调在另一条线程上读它，读到 `RUNNING` 就会把一个正在注销的实例交出去） |
 
 后置：`stop`。
 
@@ -994,37 +1088,37 @@ REQ-M2 ↔ TC 对照（手工维护）：
 | --- | --- | --- |
 | 1 | `grep -rn "SharedInstance" src testing protocol plugin-api server-app game-rts --include='*.java'` | 退出码 1、无输出（全库零命中） |
 | 2 | `grep -rn "getSharedInstances\|createSharedInstance\|areLinked" src --include='*.java'` | 退出码 1、无输出 |
-| 3 | 运行「有在线玩家的区块拒绝卸载」测试（测试名待 `REQ-M2-012` 实现后填） | `BUILD SUCCESSFUL`；断言 `unloadChunk` 抛 `IllegalStateException` 且区块状态零变更 |
-| 4 | `./gradlew check --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts` | `BUILD SUCCESSFUL`（删除 12 个文件后编译与既有测试全绿） |
+| 3 | 运行 `./gradlew :test --tests 'io.github.bearisbug.synaxis.instance.UnloadChunkIntegrationTest' --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts` | `BUILD SUCCESSFUL`；`unloadingChunkWithPlayerInsideIsRejected` 断言 `unloadChunk` 抛 `IllegalStateException` 且区块状态零变更 |
+| 4 | `./gradlew check --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts` | `BUILD SUCCESSFUL`（删掉 `SharedInstance` 与它的集成测试、改完五处引用之后，编译与既有测试全绿） |
 
 后置：无。
 
 #### `TC-GAME-034` 断线玩家不会变成 tracker 幽灵 — 对应 `REQ-M2-013` · 级别: 回归 · 执行者: AI
 
-前置：`REQ-M2-013` 的修复提交已合入，且有对应的复现测试（测试名待实现后填）。
+前置：`REQ-M2-013` 的修复提交已合入；复现测试是 `io.github.bearisbug.synaxis.instance.UnloadChunkIntegrationTest#unloadingChunkRemovesADisconnectedPlayer`。
 
 | # | 操作 | 预期 |
 | --- | --- | --- |
-| 1 | `git checkout <修复提交>^` 后运行该复现测试 | 测试**失败**（先红），失败断言为 `getEntityByUuid(该玩家)` 返回非 null |
-| 2 | `git checkout <修复提交>` 后运行同一测试 | `BUILD SUCCESSFUL`（后绿）；断言该玩家被同步移除且 `getEntityByUuid` 返回 null |
+| 1 | **只回退实现、保留测试**：`git checkout <修复提交>^ -- src/main/java/io/github/bearisbug/synaxis/instance/InstanceContainer.java`，再运行该复现测试（修复与复现测试在同一个提交里，整树 `git checkout <修复提交>^` 会把测试方法一起带走，那样跑出来是绿的） | 测试**失败**（先红），第一条红的是 `assertTrue(player.isRemoved())`，消息 `the disconnected player survived the unload of its chunk`；其后的 `getEntityByUuid(该玩家)` 返回非 null 同样会红 |
+| 2 | `git checkout HEAD -- src/main/java/io/github/bearisbug/synaxis/instance/InstanceContainer.java` 后运行同一测试 | `BUILD SUCCESSFUL`（后绿）；断言该玩家被同步移除且 `getEntityByUuid` 返回 null |
 | 3 | 真机复现：探针握手登录后立刻断开，随即 `stop`（局末 `unregisterInstance` 逐块卸载是最高频触发场景） | 进程在 15 秒内退出、退出码 0；stdout 无残留实体相关 ERROR、无线程转储 |
 | 4 | 查看停机日志 | 含 `unregisterInstance` 完成行；无「玩家仍在区块内」类告警 |
 
-后置：`git checkout` 回工作分支，确认工作区干净。
+后置：第 2 步已把实现文件恢复到 `HEAD`，确认 `git status --porcelain` 无输出。
 
 #### `TC-GAME-035` 视距收缩后两端区块集合一致 — 对应 `REQ-M2-014` · 级别: 回归 · 执行者: AI
 
-前置：`REQ-M2-014` 的修复提交已合入，且有对应的复现测试（测试名待实现后填）。
+前置：`REQ-M2-014` 的修复提交已合入；复现测试是 `io.github.bearisbug.synaxis.entity.player.PlayerChunkQueueIntegrationTest` 的两条——`shrinkingTheViewDistanceDropsThePendingChunksItUnloaded`（待发队列里的越界区块不再发出）与 `shrinkingTheViewDistanceUnloadsAroundTheRingTheClientHas`（收缩以客户端环的中心为准）。
 
 | # | 操作 | 预期 |
 | --- | --- | --- |
-| 1 | `git checkout <修复提交>^` 后运行该复现测试 | 测试**失败**（先红） |
-| 2 | `git checkout <修复提交>` 后运行同一测试 | `BUILD SUCCESSFUL`（后绿）：已判定卸载的区块不再出队发送 |
+| 1 | **只回退实现、保留测试**：`git checkout <修复提交>^ -- src/main/java/io/github/bearisbug/synaxis/entity/Player.java`，再运行那两条复现测试（修复与复现测试在同一个提交里，整树 `git checkout <修复提交>^` 会把测试方法一起带走，那样跑出来是绿的） | 两条测试都**失败**（先红）。注意同一个文件上还压着更晚的 `REQ-M2-011` 修复，回退到 `<修复提交>^` 会把它一起带走，所以同类里的 `aColumnOutsideTheLoadedMapIsNeverHandedOverAsNull` 也会红——判据只看上面那两条 |
+| 2 | `git checkout HEAD -- src/main/java/io/github/bearisbug/synaxis/entity/Player.java` 后运行同一测试 | `BUILD SUCCESSFUL`（后绿）：已判定卸载的区块不再出队发送 |
 | 3 | 真机：探针以视距 12 登录，稳定后改报视距 4 | 探针按收到的 `ChunkData` 与 `UnloadChunk` 记账，得到一个区块集合 |
-| 4 | 打印服务端记账的 `chunksLoadedByClient`（入口待 `REQ-M2-014` 实现后填），与第 3 步的集合对比 | 两个集合完全相同（没有「服务端以为发了、客户端没有」的区块） |
+| 4 | 与第 3 步的集合对比服务端的记账。`chunksLoadedByClient` 没有对外入口，两处判据改为：① 第 2 步那两条测试绿（服务端的出队与收缩都以它为中心）；② 第 3 步收到的 `ChunkData` 减去 `UnloadChunk` 之后，剩下的区块全部落在视距 4 的环内 | 两个集合完全相同（没有「服务端以为发了、客户端没有」的区块） |
 | 5 | 查看服务端 stdout | 无 ERROR、无异常堆栈 |
 
-后置：`git checkout` 回工作分支，确认工作区干净。
+后置：第 2 步已把实现文件恢复到 `HEAD`，确认 `git status --porcelain` 无输出。
 
 #### `TC-GAME-036` 游戏侧结构化 tag 无条件禁止 — 对应 `REQ-M2-015` · 级别: 回归 · 执行者: AI
 
@@ -1032,10 +1126,10 @@ REQ-M2 ↔ TC 对照（手工维护）：
 
 | # | 操作 | 预期 |
 | --- | --- | --- |
-| 1 | `./gradlew :game-rts:test --tests '*Architecture*' --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts` | `BUILD SUCCESSFUL`；报告含「游戏侧不得依赖 `Tag.Structure` / `Tag.View` / `TagHandler.fromCompound`」规则且为通过 |
+| 1 | `./gradlew :game-rts:test --tests '*Architecture*' --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts` | `BUILD SUCCESSFUL`；跑的是 `io.github.bearisbug.synaxis.game.rts.ArchitectureTest` 的三条——`gameSideDoesNotUseTheStructuredTags`（游戏侧现状不碰这三者）、`theRuleRejectsAGameClassCallingTheTagIndex`（规则对一个合成的违规类真的会红，排除空规则恒绿）与 `theRuleRejectsAGameClassReferencingTheTagIndex`（同一个违规写成方法引用 `TagHandler::fromCompound` 也会红——ArchUnit 把方法引用建模成 `JavaMethodReference`，不进 `getMethodCallsFromSelf()`，规则若用 `callMethodWhere` 就会放过它） |
 | 2 | `grep -rn "Tag.Structure\|Tag.View\|TagHandler.fromCompound" game-rts/src/main/java` | 退出码 1、无输出 |
 | 3 | 在 `game-rts` 任一类临时加一处 `Tag.Structure(...)` 调用并重跑第 1 步，然后撤销 | 第 1 步失败并指向该调用点（无条件禁止，与 compound 来源无关）；撤销后 `git status --porcelain` 无输出 |
-| 4 | `grep -n "不可用于不可信数据" src/main/java/io/github/bearisbug/synaxis/tag/Tag.java src/main/java/io/github/bearisbug/synaxis/tag/TagHandler.java` | 两个文件各至少一处命中（Javadoc 已写明） |
+| 4 | `grep -n "untrusted data" src/main/java/io/github/bearisbug/synaxis/tag/Tag.java src/main/java/io/github/bearisbug/synaxis/tag/TagHandler.java`（引擎源码里的注释与 Javadoc 一律英文，判据按原文写） | 两个文件各至少一处命中：`Tag.Structure` / `Tag.View` / `TagHandler.fromCompound` 的 Javadoc 都写明不可用于不可信数据 |
 | 5 | `grep -rln "Tag.Structure" src/test --include='*ArchitectureTest*'` | 无输出（该规则不在引擎的 `ArchitectureTest` 里——写在那边 classpath 上没有游戏类，规则恒绿） |
 
 后置：确认工作区干净。
@@ -1233,7 +1327,7 @@ REQ-M2 ↔ TC 对照（手工维护）：
 | 1 | `ls smoke 2>&1` 与 `grep -n "smoke" settings.gradle.kts` | 前者 `No such file or directory`；后者退出码 1、无输出 |
 | 2 | `./gradlew :server-app:run --no-daemon --console=plain --init-script gradle/init/aliyun-mirror.init.gradle.kts` | stdout 出现 `synaxis server-app listening on 0.0.0.0:25565`；`nc -z 127.0.0.1 25565` 退出码 0 |
 | 3 | 用 `-Dsynaxis.app.port=25570` 再启动一次 | 就绪日志里的端口为 25570，`nc -z 127.0.0.1 25570` 退出码 0 |
-| 4 | 向 stdin 输入 `stop` | 进程在 15 秒内退出、退出码 0；日志显示先逆序 `onDisable` 插件、后停引擎 |
+| 4 | 向 stdin 输入 `stop` | 进程在 15 秒内退出、退出码 0；日志里 `Disabling plugin: plugin_id=…` 按启用的逆序出现在 `Stopping synaxis server.` 之后、`Shutting down all thread pools.` 之前——插件的 `onDisable` 跑在 tick 线程已停、引擎线程池未关的那一段（宿主把它注册成引擎的 shutdown task，控制台与 SIGINT 两条路走同一段） |
 | 5 | 核对本文档 §3 与 §1 | §3 生效的启动段已是 `:server-app:run`（smoke 段作废）；§1 变更记录里有本次「废旧 ID 换新 ID」的登记 |
 
 后置：无。
@@ -1250,9 +1344,9 @@ REQ-M2 ↔ TC 对照（手工维护）：
 | 4 | 用探针握手成功后**再发一次 `C2S_HELLO`** | 被断开，原因键 `synaxis:protocol-error`（`complete` 返回 false 判为重复握手） |
 | 5 | 用探针进入 configuration 后在 1 秒时主动断开 TCP | 服务端在 1 秒左右就释放该连接的等待（日志里该 `connection_id` 的最后一行早于 3 秒），不是干等满 3 秒 |
 | 6 | 让插件的准入回调返回 `Reject("synaxis:match-unavailable")`（注入方式待 `REQ-M2-024` 实现后填），再用探针握手 | 探针收到 `S2C_HELLO` 之后被断开，原因键 `synaxis:match-unavailable`；`grep client_rejected logs/events-*.jsonl \| tail -1` 的 `reason` 为 `match-unavailable`；无 `synaxis:internal-error` |
-| 7 | 让准入回调**抛异常**，再用探针握手 | 同样以 `synaxis:match-unavailable` 断开；日志里有一行带 `plugin_id` 的 ERROR，且该次计入熔断计数 |
+| 7 | 让准入回调**抛异常**，再用探针握手 | 同样以 `synaxis:match-unavailable` 断开；日志里有一行带 `plugin_id` 的 ERROR（M2 没有熔断计数，见设计文档 §28.3 第 ① 条） |
 | 8 | 让准入回调**睡 500 毫秒后正常返回 `Accept`**，再用探针握手 | 玩家**照常进入 play**（200 毫秒是事后测量的软预算，内联调用中止不了它，不改判为 `Reject`）；日志里有一行带 `plugin_id` 与实测耗时（≥ 500 毫秒）的 WARN；两条探针**同时**发起时，各自从 `S2C_HELLO` 到 `JoinGame` 都是约 500 毫秒（注入对唯一的 provider 全局生效，所以两条都慢），而**不是**串行的约 1,000 毫秒——这证明两条连接各自跑在自己的 configuration 虚拟线程上，没有互相阻塞 |
-| 9 | 让第二个插件也调用 `admission().register(...)` 后启动 | 第二次注册抛 `IllegalStateException`，进程以非零码退出并点名两个 `plugin_id`；端口未 bind |
+| 9 | 让第二个插件也调用 `admission().register(...)` 后启动 | 第二次注册抛 `IllegalStateException`，该插件转 `failed`、被摘干净；日志里有一行 `Plugin failed to enable: plugin_id=<第二个>` 的 ERROR，随行的异常消息同时点名持槽的第一个 `plugin_id`。**进程继续走启动序列并照常 bind**——第一个插件仍持有槽位，`API-M2-010` 第 ⑤ 步的断言成立（一个 `failed`、其余照常，见设计文档 §11.2）。「一个 provider 都没有 → 非零码退出且端口未 bind」是另一档，由 `TC-GAME-032` 第 1 步判 |
 
 后置：撤掉第 6～9 步的注入，`stop`。
 
@@ -1288,12 +1382,12 @@ REQ-M2 ↔ TC 对照（手工维护）：
 
 - **全量轮**（全部用例）：首次成稿、每个阶段 gate（引擎域阶段 0、2、3；游戏域 `docs/DESIGN-M2.md` §26 的阶段 1～6b）、跨功能域改动、地基变更（JDK、Gradle、镜像、协议版本、模块拆分、启动入口）。
 - **局部轮**（受影响用例 + 全部冒烟级）：单一需求改动。受影响用例 = 本次改动触及的 `REQ-*` / `REQ-M2-*` 所对应的 TC（M2 侧的对照表在 §2，机械校验查不到它）；无 REQ 变更的改动（纯 bug 修、重构）按触及的功能域圈定：
-  - 引擎域：构建与仓库 → TC-001、TC-002、TC-004、TC-006、TC-021、TC-029，删除与注册表 → TC-008、TC-009、TC-020，命名与合规 → TC-011、TC-028，协议 → TC-012、TC-014、TC-018、TC-019、TC-026、TC-027，卫生 → TC-015、TC-016，门面与配置 → TC-023、TC-025，分层 → TC-024。
-  - 游戏域：模块与门禁 → TC-GAME-001～TC-GAME-006，插件宿主 → TC-GAME-007～TC-GAME-016，协议与握手 → TC-GAME-017～TC-GAME-028、TC-GAME-049、TC-GAME-050，世界与对局 → TC-GAME-029～TC-GAME-036，单位与寻路 → TC-GAME-052、TC-GAME-039～TC-GAME-042、TC-GAME-051，镜头 → TC-GAME-043、TC-GAME-044，客户端模组 → TC-GAME-038、TC-GAME-045～TC-GAME-047，启动器 → TC-GAME-048、TC-GAME-049、TC-GAME-050。
+  - 引擎域：构建与仓库 → TC-001、TC-002、TC-004、TC-006、TC-021、TC-029，删除与注册表 → TC-008、TC-009、TC-020，命名与合规 → TC-011、TC-028，协议 → TC-014、TC-018、TC-019、TC-026、TC-027、TC-030，卫生 → TC-015、TC-016，门面与配置 → TC-023、TC-025，分层 → TC-024。
+  - 游戏域：模块与门禁 → TC-GAME-001～TC-GAME-006，插件宿主 → TC-GAME-009～TC-GAME-011、TC-GAME-014～TC-GAME-016、TC-GAME-053～TC-GAME-055（TC-GAME-007、TC-GAME-008、TC-GAME-012、TC-GAME-013 已废弃），协议与握手 → TC-GAME-017～TC-GAME-028、TC-GAME-049、TC-GAME-050，世界与对局 → TC-GAME-029、TC-GAME-031～TC-GAME-036、TC-GAME-056（TC-GAME-030 已废弃），单位与寻路 → TC-GAME-052、TC-GAME-039～TC-GAME-042、TC-GAME-051，镜头 → TC-GAME-043、TC-GAME-044，客户端模组 → TC-GAME-038、TC-GAME-045～TC-GAME-047，启动器 → TC-GAME-048、TC-GAME-049、TC-GAME-050。
   - 跨域牵连（必须一起跑）：动了启动入口或就绪日志 → 加 TC-GAME-048、TC-GAME-029、TC-GAME-032 与全部以进程为前置的引擎域用例（启动序列一变，「对局在 bind 之前就绪、tick 在 bind 之后才起」这条口径就要重验）；动了握手、准入回调或探针 → 加 TC-GAME-049、TC-GAME-050 与 TC-004、TC-014、TC-018、TC-019、TC-020、TC-026、TC-027 七条存量 TC；动了 `:protocol` 消息布局 → 加 TC-GAME-017 与客户端侧同一份向量；动了引擎 `Entity` 的位置推进入口 → 加 TC-GAME-051 与 TC-GAME-040。
   - 影响面不确定时升级为全量轮。
 - **复测轮**（上轮失败用例 + 全部冒烟级）：修复失败项之后。
-- **人工收口轮**（仅上轮「待人工」用例）：AI 轮之后由人工补测 TC-012、TC-016、TC-GAME-020、TC-GAME-038、TC-GAME-046、TC-GAME-047，不要求冒烟级。
+- **人工收口轮**（仅上轮「待人工」用例）：AI 轮之后由人工补测 TC-016、TC-030、TC-GAME-020、TC-GAME-038、TC-GAME-046、TC-GAME-047，不要求冒烟级。
 - **未实现即阻塞**：`TC-GAME-*` 的前置多数要求对应 `REQ-M2-*` 已合入；未合入时该用例登记「阻塞」并写明缺哪条 REQ，不得臆测通过，也不得因此把它从范围里悄悄删掉。
 
 ## 6. 执行记录
@@ -1435,4 +1529,4 @@ RUN-003 证据：`docs/test-runs/RUN-003/tc-001.txt`、`docs/test-runs/RUN-003/t
 - `CommandPacketFilteringTest` 单独运行必挂，依赖其他 `@EnvTest` 先初始化静态 `serverProcess` — 接受理由：全量运行时通过，根因是 `MinecraftServer` 静态门面，阶段 4 门面改造时消失；关联：设计文档 §28 技术债，TC-003。
 - 上游 `ObjectPoolTest` 在 jcstress pre-test 阶段 NPE，jcstress 插件与 isolated-projects 不兼容 — 接受理由：阶段 0 接入 CI 时单独 job 关闭这两项并修该测试；关联：TC-005。
 - `testNamingCheck` 在 `main` 上有 10 个既有命名违规（`ArgumentItemStackTest`、`EntityTrackerLeakTest`、`ItemStackTemplateTest`、`UnsyncedComponentTest`、`PacketCompressionTest`、`PacketWriteQueueTest`、`PlayerConnectionKickTest`、`SocketWriteStateTransitionTest`、`RegistryTagCodecTest`、`PacketViewableUtilsConcurrencyTest`），任何一次非增量的 `./gradlew check`（`--rerun-tasks`、干净 checkout、CI 首跑，或 `build-src` 改动导致任务增量状态失效）都会红。该任务是 `@Incremental` 且 `outputs.upToDateWhen { true }`，日常增量构建只扫改动过的文件，所以这批违规平时不可见 — 跟进：随 `REQ-004` CI 门禁重命名这 10 个类；关联：TC-001、TC-003。
-- 探针 `echo` 子命令在 smoke 删除后归属未定：`docs/DESIGN-M2.md` §24 仍把 `echo` 列为必须跑通的六个探针子命令之一，但它走的是 smoke 的 `synaxis:main` 通道，而 `REQ-M2-006` 规定 `synaxis` 是宿主保留前缀、通道归插件所有 — 接受理由：不阻塞 M2 阶段 1～3，到阶段 4 实现握手时一并拍板（宿主自带一条诊断通道，或 `echo` 随 smoke 一起退役并按惯例废弃 TC-012 的 echo 步骤）；关联：TC-GAME-049 第 4 步、TC-012、设计文档 §24。
+- 探针 `echo` 子命令归属未定：`smoke` 已随 `REQ-M2-021` 删除，`synaxis:main` 通道再无提供方，而 `docs/DESIGN-M2.md` §24 仍把 `echo` 列为必须跑通的六个探针子命令之一；`REQ-M2-006` 规定 `synaxis` 是宿主保留前缀、通道归插件所有，因此不能简单地让某个插件接手同名通道 — 接受理由：不阻塞阶段 2 与阶段 3，到阶段 4 实现握手时一并拍板（宿主自带一条 `synaxis:*` 诊断通道，或 `echo` 子命令随 smoke 一起退役）。TC-012 的 echo 那一档已按惯例废弃，替代用例 `TC-030` 不含 echo；关联：TC-GAME-049 第 4 步、`TC-030`、设计文档 §24。

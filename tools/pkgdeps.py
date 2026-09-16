@@ -1,15 +1,20 @@
 #!/usr/bin/env python3
-"""Top level package dependency matrix for the engine sources.
+"""Top level package dependency matrix for one module of the repository.
 
 Reads every ``.java`` file under the given source roots, folds each
-``import io.github.bearisbug.synaxis.…`` statement onto the top level package it belongs to
+``import <root package>.…`` statement onto the top level package it belongs to
 and prints the resulting matrix, the fan in / fan out table and — the number the
 layering gate cares about — the edges that leave the lower layer.
 
-Usage::
+Run it per module, not over the whole repository: every module lives under the same
+``io.github.bearisbug.synaxis`` prefix, so a single run over all of them would fold four modules
+onto two or three buckets and hide their internal structure. Point ``--root-package`` at the module
+root and drop the lower layer report for the modules that have no such layering::
 
-    python3 tools/pkgdeps.py                 # matrix + lower layer report
+    python3 tools/pkgdeps.py                 # the engine: matrix + lower layer report
     python3 tools/pkgdeps.py --detail        # also list the offending files
+    python3 tools/pkgdeps.py game-rts/src/main/java \
+        --root-package io.github.bearisbug.synaxis.game.rts --skip-lower-layer
 
 The lower layer is the same set the ArchUnit rule in
 ``src/test/java/io/github/bearisbug/synaxis/ArchitectureTest.java`` enforces; keep the two in
@@ -24,7 +29,7 @@ import pathlib
 import re
 import sys
 
-ROOT_PACKAGE = "io.github.bearisbug.synaxis"
+DEFAULT_ROOT_PACKAGE = "io.github.bearisbug.synaxis"
 
 # Classes that sit directly in the root package and therefore fold onto <root>,
 # but that carry no engine dependency of their own, so the lower layer may use
@@ -46,15 +51,19 @@ LOWER_LEVEL_PACKAGES = (
 )
 
 PACKAGE_PATTERN = re.compile(r"^\s*package\s+([A-Za-z0-9_.]+)\s*;", re.MULTILINE)
-IMPORT_PATTERN = re.compile(
-    r"^\s*import\s+(?:static\s+)?(" + re.escape(ROOT_PACKAGE) + r"\.[A-Za-z0-9_.$]+)\s*;",
-    re.MULTILINE,
-)
 
 
-def top_level(fqn: str) -> str:
-    """Fold a fully qualified name onto its top level engine package."""
-    tail = fqn[len(ROOT_PACKAGE) + 1:] if fqn.startswith(ROOT_PACKAGE + ".") else ""
+def import_pattern(root_package: str) -> re.Pattern:
+    """The import statements that stay inside the scanned root package."""
+    return re.compile(
+        r"^\s*import\s+(?:static\s+)?(" + re.escape(root_package) + r"\.[A-Za-z0-9_.$]+)\s*;",
+        re.MULTILINE,
+    )
+
+
+def top_level(fqn: str, root_package: str) -> str:
+    """Fold a fully qualified name onto its top level package inside the root package."""
+    tail = fqn[len(root_package) + 1:] if fqn.startswith(root_package + ".") else ""
     head = tail.split(".", 1)[0]
     return head if head[:1].islower() else "<root>"
 
@@ -70,21 +79,22 @@ def imported_type(fqn: str) -> str:
     return ".".join(kept)
 
 
-def scan(roots: list[pathlib.Path]) -> tuple[dict, collections.Counter, dict]:
+def scan(roots: list[pathlib.Path], root_package: str) -> tuple[dict, collections.Counter, dict]:
     """Return per package file counts, the edge counter and the per edge files."""
     files: collections.Counter = collections.Counter()
     edges: collections.Counter = collections.Counter()
     witnesses: dict = collections.defaultdict(list)
+    imports = import_pattern(root_package)
     for root in roots:
         for path in sorted(root.rglob("*.java")):
             text = path.read_text(encoding="utf-8")
             declared = PACKAGE_PATTERN.search(text)
-            if declared is None or not declared.group(1).startswith(ROOT_PACKAGE):
+            if declared is None or not declared.group(1).startswith(root_package):
                 continue
-            source = top_level(declared.group(1) + ".X")
+            source = top_level(declared.group(1) + ".X", root_package)
             files[source] += 1
-            for target_fqn in IMPORT_PATTERN.findall(text):
-                target = top_level(target_fqn)
+            for target_fqn in imports.findall(text):
+                target = top_level(target_fqn, root_package)
                 if target == source:
                     continue
                 edges[(source, target)] += 1
@@ -108,6 +118,16 @@ def main() -> int:
         default=["src/main/java"],
         help="source roots to scan (default: src/main/java)",
     )
+    parser.add_argument(
+        "--root-package",
+        default=DEFAULT_ROOT_PACKAGE,
+        help=f"the package the fold and the import filter are relative to (default: {DEFAULT_ROOT_PACKAGE})",
+    )
+    parser.add_argument(
+        "--skip-lower-layer",
+        action="store_true",
+        help="drop the lower layer report, for the modules that have no such layering",
+    )
     parser.add_argument("--detail", action="store_true", help="list the offending files")
     args = parser.parse_args()
 
@@ -117,7 +137,7 @@ def main() -> int:
         print("no such source root: " + ", ".join(str(root) for root in missing), file=sys.stderr)
         return 2
 
-    files, edges, witnesses = scan(roots)
+    files, edges, witnesses = scan(roots, args.root_package)
 
     fan_out = collections.Counter()
     fan_in = collections.Counter()
@@ -129,7 +149,7 @@ def main() -> int:
         out_imports[source] += count
         in_imports[target] += count
 
-    print(f"source roots: {', '.join(str(root) for root in roots)}")
+    print(f"source roots: {', '.join(str(root) for root in roots)}   root package: {args.root_package}")
     print(f"packages: {len(files)}   edges: {len(edges)}   imports: {sum(edges.values())}")
 
     print("\npackage                files  fanout  fanin  outImp  inImp")
@@ -142,6 +162,9 @@ def main() -> int:
     print("\nedges (source -> target, imports)")
     for (source, target), count in sorted(edges.items(), key=lambda item: -item[1]):
         print(f"  {source:<14} -> {target:<14} {count:>4}")
+
+    if args.skip_lower_layer:
+        return 0
 
     lower = {
         edge: count

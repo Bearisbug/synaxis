@@ -54,7 +54,6 @@ import io.github.bearisbug.synaxis.event.player.PlayerTickEvent;
 import io.github.bearisbug.synaxis.instance.Chunk;
 import io.github.bearisbug.synaxis.instance.EntityTracker;
 import io.github.bearisbug.synaxis.instance.Instance;
-import io.github.bearisbug.synaxis.instance.SharedInstance;
 import io.github.bearisbug.synaxis.instance.block.Block;
 import io.github.bearisbug.synaxis.inventory.AbstractInventory;
 import io.github.bearisbug.synaxis.inventory.Inventory;
@@ -209,8 +208,12 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
     private int chunkBatchLead = 0; // Number of batches sent without a reply
 
     final ChunkRange.ChunkConsumer chunkAdder = (chunkX, chunkZ) -> {
-        // Load new chunks
-        var _ = this.instance.loadOptionalChunk(chunkX, chunkZ).thenAccept(this::sendChunk);
+        // Load new chunks. With auto chunk load off, a column outside the map comes back as an empty
+        // future: there is nothing to send, and handing that null to sendChunk would only throw into a
+        // future nobody keeps (REQ-M2-011)
+        var _ = this.instance.loadOptionalChunk(chunkX, chunkZ).thenAccept(chunk -> {
+            if (chunk != null) sendChunk(chunk);
+        });
     };
     final ChunkRange.ChunkConsumer chunkRemover = (chunkX, chunkZ) -> {
         // Unload old chunks
@@ -670,17 +673,10 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
     public CompletableFuture<Void> setInstance(Instance instance, Pos spawnPosition) {
         final Instance currentInstance = this.instance;
         Check.argCondition(currentInstance == instance, "Instance should be different than the current one");
-        if (SharedInstance.areLinked(currentInstance, instance) && spawnPosition.sameChunk(this.position)) {
-            // The player already has the good version of all the chunks.
-            // We just need to refresh his entity viewing list and add him to the instance
-            spawnPlayer(instance, spawnPosition, false, false, false);
-            return AsyncUtils.VOID_FUTURE;
-        }
-        // Must update the player chunks
         chunkUpdateLimitChecker.clearHistory();
         final boolean dimensionChange = currentInstance != null && !Objects.equals(currentInstance.getDimensionName(), instance.getDimensionName());
         final Consumer<Instance> runnable = (i) -> spawnPlayer(i, spawnPosition,
-                currentInstance == null, dimensionChange, true);
+                currentInstance == null, dimensionChange);
 
         resetChunkQueue();
 
@@ -757,35 +753,31 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
      *
      * @param spawnPosition the position to teleport the player
      * @param firstSpawn    true if this is the player first spawn
-     * @param updateChunks  true if chunks should be refreshed, false if the new instance shares the same
-     *                      chunks
      */
     private void spawnPlayer(Instance instance, Pos spawnPosition,
-                             boolean firstSpawn, boolean dimensionChange, boolean updateChunks) {
+                             boolean firstSpawn, boolean dimensionChange) {
         if (!firstSpawn && !dimensionChange) {
             // Player instance changed, clear current viewable collections
-            if (updateChunks) {
-                final int oldViewDistance = effectiveViewDistance();
-                final int newViewDistance = effectiveViewDistance(instance);
-                final int newChunkX = spawnPosition.chunkX();
-                final int newChunkZ = spawnPosition.chunkZ();
-                ChunkRange.chunksInRange(
-                        (int) this.chunksLoadedByClient.x(), (int) this.chunksLoadedByClient.z(), oldViewDistance,
-                        (x, z) -> {
-                            boolean inNewView = Math.abs(x - newChunkX) <= newViewDistance
-                                    && Math.abs(z - newChunkZ) <= newViewDistance;
-                            if (!inNewView) {
-                                // Only send UnloadChunkPacket for chunks no longer in the new view.
-                                // This alleviates a 26.2 client bug where, if it processes an UnloadChunkPacket
-                                // and a ChunkDataPacket for the same chunk in the same frame, the chunk disappears.
-                                // https://bugs.mojang.com/browse/MC/issues/MC-310041
-                                // TODO(26.3): Revert this change; the client bug is fixed in 26.3-snapshot5
-                                sendPacket(new UnloadChunkPacket(x, z));
-                            }
-                            process().eventHandler().call(new PlayerChunkUnloadEvent(this, x, z));
+            final int oldViewDistance = effectiveViewDistance();
+            final int newViewDistance = effectiveViewDistance(instance);
+            final int newChunkX = spawnPosition.chunkX();
+            final int newChunkZ = spawnPosition.chunkZ();
+            ChunkRange.chunksInRange(
+                    (int) this.chunksLoadedByClient.x(), (int) this.chunksLoadedByClient.z(), oldViewDistance,
+                    (x, z) -> {
+                        boolean inNewView = Math.abs(x - newChunkX) <= newViewDistance
+                                && Math.abs(z - newChunkZ) <= newViewDistance;
+                        if (!inNewView) {
+                            // Only send UnloadChunkPacket for chunks no longer in the new view.
+                            // This alleviates a 26.2 client bug where, if it processes an UnloadChunkPacket
+                            // and a ChunkDataPacket for the same chunk in the same frame, the chunk disappears.
+                            // https://bugs.mojang.com/browse/MC/issues/MC-310041
+                            // TODO(26.3): Revert this change; the client bug is fixed in 26.3-snapshot5
+                            sendPacket(new UnloadChunkPacket(x, z));
                         }
-                );
-            }
+                        process().eventHandler().call(new PlayerChunkUnloadEvent(this, x, z));
+                    }
+            );
         }
 
         if (dimensionChange) sendDimension(instance.getDimensionType(), instance.getDimensionName());
@@ -794,17 +786,15 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
         // AddEntityToInstanceEvent may have been cancelled, do not continue with a half-spawned player
         if (this.instance != instance) return;
 
-        if (updateChunks) {
-            final int chunkX = spawnPosition.chunkX();
-            final int chunkZ = spawnPosition.chunkZ();
-            chunksLoadedByClient = new Vec(chunkX, chunkZ);
-            chunkUpdateLimitChecker.addToHistory(getChunk());
-            sendPacket(new UpdateViewPositionPacket(chunkX, chunkZ));
+        final int chunkX = spawnPosition.chunkX();
+        final int chunkZ = spawnPosition.chunkZ();
+        chunksLoadedByClient = new Vec(chunkX, chunkZ);
+        chunkUpdateLimitChecker.addToHistory(getChunk());
+        sendPacket(new UpdateViewPositionPacket(chunkX, chunkZ));
 
-            // Load the nearby chunks and queue them to be sent to them
-            ChunkRange.chunksInRange(spawnPosition, this.effectiveViewDistance(), chunkAdder);
-            sendPendingChunks(); // Send available first chunk immediately to prevent falling through the floor
-        }
+        // Load the nearby chunks and queue them to be sent to them
+        ChunkRange.chunksInRange(spawnPosition, this.effectiveViewDistance(), chunkAdder);
+        sendPendingChunks(); // Send available first chunk immediately to prevent falling through the floor
 
         synchronizePositionAfterTeleport(spawnPosition, Vec.ZERO, RelativeFlags.NONE, true); // So the player doesn't get stuck
 
@@ -874,6 +864,10 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
                 long chunkIndex = chunkQueue.dequeueLong();
                 queuedChunks.remove(chunkIndex);
                 int chunkX = CoordConversion.chunkIndexGetX(chunkIndex), chunkZ = CoordConversion.chunkIndexGetZ(chunkIndex);
+                // A queued chunk can have been unloaded on the client while it waited: a shrinking view
+                // distance sends UnloadChunk right away but cannot take the chunk out of this priority
+                // queue, so it is dropped here instead (REQ-M2-014)
+                if (isOutOfClientRange(chunkX, chunkZ)) continue;
                 var chunk = instance.getChunk(chunkX, chunkZ);
                 if (chunk == null || !chunk.isLoaded()) continue;
 
@@ -898,6 +892,12 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
         } finally {
             chunkQueueLock.unlock();
         }
+    }
+
+    private boolean isOutOfClientRange(int chunkX, int chunkZ) {
+        final int range = effectiveViewDistance();
+        return Math.abs(chunkX - chunksLoadedByClient.blockX()) > range
+                || Math.abs(chunkZ - chunksLoadedByClient.blockZ()) > range;
     }
 
     private void resetChunkQueue() {
@@ -1781,7 +1781,10 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
         final int newEffective = Math.min(clientViewDistance, newInstanceViewDistance) + 1;
         if (previousEffective == newEffective) return;
 
-        final int centerX = position.chunkX(), centerZ = position.chunkZ();
+        // The ring is resized around the center the client was last told about, not around the player:
+        // the chunk update limiter can hold a crossing back, and the two then disagree by a column
+        // that would never be unloaded (REQ-M2-014)
+        final int centerX = chunksLoadedByClient.blockX(), centerZ = chunksLoadedByClient.blockZ();
         if (previousEffective < newEffective) {
             // View distance expanded, send chunks
             ChunkRange.chunksInRange(centerX, centerZ, newEffective, (chunkX, chunkZ) -> {

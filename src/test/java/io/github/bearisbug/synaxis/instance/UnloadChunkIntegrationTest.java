@@ -76,6 +76,28 @@ public class UnloadChunkIntegrationTest {
         assertTrue(entity.isRemoved(), "unloadChunk left a non-player entity behind");
     }
 
+    // A PLAY state disconnect only flags the connection offline and queues the removal for the next
+    // tick. Unloading the chunk in between deletes the dispatcher partition the queued removal needed,
+    // so the player has to be taken out synchronously, like any other entity (REQ-M2-013)
+    @Test
+    public void unloadingChunkRemovesADisconnectedPlayer(Env env) {
+        var instance = env.createFlatInstance();
+        instance.loadChunk(0, 0).join();
+
+        var player = env.createPlayer(instance, new Pos(0, 42, 0));
+        env.tick();
+
+        player.getPlayerConnection().disconnect();
+        assertFalse(player.isOnline(), "the connection was still online after disconnect");
+        assertFalse(player.isRemoved(), "the removal is supposed to still be queued at this point");
+
+        instance.unloadChunk(0, 0);
+
+        assertTrue(player.isRemoved(), "the disconnected player survived the unload of its chunk");
+        assertNull(instance.getEntityTracker().getEntityByUuid(player.getUuid()),
+                "the disconnected player stayed in the entity tracker as a ghost");
+    }
+
     // Removing the entities takes their tick thread, and a tick thread takes the instance monitor
     // (setBlock is synchronized): the monitor must not be held while waiting for a tick thread,
     // or the two lock orders deadlock the server.

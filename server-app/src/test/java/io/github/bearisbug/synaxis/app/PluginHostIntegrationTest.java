@@ -28,6 +28,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -65,6 +67,8 @@ class PluginHostIntegrationTest {
         private boolean failOnEnable;
         private boolean throwFromCallbacks;
         private boolean registerAdmission = true;
+        private @Nullable CountDownLatch disableRelease;
+        private volatile boolean disableReturned;
         private @Nullable Task task;
 
         ProbePlugin(String id, List<String> calls) {
@@ -105,6 +109,19 @@ class PluginHostIntegrationTest {
         @Override
         public void onDisable() {
             calls.add("disable:" + descriptor.id());
+            final CountDownLatch release = disableRelease;
+            // Bounded, so that a host without a disable budget fails this test instead of hanging
+            // the whole regression run.
+            if (release != null) awaitQuietly(release);
+            disableReturned = true;
+        }
+    }
+
+    private static void awaitQuietly(CountDownLatch latch) {
+        try {
+            latch.await(30, TimeUnit.SECONDS);
+        } catch (InterruptedException _) {
+            Thread.currentThread().interrupt();
         }
     }
 
@@ -181,6 +198,30 @@ class PluginHostIntegrationTest {
 
         assertEquals(List.of("healthy"), host.enabledPluginIds());
         host.disableAll();
+    }
+
+    @Test
+    void aPluginHangingInOnDisableDoesNotHoldTheShutdown(Env env) {
+        final CountDownLatch release = new CountDownLatch(1);
+        final ProbePlugin probe = new ProbePlugin("probe");
+        probe.disableRelease = release;
+        final PluginHost host = host(env);
+        host.enable(List.of(probe), Set.of());
+
+        try (LogCapture logs = LogCapture.of(PluginHost.class)) {
+            host.disableAll();
+
+            // Back before the plugin is done, which is the whole point of the budget.
+            assertFalse(probe.disableReturned);
+            final List<String> errors = logs.messagesAt(Level.ERROR);
+            assertEquals(1, errors.size(), errors.toString());
+            assertTrue(errors.getFirst().contains("plugin_id=probe"), errors.getFirst());
+        } finally {
+            release.countDown();
+        }
+
+        assertEquals(List.of(), host.enabledPluginIds());
+        assertFalse(host.hasAdmissionProvider());
     }
 
     @Test

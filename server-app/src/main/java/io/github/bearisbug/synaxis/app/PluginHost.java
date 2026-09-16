@@ -12,12 +12,14 @@ import org.slf4j.LoggerFactory;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.ServiceLoader;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Discovery and lifecycle of the plugins of one process (REQ-M2-003).
@@ -29,6 +31,8 @@ import java.util.Set;
 final class PluginHost {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(PluginHost.class);
+
+    private static final long DISABLE_BUDGET_SECONDS = 5;
 
     private final ServerProcess process;
     private final Path pluginsDirectory;
@@ -111,19 +115,39 @@ final class PluginHost {
     /**
      * Disables every enabled plugin in reverse enable order. Called before the engine shuts its
      * scheduler down, and safe to call twice.
+     * <p>
+     * The plugin side of the shutdown gets the {@value #DISABLE_BUDGET_SECONDS} s of the 15 s
+     * budget of {@code docs/DESIGN-M2.md} §17. A plugin still inside {@code onDisable} when the
+     * budget is spent is left behind on its own daemon thread and its capabilities are taken back
+     * anyway: a blocking plugin must not be able to keep the process from exiting.
      */
     void disableAll() {
+        final long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(DISABLE_BUDGET_SECONDS);
         for (int i = enabled.size() - 1; i >= 0; i--) {
             final LoadedPlugin loaded = enabled.get(i);
             LOGGER.info("Disabling plugin: plugin_id={}", loaded.id());
+            disableWithin(loaded, deadline);
+            tearDown(loaded);
+        }
+        enabled.clear();
+    }
+
+    private static void disableWithin(LoadedPlugin loaded, long deadline) {
+        final Thread thread = Thread.ofPlatform().daemon().name("plugin-disable-" + loaded.id()).start(() -> {
             try {
                 loaded.plugin().onDisable();
             } catch (Throwable throwable) {
                 LOGGER.error("Plugin failed to disable: plugin_id={}", loaded.id(), throwable);
             }
-            tearDown(loaded);
+        });
+        try {
+            thread.join(Duration.ofNanos(Math.max(1L, deadline - System.nanoTime())));
+        } catch (InterruptedException _) {
+            Thread.currentThread().interrupt();
         }
-        enabled.clear();
+        if (thread.isAlive())
+            LOGGER.error("Plugin is still in onDisable after the {} s budget: plugin_id={}. Taking its capabilities "
+                    + "back and going on with the shutdown.", DISABLE_BUDGET_SECONDS, loaded.id());
     }
 
     boolean hasAdmissionProvider() {

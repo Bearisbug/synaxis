@@ -50,6 +50,10 @@ __pycache__/
 .github/copilot/
 GEMINI.md
 
+# server-app runtime output (plugin data directories and the event ledger)
+/plugins/
+/logs/
+
 # JFR
 /.profileconfig.json
 

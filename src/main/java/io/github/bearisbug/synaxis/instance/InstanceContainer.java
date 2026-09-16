@@ -291,10 +291,13 @@ public class InstanceContainer extends Instance {
             Check.stateCondition(onlinePlayer, "You cannot unload a chunk with players inside.");
             chunk.sendPacketToViewers(new UnloadChunkPacket(chunkX, chunkZ));
             process().eventHandler().call(new InstanceChunkUnloadEvent(this, chunk));
-            // Collect all entities in chunk, except players: removing one disconnects it,
-            // and the contract of Instance#unloadChunk is to leave them alone
+            // Collect all entities in chunk, except online players: removing one disconnects it,
+            // and the contract of Instance#unloadChunk is to leave them alone. A player whose
+            // connection is already gone is not one of them: its removal is only queued for the next
+            // tick, and deleting the partition below would cancel it for good, leaving a ghost in
+            // the tracker. It is removed here like any other entity (REQ-M2-013).
             for (Entity entity : getEntityTracker().chunkEntities(chunkX, chunkZ, EntityTracker.Target.ENTITIES)) {
-                if (!(entity instanceof Player)) entities.add(entity);
+                if (!(entity instanceof Player player) || !player.isOnline()) entities.add(entity);
             }
             // Clear cache
             this.chunks.remove(CoordConversion.chunkIndex(chunkX, chunkZ));

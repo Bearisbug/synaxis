@@ -27,6 +27,14 @@ final class AdmissionGate {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(AdmissionGate.class);
 
+    /**
+     * The soft budget of {@code admit}. It is measured after the call returns and never cuts it
+     * short: the call is inline on this connection's configuration virtual thread, so there is
+     * nothing here that could abort it, and turning a late answer into a rejection would only kick a
+     * player the plugin just let in (API-M2-011).
+     */
+    static final long BUDGET_MILLIS = 200;
+
     private final AdmissionRegistry registry;
 
     AdmissionGate(AdmissionRegistry registry) {
@@ -46,6 +54,7 @@ final class AdmissionGate {
             return;
         }
         final Admission admission;
+        final long start = System.nanoTime();
         try {
             // The handshake fields are zero until REQ-M2-008 lands, which is what fills them in.
             admission = provider.admit(new AdmissionRequest(connectionId, player.getUsername(), 0, 0));
@@ -55,6 +64,11 @@ final class AdmissionGate {
             refuse(player, connectionId, DisconnectKeys.MATCH_UNAVAILABLE, "the admission provider threw");
             return;
         }
+        final long admitMs = (System.nanoTime() - start) / 1_000_000L;
+        if (admitMs > BUDGET_MILLIS)
+            LOGGER.warn("Admission provider is over its {} ms budget: plugin_id={} connection_id={} admit_ms={}. "
+                    + "Its answer stands, this connection just took longer to let in.",
+                    BUDGET_MILLIS, registry.pluginId(), connectionId, admitMs);
         switch (admission) {
             case Admission.Accept accept -> event.setSpawningInstance(accept.instance());
             case Admission.Reject reject ->

@@ -33,6 +33,8 @@ import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -417,6 +419,46 @@ class PluginHostIntegrationTest {
             assertEquals(match, player.getInstance());
         }
         host.disableAll();
+    }
+
+    @Test
+    void anAdmissionProviderSlowerThanItsBudgetStillDecidesAndIsWarnedAbout(Env env) {
+        final ProbePlugin probe = new ProbePlugin("probe");
+        final PluginHost host = host(env);
+        final Instance match = env.createFlatInstance();
+        probe.admission = _ -> {
+            sleepQuietly(AdmissionGate.BUDGET_MILLIS + 50);
+            return new Admission.Accept(match, 1);
+        };
+        host.enable(List.of(probe), Set.of());
+
+        try (LogCapture logs = LogCapture.of(AdmissionGate.class)) {
+            final Player player = env.createPlayer(match, new Pos(0, 41, 0));
+
+            final List<String> warnings = logs.messagesAt(Level.WARN);
+            assertEquals(1, warnings.size(), warnings.toString());
+            assertTrue(warnings.getFirst().contains("plugin_id=probe"), warnings.getFirst());
+            assertTrue(admitMillis(warnings.getFirst()) >= AdmissionGate.BUDGET_MILLIS, warnings.getFirst());
+            // The budget is measured after the fact, so the answer stands: a slow provider does not
+            // turn into a rejecting one.
+            assertTrue(player.getPlayerConnection().isOnline());
+            assertEquals(match, player.getInstance());
+        }
+        host.disableAll();
+    }
+
+    private static void sleepQuietly(long millis) {
+        try {
+            Thread.sleep(millis);
+        } catch (InterruptedException _) {
+            Thread.currentThread().interrupt();
+        }
+    }
+
+    private static long admitMillis(String line) {
+        final Matcher matcher = Pattern.compile("admit_ms=(\\d+)").matcher(line);
+        assertTrue(matcher.find(), line);
+        return Long.parseLong(matcher.group(1));
     }
 
     @Test

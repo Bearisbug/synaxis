@@ -34,10 +34,6 @@ final class LogCapture implements AutoCloseable {
                 .toList();
     }
 
-    void clear() {
-        appender.list.clear();
-    }
-
     @Override
     public void close() {
         logger.detachAppender(appender);

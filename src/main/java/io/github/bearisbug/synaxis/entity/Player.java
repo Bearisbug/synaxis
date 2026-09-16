@@ -208,8 +208,12 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
     private int chunkBatchLead = 0; // Number of batches sent without a reply
 
     final ChunkRange.ChunkConsumer chunkAdder = (chunkX, chunkZ) -> {
-        // Load new chunks
-        var _ = this.instance.loadOptionalChunk(chunkX, chunkZ).thenAccept(this::sendChunk);
+        // Load new chunks. With auto chunk load off, a column outside the map comes back as an empty
+        // future: there is nothing to send, and handing that null to sendChunk would only throw into a
+        // future nobody keeps (REQ-M2-011)
+        var _ = this.instance.loadOptionalChunk(chunkX, chunkZ).thenAccept(chunk -> {
+            if (chunk != null) sendChunk(chunk);
+        });
     };
     final ChunkRange.ChunkConsumer chunkRemover = (chunkX, chunkZ) -> {
         // Unload old chunks

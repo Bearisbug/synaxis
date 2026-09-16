@@ -6,6 +6,7 @@ import io.github.bearisbug.synaxis.coordinate.Pos;
 import io.github.bearisbug.synaxis.coordinate.Vec;
 import io.github.bearisbug.synaxis.entity.Player;
 import io.github.bearisbug.synaxis.event.player.AsyncPlayerConfigurationEvent;
+import io.github.bearisbug.synaxis.instance.Chunk;
 import io.github.bearisbug.synaxis.network.packet.client.common.ClientSettingsPacket;
 import io.github.bearisbug.synaxis.network.packet.client.play.ClientPlayerPositionPacket;
 import io.github.bearisbug.synaxis.network.packet.client.play.ClientTeleportConfirmPacket;
@@ -111,6 +112,46 @@ public class PlayerChunkQueueIntegrationTest {
         assertEquals(expected, new HashSet<>(unloadedChunks),
                 "the unloaded chunks must be exactly the ones the client has and no longer needs");
         assertEquals(expected.size(), unloadedChunks.size(), "a chunk must not be unloaded twice");
+    }
+
+    // With auto chunk load off, a column outside the generated map comes back as an empty future. The
+    // chunk adder used to hand that null straight to sendChunk, and the NullPointerException went into
+    // the future nobody keeps: no log, no packet, just a chunk that is never sent (REQ-M2-011)
+    @Test
+    public void aColumnOutsideTheLoadedMapIsNeverHandedOverAsNull(Env env) {
+        List<String> nullChunks = new ArrayList<>();
+        env.process().connection().setPlayerProvider((connection, profile) -> new Player(connection, profile) {
+            @Override
+            public void sendChunk(Chunk chunk) {
+                //noinspection ConstantValue
+                if (chunk == null) {
+                    nullChunks.add("null");
+                    return; // Let the assertion below report it instead of the swallowed exception
+                }
+                super.sendChunk(chunk);
+            }
+        });
+        var instance = env.createFlatInstance();
+        // The map: a 5x5 block of chunks and nothing around it
+        ChunkRange.chunksInRange(0, 0, 2, (chunkX, chunkZ) -> instance.loadChunk(chunkX, chunkZ).join());
+        instance.enableAutoChunkLoad(false);
+        env.process().eventHandler().addListener(AsyncPlayerConfigurationEvent.class,
+                event -> event.getPlayer().refreshSettings(ClientSettings.defaultSettings(4)));
+
+        var connection = env.createConnection();
+        var chunks = connection.trackIncoming(ChunkDataPacket.class);
+        Player player = connection.connect(instance, new Pos(0, 40, 0));
+        assertEquals(5, player.effectiveViewDistance(), "the ring has to reach past the map for this test");
+        for (int i = 0; i < 10; i++) {
+            player.onChunkBatchReceived(64f);
+            env.tick();
+        }
+
+        assertTrue(nullChunks.isEmpty(), "the chunk adder handed sendChunk a column that is not loaded");
+        for (ChunkDataPacket packet : chunks.collect()) {
+            final int distance = Math.max(Math.abs(packet.chunkX()), Math.abs(packet.chunkZ()));
+            assertTrue(distance <= 2, "chunk " + packet.chunkX() + "," + packet.chunkZ() + " is outside the map");
+        }
     }
 
     // The shrink unloads a chunk on the client, but a chunk already waiting in the send queue used to

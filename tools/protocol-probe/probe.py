@@ -707,8 +707,8 @@ def cmd_echo(args: argparse.Namespace) -> int:
     try:
         session.enter_play()
         payload = args.payload.encode("utf-8")
-        session.connection.send("ClientPluginMessagePacket", plugin_message_payload("synaxis:main", payload))
-        session.log(f"sent CustomPayload synaxis:main bytes={len(payload)}")
+        session.connection.send("ClientPluginMessagePacket", plugin_message_payload(args.channel, payload))
+        session.log(f"sent CustomPayload {args.channel} bytes={len(payload)}")
         deadline = time.monotonic() + args.timeout
         session.connection.socket.settimeout(0.5)
         while time.monotonic() < deadline:
@@ -721,7 +721,7 @@ def cmd_echo(args: argparse.Namespace) -> int:
             elif packet == "PluginMessagePacket":
                 channel = reader.string()
                 data = reader.raw(reader.remaining())
-                if channel != "synaxis:main":
+                if channel != args.channel:
                     continue
                 session.log(f"     echo channel={channel} payload={data.decode('utf-8', 'replace')}")
                 if data == payload:
@@ -787,8 +787,10 @@ def build_parser() -> argparse.ArgumentParser:
     deep.add_argument("--depth", type=int, default=200)
     deep.set_defaults(run=cmd_deep_recursion)
 
-    echo = subparsers.add_parser("echo", help="round trip a payload over synaxis:main")
+    echo = subparsers.add_parser("echo", help="round trip a payload over a custom payload channel")
     echo.add_argument("--payload", required=True)
+    echo.add_argument("--channel", default="synaxis:main",
+                      help="the channel to send on and to expect the answer on (default: synaxis:main)")
     echo.set_defaults(run=cmd_echo)
 
     record = subparsers.add_parser("record-registry", help="dump every RegistryData packet")

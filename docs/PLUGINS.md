@@ -95,6 +95,14 @@ java -cp "server-app/build/install/server-app/lib/*:example-plugin/build/libs/he
 
 通道 id 一律是 `<plugin_id>:<name>`。`register("echo", ...)` 实际注册的是 `hello:echo`；写成别人的命名空间（`register("rts:game", ...)`）或宿主保留的 `synaxis:*` 一律抛 `IllegalArgumentException`。入站负载由宿主的单个监听器按前缀分发，没人注册的通道直接丢弃并记一行带 `connection_id` 的 WARN，不断线也不回错。
 
+在第 6 步起的服务端上给它发一条消息（不需要客户端，仓内探针就够）：
+
+```bash
+python3 tools/protocol-probe/probe.py echo --channel hello:echo --payload hi
+```
+
+原样收回 `hi` 时退出码为 0，服务端那边会打印 `echoing 2 bytes back to probe`。
+
 ## 9. 异常会算在谁头上
 
 事件监听器、调度任务、通道 handler 三处各有一层包装：抛出来的异常各被 catch 一次、各打一行带 `plugin_id=<你的 id>` 的 ERROR，然后就地终止那一次回调。异常不会外溢到引擎，进程继续跑，插件状态也不变——M2 没有熔断器（见 `docs/DESIGN-M2.md` §28.3）。

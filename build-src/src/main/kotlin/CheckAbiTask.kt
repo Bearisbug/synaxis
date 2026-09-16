@@ -33,6 +33,14 @@ abstract class CheckAbiTask : DefaultTask() {
     @get:Internal
     abstract val rootProjectDir: Property<File>
 
+    /**
+     * Where the baseline jar is expected, resolved from `-PbaselineJarDir`. Only absent when the
+     * property is not set at all, and then the task is skipped rather than run.
+     */
+    @get:Input
+    @get:Optional
+    abstract val expectedBaselineJar: Property<String>
+
     @get:Classpath
     @get:Optional
     abstract val classpath: ConfigurableFileCollection
@@ -40,14 +48,11 @@ abstract class CheckAbiTask : DefaultTask() {
     @TaskAction
     fun run() {
         if (!oldJar.isPresent) {
-            logger.lifecycle("Skipping ABI check: Baseline JAR is not specified or could not be resolved.")
-            return
+            // -PbaselineJarDir was passed, so a missing jar is a broken gate rather than a missing
+            // baseline: no silent pass, see docs/DESIGN-M2.md §24.
+            throw GradleException("Baseline JAR does not exist: ${expectedBaselineJar.get()}")
         }
         val oldFile = oldJar.get().asFile
-        if (!oldFile.exists()) {
-            logger.lifecycle("Skipping ABI check: Baseline JAR file does not exist: ${oldFile.absolutePath}")
-            return
-        }
         val newFile = newJar.get().asFile
 
         val oldApis = extractPublicApi(oldFile)

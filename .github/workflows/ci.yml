@@ -47,8 +47,14 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: jacoco-report
-          path: build/reports/jacoco/test/jacocoTestReport.xml
+          path: '**/build/reports/jacoco/test/jacocoTestReport.xml'
           retention-days: 14
+
+      # Only the stable surface takes this gate, the engine does not: whoever takes it is a
+      # stable surface (docs/DESIGN-M2.md §24). Before the first M2 tag there is no baseline, so
+      # both tasks end as an explicit SKIPPED and the step stays green.
+      - name: ABI gate of the stable surface
+        run: ./gradlew :plugin-api:checkBinaryCompatibility :protocol:checkBinaryCompatibility
 
       - name: Set up Python
         if: github.event_name == 'pull_request'
@@ -64,7 +70,7 @@ jobs:
         if: github.event_name == 'pull_request'
         run: |
           git fetch --no-tags origin main:refs/remotes/origin/main
-          diff-cover build/reports/jacoco/test/jacocoTestReport.xml \
+          diff-cover $(find . -path '*/build/reports/jacoco/test/jacocoTestReport.xml' | sort) \
             --compare-branch=origin/main \
-            --src-roots src/main/java \
+            --src-roots src/main/java protocol/src/main/java plugin-api/src/main/java server-app/src/main/java game-rts/src/main/java \
             --fail-under=80

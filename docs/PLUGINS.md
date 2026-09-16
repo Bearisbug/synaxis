@@ -89,6 +89,7 @@ java -cp "server-app/build/install/server-app/lib/*:example-plugin/build/libs/he
 | `channels()` | `register(名字, handler)` / `send(玩家, 名字, 字节)` | 注销该插件的全部通道 |
 | `admission()` | `register(准入回调)`，决定连接进哪个对局实例、属哪个队伍 | 注销该回调 |
 | `dataDirectory()` | `plugins/<plugin_id>/`，宿主保证存在 | 不删（是你的数据） |
+| `analytics()` | `record(事件名, 属性)`，写进宿主的 `logs/events-YYYYMMDD.jsonl` | 无状态，不需要收回 |
 | `logger()` | 名为 `plugin.<plugin_id>` 的 logger | — |
 
 ## 8. 通道命名

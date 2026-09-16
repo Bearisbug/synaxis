@@ -15,6 +15,7 @@ import static com.tngtech.archunit.core.domain.JavaClass.Predicates.resideInAnyP
 import static com.tngtech.archunit.core.domain.properties.HasName.Predicates.name;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Layering gate over the engine source, see {@code docs/DESIGN.md} §24.
@@ -115,7 +116,14 @@ public class ArchitectureTest {
         JavaClasses synthetic = new ClassFileImporter()
                 .importClasses(EngineClassReachingIntoTheGameSide.class, GameSideFixture.class);
 
-        assertThrows(AssertionError.class, () -> engineDoesNotDependOnTheGameSide().check(synthetic));
+        AssertionError violation = assertThrows(
+                AssertionError.class, () -> engineDoesNotDependOnTheGameSide().check(synthetic));
+
+        // A rule whose that() clause matches nothing fails with an AssertionError of its own
+        // (failOnEmptyShould), so only the message proves that the dependency is what went red.
+        assertTrue(violation.getMessage().contains(EngineClassReachingIntoTheGameSide.class.getName()),
+                violation.getMessage());
+        assertTrue(violation.getMessage().contains(GameSideFixture.class.getName()), violation.getMessage());
     }
 
     /**

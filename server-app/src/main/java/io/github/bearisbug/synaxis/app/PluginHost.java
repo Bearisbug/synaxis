@@ -112,13 +112,17 @@ final class PluginHost {
     }
 
     /**
-     * Disables every enabled plugin in reverse enable order. Called before the engine shuts its
-     * scheduler down, and safe to call twice.
+     * Disables every enabled plugin in reverse enable order. Registered as the shutdown task of the
+     * engine scheduler, which drains it once the tick threads are joined; safe to call twice.
      * <p>
      * The plugin side of the shutdown gets the {@value #DISABLE_BUDGET_SECONDS} s of the 15 s
      * budget of {@code docs/DESIGN-M2.md} §17. A plugin still inside {@code onDisable} when the
      * budget is spent is left behind on its own daemon thread and its capabilities are taken back
-     * anyway: a blocking plugin must not be able to keep the process from exiting.
+     * anyway: a blocking plugin must not be able to keep the process from exiting. The budget is
+     * shared by the whole loop and no plugin gets a reserved slice of it, so once a plugin has spent
+     * it the ones after it are waited on no longer — with a second plugin that turns into "one
+     * plugin hangs, the rest are dropped silently", and the budget then has to get a floor per
+     * plugin.
      */
     void disableAll() {
         final long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(DISABLE_BUDGET_SECONDS);

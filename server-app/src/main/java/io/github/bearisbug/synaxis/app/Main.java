@@ -79,7 +79,9 @@ public final class Main {
             System.exit(1);
         }
 
-        // Covers the signal path: on SIGINT the engine stops without going through the console.
+        // The only place the plugins are disabled, console and SIGINT alike: the engine drains its
+        // shutdown tasks once the tick threads are joined and before it shuts anything else down, so
+        // registering here gets onDisable the same quiet process on both paths.
         process.scheduler().buildShutdownTask(host::disableAll);
 
         // (6) bind, freeze the registries, accept, start the dispatcher and the tick thread.
@@ -90,7 +92,7 @@ public final class Main {
 
         // Not a daemon: the shutdown sequence runs on this thread, and the JVM must not
         // exit out from under it once the tick threads are gone.
-        Thread.ofPlatform().name("server-app-console").start(() -> readConsole(process, host));
+        Thread.ofPlatform().name("server-app-console").start(() -> readConsole(process));
     }
 
     /**
@@ -117,13 +119,12 @@ public final class Main {
                 .collect(Collectors.toUnmodifiableSet());
     }
 
-    private static void readConsole(ServerProcess process, PluginHost host) {
+    private static void readConsole(ServerProcess process) {
         try (BufferedReader reader = new BufferedReader(new InputStreamReader(System.in, StandardCharsets.UTF_8))) {
             String line;
             while ((line = reader.readLine()) != null) {
                 if (!"stop".equals(line.strip())) continue;
                 LOGGER.info("Console requested a shutdown.");
-                host.disableAll();
                 process.stop();
                 return;
             }

@@ -96,7 +96,7 @@ REQ-M2 ↔ TC 对照（手工维护）：
 - 启动：`export JAVA_HOME=/opt/homebrew/opt/openjdk@25/libexec/openjdk.jdk/Contents/Home && ./gradlew :server-app:run --no-daemon --console=plain --init-script gradle/init/aliyun-mirror.init.gradle.kts`（`REQ-M2-021` 起 `server-app` 是唯一启动入口，`smoke` 已删除）。默认绑定 `0.0.0.0:25565`，端口用 `-Dsynaxis.app.port=<port>` 覆盖（`run` 任务把 `synaxis.*` 系统属性转给 fork 出来的 JVM）。TC-004 与 TC-018 要往服务端 stdin 写 `stop`，因此运行期间必须保持 stdin 打开（`:server-app:run` 已把 Gradle 进程的 stdin 转给应用；后台运行时用 FIFO 喂入或 `( sleep N; echo stop ) | ./gradlew :server-app:run …`）。
 - 就绪判定：stdout 出现 `synaxis server-app listening on 0.0.0.0:25565`，且 `nc -z 127.0.0.1 25565` 退出码为 0。
 - 运行时产物：进程在**仓库根**写 `plugins/<plugin_id>/`（插件数据目录）与 `logs/events-YYYYMMDD.jsonl`（事件台账），两者均已 gitignore；基线重置 = `rm -rf plugins logs` 后重启。**没有服务端日志文件**，日志只走 stdout（`server-app/src/main/resources/logback.xml` 只配了 ConsoleAppender），要留证据就重定向 stdout。
-- 日志关联：与连接相关的服务端日志行统一带 `connection_id=<uuid>` —— `Login success: username=… connection_id=… remote_address=…`、`Kicking connection_id=… identifier=… reason=synaxis:…`、`Connection closed: connection_id=… identifier=…`；宿主侧的行带 `plugin_id=<id>`——`Plugin enabled: plugin_id=… version=… enable_ms=…`、`Registered channel: plugin_id=… channel=…`、`Dropped a payload on an unregistered channel: connection_id=… channel=… bytes=…`、`Refusing a connection: connection_id=… reason=… cause=…`。
+- 日志关联：与连接相关的服务端日志行统一带 `connection_id=<uuid>` —— `Login success: username=… connection_id=… remote_address=…`、`Kicking connection_id=… identifier=… reason=synaxis:…`、`Connection closed: connection_id=… identifier=…`；宿主侧的行带 `plugin_id=<id>`——`Plugin enabled: plugin_id=… version=… enable_ms=…`、`Registered channel: plugin_id=… channel=…`、`Dropped a payload on an unregistered channel: connection_id=… channel=… bytes=…`、`Refusing a connection: connection_id=… reason=… cause=…`、`Admission provider is over its 200 ms budget: plugin_id=… connection_id=… admit_ms=…`。启动被拒时的那一行没有这两个 id：`Refusing to start: <原因>`（非法端口属性或非法 descriptor，退出码 1，见 TC-GAME-009 / TC-GAME-010）。
 - 入口：TCP `127.0.0.1:25565`；离线模式（`Auth.Offline`），任意用户名；压缩阈值 256 字节。
 - 测试账号：
 
@@ -577,6 +577,7 @@ REQ-M2 ↔ TC 对照（手工维护）：
 | 4 | `cat protocol/src/main/java/module-info.java` 与 `ls server-app/src/main/java/module-info.java game-rts/src/main/java/module-info.java 2>&1` | 前者只有 `exports`、无任何 `requires`（零第三方依赖）；后两者均 `No such file or directory`（宿主与插件跑 classpath，见 `ADR-M2-005`） |
 | 5 | `./gradlew :protocol:generatePomFileForMavenPublication --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts`，再 `grep -c '<dependency>' protocol/build/publications/maven/pom-default.xml` | 输出 `0`：`:protocol` 发布出去的坐标里没有任何第三方依赖（`ADR-M2-008`、§6）。约定插件 `synaxis.java-library` 给每个模块加的 `api(libs.jetbrainsAnnotations)` 由 `protocol/build.gradle.kts` 摘掉；不摘这里是 `1`，而这个 jar 既要随 Fabric 模组发给客户端、又要在阶段 2 归档成 ABI baseline |
 | 6 | `./gradlew check --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts` | stdout 含 `BUILD SUCCESSFUL`，退出码 0 |
+| 7 | 按 `docs/ENGINE.md` §3.6 的五条命令逐个跑 `tools/pkgdeps.py`（引擎一条，四个新模块各一条，带 `--root-package` 与 `--skip-lower-layer`） | 五条都退出码 0；引擎那条含 `lower layer edges into the rest of the engine: 0`，四个新模块各打印自己的 `root package:` 与 `edges: 0`（当前各只有一个扁平包）。一次扫全仓不算数——包名同前缀，会把四个模块折叠进引擎的桶里 |
 
 后置：无。
 
@@ -787,7 +788,7 @@ REQ-M2 ↔ TC 对照（手工维护）：
 | 1 | 通读说明并按它新建一个只实现 `SynaxisPlugin` 的模块 | 说明每一步都有可执行命令，无「问一下」类表述；开篇即写明「不支持热加载，改插件 = 重启进程」 |
 | 2 | 执行说明给出的构建命令 | stdout 含 `BUILD SUCCESSFUL` |
 | 3 | 执行说明给出的启动命令 | 进程进入就绪；stdout 含该插件 `onEnable` 的打印 |
-| 4 | 按说明从客户端（或探针）向它的通道发一条消息 | 收到回显负载，内容与发出的完全一致 |
+| 4 | 按说明第 8 节给出的命令 `python3 tools/protocol-probe/probe.py echo --channel hello:echo --payload hi` 向它的通道发一条消息 | 退出码 0，探针打印的回显负载与发出的完全一致；服务端 stdout 含 `echoing 2 bytes back to probe` |
 | 5 | `stop` 后查看日志 | 含该插件 `onDisable` 的打印，进程退出码 0 |
 
 后置：删除新建的示例模块目录，确认 `git status --porcelain` 无输出。
@@ -1322,7 +1323,7 @@ REQ-M2 ↔ TC 对照（手工维护）：
 | 1 | `ls smoke 2>&1` 与 `grep -n "smoke" settings.gradle.kts` | 前者 `No such file or directory`；后者退出码 1、无输出 |
 | 2 | `./gradlew :server-app:run --no-daemon --console=plain --init-script gradle/init/aliyun-mirror.init.gradle.kts` | stdout 出现 `synaxis server-app listening on 0.0.0.0:25565`；`nc -z 127.0.0.1 25565` 退出码 0 |
 | 3 | 用 `-Dsynaxis.app.port=25570` 再启动一次 | 就绪日志里的端口为 25570，`nc -z 127.0.0.1 25570` 退出码 0 |
-| 4 | 向 stdin 输入 `stop` | 进程在 15 秒内退出、退出码 0；日志显示先逆序 `onDisable` 插件、后停引擎 |
+| 4 | 向 stdin 输入 `stop` | 进程在 15 秒内退出、退出码 0；日志里 `Disabling plugin: plugin_id=…` 按启用的逆序出现在 `Stopping synaxis server.` 之后、`Shutting down all thread pools.` 之前——插件的 `onDisable` 跑在 tick 线程已停、引擎线程池未关的那一段（宿主把它注册成引擎的 shutdown task，控制台与 SIGINT 两条路走同一段） |
 | 5 | 核对本文档 §3 与 §1 | §3 生效的启动段已是 `:server-app:run`（smoke 段作废）；§1 变更记录里有本次「废旧 ID 换新 ID」的登记 |
 
 后置：无。
@@ -1341,7 +1342,7 @@ REQ-M2 ↔ TC 对照（手工维护）：
 | 6 | 让插件的准入回调返回 `Reject("synaxis:match-unavailable")`（注入方式待 `REQ-M2-024` 实现后填），再用探针握手 | 探针收到 `S2C_HELLO` 之后被断开，原因键 `synaxis:match-unavailable`；`grep client_rejected logs/events-*.jsonl \| tail -1` 的 `reason` 为 `match-unavailable`；无 `synaxis:internal-error` |
 | 7 | 让准入回调**抛异常**，再用探针握手 | 同样以 `synaxis:match-unavailable` 断开；日志里有一行带 `plugin_id` 的 ERROR（M2 没有熔断计数，见设计文档 §28.3 第 ① 条） |
 | 8 | 让准入回调**睡 500 毫秒后正常返回 `Accept`**，再用探针握手 | 玩家**照常进入 play**（200 毫秒是事后测量的软预算，内联调用中止不了它，不改判为 `Reject`）；日志里有一行带 `plugin_id` 与实测耗时（≥ 500 毫秒）的 WARN；两条探针**同时**发起时，各自从 `S2C_HELLO` 到 `JoinGame` 都是约 500 毫秒（注入对唯一的 provider 全局生效，所以两条都慢），而**不是**串行的约 1,000 毫秒——这证明两条连接各自跑在自己的 configuration 虚拟线程上，没有互相阻塞 |
-| 9 | 让第二个插件也调用 `admission().register(...)` 后启动 | 第二次注册抛 `IllegalStateException`，进程以非零码退出并点名两个 `plugin_id`；端口未 bind |
+| 9 | 让第二个插件也调用 `admission().register(...)` 后启动 | 第二次注册抛 `IllegalStateException`，该插件转 `failed`、被摘干净；日志里有一行 `Plugin failed to enable: plugin_id=<第二个>` 的 ERROR，随行的异常消息同时点名持槽的第一个 `plugin_id`。**进程继续走启动序列并照常 bind**——第一个插件仍持有槽位，`API-M2-010` 第 ⑤ 步的断言成立（一个 `failed`、其余照常，见设计文档 §11.2）。「一个 provider 都没有 → 非零码退出且端口未 bind」是另一档，由 `TC-GAME-032` 第 1 步判 |
 
 后置：撤掉第 6～9 步的注入，`stop`。
 

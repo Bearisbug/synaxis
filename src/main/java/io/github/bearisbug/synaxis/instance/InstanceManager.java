@@ -10,7 +10,6 @@ import io.github.bearisbug.synaxis.world.DimensionType;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Collections;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -31,14 +30,12 @@ public final class InstanceManager {
     /**
      * Registers an {@link Instance} internally.
      * <p>
-     * Note: not necessary if you created your instance using {@link #createInstanceContainer()} or {@link #createSharedInstance(InstanceContainer)}
+     * Note: not necessary if you created your instance using {@link #createInstanceContainer()}
      * but only if you instantiated your instance object manually
      *
      * @param instance the {@link Instance} to register
      */
     public void registerInstance(Instance instance) {
-        Check.stateCondition(instance instanceof SharedInstance,
-                "Please use InstanceManager#registerSharedInstance to register a shared instance");
         UNSAFE_registerInstance(instance);
     }
 
@@ -73,39 +70,6 @@ public final class InstanceManager {
     }
 
     /**
-     * Registers a {@link SharedInstance}.
-     * <p>
-     * WARNING: the {@link SharedInstance} needs to have an {@link InstanceContainer} assigned to it.
-     *
-     * @param sharedInstance the {@link SharedInstance} to register
-     * @return the registered {@link SharedInstance}
-     * @throws NullPointerException if {@code sharedInstance} doesn't have an {@link InstanceContainer} assigned to it
-     */
-    public SharedInstance registerSharedInstance(SharedInstance sharedInstance) {
-        final InstanceContainer instanceContainer = sharedInstance.getInstanceContainer();
-        Objects.requireNonNull(instanceContainer, "SharedInstance needs to have an InstanceContainer to be created!");
-
-        instanceContainer.addSharedInstance(sharedInstance);
-        UNSAFE_registerInstance(sharedInstance);
-        return sharedInstance;
-    }
-
-    /**
-     * Creates and register a {@link SharedInstance}.
-     *
-     * @param instanceContainer the container assigned to the shared instance
-     * @return the created {@link SharedInstance}
-     * @throws IllegalStateException if {@code instanceContainer} is not registered
-     */
-    public SharedInstance createSharedInstance(InstanceContainer instanceContainer) {
-        Objects.requireNonNull(instanceContainer, "Instance container cannot be null when creating a SharedInstance!");
-        Check.stateCondition(!instanceContainer.isRegistered(), "The container needs to be register in the InstanceManager");
-
-        final SharedInstance sharedInstance = new SharedInstance(UUID.randomUUID(), instanceContainer);
-        return registerSharedInstance(sharedInstance);
-    }
-
-    /**
      * Unregisters the {@link Instance} internally.
      * <p>
      * If {@code instance} is an {@link InstanceContainer} all chunks are unloaded.
@@ -119,9 +83,6 @@ public final class InstanceManager {
             InstanceUnregisterEvent event = new InstanceUnregisterEvent(instance);
             process.eventHandler().call(event);
 
-            if (instance instanceof SharedInstance sharedInstance) {
-                sharedInstance.getInstanceContainer().removeSharedInstance(sharedInstance);
-            }
             // Unregister
             instance.setRegistered(false);
             this.instances.remove(instance);
@@ -160,8 +121,6 @@ public final class InstanceManager {
 
     /**
      * Registers an {@link Instance} internally.
-     * <p>
-     * Unsafe because it does not check if {@code instance} is a {@link SharedInstance} to verify its container.
      *
      * @param instance the {@link Instance} to register
      */

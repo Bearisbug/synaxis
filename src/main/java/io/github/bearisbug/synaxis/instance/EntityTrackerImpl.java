@@ -218,9 +218,9 @@ final class EntityTrackerImpl implements EntityTracker {
     }
 
     @Override
-    public Viewable viewable(List<SharedInstance> sharedInstances, int chunkX, int chunkZ) {
+    public Viewable viewable(int chunkX, int chunkZ) {
         var entry = targetEntries[Target.PLAYERS.ordinal()];
-        return entry.viewers.computeIfAbsent(new ChunkViewKey(chunkX, chunkZ), key -> new ChunkView(key, sharedInstances));
+        return entry.viewers.computeIfAbsent(new ChunkViewKey(chunkX, chunkZ), ChunkView::new);
     }
 
     @Override
@@ -272,8 +272,6 @@ final class EntityTrackerImpl implements EntityTracker {
                 });
     }
 
-    // The shared instances are deliberately not part of the key: InstanceContainer#getSharedInstances
-    // hands out a new wrapper on every call, so keying on it makes every view unique and unreusable.
     record ChunkViewKey(int chunkX, int chunkZ) {
     }
 
@@ -318,15 +316,12 @@ final class EntityTrackerImpl implements EntityTracker {
 
     private final class ChunkView implements Viewable {
         private final ChunkViewKey key;
-        private final List<SharedInstance> sharedInstances;
         private final int chunkX, chunkZ;
         final Set<Player> set = new SetImpl();
         private int lastReferenceCount;
 
-        private ChunkView(ChunkViewKey key, List<SharedInstance> sharedInstances) {
+        private ChunkView(ChunkViewKey key) {
             this.key = key;
-            this.sharedInstances = sharedInstances;
-
             this.chunkX = key.chunkX;
             this.chunkZ = key.chunkZ;
         }
@@ -348,25 +343,16 @@ final class EntityTrackerImpl implements EntityTracker {
 
         private Collection<Player> references() {
             Int2ObjectOpenHashMap<Player> entityMap = new Int2ObjectOpenHashMap<>(lastReferenceCount);
-            collectPlayers(EntityTrackerImpl.this, entityMap);
-            if (!sharedInstances.isEmpty()) {
-                for (SharedInstance instance : sharedInstances) {
-                    collectPlayers(instance.getEntityTracker(), entityMap);
-                }
-            }
-            this.lastReferenceCount = entityMap.size();
-            return entityMap.values();
-        }
-
-        private void collectPlayers(EntityTracker tracker, Int2ObjectOpenHashMap<Player> map) {
             // Each player has its own view distance (client setting, capped by the instance, plus one:
             // see Player#effectiveViewDistance). A single server-wide radius left the outermost ring of
             // chunks the player was sent without any viewer, so block updates never reached it.
-            for (Player player : tracker.entities(Target.PLAYERS)) {
+            for (Player player : entities(Target.PLAYERS)) {
                 final Point position = player.getPosition();
                 final int distance = Math.max(Math.abs(position.chunkX() - chunkX), Math.abs(position.chunkZ() - chunkZ));
-                if (distance <= player.effectiveViewDistance()) map.putIfAbsent(player.getEntityId(), player);
+                if (distance <= player.effectiveViewDistance()) entityMap.putIfAbsent(player.getEntityId(), player);
             }
+            this.lastReferenceCount = entityMap.size();
+            return entityMap.values();
         }
 
         final class SetImpl extends AbstractSet<Player> {

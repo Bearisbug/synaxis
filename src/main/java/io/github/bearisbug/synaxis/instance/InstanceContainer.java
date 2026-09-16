@@ -46,7 +46,6 @@ import space.vectrix.flare.fastutil.Long2ObjectSyncMap;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -55,14 +54,13 @@ import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
 import static io.github.bearisbug.synaxis.instance.ChunkUtils.isLoaded;
 
 /**
- * InstanceContainer is an instance that contains chunks in contrary to SharedInstance.
+ * An instance that owns its chunks.
  */
 public class InstanceContainer extends Instance {
     private static final Logger LOGGER = LoggerFactory.getLogger(InstanceContainer.class);
@@ -73,9 +71,6 @@ public class InstanceContainer extends Instance {
     private static final BlockFace[] BLOCK_UPDATE_FACES = new BlockFace[]{
             BlockFace.WEST, BlockFace.EAST, BlockFace.BOTTOM, BlockFace.TOP, BlockFace.NORTH, BlockFace.SOUTH
     };
-
-    // the shared instances assigned to this instance
-    private final List<SharedInstance> sharedInstances = new CopyOnWriteArrayList<>();
 
     // the chunk generator used, can be null
     private volatile @Nullable Generator generator;
@@ -595,39 +590,6 @@ public class InstanceContainer extends Instance {
     @Override
     public ChunkSupplier getChunkSupplier() {
         return chunkSupplier;
-    }
-
-    /**
-     * Gets all the {@link SharedInstance} linked to this container.
-     *
-     * @return an unmodifiable {@link List} containing all the {@link SharedInstance} linked to this container
-     */
-    public List<SharedInstance> getSharedInstances() {
-        return Collections.unmodifiableList(sharedInstances);
-    }
-
-    /**
-     * Gets if this instance has {@link SharedInstance} linked to it.
-     *
-     * @return true if {@link #getSharedInstances()} is not empty
-     */
-    public boolean hasSharedInstances() {
-        return !sharedInstances.isEmpty();
-    }
-
-    /**
-     * Assigns a {@link SharedInstance} to this container.
-     * <p>
-     * Only used by {@link InstanceManager}, mostly unsafe.
-     *
-     * @param sharedInstance the shared instance to assign to this container
-     */
-    protected void addSharedInstance(SharedInstance sharedInstance) {
-        this.sharedInstances.add(sharedInstance);
-    }
-
-    void removeSharedInstance(SharedInstance sharedInstance) {
-        this.sharedInstances.remove(sharedInstance);
     }
 
     /**

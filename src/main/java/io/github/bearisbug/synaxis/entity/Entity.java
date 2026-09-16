@@ -994,7 +994,7 @@ public class Entity implements Viewable, Tickable, Schedulable, EventHandler<Ent
      */
     public CompletableFuture<Void> setInstance(Instance instance, Pos spawnPosition) {
         Check.stateCondition(!instance.isRegistered(),
-                "Instances need to be registered, please use InstanceManager#registerInstance or InstanceManager#registerSharedInstance");
+                "Instances need to be registered, please use InstanceManager#registerInstance");
         final Instance previousInstance = this.instance;
         if (Objects.equals(previousInstance, instance)) {
             return teleport(spawnPosition); // Already in the instance, teleport to spawn point

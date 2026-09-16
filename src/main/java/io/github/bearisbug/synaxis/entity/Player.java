@@ -54,7 +54,6 @@ import io.github.bearisbug.synaxis.event.player.PlayerTickEvent;
 import io.github.bearisbug.synaxis.instance.Chunk;
 import io.github.bearisbug.synaxis.instance.EntityTracker;
 import io.github.bearisbug.synaxis.instance.Instance;
-import io.github.bearisbug.synaxis.instance.SharedInstance;
 import io.github.bearisbug.synaxis.instance.block.Block;
 import io.github.bearisbug.synaxis.inventory.AbstractInventory;
 import io.github.bearisbug.synaxis.inventory.Inventory;
@@ -670,13 +669,6 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
     public CompletableFuture<Void> setInstance(Instance instance, Pos spawnPosition) {
         final Instance currentInstance = this.instance;
         Check.argCondition(currentInstance == instance, "Instance should be different than the current one");
-        if (SharedInstance.areLinked(currentInstance, instance) && spawnPosition.sameChunk(this.position)) {
-            // The player already has the good version of all the chunks.
-            // We just need to refresh his entity viewing list and add him to the instance
-            spawnPlayer(instance, spawnPosition, false, false, false);
-            return AsyncUtils.VOID_FUTURE;
-        }
-        // Must update the player chunks
         chunkUpdateLimitChecker.clearHistory();
         final boolean dimensionChange = currentInstance != null && !Objects.equals(currentInstance.getDimensionName(), instance.getDimensionName());
         final Consumer<Instance> runnable = (i) -> spawnPlayer(i, spawnPosition,

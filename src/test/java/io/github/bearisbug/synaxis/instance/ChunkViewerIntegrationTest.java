@@ -8,8 +8,6 @@ import io.github.bearisbug.synaxis.network.packet.server.play.ChunkDataPacket;
 import io.github.bearisbug.synaxis.testing.Env;
 import io.github.bearisbug.synaxis.testing.EnvTest;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.ValueSource;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
@@ -17,23 +15,15 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 @EnvTest
 public class ChunkViewerIntegrationTest {
 
-    @ParameterizedTest
-    @ValueSource(booleans = {false, true})
-    public void basicJoin(boolean sharedInstance, Env env) {
+    @Test
+    public void basicJoin(Env env) {
         Instance instance = env.createFlatInstance();
-        if (sharedInstance) {
-            // Chunks get their viewers from the instance
-            // Ensuring that the system works with shared instances is therefore important
-            var manager = env.process().instance();
-            instance = manager.createSharedInstance((InstanceContainer) instance);
-        }
 
         var chunk = instance.loadChunk(0, 0).join();
         assertEquals(0, chunk.getViewers().size());
 
         var player = env.createPlayer(instance, new Pos(0, 40, 0));
-        assertEquals(1, chunk.getViewers().size(), sharedInstance ?
-                "Chunk viewer set must include players from shared instance" : "Instance should have 1 viewer");
+        assertEquals(1, chunk.getViewers().size(), "Instance should have 1 viewer");
         assertEquals(player, chunk.getViewers().iterator().next());
     }
 

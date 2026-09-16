@@ -90,14 +90,10 @@ public sealed interface EntityTracker permits EntityTrackerImpl {
         return entities(Target.ENTITIES);
     }
 
-    Viewable viewable(List<SharedInstance> sharedInstances, int chunkX, int chunkZ);
-
-    default Viewable viewable(int chunkX, int chunkZ) {
-        return viewable(List.of(), chunkX, chunkZ);
-    }
+    Viewable viewable(int chunkX, int chunkZ);
 
     /**
-     * Releases a {@link Viewable} previously obtained from {@link #viewable(List, int, int)},
+     * Releases a {@link Viewable} previously obtained from {@link #viewable(int, int)},
      * so that it stops being retained by this tracker.
      *
      * @param viewable the viewable to unregister

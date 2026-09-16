@@ -6,6 +6,7 @@ dependencies {
     implementation(project(":plugin-api"))
 
     testImplementation(project(":testing"))
+    testImplementation(libs.archunit.junit5)
 }
 
 // No module-info here: plugins run on the classpath (ADR-M2-005). The unit, match and pathfinding

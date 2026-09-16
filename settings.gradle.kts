@@ -9,4 +9,9 @@ include("jcstress-tests")
 
 include("smoke")
 
+include("protocol")
+include("plugin-api")
+include("server-app")
+include("game-rts")
+
 enableFeaturePreview("ENHANCED_GRAPH_ORDERING")

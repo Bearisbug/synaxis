@@ -1,0 +1,21 @@
+package io.github.bearisbug.synaxis.plugin;
+
+/**
+ * The plugin API version axis, see {@code docs/DESIGN-M2.md} §8.
+ * <p>
+ * This module is the only stable surface of the server: what it exports is held to binary
+ * compatibility by the {@code checkBinaryCompatibility} gate, the engine below it is not. The
+ * lifecycle and capability types ({@code SynaxisPlugin}, {@code PluginDescriptor},
+ * {@code PluginContext}) land with REQ-M2-003 and REQ-M2-004.
+ */
+public final class PluginApi {
+
+    /**
+     * The major version a plugin declares in its descriptor. A plugin whose value differs from this
+     * one is refused; the number goes up by one on every breaking change of this module.
+     */
+    public static final int API_VERSION = 1;
+
+    private PluginApi() {
+    }
+}

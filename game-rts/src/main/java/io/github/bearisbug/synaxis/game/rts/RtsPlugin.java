@@ -46,10 +46,4 @@ public final class RtsPlugin implements SynaxisPlugin {
                 event -> event.getPlayer().setRespawnPoint(SPAWN));
         context.admission().register(_ -> new Admission.Accept(match, PLAYER_TEAM));
     }
-
-    @Override
-    public void onDisable() {
-        // Nothing of its own to release: the host takes back the event node, the tasks, the
-        // channels and the admission provider, and the engine drops the instance on shutdown.
-    }
 }

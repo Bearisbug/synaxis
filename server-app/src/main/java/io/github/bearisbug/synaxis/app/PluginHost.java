@@ -59,7 +59,6 @@ final class PluginHost {
     static List<SynaxisPlugin> discover() {
         return ServiceLoader.load(SynaxisPlugin.class).stream()
                 .map(ServiceLoader.Provider::get)
-                .map(SynaxisPlugin.class::cast)
                 .toList();
     }
 

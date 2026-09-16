@@ -603,6 +603,11 @@ public class InstanceContainer extends Instance {
      * The copy also inherits the chunk supplier, the {@link Generator} and the dimension name,
      * so chunks loaded afterwards match the copied ones. Its {@link ChunkLoader} is left at the
      * default, a copy must not write into the storage of its source.
+     * <p>
+     * <b>A copy costs as much memory as its source.</b> Every section is cloned, palettes and light
+     * data included, so copying one instance per game of a big world multiplies the resident heap
+     * by the number of copies. Generating the world again from the same generator is usually
+     * cheaper than copying it.
      *
      * @return an {@link InstanceContainer} with the exact same chunks as 'this'
      * @see #getSrcInstance() to retrieve the "creation source" of the copied instance

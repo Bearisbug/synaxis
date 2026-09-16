@@ -51,8 +51,10 @@ final class Match {
     private final UUID matchId = UUID.randomUUID();
     private final Key dimensionName = Key.key("synaxis", "match_" + UUID.randomUUID().toString().replace("-", ""));
 
+    /** Set here rather than in {@link #load}: every path out of the match reports a duration. */
+    private final long createdAtNanos = System.nanoTime();
+
     private State state = State.CREATING;
-    private long createdAtNanos;
     private @Nullable MapPreset preset;
     private @Nullable NavGrid navGrid;
     private @Nullable InstanceContainer instance;
@@ -103,7 +105,6 @@ final class Match {
      */
     void load(String mapId) {
         if (state != State.CREATING) throw new IllegalStateException("a match only loads once, state=" + state);
-        createdAtNanos = System.nanoTime();
         analytics.record("match_created", attributes("map_id", mapId, "dimension_name", dimensionName.asString()));
 
         final MapPreset selected = MapPreset.byId(mapId);
@@ -128,17 +129,15 @@ final class Match {
 
         final MapTerrain terrain = new MapTerrain(selected);
         this.navGrid = NavGrid.of(terrain);
-        final InstanceContainer loading = new InstanceContainer(process, matchId, dimensionType, null, dimensionName);
+        final InstanceContainer loading = new InstanceContainer(process, matchId, dimensionType, dimensionName);
         loading.setGenerator(new MapGenerator(terrain));
-        // §15: the instance side of the view range, the three process wide ones are set by the host
-        // before the process exists.
-        loading.viewDistance(process.config().chunkViewDistance());
 
         final Runtime runtime = Runtime.getRuntime();
         final long heapBefore = runtime.totalMemory() - runtime.freeMemory();
         try {
             generateWholeMap(loading, selected);
         } catch (Exception e) {
+            if (e instanceof InterruptedException) Thread.currentThread().interrupt();
             // The half built instance is never registered, so dropping the reference is all it takes
             logger.error("Map generation failed: match_id={} map_id={}", matchId, mapId, e);
             endWith("load-failed", null);

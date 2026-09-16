@@ -2,7 +2,6 @@ package io.github.bearisbug.synaxis.game.rts;
 
 import io.github.bearisbug.synaxis.coordinate.Pos;
 import io.github.bearisbug.synaxis.entity.Player;
-import io.github.bearisbug.synaxis.instance.Instance;
 import io.github.bearisbug.synaxis.instance.InstanceContainer;
 import io.github.bearisbug.synaxis.instance.block.Block;
 import io.github.bearisbug.synaxis.registry.RegistryKey;
@@ -184,7 +183,7 @@ class MatchIntegrationTest {
         assertEquals("normal", ended.get("reason"));
     }
 
-    private static long registeredInstances(Env env) {
-        return env.process().instance().getInstances().stream().filter(Instance::isRegistered).count();
+    private static int registeredInstances(Env env) {
+        return env.process().instance().getInstances().size();
     }
 }

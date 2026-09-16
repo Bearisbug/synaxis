@@ -31,6 +31,10 @@ class NavGridTest {
     void theStandingHeightIsTheGroundAndTheObstacleOnTopOfIt() {
         final int x = walkableColumnX();
         assertEquals(MapTerrain.GROUND_HEIGHT, grid.surfaceY(x, 0));
+
+        final int[] obstacle = obstacleColumn();
+        assertEquals(MapTerrain.GROUND_HEIGHT + MapTerrain.OBSTACLE_HEIGHT,
+                grid.surfaceY(obstacle[0], obstacle[1]));
     }
 
     @Test
@@ -98,6 +102,15 @@ class NavGridTest {
             }
         }
         return reached;
+    }
+
+    private int[] obstacleColumn() {
+        for (int x = 0; x < preset.sizeX(); x++) {
+            for (int z = 0; z < preset.sizeZ(); z++) {
+                if (!grid.isWalkable(x, z)) return new int[]{x, z};
+            }
+        }
+        throw new AssertionError("the map carries no obstacle at all");
     }
 
     private int walkableColumnX() {

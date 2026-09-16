@@ -116,12 +116,14 @@ class RtsPluginIntegrationTest {
     @Test
     void enablingBuildsTheMatchAndTakesTheAdmissionSlot(Env env) {
         MatchSupport.registerMatchDimension(env);
+        final String previousMap = System.getProperty("synaxis.app.map");
         System.setProperty("synaxis.app.map", MapPreset.SMALL.id());
         final ProbeContext context = new ProbeContext(env, dataDirectory);
         try {
             new RtsPlugin().onEnable(context);
         } finally {
-            System.clearProperty("synaxis.app.map");
+            if (previousMap == null) System.clearProperty("synaxis.app.map");
+            else System.setProperty("synaxis.app.map", previousMap);
         }
 
         final AdmissionProvider provider = context.provider;

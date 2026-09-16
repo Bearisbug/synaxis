@@ -4,7 +4,6 @@ import io.github.bearisbug.synaxis.Auth;
 import io.github.bearisbug.synaxis.JvmFlags;
 import io.github.bearisbug.synaxis.MinecraftServer;
 import io.github.bearisbug.synaxis.ServerProcess;
-import io.github.bearisbug.synaxis.instance.Instance;
 import io.github.bearisbug.synaxis.plugin.PluginApi;
 import io.github.bearisbug.synaxis.world.DimensionType;
 import net.kyori.adventure.key.Key;
@@ -115,7 +114,7 @@ public final class Main {
                     + "a player.");
             canServe = false;
         }
-        final long matches = runningMatches(process);
+        final int matches = runningMatches(process);
         if (matches != 1) {
             LOGGER.error("No running match: a plugin has to build one and register it before the port opens, "
                     + "and M2 expects exactly one (found {}).", matches);
@@ -150,8 +149,8 @@ public final class Main {
      * @param process the engine process
      * @return the number of running matches
      */
-    private static long runningMatches(ServerProcess process) {
-        return process.instance().getInstances().stream().filter(Instance::isRegistered).count();
+    private static int runningMatches(ServerProcess process) {
+        return process.instance().getInstances().size();
     }
 
     static void applyViewRangeDefaults() {

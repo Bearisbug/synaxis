@@ -115,10 +115,17 @@ ls -d "$TMPDIR"minestom-* 2>/dev/null | wc -l   # 期望 0
 ### 3.4 启动服务端
 
 ```bash
-./gradlew :smoke:run --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts
+./gradlew :server-app:run --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts
 ```
 
-`smoke` 是最小启动器：起进程、开一个平坦世界、注册 `synaxis:main` 自定义负载通道的 echo 处理器。监听 `127.0.0.1:25565`，离线模式，任意用户名可进。
+`server-app` 是唯一的启动入口：读 `synaxis.*` 配置、用 `ServiceLoader` 发现并启用插件、断言有准入回调、再 bind 监听端口（`docs/DESIGN-M2.md` `API-M2-010`）。默认监听 `0.0.0.0:25565`，离线模式，任意用户名可进；就绪日志是 `synaxis server-app listening on 0.0.0.0:25565`。
+
+端口与插件选择走系统属性，`run` 任务会把 `synaxis.*` 转给 fork 出来的 JVM：
+
+```bash
+./gradlew :server-app:run --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts \
+  -Dsynaxis.app.port=25570 -Dsynaxis.app.plugins=rts
+```
 
 另开一个终端探活：
 
@@ -126,9 +133,9 @@ ls -d "$TMPDIR"minestom-* 2>/dev/null | wc -l   # 期望 0
 nc -z 127.0.0.1 25565 && echo "server is up"
 ```
 
-在服务端 stdin 输入 `stop` 回车即可停服（10 秒内退出）。
+在服务端 stdin 输入 `stop` 回车即可停服（15 秒内退出：插件 5 秒 + 引擎 10 秒）。进程会在仓库根写两处运行时产物：插件数据目录 `plugins/<plugin_id>/` 与事件台账 `logs/events-YYYYMMDD.jsonl`，两者都已 gitignore，删掉即回到基线。
 
-> `smoke` 模块由 `REQ-008` 引入。在它合入之前，等价的启动入口是 `./gradlew :demo:run --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts`。
+没有任何插件注册准入回调时（例如 `-Dsynaxis.app.plugins=` 指了一个不存在的 id），进程以非零码退出且端口不会 bind——这是设计好的行为，不是故障。写插件见 `docs/PLUGINS.md`。
 
 ### 3.5 离线构建（验证依赖已全部冻结在本地）
 
@@ -164,18 +171,19 @@ unset JAVA_TOOL_OPTIONS
 | `src/main/resources/META-INF/native-image/` | GraalVM 可达性元数据（资源 glob 指向 `data/*.json`） |
 | `src/test/` | 单元与集成测试 |
 | `testing/` | `@EnvTest` 测试夹具模块，被 `src/test` 依赖 |
-| `demo/` | 上游遗留的示例启动器（`REQ-008` 会被 `smoke` 取代） |
 | `protocol/` | M2 子项目：与 Fabric 客户端共享的消息定义，零第三方依赖（`docs/DESIGN-M2.md` `ADR-M2-008`） |
 | `plugin-api/` | M2 子项目：唯一稳定面，引擎与 `protocol` 类型的受控再导出；接 ABI 门 |
-| `server-app/` | M2 子项目：插件宿主与装配层，跑 classpath，不出模块 |
+| `server-app/` | M2 子项目：插件宿主与装配层（唯一启动入口），跑 classpath，不出模块 |
 | `game-rts/` | M2 子项目：RTS 玩法插件，由宿主用 `ServiceLoader` 发现 |
 | `build-src/` | Gradle 约定插件（toolchain、Error Prone、发布、ABI 检查） |
 | `gradle/init/` | 构建用的临时 init 脚本，目前只有阿里云镜像脚本，见 §2.1 |
 | `gradle/libs.versions.toml` | 版本目录：所有第三方版本与 `minecraft = "26.2"` 都钉在这里 |
+| `example-plugin/` | `docs/PLUGINS.md` 的成品示例插件；独立 Gradle 构建，不进 `settings.gradle.kts` |
 | `tools/` | 运维与验收脚本，协议探针在 `tools/protocol-probe/probe.py` |
 | `docs/DESIGN.md` | 设计文档，单一事实源 |
 | `docs/TEST.md` | 测试文档，验收执行脚本与轮次台账 |
 | `docs/ENGINE.md` | 本文 |
+| `docs/PLUGINS.md` | 一页插件开发说明（`REQ-M2-023`） |
 | `docs/research/` | 选型调研与对起点代码的六路审计、架构评审 |
 | `docs/test-runs/` | 各轮测试的证据目录（`RUN-*`） |
 

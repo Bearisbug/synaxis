@@ -7,8 +7,6 @@ include("testing")
 include("jmh-benchmarks")
 include("jcstress-tests")
 
-include("smoke")
-
 include("protocol")
 include("plugin-api")
 include("server-app")

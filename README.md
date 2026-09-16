@@ -28,7 +28,8 @@ JDK 25 / Gradle 9.7.1。冷启动、常用命令、目录地图、升 Minecraft 
 | --- | --- |
 | `src/` | 引擎主源码（`io.github.bearisbug.synaxis`）与测试 |
 | `testing/` | `@EnvTest` 测试夹具模块 |
-| `smoke/` | 冒烟启动器，协议验收用的最小服务端 |
+| `protocol/`、`plugin-api/`、`server-app/`、`game-rts/` | M2 子项目：消息定义、唯一稳定面、插件宿主与启动入口、RTS 玩法插件 |
+| `example-plugin/` | 示例插件，独立 Gradle 构建（见 `docs/PLUGINS.md`） |
 | `jmh-benchmarks/`、`jcstress-tests/` | 基准与并发压力测试 |
 | `build-src/` | Gradle 约定插件（toolchain、Error Prone、发布、ABI 检查） |
 | `gradle/` | 版本目录与构建 init 脚本 |

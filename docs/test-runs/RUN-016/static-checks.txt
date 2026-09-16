@@ -1,0 +1,26 @@
+RUN-016 static checks · version 8ea0f97e00 · 2026-09-16
+== 模块 ==
+includeBuild("build-src")
+include("testing")
+include("jmh-benchmarks")
+include("jcstress-tests")
+include("protocol")
+include("plugin-api")
+include("server-app")
+include("game-rts")
+smoke tracked files: 0
+== TC-GAME-002/003 引擎→游戏依赖规则 ==
+[archunit rules]
+src/test/java/io/github/bearisbug/synaxis/ArchitectureTest.java:63:     * surface ({@code :plugin-api}) and the host ({@code :server-app}). The engine is the root
+src/test/java/io/github/bearisbug/synaxis/ArchitectureTest.java:79:            "io.github.bearisbug.synaxis.game..",
+src/test/java/io/github/bearisbug/synaxis/ArchitectureTest.java:81:            "io.github.bearisbug.synaxis.app..",
+[engine game package renamed] 1 gameevent dir; old game dir: ls: src/main/java/io/github/bearisbug/synaxis/game: No such file or directory
+== blame-ignore ==
+e7eac031aba79997132b4532fec76d92a2770ff5
+15f619f46d9810a26f7df5c5680f0918ddd16cf0
+cbe532091a995bd31400c313d5603b8d985273e2
+== pkgdeps 四个新模块 ==
+protocol: edges (source -> target, imports)
+plugin-api: edges (source -> target, imports)
+server-app: edges (source -> target, imports)
+game-rts: edges (source -> target, imports)

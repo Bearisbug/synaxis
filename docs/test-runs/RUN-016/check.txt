@@ -1,0 +1,6 @@
+TC-GAME-001 / TC-029 · clean check on 8ea0f97e00 · exit=0
+BUILD SUCCESSFUL in 5s
+build              tests=2686 failures=0
+testing/build      tests=6 failures=0
+server-app/build   tests=43 failures=0
+game-rts/build     tests=25 failures=0

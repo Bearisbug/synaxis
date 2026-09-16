@@ -1,0 +1,2 @@
+TC-GAME-032 第 5 步 / TC-GAME-036 · :game-rts:test on 8ea0f97e00 · exit=0
+BUILD SUCCESSFUL in 6s

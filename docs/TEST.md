@@ -1411,6 +1411,7 @@ REQ-M2 ↔ TC 对照（手工维护）：
 | RUN-013 | 2026-09-15 | `15f619f46d`（项目定名 Synaxis 改名提交） | AI（Claude Code，Gradle / 探针） | 局部（改名字面量→TC-002、TC-010、TC-012、TC-014、TC-018、TC-019、TC-020、TC-021、TC-024、TC-025、TC-026、TC-027 + 冒烟级 TC-001、TC-003；本轮新启用的 TC-028、TC-029 一并执行） | 通过 12/16 · 失败 2 · 待人工 1 · 跳过 1 |
 | RUN-014 | 2026-09-15 | `70e86ba348`（2026-09-15 审计修复 13 个分支合入 main，57 条修复） | AI（Claude Code，Gradle / 探针） | 全量 | 通过 18/22 · 待人工 2 · 跳过 2 |
 | RUN-015 | 2026-09-16 | `6c86fb18d9`（审计修复第二轮 F29 / F49 / F11 合入） | AI（Claude Code，Gradle / 探针） | 局部（instance / tag / player 域→TC-004、TC-018、TC-026、TC-027 + 冒烟级 TC-001、TC-002、TC-012、TC-020、TC-028、TC-029） | 通过 9/10 · 待人工 1 |
+| RUN-016 | 2026-09-16 | `8ea0f97e00`（M2 阶段 1～3 合入：模块拆分、插件宿主、世界管理与审计残留） | AI（Claude Code，Gradle） | 局部（M2 阶段 1～3 的 REQ-M2-001～006、010～015、021～023 → 其对应 TC-GAME-* 的可自动化部分 + 引擎域冒烟 TC-001、TC-029） | 通过 16/29 · 待人工 2 · 阻塞 11 |
 
 明细（仅登非「通过」项）：
 
@@ -1497,6 +1498,22 @@ TC-002 证据：`docs/test-runs/RUN-002/tc-002.txt`（5 步实际输出）（2,6
 | RUN-014 | TC-021 | 跳过 | 同上 | 下次门禁改动时 |
 
 | RUN-015 | TC-012 | 待人工 | 需原版客户端；`synaxis:main` 探针往返见 `docs/test-runs/RUN-015/echo.txt` | 人工收口轮 |
+
+| RUN-016 | TC-GAME-004 | 阻塞 | 需推远端 PR 才能看到覆盖率门变红，本轮未推 | 下次有 PR 时 |
+| RUN-016 | TC-GAME-005 | 阻塞 | 需 M2 第一个 tag 之后才有 ABI baseline；当前 ABI 门按引导规则显式 SKIPPED | 阶段 2 打 tag 后 |
+| RUN-016 | TC-GAME-006 | 阻塞 | 同上，需 baseline 存在才能验证破坏性变更变红 | 阶段 2 打 tag 后 |
+| RUN-016 | TC-GAME-017 | 阻塞 | `:protocol` 只有骨架，消息与向量随阶段 4 落 | 阶段 4 |
+| RUN-016 | TC-GAME-018 | 阻塞 | 同上 | 阶段 4 |
+| RUN-016 | TC-GAME-019 | 阻塞 | 握手随 REQ-M2-008 落在阶段 4；探针尚未实现 `C2S_HELLO` | 阶段 4 |
+| RUN-016 | TC-GAME-021 | 阻塞 | 同上 | 阶段 4 |
+| RUN-016 | TC-GAME-022 | 阻塞 | 同上 | 阶段 4 |
+| RUN-016 | TC-GAME-033 | 阻塞 | 第 3～5 步需探针连入对局，随阶段 4 落；第 1、2 步（`SharedInstance` 全库零命中、有玩家的区块拒绝卸载）已由单测覆盖 | 阶段 4 |
+| RUN-016 | TC-GAME-034 | 阻塞 | 同上：第 1、2 步已实跑，第 3～5 步需探针 | 阶段 4 |
+| RUN-016 | TC-GAME-035 | 阻塞 | 同上 | 阶段 4 |
+| RUN-016 | TC-GAME-020 | 待人工 | 需原版客户端看断线提示 | 人工收口轮 |
+| RUN-016 | TC-GAME-016 | 待人工 | 示例插件按 `docs/PLUGINS.md` 跑通需人工照说明走一遍 | 人工收口轮 |
+
+RUN-016 证据：`docs/test-runs/RUN-016/`（`static-checks.txt`：settings 含四个新模块且 `smoke` 已零跟踪文件、引擎 `game` 包已改名 `gameevent` 且旧目录不存在、ArchUnit 的引擎→游戏禁止规则写的是完整前缀、改名提交已登记 `.git-blame-ignore-revs`、`tools/pkgdeps.py` 对四个新模块各跑一条；`check.txt`：干净 `clean check` BUILD SUCCESSFUL，引擎 2,686 + testing 6 + server-app 43 + game-rts 25 共 2,760 个测试 0 失败；`tc-game-032-036.txt`：`:game-rts:test` 的对局生命周期与结构化 tag 禁止规则通过）。验收人另行核对：`Match#end` 在拆实例之前置 `ENDED`（新增回归测试先红后绿，红的证据是把状态翻转移回 `endWith` 后该用例失败）。通过项：TC-001、TC-029、TC-GAME-001、TC-GAME-002、TC-GAME-003、TC-GAME-007、TC-GAME-009、TC-GAME-010、TC-GAME-011、TC-GAME-014、TC-GAME-015、TC-GAME-029、TC-GAME-031、TC-GAME-032、TC-GAME-036、TC-GAME-048。
 
 RUN-015 证据：`docs/test-runs/RUN-015/`（`static-checks.txt`：TC-001 第 1～3 步、TC-002 五步、TC-020 第 3～5 步（主源码 1,109 文件）、TC-028 五步；`tc-001-offline.txt`：离线 `check` 通过；`tc-029.txt`：`:test --rerun-tasks` 根模块 2,684 测试 0 失败；`tc-020-check.txt`：`check` 通过；`tc-020-registry.txt`：9,063 字节与基线一致；`tc-004.txt` / `tc-004-login.txt`：登录后 `stop` 1 秒退出码 0，末 20 行无 deadlock 与线程转储；`tc-027-*.txt`：零长帧断线、深递归退出码 0 且 2 次 KeepAlive、再登成功，无 `StackOverflowError`；`tc-026-*.txt`：两次 `Disconnect reason=synaxis:protocol-error`，再登成功；`tc-018*.txt`：3 个探针均收到 `synaxis:server-stopping`，进程 1 秒退出码 0；`echo.txt`：`synaxis:main` 往返 `ping`；`smoke-server.log`：3 行 `WARN` 均带 `connection_id`，堆栈行 0）。通过项：TC-001、TC-002、TC-004、TC-018、TC-020、TC-026、TC-027、TC-028、TC-029。
 

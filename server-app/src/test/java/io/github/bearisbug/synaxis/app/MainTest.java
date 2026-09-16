@@ -19,6 +19,9 @@ class MainTest {
     void clearProperties() {
         System.clearProperty("synaxis.app.port");
         System.clearProperty("synaxis.app.plugins");
+        System.clearProperty("synaxis.entity-view-distance");
+        System.clearProperty("synaxis.chunk-view-distance");
+        System.clearProperty("synaxis.player.chunk-update-limiter-history-size");
     }
 
     @Test
@@ -37,6 +40,27 @@ class MainTest {
         System.setProperty("synaxis.app.port", "abc");
         final IllegalArgumentException refusal = assertThrows(IllegalArgumentException.class, Main::port);
         assertTrue(refusal.getMessage().contains("synaxis.app.port=abc"), refusal.getMessage());
+    }
+
+    // §15: the RTS camera sees far more of the world than the engine defaults send, and two of
+    // these three freeze while the process is being created
+    @Test
+    void theViewRangeOfTheRtsCameraIsSetBeforeTheProcessExists() {
+        Main.applyViewRangeDefaults();
+
+        assertEquals("8", System.getProperty("synaxis.entity-view-distance"));
+        assertEquals("10", System.getProperty("synaxis.chunk-view-distance"));
+        assertEquals("0", System.getProperty("synaxis.player.chunk-update-limiter-history-size"));
+    }
+
+    @Test
+    void aViewRangeTheOperatorPassedIsLeftAlone() {
+        System.setProperty("synaxis.chunk-view-distance", "6");
+
+        Main.applyViewRangeDefaults();
+
+        assertEquals("6", System.getProperty("synaxis.chunk-view-distance"));
+        assertEquals("8", System.getProperty("synaxis.entity-view-distance"));
     }
 
     @Test

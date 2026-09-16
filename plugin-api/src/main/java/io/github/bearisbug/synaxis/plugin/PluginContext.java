@@ -63,6 +63,13 @@ public interface PluginContext {
     Path dataDirectory();
 
     /**
+     * The analytics ledger the host writes, for the §20 events this plugin produces.
+     *
+     * @return the analytics capability of this plugin
+     */
+    PluginAnalytics analytics();
+
+    /**
      * A logger named after this plugin.
      *
      * @return the logger of this plugin

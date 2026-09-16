@@ -16,6 +16,18 @@ public final class PluginApi {
      */
     public static final int API_VERSION = 1;
 
+    /**
+     * The key of the one shallow dimension type the host registers before it binds, which a plugin
+     * builds its match instances on (see {@code docs/DESIGN-M2.md} §11.3 and the startup sequence
+     * of {@code API-M2-010}).
+     * <p>
+     * The dimension type registry is a dynamic one, sent once during the configuration phase: a
+     * second one registered after the port is open would shift the dimension indices of everybody
+     * already in game, so the host registers exactly one and every match shares it. Matches tell
+     * themselves apart by their dimension name, which is free form and goes into no registry.
+     */
+    public static final String MATCH_DIMENSION_TYPE = "synaxis:match";
+
     private PluginApi() {
     }
 }

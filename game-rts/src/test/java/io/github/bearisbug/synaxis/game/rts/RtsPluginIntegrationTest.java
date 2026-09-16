@@ -10,6 +10,7 @@ import io.github.bearisbug.synaxis.plugin.Admission;
 import io.github.bearisbug.synaxis.plugin.AdmissionProvider;
 import io.github.bearisbug.synaxis.plugin.AdmissionRequest;
 import io.github.bearisbug.synaxis.plugin.PluginAdmission;
+import io.github.bearisbug.synaxis.plugin.PluginAnalytics;
 import io.github.bearisbug.synaxis.plugin.PluginApi;
 import io.github.bearisbug.synaxis.plugin.PluginChannels;
 import io.github.bearisbug.synaxis.plugin.PluginContext;
@@ -24,10 +25,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.nio.file.Path;
+import java.util.List;
 import java.util.UUID;
 import java.util.function.Consumer;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
@@ -49,6 +52,7 @@ class RtsPluginIntegrationTest {
 
         private final Env env;
         private final Path dataDirectory;
+        private final RecordedEvents events = new RecordedEvents();
         private @Nullable AdmissionProvider provider;
 
         ProbeContext(Env env, Path dataDirectory) {
@@ -92,6 +96,11 @@ class RtsPluginIntegrationTest {
         }
 
         @Override
+        public PluginAnalytics analytics() {
+            return events;
+        }
+
+        @Override
         public Logger logger() {
             return LoggerFactory.getLogger("plugin.rts");
         }
@@ -106,8 +115,14 @@ class RtsPluginIntegrationTest {
 
     @Test
     void enablingBuildsTheMatchAndTakesTheAdmissionSlot(Env env) {
+        MatchSupport.registerMatchDimension(env);
+        System.setProperty("synaxis.app.map", MapPreset.SMALL.id());
         final ProbeContext context = new ProbeContext(env, dataDirectory);
-        new RtsPlugin().onEnable(context);
+        try {
+            new RtsPlugin().onEnable(context);
+        } finally {
+            System.clearProperty("synaxis.app.map");
+        }
 
         final AdmissionProvider provider = context.provider;
         assertNotNull(provider, "the plugin registered no admission provider");
@@ -115,14 +130,15 @@ class RtsPluginIntegrationTest {
                 provider.admit(new AdmissionRequest(UUID.randomUUID(), "tester", 0, 0)));
         assertEquals(1, accept.team());
 
-        // The generator is wired: ground up to the spawn height, air above it.
+        // The map is already there, the whole of it, and no chunk is ever loaded again
         final Instance match = accept.instance();
-        match.loadChunk(0, 0).join();
-        assertEquals(Block.STONE, match.getBlock(0, 39, 0));
-        assertEquals(Block.AIR, match.getBlock(0, 40, 0));
+        assertFalse(match.hasEnabledAutoChunkLoad(), "the match kept loading chunks after its map was generated");
+        assertEquals(MapPreset.SMALL.chunkCount(), match.getChunks().size());
+        assertEquals(Block.STONE, match.getBlock(0, MapTerrain.GROUND_HEIGHT - 1, 0));
+        assertEquals(List.of("match_created", "match_started"), context.events.names());
 
-        // And the connection the provider accepted really can spawn in there.
-        final Player player = env.createPlayer(match, new Pos(0, 42, 0));
+        // And the connection the provider accepted really can spawn in there
+        final Player player = env.createPlayer(match, new Pos(0.5, MapTerrain.GROUND_HEIGHT, 0.5));
         assertEquals(match, player.getInstance());
     }
 }

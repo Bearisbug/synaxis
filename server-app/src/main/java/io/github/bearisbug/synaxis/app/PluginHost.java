@@ -95,7 +95,7 @@ final class PluginHost {
             plugin.onEnable(new PluginContextImpl(process,
                     new PluginEventsImpl(id, loaded.node()), scheduler,
                     new PluginChannelsImpl(id, router), new PluginAdmissionImpl(id, admission),
-                    dataDirectory, LoggerFactory.getLogger("plugin." + id)));
+                    dataDirectory, ledger::record, LoggerFactory.getLogger("plugin." + id)));
         } catch (Throwable throwable) {
             LOGGER.error("Plugin failed to enable: plugin_id={}", id, throwable);
             tearDown(loaded);

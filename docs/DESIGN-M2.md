@@ -18,6 +18,7 @@
 | 日期 | 版本 | 改动 | 作者 |
 | --- | --- | --- | --- |
 | 2026-09-16 | v0.1 | 初稿：M2 范围、模块拆分、插件宿主、自定义协议、单位模型、寻路、世界管理与四条审计残留处置、垂直切片验收、阶段计划 | Bearisbug |
+| 2026-09-16 | v0.12 | 阶段 2（插件宿主）落地回写。**唯一的设计改动在 `API-M2-008` 的 `events()`**：由「返回宿主建的 `EventNode.all("plugin/" + id)` 子节点」改为「返回宿主的 `PluginEvents` 包装，节点本身不交给插件」——`EventNode` 是 sealed 接口、`EventNodeImpl#handleException` 是包级私有，插件把监听器直接挂到引擎节点上时，抛出的异常只会在事件树**根部**被捕获，那里没有任何信息指向是哪个插件，本条自己要求的「三层各打一次 `plugin_id`」写不出来；包装同时让「不得对 `PlayerPluginMessageEvent` 建实例作用域映射节点」这条硬约束对插件侧结构性成立（拿不到节点就建不出映射）。其余为落地登记：§5 `REQ-M2-023` 锚点补示例插件（`example-plugin/`，独立 Gradle 构建）与说明（`docs/PLUGINS.md`）的落点；§14 点名这四个断线键的常量类是 `plugin-api` 的 `DisconnectKeys`；§20 的 `plugin_enabled` 已由 server-app 写入 `logs/events-YYYYMMDD.jsonl`。**本阶段未落地、留给阶段 3 的**：`API-M2-010` 启动序列第 ③ 步的浅 `DimensionType` 与第 ⑤ 步里「唯一对局已 `running`」那一半断言随 `REQ-M2-011` 一起做，当前第 ⑤ 步只断言恰有一个准入回调 | Bearisbug |
 | 2026-09-16 | v0.11 | §26 阶段 2 的退出条件点名两条此前只挂在别处的待办：`:server-app` 应用 `application` 插件并能 `./gradlew :server-app:run`（阶段 1 没有 `mainClass` 可指，偏差此前只写在该模块的构建脚本注释里，而 `docs/TEST.md` §3 启动段与 `TC-GAME-048` 都依赖这条命令），以及 §24「依赖矩阵」那条 `tools/pkgdeps.py` 的开关——四个模块已经存在，这条不再是悬空待办 | Bearisbug |
 | 2026-09-16 | v0.10 | §24 覆盖率门条目按 `ci.yml` 现状写明 `--src-roots` 的范围：`find` 喂给 diff-cover 的是全部模块的报告，src-roots 却只列了引擎与四个新模块，`testing` 模块（约定插件给它出报告，内含 `io/github/bearisbug/synaxis/testing` 的真实源文件）的新增行因此对门禁隐形；`ci.yml` 与 `docs/ENGINE.md` 的本地等价命令同批补上 `testing/src/main/java` | Bearisbug |
 | 2026-09-16 | v0.9 | `ADR-M2-005` 要求的显式改名在 `docs/DESIGN.md` 侧执行完毕（该文档 §8 与 `ADR-007` 的「唯一稳定面」由 `platform-api` 改称 `plugin-api`，登记为其 v0.22）；§8 兼容承诺对象那行的回指随之改为陈述已完成的事实 | Bearisbug |
@@ -128,7 +129,7 @@
 | REQ-M2-020 | 客户端模组工程：独立 Gradle 构建、`fabric.mod.json` 的 minecraft 依赖钉死 `26.2`、资源打进模组 jar、`:protocol` 以 jar 形式共享。**分两段交付**：`20a` 最小骨架（Loom 构建 + `fabric.mod.json` + 能启动的空模组 + 一条能收发的自定义负载）在 §26 **阶段 0** 就要有——阶段 0 的 spike ② 与 spike ④ 都只能在一个真能启动的 Fabric 模组里做；`20b` 工程完备（CI、双端向量、资源与模型打包、跨构建消费定型）在阶段 6a | 目标 3 | P0 | `API-M2-001`（两端共享同一份编解码） |
 | REQ-M2-021 | `server-app` 承接冒烟职责并删除 `smoke`：启动命令、就绪日志、端口属性、日志文件名同步改写，`docs/TEST.md` 受影响用例按其既有惯例更新 | 目标 1 | P1 | 无对外 API，见 §24 文档同步条目与 §26 阶段 2 退出条件 |
 | REQ-M2-022 | CI 门禁扩展：jacoco 覆盖率与 diff-cover 覆盖新增四个模块；`:plugin-api` 与 `:protocol` 接 `checkBinaryCompatibility` 并按 §24 的**引导规则**处理 baseline（首个 tag 之前显式 `SKIPPED`、之后缺失即失败）；ArchUnit 依赖挪进版本目录 | 目标 1 | P1 | 无对外 API，见 §24 与 §26 阶段 1／2 退出条件 |
-| REQ-M2-023 | 社区上手：一个最小示例插件（打印生命周期、注册一条通道消息、注册一个事件监听器）与一页插件开发说明 | 目标 2 | P2 | `API-M2-007`、`API-M2-008` |
+| REQ-M2-023 | 社区上手：一个最小示例插件（打印生命周期、注册一条通道消息、注册一个事件监听器）与一页插件开发说明。落点：示例插件 `example-plugin/`（**独立 Gradle 构建，不进 `settings.gradle.kts`**——插件作者手里就是这个形态，进了就不是了；编译期 classpath 取自 `:server-app:installDist` 的 `lib/`），说明 `docs/PLUGINS.md` | 目标 2 | P2 | `API-M2-007`、`API-M2-008` |
 | REQ-M2-024 | 宿主准入链：① 插件通过 `PluginContext#admission()` 注册**唯一**的对局提供者 / 准入回调，决定「连接进哪个对局实例、属哪个队伍」或拒绝；② 握手结果从 **tick 线程**（`C2S_HELLO` 的派发线程）安全交回 **configuration 虚拟线程**（`setSpawningInstance` 的唯一合法调用点）的有界等待机制，含超时、重复握手、等待中断线三条失败路径 | 目标 2、目标 3 | P0 | `API-M2-011`；状态机见 §11.1 |
 | REQ-M2-025 | 引擎新增公开的「按航点推进位置」入口 `Entity#moveTo(Pos)`：语义等同现有 `refreshPosition(pos, false, true)`（同步、确定性、不派发事件、不做跨区块异步加载），三个 `refreshPosition` 重载保持 `@ApiStatus.Internal` 不变。**这是 M2 唯一一处为玩法新增的引擎公开入口**（即 §2 目标 1 说的那一处例外；`REQ-M2-002` / `REQ-M2-012` / `REQ-M2-013` / `REQ-M2-014` / `REQ-M2-015` 同样改引擎代码，但都是边界切分与 `docs/DESIGN.md` §28 审计残留的处置，不是为玩法让步），理由是切片里频率最高的那次调用不能落在 `@ApiStatus.Internal` 上，而唯一公开的 `Entity#teleport(...)` 每次派发 `EntityTeleportEvent`、跨区块还走异步路径 | 目标 1、目标 3 | P0 | 无对外契约条目（引擎侧 Java 入口），见 `ADR-M2-005` 的 S4 段、§12.2 时序图与 §24 的稳定面登记 |
 
@@ -308,7 +309,7 @@ M2 的对外契约有两类，都不是 HTTP：① 两端共享的**自定义负
 
 - **`API-M2-008` 插件能力面 `PluginContext`** — 实现 `REQ-M2-004`、`REQ-M2-005`、`REQ-M2-023`、`REQ-M2-024`
   - 方法（七项，全部是组合包装，不直给引擎内部对象）：`process()`、`events()`、`scheduler()`、`channels()`、`admission()`、`dataDirectory()`、`logger()`。`admission()` 的语义单列在 `API-M2-011`。
-  - `events()`：返回宿主建的 `EventNode.all("plugin/" + id)` 子节点；禁用时宿主一次 `removeChild` 摘干净。插件**不得**自行往 `GlobalEventHandler` 挂节点。**另一条硬约束：事件树上任何一处都不得对 `PlayerPluginMessageEvent` 建实例作用域映射节点（`node.map(instance, EventFilter.INSTANCE)`）**——configuration 阶段派发时 `EventNodeImpl.Handle` 的 mapped 分支会调 `EntityInstanceEvent#getInstance()`，而此时玩家没有实例，开 `-ea` 的测试里直接 AssertionError、不开 `-ea` 则静默丢弃该分支。作用域比「握手监听器别挂实例节点」大：只要树上**任何**代码建了这个映射，全局派发就会踩到。
+  - `events()`：返回宿主的 `PluginEvents` 包装（`addListener(事件类, 监听器)`）；监听器挂在宿主建的 `EventNode.all("plugin/" + id)` 子节点上，**该节点本身不交给插件**，禁用时宿主一次 `removeChild` 摘干净。插件**不得**自行往 `GlobalEventHandler` 挂节点。**为什么是包装而不是直接返回那个 `EventNode`**：`EventNode` 是 sealed 接口、`EventNodeImpl#handleException` 是包级私有，插件把监听器直接挂上去时抛出的异常只会在事件树**根部**被捕获，那里没有任何信息指向是哪个插件，下方「错误与归因」要求的「三层各打一次 `plugin_id`」就无从实现；包装还顺带让下面这条硬约束对插件侧结构性成立——拿不到节点就建不出映射节点。**该硬约束对宿主与引擎仍然有效：事件树上任何一处都不得对 `PlayerPluginMessageEvent` 建实例作用域映射节点（`node.map(instance, EventFilter.INSTANCE)`）**——configuration 阶段派发时 `EventNodeImpl.Handle` 的 mapped 分支会调 `EntityInstanceEvent#getInstance()`，而此时玩家没有实例，开 `-ea` 的测试里直接 AssertionError、不开 `-ea` 则静默丢弃该分支。作用域比「握手监听器别挂实例节点」大：只要树上**任何**代码建了这个映射，全局派发就会踩到。
   - `scheduler()`：包装层记录本插件提交的每个 `Task`，`onDisable` 时逐个 `cancel()`。
   - `channels()`：`register(String name, PayloadHandler)` 与 `send(Player, String name, byte[])`；实际通道 id 强制补 `<plugin_id>:` 前缀，注册时前缀不等于自身 id 直接抛 `IllegalArgumentException`。
   - `admission()`：见 `API-M2-011`。禁用插件时宿主一并摘掉它注册的准入回调——此后新连接一律 `synaxis:match-unavailable`（没有回调 = 没人能说玩家该进哪儿）。
@@ -685,7 +686,7 @@ flowchart LR
 
 无 HTTP，不用 RFC 9457。沿用 `docs/DESIGN.md` §14 的统一信封：断线走 Minecraft 协议的 `Disconnect` 包，原因文本是 Adventure `Component`，其 `translate` 键即稳定错误码；排障关联 ID 仍是 `connection_id`（见 `docs/DESIGN.md` §9），由网络层在 TCP 接入时生成，**该连接的每一行日志都携带；断线文本不携带**——引擎的 `PlayerConnection#kick` 只把它写进日志，`DisconnectReasons` 是纯 `TranslatableComponent`。因此凡涉及断线的验收判据一律写成「服务端该次 kick 的**日志行**带 `connection_id`」，原因与判据见 §13 的 `PAGE-DISCONNECT` 行，§19 的 gherkin 按此断言。M2 新增的错误分两层：**断线级**（沿用 `synaxis:*` 键体系）与**带内结果码**（不断线，走 `S2C_ORDER_RESULT` 的 `code`）。
 
-断线级（新增，M1 的五个键继续有效）。**这四个键住在游戏侧**：`synaxis:` 只是引擎与游戏共用的 `translate` 前缀（与「`synaxis` 是宿主保留的**通道**命名空间」是两回事），键本身由 `plugin-api` 的常量类持有，**不得加进引擎的 `DisconnectReasons`**——否则引擎就知道了「模组」「对局」这些概念，违背 §6 的依赖方向：
+断线级（新增，M1 的五个键继续有效）。**这四个键住在游戏侧**：`synaxis:` 只是引擎与游戏共用的 `translate` 前缀（与「`synaxis` 是宿主保留的**通道**命名空间」是两回事），键本身由 `plugin-api` 的常量类 `DisconnectKeys` 持有，**不得加进引擎的 `DisconnectReasons`**——否则引擎就知道了「模组」「对局」这些概念，违背 §6 的依赖方向：
 
 | 错误码（type） | 协议动作 | 语义 | 客户端处理约定 |
 | --- | --- | --- | --- |

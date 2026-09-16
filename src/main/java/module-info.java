@@ -74,8 +74,8 @@ module io.github.bearisbug.synaxis {
     exports io.github.bearisbug.synaxis.event.server;
     exports io.github.bearisbug.synaxis.event.trait;
     exports io.github.bearisbug.synaxis.exception;
-    exports io.github.bearisbug.synaxis.game;
     exports io.github.bearisbug.synaxis.gamedata;
+    exports io.github.bearisbug.synaxis.gameevent;
     exports io.github.bearisbug.synaxis.instance;
     exports io.github.bearisbug.synaxis.instance.block;
     exports io.github.bearisbug.synaxis.instance.block.predicate;

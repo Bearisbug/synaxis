@@ -1,4 +1,4 @@
 @NotNullByDefault
-package io.github.bearisbug.synaxis.game;
+package io.github.bearisbug.synaxis.gameevent;
 
 import org.jetbrains.annotations.NotNullByDefault;

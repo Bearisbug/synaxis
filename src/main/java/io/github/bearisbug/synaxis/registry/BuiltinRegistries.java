@@ -6,7 +6,7 @@ import io.github.bearisbug.synaxis.entity.EntityType;
 import io.github.bearisbug.synaxis.entity.VillagerProfession;
 import io.github.bearisbug.synaxis.entity.attribute.Attribute;
 import io.github.bearisbug.synaxis.entity.damage.DamageType;
-import io.github.bearisbug.synaxis.game.GameEvent;
+import io.github.bearisbug.synaxis.gameevent.GameEvent;
 import io.github.bearisbug.synaxis.instance.block.Block;
 import io.github.bearisbug.synaxis.instance.block.BlockEntityType;
 import io.github.bearisbug.synaxis.instance.block.BlockSoundType;

@@ -1,4 +1,4 @@
-package io.github.bearisbug.synaxis.game;
+package io.github.bearisbug.synaxis.gameevent;
 
 import io.github.bearisbug.synaxis.registry.TagKey;
 import org.jetbrains.annotations.ApiStatus;

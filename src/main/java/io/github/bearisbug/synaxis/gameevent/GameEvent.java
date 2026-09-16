@@ -1,4 +1,4 @@
-package io.github.bearisbug.synaxis.game;
+package io.github.bearisbug.synaxis.gameevent;
 
 
 import net.kyori.adventure.key.Key;

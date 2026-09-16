@@ -4,7 +4,7 @@ import net.kyori.adventure.nbt.BinaryTag;
 import io.github.bearisbug.synaxis.codec.Codec;
 import io.github.bearisbug.synaxis.entity.EntityType;
 import io.github.bearisbug.synaxis.entity.damage.DamageType;
-import io.github.bearisbug.synaxis.game.GameEvent;
+import io.github.bearisbug.synaxis.gameevent.GameEvent;
 import io.github.bearisbug.synaxis.instance.block.Block;
 import io.github.bearisbug.synaxis.instance.block.predicate.DataComponentPredicate;
 import io.github.bearisbug.synaxis.instance.fluid.Fluid;

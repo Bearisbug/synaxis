@@ -1,4 +1,4 @@
-package io.github.bearisbug.synaxis.game;
+package io.github.bearisbug.synaxis.gameevent;
 
 /**
  * This class contains all the generated constants for {@link GameEvent}

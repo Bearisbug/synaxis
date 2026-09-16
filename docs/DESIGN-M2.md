@@ -309,7 +309,7 @@ M2 的对外契约有两类，都不是 HTTP：① 两端共享的**自定义负
   - 方法：`interface SynaxisPlugin { PluginDescriptor descriptor(); void onEnable(PluginContext ctx); default void onDisable() {} }`；`record PluginDescriptor(String id, String version, int apiVersion)`。**M2 的 descriptor 里没有 `depends` / `softDepends`**——只有一个编译期插件，声明式依赖与它的解析一起推到第二个插件出现时（那时按「新增字段 + `api_version` 加 1」补回，见 §28.3 与「演进与弃用」）。
   - 发现：`ServiceLoader.load(SynaxisPlugin.class)`（M2 阶段只有编译期插件，见 `ADR-M2-006`）。
   - 约束：`id` 必须匹配 `[a-z0-9][a-z0-9_-]{0,63}` 且不得为 `synaxis`；**无参构造器里禁止注册任何东西**（注册一律在 `onEnable`）；`api_version` 与宿主不匹配时拒绝加载并阻止启动（只写日志，不下发客户端）。
-  - 顺序：M2 不做依赖解析——`ServiceLoader` 给出的顺序即启用顺序，`onDisable` 按启用逆序调用，且必须排在引擎 `scheduler.shutdown()` 之前。
+  - 顺序：M2 不做依赖解析——`ServiceLoader` 给出的顺序即启用顺序，`onDisable` 按启用逆序调用，由引擎的 `scheduler.shutdown()` 驱动（宿主把逆序禁用注册成 shutdown task），所以控制台 `stop` 与 SIGINT 两条停机路径的时序一致。
   - 版本：`api_version` 是整数，破坏性变更时加 1，见「演进与弃用」。
 
 - **`API-M2-008` 插件能力面 `PluginContext`** — 实现 `REQ-M2-004`、`REQ-M2-005`、`REQ-M2-023`、`REQ-M2-024`
@@ -925,7 +925,7 @@ flowchart LR
   When server-app 启动并随后停机
   Then 日志里 a 的 onEnable 行出现在就绪日志之前
   And 宿主已为它建好数据目录 plugins/a/
-  And 停机时 a 的 onDisable 被调用，且排在引擎 scheduler.shutdown() 之前
+  And 停机时 a 的 onDisable 被调用，由引擎 scheduler.shutdown() 驱动，两条停机路径（控制台 stop 与 SIGINT）时序一致
 
 场景: 非法插件 id 被拒绝 (REQ-M2-003)
   Given 一个插件的 descriptor 里 id 为 "Synaxis RTS"（含大写与空格）

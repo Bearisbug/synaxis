@@ -2,6 +2,7 @@ package io.github.bearisbug.synaxis.game.rts;
 
 import io.github.bearisbug.synaxis.coordinate.Pos;
 import io.github.bearisbug.synaxis.entity.Player;
+import io.github.bearisbug.synaxis.event.instance.InstanceChunkUnloadEvent;
 import io.github.bearisbug.synaxis.instance.InstanceContainer;
 import io.github.bearisbug.synaxis.instance.block.Block;
 import io.github.bearisbug.synaxis.registry.RegistryKey;
@@ -14,6 +15,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -115,6 +117,29 @@ class MatchIntegrationTest {
         assertNotNull(grid);
         assertTrue(MapPreset.SMALL.contains(spawn.x(), spawn.z()), spawn.toString());
         assertTrue(grid.isWalkable(spawn.blockX(), spawn.blockZ()), spawn.toString());
+    }
+
+    @Test
+    void endMarksTheMatchEndedBeforeItTearsTheInstanceDown(Env env) {
+        final Match match = match(env);
+        match.load(MapPreset.SMALL.id());
+        final InstanceContainer instance = match.instance();
+        assertNotNull(instance);
+
+        // The admission provider reads state() from another thread while end() runs: sample it from
+        // the middle of the teardown, which is where a stale RUNNING would hand out a dead instance
+        final List<Match.State> duringTeardown = new CopyOnWriteArrayList<>();
+        env.process().eventHandler().addListener(
+                InstanceChunkUnloadEvent.class,
+                _ -> duringTeardown.add(match.state()));
+
+        match.end();
+
+        assertFalse(duringTeardown.isEmpty(), "the teardown unloaded no chunk, nothing was sampled");
+        assertTrue(duringTeardown.stream().allMatch(state -> state == Match.State.ENDED),
+                "the match still read as running while its instance was being unregistered: " + duringTeardown);
+        assertEquals(Match.State.ENDED, match.state());
+        assertNull(match.instance());
     }
 
     @Test

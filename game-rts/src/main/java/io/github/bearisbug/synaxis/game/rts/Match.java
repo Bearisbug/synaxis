@@ -169,6 +169,10 @@ final class Match {
      */
     void end() {
         if (state == State.ENDED) return;
+        // Flipped before the teardown, not after it: the admission provider reads this from a
+        // configuration virtual thread, and a RUNNING seen mid-teardown hands out an instance that
+        // is already being unregistered.
+        this.state = State.ENDED;
         final InstanceContainer running = this.instance;
         if (running != null) {
             for (Player player : List.copyOf(running.getPlayers())) player.kick(MATCH_ENDED);

@@ -148,6 +148,20 @@ unset JAVA_TOOL_OPTIONS
 
 离线时仍然要带镜像 init 脚本：`--offline` 已经保证零网络访问，而 Gradle 的依赖缓存是**按来源仓库匹配**的——依赖当初是从阿里云镜像下下来的，仓库列表里没有这个镜像就会误报 `No cached version ... available for offline mode`。
 
+### 3.6 包依赖矩阵（改动包结构之后）
+
+**按模块分别跑**，不要一次扫全仓：五个模块的包名都在 `io.github.bearisbug.synaxis` 之下，一次扫完会把四个新模块折叠进引擎的两三个桶里，各自的内部结构反而看不见。
+
+```bash
+python3 tools/pkgdeps.py                                     # 引擎（含底层出向上层报告）
+python3 tools/pkgdeps.py protocol/src/main/java   --root-package io.github.bearisbug.synaxis.game.protocol --skip-lower-layer
+python3 tools/pkgdeps.py plugin-api/src/main/java --root-package io.github.bearisbug.synaxis.plugin        --skip-lower-layer
+python3 tools/pkgdeps.py server-app/src/main/java --root-package io.github.bearisbug.synaxis.app           --skip-lower-layer
+python3 tools/pkgdeps.py game-rts/src/main/java   --root-package io.github.bearisbug.synaxis.game.rts      --skip-lower-layer
+```
+
+引擎那一跑要看的是最后一段 `lower layer edges into the rest of the engine: 0`（`--detail` 会把违规文件逐个列出来）；`--skip-lower-layer` 把这段去掉，因为底层 9 包的分层只是引擎的，四个新模块没有对应的层。四个新模块当前各自只有一个扁平包，矩阵为空是正常输出。
+
 ---
 
 ## 4. 分支策略
@@ -213,4 +227,4 @@ unset JAVA_TOOL_OPTIONS
 - `ci.yml`：temurin JDK 25，`gradle/actions/setup-gradle` 缓存（非 `main` 只读），跑 `./gradlew check jacocoTestReport`，上传测试报告与 JaCoCo XML（保留 14 天）；PR 上另跑 `diff-cover` 对新增行做 80% 覆盖率门（需要 `fetch-depth: 0`）。本地等价：`./gradlew check jacocoTestReport --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts`，再 `diff-cover $(find . -path '*/build/reports/jacoco/test/jacocoTestReport.xml' | sort) --compare-branch=origin/main --src-roots src/main/java testing/src/main/java protocol/src/main/java plugin-api/src/main/java server-app/src/main/java game-rts/src/main/java --fail-under=80`（`pip install diff-cover`）——覆盖率门读**全部模块**的报告，少一个 `--src-roots` 就会让那个模块的新增行在本地隐形、与 CI 得出不同的绿。
 - `concurrency.yml`：`./gradlew :jcstress-tests:jcstress -Dorg.gradle.isolated-projects=false -Dorg.gradle.configuration-cache=false`，该插件不支持这两项；报告在 `jcstress-tests/build/reports/jcstress/`。本地快速模式把 `jcstress-tests/build.gradle.kts` 的 `mode` 临时设为 `quick`。
 
-`check` 里的三道门：Error Prone（约 96 项，`-Werror`）、`forbiddenImportsCheck`、`testNamingCheck`（测试类名必须与其夹具一致：`@EnvTest` 的类以 `IntegrationTest` 结尾，注册表夹具以 `RegistriesTest` 结尾；该任务是增量任务，只有干净构建目录或 `--rerun-tasks` 才全量扫），外加 `ArchitectureTest`：ArchUnit **严格**分层规则——底层集合 `codec、condition、coordinate、exception、gamedata、monitoring、thread、timer、utils` 不得依赖集合之外的引擎包，唯一豁免是根包 `JvmFlags`（零引擎依赖、只读系统属性）；任何新增反向边直接让构建红，没有冻结存储。同一个 `ArchitectureTest` 还有第二条规则「引擎不得依赖游戏侧、稳定面与宿主」——禁止 `io.github.bearisbug.synaxis.game..`、`io.github.bearisbug.synaxis.plugin..`、`io.github.bearisbug.synaxis.app..` 三个完整前缀（`REQ-M2-002`；写完整前缀是因为 `..plugin..` 会误命中引擎自己的 `network.plugin`）。`python3 tools/pkgdeps.py` 打印顶层包依赖矩阵与「底层出向上层边数」，改动包结构后先跑它。`:plugin-api` / `:protocol` 已接 ABI 门（`ci.yml` 的 `ABI gate of the stable surface` 步骤跑 `:plugin-api:checkBinaryCompatibility :protocol:checkBinaryCompatibility`）：打出第一个 tag 之前没有 baseline，不传 `-PbaselineJarDir` 时两个任务以 Gradle 的 `SKIPPED` 结束并打印「无 baseline，ABI 门未生效」、构建照常绿，传了而 baseline jar 缺失则失败（引导规则见 `docs/DESIGN-M2.md` §24）；引擎根模块不接这道门。
+`check` 里的三道门：Error Prone（约 96 项，`-Werror`）、`forbiddenImportsCheck`、`testNamingCheck`（测试类名必须与其夹具一致：`@EnvTest` 的类以 `IntegrationTest` 结尾，注册表夹具以 `RegistriesTest` 结尾；该任务是增量任务，只有干净构建目录或 `--rerun-tasks` 才全量扫），外加 `ArchitectureTest`：ArchUnit **严格**分层规则——底层集合 `codec、condition、coordinate、exception、gamedata、monitoring、thread、timer、utils` 不得依赖集合之外的引擎包，唯一豁免是根包 `JvmFlags`（零引擎依赖、只读系统属性）；任何新增反向边直接让构建红，没有冻结存储。同一个 `ArchitectureTest` 还有第二条规则「引擎不得依赖游戏侧、稳定面与宿主」——禁止 `io.github.bearisbug.synaxis.game..`、`io.github.bearisbug.synaxis.plugin..`、`io.github.bearisbug.synaxis.app..` 三个完整前缀（`REQ-M2-002`；写完整前缀是因为 `..plugin..` 会误命中引擎自己的 `network.plugin`）。`python3 tools/pkgdeps.py` 打印顶层包依赖矩阵与「底层出向上层边数」，改动包结构后先跑它，且**按模块分别跑**（每个模块一条命令，见 §3.6）。`:plugin-api` / `:protocol` 已接 ABI 门（`ci.yml` 的 `ABI gate of the stable surface` 步骤跑 `:plugin-api:checkBinaryCompatibility :protocol:checkBinaryCompatibility`）：打出第一个 tag 之前没有 baseline，不传 `-PbaselineJarDir` 时两个任务以 Gradle 的 `SKIPPED` 结束并打印「无 baseline，ABI 门未生效」、构建照常绿，传了而 baseline jar 缺失则失败（引导规则见 `docs/DESIGN-M2.md` §24）；引擎根模块不接这道门。

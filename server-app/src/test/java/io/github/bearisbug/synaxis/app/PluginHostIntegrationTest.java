@@ -7,7 +7,9 @@ import io.github.bearisbug.synaxis.event.Event;
 import io.github.bearisbug.synaxis.event.player.PlayerPluginMessageEvent;
 import io.github.bearisbug.synaxis.instance.Instance;
 import io.github.bearisbug.synaxis.plugin.Admission;
+import io.github.bearisbug.synaxis.plugin.AdmissionProvider;
 import io.github.bearisbug.synaxis.plugin.AdmissionRequest;
+import io.github.bearisbug.synaxis.plugin.DisconnectKeys;
 import io.github.bearisbug.synaxis.plugin.PluginApi;
 import io.github.bearisbug.synaxis.plugin.PluginContext;
 import io.github.bearisbug.synaxis.plugin.PluginDescriptor;
@@ -67,6 +69,9 @@ class PluginHostIntegrationTest {
         private boolean failOnEnable;
         private boolean throwFromCallbacks;
         private boolean registerAdmission = true;
+        private AdmissionProvider admission =
+                request -> new Admission.Reject("synaxis:match-unavailable-" + request.username());
+        private boolean throwFromDisable;
         private @Nullable CountDownLatch disableRelease;
         private volatile boolean disableReturned;
         private @Nullable Task task;
@@ -101,14 +106,13 @@ class PluginHostIntegrationTest {
                 ticks.incrementAndGet();
                 if (throwFromCallbacks) throw new IllegalStateException("probe task failure");
             }, TaskSchedule.immediate(), TaskSchedule.nextTick());
-            if (registerAdmission) {
-                ctx.admission().register(request -> new Admission.Reject("synaxis:match-unavailable-" + request.username()));
-            }
+            if (registerAdmission) ctx.admission().register(admission);
         }
 
         @Override
         public void onDisable() {
             calls.add("disable:" + descriptor.id());
+            if (throwFromDisable) throw new IllegalStateException("probe disable failure");
             final CountDownLatch release = disableRelease;
             // Bounded, so that a host without a disable budget fails this test instead of hanging
             // the whole regression run.
@@ -198,6 +202,25 @@ class PluginHostIntegrationTest {
 
         assertEquals(List.of("healthy"), host.enabledPluginIds());
         host.disableAll();
+    }
+
+    @Test
+    void aPluginThrowingFromOnDisableIsTornDownLikeTheOthers(Env env) {
+        final ProbePlugin probe = new ProbePlugin("probe");
+        probe.throwFromDisable = true;
+        final PluginHost host = host(env);
+        host.enable(List.of(probe), Set.of());
+
+        try (LogCapture logs = LogCapture.of(PluginHost.class)) {
+            host.disableAll();
+
+            final List<String> errors = logs.messagesAt(Level.ERROR);
+            assertEquals(1, errors.size(), errors.toString());
+            assertTrue(errors.getFirst().contains("plugin_id=probe"), errors.getFirst());
+        }
+
+        assertEquals(List.of(), host.enabledPluginIds());
+        assertFalse(host.hasAdmissionProvider());
     }
 
     @Test
@@ -337,6 +360,62 @@ class PluginHostIntegrationTest {
         assertNotNull(provider);
         assertEquals(new Admission.Reject("synaxis:match-unavailable-tester"),
                 provider.admit(new AdmissionRequest(UUID.randomUUID(), "tester", 1, 1)));
+        host.disableAll();
+    }
+
+    @Test
+    void aConnectionIsTurnedAwayWhileNoPluginHoldsTheAdmissionSlot(Env env) {
+        final ProbePlugin probe = new ProbePlugin("probe");
+        probe.registerAdmission = false;
+        final PluginHost host = host(env);
+        host.enable(List.of(probe), Set.of());
+
+        try (LogCapture logs = LogCapture.of(AdmissionGate.class)) {
+            final Player player = env.createPlayer(env.createFlatInstance(), new Pos(0, 41, 0));
+
+            final List<String> lines = logs.messagesAt(Level.INFO);
+            assertEquals(1, lines.size(), lines.toString());
+            assertTrue(lines.getFirst().contains(DisconnectKeys.MATCH_UNAVAILABLE), lines.getFirst());
+            assertFalse(player.getPlayerConnection().isOnline());
+        }
+        host.disableAll();
+    }
+
+    @Test
+    void anAdmissionProviderThatThrowsTurnsTheConnectionAwayAgainstItsPlugin(Env env) {
+        final ProbePlugin probe = new ProbePlugin("probe");
+        probe.admission = _ -> {
+            throw new IllegalStateException("probe admission failure");
+        };
+        final PluginHost host = host(env);
+        host.enable(List.of(probe), Set.of());
+
+        try (LogCapture logs = LogCapture.of(AdmissionGate.class)) {
+            final Player player = env.createPlayer(env.createFlatInstance(), new Pos(0, 41, 0));
+
+            final List<String> errors = logs.messagesAt(Level.ERROR);
+            assertEquals(1, errors.size(), errors.toString());
+            assertTrue(errors.getFirst().contains("plugin_id=probe"), errors.getFirst());
+            assertFalse(player.getPlayerConnection().isOnline());
+        }
+        host.disableAll();
+    }
+
+    @Test
+    void anAcceptedConnectionIsLetThrough(Env env) {
+        final ProbePlugin probe = new ProbePlugin("probe");
+        final PluginHost host = host(env);
+        final Instance match = env.createFlatInstance();
+        probe.admission = _ -> new Admission.Accept(match, 1);
+        host.enable(List.of(probe), Set.of());
+
+        try (LogCapture logs = LogCapture.of(AdmissionGate.class)) {
+            final Player player = env.createPlayer(match, new Pos(0, 41, 0));
+
+            assertEquals(List.of(), logs.messagesAt(Level.INFO));
+            assertTrue(player.getPlayerConnection().isOnline());
+            assertEquals(match, player.getInstance());
+        }
         host.disableAll();
     }
 

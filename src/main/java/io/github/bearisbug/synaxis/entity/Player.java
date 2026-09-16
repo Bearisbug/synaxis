@@ -866,6 +866,10 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
                 long chunkIndex = chunkQueue.dequeueLong();
                 queuedChunks.remove(chunkIndex);
                 int chunkX = CoordConversion.chunkIndexGetX(chunkIndex), chunkZ = CoordConversion.chunkIndexGetZ(chunkIndex);
+                // A queued chunk can have been unloaded on the client while it waited: a shrinking view
+                // distance sends UnloadChunk right away but cannot take the chunk out of this priority
+                // queue, so it is dropped here instead (REQ-M2-014)
+                if (isOutOfClientRange(chunkX, chunkZ)) continue;
                 var chunk = instance.getChunk(chunkX, chunkZ);
                 if (chunk == null || !chunk.isLoaded()) continue;
 
@@ -890,6 +894,12 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
         } finally {
             chunkQueueLock.unlock();
         }
+    }
+
+    private boolean isOutOfClientRange(int chunkX, int chunkZ) {
+        final int range = effectiveViewDistance();
+        return Math.abs(chunkX - chunksLoadedByClient.blockX()) > range
+                || Math.abs(chunkZ - chunksLoadedByClient.blockZ()) > range;
     }
 
     private void resetChunkQueue() {
@@ -1773,7 +1783,10 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
         final int newEffective = Math.min(clientViewDistance, newInstanceViewDistance) + 1;
         if (previousEffective == newEffective) return;
 
-        final int centerX = position.chunkX(), centerZ = position.chunkZ();
+        // The ring is resized around the center the client was last told about, not around the player:
+        // the chunk update limiter can hold a crossing back, and the two then disagree by a column
+        // that would never be unloaded (REQ-M2-014)
+        final int centerX = chunksLoadedByClient.blockX(), centerZ = chunksLoadedByClient.blockZ();
         if (previousEffective < newEffective) {
             // View distance expanded, send chunks
             ChunkRange.chunksInRange(centerX, centerZ, newEffective, (chunkX, chunkZ) -> {

@@ -113,6 +113,79 @@ public class PlayerChunkQueueIntegrationTest {
         assertEquals(expected.size(), unloadedChunks.size(), "a chunk must not be unloaded twice");
     }
 
+    // The shrink unloads a chunk on the client, but a chunk already waiting in the send queue used to
+    // be sent anyway right after: the client kept it while the server had written it off (REQ-M2-014)
+    @Test
+    public void shrinkingTheViewDistanceDropsThePendingChunksItUnloaded(Env env) {
+        // The test player sends chunks immediately, the queue under test is the one of a plain player
+        env.process().connection().setPlayerProvider(Player::new);
+        var instance = env.createFlatInstance();
+        // Generating up front makes the chunk adder queue the whole ring while the player spawns
+        ChunkRange.chunksInRange(0, 0, 5, (chunkX, chunkZ) -> instance.loadChunk(chunkX, chunkZ).join());
+        env.process().eventHandler().addListener(AsyncPlayerConfigurationEvent.class,
+                event -> event.getPlayer().refreshSettings(ClientSettings.defaultSettings(4)));
+        var connection = env.createConnection();
+        Player player = connection.connect(instance, new Pos(0, 40, 0));
+        assertEquals(5, player.effectiveViewDistance());
+
+        var chunks = connection.trackIncoming(ChunkDataPacket.class);
+        player.addPacketToQueue(new ClientSettingsPacket(ClientSettings.defaultSettings(2)));
+        env.tick();
+        final int rangeAfter = player.effectiveViewDistance();
+        assertEquals(3, rangeAfter);
+
+        // Drain the queue, acknowledging every batch like a client does
+        for (int i = 0; i < 20; i++) {
+            player.onChunkBatchReceived(64f);
+            env.tick();
+        }
+
+        for (ChunkDataPacket packet : chunks.collect()) {
+            final int distance = Math.max(Math.abs(packet.chunkX()), Math.abs(packet.chunkZ()));
+            assertTrue(distance <= rangeAfter, "chunk " + packet.chunkX() + "," + packet.chunkZ()
+                    + " was sent after the view distance shrank past it");
+        }
+    }
+
+    // The client keeps its chunk ring around the last center the server sent it, which the chunk update
+    // limiter can hold back. Unloading around the player position instead leaves the client holding
+    // chunks the server believes it dropped (REQ-M2-014)
+    @Test
+    public void shrinkingTheViewDistanceUnloadsAroundTheRingTheClientHas(Env env) {
+        var instance = env.createFlatInstance();
+        var connection = env.createConnection();
+        Player player = connection.connect(instance, new Pos(8.5, 40, 8.5));
+        player.addPacketToQueue(new ClientTeleportConfirmPacket(player.getLastSentTeleportId()));
+        // Crossing the border and coming back: the chunk update limiter already remembers chunk 0,0
+        // from the spawn and swallows the return, so the ring the client has stays centered on chunk
+        // 1,0 while the player stands in chunk 0,0
+        crossTo(env, player, 24.5);
+        crossTo(env, player, 8.5);
+        assertEquals(0, player.getPosition().chunkX(), "the player was supposed to stand back in chunk 0,0");
+
+        final int rangeBefore = player.effectiveViewDistance();
+        var unloaded = connection.trackIncoming(UnloadChunkPacket.class);
+        player.addPacketToQueue(new ClientSettingsPacket(ClientSettings.defaultSettings(2)));
+        env.tick();
+        final int rangeAfter = player.effectiveViewDistance();
+        assertEquals(3, rangeAfter);
+
+        Set<Long> expected = new HashSet<>();
+        ChunkRange.chunksInRange(1, 0, rangeBefore, (x, z) -> expected.add(CoordConversion.chunkIndex(x, z)));
+        ChunkRange.chunksInRange(1, 0, rangeAfter, (x, z) -> expected.remove(CoordConversion.chunkIndex(x, z)));
+        Set<Long> unloadedChunks = new HashSet<>();
+        for (UnloadChunkPacket packet : unloaded.collect()) {
+            unloadedChunks.add(CoordConversion.chunkIndex(packet.chunkX(), packet.chunkZ()));
+        }
+        assertEquals(expected, unloadedChunks,
+                "the shrink must unload the ring the client holds, not the one around the player");
+    }
+
+    private static void crossTo(Env env, Player player, double x) {
+        player.addPacketToQueue(new ClientPlayerPositionPacket(new Vec(x, 40, 8.5), true, false));
+        env.tick();
+    }
+
     @Test
     public void viewDistanceSentBeforeSpawnBuildsTheFirstRing(Env env) {
         var instance = env.createFlatInstance();

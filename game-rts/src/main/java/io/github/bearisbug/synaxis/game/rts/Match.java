@@ -54,7 +54,12 @@ final class Match {
     /** Set here rather than in {@link #load}: every path out of the match reports a duration. */
     private final long createdAtNanos = System.nanoTime();
 
-    private State state = State.CREATING;
+    /**
+     * Volatile because the writer and the reader are different threads: {@link #end} runs on the
+     * shutdown thread while the admission provider reads it on a configuration virtual thread, and
+     * a stale {@link State#RUNNING} would hand out an instance that is already unregistered.
+     */
+    private volatile State state = State.CREATING;
     private @Nullable MapPreset preset;
     private @Nullable NavGrid navGrid;
     private @Nullable InstanceContainer instance;

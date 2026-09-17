@@ -118,7 +118,7 @@ ls -d "$TMPDIR"minestom-* 2>/dev/null | wc -l   # 期望 0
 ./gradlew :server-app:run --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts
 ```
 
-`server-app` 是唯一的启动入口：读 `synaxis.*` 配置、用 `ServiceLoader` 发现并启用插件、断言有准入回调、再 bind 监听端口（`docs/DESIGN-M2.md` `API-M2-010`）。默认监听 `0.0.0.0:25565`，离线模式，任意用户名可进；就绪日志是 `synaxis server-app listening on 0.0.0.0:25565`。
+`server-app` 是唯一的启动入口：读 `synaxis.*` 配置、用 `ServiceLoader` 发现并启用插件、决定这次以**玩法模式**还是**核心模式**服务、再 bind 监听端口（`docs/DESIGN-M2.md` `API-M2-010` 启动序列第 ⑤ 步）。默认监听 `0.0.0.0:25565`，离线模式，任意用户名可进；就绪日志是 `synaxis server-app listening on 0.0.0.0:25565`。
 
 端口与插件选择走系统属性，`run` 任务会把 `synaxis.*` 转给 fork 出来的 JVM：
 
@@ -135,7 +135,28 @@ nc -z 127.0.0.1 25565 && echo "server is up"
 
 在服务端 stdin 输入 `stop` 回车即可停服（15 秒内退出：插件 5 秒 + 引擎 10 秒）。进程会在仓库根写两处运行时产物：插件数据目录 `plugins/<plugin_id>/` 与事件台账 `logs/events-YYYYMMDD.jsonl`，两者都已 gitignore，删掉即回到基线。
 
-没有任何插件注册准入回调时（例如 `-Dsynaxis.app.plugins=` 指了一个不存在的 id），进程以非零码退出且端口不会 bind——这是设计好的行为，不是故障。写插件见 `docs/PLUGINS.md`。
+#### 核心模式（不带任何玩法插件跑服务端核心）
+
+一个插件都不参与启动时（`-Dsynaxis.app.plugins` 指了一个不存在的 id，或 classpath 上根本没有插件），进程**不会**退出，而是以核心模式起服：宿主自建一个平坦世界、任何连接一律放行进去、并注册一条 `synaxis:main` 诊断通道把收到的自定义负载原样回发。这是压测与冒烟服务端核心本身的入口——它不带任何玩法。
+
+```bash
+# 核心模式，classpath 上有没有玩法插件都一样（强制）
+./gradlew :server-app:run --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts \
+  -Dsynaxis.app.core-mode=on
+```
+
+启动日志里一眼能分清两种模式：核心模式打 `Core mode (synaxis.app.core-mode=…): …`，玩法模式打 `Gameplay mode: … plugin_ids=[rts]`。`synaxis.app.plugins` 里写了没有插件应答的 id 时另有一行 `No plugin answers to selected ids […]: discovered plugin_ids=[…].` 的 WARN——把 id 拼错（想写 `rts` 写成了 `rst`）与刻意排除全部插件在行为上都是「进核心模式」，起服后没人能进对局时先看这行。
+
+`synaxis.app.core-mode` 三个值：`auto`（默认，没有插件参与启动就进核心模式）、`on`（强制核心模式，连插件发现都不做）、`off`（永不进核心模式，没有玩法就以非零码退出且端口不 bind，即核心模式落地之前的行为）。
+
+核心模式起来之后可以用仓内探针打一次往返：
+
+```bash
+python3 tools/protocol-probe/probe.py login --hold 2
+python3 tools/protocol-probe/probe.py echo --payload ping   # 期望打印 echo channel=synaxis:main payload=ping
+```
+
+**插件参与了启动却没留下玩法**（`onEnable` 抛异常、`-Dsynaxis.app.map` 指了未知预设……）仍然以非零码退出且端口不 bind——这是设计好的行为，不是故障，核心模式不会替一个坏掉的插件兜底。写插件见 `docs/PLUGINS.md`。
 
 ### 3.5 离线构建（验证依赖已全部冻结在本地）
 

@@ -252,8 +252,12 @@ public final class ConnectionManager {
     public void doConfiguration(Player player, boolean isFirstConfig) {
         assert process.config().insideTest() || Thread.currentThread().isVirtual();
         if (isFirstConfig) {
-            configurationPlayers.add(player);
-            keepAlivePlayers.add(player);
+            final boolean tracked = trackPlayer(player, () -> {
+                configurationPlayers.add(player);
+                keepAlivePlayers.add(player);
+            });
+            // The client left between the login acknowledgement and this thread starting
+            if (!tracked) return;
         }
         player.sendPacket(PluginMessagePacket.brandPacket(process.brandName()));
         // Request known packs immediately, but don't wait for the response until required (sending registry data).
@@ -277,12 +281,15 @@ public final class ConnectionManager {
             try {
                 knownPacks = knownPacksFuture.get(process.config().knownPacksResponseTimeout(), TimeUnit.MILLISECONDS);
             } catch (InterruptedException | TimeoutException _) {
-                LOGGER.warn("Player {} failed to respond to known packs query", player.getUsername());
+                LOGGER.warn("Player failed to respond to known packs query: username={} connection_id={}",
+                        player.getUsername(), player.getPlayerConnection().connectionId());
                 player.getPlayerConnection().disconnect();
                 return;
             } catch (ExecutionException e) {
                 throw new RuntimeException("Error receiving known packs", e);
             }
+            // The wait is also released by the disconnection, with nothing to answer with
+            if (!player.isOnline()) return;
             boolean excludeVanilla = knownPacks.contains(SelectKnownPacksPacket.MINECRAFT_CORE);
 
             Registries registries = process.registries();
@@ -321,8 +328,24 @@ public final class ConnectionManager {
         this.configurationPlayers.remove(player);
         this.playPlayers.remove(player);
         this.keepAlivePlayers.remove(player);
-        // The client is gone and will never answer the resource packs #doConfiguration waits for
+        // The client is gone and will never answer what #doConfiguration waits for
         player.releaseResourcePackWait();
+        connection.releaseKnownPacksWait();
+    }
+
+    /**
+     * Puts a player into the lifecycle sets, unless its connection has already been dropped.
+     * <p>
+     * Synchronized against {@link #removePlayer(PlayerConnection)} so that a concurrent
+     * disconnection can never be overtaken by the insertion: a player added after its own removal
+     * stays in the set forever, and with it the connection, the profile and the settings it holds.
+     *
+     * @return false if the player was not tracked because its connection is gone
+     */
+    private synchronized boolean trackPlayer(Player player, Runnable insertion) {
+        if (!connectionPlayerMap.containsKey(player.getPlayerConnection())) return false;
+        insertion.run();
+        return true;
     }
 
     /**
@@ -377,15 +400,17 @@ public final class ConnectionManager {
             // In case the method was called multiple times, the player disconnected, etc. just ignore it.
             if (!playPlayers.remove(player)) return;
 
-            configurationPlayers.add(player);
+            if (!trackPlayer(player, () -> configurationPlayers.add(player))) return;
             player.remove(false);
             player.sendPacket(new StartConfigurationPacket());
         });
         this.playWaitingPlayers.drain(player -> {
             if (!player.isOnline()) return; // Player disconnected while in queued to join
-            configurationPlayers.remove(player);
-            playPlayers.add(player);
-            keepAlivePlayers.add(player);
+            if (!trackPlayer(player, () -> {
+                configurationPlayers.remove(player);
+                playPlayers.add(player);
+                keepAlivePlayers.add(player);
+            })) return;
 
             // This fixes a bug with Geyser. They do not reply to keep alive during config, meaning that
             // `Player#didAnswerKeepAlive()` will always be false when entering the play state, so a new keep

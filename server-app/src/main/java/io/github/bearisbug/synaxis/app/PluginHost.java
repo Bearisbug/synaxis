@@ -4,6 +4,7 @@ import io.github.bearisbug.synaxis.ServerProcess;
 import io.github.bearisbug.synaxis.event.Event;
 import io.github.bearisbug.synaxis.event.EventNode;
 import io.github.bearisbug.synaxis.plugin.AdmissionProvider;
+import io.github.bearisbug.synaxis.plugin.PayloadHandler;
 import io.github.bearisbug.synaxis.plugin.PluginDescriptor;
 import io.github.bearisbug.synaxis.plugin.SynaxisPlugin;
 import org.jetbrains.annotations.Nullable;
@@ -42,6 +43,13 @@ final class PluginHost {
     private final EventNode<Event> hostNode = EventNode.all("synaxis-host");
     private final List<LoadedPlugin> enabled = new ArrayList<>();
 
+    /**
+     * How many plugins this host took on, whether or not their {@code onEnable} got anywhere. The
+     * startup sequence reads it to tell "nobody was going to provide gameplay" from "somebody was
+     * and came up wrong", which are the core mode and a refusal (API-M2-010 step 5).
+     */
+    private int attemptedPlugins;
+
     PluginHost(ServerProcess process, Path pluginsDirectory, EventLedger ledger) {
         this.process = process;
         this.pluginsDirectory = pluginsDirectory;
@@ -75,10 +83,18 @@ final class PluginHost {
      * @throws IllegalArgumentException if a selected descriptor is refused
      */
     void enable(List<SynaxisPlugin> plugins, Set<String> selectedIds) {
+        final List<String> discoveredIds = plugins.stream().map(plugin -> plugin.descriptor().id()).toList();
+        final List<String> unknownIds = selectedIds.stream().filter(id -> !discoveredIds.contains(id)).sorted().toList();
+        if (!unknownIds.isEmpty())
+            // A selection nothing answers to is not fatal (the operator may be excluding every
+            // plugin on purpose), but it is also how a typo turns into a launch that serves the
+            // core world instead of the gameplay that was asked for (API-M2-010 step 5).
+            LOGGER.warn("No plugin answers to selected ids {}: discovered plugin_ids={}.", unknownIds, discoveredIds);
         final List<SynaxisPlugin> selected = plugins.stream()
                 .filter(plugin -> selectedIds.isEmpty() || selectedIds.contains(plugin.descriptor().id()))
                 .toList();
         for (SynaxisPlugin plugin : selected) PluginDescriptors.validate(plugin.descriptor());
+        this.attemptedPlugins += selected.size();
         for (SynaxisPlugin plugin : selected) enableOne(plugin);
     }
 
@@ -153,8 +169,33 @@ final class PluginHost {
                     + "back and going on with the shutdown.", DISABLE_BUDGET_SECONDS, loaded.id());
     }
 
+    int attemptedPluginCount() {
+        return attemptedPlugins;
+    }
+
     boolean hasAdmissionProvider() {
         return admission.isRegistered();
+    }
+
+    /**
+     * Takes the admission slot for the host itself, which only the core mode does: the reserved id
+     * belongs to no plugin, so nothing ever takes this registration back.
+     *
+     * @param provider the provider to register
+     */
+    void registerHostAdmission(AdmissionProvider provider) {
+        admission.register(PluginDescriptors.RESERVED_ID, provider);
+    }
+
+    /**
+     * Registers a channel of the host's own reserved namespace, which only the core mode does.
+     *
+     * @param name    the channel id, inside the reserved namespace
+     * @param handler the inbound handler
+     */
+    void registerHostChannel(String name, PayloadHandler handler) {
+        final String channelId = router.register(PluginDescriptors.RESERVED_ID, name, handler);
+        LOGGER.info("Registered channel: plugin_id={} channel={}", PluginDescriptors.RESERVED_ID, channelId);
     }
 
     @Nullable AdmissionProvider admissionProvider() {

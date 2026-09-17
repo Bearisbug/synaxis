@@ -77,7 +77,7 @@ java -cp "server-app/build/install/server-app/lib/*:example-plugin/build/libs/he
 
 就绪日志是 `synaxis server-app listening on 0.0.0.0:25565`，它之前会出现 `Plugin enabled: plugin_id=hello ...` 与插件自己的打印。stdin 输入 `stop` 停服，停机日志里会出现 `hello-plugin is disabling`。
 
-只想启用一部分插件时用 `-Dsynaxis.app.plugins=hello,rts`（留空即全部）。注意去掉 `rts` 会让进程以非零码退出：它是唯一注册准入回调的插件，没有它没人知道玩家该进哪个对局。
+只想启用一部分插件时用 `-Dsynaxis.app.plugins=hello,rts`（留空即全部）。注意去掉 `rts` 就没有玩法了——它是唯一创建对局、唯一注册准入回调的插件，没有它没人知道玩家该进哪个对局。默认配置下进程不会因此退出，而是落进**核心模式**：宿主自建一张平坦世界、任何连接一律放行、只有 `synaxis:main` 这一条 echo 通道，端口照常 bind（日志第一眼就能认出来，见 `docs/ENGINE.md` 3.4）。要让它像以前那样拒启（两行 ERROR + 非零码退出 + 端口不 bind），得同时给 `-Dsynaxis.app.core-mode=off`。插件 id 写错（比如把 `rts` 写成 `rst`）同样不会退出，只会多一行点名没匹配上的 id 的 WARN 然后进核心模式——起服后没人能进对局时先看这行。
 
 ## 7. `PluginContext` 给了你什么
 

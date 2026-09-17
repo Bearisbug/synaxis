@@ -5,6 +5,7 @@ import io.github.bearisbug.synaxis.JvmFlags;
 import io.github.bearisbug.synaxis.MinecraftServer;
 import io.github.bearisbug.synaxis.ServerProcess;
 import io.github.bearisbug.synaxis.plugin.PluginApi;
+import io.github.bearisbug.synaxis.registry.RegistryKey;
 import io.github.bearisbug.synaxis.world.DimensionType;
 import net.kyori.adventure.key.Key;
 import org.slf4j.Logger;
@@ -27,6 +28,9 @@ import java.util.stream.Collectors;
  * has to happen before the port is bound, because the engine demands a spawning instance as soon as
  * a connection reaches the configuration phase; and it has to be synchronous on this thread,
  * because the scheduler is only advanced from inside a tick and the tick thread does not exist yet.
+ * <p>
+ * What the plugins left behind decides how the process serves: with gameplay it serves the match
+ * they built, without any it serves the core world of {@link CoreMode}.
  */
 public final class Main {
 
@@ -82,6 +86,7 @@ public final class Main {
         // process is being created, which is why this comes before init.
         final int port = port();
         final Set<String> selectedPlugins = selectedPlugins();
+        final CoreMode.Setting coreMode = CoreMode.setting();
         applyViewRangeDefaults();
 
         // (2) The engine facade, not a bare ServerProcess: MinecraftServer#start is the only public
@@ -97,32 +102,27 @@ public final class Main {
         // (3) The one shallow dimension type every match is built on. It has to be registered here:
         // step (6) freezes the registries, and a dimension type registered after the port is open
         // would shift the dimension indices of the players already in game (§11.3).
-        process.dimensionType().register(Key.key(PluginApi.MATCH_DIMENSION_TYPE),
-                DimensionType.builder().minY(0).height(MATCH_WORLD_HEIGHT).logicalHeight(MATCH_WORLD_HEIGHT).build());
+        final RegistryKey<DimensionType> dimensionType = registerMatchDimensionType(process);
 
         // (4) Plugins, on this thread. A plugin builds its match here, before anything is bound.
+        // An operator who asked for the core mode gets no plugin at all: that is the only way the
+        // core mode is deterministic while a gameplay plugin sits on the classpath.
         final PluginHost host = new PluginHost(process, Path.of("plugins"), new EventLedger(Path.of("logs")));
-        host.enable(PluginHost.discover(), selectedPlugins);
+        if (coreMode != CoreMode.Setting.ON) host.enable(PluginHost.discover(), selectedPlugins);
 
-        // (5) Without an admission provider no connection could be let anywhere, and without a
-        // running match there is nowhere to put one: refuse to open the port at all rather than let
-        // every player hit an internal error. Both are reported before exiting, because which of
-        // the two is missing says what went wrong with the plugin.
-        boolean canServe = true;
-        if (!host.hasAdmissionProvider()) {
-            LOGGER.error("No admission provider: no plugin registered one, so nothing would know where to put "
-                    + "a player.");
-            canServe = false;
-        }
-        final int matches = runningMatches(process);
-        if (matches != 1) {
-            LOGGER.error("No running match: a plugin has to build one and register it before the port opens, "
-                    + "and M2 expects exactly one (found {}).", matches);
-            canServe = false;
-        }
-        if (!canServe) {
-            LOGGER.error("Not binding {}:{}.", BIND_ADDRESS, port);
-            System.exit(1);
+        // (5) Which mode this process serves in. Gameplay needs both halves — an admission provider
+        // to say where a player goes and a running match to put them in — and a launch with no
+        // plugin to provide them serves the core's own world instead. A plugin that took part and
+        // left one half or neither behind is a plugin that came up wrong: the port stays closed
+        // rather than letting every player hit an internal error, or hiding the failure behind a
+        // world nobody can play in.
+        final int runningMatches = runningMatches(process);
+        switch (CoreMode.decide(coreMode, host.attemptedPluginCount(),
+                host.hasAdmissionProvider(), runningMatches)) {
+            case CORE -> CoreMode.start(process, host, dimensionType, coreMode);
+            case GAMEPLAY -> LOGGER.info("Gameplay mode: the running match and the admission provider come from "
+                    + "plugin_ids={}", host.enabledPluginIds());
+            case REFUSED -> refuseToServe(host, runningMatches, port);
         }
 
         // The only place the plugins are disabled, console and SIGINT alike: the engine drains its
@@ -139,6 +139,36 @@ public final class Main {
         // Not a daemon: the shutdown sequence runs on this thread, and the JVM must not
         // exit out from under it once the tick threads are gone.
         Thread.ofPlatform().name("server-app-console").start(() -> readConsole(process));
+    }
+
+    /**
+     * Registers the one shallow dimension type of the process, before anything is bound.
+     *
+     * @param process the engine process
+     * @return its key, which the core world and every match are built on
+     */
+    static RegistryKey<DimensionType> registerMatchDimensionType(ServerProcess process) {
+        return process.dimensionType().register(Key.key(PluginApi.MATCH_DIMENSION_TYPE),
+                DimensionType.builder().minY(0).height(MATCH_WORLD_HEIGHT).logicalHeight(MATCH_WORLD_HEIGHT).build());
+    }
+
+    /**
+     * Reports what a gameplay launch is missing and exits without binding. Both halves are reported,
+     * because which one is missing says what went wrong with the plugin.
+     *
+     * @param host    the plugin host
+     * @param matches how many matches are running, the count the mode was decided on
+     * @param port    the port that is not going to be bound
+     */
+    private static void refuseToServe(PluginHost host, int matches, int port) {
+        if (!host.hasAdmissionProvider())
+            LOGGER.error("No admission provider: no plugin registered one, so nothing would know where to put "
+                    + "a player.");
+        if (matches != 1)
+            LOGGER.error("No running match: a plugin has to build one and register it before the port opens, "
+                    + "and M2 expects exactly one (found {}).", matches);
+        LOGGER.error("Not binding {}:{}.", BIND_ADDRESS, port);
+        System.exit(1);
     }
 
     /**

@@ -66,7 +66,9 @@ public abstract class PlayerConnection {
     @SuppressWarnings("this-escape") // deliberate self registration during construction
     private @Nullable LoginPluginMessageProcessor loginPluginMessageProcessor = new LoginPluginMessageProcessor(this);
 
-    private @Nullable CompletableFuture<List<SelectKnownPacksPacket.Entry>> knownPacksFuture = null; // Present only when waiting for a response from the client.
+    // Present only when waiting for a response from the client. Written by the configuration thread
+    // and cleared by either the packet reader or the disconnection, hence volatile.
+    private volatile @Nullable CompletableFuture<List<SelectKnownPacksPacket.Entry>> knownPacksFuture = null;
 
     private final Map<Key, CompletableFuture<byte @Nullable []>> pendingCookieRequests = new ConcurrentHashMap<>();
 
@@ -371,6 +373,19 @@ public abstract class PlayerConnection {
         if (future != null) {
             future.complete(clientPacks);
             knownPacksFuture = null;
+        }
+    }
+
+    /**
+     * Completes the pending known packs query without a client answer. A client that is gone can
+     * never answer it, and the configuration thread waiting on it must not wait for the timeout.
+     */
+    @ApiStatus.Internal
+    public void releaseKnownPacksWait() {
+        final var future = knownPacksFuture;
+        if (future != null) {
+            knownPacksFuture = null;
+            future.complete(List.of());
         }
     }
 

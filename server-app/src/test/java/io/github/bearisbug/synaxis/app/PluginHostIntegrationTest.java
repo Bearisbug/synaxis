@@ -177,6 +177,25 @@ class PluginHostIntegrationTest {
     }
 
     @Test
+    void aSelectedIdNoPluginAnswersToIsNamedInAWarning(Env env) {
+        final ProbePlugin discovered = new ProbePlugin("rts");
+        final PluginHost host = host(env);
+
+        try (LogCapture logs = LogCapture.of(PluginHost.class)) {
+            // A typo in synaxis.app.plugins otherwise comes out as the core mode and nothing else.
+            host.enable(List.of(discovered), Set.of("rst"));
+
+            final List<String> warnings = logs.messagesAt(Level.WARN);
+            assertEquals(1, warnings.size(), warnings.toString());
+            assertTrue(warnings.getFirst().contains("rst"), warnings.getFirst());
+            assertTrue(warnings.getFirst().contains("rts"), warnings.getFirst());
+        }
+
+        assertEquals(List.of(), host.enabledPluginIds());
+        assertEquals(0, host.attemptedPluginCount());
+    }
+
+    @Test
     void anIllegalDescriptorStopsTheStartupBeforeAnyPluginIsEnabled(Env env) {
         final ProbePlugin legal = new ProbePlugin("legal");
         final PluginHost host = host(env);
@@ -203,6 +222,8 @@ class PluginHostIntegrationTest {
         }
 
         assertEquals(List.of("healthy"), host.enabledPluginIds());
+        // Both took part, which is what keeps a plugin that came up wrong out of the core mode
+        assertEquals(2, host.attemptedPluginCount());
         host.disableAll();
     }
 

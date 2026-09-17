@@ -422,6 +422,10 @@ def duration_ms(value) -> float:
 
 def distribution(values: list[float]) -> dict:
     ordered = sorted(values)
+    if not ordered:
+        # A profile can legitimately measure nothing here: --connections 0 has no logins,
+        # --echo-hz 0 has no round trips. The run still owes the caller its summary.
+        return {"count": 0}
     return {
         "count": len(ordered),
         "mean_ms": round(statistics.fmean(ordered), 3),
@@ -557,13 +561,20 @@ def run(args: argparse.Namespace) -> int:
     pool = LoginPool(args.login_workers, args.host, args.port, args.timeout, metrics)
 
     pid = args.pid or find_pid()
+    if not pid:
+        print("soak: no server process found by pgrep -f io.github.bearisbug.synaxis.app.Main; "
+              "start the server or pass --pid. Sampling nothing would look like a clean run.",
+              file=sys.stderr, flush=True)
+        return 2
     jfr_path = out / "soak.jfr"
-    recording = bool(pid) and not args.no_jfr and jfr_start(pid, jfr_path)
-    sampler = None
-    if pid and not args.no_sample:
-        sampler = Sampler(pid, args.sample_interval, args.gc_probe_interval,
-                          out / "samples.jsonl", metrics, clients)
-        sampler.start()
+    recording = not args.no_jfr
+    if recording and not jfr_start(pid, jfr_path):
+        print("soak: JFR.start failed, the run would carry no tick distribution; put the JDK bin "
+              "on PATH or pass --no-jfr.", file=sys.stderr, flush=True)
+        return 2
+    sampler = Sampler(pid, args.sample_interval, args.gc_probe_interval,
+                      out / "samples.jsonl", metrics, clients)
+    sampler.start()
     attacker = None
     if args.attacks:
         attacker = Attacker(args.host, args.port, args.attacks.split(","), args.attack_interval,
@@ -639,14 +650,13 @@ def run(args: argparse.Namespace) -> int:
     selector.close()
 
     settle = {}
-    if sampler is not None:
-        time.sleep(args.settle)
-        if args.gc_probe_interval:
-            settle["live_mib_after_disconnect"] = gc_live_set(pid)
-        settle["threads_after_disconnect"] = thread_count(pid)
-        settle["fds_after_disconnect"] = fd_count(pid)
-        sampler.stop.set()
-        sampler.join(timeout=120)
+    time.sleep(args.settle)
+    if args.gc_probe_interval:
+        settle["live_mib_after_disconnect"] = gc_live_set(pid)
+    settle["threads_after_disconnect"] = thread_count(pid)
+    settle["fds_after_disconnect"] = fd_count(pid)
+    sampler.stop.set()
+    sampler.join(timeout=120)
 
     ticks = {}
     if recording:
@@ -675,10 +685,10 @@ def run(args: argparse.Namespace) -> int:
             "echoes_sent": metrics.echoes_sent,
             "rtt_ms": distribution([value * 1000 for value in metrics.rtt]),
             "ticks": ticks,
-            "gc_probes": sampler.gc_probes if sampler else [],
+            "gc_probes": sampler.gc_probes,
             "settle": settle,
             "attacks": attacker.results if attacker else [],
-            "samples": sampler.samples if sampler else [],
+            "samples": sampler.samples,
         }
     (out / "summary.json").write_text(json.dumps(summary, indent=2), encoding="utf-8")
     report(summary)
@@ -741,9 +751,6 @@ def build_parser() -> argparse.ArgumentParser:
                         help="seconds to wait after the last disconnect before the final sample")
     runner.add_argument("--pid", type=int, default=0, help="server pid, found by pgrep when unset")
     runner.add_argument("--no-jfr", action="store_true")
-    runner.add_argument("--no-sample", action="store_true",
-                        help="drive connections only; used by the extra harness processes of an "
-                             "overload run, where one process does the sampling for all of them")
     runner.add_argument("--out", required=True)
     runner.set_defaults(run=run)
 

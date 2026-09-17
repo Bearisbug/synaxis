@@ -1,7 +1,6 @@
 # 服务端核心压测 / 长稳 harness 使用说明（2026-09-18）
 
-`tools/loadtest/soak.py` —— 只用标准库，用主仓库解释器
-`/Users/bug/Documents/Projects/Minecraft/synaxis/.venv/bin/python` 跑（worktree 里没有 `.venv`）。
+`tools/loadtest/soak.py` —— 只用标准库，`python3` 跑（Python 3.10+，与 docs/TEST.md §3 的探针同口径）。
 握手 / 登录 / configuration 三个阶段复用 `tools/protocol-probe/probe.py`（包 ID 仍从仓库推导），
 harness 在其上加：一次维持 N 条连接、每条走圈发移动包并应答 KeepAlive / TeleportConfirm、
 可配的连接 churn、把 §3 探针表的恶意子命令在负载中打进去，并用现成工具（`jcmd` / `jstat` /
@@ -34,25 +33,26 @@ mkfifo /tmp/synaxis-soak/stdin.fifo
 harness 自己 `pgrep` 找服务端 pid，起 JFR、每 10 秒采样、每 N 秒强制一次 Full GC 量存活集
 （live set），结束后 dump JFR 并算 tick 分布，产物写 `--out` 目录：
 `summary.json`（全部数字）、`samples.jsonl`（每次采样一行）、`attacks.jsonl`、`soak.jfr`。
+没测到的分布（`--connections 0` 没有登录、`--echo-hz 0` 没有 echo 往返）在 `summary.json` 里是
+`{"count": 0}`，不影响其余数字落盘。找不到服务端进程、或 `JFR.start` 失败（`jcmd` 不在 PATH）时
+harness **直接以退出码 2 拒绝跑**——采不到东西却跑完，比报错更容易被当成一次干净的长跑。
 
 ```bash
-PY=/Users/bug/Documents/Projects/Minecraft/synaxis/.venv/bin/python
-
 # 稳态：64 连接、20 分钟
-$PY tools/loadtest/soak.py run --connections 64 --duration 1200 \
+python3 tools/loadtest/soak.py run --connections 64 --duration 1200 \
   --move-hz 10 --echo-hz 0.5 --gc-probe-interval 300 --out /tmp/synaxis-soak/steady
 
 # churn：16 常驻 + 每秒 5 次登录/断开、10 分钟
-$PY tools/loadtest/soak.py run --connections 16 --duration 600 \
+python3 tools/loadtest/soak.py run --connections 16 --duration 600 \
   --churn-hz 5 --churn-hold 8 --gc-probe-interval 120 --out /tmp/synaxis-soak/churn
 
 # 恶意/边界：64 连接负载下，六种攻击轮流打
-$PY tools/loadtest/soak.py run --connections 64 --duration 600 \
+python3 tools/loadtest/soak.py run --connections 64 --duration 600 \
   --attacks zero-frame,alloc-bomb,nbt-bomb,premature-finish,bad-version,deep-recursion \
   --attack-interval 1.5 --out /tmp/synaxis-soak/attack
 ```
 
-从已有 JFR 单独算 tick 分布：`$PY tools/loadtest/soak.py ticks --jfr /tmp/synaxis-soak/steady/soak.jfr`。
+从已有 JFR 单独算 tick 分布：`python3 tools/loadtest/soak.py ticks --jfr /tmp/synaxis-soak/steady/soak.jfr`。
 
 ## 采集手段
 
@@ -70,7 +70,7 @@ $PY tools/loadtest/soak.py run --connections 64 --duration 600 \
 
 ```bash
 # 起服（同上，core-mode=on），然后只打 premature-finish、高频、不带常驻连接：
-$PY tools/loadtest/soak.py run --connections 0 --duration 360 \
+python3 tools/loadtest/soak.py run --connections 0 --duration 360 \
   --attacks premature-finish --attack-interval 0.02 --out /tmp/synaxis-soak/knownpacks
 # 期间反复取线程 dump，数卡在 doConfiguration 的线程：
 jcmd $(pgrep -f synaxis.app.Main) Thread.dump_to_file -format=json -overwrite /tmp/td.json
@@ -78,4 +78,5 @@ python3 -c "import json;d=json.load(open('/tmp/td.json'))['threadDump'];print(su
 jcmd $(pgrep -f synaxis.app.Main) GC.class_histogram | grep 'synaxis.entity.Player$'
 ```
 会看到卡住的线程数与存活 `Player` 数随攻击次数单调上升；停止攻击、静置 5 分钟
-（`knownPacksResponseTimeout` 默认值）后回落到 0。
+（`knownPacksResponseTimeout` 默认值）后线程回落到 0，`Player` 回落但留下约 1% 的残留（SOAK-2，
+再打一轮攻击残留继续累积）。两条发现的数据见本目录 `report.md`。

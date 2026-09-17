@@ -8,13 +8,14 @@
 | 项目画像 | 内部系统（引擎只被本团队的游戏工程消费，不对公网；§3/§20 降为按需，§23 简化为「直接放量 + 回滚预案」。游戏本身对外发布时另立设计文档，画像为生产产品） |
 | Owner | Bearisbug |
 | 评审人 | Bearisbug |
-| 最后更新 | 2026-09-16 |
+| 最后更新 | 2026-09-18 |
 | 关联 | 仓库 `https://github.com/Bearisbug/synaxis` · **里程碑分册 `docs/DESIGN-M2.md`（M2「游戏工程骨架与 RTS 垂直切片」，M2 范围内的需求 / 接口 / 状态机 / ADR 一律以该分册为准）** · 审计与架构评审 `docs/research/minestom-audit/`（00 总结、07 架构评审第八章） · 测试文档 `docs/TEST.md` |
 
 变更记录：
 
 | 日期 | 版本 | 改动 | 作者 |
 | --- | --- | --- | --- |
+| 2026-09-18 | v0.24 | §28 新增两条技术债：2026-09-18 压测发现 `SOAK-1`——configuration 阶段被中断的连接，其虚拟线程与整个 `Player` 对象图滞留到 `knownPacksResponseTimeout`（默认 5 分钟）才回收；`SOAK-2`——同一路径上约 1% 的连接留下永不回收的 `Player` | Bearisbug |
 | 2026-09-09 | v0.1 | 初稿：里程碑 M1 范围、实体、协议契约、状态机、阶段计划 | Bearisbug |
 | 2026-09-16 | v0.23 | §28 的四条审计残留全部转「已决」，由 `docs/DESIGN-M2.md` 的阶段 3 处置并在每条里注明去向：F29 残留（a）`SharedInstance` 整块删除（`REQ-M2-012`）、F29 残留（b）卸载区块时同步移除已下线玩家（`REQ-M2-013`）、F11 残留视距收缩的两半（`REQ-M2-014`）、F49 残留按「降级不修」处置（Javadoc + `:game-rts` 测试源集里的无条件 ArchUnit 规则，`REQ-M2-015`）。同批把 `InstanceContainer#copy()` 的内存警告写进该方法 Javadoc（登记在 M2 分册 §28.2，行为不变）。本文档其余章节未动——引擎侧契约没有变化 | Bearisbug |
 | 2026-09-16 | v0.22 | §8 演进与弃用与 `ADR-007` 里的「唯一稳定面」由 `platform-api` 改称 `plugin-api`——M2 实际落地的稳定面模块是 `:plugin-api`（谁接 ABI 门谁就是稳定面），`platform-api` 这个模块名不会存在；这是 `docs/DESIGN-M2.md` `ADR-M2-005` 要求的显式决策改名 | Bearisbug |
@@ -662,3 +663,5 @@ N/A — M1 尚未完成；完成后按 §26 退出条件逐项对照并记录实
 | 已决 | 14 个开关结构上是 JVM 级（TPS 喂给 `Tick.SERVER_TICKS` 时间单位、NBT/模板 codec 与包池是 `static final`、Adventure flattener 是 JVM 单例等），放在 `JvmFlags`/各包常量而非 `ServerConfig`；一个开关只住一处，避免两半不一致 | Bearisbug | 已于 2026-09-09 决定 |
 | 技术债 | JFR 事件类型名仍带 `minestom.` 前缀（改名会改变录制格式），与 `Minestom*` 类名、`build-src` 的 `minestom.*.gradle.kts` 插件 id 一起在分层合入后统一处理 | Bearisbug | M1.5 收尾 |
 | 技术债 | 上游未修的 `ObjectPoolTest` 在 jcstress pre-test 阶段 NPE | Bearisbug | 阶段 0 CI 接入时处理 |
+| 技术债 | 压测 `SOAK-1`（2026-09-18）：`ConnectionManager.doConfiguration` 在虚拟线程里以 `knownPacksFuture.get(knownPacksResponseTimeout)`（默认 5 分钟）等待 known-packs 应答，连接在此之前断开时这条线程不被唤醒或取消，与之绑定的 `Player` / `PlayerSocketConnection` / `ClientSettings` / `GameProfile` 一并滞留到超时；实测 9 次/秒的早退连接即可堆到数百条。证据与复现见 `docs/research/soak-2026-09-18/report.md` | Bearisbug | 下一轮（修复 + 对应用例） |
+| 技术债 | 压测 `SOAK-2`（2026-09-18，与 `SOAK-1` 同一条早退路径但没有时间上界）：configuration 阶段早退的连接里约 1% 留下**永不回收**的 `Player`——线程全部归 0 之后连续三次 Full GC 仍数到 23 个，再打 1,627 次攻击后升到 40 个，随攻击次数累积；完整登录再断开无残留。持有者未定位（需堆 dump 做 GC 根路径分析） | Bearisbug | 下一轮（与 `SOAK-1` 一并定位） |

@@ -115,7 +115,7 @@ public class DisconnectReasonsIntegrationTest {
     }
 
     @Test
-    public void aDuplicateUuidIsRejectedWithItsOwnReason(Env env) {
+    public void aDuplicateUuidIsRejectedWithItsOwnReason() {
         // The rejection itself is driven end to end by DuplicateUuidLoginIntegrationTest
         assertEquals("synaxis:duplicate-login", DisconnectReasons.DUPLICATE_LOGIN.key());
     }

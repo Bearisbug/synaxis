@@ -370,7 +370,7 @@ N/A — 无前端。客户端 Fabric 模组与其界面属于 M2。
 | `synaxis:unsupported-version` | LoginDisconnect | 协议版本 ≠ 776 | 提示安装指定版本 |
 | `synaxis:protocol-error` | Disconnect | 帧格式非法、状态机非法推进、负载超限、递归超深 | 提示重连，重复出现提示报障（`connection_id` 在服务端日志里） |
 | `synaxis:login-timeout` | 关闭 socket | 30 秒内未完成登录 | 提示重连 |
-| `synaxis:duplicate-login` | LoginDisconnect | 该 profile UUID 已有在线连接（离线模式下 UUID 由用户名派生，同名即同 UUID） | 提示换个用户名；若是自己刚掉线后重连，稍候重试 |
+| `synaxis:duplicate-login` | Disconnect（configuration 阶段） | 该 profile UUID 已有在线连接（离线模式下 UUID 由用户名派生，同名即同 UUID） | 提示换个用户名；若是自己刚掉线后重连，稍候重试 |
 | `synaxis:internal-error` | Disconnect | 服务端内部异常，如出生区块加载失败或实体注册被拒 | 提示重连并报障 |
 | `synaxis:server-stopping` | Disconnect | 进程关闭 | 提示服务器已关闭 |
 

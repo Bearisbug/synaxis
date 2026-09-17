@@ -55,11 +55,16 @@ public class DuplicateUuidLoginIntegrationTest {
 
         try (KickCapturingConnection second = new KickCapturingConnection(env.process())) {
             second.UNSAFE_setProfile(profile);
-            second.setServerState(ConnectionState.LOGIN);
+            // Where a real connection is by now: writing LoginSuccess moves the server state to
+            // CONFIGURATION (PacketVanilla#nextServerState), and the client acknowledges it after
+            // that. So the rejection leaves as a configuration Disconnect, not a LoginDisconnect
+            second.setServerState(ConnectionState.CONFIGURATION);
             LoginListener.loginAckListener(new ClientLoginAcknowledgedPacket(), second);
 
             assertEquals("synaxis:duplicate-login", second.kickKey(),
                     "the second login on a live uuid was not rejected with the duplicate login reason");
+            assertInstanceOf(DisconnectPacket.class, second.kickPacket(),
+                    "the reason reached the client as something other than the packet documented in DESIGN.md 14");
         }
 
         assertEquals(List.of(first), List.copyOf(env.process().connection().getOnlinePlayers()),
@@ -97,7 +102,7 @@ public class DuplicateUuidLoginIntegrationTest {
 
         try (KickCapturingConnection retry = new KickCapturingConnection(env.process())) {
             retry.UNSAFE_setProfile(profile);
-            retry.setServerState(ConnectionState.LOGIN);
+            retry.setServerState(ConnectionState.CONFIGURATION);
             LoginListener.loginAckListener(new ClientLoginAcknowledgedPacket(), retry);
             assertEquals("synaxis:duplicate-login", retry.kickKey(),
                     "a reconnection is rejected while the previous connection is still tracked");
@@ -139,7 +144,7 @@ public class DuplicateUuidLoginIntegrationTest {
 
     private static final class KickCapturingConnection extends PlayerSocketConnection implements AutoCloseable {
         private final SocketChannel channel;
-        private volatile @Nullable Component kickReason;
+        private volatile @Nullable SendablePacket kickPacket;
 
         private KickCapturingConnection(ServerProcess process) throws IOException {
             this(process, SocketChannel.open());
@@ -151,17 +156,23 @@ public class DuplicateUuidLoginIntegrationTest {
             this.channel = channel;
         }
 
+        private SendablePacket kickPacket() {
+            final SendablePacket packet = kickPacket;
+            assertNotNull(packet, "the connection was never kicked");
+            return packet;
+        }
+
         private String kickKey() {
-            final Component reason = kickReason;
-            assertNotNull(reason, "the connection was never kicked");
+            final SendablePacket packet = kickPacket();
+            final Component reason = packet instanceof LoginDisconnectPacket login
+                    ? login.kickMessage() : assertInstanceOf(DisconnectPacket.class, packet).message();
             return assertInstanceOf(TranslatableComponent.class, reason,
                     "the kick reason is not an error code of the engine").key();
         }
 
         @Override
         public void sendPacket(SendablePacket packet) {
-            if (packet instanceof LoginDisconnectPacket disconnect) kickReason = disconnect.kickMessage();
-            if (packet instanceof DisconnectPacket disconnect) kickReason = disconnect.message();
+            if (packet instanceof DisconnectPacket || packet instanceof LoginDisconnectPacket) kickPacket = packet;
         }
 
         @Override

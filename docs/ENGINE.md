@@ -145,7 +145,7 @@ nc -z 127.0.0.1 25565 && echo "server is up"
   -Dsynaxis.app.core-mode=on
 ```
 
-启动日志里一眼能分清两种模式：核心模式打 `Core mode (synaxis.app.core-mode=…): …`，玩法模式打 `Gameplay mode: … plugin_ids=[rts]`。
+启动日志里一眼能分清两种模式：核心模式打 `Core mode (synaxis.app.core-mode=…): …`，玩法模式打 `Gameplay mode: … plugin_ids=[rts]`。`synaxis.app.plugins` 里写了没有插件应答的 id 时另有一行 `No plugin answers to selected ids […]: discovered plugin_ids=[…].` 的 WARN——把 id 拼错（想写 `rts` 写成了 `rst`）与刻意排除全部插件在行为上都是「进核心模式」，起服后没人能进对局时先看这行。
 
 `synaxis.app.core-mode` 三个值：`auto`（默认，没有插件参与启动就进核心模式）、`on`（强制核心模式，连插件发现都不做）、`off`（永不进核心模式，没有玩法就以非零码退出且端口不 bind，即核心模式落地之前的行为）。
 

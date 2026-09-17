@@ -83,6 +83,13 @@ final class PluginHost {
      * @throws IllegalArgumentException if a selected descriptor is refused
      */
     void enable(List<SynaxisPlugin> plugins, Set<String> selectedIds) {
+        final List<String> discoveredIds = plugins.stream().map(plugin -> plugin.descriptor().id()).toList();
+        final List<String> unknownIds = selectedIds.stream().filter(id -> !discoveredIds.contains(id)).sorted().toList();
+        if (!unknownIds.isEmpty())
+            // A selection nothing answers to is not fatal (the operator may be excluding every
+            // plugin on purpose), but it is also how a typo turns into a launch that serves the
+            // core world instead of the gameplay that was asked for (API-M2-010 step 5).
+            LOGGER.warn("No plugin answers to selected ids {}: discovered plugin_ids={}.", unknownIds, discoveredIds);
         final List<SynaxisPlugin> selected = plugins.stream()
                 .filter(plugin -> selectedIds.isEmpty() || selectedIds.contains(plugin.descriptor().id()))
                 .toList();

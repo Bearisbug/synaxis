@@ -25,6 +25,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -93,6 +94,7 @@ public class ServerProcessShutdownIntegrationTest {
     private static Player connect(ServerProcess process, Instance instance) {
         final SilentConnection connection = new SilentConnection(process);
         final Player player = process.connection().createPlayer(connection, new GameProfile(UUID.randomUUID(), "Stopped"));
+        assertNotNull(player);
         player.eventNode().addListener(AsyncPlayerConfigurationEvent.class, event -> {
             event.setSpawningInstance(instance);
             event.getPlayer().setRespawnPoint(new Pos(0, 40, 0));

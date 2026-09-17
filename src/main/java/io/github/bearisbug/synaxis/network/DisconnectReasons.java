@@ -28,7 +28,13 @@ public final class DisconnectReasons {
     public static final TranslatableComponent LOGIN_TIMEOUT = Component.translatable("synaxis:login-timeout");
 
     /**
-     * The server failed to bring the client into the world, e.g. the spawn chunks could not be loaded.
+     * Another live connection already owns the profile uuid this one logged in with.
+     */
+    public static final TranslatableComponent DUPLICATE_LOGIN = Component.translatable("synaxis:duplicate-login");
+
+    /**
+     * The server failed to bring the client into the world, e.g. the spawn chunks could not be
+     * loaded or the entity tracker refused the player.
      */
     public static final TranslatableComponent INTERNAL_ERROR = Component.translatable("synaxis:internal-error");
 

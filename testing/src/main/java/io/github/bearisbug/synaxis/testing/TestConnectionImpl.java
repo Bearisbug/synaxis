@@ -45,6 +45,9 @@ final class TestConnectionImpl implements TestConnection {
         }
 
         var player = process.connection().createPlayer(playerConnection, gameProfile);
+        if (player == null) {
+            throw new IllegalStateException("Another connection is already online with the uuid " + gameProfile.uuid());
+        }
         player.eventNode().addListener(AsyncPlayerConfigurationEvent.class, event -> {
             event.setSpawningInstance(instance);
             event.getPlayer().setRespawnPoint(pos);

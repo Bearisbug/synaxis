@@ -14,6 +14,7 @@ dependencies {
 
     testImplementation(project(":testing"))
     testImplementation(libs.bundles.logback)
+    testImplementation(libs.archunit.junit5)
 }
 
 // No module-info here: the host runs on the classpath (ADR-M2-005).

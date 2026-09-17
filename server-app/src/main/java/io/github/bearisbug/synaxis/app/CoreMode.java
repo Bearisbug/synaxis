@@ -54,7 +54,7 @@ final class CoreMode {
     static final Pos SPAWN = new Pos(0.5, FLOOR_HEIGHT, 0.5);
 
     /**
-     * §7: team 0 is the neutral team, and the core mode has no sides.
+     * §9: team 0 is the neutral team, and the core mode has no sides.
      */
     private static final int TEAM = 0;
 

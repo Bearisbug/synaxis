@@ -116,12 +116,13 @@ public final class Main {
         // left one half or neither behind is a plugin that came up wrong: the port stays closed
         // rather than letting every player hit an internal error, or hiding the failure behind a
         // world nobody can play in.
+        final int runningMatches = runningMatches(process);
         switch (CoreMode.decide(coreMode, host.attemptedPluginCount(),
-                host.hasAdmissionProvider(), runningMatches(process))) {
+                host.hasAdmissionProvider(), runningMatches)) {
             case CORE -> CoreMode.start(process, host, dimensionType, coreMode);
             case GAMEPLAY -> LOGGER.info("Gameplay mode: the running match and the admission provider come from "
                     + "plugin_ids={}", host.enabledPluginIds());
-            case REFUSED -> refuseToServe(process, host, port);
+            case REFUSED -> refuseToServe(host, runningMatches, port);
         }
 
         // The only place the plugins are disabled, console and SIGINT alike: the engine drains its
@@ -155,15 +156,14 @@ public final class Main {
      * Reports what a gameplay launch is missing and exits without binding. Both halves are reported,
      * because which one is missing says what went wrong with the plugin.
      *
-     * @param process the engine process
      * @param host    the plugin host
+     * @param matches how many matches are running, the count the mode was decided on
      * @param port    the port that is not going to be bound
      */
-    private static void refuseToServe(ServerProcess process, PluginHost host, int port) {
+    private static void refuseToServe(PluginHost host, int matches, int port) {
         if (!host.hasAdmissionProvider())
             LOGGER.error("No admission provider: no plugin registered one, so nothing would know where to put "
                     + "a player.");
-        final int matches = runningMatches(process);
         if (matches != 1)
             LOGGER.error("No running match: a plugin has to build one and register it before the port opens, "
                     + "and M2 expects exactly one (found {}).", matches);

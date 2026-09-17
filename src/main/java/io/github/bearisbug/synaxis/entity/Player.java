@@ -688,7 +688,13 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
         });
         if (futures.isEmpty()) {
             // All chunks are already loaded
-            runnable.accept(instance);
+            try {
+                runnable.accept(instance);
+            } catch (RuntimeException e) {
+                // The caller decides what to do with a failed spawn, throwing here would instead
+                // hand it to whoever is draining the queue of players waiting to join
+                return CompletableFuture.failedFuture(e);
+            }
             return AsyncUtils.VOID_FUTURE;
         }
 
@@ -722,7 +728,14 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
                             future.completeExceptionally(throwable);
                             return;
                         }
-                        runnable.accept(instance);
+                        try {
+                            runnable.accept(instance);
+                        } catch (RuntimeException e) {
+                            // A spawn failing here would otherwise escape into the scheduler and
+                            // leave the future, and everyone joining it, waiting forever
+                            future.completeExceptionally(e);
+                            return;
+                        }
                         future.complete(null);
                     });
                     latch.countDown();
@@ -782,9 +795,13 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
 
         if (dimensionChange) sendDimension(instance.getDimensionType(), instance.getDimensionName());
 
-        var _ = super.setInstance(instance, spawnPosition);
+        final CompletableFuture<Void> spawn = super.setInstance(instance, spawnPosition);
         // AddEntityToInstanceEvent may have been cancelled, do not continue with a half-spawned player
         if (this.instance != instance) return;
+        // The instance did change, so the spawn chunks were loaded and the registration continuation
+        // has already run: reading its future back is what surfaces a failed registration, which
+        // dropping the future used to hide (the player stayed in the world, untracked)
+        spawn.getNow(null);
 
         final int chunkX = spawnPosition.chunkX();
         final int chunkZ = spawnPosition.chunkZ();

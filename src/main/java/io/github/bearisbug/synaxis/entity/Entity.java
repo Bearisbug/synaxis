@@ -109,6 +109,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -1037,7 +1038,10 @@ public class Entity implements Viewable, Tickable, Schedulable, EventHandler<Ent
                 spawn();
                 callEvent(new EntitySpawnEvent(this, instance));
             } catch (Exception e) {
-                handleException(e);
+                // Reported through the future, which the caller uses to undo the spawn. Swallowing
+                // it left the entity in the instance while the tracker had never heard of it:
+                // nothing could move or remove it again, yet it kept taking packets.
+                throw new CompletionException(e);
             }
         }));
     }

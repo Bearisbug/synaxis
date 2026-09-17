@@ -203,6 +203,8 @@ class PluginHostIntegrationTest {
         }
 
         assertEquals(List.of("healthy"), host.enabledPluginIds());
+        // Both took part, which is what keeps a plugin that came up wrong out of the core mode
+        assertEquals(2, host.attemptedPluginCount());
         host.disableAll();
     }
 

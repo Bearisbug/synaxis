@@ -15,6 +15,7 @@
 
 | 日期 | 版本 | 改动 | 作者 |
 | --- | --- | --- | --- |
+| 2026-09-18 | v0.25 | `SOAK-1` / `SOAK-2` 修复：断线时释放 known-packs 等待，玩家进入生命周期集合改走与 `removePlayer` 同锁的 `trackPlayer`，§28 两条技术债转「已决」。§14 按实现更正——`connection_id` 只进服务端日志，不拼进断线文本（`docs/DESIGN-M2.md` §28.2 登记的那条文实不符随之关闭） | Bearisbug |
 | 2026-09-18 | v0.24 | §28 新增两条技术债：2026-09-18 压测发现 `SOAK-1`——configuration 阶段被中断的连接，其虚拟线程与整个 `Player` 对象图滞留到 `knownPacksResponseTimeout`（默认 5 分钟，从最后一次连接起算）才回收，属 2026-09-15 审计 F02 未修完的那一半；`SOAK-2`——同一路径上约 1% 的连接留下永不回收的 `Player` | Bearisbug |
 | 2026-09-09 | v0.1 | 初稿：里程碑 M1 范围、实体、协议契约、状态机、阶段计划 | Bearisbug |
 | 2026-09-16 | v0.23 | §28 的四条审计残留全部转「已决」，由 `docs/DESIGN-M2.md` 的阶段 3 处置并在每条里注明去向：F29 残留（a）`SharedInstance` 整块删除（`REQ-M2-012`）、F29 残留（b）卸载区块时同步移除已下线玩家（`REQ-M2-013`）、F11 残留视距收缩的两半（`REQ-M2-014`）、F49 残留按「降级不修」处置（Javadoc + `:game-rts` 测试源集里的无条件 ArchUnit 规则，`REQ-M2-015`）。同批把 `InstanceContainer#copy()` 的内存警告写进该方法 Javadoc（登记在 M2 分册 §28.2，行为不变）。本文档其余章节未动——引擎侧契约没有变化 | Bearisbug |
@@ -359,12 +360,12 @@ N/A — 无前端。客户端 Fabric 模组与其界面属于 M2。
 
 ## 14. 错误处理与错误码
 
-无 HTTP，不用 RFC 9457。统一错误信封是 Minecraft 协议的 `Disconnect` / `LoginDisconnect` 包，原因文本为 Adventure `Component`，其 `translate` 键即稳定错误码；服务端日志同时记录 `connection_id`。排障关联 ID 就是 `connection_id`（§9），由网络层在 TCP 接入时生成，所有该连接的日志行与断线包携带；用户报障时展示在断线界面文本末尾。
+无 HTTP，不用 RFC 9457。统一错误信封是 Minecraft 协议的 `Disconnect` / `LoginDisconnect` 包，原因文本为 Adventure `Component`，其 `translate` 键即稳定错误码。排障关联 ID 就是 `connection_id`（§9），由网络层在 TCP 接入时生成，该连接的所有服务端日志行都带上它——**断线包本身不带**：`DisconnectReasons` 是纯 `TranslatableComponent`，`PlayerConnection#kick` 只把 `connection_id` 写进日志（`Kicking connection_id=… identifier=… reason=synaxis:…`）。用户报障时按时间与用户名在服务端日志里定位这串 id；要让玩家能直接读出它，需要 kick 时把它拼进 `Component`，那会改变每一次断线的可见文本，另行决定。
 
 | 错误码（type） | 协议动作 | 语义 | 客户端处理约定 |
 | --- | --- | --- | --- |
 | `synaxis:unsupported-version` | LoginDisconnect | 协议版本 ≠ 776 | 提示安装指定版本 |
-| `synaxis:protocol-error` | Disconnect | 帧格式非法、状态机非法推进、负载超限、递归超深 | 提示重连，重复出现提示报障并附 `connection_id` |
+| `synaxis:protocol-error` | Disconnect | 帧格式非法、状态机非法推进、负载超限、递归超深 | 提示重连，重复出现提示报障（`connection_id` 在服务端日志里） |
 | `synaxis:login-timeout` | 关闭 socket | 30 秒内未完成登录 | 提示重连 |
 | `synaxis:internal-error` | Disconnect | 服务端内部异常，如出生区块加载失败 | 提示重连并报障 |
 | `synaxis:server-stopping` | Disconnect | 进程关闭 | 提示服务器已关闭 |
@@ -663,5 +664,5 @@ N/A — M1 尚未完成；完成后按 §26 退出条件逐项对照并记录实
 | 已决 | 14 个开关结构上是 JVM 级（TPS 喂给 `Tick.SERVER_TICKS` 时间单位、NBT/模板 codec 与包池是 `static final`、Adventure flattener 是 JVM 单例等），放在 `JvmFlags`/各包常量而非 `ServerConfig`；一个开关只住一处，避免两半不一致 | Bearisbug | 已于 2026-09-09 决定 |
 | 技术债 | JFR 事件类型名仍带 `minestom.` 前缀（改名会改变录制格式），与 `Minestom*` 类名、`build-src` 的 `minestom.*.gradle.kts` 插件 id 一起在分层合入后统一处理 | Bearisbug | M1.5 收尾 |
 | 技术债 | 上游未修的 `ObjectPoolTest` 在 jcstress pre-test 阶段 NPE | Bearisbug | 阶段 0 CI 接入时处理 |
-| 技术债 | 压测 `SOAK-1`（2026-09-18）：`ConnectionManager.doConfiguration` 在虚拟线程里以 `knownPacksFuture.get(knownPacksResponseTimeout)`（默认 5 分钟）等待 known-packs 应答，连接在此之前断开时这条线程不被唤醒或取消，与之绑定的 `Player` / `PlayerSocketConnection` / `ClientSettings` / `GameProfile` 一并滞留到超时；实测 8 次/秒的早退连接即可堆到上百条，且回收地平线从**最后一次**连接起算 5 分钟，洪泛期间一条都不提前释放。**这是 2026-09-15 审计 F02 未修完的那一半**：F02 只修了同一方法的 `packFuture`（`removePlayer` 调 `releaseResourcePackWait`），`knownPacksFuture` 至今无人 complete 或 cancel。证据与复现见 `docs/research/soak-2026-09-18/report.md` | Bearisbug | 下一轮（修复 + 对应用例） |
-| 技术债 | 压测 `SOAK-2`（2026-09-18，与 `SOAK-1` 同一条早退路径但没有时间上界）：configuration 阶段早退的连接里约 1% 留下**永不回收**的 `Player`——线程全部归 0 之后连续三次 Full GC 仍数到 23 个，再打 1,627 次攻击后升到 40 个，随攻击次数累积；完整登录再断开无残留。持有者未定位（需堆 dump 做 GC 根路径分析） | Bearisbug | 下一轮（与 `SOAK-1` 一并定位） |
+| 已决 | 压测 `SOAK-1`（2026-09-18）：`ConnectionManager.doConfiguration` 等待 known-packs 应答的虚拟线程，在连接先断开时滞留到 `knownPacksResponseTimeout`（默认 5 分钟），与之绑定的 `Player` / `PlayerSocketConnection` 一并滞留。**这是 2026-09-15 审计 F02 未修完的那一半**（F02 只修了同一方法的 `packFuture`）。处置：`removePlayer` 在 `releaseResourcePackWait()` 之外再调 `PlayerConnection#releaseKnownPacksWait()`，用空清单完成这个 future，`doConfiguration` 拿到结果后按 `isOnline()` 直接退出；同一条 `WARN` 补上 `connection_id`（§14 的日志关联口径） | Bearisbug | 已于 2026-09-18 修复，回归用例 `ConfigurationKnownPacksIntegrationTest#configurationStopsWaitingForKnownPacksWhenTheClientLeaves` |
+| 已决 | 压测 `SOAK-2`（2026-09-18，与 `SOAK-1` 同一条早退路径但没有时间上界）：configuration 阶段早退的连接里约 1% 留下**永不回收**的 `Player`。持有者是 `configurationPlayers` / `keepAlivePlayers`——`doConfiguration` 先把玩家放进这两个集合，断线处理若在这之前跑完，`removePlayer` 就摘了个空，之后的插入再没有人来撤销。处置：三处插入（`doConfiguration` 与 `updateWaitingPlayers` 的两条 drain）统一走 `ConnectionManager#trackPlayer`，它与 `removePlayer` 同锁，并在插入前复核连接仍在 `connectionPlayerMap` 里，插不进去就直接返回 | Bearisbug | 已于 2026-09-18 修复，回归用例 `ConfigurationKnownPacksIntegrationTest#aClientGoneBeforeConfigurationStartsLeavesNothingBehind` |

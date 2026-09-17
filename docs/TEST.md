@@ -15,6 +15,7 @@
 | 日期 | 改动 | 作者 |
 | --- | --- | --- |
 | 2026-09-18 | §3 环境段登记压测 / 长稳 harness `tools/loadtest/soak.py`（不对应任何 TC，服务端须先在跑；跑法与采集手段见 `docs/research/soak-2026-09-18/README.md`）。用例正文未动 | Bearisbug |
+| 2026-09-18 | 跟进 `docs/DESIGN.md` v0.25 与 `docs/DESIGN-M2.md` v0.19：**新增 `TC-031`**（configuration 阶段早退的连接不留虚拟线程也不留 `Player`，覆盖 `SOAK-1` / `SOAK-2` 的修复）与 **`TC-GAME-059`**（稳定面不把 `@ApiStatus.Internal` 类型递给插件，§24 规则④）；§3 日志关联口径补上 `Player failed to respond to known packs query: username=… connection_id=…` 这一行；§5 回归映射的引擎域「协议」与游戏域「模块与门禁」各加一条；REQ-M2-002 行补 `TC-GAME-059`。既有用例语义未变 | Bearisbug |
 | 2026-09-18 | 跟进 `docs/DESIGN-M2.md` v0.18（核心模式）：**废弃 `TC-GAME-032`、新增 `TC-GAME-057`** —— 第 1 步「排除玩法插件即非零码退出、端口未 bind」这条判据在默认配置下不再成立（现在进核心模式并照常 bind），要得到拒启必须同时给 `-Dsynaxis.app.core-mode=off`；判据实质变更，按惯例换 ID，原用例第 2～5 步逐字保留。**新增 `TC-GAME-058`**（核心模式冒烟：默认起服、登录、`synaxis:main` echo 往返、`stop` 干净退出、`core-mode=on` 强制、玩法插件在场时不介入）。§2 Gherkin 场景数 47 → 48、REQ ↔ TC 表三行换 ID；§3 系统属性补 `synaxis.app.core-mode`、改写「去掉 `rts` = 非零码退出」那半句并记上「没有插件应答的 id 记一行 WARN」，探针表 `echo` 行由「无提供方、不适用」改为「核心模式下由宿主提供」；`TC-GAME-049` 第 4 步（换 ID 之外还写上切到核心模式的重启参数 `-Dsynaxis.app.core-mode=on`）、`TC-GAME-050` 第 9 步与 §5 回归映射跟着换 ID；§7「探针 `echo` 子命令归属未定」按设计文档的处置结论结案 | Bearisbug |
 | 2026-09-16 | 验收收口：`TC-GAME-008` 第 6 步改判据（插件禁用由引擎 `scheduler.shutdown()` 驱动，不再是「排在它之前」，与 `API-M2-007` 同轮改写对齐）；`TC-GAME-032` 新增一步（对局在拆世界之前就置 `ENDED`）。另补登阶段 2 遗漏的用例改动：`TC-GAME-001` 第 7 步、`TC-GAME-016` 第 4 步、`TC-GAME-048` 第 4 步、`TC-GAME-050` 第 9 步与 §3 的两行宿主日志 | Bearisbug |
 | 2026-09-16 | 阶段 3 评审第 2 轮修订，**ID 全部保留，只改步骤与后置**：TC-GAME-034 与 TC-GAME-035 的「先红后绿」两步改成**只回退实现文件、保留测试文件**（`git checkout <修复提交>^ -- src/main/java/.../InstanceContainer.java` 与 `.../entity/Player.java`）——复现测试与修复在同一个提交里，整树 `git checkout <修复提交>^` 之后那些测试方法根本不存在，`--tests` 会跑剩下的老方法并给出 `BUILD SUCCESSFUL`，按字面执行得到的是「没红」；两条的第 2 步与后置随之改为 `git checkout HEAD -- <同一文件>`。TC-GAME-034 第 1 步的失败断言改为实际先红的那条（`assertTrue(player.isRemoved())`，消息 `the disconnected player survived the unload of its chunk`），`getEntityByUuid` 那条排在它后面。TC-GAME-036 第 1 步由两条方法改为三条：规则自测拆成 `theRuleRejectsAGameClassCallingTheTagIndex` 与 `theRuleRejectsAGameClassReferencingTheTagIndex`（方法引用形态；规则改用 `accessTargetWhere` 才拦得住，见 `docs/DESIGN-M2.md` §1 v0.17） | Bearisbug |
@@ -58,7 +59,7 @@ REQ-M2 ↔ TC 对照（手工维护）：
 | REQ | TC |
 | --- | --- |
 | REQ-M2-001 模块拆分 | TC-GAME-001、TC-GAME-002 |
-| REQ-M2-002 `game` 改名与依赖方向规则 | TC-GAME-002、TC-GAME-003 |
+| REQ-M2-002 `game` 改名与依赖方向规则 | TC-GAME-002、TC-GAME-003、TC-GAME-059 |
 | REQ-M2-003 插件发现与生命周期 | TC-GAME-053、TC-GAME-009、TC-GAME-010、TC-GAME-011（TC-GAME-007、TC-GAME-008 已废弃：依赖拓扑序与环检测随范围裁剪推到 M3） |
 | REQ-M2-004 插件能力边界 | TC-GAME-055（TC-GAME-012 已废弃：M2 没有熔断，禁用只由停机触发） |
 | REQ-M2-005 异常归因 | TC-GAME-011、TC-GAME-054（TC-GAME-013 已废弃：滑窗熔断随范围裁剪推到 M3） |
@@ -101,7 +102,7 @@ REQ-M2 ↔ TC 对照（手工维护）：
 - 启动：`export JAVA_HOME=/opt/homebrew/opt/openjdk@25/libexec/openjdk.jdk/Contents/Home && ./gradlew :server-app:run --no-daemon --console=plain --init-script gradle/init/aliyun-mirror.init.gradle.kts`（`REQ-M2-021` 起 `server-app` 是唯一启动入口，`smoke` 已删除）。默认绑定 `0.0.0.0:25565`，端口用 `-Dsynaxis.app.port=<port>` 覆盖（`run` 任务把 `synaxis.*` 系统属性转给 fork 出来的 JVM）。TC-004 与 TC-018 要往服务端 stdin 写 `stop`，因此运行期间必须保持 stdin 打开（`:server-app:run` 已把 Gradle 进程的 stdin 转给应用；后台运行时用 FIFO 喂入或 `( sleep N; echo stop ) | ./gradlew :server-app:run …`）。
 - 就绪判定：stdout 出现 `synaxis server-app listening on 0.0.0.0:25565`，且 `nc -z 127.0.0.1 25565` 退出码为 0。
 - 运行时产物：进程在**仓库根**写 `plugins/<plugin_id>/`（插件数据目录）与 `logs/events-YYYYMMDD.jsonl`（事件台账），两者均已 gitignore；基线重置 = `rm -rf plugins logs` 后重启。**没有服务端日志文件**，日志只走 stdout（`server-app/src/main/resources/logback.xml` 只配了 ConsoleAppender），要留证据就重定向 stdout。
-- 日志关联：与连接相关的服务端日志行统一带 `connection_id=<uuid>` —— `Login success: username=… connection_id=… remote_address=…`、`Kicking connection_id=… identifier=… reason=synaxis:…`、`Connection closed: connection_id=… identifier=…`；宿主侧的行带 `plugin_id=<id>`——`Plugin enabled: plugin_id=… version=… enable_ms=…`、`Registered channel: plugin_id=… channel=…`、`Dropped a payload on an unregistered channel: connection_id=… channel=… bytes=…`、`Refusing a connection: connection_id=… reason=… cause=…`、`Admission provider is over its 200 ms budget: plugin_id=… connection_id=… admit_ms=…`。启动被拒时的那一行没有这两个 id：`Refusing to start: <原因>`（非法端口属性或非法 descriptor，退出码 1，见 TC-GAME-009 / TC-GAME-010）。
+- 日志关联：与连接相关的服务端日志行统一带 `connection_id=<uuid>` —— `Login success: username=… connection_id=… remote_address=…`、`Kicking connection_id=… identifier=… reason=synaxis:…`、`Connection closed: connection_id=… identifier=…`、`Player failed to respond to known packs query: username=… connection_id=…`；宿主侧的行带 `plugin_id=<id>`——`Plugin enabled: plugin_id=… version=… enable_ms=…`、`Registered channel: plugin_id=… channel=…`、`Dropped a payload on an unregistered channel: connection_id=… channel=… bytes=…`、`Refusing a connection: connection_id=… reason=… cause=…`、`Admission provider is over its 200 ms budget: plugin_id=… connection_id=… admit_ms=…`。启动被拒时的那一行没有这两个 id：`Refusing to start: <原因>`（非法端口属性或非法 descriptor，退出码 1，见 TC-GAME-009 / TC-GAME-010）。
 - 入口：TCP `127.0.0.1:25565`；离线模式（`Auth.Offline`），任意用户名；压缩阈值 256 字节。
 - 测试账号：
 
@@ -394,6 +395,21 @@ REQ-M2 ↔ TC 对照（手工维护）：
 | 4 | 向服务端 stdin 输入 `stop` | 进程 15 秒内退出、退出码 0；停机日志里 `Disabling plugin: plugin_id=rts` 出现在引擎的 `synaxis server stopped successfully.` 之前 |
 
 后置：`rm -rf plugins logs`。
+
+#### `TC-031` configuration 阶段早退的连接不留线程也不留玩家 — 对应 `REQ-017` · 级别: 回归 · 执行者: AI
+
+前置：`SOAK-1` / `SOAK-2` 的修复已合入（设计文档 §28 两条「已决」）；`jcmd` 在 `PATH` 上。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | `./gradlew :test --tests '*ConfigurationKnownPacksIntegrationTest*' --tests '*ConfigurationResourcePackIntegrationTest*' --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts` | `BUILD SUCCESSFUL`；三条用例全过——`configurationStopsWaitingForKnownPacksWhenTheClientLeaves`（断线释放 known-packs 等待）、`aClientGoneBeforeConfigurationStartsLeavesNothingBehind`（断线先于插入时不再往 `configurationPlayers` 里塞人）与 F02 原有的资源包那条 |
+| 2 | 起核心模式服务端（§3 启动段，`-Dsynaxis.app.core-mode=on`），记下 pid | stdout 出现 `synaxis server-app listening on 0.0.0.0:25565` |
+| 3 | `python3 tools/loadtest/soak.py run --connections 0 --duration 90 --attacks premature-finish --attack-interval 0.02 --out <目录>`，`duration` 到点的时刻记为零点 | `summary.json` 落盘，攻击次数为百量级 |
+| 4 | 零点 +15 秒 `jcmd <pid> Thread.dump_to_file -format=json <文件>`，数含 `doConfiguration` 栈帧的线程 | 为 `0`（修复前该值等于攻击中赛跑赢在等待侧的那一部分，并保持到「最后一次连接 + `knownPacksResponseTimeout`」，默认 5 分钟） |
+| 5 | 同一时刻 `jcmd <pid> GC.class_histogram \| grep -E 'synaxis.entity.Player$\|PlayerSocketConnection$'` | 两个类的实例数都是 `0`（`class_histogram` 自带一次 Full GC；修复前稳定残留约 1% 的攻击次数，且随轮次累积） |
+| 6 | `grep -c 'failed to respond to known packs' <服务端日志>`；命中时看行内容 | 计数为 `0`（客户端先走了的那一档不再走超时分支）；若因别的原因命中，该行带 `connection_id`（§3 日志关联口径） |
+
+后置：`stop` 停机，删掉 `--out` 目录与线程转储文件，确认没有残留 java 进程。
 
 #### `TC-013` 抢跑 FinishConfiguration 被拒绝 — 对应 `REQ-011` · 级别: 回归 · 执行者: AI
 
@@ -1117,6 +1133,19 @@ REQ-M2 ↔ TC 对照（手工维护）：
 
 后置：`stop`；`rm -rf plugins logs` 回到基线。
 
+#### `TC-GAME-059` 稳定面不把引擎内部类型递给插件 — 对应 `REQ-M2-002` · 级别: 回归 · 执行者: AI
+
+前置：`:server-app` 测试源集里的 `StableSurfaceArchitectureTest` 已合入（设计文档 §24 规则④）。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | `./gradlew :server-app:test --tests '*StableSurfaceArchitectureTest*' --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts` | `BUILD SUCCESSFUL` |
+| 2 | 在同一次运行的测试报告里看这四条用例 | 两条现状断言（`theStableSurfaceReturnsNoEngineInternal`、`theStableSurfaceAsksForNoEngineInternal`）与两条规则自测（`theReturnTypeRuleRejectsALeakedInternal`、`theParameterRuleRejectsALeakedInternal`）全部通过。自测断言的是违规消息里点名了那个方法名——ArchUnit 的 `failOnEmptyShould` 在 `that()` 一个成员都选不中时抛的也是 `AssertionError`，只判异常类型会把「规则退化成空规则」也判成通过 |
+| 3 | 临时给 `:plugin-api` 的任一公开接口加一个返回 `@ApiStatus.Internal` 类型（如 `io.github.bearisbug.synaxis.network.packet.server.CachedPacket`）的方法，重跑第 1 步，然后撤销 | 第 1 步失败于 `theStableSurfaceReturnsNoEngineInternal`；撤销后 `git status --porcelain` 无输出 |
+| 4 | `grep -rn "DoNotIncludeJars" server-app/src/test --include='*.java'` | 退出码 1、无输出（`:plugin-api` 以 jar 形式进测试运行时 classpath，排除 jar 会让规则一个类都扫不到；合成违规夹具住在同一个包里，靠 `DoNotIncludeTests` 排除） |
+
+后置：确认工作区干净。
+
 #### `TC-GAME-033` `SharedInstance` 已删除且有玩家的区块拒绝卸载 — 对应 `REQ-M2-012` · 级别: 回归 · 执行者: AI
 
 前置：`REQ-M2-012` 已合入。
@@ -1419,8 +1448,8 @@ REQ-M2 ↔ TC 对照（手工维护）：
 
 - **全量轮**（全部用例）：首次成稿、每个阶段 gate（引擎域阶段 0、2、3；游戏域 `docs/DESIGN-M2.md` §26 的阶段 1～6b）、跨功能域改动、地基变更（JDK、Gradle、镜像、协议版本、模块拆分、启动入口）。
 - **局部轮**（受影响用例 + 全部冒烟级）：单一需求改动。受影响用例 = 本次改动触及的 `REQ-*` / `REQ-M2-*` 所对应的 TC（M2 侧的对照表在 §2，机械校验查不到它）；无 REQ 变更的改动（纯 bug 修、重构）按触及的功能域圈定：
-  - 引擎域：构建与仓库 → TC-001、TC-002、TC-004、TC-006、TC-021、TC-029，删除与注册表 → TC-008、TC-009、TC-020，命名与合规 → TC-011、TC-028，协议 → TC-014、TC-018、TC-019、TC-026、TC-027、TC-030，卫生 → TC-015、TC-016，门面与配置 → TC-023、TC-025，分层 → TC-024。
-  - 游戏域：模块与门禁 → TC-GAME-001～TC-GAME-006，插件宿主 → TC-GAME-009～TC-GAME-011、TC-GAME-014～TC-GAME-016、TC-GAME-053～TC-GAME-055（TC-GAME-007、TC-GAME-008、TC-GAME-012、TC-GAME-013 已废弃），协议与握手 → TC-GAME-017～TC-GAME-028、TC-GAME-049、TC-GAME-050，世界与对局 → TC-GAME-029、TC-GAME-031、TC-GAME-033～TC-GAME-036、TC-GAME-056、TC-GAME-057（TC-GAME-030、TC-GAME-032 已废弃），单位与寻路 → TC-GAME-052、TC-GAME-039～TC-GAME-042、TC-GAME-051，镜头 → TC-GAME-043、TC-GAME-044，客户端模组 → TC-GAME-038、TC-GAME-045～TC-GAME-047，启动器 → TC-GAME-048、TC-GAME-049、TC-GAME-050、TC-GAME-058。
+  - 引擎域：构建与仓库 → TC-001、TC-002、TC-004、TC-006、TC-021、TC-029，删除与注册表 → TC-008、TC-009、TC-020，命名与合规 → TC-011、TC-028，协议 → TC-014、TC-018、TC-019、TC-026、TC-027、TC-030、TC-031，卫生 → TC-015、TC-016，门面与配置 → TC-023、TC-025，分层 → TC-024。
+  - 游戏域：模块与门禁 → TC-GAME-001～TC-GAME-006、TC-GAME-059，插件宿主 → TC-GAME-009～TC-GAME-011、TC-GAME-014～TC-GAME-016、TC-GAME-053～TC-GAME-055（TC-GAME-007、TC-GAME-008、TC-GAME-012、TC-GAME-013 已废弃），协议与握手 → TC-GAME-017～TC-GAME-028、TC-GAME-049、TC-GAME-050，世界与对局 → TC-GAME-029、TC-GAME-031、TC-GAME-033～TC-GAME-036、TC-GAME-056、TC-GAME-057（TC-GAME-030、TC-GAME-032 已废弃），单位与寻路 → TC-GAME-052、TC-GAME-039～TC-GAME-042、TC-GAME-051，镜头 → TC-GAME-043、TC-GAME-044，客户端模组 → TC-GAME-038、TC-GAME-045～TC-GAME-047，启动器 → TC-GAME-048、TC-GAME-049、TC-GAME-050、TC-GAME-058。
   - 跨域牵连（必须一起跑）：动了启动入口或就绪日志 → 加 TC-GAME-048、TC-GAME-029、TC-GAME-057、TC-GAME-058 与全部以进程为前置的引擎域用例（启动序列一变，「对局在 bind 之前就绪、tick 在 bind 之后才起」这条口径就要重验）；动了握手、准入回调或探针 → 加 TC-GAME-049、TC-GAME-050 与 TC-004、TC-014、TC-018、TC-019、TC-020、TC-026、TC-027 七条存量 TC；动了 `:protocol` 消息布局 → 加 TC-GAME-017 与客户端侧同一份向量；动了引擎 `Entity` 的位置推进入口 → 加 TC-GAME-051 与 TC-GAME-040。
   - 影响面不确定时升级为全量轮。
 - **复测轮**（上轮失败用例 + 全部冒烟级）：修复失败项之后。

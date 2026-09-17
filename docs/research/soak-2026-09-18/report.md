@@ -85,7 +85,10 @@ harness 用单 selector 循环驱动全部连接，只有登录握手在 8 个 w
 - **「所有 WARN 都带 `connection_id`」只对上面三类解码断线成立**，另有两行 WARN 不带任何连接标识，
   docs/TEST.md §3 的日志关联口径在它们上面有真实反例：
   - `ConnectionManager.java:280` 的 `Player <username> failed to respond to known packs query`
-    ——只有用户名。这是 SOAK-1 超时到点时打的那一行，每轮 premature-finish 洪泛的最后一次攻击
+    ——只有用户名。**已于 2026-09-18 改成 `Player failed to respond to known packs query:
+    username=… connection_id=…`**（`docs/TEST.md` §3 的关联口径同批补上这一行）；同一轮的 SOAK-1
+    修复还让它在「客户端先走了」这一档彻底不再出现，剩下的命中都是真的连着但不应答。
+    这是 SOAK-1 超时到点时打的那一行，每轮 premature-finish 洪泛的最后一次攻击
     之后 5 分钟成批出现。**行数与攻击次数的比例是赛跑结果，不是性质**：攻击造成的 protocol-error
     断线与 `ConnectionManager.java:264` 的 `if (!player.isOnline()) return;` 谁先到，决定这条连接
     会不会走到 known-packs 等待。实测三次分别是 684/3,792 = 18%、151/718 = 21%、复核者的
@@ -94,11 +97,15 @@ harness 用单 selector 循环驱动全部连接，只有登录握手在 8 个 w
     （由默认开启的 `synaxis.warn-unread-bytes-packet` 控制）——打在包解码点，拿不到连接上下文。
     复核者在 premature-finish 洪泛里以约 1/540 的频率抓到过 `ClientChangeDifficultyPacket 0x4`
     这一形状；本轮累计 4,510 次同样的攻击（3,792 + 718）一次都没命中（`grep -c 'not fully read'`
-    两次重跑都是 0），所以只能记下代码事实与他人观察，命中条件未定位。
+    两次重跑都是 0），所以只能记下代码事实与他人观察，命中条件未定位。**2026-09-18 判为不修**：
+    它报的是「服务端的序列化器没读完这个包」这类引擎自身缺陷，不是连接事件，`docs/TEST.md` §3
+    列举的关联行里本来就没有它；要带上 `connection_id` 得把连接标识穿过 `readPackets` →
+    `readFramedPacket` → `readPayload` 三层静态方法，代价与这条从不命中的诊断行不相称。
 - 堆存活集 33.1 → 32.4 → 29.1 MiB，不涨。
 
 判定：**攻击不影响正常连接、服务端不崩不挂；解码断线的日志规范（一行 WARN + connection_id +
-无堆栈），但上面两行 WARN 是这条规范的例外。**
+无堆栈），上面两行 WARN 当时是这条规范的例外——第一行已于 2026-09-18 补上 `connection_id`，
+第二行判为不修（理由见上）。**
 
 ## 发现
 
@@ -169,8 +176,12 @@ harness 用单 selector 循环驱动全部连接，只有登录握手在 8 个 w
   一条都不会提前释放）；正常玩家高延迟掉线也会踩到同一路径。稳态与 churn 两组
   没有触发它，正因为那两组的连接都**完整进了 play 之后**才断开，走的是另一条能即时回收的路径。
 - 复现步骤：见本目录 `README.md` 末节。
-- 归属：引擎缺陷，按任务边界本轮不修，留待下一轮。可能的方向（仅记录，未实施）：断开 / socket
-  关闭时取消或完成 `knownPacksFuture`，或把默认 5 分钟超时压到秒级。
+- 归属：引擎缺陷。**已于 2026-09-18 修复**：`ConnectionManager#removePlayer` 在
+  `releaseResourcePackWait()` 之外再调 `PlayerConnection#releaseKnownPacksWait()`，用空清单完成
+  这个 future，`doConfiguration` 拿到结果后按 `isOnline()` 直接退出；默认 5 分钟超时不动（它现在
+  只覆盖「连着但不应答」这一档）。回归用例
+  `ConfigurationKnownPacksIntegrationTest#configurationStopsWaitingForKnownPacksWhenTheClientLeaves`，
+  去向登记在 `docs/DESIGN.md` §28 与 `fixes.md` 的 F02 行。
 
 ### SOAK-2（P2）：约 1% 的早退连接留下永不回收的 `Player`
 
@@ -185,9 +196,15 @@ harness 用单 selector 循环驱动全部连接，只有登录握手在 8 个 w
   留下残留的是 configuration 阶段早退这条路径，正常连接的回收是干净的（也与组 1 / 组 2 的堆存活集
   不涨一致：40 个 `Player` 的浅堆只有 18.5 KiB，连带保留的对象图更大但未测，20 分钟量级的长跑
   都看不出来）。
-- 未定位：这些 `Player` 被谁持有本轮没有查（需要堆 dump 做 GC 根路径分析），因此只记为观察，
-  不给结论——只知道 `PlayerSocketConnection` 与它同数残留，持有者大概率同时抓着这两个。它与 SOAK-1 大概率同源（同一条早退路径），但 SOAK-1 有 5 分钟上界、这条没有上界，
-  所以分开记。
+- ~~未定位~~ **持有者已定位并修复（2026-09-18）**：是 `ConnectionManager` 的
+  `configurationPlayers` 与 `keepAlivePlayers`。`doConfiguration` 进门先把玩家放进这两个集合，
+  而断线处理（`removePlayer`）若抢在这之前跑完，它摘的是一个空集合，之后那次插入再没有人来撤销
+  ——两个集合都是 `ConnectionManager` 的字段，于是 `Player` 连同 `PlayerSocketConnection` 永久
+  可达，这正是「两个类同数残留」的原因。本轮的猜测「与 SOAK-1 同源」成立：同一条早退路径上，
+  断线与 `doConfiguration` 的赛跑赢在哪一侧决定了是滞留线程（SOAK-1）还是永久残留（SOAK-2）。
+  修复是把三处插入统一走与 `removePlayer` 同锁的 `ConnectionManager#trackPlayer`，插入前复核连接
+  仍在 `connectionPlayerMap` 里。回归用例
+  `ConfigurationKnownPacksIntegrationTest#aClientGoneBeforeConfigurationStartsLeavesNothingBehind`。
 - 复现：SOAK-1 的复现命令跑两轮，每轮结束后静置到线程归 0，再
   `jcmd <pid> GC.class_histogram | grep -E 'synaxis.entity.Player$|PlayerSocketConnection$'`
   对比两轮的残留数。

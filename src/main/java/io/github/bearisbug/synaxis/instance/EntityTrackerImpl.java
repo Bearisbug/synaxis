@@ -26,7 +26,9 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
@@ -34,6 +36,8 @@ final class EntityTrackerImpl implements EntityTracker {
     private static final Logger LOGGER = LoggerFactory.getLogger(EntityTrackerImpl.class);
 
     static final AtomicInteger TARGET_COUNTER = new AtomicInteger();
+
+    private static final long UNREGISTERED_MOVE_REPORT_INTERVAL = TimeUnit.SECONDS.toNanos(10);
 
     // Store all data associated to a Target
     // The array index is the Target enum ordinal
@@ -48,6 +52,11 @@ final class EntityTrackerImpl implements EntityTracker {
 
     private final Int2ObjectSyncMap<EntityTrackerEntry> entriesByEntityId = Int2ObjectSyncMap.hashmap();
     private final Map<UUID, EntityTrackerEntry> entriesByEntityUuid = new ConcurrentHashMap<>();
+
+    // Move attempts on untracked entities not written to the log yet, drained by every report
+    final AtomicLong unregisteredMoveAttempts = new AtomicLong();
+    private final AtomicLong lastUnregisteredMoveReport =
+            new AtomicLong(System.nanoTime() - UNREGISTERED_MOVE_REPORT_INTERVAL);
 
     @Override
     public <T extends Entity> void register(Entity entity, Point point,
@@ -102,6 +111,25 @@ final class EntityTrackerImpl implements EntityTracker {
         }
     }
 
+    /**
+     * Reports that an untracked entity was moved, at most once per
+     * {@link #UNREGISTERED_MOVE_REPORT_INTERVAL}.
+     * <p>
+     * An untracked entity is moved once per movement packet its client sends, so a line per
+     * attempt puts the size of the log under the client's control: a 15 minute soak against a
+     * player the tracker had rejected wrote 662,803 lines (84 MiB). The pending count is carried
+     * in the line that does get written, so the volume stays visible.
+     */
+    private void reportUnregisteredMove(int entityId) {
+        unregisteredMoveAttempts.incrementAndGet();
+        final long now = System.nanoTime();
+        final long last = lastUnregisteredMoveReport.get();
+        if (now - last < UNREGISTERED_MOVE_REPORT_INTERVAL) return;
+        if (!lastUnregisteredMoveReport.compareAndSet(last, now)) return;
+        LOGGER.warn("Attempted to move unregistered entity {} in the entity tracker ({} attempts since the last report)",
+                entityId, unregisteredMoveAttempts.getAndSet(0));
+    }
+
     @Override
     public @Nullable Entity getEntityById(int id) {
         EntityTrackerEntry entry = entriesByEntityId.get(id);
@@ -119,7 +147,7 @@ final class EntityTrackerImpl implements EntityTracker {
                                         Target<T> target, @Nullable Update<T> update) {
         EntityTrackerEntry entry = entriesByEntityId.get(entity.getEntityId());
         if (entry == null) {
-            LOGGER.warn("Attempted to move unregistered entity {} in the entity tracker", entity.getEntityId());
+            reportUnregisteredMove(entity.getEntityId());
             return;
         }
         Point oldPoint = entry.getLastPosition();

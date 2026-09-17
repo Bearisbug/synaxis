@@ -674,7 +674,7 @@ def run(args: argparse.Namespace) -> int:
             "connected_end": len(clients),
             "login_attempts": metrics.login_attempts,
             "login_failures": metrics.login_failures,
-            "login_latency_s": distribution([value * 1000 for value in metrics.login_latencies]),
+            "login_latency_ms": distribution([value * 1000 for value in metrics.login_latencies]),
             "steady_connections_lost": metrics.steady_losses,
             "churn_started": churn_started,
             "churn_finished": churn_finished,
@@ -717,8 +717,14 @@ def report(summary: dict) -> None:
         for key in ("threads", "fds", "OU", "MU", "rss_mib"):
             if key in first and key in last:
                 print(f"{key}: first={first[key]} last={last[key]}", flush=True)
-        print(f"peak cpu={max(sample['cpu_percent'] for sample in samples)}% "
-              f"peak harness cpu={max(sample['harness_cpu_percent'] for sample in samples)}% "
+        # The peaks span every sample, including the ones before the first login and after the
+        # last disconnect, so print the sample each one came from: a peak at clients=0 says
+        # nothing about the load window.
+        peak_cpu = max(samples, key=lambda sample: sample["cpu_percent"])
+        peak_harness = max(samples, key=lambda sample: sample["harness_cpu_percent"])
+        print(f"peak cpu={peak_cpu['cpu_percent']}% (t={peak_cpu['t']}s clients={peak_cpu['clients']}) "
+              f"peak harness cpu={peak_harness['harness_cpu_percent']}% "
+              f"(t={peak_harness['t']}s clients={peak_harness['clients']}) "
               f"peak load1={max(sample['load1'] for sample in samples)}", flush=True)
     if summary["gc_probes"]:
         print(f"live set MiB: {[probe_['live_mib'] for probe_ in summary['gc_probes']]} "

@@ -990,7 +990,10 @@ public class Entity implements Viewable, Tickable, Schedulable, EventHandler<Ent
      * @param instance      the new instance of the entity
      * @param spawnPosition the spawn position for the entity.
      * @return a {@link CompletableFuture} called once the entity's instance has been set,
-     * this is due to chunks needing to load
+     * this is due to chunks needing to load. It completes exceptionally when the spawn fails, for
+     * instance when the tracker refuses the entity, and the caller must observe it: a discarded
+     * future turns such a failure into an entity that is in the world but untracked, without a
+     * single line of log
      * @throws IllegalStateException if {@code instance} has not been registered in {@link InstanceManager}
      */
     public CompletableFuture<Void> setInstance(Instance instance, Pos spawnPosition) {

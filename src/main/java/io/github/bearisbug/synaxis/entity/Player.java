@@ -798,8 +798,9 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
         final CompletableFuture<Void> spawn = super.setInstance(instance, spawnPosition);
         // AddEntityToInstanceEvent may have been cancelled, do not continue with a half-spawned player
         if (this.instance != instance) return;
-        // The instance did change, so the spawn chunks were loaded and the registration continuation
-        // has already run: reading its future back is what surfaces a failed registration, which
+        // This is only reached once #setInstance has awaited the whole view distance range, spawn
+        // chunk included, so the continuation of super#setInstance already ran on this very thread
+        // and the future is settled. Reading it back is what surfaces a failed registration, which
         // dropping the future used to hide (the player stayed in the world, untracked)
         spawn.getNow(null);
 

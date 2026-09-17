@@ -77,6 +77,15 @@ jcmd $(pgrep -f synaxis.app.Main) Thread.dump_to_file -format=json -overwrite /t
 python3 -c "import json;d=json.load(open('/tmp/td.json'))['threadDump'];print(sum(1 for c in d['threadContainers'] for t in (c.get('threads') or []) if any('doConfiguration' in f for f in (t.get('stack') or []))))"
 jcmd $(pgrep -f synaxis.app.Main) GC.class_histogram | grep 'synaxis.entity.Player$'
 ```
-会看到卡住的线程数与存活 `Player` 数随攻击次数单调上升；停止攻击、静置 5 分钟
-（`knownPacksResponseTimeout` 默认值）后线程回落到 0，`Player` 回落但留下约 1% 的残留（SOAK-2，
-再打一轮攻击残留继续累积）。两条发现的数据见本目录 `report.md`。
+会看到卡住的线程数与存活 `Player` 数随攻击次数单调上升。判读要点：**零点是最后一次攻击，不是
+洪泛开始**——每条连接的 5 分钟超时从它自己进入等待的那一刻起算，所以停止攻击后头 3 分钟一条线程
+都不会释放，回收全部挤在「最后一次攻击 + 300 s」之前的最后一两分钟里。按 30–60 秒一次采到
+「最后一次攻击 + 360 s」才看得到完整曲线；线程归 0 后 `Player` 不归零，留下约 1% 的残留
+（SOAK-2，再打一轮攻击残留继续累积），残留的 `PlayerSocketConnection` 与 `Player` 同数：
+
+```bash
+jcmd $(pgrep -f synaxis.app.Main) GC.class_histogram \
+  | grep -E 'synaxis\.entity\.Player$|PlayerSocketConnection$'
+```
+
+两条发现的数据见本目录 `report.md`。

@@ -12,6 +12,8 @@ import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.BiFunction;
 import java.util.zip.DataFormatException;
 
@@ -28,6 +30,10 @@ public final class PacketReading {
     private final static Logger LOGGER = LoggerFactory.getLogger(PacketReading.class);
 
     private static final int MAX_VAR_INT_SIZE = 5;
+    static final long UNREAD_BYTES_REPORT_INTERVAL = TimeUnit.SECONDS.toNanos(10);
+    /** Packets decoded with trailing bytes since the last report, drained by the line that reports them. */
+    static final AtomicLong unreadBytesPackets = new AtomicLong();
+    static final AtomicLong lastUnreadBytesReport = new AtomicLong(System.nanoTime() - UNREAD_BYTES_REPORT_INTERVAL);
     private static final Result.Empty<?> EMPTY_CLIENT_PACKET = new Result.Empty<>();
     private static final Result.Skipped<?> SKIPPED_CLIENT_PACKET = new Result.Skipped<>();
 
@@ -293,13 +299,38 @@ public final class PacketReading {
                 return null;
             }
             if (JvmFlags.WARN_UNREAD_BYTES_PACKET && buffer.readableBytes() != 0) {
-                LOGGER.warn("WARNING: Packet ({}) 0x{} not fully read ({})",
-                        packetInfo.packetClass().getSimpleName(), Integer.toHexString(packetId), buffer);
+                reportUnreadBytes(packetInfo, packetId, buffer);
             }
             return packet;
         } catch (Exception e) {
             throw new RuntimeException("failed to read packet " + packetInfo.packetClass(), e);
         }
+    }
+
+    /**
+     * Reports a packet whose payload left trailing bytes, at most once per
+     * {@link #UNREAD_BYTES_REPORT_INTERVAL}.
+     * <p>
+     * Whether a frame is fully read is decided by what the client put in it, so a line per packet
+     * puts the size of the log under the client's control: a peer looping one packet with a padded
+     * tail writes a line per packet, the same shape that wrote 84 MiB in 15 minutes during
+     * {@code SOAK-3}. The pending count is carried in the line that does get written, so the volume
+     * stays visible.
+     * <p>
+     * The budget is process wide rather than per connection: this is a static decoder that never
+     * sees a connection, and a per connection budget would still let the log grow with the number
+     * of connections, which is the thing a peer controls. Both counters are only touched on the
+     * branch that was already about to log, so the decoding path pays nothing for them.
+     */
+    private static void reportUnreadBytes(PacketRegistry.PacketInfo<?> packetInfo, int packetId, NetworkBuffer buffer) {
+        unreadBytesPackets.incrementAndGet();
+        final long now = System.nanoTime();
+        final long last = lastUnreadBytesReport.get();
+        if (now - last < UNREAD_BYTES_REPORT_INTERVAL) return;
+        if (!lastUnreadBytesReport.compareAndSet(last, now)) return;
+        LOGGER.warn("WARNING: Packet ({}) 0x{} not fully read ({}) ({} packets since the last report)",
+                packetInfo.packetClass().getSimpleName(), Integer.toHexString(packetId), buffer,
+                unreadBytesPackets.getAndSet(0));
     }
 
     private static <T> T readPacketPayload(PacketRegistry.PacketInfo<? extends T> packetInfo, NetworkBuffer buffer) {

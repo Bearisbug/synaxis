@@ -578,3 +578,166 @@ p99 只有 1.9–2.3 ms。（口径对齐的那次复跑见组 6，它窗口首 
 - JFR 只开了 `synaxis.ServerTickTime` 与虚拟线程起止；未开分配采样（`jdk.ObjectAllocationSample`）。
 
 - 入站包 5,000 包/秒这条 §15 目标**已被证明达标**（2026-09-18，组 6）：换成 Java 发包端`tools/loadtest/PacketFlood.java` 后实测 5,014.9 包/秒持续 6 分钟、0 掉线，发包窗口内 7,200 个 tick p99 1.631 ms，超 50 ms 的只有 50 条连接同时进场的那个窗口首 tick；组 7 把速率抬到 40,015 包/秒仍然 0 掉线、p99 1.5 ms，余量至少 8 倍。`soak.py` 的 2,880 / 3,990 包/秒确实是 Python 发包端自己的上限，与引擎无关。**仍未测到的是「各自站在不同区块」那一面**：两个发包端的连接都挤在 spawn 周围的圆盘里，区块与分区铺开的场景另需一轮。
+
+## 阶段 4 之后的复跑（2026-09-19，引擎 head `60b6bfd362`）
+
+`docs/DESIGN-M2.md` §26 阶段 4「协议与握手」合入之后的一轮回归，只回答一个问题：**核心模式的服务端
+是否还是 RUN-017 / RUN-018 那个样子**。不加功能、不改引擎——本节之外这一轮的 diff 只有本节本身。
+
+- 对象与机器同上：`server-app` 核心模式（`-Dsynaxis.app.core-mode=on`），Apple Silicon 12 核 /
+  24 GiB，JDK 25.0.4.1，端口 25565，loopback。分支 `worktree-wf_0e9ecb79-3ec-1`。
+- **阶段 4 在核心模式下真正接进来的东西只有三样**，其余（`:protocol` 的九条消息、`rts:game` 通道、
+  强制握手）都只在玩法模式才走到：① `HandshakeGate` 每条连接一个 `ConcurrentHashMap` 条目 +
+  一个 `CompletableFuture`；② 它挂在 `ServerTickMonitorEvent` 上的每 tick 一次回收扫描
+  （长度 = 连接数）；③ 事件台账每条连接 2 行（`session_entered_configuration` + `client_verified`）。
+  下面四组各自盯着这三样。核心模式**不要求**握手（`API-M2-010` 第 ⑤ 步），但仍然回答并仍然拒绝
+  报错版本号的 hello，所以握手攻击面在这个模式下也测得到。
+- 一次起服跑完全部五组，中途不重启：起服 → 入站包 → churn → 稳态 → 恶意 → 握手攻击面 →
+  premature-finish 洪泛 → `stop`。停机 `BUILD SUCCESSFUL`，`pgrep -f synaxis.app.Main` 为空。
+
+### 对照表：四条量化目标
+
+| `docs/DESIGN.md` §15 目标 | RUN-018 基线 | 本轮实测 | 判定 |
+| --- | --- | --- | --- |
+| 入站包 50 玩家峰值 5,000 包/秒无丢包 | 5,014.9 包/秒 / 360.0 s / 0 掉线 | **5,015.0 包/秒 / 360.0 s / 1,805,450 包 / 0 掉线 0 kick** | 持平 |
+| 单 tick P99 < 50 ms | 发包窗口内 7,200 tick，p50 0.402 / p99 1.631 ms | **同口径 7,200 tick，p50 0.344 / p99 1.350 ms** | 略好 |
+| 登录延迟 < 2 s | 50 次登录 p99 114 ms | **1,478 次 churn 登录 p99 102.8 ms / max 107.7 ms** | 略好 |
+| 堆 < 2 GB | 存活集 31.6 → 31.8 MiB，断开后 28.3 | **31.7 → 31.6 → 28.2 MiB，断开后 28.1** | 持平 |
+
+### 组 A：入站包（50 连接 × 100 Hz × 360 s，`PacketFlood.java`）
+
+`java tools/loadtest/PacketFlood.java --connections 50 --hz 100 --seconds 360`，服务端侧
+`soak.py run --connections 0 --duration 400` 只采样。
+
+| 项 | RUN-018 | 本轮 |
+| --- | --- | --- |
+| 达成速率 / 窗口 | 5,014.9 包/秒 / 360.0 s | 5,015.0 包/秒 / 360.0 s（1,805,450 包） |
+| 掉线 / kick / `disconnect_reasons` | 0 / 0 / 空 | 0 / 0 / 空 |
+| 窗口内 tick | 7,200 个，p50 0.402 / p99 1.631 / max 114.4 ms | 7,200 个，p50 0.344 / p99 1.350 / max 79.70 ms |
+| 窗口首 tick 之后的最大 tick | 17.6 ms | **3.19 ms** |
+| 超 50 ms 的 tick | 1（窗口首 tick，50 条连接同时进场） | 1（同一性质，79.70 ms，其后 36.2 / 12.5 / 6.9 ms 三个衰减 tick） |
+| 存活集（强制 Full GC） | 31.6 → 31.7 → 31.8 MiB，断开后 28.3 | 31.7 → 31.6 → 28.2 MiB，断开后 28.1 |
+| 线程（负载中 / 断开后） | 66 / 54 | 66 / 54 |
+| FD（负载中 / 断开后） | 109 / 59 | 109 / 59 |
+| 窗口内 `server.log` 增量 | **0 字节**，0 WARN / 0 ERROR / 0 栈 | **0 字节**，0 WARN / 0 ERROR / 0 栈 |
+| 窗口内事件台账增量 | 不存在（阶段 4 之前没有这条路） | **50 行 / 7,750 字节 = 每条连接一行** |
+| echo 往返 | — | p50 41.7 / p99 77.4 / max 83.0 ms（3,550 次） |
+
+- 窗口口径与 RUN-018 一致：发包端窗口 360.0 s（登录爬坡不计），tick 用 `jfr print --events
+  synaxis.ServerTickTime` 的时间戳裁到 `[窗口起, 窗口止)`，正好 7,200 个（360 s × 20 TPS）；
+  `server.log` 与台账按行首时间戳裁同一段。采样进程整段（416 s）另计：8,308 个 tick，
+  p50 0.332 / p99 1.310 / max 79.72。
+- **台账那 50 行是阶段 4 唯一一处新的日志增量，而它按连接计不按包计**：1,805,450 个入站包写了
+  50 行，正是 `EventLedger` 的 Javadoc 与 §15「数据增长」说的那条上界（每连接 2～3 行、约 315 字节；
+  这 50 条连接由 `PacketFlood.java` 发起、不发 `C2S_HELLO`，所以只有 `session_entered_configuration`
+  一行）。**不是新缺陷**，端口对不受控来源开放前要把台账改成缓冲写入那条待办仍登记在
+  `docs/DESIGN.md` §28。
+
+### 组 B：churn（16 常驻 + 5 登录/秒 / 5 分钟）
+
+| 项 | RUN-017（10 分钟） | 本轮（5 分钟） |
+| --- | --- | --- |
+| 登录次数 / 失败 | 2,941 / 0 | 1,478 / 0 |
+| 登录延迟 | 未记 | p50 86.2 / p99 102.8 / max 107.7 ms |
+| 线程 | 66 恒定 | 66～67 恒定 |
+| FD（峰值 / 断开后） | 114 / 59 | 115 / 59 |
+| 存活集 | 31.1 → 31.5 → 31.6 → 31.5 → 29.0 MiB | 31.6 → 32.0 MiB，断开后 29.3 |
+| tick | 12,609 个，p50 0.31 / p99 0.87 / max 49.7 ms | 6,308 个，p50 0.367 / p99 0.863 / max **3.765** ms，超 50 ms 的 0 个 |
+| WARN / ERROR / 栈 | 无异常日志 | 0 / 0 / 0 |
+
+- **阶段 4 的三样新东西在 1,478 次完整登录后一样不剩**：跑完静置后
+  `jcmd <pid> GC.class_histogram | grep -E 'synaxis\.entity\.Player$|PlayerSocketConnection$|HandshakeGate\$Session$'`
+  三个类**一个都没数到**（RUN-017 的 churn 组当时缺的正是这条证据，见「局限」倒数第三条，本轮补上）。
+  `HandshakeGate` 的条目由两条路回收——`PlayerDisconnectEvent` 与每 tick 一次的
+  `reclaimClosedSessions`——两条都不依赖玩家是否进过 play。
+- 台账增量 2,956 行 = 1,478 × 2（`session_entered_configuration` + `client_verified`），
+  与上面那条上界一致；RUN-017 的 churn 组没有台账这条路，所以这一格没有基线可比。
+
+### 组 C：稳态（64 连接 / 5 分钟）
+
+| 项 | RUN-017（20 分钟） | 本轮（5 分钟） |
+| --- | --- | --- |
+| 登录 / 掉线 | 64/64 / 0 | 64/64 / 0 |
+| 移动包速率 | 608.9 包/秒 | 608.2 包/秒 |
+| tick | p50 0.257 / p99 0.553 / max 25.97 ms（max 在第 0 分钟进场） | p50 0.264 / p99 0.551 / max 3.904 ms，超 50 ms 的 0 个 |
+| 存活集 | 32.2 → 31.9 → 31.8 → 28.6 MiB | 32.8 → 32.8 MiB，断开后 29.4 |
+| 线程 / FD（峰值 / 断开后） | 66 / 123 / 59 | 66～67 / 123 / 59 |
+| echo 往返 | p50 44.3 / p99 83.2 ms | p50 43.9 / p99 82.8 ms |
+
+本组没有进场尖刺，因为服务端已被前两组跑热、区块早已生成——这也是它 max 只有 3.9 ms 的原因，
+不是引擎变快了。存活集比 RUN-017 高约 0.6～1.0 MiB，量级与 `:protocol` 的 20 个新类 +
+`HandshakeGate` 一次性加载相称，且**组内两次取样完全不动**（32.8 → 32.8），不是随时间增长。
+
+### 组 D：恶意 / 边界（六种攻击 + 64 连接负载 / 5 分钟）
+
+`--attacks zero-frame,alloc-bomb,nbt-bomb,premature-finish,bad-version,deep-recursion --attack-interval 1.5`
+
+- 攻击 92 次（RUN-017 是 10 分钟 185 次，同一速率），**全部探针退出码 0**；64 条正常连接
+  0 掉线 0 登录失败。
+- tick 6,309 个：p50 0.269 / p99 0.602 / max 4.154 ms，超 50 ms 的 0 个（RUN-017 同组
+  p50 0.265 / p99 0.692 / max 67.8，后者是进场尖刺）。存活集 32.5 → 33.4 MiB，断开后 29.3。
+- 服务端日志：47 行 WARN，**全部带 `connection_id`**，0 行 ERROR、0 行堆栈；三类可观察 WARN 与
+  RUN-017 的组 3 逐字相同（`Packet length must be positive: 0` / `Collection size (65,535) is out
+  of the allowed range (0..100)` / `NBT is too large (max: 2097152 bytes)`）。**`Player failed to
+  respond to known packs query` 一行都没有**（SOAK-1 的修复仍然成立）。
+- 跑完残留 `Player` / `PlayerSocketConnection` / `HandshakeGate$Session` 均为 0。
+
+### 组 E：阶段 4 新增的握手攻击面（核心模式）
+
+探针的四个握手子命令加三种本节现造的形状，全部在核心模式的同一个进程上打，期间另有一条
+`login --hold 75` 的旁观连接：
+
+| 攻击 | 打法 | 结果 |
+| --- | --- | --- |
+| 正常握手 | `probe.py handshake` | `S2C_HELLO schema_version=1 tick_rate=20`，退出码 0 |
+| 版本不符 | `probe.py bad-schema` | `Disconnect reason=synaxis:protocol-version-mismatch`（核心模式也拒） |
+| 重复握手 | `probe.py duplicate-hello` ×41 | 每次都是 `synaxis:protocol-error` |
+| 不发 HELLO | `probe.py no-hello` | 被放行、探针按设计退 1 —— 核心模式不要求握手（`API-M2-010` 第 ⑤ 步） |
+| 畸形消息 | `C2S_HELLO{mod_version=0}` | `synaxis:protocol-error`（记录构造器的校验） |
+| 超大消息（引擎硬校验之内） | 合法 hello 后补 32,000 字节填充 | **被接受**，连接保持 —— §8 要求解码器跳过更新的发送方追加的字节 |
+| 超大消息（越过引擎硬校验） | 同上补到 40,000 字节 | `synaxis:protocol-error`（引擎 32,767 字节上限先拦） |
+| 未知 msg_id 洪水 | `msg_id=0x7f` × 8,000 条 / 20 秒 | 不断线（§9：不认识的 id 是事实不是冒犯），**只写 2 行 WARN** |
+| 未注册通道洪水 | `game-flood --rate 800 --seconds 5`（`rts:game` 在核心模式不存在） | 全程在线，**只写 1 行 WARN** |
+
+- 这一批约 11,000 条恶意负载合计只让服务端写了 **4 行 WARN、0 行堆栈**，每行都带
+  `connection_id` 并带着被抑制的次数（`... (4003 refused handshake payloads since the last report)`）——
+  `HandshakeGate` 与 `PluginChannelRouter` 都走 `LogBudget`，两者都不在 ArchUnit 那条日志门禁的
+  豁免名单里，所以「在它们里面加一行不受预算约束的日志」会直接让 `check` 变红。
+- 旁观连接 75 秒全程在线、退出码 0：**握手攻击不影响正常连接**。
+
+### 组 F：premature-finish 洪泛（831 次 / 120 秒），盯 SOAK-1 / SOAK-2 是否复发
+
+`soak.py run --connections 0 --duration 120 --attacks premature-finish --attack-interval 0.05`，
+831 次攻击全部退出码 0，停手 20 秒后：
+
+| 判据 | 修好之前（RUN-017 时的 SOAK-1 / SOAK-2） | 本轮 |
+| --- | --- | --- |
+| 卡在 `doConfiguration` 的虚拟线程 | 数百条，5 分钟后才释放 | **0**（整个 dump 只有 29 条线程） |
+| 残留 `Player` / `PlayerSocketConnection` | 约 1% 的攻击次数，连过三次 Full GC 不降 | **0 / 0** |
+| 残留 `HandshakeGate$Session` | 阶段 4 新增的面 | **0** |
+| 线程 / 存活集 | — | 54 / 29.3 MiB |
+
+### 门禁复核
+
+| 门 | 命令 | 结果 |
+| --- | --- | --- |
+| 全量 `check`（Error Prone `-Werror` / ArchUnit / `testNamingCheck` / JaCoCo 新增行 80%） | `./gradlew check --rerun-tasks --no-build-cache` | **绿**，49 个任务全部真跑，3,096 条测试 0 失败 0 错误（15 条 skipped） |
+| 客户端可控日志门禁 ①（引擎） | 在 `KeepAliveListener#listener` 插一行 `LOGGER.warn` | `ArchitectureTest#clientDrivenPathsDoNotWriteALinePerPacket` **红**，撤销后绿 |
+| 客户端可控日志门禁 ②（宿主） | 在 `HandshakeGate#receive` 插一行 `LOGGER.warn` | `ClientDrivenLogArchitectureTest#hostPathsDoNotWriteALinePerPacket` **红**，撤销后绿 |
+| 客户端可控日志门禁 ③（游戏侧，阶段 4 新增） | 在 `GameChannel#receive` 插一行 `LOGGER.warn` | `game-rts` 的 `ArchitectureTest#gameSidePathsDoNotWriteALinePerPacket` **红**，撤销后绿 |
+| ABI 门 | `gh release download v0.1.0` 取 baseline jar 后 `:plugin-api:checkBinaryCompatibility :protocol:checkBinaryCompatibility -PbaselineJarDir=.abi-baseline` | **真跑并绿**（输出里两个任务都没有 `SKIPPED`，`2 executed`） |
+
+ABI 门的绿是**纯新增**换来的，不是门没齿：`:protocol` 的 jar 从 baseline 的 1 个类
+（`ProtocolSchema`）长到 21 个，`ProtocolSchema` 与 `module-info` 的 `javap` 输出与 baseline 逐字节
+相同（`schema_version` 未变）；`:plugin-api` 只多了一个 `LogBudget`，一个类都没少、一个签名都没改。
+
+### 结论与仍然未覆盖的面
+
+**阶段 4 之后核心没有退步。** 四条量化目标全部仍然达标且数字持平或略好；线程 / FD / 存活集在
+churn 与稳态两组内都不随时间涨；阶段 4 新增的握手路径在 1,478 次完整登录与 831 次早退攻击之后
+一个条目都不剩；恶意路径的日志形状与 RUN-017 逐字一致，新增的握手攻击面把 11,000 条负载压成 4 行。
+
+仍然没有测到的，与 RUN-017 / RUN-018 的「局限」同款，本轮一条都没消掉：`dispatcherThreads > 1`
+的多 tick 线程形态、连接铺开到不同区块的形态、加密与压缩两条入站解码分支、玩法模式下的
+强制握手（`required=true` 的 3 秒有界等待与 `synaxis:client-mod-required`）在长跑里的表现——
+最后这条本轮只有单测覆盖（`HandshakeIntegrationTest`），没有长跑数字。

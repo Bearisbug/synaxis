@@ -8,12 +8,13 @@
 | Owner | Bearisbug |
 | 关联设计文档 | `docs/DESIGN.md`（引擎域 M1 / M1.5）与 `docs/DESIGN-M2.md`（游戏域 M2 分册）；两份文档的 REQ 各自编号，M2 侧一律写作 `REQ-M2-*` |
 | 被测系统 | 仓库 `Bearisbug/synaxis`，分支 `main` |
-| 最后更新 | 2026-09-18 |
+| 最后更新 | 2026-09-19 |
 
 变更记录（登用例增改，不登执行轮次）：
 
 | 日期 | 改动 | 作者 |
 | --- | --- | --- |
+| 2026-09-19 | 跟进 `docs/DESIGN-M2.md` v0.22（阶段 4 的 `REQ-M2-007` 落地）：**`TC-GAME-017` 保留 ID，只增改步骤与前置**——向量集从「每条消息一个 `.bin`」扩成「常规 + 边界两组」，新增第 2 步点边界集的条数、第 3 步（原第 2 步）补上 18 条逐字节对拍与 `manifest.txt` 的 `schema_version` / `digest` 双绑断言、新增第 6 步用「对调 `C2S_CAMERA` 两个 f32 的写入顺序」反证改布局必红，原第 3、4 步顺延为第 4、5 步（客户端侧那一步仍是阶段 6a 的「阻塞」）。判据本身没有放宽，只是把原来一句话的「逐字节相同」写成可照做的形态。`TC-GAME-018` 一字未动：它是进程 + 探针的黑盒用例，随 `REQ-M2-008` 一起解除阻塞 | Bearisbug |
 | 2026-09-18 | 跟进 `docs/DESIGN.md` v0.30（客户端可驱动日志的清点范围纠正为全部模块，宿主侧四处逐包日志按同形状限流）：**废弃 `TC-033`、新增 `TC-035`** —— 原用例第 1、2 步只碰引擎根模块，而同形状的日志在 `:server-app` 里也有、门禁也另起了一条（`ClientDrivenLogArchitectureTest`），覆盖面实质变更故换 ID；新用例在原两步之后补上宿主那半边的四条测试与「在 `PluginChannelRouter#route` 插一行无节制 WARN 会红」的反证。§5 回归映射的引擎域「协议」与「分层」两行跟着换 ID。既有用例语义未变 | Bearisbug |
 | 2026-09-18 | 跟进 `docs/DESIGN.md` v0.27（客户端可驱动的日志一律有界）：**新增 `TC-033`**（尾部带多余字节的包刷一万次只写一行日志；一批 1,000 个必失败的登录插件应答只换来一次上报，kick 之后的帧不再被处理；ArchUnit 门禁拦住新加的逐包日志与逐包上报），§5 回归映射的引擎域「协议」与「分层」两行各加上它。既有用例语义未变 | Bearisbug |
 | 2026-09-18 | 跟进 `docs/DESIGN.md` v0.26（`SOAK-3`：离线模式下同名玩家的重复 UUID）：**新增 `TC-032`**（同 UUID 的第二条连接被拒于登录、追踪器里恰好一个玩家、「移动未注册实体」的日志有界），§5 回归映射的引擎域「协议」行加上它。既有用例语义未变 | Bearisbug |
@@ -930,14 +931,16 @@ REQ-M2 ↔ TC 对照（手工维护）：
 
 #### `TC-GAME-017` 双端向量逐字节一致 — 对应 `REQ-M2-007` · 级别: 冒烟 · 执行者: AI
 
-前置：`REQ-M2-007` 已合入，`protocol/src/test/resources/vectors/` 下每条消息各有一个 `.bin`；第 3 步需要 `client-fabric` 工程已建（`REQ-M2-020` 之前该步登记「阻塞」，见设计文档 §24 的两阶段验收）。
+前置：`REQ-M2-007` 已合入，`protocol/src/test/resources/vectors/` 下每条消息各有一个常规 `.bin`、`vectors/edge/` 下各有一个同名的边界 `.bin`，同目录的 `manifest.txt` 冻结着 `schema_version` 与全部 `.bin` 的 SHA-256 摘要；第 4 步需要 `client-fabric` 工程已建（`REQ-M2-020` 之前该步登记「阻塞」，见设计文档 §24 的两阶段验收）。
 
 | # | 操作 | 预期 |
 | --- | --- | --- |
 | 1 | `ls protocol/src/test/resources/vectors/*.bin \| wc -l` | 输出 `9`（`C2S_HELLO`、`S2C_HELLO`、`C2S_CAMERA`、`C2S_SELECT`、`C2S_MOVE_ORDER`、`S2C_ORDER_RESULT`、`S2C_UNIT_SPAWN`、`S2C_UNIT_STATE`、`S2C_UNIT_DESPAWN` 各一个） |
-| 2 | `./gradlew :protocol:test --rerun-tasks --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts` | `BUILD SUCCESSFUL`；测试报告显示每个向量 decode 后再 encode 与原文件逐字节相同 |
-| 3 | `cd client-fabric && ./gradlew test`（客户端侧跑同一份向量） | `BUILD SUCCESSFUL`；同样逐字节相同 |
-| 4 | 改掉某个 `.bin` 的一个字节后重跑第 2 步，再 `git checkout -- protocol/src/test/resources/vectors` | 第 2 步失败并点名该向量文件；还原后 `git status --porcelain` 无输出 |
+| 2 | `ls protocol/src/test/resources/vectors/edge/*.bin \| wc -l` | 输出 `9`，文件名与第 1 步一一同名（边界档：`count` 取上限 8 / 512 与取零、VarInt 取满五字节、`zoom` 取区间端点、`flags` / `team` 取 0） |
+| 3 | `./gradlew :protocol:test --rerun-tasks --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts` | `BUILD SUCCESSFUL`；`ProtocolVectorTest` 的 18 条 `aFrozenVectorDecodesAndReEncodesByteForByte` 全绿（decode 后再 encode 与原文件逐字节相同、且解码器把每条向量读到一个字节不剩），`theFrozenVectorsAreBoundToTheSchemaVersion` 也绿（`manifest.txt` 的 `schema_version` 等于 `ProtocolSchema.SCHEMA_VERSION`、`digest` 等于全部 `.bin` 的实算摘要） |
+| 4 | `cd client-fabric && ./gradlew test`（客户端侧跑同一份向量） | `BUILD SUCCESSFUL`；同样逐字节相同 |
+| 5 | 改掉某个 `.bin` 的一个字节后重跑第 3 步，再 `git checkout -- protocol/src/test/resources/vectors` | 第 3 步红两条：该向量的逐字节对拍点名文件名，摘要那条打出设计文档 §24 的「升 `SCHEMA_VERSION` 并重新冻结向量」提示；还原后 `git status --porcelain` 无输出 |
+| 6 | 把 `C2SCamera#write` 里 `zoom` 与 `cameraYaw` 的写入顺序对调后重跑第 3 步，再还原该文件 | `c2s_camera.bin` 与 `edge/c2s_camera.bin` 两条红——改了布局而没重新冻结向量，构建不可能绿；还原后第 3 步回到 `BUILD SUCCESSFUL` |
 
 后置：确认工作区干净。
 

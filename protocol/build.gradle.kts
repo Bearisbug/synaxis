@@ -10,5 +10,3 @@ plugins {
 configurations.named("api") {
     dependencies.removeIf { it.group == "org.jetbrains" && it.name == "annotations" }
 }
-
-// The message records and their hand written codec land with REQ-M2-007.

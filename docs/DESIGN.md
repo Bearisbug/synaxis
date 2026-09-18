@@ -8,13 +8,14 @@
 | 项目画像 | 内部系统（引擎只被本团队的游戏工程消费，不对公网；§3/§20 降为按需，§23 简化为「直接放量 + 回滚预案」。游戏本身对外发布时另立设计文档，画像为生产产品） |
 | Owner | Bearisbug |
 | 评审人 | Bearisbug |
-| 最后更新 | 2026-09-18 |
+| 最后更新 | 2026-09-19 |
 | 关联 | 仓库 `https://github.com/Bearisbug/synaxis` · **里程碑分册 `docs/DESIGN-M2.md`（M2「游戏工程骨架与 RTS 垂直切片」，M2 范围内的需求 / 接口 / 状态机 / ADR 一律以该分册为准）** · 审计与架构评审 `docs/research/minestom-audit/`（00 总结、07 架构评审第八章） · 测试文档 `docs/TEST.md` |
 
 变更记录：
 
 | 日期 | 版本 | 改动 | 作者 |
 | --- | --- | --- | --- |
+| 2026-09-19 | v0.31 | §8 `API-002`「自定义负载通道」的鉴权行更正：原文写「仅 `play` 状态的连接可用，其他状态收到即断线」，但 `ClientPluginMessagePacket` 同时实现 `ClientPacket.Configuration` 与 `ClientPacket.Play`、两个状态都注册了监听器，configuration 阶段同样派发 `PlayerPluginMessageEvent`。这是 `docs/DESIGN-M2.md` §28 登记的、要在 M2 阶段 4 随实现一起更正的技术债，本版随该阶段的客户端模组握手（`REQ-M2-008`）落地更正。引擎行为未变，改的是描述 | Bearisbug |
 | 2026-09-18 | v0.30 | 客户端可驱动日志的清点范围由「引擎根模块」纠正为「全部模块的主源码」，口径改成一条能照抄复跑的命令；宿主 `:server-app` 上同形状的四处逐包日志（未注册频道的丢弃行、频道 handler 抛异常、插件事件监听器抛异常、台账写入失败）按引擎已有的形状限流，并由 `:server-app` 自己测试源集里的 `ClientDrivenLogArchitectureTest` 守同一条规则——引擎的 `ArchitectureTest` 拿不到别的模块的 classpath，一条规则守不了两个模块。§15 的「日志量」一行补上宿主那半边的门禁 | Bearisbug |
 | 2026-09-18 | v0.29 | `ADR-007` 写死测试密度口径（含 `network` 排除 19 个 `package-info.java` 与 219 个纯 record 包定义后的逻辑文件分母），实测现状连同仍在 0.30 线下的 `command` / `utils` / `listener` / `adventure` / `world` 记进 §19：`event` 由 0.05 补到 0.32（新增 36 个测试文件），`network` 按逻辑文件为 1.09；拆分的前置条件按待拆类所在的 `entity`、`instance` 判，两者已过线。同批修两处事件树缺陷：`EventNode#setPriority` 在节点已挂载并派发过之后不失效父节点缓存，改后的优先级不生效；`addChild` 不拒绝把祖先（含节点自己）当孩子，直接把调用方打成 `StackOverflowError` 并在树上留下环。设计正文其余章节未动 | Bearisbug |
 | 2026-09-18 | v0.28 | §15 的「入站包 50 玩家峰值 5,000 包/秒无丢包」由 2026-09-18 组 6 实测闭合（Java 发包端 `tools/loadtest/PacketFlood.java`，5,014.9 包/秒 / 6 分钟 / 0 掉线，发包窗口内 7,200 个 tick 的 p99 1.631 ms，超 50 ms 的只有 50 条连接同时进场的那个窗口首 tick；组 7 抬到 40,015 包/秒仍 0 掉线）。设计正文未动；§28 新增两条技术债：① §15 写的 500 包/秒速率闸没有实现，实际起作用的是 `playerPacketPerTick` 的排空能力 + 队列深度；② §14 的错误码信封之外，默认配置下客户端的包就能触发的纯文本断线还有七处（`SOAK-6` 按全部 30 个 `kick(...)` 调用点分档清点，本轮只追齐了填满包队列的那一条） | Bearisbug |
@@ -211,7 +212,7 @@ erDiagram
   - 缓存与超时：`RegistryDataPacket` 在进程内缓存一份，注册表冻结后不再变化；登录阶段总超时 30 秒（§15）
 - **`API-002` 自定义负载通道** — 实现 `REQ-011`
   - 方法/路径：`CustomPayload` 包，通道标识 `synaxis:main`，负载为我们的二进制消息；M1 只定义一个 `echo` 消息：客户端发任意 ≤ 1,024 字节，服务端原样回发
-  - 鉴权/权限：仅 `play` 状态的连接可用，其他状态收到即断线 `synaxis:protocol-error`
+  - 鉴权/权限：`play` 与 `configuration` 两个状态都可用——`ClientPluginMessagePacket` 同时实现 `ClientPacket.Configuration` 与 `ClientPacket.Play`，两个状态都注册了监听器，两边都派发 `PlayerPluginMessageEvent`；`handshake` / `status` / `login` 状态没有这个包，收到即按帧解码失败断线 `synaxis:protocol-error`。（原文写作「仅 `play` 状态可用」，与实现不符；`docs/DESIGN-M2.md` 的 `ADR-M2-010` 正是建立在 configuration 阶段也派发这个事件上，该文档 §28 把这句登记为阶段 4 要更正的技术债。）
   - 请求/响应：见 §12 时序；消息编解码用引擎 `codec` 包，往返测试向量放 `src/test/resources/protocol/`
   - 幂等：`echo` 天然幂等；后续消息由 M2 的 `protocol` 模块定义
   - 缓存与超时：不缓存；单条负载超过 1,024 字节断线

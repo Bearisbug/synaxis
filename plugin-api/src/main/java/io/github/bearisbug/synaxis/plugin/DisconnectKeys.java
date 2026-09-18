@@ -16,6 +16,19 @@ public final class DisconnectKeys {
      */
     public static final String MATCH_UNAVAILABLE = "synaxis:match-unavailable";
 
+    /**
+     * The connection did not send a {@code C2S_HELLO} inside the handshake budget, which is what a
+     * client without the mod looks like from here: nothing arrives and nothing ever will.
+     */
+    public static final String CLIENT_MOD_REQUIRED = "synaxis:client-mod-required";
+
+    /**
+     * The connection announced a {@code schema_version} other than the one this server speaks. The
+     * wire protocol has no deprecation window — both ends ship in the same modpack — so anything
+     * but equality is a refusal.
+     */
+    public static final String PROTOCOL_VERSION_MISMATCH = "synaxis:protocol-version-mismatch";
+
     private DisconnectKeys() {
     }
 }

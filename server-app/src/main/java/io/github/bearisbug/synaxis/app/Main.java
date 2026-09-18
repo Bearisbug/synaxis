@@ -4,6 +4,7 @@ import io.github.bearisbug.synaxis.Auth;
 import io.github.bearisbug.synaxis.JvmFlags;
 import io.github.bearisbug.synaxis.MinecraftServer;
 import io.github.bearisbug.synaxis.ServerProcess;
+import io.github.bearisbug.synaxis.game.protocol.ProtocolSchema;
 import io.github.bearisbug.synaxis.plugin.PluginApi;
 import io.github.bearisbug.synaxis.registry.RegistryKey;
 import io.github.bearisbug.synaxis.world.DimensionType;
@@ -17,6 +18,7 @@ import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.Arrays;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -120,8 +122,16 @@ public final class Main {
         switch (CoreMode.decide(coreMode, host.attemptedPluginCount(),
                 host.hasAdmissionProvider(), runningMatches)) {
             case CORE -> CoreMode.start(process, host, dimensionType, coreMode);
-            case GAMEPLAY -> LOGGER.info("Gameplay mode: the running match and the admission provider come from "
-                    + "plugin_ids={}", host.enabledPluginIds());
+            case GAMEPLAY -> {
+                // Only a process that serves a game demands the mod that renders it; the core mode
+                // answers a handshake but never waits for one (REQ-M2-008, API-M2-010 step 5).
+                host.requireHandshake();
+                LOGGER.info("Gameplay mode: the running match and the admission provider come from "
+                        + "plugin_ids={}, and a client has {} s to send C2S_HELLO on {} in the {} phase "
+                        + "(schema_version={})", host.enabledPluginIds(), HandshakeGate.BUDGET.toSeconds(),
+                        HandshakeGate.CHANNEL, HandshakeGate.phase().name().toLowerCase(Locale.ROOT),
+                        ProtocolSchema.SCHEMA_VERSION);
+            }
             case REFUSED -> refuseToServe(host, runningMatches, port);
         }
 

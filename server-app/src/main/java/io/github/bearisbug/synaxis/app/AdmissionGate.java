@@ -12,6 +12,8 @@ import io.github.bearisbug.synaxis.plugin.DisconnectKeys;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.UUID;
 
 /**
@@ -36,9 +38,13 @@ final class AdmissionGate {
     static final long BUDGET_MILLIS = 200;
 
     private final AdmissionRegistry registry;
+    private final HandshakeGate handshake;
+    private final EventLedger ledger;
 
-    AdmissionGate(AdmissionRegistry registry) {
+    AdmissionGate(AdmissionRegistry registry, HandshakeGate handshake, EventLedger ledger) {
         this.registry = registry;
+        this.handshake = handshake;
+        this.ledger = ledger;
     }
 
     void attach(EventNode<Event> node) {
@@ -48,6 +54,11 @@ final class AdmissionGate {
     private void admit(AsyncPlayerConfigurationEvent event) {
         final Player player = event.getPlayer();
         final UUID connectionId = player.getPlayerConnection().connectionId();
+        // The handshake runs first and owns the whole failing half of it: a connection it turned
+        // away has already been kicked, and returning here without a spawning instance is what
+        // keeps the engine from throwing at one (§11.1 awaiting_hello).
+        final HandshakeGate.HelloResult hello = handshake.await(player);
+        if (hello == null) return;
         final AdmissionProvider provider = registry.provider();
         if (provider == null) {
             refuse(player, connectionId, DisconnectKeys.MATCH_UNAVAILABLE, "no admission provider is registered");
@@ -56,8 +67,8 @@ final class AdmissionGate {
         final Admission admission;
         final long start = System.nanoTime();
         try {
-            // The handshake fields are zero until REQ-M2-008 lands, which is what fills them in.
-            admission = provider.admit(new AdmissionRequest(connectionId, player.getUsername(), 0, 0));
+            admission = provider.admit(new AdmissionRequest(connectionId, player.getUsername(),
+                    hello.modVersion(), hello.schemaVersion()));
         } catch (Throwable throwable) {
             LOGGER.error("Admission provider failed: plugin_id={} connection_id={}",
                     registry.pluginId(), connectionId, throwable);
@@ -76,8 +87,13 @@ final class AdmissionGate {
         }
     }
 
-    private static void refuse(Player player, UUID connectionId, String reasonKey, String cause) {
+    private void refuse(Player player, UUID connectionId, String reasonKey, String cause) {
         LOGGER.info("Refusing a connection: connection_id={} reason={} cause={}", connectionId, reasonKey, cause);
+        final Map<String, Object> attributes = new LinkedHashMap<>();
+        attributes.put("connection_id", connectionId);
+        // §20 names the reason without the translate prefix the disconnect key carries.
+        attributes.put("reason", reasonKey.substring(reasonKey.indexOf(':') + 1));
+        ledger.record("client_rejected", attributes);
         // Kick and return without setting a spawning instance: the engine checks isOnline() right
         // after this event, so a kicked player never reaches the requireNonNull on that instance.
         player.kick(Component.translatable(reasonKey));

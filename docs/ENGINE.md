@@ -263,6 +263,13 @@ python3 tools/pkgdeps.py game-rts/src/main/java   --root-package io.github.beari
   2. **按类型去重**，样板是 `PacketListenerManager` 的 `missingListenerWarnings`：客户端加不了包类型，所以一种一次就封顶了。
   3. **紧跟一次断开**，见上一档。
 
-这条纪律有门禁：`ArchitectureTest#clientDrivenPathsDoNotWriteALinePerPacket` 禁止 `network..` 与 `listener..` 两个包树调用 `Logger#warn` / `Logger#error` / `Throwable#printStackTrace` / `ExceptionManager#handleException`。**`handleException` 也在禁止之列**，因为引擎默认的处理器就是 `Throwable::printStackTrace`：宿主决定这份报告落到哪里，调用点决定它写多少次。豁免名单是上面点名的七个类（`PacketReading`、`PlayerSocketConnection`、`Server`、`ConnectionManager`、`PacketListenerManager`、`HandshakeListener`、`LoginListener`），每一条都在 `boundedReporters()` 的 Javadoc 里写明自己的上界。新加一个类要写 WARN 就会红——**红了先想怎么让它有界，别直接进豁免名单**。`theClientDrivenLogRuleRejectsALinePerPacket` 与 `theClientDrivenLogRuleRejectsAReportPerPacket` 用测试源集里的两个 fixture 反证这条规则真的会红（一个写 WARN，一个把异常交给宿主）。
+这条纪律有门禁：`ArchitectureTest#clientDrivenPathsDoNotWriteALinePerPacket` 禁止 `network..` 与 `listener..` 两个包树调用 `Logger#warn` / `Logger#error` / `Throwable#printStackTrace` / `ExceptionManager#handleException`。**`handleException` 也在禁止之列**，因为引擎默认的处理器就是 `Throwable::printStackTrace`：宿主决定这份报告落到哪里，调用点决定它写多少次。豁免名单是上面点名的七个类（`PacketReading`、`PlayerSocketConnection`、`Server`、`ConnectionManager`、`PacketListenerManager`、`HandshakeListener`、`LoginListener`），每一条都在 `boundedReporters()` 的 Javadoc 里写明自己的上界。**规则守的是这两棵树里的类，不是「客户端可达的路径」**——差在哪见下面的盲点 2。新加一个类要写 WARN 就会红——**红了先想怎么让它有界，别直接进豁免名单**。`theClientDrivenLogRuleRejectsALinePerPacket` 与 `theClientDrivenLogRuleRejectsAReportPerPacket` 用测试源集里的两个 fixture 反证这条规则真的会红（一个写 WARN，一个把异常交给宿主）。
 
-盲点三个，写在这里免得被门禁的绿骗了：豁免是按类不按调用点（七个类里再加一条无界的行不会红）；`command` 包不在清单里（`CommandParserImpl` 执行命令抛异常时每次一行带栈的 ERROR）；以及豁免里 `PlayerSocketConnection` 对「监听器抛了异常」每包交一次 `handleException`，只有 `rejectMisusedPacket`（默认关）才会断开，这一处仍是敞的。后两条登记在 `docs/DESIGN.md` §28。
+盲点四个，写在这里免得被门禁的绿骗了：
+
+1. **豁免是按类不按调用点** —— 上面七个类里再加一条无界的行不会红。
+2. **包清单只到 `network..` / `listener..`，PLAY 态的包不在这两棵树里派发** —— `PlayerSocketConnection` 只内联派发 `IMMEDIATE_PROCESS_PACKETS` 那 11 个握手 / 登录 / 配置期的包，其余一律进 `Player#addPacketToQueue`，由 `entity` 包的 `Player#interpretPacketQueue` 每 tick 取 `playerPacketPerTick` 个（默认 50）交给监听器。`entity..` 不在清单里，实测在 `Player#addPacketToQueue`（每个客户端包调用一次）插一行 `LOGGER.warn`，`clientDrivenPathsDoNotWriteALinePerPacket` 仍然是绿的。**在 `Player`、`Entity` 里加逐包日志，门禁看不见，靠评审。**
+3. **`command` 包不在清单里** —— `CommandParserImpl` 执行命令抛异常时每次一行带栈的 ERROR。
+4. **「监听器抛了异常」每包一次 `handleException` 有两处，都敞着** —— `PlayerSocketConnection#processPackets`（豁免名单里的那一个）与 `Player#interpretPacketQueue`（包清单外的那一个，管的是主路径），两处代码相同，都只有 `rejectMisusedPacket`（默认关）才会在同一分支断开。
+
+后三条登记在 `docs/DESIGN.md` §28。

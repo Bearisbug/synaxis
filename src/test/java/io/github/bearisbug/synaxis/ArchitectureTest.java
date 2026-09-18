@@ -160,6 +160,12 @@ public class ArchitectureTest {
      * Anything written per packet in here is written as fast as a socket can be filled, which is
      * how {@code SOAK-3} turned one WARN into 84 MiB of log in 15 minutes ({@code docs/DESIGN.md}
      * §15 and §28, {@code docs/ENGINE.md} §8).
+     * <p>
+     * This is a list of packages, not of client reachable paths, and the two differ: only the 11
+     * packets of {@code PlayerSocketConnection.IMMEDIATE_PROCESS_PACKETS} are dispatched in here,
+     * every other one is queued and handed to its listener by
+     * {@code Player#interpretPacketQueue}, which sits in {@code entity} and is not watched. A line
+     * written per packet over there stays green, see {@code docs/ENGINE.md} §8 blind spot 2.
      */
     private static final String[] CLIENT_DRIVEN_LOG_PACKAGES = {
             "io.github.bearisbug.synaxis.network..",
@@ -170,8 +176,10 @@ public class ArchitectureTest {
      * A WARN or ERROR line, a stack trace dumped straight to the standard error stream, or an
      * exception handed to the host: the engine default sink of {@link ExceptionManager} is
      * {@code Throwable::printStackTrace}, so a report per packet is a stack trace per packet. The
-     * host picks the sink, the caller is what decides how often it is written. Anything below WARN
-     * is off by default in production, so the rule does not chase it.
+     * host picks the sink, the caller is what decides how often it is written. INFO is on in the
+     * default configuration too ({@code server-app/src/main/resources/logback.xml} sets the root to
+     * INFO); the rule stops at WARN because no client driven path writes one per packet today, and
+     * a new one has to be caught in review.
      */
     private static DescribedPredicate<JavaCall<?>> writesALogLine() {
         return target(owner(assignableTo(Logger.class))).and(target(name("warn").or(name("error"))))
@@ -186,8 +194,10 @@ public class ArchitectureTest {
      * <li>{@link PacketReading}: at most one line per 10 seconds, carrying the count it swallowed.</li>
      * <li>{@link PlayerSocketConnection}: one line per connection for a protocol error, kicked on
      * the same branch ({@code rejectMalformedPacket}, on by default), and one report per packet a
-     * listener threw on, which only {@code rejectMisusedPacket} (off by default) bounds — the one
-     * hole left open, tracked in {@code docs/DESIGN.md} §28.</li>
+     * listener threw on, which only {@code rejectMisusedPacket} (off by default) bounds — a hole
+     * left open, tracked in {@code docs/DESIGN.md} §28. The same report per packet exists a second
+     * time in {@code Player#interpretPacketQueue} for every PLAY packet, which this rule does not
+     * even see because {@code entity..} is not one of the packages above.</li>
      * <li>{@link Server}: one report per connection, every read and write loop report is followed
      * by a disconnect and a break; the accept loop reports once per accept it could not complete.</li>
      * <li>{@link ConnectionManager}: one line per player, both on the join path and both followed

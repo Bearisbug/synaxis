@@ -19,6 +19,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -60,6 +61,13 @@ final class Match {
      * a stale {@link State#RUNNING} would hand out an instance that is already unregistered.
      */
     private volatile State state = State.CREATING;
+
+    /**
+     * The units of the match and the team each belongs to (§7). Concurrent because the tick thread
+     * reads it while judging an order and the plugin writes it while spawning units.
+     */
+    private final Map<Integer, Integer> unitTeams = new ConcurrentHashMap<>();
+
     private @Nullable MapPreset preset;
     private @Nullable NavGrid navGrid;
     private @Nullable InstanceContainer instance;
@@ -96,6 +104,38 @@ final class Match {
      */
     @Nullable NavGrid navGrid() {
         return navGrid;
+    }
+
+    /**
+     * The preset this match was generated from, which is also its boundary.
+     *
+     * @return the preset, null until the match is running
+     */
+    @Nullable MapPreset preset() {
+        return preset;
+    }
+
+    /**
+     * Puts a unit on the board. REQ-M2-016 calls this when it spawns the unit's display entity; the
+     * order judgement of REQ-M2-009 already depends on the table because {@code owner(unit, sender)}
+     * is defined over a unit's team (§9).
+     *
+     * @param unitId the id of the unit, unique inside this match
+     * @param team   the team it fights for, 0 for a neutral unit nobody commands
+     */
+    void registerUnit(int unitId, int team) {
+        unitTeams.put(unitId, team);
+    }
+
+    /**
+     * The team a unit fights for.
+     *
+     * @param unitId the unit to look up
+     * @return its team, and 0 both for a neutral unit and for an id that names no unit at all —
+     *         neither is anybody's to command, which is the only question the caller asks
+     */
+    int unitTeam(int unitId) {
+        return unitTeams.getOrDefault(unitId, 0);
     }
 
     /**

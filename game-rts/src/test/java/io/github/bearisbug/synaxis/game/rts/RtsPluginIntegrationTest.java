@@ -12,6 +12,7 @@ import io.github.bearisbug.synaxis.plugin.AdmissionRequest;
 import io.github.bearisbug.synaxis.plugin.PluginAdmission;
 import io.github.bearisbug.synaxis.plugin.PluginAnalytics;
 import io.github.bearisbug.synaxis.plugin.PluginApi;
+import io.github.bearisbug.synaxis.plugin.PayloadHandler;
 import io.github.bearisbug.synaxis.plugin.PluginChannels;
 import io.github.bearisbug.synaxis.plugin.PluginContext;
 import io.github.bearisbug.synaxis.plugin.PluginEvents;
@@ -25,6 +26,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import java.util.function.Consumer;
@@ -53,6 +55,7 @@ class RtsPluginIntegrationTest {
         private final Env env;
         private final Path dataDirectory;
         private final RecordedEvents events = new RecordedEvents();
+        private final List<String> registeredChannels = new ArrayList<>();
         private @Nullable AdmissionProvider provider;
 
         ProbeContext(Env env, Path dataDirectory) {
@@ -82,7 +85,17 @@ class RtsPluginIntegrationTest {
 
         @Override
         public PluginChannels channels() {
-            throw new UnsupportedOperationException("the rts plugin owns no channel yet");
+            return new PluginChannels() {
+                @Override
+                public void register(String name, PayloadHandler handler) {
+                    registeredChannels.add(name);
+                }
+
+                @Override
+                public void send(Player player, String name, byte[] payload) {
+                    throw new UnsupportedOperationException("nothing is sent while the plugin is enabled");
+                }
+            };
         }
 
         @Override
@@ -128,6 +141,8 @@ class RtsPluginIntegrationTest {
 
         final AdmissionProvider provider = context.provider;
         assertNotNull(provider, "the plugin registered no admission provider");
+        assertEquals(List.of(GameChannel.NAME), context.registeredChannels,
+                "the slice messages have nowhere to arrive");
         final Admission.Accept accept = assertInstanceOf(Admission.Accept.class,
                 provider.admit(new AdmissionRequest(UUID.randomUUID(), "tester", 0, 0)));
         assertEquals(1, accept.team());

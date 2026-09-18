@@ -29,6 +29,14 @@ public final class DisconnectKeys {
      */
     public static final String PROTOCOL_VERSION_MISMATCH = "synaxis:protocol-version-mismatch";
 
+    /**
+     * The connection kept a game channel above the flood threshold of {@code docs/DESIGN-M2.md} §15
+     * for three seconds running. It is a gate against scripted floods, not a gameplay limit: going
+     * over the per second budget of an order or a camera report is answered in band, and only this
+     * one disconnects.
+     */
+    public static final String GAME_FLOOD = "synaxis:game-flood";
+
     private DisconnectKeys() {
     }
 }

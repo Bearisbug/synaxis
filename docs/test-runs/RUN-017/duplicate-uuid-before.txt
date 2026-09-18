@@ -1,0 +1,23 @@
+java.lang.IllegalStateException: There is already an entity registered with uuid 9fd485dd-a6fa-3aec-9359-509bab965feb
+	at io.github.bearisbug.synaxis.utils.validate.Check.isTrue(Check.java:82)
+	at io.github.bearisbug.synaxis.instance.EntityTrackerImpl.register(EntityTrackerImpl.java:62)
+	at io.github.bearisbug.synaxis.entity.Entity.lambda$setInstance$1(Entity.java:1036)
+	at io.github.bearisbug.synaxis.entity.Entity.runOwned(Entity.java:967)
+	at io.github.bearisbug.synaxis.entity.Entity.lambda$setInstance$0(Entity.java:1023)
+	at java.base/java.util.concurrent.CompletableFuture.uniAcceptNow(CompletableFuture.java:778)
+	at java.base/java.util.concurrent.CompletableFuture.uniAcceptStage(CompletableFuture.java:756)
+	at java.base/java.util.concurrent.CompletableFuture.thenAccept(CompletableFuture.java:2241)
+	at io.github.bearisbug.synaxis.entity.Entity.setInstance(Entity.java:1023)
+	at io.github.bearisbug.synaxis.entity.Player.spawnPlayer(Player.java:785)
+	at io.github.bearisbug.synaxis.entity.Player.lambda$setInstance$0(Player.java:678)
+	at io.github.bearisbug.synaxis.entity.Player.setInstance(Player.java:691)
+	at io.github.bearisbug.synaxis.entity.Player.setInstance(Player.java:744)
+	at io.github.bearisbug.synaxis.entity.Player.UNSAFE_init(Player.java:405)
+	at io.github.bearisbug.synaxis.network.ConnectionManager.lambda$updateWaitingPlayers$2(ConnectionManager.java:421)
+	at org.jctools.queues.MessagePassingQueueUtil.drain(MessagePassingQueueUtil.java:39)
+	at org.jctools.queues.varhandle.BaseMpscLinkedVarHandleArrayQueue.drain(BaseMpscLinkedVarHandleArrayQueue.java:576)
+	at org.jctools.queues.varhandle.MpscUnboundedVarHandleArrayQueue.drain(MpscUnboundedVarHandleArrayQueue.java:27)
+06:37:13.622 [Syn-Tick-0] WARN  i.g.b.s.instance.EntityTrackerImpl - Attempted to move unregistered entity 76 in the entity tracker
+06:37:13.622 [Syn-Tick-0] WARN  i.g.b.s.instance.EntityTrackerImpl - Attempted to move unregistered entity 76 in the entity tracker
+06:37:13.622 [Syn-Tick-0] WARN  i.g.b.s.instance.EntityTrackerImpl - Attempted to move unregistered entity 76 in the entity tracker
+warn_lines=662803 log_size=87614417

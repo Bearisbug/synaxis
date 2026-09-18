@@ -110,6 +110,65 @@ harness 用单 selector 循环驱动全部连接，只有登录握手在 8 个 w
 无堆栈），上面两行 WARN 当时是这条规范的例外——第一行已于 2026-09-18 补上 `connection_id`，
 第二行判为不修（理由见上）。**
 
+## 组 4：NFR 级（50 连接 / 100 Hz / 10 分钟，验收人 2026-09-18 补跑）
+
+前三组由压测员跑，稳态那组只到 609 包/秒，没有触达 `docs/DESIGN.md` §15 的量化目标。本组由验收人
+在 `e074732388` 上补跑，专门对照 §15 的四条：
+
+| §15 目标 | 本组实测 | 结论 |
+| --- | --- | --- |
+| 单 tick P99 < 50 ms（50 玩家） | p50 0.353 ms、p99 0.753 ms、max 22.6 ms（max 落在第 1 分钟的 JIT 预热窗口），超 50 ms 的 tick 0 个 | 达标，余量约 66 倍 |
+| 登录延迟 < 2 s | 50 次登录 p99 114 ms、max 114 ms | 达标 |
+| 堆 < 2 GB | 存活集 31.7 → 28.1 MiB（两次强制 Full GC 取样），RSS 214 → 299 MiB | 达标 |
+| 入站包 5,000 包/秒无丢包 | **未触达**：单进程 2,880 包/秒，两进程并行 3,990 包/秒 | 见下 |
+
+入站包那条没打满，瓶颈在 harness 不在引擎：`soak.py` 单 selector 循环驱动全部连接，Python 侧先到
+上限（并行两个进程只提升到 3,990）。可以说的是「在 2,880 包/秒下 tick p99 是 0.75 ms、离 50 ms 预算
+还有 66 倍」，不能说「5,000 包/秒达标」——要证明那一条，得先把 harness 换成多进程或非 Python 的
+发包端。这条写进「局限」。
+
+其余数字：50 条连接全程 0 掉线、0 登录失败、0 断线原因；echo 往返 p99 102.7 ms；停机后线程 66、
+FD 59、存活集 28.1 MiB。服务端日志零 WARN 零 ERROR 零堆栈行。
+
+产物：`docs/test-runs/RUN-017/nfr-50conn-summary.json`（全量数字）与 `nfr-summary.txt`（摘要）。
+
+## 组 5：同名并发登录（验收人 2026-09-18，先炸后修）
+
+组 4 之后验收人把两个 harness 进程并排跑（各 25 连接），两边的用户名都是 `soak0000..soak0024`。
+引擎默认离线模式，UUID 由用户名派生，于是后一组的 25 个玩家带着**已经在线的 UUID**登录，炸出了
+一条此前两轮审计与前三组压测都没打到的链：
+
+1. 第二个同 UUID 的玩家照常走完登录与 configuration，进入 play。
+2. tick 线程上 `Entity#setInstance` 的续体调 `EntityTrackerImpl#register`，抛
+   `IllegalStateException: There is already an entity registered with uuid …`。
+3. 续体的 `catch (Exception)` 把它交给默认异常处理器，只打一行栈。
+4. 玩家留在世界里、连接活着、能收发包，但**不在 EntityTracker 里**。
+5. 此后它每发一个移动包就写一行 `Attempted to move unregistered entity N`。
+
+实测 15 分钟写了 662,803 行、日志 87.6 MB —— 一个未认证成本极低的填盘手段。2026-09-15 审计的
+F59 在 notes 里点过名（「离线模式下 `LoginListener` 直接采信客户端 profileId、`ConnectionManager`
+无重复 UUID 拒绝」），当时不在那一批范围内。
+
+修法是三层，都在 `91902d12af`：
+
+| 层 | 改动 | 作用 |
+| --- | --- | --- |
+| 门口 | `ConnectionManager#createPlayer` 在 login-ack 时用 `synchronized` + `putIfAbsent` 抢 UUID，抢不到的那条连接以新原因键 `synaxis:duplicate-login` 断开 | 两条同 UUID 的连接恰好一条成功；断线后 `removePlayer` 用两参 `remove` 归还 UUID，合法重连不受影响 |
+| 中间 | `Entity#setInstance` 的续体不再吞异常，改抛 `CompletionException`，由 `ConnectionManager` 的 `spawnFuture.exceptionally` 撤销这次 spawn | 任何原因导致的注册失败都不再留下僵尸玩家 |
+| 兜底 | `EntityTrackerImpl` 的未注册移动 WARN 改为按时间限流，并在每次输出里带上被抑制的次数 | 日志量不再由客户端频率决定 |
+
+同一场景在修复后复跑（各 25 连接 / 60 Hz / 180 秒）：
+
+| 判据 | 修复前 | 修复后 |
+| --- | --- | --- |
+| `register` 冲突异常 | 25 | 0 |
+| `Attempted to move unregistered entity` | 662,803 | 0 |
+| `reason=synaxis:duplicate-login` 的 kick | 0 | 25 |
+| 堆栈行 / ERROR | 25 / 0 | 0 / 0 |
+| 服务端日志字节 | 87,614,417 | 26,129 |
+
+证据：`docs/test-runs/RUN-017/duplicate-uuid-before.txt` 与 `duplicate-uuid-after.txt`。
+
 ## 发现
 
 ### SOAK-1（P1）：configuration 阶段中断的连接，会把虚拟线程 + 整个 Player 对象图滞留最长 5 分钟
@@ -308,3 +367,5 @@ harness 用单 selector 循环驱动全部连接，只有登录握手在 8 个 w
 - 核心模式是平坦世界、无实体 AI / 无玩法 tick 负载，测的是网络 + 连接生命周期 + 世界 tick 底座，
   不代表 game-rts 满载。稳态连接数（64）对核心是轻载，压力主要由 churn 与攻击两组提供。
 - JFR 只开了 `synaxis.ServerTickTime` 与虚拟线程起止；未开分配采样（`jdk.ObjectAllocationSample`）。
+
+- 入站包 5,000 包/秒这条 §15 目标**未被证明**：harness 的 Python 发包端先到瓶颈（单进程 2,880、双进程 3,990 包/秒）。引擎侧在 2,880 包/秒时 tick p99 仅 0.75 ms，推测有余量，但推测不等于实测；要闭这条得换发包端。

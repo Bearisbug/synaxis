@@ -1,0 +1,9 @@
+RUN-017 NFR 级压测 · version 91902d12af
+profile: {"connections": 50, "duration": 600.0, "move_hz": 100.0, "echo_hz": 1.0, "churn_hz": 0.0, "churn_hold": 5.0, "attacks": "", "attack_interval": 5.0}
+连接 peak=50 end=50 登录失败={} 稳态掉线=0
+移动包 1728303 条 / 2880.4 每秒（目标 5,000，未触达，瓶颈在 harness）
+tick: count=12309 p50=0.353ms p99=0.753ms max=22.571ms 超 50ms=0（目标 P99<50ms）
+登录延迟: p99=114.115ms max=114.115ms（目标 <2000ms）
+echo 往返: p99=102.659ms
+存活集: [31.7, 28.1] MiB（目标 堆<2GB）
+停机后: {"live_mib_after_disconnect": 28.1, "threads_after_disconnect": 66, "fds_after_disconnect": 59}

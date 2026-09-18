@@ -1,0 +1,12 @@
+08:10:20.649 [main] INFO  i.g.bearisbug.synaxis.app.CoreMode - Core mode (synaxis.app.core-mode=on): no plugin is serving gameplay, so the host serves its own flat world. spawn=Pos[x=0.5, y=40.0, z=0.5, yaw=0.0, pitch=0.0] channel=synaxis:main (echoes every payload back)
+08:10:20.655 [main] INFO  i.github.bearisbug.synaxis.app.Main - synaxis server-app listening on 0.0.0.0:25565
+08:10:26.117 [Syn-Socket-Reader-31] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=a457e88d-0287-435f-ae05-9bb04a6a220c identifier=soak0006 reason=synaxis:duplicate-login
+08:10:26.117 [Syn-Socket-Reader-30] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=f01bab7e-4405-407b-a3e9-bcfe9aad2678 identifier=soak0004 reason=synaxis:duplicate-login
+08:10:26.117 [Syn-Socket-Reader-25] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=bc38a9af-ed5f-4370-bfb3-3ec5d409b97c identifier=soak0000 reason=synaxis:duplicate-login
+08:10:26.117 [Syn-Socket-Reader-32] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=83c5e4cd-eec1-44f6-b95f-47b9c9f64e6b identifier=soak0007 reason=synaxis:duplicate-login
+
+同名双进程压测（各 25 连接 / 60 Hz / 180 s）在修复后的判据：
+register 异常 = 0（修复前 25）
+Attempted to move unregistered entity = 0（修复前 662,803）
+reason=synaxis:duplicate-login 的 kick = 25
+堆栈行 = 0，ERROR = 0，服务端日志 26,129 字节（修复前 87,614,417）

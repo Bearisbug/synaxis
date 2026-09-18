@@ -978,11 +978,18 @@ def cmd_game_flood(args: argparse.Namespace) -> int:
 
     It is the difference between the two limits that this proves: a rate over the flood threshold
     ends the connection, and one under it never does however long it is held.
+
+    The rate that is reached is reported next to the verdict, and it is not the rate that was
+    asked for: reading between the bursts costs time, so a window may run past its second and the
+    server, which counts in fixed one second buckets, then sees fewer payloads than were sent. A
+    gate that never fired tells the reader nothing on its own — whether it is the gate or the probe
+    that fell short is the slowest window's answer to give.
     """
     session = Session(args)
     try:
         session.enter_play()
         session.log(f"flooding {args.rate} payloads a second for {args.seconds}s")
+        windows: list[float] = []
         try:
             for second in range(args.seconds):
                 started = time.monotonic()
@@ -993,6 +1000,7 @@ def cmd_game_flood(args: argparse.Namespace) -> int:
                 left = 1.0 - (time.monotonic() - started)
                 if left > 0:
                     session.pump(left)
+                windows.append(args.rate / (time.monotonic() - started))
             session.pump(args.wait)
         except Disconnected as disconnected:
             if args.expect == "flood" and disconnected.reason == "synaxis:game-flood":
@@ -1002,6 +1010,7 @@ def cmd_game_flood(args: argparse.Namespace) -> int:
         except ClosedByServer:
             session.log("connection closed without a disconnect packet")
             return 1
+        session.log(f"asked for {args.rate} payloads a second, slowest window {min(windows):.0f}")
         if args.expect == "flood":
             session.log("the flood gate never fired")
             return 1
@@ -1222,7 +1231,7 @@ def build_parser() -> argparse.ArgumentParser:
     select.set_defaults(run=cmd_select)
 
     flood = subparsers.add_parser("game-flood", help="hold a payload rate on the game channel")
-    flood.add_argument("--rate", type=int, default=400, help="payloads a second")
+    flood.add_argument("--rate", type=int, default=800, help="payloads a second")
     flood.add_argument("--seconds", type=int, default=3, help="how long to hold it")
     flood.add_argument("--expect", default="flood", choices=["flood", "alive"])
     flood.add_argument("--wait", type=float, default=2.0)

@@ -12,6 +12,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -58,8 +59,8 @@ import java.util.zip.Inflater;
  * Every connection sends `--hz` position packets per second, which is what makes the total rate
  * `--connections * --hz`. Keep `--hz` well under the drain the engine grants one player
  * (`ServerConfig#playerPacketPerTick`, 50 per tick, so 1,000 per second at 20 TPS): above it the
- * player packet queue fills and the engine kicks with "Too Many Packets", which is a limiter
- * firing rather than the engine failing.
+ * player packet queue fills and the engine kicks with `synaxis:protocol-error`, which is a
+ * limiter firing rather than the engine failing.
  */
 public final class PacketFlood {
 
@@ -329,6 +330,8 @@ public final class PacketFlood {
         private InputStream input;
         private OutputStream output;
         private int compressionThreshold = -1;
+        /** True while a frame is only partly read; login and readLoop share one thread per connection. */
+        private boolean midFrame;
         private volatile boolean closed;
         private volatile long pendingEchoNanos = -1;
         private final double radius;
@@ -404,6 +407,7 @@ public final class PacketFlood {
             for (int shift = 0; shift < 35; shift += 7) {
                 final int part = input.read();
                 if (part < 0) throw new EOFException("the server closed the connection");
+                midFrame = true;
                 value |= (part & 0x7F) << shift;
                 if ((part & 0x80) == 0) return value;
             }
@@ -415,6 +419,7 @@ public final class PacketFlood {
             final int length = readVarInt();
             final byte[] frame = input.readNBytes(length);
             if (frame.length != length) throw new EOFException("the server closed the connection");
+            midFrame = false;
             if (compressionThreshold < 0) return frame;
             final Reader reader = new Reader(frame);
             final int dataLength = reader.varInt();
@@ -488,7 +493,12 @@ public final class PacketFlood {
                     final byte[] body;
                     try {
                         body = readFrame();
-                    } catch (SocketTimeoutException _) {
+                    } catch (SocketTimeoutException timeout) {
+                        // A timeout that lands in the middle of a frame leaves the stream out of
+                        // step: every later parse reads garbage and the connection would be counted
+                        // lost for a reason that is ours, not the server's. Only an idle socket is
+                        // safe to keep reading from.
+                        if (midFrame) throw timeout;
                         continue;
                     }
                     final Reader reader = new Reader(body);
@@ -682,8 +692,15 @@ public final class PacketFlood {
         long previousSent = sentBeforeWindow;
         long previousNanos = windowStart;
         final long endNanos = windowStart + (long) (options.seconds * 1e9);
-        while (System.nanoTime() < endNanos) {
-            Thread.sleep((long) (options.sampleSeconds * 1000));
+        final long sampleNanos = (long) (options.sampleSeconds * 1e9);
+        while (true) {
+            // Cut the last sleep at the window end, otherwise the measured window is rounded up to
+            // a multiple of --sample-seconds and the report quotes a duration that was never asked
+            // for. A leftover shorter than half a sample is not worth a rate line of its own.
+            final long remaining = endNanos - System.nanoTime();
+            if (remaining <= 0) break;
+            Thread.sleep(Duration.ofNanos(Math.min(sampleNanos, remaining)));
+            if (remaining < sampleNanos / 2) break;
             final long now = System.nanoTime();
             final long sent = metrics.sent.sum();
             final double rate = (sent - previousSent) / ((now - previousNanos) / 1e9);

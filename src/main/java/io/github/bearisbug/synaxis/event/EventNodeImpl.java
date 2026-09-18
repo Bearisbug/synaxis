@@ -138,6 +138,10 @@ non-sealed class EventNodeImpl<T extends Event> implements EventNode<T> {
             final var childImpl = (EventNodeImpl<? extends T>) child;
             Check.stateCondition(!JvmFlags.EVENT_NODE_ALLOW_MULTIPLE_PARENTS && childImpl.parent != null, "Node already has a parent");
             Check.stateCondition(Objects.equals(parent, child), "Cannot have a child as parent");
+            // A node in its own children makes both the invalidation walk and the dispatch
+            // compilation recurse forever, which surfaces as a StackOverflowError on an already
+            // corrupted tree instead of on the call that built the cycle.
+            Check.stateCondition(childImpl == this, "Cannot have a node as its own child");
             if (!children.add((EventNodeImpl<T>) childImpl)) return this; // Couldn't add the child (already present?)
             childImpl.parent = this;
             childImpl.invalidateEventsFor(this);
@@ -256,7 +260,13 @@ non-sealed class EventNodeImpl<T extends Event> implements EventNode<T> {
 
     @Override
     public EventNode<T> setPriority(int priority) {
-        this.priority = priority;
+        synchronized (GLOBAL_CHILD_LOCK) {
+            this.priority = priority;
+            // A parent compiles its children into a dispatch order sorted by priority, so the new
+            // priority only reaches the dispatch once those compiled handles are dropped.
+            final EventNodeImpl<? super T> parent = this.parent;
+            if (parent != null) invalidateEventsFor(parent);
+        }
         return this;
     }
 

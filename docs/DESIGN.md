@@ -15,6 +15,7 @@
 
 | 日期 | 版本 | 改动 | 作者 |
 | --- | --- | --- | --- |
+| 2026-09-18 | v0.29 | `ADR-007` 按实测更新密度现状并写死口径：`event` 由 0.05 补到 0.32（新增 36 个测试文件），`network` 明确以「逻辑文件」为分母（排除 19 个 `package-info.java` 与 219 个纯 record 包定义）后为 1.07。同批修两处事件树缺陷：`EventNode#setPriority` 在节点已挂载并派发过之后不再失效父节点缓存，改后的优先级不生效；`addChild(self)` 未被拒绝，直接把调用方打成 `StackOverflowError` 并留下自环。设计正文其余章节未动 | Bearisbug |
 | 2026-09-18 | v0.28 | §15 的「入站包 50 玩家峰值 5,000 包/秒无丢包」由 2026-09-18 组 6 实测闭合（Java 发包端 `tools/loadtest/PacketFlood.java`，5,014.9 包/秒 / 6 分钟 / 0 掉线，发包窗口内 7,200 个 tick 的 p99 1.631 ms，超 50 ms 的只有 50 条连接同时进场的那个窗口首 tick；组 7 抬到 40,015 包/秒仍 0 掉线）。设计正文未动；§28 新增两条技术债：① §15 写的 500 包/秒速率闸没有实现，实际起作用的是 `playerPacketPerTick` 的排空能力 + 队列深度；② §14 的错误码信封之外，默认配置下客户端的包就能触发的纯文本断线还有七处（`SOAK-6` 按全部 30 个 `kick(...)` 调用点分档清点，本轮只追齐了填满包队列的那一条） | Bearisbug |
 | 2026-09-18 | v0.27 | §15 新增非功能约束「日志量不由客户端决定」（客户端可驱动频率的 WARN/ERROR 必须有界），并由 `ArchitectureTest#clientDrivenPathsDoNotWriteALinePerPacket` 一条 ArchUnit 规则守住 `network..` 与 `listener..` 两个包树（`ExceptionManager#handleException` 一并算作写日志）；`PacketReading` 的「包未读完」按 10 秒限流并带区间累计次数；`PlayerSocketConnection` 派发一批包时遇到已断开的连接就 `break`，「紧跟断开」那一档才真的有界。§28 登记全仓 27 处 WARN/ERROR/printStackTrace 的按频率归属扫描结论 | Bearisbug |
 | 2026-09-18 | v0.26 | `SOAK-3` 修复（离线模式下同名玩家的重复 UUID）：§14 新增原因键 `synaxis:duplicate-login`，§11.1 的 login→configuration 守卫补上「profile UUID 未被在线连接占用」并新增 login→disconnected 一条转移；§28 登记一条「已决」 | Bearisbug |
@@ -461,10 +462,12 @@ N/A — 无前端。客户端 Fabric 模组与其界面属于 M2。
   - Alternatives：压成一个初始提交（失去 blame）。
   - Consequences：仓库 410 MB；`git blame` 可追溯每行来历，配合 `.git-blame-ignore-revs` 跳过改名提交。
 - **`ADR-007` M1 不拆上帝类、不改静态门面** — Status: Accepted
-  - Context：`entity` 包测试密度 0.12，`event` 0.03；删除只让 `Entity` 少 1 条 import。
+  - Context：M1 起点时 `entity` 包测试密度 0.12，`event` 0.03；删除只让 `Entity` 少 1 条 import。
   - Decision：先补测试到密度 ≥ 0.3（M1 后阶段 7），再按需求驱动拆分；门面与配置改造排在阶段 4 与 5。
   - Alternatives：M1 一起做（无安全网作业，回归面极大）。
   - Consequences：M2 游戏工程通过 `plugin-api` 六个接口隔离引擎，不直接依赖上帝类。
+  - 密度口径：测试文件数 ÷ 主源码文件数，按包树（含子包）统计。`network` 包另按**逻辑文件**计分母——从 282 个主源码文件里排除 19 个 `package-info.java` 与 `packet/client`、`packet/server` 下 219 个纯 record 的包定义（后者由 `PacketWriteReadRegistriesTest` 的字节对拍整体覆盖，不需要一文件一测试），余下 44 个解码 / 编码 / 状态机 / 缓冲区文件才是分母。
+  - 现状（2026-09-18 实测）：`event` 42/130 = **0.32**，`network` 47/44 = **1.07**（逻辑文件口径；按 282 个文件的粗口径为 0.17）；已过线的还有 `instance` 0.70、`entity` 0.61、`inventory` 0.75、`item` 0.50、`thread` 0.43。七个包全部过线，拆分的前置条件已满足。
 
 ## 19. 验收 / 测试
 

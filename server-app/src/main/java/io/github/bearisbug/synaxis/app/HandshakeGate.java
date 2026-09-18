@@ -113,16 +113,25 @@ final class HandshakeGate {
     record HelloResult(int modVersion, int schemaVersion) {
     }
 
+    /**
+     * What is held for one connection: the future both threads decide through, and the connection
+     * that future belongs to. The connection is what makes the entry reclaimable — a future says
+     * nothing about whether anybody is still there to hear the answer.
+     */
+    private record Session(PlayerConnection connection, CompletableFuture<HelloResult> hello) {
+    }
+
     private final Phase phase;
     private final Duration budget;
     private final EventLedger ledger;
 
     /**
-     * One future per live connection, created by whichever side gets there first: the hello may be
+     * One entry per live connection, created by whichever side gets there first: the hello may be
      * interpreted before the configuration thread starts waiting for it, and the wait may start
-     * before the hello arrives. Entries go away with the connection.
+     * before the hello arrives. Entries go away with the connection, which is why each one carries
+     * the connection it belongs to.
      */
-    private final Map<UUID, CompletableFuture<HelloResult>> sessions = new ConcurrentHashMap<>();
+    private final Map<UUID, Session> sessions = new ConcurrentHashMap<>();
 
     /**
      * The tick this process is on, which {@code S2C_HELLO} carries so that a client can line its
@@ -167,7 +176,10 @@ final class HandshakeGate {
      * @param node the host node
      */
     void attach(EventNode<Event> node) {
-        node.addListener(ServerTickMonitorEvent.class, _ -> ticks.incrementAndGet());
+        node.addListener(ServerTickMonitorEvent.class, _ -> {
+            ticks.incrementAndGet();
+            reclaimClosedSessions();
+        });
         node.addListener(PlayerDisconnectEvent.class,
                 event -> abandon(event.getPlayer().getPlayerConnection().connectionId()));
         if (phase == Phase.LOGIN) node.addListener(AsyncPlayerPreLoginEvent.class, this::negotiateDuringLogin);
@@ -178,6 +190,15 @@ final class HandshakeGate {
      */
     void require() {
         this.required = true;
+    }
+
+    /**
+     * Counts what this gate is holding, which is the invariant its reclamation has to keep.
+     *
+     * @return how many connections it still holds a decision for
+     */
+    int openSessions() {
+        return sessions.size();
     }
 
     /**
@@ -192,7 +213,7 @@ final class HandshakeGate {
         if (!connection.isOnline()) return;
         final C2SHello hello = decode(connection, connectionId, payload);
         if (hello == null) return;
-        final CompletableFuture<HelloResult> session = session(connectionId);
+        final CompletableFuture<HelloResult> session = session(connection);
         if (!session.complete(new HelloResult(hello.modVersion(), hello.schemaVersion()))) {
             // Lost to the other thread. Either the budget was spent and this connection is already
             // being kicked, or this is a second hello on a connection that already had its one.
@@ -211,7 +232,6 @@ final class HandshakeGate {
         }
         player.sendPluginMessage(CHANNEL, answer());
         verified(connectionId, hello);
-        if (!connection.isOnline()) sessions.remove(connectionId);
     }
 
     /**
@@ -227,15 +247,11 @@ final class HandshakeGate {
         final UUID connectionId = connection.connectionId();
         ledger.record("session_entered_configuration", attributes(connectionId,
                 "protocol_version", connection.getProtocolVersion()));
-        try {
-            return decide(connection, connectionId);
-        } finally {
-            if (!connection.isOnline()) sessions.remove(connectionId);
-        }
+        return decide(connection, connectionId);
     }
 
     private @Nullable HelloResult decide(PlayerConnection connection, UUID connectionId) {
-        final CompletableFuture<HelloResult> session = session(connectionId);
+        final CompletableFuture<HelloResult> session = session(connection);
         if (!required) {
             // The core mode lets a connection in whether or not it handshook, so there is nothing
             // to wait for: a hello that already arrived was answered and judged by the tick thread,
@@ -244,12 +260,9 @@ final class HandshakeGate {
             if (!connection.isOnline()) return null;
             return session.isDone() && !session.isCompletedExceptionally() ? session.join() : NONE;
         }
-        if (!connection.isOnline()) {
-            // It left between the two, and the disconnect callback had nothing to wake yet: the
-            // flag is cleared before that callback runs, so re-reading it here closes the window.
-            abandon(connectionId);
-            return null;
-        }
+        // It may have left between the two, and the disconnect callback had nothing to wake yet:
+        // the flag is cleared before that callback runs, so re-reading it here closes the window.
+        if (!connection.isOnline()) return null;
         final HelloResult result;
         try {
             result = session.get(budget.toMillis(), TimeUnit.MILLISECONDS);
@@ -306,7 +319,7 @@ final class HandshakeGate {
                     "version-mismatch", hello.schemaVersion());
             return;
         }
-        session(connectionId).complete(new HelloResult(hello.modVersion(), hello.schemaVersion()));
+        session(connection).complete(new HelloResult(hello.modVersion(), hello.schemaVersion()));
         verified(connectionId, hello);
     }
 
@@ -351,13 +364,26 @@ final class HandshakeGate {
                 "mod_version", hello.modVersion(), "schema_version", hello.schemaVersion()));
     }
 
-    private CompletableFuture<HelloResult> session(UUID connectionId) {
-        return sessions.computeIfAbsent(connectionId, _ -> new CompletableFuture<>());
+    private CompletableFuture<HelloResult> session(PlayerConnection connection) {
+        return sessions.computeIfAbsent(connection.connectionId(),
+                _ -> new Session(connection, new CompletableFuture<>())).hello();
     }
 
     private void abandon(UUID connectionId) {
-        final CompletableFuture<HelloResult> session = sessions.remove(connectionId);
-        if (session != null) session.completeExceptionally(new ClosedSessionException(connectionId));
+        final Session session = sessions.remove(connectionId);
+        if (session != null) session.hello().completeExceptionally(new ClosedSessionException(connectionId));
+    }
+
+    /**
+     * Gives back what is held for connections that are gone. {@link PlayerDisconnectEvent} only
+     * fires for a connection that got as far as being a player, while the login phase form of the
+     * handshake holds an entry before that — and a client may open such a connection and drop it
+     * as often as it likes — so the reclamation that covers every entry is this one: a walk, once
+     * per tick, of a map as long as the connection count.
+     */
+    private void reclaimClosedSessions() {
+        for (Session session : sessions.values())
+            if (!session.connection().isOnline()) abandon(session.connection().connectionId());
     }
 
     private byte[] answer() {

@@ -61,7 +61,8 @@ final class AdmissionGate {
         if (hello == null) return;
         final AdmissionProvider provider = registry.provider();
         if (provider == null) {
-            refuse(player, connectionId, DisconnectKeys.MATCH_UNAVAILABLE, "no admission provider is registered");
+            refuse(player, connectionId, hello, DisconnectKeys.MATCH_UNAVAILABLE,
+                    "no admission provider is registered");
             return;
         }
         final Admission admission;
@@ -72,7 +73,8 @@ final class AdmissionGate {
         } catch (Throwable throwable) {
             LOGGER.error("Admission provider failed: plugin_id={} connection_id={}",
                     registry.pluginId(), connectionId, throwable);
-            refuse(player, connectionId, DisconnectKeys.MATCH_UNAVAILABLE, "the admission provider threw");
+            refuse(player, connectionId, hello, DisconnectKeys.MATCH_UNAVAILABLE,
+                    "the admission provider threw");
             return;
         }
         final long admitMs = (System.nanoTime() - start) / 1_000_000L;
@@ -83,16 +85,19 @@ final class AdmissionGate {
         switch (admission) {
             case Admission.Accept accept -> event.setSpawningInstance(accept.instance());
             case Admission.Reject reject ->
-                    refuse(player, connectionId, reject.reasonKey(), "the admission provider refused");
+                    refuse(player, connectionId, hello, reject.reasonKey(),
+                            "the admission provider refused");
         }
     }
 
-    private void refuse(Player player, UUID connectionId, String reasonKey, String cause) {
+    private void refuse(Player player, UUID connectionId, HandshakeGate.HelloResult hello,
+                        String reasonKey, String cause) {
         LOGGER.info("Refusing a connection: connection_id={} reason={} cause={}", connectionId, reasonKey, cause);
         final Map<String, Object> attributes = new LinkedHashMap<>();
         attributes.put("connection_id", connectionId);
         // §20 names the reason without the translate prefix the disconnect key carries.
         attributes.put("reason", reasonKey.substring(reasonKey.indexOf(':') + 1));
+        attributes.put("schema_version", hello.schemaVersion());
         ledger.record("client_rejected", attributes);
         // Kick and return without setting a spawning instance: the engine checks isOnline() right
         // after this event, so a kicked player never reaches the requireNonNull on that instance.

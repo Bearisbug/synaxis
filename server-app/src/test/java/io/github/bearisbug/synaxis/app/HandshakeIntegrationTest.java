@@ -32,10 +32,13 @@ import org.jetbrains.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
+import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -418,6 +421,24 @@ class HandshakeIntegrationTest {
     }
 
     @Test
+    void aConnectionThatLeavesBeforeItIsAPlayerIsReclaimed(Env env) {
+        final Wire wire = loginWire(env);
+        wire.answerLoginWith(hello(7, ProtocolSchema.SCHEMA_VERSION));
+        final HandshakeGate gate = gate(env, HandshakeGate.Phase.LOGIN, HandshakeGate.BUDGET);
+        gate.require();
+        preLogin(env, wire);
+        assertEquals(1, gate.openSessions(), "the login phase hands its result over through a session");
+
+        // Between LoginSuccess and LoginAcknowledged the connection has no player yet, so closing
+        // here fires no PlayerDisconnectEvent. A client can open and drop such a connection as
+        // often as it likes, so whatever the gate holds for it has to come back without one.
+        wire.disconnect();
+        env.tick();
+
+        assertEquals(0, gate.openSessions(), "a connection that is gone may not be held on to");
+    }
+
+    @Test
     void theConfigurationPhaseAsksNothingDuringLogin(Env env) {
         final Wire wire = loginWire(env);
         final HandshakeGate gate = gate(env, HandshakeGate.Phase.CONFIGURATION, SHORT_BUDGET);
@@ -465,6 +486,27 @@ class HandshakeIntegrationTest {
         // refusal into synaxis:internal-error (§26 phase 4).
         assertNull(failure, "a refused connection must be kicked, not left to the requireNonNull");
         assertKickedWith(DisconnectKeys.MATCH_UNAVAILABLE, wire);
+        // §20 registers client_rejected with both of these, and the reason alone does not say
+        // which client it was: this one handshook, so its schema version is known here too.
+        final String rejection = onlyLedgerLine("client_rejected");
+        assertTrue(rejection.contains("\"reason\":\"match-unavailable\""), rejection);
+        assertTrue(rejection.contains("\"schema_version\":" + ProtocolSchema.SCHEMA_VERSION), rejection);
+    }
+
+    /**
+     * @return the one ledger line of the given event, failing when there is not exactly one
+     */
+    private String onlyLedgerLine(String event) {
+        try (var files = Files.list(workingDirectory.resolve("logs"))) {
+            final List<String> lines = new ArrayList<>();
+            for (Path file : files.toList()) lines.addAll(Files.readAllLines(file));
+            final List<String> matching = lines.stream()
+                    .filter(line -> line.contains("\"event\":\"" + event + "\"")).toList();
+            assertEquals(1, matching.size(), "expected exactly one " + event + ", got " + lines);
+            return matching.getFirst();
+        } catch (IOException e) {
+            throw new IllegalStateException(e);
+        }
     }
 
     @Test

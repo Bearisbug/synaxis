@@ -16,7 +16,7 @@
 | --- | --- | --- |
 | 2026-09-18 | 跟进 `docs/DESIGN.md` v0.27（客户端可驱动的日志一律有界）：**新增 `TC-033`**（尾部带多余字节的包刷一万次只写一行日志；一批 1,000 个必失败的登录插件应答只换来一次上报，kick 之后的帧不再被处理；ArchUnit 门禁拦住新加的逐包日志与逐包上报），§5 回归映射的引擎域「协议」与「分层」两行各加上它。既有用例语义未变 | Bearisbug |
 | 2026-09-18 | 跟进 `docs/DESIGN.md` v0.26（`SOAK-3`：离线模式下同名玩家的重复 UUID）：**新增 `TC-032`**（同 UUID 的第二条连接被拒于登录、追踪器里恰好一个玩家、「移动未注册实体」的日志有界），§5 回归映射的引擎域「协议」行加上它。既有用例语义未变 | Bearisbug |
-| 2026-09-18 | §3 环境段登记入站包发包端 `tools/loadtest/PacketFlood.java`（不对应任何 TC，服务端须先在跑；它闭掉了 `docs/DESIGN.md` §15 的「5,000 包/秒」那条——实测 5,014.9 包/秒 / 6 分钟 / 0 掉线，详见 `docs/research/soak-2026-09-18/report.md` 组 6）。用例正文未动 | Bearisbug |
+| 2026-09-18 | §3 环境段登记入站包发包端 `tools/loadtest/PacketFlood.java`（长跑不对应任何 TC，服务端须先在跑；它闭掉了 `docs/DESIGN.md` §15 的「5,000 包/秒」那条——实测 5,014.9 包/秒 / 6 分钟 / 0 掉线，详见 `docs/research/soak-2026-09-18/report.md` 组 6）。同轮跟进 `SOAK-4` 的修复：**新增 `TC-034`**（填满包队列的断线带 `synaxis:protocol-error`，负控用该发包端打 50 × 1,200 包/秒），§5 回归映射的引擎域「协议」行加上它。既有用例正文未动 | Bearisbug |
 | 2026-09-18 | §3 环境段登记压测 / 长稳 harness `tools/loadtest/soak.py`（不对应任何 TC，服务端须先在跑；跑法与采集手段见 `docs/research/soak-2026-09-18/README.md`）。用例正文未动 | Bearisbug |
 | 2026-09-18 | 跟进 `docs/DESIGN.md` v0.25 与 `docs/DESIGN-M2.md` v0.19：**新增 `TC-031`**（configuration 阶段早退的连接不留虚拟线程也不留 `Player`，覆盖 `SOAK-1` / `SOAK-2` 的修复）与 **`TC-GAME-059`**（稳定面不把 `@ApiStatus.Internal` 类型递给插件，§24 规则④）；§3 日志关联口径补上 `Player failed to respond to known packs query: username=… connection_id=…` 这一行；§5 回归映射的引擎域「协议」与游戏域「模块与门禁」各加一条；REQ-M2-002 行补 `TC-GAME-059`。既有用例语义未变 | Bearisbug |
 | 2026-09-18 | 跟进 `docs/DESIGN-M2.md` v0.18（核心模式）：**废弃 `TC-GAME-032`、新增 `TC-GAME-057`** —— 第 1 步「排除玩法插件即非零码退出、端口未 bind」这条判据在默认配置下不再成立（现在进核心模式并照常 bind），要得到拒启必须同时给 `-Dsynaxis.app.core-mode=off`；判据实质变更，按惯例换 ID，原用例第 2～5 步逐字保留。**新增 `TC-GAME-058`**（核心模式冒烟：默认起服、登录、`synaxis:main` echo 往返、`stop` 干净退出、`core-mode=on` 强制、玩法插件在场时不介入）。§2 Gherkin 场景数 47 → 48、REQ ↔ TC 表三行换 ID；§3 系统属性补 `synaxis.app.core-mode`、改写「去掉 `rts` = 非零码退出」那半句并记上「没有插件应答的 id 记一行 WARN」，探针表 `echo` 行由「无提供方、不适用」改为「核心模式下由宿主提供」；`TC-GAME-049` 第 4 步（换 ID 之外还写上切到核心模式的重启参数 `-Dsynaxis.app.core-mode=on`）、`TC-GAME-050` 第 9 步与 §5 回归映射跟着换 ID；§7「探针 `echo` 子命令归属未定」按设计文档的处置结论结案 | Bearisbug |
@@ -133,7 +133,7 @@ REQ-M2 ↔ TC 对照（手工维护）：
 
 - 压测 / 长稳 harness：`python3 tools/loadtest/soak.py run --connections N --duration S --out <目录>`（Python 3.10+，仅用标准库）。它复用探针的握手 / 登录 / configuration，在其上加多连接维持、连接 churn、把上表的恶意子命令按间隔打进负载，并用 `jcmd` / `jstat` / `lsof` / `ps` 与 JFR 事件 `synaxis.ServerTickTime` 采样服务端。**不对应任何 TC**（长跑观测工具，不是判据），服务端必须已在运行，否则直接以退出码 2 拒绝跑。产物 `summary.json` / `samples.jsonl` / `attacks.jsonl` / `soak.jfr` 写进 `--out` 目录；跑法、采集手段与 2026-09-18 的一轮结果见 `docs/research/soak-2026-09-18/`。
 
-- 入站包发包端：`java tools/loadtest/PacketFlood.java --connections N --hz H --seconds S --out <目录>`（JDK 25 单文件源码启动器，不进任何 source set）。`soak.py` 的 Python 发包端到 2,880 包/秒就是上限，证不了 `docs/DESIGN.md` §15 的「50 玩家峰值 5,000 包/秒」，本工具用每连接一个发送线程 + 一个读取线程补上这一档；包 ID 与探针同口径从 `PacketVanilla.java` 推导。`--hz` 是**每条连接**的速率，总速率 = `--connections × --hz`。**不对应任何 TC**（压测工具，不是判据），服务端必须已在运行。产物 `flood.json` 里的 `achieved_packets_per_second` 是实际写进 socket 的包数 ÷ 窗口时长，登录爬坡不计入窗口；跑法与 2026-09-18 实测的 5,014.9 包/秒见 `docs/research/soak-2026-09-18/`。
+- 入站包发包端：`java tools/loadtest/PacketFlood.java --connections N --hz H --seconds S --out <目录>`（JDK 25 单文件源码启动器，不进任何 source set）。`soak.py` 的 Python 发包端到 2,880 包/秒就是上限，证不了 `docs/DESIGN.md` §15 的「50 玩家峰值 5,000 包/秒」，本工具用每连接一个发送线程 + 一个读取线程补上这一档；包 ID 与探针同口径从 `PacketVanilla.java` 推导。`--hz` 是**每条连接**的速率，总速率 = `--connections × --hz`。长跑本身**不对应任何 TC**（压测工具，不是判据），但 `TC-034` 的负控那一步用它；服务端必须已在运行。产物 `flood.json` 里的 `achieved_packets_per_second` 是实际写进 socket 的包数 ÷ 窗口时长，登录爬坡不计入窗口；跑法与 2026-09-18 实测的 5,014.9 包/秒见 `docs/research/soak-2026-09-18/`。
 
 - 种子数据与重置：无持久数据；每条用例前重启进程即为基线。`RegistryDataPacket` 参考样本 `src/test/resources/protocol/registry-data-26.2.bin` 在阶段 2 开始前由 `tools/protocol-probe/probe.py record-registry --out <file>` 录制（同一进程连续两次录制字节完全一致，已实测）。
 - 工具：`git`、`gh`（已登录 Bearisbug）、`nc`、Python 3.10+（探针）、原版 26.2 客户端、`grep`。
@@ -442,6 +442,20 @@ REQ-M2 ↔ TC 对照（手工维护）：
 | 3 | `git checkout -- src/main/java/io/github/bearisbug/synaxis/listener/PlayerPositionListener.java`，重跑第 1 步的命令 | 回到 `BUILD SUCCESSFUL` |
 
 后置：确认 `git status` 干净，没有残留 java 进程。
+
+#### `TC-034` 填满包队列的断线带得住 §14 的错误码 — 对应 `REQ-011` · 级别: 回归 · 执行者: AI
+
+前置：`SOAK-4` 的修复已合入（设计文档 §28 的 `SOAK-6` 一行记着同形状的其余待办）；`docs/research/soak-2026-09-18/README.md` 的核心模式启动段与入站包发包端可用。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | `./gradlew :test --tests '*DisconnectReasonsIntegrationTest*' --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts` | `BUILD SUCCESSFUL`；七条全过，含 `aFloodedPacketQueueDisconnectsWithAProtocolError`——把超过 `playerPacketQueueSize` 的包塞进 `Player#addPacketToQueue` 后玩家离线，且**恰好一个** disconnect 包、其 `translate` 键为 `synaxis:protocol-error`（修复前这条断言拿到的是 `TextComponentImpl`） |
+| 2 | 起核心模式服务端（§3 启动段，`-Dsynaxis.app.core-mode=on`），把服务端 stdout 重定向到一个日志文件 | stdout 出现 `synaxis server-app listening on 0.0.0.0:25565` |
+| 3 | `java tools/loadtest/PacketFlood.java --connections 50 --hz 1200 --seconds 30 --out <目录>`（每条连接 1,200 包/秒，越过 `playerPacketPerTick` 默认 50 × 20 TPS = 1,000 包/秒的排空能力，队列必满） | 十秒内 50 条连接全断，`flood.json` 的 `connections_lost` 为 `50`；`disconnect_reasons` 里只有 `synaxis:protocol-error` 这一个键（实测 50；条数可少于 50——有的连接是本地 socket 先关掉、没读到断线包，属正常竞争） |
+| 4 | `grep -c 'reason=synaxis:protocol-error' <服务端日志>` | `50`，一条被踢的连接一行（行格式见 §3 日志关联口径） |
+| 5 | `grep -c 'Kicking connection_id=' <服务端日志>` | 与第 4 步相等（`50`）。`PlayerConnection#kick` 只对 `TranslatableComponent` 写这一行，所以修复前两个计数**都是 0**：纯文本原因既不进客户端看到的错误码，也不在服务端留一行 |
+
+后置：`stop` 停机，删掉 `--out` 目录与服务端日志，确认没有残留 java 进程。
 
 #### `TC-013` 抢跑 FinishConfiguration 被拒绝 — 对应 `REQ-011` · 级别: 回归 · 执行者: AI
 
@@ -1483,7 +1497,7 @@ REQ-M2 ↔ TC 对照（手工维护）：
 
 - **全量轮**（全部用例）：首次成稿、每个阶段 gate（引擎域阶段 0、2、3；游戏域 `docs/DESIGN-M2.md` §26 的阶段 1～6b）、跨功能域改动、地基变更（JDK、Gradle、镜像、协议版本、模块拆分、启动入口）。
 - **局部轮**（受影响用例 + 全部冒烟级）：单一需求改动。受影响用例 = 本次改动触及的 `REQ-*` / `REQ-M2-*` 所对应的 TC（M2 侧的对照表在 §2，机械校验查不到它）；无 REQ 变更的改动（纯 bug 修、重构）按触及的功能域圈定：
-  - 引擎域：构建与仓库 → TC-001、TC-002、TC-004、TC-006、TC-021、TC-029，删除与注册表 → TC-008、TC-009、TC-020，命名与合规 → TC-011、TC-028，协议 → TC-014、TC-018、TC-019、TC-026、TC-027、TC-030、TC-031、TC-032、TC-033，卫生 → TC-015、TC-016，门面与配置 → TC-023、TC-025，分层 → TC-024、TC-033。
+  - 引擎域：构建与仓库 → TC-001、TC-002、TC-004、TC-006、TC-021、TC-029，删除与注册表 → TC-008、TC-009、TC-020，命名与合规 → TC-011、TC-028，协议 → TC-014、TC-018、TC-019、TC-026、TC-027、TC-030、TC-031、TC-032、TC-033、TC-034，卫生 → TC-015、TC-016，门面与配置 → TC-023、TC-025，分层 → TC-024、TC-033。
   - 游戏域：模块与门禁 → TC-GAME-001～TC-GAME-006、TC-GAME-059，插件宿主 → TC-GAME-009～TC-GAME-011、TC-GAME-014～TC-GAME-016、TC-GAME-053～TC-GAME-055（TC-GAME-007、TC-GAME-008、TC-GAME-012、TC-GAME-013 已废弃），协议与握手 → TC-GAME-017～TC-GAME-028、TC-GAME-049、TC-GAME-050，世界与对局 → TC-GAME-029、TC-GAME-031、TC-GAME-033～TC-GAME-036、TC-GAME-056、TC-GAME-057（TC-GAME-030、TC-GAME-032 已废弃），单位与寻路 → TC-GAME-052、TC-GAME-039～TC-GAME-042、TC-GAME-051，镜头 → TC-GAME-043、TC-GAME-044，客户端模组 → TC-GAME-038、TC-GAME-045～TC-GAME-047，启动器 → TC-GAME-048、TC-GAME-049、TC-GAME-050、TC-GAME-058。
   - 跨域牵连（必须一起跑）：动了启动入口或就绪日志 → 加 TC-GAME-048、TC-GAME-029、TC-GAME-057、TC-GAME-058 与全部以进程为前置的引擎域用例（启动序列一变，「对局在 bind 之前就绪、tick 在 bind 之后才起」这条口径就要重验）；动了握手、准入回调或探针 → 加 TC-GAME-049、TC-GAME-050 与 TC-004、TC-014、TC-018、TC-019、TC-020、TC-026、TC-027 七条存量 TC；动了 `:protocol` 消息布局 → 加 TC-GAME-017 与客户端侧同一份向量；动了引擎 `Entity` 的位置推进入口 → 加 TC-GAME-051 与 TC-GAME-040。
   - 影响面不确定时升级为全量轮。

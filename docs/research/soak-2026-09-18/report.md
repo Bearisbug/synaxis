@@ -420,8 +420,9 @@ CPU 与速率成正比、tick p99 基本不动 —— **5,000 包/秒这一档�
   `Component.text("Too Many Packets", RED)`，不是 §14 要求的 `translate` 键。发包端读出来是
   `{'<no translate or text key>': 50}`（补上 `text` 解析后是 `{'Too Many Packets': 50}`）。
 - **为什么算缺陷**：§14 写明「原因文本为 Adventure `Component`，其 `translate` 键即稳定错误码」，
-  §15 的限流那一行写明超限断线用 `synaxis:protocol-error`。这条路是**唯一一条**客户端能高频触发、
-  却掉在错误码信封外面的断线，排障时既没有错误码可匹配，也和其他六个原因键对不上。
+  §15 的限流那一行写明超限断线用 `synaxis:protocol-error`。这条路掉在错误码信封外面，排障时既没有
+  错误码可匹配，也和其他六个原因键对不上。**本轮修的是其中一条**——客户端可达的纯文本断线不止这一处，
+  清点见 `SOAK-6`。
 - **修法**：`Player#addPacketToQueue` 队列满时改 `kick(DisconnectReasons.PROTOCOL_ERROR)`。
   设计文档不动——§14 / §15 本来就是这么写的，是实现没追齐。
 - **回归**：`DisconnectReasonsIntegrationTest#aFloodedPacketQueueDisconnectsWithAProtocolError`
@@ -440,6 +441,32 @@ CPU 与速率成正比、tick p99 基本不动 —— **5,000 包/秒这一档�
   一条连接完全可以用 999 包/秒长期跑满，而那已经是 §15 文本的两倍）。
 - **没有在本轮改**：定 500 还是 1,000、要不要真的加一个每秒计数器（热路径上每包一次计数）、
   超限该踢还是该丢，都是设计决定，不是实现补齐。留给验收人。
+
+### SOAK-6（P2，未修）：客户端可达的纯文本断线还有六处
+
+- **怎么发现的**：修 `SOAK-4` 时按「这条断线由谁触发」把全仓的 `kick(...)` 调用点扫了一遍，
+  结论是 `SOAK-4` 只是同形状里最显眼的一条，不是唯一一条。以下每一处都由**客户端的包**触发、
+  原因组件却是 `Component.text(...)`，没有 `translate` 键，因此同样掉在 §14 的错误码信封外面：
+
+  | 位置 | 文本 | 客户端怎么触发 |
+  | --- | --- | --- |
+  | `listener/common/KeepAliveListener.java:11+16` | `Bad Keep Alive packet` | 一个 id 对不上的 `ClientKeepAlivePacket`，比填满 1024 深的队列容易得多 |
+  | `listener/PlayerPositionListener.java:21+61` | `You moved too far away!` | 位置包带 NaN / 无穷，或 \|坐标\| > `Entity.MAX_COORDINATE` |
+  | `listener/PlayerVehicleListener.java:22` | 同上（共用 `PlayerPositionListener.KICK_MESSAGE`） | 载具移动包按同一判据 |
+  | `listener/preplay/LoginListener.java:36+48` | `Malformed username!` | 登录包里的用户名由客户端决定 |
+  | `listener/preplay/LoginListener.java:83` | `Login plugin response is not supported in this auth mode` | 非代理鉴权模式下发一个登录插件应答 |
+  | `entity/Player.java:162+1566` | `Required resource pack was not loaded.` | 服务端下发过必需资源包时，客户端回一个非 `SUCCESSFULLY_LOADED` 的状态 |
+
+  只在特定配置下够得着的另有两处，同样是纯文本：`LoginListener.java:38+100/110` 的
+  `Invalid proxy response!`（Velocity / BungeeGuard 转发模式）与 `HandshakeListener.java:33+152` 的
+  `Invalid connection, please connect through the BungeeCord proxy...`（开了 BungeeCord 转发时）。
+- **另有两处带 `translate` 键但不是 §14 的错误码**，用的是原版键：`Player.java:2362` 的
+  `multiplayer.disconnect.invalid_packet`（`rejectMisusedPacket` 打开时）与 `HandshakeListener.java:38+57`
+  的 `multiplayer.disconnect.transfers_disabled`。它们至少能被客户端本地化，性质与上表那六处不同。
+- **为什么本轮不一并改**：§14 现在只有六个原因键，上表这些断线要么得复用 `synaxis:protocol-error`
+  （`Bad Keep Alive packet`、位置越界属于协议违例，尚可）、要么得新开原因键（资源包、用户名格式、
+  代理握手），那是往 §14 的错误码表里加行，属于设计决定。本轮只把压测直接打到的那一条追齐，
+  其余登记为待办（`docs/DESIGN.md` §28）。
 
 ### 观察（不是缺陷）：5,000 包/秒下最慢的那一个 tick 在 23–47 ms 之间
 

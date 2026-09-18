@@ -61,24 +61,24 @@ public class ClientDrivenLogArchitectureTest {
      * <li>{@link Main}: startup and shutdown, a fixed number of lines per process.</li>
      * <li>{@link PluginHost}: one line per plugin per enable or disable, and a plugin list a
      * client cannot add to.</li>
-     * <li>{@link EventLedger}: one line per ledger event that could not be appended, and the only
-     * ledger event of M2 is {@code plugin_enabled}.</li>
      * <li>{@link AdmissionGate}: one line per connection, on the configuration phase event that
      * happens once per login; the failure branch kicks on the same branch.</li>
-     * <li>{@link PluginSchedulerImpl}: one line per failing task run. A plugin picks that period
-     * when it schedules the task, a client cannot make a task run more often.</li>
+     * <li>{@link PluginSchedulerImpl}: one line per failing task run. A plugin picks both the
+     * period and the number of tasks; nothing a client sends adds a task on its own, and a plugin
+     * that schedules one per inbound packet would be writing the unbounded line itself.</li>
      * </ul>
-     * {@link PluginChannelRouter} and {@link PluginEventsImpl} are deliberately absent: both sit on
-     * an inbound payload path, so both report through a {@link LogBudget} instead, and an
-     * exemption per class would have let a second unbounded line in next to the budgeted one —
-     * blind spot ① of the engine rule ({@code docs/ENGINE.md} §8), which this module does not
-     * inherit.
+     * {@link PluginChannelRouter}, {@link PluginEventsImpl} and {@link EventLedger} are
+     * deliberately absent: all three sit on a path whose rate a client picks — the first two on an
+     * inbound payload, the ledger because {@code PluginAnalytics} hands {@code record} to every
+     * plugin and {@code docs/DESIGN-M2.md} §20 asks for one event per inbound order packet — so all
+     * three report through a {@link LogBudget} instead. An exemption per class would have let a
+     * second unbounded line in next to the budgeted one — blind spot ① of the engine rule
+     * ({@code docs/ENGINE.md} §8), which this module does not inherit.
      */
     private static DescribedPredicate<HasName> boundedReporters() {
         return name(LogBudget.class.getName())
                 .or(name(Main.class.getName()))
                 .or(name(PluginHost.class.getName()))
-                .or(name(EventLedger.class.getName()))
                 .or(name(AdmissionGate.class.getName()))
                 .or(name(PluginSchedulerImpl.class.getName()));
     }

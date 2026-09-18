@@ -19,6 +19,11 @@ import java.util.Map;
  * <p>
  * Each event is appended on its own, without keeping a writer open, because M2 only records
  * process lifetime events. A higher rate event would need buffering first.
+ * <p>
+ * The rate is not the host's to choose, though: {@code PluginAnalytics} hands this method to every
+ * plugin, and §20 asks for one event per inbound order packet, so a directory that cannot be
+ * written to reports through a {@link LogBudget} rather than once per event
+ * ({@code docs/DESIGN.md} §15).
  */
 final class EventLedger {
 
@@ -28,6 +33,12 @@ final class EventLedger {
             DateTimeFormatter.ofPattern("yyyyMMdd").withZone(ZoneId.systemDefault());
 
     private final Path directory;
+
+    /**
+     * The budget of the append failure. One for the whole ledger: an unwritable directory is one
+     * fact about the file, not one per event that ran into it.
+     */
+    private final LogBudget failures = new LogBudget(LOGGER, "events");
 
     EventLedger(Path directory) {
         this.directory = directory;
@@ -53,7 +64,7 @@ final class EventLedger {
             Files.writeString(directory.resolve("events-" + FILE_DATE.format(now) + ".jsonl"), line,
                     StandardCharsets.UTF_8, StandardOpenOption.CREATE, StandardOpenOption.APPEND);
         } catch (IOException e) {
-            LOGGER.warn("Could not append to the event ledger: event={}", event, e);
+            failures.warn(e, "Could not append to the event ledger: event={}", event);
         }
     }
 

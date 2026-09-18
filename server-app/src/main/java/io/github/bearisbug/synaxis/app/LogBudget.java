@@ -16,7 +16,7 @@ import java.util.concurrent.atomic.AtomicLong;
  * set is the one that writes. The count goes into the line that does get written, so the volume
  * stays visible even though it is no longer printed.
  * <p>
- * It is an object here rather than two fields per call site because the host has three of these
+ * It is an object here rather than two fields per call site because the host has four of these
  * and because holding it makes the budget the only way in: the log rule of
  * {@code ClientDrivenLogArchitectureTest} forbids the classes on an inbound payload path from
  * calling {@link Logger} directly at all, so a line added next to a budgeted one goes red instead of
@@ -26,7 +26,8 @@ import java.util.concurrent.atomic.AtomicLong;
  * The granularity is chosen so that this stays bounded by what the host registered rather than by
  * what a client sends — one budget per channel registration and one per event listener, so a
  * plugin that throws on every payload cannot hide another plugin's failure, while everything a
- * client can multiply (channel ids it invents) shares a single budget.
+ * client can multiply (channel ids it invents) shares a single budget. The event ledger has a
+ * single budget for the whole file: one unwritable directory is one fact, whoever was writing.
  */
 final class LogBudget {
 
@@ -59,6 +60,20 @@ final class LogBudget {
         final long occurrences = claim();
         if (occurrences < 0) return;
         logger.warn(format + countPattern(), appended(arguments, occurrences));
+    }
+
+    /**
+     * Writes one WARN with its stack, or counts this occurrence towards the next one.
+     *
+     * @param throwable the throwable to write the stack of, kept last so that SLF4J still takes it
+     *                  as the throwable of the line
+     * @param format    the message pattern, without the count this adds at its end
+     * @param arguments the arguments of that pattern
+     */
+    void warn(Throwable throwable, String format, Object... arguments) {
+        final long occurrences = claim();
+        if (occurrences < 0) return;
+        logger.warn(format + countPattern(), appended(arguments, occurrences, throwable));
     }
 
     /**

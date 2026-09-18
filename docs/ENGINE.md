@@ -248,7 +248,43 @@ python3 tools/pkgdeps.py game-rts/src/main/java   --root-package io.github.beari
 - `ci.yml`：temurin JDK 25，`gradle/actions/setup-gradle` 缓存（非 `main` 只读），跑 `./gradlew check jacocoTestReport`，上传测试报告与 JaCoCo XML（保留 14 天）；PR 上另跑 `diff-cover` 对新增行做 80% 覆盖率门（需要 `fetch-depth: 0`）。本地等价：`./gradlew check jacocoTestReport --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts`，再 `diff-cover $(find . -path '*/build/reports/jacoco/test/jacocoTestReport.xml' | sort) --compare-branch=origin/main --src-roots src/main/java testing/src/main/java protocol/src/main/java plugin-api/src/main/java server-app/src/main/java game-rts/src/main/java --fail-under=80`（`pip install diff-cover`）——覆盖率门读**全部模块**的报告，少一个 `--src-roots` 就会让那个模块的新增行在本地隐形、与 CI 得出不同的绿。
 - `concurrency.yml`：`./gradlew :jcstress-tests:jcstress -Dorg.gradle.isolated-projects=false -Dorg.gradle.configuration-cache=false`，该插件不支持这两项；报告在 `jcstress-tests/build/reports/jcstress/`。本地快速模式把 `jcstress-tests/build.gradle.kts` 的 `mode` 临时设为 `quick`。
 
-`check` 里的三道门：Error Prone（约 96 项，`-Werror`）、`forbiddenImportsCheck`、`testNamingCheck`（测试类名必须与其夹具一致：`@EnvTest` 的类以 `IntegrationTest` 结尾，注册表夹具以 `RegistriesTest` 结尾；该任务是增量任务，只有干净构建目录或 `--rerun-tasks` 才全量扫），外加 `ArchitectureTest`：ArchUnit **严格**分层规则——底层集合 `codec、condition、coordinate、exception、gamedata、monitoring、thread、timer、utils` 不得依赖集合之外的引擎包，唯一豁免是根包 `JvmFlags`（零引擎依赖、只读系统属性）；任何新增反向边直接让构建红，没有冻结存储。同一个 `ArchitectureTest` 还有第二条规则「引擎不得依赖游戏侧、稳定面与宿主」——禁止 `io.github.bearisbug.synaxis.game..`、`io.github.bearisbug.synaxis.plugin..`、`io.github.bearisbug.synaxis.app..` 三个完整前缀（`REQ-M2-002`；写完整前缀是因为 `..plugin..` 会误命中引擎自己的 `network.plugin`）。第三条规则「客户端可驱动的路径不得逐包写日志」见 §8。`python3 tools/pkgdeps.py` 打印顶层包依赖矩阵与「底层出向上层边数」，改动包结构后先跑它，且**按模块分别跑**（每个模块一条命令，见 §3.6）。`:plugin-api` / `:protocol` 已接 ABI 门（`ci.yml` 的 `ABI gate of the stable surface` 步骤跑 `:plugin-api:checkBinaryCompatibility :protocol:checkBinaryCompatibility`）：打出第一个 tag 之前没有 baseline，不传 `-PbaselineJarDir` 时两个任务以 Gradle 的 `SKIPPED` 结束并打印「无 baseline，ABI 门未生效」、构建照常绿，传了而 baseline jar 缺失则失败（引导规则见 `docs/DESIGN-M2.md` §24）；引擎根模块不接这道门。`check` 里**唯一一条挂墙钟的断言**是 `:game-rts` 的 `MatchIntegrationTest#theFullSizeMapGenerates`（512×512 / 1,024 区块的整图生成，`load_ms < 3000`，`docs/DESIGN-M2.md` §15 的预算、§26 阶段 3 的退出判据）。本机实测 0.7～1.2 s，余量三四倍；CI 机器被压满时它是最先红的那条——**先怀疑机器负载，别当功能回归查**。
+`check` 里的三道门：Error Prone（约 96 项，`-Werror`）、`forbiddenImportsCheck`、`testNamingCheck`（测试类名必须与其夹具一致：`@EnvTest` 的类以 `IntegrationTest` 结尾，注册表夹具以 `RegistriesTest` 结尾；该任务是增量任务，只有干净构建目录或 `--rerun-tasks` 才全量扫），外加 `ArchitectureTest`：ArchUnit **严格**分层规则——底层集合 `codec、condition、coordinate、exception、gamedata、monitoring、thread、timer、utils` 不得依赖集合之外的引擎包，唯一豁免是根包 `JvmFlags`（零引擎依赖、只读系统属性）；任何新增反向边直接让构建红，没有冻结存储。同一个 `ArchitectureTest` 还有第二条规则「引擎不得依赖游戏侧、稳定面与宿主」——禁止 `io.github.bearisbug.synaxis.game..`、`io.github.bearisbug.synaxis.plugin..`、`io.github.bearisbug.synaxis.app..` 三个完整前缀（`REQ-M2-002`；写完整前缀是因为 `..plugin..` 会误命中引擎自己的 `network.plugin`）。第三条规则「客户端可驱动的路径不得逐包写日志」见 §8。`python3 tools/pkgdeps.py` 打印顶层包依赖矩阵与「底层出向上层边数」，改动包结构后先跑它，且**按模块分别跑**（每个模块一条命令，见 §3.6）。`:plugin-api` / `:protocol` 已接 ABI 门（`ci.yml` 的 `ABI gate of the stable surface` 步骤跑 `:plugin-api:checkBinaryCompatibility :protocol:checkBinaryCompatibility`）：打出第一个 tag 之前没有 baseline，不传 `-PbaselineJarDir` 时两个任务以 Gradle 的 `SKIPPED` 结束并打印「无 baseline，ABI 门未生效」、构建照常绿，传了而 baseline jar 缺失则失败（引导规则见 `docs/DESIGN-M2.md` §24）；引擎根模块不接这道门。**这道门在有 baseline 之前一次都没真跑过，绿灯不代表它有齿**——打第一个 tag、归档 baseline jar、让 CI 开始传参的完整流程，以及本地不靠 tag 就能跑同一道门的口径，见 §7.1。`check` 里**唯一一条挂墙钟的断言**是 `:game-rts` 的 `MatchIntegrationTest#theFullSizeMapGenerates`（512×512 / 1,024 区块的整图生成，`load_ms < 3000`，`docs/DESIGN-M2.md` §15 的预算、§26 阶段 3 的退出判据）。本机实测 0.7～1.2 s，余量三四倍；CI 机器被压满时它是最先红的那条——**先怀疑机器负载，别当功能回归查**。
+
+
+### 7.1 ABI baseline：打第一个 tag 与让门禁真的跑起来
+
+`checkBinaryCompatibility` 的 baseline 是**我们自己上一个 tag 的 jar**。仓库里那 50 个 tag 全部继承自上游 Minestom，一个都不能当 baseline——拿它们比对等于拿别人的 ABI 约束我们自己。
+
+**CI 的开关只有一个文件**：`gradle/abi-baseline.tag`，内容是一行 tag 名。文件不存在 = 还没有 baseline，`ci.yml` 不传 `-PbaselineJarDir`，两个任务显式 `SKIPPED`、工作流仍绿；文件存在 = CI 先用 `gh release download` 把该 tag 的 `plugin-api.jar` 与 `protocol.jar` 取到 `.abi-baseline/`，再带 `-PbaselineJarDir=.abi-baseline` 跑门禁。传参之后「缺失即失败」自动生效：资产没上传、名字不对或下载失败，都是红，不会退回 `SKIPPED`。
+
+**打第一个 tag 的动作**（验收人做）：
+
+1. 在要打 tag 的提交上构建稳定面的 jar：`./gradlew :plugin-api:jar :protocol:jar --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts`，产物是 `plugin-api/build/libs/plugin-api-<版本>.jar` 与 `protocol/build/libs/protocol-<版本>.jar`。
+2. `git tag -a <tag> -m "<一句话>" && git push origin <tag>`。
+3. 归档 baseline jar：两个 jar **必须重命名成 `plugin-api.jar` 与 `protocol.jar`**（门禁按 `<baselineJarDir>/<模块名>.jar` 找文件，名字不对等于 baseline 缺失），作为该 tag 的 release 资产上传——`gh release create <tag> --title <tag> --notes "<一句话>" plugin-api.jar protocol.jar`（release 已存在就用 `gh release upload <tag> plugin-api.jar protocol.jar`）。
+4. 新建 `gradle/abi-baseline.tag`，写入那个 tag 名并提交。**这一步是 CI 从 `SKIPPED` 切到真检查的那一刻**，合入前先按下面的本地口径自查一遍。
+5. 之后每打一个 tag 重复 1～3，并把 `gradle/abi-baseline.tag` 的内容改成新 tag。
+
+**本地跑同一道门**（不需要 tag，改稳定面签名之前先跑它；`docs/TEST.md` TC-GAME-006 就是这个形态）：
+
+```bash
+./gradlew :plugin-api:jar :protocol:jar --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts
+mkdir -p .abi-baseline
+cp plugin-api/build/libs/plugin-api-*.jar .abi-baseline/plugin-api.jar
+cp protocol/build/libs/protocol-*.jar .abi-baseline/protocol.jar
+# 改代码，然后：
+./gradlew :plugin-api:checkBinaryCompatibility :protocol:checkBinaryCompatibility -PbaselineJarDir=.abi-baseline --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts
+```
+
+`-PbaselineJarDir` 的相对路径按**仓库根**解析，绝对路径照原样用；`.abi-baseline/` 不进仓库（`.gitignore` 的 `*.jar` 已经盖住它），验完删掉。
+
+三种结局，照着认：
+
+- **不传** `-PbaselineJarDir`：任务 `SKIPPED` + 「无 baseline，ABI 门未生效」，构建绿——这是 tag 之前的常态，不是门禁通过。
+- **传了且 baseline jar 在**：任务真的执行（输出里是 `> Task :plugin-api:checkBinaryCompatibility` 而**没有** `SKIPPED`，尾部计数含 `2 executed`）。破坏性变更打 `Public/protected method removed or signature changed: <类>#<方法><描述符>` 并以 `ABI Check failed with N binary compatibility violations.` 让构建红；只加 `default` 方法这类兼容变更不报（给接口加**抽象**方法会报 `New abstract method added to interface`，那本来就是破坏性的）。
+- **传了但 baseline jar 不在**：任务失败，`Baseline JAR does not exist: <路径>`。这是设计要的结果，不是配置出错。
+
+改稳定面签名踩到红灯时，走 `docs/DESIGN-M2.md` §8「演进与弃用」的破坏性变更流程（新方法并行 + 旧方法 `@Deprecated`），不要去放宽门禁。
 
 ---
 

@@ -673,30 +673,33 @@ REQ-M2 ↔ TC 对照（手工维护）：
 
 后置：确认 `main` 未被改动。
 
-#### `TC-GAME-005` 首个 tag 之前 ABI 门显式 SKIPPED — 对应 `REQ-M2-022` · 级别: 回归 · 执行者: AI
+#### `TC-GAME-005` 没有 baseline 与 baseline 缺失时 ABI 门的两种结局 — 对应 `REQ-M2-022` · 级别: 回归 · 执行者: AI
 
-前置：`REQ-M2-022` 已合入，且仓库尚未打出 M2 的第一个 tag。
+前置：`REQ-M2-022` 已合入。**不需要 tag**：本用例验的就是「还没有 baseline」与「baseline 该在却不在」这两半。
 
 | # | 操作 | 预期 |
 | --- | --- | --- |
-| 1 | `git tag --list` | 输出中没有 M2 的 tag（`docs/DESIGN-M2.md` §26 阶段 2 才打） |
+| 1 | `ls gradle/abi-baseline.tag` | 文件不存在（`docs/ENGINE.md` §7.1：它存在才代表已有 baseline，CI 才传 `-PbaselineJarDir`）；若已存在则本步与第 2 步改为「CI 传参」形态，跳到 TC-GAME-006 第 6 步 |
 | 2 | `./gradlew :plugin-api:checkBinaryCompatibility :protocol:checkBinaryCompatibility --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts` | 两个任务结果均为 `SKIPPED`，stdout 含「无 baseline，ABI 门未生效」字样，整体 `BUILD SUCCESSFUL` |
-| 3 | 查看 CI 上同一提交的工作流日志 | 同样含该 SKIPPED 行，工作流结论为 `success`（不静默假绿，构建仍绿） |
+| 3 | `mkdir -p /tmp/abi-empty-baseline`，再 `./gradlew :plugin-api:checkBinaryCompatibility -PbaselineJarDir=/tmp/abi-empty-baseline --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts` | `BUILD FAILED`，报 `Baseline JAR does not exist: /tmp/abi-empty-baseline/plugin-api.jar`——传了参数就不再退回 `SKIPPED`（缺失即失败） |
+| 4 | 查看 CI 上同一提交的工作流日志 | `ABI gate of the stable surface` 步骤含第 2 步那两行 `SKIPPED`，工作流结论为 `success`（不静默假绿，构建仍绿） |
 
-后置：无。打出第一个 tag 之后本用例不再适用，改跑 TC-GAME-006。
+后置：`rmdir /tmp/abi-empty-baseline`。
 
 #### `TC-GAME-006` 稳定面破坏性变更时 ABI 门变红 — 对应 `REQ-M2-022` · 级别: 边缘 · 执行者: AI
 
-前置：M2 第一个 tag 已打出，其 jar 已归档为 `:plugin-api` / `:protocol` 的 ABI baseline；本地有推送权限。
+前置：`REQ-M2-022` 已合入。第 1～5 步**不需要 tag**——baseline 目录按 `docs/ENGINE.md` §7.1 的本地口径手工造；只有第 6 步（CI 侧真红）要等第一个 tag 与 `gradle/abi-baseline.tag` 落地，且需要推送权限。
 
 | # | 操作 | 预期 |
 | --- | --- | --- |
-| 1 | 新建分支 `tmp/abi-probe`，删除 `PluginContext` 的一个公开方法（如 `dataDirectory()`）及其调用点，提交推送并开草稿 PR | PR 创建成功，工作流开始运行 |
-| 2 | 等待工作流完成 | 结论为 `failure`，日志含 `checkBinaryCompatibility` 与被删方法名 |
-| 3 | 本地执行 `./gradlew :plugin-api:checkBinaryCompatibility -PbaselineJarDir=/nonexistent --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts` | 任务**失败**（不是 SKIPPED），输出指明 baseline 缺失（自阶段 3 起缺失即失败） |
-| 4 | 关闭 PR 并删除远端与本地临时分支 | `gh api repos/Bearisbug/synaxis/branches/tmp/abi-probe` 返回 404 |
+| 1 | `./gradlew :plugin-api:jar :protocol:jar --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts`，再 `mkdir -p .abi-baseline && cp plugin-api/build/libs/plugin-api-*.jar .abi-baseline/plugin-api.jar && cp protocol/build/libs/protocol-*.jar .abi-baseline/protocol.jar` | `.abi-baseline/` 下有 `plugin-api.jar` 与 `protocol.jar` 两个文件 |
+| 2 | 不改任何代码，`./gradlew :plugin-api:checkBinaryCompatibility :protocol:checkBinaryCompatibility -PbaselineJarDir=.abi-baseline --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts` | `BUILD SUCCESSFUL`，且两个任务**真的执行**——输出里是 `> Task :plugin-api:checkBinaryCompatibility`（无 `SKIPPED`），尾部计数含 `2 executed` |
+| 3 | 给 `PluginContext` 加一个 `default String probeId() { return "probe"; }` 并重跑第 2 步的命令 | 仍 `BUILD SUCCESSFUL`：兼容变更（只加 `default` 方法）不误报 |
+| 4 | 撤销第 3 步，改为删除 `PluginContext#dataDirectory()` **连同随之失效的 `import java.nio.file.Path;`**（不删这行导入，Error Prone 的 `RemoveUnusedImports` 会先把 `compileJava` 弄红，门禁根本轮不到跑），重跑第 2 步的命令 | `BUILD FAILED`，stdout 点名那个方法：`Public/protected method removed or signature changed: io/github/bearisbug/synaxis/plugin/PluginContext#dataDirectory()Ljava/nio/file/Path;`，并以 `ABI Check failed with 1 binary compatibility violations.` 结束 |
+| 5 | `git checkout -- plugin-api/src/main/java/io/github/bearisbug/synaxis/plugin/PluginContext.java`，`git status --porcelain` | 无输出（临时破坏已撤干净） |
+| 6 | **仅第一个 tag 之后可做**：`gradle/abi-baseline.tag` 已指向该 tag、其 release 有 `plugin-api.jar` 与 `protocol.jar`；新建分支 `tmp/abi-probe`，做第 4 步那次删除（连同调用点）推送并开草稿 PR，等工作流完成，随后关 PR 删分支 | 工作流结论为 `failure`，`ABI gate of the stable surface` 步骤日志含第 4 步那两行；`gh api repos/Bearisbug/synaxis/branches/tmp/abi-probe` 返回 404 |
 
-后置：确认 `main` 未被改动。
+后置：`rm -rf .abi-baseline`；确认 `git status --porcelain` 无输出、`main` 未被改动。
 
 ### M2 · 插件宿主
 

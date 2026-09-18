@@ -242,6 +242,25 @@ class GameChannelIntegrationTest {
     }
 
     @Test
+    void aRefusalTheClientPacesItselfIsNotWrittenToTheLedger(Env env) {
+        final Fixture fixture = start(env);
+
+        // A client may spend a sequence number again as often as it likes...
+        fixture.receive(orderTo(fixture, 5, MINE));
+        fixture.receive(orderTo(fixture, 5, MINE));
+        assertEquals(OrderResultCode.STALE, fixture.channels().lastResult().code());
+
+        // ...and it may overspend its order budget as often as it likes, far under the flood gate
+        for (int seq = 6; seq <= 40; seq++) fixture.receive(orderTo(fixture, seq, MINE));
+        assertEquals(OrderResultCode.RATE_LIMITED, fixture.channels().lastResult().code());
+        assertTrue(fixture.player().isOnline());
+
+        assertEquals(List.of(), fixture.events().names().stream()
+                        .filter("unit_order_rejected"::equals).toList(),
+                "§20 counts neither code, and writing them lets a client decide how much the ledger writes");
+    }
+
+    @Test
     void aSelectionKeepsOnlyTheUnitsTheSenderCommands(Env env) {
         final Fixture fixture = start(env);
 
@@ -351,6 +370,18 @@ class GameChannelIntegrationTest {
         fixture.channel().closed(fixture.player().getPlayerConnection().connectionId());
 
         assertEquals(0, fixture.channel().openSessions(), "the per connection bookkeeping outlived the connection");
+    }
+
+    @Test
+    void aPayloadCannotPutBackTheBookkeepingOfAConnectionThatWentAway(Env env) {
+        final Fixture fixture = start(env);
+        fixture.channel().closed(fixture.player().getPlayerConnection().connectionId());
+
+        fixture.receive(orderTo(fixture, 1, MINE));
+
+        assertEquals(0, fixture.channel().openSessions(),
+                "a payload made an entry that only admission makes and only the disconnect takes back");
+        assertTrue(fixture.channels().sent.isEmpty(), "a connection with no admission behind it was served");
     }
 
     private static GameSession session(Fixture fixture) {

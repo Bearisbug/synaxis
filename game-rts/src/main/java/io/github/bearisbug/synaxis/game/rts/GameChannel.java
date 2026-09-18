@@ -23,6 +23,7 @@ import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.EnumSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.Locale;
@@ -41,8 +42,9 @@ import java.util.function.LongSupplier;
  * <b>Everything that arrives here is chosen by a client</b> — which message, how many of them and
  * how often — so this class is the high risk spot for both of the things §15 bounds. Hence the two
  * rules it is written under: every decision is the server's (the client is told the outcome, it
- * never states one), and every line it writes goes through a {@link LogBudget}, so no payload can
- * ever buy itself a log line.
+ * never states one), and nothing a payload does writes to disk on its own — every log line goes
+ * through a {@link LogBudget}, and the only refusals that reach the event ledger are the ones the
+ * order budget bounds ({@link #LEDGERED_REFUSALS}).
  * <p>
  * <b>Refusing an order and refusing a payload are different things.</b> A gameplay refusal is
  * answered in band with an {@code order_result_code} and costs nothing else (§14); only a payload
@@ -64,6 +66,16 @@ final class GameChannel {
      */
     static final String NAME = "game";
 
+    /**
+     * The refusals §20 keeps: the ones that say something about the server's answer, and the only
+     * ones whose rate the server sets. {@code stale} and {@code rate-limited} are the client's own
+     * retransmits and overspend — it can produce them as fast as it can send, all the way up to the
+     * flood gate — and one ledger event is one append on the tick thread, so writing them would put
+     * both the size of that file and a disk write per payload in the client's hands (§15).
+     */
+    private static final Set<OrderResultCode> LEDGERED_REFUSALS = EnumSet.of(OrderResultCode.NOT_OWNER,
+            OrderResultCode.OUT_OF_BOUNDS, OrderResultCode.BUSY, OrderResultCode.NO_PATH);
+
     private final Match match;
     private final MapPreset preset;
     private final NavGrid navGrid;
@@ -72,9 +84,9 @@ final class GameChannel {
     private final LongSupplier clock;
 
     /**
-     * One entry per connection that has sent anything here, dropped when the connection goes away.
-     * A client cannot make this grow beyond the connections it holds open — §15 caps the heap, and
-     * an unreclaimed entry per payload would put that cap in the client's hands.
+     * One entry per admitted connection, dropped when the connection goes away. A client cannot
+     * make this grow beyond the connections it holds open — §15 caps the heap, and an unreclaimed
+     * entry per payload would put that cap in the client's hands.
      */
     private final Map<UUID, GameSession> sessions = new ConcurrentHashMap<>();
 
@@ -101,8 +113,8 @@ final class GameChannel {
 
     /**
      * Records the team a connection was admitted with, which is the other half of every
-     * {@code owner(unit, sender)} test (§9). Called on the configuration virtual thread, from
-     * inside the admission provider.
+     * {@code owner(unit, sender)} test (§9), and is the one place bookkeeping is made. Called on
+     * the configuration virtual thread, from inside the admission provider.
      *
      * @param connectionId the connection being let in
      * @param team         the team it plays for
@@ -149,7 +161,11 @@ final class GameChannel {
         final PlayerConnection connection = player.getPlayerConnection();
         if (!connection.isOnline()) return;
         final UUID connectionId = connection.connectionId();
-        final GameSession session = sessions.computeIfAbsent(connectionId, _ -> new GameSession());
+        // Admission makes the entry and the disconnect takes it back, so a payload only ever looks
+        // one up: a payload that made one could put back an entry a disconnect has just reclaimed,
+        // and then nothing would ever reclaim it again
+        final GameSession session = sessions.get(connectionId);
+        if (session == null) return;
         final long second = TimeUnit.NANOSECONDS.toSeconds(clock.getAsLong());
 
         // Counted before anything else: a flood is about how many payloads arrive, not about what
@@ -220,8 +236,10 @@ final class GameChannel {
                               C2SMoveOrder order, long second) {
         final OrderResultCode code = judge(session, order, second);
         if (code != OrderResultCode.OK) {
-            analytics.record("unit_order_rejected", attributes(connectionId,
-                    "order_seq", order.orderSeq(), "code", wireName(code)));
+            if (LEDGERED_REFUSALS.contains(code)) {
+                analytics.record("unit_order_rejected", attributes(connectionId,
+                        "order_seq", order.orderSeq(), "code", wireName(code)));
+            }
             answer(player, new S2COrderResult(order.orderSeq(), code,
                     order.targetX(), order.targetY(), order.targetZ()));
             return;

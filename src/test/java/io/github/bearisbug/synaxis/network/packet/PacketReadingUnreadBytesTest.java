@@ -2,6 +2,7 @@ package io.github.bearisbug.synaxis.network.packet;
 
 import io.github.bearisbug.synaxis.network.ConnectionState;
 import io.github.bearisbug.synaxis.network.NetworkBuffer;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Isolated;
 
@@ -38,6 +39,13 @@ public class PacketReadingUnreadBytesTest {
         for (int i = 0; i < flood; i++) readPaddedStatusRequest(buffer);
         assertEquals(flood, PacketReading.unreadBytesPackets.get(),
                 "a line per packet would put the size of the log under the client's control");
+    }
+
+    /** Puts the process wide counters back where they were declared, this test drove them. */
+    @AfterEach
+    public void resetTheReportBudget() {
+        PacketReading.unreadBytesPackets.set(0);
+        PacketReading.lastUnreadBytesReport.set(System.nanoTime() - PacketReading.UNREAD_BYTES_REPORT_INTERVAL);
     }
 
     /** Feeds one status request frame padded with bytes the packet does not read. */

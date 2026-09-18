@@ -54,6 +54,37 @@ python3 tools/loadtest/soak.py run --connections 64 --duration 600 \
 
 从已有 JFR 单独算 tick 分布：`python3 tools/loadtest/soak.py ticks --jfr /tmp/synaxis-soak/steady/soak.jfr`。
 
+## 打满入站包：Java 发包端（组 6 / 组 7）
+
+`soak.py` 的 Python 发包端到 2,880 包/秒就是上限，证不了 §15 的「50 玩家峰值 5,000 包/秒」。
+`tools/loadtest/PacketFlood.java` 用 JDK 的单文件源码启动器直接跑，不进任何 source set、不上模块路径；
+每条连接一个发送线程 + 一个读取线程，按 `nanoTime` 截止时间定速，包 ID 与 `probe.py` 同口径从
+`PacketVanilla.java` 推导。它打印并写进 `flood.json` 的 `achieved_packets_per_second` 是**实际写进
+socket 的包数 ÷ 窗口时长**，登录爬坡不计入窗口。
+
+服务端先按上面起在核心模式，然后在 **worktree 根**执行：
+
+```bash
+# 组 6：50 连接 × 100 包/秒 = 5,000 包/秒，6 分钟
+java tools/loadtest/PacketFlood.java --connections 50 --hz 100 --seconds 360 \
+  --out /tmp/synaxis-flood/nfr
+# 同时采服务端侧（soak.py 只当采样器，自己不发包）
+python3 tools/loadtest/soak.py run --connections 0 --duration 400 --move-hz 0 --echo-hz 0 \
+  --gc-probe-interval 120 --out /tmp/synaxis-flood/nfr-monitor
+
+# 组 7：余量，每档 90 秒
+java tools/loadtest/PacketFlood.java --connections 50 --hz 200 --seconds 90 --out <目录>   # 10,000/s
+java tools/loadtest/PacketFlood.java --connections 50 --hz 400 --seconds 90 --out <目录>   # 20,000/s
+java tools/loadtest/PacketFlood.java --connections 50 --hz 800 --seconds 90 --out <目录>   # 40,000/s
+
+# 负控：越过一条连接的排空能力，看引擎踢人而不是丢包
+java tools/loadtest/PacketFlood.java --connections 50 --hz 1200 --seconds 30 --out <目录>
+```
+
+`--hz` 是**每条连接**的速率，总速率 = `--connections × --hz`。一条连接的上限不是 §15 写的 500 包/秒
+（那条没有实现，见 `report.md` 的 `SOAK-5`），而是 `ServerConfig#playerPacketPerTick`（默认 50，
+20 TPS 即 1,000 包/秒）的排空能力：超过它队列会满，引擎以 `synaxis:protocol-error` 断开。
+
 ## 采集手段
 
 | 指标 | 来源 |

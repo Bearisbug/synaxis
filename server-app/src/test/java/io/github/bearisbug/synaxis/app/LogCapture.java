@@ -28,10 +28,11 @@ final class LogCapture implements AutoCloseable {
     }
 
     List<String> messagesAt(Level level) {
-        return appender.list.stream()
-                .filter(event -> event.getLevel() == level)
-                .map(ILoggingEvent::getFormattedMessage)
-                .toList();
+        return eventsAt(level).stream().map(ILoggingEvent::getFormattedMessage).toList();
+    }
+
+    List<ILoggingEvent> eventsAt(Level level) {
+        return appender.list.stream().filter(event -> event.getLevel() == level).toList();
     }
 
     @Override

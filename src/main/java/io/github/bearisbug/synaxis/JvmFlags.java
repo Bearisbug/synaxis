@@ -43,7 +43,10 @@ public final class JvmFlags {
     /** Largest packet accepted before the connection reaches the configuration state. */
     public static final int MAX_PACKET_SIZE_PRE_AUTH = intProperty("synaxis.max-packet-size-pre-auth", 8_192);
 
-    /** Warns when a packet was not fully read, from the static reading path. */
+    /**
+     * Warns when a packet was not fully read, from the static reading path. A client decides how
+     * often that happens, so the report is throttled to one line per 10 seconds.
+     */
     public static final boolean WARN_UNREAD_BYTES_PACKET = booleanProperty("synaxis.warn-unread-bytes-packet", true);
 
     /**

@@ -1,18 +1,34 @@
 package io.github.bearisbug.synaxis;
 
+import com.tngtech.archunit.base.DescribedPredicate;
+import com.tngtech.archunit.core.domain.JavaCall;
 import com.tngtech.archunit.core.domain.JavaClasses;
+import com.tngtech.archunit.core.domain.properties.HasName;
 import com.tngtech.archunit.core.importer.ClassFileImporter;
 import com.tngtech.archunit.core.importer.ImportOption;
 import com.tngtech.archunit.lang.ArchRule;
+import io.github.bearisbug.synaxis.exception.ExceptionManager;
 import io.github.bearisbug.synaxis.game.rts.GameSideFixture;
+import io.github.bearisbug.synaxis.listener.UnboundedClientDrivenLogFixture;
+import io.github.bearisbug.synaxis.listener.manager.PacketListenerManager;
+import io.github.bearisbug.synaxis.listener.preplay.HandshakeListener;
+import io.github.bearisbug.synaxis.listener.preplay.LoginListener;
 import io.github.bearisbug.synaxis.network.ConnectionManager;
+import io.github.bearisbug.synaxis.network.UnboundedClientDrivenReportFixture;
+import io.github.bearisbug.synaxis.network.packet.PacketReading;
+import io.github.bearisbug.synaxis.network.player.PlayerSocketConnection;
 import io.github.bearisbug.synaxis.network.plugin.LoginPlugin;
+import io.github.bearisbug.synaxis.network.socket.Server;
 import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
 
 import static com.tngtech.archunit.base.DescribedPredicate.not;
+import static com.tngtech.archunit.core.domain.JavaCall.Predicates.target;
+import static com.tngtech.archunit.core.domain.JavaClass.Predicates.assignableTo;
 import static com.tngtech.archunit.core.domain.JavaClass.Predicates.resideInAPackage;
 import static com.tngtech.archunit.core.domain.JavaClass.Predicates.resideInAnyPackage;
 import static com.tngtech.archunit.core.domain.properties.HasName.Predicates.name;
+import static com.tngtech.archunit.core.domain.properties.HasOwner.Predicates.With.owner;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -136,6 +152,118 @@ public class ArchitectureTest {
                 .importClasses(ConnectionManager.class, LoginPlugin.class);
 
         engineDoesNotDependOnTheGameSide().check(synthetic);
+    }
+
+    /**
+     * The packages whose log volume a peer drives: the whole network stack, from the socket loops
+     * through the decoder to the connection, and the listeners that handle a client packet.
+     * Anything written per packet in here is written as fast as a socket can be filled, which is
+     * how {@code SOAK-3} turned one WARN into 84 MiB of log in 15 minutes ({@code docs/DESIGN.md}
+     * §15 and §28, {@code docs/ENGINE.md} §8).
+     * <p>
+     * This is a list of packages, not of client reachable paths, and the two differ: only the 11
+     * packets of {@code PlayerSocketConnection.IMMEDIATE_PROCESS_PACKETS} are dispatched in here,
+     * every other one is queued and handed to its listener by
+     * {@code Player#interpretPacketQueue}, which sits in {@code entity} and is not watched. A line
+     * written per packet over there stays green, see {@code docs/ENGINE.md} §8 blind spot 2.
+     */
+    private static final String[] CLIENT_DRIVEN_LOG_PACKAGES = {
+            "io.github.bearisbug.synaxis.network..",
+            "io.github.bearisbug.synaxis.listener..",
+    };
+
+    /**
+     * A WARN or ERROR line, a stack trace dumped straight to the standard error stream, or an
+     * exception handed to the host: the engine default sink of {@link ExceptionManager} is
+     * {@code Throwable::printStackTrace}, so a report per packet is a stack trace per packet. The
+     * host picks the sink, the caller is what decides how often it is written. INFO is on in the
+     * default configuration too ({@code server-app/src/main/resources/logback.xml} sets the root to
+     * INFO); the rule stops at WARN because no client driven path writes one per packet today, and
+     * a new one has to be caught in review.
+     */
+    private static DescribedPredicate<JavaCall<?>> writesALogLine() {
+        return target(owner(assignableTo(Logger.class))).and(target(name("warn").or(name("error"))))
+                .or(target(owner(assignableTo(Throwable.class))).and(target(name("printStackTrace"))))
+                .or(target(owner(assignableTo(ExceptionManager.class))).and(target(name("handleException"))));
+    }
+
+    /**
+     * Every class of {@link #CLIENT_DRIVEN_LOG_PACKAGES} that may still report, each with the bound
+     * that makes its volume independent of what a client sends:
+     * <ul>
+     * <li>{@link PacketReading}: at most one line per 10 seconds, carrying the count it swallowed.</li>
+     * <li>{@link PlayerSocketConnection}: one line per connection for a protocol error, kicked on
+     * the same branch ({@code rejectMalformedPacket}, on by default), and one report per packet a
+     * listener threw on, which only {@code rejectMisusedPacket} (off by default) bounds — a hole
+     * left open, tracked in {@code docs/DESIGN.md} §28. The same report per packet exists a second
+     * time in {@code Player#interpretPacketQueue} for every PLAY packet, which this rule does not
+     * even see because {@code entity..} is not one of the packages above.</li>
+     * <li>{@link Server}: one report per connection, every read and write loop report is followed
+     * by a disconnect and a break; the accept loop reports once per accept it could not complete.</li>
+     * <li>{@link ConnectionManager}: one line per player, both on the join path and both followed
+     * by dropping that connection.</li>
+     * <li>{@link PacketListenerManager}: one line per registered packet class for the lifetime of
+     * the process, a client cannot add packet classes.</li>
+     * <li>{@link HandshakeListener} and {@link LoginListener}: one line per connection, both kick
+     * on the same branch and {@code PlayerSocketConnection} stops the batch at a disconnect, so the
+     * frames queued behind the kick are never handled.</li>
+     * </ul>
+     * The exemption is per class rather than per call site, which is the blind spot of this rule: a
+     * second, unbounded line added inside one of these seven classes passes. The bound of each one
+     * is stated in its own javadoc, which is where a reviewer has to look.
+     */
+    private static DescribedPredicate<HasName> boundedReporters() {
+        return name(PacketReading.class.getName())
+                .or(name(PlayerSocketConnection.class.getName()))
+                .or(name(Server.class.getName()))
+                .or(name(ConnectionManager.class.getName()))
+                .or(name(PacketListenerManager.class.getName()))
+                .or(name(HandshakeListener.class.getName()))
+                .or(name(LoginListener.class.getName()));
+    }
+
+    private static ArchRule clientDrivenPathsDoNotLogPerPacket() {
+        return noClasses()
+                .that().resideInAnyPackage(CLIENT_DRIVEN_LOG_PACKAGES)
+                .and(not(boundedReporters()))
+                .should().callCodeUnitWhere(writesALogLine())
+                .because("a client decides how often these run, so the size of the log must not follow it");
+    }
+
+    @Test
+    public void clientDrivenPathsDoNotWriteALinePerPacket() {
+        clientDrivenPathsDoNotLogPerPacket().check(engineClasses());
+    }
+
+    /**
+     * The rule is only worth having if it fires, and it cannot be violated from the main sources
+     * without breaking the build, so the offender is a test only class in one of the packages.
+     */
+    @Test
+    public void theClientDrivenLogRuleRejectsALinePerPacket() {
+        JavaClasses synthetic = new ClassFileImporter().importClasses(UnboundedClientDrivenLogFixture.class);
+
+        AssertionError violation = assertThrows(
+                AssertionError.class, () -> clientDrivenPathsDoNotLogPerPacket().check(synthetic));
+
+        assertTrue(violation.getMessage().contains(UnboundedClientDrivenLogFixture.class.getName()),
+                violation.getMessage());
+    }
+
+    /**
+     * The other half of the rule: an exception handed to the host is a stack trace per packet under
+     * the engine default handler, and the fixture sits in {@code network} itself, the package the
+     * rule would miss if it only watched the decoder and the connection.
+     */
+    @Test
+    public void theClientDrivenLogRuleRejectsAReportPerPacket() {
+        JavaClasses synthetic = new ClassFileImporter().importClasses(UnboundedClientDrivenReportFixture.class);
+
+        AssertionError violation = assertThrows(
+                AssertionError.class, () -> clientDrivenPathsDoNotLogPerPacket().check(synthetic));
+
+        assertTrue(violation.getMessage().contains(UnboundedClientDrivenReportFixture.class.getName()),
+                violation.getMessage());
     }
 
     @Test

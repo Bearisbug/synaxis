@@ -50,11 +50,29 @@ jobs:
           path: '**/build/reports/jacoco/test/jacocoTestReport.xml'
           retention-days: 14
 
+      # The baseline is the jar of our own last tag, named in gradle/abi-baseline.tag. No such
+      # file means no tag has been cut yet, and then the gate is not given -PbaselineJarDir and
+      # ends as an explicit SKIPPED. See docs/ENGINE.md §7.1 for how to cut that first tag.
+      - name: Download the ABI baseline
+        if: hashFiles('gradle/abi-baseline.tag') != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p .abi-baseline
+          gh release download "$(tr -d '[:space:]' < gradle/abi-baseline.tag)" \
+            --repo "$GITHUB_REPOSITORY" --dir .abi-baseline --clobber \
+            --pattern plugin-api.jar --pattern protocol.jar
+
       # Only the stable surface takes this gate, the engine does not: whoever takes it is a
-      # stable surface (docs/DESIGN-M2.md §24). Before the first M2 tag there is no baseline, so
-      # both tasks end as an explicit SKIPPED and the step stays green.
+      # stable surface (docs/DESIGN-M2.md §24). Once the tag file exists the parameter is passed
+      # unconditionally, so a baseline that failed to download fails the gate instead of skipping it.
       - name: ABI gate of the stable surface
-        run: ./gradlew :plugin-api:checkBinaryCompatibility :protocol:checkBinaryCompatibility
+        run: |
+          if [ -f gradle/abi-baseline.tag ]; then
+            ./gradlew :plugin-api:checkBinaryCompatibility :protocol:checkBinaryCompatibility -PbaselineJarDir=.abi-baseline
+          else
+            ./gradlew :plugin-api:checkBinaryCompatibility :protocol:checkBinaryCompatibility
+          fi
 
       - name: Set up Python
         if: github.event_name == 'pull_request'

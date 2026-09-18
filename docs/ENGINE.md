@@ -248,4 +248,67 @@ python3 tools/pkgdeps.py game-rts/src/main/java   --root-package io.github.beari
 - `ci.yml`：temurin JDK 25，`gradle/actions/setup-gradle` 缓存（非 `main` 只读），跑 `./gradlew check jacocoTestReport`，上传测试报告与 JaCoCo XML（保留 14 天）；PR 上另跑 `diff-cover` 对新增行做 80% 覆盖率门（需要 `fetch-depth: 0`）。本地等价：`./gradlew check jacocoTestReport --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts`，再 `diff-cover $(find . -path '*/build/reports/jacoco/test/jacocoTestReport.xml' | sort) --compare-branch=origin/main --src-roots src/main/java testing/src/main/java protocol/src/main/java plugin-api/src/main/java server-app/src/main/java game-rts/src/main/java --fail-under=80`（`pip install diff-cover`）——覆盖率门读**全部模块**的报告，少一个 `--src-roots` 就会让那个模块的新增行在本地隐形、与 CI 得出不同的绿。
 - `concurrency.yml`：`./gradlew :jcstress-tests:jcstress -Dorg.gradle.isolated-projects=false -Dorg.gradle.configuration-cache=false`，该插件不支持这两项；报告在 `jcstress-tests/build/reports/jcstress/`。本地快速模式把 `jcstress-tests/build.gradle.kts` 的 `mode` 临时设为 `quick`。
 
-`check` 里的三道门：Error Prone（约 96 项，`-Werror`）、`forbiddenImportsCheck`、`testNamingCheck`（测试类名必须与其夹具一致：`@EnvTest` 的类以 `IntegrationTest` 结尾，注册表夹具以 `RegistriesTest` 结尾；该任务是增量任务，只有干净构建目录或 `--rerun-tasks` 才全量扫），外加 `ArchitectureTest`：ArchUnit **严格**分层规则——底层集合 `codec、condition、coordinate、exception、gamedata、monitoring、thread、timer、utils` 不得依赖集合之外的引擎包，唯一豁免是根包 `JvmFlags`（零引擎依赖、只读系统属性）；任何新增反向边直接让构建红，没有冻结存储。同一个 `ArchitectureTest` 还有第二条规则「引擎不得依赖游戏侧、稳定面与宿主」——禁止 `io.github.bearisbug.synaxis.game..`、`io.github.bearisbug.synaxis.plugin..`、`io.github.bearisbug.synaxis.app..` 三个完整前缀（`REQ-M2-002`；写完整前缀是因为 `..plugin..` 会误命中引擎自己的 `network.plugin`）。`python3 tools/pkgdeps.py` 打印顶层包依赖矩阵与「底层出向上层边数」，改动包结构后先跑它，且**按模块分别跑**（每个模块一条命令，见 §3.6）。`:plugin-api` / `:protocol` 已接 ABI 门（`ci.yml` 的 `ABI gate of the stable surface` 步骤跑 `:plugin-api:checkBinaryCompatibility :protocol:checkBinaryCompatibility`）：打出第一个 tag 之前没有 baseline，不传 `-PbaselineJarDir` 时两个任务以 Gradle 的 `SKIPPED` 结束并打印「无 baseline，ABI 门未生效」、构建照常绿，传了而 baseline jar 缺失则失败（引导规则见 `docs/DESIGN-M2.md` §24）；引擎根模块不接这道门。`check` 里**唯一一条挂墙钟的断言**是 `:game-rts` 的 `MatchIntegrationTest#theFullSizeMapGenerates`（512×512 / 1,024 区块的整图生成，`load_ms < 3000`，`docs/DESIGN-M2.md` §15 的预算、§26 阶段 3 的退出判据）。本机实测 0.7～1.2 s，余量三四倍；CI 机器被压满时它是最先红的那条——**先怀疑机器负载，别当功能回归查**。
+`check` 里的三道门：Error Prone（约 96 项，`-Werror`）、`forbiddenImportsCheck`、`testNamingCheck`（测试类名必须与其夹具一致：`@EnvTest` 的类以 `IntegrationTest` 结尾，注册表夹具以 `RegistriesTest` 结尾；该任务是增量任务，只有干净构建目录或 `--rerun-tasks` 才全量扫），外加 `ArchitectureTest`：ArchUnit **严格**分层规则——底层集合 `codec、condition、coordinate、exception、gamedata、monitoring、thread、timer、utils` 不得依赖集合之外的引擎包，唯一豁免是根包 `JvmFlags`（零引擎依赖、只读系统属性）；任何新增反向边直接让构建红，没有冻结存储。同一个 `ArchitectureTest` 还有第二条规则「引擎不得依赖游戏侧、稳定面与宿主」——禁止 `io.github.bearisbug.synaxis.game..`、`io.github.bearisbug.synaxis.plugin..`、`io.github.bearisbug.synaxis.app..` 三个完整前缀（`REQ-M2-002`；写完整前缀是因为 `..plugin..` 会误命中引擎自己的 `network.plugin`）。第三条规则「客户端可驱动的路径不得逐包写日志」见 §8。`python3 tools/pkgdeps.py` 打印顶层包依赖矩阵与「底层出向上层边数」，改动包结构后先跑它，且**按模块分别跑**（每个模块一条命令，见 §3.6）。`:plugin-api` / `:protocol` 已接 ABI 门（`ci.yml` 的 `ABI gate of the stable surface` 步骤跑 `:plugin-api:checkBinaryCompatibility :protocol:checkBinaryCompatibility`）：打出第一个 tag 之前没有 baseline，不传 `-PbaselineJarDir` 时两个任务以 Gradle 的 `SKIPPED` 结束并打印「无 baseline，ABI 门未生效」、构建照常绿，传了而 baseline jar 缺失则失败（引导规则见 `docs/DESIGN-M2.md` §24）；引擎根模块不接这道门。**这道门在有 baseline 之前一次都没真跑过，绿灯不代表它有齿**——打第一个 tag、归档 baseline jar、让 CI 开始传参的完整流程，以及本地不靠 tag 就能跑同一道门的口径，见 §7.1。`check` 里**唯一一条挂墙钟的断言**是 `:game-rts` 的 `MatchIntegrationTest#theFullSizeMapGenerates`（512×512 / 1,024 区块的整图生成，`load_ms < 3000`，`docs/DESIGN-M2.md` §15 的预算、§26 阶段 3 的退出判据）。本机实测 0.7～1.2 s，余量三四倍；CI 机器被压满时它是最先红的那条——**先怀疑机器负载，别当功能回归查**。
+
+
+### 7.1 ABI baseline：打第一个 tag 与让门禁真的跑起来
+
+`checkBinaryCompatibility` 的 baseline 是**我们自己上一个 tag 的 jar**。仓库里那 50 个 tag 全部继承自上游 Minestom，一个都不能当 baseline——拿它们比对等于拿别人的 ABI 约束我们自己。
+
+**CI 的开关只有一个文件**：`gradle/abi-baseline.tag`，内容是一行 tag 名。文件不存在 = 还没有 baseline，`ci.yml` 不传 `-PbaselineJarDir`，两个任务显式 `SKIPPED`、工作流仍绿；文件存在 = CI 先用 `gh release download` 把该 tag 的 `plugin-api.jar` 与 `protocol.jar` 取到 `.abi-baseline/`，再带 `-PbaselineJarDir=.abi-baseline` 跑门禁。传参之后「缺失即失败」自动生效：资产没上传、名字不对或下载失败，都是红，不会退回 `SKIPPED`。
+
+**打第一个 tag 的动作**（验收人做）：
+
+1. 在要打 tag 的提交上构建稳定面的 jar：`./gradlew :plugin-api:jar :protocol:jar --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts`，产物是 `plugin-api/build/libs/plugin-api-<版本>.jar` 与 `protocol/build/libs/protocol-<版本>.jar`。
+2. `git tag -a <tag> -m "<一句话>" && git push origin <tag>`。
+3. 归档 baseline jar：两个 jar **必须重命名成 `plugin-api.jar` 与 `protocol.jar`**（门禁按 `<baselineJarDir>/<模块名>.jar` 找文件，名字不对等于 baseline 缺失），作为该 tag 的 release 资产上传——`gh release create <tag> --title <tag> --notes "<一句话>" plugin-api.jar protocol.jar`（release 已存在就用 `gh release upload <tag> plugin-api.jar protocol.jar`）。
+4. 新建 `gradle/abi-baseline.tag`，写入那个 tag 名并提交。**这一步是 CI 从 `SKIPPED` 切到真检查的那一刻**，合入前先按下面的本地口径自查一遍。
+5. 之后每打一个 tag 重复 1～3，并把 `gradle/abi-baseline.tag` 的内容改成新 tag。
+
+**本地跑同一道门**（不需要 tag，改稳定面签名之前先跑它；`docs/TEST.md` TC-GAME-006 就是这个形态）：
+
+```bash
+./gradlew :plugin-api:jar :protocol:jar --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts
+mkdir -p .abi-baseline
+cp plugin-api/build/libs/plugin-api-*.jar .abi-baseline/plugin-api.jar
+cp protocol/build/libs/protocol-*.jar .abi-baseline/protocol.jar
+# 改代码，然后：
+./gradlew :plugin-api:checkBinaryCompatibility :protocol:checkBinaryCompatibility -PbaselineJarDir=.abi-baseline --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts
+```
+
+`-PbaselineJarDir` 的相对路径按**仓库根**解析，绝对路径照原样用；`.abi-baseline/` 不进仓库（`.gitignore` 的 `*.jar` 已经盖住它），验完删掉。
+
+三种结局，照着认：
+
+- **不传** `-PbaselineJarDir`：任务 `SKIPPED` + 「无 baseline，ABI 门未生效」，构建绿——这是 tag 之前的常态，不是门禁通过。
+- **传了且 baseline jar 在**：任务真的执行（输出里是 `> Task :plugin-api:checkBinaryCompatibility` 而**没有** `SKIPPED`，尾部计数含 `2 executed`）。破坏性变更打 `Public/protected method removed or signature changed: <类>#<方法><描述符>` 并以 `ABI Check failed with N binary compatibility violations.` 让构建红；只加 `default` 方法这类兼容变更不报（给接口加**抽象**方法会报 `New abstract method added to interface`，那本来就是破坏性的）。
+- **传了但 baseline jar 不在**：任务失败，`Baseline JAR does not exist: <路径>`。这是设计要的结果，不是配置出错。
+
+改稳定面签名踩到红灯时，走 `docs/DESIGN-M2.md` §8「演进与弃用」的破坏性变更流程（新方法并行 + 旧方法 `@Deprecated`），不要去放宽门禁。
+
+---
+
+## 8. 写日志的纪律：日志量不由客户端决定
+
+2026-09-18 的压测实测：一条「每个客户端包写一行」的 WARN 在 15 分钟里写了 662,803 行 / 84 MiB。这不是日志级别的问题，是**这条日志写多少次由对端说了算**。所以加日志之前先问一句「这一行的频率由谁决定」：
+
+- **由启动、注册表数据、配置或停机决定** —— 进程生命周期内次数固定，随便写。
+- **由连接数决定** —— 每连接至多一行，且必须与一次断开在同一分支上（`PlayerSocketConnection` 的协议错误、`HandshakeListener` 的 BungeeGuard 拒绝、`LoginListener` 的登录插件应答就是这个形状）。**「断开」要真的把活停下来才算数**：一次读上来的是一整批包，`PlayerSocketConnection#processPackets` 每派发一个包前先看连接还在不在，不在就 `break`，否则排在这次 kick 后面的几千个帧照样一个个交给监听器，「每连接一行」就变成「每包一行」（实测一批 4,000 帧，见 `docs/TEST.md` TC-035）。
+- **由客户端发了什么、发了多少决定** —— 必须有界，三选一：
+  1. **按时间限流**，样板是 `EntityTrackerImpl#reportUnregisteredMove` 与 `PacketReading#reportUnreadBytes`：一个 `AtomicLong` 记区间内累计次数、一个 `AtomicLong` 记上次输出时刻，CAS 抢到的那一次才写，并把累计次数带进那一行（**量被压掉了，但量还看得见**）。计数器只在「本来就要写日志」的那条分支上碰，解码热路径不为它付钱。宿主侧同一形状打包成了 `server-app` 的 `LogBudget`（同样是 10 秒 + 行内计数），带栈的报告也走它：一个区间里只有第一条留栈，其余次数进计数、由下一次触发写出的那一行报出来（洪水停在区间中途时积压的计数就等下一次触发），**预算按宿主注册过什么切**（每个频道注册一份、每个事件监听器一份），客户端能相乘的那一维（它自己编的 channel id）共用一份，事件台账那处整份文件共用一份。
+  2. **按类型去重**，样板是 `PacketListenerManager` 的 `missingListenerWarnings`：客户端加不了包类型，所以一种一次就封顶了。
+  3. **紧跟一次断开**，见上一档。
+
+这条纪律有门禁，**每个模块一份**：引擎的 `ArchitectureTest#clientDrivenPathsDoNotWriteALinePerPacket` 禁止 `network..` 与 `listener..` 两个包树、宿主的 `ClientDrivenLogArchitectureTest#hostPathsDoNotWriteALinePerPacket`（在 `:server-app` 自己的测试源集里）禁止 `io.github.bearisbug.synaxis.app..`，两条规则的禁止目标相同：`Logger#warn` / `Logger#error` / `Throwable#printStackTrace` / `ExceptionManager#handleException`。**一条规则守不了两个模块**：ArchUnit 扫的是自己模块 classpath 上的类，引擎的测试源集里没有宿主的类。**`handleException` 也在禁止之列**，因为引擎默认的处理器就是 `Throwable::printStackTrace`：宿主决定这份报告落到哪里，调用点决定它写多少次。豁免名单是上面点名的七个类（`PacketReading`、`PlayerSocketConnection`、`Server`、`ConnectionManager`、`PacketListenerManager`、`HandshakeListener`、`LoginListener`），每一条都在 `boundedReporters()` 的 Javadoc 里写明自己的上界。**规则守的是这两棵树里的类，不是「客户端可达的路径」**——差在哪见下面的盲点 2。新加一个类要写 WARN 就会红——**红了先想怎么让它有界，别直接进豁免名单**。`theClientDrivenLogRuleRejectsALinePerPacket` 与 `theClientDrivenLogRuleRejectsAReportPerPacket` 用测试源集里的两个 fixture 反证这条规则真的会红（一个写 WARN，一个把异常交给宿主）。宿主那条的豁免名单是 `LogBudget`、`Main`、`PluginHost`、`AdmissionGate`、`PluginSchedulerImpl`，而 `PluginChannelRouter`、`PluginEventsImpl` 与 `EventLedger` **不在**名单里——它们经 `LogBudget` 写，所以盲点 1 只对这三个类不成立；**那五个豁免类照样是按类豁免的**，往它们里面再加一行客户端可驱动的 WARN / ERROR 门禁仍然是绿的（实测：在 `AdmissionGate` 里挂一个 PLAY 期事件的监听器写一行 `LOGGER.warn`，`hostPathsDoNotWriteALinePerPacket` 不红）。它的反证 fixture 是 `UnboundedHostLogFixture`。台账那处容易被算成「每次插件启用一行」而放进豁免名单：`PluginAnalytics` 把 `record` 交给了每个插件，`DESIGN-M2` §20 又要求逐条指令记事件，所以它的频率是客户端定的——**判频率看的是谁能触发它，不是宿主自己调了几次**。
+
+盲点七个，写在这里免得被门禁的绿骗了：
+
+1. **两条规则的豁免都是按类不按调用点** —— 引擎那七个类、宿主那五个类里再加一条无界的行都不会红；只有宿主那三个经 `LogBudget` 写、因而不进名单的类躲开了这一条（见上）。
+2. **包清单只到 `network..` / `listener..`，PLAY 态的包不在这两棵树里派发** —— `PlayerSocketConnection` 只内联派发 `IMMEDIATE_PROCESS_PACKETS` 那 11 个握手 / 登录 / 配置期的包，其余一律进 `Player#addPacketToQueue`，由 `entity` 包的 `Player#interpretPacketQueue` 每 tick 取 `playerPacketPerTick` 个（默认 50）交给监听器。`entity..` 不在清单里，实测在 `Player#addPacketToQueue`（每个客户端包调用一次）插一行 `LOGGER.warn`，`clientDrivenPathsDoNotWriteALinePerPacket` 仍然是绿的。**在 `Player`、`Entity` 里加逐包日志，门禁看不见，靠评审。**
+3. **`command` 包不在清单里** —— `CommandParserImpl` 执行命令抛异常时每次一行带栈的 ERROR。
+4. **`:game-rts` 没有门禁** —— 游戏侧的两处日志（`Match` 的地图生成失败与对局结束）都由对局生命周期决定，不由客户端驱动，但那是今天的事实、不是规则保证的；游戏侧要加逐包日志，得自己在 `:game-rts` 的测试源集里加一份同形规则。
+5. **「监听器抛了异常」每包一次 `handleException` 有两处，都敞着** —— `PlayerSocketConnection#processPackets`（豁免名单里的那一个）与 `Player#interpretPacketQueue`（包清单外的那一个，管的是主路径），两处代码相同，都只有 `rejectMisusedPacket`（默认关）才会在同一分支断开。
+6. **两条规则都只认 `Logger#warn` / `Logger#error` 这两个方法名** —— SLF4J 的流式写法 `LOGGER.atWarn().log(…)` 绕得过去：`atWarn` 名字不匹配，`log` 的宿主类型是 `LoggingEventBuilder` 而不是 `Logger`（实测：在不在豁免名单里的 `PluginChannelRouter#route` 插一行 `LOGGER.atWarn().log(…)`，宿主门禁仍然是绿的）。
+7. **宿主那条规则的 import 与包谓词都只到 `io.github.bearisbug.synaxis.app..`** —— 今天 `:server-app` 的主源码全在这棵树里，所以没有实际漏扫；将来在该模块下新开一个平级顶层包（例如 `io.github.bearisbug.synaxis.hosting`），既不会被 import 也不在谓词里，会静默失明。
+
+七条都登记在 `docs/DESIGN.md` §28。

@@ -68,6 +68,7 @@ import io.github.bearisbug.synaxis.message.Messenger;
 import io.github.bearisbug.synaxis.monitoring.EventsJFR;
 import io.github.bearisbug.synaxis.network.ConnectionManager;
 import io.github.bearisbug.synaxis.network.ConnectionState;
+import io.github.bearisbug.synaxis.network.DisconnectReasons;
 import io.github.bearisbug.synaxis.network.PlayerProvider;
 import io.github.bearisbug.synaxis.network.packet.client.ClientPacket;
 import io.github.bearisbug.synaxis.network.packet.server.SendablePacket;
@@ -2332,12 +2333,17 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
      * It is used internally to add all received packet from the client.
      * Could be used to "simulate" a received packet, but to use at your own risk.
      *
+     * <p>A client that fills the queue is disconnected with {@link DisconnectReasons#PROTOCOL_ERROR},
+     * the error code {@code docs/DESIGN.md} §15 gives the per connection limiter: this queue is
+     * what really bounds how fast one connection may send, because it only drains
+     * {@link ServerConfig#playerPacketPerTick()} packets a tick.</p>
+     *
      * @param packet the packet to add in the queue
      */
     public void addPacketToQueue(ClientPacket packet) {
         final boolean success = packets.offer(packet);
         if (!success) {
-            kick(Component.text("Too Many Packets", NamedTextColor.RED));
+            kick(DisconnectReasons.PROTOCOL_ERROR);
         }
     }
 

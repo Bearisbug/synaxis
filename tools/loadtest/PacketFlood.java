@@ -531,7 +531,10 @@ public final class PacketFlood {
                         }
                     }
                 }
-            } catch (IOException error) {
+            } catch (IOException | RuntimeException error) {
+                // A decoding failure (a truncated frame, a bad inflate) is a RuntimeException. Letting
+                // it kill this thread would leave the connection counted as alive and still sending,
+                // which is the one direction a measuring tool must never be wrong in.
                 close(error.getClass().getSimpleName() + ": " + error.getMessage());
             }
         }
@@ -656,7 +659,7 @@ public final class PacketFlood {
                 try {
                     connection.login();
                     metrics.connected.incrementAndGet();
-                } catch (IOException error) {
+                } catch (IOException | RuntimeException error) {
                     System.out.println("login failed " + connection.username + ": " + error.getMessage());
                     connection.closed = true;
                 } finally {

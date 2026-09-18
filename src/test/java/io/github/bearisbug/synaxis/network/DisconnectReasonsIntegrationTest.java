@@ -10,6 +10,7 @@ import io.github.bearisbug.synaxis.instance.Instance;
 import io.github.bearisbug.synaxis.network.packet.PacketReading;
 import io.github.bearisbug.synaxis.network.packet.PacketVanilla;
 import io.github.bearisbug.synaxis.network.packet.client.handshake.ClientHandshakePacket;
+import io.github.bearisbug.synaxis.network.packet.client.play.ClientTeleportConfirmPacket;
 import io.github.bearisbug.synaxis.network.packet.server.ServerPacket;
 import io.github.bearisbug.synaxis.network.packet.server.common.DisconnectPacket;
 import io.github.bearisbug.synaxis.network.packet.server.login.LoginDisconnectPacket;
@@ -118,6 +119,26 @@ public class DisconnectReasonsIntegrationTest {
     public void aDuplicateUuidIsRejectedWithItsOwnReason() {
         // The rejection itself is driven end to end by DuplicateUuidLoginIntegrationTest
         assertEquals("synaxis:duplicate-login", DisconnectReasons.DUPLICATE_LOGIN.key());
+    }
+
+    @Test
+    public void aFloodedPacketQueueDisconnectsWithAProtocolError(Env env) {
+        // §15 bounds a single connection by how fast it sends; what the engine really bounds is
+        // the per player packet queue, and overflowing it has to stay inside the error code
+        // envelope of §14 like every other reason does.
+        final var connection = env.createConnection();
+        final var disconnects = connection.trackIncoming(DisconnectPacket.class);
+        final Player player = connection.connect(env.createFlatInstance(), new Pos(0, 42, 0));
+
+        // The queue is an array queue, so its real capacity is the configured size rounded up to
+        // a power of two; offer until it refuses rather than assuming where that is.
+        final int queueSize = env.process().config().playerPacketQueueSize();
+        for (int index = 0; index < queueSize * 2 && player.isOnline(); index++)
+            player.addPacketToQueue(new ClientTeleportConfirmPacket(index));
+
+        assertFalse(player.isOnline(), "a player that filled its packet queue must be disconnected");
+        disconnects.assertSingle(disconnect ->
+                assertEquals("synaxis:protocol-error", translateKey(disconnect.message())));
     }
 
     @Test

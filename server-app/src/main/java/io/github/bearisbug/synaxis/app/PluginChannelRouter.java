@@ -17,8 +17,12 @@ import java.util.regex.Pattern;
  * (REQ-M2-006).
  * <p>
  * Channel ids are always {@code <plugin_id>:<name>}, so the namespace of a payload already names
- * the plugin that has to handle it. A payload on a channel nobody registered is dropped with one
+ * the plugin that has to handle it. A payload on a channel nobody registered is dropped with a
  * warning instead of an error: an unknown channel is a client side fact, not a server fault.
+ * <p>
+ * Which is also why both lines of this class are written through a {@link LogBudget}: a client
+ * picks the channel of every payload it sends and how many it sends, so neither the drop nor a
+ * handler failure may be written once per payload ({@code docs/DESIGN.md} §15).
  */
 final class PluginChannelRouter {
 
@@ -33,7 +37,17 @@ final class PluginChannelRouter {
 
     private final Map<String, Registration> registrations = new ConcurrentHashMap<>();
 
-    private record Registration(String pluginId, PayloadHandler handler) {
+    /**
+     * The budget of the drop line. A client invents the channel ids, so this one is shared by every
+     * unregistered channel there is: a budget per channel id would be a budget per payload.
+     */
+    private final LogBudget drops = new LogBudget(LOGGER, "payloads");
+
+    /**
+     * @param failures the budget of this handler's failures, one per registration so that a plugin
+     *                 failing on every payload cannot silence another plugin's first stack
+     */
+    private record Registration(String pluginId, PayloadHandler handler, LogBudget failures) {
     }
 
     /**
@@ -86,7 +100,8 @@ final class PluginChannelRouter {
      */
     String register(String pluginId, String name, PayloadHandler handler) {
         final String channelId = channelId(pluginId, name);
-        final Registration previous = registrations.putIfAbsent(channelId, new Registration(pluginId, handler));
+        final Registration previous = registrations.putIfAbsent(channelId,
+                new Registration(pluginId, handler, new LogBudget(LOGGER, "failures")));
         if (previous != null)
             throw new IllegalStateException("Channel " + channelId + " is already registered by plugin_id="
                     + previous.pluginId());
@@ -107,15 +122,16 @@ final class PluginChannelRouter {
         final String channel = event.getIdentifier();
         final Registration registration = registrations.get(channel);
         if (registration == null) {
-            LOGGER.warn("Dropped a payload on an unregistered channel: connection_id={} channel={} bytes={}",
+            drops.warn("Dropped a payload on an unregistered channel: connection_id={} channel={} bytes={}",
                     player.getPlayerConnection().connectionId(), channel, event.getMessage().length);
             return;
         }
         try {
             registration.handler().handle(player, event.getMessage());
         } catch (Throwable throwable) {
-            LOGGER.error("Plugin channel handler failed: plugin_id={} channel={} connection_id={}",
-                    registration.pluginId(), channel, player.getPlayerConnection().connectionId(), throwable);
+            registration.failures().error(throwable,
+                    "Plugin channel handler failed: plugin_id={} channel={} connection_id={}",
+                    registration.pluginId(), channel, player.getPlayerConnection().connectionId());
         }
     }
 }

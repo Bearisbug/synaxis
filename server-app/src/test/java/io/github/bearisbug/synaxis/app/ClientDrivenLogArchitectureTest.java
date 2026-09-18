@@ -45,6 +45,10 @@ public class ClientDrivenLogArchitectureTest {
      * Same targets as the engine rule: a WARN or ERROR line, a stack trace on the standard error
      * stream, or an exception handed to {@link ExceptionManager}, whose default sink is
      * {@code Throwable::printStackTrace}.
+     * <p>
+     * It matches the call by name on {@link Logger}, so the fluent form
+     * {@code LOGGER.atWarn().log(…)} goes through unseen — the same gap as the engine rule has,
+     * registered in {@code docs/ENGINE.md} §8.
      */
     private static DescribedPredicate<JavaCall<?>> writesALogLine() {
         return target(owner(assignableTo(Logger.class))).and(target(name("warn").or(name("error"))))
@@ -73,7 +77,13 @@ public class ClientDrivenLogArchitectureTest {
      * plugin and {@code docs/DESIGN-M2.md} §20 asks for one event per inbound order packet — so all
      * three report through a {@link LogBudget} instead. An exemption per class would have let a
      * second unbounded line in next to the budgeted one — blind spot ① of the engine rule
-     * ({@code docs/ENGINE.md} §8), which this module does not inherit.
+     * ({@code docs/ENGINE.md} §8), which those three therefore escape.
+     * <p>
+     * The five above do not: this list is by class, exactly like the engine's, so a second line
+     * whose rate a client picks, added inside one of them, stays green. Measured, not assumed — a
+     * listener on a PLAY phase event writing a plain {@code LOGGER.warn}, put inside
+     * {@link AdmissionGate}, does not turn this rule red. Registered as a remaining blind spot in
+     * {@code docs/DESIGN.md} §28.
      */
     private static DescribedPredicate<HasName> boundedReporters() {
         return name(LogBudget.class.getName())
@@ -111,6 +121,12 @@ public class ClientDrivenLogArchitectureTest {
                 violation.getMessage());
     }
 
+    /**
+     * Both this import and {@link #HOST_PACKAGE} stop at the {@code app} package tree, which today
+     * holds every main source file of this module. A second top level package added under
+     * {@code :server-app} would be neither imported nor matched, and would go unwatched without
+     * anything going red — registered as a remaining blind spot in {@code docs/DESIGN.md} §28.
+     */
     private static JavaClasses hostClasses() {
         return new ClassFileImporter()
                 .withImportOption(new ImportOption.DoNotIncludeTests())

@@ -293,19 +293,20 @@ cp protocol/build/libs/protocol-*.jar .abi-baseline/protocol.jar
 2026-09-18 的压测实测：一条「每个客户端包写一行」的 WARN 在 15 分钟里写了 662,803 行 / 84 MiB。这不是日志级别的问题，是**这条日志写多少次由对端说了算**。所以加日志之前先问一句「这一行的频率由谁决定」：
 
 - **由启动、注册表数据、配置或停机决定** —— 进程生命周期内次数固定，随便写。
-- **由连接数决定** —— 每连接至多一行，且必须与一次断开在同一分支上（`PlayerSocketConnection` 的协议错误、`HandshakeListener` 的 BungeeGuard 拒绝、`LoginListener` 的登录插件应答就是这个形状）。**「断开」要真的把活停下来才算数**：一次读上来的是一整批包，`PlayerSocketConnection#processPackets` 每派发一个包前先看连接还在不在，不在就 `break`，否则排在这次 kick 后面的几千个帧照样一个个交给监听器，「每连接一行」就变成「每包一行」（实测一批 4,000 帧，见 `docs/TEST.md` TC-033）。
+- **由连接数决定** —— 每连接至多一行，且必须与一次断开在同一分支上（`PlayerSocketConnection` 的协议错误、`HandshakeListener` 的 BungeeGuard 拒绝、`LoginListener` 的登录插件应答就是这个形状）。**「断开」要真的把活停下来才算数**：一次读上来的是一整批包，`PlayerSocketConnection#processPackets` 每派发一个包前先看连接还在不在，不在就 `break`，否则排在这次 kick 后面的几千个帧照样一个个交给监听器，「每连接一行」就变成「每包一行」（实测一批 4,000 帧，见 `docs/TEST.md` TC-035）。
 - **由客户端发了什么、发了多少决定** —— 必须有界，三选一：
-  1. **按时间限流**，样板是 `EntityTrackerImpl#reportUnregisteredMove` 与 `PacketReading#reportUnreadBytes`：一个 `AtomicLong` 记区间内累计次数、一个 `AtomicLong` 记上次输出时刻，CAS 抢到的那一次才写，并把累计次数带进那一行（**量被压掉了，但量还看得见**）。计数器只在「本来就要写日志」的那条分支上碰，解码热路径不为它付钱。
+  1. **按时间限流**，样板是 `EntityTrackerImpl#reportUnregisteredMove` 与 `PacketReading#reportUnreadBytes`：一个 `AtomicLong` 记区间内累计次数、一个 `AtomicLong` 记上次输出时刻，CAS 抢到的那一次才写，并把累计次数带进那一行（**量被压掉了，但量还看得见**）。计数器只在「本来就要写日志」的那条分支上碰，解码热路径不为它付钱。宿主侧同一形状打包成了 `server-app` 的 `LogBudget`（同样是 10 秒 + 行内计数），带栈的报告也走它：一个区间里只有第一条留栈，其余次数进计数，**预算按宿主注册过什么切**（每个频道注册一份、每个事件监听器一份），客户端能相乘的那一维（它自己编的 channel id）共用一份。
   2. **按类型去重**，样板是 `PacketListenerManager` 的 `missingListenerWarnings`：客户端加不了包类型，所以一种一次就封顶了。
   3. **紧跟一次断开**，见上一档。
 
-这条纪律有门禁：`ArchitectureTest#clientDrivenPathsDoNotWriteALinePerPacket` 禁止 `network..` 与 `listener..` 两个包树调用 `Logger#warn` / `Logger#error` / `Throwable#printStackTrace` / `ExceptionManager#handleException`。**`handleException` 也在禁止之列**，因为引擎默认的处理器就是 `Throwable::printStackTrace`：宿主决定这份报告落到哪里，调用点决定它写多少次。豁免名单是上面点名的七个类（`PacketReading`、`PlayerSocketConnection`、`Server`、`ConnectionManager`、`PacketListenerManager`、`HandshakeListener`、`LoginListener`），每一条都在 `boundedReporters()` 的 Javadoc 里写明自己的上界。**规则守的是这两棵树里的类，不是「客户端可达的路径」**——差在哪见下面的盲点 2。新加一个类要写 WARN 就会红——**红了先想怎么让它有界，别直接进豁免名单**。`theClientDrivenLogRuleRejectsALinePerPacket` 与 `theClientDrivenLogRuleRejectsAReportPerPacket` 用测试源集里的两个 fixture 反证这条规则真的会红（一个写 WARN，一个把异常交给宿主）。
+这条纪律有门禁，**每个模块一份**：引擎的 `ArchitectureTest#clientDrivenPathsDoNotWriteALinePerPacket` 禁止 `network..` 与 `listener..` 两个包树、宿主的 `ClientDrivenLogArchitectureTest#hostPathsDoNotWriteALinePerPacket`（在 `:server-app` 自己的测试源集里）禁止 `io.github.bearisbug.synaxis.app..`，两条规则的禁止目标相同：`Logger#warn` / `Logger#error` / `Throwable#printStackTrace` / `ExceptionManager#handleException`。**一条规则守不了两个模块**：ArchUnit 扫的是自己模块 classpath 上的类，引擎的测试源集里没有宿主的类。**`handleException` 也在禁止之列**，因为引擎默认的处理器就是 `Throwable::printStackTrace`：宿主决定这份报告落到哪里，调用点决定它写多少次。豁免名单是上面点名的七个类（`PacketReading`、`PlayerSocketConnection`、`Server`、`ConnectionManager`、`PacketListenerManager`、`HandshakeListener`、`LoginListener`），每一条都在 `boundedReporters()` 的 Javadoc 里写明自己的上界。**规则守的是这两棵树里的类，不是「客户端可达的路径」**——差在哪见下面的盲点 2。新加一个类要写 WARN 就会红——**红了先想怎么让它有界，别直接进豁免名单**。`theClientDrivenLogRuleRejectsALinePerPacket` 与 `theClientDrivenLogRuleRejectsAReportPerPacket` 用测试源集里的两个 fixture 反证这条规则真的会红（一个写 WARN，一个把异常交给宿主）。宿主那条的豁免名单是 `LogBudget`、`Main`、`PluginHost`、`EventLedger`、`AdmissionGate`、`PluginSchedulerImpl`，而 `PluginChannelRouter` 与 `PluginEventsImpl` **不在**名单里——它们经 `LogBudget` 写，所以盲点 1 在宿主这边不成立；它的反证 fixture 是 `UnboundedHostLogFixture`。
 
-盲点四个，写在这里免得被门禁的绿骗了：
+盲点五个，写在这里免得被门禁的绿骗了：
 
-1. **豁免是按类不按调用点** —— 上面七个类里再加一条无界的行不会红。
+1. **引擎那条规则的豁免是按类不按调用点** —— 上面七个类里再加一条无界的行不会红（宿主那条不吃这一条，见上）。
 2. **包清单只到 `network..` / `listener..`，PLAY 态的包不在这两棵树里派发** —— `PlayerSocketConnection` 只内联派发 `IMMEDIATE_PROCESS_PACKETS` 那 11 个握手 / 登录 / 配置期的包，其余一律进 `Player#addPacketToQueue`，由 `entity` 包的 `Player#interpretPacketQueue` 每 tick 取 `playerPacketPerTick` 个（默认 50）交给监听器。`entity..` 不在清单里，实测在 `Player#addPacketToQueue`（每个客户端包调用一次）插一行 `LOGGER.warn`，`clientDrivenPathsDoNotWriteALinePerPacket` 仍然是绿的。**在 `Player`、`Entity` 里加逐包日志，门禁看不见，靠评审。**
 3. **`command` 包不在清单里** —— `CommandParserImpl` 执行命令抛异常时每次一行带栈的 ERROR。
-4. **「监听器抛了异常」每包一次 `handleException` 有两处，都敞着** —— `PlayerSocketConnection#processPackets`（豁免名单里的那一个）与 `Player#interpretPacketQueue`（包清单外的那一个，管的是主路径），两处代码相同，都只有 `rejectMisusedPacket`（默认关）才会在同一分支断开。
+4. **`:game-rts` 没有门禁** —— 游戏侧的两处日志（`Match` 的地图生成失败与对局结束）都由对局生命周期决定，不由客户端驱动，但那是今天的事实、不是规则保证的；游戏侧要加逐包日志，得自己在 `:game-rts` 的测试源集里加一份同形规则。
+5. **「监听器抛了异常」每包一次 `handleException` 有两处，都敞着** —— `PlayerSocketConnection#processPackets`（豁免名单里的那一个）与 `Player#interpretPacketQueue`（包清单外的那一个，管的是主路径），两处代码相同，都只有 `rejectMisusedPacket`（默认关）才会在同一分支断开。
 
-后三条登记在 `docs/DESIGN.md` §28。
+后四条登记在 `docs/DESIGN.md` §28。

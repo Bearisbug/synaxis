@@ -14,6 +14,7 @@
 
 | 日期 | 改动 | 作者 |
 | --- | --- | --- |
+| 2026-09-18 | 跟进 `docs/DESIGN.md` v0.30（客户端可驱动日志的清点范围纠正为全部模块，宿主侧三处逐包日志按同形状限流）：**废弃 `TC-033`、新增 `TC-035`** —— 原用例第 1、2 步只碰引擎根模块，而同形状的日志在 `:server-app` 里也有、门禁也另起了一条（`ClientDrivenLogArchitectureTest`），覆盖面实质变更故换 ID；新用例在原两步之后补上宿主那半边的三条测试与「在 `PluginChannelRouter#route` 插一行无节制 WARN 会红」的反证。§5 回归映射的引擎域「协议」与「分层」两行跟着换 ID。既有用例语义未变 | Bearisbug |
 | 2026-09-18 | 跟进 `docs/DESIGN.md` v0.27（客户端可驱动的日志一律有界）：**新增 `TC-033`**（尾部带多余字节的包刷一万次只写一行日志；一批 1,000 个必失败的登录插件应答只换来一次上报，kick 之后的帧不再被处理；ArchUnit 门禁拦住新加的逐包日志与逐包上报），§5 回归映射的引擎域「协议」与「分层」两行各加上它。既有用例语义未变 | Bearisbug |
 | 2026-09-18 | 跟进 `docs/DESIGN.md` v0.26（`SOAK-3`：离线模式下同名玩家的重复 UUID）：**新增 `TC-032`**（同 UUID 的第二条连接被拒于登录、追踪器里恰好一个玩家、「移动未注册实体」的日志有界），§5 回归映射的引擎域「协议」行加上它。既有用例语义未变 | Bearisbug |
 | 2026-09-18 | §3 环境段登记入站包发包端 `tools/loadtest/PacketFlood.java`（长跑不对应任何 TC，服务端须先在跑；它闭掉了 `docs/DESIGN.md` §15 的「5,000 包/秒」那条——实测 5,014.9 包/秒 / 6 分钟 / 0 掉线，详见 `docs/research/soak-2026-09-18/report.md` 组 6）。同轮跟进 `SOAK-4` 的修复：**新增 `TC-034`**（填满包队列的断线带 `synaxis:protocol-error`，负控用该发包端打 50 × 1,200 包/秒），§5 回归映射的引擎域「协议」行加上它。既有用例正文未动 | Bearisbug |
@@ -433,6 +434,8 @@ REQ-M2 ↔ TC 对照（手工维护）：
 
 #### `TC-033` 客户端可驱动的日志有界，且门禁拦得住新加的 — 对应 `REQ-011` · 级别: 回归 · 执行者: AI
 
+**已废弃，被 `TC-035` 取代**（范围只到引擎根模块：第 1 步的三条测试与第 2 步的反证都只碰 `ArchitectureTest`，而同形状的逐包日志在宿主 `:server-app` 里也有，门禁也另起了一条。判据的覆盖面实质变更，故换 ID）。
+
 前置：`docs/DESIGN.md` §15 的「日志量」一行与 §28 的清点结论已合入；工作副本干净。
 
 | # | 操作 | 预期 |
@@ -440,6 +443,21 @@ REQ-M2 ↔ TC 对照（手工维护）：
 | 1 | `./gradlew :test --tests '*PacketReadingUnreadBytesTest*' --tests '*PreAuthConnectionIntegrationTest*' --tests '*ArchitectureTest*' --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts` | `BUILD SUCCESSFUL`；`PacketReadingUnreadBytesTest` 里 10,001 个尾部带多余字节的包只换来一行日志（第一次输出后累计计数归零，之后 10,000 次全部积压在计数器里）；`PreAuthConnectionIntegrationTest#aKickStopsTheRestOfTheBatchFromBeingHandled` 里一次读上来的 1,000 个必失败的登录插件应答只换来 1 次上报（kick 之后这一批剩下的帧不再派发）；`ArchitectureTest` 七条全过，含 `clientDrivenPathsDoNotWriteALinePerPacket` 与反证它会红的 `theClientDrivenLogRuleRejectsALinePerPacket`、`theClientDrivenLogRuleRejectsAReportPerPacket` |
 | 2 | 在 `src/main/java/io/github/bearisbug/synaxis/listener/PlayerPositionListener.java` 里加两行 `import org.slf4j.Logger;` / `import org.slf4j.LoggerFactory;`、类内加一行 `private static final Logger LOGGER = LoggerFactory.getLogger(PlayerPositionListener.class);`，再在 `playerPacketListener` 方法体首行插一句 `LOGGER.warn("x");`，重跑第 1 步的命令（**不要写成全限定名** `org.slf4j.LoggerFactory.getLogger("t").warn("x")`：Error Prone 的 `UnnecessarilyFullyQualified` 在 `-Werror` 下会让 `:compileJava` 先失败，门禁根本跑不到） | `clientDrivenPathsDoNotWriteALinePerPacket` 失败，消息里点名 `PlayerPositionListener.playerPacketListener(...) calls method <org.slf4j.Logger.warn(java.lang.String)>` |
 | 3 | `git checkout -- src/main/java/io/github/bearisbug/synaxis/listener/PlayerPositionListener.java`，重跑第 1 步的命令 | 回到 `BUILD SUCCESSFUL` |
+
+后置：确认 `git status` 干净，没有残留 java 进程。
+
+#### `TC-035` 客户端可驱动的日志有界（引擎与宿主两个模块），且两边的门禁都拦得住新加的 — 对应 `REQ-011` · 级别: 回归 · 执行者: AI
+
+前置：`docs/DESIGN.md` §15 的「日志量」一行与 §28 的两条清点结论已合入；工作副本干净。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | `./gradlew :test --tests '*PacketReadingUnreadBytesTest*' --tests '*PreAuthConnectionIntegrationTest*' --tests '*ArchitectureTest*' --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts` | `BUILD SUCCESSFUL`；`PacketReadingUnreadBytesTest` 里 10,001 个尾部带多余字节的包只换来一行日志（第一次输出后累计计数归零，之后 10,000 次全部积压在计数器里）；`PreAuthConnectionIntegrationTest#aKickStopsTheRestOfTheBatchFromBeingHandled` 里一次读上来的 1,000 个必失败的登录插件应答只换来 1 次上报（kick 之后这一批剩下的帧不再派发）；`ArchitectureTest` 七条全过，含 `clientDrivenPathsDoNotWriteALinePerPacket` 与反证它会红的 `theClientDrivenLogRuleRejectsALinePerPacket`、`theClientDrivenLogRuleRejectsAReportPerPacket` |
+| 2 | `./gradlew :server-app:test --tests '*PluginPayloadLogBudgetIntegrationTest*' --tests '*LogBudgetTest*' --tests '*ClientDrivenLogArchitectureTest*' --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts` | `BUILD SUCCESSFUL`；`PluginPayloadLogBudgetIntegrationTest` 三条各用 10,000 次触发只换来 1 行（未注册频道的丢弃行、频道 handler 抛异常、插件事件监听器抛异常）；`LogBudgetTest` 两条——被压掉的 10,000 次由下一个区间的那一行报出来（`(10001 payloads since the last report)`）、写出去的那一条仍带着栈；`ClientDrivenLogArchitectureTest` 两条，含 `hostPathsDoNotWriteALinePerPacket` 与反证它会红的 `theHostLogRuleRejectsALinePerPayload` |
+| 3 | 在 `src/main/java/io/github/bearisbug/synaxis/listener/PlayerPositionListener.java` 里加两行 `import org.slf4j.Logger;` / `import org.slf4j.LoggerFactory;`、类内加一行 `private static final Logger LOGGER = LoggerFactory.getLogger(PlayerPositionListener.class);`，再在 `playerPacketListener` 方法体首行插一句 `LOGGER.warn("x");`，重跑第 1 步的命令（**不要写成全限定名** `org.slf4j.LoggerFactory.getLogger("t").warn("x")`：Error Prone 的 `UnnecessarilyFullyQualified` 在 `-Werror` 下会让 `:compileJava` 先失败，门禁根本跑不到） | `clientDrivenPathsDoNotWriteALinePerPacket` 失败，消息里点名 `PlayerPositionListener.playerPacketListener(...) calls method <org.slf4j.Logger.warn(java.lang.String)>` |
+| 4 | `git checkout -- src/main/java/io/github/bearisbug/synaxis/listener/PlayerPositionListener.java`，重跑第 1 步的命令 | 回到 `BUILD SUCCESSFUL` |
+| 5 | 在 `server-app/src/main/java/io/github/bearisbug/synaxis/app/PluginChannelRouter.java` 的 `route` 方法体首行插一句 `LOGGER.warn("A payload arrived on {}", event.getIdentifier());`（该类已有 `LOGGER` 字段，不必加 import），重跑第 2 步的命令 | `hostPathsDoNotWriteALinePerPacket` 失败，消息里点名 `Method <io.github.bearisbug.synaxis.app.PluginChannelRouter.route(io.github.bearisbug.synaxis.event.player.PlayerPluginMessageEvent)> calls method <org.slf4j.Logger.warn(java.lang.String, java.lang.Object)> in (PluginChannelRouter.java:117)`——**插在已经有限流日志的那个类、那个方法里也会红**，宿主的豁免是给整类没有客户端驱动路径的类留的，`PluginChannelRouter` 不在其中 |
+| 6 | `git checkout -- server-app/src/main/java/io/github/bearisbug/synaxis/app/PluginChannelRouter.java`，重跑第 2 步的命令 | 回到 `BUILD SUCCESSFUL` |
 
 后置：确认 `git status` 干净，没有残留 java 进程。
 
@@ -1497,7 +1515,7 @@ REQ-M2 ↔ TC 对照（手工维护）：
 
 - **全量轮**（全部用例）：首次成稿、每个阶段 gate（引擎域阶段 0、2、3；游戏域 `docs/DESIGN-M2.md` §26 的阶段 1～6b）、跨功能域改动、地基变更（JDK、Gradle、镜像、协议版本、模块拆分、启动入口）。
 - **局部轮**（受影响用例 + 全部冒烟级）：单一需求改动。受影响用例 = 本次改动触及的 `REQ-*` / `REQ-M2-*` 所对应的 TC（M2 侧的对照表在 §2，机械校验查不到它）；无 REQ 变更的改动（纯 bug 修、重构）按触及的功能域圈定：
-  - 引擎域：构建与仓库 → TC-001、TC-002、TC-004、TC-006、TC-021、TC-029，删除与注册表 → TC-008、TC-009、TC-020，命名与合规 → TC-011、TC-028，协议 → TC-014、TC-018、TC-019、TC-026、TC-027、TC-030、TC-031、TC-032、TC-033、TC-034，卫生 → TC-015、TC-016，门面与配置 → TC-023、TC-025，分层 → TC-024、TC-033。
+  - 引擎域：构建与仓库 → TC-001、TC-002、TC-004、TC-006、TC-021、TC-029，删除与注册表 → TC-008、TC-009、TC-020，命名与合规 → TC-011、TC-028，协议 → TC-014、TC-018、TC-019、TC-026、TC-027、TC-030、TC-031、TC-032、TC-034、TC-035，卫生 → TC-015、TC-016，门面与配置 → TC-023、TC-025，分层 → TC-024、TC-035。
   - 游戏域：模块与门禁 → TC-GAME-001～TC-GAME-006、TC-GAME-059，插件宿主 → TC-GAME-009～TC-GAME-011、TC-GAME-014～TC-GAME-016、TC-GAME-053～TC-GAME-055（TC-GAME-007、TC-GAME-008、TC-GAME-012、TC-GAME-013 已废弃），协议与握手 → TC-GAME-017～TC-GAME-028、TC-GAME-049、TC-GAME-050，世界与对局 → TC-GAME-029、TC-GAME-031、TC-GAME-033～TC-GAME-036、TC-GAME-056、TC-GAME-057（TC-GAME-030、TC-GAME-032 已废弃），单位与寻路 → TC-GAME-052、TC-GAME-039～TC-GAME-042、TC-GAME-051，镜头 → TC-GAME-043、TC-GAME-044，客户端模组 → TC-GAME-038、TC-GAME-045～TC-GAME-047，启动器 → TC-GAME-048、TC-GAME-049、TC-GAME-050、TC-GAME-058。
   - 跨域牵连（必须一起跑）：动了启动入口或就绪日志 → 加 TC-GAME-048、TC-GAME-029、TC-GAME-057、TC-GAME-058 与全部以进程为前置的引擎域用例（启动序列一变，「对局在 bind 之前就绪、tick 在 bind 之后才起」这条口径就要重验）；动了握手、准入回调或探针 → 加 TC-GAME-049、TC-GAME-050 与 TC-004、TC-014、TC-018、TC-019、TC-020、TC-026、TC-027 七条存量 TC；动了 `:protocol` 消息布局 → 加 TC-GAME-017 与客户端侧同一份向量；动了引擎 `Entity` 的位置推进入口 → 加 TC-GAME-051 与 TC-GAME-040。
   - 影响面不确定时升级为全量轮。

@@ -288,7 +288,8 @@ CPU 与速率成正比、tick p99 基本不动 —— **5,000 包/秒这一档�
   同样不检查在线状态，被踢的玩家要被滞留 5 分钟」。而 `fixes.md` 把 F02 记成 fixed，修的只是
   `packFuture` 那一半——`ConnectionManager#removePlayer`（:318-325）只调
   `player.releaseResourcePackWait()`，全仓没有任何地方 complete 或 cancel `knownPacksFuture`
-  （`grep -rn knownPacksFuture src/` 共 7 处，完成点只有客户端应答走的
+  （修复前的树上 7 处，口径 `git grep -n knownPacksFuture 862d9e7037^ -- src/ | wc -l`——`862d9e7037`
+  就是本条的修复提交，所以这个数只在它的父提交上成立，修复后的树是 9 处；完成点当时只有客户端应答走的
   `PlayerConnection.java:370`）。所以 SOAK-1 是 F02 的**残余**，本轮只是把它的代价量到了。
 - 现象：`doConfiguration` 在一条**虚拟线程**里阻塞等待 known-packs 应答。客户端若在此之前就
   终止（premature-finish 触发协议错误、或登录后直接静默 / 断开），服务端向客户端发出
@@ -468,8 +469,11 @@ CPU 与速率成正比、tick p99 基本不动 —— **5,000 包/秒这一档�
 
 ### SOAK-6（P2，未修）：§14 的错误码信封外，客户端可达的纯文本断线有七处
 
-- **怎么数的（口径写死，不是「扫了一遍」）**：`grep -rn 'kick(' src/main/java` 在本轮 HEAD 上得到
-  31 行，其中 1 行是 `AsyncPlayerConfigurationEvent` 的 Javadoc 引用，剩下 **30 个调用点**。逐个判
+- **怎么数的（口径写死，照抄就能复跑）**：`grep -rn 'kick(' src/main/java | wc -l` 在本轮 HEAD 上得到
+  **34 行** = 30 个调用点 + 3 行方法声明（`Player#kick(Component)`、`Player#kick(String)`、
+  `PlayerConnection#kick(Component)`）+ 1 行 `AsyncPlayerConfigurationEvent` 的 Javadoc `{@link}`。
+  一条命令直接数出那 **30 个调用点**：
+  `grep -rn 'kick(' src/main/java | grep -vE 'public void kick\(|\{@link' | wc -l`。逐个判
   两件事——「谁能触发它」与「原因组件有没有 `translate` 键」——落进下面六档，分档计数
   7 + 2 + 5 + 3 + 2 + 11 = 30，没有留「等等」这种收尾。`SOAK-4` 修的那一条现在在第 ⑥ 档。
 

@@ -182,6 +182,11 @@ F59 在 notes 里点过名（「离线模式下 `LoginListener` 直接采信客�
   从 `PacketVanilla.java` 的注册表顺序推导。**它报的是自己实际写进 socket 的包数**（窗口内计数 ÷ 窗口时长），
   不是「打算发多少」；登录爬坡不计入窗口。
 - 服务端采样仍用 `soak.py run --connections 0`（只采样、不发包），JFR 事件 `synaxis.ServerTickTime`。
+- **本组没有走到的两条入站解码路径**（与下面「都挤在 spawn 周围」同性质的未覆盖面）：全程离线模式，
+  `EncryptionRequestPacket` 一次没发，解密那一段零覆盖；压缩虽然协商了（`ServerProcessImpl` 默认
+  阈值 256 字节，`transitionLoginToConfig` 据此发 `SetCompressionPacket`），但位置包体只有 34 字节
+  （每帧 36 字节 = 1 字节长度 varint + 1 字节值为 0 的 data-length varint + 34 字节包体），低于阈值
+  就按未压缩发，于是引擎的 inflate 分支同样一次没走到。
 - 机器与上面几组相同：Apple Silicon，12 核，24 GiB，JDK 25.0.4.1，端口 25565，loopback。
 
 一条命令（服务端先按本目录 `README.md` 起在核心模式）：
@@ -204,17 +209,35 @@ java tools/loadtest/PacketFlood.java --connections 50 --hz 100 --seconds 360 --o
 
 实发略高于 5,000 是因为 KeepAlive 应答、TeleportConfirm 与 echo 也是入站包，一并计数。
 
-### 服务端侧（同一窗口）
+### 服务端侧（按发包窗口裁齐）
 
-| §15 目标 | 本组实测 | 结论 |
+窗口口径先说死，否则服务端侧的数字很容易混进空闲时段：发包端的窗口是 **360.0 s**（登录爬坡不计入），
+而服务端采样进程是 `soak.py run --connections 0 --duration 400`，比发包窗口长、且 JFR 由它起停。
+下表因此按同一条命令原样复跑一次（同机、同参数，`achieved 5014.9 packets/s over 360.0 s`，与上表
+一致到 0.1 包/秒，窗口内包数 1,805,402 对 1,805,500），并把 tick 与日志两行裁到发包窗口内：tick 用
+`jfr print --events synaxis.ServerTickTime` 的事件时间戳裁到 `[窗口起, 窗口止)`，正好 7,200 个
+（360 s × 20 TPS，不多不少）；日志取窗口两端 `server.log` 的字节数之差。采样进程整段的数字另附在
+表下，两个口径不混用。
+
+| §15 目标 | 本组实测（发包窗口内） | 结论 |
 | --- | --- | --- |
-| 入站包 50 玩家峰值 5,000 包/秒无丢包 | 5,014.9 包/秒持续 6 分钟，0 掉线、0 kick、0 丢包 | **达标** |
-| 单 tick P99 < 50 ms | 8,311 个 tick：p50 0.417 / p99 1.945 / max 46.8 ms，**超 50 ms 的 0 个** | 达标 |
+| 入站包 50 玩家峰值 5,000 包/秒无丢包 | 5,014.9 包/秒持续 360.0 s（1,805,402 个入站包），0 掉线、0 kick、0 丢包 | **达标** |
+| 单 tick P99 < 50 ms | 7,200 个 tick：p50 0.402 / p99 1.631 ms（余量 30 倍）；max 114.4 ms 是窗口的**第一个** tick，见下 | 达标 |
 | 登录延迟 < 2 s | 50 条连接 0.1 s 内全部进 play | 达标 |
-| 堆 < 2 GB | 存活集（强制 Full GC 后）32.2 → 31.8 → 32.0 MiB，断开后 28.5 MiB；RSS 全程 128–215 MiB | 达标 |
-| 日志量不由客户端决定 | 3,714,340 个入站包只让服务端日志长了 36,184 字节，**0 WARN、0 ERROR、0 堆栈行** | 达标 |
+| 堆 < 2 GB | 存活集（强制 Full GC 后）31.6 → 31.7 → 31.8 MiB，断开后 28.3 MiB；RSS 采样区间 109–295 MiB | 达标 |
+| 日志量不由客户端决定 | 1,805,402 个入站包让服务端日志长了 **0 字节**（13,388 → 13,388），0 WARN、0 ERROR、0 堆栈行 | 达标 |
 
-线程 66 恒定（断开后 54），FD 负载中 109、断开后回落 59，均无单调增长。
+- **那个 114.4 ms 的 tick 是进场，不是负载**：它在 14:49:01.099，即 50 条连接同一秒进 play 之后的
+  第一个 tick（区块生成 + 首批区块下发），紧跟的一个 44.0 ms，**此后整段最大 17.6 ms**。与组 1 记的
+  「第 0 分钟一次性 ≤ 68 ms」是同一件事，量级随进场并发度走（组 1 是渐进登录，本组 50 条同时进）。
+  §15 的判据是 P99，而 P99 离 50 ms 预算有 30 倍余量。
+- **日志那一行的 0 字节不等于「一条都不写」**：每条连接固定两行，只是都落在窗口外——窗口开始前
+  30 ms 的 50 行 `Login success`（9,300 字节）与窗口结束时的 50 行 `Connection closed`（8,441 字节）。
+  这正是 §15 那条约束要的形状：日志量由连接数决定，与包速率无关。
+- **采样进程整段**（416 s，含发包窗口前后约 56 s 的空闲 tick）：8,309 个 tick，p50 0.392 /
+  p99 1.570 / max 114.4 ms。比窗口内略好，因为空闲 tick 把分位数拉低了——这就是上表不用它的原因。
+
+线程负载中 66、断开后 54，FD 负载中 109、断开后回落 59，均无单调增长。
 
 「无丢包」的判据是三条同时成立，不是只看发包端：① 发包端的实际速率与目标只差 0.3%，服务端一旦
 停止读取，TCP 背压会让写阻塞、速率立刻塌下去，没有塌；② 引擎对超量入站的处置是**踢人不是丢包**
@@ -223,9 +246,10 @@ java tools/loadtest/PacketFlood.java --connections 50 --hz 100 --seconds 360 --o
 
 ### 复核：不带采样进程的一轮
 
-上面那组的 max 46.8 ms 落在负载窗口内，为排除是 harness 自己每 10 秒 `fork` 一次 `lsof` / `ps` / `jstat`
-造成的，另跑一轮只开 JFR、不跑 `soak.py` 采样的 330 秒：5,015.1 包/秒、0 掉线，6,695 个 tick
-p50 0.436 / p99 2.272 / max 34.7 ms、超 50 ms 的 0 个。结论不变，max 的量级也相当。
+上面那组进场之后最慢的一个 tick 是 17.6 ms，落在负载窗口内，为排除它是 harness 自己每 10 秒
+`fork` 一次 `lsof` / `ps` / `jstat` 造成的，另跑一轮只开 JFR、不跑 `soak.py` 采样的 330 秒：
+5,015.1 包/秒、0 掉线，6,695 个 tick p50 0.436 / p99 2.272 / max 34.7 ms、超 50 ms 的 0 个。
+结论不变，max 的量级也相当。
 
 ## 组 7：余量与拐点（同一发包端）
 
@@ -442,11 +466,15 @@ CPU 与速率成正比、tick p99 基本不动 —— **5,000 包/秒这一档�
 - **没有在本轮改**：定 500 还是 1,000、要不要真的加一个每秒计数器（热路径上每包一次计数）、
   超限该踢还是该丢，都是设计决定，不是实现补齐。留给验收人。
 
-### SOAK-6（P2，未修）：客户端可达的纯文本断线还有六处
+### SOAK-6（P2，未修）：§14 的错误码信封外，客户端可达的纯文本断线有七处
 
-- **怎么发现的**：修 `SOAK-4` 时按「这条断线由谁触发」把全仓的 `kick(...)` 调用点扫了一遍，
-  结论是 `SOAK-4` 只是同形状里最显眼的一条，不是唯一一条。以下每一处都由**客户端的包**触发、
-  原因组件却是 `Component.text(...)`，没有 `translate` 键，因此同样掉在 §14 的错误码信封外面：
+- **怎么数的（口径写死，不是「扫了一遍」）**：`grep -rn 'kick(' src/main/java` 在本轮 HEAD 上得到
+  31 行，其中 1 行是 `AsyncPlayerConfigurationEvent` 的 Javadoc 引用，剩下 **30 个调用点**。逐个判
+  两件事——「谁能触发它」与「原因组件有没有 `translate` 键」——落进下面六档，分档计数
+  7 + 2 + 5 + 3 + 2 + 11 = 30，没有留「等等」这种收尾。`SOAK-4` 修的那一条现在在第 ⑥ 档。
+
+- **① 默认配置下客户端的包就能触发、原因却是 `Component.text(...)` 的七处**，全部掉在 §14 的
+  错误码信封外面：
 
   | 位置 | 文本 | 客户端怎么触发 |
   | --- | --- | --- |
@@ -454,24 +482,52 @@ CPU 与速率成正比、tick p99 基本不动 —— **5,000 包/秒这一档�
   | `listener/PlayerPositionListener.java:21+61` | `You moved too far away!` | 位置包带 NaN / 无穷，或 \|坐标\| > `Entity.MAX_COORDINATE` |
   | `listener/PlayerVehicleListener.java:22` | 同上（共用 `PlayerPositionListener.KICK_MESSAGE`） | 载具移动包按同一判据 |
   | `listener/preplay/LoginListener.java:36+48` | `Malformed username!` | 登录包里的用户名由客户端决定 |
-  | `listener/preplay/LoginListener.java:83` | `Login plugin response is not supported in this auth mode` | 非代理鉴权模式下发一个登录插件应答 |
+  | `listener/preplay/LoginListener.java:35+124` | `Error during login!` | 发一个服务端从没请求过的 `ClientLoginPluginResponsePacket`：`LoginPluginMessageProcessor#handleResponse` 对陌生 messageId 直接抛。仓库自己的 `PreAuthConnectionIntegrationTest#aKickStopsTheRestOfTheBatchFromBeingHandled`（TC-033）每轮都在走这条路 |
+  | `network/ConnectionManager.java:59+484` | `Timeout` | 停止应答 KeepAlive 超过 `keepAliveKick`（默认 15 s）——只要不回包即可，是真实环境里最常见的一种断线 |
   | `entity/Player.java:162+1566` | `Required resource pack was not loaded.` | 服务端下发过必需资源包时，客户端回一个非 `SUCCESSFULLY_LOADED` 的状态 |
 
-  只在特定配置下够得着的另有两处，同样是纯文本：`LoginListener.java:38+100/110` 的
-  `Invalid proxy response!`（Velocity / BungeeGuard 转发模式）与 `HandshakeListener.java:33+152` 的
-  `Invalid connection, please connect through the BungeeCord proxy...`（开了 BungeeCord 转发时）。
-- **另有两处带 `translate` 键但不是 §14 的错误码**，用的是原版键：`Player.java:2362` 的
+- **② 入口是客户端的包、但要先有一次服务端内部失败的两处**：`LoginListener.java:149`
+  （`loginAckListener` 的 `catch`，`createPlayer` 抛）与 `LoginListener.java:198`
+  （`executeConfig` 起的虚拟线程里 `doConfiguration` 抛），共用 ① 的 `ERROR_DURING_LOGIN` 常量。
+  触发条件是引擎自己的异常而不是包的内容，所以单列一档。
+
+- **③ 只在代理转发配置（或宿主自己发过登录插件请求）下够得着的五处**，同样是纯文本：
+  `LoginListener.java:38+100/110` 与 `ConnectionManager.java:237` 的 `Invalid proxy response!`
+  —— 前两处是 Velocity 应答本身不合法，第三处是 `awaitReplies` 超时，引擎里只有 Velocity 模式会留下
+  待答请求，宿主在 `AsyncPlayerPreLoginEvent` 里自己 `request(...)` 也到得了；
+  `HandshakeListener.java:33+152` 的 `Invalid connection, please connect through the BungeeCord proxy...`；
+  以及 `LoginListener.java:83` 的 `Login plugin response is not supported in this auth mode` —— 这一处挂在
+  Velocity 请求的回调上，而 `ServerProcessImpl#auth` 是 `final`，它那个 `!(auth instanceof Auth.Velocity)`
+  判断不可能为真，实际是条不可达分支（本轮不动它，一并留给拍板）。
+
+- **④ 由服务端代码决定、客户端够不着的三处**：`Player.java:161+654` 的
+  `You have been removed from the server without reason.`（`remove(true)` 时连接还在），以及
+  `Player.java:1928` / `:1937` —— 后两处是 `kick(Component)` / `kick(String)` 这两个公开 API 本身，
+  理由由调用方给，不属于引擎自己的错误码面。
+
+- **⑤ 带 `translate` 键但不是 §14 错误码的两处**，用的是原版键：`Player.java:2362` 的
   `multiplayer.disconnect.invalid_packet`（`rejectMisusedPacket` 打开时）与 `HandshakeListener.java:38+57`
-  的 `multiplayer.disconnect.transfers_disabled`。它们至少能被客户端本地化，性质与上表那六处不同。
-- **为什么本轮不一并改**：§14 现在只有六个原因键，上表这些断线要么得复用 `synaxis:protocol-error`
+  的 `multiplayer.disconnect.transfers_disabled`。它们至少能被客户端本地化，性质与 ① 不同。
+
+- **⑥ 已经用 §14 原因键（`DisconnectReasons`）的十一处**：`Player.java:2346`、`CookieListener:15`、
+  `HandshakeListener:63`、`LoginListener:44 / 143 / 158 / 173`、`ConnectionManager:384 / 389 / 455`、
+  `PlayerSocketConnection:167`。`Player.java:2346` 是 `SOAK-4` 本轮从 ① 挪进来的。
+
+- **顺带的一条**：`PlayerConnection#kick`（`network/player/PlayerConnection.java:219-222`）只对
+  `TranslatableComponent` 写 `Kicking connection_id=… identifier=… reason=…`，所以 ①～④ 这些断线在
+  服务端一行日志都不留——`Timeout` 这种最常见的断线，排障时连一个计数都拿不到。
+
+- **为什么本轮不一并改**：§14 现在只有六个原因键，① 里这些要么得复用 `synaxis:protocol-error`
   （`Bad Keep Alive packet`、位置越界属于协议违例，尚可）、要么得新开原因键（资源包、用户名格式、
-  代理握手），那是往 §14 的错误码表里加行，属于设计决定。本轮只把压测直接打到的那一条追齐，
-  其余登记为待办（`docs/DESIGN.md` §28）。
+  keep-alive 超时、代理握手），那是往 §14 的错误码表里加行，属于设计决定。本轮只把压测直接打到的
+  那一条追齐，其余登记为待办（`docs/DESIGN.md` §28）。
 
 ### 观察（不是缺陷）：5,000 包/秒下最慢的那一个 tick 在 23–47 ms 之间
 
 三轮 5,000 包/秒的长跑，max tick 分别是 33.3 / 46.8 / 34.7 ms，**超 50 ms 的 tick 一个都没有**，
-p99 只有 1.9–2.3 ms。也就是 p99 离预算有 25 倍余量，但**最慢的那一个 tick 只剩 1.1–1.5 倍**。
+p99 只有 1.9–2.3 ms。（口径对齐的那次复跑见组 6，它窗口首 tick 的 114.4 ms 是 50 条连接同时进场，
+不属这里说的稳态尖刺；进场之后它整段最大 17.6 ms。）也就是 p99 离预算有 25 倍余量，但**最慢的那
+一个 tick 只剩 1.1–1.5 倍**。
 逐条对时的结论：
 
 - 10–15 ms 那一档大多能与 G1 young GC 对上（如 13:38:00.035 的 14.9 ms tick 对 14.2 ms 的
@@ -517,4 +573,4 @@ p99 只有 1.9–2.3 ms。也就是 p99 离预算有 25 倍余量，但**最慢�
   不代表 game-rts 满载。稳态连接数（64）对核心是轻载，压力主要由 churn 与攻击两组提供。
 - JFR 只开了 `synaxis.ServerTickTime` 与虚拟线程起止；未开分配采样（`jdk.ObjectAllocationSample`）。
 
-- 入站包 5,000 包/秒这条 §15 目标**已被证明达标**（2026-09-18，组 6）：换成 Java 发包端`tools/loadtest/PacketFlood.java` 后实测 5,014.9 包/秒持续 6 分钟、0 掉线，tick p99 1.945 ms、超 50 ms 的 tick 0 个；组 7 把速率抬到 40,015 包/秒仍然 0 掉线、p99 1.5 ms，余量至少 8 倍。`soak.py` 的 2,880 / 3,990 包/秒确实是 Python 发包端自己的上限，与引擎无关。**仍未测到的是「各自站在不同区块」那一面**：两个发包端的连接都挤在 spawn 周围的圆盘里，区块与分区铺开的场景另需一轮。
+- 入站包 5,000 包/秒这条 §15 目标**已被证明达标**（2026-09-18，组 6）：换成 Java 发包端`tools/loadtest/PacketFlood.java` 后实测 5,014.9 包/秒持续 6 分钟、0 掉线，发包窗口内 7,200 个 tick p99 1.631 ms，超 50 ms 的只有 50 条连接同时进场的那个窗口首 tick；组 7 把速率抬到 40,015 包/秒仍然 0 掉线、p99 1.5 ms，余量至少 8 倍。`soak.py` 的 2,880 / 3,990 包/秒确实是 Python 发包端自己的上限，与引擎无关。**仍未测到的是「各自站在不同区块」那一面**：两个发包端的连接都挤在 spawn 周围的圆盘里，区块与分区铺开的场景另需一轮。

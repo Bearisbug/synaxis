@@ -1,5 +1,6 @@
 package io.github.bearisbug.synaxis.app;
 
+import io.github.bearisbug.synaxis.plugin.LogBudget;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

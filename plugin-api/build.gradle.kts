@@ -11,4 +11,7 @@ dependencies {
 
     // PluginContext#logger() hands a Logger to the plugin, and the engine keeps slf4j to itself.
     api(libs.slf4j)
+
+    // LogBudgetTest asserts on what a budget writes, which needs a real logging backend.
+    testImplementation(libs.bundles.logback)
 }

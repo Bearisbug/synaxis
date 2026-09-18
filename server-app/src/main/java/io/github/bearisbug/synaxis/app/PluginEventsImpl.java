@@ -2,6 +2,7 @@ package io.github.bearisbug.synaxis.app;
 
 import io.github.bearisbug.synaxis.event.Event;
 import io.github.bearisbug.synaxis.event.EventNode;
+import io.github.bearisbug.synaxis.plugin.LogBudget;
 import io.github.bearisbug.synaxis.plugin.PluginEvents;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

@@ -60,8 +60,6 @@ public class ClientDrivenLogArchitectureTest {
      * The host classes that may still write a line themselves, each with the bound that keeps its
      * volume off the client's hands:
      * <ul>
-     * <li>{@link LogBudget}: the bound itself, at most one line per interval with the count it
-     * swallowed.</li>
      * <li>{@link Main}: startup and shutdown, a fixed number of lines per process.</li>
      * <li>{@link PluginHost}: one line per plugin per enable or disable, and a plugin list a
      * client cannot add to.</li>
@@ -75,19 +73,19 @@ public class ClientDrivenLogArchitectureTest {
      * deliberately absent: all three sit on a path whose rate a client picks — the first two on an
      * inbound payload, the ledger because {@code PluginAnalytics} hands {@code record} to every
      * plugin and {@code docs/DESIGN-M2.md} §20 asks for one event per inbound order packet — so all
-     * three report through a {@link LogBudget} instead. An exemption per class would have let a
-     * second unbounded line in next to the budgeted one — blind spot ① of the engine rule
-     * ({@code docs/ENGINE.md} §8), which those three therefore escape.
+     * three report through a {@link io.github.bearisbug.synaxis.plugin.LogBudget} instead. An
+     * exemption per class would have let a second unbounded line in next to the budgeted one —
+     * blind spot ① of the engine rule ({@code docs/ENGINE.md} §8), which those three therefore
+     * escape.
      * <p>
-     * The five above do not: this list is by class, exactly like the engine's, so a second line
+     * The four above do not: this list is by class, exactly like the engine's, so a second line
      * whose rate a client picks, added inside one of them, stays green. Measured, not assumed — a
      * listener on a PLAY phase event writing a plain {@code LOGGER.warn}, put inside
      * {@link AdmissionGate}, does not turn this rule red. Registered as a remaining blind spot in
      * {@code docs/DESIGN.md} §28.
      */
     private static DescribedPredicate<HasName> boundedReporters() {
-        return name(LogBudget.class.getName())
-                .or(name(Main.class.getName()))
+        return name(Main.class.getName())
                 .or(name(PluginHost.class.getName()))
                 .or(name(AdmissionGate.class.getName()))
                 .or(name(PluginSchedulerImpl.class.getName()));

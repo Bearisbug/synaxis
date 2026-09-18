@@ -19,6 +19,7 @@ import io.github.bearisbug.synaxis.network.DisconnectReasons;
 import io.github.bearisbug.synaxis.network.player.PlayerConnection;
 import io.github.bearisbug.synaxis.network.plugin.LoginPlugin;
 import io.github.bearisbug.synaxis.plugin.DisconnectKeys;
+import io.github.bearisbug.synaxis.plugin.LogBudget;
 import net.kyori.adventure.text.Component;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;

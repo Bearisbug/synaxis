@@ -18,6 +18,7 @@ import java.nio.channels.SocketChannel;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -167,6 +168,35 @@ public class PreAuthConnectionIntegrationTest {
             assertDoesNotThrow(() -> env.process().packetListener().processClientPacket(response, connection),
                     "a malformed cookie key is peer input, not an engine failure");
             assertFalse(connection.isOnline(), "a connection sending a malformed cookie key must be dropped");
+        }
+    }
+
+    /**
+     * One read hands over a whole batch of packets, dispatched one by one. A listener that kicks
+     * the connection has to end that batch: a peer fits thousands of frames into a single read
+     * buffer, and every frame behind the kick is another failure handled and another line logged
+     * for a connection that is already gone.
+     */
+    @Test
+    public void aKickStopsTheRestOfTheBatchFromBeingHandled(Env env) throws IOException {
+        final AtomicInteger reported = new AtomicInteger();
+        env.process().exception().setExceptionHandler(_ -> reported.incrementAndGet());
+        try (SocketPair pair = SocketPair.open(env)) {
+            final PlayerSocketConnection connection = pair.connection();
+            connection.setClientState(ConnectionState.LOGIN);
+            // Login plugin responses answering a request the server never sent, each one four
+            // bytes: length 3, packet id 0x02, message id 0x07, no data
+            final int frameCount = 1000;
+            final ByteBuffer frames = ByteBuffer.allocate(frameCount * 4);
+            for (int i = 0; i < frameCount; i++) frames.put(new byte[]{0x03, 0x02, 0x07, 0x00});
+            pair.peer().write(frames.flip());
+
+            connection.read(PacketVanilla.CLIENT_PACKET_PARSER);
+
+            assertFalse(connection.isOnline(), "an unexpected login plugin response must drop the connection");
+            assertEquals(1, reported.get(), "the packets behind a kick must not be handled");
+        } finally {
+            env.process().exception().setExceptionHandler(null);
         }
     }
 

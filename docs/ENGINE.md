@@ -257,12 +257,12 @@ python3 tools/pkgdeps.py game-rts/src/main/java   --root-package io.github.beari
 2026-09-18 的压测实测：一条「每个客户端包写一行」的 WARN 在 15 分钟里写了 662,803 行 / 84 MiB。这不是日志级别的问题，是**这条日志写多少次由对端说了算**。所以加日志之前先问一句「这一行的频率由谁决定」：
 
 - **由启动、注册表数据、配置或停机决定** —— 进程生命周期内次数固定，随便写。
-- **由连接数决定** —— 每连接至多一行，且必须与一次断开在同一分支上（`PlayerSocketConnection` 的协议错误、`HandshakeListener` 的 BungeeGuard 拒绝就是这个形状）。
+- **由连接数决定** —— 每连接至多一行，且必须与一次断开在同一分支上（`PlayerSocketConnection` 的协议错误、`HandshakeListener` 的 BungeeGuard 拒绝、`LoginListener` 的登录插件应答就是这个形状）。**「断开」要真的把活停下来才算数**：一次读上来的是一整批包，`PlayerSocketConnection#processPackets` 每派发一个包前先看连接还在不在，不在就 `break`，否则排在这次 kick 后面的几千个帧照样一个个交给监听器，「每连接一行」就变成「每包一行」（实测一批 4,000 帧，见 `docs/TEST.md` TC-033）。
 - **由客户端发了什么、发了多少决定** —— 必须有界，三选一：
   1. **按时间限流**，样板是 `EntityTrackerImpl#reportUnregisteredMove` 与 `PacketReading#reportUnreadBytes`：一个 `AtomicLong` 记区间内累计次数、一个 `AtomicLong` 记上次输出时刻，CAS 抢到的那一次才写，并把累计次数带进那一行（**量被压掉了，但量还看得见**）。计数器只在「本来就要写日志」的那条分支上碰，解码热路径不为它付钱。
   2. **按类型去重**，样板是 `PacketListenerManager` 的 `missingListenerWarnings`：客户端加不了包类型，所以一种一次就封顶了。
   3. **紧跟一次断开**，见上一档。
 
-这条纪律有门禁：`ArchitectureTest#clientDrivenPathsDoNotWriteALinePerPacket` 禁止 `network.packet..`、`network.player..`、`listener..` 三个包调用 `Logger#warn` / `Logger#error` / `Throwable#printStackTrace`，豁免名单是上面点名的五个类，每一条都在 `boundedReporters()` 的 Javadoc 里写明自己的上界。新加一个类要写 WARN 就会红——**红了先想怎么让它有界，别直接进豁免名单**。`theClientDrivenLogRuleRejectsALinePerPacket` 用测试源集里的 fixture 反证这条规则真的会红。
+这条纪律有门禁：`ArchitectureTest#clientDrivenPathsDoNotWriteALinePerPacket` 禁止 `network..` 与 `listener..` 两个包树调用 `Logger#warn` / `Logger#error` / `Throwable#printStackTrace` / `ExceptionManager#handleException`。**`handleException` 也在禁止之列**，因为引擎默认的处理器就是 `Throwable::printStackTrace`：宿主决定这份报告落到哪里，调用点决定它写多少次。豁免名单是上面点名的七个类（`PacketReading`、`PlayerSocketConnection`、`Server`、`ConnectionManager`、`PacketListenerManager`、`HandshakeListener`、`LoginListener`），每一条都在 `boundedReporters()` 的 Javadoc 里写明自己的上界。新加一个类要写 WARN 就会红——**红了先想怎么让它有界，别直接进豁免名单**。`theClientDrivenLogRuleRejectsALinePerPacket` 与 `theClientDrivenLogRuleRejectsAReportPerPacket` 用测试源集里的两个 fixture 反证这条规则真的会红（一个写 WARN，一个把异常交给宿主）。
 
-盲点两个，写在这里免得被门禁的绿骗了：豁免是按类不按调用点（五个类里再加一条无界的行不会红），以及 `command` 包不在清单里（`CommandParserImpl` 执行命令抛异常时每次一行带栈的 ERROR，登记在 `docs/DESIGN.md` §28）。
+盲点三个，写在这里免得被门禁的绿骗了：豁免是按类不按调用点（七个类里再加一条无界的行不会红）；`command` 包不在清单里（`CommandParserImpl` 执行命令抛异常时每次一行带栈的 ERROR）；以及豁免里 `PlayerSocketConnection` 对「监听器抛了异常」每包交一次 `handleException`，只有 `rejectMisusedPacket`（默认关）才会断开，这一处仍是敞的。后两条登记在 `docs/DESIGN.md` §28。

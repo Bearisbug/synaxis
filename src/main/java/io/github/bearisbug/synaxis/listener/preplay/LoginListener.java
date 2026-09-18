@@ -119,6 +119,8 @@ public final class LoginListener {
             LoginPluginMessageProcessor messageProcessor = connection.loginPluginMessageProcessor();
             messageProcessor.handleResponse(packet.messageId(), packet.data());
         } catch (Throwable t) {
+            // One report per connection, not per packet: a peer fits thousands of plugin responses
+            // into one read, and the kick is what ends that batch (PlayerSocketConnection#processPackets).
             connection.kick(ERROR_DURING_LOGIN);
             LOGGER.error("Error handling Login Plugin Response", t);
             connection.process().exception().handleException(t);

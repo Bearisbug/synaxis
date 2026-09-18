@@ -170,6 +170,11 @@ public class PlayerSocketConnection extends PlayerConnection {
         switch (result) {
             case PacketReading.Result.Success<ClientPacket> success -> {
                 for (PacketReading.ParsedPacket<ClientPacket> parsedPacket : success.packets()) {
+                    // A listener that dropped the connection ends the batch. A peer fits thousands
+                    // of frames into one read buffer, and handling the rest of them after the kick
+                    // gives it back the per packet work, and the per packet log line, that the
+                    // disconnect is there to stop.
+                    if (!isOnline()) break;
                     final ClientPacket packet = parsedPacket.packet();
 
                     try {

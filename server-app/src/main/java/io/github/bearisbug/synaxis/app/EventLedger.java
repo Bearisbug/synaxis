@@ -17,8 +17,10 @@ import java.util.Map;
  * The local analytics ledger of {@code docs/DESIGN-M2.md} §20: one JSON object per line in
  * {@code logs/events-YYYYMMDD.jsonl}.
  * <p>
- * Each event is appended on its own, without keeping a writer open, because M2 only records
- * process lifetime events. A higher rate event would need buffering first.
+ * Each event is appended on its own, without keeping a writer open. That holds today because
+ * every caller records a process lifetime event, but §20 also asks for one event per inbound
+ * order packet: once that lands, the per event open and close becomes the bottleneck and this
+ * has to buffer first. Registered as debt in {@code docs/DESIGN.md} §28.
  * <p>
  * The rate is not the host's to choose, though: {@code PluginAnalytics} hands this method to every
  * plugin, and §20 asks for one event per inbound order packet, so a directory that cannot be

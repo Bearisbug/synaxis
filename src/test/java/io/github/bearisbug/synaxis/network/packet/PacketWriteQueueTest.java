@@ -41,7 +41,8 @@ public class PacketWriteQueueTest {
     @Test
     public void theBufferIsGrownUntilTheMinimumIsWritten() {
         final var queue = queueOf(3, 256);
-        final NetworkBuffer buffer = NetworkBuffer.resizableBuffer(8);
+        // A buffer that does not grow on its own, so the resize has to come from writeQueue
+        final NetworkBuffer buffer = NetworkBuffer.staticBuffer(8);
 
         PacketWriting.writeQueue(buffer, queue, 3, PacketWriteQueueTest::write);
         assertEquals(0, queue.size(), "The minimum has to be reached even if the buffer starts too small");

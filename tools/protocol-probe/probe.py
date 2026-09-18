@@ -21,6 +21,9 @@ Subcommands, see docs/TEST.md section 3:
                                   non-creative player has the packet dropped before decoding
     echo --payload TEXT           round trip TEXT over the synaxis:main custom payload channel
     record-registry --out FILE    dump every received RegistryData packet to FILE
+    order [--count N] [--group G] send move orders on rts:game and report the result codes
+    select --units 1,2,3          send one C2S_SELECT and check it is not answered
+    game-flood [--rate R]         hold a payload rate on rts:game for a few seconds
     handshake                     log in and report the S2C_HELLO the server answered with
     no-hello                      log in and never send C2S_HELLO, the client without the mod
     bad-schema --schema N         send C2S_HELLO announcing a schema_version of N
@@ -58,6 +61,16 @@ PROTOCOL_SCHEMA = REPO_ROOT / "protocol/src/main/java/io/github/bearisbug/synaxi
 HANDSHAKE_CHANNEL = "synaxis:handshake"
 C2S_HELLO = 0x01
 S2C_HELLO = 0x81
+
+# The RTS slice channel and the message ids of API-M2-003 to API-M2-005. msg_id is scoped to one
+# channel, which is why these may collide with the handshake's.
+GAME_CHANNEL = "rts:game"
+C2S_CAMERA = 0x01
+C2S_SELECT = 0x02
+C2S_MOVE_ORDER = 0x03
+S2C_ORDER_RESULT = 0x84
+# docs/DESIGN-M2.md section 9 order_result_code, in the order it is encoded in
+ORDER_RESULT_CODES = ("ok", "stale", "rate-limited", "not-owner", "out-of-bounds", "busy", "no-path")
 
 
 # --------------------------------------------------------------------------------------
@@ -170,6 +183,10 @@ class Writer:
 
     def long(self, value: int) -> "Writer":
         self.buffer += struct.pack(">q", value)
+        return self
+
+    def float32(self, value: float) -> "Writer":
+        self.buffer += struct.pack(">f", value)
         return self
 
     def string(self, value: str) -> "Writer":
@@ -421,6 +438,42 @@ def hello_body(mod_version: int, schema_version: int) -> bytes:
     return Writer().varint(C2S_HELLO).varint(mod_version).varint(schema_version).bytes()
 
 
+def camera_body(anchor_x: float, anchor_z: float, zoom: float, camera_yaw: float) -> bytes:
+    """C2S_CAMERA{msg_id=0x01, anchor_x, anchor_z, zoom, camera_yaw}, see API-M2-003."""
+    return (Writer().varint(C2S_CAMERA).float32(anchor_x).float32(anchor_z)
+            .float32(zoom).float32(camera_yaw).bytes())
+
+
+def select_body(unit_ids: list[int]) -> bytes:
+    """C2S_SELECT{msg_id=0x02, count, unit_ids}, see API-M2-004. The count is written as given, so
+    a caller may go past the cap of eight on purpose."""
+    writer = Writer().varint(C2S_SELECT).varint(len(unit_ids))
+    for unit_id in unit_ids:
+        writer.varint(unit_id)
+    return writer.bytes()
+
+
+def move_order_body(order_seq: int, order_group: int, unit_id: int,
+                    target: tuple[float, float, float], mods: int = 0) -> bytes:
+    """C2S_MOVE_ORDER{msg_id=0x03, order_seq, order_group, unit_id, target, mods}, see API-M2-005."""
+    writer = Writer().varint(C2S_MOVE_ORDER).varint(order_seq).varint(order_group).varint(unit_id)
+    for coordinate in target:
+        writer.float32(coordinate)
+    return writer.raw(bytes([mods])).bytes()
+
+
+def read_order_result(data: bytes) -> dict | None:
+    """Decodes S2C_ORDER_RESULT{msg_id=0x84, order_seq, code:u8, snapped_x, snapped_y, snapped_z}."""
+    reader = Reader(data)
+    if reader.varint() != S2C_ORDER_RESULT:
+        return None
+    order_seq = reader.varint()
+    code = reader.u8()
+    return {"order_seq": order_seq,
+            "code": ORDER_RESULT_CODES[code] if code < len(ORDER_RESULT_CODES) else f"unknown({code})",
+            "snapped": (reader.float32(), reader.float32(), reader.float32())}
+
+
 def login_plugin_response_payload(message_id: int, data: bytes | None) -> bytes:
     """The login phase answer; a client that does not know the channel sends no data at all."""
     writer = Writer().varint(message_id).boolean(data is not None)
@@ -520,6 +573,8 @@ class Session:
         self.hello_mod_version = 1
         self.hello_schema_version = SCHEMA_VERSION
         self.server_hello: dict[str, int] | None = None
+        # Every S2C_ORDER_RESULT this session has been answered with, in arrival order
+        self.order_results: list[dict] = []
         # Set once this session has handshaken, so that the login phase form of it is not followed
         # by a second C2S_HELLO in the configuration phase (which is a protocol error).
         self.handshook = False
@@ -577,10 +632,26 @@ class Session:
         self.log(f"sent C2S_HELLO mod_version={self.hello_mod_version} "
                  f"schema_version={self.hello_schema_version}")
 
-    def read_handshake_payload(self, reader: Reader) -> bool:
-        """Handles a custom payload on the handshake channel, returns whether it was one."""
+    def send_game(self, body: bytes) -> None:
+        self.connection.send("ClientPluginMessagePacket", plugin_message_payload(GAME_CHANNEL, body))
+
+    def read_payload(self, reader: Reader) -> bool:
+        """Handles a custom payload on one of the two channels this probe knows.
+
+        Returns whether it was one of them; the caller keeps the reader either way, so a payload on
+        a third channel is simply not looked at.
+        """
         channel = reader.string()
         data = reader.raw(reader.remaining())
+        if channel == GAME_CHANNEL:
+            result = read_order_result(data)
+            if result is None:
+                self.log(f"     unexpected message on {channel}")
+                return True
+            self.order_results.append(result)
+            self.log(f"     S2C_ORDER_RESULT order_seq={result['order_seq']} code={result['code']} "
+                     f"snapped={result['snapped']}")
+            return True
         if channel != HANDSHAKE_CHANNEL:
             return False
         answer = read_server_hello(data)
@@ -601,7 +672,7 @@ class Session:
         while True:
             packet, reader, body = self.recv()
             if packet == "PluginMessagePacket":
-                self.read_handshake_payload(reader)
+                self.read_payload(reader)
             elif packet == "SelectKnownPacksPacket":
                 entries = [(reader.string(), reader.string(), reader.string())
                            for _ in range(reader.varint())]
@@ -654,6 +725,27 @@ class Session:
         """Reads packets for the given duration, answering keep alives."""
         self.pump_until(lambda: False, seconds)
 
+    def drain(self) -> None:
+        """Reads whatever has already arrived without waiting for more.
+
+        The flood subcommand sends far faster than it reads, and a socket buffer that fills up
+        blocks the server's writer rather than this probe; draining between bursts keeps the rate
+        the server sees equal to the rate that was asked for.
+        """
+        self.connection.socket.settimeout(0.01)
+        try:
+            while True:
+                try:
+                    packet, reader, _ = self.recv()
+                except socket.timeout:
+                    return
+                if packet == "KeepAlivePacket":
+                    self.answer_keep_alive(reader)
+                elif packet == "PluginMessagePacket":
+                    self.read_payload(reader)
+        finally:
+            self.connection.socket.settimeout(self.args.timeout)
+
     def pump_until(self, ready, seconds: float) -> bool:
         """Reads packets until ``ready()`` holds or the time is up, answering keep alives."""
         deadline = time.monotonic() + seconds
@@ -667,7 +759,7 @@ class Session:
                 if packet == "KeepAlivePacket":
                     self.answer_keep_alive(reader)
                 elif packet == "PluginMessagePacket":
-                    self.read_handshake_payload(reader)
+                    self.read_payload(reader)
             return ready()
         finally:
             self.connection.socket.settimeout(self.args.timeout)
@@ -808,6 +900,112 @@ def cmd_deep_recursion(args: argparse.Namespace) -> int:
         # The probe logs in as a survival player, so the server drops the frame without decoding it.
         # Surviving is the expected outcome; what would fail here is a crash or a stalled connection.
         session.log("no disconnect received, the creative packet was skipped before decoding")
+        return 0
+    finally:
+        session.close()
+
+
+def cmd_order(args: argparse.Namespace) -> int:
+    """Sends move orders and reports the result codes they came back with (API-M2-005).
+
+    Every request is answered, so the check is twofold: as many answers as requests, and the
+    histogram the caller expected. With `--group` the whole burst shares one order_group, which is
+    what a single click on several units looks like and what the token bucket counts as one.
+    """
+    session = Session(args)
+    try:
+        session.enter_play()
+        target = (args.x, args.y, args.z)
+        for index in range(args.count):
+            order_seq = args.seq + index
+            session.send_game(move_order_body(order_seq, args.group if args.group is not None else order_seq,
+                                              args.unit, target))
+            session.log(f"sent C2S_MOVE_ORDER order_seq={order_seq} "
+                        f"order_group={args.group if args.group is not None else order_seq} unit_id={args.unit}")
+        session.pump_until(lambda: len(session.order_results) >= args.count, args.wait)
+        histogram: dict[str, int] = {}
+        for result in session.order_results:
+            histogram[result["code"]] = histogram.get(result["code"], 0) + 1
+        session.log(f"answers={len(session.order_results)}/{args.count} "
+                    + " ".join(f"{code}={count}" for code, count in sorted(histogram.items())))
+        if len(session.order_results) != args.count:
+            session.log("every request is answered exactly once, and this one was not")
+            return 1
+        if args.expect and histogram.get(args.expect, 0) != args.expect_count:
+            session.log(f"expected {args.expect_count} answers of {args.expect}")
+            return 1
+        return 0
+    finally:
+        session.close()
+
+
+def cmd_select(args: argparse.Namespace) -> int:
+    """Sends one C2S_SELECT and checks what it costs (API-M2-004).
+
+    A selection is never answered, so the outcome is either silence or, when the count is past the
+    cap of eight, the protocol error of section 14.
+    """
+    session = Session(args)
+    try:
+        session.enter_play()
+        units = [int(unit) for unit in args.units.split(",")] if args.units else []
+        session.send_game(select_body(units))
+        session.log(f"sent C2S_SELECT count={len(units)} unit_ids={units}")
+        try:
+            session.pump(args.wait)
+        except Disconnected as disconnected:
+            if args.expect == "protocol-error" and disconnected.reason == "synaxis:protocol-error":
+                return 0
+            session.log(f"unexpected disconnect: {disconnected.reason}")
+            return 1
+        except ClosedByServer:
+            session.log("connection closed without a disconnect packet")
+            return 1
+        if args.expect == "protocol-error":
+            session.log("a count past the cap was accepted")
+            return 1
+        if session.order_results:
+            session.log("a selection was answered, which it must not be")
+            return 1
+        session.log("still connected, nothing answered")
+        return 0
+    finally:
+        session.close()
+
+
+def cmd_game_flood(args: argparse.Namespace) -> int:
+    """Holds a rate on the game channel for a number of seconds (section 14, section 15).
+
+    It is the difference between the two limits that this proves: a rate over the flood threshold
+    ends the connection, and one under it never does however long it is held.
+    """
+    session = Session(args)
+    try:
+        session.enter_play()
+        session.log(f"flooding {args.rate} payloads a second for {args.seconds}s")
+        try:
+            for second in range(args.seconds):
+                started = time.monotonic()
+                for index in range(args.rate):
+                    session.send_game(camera_body(8.0, 8.0, 24.0, 0.0))
+                    if index % 32 == 0:
+                        session.drain()
+                left = 1.0 - (time.monotonic() - started)
+                if left > 0:
+                    session.pump(left)
+            session.pump(args.wait)
+        except Disconnected as disconnected:
+            if args.expect == "flood" and disconnected.reason == "synaxis:game-flood":
+                return 0
+            session.log(f"unexpected disconnect: {disconnected.reason}")
+            return 1
+        except ClosedByServer:
+            session.log("connection closed without a disconnect packet")
+            return 1
+        if args.expect == "flood":
+            session.log("the flood gate never fired")
+            return 1
+        session.log(f"still connected, keep_alives={session.keep_alives}")
         return 0
     finally:
         session.close()
@@ -1002,6 +1200,33 @@ def build_parser() -> argparse.ArgumentParser:
 
     duplicate = subparsers.add_parser("duplicate-hello", help="send a second C2S_HELLO on the same connection")
     duplicate.set_defaults(run=cmd_duplicate_hello)
+
+    order = subparsers.add_parser("order", help="send move orders and report the result codes")
+    order.add_argument("--count", type=int, default=1, help="how many orders to send")
+    order.add_argument("--seq", type=int, default=1, help="the order_seq of the first one")
+    order.add_argument("--group", type=int, default=None,
+                       help="share one order_group, the shape of a single click on several units")
+    order.add_argument("--unit", type=int, default=1, help="the unit_id to order about")
+    order.add_argument("--x", type=float, default=8.0)
+    order.add_argument("--y", type=float, default=32.0)
+    order.add_argument("--z", type=float, default=8.0)
+    order.add_argument("--expect", default=None, help="the result code to count, see section 9")
+    order.add_argument("--expect-count", type=int, default=0, help="how many answers must carry it")
+    order.add_argument("--wait", type=float, default=5.0, help="seconds to wait for the answers")
+    order.set_defaults(run=cmd_order)
+
+    select = subparsers.add_parser("select", help="send one C2S_SELECT")
+    select.add_argument("--units", default="", help="comma separated unit_ids")
+    select.add_argument("--expect", default="silence", choices=["silence", "protocol-error"])
+    select.add_argument("--wait", type=float, default=2.0)
+    select.set_defaults(run=cmd_select)
+
+    flood = subparsers.add_parser("game-flood", help="hold a payload rate on the game channel")
+    flood.add_argument("--rate", type=int, default=400, help="payloads a second")
+    flood.add_argument("--seconds", type=int, default=3, help="how long to hold it")
+    flood.add_argument("--expect", default="flood", choices=["flood", "alive"])
+    flood.add_argument("--wait", type=float, default=2.0)
+    flood.set_defaults(run=cmd_game_flood)
 
     record = subparsers.add_parser("record-registry", help="dump every RegistryData packet")
     record.add_argument("--out", required=True)

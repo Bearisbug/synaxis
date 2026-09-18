@@ -18,6 +18,7 @@
 | 日期 | 版本 | 改动 | 作者 |
 | --- | --- | --- | --- |
 | 2026-09-16 | v0.1 | 初稿：M2 范围、模块拆分、插件宿主、自定义协议、单位模型、寻路、世界管理与四条审计残留处置、垂直切片验收、阶段计划 | Bearisbug |
+| 2026-09-18 | v0.20 | §14 沿用清单补上引擎在 `docs/DESIGN.md` v0.26 新增的第六个断线键 `synaxis:duplicate-login`（离线模式下 UUID 由用户名派生，两个玩家取同名即命中，对 M2 客户端完全可达，`PAGE-DISCONNECT` 需要它的文案）；「M1 的五个键」随之改为六个。设计结论未变，只是清单与计数跟上引擎 | Bearisbug |
 | 2026-09-18 | v0.19 | §28.2 两条技术债处置，设计结论未变：① **反方向 ArchUnit 规则缺失缩小到「查不到的那一半」**——`:server-app` 的测试源集新增 `StableSurfaceArchitectureTest`，禁止 `@ApiStatus.Internal` 的类型出现在 `:plugin-api` 公开签名的返回值或参数里（§24 规则④）。它不需要那个「把所有模块当 `testImplementation` 的聚合项目」：宿主本来就依赖稳定面，规则只看稳定面自己的签名，与插件数量无关；剩下的「插件主动去够引擎内部」那一半仍留给聚合项目。② **断线文本里没有 `connection_id`** 按「二选一」定为**改文档**：`docs/DESIGN.md` §14 已更正为「`connection_id` 只进服务端日志，不拼进断线文本」（该文档 v0.25），与本文档 §13、§14、§19 及 `docs/TEST.md` 的既有口径一致；把 id 拼进 `Component` 会改变每一次断线的可见文本，仍留到玩家自助报障成为痛点时 | Bearisbug |
 | 2026-09-18 | v0.18 | **核心模式：`server-app` 在没有任何玩法插件时不再拒绝启动**。原 `API-M2-010` 启动序列第 ⑤ 步要求「恰有一个准入回调 + 恰有一个 `running` 对局」，否则两行 ERROR + 非零码退出、端口不 bind；`smoke` 随 `REQ-M2-021` 删除之后，这条让**服务端核心自己跑不起来**——排除玩法插件等于停机，核心无法独立起服、压测或冒烟。本版把第 ⑤ 步改成三分支（`API-M2-010` 与 §11.3 同步改）：**一个插件都没有参与启动** → 宿主自建一个平坦 `InstanceContainer`、自注册默认准入（任何连接都放行到该世界）、自注册 `synaxis:main` 诊断通道做 echo，打一行 `Core mode (…)` 后照常 bind；**两半齐全** → 玩法模式，行为与本版之前完全一致（玩法优先，核心模式不介入），打一行 `Gameplay mode: … plugin_ids=[…]`；**插件参与了却只留下一半、或什么都没留下**（`onEnable` 抛异常、地图预设非法）→ 仍是配置错误，两行 ERROR + 非零码退出，`TC-GAME-056` 那一档的判据不变——核心模式的条件按「没有插件参与」而不是「没有玩法」写，就是为了不让一个坏掉的插件被核心世界盖过去。新增系统属性 `synaxis.app.core-mode`（`auto` 默认 / `on` 强制核心模式且不发现任何插件 / `off` 强制维持旧的拒启行为），压测与冒烟据此稳定地要到核心模式。连带：§23 两处与 `docs/PLUGINS.md` 第 6 节那句「`synaxis.app.plugins` 去掉 `rts` = 非零码退出」按新行为改写（默认值下改成进核心模式，要拒启得同时配 `core-mode=off`）；`API-M2-011` 的唯一性条随之限定（槽位为空不再一律等于退出：没有插件参与时由宿主用保留 id `synaxis` 自占）；`API-M2-001` 的通道枚举补上核心模式下宿主自注册的 `synaxis:main`、§19「协议探针跑通全部回归」场景写明 `echo` 跑在核心模式的进程上（玩法模式的进程上没有这条通道）；第 ④ 步新增一行 WARN 点名 `synaxis.app.plugins` 里没有插件应答的 id——拼错一个 id 的后果从「启动失败」变成了「安静地进核心模式」，得有一行日志顶上；§5 `REQ-M2-021` 补上「核心模式承接 `smoke` 的平坦世界与 `synaxis:main` echo」这半职责——`docs/TEST.md` §7 那条「探针 `echo` 子命令归属未定」据此了结，按它自己列的两个候选里的第一个（宿主自带一条 `synaxis:*` 诊断通道）落地。`docs/TEST.md` 废 `TC-GAME-032` 换 `TC-GAME-057`（第 1 步判据实质变更）、新增 `TC-GAME-058`（核心模式冒烟），`docs/ENGINE.md` 运行手册补核心模式的起法 | Bearisbug |
 | 2026-09-16 | v0.17 | 阶段 3 评审第 2 轮修订，设计结论未变，一处门禁加固、一处技术债登记、两处代码卫生：① **§24 规则③ 的写法被钉死成「按访问查」**——原实现用 `should().callMethodWhere(...)`，而 ArchUnit 把方法引用建模成 `JavaMethodReference`（不进 `getMethodCallsFromSelf()`），游戏侧只要写成 `TagHandler::fromCompound` 规则照样绿，这道「无条件禁止」的闸门就此漏过；改成 `accessTargetWhere(DescribedPredicate<JavaAccess<?>>)` 后两种写法都被捕获，规则自测相应拆成两个合成违规类（直接调用 / 方法引用），后者就是防止谓词被收窄回去的那道红。§24 同批补上规则③ javadoc 里缺的反射盲区说明（规则②早已写了）。② §28.2 新增技术债：`InstanceContainer#getSrcInstance()` / `#getLastBlockChangeTime()` 的唯一消费者 `SharedInstance.areLinked` 随 `REQ-M2-012` 删除后零调用点，但它们是 public、服务于 `copy()` 链路，**不是死代码**，登记以防下一轮被当死代码清掉。③ `Player#spawnPlayer` 的 `updateChunks` 参数在 `REQ-M2-012` 删掉 `areLinked` 快路径后恒为 `true`，参数与它门住的两段分支一并摘掉（行为不变，那条 `@param` 描述的还是随 `SharedInstance` 一起消失的概念）。④ `Match#state` 标 `volatile`：写它的是停机线程（`end()`），读它的是准入回调所在的 configuration 虚拟线程，停机窗口里读到过期的 `RUNNING` 会把已 `unregisterInstance` 的实例交出去 | Bearisbug |
@@ -698,7 +699,7 @@ flowchart LR
 
 无 HTTP，不用 RFC 9457。沿用 `docs/DESIGN.md` §14 的统一信封：断线走 Minecraft 协议的 `Disconnect` 包，原因文本是 Adventure `Component`，其 `translate` 键即稳定错误码；排障关联 ID 仍是 `connection_id`（见 `docs/DESIGN.md` §9），由网络层在 TCP 接入时生成，**该连接的每一行日志都携带；断线文本不携带**——引擎的 `PlayerConnection#kick` 只把它写进日志，`DisconnectReasons` 是纯 `TranslatableComponent`。因此凡涉及断线的验收判据一律写成「服务端该次 kick 的**日志行**带 `connection_id`」，原因与判据见 §13 的 `PAGE-DISCONNECT` 行，§19 的 gherkin 按此断言。M2 新增的错误分两层：**断线级**（沿用 `synaxis:*` 键体系）与**带内结果码**（不断线，走 `S2C_ORDER_RESULT` 的 `code`）。
 
-断线级（新增，M1 的五个键继续有效）。**这四个键住在游戏侧**：`synaxis:` 只是引擎与游戏共用的 `translate` 前缀（与「`synaxis` 是宿主保留的**通道**命名空间」是两回事），键本身由 `plugin-api` 的常量类 `DisconnectKeys` 持有，**不得加进引擎的 `DisconnectReasons`**——否则引擎就知道了「模组」「对局」这些概念，违背 §6 的依赖方向：
+断线级（新增，M1 的六个键继续有效）。**这四个键住在游戏侧**：`synaxis:` 只是引擎与游戏共用的 `translate` 前缀（与「`synaxis` 是宿主保留的**通道**命名空间」是两回事），键本身由 `plugin-api` 的常量类 `DisconnectKeys` 持有，**不得加进引擎的 `DisconnectReasons`**——否则引擎就知道了「模组」「对局」这些概念，违背 §6 的依赖方向：
 
 | 错误码（type） | 协议动作 | 语义 | 客户端处理约定 |
 | --- | --- | --- | --- |
@@ -707,7 +708,7 @@ flowchart LR
 | `synaxis:game-flood` | Disconnect | 单连接入站游戏消息连续 3 s 超过 **300 包/秒**（见 §15）。阈值**远高于任何正常操作**（§2 算出的正常峰值 ≈ 95 包/秒），也远低于引擎的 1,000 包/秒/连接稳态上限：它是防脚本洪水的闸门，**不是玩法限流**——玩法超频只回 `rate-limited`，不断线 | 提示重连；重复出现提示报障并附 `connection_id` |
 | `synaxis:match-unavailable` | Disconnect | 对局进入 `ended`（正常结束或载入失败）且无处可转移 | 提示对局已结束，返回主菜单 |
 
-沿用 `docs/DESIGN.md` §14：`synaxis:protocol-error`（M2 扩展其语义覆盖「未知 `msg_id` 之外的畸形消息、`count` 超限、重复 `C2S_HELLO`」）、`synaxis:internal-error`、`synaxis:server-stopping`、`synaxis:unsupported-version`、`synaxis:login-timeout`。
+沿用 `docs/DESIGN.md` §14：`synaxis:protocol-error`（M2 扩展其语义覆盖「未知 `msg_id` 之外的畸形消息、`count` 超限、重复 `C2S_HELLO`」）、`synaxis:internal-error`、`synaxis:server-stopping`、`synaxis:unsupported-version`、`synaxis:login-timeout`、`synaxis:duplicate-login`（离线模式下 UUID 由用户名派生，两个玩家取同名就会命中，`PAGE-DISCONNECT` 需要它的文案）。
 
 带内结果码（不断线，取值定义见 §9 `order_result_code`）：
 

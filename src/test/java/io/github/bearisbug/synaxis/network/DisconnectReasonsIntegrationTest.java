@@ -27,7 +27,6 @@ import java.nio.ByteBuffer;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 import java.util.List;
-import java.util.concurrent.CompletionException;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
@@ -35,7 +34,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -108,11 +106,18 @@ public class DisconnectReasonsIntegrationTest {
         final var connection = env.createConnection();
         final var disconnects = connection.trackIncoming(DisconnectPacket.class);
 
-        assertThrows(CompletionException.class, () -> connection.connect(broken, new Pos(0, 42, 0)),
-                "the spawn must fail");
+        // A failed spawn is reported to its own client and to the log; it never escapes onto the
+        // thread letting the queued players in, so the rest of that batch still joins
+        var _ = connection.connect(broken, new Pos(0, 42, 0));
 
         final DisconnectPacket disconnect = awaitDisconnect(disconnects.collect());
         assertEquals("synaxis:internal-error", translateKey(disconnect.message()));
+    }
+
+    @Test
+    public void aDuplicateUuidIsRejectedWithItsOwnReason() {
+        // The rejection itself is driven end to end by DuplicateUuidLoginIntegrationTest
+        assertEquals("synaxis:duplicate-login", DisconnectReasons.DUPLICATE_LOGIN.key());
     }
 
     @Test

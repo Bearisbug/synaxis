@@ -42,6 +42,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.ExecutionException;
@@ -68,6 +69,8 @@ public final class ConnectionManager {
 
     // All players once their Player object has been instantiated.
     private final Map<PlayerConnection, Player> connectionPlayerMap = new ConcurrentHashMap<>();
+    // The same players keyed by profile uuid, which owns the uuid until its connection is dropped
+    private final Map<UUID, Player> uuidPlayerMap = new ConcurrentHashMap<>();
     // Players waiting to be spawned (post configuration state)
     private final MessagePassingQueue<Player> playWaitingPlayers = ConcurrentMessageQueues.mpscUnboundedArrayQueue(64);
     // Players waiting to be (re) configured
@@ -189,12 +192,17 @@ public final class ConnectionManager {
         this.playerProvider = playerProvider != null ? playerProvider : Player::new;
     }
 
+    /**
+     * Creates the player of a connection which acknowledged its login, and claims its profile uuid.
+     *
+     * @return the player, or null when another live connection already owns that uuid and the
+     * caller must reject this one
+     */
     @ApiStatus.Internal
-    public Player createPlayer(PlayerConnection connection, GameProfile gameProfile) {
+    public @Nullable Player createPlayer(PlayerConnection connection, GameProfile gameProfile) {
         assert process.config().insideTest() || Thread.currentThread().isVirtual();
         final Player player = playerProvider.createPlayer(connection, gameProfile);
-        this.connectionPlayerMap.put(connection, player);
-        return player;
+        return trackNewPlayer(player) ? player : null;
     }
 
     public void sendRegistryTags(Player player) {
@@ -325,12 +333,31 @@ public final class ConnectionManager {
     public synchronized void removePlayer(PlayerConnection connection) {
         final Player player = this.connectionPlayerMap.remove(connection);
         if (player == null) return;
+        // Only drop the uuid when it is still this player's, a reconnection may already own it
+        this.uuidPlayerMap.remove(player.getUuid(), player);
         this.configurationPlayers.remove(player);
         this.playPlayers.remove(player);
         this.keepAlivePlayers.remove(player);
         // The client is gone and will never answer what #doConfiguration waits for
         player.releaseResourcePackWait();
         connection.releaseKnownPacksWait();
+    }
+
+    /**
+     * Publishes a freshly created player, unless its profile uuid is already taken.
+     * <p>
+     * Synchronized against {@link #removePlayer(PlayerConnection)} so that the uuid index and
+     * {@link #connectionPlayerMap} always hold the same players: a uuid is owned for exactly as
+     * long as its connection is tracked. Two connections carrying the same uuid — which offline
+     * mode hands out to anyone reusing a username — therefore cannot both win, whatever their
+     * interleaving, and the loser never reaches the entity tracker.
+     *
+     * @return false if another live connection already owns that uuid
+     */
+    private synchronized boolean trackNewPlayer(Player player) {
+        if (uuidPlayerMap.putIfAbsent(player.getUuid(), player) != null) return false;
+        connectionPlayerMap.put(player.getPlayerConnection(), player);
+        return true;
     }
 
     /**
@@ -364,6 +391,7 @@ public final class ConnectionManager {
 
         this.keepAlivePlayers.clear();
         this.connectionPlayerMap.clear();
+        this.uuidPlayerMap.clear();
 
         // A disconnect packet is written by the connection own write thread. Without waiting for
         // those threads the process exits first and the client only sees a closed socket.
@@ -419,16 +447,24 @@ public final class ConnectionManager {
 
             // Spawn the player at Player#getRespawnPoint
             CompletableFuture<Void> spawnFuture = player.UNSAFE_init();
-            // A failed spawn (e.g. the spawn chunks could not be loaded) would otherwise leave
-            // the client waiting on the join screen forever.
+            // A failed spawn (e.g. the spawn chunks could not be loaded, or the entity tracker
+            // refused the player) would otherwise leave the client waiting on the join screen
+            // forever, in a world its entity is not tracked in.
             var _ = spawnFuture.exceptionally(throwable -> {
                 LOGGER.error("Failed to spawn player {}", player.getUsername(), throwable);
                 player.kick(DisconnectReasons.INTERNAL_ERROR);
                 return null;
             });
 
-            // Required to get the exact moment the player spawns
-            if (process.config().insideTest()) spawnFuture.join();
+            // Required to get the exact moment the player spawns. Only this future can be joined,
+            // Player#setInstance overrides join to run the pending chunk work of this very thread.
+            if (process.config().insideTest()) {
+                try {
+                    spawnFuture.join();
+                } catch (CompletionException _) {
+                    // Already reported and disconnected above, the remaining players still join
+                }
+            }
         });
     }
 

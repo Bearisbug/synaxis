@@ -15,6 +15,7 @@
 
 | 日期 | 版本 | 改动 | 作者 |
 | --- | --- | --- | --- |
+| 2026-09-18 | v0.26 | `SOAK-3` 修复（离线模式下同名玩家的重复 UUID）：§14 新增原因键 `synaxis:duplicate-login`，§11.1 的 login→configuration 守卫补上「profile UUID 未被在线连接占用」并新增 login→disconnected 一条转移；§28 登记一条「已决」 | Bearisbug |
 | 2026-09-18 | v0.25 | `SOAK-1` / `SOAK-2` 修复：断线时释放 known-packs 等待，玩家进入生命周期集合改走与 `removePlayer` 同锁的 `trackPlayer`，§28 两条技术债转「已决」。§14 按实现更正——`connection_id` 只进服务端日志，不拼进断线文本（`docs/DESIGN-M2.md` §28.2 登记的那条文实不符随之关闭） | Bearisbug |
 | 2026-09-18 | v0.24 | §28 新增两条技术债：2026-09-18 压测发现 `SOAK-1`——configuration 阶段被中断的连接，其虚拟线程与整个 `Player` 对象图滞留到 `knownPacksResponseTimeout`（默认 5 分钟，从最后一次连接起算）才回收，属 2026-09-15 审计 F02 未修完的那一半；`SOAK-2`——同一路径上约 1% 的连接留下永不回收的 `Player` | Bearisbug |
 | 2026-09-09 | v0.1 | 初稿：里程碑 M1 范围、实体、协议契约、状态机、阶段计划 | Bearisbug |
@@ -266,7 +267,8 @@ stateDiagram-v2
   handshake --> login : Handshake next=2(客户端) [协议版本=776]
   handshake --> disconnected : Handshake next=2(客户端) [协议版本≠776]
   status --> disconnected : StatusRequest 已应答(客户端) [已应答一次]
-  login --> configuration : LoginAcknowledged(客户端) [LoginSuccess 已发]
+  login --> configuration : LoginAcknowledged(客户端) [LoginSuccess 已发 且 profile UUID 空闲]
+  login --> disconnected : LoginAcknowledged(客户端) [profile UUID 已被在线连接占用]
   login --> disconnected : 登录超时(系统定时器) [now-连接建立>30s]
   configuration --> play : FinishConfiguration(客户端) [服务端已发 FinishConfiguration]
   configuration --> disconnected : FinishConfiguration(客户端) [服务端未发 FinishConfiguration]
@@ -286,7 +288,8 @@ stateDiagram-v2
 | handshake → login | Handshake next=2 | 协议版本 = 776 | — | 客户端 | `API-001` |
 | handshake → disconnected | Handshake next=2 | 协议版本 ≠ 776 | 发 LoginDisconnect `synaxis:unsupported-version` | 客户端 | `API-001` |
 | status → disconnected | StatusRequest 已应答 | 已应答一次 | 第二次 StatusRequest 直接关闭（审计网络层修复） | 客户端 | `API-001` |
-| login → configuration | LoginAcknowledged | LoginSuccess 已发 | 发 KnownPacks、`RegistryDataPacket` | 客户端 | `API-001` |
+| login → configuration | LoginAcknowledged | LoginSuccess 已发 且 profile UUID 未被在线连接占用 | 创建 `ENT-Player` 并占用该 UUID，发 KnownPacks、`RegistryDataPacket` | 客户端 | `API-001` |
+| login → disconnected | LoginAcknowledged | profile UUID 已被在线连接占用 | 断线 `synaxis:duplicate-login`，不创建 `ENT-Player`；被拒的是**后来者**，在线会话不受影响（离线模式下 UUID 由用户名派生，踢老的等于给了任何人顶掉别人的手段）。旧连接尚未清理时的重连同样被拒，客户端重试即可——僵死会话由 keep-alive 在 `keepAliveKick` 内清掉，占用窗口有界 | 客户端 | `API-001` |
 | login → disconnected | 登录超时 | now − 连接建立 > 30 s | 关闭 socket | 系统定时器 | 内部任务 `connection.login-timeout`（无对外 API） |
 | configuration → play | FinishConfiguration | 服务端已发 FinishConfiguration | 创建 `ENT-Player`，发 JoinGame，进入世界 | 客户端 | `API-001` |
 | configuration → disconnected | FinishConfiguration | 服务端未发 FinishConfiguration | 断线 `synaxis:protocol-error`（审计网络层 P0-1 修复：抢跑不再 NPE） | 客户端 | `API-001` |
@@ -367,7 +370,8 @@ N/A — 无前端。客户端 Fabric 模组与其界面属于 M2。
 | `synaxis:unsupported-version` | LoginDisconnect | 协议版本 ≠ 776 | 提示安装指定版本 |
 | `synaxis:protocol-error` | Disconnect | 帧格式非法、状态机非法推进、负载超限、递归超深 | 提示重连，重复出现提示报障（`connection_id` 在服务端日志里） |
 | `synaxis:login-timeout` | 关闭 socket | 30 秒内未完成登录 | 提示重连 |
-| `synaxis:internal-error` | Disconnect | 服务端内部异常，如出生区块加载失败 | 提示重连并报障 |
+| `synaxis:duplicate-login` | Disconnect（configuration 阶段） | 该 profile UUID 已有在线连接（离线模式下 UUID 由用户名派生，同名即同 UUID） | 提示换个用户名；若是自己刚掉线后重连，稍候重试 |
+| `synaxis:internal-error` | Disconnect | 服务端内部异常，如出生区块加载失败或实体注册被拒 | 提示重连并报障 |
 | `synaxis:server-stopping` | Disconnect | 进程关闭 | 提示服务器已关闭 |
 
 ## 15. 非功能需求
@@ -639,6 +643,7 @@ N/A — M1 尚未完成；完成后按 §26 退出条件逐项对照并记录实
 
 | 类型 | 描述 | 负责人 | 何时需拍板 |
 | --- | --- | --- | --- |
+| 已决 | 压测 `SOAK-3`（2026-09-18，NFR 级复测）：离线模式下 UUID 由用户名派生，两个压测进程用同一批用户名 ⇒ 第二批玩家带着**已在线的 UUID** 走完登录与 configuration 进 play，`EntityTrackerImpl.register` 抛 `IllegalStateException`，异常被 `Entity#setInstance` 续体的 `catch` 吞掉，于是玩家「在世界里、连接活着、不在追踪器里」，此后每个移动包写一行 `Attempted to move unregistered entity`（实测 15 分钟 662,803 行 / 84 MiB）。**这是 2026-09-15 审计 F59 的 notes 里点名「不在本批次范围、未处理」的那一条**（「离线模式下 `LoginListener` 直接采信客户端 `profileId`、`ConnectionManager` 无重复 UUID 拒绝」）。处置是三层：① `ConnectionManager#createPlayer` 与 `removePlayer` 同锁地占用 / 释放 profile UUID，占用失败返回 `null`，`LoginListener` 以新原因键 `synaxis:duplicate-login` 拒掉**后来的**那条连接（§11.1、§14）；② 注册失败不再被吞——续体抛 `CompletionException`，`Player#spawnPlayer` 与 `Player#setInstance` 把它交回 future，`updateWaitingPlayers` 既有的 `exceptionally` 以 `synaxis:internal-error` 断开该连接，对**任何**注册失败成立；③ `EntityTrackerImpl` 的「移动未注册实体」改为每 10 秒最多一行、行内带区间内累计次数，日志量与客户端包速率脱钩 | Bearisbug | 已于 2026-09-18 修复，回归用例 `DuplicateUuidLoginIntegrationTest`、`FailedSpawnRegistrationIntegrationTest`、`EntityTrackerUnregisteredMoveTest` |
 | 已决 | 审计 F29：`Instance#unloadChunk` 对区块内有在线玩家的调用抛 `IllegalStateException` 且不做任何卸载动作，与 `InstanceManager.unregisterInstance` 对称；Javadoc 与 `UnloadChunkIntegrationTest` 已随之更新 | Bearisbug | 已于 2026-09-16 决定并实施 |
 | 已决 | 审计 F49：客户端 NBT 不进 tag 系统。`CustomData` / `TypedCustomData` 的 getTag / withTag 经内部 `TagNbtAccess` 直接对 compound 读写单个 tag，不再整包 `TagHandler.fromCompound`，客户端键名不再登记进 `TagImpl.INDEX_MAP` | Bearisbug | 已于 2026-09-16 决定并实施 |
 | 已决 | 审计 F49 残留：按「降级不修」处置——`Tag.Structure` / `Tag.View` / `TagHandler.fromCompound` 的 Javadoc 标明不可用于不可信数据，并由 `:game-rts` 自己的测试源集里一条 ArchUnit 规则**无条件**禁止游戏侧使用这三者（「来源」是运行期污点属性，静态分析判断不了，按来源写等于规则形同虚设）；引擎自身的读取路径不变 | Bearisbug | 已于 2026-09-16 由 `docs/DESIGN-M2.md` 的 `REQ-M2-015` 处置 |

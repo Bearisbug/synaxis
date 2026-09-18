@@ -9,9 +9,12 @@
   所以那三组数字不可回算复核；SOAK-1 / SOAK-2 的证据在 `30cec4073c`（首测）与 `14edb22d79`（回收时间轴重测）
   上采，期间只有 harness 与文档改动，引擎代码未变。分支 `worktree-wf_3e0dff43-904-1`。
 - 三组都用 `stop` 停机，Gradle `GRADLE_EXIT=0`，停机后 `pgrep synaxis.app.Main` 为空。
-- **本轮只跑与记录，不修引擎缺陷。** 改动只在 harness、本报告与文档登记（`docs/DESIGN.md` §28 的
+- **上面三组那一轮只跑与记录，不修引擎缺陷。** 改动只在 harness、本报告与文档登记（`docs/DESIGN.md` §28 的
   两条技术债、`docs/TEST.md` §3 的工具登记、`docs/research/audit-2026-09-15/fixes.md` 里 F02 的
   状态更正），引擎代码一行未动。
+- **复测（2026-09-18，验收人 NFR 级）**：同时起两个压测进程、各 25 连接会撞用户名，由此暴露 `SOAK-3`
+  （见下方「发现」第三条）——本报告的三组长跑都只跑一个 harness 进程，一次都没触达它。该条已修复，
+  修复前后的对照数字也记在同一条里。
 
 ## 压力是否到位
 
@@ -208,6 +211,68 @@ harness 用单 selector 循环驱动全部连接，只有登录握手在 8 个 w
 - 复现：SOAK-1 的复现命令跑两轮，每轮结束后静置到线程归 0，再
   `jcmd <pid> GC.class_histogram | grep -E 'synaxis.entity.Player$|PlayerSocketConnection$'`
   对比两轮的残留数。
+
+### SOAK-3（P1）：两个压测进程撞用户名 ⇒ 重复 UUID 进 play ⇒ 每个移动包一行 WARN（15 分钟 84 MiB）
+
+- **发现者与场景**：验收人在 NFR 级复测里同时起两个压测进程、各 25 条连接。`soak.py` 的用户名固定为
+  `soak0000..soak0024`（不可配），引擎默认离线模式、UUID 由用户名派生，于是第二批的 25 个玩家
+  带着**已经在线的 UUID** 登录。上面三组之所以一次都没踩到，是因为它们都只跑一个 harness 进程。
+- 触发链（已查清，证据在验收人保留的片段里：异常全栈 + WARN 样本 + 行数与日志字节数）：
+  1. 第二个同 UUID 的玩家照常通过登录与 configuration，进入 play；
+  2. tick 线程上 `ConnectionManager.updateWaitingPlayers` → `Entity.setInstance` 的续体 →
+     `EntityTrackerImpl.register` 抛 `IllegalStateException: There is already an entity registered
+     with uuid <uuid>`；
+  3. 这个异常被续体里的 `catch (Exception e) -> handleException` 吞掉，默认处理器只打一行栈；
+  4. 结果：玩家在世界里、连接活着、能收发包，但**不在 `EntityTracker` 里**；
+  5. 此后它每发一个移动包，`EntityTrackerImpl` 就写一行
+     `Attempted to move unregistered entity N in the entity tracker`。实测 15 分钟 662,803 行 / 84 MiB。
+- **来历**：2026-09-15 审计 F59 的 notes 里点过名——「离线模式下 `LoginListener` 直接采信客户端
+  `profileId`、`ConnectionManager` 无重复 UUID 拒绝」当时不在那一批的文件范围里，**未处理**。
+  F59 本身（register 的原子性）已经修过，正因为它修了，第 2 步才是干净地抛出而不是留下半张表。
+- **处置（2026-09-18，三层防线，都已合入）**：
+  1. **门口拦住**：`ConnectionManager` 新增一张 profile UUID → `Player` 的索引，与
+     `connectionPlayerMap` 在同一个 `synchronized` 里写，占用期严格等于「连接被跟踪」的时长。
+     `createPlayer` 占不到就返回 `null`，`LoginListener#loginAckListener` 以新原因键
+     **`synaxis:duplicate-login`** 拒掉**后来的**那条连接（`docs/DESIGN.md` §11.1 新增一条
+     login→disconnected 转移、§14 新增该原因键）。拒新不踢旧：离线模式下 UUID 由用户名派生，
+     踢老的等于给了任何人一个「顶掉别人」的手段；僵死会话由 keep-alive 在 `keepAliveKick` 内清掉，
+     占用窗口有界，所以合法重连的行为是**被拒 + 客户端重试**，而不是等待。
+     判定点选在 login-ack（`createPlayer`）而不是进 play 之前：那是 profile 最终确定后的第一个时刻
+     （`AsyncPlayerPreLoginEvent` 可以改 UUID，改完才发 `LoginSuccess`），也是 `Player` 对象诞生、
+     第一次进入 `connectionPlayerMap` 的时刻——把占用与这次插入放进同一把锁，占用与释放就天然
+     跟 `removePlayer` 对齐，不会出现「占了没人放」的孤儿。
+  2. **失败不留僵尸**：`Entity#setInstance` 的续体不再吞异常，抛 `CompletionException`；
+     `Player#spawnPlayer` 读回 `super.setInstance` 的 future（原来整个丢掉）、`Player#setInstance`
+     的两条完成路径把它转成失败的 future，`ConnectionManager#updateWaitingPlayers` 既有的
+     `exceptionally` 于是真的会跑，以 `synaxis:internal-error` 断开该连接，连接的 `disconnect()`
+     再摘掉玩家并在下一 tick `remove()` 掉实体。这一层对**任何**注册失败成立，不只是 UUID 冲突。
+     被取消的 `AddEntityToInstanceEvent` 不受影响：`spawnPlayer` 仍在读 future 之前按
+     `this.instance != instance` 提前返回。
+  3. **日志有界**：`EntityTrackerImpl` 的「移动未注册实体」改成每 10 秒最多一行，行内带
+     「距上次报告以来的累计次数」。选按时间限流而不是「每个实体一次」：后者要按 entity id 记一张
+     只增不减的表，而 entity id 单调递增，那张表本身就是新的无界增长。这一层无论前两层是否生效
+     都成立。
+- **修复前后实测（同一台机、同一条命令、各跑 200 秒）**：两个 `soak.py` 进程各 25 连接、
+  `--move-hz 10 --echo-hz 0 --no-jfr`，第二个晚 12 秒起（确保第一批已进 play）。
+
+  | 指标 | 修复前 | 修复后 |
+  | --- | --- | --- |
+  | `There is already an entity registered with uuid` | 25 | **0** |
+  | `Attempted to move unregistered entity` | 47,350 | **0** |
+  | 服务端日志字节数（整跑，含启动的 6.8 KB） | 6,329,554 | **29,384** |
+  | 服务端日志行数 | 48,137 | **212** |
+  | 异常栈行（`^\tat `） | 575 | **0** |
+  | `reason=synaxis:duplicate-login` 的 kick | 0（原因键不存在） | 25 |
+  | 先起那组的连接 / 移动包 | 25 / 47,497 | 25 / 47,423（**在线会话不受影响**） |
+  | 后起那组 | 25 条全部进 play（即缺陷本身） | 25 条全部 `login_failures = disconnect:synaxis:duplicate-login` |
+
+  复现命令与判据已登记为 `docs/TEST.md` 的 `TC-032`；两次跑的 `--out` 目录与服务端日志已按纪律删除。
+- 归属：引擎缺陷。**已于 2026-09-18 修复**，去向登记在 `docs/DESIGN.md` §28 与
+  `docs/research/audit-2026-09-15/fixes.md` 的 F59 行。回归用例
+  `DuplicateUuidLoginIntegrationTest`（三条：拒绝、并发恰好一条赢、旧连接摘掉后 UUID 立刻可用）、
+  `FailedSpawnRegistrationIntegrationTest`（两条：注册被拒让 future 异常完成、玩家收到
+  `synaxis:internal-error` 并在下一 tick 离开世界）、`EntityTrackerUnregisteredMoveTest`（一条：
+  一万次移动尝试不是一万行日志）。
 
 ### 未发现的项（如实记录）
 

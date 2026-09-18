@@ -132,6 +132,15 @@ public final class LoginListener {
         assert gameProfile != null;
         try {
             final Player player = connection.process().connection().createPlayer(connection, gameProfile);
+            if (player == null) {
+                // The uuid is already in the world. Letting this connection continue would take it
+                // into the play state and only there hit the entity tracker, which refuses the
+                // duplicate uuid and leaves an untracked player behind. The newcomer is the one
+                // rejected: in offline mode the uuid is derived from the username, so kicking the
+                // established session instead would hand anyone a way to evict anyone else.
+                connection.kick(DisconnectReasons.DUPLICATE_LOGIN);
+                return;
+            }
             executeConfig(player, true);
         } catch (Throwable t) {
             connection.process().exception().handleException(t);

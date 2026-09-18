@@ -1546,6 +1546,7 @@ REQ-M2 ↔ TC 对照（手工维护）：
 | RUN-015 | 2026-09-16 | `6c86fb18d9`（审计修复第二轮 F29 / F49 / F11 合入） | AI（Claude Code，Gradle / 探针） | 局部（instance / tag / player 域→TC-004、TC-018、TC-026、TC-027 + 冒烟级 TC-001、TC-002、TC-012、TC-020、TC-028、TC-029） | 通过 9/10 · 待人工 1 |
 | RUN-016 | 2026-09-16 | `8ea0f97e00`（M2 阶段 1～3 合入：模块拆分、插件宿主、世界管理与审计残留） | AI（Claude Code，Gradle） | 局部（M2 阶段 1～3 的 REQ-M2-001～006、010～015、021～023 → 其对应 TC-GAME-* 的可自动化部分 + 引擎域冒烟 TC-001、TC-029） | 通过 16/29 · 待人工 2 · 阻塞 11 |
 | RUN-017 | 2026-09-18 | `91902d12af`（引擎核心模式、压测 harness、configuration 泄漏与重复 UUID 登录的修复） | AI（Claude Code，Gradle / 探针 / soak.py） | 局部（引擎核心：核心模式起服与冒烟、连接生命周期、NFR 级压测；引擎域冒烟 TC-001、TC-029） | 通过 8/8 |
+| RUN-018 | 2026-09-18 | `70b61a8192`（日志洪泛门禁、ABI 基线上线、Java 发包端、事件与网络测试密度） | AI（Claude Code，Gradle / PacketFlood / CI） | 局部（引擎核心：客户端可控日志的两道门禁、稳定面 ABI 门、§15 入站包指标、event 与 network 包的测试密度） | 通过 6/6 |
 
 明细（仅登非「通过」项）：
 
@@ -1647,6 +1648,8 @@ TC-002 证据：`docs/test-runs/RUN-002/tc-002.txt`（5 步实际输出）（2,6
 | RUN-016 | TC-GAME-020 | 待人工 | 需原版客户端看断线提示 | 人工收口轮 |
 | RUN-016 | TC-GAME-016 | 待人工 | 示例插件按 `docs/PLUGINS.md` 跑通需人工照说明走一遍 | 人工收口轮 |
 
+
+RUN-018 证据：`docs/test-runs/RUN-018/`（`nfr-5000.txt`：Java 发包端 `tools/loadtest/PacketFlood.java` 持续 360 秒打出 5,014.9 包/秒、1,805,402 个包、0 丢失 0 断线，窗口内 7,200 个 tick 的 p99 为 1.631 ms、日志增量 0 字节 —— `docs/DESIGN.md` §15 最后一条未证明的量化指标就此闭合，四条全部达标；`gates.txt`：ABI 门在本地用 v0.1.0 release 的真实资产当 baseline 执行并通过，删掉 `PluginContext#dataDirectory()` 后以 `ABI Check failed with 1 binary compatibility violations` 变红、复原后恢复绿，CI run 35332065219 里两个任务同样真跑而非 SKIPPED；引擎与宿主两条「客户端可控路径不得逐包写日志」门禁均由审查员插探针验过会红；全量 `clean check` BUILD SUCCESSFUL，引擎 2,867 + testing 6 + server-app 69 + game-rts 25 共 2,967 个测试 0 失败）。压测方法与全部数字见 `docs/research/soak-2026-09-18/` 的组 6 与组 7。附带产出：event 包测试密度由 0.05 升到 0.32（新测试炸出两个真缺陷：事件节点可挂成环导致 StackOverflowError、写队列最小写入长度算错，均已修）；network 包分母按「排除 219 个由字节对拍整体钉住的包定义 record」重新核定为 44 个逻辑文件对 48 个测试。通过项：TC-033、TC-035、TC-GAME-005、TC-GAME-006 及 §15 四条指标的实测核对。
 
 RUN-017 证据：`docs/test-runs/RUN-017/`（`nfr-summary.txt` 与 `nfr-50conn-summary.json`：50 连接 / 10 分钟，tick p99 0.753 ms、登录延迟 p99 114 ms、存活集 31.7→28.1 MiB、0 掉线 0 登录失败，对照 `docs/DESIGN.md` §15 四条目标三条达标、入站包 5,000 每秒未触达（瓶颈在 harness，实测 2,880 单进程 / 3,990 双进程）；`duplicate-uuid-before.txt`：同名双进程压测在修复前触发 25 次 `register` 冲突异常与 662,803 行未注册移动 WARN、日志 87.6 MB；`duplicate-uuid-after.txt`：同场景修复后 `register` 异常 0、未注册移动 WARN 0、25 次 `reason=synaxis:duplicate-login` 的 kick、堆栈行 0、日志 26,129 字节）。完整 `clean check` BUILD SUCCESSFUL，引擎 2,695 + testing 6 + server-app 60 + game-rts 25 共 2,786 个测试 0 失败。压测方法与全部数字见 `docs/research/soak-2026-09-18/`。通过项：TC-001、TC-029 及核心模式起服 / 登录 / echo / stop 四项实跑（用例化随下一轮补）。
 

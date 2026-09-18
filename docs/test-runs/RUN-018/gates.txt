@@ -1,0 +1,28 @@
+RUN-018 · version 70b61a8192 · 2026-09-18
+
+== ABI 门（本地，用 v0.1.0 release 的真实资产当 baseline）==
+带 baseline：两个任务均执行（无 SKIPPED），BUILD SUCCESSFUL，28 actionable tasks: 2 executed
+破坏稳定面（删 PluginContext#dataDirectory 及其 javadoc 与 import）：
+  > Task :plugin-api:checkBinaryCompatibility FAILED
+  Public/protected method removed or signature changed: io/github/bearisbug/synaxis/plugin/PluginContext#dataDirectory()Ljava/nio/file/Path;
+  > ABI Check failed with 1 binary compatibility violations.
+复原后：BUILD SUCCESSFUL
+注意：前两次尝试失败在 compileJava（先是未用 import，再是悬空 javadoc），不是门禁——删公开方法要连 javadoc 与 import 一起删才验得到门禁本身
+
+== ABI 门（CI，run 35332065219）==
+Download the ABI baseline 步骤按 gradle/abi-baseline.tag 取到 v0.1.0 的两个 jar
+ABI gate 步骤实跑：./gradlew :plugin-api:checkBinaryCompatibility :protocol:checkBinaryCompatibility -PbaselineJarDir=.abi-baseline
+  > Task :protocol:checkBinaryCompatibility
+  > Task :plugin-api:checkBinaryCompatibility
+  BUILD SUCCESSFUL in 3s   （两个任务都执行，没有 SKIPPED）
+
+== 全量 check ==
+build              tests=2867   failures=0
+testing/build      tests=6      failures=0
+server-app/build   tests=69     failures=0
+game-rts/build     tests=25     failures=0
+合计 2,967 个测试，0 失败
+
+== 客户端可控日志门禁 ==
+引擎侧 ArchitectureTest#clientDrivenPathsDoNotLogPerPacket、宿主侧 ClientDrivenLogArchitectureTest#hostPathsDoNotWriteALinePerPacket
+两条都由审查员插探针验过会红（引擎：PlayerPositionListener 加一行 LOGGER.warn；宿主：PluginEventsImpl#addListener 加一行）

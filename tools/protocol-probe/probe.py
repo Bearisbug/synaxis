@@ -913,7 +913,6 @@ def cmd_duplicate_hello(args: argparse.Namespace) -> int:
     session = Session(args)
     try:
         session.enter_play()
-        session.handshook = False
         if not session.pump_until(lambda: session.server_hello is not None, args.timeout):
             session.log("no S2C_HELLO received, the first handshake did not go through")
             return 1

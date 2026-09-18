@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -72,6 +73,20 @@ public class EventNodeAddChildTest {
         var root = EventNode.all("root");
         assertThrows(IllegalStateException.class, () -> root.addChild(root));
         assertTrue(root.getChildren().isEmpty(), "The rejected node must not stay in the children");
+    }
+
+    @Test
+    public void aNodeCannotBeAddedUnderItsOwnDescendant() {
+        // The cycle is not limited to depth one: a grandchild adopting the root closes it too
+        var root = EventNode.all("root");
+        var child = EventNode.all("child");
+        var grandChild = EventNode.all("grandChild");
+        root.addChild(child);
+        child.addChild(grandChild);
+
+        assertThrows(IllegalStateException.class, () -> grandChild.addChild(root));
+        assertTrue(grandChild.getChildren().isEmpty(), "The rejected node must not stay in the children");
+        assertNull(root.getParent(), "The rejected edge must not reparent the root");
     }
 
     @Test

@@ -21,6 +21,14 @@ Subcommands, see docs/TEST.md section 3:
                                   non-creative player has the packet dropped before decoding
     echo --payload TEXT           round trip TEXT over the synaxis:main custom payload channel
     record-registry --out FILE    dump every received RegistryData packet to FILE
+    handshake                     log in and report the S2C_HELLO the server answered with
+    no-hello                      log in and never send C2S_HELLO, the client without the mod
+    bad-schema --schema N         send C2S_HELLO announcing a schema_version of N
+    duplicate-hello               send a second C2S_HELLO on a connection that already handshook
+
+Every subcommand that reaches the configuration phase sends C2S_HELLO on synaxis:handshake first
+(REQ-M2-008), which is what keeps the pre-handshake subcommands working against a server that
+demands the client mod. The schema_version is read out of ProtocolSchema.java, like the packet ids.
 """
 
 from __future__ import annotations
@@ -44,6 +52,12 @@ COST_PER_EMPTY_COMPOUND = 52
 REPO_ROOT = Path(__file__).resolve().parents[2]
 PACKET_VANILLA = REPO_ROOT / "src/main/java/io/github/bearisbug/synaxis/network/packet/PacketVanilla.java"
 DATA_COMPONENTS = REPO_ROOT / "src/main/java/io/github/bearisbug/synaxis/component/DataComponents.java"
+PROTOCOL_SCHEMA = REPO_ROOT / "protocol/src/main/java/io/github/bearisbug/synaxis/game/protocol/ProtocolSchema.java"
+
+# The host reserved handshake channel and its two message ids, see docs/DESIGN-M2.md API-M2-002
+HANDSHAKE_CHANNEL = "synaxis:handshake"
+C2S_HELLO = 0x01
+S2C_HELLO = 0x81
 
 
 # --------------------------------------------------------------------------------------
@@ -85,8 +99,17 @@ def _load_component_ids() -> dict[str, int]:
     return {name: index for index, name in enumerate(names)}
 
 
+def _load_schema_version() -> int:
+    """Reads the wire schema version out of the protocol module, not out of a remembered number."""
+    match = re.search(r"SCHEMA_VERSION\s*=\s*(\d+)", PROTOCOL_SCHEMA.read_text(encoding="utf-8"))
+    if match is None:
+        raise SystemExit(f"cannot find SCHEMA_VERSION in {PROTOCOL_SCHEMA}")
+    return int(match.group(1))
+
+
 REGISTRIES = _load_registries()
 COMPONENT_IDS = _load_component_ids()
+SCHEMA_VERSION = _load_schema_version()
 
 HANDSHAKE, STATUS, LOGIN, CONFIGURATION, PLAY = "HANDSHAKE", "STATUS", "LOGIN", "CONFIGURATION", "PLAY"
 _CLIENT_REGISTRY = {HANDSHAKE: "CLIENT_HANDSHAKE", STATUS: "CLIENT_STATUS", LOGIN: "CLIENT_LOGIN",
@@ -393,6 +416,25 @@ def plugin_message_payload(channel: str, data: bytes) -> bytes:
     return Writer().string(channel).raw(data).bytes()
 
 
+def hello_body(mod_version: int, schema_version: int) -> bytes:
+    """C2S_HELLO{msg_id=0x01, mod_version, schema_version}, see docs/DESIGN-M2.md API-M2-002."""
+    return Writer().varint(C2S_HELLO).varint(mod_version).varint(schema_version).bytes()
+
+
+def login_plugin_response_payload(message_id: int, data: bytes | None) -> bytes:
+    """The login phase answer; a client that does not know the channel sends no data at all."""
+    writer = Writer().varint(message_id).boolean(data is not None)
+    return writer.raw(data).bytes() if data is not None else writer.bytes()
+
+
+def read_server_hello(data: bytes) -> dict[str, int] | None:
+    """Decodes S2C_HELLO{msg_id=0x81, schema_version, tick_rate:u8, server_tick}."""
+    reader = Reader(data)
+    if reader.varint() != S2C_HELLO:
+        return None
+    return {"schema_version": reader.varint(), "tick_rate": reader.u8(), "server_tick": reader.varint()}
+
+
 def nested_potion_settings(depth: int) -> bytes:
     """A CustomPotionEffect.Settings chain nested ``depth`` levels deep."""
     writer = Writer()
@@ -472,6 +514,15 @@ class Session:
         self.connection = Connection(args.host, args.port, args.timeout)
         self.registry_data: list[bytes] = []
         self.keep_alives = 0
+        # The handshake this session performs. Every subcommand sends one by default, which is what
+        # keeps the pre-REQ-M2-008 subcommands able to reach the play state (API-M2-002).
+        self.hello = True
+        self.hello_mod_version = 1
+        self.hello_schema_version = SCHEMA_VERSION
+        self.server_hello: dict[str, int] | None = None
+        # Set once this session has handshaken, so that the login phase form of it is not followed
+        # by a second C2S_HELLO in the configuration phase (which is a protocol error).
+        self.handshook = False
 
     def close(self) -> None:
         self.connection.close()
@@ -506,6 +557,8 @@ class Session:
                 threshold = reader.varint()
                 self.connection.compression_threshold = threshold
                 self.log(f"     compression threshold={threshold}")
+            elif packet == "LoginPluginRequestPacket":
+                self.answer_login_plugin(reader)
             elif packet == "EncryptionRequestPacket":
                 raise SystemExit("EncryptionRequest received: the server is not in offline mode")
             elif packet == "LoginSuccessPacket":
@@ -517,11 +570,39 @@ class Session:
                 self.log("sent LoginAcknowledged")
                 return
 
+    def send_hello(self) -> None:
+        payload = hello_body(self.hello_mod_version, self.hello_schema_version)
+        self.connection.send("ClientPluginMessagePacket",
+                             plugin_message_payload(HANDSHAKE_CHANNEL, payload))
+        self.log(f"sent C2S_HELLO mod_version={self.hello_mod_version} "
+                 f"schema_version={self.hello_schema_version}")
+
+    def read_handshake_payload(self, reader: Reader) -> bool:
+        """Handles a custom payload on the handshake channel, returns whether it was one."""
+        channel = reader.string()
+        data = reader.raw(reader.remaining())
+        if channel != HANDSHAKE_CHANNEL:
+            return False
+        answer = read_server_hello(data)
+        if answer is None:
+            self.log(f"     unexpected message on {channel}")
+            return True
+        self.server_hello = answer
+        self.log(f"     S2C_HELLO schema_version={answer['schema_version']} "
+                 f"tick_rate={answer['tick_rate']} server_tick={answer['server_tick']}")
+        return True
+
     def configuration(self) -> None:
         """Answers the configuration phase until the server finishes it."""
+        if self.hello and not self.handshook:
+            # Sent first thing in the phase: the server starts its bounded wait when the connection
+            # gets here, and answers on the same channel (API-M2-011).
+            self.send_hello()
         while True:
             packet, reader, body = self.recv()
-            if packet == "SelectKnownPacksPacket":
+            if packet == "PluginMessagePacket":
+                self.read_handshake_payload(reader)
+            elif packet == "SelectKnownPacksPacket":
                 entries = [(reader.string(), reader.string(), reader.string())
                            for _ in range(reader.varint())]
                 self.connection.send("ClientSelectKnownPacksPacket", known_packs_payload(entries))
@@ -536,6 +617,29 @@ class Session:
                 self.log("sent FinishConfiguration")
                 return
 
+    def answer_login_plugin(self, reader: Reader) -> None:
+        """Answers the login phase form of the handshake (the fallback of ADR-M2-010).
+
+        A client that does not know the channel answers with no data at all, which is exactly what
+        this does when the session is set up to send no hello.
+        """
+        message_id = reader.varint()
+        channel = reader.string()
+        request = reader.raw(reader.remaining())
+        known = channel == HANDSHAKE_CHANNEL and self.hello
+        if channel == HANDSHAKE_CHANNEL:
+            # The server asks first in this phase, so its S2C_HELLO is the request payload.
+            answer = read_server_hello(request)
+            if answer is not None:
+                self.server_hello = answer
+                self.log(f"     S2C_HELLO schema_version={answer['schema_version']} "
+                         f"tick_rate={answer['tick_rate']} server_tick={answer['server_tick']}")
+        data = hello_body(self.hello_mod_version, self.hello_schema_version) if known else None
+        self.connection.send("ClientLoginPluginResponsePacket",
+                             login_plugin_response_payload(message_id, data))
+        self.handshook = self.handshook or known
+        self.log(f"sent LoginPluginResponse channel={channel} understood={known}")
+
     def answer_keep_alive(self, reader: Reader) -> None:
         self.connection.send("ClientKeepAlivePacket", Writer().long(reader.long()).bytes())
         self.keep_alives += 1
@@ -548,16 +652,23 @@ class Session:
 
     def pump(self, seconds: float) -> None:
         """Reads packets for the given duration, answering keep alives."""
+        self.pump_until(lambda: False, seconds)
+
+    def pump_until(self, ready, seconds: float) -> bool:
+        """Reads packets until ``ready()`` holds or the time is up, answering keep alives."""
         deadline = time.monotonic() + seconds
         self.connection.socket.settimeout(0.5)
         try:
-            while time.monotonic() < deadline:
+            while not ready() and time.monotonic() < deadline:
                 try:
                     packet, reader, _ = self.recv()
                 except socket.timeout:
                     continue
                 if packet == "KeepAlivePacket":
                     self.answer_keep_alive(reader)
+                elif packet == "PluginMessagePacket":
+                    self.read_handshake_payload(reader)
+            return ready()
         finally:
             self.connection.socket.settimeout(self.args.timeout)
 
@@ -734,6 +845,92 @@ def cmd_echo(args: argparse.Namespace) -> int:
         session.close()
 
 
+def cmd_handshake(args: argparse.Namespace) -> int:
+    session = Session(args)
+    session.hello_mod_version = args.mod_version
+    try:
+        session.enter_play()
+        # The answer may still be in flight: the server interprets a configuration phase payload on
+        # its next tick, which can land after it has already finished the phase.
+        session.pump_until(lambda: session.server_hello is not None, args.timeout)
+        answer = session.server_hello
+        if answer is None:
+            session.log("no S2C_HELLO received")
+            return 1
+        if answer["schema_version"] != SCHEMA_VERSION:
+            session.log(f"the server speaks schema_version={answer['schema_version']}, "
+                        f"this repository speaks {SCHEMA_VERSION}")
+            return 1
+        session.log(f"handshake ok schema_version={answer['schema_version']} "
+                    f"tick_rate={answer['tick_rate']} server_tick={answer['server_tick']}")
+        return 0
+    finally:
+        session.close()
+
+
+def _expect_disconnect(session: "Session", reason_key: str, seconds: float) -> int:
+    """Drives the configuration phase expecting the server to refuse the handshake.
+
+    Login is driven here as well: with the handshake in the login phase (the fallback of
+    ADR-M2-010) the refusal is a LoginDisconnect that arrives before the phase ever starts. The
+    refusal is also still awaited after the phase ends — a server that does not demand the mod (the
+    core mode) finishes the phase, and one that does may interpret the offending payload on a tick
+    that lands after it.
+    """
+    try:
+        session.login()
+        session.configuration()
+        session.pump(seconds)
+    except Disconnected as disconnected:
+        return 0 if disconnected.reason == reason_key else 1
+    except ClosedByServer:
+        session.log("connection closed without a disconnect packet")
+        return 1
+    session.log(f"the server let the connection through instead of sending {reason_key}")
+    return 1
+
+
+def cmd_no_hello(args: argparse.Namespace) -> int:
+    session = Session(args)
+    session.hello = False
+    try:
+        session.log("staying silent, the client without the mod")
+        return _expect_disconnect(session, "synaxis:client-mod-required", args.timeout)
+    finally:
+        session.close()
+
+
+def cmd_bad_schema(args: argparse.Namespace) -> int:
+    session = Session(args)
+    session.hello_schema_version = args.schema
+    try:
+        return _expect_disconnect(session, "synaxis:protocol-version-mismatch", args.timeout)
+    finally:
+        session.close()
+
+
+def cmd_duplicate_hello(args: argparse.Namespace) -> int:
+    session = Session(args)
+    try:
+        session.enter_play()
+        session.handshook = False
+        if not session.pump_until(lambda: session.server_hello is not None, args.timeout):
+            session.log("no S2C_HELLO received, the first handshake did not go through")
+            return 1
+        session.send_hello()
+        try:
+            session.pump(args.timeout)
+        except Disconnected as disconnected:
+            return 0 if disconnected.reason == "synaxis:protocol-error" else 1
+        except ClosedByServer:
+            session.log("connection closed without a disconnect packet")
+            return 1
+        session.log("the server accepted a second C2S_HELLO")
+        return 1
+    finally:
+        session.close()
+
+
 def cmd_record_registry(args: argparse.Namespace) -> int:
     session = Session(args)
     try:
@@ -793,6 +990,20 @@ def build_parser() -> argparse.ArgumentParser:
                       help="the channel to send on and to expect the answer on (default: synaxis:main)")
     echo.set_defaults(run=cmd_echo)
 
+    handshake = subparsers.add_parser("handshake", help="log in and report the S2C_HELLO answer")
+    handshake.add_argument("--mod-version", type=int, default=1)
+    handshake.set_defaults(run=cmd_handshake)
+
+    no_hello = subparsers.add_parser("no-hello", help="log in without ever sending C2S_HELLO")
+    no_hello.set_defaults(run=cmd_no_hello)
+
+    bad_schema = subparsers.add_parser("bad-schema", help="send C2S_HELLO with a mismatched schema_version")
+    bad_schema.add_argument("--schema", type=int, default=SCHEMA_VERSION + 1)
+    bad_schema.set_defaults(run=cmd_bad_schema)
+
+    duplicate = subparsers.add_parser("duplicate-hello", help="send a second C2S_HELLO on the same connection")
+    duplicate.set_defaults(run=cmd_duplicate_hello)
+
     record = subparsers.add_parser("record-registry", help="dump every RegistryData packet")
     record.add_argument("--out", required=True)
     record.set_defaults(run=cmd_record_registry)
@@ -802,7 +1013,8 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main() -> int:
     args = build_parser().parse_args()
-    print(f"probe target={args.host}:{args.port} protocol={PROTOCOL_VERSION} command={args.command}", flush=True)
+    print(f"probe target={args.host}:{args.port} protocol={PROTOCOL_VERSION} "
+          f"schema_version={SCHEMA_VERSION} command={args.command}", flush=True)
     try:
         code = args.run(args)
     except Disconnected as disconnected:

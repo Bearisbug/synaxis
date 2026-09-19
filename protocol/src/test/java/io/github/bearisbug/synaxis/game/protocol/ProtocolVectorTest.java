@@ -22,18 +22,24 @@ import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * The frozen wire vectors of {@code docs/DESIGN-M2.md} §24 and {@code docs/TEST.md} TC-GAME-017.
  * <p>
  * Every message has a canonical vector in {@code vectors/} and a boundary one in
- * {@code vectors/edge/}; the client mod runs this very same directory in §26 stage 6a. Two things
+ * {@code vectors/edge/}, and the archetype box table — the one piece of the archetype template both
+ * ends hold (§9) — is frozen beside them; the client mod runs this very same directory in §26
+ * stage 6a. Two things
  * are asserted: each vector decodes into the record written down here and re-encodes byte for
  * byte, and the digest of the whole set matches the one frozen in {@code manifest.txt} next to the
  * {@code schema_version} it belongs to — that is what makes "change a layout, raise
  * {@link ProtocolSchema#SCHEMA_VERSION} in the same change" a red build instead of a convention.
  */
 class ProtocolVectorTest {
+
+    /** The one frozen vector that is not a message: the archetype box table of §24. */
+    private static final String ARCHETYPE_BOX = "archetype_box.bin";
 
     private static final Function<MsgBuf, Message> HANDSHAKE = HandshakeMessages::read;
     private static final Function<MsgBuf, Message> GAME = GameMessages::read;
@@ -103,11 +109,32 @@ class ProtocolVectorTest {
 
     @Test
     void everyMessageHasACanonicalAndABoundaryVector() throws IOException {
-        final List<String> canonical = binFiles(vectorsDirectory());
+        final List<String> canonical = new ArrayList<>(binFiles(vectorsDirectory()));
+        assertTrue(canonical.remove(ARCHETYPE_BOX), "the archetype box table is not in the frozen set");
         final List<String> edge = binFiles(vectorsDirectory().resolve("edge"));
         assertEquals(9, canonical.size(), canonical.toString());
         assertEquals(canonical, edge, "the boundary set must cover the same nine messages");
         assertEquals(vectors().size(), canonical.size() + edge.size());
+    }
+
+    /**
+     * {@code archetype_box} is held by both ends and travels on neither ({@code docs/DESIGN-M2.md}
+     * §9), so nothing on the wire would notice the two drifting apart — a unit would simply stop
+     * being clickable where it is drawn. §24 puts the whole table under the same freeze the
+     * messages get: this asserts the server's copy, and the client mod asserts its own against the
+     * very same bytes in §26 stage 6a.
+     */
+    @Test
+    void theArchetypeBoxTableIsFrozenWithTheMessages() throws IOException {
+        final byte[] frozen = Files.readAllBytes(vectorsDirectory().resolve(ARCHETYPE_BOX));
+
+        final MsgBuf writer = MsgBuf.writing();
+        ArchetypeBox.writeTable(writer);
+
+        assertArrayEquals(frozen, writer.toByteArray(), """
+                原型的拾取包围盒变了：按 docs/DESIGN-M2.md §24，archetype_box 是两端各持一份的数据，\
+                改它必须在同一个改动里重新生成 vectors/archetype_box.bin 并更新 manifest.txt 的 digest，\
+                客户端模组那一份也要跟着改""");
     }
 
     @Test

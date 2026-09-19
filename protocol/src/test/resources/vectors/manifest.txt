@@ -4,12 +4,20 @@
 # protocol 的 ProtocolVectorTest 逐字节对拍（那里的 record 是期望值的事实源，本文件是它的
 # 可读副本）；客户端模组在 §26 阶段 6a 跑同一个目录，两端共用这一份字节。
 #
+# archetype_box.bin 不是消息：它是 §9 原型模板里两端各持一份的那半份（客户端拾取包围盒的宽高，
+# 按原型号索引），线上任何消息都不带它，所以两端写歪了也不会有包报错——单位会画在一处、点在另一处。
+# §24 因此把整张表一起冻进本目录，与消息向量同一套对拍与 digest。
+#
 # 下面的 digest 是全部 .bin 按「相对路径 + 内容」顺序喂进 SHA-256 的结果，它与 schema_version
 # 绑在一起：改任何消息布局都必须在同一个改动里把 ProtocolSchema.SCHEMA_VERSION 加 1、重新生成
 # 全部向量并更新这两行，否则 ProtocolVectorTest 会红。
 
 schema_version=1
-digest=8caa13fcc38f8be20d3cf036a1c8d98c60ec3e6c3c154712c23df1e46bd285e6
+digest=81b4bfd19377aeb7a78fb27d671b2bf597183884351f8e28952608d6c1dd2486
+
+## archetype_box.bin  (9 字节)
+期望值: [ArchetypeBox[width=0.9, height=0.9]]  —— count:varint + 每个原型 (width:f32, height:f32)
+字节:   01 3F 66 66 66 3F 66 66 66
 
 ## c2s_hello.bin  (3 字节)
 期望值: C2SHello[modVersion=1, schemaVersion=1]

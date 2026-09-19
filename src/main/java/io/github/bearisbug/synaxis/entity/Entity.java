@@ -1496,6 +1496,26 @@ public class Entity implements Viewable, Tickable, Schedulable, EventHandler<Ent
     }
 
     /**
+     * Moves this entity to the given position, synchronously and without dispatching any event.
+     * <p>
+     * This is the public entry point for advancing a position that the caller already decided on,
+     * as opposed to {@link #teleport(Pos)}, which dispatches an {@code EntityTeleportEvent} and loads
+     * chunks asynchronously. The caller must own the tick thread of this entity and the chunk covering
+     * {@code position} must already be loaded; moving outside of the loaded area throws a
+     * {@link NullPointerException} rather than failing silently.
+     * <p>
+     * It belongs to the stable surface even though it lives in the engine, which no binary
+     * compatibility gate covers: changing its signature or its semantics is a breaking change
+     * of {@code plugin-api} (see {@code docs/DESIGN-M2.md} §24).
+     *
+     * @param position the position to move to, whose view is applied to the entity
+     * @throws NullPointerException if the chunk covering {@code position} is not loaded
+     */
+    public void moveTo(final Pos position) {
+        refreshPosition(position, false, true);
+    }
+
+    /**
      * Updates internal fields and sends updates.
      *
      * @param newPosition the new position

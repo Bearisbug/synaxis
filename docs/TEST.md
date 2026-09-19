@@ -14,6 +14,7 @@
 
 | 日期 | 改动 | 作者 |
 | --- | --- | --- |
+| 2026-09-19 | 阶段 5 的 `REQ-M2-025` 落地（引擎新增公开的 `Entity#moveTo(Pos)`）：**`TC-GAME-051` 保留 ID，只填第 3 步的占位**——等价性对照测试写成真实命令 `EntityMoveToEquivalenceIntegrationTest`，判据点明四档情形（同区块带 viewer、跨区块边界带 viewer、超 8 格走 `EntityTeleportPacket` 分支、无 viewer）逐包相同。第 1、2、4～6 步与前置未动（第 4～6 步仍等 `REQ-M2-017` 的推进调用点）；用例语义未变 | Bearisbug |
 | 2026-09-19 | 阶段 4 评审第 2 轮修订。**废旧 ID 换新 ID**：`TC-GAME-025` → **`TC-GAME-064`**——原第 1 步 `game-flood --rate 400 --seconds 3` 离 300 包/秒的阈值只有 33% 余量，而探针是突发发包、读取与 `pump` 会让单次突发的周期漂过一秒，服务端又按固定 1 秒桶计数，实测 14 次挂 7 次（失败时实际速率 344～349 包/秒），判据的速率实质变更；替代用例用 `--rate 800`（6 次全中）并把探针新报的 `slowest window` 纳入第 1 步的判读。§3 的探针表（`game-flood` 默认速率 400 → 800、新增实际速率那一行输出）与 M2 环境段那句「`--rate 400` 稳过」按实测改写；§2 的 REQ ↔ TC 表与 §5 的游戏域回归映射同步换 ID。其余用例语义未变 | Bearisbug |
 | 2026-09-19 | 跟进 `docs/DESIGN-M2.md` v0.25（阶段 4 评审第 1 轮修订：`EVT:unit_order_rejected` 只记 §20 点名的四档，`stale` 与 `rate-limited` 不写台账）。**废旧 ID 换新 ID**：`TC-GAME-023` → **`TC-GAME-063`**——原第 5 步要求那 10 条超频在 `logs/events-*.jsonl` 里各留一行 `code=rate-limited`，现在它们一行都不写（客户端可无限刷的拒绝不落盘），判据实质变更；前四步逐字保留，新用例第 5 步改判「计数 0」并补第 6 步用一条越界指令反证四档照常记。§2 的 REQ ↔ TC 表与 §5 的游戏域回归映射同步换 ID。其余用例语义未变 | Bearisbug |
 | 2026-09-19 | 跟进 `docs/DESIGN-M2.md` v0.24（阶段 4 的 `REQ-M2-009` 落地）。**§3 环境段**：探针表新增 `order` / `select` / `game-flood` 三行；M2 段的探针占位填掉「发 `C2S_CAMERA` / `C2S_SELECT` / `C2S_MOVE_ORDER`、按速率发包」这几半，只留「打印收到的 `S2C_UNIT_*`、记账区块与实体位置包」待 `REQ-M2-016` / `REQ-M2-018`；「探针的 M2 子命令未验证」那条按实跑改写。**语义未变、只把「用探针…」写成实际命令**：`TC-GAME-023` 第 1～2 步、`TC-GAME-024` 第 1、2、4 步、`TC-GAME-025` 全四步、`TC-GAME-026` 第 1～2 步、`TC-GAME-039` 第 1、5 步，并在这五条的前置里点名「`ok` 那几步要等 `REQ-M2-016` 的单位（阶段 5）」——判据一条没改，改的是执行时机的说明。一条用例都没有换 ID：本轮没有任何判据实质变更 | Bearisbug |
@@ -1593,7 +1594,7 @@ REQ-M2 ↔ TC 对照（手工维护）：
 | --- | --- | --- |
 | 1 | `grep -rn "refreshPosition" game-rts/src/main/java plugin-api/src/main/java server-app/src/main/java` | 退出码 1、无输出（游戏侧与稳定面零命中内部 API） |
 | 2 | 查 `Entity#moveTo` 的声明 | 是 `public` 且**没有** `@ApiStatus.Internal`；三个 `refreshPosition` 重载仍然标着 `@ApiStatus.Internal`（新入口是提升原语，不是放宽既有 API） |
-| 3 | 运行 `moveTo` 与 `refreshPosition(pos, false, true)` 的等价性对照测试（测试名待 `REQ-M2-025` 实现后填） | `BUILD SUCCESSFUL`；两条路径对同一组输入产出逐包相同的出站序列（零行为变更） |
+| 3 | 运行 `moveTo` 与 `refreshPosition(pos, false, true)` 的等价性对照测试：`./gradlew :test --tests 'io.github.bearisbug.synaxis.entity.EntityMoveToEquivalenceIntegrationTest' --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts` | `BUILD SUCCESSFUL`、4 个用例全绿；四档情形（同区块带 viewer、跨区块边界带 viewer、超 8 格走 `EntityTeleportPacket` 分支、无 viewer）里两条路径从同一份状态出发，产出逐包相同的出站序列——包类型、顺序与全部字段都相等（零行为变更） |
 | 4 | 下一条移动指令让单位走 20 格，用探针记账这段时间内的 `EntityTeleportEvent`（计数入口待 `REQ-M2-025` 实现后填） | 计数为 `0`（推进不派发传送事件） |
 | 5 | 在同一段里观察推进是否产生跨 tick 的异步回调（JFR 采样 tick 线程） | 推进在 tick 线程上同步完成，没有 `loadOptionalChunk(...).thenRun(...)` 一类的异步链 |
 | 6 | 让单位沿航点走到一个**未载入**区块的方向（构造方式：临时把航点指到地图边界外一格） | 抛 `NullPointerException`（来自 `refreshCoordinate` 的 `Check.notNull`）并被寻路侧的守卫拦下、记 ERROR，单位不进入不一致状态（越界不静默失败，见 `ADR-M2-013`） |

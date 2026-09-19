@@ -17,6 +17,7 @@ import io.github.bearisbug.synaxis.plugin.PluginChannels;
 import io.github.bearisbug.synaxis.plugin.PluginContext;
 import io.github.bearisbug.synaxis.plugin.PluginEvents;
 import io.github.bearisbug.synaxis.plugin.PluginScheduler;
+import io.github.bearisbug.synaxis.timer.TaskSchedule;
 import io.github.bearisbug.synaxis.testing.Env;
 import io.github.bearisbug.synaxis.testing.EnvTest;
 import org.jetbrains.annotations.Nullable;
@@ -29,12 +30,14 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Consumer;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * The one compile time plugin of M2 (REQ-M2-003): what it builds while the host enables it, and
@@ -56,6 +59,8 @@ class RtsPluginIntegrationTest {
         private final Path dataDirectory;
         private final RecordedEvents events = new RecordedEvents();
         private final List<String> registeredChannels = new ArrayList<>();
+        private final List<TaskSchedule> scheduled = new ArrayList<>();
+        private final List<String> sent = new CopyOnWriteArrayList<>();
         private @Nullable AdmissionProvider provider;
 
         ProbeContext(Env env, Path dataDirectory) {
@@ -80,7 +85,10 @@ class RtsPluginIntegrationTest {
 
         @Override
         public PluginScheduler scheduler() {
-            throw new UnsupportedOperationException("the rts plugin schedules nothing yet");
+            return (task, delay, repeat) -> {
+                scheduled.add(repeat);
+                return env.process().scheduler().buildTask(task).delay(delay).repeat(repeat).schedule();
+            };
         }
 
         @Override
@@ -93,7 +101,7 @@ class RtsPluginIntegrationTest {
 
                 @Override
                 public void send(Player player, String name, byte[] payload) {
-                    throw new UnsupportedOperationException("nothing is sent while the plugin is enabled");
+                    sent.add(name);
                 }
             };
         }
@@ -154,8 +162,16 @@ class RtsPluginIntegrationTest {
         assertEquals(Block.STONE, match.getBlock(0, MapTerrain.GROUND_HEIGHT - 1, 0));
         assertEquals(List.of("match_created", "match_started"), context.events.names());
 
+        // The roster is deployed before the port is bound, and the unit task is on the scheduler:
+        // both have to exist before the first player, since neither is created on demand
+        assertEquals(Roster.OWN_UNITS + 3, match.getEntities().size(), "the roster of §3 is not on the board");
+        assertEquals(List.of(TaskSchedule.tick(1)), context.scheduled,
+                "the units are driven by one task, every tick");
+
         // And the connection the provider accepted really can spawn in there
         final Player player = env.createPlayer(match, new Pos(0.5, MapTerrain.GROUND_HEIGHT, 0.5));
         assertEquals(match, player.getInstance());
+        assertTrue(context.sent.stream().allMatch(GameChannel.NAME::equals),
+                "the units were announced on a channel that is not the plugin's");
     }
 }

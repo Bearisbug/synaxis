@@ -10,18 +10,22 @@ import io.github.bearisbug.synaxis.plugin.PluginContext;
 import io.github.bearisbug.synaxis.plugin.PluginDescriptor;
 import io.github.bearisbug.synaxis.plugin.SynaxisPlugin;
 import io.github.bearisbug.synaxis.registry.RegistryKey;
+import io.github.bearisbug.synaxis.timer.TaskSchedule;
 import io.github.bearisbug.synaxis.world.DimensionType;
 import net.kyori.adventure.key.Key;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.Objects;
+import java.util.UUID;
+
 /**
  * The RTS plugin, the one compile time plugin of M2.
  * <p>
- * It owns the match: it generates the map and builds the instance before the server binds its port
- * and tells the host, by way of the admission provider, where a connecting player belongs. It also
- * owns the one game channel of the slice, where the server judges what a client asks for
- * ({@link GameChannel}). The units and the pathfinding arrive with REQ-M2-016 and REQ-M2-017; the
- * navigation mesh they will read is already generated with the map (REQ-M2-010).
+ * It owns the match: it generates the map, builds the instance and deploys the roster before the
+ * server binds its port, then tells the host, by way of the admission provider, where a connecting
+ * player belongs. It also owns the one game channel of the slice, where the server judges what a
+ * client asks for ({@link GameChannel}), and the one scheduled task that drives the units — the
+ * pathfinding queue, the advance along the waypoints and the snapshot ({@link Units}).
  */
 public final class RtsPlugin implements SynaxisPlugin {
 
@@ -31,9 +35,8 @@ public final class RtsPlugin implements SynaxisPlugin {
     /** The map preset to generate, {@link MapPreset#DEFAULT} when the operator names none. */
     private static final String MAP_PROPERTY = "synaxis.app.map";
 
-    private static final int PLAYER_TEAM = 1;
-
     private @Nullable Match match;
+    private @Nullable Units units;
 
     @Override
     public PluginDescriptor descriptor() {
@@ -63,22 +66,39 @@ public final class RtsPlugin implements SynaxisPlugin {
         context.events().addListener(AsyncPlayerConfigurationEvent.class,
                 event -> event.getPlayer().setRespawnPoint(started.spawn()));
 
-        final GameChannel game = new GameChannel(started, context.channels(), context.analytics(),
-                System::nanoTime, context.process().connection());
+        final NavGrid navGrid = Objects.requireNonNull(started.navGrid(), "the match has no navigation mesh");
+        final MapPreset preset = Objects.requireNonNull(started.preset(), "the match has no map");
+        final GameSessions sessions = new GameSessions(context.process().connection());
+        final Units deployed = new Units(started, instance, navGrid, preset, sessions,
+                context.channels(), context.analytics(), System::nanoTime);
+        Roster.deploy(deployed, navGrid, preset, started.spawn());
+        this.units = deployed;
+
+        final GameChannel game = new GameChannel(started, sessions, deployed, context.channels(),
+                context.analytics(), System::nanoTime);
         context.channels().register(GameChannel.NAME, game::receive);
-        context.events().addListener(PlayerDisconnectEvent.class,
-                event -> game.closed(event.getPlayer().getPlayerConnection().connectionId()));
+        context.events().addListener(PlayerDisconnectEvent.class, event -> {
+            final UUID connectionId = event.getPlayer().getPlayerConnection().connectionId();
+            sessions.closed(connectionId);
+            deployed.closed(connectionId);
+        });
+        // One task, every tick: the searches the budget allows, and on every other tick the advance
+        // and the snapshot. It runs at the top of a tick, before any chunk is ticked, which is what
+        // lets it move entities without taking a lock (API-M2-010 step 6 starts the tick thread)
+        context.scheduler().scheduleTask(deployed::tick, TaskSchedule.nextTick(), TaskSchedule.tick(1));
         context.admission().register(request -> {
             if (started.state() != Match.State.RUNNING) return new Admission.Reject(DisconnectKeys.MATCH_UNAVAILABLE);
             // The team the connection is admitted with is the sender half of owner(unit, sender),
             // and this is the only place it is decided (§9)
-            game.admitted(request.connectionId(), PLAYER_TEAM);
-            return new Admission.Accept(instance, PLAYER_TEAM);
+            sessions.admitted(request.connectionId(), Roster.PLAYER_TEAM);
+            return new Admission.Accept(instance, Roster.PLAYER_TEAM);
         });
     }
 
     @Override
     public void onDisable() {
+        final Units deployed = this.units;
+        if (deployed != null) deployed.end();
         final Match running = this.match;
         if (running != null) running.end();
     }

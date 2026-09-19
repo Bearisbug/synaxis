@@ -11,7 +11,6 @@ import io.github.bearisbug.synaxis.game.protocol.MsgBuf;
 import io.github.bearisbug.synaxis.game.protocol.OrderResultCode;
 import io.github.bearisbug.synaxis.game.protocol.S2COrderResult;
 import io.github.bearisbug.synaxis.game.protocol.UnknownMessageException;
-import io.github.bearisbug.synaxis.network.ConnectionManager;
 import io.github.bearisbug.synaxis.network.ConnectionState;
 import io.github.bearisbug.synaxis.network.DisconnectReasons;
 import io.github.bearisbug.synaxis.network.player.PlayerConnection;
@@ -20,7 +19,6 @@ import io.github.bearisbug.synaxis.plugin.LogBudget;
 import io.github.bearisbug.synaxis.plugin.PluginAnalytics;
 import io.github.bearisbug.synaxis.plugin.PluginChannels;
 import net.kyori.adventure.text.Component;
-import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -32,7 +30,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.function.LongSupplier;
 
@@ -52,11 +49,11 @@ import java.util.function.LongSupplier;
  * that does not decode, or a flood, ends a connection. The two limits behind that split live in
  * {@link GameSession}.
  * <p>
- * <b>What is not here yet.</b> The {@code ACCEPT(order)} conjunction of §11.4 has two more terms
- * after the ones judged here — a queue depth and a path — and both belong to the pathfinder of
- * REQ-M2-017; the three downstream unit messages ({@code S2C_UNIT_SPAWN}, {@code S2C_UNIT_STATE},
- * {@code S2C_UNIT_DESPAWN}) are produced by the units of REQ-M2-016. An accepted order therefore
- * gets its {@code ok} and its snapped destination, and nothing walks there yet.
+ * <b>Where an accepted order goes.</b> The last term of the {@code ACCEPT(order)} conjunction of
+ * §11.4 — a path exists — cannot be judged here: a search costs too much to run inside a payload
+ * handler, so it is queued and {@link Units} answers it when it runs. Everything this class can
+ * decide on its own it decides before queueing, including the {@code busy} that says the queue is
+ * full, so an order only waits when it really is going to be searched for.
  */
 final class GameChannel {
 
@@ -80,17 +77,11 @@ final class GameChannel {
     private final Match match;
     private final MapPreset preset;
     private final NavGrid navGrid;
+    private final GameSessions sessions;
+    private final Units units;
     private final PluginChannels channels;
     private final PluginAnalytics analytics;
     private final LongSupplier clock;
-    private final ConnectionManager connections;
-
-    /**
-     * One entry per admitted connection, dropped when the connection goes away. A client cannot
-     * make this grow beyond the connections it holds open — §15 caps the heap, and an unreclaimed
-     * entry per payload would put that cap in the client's hands.
-     */
-    private final Map<UUID, GameSession> sessions = new ConcurrentHashMap<>();
 
     /**
      * The budget of the drop line. Shared by every unknown {@code msg_id} there is: the client
@@ -104,62 +95,16 @@ final class GameChannel {
     /** The budget of the flood line, which §14 asks to carry the connection id. */
     private final LogBudget floods = new LogBudget(LOGGER, "flooding connections");
 
-    GameChannel(Match match, PluginChannels channels, PluginAnalytics analytics, LongSupplier clock,
-                ConnectionManager connections) {
+    GameChannel(Match match, GameSessions sessions, Units units, PluginChannels channels,
+                PluginAnalytics analytics, LongSupplier clock) {
         this.match = match;
         this.preset = Objects.requireNonNull(match.preset(), "the match has no map");
         this.navGrid = Objects.requireNonNull(match.navGrid(), "the match has no navigation mesh");
+        this.sessions = sessions;
+        this.units = units;
         this.channels = channels;
         this.analytics = analytics;
         this.clock = clock;
-        this.connections = connections;
-    }
-
-    /**
-     * Records the team a connection was admitted with, which is the other half of every
-     * {@code owner(unit, sender)} test (§9), and is the one place bookkeeping is made. Called on
-     * the configuration virtual thread, from inside the admission provider.
-     * <p>
-     * A connection that is already gone gets no entry. Testing that and making the entry have to be
-     * one critical section, shared with {@link #closed}: the disconnect that reclaims an entry runs
-     * on another thread, and an insertion that overtook it would leave an entry nobody ever gives
-     * back — a client would then only have to close the socket while it is being admitted, as often
-     * as it likes ({@code ConnectionManager#trackPlayer} is the same shape).
-     *
-     * @param connectionId the connection being let in
-     * @param team         the team it plays for
-     */
-    synchronized void admitted(UUID connectionId, int team) {
-        if (!connections.isConnected(connectionId)) return;
-        sessions.computeIfAbsent(connectionId, _ -> new GameSession()).team(team);
-    }
-
-    /**
-     * Gives back what is held for one connection (§11.1 {@code in_game → closed}).
-     *
-     * @param connectionId the connection that went away
-     */
-    synchronized void closed(UUID connectionId) {
-        sessions.remove(connectionId);
-    }
-
-    /**
-     * Counts what this channel is holding, which is the invariant its reclamation has to keep.
-     *
-     * @return how many connections it still keeps bookkeeping for
-     */
-    int openSessions() {
-        return sessions.size();
-    }
-
-    /**
-     * The bookkeeping of one connection: its team, its selection and its camera anchor.
-     *
-     * @param connectionId the connection to look up
-     * @return its session, null when nothing is held for it
-     */
-    @Nullable GameSession session(UUID connectionId) {
-        return sessions.get(connectionId);
     }
 
     /**
@@ -245,7 +190,11 @@ final class GameChannel {
      */
     private void receiveOrder(Player player, GameSession session, UUID connectionId,
                               C2SMoveOrder order, long second) {
-        final OrderResultCode code = judge(session, order, second);
+        OrderResultCode code = judge(session, order, second);
+        // The sixth term, the queue depth, is decided by the insertion itself: two connections can
+        // hand in an order at the same moment, and a depth that was read before the insertion would
+        // not be the depth it ends up at
+        if (code == OrderResultCode.OK) code = units.request(player, connectionId, order);
         if (code != OrderResultCode.OK) {
             if (LEDGERED_REFUSALS.contains(code)) {
                 analytics.record("unit_order_rejected", attributes(connectionId,
@@ -255,13 +204,11 @@ final class GameChannel {
                     order.targetX(), order.targetY(), order.targetZ()));
             return;
         }
+        // Accepted as far as this connection is concerned, so the sequence moves on here rather
+        // than when the search finishes: two orders carrying the same seq in one tick would
+        // otherwise both be taken, and "only ever greater than the last accepted one" is what the
+        // client relies on to know that a retransmit costs it nothing (API-M2-005)
         session.acceptOrder(order.orderSeq());
-        final int column = (int) Math.floor(order.targetX());
-        final int row = (int) Math.floor(order.targetZ());
-        analytics.record("unit_order_issued", attributes(connectionId, "order_seq", order.orderSeq(),
-                "order_group", order.orderGroup(), "unit_id", order.unitId()));
-        answer(player, new S2COrderResult(order.orderSeq(), OrderResultCode.OK,
-                column + 0.5f, navGrid.surfaceY(column, row), row + 0.5f));
     }
 
     /**
@@ -278,7 +225,8 @@ final class GameChannel {
         if (!session.allowOrder(second, order.orderGroup())) return OrderResultCode.RATE_LIMITED;
         if (!commands(session, order.unitId())) return OrderResultCode.NOT_OWNER;
         if (!standable(order.targetX(), order.targetZ())) return OrderResultCode.OUT_OF_BOUNDS;
-        // The queue depth and the path are the last two terms, and both arrive with REQ-M2-017
+        // The last two terms are the pathfinder's: the queue answers busy when it is full, and the
+        // search itself answers no-path when it finds none (see receiveOrder)
         return OrderResultCode.OK;
     }
 

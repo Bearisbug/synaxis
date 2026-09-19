@@ -1002,6 +1002,17 @@ REQ-M2 ↔ TC 对照（手工维护）：
 
 **已废弃，被 `TC-GAME-062` 取代**（第 2 步的判据实质变更）：原第 2 步要求 `C2S_HELLO{schema_version=0}` 也回 `synaxis:protocol-version-mismatch`，但 `REQ-M2-007` 冻结的编解码层把 `schema_version` 定为 `≥ 1`（设计文档 §9），越界字段在 record 的紧凑构造器里就抛，按 §8 属于**畸形输入**、回 `synaxis:protocol-error`——「不等」与「非法」是两类结果，实测（2026-09-19）`--schema 0` 得到 `synaxis:protocol-error`、`--schema 2` 得到 `synaxis:protocol-version-mismatch`。按惯例换 ID，其余步骤在替代用例里保留。
 
+前置：进程就绪，服务端 `schema_version` 为 1。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 用探针发 `C2S_HELLO{schema_version=2}` | 1 秒内（不等 3 秒超时）收到 Disconnect，原因键 `synaxis:protocol-version-mismatch` |
+| 2 | 用探针发 `C2S_HELLO{schema_version=0}` | 同样收到 `synaxis:protocol-version-mismatch` |
+| 3 | `grep client_rejected logs/events-*.jsonl \| tail -2` | 两行的 `reason` 均为 `version-mismatch` |
+| 4 | 用探针发 `C2S_HELLO{schema_version=1}` | 收到 `S2C_HELLO`，其中 `tick_rate` 为 20、`server_tick` 为非负整数 |
+
+后置：无。
+
 #### `TC-GAME-022` 重复 `C2S_HELLO` 判协议错误 — 对应 `REQ-M2-008` · 级别: 回归 · 执行者: AI
 
 前置：进程就绪。
@@ -1065,6 +1076,18 @@ REQ-M2 ↔ TC 对照（手工维护）：
 
 **已废弃，被 `TC-GAME-063` 取代**（第 5 步的判据实质变更）：原第 5 步要求那 10 条超频在 `logs/events-*.jsonl` 里各留一行 `code=rate-limited`，而设计文档 §20 现在把 `rate-limited` 与 `stale` 排除出台账——这两档不进任何指标的分母，且客户端能按自己的节奏无限产生它们，而台账是每条事件一次 `open/append/close` 且写在 tick 线程上（实测一秒 1,000 条超频指令 → 台账多 1,002 行 / 215 KB）。前四步逐字保留在替代用例里。
 
+前置：探针已 in_game，持有一个本方单位 U（§3 对局种子）。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 1 秒内发 20 条 `order_group` 互不相同、`order_seq` 递增、目标均为可站立点的 `C2S_MOVE_ORDER` | 收到 20 条 `S2C_ORDER_RESULT`，一条不少（每条请求必回一条结果） |
+| 2 | 统计这 20 条结果的 `code` | 前 10 条不含 `rate-limited`，其余 10 条全为 `rate-limited` |
+| 3 | 检查连接状态 | 未收到 Disconnect，后续 KeepAlive 往返正常（玩法超频不断线，见设计文档 §14） |
+| 4 | 等 1 秒后再发 1 条合法指令 | 收到 `code=ok`（令牌桶已回填） |
+| 5 | `grep unit_order_rejected logs/events-*.jsonl \| tail -10` | 10 行的 `code` 均为 `rate-limited` |
+
+后置：无。
+
 #### `TC-GAME-063` 下令超频回 `rate-limited`、不断线、也不写台账 — 对应 `REQ-M2-009` · 级别: 回归 · 执行者: AI
 
 前置：探针已 in_game，持有一个本方单位 U（§3 对局种子）。
@@ -1100,6 +1123,17 @@ REQ-M2 ↔ TC 对照（手工维护）：
 #### `TC-GAME-025` 洪水断线、正常峰值不断线 — 对应 `REQ-M2-009` · 级别: 边缘 · 执行者: AI
 
 **已废弃，被 `TC-GAME-064` 取代**（第 1 步的速率实质变更）：原第 1 步的 `--rate 400` 离 300 包/秒的阈值只有 33% 余量，而探针是突发发包——一秒内把 400 个 `C2S_CAMERA` 打完，再按批读（每 32 包一次 10 ms 的 socket 超时）、剩下的时间 `pump`（`recv` 带 0.5 s 超时，会冲过那一秒的截止），于是单次突发的实际周期漂到 1 s 以上，而服务端按 `nanoTime` 的**固定 1 秒桶**计数、桶与桶之间只要有一个 ≤ 300 就把连续秒清零。实测这一步 14 次挂 7 次，失败时探针实际只达到 344～349 包/秒（服务端侧再被错位的秒桶切一刀就够不到阈值），服务端 stdout 里连一行 `Disconnecting a flooding connection` 都没有。替代用例把速率抬到 800（实测 6 次全中，单窗口实际 622 包/秒），并把探针新报的实际速率纳入判据；其余三步逐字保留。
+
+前置：探针支持按给定速率发包。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 以每秒 400 条的速率连续 3 秒发任意 `rts:game` 消息 | 在第 3 秒末收到 Disconnect，原因键 `synaxis:game-flood` |
+| 2 | 查看服务端 stdout | 一行 WARN 带 `connection_id`，无异常堆栈 |
+| 3 | 重新握手登录，以每秒 95 条（§2 算出的正常峰值）持续 60 秒 | 全程未断线，末尾仍在收到 `S2C_UNIT_STATE` |
+| 4 | 以每秒 299 条持续 3 秒 | 未断线（阈值是连续 3 秒 > 300 包/秒） |
+
+后置：无。
 
 #### `TC-GAME-064` 洪水断线、正常峰值不断线 — 对应 `REQ-M2-009` · 级别: 边缘 · 执行者: AI
 
@@ -1615,7 +1649,7 @@ REQ-M2 ↔ TC 对照（手工维护）：
 | RUN-016 | 2026-09-16 | `8ea0f97e00`（M2 阶段 1～3 合入：模块拆分、插件宿主、世界管理与审计残留） | AI（Claude Code，Gradle） | 局部（M2 阶段 1～3 的 REQ-M2-001～006、010～015、021～023 → 其对应 TC-GAME-* 的可自动化部分 + 引擎域冒烟 TC-001、TC-029） | 通过 16/29 · 待人工 2 · 阻塞 11 |
 | RUN-017 | 2026-09-18 | `91902d12af`（引擎核心模式、压测 harness、configuration 泄漏与重复 UUID 登录的修复） | AI（Claude Code，Gradle / 探针 / soak.py） | 局部（引擎核心：核心模式起服与冒烟、连接生命周期、NFR 级压测；引擎域冒烟 TC-001、TC-029） | 通过 8/8 |
 | RUN-018 | 2026-09-18 | `70b61a8192`（日志洪泛门禁、ABI 基线上线、Java 发包端、事件与网络测试密度） | AI（Claude Code，Gradle / PacketFlood / CI） | 局部（TC-033、TC-035、TC-GAME-005、TC-GAME-006 + §15 入站包指标与 event / network 测试密度的实测核对；均属引擎核心） | 通过 6/6 |
-| RUN-019 | 2026-09-19 | `bf7ed5c55a`（M2 阶段 4：:protocol 做实、握手与跨线程交接、服务端权威校验与限流、核心回归） | AI（Claude Code，Gradle / 探针 / PacketFlood） | 局部（REQ-M2-007→TC-GAME-017、TC-GAME-018；REQ-M2-008 与 REQ-M2-024②→TC-GAME-019、TC-GAME-021、TC-GAME-022、TC-GAME-050；REQ-M2-009→TC-GAME-023、TC-GAME-024、TC-GAME-026～028、TC-GAME-039、TC-GAME-064 + 核心基线复跑） | 通过 15/17 · 待人工 1 · 阻塞 1 |
+| RUN-019 | 2026-09-19 | `bf7ed5c55a`（M2 阶段 4：:protocol 做实、握手与跨线程交接、服务端权威校验与限流、核心回归） | AI（Claude Code，Gradle / 探针 / PacketFlood） | 局部（REQ-M2-007→TC-GAME-017、TC-GAME-018；REQ-M2-008 与 REQ-M2-024②→TC-GAME-019、TC-GAME-062、TC-GAME-022、TC-GAME-050；REQ-M2-009→TC-GAME-063、TC-GAME-024、TC-GAME-026～028、TC-GAME-039、TC-GAME-064 + 核心基线复跑） | 通过 15/17 · 待人工 1 · 阻塞 1 |
 
 明细（仅登非「通过」项）：
 

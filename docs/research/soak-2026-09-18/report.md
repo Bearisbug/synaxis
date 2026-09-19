@@ -741,3 +741,116 @@ churn 与稳态两组内都不随时间涨；阶段 4 新增的握手路径在 1
 的多 tick 线程形态、连接铺开到不同区块的形态、加密与压缩两条入站解码分支、玩法模式下的
 强制握手（`required=true` 的 3 秒有界等待与 `synaxis:client-mod-required`）在长跑里的表现——
 最后这条本轮只有单测覆盖（`HandshakeIntegrationTest`），没有长跑数字。
+
+## 阶段 5 之后的复跑（2026-09-19，分支 `worktree-wf_b183325d-361-1`，head `bb6cb1ff5d`）
+
+`docs/DESIGN-M2.md` §26 阶段 5「单位与寻路」的退出条件一条条跑通的同一轮里，把核心基线重新证明了
+一遍。本轮与前两轮的差别在于**多了一组基线里没有的负载**：阶段 5 让单位真的会走，走动中的单位给
+每个 viewer 带来引擎的实体位置包（§15「单位快照」那一行明说位置不计在快照预算里、计在引擎侧），
+而 RUN-017 / RUN-018 / RUN-019 的数字全部是在没有这份下行的情况下测的。所以这里跑两组：
+**组 A 是核心模式的原样复跑**（和 RUN-019 同口径，用来回答「有没有退步」），**组 B 是玩法模式加
+64 个单位一直在走**（用来回答「这份新负载值多少」）。
+
+- 机器与 JDK 同前三轮：Apple Silicon 12 核 / 24 GiB、JDK 25.0.4.1、端口 25565、loopback。
+- 两组各自一次起服跑完，中途不重启，跑完 `stop`、`pgrep -f synaxis.app.Main` 为空、`logs/` 已删。
+- 组 B 用默认预设 `rts-512`（验收环境的默认值），`march` 探针另开一条连接把 `unit_id=1..64` 一直
+  派在路上；发包端因此要带 `--hello true`（玩法模式 3 秒不握手就踢），并把 `--echo-hz` 关掉
+  （`synaxis:main` 是核心模式才有的诊断通道）。这两处是组 B 与组 A 唯一的口径差别。
+
+### 对照表：四条量化目标
+
+| `docs/DESIGN.md` §15 目标 | RUN-018 | RUN-019 | 本轮组 A（核心） | 本轮组 B（玩法 + 64 单位在走） |
+| --- | --- | --- | --- | --- |
+| 入站包 50 玩家峰值 5,000 包/秒无丢包 | 5,014.9 / 0 丢失 | 5,015.0 / 0 丢失 | **5,015.0 包/秒 / 360.0 s / 1,805,429 包 / 0 丢失 0 kick** | **5,751.3 包/秒 / 360.0 s / 2,070,505 包 / 0 丢失 0 kick**（其中 268,775 条是传送确认，位置包本身 1,801,730 条 = 5,004.8/秒） |
+| 单 tick P99 < 50 ms | 窗口内 7,200 tick p50 0.402 / p99 1.631 | 同口径 p50 0.344 / p99 1.350 | **同口径 7,200 tick，p50 0.355 / p99 1.367 / max 76.28** | **同口径 7,200 tick，p50 0.430 / p99 1.527 / max 22.48，超 50 ms 的 tick 0 个** |
+| 登录延迟 < 2 s | 50 次 p99 114 ms | 1,478 次 churn p99 102.8 ms | 50 条连接 0.1 s 全部进场（本轮未跑 churn 组） | 50 条连接 0.1 s 全部进场 |
+| 堆 < 2 GB | 存活集 31.6 → 31.8 MiB | 31.7 → 28.2，断开后 28.1 | **存活集 32.0 MiB，断开后 28.4** | **存活集 35.1 MiB，断开后 32.7** |
+
+**结论先写在前面：核心没有退步，阶段 5 的新负载没有把 tick 或带宽顶上去。** 组 A 与 RUN-019 逐项
+持平（p99 1.367 对 1.350，差值在同一台机器两次跑的噪声里）；组 B 在多扛 64 个单位、每 tick 一次
+推进、每 2 tick 一次全量快照的情况下，tick p99 只从 1.367 升到 1.527 ms（+0.16 ms，距 50 ms 的目标
+还有 33 倍余量），而窗口内**一个**超 50 ms 的 tick 都没有——比核心组还干净，核心组那个 76.28 ms
+是 50 条连接同时进场的头一个 tick，玩法模式下区块流送被摊得更开，头一个 tick 只有 22.48 ms。
+
+### 组 A：核心模式（`-Dsynaxis.app.core-mode=on`）
+
+冒烟四项先跑：`probe.py login` / `echo --payload hello-stage5` / `handshake` 全部退出码 0
+（`echo channel=synaxis:main payload=hello-stage5`；`S2C_HELLO schema_version=1 tick_rate=20`），
+收尾 `stop` 走 stdin 管道，`BUILD SUCCESSFUL`、进程表干净。
+
+`java tools/loadtest/PacketFlood.java --connections 50 --hz 100 --seconds 360 --out …`，
+服务端侧 `soak.py run --connections 0 --duration 400 --out …` 只采样。
+
+| 项 | RUN-019 | 本轮组 A |
+| --- | --- | --- |
+| 达成速率 / 窗口 | 5,015.0 包/秒 / 360.0 s（1,805,450 包） | 5,015.0 包/秒 / 360.0 s（1,805,429 包） |
+| 掉线 / kick / `disconnect_reasons` | 0 / 0 / 空 | 0 / 0 / 空 |
+| 窗口内 tick | 7,200 个，p50 0.344 / p99 1.350 / max 79.70 | 7,200 个，p50 0.355 / p99 1.367 / max 76.28 |
+| 窗口首 tick 之后的最大 tick | 3.19 ms | 36.17 ms（第二个衰减 tick；其后与 RUN-019 同形状） |
+| 整段采样（400 s） | 8,308 个 tick，p50 0.332 / p99 1.310 / max 79.72 | 8,309 个 tick，p50 0.343 / p99 1.185 / max 76.28 |
+| 存活集（强制 Full GC） | 31.7 → 31.6 → 28.2，断开后 28.1 | 32.0，断开后 28.4 |
+| 线程 / FD | 66 / 109 负载中，54 / 59 断开后 | 57 → 66 / 59 → 59 |
+| echo 往返 | p50 41.7 / p99 77.4 / max 83.0（3,550 次） | p50 40.4 / p99 72.02 / max 75.95（3,550 次） |
+| 窗口内 WARN / ERROR / 栈 | 0 / 0 / 0 | 0 / 0 / 0 |
+| 台账增量 | 50 行（每条连接一行） | 56 行（50 条压测连接 + 3 条探针各 2 行） |
+
+### 组 B：玩法模式（默认 `rts-512`）+ 64 个单位全程在走
+
+先起 `march`：`probe.py march --units 64 --seconds 400 --period 12 --ax 300.5 --az 300.5
+--bx 212.5 --bz 212.5 --expect-moving 64`，27 轮、1,728 条指令**全部 `ok`**，321 次采样里
+`min = median = max = 64` —— 整段没有一秒少于 64 个单位在走。再打发包端：
+`java tools/loadtest/PacketFlood.java --connections 50 --hz 100 --seconds 360 --echo-hz 0
+--hello true --out …`。
+
+| 项 | 组 A（核心） | 组 B（玩法 + 64 单位） | 差 |
+| --- | --- | --- | --- |
+| 入站位置包 | 1,805,429 = 5,015.0/秒 | 1,801,730 = 5,004.8/秒 | 持平 |
+| 入站传送确认 | 100 | 268,775 = 747/秒 | 玩法地图上有柱状障碍，压测端沿圆周走会撞上去，服务端把它推回来、它再确认——**入站总量因此比基线还高 15%，照样 0 丢失** |
+| 掉线 / kick | 0 / 0 | 0 / 0 | — |
+| 窗口内 tick（7,200 个） | p50 0.355 / p99 1.367 / max 76.28 / 超 50 ms 1 个 | p50 0.430 / p99 1.527 / max 22.48 / 超 50 ms **0** 个 | p99 +0.16 ms |
+| 整段采样 | 8,309 个，p50 0.343 / p99 1.185 | 8,910 个，p50 0.416 / p99 1.510 | p99 +0.33 ms |
+| 存活集 / 断开后 | 32.0 / 28.4 MiB | 35.1 / 32.7 MiB | +3 MiB（一张 512×512 的地图加 67 个单位） |
+| 线程 / FD | 57 → 66 / 59 | 55 → 66 / 59 | 持平，不随时间涨 |
+| WARN / ERROR / 栈 | 0 / 0 / 0 | 0 / 0 / 0 | — |
+
+**寻路的三条预算在这段负载里的实测**（台账 2,151 次 `unit_order_issued`）：`path_ms` p50 = p99 = 0、
+max 2 ms（预算 P99 < 2 ms）；`path_nodes` p50 52 / p99 103 / max 224（预算单次 ≤ 4,000）。被墙围住的
+口袋那一档仍然是吃满预算才收手的 `4001`，和 `TC-GAME-065` 第 4 步对得上。
+
+**台账增量要看清是谁写的**：组 B 这一段写了 3,684 行，但其中 2,151 + 194 + 1,957 + 31 行全部来自
+`march` 那一条连接下的指令，而**那 2,070,505 个入站包一行都没写**。台账仍然是按连接与按操作计的，
+不按包计——这与 RUN-019 的结论一致，`§15「数据增长」`那条上界没有被阶段 5 改变。
+
+### 出站带宽：走动中的单位值多少
+
+§2 的出站带宽预算只算快照（`unit_state` + `hp`），明确写着单位位置「由引擎的实体位置包承担」，
+而那一项到本轮之前没有数字。拿同一台服务端做两次 60 秒的对照，两次都是 8 条发包连接
+（`--connections 8 --hz 1 --hello true`），差别只有单位在不在走，量的是 `netstat -ib -I lo0` 的
+字节增量：
+
+| 场景 | loopback 字节 / 60 s | 折合 |
+| --- | --- | --- |
+| 67 个单位全部 idle | 2,512,244 | 41.9 KB/s |
+| 64 个单位全程在走（另加 `march` 那条连接） | 7,972,151 | 132.9 KB/s |
+
+差值 **≈ 91 KB/s，摊到 9 个 viewer 上是每人 ≈ 10.1 KB/s**。这一项按「单位数 × viewer 数」走，
+所以它是容量规划里第一个会顶上去的东西：§23 上线前检查单里「50 连接 + 单局 1,000 单位」那一行
+仍然是**待填**，本轮的数字只覆盖到 64 个单位 / 9 个 viewer，不要拿它线性外推到 1,000 个单位——
+兴趣集会剔掉视野外的单位，外推既不保守也不准。
+
+### 门禁复核
+
+| 门 | 命令 | 结果 |
+| --- | --- | --- |
+| 全量 `check`（Error Prone `-Werror` / ArchUnit / `testNamingCheck` / JaCoCo 新增行 80%） | `./gradlew check --rerun-tasks --no-build-cache` | **绿**，49 个任务全部真跑；引擎 2,872 + testing 6 + protocol 78 + plugin-api 2 + server-app 90 + game-rts 74 = **3,122 条测试 0 失败 0 错误**（15 条 skipped）。RUN-019 的同口径是 3,096 + plugin-api 2 = 3,098，阶段 5 净增 24 条 |
+| 客户端可控日志门禁 ①（引擎） | 在 `KeepAliveListener#listener` 插一行 `LOGGER.warn` | `ArchitectureTest#clientDrivenPathsDoNotWriteALinePerPacket` **红**（`AssertionError at ArchitectureTest.java:235`），撤销后绿 |
+| 客户端可控日志门禁 ②（宿主） | 在 `HandshakeGate#receive` 插一行 `LOGGER.warn` | `ClientDrivenLogArchitectureTest#hostPathsDoNotWriteALinePerPacket` **红**，撤销后绿 |
+| 客户端可控日志门禁 ③（游戏侧） | 在 `GameChannel#receive` 插一行 `LOGGER.warn` | `game-rts` 的 `ArchitectureTest#gameSidePathsDoNotWriteALinePerPacket` **红**，撤销后绿 |
+| ABI 门（`check` 不含这道门） | `gh release download v0.1.0` 取真实资产后 `:plugin-api:checkBinaryCompatibility :protocol:checkBinaryCompatibility -PbaselineJarDir=.abi-baseline` | **真跑并绿**（两个任务都没有 `SKIPPED`，尾部 `2 executed`）。本轮没有改这两个模块的公开签名 |
+
+### 仍然没有测到的面
+
+与 RUN-017 / RUN-018 / RUN-019 的「局限」同款，本轮一条都没消掉：`dispatcherThreads > 1` 的多 tick
+线程形态、连接铺开到不同区块的形态、加密与压缩两条入站解码分支。本轮新增两条：① 组 B 没有跑
+churn 与恶意攻击两组（只跑了入站包这一档），玩法模式下长时间 churn 时单位与 `GameSession` 的回收
+只有单测覆盖；② 出站带宽只测到 64 个单位 / 9 个 viewer，§23 那条「1,000 单位」仍未证。

@@ -973,7 +973,9 @@ def cmd_order(args: argparse.Namespace) -> int:
 
     Every request is answered, so the check is twofold: as many answers as requests, and the
     histogram the caller expected. With `--group` the whole burst shares one order_group, which is
-    what a single click on several units looks like and what the token bucket counts as one.
+    what a single click on several units looks like and what the token bucket counts as one;
+    `--group-size` cuts the burst into groups of that size instead, which is how a burst larger
+    than the eight packets a group may carry is sent without being rate limited.
     """
     session = Session(args)
     try:
@@ -981,10 +983,10 @@ def cmd_order(args: argparse.Namespace) -> int:
         target = (args.x, args.y, args.z)
         for index in range(args.count):
             order_seq = args.seq + index
-            session.send_game(move_order_body(order_seq, args.group if args.group is not None else order_seq,
-                                              args.unit, target))
+            order_group = args.group if args.group is not None else args.seq + index // args.group_size
+            session.send_game(move_order_body(order_seq, order_group, args.unit, target))
             session.log(f"sent C2S_MOVE_ORDER order_seq={order_seq} "
-                        f"order_group={args.group if args.group is not None else order_seq} unit_id={args.unit}")
+                        f"order_group={order_group} unit_id={args.unit}")
         session.pump_until(lambda: len(session.order_results) >= args.count, args.wait)
         histogram: dict[str, int] = {}
         for result in session.order_results:
@@ -1325,6 +1327,8 @@ def build_parser() -> argparse.ArgumentParser:
     order.add_argument("--seq", type=int, default=1, help="the order_seq of the first one")
     order.add_argument("--group", type=int, default=None,
                        help="share one order_group, the shape of a single click on several units")
+    order.add_argument("--group-size", type=int, default=1,
+                       help="how many consecutive orders share an order_group (default: 1, one each)")
     order.add_argument("--unit", type=int, default=1, help="the unit_id to order about")
     order.add_argument("--x", type=float, default=8.0)
     order.add_argument("--y", type=float, default=32.0)

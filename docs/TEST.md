@@ -8,12 +8,17 @@
 | Owner | Bearisbug |
 | 关联设计文档 | `docs/DESIGN.md`（引擎域 M1 / M1.5）与 `docs/DESIGN-M2.md`（游戏域 M2 分册）；两份文档的 REQ 各自编号，M2 侧一律写作 `REQ-M2-*` |
 | 被测系统 | 仓库 `Bearisbug/synaxis`，分支 `main` |
-| 最后更新 | 2026-09-18 |
+| 最后更新 | 2026-09-19 |
 
 变更记录（登用例增改，不登执行轮次）：
 
 | 日期 | 改动 | 作者 |
 | --- | --- | --- |
+| 2026-09-19 | 阶段 4 评审第 2 轮修订。**废旧 ID 换新 ID**：`TC-GAME-025` → **`TC-GAME-064`**——原第 1 步 `game-flood --rate 400 --seconds 3` 离 300 包/秒的阈值只有 33% 余量，而探针是突发发包、读取与 `pump` 会让单次突发的周期漂过一秒，服务端又按固定 1 秒桶计数，实测 14 次挂 7 次（失败时实际速率 344～349 包/秒），判据的速率实质变更；替代用例用 `--rate 800`（6 次全中）并把探针新报的 `slowest window` 纳入第 1 步的判读。§3 的探针表（`game-flood` 默认速率 400 → 800、新增实际速率那一行输出）与 M2 环境段那句「`--rate 400` 稳过」按实测改写；§2 的 REQ ↔ TC 表与 §5 的游戏域回归映射同步换 ID。其余用例语义未变 | Bearisbug |
+| 2026-09-19 | 跟进 `docs/DESIGN-M2.md` v0.25（阶段 4 评审第 1 轮修订：`EVT:unit_order_rejected` 只记 §20 点名的四档，`stale` 与 `rate-limited` 不写台账）。**废旧 ID 换新 ID**：`TC-GAME-023` → **`TC-GAME-063`**——原第 5 步要求那 10 条超频在 `logs/events-*.jsonl` 里各留一行 `code=rate-limited`，现在它们一行都不写（客户端可无限刷的拒绝不落盘），判据实质变更；前四步逐字保留，新用例第 5 步改判「计数 0」并补第 6 步用一条越界指令反证四档照常记。§2 的 REQ ↔ TC 表与 §5 的游戏域回归映射同步换 ID。其余用例语义未变 | Bearisbug |
+| 2026-09-19 | 跟进 `docs/DESIGN-M2.md` v0.24（阶段 4 的 `REQ-M2-009` 落地）。**§3 环境段**：探针表新增 `order` / `select` / `game-flood` 三行；M2 段的探针占位填掉「发 `C2S_CAMERA` / `C2S_SELECT` / `C2S_MOVE_ORDER`、按速率发包」这几半，只留「打印收到的 `S2C_UNIT_*`、记账区块与实体位置包」待 `REQ-M2-016` / `REQ-M2-018`；「探针的 M2 子命令未验证」那条按实跑改写。**语义未变、只把「用探针…」写成实际命令**：`TC-GAME-023` 第 1～2 步、`TC-GAME-024` 第 1、2、4 步、`TC-GAME-025` 全四步、`TC-GAME-026` 第 1～2 步、`TC-GAME-039` 第 1、5 步，并在这五条的前置里点名「`ok` 那几步要等 `REQ-M2-016` 的单位（阶段 5）」——判据一条没改，改的是执行时机的说明。一条用例都没有换 ID：本轮没有任何判据实质变更 | Bearisbug |
+| 2026-09-19 | 跟进 `docs/DESIGN-M2.md` v0.23（阶段 4 的 `REQ-M2-008` 与 `REQ-M2-024` 第 ② 半落地）。**§3 环境段**：探针表新增 `handshake` / `no-hello` / `bad-schema` / `duplicate-hello` 四行并写明 `no-hello` 只适用于玩法模式；表后补一句「本阶段起每个进 configuration 的子命令都先发一次 `C2S_HELLO`」与 login 阶段形态的说明；M2 段的探针占位填掉 `C2S_HELLO` 那一半（`C2S_CAMERA` / `C2S_SELECT` / `C2S_MOVE_ORDER` 仍待 `REQ-M2-009` / `REQ-M2-018`）；系统属性补 `synaxis.app.handshake-phase`。**语义未变、只把「用探针…」写成实际命令**：`TC-GAME-019`（并把前置收窄到玩法模式）、`TC-GAME-022`；`TC-GAME-020` 前置同样收窄到玩法模式；`TC-GAME-049` 第 1、3 步与 `TC-GAME-050` 第 1、6 步的占位填实。**废旧 ID 换新 ID**：`TC-GAME-021` → **`TC-GAME-062`**——原第 2 步要求 `schema_version=0` 也回 `synaxis:protocol-version-mismatch`，而 `REQ-M2-007` 冻结的取值域是 `≥ 1`，越界属畸形输入回 `synaxis:protocol-error`（实测两档分别命中两个键），判据实质变更。**新增** `TC-GAME-060`（核心模式豁免握手但照常回、照常判，并覆盖 `PacketFlood` 这条不发握手的压测路径）与 `TC-GAME-061`（`synaxis.app.handshake-phase=login` 退路，随 spike ④ 的结论一起废弃）。§2 的 REQ ↔ TC 表两行、§5 的游戏域回归映射与跨域牵连行同步 | Bearisbug |
+| 2026-09-19 | 跟进 `docs/DESIGN-M2.md` v0.22（阶段 4 的 `REQ-M2-007` 落地）：**`TC-GAME-017` 保留 ID，只增改步骤与前置**——向量集从「每条消息一个 `.bin`」扩成「常规 + 边界两组」，新增第 2 步点边界集的条数、第 3 步（原第 2 步）补上 18 条逐字节对拍与 `manifest.txt` 的 `schema_version` / `digest` 双绑断言、新增第 6 步用「对调 `C2S_CAMERA` 两个 f32 的写入顺序」反证改布局必红，原第 3、4 步顺延为第 4、5 步（客户端侧那一步仍是阶段 6a 的「阻塞」）。判据本身没有放宽，只是把原来一句话的「逐字节相同」写成可照做的形态。`TC-GAME-018` 一字未动：它是进程 + 探针的黑盒用例，随 `REQ-M2-008` 一起解除阻塞 | Bearisbug |
 | 2026-09-18 | 跟进 `docs/DESIGN.md` v0.30（客户端可驱动日志的清点范围纠正为全部模块，宿主侧四处逐包日志按同形状限流）：**废弃 `TC-033`、新增 `TC-035`** —— 原用例第 1、2 步只碰引擎根模块，而同形状的日志在 `:server-app` 里也有、门禁也另起了一条（`ClientDrivenLogArchitectureTest`），覆盖面实质变更故换 ID；新用例在原两步之后补上宿主那半边的四条测试与「在 `PluginChannelRouter#route` 插一行无节制 WARN 会红」的反证。§5 回归映射的引擎域「协议」与「分层」两行跟着换 ID。既有用例语义未变 | Bearisbug |
 | 2026-09-18 | 跟进 `docs/DESIGN.md` v0.27（客户端可驱动的日志一律有界）：**新增 `TC-033`**（尾部带多余字节的包刷一万次只写一行日志；一批 1,000 个必失败的登录插件应答只换来一次上报，kick 之后的帧不再被处理；ArchUnit 门禁拦住新加的逐包日志与逐包上报），§5 回归映射的引擎域「协议」与「分层」两行各加上它。既有用例语义未变 | Bearisbug |
 | 2026-09-18 | 跟进 `docs/DESIGN.md` v0.26（`SOAK-3`：离线模式下同名玩家的重复 UUID）：**新增 `TC-032`**（同 UUID 的第二条连接被拒于登录、追踪器里恰好一个玩家、「移动未注册实体」的日志有界），§5 回归映射的引擎域「协议」行加上它。既有用例语义未变 | Bearisbug |
@@ -69,8 +74,8 @@ REQ-M2 ↔ TC 对照（手工维护）：
 | REQ-M2-005 异常归因 | TC-GAME-011、TC-GAME-054（TC-GAME-013 已废弃：滑窗熔断随范围裁剪推到 M3） |
 | REQ-M2-006 通道命名空间 | TC-GAME-014、TC-GAME-015 |
 | REQ-M2-007 `:protocol` 编解码 | TC-GAME-017、TC-GAME-018 |
-| REQ-M2-008 握手与模组校验 | TC-GAME-019、TC-GAME-020、TC-GAME-021、TC-GAME-022、TC-GAME-049 |
-| REQ-M2-009 切片消息集与限流 | TC-GAME-023、TC-GAME-024、TC-GAME-025、TC-GAME-026、TC-GAME-027、TC-GAME-028 |
+| REQ-M2-008 握手与模组校验 | TC-GAME-019、TC-GAME-020、TC-GAME-022、TC-GAME-049、TC-GAME-060、TC-GAME-061、TC-GAME-062（TC-GAME-021 已废弃：`schema_version=0` 是畸形输入而不是版本不符，判据换了口径） |
+| REQ-M2-009 切片消息集与限流 | TC-GAME-024、TC-GAME-026、TC-GAME-027、TC-GAME-028、TC-GAME-063、TC-GAME-064（TC-GAME-023 已废弃：`rate-limited` 按 §20 不再写台账，第 5 步判据换了口径；TC-GAME-025 已废弃：第 1 步的 400 包/秒离阈值太近、实测 14 次挂 7 次，速率换了口径） |
 | REQ-M2-010 程序化地图生成器 | TC-GAME-029、TC-GAME-056（TC-GAME-030 已废弃：`.synx` 推 M3 后没有地图文件可损坏） |
 | REQ-M2-011 对局生命周期 | TC-GAME-029、TC-GAME-031、TC-GAME-057（TC-GAME-032 已废弃：核心模式落地后「排除插件必然非零退出」不再成立） |
 | REQ-M2-012 删除 `SharedInstance` | TC-GAME-033 |
@@ -85,7 +90,7 @@ REQ-M2 ↔ TC 对照（手工维护）：
 | REQ-M2-021 server-app 取代 smoke | TC-GAME-048、TC-GAME-049、TC-GAME-058 |
 | REQ-M2-022 CI 门禁扩展 | TC-GAME-004、TC-GAME-005、TC-GAME-006 |
 | REQ-M2-023 社区上手 | TC-GAME-016 |
-| REQ-M2-024 宿主准入链 | TC-GAME-050、TC-GAME-057 |
+| REQ-M2-024 宿主准入链 | TC-GAME-050、TC-GAME-057、TC-GAME-060 |
 | REQ-M2-025 公开的位置推进入口 | TC-GAME-051 |
 
 - 不测：
@@ -128,9 +133,18 @@ REQ-M2 ↔ TC 对照（手工维护）：
 | `alloc-bomb` | — | 登录后发送声明 65,535 个元素但只含少量字节的集合包 | 收到 `Disconnect reason=synaxis:protocol-error` |
 | `nbt-bomb` | `--mib N`（默认 3） | 通过 `ClientCustomClickActionPacket` 携带解码后估算 N MiB 的 NBT | 收到 `Disconnect reason=synaxis:protocol-error` |
 | `echo` | `--payload TEXT`（必填）、`--channel`（默认 `synaxis:main`） | 走 `synaxis:main` 通道做一次自定义负载往返。该通道由**宿主在核心模式下**提供（`synaxis` 是宿主保留的通道命名空间，玩法插件的通道仍归插件所有），因此本子命令只在核心模式的进程上适用——玩法模式没有这条通道 | 收到与发出完全一致的负载 |
+| `order` | `--count N`（默认 1）、`--seq N`（默认 1）、`--group N`（默认按序号各不相同）、`--unit N`（默认 1）、`--x/--y/--z`、`--expect CODE`、`--expect-count N`、`--wait S`（默认 5） | 进 play 后连发 N 条 `C2S_MOVE_ORDER`，收集 `S2C_ORDER_RESULT` 并打印一行 `answers=收到/发出` 加结果码直方图。给 `--group` 时整批共用一个 `order_group`（一次点击选中多个单位的形态） | 收到的结果数等于发出的条数，且 `--expect` 的结果码恰好出现 `--expect-count` 次（不给 `--expect` 时只判条数） |
+| `select` | `--units 1,2,3`、`--expect {silence,protocol-error}`（默认 `silence`）、`--wait S`（默认 2） | 进 play 后发一条 `C2S_SELECT{count=给了几个就写几个}`，count 照写不夹取，因此可以故意越过上限 8 | `silence`：连接保持且没有任何回包；`protocol-error`：收到 `Disconnect reason=synaxis:protocol-error` |
+| `game-flood` | `--rate N`（默认 800，每秒包数）、`--seconds N`（默认 3）、`--expect {flood,alive}`（默认 `flood`）、`--wait S` | 按给定速率在 `rts:game` 上持续发 `C2S_CAMERA`，发包途中按批读取（不读会先把服务端的写堵住、实际速率达不到设定值），并在跑完时报一行 `asked for <设定值> payloads a second, slowest window <实际值>`——实际值就是最慢那一秒真写进 socket 的包数，判「闸门没响是谁的错」看它 | `flood`：收到 `Disconnect reason=synaxis:game-flood`；`alive`：整段跑完仍在线 |
 | `record-registry` | `--out FILE`（必填） | 按收到顺序写出全部 `RegistryData` 包的解压后字节（含包 ID varint） | 至少收到一个 `RegistryData` 包 |
+| `handshake` | `--mod-version N`（默认 1） | 登录并握手，打印服务端回的 `S2C_HELLO` 字段 | 收到 `S2C_HELLO` 且其 `schema_version` 等于仓库里的 `ProtocolSchema.SCHEMA_VERSION` |
+| `no-hello` | — | 登录后**不发** `C2S_HELLO`（模拟没装模组的客户端） | 收到 `Disconnect reason=synaxis:client-mod-required`。**只适用于玩法模式的进程**——核心模式不要求握手，会照常放行并让本子命令退 1（见设计文档 `API-M2-010` 第 ⑤ 步） |
+| `bad-schema` | `--schema N`（默认 = 仓库值 + 1） | 发 `C2S_HELLO{schema_version=N}` | 收到 `Disconnect reason=synaxis:protocol-version-mismatch`（两种模式都适用） |
+| `duplicate-hello` | — | 握手成功后在同一条连接上再发一次 `C2S_HELLO` | 收到 `Disconnect reason=synaxis:protocol-error`（两种模式都适用） |
 
-  探针每次启动时从 `network/packet/PacketVanilla.java` 的注册表顺序推导包 ID、从 `component/DataComponents.java` 的注册顺序推导数据组件 ID，不写死协议常量；注册表顺序变化时探针自动跟随。stdout 逐条打印收到的包名、断线原因键与末行 `exit code: <n>`。
+  探针每次启动时从 `network/packet/PacketVanilla.java` 的注册表顺序推导包 ID、从 `component/DataComponents.java` 的注册顺序推导数据组件 ID、从 `protocol/…/ProtocolSchema.java` 读 `schema_version`，不写死协议常量；注册表顺序变化时探针自动跟随。stdout 逐条打印收到的包名、断线原因键与末行 `exit code: <n>`（首行也打印它这一轮用的 `schema_version`）。
+
+  **`REQ-M2-008` 起，上表每个进入 configuration 阶段的子命令都会先发一次 `C2S_HELLO`**（`no-hello` 例外，它就是来测不发的）——这是强制握手上线时保住这批存量用例的做法，不是测试旁路开关（设计文档 `API-M2-002` 的「连带影响」）。服务端跑在 `synaxis.app.handshake-phase=login` 时探针改为应答服务端的那条 login plugin request，两种形态互斥、不会重发。
 
 - 压测 / 长稳 harness：`python3 tools/loadtest/soak.py run --connections N --duration S --out <目录>`（Python 3.10+，仅用标准库）。它复用探针的握手 / 登录 / configuration，在其上加多连接维持、连接 churn、把上表的恶意子命令按间隔打进负载，并用 `jcmd` / `jstat` / `lsof` / `ps` 与 JFR 事件 `synaxis.ServerTickTime` 采样服务端。**不对应任何 TC**（长跑观测工具，不是判据），服务端必须已在运行，否则直接以退出码 2 拒绝跑。产物 `summary.json` / `samples.jsonl` / `attacks.jsonl` / `soak.jfr` 写进 `--out` 目录；跑法、采集手段与 2026-09-18 的一轮结果见 `docs/research/soak-2026-09-18/`。
 
@@ -142,14 +156,14 @@ REQ-M2 ↔ TC 对照（手工维护）：
 
 ### M2（游戏域）环境 —— 未验证
 
-> 启动、就绪判定、运行时产物与系统属性四条已随 `REQ-M2-021` 实跑核对过（起服到就绪、`nc -z` 通、`stop` 退出码 0、`-Dsynaxis.app.port` 生效）。**核心模式那一档已随设计文档 v0.18 实跑核对过**（排除玩法插件时以核心模式起服、探针 `login` 与 `echo` 均退 0、`stop` 退出码 0；再加 `-Dsynaxis.app.core-mode=off` 则两行 ERROR + 退出码 1 且端口未 bind）。**地图种子与对局种子的「一局一图」那半随 `REQ-M2-010` / `REQ-M2-011` 实跑核对过**（`-Dsynaxis.app.map=rts-512` / `rts-128` / 未知 id 三档各起一次：整图 1,024 区块 137 ms 载入完成、`match_started` 早于就绪日志、未知 id 时两行 ERROR + 非零码退出 + 端口未 bind、事件台账四行齐全）。**单位种子、探针的 M2 子命令、客户端模组三条仍未验证**，它们依赖尚未落地的 REQ。按 test-doc 纪律：首轮执行依赖这三条的 `TC-GAME-*` 之前，必须照本段从零走通一次，走不通先修本段并在那时去掉对应的「待 `REQ-M2-xxx` 实现后填」。不编造命令。
+> 启动、就绪判定、运行时产物与系统属性四条已随 `REQ-M2-021` 实跑核对过（起服到就绪、`nc -z` 通、`stop` 退出码 0、`-Dsynaxis.app.port` 生效）。**核心模式那一档已随设计文档 v0.18 实跑核对过**（排除玩法插件时以核心模式起服、探针 `login` 与 `echo` 均退 0、`stop` 退出码 0；再加 `-Dsynaxis.app.core-mode=off` 则两行 ERROR + 退出码 1 且端口未 bind）。**地图种子与对局种子的「一局一图」那半随 `REQ-M2-010` / `REQ-M2-011` 实跑核对过**（`-Dsynaxis.app.map=rts-512` / `rts-128` / 未知 id 三档各起一次：整图 1,024 区块 137 ms 载入完成、`match_started` 早于就绪日志、未知 id 时两行 ERROR + 非零码退出 + 端口未 bind、事件台账四行齐全）。**探针的 M2 子命令已随 `REQ-M2-009` 实跑核对过**（玩法模式 + `-Dsynaxis.app.map=rts-128`：`order --count 20` 收到 20 条结果、前 10 条不含 `rate-limited` 而后 10 条全是；`order --count 8 --group 1` 8 条全不含 `rate-limited`、`--count 9 --group 1` 的第 9 条是 `rate-limited`；`select --units 1..9` 得 `synaxis:protocol-error`；`game-flood --rate 800 --seconds 3` 得 `synaxis:game-flood`（连跑 6 次全中；**原先记在这里的 `--rate 400` 那一档实测是 flaky 的，14 次挂 7 次**，失败时探针实际只达到 344～349 包/秒、服务端一行洪水 WARN 都不写，见已废弃的 `TC-GAME-025`），`--rate 299 --seconds 5`（实际 268 包/秒）与 `--rate 95 --seconds 20`（实际 75 包/秒）均全程在线；整轮服务端只写了 2 行 WARN，都带 `connection_id`、都不带栈）。**单位种子与客户端模组两条仍未验证**，它们依赖尚未落地的 REQ。按 test-doc 纪律：首轮执行依赖这两条的 `TC-GAME-*` 之前，必须照本段从零走通一次，走不通先修本段并在那时去掉对应的「待 `REQ-M2-xxx` 实现后填」。不编造命令。
 
 - 启动、就绪判定与运行时产物：同上面的引擎域环境段（`REQ-M2-021` 起两者是同一个入口）。停机：控制台 `stop` 或 SIGINT，运行期间必须保持 stdin 打开。
-- 系统属性：`synaxis.app.port`（监听端口，默认 `25565`）、`synaxis.app.plugins`（启用的插件 id 列表，逗号分隔，**默认空串 = 全部**；去掉 `rts` 就没有玩法了，默认配置下进程会落进**核心模式**照常 bind，要让它拒启得同时给 `-Dsynaxis.app.core-mode=off`。列表里没有插件应答的 id 记一行 `No plugin answers to selected ids […]: discovered plugin_ids=[…].` 的 WARN，不影响启动——拼错 id 与刻意排除全部插件在行为上是同一档，只有这行日志能分开）、`synaxis.app.core-mode`（`auto` / `on` / `off`，默认 `auto`：没有玩法插件就以核心模式起服——宿主自建的平坦世界、任何连接都放行、`synaxis:main` echo 通道；`on` 强制核心模式且一个插件都不发现；`off` 永不进核心模式，没有玩法即两行 ERROR + 非零码退出。不是这三个值之一时按非法启动参数拒启。见设计文档 `API-M2-010` 启动序列第 ⑤ 步）、`synaxis.app.map`（**地图预设 id**，不是文件路径——地图在进程内程序化生成，见设计文档 `REQ-M2-010`；默认 `rts-512`，另一个可用预设是 `rts-128`，未知 id 即 `map-invalid`），另沿用引擎的 `synaxis.*`。**`synaxis.entity-view-distance=8`、`synaxis.chunk-view-distance=10`、`synaxis.player.chunk-update-limiter-history-size=0` 三项自 `REQ-M2-011` 起由 `server-app` 在建进程之前自己设好，命令行不写也生效**；命令行显式给的值优先（排障时可以单独摘掉某一项）。最后一项是 RTS 镜头能来回推的前置条件，不是调优，见设计文档 §15「可见范围」与 `ADR-M2-013`。
+- 系统属性：`synaxis.app.port`（监听端口，默认 `25565`）、`synaxis.app.plugins`（启用的插件 id 列表，逗号分隔，**默认空串 = 全部**；去掉 `rts` 就没有玩法了，默认配置下进程会落进**核心模式**照常 bind，要让它拒启得同时给 `-Dsynaxis.app.core-mode=off`。列表里没有插件应答的 id 记一行 `No plugin answers to selected ids […]: discovered plugin_ids=[…].` 的 WARN，不影响启动——拼错 id 与刻意排除全部插件在行为上是同一档，只有这行日志能分开）、`synaxis.app.core-mode`（`auto` / `on` / `off`，默认 `auto`：没有玩法插件就以核心模式起服——宿主自建的平坦世界、任何连接都放行、`synaxis:main` echo 通道；`on` 强制核心模式且一个插件都不发现；`off` 永不进核心模式，没有玩法即两行 ERROR + 非零码退出。不是这三个值之一时按非法启动参数拒启。见设计文档 `API-M2-010` 启动序列第 ⑤ 步）、`synaxis.app.handshake-phase`（`configuration` / `login`，默认 `configuration`：客户端模组握手跑在哪个协议阶段，见设计文档 `ADR-M2-010` 的「落地形态与退路」；不是这两个值之一时按非法启动参数拒启）、`synaxis.app.map`（**地图预设 id**，不是文件路径——地图在进程内程序化生成，见设计文档 `REQ-M2-010`；默认 `rts-512`，另一个可用预设是 `rts-128`，未知 id 即 `map-invalid`），另沿用引擎的 `synaxis.*`。**`synaxis.entity-view-distance=8`、`synaxis.chunk-view-distance=10`、`synaxis.player.chunk-update-limiter-history-size=0` 三项自 `REQ-M2-011` 起由 `server-app` 在建进程之前自己设好，命令行不写也生效**；命令行显式给的值优先（排障时可以单独摘掉某一项）。最后一项是 RTS 镜头能来回推的前置条件，不是调优，见设计文档 §15「可见范围」与 `ADR-M2-013`。
 - 事件台账：`logs/events-YYYYMMDD.jsonl`（相对进程工作目录，`:server-app:run` 下即仓库根），一行一个 JSON，事件名与属性见设计文档 §20。每行形如 `{"ts":"…","event":"plugin_enabled","plugin_id":"rts","version":"0.1.0","enable_ms":16}`——事件名的键是 `event`，属性平铺在同一层。多条用例以它为观察面，步骤里统一写「`grep <事件名> logs/events-*.jsonl`」。当前落地的是 `plugin_enabled` 与对局三条（`match_created` / `match_started` / `match_ended`，见 `REQ-M2-011`），其余随各自的 REQ 补。
 - 地图种子：由 `REQ-M2-010` 的**程序化生成器**在**进程内**生成，不落文件也不读文件（`.synx` 已随范围裁剪推到 M3，见设计文档 §28.3）。测试地图固定用同一个预设 id + seed，必须含：512×512 / 高度 64、若干障碍、**一块被墙完全围住的可站立区域**（TC-GAME-041 依赖）、可站立的空旷区（TC-GAME-040 依赖）。预设由 `synaxis.app.map` 选（默认 `rts-512` = 512×512 / 高度 64 / 1,024 区块，另有 `rts-128` = 128×128 / 64 区块供回滚演练与快跑用）；seed 固定在预设里（`game-rts` 的 `MapPreset`），同一预设每次启动生成同一张图。基线重置 = 重启进程（每次启动重新生成，没有需要清理的产物）。
 - 对局与单位种子：进程启动即有**唯一一个** `running` 对局（M2 写死单局，且对局在 bind 之前创建，见设计文档 `API-M2-010` 启动序列）。玩家加入后由 `:game-rts` 分配 `team=1` 与 N 个本方单位；测试对局另需：≥ 1 个 `team=0` 的中立单位与 ≥ 1 个 `team` 非 0 且不等于玩家队伍的对方单位（如 `team=2`；两者 TC-GAME-039 依赖）；≥ 1 个距出生点 ≥ 200 格的单位（TC-GAME-043 依赖）；≥ 9 个本方单位（TC-GAME-024 依赖，组内包数上限是 8，第 9 个单位才测得到越界档）；≥ 64 个本方单位的压测预设（TC-GAME-042 依赖）。**单位数量、`unit_id` 分配与预设的开启方式待 `REQ-M2-016` 实现后填**。
-- 探针（复用 M1 的 `tools/protocol-probe/probe.py`，不另起工具）：`REQ-M2-008` 的强制握手一上线，探针必须同一交付实现 `C2S_HELLO`（设计文档 `API-M2-002` 的连带影响），否则上表六个子命令在 configuration 阶段 3 秒被踢、依赖它们的七条存量 TC 整块失效。M2 另需的能力：发 `C2S_HELLO` / `C2S_CAMERA` / `C2S_SELECT` / `C2S_MOVE_ORDER`，打印收到的 `S2C_*` 消息与断线原因键，按指定速率发包，以及记账收到的区块与实体位置包。**子命令名与参数待 `REQ-M2-008` / `REQ-M2-009` / `REQ-M2-018` 实现后填**——因此 `TC-GAME-*` 的步骤统一写成「用探针发送 `<消息>{字段…}`」而不写死命令行；执行时按当时的探针帮助文本翻译成命令，并把实际命令记进证据文件。
+- 探针（复用 M1 的 `tools/protocol-probe/probe.py`，不另起工具）：`REQ-M2-008` 的强制握手一上线，探针必须同一交付实现 `C2S_HELLO`（设计文档 `API-M2-002` 的连带影响），否则上表六个子命令在 configuration 阶段 3 秒被踢、依赖它们的七条存量 TC 整块失效。**`C2S_HELLO` 那一半已随 `REQ-M2-008` 落地**：全部子命令进 configuration 阶段先发一次握手，另有 `handshake` / `no-hello` / `bad-schema` / `duplicate-hello` 四个子命令（见上表）。**发 `C2S_CAMERA` / `C2S_SELECT` / `C2S_MOVE_ORDER`、按指定速率发包、打印收到的 `S2C_ORDER_RESULT` 这几半已随 `REQ-M2-009` 落地**（见上表的 `order` / `select` / `game-flood` 三行）。M2 仍缺的能力：打印收到的 `S2C_UNIT_SPAWN` / `S2C_UNIT_STATE` / `S2C_UNIT_DESPAWN`，以及记账收到的区块与实体位置包——**这两类的子命令名与参数待 `REQ-M2-016` / `REQ-M2-018` 实现后填**，依赖它们的 `TC-GAME-*` 步骤仍写成「用探针发送 `<消息>{字段…}`」而不写死命令行；执行时按当时的探针帮助文本翻译成命令，并把实际命令记进证据文件。
 - 客户端模组：Minecraft **26.2** profile（不是 26.3）+ Fabric Loader 0.19.5 + Fabric API 0.160.0+26.2 + 本仓库 `client-fabric/` 产出的模组 jar。构建：`./gradlew publishToMavenLocal` 后 `cd client-fabric && ./gradlew build`（独立 Gradle 构建，不进 `settings.gradle.kts`）。安装：把 jar 放进该 profile 的 `mods/`。**jar 名、整合包安装步骤与当前 `schema_version` 值待 `REQ-M2-020` 实现后填**。
 - 测试账号（在上表基础上新增）：
 
@@ -930,14 +944,16 @@ REQ-M2 ↔ TC 对照（手工维护）：
 
 #### `TC-GAME-017` 双端向量逐字节一致 — 对应 `REQ-M2-007` · 级别: 冒烟 · 执行者: AI
 
-前置：`REQ-M2-007` 已合入，`protocol/src/test/resources/vectors/` 下每条消息各有一个 `.bin`；第 3 步需要 `client-fabric` 工程已建（`REQ-M2-020` 之前该步登记「阻塞」，见设计文档 §24 的两阶段验收）。
+前置：`REQ-M2-007` 已合入，`protocol/src/test/resources/vectors/` 下每条消息各有一个常规 `.bin`、`vectors/edge/` 下各有一个同名的边界 `.bin`，同目录的 `manifest.txt` 冻结着 `schema_version` 与全部 `.bin` 的 SHA-256 摘要；第 4 步需要 `client-fabric` 工程已建（`REQ-M2-020` 之前该步登记「阻塞」，见设计文档 §24 的两阶段验收）。
 
 | # | 操作 | 预期 |
 | --- | --- | --- |
 | 1 | `ls protocol/src/test/resources/vectors/*.bin \| wc -l` | 输出 `9`（`C2S_HELLO`、`S2C_HELLO`、`C2S_CAMERA`、`C2S_SELECT`、`C2S_MOVE_ORDER`、`S2C_ORDER_RESULT`、`S2C_UNIT_SPAWN`、`S2C_UNIT_STATE`、`S2C_UNIT_DESPAWN` 各一个） |
-| 2 | `./gradlew :protocol:test --rerun-tasks --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts` | `BUILD SUCCESSFUL`；测试报告显示每个向量 decode 后再 encode 与原文件逐字节相同 |
-| 3 | `cd client-fabric && ./gradlew test`（客户端侧跑同一份向量） | `BUILD SUCCESSFUL`；同样逐字节相同 |
-| 4 | 改掉某个 `.bin` 的一个字节后重跑第 2 步，再 `git checkout -- protocol/src/test/resources/vectors` | 第 2 步失败并点名该向量文件；还原后 `git status --porcelain` 无输出 |
+| 2 | `ls protocol/src/test/resources/vectors/edge/*.bin \| wc -l` | 输出 `9`，文件名与第 1 步一一同名（边界档：`count` 取上限 8 / 512 与取零、VarInt 取满五字节、`zoom` 取区间端点、`flags` / `team` 取 0） |
+| 3 | `./gradlew :protocol:test --rerun-tasks --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts` | `BUILD SUCCESSFUL`；`ProtocolVectorTest` 的 18 条 `aFrozenVectorDecodesAndReEncodesByteForByte` 全绿（decode 后再 encode 与原文件逐字节相同、且解码器把每条向量读到一个字节不剩），`theFrozenVectorsAreBoundToTheSchemaVersion` 也绿（`manifest.txt` 的 `schema_version` 等于 `ProtocolSchema.SCHEMA_VERSION`、`digest` 等于全部 `.bin` 的实算摘要） |
+| 4 | `cd client-fabric && ./gradlew test`（客户端侧跑同一份向量） | `BUILD SUCCESSFUL`；同样逐字节相同 |
+| 5 | 改掉某个 `.bin` 的一个字节后重跑第 3 步，再 `git checkout -- protocol/src/test/resources/vectors` | 第 3 步红两条：该向量的逐字节对拍点名文件名，摘要那条打出设计文档 §24 的「升 `SCHEMA_VERSION` 并重新冻结向量」提示；还原后 `git status --porcelain` 无输出 |
+| 6 | 把 `C2SCamera#write` 里 `zoom` 与 `cameraYaw` 的写入顺序对调后重跑第 3 步，再还原该文件 | `c2s_camera.bin` 与 `edge/c2s_camera.bin` 两条红——改了布局而没重新冻结向量，构建不可能绿；还原后第 3 步回到 `BUILD SUCCESSFUL` |
 
 后置：确认工作区干净。
 
@@ -957,21 +973,21 @@ REQ-M2 ↔ TC 对照（手工维护）：
 
 #### `TC-GAME-019` 未发 `C2S_HELLO` 的连接 3 秒被踢 — 对应 `REQ-M2-008` · 级别: 冒烟 · 执行者: AI
 
-前置：进程就绪；`REQ-M2-008` 已合入。
+前置：`REQ-M2-008` 已合入；进程以**玩法模式**就绪（默认起法即是；核心模式豁免握手，那一档由 `TC-GAME-060` 判）。探针子命令 `no-hello`。
 
 | # | 操作 | 预期 |
 | --- | --- | --- |
-| 1 | 用探针以「登录后不发 `C2S_HELLO`」的方式连接（模拟没装模组的客户端），记录进入 configuration 的时刻 | 3.0～3.5 秒内收到 Disconnect，原因键 `synaxis:client-mod-required` |
+| 1 | `python3 tools/protocol-probe/probe.py no-hello`（登录后不发 `C2S_HELLO`，模拟没装模组的客户端），记录进入 configuration 的时刻 | 3.0～3.5 秒内收到 Disconnect，原因键 `synaxis:client-mod-required`，退出码 0 |
 | 2 | 查看服务端 stdout | 该次 kick 的日志行带 `connection_id`（引擎只把它写进日志、不拼进断线文本，见设计文档 §13），无异常堆栈 |
 | 3 | `grep client_rejected logs/events-*.jsonl \| tail -1` | 最后一行的 `reason` 为 `mod-missing` |
 | 4 | `grep session_entered_configuration logs/events-*.jsonl \| tail -1` | 存在对应该连接的一行（分母事件覆盖未握手的会话） |
-| 5 | 用探针正常发 `C2S_HELLO` 再连一次 | 收到 `S2C_HELLO`，`schema_version` 与服务端一致，随后进入 play |
+| 5 | `python3 tools/protocol-probe/probe.py handshake` | 收到 `S2C_HELLO`，`schema_version` 与服务端一致，随后进入 play，退出码 0 |
 
 后置：无。
 
 #### `TC-GAME-020` 原版客户端看到的断线提示 — 对应 `REQ-M2-008` · 级别: 回归 · 执行者: 人工
 
-前置：进程就绪；一台装了**原版（无模组）** Minecraft 26.2 客户端的机器。
+前置：进程以**玩法模式**就绪（核心模式不要求握手，原版客户端会被放行，测不到本用例）；一台装了**原版（无模组）** Minecraft 26.2 客户端的机器。
 
 | # | 操作 | 预期 |
 | --- | --- | --- |
@@ -984,16 +1000,7 @@ REQ-M2 ↔ TC 对照（手工维护）：
 
 #### `TC-GAME-021` `schema_version` 不等即被拒 — 对应 `REQ-M2-008` · 级别: 回归 · 执行者: AI
 
-前置：进程就绪，服务端 `schema_version` 为 1。
-
-| # | 操作 | 预期 |
-| --- | --- | --- |
-| 1 | 用探针发 `C2S_HELLO{schema_version=2}` | 1 秒内（不等 3 秒超时）收到 Disconnect，原因键 `synaxis:protocol-version-mismatch` |
-| 2 | 用探针发 `C2S_HELLO{schema_version=0}` | 同样收到 `synaxis:protocol-version-mismatch` |
-| 3 | `grep client_rejected logs/events-*.jsonl \| tail -2` | 两行的 `reason` 均为 `version-mismatch` |
-| 4 | 用探针发 `C2S_HELLO{schema_version=1}` | 收到 `S2C_HELLO`，其中 `tick_rate` 为 20、`server_tick` 为非负整数 |
-
-后置：无。
+**已废弃，被 `TC-GAME-062` 取代**（第 2 步的判据实质变更）：原第 2 步要求 `C2S_HELLO{schema_version=0}` 也回 `synaxis:protocol-version-mismatch`，但 `REQ-M2-007` 冻结的编解码层把 `schema_version` 定为 `≥ 1`（设计文档 §9），越界字段在 record 的紧凑构造器里就抛，按 §8 属于**畸形输入**、回 `synaxis:protocol-error`——「不等」与「非法」是两类结果，实测（2026-09-19）`--schema 0` 得到 `synaxis:protocol-error`、`--schema 2` 得到 `synaxis:protocol-version-mismatch`。按惯例换 ID，其余步骤在替代用例里保留。
 
 #### `TC-GAME-022` 重复 `C2S_HELLO` 判协议错误 — 对应 `REQ-M2-008` · 级别: 回归 · 执行者: AI
 
@@ -1001,24 +1008,77 @@ REQ-M2 ↔ TC 对照（手工维护）：
 
 | # | 操作 | 预期 |
 | --- | --- | --- |
-| 1 | 用探针发一次 `C2S_HELLO{schema_version=1}` | 收到 `S2C_HELLO`（会话进入 `verified`） |
-| 2 | 在同一条连接上再发一次 `C2S_HELLO` | 收到 Disconnect，原因键 `synaxis:protocol-error` |
-| 3 | 查看服务端 stdout | 一行 WARN 带该连接 `connection_id`，无异常堆栈 |
+| 1 | `python3 tools/protocol-probe/probe.py duplicate-hello`，观察其输出的第一段 | 收到 `S2C_HELLO`（会话进入 `verified`） |
+| 2 | 观察该子命令随后在同一条连接上再发一次 `C2S_HELLO` 的结果 | 收到 Disconnect，原因键 `synaxis:protocol-error`，退出码 0 |
+| 3 | 查看服务端 stdout | 一行 `Refusing a handshake: connection_id=… reason=synaxis:protocol-error cause=a connection sends one C2S_HELLO and this is the second` 的 WARN，无异常堆栈 |
 | 4 | 另起一条连接正常握手并进入 play | 不受上一条连接影响，收到 `S2C_UNIT_SPAWN` |
 
 后置：无。
 
-#### `TC-GAME-023` 下令超频回 `rate-limited` 且不断线 — 对应 `REQ-M2-009` · 级别: 回归 · 执行者: AI
+#### `TC-GAME-062` `schema_version` 不等与非法各走各的出口 — 对应 `REQ-M2-008`、`REQ-M2-007` · 级别: 回归 · 执行者: AI
 
-前置：探针已 in_game，持有一个本方单位 U（§3 对局种子）。
+前置：进程就绪（两种模式都适用——核心模式豁免的只有「不发握手」那一档），服务端 `schema_version` 为 1。
 
 | # | 操作 | 预期 |
 | --- | --- | --- |
-| 1 | 1 秒内发 20 条 `order_group` 互不相同、`order_seq` 递增、目标均为可站立点的 `C2S_MOVE_ORDER` | 收到 20 条 `S2C_ORDER_RESULT`，一条不少（每条请求必回一条结果） |
-| 2 | 统计这 20 条结果的 `code` | 前 10 条不含 `rate-limited`，其余 10 条全为 `rate-limited` |
+| 1 | `python3 tools/protocol-probe/probe.py bad-schema --schema 2` | 1 秒内（不等 3 秒超时）收到 Disconnect，原因键 `synaxis:protocol-version-mismatch`，退出码 0 |
+| 2 | `python3 tools/protocol-probe/probe.py bad-schema --schema 0` | 收到 Disconnect，原因键 `synaxis:protocol-error`（`schema_version` 的取值域是 `≥ 1`，越界是畸形输入不是版本不符，见设计文档 §8、§9）；子命令按「不等」判故退 1，**本步以原因键为准** |
+| 3 | `grep client_rejected logs/events-*.jsonl \| tail -2` | 只有第 1 步那一行，`reason` 为 `version-mismatch`；第 2 步是协议层畸形，不计进握手成功率的分子分母（设计文档 §20、§21） |
+| 4 | `python3 tools/protocol-probe/probe.py handshake` | 收到 `S2C_HELLO`，其中 `schema_version` 与服务端一致、`tick_rate` 为 20、`server_tick` 为非负整数，退出码 0 |
+
+后置：无。
+
+#### `TC-GAME-060` 核心模式豁免握手但照常判一条握手 — 对应 `REQ-M2-008`、`REQ-M2-021` · 级别: 冒烟 · 执行者: AI
+
+前置：`REQ-M2-008` 已合入。本用例自己起停两次进程，开始时无进程在 25565 上。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 带 `-Dsynaxis.app.core-mode=on` 起服 | 就绪日志出现；stdout 有 `Registered channel: plugin_id=synaxis channel=synaxis:handshake` 与 `Core mode (synaxis.app.core-mode=on): …`，**没有** `Gameplay mode:` 那一行（通道照常注册，只是不强制） |
+| 2 | `python3 tools/protocol-probe/probe.py no-hello` | **不被踢**：进入 play 并保持，末行 `the server let the connection through instead of sending synaxis:client-mod-required`、退出码 1——该子命令按玩法模式判，本步以「未收到 `synaxis:client-mod-required`、连接保持」为准 |
+| 3 | `python3 tools/protocol-probe/probe.py handshake` | 退出码 0，收到 `S2C_HELLO` 且 `schema_version` 与服务端一致（不要求握手 ≠ 不回握手） |
+| 4 | `python3 tools/protocol-probe/probe.py bad-schema --schema 2` 与 `python3 tools/protocol-probe/probe.py duplicate-hello` | 两条都退出码 0，分别收到 `synaxis:protocol-version-mismatch` 与 `synaxis:protocol-error`（不要求握手 ≠ 不判握手） |
+| 5 | `java tools/loadtest/PacketFlood.java --connections 50 --hz 100 --seconds 30 --out <目录>`（该工具是另一套手写实现，**不发** `C2S_HELLO`） | `achieved` ≈ 5,000 包/秒、`0 lost`、50 条连接全程在线——核心模式的压测路径不因强制握手失效（`docs/DESIGN.md` §15 的入站包目标） |
+| 6 | `python3 tools/protocol-probe/probe.py echo --payload core-ping` | 退出码 0，回发一致负载（`synaxis:main` 仍在） |
+| 7 | 控制台 `stop`；改用**默认起法**（玩法模式）重启，再跑一次第 2 步的命令 | 第一次退出码 0、端口释放；重启后 `no-hello` 退出码 0 并收到 `synaxis:client-mod-required`——强制与豁免的分界就是有没有玩法插件 |
+
+后置：`stop`，确认无残留 java 进程。
+
+#### `TC-GAME-061` 握手阶段可切到 login 作为退路 — 对应 `REQ-M2-008`（`ADR-M2-010` 的「落地形态与退路」） · 级别: 回归 · 执行者: AI
+
+前置：`REQ-M2-008` 已合入。本用例自己起停三次进程。**`ADR-M2-010` 出结论（阶段 0 spike ④）之后本用例随被删掉的那条路径一起废弃**，见设计文档 §28.2 的登记项。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 不给 `synaxis.app.handshake-phase` 起服（默认起法） | 就绪前那行 `Gameplay mode: …` 以 `in the configuration phase (schema_version=1)` 结尾——默认就是 `ADR-M2-010` 的决定 |
+| 2 | `stop` 后带 `-Dsynaxis.app.handshake-phase=login` 起服 | 同一行改为 `in the login phase (schema_version=1)` |
+| 3 | `python3 tools/protocol-probe/probe.py handshake` | 退出码 0；输出里有 `sent LoginPluginResponse channel=synaxis:handshake understood=True`，`S2C_HELLO` 是**服务端那条 login plugin request 的负载**（不是 configuration 阶段的自定义负载） |
+| 4 | `python3 tools/protocol-probe/probe.py no-hello` | 退出码 0，收到 **`LoginDisconnect`** reason=`synaxis:client-mod-required`（login 阶段的断线包类型；判据来自「空负载应答」而不是 3 秒静默） |
+| 5 | `python3 tools/protocol-probe/probe.py bad-schema --schema 2` | 退出码 0，收到 `LoginDisconnect reason=synaxis:protocol-version-mismatch` |
+| 6 | `python3 tools/protocol-probe/probe.py login` | 退出码 0，进入 play（login 阶段握过手的连接不再在 configuration 阶段重发，不会被判重复） |
+| 7 | `grep -E "INVALID_PROXY_RESPONSE\|multiplayer.disconnect" <服务端 stdout>` | 退出码 1、无输出——退路没有落进引擎那条固定的代理错误文案上，断线文案仍全由游戏侧控制（`ADR-M2-010` 的 Alternatives 顾虑不成立） |
+| 8 | `stop` 后带 `-Dsynaxis.app.handshake-phase=later` 起服 | 一行 `Refusing to start: synaxis.app.handshake-phase=later is not one of configuration, login` 的 ERROR，退出码 1，`nc -z 127.0.0.1 25565` 非 0（端口未 bind） |
+
+后置：确认无残留 java 进程。
+
+#### `TC-GAME-023` 下令超频回 `rate-limited` 且不断线 — 对应 `REQ-M2-009` · 级别: 回归 · 执行者: AI
+
+**已废弃，被 `TC-GAME-063` 取代**（第 5 步的判据实质变更）：原第 5 步要求那 10 条超频在 `logs/events-*.jsonl` 里各留一行 `code=rate-limited`，而设计文档 §20 现在把 `rate-limited` 与 `stale` 排除出台账——这两档不进任何指标的分母，且客户端能按自己的节奏无限产生它们，而台账是每条事件一次 `open/append/close` 且写在 tick 线程上（实测一秒 1,000 条超频指令 → 台账多 1,002 行 / 215 KB）。前四步逐字保留在替代用例里。
+
+#### `TC-GAME-063` 下令超频回 `rate-limited`、不断线、也不写台账 — 对应 `REQ-M2-009` · 级别: 回归 · 执行者: AI
+
+前置：探针已 in_game，持有一个本方单位 U（§3 对局种子）。
+
+**带 `code=ok` 的步骤要等 `REQ-M2-016` 的单位落地（阶段 5）**——在那之前对局里一个单位也没有，`owner(unit, sender)` 对任何 `unit_id` 都为假，那几步会回 `not-owner`；其余步骤现在就能跑。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | `python3 tools/protocol-probe/probe.py order --count 20 --seq 1 --unit <U> --x <可站立 x> --y <y> --z <可站立 z>`（`order_group` 默认与 `order_seq` 同步递增，互不相同） | 收到 20 条 `S2C_ORDER_RESULT`，一条不少（每条请求必回一条结果），末行 `answers=20/20` |
+| 2 | 看同一行的结果码直方图 | 前 10 条不含 `rate-limited`，其余 10 条全为 `rate-limited`（`--expect rate-limited --expect-count 10` 直接把这一步判成退出码） |
 | 3 | 检查连接状态 | 未收到 Disconnect，后续 KeepAlive 往返正常（玩法超频不断线，见设计文档 §14） |
 | 4 | 等 1 秒后再发 1 条合法指令 | 收到 `code=ok`（令牌桶已回填） |
-| 5 | `grep unit_order_rejected logs/events-*.jsonl \| tail -10` | 10 行的 `code` 均为 `rate-limited` |
+| 5 | `grep -c rate-limited logs/events-*.jsonl`（`stale` 同理） | 计数 0、退出码 1——客户端能无限刷的拒绝不写台账（设计文档 §20），这 10 条只在回包里可见 |
+| 6 | 再发一条越界指令 `… order --count 1 --seq <更大值> --unit <U> --x -4 --y <y> --z 4`，然后 `grep unit_order_rejected logs/events-*.jsonl \| tail -1` | 回 `code=out-of-bounds`；台账最后一行的 `code` 就是 `out-of-bounds`——§20 点名的四档（`no-path` / `out-of-bounds` / `not-owner` / `busy`）照常逐条记，被排除的只有那两档 |
 
 后置：无。
 
@@ -1026,25 +1086,31 @@ REQ-M2 ↔ TC 对照（手工维护）：
 
 前置：探针已 in_game，持有 9 个本方单位（§3 对局种子）。
 
+**带 `code=ok` 的步骤要等 `REQ-M2-016` 的单位落地（阶段 5）**——在那之前对局里一个单位也没有，`owner(unit, sender)` 对任何 `unit_id` 都为假，那几步会回 `not-owner`；其余步骤现在就能跑。
+
 | # | 操作 | 预期 |
 | --- | --- | --- |
-| 1 | 一次性发 8 条 `order_group` 相同、`unit_id` 各异、`order_seq` 递增的 `C2S_MOVE_ORDER` | 收到 8 条 `S2C_ORDER_RESULT`，`code` 全为 `ok`（令牌只扣 1 个，按操作计不按包计） |
+| 1 | `python3 tools/protocol-probe/probe.py order --count 8 --seq 1 --group 1 --unit <U> --x <可站立 x> --y <y> --z <可站立 z>`（一次点击的形态：`order_group` 相同、`order_seq` 递增） | 收到 8 条 `S2C_ORDER_RESULT`，`code` 全为 `ok`（令牌只扣 1 个，按操作计不按包计）；直方图里 `rate-limited=0` |
 | 2 | 同一秒内再发 10 组，每组 1 条、`order_group` 互不相同 | 前 9 组回 `ok`（本秒累计 10 个 `order_group`），第 10 组回 `rate-limited` |
 | 3 | 检查连接状态 | 未断线（8 包突发远低于 `synaxis:game-flood` 的 300 包/秒阈值） |
-| 4 | 等 1 秒让令牌桶回填（第 2 步已把本秒的桶打空），再发一组 `order_group` 相同、`unit_id` 各异、共 9 条的 `C2S_MOVE_ORDER`（组内包数上限是 8） | 按发出顺序前 8 条回 `code=ok`、第 9 条回 `code=rate-limited`（超出组内上限的部分按超频处理）；连接不断线 |
+| 4 | 等 1 秒让令牌桶回填（第 2 步已把本秒的桶打空），再发 `order --count 9 --group <新组号>`（组内包数上限是 8） | 按发出顺序前 8 条回 `code=ok`、第 9 条回 `code=rate-limited`（超出组内上限的部分按超频处理）；连接不断线 |
 
 后置：无。
 
 #### `TC-GAME-025` 洪水断线、正常峰值不断线 — 对应 `REQ-M2-009` · 级别: 边缘 · 执行者: AI
 
+**已废弃，被 `TC-GAME-064` 取代**（第 1 步的速率实质变更）：原第 1 步的 `--rate 400` 离 300 包/秒的阈值只有 33% 余量，而探针是突发发包——一秒内把 400 个 `C2S_CAMERA` 打完，再按批读（每 32 包一次 10 ms 的 socket 超时）、剩下的时间 `pump`（`recv` 带 0.5 s 超时，会冲过那一秒的截止），于是单次突发的实际周期漂到 1 s 以上，而服务端按 `nanoTime` 的**固定 1 秒桶**计数、桶与桶之间只要有一个 ≤ 300 就把连续秒清零。实测这一步 14 次挂 7 次，失败时探针实际只达到 344～349 包/秒（服务端侧再被错位的秒桶切一刀就够不到阈值），服务端 stdout 里连一行 `Disconnecting a flooding connection` 都没有。替代用例把速率抬到 800（实测 6 次全中，单窗口实际 622 包/秒），并把探针新报的实际速率纳入判据；其余三步逐字保留。
+
+#### `TC-GAME-064` 洪水断线、正常峰值不断线 — 对应 `REQ-M2-009` · 级别: 边缘 · 执行者: AI
+
 前置：探针支持按给定速率发包。
 
 | # | 操作 | 预期 |
 | --- | --- | --- |
-| 1 | 以每秒 400 条的速率连续 3 秒发任意 `rts:game` 消息 | 在第 3 秒末收到 Disconnect，原因键 `synaxis:game-flood` |
+| 1 | `python3 tools/protocol-probe/probe.py game-flood --rate 800 --seconds 3` | 在第 3 秒末收到 Disconnect，原因键 `synaxis:game-flood`。没收到时先看探针末行的 `slowest window <N>`：`N` 明显低于设定值就说明是探针没打到速率、而不是闸门坏了。**光看 `N > 300` 不够**——服务端按固定 1 秒桶计数，桶与探针的窗口错位后还要再切一刀，所以这一步要的是倍数级余量（实测 `--rate 400` 失败时 N = 344～349 照样不触发，`--rate 800` 的 N 是 622 且六次全中） |
 | 2 | 查看服务端 stdout | 一行 WARN 带 `connection_id`，无异常堆栈 |
-| 3 | 重新握手登录，以每秒 95 条（§2 算出的正常峰值）持续 60 秒 | 全程未断线，末尾仍在收到 `S2C_UNIT_STATE` |
-| 4 | 以每秒 299 条持续 3 秒 | 未断线（阈值是连续 3 秒 > 300 包/秒） |
+| 3 | `python3 tools/protocol-probe/probe.py game-flood --rate 95 --seconds 60 --expect alive`（§2 算出的正常峰值） | 全程未断线，末尾仍在收到 `S2C_UNIT_STATE`（快照随 `REQ-M2-016` 落地，在那之前只判「未断线 + KeepAlive 往返正常」） |
+| 4 | `python3 tools/protocol-probe/probe.py game-flood --rate 299 --seconds 3 --expect alive` | 未断线（阈值是连续 3 秒 > 300 包/秒） |
 
 后置：无。
 
@@ -1055,7 +1121,7 @@ REQ-M2 ↔ TC 对照（手工维护）：
 | # | 操作 | 预期 |
 | --- | --- | --- |
 | 1 | 发一条 `count=1000` 的 `C2S_SELECT`（上限 8） | 收到 Disconnect，原因键 `synaxis:protocol-error` |
-| 2 | 重新握手登录，发一条 `count=9` 的 `C2S_SELECT` | 同样 `synaxis:protocol-error`（9 即越界） |
+| 2 | 重新握手登录，`python3 tools/protocol-probe/probe.py select --units 1,2,3,4,5,6,7,8,9 --expect protocol-error` | 同样 `synaxis:protocol-error`（9 即越界） |
 | 3 | 重新握手登录，发一条 32,768 字节的自定义负载 | 连接被拒（引擎 `ClientPluginMessagePacket` 构造即抛，上限 32,767），探针观察到断线；服务端 stdout 无未捕获异常堆栈 |
 | 4 | 重新握手登录，发一条 `count=8` 的合法 `C2S_SELECT`，再对其中一个本方单位下令 | 连接保持；下令回 `code=ok` |
 
@@ -1319,13 +1385,15 @@ REQ-M2 ↔ TC 对照（手工维护）：
 
 前置：对局内有一个 `team=0` 的中立单位 N 与一个属于对方队伍的单位 O（种子见 §3）；探针的队伍为 1。
 
+**第 2～4 步要等 `REQ-M2-016` 的单位落地（阶段 5）**——N 与 O 在那之前并不存在；第 1、5 步现在就能跑，它们判的是「选中不回错、不断线、不抛栈」，对不存在的 `unit_id` 同样成立。
+
 | # | 操作 | 预期 |
 | --- | --- | --- |
-| 1 | 发 `C2S_SELECT{unit_ids=[N]}` | 无任何回包，连接不断线（静默剔除，选中不回错） |
+| 1 | `python3 tools/protocol-probe/probe.py select --units <N>` | 无任何回包，连接不断线（静默剔除，选中不回错） |
 | 2 | 对 N 下一条目标合法的移动指令 | 收到 `S2C_ORDER_RESULT{code=not-owner}`（中立单位对任何人都不是 owner） |
 | 3 | 对 O 下一条目标合法的移动指令 | 同样 `code=not-owner` |
 | 4 | 发 `C2S_SELECT{unit_ids=[本方单位 U, N]}`，随后对 U 下令 | 连接不断线；对 U 下令回 `code=ok`（合法项未被连坐剔除） |
-| 5 | 发 `C2S_SELECT{unit_ids=[一个不存在的 unit_id]}` | 连接不断线、无回错；服务端 stdout 无异常堆栈 |
+| 5 | `python3 tools/protocol-probe/probe.py select --units 404`（一个不存在的 `unit_id`） | 连接不断线、无回错；服务端 stdout 无异常堆栈 |
 
 后置：无。
 
@@ -1471,12 +1539,12 @@ REQ-M2 ↔ TC 对照（手工维护）：
 
 | # | 操作 | 预期 |
 | --- | --- | --- |
-| 1 | 用探针正常握手一次 | 收到 `S2C_HELLO` 后进入 play；`grep client_verified logs/events-*.jsonl \| tail -1` 出现该连接的一行；日志里能看到这条连接调过一次准入回调（回调的日志入口待 `REQ-M2-024` 实现后填） |
+| 1 | `python3 tools/protocol-probe/probe.py handshake` | 收到 `S2C_HELLO` 后进入 play，退出码 0；`grep client_verified logs/events-*.jsonl \| tail -1` 出现该连接的一行且 `mod_version` / `schema_version` 是探针报的值（不再恒为 0）；放行的连接在 `AdmissionGate` 上**不打任何行**（只有拒绝与超预算才写日志），所以这一步的正面判据是那条台账行加上玩家真的进了对局 |
 | 2 | 用一个**故意等 2.5 秒才发 `C2S_HELLO`** 的探针连接 | 仍然握手成功（3 秒有界等待未超时），不出现半成品状态 |
 | 3 | 用「登录后不发 `C2S_HELLO`」的探针连接 | 3.0～3.5 秒被断开，原因键 `synaxis:client-mod-required`；服务端 stdout 里**没有** `spawningInstance` 相关的 `NullPointerException`（失败路径 kick 后直接 return，不设 `spawningInstance`） |
 | 4 | 用探针握手成功后**再发一次 `C2S_HELLO`** | 被断开，原因键 `synaxis:protocol-error`（`complete` 返回 false 判为重复握手） |
 | 5 | 用探针进入 configuration 后在 1 秒时主动断开 TCP | 服务端在 1 秒左右就释放该连接的等待（日志里该 `connection_id` 的最后一行早于 3 秒），不是干等满 3 秒 |
-| 6 | 让插件的准入回调返回 `Reject("synaxis:match-unavailable")`（注入方式待 `REQ-M2-024` 实现后填），再用探针握手 | 探针收到 `S2C_HELLO` 之后被断开，原因键 `synaxis:match-unavailable`；`grep client_rejected logs/events-*.jsonl \| tail -1` 的 `reason` 为 `match-unavailable`；无 `synaxis:internal-error` |
+| 6 | 让插件的准入回调返回 `Reject("synaxis:match-unavailable")`（注入方式：在 `:server-app` 测试源集里按 `PluginHostIntegrationTest.ProbePlugin` 的形态临时写一个 `probe` 插件并以 `-Dsynaxis.app.plugins=probe` 起服；同形状的自动化档已由 `HandshakeIntegrationTest#aRejectedConnectionIsToldTheMatchIsUnavailableRatherThanAnInternalError` 覆盖），再用探针握手 | 探针收到 `S2C_HELLO` 之后被断开，原因键 `synaxis:match-unavailable`；`grep client_rejected logs/events-*.jsonl \| tail -1` 的 `reason` 为 `match-unavailable`；无 `synaxis:internal-error` |
 | 7 | 让准入回调**抛异常**，再用探针握手 | 同样以 `synaxis:match-unavailable` 断开；日志里有一行带 `plugin_id` 的 ERROR（M2 没有熔断计数，见设计文档 §28.3 第 ① 条） |
 | 8 | 让准入回调**睡 500 毫秒后正常返回 `Accept`**，再用探针握手 | 玩家**照常进入 play**（200 毫秒是事后测量的软预算，内联调用中止不了它，不改判为 `Reject`）；日志里有一行带 `plugin_id` 与实测耗时（≥ 500 毫秒）的 WARN；两条探针**同时**发起时，各自从 `S2C_HELLO` 到 `JoinGame` 都是约 500 毫秒（注入对唯一的 provider 全局生效，所以两条都慢），而**不是**串行的约 1,000 毫秒——这证明两条连接各自跑在自己的 configuration 虚拟线程上，没有互相阻塞 |
 | 9 | 让第二个插件也调用 `admission().register(...)` 后启动 | 第二次注册抛 `IllegalStateException`，该插件转 `failed`、被摘干净；日志里有一行 `Plugin failed to enable: plugin_id=<第二个>` 的 ERROR，随行的异常消息同时点名持槽的第一个 `plugin_id`。**进程继续走启动序列并照常 bind**——第一个插件仍持有槽位，`API-M2-010` 第 ⑤ 步的断言成立（一个 `failed`、其余照常，见设计文档 §11.2）。「一个插件都没有参与启动 → 核心模式」与「加上 `core-mode=off` → 非零码退出且端口未 bind」是另外两档，由 `TC-GAME-058` 第 1 步与 `TC-GAME-057` 第 1 步分别判 |
@@ -1504,9 +1572,9 @@ REQ-M2 ↔ TC 对照（手工维护）：
 
 | # | 操作 | 预期 |
 | --- | --- | --- |
-| 1 | `grep -n "C2S_HELLO" tools/protocol-probe/probe.py` | 至少一处命中（探针已实现握手） |
+| 1 | `grep -n "C2S_HELLO" tools/protocol-probe/probe.py` | 至少一处命中（探针已实现握手）；`python3 tools/protocol-probe/probe.py --help` 的子命令列表含 `handshake`、`no-hello`、`bad-schema`、`duplicate-hello` |
 | 2 | `grep -rn "bypass\|skip-handshake\|no-handshake\|test-mode" tools/protocol-probe/probe.py server-app/src/main/java` | 退出码 1、无输出（没有可绕过准入的旁路开关） |
-| 3 | 依次执行探针的 `login`、`zero-frame`、`deep-recursion`、`premature-finish`、`record-registry` 子命令 | 每个都能进入 play 态并完成各自原有断言，退出码符合 §3 探针表 |
+| 3 | 依次执行探针的 `login`、`zero-frame`、`deep-recursion`、`premature-finish`、`record-registry`、`alloc-bomb`、`nbt-bomb` 子命令 | 每个都能进入 play 态并完成各自原有断言，退出码符合 §3 探针表（它们现在都在 configuration 阶段先发一次 `C2S_HELLO`） |
 | 4 | 带 `-Dsynaxis.app.core-mode=on` 重启服务端（第 1～3 步的普通进程没有这条通道），在这个**核心模式**的进程上执行探针的 `echo` 子命令（`synaxis:main` 由宿主在核心模式下提供，见设计文档 `API-M2-010` 第 ⑤ 步） | 按 §3 探针表回发一致负载，退出码 0 |
 
 后置：无。
@@ -1516,8 +1584,8 @@ REQ-M2 ↔ TC 对照（手工维护）：
 - **全量轮**（全部用例）：首次成稿、每个阶段 gate（引擎域阶段 0、2、3；游戏域 `docs/DESIGN-M2.md` §26 的阶段 1～6b）、跨功能域改动、地基变更（JDK、Gradle、镜像、协议版本、模块拆分、启动入口）。
 - **局部轮**（受影响用例 + 全部冒烟级）：单一需求改动。受影响用例 = 本次改动触及的 `REQ-*` / `REQ-M2-*` 所对应的 TC（M2 侧的对照表在 §2，机械校验查不到它）；无 REQ 变更的改动（纯 bug 修、重构）按触及的功能域圈定：
   - 引擎域：构建与仓库 → TC-001、TC-002、TC-004、TC-006、TC-021、TC-029，删除与注册表 → TC-008、TC-009、TC-020，命名与合规 → TC-011、TC-028，协议 → TC-014、TC-018、TC-019、TC-026、TC-027、TC-030、TC-031、TC-032、TC-034、TC-035，卫生 → TC-015、TC-016，门面与配置 → TC-023、TC-025，分层 → TC-024、TC-035。
-  - 游戏域：模块与门禁 → TC-GAME-001～TC-GAME-006、TC-GAME-059，插件宿主 → TC-GAME-009～TC-GAME-011、TC-GAME-014～TC-GAME-016、TC-GAME-053～TC-GAME-055（TC-GAME-007、TC-GAME-008、TC-GAME-012、TC-GAME-013 已废弃），协议与握手 → TC-GAME-017～TC-GAME-028、TC-GAME-049、TC-GAME-050，世界与对局 → TC-GAME-029、TC-GAME-031、TC-GAME-033～TC-GAME-036、TC-GAME-056、TC-GAME-057（TC-GAME-030、TC-GAME-032 已废弃），单位与寻路 → TC-GAME-052、TC-GAME-039～TC-GAME-042、TC-GAME-051，镜头 → TC-GAME-043、TC-GAME-044，客户端模组 → TC-GAME-038、TC-GAME-045～TC-GAME-047，启动器 → TC-GAME-048、TC-GAME-049、TC-GAME-050、TC-GAME-058。
-  - 跨域牵连（必须一起跑）：动了启动入口或就绪日志 → 加 TC-GAME-048、TC-GAME-029、TC-GAME-057、TC-GAME-058 与全部以进程为前置的引擎域用例（启动序列一变，「对局在 bind 之前就绪、tick 在 bind 之后才起」这条口径就要重验）；动了握手、准入回调或探针 → 加 TC-GAME-049、TC-GAME-050 与 TC-004、TC-014、TC-018、TC-019、TC-020、TC-026、TC-027 七条存量 TC；动了 `:protocol` 消息布局 → 加 TC-GAME-017 与客户端侧同一份向量；动了引擎 `Entity` 的位置推进入口 → 加 TC-GAME-051 与 TC-GAME-040。
+  - 游戏域：模块与门禁 → TC-GAME-001～TC-GAME-006、TC-GAME-059，插件宿主 → TC-GAME-009～TC-GAME-011、TC-GAME-014～TC-GAME-016、TC-GAME-053～TC-GAME-055（TC-GAME-007、TC-GAME-008、TC-GAME-012、TC-GAME-013 已废弃），协议与握手 → TC-GAME-017～TC-GAME-028、TC-GAME-049、TC-GAME-050、TC-GAME-060～TC-GAME-064（TC-GAME-021、TC-GAME-023、TC-GAME-025 已废弃），世界与对局 → TC-GAME-029、TC-GAME-031、TC-GAME-033～TC-GAME-036、TC-GAME-056、TC-GAME-057（TC-GAME-030、TC-GAME-032 已废弃），单位与寻路 → TC-GAME-052、TC-GAME-039～TC-GAME-042、TC-GAME-051，镜头 → TC-GAME-043、TC-GAME-044，客户端模组 → TC-GAME-038、TC-GAME-045～TC-GAME-047，启动器 → TC-GAME-048、TC-GAME-049、TC-GAME-050、TC-GAME-058。
+  - 跨域牵连（必须一起跑）：动了启动入口或就绪日志 → 加 TC-GAME-048、TC-GAME-029、TC-GAME-057、TC-GAME-058 与全部以进程为前置的引擎域用例（启动序列一变，「对局在 bind 之前就绪、tick 在 bind 之后才起」这条口径就要重验）；动了握手、准入回调或探针 → 加 TC-GAME-049、TC-GAME-050、TC-GAME-060、TC-GAME-061 与 TC-004、TC-014、TC-018、TC-019、TC-020、TC-026、TC-027 七条存量 TC；动了 `:protocol` 消息布局 → 加 TC-GAME-017 与客户端侧同一份向量；动了引擎 `Entity` 的位置推进入口 → 加 TC-GAME-051 与 TC-GAME-040。
   - 影响面不确定时升级为全量轮。
 - **复测轮**（上轮失败用例 + 全部冒烟级）：修复失败项之后。
 - **人工收口轮**（仅上轮「待人工」用例）：AI 轮之后由人工补测 TC-016、TC-030、TC-GAME-020、TC-GAME-038、TC-GAME-046、TC-GAME-047，不要求冒烟级。

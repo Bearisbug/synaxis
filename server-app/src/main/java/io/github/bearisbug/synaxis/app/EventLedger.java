@@ -1,5 +1,6 @@
 package io.github.bearisbug.synaxis.app;
 
+import io.github.bearisbug.synaxis.plugin.LogBudget;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -17,14 +18,21 @@ import java.util.Map;
  * The local analytics ledger of {@code docs/DESIGN-M2.md} §20: one JSON object per line in
  * {@code logs/events-YYYYMMDD.jsonl}.
  * <p>
- * Each event is appended on its own, without keeping a writer open. That holds today because
- * every caller records a process lifetime event, but §20 also asks for one event per inbound
- * order packet: once that lands, the per event open and close becomes the bottleneck and this
- * has to buffer first. Registered as debt in {@code docs/DESIGN.md} §28.
+ * Each event is appended on its own, without keeping a writer open. What holds that up is that
+ * every event here costs the client a connection: the order events of §20 are capped per connection
+ * by the order budget of §15 — the two refusals a client can repeat at will, {@code stale} and
+ * {@code rate-limited}, are left out of the ledger for that reason — and the session events
+ * ({@code session_entered_configuration}, {@code client_verified}, {@code client_rejected}) are two
+ * or three lines per connection. That is the client's to multiply rather than the host's, since a
+ * connection costs nothing in offline mode: 100 sequential logins wrote 200 lines / 30,800 bytes in
+ * 8.59 s when this was measured, so what bounds the ledger is how controlled the connections are,
+ * not anything this class does. A caller that recorded once per inbound payload would make the per
+ * event open and close the bottleneck outright. Buffering the appends is registered as debt in
+ * {@code docs/DESIGN.md} §28.
  * <p>
  * The rate is not the host's to choose, though: {@code PluginAnalytics} hands this method to every
- * plugin, and §20 asks for one event per inbound order packet, so a directory that cannot be
- * written to reports through a {@link LogBudget} rather than once per event
+ * plugin and every plugin records from its own inbound path, so a directory that cannot be written
+ * to reports through a {@link LogBudget} rather than once per event
  * ({@code docs/DESIGN.md} §15).
  */
 final class EventLedger {

@@ -16,6 +16,27 @@ public final class DisconnectKeys {
      */
     public static final String MATCH_UNAVAILABLE = "synaxis:match-unavailable";
 
+    /**
+     * The connection did not send a {@code C2S_HELLO} inside the handshake budget, which is what a
+     * client without the mod looks like from here: nothing arrives and nothing ever will.
+     */
+    public static final String CLIENT_MOD_REQUIRED = "synaxis:client-mod-required";
+
+    /**
+     * The connection announced a {@code schema_version} other than the one this server speaks. The
+     * wire protocol has no deprecation window — both ends ship in the same modpack — so anything
+     * but equality is a refusal.
+     */
+    public static final String PROTOCOL_VERSION_MISMATCH = "synaxis:protocol-version-mismatch";
+
+    /**
+     * The connection kept a game channel above the flood threshold of {@code docs/DESIGN-M2.md} §15
+     * for three seconds running. It is a gate against scripted floods, not a gameplay limit: going
+     * over the per second budget of an order or a camera report is answered in band, and only this
+     * one disconnects.
+     */
+    public static final String GAME_FLOOD = "synaxis:game-flood";
+
     private DisconnectKeys() {
     }
 }

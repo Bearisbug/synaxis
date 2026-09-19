@@ -41,6 +41,7 @@ final class PluginHost {
     private final PluginChannelRouter router = new PluginChannelRouter();
     private final AdmissionRegistry admission = new AdmissionRegistry();
     private final EventNode<Event> hostNode = EventNode.all("synaxis-host");
+    private final HandshakeGate handshake;
     private final List<LoadedPlugin> enabled = new ArrayList<>();
 
     /**
@@ -54,9 +55,23 @@ final class PluginHost {
         this.process = process;
         this.pluginsDirectory = pluginsDirectory;
         this.ledger = ledger;
+        this.handshake = new HandshakeGate(HandshakeGate.phase(), HandshakeGate.BUDGET, ledger);
         process.eventHandler().addChild(hostNode);
         router.attach(hostNode);
-        new AdmissionGate(admission).attach(hostNode);
+        handshake.attach(hostNode);
+        // The handshake speaks over a channel of the reserved namespace, so it is registered the
+        // same way the core mode's diagnostic channel is: through the one payload listener of the
+        // router, which is what keeps "an unknown channel is dropped" true for it as well.
+        registerHostChannel(HandshakeGate.CHANNEL, handshake::receive);
+        new AdmissionGate(admission, handshake, ledger).attach(hostNode);
+    }
+
+    /**
+     * Makes the client mod handshake mandatory, which the startup sequence does for a gameplay
+     * launch only (REQ-M2-008). Called before the port is bound.
+     */
+    void requireHandshake() {
+        handshake.require();
     }
 
     /**

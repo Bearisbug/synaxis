@@ -1,6 +1,7 @@
 package io.github.bearisbug.synaxis.game.rts;
 
 import io.github.bearisbug.synaxis.event.player.AsyncPlayerConfigurationEvent;
+import io.github.bearisbug.synaxis.event.player.PlayerDisconnectEvent;
 import io.github.bearisbug.synaxis.instance.InstanceContainer;
 import io.github.bearisbug.synaxis.plugin.Admission;
 import io.github.bearisbug.synaxis.plugin.DisconnectKeys;
@@ -17,9 +18,10 @@ import org.jetbrains.annotations.Nullable;
  * The RTS plugin, the one compile time plugin of M2.
  * <p>
  * It owns the match: it generates the map and builds the instance before the server binds its port
- * and tells the host, by way of the admission provider, where a connecting player belongs. The
- * units and the pathfinding arrive with REQ-M2-016 and REQ-M2-017; the navigation mesh they will
- * read is already generated with the map (REQ-M2-010).
+ * and tells the host, by way of the admission provider, where a connecting player belongs. It also
+ * owns the one game channel of the slice, where the server judges what a client asks for
+ * ({@link GameChannel}). The units and the pathfinding arrive with REQ-M2-016 and REQ-M2-017; the
+ * navigation mesh they will read is already generated with the map (REQ-M2-010).
  */
 public final class RtsPlugin implements SynaxisPlugin {
 
@@ -60,9 +62,19 @@ public final class RtsPlugin implements SynaxisPlugin {
 
         context.events().addListener(AsyncPlayerConfigurationEvent.class,
                 event -> event.getPlayer().setRespawnPoint(started.spawn()));
-        context.admission().register(_ -> started.state() == Match.State.RUNNING
-                ? new Admission.Accept(instance, PLAYER_TEAM)
-                : new Admission.Reject(DisconnectKeys.MATCH_UNAVAILABLE));
+
+        final GameChannel game = new GameChannel(started, context.channels(), context.analytics(),
+                System::nanoTime, context.process().connection());
+        context.channels().register(GameChannel.NAME, game::receive);
+        context.events().addListener(PlayerDisconnectEvent.class,
+                event -> game.closed(event.getPlayer().getPlayerConnection().connectionId()));
+        context.admission().register(request -> {
+            if (started.state() != Match.State.RUNNING) return new Admission.Reject(DisconnectKeys.MATCH_UNAVAILABLE);
+            // The team the connection is admitted with is the sender half of owner(unit, sender),
+            // and this is the only place it is decided (§9)
+            game.admitted(request.connectionId(), PLAYER_TEAM);
+            return new Admission.Accept(instance, PLAYER_TEAM);
+        });
     }
 
     @Override

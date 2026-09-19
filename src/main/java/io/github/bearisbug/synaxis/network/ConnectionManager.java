@@ -131,6 +131,24 @@ public final class ConnectionManager {
     }
 
     /**
+     * Tells whether a connection id still belongs to a live connection, in the configuration state
+     * as well as in the play state.
+     * <p>
+     * It stops being true before {@link io.github.bearisbug.synaxis.event.player.PlayerDisconnectEvent}
+     * is called — {@link PlayerConnection#disconnect()} drops the connection first and calls the
+     * event afterwards — so a listener of that event and a concurrent insertion keyed by the same
+     * connection id can agree on which of the two happened last.
+     *
+     * @param connectionId the connection id, the one that appears in the server logs
+     * @return true while the process still holds that connection and it has not been dropped
+     */
+    public boolean isConnected(UUID connectionId) {
+        for (final PlayerConnection connection : connectionPlayerMap.keySet())
+            if (connection.connectionId().equals(connectionId)) return connection.isOnline();
+        return false;
+    }
+
+    /**
      * Gets the first player in the play state which validates {@link String#equalsIgnoreCase(String)}.
      * <p>
      * This can cause issue if two or more players have the same username.

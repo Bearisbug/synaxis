@@ -4,6 +4,7 @@ import io.github.bearisbug.synaxis.entity.Player;
 import io.github.bearisbug.synaxis.event.Event;
 import io.github.bearisbug.synaxis.event.EventNode;
 import io.github.bearisbug.synaxis.event.player.PlayerPluginMessageEvent;
+import io.github.bearisbug.synaxis.plugin.LogBudget;
 import io.github.bearisbug.synaxis.plugin.PayloadHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

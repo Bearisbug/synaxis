@@ -23,6 +23,7 @@ Subcommands, see docs/TEST.md section 3:
     record-registry --out FILE    dump every received RegistryData packet to FILE
     order [--count N] [--group G] send move orders on rts:game and report the result codes
     select --units 1,2,3          send one C2S_SELECT and check it is not answered
+    march [--units N]             keep N units walking, so a load test has moving units under it
     game-flood [--rate R]         hold a payload rate on rts:game for a few seconds
     handshake                     log in and report the S2C_HELLO the server answered with
     no-hello                      log in and never send C2S_HELLO, the client without the mod
@@ -968,6 +969,10 @@ def cmd_deep_recursion(args: argparse.Namespace) -> int:
         session.close()
 
 
+# API-M2-005: how many order packets one order_group may carry.
+GROUP = 8
+
+
 def cmd_order(args: argparse.Namespace) -> int:
     """Sends move orders and reports the result codes they came back with (API-M2-005).
 
@@ -976,12 +981,20 @@ def cmd_order(args: argparse.Namespace) -> int:
     what a single click on several units looks like and what the token bucket counts as one;
     `--group-size` cuts the burst into groups of that size instead, which is how a burst larger
     than the eight packets a group may carry is sent without being rate limited.
+
+    `--select` puts a selection in front of the orders on the same connection, which is the only
+    way to see that a selection carrying a unit the sender does not command still leaves it able to
+    order the ones it does.
     """
     if args.group_size < 1:
         raise SystemExit("--group-size counts the orders sharing a group, so it is at least 1")
     session = Session(args)
     try:
         session.enter_play()
+        if args.select:
+            units = [int(unit) for unit in args.select.split(",")]
+            session.send_game(select_body(units))
+            session.log(f"sent C2S_SELECT count={len(units)} unit_ids={units}")
         target = (args.x, args.y, args.z)
         for index in range(args.count):
             order_seq = args.seq + index
@@ -1022,6 +1035,56 @@ def cmd_order(args: argparse.Namespace) -> int:
             return 1
         if session.unit_states.get(args.unit) != "idle":
             session.log(f"the unit was still moving after {args.watch}s")
+            return 1
+        return 0
+    finally:
+        session.close()
+
+
+def cmd_march(args: argparse.Namespace) -> int:
+    """Keeps a number of units walking for a while, so that a load test has moving units under it.
+
+    A walking unit puts an entity position packet on the wire every other tick for every player who
+    can see it, which is downlink the core baselines were measured without. Producing it takes a
+    connection that stays: the units of a connection that goes away are stopped (section 11.4). So
+    this holds one, and every period it sends the whole set of units to the other of two targets,
+    in groups of eight spaced far enough apart to stay under both the operation budget and the
+    search queue.
+
+    What it reports is the sampled count of units the snapshots called moving, which is the number
+    the load test needs to stand behind: an order that was answered `ok` is not yet a unit walking.
+    """
+    session = Session(args)
+    try:
+        session.enter_play()
+        targets = ((args.ax, args.az), (args.bx, args.bz))
+        deadline = time.monotonic() + args.seconds
+        samples: list[int] = []
+        order_seq = 0
+        period = 0
+        while time.monotonic() < deadline:
+            x, z = targets[period % 2]
+            for first in range(1, args.units + 1, GROUP):
+                for unit_id in range(first, min(first + GROUP, args.units + 1)):
+                    order_seq += 1
+                    session.send_game(move_order_body(order_seq, period * args.units + first,
+                                                      unit_id, (x, args.y, z)))
+                session.pump(args.spacing)
+            until = min(time.monotonic() + args.period, deadline)
+            while time.monotonic() < until:
+                session.pump(1.0)
+                samples.append(sum(1 for state in session.unit_states.values() if state == "moving"))
+            period += 1
+        histogram: dict[str, int] = {}
+        for result in session.order_results:
+            histogram[result["code"]] = histogram.get(result["code"], 0) + 1
+        moving = sorted(samples)
+        session.log(f"periods={period} orders={order_seq} "
+                    + " ".join(f"{code}={count}" for code, count in sorted(histogram.items())))
+        session.log(f"moving samples={len(moving)} min={moving[0]} median={moving[len(moving) // 2]} "
+                    f"max={moving[-1]}")
+        if moving[len(moving) // 2] < args.expect_moving:
+            session.log(f"half the samples were under {args.expect_moving} units moving")
             return 1
         return 0
     finally:
@@ -1332,6 +1395,8 @@ def build_parser() -> argparse.ArgumentParser:
     order.add_argument("--group-size", type=int, default=1,
                        help="how many consecutive orders share an order_group (default: 1, one each)")
     order.add_argument("--unit", type=int, default=1, help="the unit_id to order about")
+    order.add_argument("--select", default="",
+                       help="comma separated unit_ids to select first, on the same connection")
     order.add_argument("--x", type=float, default=8.0)
     order.add_argument("--y", type=float, default=32.0)
     order.add_argument("--z", type=float, default=8.0)
@@ -1341,6 +1406,22 @@ def build_parser() -> argparse.ArgumentParser:
     order.add_argument("--watch", type=float, default=0.0,
                        help="seconds to follow the unit in the snapshots until it is idle again")
     order.set_defaults(run=cmd_order)
+
+    march = subparsers.add_parser("march", help="keep units walking for a while, under a load test")
+    march.add_argument("--units", type=int, default=64, help="order unit_ids 1..N")
+    march.add_argument("--seconds", type=float, default=300.0, help="how long to keep them walking")
+    march.add_argument("--period", type=float, default=10.0, help="seconds between two rounds of orders")
+    march.add_argument("--spacing", type=float, default=0.25,
+                       help="seconds between two groups of orders, which is what keeps them inside "
+                            "the operation budget and the search queue")
+    march.add_argument("--ax", type=float, default=100.5)
+    march.add_argument("--az", type=float, default=100.5)
+    march.add_argument("--bx", type=float, default=40.5)
+    march.add_argument("--bz", type=float, default=40.5)
+    march.add_argument("--y", type=float, default=40.0)
+    march.add_argument("--expect-moving", type=int, default=0,
+                       help="how many units at least half the samples must report moving")
+    march.set_defaults(run=cmd_march)
 
     units = subparsers.add_parser("units", help="report the units the server puts in this connection's view")
     units.add_argument("--wait", type=float, default=5.0, help="seconds to collect spawns and snapshots")

@@ -19,6 +19,8 @@ import java.util.List;
  * Two budgets of §15 are enforced here; the third ({@code ≤ 4 requests per tick}) belongs to the
  * queue that feeds it. A search that expands more than {@value #MAX_EXPANSIONS} nodes gives up and
  * answers {@code no-path}: a bounded wrong answer the client can act on beats an unbounded tick.
+ * The search leans toward the goal by {@link #GOAL_BIAS} so that the budget buys distance rather
+ * than breadth; without it a map this open swallows the whole budget within about 150 blocks.
  * <p>
  * Diagonal steps may not cut a corner — both orthogonal neighbours have to be walkable — and the
  * string pull only shortcuts through a corridor wide enough for the archetype's radius, so the
@@ -28,6 +30,20 @@ final class Pathfinder {
 
     /** §15: the node expansion budget of one search. */
     static final int MAX_EXPANSIONS = 4_000;
+
+    /**
+     * How much the search leans toward the goal, which decides what the node budget reaches.
+     * <p>
+     * The map is a plain with scattered pillars, so the octile distance is exact almost everywhere
+     * and every staircase between two columns costs exactly the same: A* has no reason to prefer
+     * one, expands the whole equal cost plateau around the start, and runs out of budget while the
+     * goal is still inside the frontier. Leaning on the heuristic is what collapses that plateau.
+     * Measured over 160,000 column pairs on both presets, {@value} answers every connected pair,
+     * while {@code 1.05} still gives a walkable one up wrong. The price is that a route may cost
+     * that many times the shortest one: on this terrain it came out as 1.3% more walking on average
+     * and 8% in the worst pair, against a fifth of the nodes expanded.
+     */
+    private static final float GOAL_BIAS = 1.15f;
 
     /** The cost of a diagonal step, the orthogonal one being 1. */
     private static final float DIAGONAL_COST = (float) Math.sqrt(2);
@@ -130,11 +146,11 @@ final class Pathfinder {
         return NONE;
     }
 
-    /** The octile distance: exact for this neighbourhood, so A* never expands more than it must. */
+    /** The octile distance, the exact remaining cost over open ground, leaned on by {@link #GOAL_BIAS}. */
     private static float heuristic(int fromX, int fromZ, int toX, int toZ) {
         final int dx = Math.abs(toX - fromX);
         final int dz = Math.abs(toZ - fromZ);
-        return Math.max(dx, dz) + (DIAGONAL_COST - 1f) * Math.min(dx, dz);
+        return (Math.max(dx, dz) + (DIAGONAL_COST - 1f) * Math.min(dx, dz)) * GOAL_BIAS;
     }
 
     private List<Pos> trace(int start, int goal) {

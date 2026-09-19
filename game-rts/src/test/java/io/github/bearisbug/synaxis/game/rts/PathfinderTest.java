@@ -18,6 +18,13 @@ class PathfinderTest {
     private static final MapPreset PRESET = MapPreset.SMALL;
     private static final float RADIUS = Archetype.SOLDIER.radius();
 
+    /** How far the far target case orders a unit, in blocks. */
+    private static final int FAR = 200;
+
+    /** The eight compass directions the far target case aims at. */
+    private static final int[] AWAY_X = {1, -1, 0, 0, 1, 1, -1, -1};
+    private static final int[] AWAY_Z = {0, 0, 1, -1, 1, -1, 1, -1};
+
     private final MapTerrain terrain = new MapTerrain(PRESET);
     private final NavGrid grid = NavGrid.of(terrain);
     private final Pathfinder pathfinder = new Pathfinder(grid, PRESET);
@@ -44,6 +51,28 @@ class PathfinderTest {
         assertTrue(path.found());
         assertEquals(List.of(stand(x + 11, z)), path.waypoints(),
                 "nothing is in the way, so the staircase A* produced had to collapse into one leg");
+    }
+
+    @Test
+    void aFarTargetOnOpenGroundIsRoutedToRatherThanGivenUpOn() {
+        final MapPreset preset = MapPreset.DEFAULT;
+        final NavGrid open = NavGrid.of(new MapTerrain(preset));
+        final Pathfinder far = new Pathfinder(open, preset);
+        final int centreX = preset.sizeX() / 2;
+        final int centreZ = preset.sizeZ() / 2;
+        final Pos from = new Pos(centreX + 0.5, open.surfaceY(centreX, centreZ), centreZ + 0.5);
+
+        for (int i = 0; i < AWAY_X.length; i++) {
+            final int[] target = nearestWalkable(open, centreX + AWAY_X[i] * FAR,
+                    centreZ + AWAY_Z[i] * FAR);
+            final Pathfinder.Path path = far.find(from, target[0], target[1], RADIUS);
+
+            assertTrue(path.found(), "open ground " + FAR + " blocks away came back as no path: "
+                    + target[0] + "," + target[1]);
+            assertTrue(walked(from, path.waypoints()) < from.distance(
+                            new Pos(target[0] + 0.5, from.y(), target[1] + 0.5)) * 1.25,
+                    "the walk to " + target[0] + "," + target[1] + " is a detour, not a route");
+        }
     }
 
     @Test
@@ -99,6 +128,29 @@ class PathfinderTest {
         assertFalse(pathfinder.find(stand(open[0], open[1]), blocked[0], blocked[1], RADIUS).found());
         assertFalse(pathfinder.find(new Pos(blocked[0] + 0.5, MapTerrain.GROUND_HEIGHT, blocked[1] + 0.5),
                 open[0], open[1], RADIUS).found());
+    }
+
+    /** How far a unit walks to follow a path, which is what the string pull is judged on. */
+    private static double walked(Pos from, List<Pos> waypoints) {
+        double total = 0;
+        Pos previous = from;
+        for (final Pos waypoint : waypoints) {
+            total += previous.distance(waypoint);
+            previous = waypoint;
+        }
+        return total;
+    }
+
+    /** The walkable column nearest a wanted one, so that a case can aim at a spot rather than a column. */
+    private static int[] nearestWalkable(NavGrid grid, int wantedX, int wantedZ) {
+        for (int ring = 0; ring < 16; ring++) {
+            for (int x = wantedX - ring; x <= wantedX + ring; x++) {
+                for (int z = wantedZ - ring; z <= wantedZ + ring; z++) {
+                    if (grid.isWalkable(x, z)) return new int[]{x, z};
+                }
+            }
+        }
+        throw new AssertionError("no walkable column near " + wantedX + "," + wantedZ);
     }
 
     /** Whether a unit of the test archetype can walk the straight line between two waypoints. */

@@ -251,7 +251,7 @@ final class Units implements UnitEntity.UnitViewers {
         final Unit unit = units.get(order.unitId());
         // The unit went away while the order waited: there is no path to walk and nothing to move
         if (unit == null) {
-            refuse(request);
+            refuse(request, 0, 0);
             return;
         }
         final long started = clock.getAsLong();
@@ -259,7 +259,7 @@ final class Units implements UnitEntity.UnitViewers {
                 request.targetColumnX(), request.targetColumnZ(), unit.archetype().radius());
         final long pathMs = TimeUnit.NANOSECONDS.toMillis(clock.getAsLong() - started);
         if (!path.found()) {
-            refuse(request);
+            refuse(request, path.nodes(), pathMs);
             return;
         }
         superseded(unit.follow(path.waypoints(),
@@ -324,11 +324,21 @@ final class Units implements UnitEntity.UnitViewers {
      * Answers the one refusal that can only be found out down here: the destination is walkable and
      * the sender does command that unit, but no route joins the two. Like every refusal it carries
      * the target the client asked for back rather than a snapped one (§9).
+     * <p>
+     * It is the only refusal that costs a search, so it is the only one that reports what the search
+     * spent: a count over {@link Pathfinder#MAX_EXPANSIONS} is a search that ran out of budget
+     * rather than a target nothing joins, which is the first thing {@code RB-M2-003} has to tell
+     * apart (§20).
+     *
+     * @param request the order to refuse
+     * @param nodes   how many nodes its search expanded, 0 when none ran
+     * @param pathMs  how long its search took
      */
-    private void refuse(Request request) {
+    private void refuse(Request request, int nodes, long pathMs) {
         final C2SMoveOrder order = request.order();
         analytics.record("unit_order_rejected", attributes(request.connectionId(),
-                "order_seq", order.orderSeq(), "code", "no-path"));
+                "order_seq", order.orderSeq(), "code", "no-path",
+                "path_nodes", nodes, "path_ms", pathMs));
         send(request.player(), new S2COrderResult(order.orderSeq(), OrderResultCode.NO_PATH,
                 order.targetX(), order.targetY(), order.targetZ()));
     }

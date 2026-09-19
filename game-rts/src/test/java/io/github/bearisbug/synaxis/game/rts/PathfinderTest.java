@@ -118,6 +118,9 @@ class PathfinderTest {
         assertTrue(walkableColumns() > Pathfinder.MAX_EXPANSIONS,
                 "the map has to be bigger than the budget for this case to be about the budget: "
                         + walkableColumns() + " walkable columns against a budget of " + Pathfinder.MAX_EXPANSIONS);
+        assertTrue(path.nodes() > Pathfinder.MAX_EXPANSIONS,
+                "a search that gave up has to say so by its count, or RB-M2-003 cannot tell it apart "
+                        + "from a target nothing joins: " + path.nodes());
     }
 
     @Test
@@ -125,7 +128,9 @@ class PathfinderTest {
         final int[] blocked = firstObstacle();
         final int[] open = openRun(1);
 
-        assertFalse(pathfinder.find(stand(open[0], open[1]), blocked[0], blocked[1], RADIUS).found());
+        final Pathfinder.Path toBlocked = pathfinder.find(stand(open[0], open[1]), blocked[0], blocked[1], RADIUS);
+        assertFalse(toBlocked.found());
+        assertEquals(0, toBlocked.nodes(), "a search that never started cannot have spent anything");
         assertFalse(pathfinder.find(new Pos(blocked[0] + 0.5, MapTerrain.GROUND_HEIGHT, blocked[1] + 0.5),
                 open[0], open[1], RADIUS).found());
     }

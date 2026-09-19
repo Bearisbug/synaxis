@@ -100,7 +100,12 @@ class UnitMovementIntegrationTest {
         assertEquals(OrderResultCode.NO_PATH, result.code());
         assertEquals((float) walledIn.x(), result.snappedX(), "a refusal echoes the requested point back");
         assertEquals(UnitState.IDLE, unit.state(), "a unit with nowhere to go set off anyway");
-        assertEquals("no-path", Objects.requireNonNull(fixture.events.last("unit_order_rejected")).get("code"));
+        final Map<String, ?> rejected = Objects.requireNonNull(fixture.events.last("unit_order_rejected"));
+        assertEquals("no-path", rejected.get("code"));
+        // §20: the search that answered this is the most expensive one the tick runs, and RB-M2-003
+        // reads the count to tell a target nothing joins from a search that ran out of budget
+        assertTrue((Integer) rejected.get("path_nodes") > Pathfinder.MAX_EXPANSIONS,
+                "a refusal has to carry what the search spent: " + rejected);
     }
 
     @Test

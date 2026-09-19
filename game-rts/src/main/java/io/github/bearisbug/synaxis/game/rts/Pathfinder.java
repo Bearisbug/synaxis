@@ -59,7 +59,8 @@ final class Pathfinder {
      * writes into {@code unit_order_issued} as {@code path_nodes} and {@code path_ms}.
      *
      * @param waypoints the smoothed path, ending on the destination; empty when there is none
-     * @param nodes     how many nodes the search expanded
+     * @param nodes     how many nodes the search expanded, over {@link Pathfinder#MAX_EXPANSIONS}
+     *                  when it is what made the search give up
      */
     record Path(List<Pos> waypoints, int nodes) {
 
@@ -123,7 +124,7 @@ final class Pathfinder {
         while (!open.isEmpty()) {
             final int current = open.popValue();
             if (current == goal) return new Path(smooth(from, trace(start, goal), radius), expanded);
-            if (++expanded > MAX_EXPANSIONS) return NONE;
+            if (++expanded > MAX_EXPANSIONS) return new Path(List.of(), expanded);
             final int x = current % sizeX;
             final int z = current / sizeX;
             final float currentCost = cost[current];
@@ -143,7 +144,8 @@ final class Pathfinder {
                 open.push(candidate + heuristic(nextX, nextZ, toX, toZ), next);
             }
         }
-        return NONE;
+        // Everything the start joins has been looked at: the target is walkable but walled off
+        return new Path(List.of(), expanded);
     }
 
     /** The octile distance, the exact remaining cost over open ground, leaned on by {@link #GOAL_BIAS}. */

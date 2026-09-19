@@ -1,0 +1,27 @@
+RUN-020 · M2 阶段 5「单位与寻路」· version 10dc8696b9 · 2026-09-19
+
+== 阶段 5 退出条件逐条自查（验收人）==
+[moveTo 单独成一个提交] aa91f70814 feat(entity): lift the position primitive to a public Entity#moveTo(Pos)
+[game-rts 侧 refreshPosition 零命中] grep -rn refreshPosition game-rts/src plugin-api/src server-app/src → 0
+[插值陷阱未踩] setTransformationInterpolationDuration 在 game-rts 命中 0；setPosRotInterpolationDuration 命中 2
+[view_range 取配置值] UnitEntity.java:85 meta.setViewRange(archetype.viewRange())，不是写死的 1.6
+[archetype_box 向量已冻结] vectors 由 18 组增至 19 组，manifest 含 4 条 archetype 条目
+
+== ABI 门（验收人用 v0.1.0 release 真实资产）==
+> Task :protocol:checkBinaryCompatibility / > Task :plugin-api:checkBinaryCompatibility
+BUILD SUCCESSFUL，10 actionable tasks: 2 executed（真执行，非 SKIPPED）
+
+== 全量 check ==
+build              tests=2872   fail+err=0
+testing/build      tests=6      fail+err=0
+protocol/build     tests=78     fail+err=0
+server-app/build   tests=90     fail+err=0
+game-rts/build     tests=74     fail+err=0
+合计 3,120 个测试 0 失败（阶段 4 之后是 3,096）
+
+== 端到端实跑（验收人，rts-128）==
+probe order --unit 1 --x 84.5 --y 40 --z 64.5 --watch 25
+  S2C_ORDER_RESULT order_seq=1 code=ok snapped=(84.5, 40.0, 64.5)
+  unit_id=1 snapshots=70 seen_moving=True unit_state=idle
+  台账 unit_order_issued path_nodes=21；unit_order_completed elapsed_ms=6949
+  服务端 WARN+ERROR 0 行、堆栈 0 行、stop 退出码 0、无残留进程

@@ -1670,6 +1670,7 @@ REQ-M2 ↔ TC 对照（手工维护）：
 | RUN-017 | 2026-09-18 | `91902d12af`（引擎核心模式、压测 harness、configuration 泄漏与重复 UUID 登录的修复） | AI（Claude Code，Gradle / 探针 / soak.py） | 局部（引擎核心：核心模式起服与冒烟、连接生命周期、NFR 级压测；引擎域冒烟 TC-001、TC-029） | 通过 8/8 |
 | RUN-018 | 2026-09-18 | `70b61a8192`（日志洪泛门禁、ABI 基线上线、Java 发包端、事件与网络测试密度） | AI（Claude Code，Gradle / PacketFlood / CI） | 局部（TC-033、TC-035、TC-GAME-005、TC-GAME-006 + §15 入站包指标与 event / network 测试密度的实测核对；均属引擎核心） | 通过 6/6 |
 | RUN-019 | 2026-09-19 | `bf7ed5c55a`（M2 阶段 4：:protocol 做实、握手与跨线程交接、服务端权威校验与限流、核心回归） | AI（Claude Code，Gradle / 探针 / PacketFlood） | 局部（REQ-M2-007→TC-GAME-017、TC-GAME-018；REQ-M2-008 与 REQ-M2-024②→TC-GAME-019、TC-GAME-062、TC-GAME-022、TC-GAME-050；REQ-M2-009→TC-GAME-063、TC-GAME-024、TC-GAME-026～028、TC-GAME-039、TC-GAME-064 + 核心基线复跑） | 通过 15/17 · 待人工 1 · 阻塞 1 |
+| RUN-020 | 2026-09-19 | `10dc8696b9`（M2 阶段 5：Entity#moveTo、单位模型与五条建模规则、自研寻路与三重预算） | AI（Claude Code，Gradle / 探针 / PacketFlood） | 局部（REQ-M2-025→TC-GAME-051；REQ-M2-016→TC-GAME-037、TC-GAME-039、TC-GAME-052；REQ-M2-017→TC-GAME-040～042、TC-GAME-065 + 核心基线复跑） | 通过 11/13 · 待人工 1 · 阻塞 1 |
 
 明细（仅登非「通过」项）：
 
@@ -1771,6 +1772,8 @@ TC-002 证据：`docs/test-runs/RUN-002/tc-002.txt`（5 步实际输出）（2,6
 | RUN-016 | TC-GAME-020 | 待人工 | 需原版客户端看断线提示 | 人工收口轮 |
 | RUN-016 | TC-GAME-016 | 待人工 | 示例插件按 `docs/PLUGINS.md` 跑通需人工照说明走一遍 | 人工收口轮 |
 
+
+RUN-020 证据：`docs/test-runs/RUN-020/acceptance.txt`（验收人侧的退出条件自查、ABI 门、全量 check 与端到端实跑）与 `docs/research/soak-2026-09-18/report.md` 的「阶段 5 之后的复跑」一节。要点：`Entity#moveTo(Pos)` 单独成一个提交，等价性用**包序列**对照证明零行为变更（翻转 sendPackets 参数即红），三个 `refreshPosition` 重载仍是内部 API，游戏侧 grep 零命中；单位建模五条规则各有断言，文档点名的插值陷阱（`setTransformationInterpolationDuration`）全库零命中，`view_range` 取原型配置值 4.0；寻路为随地图烘一次的不可变网格 + 8 邻接 A\* + 拉绳平滑，三重预算实测——同 tick 64 条指令得 `ok` 36 / `busy` 28（和为 64、零 `rate-limited`）、每 tick 恰好处理 4 条、`path_ms` P99 0 ms、`path_nodes` 单次 ≤ 224；端到端（无客户端）下令后单位沿航点连续推进并在到达后转 idle，`unit_order_completed` 的 `elapsed_ms` 为正。**本轮审查抓到并修掉一个真缺陷**：空旷可达的远目标被答成 `no-path`（启发式未向目标偏置），修法是 octile 启发式加 1.15 的目标偏置，三重预算一个数未动，并新增 `TC-GAME-065` 钉住「远处空旷目标回 ok，`no-path` 只留给被围住的\」。**核心未退步**：PacketFlood 50 连接 × 100 Hz × 360 s 达成 5,015.0 包/秒 0 丢失（与 RUN-019 持平），窗口内 tick P99 1.367 ms（基线 1.350），存活集 32.0 MiB；三条客户端可控日志门禁各插探针均变红；ABI 门用 v0.1.0 真实资产真跑并绿。**阶段 5 新负载首测**：64 个单位全程移动时出站带宽由 idle 的 41.9 KB/s 升到 132.9 KB/s，按「单位数 × viewer 数」走；1,000 单位那一档仍未覆盖（见 §28）。待人工：TC-GAME-020。阻塞：TC-GAME-052 第 4～6 步（需 REQ-M2-018 的探针实体包解码）。
 
 RUN-019 证据：`docs/test-runs/RUN-019/`（`acceptance.txt`：验收人侧的全量 check、ABI 门与核心模式实跑）与 `docs/research/soak-2026-09-18/report.md` 的「阶段 4 之后的复跑」一节。要点：完整 `clean check` BUILD SUCCESSFUL，引擎 2,868 + testing 6 + protocol 77 + server-app 90 + game-rts 55 共 3,096 个测试 0 失败（阶段 4 之前 2,967）；`:protocol` 由 20 行骨架变为 9 条消息 + 18 组冻结向量，逐字节对拍，改线格式不升 `schema_version` 会红；握手四条出口（成功 / schema 不等 / 超时 / 等待中断线）各有秒级测试，探针已实现 `C2S_HELLO`；限流按操作计的令牌桶、选中上限 8、洪水阈值各有测试；**核心未退步**——PacketFlood 50 连接 × 100 Hz × 360 s 达成 5,015.0 包/秒 0 丢失（RUN-018 为 5,014.9），窗口内 tick P99 1.350 ms（基线 1.631），churn 登录延迟 P99 102.8 ms（基线 114），六种攻击 + 64 连接负载 5 分钟 0 掉线，三条客户端可控日志门禁各插探针均变红；ABI 门由验收人用 v0.1.0 release 的真实资产复跑，两个任务真执行且通过。本轮修掉的缺陷：登录阶段会话表无界增长、以及游戏会话表「插入晚于回收」的永久泄漏（同形状在本仓库第三次出现，已照 `ConnectionManager#trackPlayer` 的同锁判活形状修，回归测试先红后绿）。待人工：TC-GAME-020（需原版客户端看断线提示）。阻塞：TC-GAME-017 第 4 步（客户端侧跑同一份向量，等阶段 6a）。
 

@@ -3,6 +3,7 @@ package io.github.bearisbug.synaxis.game.rts;
 import io.github.bearisbug.synaxis.game.protocol.C2SCamera;
 import io.github.bearisbug.synaxis.game.protocol.C2SMoveOrder;
 import io.github.bearisbug.synaxis.game.protocol.C2SSelect;
+import io.github.bearisbug.synaxis.game.protocol.GameMessage;
 import io.github.bearisbug.synaxis.game.protocol.OrderResultCode;
 import io.github.bearisbug.synaxis.game.protocol.S2COrderResult;
 import io.github.bearisbug.synaxis.game.protocol.S2CUnitDespawn;
@@ -207,12 +208,13 @@ class GameChannelIntegrationTest {
     @Test
     void theCameraAnchorIsClampedOntoTheMap(Env env) {
         final SliceFixture fixture = SliceFixture.start(env);
+        fixture.channels.clear();
 
         fixture.receive(new C2SCamera(-40f, MapPreset.SMALL.sizeZ() + 40f, 24f, 90f));
 
         assertEquals(0f, session(fixture).anchorX());
         assertEquals(MapPreset.SMALL.sizeZ() - 1f, session(fixture).anchorZ());
-        assertTrue(fixture.channels.of(S2COrderResult.class).isEmpty(), "a camera report is not answered");
+        assertTrue(fixture.channels.of(GameMessage.class).isEmpty(), "a camera report is not answered");
     }
 
     @Test
@@ -229,11 +231,12 @@ class GameChannelIntegrationTest {
     @Test
     void anUnknownMessageIdIsDroppedRatherThanPunished(Env env) {
         final SliceFixture fixture = SliceFixture.start(env);
+        fixture.channels.clear();
 
         fixture.receive((byte) 0x7F);
 
         assertTrue(fixture.player.isOnline(), "an id this channel does not define is not an offence");
-        assertTrue(fixture.channels.of(S2COrderResult.class).isEmpty());
+        assertTrue(fixture.channels.of(GameMessage.class).isEmpty(), "an id nothing answers was answered");
     }
 
     @Test
@@ -280,10 +283,11 @@ class GameChannelIntegrationTest {
     void aPayloadBeforeThePlayPhaseIsDropped(Env env) {
         final SliceFixture fixture = SliceFixture.start(env);
         fixture.player.getPlayerConnection().setServerState(ConnectionState.CONFIGURATION);
+        fixture.channels.clear();
 
         fixture.receive(orderTo(fixture, 1, MINE));
 
-        assertTrue(fixture.channels.of(S2COrderResult.class).isEmpty(), "a game message was served before the session was in game");
+        assertTrue(fixture.channels.of(GameMessage.class).isEmpty(), "a game message was served before the session was in game");
         assertTrue(fixture.player.isOnline());
     }
 
@@ -302,12 +306,13 @@ class GameChannelIntegrationTest {
     void aPayloadCannotPutBackTheBookkeepingOfAConnectionThatWentAway(Env env) {
         final SliceFixture fixture = SliceFixture.start(env);
         fixture.sessions.closed(fixture.connectionId());
+        fixture.channels.clear();
 
         fixture.receive(orderTo(fixture, 1, MINE));
 
         assertEquals(0, fixture.sessions.open(),
                 "a payload made an entry that only admission makes and only the disconnect takes back");
-        assertTrue(fixture.channels.of(S2COrderResult.class).isEmpty(), "a connection with no admission behind it was served");
+        assertTrue(fixture.channels.of(GameMessage.class).isEmpty(), "a connection with no admission behind it was served");
     }
 
     @Test

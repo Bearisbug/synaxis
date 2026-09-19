@@ -162,16 +162,6 @@ final class Units implements UnitEntity.UnitViewers {
     }
 
     /**
-     * How many orders are waiting for a path, which is the {@code queueDepth < 32} term of the
-     * {@code ACCEPT(order)} conjunction (§11.4).
-     *
-     * @return the depth of the pathfinding queue
-     */
-    int queueDepth() {
-        return queue.size();
-    }
-
-    /**
      * Takes an order that passed every term the channel can judge on its own, which leaves the
      * queue depth and the path. Its answer — an {@code ok} with the snapped destination, or a
      * {@code no-path} — is sent when the search runs, at most
@@ -237,6 +227,7 @@ final class Units implements UnitEntity.UnitViewers {
             unit.entity().remove();
         }
         units.clear();
+        match.unregisterUnits();
     }
 
     @Override

@@ -101,10 +101,6 @@ final class SliceFixture {
         nanos.addAndGet(TimeUnit.SECONDS.toNanos(1));
     }
 
-    void advanceNanos(long amount) {
-        nanos.addAndGet(amount);
-    }
-
     /** A walkable column near the spawn, offset by the given number of blocks. */
     Pos standNear(int offsetX, int offsetZ) {
         final Pos spawn = match.spawn();

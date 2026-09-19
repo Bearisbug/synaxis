@@ -34,25 +34,6 @@ final class RecordedChannels implements PluginChannels {
     }
 
     /**
-     * Everything sent so far, to anybody.
-     *
-     * @return the messages, in the order they were sent
-     */
-    synchronized List<GameMessage> all() {
-        return sent.stream().map(Map.Entry::getValue).toList();
-    }
-
-    /**
-     * Everything one player was sent.
-     *
-     * @param player the receiver
-     * @return its messages, in the order they were sent
-     */
-    synchronized List<GameMessage> to(Player player) {
-        return sent.stream().filter(entry -> entry.getKey().equals(player)).map(Map.Entry::getValue).toList();
-    }
-
-    /**
      * The messages of one kind, whoever they went to.
      *
      * @param type the message class

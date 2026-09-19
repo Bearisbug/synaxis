@@ -22,6 +22,7 @@ import static io.github.bearisbug.synaxis.game.rts.SliceFixture.THEIRS;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -91,6 +92,10 @@ class UnitModelIntegrationTest {
 
         assertEquals(List.of(MINE, NEUTRAL, THEIRS), fixture.channels.of(S2CUnitDespawn.class).stream()
                 .map(despawn -> despawn.unitIds().getFirst()).toList());
+        assertNull(fixture.units.byId(MINE));
+        assertEquals(0, fixture.match.unitTeam(MINE),
+                "the team table still names a unit the board no longer has, so owner(unit, sender) "
+                        + "and the units themselves disagree about what is on it");
     }
 
     @Test

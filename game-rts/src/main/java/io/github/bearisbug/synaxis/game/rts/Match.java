@@ -139,6 +139,14 @@ final class Match {
     }
 
     /**
+     * Empties the table when the units are taken off the board (§11.4 {@code → removed}), so that
+     * this table and the one the units themselves live in never disagree about what is on the map.
+     */
+    void unregisterUnits() {
+        unitTeams.clear();
+    }
+
+    /**
      * Generates the map of the given preset and takes the match to {@link State#RUNNING}, or to
      * {@link State#ENDED} when it cannot ({@code map-invalid} for a preset that does not exist or
      * whose parameters are out of bounds, {@code load-failed} when the generation does not finish).

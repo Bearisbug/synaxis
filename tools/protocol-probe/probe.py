@@ -68,9 +68,14 @@ GAME_CHANNEL = "rts:game"
 C2S_CAMERA = 0x01
 C2S_SELECT = 0x02
 C2S_MOVE_ORDER = 0x03
+S2C_UNIT_SPAWN = 0x81
+S2C_UNIT_STATE = 0x82
+S2C_UNIT_DESPAWN = 0x83
 S2C_ORDER_RESULT = 0x84
 # docs/DESIGN-M2.md section 9 order_result_code, in the order it is encoded in
 ORDER_RESULT_CODES = ("ok", "stale", "rate-limited", "not-owner", "out-of-bounds", "busy", "no-path")
+# docs/DESIGN-M2.md section 9 unit_state, in the order it is encoded in; removed is never sent
+UNIT_STATES = ("idle", "moving")
 
 
 # --------------------------------------------------------------------------------------
@@ -474,6 +479,34 @@ def read_order_result(data: bytes) -> dict | None:
             "snapped": (reader.float32(), reader.float32(), reader.float32())}
 
 
+def read_unit_message(data: bytes) -> dict | None:
+    """Decodes the three downlink unit messages of API-M2-006, which carry no position at all.
+
+    Position and facing travel on the engine's own entity packets and nowhere else, so a unit's
+    place on the map is never in here; the client binds unit_id to entity_id with the spawn message
+    and reads the position off that entity.
+    """
+    reader = Reader(data)
+    msg_id = reader.varint()
+    if msg_id == S2C_UNIT_SPAWN:
+        return {"message": "S2C_UNIT_SPAWN", "unit_id": reader.varint(), "entity_id": reader.varint(),
+                "archetype": reader.varint(), "team": reader.u8(), "hp": reader.varint(),
+                "max_hp": reader.varint(), "flags": reader.u8()}
+    if msg_id == S2C_UNIT_STATE:
+        server_tick = reader.varint()
+        entries = []
+        for _ in range(reader.varint()):
+            unit_id = reader.varint()
+            state = reader.u8()
+            entries.append({"unit_id": unit_id,
+                            "unit_state": UNIT_STATES[state] if state < len(UNIT_STATES) else f"unknown({state})",
+                            "hp": reader.varint()})
+        return {"message": "S2C_UNIT_STATE", "server_tick": server_tick, "entries": entries}
+    if msg_id == S2C_UNIT_DESPAWN:
+        return {"message": "S2C_UNIT_DESPAWN", "unit_ids": [reader.varint() for _ in range(reader.varint())]}
+    return None
+
+
 def login_plugin_response_payload(message_id: int, data: bytes | None) -> bytes:
     """The login phase answer; a client that does not know the channel sends no data at all."""
     writer = Writer().varint(message_id).boolean(data is not None)
@@ -575,6 +608,12 @@ class Session:
         self.server_hello: dict[str, int] | None = None
         # Every S2C_ORDER_RESULT this session has been answered with, in arrival order
         self.order_results: list[dict] = []
+        # The interest set as the server describes it: what was spawned into it, what the last
+        # snapshot said each unit is doing, and how many snapshots have arrived (API-M2-006)
+        self.units: dict[int, dict] = {}
+        self.unit_states: dict[int, str] = {}
+        self.snapshots = 0
+        self.despawned: list[int] = []
         # Set once this session has handshaken, so that the login phase form of it is not followed
         # by a second C2S_HELLO in the configuration phase (which is a protocol error).
         self.handshook = False
@@ -645,12 +684,16 @@ class Session:
         data = reader.raw(reader.remaining())
         if channel == GAME_CHANNEL:
             result = read_order_result(data)
-            if result is None:
+            if result is not None:
+                self.order_results.append(result)
+                self.log(f"     S2C_ORDER_RESULT order_seq={result['order_seq']} code={result['code']} "
+                         f"snapped={result['snapped']}")
+                return True
+            unit = read_unit_message(data)
+            if unit is None:
                 self.log(f"     unexpected message on {channel}")
                 return True
-            self.order_results.append(result)
-            self.log(f"     S2C_ORDER_RESULT order_seq={result['order_seq']} code={result['code']} "
-                     f"snapped={result['snapped']}")
+            self.read_unit(unit)
             return True
         if channel != HANDSHAKE_CHANNEL:
             return False
@@ -662,6 +705,26 @@ class Session:
         self.log(f"     S2C_HELLO schema_version={answer['schema_version']} "
                  f"tick_rate={answer['tick_rate']} server_tick={answer['server_tick']}")
         return True
+
+    def read_unit(self, message: dict) -> None:
+        """Keeps what the three unit messages say, which is this probe's view of its interest set."""
+        if message["message"] == "S2C_UNIT_SPAWN":
+            self.units[message["unit_id"]] = message
+            self.log(f"     S2C_UNIT_SPAWN unit_id={message['unit_id']} entity_id={message['entity_id']} "
+                     f"archetype={message['archetype']} team={message['team']} flags={message['flags']}")
+        elif message["message"] == "S2C_UNIT_STATE":
+            self.snapshots += 1
+            for entry in message["entries"]:
+                self.unit_states[entry["unit_id"]] = entry["unit_state"]
+            moving = [entry["unit_id"] for entry in message["entries"] if entry["unit_state"] == "moving"]
+            self.log(f"     S2C_UNIT_STATE server_tick={message['server_tick']} "
+                     f"count={len(message['entries'])} moving={moving}")
+        else:
+            self.despawned.extend(message["unit_ids"])
+            for unit_id in message["unit_ids"]:
+                self.units.pop(unit_id, None)
+                self.unit_states.pop(unit_id, None)
+            self.log(f"     S2C_UNIT_DESPAWN unit_ids={message['unit_ids']}")
 
     def configuration(self) -> None:
         """Answers the configuration phase until the server finishes it."""
@@ -933,6 +996,53 @@ def cmd_order(args: argparse.Namespace) -> int:
             return 1
         if args.expect and histogram.get(args.expect, 0) != args.expect_count:
             session.log(f"expected {args.expect_count} answers of {args.expect}")
+            return 1
+        if args.watch <= 0:
+            return 0
+        # The walk itself, as the snapshots describe it: the unit goes moving and comes back idle
+        # once it is there (section 11.4). Its position is not in here — that is on the entity
+        # packets — so what is asserted is the state machine, not the coordinates.
+        seen_moving = session.unit_states.get(args.unit) == "moving"
+
+        def arrived() -> bool:
+            nonlocal seen_moving
+            state = session.unit_states.get(args.unit)
+            seen_moving = seen_moving or state == "moving"
+            return seen_moving and state == "idle"
+
+        session.pump_until(arrived, args.watch)
+        session.log(f"unit_id={args.unit} snapshots={session.snapshots} "
+                    f"seen_moving={seen_moving} unit_state={session.unit_states.get(args.unit)}")
+        if not seen_moving:
+            session.log("the unit never reported itself moving")
+            return 1
+        if session.unit_states.get(args.unit) != "idle":
+            session.log(f"the unit was still moving after {args.watch}s")
+            return 1
+        return 0
+    finally:
+        session.close()
+
+
+def cmd_units(args: argparse.Namespace) -> int:
+    """Reports the interest set the server describes over the three downlink unit messages.
+
+    The interest set is the engine's viewer set projected onto units (API-M2-006), so what arrives
+    here is whatever the server decided this connection can see from where its player stands.
+    """
+    session = Session(args)
+    try:
+        session.enter_play()
+        session.pump_until(lambda: len(session.units) >= args.expect_min and session.snapshots > 0, args.wait)
+        commandable = sorted(unit_id for unit_id, unit in session.units.items() if unit["flags"] & 0x01)
+        session.log(f"units={len(session.units)} commandable={commandable} "
+                    f"snapshots={session.snapshots} despawned={session.despawned}")
+        session.log(f"states={dict(sorted(session.unit_states.items()))}")
+        if len(session.units) < args.expect_min:
+            session.log(f"expected at least {args.expect_min} units in the interest set")
+            return 1
+        if session.snapshots == 0:
+            session.log("no snapshot arrived at all")
             return 1
         return 0
     finally:
@@ -1222,7 +1332,14 @@ def build_parser() -> argparse.ArgumentParser:
     order.add_argument("--expect", default=None, help="the result code to count, see section 9")
     order.add_argument("--expect-count", type=int, default=0, help="how many answers must carry it")
     order.add_argument("--wait", type=float, default=5.0, help="seconds to wait for the answers")
+    order.add_argument("--watch", type=float, default=0.0,
+                       help="seconds to follow the unit in the snapshots until it is idle again")
     order.set_defaults(run=cmd_order)
+
+    units = subparsers.add_parser("units", help="report the units the server puts in this connection's view")
+    units.add_argument("--wait", type=float, default=5.0, help="seconds to collect spawns and snapshots")
+    units.add_argument("--expect-min", type=int, default=1, help="how many units must be in the view")
+    units.set_defaults(run=cmd_units)
 
     select = subparsers.add_parser("select", help="send one C2S_SELECT")
     select.add_argument("--units", default="", help="comma separated unit_ids")

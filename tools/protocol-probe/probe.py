@@ -977,6 +977,8 @@ def cmd_order(args: argparse.Namespace) -> int:
     `--group-size` cuts the burst into groups of that size instead, which is how a burst larger
     than the eight packets a group may carry is sent without being rate limited.
     """
+    if args.group_size < 1:
+        raise SystemExit("--group-size counts the orders sharing a group, so it is at least 1")
     session = Session(args)
     try:
         session.enter_play()

@@ -20,8 +20,10 @@ import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @EnvTest
 public class ConnectionManagerIntegrationTest {
@@ -49,6 +51,22 @@ public class ConnectionManagerIntegrationTest {
         assertEquals(enginePlayer, connectionManager.findOnlinePlayer("Syn"));
         assertEquals(notchPlayer, connectionManager.findOnlinePlayer("No"));
         assertNull(connectionManager.findOnlinePlayer("leo"));
+    }
+
+    @Test
+    public void aDroppedConnectionIsNoLongerConnected(Env env) {
+        final Instance instance = env.createEmptyInstance();
+        final Player player = env.createConnection(profiles[0]).connect(instance, Pos.ZERO);
+        final ConnectionManager connectionManager = env.process().connection();
+        final UUID connectionId = player.getPlayerConnection().connectionId();
+
+        assertTrue(connectionManager.isConnected(connectionId));
+        assertFalse(connectionManager.isConnected(UUID.randomUUID()), "a connection id nobody holds");
+
+        player.getPlayerConnection().disconnect();
+
+        assertFalse(connectionManager.isConnected(connectionId),
+                "a dropped connection still counted as connected, so a disconnect can be overtaken");
     }
 
     @Test

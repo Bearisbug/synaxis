@@ -13,7 +13,11 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  */
 class GameSessionTest {
 
-    /** More than the flood threshold, the rate {@code TC-GAME-025} floods at. */
+    /**
+     * More than the flood threshold of §14. {@code TC-GAME-064} floods at twice this rate, because
+     * a probe has to reach the threshold through a socket and across the server's own second
+     * boundaries; nothing here goes through either, so being over it is enough.
+     */
     private static final int FLOODING = 400;
 
     /** The normal peak of §2, which must never cost anybody their connection. */

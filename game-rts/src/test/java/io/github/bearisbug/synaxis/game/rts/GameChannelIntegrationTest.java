@@ -30,6 +30,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -116,7 +117,8 @@ class GameChannelIntegrationTest {
         match.registerUnit(THEIRS, 2);
 
         final RecordedChannels channels = new RecordedChannels();
-        final GameChannel channel = new GameChannel(match, channels, events, nanos::get);
+        final GameChannel channel = new GameChannel(match, channels, events, nanos::get,
+                env.process().connection());
         final TestConnection connection = env.createConnection();
         final Player player = connection.connect(instance, match.spawn());
         channel.admitted(player.getPlayerConnection().connectionId(), OURS);
@@ -382,6 +384,22 @@ class GameChannelIntegrationTest {
         assertEquals(0, fixture.channel().openSessions(),
                 "a payload made an entry that only admission makes and only the disconnect takes back");
         assertTrue(fixture.channels().sent.isEmpty(), "a connection with no admission behind it was served");
+    }
+
+    @Test
+    void anAdmissionThatLostTheRaceToItsOwnDisconnectMakesNoBookkeeping(Env env) {
+        final Fixture fixture = start(env);
+        final UUID connectionId = fixture.player().getPlayerConnection().connectionId();
+        // The interleaving the reclamation has to survive: the connection goes away while its
+        // admission is still being decided, so the disconnect runs first and finds nothing to give
+        // back, and the admission callback lands on a connection that is already gone
+        fixture.player().getPlayerConnection().disconnect();
+        fixture.channel().closed(connectionId);
+
+        fixture.channel().admitted(connectionId, OURS);
+
+        assertEquals(0, fixture.channel().openSessions(),
+                "an admission that lost the race to its own disconnect made an entry nobody reclaims");
     }
 
     private static GameSession session(Fixture fixture) {

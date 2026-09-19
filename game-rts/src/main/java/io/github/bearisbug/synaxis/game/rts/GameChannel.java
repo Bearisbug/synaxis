@@ -11,6 +11,7 @@ import io.github.bearisbug.synaxis.game.protocol.MsgBuf;
 import io.github.bearisbug.synaxis.game.protocol.OrderResultCode;
 import io.github.bearisbug.synaxis.game.protocol.S2COrderResult;
 import io.github.bearisbug.synaxis.game.protocol.UnknownMessageException;
+import io.github.bearisbug.synaxis.network.ConnectionManager;
 import io.github.bearisbug.synaxis.network.ConnectionState;
 import io.github.bearisbug.synaxis.network.DisconnectReasons;
 import io.github.bearisbug.synaxis.network.player.PlayerConnection;
@@ -82,6 +83,7 @@ final class GameChannel {
     private final PluginChannels channels;
     private final PluginAnalytics analytics;
     private final LongSupplier clock;
+    private final ConnectionManager connections;
 
     /**
      * One entry per admitted connection, dropped when the connection goes away. A client cannot
@@ -102,24 +104,33 @@ final class GameChannel {
     /** The budget of the flood line, which §14 asks to carry the connection id. */
     private final LogBudget floods = new LogBudget(LOGGER, "flooding connections");
 
-    GameChannel(Match match, PluginChannels channels, PluginAnalytics analytics, LongSupplier clock) {
+    GameChannel(Match match, PluginChannels channels, PluginAnalytics analytics, LongSupplier clock,
+                ConnectionManager connections) {
         this.match = match;
         this.preset = Objects.requireNonNull(match.preset(), "the match has no map");
         this.navGrid = Objects.requireNonNull(match.navGrid(), "the match has no navigation mesh");
         this.channels = channels;
         this.analytics = analytics;
         this.clock = clock;
+        this.connections = connections;
     }
 
     /**
      * Records the team a connection was admitted with, which is the other half of every
      * {@code owner(unit, sender)} test (§9), and is the one place bookkeeping is made. Called on
      * the configuration virtual thread, from inside the admission provider.
+     * <p>
+     * A connection that is already gone gets no entry. Testing that and making the entry have to be
+     * one critical section, shared with {@link #closed}: the disconnect that reclaims an entry runs
+     * on another thread, and an insertion that overtook it would leave an entry nobody ever gives
+     * back — a client would then only have to close the socket while it is being admitted, as often
+     * as it likes ({@code ConnectionManager#trackPlayer} is the same shape).
      *
      * @param connectionId the connection being let in
      * @param team         the team it plays for
      */
-    void admitted(UUID connectionId, int team) {
+    synchronized void admitted(UUID connectionId, int team) {
+        if (!connections.isConnected(connectionId)) return;
         sessions.computeIfAbsent(connectionId, _ -> new GameSession()).team(team);
     }
 
@@ -128,7 +139,7 @@ final class GameChannel {
      *
      * @param connectionId the connection that went away
      */
-    void closed(UUID connectionId) {
+    synchronized void closed(UUID connectionId) {
         sessions.remove(connectionId);
     }
 

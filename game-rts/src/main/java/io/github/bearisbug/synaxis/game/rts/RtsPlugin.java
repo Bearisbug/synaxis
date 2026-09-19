@@ -63,7 +63,8 @@ public final class RtsPlugin implements SynaxisPlugin {
         context.events().addListener(AsyncPlayerConfigurationEvent.class,
                 event -> event.getPlayer().setRespawnPoint(started.spawn()));
 
-        final GameChannel game = new GameChannel(started, context.channels(), context.analytics(), System::nanoTime);
+        final GameChannel game = new GameChannel(started, context.channels(), context.analytics(),
+                System::nanoTime, context.process().connection());
         context.channels().register(GameChannel.NAME, game::receive);
         context.events().addListener(PlayerDisconnectEvent.class,
                 event -> game.closed(event.getPlayer().getPlayerConnection().connectionId()));

@@ -1615,6 +1615,7 @@ REQ-M2 ↔ TC 对照（手工维护）：
 | RUN-016 | 2026-09-16 | `8ea0f97e00`（M2 阶段 1～3 合入：模块拆分、插件宿主、世界管理与审计残留） | AI（Claude Code，Gradle） | 局部（M2 阶段 1～3 的 REQ-M2-001～006、010～015、021～023 → 其对应 TC-GAME-* 的可自动化部分 + 引擎域冒烟 TC-001、TC-029） | 通过 16/29 · 待人工 2 · 阻塞 11 |
 | RUN-017 | 2026-09-18 | `91902d12af`（引擎核心模式、压测 harness、configuration 泄漏与重复 UUID 登录的修复） | AI（Claude Code，Gradle / 探针 / soak.py） | 局部（引擎核心：核心模式起服与冒烟、连接生命周期、NFR 级压测；引擎域冒烟 TC-001、TC-029） | 通过 8/8 |
 | RUN-018 | 2026-09-18 | `70b61a8192`（日志洪泛门禁、ABI 基线上线、Java 发包端、事件与网络测试密度） | AI（Claude Code，Gradle / PacketFlood / CI） | 局部（TC-033、TC-035、TC-GAME-005、TC-GAME-006 + §15 入站包指标与 event / network 测试密度的实测核对；均属引擎核心） | 通过 6/6 |
+| RUN-019 | 2026-09-19 | `bf7ed5c55a`（M2 阶段 4：:protocol 做实、握手与跨线程交接、服务端权威校验与限流、核心回归） | AI（Claude Code，Gradle / 探针 / PacketFlood） | 局部（REQ-M2-007→TC-GAME-017、TC-GAME-018；REQ-M2-008 与 REQ-M2-024②→TC-GAME-019、TC-GAME-021、TC-GAME-022、TC-GAME-050；REQ-M2-009→TC-GAME-023、TC-GAME-024、TC-GAME-026～028、TC-GAME-039、TC-GAME-064 + 核心基线复跑） | 通过 15/17 · 待人工 1 · 阻塞 1 |
 
 明细（仅登非「通过」项）：
 
@@ -1716,6 +1717,8 @@ TC-002 证据：`docs/test-runs/RUN-002/tc-002.txt`（5 步实际输出）（2,6
 | RUN-016 | TC-GAME-020 | 待人工 | 需原版客户端看断线提示 | 人工收口轮 |
 | RUN-016 | TC-GAME-016 | 待人工 | 示例插件按 `docs/PLUGINS.md` 跑通需人工照说明走一遍 | 人工收口轮 |
 
+
+RUN-019 证据：`docs/test-runs/RUN-019/`（`acceptance.txt`：验收人侧的全量 check、ABI 门与核心模式实跑）与 `docs/research/soak-2026-09-18/report.md` 的「阶段 4 之后的复跑」一节。要点：完整 `clean check` BUILD SUCCESSFUL，引擎 2,868 + testing 6 + protocol 77 + server-app 90 + game-rts 55 共 3,096 个测试 0 失败（阶段 4 之前 2,967）；`:protocol` 由 20 行骨架变为 9 条消息 + 18 组冻结向量，逐字节对拍，改线格式不升 `schema_version` 会红；握手四条出口（成功 / schema 不等 / 超时 / 等待中断线）各有秒级测试，探针已实现 `C2S_HELLO`；限流按操作计的令牌桶、选中上限 8、洪水阈值各有测试；**核心未退步**——PacketFlood 50 连接 × 100 Hz × 360 s 达成 5,015.0 包/秒 0 丢失（RUN-018 为 5,014.9），窗口内 tick P99 1.350 ms（基线 1.631），churn 登录延迟 P99 102.8 ms（基线 114），六种攻击 + 64 连接负载 5 分钟 0 掉线，三条客户端可控日志门禁各插探针均变红；ABI 门由验收人用 v0.1.0 release 的真实资产复跑，两个任务真执行且通过。本轮修掉的缺陷：登录阶段会话表无界增长、以及游戏会话表「插入晚于回收」的永久泄漏（同形状在本仓库第三次出现，已照 `ConnectionManager#trackPlayer` 的同锁判活形状修，回归测试先红后绿）。待人工：TC-GAME-020（需原版客户端看断线提示）。阻塞：TC-GAME-017 第 4 步（客户端侧跑同一份向量，等阶段 6a）。
 
 RUN-018 证据：`docs/test-runs/RUN-018/`（`nfr-5000.txt`：Java 发包端 `tools/loadtest/PacketFlood.java` 持续 360 秒打出 5,014.9 包/秒、1,805,402 个包、0 丢失 0 断线，窗口内 7,200 个 tick 的 p99 为 1.631 ms、日志增量 0 字节 —— `docs/DESIGN.md` §15 最后一条未证明的量化指标就此闭合，四条全部达标；`gates.txt`：ABI 门在本地用 v0.1.0 release 的真实资产当 baseline 执行并通过，删掉 `PluginContext#dataDirectory()` 后以 `ABI Check failed with 1 binary compatibility violations` 变红、复原后恢复绿，CI run 35332065219 里两个任务同样真跑而非 SKIPPED；引擎与宿主两条「客户端可控路径不得逐包写日志」门禁均由审查员插探针验过会红；全量 `clean check` BUILD SUCCESSFUL，引擎 2,867 + testing 6 + server-app 69 + game-rts 25 共 2,967 个测试 0 失败）。压测方法与全部数字见 `docs/research/soak-2026-09-18/` 的组 6 与组 7。附带产出：event 包测试密度由 0.05 升到 0.32（新测试炸出两个真缺陷：事件节点可挂成环导致 StackOverflowError、写队列最小写入长度算错，均已修）；network 包分母按「排除 219 个由字节对拍整体钉住的包定义 record」重新核定为 44 个逻辑文件对 48 个测试。通过项：TC-033、TC-035、TC-GAME-005、TC-GAME-006 及 §15 四条指标的实测核对。
 

@@ -1,0 +1,23 @@
+RUN-019 · M2 阶段 4「协议与握手」· version bf7ed5c55a · 2026-09-19
+
+== 全量 check ==
+build              tests=2868   fail+err=0
+testing/build      tests=6      fail+err=0
+protocol/build     tests=77     fail+err=0
+server-app/build   tests=90     fail+err=0
+game-rts/build     tests=55     fail+err=0
+合计 3,096 个测试 0 失败 0 错误（阶段 4 之前是 2,967）
+
+== ABI 门（验收人用 v0.1.0 release 的真实资产复核）==
+./gradlew :plugin-api:checkBinaryCompatibility :protocol:checkBinaryCompatibility -PbaselineJarDir=.abi-baseline
+  > Task :protocol:checkBinaryCompatibility
+  > Task :plugin-api:checkBinaryCompatibility
+  BUILD SUCCESSFUL，28 actionable tasks: 2 executed  （两个任务都真执行，没有 SKIPPED）
+:protocol 本阶段新增约 20 个公开类型，全部是兼容新增，对 v0.1.0 baseline 不报违规
+
+== 核心模式实跑（验收人）==
+Core mode (synaxis.app.core-mode=on): no plugin is serving gameplay, so the host serves its own flat world. spawn=Pos[x=0.5, y=40.0, z=0.5, yaw=0.0, pitch=0.0] channel=synaxis:main (echoes every payload back)
+probe login   → exit 0（进入 play）
+probe echo    → echo channel=synaxis:main payload=phase4，exit 0
+probe handshake → handshake ok schema_version=1 tick_rate=20，exit 0
+stop → BUILD SUCCESSFUL / exit 0；WARN+ERROR 0 行、堆栈 0 行、日志 8,591 字节；无残留进程

@@ -56,6 +56,9 @@ import java.util.zip.Inflater;
  *     java tools/loadtest/PacketFlood.java --connections 50 --hz 100 --seconds 330 \
  *          --out /tmp/synaxis-flood/nfr
  *
+ * Against a gameplay mode server add `--hello true`, which sends the C2S_HELLO of REQ-M2-008 in
+ * the configuration phase; without it every connection is kicked three seconds in.
+ *
  * Every connection sends `--hz` position packets per second, which is what makes the total rate
  * `--connections * --hz`. Keep `--hz` well under the drain the engine grants one player
  * (`ServerConfig#playerPacketPerTick`, 50 per tick, so 1,000 per second at 20 TPS): above it the
@@ -66,6 +69,10 @@ public final class PacketFlood {
 
     private static final int PROTOCOL_VERSION = 776;
     private static final String ECHO_CHANNEL = "synaxis:main";
+    private static final String HANDSHAKE_CHANNEL = "synaxis:handshake";
+    /** C2S_HELLO of API-M2-002; the mod version the tool announces is the only one M2 defines. */
+    private static final int C2S_HELLO = 0x01;
+    private static final int MOD_VERSION = 1;
     private static final double FLOOR_Y = 40.0;
     /** Blocks per second each connection walks along its circle, the same figure soak.py uses. */
     private static final double WALK_SPEED = 4.0;
@@ -79,6 +86,9 @@ public final class PacketFlood {
 
     /** Registry field name to the ordered packet class names it registers. */
     private static Map<String, List<String>> registries = Map.of();
+
+    /** The wire schema version, read out of the protocol module rather than remembered. */
+    private static int schemaVersion;
 
     private static List<String> registryBlock(String source, String field) {
         final Matcher matcher = Pattern.compile("\\b" + field + "\\s*=\\s*(?:PacketRegistry\\.<[^;]*?>)?registry\\(")
@@ -104,6 +114,12 @@ public final class PacketFlood {
         if (!Files.isRegularFile(packetVanilla))
             throw new IllegalStateException("run this from the worktree root, " + packetVanilla + " is not there");
         final String source = Files.readString(packetVanilla);
+        final Path protocolSchema = repository.resolve(
+                "protocol/src/main/java/io/github/bearisbug/synaxis/game/protocol/ProtocolSchema.java");
+        final Matcher schema = Pattern.compile("SCHEMA_VERSION\\s*=\\s*(\\d+)")
+                .matcher(Files.readString(protocolSchema));
+        if (!schema.find()) throw new IllegalStateException("cannot find SCHEMA_VERSION in " + protocolSchema);
+        schemaVersion = Integer.parseInt(schema.group(1));
         final Map<String, List<String>> loaded = new LinkedHashMap<>();
         for (String field : List.of("CLIENT_HANDSHAKE", "CLIENT_LOGIN", "CLIENT_CONFIGURATION", "CLIENT_PLAY",
                 "SERVER_LOGIN", "SERVER_CONFIGURATION", "SERVER_PLAY"))
@@ -458,6 +474,14 @@ public final class PacketFlood {
                 }
             }
 
+            // REQ-M2-008: a gameplay mode server gives a connection three seconds to say it has
+            // the mod, and kicks it when it does not. Core mode asks for no such thing, so this
+            // stays off by default: the no handshake path is a load shape of its own (TC-GAME-060).
+            if (options.hello)
+                write("CLIENT_CONFIGURATION", "ClientPluginMessagePacket", new Writer()
+                        .string(HANDSHAKE_CHANNEL)
+                        .varInt(C2S_HELLO).varInt(MOD_VERSION).varInt(schemaVersion).bytes());
+
             while (true) {
                 final byte[] body = readFrame();
                 final Reader reader = new Reader(body);
@@ -609,6 +633,7 @@ public final class PacketFlood {
         double hz = 100.0;
         double seconds = 330.0;
         double echoHz = 0.2;
+        boolean hello = false;
         double timeoutSeconds = 30.0;
         double sampleSeconds = 10.0;
         Path out;
@@ -628,6 +653,7 @@ public final class PacketFlood {
                 case "--hz" -> options.hz = Double.parseDouble(value);
                 case "--seconds" -> options.seconds = Double.parseDouble(value);
                 case "--echo-hz" -> options.echoHz = Double.parseDouble(value);
+                case "--hello" -> options.hello = Boolean.parseBoolean(value);
                 case "--sample-seconds" -> options.sampleSeconds = Double.parseDouble(value);
                 case "--out" -> options.out = Path.of(value);
                 case "--repo" -> options.repository = Path.of(value);

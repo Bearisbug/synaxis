@@ -14,6 +14,7 @@
 
 | 日期 | 改动 | 作者 |
 | --- | --- | --- |
+| 2026-09-19 | 阶段 5 的 `REQ-M2-016` / `REQ-M2-017` 落地（单位与寻路）。**§3 环境段**：探针表新增 `units` 一行、`order` 行补 `--watch`；「对局与单位种子」的占位填实——固定 67 个单位，`unit_id=1..64` 本方、`65` 中立、`66` 对方、`67` 远哨，没有开关也不需要预设；探针占位只剩「记账区块与实体位置包」待 `REQ-M2-018`；M2 环境段按本轮实跑改写单位种子那一条。**语义未变、只把占位填成实际命令与断言入口**：`TC-GAME-052` 前置与第 1 步（建模断言测试是 `UnitModelIntegrationTest`）、`TC-GAME-051` 第 4 步（`EntityTeleportEvent` 的计数入口是 `UnitMovementIntegrationTest`）、`TC-GAME-040` 第 1～4 步、`TC-GAME-041` 第 1～3 步、`TC-GAME-042` 第 1 步，以及 `TC-GAME-024` / `TC-GAME-039` / `TC-GAME-063` / `TC-GAME-064` 里「等 `REQ-M2-016` 的单位」那几段说明——判据一条没改。一条用例都没有换 ID：本轮没有任何判据实质变更 | Bearisbug |
 | 2026-09-19 | 阶段 5 的 `REQ-M2-025` 落地（引擎新增公开的 `Entity#moveTo(Pos)`）：**`TC-GAME-051` 保留 ID，只填第 3 步的占位**——等价性对照测试写成真实命令 `EntityMoveToEquivalenceIntegrationTest`，判据点明四档情形（同区块带 viewer、跨区块边界带 viewer、超 8 格走 `EntityTeleportPacket` 分支、无 viewer）逐包相同。第 1、2、4～6 步与前置未动（第 4～6 步仍等 `REQ-M2-017` 的推进调用点）；用例语义未变 | Bearisbug |
 | 2026-09-19 | 阶段 4 评审第 2 轮修订。**废旧 ID 换新 ID**：`TC-GAME-025` → **`TC-GAME-064`**——原第 1 步 `game-flood --rate 400 --seconds 3` 离 300 包/秒的阈值只有 33% 余量，而探针是突发发包、读取与 `pump` 会让单次突发的周期漂过一秒，服务端又按固定 1 秒桶计数，实测 14 次挂 7 次（失败时实际速率 344～349 包/秒），判据的速率实质变更；替代用例用 `--rate 800`（6 次全中）并把探针新报的 `slowest window` 纳入第 1 步的判读。§3 的探针表（`game-flood` 默认速率 400 → 800、新增实际速率那一行输出）与 M2 环境段那句「`--rate 400` 稳过」按实测改写；§2 的 REQ ↔ TC 表与 §5 的游戏域回归映射同步换 ID。其余用例语义未变 | Bearisbug |
 | 2026-09-19 | 跟进 `docs/DESIGN-M2.md` v0.25（阶段 4 评审第 1 轮修订：`EVT:unit_order_rejected` 只记 §20 点名的四档，`stale` 与 `rate-limited` 不写台账）。**废旧 ID 换新 ID**：`TC-GAME-023` → **`TC-GAME-063`**——原第 5 步要求那 10 条超频在 `logs/events-*.jsonl` 里各留一行 `code=rate-limited`，现在它们一行都不写（客户端可无限刷的拒绝不落盘），判据实质变更；前四步逐字保留，新用例第 5 步改判「计数 0」并补第 6 步用一条越界指令反证四档照常记。§2 的 REQ ↔ TC 表与 §5 的游戏域回归映射同步换 ID。其余用例语义未变 | Bearisbug |
@@ -134,9 +135,10 @@ REQ-M2 ↔ TC 对照（手工维护）：
 | `alloc-bomb` | — | 登录后发送声明 65,535 个元素但只含少量字节的集合包 | 收到 `Disconnect reason=synaxis:protocol-error` |
 | `nbt-bomb` | `--mib N`（默认 3） | 通过 `ClientCustomClickActionPacket` 携带解码后估算 N MiB 的 NBT | 收到 `Disconnect reason=synaxis:protocol-error` |
 | `echo` | `--payload TEXT`（必填）、`--channel`（默认 `synaxis:main`） | 走 `synaxis:main` 通道做一次自定义负载往返。该通道由**宿主在核心模式下**提供（`synaxis` 是宿主保留的通道命名空间，玩法插件的通道仍归插件所有），因此本子命令只在核心模式的进程上适用——玩法模式没有这条通道 | 收到与发出完全一致的负载 |
-| `order` | `--count N`（默认 1）、`--seq N`（默认 1）、`--group N`（默认按序号各不相同）、`--unit N`（默认 1）、`--x/--y/--z`、`--expect CODE`、`--expect-count N`、`--wait S`（默认 5） | 进 play 后连发 N 条 `C2S_MOVE_ORDER`，收集 `S2C_ORDER_RESULT` 并打印一行 `answers=收到/发出` 加结果码直方图。给 `--group` 时整批共用一个 `order_group`（一次点击选中多个单位的形态） | 收到的结果数等于发出的条数，且 `--expect` 的结果码恰好出现 `--expect-count` 次（不给 `--expect` 时只判条数） |
+| `order` | `--count N`（默认 1）、`--seq N`（默认 1）、`--group N`（默认按序号各不相同）、`--unit N`（默认 1）、`--x/--y/--z`、`--expect CODE`、`--expect-count N`、`--wait S`（默认 5）、`--watch S`（默认 0） | 进 play 后连发 N 条 `C2S_MOVE_ORDER`，收集 `S2C_ORDER_RESULT` 并打印一行 `answers=收到/发出` 加结果码直方图。给 `--group` 时整批共用一个 `order_group`（一次点击选中多个单位的形态）。给 `--watch S` 时继续读 S 秒的 `S2C_UNIT_STATE`，跟着 `--unit` 那个单位走完 `moving → idle` 并打印一行 `unit_id=… snapshots=… seen_moving=… unit_state=…`（位置不在快照里，走的是引擎实体包，所以这里判的是状态机不是坐标） | 收到的结果数等于发出的条数，且 `--expect` 的结果码恰好出现 `--expect-count` 次（不给 `--expect` 时只判条数）；给了 `--watch` 时还要求该单位先报过 `moving`、并在 S 秒内回到 `idle` |
 | `select` | `--units 1,2,3`、`--expect {silence,protocol-error}`（默认 `silence`）、`--wait S`（默认 2） | 进 play 后发一条 `C2S_SELECT{count=给了几个就写几个}`，count 照写不夹取，因此可以故意越过上限 8 | `silence`：连接保持且没有任何回包；`protocol-error`：收到 `Disconnect reason=synaxis:protocol-error` |
 | `game-flood` | `--rate N`（默认 800，每秒包数）、`--seconds N`（默认 3）、`--expect {flood,alive}`（默认 `flood`）、`--wait S` | 按给定速率在 `rts:game` 上持续发 `C2S_CAMERA`，发包途中按批读取（不读会先把服务端的写堵住、实际速率达不到设定值），并在跑完时报一行 `asked for <设定值> payloads a second, slowest window <实际值>`——实际值就是最慢那一秒真写进 socket 的包数，判「闸门没响是谁的错」看它 | `flood`：收到 `Disconnect reason=synaxis:game-flood`；`alive`：整段跑完仍在线 |
+| `units` | `--wait S`（默认 5）、`--expect-min N`（默认 1） | 进 play 后收 S 秒的三条下行单位消息，打印一行 `units=… commandable=[…] snapshots=… despawned=[…]` 与一行各单位的 `unit_state`。兴趣集是引擎 viewer 集合的投影，所以这里看到的就是服务端认为这条连接该看见的那些单位（设计文档 `API-M2-006`） | 兴趣集里至少 `--expect-min` 个单位，且至少收到一条 `S2C_UNIT_STATE` |
 | `record-registry` | `--out FILE`（必填） | 按收到顺序写出全部 `RegistryData` 包的解压后字节（含包 ID varint） | 至少收到一个 `RegistryData` 包 |
 | `handshake` | `--mod-version N`（默认 1） | 登录并握手，打印服务端回的 `S2C_HELLO` 字段 | 收到 `S2C_HELLO` 且其 `schema_version` 等于仓库里的 `ProtocolSchema.SCHEMA_VERSION` |
 | `no-hello` | — | 登录后**不发** `C2S_HELLO`（模拟没装模组的客户端） | 收到 `Disconnect reason=synaxis:client-mod-required`。**只适用于玩法模式的进程**——核心模式不要求握手，会照常放行并让本子命令退 1（见设计文档 `API-M2-010` 第 ⑤ 步） |
@@ -157,14 +159,14 @@ REQ-M2 ↔ TC 对照（手工维护）：
 
 ### M2（游戏域）环境 —— 未验证
 
-> 启动、就绪判定、运行时产物与系统属性四条已随 `REQ-M2-021` 实跑核对过（起服到就绪、`nc -z` 通、`stop` 退出码 0、`-Dsynaxis.app.port` 生效）。**核心模式那一档已随设计文档 v0.18 实跑核对过**（排除玩法插件时以核心模式起服、探针 `login` 与 `echo` 均退 0、`stop` 退出码 0；再加 `-Dsynaxis.app.core-mode=off` 则两行 ERROR + 退出码 1 且端口未 bind）。**地图种子与对局种子的「一局一图」那半随 `REQ-M2-010` / `REQ-M2-011` 实跑核对过**（`-Dsynaxis.app.map=rts-512` / `rts-128` / 未知 id 三档各起一次：整图 1,024 区块 137 ms 载入完成、`match_started` 早于就绪日志、未知 id 时两行 ERROR + 非零码退出 + 端口未 bind、事件台账四行齐全）。**探针的 M2 子命令已随 `REQ-M2-009` 实跑核对过**（玩法模式 + `-Dsynaxis.app.map=rts-128`：`order --count 20` 收到 20 条结果、前 10 条不含 `rate-limited` 而后 10 条全是；`order --count 8 --group 1` 8 条全不含 `rate-limited`、`--count 9 --group 1` 的第 9 条是 `rate-limited`；`select --units 1..9` 得 `synaxis:protocol-error`；`game-flood --rate 800 --seconds 3` 得 `synaxis:game-flood`（连跑 6 次全中；**原先记在这里的 `--rate 400` 那一档实测是 flaky 的，14 次挂 7 次**，失败时探针实际只达到 344～349 包/秒、服务端一行洪水 WARN 都不写，见已废弃的 `TC-GAME-025`），`--rate 299 --seconds 5`（实际 268 包/秒）与 `--rate 95 --seconds 20`（实际 75 包/秒）均全程在线；整轮服务端只写了 2 行 WARN，都带 `connection_id`、都不带栈）。**单位种子与客户端模组两条仍未验证**，它们依赖尚未落地的 REQ。按 test-doc 纪律：首轮执行依赖这两条的 `TC-GAME-*` 之前，必须照本段从零走通一次，走不通先修本段并在那时去掉对应的「待 `REQ-M2-xxx` 实现后填」。不编造命令。
+> 启动、就绪判定、运行时产物与系统属性四条已随 `REQ-M2-021` 实跑核对过（起服到就绪、`nc -z` 通、`stop` 退出码 0、`-Dsynaxis.app.port` 生效）。**核心模式那一档已随设计文档 v0.18 实跑核对过**（排除玩法插件时以核心模式起服、探针 `login` 与 `echo` 均退 0、`stop` 退出码 0；再加 `-Dsynaxis.app.core-mode=off` 则两行 ERROR + 退出码 1 且端口未 bind）。**地图种子与对局种子的「一局一图」那半随 `REQ-M2-010` / `REQ-M2-011` 实跑核对过**（`-Dsynaxis.app.map=rts-512` / `rts-128` / 未知 id 三档各起一次：整图 1,024 区块 137 ms 载入完成、`match_started` 早于就绪日志、未知 id 时两行 ERROR + 非零码退出 + 端口未 bind、事件台账四行齐全）。**探针的 M2 子命令已随 `REQ-M2-009` 实跑核对过**（玩法模式 + `-Dsynaxis.app.map=rts-128`：`order --count 20` 收到 20 条结果、前 10 条不含 `rate-limited` 而后 10 条全是；`order --count 8 --group 1` 8 条全不含 `rate-limited`、`--count 9 --group 1` 的第 9 条是 `rate-limited`；`select --units 1..9` 得 `synaxis:protocol-error`；`game-flood --rate 800 --seconds 3` 得 `synaxis:game-flood`（连跑 6 次全中；**原先记在这里的 `--rate 400` 那一档实测是 flaky 的，14 次挂 7 次**，失败时探针实际只达到 344～349 包/秒、服务端一行洪水 WARN 都不写，见已废弃的 `TC-GAME-025`），`--rate 299 --seconds 5`（实际 268 包/秒）与 `--rate 95 --seconds 20`（实际 75 包/秒）均全程在线；整轮服务端只写了 2 行 WARN，都带 `connection_id`、都不带栈）。**单位种子那一条已随 `REQ-M2-016` / `REQ-M2-017` 实跑核对过**（玩法模式 + `-Dsynaxis.app.map=rts-128`：探针 `units --expect-min 10` 报 67 个单位、`commandable=[1..64, 67]`、中立与对方单位 `flags=0`；`order --unit 1 --x 84.5 --y 40 --z 64.5 --expect ok --expect-count 1 --watch 25` 收到 `code=ok snapped=(84.5, 40.0, 64.5)`，随后 95 条快照里该单位先 `moving` 后 `idle`，台账 `unit_order_issued` 的 `path_nodes=41` / `path_ms=0`、`unit_order_completed` 的 `elapsed_ms=6949`；`order --x 24.5 --z 24.5`（被墙围住的口袋）回 `code=no-path` 并记一行 `unit_order_rejected`；整轮服务端零 WARN 零 ERROR）。**客户端模组那一条仍未验证**，它依赖尚未落地的 REQ。按 test-doc 纪律：首轮执行依赖这两条的 `TC-GAME-*` 之前，必须照本段从零走通一次，走不通先修本段并在那时去掉对应的「待 `REQ-M2-xxx` 实现后填」。不编造命令。
 
 - 启动、就绪判定与运行时产物：同上面的引擎域环境段（`REQ-M2-021` 起两者是同一个入口）。停机：控制台 `stop` 或 SIGINT，运行期间必须保持 stdin 打开。
 - 系统属性：`synaxis.app.port`（监听端口，默认 `25565`）、`synaxis.app.plugins`（启用的插件 id 列表，逗号分隔，**默认空串 = 全部**；去掉 `rts` 就没有玩法了，默认配置下进程会落进**核心模式**照常 bind，要让它拒启得同时给 `-Dsynaxis.app.core-mode=off`。列表里没有插件应答的 id 记一行 `No plugin answers to selected ids […]: discovered plugin_ids=[…].` 的 WARN，不影响启动——拼错 id 与刻意排除全部插件在行为上是同一档，只有这行日志能分开）、`synaxis.app.core-mode`（`auto` / `on` / `off`，默认 `auto`：没有玩法插件就以核心模式起服——宿主自建的平坦世界、任何连接都放行、`synaxis:main` echo 通道；`on` 强制核心模式且一个插件都不发现；`off` 永不进核心模式，没有玩法即两行 ERROR + 非零码退出。不是这三个值之一时按非法启动参数拒启。见设计文档 `API-M2-010` 启动序列第 ⑤ 步）、`synaxis.app.handshake-phase`（`configuration` / `login`，默认 `configuration`：客户端模组握手跑在哪个协议阶段，见设计文档 `ADR-M2-010` 的「落地形态与退路」；不是这两个值之一时按非法启动参数拒启）、`synaxis.app.map`（**地图预设 id**，不是文件路径——地图在进程内程序化生成，见设计文档 `REQ-M2-010`；默认 `rts-512`，另一个可用预设是 `rts-128`，未知 id 即 `map-invalid`），另沿用引擎的 `synaxis.*`。**`synaxis.entity-view-distance=8`、`synaxis.chunk-view-distance=10`、`synaxis.player.chunk-update-limiter-history-size=0` 三项自 `REQ-M2-011` 起由 `server-app` 在建进程之前自己设好，命令行不写也生效**；命令行显式给的值优先（排障时可以单独摘掉某一项）。最后一项是 RTS 镜头能来回推的前置条件，不是调优，见设计文档 §15「可见范围」与 `ADR-M2-013`。
 - 事件台账：`logs/events-YYYYMMDD.jsonl`（相对进程工作目录，`:server-app:run` 下即仓库根），一行一个 JSON，事件名与属性见设计文档 §20。每行形如 `{"ts":"…","event":"plugin_enabled","plugin_id":"rts","version":"0.1.0","enable_ms":16}`——事件名的键是 `event`，属性平铺在同一层。多条用例以它为观察面，步骤里统一写「`grep <事件名> logs/events-*.jsonl`」。当前落地的是 `plugin_enabled` 与对局三条（`match_created` / `match_started` / `match_ended`，见 `REQ-M2-011`），其余随各自的 REQ 补。
 - 地图种子：由 `REQ-M2-010` 的**程序化生成器**在**进程内**生成，不落文件也不读文件（`.synx` 已随范围裁剪推到 M3，见设计文档 §28.3）。测试地图固定用同一个预设 id + seed，必须含：512×512 / 高度 64、若干障碍、**一块被墙完全围住的可站立区域**（TC-GAME-041 依赖）、可站立的空旷区（TC-GAME-040 依赖）。预设由 `synaxis.app.map` 选（默认 `rts-512` = 512×512 / 高度 64 / 1,024 区块，另有 `rts-128` = 128×128 / 64 区块供回滚演练与快跑用）；seed 固定在预设里（`game-rts` 的 `MapPreset`），同一预设每次启动生成同一张图。基线重置 = 重启进程（每次启动重新生成，没有需要清理的产物）。
-- 对局与单位种子：进程启动即有**唯一一个** `running` 对局（M2 写死单局，且对局在 bind 之前创建，见设计文档 `API-M2-010` 启动序列）。玩家加入后由 `:game-rts` 分配 `team=1` 与 N 个本方单位；测试对局另需：≥ 1 个 `team=0` 的中立单位与 ≥ 1 个 `team` 非 0 且不等于玩家队伍的对方单位（如 `team=2`；两者 TC-GAME-039 依赖）；≥ 1 个距出生点 ≥ 200 格的单位（TC-GAME-043 依赖）；≥ 9 个本方单位（TC-GAME-024 依赖，组内包数上限是 8，第 9 个单位才测得到越界档）；≥ 64 个本方单位的压测预设（TC-GAME-042 依赖）。**单位数量、`unit_id` 分配与预设的开启方式待 `REQ-M2-016` 实现后填**。
-- 探针（复用 M1 的 `tools/protocol-probe/probe.py`，不另起工具）：`REQ-M2-008` 的强制握手一上线，探针必须同一交付实现 `C2S_HELLO`（设计文档 `API-M2-002` 的连带影响），否则上表六个子命令在 configuration 阶段 3 秒被踢、依赖它们的七条存量 TC 整块失效。**`C2S_HELLO` 那一半已随 `REQ-M2-008` 落地**：全部子命令进 configuration 阶段先发一次握手，另有 `handshake` / `no-hello` / `bad-schema` / `duplicate-hello` 四个子命令（见上表）。**发 `C2S_CAMERA` / `C2S_SELECT` / `C2S_MOVE_ORDER`、按指定速率发包、打印收到的 `S2C_ORDER_RESULT` 这几半已随 `REQ-M2-009` 落地**（见上表的 `order` / `select` / `game-flood` 三行）。M2 仍缺的能力：打印收到的 `S2C_UNIT_SPAWN` / `S2C_UNIT_STATE` / `S2C_UNIT_DESPAWN`，以及记账收到的区块与实体位置包——**这两类的子命令名与参数待 `REQ-M2-016` / `REQ-M2-018` 实现后填**，依赖它们的 `TC-GAME-*` 步骤仍写成「用探针发送 `<消息>{字段…}`」而不写死命令行；执行时按当时的探针帮助文本翻译成命令，并把实际命令记进证据文件。
+- 对局与单位种子：进程启动即有**唯一一个** `running` 对局（M2 写死单局，且对局在 bind 之前创建，见设计文档 `API-M2-010` 启动序列）。玩家加入后由 `:game-rts` 分配 `team=1`。**阵容随 `REQ-M2-016` 落地，是固定的 67 个单位，没有开关也不需要预设**（`game-rts` 的 `Roster`，在 bind 之前按地图铺开，同一预设每次启动的编号与站位都一样）：`unit_id=1..64` 是玩家队伍（`team=1`）的单位，从出生点向外一圈圈铺在可站立格上；`unit_id=65` 是中立单位（`team=0`）、`unit_id=66` 属 `team=2`（两者 TC-GAME-039 依赖，站在出生点斜对角 3 格处）；`unit_id=67` 是本方的远哨，放在出生点 +x 方向 220 格最近的可站立格上——`rts-512` 上它离出生点 ≥ 200 格（TC-GAME-043 依赖），`rts-128` 放不下 220 格，会被夹到地图边缘（约 63 格），那条用例因此只在 `rts-512` 上跑。64 个本方单位同时满足 TC-GAME-024 的「≥ 9 个」与 TC-GAME-042 的「≥ 64 个」。全部单位 `archetype=0`、`hp=max_hp=100`。**实测**（`rts-128`，探针 `units --expect-min 10`）：兴趣集 67 个单位、`commandable=[1..64, 67]`，65 与 66 的 `flags` 为 0。
+- 探针（复用 M1 的 `tools/protocol-probe/probe.py`，不另起工具）：`REQ-M2-008` 的强制握手一上线，探针必须同一交付实现 `C2S_HELLO`（设计文档 `API-M2-002` 的连带影响），否则上表六个子命令在 configuration 阶段 3 秒被踢、依赖它们的七条存量 TC 整块失效。**`C2S_HELLO` 那一半已随 `REQ-M2-008` 落地**：全部子命令进 configuration 阶段先发一次握手，另有 `handshake` / `no-hello` / `bad-schema` / `duplicate-hello` 四个子命令（见上表）。**发 `C2S_CAMERA` / `C2S_SELECT` / `C2S_MOVE_ORDER`、按指定速率发包、打印收到的 `S2C_ORDER_RESULT` 这几半已随 `REQ-M2-009` 落地**（见上表的 `order` / `select` / `game-flood` 三行）。**打印收到的 `S2C_UNIT_SPAWN` / `S2C_UNIT_STATE` / `S2C_UNIT_DESPAWN` 这一半已随 `REQ-M2-016` 落地**（见上表的 `units` 行与 `order --watch`：三条消息一律逐条打印，`units` 汇总兴趣集，`order --watch` 跟着一个单位走完 `moving → idle`）。M2 仍缺的能力：记账收到的区块与实体位置包——**它的子命令名与参数待 `REQ-M2-018` 实现后填**，依赖它的 `TC-GAME-*` 步骤仍写成「用探针记录……」而不写死命令行；执行时按当时的探针帮助文本翻译成命令，并把实际命令记进证据文件。
 - 客户端模组：Minecraft **26.2** profile（不是 26.3）+ Fabric Loader 0.19.5 + Fabric API 0.160.0+26.2 + 本仓库 `client-fabric/` 产出的模组 jar。构建：`./gradlew publishToMavenLocal` 后 `cd client-fabric && ./gradlew build`（独立 Gradle 构建，不进 `settings.gradle.kts`）。安装：把 jar 放进该 profile 的 `mods/`。**jar 名、整合包安装步骤与当前 `schema_version` 值待 `REQ-M2-020` 实现后填**。
 - 测试账号（在上表基础上新增）：
 
@@ -1093,7 +1095,7 @@ REQ-M2 ↔ TC 对照（手工维护）：
 
 前置：探针已 in_game，持有一个本方单位 U（§3 对局种子）。
 
-**带 `code=ok` 的步骤要等 `REQ-M2-016` 的单位落地（阶段 5）**——在那之前对局里一个单位也没有，`owner(unit, sender)` 对任何 `unit_id` 都为假，那几步会回 `not-owner`；其余步骤现在就能跑。
+**单位已随 `REQ-M2-016` 落地（阶段 5）**：`unit_id=1..64` 与 `67` 是探针队伍的单位，带 `code=ok` 的步骤用它们；`65`（中立）与 `66`（对方）用来测 `not-owner`。`code=ok` 的答复由寻路队列在随后的 tick 里发出（每 tick 至多 4 条搜索，见设计文档 §15），探针的 `--wait` 已覆盖这段。
 
 | # | 操作 | 预期 |
 | --- | --- | --- |
@@ -1110,7 +1112,7 @@ REQ-M2 ↔ TC 对照（手工维护）：
 
 前置：探针已 in_game，持有 9 个本方单位（§3 对局种子）。
 
-**带 `code=ok` 的步骤要等 `REQ-M2-016` 的单位落地（阶段 5）**——在那之前对局里一个单位也没有，`owner(unit, sender)` 对任何 `unit_id` 都为假，那几步会回 `not-owner`；其余步骤现在就能跑。
+**单位已随 `REQ-M2-016` 落地（阶段 5）**：`unit_id=1..64` 与 `67` 是探针队伍的单位，带 `code=ok` 的步骤用它们；`65`（中立）与 `66`（对方）用来测 `not-owner`。`code=ok` 的答复由寻路队列在随后的 tick 里发出（每 tick 至多 4 条搜索，见设计文档 §15），探针的 `--wait` 已覆盖这段。
 
 | # | 操作 | 预期 |
 | --- | --- | --- |
@@ -1144,7 +1146,7 @@ REQ-M2 ↔ TC 对照（手工维护）：
 | --- | --- | --- |
 | 1 | `python3 tools/protocol-probe/probe.py game-flood --rate 800 --seconds 3` | 在第 3 秒末收到 Disconnect，原因键 `synaxis:game-flood`。没收到时先看探针末行的 `slowest window <N>`：`N` 明显低于设定值就说明是探针没打到速率、而不是闸门坏了。**光看 `N > 300` 不够**——服务端按固定 1 秒桶计数，桶与探针的窗口错位后还要再切一刀，所以这一步要的是倍数级余量（实测 `--rate 400` 失败时 N = 344～349 照样不触发，`--rate 800` 的 N 是 622 且六次全中） |
 | 2 | 查看服务端 stdout | 一行 WARN 带 `connection_id`，无异常堆栈 |
-| 3 | `python3 tools/protocol-probe/probe.py game-flood --rate 95 --seconds 60 --expect alive`（§2 算出的正常峰值） | 全程未断线，末尾仍在收到 `S2C_UNIT_STATE`（快照随 `REQ-M2-016` 落地，在那之前只判「未断线 + KeepAlive 往返正常」） |
+| 3 | `python3 tools/protocol-probe/probe.py game-flood --rate 95 --seconds 60 --expect alive`（§2 算出的正常峰值） | 全程未断线，末尾仍在收到 `S2C_UNIT_STATE`（快照已随 `REQ-M2-016` 落地，探针每收到一条都打印一行 `S2C_UNIT_STATE server_tick=… count=…`） |
 | 4 | `python3 tools/protocol-probe/probe.py game-flood --rate 299 --seconds 3 --expect alive` | 未断线（阈值是连续 3 秒 > 300 包/秒） |
 
 后置：无。
@@ -1388,11 +1390,11 @@ REQ-M2 ↔ TC 对照（手工维护）：
 
 #### `TC-GAME-052` 单位建模五条硬规则生效（`view_range` 按 archetype 配置） — 对应 `REQ-M2-016` · 级别: 回归 · 执行者: AI
 
-前置：对局 `running` 且至少有一个单位；建模断言测试名待 `REQ-M2-016` 实现后填。
+前置：对局 `running` 且至少有一个单位。建模断言测试是 `game-rts` 的 `UnitModelIntegrationTest`，它自己起一个 `running` 对局并在里面 spawn 单位。
 
 | # | 操作 | 预期 |
 | --- | --- | --- |
-| 1 | 运行单位建模断言测试 | `BUILD SUCCESSFUL`；报告中能点名五条断言——`hasPhysics=false`、`noGravity=true`、spawn 时 `setPosRotInterpolationDuration(2)`、`synchronizationTicks=100`、`setViewRange(archetype_view_range)` 且 `setWidth` / `setHeight` 按 `archetype_box` 为非 0 |
+| 1 | `./gradlew :game-rts:test --tests 'io.github.bearisbug.synaxis.game.rts.UnitModelIntegrationTest' --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts` | `BUILD SUCCESSFUL`；`theDisplayEntityIsBuiltToTheFiveModellingRules` 里能点名五条断言——`hasPhysics=false`、`noGravity=true`、spawn 时 `setPosRotInterpolationDuration(2)`、`synchronizationTicks=100`、`setViewRange(archetype_view_range)` 且 `setWidth` / `setHeight` 按 `archetype_box` 为非 0 |
 | 2 | 在断言测试里查 `setViewRange` 的入参来源 | 取自该原型的 `archetype_view_range` 配置项、当前值为 `4.0`；**测试里不得出现写死的 `1.6` 或 `4.0` 字面量与实体元数据直接比对**（写死临界数正是本用例取代 TC-GAME-037 的原因） |
 | 3 | `grep -rn "setTransformationInterpolationDuration" game-rts/src/main/java` | 退出码 1、无输出（位置插值不得错设成变换插值） |
 | 4 | 让一个单位移动 10 秒，用探针记录它的实体位置包 | 位置包按每 2 tick 一条到达，不是每 20 tick 一次的跳变 |
@@ -1420,7 +1422,7 @@ REQ-M2 ↔ TC 对照（手工维护）：
 
 前置：对局内有一个 `team=0` 的中立单位 N 与一个属于对方队伍的单位 O（种子见 §3）；探针的队伍为 1。
 
-**第 2～4 步要等 `REQ-M2-016` 的单位落地（阶段 5）**——N 与 O 在那之前并不存在；第 1、5 步现在就能跑，它们判的是「选中不回错、不断线、不抛栈」，对不存在的 `unit_id` 同样成立。
+**N 与 O 已随 `REQ-M2-016` 落地（阶段 5）**：`unit_id=65` 是中立单位 N、`unit_id=66` 是对方单位 O（§3 单位种子），本方单位 U 取 `1`。
 
 | # | 操作 | 预期 |
 | --- | --- | --- |
@@ -1438,10 +1440,10 @@ REQ-M2 ↔ TC 对照（手工维护）：
 
 | # | 操作 | 预期 |
 | --- | --- | --- |
-| 1 | 对 U 下一条去该目标点的移动指令 | 300 ms 内收到 `S2C_ORDER_RESULT{code=ok}`，`snapped_*` 与目标点的水平距离 < 1 格 |
-| 2 | 观察随后的 `S2C_UNIT_STATE` | U 的 `unit_state` 变为 `1`（moving） |
-| 3 | 观察引擎的实体位置包 | U 对应 `entity_id` 的位置沿航点连续推进，相邻两条位置差 < 1 格（无瞬移） |
-| 4 | 等待到达 | `unit_state` 回到 `0`（idle）；最终位置与 `snapped_*` 的距离 < 0.1 格 |
+| 1 | `python3 tools/protocol-probe/probe.py order --unit 1 --x <目标 x> --y 40 --z <目标 z> --expect ok --expect-count 1 --watch 25` | 300 ms 内收到 `S2C_ORDER_RESULT{code=ok}`，`snapped_*` 与目标点的水平距离 < 1 格 |
+| 2 | 看同一次运行里随后的 `S2C_UNIT_STATE` 行 | U 的 `unit_state` 变为 `1`（moving），即探针打印的 `moving=[1]` |
+| 3 | 观察引擎的实体位置包（记账入口待 `REQ-M2-018` 实现后填；服务端侧由 `UnitMovementIntegrationTest#theWalkIsMadeOfAdvancesRatherThanJumpsAndTeleportsNothing` 判） | U 对应 `entity_id` 的位置沿航点连续推进，相邻两条位置差 < 1 格（无瞬移） |
+| 4 | 等待到达（`--watch` 那一段自己等） | 末行 `seen_moving=True unit_state=idle`，即 `unit_state` 回到 `0`；最终位置与 `snapped_*` 的距离 < 0.1 格（服务端侧由 `UnitMovementIntegrationTest#aUnitWalksToWhereItWasOrderedAndGoesIdleThere` 判） |
 | 5 | `grep unit_order_completed logs/events-*.jsonl \| tail -1` | 有一行，`order_seq` 与第 1 步一致、`elapsed_ms` 为正数 |
 
 后置：无。
@@ -1452,9 +1454,9 @@ REQ-M2 ↔ TC 对照（手工维护）：
 
 | # | 操作 | 预期 |
 | --- | --- | --- |
-| 1 | 对 U 下令去那块被围住的地面 | 收到 `code=no-path`；U 的 `unit_state` 保持 `0`（idle） |
-| 2 | 对 U 下令去地图边界外的点 | 收到 `code=out-of-bounds` |
-| 3 | 对 U 下令去一个不可站立的点（如墙体内部或悬空点） | 收到 `code=out-of-bounds` |
+| 1 | `python3 tools/protocol-probe/probe.py order --unit 1 --x 24.5 --y 40 --z 24.5 --expect no-path --expect-count 1`（`rts-128` 上口袋在 `[16,32)²`，`rts-512` 上在 `[64,80)²`） | 收到 `code=no-path`；U 的 `unit_state` 保持 `0`（idle） |
+| 2 | `python3 tools/protocol-probe/probe.py order --unit 1 --x -4 --y 40 --z 4 --expect out-of-bounds --expect-count 1` | 收到 `code=out-of-bounds` |
+| 3 | 对 U 下令去一个不可站立的点（地图里任一障碍格，`--x/--z` 取其列中心） | 收到 `code=out-of-bounds` |
 | 4 | `grep unit_order_rejected logs/events-*.jsonl \| tail -3` | 三行的 `code` 依次为 `no-path`、`out-of-bounds`、`out-of-bounds` |
 | 5 | 再对 U 下一条合法指令 | 收到 `code=ok` 并开始移动（前面的拒绝没有把单位卡住） |
 
@@ -1466,7 +1468,7 @@ REQ-M2 ↔ TC 对照（手工维护）：
 
 | # | 操作 | 预期 |
 | --- | --- | --- |
-| 1 | 同一 tick 内发 64 条合法移动指令（每组 `order_group` 不超过 8 条包，共 8 组） | 64 条各收到一条 `S2C_ORDER_RESULT`，且一条 `code=rate-limited` 都没有（8 组只扣 8 个令牌，未到 10 操作/秒） |
+| 1 | `python3 tools/protocol-probe/probe.py order --count 64 --unit 1 --x <可站立点 x> --z <可站立点 z> --wait 10`（探针按 `--group` 的缺省逐条编号，要按 8 条一组发就分 8 次跑 `--count 8 --group N`） | 64 条各收到一条 `S2C_ORDER_RESULT`，且一条 `code=rate-limited` 都没有（8 组只扣 8 个令牌，未到 10 操作/秒） |
 | 2 | 按 `unit_order_issued` 事件的时间戳分桶统计 | 每 tick 被真正处理的请求 ≤ 4 条，其余排队 |
 | 3 | 按接收顺序统计第 1 步这 64 条结果的 `code` | 至少 32 条 `code=ok`，其余全为 `code=busy`（队列深度上限 32，见设计文档 §11.4 `ACCEPT` 的短路顺序），两者条数之和为 64 |
 | 4 | 采样 60 秒内 `unit_order_issued` 的 `path_ms` 与 `path_nodes` | `path_ms` P99 < 2 ms；`path_nodes` 单次 ≤ 4,000 |
@@ -1595,7 +1597,7 @@ REQ-M2 ↔ TC 对照（手工维护）：
 | 1 | `grep -rn "refreshPosition" game-rts/src/main/java plugin-api/src/main/java server-app/src/main/java` | 退出码 1、无输出（游戏侧与稳定面零命中内部 API） |
 | 2 | 查 `Entity#moveTo` 的声明 | 是 `public` 且**没有** `@ApiStatus.Internal`；三个 `refreshPosition` 重载仍然标着 `@ApiStatus.Internal`（新入口是提升原语，不是放宽既有 API） |
 | 3 | 运行 `moveTo` 与 `refreshPosition(pos, false, true)` 的等价性对照测试：`./gradlew :test --tests 'io.github.bearisbug.synaxis.entity.EntityMoveToEquivalenceIntegrationTest' --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts` | `BUILD SUCCESSFUL`、4 个用例全绿；四档情形（同区块带 viewer、跨区块边界带 viewer、超 8 格走 `EntityTeleportPacket` 分支、无 viewer）里两条路径从同一份状态出发，产出逐包相同的出站序列——包类型、顺序与全部字段都相等（零行为变更） |
-| 4 | 下一条移动指令让单位走 20 格，用探针记账这段时间内的 `EntityTeleportEvent`（计数入口待 `REQ-M2-025` 实现后填） | 计数为 `0`（推进不派发传送事件） |
+| 4 | 下一条移动指令让单位走 20 格，记账这段时间内的 `EntityTeleportEvent`：`./gradlew :game-rts:test --tests 'io.github.bearisbug.synaxis.game.rts.UnitMovementIntegrationTest' …`（`theWalkIsMadeOfAdvancesRatherThanJumpsAndTeleportsNothing` 用 `env.trackEvent(EntityTeleportEvent.class, EventFilter.ENTITY, 单位实体)` 数整段走法） | 计数为 `0`（推进不派发传送事件）；同一条用例还判每次推进的位移不超过 `archetype_speed × 2`，即没有瞬移 |
 | 5 | 在同一段里观察推进是否产生跨 tick 的异步回调（JFR 采样 tick 线程） | 推进在 tick 线程上同步完成，没有 `loadOptionalChunk(...).thenRun(...)` 一类的异步链 |
 | 6 | 让单位沿航点走到一个**未载入**区块的方向（构造方式：临时把航点指到地图边界外一格） | 抛 `NullPointerException`（来自 `refreshCoordinate` 的 `Check.notNull`）并被寻路侧的守卫拦下、记 ERROR，单位不进入不一致状态（越界不静默失败，见 `ADR-M2-013`） |
 

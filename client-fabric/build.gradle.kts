@@ -7,7 +7,7 @@ group = "io.github.bearisbug.synaxis.game"
 // The mod version is what players see in the mod list, so it stays SemVer; the engine's own
 // version scheme (`dev` unless GAME_ENGINE_VERSION says otherwise) is what :protocol is published
 // under and is read separately below.
-version = System.getenv("CLIENT_MOD_VERSION") ?: "0.1.0"
+version = "0.1.0"
 
 val minecraftVersion = "26.2"
 val loaderVersion = "0.19.5"
@@ -15,8 +15,12 @@ val fabricApiVersion = "0.161.0+26.2"
 val protocolVersion = System.getenv("GAME_ENGINE_VERSION") ?: "dev"
 
 repositories {
-    // :protocol comes from the engine build's publishToMavenLocal (ADR-M2-015).
-    mavenLocal()
+    // :protocol comes from the engine build's publishToMavenLocal (ADR-M2-015). That is the only
+    // coordinate this build takes from ~/.m2, so it is fenced off: an unrelated stale artifact
+    // sitting in the local repository must not be able to change what this build resolves.
+    mavenLocal {
+        content { includeGroup("io.github.bearisbug.synaxis") }
+    }
     mavenCentral()
 }
 
@@ -50,6 +54,10 @@ tasks.withType<JavaCompile>().configureEach {
 
 tasks.withType<Test>().configureEach {
     useJUnitPlatform()
+    // Loading Minecraft classes brings its log4j2 configuration along, which writes `logs/` under
+    // the working directory; keep that inside the build directory so `clean` takes it away.
+    workingDir = layout.buildDirectory.dir("test-workdir").get().asFile
+    doFirst { workingDir.mkdirs() }
 }
 
 tasks.processResources {

@@ -12,6 +12,7 @@ import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class GamePayloadTest {
@@ -53,6 +54,17 @@ class GamePayloadTest {
         buf.writerIndex(buf.writerIndex() - 1);
 
         assertThrows(MalformedMessageException.class, () -> GamePayload.CODEC.decode(buf));
+    }
+
+    @Test
+    void anUnknownMessageIdIsDroppedRatherThanBreakingTheConnection() {
+        final MsgBuf unknown = MsgBuf.writing();
+        unknown.writeVarInt(0x7F);
+
+        final RegistryFriendlyByteBuf buf = buffer();
+        buf.writeBytes(unknown.toByteArray());
+
+        assertNull(GamePayload.CODEC.decode(buf).message());
     }
 
     @Test

@@ -22,7 +22,10 @@ public final class SynaxisClientMod implements ClientModInitializer {
         PayloadTypeRegistry.serverboundPlay().register(GamePayload.TYPE, GamePayload.CODEC);
         PayloadTypeRegistry.clientboundPlay().register(GamePayload.TYPE, GamePayload.CODEC);
 
-        ClientPlayNetworking.registerGlobalReceiver(GamePayload.TYPE, (payload, _) ->
-                LOGGER.debug("rts:game msg_id={}", payload.message().msgId()));
+        ClientPlayNetworking.registerGlobalReceiver(GamePayload.TYPE, (payload, _) -> {
+            // Null means the decoder already dropped and warned about an unknown id.
+            if (payload.message() == null) return;
+            LOGGER.debug("rts:game msg_id={}", payload.message().msgId());
+        });
     }
 }

@@ -14,6 +14,7 @@
 
 | 日期 | 改动 | 作者 |
 | --- | --- | --- |
+| 2026-09-21 | 跟进 `docs/DESIGN-M2.md` v0.30（阶段 0 的 `REQ-M2-020a` 落地：客户端模组最小骨架）。**`TC-GAME-017` 保留 ID，只改前置的一句话**——第 4 步的阻塞条件原先写的是「`client-fabric` 工程已建」，而工程已经随 `REQ-M2-020a` 建好了、客户端侧却还没有那份向量的夹具，照原文读会让这一步看起来已解除阻塞；改成按 `REQ-M2-020b` 判（夹具与客户端侧 CI 是阶段 6a 的事，见设计文档 §24 的两阶段验收）。步骤表与判据一个字未改。`TC-GAME-045` 未动：它六步里本轮能跑的那几步与 §2 表后那条说明一致 | Bearisbug |
 | 2026-09-19 | 阶段 5 退出条件逐条实跑的同轮工具补齐（**判据一条没改，也没有换 ID**）。**§3 环境段**：探针表新增 `march` 一行（压测陪跑件：保持连接、把 `unit_id=1..N` 一直派在路上，并按秒采样快照里报 `moving` 的单位数——阶段 5 起「走动中的单位」给每个 viewer 带实体位置包，而基线是在没有这份下行时测的），`order` 行补 `--select`（同一条连接上先选中再下令）；`PacketFlood` 那一段写上**打玩法模式必须加 `--hello true`**（默认不发 `C2S_HELLO` 是 `TC-GAME-060` 在核心模式上判的那条路径，玩法模式 3 秒不握手就踢，不加会 0/50 登录成功）。**语义未变、只把占位填成实际命令**：`TC-GAME-039` 第 4 步（`order --select 1,<N>`，并写上 `unit_selected` 那一行的 `count=1` / `rejected_count=1`）。本轮的实跑数字与核心基线对照见 `docs/research/soak-2026-09-18/report.md`「阶段 5 之后的复跑」一节 | Bearisbug |
 | 2026-09-19 | 跟进 `docs/DESIGN-M2.md` v0.29（阶段 5 评审第 1 轮修订：启发式向目标偏置 1.15，`no-path` 那档 `unit_order_rejected` 增记 `path_nodes` / `path_ms`）。**新增** `TC-GAME-065`——默认预设上 200 格外的空旷可站立目标必须回 `ok`，并按台账的 `path_nodes` 把「吃满预算才收手」与「真的没有路」分开；这条此前无人覆盖（`TC-GAME-040` 只打 20 格），而修复前它在实服上是红的。§2 的 REQ ↔ TC 表与 §5 的游戏域回归映射同步补 ID。**§3 环境段**：单位种子那一条按本轮实跑重写（两个预设各一轮，含偏置生效后的 `path_nodes` 与批次耗时，并订正 `elapsed_ms` 那处转录）。一条既有用例都没有换 ID：本轮没有任何既有判据实质变更 | Bearisbug |
 | 2026-09-19 | 阶段 5 的 `REQ-M2-016` / `REQ-M2-017` 落地（单位与寻路）。**§3 环境段**：探针表新增 `units` 一行、`order` 行补 `--watch` 与 `--group-size`；「对局与单位种子」的占位填实——固定 67 个单位（并注明 65 / 66 与本方单位共用一列），`unit_id=1..64` 本方、`65` 中立、`66` 对方、`67` 远哨，没有开关也不需要预设；探针占位只剩「记账区块与实体位置包」待 `REQ-M2-018`；M2 环境段按本轮实跑改写单位种子那一条——`TC-GAME-041` 的两档 `out-of-bounds` 与 `TC-GAME-042` 的 64 条并发指令（两个预设各一轮，含每 tick 4 次搜索的批次与耗时）一并实跑并记进该段。**语义未变、只把占位填成实际命令与断言入口**：`TC-GAME-052` 前置与第 1 步（建模断言测试是 `UnitModelIntegrationTest`）、`TC-GAME-051` 第 4 步（`EntityTeleportEvent` 的计数入口是 `UnitMovementIntegrationTest`）、`TC-GAME-040` 第 1～4 步、`TC-GAME-041` 第 1～3 步、`TC-GAME-042` 第 1 步，以及 `TC-GAME-024` / `TC-GAME-039` / `TC-GAME-063` / `TC-GAME-064` 里「等 `REQ-M2-016` 的单位」那几段说明——判据一条没改。一条用例都没有换 ID：本轮没有任何判据实质变更 | Bearisbug |
@@ -950,7 +951,7 @@ REQ-M2 ↔ TC 对照（手工维护）：
 
 #### `TC-GAME-017` 双端向量逐字节一致 — 对应 `REQ-M2-007` · 级别: 冒烟 · 执行者: AI
 
-前置：`REQ-M2-007` 已合入，`protocol/src/test/resources/vectors/` 下每条消息各有一个常规 `.bin`、`vectors/edge/` 下各有一个同名的边界 `.bin`，同目录的 `manifest.txt` 冻结着 `schema_version` 与全部 `.bin` 的 SHA-256 摘要；第 4 步需要 `client-fabric` 工程已建（`REQ-M2-020` 之前该步登记「阻塞」，见设计文档 §24 的两阶段验收）。
+前置：`REQ-M2-007` 已合入，`protocol/src/test/resources/vectors/` 下每条消息各有一个常规 `.bin`、`vectors/edge/` 下各有一个同名的边界 `.bin`，同目录的 `manifest.txt` 冻结着 `schema_version` 与全部 `.bin` 的 SHA-256 摘要；第 4 步需要 `client-fabric` 侧有同一份向量的夹具（`REQ-M2-020b` 之前该步登记「阻塞」——`REQ-M2-020a` 只交了能 `build` 的骨架，夹具与客户端侧 CI 在阶段 6a，见设计文档 §24 的两阶段验收）。
 
 | # | 操作 | 预期 |
 | --- | --- | --- |

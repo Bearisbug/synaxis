@@ -1,0 +1,28 @@
+{
+	"schemaVersion": 1,
+	"id": "synaxis",
+	"version": "${version}",
+	"name": "Synaxis",
+	"description": "Client mod for the Synaxis RTS server. Required to join.",
+	"authors": [
+		"Bearisbug"
+	],
+	"contact": {
+		"homepage": "https://github.com/Bearisbug/synaxis",
+		"sources": "https://github.com/Bearisbug/synaxis"
+	},
+	"license": "Apache-2.0",
+	"icon": "assets/synaxis/icon.png",
+	"environment": "client",
+	"entrypoints": {
+		"client": [
+			"io.github.bearisbug.synaxis.game.client.SynaxisClientMod"
+		]
+	},
+	"depends": {
+		"fabricloader": ">=${loaderVersion}",
+		"minecraft": "${minecraftVersion}",
+		"java": ">=25",
+		"fabric-networking-api-v1": "*"
+	}
+}

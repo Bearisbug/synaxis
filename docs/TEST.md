@@ -8,12 +8,13 @@
 | Owner | Bearisbug |
 | 关联设计文档 | `docs/DESIGN.md`（引擎域 M1 / M1.5）与 `docs/DESIGN-M2.md`（游戏域 M2 分册）；两份文档的 REQ 各自编号，M2 侧一律写作 `REQ-M2-*` |
 | 被测系统 | 仓库 `Bearisbug/synaxis`，分支 `main` |
-| 最后更新 | 2026-09-19 |
+| 最后更新 | 2026-09-21 |
 
 变更记录（登用例增改，不登执行轮次）：
 
 | 日期 | 改动 | 作者 |
 | --- | --- | --- |
+| 2026-09-21 | 跟进 `docs/DESIGN-M2.md` v0.31（阶段 6a 的 `REQ-M2-020b`：客户端侧双端向量、CI、资源打包与跨构建消费定型）。**`TC-GAME-017` 保留 ID**：第 4 步由「阻塞」改成可执行——客户端构建把 `synaxis.vectors.dir` 指向 `protocol/src/test/resources/vectors`，两端读同一批文件，判据写成 `FrozenVectorTest` 的 20 条（19 条往返 + 一条把向量绑在客户端消费的 `:protocol` 工件上）；前置补上「先 `publishToMavenLocal`」，第 5 步补上第 4 步会红在哪一条。**`TC-GAME-045` 保留 ID**：第 2 步改用 `:protocol:publishToMavenLocal` 并补 `:verifyModJar` 的输出行，第 3 步按 jar 的实际内容写准（`assets/synaxis/lang/*.json` 与 `icon.png`、JiJ 的 `:protocol`；**单位模型资源移出本步**——单位当前用原版物品当可见物，自定义模型要等 `ADR-M2-002` 落到渲染那一步），第 6 步注明同一判据已有构建期门禁，新增第 7 步（反证门禁有齿）与第 8 步（CI 的 `Client mod` 工作流）。**`TC-GAME-046` 保留 ID，步骤表未动**，只在前置写明三步都要人工在有图形环境的机器上做、且第 3 步还压在「模组尚未注册 `synaxis:handshake` 客户端侧」上。§2 不测表后那条说明同步 | Bearisbug |
 | 2026-09-21 | 跟进 `docs/DESIGN-M2.md` v0.30（阶段 0 的 `REQ-M2-020a` 落地：客户端模组最小骨架）。**`TC-GAME-017` 保留 ID，只改前置的一句话**——第 4 步的阻塞条件原先写的是「`client-fabric` 工程已建」，而工程已经随 `REQ-M2-020a` 建好了、客户端侧却还没有那份向量的夹具，照原文读会让这一步看起来已解除阻塞；改成按 `REQ-M2-020b` 判（夹具与客户端侧 CI 是阶段 6a 的事，见设计文档 §24 的两阶段验收）。步骤表与判据一个字未改。`TC-GAME-045` 正文未动，只按 `:protocol` 的 JiJ 落地更新了 §2 不测表后那条说明的可测范围（第 6 步已能跑、第 3 步半数成立），并在同一处补上四个 spike 的执行清单路径 | Bearisbug |
 | 2026-09-19 | 阶段 5 退出条件逐条实跑的同轮工具补齐（**判据一条没改，也没有换 ID**）。**§3 环境段**：探针表新增 `march` 一行（压测陪跑件：保持连接、把 `unit_id=1..N` 一直派在路上，并按秒采样快照里报 `moving` 的单位数——阶段 5 起「走动中的单位」给每个 viewer 带实体位置包，而基线是在没有这份下行时测的），`order` 行补 `--select`（同一条连接上先选中再下令）；`PacketFlood` 那一段写上**打玩法模式必须加 `--hello true`**（默认不发 `C2S_HELLO` 是 `TC-GAME-060` 在核心模式上判的那条路径，玩法模式 3 秒不握手就踢，不加会 0/50 登录成功）。**语义未变、只把占位填成实际命令**：`TC-GAME-039` 第 4 步（`order --select 1,<N>`，并写上 `unit_selected` 那一行的 `count=1` / `rejected_count=1`）。本轮的实跑数字与核心基线对照见 `docs/research/soak-2026-09-18/report.md`「阶段 5 之后的复跑」一节 | Bearisbug |
 | 2026-09-19 | 跟进 `docs/DESIGN-M2.md` v0.29（阶段 5 评审第 1 轮修订：启发式向目标偏置 1.15，`no-path` 那档 `unit_order_rejected` 增记 `path_nodes` / `path_ms`）。**新增** `TC-GAME-065`——默认预设上 200 格外的空旷可站立目标必须回 `ok`，并按台账的 `path_nodes` 把「吃满预算才收手」与「真的没有路」分开；这条此前无人覆盖（`TC-GAME-040` 只打 20 格），而修复前它在实服上是红的。§2 的 REQ ↔ TC 表与 §5 的游戏域回归映射同步补 ID。**§3 环境段**：单位种子那一条按本轮实跑重写（两个预设各一轮，含偏置生效后的 `path_nodes` 与批次耗时，并订正 `elapsed_ms` 那处转录）。一条既有用例都没有换 ID：本轮没有任何既有判据实质变更 | Bearisbug |
@@ -107,7 +108,7 @@ REQ-M2 ↔ TC 对照（手工维护）：
 | M2 新增自动化（`:protocol` 双端向量测试、宿主的 descriptor 校验 / 生命周期 / 通道路由单测、ArchUnit 规则对合成 `JavaClasses` 的自测、F29 与 F11 的复现测试、jacoco 与 diff-cover 本身） | 代码仓测试套件，策略见 `docs/DESIGN-M2.md` §19；本文档只在 TC 步骤里调用它们并判读可观察输出，不复制其断言 |
 | 50 连接 + 1,000 单位的全量压测与 `docs/DESIGN-M2.md` §15 的整表性能阈值（tick P99、出站带宽、进程内存、客户端 ≥ 60 FPS） | `docs/DESIGN-M2.md` §23 上线前检查单的专项脚本，当前无归属——已知风险（本文档只在 TC-GAME-042 打到 Gherkin 写明的「64 条并发指令」这一档） |
 | 安全渗透（畸形包模糊测试之外的攻击面） | 无归属——已知风险 |
-| `docs/DESIGN-M2.md` §26 阶段 0 的四个 spike（`:protocol` 的 JiJ 消费、相机形态、地图生成与载入实测、Fabric 在 configuration 阶段能否发包） | 设计文档 §26，结论回写设计文档；spike 不是验收，不进本文档（四个 spike 的执行清单在 `docs/research/client-spikes-2026-09/README.md`）。**同阶段的客户端模组最小骨架（`REQ-M2-020a`）不属此列**——它是交付物，由 TC-GAME-045 覆盖（阶段 0 时跑得到该用例的第 1、2、4、5、6 步；第 3 步只成立一半——`:protocol` 已 JiJ 进模组 jar，`assets/` 下的自定义模型资源要等 `REQ-M2-020b`） |
+| `docs/DESIGN-M2.md` §26 阶段 0 的四个 spike（`:protocol` 的 JiJ 消费、相机形态、地图生成与载入实测、Fabric 在 configuration 阶段能否发包） | 设计文档 §26，结论回写设计文档；spike 不是验收，不进本文档（四个 spike 的执行清单在 `docs/research/client-spikes-2026-09/README.md`）。**客户端模组本身（`REQ-M2-020a` 的骨架与 `REQ-M2-020b` 的工程完备）不属此列**——它是交付物，由 TC-GAME-045 覆盖（本机跑得到第 1～7 步，第 8 步要推分支才看得到 CI） |
 | 客户端渲染观感（相机形态、选中框样式、HUD 文案、动效） | 无用例——主观项；只在 TC-GAME-047 的录屏与截图里留证据供人评判 |
 | 设计文档 §19 中「CI 门禁拦截并发回归 / 分层违规」两个场景 | 由 TC-021、TC-006 以「故意提交坏改动到临时分支」方式可操作化，见 §4 |
 
@@ -951,15 +952,15 @@ REQ-M2 ↔ TC 对照（手工维护）：
 
 #### `TC-GAME-017` 双端向量逐字节一致 — 对应 `REQ-M2-007` · 级别: 冒烟 · 执行者: AI
 
-前置：`REQ-M2-007` 已合入，`protocol/src/test/resources/vectors/` 下每条消息各有一个常规 `.bin`、`vectors/edge/` 下各有一个同名的边界 `.bin`，同目录的 `manifest.txt` 冻结着 `schema_version` 与全部 `.bin` 的 SHA-256 摘要；第 4 步需要 `client-fabric` 侧有同一份向量的夹具（`REQ-M2-020b` 之前该步登记「阻塞」——`REQ-M2-020a` 只交了能 `build` 的骨架，夹具与客户端侧 CI 在阶段 6a，见设计文档 §24 的两阶段验收）。
+前置：`REQ-M2-007` 已合入，`protocol/src/test/resources/vectors/` 下每条消息各有一个常规 `.bin`、`vectors/edge/` 下各有一个同名的边界 `.bin`，同目录的 `manifest.txt` 冻结着 `schema_version` 与全部 `.bin` 的 SHA-256 摘要；第 4 步的客户端侧夹具随 `REQ-M2-020b` 合入（`client-fabric` 的构建把 `synaxis.vectors.dir` 指到上面这个目录，两端读的是同一批文件、不是各自一份拷贝），执行前先在主构建跑一次 `./gradlew :protocol:publishToMavenLocal --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts`——客户端按坐标消费 `:protocol`（设计文档 `ADR-M2-015`）。
 
 | # | 操作 | 预期 |
 | --- | --- | --- |
 | 1 | `ls protocol/src/test/resources/vectors/*.bin \| wc -l` | 输出 `9`（`C2S_HELLO`、`S2C_HELLO`、`C2S_CAMERA`、`C2S_SELECT`、`C2S_MOVE_ORDER`、`S2C_ORDER_RESULT`、`S2C_UNIT_SPAWN`、`S2C_UNIT_STATE`、`S2C_UNIT_DESPAWN` 各一个） |
 | 2 | `ls protocol/src/test/resources/vectors/edge/*.bin \| wc -l` | 输出 `9`，文件名与第 1 步一一同名（边界档：`count` 取上限 8 / 512 与取零、VarInt 取满五字节、`zoom` 取区间端点、`flags` / `team` 取 0） |
 | 3 | `./gradlew :protocol:test --rerun-tasks --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts` | `BUILD SUCCESSFUL`；`ProtocolVectorTest` 的 18 条 `aFrozenVectorDecodesAndReEncodesByteForByte` 全绿（decode 后再 encode 与原文件逐字节相同、且解码器把每条向量读到一个字节不剩），`theFrozenVectorsAreBoundToTheSchemaVersion` 也绿（`manifest.txt` 的 `schema_version` 等于 `ProtocolSchema.SCHEMA_VERSION`、`digest` 等于全部 `.bin` 的实算摘要） |
-| 4 | `cd client-fabric && ./gradlew test`（客户端侧跑同一份向量） | `BUILD SUCCESSFUL`；同样逐字节相同 |
-| 5 | 改掉某个 `.bin` 的一个字节后重跑第 3 步，再 `git checkout -- protocol/src/test/resources/vectors` | 第 3 步红两条：该向量的逐字节对拍点名文件名，摘要那条打出设计文档 §24 的「升 `SCHEMA_VERSION` 并重新冻结向量」提示；还原后 `git status --porcelain` 无输出 |
+| 4 | `cd client-fabric && ./gradlew test --no-daemon`（客户端侧跑同一份向量） | `BUILD SUCCESSFUL`；`FrozenVectorTest` 20 条全绿——19 条 `aFrozenVectorSurvivesTheClientCodecByteForByte` 把每个 `.bin` 经客户端的编解码路径（`rts:game` 的 14 条走 `GamePayload.CODEC` 与 Minecraft 的 `RegistryFriendlyByteBuf`，两条握手向量走 `HandshakeMessages`，`archetype_box.bin` 走 `ArchetypeBox.writeTable`）解出来再写回去，与原文件逐字节相同；`theVectorsAreTheOnesThisBuildsProtocolJarSpeaks` 把这批文件绑在客户端消费的那个 `:protocol` 工件上（`manifest.txt` 的 `schema_version` 等于该工件的 `ProtocolSchema.SCHEMA_VERSION`、`digest` 等于 19 个 `.bin` 的实算摘要、条数为 19） |
+| 5 | 改掉某个 `.bin` 的一个字节后重跑第 3、4 步，再 `git checkout -- protocol/src/test/resources/vectors` | 第 3 步红两条：该向量的逐字节对拍点名文件名，摘要那条打出设计文档 §24 的「升 `SCHEMA_VERSION` 并重新冻结向量」提示；第 4 步红在 `theVectorsAreTheOnesThisBuildsProtocolJarSpeaks`（客户端只对拍往返与摘要，期望值那一份事实源在服务端侧，见该测试的类注释）；还原后 `git status --porcelain` 无输出 |
 | 6 | 把 `C2SCamera#write` 里 `zoom` 与 `cameraYaw` 的写入顺序对调后重跑第 3 步，再还原该文件 | `c2s_camera.bin` 与 `edge/c2s_camera.bin` 两条红——改了布局而没重新冻结向量，构建不可能绿；还原后第 3 步回到 `BUILD SUCCESSFUL` |
 
 后置：确认工作区干净。
@@ -1528,22 +1529,24 @@ REQ-M2 ↔ TC 对照（手工维护）：
 
 #### `TC-GAME-045` 客户端模组独立构建与资源打包 — 对应 `REQ-M2-020` · 级别: 回归 · 执行者: AI
 
-前置：`REQ-M2-020` 已合入；`client-fabric/` 在仓库内但不进主构建。
+前置：`REQ-M2-020` 已合入（`20a` 骨架 + `20b` 工程完备）；`client-fabric/` 在仓库内但不进主构建。第 1～7 步在本机可跑，第 8 步要把分支推上去才看得到。
 
 | # | 操作 | 预期 |
 | --- | --- | --- |
 | 1 | `grep -n "client-fabric" settings.gradle.kts` | 退出码 1、无输出（独立 Gradle 构建，见 `ADR-M2-015`） |
-| 2 | `./gradlew publishToMavenLocal --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts`，再 `cd client-fabric && ./gradlew build` | 两条命令都 `BUILD SUCCESSFUL`；`client-fabric/build/libs/` 下生成模组 jar |
-| 3 | `unzip -l <模组 jar>` | 含 `fabric.mod.json`、`assets/` 下的自定义模型资源，以及 `:protocol` 的类（直接打入或 JiJ 嵌套） |
+| 2 | `./gradlew :protocol:publishToMavenLocal --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts`，再 `cd client-fabric && ./gradlew build --no-daemon` | 两条命令都 `BUILD SUCCESSFUL`；`client-fabric/build/libs/` 下生成模组 jar；客户端 `check` 里 `:verifyModJar` 打出一行 `mod jar: minecraft=26.2, <N> entries, ships META-INF/jars/protocol-<版本>.jar` |
+| 3 | `unzip -l <模组 jar>` | 含 `fabric.mod.json`、`assets/synaxis/` 下的资源（`lang/en_us.json`、`lang/zh_cn.json`——§14 那十个 `synaxis:*` 断线原因键的文案，没有它模组玩家看到的也是原始键；以及 `icon.png`），以及 `META-INF/jars/protocol-<版本>.jar`（`:protocol` 以 JiJ 嵌套形式共享）。**单位模型资源不在本步范围内**：单位当前用原版物品当可见物，给 display 实体配 `minecraft:item_model` 指向模组内自定义模型是 `ADR-M2-002` 落到渲染那一步的事，届时这一行补上模型与贴图路径。前三类由构建期的 `:verifyModJar` 断言，不靠人记得 unzip |
 | 4 | `unzip -p <模组 jar> fabric.mod.json \| grep minecraft` | minecraft 依赖写死为 `"26.2"`，不是 `">=26.2"` |
 | 5 | `grep -n "configuration-cache" client-fabric/gradle.properties` | 值为 `false`（Loom 要求，与主仓库的 configuration-cache 分开） |
-| 6 | 在模组 jar 里查服务端引擎类（如 `unzip -l <模组 jar> \| grep -c "synaxis/instance"`） | 输出 `0`（只共享 `:protocol`，不把引擎塞进客户端） |
+| 6 | 在模组 jar 里查服务端引擎类（如 `unzip -l <模组 jar> \| grep -c "synaxis/instance"`） | 输出 `0`（只共享 `:protocol`，不把引擎塞进客户端）；同一判据由 `:verifyModJar` 按「`io/github/bearisbug/synaxis/` 下除客户端包以外的 `.class` 为 0」断言 |
+| 7 | 把 `fabric.mod.json` 的 minecraft 依赖临时改成 `">=${minecraftVersion}"` 后重跑第 2 步，再 `git checkout -- client-fabric/src/main/resources/fabric.mod.json` | `:verifyModJar` 红并打出「`fabric.mod.json` 的 minecraft 依赖是 >=26.2，不是钉死的 26.2」；还原后复绿（同样的反证对资源与引擎类两条也成立：删掉 `assets/synaxis/lang/` 会红在「模组 jar 里没有 `assets/` 下的资源」） |
+| 8 | 推分支后看 GitHub Actions 的 `Client mod` 工作流 | 三步全绿——`env -u CI ./gradlew :protocol:publishToMavenLocal`（CI 上签名是强制的，这个 job 没有也不需要 GPG 私钥）、`client-fabric` 的 `build`、上传模组 jar 与测试报告；产物里有模组 jar，测试报告含 `FrozenVectorTest` |
 
-后置：无。
+后置：确认工作区干净（第 7 步的临时改动已还原）。
 
 #### `TC-GAME-046` 模组只在 26.2 profile 可装 — 对应 `REQ-M2-020` · 级别: 边缘 · 执行者: 人工
 
-前置：本机同时有 26.2 与 26.3 两个 Fabric profile。
+前置：本机同时有 26.2 与 26.3 两个 Fabric profile，且已按 `docs/research/client-spikes-2026-09/README.md` 的「前置」装好模组 jar 与 `fabric-api`。**三步都要人工在有图形环境的机器上做，仓库里的 agent 一步也跑不到**（自动化能到的只有 jar 里那条版本钉死，见 `TC-GAME-045` 第 4、7 步）。**第 3 步另有一层阻塞**：模组当前只注册了 `rts:game` 的 play 两个方向，还没有 `synaxis:handshake` 的客户端侧，玩法模式下会在 3 s 后被 `synaxis:client-mod-required` 踢——它要等 spike S1（同一份清单）判掉 `ADR-M2-010` 并把握手写进模组；在那之前这一步只能用核心模式（豁免握手）判到「能进世界」。
 
 | # | 操作 | 预期 |
 | --- | --- | --- |

@@ -210,6 +210,7 @@ python3 tools/pkgdeps.py game-rts/src/main/java   --root-package io.github.beari
 | `plugin-api/` | M2 子项目：唯一稳定面，引擎与 `protocol` 类型的受控再导出；接 ABI 门 |
 | `server-app/` | M2 子项目：插件宿主与装配层（唯一启动入口），跑 classpath，不出模块 |
 | `game-rts/` | M2 子项目：RTS 玩法插件，由宿主用 `ServiceLoader` 发现 |
+| `client-fabric/` | M2 客户端模组工程（`REQ-M2-020a` 最小骨架）：Fabric Loom 的**独立 Gradle 构建**，自带 wrapper，不进 `settings.gradle.kts`（`ADR-M2-015`）；`:protocol` 从 `mavenLocal()` 按坐标消费并 JiJ 进模组 jar |
 | `build-src/` | Gradle 约定插件（toolchain、Error Prone、发布、ABI 检查） |
 | `gradle/init/` | 构建用的临时 init 脚本，目前只有阿里云镜像脚本，见 §2.1 |
 | `gradle/libs.versions.toml` | 版本目录：所有第三方版本与 `minecraft = "26.2"` 都钉在这里 |
@@ -223,6 +224,7 @@ python3 tools/pkgdeps.py game-rts/src/main/java   --root-package io.github.beari
 | `docs/test-runs/` | 各轮测试的证据目录（`RUN-*`） |
 
 版本钉死口径：Minecraft 26.2 / 协议 776（`src/main/resources/data/constants.json`）、JDK 25、Gradle 9.7.1。
+**客户端侧另有一份且不在版本目录里**：`client-fabric/build.gradle.kts` 顶部的 `minecraftVersion` / `loaderVersion` / `fabricApiVersion`（26.2 / 0.19.5 / 0.161.0+26.2）——独立构建读不到 `gradle/libs.versions.toml`，升版本时这三个常量必须单独改，`fabric.mod.json` 的 minecraft 依赖由第一个常量展开。
 
 ---
 
@@ -236,8 +238,8 @@ python3 tools/pkgdeps.py game-rts/src/main/java   --root-package io.github.beari
 4. **改包定义**：按 diff 改 `network/packet/**`；每个改动过的包都必须有往返测试。
 5. **改常量表**：从 git 历史复活 `code-generators`（REQ-008 删除前的最后版本在 commit `b162f394e8`），用新数据跑一次（入参 `<注册表数据目录> <输出目录>`），把输出与我们手工裁剪过的 `src/main/java`（原生成物已并入，REQ-008） 做三方合并——生成器会覆盖裁剪，必须人工合。
 6. **注册表**：新增 / 删除的注册表在 `Registries.java` 与 `OpaqueRegistry` 里加减，并跑 `RegistryDataPacket` 字节对比那道门（`docs/TEST.md` TC-007）。
-7. **客户端**：Fabric 模组同步升 Loader / Yarn / API，自定义 payload 的编解码用共享测试向量在两端各跑一遍。
-8. **验收**：原版客户端加我们的 Fabric 模组走完整「登录 → 进世界 → 自定义协议往返」；`./gradlew check` 全绿；ArchUnit 绿。同时更新 §5 里的版本钉死口径与 `gradle/libs.versions.toml` 的 `minecraft`。
+7. **客户端**：Fabric 模组同步升 Loader / Yarn / API——改的是 `client-fabric/build.gradle.kts` 的 `minecraftVersion` / `loaderVersion` / `fabricApiVersion` 三个常量（版本目录管不到它），自定义 payload 的编解码用共享测试向量在两端各跑一遍。
+8. **验收**：原版客户端加我们的 Fabric 模组走完整「登录 → 进世界 → 自定义协议往返」；`./gradlew check` 全绿；ArchUnit 绿。同时更新 §5 里的版本钉死口径、`gradle/libs.versions.toml` 的 `minecraft` 与 `client-fabric/build.gradle.kts` 的三个版本常量（漏掉最后一处，服务端升了而客户端会静默停在旧版本）。
 
 ---
 

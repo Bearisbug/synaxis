@@ -71,7 +71,9 @@ public void sendPacket(Packet<?> packet, ChannelFutureListener callback) {
 
 整条链只有两个 `requireNonNull` 和一次 `connection.send`。`sendableChannels` 这个字段在
 `AbstractChanneledNetworkAddon` 里只由 `registerChannel` / `unregister` 写、由 `getSendableChannels()` 读，
-而 `getSendableChannels()` 的调用点只有 `getSendable()` 与 `canSend()` 两处。
+而 `getSendableChannels()` 在整个 jar 里的调用点是：四个门面（client / server × configuration / play）各自的
+`getSendable()` 与 `canSend()` 这一对，外加 `ServerConfigurationPacketListenerImplMixin`（服务端拿它填 channel info）。
+**客户端的发送路径一处也不读它。**
 
 ## 问题二：`canSend` 与 `send` 是什么关系
 
@@ -180,7 +182,8 @@ player.sendPacket(PluginMessagePacket.brandPacket(process.brandName()));
 `ADR-M2-010` 的「落地形态与退路」说 login 阶段是改一个属性的事。核过了，确实是：
 
 - 开关：`HandshakeGate.PHASE_PROPERTY = "synaxis.app.handshake-phase"`，取值 `configuration`（默认）/ `login`，
-  非这两个值即按非法启动参数拒启（`server-app/src/main/java/io/github/bearisbug/synaxis/app/HandshakeGate.java:78`）。
+  非这两个值即按非法启动参数拒启（判断在同文件 `phase()` 的
+  `server-app/src/main/java/io/github/bearisbug/synaxis/app/HandshakeGate.java:163-171`，属性名声明在 `:80`）。
 - login 形态的实现是同一个类里的 `negotiateDuringLogin(AsyncPlayerPreLoginEvent)`，用同一对
   `C2S_HELLO` / `S2C_HELLO` record，判据从「3 s 静默」换成「空负载应答」。
 - 验收脚本已经就位：`docs/TEST.md` 的 `TC-GAME-061`（三次起停，含第 7 步确认没有落进引擎那条

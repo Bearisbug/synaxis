@@ -20,7 +20,7 @@ $JAVA_HOME/bin/javap -p -cp $J net.minecraft.client.Camera
 
 | spike | 在本文件的哪一节 | 还剩什么 |
 | --- | --- | --- |
-| ① `:protocol` 被 Fabric JiJ / 跨构建消费 | **S0** | 构建期那一半已验（`REQ-M2-020a`）、CI 上的跨构建消费也已验（`REQ-M2-020b`）；只剩「Fabric Loader 真加载这个嵌套 jar」这一步要启动一次客户端 |
+| ① `:protocol` 被 Fabric JiJ / 跨构建消费 | **S0** | 构建期那一半已验（`REQ-M2-020a`）、跨构建消费的**本机等价链**也已验（`REQ-M2-020b`：`:protocol:publishToMavenLocal` + `client-fabric` 的 `build`），CI 工作流 `.github/workflows/client-mod.yml` 本身**一次都没跑过**，待首次推分支后确认（`TC-GAME-045` 第 8 步）；只剩「Fabric Loader 真加载这个嵌套 jar」这一步要启动一次客户端 |
 | ② 相机、剔除、反投影、section 可见性与输入路径 | **S2 / S3 / S4 / S5** | 整个 spike 都要肉眼看画面，一步也没做 |
 | ③ 1,024 个区块的墙钟与堆增量 | **S6（本轮已跑完）** | 无。数字见该节，验收人不用做 |
 | ④ configuration 阶段能不能发包 | **S1** | 源码结论已出（见 `spike4-configuration-send.md`：**能发**），但那是读 jar 得出的；运行期这一半仍要跑，`ADR-M2-010` 在跑出来之前保持 Proposed |
@@ -49,8 +49,19 @@ cd client-fabric && ./gradlew build --no-daemon      # → build/libs/client-fab
 - 判据：① 游戏日志里有 `synaxis` 模组被加载、**没有** `NoClassDefFoundError` /
   `ModResolutionException`；② Mods 列表里 `synaxis` 存在（嵌套的 `protocol` 作为它的 JiJ 依赖，
   Loom 给它生成的 id 是 `io_github_bearisbug_synaxis_protocol`）；③ 能进世界。
-- 不通过时：把 `:protocol` 的发布版本改成 SemVer（`-PGAME_ENGINE_VERSION=0.1.0` 一类）再试；仍不行
-  则去掉 `include`、改成把 `:protocol` 的类 shade 进模组 jar，并回来改 `ADR-M2-015`。
+- 不通过时：把 `:protocol` 的发布版本改成 SemVer 再试。版本号**只认环境变量** `GAME_ENGINE_VERSION`
+  —— `build-src/src/main/kotlin/synaxis.java-library.gradle.kts` 与 `client-fabric/build.gradle.kts` 都写的是
+  `System.getenv("GAME_ENGINE_VERSION") ?: "dev"`，Gradle 的 `-P` 是 project property，进不了 `System.getenv`，
+  加了等于没加。**发布与客户端构建必须带同一个变量**：只给发布那条，客户端仍会去解析 `protocol:dev` 而直接失败。
+
+  ```bash
+  export GAME_ENGINE_VERSION=0.1.0                      # 两条命令共用同一个 shell
+  ./gradlew :protocol:publishToMavenLocal --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts
+  cd client-fabric && ./gradlew build --no-daemon
+  ```
+
+  此时嵌套 jar 的名字随之变成 `META-INF/jars/protocol-0.1.0.jar`，上面判据 ② 照此看。仍不行则去掉 `include`、
+  改成把 `:protocol` 的类 shade 进模组 jar，并回来改 `ADR-M2-015`。
 - 回写：`docs/DESIGN-M2.md` §28.2 里 spike ① 那一行（目前写着「剩运行期一半」）。
 
 ## S1 configuration 阶段能不能发包（spike ④，`ADR-M2-010` 的全部赌注）

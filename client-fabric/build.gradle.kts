@@ -1,3 +1,5 @@
+import java.util.zip.ZipFile
+
 plugins {
     id("fabric-loom") version "1.17.21"
 }
@@ -52,8 +54,15 @@ tasks.withType<JavaCompile>().configureEach {
     options.release = 25
 }
 
+// The frozen wire vectors of §24, read where the engine build keeps them. Both ends run the same
+// files rather than a copy each: a copy is a second thing to keep in step, which is the drift the
+// vectors exist to catch.
+val frozenVectors = layout.projectDirectory.asFile.parentFile.resolve("protocol/src/test/resources/vectors")
+
 tasks.withType<Test>().configureEach {
     useJUnitPlatform()
+    systemProperty("synaxis.vectors.dir", frozenVectors.absolutePath)
+    inputs.dir(frozenVectors).withPropertyName("frozenVectors").withPathSensitivity(PathSensitivity.RELATIVE)
     // Loading Minecraft classes brings its log4j2 configuration along, which writes `logs/` under
     // the working directory; keep that inside the build directory so `clean` takes it away.
     workingDir = layout.buildDirectory.dir("test-workdir").get().asFile
@@ -73,3 +82,49 @@ tasks.processResources {
         )
     }
 }
+
+// What the mod jar ships is itself a delivery criterion (REQ-M2-020b, docs/TEST.md TC-GAME-045),
+// and every one of these four facts is silent when it breaks: a jar that lost its resources, or
+// quietly loosened the version pin, still builds and still loads.
+val verifyModJar = tasks.register("verifyModJar") {
+    group = "verification"
+    description = "Asserts what the mod jar ships: the pinned game version, the resources, the shared codec, no engine"
+
+    val modJar = tasks.named<AbstractArchiveTask>("remapJar").flatMap { it.archiveFile }
+    val pinnedVersion = minecraftVersion
+    inputs.file(modJar)
+
+    doLast {
+        ZipFile(modJar.get().asFile).use { jar ->
+            val entries = jar.entries().asSequence().map { it.name }.toList()
+
+            val descriptor = jar.getEntry("fabric.mod.json") ?: error("模组 jar 里没有 fabric.mod.json")
+            val declared = Regex("\"minecraft\"\\s*:\\s*\"([^\"]*)\"")
+                .find(jar.getInputStream(descriptor).use { it.reader(Charsets.UTF_8).readText() })
+                ?.groupValues?.get(1)
+            check(declared == pinnedVersion) {
+                "fabric.mod.json 的 minecraft 依赖是 $declared，不是钉死的 $pinnedVersion（REQ-M2-020：不接受 >= 区间）"
+            }
+
+            check(entries.any { it.startsWith("assets/synaxis/lang/") && it.endsWith(".json") }) {
+                "模组 jar 里没有 assets/ 下的资源——断线原因键会以 synaxis:… 原文显示给玩家（§14）"
+            }
+
+            val nested = entries.filter { it.startsWith("META-INF/jars/") && it.endsWith(".jar") }
+            check(nested.size == 1 && nested.single().contains("protocol")) {
+                "模组 jar 应当恰好 JiJ 一个 :protocol（ADR-M2-015），实际是 $nested"
+            }
+
+            val engine = entries.filter {
+                it.endsWith(".class") &&
+                    it.startsWith("io/github/bearisbug/synaxis/") &&
+                    !it.startsWith("io/github/bearisbug/synaxis/game/client/")
+            }
+            check(engine.isEmpty()) { "模组 jar 里混进了客户端包之外的服务端类：${engine.take(5)}" }
+
+            logger.lifecycle("mod jar: minecraft=$declared, ${entries.size} entries, ships ${nested.single()}")
+        }
+    }
+}
+
+tasks.named("check") { dependsOn(verifyModJar) }

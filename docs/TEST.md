@@ -14,6 +14,7 @@
 
 | 日期 | 改动 | 作者 |
 | --- | --- | --- |
+| 2026-09-21 | 跟进 `docs/DESIGN-M2.md` v0.32（阶段 0 的 spike ③ 与 spike ④ 收口）。**没有任何用例的判据被改**，只有两处备注：① §2 不测表里四个 spike 那一行注明每个 spike 还剩什么（③ 已跑完、④ 只剩运行期）；② **`TC-GAME-029` 保留 ID，步骤表与判据一字未改**，第 2 步的期望列后面补一句——`heap_delta_mb < 50` 这半条**恒真**，因为该字段是 `totalMemory - freeMemory` 的前后差再 `max(0, …)`，载入中一次 young GC 就让它读 0（`rts-512` 与 `rts-128` 实测都是 0）；整图真实堆增量 ≈ 9.2 MiB 由 spike ③ 用「就绪后强制 GC 取存活堆、两个预设相减」量出，写在 `docs/research/client-spikes-2026-09/README.md` 的 S6。让这半条可证伪是一条独立改动，登记在设计文档 §28.2，本轮没有动实现，所以判据不改 | Bearisbug |
 | 2026-09-21 | 跟进 `docs/DESIGN-M2.md` v0.31（阶段 6a 的 `REQ-M2-020b`：客户端侧双端向量、CI、资源打包与跨构建消费定型）。**`TC-GAME-017` 保留 ID**：第 4 步由「阻塞」改成可执行——客户端构建把 `synaxis.vectors.dir` 指向 `protocol/src/test/resources/vectors`，两端读同一批文件，判据写成 `FrozenVectorTest` 的 20 条（19 条往返 + 一条把向量绑在客户端消费的 `:protocol` 工件上）；前置补上「先 `publishToMavenLocal`」，第 5 步补上第 4 步会红在哪一条。**`TC-GAME-045` 保留 ID**：第 2 步改用 `:protocol:publishToMavenLocal` 并补 `:verifyModJar` 的输出行，第 3 步按 jar 的实际内容写准（`assets/synaxis/lang/*.json` 与 `icon.png`、JiJ 的 `:protocol`；**单位模型资源移出本步**——单位当前用原版物品当可见物，自定义模型要等 `ADR-M2-002` 落到渲染那一步），第 6 步注明同一判据已有构建期门禁，新增第 7 步（反证门禁有齿）与第 8 步（CI 的 `Client mod` 工作流）。**`TC-GAME-046` 保留 ID，步骤表未动**，只在前置写明三步都要人工在有图形环境的机器上做、且第 3 步还压在「模组尚未注册 `synaxis:handshake` 客户端侧」上。第 1 步的期望值由 `9` 改正为 `10`——`archetype_box.bin` 自 v0.28 起就在同一目录，照原文执行第一步就不成立（本轮实跑发现）。§2 不测表后那条说明同步 | Bearisbug |
 | 2026-09-21 | 跟进 `docs/DESIGN-M2.md` v0.30（阶段 0 的 `REQ-M2-020a` 落地：客户端模组最小骨架）。**`TC-GAME-017` 保留 ID，只改前置的一句话**——第 4 步的阻塞条件原先写的是「`client-fabric` 工程已建」，而工程已经随 `REQ-M2-020a` 建好了、客户端侧却还没有那份向量的夹具，照原文读会让这一步看起来已解除阻塞；改成按 `REQ-M2-020b` 判（夹具与客户端侧 CI 是阶段 6a 的事，见设计文档 §24 的两阶段验收）。步骤表与判据一个字未改。`TC-GAME-045` 正文未动，只按 `:protocol` 的 JiJ 落地更新了 §2 不测表后那条说明的可测范围（第 6 步已能跑、第 3 步半数成立），并在同一处补上四个 spike 的执行清单路径 | Bearisbug |
 | 2026-09-19 | 阶段 5 退出条件逐条实跑的同轮工具补齐（**判据一条没改，也没有换 ID**）。**§3 环境段**：探针表新增 `march` 一行（压测陪跑件：保持连接、把 `unit_id=1..N` 一直派在路上，并按秒采样快照里报 `moving` 的单位数——阶段 5 起「走动中的单位」给每个 viewer 带实体位置包，而基线是在没有这份下行时测的），`order` 行补 `--select`（同一条连接上先选中再下令）；`PacketFlood` 那一段写上**打玩法模式必须加 `--hello true`**（默认不发 `C2S_HELLO` 是 `TC-GAME-060` 在核心模式上判的那条路径，玩法模式 3 秒不握手就踢，不加会 0/50 登录成功）。**语义未变、只把占位填成实际命令**：`TC-GAME-039` 第 4 步（`order --select 1,<N>`，并写上 `unit_selected` 那一行的 `count=1` / `rejected_count=1`）。本轮的实跑数字与核心基线对照见 `docs/research/soak-2026-09-18/report.md`「阶段 5 之后的复跑」一节 | Bearisbug |
@@ -108,7 +109,7 @@ REQ-M2 ↔ TC 对照（手工维护）：
 | M2 新增自动化（`:protocol` 双端向量测试、宿主的 descriptor 校验 / 生命周期 / 通道路由单测、ArchUnit 规则对合成 `JavaClasses` 的自测、F29 与 F11 的复现测试、jacoco 与 diff-cover 本身） | 代码仓测试套件，策略见 `docs/DESIGN-M2.md` §19；本文档只在 TC 步骤里调用它们并判读可观察输出，不复制其断言 |
 | 50 连接 + 1,000 单位的全量压测与 `docs/DESIGN-M2.md` §15 的整表性能阈值（tick P99、出站带宽、进程内存、客户端 ≥ 60 FPS） | `docs/DESIGN-M2.md` §23 上线前检查单的专项脚本，当前无归属——已知风险（本文档只在 TC-GAME-042 打到 Gherkin 写明的「64 条并发指令」这一档） |
 | 安全渗透（畸形包模糊测试之外的攻击面） | 无归属——已知风险 |
-| `docs/DESIGN-M2.md` §26 阶段 0 的四个 spike（`:protocol` 的 JiJ 消费、相机形态、地图生成与载入实测、Fabric 在 configuration 阶段能否发包） | 设计文档 §26，结论回写设计文档；spike 不是验收，不进本文档（四个 spike 的执行清单在 `docs/research/client-spikes-2026-09/README.md`）。**客户端模组本身（`REQ-M2-020a` 的骨架与 `REQ-M2-020b` 的工程完备）不属此列**——它是交付物，由 TC-GAME-045 覆盖（本机跑得到第 1～7 步，第 8 步要推分支才看得到 CI） |
+| `docs/DESIGN-M2.md` §26 阶段 0 的四个 spike（`:protocol` 的 JiJ 消费、相机形态、地图生成与载入实测、Fabric 在 configuration 阶段能否发包） | 设计文档 §26，结论回写设计文档；spike 不是验收，不进本文档（四个 spike 的执行清单在 `docs/research/client-spikes-2026-09/README.md`，开头一张表说明每个 spike 还剩什么：**③ 已于 2026-09-21 在服务端跑完**，**④ 已有源码级结论、只剩运行期那一半**，① 剩运行期一半，② 整个都要肉眼看画面）。**客户端模组本身（`REQ-M2-020a` 的骨架与 `REQ-M2-020b` 的工程完备）不属此列**——它是交付物，由 TC-GAME-045 覆盖（本机跑得到第 1～7 步，第 8 步要推分支才看得到 CI） |
 | 客户端渲染观感（相机形态、选中框样式、HUD 文案、动效） | 无用例——主观项；只在 TC-GAME-047 的录屏与截图里留证据供人评判 |
 | 设计文档 §19 中「CI 门禁拦截并发回归 / 分层违规」两个场景 | 由 TC-021、TC-006 以「故意提交坏改动到临时分支」方式可操作化，见 §4 |
 
@@ -1206,7 +1207,7 @@ REQ-M2 ↔ TC 对照（手工维护）：
 | # | 操作 | 预期 |
 | --- | --- | --- |
 | 1 | 以该预设启动 `server-app` | 进入就绪；`grep match_created logs/events-*.jsonl` 与 `grep match_started logs/events-*.jsonl` **各恰有一行**（M2 单局），`match_id` 相同 |
-| 2 | 查看 `match_started` 事件的属性 | `chunk_count` 为 `1024`（全部生成完成才进 running）、`load_ms` < 3000、`heap_delta_mb` < 50 |
+| 2 | 查看 `match_started` 事件的属性 | `chunk_count` 为 `1024`（全部生成完成才进 running）、`load_ms` < 3000、`heap_delta_mb` < 50。**后半条恒真，不要拿它当堆预算的证据**：`heap_delta_mb` 是 `totalMemory - freeMemory` 的前后差再 `max(0, …)`，载入中发生一次 young GC 它就读 0（2026-09-21 实测 `rts-512` 与 `rts-128` 都是 0）。整图真实堆增量 ≈ 9.2 MiB，量法与数字见 `docs/research/client-spikes-2026-09/README.md` 的 S6；让这半条可证伪是一条独立改动，登记在设计文档 §28.2 |
 | 3 | 跑 `./gradlew :game-rts:test --tests 'io.github.bearisbug.synaxis.game.rts.MatchIntegrationTest' --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts`（进程内没有打印 `autoChunkLoad` 的运维入口，该断言由 `theWholeMapIsGeneratedBeforeTheMatchRuns` 覆盖） | `BUILD SUCCESSFUL`；该方法断言整图区块数到齐、`hasEnabledAutoChunkLoad()` 为 `false`、实例已注册 |
 | 4 | 用探针握手登录进入 play | 进入世界并收到区块包，未出现 `synaxis:internal-error` 或 `synaxis:match-unavailable` |
 | 5 | 检查就绪日志与 `match_started` 的先后 | `match_started` 的时间戳早于就绪日志（对局在 bind 之前就已 running，见 `API-M2-010` 启动序列） |

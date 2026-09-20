@@ -2,7 +2,8 @@
 
 `docs/DESIGN-M2.md` §26 阶段 0 的 spike ② 要的是**肉眼看画面**的结论，spike ① 与 spike ④ 各剩一半
 只有真启动一次客户端才判得掉。这台仓库所在的机器没有图形环境，所以这几件事由**验收人在自己机器上**
-做；本文件是照着能执行的步骤、判据与回写目标，不是重述设计文档。
+做；本文件是照着能执行的步骤、判据与回写目标，不是重述设计文档。spike ③ 不需要客户端，已在服务端
+跑完（见 S6），列在这里只是为了让四个 spike 的账是齐的。
 
 - 执行人：验收人（Bearisbug）。仓库里的 agent 不启动客户端。
 - 产物：每个 spike 一段结论 + 截图 / 数字，截图放本目录，结论**回写设计文档对应那一行**（每节末尾点名）。
@@ -14,6 +15,15 @@ export JAVA_HOME=/opt/homebrew/opt/openjdk@25/libexec/openjdk.jdk/Contents/Home
 J=~/.gradle/caches/fabric-loom/26.2/minecraft-client.jar   # Loom 第一次构建时已解包，勿重下
 $JAVA_HOME/bin/javap -p -cp $J net.minecraft.client.Camera
 ```
+
+§26 阶段 0 的四个 spike 与本文件各节的对应：
+
+| spike | 在本文件的哪一节 | 还剩什么 |
+| --- | --- | --- |
+| ① `:protocol` 被 Fabric JiJ / 跨构建消费 | **S0** | 构建期那一半已验（`REQ-M2-020a`）、CI 上的跨构建消费也已验（`REQ-M2-020b`）；只剩「Fabric Loader 真加载这个嵌套 jar」这一步要启动一次客户端 |
+| ② 相机、剔除、反投影、section 可见性与输入路径 | **S2 / S3 / S4 / S5** | 整个 spike 都要肉眼看画面，一步也没做 |
+| ③ 1,024 个区块的墙钟与堆增量 | **S6（本轮已跑完）** | 无。数字见该节，验收人不用做 |
+| ④ configuration 阶段能不能发包 | **S1** | 源码结论已出（见 `spike4-configuration-send.md`：**能发**），但那是读 jar 得出的；运行期这一半仍要跑，`ADR-M2-010` 在跑出来之前保持 Proposed |
 
 ## 前置：把模组装进 26.2
 
@@ -47,19 +57,39 @@ cd client-fabric && ./gradlew build --no-daemon      # → build/libs/client-fab
 
 - 要判的：Fabric 客户端能否向一个**从不发 `minecraft:register`** 的服务端在 configuration 阶段
   发自定义负载。发不出去，则每个装了模组的玩家 3 s 后被 `synaxis:client-mod-required` 踢掉。
-- 本轮交付的骨架**只注册了 play 两个方向**，做这个 spike 要先加一次性的三行（做完删掉，或按结论
-  留下）：`PayloadTypeRegistry.serverboundConfiguration()` 注册 `synaxis:handshake` 的
-  `C2S_HELLO`、`clientConfiguration()` 收 `S2C_HELLO`，并在
-  `ClientConfigurationNetworking` 的 ready 事件里发一次
-  `C2SHello(mod_version, ProtocolSchema.SCHEMA_VERSION)`（`SCHEMA_VERSION` 当前 = 1）。
-  编解码照 `GamePayload` 的做法委托 `HandshakeMessages`，不要另写一份。
+- **先读 `spike4-configuration-send.md`**：那是同目录的源码级结论（`fabric-networking-api-v1:6.3.4+2989c6a09e`
+  的源码与字节码），一句话是**发得出去** —— `send()` 这条路上根本不读对端声明的通道集合，`canSend()`
+  只是一句与 `send()` 无关的查询。本节要跑的就是把那个桌面结论变成运行期事实；**跑出来之前
+  `ADR-M2-010` 保持 Proposed，不要提前改它的 Status。**
+- 本轮交付的骨架**只注册了 play 两个方向**，做这个 spike 要先加一次性的几行（做完删掉，或按结论
+  留下）。照抄下面这三件，编解码委托 `HandshakeMessages`，不要另写一份：
+
+  1. `PayloadTypeRegistry.serverboundConfiguration().register(...)` 注册 `synaxis:handshake` 的
+     `C2S_HELLO`，`PayloadTypeRegistry.clientboundConfiguration().register(...)` 注册 `S2C_HELLO`；
+     `ClientConfigurationNetworking.registerGlobalReceiver(...)` 收后者。
+     两个方向都要注册——编码器按这张表找 codec，漏一个是「本地就发不出去」，与服务端无关。
+  2. 在 **`ClientConfigurationConnectionEvents.START`** 里发一次
+     `C2SHello(mod_version, ProtocolSchema.SCHEMA_VERSION)`（`SCHEMA_VERSION` 当前 = 1）。
+  3. `START` 的回调跑在 netty 线程上（`ClientConfigurationNetworkAddon.isOnReceiveThread()` 对
+     configuration 返回 `true`），发包本身线程安全，但别在里面碰任何客户端主线程状态。
+
+  **不要挂 `READY`**：它已经 `@Deprecated`，实现上与 `COMPLETE` 同句触发，也就是收到
+  `ClientboundFinishConfigurationPacket` 之后 —— 那时服务端的 3 s 早就超时了。四个事件里只有 `START`
+  的 Javadoc 写着「Packets may be sent during this event」。
+  `START` 由服务端发来的 `minecraft:brand` 点着（Fabric 把「只发 brand、不发 register」当成原版服务端），
+  而本引擎 `ConnectionManager#doConfiguration` 的第一句就是发 brand、之后才进握手等待，顺序是对的。
 - 步骤：起**玩法模式**服务端（默认 `synaxis.app.handshake-phase=configuration`）→ 客户端登录。
 - 判据（三选一，都可观察）：① 进世界且服务端日志出现 `client_verified` / 无 kick → **发得出去，
   `ADR-M2-010` 转 Accepted**；② 客户端被 `synaxis:client-mod-required` 踢 → 发不出去；
   ③ 客户端侧抛「channel not registered / cannot send」一类异常 → 同样是发不出去。
+- 落 ② 或 ③ 时先自查一步再下结论：`grep client_rejected logs/events-*.jsonl` 看 `reason`。
+  `mod-missing` 才是「没发出来」；`version-mismatch` 说明包**发到了**，只是 `schema_version` 对不上，
+  那不是 spike ④ 失败，是模组里那个常量取错了。
 - 不通过时的两条退路（设计文档已写死，不要临场发明第三条）：服务端在 configuration 阶段主动补发
-  一次 `minecraft:register`；或 `-Dsynaxis.app.handshake-phase=login` 走 login 形态并把它定为默认。
-- 回写：`ADR-M2-010` 的 Status、§28.2 那条风险行与那条「两条阶段路径必须收敛成一条」的技术债。
+  一次 `minecraft:register`；或 `-Dsynaxis.app.handshake-phase=login` 走 login 形态并把它定为默认
+  （切换步骤见 `spike4-configuration-send.md` 末节，已核过一遍：只值一个启动参数）。
+- 回写：`ADR-M2-010` 的 Status、§28.2 那条风险行与那条「两条阶段路径必须收敛成一条」的技术债，
+  以及 `spike4-configuration-send.md` 开头那句「未在真实客户端上跑过」。
 
 ## S2 相机形态出图：正交 vs 带俯角的透视（spike ② 的选择题）
 
@@ -129,6 +159,40 @@ cd client-fabric && ./gradlew build --no-daemon      # → build/libs/client-fab
 - 不通过时（地形）：把相机 eye 钳在最高的已加载 section 内、只改投影不改 eye 高度——这是 RTS 相机
   mod 的常规解法，记进结论供 6b 实现照抄。
 - 回写：§28.2 那两条（「相机 eye 位置与 section 可见性图」「框选与边缘推屏的输入路径」）。
+
+## S6 1,024 个区块的墙钟与堆增量（spike ③）—— **本轮已跑完，验收人不用做**
+
+这一条不需要客户端，服务端自己就能量，所以 2026-09-21 这一轮直接跑掉了，留在这里只为让四个 spike
+的账是齐的。数字与复现方式如下（本机 macOS 15.3 / Apple Silicon / JDK 25 / G1）：
+
+| 预设 | 区块数 | `load_ms`（两轮） | GC 后存活堆 |
+| --- | --- | --- | --- |
+| `rts-512`（默认） | 1,024 | 147 / 166 | 32,368 KiB |
+| `rts-128` | 64 | 73 | 23,333 KiB |
+
+- **墙钟**：147～166 ms，§15 的预算是 3 s。
+- **堆增量**：两个预设差 960 个区块、差 9,035 KiB，折合 **≈ 9.4 KiB/区块**，整图 1,024 区块
+  **≈ 9.2 MiB**；§15 的预算是 50 MB，§2「整图常驻 25～35 MB」也是按进程整体算的，实测整进程存活堆
+  31.6 MiB 落在里面。
+- **量法（重点）**：不要用事件台账里的 `heap_delta_mb`。它是 `totalMemory - freeMemory` 的前后差再
+  `max(0, …)`，生成过程中只要发生一次 young GC 它就读 0 —— 实测两个预设都是 `heap_delta_mb=0`。
+  真正的数是「起服到就绪后、没有任何连接时，强制 GC 三轮取最后一次的存活堆」，两个预设相减。
+
+复现：
+
+```bash
+export JAVA_HOME=/opt/homebrew/opt/openjdk@25/libexec/openjdk.jdk/Contents/Home
+# 1) 起服（rts-512 与 rts-128 各一次），保持 stdin 打开
+./gradlew :server-app:run --no-daemon --console=plain \
+  --init-script gradle/init/aliyun-mirror.init.gradle.kts -Dsynaxis.app.map=rts-512
+# 2) 另开一个终端，就绪日志出现后：
+PID=$($JAVA_HOME/bin/jcmd -l | grep synaxis.app.Main | awk '{print $1}')
+for i in 1 2 3; do $JAVA_HOME/bin/jcmd $PID GC.run >/dev/null; sleep 2; \
+  $JAVA_HOME/bin/jcmd $PID GC.heap_info | grep garbage-first; done
+# 3) 回到服务端终端输入 stop
+```
+
+- 回写：`docs/DESIGN-M2.md` §15「地图生成」那一行的「待 §26 阶段 0 的 spike 实测确认」（本轮已填）。
 
 ## 做完之后
 

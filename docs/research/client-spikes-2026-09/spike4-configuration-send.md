@@ -189,8 +189,10 @@ player.sendPacket(PluginMessagePacket.brandPacket(process.brandName()));
 - 验收脚本已经就位：`docs/TEST.md` 的 `TC-GAME-061`（三次起停，含第 7 步确认没有落进引擎那条
   `INVALID_PROXY_RESPONSE` 文案）。
 - 切换步骤：给 `:server-app:run` 加 `-Dsynaxis.app.handshake-phase=login`，就绪前那行 `Gameplay mode: …`
-  会以 `in the login phase (schema_version=1)` 结尾；客户端模组侧改为在 `ClientLoginNetworking`
-  注册 `synaxis:handshake` 的 query 应答（`ClientLoginNetworking.registerGlobalReceiver(Identifier, LoginQueryRequestHandler)`，返回一个 `CompletableFuture<FriendlyByteBuf>`），而不是在 `ClientConfigurationConnectionEvents.START` 主动发。
-  探针已经两种形态都支持，不用改。
+  会以 `in the login phase (schema_version=1)` 结尾。**探针与客户端模组都已经两种形态都支持，切换时一行不用改**：
+  模组同时在 `ClientLoginNetworking` 上注册了 `synaxis:handshake` 的 query 应答
+  （`registerGlobalReceiver(Identifier, LoginQueryRequestHandler)`，返回 `CompletableFuture<FriendlyByteBuf>`）
+  与 `ClientConfigurationConnectionEvents.START` 上的主动发送，由服务端的启动参数决定哪条真正用上
+  （2026-09-22 随阶段 6a 落地）。
 
 真走这条时别忘了 §28.2 那条技术债：**赢的那条留下、输的那条连同 `synaxis.app.handshake-phase` 一起删掉**。

@@ -23,7 +23,7 @@ $JAVA_HOME/bin/javap -p -cp $J net.minecraft.client.Camera
 | ① `:protocol` 被 Fabric JiJ / 跨构建消费 | **S0** | 构建期那一半已验（`REQ-M2-020a`）、跨构建消费的**本机等价链**也已验（`REQ-M2-020b`：`:protocol:publishToMavenLocal` + `client-fabric` 的 `build`），CI 工作流 `.github/workflows/client-mod.yml` 本身**一次都没跑过**，待首次推分支后确认（`TC-GAME-045` 第 8 步）；只剩「Fabric Loader 真加载这个嵌套 jar」这一步要启动一次客户端 |
 | ② 相机、剔除、反投影、section 可见性与输入路径 | **S2 / S3 / S4 / S5** | 整个 spike 都要肉眼看画面，一步也没做 |
 | ③ 1,024 个区块的墙钟与堆增量 | **S6（本轮已跑完）** | 无。数字见该节，验收人不用做 |
-| ④ configuration 阶段能不能发包 | **S1** | 源码结论已出（见 `spike4-configuration-send.md`：**能发**），但那是读 jar 得出的；运行期这一半仍要跑，`ADR-M2-010` 在跑出来之前保持 Proposed |
+| ④ configuration 阶段能不能发包 | **S1** | 源码结论已出（见 `spike4-configuration-send.md`：**能发**），但那是读 jar 得出的；运行期这一半仍要跑，`ADR-M2-010` 在跑出来之前保持 Proposed。**2026-09-22 起 S1 不用再加临时代码**：握手的两条阶段路径已随阶段 6a 一起交付，起服登录即可 |
 
 ## 前置：把模组装进 26.2
 
@@ -72,17 +72,18 @@ cd client-fabric && ./gradlew build --no-daemon      # → build/libs/client-fab
   的源码与字节码），一句话是**发得出去** —— `send()` 这条路上根本不读对端声明的通道集合，`canSend()`
   只是一句与 `send()` 无关的查询。本节要跑的就是把那个桌面结论变成运行期事实；**跑出来之前
   `ADR-M2-010` 保持 Proposed，不要提前改它的 Status。**
-- 本轮交付的骨架**只注册了 play 两个方向**，做这个 spike 要先加一次性的几行（做完删掉，或按结论
-  留下）。照抄下面这三件，编解码委托 `HandshakeMessages`，不要另写一份：
+- **不需要再加临时代码**（2026-09-22 起）：模组已经把握手按两条阶段路径一起交付，起服登录即是本节。
+  落点与当初写在这里的三件事一致，复核时照着看即可：
 
-  1. `PayloadTypeRegistry.serverboundConfiguration().register(...)` 注册 `synaxis:handshake` 的
-     `C2S_HELLO`，`PayloadTypeRegistry.clientboundConfiguration().register(...)` 注册 `S2C_HELLO`；
-     `ClientConfigurationNetworking.registerGlobalReceiver(...)` 收后者。
+  1. `SynaxisClientMod#onInitializeClient` 把 `synaxis:handshake` 注册进
+     `PayloadTypeRegistry.serverboundConfiguration()` 与 `clientboundConfiguration()`，
+     `ClientConfigurationNetworking.registerGlobalReceiver(...)` 收 `S2C_HELLO`。
      两个方向都要注册——编码器按这张表找 codec，漏一个是「本地就发不出去」，与服务端无关。
-  2. 在 **`ClientConfigurationConnectionEvents.START`** 里发一次
-     `C2SHello(mod_version, ProtocolSchema.SCHEMA_VERSION)`（`SCHEMA_VERSION` 当前 = 1）。
+  2. `ClientConfigurationConnectionEvents.START` 里发一次
+     `C2SHello(mod_version, ProtocolSchema.SCHEMA_VERSION)`（`SCHEMA_VERSION` 当前 = 1）；编解码
+     委托 `HandshakeMessages`，两端只有这一份。
   3. `START` 的回调跑在 netty 线程上（`ClientConfigurationNetworkAddon.isOnReceiveThread()` 对
-     configuration 返回 `true`），发包本身线程安全，但别在里面碰任何客户端主线程状态。
+     configuration 返回 `true`），发包本身线程安全，模组的回调里也不碰任何客户端主线程状态。
 
   **不要挂 `READY`**：它已经 `@Deprecated`，实现上与 `COMPLETE` 同句触发，也就是收到
   `ClientboundFinishConfigurationPacket` 之后 —— 那时服务端的 3 s 早就超时了。四个事件里只有 `START`

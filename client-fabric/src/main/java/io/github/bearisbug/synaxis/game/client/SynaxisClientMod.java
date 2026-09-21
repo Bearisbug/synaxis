@@ -30,16 +30,6 @@ public final class SynaxisClientMod implements ClientModInitializer {
     private static final RtsClient RTS = new RtsClient(new MinecraftWorldView(),
             message -> ClientPlayNetworking.send(new GamePayload(message)));
 
-    /**
-     * The RTS client this connection's messages reach; the input layer of stage 6b hands it the
-     * ray a click produced.
-     *
-     * @return the one instance
-     */
-    public static RtsClient rts() {
-        return RTS;
-    }
-
     @Override
     public void onInitializeClient() {
         PayloadTypeRegistry.serverboundPlay().register(GamePayload.TYPE, GamePayload.CODEC);
@@ -75,9 +65,16 @@ public final class SynaxisClientMod implements ClientModInitializer {
                     answer == null ? null : new FriendlyByteBuf(Unpooled.wrappedBuffer(answer)));
         });
 
-        // A connection attempt begins here, before either phase; resetting any later would wipe a
-        // handshake that the login phase had already completed.
+        // Both of these belong to the start of something rather than the end. The handshake's is
+        // the start of a connection attempt, before either phase; resetting any later would wipe a
+        // handshake that the login phase had already completed. The RTS client's is the start of
+        // the play phase: ClientPlayConnectionEvents.INIT fires from ClientPacketListener's
+        // constructor, which runs on the packet processor thread — the one that also delivers
+        // rts:game — so the binding table stays single threaded and every packet of the previous
+        // connection is behind it in the same queue. DISCONNECT is not usable for this: Fabric
+        // fires it from Connection#channelInactive, on a netty thread, which would have it clear
+        // the table while the main thread is still handling that connection's last packets.
         ClientLoginConnectionEvents.INIT.register((_, _) -> HANDSHAKE.reset());
-        ClientPlayConnectionEvents.DISCONNECT.register((_, _) -> RTS.reset());
+        ClientPlayConnectionEvents.INIT.register((_, _) -> RTS.reset());
     }
 }

@@ -17,7 +17,8 @@ import java.util.Map;
  * why {@code API-M2-006} removed coordinates from the snapshot altogether: a second copy here
  * would be a second time base, and the box would drift away from the model whenever a unit moved.
  * <p>
- * Lives on the client thread that handles play packets and is touched from nowhere else.
+ * Lives on the client thread that handles play packets and is touched from nowhere else — the map
+ * is a plain {@link LinkedHashMap} and {@link #clear()} is as much a part of that as the puts are.
  */
 public final class UnitBindings {
 

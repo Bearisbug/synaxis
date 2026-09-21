@@ -27,7 +27,9 @@ import org.slf4j.LoggerFactory;
  * second of those is what this corrects its own selection against (§14). M2 single selects, so the
  * selection is one unit or none and {@code order_group} is each order's own {@code order_seq} (§9).
  * <p>
- * Everything here runs on the client thread that handles play packets and rendering.
+ * Everything here runs on the client thread that handles play packets and rendering, including
+ * {@link #reset()} — which is why it is wired to the <em>start</em> of a play connection rather
+ * than to the disconnect event, whose listeners Fabric runs on a netty thread.
  */
 public final class RtsClient {
 
@@ -86,8 +88,12 @@ public final class RtsClient {
                 if (selected != null && despawn.unitIds().contains(selected)) selected = null;
             }
             case S2COrderResult result -> {
-                // The answer names an order_seq, not a unit — with one unit selected there is no
-                // ambiguity about whose ownership the server just refused.
+                // The answer names an order_seq, not a unit, and this does not match the two up.
+                // That holds only while nothing can change the selection between an order going
+                // out and its answer coming back. The input layer of stage 6b can: a player who
+                // reselects inside one round trip would have a late not-owner clear the unit they
+                // have just picked, and the order after that go nowhere. Closing it means
+                // remembering which unit each order_seq named (§28.2).
                 if (result.code() == OrderResultCode.NOT_OWNER) selected = null;
             }
             default -> LOGGER.warn("Dropped a serverbound message arriving from the server: msg_id=0x{}",
@@ -126,8 +132,8 @@ public final class RtsClient {
     }
 
     /**
-     * Forgets this connection: the bindings, the selection and the order sequence, which is per
-     * connection and starts again from the beginning on the next one (§9).
+     * Starts a connection from nothing: no bindings, no selection, and an order sequence back at
+     * the beginning, which is what §9 means by per connection.
      */
     public void reset() {
         bindings.clear();

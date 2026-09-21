@@ -164,7 +164,7 @@ class RtsClientTest {
     }
 
     @Test
-    void leavingTheServerResetsTheBindingsTheSelectionAndTheSequence() {
+    void aNewConnectionStartsWithNoBindingsNoSelectionAndSequenceOne() {
         spawn(7, 4711, S2CUnitSpawn.FLAG_COMMANDABLE);
         client.selectAt(EYE, TOWARDS_THE_UNIT);
         world.ground(new Vec3(1.0, 64.0, 1.0));

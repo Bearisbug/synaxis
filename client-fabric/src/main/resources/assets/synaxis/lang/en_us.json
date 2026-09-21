@@ -8,5 +8,8 @@
 	"synaxis:login-timeout": "Logging in took too long.",
 	"synaxis:duplicate-login": "Somebody is already playing under this name.",
 	"synaxis:internal-error": "The server failed to bring you into the world.",
-	"synaxis:server-stopping": "The server is shutting down."
+	"synaxis:server-stopping": "The server is shutting down.",
+	"synaxis.order.no-path": "Cannot get there.",
+	"synaxis.order.not-owner": "Not your unit.",
+	"synaxis.order.busy": "The server is busy; try again."
 }

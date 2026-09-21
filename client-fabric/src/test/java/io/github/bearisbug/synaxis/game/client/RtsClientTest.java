@@ -11,6 +11,7 @@ import io.github.bearisbug.synaxis.game.protocol.S2CUnitState;
 import io.github.bearisbug.synaxis.game.protocol.UnitState;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 import net.minecraft.world.phys.Vec3;
 import org.junit.jupiter.api.Test;
 
@@ -30,11 +31,19 @@ class RtsClientTest {
 
     private final List<GameMessage> sent = new ArrayList<>();
     private final FakeWorldView world = new FakeWorldView();
-    private final RtsClient client = new RtsClient(world, sent::add);
+
+    /** The clock the budgets of §15 are counted against; tests move it by whole seconds. */
+    private long nanos = TimeUnit.SECONDS.toNanos(1_000);
+
+    private final RtsClient client = new RtsClient(world, () -> nanos, sent::add);
 
     private void spawn(int unitId, int entityId, int flags) {
         client.receive(new S2CUnitSpawn(unitId, entityId, 0, 1, 100, 100, flags));
         world.at(entityId, 10.0, 64.0, 0.0);
+    }
+
+    private void secondsLater(long seconds) {
+        nanos += TimeUnit.SECONDS.toNanos(seconds);
     }
 
     @Test
@@ -219,5 +228,130 @@ class RtsClientTest {
 
         assertEquals(EYE, world.lastGroundOrigin());
         assertEquals(NOWHERE, world.lastGroundDirection());
+    }
+
+    /**
+     * §15 gives a connection ten selections a second and the server drops the rest silently. A
+     * dropped selection would leave the two ends disagreeing about what is selected — the message
+     * replaces the whole set — so the click that cannot be reported does not happen at all.
+     */
+    @Test
+    void theEleventhSelectionOfASecondIsNotSentAndDoesNotChangeTheSelection() {
+        spawn(7, 4711, S2CUnitSpawn.FLAG_COMMANDABLE);
+        for (int i = 0; i < 10; i++) client.selectAt(EYE, TOWARDS_THE_UNIT);
+        sent.clear();
+
+        client.selectAt(EYE, NOWHERE);
+
+        assertEquals(List.of(), sent);
+        assertEquals(Integer.valueOf(7), client.selected());
+    }
+
+    @Test
+    void theNextSecondGivesTheSelectionBudgetBack() {
+        spawn(7, 4711, S2CUnitSpawn.FLAG_COMMANDABLE);
+        for (int i = 0; i < 11; i++) client.selectAt(EYE, TOWARDS_THE_UNIT);
+        sent.clear();
+
+        secondsLater(1);
+        client.selectAt(EYE, NOWHERE);
+
+        assertEquals(List.of(new C2SSelect(List.of())), sent);
+        assertNull(client.selected());
+    }
+
+    /**
+     * §14: an order over the budget is the one rejection the client is told to keep to itself —
+     * the server would answer {@code rate-limited} and §14 adds that the client should have
+     * throttled. It answers itself with the same code so that the click still leaves a mark.
+     */
+    @Test
+    void theEleventhOrderOfASecondIsAnsweredWithoutTheServer() {
+        spawn(7, 4711, S2CUnitSpawn.FLAG_COMMANDABLE);
+        client.selectAt(EYE, TOWARDS_THE_UNIT);
+        world.ground(new Vec3(1.0, 64.0, 1.0));
+        for (int i = 0; i < 10; i++) client.orderAt(EYE, TOWARDS_THE_UNIT);
+        sent.clear();
+
+        client.orderAt(EYE, TOWARDS_THE_UNIT);
+
+        assertEquals(List.of(), sent);
+        assertEquals(OrderResultCode.RATE_LIMITED, client.feedback().code());
+        assertEquals(new Vec3(1.0, 64.0, 1.0), client.feedback().point());
+    }
+
+    /**
+     * §8 has {@code order_seq} strictly increasing and nothing else; an order that never went out
+     * must not spend one, or the server's answer to the next order would name a number the client
+     * cannot match to a click.
+     */
+    @Test
+    void anOrderTheClientThrottledDoesNotSpendASequenceNumber() {
+        spawn(7, 4711, S2CUnitSpawn.FLAG_COMMANDABLE);
+        client.selectAt(EYE, TOWARDS_THE_UNIT);
+        world.ground(new Vec3(1.0, 64.0, 1.0));
+        for (int i = 0; i < 11; i++) client.orderAt(EYE, TOWARDS_THE_UNIT);
+        sent.clear();
+
+        secondsLater(1);
+        client.orderAt(EYE, TOWARDS_THE_UNIT);
+
+        assertEquals(11, ((C2SMoveOrder) sent.getFirst()).orderSeq());
+    }
+
+    /**
+     * The two budgets are counted apart, as they are on the server: a player clicking units does
+     * not spend the orders they are about to give.
+     */
+    @Test
+    void selectingDoesNotSpendTheOrderBudget() {
+        spawn(7, 4711, S2CUnitSpawn.FLAG_COMMANDABLE);
+        for (int i = 0; i < 10; i++) client.selectAt(EYE, TOWARDS_THE_UNIT);
+        world.ground(new Vec3(1.0, 64.0, 1.0));
+        sent.clear();
+
+        client.orderAt(EYE, TOWARDS_THE_UNIT);
+
+        assertEquals(List.of(new C2SMoveOrder(1, 1, 7, 1.0f, 64.0f, 1.0f, 0)), sent);
+    }
+
+    @Test
+    void anAcceptedOrderMarksTheSnappedPoint() {
+        spawn(7, 4711, S2CUnitSpawn.FLAG_COMMANDABLE);
+
+        client.receive(new S2COrderResult(1, OrderResultCode.OK, 1.5f, 64.0f, -2.5f));
+
+        assertEquals(OrderFeedback.Marker.GREEN, client.feedback().marker());
+        assertEquals(new Vec3(1.5, 64.0, -2.5), client.feedback().point());
+    }
+
+    /** §14: {@code stale} is a retransmission or a reordering, and the player is told nothing. */
+    @Test
+    void aStaleAnswerLeavesTheLastFeedbackWhereItWas() {
+        spawn(7, 4711, S2CUnitSpawn.FLAG_COMMANDABLE);
+        client.receive(new S2COrderResult(1, OrderResultCode.OK, 1.5f, 64.0f, -2.5f));
+
+        client.receive(new S2COrderResult(1, OrderResultCode.STALE, 9.0f, 64.0f, 9.0f));
+
+        assertEquals(OrderResultCode.OK, client.feedback().code());
+    }
+
+    @Test
+    void aNewConnectionStartsWithNoFeedbackAndBothBudgetsBack() {
+        spawn(7, 4711, S2CUnitSpawn.FLAG_COMMANDABLE);
+        client.selectAt(EYE, TOWARDS_THE_UNIT);
+        world.ground(new Vec3(1.0, 64.0, 1.0));
+        for (int i = 0; i < 11; i++) client.orderAt(EYE, TOWARDS_THE_UNIT);
+        for (int i = 0; i < 11; i++) client.selectAt(EYE, TOWARDS_THE_UNIT);
+
+        client.reset();
+        assertNull(client.feedback());
+
+        spawn(7, 4711, S2CUnitSpawn.FLAG_COMMANDABLE);
+        client.selectAt(EYE, TOWARDS_THE_UNIT);
+        sent.clear();
+        client.orderAt(EYE, TOWARDS_THE_UNIT);
+
+        assertEquals(List.of(new C2SMoveOrder(1, 1, 7, 1.0f, 64.0f, 1.0f, 0)), sent);
     }
 }

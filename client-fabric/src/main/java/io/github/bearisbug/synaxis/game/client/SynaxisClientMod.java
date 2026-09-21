@@ -27,7 +27,7 @@ public final class SynaxisClientMod implements ClientModInitializer {
 
     private static final ClientHandshake HANDSHAKE = new ClientHandshake();
 
-    private static final RtsClient RTS = new RtsClient(new MinecraftWorldView(),
+    private static final RtsClient RTS = new RtsClient(new MinecraftWorldView(), System::nanoTime,
             message -> ClientPlayNetworking.send(new GamePayload(message)));
 
     @Override

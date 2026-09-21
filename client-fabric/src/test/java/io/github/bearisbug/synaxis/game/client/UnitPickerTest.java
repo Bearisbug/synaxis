@@ -1,11 +1,15 @@
 package io.github.bearisbug.synaxis.game.client;
 
+import io.github.bearisbug.synaxis.game.protocol.ArchetypeBox;
+import io.github.bearisbug.synaxis.game.protocol.MalformedMessageException;
 import io.github.bearisbug.synaxis.game.protocol.S2CUnitSpawn;
 import net.minecraft.world.phys.Vec3;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * The picking maths of {@code ADR-M2-012}: a ray against boxes the mod builds itself, out of the
@@ -114,6 +118,77 @@ class UnitPickerTest {
         world.at(4711, 10.0, 64.0, 30.0);
         assertNull(pick(eye, new Vec3(1.0, 0.0, 0.0), 64.0));
         assertEquals(7, pick(eye, new Vec3(10.0, 0.0, 30.0), 64.0).unitId());
+    }
+
+    /**
+     * The box is 0.9 wide and centred on the entity, so the side faces sit 0.45 from the middle.
+     * A ray 0.44 to the side is the last one that counts as a hit.
+     */
+    @Test
+    void aRayGrazingTheInsideOfABoxPicksTheUnit() {
+        bind(7, 4711, ARCHETYPE);
+        world.at(4711, 10.0, 64.0, 0.0);
+
+        assertEquals(7, pick(new Vec3(0.0, 64.5, 0.44), new Vec3(1.0, 0.0, 0.0), 64.0).unitId());
+    }
+
+    @Test
+    void aRayGrazingTheOutsideOfABoxPicksNothing() {
+        bind(7, 4711, ARCHETYPE);
+        world.at(4711, 10.0, 64.0, 0.0);
+
+        assertNull(pick(new Vec3(0.0, 64.5, 0.46), new Vec3(1.0, 0.0, 0.0), 64.0));
+    }
+
+    /**
+     * The degenerate case a ray cast has to get right: the ray is parallel to a face and lies in
+     * its plane. The box stands on the entity's feet, so {@code y} equal to the rendered position
+     * is exactly the bottom face — and it counts as a hit, because the slab test is inclusive at
+     * both ends. Pinned here rather than left to chance: a unit standing on the ground is clicked
+     * at eye height in the game, but the camera of an RTS looks down and the maths must not have a
+     * seam at the floor.
+     */
+    @Test
+    void aRayLyingInTheBottomFaceOfABoxPicksTheUnit() {
+        bind(7, 4711, ARCHETYPE);
+        world.at(4711, 10.0, 64.0, 0.0);
+
+        assertEquals(7, pick(new Vec3(0.0, 64.0, 0.0), new Vec3(1.0, 0.0, 0.0), 64.0).unitId());
+    }
+
+    /** The other side of the same plane, one thousandth below the floor. */
+    @Test
+    void aRayParallelToTheBottomFaceAndUnderItPicksNothing() {
+        bind(7, 4711, ARCHETYPE);
+        world.at(4711, 10.0, 64.0, 0.0);
+
+        assertNull(pick(new Vec3(0.0, 63.999, 0.0), new Vec3(1.0, 0.0, 0.0), 64.0));
+    }
+
+    /**
+     * A ray is a half line, not a line: a unit the camera has behind it is never picked, however
+     * close it is.
+     */
+    @Test
+    void aUnitBehindTheRayIsNotPicked() {
+        bind(7, 4711, ARCHETYPE);
+        world.at(4711, 10.0, 64.0, 0.0);
+
+        assertNull(pick(new Vec3(0.0, 64.5, 0.0), new Vec3(-1.0, 0.0, 0.0), 64.0));
+    }
+
+    /**
+     * The other degenerate case, and the reason the picker has no branch for it: a box with a zero
+     * side cannot be hit by a ray at all, so {@code ArchetypeBox} refuses to hold one and the table
+     * the picker reads cannot produce one.
+     */
+    @Test
+    void theArchetypeTableCannotHandOutADegenerateBox() {
+        final ArchetypeBox box = ArchetypeBox.of(ARCHETYPE);
+
+        assertTrue(box.width() > 0 && box.height() > 0);
+        assertThrows(MalformedMessageException.class, () -> new ArchetypeBox(0.0f, 0.9f));
+        assertThrows(MalformedMessageException.class, () -> new ArchetypeBox(0.9f, 0.0f));
     }
 
     @Test

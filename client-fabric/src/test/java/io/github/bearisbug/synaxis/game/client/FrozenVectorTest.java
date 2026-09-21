@@ -1,7 +1,6 @@
 package io.github.bearisbug.synaxis.game.client;
 
 import io.github.bearisbug.synaxis.game.protocol.ArchetypeBox;
-import io.github.bearisbug.synaxis.game.protocol.HandshakeMessages;
 import io.github.bearisbug.synaxis.game.protocol.MsgBuf;
 import io.github.bearisbug.synaxis.game.protocol.ProtocolSchema;
 import io.netty.buffer.Unpooled;
@@ -17,6 +16,7 @@ import java.util.HexFormat;
 import java.util.List;
 import java.util.stream.Stream;
 import net.minecraft.core.RegistryAccess;
+import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -105,11 +105,18 @@ class FrozenVectorTest {
             return out.toByteArray();
         }
         if (HANDSHAKE.contains(name)) {
-            // synaxis:handshake has no payload type on the client yet (REQ-M2-020a registered the
-            // play channel only), so this goes straight through the shared decoder.
-            final MsgBuf out = MsgBuf.writing();
-            HandshakeMessages.read(MsgBuf.reading(frozen)).write(out);
-            return out.toByteArray();
+            // synaxis:handshake runs in the configuration phase, where Minecraft hands out a plain
+            // buffer: a connection being configured has no registries yet.
+            final FriendlyByteBuf inbound = new FriendlyByteBuf(Unpooled.buffer());
+            inbound.writeBytes(frozen);
+            final HandshakePayload payload = HandshakePayload.CODEC.decode(inbound);
+            assertNotNull(payload.message(), file + " decoded to an unknown msg_id");
+
+            final FriendlyByteBuf outbound = new FriendlyByteBuf(Unpooled.buffer());
+            HandshakePayload.CODEC.encode(outbound, payload);
+            final byte[] bytes = new byte[outbound.readableBytes()];
+            outbound.readBytes(bytes);
+            return bytes;
         }
 
         final RegistryFriendlyByteBuf inbound = buffer();

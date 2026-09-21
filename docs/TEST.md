@@ -8,12 +8,16 @@
 | Owner | Bearisbug |
 | 关联设计文档 | `docs/DESIGN.md`（引擎域 M1 / M1.5）与 `docs/DESIGN-M2.md`（游戏域 M2 分册）；两份文档的 REQ 各自编号，M2 侧一律写作 `REQ-M2-*` |
 | 被测系统 | 仓库 `Bearisbug/synaxis`，分支 `main` |
-| 最后更新 | 2026-09-21 |
+| 最后更新 | 2026-09-22 |
 
 变更记录（登用例增改，不登执行轮次）：
 
 | 日期 | 改动 | 作者 |
 | --- | --- | --- |
+| 2026-09-22 | 跟进 `docs/DESIGN-M2.md` v0.36（客户端的下令节流与七个结果码的去向）。**`TC-GAME-066` 保留 ID，原八步的操作列一字未改**：第 3 步的条数由 75 改为 92 并按类列出（新增 `OrderFeedbackTest`），期望列点名节流与结果码各对应哪条测试；**新增第 9、10、11 步**——第 9 步反证节流与 `stale` 不顶掉已画标记有齿（删两处预算守卫 + 让 `show` 无条件覆盖，红 4 条），第 10 步反证拾取的边界有齿（把射线当成无限直线并把盒子放大 0.02，红 3 条），第 11 步反证「该命中的仍然命中」与 §14 那张表有齿（把盒子缩小 0.02，同批把 `out-of-bounds` 挪进黄色一支、`no-path` 的 translate 键改成 lang 文件里没有的，红 4 条）；后置里补上这三步的还原。**没有新增用例、没有废弃用例**，§2 的 REQ ↔ TC 表与 §5 的回归映射因此未动 | Bearisbug |
+| 2026-09-22 | 跟进 `docs/DESIGN-M2.md` v0.35（客户端绑定表的回收纪律与未匹配消息的去向）。**`TC-GAME-066` 保留 ID，原六步的操作列一字未改**：第 3 步的条数由 66 改为 75 并按类列出，期望列点名回收纪律四个答案各对应哪条测试；**新增第 7、8 步**——第 7 步反证「匹配不上就计数」有齿（把两处计数改回静默丢弃，红 4 条），第 8 步反证其余三条有齿（清空漏掉计数器 + 选中被无条件清 + 下令依赖渲染位置，红 3 条；拾取缓存上一次渲染位置，红 2 条；墓碑集合，红 1 条），后置里补上这两步的还原。**没有新增用例、没有废弃用例**，§2 的 REQ ↔ TC 表与 §5 的回归映射因此未动。`UnitBindingsTest` 的 `aSnapshotLineForAUnitThatIsNotBoundYetIsIgnored` 改名为 `aSnapshotLineForAUnitThatIsNotBoundIsDroppedAndCounted` 并多一行断言，用例判据里没有一处点名过它 | Bearisbug |
+| 2026-09-22 | 跟进 `docs/DESIGN-M2.md` v0.34（客户端绑定表的清空时机）。**`TC-GAME-066` 保留 ID，原五步一字未改，新增第 6 步**：`grep` 断言 `SynaxisClientMod` 里挂的是 `ClientPlayConnectionEvents.INIT` 而不是 `DISCONNECT`，期望列写明 `DISCONNECT` 跑在 netty 线程、而 `rts:game` 的负载处理器跑在 `Minecraft.packetProcessor()` 的主线程队列上。**条数与其余判据未变**（客户端仍是 66 条；`RtsClientTest` 的 `leavingTheServerResets…` 改名为 `aNewConnectionStartsWithNoBindingsNoSelectionAndSequenceOne`，断言一行未动，第 3 步只数条数不点名它） | Bearisbug |
+| 2026-09-22 | 跟进 `docs/DESIGN-M2.md` v0.33（阶段 6a 里不需要屏幕的那半：客户端侧握手与 `REQ-M2-019` 的拾取与下令）。**新增 `TC-GAME-066`**：客户端侧的握手编排、绑定表生命周期与拾取数学在不启动游戏的前提下的判据，并在同一条用例里点名**哪两个方法体必须等真机**（`MinecraftWorldView` 的两个）。**`TC-GAME-017` 保留 ID，判据条数与文件数未变**，只把第 4 步里四条握手向量的路径由「走 `HandshakeMessages`」改正为「走 `HandshakePayload.CODEC` 与配置阶段的 `FriendlyByteBuf`」——模组现在有这条通道了，照原文读会以为客户端绕过了自己的编解码路径。**`TC-GAME-046` 保留 ID，步骤表未动**：前置里「第 3 步另有一层阻塞（模组还没有 `synaxis:handshake` 客户端侧）」已不成立，改写成「该步骤现在就是 spike S1 的运行期判据」。**`TC-GAME-038` 保留 ID**：第 5 步的「观察入口待 `REQ-M2-019` 实现后填」填上——点空地时模组发一条空的 `C2S_SELECT`，台账那一行是 `count=0`。§2 的 REQ ↔ TC 表三行与 §5 的回归映射同步 | Bearisbug |
 | 2026-09-21 | 跟进 `docs/DESIGN-M2.md` v0.32（阶段 0 的 spike ③ 与 spike ④ 收口）。**没有任何用例的判据被改**，只有两处备注：① §2 不测表里四个 spike 那一行注明每个 spike 还剩什么（③ 已跑完、④ 只剩运行期）；② **`TC-GAME-029` 保留 ID，步骤表与判据一字未改**，第 2 步的期望列后面补一句——`heap_delta_mb < 50` 这半条**不可证伪**，因为该字段是 `totalMemory - freeMemory` 的前后差再 `max(0, …)`，载入中一次 young GC 就让它读 0（`rts-512` 与 `rts-128` 实测都是 0），它实际只保证「≥ 0」；整图真实堆增量 ≈ 9.2 MiB 由 spike ③ 用「就绪后强制 GC 取存活堆、两个预设相减」量出，写在 `docs/research/client-spikes-2026-09/README.md` 的 S6。让这半条可证伪是一条独立改动，登记在设计文档 §28.2，本轮没有动实现，所以判据不改 | Bearisbug |
 | 2026-09-21 | 跟进 `docs/DESIGN-M2.md` v0.31（阶段 6a 的 `REQ-M2-020b`：客户端侧双端向量、CI、资源打包与跨构建消费定型）。**`TC-GAME-017` 保留 ID**：第 4 步由「阻塞」改成可执行——客户端构建把 `synaxis.vectors.dir` 指向 `protocol/src/test/resources/vectors`，两端读同一批文件，判据写成 `FrozenVectorTest` 的 20 条（19 条往返 + 一条把向量绑在客户端消费的 `:protocol` 工件上）；前置补上「先 `publishToMavenLocal`」，第 5 步补上第 4 步会红在哪一条。**`TC-GAME-045` 保留 ID**：第 2 步改用 `:protocol:publishToMavenLocal` 并补 `:verifyModJar` 的输出行，第 3 步按 jar 的实际内容写准（`assets/synaxis/lang/*.json` 与 `icon.png`、JiJ 的 `:protocol`；**单位模型资源移出本步**——单位当前用原版物品当可见物，自定义模型要等 `ADR-M2-002` 落到渲染那一步），第 6 步注明同一判据已有构建期门禁，新增第 7 步（反证门禁有齿）与第 8 步（CI 的 `Client mod` 工作流）。**`TC-GAME-046` 保留 ID，步骤表未动**，只在前置写明三步都要人工在有图形环境的机器上做、且第 3 步还压在「模组尚未注册 `synaxis:handshake` 客户端侧」上。第 1 步的期望值由 `9` 改正为 `10`——`archetype_box.bin` 自 v0.28 起就在同一目录，照原文执行第一步就不成立（本轮实跑发现）。§2 不测表后那条说明同步 | Bearisbug |
 | 2026-09-21 | 跟进 `docs/DESIGN-M2.md` v0.30（阶段 0 的 `REQ-M2-020a` 落地：客户端模组最小骨架）。**`TC-GAME-017` 保留 ID，只改前置的一句话**——第 4 步的阻塞条件原先写的是「`client-fabric` 工程已建」，而工程已经随 `REQ-M2-020a` 建好了、客户端侧却还没有那份向量的夹具，照原文读会让这一步看起来已解除阻塞；改成按 `REQ-M2-020b` 判（夹具与客户端侧 CI 是阶段 6a 的事，见设计文档 §24 的两阶段验收）。步骤表与判据一个字未改。`TC-GAME-045` 正文未动，只按 `:protocol` 的 JiJ 落地更新了 §2 不测表后那条说明的可测范围（第 6 步已能跑、第 3 步半数成立），并在同一处补上四个 spike 的执行清单路径 | Bearisbug |
@@ -81,7 +85,7 @@ REQ-M2 ↔ TC 对照（手工维护）：
 | REQ-M2-005 异常归因 | TC-GAME-011、TC-GAME-054（TC-GAME-013 已废弃：滑窗熔断随范围裁剪推到 M3） |
 | REQ-M2-006 通道命名空间 | TC-GAME-014、TC-GAME-015 |
 | REQ-M2-007 `:protocol` 编解码 | TC-GAME-017、TC-GAME-018 |
-| REQ-M2-008 握手与模组校验 | TC-GAME-019、TC-GAME-020、TC-GAME-022、TC-GAME-049、TC-GAME-060、TC-GAME-061、TC-GAME-062（TC-GAME-021 已废弃：`schema_version=0` 是畸形输入而不是版本不符，判据换了口径） |
+| REQ-M2-008 握手与模组校验 | TC-GAME-019、TC-GAME-020、TC-GAME-022、TC-GAME-049、TC-GAME-060、TC-GAME-061、TC-GAME-062、TC-GAME-066（TC-GAME-021 已废弃：`schema_version=0` 是畸形输入而不是版本不符，判据换了口径） |
 | REQ-M2-009 切片消息集与限流 | TC-GAME-024、TC-GAME-026、TC-GAME-027、TC-GAME-028、TC-GAME-063、TC-GAME-064（TC-GAME-023 已废弃：`rate-limited` 按 §20 不再写台账，第 5 步判据换了口径；TC-GAME-025 已废弃：第 1 步的 400 包/秒离阈值太近、实测 14 次挂 7 次，速率换了口径） |
 | REQ-M2-010 程序化地图生成器 | TC-GAME-029、TC-GAME-056（TC-GAME-030 已废弃：`.synx` 推 M3 后没有地图文件可损坏） |
 | REQ-M2-011 对局生命周期 | TC-GAME-029、TC-GAME-031、TC-GAME-057（TC-GAME-032 已废弃：核心模式落地后「排除插件必然非零退出」不再成立） |
@@ -92,8 +96,8 @@ REQ-M2 ↔ TC 对照（手工维护）：
 | REQ-M2-016 单位模型与表现 | TC-GAME-052、TC-GAME-038（TC-GAME-037 已废弃） |
 | REQ-M2-017 服务端寻路 | TC-GAME-028、TC-GAME-040、TC-GAME-041、TC-GAME-042、TC-GAME-047、TC-GAME-065 |
 | REQ-M2-018 RTS 镜头 | TC-GAME-043、TC-GAME-044、TC-GAME-047 |
-| REQ-M2-019 客户端选中与下令 | TC-GAME-038、TC-GAME-039、TC-GAME-047 |
-| REQ-M2-020 客户端模组工程 | TC-GAME-045、TC-GAME-046 |
+| REQ-M2-019 客户端选中与下令 | TC-GAME-038、TC-GAME-039、TC-GAME-047、TC-GAME-066 |
+| REQ-M2-020 客户端模组工程 | TC-GAME-045、TC-GAME-046、TC-GAME-066 |
 | REQ-M2-021 server-app 取代 smoke | TC-GAME-048、TC-GAME-049、TC-GAME-058 |
 | REQ-M2-022 CI 门禁扩展 | TC-GAME-004、TC-GAME-005、TC-GAME-006 |
 | REQ-M2-023 社区上手 | TC-GAME-016 |
@@ -109,7 +113,7 @@ REQ-M2 ↔ TC 对照（手工维护）：
 | M2 新增自动化（`:protocol` 双端向量测试、宿主的 descriptor 校验 / 生命周期 / 通道路由单测、ArchUnit 规则对合成 `JavaClasses` 的自测、F29 与 F11 的复现测试、jacoco 与 diff-cover 本身） | 代码仓测试套件，策略见 `docs/DESIGN-M2.md` §19；本文档只在 TC 步骤里调用它们并判读可观察输出，不复制其断言 |
 | 50 连接 + 1,000 单位的全量压测与 `docs/DESIGN-M2.md` §15 的整表性能阈值（tick P99、出站带宽、进程内存、客户端 ≥ 60 FPS） | `docs/DESIGN-M2.md` §23 上线前检查单的专项脚本，当前无归属——已知风险（本文档只在 TC-GAME-042 打到 Gherkin 写明的「64 条并发指令」这一档） |
 | 安全渗透（畸形包模糊测试之外的攻击面） | 无归属——已知风险 |
-| `docs/DESIGN-M2.md` §26 阶段 0 的四个 spike（`:protocol` 的 JiJ 消费、相机形态、地图生成与载入实测、Fabric 在 configuration 阶段能否发包） | 设计文档 §26，结论回写设计文档；spike 不是验收，不进本文档（四个 spike 的执行清单在 `docs/research/client-spikes-2026-09/README.md`，开头一张表说明每个 spike 还剩什么：**③ 已于 2026-09-21 在服务端跑完**，**④ 已有源码级结论、只剩运行期那一半**，① 剩运行期一半，② 整个都要肉眼看画面）。**客户端模组本身（`REQ-M2-020a` 的骨架与 `REQ-M2-020b` 的工程完备）不属此列**——它是交付物，由 TC-GAME-045 覆盖（本机跑得到第 1～7 步，第 8 步要推分支才看得到 CI） |
+| `docs/DESIGN-M2.md` §26 阶段 0 的四个 spike（`:protocol` 的 JiJ 消费、相机形态、地图生成与载入实测、Fabric 在 configuration 阶段能否发包） | 设计文档 §26，结论回写设计文档；spike 不是验收，不进本文档（四个 spike 的执行清单在 `docs/research/client-spikes-2026-09/README.md`，开头一张表说明每个 spike 还剩什么：**③ 已于 2026-09-21 在服务端跑完**，**④ 已有源码级结论、只剩运行期那一半**，① 剩运行期一半，② 整个都要肉眼看画面）。**客户端模组本身（`REQ-M2-020a` 的骨架与 `REQ-M2-020b` 的工程完备）不属此列**——它是交付物，由 TC-GAME-045（构建与打包，本机跑得到第 1～7 步，第 8 步要推分支才看得到 CI）与 TC-GAME-066（客户端侧握手与拾取里不需要屏幕的那一半）覆盖 |
 | 客户端渲染观感（相机形态、选中框样式、HUD 文案、动效） | 无用例——主观项；只在 TC-GAME-047 的录屏与截图里留证据供人评判 |
 | 设计文档 §19 中「CI 门禁拦截并发回归 / 分层违规」两个场景 | 由 TC-021、TC-006 以「故意提交坏改动到临时分支」方式可操作化，见 §4 |
 
@@ -960,7 +964,7 @@ REQ-M2 ↔ TC 对照（手工维护）：
 | 1 | `ls protocol/src/test/resources/vectors/*.bin \| wc -l` | 输出 `10`——9 条消息（`C2S_HELLO`、`S2C_HELLO`、`C2S_CAMERA`、`C2S_SELECT`、`C2S_MOVE_ORDER`、`S2C_ORDER_RESULT`、`S2C_UNIT_SPAWN`、`S2C_UNIT_STATE`、`S2C_UNIT_DESPAWN`）各一个，外加 `archetype_box.bin`（§24 把两端各持一份的原型包围盒表一并冻结，它不是消息，所以不进第 2 步的边界集） |
 | 2 | `ls protocol/src/test/resources/vectors/edge/*.bin \| wc -l` | 输出 `9`，文件名与第 1 步一一同名（边界档：`count` 取上限 8 / 512 与取零、VarInt 取满五字节、`zoom` 取区间端点、`flags` / `team` 取 0） |
 | 3 | `./gradlew :protocol:test --rerun-tasks --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts` | `BUILD SUCCESSFUL`；`ProtocolVectorTest` 的 18 条 `aFrozenVectorDecodesAndReEncodesByteForByte` 全绿（decode 后再 encode 与原文件逐字节相同、且解码器把每条向量读到一个字节不剩），`theFrozenVectorsAreBoundToTheSchemaVersion` 也绿（`manifest.txt` 的 `schema_version` 等于 `ProtocolSchema.SCHEMA_VERSION`、`digest` 等于全部 `.bin` 的实算摘要） |
-| 4 | `cd client-fabric && ./gradlew test --no-daemon`（客户端侧跑同一份向量） | `BUILD SUCCESSFUL`；`FrozenVectorTest` 20 条全绿——19 条 `aFrozenVectorSurvivesTheClientCodecByteForByte` 把每个 `.bin` 经客户端的编解码路径（`rts:game` 的 14 条走 `GamePayload.CODEC` 与 Minecraft 的 `RegistryFriendlyByteBuf`，四条握手向量走 `HandshakeMessages`（`c2s_hello.bin` / `s2c_hello.bin` 各有正规与 `edge/` 两份，`reEncode` 先剥掉 `edge/` 前缀再查 `HANDSHAKE`），`archetype_box.bin` 走 `ArchetypeBox.writeTable`；14 + 4 + 1 = 19）解出来再写回去，与原文件逐字节相同；`theVectorsAreTheOnesThisBuildsProtocolJarSpeaks` 把这批文件绑在客户端消费的那个 `:protocol` 工件上（`manifest.txt` 的 `schema_version` 等于该工件的 `ProtocolSchema.SCHEMA_VERSION`、`digest` 等于 19 个 `.bin` 的实算摘要、条数为 19） |
+| 4 | `cd client-fabric && ./gradlew test --no-daemon`（客户端侧跑同一份向量） | `BUILD SUCCESSFUL`；`FrozenVectorTest` 20 条全绿——19 条 `aFrozenVectorSurvivesTheClientCodecByteForByte` 把每个 `.bin` 经客户端的编解码路径（`rts:game` 的 14 条走 `GamePayload.CODEC` 与 Minecraft 的 `RegistryFriendlyByteBuf`，四条握手向量走 `HandshakePayload.CODEC` 与配置阶段的 `FriendlyByteBuf`——那两个配置注册表发的就是它，配置阶段的连接还没有注册表（`c2s_hello.bin` / `s2c_hello.bin` 各有正规与 `edge/` 两份，`reEncode` 先剥掉 `edge/` 前缀再查 `HANDSHAKE`），`archetype_box.bin` 走 `ArchetypeBox.writeTable`；14 + 4 + 1 = 19）解出来再写回去，与原文件逐字节相同；`theVectorsAreTheOnesThisBuildsProtocolJarSpeaks` 把这批文件绑在客户端消费的那个 `:protocol` 工件上（`manifest.txt` 的 `schema_version` 等于该工件的 `ProtocolSchema.SCHEMA_VERSION`、`digest` 等于 19 个 `.bin` 的实算摘要、条数为 19） |
 | 5 | 改掉某个 `.bin` 的一个字节后重跑第 3、4 步，再 `git checkout -- protocol/src/test/resources/vectors` | 第 3 步红两条：该向量的逐字节对拍点名文件名，摘要那条打出设计文档 §24 的「升 `SCHEMA_VERSION` 并重新冻结向量」提示；第 4 步红在 `theVectorsAreTheOnesThisBuildsProtocolJarSpeaks`（客户端只对拍往返与摘要，期望值那一份事实源在服务端侧，见该测试的类注释）；还原后 `git status --porcelain` 无输出 |
 | 6 | 把 `C2SCamera#write` 里 `zoom` 与 `cameraYaw` 的写入顺序对调后重跑第 3 步，再还原该文件 | `c2s_camera.bin` 与 `edge/c2s_camera.bin` 两条红——改了布局而没重新冻结向量，构建不可能绿；还原后第 3 步回到 `BUILD SUCCESSFUL` |
 
@@ -1420,7 +1424,7 @@ REQ-M2 ↔ TC 对照（手工维护）：
 | 2 | 同时观察 `tester2` 的屏幕 | 该单位没有任何视觉变化（不发光、无框、无角标） |
 | 3 | 用探针或抓包观察服务端下行 | 该期间没有下发任何与选中相关的实体元数据包（`HAS_GLOWING_EFFECT` 等一条没有） |
 | 4 | `grep unit_selected logs/events-*.jsonl \| tail -1` | 有一行，`count` 为 1、`rejected_count` 为 0 |
-| 5 | `tester1` 点空地取消选中 | 选中框消失；服务端记账的选中集合清空（观察入口待 `REQ-M2-019` 实现后填） |
+| 5 | `tester1` 点空地取消选中 | 选中框消失；模组发一条空的 `C2S_SELECT`（射线没拾到单位时按整集合替换语义报空集），服务端记账的选中集合随之清空——`grep unit_selected logs/events-*.jsonl \| tail -1` 那一行是 `count=0`、`rejected_count=0` |
 
 后置：两个客户端退出。
 
@@ -1547,7 +1551,7 @@ REQ-M2 ↔ TC 对照（手工维护）：
 
 #### `TC-GAME-046` 模组只在 26.2 profile 可装 — 对应 `REQ-M2-020` · 级别: 边缘 · 执行者: 人工
 
-前置：本机同时有 26.2 与 26.3 两个 Fabric profile，且已按 `docs/research/client-spikes-2026-09/README.md` 的「前置」装好模组 jar 与 `fabric-api`。**三步都要人工在有图形环境的机器上做，仓库里的 agent 一步也跑不到**（自动化能到的只有 jar 里那条版本钉死，见 `TC-GAME-045` 第 4、7 步）。**第 3 步另有一层阻塞**：模组当前只注册了 `rts:game` 的 play 两个方向，还没有 `synaxis:handshake` 的客户端侧，玩法模式下会在 3 s 后被 `synaxis:client-mod-required` 踢——它要等 spike S1（同一份清单）判掉 `ADR-M2-010` 并把握手写进模组；在那之前这一步只能用核心模式（豁免握手）判到「能进世界」。
+前置：本机同时有 26.2 与 26.3 两个 Fabric profile，且已按 `docs/research/client-spikes-2026-09/README.md` 的「前置」装好模组 jar 与 `fabric-api`。**三步都要人工在有图形环境的机器上做，仓库里的 agent 一步也跑不到**（自动化能到的只有 jar 里那条版本钉死，见 `TC-GAME-045` 第 4、7 步）。**第 3 步同时就是 spike S1 的运行期判据**：模组已注册 `synaxis:handshake` 的客户端侧（configuration 两个方向 + login 形态的 query 应答，见设计文档 `API-M2-002` 的「客户端侧」条），但那条路能不能真的在 configuration 阶段把包发出去仍是 `ADR-M2-010` 未跑完的那一半。这一步落 `synaxis:client-mod-required` 时先 `grep client_rejected logs/events-*.jsonl` 看 `reason`：`mod-missing` 才是「发不出去」，`version-mismatch` 说明包发到了、只是版本对不上。发不出去时的退路是给服务端加 `-Dsynaxis.app.handshake-phase=login` 重跑本步，客户端一行不改。
 
 | # | 操作 | 预期 |
 | --- | --- | --- |
@@ -1575,6 +1579,26 @@ REQ-M2 ↔ TC 对照（手工维护）：
 | 10 | 把录屏与第 1～9 步的关键截图归档到 `docs/test-runs/RUN-<本轮>/` | 证据文件存在，能看清上述每一步的现象 |
 
 后置：客户端退出；`stop` 关闭服务端。
+
+#### `TC-GAME-066` 客户端侧握手与选中下令的无屏幕判据 — 对应 `REQ-M2-008`、`REQ-M2-019`、`REQ-M2-020` · 级别: 回归 · 执行者: AI
+
+前置：阶段 6a 的客户端侧已合入（设计文档 v0.33，节流与结果码去向见 v0.36）；已按 `TC-GAME-017` 的前置在主构建跑过一次 `:protocol:publishToMavenLocal`。**本用例判的是「不启动游戏也能判的那一半」**：握手的编排、绑定表的生命周期、拾取的数学与一次点击产生哪些包。需要屏幕的那一半由 `TC-GAME-046` 第 3 步与 `TC-GAME-047` 判，第 5 步在此点名它是哪几行。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | `grep -cE "serverboundConfiguration\|clientboundConfiguration" client-fabric/src/main/java/io/github/bearisbug/synaxis/game/client/SynaxisClientMod.java`（表格里的 `\|` 在渲染后就是 `grep -E` 的择一符 `|`） | 输出 `2`——`synaxis:handshake` 的 configuration 两个方向都注册了；只注册一个方向就是「本地根本发不出去」，与服务端做什么无关 |
+| 2 | `grep -cE "ClientConfigurationConnectionEvents\.START\|ClientLoginNetworking\.registerGlobalReceiver" client-fabric/src/main/java/io/github/bearisbug/synaxis/game/client/SynaxisClientMod.java` | 输出 `2`——两种阶段各一条入口（configuration 主动发、login 应答 query）；阶段由服务端的 `synaxis.app.handshake-phase` 选，客户端两条都答（设计文档 `ADR-M2-010`） |
+| 3 | `cd client-fabric && ./gradlew test --no-daemon` | `BUILD SUCCESSFUL`，92 条全绿：`ClientHandshakeTest` 13、`RtsClientTest` 23、`UnitPickerTest` 15、`UnitBindingsTest` 13、`FrozenVectorTest` 20、`GamePayloadTest` 5、`OrderFeedbackTest` 3。其中节流与结果码（设计文档 v0.36）各有一条：`theEleventhSelectionOfASecondIsNotSentAndDoesNotChangeTheSelection`（超额的选中整条作废，本地选中不动）、`theEleventhOrderOfASecondIsAnsweredWithoutTheServer`（超额的下令不发包、客户端自己回 `rate-limited`）、`anOrderTheClientThrottledDoesNotSpendASequenceNumber`（没发出去的不占 `order_seq`）、`aStaleAnswerLeavesTheLastFeedbackWhereItWas`（`stale` 静默，不顶掉已经画着的标记）、`everyCodeOfTheProtocolCarriesTheMarkerDesignSection14GivesIt` 与 `everyTextKeyIsInBothLanguageFiles`（§14 那张表的颜色与文案，且两个 lang 文件都有这三个键）；拾取的边界与退化另有四条：`aRayGrazingTheInsideOfABoxPicksTheUnit`、`aRayGrazingTheOutsideOfABoxPicksNothing`、`aRayLyingInTheBottomFaceOfABoxPicksTheUnit`、`aUnitBehindTheRayIsNotPicked`。其中回收纪律的四个答案（设计文档 `ADR-M2-012` 落地形态第二段）各有一条：`aDespawnDoesNotStopTheSameUnitFromBindingAgainLater`（先 despawn 后 spawn 照常绑定，不留墓碑）、`aSnapshotLineForAUnitThatWasJustDespawnedIsDroppedAndCounted`（已解绑单位的 state 条目只计数）、`aUnitWhoseEntityTheClientHasUnloadedIsNoLongerPickable`（切换世界或卸载后不可拾取，不抛异常）、`aNewConnectionStartsWithBothCountersAtZero`（计数器与绑定同属一条连接） |
+| 4 | 反证门禁有齿：删掉 `ClientHandshake#beginConfiguration` 开头那四行 `if (state != State.IDLE)` 守卫，并把 `UnitPicker#pick` 里的 `direction.normalize().scale(maxDistance)` 改成 `direction.scale(maxDistance)`，重跑第 3 步，再 `git checkout -- client-fabric/src/main/java` | 红 3 条——`aSecondConfigurationStartOnTheSameConnectionSendsNothing` 与 `aHandshakeDoneDuringLoginStopsTheConfigurationPhaseFromSendingASecondOne`（两条都对着「一个连接只接受一次 `C2S_HELLO`」那条协议错误），以及 `anUnnormalisedDirectionMeasuresTheSameRange`；还原后复绿 |
+| 5 | `grep -rn "Minecraft.getInstance()" client-fabric/src/main/java` | 命中的文件只有 `MinecraftWorldView.java`，共三行——类注释里一行，`renderPosition` 与 `groundHit` 的方法体里各一行。**这两个方法体是本轮唯一测不到的实现**——它们要一个真在跑的客户端，判据是 `TC-GAME-047` 第 6～8 步（人工 + 录屏）；除它们之外，拾取的数学、绑定表的生命周期与消息编排都落在 `ClientWorldView` 接缝的上方，由第 3 步覆盖 |
+| 6 | `grep -nE "ClientPlayConnectionEvents\.(INIT\|DISCONNECT)\.register" client-fabric/src/main/java/io/github/bearisbug/synaxis/game/client/SynaxisClientMod.java` | 只有一行，且用的是 `INIT`。**`DISCONNECT` 出现在这里就是错的**：`fabric-networking-api-v1` 的 `ConnectionMixin` 把它注入在 `Connection#channelInactive` 的 HEAD 上，跑在 netty 线程；而 `rts:game` 的负载处理器被 `RunningOnDifferentThreadException` 顶回 `Minecraft.packetProcessor()` 的主线程队列。挂 `DISCONNECT` 就是两个线程同时写 `UnitBindings` 那个 `LinkedHashMap`，且清空可能早于最后一批包的插入。`INIT` 由 `ClientPacketListener` 的构造器点着，而构造器跑在 `handleConfigurationFinished` 里（开头就是 `PacketUtils.ensureRunningOnSameThread`），与收包同一个线程、同一个队列 |
+| 7 | 反证「匹配不上就计数」有齿：把 `UnitBindings#apply(S2CUnitDespawn)` 的循环体改回单行 `byUnitId.remove(unitId);`，并删掉 `apply(S2CUnitState)` 里 `bound == null` 分支的计数与 WARN（只留 `continue`），重跑第 3 步，再 `git checkout -- client-fabric/src/main/java` | 红 4 条——`aSnapshotLineForAUnitThatIsNotBoundIsDroppedAndCounted`、`aSnapshotLineForAUnitThatWasJustDespawnedIsDroppedAndCounted`、`aDespawnOfAUnitThatIsNotBoundIsCounted`、`aSecondDespawnOfTheSameUnitIsCounted`；还原后复绿 |
+| 8 | 反证回收纪律的其余三条有齿，**三处改动逐个做、逐个还原**（合起来跑会互相污染：第 ② 处那张静态表会跨用例串味）：① `UnitBindings#clear()` 只清 `byUnitId`、不清两个计数器；同批把 `RtsClient#receive` 的 despawn 分支改成无条件 `selected = null`，并在 `orderAt` 开头加一句「取不到选中单位的渲染位置就 `return`」。② `UnitPicker#boxOf` 在 `renderPosition` 返回 `null` 时退回一张静态表里上一次见过的位置。③ `UnitBindings` 加一个 `despawned` 墓碑集合，`apply(S2CUnitSpawn)` 见到墓碑就 `return` | ① 红 3 条——`aNewConnectionStartsWithBothCountersAtZero`、`aDespawnThatDoesNotNameTheSelectedUnitLeavesItSelected`、`aSelectedUnitWhoseEntityWentAwayCanStillBeOrdered`；② 红 2 条——`aUnitWhoseEntityTheClientHasUnloadedIsNoLongerPickable` 与 `aBoundUnitWhoseEntityHasNotArrivedIsNotPickable`（后者正是静态表串味的证据，同时说明缓存渲染位置这条路连「绑定先到」那一分支都会弄坏）；③ 红 1 条——`aDespawnDoesNotStopTheSameUnitFromBindingAgainLater`。每处还原后均复绿 |
+| 9 | 反证节流与「`stale` 不顶掉已画的标记」有齿：删掉 `RtsClient#selectAt` 开头的 `if (!allowSelect(second())) return;` 与 `orderAt` 里 `allowOrder` 那三行，并把 `show` 的条件去掉（只留 `feedback = answer;`），重跑第 3 步，再 `git checkout -- client-fabric/src/main/java` | 红 4 条——`theEleventhSelectionOfASecondIsNotSentAndDoesNotChangeTheSelection`、`theEleventhOrderOfASecondIsAnsweredWithoutTheServer`、`anOrderTheClientThrottledDoesNotSpendASequenceNumber`、`aStaleAnswerLeavesTheLastFeedbackWhereItWas`；还原后复绿 |
+| 10 | 反证「不该命中的不命中」有齿：把 `UnitPicker#pick` 的 `box.clip(origin, end)` 改成 `box.inflate(0.02).clip(origin.subtract(end.subtract(origin)), end)`（盒子放大 0.02，且把半直线当成无限直线），重跑第 3 步后还原 | 红 3 条——`aRayGrazingTheOutsideOfABoxPicksNothing`、`aRayParallelToTheBottomFaceAndUnderItPicksNothing`（两条都对着「擦边与贴面的判定是包含式的」）、`aUnitBehindTheRayIsNotPicked`（射线是半直线，不是直线）；还原后复绿 |
+| 11 | 反证「该命中的仍然命中」与 §14 那张表有齿，**两处一起改一起还原**：把同一行改成 `box.deflate(0.02).clip(origin, end)`；同批把 `OrderFeedback#marker()` 里的 `OUT_OF_BOUNDS` 从 `RED` 一支挪进 `YELLOW` 一支，并把 `NO_PATH` 的 translate 键改成两个 lang 文件里都没有的一个 | 红 4 条——`aRayGrazingTheInsideOfABoxPicksTheUnit`、`aRayLyingInTheBottomFaceOfABoxPicksTheUnit`、`everyCodeOfTheProtocolCarriesTheMarkerDesignSection14GivesIt`、`everyTextKeyIsInBothLanguageFiles`（后者是「文案漏进 lang 文件就会被画成键名本身」那条门禁）；还原后复绿 |
+
+后置：确认工作区干净（第 4、7、8、9、10、11 步的临时改动已还原）。
 
 ### M2 · 启动器与文档
 
@@ -1643,8 +1667,8 @@ REQ-M2 ↔ TC 对照（手工维护）：
 - **全量轮**（全部用例）：首次成稿、每个阶段 gate（引擎域阶段 0、2、3；游戏域 `docs/DESIGN-M2.md` §26 的阶段 1～6b）、跨功能域改动、地基变更（JDK、Gradle、镜像、协议版本、模块拆分、启动入口）。
 - **局部轮**（受影响用例 + 全部冒烟级）：单一需求改动。受影响用例 = 本次改动触及的 `REQ-*` / `REQ-M2-*` 所对应的 TC（M2 侧的对照表在 §2，机械校验查不到它）；无 REQ 变更的改动（纯 bug 修、重构）按触及的功能域圈定：
   - 引擎域：构建与仓库 → TC-001、TC-002、TC-004、TC-006、TC-021、TC-029，删除与注册表 → TC-008、TC-009、TC-020，命名与合规 → TC-011、TC-028，协议 → TC-014、TC-018、TC-019、TC-026、TC-027、TC-030、TC-031、TC-032、TC-034、TC-035，卫生 → TC-015、TC-016，门面与配置 → TC-023、TC-025，分层 → TC-024、TC-035。
-  - 游戏域：模块与门禁 → TC-GAME-001～TC-GAME-006、TC-GAME-059，插件宿主 → TC-GAME-009～TC-GAME-011、TC-GAME-014～TC-GAME-016、TC-GAME-053～TC-GAME-055（TC-GAME-007、TC-GAME-008、TC-GAME-012、TC-GAME-013 已废弃），协议与握手 → TC-GAME-017～TC-GAME-028、TC-GAME-049、TC-GAME-050、TC-GAME-060～TC-GAME-064（TC-GAME-021、TC-GAME-023、TC-GAME-025 已废弃），世界与对局 → TC-GAME-029、TC-GAME-031、TC-GAME-033～TC-GAME-036、TC-GAME-056、TC-GAME-057（TC-GAME-030、TC-GAME-032 已废弃），单位与寻路 → TC-GAME-052、TC-GAME-039～TC-GAME-042、TC-GAME-051、TC-GAME-065，镜头 → TC-GAME-043、TC-GAME-044，客户端模组 → TC-GAME-038、TC-GAME-045～TC-GAME-047，启动器 → TC-GAME-048、TC-GAME-049、TC-GAME-050、TC-GAME-058。
-  - 跨域牵连（必须一起跑）：动了启动入口或就绪日志 → 加 TC-GAME-048、TC-GAME-029、TC-GAME-057、TC-GAME-058 与全部以进程为前置的引擎域用例（启动序列一变，「对局在 bind 之前就绪、tick 在 bind 之后才起」这条口径就要重验）；动了握手、准入回调或探针 → 加 TC-GAME-049、TC-GAME-050、TC-GAME-060、TC-GAME-061 与 TC-004、TC-014、TC-018、TC-019、TC-020、TC-026、TC-027 七条存量 TC；动了 `:protocol` 消息布局 → 加 TC-GAME-017 与客户端侧同一份向量；动了引擎 `Entity` 的位置推进入口 → 加 TC-GAME-051 与 TC-GAME-040。
+  - 游戏域：模块与门禁 → TC-GAME-001～TC-GAME-006、TC-GAME-059，插件宿主 → TC-GAME-009～TC-GAME-011、TC-GAME-014～TC-GAME-016、TC-GAME-053～TC-GAME-055（TC-GAME-007、TC-GAME-008、TC-GAME-012、TC-GAME-013 已废弃），协议与握手 → TC-GAME-017～TC-GAME-028、TC-GAME-049、TC-GAME-050、TC-GAME-060～TC-GAME-064（TC-GAME-021、TC-GAME-023、TC-GAME-025 已废弃），世界与对局 → TC-GAME-029、TC-GAME-031、TC-GAME-033～TC-GAME-036、TC-GAME-056、TC-GAME-057（TC-GAME-030、TC-GAME-032 已废弃），单位与寻路 → TC-GAME-052、TC-GAME-039～TC-GAME-042、TC-GAME-051、TC-GAME-065，镜头 → TC-GAME-043、TC-GAME-044，客户端模组 → TC-GAME-038、TC-GAME-045～TC-GAME-047、TC-GAME-066，启动器 → TC-GAME-048、TC-GAME-049、TC-GAME-050、TC-GAME-058。
+  - 跨域牵连（必须一起跑）：动了启动入口或就绪日志 → 加 TC-GAME-048、TC-GAME-029、TC-GAME-057、TC-GAME-058 与全部以进程为前置的引擎域用例（启动序列一变，「对局在 bind 之前就绪、tick 在 bind 之后才起」这条口径就要重验）；动了握手、准入回调或探针 → 加 TC-GAME-049、TC-GAME-050、TC-GAME-060、TC-GAME-061 与 TC-004、TC-014、TC-018、TC-019、TC-020、TC-026、TC-027 七条存量 TC；动了客户端模组侧的握手或拾取 → 加 TC-GAME-066；动了 `:protocol` 消息布局 → 加 TC-GAME-017 与客户端侧同一份向量；动了引擎 `Entity` 的位置推进入口 → 加 TC-GAME-051 与 TC-GAME-040。
   - 影响面不确定时升级为全量轮。
 - **复测轮**（上轮失败用例 + 全部冒烟级）：修复失败项之后。
 - **人工收口轮**（仅上轮「待人工」用例）：AI 轮之后由人工补测 TC-016、TC-030、TC-GAME-020、TC-GAME-038、TC-GAME-046、TC-GAME-047，不要求冒烟级。

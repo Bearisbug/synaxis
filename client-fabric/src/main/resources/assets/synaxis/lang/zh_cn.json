@@ -8,5 +8,8 @@
 	"synaxis:login-timeout": "登录超时。",
 	"synaxis:duplicate-login": "已有同名玩家在线。",
 	"synaxis:internal-error": "服务器未能把你放进世界。",
-	"synaxis:server-stopping": "服务器正在关闭。"
+	"synaxis:server-stopping": "服务器正在关闭。",
+	"synaxis.order.no-path": "到不了那里。",
+	"synaxis.order.not-owner": "不是你的单位。",
+	"synaxis.order.busy": "服务器忙，请重试。"
 }

@@ -1676,6 +1676,7 @@ REQ-M2 ↔ TC 对照（手工维护）：
 | RUN-018 | 2026-09-18 | `70b61a8192`（日志洪泛门禁、ABI 基线上线、Java 发包端、事件与网络测试密度） | AI（Claude Code，Gradle / PacketFlood / CI） | 局部（TC-033、TC-035、TC-GAME-005、TC-GAME-006 + §15 入站包指标与 event / network 测试密度的实测核对；均属引擎核心） | 通过 6/6 |
 | RUN-019 | 2026-09-19 | `bf7ed5c55a`（M2 阶段 4：:protocol 做实、握手与跨线程交接、服务端权威校验与限流、核心回归） | AI（Claude Code，Gradle / 探针 / PacketFlood） | 局部（REQ-M2-007→TC-GAME-017、TC-GAME-018；REQ-M2-008 与 REQ-M2-024②→TC-GAME-019、TC-GAME-062、TC-GAME-022、TC-GAME-050；REQ-M2-009→TC-GAME-063、TC-GAME-024、TC-GAME-026～028、TC-GAME-039、TC-GAME-064 + 核心基线复跑） | 通过 15/17 · 待人工 1 · 阻塞 1 |
 | RUN-020 | 2026-09-19 | `10dc8696b9`（M2 阶段 5：Entity#moveTo、单位模型与五条建模规则、自研寻路与三重预算） | AI（Claude Code，Gradle / 探针 / PacketFlood） | 局部（REQ-M2-025→TC-GAME-051；REQ-M2-016→TC-GAME-037、TC-GAME-039、TC-GAME-052；REQ-M2-017→TC-GAME-040～042、TC-GAME-065 + 核心基线复跑） | 通过 11/13 · 待人工 1 · 阻塞 1 |
+| RUN-021 | 2026-09-22 | `49f0c01867`（阶段 0 / 6a 的无屏幕部分：客户端模组骨架、双端向量、spike ④ 源码结论） | AI（Claude Code，Gradle / Loom / 探针） | 局部（REQ-M2-020a→TC-GAME-045、TC-GAME-046 的可自动化部分；§24 双端向量→TC-GAME-017 第 4 步；TC-GAME-029 第 2 步备注 + 核心模式冒烟） | 通过 6/9 · 待人工 3 |
 
 明细（仅登非「通过」项）：
 
@@ -1777,6 +1778,8 @@ TC-002 证据：`docs/test-runs/RUN-002/tc-002.txt`（5 步实际输出）（2,6
 | RUN-016 | TC-GAME-020 | 待人工 | 需原版客户端看断线提示 | 人工收口轮 |
 | RUN-016 | TC-GAME-016 | 待人工 | 示例插件按 `docs/PLUGINS.md` 跑通需人工照说明走一遍 | 人工收口轮 |
 
+
+RUN-021 证据：`docs/test-runs/RUN-021/acceptance.txt`、`docs/research/client-spikes-2026-09/`（四个 spike 的执行清单与 spike ④ 的源码结论）。要点：`client-fabric` 是独立的 Loom 构建、Minecraft 钉死 26.2、产出 33,880 字节的模组 jar，未被根构建吞进去；**§24 的双端向量保证由验收人亲自验有齿**——客户端读的是引擎那一份向量目录而非副本，把 `c2s_camera.bin` 的一个字节由 194 改成 61 后，客户端的 `FrozenVectorTest` 与服务端的 `ProtocolVectorTest`（含 `schema_version` 绑定那条）**同时变红**，还原后同时恢复绿，`TC-GAME-017` 第 4 步由此脱离阻塞；spike ③（1,024 区块载入墙钟）属服务端侧，本轮直接跑掉；**spike ④ 只给了带出处的源码结论**（取证对象 `fabric-networking-api-v1:6.3.4+2989c6a09e`，源码与字节码逐条对过），文档明写「桌面结论、非运行期验证」，`ADR-M2-010` **保持 Proposed**。服务端 3,120 个测试 0 失败、客户端 25 个 0 失败；核心模式起服 + 探针 login / echo / handshake / stop 全过，WARN+ERROR 0 行。磁盘：`~/.gradle` 4.0 GB（Loom 只缓存 26.2 一个版本），剩余 61 GB。待人工（都要真实 Fabric 客户端与图形环境）：spike ①（JiJ 运行期加载）、spike ②（相机与实体剔除，含 50% 实体距离档）、spike ④ 的运行期验证。
 
 RUN-020 证据：`docs/test-runs/RUN-020/acceptance.txt`（验收人侧的退出条件自查、ABI 门、全量 check 与端到端实跑）与 `docs/research/soak-2026-09-18/report.md` 的「阶段 5 之后的复跑」一节。要点：`Entity#moveTo(Pos)` 单独成一个提交，等价性用**包序列**对照证明零行为变更（翻转 sendPackets 参数即红），三个 `refreshPosition` 重载仍是内部 API，游戏侧 grep 零命中；单位建模五条规则各有断言，文档点名的插值陷阱（`setTransformationInterpolationDuration`）全库零命中，`view_range` 取原型配置值 4.0；寻路为随地图烘一次的不可变网格 + 8 邻接 A\* + 拉绳平滑，三重预算实测——同 tick 64 条指令得 `ok` 36 / `busy` 28（和为 64、零 `rate-limited`）、每 tick 恰好处理 4 条、`path_ms` P99 0 ms、`path_nodes` 单次 ≤ 224；端到端（无客户端）下令后单位沿航点连续推进并在到达后转 idle，`unit_order_completed` 的 `elapsed_ms` 为正。**本轮审查抓到并修掉一个真缺陷**：空旷可达的远目标被答成 `no-path`（启发式未向目标偏置），修法是 octile 启发式加 1.15 的目标偏置，三重预算一个数未动，并新增 `TC-GAME-065` 钉住「远处空旷目标回 ok，`no-path` 只留给被围住的\」。**核心未退步**：PacketFlood 50 连接 × 100 Hz × 360 s 达成 5,015.0 包/秒 0 丢失（与 RUN-019 持平），窗口内 tick P99 1.367 ms（基线 1.350），存活集 32.0 MiB；三条客户端可控日志门禁各插探针均变红；ABI 门用 v0.1.0 真实资产真跑并绿。**阶段 5 新负载首测**：64 个单位全程移动时出站带宽由 idle 的 41.9 KB/s 升到 132.9 KB/s，按「单位数 × viewer 数」走；1,000 单位那一档仍未覆盖（见 §28）。待人工：TC-GAME-020。阻塞：TC-GAME-052 第 4～6 步（需 REQ-M2-018 的探针实体包解码）。
 

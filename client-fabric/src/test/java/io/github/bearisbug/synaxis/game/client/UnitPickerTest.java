@@ -73,6 +73,24 @@ class UnitPickerTest {
         assertNull(pick(new Vec3(0.0, 64.5, 0.0), new Vec3(1.0, 0.0, 0.0), 64.0));
     }
 
+    /**
+     * The other half of the same rule, and the one a world switch produces: the entity was here and
+     * is gone — the level was replaced, or the chunk was unloaded — while the binding is still in
+     * the table because the server's {@code S2C_UNIT_DESPAWN} has not arrived or never will. The
+     * unit goes back to being unpickable, silently and without an exception; nothing here tries to
+     * remember where it last was.
+     */
+    @Test
+    void aUnitWhoseEntityTheClientHasUnloadedIsNoLongerPickable() {
+        bind(7, 4711, ARCHETYPE);
+        world.at(4711, 10.0, 64.0, 0.0);
+        assertEquals(7, pick(new Vec3(0.0, 64.5, 0.0), new Vec3(1.0, 0.0, 0.0), 64.0).unitId());
+
+        world.forget(4711);
+
+        assertNull(pick(new Vec3(0.0, 64.5, 0.0), new Vec3(1.0, 0.0, 0.0), 64.0));
+    }
+
     @Test
     void aUnitOfAnArchetypeThisBuildDoesNotKnowIsNotPickable() {
         bind(7, 4711, 5);

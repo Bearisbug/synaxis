@@ -155,6 +155,33 @@ class RtsClientTest {
     }
 
     @Test
+    void aDespawnThatDoesNotNameTheSelectedUnitLeavesItSelected() {
+        spawn(7, 4711, S2CUnitSpawn.FLAG_COMMANDABLE);
+        client.selectAt(EYE, TOWARDS_THE_UNIT);
+
+        client.receive(new S2CUnitDespawn(List.of(9)));
+
+        assertEquals(Integer.valueOf(7), client.selected());
+    }
+
+    /**
+     * A selection is a {@code unit_id}, so losing the entity — a world switch, an unloaded chunk —
+     * costs the player the ability to click the unit again, not the order they are giving it. The
+     * server answers for the unit either way; the client does not silently swallow the order.
+     */
+    @Test
+    void aSelectedUnitWhoseEntityWentAwayCanStillBeOrdered() {
+        spawn(7, 4711, S2CUnitSpawn.FLAG_COMMANDABLE);
+        client.selectAt(EYE, TOWARDS_THE_UNIT);
+        world.forget(4711).ground(new Vec3(1.0, 64.0, 1.0));
+        sent.clear();
+
+        client.orderAt(EYE, TOWARDS_THE_UNIT);
+
+        assertEquals(List.of(new C2SMoveOrder(1, 1, 7, 1.0f, 64.0f, 1.0f, 0)), sent);
+    }
+
+    @Test
     void aSnapshotReachesTheBindingTable() {
         spawn(7, 4711, S2CUnitSpawn.FLAG_COMMANDABLE);
 

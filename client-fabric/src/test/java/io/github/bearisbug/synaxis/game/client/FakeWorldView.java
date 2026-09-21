@@ -23,6 +23,12 @@ final class FakeWorldView implements ClientWorldView {
         return this;
     }
 
+    /** What a world switch or a chunk unload does to an entity this client was told about. */
+    FakeWorldView forget(int entityId) {
+        positions.remove(entityId);
+        return this;
+    }
+
     FakeWorldView ground(Vec3 point) {
         this.ground = point;
         return this;

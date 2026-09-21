@@ -60,14 +60,73 @@ class UnitBindingsTest {
     }
 
     /**
-     * §8: the two spawn paths — ours and the engine's entity packet — arrive in either order, so a
-     * snapshot line for a unit that is not bound yet is a fact about timing, not an error.
+     * §8: a snapshot line naming a unit this client has not bound is not an error and never becomes
+     * one — no protocol error, no disconnect, nothing invented for it. It is still counted, because
+     * on one ordered channel the binding always precedes the snapshot that names it, so a line that
+     * matches nothing means something upstream is wrong and a drop nobody can see would hide it.
      */
     @Test
-    void aSnapshotLineForAUnitThatIsNotBoundYetIsIgnored() {
+    void aSnapshotLineForAUnitThatIsNotBoundIsDroppedAndCounted() {
         bindings.apply(new S2CUnitState(41, List.of(new S2CUnitState.Entry(9, UnitState.MOVING, 80))));
 
         assertNull(bindings.get(9));
+        assertEquals(1, bindings.unmatchedStateEntries());
+    }
+
+    /** The same line after the unit was unbound: a despawn is the end of the unit, not a hole. */
+    @Test
+    void aSnapshotLineForAUnitThatWasJustDespawnedIsDroppedAndCounted() {
+        bindings.apply(spawn(7, 4711, S2CUnitSpawn.FLAG_COMMANDABLE));
+        bindings.apply(new S2CUnitDespawn(List.of(7)));
+
+        bindings.apply(new S2CUnitState(41, List.of(new S2CUnitState.Entry(7, UnitState.MOVING, 80))));
+
+        assertNull(bindings.get(7));
+        assertEquals(1, bindings.unmatchedStateEntries());
+    }
+
+    @Test
+    void aSnapshotThatNamesOnlyBoundUnitsCountsNothing() {
+        bindings.apply(spawn(7, 4711, S2CUnitSpawn.FLAG_COMMANDABLE));
+
+        bindings.apply(new S2CUnitState(41, List.of(new S2CUnitState.Entry(7, UnitState.MOVING, 80))));
+
+        assertEquals(0, bindings.unmatchedStateEntries());
+    }
+
+    /**
+     * A despawn naming nothing is the recycling side of the same question, and it is counted for
+     * the same reason: both messages ride one ordered channel, so a despawn can only name a unit
+     * this client bound. One that names no unit is either a second despawn or a despawn that
+     * overtook its spawn, and both are worth knowing about.
+     */
+    @Test
+    void aDespawnOfAUnitThatIsNotBoundIsCounted() {
+        bindings.apply(new S2CUnitDespawn(List.of(9)));
+
+        assertEquals(1, bindings.despawnsOfUnboundUnits());
+    }
+
+    @Test
+    void aSecondDespawnOfTheSameUnitIsCounted() {
+        bindings.apply(spawn(7, 4711, S2CUnitSpawn.FLAG_COMMANDABLE));
+        bindings.apply(new S2CUnitDespawn(List.of(7)));
+        bindings.apply(new S2CUnitDespawn(List.of(7)));
+
+        assertEquals(1, bindings.despawnsOfUnboundUnits());
+    }
+
+    /**
+     * The recycle never outlives the insert that follows it: a unit that left the interest set and
+     * came back is a plain spawn, whatever the despawn before it did to the table.
+     */
+    @Test
+    void aDespawnDoesNotStopTheSameUnitFromBindingAgainLater() {
+        bindings.apply(new S2CUnitDespawn(List.of(7)));
+        bindings.apply(spawn(7, 5000, S2CUnitSpawn.FLAG_COMMANDABLE));
+
+        assertEquals(5000, bindings.get(7).entityId());
+        assertEquals(1, bindings.all().size());
     }
 
     @Test
@@ -86,5 +145,17 @@ class UnitBindingsTest {
         bindings.clear();
 
         assertEquals(0, bindings.all().size());
+    }
+
+    /** The counters belong to a connection as much as the bindings do. */
+    @Test
+    void aNewConnectionStartsWithBothCountersAtZero() {
+        bindings.apply(new S2CUnitState(41, List.of(new S2CUnitState.Entry(9, UnitState.MOVING, 80))));
+        bindings.apply(new S2CUnitDespawn(List.of(9)));
+
+        bindings.clear();
+
+        assertEquals(0, bindings.unmatchedStateEntries());
+        assertEquals(0, bindings.despawnsOfUnboundUnits());
     }
 }

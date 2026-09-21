@@ -7,6 +7,8 @@ import io.github.bearisbug.synaxis.game.protocol.UnitState;
 import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * The {@code unit_id ↔ entity_id} index {@code ADR-M2-012} leaves to the client, plus the little
@@ -19,8 +21,28 @@ import java.util.Map;
  * <p>
  * Lives on the client thread that handles play packets and is touched from nowhere else — the map
  * is a plain {@link LinkedHashMap} and {@link #clear()} is as much a part of that as the puts are.
+ * <p>
+ * <b>Who empties it, and when.</b> Only {@link #clear()}, and only from the start of a play
+ * connection — the one place that is both on this thread and ordered behind every packet of the
+ * connection before it (see {@code ADR-M2-012} and {@code SynaxisClientMod}). Nothing empties it on
+ * disconnect, on a world switch or at the end of a match: a binding is a handful of {@code int}s
+ * and an enum, so a table nobody emptied costs bytes rather than holding a level or an entity
+ * alive, and
+ * the server unbinds each unit for real by sending {@code S2C_UNIT_DESPAWN} when it leaves the
+ * player's interest set — which leaving the world and ending the match both do. A binding that
+ * outlives its entity anyway is not a hazard either: it has no position, so it cannot be picked
+ * (see {@link UnitPicker}).
+ * <p>
+ * <b>What it does with a message that matches nothing.</b> Counts it and carries on. Both
+ * directions of this table ride one ordered channel, so a snapshot line or a despawn can only name
+ * a unit this client already bound; one that names no unit means something upstream is wrong, and
+ * §8 forbids answering it with a protocol error. The middle ground is the two counters below plus
+ * one WARN per connection per kind — enough for anyone to find out, bounded no matter what the
+ * server sends.
  */
 public final class UnitBindings {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger("synaxis");
 
     /**
      * One unit as this client knows it.
@@ -49,6 +71,9 @@ public final class UnitBindings {
 
     private final Map<Integer, Binding> byUnitId = new LinkedHashMap<>();
 
+    private int unmatchedStateEntries;
+    private int despawnsOfUnboundUnits;
+
     /**
      * Binds a unit that entered this player's interest set, replacing whatever was bound before —
      * a unit that left and came back may be carried by a different entity.
@@ -62,28 +87,58 @@ public final class UnitBindings {
 
     /**
      * Forgets units that left the interest set or the match.
+     * <p>
+     * A unit that is unbound again later is a plain {@link #apply(S2CUnitSpawn)} away from being
+     * bound again: the order this table is written in never makes a later insert lose to an earlier
+     * removal.
      *
      * @param despawn the message
      */
     public void apply(S2CUnitDespawn despawn) {
-        for (final int unitId : despawn.unitIds()) byUnitId.remove(unitId);
+        for (final int unitId : despawn.unitIds()) {
+            if (byUnitId.remove(unitId) != null) continue;
+            if (despawnsOfUnboundUnits++ == 0) {
+                LOGGER.warn("Despawn for a unit this client never bound: unit_id={}", unitId);
+            }
+        }
     }
 
     /**
      * Overwrites state and health from one snapshot.
      * <p>
-     * A line naming a unit this client has not bound is dropped rather than reported: §8 leaves the
-     * arrival order of a binding and the engine's spawn packet undefined, so that is timing, not an
-     * error.
+     * A line naming a unit this client has not bound changes nothing and is counted (see
+     * {@link #unmatchedStateEntries()}); §8 rules out treating it as a protocol error.
      *
      * @param snapshot the message
      */
     public void apply(S2CUnitState snapshot) {
         for (final S2CUnitState.Entry entry : snapshot.entries()) {
-            byUnitId.computeIfPresent(entry.unitId(), (_, bound) -> new Binding(bound.unitId(),
-                    bound.entityId(), bound.archetype(), bound.team(), entry.hp(), bound.maxHp(),
-                    bound.flags(), entry.unitState()));
+            final Binding bound = byUnitId.get(entry.unitId());
+            if (bound == null) {
+                if (unmatchedStateEntries++ == 0) {
+                    LOGGER.warn("Snapshot line for a unit this client has not bound: unit_id={}, server_tick={}",
+                            entry.unitId(), snapshot.serverTick());
+                }
+                continue;
+            }
+            byUnitId.put(entry.unitId(), new Binding(bound.unitId(), bound.entityId(),
+                    bound.archetype(), bound.team(), entry.hp(), bound.maxHp(), bound.flags(),
+                    entry.unitState()));
         }
+    }
+
+    /**
+     * @return how many snapshot lines on this connection named a unit that was not bound
+     */
+    public int unmatchedStateEntries() {
+        return unmatchedStateEntries;
+    }
+
+    /**
+     * @return how many despawned {@code unit_id}s on this connection were not bound
+     */
+    public int despawnsOfUnboundUnits() {
+        return despawnsOfUnboundUnits;
     }
 
     /**
@@ -102,9 +157,12 @@ public final class UnitBindings {
     }
 
     /**
-     * Forgets everything, which is what leaving a world means.
+     * Forgets everything, counters included: both are per connection, like the bindings themselves
+     * and like the one WARN each of them is allowed.
      */
     public void clear() {
         byUnitId.clear();
+        unmatchedStateEntries = 0;
+        despawnsOfUnboundUnits = 0;
     }
 }

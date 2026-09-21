@@ -1,0 +1,12 @@
+{
+	"synaxis:client-mod-required": "本服务器需要 Synaxis 客户端模组，请安装整合包后重进。",
+	"synaxis:protocol-version-mismatch": "模组与服务器的协议版本不一致，请更新整合包。",
+	"synaxis:match-unavailable": "对局已结束，请返回主菜单。",
+	"synaxis:game-flood": "本连接的游戏消息过于密集已被断开。可以重连；反复出现请带上服务端日志里的 connection_id 报障。",
+	"synaxis:protocol-error": "服务器判定本连接发来的消息畸形。",
+	"synaxis:unsupported-version": "该 Minecraft 版本无法与服务器通信。",
+	"synaxis:login-timeout": "登录超时。",
+	"synaxis:duplicate-login": "已有同名玩家在线。",
+	"synaxis:internal-error": "服务器未能把你放进世界。",
+	"synaxis:server-stopping": "服务器正在关闭。"
+}

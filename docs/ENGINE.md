@@ -210,6 +210,7 @@ python3 tools/pkgdeps.py game-rts/src/main/java   --root-package io.github.beari
 | `plugin-api/` | M2 子项目：唯一稳定面，引擎与 `protocol` 类型的受控再导出；接 ABI 门 |
 | `server-app/` | M2 子项目：插件宿主与装配层（唯一启动入口），跑 classpath，不出模块 |
 | `game-rts/` | M2 子项目：RTS 玩法插件，由宿主用 `ServiceLoader` 发现 |
+| `client-fabric/` | M2 客户端模组工程（`REQ-M2-020`）：Fabric Loom 的**独立 Gradle 构建**，自带 wrapper，不进 `settings.gradle.kts`（`ADR-M2-015`）；`:protocol` 从 `mavenLocal()` 按坐标消费并 JiJ 进模组 jar；`check` 跑 §24 的双端向量（读 `protocol/src/test/resources/vectors/` 本身）与 `verifyModJar`，CI 见 §7 的 `client-mod.yml` |
 | `build-src/` | Gradle 约定插件（toolchain、Error Prone、发布、ABI 检查） |
 | `gradle/init/` | 构建用的临时 init 脚本，目前只有阿里云镜像脚本，见 §2.1 |
 | `gradle/libs.versions.toml` | 版本目录：所有第三方版本与 `minecraft = "26.2"` 都钉在这里 |
@@ -223,6 +224,7 @@ python3 tools/pkgdeps.py game-rts/src/main/java   --root-package io.github.beari
 | `docs/test-runs/` | 各轮测试的证据目录（`RUN-*`） |
 
 版本钉死口径：Minecraft 26.2 / 协议 776（`src/main/resources/data/constants.json`）、JDK 25、Gradle 9.7.1。
+**客户端侧另有一份且不在版本目录里**：`client-fabric/build.gradle.kts` 顶部的 `minecraftVersion` / `loaderVersion` / `fabricApiVersion`（26.2 / 0.19.5 / 0.161.0+26.2）——独立构建读不到 `gradle/libs.versions.toml`，升版本时这三个常量必须单独改，`fabric.mod.json` 的 minecraft 依赖由第一个常量展开。
 
 ---
 
@@ -236,17 +238,18 @@ python3 tools/pkgdeps.py game-rts/src/main/java   --root-package io.github.beari
 4. **改包定义**：按 diff 改 `network/packet/**`；每个改动过的包都必须有往返测试。
 5. **改常量表**：从 git 历史复活 `code-generators`（REQ-008 删除前的最后版本在 commit `b162f394e8`），用新数据跑一次（入参 `<注册表数据目录> <输出目录>`），把输出与我们手工裁剪过的 `src/main/java`（原生成物已并入，REQ-008） 做三方合并——生成器会覆盖裁剪，必须人工合。
 6. **注册表**：新增 / 删除的注册表在 `Registries.java` 与 `OpaqueRegistry` 里加减，并跑 `RegistryDataPacket` 字节对比那道门（`docs/TEST.md` TC-007）。
-7. **客户端**：Fabric 模组同步升 Loader / Yarn / API，自定义 payload 的编解码用共享测试向量在两端各跑一遍。
-8. **验收**：原版客户端加我们的 Fabric 模组走完整「登录 → 进世界 → 自定义协议往返」；`./gradlew check` 全绿；ArchUnit 绿。同时更新 §5 里的版本钉死口径与 `gradle/libs.versions.toml` 的 `minecraft`。
+7. **客户端**：Fabric 模组同步升 Loader / Yarn / API——改的是 `client-fabric/build.gradle.kts` 的 `minecraftVersion` / `loaderVersion` / `fabricApiVersion` 三个常量（版本目录管不到它），自定义 payload 的编解码用共享测试向量在两端各跑一遍。
+8. **验收**：原版客户端加我们的 Fabric 模组走完整「登录 → 进世界 → 自定义协议往返」；`./gradlew check` 全绿；ArchUnit 绿。同时更新 §5 里的版本钉死口径、`gradle/libs.versions.toml` 的 `minecraft` 与 `client-fabric/build.gradle.kts` 的三个版本常量（漏掉最后一处，服务端升了而客户端会静默停在旧版本）。
 
 ---
 
 ## 7. CI
 
-两个工作流，都在 push 到 `main` 与每个 PR 上触发；GitHub 运行器直连 Maven Central，**不用**镜像 init 脚本。
+三个工作流，都在 push 到 `main` 与每个 PR 上触发；GitHub 运行器直连 Maven Central，**不用**镜像 init 脚本。
 
 - `ci.yml`：temurin JDK 25，`gradle/actions/setup-gradle` 缓存（非 `main` 只读），跑 `./gradlew check jacocoTestReport`，上传测试报告与 JaCoCo XML（保留 14 天）；PR 上另跑 `diff-cover` 对新增行做 80% 覆盖率门（需要 `fetch-depth: 0`）。本地等价：`./gradlew check jacocoTestReport --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts`，再 `diff-cover $(find . -path '*/build/reports/jacoco/test/jacocoTestReport.xml' | sort) --compare-branch=origin/main --src-roots src/main/java testing/src/main/java protocol/src/main/java plugin-api/src/main/java server-app/src/main/java game-rts/src/main/java --fail-under=80`（`pip install diff-cover`）——覆盖率门读**全部模块**的报告，少一个 `--src-roots` 就会让那个模块的新增行在本地隐形、与 CI 得出不同的绿。
 - `concurrency.yml`：`./gradlew :jcstress-tests:jcstress -Dorg.gradle.isolated-projects=false -Dorg.gradle.configuration-cache=false`，该插件不支持这两项；报告在 `jcstress-tests/build/reports/jcstress/`。本地快速模式把 `jcstress-tests/build.gradle.kts` 的 `mode` 临时设为 `quick`。
+- `client-mod.yml`：客户端 Fabric 模组（`REQ-M2-020b`）。三步——`env -u CI ./gradlew :protocol:publishToMavenLocal` → `client-fabric` 里 `./gradlew build` → 上传模组 jar 与测试报告。三处与别的工作流不同：① **`env -u CI`**，发布约定在 `CI` 存在时强制签名，而这个 job 没有 GPG 私钥也不需要（工件不出 runner），排掉 `signMavenPublication` 不管用——`.asc` 是配置期挂进发布的；② 它**单独一个工作流**，因为 Loom 第一次要下载 Minecraft，不该让引擎的 `check` 跟着等、也不该让 Fabric 的仓库抖动把引擎门禁染红（Loom 的缓存在 `~/.gradle/caches/fabric-loom`，正落在 `setup-gradle` 默认缓存的 `caches` 里）；③ 客户端构建自己声明 `maven.fabricmc.net`，本机跑它要带代理（镜像 init 脚本里没有这个仓库）。本地等价：`./gradlew :protocol:publishToMavenLocal --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts`，再 `cd client-fabric && ./gradlew build --no-daemon`。客户端 `check` 里的两道门：`FrozenVectorTest`（§24 的双端向量，读的是 `protocol/src/test/resources/vectors/` 本身）与 `verifyModJar`（模组 jar 的版本钉死、资源、JiJ 的 `:protocol`、不含引擎类）。
 
 `check` 里的三道门：Error Prone（约 96 项，`-Werror`）、`forbiddenImportsCheck`、`testNamingCheck`（测试类名必须与其夹具一致：`@EnvTest` 的类以 `IntegrationTest` 结尾，注册表夹具以 `RegistriesTest` 结尾；该任务是增量任务，只有干净构建目录或 `--rerun-tasks` 才全量扫），外加 `ArchitectureTest`：ArchUnit **严格**分层规则——底层集合 `codec、condition、coordinate、exception、gamedata、monitoring、thread、timer、utils` 不得依赖集合之外的引擎包，唯一豁免是根包 `JvmFlags`（零引擎依赖、只读系统属性）；任何新增反向边直接让构建红，没有冻结存储。同一个 `ArchitectureTest` 还有第二条规则「引擎不得依赖游戏侧、稳定面与宿主」——禁止 `io.github.bearisbug.synaxis.game..`、`io.github.bearisbug.synaxis.plugin..`、`io.github.bearisbug.synaxis.app..` 三个完整前缀（`REQ-M2-002`；写完整前缀是因为 `..plugin..` 会误命中引擎自己的 `network.plugin`）。第三条规则「客户端可驱动的路径不得逐包写日志」见 §8。`python3 tools/pkgdeps.py` 打印顶层包依赖矩阵与「底层出向上层边数」，改动包结构后先跑它，且**按模块分别跑**（每个模块一条命令，见 §3.6）。`:plugin-api` / `:protocol` 已接 ABI 门（`ci.yml` 的 `ABI gate of the stable surface` 步骤跑 `:plugin-api:checkBinaryCompatibility :protocol:checkBinaryCompatibility`）：打出第一个 tag 之前没有 baseline，不传 `-PbaselineJarDir` 时两个任务以 Gradle 的 `SKIPPED` 结束并打印「无 baseline，ABI 门未生效」、构建照常绿，传了而 baseline jar 缺失则失败（引导规则见 `docs/DESIGN-M2.md` §24）；引擎根模块不接这道门。**这道门在有 baseline 之前一次都没真跑过，绿灯不代表它有齿**——打第一个 tag、归档 baseline jar、让 CI 开始传参的完整流程，以及本地不靠 tag 就能跑同一道门的口径，见 §7.1。`check` 里**唯一一条挂墙钟的断言**是 `:game-rts` 的 `MatchIntegrationTest#theFullSizeMapGenerates`（512×512 / 1,024 区块的整图生成，`load_ms < 3000`，`docs/DESIGN-M2.md` §15 的预算、§26 阶段 3 的退出判据）。本机实测 0.7～1.2 s，余量三四倍；CI 机器被压满时它是最先红的那条——**先怀疑机器负载，别当功能回归查**。
 

@@ -1,0 +1,12 @@
+{
+	"synaxis:client-mod-required": "This server needs the Synaxis client mod. Install the modpack and join again.",
+	"synaxis:protocol-version-mismatch": "This mod speaks a different protocol than the server. Update the modpack.",
+	"synaxis:match-unavailable": "The match has ended. Back to the main menu.",
+	"synaxis:game-flood": "The server saw too many game messages from this connection. Reconnect; if it keeps happening, report it with the connection id from the server log.",
+	"synaxis:protocol-error": "The server rejected a message from this connection as malformed.",
+	"synaxis:unsupported-version": "This Minecraft version cannot talk to the server.",
+	"synaxis:login-timeout": "Logging in took too long.",
+	"synaxis:duplicate-login": "Somebody is already playing under this name.",
+	"synaxis:internal-error": "The server failed to bring you into the world.",
+	"synaxis:server-stopping": "The server is shutting down."
+}

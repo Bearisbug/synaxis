@@ -1,0 +1,68 @@
+name: Client mod
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  # Its own workflow rather than a job inside CI: this one downloads Minecraft, and the engine's
+  # check should not wait behind it or go red when maven.fabricmc.net does. See docs/DESIGN-M2.md
+  # ADR-M2-015 for why the mod is a separate Gradle build in the first place.
+  mod:
+    name: Build the Fabric mod
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Set up JDK 25
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: 25
+
+      # The first Loom run of a runner downloads Minecraft and its libraries — hundreds of
+      # megabytes, minutes of wall clock. They live in ~/.gradle/caches/fabric-loom, which this
+      # action carries between runs by default (it caches the whole `caches` directory), so only a
+      # cache miss pays that. Read only outside main, so a pull request cannot poison what the
+      # next run restores.
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          cache-read-only: ${{ github.ref != 'refs/heads/main' }}
+
+      # ADR-M2-015: the mod consumes :protocol as a published artifact, so CI publishes it the way
+      # a developer does instead of inventing a second shape. `env -u CI` because the publishing
+      # convention makes signing mandatory whenever CI is set — this job has no GPG key and needs
+      # none, the artifact never leaves the runner.
+      - name: Publish :protocol to the local repository
+        run: env -u CI ./gradlew :protocol:publishToMavenLocal
+
+      # A separate build means a separate invocation. `check` runs the frozen vectors of §24
+      # against the very directory :protocol keeps them in — that is the client half of the two
+      # ended guarantee — and verifyModJar asserts what the jar ships (docs/TEST.md TC-GAME-045).
+      - name: Build the mod
+        run: ./gradlew build
+        working-directory: client-fabric
+
+      - name: Upload the mod jar
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: client-mod
+          path: client-fabric/build/libs/*.jar
+          retention-days: 14
+
+      - name: Upload test reports
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: client-test-reports
+          path: |
+            client-fabric/build/reports/tests/
+            client-fabric/build/test-results/
+          retention-days: 14

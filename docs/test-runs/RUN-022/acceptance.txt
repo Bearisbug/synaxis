@@ -1,0 +1,31 @@
+RUN-022 · 阶段 6a 的无屏幕部分 · version 3daf64f109 · 2026-09-22
+
+== 客户端测试（干净重跑，--rerun-tasks）==
+  ClientHandshakeTest    tests="13" failures="0"
+  FrozenVectorTest       tests="20" failures="0"
+  GamePayloadTest        tests="5" failures="0"
+  OrderFeedbackTest      tests="3" failures="0"
+  RtsClientTest          tests="23" failures="0"
+  UnitBindingsTest       tests="13" failures="0"
+  UnitPickerTest         tests="15" failures="0"
+  合计 92 条 0 失败（上一轮 25 条）
+
+== 双端向量仍有齿（验收人亲验）==
+把 s2c_unit_spawn.bin 的第 5 个字节由 0 改成 255：
+  客户端 FrozenVectorTest > aFrozenVectorSurvivesTheClientCodecByteForByte("s2c_unit_spawn.bin") FAILED
+  服务端 ProtocolVectorTest > aFrozenVectorDecodesAndReEncodesByteForByte(s2c_unit_spawn.bin) FAILED
+         ProtocolVectorTest > theFrozenVectorsAreBoundToTheSchemaVersion() FAILED
+还原后两端同时恢复绿；工作树干净。
+
+== 范围自查 ==
+服务端零改动：git diff --name-only 只命中 client-fabric/ 与 docs/
+未越界：client-fabric 源码里 Mixin / RenderSystem / MouseHandler / KeyMapping 全部零命中（渲染与输入属 6b）
+线程修复在位：SynaxisClientMod.java:78 用的是 ClientPlayConnectionEvents.INIT，DISCONNECT 零命中
+根构建 check：BUILD SUCCESSFUL，服务端 3,122 个测试 0 失败
+
+== 审查在本轮抓到的真问题 ==
+ClientPlayConnectionEvents.DISCONNECT 由 ConnectionMixin 在 channelInactive 的 HEAD 注入、直接在 netty 线程上 invoke；
+而 rts:game 的负载处理器由 ClientPlayNetworkAddon#isOnReceiveThread 门在主线程的 PacketProcessor 队列上。
+两者同写 UnitBindings 的 LinkedHashMap，且 UnitPicker.pick 遍历时可能被另一线程 clear。
+改用 INIT（由 ClientPacketListener 构造器点着，而该构造发生在 handleConfigurationFinished 里、已 ensureRunningOnSameThread）
+后两边同线程同队列，顺序问题一并解决。证据以 javap 在真实 jar 上逐条取证。

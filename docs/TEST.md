@@ -1701,6 +1701,7 @@ REQ-M2 ↔ TC 对照（手工维护）：
 | RUN-019 | 2026-09-19 | `bf7ed5c55a`（M2 阶段 4：:protocol 做实、握手与跨线程交接、服务端权威校验与限流、核心回归） | AI（Claude Code，Gradle / 探针 / PacketFlood） | 局部（REQ-M2-007→TC-GAME-017、TC-GAME-018；REQ-M2-008 与 REQ-M2-024②→TC-GAME-019、TC-GAME-062、TC-GAME-022、TC-GAME-050；REQ-M2-009→TC-GAME-063、TC-GAME-024、TC-GAME-026～028、TC-GAME-039、TC-GAME-064 + 核心基线复跑） | 通过 15/17 · 待人工 1 · 阻塞 1 |
 | RUN-020 | 2026-09-19 | `10dc8696b9`（M2 阶段 5：Entity#moveTo、单位模型与五条建模规则、自研寻路与三重预算） | AI（Claude Code，Gradle / 探针 / PacketFlood） | 局部（REQ-M2-025→TC-GAME-051；REQ-M2-016→TC-GAME-037、TC-GAME-039、TC-GAME-052；REQ-M2-017→TC-GAME-040～042、TC-GAME-065 + 核心基线复跑） | 通过 11/13 · 待人工 1 · 阻塞 1 |
 | RUN-021 | 2026-09-22 | `49f0c01867`（阶段 0 / 6a 的无屏幕部分：客户端模组骨架、双端向量、spike ④ 源码结论） | AI（Claude Code，Gradle / Loom / 探针） | 局部（REQ-M2-020a→TC-GAME-045、TC-GAME-046 的可自动化部分；§24 双端向量→TC-GAME-017 第 4 步；TC-GAME-029 第 2 步备注 + 核心模式冒烟） | 通过 6/9 · 待人工 3 |
+| RUN-022 | 2026-09-22 | `3daf64f109`（阶段 6a 的无屏幕部分：客户端握手、绑定表、拾取与下令） | AI（Claude Code，Gradle / Loom） | 局部（REQ-M2-019 的可无头测试部分→TC-GAME-045、TC-GAME-066；§24 双端向量复验；根构建回归） | 通过 4/9 · 待人工 5 |
 
 明细（仅登非「通过」项）：
 
@@ -1802,6 +1803,8 @@ TC-002 证据：`docs/test-runs/RUN-002/tc-002.txt`（5 步实际输出）（2,6
 | RUN-016 | TC-GAME-020 | 待人工 | 需原版客户端看断线提示 | 人工收口轮 |
 | RUN-016 | TC-GAME-016 | 待人工 | 示例插件按 `docs/PLUGINS.md` 跑通需人工照说明走一遍 | 人工收口轮 |
 
+
+RUN-022 证据：`docs/test-runs/RUN-022/acceptance.txt` 与 `docs/research/client-spikes-2026-09/stage6a-headless-vs-live.md`（逐行写清哪几行测不到、为什么、由谁判）。要点：客户端测试由 25 条增至 **92 条 0 失败**（握手 13、下令编排 23、拾取 15、绑定 13、向量 20、负载 5、结果码 3），**一条也没有启动 Minecraft**；碰 MC API 的只有两个接缝共四个方法（`ClientWorldView#renderPosition` / `#groundHit`、两个 `Sink#send`），生产实现各一到五行，是唯一测不到的部分，判据是人工用例。**§24 双端向量由验收人复验仍有齿**：把 `s2c_unit_spawn.bin` 的一个字节由 0 改成 255，客户端与服务端三条测试同时红，还原后同时绿。**范围自查**：服务端零改动（diff 只命中 `client-fabric/` 与 `docs/`），未越界写渲染或输入（`Mixin` / `RenderSystem` / `MouseHandler` / `KeyMapping` 全部零命中，属阶段 6b），根构建 3,122 个测试 0 失败。**本轮审查抓到一个真缺陷**：`ClientPlayConnectionEvents.DISCONNECT` 由 `ConnectionMixin` 在 `channelInactive` 的 HEAD 注入、**直接在 netty 线程上 invoke**，而 `rts:game` 的负载处理器跑在主线程的 `PacketProcessor` 队列上，两者同写绑定表的 `LinkedHashMap`、且拾取遍历时可能被另一线程清空；改用同线程同队列的 `INIT` 事件（由 `ClientPacketListener` 构造器点着，而该构造发生在已 `ensureRunningOnSameThread` 的 `handleConfigurationFinished` 里），顺序问题一并解决，证据以 `javap` 在真实 jar 上逐条取证。待人工（都要真实 Fabric 客户端与图形环境）：两个接缝的适配器、实际渲染、实际点击、端到端四环通，以及 spike ①②④ 的运行期验证。
 
 RUN-021 证据：`docs/test-runs/RUN-021/acceptance.txt`、`docs/research/client-spikes-2026-09/`（四个 spike 的执行清单与 spike ④ 的源码结论）。要点：`client-fabric` 是独立的 Loom 构建、Minecraft 钉死 26.2、产出 33,880 字节的模组 jar，未被根构建吞进去；**§24 的双端向量保证由验收人亲自验有齿**——客户端读的是引擎那一份向量目录而非副本，把 `c2s_camera.bin` 的一个字节由 194 改成 61 后，客户端的 `FrozenVectorTest` 与服务端的 `ProtocolVectorTest`（含 `schema_version` 绑定那条）**同时变红**，还原后同时恢复绿，`TC-GAME-017` 第 4 步由此脱离阻塞；spike ③（1,024 区块载入墙钟）属服务端侧，本轮直接跑掉；**spike ④ 只给了带出处的源码结论**（取证对象 `fabric-networking-api-v1:6.3.4+2989c6a09e`，源码与字节码逐条对过），文档明写「桌面结论、非运行期验证」，`ADR-M2-010` **保持 Proposed**。服务端 3,120 个测试 0 失败、客户端 25 个 0 失败；核心模式起服 + 探针 login / echo / handshake / stop 全过，WARN+ERROR 0 行。磁盘：`~/.gradle` 4.0 GB（Loom 只缓存 26.2 一个版本），剩余 61 GB。待人工（都要真实 Fabric 客户端与图形环境）：spike ①（JiJ 运行期加载）、spike ②（相机与实体剔除，含 50% 实体距离档）、spike ④ 的运行期验证。
 

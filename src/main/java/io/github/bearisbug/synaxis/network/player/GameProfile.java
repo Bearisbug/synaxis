@@ -8,6 +8,7 @@ import io.github.bearisbug.synaxis.network.NetworkBufferTemplate;
 import io.github.bearisbug.synaxis.utils.Either;
 import org.jetbrains.annotations.Nullable;
 
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
@@ -32,6 +33,17 @@ public record GameProfile(
 
     public GameProfile(UUID uuid, String name) {
         this(uuid, name, List.of());
+    }
+
+    /**
+     * The uuid a username gets in offline mode: the name based uuid a vanilla client computes for
+     * itself, so that the same name is the same uuid on both sides and across connections.
+     *
+     * @param username the username as sent in the login start
+     * @return the uuid owned by that username while no authority is asked
+     */
+    public static UUID offlineUuid(String username) {
+        return UUID.nameUUIDFromBytes(("OfflinePlayer:" + username).getBytes(StandardCharsets.UTF_8));
     }
 
     public static final NetworkBuffer.Type<GameProfile> SERIALIZER = NetworkBufferTemplate.template(

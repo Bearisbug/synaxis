@@ -4,11 +4,14 @@ import io.github.bearisbug.synaxis.JvmFlags;
 import io.github.bearisbug.synaxis.network.packet.PacketReading;
 import org.junit.jupiter.api.Test;
 
+import java.util.Arrays;
 import java.util.zip.DataFormatException;
+import java.util.zip.Deflater;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Malformed frame headers must be reported as protocol errors instead of leaking
@@ -41,6 +44,58 @@ class PacketReadingMalformedTest {
         for (int i = 0; i < 5; i++) buffer.write(NetworkBuffer.BYTE, (byte) 0xFF);
         assertThrows(DataFormatException.class,
                 () -> PacketReading.readClients(buffer, ConnectionState.HANDSHAKE, false));
+    }
+
+    /**
+     * A compressed frame announces its inflated size up front, and that number is what the decoder
+     * would size its output buffer by. An announcement over the packet size limit is refused on
+     * the announcement alone, before anything is allocated or inflated.
+     */
+    @Test
+    void aDeclaredDecompressedLengthOverTheLimitIsRefusedBeforeInflating() {
+        final NetworkBuffer frame = NetworkBuffer.resizableBuffer(64);
+        frame.write(NetworkBuffer.VAR_INT, JvmFlags.MAX_PACKET_SIZE + 1);
+        frame.write(NetworkBuffer.RAW_BYTES, new byte[]{0x78, (byte) 0x9C}); // a zlib header, never read
+
+        final DataFormatException refused = assertThrows(DataFormatException.class,
+                () -> PacketReading.readClients(framed(frame), ConnectionState.PLAY, true));
+        assertTrue(refused.getMessage().startsWith("Invalid decompressed length"),
+                "the announcement itself must be what is refused, got: " + refused.getMessage());
+    }
+
+    /**
+     * The announced size is also a ceiling: a stream that inflates past it is cut off at the
+     * announcement and refused, so a peer cannot announce a small frame and inflate a large one.
+     */
+    @Test
+    void aStreamInflatingPastItsDeclaredLengthIsAProtocolError() {
+        final byte[] inflated = new byte[4096]; // zeros, deflate shrinks them to a few bytes
+        final NetworkBuffer frame = NetworkBuffer.resizableBuffer(64);
+        frame.write(NetworkBuffer.VAR_INT, 16); // announced far below what the stream holds
+        frame.write(NetworkBuffer.RAW_BYTES, deflate(inflated));
+
+        final DataFormatException refused = assertThrows(DataFormatException.class,
+                () -> PacketReading.readClients(framed(frame), ConnectionState.PLAY, true));
+        assertTrue(refused.getMessage().startsWith("Decompressed payload exceeds"),
+                "the stream must be stopped at the announced size, got: " + refused.getMessage());
+    }
+
+    /** Wraps a compressed frame body into a frame, length prefixed like the wire has it. */
+    private static NetworkBuffer framed(NetworkBuffer body) {
+        final NetworkBuffer buffer = NetworkBuffer.resizableBuffer(64);
+        buffer.write(NetworkBuffer.VAR_INT, (int) body.writeIndex());
+        buffer.write(NetworkBuffer.RAW_BYTES, body.read(NetworkBuffer.RAW_BYTES));
+        return buffer;
+    }
+
+    private static byte[] deflate(byte[] bytes) {
+        final Deflater deflater = new Deflater();
+        deflater.setInput(bytes);
+        deflater.finish();
+        final byte[] out = new byte[bytes.length + 64];
+        final int length = deflater.deflate(out);
+        deflater.end();
+        return Arrays.copyOf(out, length);
     }
 
     @Test

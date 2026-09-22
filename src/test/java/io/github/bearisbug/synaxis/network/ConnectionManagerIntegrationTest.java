@@ -5,6 +5,8 @@ import io.github.bearisbug.synaxis.ServerProcess;
 import io.github.bearisbug.synaxis.entity.Player;
 import io.github.bearisbug.synaxis.instance.Instance;
 import io.github.bearisbug.synaxis.network.packet.server.SendablePacket;
+import io.github.bearisbug.synaxis.network.packet.server.common.DisconnectPacket;
+import io.github.bearisbug.synaxis.network.packet.server.common.KeepAlivePacket;
 import io.github.bearisbug.synaxis.network.packet.server.login.LoginSuccessPacket;
 import io.github.bearisbug.synaxis.network.player.GameProfile;
 import io.github.bearisbug.synaxis.network.player.PlayerSocketConnection;
@@ -18,6 +20,7 @@ import java.net.InetSocketAddress;
 import java.nio.channels.SocketChannel;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -51,6 +54,33 @@ public class ConnectionManagerIntegrationTest {
         assertEquals(enginePlayer, connectionManager.findOnlinePlayer("Syn"));
         assertEquals(notchPlayer, connectionManager.findOnlinePlayer("No"));
         assertNull(connectionManager.findOnlinePlayer("leo"));
+    }
+
+    /**
+     * Past the login, the keep alive is the only thing that ends a connection whose peer went
+     * quiet: the socket timeout of the configuration is a {@code SO_TIMEOUT}, which a channel
+     * read never honours. A player that stops answering is kicked once the kick delay has passed
+     * since the last keep alive it was sent, and not a millisecond earlier.
+     */
+    @Test
+    public void aPlayerThatStopsAnsweringKeepAlivesIsKicked(Env env) {
+        final var connection = env.createConnection(profiles[0]);
+        final var keepAlives = connection.trackIncoming(KeepAlivePacket.class);
+        final var disconnects = connection.trackIncoming(DisconnectPacket.class);
+        final Player player = connection.connect(env.createEmptyInstance(), Pos.ZERO);
+        final ConnectionManager connectionManager = env.process().connection();
+        final long kickAfter = TimeUnit.MILLISECONDS.toNanos(env.process().config().keepAliveKick());
+
+        final long start = System.nanoTime();
+        connectionManager.tick(start);
+        keepAlives.assertAny();
+
+        connectionManager.tick(start + kickAfter - 1);
+        assertTrue(player.isOnline(), "a player still inside the kick delay must not be kicked");
+
+        connectionManager.tick(start + kickAfter);
+        assertFalse(player.isOnline(), "a player that never answered the keep alive must be kicked");
+        disconnects.assertSingle();
     }
 
     @Test

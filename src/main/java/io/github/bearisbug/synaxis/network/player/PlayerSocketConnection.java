@@ -75,9 +75,16 @@ public class PlayerSocketConnection extends PlayerConnection {
             ClientFinishConfigurationPacket.class // Enter play state
     );
 
+    /**
+     * How long the write thread gets to flush the disconnect packet before the channel is closed
+     * under it, the same budget {@code ConnectionManager#shutdown} gives it.
+     */
+    static final long CLOSE_AFTER_DISCONNECT_MILLIS = 1_000;
+
     private final SocketChannel channel;
     private SocketAddress remoteAddress;
     private boolean attemptedProxyProtocolDetection = false;
+    private final AtomicBoolean closeArmed = new AtomicBoolean(false);
 
     // Data from client packets
     private @Nullable String loginUsername;
@@ -564,6 +571,33 @@ public class PlayerSocketConnection extends PlayerConnection {
         // The watchdog closing the connection itself is already done, only the other one is waiting
         if (loginTimeoutThread != null && loginTimeoutThread != Thread.currentThread())
             loginTimeoutThread.interrupt();
+        closeOnceFlushed();
+    }
+
+    /**
+     * The write thread closes the channel on its way out, after flushing the disconnect packet, and
+     * a peer that stopped reading keeps that thread inside a blocking socket write for as long as
+     * it keeps the TCP connection up: the kernel only takes the bytes once the peer reads them.
+     * Closing the channel is the one thing that ends such a write, so once the flush budget is
+     * spent it is done from a thread of its own, and with the channel go both socket threads, the
+     * read buffer and everything queued for the peer. The write thread never needs this: a call
+     * from there means it is not inside a write, and it closes the channel itself right after.
+     */
+    private void closeOnceFlushed() {
+        if (Thread.currentThread() == writeThread) return;
+        if (!closeArmed.compareAndSet(false, true)) return;
+        Thread.ofVirtual().name("Syn-Socket-Closer").start(() -> {
+            try {
+                writeThread.join(CLOSE_AFTER_DISCONNECT_MILLIS);
+            } catch (InterruptedException _) {
+                Thread.currentThread().interrupt();
+            }
+            try {
+                channel.close();
+            } catch (IOException _) {
+                // The write thread got there first, which is the usual case
+            }
+        });
     }
 
     public Thread readThread() {

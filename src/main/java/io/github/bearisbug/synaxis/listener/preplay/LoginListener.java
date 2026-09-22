@@ -73,7 +73,11 @@ public final class LoginListener {
             assert bungeeProfile != null;
             gameProfile = new GameProfile(bungeeProfile.uuid(), packet.username(), bungeeProfile.properties());
         } else {
-            gameProfile = new GameProfile(packet.profileId(), packet.username());
+            // Offline mode: the uuid is the server's derivation from the username, not the one the
+            // login start carries. That one is the peer's to choose, and the duplicate login guard
+            // keys on the uuid: taken as sent, one name could be online twice under two uuids, and
+            // a peer could sit on the uuid of a name it does not use.
+            gameProfile = new GameProfile(GameProfile.offlineUuid(packet.username()), packet.username());
         }
         enterConfig(connection, gameProfile);
     }

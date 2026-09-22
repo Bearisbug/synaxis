@@ -1,5 +1,6 @@
 package io.github.bearisbug.synaxis.network.player;
 
+import io.github.bearisbug.synaxis.event.player.AsyncPlayerPreLoginEvent;
 import io.github.bearisbug.synaxis.network.ConnectionState;
 import io.github.bearisbug.synaxis.network.packet.PacketVanilla;
 import io.github.bearisbug.synaxis.network.packet.client.common.ClientCookieResponsePacket;
@@ -16,6 +17,7 @@ import java.nio.ByteBuffer;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -23,6 +25,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -151,6 +154,33 @@ public class PreAuthConnectionIntegrationTest {
             env.process().packetListener().processClientPacket(loginStart, connection);
 
             assertFalse(connection.isOnline(), "a second login start must drop the connection");
+        }
+    }
+
+    /**
+     * Offline mode has no authority to ask, so the profile uuid is derived from the username, and
+     * that derivation has to be the server's: the login start carries a uuid too, chosen by the
+     * peer, and the duplicate login guard keys on the uuid. A peer allowed to pick it could log in
+     * under a name that is already online, or squat the uuid of a name it does not use.
+     */
+    @Test
+    public void theOfflineUuidComesFromTheUsernameNotFromThePeer(Env env) throws Exception {
+        final CompletableFuture<GameProfile> profile = new CompletableFuture<>();
+        env.process().eventHandler().addListener(AsyncPlayerPreLoginEvent.class,
+                event -> profile.complete(event.getGameProfile()));
+        try (SocketPair pair = SocketPair.open(env)) {
+            final PlayerSocketConnection connection = pair.connection();
+            connection.setClientState(ConnectionState.LOGIN);
+            final UUID chosenByThePeer = UUID.randomUUID();
+
+            env.process().packetListener().processClientPacket(
+                    new ClientLoginStartPacket("Notch", chosenByThePeer), connection);
+
+            final GameProfile decided = profile.get(10, TimeUnit.SECONDS);
+            assertEquals("Notch", decided.name());
+            assertEquals(GameProfile.offlineUuid("Notch"), decided.uuid(),
+                    "the profile uuid must be derived from the username, not taken from the login start");
+            assertNotEquals(chosenByThePeer, decided.uuid(), "the peer's uuid must not be trusted");
         }
     }
 

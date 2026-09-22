@@ -32,7 +32,7 @@ mkfifo /tmp/synaxis-play/stdin.fifo
   < /tmp/synaxis-play/stdin.fifo > /tmp/synaxis-play/server.log 2>&1 &
 # 就绪：server.log 出现 "synaxis server-app listening on 0.0.0.0:25566"，nc -z 127.0.0.1 25566 通
 # 核对播种：python3 tools/protocol-probe/probe.py --port 25566 units --wait 6 --expect-min 999
-#   出生点能看见 999 个（远哨在 +x 220 格外，超出 128 格的实体视距），commandable 998 个
+#   出生点能看见 999 个（1..999；远哨 1000 在 +x 220 格外，超出 128 格的实体视距），commandable 997 个（1..997）
 # 停机：echo stop > /tmp/synaxis-play/stdin.fifo
 ```
 
@@ -54,7 +54,8 @@ mkfifo /tmp/synaxis-play/stdin.fifo
 解条目，所以 50 连接 × 每秒上千帧不会让 harness 自己成为瓶颈（`samples.jsonl` 的 `harness_cpu_percent`
 是判断依据）。
 
-服务端侧：harness `pgrep` 找到进程后起 JFR（`synaxis.ServerTickTime`）、每 `--sample-interval` 秒采一次
+服务端侧：harness 用 `lsof -nP -iTCP:<--port> -sTCP:LISTEN` 找到**监听这个端口**的进程（`--pid` 可覆盖；
+按进程名找会在本机同时跑着第二个服务端时采错 JVM）后起 JFR（`synaxis.ServerTickTime`）、每 `--sample-interval` 秒采一次
 `ps` / `jstat` / `lsof`、每 `--gc-probe-interval` 秒 `jcmd GC.run` 后读存活堆；结束后 dump JFR 算 tick
 分布，读 `--server-log` 从开跑起新增的行数 WARN / ERROR / `Kicking connection_id=`，读 `--events-dir`
 （默认 `logs`，相对服务端工作目录即 worktree 根）从开跑起新增的台账事件并取 `path_ms`。
@@ -67,7 +68,7 @@ python3 tools/loadtest/soak.py play --port 25566 --connections 50 --duration 600
 ```
 
 `--units` 只是把预期单位数记进 `summary.json` 与任一连接见过的最大兴趣集对照（`units.check`），
-它不改服务端；服务端的数目只由 `-Dsynaxis.app.units` 定。找不到服务端进程或 `JFR.start` 失败时退出码 2。
+它不改服务端；服务端的数目只由 `-Dsynaxis.app.units` 定。`--port` 上没有监听进程或 `JFR.start` 失败时退出码 2。
 
 ## 规模曲线：50 × {1,000, 2,000, 4,000}
 
@@ -86,7 +87,8 @@ done
 
 **布局会影响读数**：默认播种把全部单位铺在出生点周围 ±17 格（1,000 个）～ ±34 格（4,000 个），
 锚点离出生点 128 格内的玩家兴趣集就是全部单位，`S2C_UNIT_STATE` 顶到 `count ≤ 512` 的上限
-（1,000 个单位时单条 1,927 字节），`max_entries` 读到 512 就是这个意思。这是最坏档，不是 §2
+（按 §8 布局单条约 2 KB：512 个条目各 3～4 字节，加 `msg_id` / `server_tick` / `count` 的头），
+`max_entries` 读到 512 就是这个意思。这是最坏档，不是 §2
 「单玩家视野 ≤ 200」的画像值；要按画像测得改播种布局。
 
 ## `summary.json` 字段
@@ -110,7 +112,8 @@ done
 | `ticks.ticks` / `overall` / `per_minute` | JFR `synaxis.ServerTickTime` 的条数、整段分布（`p50_ms` / `p99_ms` / `max_ms` / `over_50ms`）、逐分钟分布 | tick 预算行：`overall.p99_ms < 50` |
 | `heap.live_mib_max` / `rss_mib_max` / `gc_probes` / `settle` | 强制 GC 后存活堆的最大值；负载窗口内 RSS 最大值；逐次 GC 探针；断开 + settle 后的存活堆、线程数、FD 数 | 内存行：`live_mib_max < 2,048` |
 | `pathfinding.events` | 运行期间台账新增的事件计数（`unit_order_rejected` 按 `code` 拆开） | — |
-| `pathfinding.searches` / `path_ms` / `path_nodes_max` | 跑了搜索的事件数（`unit_order_issued` + `no-path` 档的 `unit_order_rejected`）、单次 `path_ms` 分布（台账分辨率 1 ms）、单次最大展开数 | 寻路行：`path_nodes_max ≤ 4,000` |
+| `pathfinding.searches` / `path_ms` | 跑了搜索的事件数（`unit_order_issued` + `no-path` 档的 `unit_order_rejected`）、单次 `path_ms` 分布（台账分辨率 1 ms） | 寻路行 |
+| `pathfinding.path_nodes_max_issued` / `path_nodes_max_rejected` | 单次最大展开数，按事件种类分开：前者只看 `unit_order_issued`，后者只看 `unit_order_rejected`——`no-path` 档吃满预算收手时台账按设计记 4,001（`docs/TEST.md` TC-GAME-065 第 4 步），所以后者只会是 0（没打到口袋）或 4,001，混进一栏会读成超预算 | 寻路行：`path_nodes_max_issued ≤ 4,000` |
 | `pathfinding.tick_bucket_ms` | `path_ms` 按台账 `ts` 的 50 ms 分桶求和后的分布——最接近「一个 tick 花在搜索上的毫秒」的读法 | 寻路行：`p99_ms < 2`（分辨率 1 ms，读到 ≤ 1 即达标） |
 | `server_log.warn_lines` / `error_lines` / `kick_lines` / `samples` | 开跑起 `--server-log` 新增的 WARN、ERROR、`Kicking connection_id=` 行数；去掉时间戳、线程与 uuid 后的去重样例（≤ 10 条） | — |
 | `samples` | 每 `--sample-interval` 秒一行：`clients`、`threads`、`fds`、`cpu_percent`、`rss_mib`、`load1`、`harness_cpu_percent`、`jstat` 的分代与 GC 计数、`moves`（玩家位置包累计） | — |

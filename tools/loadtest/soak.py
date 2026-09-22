@@ -564,11 +564,8 @@ def run(args: argparse.Namespace) -> int:
     selector = selectors.DefaultSelector()
     pool = LoginPool(args.login_workers, args.host, args.port, args.timeout, metrics)
 
-    pid = args.pid or find_pid()
+    pid = require_pid(args)
     if not pid:
-        print("soak: no server process found by pgrep -f io.github.bearisbug.synaxis.app.Main; "
-              "start the server or pass --pid. Sampling nothing would look like a clean run.",
-              file=sys.stderr, flush=True)
         return 2
     jfr_path = out / "soak.jfr"
     recording = not args.no_jfr
@@ -699,9 +696,19 @@ def run(args: argparse.Namespace) -> int:
     return 0
 
 
-def find_pid() -> int:
-    output = shell(["pgrep", "-f", "io.github.bearisbug.synaxis.app.Main"]).split()
+def find_pid(port: int) -> int:
+    """The pid of whatever listens on ``port``; a name match would pick any of several servers."""
+    output = shell(["lsof", "-nP", f"-iTCP:{port}", "-sTCP:LISTEN", "-t"]).split()
     return int(output[0]) if output else 0
+
+
+def require_pid(args: argparse.Namespace) -> int:
+    pid = args.pid or find_pid(args.port)
+    if not pid:
+        print(f"soak: no server process listens on TCP port {args.port} "
+              f"(lsof -nP -iTCP:{args.port} -sTCP:LISTEN); start the server on that port or pass "
+              "--pid. Sampling nothing would look like a clean run.", file=sys.stderr, flush=True)
+    return pid
 
 
 def report(summary: dict) -> None:
@@ -1096,7 +1103,9 @@ class LedgerWatch:
 
     The pathfinding budget of §15 is a per tick occupancy, and the ledger has no tick number: the
     ``path_ms`` of every search is summed into 50 ms buckets of its ``ts`` instead, which is the
-    closest a reader of the ledger can get to "what one tick spent on searching".
+    closest a reader of the ledger can get to "what one tick spent on searching". The node maximum
+    is kept apart for issued and rejected searches: a ``no-path`` rejection records the exhausted
+    budget plus one by design, folded into the issued maximum it would read as an overrun.
     """
 
     def __init__(self, directory: str) -> None:
@@ -1107,7 +1116,7 @@ class LedgerWatch:
     def finish(self) -> dict:
         counts: dict[str, int] = {}
         path_ms: list[float] = []
-        path_nodes_max = 0
+        path_nodes_max = {"issued": 0, "rejected": 0}
         buckets: dict[int, float] = {}
         if self.directory.is_dir():
             for path in sorted(self.directory.glob("events-*.jsonl")):
@@ -1126,14 +1135,16 @@ class LedgerWatch:
                             continue
                         milliseconds = float(event["path_ms"])
                         path_ms.append(milliseconds)
-                        path_nodes_max = max(path_nodes_max, int(event.get("path_nodes", 0)))
+                        kind = "rejected" if name.startswith("unit_order_rejected") else "issued"
+                        path_nodes_max[kind] = max(path_nodes_max[kind], int(event.get("path_nodes", 0)))
                         bucket = int(ledger_seconds(str(event.get("ts", ""))) / 0.05)
                         buckets[bucket] = buckets.get(bucket, 0.0) + milliseconds
         return {
             "events": dict(sorted(counts.items())),
             "searches": len(path_ms),
             "path_ms": distribution(path_ms),
-            "path_nodes_max": path_nodes_max,
+            "path_nodes_max_issued": path_nodes_max["issued"],
+            "path_nodes_max_rejected": path_nodes_max["rejected"],
             "tick_bucket_ms": distribution(list(buckets.values())),
         }
 
@@ -1161,11 +1172,8 @@ def play(args: argparse.Namespace) -> int:
     clients: list[PlayClient] = []
     selector = selectors.DefaultSelector()
 
-    pid = args.pid or find_pid()
+    pid = require_pid(args)
     if not pid:
-        print("soak: no server process found by pgrep -f io.github.bearisbug.synaxis.app.Main; "
-              "start the server or pass --pid. Sampling nothing would look like a clean run.",
-              file=sys.stderr, flush=True)
         return 2
     jfr_path = out / "soak.jfr"
     recording = not args.no_jfr
@@ -1426,7 +1434,8 @@ def report_play(summary: dict) -> None:
           f"live probes={[probe_['live_mib'] for probe_ in heap['gc_probes']]} settle={heap['settle']}", flush=True)
     path = summary["pathfinding"]
     print(f"pathfinding: searches={path['searches']} path_ms={path['path_ms']} "
-          f"tick_bucket_ms={path['tick_bucket_ms']} path_nodes_max={path['path_nodes_max']}", flush=True)
+          f"tick_bucket_ms={path['tick_bucket_ms']} path_nodes_max issued={path['path_nodes_max_issued']} "
+          f"rejected={path['path_nodes_max_rejected']}", flush=True)
     log = summary["server_log"]
     if log.get("path"):
         print(f"server log: warn={log['warn_lines']} error={log['error_lines']} kicks={log['kick_lines']}", flush=True)
@@ -1463,7 +1472,7 @@ def build_parser() -> argparse.ArgumentParser:
                         help="seconds between forced full GCs, 0 disables the live set series")
     runner.add_argument("--settle", type=float, default=15.0,
                         help="seconds to wait after the last disconnect before the final sample")
-    runner.add_argument("--pid", type=int, default=0, help="server pid, found by pgrep when unset")
+    runner.add_argument("--pid", type=int, default=0, help="server pid, the listener on --port when unset")
     runner.add_argument("--no-jfr", action="store_true")
     runner.add_argument("--out", required=True)
     runner.set_defaults(run=run)
@@ -1496,7 +1505,7 @@ def build_parser() -> argparse.ArgumentParser:
                              "written during the run are counted")
     player.add_argument("--events-dir", default="logs",
                         help="the event ledger directory of the server (relative to its working directory)")
-    player.add_argument("--pid", type=int, default=0, help="server pid, found by pgrep when unset")
+    player.add_argument("--pid", type=int, default=0, help="server pid, the listener on --port when unset")
     player.add_argument("--no-jfr", action="store_true")
     player.add_argument("--out", required=True)
     player.set_defaults(run=play)

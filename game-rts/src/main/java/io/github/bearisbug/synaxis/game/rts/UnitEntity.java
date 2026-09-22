@@ -3,7 +3,6 @@ package io.github.bearisbug.synaxis.game.rts;
 import io.github.bearisbug.synaxis.ServerProcess;
 import io.github.bearisbug.synaxis.entity.Entity;
 import io.github.bearisbug.synaxis.entity.EntityType;
-import io.github.bearisbug.synaxis.entity.Player;
 import io.github.bearisbug.synaxis.entity.metadata.display.ItemDisplayMeta;
 import io.github.bearisbug.synaxis.game.protocol.ArchetypeBox;
 import io.github.bearisbug.synaxis.item.ItemStack;
@@ -34,6 +33,11 @@ import io.github.bearisbug.synaxis.item.ItemStack;
  * <b>Nothing selection related is ever set on it.</b> Entity metadata is global to the entity, so a
  * glow put on it for the player who selected the unit would light it up for everyone watching; the
  * selection box is drawn by the client that selected it (§19, {@code ADR-M2-002}).
+ * <p>
+ * It overrides nothing. The engine's viewer hooks ({@code updateNewViewer} and the like) are
+ * {@code @ApiStatus.Internal}, and the aggregate rule of {@code docs/DESIGN-M2.md} §24 keeps the
+ * game side off them; who sees a unit is read back through the public {@link #getViewers()}
+ * by {@link Units} on every snapshot.
  */
 final class UnitEntity extends Entity {
 
@@ -43,37 +47,8 @@ final class UnitEntity extends Entity {
     /** §16: how often the engine resends an absolute position, to clear the accumulated error. */
     static final long SYNCHRONIZATION_TICKS = 100;
 
-    private final int unitId;
-    private final UnitViewers interest;
-
-    /**
-     * What the interest set is made of: the engine adds and removes viewers, and a unit entering or
-     * leaving one player's viewer set is that unit entering or leaving that player's interest set
-     * ({@code API-M2-006}). The plugin computes no radius of its own.
-     */
-    interface UnitViewers {
-
-        /**
-         * A player started seeing this unit.
-         *
-         * @param unitId the unit
-         * @param player the player who now sees it
-         */
-        void viewerAdded(int unitId, Player player);
-
-        /**
-         * A player stopped seeing this unit.
-         *
-         * @param unitId the unit
-         * @param player the player who no longer sees it
-         */
-        void viewerRemoved(int unitId, Player player);
-    }
-
-    UnitEntity(ServerProcess process, int unitId, Archetype archetype, UnitViewers interest) {
+    UnitEntity(ServerProcess process, Archetype archetype) {
         super(process, EntityType.ITEM_DISPLAY);
-        this.unitId = unitId;
-        this.interest = interest;
 
         setHasPhysics(false);
         setNoGravity(true);
@@ -86,17 +61,5 @@ final class UnitEntity extends Entity {
         meta.setWidth(box.width());
         meta.setHeight(box.height());
         meta.setItemStack(ItemStack.of(archetype.item()));
-    }
-
-    @Override
-    public void updateNewViewer(Player player) {
-        super.updateNewViewer(player);
-        interest.viewerAdded(unitId, player);
-    }
-
-    @Override
-    public void updateOldViewer(Player player) {
-        super.updateOldViewer(player);
-        interest.viewerRemoved(unitId, player);
     }
 }

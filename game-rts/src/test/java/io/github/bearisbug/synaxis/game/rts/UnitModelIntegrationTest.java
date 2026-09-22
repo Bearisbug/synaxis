@@ -67,7 +67,10 @@ class UnitModelIntegrationTest {
         final Unit mine = Objects.requireNonNull(fixture.units.byId(MINE));
 
         // The fixture spawned three units while the player was already in the instance, so the
-        // engine made it a viewer of each and the announcement hangs off that and nothing else
+        // engine made it a viewer of each; the announcement is the next snapshot reading that
+        // viewer set back, and nothing else
+        assertTrue(fixture.channels.of(S2CUnitSpawn.class).isEmpty(), "announced before a snapshot ran");
+        fixture.tick(Units.ADVANCE_INTERVAL_TICKS);
         final List<S2CUnitSpawn> spawns = fixture.channels.of(S2CUnitSpawn.class);
         assertEquals(List.of(MINE, NEUTRAL, THEIRS), spawns.stream().map(S2CUnitSpawn::unitId).toList());
         assertTrue(mine.entity().getViewers().contains(fixture.player));
@@ -84,8 +87,35 @@ class UnitModelIntegrationTest {
     }
 
     @Test
+    void aUnitLeavingAPlayersViewerSetLeavesItsInterestSetOnTheNextSnapshot(Env env) {
+        final SliceFixture fixture = SliceFixture.start(env);
+        final Unit mine = Objects.requireNonNull(fixture.units.byId(MINE));
+        fixture.tick(Units.ADVANCE_INTERVAL_TICKS);
+        assertEquals(3, fixture.channels.of(S2CUnitSpawn.class).size());
+
+        // The engine takes the player out of the viewer set at once; the announcement follows on
+        // the next snapshot, and the snapshot of that tick no longer carries the unit
+        mine.entity().setAutoViewable(false);
+        assertFalse(mine.entity().getViewers().contains(fixture.player));
+        assertTrue(fixture.channels.of(S2CUnitDespawn.class).isEmpty(), "despawned before a snapshot ran");
+        fixture.tick(Units.ADVANCE_INTERVAL_TICKS);
+
+        assertEquals(List.of(List.of(MINE)), fixture.channels.of(S2CUnitDespawn.class).stream()
+                .map(S2CUnitDespawn::unitIds).toList());
+        assertEquals(List.of(NEUTRAL, THEIRS), fixture.channels.of(S2CUnitState.class).getLast().entries().stream()
+                .map(S2CUnitState.Entry::unitId).toList());
+
+        // Back in the viewer set, the unit is announced again rather than remembered
+        mine.entity().setAutoViewable(true);
+        fixture.tick(Units.ADVANCE_INTERVAL_TICKS);
+        assertEquals(List.of(MINE, NEUTRAL, THEIRS, MINE), fixture.channels.of(S2CUnitSpawn.class).stream()
+                .map(S2CUnitSpawn::unitId).toList());
+    }
+
+    @Test
     void aUnitLeavingTheBoardIsDespawnedFromEveryInterestSetItWasIn(Env env) {
         final SliceFixture fixture = SliceFixture.start(env);
+        fixture.tick(Units.ADVANCE_INTERVAL_TICKS);
         assertEquals(3, fixture.channels.of(S2CUnitSpawn.class).size());
 
         fixture.units.end();

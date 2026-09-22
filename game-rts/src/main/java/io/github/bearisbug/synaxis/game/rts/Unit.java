@@ -2,10 +2,13 @@ package io.github.bearisbug.synaxis.game.rts;
 
 import io.github.bearisbug.synaxis.coordinate.Pos;
 import io.github.bearisbug.synaxis.coordinate.Vec;
+import io.github.bearisbug.synaxis.entity.Player;
 import io.github.bearisbug.synaxis.game.protocol.UnitState;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -44,6 +47,13 @@ final class Unit {
     private final int team;
     private final UnitEntity entity;
 
+    /**
+     * The players that have been sent this unit's {@code S2C_UNIT_SPAWN} and not yet its
+     * {@code S2C_UNIT_DESPAWN}: the interest set as last announced, which the snapshot diffs
+     * against the display entity's viewer set ({@code API-M2-006}).
+     */
+    private final Set<Player> announcedTo = new HashSet<>();
+
     private UnitState state = UnitState.IDLE;
     private List<Pos> waypoints = List.of();
     private int nextWaypoint;
@@ -70,6 +80,10 @@ final class Unit {
 
     UnitEntity entity() {
         return entity;
+    }
+
+    Set<Player> announcedTo() {
+        return announcedTo;
     }
 
     UnitState state() {

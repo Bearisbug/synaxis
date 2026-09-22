@@ -20,11 +20,13 @@ import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.NavigableMap;
 import java.util.Queue;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CompletableFuture;
@@ -40,11 +42,11 @@ import java.util.function.LongSupplier;
  * <p>
  * <b>Where this runs.</b> The searching, the advancing and the snapshot are one scheduled task,
  * which the engine advances at the top of a tick, before any chunk or entity is ticked; the payload
- * handler that fills the queue runs later in the same tick, on the thread of the sending player,
- * and the viewer callbacks run on whichever thread is tracking that entity. Only the queue and the
- * list of connections that went away are therefore shared, and both are concurrent and drained by
- * the tick — the unit state itself is written from the tick and from nowhere else, which is what
- * lets a search read the mesh and move an entity without taking a lock.
+ * handler that fills the queue runs later in the same tick, on the thread of the sending player.
+ * Only the queue and the list of connections that went away are therefore shared, and both are
+ * concurrent and drained by the tick — the unit state itself is written from the tick and from
+ * nowhere else, which is what lets a search read the mesh and move an entity without taking a
+ * lock.
  * <p>
  * <b>The three budgets of §15.</b> A search is capped at {@link Pathfinder#MAX_EXPANSIONS} nodes,
  * at most {@value #REQUESTS_PER_TICK} of them run in a tick, and a queue deeper than
@@ -52,13 +54,17 @@ import java.util.function.LongSupplier;
  * one tick does; the third is what keeps the answer honest when the first two make the server slow
  * — a client that is told {@code busy} can retry, one that is told nothing cannot.
  * <p>
- * <b>The interest set is the engine's, not ours.</b> {@code S2C_UNIT_SPAWN} and
- * {@code S2C_UNIT_DESPAWN} hang off the viewer callbacks of the display entity, and the snapshot
- * only visits the players in a unit's viewer set. No radius is computed here: the engine culls by
- * chunk rings, and a second opinion would show units the client has already been told to destroy
- * ({@code API-M2-006}).
+ * <b>The interest set is the engine's, not ours.</b> Every snapshot reads each display entity's
+ * viewer set through the public {@code Entity#getViewers()} and diffs it against the players the
+ * unit was last announced to: a player new to the set gets {@code S2C_UNIT_SPAWN}, one gone from it
+ * gets {@code S2C_UNIT_DESPAWN}, both ahead of the {@code S2C_UNIT_STATE} of the same tick. The
+ * engine's own viewer hooks are {@code @ApiStatus.Internal} and stay untouched (the aggregate rule
+ * of {@code docs/DESIGN-M2.md} §24), which puts the announcement at most one snapshot interval
+ * behind the engine's spawn packet and on the tick thread with everything else here. No radius is
+ * computed: the engine culls by chunk rings, and a second opinion would show units the client has
+ * already been told to destroy ({@code API-M2-006}).
  */
-final class Units implements UnitEntity.UnitViewers {
+final class Units {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(Units.class);
 
@@ -139,7 +145,7 @@ final class Units implements UnitEntity.UnitViewers {
      */
     Unit spawn(Archetype archetype, int team, Pos position) {
         final int unitId = nextUnitId++;
-        final UnitEntity entity = new UnitEntity(instance.process(), unitId, archetype, this);
+        final UnitEntity entity = new UnitEntity(instance.process(), archetype);
         final Unit unit = new Unit(unitId, archetype, team, entity);
         units.put(unitId, unit);
         match.registerUnit(unitId, team);
@@ -216,33 +222,53 @@ final class Units implements UnitEntity.UnitViewers {
     }
 
     /**
-     * Takes every unit off the board when the match ends (§11.4 {@code → removed}): the display
-     * entities go, which is what sends the last {@code S2C_UNIT_DESPAWN}, and every order still in
-     * flight is written off.
+     * Takes every unit off the board when the match ends (§11.4 {@code → removed}): every player
+     * still holding a unit gets its last {@code S2C_UNIT_DESPAWN}, the display entities go, and
+     * every order still in flight is written off.
      */
     void end() {
         queue.clear();
         for (final Unit unit : units.values()) {
             superseded(unit.stop(), "match-ended");
+            for (final Player player : unit.announcedTo()) despawn(unit, player);
+            unit.announcedTo().clear();
             unit.entity().remove();
         }
         units.clear();
         match.unregisterUnits();
     }
 
-    @Override
-    public void viewerAdded(int unitId, Player player) {
-        final Unit unit = units.get(unitId);
-        if (unit == null) return;
+    /**
+     * Brings the announced interest set of one unit up to the engine's viewer set: spawns to the
+     * players that joined it, despawns to the players that left it.
+     *
+     * @param unit the unit
+     * @return its viewer set as read for this snapshot
+     */
+    private Set<Player> announce(Unit unit) {
+        final Set<Player> viewers = Set.copyOf(unit.entity().getViewers());
+        final Set<Player> told = unit.announcedTo();
+        for (final Player viewer : viewers) {
+            if (told.add(viewer)) spawn(unit, viewer);
+        }
+        for (final Iterator<Player> it = told.iterator(); it.hasNext(); ) {
+            final Player player = it.next();
+            if (viewers.contains(player)) continue;
+            it.remove();
+            despawn(unit, player);
+        }
+        return viewers;
+    }
+
+    private void spawn(Unit unit, Player player) {
         final boolean commandable = unit.team() != 0
                 && unit.team() == sessions.team(player.getPlayerConnection().connectionId());
         send(player, new S2CUnitSpawn(unit.unitId(), unit.entity().getEntityId(), unit.archetype().id(),
                 unit.team(), Unit.MAX_HP, Unit.MAX_HP, commandable ? S2CUnitSpawn.FLAG_COMMANDABLE : 0));
     }
 
-    @Override
-    public void viewerRemoved(int unitId, Player player) {
-        send(player, new S2CUnitDespawn(List.of(unitId)));
+    private void despawn(Unit unit, Player player) {
+        send(player, new S2CUnitDespawn(List.of(unit.unitId())));
     }
 
     /** Runs one queued search and answers the order that asked for it. */
@@ -293,8 +319,9 @@ final class Units implements UnitEntity.UnitViewers {
     }
 
     /**
-     * Sends every player the state of the units it can see. The interest sets differ from player to
-     * player, so the packets do too and the engine's grouped packet cache does not apply
+     * Sends every player the state of the units it can see, after announcing the units that
+     * entered or left its interest set since the last snapshot. The interest sets differ from
+     * player to player, so the packets do too and the engine's grouped packet cache does not apply
      * ({@code API-M2-006}); the snapshot is built by walking the units once and bucketing by viewer
      * rather than by asking each player which units it sees.
      */
@@ -302,7 +329,7 @@ final class Units implements UnitEntity.UnitViewers {
         final Map<Player, List<S2CUnitState.Entry>> byViewer = new HashMap<>();
         for (final Unit unit : units.values()) {
             final S2CUnitState.Entry entry = new S2CUnitState.Entry(unit.unitId(), unit.state(), Unit.MAX_HP);
-            for (final Player viewer : unit.entity().getViewers()) {
+            for (final Player viewer : announce(unit)) {
                 byViewer.computeIfAbsent(viewer, _ -> new ArrayList<>()).add(entry);
             }
         }

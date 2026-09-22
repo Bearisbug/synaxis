@@ -30,7 +30,7 @@ mkfifo /tmp/synaxis-soak/stdin.fifo
 
 ## 一条命令跑一组
 
-harness 自己 `pgrep` 找服务端 pid，起 JFR、每 10 秒采样、每 N 秒强制一次 Full GC 量存活集
+harness 自己用 `lsof` 找监听 `--port` 的服务端 pid（`--pid` 可覆盖），起 JFR、每 10 秒采样、每 N 秒强制一次 Full GC 量存活集
 （live set），结束后 dump JFR 并算 tick 分布，产物写 `--out` 目录：
 `summary.json`（全部数字）、`samples.jsonl`（每次采样一行）、`attacks.jsonl`、`soak.jfr`。
 没测到的分布（`--connections 0` 没有登录、`--echo-hz 0` 没有 echo 往返）在 `summary.json` 里是

@@ -164,7 +164,7 @@ class RtsPluginIntegrationTest {
 
         // The roster is deployed before the port is bound, and the unit task is on the scheduler:
         // both have to exist before the first player, since neither is created on demand
-        assertEquals(Roster.OWN_UNITS + 3, match.getEntities().size(), "the roster of §3 is not on the board");
+        assertEquals(Roster.DEFAULT_UNITS, match.getEntities().size(), "the roster of §3 is not on the board");
         assertEquals(List.of(TaskSchedule.tick(1)), context.scheduled,
                 "the units are driven by one task, every tick");
 

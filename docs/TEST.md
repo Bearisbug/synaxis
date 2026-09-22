@@ -14,6 +14,7 @@
 
 | 日期 | 改动 | 作者 |
 | --- | --- | --- |
+| 2026-09-22 | 跟进 `docs/DESIGN.md` v0.32 与 `docs/DESIGN-M2.md` v0.40（攻击面盘点，`docs/research/attack-surface-2026-09/README.md`）。**§2 不测表**那行「安全渗透（畸形包模糊测试之外的攻击面）——无归属」改为指向盘点与本轮用例。**新增三条**：`TC-GAME-069`（慢读对端：断开后 channel 必须关，JUnit 先红后绿，探针新子命令 `slow-reader` 在核心模式实跑）、`TC-GAME-070`（离线 UUID 由服务端按用户名派生，对端自选的 UUID 不采信，先红后绿）、`TC-GAME-071`（压缩帧的两道上限与 keep-alive 空闲上界，一步反证三处有齿）。**§3 探针表**新增 `slow-reader` 一行。§5 引擎域回归映射的「协议」一档补上三条 ID。没有废弃用例；§2 的 REQ ↔ TC 表是 M2 侧的手工表，本轮三条对应的都是引擎域 REQ，由机械联检覆盖，表未动 | Bearisbug |
 | 2026-09-22 | 跟进 `docs/DESIGN-M2.md` v0.38（聚合项目 `:architecture-tests` 与 §24 规则 ⑥）。**新增 `TC-GAME-067`**：两条反方向规则与 `Entity#moveTo` 的签名钉住各一步绿、三步反证（`Unit#advance` 改回 `refreshPosition` → 成员规则红；`Unit` 加一个 `TickSchedulerThread` 字段 → 类型规则红；`Entity#moveTo` 加 `@ApiStatus.Internal` → 签名测试红），红在哪一条写进期望列。**`TC-GAME-052` 保留 ID、判据未动**：`UnitModelIntegrationTest` 的兴趣集用例改为先跑一个快照再断言 `S2C_UNIT_SPAWN`（通知自 v0.38 起由快照发出），并新增一条「离开 viewer 集合的单位在下一个快照被 despawn、回来再 spawn」的用例；第 1 步只点名五条建模断言，一字未改。§2 的 REQ ↔ TC 表 `REQ-M2-002` 与 `REQ-M2-025` 两行、§5 的「模块与门禁」与跨域牵连「动了引擎 `Entity` 的位置推进入口」同步加 `TC-GAME-067` | Bearisbug |
 | 2026-09-22 | 跟进 `docs/DESIGN-M2.md` v0.37。**`TC-GAME-029` 保留 ID，只改第 2 步的期望列**：`heap_delta_mb < 50` 换成三条一起判——`heap_gc_runs ≥ 2`、`heap_delta_kib` 在 `0` 与 `51200` 之间（实测 `rts-512` 6,600 / `rts-128` 1,125），并写明 `heap_gc_runs` 为 0 时前一个数只是分配量。**§2 的「机械校验」段改写**：`REQ-M2-*` 自本轮起进入 test-doc `check.sh` 的 REQ 双向联检（两份设计文档一起联检，元信息「关联设计文档」行的每个 `*.md` 都解析），REQ ↔ TC 对照表由「唯一判据」降为可读索引；反证：把本文档里的 `REQ-M2-012` 全部改成一个设计文档里不存在的编号 → 悬空引用与无 TC 覆盖两条同时红 | Bearisbug |
 | 2026-09-22 | 跟进 `docs/DESIGN-M2.md` v0.36（客户端的下令节流与七个结果码的去向）。**`TC-GAME-066` 保留 ID，原八步的操作列一字未改**：第 3 步的条数由 75 改为 92 并按类列出（新增 `OrderFeedbackTest`），期望列点名节流与结果码各对应哪条测试；**新增第 9、10、11 步**——第 9 步反证节流与 `stale` 不顶掉已画标记有齿（删两处预算守卫 + 让 `show` 无条件覆盖，红 4 条），第 10 步反证拾取的边界有齿（把射线当成无限直线并把盒子放大 0.02，红 3 条），第 11 步反证「该命中的仍然命中」与 §14 那张表有齿（把盒子缩小 0.02，同批把 `out-of-bounds` 挪进黄色一支、`no-path` 的 translate 键改成 lang 文件里没有的，红 4 条）；后置里补上这三步的还原。**没有新增用例、没有废弃用例**，§2 的 REQ ↔ TC 表与 §5 的回归映射因此未动 | Bearisbug |
@@ -114,7 +115,7 @@ REQ-M2 ↔ TC 对照（可读索引，覆盖与否由上述联检判）：
 | `docs/DESIGN.md` 的 `REQ-016`（拆 `NetworkBufferTypeImpl` 为按类型族分文件的实现，零 API 影响） | 纯重构，对外行为与 API 均不变，没有可单独黑盒观察的结论——由 `./gradlew check` 的既有单测覆盖，测试总数与 0 失败由 TC-029 判 |
 | M2 新增自动化（`:protocol` 双端向量测试、宿主的 descriptor 校验 / 生命周期 / 通道路由单测、ArchUnit 规则对合成 `JavaClasses` 的自测、F29 与 F11 的复现测试、jacoco 与 diff-cover 本身） | 代码仓测试套件，策略见 `docs/DESIGN-M2.md` §19；本文档只在 TC 步骤里调用它们并判读可观察输出，不复制其断言 |
 | 50 连接 + 1,000 单位的全量压测与 `docs/DESIGN-M2.md` §15 的整表性能阈值（tick P99、出站带宽、进程内存、客户端 ≥ 60 FPS） | `docs/DESIGN-M2.md` §23 上线前检查单的专项脚本，当前无归属——已知风险（本文档只在 TC-GAME-042 打到 Gherkin 写明的「64 条并发指令」这一档） |
-| 安全渗透（畸形包模糊测试之外的攻击面） | 无归属——已知风险 |
+| 安全渗透（畸形包模糊测试之外的攻击面） | 已盘点（2026-09-22）：`docs/research/attack-surface-2026-09/README.md`，资源耗尽 / 授权 / 身份 / 日志与磁盘 / 崩溃面五组，每一面写「威胁 → 现有控制（类与行）→ 证明它的测试或 TC → 结论」。盘点补的用例是 TC-GAME-069～TC-GAME-071，其余每一面在那张表里指到既有 TC 或代码仓测试；查出未修的缺口登记在 `docs/DESIGN.md` §28（连接数无上限、`socketTimeout` 空操作）与 `docs/DESIGN-M2.md` §28.2（核心模式区块加载、玩法模式的位置与挖掘、聊天放大、选中不判兴趣集）。仍然没有归属的只剩**模糊测试本身**（随机畸形帧的持续跑），与上一行的整表压测同一档 |
 | `docs/DESIGN-M2.md` §26 阶段 0 的四个 spike（`:protocol` 的 JiJ 消费、相机形态、地图生成与载入实测、Fabric 在 configuration 阶段能否发包） | 设计文档 §26，结论回写设计文档；spike 不是验收，不进本文档（四个 spike 的执行清单在 `docs/research/client-spikes-2026-09/README.md`，开头一张表说明每个 spike 还剩什么：**③ 已于 2026-09-21 在服务端跑完**，**④ 已有源码级结论、只剩运行期那一半**，① 剩运行期一半，② 整个都要肉眼看画面）。**客户端模组本身（`REQ-M2-020a` 的骨架与 `REQ-M2-020b` 的工程完备）不属此列**——它是交付物，由 TC-GAME-045（构建与打包，本机跑得到第 1～7 步，第 8 步要推分支才看得到 CI）与 TC-GAME-066（客户端侧握手与拾取里不需要屏幕的那一半）覆盖 |
 | 客户端渲染观感（相机形态、选中框样式、HUD 文案、动效） | 无用例——主观项；只在 TC-GAME-047 的录屏与截图里留证据供人评判 |
 | 设计文档 §19 中「CI 门禁拦截并发回归 / 分层违规」两个场景 | 由 TC-021、TC-006 以「故意提交坏改动到临时分支」方式可操作化，见 §4 |
@@ -149,6 +150,7 @@ REQ-M2 ↔ TC 对照（可读索引，覆盖与否由上述联检判）：
 | `order` | `--count N`（默认 1）、`--seq N`（默认 1）、`--group N`（默认按序号各不相同）、`--group-size N`（默认 1）、`--unit N`（默认 1）、`--select 1,2,3`（默认不选）、`--x/--y/--z`、`--expect CODE`、`--expect-count N`、`--wait S`（默认 5）、`--watch S`（默认 0） | 进 play 后连发 N 条 `C2S_MOVE_ORDER`，收集 `S2C_ORDER_RESULT` 并打印一行 `answers=收到/发出` 加结果码直方图。给 `--group` 时整批共用一个 `order_group`（一次点击选中多个单位的形态）；给 `--group-size N` 时按每 N 条一组编号（一批超过组内 8 包上限的指令要这么发才不会被限流）。给 `--select` 时先在**同一条连接**上发一条 `C2S_SELECT`、再发这些指令——选中集与下令判据互不相干，要看清「选中里混了一个指挥不动的单位之后，合法项还能不能下令」只有这一条路。给 `--watch S` 时继续读 S 秒的 `S2C_UNIT_STATE`，跟着 `--unit` 那个单位走完 `moving → idle` 并打印一行 `unit_id=… snapshots=… seen_moving=… unit_state=…`（位置不在快照里，走的是引擎实体包，所以这里判的是状态机不是坐标） | 收到的结果数等于发出的条数，且 `--expect` 的结果码恰好出现 `--expect-count` 次（不给 `--expect` 时只判条数）；给了 `--watch` 时还要求该单位先报过 `moving`、并在 S 秒内回到 `idle` |
 | `select` | `--units 1,2,3`、`--expect {silence,protocol-error}`（默认 `silence`）、`--wait S`（默认 2） | 进 play 后发一条 `C2S_SELECT{count=给了几个就写几个}`，count 照写不夹取，因此可以故意越过上限 8 | `silence`：连接保持且没有任何回包；`protocol-error`：收到 `Disconnect reason=synaxis:protocol-error` |
 | `game-flood` | `--rate N`（默认 800，每秒包数）、`--seconds N`（默认 3）、`--expect {flood,alive}`（默认 `flood`）、`--wait S` | 按给定速率在 `rts:game` 上持续发 `C2S_CAMERA`，发包途中按批读取（不读会先把服务端的写堵住、实际速率达不到设定值），并在跑完时报一行 `asked for <设定值> payloads a second, slowest window <实际值>`——实际值就是最慢那一秒真写进 socket 的包数，判「闸门没响是谁的错」看它 | `flood`：收到 `Disconnect reason=synaxis:game-flood`；`alive`：整段跑完仍在线 |
+| `slow-reader` | `--payloads N`（默认 256）、`--bytes N`（默认 30,000）、`--channel`（默认 `synaxis:main`）、`--wait S`（默认 30） | 进 play 后往 echo 通道发 N 个 `--bytes` 字节的随机负载，**一个字节都不读回**：服务端逐条回显，出站队列与 socket 缓冲被撑满，写线程阻塞在 socket 写里；随后保持 `--wait` 秒不读，等 keep-alive 把这条连接踢掉（上一条 keep-alive 之后 15 s）。判「服务端有没有放掉 socket」不靠读——一读服务端就解堵、自己会关——而是隔 0.5 s 连发两个小帧（`ClientPingRequestPacket`），服务端已关则第二次 `send` 报错。末行报的 `within Ns` 是从发完负载算到探测完成，只是上界；真正的关闭时刻看服务端日志。只适用核心模式（echo 通道在那里） | 两次发送里有一次 `OSError`（服务端已关 socket）；`--wait` 到点两次发送都成功则退 1，末行 `the server is still holding the socket` |
 | `units` | `--wait S`（默认 5）、`--expect-min N`（默认 1） | 进 play 后收 S 秒的三条下行单位消息，打印一行 `units=… commandable=[…] snapshots=… despawned=[…]` 与一行各单位的 `unit_state`。兴趣集是引擎 viewer 集合的投影，所以这里看到的就是服务端认为这条连接该看见的那些单位（设计文档 `API-M2-006`） | 兴趣集里至少 `--expect-min` 个单位，且至少收到一条 `S2C_UNIT_STATE` |
 | `march` | `--units N`（默认 64）、`--seconds S`（默认 300）、`--period S`（默认 10）、`--spacing S`（默认 0.25）、`--ax/--az`、`--bx/--bz`、`--y`、`--expect-moving N`（默认 0） | 进 play 后保持连接，每 `--period` 秒把 `unit_id=1..N` 轮流派往 A、B 两个点（每 8 条一组、组间隔 `--spacing` 秒，正好压在 10 操作/秒的预算与每 tick 4 次的抽取之下），每秒采样一次快照里报 `moving` 的单位数，结束时打印 `periods=… orders=…` 加结果码直方图与 `moving samples=… min=… median=… max=…`。**它是压测的陪跑件而不是判据**：阶段 5 起「走动中的单位」会给每个 viewer 带来实体位置包，而基线是在没有这份下行的情况下测的，要把这份负载摆上台面就得有一条一直在下令的连接——连接一走，它的单位全部停下（§11.4） | 发出的指令全部 `ok`，且至少一半的采样报了 `--expect-moving` 个单位在走 |
 | `record-registry` | `--out FILE`（必填） | 按收到顺序写出全部 `RegistryData` 包的解压后字节（含包 ID varint） | 至少收到一个 `RegistryData` 包 |
@@ -1681,11 +1683,54 @@ REQ-M2 ↔ TC 对照（可读索引，覆盖与否由上述联检判）：
 
 后置：无。
 
+### 攻击面盘点（2026-09）
+
+盘点表在 `docs/research/attack-surface-2026-09/README.md`；下面三条是盘点补的用例，覆盖的是当天查出的两个缺口（慢读对端、离线 UUID）与两处此前没有测试证明的既有控制（压缩帧上限、keep-alive 空闲上界）。其余每一面在盘点表里直接指到既有 TC 或代码仓测试。三条都跑在引擎的网络栈上，对应引擎域 REQ。
+
+#### `TC-GAME-069` 慢读对端：断开之后 socket 必须关掉 — 对应 `REQ-011`、`REQ-017` · 级别: 回归 · 执行者: AI
+
+前置：`docs/DESIGN.md` v0.32 已合入；核心模式服务端就绪（§3 启动段，本轮用 `-Dsynaxis.app.port=25567 -Dsynaxis.app.core-mode=on`，stdout 重定向到日志文件）。`slow-reader` 只适用核心模式（它靠 `synaxis:main` 的回显把出站缓冲撑满）。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | `./gradlew :test --tests '*SlowReaderIntegrationTest*' --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts` | `BUILD SUCCESSFUL`，`aDisconnectClosesTheChannelUnderAWriteThePeerNeverReads` 绿：真起 `Server`、真登录到 LoginSuccess，对端把接收缓冲设成 4 KB 且从不读，服务端排 16 MB 出站后 `disconnect()`，5 s 内 channel 关闭、读写线程都退出 |
+| 2 | 反证有齿：把 `PlayerSocketConnection#closeOnceFlushed` 首行的 `if (Thread.currentThread() == writeThread) return;` 改成 `!=`（让断开方永远不起关闭线程），重跑第 1 步，再 `git checkout -- src/main/java/io/github/bearisbug/synaxis/network/player/PlayerSocketConnection.java`。**不要用「删掉 `disconnect` 里那句 `closeOnceFlushed();`」来反证**：Error Prone 的 `UnusedMethod` 会让 `:compileJava` 先红 | 红 1 条，断在 `assertFalse(connection.getChannel().isOpen(), …)`——「a disconnected connection must close its channel even while the peer is not reading ==> expected: <false> but was: <true>」（修复前的原始红就是同一条，`SlowReaderIntegrationTest.java:80`）；还原后复绿 |
+| 3 | `python3 tools/protocol-probe/probe.py --port 25567 --username slowprobe slow-reader` | 退出码 0；末段两行 `holding the socket without reading for 30.0s` 与 `the server closed the socket within 31s ([Errno 32] Broken pipe)`——`within` 后面的数是 `--wait` 加探测那 0.5 s，是上界不是关闭时刻 |
+| 4 | `grep 'identifier=slowprobe' <服务端日志>` | 两行：`Login success: username=slowprobe connection_id=<C> …` 与 `Connection closed: connection_id=<C> identifier=slowprobe`，两行相隔 15～25 s（上一条 keep-alive 之后 `keepAliveKick` 15 s 踢人，而上一条 keep-alive 可能早在 configuration 阶段就发过；本轮实测修复后的进程 15.1 s、守卫反转的进程 25.0 s）。这次断线的原因是 keep-alive 超时，走的是 `Timeout` 纯文本（设计文档 §28 `SOAK-6` 的第 ① 档），所以**没有** `Kicking connection_id=` 那一行，只有关闭行；`grep -cE '^\s+at \|Caused by' <服务端日志>` 为 `0` |
+| 5 | 反证探针有齿：用第 2 步那个改了 `!=` 的工作副本重新起服，重跑第 3 步，再还原并重新起服 | 退出码 1，末行 `the server is still holding the socket after 30.0s: its write thread is blocked on a peer that does not read`；服务端日志里 `Connection closed … identifier=slowprobe` 那一行照样在（连接在逻辑上已断，socket 却还开着，正是修复前的形状） |
+| 6 | 第 3 步之后再 `python3 tools/protocol-probe/probe.py --port 25567 login --hold 3` | 退出码 0，`state=play` 与一次 `KeepAlive #1`：被慢读对端撑过的进程照常接受下一条连接 |
+
+后置：确认工作区干净（第 2、5 步的临时改动已还原）；`stop` 停机，删掉服务端日志。
+
+#### `TC-GAME-070` 离线 UUID 由服务端按用户名派生，对端自选的不采信 — 对应 `REQ-011` · 级别: 回归 · 执行者: AI
+
+前置：`docs/DESIGN.md` v0.32 已合入；第 3 步要一个核心模式服务端（同 `TC-GAME-069` 前置）。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | `./gradlew :test --tests '*PreAuthConnectionIntegrationTest*' --tests '*DuplicateUuidLoginIntegrationTest*' --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts` | `BUILD SUCCESSFUL`；`theOfflineUuidComesFromTheUsernameNotFromThePeer` 绿：`LoginStart{username=Notch, profileId=随机}` 进到 `AsyncPlayerPreLoginEvent` 时 profile 的 uuid 等于 `GameProfile.offlineUuid("Notch")`（`OfflinePlayer:Notch` 的 name-UUID），不等于对端给的那个；`DuplicateUuidLoginIntegrationTest` 三条仍绿（「同名即同 UUID」这道闸的另一半） |
+| 2 | 反证有齿：把 `LoginListener#loginStartListener` 里的 `GameProfile.offlineUuid(packet.username())` 改回 `packet.profileId()`，重跑第 1 步，再 `git checkout -- src/main/java/io/github/bearisbug/synaxis/listener/preplay/LoginListener.java` | 红 1 条，断在「the profile uuid must be derived from the username, not taken from the login start」（修复前的原始红，`PreAuthConnectionIntegrationTest.java:181`）；还原后复绿 |
+| 3 | `python3 tools/protocol-probe/probe.py --port 25567 --username probe login --hold 2` | `LoginSuccess username=probe uuid=a0d7d0d3-bb61-3352-b332-52bfa31d6c0e`——即 `OfflinePlayer:probe` 的 name-UUID（探针自己也是这么算的，所以合法客户端看不出变化；对端换一个 UUID 的形态只有第 1 步那条 JUnit 能造，探针不提供改 UUID 的开关——它不是攻击工具） |
+
+后置：确认工作区干净（第 2 步的临时改动已还原）。
+
+#### `TC-GAME-071` 压缩帧的两道上限与 keep-alive 空闲上界 — 对应 `REQ-017`、`REQ-011` · 级别: 回归 · 执行者: AI
+
+前置：工作副本干净；第 3 步要一个核心模式服务端（同 `TC-GAME-069` 前置）。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | `./gradlew :test --tests '*PacketReadingMalformedTest*' --tests '*ConnectionManagerIntegrationTest*' --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts` | `BUILD SUCCESSFUL`；`aDeclaredDecompressedLengthOverTheLimitIsRefusedBeforeInflating`（压缩帧声明的解压长度 = `MAX_PACKET_SIZE + 1` → `DataFormatException`，消息以 `Invalid decompressed length` 开头，即在声明这一步就拒、没有按声明分配）、`aStreamInflatingPastItsDeclaredLengthIsAProtocolError`（声明 16 字节、实际解出 4,096 字节的流 → 消息以 `Decompressed payload exceeds` 开头，解压在声明长度处截停）、`aPlayerThatStopsAnsweringKeepAlivesIsKicked`（发出 keep-alive 后到 `keepAliveKick − 1 ns` 仍在线，到点即踢并恰好收到一个 Disconnect 包） |
+| 2 | 反证有齿（三处一起改、一起还原）：`PacketReading#readFramedPacket` 的 `dataLength > maxPacketSize` 改成 `dataLength > maxPacketSize * 2`；`NetworkBufferImpl#decompress` 删掉 `if (!inflater.finished()) { throw … }` 那三行；`ConnectionManager#handleKeepAlive` 的 `>=` 改成 `>`。重跑第 1 步，再 `git checkout -- src/main/java/io/github/bearisbug/synaxis/network/packet/PacketReading.java src/main/java/io/github/bearisbug/synaxis/network/NetworkBufferImpl.java src/main/java/io/github/bearisbug/synaxis/network/ConnectionManager.java` | 红 3 条——`…IsRefusedBeforeInflating` 断在「the announcement itself must be what is refused, got: Decompressed length mismatch: expected 2097152, got 0」（2 MiB 已经按声明分配并送去解压了）、`…IsAProtocolError` 断在「Expected java.util.zip.DataFormatException to be thrown, but nothing was thrown」、`…IsKicked` 断在「a player that never answered the keep alive must be kicked」；还原后复绿。**不要只删 `maxPacketSize` 那半个条件**：Error Prone 的 `UnusedVariable` 会让 `:compileJava` 先红，门禁跑不到 |
+| 3 | 核心模式服务端上依次 `python3 tools/protocol-probe/probe.py --port 25567 alloc-bomb`、`… nbt-bomb`、`… zero-frame` | 三次都 `recv Disconnect reason=synaxis:protocol-error`、退出码 0（既有的输入上限，`TC-026` / `TC-027` 的口径；本步只证明盘点当天这台进程仍如此）；服务端日志三行 WARN、`grep -cE '^\s+at \|Caused by'` 为 `0` |
+
+后置：确认工作区干净（第 2 步的临时改动已还原）。
+
 ## 5. 回归策略
 
 - **全量轮**（全部用例）：首次成稿、每个阶段 gate（引擎域阶段 0、2、3；游戏域 `docs/DESIGN-M2.md` §26 的阶段 1～6b）、跨功能域改动、地基变更（JDK、Gradle、镜像、协议版本、模块拆分、启动入口）。
 - **局部轮**（受影响用例 + 全部冒烟级）：单一需求改动。受影响用例 = 本次改动触及的 `REQ-*` / `REQ-M2-*` 所对应的 TC（M2 侧的对照表在 §2，机械校验查不到它）；无 REQ 变更的改动（纯 bug 修、重构）按触及的功能域圈定：
-  - 引擎域：构建与仓库 → TC-001、TC-002、TC-004、TC-006、TC-021、TC-029，删除与注册表 → TC-008、TC-009、TC-020，命名与合规 → TC-011、TC-028，协议 → TC-014、TC-018、TC-019、TC-026、TC-027、TC-030、TC-031、TC-032、TC-034、TC-035，卫生 → TC-015、TC-016，门面与配置 → TC-023、TC-025，分层 → TC-024、TC-035。
+  - 引擎域：构建与仓库 → TC-001、TC-002、TC-004、TC-006、TC-021、TC-029，删除与注册表 → TC-008、TC-009、TC-020，命名与合规 → TC-011、TC-028，协议 → TC-014、TC-018、TC-019、TC-026、TC-027、TC-030、TC-031、TC-032、TC-034、TC-035、TC-GAME-069、TC-GAME-070、TC-GAME-071（后三条是攻击面盘点补的，动了 `network` / `listener` 包或 `ServerConfig` 的连接与超时项就跑），卫生 → TC-015、TC-016，门面与配置 → TC-023、TC-025，分层 → TC-024、TC-035。
   - 游戏域：模块与门禁 → TC-GAME-001～TC-GAME-006、TC-GAME-059、TC-GAME-067，插件宿主 → TC-GAME-009～TC-GAME-011、TC-GAME-014～TC-GAME-016、TC-GAME-053～TC-GAME-055（TC-GAME-007、TC-GAME-008、TC-GAME-012、TC-GAME-013 已废弃），协议与握手 → TC-GAME-017～TC-GAME-028、TC-GAME-049、TC-GAME-050、TC-GAME-060～TC-GAME-064（TC-GAME-021、TC-GAME-023、TC-GAME-025 已废弃），世界与对局 → TC-GAME-029、TC-GAME-031、TC-GAME-033～TC-GAME-036、TC-GAME-056、TC-GAME-057（TC-GAME-030、TC-GAME-032 已废弃），单位与寻路 → TC-GAME-052、TC-GAME-039～TC-GAME-042、TC-GAME-051、TC-GAME-065，镜头 → TC-GAME-043、TC-GAME-044，客户端模组 → TC-GAME-038、TC-GAME-045～TC-GAME-047、TC-GAME-066，启动器 → TC-GAME-048、TC-GAME-049、TC-GAME-050、TC-GAME-058。
   - 跨域牵连（必须一起跑）：动了启动入口或就绪日志 → 加 TC-GAME-048、TC-GAME-029、TC-GAME-057、TC-GAME-058 与全部以进程为前置的引擎域用例（启动序列一变，「对局在 bind 之前就绪、tick 在 bind 之后才起」这条口径就要重验）；动了握手、准入回调或探针 → 加 TC-GAME-049、TC-GAME-050、TC-GAME-060、TC-GAME-061 与 TC-004、TC-014、TC-018、TC-019、TC-020、TC-026、TC-027 七条存量 TC；动了客户端模组侧的握手或拾取 → 加 TC-GAME-066；动了 `:protocol` 消息布局 → 加 TC-GAME-017 与客户端侧同一份向量；动了引擎 `Entity` 的位置推进入口 → 加 TC-GAME-051、TC-GAME-067 与 TC-GAME-040。
   - 影响面不确定时升级为全量轮。

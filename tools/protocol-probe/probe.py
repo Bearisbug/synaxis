@@ -41,6 +41,7 @@ import argparse
 import hashlib
 import io
 import json
+import os
 import re
 import socket
 import struct
@@ -1229,6 +1230,47 @@ def cmd_echo(args: argparse.Namespace) -> int:
         session.close()
 
 
+def cmd_slow_reader(args: argparse.Namespace) -> int:
+    """Stops reading after entering play and reports whether the server let go of the socket.
+
+    What fills the server's socket buffers is its own echo: ``--payloads`` incompressible payloads
+    on the echo channel, each answered byte for byte and none of them read here, so the server's
+    write thread ends up blocked inside a socket write. Only the core mode has that channel
+    (API-M2-010 step 5). What ends the connection on the server is its keep alive, which this
+    probe never answers because it never reads. Before the closer of PlayerSocketConnection a
+    connection dropped that way kept its socket, both socket threads and everything queued for it
+    for as long as this side kept the TCP connection up.
+
+    Whether the socket was let go is decided without reading a byte, because reading would
+    unblock the server and let it close on its own: two small frames a moment apart. A server that
+    closed its side answers the first with a reset, and the second send fails.
+    """
+    session = Session(args)
+    try:
+        session.enter_play()
+        noise = os.urandom(args.bytes)
+        for _ in range(args.payloads):
+            session.connection.send("ClientPluginMessagePacket", plugin_message_payload(args.channel, noise))
+        session.log(f"sent {args.payloads} payloads of {args.bytes} bytes on {args.channel}, reading nothing back")
+        session.log(f"holding the socket without reading for {args.wait}s")
+        started = time.monotonic()
+        time.sleep(args.wait)
+        ping = Writer().varint(client_id(PLAY, "ClientPingRequestPacket")).long(0).bytes()
+        frame = Writer().byte_array(Writer().varint(0).raw(ping).bytes()).bytes()
+        try:
+            session.connection.send_raw(frame)
+            time.sleep(0.5)
+            session.connection.send_raw(frame)
+        except OSError as error:
+            session.log(f"the server closed the socket within {time.monotonic() - started:.0f}s ({error})")
+            return 0
+        session.log(f"the server is still holding the socket after {args.wait}s: "
+                    "its write thread is blocked on a peer that does not read")
+        return 1
+    finally:
+        session.close()
+
+
 def cmd_handshake(args: argparse.Namespace) -> int:
     session = Session(args)
     session.hello_mod_version = args.mod_version
@@ -1440,6 +1482,15 @@ def build_parser() -> argparse.ArgumentParser:
     flood.add_argument("--expect", default="flood", choices=["flood", "alive"])
     flood.add_argument("--wait", type=float, default=2.0)
     flood.set_defaults(run=cmd_game_flood)
+
+    slow = subparsers.add_parser("slow-reader",
+                                 help="stop reading after login and see whether the server lets go of the socket")
+    slow.add_argument("--payloads", type=int, default=256, help="echo payloads to send, none of them read back")
+    slow.add_argument("--bytes", type=int, default=30000, help="size of each payload, incompressible")
+    slow.add_argument("--channel", default="synaxis:main", help="the echo channel (core mode only)")
+    slow.add_argument("--wait", type=float, default=30.0,
+                      help="seconds to hold the socket without reading, past the keep alive kick")
+    slow.set_defaults(run=cmd_slow_reader)
 
     record = subparsers.add_parser("record-registry", help="dump every RegistryData packet")
     record.add_argument("--out", required=True)

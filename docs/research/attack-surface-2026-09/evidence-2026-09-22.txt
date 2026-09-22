@@ -1,0 +1,78 @@
+攻击面盘点 · 实跑摘录 · 2026-09-22 · 基线 c961f0492b（main）· 端口 25567 · 核心模式
+
+README §4 与 docs/TEST.md TC-GAME-069 第 4 步、TC-GAME-070 第 3 步、TC-GAME-071 第 3 步引用的数字都出自下面这些行。
+两次起服都是 ./gradlew :server-app:run -Dsynaxis.app.core-mode=on -Dsynaxis.app.port=25567，stdout 重定向到日志文件；
+探针一律 python3 tools/protocol-probe/probe.py --port 25567 …。
+
+== 一、守卫反转的进程（PlayerSocketConnection#closeOnceFlushed 首行 == 改成 !=，TC-GAME-069 第 5 步）==
+
+探针 --username slowprobe slow-reader 末段：
+  sent 256 payloads of 30000 bytes on synaxis:main, reading nothing back
+  holding the socket without reading for 30.0s
+  the server is still holding the socket after 30.0s: its write thread is blocked on a peer that does not read
+  exit code: 1
+
+服务端日志 grep slowprobe（两行相隔 15.2 s；逻辑上已断，socket 却还开着）：
+  19:32:28.162 [virtual-55] INFO  i.g.b.s.network.ConnectionManager - Login success: username=slowprobe connection_id=715183aa-e1ea-43eb-b3af-1884bca80dbf remote_address=/127.0.0.1:63517
+  19:32:43.344 [Syn-TickScheduler] INFO  i.g.b.s.n.player.PlayerConnection - Connection closed: connection_id=715183aa-e1ea-43eb-b3af-1884bca80dbf identifier=slowprobe
+
+  grep -c ' WARN '                      → 0
+  grep -cE '^\s+at |Caused by'          → 0
+  grep -c Kicking                       → 0
+
+停机 stop 后 git checkout 还原，git status 只剩本轮的文档改动。
+
+== 二、修复后的进程（源码即 HEAD）==
+
+探针 --username slowprobe slow-reader 末段（TC-GAME-069 第 3 步）：
+  state=play
+  sent 256 payloads of 30000 bytes on synaxis:main, reading nothing back
+  holding the socket without reading for 30.0s
+  the server closed the socket within 31s ([Errno 32] Broken pipe)
+  exit code: 0
+
+服务端日志 grep slowprobe（两行相隔 15.1 s；没有 Kicking 行，TC-GAME-069 第 4 步）：
+  19:33:39.268 [virtual-55] INFO  i.g.b.s.network.ConnectionManager - Login success: username=slowprobe connection_id=a55e4e4d-667a-499e-a31f-1c22f78f8772 remote_address=/127.0.0.1:64027
+  19:33:54.406 [Syn-TickScheduler] INFO  i.g.b.s.n.player.PlayerConnection - Connection closed: connection_id=a55e4e4d-667a-499e-a31f-1c22f78f8772 identifier=slowprobe
+
+探针 --username probe login --hold 2（TC-GAME-070 第 3 步）：
+       LoginSuccess username=probe uuid=a0d7d0d3-bb61-3352-b332-52bfa31d6c0e
+  holding the connection for 2.0s
+  exit code: 0
+
+探针 alloc-bomb / nbt-bomb / zero-frame（TC-GAME-071 第 3 步），三次都：
+  recv Disconnect reason=synaxis:protocol-error
+  exit code: 0
+
+服务端日志的三行 WARN（每个炸弹一行，无堆栈）：
+  19:34:12.255 [Syn-Socket-Reader-2] WARN  i.g.b.s.n.p.PlayerSocketConnection - Protocol error: connection_id=fed7e202-dcf9-44db-b53e-05926b1e4bc0 identifier=probe state=CONFIGURATION reason=IllegalArgumentException: Collection size (65,535) is out of the allowed range (0..100)
+  19:34:12.420 [Syn-Socket-Reader-3] WARN  i.g.b.s.n.p.PlayerSocketConnection - Protocol error: connection_id=2d36d01f-9964-4b59-8ea9-a74edc7439f4 identifier=probe state=PLAY reason=IllegalArgumentException: NBT is too large (max: 2097152 bytes)
+  19:34:12.552 [Syn-Socket-Reader-4] WARN  i.g.b.s.n.p.PlayerSocketConnection - Protocol error: connection_id=bf986618-bf72-4275-874a-ea765f9a5326 identifier=probe state=CONFIGURATION reason=DataFormatException: Packet length must be positive: 0
+
+探针 login --hold 3（TC-GAME-069 第 6 步，被慢读对端撑过的进程照常接客）：
+  sent KeepAlive #1 at 19:34:12
+  state=play
+  holding the connection for 3.0s
+  exit code: 0
+
+整份日志：
+  grep -c ' WARN '                      → 3（上面那三行）
+  grep -cE '^\s+at |Caused by'          → 0
+  grep -c Kicking                       → 3（三个炸弹各一行 reason=synaxis:protocol-error；slowprobe 没有）
+
+== 三、全量 check（rebase 到 c961f0492b 之后，源码即 HEAD）==
+
+./gradlew cleanTest check --no-build-cache --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts
+  BUILD SUCCESSFUL；:test / :architecture-tests:test / :server-app:test / :game-rts:test 都真跑（无 FROM-CACHE）
+  按 build/test-results 的 XML 汇总：tests=3133 failures=0 errors=0 skipped=15
+
+  本轮动过的五个测试类（引擎 build/test-results/test）：
+    SlowReaderIntegrationTest            tests="1" skipped="0" failures="0" errors="0"
+    PreAuthConnectionIntegrationTest     tests="8" skipped="0" failures="0" errors="0"
+    PacketReadingMalformedTest           tests="6" skipped="0" failures="0" errors="0"
+    ConnectionManagerIntegrationTest     tests="4" skipped="0" failures="0" errors="0"
+    DuplicateUuidLoginIntegrationTest    tests="3" skipped="0" failures="0" errors="0"
+
+两条文档 lint：
+  bash ~/.claude/skills/design-doc/check.sh docs/DESIGN-M2.md   → ✅ lint 无警告
+  bash ~/.claude/skills/test-doc/check.sh docs/TEST.md          → ✅ lint 无警告（用例 105 条 · 轮次 22）

@@ -4,8 +4,8 @@
 （tick P99 < 50 ms；`S2C_UNIT_STATE` ≤ 256 字节、10 Hz、≤ 2.5 KB/s/玩家、50 人 ≤ 125 KB/s；进程堆 < 2 GB；
 寻路 P99 < 2 ms）一个测量手段。它是 `docs/research/soak-2026-09-18/` 那套核心模式 harness 的玩法模式一半：
 连接走真实的 `C2S_HELLO` 握手进 play，然后按 RTS 玩家的形态驱动切片，服务端侧的采样手段（JFR、`jcmd`
-强制 GC、`ps`）完全相同。**本目录只登记 harness 与跑法；2026-09-22 只做了一次 60 s 冒烟证明它能跑，
-机器不安静，数字不进文档。** 正式测量的验收用例是 `docs/TEST.md` `TC-GAME-068`。
+强制 GC、`ps`）完全相同。本文件只登记 harness 与跑法；三档正式测量的数字、与 §15 的逐行对照和规模曲线在
+`report.md`，每档的 `summary.json` 在 `runs/<档名>/`。验收用例是 `docs/TEST.md` `TC-GAME-068`。
 
 ## 前置
 

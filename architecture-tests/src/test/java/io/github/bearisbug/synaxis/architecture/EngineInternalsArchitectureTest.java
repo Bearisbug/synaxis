@@ -32,8 +32,14 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * in {@code :game-rts} it would cover that one plugin. Here both sides are on one classpath, so the
  * rule reads the annotations the engine actually carries instead of a hand kept list.
  * <p>
- * Blind spot, shared with every bytecode rule: a class named through reflection or string
- * concatenation is invisible. The engine has four {@code Class.forName} sites of its own.
+ * Two blind spots. One is shared with every bytecode rule: a class named through reflection or
+ * string concatenation is invisible, and the engine has four {@code Class.forName} sites of its
+ * own. The other is this pair's alone: a game class that overrides an internal engine method and
+ * never calls {@code super} makes no access and names no internal type, so both rules pass it
+ * ({@code updateNewViewer(Player)} takes a public parameter). The compiler covers the part that
+ * matters most — {@code MissingOverride} is an error in this build, so {@code @Override} fails
+ * the build the day the engine renames or removes the hook. What nothing catches is the engine
+ * changing when it calls it.
  */
 public class EngineInternalsArchitectureTest {
 

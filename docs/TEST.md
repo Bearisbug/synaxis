@@ -14,6 +14,7 @@
 
 | 日期 | 改动 | 作者 |
 | --- | --- | --- |
+| 2026-09-22 | 跟进 `docs/DESIGN-M2.md` v0.38（聚合项目 `:architecture-tests` 与 §24 规则 ⑥）。**新增 `TC-GAME-067`**：两条反方向规则与 `Entity#moveTo` 的签名钉住各一步绿、三步反证（`Unit#advance` 改回 `refreshPosition` → 成员规则红；`Unit` 加一个 `TickSchedulerThread` 字段 → 类型规则红；`Entity#moveTo` 加 `@ApiStatus.Internal` → 签名测试红），红在哪一条写进期望列。**`TC-GAME-052` 保留 ID、判据未动**：`UnitModelIntegrationTest` 的兴趣集用例改为先跑一个快照再断言 `S2C_UNIT_SPAWN`（通知自 v0.38 起由快照发出），并新增一条「离开 viewer 集合的单位在下一个快照被 despawn、回来再 spawn」的用例；第 1 步只点名五条建模断言，一字未改。§2 的 REQ ↔ TC 表 `REQ-M2-002` 与 `REQ-M2-025` 两行、§5 的「模块与门禁」与跨域牵连「动了引擎 `Entity` 的位置推进入口」同步加 `TC-GAME-067` | Bearisbug |
 | 2026-09-22 | 跟进 `docs/DESIGN-M2.md` v0.37。**`TC-GAME-029` 保留 ID，只改第 2 步的期望列**：`heap_delta_mb < 50` 换成三条一起判——`heap_gc_runs ≥ 2`、`heap_delta_kib` 在 `0` 与 `51200` 之间（实测 `rts-512` 6,600 / `rts-128` 1,125），并写明 `heap_gc_runs` 为 0 时前一个数只是分配量。**§2 的「机械校验」段改写**：`REQ-M2-*` 自本轮起进入 test-doc `check.sh` 的 REQ 双向联检（两份设计文档一起联检，元信息「关联设计文档」行的每个 `*.md` 都解析），REQ ↔ TC 对照表由「唯一判据」降为可读索引；反证：把本文档里的 `REQ-M2-012` 全部改成一个设计文档里不存在的编号 → 悬空引用与无 TC 覆盖两条同时红 | Bearisbug |
 | 2026-09-22 | 跟进 `docs/DESIGN-M2.md` v0.36（客户端的下令节流与七个结果码的去向）。**`TC-GAME-066` 保留 ID，原八步的操作列一字未改**：第 3 步的条数由 75 改为 92 并按类列出（新增 `OrderFeedbackTest`），期望列点名节流与结果码各对应哪条测试；**新增第 9、10、11 步**——第 9 步反证节流与 `stale` 不顶掉已画标记有齿（删两处预算守卫 + 让 `show` 无条件覆盖，红 4 条），第 10 步反证拾取的边界有齿（把射线当成无限直线并把盒子放大 0.02，红 3 条），第 11 步反证「该命中的仍然命中」与 §14 那张表有齿（把盒子缩小 0.02，同批把 `out-of-bounds` 挪进黄色一支、`no-path` 的 translate 键改成 lang 文件里没有的，红 4 条）；后置里补上这三步的还原。**没有新增用例、没有废弃用例**，§2 的 REQ ↔ TC 表与 §5 的回归映射因此未动 | Bearisbug |
 | 2026-09-22 | 跟进 `docs/DESIGN-M2.md` v0.35（客户端绑定表的回收纪律与未匹配消息的去向）。**`TC-GAME-066` 保留 ID，原六步的操作列一字未改**：第 3 步的条数由 66 改为 75 并按类列出，期望列点名回收纪律四个答案各对应哪条测试；**新增第 7、8 步**——第 7 步反证「匹配不上就计数」有齿（把两处计数改回静默丢弃，红 4 条），第 8 步反证其余三条有齿（清空漏掉计数器 + 选中被无条件清 + 下令依赖渲染位置，红 3 条；拾取缓存上一次渲染位置，红 2 条；墓碑集合，红 1 条），后置里补上这两步的还原。**没有新增用例、没有废弃用例**，§2 的 REQ ↔ TC 表与 §5 的回归映射因此未动。`UnitBindingsTest` 的 `aSnapshotLineForAUnitThatIsNotBoundYetIsIgnored` 改名为 `aSnapshotLineForAUnitThatIsNotBoundIsDroppedAndCounted` 并多一行断言，用例判据里没有一处点名过它 | Bearisbug |
@@ -80,7 +81,7 @@ REQ-M2 ↔ TC 对照（可读索引，覆盖与否由上述联检判）：
 | REQ | TC |
 | --- | --- |
 | REQ-M2-001 模块拆分 | TC-GAME-001、TC-GAME-002 |
-| REQ-M2-002 `game` 改名与依赖方向规则 | TC-GAME-002、TC-GAME-003、TC-GAME-059 |
+| REQ-M2-002 `game` 改名与依赖方向规则 | TC-GAME-002、TC-GAME-003、TC-GAME-059、TC-GAME-067 |
 | REQ-M2-003 插件发现与生命周期 | TC-GAME-053、TC-GAME-009、TC-GAME-010、TC-GAME-011（TC-GAME-007、TC-GAME-008 已废弃：依赖拓扑序与环检测随范围裁剪推到 M3） |
 | REQ-M2-004 插件能力边界 | TC-GAME-055（TC-GAME-012 已废弃：M2 没有熔断，禁用只由停机触发） |
 | REQ-M2-005 异常归因 | TC-GAME-011、TC-GAME-054（TC-GAME-013 已废弃：滑窗熔断随范围裁剪推到 M3） |
@@ -103,7 +104,7 @@ REQ-M2 ↔ TC 对照（可读索引，覆盖与否由上述联检判）：
 | REQ-M2-022 CI 门禁扩展 | TC-GAME-004、TC-GAME-005、TC-GAME-006 |
 | REQ-M2-023 社区上手 | TC-GAME-016 |
 | REQ-M2-024 宿主准入链 | TC-GAME-050、TC-GAME-057、TC-GAME-060 |
-| REQ-M2-025 公开的位置推进入口 | TC-GAME-051 |
+| REQ-M2-025 公开的位置推进入口 | TC-GAME-051、TC-GAME-067 |
 
 - 不测：
 
@@ -763,6 +764,23 @@ REQ-M2 ↔ TC 对照（可读索引，覆盖与否由上述联检判）：
 | 6 | **仅第一个 tag 之后可做**：`gradle/abi-baseline.tag` 已指向该 tag、其 release 有 `plugin-api.jar` 与 `protocol.jar`；新建分支 `tmp/abi-probe`，做第 4 步那次删除（连同调用点）推送并开草稿 PR，等工作流完成，随后关 PR 删分支 | 工作流结论为 `failure`，`ABI gate of the stable surface` 步骤日志含第 4 步那两行；`gh api repos/Bearisbug/synaxis/branches/tmp/abi-probe` 返回 404 |
 
 后置：`rm -rf .abi-baseline`；确认 `git status --porcelain` 无输出、`main` 未被改动。
+
+#### `TC-GAME-067` 游戏侧不得触碰引擎内部、`Entity#moveTo` 签名钉死 — 对应 `REQ-M2-002`、`REQ-M2-025` · 级别: 回归 · 执行者: AI
+
+前置：聚合项目 `:architecture-tests` 已合入（`settings.gradle.kts` 末行；设计文档 §24 规则 ⑥）；工作区干净（`git status --porcelain` 无输出）。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | `./gradlew :architecture-tests:check --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts` | `BUILD SUCCESSFUL`；`architecture-tests/build/test-results/test/` 里 `EngineInternalsArchitectureTest` 共 5 条、0 失败 |
+| 2 | 在同一份结果里看类型规则那两条 | `theGameSideNamesNoEngineInternalType` 通过（`:game-rts` 与 `:protocol` 的主类没有一个依赖标 `@ApiStatus.Internal` 的引擎类型）；自测 `theTypeRuleRejectsAGameClassDeclaringAnInternal` 通过，且它断言的是违规消息里点名了 `GameClassDeclaringAnEngineInternal`——只判异常类型会把「规则退化成空规则」也判成通过 |
+| 3 | 在同一份结果里看成员规则那两条 | `theGameSideTouchesNoEngineInternalMember` 通过；自测 `theMemberRuleRejectsAGameClassCallingAnInternal` 通过，且违规消息含 `refreshPosition`——夹具是经自己的 `Entity` 子类调的，证明规则按解析后的成员判 owner、不按调用点 |
+| 4 | **反证一（成员规则）**：把 `game-rts/src/main/java/io/github/bearisbug/synaxis/game/rts/Unit.java` 里 `advance` 的 `entity.moveTo(position);` 临时改成 `entity.refreshPosition(position, false, true);`，重跑 `./gradlew :architecture-tests:test --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts`，然后还原 | `BUILD FAILED`，5 条里只红 `theGameSideTouchesNoEngineInternalMember`，违规消息是 `Method <…game.rts.Unit.advance(int)> calls method <…game.rts.UnitEntity.refreshPosition(…Pos, boolean, boolean)>`——调用点的 owner 是 `UnitEntity`，红的是解析到 `Entity` 上的那个内部成员 |
+| 5 | **反证二（类型规则）**：在 `Unit.java` 临时加 `import io.github.bearisbug.synaxis.TickSchedulerThread;` 与一个字段 `@Nullable TickSchedulerThread probe;`（不能写全限定名，Error Prone 的 `UnnecessarilyFullyQualified` 会先把编译弄红），重跑第 4 步的命令，然后还原 | `BUILD FAILED`，5 条里只红 `theGameSideNamesNoEngineInternalType`，违规消息是 `Field <…game.rts.Unit.probe> has type <io.github.bearisbug.synaxis.TickSchedulerThread>` |
+| 6 | **反证三（签名钉住）**：给 `src/main/java/io/github/bearisbug/synaxis/entity/Entity.java` 的 `moveTo(Pos)` 临时加 `@ApiStatus.Internal`，重跑第 4 步的命令，然后还原 | `BUILD FAILED`，红两条：`theEnginePositionEntryPointStillHasTheSignaturePluginsWereGiven`（消息 `moveTo was marked internal … expected: <false> but was: <true>`）与 `theGameSideTouchesNoEngineInternalMember`（`Unit.advance` 调的 `moveTo` 现在也是内部成员）。注解是从 class 文件读的——`ApiStatus.Internal` 只有 `CLASS` 保留级，这一步改用反射的 `isAnnotationPresent` 会假绿 |
+| 7 | `grep -rn "DoNotIncludeJars" architecture-tests/src/test --include='*.java'` | 退出码 1、无输出（五个模块都以 jar 进测试运行时 classpath，排除 jar 会让两条规则一个类都扫不到；夹具靠 `DoNotIncludeTests` 排除） |
+| 8 | `./gradlew :architecture-tests:jacocoTestReport --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts`，再 `grep -c architecture-tests .github/workflows/ci.yml` | `BUILD SUCCESSFUL`（没有主源集的模块上报告任务照常跑完、不失败）；`grep` 输出 `0`——CI 的 `diff-cover --src-roots` 不列它，没有主源码行可覆盖 |
+
+后置：第 4～6 步都已还原，`git status --porcelain` 无输出。
 
 ### M2 · 插件宿主
 
@@ -1668,8 +1686,8 @@ REQ-M2 ↔ TC 对照（可读索引，覆盖与否由上述联检判）：
 - **全量轮**（全部用例）：首次成稿、每个阶段 gate（引擎域阶段 0、2、3；游戏域 `docs/DESIGN-M2.md` §26 的阶段 1～6b）、跨功能域改动、地基变更（JDK、Gradle、镜像、协议版本、模块拆分、启动入口）。
 - **局部轮**（受影响用例 + 全部冒烟级）：单一需求改动。受影响用例 = 本次改动触及的 `REQ-*` / `REQ-M2-*` 所对应的 TC（M2 侧的对照表在 §2，机械校验查不到它）；无 REQ 变更的改动（纯 bug 修、重构）按触及的功能域圈定：
   - 引擎域：构建与仓库 → TC-001、TC-002、TC-004、TC-006、TC-021、TC-029，删除与注册表 → TC-008、TC-009、TC-020，命名与合规 → TC-011、TC-028，协议 → TC-014、TC-018、TC-019、TC-026、TC-027、TC-030、TC-031、TC-032、TC-034、TC-035，卫生 → TC-015、TC-016，门面与配置 → TC-023、TC-025，分层 → TC-024、TC-035。
-  - 游戏域：模块与门禁 → TC-GAME-001～TC-GAME-006、TC-GAME-059，插件宿主 → TC-GAME-009～TC-GAME-011、TC-GAME-014～TC-GAME-016、TC-GAME-053～TC-GAME-055（TC-GAME-007、TC-GAME-008、TC-GAME-012、TC-GAME-013 已废弃），协议与握手 → TC-GAME-017～TC-GAME-028、TC-GAME-049、TC-GAME-050、TC-GAME-060～TC-GAME-064（TC-GAME-021、TC-GAME-023、TC-GAME-025 已废弃），世界与对局 → TC-GAME-029、TC-GAME-031、TC-GAME-033～TC-GAME-036、TC-GAME-056、TC-GAME-057（TC-GAME-030、TC-GAME-032 已废弃），单位与寻路 → TC-GAME-052、TC-GAME-039～TC-GAME-042、TC-GAME-051、TC-GAME-065，镜头 → TC-GAME-043、TC-GAME-044，客户端模组 → TC-GAME-038、TC-GAME-045～TC-GAME-047、TC-GAME-066，启动器 → TC-GAME-048、TC-GAME-049、TC-GAME-050、TC-GAME-058。
-  - 跨域牵连（必须一起跑）：动了启动入口或就绪日志 → 加 TC-GAME-048、TC-GAME-029、TC-GAME-057、TC-GAME-058 与全部以进程为前置的引擎域用例（启动序列一变，「对局在 bind 之前就绪、tick 在 bind 之后才起」这条口径就要重验）；动了握手、准入回调或探针 → 加 TC-GAME-049、TC-GAME-050、TC-GAME-060、TC-GAME-061 与 TC-004、TC-014、TC-018、TC-019、TC-020、TC-026、TC-027 七条存量 TC；动了客户端模组侧的握手或拾取 → 加 TC-GAME-066；动了 `:protocol` 消息布局 → 加 TC-GAME-017 与客户端侧同一份向量；动了引擎 `Entity` 的位置推进入口 → 加 TC-GAME-051 与 TC-GAME-040。
+  - 游戏域：模块与门禁 → TC-GAME-001～TC-GAME-006、TC-GAME-059、TC-GAME-067，插件宿主 → TC-GAME-009～TC-GAME-011、TC-GAME-014～TC-GAME-016、TC-GAME-053～TC-GAME-055（TC-GAME-007、TC-GAME-008、TC-GAME-012、TC-GAME-013 已废弃），协议与握手 → TC-GAME-017～TC-GAME-028、TC-GAME-049、TC-GAME-050、TC-GAME-060～TC-GAME-064（TC-GAME-021、TC-GAME-023、TC-GAME-025 已废弃），世界与对局 → TC-GAME-029、TC-GAME-031、TC-GAME-033～TC-GAME-036、TC-GAME-056、TC-GAME-057（TC-GAME-030、TC-GAME-032 已废弃），单位与寻路 → TC-GAME-052、TC-GAME-039～TC-GAME-042、TC-GAME-051、TC-GAME-065，镜头 → TC-GAME-043、TC-GAME-044，客户端模组 → TC-GAME-038、TC-GAME-045～TC-GAME-047、TC-GAME-066，启动器 → TC-GAME-048、TC-GAME-049、TC-GAME-050、TC-GAME-058。
+  - 跨域牵连（必须一起跑）：动了启动入口或就绪日志 → 加 TC-GAME-048、TC-GAME-029、TC-GAME-057、TC-GAME-058 与全部以进程为前置的引擎域用例（启动序列一变，「对局在 bind 之前就绪、tick 在 bind 之后才起」这条口径就要重验）；动了握手、准入回调或探针 → 加 TC-GAME-049、TC-GAME-050、TC-GAME-060、TC-GAME-061 与 TC-004、TC-014、TC-018、TC-019、TC-020、TC-026、TC-027 七条存量 TC；动了客户端模组侧的握手或拾取 → 加 TC-GAME-066；动了 `:protocol` 消息布局 → 加 TC-GAME-017 与客户端侧同一份向量；动了引擎 `Entity` 的位置推进入口 → 加 TC-GAME-051、TC-GAME-067 与 TC-GAME-040。
   - 影响面不确定时升级为全量轮。
 - **复测轮**（上轮失败用例 + 全部冒烟级）：修复失败项之后。
 - **人工收口轮**（仅上轮「待人工」用例）：AI 轮之后由人工补测 TC-016、TC-030、TC-GAME-020、TC-GAME-038、TC-GAME-046、TC-GAME-047，不要求冒烟级。

@@ -181,7 +181,7 @@ python3 tools/pkgdeps.py server-app/src/main/java --root-package io.github.beari
 python3 tools/pkgdeps.py game-rts/src/main/java   --root-package io.github.bearisbug.synaxis.game.rts      --skip-lower-layer
 ```
 
-引擎那一跑要看的是最后一段 `lower layer edges into the rest of the engine: 0`（`--detail` 会把违规文件逐个列出来）；`--skip-lower-layer` 把这段去掉，因为底层 9 包的分层只是引擎的，四个新模块没有对应的层。四个新模块当前各自只有一个扁平包，矩阵为空是正常输出。
+引擎那一跑要看的是最后一段 `lower layer edges into the rest of the engine: 0`（`--detail` 会把违规文件逐个列出来）；`--skip-lower-layer` 把这段去掉，因为底层 9 包的分层只是引擎的，四个新模块没有对应的层。四个新模块当前各自只有一个扁平包，矩阵为空是正常输出。`architecture-tests/` 没有主源码，没有它的一条。
 
 ---
 
@@ -210,6 +210,7 @@ python3 tools/pkgdeps.py game-rts/src/main/java   --root-package io.github.beari
 | `plugin-api/` | M2 子项目：唯一稳定面，引擎与 `protocol` 类型的受控再导出；接 ABI 门 |
 | `server-app/` | M2 子项目：插件宿主与装配层（唯一启动入口），跑 classpath，不出模块 |
 | `game-rts/` | M2 子项目：RTS 玩法插件，由宿主用 `ServiceLoader` 发现 |
+| `architecture-tests/` | M2 子项目，**纯测试**：没有主源码，把引擎与四个 M2 子项目全部当 `testImplementation`，只住 `docs/DESIGN-M2.md` §24 规则 ⑥ 那两条任何单个模块都表达不了的反方向 ArchUnit 规则；不进 `pkgdeps`（§3.6），也不进 CI 的 `diff-cover --src-roots`（没有主源码行可覆盖） |
 | `client-fabric/` | M2 客户端模组工程（`REQ-M2-020`）：Fabric Loom 的**独立 Gradle 构建**，自带 wrapper，不进 `settings.gradle.kts`（`ADR-M2-015`）；`:protocol` 从 `mavenLocal()` 按坐标消费并 JiJ 进模组 jar；`check` 跑 §24 的双端向量（读 `protocol/src/test/resources/vectors/` 本身）与 `verifyModJar`，CI 见 §7 的 `client-mod.yml` |
 | `build-src/` | Gradle 约定插件（toolchain、Error Prone、发布、ABI 检查） |
 | `gradle/init/` | 构建用的临时 init 脚本，目前只有阿里云镜像脚本，见 §2.1 |

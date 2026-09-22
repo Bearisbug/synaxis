@@ -54,6 +54,9 @@ public final class RtsPlugin implements SynaxisPlugin {
             throw new IllegalStateException("the host did not register " + PluginApi.MATCH_DIMENSION_TYPE
                     + ", there is no dimension to build a match in");
 
+        // Read before the map is built: a refused number is a refused launch, and it should not
+        // cost a thousand chunks to find out
+        final int rosterSize = Roster.units();
         final Match started = new Match(context.process(), dimensionType, context.analytics(), context.logger());
         started.load(System.getProperty(MAP_PROPERTY, MapPreset.DEFAULT.id()));
         this.match = started;
@@ -71,7 +74,7 @@ public final class RtsPlugin implements SynaxisPlugin {
         final GameSessions sessions = new GameSessions(context.process().connection());
         final Units deployed = new Units(started, instance, navGrid, preset, sessions,
                 context.channels(), context.analytics(), System::nanoTime);
-        Roster.deploy(deployed, navGrid, preset, started.spawn());
+        Roster.deploy(deployed, navGrid, preset, started.spawn(), rosterSize);
         this.units = deployed;
 
         final GameChannel game = new GameChannel(started, sessions, deployed, context.channels(),

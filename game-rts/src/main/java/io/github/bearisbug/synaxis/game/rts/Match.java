@@ -13,6 +13,8 @@ import net.kyori.adventure.text.Component;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 
+import java.lang.management.GarbageCollectorMXBean;
+import java.lang.management.ManagementFactory;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -180,13 +182,16 @@ final class Match {
         this.preset = selected;
         this.state = State.LOADING;
 
+        // Bracket everything the map retains — terrain, navigation mesh and chunks — with live heap
+        // readings, and start the clock after the first one so that the collections those readings
+        // cost stay out of load_ms.
+        final HeapSample heapBefore = sampleLiveHeap();
+        final long generationStartNanos = System.nanoTime();
+
         final MapTerrain terrain = new MapTerrain(selected);
         this.navGrid = NavGrid.of(terrain);
         final InstanceContainer loading = new InstanceContainer(process, matchId, dimensionType, dimensionName);
         loading.setGenerator(new MapGenerator(terrain));
-
-        final Runtime runtime = Runtime.getRuntime();
-        final long heapBefore = runtime.totalMemory() - runtime.freeMemory();
         try {
             generateWholeMap(loading, selected);
         } catch (Exception e) {
@@ -196,8 +201,10 @@ final class Match {
             endWith("load-failed", null);
             return;
         }
-        final long loadMs = (System.nanoTime() - createdAtNanos) / 1_000_000L;
-        final long heapDeltaMb = Math.max(0, (runtime.totalMemory() - runtime.freeMemory() - heapBefore) / (1024 * 1024));
+        final long loadMs = (System.nanoTime() - generationStartNanos) / 1_000_000L;
+        final HeapSample heapAfter = sampleLiveHeap();
+        final long heapDeltaKib = heapAfter.liveKib() - heapBefore.liveKib();
+        final long heapGcRuns = heapBefore.collections() + heapAfter.collections();
 
         // Nothing is ever loaded again: every chunk of the map is in memory, and a request outside
         // it must answer "there is no such chunk" instead of generating a 1025th one (REQ-M2-011).
@@ -208,7 +215,39 @@ final class Match {
         logger.info("Match running: match_id={} map_id={} dimension_name={} chunk_count={} load_ms={}",
                 matchId, mapId, dimensionName.asString(), selected.chunkCount(), loadMs);
         analytics.record("match_started", attributes("map_id", mapId, "chunk_count", selected.chunkCount(),
-                "load_ms", loadMs, "heap_delta_mb", heapDeltaMb));
+                "load_ms", loadMs, "heap_delta_kib", heapDeltaKib, "heap_gc_runs", heapGcRuns));
+    }
+
+    /**
+     * Heap that survives a collection, in KiB, together with how many collections the reading
+     * itself caused. Two collections and not one: the second reclaims what the first made
+     * unreachable. Reading {@code totalMemory - freeMemory} without collecting first counts
+     * garbage as live, which is what made the map's heap budget unfalsifiable — a young GC
+     * landing inside the window was enough to make the delta read zero (§15).
+     * <p>
+     * The count is what keeps the number honest: under {@code -XX:+DisableExplicitGC}, or if
+     * someone drops the collections, {@code liveKib} silently goes back to measuring allocation
+     * instead of retention. It comes out as {@code heap_gc_runs} on {@code EVT:match_started} so
+     * that a reading taken without collecting is visible rather than merely wrong.
+     */
+    private record HeapSample(long liveKib, long collections) {}
+
+    private static HeapSample sampleLiveHeap() {
+        final long before = collectionCount();
+        System.gc();
+        System.gc();
+        final Runtime runtime = Runtime.getRuntime();
+        return new HeapSample((runtime.totalMemory() - runtime.freeMemory()) / 1024L,
+                collectionCount() - before);
+    }
+
+    private static long collectionCount() {
+        long total = 0;
+        for (GarbageCollectorMXBean collector : ManagementFactory.getGarbageCollectorMXBeans()) {
+            final long count = collector.getCollectionCount();
+            if (count > 0) total += count;
+        }
+        return total;
     }
 
     /**

@@ -14,6 +14,7 @@
 
 | 日期 | 改动 | 作者 |
 | --- | --- | --- |
+| 2026-09-22 | 跟进 `docs/DESIGN-M2.md` v0.37。**`TC-GAME-029` 保留 ID，只改第 2 步的期望列**：`heap_delta_mb < 50` 换成三条一起判——`heap_gc_runs ≥ 2`、`heap_delta_kib` 在 `0` 与 `51200` 之间（实测 `rts-512` 6,600 / `rts-128` 1,125），并写明 `heap_gc_runs` 为 0 时前一个数只是分配量。**§2 的「机械校验」段改写**：`REQ-M2-*` 自本轮起进入 test-doc `check.sh` 的 REQ 双向联检（两份设计文档一起联检，元信息「关联设计文档」行的每个 `*.md` 都解析），REQ ↔ TC 对照表由「唯一判据」降为可读索引；反证：把本文档里的 `REQ-M2-012` 全部改成一个设计文档里不存在的编号 → 悬空引用与无 TC 覆盖两条同时红 | Bearisbug |
 | 2026-09-22 | 跟进 `docs/DESIGN-M2.md` v0.36（客户端的下令节流与七个结果码的去向）。**`TC-GAME-066` 保留 ID，原八步的操作列一字未改**：第 3 步的条数由 75 改为 92 并按类列出（新增 `OrderFeedbackTest`），期望列点名节流与结果码各对应哪条测试；**新增第 9、10、11 步**——第 9 步反证节流与 `stale` 不顶掉已画标记有齿（删两处预算守卫 + 让 `show` 无条件覆盖，红 4 条），第 10 步反证拾取的边界有齿（把射线当成无限直线并把盒子放大 0.02，红 3 条），第 11 步反证「该命中的仍然命中」与 §14 那张表有齿（把盒子缩小 0.02，同批把 `out-of-bounds` 挪进黄色一支、`no-path` 的 translate 键改成 lang 文件里没有的，红 4 条）；后置里补上这三步的还原。**没有新增用例、没有废弃用例**，§2 的 REQ ↔ TC 表与 §5 的回归映射因此未动 | Bearisbug |
 | 2026-09-22 | 跟进 `docs/DESIGN-M2.md` v0.35（客户端绑定表的回收纪律与未匹配消息的去向）。**`TC-GAME-066` 保留 ID，原六步的操作列一字未改**：第 3 步的条数由 66 改为 75 并按类列出，期望列点名回收纪律四个答案各对应哪条测试；**新增第 7、8 步**——第 7 步反证「匹配不上就计数」有齿（把两处计数改回静默丢弃，红 4 条），第 8 步反证其余三条有齿（清空漏掉计数器 + 选中被无条件清 + 下令依赖渲染位置，红 3 条；拾取缓存上一次渲染位置，红 2 条；墓碑集合，红 1 条），后置里补上这两步的还原。**没有新增用例、没有废弃用例**，§2 的 REQ ↔ TC 表与 §5 的回归映射因此未动。`UnitBindingsTest` 的 `aSnapshotLineForAUnitThatIsNotBoundYetIsIgnored` 改名为 `aSnapshotLineForAUnitThatIsNotBoundIsDroppedAndCounted` 并多一行断言，用例判据里没有一处点名过它 | Bearisbug |
 | 2026-09-22 | 跟进 `docs/DESIGN-M2.md` v0.34（客户端绑定表的清空时机）。**`TC-GAME-066` 保留 ID，原五步一字未改，新增第 6 步**：`grep` 断言 `SynaxisClientMod` 里挂的是 `ClientPlayConnectionEvents.INIT` 而不是 `DISCONNECT`，期望列写明 `DISCONNECT` 跑在 netty 线程、而 `rts:game` 的负载处理器跑在 `Minecraft.packetProcessor()` 的主线程队列上。**条数与其余判据未变**（客户端仍是 66 条；`RtsClientTest` 的 `leavingTheServerResets…` 改名为 `aNewConnectionStartsWithNoBindingsNoSelectionAndSequenceOne`，断言一行未动，第 3 步只数条数不点名它） | Bearisbug |
@@ -72,9 +73,9 @@
 - 覆盖（引擎域 · M1 / M1.5）：里程碑 M1 的 12 条需求的黑盒与半黑盒验收——构建产物与仓库元数据（命令、退出码、文件）、Minecraft 协议行为（裸 socket 与原版客户端可观察的包与断线原因）、文档与合规文件。
 - 覆盖（游戏域 · M2）：`docs/DESIGN-M2.md` 的 `REQ-M2-001`～`REQ-M2-025` 的黑盒与半黑盒验收——工程门禁的可观察结论（模块树、构建红绿、CI 结论）、插件宿主的生命周期与隔离行为（启停日志、退出码、回调有无、事件 JSONL）、自定义负载协议行为（探针可见的消息、结果码与断线原因键）、程序化地图生成与对局生命周期、单位 / 寻路 / 镜头的服务端权威行为，以及客户端模组的安装与 RTS 切片的端到端人工验收。
 - Gherkin 覆盖口径：`docs/DESIGN-M2.md` §19 的 48 个 Gherkin 场景**全部**由本文档的 TC 可操作化，没有转交自动化测试的场景；逐条对照见下方 REQ ↔ TC 表与各用例标题行。
-- 机械校验盲区（必须知道，否则会把绿灯当成已核）：test-doc 的 `check.sh` 里 ID 正则是 `REQ-([A-Z]+-)?[0-9]+`，域段只允许字母，**匹配不上带数字的 `M2` 域段**——因此 `REQ-M2-*` 一条都进不了「REQ 双向联检」，联检实际只覆盖引擎域的 `REQ-001`～`REQ-017`（这与 `docs/DESIGN-M2.md` §24 记录的 design-doc 侧盲区是同一个正则）。M2 侧的「每条 REQ 至少一条 TC」只能靠下表手工核。后续里程碑若把域段取成纯字母（如 `REQ-GAME-*`），机械联检就能重新覆盖游戏域，手工表可以退役。
+- 机械校验口径：`bash ~/.claude/skills/test-doc/check.sh docs/TEST.md` 做 REQ 双向联检——本文档引用的每条 REQ 必须在某一份设计文档里存在，每份设计文档的每条 REQ 必须被至少一条 TC 引用。**两份设计文档一起联检**：`check.sh` 把上方元信息「关联设计文档」行里的**每一个** `*.md` 都解析出来，`REQ-001`～`REQ-017` 与 `REQ-M2-001`～`REQ-M2-025` 都在范围内。两处不能动，动了绿灯就不再代表已核：① ID 正则的域段是 `[A-Z][A-Z0-9]*`，收窄成纯字母会让带数字的 `M2` 域段整块静默退出联检；② 元信息那一行必须保留两份文档的路径，只留一份则另一份的 REQ 无人认领。下表因此不是唯一判据，留作可读索引——查一条 REQ 由哪些 TC 覆盖、哪些 TC 已废弃及原因。
 
-REQ-M2 ↔ TC 对照（手工维护）：
+REQ-M2 ↔ TC 对照（可读索引，覆盖与否由上述联检判）：
 
 | REQ | TC |
 | --- | --- |
@@ -1211,7 +1212,7 @@ REQ-M2 ↔ TC 对照（手工维护）：
 | # | 操作 | 预期 |
 | --- | --- | --- |
 | 1 | 以该预设启动 `server-app` | 进入就绪；`grep match_created logs/events-*.jsonl` 与 `grep match_started logs/events-*.jsonl` **各恰有一行**（M2 单局），`match_id` 相同 |
-| 2 | 查看 `match_started` 事件的属性 | `chunk_count` 为 `1024`（全部生成完成才进 running）、`load_ms` < 3000、`heap_delta_mb` < 50。**后半条不可证伪，不要拿它当堆预算的证据**：`heap_delta_mb` 是 `totalMemory - freeMemory` 的前后差再 `max(0, …)`，载入中发生一次 young GC 它就读 0（2026-09-21 实测 `rts-512` 与 `rts-128` 都是 0），于是这一档的实际含义只剩「该字段 ≥ 0」。整图真实堆增量 ≈ 9.2 MiB，量法与数字见 `docs/research/client-spikes-2026-09/README.md` 的 S6；让这半条可证伪是一条独立改动，登记在设计文档 §28.2 |
+| 2 | 查看 `match_started` 事件的属性 | `chunk_count` 为 `1024`（全部生成完成才进 running）、`load_ms` < 3000、`heap_gc_runs` ≥ 2、`heap_delta_kib` 落在 `0` 与 `51200` 之间（2026-09-22 实测 `rts-512` 6,600 / `rts-128` 1,125）。**三条要一起看**：`heap_gc_runs` 是那两次存活堆读数触发的回收次数，为 0 时 `heap_delta_kib` 量的是分配量而不是留存量，能落在预算内却什么也证明不了 |
 | 3 | 跑 `./gradlew :game-rts:test --tests 'io.github.bearisbug.synaxis.game.rts.MatchIntegrationTest' --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts`（进程内没有打印 `autoChunkLoad` 的运维入口，该断言由 `theWholeMapIsGeneratedBeforeTheMatchRuns` 覆盖） | `BUILD SUCCESSFUL`；该方法断言整图区块数到齐、`hasEnabledAutoChunkLoad()` 为 `false`、实例已注册 |
 | 4 | 用探针握手登录进入 play | 进入世界并收到区块包，未出现 `synaxis:internal-error` 或 `synaxis:match-unavailable` |
 | 5 | 检查就绪日志与 `match_started` 的先后 | `match_started` 的时间戳早于就绪日志（对局在 bind 之前就已 running，见 `API-M2-010` 启动序列） |

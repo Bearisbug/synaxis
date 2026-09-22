@@ -100,11 +100,22 @@ class MatchIntegrationTest {
         final Map<String, ?> started = events.last("match_started");
         assertNotNull(started);
         assertEquals(1024, started.get("chunk_count"));
+        final long heapDeltaKib = (Long) started.get("heap_delta_kib");
+        final long heapGcRuns = (Long) started.get("heap_gc_runs");
         LoggerFactory.getLogger(MatchIntegrationTest.class).info(
-                "Full size map: chunk_count={} load_ms={} heap_delta_mb={}",
-                started.get("chunk_count"), started.get("load_ms"), started.get("heap_delta_mb"));
+                "Full size map: chunk_count={} load_ms={} heap_delta_kib={} heap_gc_runs={}",
+                started.get("chunk_count"), started.get("load_ms"), heapDeltaKib, heapGcRuns);
         assertTrue((Long) started.get("load_ms") < 3_000,
                 "generating the map took load_ms=" + started.get("load_ms") + ", the §15 budget is 3 s");
+        // Assert the measurement before the number it produces: an allocation reading taken without
+        // collecting can land anywhere inside the budget and pass, which is exactly how this budget
+        // used to be green without evidence (§15, and the debt it closed in §28.2).
+        assertTrue(heapGcRuns >= 2, "heap_gc_runs=" + heapGcRuns + ": the two readings collected"
+                + " nothing, so heap_delta_kib is allocation noise rather than what the map retains");
+        assertTrue(heapDeltaKib > 0, "the map retained heap_delta_kib=" + heapDeltaKib
+                + ": nothing measurable survived the collection, so the §15 heap budget has no evidence behind it");
+        assertTrue(heapDeltaKib < 50 * 1024, "the 1,024 chunk map retained heap_delta_kib="
+                + heapDeltaKib + ", the §15 budget is 50 MB");
     }
 
     @Test

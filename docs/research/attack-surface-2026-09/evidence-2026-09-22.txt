@@ -66,7 +66,7 @@ README §4 与 docs/TEST.md TC-GAME-069 第 4 步、TC-GAME-070 第 3 步、TC-G
   BUILD SUCCESSFUL；:test / :architecture-tests:test / :server-app:test / :game-rts:test 都真跑（无 FROM-CACHE）
   按 build/test-results 的 XML 汇总：tests=3133 failures=0 errors=0 skipped=15
 
-  本轮动过的五个测试类（引擎 build/test-results/test）：
+  本轮点名重跑的五个测试类（DuplicateUuidLoginIntegrationTest 本轮未改动）（引擎 build/test-results/test）：
     SlowReaderIntegrationTest            tests="1" skipped="0" failures="0" errors="0"
     PreAuthConnectionIntegrationTest     tests="8" skipped="0" failures="0" errors="0"
     PacketReadingMalformedTest           tests="6" skipped="0" failures="0" errors="0"

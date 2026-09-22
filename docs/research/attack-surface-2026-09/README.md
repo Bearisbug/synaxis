@@ -4,7 +4,7 @@
 
 先读过的材料：`docs/DESIGN.md` §8 / §14 / §15 / §28、`docs/DESIGN-M2.md` §8 / §14 / §15 / §20 / §28.2、`docs/research/audit-2026-09-15/fixes.md`（F01～F60 的去向）、`docs/research/soak-2026-09-18/report.md` 组 1～7 与阶段 4 / 5 复跑、`docs/ENGINE.md` §8。它们已经压过的面（六种畸形包、握手四条出口、premature-finish 洪泛、5,000 包/秒、churn）本轮不重跑，只指过去。
 
-结果一句话：**修了两处**（慢读对端断开后 socket 永不关闭；离线 UUID 采信对端自选值），**补了四条自动化测试与一个探针子命令**（`slow-reader`），**登记了六条**（引擎侧两条、游戏侧四条），其余 31 个面各自对上了既有控制与测试。全量 `check` 绿：3,133 个测试 0 失败（15 条 skipped 是既有的按环境跳过）。
+结果一句话：**修了两处**（慢读对端断开后 socket 永不关闭；离线 UUID 采信对端自选值），**补了五个测试方法（四个测试类）与一个探针子命令**（`slow-reader`），**登记了六条**（引擎侧两条、游戏侧四条），其余 31 个面各自对上了既有控制与测试。全量 `check` 绿：3,133 个测试 0 失败（15 条 skipped 是既有的按环境跳过）。
 
 ## 1. 总表
 
@@ -94,7 +94,7 @@
 ### G5 聊天是一进 N 出的放大面（登记）
 
 - 事实：`ChatMessageListener#chatMessageListener` 把每条 `ClientChatMessagePacket` 经 `PlayerChatEvent` 广播给全部在线玩家；客户端模组不用聊天，宿主也没有取消这个事件。
-- 影响：上界是 1,000 包/秒 × 在线人数 × 256 字符，50 人时约 12.5 MB/s 出站，全由一条连接决定。
+- 影响：上界是 1,000 包/秒 × 在线人数 × 256 字符，50 人时 12.8 MB/s 出站，全由一条连接决定。
 - 处置：登记 `docs/DESIGN-M2.md` §28.2；要不要聊天是玩法决定，宿主在 `PlayerChatEvent` 上取消或限频都是一行，等定了再做。
 
 ### G6 选中与下令不判兴趣集（按设计确认）
@@ -112,7 +112,7 @@
 
 ```bash
 export JAVA_HOME=/opt/homebrew/opt/openjdk@25/libexec/openjdk.jdk/Contents/Home
-# 四条新测试
+# 四个新测试类（五个方法）
 ./gradlew :test --tests '*SlowReaderIntegrationTest*' --tests '*PreAuthConnectionIntegrationTest*' \
   --tests '*PacketReadingMalformedTest*' --tests '*ConnectionManagerIntegrationTest*' \
   --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts

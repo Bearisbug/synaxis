@@ -508,7 +508,7 @@ stateDiagram-v2
 | awaiting_hello → verified | 收到 C2S_HELLO | `schema_version = 服务端值` | tick 线程侧：`future.complete(...)`、回 `S2C_HELLO`、记 `EVT:client_verified`（回包归判包的这条线程：核心模式下没有等待的线程，一条真握手照样要回）；configuration 虚拟线程侧：调一次 `AdmissionProvider#admit`、**把 `Accept.instance` 设为 `spawningInstance`**（必须在这条线程的这个时刻做：引擎在 `doConfiguration` 内、`FinishConfiguration` 之前就要拿到它，那时会话还在 `verified`，放到 `in_game` 的动作里已经来不及） | 玩家（收包）+ 宿主（放行） | `API-M2-002`（收; msg_id=0x01）、`API-M2-011` |
 | awaiting_hello → rejected | 收到 C2S_HELLO | `schema_version ≠ 服务端值` | tick 线程侧：`future.complete(...)`；**断线 `synaxis:protocol-version-mismatch` 由 configuration 虚拟线程做**（它是随后要在不设 `spawningInstance` 的情况下返回的那条线程；tick 线程上踢会与引擎的 `requireNonNull` 竞态，见 `API-M2-011`）；记 `EVT:client_rejected` | 玩家（收包）+ configuration 虚拟线程（断线） | `API-M2-002`（收; msg_id=0x01） |
 | awaiting_hello → rejected | 握手有界等待超时 | `future.get(3, SECONDS) 抛 TimeoutException` | 断线 `synaxis:client-mod-required` 后**立即 return，不设 `spawningInstance`**；记 `EVT:client_rejected` | configuration 虚拟线程 | 内部任务 `handshake.await`（`API-M2-011`） |
-| verified → in_game | 进入 play | `configuration 已 finish ∧ ∃ 对局 match_state = running` | 放进对局、发 `S2C_UNIT_SPAWN` 初始批；记 `EVT:player_entered_play` | 引擎 | `API-M2-006` |
+| verified → in_game | 进入 play | `configuration 已 finish ∧ ∃ 对局 match_state = running` | 放进对局；下一个单位快照（≤ 2 tick）对其发 `S2C_UNIT_SPAWN` 初始批；记 `EVT:player_entered_play` | 引擎 | `API-M2-006` |
 | verified → rejected | 准入被拒 | `admit(...) 返回 Reject ∨ admit(...) 抛异常 ∨ ¬∃ 对局 match_state = running` | 断线 `Reject.reasonKey`（无回调或无对局时为 `synaxis:match-unavailable`）后立即 return；记 `EVT:client_rejected`（reason=match-unavailable） | 插件的 `AdmissionProvider`（由宿主在虚拟线程上调用） | `API-M2-011` |
 | verified → closed | 断线 | `FinishConfiguration 尚未完成` | 撤销该连接的握手记账，不进对局 | 玩家或服务端 | 引擎断线（无对外 API） |
 | in_game → closed | 断线 | — | 摘兴趣集、移除该玩家的选中记账；该连接每条在途（已 `ok` 未 completed）的指令各记一条 `EVT:unit_order_superseded`（reason=session-closed） | 玩家或服务端 | `API-M2-010`（stop）或引擎断线 |
@@ -599,7 +599,7 @@ ACCEPT(order) ≡ order_seq > 该连接已接受最大值   -- 否则 stale
 
 | 源 → 目标 | 事件 | 守卫（纯布尔） | 动作（副作用） | 谁触发 | 接口/事件 |
 | --- | --- | --- | --- | --- | --- |
-| [*] → idle | 生成 | — | 建 display 实体并按 `REQ-M2-016` 五条规则配置；发 `S2C_UNIT_SPAWN` | 插件 | `API-M2-006` |
+| [*] → idle | 生成 | — | 建 display 实体并按 `REQ-M2-016` 五条规则配置；`S2C_UNIT_SPAWN` 由下一个快照按 viewer 做差发出（≤ 2 tick） | 插件 | `API-M2-006` |
 | idle → moving | 移动指令 | `ACCEPT(order)` | 存路径与航点；回 `code=ok` 与吸附终点；记 `EVT:unit_order_issued` | 玩家 | `API-M2-005`（收; msg_id=0x03） |
 | idle → idle | 移动指令被拒 | `¬ACCEPT(order)` | 回首个为假项对应的 `code` ∈ {stale, rate-limited, not-owner, out-of-bounds, busy, no-path}；不改单位；记 `EVT:unit_order_rejected`（只有 §20 点名的那四档记，`stale` 与 `rate-limited` 不记） | 玩家 | `API-M2-005`（收; msg_id=0x03） |
 | moving → moving | 移动指令 | — | `ACCEPT(order)` 为真 → 整条替换旧路径、回 `code=ok`、记 `EVT:unit_order_issued`，并对被替换掉的旧指令记一条 `EVT:unit_order_superseded`（reason=replaced）；为假 → 回首个为假项对应的 `code`、**保留原路径继续移动**、记 `EVT:unit_order_rejected`（同上，两档客户端可无限刷的不记） | 玩家 | `API-M2-005`（收; msg_id=0x03） |
@@ -636,7 +636,7 @@ sequenceDiagram
         E->>C: FinishConfiguration 与 JoinGame
         H->>P: onPlayerJoin(玩家) (API-M2-008 的 events 子节点派发)
         P->>P: 分配队伍与初始单位
-        P-->>C: S2C_UNIT_SPAWN × N (API-M2-006)
+        P-->>C: S2C_UNIT_SPAWN × N (API-M2-006, 下一个快照 ≤ 2 tick)
         Note over P: session_state → in_game (见 11.1)
       else 返回 Reject / 抛异常 / 无 running 态对局
         P-->>H: Reject{synaxis:match-unavailable}
@@ -1444,7 +1444,7 @@ A3（server-app 取代 smoke，`ADR-M2-003`）是可逆的，不进本表，同�
 | Open Question | 新仓库公开还是私有（沿用 `docs/DESIGN.md` §28 的同一条，当前私有）。M2 要给社区写插件，这条直接决定 `:plugin-api` 是否真的有外部消费者 | Bearisbug | 内测全量放量前 |
 | 风险 | **核心模式下区块加载由对端驱动**（攻击面盘点 2026-09-22，`docs/research/attack-surface-2026-09/README.md`）：`CoreMode` 建的平坦 `InstanceContainer` 保持自动区块加载，而引擎的 `PlayerPositionListener` 对客户端位置包只判有限与 `MAX_COORDINATE`、不判速度——对端每个位置包都可以把自己挪到任意新区块，服务端为它加载 `chunkViewDistance=10` 的一圈 441 个区块，且核心模式的实例从不卸载区块。按 `playerPacketPerTick=50` 折算，上限是每秒 1,000 次跳跃 × 441 个区块的生成与常驻内存，全由一条连接决定。对局实例整图预载、`enableAutoChunkLoad(false)`，不受影响。核心模式只服务压测与冒烟、不对玩家开放，所以只登记；要修是给核心世界关自动加载，或在引擎侧加一条按速度的位置校验（那是 `docs/DESIGN.md` 的事） | Bearisbug | 核心模式对不受控的连接来源开放之前 |
 | 风险 | **玩法模式下玩家是可见的生存玩家，位置与方块都由客户端定**：`RtsPlugin` 的准入只 `Accept(instance, team)`，没有设游戏模式，`ADR-M2-013` 写的「旁观模式、不可见、位置由镜头锚点传送驱动」是 `REQ-M2-018` 的内容、尚未落地。今天一个改过的客户端可以：① 用位置包把自己的实体挪到地图任何位置，从而自己决定兴趣集——M2 没有战争迷雾、全图单位本来就对所有人可见，所以没有信息泄露，只有「兴趣集不由锚点驱动」这一条与设计不符；② 用 `FINISHED_DIGGING` 删掉地图方块（引擎的 `PlayerActionListener` 不校验挖掘时长），导航网格是烘一次的、不跟着变，单位照旧沿旧网格走，每个方块变更都广播给全部 viewer。两条都在 `REQ-M2-018` 落地（旁观模式 + 服务端传送）时一并消失，不单独修 | Bearisbug | `REQ-M2-018` 落地时 |
-| 风险 | **原版聊天是一进 N 出的放大面**：引擎的 `ChatMessageListener#chatMessageListener` 把 `ClientChatMessagePacket` 经 `PlayerChatEvent` 广播给 `getOnlinePlayers()` 的全部玩家，客户端模组不用聊天，宿主也没有取消这个事件。上界是 `playerPacketPerTick` 折算的 1,000 包/秒 × 在线人数 × 256 字符：50 人时约 12.5 MB/s 出站，全由一条连接决定。处置是宿主在 `PlayerChatEvent` 上取消或限频，属玩法决定（要不要聊天）；`ClientCommandChatPacket` 不在此列——命令只回给发送者，且宿主与插件一条命令都没注册 | Bearisbug | 内测放量前定「要不要聊天」时 |
+| 风险 | **原版聊天是一进 N 出的放大面**：引擎的 `ChatMessageListener#chatMessageListener` 把 `ClientChatMessagePacket` 经 `PlayerChatEvent` 广播给 `getOnlinePlayers()` 的全部玩家，客户端模组不用聊天，宿主也没有取消这个事件。上界是 `playerPacketPerTick` 折算的 1,000 包/秒 × 在线人数 × 256 字符：50 人时 12.8 MB/s 出站，全由一条连接决定。处置是宿主在 `PlayerChatEvent` 上取消或限频，属玩法决定（要不要聊天）；`ClientCommandChatPacket` 不在此列——命令只回给发送者，且宿主与插件一条命令都没注册 | Bearisbug | 内测放量前定「要不要聊天」时 |
 | 已决 | **选中与下令不判兴趣集**（攻击面盘点 2026-09-22 复核）：`GameChannel#commands` 只判 `owner(unit, sender)`，本方单位在地图任何位置都能被选中与下令，与 `API-M2-004` 写的判据一致（存在、属于本局、归属）。M2 没有战争迷雾、全图单位对所有人可见，所以「兴趣集之外」不构成信息或权限缺口；将来加战争迷雾时这里要补一条「只能对自己看得见的单位下令」 | Bearisbug | 已于 2026-09-22 按现状确认；战争迷雾立项时重开 |
 
 ### 28.3 M2 范围裁剪清单（第二个插件 / M3 时补回）

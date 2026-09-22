@@ -1,0 +1,78 @@
+RUN-023 验收记录（2026-09-22，验收人侧）
+
+被测版本：main 28e908d301
+  = d4a33e157b（v0.37：heap_delta_kib / heap_gc_runs、两个文档 lint 技能放宽 ID 域段）
+  + 8393303b10 / 6e2eba691f / c961f0492b（v0.38：:architecture-tests 聚合模块、Units 快照做差发 SPAWN/DESPAWN）
+  + 0a28127922 / f28b558b5c / 93644a83ae（DESIGN.md v0.32 + DESIGN-M2 v0.40：攻击面盘点、慢读关闭、离线 UUID 派生）
+  + 3505ca1784（合并 v0.39 / v0.41：synaxis.app.units、soak.py play、50 × {1000, 2000, 4000} 测量）
+  + 28e908d301（审查者留下的八条 minor：状态图/迁移表/时序图的 SPAWN 时机、12.8 MB/s、计数、程度词、寻路行只判 busy 那半、TC-GAME-068 第 5 步参考值）
+
+工作流：wf_a2e5dc25-b5d，16 个 agent，2 h 14 min；三条线各自「实现 → 独立审查 → 返工」，
+  聚合模块 1 轮返工、harness 1 轮返工、攻击面 1 轮返工、测量报告 1 轮返工，最终全部 approved。
+  两个 worktree 分支合入 main：攻击面分支已在 main 之上（fast-forward）；harness 分支与 main 在
+  DESIGN-M2.md 变更记录表、TEST.md 变更记录表 / §2 不测表 / §5 回归映射四处冲突，手工解（两边都留，
+  版本号 v0.41 → v0.40 → v0.39 → v0.38 降序；不测表取「客户端 ≥ 60 FPS 无归属」+「安全渗透 已盘点」）。
+
+一、全量 check（合并后，真跑）
+  ./gradlew cleanTest check --no-daemon --no-build-cache --init-script gradle/init/aliyun-mirror.init.gradle.kts
+  BUILD SUCCESSFUL in 1m 4s；81 actionable tasks: 34 executed, 47 up-to-date
+  根构建测试 3,140 个（417 个测试类里扣掉独立构建 client-fabric 的 92 条），0 失败 0 错误 15 skipped
+  三份文档 lint 零警告：design-doc check.sh DESIGN.md / DESIGN-M2.md，test-doc check.sh TEST.md（用例 106 条）
+
+二、反证（每条线各一组，都是我自己改、跑、看红、还原，还原后 git status 干净）
+  A. TC-GAME-067 第 6 步：Entity#moveTo 加 @ApiStatus.Internal
+     :architecture-tests:test → 5 tests completed, 2 failed
+     红的两条：theEnginePositionEntryPointStillHasTheSignaturePluginsWereGiven
+              （"moveTo was marked internal, which takes back the entry point plugins were given…"）
+              theGameSideTouchesNoEngineInternalMember（Unit#advance 调用的 moveTo 成了内部成员）
+  B. TC-GAME-069 第 2 步 + TC-GAME-070 第 2 步（同一次跑）：
+     PlayerSocketConnection#closeOnceFlushed 首行 == 改 !=；LoginListener 改回 packet.profileId()
+     :test --tests '*SlowReaderIntegrationTest*' --tests '*PreAuthConnectionIntegrationTest*'
+     → 9 tests completed, 2 failed
+     SlowReaderIntegrationTest："a disconnected connection must close its channel even while the peer is not reading"
+     PreAuthConnectionIntegrationTest："the profile uuid must be derived from the username, not taken from the login start"
+  C. TC-GAME-068 第 4 步：-Dsynaxis.app.units=3 -Dsynaxis.app.port=25566 起服
+     ERROR Plugin failed to enable: plugin_id=rts
+     java.lang.IllegalArgumentException: synaxis.app.units=3 is too few: the roster is 3 fixed units plus at least one of the player's own
+     ERROR No admission provider / No running match / Not binding 0.0.0.0:25566；Gradle 退出码 1；nc -z 退 1
+
+三、端到端（合并后的树第一次把攻击面修复与 harness 放在一起跑）
+  -Dsynaxis.app.units=1000 -Dsynaxis.app.port=25566 玩法模式起服：Match running chunk_count=1024，
+  Plugin enabled enable_ms=224，listening on 0.0.0.0:25566
+  .venv 里 python tools/loadtest/soak.py play --port 25566 --connections 50 --duration 60 --units 1000 --gc-probe-interval 20
+  退出码 0；connected_peak=50、connections_lost=0；units expected=1000 seen_max=1000 commandable_max=998 check=ok
+  orders sent=3000 answered=2986（ok 2938 / out-of-bounds 44 / no-path 4；差的 14 条是截止时在飞的）
+  tick p50 2.417 / p99 11.569 / max 41.252 ms，超 50 ms 0 个（机器同时在跑别的进程，只证不退步，不是正式数字）
+  S2C_UNIT_STATE max_payload_bytes=1991、3,827.5 B/s/连接、190,160 B/s 合计、间隔 p50 106.3 ms
+  存活堆 44.2 MiB、RSS 320 MiB；服务端 WARN 6 行（全是「interest set over the snapshot cap」预算行），ERROR 0，踢人 0
+  服务端 stop → "synaxis server stopped successfully"，BUILD SUCCESSFUL
+
+四、结果
+  通过：TC-GAME-067（反证 A 亲跑，第 4 步由审查者亲跑）、TC-GAME-069 / TC-GAME-070（反证 B 亲跑）、
+        TC-GAME-071（PacketReadingMalformedTest 在全量 check 里绿，两道上限的反证由审查者亲跑）、
+        TC-GAME-029 第 2 步（MatchIntegrationTest 断言 heap_gc_runs ≥ 2 与 0 < heap_delta_kib < 51,200，
+        v0.37 那轮的两次反证记在 DESIGN-M2 §28.2）、TC-029（0 失败）
+  失败：TC-GAME-068 第 2 步——S2C_UNIT_STATE 三项判红：单条 2,023 B（≤ 256）、4,420 B/s/玩家（≤ 2,560）、
+        220,866 B/s 50 人（≤ 128,000）；同步的 tick P99 8.617 ms、存活堆 43.0 MiB、寻路桶 P99 1 ms 达标。
+        证据 docs/research/soak-2026-09-22/runs/gate-1000/summary.json 与 report.md。
+        根因是布局：环形播种把 1,000 个单位挤在出生点 ±17 格内，每个玩家的兴趣集都顶到 512 条上限，
+        量到的是最坏布局，不是 §2「视野 50 单位」的画像；每条目 3.95 B 与 §8 布局一致，线上（压缩后）
+        2,547 B/s/玩家、127,292 B/s 合计在线内。待拍板：播种改均匀铺开后重跑，或改写 §15 那三行的口径。
+
+五、交付里的行为变化（不是缺陷，但要知道）
+  1. S2C_UNIT_SPAWN 改由下一个单位快照按 getViewers() 做差发出，比引擎实体 spawn 包最多晚 2 tick；
+     这个窗口里客户端看得见模型但点不中。起因是聚合规则第一次跑就抓到 UnitEntity 覆写了
+     @ApiStatus.Internal 的 updateNewViewer/updateOldViewer；要不要给引擎开第二个公开回调登记为 §28.2 Open Question（6b 拍板）。
+  2. 断开连接后 1 s 强制关 channel：对端读得慢但仍在读、且断线包前排着大队列时，可能收不到断线原因（DESIGN.md §16）。
+  3. 离线 UUID 不再采信 LoginStart 里的 profileId，服务端按用户名派生（GameProfile#offlineUuid）。
+
+六、已知盲区（登记在 §24 ⑥ / 测试类 javadoc）
+  游戏侧覆写引擎内部方法但不调 super，两条聚合规则都看不见；编译期 MissingOverride（error）+ @Override 兜住改名与删除，兜不住引擎改变何时调 hook。
+
+七、留给验收人
+  客户端 ≥ 60 FPS 那一行、spike ①②④ 的运行期一半、6a/6b 需要屏幕的全部（清单不变）。
+
+八、回收
+  两个 worktree 与分支已删；/tmp/synaxis-review-*、/tmp/synaxis-testdoc、/tmp/synaxis-accept*、
+  仓库根 logs/ 与 plugins/ 已删；三档测量的 JFR（各约 45 MB）由测量 agent 删除，进仓库的只有三份 summary.json；
+  端口 25566～25577 无监听进程。

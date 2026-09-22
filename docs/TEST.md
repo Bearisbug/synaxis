@@ -1783,6 +1783,7 @@ REQ-M2 ↔ TC 对照（可读索引，覆盖与否由上述联检判）：
 | RUN-020 | 2026-09-19 | `10dc8696b9`（M2 阶段 5：Entity#moveTo、单位模型与五条建模规则、自研寻路与三重预算） | AI（Claude Code，Gradle / 探针 / PacketFlood） | 局部（REQ-M2-025→TC-GAME-051；REQ-M2-016→TC-GAME-037、TC-GAME-039、TC-GAME-052；REQ-M2-017→TC-GAME-040～042、TC-GAME-065 + 核心基线复跑） | 通过 11/13 · 待人工 1 · 阻塞 1 |
 | RUN-021 | 2026-09-22 | `49f0c01867`（阶段 0 / 6a 的无屏幕部分：客户端模组骨架、双端向量、spike ④ 源码结论） | AI（Claude Code，Gradle / Loom / 探针） | 局部（REQ-M2-020a→TC-GAME-045、TC-GAME-046 的可自动化部分；§24 双端向量→TC-GAME-017 第 4 步；TC-GAME-029 第 2 步备注 + 核心模式冒烟） | 通过 6/9 · 待人工 3 |
 | RUN-022 | 2026-09-22 | `3daf64f109`（阶段 6a 的无屏幕部分：客户端握手、绑定表、拾取与下令） | AI（Claude Code，Gradle / Loom） | 局部（REQ-M2-019 的可无头测试部分→TC-GAME-045、TC-GAME-066；§24 双端向量复验；根构建回归） | 通过 4/9 · 待人工 5 |
+| RUN-023 | 2026-09-22 | `28e908d301`（三项不等屏幕的交付合入：`:architecture-tests` 聚合规则、攻击面盘点与两处引擎修复、`synaxis.app.units` 与玩法模式压测 harness 及 50 × {1,000, 2,000, 4,000} 测量；含 v0.37 的 `heap_delta_kib` 与文档 lint 放宽） | AI（Claude Code，Gradle / 探针 / harness） | 局部（REQ-M2-002、REQ-M2-025→TC-GAME-067；REQ-M2-016、REQ-M2-017、REQ-M2-009→TC-GAME-068；REQ-011、REQ-017→TC-GAME-069～TC-GAME-071；REQ-M2-010→TC-GAME-029 第 2 步 + 冒烟级 TC-029） | 通过 6/7 · 失败 1 |
 
 明细（仅登非「通过」项）：
 
@@ -1884,6 +1885,10 @@ TC-002 证据：`docs/test-runs/RUN-002/tc-002.txt`（5 步实际输出）（2,6
 | RUN-016 | TC-GAME-020 | 待人工 | 需原版客户端看断线提示 | 人工收口轮 |
 | RUN-016 | TC-GAME-016 | 待人工 | 示例插件按 `docs/PLUGINS.md` 跑通需人工照说明走一遍 | 人工收口轮 |
 
+| RUN-023 | TC-GAME-068 | 失败 | 第 2 步 `S2C_UNIT_STATE` 三项判红：单条 2,023 B（判据 ≤ 256）、4,420 B/s/玩家（≤ 2,560）、220,866 B/s 50 人（≤ 128,000）；同步的 tick P99 8.617 ms、存活堆 43.0 MiB、寻路桶 P99 1 ms 达标（证据 `docs/research/soak-2026-09-22/runs/gate-1000/summary.json` 与 `report.md`）。根因是环形播种把 1,000 单位挤在出生点 ±17 格、每人兴趣集顶到 512 上限，量的是最坏布局而非 §2「视野 50 单位」画像；线上（压缩后）2,547 B/s/玩家、127,292 B/s 合计在线内 | 待拍板：播种改均匀铺开后重跑本用例，或改写 §15 单位快照三行的口径 |
+
+
+RUN-023 证据：`docs/test-runs/RUN-023/acceptance.txt`（验收人侧：合并后全量 check、三组反证、端到端 50 连接实跑）、`docs/research/soak-2026-09-22/`（harness 用法、三档报告与 `runs/*/summary.json`）、`docs/research/attack-surface-2026-09/`（39 个面的盘点与实跑摘录）。要点：全量 check 真跑 3,140 个测试 0 失败；反证三组亲跑——`Entity#moveTo` 加 `@ApiStatus.Internal` → 聚合规则 5 条红 2 条；`closeOnceFlushed` 守卫反转 + `LoginListener` 改回采信对端 `profileId` → 两条新测试各红一条；`-Dsynaxis.app.units=3` → 拒启、端口未 bind。端到端：合并后的树第一次把攻击面修复与 harness 放在一起跑，50 连接 × 1,000 单位 × 60 s，50/50 登录、0 掉线、3,000 条下令 2,986 条回、0 ERROR 0 踢人。**正式测量的结论**（机器不安静，另一进程满占一核）：tick P99 8.617 / 9.698 / 11.096 ms（1,000 / 2,000 / 4,000 单位），存活堆 43.0 / 51.1 / 64.1 MiB，至 4,000 未见拐点；`S2C_UNIT_STATE` 三项按 v0.39 判据红，见上方明细行。**交付里的两处行为变化**：`S2C_UNIT_SPAWN` 改由下一个快照做差发出、比引擎实体包最多晚 2 tick（聚合规则抓到 `UnitEntity` 覆写内部 viewer 钩子后的处置，要不要给引擎开第二个公开回调登记为 §28.2 Open Question）；断开后 1 s 强制关 channel，慢读对端可能收不到断线原因（`docs/DESIGN.md` §16）。
 
 RUN-022 证据：`docs/test-runs/RUN-022/acceptance.txt` 与 `docs/research/client-spikes-2026-09/stage6a-headless-vs-live.md`（逐行写清哪几行测不到、为什么、由谁判）。要点：客户端测试由 25 条增至 **92 条 0 失败**（握手 13、下令编排 23、拾取 15、绑定 13、向量 20、负载 5、结果码 3），**一条也没有启动 Minecraft**；碰 MC API 的只有两个接缝共四个方法（`ClientWorldView#renderPosition` / `#groundHit`、两个 `Sink#send`），生产实现各一到五行，是唯一测不到的部分，判据是人工用例。**§24 双端向量由验收人复验仍有齿**：把 `s2c_unit_spawn.bin` 的一个字节由 0 改成 255，客户端与服务端三条测试同时红，还原后同时绿。**范围自查**：服务端零改动（diff 只命中 `client-fabric/` 与 `docs/`），未越界写渲染或输入（`Mixin` / `RenderSystem` / `MouseHandler` / `KeyMapping` 全部零命中，属阶段 6b），根构建 3,122 个测试 0 失败。**本轮审查抓到一个真缺陷**：`ClientPlayConnectionEvents.DISCONNECT` 由 `ConnectionMixin` 在 `channelInactive` 的 HEAD 注入、**直接在 netty 线程上 invoke**，而 `rts:game` 的负载处理器跑在主线程的 `PacketProcessor` 队列上，两者同写绑定表的 `LinkedHashMap`、且拾取遍历时可能被另一线程清空；改用同线程同队列的 `INIT` 事件（由 `ClientPacketListener` 构造器点着，而该构造发生在已 `ensureRunningOnSameThread` 的 `handleConfigurationFinished` 里），顺序问题一并解决，证据以 `javap` 在真实 jar 上逐条取证。待人工（都要真实 Fabric 客户端与图形环境）：两个接缝的适配器、实际渲染、实际点击、端到端四环通，以及 spike ①②④ 的运行期验证。
 

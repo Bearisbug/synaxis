@@ -1,6 +1,7 @@
 package io.github.bearisbug.synaxis.game.client.gametest;
 
 import io.github.bearisbug.synaxis.game.client.gametest.camera.SpikeCamera;
+import io.github.bearisbug.synaxis.game.client.gametest.dh.DhIrisSpike;
 import io.github.bearisbug.synaxis.game.client.gametest.ray.ScreenRay;
 import io.github.bearisbug.synaxis.game.client.gametest.s5.InputSpike;
 import io.github.bearisbug.synaxis.game.client.gametest.s5.TerrainSpike;
@@ -40,7 +41,8 @@ import org.jspecify.annotations.Nullable;
  * phase handshake of a server-app in game mode and reaches the world. S2: the same scene through
  * the orthographic and the pitched perspective spike camera. S3: {@link EntityCullingSpike}. S4: the
  * world ray under the cursor, still and while the camera pans. S5: section visibility with the eye
- * high and outside the map, and the two mouse input paths. SYNAXIS_SPIKES picks among S2 to S5.
+ * high and outside the map, and the two mouse input paths. SYNAXIS_SPIKES picks among S2 to S5;
+ * {@code dh} adds {@link DhIrisSpike}, which runs only when named.
  * Findings go to {@code synaxis-gametest/report.txt} in the run directory, screenshots to
  * {@code screenshots/}.
  */
@@ -96,6 +98,7 @@ public final class SpikeClientGameTest implements FabricClientGameTest {
             if (enabled("s3")) EntityCullingSpike.run(context, report);
             if (enabled("s4")) screenRay(context, report);
             if (enabled("s5")) sectionsAndInput(context, report);
+            if (named("dh")) DhIrisSpike.run(context, report);
             context.runOnClient(client -> client.disconnect(new TitleScreen(), false));
         } else {
             context.setScreen(TitleScreen::new);
@@ -258,6 +261,12 @@ public final class SpikeClientGameTest implements FabricClientGameTest {
         final String spikes = System.getenv("SYNAXIS_SPIKES");
         if (spikes == null || spikes.isBlank()) return true;
         return List.of(spikes.replace(" ", "").split(",")).contains(spike);
+    }
+
+    /** Whether SYNAXIS_SPIKES names a spike that only runs on request, such as {@code dh}. */
+    private static boolean named(String spike) {
+        final String spikes = System.getenv("SYNAXIS_SPIKES");
+        return spikes != null && !spikes.isBlank() && enabled(spike);
     }
 
     private static void write(List<String> report) {

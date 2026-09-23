@@ -1,0 +1,18 @@
+# logs/latest.log of the run behind report-dh-iris.txt (MODS=dh-iris, 2026-09-23), lines matching:
+# grep -niE 'graphics backend|rendering engine|Iris events|enabling DSA|enableDhFog|Profile: |Using shaderpack|Started DhWorld|waiting chunk wrappers|0010-sqlite-createInitialDataTables|Closed DhWorld|MixinApplyError|InvalidInjection|MixinTransformerError|Mixin.*(error|failed)|Stopping!|---- Minecraft Crash'
+# lines cut at 300 chars; crash-reports/: absent; hs_err: C [libopenal.so+0x9c670]
+121:[08:26:05] [Render thread/WARN] (AbstractModInitializer) Changing Distant Horizons' rendering engine to [OPEN_GL] to allow for Iris rendering. This renderer will be unavailable once Minecraft moves to Vulkan and must be fixed on Iris' end.
+137:[08:26:05] [Render thread/INFO] (Iris) OpenGL 4.5 detected, enabling DSA.
+138:[08:26:05] [Render thread/INFO] (Minecraft) Using graphics backend OpenGL, using drivers: 4.5 (Core Profile) Mesa 26.0.8-1ubuntu0.3
+198:[08:26:06] [Render thread/INFO] (Iris) DH Iris events bound.
+264:[08:26:16] [Render thread/INFO] (AbstractDhWorld) Started DhWorld of type CLIENT_ONLY
+281:[08:26:17] [Render thread/INFO] (DatabaseUpdater) Running SQL update script: [sqlScripts/0010-sqlite-createInitialDataTables.sql], for repo: [/work/client-fabric/build/run/clientGameTest/Distant_Horizons_server_data/synaxis/0000000000000@synaxis@@match_96f6da9e944f418486e384e63831a9a4/DistantHor
+295:[08:26:17] [Render thread/INFO] (ClientApi) Loaded [676] waiting chunk wrappers.
+296:[08:26:17] [Render thread/WARN] (DhApiConfigValue) Config [enableDhFog] was set by [net.irisshaders.iris.compat.dh.LodRendererEvents$2] via the deprecated API method that doesn't define the API caller. 
+378:[08:27:03] [Render thread/INFO] (Iris) Profile: HIGH (+0 options changed by user)
+379:[08:27:04] [Render thread/INFO] (Iris) Using shaderpack: ComplementaryReimagined_r5.9.3.zip
+476:[08:27:47] [Render thread/INFO] (Iris) Profile: HIGH (+3 options changed by user)
+477:[08:27:48] [Render thread/INFO] (Iris) Using shaderpack: ComplementaryReimagined_r5.9.3.zip
+497:[08:29:03] [Render thread/INFO] (AbstractDhWorld) Closed DhWorld of type [CLIENT_ONLY].
+498:[08:29:03] [Render thread/INFO] (AbstractDhWorld) Closed DhWorld of type [CLIENT_ONLY].
+505:[08:29:05] [Render thread/INFO] (Minecraft) Stopping!

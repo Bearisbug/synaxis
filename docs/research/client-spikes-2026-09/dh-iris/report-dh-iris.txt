@@ -1,0 +1,28 @@
+S0 mod synaxis 0.1.0
+S0 mod synaxis-gametest 0.1.0
+S0 mod io_github_bearisbug_synaxis_protocol dev
+S1 in world at BlockPos{x=256, y=40, z=256}
+DH mod distanthorizons 3.3.2
+DH mod iris 1.11.4+mc26.2
+DH mod sodium 0.9.2+mc26.2
+DH api 3.3.2 api_major 7 network_protocol 16
+DH world_loaded after 0 ticks, level 0000000000000@synaxis:match_96f6da9e944f418486e384e63831a9a4
+DH far view before injection: column at 736,256 empty
+DH injected 576 of 576 chunks in 170 ms, failures []
+DH column data at 736,256 after 40 ticks: top y 48 minecraft:snow_block_STATE_ sky 15, 3 non-air of 4 points, detail 0; at 560,80 top y 11 minecraft:grass_block_STATE_{snowy:false} sky 15, 2 non-air of 3 points, detail 0; control 1200,256 empty
+DH far view 100 ticks after the data: 13726 of 921600 px changed (1.5%), box 0,299..1279,366
+DH far view 400 ticks after the data: 14919 of 921600 px changed (1.6%), box 0,299..1279,367
+DH view inside the injected block, after vs before: 561724 of 921600 px changed (61.0%), box 0,211..1279,719
+IRIS pack ComplementaryReimagined_r5.9.3.zip
+IRIS iris-off-far pack_in_use false
+IRIS iris-off-lod pack_in_use false
+IRIS iris-on-far pack_in_use true vs off: 870296 of 921600 px changed (94.4%), box 0,0..1279,719
+IRIS iris-on-lod pack_in_use true vs off: 921432 of 921600 px changed (100.0%), box 0,0..1279,719
+IRIS iris-on-lowfog-far pack_in_use true vs off: 864318 of 921600 px changed (93.8%), box 0,0..1279,719; vs on: 12 of 921600 px changed (0.0%), box 63,314..1216,420
+IRIS iris-on-lowfog-lod pack_in_use true vs off: 921369 of 921600 px changed (100.0%), box 0,0..1279,719; vs on: 1914 of 921600 px changed (0.2%), box 92,215..1164,404
+CAM cam-ortho-p60-d64-h96 rendered, eye (224.50000381469727, 95.42562866210938, 256.5)
+CAM cam-perspective-p60-d64 rendered, eye (224.50000381469727, 95.42562866210938, 256.5)
+CAM cam-ortho-p60-d64-h96-over-lod rendered, eye (568.0000038146973, 75.42562866210938, 256.0)
+CAM cam-ortho-p60-d64-h480-over-lod rendered, eye (568.0000038146973, 75.42562866210938, 256.0)
+CAM cam-perspective-p60-d64-over-lod rendered, eye (568.0000038146973, 75.42562866210938, 256.0)
+CAM cam-perspective-p60-d400-over-lod rendered, eye (400.0000238418579, 366.4101791381836, 256.0)

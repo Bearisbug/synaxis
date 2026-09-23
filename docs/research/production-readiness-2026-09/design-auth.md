@@ -252,7 +252,7 @@ sequenceDiagram
 | RSA-1024 PKCS#1 私钥解密 | 103.1 µs/次，每次登录 2 次（共享密钥、challenge） | — | — |
 | RSA-1024 密钥对生成 | 9.9 ms/次，每进程 1 次 | — | — |
 
-块大小对吞吐几乎没影响：CFB8 每加密 1 字节就要做一次 AES 块运算，开销在字节数上，与调用次数无关。基准程序在 `docs/research/production-readiness-2026-09/bench/Cfb8Bench.java` 与 `RsaBench.java`，没有入库；要可复算，正式实现时应把它做成 `jmh-benchmarks/src/jmh/java/io/github/bearisbug/synaxis/network/Cfb8CipherBenchmark.java`（该模块已有 `network` 目录），在生产机型上重跑。x86 服务器上的数字**未核实**。
+块大小对吞吐几乎没影响：CFB8 每加密 1 字节就要做一次 AES 块运算，开销在字节数上，与调用次数无关。基准程序在 `docs/research/production-readiness-2026-09/bench/Cfb8Bench.java` 与 `RsaBench.java`（随本目录入库）；要可复算，正式实现时应把它做成 `jmh-benchmarks/src/jmh/java/io/github/bearisbug/synaxis/network/Cfb8CipherBenchmark.java`（该模块已有 `network` 目录），在生产机型上重跑。x86 服务器上的数字**未核实**。
 
 **折算**（下行速率取 `docs/research/soak-2026-09-22/report.md` 第 52 行「入站合计 B/s/玩家」，即 harness 客户端收到的、服务端发出的线上字节，压缩之后；那是 RTS 玩法模式的画像，MMO 的每玩家下行速率还没有测量）：
 

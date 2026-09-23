@@ -39,8 +39,10 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantLock;
@@ -139,6 +141,8 @@ public final class PlayerStore implements ShutdownParticipant {
     private final Map<String, DataSection<?>> sections = new ConcurrentHashMap<>();
     private final List<Hook> shutdownHooks = new CopyOnWriteArrayList<>();
     private final Map<Player, Record> records = new ConcurrentHashMap<>();
+    // The login of each account that is loading right now, completed when its load is over
+    private final Map<UUID, CompletableFuture<Void>> loadingAccounts = new ConcurrentHashMap<>();
     private final Queue<Record> autosaveOrder = new ConcurrentLinkedQueue<>();
     private final Map<Record, CompletableFuture<SaveResult>> shutdownSaves = new ConcurrentHashMap<>();
     private final AtomicBoolean directSnapshotWarned = new AtomicBoolean();
@@ -271,20 +275,44 @@ public final class PlayerStore implements ShutdownParticipant {
      * Loads a player's character, on the configuration thread of its connection: takes the lease,
      * waiting up to the load budget for a holder to let go, then decodes every section.
      * A player that cannot be loaded is kicked with {@code synaxis:state-unavailable}.
+     * <p>
+     * The logins of one account load one at a time: both would take the lease under this session,
+     * and the one that is refused or abandoned would give it back from under the other.
      *
      * @param player the player
      * @return true once loaded; false if the player was kicked
      */
     public boolean load(Player player) {
-        if (loadOrRefuse(player)) return true;
-        releaseUnused(player.getUuid());
-        return false;
+        final UUID account = player.getUuid();
+        final long deadline = System.nanoTime() + options.loadBudget().toNanos();
+        final CompletableFuture<Void> mine = new CompletableFuture<>();
+        while (true) {
+            final CompletableFuture<Void> other = loadingAccounts.putIfAbsent(account, mine);
+            if (other == null) break;
+            try {
+                other.get(remaining(deadline), TimeUnit.NANOSECONDS);
+            } catch (InterruptedException _) {
+                Thread.currentThread().interrupt();
+                return refuse(player, "interrupted");
+            } catch (ExecutionException | TimeoutException _) {
+                return refuse(player, "another login of this account is still loading");
+            }
+        }
+        try {
+            if (loadOrRefuse(player, deadline)) return true;
+            releaseUnused(account);
+            return false;
+        } finally {
+            loadingAccounts.remove(account, mine);
+            mine.complete(null);
+        }
     }
 
     /**
      * {@code loading → offline}: a refused login gives back a lease this session may hold for it,
      * taken by the verification of a transfer ticket or by a load that failed after its acquire.
-     * Not while another login of the account is loaded here: the lease is that one's.
+     * Not while another login of the account is loaded here: the lease is that one's. No other
+     * login of the account is loading, {@link #load} lets one in at a time.
      */
     private void releaseUnused(UUID account) {
         for (Record record : records.values()) if (record.account.equals(account)) return;
@@ -295,9 +323,8 @@ public final class PlayerStore implements ShutdownParticipant {
         }
     }
 
-    private boolean loadOrRefuse(Player player) {
+    private boolean loadOrRefuse(Player player, long deadline) {
         final UUID account = player.getUuid();
-        final long deadline = System.nanoTime() + options.loadBudget().toNanos();
         final ShardSession current = this.session;
         if (closing || (current != null && current.state() == ShardSession.State.ISOLATED))
             return refuse(player, "the shard is not taking logins");
@@ -825,7 +852,11 @@ public final class PlayerStore implements ShutdownParticipant {
         for (long i = 0; i < perTick; i++) {
             final Record record = autosaveOrder.poll();
             if (record == null) return;
-            if (record.state != LeaseState.ONLINE) continue;
+            if (record.state != LeaseState.ONLINE) {
+                // A transfer whose write fails goes back to online: it keeps its turn
+                if (record.state == LeaseState.SAVING) autosaveOrder.add(record);
+                continue;
+            }
             autosaveOrder.add(record);
             record.player.scheduler().scheduleNextTick(() -> {
                 if (record.state == LeaseState.ONLINE) submit(record, snapshot(record), false, null);

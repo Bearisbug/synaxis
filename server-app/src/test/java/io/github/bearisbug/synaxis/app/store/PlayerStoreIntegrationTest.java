@@ -29,6 +29,7 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -488,6 +489,130 @@ class PlayerStoreIntegrationTest {
         assertTrue(total >= 8 && total <= 12,
                 "100 ticks of a 20 tick period save each of 2 always dirty players about 5 times, not every other tick: "
                         + total + " writes");
+    }
+
+    @Test
+    void aLoginAbandonedWhileAnotherLoginOfItsAccountLoadsLeavesTheLeaseToTheOther(Env env) throws Exception {
+        final CountDownLatch firstInside = new CountDownLatch(1);
+        final CountDownLatch letFirstGo = new CountDownLatch(1);
+        final AtomicInteger loads = new AtomicInteger();
+        final PostgresBackend postgres = new PostgresBackend(pool.pool());
+        final StoreBackend slowFirst = new StoreBackend() {
+            @Override
+            public LoadOutcome load(UUID account, String name, long sessionId) throws SQLException {
+                if (loads.getAndIncrement() == 0) {
+                    firstInside.countDown();
+                    try {
+                        letFirstGo.await();
+                    } catch (InterruptedException e) {
+                        throw new AssertionError(e);
+                    }
+                }
+                return postgres.load(account, name, sessionId);
+            }
+
+            @Override
+            public void write(long sessionId, List<Write> writes) throws FencedException, SQLException {
+                postgres.write(sessionId, writes);
+            }
+
+            @Override
+            public void release(long characterId, long sessionId) throws SQLException {
+                postgres.release(characterId, sessionId);
+            }
+
+            @Override
+            public void releaseAccount(UUID account, long sessionId) throws SQLException {
+                postgres.releaseAccount(account, sessionId);
+            }
+        };
+        final StoreFixture.Shard shard = StoreFixture.shard(env, pool, "r1-c1", false, RedisLink.disabled("r1-c1"),
+                StoreFixture.FAST, StoreFixture.MANUAL, slowFirst);
+        shards.add(shard);
+        final UUID account = UUID.randomUUID();
+        final Player first = connect(env.process(), account, "Twice");
+        final Player second = new Player(new StoreFixture.RecordingConnection(env.process()),
+                new GameProfile(account, "Twice"));
+
+        final CompletableFuture<Boolean> firstLoaded = CompletableFuture.supplyAsync(() -> shard.store().load(first),
+                Thread.ofVirtual()::start);
+        assertTrue(firstInside.await(5, TimeUnit.SECONDS), "the first login is loading");
+        final CompletableFuture<Boolean> secondLoaded = CompletableFuture.supplyAsync(() -> shard.store().load(second),
+                Thread.ofVirtual()::start);
+        sleep(300);
+        letFirstGo.countDown();
+        assertTrue(firstLoaded.get(5, TimeUnit.SECONDS), "the first login loads");
+        // What the admission gate does with a login whose connection was replaced meanwhile
+        shard.store().abandon(first);
+        assertTrue(secondLoaded.get(5, TimeUnit.SECONDS), "the second login loads once the first is gone");
+        shard.store().admitted(second);
+
+        assertEquals(shard.sessionId(), row(database, account).lease(),
+                "the abandoned login does not give back the lease of the one that plays");
+    }
+
+    @Test
+    void aTransferWhoseWriteFailsKeepsItsTurnInTheAutosave(Env env) throws Exception {
+        final AtomicBoolean holdNext = new AtomicBoolean();
+        final CountDownLatch writeInside = new CountDownLatch(1);
+        final CountDownLatch failIt = new CountDownLatch(1);
+        final PostgresBackend postgres = new PostgresBackend(pool.pool());
+        final StoreBackend held = new StoreBackend() {
+            @Override
+            public LoadOutcome load(UUID account, String name, long sessionId) throws SQLException {
+                return postgres.load(account, name, sessionId);
+            }
+
+            @Override
+            public void write(long sessionId, List<Write> writes) throws FencedException, SQLException {
+                if (holdNext.getAndSet(false)) {
+                    writeInside.countDown();
+                    try {
+                        failIt.await();
+                    } catch (InterruptedException e) {
+                        throw new AssertionError(e);
+                    }
+                    throw new SQLException("the test's database hiccup");
+                }
+                postgres.write(sessionId, writes);
+            }
+
+            @Override
+            public void release(long characterId, long sessionId) throws SQLException {
+                postgres.release(characterId, sessionId);
+            }
+
+            @Override
+            public void releaseAccount(UUID account, long sessionId) throws SQLException {
+                postgres.releaseAccount(account, sessionId);
+            }
+        };
+        final StoreFixture.Shard shard = StoreFixture.shard(env, pool, "r1-c1", false, RedisLink.disabled("r1-c1"),
+                StoreFixture.FAST, StoreFixture.MANUAL, held);
+        shards.add(shard);
+        final Instance instance = env.createFlatInstance();
+        final UUID account = UUID.randomUUID();
+        final Player mover = online(env, shard, instance, account, "Mover");
+
+        holdNext.set(true);
+        final CompletableFuture<PlayerStore.Handoff> handoff = shard.store().transferOut(mover);
+        assertNotNull(handoff);
+        await(env, () -> writeInside.getCount() == 0, "the transfer's write is under way");
+        // Three autosave periods of 4 ticks come round while the transfer is saving
+        for (int i = 0; i < 12; i++) env.tick();
+        failIt.countDown();
+        await(env, handoff::isDone, "the transfer's write fails");
+        assertNull(handoff.join(), "the transfer failed, the player stays");
+        shard.store().get(mover, PURSE).coins = 9;
+        shard.store().markDirty(mover, PURSE);
+
+        await(env, () -> {
+            try {
+                return "{\"note\": \"\", \"coins\": 9}".equals(row(database, account).purse());
+            } catch (SQLException e) {
+                throw new AssertionError(e);
+            }
+        }, "the autosave comes round to the player after its failed transfer");
     }
 
     private static void sleep(long millis) {

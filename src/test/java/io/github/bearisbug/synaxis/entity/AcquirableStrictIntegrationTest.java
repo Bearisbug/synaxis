@@ -3,6 +3,7 @@ package io.github.bearisbug.synaxis.entity;
 import io.github.bearisbug.synaxis.coordinate.Pos;
 import io.github.bearisbug.synaxis.coordinate.Vec;
 import io.github.bearisbug.synaxis.thread.AcquirableOwnershipException;
+import io.github.bearisbug.synaxis.thread.TickThread;
 import io.github.bearisbug.synaxis.testing.Env;
 import io.github.bearisbug.synaxis.testing.EnvTest;
 import org.junit.jupiter.api.Test;
@@ -70,6 +71,19 @@ public class AcquirableStrictIntegrationTest {
     }
 
     @Test
+    public void unassignedEntityIsForeignToAnotherTickThread(Env env) {
+        // Spawned but not yet ticked, the entity is already visible to neighbours ticking elsewhere
+        var instance = env.createFlatInstance();
+        var zombie = new Entity(EntityType.ZOMBIE);
+        zombie.setInstance(instance, new Pos(0, 42, 0)).join();
+        assertNull(zombie.acquirable().assignedThread());
+
+        assertInstanceOf(AcquirableOwnershipException.class, runOnTickThread(() -> zombie.setVelocity(new Vec(1, 0, 0))));
+        assertInstanceOf(AcquirableOwnershipException.class, runOnTickThread(() -> zombie.teleport(new Pos(1, 42, 1)).join()));
+        assertDoesNotThrow(() -> zombie.setVelocity(new Vec(1, 0, 0)));
+    }
+
+    @Test
     public void ownedPlayerChangesInstanceAcrossUnloadedChunks(Env env) {
         // The spawn half of Player#setInstance runs on the scheduler thread once chunks had to load,
         // and a player that already ticks is not owned there
@@ -93,6 +107,22 @@ public class AcquirableStrictIntegrationTest {
                 result.complete(t);
             }
         });
+        return assertDoesNotThrow(() -> result.get(5, TimeUnit.SECONDS));
+    }
+
+    private static Throwable runOnTickThread(Runnable runnable) {
+        var result = new CompletableFuture<Throwable>();
+        new TickThread("Syn-Tick-Foreign", _ -> {}) {
+            @Override
+            public void run() {
+                try {
+                    runnable.run();
+                    result.complete(null);
+                } catch (Throwable t) {
+                    result.complete(t);
+                }
+            }
+        }.start();
         return assertDoesNotThrow(() -> result.get(5, TimeUnit.SECONDS));
     }
 }

@@ -15,6 +15,7 @@
 
 | 日期 | 改动 | 作者 |
 | --- | --- | --- |
+| 2026-09-24 | 4A 返工：**新增 `TC-PROD-213`**（登录读角色期间收回角色，登录读到的旧行不把角色带回来；反证换回登录读完才登记玩家的实现即红在 `:411`）。`PermissionsIntegrationTest` 多一条测试、多两行 import：`TC-PROD-201`～`TC-PROD-209`、`TC-PROD-212` 的测试数与红的行号按重跑结果改，`TC-PROD-207` 的反证多红 `TC-PROD-213` 一条，`TC-PROD-208` 的反证改为去掉登录前的占位（五条红）。§5 生产就绪域那行同步 | Bearisbug |
 | 2026-09-24 | 跟进 `docs/DESIGN-PROD.md` 第 4 波 4A（`REQ-PROD-011`，G09，`API-PROD-010`）。**新增 §4「生产就绪 · 第 4 波 4A：权限与 GM 角色」十三条 `TC-PROD-200`～`TC-PROD-212`**：Flyway V3 与回退往返（200，反证回退少删 `account_role` 即红）、`role_permission.node` 的 `CHECK`（201）、通配按整段覆盖与查询语法（202）、节点决定 `role` 命令可用而 `permissionLevel=4` 不授权并写 `EVT:gm_command`（203，§19 第一条）、登录在准入之前读角色并经 `PluginContext#permissions()` 给插件（204）、Redis 可达时 5 s 内跨分片生效（205，§19 第二条）、Redis 不可达时 30 s 周期刷新补上与过期授予不生效（206）、控制台的授予收回列出与四种失败回执（207）、登录读失败按无角色放行（208）、内存存储没有角色（209）、模组七条回执译文（210）、ABI 门（211）、4 线程严格模式（212）；每条带真跑过的反证与红的位置。`TC-PROD-141` 第 1 步按 V3 改写版本、表清单与回退顺序。§5 生产就绪域加一行 | Bearisbug |
 | 2026-09-24 | 跟进 `docs/DESIGN-PROD.md` v0.6.1（存储冻结节点排到插件 `MONITOR` 之前）。**新增 `TC-PROD-189`**（`REQ-PROD-022`、`REQ-PROD-006`）：冻结玩家的拾取与丢弃，插件 `HIGHEST` 撤销取消不生效、`MONITOR` 读到 `isCancelled()=true`；反证把冻结节点改到 `MONITOR` 之后或 `HIGHEST` 之前即红。3B 一节的类多了一条测试、测试文件行号后移 14 行：`TC-PROD-180`～`TC-PROD-184` 的测试数与反证行号按重跑结果改写，`TC-PROD-180` 第 2 步的改动点随 `tier` 的新写法改写、另红 `TC-PROD-189`，`TC-PROD-181` 第 4 步另红 `TC-PROD-189`。删去 3B 一节开头的口径差异段与 3A 一节末尾的前两处口径差异（v0.6 已按实现写进设计），第三处改为覆盖说明。§5 回归映射同步 | Bearisbug |
 | 2026-09-24 | 第 3 波集成：`TC-PROD-183` 第 1 步宿主节点下的计数改为只数插件的节点（名字以 `plugin/` 开头），宿主节点下还挂着 3A 存储的冻结节点 `synaxis-store-freeze`；判据的其余部分与反证不变 | Bearisbug |
@@ -3305,7 +3306,7 @@ jcmd "$pid" VM.flags | tr ' ' '\n' | grep -cxE -- '-XX:\+UseG1GC|-XX:InitialHeap
 
 对应 `REQ-PROD-011`（清单 G09，`API-PROD-010`、`API-PROD-004` 的 V3、`API-PROD-006` 的 `synaxis:permission`，§10 节点 `gm.role`，§19 两条权限场景，§20 `EVT:gm_command`）。实现在 `server-app` 新包 `permission/`：`RoleStore` 读写 `role`、`role_permission`、`account_role`（`db/migration/V3__roles.sql`），`HostPermissions` 是插件经 `PluginContext#permissions()` 拿到的 `Permissions`，`RoleCommand` 是 GM 命令 `role grant|revoke <玩家名|UUID> <角色>` 与 `role list <玩家名|UUID>`。
 
-数据库前置、「跑 `<类>`」的命令与结果文件同 3A 一节（`SYNAXIS_TEST_*` 四个变量；每个测试类自建 `w3a_<16 位十六进制>` 库、结束时删掉；Redis 用随机后缀的分片 ID，只发布与订阅、不写键）。本节全是 JUnit 与构建检查，不起真进程，不占端口。反证一律是「临时改一处实现、重跑、看红、`git checkout -- <文件>` 还原、重跑复绿」，还原后 `git status` 必须干净。`PermissionsIntegrationTest.java:160` 是等待助手 `await` 的超时断言，红在那里的用例看失败信息里的「not within …: <等什么>」。
+数据库前置、「跑 `<类>`」的命令与结果文件同 3A 一节（`SYNAXIS_TEST_*` 四个变量；每个测试类自建 `w3a_<16 位十六进制>` 库、结束时删掉；Redis 用随机后缀的分片 ID，只发布与订阅、不写键）。本节全是 JUnit 与构建检查，不起真进程，不占端口。反证一律是「临时改一处实现、重跑、看红、`git checkout -- <文件>` 还原、重跑复绿」，还原后 `git status` 必须干净。`PermissionsIntegrationTest.java:162` 是等待助手 `await` 的超时断言，红在那里的用例看失败信息里的「not within …: <等什么>」。
 
 #### `TC-PROD-200` Flyway V3：三张表随迁移建出，回退 SQL 正反往返 — 对应 `REQ-PROD-011` · 级别: 回归 · 执行者: AI
 
@@ -3325,7 +3326,7 @@ jcmd "$pid" VM.flags | tr ' ' '\n' | grep -cxE -- '-XX:\+UseG1GC|-XX:InitialHeap
 | # | 操作 | 预期 |
 | --- | --- | --- |
 | 1 | 跑 `io.github.bearisbug.synaxis.app.PermissionsIntegrationTest`，看 `aNodeOutsideTheGrammarIsRefusedByTheDatabase` | 通过：插入节点 `GM.Ban` 被拒，错误信息含 `role_permission_node_check`；`*` 与 `a-b.c_d.*` 插得进去 |
-| 2 | 反证有齿：`V3__roles.sql` 里 `node    text NOT NULL CHECK (node ~ '^([a-z0-9_-]+\.)*([a-z0-9_-]+\|\*)$'),` 改为 `node    text NOT NULL,`，重跑，再还原 | `7 tests completed, 1 failed`，红在 `:354`：`Expected java.lang.IllegalStateException to be thrown, but nothing was thrown.`。还原后复绿 |
+| 2 | 反证有齿：`V3__roles.sql` 里 `node    text NOT NULL CHECK (node ~ '^([a-z0-9_-]+\.)*([a-z0-9_-]+\|\*)$'),` 改为 `node    text NOT NULL,`，重跑，再还原 | `8 tests completed, 1 failed`，红在 `:356`：`Expected java.lang.IllegalStateException to be thrown, but nothing was thrown.`。还原后复绿 |
 
 后置：确认 `V3__roles.sql` 没有残留改动（它的校验和进了 Flyway 历史，改过的文件不得提交）。
 
@@ -3336,7 +3337,7 @@ jcmd "$pid" VM.flags | tr ' ' '\n' | grep -cxE -- '-XX:\+UseG1GC|-XX:InitialHeap
 | # | 操作 | 预期 |
 | --- | --- | --- |
 | 1 | 跑 `io.github.bearisbug.synaxis.app.permission.PermissionNodesTest` | 9 个 0 失败：授予 `gm.*`、`synaxis.command.kick` 时 `gm.ban`、`gm.role.grant`、`synaxis.command.kick` 为真，`gm`、`gmx.ban`、`synaxis.command.stop`、`synaxis.command` 为假；`synaxis.*` 覆盖任意深度，`*` 覆盖一切，空集合什么都不覆盖；查询 `gm.*`、`*`、`GM.ban`、`gm..ban`、`.gm`、`gm.`、`gm ban`、空串都抛 `IllegalArgumentException` |
-| 2 | 反证有齿：`PermissionNodes#covers` 的 `node.substring(0, dot + 1) + "*"` 改为 `node.substring(0, dot) + "*"`（通配前缀少了点号），跑该类与 `PermissionsIntegrationTest`，再还原 | `16 tests completed, 5 failed`：本类红在 `aWildcardCoversWholeSegmentsBelowItsPrefix`（`PermissionNodesTest.java:22`，`expected: <true> but was: <false>`）；`PermissionsIntegrationTest` 四条红：`:201` `the roles are read before the player enters the world ==> expected: <true> but was: <false>`、`:264` 与 `:296` `expected: <true> but was: <false>`、`:160` `not within PT3S: the next refresh reads it`，都是 `gm.*` 不再覆盖 `gm.ban`。还原后复绿 |
+| 2 | 反证有齿：`PermissionNodes#covers` 的 `node.substring(0, dot + 1) + "*"` 改为 `node.substring(0, dot) + "*"`（通配前缀少了点号），跑该类与 `PermissionsIntegrationTest`，再还原 | `17 tests completed, 5 failed`：本类红在 `aWildcardCoversWholeSegmentsBelowItsPrefix`（`PermissionNodesTest.java:22`，`expected: <true> but was: <false>`）；`PermissionsIntegrationTest` 四条红：`:203` `the roles are read before the player enters the world ==> expected: <true> but was: <false>`、`:266` 与 `:298` `expected: <true> but was: <false>`、`:162` `not within PT3S: the next refresh reads it`，都是 `gm.*` 不再覆盖 `gm.ban`。还原后复绿 |
 
 后置：确认 `PermissionNodes.java` 没有残留改动。
 
@@ -3347,7 +3348,7 @@ jcmd "$pid" VM.flags | tr ' ' '\n' | grep -cxE -- '-XX:\+UseG1GC|-XX:InitialHeap
 | # | 操作 | 预期 |
 | --- | --- | --- |
 | 1 | 跑 `PermissionsIntegrationTest`，看 `theNodeDecidesTheCommandAndThePermissionLevelDoesNot` | 通过（§19「权限节点决定命令可用，permissionLevel 不授权」，用 `role` 命令代替尚未交付的 `ban` 命令）：角色 `gm` 授予 `gm.*` 与 `synaxis.command.kick`；G 持有 `gm`，N 没有角色但 `setPermissionLevel(4)`。`roles(G)={gm}`，`has(G, gm.role)`、`has(G, synaxis.command.kick)` 为真，`has(G, gm)`、`has(G, synaxis.command.stop)` 为假；`has(N, gm.role)` 为假、`roles(N)` 为空；`has(G, "gm.*")`、`has(G, "GM.Ban")` 抛 `IllegalArgumentException`。N 执行 `role grant <UUID> mod` 得 `CANCELLED`（引擎的前置条件拒绝），G 执行同一条得 `SUCCESS`，之后台账回调恰好一条 `gm_command {actor=player, actor_uuid=<G>, command=role grant <UUID> mod, target=<UUID>, result=ok}`，库里该从未登录过的 UUID 持有 `mod` |
-| 2 | 反证有齿（按原版 op 等级放行）：`RoleCommand` 构造器的条件 `permissions.has(player, NODE))` 改为 `permissions.has(player, NODE) \|\| player.getPermissionLevel() == 4)`，重跑，再还原 | `7 tests completed, 1 failed`，红在 `:213`：`the precondition refuses the player without the node ==> expected: <CANCELLED> but was: <SUCCESS>`。还原后复绿 |
+| 2 | 反证有齿（按原版 op 等级放行）：`RoleCommand` 构造器的条件 `permissions.has(player, NODE))` 改为 `permissions.has(player, NODE) \|\| player.getPermissionLevel() == 4)`，重跑，再还原 | `8 tests completed, 1 failed`，红在 `:215`：`the precondition refuses the player without the node ==> expected: <CANCELLED> but was: <SUCCESS>`。还原后复绿 |
 
 后置：确认 `RoleCommand.java` 没有残留改动。
 
@@ -3358,7 +3359,7 @@ jcmd "$pid" VM.flags | tr ' ' '\n' | grep -cxE -- '-XX:\+UseG1GC|-XX:InitialHeap
 | # | 操作 | 预期 |
 | --- | --- | --- |
 | 1 | 同 `TC-PROD-203` 第 1 步那条 | 同一条里：插件 `onEnable` 拿到的 `ctx.permissions()` 与宿主的 `HostPermissions` 是同一个对象；G 的连接经 `PluginHost` 的 `AdmissionGate` 登录（内存存储 + 带数据库的权限），`PlayerSpawnEvent` 里 `has(G, gm.ban)` 已为真 |
-| 2 | 反证有齿（登录不读角色）：`AdmissionGate#admit` 里 `permissions.load(player);` 改为 `if (Boolean.getBoolean("proof.never")) permissions.load(player);`，重跑，再还原 | `7 tests completed, 1 failed`，红在 `:201`：`the roles are read before the player enters the world ==> expected: <true> but was: <false>`。还原后复绿 |
+| 2 | 反证有齿（登录不读角色）：`AdmissionGate#admit` 里 `permissions.load(player);` 改为 `if (Boolean.getBoolean("proof.never")) permissions.load(player);`，重跑，再还原 | `8 tests completed, 1 failed`，红在 `:203`：`the roles are read before the player enters the world ==> expected: <true> but was: <false>`。还原后复绿 |
 
 后置：确认 `AdmissionGate.java` 没有残留改动。
 
@@ -3369,7 +3370,7 @@ jcmd "$pid" VM.flags | tr ' ' '\n' | grep -cxE -- '-XX:\+UseG1GC|-XX:InitialHeap
 | # | 操作 | 预期 |
 | --- | --- | --- |
 | 1 | 跑 `PermissionsIntegrationTest`，看 `aChangeReachesAnotherShardThroughRedisWithinFiveSeconds` | 通过（§19「角色变更即时生效」Redis 可达一支）：两个分片 a、b 共用一个库、各连 Valkey，刷新周期是生产值 30 s；持有 `gm` 的玩家只在 b 上，登录后 `has(gm.ban)` 为真。a 的控制台执行 `role revoke <UUID> gm`，b 上 `has(gm.ban)` 在 5 s 内变假、`roles` 为空；再执行 `role grant <UUID> mod`，5 s 内变真、`roles={mod}` |
-| 2 | 反证有齿（不订阅 `synaxis:permission`）：`HostPermissions#attach` 的 `redis.listenPermissions(this::changed);` 改为 `if (Boolean.getBoolean("proof.never")) redis.listenPermissions(this::changed);`，重跑，再还原 | `7 tests completed, 1 failed`，红在 `:160`：`not within PT5S: the other shard drops gm.ban`（只剩 30 s 的刷新）。还原后复绿 |
+| 2 | 反证有齿（不订阅 `synaxis:permission`）：`HostPermissions#attach` 的 `redis.listenPermissions(this::changed);` 改为 `if (Boolean.getBoolean("proof.never")) redis.listenPermissions(this::changed);`，重跑，再还原 | `8 tests completed, 1 failed`，红在 `:162`：`not within PT5S: the other shard drops gm.ban`（只剩 30 s 的刷新）。还原后复绿 |
 
 后置：确认 `HostPermissions.java` 没有残留改动。
 
@@ -3380,8 +3381,8 @@ jcmd "$pid" VM.flags | tr ' ' '\n' | grep -cxE -- '-XX:\+UseG1GC|-XX:InitialHeap
 | # | 操作 | 预期 |
 | --- | --- | --- |
 | 1 | 跑 `PermissionsIntegrationTest`，看 `withoutRedisTheRefreshCatchesUpWithinItsPeriod` | 通过（§19「角色变更即时生效」Redis 不可达一支）：`HostPermissions.REFRESH` 是 30 s；测试把分片的刷新周期设为 1 s、不连 Redis。持有 `gm` 的玩家 `has(gm.ban)` 为真，`expires_at` 已过的授予 `has` 为假；用 SQL 删掉授予后 3 s 内变假；把过期授予的 `expires_at` 置空后 3 s 内变真；该玩家离开（下一 tick `remove`）后 3 s 内 `roles` 为空 |
-| 2 | 反证有齿（不判到期）：`RoleStore#load` 的查询去掉 ` AND (ar.expires_at IS NULL OR ar.expires_at > now())`，重跑，再还原 | `7 tests completed, 1 failed`，红在 `:297`：`an expired grant grants nothing ==> expected: <false> but was: <true>`。还原后复绿 |
-| 3 | 反证有齿（不刷新）：`HostPermissions#attach` 的 `if (roles == null) return;` 改为 `if (roles == null \|\| !Boolean.getBoolean("proof.never")) return;`（刷新与 Redis 订阅都不起），重跑，再还原 | `7 tests completed, 3 failed`，都红在 `:160`：`not within PT3S: the refresh drops gm.ban`、`not within PT3S: the next refresh reads it`（`TC-PROD-208`）、`not within PT5S: the other shard drops gm.ban`（`TC-PROD-205`）。还原后复绿 |
+| 2 | 反证有齿（不判到期）：`RoleStore#load` 的查询去掉 ` AND (ar.expires_at IS NULL OR ar.expires_at > now())`，重跑，再还原 | `8 tests completed, 1 failed`，红在 `:299`：`an expired grant grants nothing ==> expected: <false> but was: <true>`。还原后复绿 |
+| 3 | 反证有齿（不刷新）：`HostPermissions#attach` 的 `if (roles == null) return;` 改为 `if (roles == null \|\| !Boolean.getBoolean("proof.never")) return;`（刷新与 Redis 订阅都不起），重跑，再还原 | `8 tests completed, 3 failed`，都红在 `:162`：`not within PT3S: the refresh drops gm.ban`、`not within PT3S: the next refresh reads it`（`TC-PROD-208`）、`not within PT5S: the other shard drops gm.ban`（`TC-PROD-205`）。还原后复绿 |
 
 后置：确认 `RoleStore.java`、`HostPermissions.java` 没有残留改动。
 
@@ -3392,7 +3393,7 @@ jcmd "$pid" VM.flags | tr ' ' '\n' | grep -cxE -- '-XX:\+UseG1GC|-XX:InitialHeap
 | # | 操作 | 预期 |
 | --- | --- | --- |
 | 1 | 跑 `PermissionsIntegrationTest`，看 `theConsoleGrantsRevokesAndListsAndEveryRunIsOneEvent` | 通过：以 `ConsoleSender` 依次执行 `role grant Moderator mod`（按本分片在线玩家名解析）、`role list <UUID>`、`role grant Moderator admin`（没有该角色）、`role revoke <UUID> mod`、`role revoke Moderator mod`（已不持有）、`role grant Stranger mod`（既不在线也不是 UUID），回执翻译键依次是 `synaxis:role-granted`、`synaxis:role-list`、`synaxis:role-unknown`、`synaxis:role-revoked`、`synaxis:role-not-granted`、`synaxis:role-no-target`；授予的回执到达时本分片 `has(gm.ban)` 已为真，收回的回执到达时已为假（不经 Redis）；台账六条 `gm_command`，`actor` 都是 `console`，`result` 依次 `ok`、`ok`、`unknown_role`、`ok`、`not_granted`、`no_target`，最后一条 `target` 为空 |
-| 2 | 反证有齿（本分片不自己重读）：`HostPermissions#announced` 的 `read(players, false);` 改为 `if (Boolean.getBoolean("proof.never")) read(players, false);`，重跑，再还原 | `7 tests completed, 1 failed`，红在 `:245`：`this shard reads its own change at once ==> expected: <true> but was: <false>`。还原后复绿 |
+| 2 | 反证有齿（本分片不自己重读）：`HostPermissions#announced` 的 `read(players);` 改为 `if (Boolean.getBoolean("proof.never")) read(players);`，重跑，再还原 | `8 tests completed, 2 failed`：红在 `:247` `this shard reads its own change at once ==> expected: <true> but was: <false>`，以及 `TC-PROD-213` 的 `:411`（收回后本分片不重读，登录读到的旧行留下）。还原后复绿 |
 
 后置：确认 `HostPermissions.java` 没有残留改动。
 
@@ -3403,7 +3404,7 @@ jcmd "$pid" VM.flags | tr ' ' '\n' | grep -cxE -- '-XX:\+UseG1GC|-XX:InitialHeap
 | # | 操作 | 预期 |
 | --- | --- | --- |
 | 1 | 跑 `PermissionsIntegrationTest`，看 `aLoginWhoseRolesCannotBeReadHoldsNoneUntilTheNextRead` | 通过：`RoleStore` 的数据源先对 `getConnection` 抛 `SQLTransientConnectionException`；持有 `gm` 的玩家登录后 `has(gm.ban)` 为假（授权取失败即拒的一侧）；数据源恢复后，1 s 的刷新在 3 s 内把它读成真 |
-| 2 | 反证有齿（读失败时不留占位）：`HostPermissions#read` 失败分支的 `if (login) for (Player player : players)` 改为 `if (login && Boolean.getBoolean("proof.never")) for (Player player : players)`，重跑，再还原 | `7 tests completed, 1 failed`，红在 `:160`：`not within PT3S: the next refresh reads it`（刷新只重读已登记的玩家）。还原后复绿 |
+| 2 | 反证有齿（登录读之前不留占位）：`HostPermissions#load` 的 `loaded.putIfAbsent(player, new Entry(RoleStore.Grants.NONE, 0));` 改为 `if (Boolean.getBoolean("proof.never")) loaded.putIfAbsent(player, new Entry(RoleStore.Grants.NONE, 0));`，重跑，再还原 | `8 tests completed, 5 failed`，本条红在 `:162`：`not within PT3S: the next refresh reads it`（刷新只重读已登记的玩家）。占位也是成功登录落地的地方，所以另外四条一起红：`:203` `the roles are read before the player enters the world`、`:247` `this shard reads its own change at once`、`:266` 与 `:298` `expected: <true> but was: <false>`。还原后复绿 |
 
 后置：确认 `HostPermissions.java` 没有残留改动。
 
@@ -3414,7 +3415,7 @@ jcmd "$pid" VM.flags | tr ' ' '\n' | grep -cxE -- '-XX:\+UseG1GC|-XX:InitialHeap
 | # | 操作 | 预期 |
 | --- | --- | --- |
 | 1 | 跑 `PermissionsIntegrationTest`，看 `withoutADatabaseNobodyHoldsANodeAndTheCommandSaysSo` | 通过：`HostPermissions.withoutDatabase` 下玩家 `has(gm.ban)` 为假、`roles` 为空；控制台 `role grant Anyone gm` 的回执是 `synaxis:role-unavailable`，台账那条 `result=unavailable` |
-| 2 | 反证有齿：`RoleCommand#execute` 的 `if (!permissions.hasDatabase()) {` 改为 `if (!permissions.hasDatabase() && Boolean.getBoolean("proof.never")) {`，重跑，再还原 | `7 tests completed, 1 failed`，红在 `:160`：`not within PT5S: the answer`（命令线程抛 `IllegalStateException`，没有回执）。还原后复绿 |
+| 2 | 反证有齿：`RoleCommand#execute` 的 `if (!permissions.hasDatabase()) {` 改为 `if (!permissions.hasDatabase() && Boolean.getBoolean("proof.never")) {`，重跑，再还原 | `8 tests completed, 1 failed`，红在 `:162`：`not within PT5S: the answer`（命令线程抛 `IllegalStateException`，没有回执）。还原后复绿 |
 
 后置：确认 `RoleCommand.java` 没有残留改动。
 
@@ -3446,9 +3447,20 @@ jcmd "$pid" VM.flags | tr ' ' '\n' | grep -cxE -- '-XX:\+UseG1GC|-XX:InitialHeap
 
 | # | 操作 | 预期 |
 | --- | --- | --- |
-| 1 | `./gradlew :server-app:test --tests io.github.bearisbug.synaxis.app.PermissionsIntegrationTest --rerun --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts -Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true` | 7 个 0 失败、0 跳过：`has` 与 `roles` 从测试线程、命令虚拟线程与刷新虚拟线程读，都不碰实体的 `Acquirable` |
+| 1 | `./gradlew :server-app:test --tests io.github.bearisbug.synaxis.app.PermissionsIntegrationTest --rerun --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts -Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true` | 8 个 0 失败、0 跳过：`has` 与 `roles` 从测试线程、命令虚拟线程与刷新虚拟线程读，都不碰实体的 `Acquirable` |
 
 后置：无。
+
+#### `TC-PROD-213` 登录读角色期间收回角色，登录读到的旧行不把角色带回来 — 对应 `REQ-PROD-011` · 级别: 边缘 · 执行者: AI
+
+前置：数据库前置满足。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `PermissionsIntegrationTest`，看 `aRevocationWhileALoginReadsTheRolesIsNotLost` | 通过：`RoleStore` 的数据源把登录那次查询的连接扣在 `close` 上（行已读完、还没写进内存）；此时控制台 `role revoke <UUID> gm` 回 `synaxis:role-revoked`；放开连接、登录结束后 `has(gm.ban)` 为假、`roles` 为空——收回后本分片重读的那次编号更大，登录的旧结果不覆盖它 |
+| 2 | 反证有齿（登录读完才登记玩家）：把 `HostPermissions.java` 换回 `git show bf5b25ad0b:server-app/src/main/java/io/github/bearisbug/synaxis/app/permission/HostPermissions.java` 的版本，重跑，再 `git checkout -- <文件>` 还原 | `8 tests completed, 1 failed`，红在 `:411`：`the login's older rows do not bring the revoked role back ==> expected: <false> but was: <true>`（收回时内存里还没有这名玩家，本分片与其他分片的变更通知都跳过它）。还原后复绿 |
+
+后置：确认 `HostPermissions.java` 没有残留改动。
 
 ## 5. 回归策略
 
@@ -3472,7 +3484,7 @@ jcmd "$pid" VM.flags | tr ' ' '\n' | grep -cxE -- '-XX:\+UseG1GC|-XX:InitialHeap
   - 生产就绪域（`docs/DESIGN-PROD.md`）：插件调度器、玩家数据持久化、停机与转服票据（`REQ-PROD-021`、`REQ-PROD-005`～`REQ-PROD-008`、`REQ-PROD-004` 跨分片部分、`REQ-PROD-036` 的 `store_meta`、`REQ-PROD-045`）→ TC-PROD-140～TC-PROD-177；动了 `PluginScheduler` 或 `PluginSchedulerImpl` 就跑 TC-PROD-140；动了 `server-app` 的 `store/`、`transfer/`、`AdmissionGate`、`PluginHost` 的存储接线、`Main#openStore` / `migrateOnly` 或 `db/migration`、`db/rollback` 就跑 TC-PROD-141～TC-PROD-153、TC-PROD-155～TC-PROD-159、TC-PROD-169～TC-PROD-176（要数据库前置），再动了起服、停机或 Redis 路径加 TC-PROD-165～TC-PROD-168（真进程，约 3 分钟）；动了引擎 `ServerProcessImpl` 的停机序列、`ShutdownParticipant`、`ConnectionGate#close` 或 `LoginListener` 的停机分支就跑 TC-PROD-154、TC-PROD-155 与 TC-PROD-166；动了 `:plugin-api` 的接口就跑 TC-PROD-163；动了 `:testing` 的 `InMemoryPlayerDataStore` 就跑 TC-PROD-161；动了模组的 lang 就跑 TC-PROD-162；动了 `ci.yml` 的服务容器或跳过检查就跑 TC-PROD-164；动了 `server-app/build.gradle.kts` 的 `test` 任务就跑 TC-PROD-177；动了 `architecture-tests` 的持久化边界规则就跑 TC-PROD-160。跨域牵连：动了引擎停机序列 → 加 TC-PROD-020～TC-PROD-023（看门狗判死接保存）。
   - 生产就绪域（`docs/DESIGN-PROD.md`）：插件事件优先级与实例作用域（`REQ-PROD-022`）→ TC-PROD-180～TC-PROD-184、TC-PROD-189；动了 `PluginEvents`、`PluginEventsImpl`、`PluginHost` 里建与收回事件节点的两处、引擎 `EventNode` 的子节点排序、映射节点与子节点的派发先后或 `EventListener` 的取消规则就跑这六条，动了 `PlayerStore#attach` 的冻结节点也跑 TC-PROD-189。跨域牵连：动了 `PluginEventsImpl` 或 `LoadedPlugin` → 加 TC-GAME-053～TC-GAME-055（插件宿主的启用、异常归因与收回）。
   - 生产就绪域（`docs/DESIGN-PROD.md`）：WAL 归档与每日基础备份（`REQ-PROD-035` 前半）→ TC-PROD-190～TC-PROD-193；动了 `ops/postgres/archive-wal.sh` 就跑 TC-PROD-190 与 TC-PROD-191 第 3、5 步，动了 `enable-wal-archive.sh` 跑 TC-PROD-191 与 TC-PROD-193 第 7 步，动了 `check-archive.sh` 跑 TC-PROD-191、TC-PROD-192 第 2、6 步与 TC-PROD-193 第 6 步，动了 `base-backup.sh` 跑 TC-PROD-192，动了 `restore-pitr.sh` 或升 PostgreSQL 版本跑 TC-PROD-193（约 8 分钟，第 2 步要等满 5 分钟）。跨域牵连：Flyway 迁移新增或改表不影响这四条（演练用自己的库），但上线前按 `RB-PROD-008` 在正式库的副本上重做一次 TC-PROD-193。
-  - 生产就绪域（`docs/DESIGN-PROD.md`）：权限与 GM 角色（`REQ-PROD-011`）→ TC-PROD-200～TC-PROD-212；动了 `server-app` 的 `permission/`、`AdmissionGate` 里读角色的一处、`PluginHost` 的权限接线或 `RedisLink` 的 `synaxis:permission` 收发就跑 TC-PROD-201～TC-PROD-209 与 TC-PROD-212（要数据库前置），动了 `V3__roles.sql` 或 `V3__roles.down.sql` 跑 TC-PROD-200、TC-PROD-201，动了 `Permissions` 或 `PluginContext#permissions` 跑 TC-PROD-211，动了模组的 lang 跑 TC-PROD-210。跨域牵连：动了 `RedisLink` 的订阅线程 → 加 TC-PROD-141～TC-PROD-153 里走 Redis 的跨分片顶号用例（`CrossShardHandoverIntegrationTest`）；新增 Flyway 版本 → 重跑 TC-PROD-141 与 TC-PROD-200（`MigrationsDbTest` 的版本与表清单要跟着改）。
+  - 生产就绪域（`docs/DESIGN-PROD.md`）：权限与 GM 角色（`REQ-PROD-011`）→ TC-PROD-200～TC-PROD-213；动了 `server-app` 的 `permission/`、`AdmissionGate` 里读角色的一处、`PluginHost` 的权限接线或 `RedisLink` 的 `synaxis:permission` 收发就跑 TC-PROD-201～TC-PROD-209、TC-PROD-212 与 TC-PROD-213（要数据库前置），动了 `V3__roles.sql` 或 `V3__roles.down.sql` 跑 TC-PROD-200、TC-PROD-201，动了 `Permissions` 或 `PluginContext#permissions` 跑 TC-PROD-211，动了模组的 lang 跑 TC-PROD-210。跨域牵连：动了 `RedisLink` 的订阅线程 → 加 TC-PROD-141～TC-PROD-153 里走 Redis 的跨分片顶号用例（`CrossShardHandoverIntegrationTest`）；新增 Flyway 版本 → 重跑 TC-PROD-141 与 TC-PROD-200（`MigrationsDbTest` 的版本与表清单要跟着改）。
   - 影响面不确定时升级为全量轮。
 - **复测轮**（上轮失败用例 + 全部冒烟级）：修复失败项之后。
 - **人工收口轮**（仅上轮「待人工」用例）：AI 轮之后由人工补测 TC-016、TC-030、TC-GAME-020、TC-GAME-038、TC-GAME-046、TC-GAME-047，不要求冒烟级。

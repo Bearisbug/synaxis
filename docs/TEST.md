@@ -15,6 +15,7 @@
 
 | 日期 | 改动 | 作者 |
 | --- | --- | --- |
+| 2026-09-24 | 跟进 `docs/DESIGN-PROD.md` 第 4 波 4B（`REQ-PROD-010`，G08，`API-PROD-009`）。**新增 §4「生产就绪 · 第 4 波 4B：白名单与封禁」十七条 `TC-PROD-220`～`TC-PROD-236`**：Flyway V4 与回退往返（220）、`ban` 表的 `CHECK`（221）、`BanTarget.ByNetwork` 的解析与覆盖（222）、被封账号在预登录事件收到带理由与到期的 `synaxis:banned`（223，§19 第一条前半）、GM `ban` 命令 5 s 内踢出在线玩家并写 `EVT:player_banned`、`permissionLevel=4` 不授权（224，§19 第一条后半与权限场景的 `ban` 一支）、到期与撤销不生效且没有按名字封禁（225，§19 第二条）、网段封禁（226）、白名单开关（227，§19 第三条）、Redis 可达 5 s 内跨分片（228）、Redis 不可达时 30 s 周期刷新并踢人（229）、控制台三条命令的回执与台账（230）、内存存储与白名单开关取值（231）、`AdmissionRequest` 带 UUID 与地址（232）、模组十二条译文（233）、ABI 门（234）、4 线程严格模式（235）、真进程端口 25642（236）；每条带真跑过的反证与红的位置。`TC-PROD-141`、`TC-PROD-200` 第 1 步按 V4 改写版本、表清单与回退顺序，`TC-PROD-200` 第 2 步红的行号随 `MigrationsDbTest` 改为 `:91`。§5 生产就绪域加一行 | Bearisbug |
 | 2026-09-24 | 4A 返工：**新增 `TC-PROD-213`**（登录读角色期间收回角色，登录读到的旧行不把角色带回来；反证换回登录读完才登记玩家的实现即红在 `:411`）。`PermissionsIntegrationTest` 多一条测试、多两行 import：`TC-PROD-201`～`TC-PROD-209`、`TC-PROD-212` 的测试数与红的行号按重跑结果改，`TC-PROD-207` 的反证多红 `TC-PROD-213` 一条，`TC-PROD-208` 的反证改为去掉登录前的占位（五条红）。§5 生产就绪域那行同步 | Bearisbug |
 | 2026-09-24 | 跟进 `docs/DESIGN-PROD.md` 第 4 波 4A（`REQ-PROD-011`，G09，`API-PROD-010`）。**新增 §4「生产就绪 · 第 4 波 4A：权限与 GM 角色」十三条 `TC-PROD-200`～`TC-PROD-212`**：Flyway V3 与回退往返（200，反证回退少删 `account_role` 即红）、`role_permission.node` 的 `CHECK`（201）、通配按整段覆盖与查询语法（202）、节点决定 `role` 命令可用而 `permissionLevel=4` 不授权并写 `EVT:gm_command`（203，§19 第一条）、登录在准入之前读角色并经 `PluginContext#permissions()` 给插件（204）、Redis 可达时 5 s 内跨分片生效（205，§19 第二条）、Redis 不可达时 30 s 周期刷新补上与过期授予不生效（206）、控制台的授予收回列出与四种失败回执（207）、登录读失败按无角色放行（208）、内存存储没有角色（209）、模组七条回执译文（210）、ABI 门（211）、4 线程严格模式（212）；每条带真跑过的反证与红的位置。`TC-PROD-141` 第 1 步按 V3 改写版本、表清单与回退顺序。§5 生产就绪域加一行 | Bearisbug |
 | 2026-09-24 | 跟进 `docs/DESIGN-PROD.md` v0.6.1（存储冻结节点排到插件 `MONITOR` 之前）。**新增 `TC-PROD-189`**（`REQ-PROD-022`、`REQ-PROD-006`）：冻结玩家的拾取与丢弃，插件 `HIGHEST` 撤销取消不生效、`MONITOR` 读到 `isCancelled()=true`；反证把冻结节点改到 `MONITOR` 之后或 `HIGHEST` 之前即红。3B 一节的类多了一条测试、测试文件行号后移 14 行：`TC-PROD-180`～`TC-PROD-184` 的测试数与反证行号按重跑结果改写，`TC-PROD-180` 第 2 步的改动点随 `tier` 的新写法改写、另红 `TC-PROD-189`，`TC-PROD-181` 第 4 步另红 `TC-PROD-189`。删去 3B 一节开头的口径差异段与 3A 一节末尾的前两处口径差异（v0.6 已按实现写进设计），第三处改为覆盖说明。§5 回归映射同步 | Bearisbug |
@@ -2743,7 +2744,7 @@ jcmd "$pid" VM.flags | tr ' ' '\n' | grep -cxE -- '-XX:\+UseG1GC|-XX:InitialHeap
 
 | # | 操作 | 预期 |
 | --- | --- | --- |
-| 1 | 跑 `io.github.bearisbug.synaxis.app.store.MigrationsDbTest` | 5 个 0 失败：没迁移过的库 `Migrations.validate` 抛 `IllegalArgumentException`；`migrate` 后 `flyway_schema_history` 成功行是 `1`、`2`、`3`，`public` 下的表恰为 `account`、`account_role`、`character`、`character_location`、`character_section`、`flyway_schema_history`、`item_ledger`、`role`、`role_permission`、`shard_session`、`store_meta`、`transfer_nonce`；只迁到 V1 的库 `validate` 拒绝（V2、V3 待执行），`migrate` 后补上两版且 `validate` 通过；历史表里插一行 V99 后 `validate` 拒绝，信息含 `ahead of this build: V99`；依次执行 `db/rollback/V3__roles.down.sql`（见 `TC-PROD-200`）、`V2__item_ledger.down.sql`、`V1__player_store.down.sql` 后只剩 `flyway_schema_history` 且无成功行，再 `migrate` 回到 `1`、`2`、`3` 并通过 `validate` |
+| 1 | 跑 `io.github.bearisbug.synaxis.app.store.MigrationsDbTest` | 5 个 0 失败：没迁移过的库 `Migrations.validate` 抛 `IllegalArgumentException`；`migrate` 后 `flyway_schema_history` 成功行是 `1`～`4`，`public` 下的表恰为 `account`、`account_role`、`ban`、`character`、`character_location`、`character_section`、`flyway_schema_history`、`item_ledger`、`role`、`role_permission`、`shard_session`、`store_meta`、`transfer_nonce`、`whitelist`；只迁到 V1 的库 `validate` 拒绝（V2～V4 待执行），`migrate` 后补上三版且 `validate` 通过；历史表里插一行 V99 后 `validate` 拒绝，信息含 `ahead of this build: V99`；依次执行 `db/rollback/V4__moderation.down.sql`（见 `TC-PROD-220`）、`V3__roles.down.sql`（见 `TC-PROD-200`）、`V2__item_ledger.down.sql`、`V1__player_store.down.sql` 后只剩 `flyway_schema_history` 且无成功行，再 `migrate` 回到 `1`～`4` 并通过 `validate` |
 | 2 | 反证有齿：`Migrations#validate` 里 `if (future.length > 0)` 改成 `if (future.length > 1000)`，重跑第 1 步，再还原 | 红在 `aDatabaseAheadOfThisBuildIsRefused`：`Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown.`，其余 4 条仍绿。还原后复绿 |
 
 后置：确认 `Migrations.java` 没有残留改动；测试建的库已由测试删掉（`psql -c "\l w3a_*"` 无输出）。
@@ -3314,8 +3315,8 @@ jcmd "$pid" VM.flags | tr ' ' '\n' | grep -cxE -- '-XX:\+UseG1GC|-XX:InitialHeap
 
 | # | 操作 | 预期 |
 | --- | --- | --- |
-| 1 | 跑 `io.github.bearisbug.synaxis.app.store.MigrationsDbTest` | 5 个 0 失败：迁移后 `flyway_schema_history` 成功行是 `1`、`2`、`3`，`public` 下的表恰为 `account`、`account_role`、`character`、`character_location`、`character_section`、`flyway_schema_history`、`item_ledger`、`role`、`role_permission`、`shard_session`、`store_meta`、`transfer_nonce`；只迁到 V1 的库 `validate` 拒绝，`migrate` 补上 V2、V3；依次执行 `db/rollback/V3__roles.down.sql`（之后成功行是 `1`、`2`，三张表都不在）、`V2__item_ledger.down.sql`、`V1__player_store.down.sql`，再 `migrate` 回到 `1`、`2`、`3` 并通过 `validate` |
-| 2 | 反证有齿：删掉 `V3__roles.down.sql` 的 `DROP TABLE account_role;` 一行，重跑，再还原 | `5 tests completed, 1 failed`，红在 `everyVersionRollsBackAndMigratesAgain`（`MigrationsDbTest.java:88`）：`PSQLException: ERROR: cannot drop table role because other objects depend on it`（`account_role` 的外键还指着 `role`）。还原后复绿 |
+| 1 | 跑 `io.github.bearisbug.synaxis.app.store.MigrationsDbTest` | 5 个 0 失败：迁移后 `flyway_schema_history` 成功行是 `1`～`4`，`public` 下的表恰为 `account`、`account_role`、`ban`、`character`、`character_location`、`character_section`、`flyway_schema_history`、`item_ledger`、`role`、`role_permission`、`shard_session`、`store_meta`、`transfer_nonce`、`whitelist`；只迁到 V1 的库 `validate` 拒绝，`migrate` 补上 V2～V4；先回退 V4（`TC-PROD-220`），再执行 `db/rollback/V3__roles.down.sql`（之后成功行是 `1`、`2`，三张表都不在）、`V2__item_ledger.down.sql`、`V1__player_store.down.sql`，再 `migrate` 回到 `1`～`4` 并通过 `validate` |
+| 2 | 反证有齿：删掉 `V3__roles.down.sql` 的 `DROP TABLE account_role;` 一行，重跑，再还原 | `5 tests completed, 1 failed`，红在 `everyVersionRollsBackAndMigratesAgain`（`MigrationsDbTest.java:91`）：`PSQLException: ERROR: cannot drop table role because other objects depend on it`（`account_role` 的外键还指着 `role`）。还原后复绿 |
 
 后置：确认 `V3__roles.down.sql` 没有残留改动；测试建的库已删掉。
 
@@ -3462,6 +3463,206 @@ jcmd "$pid" VM.flags | tr ' ' '\n' | grep -cxE -- '-XX:\+UseG1GC|-XX:InitialHeap
 
 后置：确认 `HostPermissions.java` 没有残留改动。
 
+### 生产就绪 · 第 4 波 4B：白名单与封禁
+
+对应 `REQ-PROD-010`（清单 G08，`API-PROD-009`、`API-PROD-004` 的 V4、`API-PROD-006` 的 `synaxis:moderation`，§10 节点 `gm.ban` / `gm.whitelist`，§14 `synaxis:banned` 与 `synaxis:not-whitelisted`，§19 三条封禁与白名单场景，§20 `EVT:player_banned`）。`:plugin-api` 新增 `Moderation`、`BanTarget`（只有 `ByUuid`、`ByNetwork`）、`Ban` 与默认方法 `PluginContext#moderation()`，`AdmissionRequest` 加 `uuid`、`remoteAddress` 两个组件并保留旧的四参构造器（`@Deprecated`）。实现在 `server-app` 新包 `moderation/`：`ModerationStore` 读写 `ban`、`whitelist`（`db/migration/V4__moderation.sql`）；`HostModeration` 把生效的封禁与整张白名单放在内存里，每 30 s、本分片每次变更之后、收到 `synaxis:moderation` 时各重读一次，重读后踢出被封禁覆盖的在线玩家，登录判定挂在宿主节点的 `AsyncPlayerPreLoginEvent` 上（排在登录阶段握手之前）；`ModerationCommands` 是 GM 命令 `ban <玩家名|UUID|地址[/前缀]> <perm|<n>m|<n>h|<n>d> <理由>`、`unban <封禁编号>`、`whitelist add|remove <玩家名|UUID>`。
+
+数据库前置、「跑 `<类>`」的命令与结果文件同 3A 一节（`SYNAXIS_TEST_*` 四个变量；每个测试类自建 `w3a_<16 位十六进制>` 库、结束时删掉；Redis 用随机后缀的分片 ID，只发布与订阅、不写键）。`TC-PROD-220`～`TC-PROD-235` 是 JUnit 与构建检查，`TC-PROD-236` 起真进程（端口 25642）。反证一律是「临时改一处实现、重跑、看红、`git checkout -- <文件>` 还原、重跑复绿」，还原后 `git status` 必须干净。`ModerationIntegrationTest.java:236` 是等待助手 `await` 的超时断言，红在那里的用例看失败信息里的「not within …: <等什么>」。
+
+#### `TC-PROD-220` Flyway V4：`ban`、`whitelist` 随迁移建出，回退 SQL 正反往返 — 对应 `REQ-PROD-010` · 级别: 回归 · 执行者: AI
+
+前置：数据库前置满足。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `io.github.bearisbug.synaxis.app.store.MigrationsDbTest` | 5 个 0 失败：迁移后 `flyway_schema_history` 成功行是 `1`～`4`，`public` 下的表多出 `ban` 与 `whitelist`；只迁到 V1 的库 `validate` 拒绝，`migrate` 补上 V2～V4；先执行 `db/rollback/V4__moderation.down.sql`（之后成功行是 `1`～`3`，两张表都不在），再依次回退 V3、V2、V1，最后 `migrate` 回到 `1`～`4` 并通过 `validate` |
+| 2 | 反证有齿：删掉 `V4__moderation.down.sql` 的 `DROP TABLE ban;` 一行，重跑，再还原 | `5 tests completed, 1 failed`，红在 `everyVersionRollsBackAndMigratesAgain`（`MigrationsDbTest.java:90`）：`expected: <true> but was: <false>`（回退之后 `ban` 表还在）。还原后复绿 |
+
+后置：确认 `V4__moderation.down.sql` 没有残留改动；测试建的库已删掉。
+
+#### `TC-PROD-221` `ban` 表的 `CHECK`：类型与主体一一对应、网段前缀有界、理由 1～256 字符 — 对应 `REQ-PROD-010` · 级别: 回归 · 执行者: AI
+
+前置：数据库前置满足。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `io.github.bearisbug.synaxis.app.ModerationIntegrationTest`，看 `theDatabaseRefusesAMalformedBan` | 通过：七种行都被拒且错误信息含 `ban_` 与 `check`——`10.0.0.0/7`、`2001:db8::/31`（前缀过短）、`uuid` 类型不带 UUID、`uuid` 类型同时带网段、空理由、257 字符的理由、类型 `name`；`10.0.0.0/8` 与 `2001:db8::/32` 插得进去 |
+| 2 | 反证有齿：`V4__moderation.sql` 的 `masklen(subject_ip) BETWEEN 8 AND 32` 改为 `BETWEEN 0 AND 32`，重跑，再还原 | `12 tests completed, 1 failed`，红在 `:536`：`('network', NULL, '10.0.0.0/7', 'too wide', '00000000-0000-0000-0000-000000000000') ==> Expected java.lang.IllegalStateException to be thrown, but nothing was thrown.`。还原后复绿 |
+
+后置：确认 `V4__moderation.sql` 没有残留改动（它的校验和进了 Flyway 历史，改过的文件不得提交）。
+
+#### `TC-PROD-222` `BanTarget.ByNetwork`：只收字面地址，清掉主机位，只覆盖前缀之下的地址 — 对应 `REQ-PROD-010` · 级别: 回归 · 执行者: AI
+
+前置：工作副本干净（本条不需要数据库）。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `:plugin-api` 的 `io.github.bearisbug.synaxis.plugin.BanTargetTest` | 12 个 0 失败：`10.20.30.40/16` 存为 `10.20.0.0/16`，不带前缀按 `/32` / `/128`，`203.0.113.1/23` 存为 `203.0.112.0/23`；`example.org`、`10.0.0.0/7`、`/33`、`2001:db8::/31`、`/129`、缩写的 `10.0.0/8`、`/x`、空串、只有斜杠都抛 `IllegalArgumentException`；`203.0.112.0/23` 覆盖 `203.0.112.0`～`203.0.113.255`、不覆盖相邻两段与 IPv6 地址，地址为空时不覆盖；`ByUuid` 只覆盖本账号，与地址无关 |
+| 2 | 反证有齿（比对前不清主机位）：`ByNetwork#covers` 的 `clearHostBits(address, …);` 改为 `if (Boolean.getBoolean("proof.never")) clearHostBits(address, …);`，跑本类与 `ModerationIntegrationTest`，再还原 | 本类 `12 tests completed, 1 failed`，红在 `aNetworkCoversTheAddressesUnderItsPrefixOnly`（`BanTargetTest.java:45`，`expected: <true> but was: <false>`）；`ModerationIntegrationTest` 红一条，`:379` `any account of the network ==> expected: <true> but was: <false>`。还原后复绿 |
+
+后置：确认 `BanTarget.java` 没有残留改动。
+
+#### `TC-PROD-223` 被封账号在 Mojang 验证之后、`AdmissionProvider` 之前收到 `synaxis:banned`（带理由与到期），插件经 `PluginContext#moderation()` 拿到同一个对象 — 对应 `REQ-PROD-010` · 级别: 冒烟 · 执行者: AI
+
+前置：数据库前置满足。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `ModerationIntegrationTest`，看 `aBannedAccountIsTurnedAwayAfterVerificationAndBeforeTheAdmission` | 通过（§19「被封玩家登录被拒」前半）：插件 `onEnable` 拿到的 `ctx.moderation()` 就是宿主的 `HostModeration`；经 `Moderation#ban` 封一个账号一天、另一个永久；两条登录各走一遍引擎的 `ConnectionManager#transitionLoginToConfig`（即验证之后的那一段）：前者收到 `LoginDisconnect`，翻译键 `synaxis:banned`，第一个参数是 `griefing`，第二个参数是 `synaxis:banned-until`（参数为到期时刻的 `yyyy-MM-dd HH:mm UTC`），没有 `LoginSuccess`、连接已关；永久封禁的第二个参数是空组件；未封的账号收到 `LoginSuccess`；插件的准入回调一次都没被调用 |
+| 2 | 反证有齿（判定不踢人）：`HostModeration#check` 的 `if (ban.isPresent()) connection.kick(…)` 加 `&& Boolean.getBoolean("proof.never")`，重跑，再还原 | `12 tests completed, 3 failed`：本条红在 `:275` `refused with null ==> expected: <true> but was: <false>`；另两条是同一判定的用例，`:346`（`TC-PROD-225` 解封前那次登录应被拒）与 `:379`（`TC-PROD-226`）。还原后复绿 |
+
+后置：确认 `HostModeration.java` 没有残留改动。
+
+#### `TC-PROD-224` GM 封禁在线玩家 5 s 内被踢，写 `EVT:player_banned`；`ban` 命令看节点，`permissionLevel=4` 不授权 — 对应 `REQ-PROD-010` · 级别: 冒烟 · 执行者: AI
+
+前置：数据库前置满足。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `ModerationIntegrationTest`，看 `aBanKicksTheOnlineTargetWithinFiveSecondsAndTheCommandNeedsTheNode` | 通过（§19「在线被封即时下线」与「权限节点决定命令可用」的 `ban` 命令一支）：角色 `gm` 授予 `gm.ban`、`gm.whitelist`；G 持有 `gm`，N 没有角色但 `setPermissionLevel(4)`，V 在线。N 执行 `ban Villain perm cheating` 与 `whitelist add <UUID>` 都得 `CANCELLED`；G 执行 `ban Villain perm cheating` 得 `SUCCESS`，V 在 5 s 内离线；台账依次两条：`player_banned {ban_id=<n>, kind=uuid, operator=<G>, was_online=true, kicked_within_ms=<m>}`（`m ≤ 5000`）与 `gm_command {actor=player, actor_uuid=<G>, command=ban Villain perm cheating, target=<V>, result=ok}`；G、N 仍在线 |
+| 2 | 反证有齿（封禁后不踢在线玩家）：`HostModeration#ban` 里 `final int kicked = kickCovered();` 改为 `… = Boolean.getBoolean("proof.never") ? kickCovered() : 0;`，重跑，再还原 | `12 tests completed, 1 failed`，红在 `:236`：`not within PT5S: the banned player is kicked`。还原后复绿 |
+| 3 | 反证有齿（按原版 op 等级放行）：`ModerationCommands#guarded` 的条件 `permissions.has(player, node))` 改为 `permissions.has(player, node) \|\| player.getPermissionLevel() == 4)`，重跑，再还原 | `12 tests completed, 1 failed`，红在 `:311`：`permission level 4 is no gm.ban ==> expected: <CANCELLED> but was: <SUCCESS>`。还原后复绿 |
+
+后置：确认 `HostModeration.java`、`ModerationCommands.java` 没有残留改动。
+
+#### `TC-PROD-225` 已到期与已撤销的封禁不生效，到期不需要重读；没有按名字封禁的入口 — 对应 `REQ-PROD-010` · 级别: 回归 · 执行者: AI
+
+前置：数据库前置满足。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `ModerationIntegrationTest`，看 `expiredAndLiftedBansDoNotApplyAndThereIsNoBanByName` | 通过（§19「到期与撤销的封禁不生效，不能按名字封」）：用 SQL 写一条 `expires_at` 已过、一条 `revoked_at` 非空的封禁，两个账号都收到 `LoginSuccess`；经 API 封一个账号后登录被拒，`unban` 得 `true`、再 `unban` 同一编号得 `false`，之后登录成功；封一个 1.5 s 后到期的账号，登录被拒，到期后不经重读即可登录；`BanTarget` 的许可子类恰为 `ByUuid`、`ByNetwork`，`Moderation` 只有 `ban`、`unban`、`activeBan`、`whitelist` 四个方法且 `ban` 的第一个参数是 `BanTarget`；空理由、257 字符的理由、已过去的到期时刻都在调用处抛 `IllegalArgumentException` |
+| 2 | 反证有齿（撤销的也读进来）：`ModerationStore#load` 的查询去掉 `revoked_at IS NULL AND `，重跑，再还原 | `12 tests completed, 4 failed`：本条红在 `:342` `a lifted ban does not apply`；读进撤销行的另外三处一起红：`:236` `not within PT5S: the other shard drops it`（`TC-PROD-228`）、`:236` `not within PT3S: the refresh lifts it`（`TC-PROD-229`）、`:485` `this shard reads its own change at once`（`TC-PROD-230`）。还原后复绿 |
+| 3 | 反证有齿（内存里不判到期）：`HostModeration#activeBan` 的到期过滤 `ban.expiresAt() == null \|\| ban.expiresAt().isAfter(now)` 末尾加 `\|\| !Boolean.getBoolean("proof.never")`，重跑，再还原 | `12 tests completed, 1 failed`，红在 `:356`：`a ban stops applying when it expires, without a read ==> expected: <true> but was: <false>`。还原后复绿 |
+
+后置：确认 `ModerationStore.java`、`HostModeration.java` 没有残留改动。
+
+#### `TC-PROD-226` 按 IP 网段封禁覆盖网段内任意账号，不覆盖相邻网段 — 对应 `REQ-PROD-010` · 级别: 回归 · 执行者: AI
+
+前置：数据库前置满足。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `ModerationIntegrationTest`，看 `aNetworkBanCoversEveryAddressOfTheNetwork` | 通过：封 `10.20.30.40/16`（存为 `10.20.0.0/16`）与 `2001:db8::/32`；从 `10.20.200.1`、`2001:db8:1::1` 登录的随机账号收到 `synaxis:banned`，从 `10.21.0.1`、`2001:db9::1` 登录的收到 `LoginSuccess`；`activeBan(<UUID>, null)` 为空（没有地址时网段封禁不覆盖） |
+| 2 | 反证有齿：同 `TC-PROD-222` 第 2 步（比对前不清主机位） | 本条红在 `:379`：`any account of the network ==> expected: <true> but was: <false>`。还原后复绿 |
+
+后置：确认 `BanTarget.java` 没有残留改动。
+
+#### `TC-PROD-227` `synaxis.app.whitelist=on` 时不在名单的账号收到 `synaxis:not-whitelisted`，`off` 时不判定 — 对应 `REQ-PROD-010` · 级别: 冒烟 · 执行者: AI
+
+前置：数据库前置满足。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `ModerationIntegrationTest`，看 `theWhitelistTurnsAwayAnAccountNotOnIt` 与 `theWhitelistIsNotEnforcedWhenItIsOff` | 通过（§19「白名单开启时非名单玩家被拒」）：白名单开启的分片上，不在名单的账号收到 `LoginDisconnect synaxis:not-whitelisted`；控制台 `whitelist add <UUID>` 回 `synaxis:whitelist-added` 后该账号登录成功；`whitelist remove <UUID>` 回 `synaxis:whitelist-removed` 后再次被拒。白名单关闭的分片放行任意账号 |
+| 2 | 反证有齿（不判白名单）：`HostModeration#check` 的 `else if (whitelistEnforced && !snapshot…` 改为 `else if (whitelistEnforced && Boolean.getBoolean("proof.never") && !snapshot…`，重跑，再还原 | `12 tests completed, 1 failed`，红在 `:395`：`refused with null ==> expected: <true> but was: <false>`。还原后复绿 |
+
+后置：确认 `HostModeration.java` 没有残留改动。
+
+#### `TC-PROD-228` Redis 可达时封禁与解封 5 s 内到达另一个分片 — 对应 `REQ-PROD-010` · 级别: 回归 · 执行者: AI
+
+前置：数据库前置满足，`synaxis-valkey` 可达。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `ModerationIntegrationTest`，看 `aChangeReachesAnotherShardThroughRedisWithinFiveSeconds` | 通过（§16「封禁与登录同时发生」有 Redis 一支）：两个分片 a、b 共用一个库、各连 Valkey，刷新周期是生产值 30 s；a 封一个账号，b 的 `activeBan` 在 5 s 内出现该封禁；a 解封，b 在 5 s 内不再有它 |
+| 2 | 反证有齿（不订阅 `synaxis:moderation`）：`HostModeration#attach` 的 `redis.listenModeration(…)` 改为 `if (Boolean.getBoolean("proof.never")) redis.listenModeration(…)`，重跑，再还原 | `12 tests completed, 1 failed`，红在 `:236`：`not within PT5S: the other shard knows the ban`（只剩 30 s 的刷新）。还原后复绿 |
+
+后置：确认 `HostModeration.java` 没有残留改动。
+
+#### `TC-PROD-229` Redis 不可达时由周期刷新补上，刷新后踢出被封的在线玩家 — 对应 `REQ-PROD-010` · 级别: 回归 · 执行者: AI
+
+前置：数据库前置满足。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `ModerationIntegrationTest`，看 `withoutRedisTheRefreshCatchesUpWithinItsPeriodAndKicks` | 通过（§16 无 Redis 一支、`RB-PROD-004`）：`HostModeration.REFRESH` 是 30 s；测试把分片的刷新周期设为 1 s、不连 Redis。玩家在线时用 SQL 写一条该账号的封禁（模拟通知不到本分片的另一个分片），3 s 内该玩家离线、`activeBan` 有值；用 SQL 撤销后 3 s 内 `activeBan` 为空 |
+| 2 | 反证有齿（刷新后不踢人）：`HostModeration#refreshAndEnforce` 末尾的 `kickCovered();` 改为 `if (Boolean.getBoolean("proof.never")) kickCovered();`，重跑，再还原 | `12 tests completed, 1 failed`，红在 `:236`：`not within PT3S: the refresh kicks the banned player`。还原后复绿 |
+
+后置：确认 `HostModeration.java` 没有残留改动。
+
+#### `TC-PROD-230` 控制台 `ban`、`unban`、`whitelist` 的回执与失败回执，本分片立即生效，每次执行一条 `EVT:gm_command` — 对应 `REQ-PROD-010` · 级别: 回归 · 执行者: AI
+
+前置：数据库前置满足。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `ModerationIntegrationTest`，看 `theConsoleBansLiftsAndListsAndEveryRunIsOneEvent` | 通过：以 `ConsoleSender` 依次执行 `ban Stranger perm spam`（既不在线也不是 UUID）、`ban <UUID> 5x spam`、`ban 10.0.0.0/7 perm spam`、`ban <UUID> 10m <257 个 x>`、`ban <UUID> 10m spam`、`unban nothing`、`unban 9223372036854775807`、`whitelist add <UUID>`、`whitelist remove Stranger`，回执翻译键依次是 `synaxis:moderation-no-target`、`synaxis:moderation-bad-duration`、`synaxis:moderation-no-target`、`synaxis:moderation-bad-reason`、`synaxis:ban-done`、`synaxis:unban-none`、`synaxis:unban-none`、`synaxis:whitelist-added`、`synaxis:moderation-no-target`；`gm_command` 九条，`result` / `target` 依次 `no_target`/空、`bad_duration`/UUID、`no_target`/空、`bad_reason`/UUID、`ok`/UUID、`no_ban`/空、`no_ban`/编号、`ok`/UUID、`no_target`/空；那条封禁的到期在 9～11 分钟之后；再执行 `unban <编号>` 回 `synaxis:unban-done`，回执到达时本分片 `activeBan` 已为空（不经 Redis） |
+| 2 | 反证有齿（时长单位错）：`ModerationCommands#ban` 的 `case "m" -> Duration.ofMinutes(amount);` 改为 `Duration.ofHours(amount)`，重跑，再还原 | `12 tests completed, 1 failed`，红在 `:479`：`10m is ten minutes: <约 10 小时后的时刻> ==> expected: <true> but was: <false>`。还原后复绿 |
+| 3 | 反证有齿（解封后本分片不重读）：`HostModeration#unban` 的 `reread(database, previous -> previous.minus(banId));` 改为 `if (Boolean.getBoolean("proof.never")) reread(…);`，重跑，再还原 | `12 tests completed, 2 failed`：本条红在 `:485` `this shard reads its own change at once`，`TC-PROD-225` 红在 `:349` `the lifted ban applies no more`。还原后复绿 |
+
+后置：确认 `ModerationCommands.java`、`HostModeration.java` 没有残留改动。
+
+#### `TC-PROD-231` 内存存储没有封禁：`ban` 的 future 失败、命令回 `synaxis:moderation-unavailable`；白名单开关只认 `on` / `off`，内存存储开白名单拒绝 — 对应 `REQ-PROD-010` · 级别: 回归 · 执行者: AI
+
+前置：工作副本干净（本条的断言不碰数据库，测试类的前置仍会建库）。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `ModerationIntegrationTest`，看 `withoutADatabaseNobodyIsBannedAndNothingChanges` 与 `theWhitelistSwitchIsOnOrOff` | 通过：`HostModeration.withoutDatabase` 下 `ban(…).join()` 抛 `CompletionException`，原因是 `IllegalStateException`；`activeBan` 为空；控制台 `ban <UUID> perm spam` 回 `synaxis:moderation-unavailable`，台账那条 `result=unavailable`；没有存储而白名单开启的构造抛 `IllegalArgumentException`。`Main.whitelist()` 未设时为 `false`，`on` 为 `true`，`yes` 抛 `IllegalArgumentException`，信息含 `synaxis.app.whitelist=yes is not on or off` |
+| 2 | 反证有齿：`HostModeration` 构造器的 `if (store == null && whitelistEnforced)` 加 `&& Boolean.getBoolean("proof.never")`，重跑，再还原 | `12 tests completed, 1 failed`，红在 `:506`：`the whitelist lives in the database ==> Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown.`。还原后复绿 |
+
+后置：确认 `HostModeration.java` 没有残留改动。
+
+#### `TC-PROD-232` `AdmissionRequest` 带上验证所得的 UUID 与连接的 IP 地址 — 对应 `REQ-PROD-010` · 级别: 回归 · 执行者: AI
+
+前置：工作副本干净。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `io.github.bearisbug.synaxis.app.HandshakeIntegrationTest`，看 `aVerifiedConnectionReachesTheAdmissionProviderWithWhatItReported` | 23 个 0 失败；该条里准入回调收到的请求恰为 `AdmissionRequest[connectionId=<连接>, username=tester, modVersion=7, schemaVersion=1, uuid=<玩家 UUID>, remoteAddress=localhost/127.0.0.1]` |
+| 2 | 反证有齿：`AdmissionGate#admit` 构造请求时的 `? inet.getAddress() : null` 改为 `&& Boolean.getBoolean("proof.never") ? inet.getAddress() : null`，重跑，再还原 | `23 tests completed, 1 failed`，红在 `HandshakeIntegrationTest.java:485`：期望的 `remoteAddress=localhost/127.0.0.1`，实际为 `null`。还原后复绿 |
+
+后置：确认 `AdmissionGate.java` 没有残留改动。
+
+#### `TC-PROD-233` 客户端模组带两个断线原因、到期说明与九条命令回执的译文 — 对应 `REQ-PROD-010` · 级别: 回归 · 执行者: AI
+
+前置：工作副本干净。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | `cd client-fabric && ./gradlew build --no-daemon` | `BUILD SUCCESSFUL`；`ModerationTextTest` 2 个 0 失败：`en_us.json` 与 `zh_cn.json` 都有 `synaxis:banned`、`synaxis:banned-until`、`synaxis:not-whitelisted`、`synaxis:ban-done`、`synaxis:unban-done`、`synaxis:unban-none`、`synaxis:whitelist-added`、`synaxis:whitelist-removed`、`synaxis:moderation-no-target`、`synaxis:moderation-bad-duration`、`synaxis:moderation-bad-reason`、`synaxis:moderation-unavailable` |
+| 2 | 反证有齿：删掉 `zh_cn.json` 的 `synaxis:banned-until` 一行，`./gradlew test --tests '*ModerationTextTest*' --no-daemon`，再还原 | `2 tests completed, 1 failed`，红在 `[2] "zh_cn"`（`ModerationTextTest.java:34`）：`zh_cn has no text for synaxis:banned-until ==> expected: <true> but was: <false>`。还原后复绿 |
+
+后置：确认 `zh_cn.json` 没有残留改动。
+
+#### `TC-PROD-234` `:plugin-api` 新增 `Moderation` 与 `AdmissionRequest` 加组件过 ABI 门，`API_VERSION` 不变 — 对应 `REQ-PROD-010` · 级别: 回归 · 执行者: AI
+
+前置：按 `docs/ENGINE.md` §7.1 本地口径，在本组改动之前的提交（`prod/w4-4a` 的 `e05ade2c0e`）上 `./gradlew :plugin-api:jar :protocol:jar`，把两个 jar 改名为 `plugin-api.jar`、`protocol.jar` 放进 `<abi>`（仓库外的临时目录）。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | `./gradlew :plugin-api:checkBinaryCompatibility :protocol:checkBinaryCompatibility -PbaselineJarDir=<abi> --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts` | 两个任务都执行（没有 `SKIPPED`）、`BUILD SUCCESSFUL`：`Moderation`、`BanTarget`、`Ban` 是新增类型，`PluginContext#moderation()` 是默认方法，`AdmissionRequest` 的四参构造器仍是公开的，新增的六参构造器与两个访问器是新增方法；`PluginApi.API_VERSION` 仍是 1 |
+| 2 | 反证有齿（去掉旧构造器的公开性）：`AdmissionRequest` 的 `public AdmissionRequest(UUID connectionId, String username, int modVersion, int schemaVersion)` 去掉 `public`，重跑 `:plugin-api:checkBinaryCompatibility`，再还原 | `BUILD FAILED`：`Public/protected method removed or signature changed: io/github/bearisbug/synaxis/plugin/AdmissionRequest#<init>(Ljava/util/UUID;Ljava/lang/String;II)V`、`ABI Check failed with 1 binary compatibility violations.`。还原后复绿 |
+| 3 | 反证有齿：把 `PluginContext#moderation()` 改成抽象方法（`Moderation moderation();`），重跑 `:plugin-api:checkBinaryCompatibility`，再还原 | `BUILD FAILED`：`New abstract method added to interface: io/github/bearisbug/synaxis/plugin/PluginContext#moderation()Lio/github/bearisbug/synaxis/plugin/Moderation; (breaks implementing classes)`、`ABI Check failed with 1 binary compatibility violations.`。还原后复绿 |
+
+后置：确认 `AdmissionRequest.java`、`PluginContext.java` 没有残留改动；删掉 `<abi>`。
+
+#### `TC-PROD-235` 封禁与白名单用例在 4 个 tick 线程的严格模式下照样成立 — 对应 `REQ-PROD-010` · 级别: 回归 · 执行者: AI
+
+前置：数据库前置满足。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | `./gradlew :server-app:test --tests io.github.bearisbug.synaxis.app.ModerationIntegrationTest --rerun --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts -Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true` | 12 个 0 失败、0 跳过：判定、踢人与重读分别在登录虚拟线程、命令与写库虚拟线程、刷新虚拟线程与 Redis 订阅线程上跑，都不碰实体的 `Acquirable` |
+
+后置：无。
+
+#### `TC-PROD-236` 真进程：白名单开启时名单外被拒、名单内进服，被封账号收到 `synaxis:banned`，Redis 通知 1 s 内踢出在线玩家；开关非法或内存存储开白名单拒绝起服 — 对应 `REQ-PROD-010` · 级别: 回归 · 执行者: AI
+
+前置：`:server-app:installDist` 已跑；端口 25642 空闲；`synaxis-pg` 里建本用例专用的空库 `<db>`，`SYNAXIS_STATE_DB_URL=jdbc:postgresql://127.0.0.1:5440/<db>`、`SYNAXIS_STATE_DB_USER`、`SYNAXIS_STATE_DB_PASSWORD`、`SYNAXIS_REDIS_URL=redis://127.0.0.1:6440` 导出到环境；探针用 `uv venv --python 3.10` 建的 `.venv` 里的 Python 跑 `tools/protocol-probe/probe.py`（下称 `<probe>`，只用标准库）。下文 `<run>` 指 `java -Xmx1G -Dsynaxis.app.port=25642 -Dsynaxis.app.core-mode=on -Dsynaxis.app.store=postgres -Dsynaxis.app.shard-id=w4b-proc -Dsynaxis.app.auth=offline -Dsynaxis.connection-gate.trusted-networks=127.0.0.0/8 -cp "<仓库根>/server-app/build/install/server-app/lib/*" io.github.bearisbug.synaxis.app.Main`，每次在新的临时目录里起。离线 UUID 是 `UUID.nameUUIDFromBytes("OfflinePlayer:<名字>")`：`Invited` = `6a20463e-47a9-3c5b-bf23-bf0371b37a57`，`Banned` = `375aeb75-17e7-3800-bc1e-0e47a704624b`，`Roamer` = `0a75b29b-c4c8-3c17-8792-56601e0c5c93`。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 同一 classpath 跑 `Main --migrate-only --auth-mode=offline`；`psql` 往 `whitelist` 插 `Invited`、`Banned`，往 `ban` 插 `Banned` 的一条（`reason='griefing'`、`created_by` 为全零 UUID、`expires_at = now() + interval '1 day'`） | `Migrated the player store: auth_mode=offline`；两条插入成功 |
+| 2 | `<run> -Dsynaxis.app.whitelist=on < /dev/null > server.log 2>&1 &`，等就绪行；`<probe> --port 25642 --username Stranger login`、`--username Invited login`、`--username Banned login` | 日志有 `Effective whitelist: on` 与 `synaxis server-app listening on 0.0.0.0:25642`；`Stranger` 在 `SetCompression` 之后收到 `LoginDisconnect reason=synaxis:not-whitelisted`、退出码 1；`Invited` 进到 `state=play`、退出码 0；`Banned` 收到 `LoginDisconnect reason=synaxis:banned`、退出码 1；服务端每次拒绝一行 `Kicking connection_id=… reason=<键>` |
+| 3 | 往 `whitelist` 插 `Roamer`，`valkey-cli PUBLISH synaxis:moderation '{"kind":"whitelist-add",…}'`；后台 `<probe> --port 25642 --username Roamer login --hold 40`，进 play 后往 `ban` 插一条 `Roamer` 的永久封禁，再 `PUBLISH synaxis:moderation '{"kind":"ban",…}'`（另一个分片封禁时发的同一条通知） | 探针收到 `Disconnect reason=synaxis:banned`；服务端 `[Syn-Moderation-Change] … Kicking … identifier=Roamer reason=synaxis:banned` 与 `PUBLISH` 在同一秒（首次实测 PUBLISH `06:33:19`，踢出 `06:33:19.760`） |
+| 4 | 按 pid 停掉进程；`<run> -Dsynaxis.app.whitelist=off …` 同样起；`<probe> --username Stranger login`、`--username Banned login` | `Effective whitelist: off`；`Stranger` 进到 play；`Banned` 仍收到 `synaxis:banned`（封禁与白名单开关无关） |
+| 5 | 按 pid 停掉进程；`<run> -Dsynaxis.app.whitelist=yes < /dev/null`；再不带 `-Dsynaxis.app.store=postgres`（内存存储）加 `-Dsynaxis.app.whitelist=on` 起一次 | 两次都退出码 1、端口不 bind：`Refusing to start: synaxis.app.whitelist=yes is not on or off`；`Refusing to start: synaxis.app.whitelist=on needs the postgres store (-Dsynaxis.app.store=postgres): the whitelist lives in the database` |
+| 6 | 反证有齿（登录判定没接上）：`PluginHost` 构造器的 `moderation.attach(hostNode);` 改为 `if (Boolean.getBoolean("proof.never")) moderation.attach(hostNode);`，`installDist` 后重做第 2 步（`Banned` 与一个不在名单的 `Newcomer`），再还原并重跑 `installDist` | 红：`Effective whitelist: on`，但 `Banned` 与 `Newcomer` 都进到 `state=play`、退出码 0。还原后第 2 步复现两种拒绝 |
+
+后置：按 pid 停掉进程；删掉 `<db>`、`.venv` 与临时目录；`lsof -nP -iTCP:25642 -sTCP:LISTEN` 无输出。
+
 ## 5. 回归策略
 
 - **全量轮**（全部用例）：首次成稿、每个阶段 gate（引擎域阶段 0、2、3；游戏域 `docs/DESIGN-M2.md` §26 的阶段 1～6b；大世界域 `docs/DESIGN-M3.md` §26 的 M3-A～M3-G）、跨功能域改动、地基变更（JDK、Gradle、镜像、协议版本、模块拆分、启动入口）。
@@ -3485,6 +3686,7 @@ jcmd "$pid" VM.flags | tr ' ' '\n' | grep -cxE -- '-XX:\+UseG1GC|-XX:InitialHeap
   - 生产就绪域（`docs/DESIGN-PROD.md`）：插件事件优先级与实例作用域（`REQ-PROD-022`）→ TC-PROD-180～TC-PROD-184、TC-PROD-189；动了 `PluginEvents`、`PluginEventsImpl`、`PluginHost` 里建与收回事件节点的两处、引擎 `EventNode` 的子节点排序、映射节点与子节点的派发先后或 `EventListener` 的取消规则就跑这六条，动了 `PlayerStore#attach` 的冻结节点也跑 TC-PROD-189。跨域牵连：动了 `PluginEventsImpl` 或 `LoadedPlugin` → 加 TC-GAME-053～TC-GAME-055（插件宿主的启用、异常归因与收回）。
   - 生产就绪域（`docs/DESIGN-PROD.md`）：WAL 归档与每日基础备份（`REQ-PROD-035` 前半）→ TC-PROD-190～TC-PROD-193；动了 `ops/postgres/archive-wal.sh` 就跑 TC-PROD-190 与 TC-PROD-191 第 3、5 步，动了 `enable-wal-archive.sh` 跑 TC-PROD-191 与 TC-PROD-193 第 7 步，动了 `check-archive.sh` 跑 TC-PROD-191、TC-PROD-192 第 2、6 步与 TC-PROD-193 第 6 步，动了 `base-backup.sh` 跑 TC-PROD-192，动了 `restore-pitr.sh` 或升 PostgreSQL 版本跑 TC-PROD-193（约 8 分钟，第 2 步要等满 5 分钟）。跨域牵连：Flyway 迁移新增或改表不影响这四条（演练用自己的库），但上线前按 `RB-PROD-008` 在正式库的副本上重做一次 TC-PROD-193。
   - 生产就绪域（`docs/DESIGN-PROD.md`）：权限与 GM 角色（`REQ-PROD-011`）→ TC-PROD-200～TC-PROD-213；动了 `server-app` 的 `permission/`、`AdmissionGate` 里读角色的一处、`PluginHost` 的权限接线或 `RedisLink` 的 `synaxis:permission` 收发就跑 TC-PROD-201～TC-PROD-209、TC-PROD-212 与 TC-PROD-213（要数据库前置），动了 `V3__roles.sql` 或 `V3__roles.down.sql` 跑 TC-PROD-200、TC-PROD-201，动了 `Permissions` 或 `PluginContext#permissions` 跑 TC-PROD-211，动了模组的 lang 跑 TC-PROD-210。跨域牵连：动了 `RedisLink` 的订阅线程 → 加 TC-PROD-141～TC-PROD-153 里走 Redis 的跨分片顶号用例（`CrossShardHandoverIntegrationTest`）；新增 Flyway 版本 → 重跑 TC-PROD-141 与 TC-PROD-200（`MigrationsDbTest` 的版本与表清单要跟着改）。
+  - 生产就绪域（`docs/DESIGN-PROD.md`）：白名单与封禁（`REQ-PROD-010`）→ TC-PROD-220～TC-PROD-236；动了 `server-app` 的 `moderation/`、`PluginHost` 的封禁接线、`HandshakeGate` 登录阶段握手的跳过判断、`Main#openStore` / `Main#whitelist` 或 `RedisLink` 的 `synaxis:moderation` 收发就跑 TC-PROD-221 与 TC-PROD-223～TC-PROD-231、TC-PROD-235（要数据库前置），再动了起服或登录路径加 TC-PROD-236（真进程，约 3 分钟）；动了 `V4__moderation.sql` 或 `V4__moderation.down.sql` 跑 TC-PROD-220、TC-PROD-221；动了 `BanTarget` 跑 TC-PROD-222、TC-PROD-226；动了 `AdmissionRequest` 或 `AdmissionGate` 构造请求的一处跑 TC-PROD-232；动了 `Moderation`、`BanTarget`、`Ban`、`AdmissionRequest` 或 `PluginContext#moderation` 跑 TC-PROD-234；动了模组的 lang 跑 TC-PROD-233。跨域牵连：动了 `RedisLink` 的订阅线程 → 加 `CrossShardHandoverIntegrationTest` 与 TC-PROD-205；新增 Flyway 版本 → 重跑 TC-PROD-141、TC-PROD-200 与 TC-PROD-220。
   - 影响面不确定时升级为全量轮。
 - **复测轮**（上轮失败用例 + 全部冒烟级）：修复失败项之后。
 - **人工收口轮**（仅上轮「待人工」用例）：AI 轮之后由人工补测 TC-016、TC-030、TC-GAME-020、TC-GAME-038、TC-GAME-046、TC-GAME-047，不要求冒烟级。

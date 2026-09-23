@@ -21,7 +21,9 @@ mkdir -p /tmp/synaxis-play
 在 **worktree 根**执行，stdin 要保持打开，停机用 `stop`。`synaxis.app.units` 是对局播种的单位**总数**
 （默认 67，即 `docs/TEST.md` §3 的验收阵容；前 `n − 3` 个是玩家队伍、绕出生点一圈圈铺，随后中立、
 `team=2`、远哨各一个），非数字、≤ 3 或地图放不下时进程以 ERROR + 非零码拒启，端口不 bind。
-stdout 一定要重定向到文件——harness 靠它数 WARN / ERROR 行。
+stdout 一定要重定向到文件——harness 靠它数 WARN / ERROR 行。50 个机器人都从 `127.0.0.1` 来，
+`synaxis.connection-gate.trusted-networks=127.0.0.0/8` 不能省：连接闸门的登录桶每个地址 3 个令牌，
+不放行本机时只进得来 3 个，其余收到 `synaxis:login-throttled`。
 
 ```bash
 mkfifo /tmp/synaxis-play/stdin.fifo
@@ -29,6 +31,7 @@ mkfifo /tmp/synaxis-play/stdin.fifo
 ./gradlew :server-app:run --no-daemon --console=plain \
   --init-script gradle/init/aliyun-mirror.init.gradle.kts \
   -Dsynaxis.app.port=25566 -Dsynaxis.app.units=1000 \
+  -Dsynaxis.connection-gate.trusted-networks=127.0.0.0/8 \
   < /tmp/synaxis-play/stdin.fifo > /tmp/synaxis-play/server.log 2>&1 &
 # 就绪：server.log 出现 "synaxis server-app listening on 0.0.0.0:25566"，nc -z 127.0.0.1 25566 通
 # 核对播种：python3 tools/protocol-probe/probe.py --port 25566 units --wait 6 --expect-min 999

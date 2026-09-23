@@ -23,7 +23,8 @@ mkfifo /tmp/synaxis-soak/stdin.fifo
 ( sleep 86400 > /tmp/synaxis-soak/stdin.fifo & )   # 占住 fifo 写端
 ./gradlew :server-app:run --no-daemon --console=plain \
   --init-script gradle/init/aliyun-mirror.init.gradle.kts \
-  -Dsynaxis.app.core-mode=on < /tmp/synaxis-soak/stdin.fifo > /tmp/synaxis-soak/server.log 2>&1 &
+  -Dsynaxis.app.core-mode=on -Dsynaxis.connection-gate.trusted-networks=127.0.0.0/8 \
+  < /tmp/synaxis-soak/stdin.fifo > /tmp/synaxis-soak/server.log 2>&1 &
 # 就绪：server.log 出现 "server-app listening"，nc -z 127.0.0.1 25565 通
 # 停机：echo stop > /tmp/synaxis-soak/stdin.fifo
 ```

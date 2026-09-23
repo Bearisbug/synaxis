@@ -19,6 +19,11 @@ The logins are the probe's, which speaks no encryption: the server runs with
 ``-Dsynaxis.app.auth=offline`` (server-app defaults to online mode). An encrypted load goes through
 ``tools/loadtest/PacketFlood.java --auth``.
 
+Every connection comes from one address, so the server also runs with
+``-Dsynaxis.connection-gate.trusted-networks=127.0.0.0/8``: the connection gate gives an address three
+logins at once and one more every 2 s, and without that property all but three connections are
+turned away with ``synaxis:login-throttled``.
+
 All connections are driven by one selector loop, only the login handshakes run on worker threads.
 That keeps the harness itself off the critical path: a thread per connection spends more CPU on the
 client than the server spends serving it, which would measure the harness instead of the engine.

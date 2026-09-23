@@ -87,6 +87,8 @@ public final class ConnectionGate {
     // Only touched by the tick thread
     private long reportWindowStart;
     private boolean reportWindowStarted;
+    // Set once by the shutdown sequence, read by every login start after it
+    private volatile boolean closed;
 
     public ConnectionGate(ServerConfig config) {
         this(config, System::nanoTime);
@@ -174,6 +176,24 @@ public final class ConnectionGate {
         if (ticket.takeSeat()) return true;
         reject(Reason.FULL);
         return false;
+    }
+
+    /**
+     * Closes the login gate for good, the first step of the shutdown sequence
+     * ({@code docs/DESIGN-PROD.md} §11.4 {@code gate_closed}): from here on a login start is turned
+     * away with {@code synaxis:server-stopping}. Connections already past it are left alone.
+     */
+    public void close() {
+        this.closed = true;
+    }
+
+    /**
+     * Whether the shutdown closed the login gate.
+     *
+     * @return true once {@link #close()} was called
+     */
+    public boolean isClosed() {
+        return closed;
     }
 
     /** Counts a connection closed for not sending its handshake in time. */

@@ -51,6 +51,12 @@ public final class LoginListener {
             connection.kick(ERROR_MALFORMED_USERNAME);
             return;
         }
+        // A process shutting down lets nobody new in (docs/DESIGN-PROD.md §11.4 gate_closed)
+        if (connection.process().connection().gate().isClosed()) {
+            connection.sendPacket(new LoginDisconnectPacket(DisconnectReasons.SERVER_STOPPING));
+            connection.disconnectTurnedAway();
+            return;
+        }
         // Connection gate L3, before any work is done for the login. Counted by the gate rather
         // than logged, how often a full process is knocked at is up to the peers.
         if (connection instanceof PlayerSocketConnection socketConnection

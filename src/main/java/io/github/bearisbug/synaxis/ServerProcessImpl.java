@@ -5,6 +5,7 @@ import io.github.bearisbug.synaxis.adventure.audience.Audiences;
 import io.github.bearisbug.synaxis.adventure.bossbar.BossBarManager;
 import io.github.bearisbug.synaxis.command.CommandManager;
 import io.github.bearisbug.synaxis.entity.Entity;
+import io.github.bearisbug.synaxis.entity.Player;
 import io.github.bearisbug.synaxis.event.GlobalEventHandler;
 import io.github.bearisbug.synaxis.event.server.ServerTickMonitorEvent;
 import io.github.bearisbug.synaxis.exception.ExceptionManager;
@@ -38,12 +39,27 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.net.SocketAddress;
+import java.time.Duration;
+import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 final class ServerProcessImpl implements ServerProcess, Registries.Delegating {
     private static final Logger LOGGER = LoggerFactory.getLogger(ServerProcessImpl.class);
     private static final long SHUTDOWN_JOIN_TIMEOUT_MS = 5_000;
+    /** The save phase budget of {@code docs/DESIGN-PROD.md} §11.4 while the tick runs. */
+    private static final long SAVE_BUDGET_SECONDS = 30;
+    /** The save phase budget once the watchdog judged the process dead: its halt comes 15 s later. */
+    private static final long DEATH_SAVE_BUDGET_SECONDS = 15;
+    private static final long SAVE_POLL_NANOS = TimeUnit.MILLISECONDS.toNanos(50);
+    /** How long the kicked players in play get to leave the world, §11.4 {@code kicking}. */
+    private static final long KICK_BUDGET_SECONDS = 5;
+    private static final long KICK_POLL_MILLIS = 20;
+    private static final long SHUTDOWN_TASKS_PICKUP_MILLIS = 1_000;
+    private static final long SHUTDOWN_TASKS_BUDGET_SECONDS = 15;
 
     private final Auth auth;
     private final ServerConfig config;
@@ -72,6 +88,11 @@ final class ServerProcessImpl implements ServerProcess, Registries.Delegating {
 
     private final AtomicBoolean started = new AtomicBoolean();
     private final AtomicBoolean stopped = new AtomicBoolean();
+    // Set by the first beginShutdown; `stopped` only follows at the end of the sequence (§11.4)
+    private final AtomicBoolean stopping = new AtomicBoolean();
+    private final CompletableFuture<Void> watchdogDeath = new CompletableFuture<>();
+    private volatile ShutdownPhase shutdownPhase = ShutdownPhase.RUNNING;
+    private volatile @Nullable ShutdownParticipant shutdownParticipant;
 
     private volatile String brandName = "synaxis";
     private volatile Difficulty difficulty = Difficulty.NORMAL;
@@ -285,31 +306,173 @@ final class ServerProcessImpl implements ServerProcess, Registries.Delegating {
 
     @Override
     public void stop() {
-        if (!stopped.compareAndSet(false, true)) return;
+        beginShutdown(Duration.ZERO);
+    }
+
+    @Override
+    public void beginShutdown(Duration countdown) {
+        if (countdown.isNegative()) throw new IllegalArgumentException("countdown " + countdown + " is negative");
+        if (!stopping.compareAndSet(false, true)) return;
         // The shutdown sequence waits for every tick thread to exit, which can never happen while the
         // caller is one of them (e.g. a /stop command running on a TickThread, upstream issue #2907).
         final Thread caller = Thread.currentThread();
         if (caller instanceof TickThread || caller instanceof TickSchedulerThread) {
-            new Thread(this::shutdownProcess, "Syn-Shutdown").start();
+            new Thread(() -> shutdownProcess(countdown, false), "Syn-Shutdown").start();
         } else {
-            shutdownProcess();
+            shutdownProcess(countdown, false);
         }
     }
 
-    private void shutdownProcess() {
+    @Override
+    public void setShutdownParticipant(ShutdownParticipant participant) {
+        Check.stateCondition(started.get(), "The shutdown participant is set before the server starts.");
+        Check.stateCondition(this.shutdownParticipant != null, "A shutdown participant is already set.");
+        this.shutdownParticipant = participant;
+    }
+
+    @Override
+    public boolean shutdownAfterWatchdogDeath() {
+        watchdogDeath.complete(null);
+        // Not shutting down yet: this thread runs the whole sequence, without a countdown
+        if (stopping.compareAndSet(false, true)) {
+            shutdownProcess(Duration.ZERO, true);
+            return true;
+        }
+        // Otherwise the thread already running the sequence picks the death up: the countdown ends,
+        // or the save phase shortens its budget. Past the save phase there is nothing to change.
+        return false;
+    }
+
+    @Override
+    public ShutdownPhase shutdownPhase() {
+        return shutdownPhase;
+    }
+
+    /**
+     * The sequence of {@code docs/DESIGN-PROD.md} §11.4. {@code stopped} is set in the last step
+     * only, so the tick keeps running while players are saved and kicked and plugins disabled.
+     *
+     * @param countdown how long the gate stays closed before the save phase
+     * @param dying     whether the watchdog already judged the process dead
+     */
+    private void shutdownProcess(Duration countdown, boolean dying) {
         final String brand = brandName;
         LOGGER.info("Stopping {} server.", brand);
+        final ShutdownParticipant participant = this.shutdownParticipant;
         try {
-            // `stopped` is already set, so the ticker loop exits once the tick in flight is over.
-            // Wait for it before touching anything else, otherwise the shutdown races with ticking.
+            // gate_closed: the login gate turns new logins away from here on
+            this.shutdownPhase = ShutdownPhase.GATE_CLOSED;
+            connection.gate().close();
+            boolean dead = dying;
+            if (!dead) {
+                if (participant != null) callParticipant(() -> participant.onGateClosed(countdown));
+                dead = awaitCountdown(countdown);
+            }
+            this.shutdownPhase = ShutdownPhase.SAVING;
+            save(participant, dead);
+            // kicking: the tick still runs, which is what fires PlayerDisconnectEvent for them
+            this.shutdownPhase = ShutdownPhase.KICKING;
+            kickEveryone();
+            // plugins_disabled: the shutdown tasks, the host's plugin onDisable among them
+            this.shutdownPhase = ShutdownPhase.PLUGINS_DISABLED;
+            runShutdownTasks();
+            // stopped: the ticker loop exits once the tick in flight is over
+            stopped.set(true);
             joinThread(tickSchedulerThread);
-            // No tick is in flight anymore, user shutdown tasks can safely run before players are kicked.
-            scheduler.shutdown();
-            connection.shutdown();
-            // Kicking a PLAY player only schedules Entity#remove on its next tick, which is where
-            // PlayerDisconnectEvent is fired. The tick threads are still up for that one last tick.
-            // It runs arbitrary user code, so it is bounded like every other wait here: a wedged
-            // element must not keep stop() from returning.
+            LOGGER.info("Shutting down all thread pools.");
+            dispatcher.shutdown();
+            for (TickThread tickThread : dispatcher.threads()) joinThread(tickThread);
+            server.stop();
+            this.shutdownPhase = ShutdownPhase.STOPPED;
+        } finally {
+            stopped.set(true);
+            // Whatever happened above, the JVM must stop referencing this process through the hook.
+            removeShutdownHook();
+        }
+        LOGGER.info("{} server stopped successfully.", brand);
+    }
+
+    /**
+     * @return true if the watchdog judged the process dead before the countdown ran out
+     */
+    private boolean awaitCountdown(Duration countdown) {
+        if (countdown.isZero()) return watchdogDeath.isDone();
+        try {
+            watchdogDeath.get(countdown.toNanos(), TimeUnit.NANOSECONDS);
+            return true;
+        } catch (TimeoutException _) {
+            return false;
+        } catch (InterruptedException _) {
+            Thread.currentThread().interrupt();
+            return false;
+        } catch (ExecutionException _) {
+            return true;
+        }
+    }
+
+    /**
+     * The save phase: {@value #SAVE_BUDGET_SECONDS} s while the tick runs, {@value #DEATH_SAVE_BUDGET_SECONDS} s
+     * once the watchdog judged the process dead, which can also happen while this runs.
+     */
+    private void save(@Nullable ShutdownParticipant participant, boolean dying) {
+        if (participant == null) return;
+        boolean dead = dying;
+        final long budget = TimeUnit.SECONDS.toNanos(dead ? DEATH_SAVE_BUDGET_SECONDS : SAVE_BUDGET_SECONDS);
+        long deadline = System.nanoTime() + budget;
+        CompletableFuture<?> saved = startSave(participant, Duration.ofNanos(budget), !dead);
+        while (!saved.isDone()) {
+            final long now = System.nanoTime();
+            if (now - deadline >= 0) break;
+            if (!dead && watchdogDeath.isDone()) {
+                // saving → saving: the tick will not come back, so the rest is read on this thread
+                dead = true;
+                deadline = Math.min(deadline, now + TimeUnit.SECONDS.toNanos(DEATH_SAVE_BUDGET_SECONDS));
+                saved = startSave(participant, Duration.ofNanos(deadline - now), false);
+                continue;
+            }
+            try {
+                saved.get(Math.min(deadline - now, SAVE_POLL_NANOS), TimeUnit.NANOSECONDS);
+            } catch (TimeoutException | ExecutionException _) {
+                // Looked at again above; a failed save is as over as a completed one
+            } catch (InterruptedException _) {
+                Thread.currentThread().interrupt();
+                break;
+            }
+        }
+        final boolean timedOut = !saved.isDone();
+        if (timedOut) LOGGER.error("The shutdown save did not complete within its budget, going on with the shutdown.");
+        callParticipant(() -> participant.onSaveEnded(timedOut));
+    }
+
+    private CompletableFuture<?> startSave(ShutdownParticipant participant, Duration budget, boolean tickAlive) {
+        try {
+            return participant.saveAll(budget, tickAlive);
+        } catch (Throwable throwable) {
+            exception.handleException(throwable);
+            return CompletableFuture.completedFuture(null);
+        }
+    }
+
+    private void callParticipant(Runnable call) {
+        try {
+            call.run();
+        } catch (Throwable throwable) {
+            exception.handleException(throwable);
+        }
+    }
+
+    /**
+     * Kicks every connection and waits, at most {@value #KICK_BUDGET_SECONDS} s, for the players in
+     * play to leave the world: a kick only schedules {@code Entity#remove} for their next tick, and
+     * that removal is what fires {@code PlayerDisconnectEvent}.
+     */
+    private void kickEveryone() {
+        final List<Player> inPlay = List.copyOf(connection.getOnlinePlayers());
+        connection.shutdown();
+        if (tickSchedulerThread == null) {
+            // A process that never started its ticker (tests tick it by hand) gets one last dispatcher
+            // update instead. It runs arbitrary user code, so it is bounded like every other wait
+            // here: a wedged element must not keep stop() from returning.
             if (dispatcher.isAlive()) {
                 final Thread lastTick = new Thread(() -> dispatcher.updateAndAwait(System.nanoTime()),
                         "Syn-Shutdown-Tick");
@@ -317,15 +480,56 @@ final class ServerProcessImpl implements ServerProcess, Registries.Delegating {
                 lastTick.start();
                 joinThread(lastTick);
             }
-            LOGGER.info("Shutting down all thread pools.");
-            dispatcher.shutdown();
-            for (TickThread tickThread : dispatcher.threads()) joinThread(tickThread);
-            server.stop();
-        } finally {
-            // Whatever happened above, the JVM must stop referencing this process through the hook.
-            removeShutdownHook();
+            return;
         }
-        LOGGER.info("{} server stopped successfully.", brand);
+        final long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(KICK_BUDGET_SECONDS);
+        while (inPlay.stream().anyMatch(player -> !player.isRemoved()) && System.nanoTime() - deadline < 0) {
+            try {
+                Thread.sleep(KICK_POLL_MILLIS);
+            } catch (InterruptedException _) {
+                Thread.currentThread().interrupt();
+                return;
+            }
+        }
+    }
+
+    /**
+     * Runs the shutdown tasks on the tick scheduler thread, between two ticks, so that a plugin's
+     * {@code onDisable} never runs alongside a tick. A tick scheduler that does not pick them up
+     * within {@value #SHUTDOWN_TASKS_PICKUP_MILLIS} ms is stuck, and this thread runs them instead.
+     */
+    private void runShutdownTasks() {
+        final AtomicBoolean claimed = new AtomicBoolean();
+        final CompletableFuture<Void> done = new CompletableFuture<>();
+        final Runnable drain = () -> {
+            if (!claimed.compareAndSet(false, true)) return;
+            try {
+                scheduler.shutdown();
+            } finally {
+                done.complete(null);
+            }
+        };
+        final TickSchedulerThread ticker = tickSchedulerThread;
+        if (ticker != null && ticker.isAlive() && !watchdogDeath.isDone()) {
+            scheduler.scheduleNextTick(drain);
+            try {
+                done.get(SHUTDOWN_TASKS_PICKUP_MILLIS, TimeUnit.MILLISECONDS);
+            } catch (TimeoutException | ExecutionException _) {
+                // Not picked up in time, or picked up and still running: handled below
+            } catch (InterruptedException _) {
+                Thread.currentThread().interrupt();
+            }
+        }
+        drain.run();
+        try {
+            done.get(SHUTDOWN_TASKS_BUDGET_SECONDS, TimeUnit.SECONDS);
+        } catch (TimeoutException _) {
+            LOGGER.warn("The shutdown tasks did not complete within {} s.", SHUTDOWN_TASKS_BUDGET_SECONDS);
+        } catch (ExecutionException _) {
+            // Cannot happen, the future is only ever completed normally
+        } catch (InterruptedException _) {
+            Thread.currentThread().interrupt();
+        }
     }
 
     private void removeShutdownHook() {

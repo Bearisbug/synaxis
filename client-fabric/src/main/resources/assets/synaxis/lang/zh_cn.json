@@ -20,6 +20,13 @@
 	"synaxis:state-unavailable": "角色数据未能载入，请 30 秒后重试。",
 	"synaxis:transfer-rejected": "切换大区失败，请重新登录。",
 	"synaxis:transfer-failed": "转服失败，请稍后再试。",
+	"synaxis:role-granted": "已把角色 %1$s 授予 %2$s。",
+	"synaxis:role-revoked": "已收回 %2$s 的角色 %1$s。",
+	"synaxis:role-list": "%s 持有的角色：%s",
+	"synaxis:role-unknown": "没有名为 %s 的角色。",
+	"synaxis:role-not-granted": "%s 没有角色 %s。",
+	"synaxis:role-no-target": "本分片没有叫 %s 的在线玩家，它也不是 UUID。",
+	"synaxis:role-unavailable": "暂时读不到角色数据，请稍后再试。",
 	"synaxis.order.no-path": "到不了那里。",
 	"synaxis.order.not-owner": "不是你的单位。",
 	"synaxis.order.busy": "服务器忙，请重试。"

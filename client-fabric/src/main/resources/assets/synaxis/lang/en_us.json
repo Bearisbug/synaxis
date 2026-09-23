@@ -20,6 +20,13 @@
 	"synaxis:state-unavailable": "Your character could not be loaded. Try again in 30 seconds.",
 	"synaxis:transfer-rejected": "Switching regions failed. Please log in again.",
 	"synaxis:transfer-failed": "The transfer failed. Please try again later.",
+	"synaxis:role-granted": "Granted role %s to %s.",
+	"synaxis:role-revoked": "Took role %s back from %s.",
+	"synaxis:role-list": "%s holds the roles: %s",
+	"synaxis:role-unknown": "There is no role %s.",
+	"synaxis:role-not-granted": "%s does not hold the role %s.",
+	"synaxis:role-no-target": "No player online here is called %s, and it is not a UUID.",
+	"synaxis:role-unavailable": "Roles cannot be reached right now. Try again in a moment.",
 	"synaxis.order.no-path": "Cannot get there.",
 	"synaxis.order.not-owner": "Not your unit.",
 	"synaxis.order.busy": "The server is busy; try again."

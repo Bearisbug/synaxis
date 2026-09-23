@@ -1,6 +1,7 @@
 package io.github.bearisbug.synaxis.app;
 
 import io.github.bearisbug.synaxis.ServerProcess;
+import io.github.bearisbug.synaxis.app.permission.HostPermissions;
 import io.github.bearisbug.synaxis.app.store.PlayerStore;
 import io.github.bearisbug.synaxis.app.store.PluginPlayerData;
 import io.github.bearisbug.synaxis.app.transfer.TicketVerifier;
@@ -46,6 +47,7 @@ final class PluginHost {
     private final EventNode<Event> hostNode = EventNode.all("synaxis-host");
     private final HandshakeGate handshake;
     private final PlayerStore store;
+    private final HostPermissions permissions;
     private final List<LoadedPlugin> enabled = new ArrayList<>();
 
     /**
@@ -63,15 +65,16 @@ final class PluginHost {
     }
 
     PluginHost(ServerProcess process, Path pluginsDirectory, EventLedger ledger, PlayerStore store) {
-        this(process, pluginsDirectory, ledger, store, null);
+        this(process, pluginsDirectory, ledger, store, null, HostPermissions.withoutDatabase(process));
     }
 
     PluginHost(ServerProcess process, Path pluginsDirectory, EventLedger ledger, PlayerStore store,
-               @Nullable TicketVerifier tickets) {
+               @Nullable TicketVerifier tickets, HostPermissions permissions) {
         this.process = process;
         this.pluginsDirectory = pluginsDirectory;
         this.ledger = ledger;
         this.store = store;
+        this.permissions = permissions;
         this.handshake = new HandshakeGate(HandshakeGate.phase(), HandshakeGate.BUDGET, ledger);
         process.eventHandler().addChild(hostNode);
         router.attach(hostNode);
@@ -80,8 +83,9 @@ final class PluginHost {
         // same way the core mode's diagnostic channel is: through the one payload listener of the
         // router, which is what keeps "an unknown channel is dropped" true for it as well.
         registerHostChannel(HandshakeGate.CHANNEL, handshake::receive);
-        new AdmissionGate(admission, handshake, ledger, store, tickets).attach(hostNode);
+        new AdmissionGate(admission, handshake, ledger, store, tickets, permissions).attach(hostNode);
         store.attach(hostNode);
+        permissions.attach(hostNode);
     }
 
     /**
@@ -144,7 +148,7 @@ final class PluginHost {
             plugin.onEnable(new PluginContextImpl(process,
                     loaded.events(), scheduler,
                     new PluginChannelsImpl(id, router), new PluginAdmissionImpl(id, admission),
-                    dataDirectory, ledger::record, playerData, playerData, LoggerFactory.getLogger("plugin." + id)));
+                    dataDirectory, ledger::record, playerData, playerData, permissions, LoggerFactory.getLogger("plugin." + id)));
         } catch (Throwable throwable) {
             playerData.discard();
             LOGGER.error("Plugin failed to enable: plugin_id={}", id, throwable);

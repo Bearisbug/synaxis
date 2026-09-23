@@ -6,6 +6,9 @@ import io.github.bearisbug.synaxis.MinecraftServer;
 import io.github.bearisbug.synaxis.ServerProcess;
 import io.github.bearisbug.synaxis.SessionServer;
 import io.github.bearisbug.synaxis.Watchdog;
+import io.github.bearisbug.synaxis.app.permission.HostPermissions;
+import io.github.bearisbug.synaxis.app.permission.RoleCommand;
+import io.github.bearisbug.synaxis.app.permission.RoleStore;
 import io.github.bearisbug.synaxis.app.store.AuthMode;
 import io.github.bearisbug.synaxis.app.store.Database;
 import io.github.bearisbug.synaxis.app.store.Migrations;
@@ -165,7 +168,9 @@ public final class Main {
         // whose database is not the one it expects refuses here, before anything is bound.
         final StoreRuntime store = openStore(storeMode, process, auth, shardId, ledger, System.getenv());
         process.setShutdownParticipant(store.store());
-        final PluginHost host = new PluginHost(process, Path.of("plugins"), ledger, store.store(), store.verifier());
+        final PluginHost host = new PluginHost(process, Path.of("plugins"), ledger, store.store(), store.verifier(),
+                store.permissions());
+        process.command().register(new RoleCommand(process, store.permissions(), ledger::record));
         final CrashReports crashReports = crashReports(process, host, shardId, Path.of("crash-reports"));
         installExceptionHandler(process, crashReports);
         final Watchdog watchdog = startWatchdog(process, crashReports);
@@ -301,9 +306,11 @@ public final class Main {
      * @param housekeeping the cleanup jobs of a shard, null in memory
      * @param issuer       the source side of a transfer, null without transfer keys
      * @param verifier     the target side of a transfer, null without transfer keys
+ * @param permissions  the roles of the online players, none in memory
      */
     record StoreRuntime(PlayerStore store, @Nullable Database database, @Nullable StoreHousekeeping housekeeping,
-                        @Nullable TransferTickets issuer, @Nullable TicketVerifier verifier) implements AutoCloseable {
+                        @Nullable TransferTickets issuer, @Nullable TicketVerifier verifier, HostPermissions permissions)
+            implements AutoCloseable {
         @Override
         public void close() {
             if (housekeeping != null) housekeeping.close();
@@ -335,7 +342,8 @@ public final class Main {
                 throw new IllegalArgumentException("synaxis.accept-transfers=true needs the postgres store "
                         + "(-Dsynaxis.app.store=postgres): transfer tickets are checked against the database");
             LOGGER.info("Effective store: mode=memory, player data lives as long as the process");
-            return new StoreRuntime(PlayerStore.inMemory(process, ledger::record), null, null, null, null);
+            return new StoreRuntime(PlayerStore.inMemory(process, ledger::record), null, null, null, null,
+                    HostPermissions.withoutDatabase(process));
         }
         final StoreSettings settings = StoreSettings.fromEnvironment(environment);
         final TransferKeys keys = TransferKeys.fromEnvironment(environment);
@@ -364,12 +372,15 @@ public final class Main {
             session.open();
             final StoreHousekeeping housekeeping = new StoreHousekeeping(database.pool());
             housekeeping.start();
+            final HostPermissions permissions = new HostPermissions(process, new RoleStore(database.pool()), redis,
+                    HostPermissions.REFRESH);
             LOGGER.info("Effective store: mode=postgres auth_mode={} {}", effective.value(), settings);
-            if (keys == null) return new StoreRuntime(store, database, housekeeping, null, null);
+            if (keys == null) return new StoreRuntime(store, database, housekeeping, null, null, permissions);
             final TransferCooldowns cooldowns = TransferCooldowns.fromSystemProperties();
             LOGGER.info("Effective transfers: {} accept={}", keys, process.config().acceptTransfers());
             return new StoreRuntime(store, database, housekeeping, new TicketIssuer(store, keys, cooldowns, shardId),
-                    new TicketVerifier(database.pool(), session::sessionId, shardId, keys, cooldowns, ledger::record));
+                    new TicketVerifier(database.pool(), session::sessionId, shardId, keys, cooldowns, ledger::record),
+                    permissions);
         } catch (SQLException e) {
             database.close();
             throw new IllegalArgumentException("the player store database failed: " + e.getMessage(), e);

@@ -1,6 +1,7 @@
 package io.github.bearisbug.synaxis.app;
 
 import net.kyori.adventure.text.Component;
+import io.github.bearisbug.synaxis.app.permission.HostPermissions;
 import io.github.bearisbug.synaxis.app.store.PlayerStore;
 import io.github.bearisbug.synaxis.app.transfer.TicketVerifier;
 import io.github.bearisbug.synaxis.entity.Player;
@@ -45,14 +46,16 @@ final class AdmissionGate {
     private final EventLedger ledger;
     private final PlayerStore store;
     private final @Nullable TicketVerifier tickets;
+    private final HostPermissions permissions;
 
     AdmissionGate(AdmissionRegistry registry, HandshakeGate handshake, EventLedger ledger, PlayerStore store,
-                  @Nullable TicketVerifier tickets) {
+                  @Nullable TicketVerifier tickets, HostPermissions permissions) {
         this.registry = registry;
         this.handshake = handshake;
         this.ledger = ledger;
         this.store = store;
         this.tickets = tickets;
+        this.permissions = permissions;
     }
 
     void attach(EventNode<Event> node) {
@@ -82,6 +85,8 @@ final class AdmissionGate {
             rejected(connectionId, hello, DisconnectKeys.STATE_UNAVAILABLE);
             return;
         }
+        // The roles next, so that the admission provider can already ask about them (API-PROD-010)
+        permissions.load(player);
         if (!player.isOnline()) {
             store.abandon(player);
             return;

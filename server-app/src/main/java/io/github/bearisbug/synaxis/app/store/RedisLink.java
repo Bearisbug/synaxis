@@ -14,13 +14,17 @@ import redis.clients.jedis.params.SetParams;
 
 import java.net.URI;
 import java.util.Map;
+import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Consumer;
 
 /**
  * What a shard keeps in Redis, all of it disposable ({@code docs/DESIGN-PROD.md} {@code API-PROD-006},
  * {@code ADR-PROD-003}): where a player is ({@code presence:{uuid}}, a routing hint only) and the
- * requests to let a player go ({@code synaxis:kick:{shard_id}}).
+ * requests to let a player go ({@code synaxis:kick:{shard_id}}) and the accounts whose roles changed
+ * ({@code synaxis:permission}).
  * <p>
  * Nothing here decides who holds a character, PostgreSQL does; Redis being down only turns a
  * cross-shard duplicate login into a refusal. Its failures are counted into one warning per 10 s.
@@ -32,6 +36,8 @@ public final class RedisLink implements AutoCloseable {
     /** How long a presence key lives without being refreshed. */
     static final long PRESENCE_TTL_MS = 30_000;
     static final int TIMEOUT_MS = 2_000;
+    /** Where a role change is announced, with the account it changed. */
+    static final String PERMISSION_CHANNEL = "synaxis:permission";
     private static final long RESUBSCRIBE_MILLIS = 1_000;
 
     /** Asked to let a player go because the same account logs in on another shard. */
@@ -44,7 +50,7 @@ public final class RedisLink implements AutoCloseable {
     private final String shardId;
     private final LogBudget failures = new LogBudget(LOGGER, "Redis failures");
     private final AtomicBoolean closed = new AtomicBoolean();
-    private volatile @Nullable JedisPubSub subscription;
+    private final List<JedisPubSub> subscriptions = new CopyOnWriteArrayList<>();
     private volatile boolean up;
 
     private RedisLink(@Nullable RedisClient client, String shardId) {
@@ -100,22 +106,44 @@ public final class RedisLink implements AutoCloseable {
      * @param listener told about every kick request
      */
     public void listen(KickListener listener) {
+        subscribe("Syn-Redis-Kick", kickChannel(shardId), message -> deliver(message, listener));
+    }
+
+    /**
+     * Starts listening on {@value #PERMISSION_CHANNEL}, the same way as {@link #listen}.
+     *
+     * @param listener told the account of every role change
+     */
+    public void listenPermissions(Consumer<UUID> listener) {
+        subscribe("Syn-Redis-Permission", PERMISSION_CHANNEL, message -> {
+            try {
+                listener.accept(UUID.fromString(JsonParser.parseString(message).getAsJsonObject()
+                        .get("account_uuid").getAsString()));
+            } catch (RuntimeException e) {
+                failures.warn(e, "Ignoring a malformed role change on {}", PERMISSION_CHANNEL);
+            }
+        });
+    }
+
+    private void subscribe(String threadName, String channel, Consumer<String> handler) {
         final RedisClient redis = this.client;
         if (redis == null) return;
-        Thread.ofPlatform().name("Syn-Redis-Kick").daemon().start(() -> {
+        Thread.ofPlatform().name(threadName).daemon().start(() -> {
             while (!closed.get()) {
                 final JedisPubSub pubSub = new JedisPubSub() {
                     @Override
-                    public void onMessage(String channel, String message) {
-                        deliver(message, listener);
+                    public void onMessage(String subscribed, String message) {
+                        handler.accept(message);
                     }
                 };
-                this.subscription = pubSub;
+                subscriptions.add(pubSub);
                 try {
-                    redis.subscribe(pubSub, kickChannel(shardId));
+                    redis.subscribe(pubSub, channel);
                 } catch (RuntimeException e) {
                     if (closed.get()) return;
                     failed(e, "subscribe");
+                } finally {
+                    subscriptions.remove(pubSub);
                 }
                 try {
                     Thread.sleep(RESUBSCRIBE_MILLIS);
@@ -152,6 +180,27 @@ public final class RedisLink implements AutoCloseable {
         message.addProperty("reason", "logged-in-elsewhere");
         try {
             redis.publish(kickChannel(holderShard), message.toString());
+            up = true;
+            return true;
+        } catch (RuntimeException e) {
+            failed(e, "publish");
+            return false;
+        }
+    }
+
+    /**
+     * Tells every shard that an account's roles changed ({@code API-PROD-006}).
+     *
+     * @param account the account
+     * @return false if the message could not be sent: Redis is down, or not configured
+     */
+    public boolean publishPermissionChange(UUID account) {
+        final RedisClient redis = this.client;
+        if (redis == null) return false;
+        final JsonObject message = new JsonObject();
+        message.addProperty("account_uuid", account.toString());
+        try {
+            redis.publish(PERMISSION_CHANNEL, message.toString());
             up = true;
             return true;
         } catch (RuntimeException e) {
@@ -236,8 +285,7 @@ public final class RedisLink implements AutoCloseable {
     @Override
     public void close() {
         if (!closed.compareAndSet(false, true)) return;
-        final JedisPubSub pubSub = this.subscription;
-        if (pubSub != null) {
+        for (JedisPubSub pubSub : subscriptions) {
             try {
                 pubSub.unsubscribe();
             } catch (RuntimeException _) {

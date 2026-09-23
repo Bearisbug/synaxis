@@ -1,0 +1,129 @@
+{ 45.11 41.62 31.87 }
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/9.7.1/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build 
+Isolated Projects is an incubating feature.
+Reusing configuration cache.
+> Task :testing:processResources NO-SOURCE
+> Task :protocol:processResources NO-SOURCE
+> Task :architecture-tests:processResources NO-SOURCE
+> Task :architecture-tests:processTestResources NO-SOURCE
+> Task :architecture-tests:compileJava NO-SOURCE
+> Task :architecture-tests:classes UP-TO-DATE
+> Task :game-rts:processTestResources NO-SOURCE
+> Task :plugin-api:processResources NO-SOURCE
+> Task :jcstress-tests:compileJava NO-SOURCE
+> Task :architecture-tests:testNamingCheck
+> Task :architecture-tests:forbiddenImportsCheck
+> Task :jcstress-tests:processResources NO-SOURCE
+> Task :jcstress-tests:classes UP-TO-DATE
+> Task :jcstress-tests:processTestResources NO-SOURCE
+> Task :jcstress-tests:testNamingCheck
+> Task :jcstress-tests:compileTestJava NO-SOURCE
+> Task :jcstress-tests:testClasses UP-TO-DATE
+> Task :jmh-benchmarks:compileJava NO-SOURCE
+> Task :jmh-benchmarks:processResources NO-SOURCE
+> Task :jmh-benchmarks:classes UP-TO-DATE
+> Task :jmh-benchmarks:compileTestJava NO-SOURCE
+> Task :game-rts:processResources
+> Task :jmh-benchmarks:processTestResources NO-SOURCE
+> Task :jmh-benchmarks:testClasses UP-TO-DATE
+> Task :jcstress-tests:test NO-SOURCE
+> Task :game-rts:testNamingCheck
+> Task :jcstress-tests:forbiddenImportsCheck
+> Task :jmh-benchmarks:testNamingCheck
+> Task :jmh-benchmarks:test NO-SOURCE
+> Task :game-rts:forbiddenImportsCheck
+> Task :plugin-api:processTestResources NO-SOURCE
+> Task :plugin-api:testNamingCheck
+> Task :jmh-benchmarks:processJmhResources NO-SOURCE
+> Task :protocol:testNamingCheck
+> Task :plugin-api:forbiddenImportsCheck
+> Task :protocol:forbiddenImportsCheck
+> Task :server-app:processTestResources
+> Task :testing:processTestResources NO-SOURCE
+> Task :processTestResources
+> Task :testing:testNamingCheck
+> Task :jmh-benchmarks:forbiddenImportsCheck
+> Task :testing:forbiddenImportsCheck
+> Task :server-app:testNamingCheck
+> Task :server-app:forbiddenImportsCheck
+> Task :protocol:processTestResources
+> Task :server-app:buildInfo
+> Task :server-app:processResources
+> Task :generateJavaTemplates
+> Task :processResources
+> Task :testNamingCheck
+> Task :forbiddenImportsCheck
+> Task :protocol:compileJava
+> Task :protocol:classes
+> Task :protocol:jar
+> Task :protocol:compileTestJava
+> Task :protocol:errorproneCheck
+> Task :protocol:testClasses
+> Task :protocol:test
+> Task :protocol:check
+> Task :compileJava
+> Task :classes
+> Task :jar
+> Task :jcstress-tests:compileJcstressJava
+> Task :jcstress-tests:errorproneCheck
+> Task :jcstress-tests:check
+> Task :jmh-benchmarks:compileWorldbenchJava
+> Task :plugin-api:compileJava
+> Task :plugin-api:classes
+> Task :plugin-api:jar
+> Task :testing:compileJava
+> Task :testing:classes
+> Task :testing:jar
+> Task :plugin-api:compileTestJava
+> Task :plugin-api:testClasses
+> Task :plugin-api:errorproneCheck
+> Task :testing:compileTestJava
+> Task :testing:testClasses
+> Task :testing:errorproneCheck
+> Task :game-rts:compileJava
+> Task :game-rts:classes
+> Task :game-rts:jar
+> Task :plugin-api:test
+> Task :plugin-api:check
+> Task :server-app:compileJava
+> Task :server-app:classes
+> Task :server-app:jar
+
+> Task :testing:test
+SLF4J(W): No SLF4J providers were found.
+SLF4J(W): Defaulting to no-operation (NOP) logger implementation
+SLF4J(W): See https://www.slf4j.org/codes.html#noProviders for further details.
+
+> Task :architecture-tests:compileTestJava
+> Task :architecture-tests:errorproneCheck
+> Task :architecture-tests:testClasses
+> Task :game-rts:compileTestJava
+> Task :game-rts:errorproneCheck
+> Task :game-rts:testClasses
+> Task :testing:check
+> Task :server-app:compileTestJava
+> Task :server-app:errorproneCheck
+> Task :server-app:testClasses
+> Task :jmh-benchmarks:compileJmhJava
+> Task :jmh-benchmarks:jmhClasses
+> Task :jmh-benchmarks:jmhRunBytecodeGenerator
+> Task :architecture-tests:test
+> Task :architecture-tests:check
+> Task :jmh-benchmarks:jmhCompileGeneratedClasses
+> Task :jmh-benchmarks:errorproneCheck
+> Task :jmh-benchmarks:check
+> Task :compileTestJava
+> Task :errorproneCheck
+> Task :testClasses
+> Task :game-rts:test
+> Task :game-rts:check
+> Task :server-app:test
+> Task :server-app:check
+> Task :test
+> Task :check
+
+BUILD SUCCESSFUL in 1m 3s
+57 actionable tasks: 57 executed
+Configuration cache entry reused.
+exit=0

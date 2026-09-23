@@ -1,0 +1,20 @@
+Wed Sep 23 14:39:02 UTC 2026
+{ 12.81 21.45 26.23 }
+8772698832d95bc0c49d10ae703fcabe62048ccd
+== step 1/2 run 1
+BUILD SUCCESSFUL in 1m 5s
+== step 1/2 run 2
+BUILD SUCCESSFUL in 31s
+== step 1/2 run 3
+BUILD SUCCESSFUL in 27s
+== step 3: ChunkData.java from 1275602157
+ChunkPacketDeterminismTest > samePacketBytesAcrossJvms(Path) FAILED
+> Task :test FAILED
+BUILD FAILED in 23s
+message="org.opentest4j.AssertionFailedError: run 0 and run 1 differ: plain chunk 0,0: first differing byte at packet offset 2862 (blockEntities offset 1, 25 bytes), fields 8,605,2861,2886,2908 vs 8,605,2861,2886,2908"
+== step 4: restore
+BUILD SUCCESSFUL in 29s
+git status src: []
+== XML after step 4
+<testsuite name="io.github.bearisbug.synaxis.instance.ChunkPacketDeterminismTest" tests="1" skipped="0" failures="0" errors="0" timestamp="2026-09-23T14:41:55.045Z" hostname="Mac.local" time="5.863"
+<testcase name="samePacketBytesAcrossJvms(Path)" classname="io.github.bearisbug.synaxis.instance.ChunkPacketDeterminismTest" time="5.854"/

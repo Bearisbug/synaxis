@@ -1,0 +1,16 @@
+## tamper surface.light.gz byte 12 low nibble (rerun for the message)
+LightParityIntegrationTest > matchesVanilla(String, Env) > [6] "surface" FAILED
+7 tests completed, 1 failed
+> Task :test FAILED
+BUILD FAILED in 9s
+    <failure message="org.opentest4j.AssertionFailedError: 1 of 589824 nibbles differ from vanilla in surface ==&gt; expected: &lt;0&gt; but was: &lt;1&gt;" type="org.opentest4j.AssertionFailedError">
+  <system-err><![CDATA[surface sky (-16, -64, -16) minecraft:air: vanilla 15, synaxis 0
+## shape list: first entry id 2235 -> 2236
+ .../io/github/bearisbug/synaxis/instance/light/light_shape_states.txt   | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+LightBlocksTest > shapeStateIdsMatchRegistry() FAILED
+2 tests completed, 1 failed
+> Task :test FAILED
+BUILD FAILED in 15s
+    <failure message="org.opentest4j.AssertionFailedError: 2236 minecraft:sticky_piston[extended=true,facing=north] ==&gt; expected: &lt;{facing=north, extended=true}&gt; but was: &lt;{facing=&gt;east, extended=&gt;true}&gt;" type="org.opentest4j.AssertionFail
+## status

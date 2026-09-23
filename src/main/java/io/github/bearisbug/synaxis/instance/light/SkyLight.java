@@ -58,6 +58,7 @@ final class SkyLight implements Light {
         this.needsSend.set(true);
         this.isValidBorders = false;
         this.contentPropagation = null;
+        this.fullyLit = false;
     }
 
     @Override

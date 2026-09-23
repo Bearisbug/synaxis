@@ -250,7 +250,7 @@ python3 tools/pkgdeps.py game-rts/src/main/java   --root-package io.github.beari
 | `gradle/init/` | 构建用的临时 init 脚本，目前只有阿里云镜像脚本，见 §2.1 |
 | `gradle/libs.versions.toml` | 版本目录：所有第三方版本与 `minecraft = "26.2"` 都钉在这里 |
 | `example-plugin/` | `docs/PLUGINS.md` 的成品示例插件；独立 Gradle 构建，不进 `settings.gradle.kts` |
-| `tools/` | 运维与验收脚本，协议探针在 `tools/protocol-probe/probe.py` |
+| `tools/` | 运维与验收脚本，协议探针在 `tools/protocol-probe/probe.py`；`tools/light-oracle/gen.sh` 用原版服务端的光照引擎生成光照形状表与对拍真值 |
 | `docs/DESIGN.md` | 设计文档，单一事实源 |
 | `docs/TEST.md` | 测试文档，验收执行脚本与轮次台账 |
 | `docs/ENGINE.md` | 本文 |
@@ -268,7 +268,7 @@ python3 tools/pkgdeps.py game-rts/src/main/java   --root-package io.github.beari
 硬 fork 之后升版本是一次**主动的、有预算的项目**，不是季度例行动作。按 `docs/research/minestom-audit/07-architecture-review.md` §8.5 执行：
 
 1. **决策**：先写清为什么升（新客户端特性 / 玩家被迫升级 / 安全）。没有明确理由就不升——钉死版本的全部价值就在这里。
-2. **拿数据**：从上游 `MinestomDataGenerator` 跑出新版 JSON（或直接取新版 `net.minestom:data` 解包），整体替换 `src/main/resources/data/`，然后 `git diff` 逐个注册表看增删。
+2. **拿数据**：从上游 `MinestomDataGenerator` 跑出新版 JSON（或直接取新版 `net.minestom:data` 解包），整体替换 `src/main/resources/data/`，然后 `git diff` 逐个注册表看增删。注册表数据不带 `useShapeForLightOcclusion`，光照靠 `instance/light/light_shape_states.txt` 按状态 ID 补上：把 `tools/light-oracle/gen.sh` 里的 `SERVER_SHA1` 与 Loom 缓存路径改成新版，重跑它，新表与 `parity/*.light.gz` 对拍真值一起提交（`LightBlocksTest` 会拦下 ID 已错位的旧表）。
 3. **协议 diff**：对照 wiki.vg / Mojang 的版本差异，列出新增、删除、改字段的包。这是工作量主体。
 4. **改包定义**：按 diff 改 `network/packet/**`；每个改动过的包都必须有往返测试。
 5. **改常量表**：从 git 历史复活 `code-generators`（REQ-008 删除前的最后版本在 commit `b162f394e8`），用新数据跑一次（入参 `<注册表数据目录> <输出目录>`），把输出与我们手工裁剪过的 `src/main/java`（原生成物已并入，REQ-008） 做三方合并——生成器会覆盖裁剪，必须人工合。

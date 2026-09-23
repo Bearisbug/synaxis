@@ -1,0 +1,10 @@
+# logs/latest.log of the run behind report-dh.txt (MODS=dh, 2026-09-23), lines matching:
+# grep -niE 'graphics backend|rendering engine|Iris events|enabling DSA|enableDhFog|Profile: |Using shaderpack|Started DhWorld|waiting chunk wrappers|0010-sqlite-createInitialDataTables|Closed DhWorld|MixinApplyError|InvalidInjection|MixinTransformerError|Mixin.*(error|failed)|Stopping!|---- Minecraft Crash'
+# lines cut at 300 chars; crash-reports/: absent; hs_err: C [libopenal.so+0x9c670]
+115:[08:24:31] [Render thread/INFO] (Minecraft) Using graphics backend OpenGL, using drivers: 4.5 (Core Profile) Mesa 26.0.8-1ubuntu0.3
+227:[08:24:42] [Render thread/INFO] (AbstractDhWorld) Started DhWorld of type CLIENT_ONLY
+247:[08:24:43] [Render thread/INFO] (DatabaseUpdater) Running SQL update script: [sqlScripts/0010-sqlite-createInitialDataTables.sql], for repo: [/work/client-fabric/build/run/clientGameTest/Distant_Horizons_server_data/synaxis/0000000000000@synaxis@@match_96f6da9e944f418486e384e63831a9a4/DistantHor
+261:[08:24:43] [Render thread/INFO] (ClientApi) Loaded [673] waiting chunk wrappers.
+272:[08:25:39] [Render thread/INFO] (AbstractDhWorld) Closed DhWorld of type [CLIENT_ONLY].
+273:[08:25:39] [Render thread/INFO] (AbstractDhWorld) Closed DhWorld of type [CLIENT_ONLY].
+279:[08:25:41] [Render thread/INFO] (Minecraft) Stopping!

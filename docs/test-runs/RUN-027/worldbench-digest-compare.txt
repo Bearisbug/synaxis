@@ -1,0 +1,96 @@
+# script (run in a uv venv outside the repo, stdlib only):
+#   import json, sys
+#   F = ["plainFramedSha256", "litFramedSha256", "plainUncompressedSha256", "litUncompressedSha256"]
+#   K = ["type", "height", "terrain", "palettes", "chunks"]
+#   def load(p):
+#       d = json.load(open(p))
+#       return {tuple(j["params"][k] for k in K): j for j in d["jobs"] if j["params"]["type"] == "packet"}, d
+#   a, da = load(sys.argv[1]); b, db = load(sys.argv[2])
+#   print(f"A={sys.argv[1]} commit={da['machine'].get('gitCommit')}  B={sys.argv[2]} commit={db['machine'].get('gitCommit')}")
+#   eq = tot = 0
+#   for key in a:
+#       ja, jb = a[key], b.get(key)
+#       for f in F:
+#           tot += 1
+#           same = jb is not None and ja.get(f) == jb.get(f) and ja.get(f)
+#           eq += bool(same)
+#           print(f"{'SAME' if same else 'DIFF'} h={key[1]} t={key[2]} p={key[3][:9]} {f} {ja.get(f,'')[:16]} {(jb or {}).get(f,'')[:16]}")
+#       la = [round(ja.get('loadAverageBefore',0),1), round(ja.get('loadAverageAfter',0),1)]
+#       print(f"     load A {la} n={ja['plainFramedBytes']['n'] if 'n' in ja['plainFramedBytes'] else ja['plainFramedBytes']}")
+#   print(f"jobs A={len(a)} B={len(b)}  digests equal {eq}/{tot}")
+== step 4: packet-1 vs packet-2
+A=docs/test-runs/RUN-027/packet-1.json commit=8772698832d95bc0c49d10ae703fcabe62048ccd  B=docs/test-runs/RUN-027/packet-2.json commit=8772698832d95bc0c49d10ae703fcabe62048ccd
+SAME h=384 t=natural p=optimized plainFramedSha256 cce554b575e389eb cce554b575e389eb
+SAME h=384 t=natural p=optimized litFramedSha256 97f0922588a39f16 97f0922588a39f16
+SAME h=384 t=natural p=optimized plainUncompressedSha256 39cd21196940926d 39cd21196940926d
+SAME h=384 t=natural p=optimized litUncompressedSha256 dbc05847fb9caca6 dbc05847fb9caca6
+     load A [13.3, 11.5] n=2700
+SAME h=384 t=natural p=as genera plainFramedSha256 46b544d79f1c2b17 46b544d79f1c2b17
+SAME h=384 t=natural p=as genera litFramedSha256 6bc719d091412e04 6bc719d091412e04
+SAME h=384 t=natural p=as genera plainUncompressedSha256 471a6d9f08543080 471a6d9f08543080
+SAME h=384 t=natural p=as genera litUncompressedSha256 019e730234d209fd 019e730234d209fd
+     load A [11.5, 11.8] n=2700
+SAME h=384 t=solid p=optimized plainFramedSha256 2b260483a964dc6f 2b260483a964dc6f
+SAME h=384 t=solid p=optimized litFramedSha256 58c4c30486defb62 58c4c30486defb62
+SAME h=384 t=solid p=optimized plainUncompressedSha256 2576dbc6ce242861 2576dbc6ce242861
+SAME h=384 t=solid p=optimized litUncompressedSha256 a259836ab3a5d52c a259836ab3a5d52c
+     load A [11.8, 10.9] n=2700
+SAME h=256 t=natural p=optimized plainFramedSha256 9b156094d2b29f62 9b156094d2b29f62
+SAME h=256 t=natural p=optimized litFramedSha256 d6fb083a935c4130 d6fb083a935c4130
+SAME h=256 t=natural p=optimized plainUncompressedSha256 2142cbf34060e6e8 2142cbf34060e6e8
+SAME h=256 t=natural p=optimized litUncompressedSha256 e82dd549c31d4805 e82dd549c31d4805
+     load A [10.9, 9.8] n=2700
+SAME h=256 t=solid p=optimized plainFramedSha256 faf5145c57c5ada0 faf5145c57c5ada0
+SAME h=256 t=solid p=optimized litFramedSha256 caed7bb4feeafa16 caed7bb4feeafa16
+SAME h=256 t=solid p=optimized plainUncompressedSha256 d3e147b18b553b64 d3e147b18b553b64
+SAME h=256 t=solid p=optimized litUncompressedSha256 9fc847efb7a255d6 9fc847efb7a255d6
+     load A [9.8, 9.8] n=2700
+SAME h=64 t=natural p=optimized plainFramedSha256 482b80778845346c 482b80778845346c
+SAME h=64 t=natural p=optimized litFramedSha256 3fe53ed4d61141bb 3fe53ed4d61141bb
+SAME h=64 t=natural p=optimized plainUncompressedSha256 67352e83d834a88e 67352e83d834a88e
+SAME h=64 t=natural p=optimized litUncompressedSha256 61b90e517cb9347e 61b90e517cb9347e
+     load A [9.8, 9.5] n=2700
+SAME h=64 t=flat40 p=optimized plainFramedSha256 51f02cd56d1576ad 51f02cd56d1576ad
+SAME h=64 t=flat40 p=optimized litFramedSha256 cceb1f04689c9303 cceb1f04689c9303
+SAME h=64 t=flat40 p=optimized plainUncompressedSha256 bc7214c653086f22 bc7214c653086f22
+SAME h=64 t=flat40 p=optimized litUncompressedSha256 df73342b15b4bfb4 df73342b15b4bfb4
+     load A [9.2, 9.2] n=2700
+jobs A=7 B=7  digests equal 28/28
+== step 5: packet-1 vs bench-2026-09-packet-canonical-1.json
+A=docs/test-runs/RUN-027/packet-1.json commit=8772698832d95bc0c49d10ae703fcabe62048ccd  B=docs/research/large-world-2026-09/bench-2026-09-packet-canonical-1.json commit=f5a99ee0312e29bdb7769c787c34bf4fd9cfd13f
+SAME h=384 t=natural p=optimized plainFramedSha256 cce554b575e389eb cce554b575e389eb
+SAME h=384 t=natural p=optimized litFramedSha256 97f0922588a39f16 97f0922588a39f16
+SAME h=384 t=natural p=optimized plainUncompressedSha256 39cd21196940926d 39cd21196940926d
+SAME h=384 t=natural p=optimized litUncompressedSha256 dbc05847fb9caca6 dbc05847fb9caca6
+     load A [13.3, 11.5] n=2700
+SAME h=384 t=natural p=as genera plainFramedSha256 46b544d79f1c2b17 46b544d79f1c2b17
+SAME h=384 t=natural p=as genera litFramedSha256 6bc719d091412e04 6bc719d091412e04
+SAME h=384 t=natural p=as genera plainUncompressedSha256 471a6d9f08543080 471a6d9f08543080
+SAME h=384 t=natural p=as genera litUncompressedSha256 019e730234d209fd 019e730234d209fd
+     load A [11.5, 11.8] n=2700
+SAME h=384 t=solid p=optimized plainFramedSha256 2b260483a964dc6f 2b260483a964dc6f
+SAME h=384 t=solid p=optimized litFramedSha256 58c4c30486defb62 58c4c30486defb62
+SAME h=384 t=solid p=optimized plainUncompressedSha256 2576dbc6ce242861 2576dbc6ce242861
+SAME h=384 t=solid p=optimized litUncompressedSha256 a259836ab3a5d52c a259836ab3a5d52c
+     load A [11.8, 10.9] n=2700
+SAME h=256 t=natural p=optimized plainFramedSha256 9b156094d2b29f62 9b156094d2b29f62
+SAME h=256 t=natural p=optimized litFramedSha256 d6fb083a935c4130 d6fb083a935c4130
+SAME h=256 t=natural p=optimized plainUncompressedSha256 2142cbf34060e6e8 2142cbf34060e6e8
+SAME h=256 t=natural p=optimized litUncompressedSha256 e82dd549c31d4805 e82dd549c31d4805
+     load A [10.9, 9.8] n=2700
+SAME h=256 t=solid p=optimized plainFramedSha256 faf5145c57c5ada0 faf5145c57c5ada0
+SAME h=256 t=solid p=optimized litFramedSha256 caed7bb4feeafa16 caed7bb4feeafa16
+SAME h=256 t=solid p=optimized plainUncompressedSha256 d3e147b18b553b64 d3e147b18b553b64
+SAME h=256 t=solid p=optimized litUncompressedSha256 9fc847efb7a255d6 9fc847efb7a255d6
+     load A [9.8, 9.8] n=2700
+SAME h=64 t=natural p=optimized plainFramedSha256 482b80778845346c 482b80778845346c
+SAME h=64 t=natural p=optimized litFramedSha256 3fe53ed4d61141bb 3fe53ed4d61141bb
+SAME h=64 t=natural p=optimized plainUncompressedSha256 67352e83d834a88e 67352e83d834a88e
+SAME h=64 t=natural p=optimized litUncompressedSha256 61b90e517cb9347e 61b90e517cb9347e
+     load A [9.8, 9.5] n=2700
+SAME h=64 t=flat40 p=optimized plainFramedSha256 51f02cd56d1576ad 51f02cd56d1576ad
+SAME h=64 t=flat40 p=optimized litFramedSha256 cceb1f04689c9303 cceb1f04689c9303
+SAME h=64 t=flat40 p=optimized plainUncompressedSha256 bc7214c653086f22 bc7214c653086f22
+SAME h=64 t=flat40 p=optimized litUncompressedSha256 df73342b15b4bfb4 df73342b15b4bfb4
+     load A [9.2, 9.2] n=2700
+jobs A=7 B=7  digests equal 28/28

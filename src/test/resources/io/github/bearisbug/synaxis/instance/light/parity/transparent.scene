@@ -1,0 +1,30 @@
+# 透光与半透光方块：玻璃、染色玻璃、树叶、水（深 20）、冰、浮冰、霜冰、史莱姆块、蜂蜜块、蜘蛛网、
+# 细雪、含水台阶、海带与海草。每种各占一根 4x4 的柱子或一个池子，四周露天。
+fill -32 0 -32 47 9 47 minecraft:stone
+fill -32 10 -32 47 10 47 minecraft:sand
+fill -14 11 -14 -11 30 -11 minecraft:glass
+fill -8 11 -14 -5 30 -11 minecraft:tinted_glass
+fill -2 11 -14 1 30 -11 minecraft:oak_leaves[persistent=true]
+fill 4 11 -14 7 30 -11 minecraft:ice
+fill 10 11 -14 13 30 -11 minecraft:packed_ice
+fill 16 11 -14 19 30 -11 minecraft:frosted_ice
+fill 22 11 -14 25 30 -11 minecraft:slime_block
+fill 28 11 -14 31 30 -11 minecraft:honey_block
+fill -14 11 -6 -11 30 -3 minecraft:cobweb
+fill -8 11 -6 -5 30 -3 minecraft:powder_snow
+fill -2 11 -6 1 30 -3 minecraft:oak_slab[type=bottom,waterlogged=true]
+fill 4 11 -6 7 30 -3 minecraft:oak_slab[type=top,waterlogged=true]
+fill 10 11 -6 13 30 -3 minecraft:glass_pane
+fill 16 11 -6 19 30 -3 minecraft:white_shulker_box
+# 深水池：石墙围成，水深 20，跨 x=16 与 z=16 与 y=16/32 section 边界
+fill 2 10 6 26 34 26 minecraft:stone
+fill 3 11 7 25 34 25 minecraft:water
+fill 6 11 10 6 25 10 minecraft:kelp_plant
+set 6 26 10 minecraft:kelp
+set 10 11 12 minecraft:seagrass
+set 12 11 12 minecraft:tall_seagrass[half=lower]
+set 12 12 12 minecraft:tall_seagrass[half=upper]
+# 冰盖水池
+fill -20 10 10 -8 20 22 minecraft:stone
+fill -19 11 11 -9 19 21 minecraft:water
+fill -19 20 11 -9 20 21 minecraft:ice

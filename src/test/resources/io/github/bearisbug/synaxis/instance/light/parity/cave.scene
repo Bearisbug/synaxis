@@ -1,0 +1,27 @@
+# 洞穴：y 0..40 全是石头，挖出横向隧道、房间与一条通天竖井；洞内有水池、岩浆池与火把。
+fill -32 0 -32 47 40 47 minecraft:stone
+fill -32 41 -32 47 41 47 minecraft:grass_block
+# 通天竖井，落进 section 边界 y=32
+fill 4 20 4 6 41 6 minecraft:air
+# 大房间，跨 x=0/16 与 z=0/16
+fill -10 20 -10 25 30 25 minecraft:air
+# 横向隧道
+fill -30 22 7 47 24 8 minecraft:air
+fill 12 18 -30 13 20 47 minecraft:air
+# 深处小洞室，只靠方块光照明
+fill 20 4 20 28 10 28 minecraft:air
+set 24 4 24 minecraft:torch
+set 20 7 24 minecraft:wall_torch[facing=east]
+set 28 10 28 minecraft:glowstone
+# 大房间里的水池与岩浆池
+fill -8 20 -8 0 23 0 minecraft:water
+fill 15 20 15 20 21 20 minecraft:lava
+set 10 20 -5 minecraft:torch
+set 2 25 22 minecraft:lantern
+# 隧道口的台阶与楼梯
+fill -30 22 7 -30 22 8 minecraft:stone_slab[type=bottom]
+fill -29 22 7 -29 22 8 minecraft:stone_stairs[facing=west,half=bottom]
+# 竖井口铺地毯，半路一层细雪；大房间顶上一片潜影盒吊顶
+fill 4 41 4 6 41 6 minecraft:white_carpet
+fill 4 35 4 6 35 6 minecraft:powder_snow
+fill -2 30 -2 3 30 3 minecraft:white_shulker_box

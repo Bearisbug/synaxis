@@ -1,0 +1,103 @@
+## quick Wed Sep 23 17:14:24 CST 2026 load={ 81.39 26.22 13.48 }
+Picked up JAVA_TOOL_OPTIONS: -Dhttps.proxyHost=127.0.0.1 -Dhttps.proxyPort=7897 -Dhttp.proxyHost=127.0.0.1 -Dhttp.proxyPort=7897 -Dhttp.nonProxyHosts=maven.aliyun.com|*.aliyun.com
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/9.7.1/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build 
+Isolated Projects is an incubating feature.
+Calculating task graph as no cached configuration is available for tasks: :jmh-benchmarks:worldBench
+Caught exception: Could not start the FSEvents stream: /Users/bug/Documents/Projects/Minecraft/synaxis-wt/integrate
+
+> Configure project :build-src
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by build file 'build-src/build.gradle.kts'
+Build was configured to prefer settings repositories over project repositories but repository 'Gradle Central Plugin Repository' was added by build file 'build-src/build.gradle.kts'
+
+> Task :build-src:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :build-src:generateEntrypointForConventions UP-TO-DATE
+> Task :build-src:generateEntrypointForConventionsInPluginsBlock UP-TO-DATE
+> Task :build-src:generateEntrypointForLibs UP-TO-DATE
+> Task :build-src:generateEntrypointForLibsInPluginsBlock UP-TO-DATE
+> Task :build-src:generateExternalPluginSpecBuilders UP-TO-DATE
+> Task :build-src:generateLibrariesForConventions UP-TO-DATE
+> Task :build-src:generateLibrariesForLibs UP-TO-DATE
+> Task :build-src:extractPrecompiledScriptPluginPlugins UP-TO-DATE
+> Task :build-src:compilePluginsBlocks UP-TO-DATE
+> Task :build-src:generatePrecompiledScriptPluginAccessors UP-TO-DATE
+> Task :build-src:generateScriptPluginAdapters UP-TO-DATE
+> Task :build-src:verifyEarlyEvaluatedBuild UP-TO-DATE
+> Task :build-src:verifyTopLevelBuild UP-TO-DATE
+> Task :build-src:compileKotlin UP-TO-DATE
+> Task :build-src:compileJava UP-TO-DATE
+> Task :build-src:pluginDescriptors UP-TO-DATE
+> Task :build-src:processResources UP-TO-DATE
+> Task :build-src:classes UP-TO-DATE
+> Task :build-src:jar UP-TO-DATE
+
+> Configure project :
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by plugin 'synaxis.java-library'
+
+> Configure project :game-rts
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by plugin 'synaxis.java-library'
+
+> Configure project :architecture-tests
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by plugin 'synaxis.java-library'
+
+> Configure project :protocol
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by plugin 'synaxis.java-library'
+
+> Configure project :testing
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by plugin 'synaxis.java-library'
+
+> Configure project :plugin-api
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by plugin 'synaxis.java-library'
+
+> Configure project :server-app
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by plugin 'synaxis.java-library'
+
+> Configure project :jcstress-tests
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by plugin 'synaxis.java-library'
+
+> Configure project :jmh-benchmarks
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by plugin 'synaxis.java-library'
+
+> Task :jmh-benchmarks:processWorldbenchResources NO-SOURCE
+> Task :generateJavaTemplates UP-TO-DATE
+> Task :processResources UP-TO-DATE
+> Task :compileJava UP-TO-DATE
+> Task :classes UP-TO-DATE
+> Task :jar UP-TO-DATE
+> Task :jmh-benchmarks:compileWorldbenchJava UP-TO-DATE
+> Task :jmh-benchmarks:worldbenchClasses UP-TO-DATE
+
+> Task :jmh-benchmarks:worldBench
+Picked up JAVA_TOOL_OPTIONS: -Dhttps.proxyHost=127.0.0.1 -Dhttps.proxyPort=7897 -Dhttp.proxyHost=127.0.0.1 -Dhttp.proxyPort=7897 -Dhttp.nonProxyHosts=maven.aliyun.com|*.aliyun.com
+== packet h=384 t=natural p=opt grid=8 rounds=1 warmup=0
+Picked up JAVA_TOOL_OPTIONS: -Dhttps.proxyHost=127.0.0.1 -Dhttps.proxyPort=7897 -Dhttp.proxyHost=127.0.0.1 -Dhttp.proxyPort=7897 -Dhttp.nonProxyHosts=maven.aliyun.com|*.aliyun.com
+SLF4J(W): No SLF4J providers were found.
+SLF4J(W): Defaulting to no-operation (NOP) logger implementation
+SLF4J(W): See https://www.slf4j.org/codes.html#noProviders for further details.
+   {"params":{"type":"packet","height":384,"minY":-64,"terrain":"natural","palettes":"optimized (indirect, as decoded from the network format)","chunks":64,"rounds":1,"warmup":0,"compressionThreshold":256},"sampleChunks":"interior 6x6 of each round, pooled over rounds","plainFirstSerializeMs":{"n":36,"median":0.619125,"p95":1.168167,"mean":0.6871400833333333,"min":0.42325,"max":1.363167},"plainFramedBytes":{"n":36,"median":2323.0,"p95":2613.0,"mean":2330.1388888888887,"min":1827.0,"max":2727.0},"plainUncompressedBytes":{"n":36,"median":19323.0,"p95":19332.0,"mean":19096.166666666668,"min":17268.0,"max":19332.0},"lazyLightFirstSerializeMs":{"n":36,"median":2.902542,"p95":4.691625,"mean":3.0966238611111114,"min":1.625333,"max":5.528625},"litSerializeMs":{"n":36,"median":0.62075,"p95":0.685125,"mean":0.6136168333333332,"min":0.4795,"max":0.721584},"litFramedBytes":{"n":36,"median":2412.0,"p95":2793.0,"mean":2423.8055555555557,"min":1893.0,"max":2836.0},"litUncompressedBytes":{"n":36,"median":23435.0,"p95":25489.0,"mean":24172.222222222223,"min":23426.0,"max":25490.0},"skyArraysPerPacket":{"n":36,"median":2.0,"p95":3.0,"mean":2.4722222222222223,"min":2.0,"max":3.0},"blockArraysPerPacket":{"n":36,"median":0.0,"p95":0.0,"mean":0.0,"min":0.0,"max":0.0},"heap":{"plainGeneratedKiBPerChunk":{"n":1,"median":43.281494140625,"p95":43.281494140625,"mean":43.281494140625,"min":43.281494140625,"max":43.281494140625},"plainWithPacketCacheKiBPerChunk":{"n":1,"median":92.860595703125,"p95":92.860595703125,"mean":92.860595703125,"min":92.860595703125,"max":92.860595703125},"lightingGeneratedKiBPerChunk":{"n":1,"median":26.1590576171875,"p95":26.1590576171875,"mean":26.1590576171875,"min":26.1590576171875,"max":26.1590576171875},"lightingLitKiBPerChunk":{"n":1,"median":37.3719482421875,"p95":37.3719482421875,"mean":37.3719482421875,"min":37.3719482421875,"max":37.3719482421875},"lightingLitWithPacketCacheKiBPerChunk":{"n":1,"median":59.1038818359375,"p95":59.1038818359375,"mean":59.1038818359375,"min":59.1038818359375,"max":59.1038818359375}},"wholePass":{"plainWallMsPerChunk":{"n":1,"median":0.959037765625,"p95":0.959037765625,"mean":0.959037765625,"min":0.959037765625,"max":0.959037765625},"plainCpuMsPerChunk":{"n":1,"median":2.258125,"p95":2.258125,"mean":2.258125,"min":2.258125,"max":2.258125},"lazyLightWallMsPerChunk":{"n":1,"median":6.953556640625,"p95":6.953556640625,"mean":6.953556640625,"min":6.953556640625,"max":6.953556640625},"lazyLightCpuMsPerChunk":{"n":1,"median":52.861,"p95":52.861,"mean":52.861,"min":52.861,"max":52.861},"litWallMsPerChunk":{"n":1,"median":0.6148170625,"p95":0.6148170625,"mean":0.6148170625,"min":0.6148170625,"max":0.6148170625},"litCpuMsPerChunk":{"n":1,"median":1.962203125,"p95":1.962203125,"mean":1.962203125,"min":1.962203125,"max":1.962203125}},"job":"packet h\u003d384 t\u003dnatural p\u003dopt grid\u003d8 rounds\u003d1 warmup\u003d0","loadAverageBefore":76.55712890625,"loadAverageAfter":76.55712890625,"jvm":{"maxHeapMiB":3072,"inputArguments":["-Dhttps.proxyHost\u003d127.0.0.1","-Dhttps.proxyPort\u003d7897","-Dhttp.proxyHost\u003d127.0.0.1","-Dhttp.proxyPort\u003d7897","-Dhttp.nonProxyHosts\u003dmaven.aliyun.com|*.aliyun.com","-Xms3g","-Xmx3g","-XX:+UseG1GC","-XX:+AlwaysPreTouch"]}}
+== relight h=384 t=natural n=256 rounds=1
+Picked up JAVA_TOOL_OPTIONS: -Dhttps.proxyHost=127.0.0.1 -Dhttps.proxyPort=7897 -Dhttp.proxyHost=127.0.0.1 -Dhttp.proxyPort=7897 -Dhttp.nonProxyHosts=maven.aliyun.com|*.aliyun.com
+SLF4J(W): No SLF4J providers were found.
+SLF4J(W): Defaulting to no-operation (NOP) logger implementation
+SLF4J(W): See https://www.slf4j.org/codes.html#noProviders for further details.
+   {"params":{"type":"relight","height":384,"minY":-64,"terrain":"natural","palettes":"optimized (indirect, as decoded from the network format)","chunks":256,"rounds":1,"warmup":1,"compressionThreshold":256},"relightWallMs":{"n":1,"median":153.858333,"p95":153.858333,"mean":153.858333,"min":153.858333,"max":153.858333},"relightCpuMs":{"n":1,"median":1022.99,"p95":1022.99,"mean":1022.99,"min":1022.99,"max":1022.99},"generatedKiBPerChunk":{"n":1,"median":27.937957763671875,"p95":27.937957763671875,"mean":27.937957763671875,"min":27.937957763671875,"max":27.937957763671875},"relightHeapDeltaMiB":{"n":1,"median":0.9487152099609375,"p95":0.9487152099609375,"mean":0.9487152099609375,"min":0.9487152099609375,"max":0.9487152099609375},"litTotalKiBPerChunk":{"n":1,"median":31.732818603515625,"p95":31.732818603515625,"mean":31.732818603515625,"min":31.732818603515625,"max":31.732818603515625},"job":"relight h\u003d384 t\u003dnatural n\u003d256 rounds\u003d1","loadAverageBefore":76.55712890625,"loadAverageAfter":73.22900390625,"jvm":{"maxHeapMiB":3072,"inputArguments":["-Dhttps.proxyHost\u003d127.0.0.1","-Dhttps.proxyPort\u003d7897","-Dhttp.proxyHost\u003d127.0.0.1","-Dhttp.proxyPort\u003d7897","-Dhttp.nonProxyHosts\u003dmaven.aliyun.com|*.aliyun.com","-Xms3g","-Xmx3g","-XX:+UseG1GC","-XX:+AlwaysPreTouch"]}}
+== local h=384 t=natural grid=12 samples=30 warmupSamples=6
+Picked up JAVA_TOOL_OPTIONS: -Dhttps.proxyHost=127.0.0.1 -Dhttps.proxyPort=7897 -Dhttp.proxyHost=127.0.0.1 -Dhttp.proxyPort=7897 -Dhttp.nonProxyHosts=maven.aliyun.com|*.aliyun.com
+SLF4J(W): No SLF4J providers were found.
+SLF4J(W): Defaulting to no-operation (NOP) logger implementation
+SLF4J(W): See https://www.slf4j.org/codes.html#noProviders for further details.
+   {"params":{"type":"local","height":384,"minY":-64,"terrain":"natural","palettes":"optimized (indirect, as decoded from the network format)","chunks":144,"rounds":1,"warmup":6,"compressionThreshold":256},"samples":30,"lazy3x3Ms":{"all":{"n":30,"median":2.640083,"p95":3.84425,"mean":2.7378207666666667,"min":1.751542,"max":4.463791},"placeGlowstone":{"n":10,"median":2.689791,"p95":4.463791,"mean":2.9121914999999996,"min":1.991709,"max":4.463791},"placeStone":{"n":10,"median":2.829792,"p95":3.491875,"mean":2.7614457999999997,"min":1.751542,"max":3.491875},"dig":{"n":10,"median":2.548292,"p95":3.019167,"mean":2.539825,"min":2.019084,"max":3.019167}},"relight3x3Ms":{"all":{"n":30,"median":2.405375,"p95":3.476042,"mean":2.5641638333333336,"min":1.901083,"max":3.584083},"placeGlowstone":{"n":10,"median":2.468166,"p95":3.584083,"mean":2.6661706,"min":2.196541,"max":3.584083},"placeStone":{"n":10,"median":2.40075,"p95":3.423292,"mean":2.5120251000000002,"min":2.078834,"max":3.423292},"dig":{"n":10,"median":2.307417,"p95":3.476042,"mean":2.5142958,"min":1.901083,"max":3.476042}},"job":"local h\u003d384 t\u003dnatural grid\u003d12 samples\u003d30 warmupSamples\u003d6","loadAverageBefore":73.22900390625,"loadAverageAfter":73.22900390625,"jvm":{"maxHeapMiB":3072,"inputArguments":["-Dhttps.proxyHost\u003d127.0.0.1","-Dhttps.proxyPort\u003d7897","-Dhttp.proxyHost\u003d127.0.0.1","-Dhttp.proxyPort\u003d7897","-Dhttp.nonProxyHosts\u003dmaven.aliyun.com|*.aliyun.com","-Xms3g","-Xmx3g","-XX:+UseG1GC","-XX:+AlwaysPreTouch"]}}
+Results written to /Users/bug/Documents/Projects/Minecraft/synaxis-wt/integrate/jmh-benchmarks/build/worldbench/run025-quick.json
+
+[Incubating] Problems report is available at: file:///Users/bug/Documents/Projects/Minecraft/synaxis-wt/integrate/build/reports/problems/problems-report.html
+
+Deprecated Gradle features were used in this build, making it incompatible with Gradle 10.
+
+You can use '--warning-mode all' to show the individual deprecation warnings and determine if they come from your own scripts or plugins.
+
+For more on this, please refer to https://docs.gradle.org/9.7.1/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.
+
+BUILD SUCCESSFUL in 10s
+24 actionable tasks: 1 executed, 23 up-to-date
+Configuration cache entry stored.
+GRADLE_EXIT=0

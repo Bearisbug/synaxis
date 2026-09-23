@@ -1,6 +1,7 @@
 package io.github.bearisbug.synaxis.game.client.gametest;
 
 import io.github.bearisbug.synaxis.game.client.gametest.camera.SpikeCamera;
+import io.github.bearisbug.synaxis.game.client.gametest.dh.DhIrisSpike;
 import io.github.bearisbug.synaxis.game.client.gametest.ray.ScreenRay;
 import io.github.bearisbug.synaxis.game.client.gametest.s5.InputSpike;
 import io.github.bearisbug.synaxis.game.client.gametest.s5.TerrainSpike;
@@ -46,7 +47,8 @@ import org.jspecify.annotations.Nullable;
  * world ray under the cursor, still and while the camera pans. S5: section visibility with the eye
  * high and outside the map, and the two mouse input paths. {@code chat}: the secure chat toast and
  * what one chat message brings back, see {@link #chat}. SYNAXIS_SPIKES picks among S2 to S5 and
- * {@code chat} ({@code all} for every one); unset, the spikes do not run at all and only
+ * {@code chat} ({@code all} for every one); {@code dh} adds {@link DhIrisSpike}, which runs only
+ * when named, not under {@code all}. Unset, the spikes do not run at all and only
  * {@link RegressionClientGameTest} does. Findings are appended to {@code synaxis-gametest/report.txt}
  * in the run directory, after the regression's R lines; screenshots go to {@code screenshots/}.
  */
@@ -105,6 +107,7 @@ public final class SpikeClientGameTest implements FabricClientGameTest {
             if (enabled("s3")) EntityCullingSpike.run(context, report);
             if (enabled("s4")) screenRay(context, report);
             if (enabled("s5")) sectionsAndInput(context, report);
+            if (named("dh")) DhIrisSpike.run(context, report);
             context.runOnClient(client -> client.disconnect(new TitleScreen(), false));
         } else {
             context.setScreen(TitleScreen::new);
@@ -289,6 +292,11 @@ public final class SpikeClientGameTest implements FabricClientGameTest {
     private static boolean enabled(String spike) {
         final List<String> spikes = List.of(System.getenv("SYNAXIS_SPIKES").replace(" ", "").split(","));
         return spikes.contains("all") || spikes.contains(spike);
+    }
+
+    /** Whether SYNAXIS_SPIKES names a spike that only runs on request, such as {@code dh}. */
+    private static boolean named(String spike) {
+        return List.of(System.getenv("SYNAXIS_SPIKES").replace(" ", "").split(",")).contains(spike);
     }
 
     private static void write(List<String> report) {

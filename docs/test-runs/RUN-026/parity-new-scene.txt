@@ -1,0 +1,22 @@
+## new scene via gen.sh: copy surface.scene to zz-copy.scene
+cave
+deep
+emitters
+overhang
+shaft
+surface
+transparent
+zz-copy
+GEN_EXIT=0
+zz-copy.light.gz identical to surface.light.gz
+BUILD SUCCESSFUL in 2s
+io.github.bearisbug.synaxis.instance.light.LightParityIntegrationTest tests=8 skipped=0 failures=0 errors=0
+testcase name="[1] &quot;cave&quot;"
+testcase name="[2] &quot;deep&quot;"
+testcase name="[3] &quot;emitters&quot;"
+testcase name="[4] &quot;overhang&quot;"
+testcase name="[5] &quot;shaft&quot;"
+testcase name="[6] &quot;surface&quot;"
+testcase name="[7] &quot;transparent&quot;"
+testcase name="[8] &quot;zz-copy&quot;"
+## status

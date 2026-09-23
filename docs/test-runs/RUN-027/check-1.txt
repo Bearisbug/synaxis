@@ -1,0 +1,148 @@
+{ 25.96 37.20 29.45 }
+8772698832d95bc0c49d10ae703fcabe62048ccd
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/9.7.1/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build 
+Isolated Projects is an incubating feature.
+Reusing configuration cache.
+> Task :architecture-tests:compileJava NO-SOURCE
+> Task :testing:processResources NO-SOURCE
+> Task :architecture-tests:processResources NO-SOURCE
+> Task :architecture-tests:processTestResources NO-SOURCE
+> Task :protocol:processResources NO-SOURCE
+> Task :architecture-tests:classes UP-TO-DATE
+> Task :plugin-api:processResources NO-SOURCE
+> Task :game-rts:processTestResources NO-SOURCE
+> Task :jcstress-tests:compileJava NO-SOURCE
+> Task :jcstress-tests:processResources NO-SOURCE
+> Task :jcstress-tests:classes UP-TO-DATE
+> Task :jcstress-tests:compileTestJava NO-SOURCE
+> Task :architecture-tests:testNamingCheck
+> Task :jcstress-tests:forbiddenImportsCheck
+> Task :game-rts:testNamingCheck
+> Task :game-rts:forbiddenImportsCheck
+> Task :architecture-tests:forbiddenImportsCheck
+> Task :jcstress-tests:testNamingCheck
+> Task :jcstress-tests:processTestResources NO-SOURCE
+> Task :jcstress-tests:testClasses UP-TO-DATE
+> Task :jmh-benchmarks:processResources NO-SOURCE
+> Task :jmh-benchmarks:processTestResources NO-SOURCE
+> Task :jmh-benchmarks:processJmhResources NO-SOURCE
+> Task :jmh-benchmarks:testNamingCheck
+> Task :plugin-api:processTestResources NO-SOURCE
+> Task :game-rts:processResources
+> Task :jmh-benchmarks:compileJava NO-SOURCE
+> Task :jmh-benchmarks:classes UP-TO-DATE
+> Task :plugin-api:testNamingCheck
+> Task :server-app:buildInfo
+> Task :jmh-benchmarks:compileTestJava NO-SOURCE
+> Task :jmh-benchmarks:testClasses UP-TO-DATE
+> Task :jcstress-tests:test NO-SOURCE
+> Task :protocol:forbiddenImportsCheck
+> Task :protocol:testNamingCheck
+> Task :processTestResources
+> Task :jmh-benchmarks:test NO-SOURCE
+> Task :plugin-api:forbiddenImportsCheck
+> Task :testing:processTestResources NO-SOURCE
+> Task :server-app:processResources
+> Task :server-app:processTestResources
+> Task :testing:testNamingCheck
+> Task :testing:forbiddenImportsCheck
+> Task :jmh-benchmarks:forbiddenImportsCheck
+> Task :server-app:forbiddenImportsCheck
+> Task :server-app:testNamingCheck
+> Task :protocol:processTestResources
+> Task :generateJavaTemplates
+> Task :testNamingCheck
+> Task :processResources
+> Task :forbiddenImportsCheck
+> Task :protocol:compileJava
+> Task :protocol:classes
+> Task :protocol:jar
+> Task :protocol:compileTestJava
+> Task :protocol:errorproneCheck
+> Task :protocol:testClasses
+> Task :protocol:test
+> Task :protocol:check
+> Task :compileJava
+> Task :classes
+> Task :jar
+> Task :jcstress-tests:compileJcstressJava
+> Task :jcstress-tests:errorproneCheck
+> Task :jcstress-tests:check
+> Task :jmh-benchmarks:compileWorldbenchJava
+> Task :plugin-api:compileJava
+> Task :plugin-api:classes
+> Task :plugin-api:jar
+> Task :testing:compileJava
+> Task :testing:classes
+> Task :testing:jar
+> Task :plugin-api:compileTestJava
+> Task :plugin-api:errorproneCheck
+> Task :plugin-api:testClasses
+> Task :game-rts:compileJava
+> Task :game-rts:classes
+> Task :game-rts:jar
+> Task :testing:compileTestJava
+> Task :testing:testClasses
+> Task :testing:errorproneCheck
+> Task :plugin-api:test
+> Task :plugin-api:check
+> Task :server-app:compileJava
+> Task :server-app:classes
+> Task :server-app:jar
+
+> Task :testing:test
+SLF4J(W): No SLF4J providers were found.
+SLF4J(W): Defaulting to no-operation (NOP) logger implementation
+SLF4J(W): See https://www.slf4j.org/codes.html#noProviders for further details.
+
+> Task :architecture-tests:compileTestJava
+> Task :architecture-tests:testClasses
+> Task :architecture-tests:errorproneCheck
+> Task :game-rts:compileTestJava
+> Task :game-rts:errorproneCheck
+> Task :game-rts:testClasses
+> Task :testing:check
+> Task :server-app:compileTestJava
+> Task :server-app:errorproneCheck
+> Task :server-app:testClasses
+> Task :jmh-benchmarks:compileJmhJava
+> Task :jmh-benchmarks:jmhClasses
+> Task :jmh-benchmarks:jmhRunBytecodeGenerator
+> Task :architecture-tests:test
+> Task :architecture-tests:check
+> Task :jmh-benchmarks:jmhCompileGeneratedClasses
+> Task :jmh-benchmarks:errorproneCheck
+> Task :jmh-benchmarks:check
+> Task :compileTestJava
+> Task :errorproneCheck
+> Task :testClasses
+
+> Task :server-app:test
+
+PluginHostIntegrationTest > theProcessAcceptsOnlyOneAdmissionProvider(Env) FAILED
+    org.junit.platform.commons.JUnitException at ArrayList.java:1604
+        Caused by: org.junit.jupiter.api.io.TempDirDeletionStrategy$DeletionException
+
+> Task :game-rts:test
+> Task :game-rts:check
+
+> Task :server-app:test FAILED
+
+113 tests completed, 1 failed
+
+> Task :test
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':server-app:test'.
+> There were failing tests. See the report at: file:///Users/bug/Documents/Projects/Minecraft/synaxis-wt/integrate/server-app/build/reports/tests/test/index.html
+
+* Try:
+> Run with --scan to get full insights from a Build Scan (powered by Develocity).
+
+BUILD FAILED in 55s
+57 actionable tasks: 57 executed
+Configuration cache entry reused.
+exit=1

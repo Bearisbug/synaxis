@@ -1,0 +1,42 @@
+## 1 parity green
+> Task :testing:processResources NO-SOURCE
+> Task :testing:compileJava
+> Task :testing:classes
+> Task :testing:jar
+> Task :testClasses
+> Task :test
+BUILD SUCCESSFUL in 42s
+io.github.bearisbug.synaxis.instance.light.LightParityIntegrationTest tests=7 skipped=0 failures=0 errors=0
+## 2 tamper surface.light.gz byte 12 low nibble
+> Task :testing:processResources NO-SOURCE
+> Task :testing:compileJava
+> Task :testing:classes
+> Task :testing:jar
+> Task :testClasses
+> Task :test
+LightParityIntegrationTest > matchesVanilla(String, Env) > [6] "surface" FAILED
+7 tests completed, 1 failed
+> Task :test FAILED
+BUILD FAILED in 27s
+io.github.bearisbug.synaxis.instance.light.LightParityIntegrationTest tests=7 skipped=0 failures=1 errors=0
+nibbles differ from vanilla in surface ==
+nibbles differ from vanilla in surface ==
+surface sky (-16, -64, -16) minecraft:air: vanilla 15, synaxis 0
+## 3 new scene auto-included
+> Task :testing:processResources NO-SOURCE
+> Task :testing:compileJava
+> Task :testing:classes
+> Task :testing:jar
+> Task :testClasses
+> Task :test
+BUILD SUCCESSFUL in 30s
+io.github.bearisbug.synaxis.instance.light.LightParityIntegrationTest tests=8 skipped=0 failures=0 errors=0
+testcase name="[1] &quot;cave&quot;"
+testcase name="[2] &quot;deep&quot;"
+testcase name="[3] &quot;emitters&quot;"
+testcase name="[4] &quot;overhang&quot;"
+testcase name="[5] &quot;shaft&quot;"
+testcase name="[6] &quot;surface&quot;"
+testcase name="[7] &quot;transparent&quot;"
+testcase name="[8] &quot;zz-copy&quot;"
+## status

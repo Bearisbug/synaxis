@@ -1,0 +1,22 @@
+## flat40 repeat 1 Wed Sep 23 17:21:53 CST 2026 load={ 31.42 24.33 16.84 }
+== packet,h=64,t=flat40,p=opt
+== packet,h=256,t=natural,p=opt
+Results written to /Users/bug/Documents/Projects/Minecraft/synaxis-wt/integrate/jmh-benchmarks/build/worldbench/run025-flat40-1.json
+BUILD SUCCESSFUL in 37s
+## flat40 repeat 2 Wed Sep 23 17:22:30 CST 2026 load={ 23.64 23.16 16.71 }
+== packet,h=64,t=flat40,p=opt
+== packet,h=256,t=natural,p=opt
+Results written to /Users/bug/Documents/Projects/Minecraft/synaxis-wt/integrate/jmh-benchmarks/build/worldbench/run025-flat40-2.json
+BUILD SUCCESSFUL in 28s
+== packet,h=64,t=flat40,p=opt loadBefore=26.6 loadAfter=26.4
+  plainFramedBytes       DIFFERS   new mean 136.0756  base mean 136.1089
+  litFramedBytes         DIFFERS   new mean 182.9533  base mean 182.9733
+== packet,h=256,t=natural,p=opt loadBefore=26.4 loadAfter=23.6
+  plainFramedBytes       DIFFERS   new mean 1409.6267  base mean 1409.6233
+  litFramedBytes         DIFFERS   new mean 1502.1644  base mean 1502.1611
+== packet,h=64,t=flat40,p=opt loadBefore=21.5 loadAfter=23.0
+  plainFramedBytes       IDENTICAL new mean 136.1089  base mean 136.1089
+  litFramedBytes         IDENTICAL new mean 182.9733  base mean 182.9733
+== packet,h=256,t=natural,p=opt loadBefore=23.0 loadAfter=23.6
+  plainFramedBytes       IDENTICAL new mean 1409.6233  base mean 1409.6233
+  litFramedBytes         IDENTICAL new mean 1502.1611  base mean 1502.1611

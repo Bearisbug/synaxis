@@ -1,0 +1,88 @@
+base docs/research/large-world-2026-09/bench-2026-09-results.json
+new  docs/test-runs/RUN-025/run025-packet.json gitCommit 75925b315d385f9f2a5dc888c7400e06e622bbf1
+== packet,h=64,t=flat40,p=opt loadBefore=67.7 loadAfter=66.1
+  plainUncompressedBytes IDENTICAL new mean 4634.0000  base mean 4634.0000
+  litUncompressedBytes   IDENTICAL new mean 8742.0000  base mean 8742.0000
+  skyArraysPerPacket     IDENTICAL new mean 2.0000  base mean 2.0000
+  plainFramedBytes       DIFFERS   new mean 136.0756  base mean 136.1089
+  litFramedBytes         DIFFERS   new mean 182.9533  base mean 182.9733
+== packet,h=256,t=natural,p=opt loadBefore=66.1 loadAfter=59.4
+  plainUncompressedBytes IDENTICAL new mean 12119.0811  base mean 12119.0811
+  litUncompressedBytes   IDENTICAL new mean 17534.5256  base mean 17534.5256
+  skyArraysPerPacket     IDENTICAL new mean 2.6378  base mean 2.6378
+  plainFramedBytes       IDENTICAL new mean 1409.6233  base mean 1409.6233
+  litFramedBytes         IDENTICAL new mean 1502.1611  base mean 1502.1611
+== packet,h=384,t=natural,p=opt loadBefore=59.4 loadAfter=51.0
+  plainUncompressedBytes IDENTICAL new mean 20400.9267  base mean 20400.9267
+  litUncompressedBytes   IDENTICAL new mean 25816.3711  base mean 25816.3711
+  skyArraysPerPacket     IDENTICAL new mean 2.6378  base mean 2.6378
+  plainFramedBytes       IDENTICAL new mean 2485.6844  base mean 2485.6844
+  litFramedBytes         IDENTICAL new mean 2582.2778  base mean 2582.2778
+
+## same jobs against run 1
+base docs/research/large-world-2026-09/bench-2026-09-run1.json
+new  docs/test-runs/RUN-025/run025-packet.json gitCommit 75925b315d385f9f2a5dc888c7400e06e622bbf1
+== packet,h=64,t=flat40,p=opt loadBefore=67.7 loadAfter=66.1
+  plainUncompressedBytes IDENTICAL new mean 4634.0000  base mean 4634.0000
+  litUncompressedBytes   IDENTICAL new mean 8742.0000  base mean 8742.0000
+  skyArraysPerPacket     IDENTICAL new mean 2.0000  base mean 2.0000
+  plainFramedBytes       IDENTICAL new mean 136.0756  base mean 136.0756
+  litFramedBytes         IDENTICAL new mean 182.9533  base mean 182.9533
+== packet,h=256,t=natural,p=opt loadBefore=66.1 loadAfter=59.4
+  plainUncompressedBytes IDENTICAL new mean 12119.0811  base mean 12119.0811
+  litUncompressedBytes   IDENTICAL new mean 17534.5256  base mean 17534.5256
+  skyArraysPerPacket     IDENTICAL new mean 2.6378  base mean 2.6378
+  plainFramedBytes       DIFFERS   new mean 1409.6233  base mean 1409.6267
+  litFramedBytes         DIFFERS   new mean 1502.1611  base mean 1502.1644
+== packet,h=384,t=natural,p=opt loadBefore=59.4 loadAfter=51.0
+  plainUncompressedBytes IDENTICAL new mean 20400.9267  base mean 20400.9267
+  litUncompressedBytes   IDENTICAL new mean 25816.3711  base mean 25816.3711
+  skyArraysPerPacket     IDENTICAL new mean 2.6378  base mean 2.6378
+  plainFramedBytes       IDENTICAL new mean 2485.6844  base mean 2485.6844
+  litFramedBytes         IDENTICAL new mean 2582.2778  base mean 2582.2778
+
+## committed run 1 (base) vs committed run 2 (new): the two baseline files against each other, packet jobs
+base docs/research/large-world-2026-09/bench-2026-09-run1.json
+new  docs/research/large-world-2026-09/bench-2026-09-results.json gitCommit 3085e0edab091f644c0697c9f8becc7ddc59dad4
+== packet h=384 t=natural p=opt loadBefore=54.5 loadAfter=57.6
+  plainUncompressedBytes IDENTICAL new mean 20400.9267  base mean 20400.9267
+  litUncompressedBytes   IDENTICAL new mean 25816.3711  base mean 25816.3711
+  skyArraysPerPacket     IDENTICAL new mean 2.6378  base mean 2.6378
+  plainFramedBytes       IDENTICAL new mean 2485.6844  base mean 2485.6844
+  litFramedBytes         IDENTICAL new mean 2582.2778  base mean 2582.2778
+== packet h=384 t=natural p=setall loadBefore=57.6 loadAfter=40.0
+  plainUncompressedBytes IDENTICAL new mean 77796.3933  base mean 77796.3933
+  litUncompressedBytes   IDENTICAL new mean 83211.8378  base mean 83211.8378
+  skyArraysPerPacket     IDENTICAL new mean 2.6378  base mean 2.6378
+  plainFramedBytes       DIFFERS   new mean 3651.1711  base mean 3651.1667
+  litFramedBytes         DIFFERS   new mean 3745.8778  base mean 3745.8744
+== packet h=384 t=solid p=opt loadBefore=37.2 loadAfter=34.9
+  plainUncompressedBytes IDENTICAL new mean 7822.1156  base mean 7822.1156
+  litUncompressedBytes   IDENTICAL new mean 13237.5600  base mean 13237.5600
+  skyArraysPerPacket     IDENTICAL new mean 2.6378  base mean 2.6378
+  plainFramedBytes       IDENTICAL new mean 817.4378  base mean 817.4378
+  litFramedBytes         IDENTICAL new mean 906.2911  base mean 906.2911
+== packet h=256 t=natural p=opt loadBefore=34.9 loadAfter=33.0
+  plainUncompressedBytes IDENTICAL new mean 12119.0811  base mean 12119.0811
+  litUncompressedBytes   IDENTICAL new mean 17534.5256  base mean 17534.5256
+  skyArraysPerPacket     IDENTICAL new mean 2.6378  base mean 2.6378
+  plainFramedBytes       DIFFERS   new mean 1409.6233  base mean 1409.6267
+  litFramedBytes         DIFFERS   new mean 1502.1611  base mean 1502.1644
+== packet h=256 t=solid p=opt loadBefore=30.9 loadAfter=40.9
+  plainUncompressedBytes IDENTICAL new mean 5700.1156  base mean 5700.1156
+  litUncompressedBytes   IDENTICAL new mean 11115.5600  base mean 11115.5600
+  skyArraysPerPacket     IDENTICAL new mean 2.6378  base mean 2.6378
+  plainFramedBytes       IDENTICAL new mean 496.8611  base mean 496.8611
+  litFramedBytes         IDENTICAL new mean 583.1789  base mean 583.1789
+== packet h=64 t=natural p=opt loadBefore=40.9 loadAfter=37.9
+  plainUncompressedBytes IDENTICAL new mean 5600.0922  base mean 5600.0922
+  litUncompressedBytes   IDENTICAL new mean 10436.9811  base mean 10436.9811
+  skyArraysPerPacket     IDENTICAL new mean 2.3556  base mean 2.3556
+  plainFramedBytes       IDENTICAL new mean 707.3456  base mean 707.3456
+  litFramedBytes         IDENTICAL new mean 770.6311  base mean 770.6311
+== packet h=64 t=flat40 p=opt loadBefore=37.9 loadAfter=35.3
+  plainUncompressedBytes IDENTICAL new mean 4634.0000  base mean 4634.0000
+  litUncompressedBytes   IDENTICAL new mean 8742.0000  base mean 8742.0000
+  skyArraysPerPacket     IDENTICAL new mean 2.0000  base mean 2.0000
+  plainFramedBytes       DIFFERS   new mean 136.1089  base mean 136.0756
+  litFramedBytes         DIFFERS   new mean 182.9733  base mean 182.9533

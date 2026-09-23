@@ -1,0 +1,10 @@
+== run 1
+BUILD SUCCESSFUL in 39s
+== run 2
+BUILD SUCCESSFUL in 27s
+== run 3
+BUILD SUCCESSFUL in 26s
+== run 4
+BUILD SUCCESSFUL in 31s
+== run 5
+BUILD SUCCESSFUL in 28s

@@ -63,7 +63,7 @@ $BACKUP_ROOT/
    | `ALERT` 行 | 常见原因 | 修法 |
    | --- | --- | --- |
    | `archive_mode is off` | 有人关了归档，或这是 `restore-pitr.sh` 恢复出来的实例 | 按第 1 节第 2～3 步重开并重启；恢复出来的实例按第 3 节第 5 步 |
-   | `archive_command is failing` | 备份卷满或不可写（`Permission denied`、`No space left on device`）；`archive-wal.sh` 报 `already exists with different content` | 前者腾空间或修权限，PostgreSQL 会自动重试同一个段（连续失败 3 次后日志报 `failed too many times, will try again later`，最多等 60 s 再试），不用重启也不用 reload。后者说明有两个库在往同一个 `wal/` 写（多半是恢复实例的 `BACKUP_ROOT` 没换），先停掉写错的那个库的归档，不要删或覆盖已归档的文件 |
+   | `archive_command is failing` | 备份卷满或不可写（`Permission denied`、`No space left on device`）；`archive-wal.sh` 报 `already exists with different content` | 前者腾空间或修权限，PostgreSQL 会自动重试同一个段（连续失败 3 次后日志报 `failed too many times, will try again later`，最多等 60 s 再试），不用重启也不用 reload。后者说明另一个同在时间线 1 的集群在往同一个 `wal/` 写：重新 initdb 的库（例如重建了数据卷、保留了备份卷），或两个库配了同一个 `BACKUP_ROOT`，新库的 `000000010000000000000001` 起的段与旧归档同名不同内容。先停掉写错的那个库的归档，不要删或覆盖已归档的文件。恢复出来的实例不会触发这条：它在新时间线上归档（`00000002…`），沿用旧 `BACKUP_ROOT` 时段名不冲突，会悄悄混进原库的归档，所以第 3 节第 5 步要求换目录 |
    | `oldest WAL waiting …s > 300s` | 通常与上一行同时出现；单独出现时是归档跟不上写入（压缩慢或备份盘慢） | 同上一行；单独出现时看备份卷的 I/O |
    | `no base backup` / `newest base backup … is older than 26h` | 定时任务没跑或失败 | 读 `$BACKUP_ROOT/base-backup.log` 的最后一次输出，修好后执行第 3 步 |
 

@@ -44,11 +44,11 @@ import java.util.zip.GZIPOutputStream;
  */
 public final class LightOracle {
     // Must match LightParityIntegrationTest: the scene lives in chunks -2..2, light is compared in -1..1
-    // for sections 0..3. The outer ring is 16 blocks wide, more than light can travel, so however vanilla
+    // for sections -4..3. The outer ring is 16 blocks wide, more than light can travel, so however vanilla
     // and Synaxis treat the unloaded world past it cannot reach the compared chunks.
     static final int LOAD_RADIUS = 2;
     static final int COMPARE_RADIUS = 1;
-    static final int MIN_SECTION = 0;
+    static final int MIN_SECTION = -4;
     static final int MAX_SECTION = 3;
     static final int MIN_Y = -64;
     static final int HEIGHT = 384;

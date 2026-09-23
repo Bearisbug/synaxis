@@ -1,0 +1,24 @@
+# 深谷：地表在 y=-40，下面是 y -64..-41 的石头，覆盖负 section（-4、-3）与 y=-48、y=-32 的 section 边界。
+# 一座土丘伸进 section -2；石头里挖一个洞室，竖井通到地表，洞口铺地毯，竖井里夹一层细雪。
+fill -32 -64 -32 47 -41 47 minecraft:stone
+fill -32 -40 -32 47 -40 47 minecraft:grass_block
+# 土丘，跨 x=16 与 z=0 的区块边界
+fill 10 -39 -6 22 -30 6 minecraft:dirt
+fill 10 -29 -6 22 -29 6 minecraft:grass_block
+fill 12 -28 -4 20 -28 4 minecraft:white_carpet
+# 洞室，跨 x=0、z=16 与 y=-48 边界
+fill -10 -60 8 12 -44 24 minecraft:air
+set 0 -60 16 minecraft:torch
+set 10 -52 10 minecraft:glowstone
+fill -8 -60 20 -4 -58 24 minecraft:lava
+fill 4 -60 20 8 -57 24 minecraft:water
+fill -10 -44 8 12 -44 8 minecraft:oak_slab[type=top,waterlogged=true]
+# 竖井：地表到洞室，洞口地毯，半路一层细雪与一层红树叶
+fill 2 -43 2 4 -40 7 minecraft:air
+fill 2 -40 2 4 -40 4 minecraft:white_carpet
+fill 2 -42 5 4 -42 5 minecraft:powder_snow
+fill 2 -41 7 4 -41 7 minecraft:mangrove_leaves[persistent=true]
+# 地表上的染色玻璃棚、上半台阶棚与白色潜影盒
+fill -20 -35 -20 -12 -35 -12 minecraft:tinted_glass
+fill -20 -34 -8 -12 -34 0 minecraft:stone_slab[type=top]
+set 30 -39 30 minecraft:white_shulker_box

@@ -14,6 +14,7 @@ import java.util.Objects;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotSame;
 import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class LightBlocksTest {
 
@@ -30,9 +31,12 @@ public class LightBlocksTest {
                     .filter(line -> !line.isEmpty() && !line.startsWith("#")).toList();
         }
         assertEquals(6762, lines.size());
+        final int stateCount = Block.values().stream().mapToInt(block -> block.possibleStates().size()).sum();
         for (String line : lines) {
             final int space = line.indexOf(' ');
-            final Block block = Objects.requireNonNull(Block.fromStateId(Integer.parseInt(line.substring(0, space))), line);
+            final int id = Integer.parseInt(line.substring(0, space));
+            assertTrue(id >= 0 && id < stateCount, () -> line + ": no state id " + id + " among " + stateCount);
+            final Block block = Objects.requireNonNull(Block.fromStateId(id), line);
             final String state = line.substring(space + 1);
             final int bracket = state.indexOf('[');
             final Map<String, String> properties = new HashMap<>();

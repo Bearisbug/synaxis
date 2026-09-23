@@ -21,3 +21,7 @@ set 2 25 22 minecraft:lantern
 # 隧道口的台阶与楼梯
 fill -30 22 7 -30 22 8 minecraft:stone_slab[type=bottom]
 fill -29 22 7 -29 22 8 minecraft:stone_stairs[facing=west,half=bottom]
+# 竖井口铺地毯，半路一层细雪；大房间顶上一片潜影盒吊顶
+fill 4 41 4 6 41 6 minecraft:white_carpet
+fill 4 35 4 6 35 6 minecraft:powder_snow
+fill -2 30 -2 3 30 3 minecraft:white_shulker_box

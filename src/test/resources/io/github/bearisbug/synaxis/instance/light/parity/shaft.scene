@@ -1,0 +1,19 @@
+# 高空顶棚：y=60..61 的石头顶棚罩住整片区域，地面在 y=-40，中间 y -32..47 共 5 个 section 全空。
+# 天光只能从顶棚上的洞、玻璃窗、地毯窗、树叶窗与缺口进入，再穿过这些全空 section 落到地面。
+fill -32 -64 -32 47 -41 47 minecraft:stone
+fill -32 -40 -32 47 -40 47 minecraft:grass_block
+fill -32 60 -32 47 61 47 minecraft:stone
+# 4x4 天洞，跨 x=16 的区块边界
+fill 14 60 4 17 61 7 minecraft:air
+# 玻璃窗与染色玻璃窗
+fill -10 60 -10 -7 61 -7 minecraft:glass
+fill -10 60 20 -7 61 23 minecraft:tinted_glass
+# 地毯窗（顶层是地毯，下面空）与树叶窗
+fill 20 60 20 23 60 23 minecraft:air
+fill 20 61 20 23 61 23 minecraft:white_carpet
+fill 30 60 -20 33 61 -17 minecraft:mangrove_leaves[persistent=true]
+# 顶棚缺一角：x -32..-25、z 40..47 露天
+fill -32 60 40 -25 61 47 minecraft:air
+# 地面上一根火把和一块地毯
+set 0 -39 0 minecraft:torch
+set 15 -39 5 minecraft:white_carpet

@@ -8,17 +8,21 @@ import io.github.bearisbug.synaxis.instance.block.Block;
 import io.github.bearisbug.synaxis.testing.Env;
 import io.github.bearisbug.synaxis.testing.EnvTest;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.ValueSource;
+import org.junit.jupiter.params.provider.MethodSource;
 
 import java.io.DataInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.URISyntaxException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.stream.Stream;
 import java.util.zip.GZIPInputStream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -27,7 +31,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
  * Nibble-for-nibble parity with the vanilla 26.2 light engine. Each {@code parity/<scene>.scene} is built in
  * chunks -2..2, relit by {@link LightingChunk#relight}, and compared against {@code parity/<scene>.light.gz},
  * which {@code tools/light-oracle/gen.sh} produced by running vanilla's {@code LevelLightEngine} on the same
- * scene. Chunks -1..1 and sections 0..3 are compared, sky and block light both.
+ * scene. Every {@code *.scene} in that directory runs. Chunks -1..1 and sections -4..3 (y -64..63) are
+ * compared, sky and block light both.
  */
 @EnvTest
 public class LightParityIntegrationTest {
@@ -37,8 +42,18 @@ public class LightParityIntegrationTest {
     record Op(int x1, int y1, int z1, int x2, int y2, int z2, Block block) {
     }
 
+    static List<String> scenes() throws IOException, URISyntaxException {
+        final Path dir = Path.of(Objects.requireNonNull(LightParityIntegrationTest.class.getResource(DIR)).toURI());
+        try (Stream<Path> files = Files.list(dir)) {
+            return files.map(file -> file.getFileName().toString())
+                    .filter(name -> name.endsWith(".scene"))
+                    .map(name -> name.substring(0, name.length() - ".scene".length()))
+                    .sorted().toList();
+        }
+    }
+
     @ParameterizedTest
-    @ValueSource(strings = {"surface", "overhang", "cave", "transparent", "emitters"})
+    @MethodSource("scenes")
     public void matchesVanilla(String scene, Env env) throws IOException {
         List<Op> ops = parse(scene);
 

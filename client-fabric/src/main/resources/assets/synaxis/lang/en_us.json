@@ -13,6 +13,10 @@
 	"synaxis:login-throttled": "Logging in too often. Wait a few seconds and try again.",
 	"synaxis:shard-full": "This channel is full.",
 	"synaxis:keep-alive-timeout": "The connection timed out. Reconnect.",
+	"synaxis:auth-failed": "This server only accepts genuine Minecraft accounts. Log in with the official launcher and join again.",
+	"synaxis:auth-unavailable": "The Minecraft account service cannot be reached right now. Try again in a moment.",
+	"synaxis:logged-in-elsewhere": "Your account logged in from another place.",
+	"synaxis:state-unavailable": "Your character could not be loaded. Try again in 30 seconds.",
 	"synaxis.order.no-path": "Cannot get there.",
 	"synaxis.order.not-owner": "Not your unit.",
 	"synaxis.order.busy": "The server is busy; try again."

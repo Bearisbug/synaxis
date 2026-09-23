@@ -9,6 +9,7 @@ import io.github.bearisbug.synaxis.network.packet.server.common.PluginMessagePac
 import io.github.bearisbug.synaxis.network.packet.server.common.ResourcePackPopPacket;
 import io.github.bearisbug.synaxis.network.packet.server.common.ShowDialogPacket;
 import io.github.bearisbug.synaxis.network.packet.server.common.TagsPacket;
+import io.github.bearisbug.synaxis.network.packet.server.login.EncryptionRequestPacket;
 import io.github.bearisbug.synaxis.network.packet.server.login.LoginDisconnectPacket;
 import io.github.bearisbug.synaxis.network.packet.server.login.LoginPluginRequestPacket;
 import io.github.bearisbug.synaxis.network.packet.server.login.LoginSuccessPacket;
@@ -97,14 +98,14 @@ public class PacketRegistryLookupTest {
     @Test
     public void theClientBoundLoginIdsAreTheVanillaOnes() {
         // 26.2 LoginProtocols: login_disconnect, hello, login_finished, login_compression,
-        // custom_query, cookie_request. hello is never sent in offline mode but keeps its id.
+        // custom_query, cookie_request. hello is the encryption request of online mode.
         final var login = PacketVanilla.SERVER_PACKET_PARSER.login();
         assertEquals(0, login.packetInfo(LoginDisconnectPacket.class).id());
         assertEquals(2, login.packetInfo(LoginSuccessPacket.class).id());
         assertEquals(3, login.packetInfo(SetCompressionPacket.class).id());
         assertEquals(4, login.packetInfo(LoginPluginRequestPacket.class).id());
         assertEquals(5, login.packetInfo(CookieRequestPacket.class).id());
-        assertThrows(IllegalStateException.class, () -> login.packetInfo(1));
+        assertEquals(1, login.packetInfo(EncryptionRequestPacket.class).id());
     }
 
     @Test

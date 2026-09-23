@@ -10,8 +10,13 @@ import java.net.SocketTimeoutException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.security.GeneralSecurityException;
+import java.security.KeyFactory;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.security.PublicKey;
+import java.security.SecureRandom;
+import java.security.spec.X509EncodedKeySpec;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -32,6 +37,11 @@ import java.util.regex.Pattern;
 import java.util.zip.DataFormatException;
 import java.util.zip.Deflater;
 import java.util.zip.Inflater;
+import javax.crypto.Cipher;
+import javax.crypto.CipherInputStream;
+import javax.crypto.CipherOutputStream;
+import javax.crypto.spec.IvParameterSpec;
+import javax.crypto.spec.SecretKeySpec;
 
 /**
  * usage: java tools/loadtest/PacketFlood.java [options]
@@ -58,6 +68,12 @@ import java.util.zip.Inflater;
  *
  * Against a gameplay mode server add `--hello true`, which sends the C2S_HELLO of REQ-M2-008 in
  * the configuration phase; without it every connection is kicked three seconds in.
+ *
+ * `--auth` names the login mode of the server (`synaxis.app.auth`, `docs/DESIGN-PROD.md`
+ * `API-PROD-001`): `offline` (the default) expects no encryption request; `offline-encrypted` and
+ * `online` answer it with RSA/PKCS#1 and run AES/CFB8 both ways, the latter against a server whose
+ * session server is `tools/fake-sessionserver` in `allow-all` mode, since the bots have no Mojang
+ * account and never join a session.
  *
  * Every connection sends `--hz` position packets per second, which is what makes the total rate
  * `--connections * --hz`. Keep `--hz` well under the drain the engine grants one player
@@ -465,12 +481,14 @@ public final class PacketFlood {
                 if (packet.equals("SetCompressionPacket")) {
                     compressionThreshold = reader.varInt();
                 } else if (packet.equals("EncryptionRequestPacket")) {
-                    throw new IOException("the server is not in offline mode");
+                    encrypt(reader);
                 } else if (packet.equals("LoginSuccessPacket")) {
                     write("CLIENT_LOGIN", "ClientLoginAcknowledgedPacket", new byte[0]);
                     break;
-                } else if (packet.startsWith("LoginDisconnect") || packet.equals("DisconnectPacket")) {
-                    throw new IOException("login refused: " + packet);
+                } else if (packet.equals("LoginDisconnectPacket")) {
+                    // A JSON text in the login state; the reason key is its translate member
+                    final Matcher key = Pattern.compile("\"translate\"\\s*:\\s*\"([^\"]+)\"").matcher(reader.string());
+                    throw new IOException("login refused: " + (key.find() ? key.group(1) : packet));
                 }
             }
 
@@ -504,6 +522,47 @@ public final class PacketFlood {
                         // registry data and the rest of the configuration stream, nothing to answer
                     }
                 }
+            }
+        }
+
+        /**
+         * Answers an encryption request the way a vanilla client does and switches both directions
+         * of the socket to AES/CFB8. The server sends nothing between the request and its answer to
+         * the key, so no plaintext byte is left behind in the buffered input.
+         */
+        private void encrypt(Reader request) throws IOException {
+            if (options.auth.equals("offline"))
+                throw new IOException("the server asked for encryption: pass --auth offline-encrypted or --auth online, "
+                        + "or start it with -Dsynaxis.app.auth=offline");
+            request.string(); // server id, always empty
+            final byte[] publicKey = request.raw(request.varInt());
+            final byte[] challenge = request.raw(request.varInt());
+            final boolean shouldAuthenticate = request.u8() != 0;
+            if (shouldAuthenticate != options.auth.equals("online"))
+                throw new IOException("--auth " + options.auth + " but the server "
+                        + (shouldAuthenticate ? "verifies logins with a session server" : "does not verify logins"));
+            final byte[] secret = new byte[16];
+            new SecureRandom().nextBytes(secret);
+            try {
+                final PublicKey key = KeyFactory.getInstance("RSA").generatePublic(new X509EncodedKeySpec(publicKey));
+                final Cipher rsa = Cipher.getInstance("RSA/ECB/PKCS1Padding");
+                rsa.init(Cipher.ENCRYPT_MODE, key);
+                final byte[] encryptedSecret = rsa.doFinal(secret);
+                final byte[] encryptedChallenge = rsa.doFinal(challenge);
+                write("CLIENT_LOGIN", "ClientEncryptionResponsePacket", new Writer()
+                        .varInt(encryptedSecret.length).raw(encryptedSecret)
+                        .varInt(encryptedChallenge.length).raw(encryptedChallenge).bytes());
+                final SecretKeySpec aes = new SecretKeySpec(secret, "AES");
+                final Cipher decrypt = Cipher.getInstance("AES/CFB8/NoPadding");
+                decrypt.init(Cipher.DECRYPT_MODE, aes, new IvParameterSpec(secret));
+                final Cipher encrypt = Cipher.getInstance("AES/CFB8/NoPadding");
+                encrypt.init(Cipher.ENCRYPT_MODE, aes, new IvParameterSpec(secret));
+                synchronized (writeLock) {
+                    input = new BufferedInputStream(new CipherInputStream(socket.getInputStream(), decrypt), 1 << 16);
+                    output = new CipherOutputStream(socket.getOutputStream(), encrypt);
+                }
+            } catch (GeneralSecurityException error) {
+                throw new IOException("cannot answer the encryption request", error);
             }
         }
 
@@ -634,6 +693,7 @@ public final class PacketFlood {
         double seconds = 330.0;
         double echoHz = 0.2;
         boolean hello = false;
+        String auth = "offline";
         double timeoutSeconds = 30.0;
         double sampleSeconds = 10.0;
         Path out;
@@ -654,6 +714,11 @@ public final class PacketFlood {
                 case "--seconds" -> options.seconds = Double.parseDouble(value);
                 case "--echo-hz" -> options.echoHz = Double.parseDouble(value);
                 case "--hello" -> options.hello = Boolean.parseBoolean(value);
+                case "--auth" -> {
+                    if (!List.of("offline", "offline-encrypted", "online").contains(value))
+                        throw new IllegalArgumentException("--auth is offline, offline-encrypted or online");
+                    options.auth = value;
+                }
                 case "--sample-seconds" -> options.sampleSeconds = Double.parseDouble(value);
                 case "--out" -> options.out = Path.of(value);
                 case "--repo" -> options.repository = Path.of(value);

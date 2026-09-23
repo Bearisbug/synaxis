@@ -18,6 +18,7 @@ import io.github.bearisbug.synaxis.network.ConnectionManager;
 import io.github.bearisbug.synaxis.network.UnboundedClientDrivenReportFixture;
 import io.github.bearisbug.synaxis.network.packet.PacketReading;
 import io.github.bearisbug.synaxis.network.player.PlayerSocketConnection;
+import io.github.bearisbug.synaxis.network.player.SessionClient;
 import io.github.bearisbug.synaxis.network.plugin.LoginPlugin;
 import io.github.bearisbug.synaxis.network.socket.Server;
 import org.junit.jupiter.api.Test;
@@ -208,12 +209,14 @@ public class ArchitectureTest {
      * by dropping that connection.</li>
      * <li>{@link PacketListenerManager}: one line per registered packet class for the lifetime of
      * the process, a client cannot add packet classes.</li>
+     * <li>{@link SessionClient}: at most one line per 10 seconds, carrying the verification
+     * outcomes it counted.</li>
      * <li>{@link HandshakeListener} and {@link LoginListener}: one line per connection, both kick
      * on the same branch and {@code PlayerSocketConnection} stops the batch at a disconnect, so the
      * frames queued behind the kick are never handled.</li>
      * </ul>
      * The exemption is per class rather than per call site, which is the blind spot of this rule: a
-     * second, unbounded line added inside one of these eight classes passes. The bound of each one
+     * second, unbounded line added inside one of these nine classes passes. The bound of each one
      * is stated in its own javadoc, which is where a reviewer has to look.
      */
     private static DescribedPredicate<HasName> boundedReporters() {
@@ -221,6 +224,7 @@ public class ArchitectureTest {
                 .or(name(PlayerSocketConnection.class.getName()))
                 .or(name(Server.class.getName()))
                 .or(name(ConnectionGate.class.getName()))
+                .or(name(SessionClient.class.getName()))
                 .or(name(ConnectionManager.class.getName()))
                 .or(name(PacketListenerManager.class.getName()))
                 .or(name(HandshakeListener.class.getName()))

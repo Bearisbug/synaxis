@@ -105,6 +105,7 @@ import io.github.bearisbug.synaxis.network.packet.server.configuration.RegistryD
 import io.github.bearisbug.synaxis.network.packet.server.configuration.ResetChatPacket;
 import io.github.bearisbug.synaxis.network.packet.server.configuration.SelectKnownPacksPacket;
 import io.github.bearisbug.synaxis.network.packet.server.configuration.UpdateEnabledFeaturesPacket;
+import io.github.bearisbug.synaxis.network.packet.server.login.EncryptionRequestPacket;
 import io.github.bearisbug.synaxis.network.packet.server.login.LoginDisconnectPacket;
 import io.github.bearisbug.synaxis.network.packet.server.login.LoginPluginRequestPacket;
 import io.github.bearisbug.synaxis.network.packet.server.login.LoginSuccessPacket;
@@ -383,7 +384,7 @@ public final class PacketVanilla {
 
     static final PacketRegistry<ServerPacket.Login> SERVER_LOGIN = registry(ConnectionState.LOGIN, PacketRegistry.ConnectionSide.SERVER,
             entry(LoginDisconnectPacket.class, LoginDisconnectPacket.SERIALIZER),
-            entry(ReservedPacket.class, ReservedPacket.SERIALIZER), // minecraft:hello, offline mode never asks for encryption
+            entry(EncryptionRequestPacket.class, EncryptionRequestPacket.SERIALIZER),
             entry(LoginSuccessPacket.class, LoginSuccessPacket.SERIALIZER),
             entry(SetCompressionPacket.class, SetCompressionPacket.SERIALIZER),
             entry(LoginPluginRequestPacket.class, LoginPluginRequestPacket.SERIALIZER),

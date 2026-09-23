@@ -66,6 +66,15 @@ fabricApi {
     }
 }
 
+// The full online login of REQ-PROD-030 without a Mojang account (docs/DESIGN-PROD.md API-PROD-026):
+// SYNAXIS_GAMETEST_SESSION_HOST=http://<host>:<port> points authlib's three hosts at
+// tools/fake-sessionserver, so the client joins a session there that a server-app in online mode,
+// its session server overridden to the same place, can verify. authlib ignores the hosts unless all
+// three are set. Unset, the client talks to Mojang as usual, which only an offline server accepts.
+val authlibHosts = providers.environmentVariable("SYNAXIS_GAMETEST_SESSION_HOST").map { host ->
+    listOf("session", "services", "profiles").map { "-Dminecraft.api.$it.host=$host" }
+}.orElse(emptyList())
+
 // The gametests load the mod jar players get, from the run directory's mods/, instead of the dev
 // classes: only that jar nests :protocol, and whether Fabric Loader accepts the nested jar is what
 // spike S0 has to see.
@@ -77,6 +86,7 @@ tasks.named<JavaExec>("runClientGameTest") {
     // A new collection over the same sources: filtering `classpath` itself would feed it into itself.
     val loomClasspath = files((classpath as ConfigurableFileCollection).from.toList())
     classpath = loomClasspath.filter { it !in devMod.files && it.name != protocolJar }
+    jvmArgumentProviders.add(CommandLineArgumentProvider { authlibHosts.get() })
     // Loom keeps the run directory to itself; `workingDir` here would be the project directory.
     val mods = layout.buildDirectory.dir("run/clientGameTest/mods")
     doFirst {
@@ -98,6 +108,7 @@ dependencies {
 tasks.register<net.fabricmc.loom.task.prod.ClientProductionRunTask>("runProductionClientGameTest") {
     mods.from(gametestJar)
     jvmArgs.add("-Dfabric.client.gametest")
+    jvmArgs.addAll(authlibHosts)
     runDir = layout.buildDirectory.dir("run/productionClientGameTest")
 }
 

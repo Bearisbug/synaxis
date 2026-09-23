@@ -252,8 +252,10 @@ final class ServerProcessImpl implements ServerProcess, Registries.Delegating {
         final String brand = brandName;
         LOGGER.info("Starting {} ({}) server.", brand, Git.version());
         switch (auth) {
-            case Auth.Offline _ ->
-                    LOGGER.info("Running in offline mode. Beware that this is not secure and players can impersonate each other.");
+            case Auth.Offline offline -> LOGGER.info("Running in offline mode{}. Beware that this is not secure "
+                    + "and players can impersonate each other.", offline.encrypt() ? " with encryption" : "");
+            case Auth.Online online -> LOGGER.info("Running in online mode, logins are verified against {}.",
+                    online.sessionServer().hasJoinedUrl());
             case Auth.Velocity _ -> LOGGER.info("Running in Velocity mode with modern IP forwarding.");
             case Auth.Bungee bungee -> {
                 if (bungee.guard()) {

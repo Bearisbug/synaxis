@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 """Minimal Minecraft 26.2 (protocol 776) client used to smoke test synaxis.
 
-Standard library only, no third party packages.
+Standard library only, no third party packages. It speaks no encryption, so the server it talks to
+runs in offline mode: ``server-app`` with ``-Dsynaxis.app.auth=offline`` (the default is online).
+The encrypted login is covered by the engine's Java tests and ``tools/loadtest/PacketFlood.java``.
 
 Packet ids are never hardcoded: they are the index of the packet class inside the
 registry lists of ``src/main/java/io/github/bearisbug/synaxis/network/packet/PacketVanilla.java``
@@ -656,7 +658,8 @@ class Session:
             elif packet == "LoginPluginRequestPacket":
                 self.answer_login_plugin(reader)
             elif packet == "EncryptionRequestPacket":
-                raise SystemExit("EncryptionRequest received: the server is not in offline mode")
+                raise SystemExit("EncryptionRequest received: the probe needs an offline server, "
+                                 "start server-app with -Dsynaxis.app.auth=offline")
             elif packet == "LoginSuccessPacket":
                 player_uuid = reader.uuid()
                 username = reader.string()

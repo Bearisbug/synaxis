@@ -1,6 +1,8 @@
 package io.github.bearisbug.synaxis.network;
 
+import io.github.bearisbug.synaxis.Auth;
 import io.github.bearisbug.synaxis.ServerProcess;
+import io.github.bearisbug.synaxis.crypto.LoginCrypt;
 import io.github.bearisbug.synaxis.entity.Player;
 import io.github.bearisbug.synaxis.event.player.AsyncPlayerConfigurationEvent;
 import io.github.bearisbug.synaxis.event.player.AsyncPlayerPreLoginEvent;
@@ -18,6 +20,7 @@ import io.github.bearisbug.synaxis.network.packet.server.play.StartConfiguration
 import io.github.bearisbug.synaxis.network.player.GameProfile;
 import io.github.bearisbug.synaxis.network.player.PlayerConnection;
 import io.github.bearisbug.synaxis.network.player.PlayerSocketConnection;
+import io.github.bearisbug.synaxis.network.player.SessionClient;
 import io.github.bearisbug.synaxis.network.plugin.LoginPluginMessageProcessor;
 import io.github.bearisbug.synaxis.registry.Registries;
 import io.github.bearisbug.synaxis.registry.StaticProtocolObject;
@@ -29,6 +32,7 @@ import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.security.KeyPair;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -56,14 +60,37 @@ public final class ConnectionManager {
 
     private static final long DISCONNECT_FLUSH_TIMEOUT = 1_000;
 
+    /**
+     * How long an online mode login waits for the session it replaces to leave the world
+     * ({@code docs/DESIGN-PROD.md} §11.1), and how often it looks.
+     */
+    private static final long SESSION_HANDOVER_TIMEOUT = TimeUnit.SECONDS.toNanos(5);
+    private static final long SESSION_HANDOVER_POLL_MILLIS = 10;
+
     private final ServerProcess process;
     private final CachedPacket cachedTagsPacket;
     private final ConnectionGate gate;
+    private final @Nullable KeyPair loginKeyPair;
+    private final @Nullable SessionClient sessionClient;
 
     public ConnectionManager(ServerProcess process) {
         this.process = process;
         this.cachedTagsPacket = new CachedPacket(() -> Registries.tagsPacket(process.registries()));
         this.gate = new ConnectionGate(process.config());
+        switch (process.auth()) {
+            case Auth.Online online -> {
+                this.loginKeyPair = online.keyPair();
+                this.sessionClient = new SessionClient(online.sessionServer());
+            }
+            case Auth.Offline offline -> {
+                this.loginKeyPair = offline.encrypt() ? LoginCrypt.generateKeyPair() : null;
+                this.sessionClient = null;
+            }
+            case Auth.Velocity _, Auth.Bungee _ -> {
+                this.loginKeyPair = null;
+                this.sessionClient = null;
+            }
+        }
     }
 
     /**
@@ -73,6 +100,21 @@ public final class ConnectionManager {
     @ApiStatus.Internal
     public ConnectionGate gate() {
         return gate;
+    }
+
+    /**
+     * The RSA key pair logins are encrypted with, null when the mode does not encrypt
+     * ({@code docs/DESIGN-PROD.md} {@code API-PROD-002}).
+     */
+    @ApiStatus.Internal
+    public @Nullable KeyPair loginKeyPair() {
+        return loginKeyPair;
+    }
+
+    /** The session server client of an online mode process, null in every other mode. */
+    @ApiStatus.Internal
+    public @Nullable SessionClient sessionClient() {
+        return sessionClient;
     }
 
     // All players once their Player object has been instantiated.
@@ -231,6 +273,47 @@ public final class ConnectionManager {
         return trackNewPlayer(player) ? player : null;
     }
 
+    /**
+     * The online mode counterpart of {@link #createPlayer}: the uuid is Mojang's, so a live session
+     * holding it is the same account logging in again. That session is kicked with
+     * {@link DisconnectReasons#LOGGED_IN_ELSEWHERE}, and this call waits until its player has left
+     * the world, because the entity tracker refuses a second entity with the same uuid and the old
+     * one is only removed on the next tick ({@code docs/DESIGN-PROD.md} §11.1, §16). Runs on the
+     * read thread of the new connection.
+     *
+     * @return the player, or null when the uuid was still not free after 5 seconds
+     */
+    @ApiStatus.Internal
+    public @Nullable Player createPlayerReplacing(PlayerConnection connection, GameProfile gameProfile) {
+        assert process.config().insideTest() || Thread.currentThread().isVirtual();
+        final Player player = playerProvider.createPlayer(connection, gameProfile);
+        final long deadline = System.nanoTime() + SESSION_HANDOVER_TIMEOUT;
+        while (true) {
+            final Player previous = trackOrPrevious(player);
+            if (previous == null) return player;
+            previous.kick(DisconnectReasons.LOGGED_IN_ELSEWHERE);
+            while (uuidPlayerMap.get(player.getUuid()) == previous || !leftTheWorld(previous)) {
+                if (System.nanoTime() - deadline >= 0 || !connection.isOnline()) return null;
+                try {
+                    Thread.sleep(SESSION_HANDOVER_POLL_MILLIS);
+                } catch (InterruptedException _) {
+                    Thread.currentThread().interrupt();
+                    return null;
+                }
+            }
+            // Another login of the same account may have taken the uuid in the meantime, the loop
+            // replaces that one too until the deadline
+            if (System.nanoTime() - deadline >= 0) return null;
+        }
+    }
+
+    /** Read under the player's lock, the one {@code Entity#remove} holds while it writes both. */
+    private static boolean leftTheWorld(Player player) {
+        synchronized (player) {
+            return player.isRemoved() || player.getInstance() == null;
+        }
+    }
+
     public void sendRegistryTags(Player player) {
         player.sendPacket(cachedTagsPacket);
     }
@@ -381,9 +464,17 @@ public final class ConnectionManager {
      * @return false if another live connection already owns that uuid
      */
     private synchronized boolean trackNewPlayer(Player player) {
-        if (uuidPlayerMap.putIfAbsent(player.getUuid(), player) != null) return false;
+        return trackOrPrevious(player) == null;
+    }
+
+    /**
+     * {@link #trackNewPlayer}, returning the player owning the uuid instead when it is taken.
+     */
+    private synchronized @Nullable Player trackOrPrevious(Player player) {
+        final Player previous = uuidPlayerMap.putIfAbsent(player.getUuid(), player);
+        if (previous != null) return previous;
         connectionPlayerMap.put(player.getPlayerConnection(), player);
-        return true;
+        return null;
     }
 
     /**
@@ -442,6 +533,7 @@ public final class ConnectionManager {
         handleKeepAlive(keepAlivePlayers, tickStart);
 
         gate.tick(tickStart);
+        if (sessionClient != null) sessionClient.tick(tickStart);
 
         // Interpret packets for configuration players
         configurationPlayers.forEach(Player::interpretPacketQueue);

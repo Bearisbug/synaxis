@@ -111,6 +111,15 @@ public abstract class PlayerConnection {
     }
 
     /**
+     * When this connection runs out of the login timeout, in {@link System#currentTimeMillis()}
+     * time: the budget a session server query of the login has to fit in.
+     */
+    @ApiStatus.Internal
+    public long loginDeadlineMillis() {
+        return connectedAtMillis + process.config().loginTimeout();
+    }
+
+    /**
      * Returns whether this connection is still waiting for its handshake past
      * {@code synaxis.handshake-timeout-ms}.
      *

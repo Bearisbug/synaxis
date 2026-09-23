@@ -15,6 +15,10 @@ file). This module adds what a soak needs on top of a single probe run:
 Nothing in the engine is changed or instrumented for this: every server side number comes from a
 JDK tool pointed at the running pid.
 
+The logins are the probe's, which speaks no encryption: the server runs with
+``-Dsynaxis.app.auth=offline`` (server-app defaults to online mode). An encrypted load goes through
+``tools/loadtest/PacketFlood.java --auth``.
+
 All connections are driven by one selector loop, only the login handshakes run on worker threads.
 That keeps the harness itself off the critical path: a thread per connection spends more CPU on the
 client than the server spends serving it, which would measure the harness instead of the engine.

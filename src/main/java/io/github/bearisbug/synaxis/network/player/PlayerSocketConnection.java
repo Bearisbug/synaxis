@@ -3,6 +3,7 @@ package io.github.bearisbug.synaxis.network.player;
 import io.github.bearisbug.synaxis.JvmFlags;
 import io.github.bearisbug.synaxis.ServerProcess;
 import io.github.bearisbug.synaxis.adventure.EngineAdventure;
+import io.github.bearisbug.synaxis.crypto.LoginCrypt;
 import io.github.bearisbug.synaxis.entity.GameMode;
 import io.github.bearisbug.synaxis.entity.Player;
 import io.github.bearisbug.synaxis.event.ListenerHandle;
@@ -43,6 +44,8 @@ import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.crypto.Cipher;
+import javax.crypto.SecretKey;
 import java.io.EOFException;
 import java.io.IOException;
 import java.net.SocketAddress;
@@ -86,6 +89,12 @@ public class PlayerSocketConnection extends PlayerConnection {
     private SocketAddress remoteAddress;
     private boolean attemptedProxyProtocolDetection = false;
     private final AtomicBoolean closeArmed = new AtomicBoolean(false);
+
+    // The login encryption (docs/DESIGN-PROD.md API-PROD-002). The challenge is only touched by the
+    // read thread; the ciphers are read by the write thread once per packet, hence volatile.
+    private byte @Nullable [] encryptionChallenge;
+    private boolean encryptionResponseClaimed;
+    private volatile @Nullable EncryptionContext encryption;
 
     // Data from client packets
     private @Nullable String loginUsername;
@@ -133,7 +142,12 @@ public class PlayerSocketConnection extends PlayerConnection {
 
     public void read(PacketParser<ClientPacket> packetParser) throws IOException {
         NetworkBuffer readBuffer = this.readBuffer;
-        readBuffer.readChannel(channel);
+        final long writeIndex = readBuffer.writeIndex();
+        final int length = readBuffer.readChannel(channel);
+        // Decrypt what just arrived; what was already in the buffer when the cipher came on was
+        // decrypted by #enableEncryption
+        final EncryptionContext encryption = this.encryption;
+        if (encryption != null && length > 0) readBuffer.cipher(encryption.decrypt(), writeIndex, length);
 
         if (process().config().proxyProtocol() && !attemptedProxyProtocolDetection) {
             final ProxyProtocolDecoder.Result result = ProxyProtocolDecoder.parse(remoteAddress, readBuffer);
@@ -164,10 +178,28 @@ public class PlayerSocketConnection extends PlayerConnection {
     }
 
     private void processPackets(NetworkBuffer readBuffer, PacketParser<ClientPacket> packetParser) {
+        // While the answer to an encryption request is outstanding, frames are read and handled
+        // one at a time: whatever the peer sent behind its key is already ciphertext, which
+        // #enableEncryption decrypts in place before the next frame is read.
+        boolean oneAtATime;
+        do {
+            oneAtATime = awaitingEncryptionResponse();
+            if (!processBatch(readBuffer, packetParser, oneAtATime)) return;
+        } while (oneAtATime && isOnline() && readBuffer.readableBytes() > 0);
+    }
+
+    /**
+     * @return true if at least one frame was taken off the buffer, false if it held no complete
+     * frame or the batch failed
+     */
+    private boolean processBatch(NetworkBuffer readBuffer, PacketParser<ClientPacket> packetParser, boolean oneFrame) {
         final ConnectionState startingState = getClientState();
         final PacketReading.Result<ClientPacket> result;
         try {
-            result = PacketReading.<ClientPacket>readPackets(
+            result = oneFrame
+                    ? PacketReading.<ClientPacket>readPacket(readBuffer, packetParser, startingState,
+                    PacketVanilla::nextClientState, compression(), this::readClientPacket)
+                    : PacketReading.<ClientPacket>readPackets(
                     readBuffer,
                     packetParser,
                     startingState, PacketVanilla::nextClientState,
@@ -184,7 +216,7 @@ public class PlayerSocketConnection extends PlayerConnection {
             // The remaining packets of the batch are lost, disconnect to avoid
             // reading from an invalid state.
             if (process().config().rejectMalformedPacket()) kick(DisconnectReasons.PROTOCOL_ERROR);
-            return;
+            return false;
         }
         switch (result) {
             case PacketReading.Result.Success<ClientPacket> success -> {
@@ -217,11 +249,15 @@ public class PlayerSocketConnection extends PlayerConnection {
                 }
                 // Compact in case of incomplete read
                 readBuffer.compact();
+                return true;
             }
             case PacketReading.Result.Empty<ClientPacket> _ -> {
                 // Empty
             }
-            case PacketReading.Result.Skipped<ClientPacket> _ -> readBuffer.compact();
+            case PacketReading.Result.Skipped<ClientPacket> _ -> {
+                readBuffer.compact();
+                return true;
+            }
             case PacketReading.Result.Failure<ClientPacket> failure -> {
                 readBuffer.compact(); // Drop the complete frames already read before growing
                 final long requiredCapacity = failure.requiredCapacity();
@@ -233,6 +269,61 @@ public class PlayerSocketConnection extends PlayerConnection {
                     readBuffer.resize(Math.min(requiredCapacity, readBuffer.capacity() * 2));
             }
         }
+        return false;
+    }
+
+    /**
+     * Remembers the challenge of the encryption request about to be sent. Read thread only.
+     *
+     * @param challenge the four random bytes the client has to send back encrypted
+     * @throws IllegalStateException if an encryption request was already sent
+     */
+    @ApiStatus.Internal
+    public void expectEncryptionResponse(byte[] challenge) {
+        Check.stateCondition(encryptionChallenge != null || encryptionResponseClaimed,
+                "An encryption request was already sent");
+        this.encryptionChallenge = challenge.clone();
+    }
+
+    private boolean awaitingEncryptionResponse() {
+        return encryptionChallenge != null && !encryptionResponseClaimed;
+    }
+
+    /**
+     * Claims the one encryption response a connection may send. Read thread only.
+     *
+     * @return the challenge of the encryption request, or null if none was sent or its response
+     * was already claimed
+     */
+    @ApiStatus.Internal
+    public byte @Nullable [] claimEncryptionResponse() {
+        if (encryptionResponseClaimed) return null;
+        this.encryptionResponseClaimed = true;
+        return encryptionChallenge;
+    }
+
+    /**
+     * Switches both directions of the connection to AES/CFB8. Called on the read thread while it
+     * handles the encryption response: the bytes the peer sent behind that frame are decrypted in
+     * place here, and every packet written from now on, a login disconnect included, is encrypted.
+     *
+     * @param sharedSecret the key the client sent, already decrypted
+     * @throws IllegalStateException if encryption is already enabled
+     */
+    @ApiStatus.Internal
+    public void enableEncryption(SecretKey sharedSecret) {
+        Check.stateCondition(encryption != null, "Encryption is already enabled!");
+        // Nothing may be waiting to be written: it was framed for a plaintext stream. The server
+        // sends nothing between the encryption request and its answer to the key, so this holds
+        // as long as the login flow does not change.
+        assert packetQueue.isEmpty() && writeLeftover == null : "packets queued while enabling encryption";
+        final EncryptionContext context = new EncryptionContext(
+                LoginCrypt.streamCipher(Cipher.ENCRYPT_MODE, sharedSecret),
+                LoginCrypt.streamCipher(Cipher.DECRYPT_MODE, sharedSecret));
+        final NetworkBuffer readBuffer = this.readBuffer;
+        final long unread = readBuffer.readableBytes();
+        if (unread > 0) readBuffer.cipher(context.decrypt(), readBuffer.readIndex(), unread);
+        this.encryption = context;
     }
 
     /**
@@ -415,7 +506,14 @@ public class PlayerSocketConnection extends PlayerConnection {
     }
 
     private boolean writeSendable(NetworkBuffer buffer, SendablePacket sendable, boolean compressed) {
-        return writePacketSync(buffer, sendable, compressed);
+        final long start = buffer.writeIndex();
+        if (!writePacketSync(buffer, sendable, compressed)) return false;
+        // Encrypted in the connection's own buffer: a shared framed or cached body was copied into
+        // it first, so the shared bytes are never touched
+        final EncryptionContext encryption = this.encryption;
+        final long length = buffer.writeIndex() - start;
+        if (encryption != null && length > 0) buffer.cipher(encryption.encrypt(), start, length);
+        return true;
     }
 
     // A packet that did not fit is written again on a bigger buffer, or on the next flush.
@@ -625,6 +723,9 @@ public class PlayerSocketConnection extends PlayerConnection {
 
     public Thread writeThread() {
         return writeThread;
+    }
+
+    private record EncryptionContext(Cipher encrypt, Cipher decrypt) {
     }
 
     @ApiStatus.Internal

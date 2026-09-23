@@ -3,6 +3,8 @@
 # screenshots, report and logs to $OUT (default /tmp/synaxis-gametest). The repository is mounted
 # read only and copied inside, so the host's build/ and .gradle/ are never touched.
 #   SYNAXIS_GAMETEST_SERVER=host.docker.internal:25566 client-fabric/gametest-env/run.sh
+# Against an online mode server, SYNAXIS_GAMETEST_SESSION_HOST=http://host.docker.internal:<port> points
+# the client's authlib at tools/fake-sessionserver (record mode), the one the server verifies against.
 # SYNAXIS_SPIKES (unset runs only the regression R1-R8; all, or e.g. s2,s5, adds the spikes), SYNAXIS_GAMETEST_NIGHT_VISION (true adds
 # client-side night vision to the in-world shots), the SYNAXIS_CAMERA_* variables of the spike
 # camera (gametest camera/SpikeCamera.java) and the SYNAXIS_S3_* variables of the entity culling
@@ -22,6 +24,7 @@ docker run --rm --name "${CONTAINER:-synaxis-mc-client}" \
   -v "$OUT":/out \
   -e ALSOFT_DRIVERS=null \
   -e SYNAXIS_GAMETEST_SERVER="${SYNAXIS_GAMETEST_SERVER:-}" \
+  -e SYNAXIS_GAMETEST_SESSION_HOST \
   -e SYNAXIS_SPIKES -e SYNAXIS_GAMETEST_NIGHT_VISION \
   -e SYNAXIS_CAMERA_MODES -e SYNAXIS_CAMERA_PITCHES -e SYNAXIS_CAMERA_DISTANCE \
   -e SYNAXIS_CAMERA_ORTHO_HEIGHT -e SYNAXIS_CAMERA_YAW -e SYNAXIS_CAMERA_ANCHOR \

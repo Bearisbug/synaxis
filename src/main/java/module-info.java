@@ -28,6 +28,7 @@ module io.github.bearisbug.synaxis {
     requires org.slf4j;
     requires org.jctools.core.jdk11;
     requires jdk.jfr;
+    requires java.net.http;
 
     // EXPORTS
     exports io.github.bearisbug.synaxis;

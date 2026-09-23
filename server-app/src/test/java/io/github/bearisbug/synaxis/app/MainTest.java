@@ -1,11 +1,16 @@
 package io.github.bearisbug.synaxis.app;
 
+import io.github.bearisbug.synaxis.Auth;
+import io.github.bearisbug.synaxis.SessionServer;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
+import java.net.URI;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -21,9 +26,45 @@ class MainTest {
         System.clearProperty("synaxis.app.plugins");
         System.clearProperty("synaxis.app.shard-id");
         System.clearProperty("synaxis.app.ledger-max-bytes-per-day");
+        System.clearProperty("synaxis.app.auth");
+        System.clearProperty("synaxis.app.auth.session-server");
         System.clearProperty("synaxis.entity-view-distance");
         System.clearProperty("synaxis.chunk-view-distance");
         System.clearProperty("synaxis.player.chunk-update-limiter-history-size");
+    }
+
+    @Test
+    void theDefaultLoginModeIsOnlineAgainstMojang() {
+        final Auth.Online online = assertInstanceOf(Auth.Online.class, Main.auth());
+        assertEquals(SessionServer.mojang().hasJoinedUrl(), online.sessionServer().hasJoinedUrl());
+        assertTrue(online.sessionServer().isMojang());
+    }
+
+    @Test
+    void offlineModesAreAskedForByName() {
+        System.setProperty("synaxis.app.auth", "offline");
+        assertEquals(new Auth.Offline(false), Main.auth());
+        System.setProperty("synaxis.app.auth", "offline-encrypted");
+        assertEquals(new Auth.Offline(true), Main.auth());
+    }
+
+    @Test
+    void theSessionServerCanBeOverriddenForTesting() {
+        System.setProperty("synaxis.app.auth.session-server", "http://127.0.0.1:25624/session/minecraft/hasJoined");
+        final Auth.Online online = assertInstanceOf(Auth.Online.class, Main.auth());
+        assertEquals(URI.create("http://127.0.0.1:25624/session/minecraft/hasJoined"), online.sessionServer().hasJoinedUrl());
+        assertFalse(online.sessionServer().isMojang());
+    }
+
+    @Test
+    void anUnknownLoginModeOrSessionServerIsRefused() {
+        System.setProperty("synaxis.app.auth", "cracked");
+        final IllegalArgumentException mode = assertThrows(IllegalArgumentException.class, Main::auth);
+        assertTrue(mode.getMessage().contains("synaxis.app.auth=cracked"), mode.getMessage());
+        System.setProperty("synaxis.app.auth", "online");
+        System.setProperty("synaxis.app.auth.session-server", "localhost:25624");
+        final IllegalArgumentException url = assertThrows(IllegalArgumentException.class, Main::auth);
+        assertTrue(url.getMessage().contains("synaxis.app.auth.session-server=localhost:25624"), url.getMessage());
     }
 
     @Test

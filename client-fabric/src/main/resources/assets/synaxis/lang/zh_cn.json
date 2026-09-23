@@ -13,6 +13,10 @@
 	"synaxis:login-throttled": "登录过于频繁，请稍候几秒再试。",
 	"synaxis:shard-full": "本频道已满。",
 	"synaxis:keep-alive-timeout": "连接超时，请重连。",
+	"synaxis:auth-failed": "本服务器只接受正版账号，请用官方启动器登录后重进。",
+	"synaxis:auth-unavailable": "正版验证服务暂时无法访问，请稍后重试。",
+	"synaxis:logged-in-elsewhere": "你的账号在别处登录。",
+	"synaxis:state-unavailable": "角色数据未能载入，请 30 秒后重试。",
 	"synaxis.order.no-path": "到不了那里。",
 	"synaxis.order.not-owner": "不是你的单位。",
 	"synaxis.order.busy": "服务器忙，请重试。"

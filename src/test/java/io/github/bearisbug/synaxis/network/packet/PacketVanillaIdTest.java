@@ -97,6 +97,7 @@ import io.github.bearisbug.synaxis.network.packet.server.configuration.RegistryD
 import io.github.bearisbug.synaxis.network.packet.server.configuration.ResetChatPacket;
 import io.github.bearisbug.synaxis.network.packet.server.configuration.SelectKnownPacksPacket;
 import io.github.bearisbug.synaxis.network.packet.server.configuration.UpdateEnabledFeaturesPacket;
+import io.github.bearisbug.synaxis.network.packet.server.login.EncryptionRequestPacket;
 import io.github.bearisbug.synaxis.network.packet.server.login.LoginDisconnectPacket;
 import io.github.bearisbug.synaxis.network.packet.server.login.LoginPluginRequestPacket;
 import io.github.bearisbug.synaxis.network.packet.server.login.LoginSuccessPacket;
@@ -253,7 +254,7 @@ class PacketVanillaIdTest {
     /** {@code LoginProtocols.CLIENTBOUND_TEMPLATE}. */
     private static final List<Row> CLIENTBOUND_LOGIN = List.of(
             row(0, "minecraft:login_disconnect", LoginDisconnectPacket.class),
-            row(1, "minecraft:hello", RESERVED),
+            row(1, "minecraft:hello", EncryptionRequestPacket.class),
             row(2, "minecraft:login_finished", LoginSuccessPacket.class),
             row(3, "minecraft:login_compression", SetCompressionPacket.class),
             row(4, "minecraft:custom_query", LoginPluginRequestPacket.class),

@@ -138,6 +138,7 @@ import io.github.bearisbug.synaxis.network.packet.server.configuration.RegistryD
 import io.github.bearisbug.synaxis.network.packet.server.configuration.ResetChatPacket;
 import io.github.bearisbug.synaxis.network.packet.server.configuration.SelectKnownPacksPacket;
 import io.github.bearisbug.synaxis.network.packet.server.configuration.UpdateEnabledFeaturesPacket;
+import io.github.bearisbug.synaxis.network.packet.server.login.EncryptionRequestPacket;
 import io.github.bearisbug.synaxis.network.packet.server.login.LoginDisconnectPacket;
 import io.github.bearisbug.synaxis.network.packet.server.login.LoginPluginRequestPacket;
 import io.github.bearisbug.synaxis.network.packet.server.login.LoginSuccessPacket;
@@ -348,6 +349,11 @@ public class PacketWriteReadRegistriesTest {
         addServerPackets(
                 new LoginDisconnectPacket(COMPONENT.append(Component.text(" your Disconnected!", NamedTextColor.BLUE))),
                 new LoginDisconnectPacket(COMPONENT.appendNewline().appendSpace().append(Component.text("Disconnected!", NamedTextColor.RED)))
+        );
+        addServerPackets(
+                new EncryptionRequestPacket("abvcr3ujt324joi32aaa", new byte[124], new byte[65], true), // max test
+                new EncryptionRequestPacket("server", new byte[64], new byte[235], false),
+                new EncryptionRequestPacket("", new byte[54], new byte[23], true) // default
         );
         addServerPackets(
                 new LoginSuccessPacket(new GameProfile(UUID.randomUUID(), OG), UUID.randomUUID()),

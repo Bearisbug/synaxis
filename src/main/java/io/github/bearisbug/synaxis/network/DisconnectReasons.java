@@ -64,6 +64,29 @@ public final class DisconnectReasons {
      */
     public static final TranslatableComponent KEEP_ALIVE_TIMEOUT = Component.translatable("synaxis:keep-alive-timeout");
 
+    /**
+     * The session server answered 204: the name did not join this server with a Mojang session.
+     * Sent encrypted, the client switched to the cipher when it sent its key.
+     */
+    public static final TranslatableComponent AUTH_FAILED = Component.translatable("synaxis:auth-failed");
+
+    /**
+     * The session server did not answer in time, or answered 429, 5xx or garbage, and the one
+     * retry failed too. Sent encrypted.
+     */
+    public static final TranslatableComponent AUTH_UNAVAILABLE = Component.translatable("synaxis:auth-unavailable");
+
+    /**
+     * Online mode: the same Mojang uuid logged in again, and this older session makes room for it.
+     */
+    public static final TranslatableComponent LOGGED_IN_ELSEWHERE = Component.translatable("synaxis:logged-in-elsewhere");
+
+    /**
+     * The player's state could not be brought in on time. From the engine: an online mode login
+     * whose previous session did not leave the world within 5 seconds.
+     */
+    public static final TranslatableComponent STATE_UNAVAILABLE = Component.translatable("synaxis:state-unavailable");
+
     private DisconnectReasons() {
     }
 }

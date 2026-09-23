@@ -71,9 +71,10 @@ jobs:
         run: env -u CI ./gradlew :protocol:publishToMavenLocal
 
       # server-app reads commands from stdin; `tail -f /dev/null` keeps it open for the whole job.
+      # Offline: the CI client has no Mojang account (the online path is REQ-PROD-030's B tier).
       - name: Start server-app in game mode
         run: |
-          (tail -f /dev/null | ./gradlew :server-app:run --console=plain \
+          (tail -f /dev/null | ./gradlew :server-app:run --console=plain -Dsynaxis.app.auth=offline \
             -Dsynaxis.app.port=25565 -Dsynaxis.app.handshake-phase=$HANDSHAKE_PHASE \
             > server.log 2>&1 &)
           for i in $(seq 1 300); do

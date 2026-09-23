@@ -52,6 +52,7 @@ import io.github.bearisbug.synaxis.network.packet.client.common.ClientSettingsPa
 import io.github.bearisbug.synaxis.network.packet.client.configuration.ClientFinishConfigurationPacket;
 import io.github.bearisbug.synaxis.network.packet.client.configuration.ClientSelectKnownPacksPacket;
 import io.github.bearisbug.synaxis.network.packet.client.handshake.ClientHandshakePacket;
+import io.github.bearisbug.synaxis.network.packet.client.login.ClientEncryptionResponsePacket;
 import io.github.bearisbug.synaxis.network.packet.client.login.ClientLoginAcknowledgedPacket;
 import io.github.bearisbug.synaxis.network.packet.client.login.ClientLoginPluginResponsePacket;
 import io.github.bearisbug.synaxis.network.packet.client.login.ClientLoginStartPacket;
@@ -127,6 +128,7 @@ public final class PacketListenerManager {
         setListener(ConnectionState.STATUS, ClientPingRequestPacket.class, StatusListener::pingRequestListener);
 
         setListener(ConnectionState.LOGIN, ClientLoginStartPacket.class, LoginListener::loginStartListener);
+        setListener(ConnectionState.LOGIN, ClientEncryptionResponsePacket.class, LoginListener::loginEncryptionResponseListener);
         setListener(ConnectionState.LOGIN, ClientLoginPluginResponsePacket.class, LoginListener::loginPluginResponseListener);
         setListener(ConnectionState.LOGIN, ClientLoginAcknowledgedPacket.class, LoginListener::loginAckListener);
         setListener(ConnectionState.LOGIN, ClientCookieResponsePacket.class, CookieListener::handleCookieResponse);

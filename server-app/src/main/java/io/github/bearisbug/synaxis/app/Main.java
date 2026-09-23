@@ -4,6 +4,7 @@ import io.github.bearisbug.synaxis.Auth;
 import io.github.bearisbug.synaxis.JvmFlags;
 import io.github.bearisbug.synaxis.MinecraftServer;
 import io.github.bearisbug.synaxis.ServerProcess;
+import io.github.bearisbug.synaxis.SessionServer;
 import io.github.bearisbug.synaxis.Watchdog;
 import io.github.bearisbug.synaxis.game.protocol.ProtocolSchema;
 import io.github.bearisbug.synaxis.plugin.PluginApi;
@@ -18,6 +19,7 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.lang.management.ManagementFactory;
+import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.time.Clock;
@@ -55,6 +57,8 @@ public final class Main {
     /** A shard id ends up in file names, so it is kept to characters that cannot leave the directory. */
     private static final Pattern SHARD_ID = Pattern.compile("[A-Za-z0-9][A-Za-z0-9._-]*");
     private static final String LEDGER_MAX_BYTES_PROPERTY = "synaxis.app.ledger-max-bytes-per-day";
+    private static final String AUTH_PROPERTY = "synaxis.app.auth";
+    private static final String SESSION_SERVER_PROPERTY = "synaxis.app.auth.session-server";
 
     /**
      * The world height of §9, and the only one M2 has: the single shallow dimension type is built
@@ -103,18 +107,20 @@ public final class Main {
         final String shardId = shardId();
         final long ledgerMaxBytesPerDay = ledgerMaxBytesPerDay();
         final Set<String> selectedPlugins = selectedPlugins();
+        final Auth auth = auth();
         final CoreMode.Setting coreMode = CoreMode.setting();
         applyViewRangeDefaults();
 
         // (2) The engine facade, not a bare ServerProcess: MinecraftServer#start is the only public
         // entry point doing bind, dispatcher and tick thread in the right order.
-        final MinecraftServer server = MinecraftServer.init(new Auth.Offline());
+        final MinecraftServer server = MinecraftServer.init(auth);
         final ServerProcess process = server.process();
 
         // Boot self-check: the effective settings go in the log, so a launch argument that did not
         // land is visible here instead of at the first symptom.
         LOGGER.info("Effective {}", process.config());
         LOGGER.info("Effective {}", JvmFlags.describe());
+        logAuth(auth);
 
         // (3) The one shallow dimension type every match is built on. It has to be registered here:
         // step (6) freezes the registries, and a dimension type registered after the port is open
@@ -292,6 +298,59 @@ public final class Main {
             // Integer.getInteger would fall back to the default here, and the process would come up
             // on a port nobody asked for (docs/TEST.md §3 reads this one back as a precondition).
             throw new IllegalArgumentException(PORT_PROPERTY + "=" + property + " is not a port number");
+        }
+    }
+
+    /**
+     * The login mode of {@code docs/DESIGN-PROD.md} {@code API-PROD-001}: {@code online} unless the
+     * launch says otherwise, so a deployment that forgot the argument fails to let anyone in rather
+     * than letting everyone in under any name.
+     *
+     * @return the auth of the process
+     * @throws IllegalArgumentException if the mode is not one of the three, or the session server
+     *                                  override is not an http or https URL
+     */
+    static Auth auth() {
+        final String mode = System.getProperty(AUTH_PROPERTY, "online").strip();
+        return switch (mode) {
+            case "online" -> {
+                final String override = System.getProperty(SESSION_SERVER_PROPERTY);
+                yield new Auth.Online(override == null ? SessionServer.mojang() : SessionServer.at(sessionServer(override)));
+            }
+            case "offline" -> new Auth.Offline(false);
+            case "offline-encrypted" -> new Auth.Offline(true);
+            default -> throw new IllegalArgumentException(AUTH_PROPERTY + "=" + mode
+                    + " is not a login mode: online, offline or offline-encrypted");
+        };
+    }
+
+    private static URI sessionServer(String property) {
+        final URI uri;
+        try {
+            uri = URI.create(property.strip());
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException(SESSION_SERVER_PROPERTY + "=" + property + " is not a URL", e);
+        }
+        if (uri.getHost() == null || !("http".equals(uri.getScheme()) || "https".equals(uri.getScheme())))
+            throw new IllegalArgumentException(SESSION_SERVER_PROPERTY + "=" + property + " is not an http or https URL");
+        return uri;
+    }
+
+    /**
+     * The login mode goes in the boot self-check. A process verifying against anything but Mojang
+     * lets in whoever that server vouches for, which is what CI and load tests want and a
+     * production deployment must never do, so it is a warning.
+     */
+    private static void logAuth(Auth auth) {
+        switch (auth) {
+            case Auth.Online online when online.sessionServer().isMojang() ->
+                    LOGGER.info("Effective auth: mode=online session_server={}", online.sessionServer().hasJoinedUrl());
+            case Auth.Online online -> LOGGER.warn("Effective auth: mode=online session_server={} is not Mojang's "
+                    + "session server; a login is let in on whatever it answers, which is for CI and load "
+                    + "tests only", online.sessionServer().hasJoinedUrl());
+            case Auth.Offline offline -> LOGGER.info("Effective auth: mode={}",
+                    offline.encrypt() ? "offline-encrypted" : "offline");
+            default -> LOGGER.info("Effective auth: {}", auth);
         }
     }
 

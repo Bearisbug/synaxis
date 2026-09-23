@@ -31,7 +31,7 @@ $BACKUP_ROOT/
 4. 验证：`psql -Atc "SELECT pg_walfile_name(pg_switch_wal())"`，2 s 内 `$BACKUP_ROOT/wal/` 出现同名 `.gz`，`pg_stat_archiver.failed_count` 为 0。
 5. 立即做第一份基础备份：`BACKUP_CHECKPOINT=fast /backup/bin/base-backup.sh`。没有基础备份时归档的 WAL 无从回放，`check-archive.sh` 也会一直告警。
 
-恢复点：提交在 `archive_timeout`（60 s）之内被切进一个已完成的段，归档本身在秒级完成，所以正常情况下提交后 ≤ 60 s 可恢复（`TC-PROD-191` 实测 27 s）；归档失败时由 `check-archive.sh` 在 WAL 等待满 300 s 时告警，两者合起来守住 5 分钟。
+恢复点：提交在 `archive_timeout`（60 s）之内被切进一个已完成的段，归档本身在秒级完成，所以正常情况下提交后可恢复的上限是 60 s 加一次压缩的时间（`TC-PROD-191` 两次实测 27 s 与 57.5 s）；归档失败时由 `check-archive.sh` 在 WAL 等待满 300 s 时告警，两者合起来守住 5 分钟。
 
 ## 2. 定时任务
 
@@ -53,7 +53,25 @@ $BACKUP_ROOT/
 6. `server-app --migrate-only` 校验表结构版本（`docs/DESIGN-PROD.md` §25），切连接串，起服。旧租约随新 `shard_session` 全部过期。
 7. 原库保留只读 7 天，发现恢复点选错时切回。
 
-## 4. 本机开发容器
+## 4. 归档告警处置（`RB-PROD-008` 处置）
+
+触发：`check-archive.sh` 退出码非 0。stderr 的 `ALERT` 行决定走哪一条；同时出现多行时先处理归档（前三种），再处理备份。
+
+1. 诊断：`psql -X -c "SELECT * FROM pg_stat_archiver"` 看 `last_failed_wal`、`last_failed_time` 与 `last_archived_time`；PostgreSQL 日志里每次失败有一对 `archive command failed with exit code <n>` 与 `The failed archive command was: …`，`archive-wal.sh` 自己的报错（stderr，没有时间戳前缀，例如 `can't create /backup/wal/.<段名>.gz.partial: …`）紧挨在这一对前面；`df -h $BACKUP_ROOT` 看备份卷是否满了。
+2. 按告警修：
+
+   | `ALERT` 行 | 常见原因 | 修法 |
+   | --- | --- | --- |
+   | `archive_mode is off` | 有人关了归档，或这是 `restore-pitr.sh` 恢复出来的实例 | 按第 1 节第 2～3 步重开并重启；恢复出来的实例按第 3 节第 5 步 |
+   | `archive_command is failing` | 备份卷满或不可写（`Permission denied`、`No space left on device`）；`archive-wal.sh` 报 `already exists with different content` | 前者腾空间或修权限，PostgreSQL 会自动重试同一个段（连续失败 3 次后日志报 `failed too many times, will try again later`，最多等 60 s 再试），不用重启也不用 reload。后者说明有两个库在往同一个 `wal/` 写（多半是恢复实例的 `BACKUP_ROOT` 没换），先停掉写错的那个库的归档，不要删或覆盖已归档的文件 |
+   | `oldest WAL waiting …s > 300s` | 通常与上一行同时出现；单独出现时是归档跟不上写入（压缩慢或备份盘慢） | 同上一行；单独出现时看备份卷的 I/O |
+   | `no base backup` / `newest base backup … is older than 26h` | 定时任务没跑或失败 | 读 `$BACKUP_ROOT/base-backup.log` 的最后一次输出，修好后执行第 3 步 |
+
+3. 修好后先确认 `check-archive.sh` 的归档检查回到 `failing=f`、`archive_mode=on`，积压的段会自动补归档（`ready` 回到 0）；然后**立即补一份基础备份**：`BACKUP_CHECKPOINT=fast $BACKUP_ROOT/bin/base-backup.sh`，再跑一次 `check-archive.sh` 应为退出码 0、`newest base backup` 是刚做的那份。原因：`archive_mode` 关掉的那段时间，或 `pg_wal` 里的段在归档前被手工清掉时，这段 WAL 永远不在归档里，旧的基础备份回放不过这个缺口，只有缺口之后的新备份能用于时间点恢复。
+4. 升级：归档中断超过 15 分钟通知用户。`archive_mode is off` 与 `archive_command is failing` 从第一次告警起算；`oldest WAL waiting` 首报时已经中断了 300 s，所以它首报后 10 分钟还没恢复就通知。
+5. 恢复验证：`check-archive.sh` 连续 15 分钟退出码 0，且第 3 步的补备份已完成。
+
+## 5. 本机开发容器
 
 本机开发与测试共用容器 `synaxis-pg`，各组各用自己的 database。归档与备份放在单独的卷 `synaxis-pg-backup`：
 

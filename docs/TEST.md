@@ -15,6 +15,7 @@
 
 | 日期 | 改动 | 作者 |
 | --- | --- | --- |
+| 2026-09-24 | 3C 审查返工第 2 轮：`TC-PROD-191` 第 7 步修好归档后按 `ops/postgres/README.md` 新增的第 4 节（归档告警处置）补一份基础备份并核对探针认到新备份；README 原第 4 节（本机开发容器）顺延为第 5 节，本节两处引用同步 | Bearisbug |
 | 2026-09-24 | 3C 审查返工：`TC-PROD-191` 第 5 步改用自己的库 `synaxis_rpo`，不再依赖 `TC-PROD-193` 建的表；第 6 步先写一行再切段；`TC-PROD-192` 新增第 4 步（强杀留下的 `.partial` 由下一次备份清掉，反证用修复前脚本），原第 4、5 步顺延；`TC-PROD-193` 第 4 步按结束时间选备份，第 6 步加探针对 `archive_mode=off` 的告警与反证，新增第 7 步给恢复实例开归档；§5 回归映射同步 | Bearisbug |
 | 2026-09-24 | 新增第 3 波 3C 一节 `TC-PROD-190`～`TC-PROD-193`（`REQ-PROD-035` 前半）：`archive_command` 脚本的幂等与拒绝覆盖、在本机 `synaxis-pg` 上开归档与告警探针、每日基础备份与保留清理、恢复到 5 分钟以前的时间点；每条带反证步骤（去掉同名检查、`archive_command=/bin/false`、备份过期、没有归档 WAL）。§5 回归映射同步 | Bearisbug |
 | 2026-09-23 | §7 登记并结案 `PluginHostIntegrationTest > theProcessAcceptsOnlyOneAdmissionProvider` 的偶发红：根因是两个集成测试类起了事件台账写线程不关，写线程在 JUnit 删临时目录时才建 `logs/`；写明复现办法（占满虚拟线程载体 + 拉长删除，修前 20 次红 6 次）与处置（`@AfterEach` 关台账，修后 100 次与严格模式 20 次全绿）。用例判据未动 | Bearisbug |
@@ -2714,7 +2715,7 @@ jcmd "$pid" VM.flags | tr ' ' '\n' | grep -cxE -- '-XX:\+UseG1GC|-XX:InitialHeap
 
 ### 生产就绪 · 第 3 波 3C：WAL 归档与每日基础备份
 
-对应 `REQ-PROD-035` 前半（§17 `backup.base` / WAL 归档一行，§21「WAL 归档延迟」SLI，Runbook `RB-PROD-008`，§19「WAL 归档与恢复演练」）。实现在 `ops/postgres/`：`archive-wal.sh` 是 `archive_command`，`enable-wal-archive.sh` 用 `ALTER SYSTEM` 开归档（`archive_timeout=60s`），`base-backup.sh` 做每日基础备份并按保留份数清理归档，`check-archive.sh` 是告警探针，`restore-pitr.sh` 准备时间点恢复的数据目录；操作步骤在 `ops/postgres/README.md`。四条用例都在本机共用容器 `synaxis-pg`（`postgres:16-alpine`，PostgreSQL 16.13，`127.0.0.1:5440`，数据卷 `synaxis-pg-data`，归档与备份卷 `synaxis-pg-backup` 挂在 `/backup`）里跑，脚本按 README 第 4 节拷到 `/backup/bin/`；下文 `PG` 是 `docker exec -u postgres synaxis-pg`，`PGI` 是 `docker exec -i -u postgres synaxis-pg`。不起 `server-app`，不占游戏端口。演练用自己的库 `synaxis_drill`，不碰别组的库。
+对应 `REQ-PROD-035` 前半（§17 `backup.base` / WAL 归档一行，§21「WAL 归档延迟」SLI，Runbook `RB-PROD-008`，§19「WAL 归档与恢复演练」）。实现在 `ops/postgres/`：`archive-wal.sh` 是 `archive_command`，`enable-wal-archive.sh` 用 `ALTER SYSTEM` 开归档（`archive_timeout=60s`），`base-backup.sh` 做每日基础备份并按保留份数清理归档，`check-archive.sh` 是告警探针，`restore-pitr.sh` 准备时间点恢复的数据目录；操作步骤在 `ops/postgres/README.md`。四条用例都在本机共用容器 `synaxis-pg`（`postgres:16-alpine`，PostgreSQL 16.13，`127.0.0.1:5440`，数据卷 `synaxis-pg-data`，归档与备份卷 `synaxis-pg-backup` 挂在 `/backup`）里跑，脚本按 README 第 5 节拷到 `/backup/bin/`；下文 `PG` 是 `docker exec -u postgres synaxis-pg`，`PGI` 是 `docker exec -i -u postgres synaxis-pg`。不起 `server-app`，不占游戏端口。演练用自己的库 `synaxis_drill`，不碰别组的库。
 
 #### `TC-PROD-190` `archive_command` 脚本：压缩落盘、重复归档幂等、同名不同内容拒绝覆盖、写不进去不留半个文件 — 对应 `REQ-PROD-035` · 级别: 回归 · 执行者: AI
 
@@ -2733,7 +2734,7 @@ jcmd "$pid" VM.flags | tr ' ' '\n' | grep -cxE -- '-XX:\+UseG1GC|-XX:InitialHeap
 
 #### `TC-PROD-191` 在 `synaxis-pg` 上开归档：重启后切段即归档，提交 60 s 内可恢复，归档失败与积压都告警 — 对应 `REQ-PROD-035` · 级别: 回归 · 执行者: AI
 
-前置：`synaxis-pg` 按 `ops/postgres/README.md` 第 4 节的 `docker run` 起好，`/backup/bin/` 已拷入脚本并 `chown`；还没开归档（`PG psql -X -At -c "SHOW archive_mode"` 为 `off`）。已经开过时从第 3 步做起。
+前置：`synaxis-pg` 按 `ops/postgres/README.md` 第 5 节的 `docker run` 起好，`/backup/bin/` 已拷入脚本并 `chown`；还没开归档（`PG psql -X -At -c "SHOW archive_mode"` 为 `off`）。已经开过时从第 3 步做起。
 
 | # | 操作 | 预期 |
 | --- | --- | --- |
@@ -2743,7 +2744,7 @@ jcmd "$pid" VM.flags | tr ' ' '\n' | grep -cxE -- '-XX:\+UseG1GC|-XX:InitialHeap
 | 4 | `PG /backup/bin/check-archive.sh; echo rc=$?`（还没有基础备份） | `check-archive: ready=0 oldest_ready_s=0 failing=f … archive_mode=on`，下一行 `check-archive: ALERT no base backup in /backup/base`，`rc=1`。做完 `TC-PROD-192` 第 1 步后重跑为 `rc=0` |
 | 5 | 恢复点：`PG createdb synaxis_rpo`；`PGI psql -X -At -q -d synaxis_rpo`，输入 `CREATE TABLE rpo_marker (id bigserial PRIMARY KEY, note text NOT NULL); INSERT INTO rpo_marker (note) VALUES ('rpo'); SELECT pg_walfile_name(pg_current_wal_insert_lsn()), clock_timestamp();`；之后每 5 s 查一次第 3 步的 `pg_stat_archiver`，共 80 s | 这次提交所在的段在 60 s 内出现在 `last_archived_wal`：首次实测提交 `16:13:10.84`（UTC）落在 `000000010000000000000007`，`last_archived_time` 为 `16:13:37.91`，27 s；返工重跑提交 `16:34:12.65` 落在 `…13`，归档于 `16:35:10.16`，57.5 s。上限是 `archive_timeout` 的 60 s 加一次压缩的时间，在 5 分钟恢复点目标之内 |
 | 6 | 反证有齿（归档失败）：`PGI psql -X -At`，输入 `ALTER SYSTEM SET archive_command = '/bin/false'; SELECT pg_reload_conf();`；`PG psql -X -At -d synaxis_rpo -c "INSERT INTO rpo_marker (note) VALUES ('fail')"` 后再切一次段（第 3 步第一条命令；不先写一行时当前段是空的，不会切），等 15 s，`docker exec -u postgres -e ARCHIVE_MAX_LAG_S=5 synaxis-pg /backup/bin/check-archive.sh; echo rc=$?` | 红：`rc=1`，两行告警 `check-archive: ALERT oldest WAL waiting 16s > 5s` 与 `check-archive: ALERT archive_command is failing`（返工重跑为 `15s`），状态行 `ready=1 … failing=t … failed=3 … archive_mode=on`（`/bin/false` 每次重试都计一次失败，重跑时 `failed` 从 3 涨到 6） |
-| 7 | 还原：同第 6 步，把 `archive_command` 写回 `'/backup/bin/archive-wal.sh %p %f /backup/wal'` 并 reload；65 s 后跑 `PG /backup/bin/check-archive.sh; echo rc=$?` | `rc=0`，`ready=0 oldest_ready_s=0 failing=f`：积压的段在修好后自动补归档，`last_archived_wal` 追到最新段 |
+| 7 | 还原并按 `ops/postgres/README.md` 第 4 节第 3 步补备份：同第 6 步，把 `archive_command` 写回 `'/backup/bin/archive-wal.sh %p %f /backup/wal'` 并 reload；65 s 后跑 `PG /backup/bin/check-archive.sh; echo rc=$?`；然后 `docker exec -u postgres -e BACKUP_CHECKPOINT=fast synaxis-pg /backup/bin/base-backup.sh; echo rc=$?`，再跑一次 `check-archive.sh` | 第一次探针 `rc=0`，`failing=f`、`ready=0 oldest_ready_s=0`：积压的段在修好后自动补归档，`last_archived_wal` 追到第 6 步切出的段（第 2 轮返工实测恰逢 `archive_timeout` 切段，为 `ready=1 oldest_ready_s=1`，仍 `rc=0`）。备份 `rc=0`，输出 `base-backup: /backup/base/<UTC 时间戳>` 与 `base-backup: kept WAL from …`（实测 `20260923T170720Z`，1 s 内完成）；第二次探针 `rc=0`，`newest base backup` 是这份新备份 |
 
 后置：归档保持开着（它就是本条交付的状态）；`SHOW archive_command` 是第 2 步的值；`PG dropdb synaxis_rpo`。`archive_mode=off` 的告警在 `TC-PROD-193` 第 6、7 步对恢复出来的实例测，不为它重启共用容器。
 

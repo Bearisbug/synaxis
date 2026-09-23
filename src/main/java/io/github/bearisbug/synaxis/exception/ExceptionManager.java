@@ -1,35 +1,55 @@
 package io.github.bearisbug.synaxis.exception;
 
 import org.jetbrains.annotations.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.UUID;
 
 /**
  * Manages the handling of exceptions.
+ * <p>
+ * An {@link OutOfMemoryError} is handed to the handler like any other throwable: the process does
+ * not try to run its stop sequence on an exhausted heap. Exiting is the JVM's job, through
+ * {@code -XX:+ExitOnOutOfMemoryError} on the launch command ({@code docs/DESIGN-PROD.md}
+ * {@code API-PROD-013}).
  */
 public final class ExceptionManager {
 
-    private final Runnable shutdown;
+    private static final Logger LOGGER = LoggerFactory.getLogger(ExceptionManager.class);
+
+    /** The sink when no handler is set: a log line, never the bare standard error stream. */
+    private static final ExceptionHandler DEFAULT_HANDLER = new ExceptionHandler() {
+        @Override
+        public void handleException(Throwable e) {
+            handleException(e, null);
+        }
+
+        @Override
+        public void handleException(Throwable e, @Nullable UUID connectionId) {
+            LOGGER.error("Unhandled exception: connection_id={}", connectionId == null ? "-" : connectionId, e);
+        }
+    };
+
     private @Nullable ExceptionHandler exceptionHandler;
 
     /**
-     * @param shutdown stops the owning process, called when the JVM runs out of memory
-     */
-    public ExceptionManager(Runnable shutdown) {
-        this.shutdown = shutdown;
-    }
-
-    /**
-     * Handles an exception, if no {@link ExceptionHandler} is set, it just prints the stack trace.
+     * Handles an exception, if no {@link ExceptionHandler} is set it is logged as an ERROR.
      *
      * @param e the occurred exception
      */
     public void handleException(Throwable e) {
-        if (e instanceof OutOfMemoryError) {
-            // OOM should be handled manually
-            e.printStackTrace();
-            shutdown.run();
-            return;
-        }
-        this.getExceptionHandler().handleException(e);
+        handleException(e, null);
+    }
+
+    /**
+     * Handles an exception thrown while handling one connection.
+     *
+     * @param e            the occurred exception
+     * @param connectionId the connection it was thrown for, {@code null} when there is none
+     */
+    public void handleException(Throwable e, @Nullable UUID connectionId) {
+        this.getExceptionHandler().handleException(e, connectionId);
     }
 
     /**
@@ -47,7 +67,7 @@ public final class ExceptionManager {
      * @return the current {@link ExceptionHandler}
      */
     public ExceptionHandler getExceptionHandler() {
-        if (this.exceptionHandler == null) this.exceptionHandler = Throwable::printStackTrace;
+        if (this.exceptionHandler == null) this.exceptionHandler = DEFAULT_HANDLER;
         return this.exceptionHandler;
     }
 }

@@ -302,7 +302,8 @@ public class Entity implements Viewable, Tickable, Schedulable, EventHandler<Ent
 
     private void handleException(Throwable throwable) {
         final ServerProcess process = this.process;
-        if (process != null) process.exception().handleException(throwable);
+        if (process != null) process.exception().handleException(throwable,
+                this instanceof Player player ? player.getPlayerConnection().connectionId() : null);
         else throwable.printStackTrace();
     }
 

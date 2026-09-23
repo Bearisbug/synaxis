@@ -7,6 +7,7 @@ import io.github.bearisbug.synaxis.ServerProcess;
 import io.github.bearisbug.synaxis.game.protocol.ProtocolSchema;
 import io.github.bearisbug.synaxis.plugin.PluginApi;
 import io.github.bearisbug.synaxis.registry.RegistryKey;
+import io.github.bearisbug.synaxis.timer.TaskSchedule;
 import io.github.bearisbug.synaxis.world.DimensionType;
 import net.kyori.adventure.key.Key;
 import org.slf4j.Logger;
@@ -15,12 +16,18 @@ import org.slf4j.LoggerFactory;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.lang.management.ManagementFactory;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
+import java.time.Clock;
+import java.time.ZoneId;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 /**
@@ -42,6 +49,11 @@ public final class Main {
     private static final String PORT_PROPERTY = "synaxis.app.port";
     private static final String PLUGINS_PROPERTY = "synaxis.app.plugins";
     private static final int DEFAULT_PORT = 25565;
+    private static final String SHARD_ID_PROPERTY = "synaxis.app.shard-id";
+    private static final String DEFAULT_SHARD_ID = "local";
+    /** A shard id ends up in file names, so it is kept to characters that cannot leave the directory. */
+    private static final Pattern SHARD_ID = Pattern.compile("[A-Za-z0-9][A-Za-z0-9._-]*");
+    private static final String LEDGER_MAX_BYTES_PROPERTY = "synaxis.app.ledger-max-bytes-per-day";
 
     /**
      * The world height of §9, and the only one M2 has: the single shallow dimension type is built
@@ -87,6 +99,8 @@ public final class Main {
         // (1) Process level configuration. The engine reads its own synaxis.* properties while the
         // process is being created, which is why this comes before init.
         final int port = port();
+        final String shardId = shardId();
+        final long ledgerMaxBytesPerDay = ledgerMaxBytesPerDay();
         final Set<String> selectedPlugins = selectedPlugins();
         final CoreMode.Setting coreMode = CoreMode.setting();
         applyViewRangeDefaults();
@@ -109,7 +123,11 @@ public final class Main {
         // (4) Plugins, on this thread. A plugin builds its match here, before anything is bound.
         // An operator who asked for the core mode gets no plugin at all: that is the only way the
         // core mode is deterministic while a gameplay plugin sits on the classpath.
-        final PluginHost host = new PluginHost(process, Path.of("plugins"), new EventLedger(Path.of("logs")));
+        final EventLedger ledger = new EventLedger(Path.of("logs"), shardId, ledgerMaxBytesPerDay);
+        ledger.start();
+        final PluginHost host = new PluginHost(process, Path.of("plugins"), ledger);
+        final CrashReports crashReports = crashReports(process, host, shardId, Path.of("crash-reports"));
+        installExceptionHandler(process, crashReports);
         if (coreMode != CoreMode.Setting.ON) host.enable(PluginHost.discover(), selectedPlugins);
 
         // (5) Which mode this process serves in. Gameplay needs both halves — an admission provider
@@ -132,13 +150,15 @@ public final class Main {
                         HandshakeGate.CHANNEL, HandshakeGate.phase().name().toLowerCase(Locale.ROOT),
                         ProtocolSchema.SCHEMA_VERSION);
             }
-            case REFUSED -> refuseToServe(host, runningMatches, port);
+            case REFUSED -> refuseToServe(host, ledger, runningMatches, port);
         }
 
         // The only place the plugins are disabled, console and SIGINT alike: the engine drains its
         // shutdown tasks once the tick threads are joined and before it shuts anything else down, so
         // registering here gets onDisable the same quiet process on both paths.
         process.scheduler().buildShutdownTask(host::disableAll);
+        // After the plugins, so that what they record in onDisable is on disk (API-PROD-014)
+        process.scheduler().buildShutdownTask(ledger::close);
 
         // (6) bind, freeze the registries, accept, start the dispatcher and the tick thread.
         server.start(BIND_ADDRESS, port);
@@ -149,6 +169,44 @@ public final class Main {
         // Not a daemon: the shutdown sequence runs on this thread, and the JVM must not
         // exit out from under it once the tick threads are gone.
         Thread.ofPlatform().name("server-app-console").start(() -> readConsole(process));
+    }
+
+    /**
+     * The crash report writer of the process ({@code docs/DESIGN-PROD.md} {@code API-PROD-013}),
+     * shared by every fatal path: the exception handler below and the tick watchdog.
+     *
+     * @param process   the engine process, whose settings go into a report
+     * @param host      the plugin host, whose plugins go into a report
+     * @param shardId   the shard id of the file names
+     * @param directory where the reports go
+     * @return the writer
+     */
+    static CrashReports crashReports(ServerProcess process, PluginHost host, String shardId, Path directory) {
+        return new CrashReports(directory, shardId, Clock.system(ZoneId.systemDefault()),
+                () -> CrashReports.describe(List.of(process.config().toString(), JvmFlags.describe()),
+                        System.getProperties(), System.getenv(), ManagementFactory.getRuntimeMXBean().getInputArguments()),
+                host::enabledPluginVersions);
+    }
+
+    /**
+     * Sends what the engine could not handle, and what kills a thread, to the host's handler
+     * ({@code API-PROD-013}). The tick number in its lines is counted here, at the start of every
+     * tick of the scheduler, so that it reads the same on every thread.
+     *
+     * @param process      the engine process
+     * @param crashReports the writer of the fatal branch
+     * @return the handler, which the JVM now also calls for every thread that dies of a throwable
+     */
+    static HostExceptionHandler installExceptionHandler(ServerProcess process, CrashReports crashReports) {
+        final AtomicLong tick = new AtomicLong();
+        process.scheduler().scheduleTask(() -> {
+            tick.incrementAndGet();
+            return TaskSchedule.nextTick();
+        }, TaskSchedule.nextTick());
+        final HostExceptionHandler handler = new HostExceptionHandler(crashReports, tick::get);
+        process.exception().setExceptionHandler(handler);
+        Thread.setDefaultUncaughtExceptionHandler(handler::handleUncaught);
+        return handler;
     }
 
     /**
@@ -167,10 +225,11 @@ public final class Main {
      * because which one is missing says what went wrong with the plugin.
      *
      * @param host    the plugin host
+     * @param ledger  the event ledger, drained before the exit so the plugin events stay
      * @param matches how many matches are running, the count the mode was decided on
      * @param port    the port that is not going to be bound
      */
-    private static void refuseToServe(PluginHost host, int matches, int port) {
+    private static void refuseToServe(PluginHost host, EventLedger ledger, int matches, int port) {
         if (!host.hasAdmissionProvider())
             LOGGER.error("No admission provider: no plugin registered one, so nothing would know where to put "
                     + "a player.");
@@ -178,6 +237,7 @@ public final class Main {
             LOGGER.error("No running match: a plugin has to build one and register it before the port opens, "
                     + "and M2 expects exactly one (found {}).", matches);
         LOGGER.error("Not binding {}:{}.", BIND_ADDRESS, port);
+        ledger.close();
         System.exit(1);
     }
 
@@ -214,6 +274,35 @@ public final class Main {
             // on a port nobody asked for (docs/TEST.md §3 reads this one back as a precondition).
             throw new IllegalArgumentException(PORT_PROPERTY + "=" + property + " is not a port number");
         }
+    }
+
+    /**
+     * @return the shard id of the ledger and crash report file names, {@value #DEFAULT_SHARD_ID}
+     *         when the property is not set
+     * @throws IllegalArgumentException if it holds a character a file name must not carry
+     */
+    static String shardId() {
+        final String shardId = System.getProperty(SHARD_ID_PROPERTY, DEFAULT_SHARD_ID).strip();
+        if (!SHARD_ID.matcher(shardId).matches())
+            throw new IllegalArgumentException(SHARD_ID_PROPERTY + "=" + shardId + " is not a shard id: letters, "
+                    + "digits, '.', '_' and '-' only, starting with a letter or a digit");
+        return shardId;
+    }
+
+    /**
+     * @return the daily size cap of the event ledger in bytes, 1 GiB when the property is not set
+     * @throws IllegalArgumentException if the property is not a positive number
+     */
+    static long ledgerMaxBytesPerDay() {
+        final String property = System.getProperty(LEDGER_MAX_BYTES_PROPERTY);
+        if (property == null) return EventLedger.DEFAULT_MAX_BYTES_PER_DAY;
+        try {
+            final long bytes = Long.parseLong(property.strip());
+            if (bytes > 0) return bytes;
+        } catch (NumberFormatException _) {
+            // reported below, like a negative value
+        }
+        throw new IllegalArgumentException(LEDGER_MAX_BYTES_PROPERTY + "=" + property + " is not a positive number of bytes");
     }
 
     static Set<String> selectedPlugins() {

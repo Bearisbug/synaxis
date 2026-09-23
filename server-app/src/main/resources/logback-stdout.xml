@@ -1,0 +1,3 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- -Dsynaxis.app.log=stdout: the console appender of logback.xml is all there is -->
+<included/>

@@ -16,8 +16,7 @@ public class GlobalEventHandlerTest {
 
     @Test
     public void theGlobalHandlerIsARootNamedGlobalAcceptingEveryEvent() {
-        var handler = new GlobalEventHandler(new ExceptionManager(() -> {
-        }));
+        var handler = new GlobalEventHandler(new ExceptionManager());
         assertEquals("global", handler.getName());
         assertSame(Event.class, handler.getEventType());
         assertNull(handler.getParent());
@@ -26,8 +25,7 @@ public class GlobalEventHandlerTest {
     @Test
     public void theGlobalHandlerRoutesToItsExceptionManager() {
         List<Throwable> caught = new ArrayList<>();
-        var manager = new ExceptionManager(() -> {
-        });
+        var manager = new ExceptionManager();
         manager.setExceptionHandler(caught::add);
         var handler = new GlobalEventHandler(manager);
         handler.addListener(EventNodeTest.EventTest.class, _ -> {

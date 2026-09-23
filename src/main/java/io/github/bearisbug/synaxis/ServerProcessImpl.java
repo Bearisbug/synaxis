@@ -83,7 +83,7 @@ final class ServerProcessImpl implements ServerProcess, Registries.Delegating {
     public ServerProcessImpl(Auth auth, ServerConfig config) {
         this.auth = auth;
         this.config = config;
-        this.exception = new ExceptionManager(this::stop);
+        this.exception = new ExceptionManager();
         this.registries = Registries.vanilla();
 
         this.connection = new ConnectionManager(this);

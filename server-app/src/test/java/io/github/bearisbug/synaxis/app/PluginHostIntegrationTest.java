@@ -28,6 +28,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
@@ -53,6 +54,9 @@ class PluginHostIntegrationTest {
 
     @TempDir
     Path workingDirectory;
+
+    /** The ledger of {@link #host}, started so that {@link #readLedger} can drain it to disk. */
+    private @Nullable EventLedger ledger;
 
     private record ProbeEvent() implements Event {
     }
@@ -132,8 +136,9 @@ class PluginHostIntegrationTest {
     }
 
     private PluginHost host(Env env) {
-        return new PluginHost(env.process(), workingDirectory.resolve("plugins"),
-                new EventLedger(workingDirectory.resolve("logs")));
+        ledger = new EventLedger(workingDirectory.resolve("logs"), "test", EventLedger.DEFAULT_MAX_BYTES_PER_DAY);
+        ledger.start();
+        return new PluginHost(env.process(), workingDirectory.resolve("plugins"), ledger);
     }
 
     @Test
@@ -497,6 +502,8 @@ class PluginHostIntegrationTest {
     }
 
     private List<String> readLedger() {
+        // The writer thread owns the file; closing drains what is queued and forces it
+        Objects.requireNonNull(ledger, "only a test that built a host has a ledger").close();
         final Path directory = workingDirectory.resolve("logs");
         try (var files = Files.list(directory)) {
             final List<String> lines = new ArrayList<>();

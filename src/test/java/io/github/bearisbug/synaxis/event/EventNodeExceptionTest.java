@@ -13,8 +13,7 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 public class EventNodeExceptionTest {
 
     private static GlobalEventHandler handlerCollecting(List<Throwable> sink) {
-        var manager = new ExceptionManager(() -> {
-        });
+        var manager = new ExceptionManager();
         manager.setExceptionHandler(sink::add);
         return new GlobalEventHandler(manager);
     }

@@ -2357,7 +2357,7 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
                 manager.processClientPacket(packet, playerConnection);
             } catch (Throwable e) {
                 if (playerConnection.getClientState().ordinal() > config.suppressMisusedPacketErrorLevel())
-                    process().exception().handleException(e);
+                    process().exception().handleException(e, playerConnection.connectionId());
                 if (config.rejectMisusedPacket())
                     kick(Component.translatable("multiplayer.disconnect.invalid_packet", "Invalid Packet", NamedTextColor.RED));
             }

@@ -40,6 +40,7 @@ import java.nio.file.Path;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -87,6 +88,9 @@ class HandshakeIntegrationTest {
 
     @TempDir
     Path workingDirectory;
+
+    /** The ledger of {@link #host}, started so that {@link #onlyLedgerLine} can drain it to disk. */
+    private @Nullable EventLedger ledger;
 
     /**
      * A connection in the configuration phase that keeps what was written to it, and optionally
@@ -136,7 +140,7 @@ class HandshakeIntegrationTest {
 
     private HandshakeGate gate(Env env, HandshakeGate.Phase phase, Duration budget) {
         final HandshakeGate gate = new HandshakeGate(phase, budget,
-                new EventLedger(workingDirectory.resolve("logs")));
+                new EventLedger(workingDirectory.resolve("logs"), "test", EventLedger.DEFAULT_MAX_BYTES_PER_DAY));
         gate.attach(env.process().eventHandler());
         return gate;
     }
@@ -497,6 +501,8 @@ class HandshakeIntegrationTest {
      * @return the one ledger line of the given event, failing when there is not exactly one
      */
     private String onlyLedgerLine(String event) {
+        // The writer thread owns the file; closing drains what is queued and forces it
+        Objects.requireNonNull(ledger, "only a test that built a host has a ledger").close();
         try (var files = Files.list(workingDirectory.resolve("logs"))) {
             final List<String> lines = new ArrayList<>();
             for (Path file : files.toList()) lines.addAll(Files.readAllLines(file));
@@ -527,8 +533,9 @@ class HandshakeIntegrationTest {
     }
 
     private PluginHost host(Env env) {
-        return new PluginHost(env.process(), workingDirectory.resolve("plugins"),
-                new EventLedger(workingDirectory.resolve("logs")));
+        ledger = new EventLedger(workingDirectory.resolve("logs"), "test", EventLedger.DEFAULT_MAX_BYTES_PER_DAY);
+        ledger.start();
+        return new PluginHost(env.process(), workingDirectory.resolve("plugins"), ledger);
     }
 
     /**

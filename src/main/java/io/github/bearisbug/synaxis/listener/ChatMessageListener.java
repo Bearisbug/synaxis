@@ -10,6 +10,7 @@ import io.github.bearisbug.synaxis.network.packet.client.play.ClientCommandChatP
 import io.github.bearisbug.synaxis.network.packet.client.play.ClientSignedCommandChatPacket;
 
 import java.util.Collection;
+import java.util.List;
 
 public class ChatMessageListener {
     public static void commandChatListener(ClientCommandChatPacket packet, Player player) {
@@ -35,6 +36,8 @@ public class ChatMessageListener {
     }
 
     public static void chatMessageListener(ClientChatMessagePacket packet, Player player) {
+        // Over the connection's rate the message is dropped and counted, and the player stays.
+        if (!player.chatRateLimiter().tryAcquire(System.nanoTime())) return;
         final String message = packet.message();
         EventsJFR.newPlayerChat(player.getUuid(), message).commit();
         if (!Messenger.canReceiveMessage(player)) {
@@ -42,8 +45,9 @@ public class ChatMessageListener {
             return;
         }
 
-        final Collection<Player> players = player.process().connection().getOnlinePlayers();
-        PlayerChatEvent playerChatEvent = new PlayerChatEvent(player, players, message);
+        // Nobody receives a chat message unless a listener adds them: the channel, the instance or
+        // the whisper target is the plugins' decision (docs/DESIGN-PROD.md API-PROD-008).
+        PlayerChatEvent playerChatEvent = new PlayerChatEvent(player, List.of(), message);
 
         // Call the event
         player.process().eventHandler().callCancellable(playerChatEvent, () -> {

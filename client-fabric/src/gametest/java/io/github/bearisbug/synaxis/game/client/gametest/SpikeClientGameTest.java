@@ -12,13 +12,16 @@ import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.concurrent.CopyOnWriteArrayList;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.screenshot.TestScreenshotOptions;
+import net.fabricmc.fabric.api.client.message.v1.ClientReceiveMessageEvents;
 import net.fabricmc.loader.api.FabricLoader;
 import net.fabricmc.loader.api.ModContainer;
 import net.minecraft.client.CameraType;
+import net.minecraft.client.gui.components.toasts.SystemToast;
 import net.minecraft.client.gui.screens.ConnectScreen;
 import net.minecraft.client.gui.screens.DisconnectedScreen;
 import net.minecraft.client.gui.screens.TitleScreen;
@@ -41,8 +44,9 @@ import org.jspecify.annotations.Nullable;
  * phase handshake of a server-app in game mode and reaches the world. S2: the same scene through
  * the orthographic and the pitched perspective spike camera. S3: {@link EntityCullingSpike}. S4: the
  * world ray under the cursor, still and while the camera pans. S5: section visibility with the eye
- * high and outside the map, and the two mouse input paths. SYNAXIS_SPIKES picks among S2 to S5
- * ({@code all} for every one); unset, the spikes do not run at all and only
+ * high and outside the map, and the two mouse input paths. {@code chat}: the secure chat toast and
+ * what one chat message brings back, see {@link #chat}. SYNAXIS_SPIKES picks among S2 to S5 and
+ * {@code chat} ({@code all} for every one); unset, the spikes do not run at all and only
  * {@link RegressionClientGameTest} does. Findings are appended to {@code synaxis-gametest/report.txt}
  * in the run directory, after the regression's R lines; screenshots go to {@code screenshots/}.
  */
@@ -86,6 +90,7 @@ public final class SpikeClientGameTest implements FabricClientGameTest {
         report.add(outcome);
         context.takeScreenshot("s1-after-connect");
         if (outcome.startsWith("S1 in world")) {
+            if (enabled("chat")) chat(context, report);
             // A 20° downward look puts the ground in the picture. The terrain is lit by the light the
             // server computed; SYNAXIS_GAMETEST_NIGHT_VISION=true adds client-side night vision on top.
             context.runOnClient(client -> {
@@ -106,6 +111,29 @@ public final class SpikeClientGameTest implements FabricClientGameTest {
         }
         context.waitForScreen(TitleScreen.class);
         write(report);
+    }
+
+    /**
+     * Chat (REQ-PROD-009, docs/DESIGN-PROD.md ADR-PROD-009). The server does not enforce secure chat,
+     * which makes a vanilla client put up the "Chat messages can't be verified" toast on joining; C1
+     * says whether it is up. C2 sends one chat message and lists what came back: nothing unless a
+     * server plugin relays it, and then a system message, never player chat. It runs right after S1
+     * because the toast is gone 5 s after the join.
+     */
+    private static void chat(ClientGameTestContext context, List<String> report) {
+        report.add(context.computeOnClient(client -> "C1 unsecure_server_toast=" + (client.gui.toastManager()
+                .getToast(SystemToast.class, SystemToast.SystemToastId.UNSECURE_SERVER_WARNING) != null)));
+        final List<String> system = new CopyOnWriteArrayList<>();
+        final List<String> playerChat = new CopyOnWriteArrayList<>();
+        ClientReceiveMessageEvents.GAME.register((message, overlay) -> {
+            if (!overlay) system.add(message.getString());
+        });
+        ClientReceiveMessageEvents.CHAT.register((message, _, _, _, _) -> playerChat.add(message.getString()));
+        context.waitTicks(20);
+        context.runOnClient(client -> client.player.connection.sendChat("hello from the gametest"));
+        context.waitTicks(40);
+        context.takeScreenshot("chat-after-send");
+        report.add("C2 system_messages=" + system + " player_chat=" + playerChat);
     }
 
     /**

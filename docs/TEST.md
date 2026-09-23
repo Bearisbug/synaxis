@@ -14,6 +14,7 @@
 
 | 日期 | 改动 | 作者 |
 | --- | --- | --- |
+| 2026-09-23 | 跟进 `docs/DESIGN-PROD.md` 第 1 波 1B（`REQ-PROD-009`，G05）。**新增 `TC-PROD-080`～`TC-PROD-083`**（均对应 `REQ-PROD-009`）：新开「生产就绪 · 聊天」一节。080 判引擎默认 0 收件人（50 人在线出站聊天包 0）、只有监听器加的收件人收到 `SystemChat`，反证是换回全进程名单，红在 `expected: <0> but was: <50>`；081 判每连接 1 条/秒、burst 3 的令牌桶与 `synaxis.chat-rate-per-second`、`synaxis.chat-burst` 两个键，反证是删限频行（10 条全进事件）与 burst 边界多放一条；082 判 `JoinGame` 的 `enforcesSecureChat=false`，反证是改回 `true`；083 在无头容器里用真客户端判进服没有「Chat messages can't be verified」提示、转发的聊天是系统消息，反证是模组不注册 `ClientPacketListenerMixin`，红在 `C1 unsecure_server_toast=true`。§5 加聊天一行 | Bearisbug |
 | 2026-09-23 | 跟进 `docs/DESIGN-PROD.md` 第 0 波 0E（`REQ-PROD-028`，G25）。**新增 `TC-PROD-050`**（对应 `REQ-PROD-028`）：新开「生产就绪 · 运行参数」一节，判 `installDist` 启动脚本与 `:server-app:run` 两条入口的 JVM 都带 G1、`-Xms4G -Xmx4G`、`AlwaysPreTouch`、`MaxGCPauseMillis=50` 与两个 OOM 参数（`jcmd VM.flags` 计数 7），`JAVA_OPTS` 能覆盖、换 ZGC 须先关 G1；反证是删掉 `-Xms4G` 与 `AlwaysPreTouch` 两行，计数掉到 5。§5 加生产就绪域一行 | Bearisbug |
 | 2026-09-23 | 跟进 `docs/DESIGN-PROD.md` 第 0 波 0D（`REQ-PROD-030` 离线档，`API-PROD-026`）。**新增三条**：`TC-PROD-040`（无头容器里真客户端 R1～R8 全绿，dev 与生产启动器各一次，带 spike 时 R 行在前、spike 行追加；反证删掉 `en_us.json` 的 `synaxis:protocol-error` 译文，红在 R8）、`TC-PROD-041`（判定读报告与台账：连不上服务端时报告仍写满 8 行、全绿报告配空台账也判红、缺报告判红）、`TC-PROD-042`（工作流触发、`continue-on-error` 与判定步骤；把判定步骤原样抽出来在 CI 布局里跑，反证一条 R8 FAIL 或缺一份报告即红）。§5 局部轮加「生产就绪域」一行 | Bearisbug |
 | 2026-09-23 | 跟进 `docs/DESIGN-PROD.md` §26 第 0 波 0C（`REQ-PROD-019` 前半）。**新增 §4「生产就绪 · 第 0 波 · 线程正确性」四条**：`TC-PROD-030`（`Math.floorMod` 取模，反证改回 `Math.abs` 即 `Index -2 out of bounds for length 6`）、`TC-PROD-031`（`Entity#teleport`、`Entity#setInstance`、`Player#setInstance` 三处所有权断言，逐处反证）、`TC-PROD-032`（未分配实体放行建它的线程与非 tick 线程，别的 tick 线程仍判越权；玩家换实例的调度线程半段经 `Acquirable`；各一步反证）、`TC-PROD-033`（`-Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true` 跑全量，含「属性没转进测试 JVM」与「`Env` 没读」两步反证；登记 1 线程轮红的 5 条、4 线程首轮红的 1 条及处置）。§5 引擎域加「tick 多线程」一组 | Bearisbug |
@@ -2050,6 +2051,59 @@ jcmd "$pid" VM.flags | tr ' ' '\n' | grep -cxE -- '-XX:\+UseG1GC|-XX:InitialHeap
 
 后置：按 pid 停掉所有服务端与对应的 `tail -f /dev/null`；删掉第 2～6 步的临时目录与第 3 步的日志；确认工作区干净（第 6 步的临时改动已还原）。
 
+### 生产就绪 · 聊天（`REQ-PROD-009`）
+
+四条都对应 `REQ-PROD-009`（`API-PROD-008`、`ADR-PROD-009`）。前三条是引擎单测与集成测试，命令统一写作「跑 `<类>`」，即 `./gradlew :test --tests <类> --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts`，结果看 `build/test-results/test/TEST-<类>.xml` 的 `tests`、`failures` 与 `<failure message>`；第四条在无头容器里跑真客户端，截图归档在 `docs/research/production-readiness-2026-09/chat-evidence/`。
+
+#### `TC-PROD-080` 引擎默认不广播，收件人只由监听器决定 — 对应 `REQ-PROD-009` · 级别: 回归 · 执行者: AI
+
+前置：工作副本干净；不需要起服。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `io.github.bearisbug.synaxis.listener.ChatMessageListenerIntegrationTest` | `BUILD SUCCESSFUL`，4 个测试 0 失败。`withoutAListenerNobodyReceivesTheMessage`：50 名玩家同在一个实例、没有任何 `PlayerChatEvent` 监听器，一人发一条聊天，50 条连接收到的 `SystemChatPacket` 合计 0，事件的收件人集合为空。`onlyTheRecipientsAListenerNamesReceiveIt`：监听器只把一人加进收件人，该人恰好收到 1 个 `SystemChatPacket`（`overlay=false`，内容等于事件的格式化消息），发送者与第三人各 0 个 |
+| 2 | 反证有齿：`ChatMessageListener#chatMessageListener` 里的 `new PlayerChatEvent(player, List.of(), message)` 换回 `player.process().connection().getOnlinePlayers()`，同时删掉 `import java.util.List;`（否则 Error Prone 的 `RemoveUnusedImports` 让编译先失败），重跑第 1 步，再 `git checkout -- src/main/java/io/github/bearisbug/synaxis/listener/ChatMessageListener.java` | `4 tests completed, 2 failed`，红在：`withoutAListenerNobodyReceivesTheMessage` 报 `outbound chat packets for one message with 50 online ==> expected: <0> but was: <50>`；`onlyTheRecipientsAListenerNamesReceiveIt` 报 `Expected 1 element, got [SystemChatPacket[…], SystemChatPacket[…]]`（收件人在全进程名单里一次、又被监听器加了一次）。还原后第 1 步复绿 |
+
+后置：确认 `git status` 里 `ChatMessageListener.java` 没有改动。
+
+#### `TC-PROD-081` 每连接 1 条/秒、burst 3，超限丢弃计数不断线 — 对应 `REQ-PROD-009` · 级别: 回归 · 执行者: AI
+
+前置：工作副本干净；第 3、4 步要 `:server-app:installDist` 的产物与空闲端口 25622。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `io.github.bearisbug.synaxis.message.ChatRateLimiterTest`，再跑 `io.github.bearisbug.synaxis.ServerConfigTest` | 两次都 `BUILD SUCCESSFUL`。`ChatRateLimiterTest` 4 个 0 失败：1 s 内 10 条放行 3 条、`dropped()` 为 7；第一条之后 1.1 s 恰好回来一个令牌；每秒 1 条匀速发 60 条一条不丢；闲置一小时后也只攒 3 个令牌；`System.nanoTime()` 为负数时照常计时。`ServerConfigTest` 5 个 0 失败：默认 `chatRatePerSecond=1`、`chatBurst=3`，任一为 0 时构造抛 `IllegalArgumentException` |
+| 2 | 跑 `io.github.bearisbug.synaxis.listener.ChatMessageListenerIntegrationTest` | 4 个 0 失败，其中 `tenMessagesInOneSecondLetThreeThroughAndKeepTheConnection`：同一玩家一批入队 10 条聊天，`PlayerChatEvent` 恰好 3 次，`chatRateLimiter().dropped()` 为 7，玩家仍在线 |
+| 3 | 在临时目录里 `java -Xmx1G -Dsynaxis.app.port=25622 -Dsynaxis.chat-rate-per-second=2 -Dsynaxis.chat-burst=5 -cp "<仓库根>/server-app/build/install/server-app/lib/*" io.github.bearisbug.synaxis.app.Main < /dev/null > server.log 2>&1 &`，就绪后 `grep -o 'chatRatePerSecond=[0-9]*, chatBurst=[0-9]*' server.log`，再 `kill <pid>` | 启动自检行里是 `chatRatePerSecond=2, chatBurst=5`；不带这两个属性时是 `chatRatePerSecond=1, chatBurst=3` |
+| 4 | 第 3 步的写法，两个属性换成 `-Dsynaxis.chat-burst=0` | 进程退出，端口 25622 无监听，日志 `ERROR … Main - Refusing to start: the chat rate and burst must be at least 1 but were 1 and 0` |
+| 5 | 反证有齿（限频）：删掉 `ChatMessageListener#chatMessageListener` 第一行 `if (!player.chatRateLimiter().tryAcquire(System.nanoTime())) return;`，重跑第 2 步，再 `git checkout` 还原 | 红在 `tenMessagesInOneSecondLetThreeThroughAndKeepTheConnection`：`Expected 3 element(s), got 10: [io.github.bearisbug.synaxis.event.player.PlayerChatEvent@…` |
+| 6 | 反证有齿（burst 边界）：`ChatRateLimiter` 构造器里 `this.tolerance = (burst - 1) * interval;` 改成 `burst * interval`，重跑第 1 步的 `ChatRateLimiterTest` 与第 2 步，再还原 | `ChatRateLimiterTest` 4 个里 3 个红：`aBurstOfThreeThenOneASecond` 报 `10 messages within 1 s: the burst of 3 goes through, the rest is dropped ==> expected: <3> but was: <4>`，`anIdleConnectionDoesNotSaveUpMoreThanTheBurst` 报 `expected: <3> but was: <4>`，`negativeNanoTimesWork` 报 `expected: <false> but was: <true>`；集成测试红在 `Expected 3 element(s), got 4`。还原后全绿 |
+
+后置：按 pid 停掉第 3 步的服务端，删掉临时目录；确认工作区没有第 5、6 步的残留改动。
+
+#### `TC-PROD-082` `JoinGame` 不强制安全聊天、在线模式标志不变 — 对应 `REQ-PROD-009` · 级别: 回归 · 执行者: AI
+
+前置：工作副本干净。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `io.github.bearisbug.synaxis.listener.ChatMessageListenerIntegrationTest` | `joinGameDoesNotEnforceSecureChat` 绿：进服时恰好收到 1 个 `JoinGamePacket`，`enforcesSecureChat=false`、`onlineMode=true`（客户端靠后者显示 Tab 列表头像） |
+| 2 | 反证有齿：`Player#UNSAFE_init` 里 `JoinGamePacket` 的最后一个参数 `false` 改回 `true`，重跑第 1 步，再 `git checkout -- src/main/java/io/github/bearisbug/synaxis/entity/Player.java` | 红在 `joinGameDoesNotEnforceSecureChat`：`chat is relayed as system messages, never signed ==> expected: <false> but was: <true>`。还原后复绿 |
+
+后置：确认 `Player.java` 没有残留改动。
+
+#### `TC-PROD-083` 真客户端进服没有「聊天无法验证」提示，转发的聊天是系统消息 — 对应 `REQ-PROD-009` · 级别: 回归 · 执行者: AI
+
+前置：镜像 `synaxis-mc-client:dev` 与卷 `synaxis-mc-gradle` 就绪，`docker ps` 里没有别的容器挂着这个卷；`:protocol:publishToMavenLocal` 与 `:server-app:installDist` 已跑。把 `docs/research/production-readiness-2026-09/chat-evidence/ChatRelayPlugin.java` 对着 `server-app/build/install/server-app/lib/*` 编译，连同内容为 `chatrelay.ChatRelayPlugin` 的 `META-INF/services/io.github.bearisbug.synaxis.plugin.SynaxisPlugin` 打成 `<relay.jar>`。起服：在临时目录里 `java -Xmx1G -Dsynaxis.app.port=25622 -cp "<仓库根>/server-app/build/install/server-app/lib/*:<relay.jar>" io.github.bearisbug.synaxis.app.Main < /dev/null > server.log 2>&1 &`，日志出现 `Plugin enabled: plugin_id=chatrelay` 与 `listening on 0.0.0.0:25622` 后再做第 1 步。客户端是离线开发账号，正版路径要等 `REQ-PROD-002` 落地后另测。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | `SYNAXIS_GAMETEST_SERVER=host.docker.internal:25622 SYNAXIS_SPIKES=chat OUT=<out1> client-fabric/gametest-env/run.sh`；`cat <out1>/synaxis-gametest/report.txt` | `run.sh` 退出码只记录（本地 aarch64 容器恒为 1）。R1～R8 八行 `PASS`，其后 `S0` 3 行、`S1 in world at BlockPos{x=256, y=40, z=256}`、`C1 unsecure_server_toast=false`、`C2 system_messages=[<Player0> hello from the gametest] player_chat=[]`；`<out1>/logs/latest.log` 有一行 `[System] [CHAT] <Player0> hello from the gametest`。截图 `<out1>/screenshots/*_chat-after-send.png`：右上角只有「Social Interactions」教程提示，聊天栏一行 `<Player0> hello from the gametest`，左侧没有「不安全」标记（归档为 `secure-chat-off-mod-relayed.png`） |
+| 2 | 按 pid 停服，起服命令去掉 `:<relay.jar>` 重起，`OUT=<out2>` 重跑第 1 步 | R1～R8 `PASS`；`C1 unsecure_server_toast=false`、`C2 system_messages=[] player_chat=[]`；`latest.log` 没有 `[CHAT]` 行，截图聊天栏为空（归档为 `secure-chat-off-mod-no-recipients.png`）：引擎默认 0 收件人，发送者自己也收不到 |
+| 3 | 反证有齿：带 `<relay.jar>` 重起服务端，删掉 `client-fabric/src/main/resources/fabric.mod.json` 的 `"mixins"` 一项（模组不再注册 `ClientPacketListenerMixin`），`OUT=<out3>` 重跑第 1 步，再 `git checkout -- client-fabric/src/main/resources/fabric.mod.json` | R1～R8 仍 `PASS`，红在 `C1 unsecure_server_toast=true`；截图右上角多出黄字「Chat messages can't be verified」与「Messages sent on this server may be modified and might not reflect the original message」（归档为 `secure-chat-off-vanilla-toast.png`）。`C2` 与第 1 步相同：提示只由 `enforcesSecureChat=false` 触发，与聊天怎么转发无关 |
+
+后置：按 pid 停服；删掉 `<relay.jar>` 及其编译目录、各 `<out>` 与服务端临时目录；`docker ps -a` 里没有残留的 `synaxis-mc-client*` 容器；`git status` 干净。
+
 ## 5. 回归策略
 
 - **全量轮**（全部用例）：首次成稿、每个阶段 gate（引擎域阶段 0、2、3；游戏域 `docs/DESIGN-M2.md` §26 的阶段 1～6b）、跨功能域改动、地基变更（JDK、Gradle、镜像、协议版本、模块拆分、启动入口）。
@@ -2064,6 +2118,7 @@ jcmd "$pid" VM.flags | tr ' ' '\n' | grep -cxE -- '-XX:\+UseG1GC|-XX:InitialHeap
   - 生产就绪域（`docs/DESIGN-PROD.md`）：真客户端回归 → TC-PROD-040～TC-PROD-042；动了 `client-fabric/**`、`protocol/**`、`server-app/**`、`game-rts/**`、`plugin-api/**`、引擎 `network` / `listener` 包或 `client-gametest.yml` 就跑 TC-PROD-040（与工作流的 PR 路径过滤同一口径），动了 `judge.sh` 或工作流再加 TC-PROD-041、TC-PROD-042。
 
   - 生产就绪域（`docs/DESIGN-PROD.md`）：运行参数 → TC-PROD-050（动了 `server-app/build.gradle.kts` 的 `application` 块、启动脚本或部署单元的 JVM 参数就跑）。
+  - 生产就绪域（`docs/DESIGN-PROD.md`）：聊天（`REQ-PROD-009`）→ TC-PROD-080～TC-PROD-083；动了 `ChatMessageListener`、`PlayerChatEvent`、`Messenger`、`ChatRateLimiter`、`ServerConfig` 的 `synaxis.chat-*` 键或 `Player` 发的 `JoinGamePacket` 就跑 TC-PROD-080～TC-PROD-082；动了模组的 `ClientPacketListenerMixin`、`synaxis.mixins.json` 或 `SpikeClientGameTest#chat` 再加 TC-PROD-083。
   - 影响面不确定时升级为全量轮。
 - **复测轮**（上轮失败用例 + 全部冒烟级）：修复失败项之后。
 - **人工收口轮**（仅上轮「待人工」用例）：AI 轮之后由人工补测 TC-016、TC-030、TC-GAME-020、TC-GAME-038、TC-GAME-046、TC-GAME-047，不要求冒烟级。

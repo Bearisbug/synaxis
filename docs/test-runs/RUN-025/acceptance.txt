@@ -1,0 +1,34 @@
+RUN-025 验收记录（2026-09-23，验收人侧）
+
+被测版本：集成分支 prod/integrate-w0（合并基 main 2a315e7177 + 第 0 波五组：0A ee1e0994a4、0B f0fa51ae5c、0C、0D、0E），
+合并提交 578b4d7145 之上再加设计回写 DESIGN-PROD v0.3 与 judge.sh 跨天读 gz 的修正。
+范围：DESIGN-PROD §26 第 0 波——REQ-PROD-014 前半（看门狗）、015（崩溃报告）、016（日志轮转）、017（台账缓冲）、
+019 前半（线程正确性）、028（JVM 参数）、030 离线档（真客户端回归断言）。
+每组都经「实现 → 独立审查 → 至多两轮返工」：0A 2 轮、0B 1 轮、0C 2 轮、0D 2 轮、0E 1 轮，全部 APPROVED。
+
+一、全量与多线程
+  ./gradlew cleanTest check --no-build-cache → BUILD SUCCESSFUL
+  ./gradlew test --rerun --continue -Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true → BUILD SUCCESSFUL，
+    3,188 个测试 0 失败，EnvDispatcherThreadsIntegrationTest 报「env dispatcher threads: 4」
+  client-fabric ./gradlew build → 成功
+
+二、验收人反证（还原后 git status 干净）
+  TC-PROD-030：ThreadDispatcherImpl 的 Math.floorMod 改回 Math.abs(threadId % n) → ThreadDispatcherTest 15 条红 1 条
+  TC-PROD-006 第 4 步：EventLedger#drainSealed 的 while (recording.get() != 0) 改成 < 0 → EventLedgerTest 7 条红 1 条
+
+三、合并中处理的问题
+  0E 的默认 -Xms4G 与 0A 的 OOM 用例 JAVA_OPTS="-Xmx24m" 冲突（初始堆大于最大堆时 JVM 拒启，OOM 永远验不到）。
+  TC-PROD-003 第 2 步改为 -Xms16m -Xmx24m，验收人实跑：exit=3、工作目录留下 java_pid<pid>.hprof（36 MB）、stdout 末行
+  "Terminating due to java.lang.OutOfMemoryError: Java heap space"，没有 Stopping / Disabling plugin 行。
+  judge.sh 只读 events-*.jsonl，跨过午夜时前一天已被台账压成 .gz 会漏计；改为同时 gzip -dc 读 .jsonl.gz，
+  本地构造一天 .jsonl + 一天 .jsonl.gz 各一条 client_verified，计数 2。
+
+四、结果
+  通过：TC-PROD-001～008、TC-PROD-020～023、TC-PROD-030～033、TC-PROD-040～042（0D）（本地两次真客户端运行、一次故意失败判红，
+        由 0D 组与审查者实跑）、TC-PROD-050
+  待 CI：REQ-PROD-030 的退出条件「main 上连续 5 次绿」与 REQ-PROD-019 的「4 线程 counter 严格模式 job 在 main 上连续 3 次绿」，
+        只能合入 main 后由 CI 判定
+
+五、登记但不属本波
+  DESIGN-M2 §20 定义了 EVT:player_entered_play（首次上手完成率的分母），服务端从未发出这个事件——M2 的埋点缺口，待登记处理。
+  0E 的 agent 曾用 pkill -f "tail -f /dev/null" 停服，可能误杀其他会话管道里的 tail，已通知另一会话；之后一律按 pid 停。

@@ -31,7 +31,8 @@ for report in "$@"; do
 done
 expect "$reports reports for $LAUNCHES launches" "$reports" -eq "$LAUNCHES"
 
-events() { cat "$LEDGER_DIR"/events-*.jsonl 2>/dev/null | grep -c "\"event\":\"$1\""; }
+# A run that crosses midnight finds the previous day already gzipped by the ledger's housekeeping
+events() { { cat "$LEDGER_DIR"/events-*.jsonl; gzip -dc "$LEDGER_DIR"/events-*.jsonl.gz; } 2>/dev/null | grep -c "\"event\":\"$1\""; }
 verified=$(events client_verified)
 rejected=$(events client_rejected)
 orders=$(events unit_order_issued)

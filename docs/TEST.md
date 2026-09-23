@@ -2099,6 +2099,7 @@ jcmd "$pid" VM.flags | tr ' ' '\n' | grep -cxE -- '-XX:\+UseG1GC|-XX:InitialHeap
 | RUN-022 | 2026-09-22 | `3daf64f109`（阶段 6a 的无屏幕部分：客户端握手、绑定表、拾取与下令） | AI（Claude Code，Gradle / Loom） | 局部（REQ-M2-019 的可无头测试部分→TC-GAME-045、TC-GAME-066；§24 双端向量复验；根构建回归） | 通过 4/9 · 待人工 5 |
 | RUN-023 | 2026-09-22 | `28e908d301`（三项不等屏幕的交付合入：`:architecture-tests` 聚合规则、攻击面盘点与两处引擎修复、`synaxis.app.units` 与玩法模式压测 harness 及 50 × {1,000, 2,000, 4,000} 测量；含 v0.37 的 `heap_delta_kib` 与文档 lint 放宽） | AI（Claude Code，Gradle / 探针 / harness） | 局部（REQ-M2-002、REQ-M2-025→TC-GAME-067；REQ-M2-016、REQ-M2-017、REQ-M2-009→TC-GAME-068；REQ-011、REQ-017→TC-GAME-069～TC-GAME-071；REQ-M2-010→TC-GAME-029 第 2 步 + 冒烟级 TC-029） | 通过 6/7 · 失败 1 |
 | RUN-024 | 2026-09-23 | `d3d065787e`（无头真客户端 spike S0～S5、clientbound 包 ID 修复与 26.2 整表门禁、`archetype_view_range` 5.0、对局世界载入期整图光照） | AI（Claude Code，Gradle / Docker 无头客户端） | 局部（REQ-005→TC-036；REQ-M2-010、REQ-M2-011→TC-GAME-029；REQ-M2-016→TC-GAME-052；REQ-M2-020→TC-GAME-046 + 冒烟级 TC-029） | 通过 4/5 · 待人工 1 |
+| RUN-025 | 2026-09-23 | 集成分支 `prod/integrate-w0`（DESIGN-PROD 第 0 波：看门狗、崩溃报告、日志轮转、台账缓冲、线程正确性、JVM 参数、真客户端回归断言） | AI（Claude Code，Gradle / Docker 无头客户端） | 局部（REQ-PROD-014、015、016、017、019、028、030→TC-PROD-001～TC-PROD-008、TC-PROD-020～TC-PROD-023、TC-PROD-030～TC-PROD-033、TC-PROD-040～TC-PROD-042、TC-PROD-050 + 冒烟级 TC-029） | 通过 6/7 · 阻塞 1 |
 
 明细（仅登非「通过」项）：
 
@@ -2204,6 +2205,10 @@ TC-002 证据：`docs/test-runs/RUN-002/tc-002.txt`（5 步实际输出）（2,6
 
 | RUN-024 | TC-GAME-046 | 待人工 | 第 1、2 步要本机同时装 26.2 与 26.3 两个 Fabric profile；第 3 步（configuration 阶段握手不被 `client-mod-required` 踢）已由无头真客户端 S1 满足，台账 `client_verified`、无 kick，见 `docs/research/client-spikes-2026-09/README.md` S1 节 | 人工收口轮 |
 
+| RUN-025 | TC-PROD-040 | 阻塞 | 本地已两次真客户端运行判绿、一次故意失败判红；设计的退出条件是 main 上 `client-gametest.yml` 连续 5 次绿，只能合入后由 CI 判定 | 合入 main 后看 CI |
+
+
+RUN-025 证据：`docs/test-runs/RUN-025/acceptance.txt`。要点：第 0 波五组全部经独立审查通过；合并后全量 check 与 4 线程 counter 严格模式全量（3,188 个测试）都绿；验收人两条反证（线程下标取模、台账停机等在途写入）都红；合并时发现 0E 的默认 `-Xms4G` 让 0A 的 OOM 用例永远验不到 OOM，已改用例并实跑确认退出码 3 与堆转储。
 
 RUN-024 证据：`docs/test-runs/RUN-024/acceptance.txt` 与 `docs/research/client-spikes-2026-09/`（S0～S5 的结论、截图与无头运行方式）。要点：真 26.2 客户端第一次连上本引擎，暴露出 REQ-005 删包把 clientbound 包 ID 按位置打乱（登录 1 个、play 18 个）——此前所有自动化都从本仓库注册表推导 ID，所以一直绿；修复后由 `PacketVanillaIdTest` 把 26.2 原版 251 个 ID 整表钉死，验收人删一个占位即红。对局世界改为载入期整图算光照，rts-512 的 `load_ms` 771～968 ms、`heap_delta_kib` 约 9,300，删掉 relight 即红。
 

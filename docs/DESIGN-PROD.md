@@ -4,7 +4,7 @@
 
 | 字段 | 值 |
 | --- | --- |
-| 状态 | 草稿（2026-09-23 初稿，同日按第 1 轮两份评审意见修订为 v0.2，再按真客户端回归的实现修订 `API-PROD-026` 为 v0.3）。用户同日已拍板七项方向（下表）；其余待拍板点一律按三份草案的默认值定，逐项见 §28.1 |
+| 状态 | 草稿（2026-09-23 初稿，同日按第 1 轮两份评审意见修订为 v0.2，再按第 0 波五个组（0A～0E）的实现回写为 v0.3）。用户同日已拍板七项方向（下表）；其余待拍板点一律按三份草案的默认值定，逐项见 §28.1 |
 | 项目画像 | 生产产品（对外真实玩家：内测单分片 50～200 人，正式档每分片 200～500 人，见 §2；全部 `[核心]` 节生效） |
 | Owner | Bearisbug |
 | 评审人 | Bearisbug |
@@ -33,7 +33,7 @@
 | --- | --- | --- | --- |
 | 2026-09-23 | v0.1 | 初稿：把清单 G01～G40 与三份草案落成 44 条 `REQ-PROD`、27 条 `API-PROD`、13 条 `ADR-PROD`、8 条 `RB-PROD`；五台状态机（登录验证、分片会话、角色写权、停机顺序、看门狗）；§26 分七波。**其余待拍板点按草案默认值定**：清单 §7 的 Q3、Q5～Q12，auth 草案 ①～⑧，持久化草案 D1～D13，运维草案 §6 #1～#10，逐项结果与切换条件见 §28.1。**相对草案的三处更正**：① G28 的一次性 nonce 记在 PostgreSQL `transfer_nonce`（与 `API-M3-011` ⑤、持久化草案 ② 一致），不按清单 G28 写的「Redis 记已用」——nonce 丢了就能重放，不属于可丢数据（U3）；② 停机保存预算取清单 G04 的 30 s，不取持久化草案 ③ 的 8 s，`docs/DESIGN.md` §17 `process.shutdown` 的 10 s join 上限与 §21「`stop()` < 10 s」SLO 需主会话改写（§28.3）；③ 区块发送的引擎兜底上限保持 64 块/tick（现默认值 `ServerConfig.java:208`；「保持不变」是协调会话 2026-09-23 的口径，M3 工作区未写入，**未核实**），清单 G23 的「4 块/tick」改为分片宿主默认值（`API-PROD-020`） | Bearisbug |
 | 2026-09-23 | v0.2 | 第 1 轮评审修订。**正确性**：首次建档 `INSERT` 时 `lease_session_id` 写 NULL，再走获取语句（原写法让新玩家拿不到自己的租约）；获取语句加「持有者 = 本会话」分支，`saving → orphaned` 显式释放租约；起服事务把同 `shard_id` 的旧会话置过期，前提「同一 `shard_id` 同时只有一个进程」；`closing` 期间续期照常且续期用独占连接；会话释放只令其过期（`DELETE` 与外键冲突），另加过期会话清理任务。**停机**：新增引擎—宿主契约 `ShutdownParticipant`（`API-PROD-007`），引擎计时、宿主保存；`stopped` 标志推迟到最后一步置位，另设内部 `stopping` 标志；保存阶段全体冻结，冻结期间 `commitTogether` 回 `UNAVAILABLE` 且不计入 §3；补 `gate_closed` / `saving` 期间的看门狗判死转移。**闸门**：L3 改按「已占席位」计数（含登录中的连接）；不开 PROXY 时 L1 在 accept 判定，另加握手前 5 s 超时；L3 断线键统一为 M3 已定的 `synaxis:shard-full`，M3 `API-M3-011` ① 由 L3 取代。**G33**：`store_meta.auth_mode` 只由 `--migrate-only` 按发布参数写入，分片只读、空值拒绝起服，正式库按 `online` 迁移，因此生产分片只能跑在线模式（恢复清单 G33 原意）。**其他**：冻结接口 `PlayerDataStore#isFrozen`；同分片踢旧后等旧 `Player` 移除；白名单、封禁、角色授予不建账号外键；`MONITOR` 只读改为文档约定；沿用现有键 `synaxis.entity-synchronization-ticks`；验证指标按每次登录的最终结果计数；`transfer_nonce` 清理归 M3 `nonce.gc`（每 10 min）；Flyway 回退采用 M3 的 `db/rollback/*.down.sql` + CI 正反往返，发布仍守「先扩后缩」；§26 第 0 波退出条件改为 counter 严格模式、看门狗判死接保存与 `store_meta` 自检挪到 3A、并行冲突表补全；§28.3 补齐交给 M3 的改动清单 | Bearisbug |
-| 2026-09-23 | v0.3 | `API-PROD-026` 按真客户端回归的实现补口径：`client_verified` 的期望值改为连接次数 C（不跑 spike 时 C = N，带 spike 跑时 C = 2N）；新增 `SYNAXIS_SPIKES` 语义（不设只跑 R1～R8，`all` 或逗号列举才跑 spike，CI 只有每日任务设 `all`）。§19「CI 判定不看退出码」的 Given 改为退出码非 0 而报告全 PASS、没进世界而报告缺 R3 两次运行：回归 gametest 遇 FAIL 以断言失败结束，原 Given「S1 断线但 Gradle 退出码 0」不再能构造 | Bearisbug |
+| 2026-09-23 | v0.3 | 按第 0 波实现回写设计。**0A**（`REQ-PROD-015`～`017`）：`API-PROD-014` 日志改为控制台恒在、`file` 模式另加滚动文件；新增配置键 `synaxis.app.shard-id`（字符规则）并写明 `synaxis.app.log`、`synaxis.app.ledger-max-bytes-per-day` 的取值规则；`API-PROD-013` 写明「致命错误」的范围与密钥脱敏判定；`EVT:ledger_dropped` 的原因属性定名 `reason`（原写 `cause`），另加关闭之后到达的行不入台账、只在日志计 `dropped_after_close`；tick 号由宿主提供，引擎默认落点改为全局 10 s 一行带累计数。**0B**（`REQ-PROD-014` 前半）：`ServerProcess#watchdog()` 内部访问器；tick 起止打点在 `ServerProcessImpl.TickerImpl.tick`；四个看门狗键各自取 0 的含义；`stop()` 不撤回在途 tick 的判决；判死回调跑在单独线程 `Syn-Watchdog-Report`（3A 驱动保存的挂载点）；`synaxis_watchdog_warnings_total` 推迟到 5A；§24 ② 不把 `Watchdog` 纳入客户端驱动日志规则；首条警告实际落在 10～11 s。§11.5 状态机相应加 `watching → dying`、`off` 两处。**0C**（`REQ-PROD-019` 前半）：`API-PROD-016` 写明 `Acquirable` 未分配态语义与严格模式两个开关由 build-src 约定插件转发给测试 JVM。**0D**（`REQ-PROD-030` 离线档）：`client_verified` 的期望值改为连接次数 C（不跑 spike 时 C = N，带 spike 跑时 C = 2N）；新增 `SYNAXIS_SPIKES` 语义（不设只跑 R1～R8，`all` 或逗号列举才跑 spike，CI 只有每日任务设 `all`）；§19「CI 判定不看退出码」的 Given 改为退出码非 0 而报告全 PASS、没进世界而报告缺 R3 两次运行（回归 gametest 遇 FAIL 以断言失败结束，原 Given「S1 断线但 Gradle 退出码 0」不再能构造）；判定只做 `API-PROD-026` 列出的四项台账与日志检查，运维草案 R3 交叉验证用的 `player_entered_play` 代码里不存在；写明 R5 选中规则、R6 射线与目标点的取法；触发列表不含草案的 push `client-gametest-ci`。**0E**（`REQ-PROD-028`）：OOM 两个参数统一由 `server-app/build.gradle.kts` 的 `applicationDefaultJvmArgs` 提供，`REQ-PROD-015` 不另加；默认参数同时作用于 `:server-app:run` 与启动脚本；未设 `HeapDumpPath`，堆转储写在进程工作目录，`RB-PROD-003` 相应改写 | Bearisbug |
 
 ## 2. 背景 / 目标 / 非目标
 
@@ -126,8 +126,8 @@
 | REQ-PROD-012 | 控制台命令与插件命令：控制台输入交给 `CommandManager`；`PluginContext#commands()` 按插件命名空间注册、禁用时注销、异常走 `LogBudget`；内置 list、kick、broadcast、save、stop、tps 六条（`profile` 属 `REQ-PROD-034`） | G10 | 内测 | P1 | `API-PROD-011` |
 | REQ-PROD-013 | 入站包速率闸与补全限频：读线程入队处滑动窗口计数（全部包 + 按包类型覆盖），动作 DROP / KICK；解压字节/秒上限；补全每连接 20 次/秒 | G11 | 内测 | P1 | `API-PROD-012` |
 | REQ-PROD-014 | tick 卡死看门狗：卡 10 s 打印全部 TickThread 与调度线程栈、之后每 5 s 一次；60 s 判死先尝试落盘停机，15 s 未完成 `Runtime.halt` 非零退出 | G12 | 内测 | P0 | `API-PROD-013`；状态机 §11.5 |
-| REQ-PROD-015 | 崩溃报告与未捕获异常：`ExceptionManager` 走 SLF4J 带上下文并保留限流；致命路径写 `crash-reports/<时间戳>.txt`；启动参数加 `HeapDumpOnOutOfMemoryError` 与 `ExitOnOutOfMemoryError` | G13 | 内测 | P1 | `API-PROD-013` |
-| REQ-PROD-016 | 日志文件与轮转：每天或单文件 256 MB 滚动、gzip、保留 14 天、总量 10 GB，外包 `AsyncAppender`（`neverBlock`、队列 8,192）；容器部署保留 stdout，二者由启动参数选 | G14 | 内测 | P1 | `API-PROD-014` |
+| REQ-PROD-015 | 崩溃报告与未捕获异常：`ExceptionManager` 走 SLF4J 带上下文并保留限流；致命路径写 `crash-reports/<时间戳>-<shard_id>.txt`；OOM 由 `REQ-PROD-028` 默认参数里的 `ExitOnOutOfMemoryError` 结束进程，本需求不另加启动参数 | G13 | 内测 | P1 | `API-PROD-013` |
+| REQ-PROD-016 | 日志文件与轮转：每天或单文件 256 MB 滚动、gzip、保留 14 天、总量 10 GB，外包 `AsyncAppender`（`neverBlock`、队列 8,192）；控制台输出始终保留，容器部署用启动参数关掉文件 | G14 | 内测 | P1 | `API-PROD-014` |
 | REQ-PROD-017 | 事件台账缓冲写入：65,536 行有界队列 + 单写线程，1 s 或 64 KiB 刷一次，满即丢新并计数；按天 gzip、保留 30 天、文件名带 `shard_id`、每日上限 1 GiB | G15 | 内测 | P0 | `API-PROD-014` |
 | REQ-PROD-018 | 运行指标导出：Micrometer + Prometheus 文本格式，内网端口 `/metrics`；MSPT 按 TickThread 分别导出；在线人数、各阶段连接数、包数与字节、实体与区块数、GC 与堆、数据库连接池与语句延迟 | G16 | 内测 | P0 | `API-PROD-015` |
 | REQ-PROD-019 | tick 多线程引擎侧正确性：`ThreadDispatcherImpl` 取模改 `Math.floorMod`；`setInstance` / `teleport` 三处 `Acquirable` 接线；全量测试加一轮 4 线程严格模式（先 `counter`，`REQ-PROD-020` 落地后再加一轮 `grid`）；`LogBudget` 与 `GameChannel` 线程安全审过；插件线程契约写进 `plugin-api` 与 `docs/PLUGINS.md` | G17 | 内测 | P0 | `API-PROD-016` |
@@ -139,7 +139,7 @@
 | REQ-PROD-025 | 出站积压上限：每连接 4 MiB，超限先丢可合并的位置包，仍超限断线；同步间隔与移动包频率可配 | G22 | 内测 | P1 | `API-PROD-020` |
 | REQ-PROD-026 | 区块下发的服务端硬上限：引擎兜底 64 块/tick 不变，分片宿主默认每玩家 4 块/tick，与客户端回报取小；区块内容与加载速率归 M3 | G23 | 内测 | P1 | `API-PROD-020` |
 | REQ-PROD-027 | Tab 玩家列表去 O(N²)：进服合并为一个多条目 `PlayerInfoUpdatePacket`；延迟每 30 s 批量一包；可见集合由插件设 | G24 | 内测 | P1 | `API-PROD-020` |
-| REQ-PROD-028 | JVM 与 GC 默认参数：G1、`-Xms4G -Xmx4G`、`AlwaysPreTouch`、`MaxGCPauseMillis=50` | G25 | 内测 | P1 | 无对外 API，见 §15 与 §23 上线前检查单 |
+| REQ-PROD-028 | JVM 与 GC 默认参数：G1、`-Xms4G -Xmx4G`、`AlwaysPreTouch`、`MaxGCPauseMillis=50`、`HeapDumpOnOutOfMemoryError`、`ExitOnOutOfMemoryError`；同时作用于 `:server-app:run` 与发行包启动脚本 | G25 | 内测 | P1 | 无对外 API，见 §15 与 §23 上线前检查单 |
 | REQ-PROD-029 | 200～500 人压测：Java 模块 `:loadtest`（回区块回执、可分机、可加密）；画像为主城 200 人同格、分散 500 人、传送涌入、重连风暴、闸门攻击；200 人档 tick P99 < 50 ms，500 人两档记录 tick P99 与每人出口、不达标则频道 `capacity` 降到 200～300（运维草案 ⑤ 5.4 D） | G26 | 内测 | P0 | `API-PROD-025` |
 | REQ-PROD-030 | 真客户端端到端回归常驻 CI：R1～R8 八条断言，判定读报告与台账、退出码只记录不判定；PR（路径过滤）+ push main + 每日；连续 20 次全绿后设为必需检查；G01 落地后切完整正版路径档 | G27 | 内测 | P0 | `API-PROD-026` |
 | REQ-PROD-031 | 跨大区 Transfer 与签名 cookie 的插件面：`transfer`、`wasTransferred`、store / fetch cookie；转入连接照常走加密与 `hasJoined`，票据 UUID 必须等于本次验证出的 UUID；每玩家转服冷却 5 s | G28 | 运营 | P1 | `API-PROD-021`；时序 §12.3 |
@@ -468,13 +468,27 @@ erDiagram
   - 键：`synaxis.packet-limit.window-ms` 7,000、`synaxis.packet-limit.max-packets` 500、`synaxis.packet-limit.action` `KICK`（`DROP` 可选）、`synaxis.packet-limit.overrides`（`<包资源名>=<窗口内上限>:<DROP|KICK>` 逗号分隔）、`synaxis.packet-limit.max-inflated-bytes-per-second`（初值 4 MiB/s，本分册定，**未核实**）、`synaxis.tab-complete-rate-per-second` 20。
   - 初值取 Paper 的 500 包 / 7 s，200 人压测后改为入站 P99 × 2（清单 G11）。KICK 用既有 `synaxis:protocol-error`（与 `docs/DESIGN.md` §15 限流行同一语义）。
 - **`API-PROD-013` 看门狗、崩溃报告与异常落点** — 实现 `REQ-PROD-014`、`REQ-PROD-015`
-  - 看门狗键：`synaxis.watchdog.early-warning-ms` 10,000、`synaxis.watchdog.early-warning-every-ms` 5,000、`synaxis.watchdog.timeout-ms` 60,000、`synaxis.watchdog.halt-after-ms` 15,000；`0` 关闭。判死后退出码 70。
-  - 崩溃报告：`crash-reports/<yyyyMMdd-HHmmss>-<shard_id>.txt`，内容为线程转储、生效配置（密钥键只写「已设置」）、插件列表与版本、`git head`、触发原因。
-  - `ExceptionManager` 默认落点改为 SLF4J，行内带 tick 号与 `connection_id`，保留 `LogBudget` 限流；OOM 不再走完整 stop，由 `-XX:+ExitOnOutOfMemoryError` 退出。
+  - 看门狗键（引擎 `ServerConfig`，负数拒启）：`synaxis.watchdog.early-warning-ms` 10,000、`synaxis.watchdog.early-warning-every-ms` 5,000、`synaxis.watchdog.timeout-ms` 60,000、`synaxis.watchdog.halt-after-ms` 15,000。判死后退出码 70。各键取 0 的含义：
+
+    | 键 = 0 | 效果 |
+    | --- | --- |
+    | `timeout-ms` | 不起 `Syn-Watchdog` 线程，启动日志记一行「watchdog off」；其余三键不再生效 |
+    | `early-warning-ms` | 不打早期警告，tick 卡住到 `timeout-ms` 直接判死 |
+    | `early-warning-every-ms` | 每次卡住只打第一条警告，不重复 |
+    | `halt-after-ms` | 照常判死、写崩溃报告，但不 `Runtime.halt` |
+
+  - 引擎接线：看门狗由引擎每进程持有一个，宿主经 `ServerProcess#watchdog()`（`@ApiStatus.Internal`）取得并起停；tick 起止打点在 `ServerProcessImpl.TickerImpl.tick` 的首尾（`finally` 里打结束点），覆盖调度线程上的整个 tick。巡检每 1 s 一次，所以首条警告实际落在卡住后 10～11 s、重复警告间隔 5～6 s、判死落在 60～61 s。警告内容是正在跑 tick 的线程与全部 TickThread 的栈。
+  - 判死：`Watchdog#start(onDeath)` 的回调在单独的平台线程 `Syn-Watchdog-Report` 上执行，宿主在里面写崩溃报告；halt 计时由 `Syn-Watchdog` 自己走，回调卡住也不拦 halt。第 3 波 3A 在同一回调里驱动 §11.4 的判死保存。已判死的进程不会因 tick 结束而恢复。`stop()` 在没有在途 tick 时结束巡检；有在途 tick 时继续看到它结束，已判死的照常 halt，所以卡在 tick 后面的停机序列仍以 halt 收尾。
+  - 崩溃报告：`crash-reports/<yyyyMMdd-HHmmss>-<shard_id>.txt`（同一秒第二份起加 `-2`、`-3` 后缀），内容为触发原因、线程转储、生效配置、插件列表与版本、`git head`（构建时写入，IDE 里跑写 `unknown`）。生效配置的脱敏规则：`SYNAXIS_*` 环境变量一律只写 `<set>`；`synaxis.*` 系统属性与 JVM 的 `-D` 参数中，键名含 `password`、`secret`、`token`、`credential`（不分大小写）的只写 `<set>`，其余原样写。
+  - 宿主异常落点 `HostExceptionHandler` 同时接 `ExceptionManager` 与全部线程的默认未捕获异常处理器：每条异常一行 ERROR 带栈、tick 号与 `connection_id`，按异常类各一个 `LogBudget`（10 s 一行）。「致命错误」指 `VirtualMachineError` 中除 `StackOverflowError` 以外的（单个监听器就能触发栈溢出且进程能活下来）；致命错误每进程只写第一份崩溃报告，不停进程。
+  - tick 号由宿主提供：引擎没有进程级 tick 计数，宿主在调度器上挂每 tick 自增的任务，异常行读它。宿主未设落点时，引擎默认落点是一行 SLF4J ERROR，全局 10 s 至多一行，带这段时间的累计条数与 `connection_id`，不带 tick 号。
+  - OOM 不走完整 stop：`-XX:+ExitOnOutOfMemoryError` 在异常落点之前结束进程（退出码 3），参数由 `REQ-PROD-028` 的默认 JVM 参数提供。
 - **`API-PROD-014` 日志与事件台账** — 实现 `REQ-PROD-016`、`REQ-PROD-017`、`REQ-PROD-011`
-  - 日志：`logback.xml` 两套 appender，`-Dsynaxis.app.log=file|stdout`（默认 `file`）；`file` 为 `RollingFileAppender` + `SizeAndTimeBasedRollingPolicy`（`logs/latest.log`，每天或 256 MB 滚动，gzip，`maxHistory` 14，`totalSizeCap` 10 GB），外包 `AsyncAppender`（`neverBlock=true`，`queueSize` 8,192）。
-  - 台账：`EventLedger#record` 在调用线程拼好整行后 `offer` 进 65,536 行有界 MPSC 队列，永不阻塞；写线程 `Syn-Ledger-Writer` 持有 `FileChannel`，距上次写盘满 1,000 ms 或缓冲满 64 KiB 写一次，不逐次 `fsync`，关闭时 `force(true)`。文件 `logs/events-<shard_id>-YYYYMMDD.jsonl`，跨天后压成 `.jsonl.gz`，保留 30 天；`synaxis.app.ledger-max-bytes-per-day` 默认 1 GiB，到达后只写 `ledger_dropped` 汇总行。
-  - 队列满：丢新来的那条并计数，下一次写盘先写 `{"event":"ledger_dropped","count":N,"since":…}`。
+  - 日志：`logback.xml` 的控制台 appender 在两种模式下都挂着（就绪行、测试、soak 与 CI 都读 stdout），`-Dsynaxis.app.log` 决定另外加什么：`file`（默认）另挂 `RollingFileAppender` + `SizeAndTimeBasedRollingPolicy`（`logs/latest.log`，每天或 256 MB 滚动成 `logs/YYYY-MM-DD.N.log.gz`，`maxHistory` 14，`totalSizeCap` 10 GB），外包 `AsyncAppender`（`neverBlock=true`，`queueSize` 8,192）；`stdout` 只有控制台，不建任何文件，给由运行时收集 stdout 的容器用。其他值按 `logback-<值>.xml` 找不到资源处理：logback 在控制台报一行找不到，效果同 `stdout`。
+  - 分片 ID：`synaxis.app.shard-id` 默认 `local`，进台账与崩溃报告的文件名；去掉首尾空白后必须匹配 `[A-Za-z0-9][A-Za-z0-9._-]*`（字母或数字开头，只含字母、数字、`.`、`_`、`-`，因此不能跳出目录），否则拒启。
+  - 台账：`EventLedger#record` 在调用线程拼好整行后 `offer` 进 65,536 行有界 MPSC 队列，永不阻塞；写线程 `Syn-Ledger-Writer` 持有 `FileChannel`，距上次写盘满 1,000 ms 或缓冲满 64 KiB 写一次，不逐次 `fsync`，关闭时 `force(true)`。文件 `logs/events-<shard_id>-YYYYMMDD.jsonl`，跨天后压成 `.jsonl.gz`，保留 30 天。`synaxis.app.ledger-max-bytes-per-day` 默认 1 GiB（1,073,741,824），必须是正整数字节数，否则拒启；当天文件到达上限后只写 `ledger_dropped` 汇总行。
+  - 丢弃：队列满时丢新来的那条并计数；下一次写盘先按原因各写一行 `{"ts":…,"event":"ledger_dropped","reason":"queue_full|daily_cap","count":N,"since":…}`，`since` 是这一批里第一次丢弃的时刻。
+  - 关闭：停机时连接还在服务，`record` 可能与关闭竞争。写线程先封口、等已过封口检查的 `record` 全部入队，再做最后一次排空，所以每一行要么落盘、要么被看到封口的 `record` 拒掉。封口之后到达的行不入台账（已没有文件可写汇总行），只在日志经 `LogBudget` 计数 `dropped_after_close=N`。
   - 事件行格式沿用 `docs/DESIGN-M2.md` §20（`ts` 在事件发生线程上取）。
 - **`API-PROD-015` 指标导出** — 实现 `REQ-PROD-018`、`REQ-PROD-042`
   - Micrometer + `micrometer-registry-prometheus`；JDK `com.sun.net.httpserver` 在 `synaxis.app.metrics.bind`（默认 `127.0.0.1:9464`，本分册定）暴露 `GET /metrics`，不鉴权，只绑内网。
@@ -498,13 +512,15 @@ erDiagram
     | `synaxis_redis_up` | gauge | — | Redis 可达为 1 |
     | `synaxis_ledger_dropped_total` | counter | — | 台账丢弃行数 |
     | `synaxis_outbound_backlog_kicks_total` | counter | — | 出站积压超限断线数 |
-    | `synaxis_watchdog_warnings_total` | counter | — | 看门狗早期警告次数 |
+    | `synaxis_watchdog_warnings_total` | counter | — | 看门狗早期警告次数（第 0 波没有注册表，随 5A 接上） |
     | `synaxis_cipher_cpu_seconds_total` | counter | `direction` | 加解密耗时累计（`REQ-PROD-042` 的触发判据） |
   - `TickMonitor.acquisitionTimeMs` 在审计 P3-3（`minestom-audit/04-threading-events.md:819`）修掉之前不导出。
 - **`API-PROD-016` 空间分格与 tick 线程契约** — 实现 `REQ-PROD-019`、`REQ-PROD-020`
   - `ThreadProvider.grid(int exponent)`：区块 (cx, cz) 归格 `(cx >> exponent, cz >> exponent)`，线程号 = 格坐标 hash，下标 `Math.floorMod(hash, 线程数)`；`RefreshType.NEVER`。
   - 配置：`ServerProcessImpl` 不再写死 `counter()`（`ServerProcessImpl.java:104`），读 `synaxis.thread-provider=grid|counter`（默认 `counter`）、`synaxis.thread-grid-exponent`（默认 4，16×16 区块）、`synaxis.dispatcher-threads`（引擎默认 1）。MMO 分片宿主启动时写入 `thread-provider=grid` 与 `dispatcher-threads = max(1, Runtime.availableProcessors() − 2)`（U5），命令行显式给的值优先；M2 `Main` 与 RTS 进程不设（§28.1 Q8）。
   - `ThreadDispatcherImpl.java:141` 的 `Math.abs(threadId) % threads.size()` 改为 `Math.floorMod(threadId, threads.size())`。
+  - 所有权断言（`Acquirable#assertOwnership`，断言开或 `synaxis.acquirable-strict=true` 时生效）的未分配态：dispatcher 还没给元素分配 tick 线程时，放行创建它的线程与任何非 `TickThread` 的线程（玩家在连接线程上构造、由调度线程 spawn），其他 tick 线程判越权抛 `AcquirableOwnershipException`，因为 `setInstance` 之后到下一次 dispatcher 更新之前，元素已能经追踪器与观察者被 tick 线程碰到。未分配元素上的 `lock()` / `sync()` 仍只认创建线程。
+  - 严格模式 job：`-Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true` 写在 Gradle 命令行上，由 build-src 约定插件 `synaxis.java-library` 转发给每个测试 JVM（不给时测试 JVM 不带这两个属性）。
   - 线程契约（写进 `plugin-api` 的 `package-info` 与 `docs/PLUGINS.md`）：实体与玩家的回调在该实体所属 tick 线程上执行；跨格影响（攻击、交易）优先投递到目标实体的调度器（`runOn`，`API-PROD-017`），由目标所在线程下一 tick 执行；`Acquirable.sync` 只用于必须当 tick 读到对方状态的场合；插件每 tick 的全局逻辑跑在调度线程上，是串行段。
 - **`API-PROD-017` 插件调度器** — 实现 `REQ-PROD-021`
   - `PluginScheduler` 增加 `Task runAsync(Runnable task)`（虚拟线程；插件禁用时中断未完成任务）与 `Task runOn(Schedulable target, Runnable task, TaskSchedule delay)`（投递到实例或实体所属线程）；现有 `scheduleTask(task, delay, repeat)` 不变。
@@ -542,10 +558,12 @@ erDiagram
   - `summary.json` 字段沿用 `soak-2026-09-22` 口径，新增 `inbound.chunks`（`REQ-M3-014` 已定名）、`login_latency_ms`（按加密开关分栏）、`kicks_by_reason`、`chunk_batch_rtt_ms`、`connection_gate`、`ticks.acquire_ms`、`dispatcher_busy_ratio`（每线程）。
   - 加密档连 `API-PROD-027` 的 `allow-all` 模式；机器人库 `store_meta.auth_mode = offline`，正式分片连它会拒绝起服。
 - **`API-PROD-026` 真客户端回归的报告与判定** — 实现 `REQ-PROD-030`
-  - 报告：每次客户端启动写 `report.txt`，每条断言一行 `R<n> PASS|FAIL <证据>`，写报告放进 `try/finally`。R1～R8 定义见运维草案 ① 1.2（模组加载、握手通过、进世界、收到单位、选中、下令后位移 ≥ 2.0 格、光照非零、断线原因可读）。
+  - 报告：每次客户端启动写 `report.txt`，每条断言一行 `R<n> PASS|FAIL <证据>`，写报告放进 `try/finally`。R1～R8 定义见运维草案 ① 1.2（模组加载、握手通过、进世界、收到单位、选中、下令后位移 ≥ 2.0 格、光照非零、断线原因可读），本分册的口径差异两条：
+    - 草案每条断言后的「台账交叉验证」列只落实下面判定步骤的四项；草案给 R3 用的 `player_entered_play` 在代码里不存在，R3 只看客户端 `level` 与 `player` 非空。
+    - R5 按绑定顺序逐个检查本方可指挥单位，选第一个满足「从相机指向其碰撞箱中心的射线最先打中的就是它」（`UnitPicker.pick`）的单位；R6 的射线从目标点正上方 16 格竖直向下（地图障碍高 3 格），目标点取单位当前位置沿 +x、+z、−x、−z 依次偏 8 格，第一个回 `OK` 的即为下令，之后等 100 tick 内水平位移 ≥ 2.0 格。
   - 判定步骤（CI）：报告份数 = 客户端启动次数 N；每份 `^R[1-8] PASS` 恰 8 行、`FAIL` 0 行；台账 `client_verified` = 连接次数 C、`client_rejected` = 0、`unit_order_issued` ≥ N；`server.log` 中 `reason=synaxis:protocol-error` 的 kick 行 = N；Gradle 客户端步骤 `continue-on-error: true`，退出码只记录。不跑 spike 时 C = N；带 spike 跑时 spike 的 S1 每次启动多连一次，C = 2N。
   - spike 开关：环境变量 `SYNAXIS_SPIKES`，不设或为空时每次启动只跑回归 R1～R8；`all` 跑 S0～S5，逗号列举（如 `s2,s5`）跑 S0、S1 加所列项；spike 结果追加在报告的 R 行之后。CI 只有 `schedule` 设 `all`，PR 与 push `main` 不跑 spike。
-  - 触发：`pull_request`（路径过滤 `client-fabric/**`、`protocol/**`、`server-app/**`、`game-rts/**`、`plugin-api/**`、`src/main/java/**/network/**`、`src/main/java/**/listener/**`、工作流文件）、push `main`、`schedule` 每日 UTC 18:00。
+  - 触发：`pull_request`（路径过滤 `client-fabric/**`、`protocol/**`、`server-app/**`、`game-rts/**`、`plugin-api/**`、`src/main/java/**/network/**`、`src/main/java/**/listener/**`、工作流文件）、push `main`、`schedule` 每日 UTC 18:00，另有手动 `workflow_dispatch`（可选握手阶段）；运维草案原有的 push `client-gametest-ci` 分支触发去掉。
   - 档位：`REQ-PROD-002` 落地前跑离线档；落地后跑完整正版路径档（`Auth.Online` + `API-PROD-027` `record` 模式，客户端 JVM 带 `minecraft.api.session.host` / `services.host` / `profiles.host` 三个属性）。
 - **`API-PROD-027` 假 sessionserver** — 实现 `REQ-PROD-044`
   - `tools/fake-sessionserver/FakeSessionServer.java`：单文件，只用 JDK `com.sun.net.httpserver`，`java FakeSessionServer.java --mode record|allow-all --port P` 直接跑，不打镜像。
@@ -821,9 +839,9 @@ stateDiagram-v2
 | [*] → started | start | 端口绑定成功 | 同 `docs/DESIGN.md` §11.2 | ROLE-GameApp | `docs/DESIGN.md` `API-003` |
 | started → gate_closed | beginShutdown | `stopping` 由 false 置 true 成功（重复调用 CAS 失败，直接返回） | tick 线程调用时投递到停机线程（同引擎 §11.2）；闸门 L3 置满（新 `LoginStart` 收 `synaxis:server-stopping`）；调宿主 `onGateClosed(countdown)`，宿主广播倒计时；`stopped` 仍为 false，`isAlive()` 仍为 true | ROLE-Operator（控制台、管理接口）/ 宿主 | `API-PROD-007`、`API-PROD-022` |
 | gate_closed → saving | 倒计时结束 | now ≥ 倒计时截止 | 调宿主 `saveAll(30 s, tickAlive=true)`，以 30 s 为上限等待：宿主对全体在线玩家进入冻结、分片会话进 `closing`，在各玩家所属 tick 线程上调插件 `onShutdownSave` 并快照，写库在虚拟线程；标记「已冲刷」，之后的 `PlayerDisconnectEvent` 不再写 | 内部任务 `process.shutdown` | `API-PROD-007` |
-| started → saving | 看门狗判死 | tick 卡住 ≥ 60 s | 置 `stopping`；跳过倒计时；调 `saveAll(15 s, tickAlive=false)`：宿主跳过插件钩子，由停机线程直接读快照（数据可能不一致，记 WARN）；§11.5 同时开始 15 s halt 计时，所以这条路径的保存预算是 15 s | 内部任务 `watchdog` | `API-PROD-013` |
-| gate_closed → saving | 看门狗判死 | tick 卡住 ≥ 60 s | 放弃剩余倒计时；其余同 started → saving | 内部任务 `watchdog` | `API-PROD-013` |
-| saving → saving | 看门狗判死 | tick 卡住 ≥ 60 s | 阶段不变；保存截止改为 min(原截止, 判死后 15 s)；宿主尚未完成的快照改由停机线程直接读（记 WARN） | 内部任务 `watchdog` | `API-PROD-013` |
+| started → saving | 看门狗判死 | tick 卡住 ≥ 60 s | 置 `stopping`；跳过倒计时；调 `saveAll(15 s, tickAlive=false)`：宿主跳过插件钩子，由停机线程直接读快照（数据可能不一致，记 WARN）；§11.5 同时开始 15 s halt 计时，所以这条路径的保存预算是 15 s | 内部任务 `watchdog`（判死回调线程 `Syn-Watchdog-Report`） | `API-PROD-013` |
+| gate_closed → saving | 看门狗判死 | tick 卡住 ≥ 60 s | 放弃剩余倒计时；其余同 started → saving | 内部任务 `watchdog`（判死回调线程 `Syn-Watchdog-Report`） | `API-PROD-013` |
+| saving → saving | 看门狗判死 | tick 卡住 ≥ 60 s | 阶段不变；保存截止改为 min(原截止, 判死后 15 s)；宿主尚未完成的快照改由停机线程直接读（记 WARN） | 内部任务 `watchdog`（判死回调线程 `Syn-Watchdog-Report`） | `API-PROD-013` |
 | saving → kicking | 保存结束 | `saveAll` 返回的 future 已完成 | 调宿主 `onSaveEnded(false)`：宿主写 `EVT:shutdown_saved`（`saved = online`）并驱动 §11.2 `closing → released` | 内部任务 `process.shutdown` | `API-PROD-007` |
 | saving → kicking | 保存超时 | 已用时 ≥ 本次保存预算（正常 30 s，判死路径 15 s） | 调宿主 `onSaveEnded(true)`：未完成的角色逐个记 ERROR（`character_id`），写 `EVT:shutdown_saved`（`saved < online`），驱动 §11.2 `closing → released`，残余租约随会话过期立即可被接管 | 内部任务 `process.shutdown` | `API-PROD-007` |
 | kicking → plugins_disabled | 踢人完成 | 在线玩家数 = 0 ∨ 已用时 ≥ 5 s | `synaxis:server-stopping` 踢全部连接；PLAY 玩家的 `PlayerDisconnectEvent` 在仍运行的 tick 线程上派发；然后 `scheduler.shutdown()` 执行宿主挂在 `buildShutdownTask` 上的 `host::disableAll`（插件 `onDisable`） | 内部任务 `process.shutdown` | `API-PROD-007` |
@@ -835,30 +853,37 @@ stateDiagram-v2
 
 ```mermaid
 stateDiagram-v2
-  [*] --> watching : 起服(宿主) [watchdog.timeout-ms > 0]
-  watching --> warning : 巡检(watchdog) [当前 tick 已用时 ≥ 10 s]
-  warning --> warning : 巡检(watchdog) [距上次打印 ≥ 5 s ∧ 已用时 < 60 s]
+  [*] --> watching : 起服(宿主) [timeout-ms > 0]
+  watching --> warning : 巡检(watchdog) [early-warning-ms > 0 ∧ early-warning-ms ≤ 当前 tick 已用时 < timeout-ms]
+  warning --> warning : 巡检(watchdog) [early-warning-every-ms > 0 ∧ 距上次打印 ≥ early-warning-every-ms ∧ 已用时 < timeout-ms]
   warning --> watching : tick 结束(tick 线程) [当前 tick 已完成]
-  warning --> dying : 巡检(watchdog) [已用时 ≥ 60 s]
+  watching --> dying : 巡检(watchdog) [当前 tick 已用时 ≥ timeout-ms]
+  warning --> dying : 巡检(watchdog) [已用时 ≥ timeout-ms]
+  watching --> off : 巡检(watchdog) [已请求 stop ∧ 无在途 tick]
   dying --> exited : 落盘停机完成(process.shutdown) [停机序列到 stopped]
-  dying --> halted : 巡检(watchdog) [进入 dying 后已用时 ≥ 15 s]
+  dying --> halted : 巡检(watchdog) [halt-after-ms > 0 ∧ 进入 dying 后已用时 ≥ halt-after-ms]
+  dying --> off : 巡检(watchdog) [halt-after-ms = 0 ∧ 已请求 stop]
   exited --> [*]
   halted --> [*]
+  off --> [*]
 ```
 
-迁移表：
+迁移表（键名省略前缀 `synaxis.watchdog.`，默认值与各键取 0 的含义见 `API-PROD-013`）：
 
 | 源 → 目标 | 事件 | 守卫（纯布尔） | 动作（副作用） | 谁触发 | 接口/事件 |
 | --- | --- | --- | --- | --- | --- |
-| [*] → watching | 起服 | `watchdog.timeout-ms` > 0 | 起平台线程 `Syn-Watchdog`，每 1 s 巡检一次 | 宿主 | `API-PROD-013` |
-| watching → warning | 巡检 | 当前 tick 已用时 ≥ 10 s | 打印全部 TickThread 与调度线程栈（WARN）；`synaxis_watchdog_warnings_total` +1 | 内部任务 `watchdog` | `API-PROD-013` |
-| warning → warning | 巡检 | 距上次打印 ≥ 5 s ∧ 已用时 < 60 s | 再打印一次栈 | 内部任务 `watchdog` | `API-PROD-013` |
-| warning → watching | tick 结束 | 当前 tick 已完成 | 记一行 INFO「tick 恢复，卡住 N ms」 | tick 线程 | `API-PROD-013` |
-| warning → dying | 巡检 | 已用时 ≥ 60 s | 写崩溃报告；按停机序列当前阶段驱动 §11.4 的判死转移：`started` 或 `gate_closed` → `saving`，已在 `saving` 时 `saving → saving`，已到 `kicking` 之后不驱动 | 内部任务 `watchdog` | `API-PROD-013` |
-| dying → exited | 落盘停机完成 | 停机序列到 `stopped` | 进程退出码 70 | 内部任务 `process.shutdown` | `API-PROD-013` |
-| dying → halted | 巡检 | 进入 `dying` 后已用时 ≥ 15 s | `Runtime.halt(70)`；由 systemd 或容器重启；残余租约 ≤ 30 s 后可接管 | 内部任务 `watchdog` | `API-PROD-013` |
+| [*] → watching | 起服 | `timeout-ms` > 0 | 起平台线程 `Syn-Watchdog`，每 1 s 巡检一次；`timeout-ms` = 0 时不起线程，只记一行 INFO，不进入本状态机 | 宿主（`Main` 在首个 tick 之前调 `ServerProcess#watchdog().start`） | `API-PROD-013` |
+| watching → warning | 巡检 | `early-warning-ms` > 0 ∧ `early-warning-ms` ≤ 当前 tick 已用时 < `timeout-ms` | 打印正在跑 tick 的线程与全部 TickThread 的栈（一条 WARN）；`synaxis_watchdog_warnings_total` +1（该指标随 5A 接上） | 内部任务 `watchdog` | `API-PROD-013` |
+| warning → warning | 巡检 | `early-warning-every-ms` > 0 ∧ 距上次打印 ≥ `early-warning-every-ms` ∧ 已用时 < `timeout-ms` | 再打印一次栈 | 内部任务 `watchdog` | `API-PROD-013` |
+| warning → watching | tick 结束 | 当前 tick 已完成 | 记一行 INFO「tick 恢复，卡住 N ms」 | 跑 tick 的线程（`TickerImpl.tick` 的 `finally`） | `API-PROD-013` |
+| watching → dying | 巡检 | 当前 tick 已用时 ≥ `timeout-ms` | 同 warning → dying（这个 tick 还没打过警告就已到 `timeout-ms` 时走这条：`early-warning-ms` = 0、不小于 `timeout-ms`，或两者相差不足一个巡检间隔） | 内部任务 `watchdog` | `API-PROD-013` |
+| warning → dying | 巡检 | 已用时 ≥ `timeout-ms` | 一条 ERROR 带正在跑 tick 的线程与全部 TickThread 的栈；在单独线程 `Syn-Watchdog-Report` 上调宿主的判死回调：写崩溃报告，第 3 波起再按停机序列当前阶段驱动 §11.4 的判死转移（`started` 或 `gate_closed` → `saving`，已在 `saving` 时 `saving → saving`，已到 `kicking` 之后不驱动）；回调卡住不影响 halt 计时。进入 `dying` 后 tick 结束也不回 `watching` | 内部任务 `watchdog` | `API-PROD-013` |
+| watching → off | 巡检 | 已请求 stop ∧ 无在途 tick | 巡检线程退出。有在途 tick 时 `stop()` 不生效，直到该 tick 结束或判死 | 内部任务 `watchdog`（`stop()` 由停机任务调用） | `API-PROD-013` |
+| dying → exited | 落盘停机完成 | 停机序列到 `stopped` | 进程退出码 70（第 3 波 3A 接上判死保存后才有这条路径，第 0 波判死后只能 halt） | 内部任务 `process.shutdown` | `API-PROD-013` |
+| dying → halted | 巡检 | `halt-after-ms` > 0 ∧ 进入 `dying` 后已用时 ≥ `halt-after-ms` | `Runtime.halt(70)`；由 systemd 或容器重启；残余租约 ≤ 30 s 后可接管 | 内部任务 `watchdog` | `API-PROD-013` |
+| dying → off | 巡检 | `halt-after-ms` = 0 ∧ 已请求 stop | 巡检线程退出，进程由停机序列正常结束 | 内部任务 `watchdog` | `API-PROD-013` |
 
-跨机一致性：§11.4 三条判死转移的守卫「tick 卡住 ≥ 60 s」与 `warning → dying` 同一判据；停机序列处于 `started`、`gate_closed`、`saving` 时恰有一条成立，处于 `kicking` 及之后时不驱动，由 `dying → halted` 收尾。判死路径的保存预算是 15 s（halt 计时），不是正常停机的 30 s。`dying → halted` 先于 `onSaveEnded` 发生时 §11.2 的会话不会走到 `released`，残余租约靠 30 s 过期（§11.3 `online → orphaned`）。
+跨机一致性：§11.4 三条判死转移的守卫「tick 卡住 ≥ 60 s」与 `watching → dying`、`warning → dying` 同一判据（默认值下）；停机序列处于 `started`、`gate_closed`、`saving` 时恰有一条成立，处于 `kicking` 及之后时不驱动，由 `dying → halted` 收尾。判死路径的保存预算是 15 s（halt 计时），不是正常停机的 30 s。`dying → halted` 先于 `onSaveEnded` 发生时 §11.2 的会话不会走到 `released`，残余租约靠 30 s 过期（§11.3 `online → orphaned`）。
 
 ## 12. 关键流程时序
 
@@ -1073,7 +1098,7 @@ L0、L0′、accept 时的 L1 超限与握手前超时都不发包，没有键�
 | 可见实体 | 200 人同格 | 每玩家可见非必显实体 ≤ 100；200 人同格合计出站 < 100 Mbit/s 时才放宽上限（清单 G21） |
 | 入站限流 | 单连接 | 7 s 窗口 > 500 包 KICK（初值），200 人压测后改为入站 P99 × 2；补全 > 20 次/秒丢弃 |
 | 聊天 | 单连接 | > 1 条/秒（burst 3）丢弃；引擎默认 0 收件人，一进 0 出 |
-| 看门狗 | tick 卡住 | 10 s 首次打印栈；60 s 判死；判死后 ≤ 15 s 进程退出 |
+| 看门狗 | tick 卡住 | 10～11 s 首次打印栈；60～61 s 判死（巡检间隔 1 s）；判死后 ≤ 16 s 进程退出 |
 | 日志与磁盘 | 12 个月 | 服务日志总量 ≤ 10 GB、保留 14 天；台账每日 ≤ 1 GiB、保留 30 天；崩溃报告与堆转储不自动删，由 `RB-PROD-003` 处理后归档 |
 | 数据增长 | 12 个月 | `character` 行数 = 注册角色数，按 32,000 在线 × 10 倍注册估 32 万行；`character_section` ≤ 32 万 × 段数 × 64 KiB（上界，与 M3 §15「≈ 20 GiB 上界」同口径）；`transfer_nonce` 由 M3 `nonce.gc` 每 10 min 删过期行；`shard_session` 每小时删 1 天前过期且无引用的行；`item_ledger` 写入量未测，超过保存次数 2 倍时改为只记稀有物品（D5）；`ban` 与 `account_role` 不清理 |
 | 备份 | PostgreSQL | 恢复点目标 ≤ 5 分钟（WAL 归档 + 每日基础备份）；恢复时间目标未定，首次演练后回填 |
@@ -1143,7 +1168,7 @@ L0、L0′、accept 时的 L1 超限与握手前超时都不发包，没有键�
 | `shard_session.cleanup` | 每小时 | 任一分片执行，advisory lock 互斥 | 30 s | 下轮补扫 | 无（量小）；`transfer_nonce` 清理归 M3 `nonce.gc` |
 | `moderation.cache` | 每 30 s 失效 + `synaxis:moderation` 消息 | 每分片 | 2 s | 沿用旧缓存 | 见 `RB-PROD-002` |
 | `ledger.writer`（`Syn-Ledger-Writer`） | 每 1 s 或缓冲 64 KiB | 单写线程 | — | 写失败经 `LogBudget` 10 s 一行；队列满丢新 | 见 `RB-PROD-007` |
-| `watchdog`（`Syn-Watchdog`） | 每 1 s | 平台线程，单个 | — | 见 §11.5 | 见 `RB-PROD-003` |
+| `watchdog`（`Syn-Watchdog`） | 每 1 s | 平台线程，单个；判死回调另起一个平台线程 `Syn-Watchdog-Report` | — | 见 §11.5；回调抛异常记 ERROR，不影响 halt | 见 `RB-PROD-003` |
 | `connection.gate-sweep` | 每 60 s | 单个 | — | 清掉桶已满的键 | 见 `RB-PROD-005` |
 | `process.shutdown` | `stop` / `beginShutdown` / 判死 | 单实例，幂等 | 保存 30 s（判死路径 15 s），踢人 5 s，台账 2 s | 超时记 ERROR 继续下一阶段 | 见 `RB-PROD-003` |
 | `backup.base` / WAL 归档（运维侧） | 每日 / 持续 | pgBackRest 或 pg_basebackup | — | 失败告警 | 见 `RB-PROD-008` |
@@ -1465,12 +1490,12 @@ L0、L0′、accept 时的 L1 超限与握手前超时都不发包，没有键�
 场景: tick 卡住 10 s 打印栈、60 s 判死 (REQ-PROD-014)
   Given 测试插件让某个 tick 阻塞 70 s
   When 看门狗巡检
-  Then 第 10 s 打印全部 TickThread 与调度线程栈，之后每 5 s 一次；第 60 s 写崩溃报告并进入落盘停机
+  Then 第 10～11 s 打印正在跑 tick 的线程与全部 TickThread 的栈，之后每隔 5～6 s 一次；第 60～61 s 写崩溃报告并进入落盘停机
 
 场景: 停机倒计时期间 tick 卡死仍先落盘 (REQ-PROD-014)
   Given 执行 stop 120 进入倒计时，随后测试插件让 tick 阻塞
   When 阻塞满 60 s
-  Then 停机序列从 gate_closed 进入 saving，宿主 saveAll 以 tickAlive=false、预算 15 s 被调用，有脏段的角色 version 加 1；进程在判死后 15 s 内退出
+  Then 停机序列从 gate_closed 进入 saving，宿主 saveAll 以 tickAlive=false、预算 15 s 被调用，有脏段的角色 version 加 1；进程在判死后 16 s 内退出（halt 计时 15 s 加巡检间隔 1 s）
 
 场景: 落盘停机 15 s 未完成即 halt (REQ-PROD-014)
   Given 看门狗已判死，停机序列被阻塞
@@ -1480,27 +1505,27 @@ L0、L0′、accept 时的 L1 超限与握手前超时都不发包，没有键�
 场景: 未捕获异常走 SLF4J 并写崩溃报告 (REQ-PROD-015)
   Given server-app 已设 ExceptionManager 落点
   When tick 线程抛一个异常，随后触发一次致命错误
-  Then 异常行带 tick 号与 connection_id 且 10 s 内同类至多一行；致命错误生成 crash-reports/<时间戳>-<shard_id>.txt，含线程转储、生效配置（密钥只写「已设置」）、插件列表与 git head
+  Then 异常行带 tick 号与 connection_id 且 10 s 内同一异常类至多一行；致命错误（StackOverflowError 除外的 VirtualMachineError）生成 crash-reports/<时间戳>-<shard_id>.txt，含线程转储、生效配置（SYNAXIS_* 环境变量与键名含 password / secret / token / credential 的属性只写 <set>）、插件列表与 git head；同一进程第二次致命错误不再生成报告
 
 场景: OOM 不走完整 stop (REQ-PROD-015)
-  Given 启动参数含 -XX:+HeapDumpOnOutOfMemoryError -XX:+ExitOnOutOfMemoryError
+  Given 用 server-app 发行包的启动脚本起服（默认参数含 -XX:+HeapDumpOnOutOfMemoryError -XX:+ExitOnOutOfMemoryError）
   When 进程 OOM
-  Then 生成堆转储并立即退出，不执行停机序列
+  Then 工作目录生成 java_pid<pid>.hprof，进程以退出码 3 立即退出，不执行停机序列
 
 场景: 日志按天或按大小滚动并压缩 (REQ-PROD-016)
   Given synaxis.app.log=file，单文件上限临时改为 1 MB
   When 写入 3 MB 日志
-  Then logs/ 下出现 latest.log 与至少 2 个 .gz 归档；synaxis.app.log=stdout 时不写文件
+  Then logs/ 下出现 latest.log 与至少 2 个 .gz 归档，控制台同时有全部日志；synaxis.app.log=stdout 时只写控制台、不建任何文件
 
 场景: 台账缓冲写入且满即丢新 (REQ-PROD-017)
   Given 台账队列容量 65,536 且写线程被阻塞
   When 生产者写入 70,000 行后写线程恢复
-  Then record 调用从不阻塞，文件里先出现一行 ledger_dropped count=4464，之后是 65,536 行；正常 stop 后 0 行丢失
+  Then record 调用从不阻塞，文件里先出现一行 ledger_dropped reason=queue_full count=4464，之后是 65,536 行；正常 stop 后 0 行丢失；关闭之后再 record 的行不入文件，日志记 dropped_after_close
 
 场景: 台账文件按分片与日期命名并受每日上限约束 (REQ-PROD-017)
   Given shard_id=r01-c1，ledger-max-bytes-per-day 临时改为 1 MB
   When 当天写入 2 MB 事件
-  Then 文件名为 events-r01-c1-YYYYMMDD.jsonl，达到上限后只写 ledger_dropped 汇总行；跨天后前一天文件被压成 .jsonl.gz
+  Then 文件名为 events-r01-c1-YYYYMMDD.jsonl，达到上限后只写 reason=daily_cap 的 ledger_dropped 汇总行；跨天后前一天文件被压成 .jsonl.gz；shard-id 含 / 或以 . 开头时拒启
 
 场景: 指标端点只在内网暴露并含每线程 MSPT (REQ-PROD-018)
   Given dispatcher-threads=4 且 metrics.bind=127.0.0.1:9464
@@ -1515,7 +1540,7 @@ L0、L0′、accept 时的 L1 超限与握手前超时都不发包，没有键�
 场景: 4 线程严格模式下全量测试绿 (REQ-PROD-019)
   Given CI job 带 -Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true，thread-provider 为 counter（第 0 波）；5D 落地后同一 job 再以 thread-provider=grid 跑一轮
   When 跑引擎与 server-app 全量测试
-  Then 每一轮都 0 失败；setInstance 与 teleport 在非所属线程调用时抛所有权异常
+  Then 每一轮都 0 失败；setInstance 与 teleport 在非所属线程调用时抛所有权异常；未分配线程的实体在创建线程与非 TickThread 上通过断言，在其他 TickThread 上抛所有权异常
 
 场景: 同一分格的区块归同一线程 (REQ-PROD-020)
   Given thread-provider=grid、exponent=4、dispatcher-threads=6
@@ -1700,7 +1725,7 @@ L0、L0′、accept 时的 L1 超限与握手前超时都不发包，没有键�
 | `EVT:gm_command` | GM 命令或管理接口调用执行 | `actor`（`player` / `console` / `management`）、`actor_uuid`、`command`、`target`、`result` | 诊断用（审计），不进 §3 |
 | `EVT:lease_takeover` | §11.3 `orphaned → loading`，持有者是别的会话时 | `character_id`、`previous_session_id`、`gap_ms`（事件名沿用 M3，属性按本分册取代 M3 的 `player_uuid`、`previous_owner`，M3 会话同步，§28.3） | 诊断用；停机保存完整率的兜底证据 |
 | `EVT:save_fenced` | §11.3 `online → fenced` | `character_id`、`session_id`、`cause`（`zero_rows` / `session_isolated`） | 诊断用；与 `synaxis_store_save_total{result="fenced"}` 互证 |
-| `EVT:ledger_dropped` | 台账队列满或达每日上限后的下一次写盘 | `count`、`since`、`cause`（`queue_full` / `daily_cap`） | 口径受损标记：出现的那天 §3 比率照算但不参与 §23 放量门槛 |
+| `EVT:ledger_dropped` | 台账队列满或达每日上限后的下一次写盘，每个原因一行；关闭之后到达的行不在此列（只在日志计 `dropped_after_close`） | `reason`（`queue_full` / `daily_cap`）、`count`、`since` | 口径受损标记：出现的那天 §3 比率照算但不参与 §23 放量门槛 |
 
 ## 21. 可观测性 (SLI/SLO/告警)
 
@@ -1724,11 +1749,11 @@ L0、L0′、accept 时的 L1 超限与握手前超时都不发包，没有键�
 
 - **`RB-PROD-001` sessionserver 故障（验证成功率 < 95%）**：影响 新登录与转入全部失败，已在线玩家不受影响 · owner Bearisbug · 诊断 看 `synaxis_auth_hasjoined_total{result}` 是 `unavailable` 为主还是 `unverified` 为主（后者是盗版客户端或攻击，不是故障）；从分片机 `curl` 一次 `hasJoined`（固定假 `serverId`，预期 204）区分 Mojang 侧故障与本机出口故障；看是否出现 429（出口 IP 配额） · 处置 Mojang 侧故障：公告「正版验证暂不可用」，不改配置（U2 定为拒绝登录）；429：确认各分片独立出口 IP，排查是否有来源在用合法 `minecraft:key` 刷验证（闸门 L1 / L2 计数）；本机出口故障：切备用出口 · 回滚 N/A（无配置变更）；降级缓存默认不做，单次故障超过 30 分钟且运营判定停服比冒名更贵时，按 §28.1 Q4 另立需求并做成带过期时间的手动开关 · 升级 1 小时 error budget 燃烧速率 > 14.4 倍（即 1 小时耗掉 2% 的月预算）通知用户；故障超过 30 分钟触发 Q4 评估 · 恢复验证 验证成功率连续 15 分钟 ≥ 99.5%
 - **`RB-PROD-002` 数据库故障（分片会话 `degraded` / `isolated`，或语句 p99 > 200 ms）**：影响 新登录 `state-unavailable`；在线玩家 10 s 冻结、30 s 被踢，丢失 ≤ 60 s + 30 s 非关键进度 · owner Bearisbug · 诊断 `synaxis_db_pool_pending` 是否堆积（慢）还是连接失败（不可达）；PostgreSQL 侧 `pg_stat_activity` 看锁等待与长事务；确认是全部分片还是单个分片（单个多半是网络分区） · 处置 慢：查长事务与索引，分片数 > 24 时确认走了 PgBouncer；不可达：恢复数据库或网络，分片会自动 `shard_session.reopen` 以新纪元恢复，不需要重启；数据损坏：走 `RB-PROD-008` · 回滚 应用层回退上一个 tag（滚动重启 + 转服）；数据层只允许「先扩后缩」的迁移，回退分片版本不需要回退表结构；迁移本身有误时手工执行该版本的 `db/rollback/V<n>__*.down.sql`（§25） · 升级 进入 `isolated` 或 1 小时燃烧速率 > 14.4 倍立即通知用户 · 恢复验证 分片会话连续 15 分钟 `active`，语句 p99 ≤ 50 ms，抽 5 个账号登录读到的 `version` 等于故障前最后一次成功保存
-- **`RB-PROD-003` tick 卡死（看门狗警告或判死）**：影响 该分片全体卡顿；判死时停机重启，玩家断线 · owner Bearisbug · 诊断 读日志里看门狗第 10 s 起每 5 s 打印的栈，找占住 TickThread 的帧（插件任务、`Acquirable` 全局锁、同步 I/O）；判死时读 `crash-reports/` 与堆转储；必要时 `profile 60` 采 JFR · 处置 插件导致：禁用该插件后滚动重启；锁争用：按 `API-PROD-016` 契约把跨格 `sync` 改为投递；未恢复的进程由看门狗 halt 后 systemd 或容器重启 · 回滚 回退上一个 tag · 升级 同一分片 24 小时内判死 ≥ 2 次即 P0，通知用户 · 恢复验证 该分片每线程 tick P99 < 50 ms 持续 30 分钟，无看门狗警告
+- **`RB-PROD-003` tick 卡死（看门狗警告或判死）**：影响 该分片全体卡顿；判死时停机重启，玩家断线 · owner Bearisbug · 诊断 读日志里看门狗第 10～11 s 起每 5 s 打印的栈，找占住 TickThread 的帧（插件任务、`Acquirable` 全局锁、同步 I/O）；判死时读 `crash-reports/`；OOM 退出时堆转储在进程工作目录（`java_pid<pid>.hprof`，未设 `HeapDumpPath`）；必要时 `profile 60` 采 JFR · 处置 插件导致：禁用该插件后滚动重启；锁争用：按 `API-PROD-016` 契约把跨格 `sync` 改为投递；未恢复的进程由看门狗 halt 后 systemd 或容器重启 · 回滚 回退上一个 tag · 升级 同一分片 24 小时内判死 ≥ 2 次即 P0，通知用户 · 恢复验证 该分片每线程 tick P99 < 50 ms 持续 30 分钟，无看门狗警告
 - **`RB-PROD-004` Redis 故障（`synaxis_redis_up = 0` 连续 60 s）**：影响 登录照常；跨分片顶号退化为拒新，封禁与权限变更延迟到缓存过期（≤ 30 s） · owner Bearisbug · 诊断 `valkey-cli ping`，看内存与持久化配置（本用途不需要持久化） · 处置 重启或替换 Valkey 实例；各分片 10 s 内自动重写在线名单，无需分片操作 · 回滚 N/A（Redis 不存权威数据） · 升级 连续 30 分钟不可恢复时通知用户（顶号体验受影响） · 恢复验证 `synaxis_redis_up = 1`，`presence:*` 键数与各分片在线人数之和的差 < 1%
 - **`RB-PROD-005` 连接层异常（闸门拒绝激增或出站积压断线激增）**：影响 攻击时正常玩家可能被 L0 挡住；积压断线多为玩家网络差或同格实体过多 · owner Bearisbug · 诊断 看 10 s 汇总日志的四个拒绝计数与 `synaxis_connections`；按 IP 前缀聚合拒绝来源；积压断线看是否集中在同一分格（`EntityPositionSync` 字节占比） · 处置 单一来源攻击：机房防火墙封该网段；正常玩家误伤（按 `connection_id` 查到在线账号）超过每天 5 次：把对应上限翻倍或给该地区加白名单网段（§28.1 Q5）；积压集中在同格：调低该区域视距或 `max-visible-entities-per-player` · 回滚 配置键回原值后滚动重启 · 升级 L0 满（`closed_at_accept` > 0）持续 5 分钟通知用户并联系机房清洗 · 恢复验证 拒绝数回到在线人数 × 2 以下持续 30 分钟，积压断线每 5 分钟 ≤ 10 次
 - **`RB-PROD-006` 非故障期间出现 fenced 写入**：影响 被 fenced 的玩家被踢，丢失距上次保存的进度 · owner Bearisbug · 诊断 读 `EVT:save_fenced` 的 `cause`；`zero_rows` 且同角色有 `EVT:lease_takeover`：两个分片同时认为自己持有写权，查持有者分片是否经历过长 GC 停顿或分区；`version` 与票据 `state_version` 不等的 ERROR 属一致性断言失败 · 处置 定位到分片后暂停该分片登录（`synaxis:shard/drain`），收集 GC 日志与网络记录；一致性断言失败时冻结相关角色并人工核对 `item_ledger` · 回滚 回退上一个 tag · 升级 出现一次一致性断言失败即 P0 通知用户 · 恢复验证 24 小时内 fenced 为 0，`item_ledger` 抽查无同一 `uid` 同时出现在两个角色
-- **`RB-PROD-007` 事件台账丢弃（`synaxis_ledger_dropped_total` > 0）**：影响 当天 §3 指标口径受损（照算但不参与放量门槛） · owner Bearisbug · 诊断 读 `EVT:ledger_dropped` 的 `cause`；`queue_full`：磁盘慢或写线程异常（看 `LogBudget` WARN）；`daily_cap`：当天写入量异常（攻击或插件刷事件） · 处置 磁盘问题换盘或清空间；插件刷事件则定位插件；正常量超过 100 MB/天时按实际量 10 倍重设每日上限（§28.1 ops #7） · 回滚 N/A · 升级 连续两天出现即通知用户 · 恢复验证 连续 24 小时 `ledger_dropped` 为 0
+- **`RB-PROD-007` 事件台账丢弃（`synaxis_ledger_dropped_total` > 0）**：影响 当天 §3 指标口径受损（照算但不参与放量门槛） · owner Bearisbug · 诊断 读 `EVT:ledger_dropped` 的 `reason`；`queue_full`：磁盘慢或写线程异常（看 `LogBudget` WARN）；`daily_cap`：当天写入量异常（攻击或插件刷事件） · 处置 磁盘问题换盘或清空间；插件刷事件则定位插件；正常量超过 100 MB/天时按实际量 10 倍重设每日上限（§28.1 ops #7） · 回滚 N/A · 升级 连续两天出现即通知用户 · 恢复验证 连续 24 小时 `ledger_dropped` 为 0
 - **`RB-PROD-008` 数据库恢复（WAL 归档延迟告警或需要时间点恢复）**：影响 恢复点目标 ≤ 5 分钟的承诺失效，或需要把库回到过去某时刻 · owner Bearisbug · 诊断 pgBackRest（或 pg_basebackup + `archive_command`）的最近归档时间与失败日志 · 处置 修复归档后立即触发一次基础备份；时间点恢复：全部分片 `drain` 并停机 → 在新实例上恢复到目标时间点 → `server-app --migrate-only` 校验版本 → 切连接串 → 起服（新 `shard_session`，旧租约全部过期） · 回滚 恢复前的原库保留只读 7 天（本分册定），发现恢复点选错时切回 · 升级 WAL 归档中断超过 15 分钟通知用户 · 恢复验证 抽 20 个账号的 `version` 与恢复时间点一致；演练耗时记入 §15 备份行的恢复时间目标
 
 ## 23. 发布: Feature Flag / 灰度 / 回滚
@@ -1774,7 +1799,7 @@ L0、L0′、accept 时的 L1 超限与握手前超时都不发包，没有键�
 
 - **lint 口径**：`bash ~/.claude/skills/design-doc/check.sh docs/DESIGN-PROD.md` 的 ID 类机械检查对 `REQ-PROD-*` / `API-PROD-*` / `RB-PROD-*` 生效（域段正则 `[A-Z][A-Z0-9]*` 认纯字母的 `PROD`）；定义记法同 `docs/DESIGN-M2.md` §24：需求与 Runbook 是表格首格或条目，接口是 `- **`API-PROD-001`** …` 条目。回指 `docs/DESIGN.md`、M2、M3 的 ID（`API-003`、`API-M3-011` 等）由 lint 单列 ℹ️，不计警告。零警告是交付门槛。
 - **ABI 门**：`:plugin-api` 新增的 `PlayerDataStore`、`Moderation`、`Permissions`、`PluginCommands`、`PluginLifecycle`、`Transfers` 与 `PluginScheduler` / `PluginEvents` 的新方法全部过 `checkBinaryCompatibility`（`docs/DESIGN-M2.md` §24）；`AdmissionRequest` 加组件若被判破坏，同一 PR 把 `API_VERSION` 加到 2。
-- **ArchUnit**：① 引擎、`:plugin-api`、玩法插件不依赖 `java.sql..`、`org.postgresql..`、`com.zaxxer..`、`redis.clients..`（`ADR-PROD-012`）；② 新类 `ConnectionGate`、`SessionClient`、`Watchdog` 进 `ClientDrivenLogArchitectureTest` / `ArchitectureTest` 的检查范围，豁免名单逐条写上界。
+- **ArchUnit**：① 引擎、`:plugin-api`、玩法插件不依赖 `java.sql..`、`org.postgresql..`、`com.zaxxer..`、`redis.clients..`（`ADR-PROD-012`）；② 新类 `ConnectionGate`、`SessionClient` 进 `ClientDrivenLogArchitectureTest` / `ArchitectureTest` 的检查范围，豁免名单逐条写上界；`Watchdog` 不纳入，它的日志量只随时间走（每次卡住每 5 s 一条，与客户端发什么无关）。
 - **翻译键门禁**（`REQ-PROD-041`）：CI 扫描 `DisconnectReasons`、`DisconnectKeys` 与插件声明的键，逐个核对 `client-fabric/src/main/resources/assets/synaxis/lang/zh_cn.json` 与 `en_us.json`，缺任一即失败。
 - **配置键**：`ServerConfigTest` 的 `defaults() == fromSystemProperties()` 断言扩到全部新键；配置文件的「未知键拒绝启动」由同一张键表驱动，键表是唯一出处。
 - **数据库**：Flyway 脚本只增不改；每个版本配一份 `db/rollback/V<n>__*.down.sql`；`dbTest` 跑「空库 migrate」「从上一版本 migrate」「库版本领先代码时拒绝起服」（持久化草案 P13）「migrate → 回退 SQL → migrate 正反往返」（`docs/DESIGN-M3.md` §25 口径）「`store_meta` 缺失时拒绝起服」五条。
@@ -1834,7 +1859,7 @@ flowchart LR
 
 | 波 | REQ（差距） | 可并行的组（按改动文件分组） | 退出条件（可验证） | 工作量（人日） |
 | --- | --- | --- | --- | --- |
-| 0 无前置 | `REQ-PROD-014` 前半（G12：打印栈、60 s 判死、崩溃报告、15 s 后 halt）、`REQ-PROD-015`（G13）、`REQ-PROD-016`（G14）、`REQ-PROD-017`（G15）、`REQ-PROD-019` 前半（G17：floorMod、4 线程 `counter` 严格模式 CI job、三处 `Acquirable` 接线）、`REQ-PROD-028`（G25）、`REQ-PROD-030` 离线档（G27） | 0A 宿主日志线：G13 + G14 + G15（都改 `server-app/.../Main.java`，同一人做，含崩溃报告写入器）；0A 合并后 0B 看门狗 G12（`TickSchedulerThread.java`、`ServerProcessImpl.java`、`ServerConfig.java`，并在 `Main.java` 起停看门狗、复用 0A 的崩溃报告写入器，所以不与 0A 并行）；0C 线程正确性 G17 前半（`ThreadDispatcherImpl.java`、`Entity.java` / `Player.java` 的 `setInstance` / `teleport`、CI）；0D CI 断言 G27（`client-fabric/src/gametest/**`、工作流）；0E JVM 参数 G25（`server-app/build.gradle.kts`、`docs/ENGINE.md`）。0C～0E 与 0A / 0B 可并行 | §19 中这些 REQ 的场景全绿，例外是 `REQ-PROD-014` 里「进入落盘停机」「倒计时期间卡死仍先落盘」两处，这一波判死后直接 halt，落盘路径在 3A 验；4 线程 `counter` 严格模式 job 在 main 上连续 3 次绿；真客户端离线档 R1～R8 连续 5 次绿 | 13.5～16.5（G17 前半 2～3 为本分册估） |
+| 0 无前置 | `REQ-PROD-014` 前半（G12：打印栈、60 s 判死、崩溃报告、15 s 后 halt）、`REQ-PROD-015`（G13）、`REQ-PROD-016`（G14）、`REQ-PROD-017`（G15）、`REQ-PROD-019` 前半（G17：floorMod、4 线程 `counter` 严格模式 CI job、三处 `Acquirable` 接线）、`REQ-PROD-028`（G25）、`REQ-PROD-030` 离线档（G27） | 0A 宿主日志线：G13 + G14 + G15（都改 `server-app/.../Main.java`，同一人做，含崩溃报告写入器）；0A 合并后 0B 看门狗 G12（新类 `Watchdog.java`、`ServerProcess.java`、`ServerProcessImpl.java`（tick 起止打点在 `TickerImpl.tick`）、`ServerConfig.java`，并在 `Main.java` 起停看门狗、复用 0A 的崩溃报告写入器，所以不与 0A 并行）；0C 线程正确性 G17 前半（`ThreadDispatcherImpl.java`、`Entity.java` / `Player.java` 的 `setInstance` / `teleport`、CI）；0D CI 断言 G27（`client-fabric/src/gametest/**`、工作流）；0E JVM 参数 G25（`server-app/build.gradle.kts`、`docs/ENGINE.md`）。0C～0E 与 0A / 0B 可并行 | §19 中这些 REQ 的场景全绿，例外是 `REQ-PROD-014` 里「进入落盘停机」「倒计时期间卡死仍先落盘」两处，这一波判死后直接 halt，落盘路径在 3A 验；4 线程 `counter` 严格模式 job 在 main 上连续 3 次绿；真客户端离线档 R1～R8 连续 5 次绿 | 13.5～16.5（G17 前半 2～3 为本分册估） |
 | 1 连接闸门 | `REQ-PROD-001`（G02）、`REQ-PROD-043`（G40）、`REQ-PROD-009`（G05） | 1A 闸门 G02 + G40（`Server.java`、`HandshakeListener.java`、`ConnectionManager.java`、`StatusResponse.java`、`ServerConfig.java`、`DisconnectReasons.java`、模组 lang）；1B 聊天 G05（`ChatMessageListener.java`、`Player.java:355`、`ServerConfig.java` 一个键）——与 1A 同改 `ServerConfig.java`，1A 先合 | 闸门五层与 fd 退避的集成测试绿；§15 闸门档（单 IP 100 连接/秒 × 60 s）在 50 人规模上跑过；聊天两条场景绿，真客户端无聊天警告截图 | 6.5～7.5 |
 | 2 正版验证 | `REQ-PROD-002`（G01）、`REQ-PROD-003`（G06）、`REQ-PROD-004`（G07，同分片部分）、`REQ-PROD-044`、`REQ-PROD-036`（G33）、`REQ-PROD-030` 切完整正版路径档 | 2A 一个 PR：G01 + G06 + G07 + 假 sessionserver（`Auth.java`、`LoginListener.java`、`ConnectionManager.java`（同分片踢旧后等旧 `Player` 移除）、`HandshakeListener.java`、`PlayerSocketConnection.java`、`PacketVanilla.java`、`crypto/`、`module-info.java`、`server-app/.../Main.java`）；2A 合并后串行：2B 删除 `Auth.Velocity` / `Bungee` 与 PROXY 可信网段自检（G33 的前半；又改 `Auth.java`、`HandshakeListener.java`，不能与 2A 并行；`store_meta` 自检要读第 3 波才建的表，挪到 3A）；2C 工作流切 B 档（只改工作流，可与 2B 并行） | 在线模式全部自动化场景绿（`REQ-PROD-002`～`004`、`044`）；B 档 R1～R8 连续 5 次绿；用户用正版账号完成 auth 草案 §6.2 前两条人工用例并登记 | 7.5～10（假 sessionserver 与 B 档切换含在 G01、G27 内） |
 | 3 持久化 | `REQ-PROD-021`（G18）→ `REQ-PROD-005`、`006`、`007`（G03）→ `REQ-PROD-008`（G04）；`REQ-PROD-004` 跨分片部分；`REQ-PROD-022`（G19）；`REQ-PROD-035` 前半（WAL 归档与每日基础备份） | 3A 主线串行（同一人）：G18（`PluginScheduler`、`PluginSchedulerImpl`）→ G03（`server-app` 新包 `store/`、`PluginContext.java`、`AdmissionGate.java`（载入插在 `handshake.await` 与 `provider.admit` 之间，`:60-71`）、Flyway V1～V2 与回退 SQL、`--migrate-only --auth-mode` 与 `store_meta` 自检）→ G04（`ServerProcessImpl.java`、`ServerProcess.java`、`Main.java`、`ConnectionManager.java`，含看门狗判死接保存阶段）；3B 事件优先级 G19（`PluginEvents.java`、`PluginEventsImpl.java`，与 3A 不同文件，可并行）；3C 运维：WAL 归档（不动代码） | 持久化草案 P1～P9、P13、P14 全绿；§19 `REQ-PROD-005`、`REQ-PROD-008` 全部场景与 `REQ-PROD-014` 两条落盘场景绿；`REQ-PROD-036` 的三条 `store_meta` 场景绿；WAL 归档已开并有第一份基础备份 | 15.5～19.5（G32 前半 1 为本分册估；从第 0 波挪来的「判死接保存」与从第 2 波挪来的 `store_meta` 自检工作量仍计在原波次） |
@@ -1947,7 +1972,7 @@ N/A — 本分册尚未开工。R2 封闭内测稳定运行 7 天后按 §3 三�
 | --- | --- | --- | --- |
 | `docs/DESIGN.md` | §1 关联行、§26 里程碑表 | 加「生产就绪分册 `docs/DESIGN-PROD.md`」一行，范围内的需求 / 接口 / 状态机 / ADR 以分册为准 | 主会话 |
 | `docs/DESIGN.md` | §17 `process.shutdown` 行、§21「`stop()` 到进程退出用时」行、`RB-002` | 10 s 上限改为「保存 30 s + 踢人 5 s + 台账 2 s + 倒计时」，SLO 引用本分册 §11.4 | 主会话 |
-| `docs/DESIGN.md` | §28 技术债：台账逐条写、`Auth.Velocity` / `Bungee` 暂留、连接数无上限、`socketTimeout` 空操作、「每秒 > 500 包断线」未实现、`ExceptionManager` 默认 `printStackTrace` | 分别改为「由 `REQ-PROD-017` / `REQ-PROD-036` / `REQ-PROD-001` / `REQ-PROD-043` / `REQ-PROD-013` / `REQ-PROD-015` 承接」；台账那条「缓冲写入即可与 churn 脱钩」按 `ADR-PROD-005` 改写 | 主会话 |
+| `docs/DESIGN.md` | §28 技术债：台账逐条写、`Auth.Velocity` / `Bungee` 暂留、连接数无上限、`socketTimeout` 空操作、「每秒 > 500 包断线」未实现、`ExceptionManager` 默认 `printStackTrace` | 分别改为「由 `REQ-PROD-017` / `REQ-PROD-036` / `REQ-PROD-001` / `REQ-PROD-043` / `REQ-PROD-013` / `REQ-PROD-015` 承接」；台账那条「缓冲写入即可与 churn 脱钩」按 `ADR-PROD-005` 改写；§28 `Acquirable` 未分配态风险行按 `API-PROD-016` 所有权断言的未分配态语义关闭 | 主会话 |
 | `docs/DESIGN.md` | §8 `API-001` 鉴权行、§11.1、§14 | 鉴权行改「在线 / 离线两种，见 `API-PROD-001`」；§11.1 login 态注明展开在本分册 §11.1；§14 表尾注明新增键见本分册 §14 | 主会话 |
 | `docs/DESIGN-M2.md` | §17 末句「无网络第三方」、§21、§28.2 聊天放大（攻击面 G5） | §17 改为引用本分册 §17；§21 引用本分册验证成功率与 `hasJoined` p99；G5 改为「由 `REQ-PROD-009` 承接」 | 主会话 |
 | `docs/DESIGN-M3.md` | `REQ-M3-015`、`API-M3-009`、`ADR-M3-006` | 只提需求并引用 `API-PROD-016`；线程数改为核数 − 2 | M3 会话（已同意） |

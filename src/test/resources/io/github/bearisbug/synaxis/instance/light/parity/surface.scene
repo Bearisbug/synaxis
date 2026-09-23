@@ -1,0 +1,42 @@
+# 地表：起伏的草地，覆盖层方块（台阶、楼梯、地毯、雪层、耕地、土径、附魔台）与一棵树，全部露天。
+# 场景在区块 -2..2 内（x、z 取 -32..47），对拍比较区块 -1..1、y 0..63。
+fill -32 0 -32 47 9 47 minecraft:stone
+fill -32 10 -32 47 10 47 minecraft:grass_block
+# 丘陵，跨 x=0 与 z=16 的区块边界
+fill -6 11 10 5 14 22 minecraft:dirt
+fill -6 15 10 5 15 22 minecraft:grass_block
+fill -3 16 13 2 18 19 minecraft:stone
+# 丘陵上的台阶与楼梯
+fill -6 16 10 5 16 10 minecraft:oak_slab[type=bottom]
+fill -6 16 22 5 16 22 minecraft:stone_brick_stairs[facing=north,half=bottom]
+fill 6 11 10 6 11 22 minecraft:oak_stairs[facing=east,half=bottom]
+fill -3 19 13 2 19 13 minecraft:cobblestone_slab[type=top]
+# 地毯、雪层（各层数）、耕地、土径、附魔台、末地传送门框架、讲台、切石机、阳光探测器
+fill 10 11 -10 14 11 -6 minecraft:white_carpet
+set 16 11 -8 minecraft:snow[layers=1]
+set 17 11 -8 minecraft:snow[layers=2]
+set 18 11 -8 minecraft:snow[layers=4]
+set 19 11 -8 minecraft:snow[layers=7]
+set 20 11 -8 minecraft:snow[layers=8]
+fill 16 10 -4 20 10 0 minecraft:farmland
+fill 22 10 -4 26 10 0 minecraft:dirt_path
+set 12 11 2 minecraft:enchanting_table
+set 13 11 2 minecraft:end_portal_frame
+set 14 11 2 minecraft:lectern
+set 15 11 2 minecraft:stonecutter
+set 16 11 2 minecraft:daylight_detector
+# 栅栏、箱子、活塞（缩回与伸出）
+fill -12 11 -12 -12 11 -2 minecraft:oak_fence
+set -10 11 -10 minecraft:chest
+set -8 11 -10 minecraft:piston[facing=up,extended=true]
+set -8 12 -10 minecraft:piston_head[facing=up,type=normal]
+set -6 11 -10 minecraft:piston[facing=north,extended=false]
+# 一棵树：原木 + 橡树叶冠，旁边一团红树叶与苍白橡树叶
+fill 24 11 20 24 16 20 minecraft:oak_log
+fill 21 15 17 27 18 23 minecraft:oak_leaves[persistent=true]
+fill 24 15 20 24 16 20 minecraft:oak_log
+fill -14 11 24 -10 15 28 minecraft:mangrove_leaves[persistent=true]
+fill -9 11 24 -6 14 28 minecraft:pale_oak_leaves[persistent=true]
+# 草与花
+fill 0 11 -14 6 11 -14 minecraft:short_grass
+set 8 11 -14 minecraft:poppy

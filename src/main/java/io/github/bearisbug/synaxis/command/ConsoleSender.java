@@ -7,6 +7,7 @@ import net.kyori.adventure.text.TranslatableComponent;
 import net.kyori.adventure.text.flattener.ComponentFlattener;
 import net.kyori.adventure.text.logger.slf4j.ComponentLogger;
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
+import org.jetbrains.annotations.Nullable;
 import io.github.bearisbug.synaxis.JvmFlags;
 import io.github.bearisbug.synaxis.ServerProcess;
 import io.github.bearisbug.synaxis.adventure.EngineAdventure;
@@ -64,13 +65,9 @@ public class ConsoleSender implements CommandSender {
 
     private static void flattenTranslatable(TranslatableComponent component, Consumer<Component> out) {
         if (JvmFlags.AUTOMATIC_COMPONENT_TRANSLATION) {
-            final Component translated =
-                    EngineAdventure.COMPONENT_TRANSLATOR.apply(component, EngineAdventure.getDefaultLocale());
-            if (!(translated instanceof TranslatableComponent)) {
-                // The translation ends with the original's children, which the flattener walks
-                // itself after this; without them here they are written once
-                final List<Component> children = translated.children();
-                out.accept(translated.children(children.subList(0, children.size() - component.children().size())));
+            final Component translated = translation(component);
+            if (translated != null) {
+                out.accept(translated);
                 return;
             }
         }
@@ -88,6 +85,18 @@ public class ConsoleSender implements CommandSender {
             text = fallback;
         }
         out.accept(Component.text(text));
+    }
+
+    /**
+     * The server side translation of the component, or null when it has none. The component is
+     * translated without its children, which the flattener walks itself after this: a
+     * {@code MessageFormat} translation would end with them, a translator that returns a component
+     * may leave them out.
+     */
+    static @Nullable Component translation(TranslatableComponent component) {
+        final Component translated = EngineAdventure.COMPONENT_TRANSLATOR.apply(component.children(List.of()),
+                EngineAdventure.getDefaultLocale());
+        return translated instanceof TranslatableComponent ? null : translated;
     }
 
     @Override

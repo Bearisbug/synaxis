@@ -50,6 +50,10 @@ public record ServerConfig(
         int maxPlayers,
         int maxJoinsPerTick,
 
+        // Chat (docs/DESIGN-PROD.md API-PROD-008): a token bucket per connection
+        int chatRatePerSecond,
+        int chatBurst,
+
         // Network error handling
         boolean suppressConnectionAcceptErrors,
         boolean suppressConnectionIoErrors,
@@ -113,6 +117,9 @@ public record ServerConfig(
         if (playerChunkUpdateLimiterHistorySize < 0)
             throw new IllegalArgumentException(
                     "playerChunkUpdateLimiterHistorySize must not be negative but was " + playerChunkUpdateLimiterHistorySize);
+        if (chatRatePerSecond < 1 || chatBurst < 1)
+            throw new IllegalArgumentException("the chat rate and burst must be at least 1 but were "
+                    + chatRatePerSecond + " and " + chatBurst);
         if (watchdogEarlyWarning < 0 || watchdogEarlyWarningEvery < 0 || watchdogTimeout < 0 || watchdogHaltAfter < 0)
             throw new IllegalArgumentException("the watchdog durations must not be negative but were " + watchdogEarlyWarning
                     + ", " + watchdogEarlyWarningEvery + ", " + watchdogTimeout + " and " + watchdogHaltAfter);
@@ -176,6 +183,8 @@ public record ServerConfig(
                         DEFAULTS.connectionGateTrustedNetworks))
                 .maxPlayers(intProperty("synaxis.max-players", DEFAULTS.maxPlayers))
                 .maxJoinsPerTick(intProperty("synaxis.max-joins-per-tick", DEFAULTS.maxJoinsPerTick))
+                .chatRatePerSecond(intProperty("synaxis.chat-rate-per-second", DEFAULTS.chatRatePerSecond))
+                .chatBurst(intProperty("synaxis.chat-burst", DEFAULTS.chatBurst))
                 .suppressConnectionAcceptErrors(booleanProperty("synaxis.suppress-connection-accept-errors", DEFAULTS.suppressConnectionAcceptErrors))
                 .suppressConnectionIoErrors(booleanProperty("synaxis.suppress-connection-io-errors", DEFAULTS.suppressConnectionIoErrors))
                 .suppressMalformedPacketErrorLevel(intProperty("synaxis.suppress-malformed-packet-error-level", DEFAULTS.suppressMalformedPacketErrorLevel))
@@ -293,6 +302,8 @@ public record ServerConfig(
         private String connectionGateTrustedNetworks = "";
         private int maxPlayers = 0; // 0 means no limit
         private int maxJoinsPerTick = 0; // 0 means no limit
+        private int chatRatePerSecond = 1;
+        private int chatBurst = 3;
         private boolean suppressConnectionAcceptErrors = true;
         private boolean suppressConnectionIoErrors = true; // Like peer resets etc
         private int suppressMalformedPacketErrorLevel = 0;
@@ -352,6 +363,8 @@ public record ServerConfig(
             this.connectionGateTrustedNetworks = config.connectionGateTrustedNetworks;
             this.maxPlayers = config.maxPlayers;
             this.maxJoinsPerTick = config.maxJoinsPerTick;
+            this.chatRatePerSecond = config.chatRatePerSecond;
+            this.chatBurst = config.chatBurst;
             this.suppressConnectionAcceptErrors = config.suppressConnectionAcceptErrors;
             this.suppressConnectionIoErrors = config.suppressConnectionIoErrors;
             this.suppressMalformedPacketErrorLevel = config.suppressMalformedPacketErrorLevel;
@@ -524,6 +537,16 @@ public record ServerConfig(
             return this;
         }
 
+        public Builder chatRatePerSecond(int chatRatePerSecond) {
+            this.chatRatePerSecond = chatRatePerSecond;
+            return this;
+        }
+
+        public Builder chatBurst(int chatBurst) {
+            this.chatBurst = chatBurst;
+            return this;
+        }
+
         public Builder suppressConnectionAcceptErrors(boolean suppressConnectionAcceptErrors) {
             this.suppressConnectionAcceptErrors = suppressConnectionAcceptErrors;
             return this;
@@ -661,6 +684,7 @@ public record ServerConfig(
                     maxConnections, acceptBackoff, maxConnectionsPerIp, handshakeTimeout, loginRatePerIp,
                     loginBurstPerIp, statusRatePerIp, statusBurstPerIp, transferRatePerIp, transferBurstPerIp,
                     connectionGateTrustedNetworks, maxPlayers, maxJoinsPerTick,
+                    chatRatePerSecond, chatBurst,
                     suppressConnectionAcceptErrors, suppressConnectionIoErrors, suppressMalformedPacketErrorLevel,
                     suppressMisusedPacketErrorLevel, rejectMalformedPacket, rejectMisusedPacket, socketSendBufferSize,
                     socketReceiveBufferSize, socketNoDelay, socketTimeout, pooledBufferSize, minChunksPerTick,

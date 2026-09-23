@@ -64,6 +64,7 @@ import io.github.bearisbug.synaxis.item.Material;
 import io.github.bearisbug.synaxis.item.component.WrittenBookContent;
 import io.github.bearisbug.synaxis.listener.manager.PacketListenerManager;
 import io.github.bearisbug.synaxis.message.ChatPosition;
+import io.github.bearisbug.synaxis.message.ChatRateLimiter;
 import io.github.bearisbug.synaxis.message.Messenger;
 import io.github.bearisbug.synaxis.monitoring.EventsJFR;
 import io.github.bearisbug.synaxis.network.ConnectionManager;
@@ -256,6 +257,7 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
     // Game state (https://minecraft.wiki/w/Minecraft_Wiki:Projects/wiki.vg_merge/Protocol#Game_Event)
     private boolean enableRespawnScreen;
     private final ChunkUpdateLimitChecker chunkUpdateLimitChecker;
+    private final ChatRateLimiter chatRateLimiter;
 
     // Experience orb pickup
     protected Cooldown experiencePickupCooldown = new Cooldown(Duration.of(10, TimeUnit.SERVER_TICK));
@@ -295,6 +297,7 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
         this.settings = ClientSettings.defaultSettings(config.chunkViewDistance());
         this.clientViewDistance = settings.viewDistance();
         this.chunkUpdateLimitChecker = new ChunkUpdateLimitChecker(config.playerChunkUpdateLimiterHistorySize());
+        this.chatRateLimiter = new ChatRateLimiter(config.chatRatePerSecond(), config.chatBurst());
         this.dimensionTypeRegistry = playerConnection.process().dimensionType();
         this.gameProfile = gameProfile;
         this.username = gameProfile.name();
@@ -353,9 +356,9 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
                 new PlayerSpawnInfo(dimensionTypeId, spawnInstance.getDimensionName(), 0,
                         gameMode, null, false, levelFlat,
                         deathLocation, portalCooldown, DEFAULT_SEA_LEVEL),
-                // Always leave online mode & chat secure chat enabled
-                // so the client makes a chat session and shows tablist heads.
-                true, true);
+                // Online mode stays on so the client shows tablist heads. Secure chat is off: chat is
+                // relayed as system messages, never as signed player chat (docs/DESIGN-PROD.md ADR-PROD-009).
+                true, false);
         sendPacket(joinGamePacket);
 
         // Start sending inventory updates
@@ -1733,6 +1736,17 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
      */
     public PlayerConnection getPlayerConnection() {
         return playerConnection;
+    }
+
+    /**
+     * The chat token bucket of this connection, taken by every chat message before it becomes a
+     * {@link io.github.bearisbug.synaxis.event.player.PlayerChatEvent}.
+     *
+     * @return the chat rate limiter
+     */
+    @ApiStatus.Internal
+    public ChatRateLimiter chatRateLimiter() {
+        return chatRateLimiter;
     }
 
     /**

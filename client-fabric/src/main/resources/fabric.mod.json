@@ -19,6 +19,9 @@
 			"io.github.bearisbug.synaxis.game.client.SynaxisClientMod"
 		]
 	},
+	"mixins": [
+		"synaxis.mixins.json"
+	],
 	"depends": {
 		"fabricloader": ">=${loaderVersion}",
 		"minecraft": "${minecraftVersion}",

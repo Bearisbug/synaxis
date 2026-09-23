@@ -37,6 +37,9 @@ public class ServerConfigTest {
         assertEquals(5_000, config.watchdogEarlyWarningEvery());
         assertEquals(60_000, config.watchdogTimeout());
         assertEquals(15_000, config.watchdogHaltAfter());
+        // docs/DESIGN-PROD.md API-PROD-008
+        assertEquals(1, config.chatRatePerSecond());
+        assertEquals(3, config.chatBurst());
     }
 
     @Test
@@ -52,6 +55,8 @@ public class ServerConfigTest {
         assertThrows(IllegalArgumentException.class, () -> ServerConfig.builder().dispatcherThreads(0).build());
         assertThrows(IllegalArgumentException.class,
                 () -> ServerConfig.builder().playerChunkUpdateLimiterHistorySize(-1).build());
+        assertThrows(IllegalArgumentException.class, () -> ServerConfig.builder().chatRatePerSecond(0).build());
+        assertThrows(IllegalArgumentException.class, () -> ServerConfig.builder().chatBurst(0).build());
     }
 
     @Test

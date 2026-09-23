@@ -4,7 +4,7 @@
 
 | 字段 | 值 |
 | --- | --- |
-| 状态 | 草稿（2026-09-23 初稿，同日按第 1 轮两份评审意见修订为 v0.2，再按第 0 波五个组（0A～0E）的实现回写为 v0.3，再按第 1 波（1A、1B）与第 2 波（2A～2C）的实现回写为 v0.4）。用户同日已拍板七项方向（下表）；其余待拍板点一律按三份草案的默认值定，逐项见 §28.1 |
+| 状态 | 草稿（2026-09-23 初稿，同日按第 1 轮两份评审意见修订为 v0.2，再按第 0 波五个组（0A～0E）的实现回写为 v0.3，再按第 1 波（1A、1B）与第 2 波（2A～2C）的实现回写为 v0.4，再收回转服票据的定义、拆出不依赖 M3 的票据组为 v0.5）。用户同日已拍板七项方向（下表）；其余待拍板点一律按三份草案的默认值定，逐项见 §28.1 |
 | 项目画像 | 生产产品（对外真实玩家：内测单分片 50～200 人，正式档每分片 200～500 人，见 §2；全部 `[核心]` 节生效） |
 | Owner | Bearisbug |
 | 评审人 | Bearisbug |
@@ -13,7 +13,7 @@
 
 本文档是 `docs/DESIGN.md` 的「生产就绪」分册，与 `docs/DESIGN-M2.md`、`docs/DESIGN-M3.md` 同为分册形态，写法与防腐坏机制沿用 `docs/DESIGN-M2.md` §24 最后一条：只管生产就绪新增的东西，引擎侧、M2、M3 的事实一律用「见 `docs/DESIGN.md` §N」「见 `docs/DESIGN-M3.md` §N」引用，不复制。ID 用纯字母域段：需求 `REQ-PROD-*`、接口 `API-PROD-*`、决策 `ADR-PROD-*`、Runbook `RB-PROD-*`；实体 `ENT-*`、事件 `EVT:*` 用语义命名，已核对不与 M1～M3 重名。
 
-与 M3 的边界：世界存储（`.synx`）、区块流送、自动卸载、覆盖层、远景、光照烘焙归 `docs/DESIGN-M3.md`，本分册只写接口约束并引用。两处归属调整已与 M3 会话对齐（2026-09-23）：① 空间分格 `ThreadProvider.grid` 的引擎侧设计归本分册（`API-PROD-016`），`REQ-M3-015` / `API-M3-009` 改为只提需求并引用这里；② 玩家状态存储由本分册 `API-PROD-004`、§11.3 取代 `REQ-M3-018` / `API-M3-012` / M3 §11.4 / `ADR-M3-009` 的对应部分，M3 会话把那几处改为引用。`docs/DESIGN.md` §1 关联行与 §26、`CLAUDE.md`、`docs/TEST.md` 的登记由主会话协调，本次未改（清单见 §28.3）。
+与 M3 的边界：世界存储（`.synx`）、区块流送、自动卸载、覆盖层、远景、光照烘焙归 `docs/DESIGN-M3.md`，本分册只写接口约束并引用。两处归属调整已与 M3 会话对齐（2026-09-23）：① 空间分格 `ThreadProvider.grid` 的引擎侧设计归本分册（`API-PROD-016`），`REQ-M3-015` / `API-M3-009` 改为只提需求并引用这里；② 玩家状态存储由本分册 `API-PROD-004`、§11.3 取代 `REQ-M3-018` / `API-M3-012` / M3 §11.4 / `ADR-M3-009` 的对应部分，M3 会话把那几处改为引用；③ 转服票据（Cookie 布局、签名密钥、验票顺序、`transfer_nonce` 表与清理、`synaxis:transfer-rejected` 与 `synaxis:state-unavailable` 两个断线键）由本分册 `REQ-PROD-045`、`API-PROD-028` 与 §14 定义，`docs/DESIGN-M3.md` v0.3 起已删去原 `API-M3-011` 与其 §14 的这两行，M3 只保留选频道、容量与首批区块（`REQ-M3-017`），经 `API-PROD-028` 的宿主接口发起转服。`docs/DESIGN.md` §1 关联行与 §26、`CLAUDE.md`、`docs/TEST.md` 的登记由主会话协调，本次未改（清单见 §28.3）。
 
 用户 2026-09-23 拍板（本分册所有设计的前提）：
 
@@ -35,6 +35,7 @@
 | 2026-09-23 | v0.2 | 第 1 轮评审修订。**正确性**：首次建档 `INSERT` 时 `lease_session_id` 写 NULL，再走获取语句（原写法让新玩家拿不到自己的租约）；获取语句加「持有者 = 本会话」分支，`saving → orphaned` 显式释放租约；起服事务把同 `shard_id` 的旧会话置过期，前提「同一 `shard_id` 同时只有一个进程」；`closing` 期间续期照常且续期用独占连接；会话释放只令其过期（`DELETE` 与外键冲突），另加过期会话清理任务。**停机**：新增引擎—宿主契约 `ShutdownParticipant`（`API-PROD-007`），引擎计时、宿主保存；`stopped` 标志推迟到最后一步置位，另设内部 `stopping` 标志；保存阶段全体冻结，冻结期间 `commitTogether` 回 `UNAVAILABLE` 且不计入 §3；补 `gate_closed` / `saving` 期间的看门狗判死转移。**闸门**：L3 改按「已占席位」计数（含登录中的连接）；不开 PROXY 时 L1 在 accept 判定，另加握手前 5 s 超时；L3 断线键统一为 M3 已定的 `synaxis:shard-full`，M3 `API-M3-011` ① 由 L3 取代。**G33**：`store_meta.auth_mode` 只由 `--migrate-only` 按发布参数写入，分片只读、空值拒绝起服，正式库按 `online` 迁移，因此生产分片只能跑在线模式（恢复清单 G33 原意）。**其他**：冻结接口 `PlayerDataStore#isFrozen`；同分片踢旧后等旧 `Player` 移除；白名单、封禁、角色授予不建账号外键；`MONITOR` 只读改为文档约定；沿用现有键 `synaxis.entity-synchronization-ticks`；验证指标按每次登录的最终结果计数；`transfer_nonce` 清理归 M3 `nonce.gc`（每 10 min）；Flyway 回退采用 M3 的 `db/rollback/*.down.sql` + CI 正反往返，发布仍守「先扩后缩」；§26 第 0 波退出条件改为 counter 严格模式、看门狗判死接保存与 `store_meta` 自检挪到 3A、并行冲突表补全；§28.3 补齐交给 M3 的改动清单 | Bearisbug |
 | 2026-09-23 | v0.3 | 按第 0 波实现回写设计。**0A**（`REQ-PROD-015`～`017`）：`API-PROD-014` 日志改为控制台恒在、`file` 模式另加滚动文件；新增配置键 `synaxis.app.shard-id`（字符规则）并写明 `synaxis.app.log`、`synaxis.app.ledger-max-bytes-per-day` 的取值规则；`API-PROD-013` 写明「致命错误」的范围与密钥脱敏判定；`EVT:ledger_dropped` 的原因属性定名 `reason`（原写 `cause`），另加关闭之后到达的行不入台账、只在日志计 `dropped_after_close`；tick 号由宿主提供，引擎默认落点改为全局 10 s 一行带累计数。**0B**（`REQ-PROD-014` 前半）：`ServerProcess#watchdog()` 内部访问器；tick 起止打点在 `ServerProcessImpl.TickerImpl.tick`；四个看门狗键各自取 0 的含义；`stop()` 不撤回在途 tick 的判决；判死回调跑在单独线程 `Syn-Watchdog-Report`（3A 驱动保存的挂载点）；`synaxis_watchdog_warnings_total` 推迟到 5A；§24 ② 不把 `Watchdog` 纳入客户端驱动日志规则；首条警告实际落在 10～11 s。§11.5 状态机相应加 `watching → dying`、`off` 两处。**0C**（`REQ-PROD-019` 前半）：`API-PROD-016` 写明 `Acquirable` 未分配态语义与严格模式两个开关由 build-src 约定插件转发给测试 JVM。**0D**（`REQ-PROD-030` 离线档）：`client_verified` 的期望值改为连接次数 C（不跑 spike 时 C = N，带 spike 跑时 C = 2N）；新增 `SYNAXIS_SPIKES` 语义（不设只跑 R1～R8，`all` 或逗号列举才跑 spike，CI 只有每日任务设 `all`）；§19「CI 判定不看退出码」的 Given 改为退出码非 0 而报告全 PASS、没进世界而报告缺 R3 两次运行（回归 gametest 遇 FAIL 以断言失败结束，原 Given「S1 断线但 Gradle 退出码 0」不再能构造）；判定只做 `API-PROD-026` 列出的四项台账与日志检查，运维草案 R3 交叉验证用的 `player_entered_play` 代码里不存在；写明 R5 选中规则、R6 射线与目标点的取法；触发列表不含草案的 push `client-gametest-ci`。**0E**（`REQ-PROD-028`）：OOM 两个参数统一由 `server-app/build.gradle.kts` 的 `applicationDefaultJvmArgs` 提供，`REQ-PROD-015` 不另加；默认参数同时作用于 `:server-app:run` 与启动脚本；未设 `HeapDumpPath`，堆转储写在进程工作目录，`RB-PROD-003` 相应改写 | Bearisbug |
 | 2026-09-23 | v0.4 | 按第 1、2 波实现回写设计。**1A**（`REQ-PROD-001`、`REQ-PROD-043`）：`API-PROD-003` 加取值规则——`max-connections`、`max-connections-per-ip`、`handshake-timeout-ms` ≥ 1，三只桶的速率 > 0、容量 ≥ 1，L0～L2 的键都不接受 0，放行某些来源用可信网段；`max-players`、`max-joins-per-tick` 取 0 表示不限。被闸门拒的连接经新增的 `PlayerConnection#disconnectTurnedAway` 静默关闭，不写 `Connection closed` 行。计数释放改用每连接 `ConnectionGate.Ticket` 的锁（原写与 `ConnectionManager#removePlayer` 同锁），防孤儿的做法是释放之后该连接再占的计数一律不记；开 PROXY 时 L1 按 `compute` 里自增后的值比上限。accept 失败汇总行按实现写出句式；闸门汇总行由 tick 线程驱动，tick 卡住期间不出；`ConnectionGate` 进 `ArchitectureTest` 的日志豁免名单并登记上界。`synaxis_gate_rejections_total` 随 `REQ-PROD-018` 导出，本波只有 `ConnectionGate#rejected(Reason)`，§19 场景在 5A 之前读它。§15 闸门档「台账 0 条来自攻击 IP 的会话事件」注明只在在线模式成立。**1B**（`REQ-PROD-009`）：`REQ-PROD-009` 与 `API-PROD-008` 写明聊天默认收件人为空集合、发给谁由玩法插件定，每连接令牌桶 `synaxis.chat-rate-per-second` 默认 1、`synaxis.chat-burst` 默认 3，`JoinGame` 的 `enforcesSecureChat=false`，另加客户端模组拦掉进服聊天提示 toast 的 mixin。**2A**（`REQ-PROD-002`～`004`、`044`）：`REQ-PROD-044`、`API-PROD-027` 与 §19 场景改为 `record` 模式只按 serverId 匹配（join 请求体里没有用户名）。**2B**（`REQ-PROD-036` 前半）：开 PROXY 必须同时配可信网段且 `proxyProtocolRequired=true`，`API-PROD-001` 与 §19 补上；拒启在 `ServerConfig` 构造器里做；没发 PROXY 头的连接与头部来自可信网段外的连接都断开；§8 deprecated 清单去掉已删除的两种模式。§28.3 补 `docs/DESIGN.md` §28 两处（代理转发模式技术债关闭；`SOAK-3` 清点行的 `HandshakeListener` BungeeGuard 与豁免名单）与 `docs/DESIGN-M2.md` `network.plugin` 包名歧义仍开着的一条。**2C**（`REQ-PROD-030` 完整正版路径档）：`API-PROD-026` 的 R3 在正版档还要求 `encrypted=true`，判定步骤加两项假 sessionserver 日志检查（每连接一次 join、一次 hasJoined）；§26 第 2 波 2C 组补上实际改动的 `judge.sh`、回归测试 R3 与一个访问器 mixin；§28.2「authlib 是否接受 `http://` 会话主机」已证实可以，关闭 | Bearisbug |
+| 2026-09-23 | v0.5 | 收回转服票据的定义。`docs/DESIGN-M3.md` v0.3 按分工删了 `API-M3-011` 与其 §14 的 `synaxis:transfer-rejected`、`synaxis:state-unavailable` 两行，本分册却仍把它们当 M3 的定义引用，成了循环引用。以 M3 v0.2（`7daab2623c`）原文为底写成本分册自己的定义：新增 `REQ-PROD-045`（票据签发与验票）与 `API-PROD-028`（Cookie 布局、`SYNAXIS_TRANSFER_HMAC_KEYS`、宿主接口 `TransferTickets`、检查 ①～⑥：① 由 L3 取代，④ 加「票据 `player_uuid` = 本次验证 UUID」、拒绝原因 `uuid-mismatch`，`transfer_nonce` 表结构），相对 v0.2 布局加 `character_id u64`（写权与版本按角色计），一致性断言失败定名 `version-mismatch`；冷却以转入票据的 `issued_at` 起算，来回转服也受冷却。`API-PROD-004` 密钥段、`API-PROD-021`、§4 术语、§7 `ENT-TransferNonce`、§9（`transfer_nonce.expires_at`、`reject_reason`）、§10 矩阵与行级可见性、§11.3（`in_transit → loading` 改引 `API-PROD-028`，补 `in_transit → loading` 普通登录与 `in_transit → offline` 验票不通过两条）、§12.3、§14（两个键改由本分册定义，`synaxis:state-unavailable` 列全五种来源）、§16、§19 三条场景、§20 `EVT:transfer_rejected`、§24 票据向量、§25 V1 改指本分册。`transfer_nonce` 清理从 M3 `nonce.gc` 收回为本分册 `transfer_nonce.gc`（advisory lock 互斥，不依赖 M3 的 `shard_heartbeat`）。**排期**：原 6A 依赖 M3-E 的票据、M3-E 又依赖 6A；票据签发与验票拆成第 3 波 3D 组，只依赖 3A，M3-E 只依赖 3D，6A 留插件面与 P10 并排在 3D、M3-E 之后；第 3 波工作量 +2～3、第 6 波 −2～3 人日，§28.1 Q12 同步。**迁移**：§25 给 M3 的 `world_flag` 分 V6，并写明版本号按合并顺序落地、不开 `outOfOrder`。§28.3 的 `docs/DESIGN-M3.md` 行改写为 M3 要改的引用清单 | Bearisbug |
 
 ## 2. 背景 / 目标 / 非目标
 
@@ -79,7 +80,7 @@
 
 ## 4. 术语表 / 统一语言
 
-引擎术语见 `docs/DESIGN.md` §4，M2 见 `docs/DESIGN-M2.md` §4，M3（大区、频道、分片、转服票据、分格）见 `docs/DESIGN-M3.md` §4；本表只登记本分册新增的。
+引擎术语见 `docs/DESIGN.md` §4，M2 见 `docs/DESIGN-M2.md` §4，M3（大区、频道、分片、分格）见 `docs/DESIGN-M3.md` §4；本表只登记本分册新增的。
 
 | 术语 | 定义 | 代码/字段标识 | 对应实体 |
 | --- | --- | --- | --- |
@@ -97,6 +98,7 @@
 | 冻结 | 分片会话 `degraded`（续期失败超过 10 s）或 `closing`（停机保存）期间对全体在线玩家、以及单个玩家处于 `saving` 期间，禁止改变物品归属的操作（拾取、丢弃、交易、邮件、商店），移动与战斗照常 | `PlayerDataStore#isFrozen` | `ENT-ShardSession` |
 | 自我隔离 | 分片会话过期（30 s）后停止一切写入、踢出全部在线玩家 | `isolated` | `ENT-ShardSession` |
 | 顶号 | 同一 Mojang UUID 再次登录时把旧会话踢掉、新连接进来 | `logged-in-elsewhere` | `ENT-CharacterLease` |
+| 转服票据 | 源分片写回并释放写权后签发、存进客户端 Cookie `synaxis:transfer` 的 HMAC-SHA256 签名数据，目标分片验票后才获取写权；30 s 过期，nonce 一次性 | `TransferTicket` | `ENT-TransferNonce`、`ENT-CharacterLease` |
 | 在线名单 | Redis 里 `presence:{uuid}` 的路由提示，可丢，以 PostgreSQL 租约为准 | `presence` | — |
 | 事件台账 | 宿主写的本地 JSONL 分析日志 | `EventLedger` | — |
 | 看门狗 | 独立线程，检测 tick 卡住并打印栈、判死后落盘停机或 `Runtime.halt` | `Watchdog` | `ENT-Watchdog` |
@@ -143,7 +145,7 @@
 | REQ-PROD-028 | JVM 与 GC 默认参数：G1、`-Xms4G -Xmx4G`、`AlwaysPreTouch`、`MaxGCPauseMillis=50`、`HeapDumpOnOutOfMemoryError`、`ExitOnOutOfMemoryError`；同时作用于 `:server-app:run` 与发行包启动脚本 | G25 | 内测 | P1 | 无对外 API，见 §15 与 §23 上线前检查单 |
 | REQ-PROD-029 | 200～500 人压测：Java 模块 `:loadtest`（回区块回执、可分机、可加密）；画像为主城 200 人同格、分散 500 人、传送涌入、重连风暴、闸门攻击；200 人档 tick P99 < 50 ms，500 人两档记录 tick P99 与每人出口、不达标则频道 `capacity` 降到 200～300（运维草案 ⑤ 5.4 D） | G26 | 内测 | P0 | `API-PROD-025` |
 | REQ-PROD-030 | 真客户端端到端回归常驻 CI：R1～R8 八条断言，判定读报告与台账、退出码只记录不判定；PR（路径过滤）+ push main + 每日；连续 20 次全绿后设为必需检查；G01 落地后切完整正版路径档 | G27 | 内测 | P0 | `API-PROD-026` |
-| REQ-PROD-031 | 跨大区 Transfer 与签名 cookie 的插件面：`transfer`、`wasTransferred`、store / fetch cookie；转入连接照常走加密与 `hasJoined`，票据 UUID 必须等于本次验证出的 UUID；每玩家转服冷却 5 s | G28 | 运营 | P1 | `API-PROD-021`；时序 §12.3 |
+| REQ-PROD-031 | 跨大区 Transfer 与签名 cookie 的插件面：`transfer`、`wasTransferred`、store / fetch cookie；转入连接照常走加密与 `hasJoined`，票据 UUID 必须等于本次验证出的 UUID；每玩家转服冷却 5 s；票据本身的签发与验票见 `REQ-PROD-045` | G28 | 运营 | P1 | `API-PROD-021`；时序 §12.3 |
 | REQ-PROD-032 | 管理接口：SMP 兼容子集（players 列表与踢人、server status / save / stop、bans、进出通知）+ `synaxis:` 扩展（drain、分片状态、广播、转服、profile）；默认只绑内网，Bearer 鉴权 | G29 | 运营 | P1 | `API-PROD-022` |
 | REQ-PROD-033 | 配置文件：`synaxis.properties`，键名与 `synaxis.*` 一一对应，优先级 `-D` > 文件 > 默认，未知键拒绝启动；不做热重载 | G30 | 运营 | P2 | `API-PROD-023` |
 | REQ-PROD-034 | 性能剖析命令：内置命令 `profile <秒数>`（默认 60 s）开 JFR，产出 .jfr 路径；对应管理接口方法 | G31 | 运营 | P2 | `API-PROD-011`、`API-PROD-022` |
@@ -157,6 +159,7 @@
 | REQ-PROD-042 | 原生 AES-CFB8 / 压缩（velocity-native）：生产机型上加密 + 压缩占用超过 1 个核的 10% 时才引入 | G39 | 条件 | P3 | 无对外 API，见 `ADR-PROD-011` 与 §21 `synaxis_cipher_cpu_seconds_total` |
 | REQ-PROD-043 | keep-alive 收尾：`socketTimeout` 对 `SocketChannel` 无效，走弃用流程删除；keep-alive 超时断线改用 `synaxis:keep-alive-timeout` 键 | G40 | 条件 | P2 | `API-PROD-003` |
 | REQ-PROD-044 | 假 sessionserver：`record` 模式只对客户端 `join` 过的 serverId 回 200（join 请求体里没有用户名，不按用户名匹配），`allow-all` 模式对任何用户名回 200；两种模式都能注入延迟、204、429、503 与超时；供 CI 与压测 | G01、G26、G27 | 阻断 | P0 | `API-PROD-027` |
+| REQ-PROD-045 | 转服票据的签发与验票：源分片写回并释放写权后签 HMAC-SHA256 票据（30 s 过期、16 B 一次性 nonce、带 `state_version`），先 `StoreCookie` 再 `Transfer`；目标分片在 configuration 阶段按固定顺序验票（签名 → 有效期 → 目标分片与 UUID → nonce → 写权），nonce 记 PostgreSQL `transfer_nonce`；每玩家冷却 5 s；以宿主内部接口交给 M3 `ShardService#transfer` 调用，不依赖 M3 的任何代码 | G28 | 运营 | P1 | `API-PROD-028`；状态机 §11.3、时序 §12.3 |
 
 ## 6. 总体架构
 
@@ -302,7 +305,7 @@ erDiagram
 | `ENT-CharacterSection` | `character_section` | 插件数据段；单段编码后 ≤ 64 KiB（沿用 `API-M3-012` 的 65,536 B） |
 | `ENT-CharacterLocation` | `character_location` | 每个大区各记一个最后位置 |
 | `ENT-ShardSession` | `shard_session` | 分片每次起服新建一行；状态机见 §11.2 |
-| `ENT-TransferNonce` | `transfer_nonce` | 转服票据一次性 nonce，沿用 `API-M3-011` ⑤；过期行由 M3 `nonce.gc` 每 10 min 删除（`docs/DESIGN-M3.md` §17），本分册不另设任务 |
+| `ENT-TransferNonce` | `transfer_nonce` | 转服票据用过的 nonce，一行一张票据；目标分片验票检查 ⑤ 插入（`API-PROD-028`），过期行由 `transfer_nonce.gc` 每 10 min 删除（§17） |
 | `ENT-StoreMeta` | `store_meta` | `auth_mode = online / offline`，防离线 UUID 写进正式库；只由 `--migrate-only --auth-mode` 写入（`API-PROD-004`），分片只读 |
 | `ENT-Ban` | `ban` | 按 UUID 或 IP 网段；`subject_uuid` 不建到 `account` 的外键（预先封禁的 UUID 可能从未登录）；是否生效由 `expires_at`、`revoked_at` 派生（§11 免建理由） |
 | `ENT-Whitelist` | `whitelist` | 白名单开关 `synaxis.app.whitelist` 打开时才判定；`account_uuid` 不建外键（受邀者加白名单时还没登录过） |
@@ -402,7 +405,7 @@ erDiagram
   - 连接：pgjdbc 42.7.13 + HikariCP 7.1.0，`maximumPoolSize = 4`、`connectionTimeout = 2000`、`statement_timeout = 2s`；分片会话续期用一条不进池的独占连接（断开即重连），登录风暴或停机批量保存占满池时续期不排队；分片数 ≤ 24 直连，超过 24 加 PgBouncer（事务模式），不调大 `max_connections`（D10）。
   - 账号：分片用的数据库账号只有 DML 权限；DDL 只给发布流程 `server-app --migrate-only --auth-mode=online|offline` 用的账号，分片起服只 `validate`（D11）。`--migrate-only` 在迁移之后写 `store_meta(auth_mode)`：该行不存在时按 `--auth-mode` 插入；已存在且值不同时迁移失败、非零退出，不改库。正式库用 `online`，CI、压测、本机开发库用 `offline`。
   - 过期会话清理：`shard_session.cleanup` 每小时删 `expires_at < now() − 1 天` 且没有角色行引用的会话行（起服与 `reopen` 每次都新增一行）。
-  - 密钥：`SYNAXIS_STATE_DB_URL`（沿用 `API-M3-011`）、`SYNAXIS_STATE_DB_USER`、`SYNAXIS_STATE_DB_PASSWORD`，按 `CLAUDE.md` 密钥纪律只进 `.env` 与 Bitwarden，`.env.example` 登记键名、用途与获取方式。
+  - 密钥：`SYNAXIS_STATE_DB_URL`（JDBC URL，形如 `jdbc:postgresql://host:5432/synaxis`）、`SYNAXIS_STATE_DB_USER`、`SYNAXIS_STATE_DB_PASSWORD`，按 `CLAUDE.md` 密钥纪律只进 `.env` 与 Bitwarden，`.env.example` 登记键名、用途与获取方式。
 - **`API-PROD-005` `PlayerDataStore`（`:plugin-api` 新增）** — 实现 `REQ-PROD-006`
   - `PluginContext` 增加 `PlayerDataStore playerData()`。签名（持久化草案 ①）：
 
@@ -546,10 +549,9 @@ erDiagram
   - Tab 列表：进服时一个多条目 `PlayerInfoUpdatePacket`；延迟 `synaxis.tab-latency-interval-ms` 默认 30,000 批量一包；`PluginContext#tabList().setVisibility(BiPredicate<Player, Player>)` 决定谁出现在谁的列表里，不在列表里的仍发 PlayerInfo（皮肤渲染依赖）但 `listed=false`。
   - 压缩：`synaxis.compression-threshold` 默认 256、`synaxis.compression-level` 默认 6（`ServerProcessImpl.java:77`、`NetworkBufferImpl.java:301`）。
 - **`API-PROD-021` 转服与 Cookie 插件面** — 实现 `REQ-PROD-031`
-  - `Player`（经 `PluginContext#transfers()` 的 `Transfers`）：`transfer(Player, String host, int port)`、`boolean wasTransferred(Player)`、`storeCookie(Player, Key, byte[])`（≤ 5,120 B，超过抛 `IllegalArgumentException`，不发包）、`CompletableFuture<byte[]> fetchCookie(Player, Key)`。跨大区转服走 M3 `ShardService#transfer`（`API-M3-010`），票据布局与检查顺序见 `API-M3-011`。
+  - `Player`（经 `PluginContext#transfers()` 的 `Transfers`）：`transfer(Player, String host, int port)`、`boolean wasTransferred(Player)`、`storeCookie(Player, Key, byte[])`（≤ 5,120 B，超过抛 `IllegalArgumentException`，不发包）、`CompletableFuture<byte[]> fetchCookie(Player, Key)`。这里的 `transfer` 是不带票据的原版转服（送往外部服务器）；跨大区转服走 M3 `ShardService#transfer`（`API-M3-010`），它经 `API-PROD-028` 的宿主接口签发票据。
   - 分片宿主启动时写 `synaxis.accept-transfers=true`（引擎既有键，默认 false；为 false 时 `HandshakeListener.java:53-57` 直接踢掉 transfer 意图的连接）。
-  - 本分册加的约束：转入连接照常走 §11.1 全程（加密 + `hasJoined`），不因 `wasTransferred` 跳过鉴权；`API-M3-011` 检查 ④ 增加「票据 `player_uuid` = 本次验证出的 UUID」；每玩家转服冷却 `synaxis.app.transfer-cooldown-ms` 默认 5,000（客户端每账号 30 s 内最多 6 次 join，**未核实**）；nonce 记 PostgreSQL `transfer_nonce`。
-  - 源分片在签票据前走 §11.3 `online → saving → in_transit`（写入并释放租约）。
+  - 本分册加的约束：转入连接照常走 §11.1 全程（加密 + `hasJoined`），不因 `wasTransferred` 跳过鉴权；票据检查 ④ 要求「票据 `player_uuid` = 本次验证出的 UUID」（`API-PROD-028`）；每玩家转服冷却 `synaxis.app.transfer-cooldown-ms` 默认 5,000（客户端每账号 30 s 内最多 6 次 join，**未核实**），`Transfers#transfer` 与 `API-PROD-028` 的签发入口共用同一张冷却表。
 - **`API-PROD-022` 管理接口（SMP 兼容子集）** — 实现 `REQ-PROD-032`、`REQ-PROD-034`
   - 传输：WebSocket 上的 JSON-RPC 2.0，`synaxis.app.management.bind` 默认 `127.0.0.1:25585`（本分册定），`synaxis.app.management.enabled` 默认 false；Bearer 鉴权，令牌 `SYNAXIS_MANAGEMENT_TOKEN`（密钥纪律同上）。WebSocket 库做 G29 时再定（Java-WebSocket 或 Jetty，§28.1 Q10）。
   - 方法：`minecraft:players`、`minecraft:players/kick`、`minecraft:server/status`、`minecraft:server/save`、`minecraft:server/stop`、`minecraft:bans`、`minecraft:bans/add`、`minecraft:bans/remove`，通知 `minecraft:notification/players/joined`、`…/left`；扩展 `synaxis:shard/drain`（关登录门但不停机）、`synaxis:shard/status`（分片会话状态、在线、MSPT）、`synaxis:broadcast`、`synaxis:transfer`、`synaxis:profile`。方法名按 minecraft.wiki SMP 页，26.2 对应的协议版本号**未核实**。
@@ -575,6 +577,30 @@ erDiagram
   - `tools/fake-sessionserver/FakeSessionServer.java`：单文件，只用 JDK `com.sun.net.httpserver`，`java FakeSessionServer.java --mode record|allow-all --port P` 直接跑，不打镜像。
   - 端点：`POST /session/minecraft/join`（`record` 模式按 serverId 记下 join 时的 `selectedProfile`）、`GET /session/minecraft/hasJoined`（`record` 模式只对 join 过的 serverId 回 200，正文 `id` 是 join 时的 profile、`name` 是查询里的用户名，其余 204——join 请求体只有 `accessToken`、`selectedProfile`、`serverId`，没有用户名可比；每次登录的 serverId 都是新算的，按 serverId 已能把 join 与 hasJoined 对上；`allow-all` 对任何用户名回 200，profile UUID 按用户名派生）。
   - 故障注入：`--inject delay=<ms>|status=204|429|503|timeout`，可按请求序号指定。
+- **`API-PROD-028` 转服票据（Cookie 布局、签发与验票，宿主）** — 实现 `REQ-PROD-045`
+  - Cookie 键 `synaxis:transfer`，值 ≤ 5,120 B（`CookieStorePacket.MAX_VALUE_LENGTH`）。布局，整数一律大端：`ver u8 = 1`、`key_id u8`、`player_uuid 16 B`、`character_id u64`、`source_shard`（UTF-8，u8 长度前缀）、`target_shard`（同）、`state_version u64`、`nonce 16 B`、`issued_at u64`（Unix ms）、`expires_at u64`（= `issued_at` + 30,000）、`hmac 32 B`（HMAC-SHA256，覆盖前面全部字节）。`character_id` 指明写权交接的是哪个角色（写权与 `version` 按角色计，§7）；`issued_at` 同时是 `docs/DESIGN-M3.md` §3 转服首批区块耗时的起点，与 M3 事件 `EVT:transfer_issued` 的 `issued_at` 属性同值（该事件由 M3 定义，`docs/DESIGN-M3.md` §20）。票据只带版本号，不带玩家数据。
+  - 密钥：环境变量 `SYNAXIS_TRANSFER_HMAC_KEYS`，`key_id:base64` 逗号分隔，1～2 项，`key_id` ∈ 0～255 且不重复，每把密钥解码后恰 32 B；签发用第一项，验票按票据的 `key_id` 取对应一项。轮换：新密钥加为第二项滚动重启全部分片 → 调到第一项再滚动一次 → 30 s 后删旧项。`synaxis.accept-transfers=true` 时变量缺失或格式不符拒绝起服；变量缺失且不接收转入的进程（M2 的 `Main`）不创建签发端。密钥纪律同 `API-PROD-004`。
+  - 宿主内部接口（`server-app` 包 `io.github.bearisbug.synaxis.app.transfer`，不进 `:plugin-api`；M3 `ShardService` 的实现在同一模块内经构造器拿到它）：
+
+    ```java
+    public interface TransferTickets {
+        // 任意线程可调；future 在 Transfer 包发出或确定失败后完成
+        CompletableFuture<TransferOutcome> transfer(Player player, String targetShardId, String host, int port);
+    }
+    public enum TransferOutcome { SENT, COOLDOWN, NOT_ONLINE, SAVE_FAILED }
+    ```
+
+  - 签发（源分片）：① 冷却：该玩家最近一次转服时刻距今 < `synaxis.app.transfer-cooldown-ms`（默认 5,000）回 `COOLDOWN`，不碰数据库；「最近一次」取本分片发出的上一次，或转入本分片那张票据的 `issued_at`，所以 A → B → A 的来回也受冷却。② 玩家不在 §11.3 `online` 回 `NOT_ONLINE`。③ 走 §11.3 `online → saving`，写入并释放（`API-PROD-004`），失败走 `saving → online` 回 `SAVE_FAILED`。④ 成功走 `saving → in_transit`：`nonce` 取 `SecureRandom` 16 B，`state_version` = 写入后的 `version`，`source_shard` / `target_shard` 为 `synaxis.app.shard-id` 与入参 `targetShardId`；先 `storeCookie("synaxis:transfer", 票据)` 再 `transfer(host, port)`，回 `SENT`。
+  - 验票（目标分片）：只对握手意图为 transfer（`PlayerConnection#wasTransferred()`）的连接做；在 configuration 阶段的准入虚拟线程上（`AdmissionGate`，`store.load` 之前）按固定顺序检查，第一个不通过的检查决定结果：
+    - ① 频道容量：由连接闸门 L3 在 `LoginStart` 判定（`API-PROD-003`），早于加密请求，这里不再检查；满员的连接到不了这一步，不读 Cookie、不消耗 nonce。
+    - ② `fetchCookie("synaxis:transfer")`（5 s 未回按缺失）；Cookie 缺失、长度或 `ver` 不符、`key_id` 不在密钥表、HMAC 不符（常数时间比较）→ `bad-signature`。
+    - ③ now > `expires_at` → `expired`。
+    - ④ `target_shard` ≠ 本分片 `shard_id` → `wrong-target`；`player_uuid` ≠ 本次登录验证得到的 UUID（在线模式是 Mojang `hasJoined` 返回的 UUID）→ `uuid-mismatch`。
+    - ⑤ `INSERT INTO transfer_nonce (nonce, expires_at) VALUES (:nonce, to_timestamp(:expires_at / 1000.0)) ON CONFLICT DO NOTHING`，影响 0 行 → `nonce-reused`；数据库错误或超时 → `store-unavailable`。nonce 单独提交，后面的检查失败也不回滚，一张票据只能被验一次。
+    - ⑥ 对 `character_id` 执行获取语句（`API-PROD-004`，另加条件 `account_uuid = player_uuid`），影响 0 行 → `lease-held`（转入不发顶号）；数据库错误 → `store-unavailable`。获取成功后读到的 `version` ≠ `state_version` 时释放写权并以 `version-mismatch` 拒绝（一致性断言，记 ERROR）。
+    - 断线键：②③④⑤ 与 `version-mismatch` 回 `synaxis:transfer-rejected`；`lease-held` 与 `store-unavailable` 回 `synaxis:state-unavailable`（§14）。每次拒绝写一条 `EVT:transfer_rejected`（§20），日志带 `transfer_ref`（nonce 前 8 位 hex）。全部通过走 §11.3 `in_transit → loading`，之后与普通登录同一条载入路径。
+  - 表：`transfer_nonce(nonce bytea PRIMARY KEY CHECK (octet_length(nonce) = 16), expires_at timestamptz NOT NULL)`，属 Flyway V1（§25）；清理任务 `transfer_nonce.gc`（§17）。
+  - 测试向量：`server-app/src/test/resources/vectors/transfer/` 放一张已知密钥签出的票据与改过 `player_uuid`、过期、`ver` 错三张坏票据，编码与验票两侧跑同一批（§24）。
 
 演进与弃用：
 
@@ -617,7 +643,9 @@ erDiagram
 | 封禁撤销 | `revoked_at` | `ban.revoked_at` | timestamptz | 否 | 非 null 即失效 | UTC | 否 |
 | 权限节点 | `node` | `role_permission.node` | text | 是 | 小写点分，末段可为 `*` | — | 否 |
 | 物品 uid | `item_uid` | `item_ledger.item_uid` | uuid | 是 | UUIDv7，服务端产生 | — | 否 |
-| 转服 nonce | `nonce` | `transfer_nonce.nonce` | bytea | 是 | 16 B，主键唯一；过期行由 M3 `nonce.gc` 每 10 min 删 | — | 否 |
+| 转服 nonce | `nonce` | `transfer_nonce.nonce` | bytea | 是 | 16 B，主键唯一；过期行由 `transfer_nonce.gc` 每 10 min 删 | — | 否 |
+| 转服 nonce 到期 | `expires_at` | `transfer_nonce.expires_at` | timestamptz | 是 | = 票据 `expires_at` | UTC | 否 |
+| 票据拒绝原因 | `reject_reason` | `EVT:transfer_rejected.reason` | enum | 是 | `bad-signature` / `expired` / `wrong-target` / `uuid-mismatch` / `nonce-reused` / `lease-held` / `store-unavailable` / `version-mismatch`（依次对应 `API-PROD-028` 检查 ②～⑥ 与一致性断言）；统计遇未知值按 `store-unavailable` 计 | — | 否 |
 | 断线原因 | `disconnect_reason` | — | enum | 是 | 见 §14 与 `docs/DESIGN.md` §14 | — | 否 |
 | 远端 IP 前缀 | `ip_prefix` | — | string | 是 | IPv4 /32、IPv6 /64；闸门计数键 | — | 是（日志脱敏到 /24） |
 
@@ -665,6 +693,7 @@ erDiagram
 | `API-PROD-025` 压测 harness | ✗ | ✗ | ✗ | ✗ | ✓ | ✓ |
 | `API-PROD-026` 真客户端回归 | ✗ | ✗ | ✗ | ✗ | ✗ | ✓ |
 | `API-PROD-027` 假 sessionserver | ✗ | ✗ | ✗ | ✗ | ✗ | ✓（生产配置禁止指向它：地址非 Mojang 时启动 WARN） |
+| `API-PROD-028` 转服票据 | ✓（只保存与回传 Cookie，无法解读或伪造） | ✗（经 M3 `ShardService#transfer` 间接发起） | ✓（签发与验票，持有密钥） | ✗ | ✓（配置密钥） | ✗ |
 
 行级可见性：
 
@@ -673,10 +702,11 @@ erDiagram
 | `API-PROD-005` | ROLE-Plugin | 只能 `get` / `markDirty` 本插件 `register` 过的段；`register` 的 id 前缀必须等于自己的 plugin id，否则 `IllegalStateException` |
 | `API-PROD-011` | ROLE-Plugin | 只能注销自己注册的命令 |
 | `API-PROD-022` | ROLE-Operator | `synaxis:shard/*` 只作用于本分片；跨分片操作由运维对每个分片各调一次 |
+| `API-PROD-028` | ROLE-Client | 目标分片只接受 `target_shard` = 自己且 `player_uuid` = 本连接验证所得 UUID 的票据（检查 ④） |
 
 ## 11. 状态机
 
-数据字典里 ≥ 2 态的枚举：`login_state`（§11.1 建机）、`state`（分片会话，§11.2 建机）、`lease_state`（§11.3 建机）、停机阶段（§11.4 建机，扩展 `docs/DESIGN.md` §11.2 的 `stopping` 态）、看门狗（§11.5 建机）。免建：`result` 与 `SaveResult` 是单次调用的返回值，没有生命周期；`ban` 的「生效 / 到期 / 撤销」是纯派生态（`revoked_at IS NULL ∧ (expires_at IS NULL ∨ expires_at > now())`），产生转移只有 `API-PROD-009` 的 `ban`（→ 生效）、`unban`（→ 撤销）与时间流逝（→ 到期），三条都已在 `API-PROD-009` 与 §9 核到；Redis `presence.state` 是 §11.3 的投影，随 §11.3 迁移表的动作列翻转。
+数据字典里 ≥ 2 态的枚举：`login_state`（§11.1 建机）、`state`（分片会话，§11.2 建机）、`lease_state`（§11.3 建机）、停机阶段（§11.4 建机，扩展 `docs/DESIGN.md` §11.2 的 `stopping` 态）、看门狗（§11.5 建机）。免建：`result`、`SaveResult` 与 `reject_reason` 是单次调用或单次验票的结果，没有生命周期（票据本身的生命周期即 §11.3 的 `in_transit`）；`ban` 的「生效 / 到期 / 撤销」是纯派生态（`revoked_at IS NULL ∧ (expires_at IS NULL ∨ expires_at > now())`），产生转移只有 `API-PROD-009` 的 `ban`（→ 生效）、`unban`（→ 撤销）与时间流逝（→ 到期），三条都已在 `API-PROD-009` 与 §9 核到；Redis `presence.state` 是 §11.3 的投影，随 §11.3 迁移表的动作列翻转。
 
 ### 11.1 登录验证 `ENT-LoginAttempt`
 
@@ -790,7 +820,9 @@ stateDiagram-v2
   saving --> in_transit : 写回完成(源分片) [触发 = 转服 ∧ 写入并释放影响 1 行]
   saving --> online : 写回失败(源分片) [触发 = 转服 ∧ 数据库错误或超时]
   saving --> orphaned : 写回失败(源分片) [触发 ≠ 转服 ∧ 重试上限已到]
-  in_transit --> loading : 目标验票(目标分片) [API-M3-011 检查全部通过 ∧ 获取语句影响 1 行]
+  in_transit --> loading : 目标验票(目标分片) [API-PROD-028 检查 ②～⑥ 全部通过 ∧ version = state_version]
+  in_transit --> loading : 普通登录(任一分片) [获取语句影响 1 行]
+  in_transit --> offline : 验票不通过(目标分片) [API-PROD-028 任一检查不通过 ∨ version ≠ state_version]
   in_transit --> offline : 票据过期(系统) [now > expires_at ∧ 未被验票]
   online --> orphaned : 持有者分片崩溃(系统) [持有者会话 expires_at < now]
   orphaned --> loading : 再次登录(任一分片) [获取语句影响 1 行]
@@ -812,7 +844,9 @@ stateDiagram-v2
 | saving → in_transit | 写回完成 | 触发 = 转服 ∧ 写入并释放影响 1 行 | presence 改 `in_transit(target)` 带 30 s TTL；签票据（带新 `state_version`）；先 `storeCookie` 再 `transfer` | 源分片 | `API-PROD-021` |
 | saving → online | 写回失败 | 触发 = 转服 ∧ 数据库错误或超时 | 解冻；提示「转服失败，请稍后再试」；不签票据 | 源分片 | `API-PROD-021` |
 | saving → orphaned | 写回失败 | 触发 ≠ 转服 ∧ 重试上限已到（1 s / 2 s / 4 s 退避，上限 30 s） | 丢弃快照并记 ERROR（带 `character_id` 与失败原因）；单独执行一次释放语句（不带版本号、不写段）。数据库可达而只是某段被约束拒绝（如编码后超过 64 KiB）时释放成功，玩家可在任一分片再登录；数据库不可达时释放也失败，本会话随续期失败过期，同样可接管 | 源分片 | `API-PROD-004` |
-| in_transit → loading | 目标验票 | `API-M3-011` 检查 ①～⑥ 全部通过（④ 含 UUID = 本次验证 UUID）∧ 获取语句影响 1 行 | 插入 nonce；目标读到的 `version` ≠ 票据 `state_version` 时记 ERROR 并拒绝进入（一致性断言） | 目标分片 | `API-M3-011`、`API-PROD-004` |
+| in_transit → loading | 目标验票 | `API-PROD-028` 检查 ②～⑥ 全部通过（④ 含 `player_uuid` = 本次验证 UUID，⑤ 插入 nonce 影响 1 行，⑥ 获取语句影响 1 行）∧ 读到的 `version` = 票据 `state_version` | Redis `SET presence:{uuid} {shard, session, loading} PX 30000`；以票据 `issued_at` 记该玩家最近一次转服时刻（冷却）；进入与普通登录相同的载入 | 目标分片 | `API-PROD-028`、`API-PROD-004` |
+| in_transit → loading | 普通登录 | 获取语句影响 1 行（写权在签票前已释放，与 `offline → loading` 同一条语句） | 同 `offline → loading`；这张票据此后到达任何分片都在检查 ⑤ 或 ⑥ 被拒 | 任一分片 | `API-PROD-004` |
+| in_transit → offline | 验票不通过 | `API-PROD-028` 检查 ②～⑥ 任一不通过 ∨ 读到的 `version` ≠ 票据 `state_version` | 断线 `synaxis:transfer-rejected` 或 `synaxis:state-unavailable`（按 `reject_reason`，§14）；写 `EVT:transfer_rejected`；`version-mismatch` 时释放刚取得的写权并记 ERROR（一致性断言）；其余情况写权未被本分片取得，不动库；`lease-held` 说明角色已经由普通登录离开 `in_transit`，这时不发生状态转移，只作废这张票据。玩家之后以普通登录进任一分片都能取回角色 | 目标分片 | `API-PROD-028` |
 | in_transit → offline | 票据过期 | now > 票据 `expires_at` ∧ 未被验票 | 无动作（租约早已释放），presence 自然过期 | 系统 | 内部任务 `presence` TTL（无对外 API） |
 | online → orphaned | 持有者分片崩溃 | 持有者 `shard_session.expires_at` < now | 无动作；丢失窗口 = 距上次成功保存 ≤ 60 s | 系统 | 无对外 API，见 §11.2 |
 | orphaned → loading | 再次登录 | 获取语句影响 1 行（它已覆盖「持有者为空」「持有者 = 本会话」「持有者会话过期」三种） | 持有者是别的会话时写 `EVT:lease_takeover`；持有者是本会话时丢弃内存里该角色的旧快照，按库里版本重新载入 | 任一分片 | `API-PROD-004` |
@@ -996,28 +1030,28 @@ sequenceDiagram
   participant P as PostgreSQL
   participant B as 目标分片
   participant M as sessionserver
-  A->>A: 插件调 ShardService.transfer, 冷却 5 s 检查 (API-PROD-021, API-M3-010)
+  A->>A: 插件调 ShardService.transfer 选频道 (API-M3-010), 宿主 TransferTickets.transfer 冷却 5 s 检查 (API-PROD-028)
   A->>A: 冻结交易, tick 线程快照 (§11.3 online → saving)
   A->>P: 写入并释放租约 (API-PROD-004)
   alt 写回失败
     A-->>C: 提示转服失败, 解冻 (§11.3 saving → online)
   end
-  A->>C: StoreCookie synaxis:transfer 票据 (API-M3-011)
-  A->>C: Transfer(host, port) (API-PROD-021)
+  A->>C: StoreCookie synaxis:transfer 票据 (API-PROD-028)
+  A->>C: Transfer(host, port) (API-PROD-028)
   C->>B: Handshake intent TRANSFER (API-PROD-003 transfer 桶)
   C->>B: LoginStart → EncryptionRequest/Response (API-PROD-002)
   C->>M: POST join (客户端侧, 消耗每账号 join 额度)
   B->>M: GET hasJoined (API-PROD-002)
   M-->>B: profile
-  B->>C: FetchCookie synaxis:transfer (configuration 阶段, API-M3-011)
+  B->>C: FetchCookie synaxis:transfer (configuration 阶段, API-PROD-028 ②)
   C-->>B: 票据
-  B->>B: 检查 ①~⑥, ④ 含 player_uuid = 本次验证 UUID (API-M3-011, API-PROD-021)
-  B->>P: INSERT transfer_nonce, 获取租约 (API-PROD-004)
+  B->>B: 验 HMAC, 有效期, target_shard 与 player_uuid = 本次验证 UUID (API-PROD-028 ②~④)
+  B->>P: INSERT transfer_nonce, 获取租约并比对 version (API-PROD-028 ⑤⑥, API-PROD-004)
   alt 任一检查失败
-    B-->>C: Disconnect transfer-rejected 或 state-unavailable (docs/DESIGN-M3.md §14)
+    B-->>C: Disconnect transfer-rejected 或 state-unavailable (§14)
   end
   B->>P: 载入全部段 (API-PROD-004)
-  Note over A,B: 驱动 §11.3 saving → in_transit → loading → online
+  Note over A,B: 驱动 §11.3 saving → in_transit → loading → online, 验票失败时 in_transit → offline
 ```
 
 ### 12.4 跨分片顶号
@@ -1060,13 +1094,13 @@ N/A — 本分册没有新页面。断线原因的文案住在客户端模组的
 
 ## 14. 错误处理与错误码
 
-无 HTTP，不用 RFC 9457。沿用 `docs/DESIGN.md` §14：断线原因是 `translate` 键，排障关联 ID 是 `connection_id`，每行日志携带、断线文本不携带。连接层概念的键住引擎 `network/DisconnectReasons.java`（现有 6 个），玩法与宿主概念的键住 `:plugin-api` 的 `DisconnectKeys`（现有 4 个，M3 加 3 个，其中 `synaxis:shard-full` 按本表改住引擎，因为判定点 L3 在引擎里）。管理接口的 JSON-RPC 错误用标准错误码 −32600～−32603 与 −32000（鉴权失败），`data` 字段带 `request_id`。
+无 HTTP，不用 RFC 9457。沿用 `docs/DESIGN.md` §14：断线原因是 `translate` 键，排障关联 ID 是 `connection_id`，每行日志携带、断线文本不携带。连接层概念的键住引擎 `network/DisconnectReasons.java`（现有 6 个），玩法与宿主概念的键住 `:plugin-api` 的 `DisconnectKeys`（现有 4 个，本分册加 `synaxis:banned`、`synaxis:not-whitelisted`、`synaxis:state-unavailable`、`synaxis:transfer-rejected`；M3 不加键，频道满的 `synaxis:shard-full` 住引擎，因为判定点 L3 在引擎里）。管理接口的 JSON-RPC 错误用标准错误码 −32600～−32603 与 −32000（鉴权失败），`data` 字段带 `request_id`。
 
 | 错误码（type） | 住处 | 协议动作 | 语义 | 客户端处理约定 |
 | --- | --- | --- | --- | --- |
 | `synaxis:too-many-connections` | 引擎 | LoginDisconnect（明文） | 同一 IP 并发连接数达上限（L1） | 提示「同一网络连接数过多」，附报障途径 |
 | `synaxis:login-throttled` | 引擎 | LoginDisconnect（明文） | 同一 IP 登录或转入太频繁（L2） | 提示稍候几秒再试 |
-| `synaxis:shard-full` | 引擎（M3 已定名，改住 `DisconnectReasons`） | LoginDisconnect（明文） | 已占席位达 `max-players`（L3），login 与 transfer 意图同一判定，不发加密请求、不读 Cookie、不消耗票据 nonce；取代 `docs/DESIGN-M3.md` `API-M3-011` ① 的 configuration 阶段容量检查 | 提示本频道已满，模组可自动换频道；频道满只有这一个键 |
+| `synaxis:shard-full` | 引擎（`DisconnectReasons`） | LoginDisconnect（明文） | 已占席位达 `max-players`（L3），login 与 transfer 意图同一判定，不发加密请求、不读 Cookie、不消耗票据 nonce；即 `API-PROD-028` 检查 ①，configuration 阶段不再判容量 | 提示本频道已满，模组可自动换频道；频道满只有这一个键 |
 | `synaxis:auth-failed` | 引擎 | LoginDisconnect（已加密） | `hasJoined` 回 204：该名字没有用正版会话加入本服 | 提示用正版启动器登录 |
 | `synaxis:auth-unavailable` | 引擎 | LoginDisconnect（已加密） | `hasJoined` 超时、不可达、429 或 5xx，重试一次后仍失败 | 提示正版验证服务暂时不可用，稍后重试 |
 | `synaxis:logged-in-elsewhere` | 引擎 | Disconnect（发给旧会话） | 同一 Mojang UUID 从别处登录（仅在线模式） | 提示账号在别处登录 |
@@ -1074,7 +1108,8 @@ N/A — 本分册没有新页面。断线原因的文案住在客户端模组的
 | `synaxis:keep-alive-timeout` | 引擎 | Disconnect | keep-alive 超过 `keepAliveKick` 未应答（替换纯文本 `"Timeout"`） | 提示连接超时，重连 |
 | `synaxis:banned` | plugin-api | LoginDisconnect（已加密） | 该 UUID 或 IP 网段有生效的封禁；翻译参数：理由、到期时间（永久为空） | 显示理由与到期时间 |
 | `synaxis:not-whitelisted` | plugin-api | LoginDisconnect（已加密） | 白名单开启且该 UUID 不在名单 | 提示内测资格 |
-| `synaxis:state-unavailable` | plugin-api（M3 已定） | Disconnect（configuration 阶段）或 Disconnect（play 中被隔离） | 见 `docs/DESIGN-M3.md` §14；本分册加三种来源：载入超时或解码失败、分片会话隔离、顶号 5 s 内未拿到租约 | 30 s 后重试 |
+| `synaxis:state-unavailable` | plugin-api | Disconnect（configuration 阶段）或 Disconnect（play 中被隔离） | 玩家数据暂时拿不到，五种来源：载入超时或解码失败（§11.3 `loading → offline`）；分片会话隔离（§11.2）；顶号 5 s 内未拿到租约，或 Redis 不可达时租约被活会话持有（§11.3 末段）；转入时写权被别处持有（`API-PROD-028` ⑥ `lease-held`）；验票时数据库错误或超时（`store-unavailable`） | 提示稍后重试；30 s 后重试（会话租约最长 30 s 过期） |
+| `synaxis:transfer-rejected` | plugin-api | Disconnect（configuration 阶段） | 转入的票据不可用：缺失或签名无效、已过期、目标分片或 UUID 不符、nonce 已用、版本不一致（`API-PROD-028` ②～⑤ 与一致性断言）。写权在签票前已释放，玩家重新登录任一分片都能取回角色 | 提示「切换大区失败，请重新登录」；10 分钟内第二次出现时提示报障并附时间 |
 | `synaxis:server-stopping` | 引擎（现有） | LoginDisconnect / Disconnect | 本分册加一种来源：停机闸门关闭后的新登录 | 提示服务器维护 |
 | `synaxis:protocol-error` | 引擎（现有） | Disconnect | 本分册加两种来源：加密握手非法（重复、未请求、challenge 不符、密钥长度错）、入站包速率闸 KICK | 同 `docs/DESIGN.md` §14 |
 
@@ -1106,7 +1141,7 @@ L0、L0′、accept 时的 L1 超限与握手前超时都不发包，没有键�
 | 聊天 | 单连接 | > 1 条/秒（burst 3）丢弃；引擎默认 0 收件人，一进 0 出 |
 | 看门狗 | tick 卡住 | 10～11 s 首次打印栈；60～61 s 判死（巡检间隔 1 s）；判死后 ≤ 16 s 进程退出 |
 | 日志与磁盘 | 12 个月 | 服务日志总量 ≤ 10 GB、保留 14 天；台账每日 ≤ 1 GiB、保留 30 天；崩溃报告与堆转储不自动删，由 `RB-PROD-003` 处理后归档 |
-| 数据增长 | 12 个月 | `character` 行数 = 注册角色数，按 32,000 在线 × 10 倍注册估 32 万行；`character_section` ≤ 32 万 × 段数 × 64 KiB（上界，与 M3 §15「≈ 20 GiB 上界」同口径）；`transfer_nonce` 由 M3 `nonce.gc` 每 10 min 删过期行；`shard_session` 每小时删 1 天前过期且无引用的行；`item_ledger` 写入量未测，超过保存次数 2 倍时改为只记稀有物品（D5）；`ban` 与 `account_role` 不清理 |
+| 数据增长 | 12 个月 | `character` 行数 = 注册角色数，按 32,000 在线 × 10 倍注册估 32 万行；`character_section` ≤ 32 万 × 段数 × 64 KiB（上界，与 M3 §15「≈ 20 GiB 上界」同口径）；`transfer_nonce` 由 `transfer_nonce.gc` 每 10 min 删过期行（行数 ≤ 转服速率 × 30 s）；`shard_session` 每小时删 1 天前过期且无引用的行；`item_ledger` 写入量未测，超过保存次数 2 倍时改为只记稀有物品（D5）；`ban` 与 `account_role` 不清理 |
 | 备份 | PostgreSQL | 恢复点目标 ≤ 5 分钟（WAL 归档 + 每日基础备份）；恢复时间目标未定，首次演练后回填 |
 | 构建与 CI | 真客户端回归 | PR 档约 4 分钟、main 与每日约 6 分钟（折算，**未实测**）；每月约 1,600 分钟（私有仓库额度**未核实**） |
 | 兼容 | 客户端 | 仅 26.2 + 本项目模组；在线模式需要正版账号 |
@@ -1133,7 +1168,7 @@ L0、L0′、accept 时的 L1 超限与握手前超时都不发包，没有键�
 | 停机保存与 `PlayerDisconnectEvent` | 停机线程 × tick 线程 | 保存阶段结束后标「已冲刷」，断线事件不再写库 | §11.4 `gate_closed → saving` 动作 |
 | 已保存的玩家在踢人前继续操作 | tick 线程 × 停机线程 | 保存到踢人之间（≤ 30 s + 5 s）不产生会丢的归属变更：拾取与丢弃被取消，`commitTogether` 回 `UNAVAILABLE`（`cause=frozen`，不计入 fenced）；移动与战斗的变化不再落库，属可接受损失 | `saveAll` 开头对全体进入冻结（`API-PROD-005` `isFrozen`） |
 | 顶号消息丢失（Redis 抖动） | 新分片 × 旧分片 | 新分片 5 s 后 `state-unavailable`，不会双开 | 写权只由 PostgreSQL 判定；Redis 消息只加速释放 |
-| 同一票据重放 | 目标分片 × 2 | 先到者成功，后到者 `transfer-rejected` | `transfer_nonce` 主键唯一 |
+| 同一票据重放 | 目标分片 × 2 | 先到者成功，后到者 `transfer-rejected`（`reason=nonce-reused`） | `transfer_nonce` 主键唯一（`API-PROD-028` ⑤） |
 | 封禁与登录同时发生 | GM × 登录分片 | 最迟 30 s（缓存 TTL）内生效；有 Redis 时即时 | `synaxis:moderation` 清缓存 + 踢在线 |
 | 台账多线程写 | tick、configuration、准入、启动线程 | 同线程顺序不变；跨线程行序与 `ts` 可差数微秒；聚合按 `connection_id` 配对，不按相邻行 | MPSC 队列 + 单写线程（运维草案 ③ 3.4） |
 | 跨格交互 | 两个 tick 线程 | 投递到目标实体调度器，下一 tick 在目标线程执行；`Acquirable.sync` 仅当 tick 必需 | `API-PROD-016` 线程契约 |
@@ -1171,7 +1206,8 @@ L0、L0′、accept 时的 L1 超限与握手前超时都不发包，没有键�
 | `store.autosave` | 每 60 s 一轮，按 tick 摊开：每 tick 快照 ⌈在线 ÷ 1,200⌉ 人 | 每角色至多一次在途写入 | 语句 2 s | 快照留内存按 1 / 2 / 4 s 退避（上限 30 s） | 见 `RB-PROD-002` |
 | `store.load` | configuration 阶段每连接 | 同时在途 ≤ 2（信号量） | 整段 5 s | 断线 `state-unavailable` | 见 `RB-PROD-002` |
 | `presence.refresh` | 每 10 s | 每分片单个，批量 `SET … PX 30000` | 2 s | 下轮再试 | 见 `RB-PROD-004` |
-| `shard_session.cleanup` | 每小时 | 任一分片执行，advisory lock 互斥 | 30 s | 下轮补扫 | 无（量小）；`transfer_nonce` 清理归 M3 `nonce.gc` |
+| `shard_session.cleanup` | 每小时 | 任一分片执行，advisory lock 互斥 | 30 s | 下轮补扫 | 无（量小） |
+| `transfer_nonce.gc` | 每 10 min | 任一分片执行，advisory lock 互斥；`DELETE FROM transfer_nonce WHERE expires_at < now()` | 10 s | 下轮补删 | 无（只删过期行，过期票据在检查 ③ 已被拒，删掉不会让它重放成功） |
 | `moderation.cache` | 每 30 s 失效 + `synaxis:moderation` 消息 | 每分片 | 2 s | 沿用旧缓存 | 见 `RB-PROD-002` |
 | `ledger.writer`（`Syn-Ledger-Writer`） | 每 1 s 或缓冲 64 KiB | 单写线程 | — | 写失败经 `LogBudget` 10 s 一行；队列满丢新 | 见 `RB-PROD-007` |
 | `watchdog`（`Syn-Watchdog`） | 每 1 s | 平台线程，单个；判死回调另起一个平台线程 `Syn-Watchdog-Report` | — | 见 §11.5；回调抛异常记 ERROR，不影响 halt | 见 `RB-PROD-003` |
@@ -1635,6 +1671,21 @@ L0、L0′、accept 时的 L1 超限与握手前超时都不发包，没有键�
   When 来回转服 100 次
   Then 100 次全部成功，每个 uid 物品在全库只出现一次，version 严格递增
 
+场景: 坏票据按检查顺序被拒且 nonce 只用一次 (REQ-PROD-045)
+  Given 目标分片 B（shard_id=r1-c1，accept-transfers=true），一张用已知密钥签出、target_shard=r1-c1 的有效票据，以及改过一个字节的、expires_at 已过 1 s 的、target_shard=r2-c1 的、player_uuid 属于别人的四张坏票据
+  When 分别带这五张票据以 transfer 意图连 B，之后再带那张有效票据连一次
+  Then 有效票据第一次进服；四张坏票据依次断线 synaxis:transfer-rejected，EVT:transfer_rejected 的 reason 为 bad-signature、expired、wrong-target、uuid-mismatch；有效票据第二次断线 synaxis:transfer-rejected，reason=nonce-reused；transfer_nonce 恰有有效票据那一行
+
+场景: 票据版本与库里不一致时拒绝进入 (REQ-PROD-045)
+  Given 源分片签出票据后，库里该角色的 version 被改成 state_version + 1
+  When 玩家带这张票据转入目标分片
+  Then 断线 synaxis:transfer-rejected，reason=version-mismatch，日志有一条 ERROR，角色的 lease_session_id 为 NULL
+
+场景: 转服冷却跨分片生效 (REQ-PROD-045)
+  Given 玩家从 A 转入 B，票据 issued_at = t
+  When B 上在 t + 3 s 与 t + 6 s 各调一次 TransferTickets.transfer 送回 A
+  Then 第一次返回 COOLDOWN 且库里 version 不变；第二次返回 SENT
+
 场景: 管理接口鉴权与只绑内网 (REQ-PROD-032)
   Given management.enabled=true、bind=127.0.0.1:25585
   When 不带令牌调 minecraft:players，带正确令牌调 minecraft:players/kick
@@ -1733,6 +1784,7 @@ L0、L0′、accept 时的 L1 超限与握手前超时都不发包，没有键�
 | `EVT:gm_command` | GM 命令或管理接口调用执行 | `actor`（`player` / `console` / `management`）、`actor_uuid`、`command`、`target`、`result` | 诊断用（审计），不进 §3 |
 | `EVT:lease_takeover` | §11.3 `orphaned → loading`，持有者是别的会话时 | `character_id`、`previous_session_id`、`gap_ms`（事件名沿用 M3，属性按本分册取代 M3 的 `player_uuid`、`previous_owner`，M3 会话同步，§28.3） | 诊断用；停机保存完整率的兜底证据 |
 | `EVT:save_fenced` | §11.3 `online → fenced` | `character_id`、`session_id`、`cause`（`zero_rows` / `session_isolated`） | 诊断用；与 `synaxis_store_save_total{result="fenced"}` 互证 |
+| `EVT:transfer_rejected` | 目标分片验票不通过（§11.3 `in_transit → offline` 或票据作废） | `transfer_ref`、`reason`（§9 `reject_reason`）、`source_shard`、`target_shard`（票据可解析时才有）、`player_uuid`（本次验证所得） | 诊断用；`docs/DESIGN-M3.md` §3 转服成功率的失败侧明细 |
 | `EVT:ledger_dropped` | 台账队列满或达每日上限后的下一次写盘，每个原因一行；关闭之后到达的行不在此列（只在日志计 `dropped_after_close`） | `reason`（`queue_full` / `daily_cap`）、`count`、`since` | 口径受损标记：出现的那天 §3 比率照算但不参与 §23 放量门槛 |
 
 ## 21. 可观测性 (SLI/SLO/告警)
@@ -1811,6 +1863,7 @@ L0、L0′、accept 时的 L1 超限与握手前超时都不发包，没有键�
 - **翻译键门禁**（`REQ-PROD-041`）：CI 扫描 `DisconnectReasons`、`DisconnectKeys` 与插件声明的键，逐个核对 `client-fabric/src/main/resources/assets/synaxis/lang/zh_cn.json` 与 `en_us.json`，缺任一即失败。
 - **配置键**：`ServerConfigTest` 的 `defaults() == fromSystemProperties()` 断言扩到全部新键；配置文件的「未知键拒绝启动」由同一张键表驱动，键表是唯一出处。
 - **数据库**：Flyway 脚本只增不改；每个版本配一份 `db/rollback/V<n>__*.down.sql`；`dbTest` 跑「空库 migrate」「从上一版本 migrate」「库版本领先代码时拒绝起服」（持久化草案 P13）「migrate → 回退 SQL → migrate 正反往返」（`docs/DESIGN-M3.md` §25 口径）「`store_meta` 缺失时拒绝起服」五条。
+- **转服票据向量**：`API-PROD-028` 的布局只有一个事实源——`server-app` 的票据编解码类；`server-app/src/test/resources/vectors/transfer/` 的一张好票据与三张坏票据由签发与验票两侧跑同一批，改布局必须同一个 PR 里升 `ver` 并重新生成向量。
 - **指标名**：`MetricsNamesTest` 把 `API-PROD-015` 的名单写成常量，注册表里多一个或少一个都失败。
 - **文档**：本分册与 `docs/TEST.md` 按 `CLAUDE.md` 功能开发纪律随代码同步；`docs/DESIGN.md` §1 关联与 §26、`CLAUDE.md` 的单一事实源表述要回指本分册（三处缺一必然腐坏，同 `docs/DESIGN-M2.md` §24 末条），由主会话登记（§28.3）。
 
@@ -1824,11 +1877,14 @@ L0、L0′、accept 时的 L1 超限与握手前超时都不发包，没有键�
 
 | 版本 | 内容 | 所在波次 |
 | --- | --- | --- |
-| V1 | `store_meta`、`account`、`character`、`character_location`、`character_section`、`shard_session`、`transfer_nonce`（`transfer_nonce` 结构以 `API-M3-011` ⑤ 为准，只在这里建一次） | 第 3 波 |
+| V1 | `store_meta`、`account`、`character`、`character_location`、`character_section`、`shard_session`、`transfer_nonce`（结构见 `API-PROD-028`，只在这里建一次） | 第 3 波 |
 | V2 | `item_ledger` | 第 3 波 |
 | V3 | `role`、`role_permission`、`account_role` | 第 4 波 |
 | V4 | `ban`、`whitelist` | 第 4 波 |
 | V5 | `shard_heartbeat`（结构以 `API-M3-010` 为准，脚本内容由 M3 会话提供） | M3-E |
+| V6 | `world_flag`（结构以 `docs/DESIGN-M3.md` `API-M3-013` 为准，脚本与回退 SQL 由 M3 会话提供） | M3-E |
+
+版本号按合并顺序落地：`main` 上已有 V<n−1> 才能合并 V<n>。Flyway 默认不接受乱序（库里已有 V5 时再出现 V3，`validate` 失败），本仓库不开 `outOfOrder`。M3-E 若先于第 4 波合并，合并时把 V5、V6 与第 4 波的 V3、V4 按实际合并顺序重排编号，并同步改本表。
 
 回退策略（与 M3 统一）分两层。发布规则是「先扩后缩」：同一次发布只加列加表，删列放到下一次发布，所以回退分片版本不需要回退表结构。每个版本另配 `db/rollback/V<n>__*.down.sql`，最后一句删掉 `flyway_schema_history` 里该版本的行，只在迁移本身有误时由 `RB-PROD-002` 手工执行；Flyway 社区版不执行 `U` undo 迁移，所以回退 SQL 不走 Flyway。CI 在 `dbTest` 里对每个版本做一次「migrate → 回退 SQL → migrate」往返（§24）。
 
@@ -1863,20 +1919,24 @@ flowchart LR
   W5a --> W5b[第 5 波 后半 G11 G20~G24 → 分格 → 500 人]
   W4 --> W6[第 6 波 正式运营前 G28~G38]
   W5b --> W6
+  W3 --> M3E[M3-E 分片 见 DESIGN-M3 §26]
+  M3E --> W6
 ```
+
+第 3 波的 3D 组（转服票据，`REQ-PROD-045`）只依赖 3A 的写权语句与 V1，不依赖 M3 的任何代码；M3-E 的转服调用 3D 的 `TransferTickets`，所以排在第 3 波之后；第 6 波 6A（插件面 `Transfers` 与 P10 两分片来回转服）依赖 3D 与 M3-E 的 `ShardService`。依赖只有 3D → M3-E → 6A 一个方向，没有环。
 
 | 波 | REQ（差距） | 可并行的组（按改动文件分组） | 退出条件（可验证） | 工作量（人日） |
 | --- | --- | --- | --- | --- |
 | 0 无前置 | `REQ-PROD-014` 前半（G12：打印栈、60 s 判死、崩溃报告、15 s 后 halt）、`REQ-PROD-015`（G13）、`REQ-PROD-016`（G14）、`REQ-PROD-017`（G15）、`REQ-PROD-019` 前半（G17：floorMod、4 线程 `counter` 严格模式 CI job、三处 `Acquirable` 接线）、`REQ-PROD-028`（G25）、`REQ-PROD-030` 离线档（G27） | 0A 宿主日志线：G13 + G14 + G15（都改 `server-app/.../Main.java`，同一人做，含崩溃报告写入器）；0A 合并后 0B 看门狗 G12（新类 `Watchdog.java`、`ServerProcess.java`、`ServerProcessImpl.java`（tick 起止打点在 `TickerImpl.tick`）、`ServerConfig.java`，并在 `Main.java` 起停看门狗、复用 0A 的崩溃报告写入器，所以不与 0A 并行）；0C 线程正确性 G17 前半（`ThreadDispatcherImpl.java`、`Entity.java` / `Player.java` 的 `setInstance` / `teleport`、CI）；0D CI 断言 G27（`client-fabric/src/gametest/**`、工作流）；0E JVM 参数 G25（`server-app/build.gradle.kts`、`docs/ENGINE.md`）。0C～0E 与 0A / 0B 可并行 | §19 中这些 REQ 的场景全绿，例外是 `REQ-PROD-014` 里「进入落盘停机」「倒计时期间卡死仍先落盘」两处，这一波判死后直接 halt，落盘路径在 3A 验；4 线程 `counter` 严格模式 job 在 main 上连续 3 次绿；真客户端离线档 R1～R8 连续 5 次绿 | 13.5～16.5（G17 前半 2～3 为本分册估） |
 | 1 连接闸门 | `REQ-PROD-001`（G02）、`REQ-PROD-043`（G40）、`REQ-PROD-009`（G05） | 1A 闸门 G02 + G40（`Server.java`、`HandshakeListener.java`、`ConnectionManager.java`、`StatusResponse.java`、`ServerConfig.java`、`DisconnectReasons.java`、模组 lang）；1B 聊天 G05（`ChatMessageListener.java`、`Player.java:355`、`ServerConfig.java` 两个键、客户端模组 `ClientPacketListenerMixin`）——与 1A 同改 `ServerConfig.java`，1A 先合 | 闸门五层与 fd 退避的集成测试绿；§15 闸门档（单 IP 100 连接/秒 × 60 s）在 50 人规模上跑过；聊天两条场景绿，真客户端无聊天警告截图 | 6.5～7.5 |
 | 2 正版验证 | `REQ-PROD-002`（G01）、`REQ-PROD-003`（G06）、`REQ-PROD-004`（G07，同分片部分）、`REQ-PROD-044`、`REQ-PROD-036`（G33）、`REQ-PROD-030` 切完整正版路径档 | 2A 一个 PR：G01 + G06 + G07 + 假 sessionserver（`Auth.java`、`LoginListener.java`、`ConnectionManager.java`（同分片踢旧后等旧 `Player` 移除）、`HandshakeListener.java`、`PlayerSocketConnection.java`、`PacketVanilla.java`、`crypto/`、`module-info.java`、`server-app/.../Main.java`）；2A 合并后串行：2B 删除 `Auth.Velocity` / `Bungee` 与 PROXY 可信网段自检（G33 的前半；又改 `Auth.java`、`HandshakeListener.java`，不能与 2A 并行；`store_meta` 自检要读第 3 波才建的表，挪到 3A）；2C 切 B 档（工作流、`client-fabric/gametest-env/judge.sh` 的两项假 sessionserver 日志检查、回归测试 `RegressionClientGameTest` 的 R3 与 gametest 源集的访问器 mixin `ConnectionAccessor`；不动引擎，可与 2B 并行） | 在线模式全部自动化场景绿（`REQ-PROD-002`～`004`、`044`）；B 档 R1～R8 连续 5 次绿；用户用正版账号完成 auth 草案 §6.2 前两条人工用例并登记 | 7.5～10（假 sessionserver 与 B 档切换含在 G01、G27 内） |
-| 3 持久化 | `REQ-PROD-021`（G18）→ `REQ-PROD-005`、`006`、`007`（G03）→ `REQ-PROD-008`（G04）；`REQ-PROD-004` 跨分片部分；`REQ-PROD-022`（G19）；`REQ-PROD-035` 前半（WAL 归档与每日基础备份） | 3A 主线串行（同一人）：G18（`PluginScheduler`、`PluginSchedulerImpl`）→ G03（`server-app` 新包 `store/`、`PluginContext.java`、`AdmissionGate.java`（载入插在 `handshake.await` 与 `provider.admit` 之间，`:60-71`）、Flyway V1～V2 与回退 SQL、`--migrate-only --auth-mode` 与 `store_meta` 自检）→ G04（`ServerProcessImpl.java`、`ServerProcess.java`、`Main.java`、`ConnectionManager.java`，含看门狗判死接保存阶段）；3B 事件优先级 G19（`PluginEvents.java`、`PluginEventsImpl.java`，与 3A 不同文件，可并行）；3C 运维：WAL 归档（不动代码） | 持久化草案 P1～P9、P13、P14 全绿；§19 `REQ-PROD-005`、`REQ-PROD-008` 全部场景与 `REQ-PROD-014` 两条落盘场景绿；`REQ-PROD-036` 的三条 `store_meta` 场景绿；WAL 归档已开并有第一份基础备份 | 15.5～19.5（G32 前半 1 为本分册估；从第 0 波挪来的「判死接保存」与从第 2 波挪来的 `store_meta` 自检工作量仍计在原波次） |
+| 3 持久化 | `REQ-PROD-021`（G18）→ `REQ-PROD-005`、`006`、`007`（G03）→ `REQ-PROD-008`（G04）；`REQ-PROD-004` 跨分片部分；`REQ-PROD-022`（G19）；`REQ-PROD-035` 前半（WAL 归档与每日基础备份）；`REQ-PROD-045`（G28 前半，转服票据） | 3A 主线串行（同一人）：G18（`PluginScheduler`、`PluginSchedulerImpl`）→ G03（`server-app` 新包 `store/`、`PluginContext.java`、`AdmissionGate.java`（载入插在 `handshake.await` 与 `provider.admit` 之间，`:60-71`）、Flyway V1～V2 与回退 SQL、`--migrate-only --auth-mode` 与 `store_meta` 自检）→ G04（`ServerProcessImpl.java`、`ServerProcess.java`、`Main.java`、`ConnectionManager.java`，含看门狗判死接保存阶段）；3B 事件优先级 G19（`PluginEvents.java`、`PluginEventsImpl.java`，与 3A 不同文件，可并行）；3C 运维：WAL 归档（不动代码）；3D 转服票据 G28 前半（`REQ-PROD-045`：`server-app` 新包 `transfer/`（票据编解码、`TransferTickets`、验票）、`AdmissionGate.java`（验票插在 `store.load` 之前）、`transfer_nonce.gc`、`DisconnectKeys.java` 加 `synaxis:transfer-rejected`、模组 lang、`.env.example` 登记 `SYNAXIS_TRANSFER_HMAC_KEYS`；3A 合并后开工，改 `AdmissionGate.java` 排在 3A 之后） | 持久化草案 P1～P9、P13、P14 全绿；§19 `REQ-PROD-005`、`REQ-PROD-008` 全部场景与 `REQ-PROD-014` 两条落盘场景绿；`REQ-PROD-036` 的三条 `store_meta` 场景绿；`REQ-PROD-045` 三条场景绿（由 `server-app` 的集成测试直接调 `TransferTickets` 驱动，源与目标可以是同一进程，不需要 M3 的 `ShardService`）且票据向量测试绿；WAL 归档已开并有第一份基础备份 | 17.5～22.5（G32 前半 1、G28 前半 2～3 为本分册估；从第 0 波挪来的「判死接保存」与从第 2 波挪来的 `store_meta` 自检工作量仍计在原波次） |
 | 4 治理 | `REQ-PROD-011`（G09）→ `REQ-PROD-010`（G08）、`REQ-PROD-012`（G10） | 4A 权限 G09（Flyway V3、`Permissions`）先合；之后 4B 封禁 G08（Flyway V4、`AdmissionRequest.java`、`ConnectionManager.java` 预登录事件）与 4C 命令 G10（`Main.java#readConsole`、`PluginCommands`，内置六条，`profile` 在 6B）并行。4A～4C 都往 `PluginContext.java` 加方法，合并按 A → B → C 串行，ABI 门每次过 | 封禁、白名单、权限、命令场景全绿；`API_VERSION` 是否加到 2 已由 ABI 门判定并记入 §1 | 10～13 |
 | 5 规模 | 前半：`REQ-PROD-018`（G16）→ `REQ-PROD-029` harness（G26）→ 200 人基线；后半：`REQ-PROD-013`（G11）、`REQ-PROD-023`（G20）、`REQ-PROD-024`（G21）、`REQ-PROD-025`（G22）、`REQ-PROD-026`（G23）、`REQ-PROD-027`（G24）→ `REQ-PROD-020` 分格 + `REQ-PROD-019` 后半 → 500 人压测 | 5A 指标与 harness（新模块 `:loadtest`、`server-app` 指标包、`Main.java` 指标装配）；基线之后：5B 入站 G11 + 出站 G22 + 区块 G23 + Tab G24（都改 `Player.java`，G11 与 G22 还同改 `PlayerSocketConnection.java`，同一人串行）；5C 可见性 G20 + G21（`EntityView.java`、`EntityTrackerImpl.java`、`Instance.java:162`，也改 `Player.java`，合并排在 5B 之后）；5D 分格（`ThreadProvider.java`、`ServerProcessImpl.java:104`、分片宿主），与 5B / 5C 只共用 `ServerConfig.java`，按 5B → 5C → 5D 合并 | 200 人 walk 30 min：tick P99 < 50 ms、超 50 ms 为 0、RSS < 4 GiB；G11 阈值按入站 P99 × 2 写回 `API-PROD-012`；4 线程 `grid` 严格模式 job 在 main 上连续 3 次绿（5D）；500 人两档与重连风暴、闸门、台账档记录在案，`capacity` 定值写回 §15 | 40～57（G17 后半 4～7、分格 3～4 为本分册估；分格从 M3-E 的 12 天中扣出，由 M3 会话同步） |
-| 6 正式运营前 | `REQ-PROD-031`（G28）、`REQ-PROD-032`（G29）、`REQ-PROD-033`（G30）、`REQ-PROD-034`（G31）、`REQ-PROD-035` 后半（G32 恢复演练）、`REQ-PROD-037`（G34）、`REQ-PROD-038`（G35）、`REQ-PROD-039`（G36）、`REQ-PROD-040`（G37）、`REQ-PROD-041`（G38） | 6A 转服 G28（`Transfers`、`HandshakeListener.java`，依赖 M3-E 票据）；6B 管理接口 G29 + profile G31（新 WebSocket 包、`Main.java`，6C 之前合并）；6C 配置文件 G30 + 压缩 G35（都改 `ServerConfig.java`，同一人；键表要收全本波新增的键，所以 6C 排在第 6 波最后合并）；6D 列表 G34（`StatusResponse.java`）；6E 视距 G36 + 休眠 G37（`Player.java`、`Entity.java`，同一人）；6F 翻译键门禁 G38（CI）；6G 恢复演练 G32（运维） | 各 REQ 场景全绿；两分片来回转服 100 次（P10）绿；恢复演练一次并记录耗时；§23 R4 进入门槛满足 | 19～23.5 |
+| 6 正式运营前 | `REQ-PROD-031`（G28）、`REQ-PROD-032`（G29）、`REQ-PROD-033`（G30）、`REQ-PROD-034`（G31）、`REQ-PROD-035` 后半（G32 恢复演练）、`REQ-PROD-037`（G34）、`REQ-PROD-038`（G35）、`REQ-PROD-039`（G36）、`REQ-PROD-040`（G37）、`REQ-PROD-041`（G38） | 6A 转服 G28 后半（插件面 `Transfers`、`gm.transfer`、`HandshakeListener.java`；票据用 3D 的，P10 由 M3-E 的 `ShardService#transfer` 驱动，所以排在 3D 与 M3-E 之后）；6B 管理接口 G29 + profile G31（新 WebSocket 包、`Main.java`，6C 之前合并）；6C 配置文件 G30 + 压缩 G35（都改 `ServerConfig.java`，同一人；键表要收全本波新增的键，所以 6C 排在第 6 波最后合并）；6D 列表 G34（`StatusResponse.java`）；6E 视距 G36 + 休眠 G37（`Player.java`、`Entity.java`，同一人）；6F 翻译键门禁 G38（CI）；6G 恢复演练 G32（运维） | 各 REQ 场景全绿；两分片来回转服 100 次（P10）绿；恢复演练一次并记录耗时；§23 R4 进入门槛满足 | 17～20.5（G28 前半 2～3 已移到 3D） |
 | 条件 | `REQ-PROD-042`（G39） | — | 触发条件成立时另立波次 | 2 |
 
-合计：第 0～5 波 93～123.5 人日（清单 G01～G27 的 88～117，加上移入的 G40 0.5、G33 0.5～1、G32 前半 1，以及从 M3 划过来的分格 3～4），第 6 波 19～23.5 人日，条件项 2 人日。
+合计：第 0～5 波 95～126.5 人日（清单 G01～G27 的 88～117，加上移入的 G40 0.5、G33 0.5～1、G32 前半 1、G28 前半 2～3，以及从 M3 划过来的分格 3～4），第 6 波 17～20.5 人日，条件项 2 人日。
 
 改同一批文件、不宜并行的组（合并顺序即上表）：
 
@@ -1889,8 +1949,9 @@ flowchart LR
 | `HandshakeListener.java` | 1A（L1 / L2）、2A（transfer 意图鉴权）、2B（删 Velocity / Bungee 分支）、6A（G28） | 按波次串行 |
 | `LoginListener.java` | 2A（G01、G06、G07）、2B | 2A → 2B |
 | `ConnectionManager.java` | 1A（L3 席位、L4）、2A（G07 同分片踢旧后等旧 `Player` 移除）、3A（G04 停机）、4B（G08 预登录判定） | 按波次串行 |
-| `server-app/.../AdmissionGate.java` | 3A（载入插在 `handshake.await` 与 `provider.admit` 之间）、4B（`AdmissionRequest` 加组件的调用点） | 按波次串行 |
+| `server-app/.../AdmissionGate.java` | 3A（载入插在 `handshake.await` 与 `provider.admit` 之间）、3D（验票插在载入之前）、4B（`AdmissionRequest` 加组件的调用点） | 3A → 3D → 4B |
 | `ServerProcessImpl.java` | 0B（G12）、3A（G04）、5D（`:104` 分格）、6C（G35 压缩阈值） | 按波次串行 |
+| `plugin-api/.../DisconnectKeys.java` | 3A（`synaxis:state-unavailable`）、3D（`synaxis:transfer-rejected`）、4B（`synaxis:banned`、`synaxis:not-whitelisted`） | 按 3A → 3D → 4B 串行，每次同步模组两份 lang |
 | `plugin-api/.../PluginContext.java` | 3A（`playerData`、`lifecycle`）、4A～4C（`permissions`、`moderation`、`commands`）、5B（`tabList`，G24）、5C（`entities`，G20）、6A（`transfers`） | 每次加方法单独一个提交，ABI 门逐次过 |
 
 ## 27. 上线后度量与复盘
@@ -1916,7 +1977,7 @@ N/A — 本分册尚未开工。R2 封闭内测稳定运行 7 天后按 §3 三�
 | Q9 / D12 | 数据库故障时在线玩家 | 按默认值定 | 10 s 冻结、30 s 踢出 | 运营宁可无上界丢进度也不踢人时改为只冻结，代价是分区时两边各玩各的、一边进度被 fencing 丢掉 · §11.2 |
 | Q10 | 新增依赖 | 按默认值定 | 接受 pgjdbc、HikariCP、Flyway、Jedis、Micrometer + Prometheus；G29 的 WebSocket 库做 G29 时再定 | 项目要求零新依赖时 G16 改 JDK `HttpServer` 手写文本格式，约多 1 人日 · §17 |
 | Q11 / ops #10 | 压测机器 | 按默认值定 | 服务端与机器人各一台 ≥ 8 核 / 16 GiB，千兆内网 | 只有本机时 500 人档只跑 A～C，D～G 等第二台机器 · `REQ-PROD-029` |
-| Q12 | G28 Transfer 排期 | 按默认值定 | 正式运营前（第 6 波） | 内测开两个及以上大区时提前到内测前，工作量 +3.5～5 人日 · §26 |
+| Q12 | G28 Transfer 排期 | 按默认值定 | 票据签发与验票在第 3 波 3D（M3-E 的转服依赖它）；插件面 `Transfers` 与 P10 在正式运营前（第 6 波） | 内测开两个及以上大区时 6A 提前到内测前，工作量 +1.5～2 人日（3.5～5 减去已在 3D 的 2～3，本分册估） · §26 |
 | auth ② / D7 | 在线模式重复登录 | 按默认值定 | 踢旧会话、放新连接；跨分片顶号 | 持久化侧做不到「旧会话先保存释放、新会话再载入」，或运营认定顶号是安全风险时改拒新 · `ADR-PROD-010` |
 | auth ③ | 转服冷却 | 按默认值定 | 每玩家 5 s | Mojang 客户端 join 限额被证实不是 6 次 / 30 s 时重算 · `API-PROD-021` |
 | auth ⑤ | CFB8 实现 | 按默认值定 | JDK 自带 | 生产机型上加密占用 > 1 个核的 10% · `ADR-PROD-011` |
@@ -1991,13 +2052,15 @@ N/A — 本分册尚未开工。R2 封闭内测稳定运行 7 天后按 §3 三�
 | `docs/DESIGN-M3.md` | §7 ER 的 `STATE_LEASE` 实体与「`STATE_LEASE` 与玩家状态同一行（`player_state` 表）」一句；§9 `player_state.*` 各行（`version`、`lease_owner`、`lease_expires_at`、`payload`） | 删去，改为引用本分册 §7 `ENT-CharacterLease` 与 §9 | M3 会话 |
 | `docs/DESIGN-M3.md` | §10 行级可见性的 `API-M3-012` 行（`lease_owner = 本分片`） | 删去，改为引用本分册 §10 `API-PROD-005` 行（写入条件是 `lease_session_id = 本会话`） | M3 会话 |
 | `docs/DESIGN-M3.md` | §14 `synaxis:state-unavailable` 行的语义「租约被另一分片持有且未过期」 | 改为引用本分册 §14：在线模式下被活会话持有时先顶号，5 s 内拿不到才回这个键；另有载入失败、会话隔离两种来源 | M3 会话 |
-| `docs/DESIGN-M3.md` | `API-M3-011` 检查 ①（频道容量）、§11.3 `issued → rejected` 的 `capacity` 分支、§12 时序里「检查频道容量」一步、§9 `reject_reason` 的 `shard-full` 值、§14 `synaxis:shard-full` 行、§19 断言 `EVT:transfer_rejected` `reason=shard-full` 的那条场景（断线键仍是 `synaxis:shard-full`、`ShardService#transfer` 不选满员频道的那条不受影响） | ① 由本分册 L3 取代：同一个键 `synaxis:shard-full`，判定点前移到 `LoginStart`，同样不读 Cookie、不消耗 nonce；L3 拒绝不写台账，所以 `EVT:transfer_rejected` 不再有 `reason=shard-full`，场景改为断言 `synaxis_gate_rejections_total{reason="full"}`；该键改住引擎 `DisconnectReasons`，`DisconnectKeys` 不再加它 | M3 会话 |
+| `docs/DESIGN-M3.md` | 频道容量（原 `API-M3-011` ①）、§12 时序、§14 `synaxis:shard-full` 行、§19 两条满员场景 | 由本分册 L3 取代，键 `synaxis:shard-full` 住引擎；M3 v0.4 已改完 | 已完成（M3 v0.4） |
 | `docs/DESIGN-M3.md` | §19 `REQ-M3-018` 三条场景（崩溃后接管、同时建档、「租约被他人持有时拒绝登录，S1 不受影响」） | 删去，由本分册 `REQ-PROD-004`、`REQ-PROD-005`、`REQ-PROD-007` 的场景取代。第三条与本分册在线模式跨分片顶号相反：Redis 可达时 S1 被顶掉，只有 Redis 不可达时才是「S2 `state-unavailable`、S1 不受影响」 | M3 会话 |
 | `docs/DESIGN-M3.md` | §20 `EVT:lease_takeover` 属性 `player_uuid, previous_owner` | 改为 `character_id, previous_session_id, gap_ms`（本分册 §20） | M3 会话 |
 | `docs/DESIGN-M3.md` | `RB-M3-005` 外部状态存储不可用、§17 `lease.renew` / `state.autosave` 任务行、§21 状态存储可用 SLI | `RB-M3-005` 改为引用 `RB-PROD-002`；两个任务由本分册 `shard_session.renew` / `store.autosave` 取代；SLI 引用本分册 §21 分片会话状态 | M3 会话 |
 | `docs/DESIGN-M3.md` | §15 数据增长行的 `player_state` 部分 | 改为引用本分册 §15 数据增长行（`character` + `character_section`） | M3 会话 |
-| `docs/DESIGN-M3.md` | §17 `nonce.gc`（每 10 min） | 保留，作为 `transfer_nonce` 唯一的清理任务；本分册不另设 | 不改（本分册已对齐） |
+| `docs/DESIGN-M3.md` | §17 `nonce.gc` 行、§15 数据增长行「`transfer_nonce` 由 `nonce.gc`（§17）每 10 min 删过期行」 | 删去 `nonce.gc` 行：清理改由本分册 §17 `transfer_nonce.gc`（advisory lock 互斥，不依赖 `shard_heartbeat`），这样 3D 组不依赖 M3-E；§15 那半句改指本分册 §17 | M3 会话 |
 | `docs/DESIGN-M3.md` | §25 `V1__player_state.sql`（建 `player_state`、`transfer_nonce`、`shard_heartbeat`）与回退 SQL 段落 | 整条改为引用本分册 §25 版本表：`transfer_nonce` 归 V1，`shard_heartbeat` 归 V5 且由 M3 提供脚本内容，`player_state` 不建；回退策略两边统一为 `db/rollback/*.down.sql` + CI 正反往返 + 发布先扩后缩 | M3 会话 |
-| `docs/DESIGN-M3.md` | `API-M3-011` 检查 ④、玩家 UUID「离线模式按用户名派生」一句、§17 sessionserver 行 | ④ 加「票据 `player_uuid` = 本次 Mojang 验证 UUID」；UUID 改为 Mojang 正版 UUID；sessionserver 行引用本分册 §17 | M3 会话 |
+| `docs/DESIGN-M3.md` | 玩家 UUID「离线模式按用户名派生」一句、§17 sessionserver 行 | UUID 改为 Mojang 正版 UUID；sessionserver 行引用本分册 §17（票据检查 ④ 的 UUID 一致已写进本分册 `API-PROD-028`） | M3 会话 |
+| `docs/DESIGN-M3.md` | 转服票据尚未写入的六处：§1 末段「票据布局与检查顺序该分册尚未写入，见 §28.2」；§3 转服首批区块耗时行「`API-PROD-021`，布局尚未写入，见 §28.2」；`ADR-M3-008` Decision「票据布局与检查顺序该分册尚未写入，§28.2」；§12.2 时序「StoreCookie 与 Transfer (API-PROD-021)」与「验票并获取写权 (API-PROD-004)」两步；`API-M3-010` 插件面「之后的写回、Cookie 与 `Transfer` 由生产就绪分册完成（`API-PROD-021` 与 §12.3，含每玩家转服冷却 5 s）」；§14 首段两个键「归该分册 §14」 | 票据布局、密钥、检查 ①～⑥、`transfer_nonce` 一律改指本分册 `API-PROD-028`（`issued_at` 在布局里，即 §3 耗时起点）；`ShardService#transfer` 选好频道后调宿主接口 `TransferTickets#transfer(player, targetShardId, host, port)`（`API-PROD-028`），`COOLDOWN` / `NOT_ONLINE` / `SAVE_FAILED` 三种结果由 `ShardService` 返回给插件；§12.2 两步改引 `API-PROD-028`；§14 两个键的定义见本分册 §14（`synaxis:transfer-rejected` 与 `synaxis:state-unavailable` 两行）；`EVT:transfer_rejected` 由本分册 §20 定义 | M3 会话 |
+| `docs/DESIGN-M3.md` | `API-M3-013` 存储段与 §25「`world_flag` 尚未分到版本号」、§26 M3-E 行「转服的票据与冷却在该分册第 6 波（6A）完成」、§1 关联行「`docs/DESIGN-PROD.md`（v0.3）」、§28.2 两条技术债（「生产就绪分册仍有按本文档 v0.2 引用的位置」「`world_flag` 表不在该分册 §25 的版本表里」） | `world_flag` = V6（本分册 §25，与 V5 同在 M3-E，合并顺序规则见 §25）；M3-E 依赖改为「该分册第 3 波 3D 组（`REQ-PROD-045` 转服票据）」，不再依赖 6A；关联行改 v0.5；两条技术债关闭 | M3 会话 |
 | `CLAUDE.md` | 功能开发纪律段的单一事实源表述 | 加「生产就绪分册 `docs/DESIGN-PROD.md`」 | 主会话 |
 | `docs/TEST.md` | TC-036 第 1 步期望值；§3 探针表；新增用例 | TC-036 login ID 1 改为 `EncryptionRequestPacket`；探针表注明只打 `Offline(encrypt=false)`；按 §19 场景新增 TC 并追溯到 `REQ-PROD-*` | 主会话 |

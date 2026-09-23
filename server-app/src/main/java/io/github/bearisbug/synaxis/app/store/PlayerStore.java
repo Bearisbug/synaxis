@@ -117,7 +117,11 @@ public final class PlayerStore implements ShutdownParticipant {
         // Guarded by this record: the single slot write queue
         private @Nullable Map<String, Encoded> pending;
         private boolean release;
+        // A transfer asked for and not snapshotted yet, its caller's future
+        private @Nullable CompletableFuture<SaveResult> transferAsked;
         private boolean transferring;
+        // The player logged out while its transfer was writing: the write goes on as the logout save
+        private boolean loggedOut;
         private boolean writing;
         private final List<CompletableFuture<SaveResult>> waiting = new ArrayList<>();
 
@@ -587,13 +591,17 @@ public final class PlayerStore implements ShutdownParticipant {
     public @Nullable CompletableFuture<@Nullable Handoff> transferOut(Player player) {
         final Record record = records.get(player);
         if (record == null || closing) return null;
+        final CompletableFuture<SaveResult> done = new CompletableFuture<>();
         synchronized (record) {
             if (record.state != LeaseState.ONLINE) return null;
             record.state = LeaseState.SAVING;
+            record.transferAsked = done;
         }
-        final CompletableFuture<SaveResult> done = new CompletableFuture<>();
         player.scheduler().scheduleNextTick(() -> {
             synchronized (record) {
+                // Logged out before this tick: the logout save took the snapshot instead
+                if (record.transferAsked == null) return;
+                record.transferAsked = null;
                 record.transferring = true;
             }
             submit(record, snapshot(record), true, done);
@@ -673,11 +681,14 @@ public final class PlayerStore implements ShutdownParticipant {
             final SaveResult result = write(record, snapshot, release);
             if (transfer && result == SaveResult.UNAVAILABLE) {
                 // saving → online: a transfer gets one attempt, the player stays and the snapshot
-                // waits for the next save as an ordinary one
+                // waits for the next save as an ordinary one. A player that logged out meanwhile
+                // stays in saving: the snapshot is retried as its logout save
                 synchronized (record) {
                     record.transferring = false;
-                    record.release = false;
-                    record.state = LeaseState.ONLINE;
+                    if (!record.loggedOut) {
+                        record.release = false;
+                        record.state = LeaseState.ONLINE;
+                    }
                 }
                 for (CompletableFuture<SaveResult> future : waiting) future.complete(result);
             } else if (result != SaveResult.UNAVAILABLE || !release) {
@@ -693,12 +704,16 @@ public final class PlayerStore implements ShutdownParticipant {
                 case SAVED -> {
                     failed = 0;
                     if (release && transfer) {
-                        // saving → in_transit: the lease is given back, the ticket carries the version
-                        record.state = LeaseState.IN_TRANSIT;
-                        redis.presence(record.account, sessionId(), "in_transit");
+                        final boolean left;
                         synchronized (record) {
                             record.writing = false;
+                            left = record.loggedOut;
+                            // saving → in_transit: the lease is given back, the ticket carries the version
+                            if (!left) record.state = LeaseState.IN_TRANSIT;
                         }
+                        // saving → offline: the player logged out while the write was under way
+                        if (left) finished(record, LeaseState.OFFLINE);
+                        else redis.presence(record.account, sessionId(), "in_transit");
                         return;
                     }
                     if (release) {
@@ -818,25 +833,50 @@ public final class PlayerStore implements ShutdownParticipant {
         }
     }
 
-    /** Logout: {@code online → saving}, write the dirty sections and give the lease back. */
+    /**
+     * Logout: {@code online → saving}, write the dirty sections and give the lease back. A transfer
+     * still writing becomes the logout save: its write failing is retried as one, its write
+     * succeeding ends in {@code offline}.
+     */
     private void loggedOut(Player player) {
         final Record record = records.get(player);
         if (record == null) return;
-        switch (record.state) {
-            case LOADING -> abandon(player);
-            case ONLINE -> {
-                record.state = LeaseState.SAVING;
-                submit(record, snapshot(record), true, null);
-            }
-            case IN_TRANSIT -> {
-                // Written and released before the ticket was sent; the presence runs out on its own
-                records.remove(player, record);
-                record.gone.complete(null);
-            }
-            default -> {
-                // Saving already (shutdown, a previous logout), or no longer this shard's
+        if (record.state == LeaseState.LOADING) {
+            abandon(player);
+            return;
+        }
+        final CompletableFuture<SaveResult> droppedTransfer;
+        synchronized (record) {
+            switch (record.state) {
+                case ONLINE -> {
+                    record.state = LeaseState.SAVING;
+                    submit(record, snapshot(record), true, null);
+                    return;
+                }
+                case IN_TRANSIT -> {
+                    // Written and released before the ticket was sent; the presence runs out on its own
+                    records.remove(player, record);
+                    record.gone.complete(null);
+                    return;
+                }
+                case SAVING -> {
+                    if (record.transferring) {
+                        record.loggedOut = true;
+                        return;
+                    }
+                    // Saving already (shutdown, a previous logout) unless a transfer is not snapshotted yet
+                    droppedTransfer = record.transferAsked;
+                    if (droppedTransfer == null) return;
+                    record.transferAsked = null;
+                    submit(record, snapshot(record), true, null);
+                }
+                default -> {
+                    // No longer this shard's
+                    return;
+                }
             }
         }
+        droppedTransfer.complete(SaveResult.UNAVAILABLE);
     }
 
     /**

@@ -74,3 +74,14 @@ tasks.named<JavaExec>("run") {
     // command is run.
     workingDir = layout.settingsDirectory.asFile
 }
+
+// The store tests find synaxis-pg and synaxis-valkey through these (docs/TEST.md): a run without
+// them skips what a run with them executes, so they are inputs of the test results. Only whether
+// the password is set goes in, an input's value is kept in Gradle's task history.
+tasks.named<Test>("test") {
+    for (name in listOf("SYNAXIS_TEST_PG_URL", "SYNAXIS_TEST_PG_USER", "SYNAXIS_TEST_REDIS_URL")) {
+        inputs.property(name, providers.environmentVariable(name).orElse(""))
+    }
+    inputs.property("SYNAXIS_TEST_PG_PASSWORD set",
+        providers.environmentVariable("SYNAXIS_TEST_PG_PASSWORD").map { true }.orElse(false))
+}

@@ -615,6 +615,138 @@ class PlayerStoreIntegrationTest {
         }, "the autosave comes round to the player after its failed transfer");
     }
 
+    /**
+     * A backend whose next write, once armed, waits inside until the test lets it go, then fails
+     * or goes through.
+     */
+    private StoreBackend holding(AtomicBoolean holdNext, CountDownLatch writeInside, CountDownLatch letGo,
+                                 AtomicBoolean failHeld) {
+        final PostgresBackend postgres = new PostgresBackend(pool.pool());
+        return new StoreBackend() {
+            @Override
+            public LoadOutcome load(UUID account, String name, long sessionId) throws SQLException {
+                return postgres.load(account, name, sessionId);
+            }
+
+            @Override
+            public void write(long sessionId, List<Write> writes) throws FencedException, SQLException {
+                if (holdNext.getAndSet(false)) {
+                    writeInside.countDown();
+                    try {
+                        letGo.await();
+                    } catch (InterruptedException e) {
+                        throw new AssertionError(e);
+                    }
+                    if (failHeld.get()) throw new SQLException("the test's database hiccup");
+                }
+                postgres.write(sessionId, writes);
+            }
+
+            @Override
+            public void release(long characterId, long sessionId) throws SQLException {
+                postgres.release(characterId, sessionId);
+            }
+
+            @Override
+            public void releaseAccount(UUID account, long sessionId) throws SQLException {
+                postgres.releaseAccount(account, sessionId);
+            }
+        };
+    }
+
+    /** The player left this shard: no record, the lease back, and it can log in here again. */
+    private void assertLetGo(Env env, StoreFixture.Shard shard, UUID account, String name, int coins) {
+        await(env, () -> {
+            try {
+                final StoreFixture.Row row = row(database, account);
+                return shard.store().loadedCount() == 0 && row != null && row.lease() == null;
+            } catch (SQLException e) {
+                throw new AssertionError(e);
+            }
+        }, "the record goes and the lease is given back");
+        try {
+            assertEquals("{\"note\": \"\", \"coins\": " + coins + "}", row(database, account).purse(),
+                    "the snapshot taken for the transfer is written");
+        } catch (SQLException e) {
+            throw new AssertionError(e);
+        }
+        final Player again = connect(env.process(), account, name);
+        assertTrue(shard.store().load(again), "the account logs in on this shard again");
+        assertEquals(coins, shard.store().get(again, PURSE).coins);
+    }
+
+    @Test
+    void aTransferWhoseWriteFailsAfterTheLogoutIsRetriedAsTheLogoutSave(Env env) throws Exception {
+        final AtomicBoolean holdNext = new AtomicBoolean();
+        final CountDownLatch writeInside = new CountDownLatch(1);
+        final CountDownLatch letGo = new CountDownLatch(1);
+        final StoreFixture.Shard shard = StoreFixture.shard(env, pool, "r1-c1", false, RedisLink.disabled("r1-c1"),
+                StoreFixture.FAST, StoreFixture.MANUAL, holding(holdNext, writeInside, letGo, new AtomicBoolean(true)));
+        shards.add(shard);
+        final Instance instance = env.createFlatInstance();
+        final UUID account = UUID.randomUUID();
+        final Player mover = online(env, shard, instance, account, "Mover");
+        shard.store().get(mover, PURSE).coins = 7;
+        shard.store().markDirty(mover, PURSE);
+
+        holdNext.set(true);
+        final CompletableFuture<PlayerStore.Handoff> handoff = shard.store().transferOut(mover);
+        assertNotNull(handoff);
+        await(env, () -> writeInside.getCount() == 0, "the transfer's write is under way");
+        mover.kick(Component.text("gone"));
+        for (int i = 0; i < 5; i++) env.tick();
+        letGo.countDown();
+        await(env, handoff::isDone, "the transfer's write fails");
+        assertNull(handoff.join(), "no ticket for a write that failed");
+
+        assertLetGo(env, shard, account, "Mover", 7);
+    }
+
+    @Test
+    void aTransferWhoseWriteSucceedsAfterTheLogoutEndsOffline(Env env) throws Exception {
+        final AtomicBoolean holdNext = new AtomicBoolean();
+        final CountDownLatch writeInside = new CountDownLatch(1);
+        final CountDownLatch letGo = new CountDownLatch(1);
+        final StoreFixture.Shard shard = StoreFixture.shard(env, pool, "r1-c1", false, RedisLink.disabled("r1-c1"),
+                StoreFixture.FAST, StoreFixture.MANUAL, holding(holdNext, writeInside, letGo, new AtomicBoolean()));
+        shards.add(shard);
+        final Instance instance = env.createFlatInstance();
+        final UUID account = UUID.randomUUID();
+        final Player mover = online(env, shard, instance, account, "Mover");
+        shard.store().get(mover, PURSE).coins = 8;
+        shard.store().markDirty(mover, PURSE);
+
+        holdNext.set(true);
+        final CompletableFuture<PlayerStore.Handoff> handoff = shard.store().transferOut(mover);
+        assertNotNull(handoff);
+        await(env, () -> writeInside.getCount() == 0, "the transfer's write is under way");
+        mover.kick(Component.text("gone"));
+        for (int i = 0; i < 5; i++) env.tick();
+        letGo.countDown();
+        await(env, handoff::isDone, "the transfer's write goes through");
+
+        assertLetGo(env, shard, account, "Mover", 8);
+    }
+
+    @Test
+    void aLogoutBeforeTheTransferSnapshotsSavesAsTheLogout(Env env) throws Exception {
+        final StoreFixture.Shard shard = shard(env, "r1-c1");
+        final Instance instance = env.createFlatInstance();
+        final UUID account = UUID.randomUUID();
+        final Player mover = online(env, shard, instance, account, "Mover");
+        shard.store().get(mover, PURSE).coins = 6;
+        shard.store().markDirty(mover, PURSE);
+
+        final CompletableFuture<PlayerStore.Handoff> handoff = shard.store().transferOut(mover);
+        assertNotNull(handoff);
+        // Gone before the tick that would take the transfer's snapshot
+        mover.remove();
+        await(env, handoff::isDone, "the transfer is dropped");
+        assertNull(handoff.join(), "no ticket for a player that left");
+
+        assertLetGo(env, shard, account, "Mover", 6);
+    }
+
     private static void sleep(long millis) {
         try {
             Thread.sleep(millis);

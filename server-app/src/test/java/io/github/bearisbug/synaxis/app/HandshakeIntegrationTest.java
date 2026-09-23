@@ -29,6 +29,7 @@ import io.github.bearisbug.synaxis.testing.EnvTest;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.TranslatableComponent;
 import org.jetbrains.annotations.Nullable;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -91,6 +92,17 @@ class HandshakeIntegrationTest {
 
     /** The ledger of {@link #host}, started so that {@link #onlyLedgerLine} can drain it to disk. */
     private @Nullable EventLedger ledger;
+
+    /**
+     * Stops the writer thread of the ledger before JUnit deletes {@link #workingDirectory}. Left
+     * running, it creates {@code logs/} and the day's file whenever it gets round to the first line,
+     * which on a loaded run can be after the test has returned: into the middle of the deletion
+     * ({@code DirectoryNotEmptyException}) or after it (the temp directory comes back).
+     */
+    @AfterEach
+    void closeLedger() {
+        if (ledger != null) ledger.close();
+    }
 
     /**
      * A connection in the configuration phase that keeps what was written to it, and optionally

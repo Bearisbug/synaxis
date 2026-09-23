@@ -1,0 +1,19 @@
+{
+	"schemaVersion": 1,
+	"id": "synaxis-gametest",
+	"version": "0.1.0",
+	"name": "Synaxis client gametests",
+	"environment": "client",
+	"entrypoints": {
+		"fabric-client-gametest": [
+			"io.github.bearisbug.synaxis.game.client.gametest.SpikeClientGameTest"
+		]
+	},
+	"mixins": [
+		"synaxis-gametest.mixins.json"
+	],
+	"depends": {
+		"synaxis": "*",
+		"fabric-client-gametest-api-v1": "*"
+	}
+}

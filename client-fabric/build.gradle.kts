@@ -32,7 +32,10 @@ dependencies {
     // file Fabric publishes for that era; Loom still wants something in the `mappings` configuration.
     minecraft("com.mojang:minecraft:$minecraftVersion")
     mappings("net.fabricmc:intermediary:0.0.0:v2")
-    implementation("net.fabricmc:fabric-loader:$loaderVersion")
+    // `mod*`, not plain `implementation`: with a `mappings` entry Loom only reads the loader's
+    // fabric-installer.json from the mod configurations, and that file is what puts ASM and Mixin on
+    // the runtime classpath. Without it a launched client dies with "ASM not detected on the classpath".
+    modImplementation("net.fabricmc:fabric-loader:$loaderVersion")
     implementation("net.fabricmc.fabric-api:fabric-api:$fabricApiVersion")
 
     // One codec for both ends (§24). `include` nests it in the mod jar, so the mod ships the very
@@ -47,6 +50,55 @@ dependencies {
 
 java {
     toolchain.languageVersion = JavaLanguageVersion.of(25)
+}
+
+// The real client, driven through Fabric's client gametest API (docs/research/client-spikes-2026-09).
+// It needs a display, so it runs in the headless container of gametest-env/, never on a desktop:
+// Minecraft grabs the mouse once a world is open. `./gradlew runClientGameTest` inside that
+// container; SYNAXIS_GAMETEST_SERVER=<host:port> points it at a running server-app.
+fabricApi {
+    configureTests {
+        createSourceSet = true
+        modId = "synaxis-gametest"
+        enableGameTests = false
+        enableClientGameTests = true
+        eula = false
+    }
+}
+
+// The gametests load the mod jar players get, from the run directory's mods/, instead of the dev
+// classes: only that jar nests :protocol, and whether Fabric Loader accepts the nested jar is what
+// spike S0 has to see.
+tasks.named<JavaExec>("runClientGameTest") {
+    val modJar = tasks.named<AbstractArchiveTask>("remapJar").flatMap { it.archiveFile }
+    val devMod = sourceSets.main.get().output
+    val protocolJar = "protocol-$protocolVersion.jar"
+    inputs.file(modJar)
+    // A new collection over the same sources: filtering `classpath` itself would feed it into itself.
+    val loomClasspath = files((classpath as ConfigurableFileCollection).from.toList())
+    classpath = loomClasspath.filter { it !in devMod.files && it.name != protocolJar }
+    // Loom keeps the run directory to itself; `workingDir` here would be the project directory.
+    val mods = layout.buildDirectory.dir("run/clientGameTest/mods")
+    doFirst {
+        val jar = modJar.get().asFile
+        jar.copyTo(mods.get().asFile.resolve(jar.name), overwrite = true)
+    }
+}
+
+// The same gametests through Loom's production launcher, the way players start the game: remapJar
+// plus Fabric API from mods/, no dev classpath at all.
+val gametestJar = tasks.register<Jar>("gametestJar") {
+    archiveClassifier = "gametest"
+    from(sourceSets["gametest"].output)
+}
+dependencies {
+    // Loom's production run takes remapJar plus whatever is in this configuration
+    "productionRuntimeMods"("net.fabricmc.fabric-api:fabric-api:$fabricApiVersion")
+}
+tasks.register<net.fabricmc.loom.task.prod.ClientProductionRunTask>("runProductionClientGameTest") {
+    mods.from(gametestJar)
+    jvmArgs.add("-Dfabric.client.gametest")
+    runDir = layout.buildDirectory.dir("run/productionClientGameTest")
 }
 
 tasks.withType<JavaCompile>().configureEach {

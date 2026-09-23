@@ -41,8 +41,9 @@ public final class RtsClient {
      * How far a click reaches, in blocks.
      * <p>
      * Past this the units are not on screen to be clicked: the client culls a display entity at
-     * {@code view_range × 64} blocks (§15), and 4.0 is the {@code archetype_view_range} every M2
-     * archetype carries.
+     * {@code view_range × 64 × clamp(renderDistance / 8, 1, 2.5) × entityDistanceScaling} blocks
+     * from the camera (§15), and the render distance fog closes even earlier, at
+     * {@code 16 × renderDistance} blocks out horizontally — 160 at render distance 10.
      */
     public static final double REACH = 256.0;
 

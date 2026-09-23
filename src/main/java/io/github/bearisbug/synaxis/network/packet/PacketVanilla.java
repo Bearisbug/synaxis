@@ -383,6 +383,7 @@ public final class PacketVanilla {
 
     static final PacketRegistry<ServerPacket.Login> SERVER_LOGIN = registry(ConnectionState.LOGIN, PacketRegistry.ConnectionSide.SERVER,
             entry(LoginDisconnectPacket.class, LoginDisconnectPacket.SERIALIZER),
+            entry(ReservedPacket.class, ReservedPacket.SERIALIZER), // minecraft:hello, offline mode never asks for encryption
             entry(LoginSuccessPacket.class, LoginSuccessPacket.SERIALIZER),
             entry(SetCompressionPacket.class, SetCompressionPacket.SERIALIZER),
             entry(LoginPluginRequestPacket.class, LoginPluginRequestPacket.SERIALIZER),
@@ -416,6 +417,7 @@ public final class PacketVanilla {
             entry(BundlePacket.class, BundlePacket.SERIALIZER),
             entry(SpawnEntityPacket.class, SpawnEntityPacket.SERIALIZER),
             entry(EntityAnimationPacket.class, EntityAnimationPacket.SERIALIZER),
+            entry(ReservedPacket.class, ReservedPacket.SERIALIZER), // minecraft:award_stats
             entry(AcknowledgeBlockChangePacket.class, AcknowledgeBlockChangePacket.SERIALIZER),
             entry(BlockBreakAnimationPacket.class, BlockBreakAnimationPacket.SERIALIZER),
             entry(BlockEntityDataPacket.class, BlockEntityDataPacket.SERIALIZER),
@@ -438,6 +440,11 @@ public final class PacketVanilla {
             entry(CustomChatCompletionPacket.class, CustomChatCompletionPacket.SERIALIZER),
             entry(PluginMessagePacket.class, PluginMessagePacket.SERIALIZER),
             entry(DamageEventPacket.class, DamageEventPacket.SERIALIZER),
+            entry(ReservedPacket.class, ReservedPacket.SERIALIZER), // minecraft:debug_block_value
+            entry(ReservedPacket.class, ReservedPacket.SERIALIZER), // minecraft:debug_chunk_value
+            entry(ReservedPacket.class, ReservedPacket.SERIALIZER), // minecraft:debug_entity_value
+            entry(ReservedPacket.class, ReservedPacket.SERIALIZER), // minecraft:debug_event
+            entry(ReservedPacket.class, ReservedPacket.SERIALIZER), // minecraft:debug_sample
             entry(DeleteChatPacket.class, DeleteChatPacket.SERIALIZER),
             entry(DisconnectPacket.class, DisconnectPacket.SERIALIZER),
             entry(DisguisedChatPacket.class, DisguisedChatPacket.SERIALIZER),
@@ -470,6 +477,7 @@ public final class PacketVanilla {
             entry(OpenSignEditorPacket.class, OpenSignEditorPacket.SERIALIZER),
             entry(PingPacket.class, PingPacket.SERIALIZER),
             entry(PingResponsePacket.class, PingResponsePacket.SERIALIZER),
+            entry(ReservedPacket.class, ReservedPacket.SERIALIZER), // minecraft:place_ghost_recipe
             entry(PlayerAbilitiesPacket.class, PlayerAbilitiesPacket.SERIALIZER),
             entry(PlayerChatMessagePacket.class, PlayerChatMessagePacket.SERIALIZER),
             entry(EndCombatEventPacket.class, EndCombatEventPacket.SERIALIZER),
@@ -480,13 +488,18 @@ public final class PacketVanilla {
             entry(FacePlayerPacket.class, FacePlayerPacket.SERIALIZER),
             entry(PlayerPositionAndLookPacket.class, PlayerPositionAndLookPacket.SERIALIZER),
             entry(PlayerRotationPacket.class, PlayerRotationPacket.SERIALIZER),
+            entry(ReservedPacket.class, ReservedPacket.SERIALIZER), // minecraft:recipe_book_add
+            entry(ReservedPacket.class, ReservedPacket.SERIALIZER), // minecraft:recipe_book_remove
+            entry(ReservedPacket.class, ReservedPacket.SERIALIZER), // minecraft:recipe_book_settings
             entry(DestroyEntitiesPacket.class, DestroyEntitiesPacket.SERIALIZER),
             entry(RemoveEntityEffectPacket.class, RemoveEntityEffectPacket.SERIALIZER),
+            entry(ReservedPacket.class, ReservedPacket.SERIALIZER), // minecraft:reset_score
             entry(ResourcePackPopPacket.class, ResourcePackPopPacket.SERIALIZER),
             entry(ResourcePackPushPacket.class, ResourcePackPushPacket.SERIALIZER),
             entry(RespawnPacket.class, RespawnPacket.SERIALIZER),
             entry(EntityHeadLookPacket.class, EntityHeadLookPacket.SERIALIZER),
             entry(MultiBlockChangePacket.class, MultiBlockChangePacket.SERIALIZER),
+            entry(ReservedPacket.class, ReservedPacket.SERIALIZER), // minecraft:select_advancements_tab
             entry(ServerDataPacket.class, ServerDataPacket.SERIALIZER),
             entry(ActionBarPacket.class, ActionBarPacket.SERIALIZER),
             entry(WorldBorderCenterPacket.class, WorldBorderCenterPacket.SERIALIZER),
@@ -499,6 +512,7 @@ public final class PacketVanilla {
             entry(UpdateViewDistancePacket.class, UpdateViewDistancePacket.SERIALIZER),
             entry(SetCursorItemPacket.class, SetCursorItemPacket.SERIALIZER),
             entry(SpawnPositionPacket.class, SpawnPositionPacket.SERIALIZER),
+            entry(ReservedPacket.class, ReservedPacket.SERIALIZER), // minecraft:set_display_objective
             entry(EntityMetaDataPacket.class, EntityMetaDataPacket.SERIALIZER),
             entry(AttachEntityPacket.class, AttachEntityPacket.SERIALIZER),
             entry(EntityVelocityPacket.class, EntityVelocityPacket.SERIALIZER),
@@ -506,8 +520,11 @@ public final class PacketVanilla {
             entry(SetExperiencePacket.class, SetExperiencePacket.SERIALIZER),
             entry(UpdateHealthPacket.class, UpdateHealthPacket.SERIALIZER),
             entry(HeldItemChangePacket.class, HeldItemChangePacket.SERIALIZER),
+            entry(ReservedPacket.class, ReservedPacket.SERIALIZER), // minecraft:set_objective
             entry(SetPassengersPacket.class, SetPassengersPacket.SERIALIZER),
             entry(SetPlayerInventorySlotPacket.class, SetPlayerInventorySlotPacket.SERIALIZER),
+            entry(ReservedPacket.class, ReservedPacket.SERIALIZER), // minecraft:set_player_team
+            entry(ReservedPacket.class, ReservedPacket.SERIALIZER), // minecraft:set_score
             entry(UpdateSimulationDistancePacket.class, UpdateSimulationDistancePacket.SERIALIZER),
             entry(SetTitleSubTitlePacket.class, SetTitleSubTitlePacket.SERIALIZER),
             entry(SetTimePacket.class, SetTimePacket.SERIALIZER),
@@ -527,8 +544,10 @@ public final class PacketVanilla {
             entry(SetTickStatePacket.class, SetTickStatePacket.SERIALIZER),
             entry(TickStepPacket.class, TickStepPacket.SERIALIZER),
             entry(TransferPacket.class, TransferPacket.SERIALIZER),
+            entry(ReservedPacket.class, ReservedPacket.SERIALIZER), // minecraft:update_advancements
             entry(EntityAttributesPacket.class, EntityAttributesPacket.SERIALIZER),
             entry(EntityEffectPacket.class, EntityEffectPacket.SERIALIZER),
+            entry(ReservedPacket.class, ReservedPacket.SERIALIZER), // minecraft:update_recipes
             entry(TagsPacket.class, TagsPacket.SERIALIZER),
             entry(ProjectilePowerPacket.class, ProjectilePowerPacket.SERIALIZER),
             entry(CustomReportDetailsPacket.class, CustomReportDetailsPacket.SERIALIZER),

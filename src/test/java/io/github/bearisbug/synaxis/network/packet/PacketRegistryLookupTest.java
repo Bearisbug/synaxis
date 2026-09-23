@@ -4,7 +4,27 @@ import io.github.bearisbug.synaxis.network.ConnectionState;
 import io.github.bearisbug.synaxis.network.packet.client.ClientPacket;
 import io.github.bearisbug.synaxis.network.packet.client.common.ClientPluginMessagePacket;
 import io.github.bearisbug.synaxis.network.packet.client.handshake.ClientHandshakePacket;
+import io.github.bearisbug.synaxis.network.packet.server.common.CookieRequestPacket;
 import io.github.bearisbug.synaxis.network.packet.server.common.PluginMessagePacket;
+import io.github.bearisbug.synaxis.network.packet.server.common.ResourcePackPopPacket;
+import io.github.bearisbug.synaxis.network.packet.server.common.ShowDialogPacket;
+import io.github.bearisbug.synaxis.network.packet.server.common.TagsPacket;
+import io.github.bearisbug.synaxis.network.packet.server.login.LoginDisconnectPacket;
+import io.github.bearisbug.synaxis.network.packet.server.login.LoginPluginRequestPacket;
+import io.github.bearisbug.synaxis.network.packet.server.login.LoginSuccessPacket;
+import io.github.bearisbug.synaxis.network.packet.server.login.SetCompressionPacket;
+import io.github.bearisbug.synaxis.network.packet.server.play.AcknowledgeBlockChangePacket;
+import io.github.bearisbug.synaxis.network.packet.server.play.DeleteChatPacket;
+import io.github.bearisbug.synaxis.network.packet.server.play.DestroyEntitiesPacket;
+import io.github.bearisbug.synaxis.network.packet.server.play.EntityAnimationPacket;
+import io.github.bearisbug.synaxis.network.packet.server.play.EntityAttributesPacket;
+import io.github.bearisbug.synaxis.network.packet.server.play.EntityMetaDataPacket;
+import io.github.bearisbug.synaxis.network.packet.server.play.InitializeWorldBorderPacket;
+import io.github.bearisbug.synaxis.network.packet.server.play.JoinGamePacket;
+import io.github.bearisbug.synaxis.network.packet.server.play.PlayerAbilitiesPacket;
+import io.github.bearisbug.synaxis.network.packet.server.play.ServerDataPacket;
+import io.github.bearisbug.synaxis.network.packet.server.play.SetPassengersPacket;
+import io.github.bearisbug.synaxis.network.packet.server.play.UpdateSimulationDistancePacket;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
@@ -72,5 +92,42 @@ public class PacketRegistryLookupTest {
         assertEquals(ConnectionState.PLAY, serverPlay.state());
         // A server packet is unknown to the client-bound registry of the same state
         assertThrows(IllegalStateException.class, () -> clientPlay().packetInfo(PluginMessagePacket.class));
+    }
+
+    @Test
+    public void theClientBoundLoginIdsAreTheVanillaOnes() {
+        // 26.2 LoginProtocols: login_disconnect, hello, login_finished, login_compression,
+        // custom_query, cookie_request. hello is never sent in offline mode but keeps its id.
+        final var login = PacketVanilla.SERVER_PACKET_PARSER.login();
+        assertEquals(0, login.packetInfo(LoginDisconnectPacket.class).id());
+        assertEquals(2, login.packetInfo(LoginSuccessPacket.class).id());
+        assertEquals(3, login.packetInfo(SetCompressionPacket.class).id());
+        assertEquals(4, login.packetInfo(LoginPluginRequestPacket.class).id());
+        assertEquals(5, login.packetInfo(CookieRequestPacket.class).id());
+        assertThrows(IllegalStateException.class, () -> login.packetInfo(1));
+    }
+
+    @Test
+    public void theClientBoundPlayIdsAreTheVanillaOnes() {
+        // 26.2 GameProtocols has 141 clientbound play ids; the engine lacks 18 of them. Each packet
+        // right after a reserved run, and the last one, sits where the vanilla client expects it.
+        final var play = PacketVanilla.SERVER_PACKET_PARSER.play();
+        assertEquals(2, play.packetInfo(EntityAnimationPacket.class).id());
+        assertEquals(4, play.packetInfo(AcknowledgeBlockChangePacket.class).id());
+        assertEquals(31, play.packetInfo(DeleteChatPacket.class).id());
+        assertEquals(43, play.packetInfo(InitializeWorldBorderPacket.class).id());
+        assertEquals(49, play.packetInfo(JoinGamePacket.class).id());
+        assertEquals(64, play.packetInfo(PlayerAbilitiesPacket.class).id());
+        assertEquals(77, play.packetInfo(DestroyEntitiesPacket.class).id());
+        assertEquals(80, play.packetInfo(ResourcePackPopPacket.class).id());
+        assertEquals(86, play.packetInfo(ServerDataPacket.class).id());
+        assertEquals(99, play.packetInfo(EntityMetaDataPacket.class).id());
+        assertEquals(107, play.packetInfo(SetPassengersPacket.class).id());
+        assertEquals(111, play.packetInfo(UpdateSimulationDistancePacket.class).id());
+        assertEquals(131, play.packetInfo(EntityAttributesPacket.class).id());
+        assertEquals(134, play.packetInfo(TagsPacket.class).id());
+        assertEquals(140, play.packetInfo(ShowDialogPacket.class).id());
+        assertThrows(IllegalStateException.class, () -> play.packetInfo(3));
+        assertThrows(IllegalStateException.class, () -> play.packetInfo(ReservedPacket.class));
     }
 }

@@ -1,0 +1,14 @@
+{
+	"required": true,
+	"package": "io.github.bearisbug.synaxis.game.client.gametest.mixin",
+	"compatibilityLevel": "JAVA_25",
+	"client": [
+		"CameraMixin",
+		"GameRendererMixin",
+		"LevelExtractorMixin",
+		"MouseHandlerMixin"
+	],
+	"injectors": {
+		"defaultRequire": 1
+	}
+}

@@ -3,8 +3,10 @@ package io.github.bearisbug.synaxis.game.rts;
 import io.github.bearisbug.synaxis.coordinate.Pos;
 import io.github.bearisbug.synaxis.entity.Player;
 import io.github.bearisbug.synaxis.event.instance.InstanceChunkUnloadEvent;
+import io.github.bearisbug.synaxis.instance.Chunk;
 import io.github.bearisbug.synaxis.instance.InstanceContainer;
 import io.github.bearisbug.synaxis.instance.block.Block;
+import io.github.bearisbug.synaxis.instance.light.Light;
 import io.github.bearisbug.synaxis.registry.RegistryKey;
 import io.github.bearisbug.synaxis.testing.Env;
 import io.github.bearisbug.synaxis.testing.EnvTest;
@@ -81,6 +83,43 @@ class MatchIntegrationTest {
                         "column " + x + "," + z + " has nothing to stand on at its own surface height");
             }
         }
+    }
+
+    // What the first chunk packet a player receives carries: light the server computed while the map
+    // loaded. Read straight from the sections, not through Instance#getSkyLight, which would compute
+    // a stale section on demand and so pass even when the load left the light uncomputed.
+    @Test
+    void theMapIsLitBeforeTheMatchRuns(Env env) {
+        final Match match = match(env);
+        match.load(MapPreset.SMALL.id());
+
+        final NavGrid grid = match.navGrid();
+        final InstanceContainer instance = match.instance();
+        assertNotNull(grid);
+        assertNotNull(instance);
+        final int aboveEverything = MapTerrain.GROUND_HEIGHT + MapTerrain.OBSTACLE_HEIGHT + 1;
+        for (int x = 0; x < MapPreset.SMALL.sizeX(); x += 7) {
+            for (int z = 0; z < MapPreset.SMALL.sizeZ(); z += 5) {
+                final String column = "column " + x + "," + z;
+                assertEquals(15, computedSkyLight(instance, x, aboveEverything, z),
+                        column + ": the open air above the map is not lit by the sky");
+                if (grid.isWalkable(x, z)) {
+                    assertEquals(15, computedSkyLight(instance, x, MapTerrain.GROUND_HEIGHT, z),
+                            column + ": the air a unit stands in is not lit by the sky");
+                }
+                assertEquals(0, computedSkyLight(instance, x, MapTerrain.GROUND_HEIGHT - 2, z),
+                        column + ": sky light leaked into the stone under the surface");
+            }
+        }
+    }
+
+    private static int computedSkyLight(InstanceContainer instance, int x, int y, int z) {
+        final Chunk chunk = instance.getChunkAt(x, z);
+        assertNotNull(chunk);
+        final Light light = chunk.getSectionAt(y).skyLight();
+        assertFalse(light.requiresUpdate(), "the section holding " + x + "," + y + "," + z
+                + " is still waiting for its light, which would be computed only when it is sent");
+        return light.getLevel(x & 15, y & 15, z & 15);
     }
 
     // The map of the game, not the small one the rest of these tests use: 512x512 in 1,024 chunks,

@@ -8,12 +8,14 @@
 | Owner | Bearisbug |
 | 关联设计文档 | `docs/DESIGN.md`（引擎域 M1 / M1.5）与 `docs/DESIGN-M2.md`（游戏域 M2 分册）；两份文档的 REQ 各自编号，M2 侧一律写作 `REQ-M2-*` |
 | 被测系统 | 仓库 `Bearisbug/synaxis`，分支 `main` |
-| 最后更新 | 2026-09-22 |
+| 最后更新 | 2026-09-23 |
 
 变更记录（登用例增改，不登执行轮次）：
 
 | 日期 | 改动 | 作者 |
 | --- | --- | --- |
+| 2026-09-23 | 跟进 `docs/DESIGN-M2.md` v0.44（对局世界由服务端在载入阶段整图算光照）。**`TC-GAME-029` 保留 ID**：第 2 步的实测参考值换成含光照的 2026-09-23 数字（判据 `load_ms` < 3000、`heap_gc_runs` ≥ 2、`heap_delta_kib` 在 `0` 与 `51200` 之间不变）；新增第 10 步「进场即有光照」（`MatchIntegrationTest#theMapIsLitBeforeTheMatchRuns`）与第 11 步反证（chunk supplier 改回 `DynamicChunk` 则第 10 步必红）。§5 跨域牵连补一条：动了对局的 chunk supplier、载入流程或引擎 `LightingChunk` / `instance.light` → 加 TC-GAME-029 | Bearisbug |
+| 2026-09-23 | 跟进 `docs/DESIGN.md` v0.33 与 `docs/DESIGN-M2.md` v0.43。**新增 `TC-036`**（对应 `REQ-005`）：`PacketVanillaIdTest` 把 26.2 原版 login、configuration、play 两个方向六张表的包 ID 钉死，一步绿、一步反证（删掉 `award_stats` 的占位即红）、一步还原；§2 补一条「包 ID 口径」，说明探针与压测 harness 的包 ID 来自本仓库注册表、不能证明与原版一致；§5 引擎域「删除与注册表」加 TC-036，跨域牵连加「动了包注册表」一条。**`TC-GAME-052` 保留 ID**：第 2 步当前值 4.0 → 5.0；第 7 步的公式补上 `clamp(rd / 8, 1, 2.5)`，判据由「≥ 97 格」改为「盖住渲染距离雾界」（rd 8 为 160 格、覆盖到眼高 96，rd 10 为 200 格、覆盖到眼高 120）。`TC-GAME-047` 第 4 步的 4.0 随之改 5.0 | Bearisbug |
 | 2026-09-22 | 跟进 `docs/DESIGN-M2.md` v0.41（§15 整表阈值的正式测量，报告 `docs/research/soak-2026-09-22/report.md`）。**`TC-GAME-068` 保留 ID，操作列一字未改**：第 2、3 步的实测参考值从「待 v0.41 填」换成 2026-09-22 的实测，数字全部可从 `docs/research/soak-2026-09-22/runs/<档名>/summary.json` 复算——第 2 步四条预算里 tick、堆、寻路三条绿，`S2C_UNIT_STATE` 那条三个字段红（最坏布局把兴趣集顶到 512 条上限）；第 3 步三档 tick P99 8.617 → 9.698 → 11.096、至 4,000 未越线。第 2 步期望列的 `orders.answered = orders.sent` 补上口径：harness 到截止时刻即关连接，最后一秒内发出的下令收不到回包，差 ≤ 50 条不算红（实测差 3 条）。第 5、6 步的反证在正式测量那一轮重跑，参考值补上（`check=mismatch`、退出码 2）。§2 不测表、REQ ↔ TC 表与 §5 回归映射不动——`TC-GAME-068` 自 v0.39 起已登记在三处 | Bearisbug |
 | 2026-09-22 | 跟进 `docs/DESIGN.md` v0.32 与 `docs/DESIGN-M2.md` v0.40（攻击面盘点，`docs/research/attack-surface-2026-09/README.md`）。**§2 不测表**那行「安全渗透（畸形包模糊测试之外的攻击面）——无归属」改为指向盘点与本轮用例。**新增三条**：`TC-GAME-069`（慢读对端：断开后 channel 必须关，JUnit 先红后绿，探针新子命令 `slow-reader` 在核心模式实跑）、`TC-GAME-070`（离线 UUID 由服务端按用户名派生，对端自选的 UUID 不采信，先红后绿）、`TC-GAME-071`（压缩帧的两道上限与 keep-alive 空闲上界，一步反证三处有齿）。**§3 探针表**新增 `slow-reader` 一行。§5 引擎域回归映射的「协议」一档补上三条 ID。没有废弃用例；§2 的 REQ ↔ TC 表是 M2 侧的手工表，本轮三条对应的都是引擎域 REQ，由机械联检覆盖，表未动 | Bearisbug |
 | 2026-09-22 | 跟进 `docs/DESIGN-M2.md` v0.39（§15「50 玩家、单局、全服 1,000 单位」这一档的测量手段）。**新增 `TC-GAME-068`**（对应 `REQ-M2-016`、`REQ-M2-017`、`REQ-M2-009`）：步骤就是 `docs/research/soak-2026-09-22/README.md` 的命令（`-Dsynaxis.app.units=1000` 起服、`soak.py play` 跑门禁档与 50 × {1,000, 2,000, 4,000} 规模曲线），期望列是 §15 的四条数字，实测参考值一列留给测量那一轮（待 v0.41 填）；三步反证今天都跑过——`synaxis.app.units=3` 与 `=abc` 各起一次服都拒启（红在 `Plugin failed to enable` 的 ERROR 与 `GRADLE_EXIT` 非 0），`--units 900` 对着 1,000 单位的服务端跑出 `units.check=mismatch`，服务端停掉后 harness 退出码 2。**§2**：不测表里「50 连接 + 1,000 单位的全量压测」那一行改成只剩客户端 ≥ 60 FPS 无归属，其余四条指向本用例与 harness；REQ ↔ TC 表的 `REQ-M2-009` / `REQ-M2-016` / `REQ-M2-017` 三行各加 `TC-GAME-068`。**§3**：系统属性段新增 `synaxis.app.units`，种子段的「固定 67 个、没有开关」改成「默认 67、总数由 `synaxis.app.units` 定」并补 1,000 单位时的编号与实测，harness 段补 `play` 子命令。**§5** 单位与寻路一组加 `TC-GAME-068`。没有废弃用例 | Bearisbug |
@@ -77,6 +79,7 @@
 - 覆盖（引擎域 · M1 / M1.5）：里程碑 M1 的 12 条需求的黑盒与半黑盒验收——构建产物与仓库元数据（命令、退出码、文件）、Minecraft 协议行为（裸 socket 与原版客户端可观察的包与断线原因）、文档与合规文件。
 - 覆盖（游戏域 · M2）：`docs/DESIGN-M2.md` 的 `REQ-M2-001`～`REQ-M2-025` 的黑盒与半黑盒验收——工程门禁的可观察结论（模块树、构建红绿、CI 结论）、插件宿主的生命周期与隔离行为（启停日志、退出码、回调有无、事件 JSONL）、自定义负载协议行为（探针可见的消息、结果码与断线原因键）、程序化地图生成与对局生命周期、单位 / 寻路 / 镜头的服务端权威行为，以及客户端模组的安装与 RTS 切片的端到端人工验收。
 - Gherkin 覆盖口径：`docs/DESIGN-M2.md` §19 的 48 个 Gherkin 场景**全部**由本文档的 TC 可操作化，没有转交自动化测试的场景；逐条对照见下方 REQ ↔ TC 表与各用例标题行。
+- 包 ID 口径：协议探针 `tools/protocol-probe/probe.py` 与压测 harness `tools/loadtest/PacketFlood.java` 的包 ID 都是解析本仓库 `PacketVanilla.java` 得到的，编码端与解码端用同一张表，表错了也照样自洽地通过，所以**以探针或压测为判据的用例不能证明包 ID 与原版一致**。与 26.2 原版一致由 TC-036 的整表测试判（REQ-005 删包打乱 ID 的那次缺陷就是这样漏过去的，见 `docs/DESIGN.md` §28）。
 - 机械校验口径：`bash ~/.claude/skills/test-doc/check.sh docs/TEST.md` 做 REQ 双向联检——本文档引用的每条 REQ 必须在某一份设计文档里存在，每份设计文档的每条 REQ 必须被至少一条 TC 引用。**两份设计文档一起联检**：`check.sh` 把上方元信息「关联设计文档」行里的**每一个** `*.md` 都解析出来，`REQ-001`～`REQ-017` 与 `REQ-M2-001`～`REQ-M2-025` 都在范围内。两处不能动，动了绿灯就不再代表已核：① ID 正则的域段是 `[A-Z][A-Z0-9]*`，收窄成纯字母会让带数字的 `M2` 域段整块静默退出联检；② 元信息那一行必须保留两份文档的路径，只留一份则另一份的 REQ 无人认领。下表因此不是唯一判据，留作可读索引——查一条 REQ 由哪些 TC 覆盖、哪些 TC 已废弃及原因。
 
 REQ-M2 ↔ TC 对照（可读索引，覆盖与否由上述联检判）：
@@ -359,6 +362,18 @@ REQ-M2 ↔ TC 对照（可读索引，覆盖与否由上述联检判）：
 | 5 | `./gradlew check --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts` | `BUILD SUCCESSFUL` |
 
 后置：无。
+
+#### `TC-036` 包 ID 与 26.2 原版逐个一致，删掉的包留着空位 — 对应 `REQ-005` · 级别: 回归 · 执行者: AI
+
+前置：无。这是一条单元测试，不起进程，也不读 26.2 客户端 jar——六张原版表是 `PacketVanillaIdTest` 里的常量（每行一个 ID、原版资源名与引擎的包类，引擎没有的包写 `RESERVED`），出处写在该类的注释里。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | `./gradlew :test --tests 'io.github.bearisbug.synaxis.network.packet.PacketVanillaIdTest' --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts` | `BUILD SUCCESSFUL`；`build/test-results/test/TEST-io.github.bearisbug.synaxis.network.packet.PacketVanillaIdTest.xml` 的 `testsuite` 行是 `tests="6" skipped="0" failures="0" errors="0"`。六个方法各判一张表：clientbound login 6 个 ID、configuration 20 个、play 141 个，serverbound login 5 个、configuration 10 个、play 69 个 |
+| 2 | 反证：删掉 `src/main/java/io/github/bearisbug/synaxis/network/packet/PacketVanilla.java` 里 `SERVER_PLAY` 的第一个 `ReservedPacket` 占位（行尾注释 `// minecraft:award_stats` 那一行），重跑第 1 步 | `BUILD FAILED`，`6 tests completed, 1 failed`，失败的是 `theClientboundPlayIdsAreTheVanillaOnes`；XML 里第一条失败信息是 `SERVER_PLAY id 3 minecraft:award_stats is a packet the engine does not have, its slot must stay reserved`，其后从 `id 4 minecraft:block_changed_ack` 起每个包都报 `is not where ... sits` |
+| 3 | `git checkout -- src/main/java/io/github/bearisbug/synaxis/network/packet/PacketVanilla.java`，重跑第 1 步 | 与第 1 步相同 |
+
+后置：`git status --short src/main` 无输出。
 
 ### 命名与合规
 
@@ -1234,7 +1249,7 @@ REQ-M2 ↔ TC 对照（可读索引，覆盖与否由上述联检判）：
 | # | 操作 | 预期 |
 | --- | --- | --- |
 | 1 | 以该预设启动 `server-app` | 进入就绪；`grep match_created logs/events-*.jsonl` 与 `grep match_started logs/events-*.jsonl` **各恰有一行**（M2 单局），`match_id` 相同 |
-| 2 | 查看 `match_started` 事件的属性 | `chunk_count` 为 `1024`（全部生成完成才进 running）、`load_ms` < 3000、`heap_gc_runs` ≥ 2、`heap_delta_kib` 落在 `0` 与 `51200` 之间（2026-09-22 实测 `rts-512` 6,600 / `rts-128` 1,125）。**三条要一起看**：`heap_gc_runs` 是那两次存活堆读数触发的回收次数，为 0 时 `heap_delta_kib` 量的是分配量而不是留存量，能落在预算内却什么也证明不了 |
+| 2 | 查看 `match_started` 事件的属性 | `chunk_count` 为 `1024`（全部生成完成才进 running）、`load_ms` < 3000、`heap_gc_runs` ≥ 2、`heap_delta_kib` 落在 `0` 与 `51200` 之间（2026-09-23 实测，含整图光照：`rts-512` 的 `load_ms` 771 / 968、`heap_delta_kib` 9,320 / 9,251；`rts-128` 228 / 189、850 / 850）。**三条要一起看**：`heap_gc_runs` 是那两次存活堆读数触发的回收次数，为 0 时 `heap_delta_kib` 量的是分配量而不是留存量，能落在预算内却什么也证明不了 |
 | 3 | 跑 `./gradlew :game-rts:test --tests 'io.github.bearisbug.synaxis.game.rts.MatchIntegrationTest' --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts`（进程内没有打印 `autoChunkLoad` 的运维入口，该断言由 `theWholeMapIsGeneratedBeforeTheMatchRuns` 覆盖） | `BUILD SUCCESSFUL`；该方法断言整图区块数到齐、`hasEnabledAutoChunkLoad()` 为 `false`、实例已注册 |
 | 4 | 用探针握手登录进入 play | 进入世界并收到区块包，未出现 `synaxis:internal-error` 或 `synaxis:match-unavailable` |
 | 5 | 检查就绪日志与 `match_started` 的先后 | `match_started` 的时间戳早于就绪日志（对局在 bind 之前就已 running，见 `API-M2-010` 启动序列） |
@@ -1242,6 +1257,8 @@ REQ-M2 ↔ TC 对照（可读索引，覆盖与否由上述联检判）：
 | 7 | 就绪之后 `jcmd <pid> Thread.print \| grep -c Syn-TickScheduler` 与 `\| grep -c Syn-Tick-` | 两者都 ≥ 1（启动序列第 ⑥ 步已起 `TickSchedulerThread` 与 dispatcher 的 tick 线程） |
 | 8 | 就绪日志出现后立刻用探针连接并发 `C2S_HELLO` | 3 秒内收到 `S2C_HELLO`（configuration 阶段的入站包只在 tick 里被解释；tick 没起来这一步必然超时成 `synaxis:client-mod-required`） |
 | 9 | 全程用 `lsof -p <pid> \| grep -i 'synx\|\.map'` 或等价手段查地图文件句柄，并在停机后 `git status --porcelain` | 无任何地图文件被打开或写出（M2 不落盘，`.synx` 已推 M3，见设计文档 §28.3 第 ② 条）；工作区干净 |
+| 10 | 跑 `./gradlew :game-rts:test --tests 'io.github.bearisbug.synaxis.game.rts.MatchIntegrationTest.theMapIsLitBeforeTheMatchRuns' --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts` | `BUILD SUCCESSFUL`；该方法在 `load` 返回后直接读 section 的天光（不经会顺手补算的 `Instance#getSkyLight`），断言被读的 section 都不在待算状态、地表以上的空气为 `15`、地表下两格的石头为 `0`——即进场玩家收到的第一批区块包已带天光 |
+| 11 | 反证：把 `Match.java` 里的 `loading.setChunkSupplier(LightingChunk::new);` 改成 `loading.setChunkSupplier(DynamicChunk::new);`（补 `import io.github.bearisbug.synaxis.instance.DynamicChunk;`，删掉 `LightingChunk.relight` 那一句与已不用的 `LightingChunk` 导入），重跑第 10 步，再 `git checkout -- game-rts/src/main/java/io/github/bearisbug/synaxis/game/rts/Match.java` 复原 | 改动后第 10 步**必红**，失败信息为 `column 0,0: the open air above the map is not lit by the sky ==> expected: <15> but was: <0>`；复原后重跑为绿 |
 
 后置：`stop`。
 
@@ -1428,12 +1445,12 @@ REQ-M2 ↔ TC 对照（可读索引，覆盖与否由上述联检判）：
 | # | 操作 | 预期 |
 | --- | --- | --- |
 | 1 | `./gradlew :game-rts:test --tests 'io.github.bearisbug.synaxis.game.rts.UnitModelIntegrationTest' --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts` | `BUILD SUCCESSFUL`；`theDisplayEntityIsBuiltToTheFiveModellingRules` 里能点名五条断言——`hasPhysics=false`、`noGravity=true`、spawn 时 `setPosRotInterpolationDuration(2)`、`synchronizationTicks=100`、`setViewRange(archetype_view_range)` 且 `setWidth` / `setHeight` 按 `archetype_box` 为非 0 |
-| 2 | 在断言测试里查 `setViewRange` 的入参来源 | 取自该原型的 `archetype_view_range` 配置项、当前值为 `4.0`；**测试里不得出现写死的 `1.6` 或 `4.0` 字面量与实体元数据直接比对**（写死临界数正是本用例取代 TC-GAME-037 的原因） |
+| 2 | 在断言测试里查 `setViewRange` 的入参来源 | 取自该原型的 `archetype_view_range` 配置项、当前值为 `5.0`（`Archetype.SOLDIER`）；**测试里不得出现写死的 `1.6`、`4.0` 或 `5.0` 字面量与实体元数据直接比对**（写死临界数正是本用例取代 TC-GAME-037 的原因） |
 | 3 | `grep -rn "setTransformationInterpolationDuration" game-rts/src/main/java` | 退出码 1、无输出（位置插值不得错设成变换插值） |
 | 4 | 让一个单位移动 10 秒，用探针记录它的实体位置包 | 位置包按每 2 tick 一条到达，不是每 20 tick 一次的跳变 |
 | 5 | 在同一段记录里统计周期性位置重同步包 | 约每 100 tick 一条（重同步被调大而不是关掉，保留纠正通道） |
 | 6 | 把锚点推到让该单位落在离玩家实体约 97 格处 | 探针未收到该实体的 `DestroyEntities`（服务端 `synaxis.entity-view-distance=8` 即 128 格，97 格仍在跟踪范围内）——这一步只判**服务端跟踪**这一层 |
-| 7 | 计算该原型在「实体距离」50% 档下的客户端有效剔除半径（`archetype_view_range × 64 × 0.5`） | ≥ 97 格（4.0 → 128 格，有余量）；**客户端是否真渲染由 TC-GAME-047 第 3、4 步人工判定**，探针观察不到 |
+| 7 | 计算该原型在「实体距离」50% 档下的客户端有效剔除半径 `archetype_view_range × 64 × clamp(rd / 8, 1, 2.5) × 0.5`，rd 取 8 与 10；再算相机眼高 h 时渲染距离雾界处的单位离相机多远：`√((16·rd)² + h²)` | rd 8：5.0 × 64 × 1 × 0.5 = 160 格，≥ √(128² + 96²) = 160，覆盖到眼高 96；rd 10：5.0 × 64 × 1.25 × 0.5 = 200 格，≥ √(160² + 120²) = 200，覆盖到眼高 120。S3 实测会丢单位的机位（rd 10、眼高 84）需要 ≥ √(160² + 84²) ≈ 180.7 格，200 格有余量（该机位的下限是 `view_range` ≥ 4.52）；**客户端是否真渲染由 TC-GAME-047 第 3、4 步人工判定**，探针观察不到 |
 
 后置：无。
 
@@ -1608,7 +1625,7 @@ REQ-M2 ↔ TC 对照（可读索引，覆盖与否由上述联检判）：
 | 1 | 多人游戏直连 `127.0.0.1` | 5 秒内进入对局，看到 RTS 俯视镜头与地面，屏幕上有本方单位 |
 | 2 | 把镜头锚点推到 200 格外 | 该区域的地形与单位都被渲染出来（不是空白地形、也不是「有地形没单位」） |
 | 3 | 缩放到最远（`zoom=48`） | 屏幕角落（离锚点约 97 格）的单位仍然可见，地形无大面积不渲染 |
-| 4 | 在视频设置里把「实体距离」调到 **50%**（剔除半径全局倍率的下限），回到游戏重复第 3 步 | 屏幕角落的单位**仍然**可见（`archetype_view_range=4.0` 的余量 + 模组对该倍率的覆盖，见设计文档 §15「可见范围」④⑥）；若不可见，按 `ADR-M2-013` 先查模组是否真的覆盖了该选项，再查 `archetype_view_range` |
+| 4 | 在视频设置里把「实体距离」调到 **50%**（剔除半径全局倍率的下限），回到游戏重复第 3 步 | 屏幕角落的单位**仍然**可见（两道保险：`archetype_view_range=5.0` 在 50% 档、渲染距离 10 下的剔除半径是 200 格，推算见 TC-GAME-052 第 7 步；另一道是模组对该倍率的覆盖。见设计文档 §15「可见范围」④⑥）；若不可见，按 `ADR-M2-013` 先查模组是否真的覆盖了该选项，再查 `archetype_view_range` |
 | 5 | 把镜头在出生点与 200 格外之间来回推 3 个来回 | 每次推过去那一侧的地形与单位都重新出现（区块更新限流器已关，见 TC-GAME-043 第 6 步） |
 | 6 | 左键点中一个本方单位 | 该单位出现选中框；`grep unit_selected logs/events-*.jsonl \| tail -1` 出现对应记录 |
 | 7 | 右键点 20 格外一处可站立地面 | 落点出现绿色标记；单位在 300 ms 内起步，平滑走过去（不是瞬移、不是每秒一跳），到达后停下 |
@@ -1747,9 +1764,9 @@ REQ-M2 ↔ TC 对照（可读索引，覆盖与否由上述联检判）：
 
 - **全量轮**（全部用例）：首次成稿、每个阶段 gate（引擎域阶段 0、2、3；游戏域 `docs/DESIGN-M2.md` §26 的阶段 1～6b）、跨功能域改动、地基变更（JDK、Gradle、镜像、协议版本、模块拆分、启动入口）。
 - **局部轮**（受影响用例 + 全部冒烟级）：单一需求改动。受影响用例 = 本次改动触及的 `REQ-*` / `REQ-M2-*` 所对应的 TC（M2 侧的对照表在 §2，机械校验查不到它）；无 REQ 变更的改动（纯 bug 修、重构）按触及的功能域圈定：
-  - 引擎域：构建与仓库 → TC-001、TC-002、TC-004、TC-006、TC-021、TC-029，删除与注册表 → TC-008、TC-009、TC-020，命名与合规 → TC-011、TC-028，协议 → TC-014、TC-018、TC-019、TC-026、TC-027、TC-030、TC-031、TC-032、TC-034、TC-035、TC-GAME-069、TC-GAME-070、TC-GAME-071（后三条是攻击面盘点补的，动了 `network` / `listener` 包或 `ServerConfig` 的连接与超时项就跑），卫生 → TC-015、TC-016，门面与配置 → TC-023、TC-025，分层 → TC-024、TC-035。
+  - 引擎域：构建与仓库 → TC-001、TC-002、TC-004、TC-006、TC-021、TC-029，删除与注册表 → TC-008、TC-009、TC-020、TC-036，命名与合规 → TC-011、TC-028，协议 → TC-014、TC-018、TC-019、TC-026、TC-027、TC-030、TC-031、TC-032、TC-034、TC-035、TC-GAME-069、TC-GAME-070、TC-GAME-071（后三条是攻击面盘点补的，动了 `network` / `listener` 包或 `ServerConfig` 的连接与超时项就跑），卫生 → TC-015、TC-016，门面与配置 → TC-023、TC-025，分层 → TC-024、TC-035。
   - 游戏域：模块与门禁 → TC-GAME-001～TC-GAME-006、TC-GAME-059、TC-GAME-067，插件宿主 → TC-GAME-009～TC-GAME-011、TC-GAME-014～TC-GAME-016、TC-GAME-053～TC-GAME-055（TC-GAME-007、TC-GAME-008、TC-GAME-012、TC-GAME-013 已废弃），协议与握手 → TC-GAME-017～TC-GAME-028、TC-GAME-049、TC-GAME-050、TC-GAME-060～TC-GAME-064（TC-GAME-021、TC-GAME-023、TC-GAME-025 已废弃），世界与对局 → TC-GAME-029、TC-GAME-031、TC-GAME-033～TC-GAME-036、TC-GAME-056、TC-GAME-057（TC-GAME-030、TC-GAME-032 已废弃），单位与寻路 → TC-GAME-052、TC-GAME-039～TC-GAME-042、TC-GAME-051、TC-GAME-065、TC-GAME-068，镜头 → TC-GAME-043、TC-GAME-044，客户端模组 → TC-GAME-038、TC-GAME-045～TC-GAME-047、TC-GAME-066，启动器 → TC-GAME-048、TC-GAME-049、TC-GAME-050、TC-GAME-058。
-  - 跨域牵连（必须一起跑）：动了启动入口或就绪日志 → 加 TC-GAME-048、TC-GAME-029、TC-GAME-057、TC-GAME-058 与全部以进程为前置的引擎域用例（启动序列一变，「对局在 bind 之前就绪、tick 在 bind 之后才起」这条口径就要重验）；动了握手、准入回调或探针 → 加 TC-GAME-049、TC-GAME-050、TC-GAME-060、TC-GAME-061 与 TC-004、TC-014、TC-018、TC-019、TC-020、TC-026、TC-027 七条存量 TC；动了客户端模组侧的握手或拾取 → 加 TC-GAME-066；动了 `:protocol` 消息布局 → 加 TC-GAME-017 与客户端侧同一份向量；动了引擎 `Entity` 的位置推进入口 → 加 TC-GAME-051、TC-GAME-067 与 TC-GAME-040。
+  - 跨域牵连（必须一起跑）：动了 `network/packet` 下的包注册表（增删包、调顺序、升协议版本）→ 加 TC-036；动了启动入口或就绪日志 → 加 TC-GAME-048、TC-GAME-029、TC-GAME-057、TC-GAME-058 与全部以进程为前置的引擎域用例（启动序列一变，「对局在 bind 之前就绪、tick 在 bind 之后才起」这条口径就要重验）；动了握手、准入回调或探针 → 加 TC-GAME-049、TC-GAME-050、TC-GAME-060、TC-GAME-061 与 TC-004、TC-014、TC-018、TC-019、TC-020、TC-026、TC-027 七条存量 TC；动了客户端模组侧的握手或拾取 → 加 TC-GAME-066；动了 `:protocol` 消息布局 → 加 TC-GAME-017 与客户端侧同一份向量；动了引擎 `Entity` 的位置推进入口 → 加 TC-GAME-051、TC-GAME-067 与 TC-GAME-040；动了对局的 chunk supplier、`Match#load` 的载入流程或引擎 `LightingChunk` / `instance.light` → 加 TC-GAME-029（第 10、11 步是光照的先红后绿）。
   - 影响面不确定时升级为全量轮。
 - **复测轮**（上轮失败用例 + 全部冒烟级）：修复失败项之后。
 - **人工收口轮**（仅上轮「待人工」用例）：AI 轮之后由人工补测 TC-016、TC-030、TC-GAME-020、TC-GAME-038、TC-GAME-046、TC-GAME-047，不要求冒烟级。
@@ -1784,6 +1801,7 @@ REQ-M2 ↔ TC 对照（可读索引，覆盖与否由上述联检判）：
 | RUN-021 | 2026-09-22 | `49f0c01867`（阶段 0 / 6a 的无屏幕部分：客户端模组骨架、双端向量、spike ④ 源码结论） | AI（Claude Code，Gradle / Loom / 探针） | 局部（REQ-M2-020a→TC-GAME-045、TC-GAME-046 的可自动化部分；§24 双端向量→TC-GAME-017 第 4 步；TC-GAME-029 第 2 步备注 + 核心模式冒烟） | 通过 6/9 · 待人工 3 |
 | RUN-022 | 2026-09-22 | `3daf64f109`（阶段 6a 的无屏幕部分：客户端握手、绑定表、拾取与下令） | AI（Claude Code，Gradle / Loom） | 局部（REQ-M2-019 的可无头测试部分→TC-GAME-045、TC-GAME-066；§24 双端向量复验；根构建回归） | 通过 4/9 · 待人工 5 |
 | RUN-023 | 2026-09-22 | `28e908d301`（三项不等屏幕的交付合入：`:architecture-tests` 聚合规则、攻击面盘点与两处引擎修复、`synaxis.app.units` 与玩法模式压测 harness 及 50 × {1,000, 2,000, 4,000} 测量；含 v0.37 的 `heap_delta_kib` 与文档 lint 放宽） | AI（Claude Code，Gradle / 探针 / harness） | 局部（REQ-M2-002、REQ-M2-025→TC-GAME-067；REQ-M2-016、REQ-M2-017、REQ-M2-009→TC-GAME-068；REQ-011、REQ-017→TC-GAME-069～TC-GAME-071；REQ-M2-010→TC-GAME-029 第 2 步 + 冒烟级 TC-029） | 通过 6/7 · 失败 1 |
+| RUN-024 | 2026-09-23 | `d3d065787e`（无头真客户端 spike S0～S5、clientbound 包 ID 修复与 26.2 整表门禁、`archetype_view_range` 5.0、对局世界载入期整图光照） | AI（Claude Code，Gradle / Docker 无头客户端） | 局部（REQ-005→TC-036；REQ-M2-010、REQ-M2-011→TC-GAME-029；REQ-M2-016→TC-GAME-052；REQ-M2-020→TC-GAME-046 + 冒烟级 TC-029） | 通过 4/5 · 待人工 1 |
 
 明细（仅登非「通过」项）：
 
@@ -1887,6 +1905,10 @@ TC-002 证据：`docs/test-runs/RUN-002/tc-002.txt`（5 步实际输出）（2,6
 
 | RUN-023 | TC-GAME-068 | 失败 | 第 2 步 `S2C_UNIT_STATE` 三项判红：单条 2,023 B（判据 ≤ 256）、4,420 B/s/玩家（≤ 2,560）、220,866 B/s 50 人（≤ 128,000）；同步的 tick P99 8.617 ms、存活堆 43.0 MiB、寻路桶 P99 1 ms 达标（证据 `docs/research/soak-2026-09-22/runs/gate-1000/summary.json` 与 `report.md`）。根因是环形播种把 1,000 单位挤在出生点 ±17 格、每人兴趣集顶到 512 上限，量的是最坏布局而非 §2「视野 50 单位」画像；线上（压缩后）2,547 B/s/玩家、127,292 B/s 合计在线内 | 待拍板：播种改均匀铺开后重跑本用例，或改写 §15 单位快照三行的口径 |
 
+| RUN-024 | TC-GAME-046 | 待人工 | 第 1、2 步要本机同时装 26.2 与 26.3 两个 Fabric profile；第 3 步（configuration 阶段握手不被 `client-mod-required` 踢）已由无头真客户端 S1 满足，台账 `client_verified`、无 kick，见 `docs/research/client-spikes-2026-09/README.md` S1 节 | 人工收口轮 |
+
+
+RUN-024 证据：`docs/test-runs/RUN-024/acceptance.txt` 与 `docs/research/client-spikes-2026-09/`（S0～S5 的结论、截图与无头运行方式）。要点：真 26.2 客户端第一次连上本引擎，暴露出 REQ-005 删包把 clientbound 包 ID 按位置打乱（登录 1 个、play 18 个）——此前所有自动化都从本仓库注册表推导 ID，所以一直绿；修复后由 `PacketVanillaIdTest` 把 26.2 原版 251 个 ID 整表钉死，验收人删一个占位即红。对局世界改为载入期整图算光照，rts-512 的 `load_ms` 771～968 ms、`heap_delta_kib` 约 9,300，删掉 relight 即红。
 
 RUN-023 证据：`docs/test-runs/RUN-023/acceptance.txt`（验收人侧：合并后全量 check、三组反证、端到端 50 连接实跑）、`docs/research/soak-2026-09-22/`（harness 用法、三档报告与 `runs/*/summary.json`）、`docs/research/attack-surface-2026-09/`（39 个面的盘点与实跑摘录）。要点：全量 check 真跑 3,140 个测试 0 失败；反证三组亲跑——`Entity#moveTo` 加 `@ApiStatus.Internal` → 聚合规则 5 条红 2 条；`closeOnceFlushed` 守卫反转 + `LoginListener` 改回采信对端 `profileId` → 两条新测试各红一条；`-Dsynaxis.app.units=3` → 拒启、端口未 bind。端到端：合并后的树第一次把攻击面修复与 harness 放在一起跑，50 连接 × 1,000 单位 × 60 s，50/50 登录、0 掉线、3,000 条下令 2,986 条回、0 ERROR 0 踢人。**正式测量的结论**（机器不安静，另一进程满占一核）：tick P99 8.617 / 9.698 / 11.096 ms（1,000 / 2,000 / 4,000 单位），存活堆 43.0 / 51.1 / 64.1 MiB，至 4,000 未见拐点；`S2C_UNIT_STATE` 三项按 v0.39 判据红，见上方明细行。**交付里的两处行为变化**：`S2C_UNIT_SPAWN` 改由下一个快照做差发出、比引擎实体包最多晚 2 tick（聚合规则抓到 `UnitEntity` 覆写内部 viewer 钩子后的处置，要不要给引擎开第二个公开回调登记为 §28.2 Open Question）；断开后 1 s 强制关 channel，慢读对端可能收不到断线原因（`docs/DESIGN.md` §16）。
 

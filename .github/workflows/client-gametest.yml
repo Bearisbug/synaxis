@@ -1,0 +1,100 @@
+name: Client gametest
+
+on:
+  push:
+    branches: [ client-gametest-ci ]
+  workflow_dispatch:
+    inputs:
+      handshake_phase:
+        description: synaxis.app.handshake-phase of the server-app the client joins
+        type: choice
+        options: [ configuration, login ]
+        default: configuration
+
+permissions:
+  contents: read
+
+jobs:
+  # The real Minecraft client, driven by fabric-client-gametest-api, against a server-app in game
+  # mode: spikes S0 and S1 of docs/research/client-spikes-2026-09/README.md. Xvfb gives it a display
+  # and Mesa llvmpipe gives it OpenGL, the same as client-fabric/gametest-env/ does in Docker.
+  gametest:
+    name: Run the client gametests
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    env:
+      HANDSHAKE_PHASE: ${{ inputs.handshake_phase || 'configuration' }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Set up JDK 25
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: 25
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          cache-read-only: true
+
+      - name: Install Xvfb and Mesa
+        run: |
+          sudo apt-get update
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+            xvfb xauth libgl1 libgl1-mesa-dri libegl1 libglx-mesa0 mesa-utils
+
+      # `env -u CI`: the publishing convention requires signing whenever CI is set (see client-mod.yml).
+      - name: Publish :protocol to the local repository
+        run: env -u CI ./gradlew :protocol:publishToMavenLocal
+
+      # server-app reads commands from stdin; `tail -f /dev/null` keeps it open for the whole job.
+      - name: Start server-app in game mode
+        run: |
+          (tail -f /dev/null | ./gradlew :server-app:run --console=plain \
+            -Dsynaxis.app.port=25565 -Dsynaxis.app.handshake-phase=$HANDSHAKE_PHASE \
+            > server.log 2>&1 &)
+          for i in $(seq 1 300); do
+            grep -q "server-app listening" server.log && exit 0
+            sleep 1
+          done
+          cat server.log
+          exit 1
+
+      - name: Run the client gametests
+        working-directory: client-fabric
+        env:
+          SYNAXIS_GAMETEST_SERVER: 127.0.0.1:25565
+          LIBGL_ALWAYS_SOFTWARE: "1"
+          GALLIUM_DRIVER: llvmpipe
+        run: xvfb-run -a -s "-screen 0 1280x720x24" ./gradlew runClientGameTest --console=plain --stacktrace
+
+      # The same tests against the remapped mod jar, :protocol nested in it (S0).
+      - name: Run the client gametests against the production mod jar
+        if: success() || failure()
+        working-directory: client-fabric
+        env:
+          SYNAXIS_GAMETEST_SERVER: 127.0.0.1:25565
+          LIBGL_ALWAYS_SOFTWARE: "1"
+          GALLIUM_DRIVER: llvmpipe
+        run: xvfb-run -a -s "-screen 0 1280x720x24" ./gradlew runProductionClientGameTest --console=plain --stacktrace
+
+      - name: Show the reports and the server's event ledger
+        if: always()
+        run: |
+          for report in client-fabric/build/run/*/synaxis-gametest/report.txt; do echo "== $report"; cat "$report"; done || true
+          cat logs/events-*.jsonl || true
+
+      - name: Upload screenshots, report and logs
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: client-gametest-${{ env.HANDSHAKE_PHASE }}
+          path: |
+            client-fabric/build/run/**/screenshots/
+            client-fabric/build/run/**/synaxis-gametest/report.txt
+            client-fabric/build/run/**/logs/
+            server.log
+            logs/events-*.jsonl
+          retention-days: 14

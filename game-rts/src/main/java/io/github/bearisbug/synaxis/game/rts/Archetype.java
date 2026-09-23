@@ -13,10 +13,13 @@ import io.github.bearisbug.synaxis.item.Material;
  * ({@link ArchetypeBox}).
  * <p>
  * {@link #viewRange()} is a configuration value rather than a threshold written into the code that
- * uses it. The client culls a display entity beyond {@code view_range × 64 blocks × the player's
- * entity distance multiplier}, and that multiplier goes as low as 0.5 — 4.0 is the value that
- * still covers the 97 blocks of a screen corner at the widest zoom with margin left over. Change
- * the zoom cap or the unit sizes and this is the one number to move (§15, the visible range row).
+ * uses it. The client culls a display entity beyond
+ * {@code view_range × 64 × clamp(renderDistance / 8, 1, 2.5) × entityDistanceScaling} blocks,
+ * measured from the render camera, and the player can take that last multiplier down to 0.5. 5.0
+ * keeps units drawn out to the render distance fog at that setting: with a render distance of 10
+ * it reaches 200 blocks, which covers the fog edge 160 blocks out horizontally up to a camera 120
+ * blocks high (96 high at render distance 8). Change the zoom cap, the camera height or the unit
+ * sizes and this is the one number to move (§15, the visible range row).
  *
  * @param id        the archetype number carried by {@code S2C_UNIT_SPAWN}
  * @param item      what the display entity shows
@@ -27,7 +30,7 @@ import io.github.bearisbug.synaxis.item.Material;
 record Archetype(int id, Material item, float speed, float radius, float viewRange) {
 
     /** The one archetype M2 fields; the rest of the roster is M3 (§28.3). */
-    static final Archetype SOLDIER = new Archetype(0, Material.IRON_GOLEM_SPAWN_EGG, 0.15f, 0.45f, 4.0f);
+    static final Archetype SOLDIER = new Archetype(0, Material.IRON_GOLEM_SPAWN_EGG, 0.15f, 0.45f, 5.0f);
 
     /**
      * The picking box of this archetype, the half of the template the client holds too.

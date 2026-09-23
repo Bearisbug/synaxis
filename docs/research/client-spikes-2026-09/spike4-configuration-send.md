@@ -1,7 +1,8 @@
 # spike ④ 的源码结论：Fabric 客户端在 configuration 阶段发包，是否依赖对端的 `minecraft:register`
 
-**这是桌面结论，不是运行期验证。** 下面每一条都能在本机 jar 上复核，但**没有在真实 Minecraft 客户端上跑过**。
-`ADR-M2-010` 因此**保持 Proposed**，直到验收人按本目录 `README.md` 的 S1 跑出结果。
+**本文是桌面结论（读 jar 得出）；运行期已于 2026-09-23 证实。** 真 26.2 客户端在无头容器与 GitHub Actions 上
+按本目录 `README.md` 的 S1 登录玩法模式服务端，configuration 阶段发出的 `C2S_HELLO` 被判 `client_verified`、
+无 kick（证据见 README S1 节的「结论」），`ADR-M2-010` 随之转 Accepted。下面每一条仍能在本机 jar 上复核。
 
 ## 取证对象
 
@@ -169,8 +170,8 @@ player.sendPacket(PluginMessagePacket.brandPacket(process.brandName()));
 
 **源码显示：能发。** Fabric 的 configuration 发送路径不看对端的 `minecraft:register`，`canSend()` 只是一句
 与 `send()` 无关的查询；本引擎发的 `minecraft:brand` 又正好能把 `ClientConfigurationConnectionEvents.START`
-点着，且它早于服务端的 3 s 等待。**但这一条没有在真实客户端上跑过**，它是读 jar 得出的，
-`ADR-M2-010` 保持 Proposed。
+点着，且它早于服务端的 3 s 等待。这一条是读 jar 得出的；2026-09-23 真客户端实跑与它相符（README S1 节），
+`ADR-M2-010` 已转 Accepted。
 
 跑出来若与此不符，退路仍是设计文档写死的那两条，不要临场发明第三条：
 

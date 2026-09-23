@@ -1,9 +1,10 @@
-# 阶段 6a 交接：哪些已被无头测试钉住，哪些必须等真机（2026-09-22）
+# 阶段 6a 交接：哪些已被无头测试钉住，哪些必须等真机（2026-09-22，2026-09-23 按无头实跑更新）
 
 `docs/DESIGN-M2.md` §26 把阶段 6a 分成两截验收。**不需要屏幕的那截已经交付完**（设计文档 v0.31 /
 v0.33 / v0.36），判据是 `docs/TEST.md` 的 `TC-GAME-017` 第 4 步、`TC-GAME-045` 与 `TC-GAME-066`；
-需要屏幕的那截一步也没跑。本文件是这两截的分界线，逐行写清楚**哪几行代码测不到、为什么、由谁来判**，
-以及验收人跑完 README 里的 S0～S5 之后按什么顺序往下接。
+需要屏幕的那截里，README 的 S0～S5 已于 2026-09-23 在无头容器（Xvfb + Mesa llvmpipe）里用真 26.2 客户端跑完，
+第二节据此把清单分成「已做」「无头能做、属 6b」「必须等真机」三组。本文件是这两截的分界线，逐行写清楚
+**哪几行代码测不到、为什么、由谁来判**，以及 spike 结论出来之后按什么顺序往下接。
 
 - 客户端测试现状：`cd client-fabric && ./gradlew test --no-daemon` 共 92 条，0 失败
   （`ClientHandshakeTest` 13、`RtsClientTest` 23、`UnitPickerTest` 15、`UnitBindingsTest` 13、
@@ -27,28 +28,44 @@ v0.33 / v0.36），判据是 `docs/TEST.md` 的 `TC-GAME-017` 第 4 步、`TC-GA
 快照只覆盖已绑的、未匹配条目计数、每连接清空）、消息编排（一次点击发什么包、`order_seq` 怎么走、
 七个结果码各自的去向、两条 10 次/秒的节流）。
 
-## 二、必须等真机的清单（与设计文档 v0.33 那份相同，一项没减）
+## 二、必须等真机的清单（2026-09-23 按无头实跑更新）
 
-1. **`ADR-M2-010` 的运行期一半**——configuration 阶段的负载能不能真发出去。源码结论是「能」
-   （`spike4-configuration-send.md`），运行期没跑过，所以 ADR 仍是 Proposed。判据是
-   `TC-GAME-046` 第 3 步（README 的 S1）。发不出去时的退路是服务端加
-   `-Dsynaxis.app.handshake-phase=login` 重跑，**客户端一行不用改**——login 与 configuration 两条
-   路径都已实现，且共用同一个状态机。
-2. **`MinecraftWorldView` 的两个方法体**（上表）。
-3. **输入层**：哪次点击、用哪条射线调 `RtsClient#selectAt` / `#orderAt`。本轮**刻意没有实现**
-   ——它依赖 README 的 S4（屏幕坐标 → 世界射线）与 S5（输入走透明 `Screen` 还是 mixin
-   `MouseHandler`）的结论，属阶段 6b。
-4. **绘制**：选中框（§5 与 §19 写死是客户端本地画，服务端不下发任何选中相关的实体元数据）与
-   落点标记（`OrderFeedback` 已经算好画什么颜色、画在哪、带不带字，6b 只需要读它）。
-5. **端到端四环通**（协议 / 渲染 / 拾取 / 下令），`TC-GAME-047` 全篇。
+v0.33 那份清单原有五项。无头容器能起真客户端之后，「需要屏幕」不再等于「需要真机」：画面能截图、输入能经
+`TestInput` 注入，只有真显卡的观感与真操作系统的光标还得人来看。跑法见 README 的「无头运行方式」。
+
+**已做**
+
+1. **`ADR-M2-010` 的运行期一半**——configuration 阶段的负载发得出去，`ADR-M2-010` 转 Accepted。证据：事件台账
+   `session_entered_configuration` 之后 42 ms / 53 ms 记 `client_verified`，无 `client_rejected`、无 kick；CI run
+   35815252028 的 dev 与生产两次连接同样通过；login 对照也进世界（README S1 节的「结论」）。
+2. **输入层的前置结论**：S4 定了「屏幕坐标 → 世界射线」的取法（35 个静止点 33 个 0.0 px、2 个 0.1 px，平移 12 帧
+   全 0.0 px，`s4-screen-ray.md`），S5 定了输入走 mixin `MouseHandler`（README S5 节）。输入层本身仍未实现。
+
+**无头能做，属阶段 6b，还没做**
+
+3. **`MinecraftWorldView` 的两个方法体**（上表）。S4 的 gametest 用自己的 `level.clip` 验过射线，但没有调这两个
+   方法；接上输入层后，`TC-GAME-047` 第 6～9 步可以写成 client gametest 在容器里跑。
+4. **输入层**：哪次点击、用哪条射线调 `RtsClient#selectAt` / `#orderAt`。
+5. **绘制**：选中框（§5 与 §19 写死是客户端本地画，服务端不下发任何选中相关的实体元数据）与落点标记
+   （`OrderFeedback` 已经算好画什么颜色、画在哪、带不带字，6b 只需要读它）。正交下选中描边不能走原版线条
+   着色器（S4：`VIEW_SHRINK` 把线往中心拉 3.6～4.7 px）。
+6. **端到端四环通**（协议 / 渲染 / 拾取 / 下令），`TC-GAME-047` 全篇。截图判据能在容器里跑，录屏不能。
+
+**必须等真机**
+
+7. **真显卡上的观感**：阴影、雾、正交画面偏灰（S2），以及对局世界补上光照之后的明暗。无头画面全是 llvmpipe，
+   地形能看清还靠 gametest 给玩家加的客户端夜视。
+8. **真实系统光标**：fabric-client-gametest 取消了 GLFW 的抓鼠标，S5 只能按 `MouseHandler.isMouseGrabbed()` 判光标
+   是否释放；HiDPI / Retina 下的光标缩放（S4）也没测。
+9. **客户端帧率**：§28.2「同屏单位数上限」的客户端那一半，llvmpipe 的帧率不代表玩家机器。
 
 ## 三、跑完 spike 之后按什么顺序接
 
-1. **先 S0 + S1**。S1 落 `synaxis:client-mod-required` 时先
-   `grep client_rejected logs/events-*.jsonl` 看 `reason`：`mod-missing` 才是「发不出去」，
-   `version-mismatch` 说明包发到了。结论回写 `ADR-M2-010`（Proposed → Accepted 或换成 login 形态）。
-2. **S2 / S3 出画面结论**，回写 §28.2 的相机与剔除两行。这一步跑完才知道 6b 的相机用正交还是带俯角
-   的透视，而这个选择决定 S4 的反投影怎么写。
+1. **先 S0 + S1**（2026-09-23 已完成，`ADR-M2-010` 已转 Accepted）。以后 S1 若落
+   `synaxis:client-mod-required`，先 `grep client_rejected logs/events-*.jsonl` 看 `reason`：`mod-missing` 才是
+   「发不出去」，`version-mismatch` 说明包发到了。
+2. **S2 / S3 出画面结论**（2026-09-23 已出图，剔除一行已回写 §28.2）。相机用正交还是带俯角的透视**等用户选**，
+   截图在 README S2 节；S4 的反投影两种形态都验过，这个选择不再卡住 S4。
 3. **S4 给出「屏幕坐标 → 世界射线」的写法**，这是 6b 第一件要落地的事：把那条射线接到
    `RtsClient#selectAt` / `#orderAt` 上。接上之后不需要再改 `RtsClient`——它收的就是一条射线。
 4. **S5 定输入路径**，然后 6b 按顺序做：相机 mixin → 输入层 → 选中框与落点标记的绘制

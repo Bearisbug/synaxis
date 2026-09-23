@@ -4,6 +4,7 @@ import io.github.bearisbug.synaxis.ServerProcess;
 import io.github.bearisbug.synaxis.coordinate.Pos;
 import io.github.bearisbug.synaxis.entity.Player;
 import io.github.bearisbug.synaxis.instance.InstanceContainer;
+import io.github.bearisbug.synaxis.instance.LightingChunk;
 import io.github.bearisbug.synaxis.plugin.DisconnectKeys;
 import io.github.bearisbug.synaxis.plugin.PluginAnalytics;
 import io.github.bearisbug.synaxis.registry.RegistryKey;
@@ -191,9 +192,14 @@ final class Match {
         final MapTerrain terrain = new MapTerrain(selected);
         this.navGrid = NavGrid.of(terrain);
         final InstanceContainer loading = new InstanceContainer(process, matchId, dimensionType, dimensionName);
+        loading.setChunkSupplier(LightingChunk::new);
         loading.setGenerator(new MapGenerator(terrain));
         try {
             generateWholeMap(loading, selected);
+            // Light the whole map here, while nobody is connected: left to itself a LightingChunk
+            // computes its light only when its first packet is built, on the thread of whoever
+            // joins, and the terrain reaches that player unlit until the light catches up (§28.2).
+            LightingChunk.relight(loading, loading.getChunks());
         } catch (Exception e) {
             if (e instanceof InterruptedException) Thread.currentThread().interrupt();
             // The half built instance is never registered, so dropping the reference is all it takes

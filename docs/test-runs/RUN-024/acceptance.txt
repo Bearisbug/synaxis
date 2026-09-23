@@ -1,0 +1,31 @@
+RUN-024 验收记录（2026-09-23，验收人侧）
+
+被测版本：client-gametest d3d065787e（合入 main 时压成一个提交）
+内容：无头真客户端跑 spike S0～S5（client-fabric 的 gametest 源码集 + gametest-env 容器 + client-gametest.yml）；
+      引擎 clientbound 包 ID 修复（ReservedPacket 占位）与 26.2 原版整表门禁 PacketVanillaIdTest；
+      archetype_view_range 4.0 → 5.0 与剔除半径公式改正；对局世界改用 LightingChunk 并在载入期整图 relight；S2 重拍。
+
+一、全量 check（合并三条分支之后，cleanTest --no-build-cache 真跑）
+  BUILD SUCCESSFUL；根构建测试 3,149 个，0 失败 0 错误（较 RUN-023 的 3,140 多出 PacketVanillaIdTest 6 条、
+  MatchIntegrationTest#theMapIsLitBeforeTheMatchRuns 1 条、其余为合并带入的 PacketRegistryLookupTest 等）
+  client-fabric：./gradlew build BUILD SUCCESSFUL（含 92 条单测与 verifyModJar）
+  三份文档 lint 零警告
+
+二、反证（验收人亲跑，还原后 git status 干净）
+  A. TC-036：删掉 PacketVanilla 里 minecraft:award_stats 那一行 ReservedPacket 占位
+     :test --tests '*PacketVanillaIdTest*' → 6 tests completed, 1 failed；还原后绿
+  B. TC-GAME-029 第 11 步的同类反证：删掉 Match#load 里的 LightingChunk.relight 调用（supplier 保留）
+     :game-rts:test --tests '*MatchIntegrationTest*' → 10 tests completed, 1 failed，
+     "the section holding 0,44,0 is still waiting for its light, which would be computed only when it is sent"；还原后绿
+  审查者另复现：supplier 改回 DynamicChunk → 天光 0 红；TC-036 由审查者用 javap 逐行比对 251 个 ID 全部一致。
+
+三、真客户端证据（无头容器 Xvfb + Mesa llvmpipe，详见 docs/research/client-spikes-2026-09/README.md 各节结论）
+  S0：Fabric Loader 把 protocol-dev.jar 作为 synaxis 的 JiJ 子模组加载，NoClassDefFoundError / ModResolutionException 0 次
+  S1：configuration 阶段 C2S_HELLO → 服务端台账 client_verified，无 kick；login 阶段对照同样通过 → ADR-M2-010 Accepted
+  光照：关掉夜视的 light-s1-in-world.png 地形有正常明暗
+  截图 38 张，入库前统一缩到宽 960、256 色，合计 8.2 MiB
+
+四、结果
+  通过：TC-036、TC-GAME-029（第 2、10、11 步）、TC-GAME-052、TC-029
+  待人工：TC-GAME-046（第 1、2 步要 26.2 与 26.3 两个 profile；第 3 步的判据已由无头 S1 满足）、
+          TC-GAME-047（端到端四环通，依赖 6b）

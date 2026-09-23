@@ -4,6 +4,7 @@ import io.github.bearisbug.synaxis.network.ConnectionState;
 import io.github.bearisbug.synaxis.network.NetworkBuffer;
 import org.jetbrains.annotations.UnknownNullability;
 
+import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -24,16 +25,16 @@ final class PacketRegistryImpl<T> implements PacketRegistry<T> {
         this.state = state;
         this.side = side;
         final PacketInfo<? extends T>[] packetInfos = new PacketInfo[entries.length];
-        final Map.Entry<Class<?>, PacketInfo<? extends T>>[] packetIdEntries = new Map.Entry[entries.length];
+        final List<Map.Entry<Class<?>, PacketInfo<? extends T>>> packetIdEntries = new ArrayList<>(entries.length);
         for (int i = 0; i < entries.length; i++) {
             final Map.Entry<? extends Class<? extends T>, ? extends NetworkBuffer.Type<? extends T>> entry = entries[i];
             Objects.requireNonNull(entry);
             final PacketInfo<? extends T> packetInfo = new PacketInfo<>(entry.getKey(), i, (NetworkBuffer.Type<T>) entry.getValue());
             packetInfos[i] = packetInfo;
-            packetIdEntries[i] = entry(packetInfo.packetClass(), packetInfo);
+            if (packetInfo.packetClass() != ReservedPacket.class) packetIdEntries.add(entry(packetInfo.packetClass(), packetInfo));
         }
         this.packets = List.of(packetInfos);
-        this.packetIds = Map.ofEntries(packetIdEntries);
+        this.packetIds = Map.ofEntries(packetIdEntries.toArray(Map.Entry[]::new));
     }
 
     @Override
@@ -70,13 +71,13 @@ final class PacketRegistryImpl<T> implements PacketRegistry<T> {
     @Override
     @SuppressWarnings("unchecked")
     public PacketInfo<T> packetInfo(int packetId) {
-        if (packetId < 0 || packetId >= packets.size())
+        if (packetId < 0 || packetId >= packets.size() || packets.get(packetId).packetClass() == ReservedPacket.class)
             throw new IllegalStateException("Packet id 0x" + Integer.toHexString(packetId) + " isn't registered!");
         return (PacketInfo<T>) packets.get(packetId);
     }
 
     @Override
     public Iterator<PacketInfo<? extends T>> iterator() {
-        return packets.iterator();
+        return packets.stream().filter(info -> info.packetClass() != ReservedPacket.class).iterator();
     }
 }

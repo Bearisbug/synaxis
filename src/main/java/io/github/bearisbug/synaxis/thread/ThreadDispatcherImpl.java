@@ -138,7 +138,7 @@ final class ThreadDispatcherImpl<P, E extends Tickable> implements ThreadDispatc
 
     private TickThread retrieveThread(P partition) {
         final int threadId = provider.findThread(partition);
-        final int index = Math.abs(threadId) % threads.size();
+        final int index = Math.floorMod(threadId, threads.size());
         return threads.get(index);
     }
 

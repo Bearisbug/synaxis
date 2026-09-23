@@ -169,7 +169,10 @@ public sealed interface Acquirable<T> permits AcquirableImpl {
     /**
      * Checks if the current thread owns the acquirable element.
      * <p>
-     * Throws an {@link AcquirableOwnershipException} if not owned.
+     * Throws an {@link AcquirableOwnershipException} if not owned. An element no tick thread has been
+     * assigned to yet passes on the thread that created it and on any thread that is not a
+     * {@link TickThread}; a tick thread other than the creator throws. {@link #lock()} and
+     * {@link #sync(Consumer)} on an unassigned element still only accept the creating thread.
      * <p>
      * This method is only enabled when assertions are enabled or
      * the {@code synaxis.acquirable-strict} system property is set to true.

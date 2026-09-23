@@ -40,7 +40,8 @@ public class EntityAsyncContinuationIntegrationTest {
 
         entity.chunkRefreshed.set(false);
         // The target chunk is not loaded, so the continuation runs on the chunk loading thread
-        entity.teleport(new Pos(4000, 42, 4000)).join();
+        // Joined outside the acquirable: the continuation needs it
+        entity.acquirable().applySync(e -> e.teleport(new Pos(4000, 42, 4000))).join();
         assertTrue(entity.chunkRefreshed.get(), "the teleport did not cross a chunk");
         assertTrue(entity.ownedOnChunkRefresh.get(),
                 "teleport continuation mutated the entity without owning it");
@@ -56,7 +57,7 @@ public class EntityAsyncContinuationIntegrationTest {
         assertNotNull(entity.acquirable().assignedThread());
 
         entity.chunkRefreshed.set(false);
-        entity.setInstance(target, new Pos(4000, 42, 4000)).join();
+        entity.acquirable().applySync(e -> e.setInstance(target, new Pos(4000, 42, 4000))).join();
         assertTrue(entity.chunkRefreshed.get(), "the entity was not moved to the new instance");
         assertTrue(entity.ownedOnChunkRefresh.get(),
                 "setInstance continuation mutated the entity without owning it");

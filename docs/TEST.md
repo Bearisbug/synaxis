@@ -14,6 +14,7 @@
 
 | 日期 | 改动 | 作者 |
 | --- | --- | --- |
+| 2026-09-23 | 跟进 `docs/DESIGN-PROD.md` §26 第 0 波 0C（`REQ-PROD-019` 前半）。**新增 §4「生产就绪 · 第 0 波 · 线程正确性」四条**：`TC-PROD-030`（`Math.floorMod` 取模，反证改回 `Math.abs` 即 `Index -2 out of bounds for length 6`）、`TC-PROD-031`（`Entity#teleport`、`Entity#setInstance`、`Player#setInstance` 三处所有权断言，逐处反证）、`TC-PROD-032`（未分配实体放行建它的线程与非 tick 线程，别的 tick 线程仍判越权；玩家换实例的调度线程半段经 `Acquirable`；各一步反证）、`TC-PROD-033`（`-Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true` 跑全量，含「属性没转进测试 JVM」与「`Env` 没读」两步反证；登记 1 线程轮红的 5 条、4 线程首轮红的 1 条及处置）。§5 引擎域加「tick 多线程」一组 | Bearisbug |
 | 2026-09-23 | 跟进 `docs/DESIGN-PROD.md` 第 0 波 0B 组（`REQ-PROD-014` 前半：tick 看门狗打栈、判死、崩溃报告、halt）。**新增 `TC-PROD-020`～`TC-PROD-023`**，每条带反证（临时破坏实现、重跑、看红、还原），红在哪一条写进期望列；§19 的「进入落盘停机」「倒计时期间卡死仍先落盘」两处归第 3 波 3A，本波各用例只验 halt 路径。**§3 运行时产物**：崩溃报告也在看门狗判死时写，并注明判死后以退出码 70 halt 与 `synaxis.watchdog.timeout-ms=0` 关闭。§5 回归映射加生产就绪域一行，跨域牵连加一条 | Bearisbug |
 | 2026-09-23 | 0A 组返工：`TC-PROD-006` 第 1 步加 `aRecordRacingTheCloseIsWrittenOrRefusedNeverLeftInTheQueue`（`record` 与停机竞争时那一行要么落盘、要么在日志里计数），新增第 5 步反证；`TC-PROD-001` 第 1 步加引擎默认落点 10 s 限流一条，新增第 4 步反证；`TC-PROD-001`、`TC-PROD-003`、`TC-PROD-006`、`TC-PROD-007` 反证期望里的测试行号随测试文件改动更新，`TC-PROD-006` 第 3 步由红 3 条改为红 4 条 | Bearisbug |
 | 2026-09-23 | 跟进 `docs/DESIGN-PROD.md` 第 0 波 0A 组（`REQ-PROD-015` 崩溃报告与未捕获异常、`REQ-PROD-016` 日志文件与轮转、`REQ-PROD-017` 事件台账缓冲写入）。**新增 `TC-PROD-001`～`TC-PROD-008`**，每条带一步反证（临时破坏实现、重跑、看红、还原），红在哪一条写进期望列。**§3 环境段**：「没有服务端日志文件」改为默认另写 `logs/latest.log`（`-Dsynaxis.app.log=stdout` 时不写），台账文件名改为 `logs/events-<shard_id>-YYYYMMDD.jsonl`（`shard_id` 默认 `local`，glob `events-*.jsonl` 照旧匹配）并注明写盘最多晚 1 s；新增系统属性 `synaxis.app.shard-id`、`synaxis.app.ledger-max-bytes-per-day`、`synaxis.app.log`。**`TC-035` 保留 ID、判据未动**：第 2 步里「`EventLedgerTest` 一条」改为点名 `aFloodOfEventsIntoAnUnwritableLedgerWritesOneLine`（该类现有六条，其余五条归 `TC-PROD-006` / `TC-PROD-007`）。§5 回归映射加生产就绪域一行与跨域牵连一条 | Bearisbug |
@@ -1923,11 +1924,66 @@ REQ-M2 ↔ TC 对照（可读索引，覆盖与否由上述联检判）：
 
 后置：停服（按 pid），结束占着 FIFO 的 `sleep`，`rm -rf $W`；`git status` 干净。
 
+### 生产就绪 · 第 0 波 · 线程正确性（`REQ-PROD-019` 前半）
+
+`docs/DESIGN-PROD.md` §26 第 0 波 0C：`ThreadDispatcherImpl` 取模、`setInstance` / `teleport` 三处所有权断言、4 线程 `counter` 严格模式测试轮。四条都是 JUnit 或 Gradle 命令，不起服务端进程。
+
+#### `TC-PROD-030` 线程号为 `Integer.MIN_VALUE` 时下标仍落在线程表内 — 对应 `REQ-PROD-019` · 级别: 回归 · 执行者: AI
+
+前置：无。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | `./gradlew :test --tests 'io.github.bearisbug.synaxis.thread.ThreadDispatcherTest' --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts` | `BUILD SUCCESSFUL`；`build/test-results/test/TEST-io.github.bearisbug.synaxis.thread.ThreadDispatcherTest.xml` 的 `testsuite` 行是 `tests="15" skipped="0" failures="0" errors="0"`。其中 `minValueThreadIdMapsToAValidThread`：6 条线程、`ThreadProvider` 对任何分区都回 `Integer.MIN_VALUE`，元素只在 `threads().get(4)` 上 tick（`Math.floorMod(-2^31, 6) = 4`） |
+| 2 | 反证：把 `src/main/java/io/github/bearisbug/synaxis/thread/ThreadDispatcherImpl.java` 的 `retrieveThread` 里 `Math.floorMod(threadId, threads.size())` 改回 `Math.abs(threadId) % threads.size()`，重跑第 1 步 | `BUILD FAILED`，`15 tests completed, 1 failed`；失败的是 `minValueThreadIdMapsToAValidThread`，信息 `java.lang.ArrayIndexOutOfBoundsException: Index -2 out of bounds for length 6`（修复前的原始红就是这一条） |
+| 3 | `git checkout -- src/main/java/io/github/bearisbug/synaxis/thread/ThreadDispatcherImpl.java`，重跑第 1 步 | 与第 1 步相同 |
+
+后置：`git status --short src/main` 无输出。
+
+#### `TC-PROD-031` `setInstance` 与 `teleport` 在非所属线程调用时抛所有权异常 — 对应 `REQ-PROD-019` · 级别: 回归 · 执行者: AI
+
+前置：无。测试 JVM 由 Gradle 默认带 `-ea`，所有权断言在测试里始终开着，不必另给 `-Dsynaxis.acquirable-strict=true`。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | `./gradlew :test --tests 'io.github.bearisbug.synaxis.entity.AcquirableStrictIntegrationTest' --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts` | `BUILD SUCCESSFUL`，该类 `tests="5"` 全绿。`foreignThreadInstanceChangeAndTeleportThrow`：一只僵尸与一个玩家各 tick 过一次（已分配 tick 线程）后，从虚拟线程分别调 `Entity#teleport`、`Entity#setInstance`、`Player#teleport`、`Player#setInstance`，四次都在返回 future 之前抛 `AcquirableOwnershipException`，两者仍在原实例 |
+| 2 | 反证三处，逐处改、跑、还原：① 删掉 `src/main/java/io/github/bearisbug/synaxis/entity/Entity.java` 里 `teleport(Pos, Vec, long[], int, boolean)` 的首行 `this.acquirable.assertOwnership();`；② 删掉同文件 `setInstance(Instance, Pos)` 的首行 `this.acquirable.assertOwnership();`；③ 删掉 `src/main/java/io/github/bearisbug/synaxis/entity/Player.java` 里 `setInstance(Instance, Pos)` 的首行 `acquirable().assertOwnership();`。每处改完重跑第 1 步，再 `git checkout --` 该文件 | 三次都是 `5 tests completed, 1 failed`，失败的是 `foreignThreadInstanceChangeAndTeleportThrow`，信息 `Unexpected null value, expected: <io.github.bearisbug.synaxis.thread.AcquirableOwnershipException> but was: <null>`（调用照常完成了）。断的行依次是僵尸 `teleport`、僵尸 `setInstance`、玩家 `setInstance` 那一行（本轮实测 `AcquirableStrictIntegrationTest.java:54`、`:55`、`:57`，行号随文件变动，不作判据）。`Player#teleport` 没有自己的断言，它经 `Entity#teleport`，所以反证 ① 同时覆盖它 |
+| 3 | 三处都还原后重跑第 1 步 | 与第 1 步相同 |
+
+后置：`git status --short src/main` 无输出。
+
+#### `TC-PROD-032` 接线不误伤：未分配的实体可由非 tick 线程放置、别的 tick 线程仍判越权，已 tick 的玩家可跨未加载区块换实例 — 对应 `REQ-PROD-019` · 级别: 回归 · 执行者: AI
+
+前置：无。断言接进 `setInstance` 之前必须先放宽两处，否则引擎自己的调用路径会被判越权：玩家在连接线程上构造、由 tick 调度线程放进实例（此时还没分配 tick 线程）；玩家换实例要等区块加载时，后半段 `spawnPlayer` 由调度线程执行，而调度线程不拥有已在 tick 的玩家。未分配时只放行建它的线程和非 `TickThread`（调度线程是 `EngineThread` 不是 `TickThread`）：实体 `setInstance` 后到下一 tick 分配线程前，已能经追踪器与观察者列表被别的 tick 线程拿到，那条线程改它仍算越权。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | `./gradlew :test --tests 'io.github.bearisbug.synaxis.entity.AcquirableStrictIntegrationTest' --tests 'io.github.bearisbug.synaxis.entity.PlayerChunkLoadFailureIntegrationTest' --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts` | `BUILD SUCCESSFUL`；`unassignedEntityCanBeSpawnedFromAnotherThread`（测试线程建的僵尸由虚拟线程 `setInstance` 成功）、`unassignedEntityIsForeignToAnotherTickThread`（已放进实例、`assignedThread()` 仍为 null 的僵尸，在另起的 `TickThread` 上 `setVelocity` 与 `teleport` 都抛 `AcquirableOwnershipException`，测试线程自己 `setVelocity` 不抛）、`ownedPlayerChangesInstanceAcrossUnloadedChunks`（已 tick 的玩家经 `acquirable().applySync` 换到另一个实例的 (4000, 42, 4000)，join 正常返回，`getInstance()` 是目标实例）、`failingChunkLoaderDoesNotHangSetInstance` 四条绿 |
+| 2 | 反证未分配语义：把 `src/main/java/io/github/bearisbug/synaxis/thread/AcquirableImpl.java` 的 `assertOwnership` 里整个 `if (assignedThread == null) { … }` 块与其后的 `if (isOwnedImpl(assignedThread)) return;` 换成一行 `if (isOwned()) return;`（改前的语义：未分配时只认建它的线程），重跑第 1 步，再 `git checkout --` 该文件 | 红 2 条：`unassignedEntityCanBeSpawnedFromAnotherThread` 断在 `expected: <null> but was: <io.github.bearisbug.synaxis.thread.AcquirableOwnershipException: … Initialization thread: …>`；`failingChunkLoaderDoesNotHangSetInstance` 断在 `the chunk load failure must reach the caller ==> Unexpected type, expected: <java.util.concurrent.CompletionException> but was: <io.github.bearisbug.synaxis.thread.AcquirableOwnershipException>`。还原后复绿 |
+| 3 | 反证调度线程那半段：把 `src/main/java/io/github/bearisbug/synaxis/entity/Player.java` 的 `setInstance` 里 `(i) -> runOwned(() -> spawnPlayer(…))` 改回 `(i) -> spawnPlayer(…)`，重跑第 1 步，再 `git checkout --` 该文件 | 红 1 条：`ownedPlayerChangesInstanceAcrossUnloadedChunks` 断在 `Unexpected exception thrown: java.util.concurrent.CompletionException: io.github.bearisbug.synaxis.thread.AcquirableOwnershipException: … Assigned thread: Syn-Tick-0`。还原后复绿 |
+| 4 | 反证 tick 线程判越权：把 `src/main/java/io/github/bearisbug/synaxis/thread/AcquirableImpl.java` 的 `assertOwnership` 里未分配分支的放行条件中 `!(current instanceof TickThread)` 改成 `current != null`（未分配时任何线程都放行），重跑第 1 步，再 `git checkout --` 该文件 | 红 1 条：`unassignedEntityIsForeignToAnotherTickThread` 断在 `AcquirableStrictIntegrationTest.java:81`（`setVelocity` 那条）`Unexpected null value, expected: <io.github.bearisbug.synaxis.thread.AcquirableOwnershipException>`。还原后复绿 |
+
+后置：`git status --short src/main` 无输出。
+
+#### `TC-PROD-033` 4 线程 `counter` 严格模式跑全量 — 对应 `REQ-PROD-019` · 级别: 回归 · 执行者: AI
+
+前置：无。开关是 Gradle 命令行上的两个系统属性，由 `build-src` 的 `synaxis.java-library` 约定插件转给每个模块的测试 JVM；`EnvTestExt` 只从 JVM 读线程数这一项。CI 上同一条命令是 `.github/workflows/ci.yml` 的 `multithreaded` job。三处断言接好后，先在默认 1 线程配置下跑全量，红了 5 条：4 条是测试在测试线程上直接对已 tick 的实体调 `teleport` / `setInstance`（单线程假设），按 `API-PROD-016` 的线程契约改为经 `acquirable()` 调用、在锁外 join：`EntityAsyncContinuationIntegrationTest` 两条、`EntityViewDirectionIntegrationTest#viewYawAndPitch`、`PlayerMovementIntegrationTest#testClientViewDistanceSettings`；第 5 条 `PlayerChunkLoadFailureIntegrationTest` 是引擎侧的未分配语义，见 `TC-PROD-032`。之后首次在本配置下跑全量只红 1 条：`ServerConfigTest#testJvmUsesTheProductionDefaults`（「测试 JVM 不带任何引擎设置」），已改为比较时豁免 `dispatcherThreads` 这一项。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | `./gradlew test --rerun --continue -Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts` | `BUILD SUCCESSFUL`；各模块 `build/test-results/test/*.xml` 全部 `failures="0" errors="0"`（本轮 412 个类、3,155 条：引擎 2,890、`server-app` 90、`game-rts` 83、`protocol` 78、`testing` 7、`architecture-tests` 5、`plugin-api` 2） |
+| 2 | `grep -o 'env dispatcher threads: [0-9]*' testing/build/test-results/test/TEST-io.github.bearisbug.synaxis.testing.test.EnvDispatcherThreadsIntegrationTest.xml` | 输出 `env dispatcher threads: 4`（CI job 的最后一步就是这条 grep） |
+| 3 | 反证 Gradle 不转发：把 `build-src/src/main/kotlin/synaxis.java-library.gradle.kts` 里的 `providers.systemProperty(name).orNull?.let { systemProperty(name, it) }` 改成 `providers.systemProperty(name).orNull?.let { }`，跑 `./gradlew :testing:test --tests '*EnvDispatcherThreadsIntegrationTest' -Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts`，再跑第 2 步，然后 `git checkout --` 该文件 | 测试本身绿（JVM 里没有这个属性，期望值与实际都是 1），第 2 步输出 `env dispatcher threads: 1`，`grep -q 'env dispatcher threads: 4'` 退出码 1：只看测试结果会把「全量其实跑在 1 条线程上」当成绿，CI 那一步 grep 拦的就是这个 |
+| 4 | 反证 `Env` 不读：删掉 `testing/src/main/java/io/github/bearisbug/synaxis/testing/EnvTestExt.java` 里 `.dispatcherThreads(ServerConfig.fromSystemProperties().dispatcherThreads())` 那一行，跑第 3 步那条 `:testing:test` 命令，然后 `git checkout --` 该文件 | 红 1 条：`envRunsTheDispatcherThreadsOfTheJvm` 断在 `expected: <4> but was: <1>` |
+| 5 | 两处都还原后重跑第 3 步那条 `:testing:test` 命令与第 2 步 | 绿，输出 `env dispatcher threads: 4` |
+
+后置：`git status --short` 无输出。
+
 ## 5. 回归策略
 
 - **全量轮**（全部用例）：首次成稿、每个阶段 gate（引擎域阶段 0、2、3；游戏域 `docs/DESIGN-M2.md` §26 的阶段 1～6b）、跨功能域改动、地基变更（JDK、Gradle、镜像、协议版本、模块拆分、启动入口）。
 - **局部轮**（受影响用例 + 全部冒烟级）：单一需求改动。受影响用例 = 本次改动触及的 `REQ-*` / `REQ-M2-*` 所对应的 TC（M2 侧的对照表在 §2，机械校验查不到它）；无 REQ 变更的改动（纯 bug 修、重构）按触及的功能域圈定：
-  - 引擎域：构建与仓库 → TC-001、TC-002、TC-004、TC-006、TC-021、TC-029，删除与注册表 → TC-008、TC-009、TC-020、TC-036，命名与合规 → TC-011、TC-028，协议 → TC-014、TC-018、TC-019、TC-026、TC-027、TC-030、TC-031、TC-032、TC-034、TC-035、TC-GAME-069、TC-GAME-070、TC-GAME-071（后三条是攻击面盘点补的，动了 `network` / `listener` 包或 `ServerConfig` 的连接与超时项就跑），卫生 → TC-015、TC-016，门面与配置 → TC-023、TC-025，分层 → TC-024、TC-035。
+  - 引擎域：构建与仓库 → TC-001、TC-002、TC-004、TC-006、TC-021、TC-029，删除与注册表 → TC-008、TC-009、TC-020、TC-036，命名与合规 → TC-011、TC-028，协议 → TC-014、TC-018、TC-019、TC-026、TC-027、TC-030、TC-031、TC-032、TC-034、TC-035、TC-GAME-069、TC-GAME-070、TC-GAME-071（后三条是攻击面盘点补的，动了 `network` / `listener` 包或 `ServerConfig` 的连接与超时项就跑），卫生 → TC-015、TC-016，门面与配置 → TC-023、TC-025，分层 → TC-024、TC-035，tick 多线程（`thread` 包、`Entity` / `Player` 的 `setInstance` / `teleport`、`EnvTestExt`、测试 JVM 参数）→ TC-PROD-030～TC-PROD-033。
   - 游戏域：模块与门禁 → TC-GAME-001～TC-GAME-006、TC-GAME-059、TC-GAME-067，插件宿主 → TC-GAME-009～TC-GAME-011、TC-GAME-014～TC-GAME-016、TC-GAME-053～TC-GAME-055（TC-GAME-007、TC-GAME-008、TC-GAME-012、TC-GAME-013 已废弃），协议与握手 → TC-GAME-017～TC-GAME-028、TC-GAME-049、TC-GAME-050、TC-GAME-060～TC-GAME-064（TC-GAME-021、TC-GAME-023、TC-GAME-025 已废弃），世界与对局 → TC-GAME-029、TC-GAME-031、TC-GAME-033～TC-GAME-036、TC-GAME-056、TC-GAME-057（TC-GAME-030、TC-GAME-032 已废弃），单位与寻路 → TC-GAME-052、TC-GAME-039～TC-GAME-042、TC-GAME-051、TC-GAME-065、TC-GAME-068，镜头 → TC-GAME-043、TC-GAME-044，客户端模组 → TC-GAME-038、TC-GAME-045～TC-GAME-047、TC-GAME-066，启动器 → TC-GAME-048、TC-GAME-049、TC-GAME-050、TC-GAME-058。
   - 生产就绪域：宿主日志线（`REQ-PROD-015`～`REQ-PROD-017`）→ TC-PROD-001～TC-PROD-008。
   - 生产就绪域：tick 看门狗（`REQ-PROD-014` 前半）→ TC-PROD-020～TC-PROD-023。

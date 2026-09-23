@@ -69,6 +69,13 @@ tasks.withType<Test> {
     // its own ServerConfig, which keeps the test defaults equal to the production ones (REQ-014).
     minHeapSize = "512m"
     maxHeapSize = "1024m"
+
+    // The multi-threaded test round (REQ-PROD-019) is switched on from the command line, e.g.
+    // `./gradlew check -Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true`; without
+    // them the tests keep the engine defaults above.
+    for (name in listOf("synaxis.dispatcher-threads", "synaxis.acquirable-strict")) {
+        providers.systemProperty(name).orNull?.let { systemProperty(name, it) }
+    }
 }
 
 tasks.jacocoTestReport {

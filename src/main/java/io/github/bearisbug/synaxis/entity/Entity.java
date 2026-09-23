@@ -459,6 +459,7 @@ public class Entity implements Viewable, Tickable, Schedulable, EventHandler<Ent
     public CompletableFuture<Void> teleport(Pos position, Vec velocity, long @Nullable [] chunks,
                                             @MagicConstant(flagsFromClass = RelativeFlags.class) int flags,
                                             boolean shouldConfirm) {
+        this.acquirable.assertOwnership();
         Check.stateCondition(instance == null, "You need to use Entity#setInstance before teleporting an entity!");
 
         EntityTeleportEvent event = new EntityTeleportEvent(this, position, flags);
@@ -998,6 +999,7 @@ public class Entity implements Viewable, Tickable, Schedulable, EventHandler<Ent
      * @throws IllegalStateException if {@code instance} has not been registered in {@link InstanceManager}
      */
     public CompletableFuture<Void> setInstance(Instance instance, Pos spawnPosition) {
+        this.acquirable.assertOwnership();
         Check.stateCondition(!instance.isRegistered(),
                 "Instances need to be registered, please use InstanceManager#registerInstance");
         final Instance previousInstance = this.instance;

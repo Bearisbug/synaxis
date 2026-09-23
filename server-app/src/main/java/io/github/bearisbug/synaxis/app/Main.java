@@ -223,7 +223,8 @@ public final class Main {
 
         // A daemon: a stop runs on a thread of its own, and a console nobody types into must not
         // keep the JVM alive once that thread and the tick threads are gone.
-        Thread.ofPlatform().name("server-app-console").daemon().start(() -> readConsole(process));
+        Thread.ofPlatform().name("server-app-console").daemon().start(() -> readConsole(process,
+                new BufferedReader(new InputStreamReader(System.in, StandardCharsets.UTF_8))));
     }
 
     /**
@@ -593,11 +594,24 @@ public final class Main {
                 .collect(Collectors.toUnmodifiableSet());
     }
 
-    private static void readConsole(ServerProcess process) {
-        try (BufferedReader reader = new BufferedReader(new InputStreamReader(System.in, StandardCharsets.UTF_8))) {
+    /**
+     * Runs every line of the console until it ends. A line whose command throws, from its
+     * condition, an argument callback or a listener the engine does not guard, is one line in the
+     * log with its stack, and the next line runs.
+     *
+     * @param process the engine process
+     * @param console the console input, closed once it ends
+     */
+    static void readConsole(ServerProcess process, BufferedReader console) {
+        try (BufferedReader reader = console) {
             String line;
             while ((line = reader.readLine()) != null) {
-                if (!line.isBlank()) runConsoleCommand(process, line);
+                if (line.isBlank()) continue;
+                try {
+                    runConsoleCommand(process, line);
+                } catch (RuntimeException e) {
+                    LOGGER.error("Console command failed: {}", line.strip(), e);
+                }
             }
         } catch (IOException e) {
             LOGGER.error("Console reader stopped", e);

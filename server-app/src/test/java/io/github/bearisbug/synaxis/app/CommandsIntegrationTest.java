@@ -37,6 +37,8 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
+import java.io.BufferedReader;
+import java.io.StringReader;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.List;
@@ -287,6 +289,8 @@ class CommandsIntegrationTest {
         final long start = System.nanoTime();
         assertEquals(CommandResult.Type.SUCCESS, env.process().command().execute(console, "stop 1").getType());
         assertEquals("synaxis:command-stopping 1", console.answers.getLast());
+        assertEquals(CommandResult.Type.SUCCESS, env.process().command().execute(console, "stop 0").getType());
+        assertEquals("synaxis:command-already-stopping", console.answers.getLast(), "a second stop changes nothing");
         await(env, () -> env.process().shutdownPhase() == ShutdownPhase.GATE_CLOSED, Duration.ofSeconds(2), "the gate");
         final long deadline = System.nanoTime() + Duration.ofSeconds(10).toNanos();
         while (env.process().shutdownPhase() != ShutdownPhase.STOPPED) {
@@ -295,7 +299,48 @@ class CommandsIntegrationTest {
         }
         final long tookMillis = Duration.ofNanos(System.nanoTime() - start).toMillis();
         assertTrue(tookMillis >= 1_000, "the countdown is waited for, took " + tookMillis + " ms");
-        assertEquals(List.of("invalid", "invalid", "ok"), events.stream().map(e -> e.get("result")).toList());
+        assertEquals(List.of("invalid", "invalid", "ok", "invalid"), events.stream().map(e -> e.get("result")).toList());
+    }
+
+    @Test
+    void stopWhileTheEngineIsAlreadyStoppingAnswersSoAndChangesNothing(Env env) {
+        host(env);
+        final RecordingConsole console = new RecordingConsole(env.process());
+        // What SIGTERM does, without a command of the host
+        Thread.ofPlatform().start(() -> env.process().beginShutdown(Duration.ofSeconds(2)));
+        await(env, () -> env.process().shutdownPhase() != ShutdownPhase.RUNNING, Duration.ofSeconds(2), "the shutdown");
+        final long start = System.nanoTime();
+        assertEquals(CommandResult.Type.SUCCESS, env.process().command().execute(console, "stop 0").getType());
+        assertEquals(List.of("synaxis:command-already-stopping"), console.answers);
+        assertEquals(List.of("invalid"), events.stream().map(e -> e.get("result")).toList());
+        final long deadline = System.nanoTime() + Duration.ofSeconds(10).toNanos();
+        while (env.process().shutdownPhase() != ShutdownPhase.STOPPED) {
+            assertTrue(System.nanoTime() - deadline < 0, "stopped within 10 s");
+            Thread.onSpinWait();
+        }
+        final long tookMillis = Duration.ofNanos(System.nanoTime() - start).toMillis();
+        assertTrue(tookMillis >= 1_000, "the engine's countdown is still waited for, took " + tookMillis + " ms");
+    }
+
+    @Test
+    void aConsoleLineThatThrowsIsOneLogLineAndTheNextLineRuns(Env env) {
+        final Instance match = env.createFlatInstance();
+        final Command party = new Command("party");
+        // A condition written for players only, which the console trips over
+        party.setCondition((sender, _) -> ((Player) sender).isOnline());
+        party.setDefaultExecutor((_, _) -> { });
+        final PluginHost host = host(env);
+        host.enable(List.of(new Probe("mmo", match, ctx -> ctx.commands().register(party))), Set.of());
+
+        try (LogCapture main = LogCapture.of(Main.class)) {
+            Main.readConsole(env.process(), new BufferedReader(new StringReader("mmo:party\n\nlist\n")));
+            assertEquals(List.of("Console command failed: mmo:party"), main.messagesAt(Level.ERROR));
+            assertEquals(ClassCastException.class.getName(),
+                    main.eventsAt(Level.ERROR).getFirst().getThrowableProxy().getClassName());
+        }
+        assertEquals(List.of("console list"),
+                events.stream().map(e -> e.get("actor") + " " + e.get("command")).toList(), "the line after it ran");
+        host.disableAll();
     }
 
     @Test

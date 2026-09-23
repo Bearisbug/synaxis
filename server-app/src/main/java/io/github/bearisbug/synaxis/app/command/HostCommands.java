@@ -21,6 +21,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BiConsumer;
 
 /**
@@ -43,6 +44,8 @@ public final class HostCommands {
     private final PlayerStore store;
     private final BiConsumer<String, Map<String, ?>> analytics;
     private final TickStats ticks = new TickStats();
+    /** Set by the first {@code stop} that starts the shutdown, before its thread calls the engine. */
+    private final AtomicBoolean stopping = new AtomicBoolean();
 
     /**
      * @param process     the engine process
@@ -165,6 +168,12 @@ public final class HostCommands {
     }
 
     private void stop(CommandSender sender, String input, int seconds) {
+        // The engine ignores every shutdown after the first, so a second countdown would change nothing
+        if (process.shutdownPhase() != ServerProcess.ShutdownPhase.RUNNING || !stopping.compareAndSet(false, true)) {
+            reply(sender, "synaxis:command-already-stopping", "The server is already stopping");
+            record(sender, input, null, "invalid");
+            return;
+        }
         reply(sender, "synaxis:command-stopping", "The server stops in %s s", String.valueOf(seconds));
         record(sender, input, null, "ok");
         // Its own thread, not a daemon: the sequence waits for every tick thread, the one running a

@@ -33,6 +33,7 @@
 	"synaxis:command-broadcast": "已发给 %s 名玩家。",
 	"synaxis:command-saved": "已保存 %2$s 名玩家中的 %1$s 名。",
 	"synaxis:command-stopping": "服务器将在 %s 秒后关闭。",
+	"synaxis:command-already-stopping": "服务器已在关闭中。",
 	"synaxis:command-stop-usage": "用法：stop [秒数]，秒数为不小于 0 的整数。",
 	"synaxis:command-tps": "TPS %s，MSPT p50 %s ms、p95 %s ms、p99 %s ms（最近 %s 个 tick）",
 	"synaxis.order.no-path": "到不了那里。",

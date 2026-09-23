@@ -28,7 +28,7 @@ class HostCommandTextTest {
         }
         for (final String key : List.of("synaxis:command-list", "synaxis:command-no-player", "synaxis:command-kicked",
                 "synaxis:command-broadcast", "synaxis:command-saved", "synaxis:command-stopping",
-                "synaxis:command-stop-usage", "synaxis:command-tps")) {
+                "synaxis:command-stop-usage", "synaxis:command-already-stopping", "synaxis:command-tps")) {
             assertTrue(translations.contains('"' + key + '"'), language + " has no text for " + key);
         }
     }

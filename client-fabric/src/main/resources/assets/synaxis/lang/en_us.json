@@ -33,6 +33,7 @@
 	"synaxis:command-broadcast": "Sent to %s players.",
 	"synaxis:command-saved": "Saved %s of %s players.",
 	"synaxis:command-stopping": "The server stops in %s s.",
+	"synaxis:command-already-stopping": "The server is already stopping.",
 	"synaxis:command-stop-usage": "Usage: stop [seconds], a whole number from 0.",
 	"synaxis:command-tps": "TPS %s, MSPT p50 %s ms, p95 %s ms, p99 %s ms over the last %s ticks.",
 	"synaxis.order.no-path": "Cannot get there.",

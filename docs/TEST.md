@@ -14,6 +14,7 @@
 
 | 日期 | 改动 | 作者 |
 | --- | --- | --- |
+| 2026-09-23 | 跟进 `docs/DESIGN-PROD.md` 第 2 波 2A（`REQ-PROD-002` 正版验证与加密，G01；`REQ-PROD-003` 皮肤，G06；`REQ-PROD-004` 同分片部分，G07；`REQ-PROD-044` 假 sessionserver）。**新增 §4「生产就绪 · 第 2 波 2A：正版验证与加密」十六条 `TC-PROD-090`～`TC-PROD-105`**：`serverHash` 与 CFB8（090）、login ID 1 恢复为加密请求（091）、在线完整登录与线上无明文（092）、204 的加密断线包（093）、不可用重试一次（094）、在途上限 32（095）、非法加密握手（096）、验证期间断开（097）、加密不验证（098）、皮肤属性进 PlayerInfo（099）、同分片踢旧与 5 s 上限（100）、`server-app` 选模式（101）、假 sessionserver（102）、真进程在线模式与 Mojang 真 sessionserver 的 204（103，端口 25623）、真客户端完整正版路径（104）、模组四个新键（105）；每条带反证，红在哪写进期望列，与 §19 的两处口径差异写在该节末尾。**§3 环境段**：`server-app` 默认改为在线模式，本文档里探针、压测与无头客户端连的服务端一律加 `-Dsynaxis.app.auth=offline`（`REQ-PROD-030` 的完整正版路径档除外），启动命令与「入口」行随之改写。§5 回归映射加生产就绪域一行与跨域牵连一条 | Bearisbug |
 | 2026-09-23 | 跟进 `docs/DESIGN-PROD.md` 第 1 波 1B（`REQ-PROD-009`，G05）。**新增 `TC-PROD-080`～`TC-PROD-083`**（均对应 `REQ-PROD-009`）：新开「生产就绪 · 聊天」一节。080 判引擎默认 0 收件人（50 人在线出站聊天包 0）、只有监听器加的收件人收到 `SystemChat`，反证是换回全进程名单，红在 `expected: <0> but was: <50>`；081 判每连接 1 条/秒、burst 3 的令牌桶与 `synaxis.chat-rate-per-second`、`synaxis.chat-burst` 两个键，反证是删限频行（10 条全进事件）与 burst 边界多放一条；082 判 `JoinGame` 的 `enforcesSecureChat=false`，反证是改回 `true`；083 在无头容器里用真客户端判进服没有「Chat messages can't be verified」提示、转发的聊天是系统消息，反证是模组不注册 `ClientPacketListenerMixin`，红在 `C1 unsecure_server_toast=true`。§5 加聊天一行 | Bearisbug |
 | 2026-09-23 | 跟进 `docs/DESIGN-PROD.md` 第 1 波 1A（`REQ-PROD-001` 连接闸门，G02；`REQ-PROD-043` keep-alive 收尾，G40）。**新增 §4「生产就绪 · 第 1 波 1A：连接闸门与 keep-alive 收尾」十条 `TC-PROD-060`～`TC-PROD-069`**：闸门计数的假时钟单元（060）、真 socket 上的 L0 / L1 / 握手前超时（061）、三只令牌桶与断线键映射（062）、L3 席位与 status 的 max（063）、L4 每 tick 入场（064）、fd 耗尽的 accept 退避（065，`ulimit -n 256` 的子 JVM）、拒绝只写 10 s 汇总且被拒连接不写 `Connection closed`（066）、`synaxis:keep-alive-timeout` 与 `synaxis.socket-timeout` 弃用 WARN（067，对应 `REQ-PROD-043`）、模组四个新键的译文（068）、真进程上 50 个机器人 + 单地址 100 连接/秒 × 60 s 与 1,024 条空闲连接（069，端口 25621，新工具 `tools/loadtest/gate_flood.py`）；每条带反证，红在哪写进期望列。本波是离线模式，§19 的「RSA 解密与 `hasJoined` 计数为 0」改验登录事件没有触发，写在该节开头。§5 回归映射加生产就绪域一行与跨域牵连一条 | Bearisbug |
 | 2026-09-23 | 跟进 `docs/DESIGN-PROD.md` 第 0 波 0E（`REQ-PROD-028`，G25）。**新增 `TC-PROD-050`**（对应 `REQ-PROD-028`）：新开「生产就绪 · 运行参数」一节，判 `installDist` 启动脚本与 `:server-app:run` 两条入口的 JVM 都带 G1、`-Xms4G -Xmx4G`、`AlwaysPreTouch`、`MaxGCPauseMillis=50` 与两个 OOM 参数（`jcmd VM.flags` 计数 7），`JAVA_OPTS` 能覆盖、换 ZGC 须先关 G1；反证是删掉 `-Xms4G` 与 `AlwaysPreTouch` 两行，计数掉到 5。§5 加生产就绪域一行 | Bearisbug |
@@ -137,11 +138,11 @@ REQ-M2 ↔ TC 对照（可读索引，覆盖与否由上述联检判）：
 
 ## 3. 环境与前置
 
-- 启动：`export JAVA_HOME=/opt/homebrew/opt/openjdk@25/libexec/openjdk.jdk/Contents/Home && ./gradlew :server-app:run --no-daemon --console=plain --init-script gradle/init/aliyun-mirror.init.gradle.kts`（`REQ-M2-021` 起 `server-app` 是唯一启动入口，`smoke` 已删除）。默认绑定 `0.0.0.0:25565`，端口用 `-Dsynaxis.app.port=<port>` 覆盖（`run` 任务把 `synaxis.*` 系统属性转给 fork 出来的 JVM）。TC-004 与 TC-018 要往服务端 stdin 写 `stop`，因此运行期间必须保持 stdin 打开（`:server-app:run` 已把 Gradle 进程的 stdin 转给应用；后台运行时用 FIFO 喂入或 `( sleep N; echo stop ) | ./gradlew :server-app:run …`）。
+- 启动：`export JAVA_HOME=/opt/homebrew/opt/openjdk@25/libexec/openjdk.jdk/Contents/Home && ./gradlew :server-app:run --no-daemon --console=plain --init-script gradle/init/aliyun-mirror.init.gradle.kts -Dsynaxis.app.auth=offline`（`-Dsynaxis.app.auth=offline` 自 `REQ-PROD-002` 起必须写：`server-app` 默认在线模式，探针、压测机器人与无头客户端都没有正版账号；本文档里其余起服命令，不论是 `:server-app:run` 还是 `java … Main`，没写 `synaxis.app.auth` 的一律按加了这个参数执行，写了的以用例为准。`REQ-M2-021` 起 `server-app` 是唯一启动入口，`smoke` 已删除）。默认绑定 `0.0.0.0:25565`，端口用 `-Dsynaxis.app.port=<port>` 覆盖（`run` 任务把 `synaxis.*` 系统属性转给 fork 出来的 JVM）。TC-004 与 TC-018 要往服务端 stdin 写 `stop`，因此运行期间必须保持 stdin 打开（`:server-app:run` 已把 Gradle 进程的 stdin 转给应用；后台运行时用 FIFO 喂入或 `( sleep N; echo stop ) | ./gradlew :server-app:run …`）。
 - 就绪判定：stdout 出现 `synaxis server-app listening on 0.0.0.0:25565`，且 `nc -z 127.0.0.1 25565` 退出码为 0。
 - 运行时产物：进程在**仓库根**写 `plugins/<plugin_id>/`（插件数据目录）、`logs/events-<shard_id>-YYYYMMDD.jsonl`（事件台账，`shard_id` 由 `-Dsynaxis.app.shard-id` 给，默认 `local`）、`logs/latest.log`（服务端日志文件，按天或 256 MB 滚动成 `logs/YYYY-MM-DD.N.log.gz`）与致命错误或看门狗判死时的 `crash-reports/<yyyyMMdd-HHmmss>-<shard_id>.txt`，四者均已 gitignore；基线重置 = `rm -rf plugins logs crash-reports` 后重启。stdout 照旧输出全部日志，就绪判定与各用例的「重定向 stdout 留证据」不变；`-Dsynaxis.app.log=stdout` 时只走 stdout、不建 `latest.log`（`REQ-PROD-016`）。启动脚本 `server-app/build/install/server-app/bin/server-app`（`:server-app:installDist` 产出）与 `:server-app:run` 都带 `-XX:+HeapDumpOnOutOfMemoryError -XX:+ExitOnOutOfMemoryError`，OOM 时在工作目录留 `java_pid<pid>.hprof` 并以退出码 3 结束（`REQ-PROD-015`）。 tick 卡住 60 s 时看门狗判死、写崩溃报告，再过 15 s 以退出码 70 结束（`REQ-PROD-014`）；挂调试器在 tick 线程上停断点之前给 `-Dsynaxis.watchdog.timeout-ms=0`，否则进程会被 halt。
 - 日志关联：与连接相关的服务端日志行统一带 `connection_id=<uuid>` —— `Login success: username=… connection_id=… remote_address=…`、`Kicking connection_id=… identifier=… reason=synaxis:…`、`Connection closed: connection_id=… identifier=…`、`Player failed to respond to known packs query: username=… connection_id=…`；宿主侧的行带 `plugin_id=<id>`——`Plugin enabled: plugin_id=… version=… enable_ms=…`、`Registered channel: plugin_id=… channel=…`、`Dropped a payload on an unregistered channel: connection_id=… channel=… bytes=…`、`Refusing a connection: connection_id=… reason=… cause=…`、`Admission provider is over its 200 ms budget: plugin_id=… connection_id=… admit_ms=…`。启动被拒时的那一行没有这两个 id：`Refusing to start: <原因>`（非法端口属性或非法 descriptor，退出码 1，见 TC-GAME-009 / TC-GAME-010）。
-- 入口：TCP `127.0.0.1:25565`；离线模式（`Auth.Offline`），任意用户名；压缩阈值 256 字节。
+- 入口：TCP `127.0.0.1:25565`；按上面的启动命令是离线模式（`Auth.Offline`），任意用户名；压缩阈值 256 字节。不带 `synaxis.app.auth` 时是在线模式，只有经 sessionserver 验证的账号进得来（`docs/DESIGN-PROD.md` `API-PROD-001`）。
 - 测试账号：
 
 | 角色 | 账号 | 获取方式 |
@@ -2225,6 +2226,196 @@ jcmd "$pid" VM.flags | tr ' ' '\n' | grep -cxE -- '-XX:\+UseG1GC|-XX:InitialHeap
 
 后置：按 pid 停服；删掉 `<relay.jar>` 及其编译目录、各 `<out>` 与服务端临时目录；`docker ps -a` 里没有残留的 `synaxis-mc-client*` 容器；`git status` 干净。
 
+### 生产就绪 · 第 2 波 2A：正版验证与加密
+
+十六条对应 `REQ-PROD-002`、`REQ-PROD-003`、`REQ-PROD-004`（同分片部分）与 `REQ-PROD-044`（`API-PROD-001`、`API-PROD-002`、`API-PROD-027`，§11.1 登录验证状态机）。`TC-PROD-090`～`TC-PROD-101` 与 `TC-PROD-105` 是 JUnit，命令统一写作「跑 `<类>`」，即 `./gradlew :test --tests <类> --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts`（`server-app` 的类换成 `:server-app:test`，模组的类在 `client-fabric` 目录里跑 `./gradlew test --tests <类> --no-daemon`），结果看 `build/test-results/test/TEST-<类>.xml` 的 `tests`、`failures` 与 `<failure message>`。在线模式的引擎测试不出网：`OnlineLoginSocketTest` 与 `OnlineDuplicateLoginSocketTest` 在回环地址上起真 `Server`，一边是 JCE 写的测试客户端 `EncryptedLoginClient`（RSA/PKCS#1 加密密钥与 challenge，之后两个方向 AES/CFB8），一边是测试内的 `com.sun.net.httpserver` 假服务 `TestSessionServer`（可排定每次 `hasJoined` 的状态码与延迟、可挂起、记录查询与同时在途数）。`TC-PROD-102`～`TC-PROD-104` 起真进程，端口 25623；假 sessionserver 用 `--port 0` 取随机端口，下文记作 `<F>`。反证一律是「临时改一处实现、重跑、看红、还原」，还原后 `git status` 必须干净。
+
+#### `TC-PROD-090` `serverHash` 是有符号十六进制，密钥对是 RSA-1024，CFB8 是跨包连续的字节流 — 对应 `REQ-PROD-002` · 级别: 回归 · 执行者: AI
+
+前置：工作副本干净；不需要起服。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `io.github.bearisbug.synaxis.crypto.LoginCryptTest` | 4 个 0 失败。`theServerHashIsSignedHexadecimalWithoutLeadingZeros`：空密钥、空公钥编码时 `serverHash` 退化为名字的 SHA-1，`Notch`、`jeb_`、`simon` 三个分别是 `4ed1f46bbe04bc756bcb17c0c7ce3e4632f06a48`、`-7c9d5b0044c130109a5d7b5fb5c317c02b4e28c1`、`88e16a1019277b15d58faf0541e11910eb756f6`（minecraft.wiki「Java Edition protocol/Encryption」页的三组示例，2026-09-23 读取）；`theServerHashCoversTheSecretAndTheKey`：共享密钥改一个字节或换一把公钥，哈希都变；`theKeyPairIsRsa1024`：模数 1,024 位；`theStreamCipherCarriesOnAcrossCallsWithTheSecretAsIv`：一次加密 23 字节与拆成 5 + 18 两次加密的密文逐字节相同，解回原文 |
+| 2 | 反证有齿：`LoginCrypt#serverHash` 的 `new BigInteger(digest.digest())` 改成 `new BigInteger(1, digest.digest())`（当成无符号数），重跑第 1 步，再还原 | `4 tests completed, 1 failed`，红在 `theServerHashIsSignedHexadecimalWithoutLeadingZeros`：`expected: <-7c9d5b0044c130109a5d7b5fb5c317c02b4e28c1> but was: <8362a4ffbb3ecfef65a284a04a3ce83fd4b1d73f>`（`jeb_` 的摘要首位为 1，无符号读法丢了负号）。还原后复绿 |
+
+后置：确认 `LoginCrypt.java` 没有残留改动。
+
+#### `TC-PROD-091` clientbound login ID 1 恢复为 `EncryptionRequestPacket`，编解码往返 — 对应 `REQ-PROD-002` · 级别: 回归 · 执行者: AI
+
+前置：工作副本干净。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `io.github.bearisbug.synaxis.network.packet.PacketVanillaIdTest`、`io.github.bearisbug.synaxis.network.packet.PacketRegistryLookupTest`、`io.github.bearisbug.synaxis.network.PacketWriteReadRegistriesTest` | 全部 0 失败。`PacketVanillaIdTest` 的 clientbound login 表第 1 行是 `row(1, "minecraft:hello", EncryptionRequestPacket.class)`，login 表不再有 `RESERVED`；`PacketRegistryLookupTest#theClientBoundLoginIdsAreTheVanillaOnes` 判 `EncryptionRequestPacket` 的 ID 是 1；`PacketWriteReadRegistriesTest` 含三个 `EncryptionRequestPacket` 实例（124 / 65 字节带认证、`server` 不带认证、空 `serverId` 带认证）的往返 |
+| 2 | 反证有齿：`PacketVanilla.java` 的 `SERVER_LOGIN` 里 `entry(EncryptionRequestPacket.class, …)` 换回 `entry(ReservedPacket.class, ReservedPacket.SERIALIZER)`，同时删掉 `EncryptionRequestPacket` 的 import（否则 Error Prone 的未用 import 先让编译失败），重跑第 1 步，再还原 | 2 条红：`PacketVanillaIdTest#theClientboundLoginIdsAreTheVanillaOnes` 报 `Multiple Failures (3 failures)`，首条是 `Packet type class …EncryptionRequestPacket cannot be sent in state SERVER_LOGIN!`，另有 `Packet id 0x1 isn't registered!`；`PacketRegistryLookupTest#theClientBoundLoginIdsAreTheVanillaOnes` 报同一条 `cannot be sent in state SERVER_LOGIN!`。`PacketWriteReadRegistriesTest` 466 个仍绿（它按注册表逐包取实例，拿不到占位包的实例不算失败）。还原后复绿 |
+
+后置：确认 `PacketVanilla.java` 没有残留改动。
+
+#### `TC-PROD-092` 在线模式完整登录拿到 Mojang 身份，加密之后线上没有明文 — 对应 `REQ-PROD-002`、`REQ-PROD-003` · 级别: 回归 · 执行者: AI
+
+前置：工作副本干净。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `io.github.bearisbug.synaxis.network.OnlineLoginSocketTest` | 13 个 0 失败，其中 `anOnlineLoginTakesTheIdentityTheSessionServerVouchesFor`：假服务给 `Steve` 的 profile 是随机 UUID `U` 与 `textures=skin-of-steve`（签名 `sig-skin-of-steve`）。加密请求的 `serverId` 为空串、`shouldAuthenticate=true`；`LoginSuccess` 里的 UUID 等于 `U`、不等于 `offlineUuid("Steve")`，名字 `Steve`，属性恰好是那一条带签名的 `textures`；假服务恰好收到 1 次查询，`username=Steve`、`serverId` 等于客户端自己算出的 `serverHash`；客户端从 socket 收到的原始字节里没有 `Steve` 这 5 个字节（`LoginSuccess` 是密文） |
+| 2 | 反证有齿：`PlayerSocketConnection#writeSendable` 里 `buffer.cipher(encryption.encrypt(), start, length)` 的长度改成 `0`（出站不再加密），只跑 `OnlineLoginSocketTest.anOnlineLoginTakesTheIdentityTheSessionServerVouchesFor`，再还原 | 红在该方法：`java.io.IOException: var-int too long`（客户端把明文的 `SetCompression` 当密文解，读出的帧长是乱码）。还原后复绿 |
+
+后置：确认 `PlayerSocketConnection.java` 没有残留改动。
+
+#### `TC-PROD-093` `hasJoined` 回 204：断线包 `synaxis:auth-failed` 是加密的，且不重试 — 对应 `REQ-PROD-002` · 级别: 回归 · 执行者: AI
+
+前置：工作副本干净。这一条钉 auth 草案 §1.3 上游缺陷 ①：先开加密再验证，失败断线包也走密文。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `io.github.bearisbug.synaxis.network.OnlineLoginSocketTest` | `aNameThatDidNotJoinIsRefusedWithAnEncryptedAuthFailed` 绿：假服务对第 1 次查询回 204，客户端解密后读到 `LoginDisconnect`，翻译键 `synaxis:auth-failed`；原始字节里没有 `synaxis:auth-failed`；假服务只收到 1 次查询；随后连接被关、没有别的包 |
+| 2 | 反证有齿：删掉 `LoginListener#loginEncryptionResponseListener` 里的 `socketConnection.enableEncryption(LoginCrypt.sharedSecret(secret));` 一行（服务端不开加密，即上游在失败分支上的行为），只跑该方法，再还原 | 红：`java.io.IOException: var-int too long`，客户端已切到密文，明文断线包解不出来，玩家看到的是解码错误而不是原因。还原后复绿 |
+
+后置：确认 `LoginListener.java` 没有残留改动。
+
+#### `TC-PROD-094` sessionserver 不可用时退避重试一次：503 后 200 进服，两次失败或两次超时得 `synaxis:auth-unavailable` — 对应 `REQ-PROD-002` · 级别: 回归 · 执行者: AI
+
+前置：工作副本干净。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `io.github.bearisbug.synaxis.network.OnlineLoginSocketTest` | 三条绿：`anUnavailableSessionServerIsAskedOnceMore`（503、200，客户端拿到 `LoginSuccess`，假服务收到 2 次查询）；`twoUnavailableAnswersRefuseWithAuthUnavailable`（503、429，解密后读到 `synaxis:auth-unavailable`，恰好 2 次查询）；`aSessionServerThatDoesNotAnswerInTimeIsUnavailable`（`SessionServer` 超时设 1 s，假服务两次都 3 s 后才回 200，得 `synaxis:auth-unavailable`，2 次查询，该方法耗时约 3.3 s：两次各 1 s 超时加 0.5～1.5 s 退避）。§19 场景写的是超时 5 s、假服务阻塞 6 s，本用例按比例缩短 |
+| 2 | 反证有齿：`SessionClient#verify` 里退避之后的 `result = query(username, serverHash, clientAddress, deadlineMillis);` 删掉（只查一次），只跑上面三条，再还原 | `3 tests completed, 3 failed`：`anUnavailableSessionServerIsAskedOnceMore` 报 `the login failed: login disconnect … key=synaxis:auth-unavailable`；`twoUnavailableAnswersRefuseWithAuthUnavailable` 报 `retried exactly once ==> expected: <2> but was: <1>`；`aSessionServerThatDoesNotAnswerInTimeIsUnavailable` 报 `expected: <2> but was: <1>`。还原后复绿 |
+
+后置：确认 `SessionClient.java` 没有残留改动。
+
+#### `TC-PROD-095` 同时在途的 `hasJoined` 不超过 `maxInFlight` — 对应 `REQ-PROD-002` · 级别: 回归 · 执行者: AI
+
+前置：工作副本干净。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `io.github.bearisbug.synaxis.network.OnlineLoginSocketTest` | `noMoreThanMaxInFlightQueriesRunAtOnce` 绿：`maxInFlight=32`，假服务挂起全部查询，42 个客户端同时登录（`127.0.0.0/8` 设为闸门可信网段，L1 / L2 不参与）；在途数到 32 后再等 500 ms 仍是 32；放行后 42 个都拿到 `LoginSuccess`，假服务记到的峰值在途数是 32、查询共 42 次 |
+| 2 | 反证有齿：`SessionClient` 构造器里 `new Semaphore(server.maxInFlight(), true)` 改成 `server.maxInFlight() + 100`，只跑该方法，再还原 | 红：`the queries past the limit wait for a slot ==> expected: <32> but was: <42>`。还原后复绿 |
+
+后置：确认 `SessionClient.java` 没有残留改动。
+
+#### `TC-PROD-096` 非法加密握手一律 `synaxis:protocol-error`，不向 sessionserver 发请求 — 对应 `REQ-PROD-002` · 级别: 边缘 · 执行者: AI
+
+前置：工作副本干净。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `io.github.bearisbug.synaxis.network.OnlineLoginSocketTest` | 五条绿，都读到翻译键 `synaxis:protocol-error`：`aKeyWithoutARequestIsAProtocolError`（握手后不发 `LoginStart` 直接发 `minecraft:key`，假服务 0 次查询）；`aWrongChallengeIsAProtocolError`（challenge 翻转一位，0 次查询）；`aSecretThatIsNotAnAes128KeyIsAProtocolError`（共享密钥 15 字节，0 次查询）；`aKeyToAnOfflineServerIsAProtocolError`（`Auth.Offline()` 的服务端收到 `minecraft:key`）；`aSecondKeyIsAProtocolError`（第一把密钥合法，紧跟一把已经走密文的第二把，断线包是加密的，`AsyncPlayerPreLoginEvent` 0 次）。前四条的断线包是明文：此时服务端还没开加密，而发出这些包的只可能是非原版对端 |
+| 2 | 反证有齿：`LoginListener#loginEncryptionResponseListener` 的 `MessageDigest.isEqual(challenge, echoed)` 改成 `MessageDigest.isEqual(echoed, echoed)`（不再校验 challenge），只跑 `aWrongChallengeIsAProtocolError`，再还原 | 红：`java.net.SocketTimeoutException: Read timed out`（约 20 s）。服务端接受了伪造的 challenge、开了加密并去查 sessionserver，客户端等的明文断线包永远不来。还原后复绿 |
+
+后置：确认 `LoginListener.java` 没有残留改动。§19 场景「发两次」要求假服务 0 次查询，实现做不到，见本节末尾的说明。
+
+#### `TC-PROD-097` 验证期间对端断开：结果丢弃，不进 configuration — 对应 `REQ-PROD-002` · 级别: 回归 · 执行者: AI
+
+前置：工作副本干净。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `io.github.bearisbug.synaxis.network.OnlineLoginSocketTest` | `aPeerThatLeavesDuringVerificationIsForgotten` 绿：假服务 2 s 后才回 200；客户端发完密钥、等到查询已发出就关 socket；再等 3 s，`AsyncPlayerPreLoginEvent` 0 次，configuration 态玩家 0 个 |
+| 2 | 反证有齿：删掉 `LoginListener#verify` 里的 `if (!connection.isOnline()) return;`，只跑该方法，再还原 | 红：`the answer reached a connection that is gone ==> expected: <0> but was: <1>`。还原后复绿 |
+
+后置：确认 `LoginListener.java` 没有残留改动。
+
+#### `TC-PROD-098` 加密不验证（`Auth.Offline(encrypt=true)`）：不让客户端 join，身份按用户名派生 — 对应 `REQ-PROD-002` · 级别: 回归 · 执行者: AI
+
+前置：工作副本干净。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `io.github.bearisbug.synaxis.network.OnlineLoginSocketTest` | `encryptedOfflineModeEncryptsWithoutAskingForASession` 绿：加密请求 `shouldAuthenticate=false`；`LoginSuccess` 的 UUID 是 `offlineUuid("Local")`；原始字节里没有 `Local` |
+| 2 | 反证有齿：`LoginListener#loginStartListener` 发加密请求时 `auth instanceof Auth.Online` 改成 `true`，只跑该方法，再还原 | 红：`the client must not join a session ==> expected: <false> but was: <true>`。还原后复绿 |
+
+后置：确认 `LoginListener.java` 没有残留改动。
+
+#### `TC-PROD-099` 正版皮肤：`textures` 原样进 `PlayerInfoUpdatePacket`，引擎不另查皮肤 — 对应 `REQ-PROD-003` · 级别: 回归 · 执行者: AI
+
+前置：工作副本干净。profile 从 `hasJoined` 到 `LoginSuccess` 的那一段由 `TC-PROD-092` 判。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `io.github.bearisbug.synaxis.entity.ProfileSkinIntegrationTest`，再跑 `io.github.bearisbug.synaxis.network.player.SessionClientTest` | 前者 2 个 0 失败：`theTexturesOfTheProfileReachOtherPlayers` 里先进服的旁观者收到的 `ADD_PLAYER` 包中，新玩家那一条的属性恰好是 `textures` / `base64-textures` / `base64-signature`；`noEngineCodeLooksASkinUpOnItsOwn`（ArchUnit）判 `PlayerSkin` 之外没有任何引擎类调用 `PlayerSkin.fromUsername` 或 `fromUuid`。后者 2 个 0 失败：200 的正文按原样建 profile（无签名的属性签名为 null），空串、非 JSON、`{}`、UUID 不是 32 位十六进制、名字超过 16 字符都判为 `Unavailable` |
+| 2 | 反证有齿（签名）：`Player.java` 建初始皮肤处 `new PlayerSkin(property.value(), property.signature())` 的签名改成 `null`，跑 `ProfileSkinIntegrationTest`，再还原 | 红在 `theTexturesOfTheProfileReachOtherPlayers`：`No elements matched the predicate`，失败信息里列出的 `ADD_PLAYER` 条目属性没有这条带签名的 `textures` |
+| 3 | 反证有齿（另查皮肤）：在 `LoginListener#turnAway` 开头加 `var _ = PlayerSkin.fromUsername(connection.getIdentifier());` 并补 import，跑 `ProfileSkinIntegrationTest`，再还原 | 红在 `noEngineCodeLooksASkinUpOnItsOwn`：`Architecture Violation … should call method PlayerSkin.fromUsername(String) or should call method PlayerSkin.fromUuid(String) … was violated (1 times)`。还原后两条都绿 |
+
+后置：确认 `Player.java`、`LoginListener.java` 没有残留改动。
+
+#### `TC-PROD-100` 在线模式同分片重复登录踢旧、新连接等旧玩家离开世界（上限 5 s）；离线模式仍拒新 — 对应 `REQ-PROD-004` · 级别: 回归 · 执行者: AI
+
+前置：工作副本干净。只覆盖同分片部分；跨分片顶号属第 3 波。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `io.github.bearisbug.synaxis.network.OnlineDuplicateLoginSocketTest` | 1 个 0 失败：`MinecraftServer` 以在线模式起在回环地址上并 tick，两个 JCE 客户端先后以同一账号（假服务给同一个 UUID）登录并走完 configuration。第一个客户端在 play 态收到 `Disconnect synaxis:logged-in-elsewhere`；第二个进入 play，旧 `Player` 已 `isRemoved()`；实例的实体追踪器按该 UUID 取到的是新玩家（其他玩家看得到它）；在线玩家列表只有新玩家；第二个客户端没有被断开 |
+| 2 | 跑 `io.github.bearisbug.synaxis.network.SessionHandoverIntegrationTest` 与 `io.github.bearisbug.synaxis.network.DuplicateUuidLoginIntegrationTest` | 前者 1 个 0 失败：旧会话用测试夹具的连接（`disconnect()` 为空操作，被踢后不释放 UUID、也不离开世界），`createPlayerReplacing` 在 5,000～7,000 ms 之间返回 null，旧会话收到过 `synaxis:logged-in-elsewhere`，在线玩家仍是旧的那个；登录监听器据此以 `synaxis:state-unavailable` 断开新连接。后者 3 个 0 失败，离线模式下同 UUID 的第二条连接仍收到 `synaxis:duplicate-login` |
+| 3 | 反证有齿（踢旧）：`LoginListener#loginAckListener` 的在线分支里 `createPlayerReplacing(connection, gameProfile)` 改成 `createPlayer(connection, gameProfile)`，跑第 1 步，再还原 | 红：`disconnected during configuration: synaxis:state-unavailable`（新连接被拒，旧会话留着） |
+| 4 | 反证有齿（5 s 上限）：`ConnectionManager` 的 `SESSION_HANDOVER_TIMEOUT` 由 `TimeUnit.SECONDS.toNanos(5)` 改成 `toNanos(1)`，跑第 2 步的 `SessionHandoverIntegrationTest`，再还原 | 红：`waited 1006 ms ==> expected: <true> but was: <false>`。还原后两步复绿 |
+
+后置：确认 `LoginListener.java`、`ConnectionManager.java` 没有残留改动。
+
+#### `TC-PROD-101` `server-app` 默认在线模式，离线须显式传参，非 Mojang 的 sessionserver 启动打 WARN — 对应 `REQ-PROD-002` · 级别: 回归 · 执行者: AI
+
+前置：工作副本干净；第 2～4 步要 `:server-app:installDist` 的产物与空闲端口 25623，每步在新建的临时目录里起服（stdin 接 `/dev/null`），就绪后按 pid 停。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `io.github.bearisbug.synaxis.app.MainTest`（`:server-app:test`） | 15 个 0 失败，其中四条新的：不设属性时 `Main.auth()` 是 `Auth.Online`，地址是 `https://sessionserver.mojang.com/session/minecraft/hasJoined`；`offline` 得 `new Auth.Offline(false)`，`offline-encrypted` 得 `new Auth.Offline(true)`；`synaxis.app.auth.session-server=http://127.0.0.1:25624/session/minecraft/hasJoined` 时地址被替换且 `isMojang()` 为 false；`synaxis.app.auth=cracked` 与 `session-server=localhost:25624`（没有 scheme）各抛 `IllegalArgumentException`，信息里带原值 |
+| 2 | `java -Xmx1G -Dsynaxis.app.port=25623 -Dsynaxis.app.core-mode=on -cp "<仓库根>/server-app/build/install/server-app/lib/*" io.github.bearisbug.synaxis.app.Main < /dev/null > server.log 2>&1 &`，就绪后 `grep 'Effective auth' server.log` | 一行 INFO：`Effective auth: mode=online session_server=https://sessionserver.mojang.com/session/minecraft/hasJoined`；引擎另打 `Running in online mode, logins are verified against https://sessionserver.mojang.com/…` |
+| 3 | 第 2 步的写法加 `-Dsynaxis.app.auth.session-server=http://127.0.0.1:<F>/session/minecraft/hasJoined` | 那一行变成 WARN：`Effective auth: mode=online session_server=http://127.0.0.1:<F>/… is not Mojang's session server; a login is let in on whatever it answers, which is for CI and load tests only` |
+| 4 | 第 2 步的写法加 `-Dsynaxis.app.auth=bogus` | 进程退出、端口 25623 无监听，日志 `ERROR … Main - Refusing to start: synaxis.app.auth=bogus is not a login mode: online, offline or offline-encrypted` |
+| 5 | 反证有齿：`Main#auth` 的默认值 `"online"` 改成 `"offline"`，重跑第 1 步，再还原 | `15 tests completed, 2 failed`：`theDefaultLoginModeIsOnlineAgainstMojang` 与 `theSessionServerCanBeOverriddenForTesting` 都报 `Unexpected type, expected: <io.github.bearisbug.synaxis.Auth.Online> but was: <io.github.bearisbug.synaxis.Auth.Offline>`。还原后复绿 |
+
+后置：按 pid 停掉第 2～3 步的服务端，删掉临时目录；确认 `Main.java` 没有残留改动。
+
+#### `TC-PROD-102` 假 sessionserver：`record` 只认 join 过的 serverId，`allow-all` 全放行，故障可按序号注入 — 对应 `REQ-PROD-044` · 级别: 回归 · 执行者: AI
+
+前置：工作副本干净。下面的 `curl` 都带 `--noproxy '*'`（本机设了 HTTP 代理时，回环地址也会被送去代理）。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | `java tools/fake-sessionserver/FakeSessionServer.java --mode record --port 0 --inject status=503@3 > fake.log &`，读出 `fake.log` 首行的端口 `<F>`；`curl -X POST -d '{"accessToken":"t","selectedProfile":"0123456789abcdef0123456789abcdef","serverId":"H1"}' http://127.0.0.1:<F>/session/minecraft/join`；再依次 GET `hasJoined?username=Steve&serverId=H1`、`?username=Alex&serverId=H2`、`Steve/H1`、`Steve/H1` | join 回 204；四次 `hasJoined` 依次 200（正文 `{"id":"0123456789abcdef0123456789abcdef","name":"Steve","properties":[]}`）、204、503（第 3 次按 `@3` 注入）、200。`fake.log` 每个请求一行：`1 POST /session/minecraft/join -> 204`、`2 GET …username=Steve&serverId=H1 -> 200`、`3 GET …username=Alex&serverId=H2 -> 204`、`4 … -> 503`、`5 … -> 200` |
+| 2 | 按 pid 停掉，换 `--mode allow-all --port 0 --inject delay=1500@1 --inject timeout@2 --inject status=429@3` 重起；对 `hasJoined?username=Alex&serverId=H2` 连发四次，第 2 次带 `curl --max-time 3` | 第 1 次 200、耗时约 1.5 s，正文 `id` 是 `36532b5ec4423dbba24cc7e55d0f979a`（`OfflinePlayer:Alex` 的 name-UUID）；第 2 次 `curl` 退出码 28（超时，`fake.log` 记 `-> held`）；第 3 次 429；第 4 次 200 |
+| 3 | 反证有齿：把 `FakeSessionServer#hasJoined` 里的 `joinedProfiles.get(serverId)` 换成 `joinedProfiles.values().stream().findFirst().orElse(null)`（不再按 serverId 认），在临时目录里用改过的副本重做第 1 步的 join 与前两次 `hasJoined` | 红：`Alex/H2` 回 200 而不是 204。副本删掉，仓库里的文件没动 |
+
+后置：按 pid 停掉假服务，删掉临时目录。
+
+#### `TC-PROD-103` 真进程：在线模式经假 sessionserver 放行 20 个加密机器人，对着 Mojang 的真 sessionserver 被拒为 `synaxis:auth-failed` — 对应 `REQ-PROD-002`、`REQ-PROD-044` · 级别: 回归 · 执行者: AI
+
+前置：`:server-app:installDist` 已跑；端口 25623 空闲；`javac -d <cls> tools/loadtest/PacketFlood.java tools/fake-sessionserver/FakeSessionServer.java`。第 3 步要本机能经代理 `127.0.0.1:7897` 访问 `sessionserver.mojang.com`。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | `java -cp <cls> FakeSessionServer --mode allow-all --port 0 > fake.log &` 得端口 `<F>`；在临时目录里起服：`java -Xmx1G -Dsynaxis.app.port=25623 -Dsynaxis.app.core-mode=on -Dsynaxis.app.auth.session-server=http://127.0.0.1:<F>/session/minecraft/hasJoined -Dsynaxis.connection-gate.trusted-networks=127.0.0.0/8 -cp "<仓库根>/server-app/build/install/server-app/lib/*" io.github.bearisbug.synaxis.app.Main < /dev/null > server.log 2>&1 &`；就绪后在仓库根跑 `java -cp <cls> PacketFlood --port 25623 --auth online --connections 20 --hz 5 --seconds 10 --out <out>` | `flood: 20/20 logged in in 0.3 s`、`0 lost`；`fake.log` 恰好 20 行 `GET /session/minecraft/hasJoined?username=flood00NN&serverId=… -> 200`；`server.log` 20 行 `Login success`，WARN 只有启动时 `Effective auth … is not Mojang's session server` 那一行，没有 ERROR |
+| 2 | 反证有齿：同一服务端，`python3 tools/protocol-probe/probe.py --port 25623 login --hold 1`，再 `java -cp <cls> PacketFlood --port 25623 --connections 2 --hz 5 --seconds 2 --out <out2>`（不带 `--auth`，默认 `offline`） | 探针打印 `recv EncryptionRequestPacket` 后退出码 1：`EncryptionRequest received: the probe needs an offline server, start server-app with -Dsynaxis.app.auth=offline`；PacketFlood 两条都 `login failed flood000N: the server asked for encryption: pass --auth offline-encrypted or --auth online, or start it with -Dsynaxis.app.auth=offline`，`0/2 logged in` |
+| 3 | 按 pid 停服与假服务；不带 `session-server` 覆盖、加 `-Dhttps.proxyHost=127.0.0.1 -Dhttps.proxyPort=7897` 重新起服；`java -cp <cls> PacketFlood --port 25623 --auth online --connections 1 --hz 5 --seconds 2 --out <out3>` | 启动行 `Effective auth: mode=online session_server=https://sessionserver.mojang.com/session/minecraft/hasJoined`（INFO）；机器人 `login failed flood0000: login refused: synaxis:auth-failed`（Mojang 对没 join 过的名字回 204）；10 s 内 `server.log` 出现一行 `WARN … SessionClient - Session verification in the last 10 s: verified=0 unverified=1 unavailable=0 session_server=https://sessionserver.mojang.com/…`，没有逐条的拒绝日志 |
+
+后置：按 pid 停服；删掉 `<cls>`、各 `<out>` 与临时目录。
+
+#### `TC-PROD-104` 真客户端（无头容器）走完整正版路径：join 与 `hasJoined` 同一个 serverId，R1～R8 全绿 — 对应 `REQ-PROD-002`、`REQ-PROD-044` · 级别: 回归 · 执行者: AI
+
+前置：镜像 `synaxis-mc-client:dev` 与卷 `synaxis-mc-gradle` 就绪，`docker ps` 里没有别的容器挂着这个卷；`:protocol:publishToMavenLocal`、`:server-app:installDist` 已跑；假服务 `java -cp <cls> FakeSessionServer --mode record --bind 0.0.0.0 --port 0 > fake.log &` 得端口 `<F>`；在临时目录里以玩法模式起服：`java -Xmx1G -Dsynaxis.app.port=25623 -Dsynaxis.app.auth.session-server=http://127.0.0.1:<F>/session/minecraft/hasJoined -cp "<仓库根>/server-app/build/install/server-app/lib/*" io.github.bearisbug.synaxis.app.Main < /dev/null > server.log 2>&1 &`，日志出现 `Gameplay mode` 与 `listening on 0.0.0.0:25623`。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | `SYNAXIS_GAMETEST_SERVER=host.docker.internal:25623 SYNAXIS_GAMETEST_SESSION_HOST=http://host.docker.internal:<F> OUT=<out1> client-fabric/gametest-env/run.sh`；`cat <out1>/synaxis-gametest/report.txt`；在临时目录里 `LAUNCHES=1 CONNECTIONS=1 SERVER_LOG=server.log LEDGER_DIR=logs client-fabric/gametest-env/judge.sh <out1>/synaxis-gametest/report.txt` | `run.sh` 退出码只记录（本地 aarch64 容器恒为 1，退出时 libopenal 段错误）。客户端日志 `Environment[sessionHost=http://host.docker.internal:<F>, servicesHost=…, profilesHost=…, name=properties]`；`fake.log` 两行：`1 POST /session/minecraft/join -> 204` 与 `2 GET /session/minecraft/hasJoined?username=Player0&serverId=<H> -> 200`，两处 `<H>` 相同；`server.log` 的 `Login success: username=Player0` 在线程 `Syn-Session-Verify` 上。报告 R1～R8 八行 `PASS`（R3 `in world at BlockPos{x=256, y=40, z=256}`，R8 `screen: Connection Lost. The server rejected a message from this connection as malformed.`）；判定脚本 `client regression: all checks passed`。客户端去假 services 主机拉 `/player/certificates`、`/player/attributes`、`/publickeys`、`/privacy/blocklist` 都是 404，只记 ERROR 日志，不影响进服 |
+| 2 | 反证有齿：不设 `SYNAXIS_GAMETEST_SESSION_HOST`，`OUT=<out2>` 重跑第 1 步 | 红在 R3：`R3 FAIL not in world: Failed to connect to the server. Failed to log in: Invalid session (Try restarting your game and the launcher)`，R2、R4～R8 跟着 FAIL；客户端日志 `Environment[… name=PROD]`（开发账号去 Mojang join 被拒）；`fake.log` 与 `server.log` 都没有新增的登录 |
+
+后置：按 pid 停服与假服务；删掉各 `<out>`、`<cls>` 与临时目录；`docker ps -a` 里没有残留的 `synaxis-mc-client*` 容器。
+
+#### `TC-PROD-105` 客户端模组带四个新断线键的中英文译文 — 对应 `REQ-PROD-002`、`REQ-PROD-004` · 级别: 回归 · 执行者: AI
+
+前置：工作副本干净。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | `cd client-fabric && ./gradlew build --no-daemon` | `BUILD SUCCESSFUL`；`LoginVerificationTextTest` 2 个 0 失败：`en_us.json` 与 `zh_cn.json` 都有 `synaxis:auth-failed`、`synaxis:auth-unavailable`、`synaxis:logged-in-elsewhere`、`synaxis:state-unavailable` |
+| 2 | 反证有齿：删掉 `zh_cn.json` 的 `synaxis:auth-failed` 一行，`./gradlew test --tests '*LoginVerificationTextTest*' --no-daemon`，再还原 | `2 tests completed, 1 failed`，红在 `[2] "zh_cn"`：`zh_cn has no text for synaxis:auth-failed ==> expected: <true> but was: <false>`。还原后复绿 |
+
+后置：确认 `zh_cn.json` 没有残留改动。
+
+本节与设计文档 §19 的口径差异两处：一是「非法加密握手」场景的「发两次」一档，第一把密钥是合法的，读线程处理完它就把 `hasJoined` 交给验证线程，第二把随后才到，所以假服务会收到 1 次查询而不是 0 次；本节只判第二把得到加密的 `synaxis:protocol-error`、验证结果被丢弃（`TC-PROD-096`）。二是「不可用时重试」场景的超时档按比例缩短为超时 1 s、阻塞 3 s（`TC-PROD-094`）。
+
 ## 5. 回归策略
 
 - **全量轮**（全部用例）：首次成稿、每个阶段 gate（引擎域阶段 0、2、3；游戏域 `docs/DESIGN-M2.md` §26 的阶段 1～6b）、跨功能域改动、地基变更（JDK、Gradle、镜像、协议版本、模块拆分、启动入口）。
@@ -2240,6 +2431,7 @@ jcmd "$pid" VM.flags | tr ' ' '\n' | grep -cxE -- '-XX:\+UseG1GC|-XX:InitialHeap
   - 生产就绪域（`docs/DESIGN-PROD.md`）：真客户端回归 → TC-PROD-040～TC-PROD-042；动了 `client-fabric/**`、`protocol/**`、`server-app/**`、`game-rts/**`、`plugin-api/**`、引擎 `network` / `listener` 包或 `client-gametest.yml` 就跑 TC-PROD-040（与工作流的 PR 路径过滤同一口径），动了 `judge.sh` 或工作流再加 TC-PROD-041、TC-PROD-042。
 
   - 生产就绪域（`docs/DESIGN-PROD.md`）：运行参数 → TC-PROD-050（动了 `server-app/build.gradle.kts` 的 `application` 块、启动脚本或部署单元的 JVM 参数就跑）。
+  - 生产就绪域（`docs/DESIGN-PROD.md`）：正版验证与加密（`REQ-PROD-002`～`REQ-PROD-004`、`REQ-PROD-044`）→ TC-PROD-090～TC-PROD-105；动了 `Auth`、`SessionServer`、`crypto/LoginCrypt`、`network/player/SessionClient`、`LoginListener`、`PlayerSocketConnection` 的加解密或逐帧读取、`ConnectionManager#createPlayerReplacing`、`server-app` 的 `Main#auth` 就跑 TC-PROD-090～TC-PROD-101 与 TC-PROD-105，动了 `tools/fake-sessionserver`、`PacketFlood --auth` 或模组 gametest 的 authlib 参数再加 TC-PROD-102～TC-PROD-104。跨域牵连：动了 `PacketVanilla` 的 login 表 → 加 TC-036 与 TC-PROD-091；动了登录监听器的离线分支或 `DuplicateUuidLoginIntegrationTest` → 加 TC-032 与 TC-PROD-100。
   - 生产就绪域（`docs/DESIGN-PROD.md`）：聊天（`REQ-PROD-009`）→ TC-PROD-080～TC-PROD-083；动了 `ChatMessageListener`、`PlayerChatEvent`、`Messenger`、`ChatRateLimiter`、`ServerConfig` 的 `synaxis.chat-*` 键或 `Player` 发的 `JoinGamePacket` 就跑 TC-PROD-080～TC-PROD-082；动了模组的 `ClientPacketListenerMixin`、`synaxis.mixins.json` 或 `SpikeClientGameTest#chat` 再加 TC-PROD-083。
   - 影响面不确定时升级为全量轮。
 - **复测轮**（上轮失败用例 + 全部冒烟级）：修复失败项之后。

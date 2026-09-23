@@ -149,7 +149,7 @@ public class OnlineLoginSocketTest {
                 });
                 results.add(result);
             }
-            awaitUntil(() -> sessions.inFlight() == maxInFlight, "the first queries are held");
+            awaitUntil(() -> sessions.inFlight() >= maxInFlight, "the first queries are held");
             Thread.sleep(500);
             assertEquals(maxInFlight, sessions.inFlight(), "the queries past the limit wait for a slot");
 

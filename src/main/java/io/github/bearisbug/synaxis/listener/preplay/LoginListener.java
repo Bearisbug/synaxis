@@ -7,7 +7,6 @@ import io.github.bearisbug.synaxis.crypto.LoginCrypt;
 import io.github.bearisbug.synaxis.entity.Player;
 import io.github.bearisbug.synaxis.network.ConnectionState;
 import io.github.bearisbug.synaxis.network.DisconnectReasons;
-import io.github.bearisbug.synaxis.network.NetworkBuffer;
 import io.github.bearisbug.synaxis.network.packet.client.configuration.ClientFinishConfigurationPacket;
 import io.github.bearisbug.synaxis.network.packet.client.configuration.ClientSelectKnownPacksPacket;
 import io.github.bearisbug.synaxis.network.packet.client.login.ClientEncryptionResponsePacket;
@@ -21,22 +20,16 @@ import io.github.bearisbug.synaxis.network.player.GameProfile;
 import io.github.bearisbug.synaxis.network.player.PlayerConnection;
 import io.github.bearisbug.synaxis.network.player.PlayerSocketConnection;
 import io.github.bearisbug.synaxis.network.player.SessionClient;
-import io.github.bearisbug.synaxis.network.plugin.LoginPlugin;
 import io.github.bearisbug.synaxis.network.plugin.LoginPluginMessageProcessor;
 import io.github.bearisbug.synaxis.utils.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.net.InetAddress;
-import java.net.InetSocketAddress;
 import java.net.SocketAddress;
-import java.net.UnknownHostException;
 import java.security.GeneralSecurityException;
 import java.security.KeyPair;
 import java.security.MessageDigest;
 import java.security.SecureRandom;
-
-import static io.github.bearisbug.synaxis.network.NetworkBuffer.STRING;
 
 public final class LoginListener {
     private static final Logger LOGGER = LoggerFactory.getLogger(LoginListener.class);
@@ -69,17 +62,10 @@ public final class LoginListener {
 
         final Auth auth = connection.process().auth();
         final boolean isSocketConnection = connection instanceof PlayerSocketConnection;
-        // Proxy support (only for socket clients) and cache the login username
+        // Socket clients: cache the login username
         if (isSocketConnection) {
             PlayerSocketConnection socketConnection = (PlayerSocketConnection) connection;
             socketConnection.UNSAFE_setLoginUsername(packet.username());
-            // Velocity support
-            if (auth instanceof Auth.Velocity) {
-                // Dont block the connection so we can still read more packets
-                var _ = connection.loginPluginMessageProcessor().request(Auth.Velocity.PLAYER_INFO_CHANNEL, new byte[0])
-                        .thenAccept(response -> handleVelocityProxyResponse(socketConnection, response));
-                return;
-            }
             // Online mode and encrypted offline mode: the login goes on once the key arrives
             final KeyPair keyPair = connection.process().connection().loginKeyPair();
             if (keyPair != null) {
@@ -92,22 +78,11 @@ public final class LoginListener {
             }
         }
 
-        final GameProfile gameProfile;
-        if (auth instanceof Auth.Bungee) {
-            // LEGACY FORWARDING
-            // Use game profile set during handshake
-            assert connection instanceof PlayerSocketConnection;
-            final GameProfile bungeeProfile = ((PlayerSocketConnection) connection).gameProfile();
-            assert bungeeProfile != null;
-            gameProfile = new GameProfile(bungeeProfile.uuid(), packet.username(), bungeeProfile.properties());
-        } else {
-            // Offline mode: the uuid is the server's derivation from the username, not the one the
-            // login start carries. That one is the peer's to choose, and the duplicate login guard
-            // keys on the uuid: taken as sent, one name could be online twice under two uuids, and
-            // a peer could sit on the uuid of a name it does not use.
-            gameProfile = new GameProfile(GameProfile.offlineUuid(packet.username()), packet.username());
-        }
-        enterConfig(connection, gameProfile);
+        // Offline mode: the uuid is the server's derivation from the username, not the one the
+        // login start carries. That one is the peer's to choose, and the duplicate login guard
+        // keys on the uuid: taken as sent, one name could be online twice under two uuids, and
+        // a peer could sit on the uuid of a name it does not use.
+        enterConfig(connection, new GameProfile(GameProfile.offlineUuid(packet.username()), packet.username()));
     }
 
     /**
@@ -188,42 +163,6 @@ public final class LoginListener {
     private static void turnAway(PlayerSocketConnection connection, Component reason) {
         connection.sendPacket(new LoginDisconnectPacket(reason));
         connection.disconnectTurnedAway();
-    }
-
-    private static void handleVelocityProxyResponse(PlayerSocketConnection socketConnection, LoginPlugin.Response response) {
-        if (!(socketConnection.process().auth() instanceof Auth.Velocity velocity)) {
-            socketConnection.kick(Component.text("Login plugin response is not supported in this auth mode", NamedTextColor.RED));
-            return;
-        }
-
-        final byte[] data = response.payload();
-        SocketAddress socketAddress = null;
-        GameProfile gameProfile = null;
-        boolean success = false;
-        if (data != null && data.length > 0) {
-            NetworkBuffer buffer = NetworkBuffer.wrap(data, 0, data.length);
-            success = velocity.checkIntegrity(buffer);
-            if (success) {
-                // Get the real connection address
-                final InetAddress address;
-                try {
-                    address = InetAddress.getByName(buffer.read(STRING));
-                } catch (UnknownHostException e) {
-                    socketConnection.kick(INVALID_PROXY_RESPONSE);
-                    socketConnection.process().exception().handleException(e, socketConnection.connectionId());
-                    return;
-                }
-                final int port = ((InetSocketAddress) socketConnection.getRemoteAddress()).getPort();
-                socketAddress = new InetSocketAddress(address, port);
-                gameProfile = GameProfile.SERIALIZER.read(buffer);
-            }
-        }
-        if (!success) {
-            socketConnection.kick(INVALID_PROXY_RESPONSE);
-            return;
-        }
-        socketConnection.setRemoteAddress(socketAddress);
-        enterConfig(socketConnection, gameProfile);
     }
 
     public static void loginPluginResponseListener(ClientLoginPluginResponsePacket packet, PlayerConnection connection) {

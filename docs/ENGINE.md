@@ -331,7 +331,7 @@ cp protocol/build/libs/protocol-*.jar .abi-baseline/protocol.jar
 2026-09-18 的压测实测：一条「每个客户端包写一行」的 WARN 在 15 分钟里写了 662,803 行 / 84 MiB。这不是日志级别的问题，是**这条日志写多少次由对端说了算**。所以加日志之前先问一句「这一行的频率由谁决定」：
 
 - **由启动、注册表数据、配置或停机决定** —— 进程生命周期内次数固定，随便写。
-- **由连接数决定** —— 每连接至多一行，且必须与一次断开在同一分支上（`PlayerSocketConnection` 的协议错误、`HandshakeListener` 的 BungeeGuard 拒绝、`LoginListener` 的登录插件应答就是这个形状）。**「断开」要真的把活停下来才算数**：一次读上来的是一整批包，`PlayerSocketConnection#processPackets` 每派发一个包前先看连接还在不在，不在就 `break`，否则排在这次 kick 后面的几千个帧照样一个个交给监听器，「每连接一行」就变成「每包一行」（实测一批 4,000 帧，见 `docs/TEST.md` TC-035）。
+- **由连接数决定** —— 每连接至多一行，且必须与一次断开在同一分支上（`PlayerSocketConnection` 的协议错误、`LoginListener` 的登录插件应答就是这个形状）。**「断开」要真的把活停下来才算数**：一次读上来的是一整批包，`PlayerSocketConnection#processPackets` 每派发一个包前先看连接还在不在，不在就 `break`，否则排在这次 kick 后面的几千个帧照样一个个交给监听器，「每连接一行」就变成「每包一行」（实测一批 4,000 帧，见 `docs/TEST.md` TC-035）。
 - **由客户端发了什么、发了多少决定** —— 必须有界，三选一：
   1. **按时间限流**，样板是 `EntityTrackerImpl#reportUnregisteredMove` 与 `PacketReading#reportUnreadBytes`：一个 `AtomicLong` 记区间内累计次数、一个 `AtomicLong` 记上次输出时刻，CAS 抢到的那一次才写，并把累计次数带进那一行（**量被压掉了，但量还看得见**）。计数器只在「本来就要写日志」的那条分支上碰，解码热路径不为它付钱。宿主与游戏侧同一形状打包成了 `plugin-api` 的 `LogBudget`（标 `@ApiStatus.Internal`，不进 ABI 门；住在稳定面模块是因为宿主与插件坐在同一条客户端可控路径上，而插件不能依赖宿主）（同样是 10 秒 + 行内计数），带栈的报告也走它：一个区间里只有第一条留栈，其余次数进计数、由下一次触发写出的那一行报出来（洪水停在区间中途时积压的计数就等下一次触发），**预算按宿主注册过什么切**（每个频道注册一份、每个事件监听器一份），客户端能相乘的那一维（它自己编的 channel id）共用一份，事件台账那处整份文件共用一份。
   2. **按类型去重**，样板是 `PacketListenerManager` 的 `missingListenerWarnings`：客户端加不了包类型，所以一种一次就封顶了。

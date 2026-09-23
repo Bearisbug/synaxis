@@ -86,10 +86,6 @@ public final class ConnectionManager {
                 this.loginKeyPair = offline.encrypt() ? LoginCrypt.generateKeyPair() : null;
                 this.sessionClient = null;
             }
-            case Auth.Velocity _, Auth.Bungee _ -> {
-                this.loginKeyPair = null;
-                this.sessionClient = null;
-            }
         }
     }
 

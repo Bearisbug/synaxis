@@ -19,7 +19,7 @@ public record ClientHandshakePacket(int protocolVersion, String serverAddress,
             ClientHandshakePacket::new);
 
     public ClientHandshakePacket {
-        //TODO, while this is dependent on Auth the max default is 255, bungee guard could be up to MAX_VALUE (we do check in the listener)
+        // The vanilla limit of 255 is checked by HandshakeListener
         Check.argCondition(serverAddress.length() > Short.MAX_VALUE, "Server address length cannot be greater than {0}", Short.MAX_VALUE);
     }
 

@@ -11,7 +11,6 @@ import io.github.bearisbug.synaxis.exception.ExceptionManager;
 import io.github.bearisbug.synaxis.game.rts.GameSideFixture;
 import io.github.bearisbug.synaxis.listener.UnboundedClientDrivenLogFixture;
 import io.github.bearisbug.synaxis.listener.manager.PacketListenerManager;
-import io.github.bearisbug.synaxis.listener.preplay.HandshakeListener;
 import io.github.bearisbug.synaxis.listener.preplay.LoginListener;
 import io.github.bearisbug.synaxis.network.ConnectionGate;
 import io.github.bearisbug.synaxis.network.ConnectionManager;
@@ -211,12 +210,12 @@ public class ArchitectureTest {
      * the process, a client cannot add packet classes.</li>
      * <li>{@link SessionClient}: at most one line per 10 seconds, carrying the verification
      * outcomes it counted.</li>
-     * <li>{@link HandshakeListener} and {@link LoginListener}: one line per connection, both kick
-     * on the same branch and {@code PlayerSocketConnection} stops the batch at a disconnect, so the
-     * frames queued behind the kick are never handled.</li>
+     * <li>{@link LoginListener}: one line per connection, it kicks on the same branch and
+     * {@code PlayerSocketConnection} stops the batch at a disconnect, so the frames queued behind
+     * the kick are never handled.</li>
      * </ul>
      * The exemption is per class rather than per call site, which is the blind spot of this rule: a
-     * second, unbounded line added inside one of these nine classes passes. The bound of each one
+     * second, unbounded line added inside one of these eight classes passes. The bound of each one
      * is stated in its own javadoc, which is where a reviewer has to look.
      */
     private static DescribedPredicate<HasName> boundedReporters() {
@@ -227,7 +226,6 @@ public class ArchitectureTest {
                 .or(name(SessionClient.class.getName()))
                 .or(name(ConnectionManager.class.getName()))
                 .or(name(PacketListenerManager.class.getName()))
-                .or(name(HandshakeListener.class.getName()))
                 .or(name(LoginListener.class.getName()));
     }
 

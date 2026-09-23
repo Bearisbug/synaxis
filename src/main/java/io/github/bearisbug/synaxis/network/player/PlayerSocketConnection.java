@@ -414,18 +414,6 @@ public class PlayerSocketConnection extends PlayerConnection {
         return remoteAddress;
     }
 
-    /**
-     * Changes the internal remote address field.
-     * <p>
-     * Mostly unsafe, used internally when interacting with a proxy.
-     *
-     * @param remoteAddress the new connection remote address
-     */
-    @ApiStatus.Internal
-    public void setRemoteAddress(SocketAddress remoteAddress) {
-        this.remoteAddress = remoteAddress;
-    }
-
     public SocketChannel getChannel() {
         return channel;
     }

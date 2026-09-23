@@ -256,14 +256,6 @@ final class ServerProcessImpl implements ServerProcess, Registries.Delegating {
                     + "and players can impersonate each other.", offline.encrypt() ? " with encryption" : "");
             case Auth.Online online -> LOGGER.info("Running in online mode, logins are verified against {}.",
                     online.sessionServer().hasJoinedUrl());
-            case Auth.Velocity _ -> LOGGER.info("Running in Velocity mode with modern IP forwarding.");
-            case Auth.Bungee bungee -> {
-                if (bungee.guard()) {
-                    LOGGER.info("Running in BungeeCord mode, using legacy IP forwarding with Guard enabled.");
-                } else {
-                    LOGGER.info("Running in BungeeCord mode without BungeeGuard. Be sure to configure your firewall to prevent direct connections.");
-                }
-            }
         }
 
         // Init server

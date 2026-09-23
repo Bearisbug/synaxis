@@ -1,53 +1,29 @@
 package io.github.bearisbug.synaxis.listener.preplay;
 
-import com.google.gson.JsonArray;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
 import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.format.NamedTextColor;
-import io.github.bearisbug.synaxis.Auth;
 import io.github.bearisbug.synaxis.MinecraftServer;
 import io.github.bearisbug.synaxis.ServerConfig;
 import io.github.bearisbug.synaxis.network.ConnectionGate;
 import io.github.bearisbug.synaxis.network.DisconnectReasons;
 import io.github.bearisbug.synaxis.network.packet.client.handshake.ClientHandshakePacket;
 import io.github.bearisbug.synaxis.network.packet.server.login.LoginDisconnectPacket;
-import io.github.bearisbug.synaxis.network.player.GameProfile;
 import io.github.bearisbug.synaxis.network.player.PlayerConnection;
 import io.github.bearisbug.synaxis.network.player.PlayerSocketConnection;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import java.net.InetSocketAddress;
-import java.net.SocketAddress;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.UUID;
 
 public final class HandshakeListener {
-
-    private static final Logger LOGGER = LoggerFactory.getLogger(HandshakeListener.class);
-
-    /**
-     * Indicates that a BungeeGuard authentication was invalid due to missing, multiple, or invalid tokens.
-     */
-    private static final Component INVALID_BUNGEE_FORWARDING = Component.text("Invalid connection, please connect through the BungeeCord proxy. If you believe this is an error, contact a server administrator.", NamedTextColor.RED);
 
     /**
      * Text sent if a player was transferred to this server but the {@link ServerConfig#acceptTransfers()} setting is not enabled.
      */
     private static final Component TRANSFERS_DISABLED_TEXT = Component.translatable("multiplayer.disconnect.transfers_disabled");
 
-    private static int maxHandshakeLength(PlayerConnection connection) {
-        // BungeeGuard limits handshake length to 2500 characters, while vanilla limits it to 255
-        return connection.process().auth() instanceof Auth.Bungee bungee ? (bungee.guard() ? 2500 : Short.MAX_VALUE) : 255;
-    }
+    /** The longest server address a vanilla client sends. */
+    private static final int MAX_SERVER_ADDRESS_LENGTH = 255;
 
     @SuppressWarnings("fallthrough") // transfers deliberately continue with the regular login flow
     public static void listener(ClientHandshakePacket packet, PlayerConnection connection) {
-        String address = packet.serverAddress();
-        if (address.length() > maxHandshakeLength(connection)) {
+        final String address = packet.serverAddress();
+        if (address.length() > MAX_SERVER_ADDRESS_LENGTH) {
             throw new IllegalArgumentException("Server address too long: " + address.length());
         }
         if (connection instanceof PlayerSocketConnection socketConnection
@@ -66,13 +42,6 @@ public final class HandshakeListener {
                     // Incorrect client version
                     connection.kick(DisconnectReasons.UNSUPPORTED_VERSION);
                     break;
-                }
-
-                final Auth auth = connection.process().auth();
-
-                // Bungee support (IP forwarding)
-                if (auth instanceof Auth.Bungee bungee && connection instanceof PlayerSocketConnection socketConnection) {
-                    address = handleBungeeForwarding(address, socketConnection, bungee);
                 }
             default:
                 break;
@@ -99,78 +68,5 @@ public final class HandshakeListener {
         }
         connection.disconnectTurnedAway();
         return false;
-    }
-
-    private static String handleBungeeForwarding(String address,
-                                                 PlayerSocketConnection socketConnection,
-                                                 Auth.Bungee bungee) {
-        final String[] split = address.split("\00", 0);
-
-        if (split.length == 3 || split.length == 4) {
-            final boolean hasProperties = split.length == 4;
-            if (bungee.guard() && !hasProperties) {
-                bungeeDisconnect(socketConnection);
-                return address;
-            }
-
-            final String forwardedAddress = split[0];
-
-            final SocketAddress socketAddress = new InetSocketAddress(split[1],
-                    ((InetSocketAddress) socketConnection.getRemoteAddress()).getPort());
-            socketConnection.setRemoteAddress(socketAddress);
-
-            final UUID playerUuid = UUID.fromString(
-                    split[2]
-                            .replaceFirst(
-                                    "(\\p{XDigit}{8})(\\p{XDigit}{4})(\\p{XDigit}{4})(\\p{XDigit}{4})(\\p{XDigit}+)", "$1-$2-$3-$4-$5"
-                            )
-            );
-
-            List<GameProfile.Property> properties = new ArrayList<>();
-            if (hasProperties) {
-                boolean foundBungeeGuardToken = false;
-                final String rawPropertyJson = split[3];
-                final JsonArray propertyJson = JsonParser.parseString(rawPropertyJson).getAsJsonArray();
-                for (JsonElement element : propertyJson) {
-                    final JsonObject jsonObject = element.getAsJsonObject();
-                    final JsonElement name = jsonObject.get("name");
-                    final JsonElement value = jsonObject.get("value");
-                    final JsonElement signature = jsonObject.get("signature");
-                    if (name == null || value == null) continue;
-
-                    final String nameString = name.getAsString();
-                    final String valueString = value.getAsString();
-                    final String signatureString = signature == null ? null : signature.getAsString();
-
-                    if (bungee.guard() && nameString.equals("bungeeguard-token")) {
-                        if (foundBungeeGuardToken || !bungee.validToken(valueString)) {
-                            bungeeDisconnect(socketConnection);
-                            return address;
-                        }
-
-                        foundBungeeGuardToken = true;
-                    }
-
-                    properties.add(new GameProfile.Property(nameString, valueString, signatureString));
-                }
-
-                if (bungee.guard() && !foundBungeeGuardToken) {
-                    bungeeDisconnect(socketConnection);
-                    return address;
-                }
-            }
-
-            final GameProfile gameProfile = new GameProfile(playerUuid, "test", properties);
-            socketConnection.UNSAFE_setProfile(gameProfile);
-            return forwardedAddress;
-        }
-
-        bungeeDisconnect(socketConnection);
-        return address;
-    }
-
-    private static void bungeeDisconnect(PlayerConnection connection) {
-        LOGGER.warn("{} tried to log in without valid BungeeGuard forwarding information.", connection.getIdentifier());
-        connection.kick(INVALID_BUNGEE_FORWARDING);
     }
 }

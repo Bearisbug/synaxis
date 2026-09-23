@@ -9,12 +9,14 @@
 | Owner | Bearisbug |
 | 评审人 | Bearisbug |
 | 最后更新 | 2026-09-23 |
-| 关联 | 仓库 `https://github.com/Bearisbug/synaxis` · **里程碑分册 `docs/DESIGN-M2.md`（M2「游戏工程骨架与 RTS 垂直切片」，M2 范围内的需求 / 接口 / 状态机 / ADR 一律以该分册为准）** · 审计与架构评审 `docs/research/minestom-audit/`（00 总结、07 架构评审第八章） · 测试文档 `docs/TEST.md` |
+| 关联 | 仓库 `https://github.com/Bearisbug/synaxis` · **里程碑分册 `docs/DESIGN-M2.md`（M2「游戏工程骨架与 RTS 垂直切片」，M2 范围内的需求 / 接口 / 状态机 / ADR 一律以该分册为准）** · **里程碑分册 `docs/DESIGN-M3.md`（M3「大世界地图管线与分片」，M3 范围内的需求 / 接口 / 状态机 / ADR 一律以该分册为准）** · 审计与架构评审 `docs/research/minestom-audit/`（00 总结、07 架构评审第八章） · 测试文档 `docs/TEST.md` |
 
 变更记录：
 
 | 日期 | 版本 | 改动 | 作者 |
 | --- | --- | --- | --- |
+| 2026-09-23 | v0.36 | §28 光照 parity 测试那条技术债转已决：`LightParityIntegrationTest` 已随 `docs/DESIGN-M3.md` `REQ-M3-007` 补回，7 个场景与原版 26.2 逐值差异 0。设计正文其余章节与引擎代码未动 | Bearisbug |
+| 2026-09-23 | v0.35 | 登记里程碑分册 `docs/DESIGN-M3.md`（M3「大世界地图管线与分片」，草稿）：§1「关联」行加分册指引，§26 里程碑表加 M3 一行。设计正文其余章节与引擎代码未动 | Bearisbug |
 | 2026-09-23 | v0.34 | §28 光照 parity 测试那条技术债的「M2 决定光照去留时一并处理」落地：M2 决定保留光照（`docs/DESIGN-M2.md` v0.44），parity 测试仍未补，该行改写现有证据的范围，时限改为「地形出现平地与石柱以外的方块之前」。引擎代码未改 | Bearisbug |
 | 2026-09-23 | v0.33 | 登记 REQ-005 删包留下的包 ID 缺陷与修复，设计正文动了 REQ-005 一行、§19 一条 Gherkin 与 §28 一行。**缺陷**：包 ID 就是包在注册表里的位置，REQ-005 删掉 clientbound 包之后排在后面的包整体前移——login 在 `minecraft:hello` 之后前移 1 位，play 有 18 个空位；服务端把 `login_compression` 发在原版 `login_finished` 的 ID 上，原版 26.2 客户端按 `login_finished` 解码失败、登录不进去。**修复**：commit `cb44131ef1` 用 `ReservedPacket` 占住每个空位（login 1 个、play 18 个），它只占位置，注册表不按类、不按 ID 解析它。**门禁**：新增 `PacketVanillaIdTest`，把 26.2 原版 login、configuration、play 三个状态两个方向共六张表逐个 ID ↔ 资源名钉死（期望值由 `javap` 读 26.2 客户端 jar 得到，写成测试里的常量，运行时不依赖 jar），对应 `docs/TEST.md` TC-036 | Bearisbug |
 | 2026-09-22 | v0.32 | 攻击面盘点（`docs/research/attack-surface-2026-09/README.md`，`docs/TEST.md` §2 那行「安全渗透——无归属」自此有归属）在引擎侧修了两处、登记了两条，设计正文只动 §16。**修**：① 对端登录后停止读取，`PlayerConnection#disconnect` 之后 socket 永不关闭——断线包由写线程写、channel 也由它退出时关，而它正卡在 socket 写里等对端读；`PlayerSocketConnection` 现在在断开后给写线程 1 s 冲刷预算，超时由一条独立虚拟线程关闭 channel（§16 新增一行，§28 一条「已决」）。② 离线模式的 profile UUID 由服务端按用户名派生（`GameProfile#offlineUuid`），不再采信 `LoginStart` 里对端自选的 UUID——§10 与 §14 本来就写的是「按用户名派生」，是实现追齐；否则 `synaxis:duplicate-login` 这道闸按 UUID 判，对端换个 UUID 就能同名上线两次（§28 一条「已决」）。**登记**（§28 两条技术债）：连接数无上限且 fd 耗尽时 accept 循环空转；`socketTimeout` 对 `SocketChannel` 读无效，登录后唯一的空闲上界是 keep-alive。压缩帧的两道上限与 keep-alive 踢人各补一条证明既有控制的测试。游戏侧的四条登记见 `docs/DESIGN-M2.md` v0.40 | Bearisbug |
@@ -644,6 +646,7 @@ N/A — 无 schema 变更，M1 不落盘任何持久数据。
 | 5 配置（M1.5） | REQ-014 | `DISPATCHER_THREADS=2` 下全量绿 | 已完成（2,576 测试，线程数 2 全绿两次后恢复默认 1） |
 | 6 分层（M1.5） | REQ-015、REQ-016 | ArchUnit 禁止规则绿，依赖矩阵底层出向上层边为 0 | 已完成（2,576 测试；`pkgdeps.py` 底层出向上层边 0） |
 | M2 游戏工程与 RTS 垂直切片 | 见 **`docs/DESIGN-M2.md`**（独立分册） | 见该分册 §26 | 见该分册 §26 |
+| M3 大世界地图管线与分片 | 见 **`docs/DESIGN-M3.md`**（独立分册，草稿未评审） | 见该分册 §26 | 见该分册 §26 |
 
 阶段 0 到 3 必须连续完成（`ADR-004`）。阶段 2 的删除必须在阶段 1 的实体层与 instance 层修复合入之后开始，否则复现测试会随被删代码丢失。
 
@@ -681,7 +684,7 @@ N/A — M1 尚未完成；完成后按 §26 退出条件逐项对照并记录实
 | 风险 | `assertOwnership()` 对未分配线程的实体一律拒绝，`setInstance` / `teleport` 三处仍未接线；接线需先放宽未分配态语义 | Bearisbug | 阶段 4 前 |
 | 风险 | jcstress Gradle 插件与 isolated-projects / configuration cache 不兼容，CI 需单独 job 并关闭这两项 | Bearisbug | 阶段 0 |
 | 技术债 | `network` 包三处小缺陷（拆分时发现，未改）：`IOUTF8StringType` javadoc 含 `${@link ...}` 坏标签；`ListType`/`SetType` 的 `write` 空值分支写 `BYTE 0` 而 `read` 读 `VAR_INT`，仅因同为单字节 0 而巧合往返；`RawBytesType.write` 局部变量遮蔽记录组件 `length` | Bearisbug | M1.5 阶段 7 补测试时修 |
-| 技术债 | 删除 `instance/anvil` 连带删掉了 `LightParityIntegrationTest`（对原版光照逐值比对），光照引擎暂无 parity 测试。M2 已决定对局世界用 `LightingChunk` 在载入阶段整图算光照（`docs/DESIGN-M2.md` v0.44 的 §28.2），目前的正确性证据只有平地图上「地表以上空气天光 15、地表下石头 0」一条断言与一张真客户端截图，覆盖不到方块光、半透明方块与区块边界的逐值结果 | Bearisbug | 地形出现平地与石柱以外的方块之前 |
+| 已决 | 删除 `instance/anvil` 连带删掉的光照 parity 测试已补回（v0.36）：`LightParityIntegrationTest` 对 `parity/*.scene` 的 7 个场景（含方块光、半透明方块与区块边界），与原版 26.2 `LevelLightEngine` 隔离运行的真值逐 nibble 比较 sky 与 block 两层，差异 0，进 `./gradlew check`。真值由 `tools/light-oracle/gen.sh` 生成；需求、修掉的缺陷与门禁见 `docs/DESIGN-M3.md` `REQ-M3-007` 与 §5 末表 | Bearisbug | 已于 2026-09-23 处置（v0.36） |
 | 技术债 | `Auth.Velocity` / `Auth.Bungee` 代理转发模式暂留（单机单区用不到，但不是 Mojang 会话鉴权）；`MojangUtils.authenticateSession` 已零调用，随 REQ-014 一起清理 | Bearisbug | 阶段 5 |
 | 技术债 | ArchUnit 冻结存储在纯删除后需要手动剪枝（临时 `allowStoreUpdate=true` 跑一次再改回，核对 diff 只有删除）；每轮删除都要做 | Bearisbug | 每轮删除 |
 | Open Question | Adventure `ClickCallback.Provider` SPI 是 JVM 全局的，无法选择进程，REQ-013 后未注册；`ClickEvent.callback()` 退化为「不支持」，可用入口是 `process.clickCallbackManager().createClickEvent(...)`。要决定：接受实例入口，还是用「当前进程」线程局部桥接 | Bearisbug | M2 设计前 |

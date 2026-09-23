@@ -1,6 +1,7 @@
 package io.github.bearisbug.synaxis.app;
 
 import io.github.bearisbug.synaxis.ServerProcess;
+import io.github.bearisbug.synaxis.app.moderation.HostModeration;
 import io.github.bearisbug.synaxis.app.permission.HostPermissions;
 import io.github.bearisbug.synaxis.app.store.PlayerStore;
 import io.github.bearisbug.synaxis.app.store.PluginPlayerData;
@@ -48,6 +49,7 @@ final class PluginHost {
     private final HandshakeGate handshake;
     private final PlayerStore store;
     private final HostPermissions permissions;
+    private final HostModeration moderation;
     private final List<LoadedPlugin> enabled = new ArrayList<>();
 
     /**
@@ -70,14 +72,22 @@ final class PluginHost {
 
     PluginHost(ServerProcess process, Path pluginsDirectory, EventLedger ledger, PlayerStore store,
                @Nullable TicketVerifier tickets, HostPermissions permissions) {
+        this(process, pluginsDirectory, ledger, store, tickets, permissions, HostModeration.withoutDatabase(process));
+    }
+
+    PluginHost(ServerProcess process, Path pluginsDirectory, EventLedger ledger, PlayerStore store,
+               @Nullable TicketVerifier tickets, HostPermissions permissions, HostModeration moderation) {
         this.process = process;
         this.pluginsDirectory = pluginsDirectory;
         this.ledger = ledger;
         this.store = store;
         this.permissions = permissions;
+        this.moderation = moderation;
         this.handshake = new HandshakeGate(HandshakeGate.phase(), HandshakeGate.BUDGET, ledger);
         process.eventHandler().addChild(hostNode);
         router.attach(hostNode);
+        // Before the handshake: a banned connection is turned away before anything else is asked of it
+        moderation.attach(hostNode);
         handshake.attach(hostNode);
         // The handshake speaks over a channel of the reserved namespace, so it is registered the
         // same way the core mode's diagnostic channel is: through the one payload listener of the
@@ -148,7 +158,8 @@ final class PluginHost {
             plugin.onEnable(new PluginContextImpl(process,
                     loaded.events(), scheduler,
                     new PluginChannelsImpl(id, router), new PluginAdmissionImpl(id, admission),
-                    dataDirectory, ledger::record, playerData, playerData, permissions, LoggerFactory.getLogger("plugin." + id)));
+                    dataDirectory, ledger::record, playerData, playerData, permissions, moderation,
+                    LoggerFactory.getLogger("plugin." + id)));
         } catch (Throwable throwable) {
             playerData.discard();
             LOGGER.error("Plugin failed to enable: plugin_id={}", id, throwable);

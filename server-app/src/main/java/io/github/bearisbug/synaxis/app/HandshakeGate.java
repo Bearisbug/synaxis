@@ -294,7 +294,8 @@ final class HandshakeGate {
      * silence. Runs on the login virtual thread of that connection, before it is a player.
      */
     private void negotiateDuringLogin(AsyncPlayerPreLoginEvent event) {
-        if (!required) return;
+        // The ban check runs first on the same node and may have turned the connection away
+        if (!required || !event.getConnection().isOnline()) return;
         final PlayerConnection connection = event.getConnection();
         final UUID connectionId = connection.connectionId();
         final CompletableFuture<LoginPlugin.Response> answered = event.sendPluginRequest(CHANNEL, answer());

@@ -23,8 +23,8 @@ import java.util.function.Consumer;
 /**
  * What a shard keeps in Redis, all of it disposable ({@code docs/DESIGN-PROD.md} {@code API-PROD-006},
  * {@code ADR-PROD-003}): where a player is ({@code presence:{uuid}}, a routing hint only) and the
- * requests to let a player go ({@code synaxis:kick:{shard_id}}) and the accounts whose roles changed
- * ({@code synaxis:permission}).
+ * requests to let a player go ({@code synaxis:kick:{shard_id}}), the accounts whose roles changed
+ * ({@code synaxis:permission}) and the changes of the bans and the whitelist ({@code synaxis:moderation}).
  * <p>
  * Nothing here decides who holds a character, PostgreSQL does; Redis being down only turns a
  * cross-shard duplicate login into a refusal. Its failures are counted into one warning per 10 s.
@@ -38,6 +38,8 @@ public final class RedisLink implements AutoCloseable {
     static final int TIMEOUT_MS = 2_000;
     /** Where a role change is announced, with the account it changed. */
     static final String PERMISSION_CHANNEL = "synaxis:permission";
+    /** Where a change of the bans or the whitelist is announced. */
+    static final String MODERATION_CHANNEL = "synaxis:moderation";
     private static final long RESUBSCRIBE_MILLIS = 1_000;
 
     /** Asked to let a player go because the same account logs in on another shard. */
@@ -125,6 +127,16 @@ public final class RedisLink implements AutoCloseable {
         });
     }
 
+    /**
+     * Starts listening on {@value #MODERATION_CHANNEL}, the same way as {@link #listen}. What changed
+     * is not handed on: every change is answered by reading the bans and the whitelist again.
+     *
+     * @param listener told about every change
+     */
+    public void listenModeration(Runnable listener) {
+        subscribe("Syn-Redis-Moderation", MODERATION_CHANNEL, _ -> listener.run());
+    }
+
     private void subscribe(String threadName, String channel, Consumer<String> handler) {
         final RedisClient redis = this.client;
         if (redis == null) return;
@@ -201,6 +213,31 @@ public final class RedisLink implements AutoCloseable {
         message.addProperty("account_uuid", account.toString());
         try {
             redis.publish(PERMISSION_CHANNEL, message.toString());
+            up = true;
+            return true;
+        } catch (RuntimeException e) {
+            failed(e, "publish");
+            return false;
+        }
+    }
+
+    /**
+     * Tells every shard that the bans or the whitelist changed ({@code API-PROD-006}).
+     *
+     * @param kind    {@code ban}, {@code unban}, {@code whitelist-add} or {@code whitelist-remove}
+     * @param subject the account or the network
+     * @param banId   the ban, null for a whitelist change
+     * @return false if the message could not be sent: Redis is down, or not configured
+     */
+    public boolean publishModeration(String kind, String subject, @Nullable Long banId) {
+        final RedisClient redis = this.client;
+        if (redis == null) return false;
+        final JsonObject message = new JsonObject();
+        message.addProperty("kind", kind);
+        message.addProperty("subject", subject);
+        message.addProperty("ban_id", banId);
+        try {
+            redis.publish(MODERATION_CHANNEL, message.toString());
             up = true;
             return true;
         } catch (RuntimeException e) {

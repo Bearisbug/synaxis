@@ -6,6 +6,9 @@ import io.github.bearisbug.synaxis.MinecraftServer;
 import io.github.bearisbug.synaxis.ServerProcess;
 import io.github.bearisbug.synaxis.SessionServer;
 import io.github.bearisbug.synaxis.Watchdog;
+import io.github.bearisbug.synaxis.app.moderation.HostModeration;
+import io.github.bearisbug.synaxis.app.moderation.ModerationCommands;
+import io.github.bearisbug.synaxis.app.moderation.ModerationStore;
 import io.github.bearisbug.synaxis.app.permission.HostPermissions;
 import io.github.bearisbug.synaxis.app.permission.RoleCommand;
 import io.github.bearisbug.synaxis.app.permission.RoleStore;
@@ -79,6 +82,7 @@ public final class Main {
     private static final String AUTH_PROPERTY = "synaxis.app.auth";
     private static final String SESSION_SERVER_PROPERTY = "synaxis.app.auth.session-server";
     private static final String STORE_PROPERTY = "synaxis.app.store";
+    private static final String WHITELIST_PROPERTY = "synaxis.app.whitelist";
     static final String STORE_MEMORY = "memory";
     static final String STORE_POSTGRES = "postgres";
     static final String MIGRATE_ONLY = "--migrate-only";
@@ -169,8 +173,10 @@ public final class Main {
         final StoreRuntime store = openStore(storeMode, process, auth, shardId, ledger, System.getenv());
         process.setShutdownParticipant(store.store());
         final PluginHost host = new PluginHost(process, Path.of("plugins"), ledger, store.store(), store.verifier(),
-                store.permissions());
+                store.permissions(), store.moderation());
         process.command().register(new RoleCommand(process, store.permissions(), ledger::record));
+        new ModerationCommands(process, store.moderation(), store.permissions(), ledger::record).commands()
+                .forEach(process.command()::register);
         final CrashReports crashReports = crashReports(process, host, shardId, Path.of("crash-reports"));
         installExceptionHandler(process, crashReports);
         final Watchdog watchdog = startWatchdog(process, crashReports);
@@ -307,9 +313,11 @@ public final class Main {
      * @param issuer       the source side of a transfer, null without transfer keys
      * @param verifier     the target side of a transfer, null without transfer keys
      * @param permissions  the roles of the online players, none in memory
+     * @param moderation   the bans and the whitelist, none in memory
      */
     record StoreRuntime(PlayerStore store, @Nullable Database database, @Nullable StoreHousekeeping housekeeping,
-                        @Nullable TransferTickets issuer, @Nullable TicketVerifier verifier, HostPermissions permissions)
+                        @Nullable TransferTickets issuer, @Nullable TicketVerifier verifier, HostPermissions permissions,
+                        HostModeration moderation)
             implements AutoCloseable {
         @Override
         public void close() {
@@ -342,8 +350,10 @@ public final class Main {
                 throw new IllegalArgumentException("synaxis.accept-transfers=true needs the postgres store "
                         + "(-Dsynaxis.app.store=postgres): transfer tickets are checked against the database");
             LOGGER.info("Effective store: mode=memory, player data lives as long as the process");
+            final HostModeration moderation = new HostModeration(process, null, RedisLink.disabled(shardId),
+                    HostModeration.REFRESH, whitelist(), ledger::record);
             return new StoreRuntime(PlayerStore.inMemory(process, ledger::record), null, null, null, null,
-                    HostPermissions.withoutDatabase(process));
+                    HostPermissions.withoutDatabase(process), moderation);
         }
         final StoreSettings settings = StoreSettings.fromEnvironment(environment);
         final TransferKeys keys = TransferKeys.fromEnvironment(environment);
@@ -374,13 +384,18 @@ public final class Main {
             housekeeping.start();
             final HostPermissions permissions = new HostPermissions(process, new RoleStore(database.pool()), redis,
                     HostPermissions.REFRESH);
+            final boolean whitelist = whitelist();
+            final HostModeration moderation = new HostModeration(process, new ModerationStore(database.pool()), redis,
+                    HostModeration.REFRESH, whitelist, ledger::record);
+            moderation.start();
+            LOGGER.info("Effective whitelist: {}", whitelist ? "on" : "off");
             LOGGER.info("Effective store: mode=postgres auth_mode={} {}", effective.value(), settings);
-            if (keys == null) return new StoreRuntime(store, database, housekeeping, null, null, permissions);
+            if (keys == null) return new StoreRuntime(store, database, housekeeping, null, null, permissions, moderation);
             final TransferCooldowns cooldowns = TransferCooldowns.fromSystemProperties();
             LOGGER.info("Effective transfers: {} accept={}", keys, process.config().acceptTransfers());
             return new StoreRuntime(store, database, housekeeping, new TicketIssuer(store, keys, cooldowns, shardId),
                     new TicketVerifier(database.pool(), session::sessionId, shardId, keys, cooldowns, ledger::record),
-                    permissions);
+                    permissions, moderation);
         } catch (SQLException e) {
             database.close();
             throw new IllegalArgumentException("the player store database failed: " + e.getMessage(), e);
@@ -418,6 +433,18 @@ public final class Main {
             LOGGER.error("Refusing to migrate: {}", e.getMessage(), e);
             return 1;
         }
+    }
+
+    /**
+     * @return whether {@code synaxis.app.whitelist} turns the whitelist on ({@code docs/DESIGN-PROD.md} §23),
+     *         off when it is not set
+     * @throws IllegalArgumentException for a value other than on or off
+     */
+    static boolean whitelist() {
+        final String value = System.getProperty(WHITELIST_PROPERTY, "off").strip();
+        if (!"on".equals(value) && !"off".equals(value))
+            throw new IllegalArgumentException(WHITELIST_PROPERTY + "=" + value + " is not on or off");
+        return "on".equals(value);
     }
 
     /**

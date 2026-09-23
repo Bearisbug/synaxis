@@ -1,6 +1,7 @@
 package io.github.bearisbug.synaxis.app;
 
 import io.github.bearisbug.synaxis.ServerProcess;
+import io.github.bearisbug.synaxis.plugin.Moderation;
 import io.github.bearisbug.synaxis.plugin.Permissions;
 import io.github.bearisbug.synaxis.plugin.PlayerDataStore;
 import io.github.bearisbug.synaxis.plugin.PluginAdmission;
@@ -27,10 +28,11 @@ import java.nio.file.Path;
  * @param playerData    the plugin's view of the player store ({@code docs/DESIGN-PROD.md} API-PROD-005)
  * @param lifecycle     the plugin's shutdown save hook ({@code docs/DESIGN-PROD.md} API-PROD-007)
  * @param permissions   the permission nodes of the players ({@code docs/DESIGN-PROD.md} API-PROD-010)
+ * @param moderation    the bans and the whitelist ({@code docs/DESIGN-PROD.md} API-PROD-009)
  * @param logger        a logger named after the plugin
  */
 record PluginContextImpl(ServerProcess process, PluginEvents events, PluginScheduler scheduler,
                          PluginChannels channels, PluginAdmission admission, Path dataDirectory,
                          PluginAnalytics analytics, PlayerDataStore playerData, PluginLifecycle lifecycle,
-                         Permissions permissions, Logger logger) implements PluginContext {
+                         Permissions permissions, Moderation moderation, Logger logger) implements PluginContext {
 }

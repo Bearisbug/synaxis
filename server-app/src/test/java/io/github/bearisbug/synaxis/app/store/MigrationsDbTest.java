@@ -50,10 +50,10 @@ class MigrationsDbTest {
         Migrations.migrate(pool.pool(), AuthMode.OFFLINE);
 
         Migrations.validate(pool.pool());
-        assertEquals(List.of("1", "2", "3"), appliedVersions());
-        assertEquals(List.of("account", "account_role", "character", "character_location", "character_section",
+        assertEquals(List.of("1", "2", "3", "4"), appliedVersions());
+        assertEquals(List.of("account", "account_role", "ban", "character", "character_location", "character_section",
                 "flyway_schema_history", "item_ledger", "role", "role_permission", "shard_session", "store_meta",
-                "transfer_nonce"), tables());
+                "transfer_nonce", "whitelist"), tables());
     }
 
     @Test
@@ -61,11 +61,11 @@ class MigrationsDbTest {
         Flyway.configure().dataSource(pool.pool()).locations("classpath:db/migration").target("1").load().migrate();
         assertEquals(List.of("1"), appliedVersions());
         assertThrows(IllegalArgumentException.class, () -> Migrations.validate(pool.pool()),
-                "V2 and V3 are pending, the shard refuses");
+                "V2 to V4 are pending, the shard refuses");
 
         Migrations.migrate(pool.pool(), AuthMode.OFFLINE);
 
-        assertEquals(List.of("1", "2", "3"), appliedVersions());
+        assertEquals(List.of("1", "2", "3", "4"), appliedVersions());
         Migrations.validate(pool.pool());
     }
 
@@ -85,6 +85,9 @@ class MigrationsDbTest {
     void everyVersionRollsBackAndMigratesAgain() throws Exception {
         Migrations.migrate(pool.pool(), AuthMode.OFFLINE);
 
+        database.execute(resource("db/rollback/V4__moderation.down.sql"));
+        assertEquals(List.of("1", "2", "3"), appliedVersions());
+        assertTrue(!tables().contains("ban") && !tables().contains("whitelist"));
         database.execute(resource("db/rollback/V3__roles.down.sql"));
         assertEquals(List.of("1", "2"), appliedVersions());
         assertTrue(!tables().contains("role") && !tables().contains("role_permission") && !tables().contains("account_role"));
@@ -96,7 +99,7 @@ class MigrationsDbTest {
         assertEquals(List.of("flyway_schema_history"), tables());
 
         Migrations.migrate(pool.pool(), AuthMode.OFFLINE);
-        assertEquals(List.of("1", "2", "3"), appliedVersions());
+        assertEquals(List.of("1", "2", "3", "4"), appliedVersions());
         Migrations.validate(pool.pool());
     }
 

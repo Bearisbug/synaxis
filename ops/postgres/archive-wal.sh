@@ -24,4 +24,6 @@ trap 'rm -f "$tmp"' EXIT
 gzip -c "$src" > "$tmp"
 sync "$tmp"
 mv "$tmp" "$dest"
+# 目录项也要落盘：返回 0 后 PostgreSQL 就回收这个段，掉电丢了改名等于丢了这个段
+sync "$dir"
 trap - EXIT

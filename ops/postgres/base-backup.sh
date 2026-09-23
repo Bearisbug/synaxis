@@ -11,6 +11,8 @@ stamp=$(date -u +%Y%m%dT%H%M%SZ)
 dest="$root/base/$stamp"
 tmp="$root/base/.$stamp.partial"
 mkdir -p "$root/base"
+# 上次被 SIGKILL、OOM 或断电打断时 EXIT trap 没机会跑，留下的半份在这里删掉；前提是同一时刻只跑一个本脚本
+rm -rf "$root/base"/.*.partial
 
 trap 'rm -rf "$tmp"' EXIT
 pg_basebackup -D "$tmp" -Ft -z -X stream -c "$checkpoint" -l "synaxis $stamp" -w

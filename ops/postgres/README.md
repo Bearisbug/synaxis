@@ -4,10 +4,10 @@
 
 | 文件 | 在哪跑 | 作用 |
 | --- | --- | --- |
-| `archive-wal.sh` | PostgreSQL 的 `archive_command` | 一个 WAL 文件 gzip 后写进 `$BACKUP_ROOT/wal/<名字>.gz`；先写 `.partial` 再改名；同名文件已在且内容相同时照成功处理，内容不同时退出码 1、绝不覆盖 |
+| `archive-wal.sh` | PostgreSQL 的 `archive_command` | 一个 WAL 文件 gzip 后写进 `$BACKUP_ROOT/wal/<名字>.gz`；先写 `.partial` 并落盘，改名后再对目录 `sync`；同名文件已在且内容相同时照成功处理，内容不同时退出码 1、绝不覆盖 |
 | `enable-wal-archive.sh` | 数据库服务器，`postgres` 用户 | `ALTER SYSTEM` 写四个参数：`wal_level=replica`、`archive_mode=on`、`archive_command`（指向本目录的 `archive-wal.sh`）、`archive_timeout=60s`；之后要重启 |
-| `base-backup.sh` | 同上，每日一次 | `pg_basebackup -Ft -z -X stream` 写进 `$BACKUP_ROOT/base/<UTC 时间戳>/`，只留最新 `$BACKUP_KEEP` 份（默认 7），再用 `pg_archivecleanup` 删掉最旧一份之前的归档 WAL |
-| `check-archive.sh` | 同上，每分钟一次 | 退出码 1 即告警：最早一个待归档的 WAL 等了超过 `$ARCHIVE_MAX_LAG_S`（默认 300 s）、最近一次归档失败晚于最近一次成功、最新基础备份早于 `$BASE_MAX_AGE_H`（默认 26 h） |
+| `base-backup.sh` | 同上，每日一次 | `pg_basebackup -Ft -z -X stream` 写进 `$BACKUP_ROOT/base/<UTC 时间戳>/`，只留最新 `$BACKUP_KEEP` 份（默认 7），再用 `pg_archivecleanup` 删掉最旧一份之前的归档 WAL；开头先删上次被强杀留下的 `.<时间戳>.partial`，所以同一时刻只能跑一个 |
+| `check-archive.sh` | 同上，每分钟一次 | 退出码非 0 即告警：`archive_mode` 为 `off`、最早一个待归档的 WAL 等了超过 `$ARCHIVE_MAX_LAG_S`（默认 300 s）、最近一次归档失败晚于最近一次成功、最新基础备份早于 `$BASE_MAX_AGE_H`（默认 26 h） |
 | `restore-pitr.sh` | 恢复目标机，`postgres` 用户 | 把一份基础备份解到空的新数据目录，写 `restore_command`、`recovery_target_time`、`recovery_target_action=promote`、`archive_mode=off` 与 `recovery.signal` |
 
 所有脚本是 POSIX `sh`（官方 `postgres:16-alpine` 镜像里没有 bash），共用环境变量 `BACKUP_ROOT`（默认 `/backup`），连库走 libpq 环境变量（`PGHOST`、`PGPORT`、`PGUSER`），默认连本机 socket 上的 `postgres` 超级用户。
@@ -41,16 +41,16 @@ $BACKUP_ROOT/
 * * * * *   BACKUP_ROOT=/backup /backup/bin/check-archive.sh > /dev/null 2>> /backup/check-archive.alert || <告警发送命令>
 ```
 
-基础备份默认 `BACKUP_CHECKPOINT=spread`，按 `checkpoint_completion_target` 摊开检查点的写入，避免在白天高峰打出一阵 I/O；手工补备份时用 `fast`。`check-archive.sh` 的阈值对应 `docs/DESIGN-PROD.md` §21 的「WAL 归档延迟」一行（最新归档距今 ≤ 5 分钟，> 5 分钟告警）；它读的是 `pg_stat_archiver` 与 `pg_ls_archive_statusdir()`，用非超级用户跑时给该用户 `pg_monitor` 角色。
+基础备份默认 `BACKUP_CHECKPOINT=spread`，按 `checkpoint_completion_target` 摊开检查点的写入，避免在白天高峰打出一阵 I/O；手工补备份时用 `fast`。`docs/DESIGN-PROD.md` §21 的「WAL 归档延迟」一行写的是「最新归档距今 ≤ 5 分钟」。`check-archive.sh` 测的是「最早一个待归档的 WAL 已等待多久」，阈值同为 300 s：空闲的库在 `archive_timeout` 下也可能长时间没有新段可归档，按「最新归档距今」会误报，而待归档文件等满 300 s 说明提交确实超过 5 分钟没进归档。另外单查 `archive_mode`，因为归档关掉时既没有待归档文件也没有失败记录。它读的是 `pg_stat_archiver` 与 `pg_ls_archive_statusdir()`，用非超级用户跑时给该用户 `pg_monitor` 角色。
 
 ## 3. 时间点恢复（`RB-PROD-008` 处置）
 
 1. 全部分片 `drain` 并停机，记下要回到的时间点 `T`（带时区，例如 `2026-09-23 16:11:20+00`）。
-2. 选开始时间早于 `T` 的最新一份基础备份：`ls $BACKUP_ROOT/base`，目录名是 UTC 开始时间。
+2. 选**结束时间**早于 `T` 的最新一份基础备份。目录名是 UTC 开始时间，结束时间在归档的备份标签文件里：`for f in $BACKUP_ROOT/wal/*.backup.gz; do gzip -dc "$f" | grep -E '^(LABEL|STOP TIME):'; done`，`LABEL: synaxis <时间戳>` 对应目录名。只看开始时间不够：`T` 落在某份备份的开始与结束之间时，用这份起库会报 `requested recovery stop point is before consistent recovery point`。
 3. 在新实例上（同为 PostgreSQL 16，能读到 `$BACKUP_ROOT/wal/`）：`BACKUP_ROOT=/backup /backup/bin/restore-pitr.sh /backup/base/<时间戳> "<T>" <新数据目录>`，再用这个数据目录起 PostgreSQL（`pg_ctl -D <新数据目录> -l <日志> -w start`，或把 systemd 单元的数据目录指过去）。
 4. 等 `SELECT pg_is_in_recovery()` 返回 `f`。日志里依次有 `starting point-in-time recovery to <T>`、若干 `restored log file`、`recovery stopping before commit of transaction … time …`（这个时间晚于 `T`）、`selected new timeline ID`、`archive recovery complete`。日志出现 `FATAL: recovery ended before configured recovery target was reached` 说明 `T` 之后的 WAL 没有归档到，换更早的 `T` 或先查归档缺口。
-5. `server-app --migrate-only` 校验表结构版本（`docs/DESIGN-PROD.md` §25），切连接串，起服。旧租约随新 `shard_session` 全部过期。
-6. 恢复出来的实例没有开归档（`restore-pitr.sh` 写了 `archive_mode=off`）：它是新时间线，不能往原库的 `wal/` 里写。确认要长期用它之后，对它重新执行第 1 节，归档目录换一个新的。
+5. 恢复出来的实例没有开归档（`restore-pitr.sh` 写了 `archive_mode=off`），这时 `check-archive.sh` 对它报 `ALERT archive_mode is off`。起服之前先对它执行第 1 节第 2～5 步，`BACKUP_ROOT` 换一个新目录：它是新时间线，不往原库的 `wal/` 里写。再把 `check-archive.sh` 与 `base-backup.sh` 的定时任务指向它。
+6. `server-app --migrate-only` 校验表结构版本（`docs/DESIGN-PROD.md` §25），切连接串，起服。旧租约随新 `shard_session` 全部过期。
 7. 原库保留只读 7 天，发现恢复点选错时切回。
 
 ## 4. 本机开发容器

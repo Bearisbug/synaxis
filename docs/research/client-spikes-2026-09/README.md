@@ -49,8 +49,10 @@ export JAVA_HOME=/opt/homebrew/opt/openjdk@25/libexec/openjdk.jdk/Contents/Home
 # 2. 玩法模式服务端，stdin 用 fifo 保持打开
 mkdir -p /tmp/synaxis-gt && mkfifo /tmp/synaxis-gt/stdin.fifo
 ( sleep 86400 > /tmp/synaxis-gt/stdin.fifo & echo $! > /tmp/synaxis-gt/holder.pid )   # 占住 fifo 写端
+#    dev 客户端没有正版会话，走离线；本机连接放行出闸门的每地址登录桶（原因见代码块下第一条）
 ./gradlew :server-app:run --no-daemon --console=plain --init-script gradle/init/aliyun-mirror.init.gradle.kts \
-  -Dsynaxis.app.port=25566 < /tmp/synaxis-gt/stdin.fifo > /tmp/synaxis-gt/server.log 2>&1 &
+  -Dsynaxis.app.port=25566 -Dsynaxis.app.auth=offline -Dsynaxis.connection-gate.trusted-networks=127.0.0.0/8 \
+  < /tmp/synaxis-gt/stdin.fifo > /tmp/synaxis-gt/server.log 2>&1 &
 # 3. server.log 出现 "server-app listening" 后跑客户端（冷缓存首轮下载约 1 GB，热缓存 Loom 配置 + 启动 23～47 s）
 SYNAXIS_GAMETEST_SERVER=host.docker.internal:25566 OUT=/tmp/synaxis-gt/out client-fabric/gametest-env/run.sh
 cat /tmp/synaxis-gt/out/synaxis-gametest/report.txt; ls /tmp/synaxis-gt/out/screenshots
@@ -58,6 +60,7 @@ cat /tmp/synaxis-gt/out/synaxis-gametest/report.txt; ls /tmp/synaxis-gt/out/scre
 echo stop > /tmp/synaxis-gt/stdin.fifo; kill $(cat /tmp/synaxis-gt/holder.pid); rm -rf /tmp/synaxis-gt
 ```
 
+- 第 2 步的两个参数：`docs/DESIGN-PROD.md` 第 2 波起 `server-app` 默认在线模式（`API-PROD-001`），Loom 起的 dev 客户端没有 Mojang 会话，不带 `-Dsynaxis.app.auth=offline` 就过不了在线验证、进不了世界（R3 起全红）；第 1 波起连接闸门每个来源地址只有 3 个登录令牌、每 2 s 回 1 个（`API-PROD-003`），带 spike 跑时每次启动连两次，连续几轮就会撞上 `synaxis:login-throttled`，所以放行 `127.0.0.0/8`。容器经 `host.docker.internal` 连进来时宿主看到的来源地址本轮没有核对；不在 `127.0.0.0/8` 里时，把 `server.log` 里 `remote_address=` 的那一段加进可信网段（逗号分隔）。CI 走的是另一条路：服务端在线模式、指向假 sessionserver（下方「GitHub Actions」）。
 - 第 3 步以 1 结束是已知问题：客户端打出 `Stopping!` 之后，LWJGL 自带的 linux-aarch64 `libopenal.so` 在
   退出析构里段错误（`libopenal+0x9c670`），Gradle 报 exit value 134；`ALSOFT_DRIVERS=null` 无效。x86_64 上
   是否复现未测。

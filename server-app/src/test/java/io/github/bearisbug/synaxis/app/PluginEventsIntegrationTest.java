@@ -9,6 +9,7 @@ import io.github.bearisbug.synaxis.event.EventNode;
 import io.github.bearisbug.synaxis.event.entity.EntityTickEvent;
 import io.github.bearisbug.synaxis.event.player.PlayerChatEvent;
 import io.github.bearisbug.synaxis.event.player.PlayerCustomClickEvent;
+import io.github.bearisbug.synaxis.event.player.PlayerDisconnectEvent;
 import io.github.bearisbug.synaxis.event.player.PlayerPluginMessageEvent;
 import io.github.bearisbug.synaxis.event.server.ServerTickMonitorEvent;
 import io.github.bearisbug.synaxis.event.trait.CancellableEvent;
@@ -202,7 +203,7 @@ class PluginEventsIntegrationTest {
         final PluginEvents scope = kept[0].forInstance(instance);
 
         for (Class<? extends Event> type : List.of(ServerTickMonitorEvent.class, PlayerPluginMessageEvent.class,
-                PlayerCustomClickEvent.class, PlayerInstanceEvent.class)) {
+                PlayerCustomClickEvent.class, PlayerDisconnectEvent.class, PlayerInstanceEvent.class)) {
             assertThrows(IllegalArgumentException.class, () -> scope.addListener(type, _ -> {
             }), type.getName());
         }

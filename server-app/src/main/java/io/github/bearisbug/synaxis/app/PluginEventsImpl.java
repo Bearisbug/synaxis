@@ -5,6 +5,7 @@ import io.github.bearisbug.synaxis.event.EventFilter;
 import io.github.bearisbug.synaxis.event.EventListener;
 import io.github.bearisbug.synaxis.event.EventNode;
 import io.github.bearisbug.synaxis.event.player.PlayerCustomClickEvent;
+import io.github.bearisbug.synaxis.event.player.PlayerDisconnectEvent;
 import io.github.bearisbug.synaxis.event.player.PlayerPluginMessageEvent;
 import io.github.bearisbug.synaxis.event.trait.CancellableEvent;
 import io.github.bearisbug.synaxis.event.trait.InstanceEvent;
@@ -174,6 +175,10 @@ final class PluginEventsImpl implements PluginEvents {
     }
 
     private record InstanceScope(EventNode<InstanceEvent> parent, String instanceId) implements Scope {
+        /** Instance events that {@code PlayerConnection} and the configuration listeners also fire outside PLAY. */
+        private static final List<Class<? extends Event>> DISPATCHED_WITHOUT_INSTANCE = List.of(
+                PlayerPluginMessageEvent.class, PlayerCustomClickEvent.class, PlayerDisconnectEvent.class);
+
         @Override
         public void check(Class<? extends Event> eventType) {
             if (!InstanceEvent.class.isAssignableFrom(eventType))
@@ -186,10 +191,10 @@ final class PluginEventsImpl implements PluginEvents {
 
         private static boolean dispatchedWithoutInstance(Class<? extends Event> eventType) {
             // A supertype of these would route them into the mapped branch just the same
-            return eventType.isAssignableFrom(PlayerPluginMessageEvent.class)
-                    || eventType.isAssignableFrom(PlayerCustomClickEvent.class)
-                    || PlayerPluginMessageEvent.class.isAssignableFrom(eventType)
-                    || PlayerCustomClickEvent.class.isAssignableFrom(eventType);
+            for (Class<? extends Event> type : DISPATCHED_WITHOUT_INSTANCE) {
+                if (eventType.isAssignableFrom(type) || type.isAssignableFrom(eventType)) return true;
+            }
+            return false;
         }
 
         @Override

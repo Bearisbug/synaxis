@@ -15,7 +15,7 @@
 
 | 日期 | 改动 | 作者 |
 | --- | --- | --- |
-| 2026-09-24 | 跟进 `docs/DESIGN-PROD.md` 第 3 波 3B（`REQ-PROD-022`，G19，`API-PROD-018`）。**新增 §4「生产就绪 · 第 3 波 3B：插件事件优先级与实例作用域」四条 `TC-PROD-180`～`TC-PROD-183`**：六档优先级跨插件排成一个顺序（180，反证各档节点优先级全设 0 即退化成按建节点先后）、`ignoreCancelled` 与两参形式、`MONITOR` 收到已取消事件（181，反证删掉已取消判断、或改回引擎两参的跳过规则）、`forInstance` 只收本实例事件且在实例所属 tick 线程上执行、拒绝配置阶段也派发的事件（182，含 4 线程严格模式一步；反证作用域失效、只拒接口）、禁用收回每档与实例下的节点（183，反证不登记实例节点、收回后仍接受注册）；每条红在哪写进期望列，与设计文档的两处口径差异（§19 的「HIGH 先于 NORMAL」、两参形式原本跳过已取消事件）写在该节开头。§5 回归映射加生产就绪域一行 | Bearisbug |
+| 2026-09-24 | 跟进 `docs/DESIGN-PROD.md` 第 3 波 3B（`REQ-PROD-022`，G19，`API-PROD-018`）。**新增 §4「生产就绪 · 第 3 波 3B：插件事件优先级与实例作用域」四条 `TC-PROD-180`～`TC-PROD-183`**：六档优先级跨插件排成一个顺序（180，反证各档节点优先级全设 0 即退化成按建节点先后）、`ignoreCancelled` 与两参形式、`MONITOR` 收到已取消事件（181，反证删掉已取消判断、或改回引擎两参的跳过规则）、`forInstance` 只收本实例事件且在实例所属 tick 线程上执行、拒绝配置阶段也派发的事件（182，含 4 线程严格模式一步；反证作用域失效、只拒接口、漏拒断开事件）、禁用收回每档与实例下的节点（183，反证不登记实例节点、收回后仍接受注册）；每条红在哪写进期望列，与设计文档的四处口径差异（§19 的「HIGH 先于 NORMAL」、两参形式原本跳过已取消事件、`API-PROD-018` 未写的实例作用域拒绝清单与两种作用域先后）写在该节开头。§5 回归映射加生产就绪域一行 | Bearisbug |
 | 2026-09-23 | §7 登记并结案 `PluginHostIntegrationTest > theProcessAcceptsOnlyOneAdmissionProvider` 的偶发红：根因是两个集成测试类起了事件台账写线程不关，写线程在 JUnit 删临时目录时才建 `logs/`；写明复现办法（占满虚拟线程载体 + 拉长删除，修前 20 次红 6 次）与处置（`@AfterEach` 关台账，修后 100 次与严格模式 20 次全绿）。用例判据未动 | Bearisbug |
 | 2026-09-23 | 跟进 `docs/DESIGN-PROD.md` v0.4（第 1、2 波实现回写）。2A 一节末尾的口径差异从三处减为两处：`record` 模式只按 serverId 匹配已写进 `REQ-PROD-044`、`API-PROD-027` 与 §19，删去该条；2B 一节开头的口径差异改为直接引用 `REQ-PROD-036`（`API-PROD-001` 与 §19 已补上 `proxyProtocolRequired=true`）。用例判据未动 | Bearisbug |
 | 2026-09-23 | 跟进 `docs/DESIGN-PROD.md` 第 1 波 1A 的连接闸门默认值（`REQ-PROD-001`，登录桶每地址 3 个令牌、每 2 s 回 1 个）：本机连多个机器人或连续跑多次探针的起服命令补 `-Dsynaxis.connection-gate.trusted-networks=127.0.0.0/8`。**§3 环境段**：「启动」命令补这个参数并写明沿用本段起法的用例都带着它，由此覆盖协议冒烟（`TC-014`、`TC-018`、`TC-019`、`TC-026`、`TC-027`）、`TC-031`、`TC-032`、`TC-034`（经 `docs/research/soak-2026-09-18/README.md` 的起服段，同步补了参数）与 M2 起服后跑探针或压测的用例（`TC-GAME-019`、`024`、`026`、`031`、`039`～`042`、`049`、`050`、`054`、`055`、`058`、`060`～`065`、`069`、`070`）；「压测 / 长稳 harness」与「入站包发包端」两条写明服务端要带它。**`TC-GAME-068` 第 1 步**起服命令补这个参数（第 3、5 步沿用第 1 步）。判闸门本身的 `TC-PROD-060`～`TC-PROD-069` 与自带参数的 `TC-PROD-103` 不动 | Bearisbug |
@@ -2715,7 +2715,7 @@ jcmd "$pid" VM.flags | tr ' ' '\n' | grep -cxE -- '-XX:\+UseG1GC|-XX:InitialHeap
 
 四条对应 `REQ-PROD-022`（清单 G19，`API-PROD-018`）。四条都是 `server-app` 的 JUnit `io.github.bearisbug.synaxis.app.PluginEventsIntegrationTest`，命令统一写作「跑该类」，即 `./gradlew :server-app:test --tests io.github.bearisbug.synaxis.app.PluginEventsIntegrationTest --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts`，结果看 `server-app/build/test-results/test/TEST-io.github.bearisbug.synaxis.app.PluginEventsIntegrationTest.xml` 的 `tests`、`failures` 与 `<failure message>`。插件都经 `PluginHost#enable` 启用，监听器落在生产里的同一处节点上。反证一律是「临时改 `server-app/src/main/java/io/github/bearisbug/synaxis/app/PluginEventsImpl.java` 一处、重跑、看红、还原」，还原后 `git status` 必须干净。`MONITOR` 不得改事件是写进 `PluginEvents.EventPriority#MONITOR` Javadoc 的约定，宿主不拦截，本节不测。
 
-本节与设计文档的口径差异两处。一是 §19「事件按优先级执行且可忽略已取消」写「HIGH 先于 NORMAL 执行」，与同一句的「MONITOR 在 HIGHEST 之后」和 Paper 的顺序（`LOWEST` 先、`MONITOR` 末）矛盾；实现按 Paper，`NORMAL` 先于 `HIGH`，所以用例改为 `LOW` 取消、`NORMAL` 且 `ignoreCancelled=true` 的不被调用（`TC-PROD-181` 第 1 步），另加一步写明 `HIGH` 取消时 `NORMAL` 已经跑过（第 2 步）。二是 `API-PROD-018`「现有两参 `addListener` 等价于 `NORMAL`、`ignoreCancelled=false`」：引擎 `EventNode#addListener(Class, Consumer)` 对可取消的事件类型会跳过已取消的事件，M2 的两参形式实际是 `ignoreCancelled=true`；实现按设计文档改为 `false`，由第 1 步的 `normal:default` 判定。
+本节与设计文档的口径差异四处，待 `docs/DESIGN-PROD.md` 修订后删去本段。一是 §19「事件按优先级执行且可忽略已取消」写「HIGH 先于 NORMAL 执行」，与同一句的「MONITOR 在 HIGHEST 之后」和 Paper 的顺序（`LOWEST` 先、`MONITOR` 末）矛盾；实现按 Paper，`NORMAL` 先于 `HIGH`，所以用例改为 `LOW` 取消、`NORMAL` 且 `ignoreCancelled=true` 的不被调用（`TC-PROD-181` 第 1 步），另加一步写明 `HIGH` 取消时 `NORMAL` 已经跑过（第 2 步）。二是 `API-PROD-018`「现有两参 `addListener` 等价于 `NORMAL`、`ignoreCancelled=false`」：引擎 `EventNode#addListener(Class, Consumer)` 对可取消的事件类型会跳过已取消的事件，M2 的两参形式实际是 `ignoreCancelled=true`；实现按设计文档改为 `false`，由第 1 步的 `normal:default` 判定。三是 `API-PROD-018` 没写 `forInstance` 拒绝哪些事件类型：实现拒绝非实例事件，以及配置阶段也会派发的 `PlayerPluginMessageEvent`、`PlayerCustomClickEvent`、`PlayerDisconnectEvent` 与它们的超类型（`TC-PROD-182` 第 2 步）。四是 `API-PROD-018` 没写两种作用域的先后：实例作用域的监听器先于全局作用域的全部插件监听器执行，宿主或引擎直接挂在根节点上的监听器仍排在它前面；同档内不同插件按各自首次注册该档的先后执行（`TC-PROD-180` 第 1 步）。
 
 #### `TC-PROD-180` 六档优先级跨插件排成一个顺序，`MONITOR` 在 `HIGHEST` 之后 — 对应 `REQ-PROD-022` · 级别: 回归 · 执行者: AI
 
@@ -2723,8 +2723,8 @@ jcmd "$pid" VM.flags | tr ' ' '\n' | grep -cxE -- '-XX:\+UseG1GC|-XX:InitialHeap
 
 | # | 操作 | 预期 |
 | --- | --- | --- |
-| 1 | 跑该类 | 6 个 0 失败；`thePrioritiesOfEveryPluginRunInOneOrder` 里先启用的 `first` 注册 `MONITOR`、`HIGH`、`LOWEST`，后启用的 `second` 注册 `HIGHEST`、两参（`NORMAL`）、`LOW`、`HIGH`，都故意乱序，一次派发的调用序列是 `first:lowest, second:low, second:normal, first:high, second:high, second:highest, first:monitor`：同档内按启用顺序 |
-| 2 | 反证有齿（每档节点不设优先级）：`tier` 里 `scope.attach(name, priority.ordinal() - EventPriority.NORMAL.ordinal())` 改为 `scope.attach(name, 0)`，重跑，再还原 | `6 tests completed, 2 failed`。红在 `thePrioritiesOfEveryPluginRunInOneOrder`（`PluginEventsIntegrationTest.java:121`）：`but was: <[first:monitor, first:high, first:lowest, second:highest, second:normal, second:low, second:high]>`，退化成按建节点的先后执行；另一条红是 `TC-PROD-181` 第 2 步那条（`:165`，`but was: <[high:cancel, cancelled=true]>`）。还原后复绿 |
+| 1 | 跑该类 | 6 个 0 失败；`thePrioritiesOfEveryPluginRunInOneOrder` 里先启用的 `first` 注册 `MONITOR`、`HIGH`、`LOWEST`，后启用的 `second` 注册 `HIGHEST`、两参（`NORMAL`）、`LOW`、`HIGH`，都故意乱序，一次派发的调用序列是 `first:lowest, second:low, second:normal, first:high, second:high, second:highest, first:monitor`：同档内按各插件首次注册该档的先后（本例两插件都在 `onEnable` 里注册，即启用顺序） |
+| 2 | 反证有齿（每档节点不设优先级）：`tier` 里 `scope.attach(name, priority.ordinal() - EventPriority.NORMAL.ordinal())` 改为 `scope.attach(name, 0)`，重跑，再还原 | `6 tests completed, 2 failed`。红在 `thePrioritiesOfEveryPluginRunInOneOrder`（`PluginEventsIntegrationTest.java:122`）：`but was: <[first:monitor, first:high, first:lowest, second:highest, second:normal, second:low, second:high]>`，退化成按建节点的先后执行；另一条红是 `TC-PROD-181` 第 2 步那条（`:166`，`but was: <[high:cancel, cancelled=true]>`）。还原后复绿 |
 
 后置：确认 `PluginEventsImpl.java` 没有残留改动。
 
@@ -2736,8 +2736,8 @@ jcmd "$pid" VM.flags | tr ' ' '\n' | grep -cxE -- '-XX:\+UseG1GC|-XX:InitialHeap
 | --- | --- | --- |
 | 1 | 跑该类，看 `aCancelledEventSkipsTheListenersThatIgnoreCancelled` | 通过：插件 `moderation` 以 `LOW` 取消 `PlayerChatEvent`；插件 `guilds` 的 `NORMAL` + `ignoreCancelled=true` 监听器没被调用，两参监听器被调用，`MONITOR` 读到 `isCancelled()=true`；调用序列 `low:cancel, normal:default, monitor:cancelled=true` |
 | 2 | 同一轮，看 `aListenerThatIgnoresCancelledStillRunsBeforeALaterCancel` | 通过：`HIGH` 取消的事件，`NORMAL` + `ignoreCancelled=true` 的监听器照样被调用，因为它先跑；序列 `normal:ignoring, high:cancel, cancelled=true` |
-| 3 | 反证有齿（不判已取消）：删掉包装里 `if (ignoreCancelled && event instanceof CancellableEvent cancellable && cancellable.isCancelled()) return;` 一行和随之无用的 `CancellableEvent` import，重跑，再还原 | `6 tests completed, 1 failed`，红在 `aCancelledEventSkipsTheListenersThatIgnoreCancelled`（`:147`）：`but was: <[low:cancel, normal:ignoring, normal:default, monitor:cancelled=true]>`。还原后复绿 |
-| 4 | 反证有齿（沿用引擎两参 `addListener` 的跳过规则）：`add` 里 `EventListener.builder(eventType).ignoreCancelled(false)` 改为 `ignoreCancelled(true)`，重跑，再还原 | `6 tests completed, 1 failed`，红在 `:147`：`but was: <[low:cancel]>`，两参与 `MONITOR` 监听器都收不到已取消的事件。还原后复绿 |
+| 3 | 反证有齿（不判已取消）：删掉包装里 `if (ignoreCancelled && event instanceof CancellableEvent cancellable && cancellable.isCancelled()) return;` 一行和随之无用的 `CancellableEvent` import，重跑，再还原 | `6 tests completed, 1 failed`，红在 `aCancelledEventSkipsTheListenersThatIgnoreCancelled`（`:148`）：`but was: <[low:cancel, normal:ignoring, normal:default, monitor:cancelled=true]>`。还原后复绿 |
+| 4 | 反证有齿（沿用引擎两参 `addListener` 的跳过规则）：`add` 里 `EventListener.builder(eventType).ignoreCancelled(false)` 改为 `ignoreCancelled(true)`，重跑，再还原 | `6 tests completed, 1 failed`，红在 `:148`：`but was: <[low:cancel]>`，两参与 `MONITOR` 监听器都收不到已取消的事件。还原后复绿 |
 
 后置：确认 `PluginEventsImpl.java` 没有残留改动。
 
@@ -2748,10 +2748,11 @@ jcmd "$pid" VM.flags | tr ' ' '\n' | grep -cxE -- '-XX:\+UseG1GC|-XX:InitialHeap
 | # | 操作 | 预期 |
 | --- | --- | --- |
 | 1 | 跑该类，看 `anInstanceScopedListenerOnlyHearsItsInstanceOnItsTickThread` | 通过：实例 A、B 各一只僵尸，插件用 `forInstance(A)` 监听 `EntityTickEvent`，tick 两次后收到的实体全是 A 里那只（非空）；每次回调的当前线程都是 `TickThread`，且等于该实体 `acquirable().assignedThread()` |
-| 2 | 同一轮，看 `theInstanceScopeRefusesWhatItCannotScope` | 通过：`forInstance` 返回的 `PluginEvents` 对 `ServerTickMonitorEvent`（不是实例事件）、`PlayerPluginMessageEvent`、`PlayerCustomClickEvent`（配置阶段也派发，那时玩家没有实例）与它们的超类型 `PlayerInstanceEvent` 都抛 `IllegalArgumentException`；`PlayerChatEvent` 照常注册，实例节点下多出 1 个子节点 |
+| 2 | 同一轮，看 `theInstanceScopeRefusesWhatItCannotScope` | 通过：`forInstance` 返回的 `PluginEvents` 对 `ServerTickMonitorEvent`（不是实例事件）、`PlayerPluginMessageEvent`、`PlayerCustomClickEvent`、`PlayerDisconnectEvent`（配置阶段也派发，那时玩家没有实例；断开事件由 `PlayerConnection#disconnect` 在非 PLAY 状态下派发）与它们的超类型 `PlayerInstanceEvent` 都抛 `IllegalArgumentException`；`PlayerChatEvent` 照常注册，实例节点下多出 1 个子节点 |
 | 3 | 再跑一次严格模式：`./gradlew :server-app:test --tests io.github.bearisbug.synaxis.app.PluginEventsIntegrationTest --rerun --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts -Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true` | 6 个 0 失败：4 个 tick 线程下第 1 步的线程判定照样成立 |
-| 4 | 反证有齿（作用域失效）：`forInstance` 方法体第一行加 `if (instance != null) return this;`，重跑，再还原 | `6 tests completed, 3 failed`。第 1 步那条红在 `:192`：`heard an entity outside A: [Entity@…, Entity@…, …]`，两只僵尸交替出现；第 2 步那条红在 `:206`：`ServerTickMonitorEvent ==> Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown.`；`TC-PROD-183` 那条红在 `:234`：`expected: <1> but was: <0>`（实例节点下没有子节点）。还原后复绿 |
-| 5 | 反证有齿（只拒接口不拒具体类）：`InstanceScope#check` 的 `if (dispatchedWithoutInstance(eventType))` 改为 `if (dispatchedWithoutInstance(eventType) && eventType.isInterface())`，重跑，再还原 | `6 tests completed, 1 failed`，红在 `:206`：`PlayerPluginMessageEvent ==> Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown.`。还原后复绿 |
+| 4 | 反证有齿（作用域失效）：`forInstance` 方法体第一行加 `if (instance != null) return this;`，重跑，再还原 | `6 tests completed, 3 failed`。第 1 步那条红在 `:193`：`heard an entity outside A: [Entity@…, Entity@…, …]`，两只僵尸交替出现；第 2 步那条红在 `:207`：`ServerTickMonitorEvent ==> Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown.`；`TC-PROD-183` 那条红在 `:235`：`expected: <1> but was: <0>`（实例节点下没有子节点）。还原后复绿 |
+| 5 | 反证有齿（只拒接口不拒具体类）：`InstanceScope#check` 的 `if (dispatchedWithoutInstance(eventType))` 改为 `if (dispatchedWithoutInstance(eventType) && eventType.isInterface())`，重跑，再还原 | `6 tests completed, 1 failed`，红在 `:207`：`PlayerPluginMessageEvent ==> Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown.`。还原后复绿 |
+| 6 | 反证有齿（漏拒断开事件）：`InstanceScope` 的 `DISPATCHED_WITHOUT_INSTANCE` 去掉 `PlayerDisconnectEvent.class` 与随之无用的 import，重跑，再还原 | `6 tests completed, 1 failed`，红在 `:207`：`io.github.bearisbug.synaxis.event.player.PlayerDisconnectEvent ==> Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown.`。还原后复绿 |
 
 后置：确认 `PluginEventsImpl.java` 没有残留改动。
 
@@ -2762,8 +2763,8 @@ jcmd "$pid" VM.flags | tr ' ' '\n' | grep -cxE -- '-XX:\+UseG1GC|-XX:InitialHeap
 | # | 操作 | 预期 |
 | --- | --- | --- |
 | 1 | 跑该类，看 `disablingTakesBackEveryPriorityAndEveryInstanceScope` | 通过：插件六档各注册一个监听器、再在实例下注册一个，宿主节点 `synaxis-host` 下 6 个子节点、实例节点下 1 个；派发与 tick 后两边计数为 6 与 1。`disableAll` 之后插件再用留着的 `PluginEvents` 加一个全局、一个实例下的监听器（模拟比插件活得久的任务）：宿主节点与实例节点下都是 0 个子节点，再派发与 tick，计数仍是 6 与 1 |
-| 2 | 反证有齿（不登记实例下的节点）：`tier` 里 `registrations.add(node);` 改为 `if (scope instanceof GlobalScope) registrations.add(node);`，重跑，再还原 | `6 tests completed, 1 failed`，红在 `:247`：`expected: <0> but was: <1>`，禁用后实例节点下还挂着该插件的节点。还原后复绿 |
-| 3 | 反证有齿（收回后仍接受注册）：`addListener` 里 `if (registrations.detached) return;` 改为 `if (registrations.detached && priority == null) return;`，重跑，再还原 | `6 tests completed, 1 failed`，红在 `:247`：`expected: <0> but was: <1>`，禁用后新挂的实例节点没人收回。还原后复绿 |
+| 2 | 反证有齿（不登记实例下的节点）：`tier` 里 `registrations.add(node);` 改为 `if (scope instanceof GlobalScope) registrations.add(node);`，重跑，再还原 | `6 tests completed, 1 failed`，红在 `:248`：`expected: <0> but was: <1>`，禁用后实例节点下还挂着该插件的节点。还原后复绿 |
+| 3 | 反证有齿（收回后仍接受注册）：`addListener` 里 `if (registrations.detached) return;` 改为 `if (registrations.detached && priority == null) return;`，重跑，再还原 | `6 tests completed, 1 failed`，红在 `:248`：`expected: <0> but was: <1>`，禁用后新挂的实例节点没人收回。还原后复绿 |
 
 后置：确认 `PluginEventsImpl.java` 没有残留改动。
 

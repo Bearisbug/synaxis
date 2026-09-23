@@ -15,8 +15,8 @@ import java.util.function.Consumer;
  * <p>
  * Priorities order the listeners of every plugin together: all {@link EventPriority#LOWEST}
  * listeners of all plugins run before any {@link EventPriority#LOW} one, and so on up to
- * {@link EventPriority#MONITOR}. Within one priority, plugins run in enable order and one plugin's
- * listeners in registration order.
+ * {@link EventPriority#MONITOR}. Within one priority, plugins run in the order each first
+ * registered a listener at that priority, and one plugin's listeners in registration order.
  * <p>
  * A plugin must not attach nodes to the global handler itself. In particular nothing may build an
  * instance scoped mapped node for {@code PlayerPluginMessageEvent}: that event is also dispatched
@@ -75,15 +75,15 @@ public interface PluginEvents {
      * Returns the event capability scoped to one instance: its listeners are only called for events
      * of that instance, on the thread that ticks the instance.
      * <p>
-     * The listeners hang below the instance's own event node. That node is dispatched before any
-     * global listener, so priorities order the instance scoped listeners among themselves, and all
-     * of them run before the global ones of the same event. They are taken back when the plugin is
-     * disabled and go away with the instance.
+     * The listeners hang below the instance's own event node. That node is dispatched before the
+     * global scope listeners of every plugin, so priorities order the instance scoped listeners
+     * among themselves, and all of them run before the global scope plugin listeners of the same
+     * event. They are taken back when the plugin is disabled and go away with the instance.
      * <p>
-     * Only {@code InstanceEvent} types can be listened to here. {@code PlayerPluginMessageEvent} and
-     * {@code PlayerCustomClickEvent} are refused, and so are their supertypes such as
-     * {@code PlayerInstanceEvent}: both are also dispatched in the configuration phase, before the
-     * player has an instance.
+     * Only {@code InstanceEvent} types can be listened to here. {@code PlayerPluginMessageEvent},
+     * {@code PlayerCustomClickEvent} and {@code PlayerDisconnectEvent} are refused, and so are their
+     * supertypes such as {@code PlayerInstanceEvent}: all three are also dispatched outside the play
+     * phase, when the player has no instance.
      *
      * @param instance the instance to scope to
      * @return the capability scoped to {@code instance}; its

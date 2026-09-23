@@ -3,7 +3,7 @@
 # screenshots, report and logs to $OUT (default /tmp/synaxis-gametest). The repository is mounted
 # read only and copied inside, so the host's build/ and .gradle/ are never touched.
 #   SYNAXIS_GAMETEST_SERVER=host.docker.internal:25566 client-fabric/gametest-env/run.sh
-# SYNAXIS_SPIKES (all of s2,s3,s4,s5 unless set, e.g. s2,s5), SYNAXIS_GAMETEST_NIGHT_VISION (true adds
+# SYNAXIS_SPIKES (unset runs only the regression R1-R8; all, or e.g. s2,s5, adds the spikes), SYNAXIS_GAMETEST_NIGHT_VISION (true adds
 # client-side night vision to the in-world shots), the SYNAXIS_CAMERA_* variables of the spike
 # camera (gametest camera/SpikeCamera.java) and the SYNAXIS_S3_* variables of the entity culling
 # spike (gametest EntityCullingSpike.java) pass through.

@@ -4,7 +4,7 @@
 
 | 字段 | 值 |
 | --- | --- |
-| 状态 | 草稿（2026-09-23 初稿，同日按第 1 轮两份评审意见修订为 v0.2）。用户同日已拍板七项方向（下表）；其余待拍板点一律按三份草案的默认值定，逐项见 §28.1 |
+| 状态 | 草稿（2026-09-23 初稿，同日按第 1 轮两份评审意见修订为 v0.2，再按真客户端回归的实现修订 `API-PROD-026` 为 v0.3）。用户同日已拍板七项方向（下表）；其余待拍板点一律按三份草案的默认值定，逐项见 §28.1 |
 | 项目画像 | 生产产品（对外真实玩家：内测单分片 50～200 人，正式档每分片 200～500 人，见 §2；全部 `[核心]` 节生效） |
 | Owner | Bearisbug |
 | 评审人 | Bearisbug |
@@ -33,6 +33,7 @@
 | --- | --- | --- | --- |
 | 2026-09-23 | v0.1 | 初稿：把清单 G01～G40 与三份草案落成 44 条 `REQ-PROD`、27 条 `API-PROD`、13 条 `ADR-PROD`、8 条 `RB-PROD`；五台状态机（登录验证、分片会话、角色写权、停机顺序、看门狗）；§26 分七波。**其余待拍板点按草案默认值定**：清单 §7 的 Q3、Q5～Q12，auth 草案 ①～⑧，持久化草案 D1～D13，运维草案 §6 #1～#10，逐项结果与切换条件见 §28.1。**相对草案的三处更正**：① G28 的一次性 nonce 记在 PostgreSQL `transfer_nonce`（与 `API-M3-011` ⑤、持久化草案 ② 一致），不按清单 G28 写的「Redis 记已用」——nonce 丢了就能重放，不属于可丢数据（U3）；② 停机保存预算取清单 G04 的 30 s，不取持久化草案 ③ 的 8 s，`docs/DESIGN.md` §17 `process.shutdown` 的 10 s join 上限与 §21「`stop()` < 10 s」SLO 需主会话改写（§28.3）；③ 区块发送的引擎兜底上限保持 64 块/tick（现默认值 `ServerConfig.java:208`；「保持不变」是协调会话 2026-09-23 的口径，M3 工作区未写入，**未核实**），清单 G23 的「4 块/tick」改为分片宿主默认值（`API-PROD-020`） | Bearisbug |
 | 2026-09-23 | v0.2 | 第 1 轮评审修订。**正确性**：首次建档 `INSERT` 时 `lease_session_id` 写 NULL，再走获取语句（原写法让新玩家拿不到自己的租约）；获取语句加「持有者 = 本会话」分支，`saving → orphaned` 显式释放租约；起服事务把同 `shard_id` 的旧会话置过期，前提「同一 `shard_id` 同时只有一个进程」；`closing` 期间续期照常且续期用独占连接；会话释放只令其过期（`DELETE` 与外键冲突），另加过期会话清理任务。**停机**：新增引擎—宿主契约 `ShutdownParticipant`（`API-PROD-007`），引擎计时、宿主保存；`stopped` 标志推迟到最后一步置位，另设内部 `stopping` 标志；保存阶段全体冻结，冻结期间 `commitTogether` 回 `UNAVAILABLE` 且不计入 §3；补 `gate_closed` / `saving` 期间的看门狗判死转移。**闸门**：L3 改按「已占席位」计数（含登录中的连接）；不开 PROXY 时 L1 在 accept 判定，另加握手前 5 s 超时；L3 断线键统一为 M3 已定的 `synaxis:shard-full`，M3 `API-M3-011` ① 由 L3 取代。**G33**：`store_meta.auth_mode` 只由 `--migrate-only` 按发布参数写入，分片只读、空值拒绝起服，正式库按 `online` 迁移，因此生产分片只能跑在线模式（恢复清单 G33 原意）。**其他**：冻结接口 `PlayerDataStore#isFrozen`；同分片踢旧后等旧 `Player` 移除；白名单、封禁、角色授予不建账号外键；`MONITOR` 只读改为文档约定；沿用现有键 `synaxis.entity-synchronization-ticks`；验证指标按每次登录的最终结果计数；`transfer_nonce` 清理归 M3 `nonce.gc`（每 10 min）；Flyway 回退采用 M3 的 `db/rollback/*.down.sql` + CI 正反往返，发布仍守「先扩后缩」；§26 第 0 波退出条件改为 counter 严格模式、看门狗判死接保存与 `store_meta` 自检挪到 3A、并行冲突表补全；§28.3 补齐交给 M3 的改动清单 | Bearisbug |
+| 2026-09-23 | v0.3 | `API-PROD-026` 按真客户端回归的实现补口径：`client_verified` 的期望值改为连接次数 C（不跑 spike 时 C = N，带 spike 跑时 C = 2N）；新增 `SYNAXIS_SPIKES` 语义（不设只跑 R1～R8，`all` 或逗号列举才跑 spike，CI 只有每日任务设 `all`）。§19「CI 判定不看退出码」的 Given 改为退出码非 0 而报告全 PASS、没进世界而报告缺 R3 两次运行：回归 gametest 遇 FAIL 以断言失败结束，原 Given「S1 断线但 Gradle 退出码 0」不再能构造 | Bearisbug |
 
 ## 2. 背景 / 目标 / 非目标
 
@@ -542,7 +543,8 @@ erDiagram
   - 加密档连 `API-PROD-027` 的 `allow-all` 模式；机器人库 `store_meta.auth_mode = offline`，正式分片连它会拒绝起服。
 - **`API-PROD-026` 真客户端回归的报告与判定** — 实现 `REQ-PROD-030`
   - 报告：每次客户端启动写 `report.txt`，每条断言一行 `R<n> PASS|FAIL <证据>`，写报告放进 `try/finally`。R1～R8 定义见运维草案 ① 1.2（模组加载、握手通过、进世界、收到单位、选中、下令后位移 ≥ 2.0 格、光照非零、断线原因可读）。
-  - 判定步骤（CI）：报告份数 = 客户端启动次数 N；每份 `^R[1-8] PASS` 恰 8 行、`FAIL` 0 行；台账 `client_verified` = N、`client_rejected` = 0、`unit_order_issued` ≥ N；`server.log` 中 `reason=synaxis:protocol-error` 的 kick 行 = N；Gradle 客户端步骤 `continue-on-error: true`，退出码只记录。
+  - 判定步骤（CI）：报告份数 = 客户端启动次数 N；每份 `^R[1-8] PASS` 恰 8 行、`FAIL` 0 行；台账 `client_verified` = 连接次数 C、`client_rejected` = 0、`unit_order_issued` ≥ N；`server.log` 中 `reason=synaxis:protocol-error` 的 kick 行 = N；Gradle 客户端步骤 `continue-on-error: true`，退出码只记录。不跑 spike 时 C = N；带 spike 跑时 spike 的 S1 每次启动多连一次，C = 2N。
+  - spike 开关：环境变量 `SYNAXIS_SPIKES`，不设或为空时每次启动只跑回归 R1～R8；`all` 跑 S0～S5，逗号列举（如 `s2,s5`）跑 S0、S1 加所列项；spike 结果追加在报告的 R 行之后。CI 只有 `schedule` 设 `all`，PR 与 push `main` 不跑 spike。
   - 触发：`pull_request`（路径过滤 `client-fabric/**`、`protocol/**`、`server-app/**`、`game-rts/**`、`plugin-api/**`、`src/main/java/**/network/**`、`src/main/java/**/listener/**`、工作流文件）、push `main`、`schedule` 每日 UTC 18:00。
   - 档位：`REQ-PROD-002` 落地前跑离线档；落地后跑完整正版路径档（`Auth.Online` + `API-PROD-027` `record` 模式，客户端 JVM 带 `minecraft.api.session.host` / `services.host` / `profiles.host` 三个属性）。
 - **`API-PROD-027` 假 sessionserver** — 实现 `REQ-PROD-044`
@@ -1581,9 +1583,9 @@ L0、L0′、accept 时的 L1 超限与握手前超时都不发包，没有键�
   Then 200 人 tick P99 < 50 ms、超 50 ms 的 tick 为 0、RSS < 4 GiB；500 人两档记录 tick P99 与每人出口，未达标时频道 capacity 写成 200～300 并回写 §15
 
 场景: CI 判定不看退出码 (REQ-PROD-030)
-  Given 一次运行里客户端 S1 断线但 Gradle 退出码 0
-  When 判定步骤读 report.txt 与台账
-  Then 缺 R3 PASS 行或 client_verified 行数不等于启动次数时判定失败
+  Given 两次运行：一次报告 8 条 PASS、台账齐，但客户端步骤退出码为 1（容器退出时 libopenal 段错误）；另一次客户端没进世界，报告 R3 为 FAIL 或整份报告缺失
+  When 判定步骤读 report.txt、台账与 server.log
+  Then 前一次判定通过；后一次判定失败；client_verified 行数不等于连接次数时同样判定失败
 
 场景: 完整正版路径档进世界 (REQ-PROD-030)
   Given 服务端 Auth.Online 指向 record 模式假 sessionserver，客户端带三个 authlib host 属性

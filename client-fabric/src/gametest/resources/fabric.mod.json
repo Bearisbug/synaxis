@@ -6,6 +6,7 @@
 	"environment": "client",
 	"entrypoints": {
 		"fabric-client-gametest": [
+			"io.github.bearisbug.synaxis.game.client.gametest.RegressionClientGameTest",
 			"io.github.bearisbug.synaxis.game.client.gametest.SpikeClientGameTest"
 		]
 	},

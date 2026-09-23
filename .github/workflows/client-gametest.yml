@@ -1,8 +1,22 @@
 name: Client gametest
 
+# REQ-PROD-030 / API-PROD-026: a pull request touching the client, the wire or the server runs the
+# production mod jar once; main and the daily run take both launches, and the daily one the spikes too.
 on:
+  pull_request:
+    paths:
+      - client-fabric/**
+      - protocol/**
+      - server-app/**
+      - game-rts/**
+      - plugin-api/**
+      - src/main/java/**/network/**
+      - src/main/java/**/listener/**
+      - .github/workflows/client-gametest.yml
   push:
-    branches: [ client-gametest-ci ]
+    branches: [ main ]
+  schedule:
+    - cron: '0 18 * * *'
   workflow_dispatch:
     inputs:
       handshake_phase:
@@ -16,14 +30,21 @@ permissions:
 
 jobs:
   # The real Minecraft client, driven by fabric-client-gametest-api, against a server-app in game
-  # mode: spikes S0 and S1 of docs/research/client-spikes-2026-09/README.md. Xvfb gives it a display
-  # and Mesa llvmpipe gives it OpenGL, the same as client-fabric/gametest-env/ does in Docker.
+  # mode: the regression assertions R1 to R8 (RegressionClientGameTest), plus on the daily run the
+  # spikes of docs/research/client-spikes-2026-09/README.md. Xvfb gives it a display and Mesa
+  # llvmpipe gives it OpenGL, the same as client-fabric/gametest-env/ does in Docker.
   gametest:
     name: Run the client gametests
     runs-on: ubuntu-latest
     timeout-minutes: 40
     env:
       HANDSHAKE_PHASE: ${{ inputs.handshake_phase || 'configuration' }}
+      # A pull request launches the client once (the production jar); every other trigger twice.
+      LAUNCHES: ${{ github.event_name == 'pull_request' && '1' || '2' }}
+      # The spikes' S1 connects once more per launch. S3's distances are the ones the spike report used.
+      SYNAXIS_SPIKES: ${{ github.event_name == 'schedule' && 'all' || '' }}
+      SYNAXIS_S3_DISTANCES: ${{ github.event_name == 'schedule' && '97,130,150,170,200,250,300,340' || '' }}
+      CONNECTIONS_PER_LAUNCH: ${{ github.event_name == 'schedule' && '2' || '1' }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7
@@ -62,7 +83,11 @@ jobs:
           cat server.log
           exit 1
 
+      # The exit codes of the two client steps are recorded, not judged: the judge step below reads
+      # the reports and the server's ledger and log instead.
       - name: Run the client gametests
+        if: env.LAUNCHES == '2'
+        continue-on-error: true
         working-directory: client-fabric
         env:
           SYNAXIS_GAMETEST_SERVER: 127.0.0.1:25565
@@ -70,9 +95,10 @@ jobs:
           GALLIUM_DRIVER: llvmpipe
         run: xvfb-run -a -s "-screen 0 1280x720x24" ./gradlew runClientGameTest --console=plain --stacktrace
 
-      # The same tests against the remapped mod jar, :protocol nested in it (S0).
+      # The same tests against the remapped mod jar, :protocol nested in it (R1).
       - name: Run the client gametests against the production mod jar
         if: success() || failure()
+        continue-on-error: true
         working-directory: client-fabric
         env:
           SYNAXIS_GAMETEST_SERVER: 127.0.0.1:25565
@@ -85,6 +111,16 @@ jobs:
         run: |
           for report in client-fabric/build/run/*/synaxis-gametest/report.txt; do echo "== $report"; cat "$report"; done || true
           cat logs/events-*.jsonl || true
+
+      - name: Judge the regression by the reports, the ledger and the server log
+        if: success() || failure()
+        env:
+          SERVER_LOG: server.log
+          LEDGER_DIR: logs
+        run: |
+          reports=(client-fabric/build/run/productionClientGameTest/synaxis-gametest/report.txt)
+          if [ "$LAUNCHES" = 2 ]; then reports+=(client-fabric/build/run/clientGameTest/synaxis-gametest/report.txt); fi
+          CONNECTIONS=$((LAUNCHES * CONNECTIONS_PER_LAUNCH)) client-fabric/gametest-env/judge.sh "${reports[@]}"
 
       - name: Upload screenshots, report and logs
         if: always()

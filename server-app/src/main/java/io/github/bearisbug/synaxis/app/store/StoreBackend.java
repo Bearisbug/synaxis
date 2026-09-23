@@ -50,6 +50,16 @@ public interface StoreBackend {
     void release(long characterId, long sessionId) throws SQLException;
 
     /**
+     * Gives back the lease of an account's character if this session holds it: a login refused
+     * after a lease was taken for it, by the load or by the verification of a transfer ticket.
+     *
+     * @param account   the account uuid
+     * @param sessionId the session of this shard
+     * @throws SQLException if the database failed
+     */
+    void releaseAccount(UUID account, long sessionId) throws SQLException;
+
+    /**
      * One stored section.
      *
      * @param schemaVersion the version it was written with

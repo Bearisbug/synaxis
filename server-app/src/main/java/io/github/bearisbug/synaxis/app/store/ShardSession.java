@@ -10,6 +10,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.Duration;
+import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executors;
@@ -25,10 +26,16 @@ import java.util.function.LongSupplier;
  * The renewal runs on a platform thread of its own and on a connection of its own. Whether this
  * shard still holds its leases is only ever decided by the database's clock, through an update that
  * finds the session already expired; the local clock only decides when to freeze early.
+ * <p>
+ * The 10 s freeze and the 30 s isolation are decided by a watch thread of their own every
+ * {@value #WATCH_EVERY_MS} ms, not by the renewal: a database that stops answering without closing
+ * the connection holds the renewal inside its statement until the socket timeout of
+ * {@link Database}, and the deadlines must not wait for it.
  */
 public final class ShardSession implements AutoCloseable {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ShardSession.class);
+    static final long WATCH_EVERY_MS = 250;
 
     /** The states of §11.2. */
     public enum State {
@@ -72,9 +79,12 @@ public final class ShardSession implements AutoCloseable {
     private final LogBudget failures = new LogBudget(LOGGER, "renewal failures");
     private final ScheduledExecutorService renewal = Executors.newSingleThreadScheduledExecutor(
             Thread.ofPlatform().name("Syn-Shard-Session").daemon().factory());
+    private final ScheduledExecutorService watch = Executors.newSingleThreadScheduledExecutor(
+            Thread.ofPlatform().name("Syn-Shard-Watch").daemon().factory());
 
     // Only touched on the renewal thread, and by open() before it starts
     private @Nullable Connection connection;
+    // Guarded by this
     private long lastRenewed;
 
     private volatile long sessionId;
@@ -111,7 +121,9 @@ public final class ShardSession implements AutoCloseable {
             opened.setAutoCommit(true);
             this.connection = opened;
             this.sessionId = id;
-            this.lastRenewed = nanoClock.getAsLong();
+            synchronized (this) {
+                this.lastRenewed = nanoClock.getAsLong();
+            }
         } catch (SQLException e) {
             closeQuietly(opened);
             throw e;
@@ -120,6 +132,7 @@ public final class ShardSession implements AutoCloseable {
         LOGGER.info("Shard session opened: shard_id={} session_id={}", shardId, sessionId);
         final long every = timing.renewEvery().toMillis();
         var _ = renewal.scheduleWithFixedDelay(this::renewOrReopen, every, every, TimeUnit.MILLISECONDS);
+        var _ = watch.scheduleAtFixedRate(this::checkDeadlines, WATCH_EVERY_MS, WATCH_EVERY_MS, TimeUnit.MILLISECONDS);
         return sessionId;
     }
 
@@ -146,10 +159,7 @@ public final class ShardSession implements AutoCloseable {
      * session would expire in the middle of the save and fence its last writes.
      */
     public void beginClosing() {
-        synchronized (this) {
-            if (state != State.ACTIVE && state != State.DEGRADED) return;
-        }
-        transition(State.CLOSING);
+        transition(State.CLOSING, State.ACTIVE, State.DEGRADED);
     }
 
     /**
@@ -175,6 +185,7 @@ public final class ShardSession implements AutoCloseable {
             Thread.currentThread().interrupt();
         }
         renewal.shutdownNow();
+        watch.shutdownNow();
         transition(State.RELEASED);
     }
 
@@ -191,44 +202,75 @@ public final class ShardSession implements AutoCloseable {
             update.setLong(1, timing.lease().toSeconds());
             update.setLong(2, sessionId);
             if (update.executeUpdate() == 1) {
-                this.lastRenewed = now;
+                final boolean recovered;
                 synchronized (this) {
-                    if (state != State.DEGRADED) return;
+                    this.lastRenewed = now;
+                    recovered = state == State.DEGRADED;
+                    if (recovered) state = State.ACTIVE;
                 }
-                transition(State.ACTIVE);
+                if (recovered) changed(State.DEGRADED, State.ACTIVE);
                 return;
             }
             // The database says the session is over: another run of this shard id took its leases
             // over, or it ran out while renewal failed. A closing shard lets the leases run out.
-            synchronized (this) {
-                if (state == State.CLOSING) return;
-            }
-            LOGGER.error("Shard session expired: shard_id={} session_id={}. Isolating this shard.", shardId, sessionId);
-            transition(State.ISOLATED);
+            if (transition(State.ISOLATED, State.ACTIVE, State.DEGRADED))
+                LOGGER.error("Shard session expired: shard_id={} session_id={}. Isolated this shard.", shardId, sessionId);
         } catch (SQLException e) {
             dropConnection();
-            final long failingFor = now - lastRenewed;
+            final long failingFor;
+            synchronized (this) {
+                failingFor = nanoClock.getAsLong() - lastRenewed;
+            }
             failures.warn(e, "Shard session renewal failed: shard_id={} session_id={} failing_for_ms={}",
                     shardId, sessionId, TimeUnit.NANOSECONDS.toMillis(failingFor));
-            final State next;
-            synchronized (this) {
-                if (state != State.ACTIVE && state != State.DEGRADED) return;
-                if (failingFor >= timing.isolatedAfter().toNanos()) next = State.ISOLATED;
-                else if (failingFor > timing.degradedAfter().toNanos() && state == State.ACTIVE) next = State.DEGRADED;
-                else return;
-            }
-            transition(next);
+            checkDeadlines();
         }
     }
 
-    /** {@code isolated → active}: a new epoch, without making any other session expire. */
+    /**
+     * {@code active → degraded} past {@code degradedAfter} without a renewal, {@code active |
+     * degraded → isolated} past {@code isolatedAfter}. Run by the watch thread, and by a failed
+     * renewal; also called by tests instead of waiting for the next run.
+     */
+    void checkDeadlines() {
+        final State previous;
+        final State next;
+        synchronized (this) {
+            previous = state;
+            if (previous != State.ACTIVE && previous != State.DEGRADED) return;
+            final long failingFor = nanoClock.getAsLong() - lastRenewed;
+            if (failingFor >= timing.isolatedAfter().toNanos()) next = State.ISOLATED;
+            else if (failingFor > timing.degradedAfter().toNanos() && previous == State.ACTIVE) next = State.DEGRADED;
+            else return;
+            state = next;
+        }
+        if (next == State.ISOLATED)
+            LOGGER.error("Shard session not renewed for {} s: shard_id={} session_id={}. Isolating this shard.",
+                    timing.isolatedAfter().toSeconds(), shardId, sessionId);
+        changed(previous, next);
+    }
+
+    /**
+     * {@code isolated → active}: a new epoch, without making any other session expire. The
+     * previous epoch of this run is made to expire first: isolated by the watch while its last
+     * renewal was still under way, it may have been renewed after all, and its leases would stay
+     * out of reach for another lease period.
+     */
     private void reopen() {
         try {
-            final long id = insert(connection());
+            final Connection current = connection();
+            try (PreparedStatement expire = current.prepareStatement(
+                    "UPDATE shard_session SET expires_at = now() WHERE session_id = ? AND expires_at > now()")) {
+                expire.setLong(1, sessionId);
+                expire.executeUpdate();
+            }
+            final long id = insert(current);
             this.sessionId = id;
-            this.lastRenewed = nanoClock.getAsLong();
+            synchronized (this) {
+                this.lastRenewed = nanoClock.getAsLong();
+            }
             LOGGER.info("Shard session reopened: shard_id={} session_id={}", shardId, id);
-            transition(State.ACTIVE);
+            transition(State.ACTIVE, State.ISOLATED);
         } catch (SQLException e) {
             dropConnection();
             failures.warn(e, "Shard session could not be reopened: shard_id={}", shardId);
@@ -248,13 +290,24 @@ public final class ShardSession implements AutoCloseable {
         }
     }
 
-    private void transition(State next) {
+    /**
+     * Moves to {@code next} if the state is one of {@code from} (any state if none is given), the
+     * check and the move under one lock.
+     *
+     * @return whether it moved
+     */
+    private boolean transition(State next, State... from) {
         final State previous;
         synchronized (this) {
             previous = this.state;
-            if (previous == next) return;
+            if (previous == next || (from.length > 0 && !List.of(from).contains(previous))) return false;
             this.state = next;
         }
+        changed(previous, next);
+        return true;
+    }
+
+    private void changed(State previous, State next) {
         LOGGER.info("Shard session state: shard_id={} session_id={} {} -> {}", shardId, sessionId,
                 previous.name().toLowerCase(Locale.ROOT), next.name().toLowerCase(Locale.ROOT));
         try {
@@ -289,6 +342,7 @@ public final class ShardSession implements AutoCloseable {
 
     @Override
     public void close() {
+        watch.shutdownNow();
         renewal.shutdownNow();
         try {
             if (!renewal.awaitTermination(Database.STATEMENT_TIMEOUT_MS * 2L, TimeUnit.MILLISECONDS))

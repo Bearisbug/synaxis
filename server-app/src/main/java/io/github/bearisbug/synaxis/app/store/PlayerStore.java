@@ -89,6 +89,13 @@ public final class PlayerStore implements ShutdownParticipant {
     private record Hook(String pluginId, Consumer<ShutdownNotice> hook) {
     }
 
+    /**
+     * An encoded section and the commit count of its character when it was read: a snapshot read
+     * before a {@code commitTogether} wrote the same section must not be written over the commit.
+     */
+    private record Encoded(StoreBackend.StoredSection section, long takenAt) {
+    }
+
     /** One loaded character. */
     static final class Record {
         final Player player;
@@ -100,9 +107,13 @@ public final class PlayerStore implements ShutdownParticipant {
         final CompletableFuture<Void> gone = new CompletableFuture<>();
         final AtomicBoolean shutdownSnapshot = new AtomicBoolean();
         final AtomicLong version;
+        // Bumped by every commitTogether once its values are in, with the sections it wrote; both
+        // are written under writeLock
+        final AtomicLong commits = new AtomicLong();
+        final Map<String, Long> committedAt = new ConcurrentHashMap<>();
         volatile LeaseState state = LeaseState.LOADING;
         // Guarded by this record: the single slot write queue
-        private @Nullable Map<String, StoreBackend.StoredSection> pending;
+        private @Nullable Map<String, Encoded> pending;
         private boolean release;
         private boolean transferring;
         private boolean writing;
@@ -131,6 +142,8 @@ public final class PlayerStore implements ShutdownParticipant {
     private final Queue<Record> autosaveOrder = new ConcurrentLinkedQueue<>();
     private final Map<Record, CompletableFuture<SaveResult>> shutdownSaves = new ConcurrentHashMap<>();
     private final AtomicBoolean directSnapshotWarned = new AtomicBoolean();
+    // Only touched by the autosave task: online players summed per tick, one save per period
+    private long autosaveCredit;
     private volatile @Nullable ShardSession session;
     private volatile boolean closing;
     // Set once the shutdown save phase is over: a write still retrying is given up
@@ -246,6 +259,12 @@ public final class PlayerStore implements ShutdownParticipant {
         shutdownHooks.add(new Hook(pluginId, hook));
     }
 
+    /** Takes back what a plugin that failed to enable registered: its sections and its hooks. */
+    void discard(String pluginId, Set<String> sectionIds) {
+        for (String id : sectionIds) sections.remove(id);
+        shutdownHooks.removeIf(hook -> hook.pluginId().equals(pluginId));
+    }
+
     // ---- login ----
 
     /**
@@ -257,6 +276,26 @@ public final class PlayerStore implements ShutdownParticipant {
      * @return true once loaded; false if the player was kicked
      */
     public boolean load(Player player) {
+        if (loadOrRefuse(player)) return true;
+        releaseUnused(player.getUuid());
+        return false;
+    }
+
+    /**
+     * {@code loading → offline}: a refused login gives back a lease this session may hold for it,
+     * taken by the verification of a transfer ticket or by a load that failed after its acquire.
+     * Not while another login of the account is loaded here: the lease is that one's.
+     */
+    private void releaseUnused(UUID account) {
+        for (Record record : records.values()) if (record.account.equals(account)) return;
+        try {
+            backend.releaseAccount(account, sessionId());
+        } catch (SQLException e) {
+            failures.warn(e, "Giving back the lease of a refused login failed, it runs out with the session");
+        }
+    }
+
+    private boolean loadOrRefuse(Player player) {
         final UUID account = player.getUuid();
         final long deadline = System.nanoTime() + options.loadBudget().toNanos();
         final ShardSession current = this.session;
@@ -461,8 +500,13 @@ public final class PlayerStore implements ShutdownParticipant {
                 backend.write(sessionId(), writes);
                 for (Record record : ordered) {
                     record.version.incrementAndGet();
+                    // Values first, then the count: a snapshot that read the count before it
+                    // read one of these values is dropped at its write, never kept with old ones
                     for (Map.Entry<DataSection<?>, Object> entry : staged.get(record.player).entrySet())
                         record.values.put(entry.getKey().id(), entry.getValue());
+                    final long commit = record.commits.incrementAndGet();
+                    for (DataSection<?> section : staged.get(record.player).keySet())
+                        record.committedAt.put(section.id(), commit);
                 }
                 ordered.getFirst().player.scheduler().scheduleNextTick(apply);
                 critical("commit", SaveResult.SAVED, null, start, ordered.size());
@@ -534,15 +578,16 @@ public final class PlayerStore implements ShutdownParticipant {
     // ---- saving ----
 
     /** Encodes the dirty sections, on the tick thread that owns the player. */
-    private Map<String, StoreBackend.StoredSection> snapshot(Record record) {
-        final Map<String, StoreBackend.StoredSection> out = new HashMap<>();
+    private Map<String, Encoded> snapshot(Record record) {
+        final long takenAt = record.commits.get();
+        final Map<String, Encoded> out = new HashMap<>();
         for (String id : List.copyOf(record.dirty)) {
             record.dirty.remove(id);
             final DataSection<?> section = sections.get(id);
             final Object value = record.values.get(id);
             if (section == null || value == null) continue;
             try {
-                out.put(id, encode(section, value));
+                out.put(id, new Encoded(encode(section, value), takenAt));
             } catch (RuntimeException e) {
                 LOGGER.error("Encoding a section failed, it stays dirty: character_id={} section_id={}",
                         record.characterId, id, e);
@@ -561,7 +606,7 @@ public final class PlayerStore implements ShutdownParticipant {
      * Queues a snapshot on the character's single write slot; a snapshot already waiting there is
      * merged under it, the newer value of a section winning.
      */
-    private void submit(Record record, Map<String, StoreBackend.StoredSection> snapshot, boolean release,
+    private void submit(Record record, Map<String, Encoded> snapshot, boolean release,
                         @Nullable CompletableFuture<SaveResult> done) {
         synchronized (record) {
             if (record.pending == null) record.pending = new HashMap<>(snapshot);
@@ -578,7 +623,7 @@ public final class PlayerStore implements ShutdownParticipant {
         int failed = 0;
         long firstFailure = 0;
         while (true) {
-            final Map<String, StoreBackend.StoredSection> snapshot;
+            final Map<String, Encoded> snapshot;
             final boolean release;
             final boolean transfer;
             final List<CompletableFuture<SaveResult>> waiting;
@@ -661,7 +706,7 @@ public final class PlayerStore implements ShutdownParticipant {
                     // Kept for the next attempt, under whatever came in meanwhile
                     synchronized (record) {
                         if (record.pending != null) {
-                            final Map<String, StoreBackend.StoredSection> newer = record.pending;
+                            final Map<String, Encoded> newer = record.pending;
                             record.pending = new HashMap<>(snapshot);
                             record.pending.putAll(newer);
                         } else {
@@ -675,14 +720,25 @@ public final class PlayerStore implements ShutdownParticipant {
         }
     }
 
-    private SaveResult write(Record record, Map<String, StoreBackend.StoredSection> snapshot, boolean release) {
+    private SaveResult write(Record record, Map<String, Encoded> snapshot, boolean release) {
         final ShardSession current = this.session;
         if (current != null && current.state() == ShardSession.State.ISOLATED) return SaveResult.FENCED;
         // Nothing changed and nothing to give back: no write, no version bump
         if (snapshot.isEmpty() && !release) return SaveResult.SAVED;
         record.writeLock.lock();
         try {
-            backend.write(sessionId(), List.of(new StoreBackend.Write(record.characterId, record.version.get(), snapshot, release)));
+            final Map<String, StoreBackend.StoredSection> sections = new HashMap<>();
+            for (Map.Entry<String, Encoded> entry : snapshot.entrySet()) {
+                if (entry.getValue().takenAt() >= record.committedAt.getOrDefault(entry.getKey(), 0L)) {
+                    sections.put(entry.getKey(), entry.getValue().section());
+                } else {
+                    // A commit wrote this section after the snapshot read it. Dirty again, so a
+                    // change made on top of the commit before the next snapshot is not lost
+                    record.dirty.add(entry.getKey());
+                }
+            }
+            if (sections.isEmpty() && !release) return SaveResult.SAVED;
+            backend.write(sessionId(), List.of(new StoreBackend.Write(record.characterId, record.version.get(), sections, release)));
             record.version.incrementAndGet();
             return SaveResult.SAVED;
         } catch (StoreBackend.FencedException _) {
@@ -756,13 +812,17 @@ public final class PlayerStore implements ShutdownParticipant {
         }
     }
 
-    /** One tick of {@code store.autosave}: ⌈online ÷ period⌉ players, each on its own tick thread. */
+    /**
+     * One tick of {@code store.autosave}: online ÷ period players on average, the remainder carried
+     * to the next tick, so each player comes round once per period; each on its own tick thread.
+     */
     private void autosaveTick() {
         final ShardSession current = this.session;
         if (closing || (current != null && current.state() != ShardSession.State.ACTIVE)) return;
-        final int online = autosaveOrder.size();
-        final int perTick = (online + options.autosavePeriodTicks() - 1) / options.autosavePeriodTicks();
-        for (int i = 0; i < perTick; i++) {
+        autosaveCredit += autosaveOrder.size();
+        final long perTick = autosaveCredit / options.autosavePeriodTicks();
+        autosaveCredit %= options.autosavePeriodTicks();
+        for (long i = 0; i < perTick; i++) {
             final Record record = autosaveOrder.poll();
             if (record == null) return;
             if (record.state != LeaseState.ONLINE) continue;

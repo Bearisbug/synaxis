@@ -37,6 +37,16 @@ public final class PluginPlayerData implements PlayerDataStore, PluginLifecycle 
         this.enabling = false;
     }
 
+    /**
+     * Takes back the sections and the shutdown hooks of a plugin whose {@code onEnable} failed:
+     * no login decodes a section of a plugin that is not there, no shutdown calls its hooks.
+     */
+    public void discard() {
+        this.enabling = false;
+        store.discard(pluginId, Set.copyOf(owned));
+        owned.clear();
+    }
+
     @Override
     public <T> void register(DataSection<T> section) {
         if (!enabling)

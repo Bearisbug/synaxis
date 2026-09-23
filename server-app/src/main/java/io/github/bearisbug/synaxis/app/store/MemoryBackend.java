@@ -52,4 +52,9 @@ public final class MemoryBackend implements StoreBackend {
     public void release(long characterId, long sessionId) {
         // No lease to give back
     }
+
+    @Override
+    public void releaseAccount(UUID account, long sessionId) {
+        // No lease to give back
+    }
 }

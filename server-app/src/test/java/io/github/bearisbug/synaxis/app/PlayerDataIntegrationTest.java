@@ -29,6 +29,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.sql.SQLException;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -229,6 +230,62 @@ class PlayerDataIntegrationTest {
         host.disableAll();
     }
 
+    @Test
+    void aPluginThatFailsToEnableLeavesNoSectionAndNoShutdownHookBehind(Env env) {
+        final AtomicInteger defaults = new AtomicInteger();
+        final AtomicInteger hooks = new AtomicInteger();
+        final DataSection<AtomicInteger> bag = new DataSection<>() {
+            @Override
+            public String id() {
+                return "broken:bag";
+            }
+
+            @Override
+            public int schemaVersion() {
+                return 1;
+            }
+
+            @Override
+            public AtomicInteger createDefault() {
+                defaults.incrementAndGet();
+                return new AtomicInteger();
+            }
+
+            @Override
+            public AtomicInteger decode(JsonElement json, int storedVersion) {
+                return new AtomicInteger(json.getAsInt());
+            }
+
+            @Override
+            public JsonElement encode(AtomicInteger value) {
+                return new JsonPrimitive(value.get());
+            }
+        };
+        final Instance match = env.createFlatInstance();
+        final Probe broken = new Probe("broken", ctx -> {
+            ctx.playerData().register(bag);
+            ctx.lifecycle().onShutdownSave(_ -> hooks.incrementAndGet());
+            throw new IllegalStateException("the test's plugin fails to enable");
+        });
+        final Probe admitting = new Probe("probe", ctx -> ctx.admission().register(_ -> new Admission.Accept(match, 1)));
+        ledger = new EventLedger(workingDirectory.resolve("logs"), "test", EventLedger.DEFAULT_MAX_BYTES_PER_DAY);
+        ledger.start();
+        final PlayerStore store = new PlayerStore(env.process(), new MemoryBackend(), RedisLink.disabled("test"), "test",
+                false, PlayerStore.Options.DEFAULT, ledger::record);
+        final PluginHost host = new PluginHost(env.process(), workingDirectory.resolve("plugins"), ledger, store);
+        host.enable(List.of(broken, admitting), Set.of());
+
+        final Player player = env.createPlayer(match, new Pos(0, 41, 0));
+        assertTrue(player.getPlayerConnection().isOnline());
+        final var saved = store.saveAll(Duration.ofSeconds(5), true);
+        env.tick();
+        saved.join();
+
+        assertEquals(0, defaults.get(), "no login loads a section of a plugin that is not there");
+        assertEquals(0, hooks.get(), "no shutdown calls the hook of a plugin that is not there");
+        host.disableAll();
+    }
+
     private List<String> readLedger() throws IOException {
         Objects.requireNonNull(ledger).close();
         final List<String> lines = new ArrayList<>();
@@ -253,6 +310,11 @@ class PlayerDataIntegrationTest {
         public void release(long characterId, long sessionId) throws SQLException {
             throw new SQLException("the test database is down");
         }
+
+        @Override
+        public void releaseAccount(UUID account, long sessionId) throws SQLException {
+            throw new SQLException("the test database is down");
+        }
     }
 
     private static final class CountingBackend implements StoreBackend {
@@ -274,6 +336,11 @@ class PlayerDataIntegrationTest {
         @Override
         public void release(long characterId, long sessionId) {
             releases.incrementAndGet();
+        }
+
+        @Override
+        public void releaseAccount(UUID account, long sessionId) {
+            memory.releaseAccount(account, sessionId);
         }
     }
 }

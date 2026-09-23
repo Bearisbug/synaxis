@@ -54,6 +54,8 @@ public final class PostgresBackend implements StoreBackend {
             DO UPDATE SET schema_version = EXCLUDED.schema_version, data = EXCLUDED.data, updated_at = now()""";
     private static final String RELEASE = """
             UPDATE character SET lease_session_id = NULL WHERE character_id = ? AND lease_session_id = ?""";
+    private static final String RELEASE_ACCOUNT = """
+            UPDATE character SET lease_session_id = NULL WHERE account_uuid = ? AND slot = 0 AND lease_session_id = ?""";
 
     private final DataSource dataSource;
 
@@ -63,43 +65,58 @@ public final class PostgresBackend implements StoreBackend {
 
     @Override
     public LoadOutcome load(UUID account, String name, long sessionId) throws SQLException {
+        // One transaction: a load that fails after its acquire, reading the sections, holds no lease
         try (Connection connection = dataSource.getConnection()) {
-            try (PreparedStatement upsert = connection.prepareStatement(UPSERT_ACCOUNT)) {
-                upsert.setObject(1, account);
-                upsert.setString(2, name);
-                upsert.executeUpdate();
+            connection.setAutoCommit(false);
+            try {
+                final LoadOutcome outcome = load(connection, account, name, sessionId);
+                connection.commit();
+                return outcome;
+            } catch (SQLException e) {
+                connection.rollback();
+                throw e;
+            } finally {
+                connection.setAutoCommit(true);
             }
-            try (PreparedStatement insert = connection.prepareStatement(INSERT_CHARACTER)) {
-                insert.setObject(1, account);
-                insert.executeUpdate();
-            }
-            // A holder whose lease is released between the two statements makes the second find
-            // nobody, and the acquire is simply tried again
-            for (int attempt = 0; ; attempt++) {
-                try (PreparedStatement acquire = connection.prepareStatement(ACQUIRE)) {
-                    acquire.setObject(1, account);
-                    acquire.setLong(2, sessionId);
-                    acquire.setLong(3, sessionId);
-                    try (ResultSet row = acquire.executeQuery()) {
-                        if (row.next()) {
-                            final long characterId = row.getLong(1);
-                            final long version = row.getLong(2);
-                            final long previous = row.getLong(3);
-                            final Long previousSession = row.wasNull() || previous == sessionId ? null : previous;
-                            final Timestamp lastSaved = row.getTimestamp(4);
-                            return new LoadOutcome.Acquired(characterId, version, sections(connection, characterId),
-                                    previousSession, lastSaved == null ? null : lastSaved.toInstant());
-                        }
+        }
+    }
+
+    private static LoadOutcome load(Connection connection, UUID account, String name, long sessionId) throws SQLException {
+        try (PreparedStatement upsert = connection.prepareStatement(UPSERT_ACCOUNT)) {
+            upsert.setObject(1, account);
+            upsert.setString(2, name);
+            upsert.executeUpdate();
+        }
+        try (PreparedStatement insert = connection.prepareStatement(INSERT_CHARACTER)) {
+            insert.setObject(1, account);
+            insert.executeUpdate();
+        }
+        // A holder whose lease is released between the two statements makes the second find
+        // nobody, and the acquire is simply tried again
+        for (int attempt = 0; ; attempt++) {
+            try (PreparedStatement acquire = connection.prepareStatement(ACQUIRE)) {
+                acquire.setObject(1, account);
+                acquire.setLong(2, sessionId);
+                acquire.setLong(3, sessionId);
+                try (ResultSet row = acquire.executeQuery()) {
+                    if (row.next()) {
+                        final long characterId = row.getLong(1);
+                        final long version = row.getLong(2);
+                        final long previous = row.getLong(3);
+                        final Long previousSession = row.wasNull() || previous == sessionId ? null : previous;
+                        final Timestamp lastSaved = row.getTimestamp(4);
+                        return new LoadOutcome.Acquired(characterId, version, sections(connection, characterId),
+                                previousSession, lastSaved == null ? null : lastSaved.toInstant());
                     }
                 }
-                try (PreparedStatement holder = connection.prepareStatement(HOLDER)) {
-                    holder.setObject(1, account);
-                    try (ResultSet row = holder.executeQuery()) {
-                        if (row.next()) return new LoadOutcome.Held(row.getString(1), row.getLong(2));
-                    }
-                }
-                if (attempt > 0) throw new SQLException("character of " + account + " neither acquired nor held");
             }
+            try (PreparedStatement holder = connection.prepareStatement(HOLDER)) {
+                holder.setObject(1, account);
+                try (ResultSet row = holder.executeQuery()) {
+                    if (row.next()) return new LoadOutcome.Held(row.getString(1), row.getLong(2));
+                }
+            }
+            if (attempt > 0) throw new SQLException("character of " + account + " neither acquired nor held");
         }
     }
 
@@ -158,6 +175,16 @@ public final class PostgresBackend implements StoreBackend {
     public void release(long characterId, long sessionId) throws SQLException {
         try (Connection connection = dataSource.getConnection()) {
             release(connection, characterId, sessionId);
+        }
+    }
+
+    @Override
+    public void releaseAccount(UUID account, long sessionId) throws SQLException {
+        try (Connection connection = dataSource.getConnection();
+             PreparedStatement release = connection.prepareStatement(RELEASE_ACCOUNT)) {
+            release.setObject(1, account);
+            release.setLong(2, sessionId);
+            release.executeUpdate();
         }
     }
 

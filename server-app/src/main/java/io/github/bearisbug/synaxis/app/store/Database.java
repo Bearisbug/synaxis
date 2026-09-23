@@ -20,6 +20,13 @@ public final class Database implements AutoCloseable {
     static final int POOL_SIZE = 4;
     static final int CONNECTION_TIMEOUT_MS = 2_000;
     static final int STATEMENT_TIMEOUT_MS = 2_000;
+    /**
+     * How long a read on the socket may wait. A database that stops answering without closing the
+     * connection (paused, or a network that drops packets) never trips the statement timeout, which
+     * the server enforces; without this a statement would wait for it forever.
+     */
+    static final int SOCKET_TIMEOUT_MS = 4_000;
+    static final int VALIDATION_TIMEOUT_MS = 1_000;
 
     private final StoreSettings settings;
     private final HikariDataSource pool;
@@ -40,6 +47,7 @@ public final class Database implements AutoCloseable {
         config.setMaximumPoolSize(POOL_SIZE);
         config.setMinimumIdle(1);
         config.setConnectionTimeout(CONNECTION_TIMEOUT_MS);
+        config.setValidationTimeout(VALIDATION_TIMEOUT_MS);
         config.setDataSourceProperties(driverProperties());
         this.pool = new HikariDataSource(config);
     }
@@ -71,6 +79,9 @@ public final class Database implements AutoCloseable {
         // Every statement of the store is bounded (API-PROD-004), the server enforces it
         properties.setProperty("options", "-c statement_timeout=" + STATEMENT_TIMEOUT_MS);
         properties.setProperty("connectTimeout", String.valueOf(CONNECTION_TIMEOUT_MS / 1_000));
+        // The TCP handshake of a paused database still succeeds, it is the login that waits
+        properties.setProperty("loginTimeout", String.valueOf(CONNECTION_TIMEOUT_MS / 1_000));
+        properties.setProperty("socketTimeout", String.valueOf(SOCKET_TIMEOUT_MS / 1_000));
         properties.setProperty("ApplicationName", "synaxis");
         return properties;
     }

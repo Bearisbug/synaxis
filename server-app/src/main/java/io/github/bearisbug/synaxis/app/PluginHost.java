@@ -147,7 +147,7 @@ final class PluginHost {
                     new PluginChannelsImpl(id, router), new PluginAdmissionImpl(id, admission),
                     dataDirectory, ledger::record, playerData, playerData, LoggerFactory.getLogger("plugin." + id)));
         } catch (Throwable throwable) {
-            playerData.enabled();
+            playerData.discard();
             LOGGER.error("Plugin failed to enable: plugin_id={}", id, throwable);
             tearDown(loaded);
             return;

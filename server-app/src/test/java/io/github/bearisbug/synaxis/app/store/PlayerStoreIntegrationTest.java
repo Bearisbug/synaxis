@@ -22,12 +22,14 @@ import net.kyori.adventure.text.Component;
 import org.slf4j.LoggerFactory;
 
 import java.sql.SQLException;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static io.github.bearisbug.synaxis.app.store.StoreFixture.PURSE;
@@ -39,6 +41,7 @@ import static io.github.bearisbug.synaxis.app.store.StoreFixture.row;
 import static io.github.bearisbug.synaxis.app.store.StoreFixture.spawn;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -380,6 +383,119 @@ class PlayerStoreIntegrationTest {
         assertEquals("{\"note\": \"\", \"coins\": 7}", row(database, dirty).purse());
         assertEquals(0, row(database, clean).version(), "nothing dirty, nothing written");
         assertEquals(1, row(database, dirty).version(), "written once, not once per period");
+    }
+
+    @Test
+    void aSaveRetryingFromBeforeACommitDoesNotWriteOverTheCommit(Env env) throws SQLException {
+        final AtomicBoolean failNext = new AtomicBoolean();
+        final PostgresBackend postgres = new PostgresBackend(pool.pool());
+        final StoreBackend flaky = new StoreBackend() {
+            @Override
+            public LoadOutcome load(UUID account, String name, long sessionId) throws SQLException {
+                return postgres.load(account, name, sessionId);
+            }
+
+            @Override
+            public void write(long sessionId, List<Write> writes) throws FencedException, SQLException {
+                if (failNext.getAndSet(false)) throw new SQLException("the test's database hiccup");
+                postgres.write(sessionId, writes);
+            }
+
+            @Override
+            public void release(long characterId, long sessionId) throws SQLException {
+                postgres.release(characterId, sessionId);
+            }
+
+            @Override
+            public void releaseAccount(UUID account, long sessionId) throws SQLException {
+                postgres.releaseAccount(account, sessionId);
+            }
+        };
+        final PlayerStore.Options slowRetry = new PlayerStore.Options(Duration.ofSeconds(5), 2, 4,
+                List.of(Duration.ofMillis(800)), Duration.ofSeconds(1), Duration.ofMillis(50));
+        final StoreFixture.Shard shard = StoreFixture.shard(env, pool, "r1-c1", false, RedisLink.disabled("r1-c1"),
+                slowRetry, StoreFixture.MANUAL, flaky);
+        shards.add(shard);
+        final Instance instance = env.createFlatInstance();
+        final UUID account = UUID.randomUUID();
+        final Player trader = online(env, shard, instance, account, "Trader");
+        shard.store().get(trader, PURSE).coins = 100;
+        shard.store().markDirty(trader, PURSE);
+        failNext.set(true);
+        assertEquals(SaveResult.UNAVAILABLE, shard.store().saveNow(trader).join(), "the first attempt fails and backs off");
+
+        assertEquals(SaveResult.SAVED, shard.store().commitTogether(
+                Map.of(trader, Map.<DataSection<?>, Object>of(PURSE, purse(50))), () -> {
+                }).join(), "the trade commits while the save waits for its retry");
+        final long end = System.nanoTime() + Duration.ofMillis(1_500).toNanos();
+        while (System.nanoTime() < end) {
+            env.tick();
+            sleep(10);
+        }
+
+        assertEquals(50, shard.store().get(trader, PURSE).coins);
+        assertEquals("{\"note\": \"\", \"coins\": 50}", row(database, account).purse(),
+                "the retry of the snapshot from before the trade is not written over it");
+    }
+
+    @Test
+    void aLoginRefusedForTheLoadQueueGivesBackTheLeaseItWasHolding(Env env) throws SQLException {
+        final PlayerStore.Options noPermits = new PlayerStore.Options(Duration.ofMillis(200), 0, 4,
+                List.of(Duration.ofMillis(50)), Duration.ofSeconds(1), Duration.ofMillis(50));
+        final StoreFixture.Shard shard = shard(env, "r1-c1", noPermits);
+        final UUID transferred = UUID.randomUUID();
+        // What check 6 of a transfer ticket does before the ordinary load
+        assertInstanceOf(StoreBackend.LoadOutcome.Acquired.class,
+                new PostgresBackend(pool.pool()).load(transferred, "Crowded", shard.sessionId()));
+        assertEquals(shard.sessionId(), row(database, transferred).lease());
+
+        assertFalse(shard.store().load(connect(env.process(), transferred, "Crowded")), "the load queue is full");
+        assertNull(row(database, transferred).lease(), "a login refused for the load queue gives the lease back");
+    }
+
+    @Test
+    void aLoadThatFailsAfterItsAcquireHoldsNoLease(Env env) throws SQLException {
+        final StoreFixture.Shard roomy = shard(env, "r1-c1");
+        final UUID broken = UUID.randomUUID();
+        storeSection(broken, 2, "{\"coins\": 4}");
+        database.execute("ALTER TABLE character_section RENAME TO character_section_gone");
+        assertFalse(roomy.store().load(connect(env.process(), broken, "Unlucky")), "the sections cannot be read");
+        assertEquals(0, count(database, "SELECT count(*) FROM character WHERE account_uuid = '" + broken
+                + "' AND lease_session_id IS NOT NULL"), "a load that fails after its acquire holds no lease");
+    }
+
+    @Test
+    void theAutosaveComesRoundOncePerPeriodWhateverTheNumberOnline(Env env) throws SQLException {
+        final PlayerStore.Options twentyTicks = new PlayerStore.Options(Duration.ofSeconds(5), 2, 20,
+                List.of(Duration.ofMillis(50)), Duration.ofSeconds(1), Duration.ofMillis(50));
+        final StoreFixture.Shard shard = shard(env, "r1-c1", twentyTicks);
+        final Instance instance = env.createFlatInstance();
+        final UUID a = UUID.randomUUID();
+        final UUID b = UUID.randomUUID();
+        final Player first = online(env, shard, instance, a, "Busy");
+        final Player second = online(env, shard, instance, b, "Busier");
+
+        for (int i = 0; i < 100; i++) {
+            for (Player player : List.of(first, second)) {
+                shard.store().get(player, PURSE).coins++;
+                shard.store().markDirty(player, PURSE);
+            }
+            env.tick();
+        }
+        sleep(300);
+
+        final long total = row(database, a).version() + row(database, b).version();
+        assertTrue(total >= 8 && total <= 12,
+                "100 ticks of a 20 tick period save each of 2 always dirty players about 5 times, not every other tick: "
+                        + total + " writes");
+    }
+
+    private static void sleep(long millis) {
+        try {
+            Thread.sleep(millis);
+        } catch (InterruptedException e) {
+            throw new AssertionError(e);
+        }
     }
 
     private void storeSection(UUID account, int schemaVersion, String json) {

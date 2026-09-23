@@ -15,6 +15,7 @@
 
 | 日期 | 改动 | 作者 |
 | --- | --- | --- |
+| 2026-09-24 | 3A 返工：新增 `TC-PROD-169`～`TC-PROD-173`（退避中的旧快照不覆盖交易结果；数据库不应答时语句在 socket 超时内失败、分片按时冻结与踢出并在恢复后重开；载入被拒时还回已取得的租约；定时保存每人每周期一次；启用失败的插件不留数据段与停机钩子），均为 JUnit，每条带反证。§4 该节开头的用例分类、节末第二处口径差异（数据库暂停改由 `TC-PROD-170` 的停转发代理覆盖）与 §5 回归映射同步 | Bearisbug |
 | 2026-09-24 | 跟进 `docs/DESIGN-PROD.md` 第 3 波 3A（`REQ-PROD-021` 插件调度器；`REQ-PROD-005`～`REQ-PROD-007` 玩家数据持久化，含 Flyway V1、V2 与回退 SQL、`--migrate-only` 与 `store_meta` 自检、分片会话、fencing、跨分片顶号、Redis 在线名单；`REQ-PROD-008` 停机；`REQ-PROD-014` 的两条落盘场景）与 3D（`REQ-PROD-045` 转服票据）。**新增 §4「生产就绪 · 第 3 波 3A：插件调度器、玩家数据持久化与停机（含 3D 转服票据）」二十九条 `TC-PROD-140`～`TC-PROD-168`**：25 条 JUnit 或构建检查（其中 16 条要连本机共用的 `synaxis-pg` / `synaxis-valkey` 或 CI 的服务容器，节首写明环境变量与「设了地址就不许跳过」的规则）、4 条真进程（端口 25631：迁移与自检、20 个机器人 `stop`、`kill -9` 后立即接管、Redis 不可达）；每条带反证，红在哪写进期望列，与设计文档的三处口径差异写在该节末尾。§5 回归映射加生产就绪域一行 | Bearisbug |
 | 2026-09-23 | §7 登记并结案 `PluginHostIntegrationTest > theProcessAcceptsOnlyOneAdmissionProvider` 的偶发红：根因是两个集成测试类起了事件台账写线程不关，写线程在 JUnit 删临时目录时才建 `logs/`；写明复现办法（占满虚拟线程载体 + 拉长删除，修前 20 次红 6 次）与处置（`@AfterEach` 关台账，修后 100 次与严格模式 20 次全绿）。用例判据未动 | Bearisbug |
 | 2026-09-23 | 跟进 `docs/DESIGN-PROD.md` v0.4（第 1、2 波实现回写）。2A 一节末尾的口径差异从三处减为两处：`record` 模式只按 serverId 匹配已写进 `REQ-PROD-044`、`API-PROD-027` 与 §19，删去该条；2B 一节开头的口径差异改为直接引用 `REQ-PROD-036`（`API-PROD-001` 与 §19 已补上 `proxyProtocolRequired=true`）。用例判据未动 | Bearisbug |
@@ -2713,7 +2714,7 @@ jcmd "$pid" VM.flags | tr ' ' '\n' | grep -cxE -- '-XX:\+UseG1GC|-XX:InitialHeap
 
 ### 生产就绪 · 第 3 波 3A：插件调度器、玩家数据持久化与停机（含 3D 转服票据）
 
-对应 `REQ-PROD-021`、`REQ-PROD-005`～`REQ-PROD-008`、`REQ-PROD-004` 跨分片部分、`REQ-PROD-036` 的三条 `store_meta` 场景、`REQ-PROD-014` 的两条落盘场景与 `REQ-PROD-045`（`API-PROD-004`～`API-PROD-007`、`API-PROD-017`、`API-PROD-028`，§11.2～§11.4，§12.2～§12.4）。`TC-PROD-140`～`TC-PROD-164` 是 JUnit 或构建检查，`TC-PROD-165`～`TC-PROD-168` 起真进程（端口 25631）。
+对应 `REQ-PROD-021`、`REQ-PROD-005`～`REQ-PROD-008`、`REQ-PROD-004` 跨分片部分、`REQ-PROD-036` 的三条 `store_meta` 场景、`REQ-PROD-014` 的两条落盘场景与 `REQ-PROD-045`（`API-PROD-004`～`API-PROD-007`、`API-PROD-017`、`API-PROD-028`，§11.2～§11.4，§12.2～§12.4）。`TC-PROD-140`～`TC-PROD-164` 与 `TC-PROD-169`～`TC-PROD-173` 是 JUnit 或构建检查，`TC-PROD-165`～`TC-PROD-168` 起真进程（端口 25631）。
 
 数据库前置：本机固定容器 `synaxis-pg`（`postgres:16-alpine`）与 `synaxis-valkey`（`valkey/valkey:8-alpine`），各组共用，各用自己的库与键前缀。测试经环境变量找它们：`SYNAXIS_TEST_PG_URL`（任一库的管理 JDBC URL，例 `jdbc:postgresql://127.0.0.1:5440/postgres`）、`SYNAXIS_TEST_PG_USER`、`SYNAXIS_TEST_PG_PASSWORD`（该账号要有 `CREATEDB`）、`SYNAXIS_TEST_REDIS_URL`（例 `redis://127.0.0.1:6440`）。每个测试类自建一个随机名的库（`w3a_<16 位十六进制>`）、结束时 `DROP … WITH (FORCE)`；Redis 侧用随机后缀的分片 ID，不留键。不设 `SYNAXIS_TEST_PG_URL` 且默认地址连不上时这些测试跳过，设了而连不上时失败（CI 就是后一种，见 `TC-PROD-164`）。JUnit 命令统一写作「跑 `<类>`」，即带上述变量执行 `./gradlew :server-app:test --tests <类> --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts`（引擎的类换成 `:test`，`:testing`、`:architecture-tests` 同理），结果看 `build/test-results/test/TEST-<类>.xml`。反证一律是「临时改一处实现、重跑、看红、还原」，还原后 `git status` 必须干净；真进程的反证还要在改动后重跑 `:server-app:installDist`，还原后再跑一次。
 
@@ -3042,7 +3043,62 @@ jcmd "$pid" VM.flags | tr ' ' '\n' | grep -cxE -- '-XX:\+UseG1GC|-XX:InitialHeap
 
 后置：按 pid 停掉 PacketFlood；删掉 `<db>`（`DROP DATABASE … WITH (FORCE)`）、`<cls>` 与临时目录；`lsof -nP -iTCP:25631 -sTCP:LISTEN` 无输出。
 
-本节与设计文档的口径差异：一是 §17、§19、§24 写的是 Testcontainers 与单独的 `dbTest` 任务，本节的数据库用例在普通 `test` 任务里连共用容器（本地）或服务容器（CI），CI 以「设了地址就不许跳过」加结果文件检查保证跳过数为 0；二是 §19「数据库暂停时冻结再踢出」「Redis 宕机照常登录」的进程级 `docker pause` 没有做（两个容器各组共用，暂停会打断别组），分别由 `TC-PROD-143`、`TC-PROD-149` 的断连与过期和 `TC-PROD-168` 的不可达地址覆盖；三是 §19「崩溃后丢失窗口不超过 60 s」在 `TC-PROD-167` 只验了立即接管，60 s 定时保存的丢失窗口由 `TC-PROD-150` 覆盖。
+#### `TC-PROD-169` 退避中的旧快照不覆盖 `commitTogether` 写进库的交易结果 — 对应 `REQ-PROD-006`、`REQ-PROD-005` · 级别: 回归 · 执行者: AI
+
+前置：数据库前置满足。测试用一个包住 `PostgresBackend` 的后端，只让下一次写入抛 `SQLException`；重试退避设成 800 ms。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `PlayerStoreIntegrationTest`，看 `aSaveRetryingFromBeforeACommitDoesNotWriteOverTheCommit` | 玩家 `coins` 改成 100 并 `markDirty`，`saveNow` 第一次写失败、得 `UNAVAILABLE` 并进入退避；退避期间 `commitTogether` 把 `coins` 写成 50、得 `SAVED`；再跑 1.5 s 的 tick 后内存里是 50，库里 `probe:purse` 是 `{"note": "", "coins": 50}`（退避醒来的旧快照在写锁内被丢弃，该段重新标脏，下一轮定时保存写的是内存里的 50） |
+| 2 | 反证有齿：`PlayerStore#write` 里的 `if (entry.getValue().takenAt() >= record.committedAt.getOrDefault(entry.getKey(), 0L)) {` 换成 `if (!Boolean.getBoolean("proof.never")) {`，与 `TC-PROD-170`～`TC-PROD-173` 的改动同一轮跑本类、`DatabaseHangIntegrationTest` 与 `PlayerDataIntegrationTest`（`23 tests completed, 7 failed`），再还原 | 本处红：`the retry of the snapshot from before the trade is not written over it ==> expected: <{"note": "", "coins": 50}> but was: <{"note": "", "coins": 100}>`（`PlayerStoreIntegrationTest.java:437`，内存是交易后的 50，库里是交易前的 100）。还原后复绿 |
+
+后置：确认 `PlayerStore.java` 没有残留改动。
+
+#### `TC-PROD-170` 数据库不再应答（连接不断）：语句在 socket 超时内失败，在线玩家 1 个冻结周期后冻结、1 个隔离周期后被踢，数据库恢复后分片以新纪元重新收登录 — 对应 `REQ-PROD-005` · 级别: 回归 · 执行者: AI
+
+前置：数据库前置满足。共用的 `synaxis-pg` 不能 `docker pause`，测试让分片经测试内的 TCP 代理连库，代理「停止转发」时连接保持打开、新连接照样被接受但收不到任何字节，与暂停容器或丢包网络对客户端的表现相同。会话时序缩短为续期 200 ms、1 s 冻结、3 s 隔离（生产 5 s / 10 s / 30 s）；`Database` 的 `socketTimeout` 是 4 s、`loginTimeout` 2 s。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `io.github.bearisbug.synaxis.app.store.DatabaseHangIntegrationTest` | 2 个 0 失败：`aStatementTheDatabaseStopsAnsweringFailsInsteadOfWaitingForever` 先从池里取连接、再停转发，`SELECT 1` 在 5 s 内以 `SQLException` 失败；`aDatabaseThatStopsAnsweringFreezesThenKicksAndTheShardComesBack` 一名玩家在线时停转发，0.6～2 s 内 `isFrozen` 变 true，2.6～4 s 内被踢（`synaxis:state-unavailable`），会话为 `ISOLATED`，这期间续期线程一直卡在语句里；恢复转发后 10 s 内会话回到 `ACTIVE`，新登录载入成功 |
+| 2 | 反证有齿（两轮）：一轮把 `ShardSession#open` 里的 `var _ = watch.scheduleAtFixedRate(…)` 包进 `if (Boolean.getBoolean("proof.never")) { … }`（没有看门计时，只靠续期线程判定），与 `TC-PROD-169` 同一轮跑，另单独重跑本类一次；另一轮只把 `Database#driverProperties` 的 `properties.setProperty("socketTimeout", …)` 前加 `if (Boolean.getBoolean("proof.never"))`，单独跑本类，再还原 | 看门那轮本类 `2 tests completed, 1 failed`：`aDatabaseThatStopsAnsweringFreezesThenKicksAndTheShardComesBack` 红 `not within 3000 ms: frozen`（续期线程卡在 socket 超时里，状态停在 `ACTIVE`）。`socketTimeout` 那轮 `2 tests completed, 1 failed`：`aStatementTheDatabaseStopsAnsweringFailsInsteadOfWaitingForever` 红 `java.util.concurrent.TimeoutException`（语句 15 s 仍没返回；测试在 `finally` 里切断代理的 socket 才结束）。还原后复绿 |
+
+后置：确认 `ShardSession.java`、`Database.java` 没有残留改动；`select datname from pg_database where datname like 'w3a_%'` 无本次留下的库。
+
+#### `TC-PROD-171` 载入被拒时还回本会话已取得的租约：排队超时被拒、取得租约后读段失败 — 对应 `REQ-PROD-005` · 级别: 回归 · 执行者: AI
+
+前置：数据库前置满足。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `PlayerStoreIntegrationTest`，看 `aLoginRefusedForTheLoadQueueGivesBackTheLeaseItWasHolding` 与 `aLoadThatFailsAfterItsAcquireHoldsNoLease` | 前者：先用获取语句替该账号取得租约（转服验票第 ⑥ 步的做法），载入名额设为 0、预算 200 ms，`load` 返回 false 后该角色 `lease_session_id` 为 NULL。后者：已有角色的账号在 `character_section` 被改名后登录，获取成功、读段失败，`load` 返回 false，该角色没有租约 |
+| 2 | 反证有齿：`PlayerStore#load` 里的 `releaseUnused(player.getUuid());` 换成 `if (Boolean.getBoolean("proof.never")) releaseUnused(player.getUuid());`，同时在 `PostgresBackend` 获取成功后的 `return new LoadOutcome.Acquired(` 前加一行 `connection.commit();`（获取先单独提交），与 `TC-PROD-169` 同一轮跑，再还原 | 两条都红：前者 `a login refused for the load queue gives the lease back ==> expected: <null> but was: <1>`；后者 `a load that fails after its acquire holds no lease ==> expected: <0> but was: <1>`。还原后复绿 |
+
+后置：确认 `PlayerStore.java`、`PostgresBackend.java` 没有残留改动。
+
+#### `TC-PROD-172` 定时保存每人每周期一次，与在线人数无关 — 对应 `REQ-PROD-005` · 级别: 回归 · 执行者: AI
+
+前置：数据库前置满足。测试把一轮设为 20 tick。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `PlayerStoreIntegrationTest`，看 `theAutosaveComesRoundOncePerPeriodWhateverTheNumberOnline` | 两人在线，每个 tick 都改段并 `markDirty`，跑 100 个 tick：两人 `version` 之和在 8～12 之间（每人约 5 次） |
+| 2 | 反证有齿：`PlayerStore#autosaveTick` 的 `final long perTick = autosaveCredit / options.autosavePeriodTicks();` 换成 `final long perTick = Boolean.getBoolean("proof.never") ? autosaveCredit / options.autosavePeriodTicks() : ((long) autosaveOrder.size() + options.autosavePeriodTicks() - 1) / options.autosavePeriodTicks();`（每 tick 向上取整至少存一人），与 `TC-PROD-169` 同一轮跑，再还原 | 红：`100 ticks of a 20 tick period save each of 2 always dirty players about 5 times, not every other tick: 28 writes ==> expected: <true> but was: <false>`。还原后复绿 |
+
+后置：确认 `PlayerStore.java` 没有残留改动。
+
+#### `TC-PROD-173` 启用失败的插件不留数据段与停机钩子 — 对应 `REQ-PROD-006`、`REQ-PROD-008` · 级别: 回归 · 执行者: AI
+
+前置：工作副本干净（内存后端，不需要数据库）。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `io.github.bearisbug.synaxis.app.PlayerDataIntegrationTest`，看 `aPluginThatFailsToEnableLeavesNoSectionAndNoShutdownHookBehind` | 插件 `broken` 在 `onEnable` 里注册 `broken:bag`、登记停机钩子后抛异常；之后一名玩家经另一插件的准入进服，`broken:bag` 的 `createDefault` 调用 0 次；`saveAll` 跑完一个 tick 后钩子调用 0 次 |
+| 2 | 反证有齿：`PluginHost#enableOne` 的 catch 分支 `playerData.discard();` 换回 `playerData.enabled();`，与 `TC-PROD-169` 同一轮跑，再还原 | 红：`no login loads a section of a plugin that is not there ==> expected: <0> but was: <1>`。还原后复绿 |
+
+后置：确认 `PluginHost.java` 没有残留改动。
+
+本节与设计文档的口径差异：一是 §17、§19、§24 写的是 Testcontainers 与单独的 `dbTest` 任务，本节的数据库用例在普通 `test` 任务里连共用容器（本地）或服务容器（CI），CI 以「设了地址就不许跳过」加结果文件检查保证跳过数为 0；二是 §19「数据库暂停时冻结再踢出」「Redis 宕机照常登录」的进程级 `docker pause` 没有做（两个容器各组共用，暂停会打断别组），前者由 `TC-PROD-170` 经测试内停止转发的 TCP 代理覆盖，后者由 `TC-PROD-168` 的不可达地址覆盖；三是 §19「崩溃后丢失窗口不超过 60 s」在 `TC-PROD-167` 只验了立即接管，60 s 定时保存的丢失窗口由 `TC-PROD-150` 覆盖。
 
 ## 5. 回归策略
 
@@ -3063,7 +3119,7 @@ jcmd "$pid" VM.flags | tr ' ' '\n' | grep -cxE -- '-XX:\+UseG1GC|-XX:InitialHeap
   - 生产就绪域（`docs/DESIGN-PROD.md`）：正版验证与加密（`REQ-PROD-002`～`REQ-PROD-004`、`REQ-PROD-044`）→ TC-PROD-090～TC-PROD-105（人工 TC-PROD-106）；动了 `Auth`、`SessionServer`、`crypto/LoginCrypt`、`network/player/SessionClient`、`LoginListener`、`PlayerSocketConnection` 的加解密或逐帧读取、`ConnectionManager#createPlayerReplacing`、`server-app` 的 `Main#auth` 就跑 TC-PROD-090～TC-PROD-101 与 TC-PROD-105，动了 `tools/fake-sessionserver`、`PacketFlood --auth` 或模组 gametest 的 authlib 参数再加 TC-PROD-102～TC-PROD-104。跨域牵连：动了 `PacketVanilla` 的 login 表 → 加 TC-036 与 TC-PROD-091；动了登录监听器的离线分支或 `DuplicateUuidLoginIntegrationTest` → 加 TC-032 与 TC-PROD-100。
   - 生产就绪域（`docs/DESIGN-PROD.md`）：代理转发模式删除与 PROXY 可信网段（`REQ-PROD-036` 前半）→ TC-PROD-120～TC-PROD-124；动了 `Auth` 的模式集合、`HandshakeListener`、`ArchitectureTest#boundedReporters`、`ServerConfig` 的 `synaxis.proxy-protocol*` 键、`ConnectionGate#parseNetworks` 或 `PlayerSocketConnection` 的 PROXY 解码就跑 TC-PROD-120～TC-PROD-123，再动了 `server-app` 的拒绝起服路径加 TC-PROD-124（真进程）。跨域牵连：动了 PROXY 解码或可信网段 → 加 TC-PROD-061。
   - 生产就绪域（`docs/DESIGN-PROD.md`）：聊天（`REQ-PROD-009`）→ TC-PROD-080～TC-PROD-083；动了 `ChatMessageListener`、`PlayerChatEvent`、`Messenger`、`ChatRateLimiter`、`ServerConfig` 的 `synaxis.chat-*` 键或 `Player` 发的 `JoinGamePacket` 就跑 TC-PROD-080～TC-PROD-082；动了模组的 `ClientPacketListenerMixin`、`synaxis.mixins.json` 或 `SpikeClientGameTest#chat` 再加 TC-PROD-083。
-  - 生产就绪域（`docs/DESIGN-PROD.md`）：插件调度器、玩家数据持久化、停机与转服票据（`REQ-PROD-021`、`REQ-PROD-005`～`REQ-PROD-008`、`REQ-PROD-004` 跨分片部分、`REQ-PROD-036` 的 `store_meta`、`REQ-PROD-045`）→ TC-PROD-140～TC-PROD-168；动了 `PluginScheduler` 或 `PluginSchedulerImpl` 就跑 TC-PROD-140；动了 `server-app` 的 `store/`、`transfer/`、`AdmissionGate`、`PluginHost` 的存储接线、`Main#openStore` / `migrateOnly` 或 `db/migration`、`db/rollback` 就跑 TC-PROD-141～TC-PROD-153、TC-PROD-155～TC-PROD-159（要数据库前置），再动了起服、停机或 Redis 路径加 TC-PROD-165～TC-PROD-168（真进程，约 3 分钟）；动了引擎 `ServerProcessImpl` 的停机序列、`ShutdownParticipant`、`ConnectionGate#close` 或 `LoginListener` 的停机分支就跑 TC-PROD-154、TC-PROD-155 与 TC-PROD-166；动了 `:plugin-api` 的接口就跑 TC-PROD-163；动了 `:testing` 的 `InMemoryPlayerDataStore` 就跑 TC-PROD-161；动了模组的 lang 就跑 TC-PROD-162；动了 `ci.yml` 的服务容器或跳过检查就跑 TC-PROD-164；动了 `architecture-tests` 的持久化边界规则就跑 TC-PROD-160。跨域牵连：动了引擎停机序列 → 加 TC-PROD-020～TC-PROD-023（看门狗判死接保存）。
+  - 生产就绪域（`docs/DESIGN-PROD.md`）：插件调度器、玩家数据持久化、停机与转服票据（`REQ-PROD-021`、`REQ-PROD-005`～`REQ-PROD-008`、`REQ-PROD-004` 跨分片部分、`REQ-PROD-036` 的 `store_meta`、`REQ-PROD-045`）→ TC-PROD-140～TC-PROD-173；动了 `PluginScheduler` 或 `PluginSchedulerImpl` 就跑 TC-PROD-140；动了 `server-app` 的 `store/`、`transfer/`、`AdmissionGate`、`PluginHost` 的存储接线、`Main#openStore` / `migrateOnly` 或 `db/migration`、`db/rollback` 就跑 TC-PROD-141～TC-PROD-153、TC-PROD-155～TC-PROD-159、TC-PROD-169～TC-PROD-173（要数据库前置），再动了起服、停机或 Redis 路径加 TC-PROD-165～TC-PROD-168（真进程，约 3 分钟）；动了引擎 `ServerProcessImpl` 的停机序列、`ShutdownParticipant`、`ConnectionGate#close` 或 `LoginListener` 的停机分支就跑 TC-PROD-154、TC-PROD-155 与 TC-PROD-166；动了 `:plugin-api` 的接口就跑 TC-PROD-163；动了 `:testing` 的 `InMemoryPlayerDataStore` 就跑 TC-PROD-161；动了模组的 lang 就跑 TC-PROD-162；动了 `ci.yml` 的服务容器或跳过检查就跑 TC-PROD-164；动了 `architecture-tests` 的持久化边界规则就跑 TC-PROD-160。跨域牵连：动了引擎停机序列 → 加 TC-PROD-020～TC-PROD-023（看门狗判死接保存）。
   - 影响面不确定时升级为全量轮。
 - **复测轮**（上轮失败用例 + 全部冒烟级）：修复失败项之后。
 - **人工收口轮**（仅上轮「待人工」用例）：AI 轮之后由人工补测 TC-016、TC-030、TC-GAME-020、TC-GAME-038、TC-GAME-046、TC-GAME-047，不要求冒烟级。

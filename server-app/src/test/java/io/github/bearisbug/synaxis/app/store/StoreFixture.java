@@ -105,10 +105,16 @@ final class StoreFixture {
 
     static Shard shard(Env env, Database pool, String shardId, boolean displace, RedisLink redis,
                        PlayerStore.Options options) throws SQLException {
+        return shard(env, pool, shardId, displace, redis, options, MANUAL, new PostgresBackend(pool.pool()));
+    }
+
+    /** The same with the session's clock and the backend chosen by the test. */
+    static Shard shard(Env env, Database pool, String shardId, boolean displace, RedisLink redis,
+                       PlayerStore.Options options, ShardSession.Timing timing, StoreBackend backend) throws SQLException {
         final List<String> ledger = new CopyOnWriteArrayList<>();
-        final PlayerStore store = new PlayerStore(env.process(), new PostgresBackend(pool.pool()), redis, shardId,
+        final PlayerStore store = new PlayerStore(env.process(), backend, redis, shardId,
                 displace, options, (event, attributes) -> ledger.add(event + " " + attributes));
-        final ShardSession session = new ShardSession(pool::dedicated, shardId, MANUAL, System::nanoTime,
+        final ShardSession session = new ShardSession(pool::dedicated, shardId, timing, System::nanoTime,
                 store::sessionChanged);
         store.useSession(session);
         store.register(PURSE);

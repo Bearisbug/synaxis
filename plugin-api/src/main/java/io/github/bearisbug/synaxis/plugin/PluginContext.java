@@ -111,6 +111,20 @@ public interface PluginContext {
     }
 
     /**
+     * Commands of this plugin, all under its own {@code <plugin_id>:} namespace
+     * ({@code docs/DESIGN-PROD.md} API-PROD-011).
+     * <p>
+     * The host's context always has one; the default is there for the same reason as
+     * {@link #playerData()}'s.
+     *
+     * @return the command capability of this plugin
+     * @throws UnsupportedOperationException from a context that is not the host's
+     */
+    default PluginCommands commands() {
+        throw new UnsupportedOperationException("only the host's plugin context has commands");
+    }
+
+    /**
      * A logger named after this plugin.
      *
      * @return the logger of this plugin

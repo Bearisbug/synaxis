@@ -221,4 +221,17 @@ public class BlockIsOccludedTest {
             assertTrue(shape.isOccluded(airBlock, face));
         }
     }
+
+    /**
+     * An extended piston head's plate is four boxes around the arm; together with the arm they cover the whole
+     * face. Covering rectangles that miss the part still to cover must leave that part as it is.
+     */
+    @Test
+    public void pistonHeadPlateIsFullFace() {
+        Shape head = Block.PISTON_HEAD.withProperties(Map.of("facing", "up", "short", "false")).occlusionShape();
+
+        assertTrue(head.isFaceFull(BlockFace.TOP));
+        assertFalse(head.isFaceFull(BlockFace.BOTTOM));
+        assertFalse(head.isFaceFull(BlockFace.NORTH));
+    }
 }

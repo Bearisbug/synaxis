@@ -262,6 +262,7 @@ public record ShapeImpl(ShapeData shapeData, OcclusionData occlusionData) implem
     private static List<Rectangle> getRemaining(Rectangle covering, Rectangle toCover) {
         List<Rectangle> remaining = new ArrayList<>();
         covering = clipRectangle(covering, toCover);
+        if (covering.x1() >= covering.x2() || covering.y1() >= covering.y2()) return List.of(toCover);
         // Up
         if (covering.y1() > toCover.y1()) {
             remaining.add(new Rectangle(toCover.x1(), toCover.y1(), toCover.x2(), covering.y1()));

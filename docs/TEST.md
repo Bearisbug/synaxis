@@ -14,6 +14,7 @@
 
 | 日期 | 改动 | 作者 |
 | --- | --- | --- |
+| 2026-09-23 | 跟进 `docs/DESIGN-PROD.md` 第 0 波 0E（`REQ-PROD-028`，G25）。**新增 `TC-PROD-050`**（对应 `REQ-PROD-028`）：新开「生产就绪 · 运行参数」一节，判 `installDist` 启动脚本与 `:server-app:run` 两条入口的 JVM 都带 G1、`-Xms4G -Xmx4G`、`AlwaysPreTouch`、`MaxGCPauseMillis=50` 与两个 OOM 参数（`jcmd VM.flags` 计数 7），`JAVA_OPTS` 能覆盖、换 ZGC 须先关 G1；反证是删掉 `-Xms4G` 与 `AlwaysPreTouch` 两行，计数掉到 5。§5 加生产就绪域一行 | Bearisbug |
 | 2026-09-23 | 跟进 `docs/DESIGN-M2.md` v0.44（对局世界由服务端在载入阶段整图算光照）。**`TC-GAME-029` 保留 ID**：第 2 步的实测参考值换成含光照的 2026-09-23 数字（判据 `load_ms` < 3000、`heap_gc_runs` ≥ 2、`heap_delta_kib` 在 `0` 与 `51200` 之间不变）；新增第 10 步「进场即有光照」（`MatchIntegrationTest#theMapIsLitBeforeTheMatchRuns`）与第 11 步反证（chunk supplier 改回 `DynamicChunk` 则第 10 步必红）。§5 跨域牵连补一条：动了对局的 chunk supplier、载入流程或引擎 `LightingChunk` / `instance.light` → 加 TC-GAME-029 | Bearisbug |
 | 2026-09-23 | 跟进 `docs/DESIGN.md` v0.33 与 `docs/DESIGN-M2.md` v0.43。**新增 `TC-036`**（对应 `REQ-005`）：`PacketVanillaIdTest` 把 26.2 原版 login、configuration、play 两个方向六张表的包 ID 钉死，一步绿、一步反证（删掉 `award_stats` 的占位即红）、一步还原；§2 补一条「包 ID 口径」，说明探针与压测 harness 的包 ID 来自本仓库注册表、不能证明与原版一致；§5 引擎域「删除与注册表」加 TC-036，跨域牵连加「动了包注册表」一条。**`TC-GAME-052` 保留 ID**：第 2 步当前值 4.0 → 5.0；第 7 步的公式补上 `clamp(rd / 8, 1, 2.5)`，判据由「≥ 97 格」改为「盖住渲染距离雾界」（rd 8 为 160 格、覆盖到眼高 96，rd 10 为 200 格、覆盖到眼高 120）。`TC-GAME-047` 第 4 步的 4.0 随之改 5.0 | Bearisbug |
 | 2026-09-22 | 跟进 `docs/DESIGN-M2.md` v0.41（§15 整表阈值的正式测量，报告 `docs/research/soak-2026-09-22/report.md`）。**`TC-GAME-068` 保留 ID，操作列一字未改**：第 2、3 步的实测参考值从「待 v0.41 填」换成 2026-09-22 的实测，数字全部可从 `docs/research/soak-2026-09-22/runs/<档名>/summary.json` 复算——第 2 步四条预算里 tick、堆、寻路三条绿，`S2C_UNIT_STATE` 那条三个字段红（最坏布局把兴趣集顶到 512 条上限）；第 3 步三档 tick P99 8.617 → 9.698 → 11.096、至 4,000 未越线。第 2 步期望列的 `orders.answered = orders.sent` 补上口径：harness 到截止时刻即关连接，最后一秒内发出的下令收不到回包，差 ≤ 50 条不算红（实测差 3 条）。第 5、6 步的反证在正式测量那一轮重跑，参考值补上（`check=mismatch`、退出码 2）。§2 不测表、REQ ↔ TC 表与 §5 回归映射不动——`TC-GAME-068` 自 v0.39 起已登记在三处 | Bearisbug |
@@ -1762,6 +1763,30 @@ REQ-M2 ↔ TC 对照（可读索引，覆盖与否由上述联检判）：
 
 后置：确认工作区干净（第 2 步的临时改动已还原）。
 
+### 生产就绪 · 运行参数
+
+#### `TC-PROD-050` 默认 JVM 参数在启动脚本与 `:server-app:run` 两条入口都生效 — 对应 `REQ-PROD-028` · 级别: 回归 · 执行者: AI
+
+前置：`REQ-PROD-028` 已合入；工作副本干净；端口 25605 空闲。下文 `FLAGS` 指这条命令（按端口找 pid，数七个期望参数命中了几个）：
+
+```bash
+pid=$(lsof -nP -iTCP:25605 -sTCP:LISTEN -t); echo "pid=$pid"
+jcmd "$pid" VM.flags | tr ' ' '\n' | grep -E 'UseG1GC|UseZGC|HeapSize=|AlwaysPreTouch|MaxGCPauseMillis|OnOutOfMemoryError'
+jcmd "$pid" VM.flags | tr ' ' '\n' | grep -cxE -- '-XX:\+UseG1GC|-XX:InitialHeapSize=4294967296|-XX:MaxHeapSize=4294967296|-XX:\+AlwaysPreTouch|-XX:MaxGCPauseMillis=50|-XX:\+HeapDumpOnOutOfMemoryError|-XX:\+ExitOnOutOfMemoryError'
+```
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | `./gradlew :server-app:installDist --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts`，再 `grep -n '^DEFAULT_JVM_OPTS=' server-app/build/install/server-app/bin/server-app` | `BUILD SUCCESSFUL`；恰好一行，依次是 `"-XX:+UseG1GC" "-Xms4G" "-Xmx4G" "-XX:+AlwaysPreTouch" "-XX:MaxGCPauseMillis=50" "-XX:+HeapDumpOnOutOfMemoryError" "-XX:+ExitOnOutOfMemoryError"` |
+| 2 | 建临时目录 `D=$(mktemp -d)` 并 `cd "$D"`，`tail -f /dev/null \| JAVA_OPTS=-Dsynaxis.app.port=25605 <仓库根>/server-app/build/install/server-app/bin/server-app > server.log 2>&1 &`；等 `server.log` 出现 `listening on 0.0.0.0:25605` 后执行 `FLAGS` | 列出 `-XX:+UseG1GC`、`-XX:InitialHeapSize=4294967296`、`-XX:MaxHeapSize=4294967296`、`-XX:+AlwaysPreTouch`、`-XX:MaxGCPauseMillis=50`、`-XX:+HeapDumpOnOutOfMemoryError`、`-XX:+ExitOnOutOfMemoryError`；末行计数 `7`。随后 `kill <pid>`，进程在 15 s 内退出，`server.log` 末行 `synaxis server stopped successfully.` |
+| 3 | 回仓库根，`tail -f /dev/null \| ./gradlew :server-app:run --no-daemon --console=plain --init-script gradle/init/aliyun-mirror.init.gradle.kts -Dsynaxis.app.port=25605 > <日志> 2>&1 &`；就绪后执行 `FLAGS` | 与第 2 步相同，计数 `7`（`run` 任务 fork 的 JVM 同样带默认参数）；`kill <pid>` 停机（Gradle 因子进程被信号终止报 `BUILD FAILED`，属预期） |
+| 4 | 覆盖：第 2 步的写法，`JAVA_OPTS` 改成 `-Dsynaxis.app.port=25605 -XX:+UseZGC` | 进程不起：`server.log` 为 `Error occurred during initialization of VM` 与 `Multiple garbage collectors selected`，端口 25605 无监听（换收集器必须先关 G1，`docs/ENGINE.md` §3.4 写明） |
+| 5 | 覆盖：`JAVA_OPTS` 改成 `-Dsynaxis.app.port=25605 -XX:-UseG1GC -XX:+UseZGC -Xms8G -Xmx8G`；就绪后执行 `FLAGS` | 列出 `-XX:-UseG1GC`、`-XX:+UseZGC`、`-XX:InitialHeapSize=8589934592`、`-XX:MaxHeapSize=8589934592`，其余三个参数仍在；计数 `4`（`JAVA_OPTS` 排在默认参数之后，同名参数后者生效，不用重新构建）。`kill <pid>` 停机 |
+| 6 | 反证有齿：删掉 `server-app/build.gradle.kts` 里 `"-Xms4G",` 与 `"-XX:+AlwaysPreTouch",` 两行，重跑第 1、2 步，再 `git checkout -- server-app/build.gradle.kts` 并重跑第 1 步 | 第 1 步那行少了这两个参数；第 2 步计数 `5`，红在两处：`-XX:+AlwaysPreTouch` 不出现，`InitialHeapSize` 退回 JVM 按物理内存 1/64 选的值（24 GiB 的 Apple M4 Pro 上是 `402653184`），不等于 `4294967296`。还原并重装后第 2 步回到计数 `7` |
+| 7 | `grep -n 'JVM 参数（生产默认）' docs/ENGINE.md`，读该小节 | 恰好一处命中；小节逐个写了七个参数的理由、改分代 ZGC 的条件（堆上限 > 8 GiB 或 GC 暂停 P99 > 10 ms）、`JAVA_OPTS` 覆盖方式与第 2 步的取证命令 |
+
+后置：按 pid 停掉所有服务端与对应的 `tail -f /dev/null`；删掉第 2～6 步的临时目录与第 3 步的日志；确认工作区干净（第 6 步的临时改动已还原）。
+
 ## 5. 回归策略
 
 - **全量轮**（全部用例）：首次成稿、每个阶段 gate（引擎域阶段 0、2、3；游戏域 `docs/DESIGN-M2.md` §26 的阶段 1～6b）、跨功能域改动、地基变更（JDK、Gradle、镜像、协议版本、模块拆分、启动入口）。
@@ -1769,6 +1794,7 @@ REQ-M2 ↔ TC 对照（可读索引，覆盖与否由上述联检判）：
   - 引擎域：构建与仓库 → TC-001、TC-002、TC-004、TC-006、TC-021、TC-029，删除与注册表 → TC-008、TC-009、TC-020、TC-036，命名与合规 → TC-011、TC-028，协议 → TC-014、TC-018、TC-019、TC-026、TC-027、TC-030、TC-031、TC-032、TC-034、TC-035、TC-GAME-069、TC-GAME-070、TC-GAME-071（后三条是攻击面盘点补的，动了 `network` / `listener` 包或 `ServerConfig` 的连接与超时项就跑），卫生 → TC-015、TC-016，门面与配置 → TC-023、TC-025，分层 → TC-024、TC-035。
   - 游戏域：模块与门禁 → TC-GAME-001～TC-GAME-006、TC-GAME-059、TC-GAME-067，插件宿主 → TC-GAME-009～TC-GAME-011、TC-GAME-014～TC-GAME-016、TC-GAME-053～TC-GAME-055（TC-GAME-007、TC-GAME-008、TC-GAME-012、TC-GAME-013 已废弃），协议与握手 → TC-GAME-017～TC-GAME-028、TC-GAME-049、TC-GAME-050、TC-GAME-060～TC-GAME-064（TC-GAME-021、TC-GAME-023、TC-GAME-025 已废弃），世界与对局 → TC-GAME-029、TC-GAME-031、TC-GAME-033～TC-GAME-036、TC-GAME-056、TC-GAME-057（TC-GAME-030、TC-GAME-032 已废弃），单位与寻路 → TC-GAME-052、TC-GAME-039～TC-GAME-042、TC-GAME-051、TC-GAME-065、TC-GAME-068，镜头 → TC-GAME-043、TC-GAME-044，客户端模组 → TC-GAME-038、TC-GAME-045～TC-GAME-047、TC-GAME-066，启动器 → TC-GAME-048、TC-GAME-049、TC-GAME-050、TC-GAME-058。
   - 跨域牵连（必须一起跑）：动了 `network/packet` 下的包注册表（增删包、调顺序、升协议版本）→ 加 TC-036；动了启动入口或就绪日志 → 加 TC-GAME-048、TC-GAME-029、TC-GAME-057、TC-GAME-058 与全部以进程为前置的引擎域用例（启动序列一变，「对局在 bind 之前就绪、tick 在 bind 之后才起」这条口径就要重验）；动了握手、准入回调或探针 → 加 TC-GAME-049、TC-GAME-050、TC-GAME-060、TC-GAME-061 与 TC-004、TC-014、TC-018、TC-019、TC-020、TC-026、TC-027 七条存量 TC；动了客户端模组侧的握手或拾取 → 加 TC-GAME-066；动了 `:protocol` 消息布局 → 加 TC-GAME-017 与客户端侧同一份向量；动了引擎 `Entity` 的位置推进入口 → 加 TC-GAME-051、TC-GAME-067 与 TC-GAME-040；动了对局的 chunk supplier、`Match#load` 的载入流程或引擎 `LightingChunk` / `instance.light` → 加 TC-GAME-029（第 10、11 步是光照的先红后绿）。
+  - 生产就绪域（`docs/DESIGN-PROD.md`）：运行参数 → TC-PROD-050（动了 `server-app/build.gradle.kts` 的 `application` 块、启动脚本或部署单元的 JVM 参数就跑）。
   - 影响面不确定时升级为全量轮。
 - **复测轮**（上轮失败用例 + 全部冒烟级）：修复失败项之后。
 - **人工收口轮**（仅上轮「待人工」用例）：AI 轮之后由人工补测 TC-016、TC-030、TC-GAME-020、TC-GAME-038、TC-GAME-046、TC-GAME-047，不要求冒烟级。

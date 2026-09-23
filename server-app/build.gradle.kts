@@ -20,6 +20,19 @@ dependencies {
 // No module-info here: the host runs on the classpath (ADR-M2-005).
 application {
     mainClass.set("io.github.bearisbug.synaxis.app.Main")
+    // Production defaults (docs/DESIGN-PROD.md REQ-PROD-028 and REQ-PROD-015; rationale in
+    // docs/ENGINE.md). They reach both `:server-app:run` and the start scripts of installDist and
+    // distZip. The start scripts put JAVA_OPTS and SERVER_APP_OPTS after these, so an operator
+    // overrides any of them there without a rebuild.
+    applicationDefaultJvmArgs = listOf(
+        "-XX:+UseG1GC",
+        "-Xms4G",
+        "-Xmx4G",
+        "-XX:+AlwaysPreTouch",
+        "-XX:MaxGCPauseMillis=50",
+        "-XX:+HeapDumpOnOutOfMemoryError",
+        "-XX:+ExitOnOutOfMemoryError",
+    )
 }
 
 // `./gradlew -Dsynaxis.app.port=...` sets the property on the Gradle JVM, while the app runs in a

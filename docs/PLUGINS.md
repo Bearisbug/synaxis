@@ -84,7 +84,7 @@ java -cp "server-app/build/install/server-app/lib/*:example-plugin/build/libs/he
 | 能力 | 用途 | 禁用时宿主怎么收回 |
 | --- | --- | --- |
 | `process()` | 引擎进程本体。**唯一不作兼容承诺的一项**，用它自担风险 | 不收回（不是宿主发的） |
-| `events()` | `addListener(事件类, 监听器)`（`NORMAL`，已取消的事件照样收到）；`addListener(事件类, 优先级, ignoreCancelled, 监听器)`，六档 `LOWEST` → `MONITOR` 依次执行，所有插件同档的排在一起，`MONITOR` 只读不改（约定，不拦截）；`forInstance(实例)` 只收该实例的事件，在实例所属 tick 线程上执行，且先于全局作用域的全部插件监听器；配置阶段也会派发的 `PlayerPluginMessageEvent`、`PlayerCustomClickEvent`、`PlayerDisconnectEvent` 及其超类型不能按实例监听，注册即抛 `IllegalArgumentException`。监听器挂在宿主按插件、按档建的子节点上 | 该插件的全部子节点（含实例下的）`removeChild` |
+| `events()` | `addListener(事件类, 监听器)`（`NORMAL`，已取消的事件照样收到）；`addListener(事件类, 优先级, ignoreCancelled, 监听器)`，六档 `LOWEST` → `MONITOR` 依次执行，所有插件同档的排在一起，`MONITOR` 只读不改（约定，不拦截）；`forInstance(实例)` 只收该实例的事件，在实例所属 tick 线程上执行，且先于全局作用域的全部插件监听器；`PlayerPluginMessageEvent`、`PlayerCustomClickEvent`、`PlayerDisconnectEvent`、`PlayerPacketEvent` 及其超类型在玩家没有实例时也可能派发，不能按实例监听，注册即抛 `IllegalArgumentException`。监听器挂在宿主按插件、按档建的子节点上 | 该插件的全部子节点（含实例下的）`removeChild` |
 | `scheduler()` | `scheduleTask(任务, 延迟, 重复)` | 逐个 `cancel()` |
 | `channels()` | `register(名字, handler)` / `send(玩家, 名字, 字节)` | 注销该插件的全部通道 |
 | `admission()` | `register(准入回调)`，决定连接进哪个对局实例、属哪个队伍 | 注销该回调 |

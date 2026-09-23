@@ -274,4 +274,23 @@ class PluginEventsIntegrationTest {
         assertEquals(EventPriority.values().length, global.get());
         assertEquals(1, scoped.get());
     }
+
+    @Test
+    void theInstanceScopeRunsBeforeEveryGlobalPluginListener(Env env) {
+        final Instance instance = env.createFlatInstance();
+        final Player player = env.createPlayer(instance, new Pos(0, 41, 0));
+        final List<String> calls = new CopyOnWriteArrayList<>();
+        // The earliest global priority against the latest instance one, from the plugin enabled first
+        final Plugin global = new Plugin("global", events ->
+                events.addListener(PlayerChatEvent.class, EventPriority.LOWEST, false, _ -> calls.add("global:lowest")));
+        final Plugin scoped = new Plugin("scoped", events ->
+                events.forInstance(instance).addListener(PlayerChatEvent.class, EventPriority.MONITOR, false,
+                        _ -> calls.add("instance:monitor")));
+        final PluginHost host = host(env, global, scoped);
+
+        env.process().eventHandler().call(new PlayerChatEvent(player, List.of(), "hello"));
+
+        assertEquals(List.of("instance:monitor", "global:lowest"), calls);
+        host.disableAll();
+    }
 }

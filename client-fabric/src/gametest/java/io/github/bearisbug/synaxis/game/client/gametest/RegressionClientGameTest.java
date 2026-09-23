@@ -8,9 +8,11 @@ import io.github.bearisbug.synaxis.game.client.RtsClient;
 import io.github.bearisbug.synaxis.game.client.SynaxisClientMod;
 import io.github.bearisbug.synaxis.game.client.UnitBindings;
 import io.github.bearisbug.synaxis.game.client.UnitPicker;
+import io.github.bearisbug.synaxis.game.client.gametest.mixin.ConnectionAccessor;
 import io.github.bearisbug.synaxis.game.protocol.ArchetypeBox;
 import io.github.bearisbug.synaxis.game.protocol.OrderResultCode;
 import io.github.bearisbug.synaxis.game.protocol.S2COrderResult;
+import io.netty.channel.ChannelPipeline;
 import java.io.IOException;
 import java.lang.reflect.Field;
 import java.nio.charset.StandardCharsets;
@@ -32,6 +34,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.ConnectScreen;
 import net.minecraft.client.gui.screens.DisconnectedScreen;
 import net.minecraft.client.gui.screens.TitleScreen;
+import net.minecraft.client.multiplayer.ClientPacketListener;
 import net.minecraft.client.multiplayer.ServerData;
 import net.minecraft.client.multiplayer.resolver.ServerAddress;
 import net.minecraft.core.BlockPos;
@@ -46,10 +49,11 @@ import org.jspecify.annotations.Nullable;
  * client against a server-app in game mode.
  * <p>
  * R1 the mod and its nested :protocol are loaded, R2 the configuration phase handshake is accepted,
- * R3 the client reaches the world, R4 it binds units it may command, R5 it selects one, R6 an order
- * moves that unit at least 2.0 blocks, R7 the sky light the server sent is 15 above the ground and 0
- * below it, R8 a protocol error disconnects with a readable sentence rather than the raw key. R8 is
- * last because it ends the connection.
+ * R3 the client reaches the world (in the full online tier, over an encrypted connection), R4 it
+ * binds units it may command, R5 it selects one, R6 an order moves that unit at least 2.0 blocks,
+ * R7 the sky light the server sent is 15 above the ground and 0 below it, R8 a protocol error
+ * disconnects with a readable sentence rather than the raw key. R8 is last because it ends the
+ * connection.
  * <p>
  * Every assertion is one line {@code R<n> PASS|FAIL <evidence>} of
  * {@code synaxis-gametest/report.txt}, written in a {@code finally} so that a step that throws still
@@ -82,6 +86,12 @@ public final class RegressionClientGameTest implements FabricClientGameTest {
     private static final double ORDER_RAY_HEIGHT = 16.0;
 
     private static final String PROTOCOL_ERROR_KEY = "synaxis:protocol-error";
+
+    /**
+     * Set, with its two siblings, by build.gradle.kts from SYNAXIS_GAMETEST_SESSION_HOST: the full
+     * online tier, where the server is in online mode and the connection has to be encrypted.
+     */
+    private static final String SESSION_HOST_PROPERTY = "minecraft.api.session.host";
 
     @Override
     public void runTest(ClientGameTestContext context) {
@@ -117,8 +127,11 @@ public final class RegressionClientGameTest implements FabricClientGameTest {
                 context.computeOnClient(_ -> "state=" + handshake.state()
                         + (handshake.serverHello() == null ? "" : " schema_version=" + handshake.serverHello().schemaVersion())));
         final boolean inWorld = context.computeOnClient(RegressionClientGameTest::inWorld);
-        report.put(3, inWorld, context.computeOnClient(client -> inWorld
-                ? "in world at " + client.player.blockPosition()
+        final boolean online = System.getProperty(SESSION_HOST_PROPERTY) != null;
+        final boolean encrypted = context.computeOnClient(RegressionClientGameTest::encrypted);
+        report.put(3, inWorld && (encrypted || !online), context.computeOnClient(client -> inWorld
+                ? "in world at " + client.player.blockPosition() + " encrypted=" + encrypted
+                        + (online ? " session_host=" + System.getProperty(SESSION_HOST_PROPERTY) : "")
                 : "not in world: " + screenText(client)));
         context.takeScreenshot("r3-after-connect");
         if (!inWorld) {
@@ -283,6 +296,14 @@ public final class RegressionClientGameTest implements FabricClientGameTest {
 
     private static boolean inWorld(Minecraft client) {
         return client.level != null && client.player != null;
+    }
+
+    /** Whether the connection to the server carries the cipher handlers the key exchange adds. */
+    private static boolean encrypted(Minecraft client) {
+        final ClientPacketListener listener = client.getConnection();
+        if (listener == null) return false;
+        final ChannelPipeline pipeline = ((ConnectionAccessor) listener.getConnection()).synaxis$channel().pipeline();
+        return pipeline.get("decrypt") != null && pipeline.get("encrypt") != null;
     }
 
     private static String screenText(Minecraft client) {

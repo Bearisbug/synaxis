@@ -78,12 +78,14 @@ public interface PluginEvents {
      * The listeners hang below the instance's own event node. That node is dispatched before the
      * global scope listeners of every plugin, so priorities order the instance scoped listeners
      * among themselves, and all of them run before the global scope plugin listeners of the same
-     * event. They are taken back when the plugin is disabled and go away with the instance.
+     * event. They are taken back when the plugin is disabled and go away with the instance. Every
+     * call for the same instance shares that instance's priority nodes, so calling this once per
+     * listener keeps the order within a priority.
      * <p>
      * Only {@code InstanceEvent} types can be listened to here. {@code PlayerPluginMessageEvent},
-     * {@code PlayerCustomClickEvent} and {@code PlayerDisconnectEvent} are refused, and so are their
-     * supertypes such as {@code PlayerInstanceEvent}: all three are also dispatched outside the play
-     * phase, when the player has no instance.
+     * {@code PlayerCustomClickEvent}, {@code PlayerDisconnectEvent} and {@code PlayerPacketEvent} are
+     * refused, and so are their supertypes such as {@code PlayerInstanceEvent}: all four can also be
+     * dispatched while the player has no instance.
      *
      * @param instance the instance to scope to
      * @return the capability scoped to {@code instance}; its

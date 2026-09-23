@@ -6,6 +6,7 @@ import io.github.bearisbug.synaxis.event.EventListener;
 import io.github.bearisbug.synaxis.event.EventNode;
 import io.github.bearisbug.synaxis.event.player.PlayerCustomClickEvent;
 import io.github.bearisbug.synaxis.event.player.PlayerDisconnectEvent;
+import io.github.bearisbug.synaxis.event.player.PlayerPacketEvent;
 import io.github.bearisbug.synaxis.event.player.PlayerPluginMessageEvent;
 import io.github.bearisbug.synaxis.event.trait.CancellableEvent;
 import io.github.bearisbug.synaxis.event.trait.InstanceEvent;
@@ -16,11 +17,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.lang.ref.WeakReference;
-import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.WeakHashMap;
 import java.util.function.Consumer;
 
 /**
@@ -37,6 +38,8 @@ import java.util.function.Consumer;
  * Each priority gets its own child node of the parent, created on first use with
  * {@link EventNode#setPriority}. The parent sorts its children by priority, so the nodes of every
  * plugin at one priority sit together and a single plugin wide node could not give that order.
+ * The nodes are shared by every {@code PluginEventsImpl} of the plugin with the same parent, so
+ * calling {@link #forInstance} once per listener still gives one node per priority and instance.
  * {@link #detach()} takes all of them back, including those below instance nodes.
  */
 final class PluginEventsImpl implements PluginEvents {
@@ -46,7 +49,6 @@ final class PluginEventsImpl implements PluginEvents {
     private final String pluginId;
     private final Scope scope;
     private final Registrations registrations;
-    private final Map<EventPriority, EventNode<?>> tiers = new EnumMap<>(EventPriority.class);
 
     /**
      * @param pluginId the owning plugin
@@ -96,13 +98,15 @@ final class PluginEventsImpl implements PluginEvents {
 
     private EventNode<?> tier(EventPriority priority) {
         assert Thread.holdsLock(registrations);
-        EventNode<?> node = tiers.get(priority);
+        final Map<EventPriority, WeakReference<EventNode<?>>> tiers =
+                registrations.tiers.computeIfAbsent(scope.parent(), _ -> new EnumMap<>(EventPriority.class));
+        final WeakReference<EventNode<?>> existing = tiers.get(priority);
+        EventNode<?> node = existing != null ? existing.get() : null;
         if (node != null) return node;
         final String name = "plugin/" + pluginId + scope.suffix() + "/" + priority.name().toLowerCase(Locale.ROOT);
         // LOWEST..MONITOR as -2..3, so that NORMAL keeps the default priority 0 of other nodes
         node = scope.attach(name, priority.ordinal() - EventPriority.NORMAL.ordinal());
-        tiers.put(priority, node);
-        registrations.add(node);
+        tiers.put(priority, new WeakReference<>(node));
         return node;
     }
 
@@ -119,11 +123,13 @@ final class PluginEventsImpl implements PluginEvents {
     void detach() {
         synchronized (registrations) {
             registrations.detached = true;
-            for (WeakReference<EventNode<?>> reference : registrations.nodes) {
-                final EventNode<?> node = reference.get();
-                if (node != null) removeFromParent(node);
+            for (Map<EventPriority, WeakReference<EventNode<?>>> tiers : registrations.tiers.values()) {
+                for (WeakReference<EventNode<?>> reference : tiers.values()) {
+                    final EventNode<?> node = reference.get();
+                    if (node != null) removeFromParent(node);
+                }
             }
-            registrations.nodes.clear();
+            registrations.tiers.clear();
         }
     }
 
@@ -134,21 +140,20 @@ final class PluginEventsImpl implements PluginEvents {
     }
 
     /**
-     * The nodes of one plugin across all its scopes. Held weakly: the parent keeps a node alive as
-     * long as it is attached, and an instance node together with its children goes away with the
-     * instance, which a plugin creating an instance per dungeon run relies on.
+     * The priority nodes of one plugin across all its scopes, by the node they are attached to.
+     * Held weakly: the parent keeps a node alive as long as it is attached, and an instance node
+     * together with its children goes away with the instance, which a plugin creating an instance
+     * per dungeon run relies on. The values are weak too, since a priority node refers to its
+     * parent and a strong one would keep the key alive.
      */
     private static final class Registrations {
-        private final List<WeakReference<EventNode<?>>> nodes = new ArrayList<>();
+        private final Map<EventNode<?>, Map<EventPriority, WeakReference<EventNode<?>>>> tiers = new WeakHashMap<>();
         private boolean detached;
-
-        void add(EventNode<?> node) {
-            nodes.removeIf(reference -> reference.get() == null);
-            nodes.add(new WeakReference<>(node));
-        }
     }
 
     private sealed interface Scope {
+        EventNode<?> parent();
+
         void check(Class<? extends Event> eventType);
 
         String suffix();
@@ -175,9 +180,14 @@ final class PluginEventsImpl implements PluginEvents {
     }
 
     private record InstanceScope(EventNode<InstanceEvent> parent, String instanceId) implements Scope {
-        /** Instance events that {@code PlayerConnection} and the configuration listeners also fire outside PLAY. */
+        /**
+         * Instance events that are also fired for a player without an instance: by
+         * {@code PlayerConnection} and the configuration listeners, and for {@code PlayerPacketEvent}
+         * by the PLAY packets drained in the same batch as the one that ends the configuration.
+         */
         private static final List<Class<? extends Event>> DISPATCHED_WITHOUT_INSTANCE = List.of(
-                PlayerPluginMessageEvent.class, PlayerCustomClickEvent.class, PlayerDisconnectEvent.class);
+                PlayerPluginMessageEvent.class, PlayerCustomClickEvent.class, PlayerDisconnectEvent.class,
+                PlayerPacketEvent.class);
 
         @Override
         public void check(Class<? extends Event> eventType) {
@@ -185,8 +195,8 @@ final class PluginEventsImpl implements PluginEvents {
                 throw new IllegalArgumentException("Not an instance event, it cannot be scoped to an instance: "
                         + eventType.getName());
             if (dispatchedWithoutInstance(eventType))
-                throw new IllegalArgumentException("Also dispatched in the configuration phase, where the player has "
-                        + "no instance: " + eventType.getName());
+                throw new IllegalArgumentException("Also dispatched while the player has no instance: "
+                        + eventType.getName());
         }
 
         private static boolean dispatchedWithoutInstance(Class<? extends Event> eventType) {

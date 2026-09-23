@@ -10,6 +10,7 @@ import io.github.bearisbug.synaxis.event.entity.EntityTickEvent;
 import io.github.bearisbug.synaxis.event.player.PlayerChatEvent;
 import io.github.bearisbug.synaxis.event.player.PlayerCustomClickEvent;
 import io.github.bearisbug.synaxis.event.player.PlayerDisconnectEvent;
+import io.github.bearisbug.synaxis.event.player.PlayerPacketEvent;
 import io.github.bearisbug.synaxis.event.player.PlayerPluginMessageEvent;
 import io.github.bearisbug.synaxis.event.server.ServerTickMonitorEvent;
 import io.github.bearisbug.synaxis.event.trait.CancellableEvent;
@@ -203,7 +204,8 @@ class PluginEventsIntegrationTest {
         final PluginEvents scope = kept[0].forInstance(instance);
 
         for (Class<? extends Event> type : List.of(ServerTickMonitorEvent.class, PlayerPluginMessageEvent.class,
-                PlayerCustomClickEvent.class, PlayerDisconnectEvent.class, PlayerInstanceEvent.class)) {
+                PlayerCustomClickEvent.class, PlayerDisconnectEvent.class, PlayerPacketEvent.class,
+                PlayerInstanceEvent.class)) {
             assertThrows(IllegalArgumentException.class, () -> scope.addListener(type, _ -> {
             }), type.getName());
         }
@@ -211,6 +213,27 @@ class PluginEventsIntegrationTest {
         });
         assertEquals(1, instance.eventNode().getChildren().size());
         host.disableAll();
+    }
+
+    @Test
+    void callingForInstanceAgainSharesTheInstanceNodes(Env env) {
+        final Instance instance = env.createFlatInstance();
+        final Player player = env.createPlayer(instance, new Pos(0, 41, 0));
+        final List<String> calls = new CopyOnWriteArrayList<>();
+        final PluginEvents[] kept = new PluginEvents[2];
+        final PluginHost host = host(env, new Plugin("p1", events -> kept[0] = events),
+                new Plugin("p2", events -> kept[1] = events));
+
+        // One forInstance call per listener, the second plugin registering between the first's two
+        kept[0].forInstance(instance).addListener(PlayerChatEvent.class, _ -> calls.add("p1:a"));
+        kept[1].forInstance(instance).addListener(PlayerChatEvent.class, _ -> calls.add("p2:c"));
+        kept[0].forInstance(instance).addListener(PlayerChatEvent.class, _ -> calls.add("p1:b"));
+        env.process().eventHandler().call(new PlayerChatEvent(player, List.of(), "hello"));
+
+        assertEquals(List.of("p1:a", "p1:b", "p2:c"), calls);
+        assertEquals(2, instance.eventNode().getChildren().size(), "one NORMAL node per plugin");
+        host.disableAll();
+        assertEquals(0, instance.eventNode().getChildren().size());
     }
 
     @Test

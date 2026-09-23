@@ -14,6 +14,7 @@
 
 | 日期 | 改动 | 作者 |
 | --- | --- | --- |
+| 2026-09-23 | 跟进 `docs/DESIGN-M3.md` v0.5（区块包字节确定性，引擎修复 `5fba33a398`）。**改写 `TC-WORLD-006`**：标题与判据从「成帧字节与基线结果一致」改为「两次运行字节摘要相同」——7 个 `packet` 作业连跑两次，28 个 SHA-256 摘要（成帧压缩后与压缩前各两个）两次全等，再与 `bench-2026-09-packet-canonical-1.json` 全等（换 JDK 构建时只要求压缩前的两个相等）；长度分布降为参考。修复前长度相同、字节不同，旧判据查不出来，旧基线 `bench-2026-09-results.json` 的 `setall` 与 flat40 两个作业、`bench-2026-09-run1.json` 的高 256 natural 作业，成帧长度与修复后不同（抽到了修复前另一种高度图顺序），不能再当字节基线。`TC-WORLD-007` 第 2 步随之改为比摘要。**新增 `TC-WORLD-009`**（对应 `REQ-M3-003`）：`ChunkPacketDeterminismTest` 6 个子 JVM 逐字节比对，连跑三次绿；反证换回修复前的 `ChunkData.java` 即红在 `heightmaps` 或 `blockEntities`。§2 覆盖范围、Gherkin 口径与 REQ-M3 对照表的 `REQ-M3-003` 行同步；§5 大世界域加「区块包编码」一组 | Bearisbug |
 | 2026-09-23 | 接入 `docs/DESIGN-M3.md` v0.3（大世界域）。元信息「关联设计文档」加入该分册，联检由两份变三份。**新增 8 条**，域段 `WORLD`：光照 `TC-WORLD-001`（原版 26.2 对拍 7 场景 0 差异、篡改真值即红且报出坐标与两边的值、新场景经 `gen.sh` 生成后自动纳入）、`TC-WORLD-002`（`gen.sh` 逐字节再生真值、jar 的 SHA-1 不符退 1）、`TC-WORLD-003`（`lightBlock` 衰减与 tinted_glass，换回修复前的两个文件红 11 条）、`TC-WORLD-004`（面遮挡表与 `ShapeImpl` 满面，表错位、删守卫各红）、`TC-WORLD-005`（`fullyLit`，删一行红 2 条）；基准 `TC-WORLD-006`（`--quick` 冒烟与区块包字节对基线）、`TC-WORLD-007`（空闲机器复跑默认作业表）、`TC-WORLD-008`（真地图档，等美术地图）。§2 加 M3 覆盖范围、REQ-M3 对照表（21 条 REQ 未实现、没有用例）和两行不测项：DH + Iris spike 不作验收，真显卡项无归属。§3 加「M3（大世界域）环境」。§5 加大世界域的局部轮映射，跨域牵连加光照、升版本、区块包编码三条 | Bearisbug |
 | 2026-09-23 | 跟进 `docs/DESIGN-PROD.md` 第 0 波 0E（`REQ-PROD-028`，G25）。**新增 `TC-PROD-050`**（对应 `REQ-PROD-028`）：新开「生产就绪 · 运行参数」一节，判 `installDist` 启动脚本与 `:server-app:run` 两条入口的 JVM 都带 G1、`-Xms4G -Xmx4G`、`AlwaysPreTouch`、`MaxGCPauseMillis=50` 与两个 OOM 参数（`jcmd VM.flags` 计数 7），`JAVA_OPTS` 能覆盖、换 ZGC 须先关 G1；反证是删掉 `-Xms4G` 与 `AlwaysPreTouch` 两行，计数掉到 5。§5 加生产就绪域一行 | Bearisbug |
 | 2026-09-23 | 跟进 `docs/DESIGN-PROD.md` 第 0 波 0D（`REQ-PROD-030` 离线档，`API-PROD-026`）。**新增三条**：`TC-PROD-040`（无头容器里真客户端 R1～R8 全绿，dev 与生产启动器各一次，带 spike 时 R 行在前、spike 行追加；反证删掉 `en_us.json` 的 `synaxis:protocol-error` 译文，红在 R8）、`TC-PROD-041`（判定读报告与台账：连不上服务端时报告仍写满 8 行、全绿报告配空台账也判红、缺报告判红）、`TC-PROD-042`（工作流触发、`continue-on-error` 与判定步骤；把判定步骤原样抽出来在 CI 布局里跑，反证一条 R8 FAIL 或缺一份报告即红）。§5 局部轮加「生产就绪域」一行 | Bearisbug |
@@ -85,8 +86,8 @@
 
 - 覆盖（引擎域 · M1 / M1.5）：里程碑 M1 的 12 条需求的黑盒与半黑盒验收——构建产物与仓库元数据（命令、退出码、文件）、Minecraft 协议行为（裸 socket 与原版客户端可观察的包与断线原因）、文档与合规文件。
 - 覆盖（游戏域 · M2）：`docs/DESIGN-M2.md` 的 `REQ-M2-001`～`REQ-M2-025` 的黑盒与半黑盒验收——工程门禁的可观察结论（模块树、构建红绿、CI 结论）、插件宿主的生命周期与隔离行为（启停日志、退出码、回调有无、事件 JSONL）、自定义负载协议行为（探针可见的消息、结果码与断线原因键）、程序化地图生成与对局生命周期、单位 / 寻路 / 镜头的服务端权威行为，以及客户端模组的安装与 RTS 切片的端到端人工验收。
-- 覆盖（大世界域 · M3）：`docs/DESIGN-M3.md` 里**已落地**的两块——光照（`REQ-M3-005`、`REQ-M3-006`、`REQ-M3-007`、`REQ-M3-027`、`REQ-M3-028`：原版 26.2 对拍、`lightBlock` 衰减、面遮挡与 `ShapeImpl` 满面判定、`fullyLit` 重算，以及真值由 `tools/light-oracle/gen.sh` 逐字节再生）与基准程序（`REQ-M3-013`：`LargeWorldBench` 能跑、字节可复现、空闲机器复跑）。观察面是 JUnit 结果 XML、`gen.sh` 的退出码与 `git status`、`worldBench` 产出的 JSON。其余 `REQ-M3-*` 尚未实现，用例随各阶段实现派生，见下方 REQ-M3 对照表。
-- Gherkin 覆盖口径（M3）：`docs/DESIGN-M3.md` §19 里打到上述六条 REQ 的 12 个场景全部由 TC-WORLD-001～TC-WORLD-008 可操作化（`REQ-M3-004` 名下「M2 对局在修复后的光照下仍然有光」由 TC-GAME-029 第 10、11 步承担）；其余场景对应的 REQ 未实现，暂无用例。
+- 覆盖（大世界域 · M3）：`docs/DESIGN-M3.md` 里**已落地**的两块——光照（`REQ-M3-005`、`REQ-M3-006`、`REQ-M3-007`、`REQ-M3-027`、`REQ-M3-028`：原版 26.2 对拍、`lightBlock` 衰减、面遮挡与 `ShapeImpl` 满面判定、`fullyLit` 重算，以及真值由 `tools/light-oracle/gen.sh` 逐字节再生）与基准程序（`REQ-M3-013`：`LargeWorldBench` 能跑、两次运行区块包字节摘要相同、空闲机器复跑），另加 `REQ-M3-003` 名下的区块包跨 JVM 逐字节确定（引擎 `ChunkData` 编码，烘焙器本身未实现）。观察面是 JUnit 结果 XML、`gen.sh` 的退出码与 `git status`、`worldBench` 产出的 JSON。其余 `REQ-M3-*` 尚未实现，用例随各阶段实现派生，见下方 REQ-M3 对照表。
+- Gherkin 覆盖口径（M3）：`docs/DESIGN-M3.md` §19 里打到上述六条 REQ 的 13 个场景全部由 TC-WORLD-001～TC-WORLD-008 可操作化，`REQ-M3-003` 名下「区块包跨 JVM 逐字节确定」一条由 TC-WORLD-009 可操作化（`REQ-M3-004` 名下「M2 对局在修复后的光照下仍然有光」由 TC-GAME-029 第 10、11 步承担）；其余场景对应的 REQ 未实现，暂无用例。
 - Gherkin 覆盖口径：`docs/DESIGN-M2.md` §19 的 48 个 Gherkin 场景**全部**由本文档的 TC 可操作化，没有转交自动化测试的场景；逐条对照见下方 REQ ↔ TC 表与各用例标题行。
 - 包 ID 口径：协议探针 `tools/protocol-probe/probe.py` 与压测 harness `tools/loadtest/PacketFlood.java` 的包 ID 都是解析本仓库 `PacketVanilla.java` 得到的，编码端与解码端用同一张表，表错了也照样自洽地通过，所以**以探针或压测为判据的用例不能证明包 ID 与原版一致**。与 26.2 原版一致由 TC-036 的整表测试判（REQ-005 删包打乱 ID 的那次缺陷就是这样漏过去的，见 `docs/DESIGN.md` §28）。
 - 机械校验口径：`bash ~/.claude/skills/test-doc/check.sh docs/TEST.md` 做 REQ 双向联检——本文档引用的每条 REQ 必须在某一份设计文档里存在，每份设计文档的每条 REQ 必须被至少一条 TC 引用。**三份设计文档一起联检**：`check.sh` 把上方元信息「关联设计文档」行里的**每一个** `*.md` 都解析出来，`REQ-001`～`REQ-017`、`REQ-M2-001`～`REQ-M2-025` 与 `REQ-M3-001`～`REQ-M3-028` 都在范围内。两处不能动，动了绿灯就不再代表已核：① ID 正则的域段是 `[A-Z][A-Z0-9]*`，收窄成纯字母会让带数字的 `M2`、`M3` 域段整块静默退出联检；② 元信息那一行必须保留三份文档的路径，少一份则那一份的 REQ 无人认领。M3 侧的反向联检是被下方对照表里的「未实现」行满足的，绿灯只说明每条 REQ 都登记了去向，不说明它有用例。下表因此不是唯一判据，留作可读索引——查一条 REQ 由哪些 TC 覆盖、哪些 TC 已废弃及原因。
@@ -129,7 +130,7 @@ REQ-M3 ↔ TC 对照（可读索引）。「未实现」行没有用例，是已
 | --- | --- |
 | REQ-M3-001 `.synx` 区域文件格式 | 未实现 |
 | REQ-M3-002 地图发布目录与清单 | 未实现 |
-| REQ-M3-003 离线烘焙器 | 未实现 |
+| REQ-M3-003 离线烘焙器 | 烘焙器未实现；名下「区块包逐字节确定」一条由 TC-WORLD-009 判 |
 | REQ-M3-004 光照引擎抽取 | 未实现；它名下「M2 对局在修复后的光照下仍然有光」一条今天由 TC-GAME-029 第 10、11 步判 |
 | REQ-M3-005 天光整列按 `lightBlock` 与面遮挡停止 | TC-WORLD-003 |
 | REQ-M3-006 BFS 按 `lightBlock` 衰减 | TC-WORLD-003 |
@@ -250,7 +251,7 @@ REQ-M3 ↔ TC 对照（可读索引）。「未实现」行没有用例，是已
 - 不起服务端进程。光照用例是 JUnit（`./gradlew :test --tests …`），观察面是 `build/test-results/test/TEST-<类名>.xml` 的 `testsuite` 行（`tests` / `failures` / `errors`）与失败的 `failure message`；构建命令同上面引擎域，带镜像 init 脚本，本机有代理时按 `docs/ENGINE.md` §2.2 设 `JAVA_TOOL_OPTIONS`。
 - 光照真值：`tools/light-oracle/gen.sh` 需要 `JAVA_HOME` 指向 JDK 25，与原版 26.2 服务端 jar（SHA-1 `823e2250d24b3ddac457a60c92a6a941943fcd6a`）。取 jar 的顺序是 `$SERVER_JAR` → Loom 缓存 `~/.gradle/caches/fabric-loom/26.2/minecraft-server.jar`（`client-fabric` 构建过一次就有）→ 从 Mojang 下载；SHA-1 不符即退出码 1。脚本在 `$TMPDIR/light-oracle.XXXXXX` 解包依赖，退出时删除。它改写的只有 `src/main/resources/io/github/bearisbug/synaxis/instance/light/light_shape_states.txt` 与 `src/test/resources/io/github/bearisbug/synaxis/instance/light/parity/*.light.gz`，用完 `git status --porcelain -- src` 判有无漂移。
 - 对拍场景：`src/test/resources/io/github/bearisbug/synaxis/instance/light/parity/<名>.scene`（每行 `fill x1 y1 z1 x2 y2 z2 <方块状态>` 或 `set x y z <方块状态>`，`#` 起注释）与同名 `<名>.light.gz`（gzip 后是三个 int 头——半径、最小 section、最大 section——再按区块、section、sky / block 顺序排的 2,048 字节光照数组）。`LightParityIntegrationTest` 列目录取全部 `*.scene`，加场景不改测试代码。
-- 基准：`./gradlew :jmh-benchmarks:worldBench -PworldBenchArgs="<参数>"`，参数与作业表见 `jmh-benchmarks/README.md`；结果 JSON 写到 `jmh-benchmarks/` 下 `--out` 给的相对路径（默认 `build/worldbench/`，已 gitignore）。每个作业一个子 JVM，堆由 `--heap` 定（默认 6g，冒烟用 3g）。**空闲**的判据：作业 JSON 里 `loadAverageBefore` 与 `loadAverageAfter` 都低于核数的一半（本机 12 核即 < 6）；跑之前用 `sysctl -n vm.loadavg` 看一眼。基线结果是 `docs/research/large-world-2026-09/bench-2026-09-results.json`（第 2 轮）与 `bench-2026-09-run1.json`（第 1 轮）。
+- 基准：`./gradlew :jmh-benchmarks:worldBench -PworldBenchArgs="<参数>"`，参数与作业表见 `jmh-benchmarks/README.md`；结果 JSON 写到 `jmh-benchmarks/` 下 `--out` 给的相对路径（默认 `build/worldbench/`，已 gitignore）。每个作业一个子 JVM，堆由 `--heap` 定（默认 6g，冒烟用 3g）。**空闲**的判据：作业 JSON 里 `loadAverageBefore` 与 `loadAverageAfter` 都低于核数的一半（本机 12 核即 < 6）；跑之前用 `sysctl -n vm.loadavg` 看一眼。基线结果是 `docs/research/large-world-2026-09/bench-2026-09-results.json`（第 2 轮）与 `bench-2026-09-run1.json`（第 1 轮）。区块包字节的基线是 `bench-2026-09-packet-canonical-1.json`（引擎修复包字节顺序之后，带四个 SHA-256 摘要）；前两份跑在修复之前，个别作业的成帧长度抽到了修复前的另一种顺序，只能当长度与耗时的参考。
 - 比较 JSON 用虚拟环境里的 Python，只用标准库。仓库的 `.gitignore` 没有忽略 `.venv`，所以虚拟环境建在仓库外（如 `uv venv --python 3.10 $TMPDIR/synaxis-venv`，用完删除），按 `params` 的 `type`、`height`、`terrain`、`palettes`、`chunks` 五项把新结果与基线逐作业配对。
 - 种子数据与重置：没有持久数据。反证步骤改的源码与资源一律用 `git checkout -- <路径>` 还原，后置统一判 `git status --porcelain -- src` 为空。
 
@@ -1889,16 +1890,17 @@ REQ-M3 ↔ TC 对照（可读索引）。「未实现」行没有用例，是已
 
 命令里的 `<W>` 代表 `./gradlew :jmh-benchmarks:worldBench --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts`；「逐作业比较」按 §3 M3 环境那一条配对。
 
-#### `TC-WORLD-006` 基准程序冒烟跑通，区块包字节与基线结果一致 — 对应 `REQ-M3-013` · 级别: 回归 · 执行者: AI
+#### `TC-WORLD-006` 基准程序冒烟跑通，区块包字节两次运行逐字节相同 — 对应 `REQ-M3-013` · 级别: 回归 · 执行者: AI
 
-前置：§3「M3（大世界域）环境」；不要求空闲机器（本用例不判耗时）。
+前置：§3「M3（大世界域）环境」；不要求空闲机器（本用例不判耗时）。第 2、3 步的作业表 `<J>` 是 7 个 `packet` 作业：`packet,h=384,t=natural,p=opt;packet,h=384,t=natural,p=setall;packet,h=384,t=solid,p=opt;packet,h=256,t=natural,p=opt;packet,h=256,t=solid,p=opt;packet,h=64,t=natural,p=opt;packet,h=64,t=flat40,p=opt`（即 `DEFAULT_JOBS` 的前 7 项，字段间用逗号而不是空格，避免被 Gradle 属性拆开）。
 
 | # | 操作 | 预期 |
 | --- | --- | --- |
-| 1 | `<W> -PworldBenchArgs="--quick --heap 3g --out build/worldbench/quick.json"` | `BUILD SUCCESSFUL`；stdout 依次有 `== packet h=384 t=natural p=opt grid=8 rounds=1 warmup=0`、`== relight h=384 t=natural n=256 rounds=1`、`== local h=384 t=natural grid=12 samples=30 warmupSamples=6`，末行 `Results written to …/jmh-benchmarks/build/worldbench/quick.json`。JSON 顶层有 `schema`（值 1）、`machine`（含 `gitCommit` 等于当前 HEAD）、`childJvmArgs`、`jobs`（3 个），每个作业有 `params`、`loadAverageBefore`、`loadAverageAfter`、`jvm` |
-| 2 | `<W> "-PworldBenchArgs=--out build/worldbench/packet.json --jobs packet,h=64,t=flat40,p=opt;packet,h=256,t=natural,p=opt;packet,h=384,t=natural,p=opt"` | `BUILD SUCCESSFUL`；JSON 里 3 个作业，每个的 `plainFramedBytes` 等分布 `n` 为 2,700 |
-| 3 | 把第 2 步的 JSON 与 `docs/research/large-world-2026-09/bench-2026-09-results.json` 逐作业比较 `plainUncompressedBytes`、`litUncompressedBytes`、`skyArraysPerPacket` 三个分布对象 | 三个作业、三个字段全部全等 |
-| 4 | 同样比较 `plainFramedBytes`、`litFramedBytes`（成帧 + zlib 之后真正写进 socket 的字节，设计文档 §19「基准程序复跑」要求的「字节数与 bench-2026-09-results.json 相同」） | 三个作业、两个字段全部全等 |
+| 1 | `<W> -PworldBenchArgs="--quick --heap 3g --out build/worldbench/quick.json"` | `BUILD SUCCESSFUL`；stdout 依次有 `== packet h=384 t=natural p=opt grid=8 rounds=1 warmup=0`、`== relight h=384 t=natural n=256 rounds=1`、`== local h=384 t=natural grid=12 samples=30 warmupSamples=6`，末行 `Results written to …/jmh-benchmarks/build/worldbench/quick.json`。JSON 顶层有 `schema`（值 1）、`machine`（含 `gitCommit` 等于当前 HEAD）、`childJvmArgs`、`jobs`（3 个），每个作业有 `params`、`loadAverageBefore`、`loadAverageAfter`、`jvm`；`packet` 作业另有 `plainFramedSha256`、`litFramedSha256`、`plainUncompressedSha256`、`litUncompressedSha256` 四个 64 位 hex 字段 |
+| 2 | `<W> "-PworldBenchArgs=--out build/worldbench/packet-1.json --jobs <J>"` | `BUILD SUCCESSFUL`；JSON 里 7 个作业，每个的 `plainFramedBytes` 等分布 `n` 为 2,700，四个摘要字段齐全 |
+| 3 | 第 2 步原样再跑一次，`--out` 改为 `build/worldbench/packet-2.json` | 同第 2 步 |
+| 4 | 按 `params` 配对，逐作业比较 `packet-1.json` 与 `packet-2.json` 的四个摘要 | 7 个作业 × 4 个摘要 = 28 个全部相等（压缩前与成帧压缩后的包字节两次运行都逐字节相同）。长度分布（`*FramedBytes`、`*UncompressedBytes`）只作参考，不作复现判据：修复前就出现过长度相同、字节不同 |
+| 5 | 同样比较 `packet-1.json` 与 `docs/research/large-world-2026-09/bench-2026-09-packet-canonical-1.json` 的四个摘要 | 28 个全部相等。该基线跑在本机 §3 的 JDK 25 上；换了 JDK 构建时两个 `*FramedSha256` 允许不同（zlib 实现随 JDK 构建变化，设计文档 `API-M3-003`），两个 `*UncompressedSha256` 仍须相等 |
 
 后置：无（产物在已 gitignore 的 `jmh-benchmarks/build/`）。
 
@@ -1909,7 +1911,7 @@ REQ-M3 ↔ TC 对照（可读索引）。「未实现」行没有用例，是已
 | # | 操作 | 预期 |
 | --- | --- | --- |
 | 1 | `<W> -PworldBenchArgs="--out build/worldbench/full.json"` | `BUILD SUCCESSFUL`；JSON 里 21 个作业（源码 `DEFAULT_JOBS`，与 `bench-2026-09-results.json` 同数），每个作业的 `loadAverageBefore` 与 `loadAverageAfter` 都低于 `machine.availableProcessors` 的一半 |
-| 2 | 与 `bench-2026-09-results.json` 逐作业比较 TC-WORLD-006 第 3、4 步的五个字段 | 21 个作业全部全等 |
+| 2 | 与 `bench-2026-09-packet-canonical-1.json` 逐作业比较 7 个 `packet` 作业的四个摘要（同 TC-WORLD-006 第 5 步） | 28 个全部相等 |
 | 3 | `tools/worldbench/summarize_worldbench.py build/worldbench/full.json`（在虚拟环境里跑） | 打印的表格与 `docs/research/large-world-2026-09/bench-2026-09.md` §3 同构；墙钟列随后替换该文档 §3.2、§3.3 的对应列，并删去 §1 末尾「两轮都在别的任务并行时跑」的限制 |
 
 后置：无。
@@ -1924,6 +1926,23 @@ REQ-M3 ↔ TC 对照（可读索引）。「未实现」行没有用例，是已
 | 2 | 把段① 字节/区块与设计文档 §2 用的 1,502 B（高 256 natural 带光照均值）比较 | 偏差在 ±20% 以内；超出时设计文档 §2 已按新值重算（变更记录可查） |
 
 后置：无。
+
+### M3 · 区块包编码
+
+`<G>` 同「M3 · 光照」；`<C>` 代表 `src/main/java/io/github/bearisbug/synaxis/network/packet/server/play/data/ChunkData.java`；结果 XML 在 `build/test-results/test/TEST-io.github.bearisbug.synaxis.instance.ChunkPacketDeterminismTest.xml`。
+
+#### `TC-WORLD-009` 区块包跨 JVM 逐字节确定（先红后绿） — 对应 `REQ-M3-003` · 级别: 回归 · 执行者: AI
+
+前置：§3「M3（大世界域）环境」；工作区 `src` 下没有未提交改动。本用例只判区块包编码这一条，烘焙器本身未实现。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | `<G> :test --tests 'io.github.bearisbug.synaxis.instance.ChunkPacketDeterminismTest'` | `BUILD SUCCESSFUL`；XML 的 `testsuite` 行 `tests="1" skipped="0" failures="0" errors="0"`，`testcase` 是 `samePacketBytesAcrossJvms(Path)`。测试依次起 6 个子 JVM，每个用同一生成器生成 3×3 区块（DynamicChunk 与 LightingChunk 各一遍，含高度图与每区块 4 个箱子，section 经 `optimize(SIZE)`），父进程逐字节比对未压缩包 |
+| 2 | 第 1 步原样再跑两次（每次都起新的 6 个子 JVM） | 两次都与第 1 步相同 |
+| 3 | 反证：`git checkout 1275602157 -- <C>`（修复前按 `Map.copyOf` / `toUnmodifiableMap` 复制的版本），重跑第 1 步 | `BUILD FAILED`，stdout 有 `ChunkPacketDeterminismTest > samePacketBytesAcrossJvms(Path) FAILED`；XML 的失败信息形如 `run 0 and run <i> differ: plain chunk 0,0: first differing byte at packet offset 9 (heightmaps offset 1, 597 bytes), fields …`（字段是 `heightmaps` 或 `blockEntities`）。修复前每个 JVM 的 Map 顺序随启动种子变化，6 个 JVM 全部抽到同一顺序的概率约为 1/32（只算高度图两项）；若恰好全绿，再重跑一次，连续两次绿即判本步失败 |
+| 4 | `git checkout HEAD -- <C>`，重跑第 1 步 | 与第 1 步相同 |
+
+后置：`git status --porcelain -- src` 无输出。
 
 ### 生产就绪 · 第 0 波 0A：宿主日志线
 
@@ -2215,7 +2234,7 @@ jcmd "$pid" VM.flags | tr ' ' '\n' | grep -cxE -- '-XX:\+UseG1GC|-XX:InitialHeap
   - 游戏域：模块与门禁 → TC-GAME-001～TC-GAME-006、TC-GAME-059、TC-GAME-067，插件宿主 → TC-GAME-009～TC-GAME-011、TC-GAME-014～TC-GAME-016、TC-GAME-053～TC-GAME-055（TC-GAME-007、TC-GAME-008、TC-GAME-012、TC-GAME-013 已废弃），协议与握手 → TC-GAME-017～TC-GAME-028、TC-GAME-049、TC-GAME-050、TC-GAME-060～TC-GAME-064（TC-GAME-021、TC-GAME-023、TC-GAME-025 已废弃），世界与对局 → TC-GAME-029、TC-GAME-031、TC-GAME-033～TC-GAME-036、TC-GAME-056、TC-GAME-057（TC-GAME-030、TC-GAME-032 已废弃），单位与寻路 → TC-GAME-052、TC-GAME-039～TC-GAME-042、TC-GAME-051、TC-GAME-065、TC-GAME-068，镜头 → TC-GAME-043、TC-GAME-044，客户端模组 → TC-GAME-038、TC-GAME-045～TC-GAME-047、TC-GAME-066，启动器 → TC-GAME-048、TC-GAME-049、TC-GAME-050、TC-GAME-058。
   - 生产就绪域：宿主日志线（`REQ-PROD-015`～`REQ-PROD-017`）→ TC-PROD-001～TC-PROD-008。
   - 生产就绪域：tick 看门狗（`REQ-PROD-014` 前半）→ TC-PROD-020～TC-PROD-023。
-  - 大世界域：光照 → TC-WORLD-001～TC-WORLD-005，基准 → TC-WORLD-006（TC-WORLD-007 只在空闲机器上跑，属全量轮；TC-WORLD-008 等第一张美术地图）。
+  - 大世界域：光照 → TC-WORLD-001～TC-WORLD-005，基准 → TC-WORLD-006（TC-WORLD-007 只在空闲机器上跑，属全量轮；TC-WORLD-008 等第一张美术地图），区块包编码（引擎 `ChunkData`、`ChunkDataPacket`、`LightData`、调色板的网络编码与 `optimize`）→ TC-WORLD-009 与 TC-WORLD-006。
   - 跨域牵连（必须一起跑）：动了 `network/packet` 下的包注册表（增删包、调顺序、升协议版本）→ 加 TC-036；动了启动入口或就绪日志 → 加 TC-GAME-048、TC-GAME-029、TC-GAME-057、TC-GAME-058 与全部以进程为前置的引擎域用例（启动序列一变，「对局在 bind 之前就绪、tick 在 bind 之后才起」这条口径就要重验）；动了握手、准入回调或探针 → 加 TC-GAME-049、TC-GAME-050、TC-GAME-060、TC-GAME-061 与 TC-004、TC-014、TC-018、TC-019、TC-020、TC-026、TC-027 七条存量 TC；动了客户端模组侧的握手或拾取 → 加 TC-GAME-066；动了 `:protocol` 消息布局 → 加 TC-GAME-017 与客户端侧同一份向量；动了引擎 `Entity` 的位置推进入口 → 加 TC-GAME-051、TC-GAME-067 与 TC-GAME-040；动了对局的 chunk supplier、`Match#load` 的载入流程或引擎 `LightingChunk` / `instance.light` → 加 TC-GAME-029（第 10、11 步是光照的先红后绿）；动了 `ExceptionManager` / `ExceptionHandler`、宿主的 `EventLedger`、`logback*.xml` 或 `server-app` 的启动参数 → 加 TC-PROD-001～TC-PROD-008 与 TC-035。动了 `ServerProcessImpl` 的 `TickerImpl`、`Watchdog`、`ServerConfig` 的 `synaxis.watchdog.*` 键或宿主的 `CrashReports` → 加 TC-PROD-020～TC-PROD-023 与 TC-PROD-002。
 
   - 跨域牵连（必须一起跑）：动了 `network/packet` 下的包注册表（增删包、调顺序、升协议版本）→ 加 TC-036；动了启动入口或就绪日志 → 加 TC-GAME-048、TC-GAME-029、TC-GAME-057、TC-GAME-058 与全部以进程为前置的引擎域用例（启动序列一变，「对局在 bind 之前就绪、tick 在 bind 之后才起」这条口径就要重验）；动了握手、准入回调或探针 → 加 TC-GAME-049、TC-GAME-050、TC-GAME-060、TC-GAME-061 与 TC-004、TC-014、TC-018、TC-019、TC-020、TC-026、TC-027 七条存量 TC；动了客户端模组侧的握手或拾取 → 加 TC-GAME-066；动了 `:protocol` 消息布局 → 加 TC-GAME-017 与客户端侧同一份向量；动了引擎 `Entity` 的位置推进入口 → 加 TC-GAME-051、TC-GAME-067 与 TC-GAME-040；动了对局的 chunk supplier、`Match#load` 的载入流程或引擎 `LightingChunk` / `instance.light` → 加 TC-GAME-029（第 10、11 步是光照的先红后绿）。
@@ -2259,6 +2278,7 @@ jcmd "$pid" VM.flags | tr ' ' '\n' | grep -cxE -- '-XX:\+UseG1GC|-XX:InitialHeap
 | RUN-024 | 2026-09-23 | `d3d065787e`（无头真客户端 spike S0～S5、clientbound 包 ID 修复与 26.2 整表门禁、`archetype_view_range` 5.0、对局世界载入期整图光照） | AI（Claude Code，Gradle / Docker 无头客户端） | 局部（REQ-005→TC-036；REQ-M2-010、REQ-M2-011→TC-GAME-029；REQ-M2-016→TC-GAME-052；REQ-M2-020→TC-GAME-046 + 冒烟级 TC-029） | 通过 4/5 · 待人工 1 |
 | RUN-025 | 2026-09-23 | 集成分支 `prod/integrate-w0`（DESIGN-PROD 第 0 波：看门狗、崩溃报告、日志轮转、台账缓冲、线程正确性、JVM 参数、真客户端回归断言） | AI（Claude Code，Gradle / Docker 无头客户端） | 局部（REQ-PROD-014、015、016、017、019、028、030→TC-PROD-001～TC-PROD-008、TC-PROD-020～TC-PROD-023、TC-PROD-030～TC-PROD-033、TC-PROD-040～TC-PROD-042、TC-PROD-050 + 冒烟级 TC-029） | 通过 6/7 · 阻塞 1 |
 | RUN-026 | 2026-09-23 | `75925b315d`（分支 `m3/integrate`：光照 parity 修复、`LargeWorldBench`、DH + Iris spike 三条分支合入 `main` `4f686b87f6`；本轮之后的两个文档提交不改代码） | AI（Claude Code，Gradle / `gen.sh` / worldBench） | 局部（REQ-M3-007→TC-WORLD-001、TC-WORLD-002；REQ-M3-005、REQ-M3-006→TC-WORLD-003；REQ-M3-027→TC-WORLD-002、TC-WORLD-004；REQ-M3-028→TC-WORLD-005；REQ-M3-013→TC-WORLD-006～TC-WORLD-008；跨域牵连（引擎 `LightingChunk` / `instance.light`）→TC-GAME-029 第 1、2、10、11 步 + 冒烟级 TC-029） | 通过 7/10 · 失败 1 · 阻塞 1 · 跳过 1 |
+| RUN-027 | 2026-09-23 | `8772698832`（分支 `m3/integrate`：引擎 `ChunkData` 编码顺序修复 `5fba33a398`、基准字节摘要 `f5a99ee031`、基准文档 `8772698832`；本轮之后的两个文档提交不改代码） | AI（Claude Code，Gradle / `gen.sh` / worldBench） | 复测（RUN-026 失败的 TC-WORLD-006，按改写后的判据）+ 局部（REQ-M3-003→TC-WORLD-009；区块包编码→TC-WORLD-006）+ 冒烟级 TC-029、TC-WORLD-001 | 通过 4/4 |
 
 明细（仅登非「通过」项）：
 
@@ -2370,6 +2390,8 @@ TC-002 证据：`docs/test-runs/RUN-002/tc-002.txt`（5 步实际输出）（2,6
 | RUN-026 | TC-WORLD-007 | 跳过 | 机器不空闲：本轮 worldBench 作业记录的 1 分钟负载 21.5～76.6（12 核，判据 < 6），同机有别的任务在跑 | 空闲机器上的全量轮 |
 | RUN-026 | TC-WORLD-008 | 阻塞 | 还没有美术地图，`LargeWorldBench` 也没有从 `.synx` 或 Anvil 读入的作业（设计文档 `API-M3-008` 待补作业 T1） | 第一张美术地图出来时 |
 
+
+RUN-027 证据：`docs/test-runs/RUN-027/`。本轮关闭 RUN-026 明细里 TC-WORLD-006 的失败：根因是引擎 `ChunkData` 用 `Map.copyOf` / `toUnmodifiableMap` 复制高度图与方块实体，迭代顺序随 JVM 启动种子变化，同一区块在不同 JVM 里编出长度相同、字节不同的包，成帧压缩后长度随之在两组值之间来回（`docs/research/large-world-2026-09/bench-2026-09.md` §3.5）；`5fba33a398` 改为按类型序号与方块索引排序。TC-WORLD-006 的判据同批改写为「两次运行 28 个摘要相同」（§1 变更记录），按 RUN-026 的旧判据（成帧长度与 `bench-2026-09-results.json` 全等）修复后仍会在 `setall` 与 flat40 两个作业上不等，因为那份基线抽到的是修复前另一种顺序。`check-2.txt` 与 `check-2-counts.txt`：`./gradlew check --rerun-tasks --continue` BUILD SUCCESSFUL、57 个任务全部执行；按本轮新生成的结果 XML 统计 3,213 个测试、0 失败、15 跳过，其中根模块 2,925（TC-029 第 2 步判据 ≥ 2,599 且 0 失败），比 RUN-026 合并后多出的 1 个是 `ChunkPacketDeterminismTest`。`check-1.txt`：同一命令的第一次运行 BUILD FAILED，唯一失败是 `:server-app` 的 `PluginHostIntegrationTest > theProcessAcceptsOnlyOneAdmissionProvider(Env)`，测试体断言通过，JUnit 关闭扩展上下文时删 `@TempDir` 报 `DirectoryNotEmptyException`；`plugin-host-flaky.txt`：该类单独重跑 5 次全绿，第二次全量（`check-2.txt`）也绿，共 7 次红 1 次。这是 `server-app` 的偶发清理竞争，与本轮改的区块包编码无关，根因未查（疑似测试结束后仍有线程往临时目录写文件），不计入本轮四条用例的结果。`tc-world-001.txt`：TC-WORLD-001 四步，7 个场景 0 差异；篡改 `surface.light.gz` 偏移 12 后 `[6] "surface"` 红、`system-err` 为 `surface sky (-16, -64, -16) minecraft:air: vanilla 15, synaxis 0`（`1 of 589824` 那句失败信息在第 3 步重跑时被 XML 覆盖，没有留档）；`zz-copy` 经 `gen.sh` 生成后与 `surface` 逐字节相同、测试数 7 → 8；还原后 `git status --porcelain -- src` 为空。`tc-world-009.txt`：TC-WORLD-009 连跑三次绿（每次 6 个子 JVM）；换回 `1275602157` 的 `ChunkData.java` 后红，失败信息 `run 0 and run 1 differ: plain chunk 0,0: first differing byte at packet offset 2862 (blockEntities offset 1, 25 bytes)`（这次先暴露的是方块实体，不是高度图）；还原后绿。`worldbench-quick.txt`、`quick.json`：TC-WORLD-006 第 1 步，`packet` 作业带四个摘要字段。`worldbench-packet-{1,2}.txt`、`packet-{1,2}.json`、`worldbench-digest-compare.txt`：第 2～5 步，两次运行 28/28 摘要相同，与 `bench-2026-09-packet-canonical-1.json` 也是 28/28；比较脚本在仓库外的 uv 虚拟环境里跑，只用标准库，脚本原文抄在比较结果开头。两次 packet 运行的 1 分钟负载 8.9～14.4（12 核），本轮不判耗时。**本轮没执行**：TC-WORLD-002～TC-WORLD-005（光照代码本轮没动）、TC-WORLD-007（机器不空闲）、TC-WORLD-008（阻塞，同 RUN-026）、TC-029 之外的冒烟级用例（沿用 RUN-023 起的范围）、`client-fabric` 构建（本轮没改客户端代码）。
 
 RUN-026 证据：`docs/test-runs/RUN-026/`（目录内原始日志写的 `docs/test-runs/RUN-025/` 与 `run025-*.json` 是本轮改号前的路径，指的就是本目录的文件）。`check.txt`：`./gradlew check --rerun-tasks` BUILD SUCCESSFUL、73 个任务全部执行，非根模块 264 个测试 0 失败；`tc-029.txt`：根模块 `:test --continue --rerun-tasks` 2,909 个测试 0 失败 15 跳过，两者合计 3,173。`gen-sh.txt` 与 `gen-sh-wrong-jar.txt`：TC-WORLD-002 四步，真值逐字节再生、`git status` 无输出、临时目录已删、客户端 jar 冒充退 1。`parity.txt`、`light-reverse-2.txt`、`parity-new-scene.txt`：TC-WORLD-001，篡改一个 nibble 报 `1 of 589824`，`zz-copy` 场景经 `gen.sh` 生成后与 `surface` 真值逐字节相同、测试数 7 → 8。`light-reverse.txt` 与 `light-reverse-2.txt`：TC-WORLD-003～005 的绿、四组反证（修复前两文件红 11 条、`fullyLit` 红 2 条、`ShapeImpl` 红 2 条、表错位红 1 条）与还原后全绿。`worldbench-quick.txt`、`run025-quick.json`、`worldbench-packet.txt`、`run025-packet.json`、`run025-flat40-{1,2}.json`、`worldbench-bytes-compare.txt`、`worldbench-repeat.txt`：TC-WORLD-006；比较脚本在仓库外的虚拟环境里跑，只用标准库，按 `params` 五项配对。`tc-game-029.txt` 与 `tc-game-029-server.log`：`rts-512` 起服，`match_started` 的 `chunk_count` 1024、`load_ms` 828、`heap_delta_kib` 9,455、`heap_gc_runs` 4（第 2 步判据内，与 RUN-024 的 771～968 / 约 9,300 同档，光照修复没有拖慢整图载入）；第 10 步绿，第 11 步 supplier 改回 `DynamicChunk` 红在 `column 0,0: the open air above the map is not lit by the sky`，还原后绿；TC-GAME-029 的第 3～9 步本轮没跑（与 RUN-024 同范围）。基准的 JSON 都在负载 21～77 的机器上跑出，耗时数字只当上界，本轮不判耗时。**DH + Iris spike（不是验收，只登证据指针）**：`docs/research/client-spikes-2026-09/dh-iris/README.md`，报告 `report-dh.txt` / `report-dh-iris.txt`、日志摘录与 `screenshots/`，随 `75925b315d` 合入；集成合并时只编译了 gametest 源码集（`client-fabric` 的 `compileGametestJava`，同时 `check` 92 个测试 0 失败），本轮没有重跑 `runClientGameTest`。**本轮没执行**：TC-WORLD-007（机器不空闲）、TC-WORLD-008（阻塞）、真显卡项（本机只有 llvmpipe 无头容器，见 §2 不测表）、`client-fabric` 构建（代码与集成合并时同一 commit）、TC-029 之外的冒烟级用例（沿用 RUN-023、RUN-024 的范围）。
 

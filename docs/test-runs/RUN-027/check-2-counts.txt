@@ -1,0 +1,9 @@
+# directory tests skipped failures errors (fresh XML after check-2)
+./architecture-tests/build/test-results/test 5 0 0 0
+./build/test-results/test 2925 15 0 0
+./game-rts/build/test-results/test 83 0 0 0
+./plugin-api/build/test-results/test 2 0 0 0
+./protocol/build/test-results/test 78 0 0 0
+./server-app/build/test-results/test 113 0 0 0
+./testing/build/test-results/test 7 0 0 0
+total 3213 15 0 0

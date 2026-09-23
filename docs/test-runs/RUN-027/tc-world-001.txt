@@ -1,0 +1,71 @@
+Wed Sep 23 14:36:45 UTC 2026
+{ 13.46 26.76 28.67 }
+8772698832d95bc0c49d10ae703fcabe62048ccd
+BUILD SUCCESSFUL in 36s
+<testsuite name="io.github.bearisbug.synaxis.instance.light.LightParityIntegrationTest" tests="7" skipped="0" failures="0" errors="0" timestamp="2026-09-23T14:37:20.351Z" hostname="Mac.local" time="1.667"
+<testcase name="[1] &quot;cave&quot;"
+<testcase name="[2] &quot;deep&quot;"
+<testcase name="[3] &quot;emitters&quot;"
+<testcase name="[4] &quot;overhang&quot;"
+<testcase name="[5] &quot;shaft&quot;"
+<testcase name="[6] &quot;surface&quot;"
+<testcase name="[7] &quot;transparent&quot;"
+== step 2: flip low nibble of byte 12 in surface.light.gz
+LightParityIntegrationTest > matchesVanilla(String, Env) > [6] "surface" FAILED
+7 tests completed, 1 failed
+> Task :test FAILED
+BUILD FAILED in 24s
+tests="7" skipped="0" failures="1" errors="0" 
+surface sky (-16, -64, -16) minecraft:air: vanilla 15, synaxis 0
+== step 3: restore, add zz-copy scene, gen.sh
+WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
+WARNING: sun.misc.Unsafe::objectFieldOffset has been called by org.joml.MemUtil$MemUtilUnsafe (file:/private/var/folders/cg/30kkblns6599cnrbhx__l4jw0000gn/T/light-oracle.OpIrJZ/META-INF/libraries/org/joml/joml/1.10.8/joml-1.10.8.jar)
+WARNING: Please consider reporting this to the maintainers of class org.joml.MemUtil$MemUtilUnsafe
+WARNING: sun.misc.Unsafe::objectFieldOffset will be removed in a future release
+WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
+WARNING: sun.misc.Unsafe::objectFieldOffset has been called by org.joml.MemUtil$MemUtilUnsafe (file:/private/var/folders/cg/30kkblns6599cnrbhx__l4jw0000gn/T/light-oracle.OpIrJZ/META-INF/libraries/org/joml/joml/1.10.8/joml-1.10.8.jar)
+WARNING: Please consider reporting this to the maintainers of class org.joml.MemUtil$MemUtilUnsafe
+WARNING: sun.misc.Unsafe::objectFieldOffset will be removed in a future release
+cave
+WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
+WARNING: sun.misc.Unsafe::objectFieldOffset has been called by org.joml.MemUtil$MemUtilUnsafe (file:/private/var/folders/cg/30kkblns6599cnrbhx__l4jw0000gn/T/light-oracle.OpIrJZ/META-INF/libraries/org/joml/joml/1.10.8/joml-1.10.8.jar)
+WARNING: Please consider reporting this to the maintainers of class org.joml.MemUtil$MemUtilUnsafe
+WARNING: sun.misc.Unsafe::objectFieldOffset will be removed in a future release
+deep
+WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
+WARNING: sun.misc.Unsafe::objectFieldOffset has been called by org.joml.MemUtil$MemUtilUnsafe (file:/private/var/folders/cg/30kkblns6599cnrbhx__l4jw0000gn/T/light-oracle.OpIrJZ/META-INF/libraries/org/joml/joml/1.10.8/joml-1.10.8.jar)
+WARNING: Please consider reporting this to the maintainers of class org.joml.MemUtil$MemUtilUnsafe
+WARNING: sun.misc.Unsafe::objectFieldOffset will be removed in a future release
+emitters
+WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
+WARNING: sun.misc.Unsafe::objectFieldOffset has been called by org.joml.MemUtil$MemUtilUnsafe (file:/private/var/folders/cg/30kkblns6599cnrbhx__l4jw0000gn/T/light-oracle.OpIrJZ/META-INF/libraries/org/joml/joml/1.10.8/joml-1.10.8.jar)
+WARNING: Please consider reporting this to the maintainers of class org.joml.MemUtil$MemUtilUnsafe
+WARNING: sun.misc.Unsafe::objectFieldOffset will be removed in a future release
+overhang
+WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
+WARNING: sun.misc.Unsafe::objectFieldOffset has been called by org.joml.MemUtil$MemUtilUnsafe (file:/private/var/folders/cg/30kkblns6599cnrbhx__l4jw0000gn/T/light-oracle.OpIrJZ/META-INF/libraries/org/joml/joml/1.10.8/joml-1.10.8.jar)
+WARNING: Please consider reporting this to the maintainers of class org.joml.MemUtil$MemUtilUnsafe
+WARNING: sun.misc.Unsafe::objectFieldOffset will be removed in a future release
+shaft
+WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
+WARNING: sun.misc.Unsafe::objectFieldOffset has been called by org.joml.MemUtil$MemUtilUnsafe (file:/private/var/folders/cg/30kkblns6599cnrbhx__l4jw0000gn/T/light-oracle.OpIrJZ/META-INF/libraries/org/joml/joml/1.10.8/joml-1.10.8.jar)
+WARNING: Please consider reporting this to the maintainers of class org.joml.MemUtil$MemUtilUnsafe
+WARNING: sun.misc.Unsafe::objectFieldOffset will be removed in a future release
+surface
+WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
+WARNING: sun.misc.Unsafe::objectFieldOffset has been called by org.joml.MemUtil$MemUtilUnsafe (file:/private/var/folders/cg/30kkblns6599cnrbhx__l4jw0000gn/T/light-oracle.OpIrJZ/META-INF/libraries/org/joml/joml/1.10.8/joml-1.10.8.jar)
+WARNING: Please consider reporting this to the maintainers of class org.joml.MemUtil$MemUtilUnsafe
+WARNING: sun.misc.Unsafe::objectFieldOffset will be removed in a future release
+transparent
+WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
+WARNING: sun.misc.Unsafe::objectFieldOffset has been called by org.joml.MemUtil$MemUtilUnsafe (file:/private/var/folders/cg/30kkblns6599cnrbhx__l4jw0000gn/T/light-oracle.OpIrJZ/META-INF/libraries/org/joml/joml/1.10.8/joml-1.10.8.jar)
+WARNING: Please consider reporting this to the maintainers of class org.joml.MemUtil$MemUtilUnsafe
+WARNING: sun.misc.Unsafe::objectFieldOffset will be removed in a future release
+zz-copy
+gen.sh exit=0
+cmp: identical
+BUILD SUCCESSFUL in 25s
+tests="8" skipped="0" failures="0" errors="0" 
+<testcase name="[8] &quot;zz-copy&quot;"
+== step 4
+git status src: []

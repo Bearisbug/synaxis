@@ -1,11 +1,25 @@
 <?xml version="1.0" encoding="UTF-8"?>
+<!--
+  docs/DESIGN-PROD.md API-PROD-014. -Dsynaxis.app.log picks where the log goes besides the console:
+  - file (default): logs/latest.log, rolled every day or at 256 MB, gzipped, 14 days and 10 GB at
+    most, behind an AsyncAppender that drops rather than blocks the thread that logs.
+  - stdout: nothing more than the console, for a container whose runtime collects stdout. The file
+    appenders are not even built, so no file is created.
+  Any other value names a resource that does not exist, and logback prints that on the console.
+  The console stays on in both modes: the ready line and every server log the tests, the soak
+  harness and CI read is taken from stdout.
+-->
 <configuration>
     <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
         <encoder>
             <pattern>%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
         </encoder>
     </appender>
+
     <root level="INFO">
         <appender-ref ref="STDOUT"/>
     </root>
+
+    <!-- logback-file.xml or logback-stdout.xml, next to this file -->
+    <include resource="logback-${synaxis.app.log:-file}.xml"/>
 </configuration>

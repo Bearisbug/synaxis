@@ -39,7 +39,7 @@ class CoreModeIntegrationTest {
 
     private PluginHost host(Env env) {
         return new PluginHost(env.process(), workingDirectory.resolve("plugins"),
-                new EventLedger(workingDirectory.resolve("logs")));
+                new EventLedger(workingDirectory.resolve("logs"), "test", EventLedger.DEFAULT_MAX_BYTES_PER_DAY));
     }
 
     private static InstanceContainer core(Env env, PluginHost host) {

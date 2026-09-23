@@ -19,6 +19,8 @@ class MainTest {
     void clearProperties() {
         System.clearProperty("synaxis.app.port");
         System.clearProperty("synaxis.app.plugins");
+        System.clearProperty("synaxis.app.shard-id");
+        System.clearProperty("synaxis.app.ledger-max-bytes-per-day");
         System.clearProperty("synaxis.entity-view-distance");
         System.clearProperty("synaxis.chunk-view-distance");
         System.clearProperty("synaxis.player.chunk-update-limiter-history-size");
@@ -72,5 +74,36 @@ class MainTest {
     void theSelectionPropertyIsACommaSeparatedList() {
         System.setProperty("synaxis.app.plugins", "rts, probe ,");
         assertEquals(Set.of("rts", "probe"), Main.selectedPlugins());
+    }
+
+    @Test
+    void theShardIdDefaultsToLocalAndTakesTheProperty() {
+        assertEquals("local", Main.shardId());
+        System.setProperty("synaxis.app.shard-id", "r01-c1");
+        assertEquals("r01-c1", Main.shardId());
+    }
+
+    // The shard id is part of the ledger and crash report file names
+    @Test
+    void aShardIdThatCouldLeaveTheDirectoryIsRefused() {
+        System.setProperty("synaxis.app.shard-id", "../r01");
+        final IllegalArgumentException refusal = assertThrows(IllegalArgumentException.class, Main::shardId);
+        assertTrue(refusal.getMessage().contains("synaxis.app.shard-id=../r01"), refusal.getMessage());
+    }
+
+    @Test
+    void theLedgerCapIsOneGibibyteUnlessThePropertySaysOtherwise() {
+        assertEquals(1L << 30, Main.ledgerMaxBytesPerDay());
+        System.setProperty("synaxis.app.ledger-max-bytes-per-day", "1048576");
+        assertEquals(1_048_576L, Main.ledgerMaxBytesPerDay());
+    }
+
+    @Test
+    void aLedgerCapThatIsNotAPositiveNumberIsRefused() {
+        System.setProperty("synaxis.app.ledger-max-bytes-per-day", "0");
+        assertThrows(IllegalArgumentException.class, Main::ledgerMaxBytesPerDay);
+        System.setProperty("synaxis.app.ledger-max-bytes-per-day", "1G");
+        final IllegalArgumentException refusal = assertThrows(IllegalArgumentException.class, Main::ledgerMaxBytesPerDay);
+        assertTrue(refusal.getMessage().contains("synaxis.app.ledger-max-bytes-per-day=1G"), refusal.getMessage());
     }
 }

@@ -92,3 +92,41 @@ jobs:
             --compare-branch=origin/main \
             --src-roots src/main/java testing/src/main/java protocol/src/main/java plugin-api/src/main/java server-app/src/main/java game-rts/src/main/java \
             --fail-under=80
+
+  # REQ-PROD-019: the whole suite again with four tick threads and the ownership assertions on.
+  # The counter provider spreads the chunks of one instance over all four threads.
+  multithreaded:
+    name: Test with 4 tick threads (strict)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Set up JDK 25
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: 25
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          cache-read-only: ${{ github.ref != 'refs/heads/main' }}
+
+      - name: Run the tests with 4 tick threads
+        run: ./gradlew test -Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true
+
+      # Without this a build that stopped forwarding the properties would pass on one thread
+      - name: Check that the tests ran with 4 tick threads
+        run: |
+          grep -q 'env dispatcher threads: 4' testing/build/test-results/test/TEST-io.github.bearisbug.synaxis.testing.test.EnvDispatcherThreadsIntegrationTest.xml
+
+      - name: Upload test reports
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: test-reports-multithreaded
+          path: |
+            **/build/reports/tests/
+            **/build/test-results/
+          retention-days: 14

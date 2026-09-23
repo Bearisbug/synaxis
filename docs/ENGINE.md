@@ -158,6 +158,40 @@ python3 tools/protocol-probe/probe.py echo --payload ping   # 期望打印 echo 
 
 **插件参与了启动却没留下玩法**（`onEnable` 抛异常、`-Dsynaxis.app.map` 指了未知预设……）仍然以非零码退出且端口不 bind——这是设计好的行为，不是故障，核心模式不会替一个坏掉的插件兜底。写插件见 `docs/PLUGINS.md`。
 
+#### JVM 参数（生产默认）
+
+`server-app/build.gradle.kts` 的 `applicationDefaultJvmArgs` 写死了下面七个参数（`docs/DESIGN-PROD.md` `REQ-PROD-028` 与 `REQ-PROD-015`）。`:server-app:run` 与 `installDist` / `distZip` 生成的启动脚本 `bin/server-app` 都带上它们，所以本机开发、CI 与部署机跑的是同一组。
+
+| 参数 | 理由 |
+| --- | --- |
+| `-XX:+UseG1GC` | JDK 25 的默认收集器本来就是 G1，但只在 JVM 认定为「服务器级机器」（≥ 2 核且 ≥ 1792 MiB 内存）时才选它；容器里 CPU 或内存配额卡得小，会静默退回 Serial。显式写上，换机器不变 |
+| `-Xms4G -Xmx4G` | 初始堆等于最大堆，运行中不扩缩堆、不为扩堆触发 GC。50 连接三档（1,000 / 2,000 / 4,000 单位）强制 GC 后的存活堆是 43.0 / 51.1 / 64.1 MiB（`docs/research/soak-2026-09-22/report.md` 规模曲线表）；500 人档的存活堆未实测（`REQ-PROD-029` 压测后回填）。部署机按 16 GiB 规划（`docs/DESIGN-PROD.md` §2 容量表），4 GiB 堆之外留给堆外内存（网络缓冲、元空间、线程栈）与系统 |
+| `-XX:+AlwaysPreTouch` | 启动时把整个堆逐页写一遍，缺页中断发生在 bind 之前，不落在 tick 里。代价是启动慢一点、进程一起来就占满堆的物理内存 |
+| `-XX:MaxGCPauseMillis=50` | 一个 tick 的预算是 50 ms（20 TPS）。Paper 推荐的 Aikar 参数用 200 ms（docs.papermc.io/paper/aikars-flags），一次停顿就能吃掉 4 个 tick |
+| `-XX:+HeapDumpOnOutOfMemoryError` | OOM 时在进程工作目录写 `java_pid<pid>.hprof`（`:server-app:run` 的工作目录是仓库根，`**.hprof` 已 gitignore）。一份转储最大约等于堆上限 4 GiB，不自动删除（`docs/DESIGN-PROD.md` §15 日志与磁盘行） |
+| `-XX:+ExitOnOutOfMemoryError` | OOM 后堆里的状态已不可信，直接退出、不走 `stop` 的停机序列，由 systemd 或容器拉起（`REQ-PROD-015`）。部署单元要配自动重启，否则 OOM 后进程就停在那里 |
+
+改用分代 ZGC 的条件（`docs/DESIGN-PROD.md` §2 堆行）：堆上限要超过 8 GiB，或压测中 GC 暂停 P99 > 10 ms。代价是吞吐与 RSS 变差，幅度未测。JDK 25 的 ZGC 只有分代模式，不需要再写 `-XX:+ZGenerational`。
+
+**覆盖方式**：启动脚本把 `JAVA_OPTS` 与 `SERVER_APP_OPTS` 排在默认参数之后，HotSpot 对同一参数取最后一次，所以部署机改参数不用重新构建。换收集器时必须先关掉 G1，只加 `-XX:+UseZGC` 会报 `Multiple garbage collectors selected` 并拒绝启动：
+
+```bash
+./gradlew :server-app:installDist --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts
+JAVA_OPTS="-XX:-UseG1GC -XX:+UseZGC -Xms8G -Xmx8G -Dsynaxis.app.port=25565" \
+  server-app/build/install/server-app/bin/server-app
+```
+
+`:server-app:run` 不读 `JAVA_OPTS`，本机开发要换参数只能临时改 `build.gradle.kts`。
+
+**确认参数生效**：服务端就绪后按端口找到 pid，读 `jcmd <pid> VM.flags`：
+
+```bash
+pid=$(lsof -nP -iTCP:25565 -sTCP:LISTEN -t)
+jcmd "$pid" VM.flags | tr ' ' '\n' | grep -E 'UseG1GC|HeapSize|AlwaysPreTouch|MaxGCPauseMillis|OnOutOfMemoryError'
+```
+
+期望出现 `-XX:+UseG1GC`、`-XX:InitialHeapSize=4294967296`、`-XX:MaxHeapSize=4294967296`、`-XX:+AlwaysPreTouch`、`-XX:MaxGCPauseMillis=50`、`-XX:+HeapDumpOnOutOfMemoryError`、`-XX:+ExitOnOutOfMemoryError`。macOS 上 `ps -o rss` 在预触之后仍只有几十 MiB（2026-09-23 本机实测 47,920 KiB），这是 macOS 压缩了全零页，不说明预触没生效，以 `VM.flags` 为准；Linux 上预触后的 RSS 未实测。
+
 ### 3.5 离线构建（验证依赖已全部冻结在本地）
 
 ```bash

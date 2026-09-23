@@ -9,6 +9,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -41,10 +42,11 @@ import org.jspecify.annotations.Nullable;
  * phase handshake of a server-app in game mode and reaches the world. S2: the same scene through
  * the orthographic and the pitched perspective spike camera. S3: {@link EntityCullingSpike}. S4: the
  * world ray under the cursor, still and while the camera pans. S5: section visibility with the eye
- * high and outside the map, and the two mouse input paths. SYNAXIS_SPIKES picks among S2 to S5;
- * {@code dh} adds {@link DhIrisSpike}, which runs only when named.
- * Findings go to {@code synaxis-gametest/report.txt} in the run directory, screenshots to
- * {@code screenshots/}.
+ * high and outside the map, and the two mouse input paths. SYNAXIS_SPIKES picks among S2 to S5
+ * ({@code all} for every one); {@code dh} adds {@link DhIrisSpike}, which runs only when named,
+ * not under {@code all}. Unset, the spikes do not run at all and only
+ * {@link RegressionClientGameTest} does. Findings are appended to {@code synaxis-gametest/report.txt}
+ * in the run directory, after the regression's R lines; screenshots go to {@code screenshots/}.
  */
 public final class SpikeClientGameTest implements FabricClientGameTest {
 
@@ -52,6 +54,8 @@ public final class SpikeClientGameTest implements FabricClientGameTest {
 
     @Override
     public void runTest(ClientGameTestContext context) {
+        final String spikes = System.getenv("SYNAXIS_SPIKES");
+        if (spikes == null || spikes.isBlank()) return;
         final List<String> report = new ArrayList<>();
 
         context.waitForScreen(TitleScreen.class);
@@ -256,24 +260,22 @@ public final class SpikeClientGameTest implements FabricClientGameTest {
         TerrainSpike.run(context, report);
     }
 
-    /** Whether SYNAXIS_SPIKES (comma separated, e.g. {@code s2,s5}) names a spike; unset runs S2 to S5. */
+    /** Whether SYNAXIS_SPIKES (comma separated, e.g. {@code s2,s5}) names a spike; {@code all} runs S2 to S5. */
     private static boolean enabled(String spike) {
-        final String spikes = System.getenv("SYNAXIS_SPIKES");
-        if (spikes == null || spikes.isBlank()) return true;
-        return List.of(spikes.replace(" ", "").split(",")).contains(spike);
+        final List<String> spikes = List.of(System.getenv("SYNAXIS_SPIKES").replace(" ", "").split(","));
+        return spikes.contains("all") || spikes.contains(spike);
     }
 
     /** Whether SYNAXIS_SPIKES names a spike that only runs on request, such as {@code dh}. */
     private static boolean named(String spike) {
-        final String spikes = System.getenv("SYNAXIS_SPIKES");
-        return spikes != null && !spikes.isBlank() && enabled(spike);
+        return List.of(System.getenv("SYNAXIS_SPIKES").replace(" ", "").split(",")).contains(spike);
     }
 
     private static void write(List<String> report) {
         final Path file = FabricLoader.getInstance().getGameDir().resolve("synaxis-gametest/report.txt");
         try {
             Files.createDirectories(file.getParent());
-            Files.write(file, report, StandardCharsets.UTF_8);
+            Files.write(file, report, StandardCharsets.UTF_8, StandardOpenOption.CREATE, StandardOpenOption.APPEND);
         } catch (IOException e) {
             throw new IllegalStateException("could not write " + file, e);
         }

@@ -221,6 +221,16 @@ final class PluginHost {
         return enabled.stream().map(LoadedPlugin::id).toList();
     }
 
+    /**
+     * Read by a crash report, from whichever thread is failing: a report written while a plugin is
+     * being enabled or disabled can fail to list them, and prints that failure instead.
+     *
+     * @return one {@code id version} entry per enabled plugin, in enable order
+     */
+    List<String> enabledPluginVersions() {
+        return enabled.stream().map(loaded -> loaded.id() + " " + loaded.plugin().descriptor().version()).toList();
+    }
+
     private void tearDown(LoadedPlugin loaded) {
         hostNode.removeChild(loaded.node());
         loaded.scheduler().cancelAll();

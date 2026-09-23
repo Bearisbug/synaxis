@@ -65,7 +65,8 @@ public class EntityViewDirectionIntegrationTest {
         var headLookTracker = connection.trackIncoming(EntityHeadLookPacket.class);
 
         player2.setSynchronizationTicks(1);
-        player2.setView(90, 45);
+        // Ticked already, so it belongs to a tick thread and the test thread has to acquire it
+        player2.acquirable().sync(p -> p.setView(90, 45));
 
         env.tick();
 

@@ -57,6 +57,12 @@ public record ServerConfig(
         // Entities
         boolean enforceInteractionLimit,
 
+        // Tick watchdog (docs/DESIGN-PROD.md API-PROD-013), in milliseconds, 0 turns the stage off
+        long watchdogEarlyWarning,
+        long watchdogEarlyWarningEvery,
+        long watchdogTimeout,
+        long watchdogHaltAfter,
+
         // Experimental/unstable
         boolean registryUnsafeOps,
         boolean insideTest,
@@ -73,6 +79,9 @@ public record ServerConfig(
         if (playerChunkUpdateLimiterHistorySize < 0)
             throw new IllegalArgumentException(
                     "playerChunkUpdateLimiterHistorySize must not be negative but was " + playerChunkUpdateLimiterHistorySize);
+        if (watchdogEarlyWarning < 0 || watchdogEarlyWarningEvery < 0 || watchdogTimeout < 0 || watchdogHaltAfter < 0)
+            throw new IllegalArgumentException("the watchdog durations must not be negative but were " + watchdogEarlyWarning
+                    + ", " + watchdogEarlyWarningEvery + ", " + watchdogTimeout + " and " + watchdogHaltAfter);
     }
 
     /**
@@ -119,6 +128,10 @@ public record ServerConfig(
                 .chunksPerTickMultiplier(floatProperty("synaxis.chunk-queue.multiplier", DEFAULTS.chunksPerTickMultiplier))
                 .viewablePacket(booleanProperty("synaxis.viewable-packet", DEFAULTS.viewablePacket))
                 .enforceInteractionLimit(booleanProperty("synaxis.enforce-entity-interaction-range", DEFAULTS.enforceInteractionLimit))
+                .watchdogEarlyWarning(longProperty("synaxis.watchdog.early-warning-ms", DEFAULTS.watchdogEarlyWarning))
+                .watchdogEarlyWarningEvery(longProperty("synaxis.watchdog.early-warning-every-ms", DEFAULTS.watchdogEarlyWarningEvery))
+                .watchdogTimeout(longProperty("synaxis.watchdog.timeout-ms", DEFAULTS.watchdogTimeout))
+                .watchdogHaltAfter(longProperty("synaxis.watchdog.halt-after-ms", DEFAULTS.watchdogHaltAfter))
                 .registryUnsafeOps(booleanProperty("synaxis.registry.unsafe-ops", DEFAULTS.registryUnsafeOps))
                 .insideTest(booleanProperty("synaxis.inside-test", DEFAULTS.insideTest))
                 .fasterSocketWrites(booleanProperty("synaxis.new-socket-write-lock", DEFAULTS.fasterSocketWrites))
@@ -209,6 +222,10 @@ public record ServerConfig(
         private float chunksPerTickMultiplier = 1f;
         private boolean viewablePacket = true;
         private boolean enforceInteractionLimit = true;
+        private long watchdogEarlyWarning = 10_000;
+        private long watchdogEarlyWarningEvery = 5_000;
+        private long watchdogTimeout = 60_000;
+        private long watchdogHaltAfter = 15_000;
         private boolean registryUnsafeOps = false;
         private boolean insideTest = false;
         private boolean fasterSocketWrites = false;
@@ -251,6 +268,10 @@ public record ServerConfig(
             this.chunksPerTickMultiplier = config.chunksPerTickMultiplier;
             this.viewablePacket = config.viewablePacket;
             this.enforceInteractionLimit = config.enforceInteractionLimit;
+            this.watchdogEarlyWarning = config.watchdogEarlyWarning;
+            this.watchdogEarlyWarningEvery = config.watchdogEarlyWarningEvery;
+            this.watchdogTimeout = config.watchdogTimeout;
+            this.watchdogHaltAfter = config.watchdogHaltAfter;
             this.registryUnsafeOps = config.registryUnsafeOps;
             this.insideTest = config.insideTest;
             this.fasterSocketWrites = config.fasterSocketWrites;
@@ -418,6 +439,26 @@ public record ServerConfig(
             return this;
         }
 
+        public Builder watchdogEarlyWarning(long watchdogEarlyWarning) {
+            this.watchdogEarlyWarning = watchdogEarlyWarning;
+            return this;
+        }
+
+        public Builder watchdogEarlyWarningEvery(long watchdogEarlyWarningEvery) {
+            this.watchdogEarlyWarningEvery = watchdogEarlyWarningEvery;
+            return this;
+        }
+
+        public Builder watchdogTimeout(long watchdogTimeout) {
+            this.watchdogTimeout = watchdogTimeout;
+            return this;
+        }
+
+        public Builder watchdogHaltAfter(long watchdogHaltAfter) {
+            this.watchdogHaltAfter = watchdogHaltAfter;
+            return this;
+        }
+
         public Builder registryUnsafeOps(boolean registryUnsafeOps) {
             this.registryUnsafeOps = registryUnsafeOps;
             return this;
@@ -452,6 +493,7 @@ public record ServerConfig(
                     suppressMisusedPacketErrorLevel, rejectMalformedPacket, rejectMisusedPacket, socketSendBufferSize,
                     socketReceiveBufferSize, socketNoDelay, socketTimeout, pooledBufferSize, minChunksPerTick,
                     maxChunksPerTick, chunksPerTickMultiplier, viewablePacket, enforceInteractionLimit,
+                    watchdogEarlyWarning, watchdogEarlyWarningEvery, watchdogTimeout, watchdogHaltAfter,
                     registryUnsafeOps, insideTest, fasterSocketWrites, proxyProtocol, proxyProtocolRequired);
         }
     }

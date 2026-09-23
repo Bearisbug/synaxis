@@ -6,7 +6,7 @@
 | --- | --- |
 | 状态 | 草稿 |
 | Owner | Bearisbug |
-| 关联设计文档 | `docs/DESIGN.md`（引擎域 M1 / M1.5）、`docs/DESIGN-M2.md`（游戏域 M2 分册）与 `docs/DESIGN-M3.md`（大世界域 M3 分册）；三份文档的 REQ 各自编号，M2 侧写作 `REQ-M2-*`、M3 侧写作 `REQ-M3-*` |
+| 关联设计文档 | `docs/DESIGN.md`（引擎域 M1 / M1.5）、`docs/DESIGN-M2.md`（游戏域 M2 分册）、`docs/DESIGN-M3.md`（大世界域 M3 分册）与 `docs/DESIGN-PROD.md`（生产就绪分册）；各文档的 REQ 各自编号，M2 侧写作 `REQ-M2-*`、M3 侧写作 `REQ-M3-*`，生产就绪侧写作 `REQ-PROD-*`，对应用例写作 `TC-PROD-*` |
 | 被测系统 | 仓库 `Bearisbug/synaxis`，分支 `main` |
 | 最后更新 | 2026-09-23 |
 
@@ -15,6 +15,12 @@
 | 日期 | 改动 | 作者 |
 | --- | --- | --- |
 | 2026-09-23 | 接入 `docs/DESIGN-M3.md` v0.3（大世界域）。元信息「关联设计文档」加入该分册，联检由两份变三份。**新增 8 条**，域段 `WORLD`：光照 `TC-WORLD-001`（原版 26.2 对拍 7 场景 0 差异、篡改真值即红且报出坐标与两边的值、新场景经 `gen.sh` 生成后自动纳入）、`TC-WORLD-002`（`gen.sh` 逐字节再生真值、jar 的 SHA-1 不符退 1）、`TC-WORLD-003`（`lightBlock` 衰减与 tinted_glass，换回修复前的两个文件红 11 条）、`TC-WORLD-004`（面遮挡表与 `ShapeImpl` 满面，表错位、删守卫各红）、`TC-WORLD-005`（`fullyLit`，删一行红 2 条）；基准 `TC-WORLD-006`（`--quick` 冒烟与区块包字节对基线）、`TC-WORLD-007`（空闲机器复跑默认作业表）、`TC-WORLD-008`（真地图档，等美术地图）。§2 加 M3 覆盖范围、REQ-M3 对照表（21 条 REQ 未实现、没有用例）和两行不测项：DH + Iris spike 不作验收，真显卡项无归属。§3 加「M3（大世界域）环境」。§5 加大世界域的局部轮映射，跨域牵连加光照、升版本、区块包编码三条 | Bearisbug |
+| 2026-09-23 | 跟进 `docs/DESIGN-PROD.md` 第 0 波 0E（`REQ-PROD-028`，G25）。**新增 `TC-PROD-050`**（对应 `REQ-PROD-028`）：新开「生产就绪 · 运行参数」一节，判 `installDist` 启动脚本与 `:server-app:run` 两条入口的 JVM 都带 G1、`-Xms4G -Xmx4G`、`AlwaysPreTouch`、`MaxGCPauseMillis=50` 与两个 OOM 参数（`jcmd VM.flags` 计数 7），`JAVA_OPTS` 能覆盖、换 ZGC 须先关 G1；反证是删掉 `-Xms4G` 与 `AlwaysPreTouch` 两行，计数掉到 5。§5 加生产就绪域一行 | Bearisbug |
+| 2026-09-23 | 跟进 `docs/DESIGN-PROD.md` 第 0 波 0D（`REQ-PROD-030` 离线档，`API-PROD-026`）。**新增三条**：`TC-PROD-040`（无头容器里真客户端 R1～R8 全绿，dev 与生产启动器各一次，带 spike 时 R 行在前、spike 行追加；反证删掉 `en_us.json` 的 `synaxis:protocol-error` 译文，红在 R8）、`TC-PROD-041`（判定读报告与台账：连不上服务端时报告仍写满 8 行、全绿报告配空台账也判红、缺报告判红）、`TC-PROD-042`（工作流触发、`continue-on-error` 与判定步骤；把判定步骤原样抽出来在 CI 布局里跑，反证一条 R8 FAIL 或缺一份报告即红）。§5 局部轮加「生产就绪域」一行 | Bearisbug |
+| 2026-09-23 | 跟进 `docs/DESIGN-PROD.md` §26 第 0 波 0C（`REQ-PROD-019` 前半）。**新增 §4「生产就绪 · 第 0 波 · 线程正确性」四条**：`TC-PROD-030`（`Math.floorMod` 取模，反证改回 `Math.abs` 即 `Index -2 out of bounds for length 6`）、`TC-PROD-031`（`Entity#teleport`、`Entity#setInstance`、`Player#setInstance` 三处所有权断言，逐处反证）、`TC-PROD-032`（未分配实体放行建它的线程与非 tick 线程，别的 tick 线程仍判越权；玩家换实例的调度线程半段经 `Acquirable`；各一步反证）、`TC-PROD-033`（`-Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true` 跑全量，含「属性没转进测试 JVM」与「`Env` 没读」两步反证；登记 1 线程轮红的 5 条、4 线程首轮红的 1 条及处置）。§5 引擎域加「tick 多线程」一组 | Bearisbug |
+| 2026-09-23 | 跟进 `docs/DESIGN-PROD.md` 第 0 波 0B 组（`REQ-PROD-014` 前半：tick 看门狗打栈、判死、崩溃报告、halt）。**新增 `TC-PROD-020`～`TC-PROD-023`**，每条带反证（临时破坏实现、重跑、看红、还原），红在哪一条写进期望列；§19 的「进入落盘停机」「倒计时期间卡死仍先落盘」两处归第 3 波 3A，本波各用例只验 halt 路径。**§3 运行时产物**：崩溃报告也在看门狗判死时写，并注明判死后以退出码 70 halt 与 `synaxis.watchdog.timeout-ms=0` 关闭。§5 回归映射加生产就绪域一行，跨域牵连加一条 | Bearisbug |
+| 2026-09-23 | 0A 组返工：`TC-PROD-006` 第 1 步加 `aRecordRacingTheCloseIsWrittenOrRefusedNeverLeftInTheQueue`（`record` 与停机竞争时那一行要么落盘、要么在日志里计数），新增第 4 步反证；`TC-PROD-001` 第 1 步加引擎默认落点 10 s 限流一条，新增第 4 步反证；`TC-PROD-001`、`TC-PROD-003`、`TC-PROD-006`、`TC-PROD-007` 反证期望里的测试行号随测试文件改动更新，`TC-PROD-006` 第 3 步由红 3 条改为红 4 条 | Bearisbug |
+| 2026-09-23 | 跟进 `docs/DESIGN-PROD.md` 第 0 波 0A 组（`REQ-PROD-015` 崩溃报告与未捕获异常、`REQ-PROD-016` 日志文件与轮转、`REQ-PROD-017` 事件台账缓冲写入）。**新增 `TC-PROD-001`～`TC-PROD-008`**，每条带一步反证（临时破坏实现、重跑、看红、还原），红在哪一条写进期望列。**§3 环境段**：「没有服务端日志文件」改为默认另写 `logs/latest.log`（`-Dsynaxis.app.log=stdout` 时不写），台账文件名改为 `logs/events-<shard_id>-YYYYMMDD.jsonl`（`shard_id` 默认 `local`，glob `events-*.jsonl` 照旧匹配）并注明写盘最多晚 1 s；新增系统属性 `synaxis.app.shard-id`、`synaxis.app.ledger-max-bytes-per-day`、`synaxis.app.log`。**`TC-035` 保留 ID、判据未动**：第 2 步里「`EventLedgerTest` 一条」改为点名 `aFloodOfEventsIntoAnUnwritableLedgerWritesOneLine`（该类现有六条，其余五条归 `TC-PROD-006` / `TC-PROD-007`）。§5 回归映射加生产就绪域一行与跨域牵连一条 | Bearisbug |
 | 2026-09-23 | 跟进 `docs/DESIGN-M2.md` v0.44（对局世界由服务端在载入阶段整图算光照）。**`TC-GAME-029` 保留 ID**：第 2 步的实测参考值换成含光照的 2026-09-23 数字（判据 `load_ms` < 3000、`heap_gc_runs` ≥ 2、`heap_delta_kib` 在 `0` 与 `51200` 之间不变）；新增第 10 步「进场即有光照」（`MatchIntegrationTest#theMapIsLitBeforeTheMatchRuns`）与第 11 步反证（chunk supplier 改回 `DynamicChunk` 则第 10 步必红）。§5 跨域牵连补一条：动了对局的 chunk supplier、载入流程或引擎 `LightingChunk` / `instance.light` → 加 TC-GAME-029 | Bearisbug |
 | 2026-09-23 | 跟进 `docs/DESIGN.md` v0.33 与 `docs/DESIGN-M2.md` v0.43。**新增 `TC-036`**（对应 `REQ-005`）：`PacketVanillaIdTest` 把 26.2 原版 login、configuration、play 两个方向六张表的包 ID 钉死，一步绿、一步反证（删掉 `award_stats` 的占位即红）、一步还原；§2 补一条「包 ID 口径」，说明探针与压测 harness 的包 ID 来自本仓库注册表、不能证明与原版一致；§5 引擎域「删除与注册表」加 TC-036，跨域牵连加「动了包注册表」一条。**`TC-GAME-052` 保留 ID**：第 2 步当前值 4.0 → 5.0；第 7 步的公式补上 `clamp(rd / 8, 1, 2.5)`，判据由「≥ 97 格」改为「盖住渲染距离雾界」（rd 8 为 160 格、覆盖到眼高 96，rd 10 为 200 格、覆盖到眼高 120）。`TC-GAME-047` 第 4 步的 4.0 随之改 5.0 | Bearisbug |
 | 2026-09-22 | 跟进 `docs/DESIGN-M2.md` v0.41（§15 整表阈值的正式测量，报告 `docs/research/soak-2026-09-22/report.md`）。**`TC-GAME-068` 保留 ID，操作列一字未改**：第 2、3 步的实测参考值从「待 v0.41 填」换成 2026-09-22 的实测，数字全部可从 `docs/research/soak-2026-09-22/runs/<档名>/summary.json` 复算——第 2 步四条预算里 tick、堆、寻路三条绿，`S2C_UNIT_STATE` 那条三个字段红（最坏布局把兴趣集顶到 512 条上限）；第 3 步三档 tick P99 8.617 → 9.698 → 11.096、至 4,000 未越线。第 2 步期望列的 `orders.answered = orders.sent` 补上口径：harness 到截止时刻即关连接，最后一秒内发出的下令收不到回包，差 ≤ 50 条不算红（实测差 3 条）。第 5、6 步的反证在正式测量那一轮重跑，参考值补上（`check=mismatch`、退出码 2）。§2 不测表、REQ ↔ TC 表与 §5 回归映射不动——`TC-GAME-068` 自 v0.39 起已登记在三处 | Bearisbug |
@@ -85,6 +91,8 @@
 - 包 ID 口径：协议探针 `tools/protocol-probe/probe.py` 与压测 harness `tools/loadtest/PacketFlood.java` 的包 ID 都是解析本仓库 `PacketVanilla.java` 得到的，编码端与解码端用同一张表，表错了也照样自洽地通过，所以**以探针或压测为判据的用例不能证明包 ID 与原版一致**。与 26.2 原版一致由 TC-036 的整表测试判（REQ-005 删包打乱 ID 的那次缺陷就是这样漏过去的，见 `docs/DESIGN.md` §28）。
 - 机械校验口径：`bash ~/.claude/skills/test-doc/check.sh docs/TEST.md` 做 REQ 双向联检——本文档引用的每条 REQ 必须在某一份设计文档里存在，每份设计文档的每条 REQ 必须被至少一条 TC 引用。**三份设计文档一起联检**：`check.sh` 把上方元信息「关联设计文档」行里的**每一个** `*.md` 都解析出来，`REQ-001`～`REQ-017`、`REQ-M2-001`～`REQ-M2-025` 与 `REQ-M3-001`～`REQ-M3-028` 都在范围内。两处不能动，动了绿灯就不再代表已核：① ID 正则的域段是 `[A-Z][A-Z0-9]*`，收窄成纯字母会让带数字的 `M2`、`M3` 域段整块静默退出联检；② 元信息那一行必须保留三份文档的路径，少一份则那一份的 REQ 无人认领。M3 侧的反向联检是被下方对照表里的「未实现」行满足的，绿灯只说明每条 REQ 都登记了去向，不说明它有用例。下表因此不是唯一判据，留作可读索引——查一条 REQ 由哪些 TC 覆盖、哪些 TC 已废弃及原因。
 
+- 生产就绪侧（`docs/DESIGN-PROD.md`）：`TC-PROD-*` 随该分册 §26 的七个波次逐波补齐。尚未开工的波次，它的 `REQ-PROD-*` 在联检里报「无任何 TC 引用」是预期的在途状态；第 6 波合入后这一类提示必须为零。
+
 REQ-M2 ↔ TC 对照（可读索引，覆盖与否由上述联检判）：
 
 | REQ | TC |
@@ -136,7 +144,7 @@ REQ-M3 ↔ TC 对照（可读索引）。「未实现」行没有用例，是已
 | REQ-M3-015 空间分格 `ThreadProvider` | 未实现 |
 | REQ-M3-016 大区分服 + 频道 | 未实现 |
 | REQ-M3-017 跨大区转服的世界侧 | 未实现 |
-| REQ-M3-019 光影兼容 | 未实现（DH + Iris spike 的证据见 §6 RUN-025 证据段，spike 不是验收） |
+| REQ-M3-019 光影兼容 | 未实现（DH + Iris spike 的证据见 §6 RUN-026 证据段，spike 不是验收） |
 | REQ-M3-020 离线 Anvil 读取器 | 未实现 |
 | REQ-M3-021 烘焙器第二道对拍 | 未实现 |
 | REQ-M3-022 编辑源交付规范 | 未实现 |
@@ -166,7 +174,7 @@ REQ-M3 ↔ TC 对照（可读索引）。「未实现」行没有用例，是已
 
 - 启动：`export JAVA_HOME=/opt/homebrew/opt/openjdk@25/libexec/openjdk.jdk/Contents/Home && ./gradlew :server-app:run --no-daemon --console=plain --init-script gradle/init/aliyun-mirror.init.gradle.kts`（`REQ-M2-021` 起 `server-app` 是唯一启动入口，`smoke` 已删除）。默认绑定 `0.0.0.0:25565`，端口用 `-Dsynaxis.app.port=<port>` 覆盖（`run` 任务把 `synaxis.*` 系统属性转给 fork 出来的 JVM）。TC-004 与 TC-018 要往服务端 stdin 写 `stop`，因此运行期间必须保持 stdin 打开（`:server-app:run` 已把 Gradle 进程的 stdin 转给应用；后台运行时用 FIFO 喂入或 `( sleep N; echo stop ) | ./gradlew :server-app:run …`）。
 - 就绪判定：stdout 出现 `synaxis server-app listening on 0.0.0.0:25565`，且 `nc -z 127.0.0.1 25565` 退出码为 0。
-- 运行时产物：进程在**仓库根**写 `plugins/<plugin_id>/`（插件数据目录）与 `logs/events-YYYYMMDD.jsonl`（事件台账），两者均已 gitignore；基线重置 = `rm -rf plugins logs` 后重启。**没有服务端日志文件**，日志只走 stdout（`server-app/src/main/resources/logback.xml` 只配了 ConsoleAppender），要留证据就重定向 stdout。
+- 运行时产物：进程在**仓库根**写 `plugins/<plugin_id>/`（插件数据目录）、`logs/events-<shard_id>-YYYYMMDD.jsonl`（事件台账，`shard_id` 由 `-Dsynaxis.app.shard-id` 给，默认 `local`）、`logs/latest.log`（服务端日志文件，按天或 256 MB 滚动成 `logs/YYYY-MM-DD.N.log.gz`）与致命错误或看门狗判死时的 `crash-reports/<yyyyMMdd-HHmmss>-<shard_id>.txt`，四者均已 gitignore；基线重置 = `rm -rf plugins logs crash-reports` 后重启。stdout 照旧输出全部日志，就绪判定与各用例的「重定向 stdout 留证据」不变；`-Dsynaxis.app.log=stdout` 时只走 stdout、不建 `latest.log`（`REQ-PROD-016`）。启动脚本 `server-app/build/install/server-app/bin/server-app`（`:server-app:installDist` 产出）与 `:server-app:run` 都带 `-XX:+HeapDumpOnOutOfMemoryError -XX:+ExitOnOutOfMemoryError`，OOM 时在工作目录留 `java_pid<pid>.hprof` 并以退出码 3 结束（`REQ-PROD-015`）。 tick 卡住 60 s 时看门狗判死、写崩溃报告，再过 15 s 以退出码 70 结束（`REQ-PROD-014`）；挂调试器在 tick 线程上停断点之前给 `-Dsynaxis.watchdog.timeout-ms=0`，否则进程会被 halt。
 - 日志关联：与连接相关的服务端日志行统一带 `connection_id=<uuid>` —— `Login success: username=… connection_id=… remote_address=…`、`Kicking connection_id=… identifier=… reason=synaxis:…`、`Connection closed: connection_id=… identifier=…`、`Player failed to respond to known packs query: username=… connection_id=…`；宿主侧的行带 `plugin_id=<id>`——`Plugin enabled: plugin_id=… version=… enable_ms=…`、`Registered channel: plugin_id=… channel=…`、`Dropped a payload on an unregistered channel: connection_id=… channel=… bytes=…`、`Refusing a connection: connection_id=… reason=… cause=…`、`Admission provider is over its 200 ms budget: plugin_id=… connection_id=… admit_ms=…`。启动被拒时的那一行没有这两个 id：`Refusing to start: <原因>`（非法端口属性或非法 descriptor，退出码 1，见 TC-GAME-009 / TC-GAME-010）。
 - 入口：TCP `127.0.0.1:25565`；离线模式（`Auth.Offline`），任意用户名；压缩阈值 256 字节。
 - 测试账号：
@@ -218,8 +226,8 @@ REQ-M3 ↔ TC 对照（可读索引）。「未实现」行没有用例，是已
 > 启动、就绪判定、运行时产物与系统属性四条已随 `REQ-M2-021` 实跑核对过（起服到就绪、`nc -z` 通、`stop` 退出码 0、`-Dsynaxis.app.port` 生效）。**核心模式那一档已随设计文档 v0.18 实跑核对过**（排除玩法插件时以核心模式起服、探针 `login` 与 `echo` 均退 0、`stop` 退出码 0；再加 `-Dsynaxis.app.core-mode=off` 则两行 ERROR + 退出码 1 且端口未 bind）。**地图种子与对局种子的「一局一图」那半随 `REQ-M2-010` / `REQ-M2-011` 实跑核对过**（`-Dsynaxis.app.map=rts-512` / `rts-128` / 未知 id 三档各起一次：整图 1,024 区块 137 ms 载入完成、`match_started` 早于就绪日志、未知 id 时两行 ERROR + 非零码退出 + 端口未 bind、事件台账四行齐全）。**探针的 M2 子命令已随 `REQ-M2-009` 实跑核对过**（玩法模式 + `-Dsynaxis.app.map=rts-128`：`order --count 20` 收到 20 条结果、前 10 条不含 `rate-limited` 而后 10 条全是；`order --count 8 --group 1` 8 条全不含 `rate-limited`、`--count 9 --group 1` 的第 9 条是 `rate-limited`；`select --units 1..9` 得 `synaxis:protocol-error`；`game-flood --rate 800 --seconds 3` 得 `synaxis:game-flood`（连跑 6 次全中；**原先记在这里的 `--rate 400` 那一档实测是 flaky 的，14 次挂 7 次**，失败时探针实际只达到 344～349 包/秒、服务端一行洪水 WARN 都不写，见已废弃的 `TC-GAME-025`），`--rate 299 --seconds 5`（实际 268 包/秒）与 `--rate 95 --seconds 20`（实际 75 包/秒）均全程在线；整轮服务端只写了 2 行 WARN，都带 `connection_id`、都不带栈）。**单位种子那一条已随 `REQ-M2-016` / `REQ-M2-017` 实跑核对过**（数字取自设计文档 v0.29 那一轮的实跑，即启发式带 1.15 目标偏置之后。`rts-128`：探针 `units --expect-min 10` 报 67 个单位、`commandable=[1..64, 67]`、中立与对方单位 `flags=0`；`order --unit 1 --x 84.5 --y 40 --z 64.5 --expect ok --expect-count 1 --watch 40` 收到 `code=ok snapped=(84.5, 40.0, 64.5)`，随后 69 条快照里该单位先 `moving` 后 `idle`，台账 `unit_order_issued` 的 `path_nodes=21` / `path_ms=0`、`unit_order_completed` 的 `elapsed_ms=6799`（这一项每轮都会差几十毫秒——指令落在 tick 的哪一段决定它，判据是「为正数」而不是某个具体值）；`order --x 24.5 --z 24.5`（被墙围住的口袋）回 `code=no-path` 并记一行 `unit_order_rejected`（带 `path_nodes=4001` / `path_ms=3`，即吃满 4,000 节点预算才收手），`order --x -4 --z 4`（地图外）与 `order --x 16.5 --z 16.5`（口袋墙体所在的列）各回 `code=out-of-bounds` 且台账那两行不带这两个字段（当场判定，没花搜索）；`order --count 64 --group-size 8 --unit 1 --wait 10` 打向一个单位没站着的可站立点，一次收齐 64 条结果、`ok=36 busy=28`、一条 `rate-limited` 都没有，台账里 36 条 `unit_order_issued` 正好切成 9 批、每批 4 条、批间隔 48.7～49.5 ms（一个 tick 抽 4 条），批内跨度中位数 0.58 ms、最大 1.26 ms，`path_nodes=42～44`、`path_ms=0`。默认预设 `rts-512`：`--x 456.5 --z 336.5`（东南约 215 格的空旷地，**偏置之前这一条回的是 `no-path`**）、`--x 456.5 --z 256.5`、`--x 350.5 --z 350.5` 与四个地图角（`4.5/507.5` 的四种组合，离出生点约 356 格）全部回 `code=ok`；同一个 215 格目标连发 4 轮 64 条，每轮 `ok=36 busy=28`，144 条 `unit_order_issued` 的 `path_nodes` 落在 201～206、`path_ms` 全为 0，36 批每批 4 条、批内跨度中位数 0.47 ms、P95 0.84 ms、最大 1.00 ms；打进口袋（`--x 72.5 --z 72.5`，每次搜索都吃满 4,000 节点预算）同样连发 4 轮，144 条 `unit_order_rejected` 的 `path_nodes` 全是 `4001`、`path_ms` 143 条为 0 / 1 条为 2，36 批每批 4 条、批内跨度中位数 0.77 ms、P95 1.15 ms、最大 1.76 ms（全部在 §15 的 2 ms 以内）。两个预设整轮服务端都零 WARN 零 ERROR）。**客户端模组那一条仍未验证**，它依赖尚未落地的 REQ。按 test-doc 纪律：首轮执行依赖这两条的 `TC-GAME-*` 之前，必须照本段从零走通一次，走不通先修本段并在那时去掉对应的「待 `REQ-M2-xxx` 实现后填」。不编造命令。
 
 - 启动、就绪判定与运行时产物：同上面的引擎域环境段（`REQ-M2-021` 起两者是同一个入口）。停机：控制台 `stop` 或 SIGINT，运行期间必须保持 stdin 打开。
-- 系统属性：`synaxis.app.port`（监听端口，默认 `25565`）、`synaxis.app.plugins`（启用的插件 id 列表，逗号分隔，**默认空串 = 全部**；去掉 `rts` 就没有玩法了，默认配置下进程会落进**核心模式**照常 bind，要让它拒启得同时给 `-Dsynaxis.app.core-mode=off`。列表里没有插件应答的 id 记一行 `No plugin answers to selected ids […]: discovered plugin_ids=[…].` 的 WARN，不影响启动——拼错 id 与刻意排除全部插件在行为上是同一档，只有这行日志能分开）、`synaxis.app.core-mode`（`auto` / `on` / `off`，默认 `auto`：没有玩法插件就以核心模式起服——宿主自建的平坦世界、任何连接都放行、`synaxis:main` echo 通道；`on` 强制核心模式且一个插件都不发现；`off` 永不进核心模式，没有玩法即两行 ERROR + 非零码退出。不是这三个值之一时按非法启动参数拒启。见设计文档 `API-M2-010` 启动序列第 ⑤ 步）、`synaxis.app.handshake-phase`（`configuration` / `login`，默认 `configuration`：客户端模组握手跑在哪个协议阶段，见设计文档 `ADR-M2-010` 的「落地形态与退路」；不是这两个值之一时按非法启动参数拒启）、`synaxis.app.map`（**地图预设 id**，不是文件路径——地图在进程内程序化生成，见设计文档 `REQ-M2-010`；默认 `rts-512`，另一个可用预设是 `rts-128`，未知 id 即 `map-invalid`）、`synaxis.app.units`（对局播种的单位**总数**，默认 `67` 即下面种子段的验收阵容；`:game-rts` 在插件 `onEnable` 里读它——非数字或 ≤ 3 在建图之前就拒绝，地图放不下时在一个单位都没播之前拒绝，两者都是 `Plugin failed to enable: plugin_id=rts` 的 ERROR 行（堆栈首行点名 `synaxis.app.units=<值>` 与原因）加 `API-M2-010` 第 ⑤ 步拒启的两行 ERROR、`GRADLE_EXIT` 非 0、端口不 bind。它是 `TC-GAME-068` 把全服单位数推到 1,000 的旋钮，播种规则与默认阵容相同，见设计文档 §15 表后「四条预算的测量手段」），另沿用引擎的 `synaxis.*`。**`synaxis.entity-view-distance=8`、`synaxis.chunk-view-distance=10`、`synaxis.player.chunk-update-limiter-history-size=0` 三项自 `REQ-M2-011` 起由 `server-app` 在建进程之前自己设好，命令行不写也生效**；命令行显式给的值优先（排障时可以单独摘掉某一项）。最后一项是 RTS 镜头能来回推的前置条件，不是调优，见设计文档 §15「可见范围」与 `ADR-M2-013`。
-- 事件台账：`logs/events-YYYYMMDD.jsonl`（相对进程工作目录，`:server-app:run` 下即仓库根），一行一个 JSON，事件名与属性见设计文档 §20。每行形如 `{"ts":"…","event":"plugin_enabled","plugin_id":"rts","version":"0.1.0","enable_ms":16}`——事件名的键是 `event`，属性平铺在同一层。多条用例以它为观察面，步骤里统一写「`grep <事件名> logs/events-*.jsonl`」。当前落地的是 `plugin_enabled` 与对局三条（`match_created` / `match_started` / `match_ended`，见 `REQ-M2-011`），其余随各自的 REQ 补。
+- 系统属性：`synaxis.app.port`（监听端口，默认 `25565`）、`synaxis.app.plugins`（启用的插件 id 列表，逗号分隔，**默认空串 = 全部**；去掉 `rts` 就没有玩法了，默认配置下进程会落进**核心模式**照常 bind，要让它拒启得同时给 `-Dsynaxis.app.core-mode=off`。列表里没有插件应答的 id 记一行 `No plugin answers to selected ids […]: discovered plugin_ids=[…].` 的 WARN，不影响启动——拼错 id 与刻意排除全部插件在行为上是同一档，只有这行日志能分开）、`synaxis.app.core-mode`（`auto` / `on` / `off`，默认 `auto`：没有玩法插件就以核心模式起服——宿主自建的平坦世界、任何连接都放行、`synaxis:main` echo 通道；`on` 强制核心模式且一个插件都不发现；`off` 永不进核心模式，没有玩法即两行 ERROR + 非零码退出。不是这三个值之一时按非法启动参数拒启。见设计文档 `API-M2-010` 启动序列第 ⑤ 步）、`synaxis.app.handshake-phase`（`configuration` / `login`，默认 `configuration`：客户端模组握手跑在哪个协议阶段，见设计文档 `ADR-M2-010` 的「落地形态与退路」；不是这两个值之一时按非法启动参数拒启）、`synaxis.app.map`（**地图预设 id**，不是文件路径——地图在进程内程序化生成，见设计文档 `REQ-M2-010`；默认 `rts-512`，另一个可用预设是 `rts-128`，未知 id 即 `map-invalid`）、`synaxis.app.units`（对局播种的单位**总数**，默认 `67` 即下面种子段的验收阵容；`:game-rts` 在插件 `onEnable` 里读它——非数字或 ≤ 3 在建图之前就拒绝，地图放不下时在一个单位都没播之前拒绝，两者都是 `Plugin failed to enable: plugin_id=rts` 的 ERROR 行（堆栈首行点名 `synaxis.app.units=<值>` 与原因）加 `API-M2-010` 第 ⑤ 步拒启的两行 ERROR、`GRADLE_EXIT` 非 0、端口不 bind。它是 `TC-GAME-068` 把全服单位数推到 1,000 的旋钮，播种规则与默认阵容相同，见设计文档 §15 表后「四条预算的测量手段」）、`synaxis.app.shard-id`（台账与崩溃报告文件名里的分片 id，默认 `local`，只许字母、数字与 `.` `_` `-` 且不以符号开头，否则拒启）、`synaxis.app.ledger-max-bytes-per-day`（台账每日字节上限，默认 1 GiB，非正整数拒启）、`synaxis.app.log`（`file` 默认，另写 `logs/latest.log`；`stdout` 只走控制台），另沿用引擎的 `synaxis.*`。**`synaxis.entity-view-distance=8`、`synaxis.chunk-view-distance=10`、`synaxis.player.chunk-update-limiter-history-size=0` 三项自 `REQ-M2-011` 起由 `server-app` 在建进程之前自己设好，命令行不写也生效**；命令行显式给的值优先（排障时可以单独摘掉某一项）。最后一项是 RTS 镜头能来回推的前置条件，不是调优，见设计文档 §15「可见范围」与 `ADR-M2-013`。
+- 事件台账：`logs/events-<shard_id>-YYYYMMDD.jsonl`（相对进程工作目录，`:server-app:run` 下即仓库根；`shard_id` 默认 `local`），一行一个 JSON，由写线程攒批写盘，**一条事件最多晚 1 s 才出现在文件里**（正常 `stop` 时排空，不丢；`REQ-PROD-017`），所以「做完一步立刻 grep」之前先等 1 s。事件名与属性见设计文档 §20。每行形如 `{"ts":"…","event":"plugin_enabled","plugin_id":"rts","version":"0.1.0","enable_ms":16}`——事件名的键是 `event`，属性平铺在同一层。多条用例以它为观察面，步骤里统一写「`grep <事件名> logs/events-*.jsonl`」。当前落地的是 `plugin_enabled` 与对局三条（`match_created` / `match_started` / `match_ended`，见 `REQ-M2-011`），其余随各自的 REQ 补。
 - 地图种子：由 `REQ-M2-010` 的**程序化生成器**在**进程内**生成，不落文件也不读文件（`.synx` 已随范围裁剪推到 M3，见设计文档 §28.3）。测试地图固定用同一个预设 id + seed，必须含：512×512 / 高度 64、若干障碍、**一块被墙完全围住的可站立区域**（TC-GAME-041 依赖）、可站立的空旷区（TC-GAME-040 依赖）。预设由 `synaxis.app.map` 选（默认 `rts-512` = 512×512 / 高度 64 / 1,024 区块，另有 `rts-128` = 128×128 / 64 区块供回滚演练与快跑用）；seed 固定在预设里（`game-rts` 的 `MapPreset`），同一预设每次启动生成同一张图。基线重置 = 重启进程（每次启动重新生成，没有需要清理的产物）。
 - 对局与单位种子：进程启动即有**唯一一个** `running` 对局（M2 写死单局，且对局在 bind 之前创建，见设计文档 `API-M2-010` 启动序列）。玩家加入后由 `:game-rts` 分配 `team=1`。**阵容随 `REQ-M2-016` 落地，默认 67 个单位；总数由 `synaxis.app.units` 定（设计文档 v0.39，见上面的系统属性段），不需要预设**（`game-rts` 的 `Roster`，在 bind 之前按地图铺开，同一预设 + 同一数目每次启动的编号与站位都一样）。默认值下：`unit_id=1..64` 是玩家队伍（`team=1`）的单位，从出生点向外一圈圈铺在可站立格上；`unit_id=65` 是中立单位（`team=0`）、`unit_id=66` 属 `team=2`（两者 TC-GAME-039 依赖，站在出生点斜对角 3 格处——那两格落在 64 个本方单位已经铺满的第 3 圈上，所以它们各与一个本方单位**共用一列、叠在一起**，display 实体没有碰撞体积，依赖它们的用例判的也是归属而不是站位）；`unit_id=67` 是本方的远哨，放在出生点 +x 方向 220 格最近的可站立格上——`rts-512` 上它离出生点 ≥ 200 格（TC-GAME-043 依赖），`rts-128` 放不下 220 格，会被夹到地图边缘（约 63 格），那条用例因此只在 `rts-512` 上跑。64 个本方单位同时满足 TC-GAME-024 的「≥ 9 个」与 TC-GAME-042 的「≥ 64 个」。全部单位 `archetype=0`、`hp=max_hp=100`。**实测**（`rts-128`，探针 `units --expect-min 10`）：兴趣集 67 个单位、`commandable=[1..64, 67]`，65 与 66 的 `flags` 为 0。**`-Dsynaxis.app.units=1000` 时**编号同构：`unit_id=1..997` 本方、998 中立、999 `team=2`、1000 远哨，本方单位铺到出生点周围约 ±17 格；实测（`rts-512`，探针 `--port 25566 units --wait 6 --expect-min 999`）出生点看见 999 个（`1..999`）、`commandable` 997 个（`1..997`）——远哨 `1000` 在 220 格外，超出 128 格的实体视距，看不见就不进列表。 阶段 5 退出条件那一轮的实跑（两个预设各一轮）：`rts-128` 上 `unit_id=1` 从出生点走 20 格用了 `elapsed_ms=6949`（`archetype_speed=0.15` 格/tick、每 2 tick 推进一次 = 3.0 格/秒，算得过来），全程 70 条快照报 `moving`；`rts-512` 上同一条走法、`TC-GAME-041` 的口袋（`[64,80)²`）与两档 `out-of-bounds`、`TC-GAME-042` 的 64 条并发指令（`ok=36` / `busy=28` / `rate-limited=0`、每 tick 恰好 4 次搜索共 9 个 tick）、`TC-GAME-065` 的 215 格目标都照判据复现。
 - 探针（复用 M1 的 `tools/protocol-probe/probe.py`，不另起工具）：`REQ-M2-008` 的强制握手一上线，探针必须同一交付实现 `C2S_HELLO`（设计文档 `API-M2-002` 的连带影响），否则上表六个子命令在 configuration 阶段 3 秒被踢、依赖它们的七条存量 TC 整块失效。**`C2S_HELLO` 那一半已随 `REQ-M2-008` 落地**：全部子命令进 configuration 阶段先发一次握手，另有 `handshake` / `no-hello` / `bad-schema` / `duplicate-hello` 四个子命令（见上表）。**发 `C2S_CAMERA` / `C2S_SELECT` / `C2S_MOVE_ORDER`、按指定速率发包、打印收到的 `S2C_ORDER_RESULT` 这几半已随 `REQ-M2-009` 落地**（见上表的 `order` / `select` / `game-flood` 三行）。**打印收到的 `S2C_UNIT_SPAWN` / `S2C_UNIT_STATE` / `S2C_UNIT_DESPAWN` 这一半已随 `REQ-M2-016` 落地**（见上表的 `units` 行与 `order --watch`：三条消息一律逐条打印，`units` 汇总兴趣集，`order --watch` 跟着一个单位走完 `moving → idle`）。M2 仍缺的能力：记账收到的区块与实体位置包——**它的子命令名与参数待 `REQ-M2-018` 实现后填**，依赖它的 `TC-GAME-*` 步骤仍写成「用探针记录……」而不写死命令行；执行时按当时的探针帮助文本翻译成命令，并把实际命令记进证据文件。
@@ -237,7 +245,7 @@ REQ-M3 ↔ TC 对照（可读索引）。「未实现」行没有用例，是已
 
 ### M3（大世界域）环境
 
-> 2026-09-23 随 RUN-025 实跑核对过：`gen.sh` 在本机缓存的 26.2 服务端 jar 上跑通并逐字节再生全部真值，`worldBench --quick` 与指定作业两种跑法都产出 JSON。
+> 2026-09-23 随 RUN-026 实跑核对过：`gen.sh` 在本机缓存的 26.2 服务端 jar 上跑通并逐字节再生全部真值，`worldBench --quick` 与指定作业两种跑法都产出 JSON。
 
 - 不起服务端进程。光照用例是 JUnit（`./gradlew :test --tests …`），观察面是 `build/test-results/test/TEST-<类名>.xml` 的 `testsuite` 行（`tests` / `failures` / `errors`）与失败的 `failure message`；构建命令同上面引擎域，带镜像 init 脚本，本机有代理时按 `docs/ENGINE.md` §2.2 设 `JAVA_TOOL_OPTIONS`。
 - 光照真值：`tools/light-oracle/gen.sh` 需要 `JAVA_HOME` 指向 JDK 25，与原版 26.2 服务端 jar（SHA-1 `823e2250d24b3ddac457a60c92a6a941943fcd6a`）。取 jar 的顺序是 `$SERVER_JAR` → Loom 缓存 `~/.gradle/caches/fabric-loom/26.2/minecraft-server.jar`（`client-fabric` 构建过一次就有）→ 从 Mojang 下载；SHA-1 不符即退出码 1。脚本在 `$TMPDIR/light-oracle.XXXXXX` 解包依赖，退出时删除。它改写的只有 `src/main/resources/io/github/bearisbug/synaxis/instance/light/light_shape_states.txt` 与 `src/test/resources/io/github/bearisbug/synaxis/instance/light/parity/*.light.gz`，用完 `git status --porcelain -- src` 判有无漂移。
@@ -549,7 +557,7 @@ REQ-M3 ↔ TC 对照（可读索引）。「未实现」行没有用例，是已
 | # | 操作 | 预期 |
 | --- | --- | --- |
 | 1 | `./gradlew :test --tests '*PacketReadingUnreadBytesTest*' --tests '*PreAuthConnectionIntegrationTest*' --tests '*ArchitectureTest*' --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts` | `BUILD SUCCESSFUL`；`PacketReadingUnreadBytesTest` 里 10,001 个尾部带多余字节的包只换来一行日志（第一次输出后累计计数归零，之后 10,000 次全部积压在计数器里）；`PreAuthConnectionIntegrationTest#aKickStopsTheRestOfTheBatchFromBeingHandled` 里一次读上来的 1,000 个必失败的登录插件应答只换来 1 次上报（kick 之后这一批剩下的帧不再派发）；`ArchitectureTest` 七条全过，含 `clientDrivenPathsDoNotWriteALinePerPacket` 与反证它会红的 `theClientDrivenLogRuleRejectsALinePerPacket`、`theClientDrivenLogRuleRejectsAReportPerPacket` |
-| 2 | `./gradlew :server-app:test --tests '*PluginPayloadLogBudgetIntegrationTest*' --tests '*LogBudgetTest*' --tests '*EventLedgerTest*' --tests '*ClientDrivenLogArchitectureTest*' --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts` | `BUILD SUCCESSFUL`；`PluginPayloadLogBudgetIntegrationTest` 四条——前三条各用 10,000 次触发只换来 1 行（未注册频道的丢弃行、频道 handler 抛异常、插件事件监听器抛异常），第四条钉住预算的粒度：两个都会抛的频道，对第一个刷 10,000 次之后，第二个的第一次失败仍写出自己那条带栈的 ERROR（一共 2 行，第二行带 `plugin_id=quiet`）；`EventLedgerTest` 一条——台账目录不可写时，10,000 次 `record` 只换来 1 行 WARN 且那一行仍带着栈（插件按 `DESIGN-M2` §20 逐条指令记事件，频率是客户端定的）；`LogBudgetTest` 两条——被压掉的 10,000 次由下一个区间的那一行报出来（`(10001 payloads since the last report)`）、写出去的那一条仍带着栈；`ClientDrivenLogArchitectureTest` 两条，含 `hostPathsDoNotWriteALinePerPacket` 与反证它会红的 `theHostLogRuleRejectsALinePerPayload` |
+| 2 | `./gradlew :server-app:test --tests '*PluginPayloadLogBudgetIntegrationTest*' --tests '*LogBudgetTest*' --tests '*EventLedgerTest*' --tests '*ClientDrivenLogArchitectureTest*' --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts` | `BUILD SUCCESSFUL`；`PluginPayloadLogBudgetIntegrationTest` 四条——前三条各用 10,000 次触发只换来 1 行（未注册频道的丢弃行、频道 handler 抛异常、插件事件监听器抛异常），第四条钉住预算的粒度：两个都会抛的频道，对第一个刷 10,000 次之后，第二个的第一次失败仍写出自己那条带栈的 ERROR（一共 2 行，第二行带 `plugin_id=quiet`）；`EventLedgerTest#aFloodOfEventsIntoAnUnwritableLedgerWritesOneLine`——台账目录不可写时，10,000 次 `record` 只换来 1 行 WARN 且那一行仍带着栈（插件按 `DESIGN-M2` §20 逐条指令记事件，频率是客户端定的）；`LogBudgetTest` 两条——被压掉的 10,000 次由下一个区间的那一行报出来（`(10001 payloads since the last report)`）、写出去的那一条仍带着栈；`ClientDrivenLogArchitectureTest` 两条，含 `hostPathsDoNotWriteALinePerPacket` 与反证它会红的 `theHostLogRuleRejectsALinePerPayload` |
 | 3 | 在 `src/main/java/io/github/bearisbug/synaxis/listener/PlayerPositionListener.java` 里加两行 `import org.slf4j.Logger;` / `import org.slf4j.LoggerFactory;`、类内加一行 `private static final Logger LOGGER = LoggerFactory.getLogger(PlayerPositionListener.class);`，再在 `playerPacketListener` 方法体首行插一句 `LOGGER.warn("x");`，重跑第 1 步的命令（**不要写成全限定名** `org.slf4j.LoggerFactory.getLogger("t").warn("x")`：Error Prone 的 `UnnecessarilyFullyQualified` 在 `-Werror` 下会让 `:compileJava` 先失败，门禁根本跑不到） | `clientDrivenPathsDoNotWriteALinePerPacket` 失败，消息里点名 `PlayerPositionListener.playerPacketListener(...) calls method <org.slf4j.Logger.warn(java.lang.String)>` |
 | 4 | `git checkout -- src/main/java/io/github/bearisbug/synaxis/listener/PlayerPositionListener.java`，重跑第 1 步的命令 | 回到 `BUILD SUCCESSFUL` |
 | 5 | 在 `server-app/src/main/java/io/github/bearisbug/synaxis/app/PluginChannelRouter.java` 的 `route` 方法体首行插一句 `LOGGER.warn("A payload arrived on {}", event.getIdentifier());`（该类已有 `LOGGER` 字段，不必加 import），重跑第 2 步的命令 | `hostPathsDoNotWriteALinePerPacket` 失败，消息里点名 `Method <io.github.bearisbug.synaxis.app.PluginChannelRouter.route(io.github.bearisbug.synaxis.event.player.PlayerPluginMessageEvent)> calls method <org.slf4j.Logger.warn(java.lang.String, java.lang.Object)>`（后面跟的 `in (PluginChannelRouter.java:N)` 是插入行的行号，随文件变动，不作判据）——**插在已经有限流日志的那个类、那个方法里也会红**，宿主的豁免是给整类没有客户端驱动路径的类留的，`PluginChannelRouter` 不在其中 |
@@ -1917,15 +1925,303 @@ REQ-M3 ↔ TC 对照（可读索引）。「未实现」行没有用例，是已
 
 后置：无。
 
+### 生产就绪 · 第 0 波 0A：宿主日志线
+
+`docs/DESIGN-PROD.md` 的 `REQ-PROD-015`（G13）、`REQ-PROD-016`（G14）、`REQ-PROD-017`（G15），接口见 `API-PROD-013`、`API-PROD-014`，台账取舍见 `ADR-PROD-005`。进程级的几步都用 `:server-app:installDist` 产出的启动脚本、在一个空的临时目录里起服（`logs/`、`crash-reports/` 与堆转储都落在工作目录），端口 25601；停机往 stdin 写 `stop`，stdin 用 FIFO 保持打开（`mkfifo in.fifo; sleep 100000 > in.fifo &`，再把起服命令的 stdin 接到 `in.fifo`）。探针按 `~/.claude/CLAUDE.md` 的约定在仓库根的 `.venv` 里跑（`uv venv --python 3.10`，只用标准库）。
+
+#### `TC-PROD-001` 未捕获异常走 SLF4J，行内带 tick 号与 connection_id，同类 10 s 至多一行 — 对应 `REQ-PROD-015` · 级别: 回归 · 执行者: AI
+
+前置：工作副本干净。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | `./gradlew :test --tests '*ExceptionManagerTest*' --tests '*EventNodeExceptionTest*' --tests '*GlobalEventHandlerTest*' --tests '*PlayerPacketQueueIntegrationTest*' :server-app:test --tests '*HostExceptionIntegrationTest*' --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts` | `BUILD SUCCESSFUL`；`ExceptionManagerTest` 五条（`OutOfMemoryError` 交给 handler 而不是停机、`connection_id` 送到 handler、只实现单参方法的 handler 照样收到、没设 handler 时默认落点 10 s 内的异常只计数不写行、没设 handler 时默认落点不写 stderr）；`HostExceptionIntegrationTest#aListenerThatThrowsOnEveryPacketIsOneLineWithTheTickAndTheConnection`：监听器对 9 个包各抛一次，只有 1 行 ERROR，行内 `tick=1`、`connection_id=<该玩家的连接 id>`，且带栈；`#aThreadThatDiesOfAThrowableIsLoggedOnThatThread`：未捕获异常那一行的线程名是死掉的那条线程 `dying-thread`，`connection_id=-` |
+| 2 | 反证有齿（两处一起改、一起还原）：`src/main/java/io/github/bearisbug/synaxis/entity/Player.java` 的 `interpretPacketQueue` 里 `handleException(e, playerConnection.connectionId())` 改回 `handleException(e)`；`src/main/java/io/github/bearisbug/synaxis/exception/ExceptionManager.java` 默认 handler 的 `LOGGER.error(…)` 上一行插 `e.printStackTrace();`（**不要删掉 `LOGGER.error` 那行**：`LOGGER` 变成无用字段，Error Prone 的 `UnusedVariable` 会让 `:compileJava` 先红）。重跑第 1 步，再 `git checkout --` 这两个文件 | 红 2 条：`ExceptionManagerTest.theDefaultHandlerDoesNotPrintToStandardError` 断在「the default sink is SLF4J, a bare stack trace bypasses the log configuration ==> expected: <false> but was: <true>」（`ExceptionManagerTest.java:111`）；`HostExceptionIntegrationTest.aListenerThatThrowsOnEveryPacket…` 断在 connection_id 那条断言（`HostExceptionIntegrationTest.java:86`），消息就是那一行 `Unhandled exception: tick=1 connection_id=- (1 IllegalStateException since the last report)`；还原后复绿 |
+| 3 | 反证限流有齿：`server-app/src/main/java/io/github/bearisbug/synaxis/app/HostExceptionHandler.java` 的 `budgets.computeIfAbsent(…)` 上一行插 `budgets.remove(e.getClass());`（每次都拿一份新预算），只重跑第 1 步的 `:server-app:test` 那半，再 `git checkout --` 该文件 | 红 1 条：`aListenerThatThrowsOnEveryPacket…` 断在「nine failures of one kind inside 10 s are one line ==> expected: <1> but was: <9>」（`HostExceptionIntegrationTest.java:83`）；还原后复绿 |
+| 4 | 反证引擎默认落点的限流有齿：`src/main/java/io/github/bearisbug/synaxis/exception/ExceptionManager.java` 默认 handler 的 `if (now - last < DEFAULT_REPORT_INTERVAL) return;` 改成 `if (now - last < 0) return;`（每次都写一行），只跑 `:test --tests '*ExceptionManagerTest*'`，再 `git checkout --` 该文件 | 红 1 条：`theDefaultHandlerWritesAtMostOneLinePerIntervalAndCountsTheRest` 断在「inside one interval the exceptions are counted for the next line, not written」（`ExceptionManagerTest.java:93`，每次写行都把计数清零）；还原后复绿 |
+
+后置：`git status` 干净。
+
+#### `TC-PROD-002` 致命错误写崩溃报告：线程转储、脱敏的生效配置、插件与 git head，一个进程只写一份 — 对应 `REQ-PROD-015` · 级别: 回归 · 执行者: AI
+
+前置：工作副本干净。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | `./gradlew :server-app:test --tests '*CrashReportsTest*' --tests '*HostExceptionIntegrationTest*' --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts` | `BUILD SUCCESSFUL`；`CrashReportsTest` 五条：文件名 `20260923-040506-r01-c1.txt`（固定时钟）、报告含 `Reason:`、起因栈、`-- Git head --`、`-- Plugins --` 下的 `rts 0.1.0`、生效配置与线程转储，写报告的线程自己的栈超过 8 帧（`ThreadInfo#toString` 会截在 8 帧）；同一秒第二份叫 `…-r01-c1-2.txt`；插件列表取不到时写 `(could not be collected: …)`、其余段照写；目录不可写时两次写只换来 1 行 ERROR 且不抛；`secretsAreOnlyEverSaidToBeSet`：`synaxis.app.db-password`、`env SYNAXIS_MANAGEMENT_TOKEN`、`-Dsynaxis.app.api-token` 三处只写 `<set>`，`hunter2` / `abc123` / `xyz789` 一个都不出现。`HostExceptionIntegrationTest#aFatalErrorWritesOneCrashReportAndDoesNotStopTheProcess`：连着两次 `OutOfMemoryError` 只有 1 行 ERROR（带 `crash_report=<路径>`）、`crash-reports/` 下恰 1 个 `yyyyMMdd-HHmmss-r01-c1.txt`，内含 `java.lang.OutOfMemoryError: test heap`、`ServerConfig[` 与 `-- Thread dump --`；停机任务没有被执行；`InternalError` 算致命、`StackOverflowError` 不算 |
+| 2 | `./gradlew :server-app:jar --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts`，再 `unzip -p server-app/build/libs/server-app-dev.jar synaxis-build.properties` 与 `git rev-parse HEAD` | 前者一行 `git.head=<40 位提交号>`，与后者相同（崩溃报告的 `-- Git head --` 段读的就是它） |
+| 3 | 反证有齿（两处一起改、一起还原）：`CrashReports#masked` 的条件改成 `SECRET_KEY.matcher(name).matches() && name.isEmpty()`（**不要直接 `return value;`**：`SECRET_KEY` 变成无用字段，`UnusedVariable` 先红）；`HostExceptionHandler#handleException` 的 `if (isFatal(e)) {` 下一行插 `crashReported.set(false);`。重跑第 1 步，再 `git checkout --` 这两个文件 | 红 2 条：`CrashReportsTest.secretsAreOnlyEverSaidToBeSet`，实际输出里是 `synaxis.app.db-password=hunter2`；`HostExceptionIntegrationTest.aFatalError…` 断在「the first fatal error is the one the report is about ==> expected: <1> but was: <2>」（`HostExceptionIntegrationTest.java:113`）；还原后复绿 |
+
+后置：`git status` 干净。
+
+#### `TC-PROD-003` OOM 立即退出、留下堆转储、不走停机序列 — 对应 `REQ-PROD-015` · 级别: 回归 · 执行者: AI
+
+前置：工作副本干净；一个空的临时目录作工作目录（下称 `$W`），`$REPO` 指仓库根。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | `./gradlew :server-app:installDist --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts`，再 `grep '^DEFAULT_JVM_OPTS' server-app/build/install/server-app/bin/server-app` | `DEFAULT_JVM_OPTS='"-XX:+HeapDumpOnOutOfMemoryError" "-XX:+ExitOnOutOfMemoryError"'` |
+| 2 | `cd $W && JAVA_OPTS="-Xms16m -Xmx24m -Dsynaxis.app.port=25601" $REPO/server-app/build/install/server-app/bin/server-app < /dev/null > stdout.log 2>&1; echo exit=$?`，再 `ls $W`、`tail -2 stdout.log`、`grep -c 'Stopping\|Disabling plugin' stdout.log` | `exit=3`；`$W` 下多一个 `java_pid<pid>.hprof`（本轮实测 35,888,644 字节）；末两行 `Heap dump file created [… bytes in … secs]` 与 `Terminating due to java.lang.OutOfMemoryError: Java heap space`；计数 `0`（24 MB 的堆在建对局时就耗尽，停机序列一行都没跑） |
+| 3 | `./gradlew :test --tests '*ExceptionManagerTest*' :server-app:test --tests '*HostExceptionIntegrationTest*' --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts` | `BUILD SUCCESSFUL`；`anOutOfMemoryErrorGoesToTheHandlerInsteadOfAStopSequence` 与 `aFatalErrorWritesOneCrashReportAndDoesNotStopTheProcess` 绿：没带这两个参数的进程（开发时直接跑）撞上 OOM 也只进宿主 handler，不跑停机序列 |
+| 4 | 反证有齿（两处一起改、一起还原）：`server-app/build.gradle.kts` 注释掉 `applicationDefaultJvmArgs = …` 那一行；`ExceptionManager#handleException(Throwable, UUID)` 首部插回旧的 OOM 分支 `if (e instanceof OutOfMemoryError) { e.printStackTrace(); return; }`。重做第 1～3 步（`rm -rf $W/*` 后再起），再 `git checkout --` 这两个文件并重新 `installDist` | 第 1 步 `DEFAULT_JVM_OPTS=""`；第 2 步 `exit=1`、没有 `.hprof`，stdout 只有 `Exception in thread "main" java.lang.OutOfMemoryError: Java heap space` 与栈；第 3 步红 2 条：`anOutOfMemoryError…` 断在「the host decides what an exhausted heap costs, not a stop sequence ==> expected: <1> but was: <0>」（`ExceptionManagerTest.java:53`），`aFatalError…` 断在 `expected: <1> but was: <0>`（`HostExceptionIntegrationTest.java:105`，一行 ERROR 都没有）；还原后复绿 |
+
+后置：`rm -rf $W`（堆转储 30 MB 以上）；`git status` 干净。
+
+#### `TC-PROD-004` 日志配置：按天或 256 MB 滚动、gzip、保留 14 天与 10 GB、非阻塞异步队列，stdout 模式不建文件 — 对应 `REQ-PROD-016` · 级别: 回归 · 执行者: AI
+
+前置：工作副本干净。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | `./gradlew :server-app:test --tests '*LogbackConfigurationTest*' --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts` | `BUILD SUCCESSFUL`，四条：`theFileModeHasTheDesignedRetentionBehindANonBlockingQueue`（生产 `logback.xml` 在 file 模式下没有任何 WARN 级配置状态；根 logger 的 `FILE` 是 `AsyncAppender`，`queueSize` 8192、`neverBlock` 为真；其下 `ROLLING` 写 `latest.log`，`maxHistory` 14、gzip 压缩、文件名按 `yyyy-MM-dd` 滚动，配置里字面量 `256MB` 与 `10GB`）；`threeMegabytesOfLogRollIntoCompressedFiles`（上限临时改 1 MB 写 3 MB，得到 `latest.log` 与至少 2 个 `.log.gz`）；`theStdoutModeWritesNoFile`（根 logger 只挂 `STDOUT`，临时目录里一个文件都没有）；`aModeThatDoesNotExistIsReportedByLogback`（`synaxis.app.log=files` 时 logback 的状态里点名找不到 `logback-files.xml`，启动时会打在控制台上） |
+| 2 | 反证有齿（两处一起改、一起还原）：`server-app/src/main/resources/logback-file.xml` 的 `<neverBlock>true</neverBlock>` 改成 `false`、`fileNamePattern` 末尾的 `.log.gz` 改成 `.log`。重跑第 1 步，再 `git checkout --` 该文件 | 红 2 条：`theFileMode…` 断在「a full queue drops a line rather than blocking a tick」（`LogbackConfigurationTest.java:103`）；`threeMegabytes…` 断在 `.log.gz` 计数，实际文件是 `[2026-09-23.0.log, 2026-09-23.1.log, 2026-09-23.2.log, latest.log]`（`:131`，日期随执行日）——同时证明 1 MB 上限确实触发了滚动；还原后复绿 |
+| 3 | 反证模式切换有齿：`server-app/src/main/resources/logback.xml` 的 `<include resource="logback-${synaxis.app.log:-file}.xml"/>` 改成固定的 `<include resource="logback-file.xml"/>`，只跑 `--tests '*LogbackConfigurationTest.theStdoutModeWritesNoFile'`，再 `git checkout --` 该文件并 `rm -rf server-app/logs`（此时 file 模式的相对路径会在模块目录里建出 `logs/latest.log`） | 红 1 条：「the console is all there is ==> expected: <[STDOUT]> but was: <[STDOUT, FILE]>」（`:144`）；还原后复绿 |
+
+后置：`git status` 干净，`server-app/logs` 不存在。
+
+#### `TC-PROD-005` 真进程：默认另写 `logs/latest.log` 且停机最后一行也在，`stdout` 模式不写文件 — 对应 `REQ-PROD-016` · 级别: 回归 · 执行者: AI
+
+前置：`./gradlew :server-app:installDist --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts` 已跑；空的临时目录 `$W` 作工作目录，`$W/in.fifo` 按本节开头的做法保持打开；25601 空闲。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | `cd $W && JAVA_OPTS="-Dsynaxis.app.port=25601" $REPO/server-app/build/install/server-app/bin/server-app < in.fifo > stdout.log 2>&1 &`，等 20 s，`grep -c listening stdout.log`、`grep -c ch.qos.logback stdout.log`、`ls logs` | `1`；`0`（没有 logback 的配置状态行——配置里只要有一条 WARN，logback 就会把整份状态打在控制台上）；`logs/` 下有 `latest.log` 与 `events-local-<今天>.jsonl`，`latest.log` 含同一行 `synaxis server-app listening on 0.0.0.0:25601`，时间戳带日期 |
+| 2 | `echo stop > in.fifo`，等 10 s，查进程是否还在，`tail -1 logs/latest.log` | 进程已退出；末行 `… synaxis server stopped successfully.`（异步队列在进程退出前已写完） |
+| 3 | `rm -rf $W/logs $W/plugins`，加 `-Dsynaxis.app.log=stdout` 重做第 1、2 步 | stdout 照常就绪与停机；`logs/` 下只有 `events-local-<今天>.jsonl`，没有 `latest.log` |
+| 4 | 反证有齿：做 `TC-PROD-004` 第 3 步那处改动并重新 `installDist`，清空 `$W` 后重做第 3 步；再还原、`rm -rf server-app/logs`、重新 `installDist` | `stdout` 模式下 `logs/latest.log` 被建了出来（本轮实测）；还原后重做第 3 步回到没有 `latest.log` |
+
+后置：停服（按 pid），结束占着 FIFO 的 `sleep`，`rm -rf $W`；`git status` 干净。
+
+#### `TC-PROD-006` 台账：有界队列满即丢新并先写汇总行、按 1 s 或 64 KiB 写盘、正常停机零丢失 — 对应 `REQ-PROD-017` · 级别: 回归 · 执行者: AI
+
+前置：工作副本干净。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | `./gradlew :server-app:test --tests '*EventLedgerTest*' --tests '*PluginHostIntegrationTest*' --tests '*HandshakeIntegrationTest*' --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts` | `BUILD SUCCESSFUL`；`EventLedgerTest` 里本用例看五条：`aFullQueueDropsTheNewLinesWithoutBlockingAndSaysSoFirst`（写线程未启动时记 70,000 行，10 s 超时内全部返回；启动并关闭后文件首行是 `ledger_dropped`、`reason=queue_full`、`count=4464`、`since` 为第一次丢弃的时刻，其后恰 65,536 行，`order_seq` 从 0 到 65,535 依次排列——留下的是先到的）；`aNormalStopLosesNothingFromAnyThread`（4 个线程各记 10,000 行，关闭后文件恰 40,000 行、没有 `ledger_dropped`）；`aRecordRacingTheCloseIsWrittenOrRefusedNeverLeftInTheQueue`（一次 `record` 已过了「台账关没关」的检查、还没入队时停在取时间戳那一步，此时另一线程调 `close`，300 ms 后放行：这一行照样在文件里、文件恰 1 行；`close` 返回后再记一行，文件不变，日志多 1 行 WARN 计数 `dropped_after_close=1`）；`aFewLinesWaitForTheIntervalAndAFullBufferDoesNot`（一行在 200 ms 时还没落盘，900 ms 之后才出现；随后 1,000 行、约 250 KB 的突发不等下一个间隔就写出）；`aFloodOfEventsIntoAnUnwritableLedgerWritesOneLine`（目录不可写时 10,000 次 `record` 只换来 1 行带栈的 WARN）。`PluginHostIntegrationTest` 与 `HandshakeIntegrationTest` 照旧能在关闭台账之后读到 `plugin_enabled` 与 `client_rejected` |
+| 2 | 反证「丢新」与「64 KiB」有齿（两处一起改、一起还原）：`EventLedger#offer` 队满时改成先 `queue.poll()` 再 `queue.offer(entry)`（丢旧）；`run()` 的写盘条件删掉 `buffer.size >= BUFFER_BYTES \|\| `。只重跑 `--tests '*EventLedgerTest*'`，再 `git checkout --` 该文件 | 红 2 条：`aFullQueue…` 断在第一条保留行 `…"order_seq":4464}`（`EventLedgerTest.java:141`，丢旧就留下了 4,464 之后的行）；`aFewLines…` 断在「a full buffer does not wait for the interval」（`:225`）；还原后复绿 |
+| 3 | 反证停机排空有齿：`EventLedger#close` 的 `if (thread == null) return;` 改成 `!=`（不等写线程排空就返回），只重跑 `--tests '*EventLedgerTest*'`，再还原 | 红 4 条：`aNormalStop…` 断在 `expected: <40000> but was: <39727>`（`:160`，差多少随调度而变，本轮跑 3 次红 2 次，另一次写线程恰好排空了）；`aFullQueue…` 与 `aDayStops…` 抛 `NoSuchFileException`（`:80`，文件还没写出来）；`aRecordRacing…` 断在「the racing line is in the file」（`:201`）；还原后复绿 |
+| 4 | 反证「关闭与在途 `record` 竞争」有齿：`EventLedger#drainSealed` 的 `while (recording.get() != 0)` 改成 `while (recording.get() < 0)`（不等在途的 `record` 入队就做最后一次排空），只重跑 `--tests '*EventLedgerTest*'`，再 `git checkout --` 该文件 | 红 1 条：`aRecordRacing…` 断在「the racing line is in the file ==> expected: <1> but was: <0>」（`:201`，那一行入了队却没人再取）；还原后复绿。另把 `EventLedger.java` 换成 `ab8d625eee` 的版本（先查 `closing` 再入队、写线程见空队列就退出）跑同一条，断在 `:198`：那一行被当成 `queue_full` 计数，汇总行却永远写不出来，关闭后的一行也不进日志 |
+
+后置：`git status` 干净。
+
+#### `TC-PROD-007` 台账：文件名带 `shard_id`、每日上限只留汇总行、跨天压缩、保留 30 天 — 对应 `REQ-PROD-017` · 级别: 回归 · 执行者: AI
+
+前置：工作副本干净。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | `./gradlew :server-app:test --tests '*EventLedgerTest*' --tests '*MainTest*' --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts` | `BUILD SUCCESSFUL`；`aDayStopsAtItsCapAndIsCompressedOnceTheNextDayStarts`：`shard_id=r01-c1`、上限临时 1 MB、同一天记约 2 MB，文件叫 `events-r01-c1-20260923.jsonl`，大小不超过 1 MB + 1 KiB，`filler` 行数加上 `reason=daily_cap` 汇总行的 `count` 之和等于记的条数；时钟拨到次日再记一条，`events-r01-c1-20260924.jsonl` 恰 1 行，前一天的文件变成 `.jsonl.gz`、原文件消失，解压内容与原文件逐字节相同。`housekeepingKeepsThirtyDaysOfThisShardOnly`：32 天与 31 天前的删掉、30 天前的留下并压缩、昨天的压缩、今天的不动，别的分片（`events-other-…`）与旧命名（`events-20260801.jsonl`）不碰。`MainTest` 新增四条：`shard_id` 默认 `local`、`../r01` 拒绝（消息含 `synaxis.app.shard-id=../r01`）；上限默认 1 GiB，`0` 与 `1G` 拒绝 |
+| 2 | 反证有齿（三处一起改、一起还原）：`EventLedger#accept` 的上限比较改成 `> maxBytesPerDay * 4`；`EventLedger#housekeep` 的 `day.isBefore(oldestKept)` 改成 `day.isBefore(oldestKept.minusDays(1))`；`Main#shardId` 的 `matches()` 改成 `find()`。重跑第 1 步，再 `git checkout --` 这两个文件 | 红 3 条：`aDayStops…` 断在「2 MB into a 1 MB day drops lines」（`EventLedgerTest.java:250`）；`housekeeping…` 断在文件列表多出 `events-r01-c1-20260823.jsonl.gz`（`:282`）；`MainTest.aShardIdThatCouldLeaveTheDirectoryIsRefused` 断在「Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown」（`MainTest.java:90`）；还原后复绿 |
+
+后置：`git status` 干净。
+
+#### `TC-PROD-008` 真进程：台账按分片命名、停机时排空插件在 `onDisable` 里记的事件、非法 `shard_id` 拒启 — 对应 `REQ-PROD-017` · 级别: 回归 · 执行者: AI
+
+前置：同 `TC-PROD-005` 前置（`installDist`、空的 `$W`、FIFO、25601 空闲）；仓库根有 `.venv`。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | `cd $W && JAVA_OPTS="-Dsynaxis.app.port=25601 -Dsynaxis.app.shard-id=r01-c1" $REPO/server-app/build/install/server-app/bin/server-app < in.fifo > stdout.log 2>&1 &`，等 20 s，`cut -c1-90 logs/events-r01-c1-<今天>.jsonl` | 就绪；文件名带 `r01-c1`，3 行：`match_created`、`match_started`、`plugin_enabled` |
+| 2 | 仓库根 `.venv/bin/python tools/protocol-probe/probe.py --port 25601 handshake`，随即 `echo stop > $W/in.fifo`，等 10 s，再看台账 | 探针 `exit code: 0`；进程已退出；台账 6 行，多出 `session_entered_configuration`、`client_verified`（两行同一个 `connection_id`）与最后一行 `match_ended`（插件在 `onDisable` 里记的） |
+| 3 | 清空 `$W`，以 `JAVA_OPTS="-Dsynaxis.app.port=25601 -Dsynaxis.app.shard-id=../x"` 起服（stdin 接 `/dev/null`），`echo exit=$?` | `exit=1`；stdout 一行 `Refusing to start: synaxis.app.shard-id=../x is not a shard id: letters, digits, '.', '_' and '-' only, starting with a letter or a digit` |
+| 4 | 反证有齿：删掉 `server-app/src/main/java/io/github/bearisbug/synaxis/app/Main.java` 里的 `process.scheduler().buildShutdownTask(ledger::close);`，重新 `installDist`，清空 `$W` 后重做第 1、2 步；再 `git checkout --` 该文件并重新 `installDist` | 台账只有第 1 步那 3 行：探针的两行与 `match_ended` 全丢（写线程是虚拟线程，没人排空它，JVM 退出时最后不到 1 s 的事件就没了）；还原后重做第 1、2 步回到 6 行 |
+
+后置：停服（按 pid），结束占着 FIFO 的 `sleep`，`rm -rf $W`；`git status` 干净。
+
+### 生产就绪 · 第 0 波 0B：tick 看门狗
+
+`docs/DESIGN-PROD.md` 的 `REQ-PROD-014` 前半（G12），接口见 `API-PROD-013`，状态机见 §11.5。四个键 `synaxis.watchdog.early-warning-ms` 10,000、`early-warning-every-ms` 5,000、`timeout-ms` 60,000、`halt-after-ms` 15,000，`0` 关闭对应一段（`timeout-ms=0` 时整个看门狗不起线程）。**本波判死后直接进 halt 计时**：§19 里「第 60 s 写崩溃报告并进入落盘停机」只验到写崩溃报告为止，「停机倒计时期间 tick 卡死仍先落盘」整条与「落盘停机 15 s 未完成即 halt」里的「落盘停机」都归第 3 波 3A；「15 s 后以退出码 70 halt」本波验。单元用例用假时钟手动巡检；halt 会结束 JVM，所以真 halt 在测试另起的一个 JVM 里验；真进程那条用 `:server-app:installDist` 的启动脚本，端口 25602，工作目录与 FIFO 的做法同 0A 一节。
+
+#### `TC-PROD-020` 卡住的 tick：第 10 s 打栈、之后每 5 s 一次、第 60 s 判死、判死后 15 s 以 70 halt — 对应 `REQ-PROD-014` · 级别: 回归 · 执行者: AI
+
+前置：工作副本干净。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | `./gradlew :test --tests '*WatchdogTest*' --tests '*ServerConfigTest*' --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts` | `BUILD SUCCESSFUL`；`WatchdogTest#aStuckTickIsReportedAtTenSecondsThenEveryFiveAndJudgedDeadAtSixty`（默认四个值、假时钟每秒巡检一次）：9.999 s 没有警告；10 s 第一条，以 `Tick watchdog: the tick has been running for 10000 ms` 开头，带跑 tick 那条线程的名字与完整栈；14.999 s 仍是 1 条，到 59 s 共 10 条（10、15……55 s）；60 s 判死，宿主收到一次 `60000`；74.999 s 仍在等、不再警告；75 s 以 `70` halt 一次，此后巡检返回「不再看」。`#aTickThatEndsIsWatchedAfreshAndAVerdictIsNeverTakenBack`：12.5 s 结束的 tick 之后，30 s 起的新 tick 从自己的起点重新计 10 s 与 60 s；新 tick 在判死后结束也不撤回判决，照样 halt。`ServerConfigTest#defaults` 四个默认值 10000 / 5000 / 60000 / 15000，`testJvmUsesTheProductionDefaults` 照旧绿（四个新键也在「默认值 = 读系统属性」的断言里） |
+| 2 | 反证「每 5 s」有齿：`src/main/java/io/github/bearisbug/synaxis/Watchdog.java` 的 `now - lastWarning >= earlyWarningEvery)` 改成 `now - lastWarning >= earlyWarningEvery * 2)`，只跑 `:test --tests '*WatchdogTest*'`，再 `git checkout --` 该文件 | 红 2 条：`aStuckTick…` 断在「10, 15, … 55 s ==> expected: <10> but was: <5>」（`WatchdogTest.java:87`）；`aTickThatEnds…` 断在「40, 45, … 85 s ==> expected: <11> but was: <6>」（`:124`）；还原后复绿 |
+| 3 | 反证「15 s 后」有齿：同一文件 `now - dyingSince < haltAfter) return` 改成 `now - dyingSince < 0) return`（判死后下一次巡检就 halt），只跑 `:test --tests '*WatchdogTest*'`，再 `git checkout --` 该文件 | 红 1 条：`aStuckTick…` 断在「still dying 14.999 s after the verdict ==> expected: <true> but was: <false>」（`:96`）；还原后复绿 |
+
+后置：`git status` 干净。
+
+#### `TC-PROD-021` 看门狗接在每个 tick 上，`0` 关闭一段，停看门狗不放过在途的卡死 — 对应 `REQ-PROD-014` · 级别: 回归 · 执行者: AI
+
+前置：工作副本干净。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | `./gradlew :test --tests '*WatchdogTest*' --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts` | `BUILD SUCCESSFUL`；`#zeroTurnsAStageOff`：`early-warning-ms=0` 一条警告都没有、60 s 照样判死；`early-warning-every-ms=0` 只有第一条；`halt-after-ms=0` 判死后 1 小时也不 halt，停看门狗后巡检返回「不再看」；`timeout-ms=0` 时 `start` 不起线程；负值在建配置时抛 `IllegalArgumentException`。`#stopWatchesTheTickInFlightToItsEnd`：线程名 `Syn-Watchdog`、daemon，重复 `start` 抛 `IllegalStateException`；没有在途 tick 时 `stop` 后线程 10 s 内退出；有在途 tick 时 `stop` 之后 200 ms 线程仍在，时钟拨到 60 s 判死、75 s halt 后线程才退出。`#aTickOfTheProcessStuckPastTheTimeoutIsJudgedDead`：真 `ServerProcess`（警告 200 ms、判死 1,200 ms、halt 关闭），调度任务把 `ticker().tick` 卡住，10 s 内收到判死，卡住时长 ≥ 1,200 ms |
+| 2 | 反证「停不撤回在途判决」有齿：`Watchdog.java` 的 `if (halted) return false;` 改成 `if (halted \|\| stopRequested) return false;`，重跑第 1 步，再 `git checkout --` 该文件 | 红 1 条：`stopWatches…` 断在「a tick in flight is still watched ==> expected: <true> but was: <false>」（`WatchdogTest.java:193`）；还原后复绿 |
+| 3 | 反证「每个 tick 都经过看门狗」有齿：`src/main/java/io/github/bearisbug/synaxis/ServerProcessImpl.java` 的 `final long watched = watchdog.tickStarted();` 改成 `final long watched = 0;`，重跑第 1 步，再 `git checkout --` 该文件 | 红 1 条：`aTickOfTheProcess…` 等满 10 s 后断在「the watchdog saw the tick of the process ==> expected: not <null>」（`:230`）；还原后复绿 |
+
+后置：`git status` 干净。
+
+#### `TC-PROD-022` 真 JVM 卡死：警告里有 tick 线程的栈，判死写一份崩溃报告，halt 退出码 70（本波只验 halt 路径） — 对应 `REQ-PROD-014` · 级别: 回归 · 执行者: AI
+
+前置：工作副本干净。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | `./gradlew :server-app:test --tests '*WatchdogHaltTest*' --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts` | `BUILD SUCCESSFUL`，单条约 6 s。`WatchdogHaltTest` 另起一个 JVM 跑 `WatchdogHaltFixture`：`MinecraftServer` 真起在 `127.0.0.1:0`，看门狗照 `Main#startWatchdog` 接到 `CrashReports`，首个 tick 在调度任务里永久 park；四个键由 `-Dsynaxis.watchdog.*` 给成 500 / 1000 / 3000 / 2000。断言：子 JVM 退出码 `70`；日志有 `Tick watchdog on: stacks after 500 ms and every 1000 ms after that, judged dead after 3000 ms, halted with exit code 70 2000 ms later`；至少一条 `Tick watchdog: the tick has been running for` 警告，栈里有 `"Syn-TickScheduler"`、`"Syn-Tick-0"` 与卡住的帧 `WatchdogHaltFixture.stall`；`is judged dead` 那一行到进程退出 ≥ 1,500 ms；有 `halting the process with exit code 70`；`crash-reports/` 下恰 1 个 `…-watchdog-test.txt`，含 `Reason: tick watchdog: the tick has been stuck for `、`-- Thread dump --` 与 `WatchdogHaltFixture.stall`。本轮实测：警告在 1,000 ms 与 2,002 ms（巡检每 1 s 一次，所以第一条落在阈值之后的第一次巡检），判死在 3,012 ms，halt 在判死后 2,018 ms |
+| 2 | 反证「退出码 70」有齿：`src/main/java/io/github/bearisbug/synaxis/Watchdog.java` 默认构造器里的 `status -> Runtime.getRuntime().halt(status)` 改成 `status -> Runtime.getRuntime().halt(status - 69)`（**不要写成 `halt(1)`**：`status` 变成无用 lambda 参数，Error Prone 的 `UnnamedVariable` 让 `:compileJava` 先红），重跑第 1 步，再 `git checkout --` 该文件 | 红 1 条：`expected: <70> but was: <1>`（`WatchdogHaltTest.java:63`，消息是子 JVM 的全部输出）；还原后复绿 |
+| 3 | 反证「判死即写报告」有齿：同一文件判死分支的 `Thread.ofPlatform().name(THREAD_NAME + "-Report").daemon().start(() -> {` 改成 `.unstarted(() -> {`（报告线程建了不启动），重跑第 1 步，再 `git checkout --` 该文件 | 红 1 条：`NoSuchFileException: …/synaxis-watchdog-<随机>/crash-reports`（`:81`，目录都没建出来）；还原后复绿 |
+
+后置：`git status` 干净；测试在 `finally` 里删掉自己的 `synaxis-watchdog-*` 临时目录，`ls $TMPDIR \| grep -c synaxis-watchdog` 为 `0`。
+
+#### `TC-PROD-023` 真进程：宿主起停看门狗，`timeout-ms=0` 不起，负值拒启，正常停机退出码 0 — 对应 `REQ-PROD-014` · 级别: 回归 · 执行者: AI
+
+前置：`./gradlew :server-app:installDist --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts` 已跑；空的临时目录 `$W` 作工作目录，`$W/in.fifo` 按 0A 一节开头的做法保持打开；25602 空闲；起服命令前带 `JAVA_HOME=<JDK 25>`（启动脚本不带它会用系统 Java，报 `UnsupportedClassVersionError`）。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | `cd $W && (JAVA_OPTS="-Dsynaxis.app.port=25602" $REPO/server-app/build/install/server-app/bin/server-app < in.fifo > stdout.log 2>&1; echo "exit=$?" > code) &`，等 20 s，`grep -c listening stdout.log`、`grep 'Tick watchdog' stdout.log`，再 `jcmd <java pid> Thread.print \| grep '"Syn-Watchdog"'` | `1`；恰 1 行 `Tick watchdog on: stacks after 10000 ms and every 5000 ms after that, judged dead after 60000 ms, halted with exit code 70 15000 ms later`（在 `listening` 之前）；线程 `"Syn-Watchdog"` 在、`daemon` |
+| 2 | `echo stop > in.fifo`，等 8 s，`cat code`、`ls $W`、`grep -c 'Tick watchdog' stdout.log` | `exit=0`；没有 `crash-reports/`；计数仍是 `1`（正常停机不触发警告，停机任务最后一个是停看门狗） |
+| 3 | `rm -rf $W/logs $W/plugins $W/stdout.log $W/code`，加 `-Dsynaxis.watchdog.timeout-ms=0` 重做第 1、2 步 | 就绪；唯一一行 `Tick watchdog off (synaxis.watchdog.timeout-ms=0)`；`exit=0` |
+| 4 | 清空日志，以 `JAVA_OPTS="-Dsynaxis.app.port=25602 -Dsynaxis.watchdog.halt-after-ms=-1"` 起服（stdin 接 `/dev/null`），`echo exit=$?` | `exit=1`；`Refusing to start: the watchdog durations must not be negative but were 10000, 5000, 60000 and -1` |
+| 5 | 反证宿主起看门狗有齿：`server-app/src/main/java/io/github/bearisbug/synaxis/app/Main.java` 的 `final Watchdog watchdog = startWatchdog(process, crashReports);` 改成 `final Watchdog watchdog = process.watchdog();`，重新 `installDist`，清空 `$W` 后重做第 1、2 步；再 `git checkout --` 该文件并重新 `installDist`，重做第 1 步 | 改动下就绪照常，但 `grep -c 'Tick watchdog'` 为 `0`（本轮实测），`exit=0`；还原后回到第 1 步那一行 |
+
+后置：停服（按 pid），结束占着 FIFO 的 `sleep`，`rm -rf $W`；`git status` 干净。
+
+### 生产就绪 · 第 0 波 · 线程正确性（`REQ-PROD-019` 前半）
+
+`docs/DESIGN-PROD.md` §26 第 0 波 0C：`ThreadDispatcherImpl` 取模、`setInstance` / `teleport` 三处所有权断言、4 线程 `counter` 严格模式测试轮。四条都是 JUnit 或 Gradle 命令，不起服务端进程。
+
+#### `TC-PROD-030` 线程号为 `Integer.MIN_VALUE` 时下标仍落在线程表内 — 对应 `REQ-PROD-019` · 级别: 回归 · 执行者: AI
+
+前置：无。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | `./gradlew :test --tests 'io.github.bearisbug.synaxis.thread.ThreadDispatcherTest' --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts` | `BUILD SUCCESSFUL`；`build/test-results/test/TEST-io.github.bearisbug.synaxis.thread.ThreadDispatcherTest.xml` 的 `testsuite` 行是 `tests="15" skipped="0" failures="0" errors="0"`。其中 `minValueThreadIdMapsToAValidThread`：6 条线程、`ThreadProvider` 对任何分区都回 `Integer.MIN_VALUE`，元素只在 `threads().get(4)` 上 tick（`Math.floorMod(-2^31, 6) = 4`） |
+| 2 | 反证：把 `src/main/java/io/github/bearisbug/synaxis/thread/ThreadDispatcherImpl.java` 的 `retrieveThread` 里 `Math.floorMod(threadId, threads.size())` 改回 `Math.abs(threadId) % threads.size()`，重跑第 1 步 | `BUILD FAILED`，`15 tests completed, 1 failed`；失败的是 `minValueThreadIdMapsToAValidThread`，信息 `java.lang.ArrayIndexOutOfBoundsException: Index -2 out of bounds for length 6`（修复前的原始红就是这一条） |
+| 3 | `git checkout -- src/main/java/io/github/bearisbug/synaxis/thread/ThreadDispatcherImpl.java`，重跑第 1 步 | 与第 1 步相同 |
+
+后置：`git status --short src/main` 无输出。
+
+#### `TC-PROD-031` `setInstance` 与 `teleport` 在非所属线程调用时抛所有权异常 — 对应 `REQ-PROD-019` · 级别: 回归 · 执行者: AI
+
+前置：无。测试 JVM 由 Gradle 默认带 `-ea`，所有权断言在测试里始终开着，不必另给 `-Dsynaxis.acquirable-strict=true`。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | `./gradlew :test --tests 'io.github.bearisbug.synaxis.entity.AcquirableStrictIntegrationTest' --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts` | `BUILD SUCCESSFUL`，该类 `tests="5"` 全绿。`foreignThreadInstanceChangeAndTeleportThrow`：一只僵尸与一个玩家各 tick 过一次（已分配 tick 线程）后，从虚拟线程分别调 `Entity#teleport`、`Entity#setInstance`、`Player#teleport`、`Player#setInstance`，四次都在返回 future 之前抛 `AcquirableOwnershipException`，两者仍在原实例 |
+| 2 | 反证三处，逐处改、跑、还原：① 删掉 `src/main/java/io/github/bearisbug/synaxis/entity/Entity.java` 里 `teleport(Pos, Vec, long[], int, boolean)` 的首行 `this.acquirable.assertOwnership();`；② 删掉同文件 `setInstance(Instance, Pos)` 的首行 `this.acquirable.assertOwnership();`；③ 删掉 `src/main/java/io/github/bearisbug/synaxis/entity/Player.java` 里 `setInstance(Instance, Pos)` 的首行 `acquirable().assertOwnership();`。每处改完重跑第 1 步，再 `git checkout --` 该文件 | 三次都是 `5 tests completed, 1 failed`，失败的是 `foreignThreadInstanceChangeAndTeleportThrow`，信息 `Unexpected null value, expected: <io.github.bearisbug.synaxis.thread.AcquirableOwnershipException> but was: <null>`（调用照常完成了）。断的行依次是僵尸 `teleport`、僵尸 `setInstance`、玩家 `setInstance` 那一行（本轮实测 `AcquirableStrictIntegrationTest.java:54`、`:55`、`:57`，行号随文件变动，不作判据）。`Player#teleport` 没有自己的断言，它经 `Entity#teleport`，所以反证 ① 同时覆盖它 |
+| 3 | 三处都还原后重跑第 1 步 | 与第 1 步相同 |
+
+后置：`git status --short src/main` 无输出。
+
+#### `TC-PROD-032` 接线不误伤：未分配的实体可由非 tick 线程放置、别的 tick 线程仍判越权，已 tick 的玩家可跨未加载区块换实例 — 对应 `REQ-PROD-019` · 级别: 回归 · 执行者: AI
+
+前置：无。断言接进 `setInstance` 之前必须先放宽两处，否则引擎自己的调用路径会被判越权：玩家在连接线程上构造、由 tick 调度线程放进实例（此时还没分配 tick 线程）；玩家换实例要等区块加载时，后半段 `spawnPlayer` 由调度线程执行，而调度线程不拥有已在 tick 的玩家。未分配时只放行建它的线程和非 `TickThread`（调度线程是 `EngineThread` 不是 `TickThread`）：实体 `setInstance` 后到下一 tick 分配线程前，已能经追踪器与观察者列表被别的 tick 线程拿到，那条线程改它仍算越权。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | `./gradlew :test --tests 'io.github.bearisbug.synaxis.entity.AcquirableStrictIntegrationTest' --tests 'io.github.bearisbug.synaxis.entity.PlayerChunkLoadFailureIntegrationTest' --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts` | `BUILD SUCCESSFUL`；`unassignedEntityCanBeSpawnedFromAnotherThread`（测试线程建的僵尸由虚拟线程 `setInstance` 成功）、`unassignedEntityIsForeignToAnotherTickThread`（已放进实例、`assignedThread()` 仍为 null 的僵尸，在另起的 `TickThread` 上 `setVelocity` 与 `teleport` 都抛 `AcquirableOwnershipException`，测试线程自己 `setVelocity` 不抛）、`ownedPlayerChangesInstanceAcrossUnloadedChunks`（已 tick 的玩家经 `acquirable().applySync` 换到另一个实例的 (4000, 42, 4000)，join 正常返回，`getInstance()` 是目标实例）、`failingChunkLoaderDoesNotHangSetInstance` 四条绿 |
+| 2 | 反证未分配语义：把 `src/main/java/io/github/bearisbug/synaxis/thread/AcquirableImpl.java` 的 `assertOwnership` 里整个 `if (assignedThread == null) { … }` 块与其后的 `if (isOwnedImpl(assignedThread)) return;` 换成一行 `if (isOwned()) return;`（改前的语义：未分配时只认建它的线程），重跑第 1 步，再 `git checkout --` 该文件 | 红 2 条：`unassignedEntityCanBeSpawnedFromAnotherThread` 断在 `expected: <null> but was: <io.github.bearisbug.synaxis.thread.AcquirableOwnershipException: … Initialization thread: …>`；`failingChunkLoaderDoesNotHangSetInstance` 断在 `the chunk load failure must reach the caller ==> Unexpected type, expected: <java.util.concurrent.CompletionException> but was: <io.github.bearisbug.synaxis.thread.AcquirableOwnershipException>`。还原后复绿 |
+| 3 | 反证调度线程那半段：把 `src/main/java/io/github/bearisbug/synaxis/entity/Player.java` 的 `setInstance` 里 `(i) -> runOwned(() -> spawnPlayer(…))` 改回 `(i) -> spawnPlayer(…)`，重跑第 1 步，再 `git checkout --` 该文件 | 红 1 条：`ownedPlayerChangesInstanceAcrossUnloadedChunks` 断在 `Unexpected exception thrown: java.util.concurrent.CompletionException: io.github.bearisbug.synaxis.thread.AcquirableOwnershipException: … Assigned thread: Syn-Tick-0`。还原后复绿 |
+| 4 | 反证 tick 线程判越权：把 `src/main/java/io/github/bearisbug/synaxis/thread/AcquirableImpl.java` 的 `assertOwnership` 里未分配分支的放行条件中 `!(current instanceof TickThread)` 改成 `current != null`（未分配时任何线程都放行），重跑第 1 步，再 `git checkout --` 该文件 | 红 1 条：`unassignedEntityIsForeignToAnotherTickThread` 断在 `AcquirableStrictIntegrationTest.java:81`（`setVelocity` 那条）`Unexpected null value, expected: <io.github.bearisbug.synaxis.thread.AcquirableOwnershipException>`。还原后复绿 |
+
+后置：`git status --short src/main` 无输出。
+
+#### `TC-PROD-033` 4 线程 `counter` 严格模式跑全量 — 对应 `REQ-PROD-019` · 级别: 回归 · 执行者: AI
+
+前置：无。开关是 Gradle 命令行上的两个系统属性，由 `build-src` 的 `synaxis.java-library` 约定插件转给每个模块的测试 JVM；`EnvTestExt` 只从 JVM 读线程数这一项。CI 上同一条命令是 `.github/workflows/ci.yml` 的 `multithreaded` job。三处断言接好后，先在默认 1 线程配置下跑全量，红了 5 条：4 条是测试在测试线程上直接对已 tick 的实体调 `teleport` / `setInstance`（单线程假设），按 `API-PROD-016` 的线程契约改为经 `acquirable()` 调用、在锁外 join：`EntityAsyncContinuationIntegrationTest` 两条、`EntityViewDirectionIntegrationTest#viewYawAndPitch`、`PlayerMovementIntegrationTest#testClientViewDistanceSettings`；第 5 条 `PlayerChunkLoadFailureIntegrationTest` 是引擎侧的未分配语义，见 `TC-PROD-032`。之后首次在本配置下跑全量只红 1 条：`ServerConfigTest#testJvmUsesTheProductionDefaults`（「测试 JVM 不带任何引擎设置」），已改为比较时豁免 `dispatcherThreads` 这一项。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | `./gradlew test --rerun --continue -Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts` | `BUILD SUCCESSFUL`；各模块 `build/test-results/test/*.xml` 全部 `failures="0" errors="0"`（本轮 412 个类、3,155 条：引擎 2,890、`server-app` 90、`game-rts` 83、`protocol` 78、`testing` 7、`architecture-tests` 5、`plugin-api` 2） |
+| 2 | `grep -o 'env dispatcher threads: [0-9]*' testing/build/test-results/test/TEST-io.github.bearisbug.synaxis.testing.test.EnvDispatcherThreadsIntegrationTest.xml` | 输出 `env dispatcher threads: 4`（CI job 的最后一步就是这条 grep） |
+| 3 | 反证 Gradle 不转发：把 `build-src/src/main/kotlin/synaxis.java-library.gradle.kts` 里的 `providers.systemProperty(name).orNull?.let { systemProperty(name, it) }` 改成 `providers.systemProperty(name).orNull?.let { }`，跑 `./gradlew :testing:test --tests '*EnvDispatcherThreadsIntegrationTest' -Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts`，再跑第 2 步，然后 `git checkout --` 该文件 | 测试本身绿（JVM 里没有这个属性，期望值与实际都是 1），第 2 步输出 `env dispatcher threads: 1`，`grep -q 'env dispatcher threads: 4'` 退出码 1：只看测试结果会把「全量其实跑在 1 条线程上」当成绿，CI 那一步 grep 拦的就是这个 |
+| 4 | 反证 `Env` 不读：删掉 `testing/src/main/java/io/github/bearisbug/synaxis/testing/EnvTestExt.java` 里 `.dispatcherThreads(ServerConfig.fromSystemProperties().dispatcherThreads())` 那一行，跑第 3 步那条 `:testing:test` 命令，然后 `git checkout --` 该文件 | 红 1 条：`envRunsTheDispatcherThreadsOfTheJvm` 断在 `expected: <4> but was: <1>` |
+| 5 | 两处都还原后重跑第 3 步那条 `:testing:test` 命令与第 2 步 | 绿，输出 `env dispatcher threads: 4` |
+
+后置：`git status --short` 无输出。
+
+### 生产就绪 · 真客户端回归（`docs/DESIGN-PROD.md` 第 0 波 0D）
+
+三条都对应 `REQ-PROD-030` 的离线档（`API-PROD-026`）。回归断言在 `client-fabric/src/gametest/.../RegressionClientGameTest.java`，判定脚本是 `client-fabric/gametest-env/judge.sh`，工作流是 `.github/workflows/client-gametest.yml`。本地只在无头容器里跑客户端（镜像 `synaxis-mc-client:dev` 与卷 `synaxis-mc-gradle`，做法见 `docs/research/client-spikes-2026-09/README.md`「无头运行方式」），不在桌面起客户端。CI 侧「main 上连续 5 次绿」「连续 20 次绿后设为必需检查」由验收人在合并后判，不在这三条里。
+
+#### `TC-PROD-040` 真客户端 R1～R8 全绿，一条断言坏了报告与 gametest 都红 — 对应 `REQ-PROD-030` · 级别: 回归 · 执行者: AI
+
+前置：`./gradlew :protocol:publishToMavenLocal --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts` 已跑；删掉仓库根的 `logs/`，按 README 第 2 步起玩法模式服务端（离线，`handshake-phase` 用默认的 `configuration`），本轮用 `-Dsynaxis.app.port=25604`，stdout 重定向到 `<server.log>`；日志出现 `server-app listening` 后再做第 1 步。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | `SYNAXIS_GAMETEST_SERVER=host.docker.internal:25604 OUT=<out1> client-fabric/gametest-env/run.sh`；`cat <out1>/synaxis-gametest/report.txt` | `run.sh` 的退出码只记录不判定（本地 aarch64 容器恒为 1：`Stopping!` 之后 `libopenal` 段错误，Gradle 报 `exit value 134`）。报告恰 8 行、全部 `PASS`，实测：`R1 PASS mods [io_github_bearisbug_synaxis_protocol dev, synaxis 0.1.0]`、`R2 PASS state=VERIFIED schema_version=1`、`R3 PASS in world at BlockPos{x=256, y=40, z=256}`、`R4 PASS bound=66 commandable=64 unmatched_state_entries=0`、`R5 PASS unit_id=1 selected=1`、`R6 PASS unit_id=1 answers [OK] target 263.50,40.00,255.50 moved 2.27 blocks (need 2.0)`、`R7 PASS surface BlockPos{x=256, y=39, z=256} sky_above=15 sky_below=0`、`R8 PASS screen: Connection Lost. The server rejected a message from this connection as malformed.`；`<out1>/screenshots/` 有 `r3-after-connect`、`r7-in-world`、`r8-disconnected` 三张 |
+| 2 | 生产启动器那一条：把 `run.sh` 复制一份，容器里的 `runClientGameTest` 换成 `runProductionClientGameTest`、拷出目录换成 `build/run/productionClientGameTest`，其余不变，`OUT=<out2>` 跑一次 | 同第 1 步，8 行 `PASS`（本轮实测 `R5 PASS unit_id=2 selected=2`、`R6 … moved 2.10 blocks`）。R1 的模组列表来自 Loom 生产启动器装的 `remapJar`，证明嵌套的 `:protocol` 在玩家那条启动路径上同样被加载 |
+| 3 | `LAUNCHES=2 SERVER_LOG=<server.log> LEDGER_DIR=logs client-fabric/gametest-env/judge.sh <out1>/synaxis-gametest/report.txt <out2>/synaxis-gametest/report.txt` | 退出码 0，逐行 `ok`：两份 `8 PASS`、`2 reports for 2 launches`、`client_verified 2, expected 2`、`client_rejected 0, expected 0`、`unit_order_issued 2, expected >= 2`、`protocol-error kicks 2, expected 2`，末行 `client regression: all checks passed` |
+| 4 | 反证有齿：删掉 `client-fabric/src/main/resources/assets/synaxis/lang/en_us.json` 里 `"synaxis:protocol-error"` 那一行（`verifyModJar` 仍绿，它只查 lang 文件在不在），同一个服务端上 `OUT=<out3>` 重跑第 1 步，再 `git checkout -- client-fabric/src/main/resources/assets/synaxis/lang/en_us.json` | 报告 R1～R7 `PASS`，红在 R8：`R8 FAIL screen: Connection Lost. synaxis:protocol-error`（屏幕上是键本身）；`<out3>.log` 里 gametest 以 `java.lang.AssertionError: regression assertions failed:` 结束，下一行就是这条 R8。`judge.sh` 带 `LAUNCHES=3` 与三份报告：`FAIL <out3>/…/report.txt: 7 PASS, 1 FAIL`，台账四项都是 `ok`（红只来自报告），末行 `client regression: 1 check(s) failed`，退出码 1。还原后第 1 步复绿 |
+| 5 | 带 spike 跑一次（每日任务的形态）：重起服务端（先删 `logs/`），`SYNAXIS_SPIKES=s2 OUT=<out5> client-fabric/gametest-env/run.sh`，再 `LAUNCHES=1 CONNECTIONS=2 SERVER_LOG=<server.log> LEDGER_DIR=logs client-fabric/gametest-env/judge.sh <out5>/synaxis-gametest/report.txt` | 报告前 8 行 R1～R8 `PASS`，其后追加 spike 的 `S0` 3 行、`S1` 1 行、`S2` 2 行（spike 追加写，不覆盖 R 行）；`judge.sh` 退出码 0，`client_verified 2, expected 2`（spike 的 S1 每次启动多连一次）。不设 `SYNAXIS_SPIKES` 时报告只有 R1～R8 八行 |
+
+后置：`echo stop` 停服、按 pid 停掉 fifo 占位进程；删掉仓库根 `logs/`、各 `<out>` 目录与 `run.sh` 副本；`git status` 干净（第 4 步的临时改动已还原）。
+
+#### `TC-PROD-041` 判定读报告与台账，不读退出码 — 对应 `REQ-PROD-030` · 级别: 边缘 · 执行者: AI
+
+前置：`TC-PROD-040` 第 1 步留下的全绿报告 `<out1>`；一个空目录 `<empty>` 当台账目录（没有任何 `events-*.jsonl`）。第 1 步不需要服务端。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 客户端连不上服务端：`SYNAXIS_GAMETEST_SERVER=host.docker.internal:1 OUT=<out4> client-fabric/gametest-env/run.sh`；`cat <out4>/synaxis-gametest/report.txt` | 报告照样是 8 行（写在 `finally` 里，中途失败也一行不少）：`R1 PASS …`、`R2 FAIL state=IDLE`、`R3 FAIL not in world: Failed to connect to the server. finishConnect(..) failed with error(-111): Connection refused`、R4～R8 都是 `FAIL not reached: R3 failed` |
+| 2 | `LAUNCHES=1 SERVER_LOG=/dev/null LEDGER_DIR=<empty> client-fabric/gametest-env/judge.sh <out4>/synaxis-gametest/report.txt` | 退出码 1：`FAIL …: 1 PASS, 7 FAIL`（下面列出 7 条 FAIL 行）、`FAIL client_verified 0, expected 1`、`FAIL unit_order_issued 0, expected >= 1`、`FAIL protocol-error kicks 0, expected 1`，末行 `client regression: 4 check(s) failed` |
+| 3 | 台账有齿：`LAUNCHES=1 SERVER_LOG=/dev/null LEDGER_DIR=<empty> client-fabric/gametest-env/judge.sh <out1>/synaxis-gametest/report.txt`（报告全绿，服务端一侧什么都没有） | 退出码 1：`ok … 8 PASS`，但 `FAIL client_verified 0, expected 1`、`FAIL unit_order_issued 0, expected >= 1`、`FAIL protocol-error kicks 0, expected 1`，末行 `client regression: 3 check(s) failed`——只有报告、服务端没见到这次连接，判不了绿 |
+| 4 | 缺报告：`LAUNCHES=2 …/judge.sh <out1>/synaxis-gametest/report.txt <不存在的路径>/report.txt`（其余同第 3 步） | 退出码 1，其中 `FAIL no report at <不存在的路径>/report.txt` 与 `FAIL 1 reports for 2 launches` 两行来自缺的那份报告 |
+
+后置：删掉 `<out4>` 与 `<empty>`。
+
+#### `TC-PROD-042` 工作流的触发与判定步骤 — 对应 `REQ-PROD-030` · 级别: 回归 · 执行者: AI
+
+前置：`actionlint` 已装（Homebrew）；`TC-PROD-040` 的三份报告 `<out1>`（dev，全绿）、`<out2>`（生产，全绿）、`<out3>`（R8 FAIL）与 `<server.log>` 还在。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | `actionlint .github/workflows/client-gametest.yml` | 只有 2 条 shellcheck 提示，都在「Start server-app in game mode」那一步（`SC2034` 的 `i` 未用、`SC2086`），与基线 `2a315e7177` 的同一文件条数相同；本次改动的行零提示 |
+| 2 | `sed -n '/^on:/,/^permissions:/p' .github/workflows/client-gametest.yml` | `pull_request.paths` 恰 8 项（`client-fabric/**`、`protocol/**`、`server-app/**`、`game-rts/**`、`plugin-api/**`、`src/main/java/**/network/**`、`src/main/java/**/listener/**`、本工作流文件）；`push.branches: [ main ]`；`schedule` 一条 `cron: '0 18 * * *'`；`workflow_dispatch` 保留 `handshake_phase` 输入 |
+| 3 | `grep -n 'LAUNCHES:\|SYNAXIS_SPIKES:\|CONNECTIONS_PER_LAUNCH:\|continue-on-error\|judge.sh' .github/workflows/client-gametest.yml` | PR 为 `LAUNCHES=1`（dev 那一步 `if: env.LAUNCHES == '2'` 跳过，只跑生产 jar），其余触发为 2；只有 `schedule` 设 `SYNAXIS_SPIKES=all`、固定 `SYNAXIS_S3_DISTANCES` 与 `CONNECTIONS_PER_LAUNCH=2`；两个客户端步骤各一行 `continue-on-error: true`；判定步骤调用 `client-fabric/gametest-env/judge.sh` |
+| 4 | 把判定步骤的 `run:` 块原样抽出来，在一个按 CI 布局摆好的临时目录里跑（`client-fabric/build/run/{clientGameTest,productionClientGameTest}/synaxis-gametest/report.txt` 分别放 `<out1>`、`<out2>` 的报告，`server.log` 放 `<server.log>` 里的两行 `Kicking … reason=synaxis:protocol-error`，`logs/events-*.jsonl` 放两行 `client_verified` 与两行 `unit_order_issued`），`LAUNCHES=2 CONNECTIONS_PER_LAUNCH=1 SERVER_LOG=server.log LEDGER_DIR=logs bash step.sh`；再用 `LAUNCHES=1` 且删掉 dev 那份报告重跑 | 两次都退出码 0、末行 `client regression: all checks passed`：main 读两份报告，PR 只读生产那份 |
+| 5 | 反证有齿（一条断言坏了 job 判红）：生产那份换成 `<out3>` 的报告，`LAUNCHES=1` 重跑第 4 步；再换回 `<out2>`、`LAUNCHES=2` 并删掉 dev 那份报告重跑 | 前一次退出码 1：`FAIL …/productionClientGameTest/synaxis-gametest/report.txt: 7 PASS, 1 FAIL` 下接 `R8 FAIL screen: Connection Lost. synaxis:protocol-error`，末行 `client regression: 1 check(s) failed`。后一次退出码 1：`FAIL no report at client-fabric/build/run/clientGameTest/synaxis-gametest/report.txt` 与 `FAIL 1 reports for 2 launches`，末行 `client regression: 2 check(s) failed`——main 上 dev 那次启动没留下报告，job 红 |
+
+后置：删掉临时目录。
+
+### 生产就绪 · 运行参数
+
+#### `TC-PROD-050` 默认 JVM 参数在启动脚本与 `:server-app:run` 两条入口都生效 — 对应 `REQ-PROD-028` · 级别: 回归 · 执行者: AI
+
+前置：`REQ-PROD-028` 已合入；工作副本干净；端口 25605 空闲。下文 `FLAGS` 指这条命令（按端口找 pid，数七个期望参数命中了几个）：
+
+```bash
+pid=$(lsof -nP -iTCP:25605 -sTCP:LISTEN -t); echo "pid=$pid"
+jcmd "$pid" VM.flags | tr ' ' '\n' | grep -E 'UseG1GC|UseZGC|HeapSize=|AlwaysPreTouch|MaxGCPauseMillis|OnOutOfMemoryError'
+jcmd "$pid" VM.flags | tr ' ' '\n' | grep -cxE -- '-XX:\+UseG1GC|-XX:InitialHeapSize=4294967296|-XX:MaxHeapSize=4294967296|-XX:\+AlwaysPreTouch|-XX:MaxGCPauseMillis=50|-XX:\+HeapDumpOnOutOfMemoryError|-XX:\+ExitOnOutOfMemoryError'
+```
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | `./gradlew :server-app:installDist --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts`，再 `grep -n '^DEFAULT_JVM_OPTS=' server-app/build/install/server-app/bin/server-app` | `BUILD SUCCESSFUL`；恰好一行，依次是 `"-XX:+UseG1GC" "-Xms4G" "-Xmx4G" "-XX:+AlwaysPreTouch" "-XX:MaxGCPauseMillis=50" "-XX:+HeapDumpOnOutOfMemoryError" "-XX:+ExitOnOutOfMemoryError"` |
+| 2 | 建临时目录 `D=$(mktemp -d)` 并 `cd "$D"`，`tail -f /dev/null \| JAVA_OPTS=-Dsynaxis.app.port=25605 <仓库根>/server-app/build/install/server-app/bin/server-app > server.log 2>&1 &`；等 `server.log` 出现 `listening on 0.0.0.0:25605` 后执行 `FLAGS` | 列出 `-XX:+UseG1GC`、`-XX:InitialHeapSize=4294967296`、`-XX:MaxHeapSize=4294967296`、`-XX:+AlwaysPreTouch`、`-XX:MaxGCPauseMillis=50`、`-XX:+HeapDumpOnOutOfMemoryError`、`-XX:+ExitOnOutOfMemoryError`；末行计数 `7`。随后 `kill <pid>`，进程在 15 s 内退出，`server.log` 末行 `synaxis server stopped successfully.` |
+| 3 | 回仓库根，`tail -f /dev/null \| ./gradlew :server-app:run --no-daemon --console=plain --init-script gradle/init/aliyun-mirror.init.gradle.kts -Dsynaxis.app.port=25605 > <日志> 2>&1 &`；就绪后执行 `FLAGS` | 与第 2 步相同，计数 `7`（`run` 任务 fork 的 JVM 同样带默认参数）；`kill <pid>` 停机（Gradle 因子进程被信号终止报 `BUILD FAILED`，属预期） |
+| 4 | 覆盖：第 2 步的写法，`JAVA_OPTS` 改成 `-Dsynaxis.app.port=25605 -XX:+UseZGC` | 进程不起：`server.log` 为 `Error occurred during initialization of VM` 与 `Multiple garbage collectors selected`，端口 25605 无监听（换收集器必须先关 G1，`docs/ENGINE.md` §3.4 写明） |
+| 5 | 覆盖：`JAVA_OPTS` 改成 `-Dsynaxis.app.port=25605 -XX:-UseG1GC -XX:+UseZGC -Xms8G -Xmx8G`；就绪后执行 `FLAGS` | 列出 `-XX:-UseG1GC`、`-XX:+UseZGC`、`-XX:InitialHeapSize=8589934592`、`-XX:MaxHeapSize=8589934592`，其余三个参数仍在；计数 `4`（`JAVA_OPTS` 排在默认参数之后，同名参数后者生效，不用重新构建）。`kill <pid>` 停机 |
+| 6 | 反证有齿：删掉 `server-app/build.gradle.kts` 里 `"-Xms4G",` 与 `"-XX:+AlwaysPreTouch",` 两行，重跑第 1、2 步，再 `git checkout -- server-app/build.gradle.kts` 并重跑第 1 步 | 第 1 步那行少了这两个参数；第 2 步计数 `5`，红在两处：`-XX:+AlwaysPreTouch` 不出现，`InitialHeapSize` 退回 JVM 按物理内存 1/64 选的值（24 GiB 的 Apple M4 Pro 上是 `402653184`），不等于 `4294967296`。还原并重装后第 2 步回到计数 `7` |
+| 7 | `grep -n 'JVM 参数（生产默认）' docs/ENGINE.md`，读该小节 | 恰好一处命中；小节逐个写了七个参数的理由、改分代 ZGC 的条件（堆上限 > 8 GiB 或 GC 暂停 P99 > 10 ms）、`JAVA_OPTS` 覆盖方式与第 2 步的取证命令 |
+
+后置：按 pid 停掉所有服务端与对应的 `tail -f /dev/null`；删掉第 2～6 步的临时目录与第 3 步的日志；确认工作区干净（第 6 步的临时改动已还原）。
+
 ## 5. 回归策略
 
 - **全量轮**（全部用例）：首次成稿、每个阶段 gate（引擎域阶段 0、2、3；游戏域 `docs/DESIGN-M2.md` §26 的阶段 1～6b；大世界域 `docs/DESIGN-M3.md` §26 的 M3-A～M3-G）、跨功能域改动、地基变更（JDK、Gradle、镜像、协议版本、模块拆分、启动入口）。
 - **局部轮**（受影响用例 + 全部冒烟级）：单一需求改动。受影响用例 = 本次改动触及的 `REQ-*` / `REQ-M2-*` 所对应的 TC（M2 侧的对照表在 §2，机械校验查不到它）；无 REQ 变更的改动（纯 bug 修、重构）按触及的功能域圈定：
-  - 引擎域：构建与仓库 → TC-001、TC-002、TC-004、TC-006、TC-021、TC-029，删除与注册表 → TC-008、TC-009、TC-020、TC-036，命名与合规 → TC-011、TC-028，协议 → TC-014、TC-018、TC-019、TC-026、TC-027、TC-030、TC-031、TC-032、TC-034、TC-035、TC-GAME-069、TC-GAME-070、TC-GAME-071（后三条是攻击面盘点补的，动了 `network` / `listener` 包或 `ServerConfig` 的连接与超时项就跑），卫生 → TC-015、TC-016，门面与配置 → TC-023、TC-025，分层 → TC-024、TC-035。
+  - 引擎域：构建与仓库 → TC-001、TC-002、TC-004、TC-006、TC-021、TC-029，删除与注册表 → TC-008、TC-009、TC-020、TC-036，命名与合规 → TC-011、TC-028，协议 → TC-014、TC-018、TC-019、TC-026、TC-027、TC-030、TC-031、TC-032、TC-034、TC-035、TC-GAME-069、TC-GAME-070、TC-GAME-071（后三条是攻击面盘点补的，动了 `network` / `listener` 包或 `ServerConfig` 的连接与超时项就跑），卫生 → TC-015、TC-016，门面与配置 → TC-023、TC-025，分层 → TC-024、TC-035，tick 多线程（`thread` 包、`Entity` / `Player` 的 `setInstance` / `teleport`、`EnvTestExt`、测试 JVM 参数）→ TC-PROD-030～TC-PROD-033。
   - 游戏域：模块与门禁 → TC-GAME-001～TC-GAME-006、TC-GAME-059、TC-GAME-067，插件宿主 → TC-GAME-009～TC-GAME-011、TC-GAME-014～TC-GAME-016、TC-GAME-053～TC-GAME-055（TC-GAME-007、TC-GAME-008、TC-GAME-012、TC-GAME-013 已废弃），协议与握手 → TC-GAME-017～TC-GAME-028、TC-GAME-049、TC-GAME-050、TC-GAME-060～TC-GAME-064（TC-GAME-021、TC-GAME-023、TC-GAME-025 已废弃），世界与对局 → TC-GAME-029、TC-GAME-031、TC-GAME-033～TC-GAME-036、TC-GAME-056、TC-GAME-057（TC-GAME-030、TC-GAME-032 已废弃），单位与寻路 → TC-GAME-052、TC-GAME-039～TC-GAME-042、TC-GAME-051、TC-GAME-065、TC-GAME-068，镜头 → TC-GAME-043、TC-GAME-044，客户端模组 → TC-GAME-038、TC-GAME-045～TC-GAME-047、TC-GAME-066，启动器 → TC-GAME-048、TC-GAME-049、TC-GAME-050、TC-GAME-058。
+  - 生产就绪域：宿主日志线（`REQ-PROD-015`～`REQ-PROD-017`）→ TC-PROD-001～TC-PROD-008。
+  - 生产就绪域：tick 看门狗（`REQ-PROD-014` 前半）→ TC-PROD-020～TC-PROD-023。
   - 大世界域：光照 → TC-WORLD-001～TC-WORLD-005，基准 → TC-WORLD-006（TC-WORLD-007 只在空闲机器上跑，属全量轮；TC-WORLD-008 等第一张美术地图）。
+  - 跨域牵连（必须一起跑）：动了 `network/packet` 下的包注册表（增删包、调顺序、升协议版本）→ 加 TC-036；动了启动入口或就绪日志 → 加 TC-GAME-048、TC-GAME-029、TC-GAME-057、TC-GAME-058 与全部以进程为前置的引擎域用例（启动序列一变，「对局在 bind 之前就绪、tick 在 bind 之后才起」这条口径就要重验）；动了握手、准入回调或探针 → 加 TC-GAME-049、TC-GAME-050、TC-GAME-060、TC-GAME-061 与 TC-004、TC-014、TC-018、TC-019、TC-020、TC-026、TC-027 七条存量 TC；动了客户端模组侧的握手或拾取 → 加 TC-GAME-066；动了 `:protocol` 消息布局 → 加 TC-GAME-017 与客户端侧同一份向量；动了引擎 `Entity` 的位置推进入口 → 加 TC-GAME-051、TC-GAME-067 与 TC-GAME-040；动了对局的 chunk supplier、`Match#load` 的载入流程或引擎 `LightingChunk` / `instance.light` → 加 TC-GAME-029（第 10、11 步是光照的先红后绿）；动了 `ExceptionManager` / `ExceptionHandler`、宿主的 `EventLedger`、`logback*.xml` 或 `server-app` 的启动参数 → 加 TC-PROD-001～TC-PROD-008 与 TC-035。动了 `ServerProcessImpl` 的 `TickerImpl`、`Watchdog`、`ServerConfig` 的 `synaxis.watchdog.*` 键或宿主的 `CrashReports` → 加 TC-PROD-020～TC-PROD-023 与 TC-PROD-002。
 
-  - 跨域牵连（必须一起跑）：动了 `network/packet` 下的包注册表（增删包、调顺序、升协议版本）→ 加 TC-036；动了启动入口或就绪日志 → 加 TC-GAME-048、TC-GAME-029、TC-GAME-057、TC-GAME-058 与全部以进程为前置的引擎域用例（启动序列一变，「对局在 bind 之前就绪、tick 在 bind 之后才起」这条口径就要重验）；动了握手、准入回调或探针 → 加 TC-GAME-049、TC-GAME-050、TC-GAME-060、TC-GAME-061 与 TC-004、TC-014、TC-018、TC-019、TC-020、TC-026、TC-027 七条存量 TC；动了客户端模组侧的握手或拾取 → 加 TC-GAME-066；动了 `:protocol` 消息布局 → 加 TC-GAME-017 与客户端侧同一份向量；动了引擎 `Entity` 的位置推进入口 → 加 TC-GAME-051、TC-GAME-067 与 TC-GAME-040；动了对局的 chunk supplier、`Match#load` 的载入流程或引擎 `LightingChunk` / `instance.light` → 加 TC-GAME-029（第 10、11 步是光照的先红后绿）；动了引擎 `LightingChunk`、`instance/light/` 下任一类、`collision/ShapeImpl`、方块注册表数据（`block.json`）或 `tools/light-oracle/` → 加 TC-WORLD-001～TC-WORLD-005 与 TC-GAME-029（光照值变了，M2 对局的整图光照跟着变）；升 Minecraft 版本 → 先按 `docs/ENGINE.md` 升版清单用 `gen.sh` 重生真值，再跑 TC-WORLD-001～TC-WORLD-005；动了区块包编码、调色板（`instance/palette/`）或 `jmh-benchmarks/src/worldbench/` → 加 TC-WORLD-006。
+  - 跨域牵连（必须一起跑）：动了 `network/packet` 下的包注册表（增删包、调顺序、升协议版本）→ 加 TC-036；动了启动入口或就绪日志 → 加 TC-GAME-048、TC-GAME-029、TC-GAME-057、TC-GAME-058 与全部以进程为前置的引擎域用例（启动序列一变，「对局在 bind 之前就绪、tick 在 bind 之后才起」这条口径就要重验）；动了握手、准入回调或探针 → 加 TC-GAME-049、TC-GAME-050、TC-GAME-060、TC-GAME-061 与 TC-004、TC-014、TC-018、TC-019、TC-020、TC-026、TC-027 七条存量 TC；动了客户端模组侧的握手或拾取 → 加 TC-GAME-066；动了 `:protocol` 消息布局 → 加 TC-GAME-017 与客户端侧同一份向量；动了引擎 `Entity` 的位置推进入口 → 加 TC-GAME-051、TC-GAME-067 与 TC-GAME-040；动了对局的 chunk supplier、`Match#load` 的载入流程或引擎 `LightingChunk` / `instance.light` → 加 TC-GAME-029（第 10、11 步是光照的先红后绿）。
+  - 生产就绪域（`docs/DESIGN-PROD.md`）：真客户端回归 → TC-PROD-040～TC-PROD-042；动了 `client-fabric/**`、`protocol/**`、`server-app/**`、`game-rts/**`、`plugin-api/**`、引擎 `network` / `listener` 包或 `client-gametest.yml` 就跑 TC-PROD-040（与工作流的 PR 路径过滤同一口径），动了 `judge.sh` 或工作流再加 TC-PROD-041、TC-PROD-042。
+
+  - 生产就绪域（`docs/DESIGN-PROD.md`）：运行参数 → TC-PROD-050（动了 `server-app/build.gradle.kts` 的 `application` 块、启动脚本或部署单元的 JVM 参数就跑）。
   - 影响面不确定时升级为全量轮。
 - **复测轮**（上轮失败用例 + 全部冒烟级）：修复失败项之后。
 - **人工收口轮**（仅上轮「待人工」用例）：AI 轮之后由人工补测 TC-016、TC-030、TC-GAME-020、TC-GAME-038、TC-GAME-046、TC-GAME-047，不要求冒烟级。
@@ -1961,7 +2257,8 @@ REQ-M3 ↔ TC 对照（可读索引）。「未实现」行没有用例，是已
 | RUN-022 | 2026-09-22 | `3daf64f109`（阶段 6a 的无屏幕部分：客户端握手、绑定表、拾取与下令） | AI（Claude Code，Gradle / Loom） | 局部（REQ-M2-019 的可无头测试部分→TC-GAME-045、TC-GAME-066；§24 双端向量复验；根构建回归） | 通过 4/9 · 待人工 5 |
 | RUN-023 | 2026-09-22 | `28e908d301`（三项不等屏幕的交付合入：`:architecture-tests` 聚合规则、攻击面盘点与两处引擎修复、`synaxis.app.units` 与玩法模式压测 harness 及 50 × {1,000, 2,000, 4,000} 测量；含 v0.37 的 `heap_delta_kib` 与文档 lint 放宽） | AI（Claude Code，Gradle / 探针 / harness） | 局部（REQ-M2-002、REQ-M2-025→TC-GAME-067；REQ-M2-016、REQ-M2-017、REQ-M2-009→TC-GAME-068；REQ-011、REQ-017→TC-GAME-069～TC-GAME-071；REQ-M2-010→TC-GAME-029 第 2 步 + 冒烟级 TC-029） | 通过 6/7 · 失败 1 |
 | RUN-024 | 2026-09-23 | `d3d065787e`（无头真客户端 spike S0～S5、clientbound 包 ID 修复与 26.2 整表门禁、`archetype_view_range` 5.0、对局世界载入期整图光照） | AI（Claude Code，Gradle / Docker 无头客户端） | 局部（REQ-005→TC-036；REQ-M2-010、REQ-M2-011→TC-GAME-029；REQ-M2-016→TC-GAME-052；REQ-M2-020→TC-GAME-046 + 冒烟级 TC-029） | 通过 4/5 · 待人工 1 |
-| RUN-025 | 2026-09-23 | `75925b315d`（分支 `m3/integrate`：光照 parity 修复、`LargeWorldBench`、DH + Iris spike 三条分支合入 `main` `4f686b87f6`；本轮之后的两个文档提交不改代码） | AI（Claude Code，Gradle / `gen.sh` / worldBench） | 局部（REQ-M3-007→TC-WORLD-001、TC-WORLD-002；REQ-M3-005、REQ-M3-006→TC-WORLD-003；REQ-M3-027→TC-WORLD-002、TC-WORLD-004；REQ-M3-028→TC-WORLD-005；REQ-M3-013→TC-WORLD-006～TC-WORLD-008；跨域牵连（引擎 `LightingChunk` / `instance.light`）→TC-GAME-029 第 1、2、10、11 步 + 冒烟级 TC-029） | 通过 7/10 · 失败 1 · 阻塞 1 · 跳过 1 |
+| RUN-025 | 2026-09-23 | 集成分支 `prod/integrate-w0`（DESIGN-PROD 第 0 波：看门狗、崩溃报告、日志轮转、台账缓冲、线程正确性、JVM 参数、真客户端回归断言） | AI（Claude Code，Gradle / Docker 无头客户端） | 局部（REQ-PROD-014、015、016、017、019、028、030→TC-PROD-001～TC-PROD-008、TC-PROD-020～TC-PROD-023、TC-PROD-030～TC-PROD-033、TC-PROD-040～TC-PROD-042、TC-PROD-050 + 冒烟级 TC-029） | 通过 6/7 · 阻塞 1 |
+| RUN-026 | 2026-09-23 | `75925b315d`（分支 `m3/integrate`：光照 parity 修复、`LargeWorldBench`、DH + Iris spike 三条分支合入 `main` `4f686b87f6`；本轮之后的两个文档提交不改代码） | AI（Claude Code，Gradle / `gen.sh` / worldBench） | 局部（REQ-M3-007→TC-WORLD-001、TC-WORLD-002；REQ-M3-005、REQ-M3-006→TC-WORLD-003；REQ-M3-027→TC-WORLD-002、TC-WORLD-004；REQ-M3-028→TC-WORLD-005；REQ-M3-013→TC-WORLD-006～TC-WORLD-008；跨域牵连（引擎 `LightingChunk` / `instance.light`）→TC-GAME-029 第 1、2、10、11 步 + 冒烟级 TC-029） | 通过 7/10 · 失败 1 · 阻塞 1 · 跳过 1 |
 
 明细（仅登非「通过」项）：
 
@@ -2067,12 +2364,16 @@ TC-002 证据：`docs/test-runs/RUN-002/tc-002.txt`（5 步实际输出）（2,6
 
 | RUN-024 | TC-GAME-046 | 待人工 | 第 1、2 步要本机同时装 26.2 与 26.3 两个 Fabric profile；第 3 步（configuration 阶段握手不被 `client-mod-required` 踢）已由无头真客户端 S1 满足，台账 `client_verified`、无 kick，见 `docs/research/client-spikes-2026-09/README.md` S1 节 | 人工收口轮 |
 
-| RUN-025 | TC-WORLD-006 | 失败 | 第 1～3 步通过（未压缩字节与每包天光数组数三个作业全等）。第 4 步预期成帧字节全等，实际 `packet h=64 t=flat40` 的 `plainFramedBytes` 均值 136.0756、基线 136.1089，`litFramedBytes` 182.9533、基线 182.9733；两个 natural 作业全等。同一程序再连跑两次：第 1 次 flat40 与高 256 natural 都与基线不同，第 2 次都相同，成帧字节在两组值之间来回，未压缩字节每次都全等。入库的两轮基线互相比，7 个 `packet` 作业里有 3 个（高 384 setall、高 256 natural、flat40）成帧字节不同，与 `bench-2026-09.md` §1「字节数两轮完全一致」不符。证据 `docs/test-runs/RUN-025/worldbench-bytes-compare.txt`、`docs/test-runs/RUN-025/worldbench-repeat.txt` | 待拍板：设计文档 §19「基准程序复跑」的「字节数相同」改为只判未压缩字节，或先查清同样长度的包体为何逐次不同（若是 section 内字节顺序不稳，会碰到 `REQ-M3-003`「同输入同版本产出同一内容哈希」）；定了之后新起复测轮 |
-| RUN-025 | TC-WORLD-007 | 跳过 | 机器不空闲：本轮 worldBench 作业记录的 1 分钟负载 21.5～76.6（12 核，判据 < 6），同机有别的任务在跑 | 空闲机器上的全量轮 |
-| RUN-025 | TC-WORLD-008 | 阻塞 | 还没有美术地图，`LargeWorldBench` 也没有从 `.synx` 或 Anvil 读入的作业（设计文档 `API-M3-008` 待补作业 T1） | 第一张美术地图出来时 |
+| RUN-025 | TC-PROD-040 | 阻塞 | 本地已两次真客户端运行判绿、一次故意失败判红；设计的退出条件是 main 上 `client-gametest.yml` 连续 5 次绿，只能合入后由 CI 判定 | 合入 main 后看 CI |
+
+| RUN-026 | TC-WORLD-006 | 失败 | 第 1～3 步通过（未压缩字节与每包天光数组数三个作业全等）。第 4 步预期成帧字节全等，实际 `packet h=64 t=flat40` 的 `plainFramedBytes` 均值 136.0756、基线 136.1089，`litFramedBytes` 182.9533、基线 182.9733；两个 natural 作业全等。同一程序再连跑两次：第 1 次 flat40 与高 256 natural 都与基线不同，第 2 次都相同，成帧字节在两组值之间来回，未压缩字节每次都全等。入库的两轮基线互相比，7 个 `packet` 作业里有 3 个（高 384 setall、高 256 natural、flat40）成帧字节不同，与 `bench-2026-09.md` §1「字节数两轮完全一致」不符。证据 `docs/test-runs/RUN-025/worldbench-bytes-compare.txt`、`docs/test-runs/RUN-025/worldbench-repeat.txt` | 待拍板：设计文档 §19「基准程序复跑」的「字节数相同」改为只判未压缩字节，或先查清同样长度的包体为何逐次不同（若是 section 内字节顺序不稳，会碰到 `REQ-M3-003`「同输入同版本产出同一内容哈希」）；定了之后新起复测轮 |
+| RUN-026 | TC-WORLD-007 | 跳过 | 机器不空闲：本轮 worldBench 作业记录的 1 分钟负载 21.5～76.6（12 核，判据 < 6），同机有别的任务在跑 | 空闲机器上的全量轮 |
+| RUN-026 | TC-WORLD-008 | 阻塞 | 还没有美术地图，`LargeWorldBench` 也没有从 `.synx` 或 Anvil 读入的作业（设计文档 `API-M3-008` 待补作业 T1） | 第一张美术地图出来时 |
 
 
-RUN-025 证据：`docs/test-runs/RUN-025/`。`check.txt`：`./gradlew check --rerun-tasks` BUILD SUCCESSFUL、73 个任务全部执行，非根模块 264 个测试 0 失败；`tc-029.txt`：根模块 `:test --continue --rerun-tasks` 2,909 个测试 0 失败 15 跳过，两者合计 3,173。`gen-sh.txt` 与 `gen-sh-wrong-jar.txt`：TC-WORLD-002 四步，真值逐字节再生、`git status` 无输出、临时目录已删、客户端 jar 冒充退 1。`parity.txt`、`light-reverse-2.txt`、`parity-new-scene.txt`：TC-WORLD-001，篡改一个 nibble 报 `1 of 589824`，`zz-copy` 场景经 `gen.sh` 生成后与 `surface` 真值逐字节相同、测试数 7 → 8。`light-reverse.txt` 与 `light-reverse-2.txt`：TC-WORLD-003～005 的绿、四组反证（修复前两文件红 11 条、`fullyLit` 红 2 条、`ShapeImpl` 红 2 条、表错位红 1 条）与还原后全绿。`worldbench-quick.txt`、`run025-quick.json`、`worldbench-packet.txt`、`run025-packet.json`、`run025-flat40-{1,2}.json`、`worldbench-bytes-compare.txt`、`worldbench-repeat.txt`：TC-WORLD-006；比较脚本在仓库外的虚拟环境里跑，只用标准库，按 `params` 五项配对。`tc-game-029.txt` 与 `tc-game-029-server.log`：`rts-512` 起服，`match_started` 的 `chunk_count` 1024、`load_ms` 828、`heap_delta_kib` 9,455、`heap_gc_runs` 4（第 2 步判据内，与 RUN-024 的 771～968 / 约 9,300 同档，光照修复没有拖慢整图载入）；第 10 步绿，第 11 步 supplier 改回 `DynamicChunk` 红在 `column 0,0: the open air above the map is not lit by the sky`，还原后绿；TC-GAME-029 的第 3～9 步本轮没跑（与 RUN-024 同范围）。基准的 JSON 都在负载 21～77 的机器上跑出，耗时数字只当上界，本轮不判耗时。**DH + Iris spike（不是验收，只登证据指针）**：`docs/research/client-spikes-2026-09/dh-iris/README.md`，报告 `report-dh.txt` / `report-dh-iris.txt`、日志摘录与 `screenshots/`，随 `75925b315d` 合入；集成合并时只编译了 gametest 源码集（`client-fabric` 的 `compileGametestJava`，同时 `check` 92 个测试 0 失败），本轮没有重跑 `runClientGameTest`。**本轮没执行**：TC-WORLD-007（机器不空闲）、TC-WORLD-008（阻塞）、真显卡项（本机只有 llvmpipe 无头容器，见 §2 不测表）、`client-fabric` 构建（代码与集成合并时同一 commit）、TC-029 之外的冒烟级用例（沿用 RUN-023、RUN-024 的范围）。
+RUN-026 证据：`docs/test-runs/RUN-026/`（目录内原始日志写的 `docs/test-runs/RUN-025/` 与 `run025-*.json` 是本轮改号前的路径，指的就是本目录的文件）。`check.txt`：`./gradlew check --rerun-tasks` BUILD SUCCESSFUL、73 个任务全部执行，非根模块 264 个测试 0 失败；`tc-029.txt`：根模块 `:test --continue --rerun-tasks` 2,909 个测试 0 失败 15 跳过，两者合计 3,173。`gen-sh.txt` 与 `gen-sh-wrong-jar.txt`：TC-WORLD-002 四步，真值逐字节再生、`git status` 无输出、临时目录已删、客户端 jar 冒充退 1。`parity.txt`、`light-reverse-2.txt`、`parity-new-scene.txt`：TC-WORLD-001，篡改一个 nibble 报 `1 of 589824`，`zz-copy` 场景经 `gen.sh` 生成后与 `surface` 真值逐字节相同、测试数 7 → 8。`light-reverse.txt` 与 `light-reverse-2.txt`：TC-WORLD-003～005 的绿、四组反证（修复前两文件红 11 条、`fullyLit` 红 2 条、`ShapeImpl` 红 2 条、表错位红 1 条）与还原后全绿。`worldbench-quick.txt`、`run025-quick.json`、`worldbench-packet.txt`、`run025-packet.json`、`run025-flat40-{1,2}.json`、`worldbench-bytes-compare.txt`、`worldbench-repeat.txt`：TC-WORLD-006；比较脚本在仓库外的虚拟环境里跑，只用标准库，按 `params` 五项配对。`tc-game-029.txt` 与 `tc-game-029-server.log`：`rts-512` 起服，`match_started` 的 `chunk_count` 1024、`load_ms` 828、`heap_delta_kib` 9,455、`heap_gc_runs` 4（第 2 步判据内，与 RUN-024 的 771～968 / 约 9,300 同档，光照修复没有拖慢整图载入）；第 10 步绿，第 11 步 supplier 改回 `DynamicChunk` 红在 `column 0,0: the open air above the map is not lit by the sky`，还原后绿；TC-GAME-029 的第 3～9 步本轮没跑（与 RUN-024 同范围）。基准的 JSON 都在负载 21～77 的机器上跑出，耗时数字只当上界，本轮不判耗时。**DH + Iris spike（不是验收，只登证据指针）**：`docs/research/client-spikes-2026-09/dh-iris/README.md`，报告 `report-dh.txt` / `report-dh-iris.txt`、日志摘录与 `screenshots/`，随 `75925b315d` 合入；集成合并时只编译了 gametest 源码集（`client-fabric` 的 `compileGametestJava`，同时 `check` 92 个测试 0 失败），本轮没有重跑 `runClientGameTest`。**本轮没执行**：TC-WORLD-007（机器不空闲）、TC-WORLD-008（阻塞）、真显卡项（本机只有 llvmpipe 无头容器，见 §2 不测表）、`client-fabric` 构建（代码与集成合并时同一 commit）、TC-029 之外的冒烟级用例（沿用 RUN-023、RUN-024 的范围）。
+
+RUN-025 证据：`docs/test-runs/RUN-025/acceptance.txt`。要点：第 0 波五组全部经独立审查通过；合并后全量 check 与 4 线程 counter 严格模式全量（3,188 个测试）都绿；验收人两条反证（线程下标取模、台账停机等在途写入）都红；合并时发现 0E 的默认 `-Xms4G` 让 0A 的 OOM 用例永远验不到 OOM，已改用例并实跑确认退出码 3 与堆转储。
 
 RUN-024 证据：`docs/test-runs/RUN-024/acceptance.txt` 与 `docs/research/client-spikes-2026-09/`（S0～S5 的结论、截图与无头运行方式）。要点：真 26.2 客户端第一次连上本引擎，暴露出 REQ-005 删包把 clientbound 包 ID 按位置打乱（登录 1 个、play 18 个）——此前所有自动化都从本仓库注册表推导 ID，所以一直绿；修复后由 `PacketVanillaIdTest` 把 26.2 原版 251 个 ID 整表钉死，验收人删一个占位即红。对局世界改为载入期整图算光照，rts-512 的 `load_ms` 771～968 ms、`heap_delta_kib` 约 9,300，删掉 relight 即红。
 

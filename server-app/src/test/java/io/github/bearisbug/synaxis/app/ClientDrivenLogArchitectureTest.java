@@ -68,6 +68,9 @@ public class ClientDrivenLogArchitectureTest {
      * <li>{@link PluginSchedulerImpl}: one line per failing task run. A plugin picks both the
      * period and the number of tasks; nothing a client sends adds a task on its own, and a plugin
      * that schedules one per inbound packet would be writing the unbounded line itself.</li>
+     * <li>{@link CrashReports}: it prints stack traces into a crash report file, not into the log,
+     * and one report per fatal event — the exception handler writes one per process, the tick
+     * watchdog one per stall. Its own failure goes through a budget.</li>
      * </ul>
      * {@link PluginChannelRouter}, {@link PluginEventsImpl} and {@link EventLedger} are
      * deliberately absent: all three sit on a path whose rate a client picks — the first two on an
@@ -78,7 +81,7 @@ public class ClientDrivenLogArchitectureTest {
      * blind spot ① of the engine rule ({@code docs/ENGINE.md} §8), which those three therefore
      * escape.
      * <p>
-     * The four above do not: this list is by class, exactly like the engine's, so a second line
+     * The five above do not: this list is by class, exactly like the engine's, so a second line
      * whose rate a client picks, added inside one of them, stays green. Measured, not assumed — a
      * listener on a PLAY phase event writing a plain {@code LOGGER.warn}, put inside
      * {@link AdmissionGate}, does not turn this rule red. Registered as a remaining blind spot in
@@ -88,7 +91,8 @@ public class ClientDrivenLogArchitectureTest {
         return name(Main.class.getName())
                 .or(name(PluginHost.class.getName()))
                 .or(name(AdmissionGate.class.getName()))
-                .or(name(PluginSchedulerImpl.class.getName()));
+                .or(name(PluginSchedulerImpl.class.getName()))
+                .or(name(CrashReports.class.getName()));
     }
 
     private static ArchRule hostPathsDoNotLogPerPacket() {

@@ -672,12 +672,15 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
      */
     @Override
     public CompletableFuture<Void> setInstance(Instance instance, Pos spawnPosition) {
+        acquirable().assertOwnership();
         final Instance currentInstance = this.instance;
         Check.argCondition(currentInstance == instance, "Instance should be different than the current one");
         chunkUpdateLimitChecker.clearHistory();
         final boolean dimensionChange = currentInstance != null && !Objects.equals(currentInstance.getDimensionName(), instance.getDimensionName());
-        final Consumer<Instance> runnable = (i) -> spawnPlayer(i, spawnPosition,
-                currentInstance == null, dimensionChange);
+        // Once chunks had to load this runs on the tick scheduler thread, which does not own a player
+        // that is already ticking, so it goes through the acquirable like the Entity continuations
+        final Consumer<Instance> runnable = (i) -> runOwned(() -> spawnPlayer(i, spawnPosition,
+                currentInstance == null, dimensionChange));
 
         resetChunkQueue();
 
@@ -2357,7 +2360,7 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
                 manager.processClientPacket(packet, playerConnection);
             } catch (Throwable e) {
                 if (playerConnection.getClientState().ordinal() > config.suppressMisusedPacketErrorLevel())
-                    process().exception().handleException(e);
+                    process().exception().handleException(e, playerConnection.connectionId());
                 if (config.rejectMisusedPacket())
                     kick(Component.translatable("multiplayer.disconnect.invalid_packet", "Invalid Packet", NamedTextColor.RED));
             }

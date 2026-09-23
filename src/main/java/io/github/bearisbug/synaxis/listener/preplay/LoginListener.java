@@ -102,7 +102,7 @@ public final class LoginListener {
                     address = InetAddress.getByName(buffer.read(STRING));
                 } catch (UnknownHostException e) {
                     socketConnection.kick(INVALID_PROXY_RESPONSE);
-                    socketConnection.process().exception().handleException(e);
+                    socketConnection.process().exception().handleException(e, socketConnection.connectionId());
                     return;
                 }
                 final int port = ((InetSocketAddress) socketConnection.getRemoteAddress()).getPort();
@@ -127,7 +127,7 @@ public final class LoginListener {
             // into one read, and the kick is what ends that batch (PlayerSocketConnection#processPackets).
             connection.kick(ERROR_DURING_LOGIN);
             LOGGER.error("Error handling Login Plugin Response", t);
-            connection.process().exception().handleException(t);
+            connection.process().exception().handleException(t, connection.connectionId());
         }
     }
 
@@ -149,7 +149,7 @@ public final class LoginListener {
             }
             executeConfig(player, true);
         } catch (Throwable t) {
-            connection.process().exception().handleException(t);
+            connection.process().exception().handleException(t, connection.connectionId());
             connection.kick(ERROR_DURING_LOGIN);
         }
     }
@@ -185,7 +185,7 @@ public final class LoginListener {
             try {
                 connection.process().connection().transitionLoginToConfig(connection, gameProfile);
             } catch (Throwable t) {
-                connection.process().exception().handleException(t);
+                connection.process().exception().handleException(t, connection.connectionId());
             }
         });
     }
@@ -198,7 +198,7 @@ public final class LoginListener {
             try {
                 player.process().connection().doConfiguration(player, isFirstConfig);
             } catch (Throwable t) {
-                player.process().exception().handleException(t);
+                player.process().exception().handleException(t, player.getPlayerConnection().connectionId());
                 player.kick(ERROR_DURING_LOGIN);
             }
         });

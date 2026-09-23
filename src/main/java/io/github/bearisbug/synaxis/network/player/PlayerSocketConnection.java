@@ -198,7 +198,7 @@ public class PlayerSocketConnection extends PlayerConnection {
                     } catch (Throwable e) {
                         rethrowFatal(e);
                         if (startingState.ordinal() > process().config().suppressMisusedPacketErrorLevel())
-                            process().exception().handleException(e);
+                            process().exception().handleException(e, connectionId());
                         // Packets already in the queue are unaffected.
                         if (process().config().rejectMisusedPacket()) disconnect();
                     }

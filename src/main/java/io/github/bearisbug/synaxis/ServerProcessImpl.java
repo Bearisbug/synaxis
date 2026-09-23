@@ -68,6 +68,7 @@ final class ServerProcessImpl implements ServerProcess, Registries.Delegating {
     private final ThreadDispatcher<Chunk, Entity> dispatcher;
     private final PacketViewableUtils viewablePackets;
     private final Ticker ticker;
+    private final Watchdog watchdog;
 
     private final AtomicBoolean started = new AtomicBoolean();
     private final AtomicBoolean stopped = new AtomicBoolean();
@@ -83,7 +84,7 @@ final class ServerProcessImpl implements ServerProcess, Registries.Delegating {
     public ServerProcessImpl(Auth auth, ServerConfig config) {
         this.auth = auth;
         this.config = config;
-        this.exception = new ExceptionManager(this::stop);
+        this.exception = new ExceptionManager();
         this.registries = Registries.vanilla();
 
         this.connection = new ConnectionManager(this);
@@ -105,6 +106,7 @@ final class ServerProcessImpl implements ServerProcess, Registries.Delegating {
                 exception::handleException);
         this.viewablePackets = new PacketViewableUtils(this, config.viewablePacket(), config.pooledBufferSize());
         this.ticker = new TickerImpl();
+        this.watchdog = new Watchdog(config, dispatcher::threads);
     }
 
     @Override
@@ -191,6 +193,11 @@ final class ServerProcessImpl implements ServerProcess, Registries.Delegating {
     @Override
     public Ticker ticker() {
         return ticker;
+    }
+
+    @Override
+    public Watchdog watchdog() {
+        return watchdog;
     }
 
     @Override
@@ -358,6 +365,15 @@ final class ServerProcessImpl implements ServerProcess, Registries.Delegating {
     private final class TickerImpl implements Ticker {
         @Override
         public void tick(long nanoTime) {
+            final long watched = watchdog.tickStarted();
+            try {
+                tickWatched(nanoTime);
+            } finally {
+                watchdog.tickEnded(watched);
+            }
+        }
+
+        private void tickWatched(long nanoTime) {
             if (Thread.currentThread() instanceof TickSchedulerThread self) tickSchedulerThread = self;
             var serverTickEvent = EventsJFR.newServerTick();
             serverTickEvent.begin();

@@ -30,11 +30,11 @@ $JAVA_HOME/bin/javap -p -cp $J net.minecraft.client.Camera
 
 ## 无头运行方式
 
-两条路都打通了，跑的是同一份 `client-fabric/src/gametest/**`（`SpikeClientGameTest`）。spike 用的 mixin、
+两条路都打通了，跑的是同一份 `client-fabric/src/gametest/**`：先跑回归断言 R1～R8（`RegressionClientGameTest`，`docs/DESIGN-PROD.md` `API-PROD-026`），再跑 spike（`SpikeClientGameTest`）。spike 用的 mixin、
 相机覆盖、调试绘制只在 gametest 源码集，不进模组 jar（`./gradlew build` 的 `verifyModJar` 报 32 个条目，
 `unzip -l build/libs/client-fabric-0.1.0.jar | grep -iE 'gametest|mixin'` 无输出）。环境变量 `SYNAXIS_SPIKES`
-（逗号分隔，如 `s2,s5`）选跑哪几节，不设则 S2～S5 全跑（S3 另要 `SYNAXIS_S3_DISTANCES`，不设就跳过，
-见 S3 节的复现命令）；S0、S1 每次都跑。`SYNAXIS_GAMETEST_NIGHT_VISION=true` 在进世界后给玩家加客户端夜视，
+（逗号分隔，如 `s2,s5`；`all` 为 S2～S5 全跑）选跑哪几节，不设则整个 spike 不跑、只跑 R1～R8（S3 另要
+`SYNAXIS_S3_DISTANCES`，不设就跳过，见 S3 节的复现命令）；设了则 S0、S1 必跑，spike 的行追加在 R1～R8 之后。`SYNAXIS_GAMETEST_NIGHT_VISION=true` 在进世界后给玩家加客户端夜视，
 默认关。**判定看
 `synaxis-gametest/report.txt` 与服务端的 `logs/events-*.jsonl`，不看退出码**：S1 断线时 CI 也是绿的
 （run 35813814226），本地容器则每次都以 1 结束（见下方第 4 步）。
@@ -68,8 +68,7 @@ echo stop > /tmp/synaxis-gt/stdin.fifo; kill $(cat /tmp/synaxis-gt/holder.pid); 
 - `runClientGameTest` 从 classpath 上去掉 dev 类与 `protocol-dev.jar`，把 `remapJar` 拷进
   `run/clientGameTest/mods/`，所以本地这条路加载的就是发布的模组 jar 与它嵌套的 `:protocol`。
 
-**GitHub Actions**：`.github/workflows/client-gametest.yml`，`ubuntu-latest` + Temurin 25 + Xvfb/Mesa，推
-`client-gametest-ci` 分支或 `workflow_dispatch` 触发（输入 `handshake_phase` 可选 `login` 跑对照）。同一个
+**GitHub Actions**：`.github/workflows/client-gametest.yml`，`ubuntu-latest` + Temurin 25 + Xvfb/Mesa，触发方式与判定见 `docs/DESIGN-PROD.md` `API-PROD-026`（PR 按路径过滤只跑生产 jar 一次、push `main` 与每日 UTC 18:00 跑两次、每日另跑 spike；判定由 `client-fabric/gametest-env/judge.sh` 读报告、台账与 `server.log`）；`workflow_dispatch` 仍可手动触发（输入 `handshake_phase` 可选 `login` 跑对照）。同一个
 job 里先起 server-app（`tail -f /dev/null` 撑住 stdin），再依次跑 `runClientGameTest` 与
 `runProductionClientGameTest`（Loom 的生产启动器，只装 `remapJar` + Fabric API + gametest jar），截图、
 `report.txt`、客户端日志、`server.log` 与事件台账作为 artifact 上传，保留 14 天。run 35815252028 与

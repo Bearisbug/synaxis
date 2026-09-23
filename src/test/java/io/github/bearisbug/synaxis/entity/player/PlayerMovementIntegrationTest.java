@@ -142,7 +142,8 @@ public class PlayerMovementIntegrationTest {
 
         Collector<ChunkDataPacket> chunkDataPacketCollector = connection.trackIncoming(ChunkDataPacket.class);
         player.addPacketToQueue(new ClientTeleportConfirmPacket(player.getLastSentTeleportId()));
-        player.teleport(new Pos(176, 40, 176)).join();
+        // The player tick above assigned a tick thread; joined outside the acquirable, the continuation needs it
+        player.acquirable().applySync(p -> p.teleport(new Pos(176, 40, 176))).join();
         player.addPacketToQueue(new ClientTeleportConfirmPacket(player.getLastSentTeleportId()));
         player.addPacketToQueue(new ClientPlayerPositionPacket(new Vec(176.5, 40, 176.5), true, false));
         player.interpretPacketQueue();

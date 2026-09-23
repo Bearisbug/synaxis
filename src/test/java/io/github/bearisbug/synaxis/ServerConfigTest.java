@@ -13,10 +13,14 @@ public class ServerConfigTest {
     /**
      * REQ-014: tests and production share one default table. Nothing may inject an engine setting
      * into the test JVM, so reading the system properties here has to give the plain defaults back.
+     * The one exception is the thread count, which the multi-threaded CI round hands to every test
+     * JVM (REQ-PROD-019).
      */
     @Test
     public void testJvmUsesTheProductionDefaults() {
-        assertEquals(ServerConfig.defaults(), ServerConfig.fromSystemProperties());
+        final ServerConfig defaults = ServerConfig.defaults();
+        final ServerConfig fromJvm = ServerConfig.fromSystemProperties();
+        assertEquals(defaults, fromJvm.toBuilder().dispatcherThreads(defaults.dispatcherThreads()).build());
     }
 
     @Test
@@ -28,6 +32,11 @@ public class ServerConfigTest {
         assertEquals(30_000, config.loginTimeout());
         assertTrue(config.viewablePacket());
         assertFalse(config.insideTest());
+        // docs/DESIGN-PROD.md API-PROD-013
+        assertEquals(10_000, config.watchdogEarlyWarning());
+        assertEquals(5_000, config.watchdogEarlyWarningEvery());
+        assertEquals(60_000, config.watchdogTimeout());
+        assertEquals(15_000, config.watchdogHaltAfter());
     }
 
     @Test

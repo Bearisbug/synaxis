@@ -16,6 +16,7 @@ import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.net.InetSocketAddress;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.UUID;
@@ -95,7 +96,9 @@ final class AdmissionGate {
         final long start = System.nanoTime();
         try {
             admission = provider.admit(new AdmissionRequest(connectionId, player.getUsername(),
-                    hello.modVersion(), hello.schemaVersion()));
+                    hello.modVersion(), hello.schemaVersion(), player.getUuid(),
+                    player.getPlayerConnection().getRemoteAddress() instanceof InetSocketAddress inet
+                            ? inet.getAddress() : null));
         } catch (Throwable throwable) {
             LOGGER.error("Admission provider failed: plugin_id={} connection_id={}",
                     registry.pluginId(), connectionId, throwable);

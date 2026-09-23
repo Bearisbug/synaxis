@@ -24,6 +24,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 import java.io.IOException;
+import java.net.InetAddress;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -399,7 +400,8 @@ class PluginHostIntegrationTest {
         final var provider = host.admissionProvider();
         assertNotNull(provider);
         assertEquals(new Admission.Reject("synaxis:match-unavailable-tester"),
-                provider.admit(new AdmissionRequest(UUID.randomUUID(), "tester", 1, 1)));
+                provider.admit(new AdmissionRequest(UUID.randomUUID(), "tester", 1, 1, UUID.randomUUID(),
+                        InetAddress.getLoopbackAddress())));
         host.disableAll();
     }
 

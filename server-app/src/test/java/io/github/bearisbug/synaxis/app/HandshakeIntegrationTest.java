@@ -483,7 +483,8 @@ class HandshakeIntegrationTest {
 
         assertNull(failure, "the configuration phase must not throw");
         assertEquals(List.of(new AdmissionRequest(wire.connectionId(), player.getUsername(),
-                7, ProtocolSchema.SCHEMA_VERSION)), seen);
+                7, ProtocolSchema.SCHEMA_VERSION, player.getUuid(),
+                ((InetSocketAddress) wire.getRemoteAddress()).getAddress())), seen);
         assertTrue(wire.isOnline());
     }
 

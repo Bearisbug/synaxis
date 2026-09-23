@@ -26,6 +26,7 @@ import org.junit.jupiter.api.io.TempDir;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.net.InetAddress;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
@@ -158,7 +159,8 @@ class RtsPluginIntegrationTest {
         assertEquals(List.of(GameChannel.NAME), context.registeredChannels,
                 "the slice messages have nowhere to arrive");
         final Admission.Accept accept = assertInstanceOf(Admission.Accept.class,
-                provider.admit(new AdmissionRequest(UUID.randomUUID(), "tester", 0, 0)));
+                provider.admit(new AdmissionRequest(UUID.randomUUID(), "tester", 0, 0, UUID.randomUUID(),
+                        InetAddress.getLoopbackAddress())));
         assertEquals(1, accept.team());
 
         // The map is already there, the whole of it, and no chunk is ever loaded again

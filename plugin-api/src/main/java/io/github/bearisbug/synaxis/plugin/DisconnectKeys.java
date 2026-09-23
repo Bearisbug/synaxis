@@ -52,6 +52,19 @@ public final class DisconnectKeys {
      */
     public static final String TRANSFER_REJECTED = "synaxis:transfer-rejected";
 
+    /**
+     * The account or the network the player connects from has a ban in force
+     * ({@code docs/DESIGN-PROD.md} §14). The two translation arguments are the reason and, for a
+     * ban that expires, a {@code synaxis:banned-until} component naming the expiry; for a permanent
+     * ban the second one is empty.
+     */
+    public static final String BANNED = "synaxis:banned";
+
+    /**
+     * The whitelist is enforced and the account is not on it ({@code docs/DESIGN-PROD.md} §14).
+     */
+    public static final String NOT_WHITELISTED = "synaxis:not-whitelisted";
+
     private DisconnectKeys() {
     }
 }

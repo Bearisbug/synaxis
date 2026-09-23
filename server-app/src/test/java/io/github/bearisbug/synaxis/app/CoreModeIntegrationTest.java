@@ -16,6 +16,7 @@ import io.github.bearisbug.synaxis.testing.TestConnection;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
+import java.net.InetAddress;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.List;
@@ -67,7 +68,8 @@ class CoreModeIntegrationTest {
         final AdmissionProvider provider = host.admissionProvider();
         assertNotNull(provider);
         assertEquals(new Admission.Accept(world, 0),
-                provider.admit(new AdmissionRequest(UUID.randomUUID(), "probe", 0, 0)));
+                provider.admit(new AdmissionRequest(UUID.randomUUID(), "probe", 0, 0, UUID.randomUUID(),
+                        InetAddress.getLoopbackAddress())));
 
         try (LogCapture logs = LogCapture.of(AdmissionGate.class)) {
             final Player player = env.createPlayer(world, CoreMode.SPAWN);

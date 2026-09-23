@@ -111,6 +111,19 @@ public interface PluginContext {
     }
 
     /**
+     * Bans and the whitelist ({@code docs/DESIGN-PROD.md} API-PROD-009).
+     * <p>
+     * The host's context always has one; the default is there for the same reason as
+     * {@link #playerData()}'s.
+     *
+     * @return the moderation capability of this plugin
+     * @throws UnsupportedOperationException from a context that is not the host's
+     */
+    default Moderation moderation() {
+        throw new UnsupportedOperationException("only the host's plugin context has moderation");
+    }
+
+    /**
      * A logger named after this plugin.
      *
      * @return the logger of this plugin

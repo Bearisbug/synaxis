@@ -118,7 +118,8 @@ jobs:
 
       # Without this a build that stopped forwarding the properties would pass on one thread
       - name: Check that the tests ran with 4 tick threads
-        run: grep -q 'env dispatcher threads: 4' testing/build/test-results/test/TEST-io.github.bearisbug.synaxis.testing.test.EnvDispatcherThreadsIntegrationTest.xml
+        run: |
+          grep -q 'env dispatcher threads: 4' testing/build/test-results/test/TEST-io.github.bearisbug.synaxis.testing.test.EnvDispatcherThreadsIntegrationTest.xml
 
       - name: Upload test reports
         if: always()

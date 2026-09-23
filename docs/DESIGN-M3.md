@@ -5,17 +5,17 @@
 | 字段 | 值 |
 | --- | --- |
 | 状态 | 草稿（未评审；远景、光影、存储与分工已由用户 2026-09-23 拍板，见下方拍板表） |
-| 项目画像 | 生产产品（与 `docs/DESIGN-M2.md` §1 相同：交付的是面向真实玩家的 MMO 服务端；按生产产品填全部 `[核心]` 节。可观测性与埋点仍落本地文件，外部依赖是 PostgreSQL、Redis 与分发高度场包的 CDN） |
+| 项目画像 | 生产产品（与 `docs/DESIGN-M2.md` §1 相同：交付的是面向真实玩家的 MMO 服务端；按生产产品填全部 `[核心]` 节。可观测性与埋点仍落本地文件，外部依赖是 PostgreSQL、Valkey 8（Redis 兼容，只放可丢数据）与分发高度场包的 CDN） |
 | Owner | Bearisbug |
 | 评审人 | Bearisbug |
 | 最后更新 | 2026-09-23 |
-| 关联 | 引擎单一事实源 `docs/DESIGN.md` · M2 分册 `docs/DESIGN-M2.md`（§15、§28.2、§28.3） · 技术路线报告 `docs/research/large-world-2026-09/README.md`（下称「路线报告」，第 4 节与第 8.1 节的数字已被基准重测取代） · 远景与光影备忘录 `docs/research/large-world-2026-09/far-view-vs-iris.md`（下称「远景备忘录」） · 存储对比 `docs/research/large-world-2026-09/storage-options.md`（下称「存储对比」） · 基准重测 `docs/research/large-world-2026-09/bench-2026-09.md`（下称「基准重测」） · DH spike `docs/research/client-spikes-2026-09/dh-iris/README.md` · 生产就绪设计 `docs/research/production-readiness-2026-09/`（`design-persistence.md`、`design-auth.md`、`design-ops-scale.md`） · 测试文档 `docs/TEST.md` · 仓库 `https://github.com/Bearisbug/synaxis` |
+| 关联 | 引擎单一事实源 `docs/DESIGN.md` · M2 分册 `docs/DESIGN-M2.md`（§15、§28.2、§28.3） · 技术路线报告 `docs/research/large-world-2026-09/README.md`（下称「路线报告」，第 4 节与第 8.1 节的数字已被基准重测取代） · 远景与光影备忘录 `docs/research/large-world-2026-09/far-view-vs-iris.md`（下称「远景备忘录」） · 存储对比 `docs/research/large-world-2026-09/storage-options.md`（下称「存储对比」） · 基准重测 `docs/research/large-world-2026-09/bench-2026-09.md`（下称「基准重测」） · DH spike `docs/research/client-spikes-2026-09/dh-iris/README.md` · 生产就绪分册 `docs/DESIGN-PROD.md`（v0.3；其输入草案在 `docs/research/production-readiness-2026-09/`，本文档不再引用草案） · 测试文档 `docs/TEST.md` · 仓库 `https://github.com/Bearisbug/synaxis` |
 
 本文档是 `docs/DESIGN.md` 的第二个里程碑分册，写法与防腐坏机制沿用 `docs/DESIGN-M2.md` §24 最后一条：只管 M3 新增的东西，引擎侧与 M2 侧的事实一律用「见 `docs/DESIGN.md` §N」「见 `docs/DESIGN-M2.md` §N」引用。ID 独立编号：需求 `REQ-M3-*`、接口 `API-M3-*`、决策 `ADR-M3-*`、Runbook `RB-M3-*`；实体 `ENT-*`、页面 `PAGE-*`、事件 `EVT:*` 用语义命名，名字与 M1、M2 已有的不重复（已核对 `ENT-Map`、`ENT-NavGrid`、`ENT-Match` 等 M2 名字未被复用）。
 
 **`.synx` 的 ID 处置**：`docs/DESIGN-M2.md` §28.3 ② 原写「M3 整条加回 `API-M2-009`」。M3 的格式与 M2 当初的设计不是同一个东西（M2 是单文件 `header` / `chunks` / `nav` 三段；M3 是 32×32 区块一个区域文件、偏移索引、四段内容、存已成帧的原版包体），按 ID「语义实质变更 = 新 ID」的规则，M3 用 `API-M3-001` 取代 `API-M2-009`，`API-M2-009` 不复活；M2 分册 §28.3 ② 已同步改写（`docs/DESIGN-M2.md` v0.45）。
 
-**与生产就绪轨道的分工**（用户 2026-09-23 拍板）：PostgreSQL 是唯一权威存储，Redis 只放可丢的缓存和消息；玩家数据、写权租约（每个分片一个会话租约）、转服 Cookie 的签名与验票、正版验证、连接闸门、压测 harness、空间分格线程的引擎侧细节、PostgreSQL 迁移与回退，一律以 `docs/research/production-readiness-2026-09/` 下的 `design-persistence.md`、`design-auth.md`、`design-ops-scale.md` 为准。本文档只写这些能力的区块与世界侧需求，引用而不复述。
+**与生产就绪轨道的分工**（用户 2026-09-23 拍板）：PostgreSQL 是唯一权威存储，Redis 只放可丢的缓存和消息；玩家数据、写权租约（每个分片一个会话租约）、转服 Cookie 的签名与验票、正版验证、连接闸门、压测 harness、空间分格线程的引擎侧细节、PostgreSQL 迁移与回退，一律以生产就绪分册 `docs/DESIGN-PROD.md` 为准。本文档只写这些能力的区块与世界侧需求，引用而不复述。
 
 用户 2026-09-23 的拍板（本文档所有设计的前提）：
 
@@ -31,7 +31,7 @@
 | Q8 服务端读光照 | 不读 | 服务端光照只为给新观察者发包，不进玩法查询 |
 | Q9 Sodium | 不捆绑，只声明兼容 | Iris 硬依赖 Sodium，Sodium、Iris、光影包都由玩家自装（R1 行） |
 | 远景方案 | 方案 B：Distant Horizons。客户端首次进大区下载 5.3～21 MiB 高度场包，本地烘焙 DH 库（每列 1～3 点）；切换条件与退路（CDN 预烘库、方案 C 经 Iris `assignPipeline`）照远景备忘录 §6。自写 clipmap + 自研着色器（方案 A）排除 | `ADR-M3-012`、`REQ-M3-024`、`REQ-M3-025` |
-| R1 光影组件谁装 | Iris、Sodium、光影包由玩家自装；客户端检测并引导，没装时用原版画面兜底。DH 随客户端整合分发（远景备忘录 R1 的默认，用户未单独确认，**默认，可改**，见 §28.1） | `REQ-M3-026`、`PAGE-SHADER-GUIDE`；DH 分发见 `API-M3-015` 许可段 |
+| R1 光影组件谁装 | Iris、Sodium、光影包由玩家自装；客户端检测并引导，没装时用原版画面兜底。DH 随客户端整合分发（用户 2026-09-23 确认：LGPL-3.0，附许可、允许玩家替换 jar，版本锁定与本地烘焙代码一起升级） | `REQ-M3-026`、`PAGE-SHADER-GUIDE`；DH 分发见 `API-M3-015` 许可段 |
 | R2 RTS 相机 | 带俯角的透视，eye 离地 ≤ 100 格，不用正交。相机实现归 `docs/DESIGN-M2.md` 阶段 6b（另一会话负责），本文档只引用；M2 §28.2「RTS 相机形态」那条 Open Question 仍写「待用户选」，由 6b 关闭 | §6.1 共同约束；DH 在正交下不画 LOD 是选透视的依据之一 |
 | R3 远景烘焙粒度 | 只烘高度场（每列 1～3 点，不保留建筑轮廓），客户端本地生成 DH 库 | `REQ-M3-025` |
 | 存储路线 | 原版 26.2 Anvil 存档作编辑器交换格式 → `:baker` 烘焙 → `.synx` mmap；覆盖层存本地只追加分段文件，每频道一份 | `ADR-M3-014`、`ADR-M3-015` |
@@ -46,11 +46,13 @@
 
 | 日期 | 版本 | 改动 | 作者 |
 | --- | --- | --- | --- |
+| 2026-09-23 | v0.5 | 区块包字节确定性：引擎 `ChunkData` 修复前用 `Map.copyOf` / `toUnmodifiableMap` 复制高度图与方块实体，同一区块在不同 JVM 里编出长度相同、字节不同的包（`5fba33a398` 修复）。`REQ-M3-003` 补「区块包逐字节确定」；`API-M3-001` 段① 加「字节可复现」（编码集合的固定顺序、禁止直接决定编码顺序的集合、编码前 `optimize(SIZE)`、验收门 `ChunkPacketDeterminismTest`）；`API-M3-003` 确定性条目改为解压后包体跨 JDK 相同、成帧字节同一 JDK 构建相同；`API-M3-008` 输出加 `packet` 作业的四个 SHA-256 摘要；§19 新增「区块包跨 JVM 逐字节确定」「基准的区块包字节两次运行逐字节相同」两条场景，「基准程序复跑」的字节判据改为与 `bench-2026-09-packet-canonical-1.json` 的摘要相同；§28.2 加跨区块写入未覆盖的风险 | Bearisbug |
+| 2026-09-23 | v0.4 | 按 `docs/DESIGN-PROD.md` v0.3 §28.3 改写对生产就绪的全部引用：原先指向 `docs/research/production-readiness-2026-09/` 三份草案的位置一律改指该分册的 ID 与节号。**频道满**：只用 `synaxis:shard-full` 一个键，住引擎 `DisconnectReasons`，由连接闸门 L3 在 `LoginStart` 按已占席位判定，早于加密请求与读 Cookie，不消耗票据 nonce，不写台账（`REQ-M3-016`、`REQ-M3-017`、`API-M3-010` 容量段、§12.2、§13、§14、§19 两条场景与 `RB-M3-001` 改为断言 `synaxis_gate_rejections_total{reason="full"}`），取代 v0.3 的 `synaxis:server-full`。**分格线程**：`REQ-M3-015`、`API-M3-009` 只提世界侧要求，引擎侧设计引用 `API-PROD-016`，`ADR-M3-006` 引用 `ADR-PROD-006`。**持久化与租约**：§1 末段写明 `REQ-M3-018`、`API-M3-012`、v0.2 §11.4、`RB-M3-005`、`API-M3-011` 的去向；§7、§11、§16、§17、§20（`EVT:lease_takeover` 属性为 `character_id`、`previous_session_id`、`gap_ms`）、§21、`ADR-M3-009`（引用 `ADR-PROD-003`、`ADR-PROD-004`）改为引用该分册；§14 写明 `synaxis:state-unavailable` 的来源按该分册 §14（在线模式下先顶号，5 s 内拿不到租约才回这个键）；§15 数据增长行加 `transfer_nonce` 与玩家数据的出处；外部依赖写明 Valkey 8（可丢）。**迁移**：§25 改为引用该分册 §25 版本表（`shard_heartbeat` = V5，脚本内容由本分册提供；`transfer_nonce` = 该分册 V1；`player_state` 不建），回退策略两层；§17 新增 `nonce.gc`（每 10 min，`transfer_nonce` 唯一的清理任务）。**区块发送**：`API-M3-006` 写明引擎兜底限速每玩家每 tick 64 区块（`synaxis.chunk-queue.max-per-tick`，1,280 区块/s）保持不变，并与分片宿主每玩家 4 区块/tick（`REQ-PROD-026`）对照。**停机**：`API-M3-007` 停机段挂到该分册 §11.4 `saving` 阶段，§28.2「停机预算已占满」改为挂载方式的开放问题。**DH 分发**：用户确认随客户端分发（LGPL-3.0，附许可、允许玩家替换 jar，版本锁定与本地烘焙代码一起升级），§1 R1 行、`API-M3-015` 许可段、§17、§23 检查单同步，§28.1 该行关闭。§28.2 新增两条交给生产就绪会话：该分册仍按 v0.2 引用 `API-M3-011` 与本文档 §14 的两个键；`world_flag` 不在该分册 §25 版本表 | Bearisbug |
 | 2026-09-23 | v0.3 | 合入用户对远景、光影、存储与分工的拍板及五份证据。**远景与光影**：§6.1 与 `ADR-M3-012` 定为方案 B（DH + 客户端本地烘焙高度场包），新增 `REQ-M3-024`～`REQ-M3-026`、`API-M3-014`、`API-M3-015`、§12.4 时序与 `PAGE-SHADER-GUIDE`；DH spike 的结论（本地注入在 llvmpipe 下可用、正交不画 LOD、透视下相机周围约一个原版视距不画、与 Iris 同开固定 OpenGL、光影包在 LOD 上的效果无有效数据）写进 §6.1 与 §28.2。**存储**：`API-M3-001` 段② 删碰撞位集、段③ 改为全部方块实体完整 NBT + handler + 静态实体表，`region_content_hash` 改按段① 解压后包体算；烘焙器读 `region/` 与 `entities/`、DataVersion 门禁、「升级 → 预生成 → 校验 `isLightOn` 覆盖率」固定顺序；覆盖存储用 `Arena.ofAuto` 映射、活动段预分配、10 s 定期落盘 + group commit；新增 `REQ-M3-020`～`REQ-M3-023`、`API-M3-013`、`ADR-M3-014`、`ADR-M3-015`；关闭「编辑源格式」「覆盖存储重启是否保留」两个开放问题。**光照**：④⑤ 两处缺陷与对拍中发现的 `fullyLit`、面遮挡、`ShapeImpl` 三处已修，`LightParityIntegrationTest` 7 个场景 0 差异是验收门；真值改为原版 26.2 `LevelLightEngine` 隔离运行（`ADR-M3-013` 取代 `ADR-M3-005`）；新增 `REQ-M3-027`（面遮挡）与 `REQ-M3-028`（`fullyLit`）；`flushQueue` 竞争改为 M3-D 前必须处理；§15 删去对拍例外表（测试直接断言 0 差异）。**基准**：§2、§15 的带宽、磁盘、堆、耗时换成基准重测值，P2 验收补调色板形态与「不产生 `ChunkDataPacket`」两条。**分工**：`REQ-M3-018`、`API-M3-011`、`API-M3-012`、`RB-M3-005` 与 §11.3、§11.4 两台状态机移交生产就绪轨道；`ADR-M3-009` 改为「PostgreSQL 唯一权威、Redis 只放可丢的缓存和消息」；分片宿主 `dispatcherThreads` 改为核数 − 2；频道满员改用连接闸门的 `synaxis:server-full`；原 `API-M3-011` 里的 `synaxis.accept-transfers=true` 并入 `API-M3-010`；覆盖存储补停机落盘（`overlay.shutdown-flush`，§11.1 加一条迁移）；转服首批区块耗时的起点定为票据 `issued_at`，`EVT:transfer_issued` 加该属性；§28.2 列全生产就绪文档对 v0.2 的引用。**自定默认**：DH 随客户端分发登记进 §28.1。另同批改了 `docs/DESIGN-M2.md` 两处（v0.45）、`docs/DESIGN.md` §28 parity 技术债转已决（v0.36）、`CLAUDE.md` 一句与路线报告开头一行 | Bearisbug |
 | 2026-09-23 | v0.2 | 评审第 1 轮修订：M3 的线程模型、模拟距离、自动卸载改为分片宿主显式开启，引擎默认值不变（`API-M3-006`、`API-M3-009`，§19 加一条 M2 行为不变的场景）；§6.1 按远景备忘录改为 A / B / C 三条路；§5 光照处置表 ⑥ 改为 `flushQueue` 保留给 `relightSection`；`REQ-M3-006` 注册表计数更正为 727 / 85 / 384；覆盖存储改为只追加分段 + 内存索引；§6 登记 `:synx` 用到的引擎内部面；§11.2 光照版本守卫前移到 `[*] → baking`；Flyway 回退改为手工回退 SQL；§15 / §19 火把、光影同装、对拍例外表的判据改为可判定；`docs/DESIGN.md` 同批登记 §26 与变更记录 | Bearisbug |
 | 2026-09-23 | v0.1 | 初稿：`.synx` 格式与测试向量、离线烘焙器、光照引擎抽取与两处修复、原版光照对拍、`SynxChunkLoader` 与区块驻留、覆盖层、运行时光照、基准程序、空间分格线程、大区分服与频道、转服票据、外部状态存储；远景占位；光影按 Q2 定为社区光影包 | Bearisbug |
 
-已废弃、移交生产就绪轨道的 ID（编号不回收）：`REQ-M3-018` 外部状态存储、`API-M3-011` 转服票据 Cookie、`API-M3-012` 玩家状态存储、`RB-M3-005` 外部状态存储不可用，现以 `design-persistence.md` §①～⑤ 与 `design-auth.md` §④ 为准；区块与世界侧的剩余需求见 `REQ-M3-017`、`REQ-M3-023`、`API-M3-013`、`RB-M3-006`。
+已废弃、移交生产就绪分册的 ID（编号不回收）与去向：`REQ-M3-018` 外部状态存储 → `docs/DESIGN-PROD.md` `REQ-PROD-005`～`REQ-PROD-007`；`API-M3-012` 玩家状态存储与 v0.2 的 §11.4 `ENT-StateLease` → `API-PROD-004`、`API-PROD-005` 与该分册 §11.3 `ENT-CharacterLease`；`RB-M3-005` 外部状态存储不可用 → `RB-PROD-002`；`API-M3-011` 转服票据 Cookie → `REQ-PROD-031`、`API-PROD-021`（票据布局与检查顺序该分册尚未写入，见 §28.2）。区块与世界侧的剩余需求见 `REQ-M3-017`、`REQ-M3-023`、`API-M3-013`、`RB-M3-006`。
 
 ## 2. 背景 / 目标 / 非目标
 
@@ -60,7 +62,7 @@
   2. 光照与原版一致且有可执行的证据：光照缺陷已修，逐值对拍是门禁，错误不会被烘焙进全部 `.synx`。
   3. 运行时内存有界：视距与模拟距离分开、按观察者引用计数自动卸载、被改区块进覆盖层且覆盖层有 LRU 硬上限，崩溃最多丢 10 s 改动。
   4. 规模数字可复现：带宽、磁盘、堆、耗时都来自入库的基准程序（基准重测），美术地图出来后按同一程序补测。
-  5. 每分片 200～500 人：空间分格线程、大区分服 + 频道、跨大区转服；玩家数据与写权由生产就绪轨道负责。
+  5. 每分片 200～500 人：空间分格线程、大区分服 + 频道、跨大区转服；玩家数据与写权由生产就绪分册 `docs/DESIGN-PROD.md` 负责。
   6. 远景 4,096 格：客户端用 DH 画高度场 LOD，开光影时由光影包统一着色。
 - 非目标：
   - 不自写远景 clipmap 与着色器（方案 A 排除）；方案 C（clipmap 经 Iris `assignPipeline` 登记）只作 `ADR-M3-012` 的退路，不排期。
@@ -77,7 +79,7 @@
   - 不做客户端本地区块缓存、不换 zstd 压缩（路线报告 §3.5、§3.6 都放到实测之后）。
   - 不修 `LightingChunk` 的运行期路径（懒算、`relightSection` 的实例锁、延迟重发），MMO 实例不使用它（§5 末表）；`flushQueue` 竞争例外，M3-D 前必须处理。
   - 不做 `docs/DESIGN-M2.md` §28.3 ③ 的多局并行；M2 RTS 进程的运行行为不变：M3 新增的线程模型、模拟距离、自动卸载都由 MMO 分片宿主显式开启，引擎默认值不改（`API-M3-006`、`API-M3-009`）。
-  - 不设计玩家数据、写权租约、转服票据的签名与验票、正版验证、连接闸门与压测 harness 本身（生产就绪轨道，见 §1 分工）。
+  - 不设计玩家数据、写权租约、转服票据的签名与验票、正版验证、连接闸门与压测 harness 本身（生产就绪分册 `docs/DESIGN-PROD.md`，见 §1 分工）。
   - 不升 Minecraft 版本（26.2 / 协议 776 继续钉死，重估见 `docs/DESIGN-M2.md` `ADR-M2-016`）。
 
 规模画像（下游 §15 / §17 / §21 全部数字的唯一来源）。**数字口径**：区块包体、堆、序列化与 relight 耗时出自基准重测（Apple M4 Pro 12 核，`bench-2026-09-results.json`）。三条限制对本表每一行都成立：地形是合成的，美术地图未测；墙钟耗时在负载均值 26～82 的机器上测得，只当上界；CPU 时间比墙钟稳，估算成本时用 CPU。默认档取「高 256 自然地形」（Q7 高度，地下有矿有洞），另列「高 256 实心地下」（人工地图地下不做内容）与「高 384 自然地形」两档作区间。
@@ -95,13 +97,13 @@
 | 区块吞吐 | 500 人 3.4k～7.8k 区块/s，全部是 mmap 读 + 内存拷贝（5.1～11.7 MB/s） | 500 × 6.75～15.6 区块/s × 1,502 B |
 | 引擎兜底限速 | 64 区块/tick = 1,280 区块/s（`ServerConfig.maxChunksPerTick`，属性 `synaxis.chunk-queue.max-per-tick`） | 存储对比 §4 口径更正；正常速率由客户端 `ChunkBatchReceived` 回报决定，流控不改 |
 | 区块 CPU 对照 | 未改区块改走 `.synx` 之前：每区块 0.52 ms（不带光照）/ 3.95 ms（懒算光照）CPU；走 `.synx` 之后只剩读页与拷贝 | 基准重测 §3.1 整遍 CPU，高 256 自然地形 |
-| 加密 CPU（online 模式） | AES-CFB8 出站 11.2～11.6 ms/MiB；500 人步行 21.3 MB/s ≈ 0.23 核，骑乘 28.0 MB/s ≈ 0.30 核 | `design-auth.md` §⑤ 本机实测（M4 Pro）；核数按 11.29 ms/MiB × 本表「分片出站」推算。`design-auth.md` §⑤ 的 0.21 核用同一速率、按 RTS 4,000 单位档 18.30 MiB/s 算，口径不同、不矛盾。`.synx` 的预压缩包体可以复用，但加密是每连接一次，不能跨连接复用 |
+| 加密 CPU（online 模式） | AES-CFB8 出站 11.2～11.6 ms/MiB；500 人步行 21.3 MB/s ≈ 0.23 核，骑乘 28.0 MB/s ≈ 0.30 核 | 本机实测（M4 Pro），出处见 `docs/DESIGN-PROD.md` `ADR-PROD-011`；核数按 11.29 ms/MiB × 本表「分片出站」推算。该分册 §2 的 0.21 核用同一速率、按 RTS 4,000 单位档 18.30 MiB/s 算，口径不同、不矛盾。`.synx` 的预压缩包体可以复用，但加密是每连接一次，不能跨连接复用 |
 | 磁盘 | 每大区 `.synx` ≈ 219 MB + 段③：段① 65,536 × 1,502 B ≈ 98 MB；段② 544 B/区块 ≈ 36 MB；段③ 只存方块实体与静态实体，合成地形为 0，美术地图未测；段④ 1.25 KiB/区块 ≈ 84 MB；索引与头部约 1 MB。正式档全世界 ≈ 14 GB + 段③ | `API-M3-001` 各段布局；段① 按包体区间为 38～169 MB/大区；段③ 由存储对比 T1 量 |
 | 远景高度场包 | 每大区 5.3～21 MiB（未压缩，从第 2 层或第 1 层起的金字塔）；正式档全部大区 0.33～1.3 GiB | 路线报告 §4.2 算式 1,024² 或 2,048² × 4 B × 4/3；压缩率未测 |
 | 服务端堆 | 覆盖层 LRU 上限：内测档 16,384 区块 × 21.1 KiB ≈ 0.33 GiB（含 SoftReference 包缓存的上界 0.56 GiB）；正式档 24,576 区块 ≈ 0.49 GiB（0.84 GiB）。堆外成帧包体 24,576 × 1,502 B ≈ 37 MB。区块解码缓存上限 256 MiB。句柄区块常驻字节未测 | 基准重测 §3.1 存活堆（光照已算、间接调色板）；句柄区块由存储对比 T3 量。进程目标 RSS < 4 GiB |
 | 烘焙 | 一个 4k×4k 大区：光照 52～92 CPU·s + 编码约 31 CPU·s（0.47 ms/区块）；正式档全图光照 0.9～1.6 CPU·h，按区域并行摊到核上 | 基准重测 §6.3（整图 relight 的 CPU 线性外推，高 256）与 §3.1「光照已知」整遍 CPU |
 | 世界状态标志 | 假设每大区 ≤ 1,000 个标志，写入 ≤ 1 次/秒 | 假设值；超过 10,000 个标志或 10 次/秒时重估 `API-M3-013` 的重放与同步方式 |
-| 分布与形态 | 每个大区一个进程，满员开频道；同一大区的频道进程部署在同一台机器并挂同一只读卷，映射同一 inode，页缓存只占一份（各容器各拷一份则不共享）。地图发布目录按 `build_id` 分发到分片机；高度场包经 CDN 分发给客户端；外部依赖 PostgreSQL（唯一权威）与 Redis（可丢） | Q3、Q4、存储对比 §2 |
+| 分布与形态 | 每个大区一个进程，满员开频道；同一大区的频道进程部署在同一台机器并挂同一只读卷，映射同一 inode，页缓存只占一份（各容器各拷一份则不共享）。地图发布目录按 `build_id` 分发到分片机；高度场包经 CDN 分发给客户端；外部依赖 PostgreSQL（唯一权威）与 Valkey 8（Redis 兼容，可丢） | Q3、Q4、存储对比 §2 |
 
 ## 3. 成功指标 / 验收阈值
 
@@ -110,7 +112,7 @@
 | 指标 | 定义（分子 ÷ 分母，全部是事件计数或事件属性） | 当前 | 目标 | 由哪些事件算 |
 | --- | --- | --- | --- | --- |
 | 转服成功率 | `EVT:transfer_completed` 计数 ÷ `EVT:transfer_issued` 计数 | 无（M3 前无转服） | ≥ 99% | 见 `EVT:transfer_issued`、`EVT:transfer_completed` |
-| 转服首批区块耗时 P95 | `EVT:transfer_completed` 的 `first_batch_ms`（票据的 `issued_at` 到目标分片发完首批 9 个区块的 `ChunkBatchFinished`。`issued_at` 由源分片签票时写进 Cookie，同一个值记为 `EVT:transfer_issued` 的 `issued_at` 属性；Cookie 布局归 `design-auth.md` §4.1，本文档要求它带这个字段。两个时间戳来自两台机器，前提是分片机跑 NTP 且时钟偏差 ≤ 50 ms，即 5 s 目标的 1%） | 无 | < 5 s | 见 `EVT:transfer_completed` |
+| 转服首批区块耗时 P95 | `EVT:transfer_completed` 的 `first_batch_ms`（票据的 `issued_at` 到目标分片发完首批 9 个区块的 `ChunkBatchFinished`。`issued_at` 由源分片签票时写进 Cookie，同一个值记为 `EVT:transfer_issued` 的 `issued_at` 属性；Cookie 布局归生产就绪分册（`docs/DESIGN-PROD.md` `API-PROD-021`，布局尚未写入，见 §28.2），本文档要求它带这个字段。两个时间戳来自两台机器，前提是分片机跑 NTP 且时钟偏差 ≤ 50 ms，即 5 s 目标的 1%） | 无 | < 5 s | 见 `EVT:transfer_completed` |
 | 零编码发送占比 | 各分片 `EVT:chunk_stream_stats` 的 Σ`handle_sent` ÷ Σ(`handle_sent` + `overlay_sent`) | 无 | ≥ 95%（监控阈值，不是容量假设：堆由覆盖层上限兜住） | 见 `EVT:chunk_stream_stats` |
 | 地图版本一次发布成功率 | `EVT:map_build_finished`（`outcome=published`）计数 ÷ `EVT:map_build_started` 计数 | 无 | ≥ 90% | 见 `EVT:map_build_started`、`EVT:map_build_finished` |
 
@@ -150,7 +152,7 @@
 | 大区 | 按地理切出的一块地图（正式档 4k×4k 格） | `region_id` | `ENT-Shard` |
 | 频道 | 同一大区的一个进程副本；人数超上限时同一大区开多个频道 | `channel` | `ENT-Shard` |
 | 分片 | 一个游戏服进程 = 一个（大区, 频道） | `shard_id` | `ENT-Shard` |
-| 转服 | 用原版 `Transfer` 包把玩家送到另一个分片；Cookie 签名、验票与写权交接见 `design-auth.md` §4.1 与 `design-persistence.md` §③ | `transfer` | — |
+| 转服 | 用原版 `Transfer` 包把玩家送到另一个分片；Cookie 签名、验票与写权交接见 `docs/DESIGN-PROD.md` `API-PROD-021`、§11.3 与 §12.3 | `transfer` | — |
 | 世界状态标志 | 需要跨频道、跨地图版本保持一致的世界状态（开过的门、修好的桥），存 PostgreSQL；频道进程按标志重放到自己的覆盖层 | `world_flag` | `ENT-WorldFlag` |
 | 高度场包 | 一个大区的远景数据：按层的高度 + 材质 + 色调采样金字塔，客户端下载后本地烘焙成 DH 库 | `farview/<region_id>.hfp` | `ENT-FarViewPack` |
 | DH 库 | Distant Horizons 的 SQLite LOD 库；客户端从高度场包生成，经 DH API 钉住目录并设为只读 | — | — |
@@ -164,7 +166,7 @@
 | --- | --- | --- | --- | --- |
 | REQ-M3-001 | `.synx` 区域文件格式：32×32 区块、定长头部 + 偏移索引、可 mmap、四段内容（段① 包体、段② 导航、段③ 方块实体与静态实体表、段④ 列摘要）、地图内容哈希 + 协议版本 + 注册表摘要；读写两侧共用一套测试向量 | 目标 1 | P0 | `API-M3-001` |
 | REQ-M3-002 | 地图发布目录与清单：`manifest.json` 记内容哈希、协议版本、光照引擎版本、源存档 DataVersion 与光照覆盖率、逐文件摘要；分片起服时全量校验，任一项不符拒绝起服；升 MC 版本要按协议版本批量重烘，重烘耗时写进升版清单 | 目标 1 | P0 | `API-M3-002`；状态机见 §11.2 |
-| REQ-M3-003 | 离线烘焙器：输入为编辑源存档或 M2 `Generator`；按区域并行（每个区域带 1 区块光环读取邻居）；产出区域文件、高度场包与清单；烘焙末尾自动校验（抽样逐字节对比 + 摘要）；同输入同版本产出同一内容哈希；产出的 section 只能是单值或间接调色板 | 目标 1 | P0 | `API-M3-003`；状态机见 §11.2 |
+| REQ-M3-003 | 离线烘焙器：输入为编辑源存档或 M2 `Generator`；按区域并行（每个区域带 1 区块光环读取邻居）；产出区域文件、高度场包与清单；烘焙末尾自动校验（抽样逐字节对比 + 摘要）；同输入同版本产出同一内容哈希；产出的 section 只能是单值或间接调色板；「同一内容哈希」要求区块包逐字节确定：同一区块状态在任何 JVM、任何线程调度下编出的未压缩 `ChunkDataPacket` 字节相同（编码顺序与调色板规范化见 `API-M3-001` 段①） | 目标 1 | P0 | `API-M3-003`；状态机见 §11.2 |
 | REQ-M3-004 | 光照引擎抽取：`LightEngine` 跑在 `WorldView` 上，不依赖 `Instance`、不进 `synchronized(instance)`；复用 `LightBlocks` 的光照规则；`LightingChunk.relight` 改为委托给它（M2 对局同时受益）；`LightParityIntegrationTest` 的全部场景同时对 `LightEngine` 跑 | 目标 2 | P0 | `API-M3-004` |
 | REQ-M3-005 | 光照修复 ④（**已落地**，commit `32e1923e47`）：天光整列从世界顶部向下，停在第一条满足「下方方块 `lightBlock ≠ 0`，或上下两格之间的面相互遮挡」的边；删除手写的 23 种 `DIFFUSE_SKY_LIGHT`（注册表里默认状态 `lightBlock == 1` 的有 85 种方块，按任一状态计有 459 种） | 目标 2 | P0 | 无对外 API，见 §19 与 §24 光照门禁 |
 | REQ-M3-006 | 光照修复 ⑤（**已落地**，commit `32e1923e47`）：BFS 每步衰减由固定 1 改为 `max(1, lightBlock(光进入的方块))`。按 `src/main/resources/data/block.json`，`lightBlock` 只有 0 / 1 / 15 三种取值：按默认状态是 727 / 85 / 384 个方块（共 1,196），按全部 32,366 个状态是 17,476 / 12,106 / 2,784；`tinted_glass`（`lightBlock` 15、遮挡形状为空）修复前让光像空气一样通过 | 目标 2 | P0 | 无对外 API，见 §19 与 §24 光照门禁 |
@@ -175,10 +177,10 @@
 | REQ-M3-011 | 覆盖层：被改区块物化为 `DynamicChunk`；改动写每频道一份的覆盖存储，不改 `.synx`；覆盖层常驻数有 LRU 硬上限（内测档 16,384、正式档 24,576），淘汰时写覆盖存储并退回句柄；脏区块每 10 s 定期落盘，同一 tick 的追加合并为一次 `fsync`，进程崩溃最多丢最近 10 s 的改动（F4），正常停机时全部脏区块落盘；地图换 `build_id` 时清空（F1） | 目标 3 | P0 | `API-M3-007`；状态机见 §11.1 |
 | REQ-M3-012 | 运行时光照：未改区块的光照随段① 下发，服务端 0 CPU；被改区块在 tick 线程外的有界线程池做 3×3 局部重算，结果只进之后发给新观察者的包；不向已在看的客户端发 `UpdateLightPacket`（前提待 P1① 验证，退路见 `ADR-M3-002`）；开工前 `flushQueue` 竞争必须已消除（§5 末表 ⑥） | 目标 2、目标 3 | P0 | 无对外 API，见 §12.1 时序与 §17 内部任务 `overlay.relight` |
 | REQ-M3-013 | 可提交的基准程序：已完成（基准重测，`LargeWorldBench`，两轮），§2 / §15 已换成重测值；剩余三项：空闲机器复跑墙钟列、加「从 `.synx` 或 Anvil 读入」的真地图档（存储对比 T1）、补句柄区块常驻字节（T3）与段① 解码耗时（T2） | 目标 4 | P0 | `API-M3-008` |
-| REQ-M3-014 | 压测量出真实区块下行：机器人回 `ChunkBatchReceived`、按步行与坐骑两档移动，产物带 `inbound.chunks`。harness 本身（Java `:loadtest` 模块、分机、加密档）按 `design-ops-scale.md` ⑤ 实现，本需求只定区块侧的字段与判据 | 目标 4 | P0 | 无对外 API，见 §15 测量手段与 §26 M3-C 退出条件 |
-| REQ-M3-015 | 空间分格 `ThreadProvider`：16×16 区块一格，同一格的区块归同一 tick 线程；分片宿主选用它并把 `dispatcherThreads` 设为核数 − 2。引擎默认仍是 `counter` + 1 线程。引擎侧接口细节（取模、多线程测试矩阵、`acquire_ms` 指标）以 `design-ops-scale.md` ④ 为准 | 目标 5 | P1 | `API-M3-009` |
-| REQ-M3-016 | 大区分服 + 频道：分片目录描述大区边界与频道地址；分片心跳上报在线人数；频道满员时由连接闸门拒绝（`design-ops-scale.md` ② L3，`capacity` 取自分片目录） | 目标 5 | P1 | `API-M3-010` |
-| REQ-M3-017 | 跨大区转服的世界侧：源分片按心跳与容量选目标频道；目标分片在读 Cookie 之前判容量；验票通过后首批 9 个区块 P95 < 5 s 发完；写转服事件。Cookie 签名、验票、写权交接与正版验证见 `design-auth.md` §4.1 与 `design-persistence.md` §③ | 目标 5 | P1 | `API-M3-010`；时序见 §12.2 |
+| REQ-M3-014 | 压测量出真实区块下行：机器人回 `ChunkBatchReceived`、按步行与坐骑两档移动，产物带 `inbound.chunks`。harness 本身（Java `:loadtest` 模块、分机、加密档）按 `docs/DESIGN-PROD.md` `API-PROD-025` 实现，本需求只定区块侧的字段与判据 | 目标 4 | P0 | 无对外 API，见 §15 测量手段与 §26 M3-C 退出条件 |
+| REQ-M3-015 | 空间分格 `ThreadProvider`：16×16 区块一格，同一格的区块归同一 tick 线程；分片宿主选用它并把 `dispatcherThreads` 设为核数 − 2。引擎默认仍是 `counter` + 1 线程。本需求只提世界侧要求，引擎侧设计（`ThreadProvider.grid`、取模、多线程测试矩阵、线程契约、`acquire_ms` 指标）归 `docs/DESIGN-PROD.md` `REQ-PROD-020` 与 `API-PROD-016` | 目标 5 | P1 | `API-M3-009` |
+| REQ-M3-016 | 大区分服 + 频道：分片目录描述大区边界与频道地址；分片心跳上报在线人数；频道满员时由连接闸门 L3 在 `LoginStart` 拒绝，键只有 `synaxis:shard-full` 一个（`docs/DESIGN-PROD.md` `API-PROD-003`，`capacity` 取自分片目录） | 目标 5 | P1 | `API-M3-010` |
+| REQ-M3-017 | 跨大区转服的世界侧：源分片按心跳与容量选目标频道；目标分片的容量由连接闸门 L3 在 `LoginStart` 判定，早于加密请求与读 Cookie；验票通过后首批 9 个区块 P95 < 5 s 发完；写转服事件。Cookie 签名、验票、写权交接与正版验证见 `docs/DESIGN-PROD.md` `REQ-PROD-031`、`API-PROD-021` 与 §12.3 | 目标 5 | P1 | `API-M3-010`；时序见 §12.2 |
 | REQ-M3-019 | 光影兼容：`client-fabric` 不覆盖原版核心着色器、不在 `fabric.mod.json` 声明与 Sodium / Iris / DH 冲突；与 Sodium 0.9.2 + Iris 1.11.4 + DH 3.3.2 同装时 RTS 相机 mixin 照常应用 | 目标 6 | P1 | 无对外 API，见 `ADR-M3-010` 与 §17 外部依赖 |
 | REQ-M3-020 | 离线 Anvil 读取器：从 `74592d8fdf^` 复活 `RegionFile` 读路径与 `AnvilLoader` 的 section / 调色板 / 生物群系 / 方块实体解码，放 `:baker`，不回引擎；只读打开；`Status` 与 `status` 两种大小写都接受且只接受 full；版本只靠 `DataVersion == 4903` 门禁；只保留 `dimensions/<ns>/<path>/` 构造器；方块实体按坐标保存完整 NBT，不经 `Block.fromKey`；另读 `entities/r.<x>.<z>.mca` | 目标 1 | P0 | `API-M3-003` |
 | REQ-M3-021 | 烘焙器用源存档的原版光照做第二道对拍：源区块 `isLightOn = true` 时，光照输出与源 `SkyLight` / `BlockLight` 逐 nibble 比较，差异数写进清单；只报告，是否升为门禁待存储对比 T6 定 | 目标 2 | P1 | 无对外 API，见 §11.2 `verifying → published` 动作与 §12.3 |
@@ -228,10 +230,10 @@ flowchart LR
     light[光照规则 LightBlocks<br/>LightEngine 待抽取]
   end
   subgraph ext[外部]
-    pg[(PostgreSQL<br/>唯一权威 · 标志 · 心跳<br/>玩家数据见 design-persistence)]
-    redis[(Redis<br/>可丢的缓存与消息)]
+    pg[(PostgreSQL<br/>唯一权威 · 标志 · 心跳<br/>玩家数据见 DESIGN-PROD)]
+    redis[(Valkey 8<br/>可丢的缓存与消息)]
     cdn[(CDN<br/>高度场包)]
-    mojang[Mojang sessionserver<br/>见 design-auth]
+    mojang[Mojang sessionserver<br/>见 DESIGN-PROD]
   end
   subgraph client[客户端]
     mod[client-fabric<br/>RTS 相机 · 远景接入 · 光影检测]
@@ -308,7 +310,7 @@ B 的已知约束（DH spike 与远景备忘录 §2 实测或读源码所得）�
 
 ## 7. 数据模型 / 领域实体
 
-引擎侧实体见 `docs/DESIGN.md` §7，M2 实体见 `docs/DESIGN-M2.md` §7，本节只画 M3 新增的；字段权威定义在 §9。玩家数据、分片会话租约与转服 nonce 的实体见 `design-persistence.md` §②。
+引擎侧实体见 `docs/DESIGN.md` §7，M2 实体见 `docs/DESIGN-M2.md` §7，本节只画 M3 新增的；字段权威定义在 §9。玩家数据、角色写权（`ENT-CharacterLease`）、分片会话与转服 nonce 的实体见 `docs/DESIGN-PROD.md` §7，字段见该分册 §9。
 
 ```mermaid
 erDiagram
@@ -415,6 +417,7 @@ M3 的契约有四类：① 文件格式（`.synx`、清单、覆盖存储、高
   - 偏移索引（256 起，1,024 项 × 16 B = 16,384 B）：第 `i = (chunk_z & 31) × 32 + (chunk_x & 31)` 项为 `{offset: u64, length: u32, crc32c: u32}`；`offset = 0` 表示无该区块，只允许出现在清单 `bounds` 之外（烘焙器保证 `bounds` 内每个区块都有记录，`verify` 逐项检查）。记录区从 16,640 起，每条记录 8 B 对齐。
   - 区块记录：16 B 段长表（四个 u32）后接四段：
     - 段①：`ChunkDataPacket` 在 `compression_threshold` 下成帧、压缩后的完整字节（帧长 VarInt + 未压缩长度 VarInt + zlib 数据），包 id 按协议 776。光照按烘焙结果逐 section 填 sky / block 两组 mask，**不得对有天光的 section 置 `emptySkyMask`**（M2 的全黑剪影即由此而来，见 `docs/DESIGN-M2.md` §28.2）。每个 section 的方块调色板必须是单值或间接调色板（`REQ-M3-003`）。方块实体只带客户端需要的标签（有 `BlockHandler` 的按 `getBlockEntityTags()`），服务端不从段① 读方块实体。
+      - 字节可复现：同一烘焙输入与版本，在不同进程中产出的段① 未压缩包体必须逐字节相同（`region_content_hash` 按它计算），同一 JDK 构建下成帧压缩后的字节也相同（zlib 在同级别、同输入下是确定的）。为此编码中的集合一律按固定顺序写出：高度图按 `Heightmap.Type` 序号，方块实体按区块内方块索引升序（引擎 `ChunkData` 构造器，`5fba33a398`）。迭代顺序随 JVM 启动种子变化的集合（`Map.of`、`Map.copyOf`、`Set.of`、`Collectors.toUnmodifiableMap`、以身份哈希为键的 `HashMap`）不得直接决定编码顺序：修复前 `ChunkData` 用 `Map.copyOf` 与 `toUnmodifiableMap`，同一区块在两个 JVM 里编出长度相同、字节不同的包（高度图两项互换），压缩后长度随之变化（`docs/research/large-world-2026-09/bench-2026-09.md` §3.5）。烘焙器编码前对每个 section 执行 `optimize(SIZE)`，使间接调色板的顺序只取决于 section 内容，与写入顺序无关。验收门是 `ChunkPacketDeterminismTest`（6 个子 JVM 逐字节比对，§19）。
     - 段②：定长 544 B：walkable 位集 32 B + surface_y 256 × i16（沿用 M2 导航层，见 `docs/DESIGN-M2.md` §9）。实体物理走 `BlockCollision` 取 `Block` 对象，不需要碰撞位集；将来自研寻路或服务端射线要它时，以新 `format_version` 加回。
     - 段③：方块实体与静态实体表，整段 deflate。方块实体子表 `count u32` + 每项 `{index u16（section 内 ((y&15)×16+z)×16+x）, section_y i8, handler_len u8, handler UTF-8（无 handler 时长度 0）, nbt_len u32, nbt（未压缩二进制 NBT，完整，含客户端标签）}`，覆盖区块内**全部**方块实体（26.2 有 7 种方块实体类型没有同名方块：`sign`、`hanging_sign`、`mob_spawner`、`skull`、`banner`、`shelf`、`brushable_block`，经 `ChunkData.readBlockEntities` 会被静默丢掉，所以不能从段① 重建）；静态实体子表 `count u32` + 每项 `{nbt_len u32, nbt（源 entities/ 里该实体的完整 NBT，含 id 与 Pos）}`。区块内两者都没有时长度 0。
     - 段④：256 列 × 5 B（表面高度 u16、表面方块状态 id u16、天光 u8），是高度场包（`API-M3-014`）的来源。
@@ -435,7 +438,7 @@ M3 的契约有四类：① 文件格式（`.synx`、清单、覆盖存储、高
   - `bake` 的步骤：枚举区域 → 每个区域一个任务，读本区域 + 四周 1 区块光环的方块进 `WorldView` → 按光照规则算光照 → 逐 section `optimize(SIZE)`，编码四段 → 写临时目录 → 全部区域完成后从段④ 汇总每个大区的高度场包 → 跑 `verify` → 通过则原子改名为发布目录。
   - `verify`：抽样逐字节对比 + 摘要；Anvil 源里 `isLightOn = true` 的区块把光照输出与源 `SkyLight` / `BlockLight` 逐 nibble 比较，差异数写 `verify.source_light_diff`（只报告，不影响退出码，`REQ-M3-021`）。
   - 退出码：0 发布成功；2 源不可读、DataVersion 不符、区块未到 full 或标记命名空间未登记；3 某区域烘焙失败；4 校验不通过；5 输出目录已存在；6 当前 `LightEngine.VERSION` 不在已过对拍版本集（§11.2）。每次运行写 `EVT:map_build_started` / `EVT:map_build_finished`。
-  - 确定性：同一 `--source`、同一 `baker_version` 与 `light_engine_version`，`content_hash` 必须相同；段① 字节只在同一 JDK 构建上保证相同。
+  - 确定性：同一 `--source`、同一 `baker_version` 与 `light_engine_version`，`content_hash` 必须相同；段① 解压后的包体在任何 JDK 上都相同（`API-M3-001` 段①「字节可复现」），成帧压缩后的字节只在同一 JDK 构建上保证相同（zlib 实现随 JDK 构建变化）。
 
 - **`API-M3-004` 光照引擎 Java API** — 实现 `REQ-M3-004`
   - `interface WorldView { int minY(); int height(); boolean hasChunk(int cx, int cz); Block getBlock(int x, int y, int z); }`（引擎 `instance.light` 包，`@ApiStatus.Experimental`）。
@@ -458,14 +461,14 @@ M3 的契约有四类：① 文件格式（`.synx`、清单、覆盖存储、高
   - Java（按实例）：`Instance#setSimulationDistance(int chunks)`（`-1` = 不限，默认 `-1`）；`Instance#setChunkUnloadGraceTicks(int ticks)`（`-1` = 不自动卸载，默认 `-1`）；`Instance#addChunkTicket(int cx, int cz, Object owner)` / `removeChunkTicket(...)`。玩家视野进出由引擎自动加减票据；开启了自动卸载的实例上，票据数归零并空闲满宽限期的区块在 tick 末尾卸载（内部任务 `chunk.unload`）。
   - 分片宿主的设置：`synaxis.chunk-view-distance=12`（宿主校验大于 16 即起服报错）、`setSimulationDistance(4)`（必须 ≤ 视距）、`setChunkUnloadGraceTicks(100)`。三个值从宿主配置 `shard.view-distance` / `shard.simulation-distance` / `shard.unload-grace-ticks` 读。
   - 模拟距离外的区块不进 `ThreadDispatcher` 的 tick 分区：区块内实体与方块不 tick，但照常发包、照常可见。
-  - 下发速率：由客户端 `ChunkBatchReceived` 回报决定；引擎兜底上限 `synaxis.chunk-queue.max-per-tick` 默认 64 区块/tick（1,280 区块/s），不改。
+  - 下发速率：由客户端 `ChunkBatchReceived` 回报决定。**引擎兜底限速保持不变**：`synaxis.chunk-queue.max-per-tick`（`ServerConfig.maxChunksPerTick`）默认每玩家每 tick 最多 64 区块，即 1,280 区块/s；M3 不改这个默认值，分片宿主也不覆盖它。分片宿主另设每玩家 4 区块/tick 的发送上限（`docs/DESIGN-PROD.md` `REQ-PROD-026`、`API-PROD-020`，与客户端回报取小）：首批 9 个区块 3 个 tick 内发完，与 §15 转服行「首批 9 块 P95 < 5 s」不冲突；填满视距 12 的 625 个区块约 156 tick ≈ 7.8 s，M3 对填满时间没有目标，要不要设在 M3-C 实测 P1③（§17）之后定。
 
 - **`API-M3-007` 覆盖存储** — 实现 `REQ-M3-011`
   - 目录 `<work_dir>/overlay/<build_id>/`，每个频道进程一份（`work_dir` 按 `shard_id` 分开，F2），内含只追加的分段文件 `seg.<n>.synx`（`n` 递增）。段文件头部同 `API-M3-001` 的 256 B，`flags.overlay = 1`，没有偏移索引；其后逐条追加 `{chunk_x i32, chunk_z i32, generation u64, length u32, crc32c u32}` 24 B 记录头 + 一条区块记录（段①～③ 按覆盖层当前内容重新编码，段④ 长度 0）。
   - 映射：活动段创建时预分配 256 MiB 稀疏文件，一次映射到封口上限，读者按内存索引里的 offset 读；段文件用 `FileChannel.map(…, Arena.ofAuto())` 映射，解除映射交给 GC 可达性——出站队列（无界 `mpscUnboundedArrayQueue`）里排队的 `BufferedPacket` 持有段就不会被回收。
   - 写入：三个来源在同一个 tick 末尾单线程阶段追加——`overlay.evict`（每 tick ≤ 64 条）、`chunk.unload`（≤ 256 条）、`overlay.flush`（脏区块距上次落盘 ≥ `synaxis.overlay.flush-interval-s`，默认 10，每 tick ≤ 64 条）。该阶段的全部追加合并为一次 `fsync`（group commit，每秒最多 20 次），`fsync` 成功后才更新内存索引 `(cx, cz) → (段号, offset, length, generation)` 并清脏标记。活动段超过 1,024 条记录或 256 MiB 即封口、开新段。**任何段文件都不截断、不原地改写**。
   - 崩溃丢失窗口：最近 ≤ `flush-interval-s` 秒的改动（F4）。脏区块多于 64 × 20 × 10 = 12,800 个时窗口按比例拉长，实际最大值记在 `EVT:chunk_stream_stats.flush_lag_s_max`。真正要求不丢的改动建模成世界状态标志（`API-M3-013`）。
-  - 停机：分片宿主注册 shutdown 任务 `overlay.shutdown-flush`，排在 `design-persistence.md` §③「每个时机做什么」的停机保存之后、`host::disableAll` 之前（生产就绪 README §4 的「保存玩家 → 保存 overlay → 停 tick」）。引擎执行 shutdown 任务前已 join tick 线程（`ServerProcessImpl#shutdownProcess`），停机线程是覆盖层唯一的读写者。步骤：等 `overlay.relight` 的在途任务结束（单次上限 200 ms），结果由停机线程直接回写；全部脏区块重编码追加（编码在 `overlay.relight` 线程池上并行，追加单线程），合并为一次 `fsync`，成功后更新索引。预算 2 s：按编码 0.47 ms/区块 CPU（§2 烘焙行）与 `max(1, 核数 / 4)` 个线程，12 核机 2 s 约编完 12,700 个区块，与定期落盘最多积下的 12,800 个脏区块同量级（推算，未测，T10 一并量）。超出预算时停止编码，已追加的部分照常 `fsync`，剩余脏区块数记 ERROR，这些区块的丢失量退化为崩溃窗口（≤ 10 s）。
+  - 停机：`overlay.shutdown-flush` 排在玩家停机保存之后、停 tick 之前，挂在 `docs/DESIGN-PROD.md` §11.4 的 `saving` 阶段（该分册 §17 世界存储约束 ①「保存玩家 → 保存覆盖层 → 停 tick」），计入该阶段 30 s 预算。下列步骤以「停机线程是覆盖层唯一的读写者」为前提：现行关闭序列先 join tick 线程再跑 shutdown 任务（`ServerProcessImpl#shutdownProcess`），前提成立；该分册 §11.4 的新序里 `saving` 阶段 tick 仍在运行，挂载点与单写者前提要在 M3-C 前按新序重定（§28.2）。步骤：等 `overlay.relight` 的在途任务结束（单次上限 200 ms），结果由停机线程直接回写；全部脏区块重编码追加（编码在 `overlay.relight` 线程池上并行，追加单线程），合并为一次 `fsync`，成功后更新索引。预算 2 s：按编码 0.47 ms/区块 CPU（§2 烘焙行）与 `max(1, 核数 / 4)` 个线程，12 核机 2 s 约编完 12,700 个区块，与定期落盘最多积下的 12,800 个脏区块同量级（推算，未测，T10 一并量）。超出预算时停止编码，已追加的部分照常 `fsync`，剩余脏区块数记 ERROR，这些区块的丢失量退化为崩溃窗口（≤ 10 s）。
   - 整理：已封口段里被新记录覆盖的比例超过 50% 时，把其中仍有效的记录复制进活动段（计入同一 tick 的追加与 `fsync`），更新内存索引，再 unlink 旧段文件；不显式解除映射，每 tick 最多复制 64 条。
   - 启动：按段号升序扫描全部段文件重建内存索引，同一区块取 `generation` 最大的一条；某条记录的 `crc32c` 不符则丢弃这一条及同段之后的全部记录（写到一半崩溃的尾部），记 ERROR。进程重启保留同一 `build_id` 的记录。
   - 生命周期：与 `build_id` 绑定；分片以新 `build_id` 起服时旧目录整体丢弃（F1，含只升协议）。起服重放世界状态标志在索引重建之后（`API-M3-013`）。
@@ -473,27 +476,26 @@ M3 的契约有四类：① 文件格式（`.synx`、清单、覆盖存储、高
 - **`API-M3-008` 基准程序** — 实现 `REQ-M3-013`
   - `./gradlew :jmh-benchmarks:worldBench -PworldBenchArgs="--out <json>"`（`jmh-benchmarks/src/worldbench/…/LargeWorldBench.java` 与 `SyntheticTerrain.java`；`--quick`、`--heap`、`--jobs <作业表>` 见 `jmh-benchmarks/README.md`）。每个作业一个子 JVM（`-Xms/-Xmx` 同值、G1、`AlwaysPreTouch`）。
   - 作业：`packet`（压缩与未压缩包体、首次序列化 ms 的墙钟与 CPU，带 / 不带 / 懒算光照）、`relight`（整图 relight 墙钟、CPU 与堆增量）、`local`（单处改动后 3×3 懒重算与整块重算）；地形 natural / solid / flat40 三种、高 64 / 256 / 384 三档、调色板 `opt`（间接）与 `setall`（生成器原样）两种。
-  - 输出 JSON：`machine`（CPU、核数、JDK、`gitCommit`）、每作业的 `loadAverageBefore/After` 与各指标分布；`tools/worldbench/summarize_worldbench.py <json>` 重新生成表格。默认作业表的结果：`docs/research/large-world-2026-09/bench-2026-09-results.json`（基准重测的第 2 轮，第 1 轮是同目录的 `bench-2026-09-run1.json`）。
+  - 输出 JSON：`machine`（CPU、核数、JDK、`gitCommit`）、每作业的 `loadAverageBefore/After` 与各指标分布，`packet` 作业另有 `plainFramedSha256`、`litFramedSha256`、`plainUncompressedSha256`、`litUncompressedSha256` 四个字节摘要（字节复现以摘要为判据，长度分布分不出「长度相同、字节不同」）；`tools/worldbench/summarize_worldbench.py <json>` 重新生成表格。默认作业表的结果：`docs/research/large-world-2026-09/bench-2026-09-results.json`（基准重测的第 2 轮，第 1 轮是同目录的 `bench-2026-09-run1.json`）。
   - 口径：存活堆用「两次强制回收后取差」（同 `Match#sampleLiveHeap`），**报堆数字必须同时写明三项：是否含包缓存、调色板形态、是否预热**；墙钟只在 `loadAverageBefore/After` 低于核数一半时算有效。
-  - 待补作业：从 `.synx` 或 Anvil 读入的真地图地形（存储对比 T1）、句柄区块常驻字节（T3）、段① 解码耗时（T2）、覆盖层每 tick 定期落盘的开销与单次 `fsync`（T10）。AES-CFB8 的 CPU 由 `design-auth.md` §⑤ 的 `Cfb8Bench` 量过（11.2～11.6 ms/MiB），并入 JMH 的事归该文档。
+  - 待补作业：从 `.synx` 或 Anvil 读入的真地图地形（存储对比 T1）、句柄区块常驻字节（T3）、段① 解码耗时（T2）、覆盖层每 tick 定期落盘的开销与单次 `fsync`（T10）。AES-CFB8 的 CPU 已由生产就绪侧量过（11.2～11.6 ms/MiB，`docs/DESIGN-PROD.md` `ADR-PROD-011`），并入 JMH 的事归该分册。
 
 - **`API-M3-009` 空间分格 `ThreadProvider`** — 实现 `REQ-M3-015`
-  - `ThreadProvider.grid(int exponent)`：区块 (cx, cz) 归格 `(cx >> exponent, cz >> exponent)`，线程号 = 格坐标的 `hash` 对线程数取模；`RefreshType.NEVER`。
-  - 配置：`ServerProcessImpl` 不再写死 `counter()`（`ServerProcessImpl.java:104`），改读 `synaxis.thread-provider=grid|counter`，**默认 `counter`**；`synaxis.thread-grid-exponent` 默认 4（16×16 区块）；`synaxis.dispatcher-threads` 默认仍是 1。分片宿主启动时写入 `thread-provider=grid` 与 `dispatcher-threads = max(1, Runtime.availableProcessors() − 2)`（留 2 个核给调度线程、网络读写与 `overlay.relight`），写法同 M2 `Main` 的 `VIEW_RANGE_PROPERTIES`（命令行显式给的值优先）。M2 的 `Main` 不设这两项，仍是单线程 `counter`。
-  - 引擎侧的取模修正、多线程测试矩阵、跨格交互写法与 `acquire_ms` 指标以 `design-ops-scale.md` ④ 为准。
+  - 需求：同一 16×16 区块格的区块归同一 tick 线程；MMO 分片宿主选用分格并把 tick 线程数设为核数 − 2（留 2 个核给调度线程、网络读写与 `overlay.relight`），命令行显式给的值优先；引擎默认仍是 `counter` + 1 线程，M2 的 `Main` 与 RTS 进程不设。
+  - 接口与引擎侧设计以 `docs/DESIGN-PROD.md` `API-PROD-016` 为准，本节不复述：`ThreadProvider.grid(int exponent)` 与三个配置键、线程号取模（`Math.floorMod`）、`Acquirable` 未分配态与线程契约、4 线程严格模式测试、`acquire_ms` 指标。
 
 - **`API-M3-010` 分片目录与频道** — 实现 `REQ-M3-016`、`REQ-M3-017`
   - `shards.json`（与地图版本一起放在发布目录，但**不进 `content_hash`**：它含机器地址，加频道或换机器只改这个文件，不需要重烘）：`regions[]`（`region_id`、区块边界、`build_id`）与 `channels[]`（`shard_id`、`region_id`、`channel`、`host`、`port`、`capacity`，`capacity` ∈ [200, 500]）。
-  - 心跳：每分片每 5 s 写 `shard_heartbeat(shard_id, online, updated_at)`；超过 15 s 未更新视为下线。表结构随 `server-app` 的迁移脚本管理，迁移与回退办法见 `design-persistence.md` §⑥。
+  - 心跳：每分片每 5 s 写 `shard_heartbeat(shard_id, online, updated_at)`；超过 15 s 未更新视为下线。表结构随 `server-app` 的迁移脚本管理，版本号 V5 与回退策略见 `docs/DESIGN-PROD.md` §25，脚本内容由本分册提供（本分册 §25）。
   - 接收转入：分片宿主起服时设 `synaxis.accept-transfers=true`（引擎既有属性，默认 false，`ServerConfig.java:190`；写法同 `API-M3-009` 的宿主默认值，命令行显式给的值优先）。M2 的 `Main` 不设，仍拒绝 intent=transfer 的握手。
-  - 容量：分片宿主把 `capacity` 交给连接闸门作 L3 分片上限，满员断线 `synaxis:server-full`（`design-ops-scale.md` ② L3 与 §2.4）；转服进来的连接同样先过这一关，此时还没读 Cookie。
-  - 插件面：`PluginContext#shards()` 返回 `ShardService`，`transfer(Player, String regionId)` 选该大区 `online / capacity` 最低且在线的频道发起转服；之后的写回、Cookie 与 `Transfer` 由生产就绪轨道的实现完成（`design-persistence.md` §③「Transfer 跨大区交接」）。属 `:plugin-api` 新增方法，兼容变更，`api_version` 不变。
+  - 容量：分片宿主把 `capacity` 写进 `synaxis.max-players`，由连接闸门 L3 在处理 `LoginStart` 时按已占席位判定，满员以 `LoginDisconnect` 断线 `synaxis:shard-full`（`docs/DESIGN-PROD.md` `API-PROD-003` 与 §14）。频道满只有这一个键，login 与 transfer 意图同一判定：转服进来的连接在发加密请求、读 Cookie 之前就被拒，票据 nonce 不消耗；L3 拒绝不写台账，只计 `synaxis_gate_rejections_total{reason="full"}`。
+  - 插件面：`PluginContext#shards()` 返回 `ShardService`，`transfer(Player, String regionId)` 选该大区 `online / capacity` 最低且在线的频道发起转服；之后的写回、Cookie 与 `Transfer` 由生产就绪分册完成（`docs/DESIGN-PROD.md` `API-PROD-021` 与 §12.3，含每玩家转服冷却 5 s）。属 `:plugin-api` 新增方法，兼容变更，`api_version` 不变。
   - 首批区块：目标分片验票通过、玩家进世界后，按普通进场路径发区块；发完首批 9 个区块的 `ChunkBatchFinished` 时写 `EVT:transfer_completed`。
 
 - **`API-M3-013` 世界状态标志** — 实现 `REQ-M3-023`
-  - 存储：PostgreSQL 表 `world_flag(map_id text, region_id text, flag_key text, value jsonb, version bigint, updated_at timestamptz, PRIMARY KEY (map_id, region_id, flag_key))`，属 `server-app`；迁移、回退与本地测试容器沿用 `design-persistence.md` §⑥ 的办法。写入按 `version` 条件更新。
+  - 存储：PostgreSQL 表 `world_flag(map_id text, region_id text, flag_key text, value jsonb, version bigint, updated_at timestamptz, PRIMARY KEY (map_id, region_id, flag_key))`，属 `server-app`；迁移版本号与回退策略按 `docs/DESIGN-PROD.md` §25（`world_flag` 尚未分到版本号，见 §28.2），本地测试容器同该分册 §19 的 `dbTest`。写入按 `version` 条件更新。
   - 插件面：`PluginContext#worldFlags()` 返回 `WorldFlags`：`register(String key, FlagApplier applier)`（`FlagApplier` 给出某个取值对应的一组 `(坐标, 方块状态, NBT)`）、`get(key)`、`set(key, value)`。属 `:plugin-api` 新增方法，兼容变更。
-  - 重放：频道进程起服、覆盖存储索引重建之后、bind 端口之前，读本大区全部标志，逐个调 `applier` 并把目标格设成规定的状态；重放幂等（目标格已是该状态就不改，不产生脏区块）。覆盖层与标志冲突时以标志为准并记 WARN。读失败重试 3 次（退避 1 / 2 / 4 s），仍失败以 `synx-world-flags-unavailable` 非零退出。这使 PostgreSQL 成为每个分片的起服硬依赖；`ADR-M3-015` 不让覆盖层进数据库，防的是运行期卸载与淘汰依赖数据库，两者不冲突：分片起服本来就要连 PostgreSQL（`design-persistence.md` §②：新建 `shard_session` 行、比对 `store_meta.auth_mode`、Flyway `validate`，任一失败拒绝起服），标志重放没有新增故障点。替代做法是用上次成功读到的标志快照（存本地）起服、运行期再追平，代价是起服后最长一个同步周期内门、桥状态与其他频道不一致，玩法依赖标志做进度判定时会出错，所以不取。
+  - 重放：频道进程起服、覆盖存储索引重建之后、bind 端口之前，读本大区全部标志，逐个调 `applier` 并把目标格设成规定的状态；重放幂等（目标格已是该状态就不改，不产生脏区块）。覆盖层与标志冲突时以标志为准并记 WARN。读失败重试 3 次（退避 1 / 2 / 4 s），仍失败以 `synx-world-flags-unavailable` 非零退出。这使 PostgreSQL 成为每个分片的起服硬依赖；`ADR-M3-015` 不让覆盖层进数据库，防的是运行期卸载与淘汰依赖数据库，两者不冲突：分片起服本来就要连 PostgreSQL（`docs/DESIGN-PROD.md` §11.2 起服与 `API-PROD-004`：新建 `shard_session` 行、比对 `store_meta.auth_mode`、Flyway `validate`，任一失败拒绝起服），标志重放没有新增故障点。替代做法是用上次成功读到的标志快照（存本地）起服、运行期再追平，代价是起服后最长一个同步周期内门、桥状态与其他频道不一致，玩法依赖标志做进度判定时会出错，所以不取。
   - 运行期同步：`set` 成功后向 Redis 频道 `worldflag:<map_id>:<region_id>` 发一条 `{flag_key, version}`；同大区各频道收到后读 PostgreSQL 取值并应用。消息可丢：每个频道每 60 s 按 `updated_at` 增量拉一次兜底，所以 Redis 不可用时最长 60 s 后收敛。
   - 应用到的区块按普通 `setBlock` 物化为覆盖层并计入 `overlay_cap`。
 
@@ -511,13 +513,13 @@ M3 的契约有四类：① 文件格式（`.synx`、清单、覆盖存储、高
   - 钉目录：`IDhApiSaveStructure` 指向上面的缓存目录，`IDhApiWorldProxy.setReadOnly(true)`；远景半径 4,096 格，低配档 2,048 格。
   - 版本锁：只在 DH 3.3.2（API 7）+ Iris 1.11.4 + Sodium 0.9.2（均为 26.2 版）的组合上启用远景；DH 缺席或版本不符时不画远景、不报错。
   - 光影检测：`FabricLoader#isModLoaded("sodium")`、`isModLoaded("iris")`，Iris 在时读 `IrisApi#isShaderPackInUse()`；三者缺任一项且玩家没勾「不再提示」时，进世界后打开一次 `PAGE-SHADER-GUIDE`。检测结果不上报服务端。
-  - 许可：DH 是 LGPL-3.0-only，默认随客户端整合分发（§28.1，可改为玩家自装），分发时以独立 jar 放 `mods/`，附显著声明与 GPL / LGPL 全文，在显示版权的界面列出 DH（远景备忘录 §3.6）。
+  - 许可：DH 是 LGPL-3.0-only，随客户端整合分发（用户 2026-09-23 确认，§28.1）：以独立 jar 放 `mods/`，附显著声明与 GPL / LGPL 全文，在显示版权的界面列出 DH（远景备忘录 §3.6）；玩家可以替换这个 jar；DH 升版时上一条版本锁与本地烘焙代码（写库路径依赖 DH core 内部类）一起改、一起验证。
 
 演进与弃用：
 
-- 版本方案：文件格式用 `format_version` 整数（`.synx` 与高度场包各一套）、光照用 `LightEngine.VERSION` 整数、数据库用迁移版本号（`design-persistence.md` §⑥）；Java 稳定面（`WorldView`、`LightEngine`、`ShardService`、`WorldFlags`）随 `:plugin-api` 的 SemVer。
+- 版本方案：文件格式用 `format_version` 整数（`.synx` 与高度场包各一套）、光照用 `LightEngine.VERSION` 整数、数据库用迁移版本号（`docs/DESIGN-PROD.md` §25）；Java 稳定面（`WorldView`、`LightEngine`、`ShardService`、`WorldFlags`）随 `:plugin-api` 的 SemVer。
 - 弃用期：文件格式与光照版本不设弃用期——不符即拒绝起服、重烘即可（地图按版本发布，Q3）；高度场包版本不符时客户端不画远景。
-- 当前 deprecated 清单：`API-M2-009`（被 `API-M3-001` 取代，见 §1）；`API-M3-011`、`API-M3-012`（移交生产就绪轨道，见 §1 末段）。
+- 当前 deprecated 清单：`API-M2-009`（被 `API-M3-001` 取代，见 §1）；`API-M3-011`、`API-M3-012`（移交生产就绪分册 `docs/DESIGN-PROD.md`，去向见 §1 末段）。
 
 ## 9. 数据字典
 
@@ -571,7 +573,7 @@ M1 / M2 角色见 `docs/DESIGN.md` §10 与 `docs/DESIGN-M2.md` §10。M3 新增
 
 ## 11. 状态机
 
-数据字典里取值 ≥ 2 的生命周期枚举共两个：`residency_state`、`build_state`，各建一台机。转服票据与玩家写权的生命周期归生产就绪轨道（`design-persistence.md` §③ 的玩家归属状态机）。
+数据字典里取值 ≥ 2 的生命周期枚举共两个：`residency_state`、`build_state`，各建一台机。转服票据与玩家写权的生命周期归生产就绪分册（`docs/DESIGN-PROD.md` §11.3 `ENT-CharacterLease`，含 `in_transit`）。
 
 ### 11.1 区块驻留 `ENT-ChunkResidency`
 
@@ -675,7 +677,7 @@ sequenceDiagram
 
 ### 12.2 跨大区转服（世界侧）
 
-写回与释放、Cookie 的签名与验票、正版验证、写权获取的细节不在本图展开，分别见 `design-persistence.md` §③「Transfer 跨大区交接」与 `design-auth.md` §4.1。
+写回与释放、Cookie 的签名与验票、正版验证、写权获取的细节不在本图展开，见 `docs/DESIGN-PROD.md` §12.3（跨大区转服与目标分片重新验证）。
 
 ```mermaid
 sequenceDiagram
@@ -686,22 +688,22 @@ sequenceDiagram
   participant D as 目标分片
   C->>S: 走进大区关卡门 插件调 ShardService (API-M3-010)
   S->>S: 按心跳与容量选目标频道 (API-M3-010)
-  S->>DB: 写回并释放写权 见 design-persistence §③
-  S->>C: StoreCookie 与 Transfer 见 design-auth §4.1
+  S->>DB: 写回并释放写权 (API-PROD-004)
+  S->>C: StoreCookie 与 Transfer (API-PROD-021)
   S->>S: 写 EVT:transfer_issued
   C->>D: 握手 intent=transfer 并重新登录
-  D->>D: 连接闸门 L3 容量 满员即断线 synaxis:server-full (API-M3-010)
-  D->>DB: 验票并获取写权 见 design-persistence §③
+  D->>D: LoginStart 时闸门 L3 判席位 满员即断线 synaxis:shard-full (API-PROD-003)
+  D->>DB: 验票并获取写权 (API-PROD-004)
   alt 通过
     D->>D: 视野票据加载首批区块 (API-M3-006)
     D->>C: 首批 9 个区块 (API-M3-005)
     D->>D: 写 EVT:transfer_completed
   else 拒绝
-    D->>C: Disconnect 原因键见 design-auth 与 design-persistence
+    D->>C: Disconnect 原因键见 DESIGN-PROD §14
   end
 ```
 
-驱动的状态机迁移：§11.1 `[*] → handle`（第 9～10 步，目标分片首批区块）。票据与写权的状态迁移见 `design-persistence.md` §③ 的迁移表。
+驱动的状态机迁移：§11.1 `[*] → handle`（第 9～10 步，目标分片首批区块）。票据与写权的状态迁移见 `docs/DESIGN-PROD.md` §11.3 的迁移表（`in_transit → loading`、`in_transit → offline`）。
 
 ### 12.3 烘焙与发布
 
@@ -785,13 +787,13 @@ flowchart LR
 
 | 页面 | 可见角色 | 调用的接口 | 关键页态 |
 | --- | --- | --- | --- |
-| `PAGE-TRANSFER` | ROLE-Player | `API-M3-010`（选频道，服务端侧） | 原版连接屏，无自定义界面；超过 30 s 未完成即票据过期（`design-persistence.md` §③），落到断线页 |
-| `PAGE-DISCONNECT` | ROLE-Player | — | 断线原因键的文案：`synaxis:server-full` 见 `design-ops-scale.md` §2.4；转服与写权相关的键见 `design-auth.md` §4.2 与 `design-persistence.md` §⑤ |
+| `PAGE-TRANSFER` | ROLE-Player | `API-M3-010`（选频道，服务端侧） | 原版连接屏，无自定义界面；超过 30 s 未完成即票据过期（`docs/DESIGN-PROD.md` §11.3 `in_transit → offline`），落到断线页 |
+| `PAGE-DISCONNECT` | ROLE-Player | — | 断线原因键的文案：频道满 `synaxis:shard-full`（模组可自动换频道）、转服与写权相关的键，都见 `docs/DESIGN-PROD.md` §14 |
 | `PAGE-SHADER-GUIDE` | ROLE-Player | `API-M3-015`（本机检测） | 三态：缺 Sodium / Iris（给安装说明与版本号：Sodium 0.9.2、Iris 1.11.4，26.2）；已装 Iris 未启用光影包（推荐 Complementary Reimagined，给启用路径）；Mac 上光影包被 Iris 自动关闭（说明原版画面是正常兜底）。按钮「知道了」「不再提示」；关闭后画面照常，不影响进服 |
 
 ## 14. 错误处理与错误码
 
-无 HTTP，不用 RFC 9457。沿用 `docs/DESIGN.md` §14 与 `docs/DESIGN-M2.md` §14：断线原因是 `translate` 键，排障关联 ID 是 `connection_id`，每行日志携带、断线文本不携带。M3 不新增断线键：频道满员用连接闸门的 `synaxis:server-full`（`design-ops-scale.md` §2.4）；转服验票与写权失败的键归 `design-auth.md` §4.2 与 `design-persistence.md` §⑤。转服日志带票据 nonce 的前 8 位 hex（`transfer_ref`），源、目标两侧日志用它串起来。
+无 HTTP，不用 RFC 9457。沿用 `docs/DESIGN.md` §14 与 `docs/DESIGN-M2.md` §14：断线原因是 `translate` 键，排障关联 ID 是 `connection_id`，每行日志携带、断线文本不携带。M3 不新增断线键。频道满只有 `synaxis:shard-full` 一个键：住引擎 `DisconnectReasons`，由连接闸门 L3 在 `LoginStart` 判定（`API-M3-010` 容量段，定义见 `docs/DESIGN-PROD.md` §14）。转服验票与写权失败的键（`synaxis:transfer-rejected`、`synaxis:state-unavailable`）归该分册 §14：`synaxis:state-unavailable` 的来源是载入超时或解码失败、分片会话隔离，以及在线模式下租约被活会话持有时先顶号、5 s 内仍拿不到租约。转服日志带票据 nonce 的前 8 位 hex（`transfer_ref`），源、目标两侧日志用它串起来。
 
 起服拒绝（进程非零码退出、端口不 bind，错误写进启动日志）：
 
@@ -819,7 +821,7 @@ flowchart LR
 | 调色板形态 | 烘焙产物与覆盖层物化结果 | 每个 section 的方块调色板只能是单值或间接调色板（P2 验收）。依据：生成器用 `setAll` 会转成直接调色板，高 384 自然地形堆从 27.0 涨到 81.1 KiB/区块、包体 +47%（基准重测 §1 第 4 条） |
 | 包体一致 | 抽 1,000 个区块 | 段① 字节与「段① 解码成 `DynamicChunk`（方块实体取自段③）再 `createChunkPacket`」逐字节一致（P2 ②） |
 | 带宽 | 200 机器人步行 / 坐骑 | 区块下行 KB/s/人与模型（步行 10.1、坐骑 23.5）偏差 ≤ ±20%（P2 ⑥）；分片出站实测与 §2 估算偏差 ≤ ±20%（P6）；每人收到的区块数 > 首批 9 块。下发速率由客户端回报决定，引擎兜底 64 区块/tick |
-| 加密 | online 模式 500 人 | 服务端加密 CPU 与 §2 推算（0.23～0.30 核）偏差记录在案；判据与原生实现的切换条件归 `design-auth.md` §⑤ |
+| 加密 | online 模式 500 人 | 服务端加密 CPU 与 §2 推算（0.23～0.30 核）偏差记录在案；判据与原生实现的切换条件归 `docs/DESIGN-PROD.md` §15 加密 CPU 行与 `ADR-PROD-011` |
 | 烘焙 | 4k×4k 测试图（65,536 区块，高 256） | 烘焙成功，记墙钟、CPU 与磁盘（P2 ①）。规划值见 §2「烘焙」行，16 线程墙钟按其 CPU 时间除以 16 估 < 10 s（推算） |
 | 起服 | 挂载一个大区（≈ 219 MB + 段③ + 邻区边缘文件） | 全量 `payload_sha256` 校验 < 5 s（按 SHA-256 硬件加速约 1 GB/s 推算，未测） |
 | 覆盖层内存 | 覆盖层满载 | 堆（光照已算、间接调色板、不含包缓存）、含 SoftReference 包缓存的上界、堆外成帧包体与解码缓存各不超过 §2「服务端堆」行对应档的值；进程堆 < 2 GB 沿用 `docs/DESIGN.md` §15，正式档堆上限 3 GiB、RSS < 4 GiB。监控按堆与堆外两项（NMT 或 `BufferPoolMXBean`） |
@@ -831,13 +833,13 @@ flowchart LR
 | 光照正确性 | 对拍 | `LightParityIntegrationTest` 全部场景与原版 26.2 逐值差异为 0（当前 7 个场景）；测试直接断言差异数为 0，没有例外表，任何差异都让测试失败 |
 | 兼容 | 客户端 | Minecraft 26.2；Apple Silicon（GL 4.1）必须能进服并正常渲染近景（Q5）；光影只在 OpenGL 后端（Iris 不支持 Vulkan；DH 与 Iris 同开固定 OpenGL）。帧率判据（远景备忘录 V7、V8）：RTX 3060、1080p、rd=12、远景 4,096 格、Complementary 默认档 P1% ≥ 60 FPS，开 DH 比关 DH 的平均帧时间多 ≤ 2 ms；Mac 1080p、LOW 档 P1% ≥ 45 FPS；低配档 GTX 1650 / M1、1080p、r=8、远景 2,048 格 P1% ≥ 45 FPS。全部由用户提供的真机测（§17） |
 | 远景准备 | 首次进一个大区 | 下载 5.3～21 MiB（50 Mbit/s 下 1～4 s）+ 本地烘焙；本地烘焙耗时 ≤ 同一库在 50 Mbit/s 下的下载时间（切换条件 2，V2 在 Windows 与 Mac 各测一次）；进服不等远景 |
-| 数据增长 | 12 个月 | 地图版本目录按版本增长，`retired/` 保留 30 天后删；覆盖存储随 `build_id` 丢弃；CDN 上的高度场包随 `retire` 下线；`world_flag` 行数 = 标志数，每大区 ≤ 1,000 行 |
+| 数据增长 | 12 个月 | 地图版本目录按版本增长，`retired/` 保留 30 天后删；覆盖存储随 `build_id` 丢弃；CDN 上的高度场包随 `retire` 下线；`world_flag` 行数 = 标志数，每大区 ≤ 1,000 行；`transfer_nonce` 由 `nonce.gc`（§17）每 10 min 删过期行；玩家数据（`character` + `character_section`）的增长见 `docs/DESIGN-PROD.md` §15 数据增长行 |
 
-**测量手段**：tick 与堆沿用 `docs/DESIGN-M2.md` §15 的 soak `summary.json` 字段口径，压测工具按 `design-ops-scale.md` ⑤；区块下行由 `REQ-M3-014` 的 `inbound.chunks`（区块包条数、字节、按移动档分栏）；零编码由 JFR `jdk.ExecutionSample` 栈过滤 `createChunkPacket` 加对象计数断言；包体一致与光照对拍是单元测试；基准数字按 `API-M3-008` 的口径，报堆必须写明是否含包缓存、调色板形态、是否预热三项。
+**测量手段**：tick 与堆沿用 `docs/DESIGN-M2.md` §15 的 soak `summary.json` 字段口径，压测工具按 `docs/DESIGN-PROD.md` `API-PROD-025`；区块下行由 `REQ-M3-014` 的 `inbound.chunks`（区块包条数、字节、按移动档分栏）；零编码由 JFR `jdk.ExecutionSample` 栈过滤 `createChunkPacket` 加对象计数断言；包体一致与光照对拍是单元测试；基准数字按 `API-M3-008` 的口径，报堆必须写明是否含包缓存、调色板形态、是否预热三项。
 
 ## 16. 并发与一致性
 
-引擎侧竞态见 `docs/DESIGN.md` §16，M2 竞态见 `docs/DESIGN-M2.md` §16，玩家数据与写权的竞态见 `design-persistence.md` §③⑤，本表只列 M3 新增的。
+引擎侧竞态见 `docs/DESIGN.md` §16，M2 竞态见 `docs/DESIGN-M2.md` §16，玩家数据与写权的竞态（两分片同时获取同一角色、首次建档、僵尸分片写入、票据重放等）见 `docs/DESIGN-PROD.md` §16，本表只列 M3 新增的。
 
 | 竞态场景 | 参与方 | 期望结果 | 依据（约束/守卫） |
 | --- | --- | --- | --- |
@@ -867,12 +869,12 @@ flowchart LR
 
 | 依赖 | 用途 | SLA | 超时/重试 | 失败影响 | 降级 |
 | --- | --- | --- | --- | --- | --- |
-| PostgreSQL 16（自托管，单主） | 唯一权威存储：世界状态标志、分片心跳；玩家数据与写权见 `design-persistence.md` | 按 `design-persistence.md` §④⑤ | 语句超时 2 s；标志重放重试 3 次，退避 1 / 2 / 4 s | 起服时读不到标志则拒绝起服；运行期标志写入失败 | 运行期写入失败时玩法插件收到失败结果、不改世界；起服失败见 `RB-M3-006` |
-| Redis（Valkey 8，版本与客户端见 `design-persistence.md` §④） | 可丢的消息：世界状态标志变化通知 | 可丢，不承诺 | 发布失败不重试 | 其他频道最长 60 s 后才看到标志变化 | 每频道每 60 s 从 PostgreSQL 增量拉取 |
+| PostgreSQL 16（自托管，单主） | 唯一权威存储：世界状态标志、分片心跳；玩家数据、写权与转服 nonce 见 `docs/DESIGN-PROD.md` §17 | 按该分册 §17（99.9% 规划） | 语句超时 2 s；标志重放重试 3 次，退避 1 / 2 / 4 s | 起服时读不到标志则拒绝起服；运行期标志写入失败 | 运行期写入失败时玩法插件收到失败结果、不改世界；起服失败见 `RB-M3-006` |
+| Valkey 8（Redis 兼容；版本与客户端 Jedis 8.0.1 见 `docs/DESIGN-PROD.md` §17） | 可丢的消息：世界状态标志变化通知；玩家侧用途（在线名单、顶号与封禁通知）见该分册 `API-PROD-006` | 可丢，不承诺 | 发布失败不重试 | 其他频道最长 60 s 后才看到标志变化 | 每频道每 60 s 从 PostgreSQL 增量拉取 |
 | CDN（对象存储 + 静态分发） | 高度场包下载 | 按所选服务商 | 客户端重试 2 次 | 该玩家这次进大区没有远景 | 原版视距；下次进大区再试 |
-| Mojang sessionserver | online 模式登录鉴权（每次转服都重新登录） | 见 `design-auth.md` §4.2、§4.3 | 同左 | online 模式下转服整体失败 | 同左 |
+| Mojang sessionserver | online 模式登录鉴权（每次转服都重新登录） | 见 `docs/DESIGN-PROD.md` §17 | 同左 | online 模式下转服整体失败 | 同左 |
 | 原版 26.2 专用服务端 `server.jar`（SHA-1 `823e2250d24b3ddac457a60c92a6a941943fcd6a`） | `tools/light-oracle/gen.sh` 生成光照形状表与对拍真值；美术侧的 `--forceUpgrade` 与 Chunky 预生成。不进运行时 | — | — | 形状表与真值无法再生；源存档无法升级 | 生成物入库，平时不需要 |
-| Distant Horizons 3.3.2（26.2，LGPL-3.0-only） | 客户端远景，随客户端整合分发（默认，可改，§28.1） | 第三方，无 SLA | — | 远景不可用 | 原版视距 |
+| Distant Horizons 3.3.2（26.2，LGPL-3.0-only） | 客户端远景，随客户端整合分发（用户已确认，§28.1；玩家可替换 jar） | 第三方，无 SLA | — | 远景不可用 | 原版视距 |
 | Sodium 0.9.2 + Iris 1.11.4 + 光影包（Complementary Reimagined r5.9.3） | 玩家自装的光影路径（`ADR-M3-010`） | 第三方，无 SLA | — | 光影不可用或性能回归（Iris 26.2 有 #3241：同配置 138 → 84 FPS，原因未定） | 原版画面兜底，`PAGE-SHADER-GUIDE` 引导 |
 
 外部依赖（需要真显卡或真机，本机与无头容器做不了）。**机器由用户提供**：一台 RTX 3060 级 Windows、一台 Apple Silicon Mac、一台 GTX 1650 级 Windows；组合固定为 MC 26.2 + Sodium 0.9.2 + Iris 1.11.4+26.2 + Complementary r5.9.3 + DH 3.3.2-26.2。结论回写 §15 与 §28.2。
@@ -890,7 +892,7 @@ flowchart LR
 | P1⑧ | Complementary 与 Photon 在 26.2 + Iris 1.11.4 + 我们的模组下的帧时间；RTS 相机 mixin 与 Sodium 异步遮挡剔除、Iris 阴影剔除能否共存（无头容器已证实 mixin 能应用、不崩溃） | RTX 3060 级机 + Apple Silicon Mac | `REQ-M3-019` 验收 |
 | Vulkan | 不开光影时 DH 的 BLAZE_3D 引擎在 Vulkan 后端下的远景 | RTX 3060 级机 | 仅影响不开光影的 Vulkan 玩家 |
 
-本机或无头容器可做、不需要用户机器的：远景备忘录 V1（DH core 写的库在连 Synaxis 的多人客户端上能否画出，DH spike 同一套容器）；P1④（harness 回 ack）归 `REQ-M3-014`；AES-CFB8 CPU 已由 `design-auth.md` §⑤ 测过。方案 C 的 V4、V5 与 P1②（Blaze3D 画高度场）只在切换到 C 时才做。
+本机或无头容器可做、不需要用户机器的：远景备忘录 V1（DH core 写的库在连 Synaxis 的多人客户端上能否画出，DH spike 同一套容器）；P1④（harness 回 ack）归 `REQ-M3-014`；AES-CFB8 CPU 已由生产就绪侧测过（`docs/DESIGN-PROD.md` `ADR-PROD-011`）。方案 C 的 V4、V5 与 P1②（Blaze3D 画高度场）只在切换到 C 时才做。
 
 内部后台任务：
 
@@ -899,11 +901,12 @@ flowchart LR
 | `overlay.relight` | `setBlock` 物化或再次改动后投递 | 有界线程池（线程数 = `synaxis.relight-threads`，默认 `max(1, 核数 / 4)`；队列上限 4,096，满则同区块合并） | 单次 200 ms | 超时或抛异常：记 ERROR，区块保留旧光照，下一次改动再投递 | 见 `RB-M3-003` |
 | `overlay.evict` | 每 tick 末尾，`overlay_resident > overlay_cap` 时 | 单线程阶段；每 tick 最多淘汰 64 个 | 单个 50 ms | 写入失败留常驻、下一 tick 重试（§11.1） | 见 `RB-M3-002` |
 | `overlay.flush` | 每 tick 末尾，有脏区块距上次落盘 ≥ `flush_interval_s` 时 | 单线程阶段；每 tick 最多 64 个；与淘汰、卸载的追加合并为一次 `fsync` | 整个写入阶段 20 ms | 写入失败保留 `dirty`，下一 tick 重试 | 见 `RB-M3-002` |
-| `overlay.shutdown-flush` | 进程停机，shutdown 任务，排在玩家停机保存之后、`host::disableAll` 之前 | 每分片一次；编码在 `overlay.relight` 线程池并行，追加单线程，一次 `fsync` | 2 s | 超时停止编码、`fsync` 已追加部分，剩余脏区块数记 ERROR | 见 `RB-M3-002` |
+| `overlay.shutdown-flush` | 进程停机，排在玩家停机保存之后、停 tick 之前，属 `docs/DESIGN-PROD.md` §11.4 `saving` 阶段（新序下的挂载方式见 §28.2） | 每分片一次；编码在 `overlay.relight` 线程池并行，追加单线程，一次 `fsync` | 2 s | 超时停止编码、`fsync` 已追加部分，剩余脏区块数记 ERROR | 见 `RB-M3-002` |
 | `chunk.unload` | 每 tick 末尾 | 单线程阶段；每 tick 最多 256 个 | — | 覆盖区块写入失败则不卸载 | 见 `RB-M3-002` |
 | `flags.replay` | 起服、覆盖存储索引重建之后 | 每分片一次，逐标志应用 | 30 s | 读失败重试 3 次后非零退出 | 见 `RB-M3-006` |
 | `flags.sync` | 收到 Redis 消息；每 60 s 兜底 | 每分片一个 | 2 s | 下一轮补；连续 5 次失败记 WARN | 见 `RB-M3-006` |
 | `shard.heartbeat` | 每 5 s | 每分片一个 | 2 s | 下一轮补；连续 3 次失败记 WARN | 见 `RB-M3-004` |
+| `nonce.gc` | 每 10 min | 删 `transfer_nonce` 里 `expires_at < now()` 的行；只由 `shard_id` 字典序最小的在线分片执行（在线按 `shard_heartbeat` 判）。表由 `docs/DESIGN-PROD.md` §25 V1 建，这是它唯一的清理任务，该分册不另设 | 10 s | 下一轮补 | 无（删过期行，无其他副作用） |
 
 ## 18. ADR 决策记录
 
@@ -933,8 +936,8 @@ flowchart LR
   - Alternatives：见 `ADR-M3-013`。
   - Consequences：实现时改为直接隔离运行原版 `LevelLightEngine`，存档路线不再使用。
 - **`ADR-M3-006` 空间分格 `ThreadProvider`，16×16 区块一格** — Status: Accepted
-  - Context：`counter()` 把同一片区域的区块打散到不同线程，相邻实体交互全变成跨线程 `Acquirable`；跨线程访问经全进程唯一的 `GLOBAL_LOCK` 串行化（`design-ops-scale.md` §4.2）。
-  - Decision：格边长 2^4 区块（参照 Folia 的 grid-exponent=4）；由分片宿主选用并把 `dispatcherThreads` 设为核数 − 2，引擎默认仍是 `counter` + 1 线程，M2 进程不变。
+  - Context：`counter()` 把同一片区域的区块打散到不同线程，相邻实体交互全变成跨线程 `Acquirable`；跨线程访问经全进程唯一的 `GLOBAL_LOCK` 串行化（`docs/DESIGN-PROD.md` `ADR-PROD-006`）。
+  - Decision：格边长 2^4 区块（参照 Folia 的 grid-exponent=4）；由分片宿主选用并把 `dispatcherThreads` 设为核数 − 2，引擎默认仍是 `counter` + 1 线程，M2 进程不变。引擎侧的实现决策（每 tick 屏障、线程契约）见 `docs/DESIGN-PROD.md` `ADR-PROD-006`，接口见 `API-PROD-016`。
   - Alternatives：Folia 式动态区域合并（复杂度高、上游不可用）；单线程（500 人下 tick 预算不够，未测）；`dispatcherThreads` = 核数（调度线程、网络读写虚拟线程的载体与 `overlay.relight` 会与 tick 线程抢核）。
   - Consequences：主城或世界 Boss 聚在一格时这一格仍是单线程，Folia 也一样；「500 人挤在 1 个分格」是 P6 单列的测试档。
 - **`ADR-M3-007` 按大区分服 + 频道，不做无缝跨服** — Status: Accepted（用户 2026-09-23 拍板 Q4）
@@ -942,16 +945,16 @@ flowchart LR
   - Decision：每个大区一个进程，满员开频道；大区之间用地形屏障或关卡门分隔。
   - Alternatives：MultiPaper 式单世界跨服（停在 1.20.1，无 MMO 上线案例）；自研边界幽灵实体（工作量未估）。
   - Consequences：大区边界看不见对面的玩家；同大区不同频道的玩家互相不可见，地形改动也互相不可见（F2，`ADR-M3-015`）。
-- **`ADR-M3-008` 转服用原版 `Transfer` + 签名 Cookie + 写权交接** — Status: Accepted；实现细节移交生产就绪轨道
+- **`ADR-M3-008` 转服用原版 `Transfer` + 签名 Cookie + 写权交接** — Status: Accepted；实现细节移交生产就绪分册
   - Context：26.2 客户端原生支持 `Transfer` 与 Cookie（引擎已有 `TransferPacket`、`CookieStorePacket`、`fetchCookie`、`synaxis.accept-transfers`）。
-  - Decision：票据签名防伪造、有过期、一次性；状态本体不放 Cookie，真状态走 PostgreSQL 并由写权保证单写者。签名、验票顺序与写权交接以 `design-auth.md` §4.1 与 `design-persistence.md` §③ 为准。
+  - Decision：票据签名防伪造、有过期、一次性；状态本体不放 Cookie，真状态走 PostgreSQL 并由写权保证单写者。签名、验票顺序与写权交接以 `docs/DESIGN-PROD.md` `API-PROD-021`、§11.3 与 §12.3 为准（票据布局与检查顺序该分册尚未写入，§28.2）。
   - Alternatives：Velocity 一类代理（多一跳；用户已定不用 Velocity）；把背包写进 Cookie（5,120 B 上限，且客户端可篡改）。
-  - Consequences：每次转服都重新走登录，online 模式下 Mojang sessionserver 是转服的外部故障点；世界侧只剩选频道、容量判定与首批区块（`REQ-M3-017`）。
+  - Consequences：每次转服都重新走登录，online 模式下 Mojang sessionserver 是转服的外部故障点；世界侧只剩选频道与首批区块（`REQ-M3-017`）；容量判定前移到连接闸门 L3（`docs/DESIGN-PROD.md` `API-PROD-003`）。
 - **`ADR-M3-009` PostgreSQL 是唯一权威存储，Redis 只放可丢的缓存和消息** — Status: Accepted（用户 2026-09-23 拍板）
   - Context：玩家数据、写权租约、世界状态标志、分片心跳都要持久且有条件更新语义；跨分片通知、在线表、限流这类数据丢了能重建。
-  - Decision：PostgreSQL 16 存全部权威数据，写权与版本号用单行条件 `UPDATE`；Redis（Valkey 8）只放可丢的缓存和消息，本文档里只有世界状态标志的变化通知。
-  - Alternatives：Redis 当写回缓冲（出现两个权威副本，AOF `everysec` 本身有 1 s 丢失窗口，`design-persistence.md` D6）；只用 PostgreSQL 不用 Redis（标志变化只能轮询，同大区频道之间最长延迟等于轮询间隔）；每分片本地文件（转服时目标读不到）。
-  - Consequences：多两个要运维的有状态服务；Redis 整体不可用时标志同步退化为 60 s 轮询，不影响正确性；PostgreSQL 的容量规划归 `design-persistence.md`。
+  - Decision：PostgreSQL 16 存全部权威数据，写权与版本号用单行条件 `UPDATE`；Redis（Valkey 8）只放可丢的缓存和消息，本文档里只有世界状态标志的变化通知。玩家数据侧的同一决策见 `docs/DESIGN-PROD.md` `ADR-PROD-003`，写权粒度（每分片一个会话租约）见 `ADR-PROD-004`。
+  - Alternatives：Redis 当写回缓冲（出现两个权威副本，AOF `everysec` 本身有 1 s 丢失窗口，`docs/DESIGN-PROD.md` §28.1 D6）；只用 PostgreSQL 不用 Redis（标志变化只能轮询，同大区频道之间最长延迟等于轮询间隔）；每分片本地文件（转服时目标读不到）。
+  - Consequences：多两个要运维的有状态服务；Redis 整体不可用时标志同步退化为 60 s 轮询，不影响正确性；PostgreSQL 的容量规划归 `docs/DESIGN-PROD.md`（§15 数据增长行与 `API-PROD-004` 连接段）。
 - **`ADR-M3-010` 光影用社区光影包，不自研画风** — Status: Accepted（用户 2026-09-23 拍板 Q2、R1）
   - Context：路线报告推荐自研 L1/L2，用户选了社区光影包。
   - Decision：主画面由玩家自装的 Iris + Complementary / Photon 一类光影包提供；`client-fabric` 不覆盖原版核心着色器，不声明与 Sodium / Iris 冲突；不做 `synaxis:lights` 与 64 点光源 UBO。Sodium、Iris、光影包都由玩家自装，客户端检测并引导（`REQ-M3-026`），没装时原版画面兜底。
@@ -985,7 +988,7 @@ flowchart LR
 
 ## 19. 验收 / 测试
 
-测试策略：格式、光照、区块驻留、覆盖存储、世界状态标志是单元与集成测试（JUnit，进 `./gradlew check`）；带宽、tick、堆是压测（工具按 `design-ops-scale.md` ⑤，结果入 `docs/research/`）；客户端相关的用例在无头容器跑（沿用 `docs/research/client-spikes-2026-09/README.md` 与 `dh-iris/README.md` 的方式），需要真显卡的列在 §17 外部依赖。可执行用例按 `CLAUDE.md` 的纪律派生进 `docs/TEST.md`。
+测试策略：格式、光照、区块驻留、覆盖存储、世界状态标志是单元与集成测试（JUnit，进 `./gradlew check`）；带宽、tick、堆是压测（工具按 `docs/DESIGN-PROD.md` `API-PROD-025`，结果入 `docs/research/`）；客户端相关的用例在无头容器跑（沿用 `docs/research/client-spikes-2026-09/README.md` 与 `dh-iris/README.md` 的方式），需要真显卡的列在 §17 外部依赖。可执行用例按 `CLAUDE.md` 的纪律派生进 `docs/TEST.md`。
 
 ```gherkin
 场景: 区域文件读写与测试向量一致 (REQ-M3-001)
@@ -1027,6 +1030,11 @@ flowchart LR
   Given 同一张 3×3 区域的测试图
   When 分别用 1 线程与 9 线程烘焙
   Then 两次的 content_hash 相同，每个区域文件的段②③④ 逐字节相同
+
+场景: 区块包跨 JVM 逐字节确定 (REQ-M3-003)
+  Given 同一生成器生成的 3×3 区块（含高度图与 4 个方块实体，每个 section 经 optimize(SIZE)），DynamicChunk 与 LightingChunk 各一遍
+  When 依次在 6 个子 JVM 里编码每个区块的未压缩 ChunkDataPacket
+  Then 6 个 JVM 的字节逐字节相同；不同时失败信息给出区块坐标、字段名（head、heightmaps、sections、blockEntities、light）与字段内偏移
 
 场景: 烘焙源不可读 (REQ-M3-003)
   Given --source 指向不存在的目录
@@ -1186,7 +1194,12 @@ flowchart LR
 场景: 基准程序复跑 (REQ-M3-013)
   Given 空闲机器（loadAverageBefore 低于核数一半）
   When 运行 ./gradlew :jmh-benchmarks:worldBench 默认作业表
-  Then 输出 JSON 含每个作业的 machine、loadAverageBefore/After 与指标分布；字节数与 bench-2026-09-results.json 相同；墙钟列替换基准重测 §3.2、§3.3
+  Then 输出 JSON 含每个作业的 machine、loadAverageBefore/After 与指标分布；7 个 packet 作业的 28 个字节摘要与 bench-2026-09-packet-canonical-1.json 相同；墙钟列替换基准重测 §3.2、§3.3
+
+场景: 基准的区块包字节两次运行逐字节相同 (REQ-M3-013)
+  Given 同一 commit、同一 JDK 构建
+  When 连续两次运行 worldBench 的 7 个 packet 作业
+  Then 每个作业的 plainFramedSha256、litFramedSha256、plainUncompressedSha256、litUncompressedSha256 两次相同，28 个摘要全部相等
 
 场景: 真地图档补测 (REQ-M3-013)
   Given 第一张美术地图的至少 1 个 32×32 区域
@@ -1214,9 +1227,9 @@ flowchart LR
   Then 记录 tick P99、acquire_ms 与每人出口；tick P99 ≥ 50 ms 时把频道 capacity 降到 300 并在 §15 登记
 
 场景: 频道满员 (REQ-M3-016)
-  Given 某频道 capacity=200 且在线 200
-  When 第 201 个玩家连接
-  Then 连接闸门断线 synaxis:server-full；ShardService#transfer 不会选这个频道
+  Given 某频道 capacity=200 且已占席位 200
+  When 第 201 个玩家连接并发出 LoginStart
+  Then 该连接收到 LoginDisconnect synaxis:shard-full，服务端没有发加密请求，synaxis_gate_rejections_total{reason="full"} 加 1；ShardService#transfer 不会选这个频道
 
 场景: 心跳过期的频道不被选中 (REQ-M3-016)
   Given 目标大区有两个频道，其中一个 shard_heartbeat 已 20 s 未更新
@@ -1229,9 +1242,9 @@ flowchart LR
   Then 目标分片发完首批 9 个区块，EVT:transfer_completed 的 first_batch_ms < 5000，EVT:transfer_issued 与 EVT:transfer_completed 的 transfer_ref 相同
 
 场景: 满员频道在读 Cookie 之前拒绝转入 (REQ-M3-017)
-  Given 目标频道 capacity=200 且在线 200，玩家持有一张有效票据
-  When 玩家经 Transfer 连入该频道
-  Then 断线 synaxis:server-full，目标分片没有发 CookieRequest
+  Given 目标频道 capacity=200 且已占席位 200，玩家持有一张有效票据
+  When 玩家经 Transfer 连入该频道并发出 LoginStart
+  Then 该连接收到 LoginDisconnect synaxis:shard-full，目标分片没有发加密请求与 CookieRequest，票据 nonce 未写入 transfer_nonce，synaxis_gate_rejections_total{reason="full"} 加 1，台账没有这条连接的事件
 
 场景: 与 Sodium、Iris 和 DH 同装 (REQ-M3-019)
   Given 客户端装 client-fabric、Sodium 0.9.2、Iris 1.11.4、DH 3.3.2，光影包开与关两轮（无头容器）
@@ -1337,7 +1350,7 @@ flowchart LR
 
 ## 20. 埋点 / 分析事件
 
-事件写本地 `logs/events-YYYYMMDD.jsonl`（沿用 `docs/DESIGN-M2.md` §20），每条带 `ts` 与 `shard_id`；烘焙器的事件写在它自己的 `logs/` 下。玩家数据与写权的事件（含 `EVT:lease_takeover`）见 `design-persistence.md`。
+事件写本地 `logs/events-YYYYMMDD.jsonl`（沿用 `docs/DESIGN-M2.md` §20），每条带 `ts` 与 `shard_id`；烘焙器的事件写在它自己的 `logs/` 下。玩家数据与写权的事件见 `docs/DESIGN-PROD.md` §20；其中 `EVT:lease_takeover` 的属性是 `character_id`、`previous_session_id`、`gap_ms`。
 
 | 事件（ID=事件名） | 触发时机 | 关键属性 | 对应指标 |
 | --- | --- | --- | --- |
@@ -1362,15 +1375,15 @@ flowchart LR
 | 起服成功（分片进程退出码） | 0 | 任一次非零退出 | 见 `RB-M3-004`；`synx-world-flags-unavailable` 见 `RB-M3-006` |
 | 世界标志同步（`flags.sync` 连续失败次数与 `flag_conflicts`） | 失败 0；冲突每小时 ≤ 10 | 连续 5 次失败，或 1 小时冲突 > 100 | 见 `RB-M3-006` |
 
-引擎的 tick P99、停服耗时、协议错误断线率三条 SLI 继续有效（`docs/DESIGN.md` §21）；玩家数据与写权的 SLI 归 `design-persistence.md`。
+引擎的 tick P99、停服耗时、协议错误断线率三条 SLI 继续有效（`docs/DESIGN.md` §21）；停服耗时的 SLO 由 `docs/DESIGN-PROD.md` §11.4 的停机预算取代（`docs/DESIGN.md` §21 已改写）。玩家数据与写权的 SLI（分片会话状态、保存 fenced 数、数据库语句 p99）见 `docs/DESIGN-PROD.md` §21。
 
 ## 22. 运维 Runbook
 
-- **`RB-M3-001` 转服成功率骤降**：影响 玩家切不了大区 · owner Bearisbug · 诊断 用 `transfer_ref` 串起源、目标两侧日志；目标分片断线原因是 `synaxis:server-full` 说明目标大区频道不够，按 `API-M3-010` 加频道（只改 `shards.json`）；验票、写权、正版验证类原因按 `design-persistence.md` §⑤ 与 `design-auth.md` §4.2 排查；`first_batch_ms` 高但成功率正常说明首批区块慢，查目标分片 tick 与 `EVT:chunk_stream_stats` · 处置 频道不够时加频道；其余按上述两份文档处置 · 回滚 关闭关卡门（`gates.enabled=false`）让玩家留在当前大区，`git checkout` 上一个 tag 重启分片 · 升级判据 10 分钟内成功率 < 50% 即暂停跨大区玩法并广播 · 恢复验证 成功率回到 99% 以上持续 10 分钟
+- **`RB-M3-001` 转服成功率骤降**：影响 玩家切不了大区 · owner Bearisbug · 诊断 用 `transfer_ref` 串起源、目标两侧日志；目标分片 `synaxis_gate_rejections_total{reason="full"}` 上升（频道满 `synaxis:shard-full` 不写台账，只进这个计数）说明目标大区频道不够，按 `API-M3-010` 加频道（只改 `shards.json`）；验票、写权、正版验证类原因按 `docs/DESIGN-PROD.md` §14 与 `RB-PROD-001`、`RB-PROD-002` 排查；`first_batch_ms` 高但成功率正常说明首批区块慢，查目标分片 tick 与 `EVT:chunk_stream_stats` · 处置 频道不够时加频道；其余按上述 Runbook 处置 · 回滚 关闭关卡门（`gates.enabled=false`）让玩家留在当前大区，`git checkout` 上一个 tag 重启分片 · 升级判据 10 分钟内成功率 < 50% 即暂停跨大区玩法并广播 · 恢复验证 成功率回到 99% 以上持续 10 分钟
 - **`RB-M3-002` 覆盖层触顶或落盘失败**：影响 堆逼近上限，或崩溃时丢失超过 10 s 的改动 · owner Bearisbug · 诊断 看 `EVT:chunk_stream_stats` 的 `overlay_resident`、`overlay_evicted`、`evict_failed`、`flush_lag_s_max`、`failed`；`evict_failed > 0` 查覆盖存储目录的磁盘空间与权限；`flush_lag_s_max` 持续 > 20 s 说明脏区块多于每 tick 64 条能消化的量；`failed > 0` 查 ERROR 日志里的区块坐标并用 `baker verify` 核对区域文件；占用长期 ≥ 95% 说明玩法改动量超出 Q3 的「基本静态」前提 · 处置 磁盘问题修复后淘汰与落盘自动重试；改动量过大时临时设 `synaxis.world-writable=false` 并重启 · 回滚 切回上一个 `build_id`（覆盖层随之清空，已知代价） · 升级判据 `evict_failed` 持续 10 分钟或堆超过 90% 即停服 · 恢复验证 `evict_failed` 与 `failed` 连续 30 分钟为 0，占用 < 80%，`flush_lag_s_max` ≤ 10 s
 - **`RB-M3-003` 光照重算积压**：影响 新观察者看到旧光照，客户端自行修正前短暂不一致 · owner Bearisbug · 诊断 看 `relight_queue_p99_ms` 与 `relight_ms_p99`；单次耗时高说明改动集中在复杂区域，排队高说明线程池不够 · 处置 调大线程池（`synaxis.relight-threads`），或定位高频改方块的插件逻辑 · 回滚 N/A（不影响玩法正确性，服务端不读光照） · 升级判据 连续 30 分钟 > 1,000 ms 即排查插件并限制其改方块频率 · 恢复验证 `relight_queue_p99_ms` < 250 ms 持续 10 分钟
 - **`RB-M3-004` 分片起服拒绝地图**：影响 该大区或频道不可用 · owner Bearisbug · 诊断 启动日志里的 `synx-*` 错误码（§14）逐条对应处置；`synx-payload-hash` 看是哪个文件、与发布源比对大小与摘要；`shard_heartbeat` 连续失败说明数据库连接问题 · 处置 按 §14 表处置：重新分发文件、按当前协议 `rebake`、或改挂载的 `build_id` · 回滚 `-Dsynaxis.map.build` 指回上一个 `published` 版本重启 · 升级判据 同一大区全部频道都起不来即对外公告维护 · 恢复验证 `EVT:shard_started` 出现且 `verify_ms` 在 §15 目标内
-- **`RB-M3-006` 世界状态标志不可用或冲突激增**：影响 分片起不来（起服读不到标志），或同大区频道之间的门、桥状态不一致 · owner Bearisbug · 诊断 起服失败看 `synx-world-flags-unavailable` 与 PostgreSQL 连接错误；运行期看 `flags.sync` 的失败日志与 Redis 连通性（Redis 不可用只会让收敛慢到 60 s，不是故障）；`flag_conflicts` 激增说明某个插件在改标志管辖的方块，按 WARN 日志里的坐标找插件 · 处置 恢复数据库连接后重启分片；插件冲突时修插件，或临时注销该标志 · 回滚 分片回到上一个 tag；标志表的回退按 `design-persistence.md` §⑥ 的迁移回退办法 · 升级判据 同一大区全部频道都起不来即对外公告维护 · 恢复验证 `EVT:shard_started` 的 `flags_replayed` 等于标志数，`flags.sync` 30 分钟无失败，`flag_conflicts` 回到每小时 ≤ 10
+- **`RB-M3-006` 世界状态标志不可用或冲突激增**：影响 分片起不来（起服读不到标志），或同大区频道之间的门、桥状态不一致 · owner Bearisbug · 诊断 起服失败看 `synx-world-flags-unavailable` 与 PostgreSQL 连接错误；运行期看 `flags.sync` 的失败日志与 Redis 连通性（Redis 不可用只会让收敛慢到 60 s，不是故障）；`flag_conflicts` 激增说明某个插件在改标志管辖的方块，按 WARN 日志里的坐标找插件 · 处置 恢复数据库连接后重启分片；插件冲突时修插件，或临时注销该标志 · 回滚 分片回到上一个 tag；标志表的回退按 `docs/DESIGN-PROD.md` §25 的回退策略（手工执行 `db/rollback/V<n>__*.down.sql`） · 升级判据 同一大区全部频道都起不来即对外公告维护 · 恢复验证 `EVT:shard_started` 的 `flags_replayed` 等于标志数，`flags.sync` 30 分钟无失败，`flag_conflicts` 回到每小时 ≤ 10
 
 ## 23. 发布: Feature Flag / 灰度 / 回滚
 
@@ -1406,7 +1419,7 @@ Feature flag：
 | 基准重测完成，§2 数字已替换 | 过：基准重测（`bench-2026-09.md`，数字取第 2 轮 `bench-2026-09-results.json`）；空闲机器复跑与真地图档待补 |
 | 回滚演练：`synaxis.map.build` 切回上一版实测过 | 待 M3-C |
 | 远景与光影在用户提供的真机上达标（V2、V3、V7、V8） | 待外部依赖 |
-| DH 的 LGPL 声明与许可全文随客户端分发 | 待 M3-G |
+| DH 的 LGPL 声明与许可全文随客户端分发，玩家可替换 DH jar | 待 M3-G |
 | 用户文档/帮助中心已同步 | N-A：M3 对玩家可见的是转服过场、断线文案与光影引导屏，内测阶段无帮助中心；对外发布时补 |
 
 ## 24. 契约同步与防漂移机制
@@ -1414,17 +1427,17 @@ Feature flag：
 - **`.synx` 测试向量**：唯一事实源是 `:synx` 的编解码类；向量在 `synx/src/test/resources/vectors/`（常规）与 `vectors/edge/`（损坏与不兼容），`manifest.txt` 冻结 `format_version` 与全部向量的 SHA-256。改布局必须同一个 PR 里升 `format_version` 并重新冻结，门禁写法照搬 `docs/DESIGN-M2.md` §24 的 `ProtocolVectorTest`。写入器的逐字节向量只在 CI 钉死的 JDK 构建上断言（zlib 输出随 JDK 自带 zlib 变化），读取器与内容哈希向量在所有 JDK 上断言。
 - **高度场包向量**：`baker/src/test/resources/vectors/farview/` 放一个小区域的 `.hfp` 与期望采样，写入器与 `client-fabric` 的读取器跑同一批；布局定稿时（§28.2 水面与水底）冻结。
 - **光照门禁**：`LightParityIntegrationTest`（`parity/*.scene` 全部场景）、`LightDampeningIntegrationTest`、`LightBlocksTest` 进 `./gradlew check`。真值 `*.light.gz` 与 `light_shape_states.txt` 只由 `tools/light-oracle/gen.sh` 生成（核对 `server.jar` 的 SHA-1），不手改；`LightBlocksTest` 拦下状态 ID 已错位的旧表。`REQ-M3-004` 落地后，`LightEngine.VERSION` 与 `baker/src/main/resources/verified-light-versions.txt` 由一条测试互相绑定——改光照代码而不升版本，或升版本而对拍没绿，CI 都红。烘焙器只接受该文件里列出的版本（§11.2 守卫）。
-- **数据库**：`world_flag` 与 `shard_heartbeat` 的迁移脚本是表结构的唯一事实源，迁移工具、回退脚本与 CI 做法沿用 `design-persistence.md` §⑥。
+- **数据库**：`world_flag` 与 `shard_heartbeat` 的迁移脚本是表结构的唯一事实源；版本号由 `docs/DESIGN-PROD.md` §25 的版本表统一分配，回退脚本与 CI 往返（migrate → 回退 SQL → migrate）按该分册 §24、§25。
 - **ArchUnit**：新增两条——MMO 路径的模块（`:synx`、`:baker` 与 `server-app` 的分片包）不得引用 `LightingChunk`；`LightEngine` 不得引用 `Instance`。
 - **引擎内部面**：§6 内部面表是 `:synx` 与 `:baker` 可用的 `@ApiStatus.Internal` 成员的全集。聚合项目 `:architecture-tests` 加一条规则：`io.github.bearisbug.synaxis.synx..` 与 `…baker..` 访问的 `@ApiStatus.Internal` 引擎成员必须在该表的名单里（名单写成测试里的常量），名单外的访问即红；引擎改动名单内成员的 PR 必须跑 `:synx:check`。
 - **基准结果**：`docs/research/large-world-2026-09/bench-2026-09-results.json` 与后续轮次入库；§2 与 §15 引用基准重测文档的节号，不抄数字到第三处。报堆数字必须写明是否含包缓存、调色板形态、是否预热。
-- **跨轨道引用**：玩家数据、写权、转服验票、正版验证、连接闸门、压测 harness 的契约只在 `docs/research/production-readiness-2026-09/` 的对应文档里写，本文档只引用节号；那些文档转正为设计分册时，本文档的引用随之改指。
+- **跨轨道引用**：玩家数据、写权、转服验票、正版验证、连接闸门、停机顺序、分格线程的引擎侧、压测 harness 的契约只在 `docs/DESIGN-PROD.md` 里写，本文档只引用它的 ID 与节号，不复述。
 - **lint 口径**：`bash ~/.claude/skills/design-doc/check.sh docs/DESIGN-M3.md` 必须零警告；ID 按定义记法写（需求与 Runbook 是表格首格或 Runbook 条目，接口是 `- **`API-M3-…`**` 条目）。
-- **分册回指**：`docs/DESIGN.md` §1 的「关联」行与 §26 里程碑表登记本分册（`docs/DESIGN.md` v0.35；v0.36 关闭该文档 §28 的光照 parity 技术债）；`CLAUDE.md`「功能开发纪律」同时列出 `docs/DESIGN-M2.md` 与本分册。
+- **分册回指**：`docs/DESIGN.md` §1 的「关联」行与 §26 里程碑表登记本分册（`docs/DESIGN.md` v0.35；v0.36 关闭该文档 §28 的光照 parity 技术债）；`CLAUDE.md`「功能开发纪律」同时列出 `docs/DESIGN-M2.md`、本分册与 `docs/DESIGN-PROD.md`（`docs/DESIGN.md` v0.37 同批登记该分册）。
 
 ## 25. 迁移 / 数据回填
 
-- PostgreSQL：本文档新增 `world_flag` 与 `shard_heartbeat` 两张表，属 `server-app`；迁移工具、版本号、回退脚本、执行者与上线次序沿用 `design-persistence.md` §⑥ 与 D11。上线次序：先迁移数据库，再起分片，最后打开 `gates.enabled`。
+- PostgreSQL：本文档新增 `world_flag` 与 `shard_heartbeat` 两张表，属 `server-app`。版本号由 `docs/DESIGN-PROD.md` §25 的版本表统一分配（它是 `db/migration` 目录唯一的版本号分配表）：`shard_heartbeat` 归 V5，结构以 `API-M3-010` 为准，脚本内容由本分册提供，随 M3-E 入库；`transfer_nonce` 归该分册 V1，本分册不建；v0.2 规划的 `player_state` 不建，由该分册的 `character` + `character_section` 取代；`world_flag` 尚未分到版本号（§28.2）。回退策略与该分册统一为两层：发布「先扩后缩」，同一次发布只加列加表，回退分片版本不需要回退表结构；每个版本配 `db/rollback/V<n>__*.down.sql`（最后一句删掉 `flyway_schema_history` 里该版本的行），只在迁移本身有误时手工执行，CI 在 `dbTest` 里对每个版本做一次 migrate → 回退 SQL → migrate 往返。执行者是发布流程 `server-app --migrate-only`，分片只 `validate`（该分册 §28.1 D11）。上线次序：先迁移数据库，再起分片，最后打开 `gates.enabled`。
 - 地图：无存量数据迁移。M2 的 RTS 对局地图仍在进程内生成，不受影响。
 - 覆盖存储：随 `build_id` 丢弃，不做跨版本迁移（F1）。
 - 光照值变化：`REQ-M3-005`、`REQ-M3-006`、`REQ-M3-027`、`REQ-M3-028` 已改变 M2 对局的光照值，M2 无存档，不需要回填。
@@ -1440,7 +1453,7 @@ Feature flag：
 | M3-B 格式与烘焙 | `REQ-M3-001`～`REQ-M3-003`、`REQ-M3-020`～`REQ-M3-022` | 向量冻结；4k×4k 测试图烘焙成功并记墙钟、CPU 与磁盘；并行等于串行；调色板形态断言；损坏与不兼容向量各有断言；Anvil 门禁、标记映射、实体读取三组用例绿；交付规范文档入 `docs/` | 12 天（自估，含复活 Anvil 读取器 4～5 天） |
 | M3-C 流送与内存 | `REQ-M3-008`～`REQ-M3-011`、`REQ-M3-014` | 路线报告 P2 ②④⑤⑥：1,000 区块逐字节一致、JFR 无 `createChunkPacket` 且 `ChunkDataPacket` 对象数为 0、卸载可证伪、200 机器人 600 s tick P99 < 50 ms 且下行与模型偏差 ≤ ±20%；覆盖层崩溃窗口与 group commit 用例绿 | 12 天（自估） |
 | M3-D 运行时光照 | `REQ-M3-012` | 开工前 `flushQueue` 竞争已消除（§5 末表 ⑥）；路线报告 P4 的火把判据（无头容器）；P1① 逐 nibble 一半的结论；不成立时退路已实现并计入 §15 带宽 | 5 天（自估），依赖 P1① |
-| M3-E 分片 | `REQ-M3-015`～`REQ-M3-017`、`REQ-M3-023` | 路线报告 P6：200 机器人 30 min 达标、500 机器人与单分格档记录在案、转服 P95 < 5 s；世界标志四组用例绿。依赖生产就绪轨道的持久化、验证与连接闸门先落地 | 10 天（自估） |
+| M3-E 分片 | `REQ-M3-015`～`REQ-M3-017`、`REQ-M3-023` | 路线报告 P6：200 机器人 30 min 达标、500 机器人与单分格档记录在案、转服 P95 < 5 s；世界标志四组用例绿。依赖 `docs/DESIGN-PROD.md` 第 1 波连接闸门、第 2 波正版验证、第 3 波持久化先落地；转服的票据与冷却在该分册第 6 波（6A）完成 | 10 天（自估） |
 | M3-F 光影兼容 | `REQ-M3-019`、`REQ-M3-026` | 无头容器里 Sodium + Iris + DH 同装用例绿；引导屏两组用例绿；P1⑧、V7 结论回写 §15 与 §28.2 | 4 天（自估），真机部分依赖外部 |
 | M3-G 远景 | `REQ-M3-024`、`REQ-M3-025` | V1 在无头容器里有结论；高度场包向量冻结；客户端远景两组用例绿；V2、V3、V6、V8 结论回写 §15，按 §6.1 切换条件判定是否换路 | 2.5～4 人周（远景备忘录 §3.2 自估） |
 
@@ -1454,19 +1467,20 @@ N/A — M3 的服务端阶段尚未开工（M3-A 的光照与基准部分已完�
 
 ### 28.1 待用户拍板
 
-以下三项已按默认值写进设计，用户可改。前两项改动时只影响交付规范与烘焙器的标记解析；第三项改动时只影响 `API-M3-015` 许可段、§17 DH 行与 §23 检查单。
+前两项已按默认值写进设计，用户可改，改动时只影响交付规范与烘焙器的标记解析；第三项已由用户确认。
 
 | 类型 | 描述 | 负责人 | 何时需拍板 |
 | --- | --- | --- | --- |
 | Open Question | **美术工具（F3）**。默认 WorldEdit 7.4.5（GPL-3.0-only）+ Litematica 0.28.8（LGPL-3.0-only），地形底稿可用 WorldPainter（26.2 支持未核实），不买 Axiom。切换条件：美术需要多人协作建图或 Axiom 专属笔刷。代价：购买 Axiom Commercial License（价格与「commercial purposes」定义未读原文） | Bearisbug | M3-B 交付规范定稿前 |
 | Open Question | **服务端数据标记约定（F3′）**。默认 DATA 模式结构方块，`metadata` 写 `<handler 命名空间> <SNBT>`，作用于正下方一格，烘焙时替换为空气；隐藏区域用 `synaxis:hidden` 同类标记。切换条件：美术工具链里有更顺手的标记方式（如 Litematica 的元数据或独立的 JSON 旁注文件）。代价：改烘焙器的标记解析与交付规范，格式不变 | Bearisbug | M3-B 交付规范定稿前 |
-| Open Question | **DH 随客户端整合分发**。用户 R1 只拍板了 Iris、Sodium、光影包由玩家自装；DH 是否随我们的客户端分发，按远景备忘录 R1 的默认写成「随客户端分发」：独立 jar 放 `mods/`，承担 LGPL-3.0 §4a 显著声明、§4b 附 GPL 与 LGPL 全文、§4c 在显示版权的界面列出 DH（远景备忘录 §3.6）。替代：DH 也由玩家自装，我们不承担分发义务，`client-fabric` 照常经反射检测 DH，缺席时只有原版视距；代价是 `PAGE-SHADER-GUIDE` 多一类缺失提示，远景覆盖率取决于玩家是否自装 | Bearisbug | M3-G 开工前 |
+| 已决 | **DH 随客户端整合分发**（用户 2026-09-23 确认）。DH 是 LGPL-3.0-only：独立 jar 放 `mods/`，承担 LGPL-3.0 §4a 显著声明、§4b 附 GPL 与 LGPL 全文、§4c 在显示版权的界面列出 DH（远景备忘录 §3.6）；允许玩家替换这个 jar；DH 的版本锁定（`API-M3-015` 版本锁）与客户端本地烘焙代码一起升级。落点：`API-M3-015` 许可段、§17 DH 行、§23 检查单 | Bearisbug | 已于 2026-09-23 决定 |
 
 ### 28.2 风险与技术债
 
 | 类型 | 描述 | 负责人 | 何时需拍板 |
 | --- | --- | --- | --- |
 | 风险 | **基准只覆盖合成地形**：美术地图的方块实体、群系混排、火把与岩浆（块光数组）都会让包体与堆变大，幅度未测；段③ 大小完全未知。墙钟在负载均值 26～82 的机器上测得，只当上界 | Bearisbug | 第一张美术地图出来时跑 T1；空闲机器复跑（`REQ-M3-013`） |
+| 风险 | **跨区块写入与调色板顺序未覆盖**：`ChunkPacketDeterminismTest` 与基准的生成器都不跨区块写方块。生成器或烘焙器若跨区块写入（`fork`），而编码前没做 `optimize(SIZE)`，间接调色板会保留写入顺序，段① 字节仍可能随线程调度变化；`API-M3-001` 段① 已把 `optimize(SIZE)` 定为必须，但没有测试守住 | Bearisbug | M3-B 烘焙器开工时，把「并行烘焙等于串行烘焙」的比较扩到段① 解压后的包体 |
 | 风险 | 存储对比 T2～T10 未测：段① 解码耗时（决定段③ 是否要回存调色板）、句柄区块常驻字节、mmap 冷页对虚拟线程载体的阻塞、`refreshThreads` 轮询 65,536 分区的耗时、源存档光照对拍能否设为门禁、`--forceUpgrade` 后预生成的 `isLightOn` 覆盖率、覆盖层稳态写入率、单次 `fsync` 延迟与定期落盘的 tick 开销 | Bearisbug | 各项在对应阶段（M3-B、M3-C）开工时测 |
 | 风险 | **实体流量才是出站大头**：包体变小后默认档步行时区块只占出站的 24%，而实体下行 14.5～32.5 KB/s/人来自 RTS 口径，MMO 主城可见对数按 n² 增长，没有模型 | Bearisbug | M3-E 的 500 机器人档之前补一个主城实体流量模型 |
 | 风险 | **P1① 不成立**：客户端不能正确自算光照时，`ADR-M3-002` 走退路，每次改动每个观察者多 9 × B 下行；服务端重算值与客户端自算值可能有细微差别 | Bearisbug | M3-D |
@@ -1475,14 +1489,15 @@ N/A — M3 的服务端阶段尚未开工（M3-A 的光照与基准部分已完�
 | 风险 | **光影包在 LOD 上的效果没有有效数据**：llvmpipe 下 LOD 被一层来源不明的浅蓝雾盖住；DH 在 4,096 格下的堆、显存、帧时间没有数字；Iris 26.2 #3241 性能回归原因未定；光影包在 Apple Silicon 上能否运行只有源码结论 | Bearisbug | 用户提供真机后跑 V3、V7、V8、P1⑧ |
 | 风险 | DH 钉住目录并设为只读后是否仍把服务端发来的近圈区块写进 LOD 库，客户端本地烘焙与 DH 打开同一 SQLite 库的先后与并发，DH 自带的 V1 → V2 迁移是否覆盖我们写出的库，都未验证 | Bearisbug | M3-G（V1 同一套容器） |
 | 风险 | 光照正确性依赖修过的光照规则，错一次会写进全部 `.synx`；对拍场景是手写的 7 个，没有逐状态枚举全部 `lightBlock ≥ 1` 与 `lightEmission > 0` 的状态，真实地图上的方块组合由 `REQ-M3-021` 补充 | Bearisbug | 持续；源存档对拍能否升为门禁待 T6 |
-| 风险 | 离线模式下转服票据只防伪造状态，不防冒名；对外发布前切 online 模式由 `design-auth.md` 负责，届时 Mojang sessionserver 是转服的外部故障点 | Bearisbug | 对外发布前 |
+| 风险 | 离线模式下转服票据只防伪造状态，不防冒名；`server-app` 默认在线模式、转入连接照常走加密与 `hasJoined`、票据 `player_uuid` 须等于本次验证出的 UUID，都由 `docs/DESIGN-PROD.md` `REQ-PROD-002`、`REQ-PROD-031` 负责，届时 Mojang sessionserver 是转服的外部故障点 | Bearisbug | 对外发布前 |
 | 风险 | 段① 依赖生物群系注册表顺序；注册表内容或顺序一变就要重烘（`registry_digest` 会拦住，不会静默出错）；只升协议也会清空全部覆盖层（F1），一年升协议 2 次以上即触发 `ADR-M3-015` 的切换条件 | Bearisbug | 每次改注册表或升版时 |
 | 风险 | 32k×32k 手工地图需要内容生产线，M3 不做编辑器；没有生产线时正式档尺寸只是技术上限 | Bearisbug | 正式档立项时 |
 | 风险 | 大量世界状态标志会把区块物化进覆盖层并占 `overlay_cap`；标志数超过 §2 假设（每大区 1,000）时要重估 | Bearisbug | 玩法首次批量使用标志时 |
-| 风险 | **MMO 分片的停机预算已经占满**：`design-persistence.md` 的停机保存 8 s 加 `overlay.shutdown-flush` 2 s 共 10 s，等于 `docs/DESIGN.md` §21「`stop()` 到进程退出 < 10 s」，还没算之后踢人与最后一个 tick 的 join（每线程上限 5 s）。部署侧的 `TimeoutStopSec` ≥ 60 s（生产就绪 README G04）兜得住，但 `RB-002` 的 10 s 告警会误报 | Bearisbug | M3-C 实测两段停机耗时后，为分片宿主单独定停服 SLO |
+| Open Question | **覆盖层停机落盘在新关闭顺序下怎么挂**：停机预算已按 `docs/DESIGN-PROD.md` §11.4 改为倒计时之后保存 30 s（判死路径 15 s）+ 踢人 5 s + 台账 2 s，`docs/DESIGN.md` §17、§21 与 `RB-002` 同批改写（v0.37）；`overlay.shutdown-flush` 的 2 s 与玩家保存同在 30 s 的 `saving` 阶段内，预算不再冲突。剩下的是挂载方式：`API-M3-007` 停机段的步骤假定 tick 线程已 join、停机线程是覆盖层唯一读写者，而该分册 §11.4 新序里 `saving` 阶段 tick 仍在运行。可选做法有两种：在 `saving` 内先禁止改地形再由停机线程落盘；或把最后一次落盘放进 tick 末尾写入阶段，与 `overlay.flush` 同一单线程阶段 | Bearisbug | M3-C 开工前，且早于生产就绪第 3 波（停机重排）合入 |
 | 技术债 | `LightingChunk` 的 `flushQueue` 竞争（§5 末表 ⑥）在 M3-D 开工前必须消除；懒算、`relightSection` 的实例锁、全局重发延迟与 `onGenerate` 写死 20 tick（①②③）保留给 M2，M2 若出现运行期改地形就会碰到它们 | Bearisbug | M3-D 开工前（⑥）；M2 出现可破坏地形时（①②③） |
 | 技术债 | 高度场包的采样布局还没定：路线报告的 4 B 采样只有一个高度，远景备忘录要求水面列另写水底，需要多一个 12 bit 高度或单独的水深层 | Bearisbug | M3-G 开工时，随 V2 定稿 |
 | 技术债 | `synaxis:farview` 负载要登记进 `docs/DESIGN-M2.md` §8 的协议消息表（跨分册改动） | Bearisbug | M3-G 开工时 |
 | 技术债 | 静态实体（展示框、盔甲架、`*_display`）的运行期改动不持久化：玩家打掉的展示框在区块重新载入后复原；需要持久时建模成世界状态标志 | Bearisbug | 玩法首次允许玩家改静态实体时 |
-| 技术债 | **生产就绪三份文档仍按 v0.2 引用本文档**。v0.3 删去的定义：`API-M3-011`（Cookie 字节布局，含 `issued_at` / `expires_at`；`SYNAXIS_TRANSFER_HMAC_KEYS` 轮换；检查 ①～⑥；`SYNAXIS_STATE_DB_URL`；`synaxis.accept-transfers`，后者已并入 `API-M3-010`）、`API-M3-012`（`player_state`、`transfer_nonce`、64 KiB 上限）、§11.3 转服票据与 §11.4 状态租约两台状态机、`REQ-M3-018`。v0.2 与 v0.3 分两个 commit 入库，v0.2 原文用 `git show 7daab2623c:docs/DESIGN-M3.md` 取。按 v0.2 的 ID 或行号引用的位置：`design-persistence.md` 第 12、20、99、101、153、184、193、205、235、271、277（「`DESIGN-M3.md` §14 已有」`synaxis:state-unavailable`，v0.3 §14 不再定义它）、326～334（含 `DESIGN-M3.md:467` 行号）、369 行；`design-auth.md` 第 133、203、347 行。按已改写的旧结论引用的位置：`design-persistence.md` 第 201 行（「`ADR-M3-009` 否决 Redis 的理由相同」，ADR 已改写）；`design-ops-scale.md` 第 261 行（「`dispatcher-threads` 设为核数」，现为核数 − 2）、第 312 行（ADR 否决 Redis、「外部依赖只有 PostgreSQL」）；`README.md` 第 28、106、159、160、164 行（`REQ-M3-018` / `API-M3-012` 的分歧、「M3 那边改 ADR 对齐」与「`REQ-M3-015` 写核数」，均已对齐）。这些文档转为正式设计时把上述定义写进去并改掉引用 | Bearisbug | 生产就绪轨道转正时（归该轨道） |
+| 技术债 | **生产就绪分册仍有按本文档 v0.2 引用的位置**。按用户 2026-09-23 的分工拍板，转服 Cookie 的签名与验票归生产就绪，本文档 v0.3 起没有 `API-M3-011`（Cookie 字节布局，含 `issued_at` / `expires_at`；`SYNAXIS_TRANSFER_HMAC_KEYS` 轮换；检查 ①～⑥；`SYNAXIS_STATE_DB_URL`）与 §14 的 `synaxis:transfer-rejected`、`synaxis:state-unavailable` 两行（v0.2 原文用 `git show 7daab2623c:docs/DESIGN-M3.md` 取）。`docs/DESIGN-PROD.md` v0.3 仍把它们当作本文档的定义引用：`API-PROD-004` 密钥段、`API-PROD-021`（「票据布局与检查顺序见 `API-M3-011`」）、§7 `ENT-TransferNonce`、§11.3 `in_transit → loading`、§12.3、§14 `synaxis:state-unavailable` 行（「见 `docs/DESIGN-M3.md` §14」）、§25 V1。本文档 §3 的首批耗时口径与 `EVT:transfer_issued.issued_at` 依赖 Cookie 带 `issued_at`。处置：该分册把票据布局、检查 ①～⑥（① 已由 L3 取代，④ 加「票据 `player_uuid` = 本次验证 UUID」）、`transfer_nonce` 结构与两个断线键写进自身，本文档随后把「布局尚未写入」的几处改指 | Bearisbug（生产就绪会话） | 生产就绪第 6 波 6A（转服）开工前；M3-E 的转服用例依赖它 |
+| 技术债 | `world_flag` 表不在 `docs/DESIGN-PROD.md` §25 的版本表里（该表是 `db/migration` 目录唯一的版本号分配表，现有 V1～V5），本文档不能自定版本号 | Bearisbug（生产就绪会话） | M3-E 开工前 |
 | 说明 | **M2 soak 判据不需要因 M3 重跑**：M3 不改引擎任何既有默认值（视距 8、`counter`、1 线程），模拟距离与自动卸载是按实例开启、默认关闭的新能力，M2 的 `Main` 与 `Match` 都不调用；由 §19「引擎默认值下 M2 对局行为不变」守住。例外是光照：光照修复改了 M2 整图 relight 的结果，M2 的 `load_ms` 与光照断言在 M3-A 退出条件里重跑 | Bearisbug | M3-A |

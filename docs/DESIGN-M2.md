@@ -18,6 +18,7 @@
 | 日期 | 版本 | 改动 | 作者 |
 | --- | --- | --- | --- |
 | 2026-09-16 | v0.1 | 初稿：M2 范围、模块拆分、插件宿主、自定义协议、单位模型、寻路、世界管理与四条审计残留处置、垂直切片验收、阶段计划 | Bearisbug |
+| 2026-09-23 | v0.46 | 按 `docs/DESIGN-PROD.md` v0.3 §28.3 改三处引用，接口契约、消息布局与 `schema_version` 未改。§17 末段不再写「无网络第三方」：本表依赖仍在进程与整合包内，生产就绪起的 sessionserver、PostgreSQL、Valkey 引用该分册 §17；§21 末段加验证成功率与 `hasJoined` p99 两条 SLI 的出处（该分册 §21）；§28.2「原版聊天是一进 N 出的放大面」（攻击面 G5）改为由 `REQ-PROD-009` 承接 | Bearisbug |
 | 2026-09-23 | v0.45 | 随 `docs/DESIGN-M3.md` v0.3 同步两处，正文其余章节、接口契约与 `schema_version` 未改。§28.2「光照：服务端用 `LightingChunk` 在载入阶段整图计算」一行的证据部分改写：M2 对局整图算一次光照已落地不变，`LightingChunk` 的 ④⑤ 两处缺陷已在 M3 修复并以 `LightParityIntegrationTest` 对拍为门禁，细节指向 `docs/DESIGN-M3.md` §5。§28.3 ② 的列头由「补回时的落点」改为「M3 的处置」，六行去向改指 DESIGN-M3：`API-M2-009` 被 `API-M3-001` 取代不复活，`ChunkLoader` 由 `API-M3-005` 承接，`map.load` 落盘语义、`RB-M2-004` 与对局载入成功率 SLI 不补回（MMO 侧分别对应 `API-M3-002`、`RB-M3-004`、DESIGN-M3 §21），S5 格式部分已由 `API-M3-001` 落地 | Bearisbug |
 | 2026-09-23 | v0.44 | **§28.2「光照：M2 不算」翻案为「服务端用 `LightingChunk` 在载入阶段整图计算」**，同一节那条风险「对局世界没有光照数据，真客户端上地形是黑色剪影」转已决。对局实例改用 `LightingChunk`，`Match#load` 在整图生成之后、进 `running` 之前调一次 `LightingChunk.relight` 把全部区块的光照算完，玩家进场收到的第一批区块包就带天光。**接口契约、消息布局与 `schema_version` 一个字未改**。随之改动的位置：§5 `REQ-M2-011` 补「进 `running` 之前整图光照已算完」；§11.3 迁移表 `creating → loading` 与 `loading → running` 两行的动作；§15「地图生成」一行的实测换成新数字（`rts-512` 的 `load_ms` 126～167 → 771～968 ms，`heap_delta_kib` ≈ 6,030 → ≈ 9,290 KiB，仍在 3 s / 50 MB 内）；§19 场景「程序化生成的整图载入并关闭自动加载」补一条光照断言。引擎光照代码未改，本轮没有发现它的缺陷 | Bearisbug |
 | 2026-09-23 | v0.43 | 按 spike ② S3 的结论改剔除半径公式与 `archetype_view_range`。**接口契约、消息布局与 `schema_version` 一个字未改**。公式由 `view_range × 64 × 倍率` 改为 `view_range × 64 × clamp(rd / 8, 1, 2.5) × 倍率`、从渲染相机量球面距离，改在 §9 原型模板行、§15「可见范围」行第 ④ 项与 `ADR-M2-013` 的必做项；第 ④ 项的推算改为「盖住渲染距离雾界」：50% 档要 `view_range ≥ √((16·rd)² + h²) / (64 × clamp(rd / 8, 1, 2.5) × 0.5)`，rd 10、眼高 84 时 4.52。`archetype_view_range` 由 4.0 改为 **5.0**（`Archetype.SOLDIER`）：50% 档下 rd 8 为 160 格、覆盖到眼高 96，rd 10 为 200 格、覆盖到眼高 120。`REQ-M2-016` 的默认值与 §19 那条 Gherkin 随之改，最后一步的判据从「离玩家约 97 格的角落」改为「雾界以内的四角」。§28.2 剔除那一行转已决，只剩四角「不闪」的补证 | Bearisbug |
@@ -824,7 +825,7 @@ flowchart LR
 | 引擎（本仓库根模块） | 服务端一切 | 本团队维护，**不承诺 API 兼容** | — | 插件编译不过 | `plugin-api` 吸收变更，插件只依赖它 |
 | 参考实现源码（OrthoCamera / ShoulderSurfing / Free Cursor） | 抄实现思路 | 无 | — | 无 | 只读源码，**不作为运行时依赖**；许可证逐个确认后才可复制代码片段（见 §28） |
 
-本功能的 SLO 不高于依赖 SLA 能支撑的上限：所有运行时依赖都在同一个进程或同一个整合包内，无网络第三方，故 §21 的 SLO 只受本进程约束。
+本功能的 SLO 不高于依赖 SLA 能支撑的上限：本表的依赖都在同一个进程或同一个整合包内，故 §21 的 M2 SLO 只受本进程约束。生产就绪起 `server-app` 默认在线模式，登录依赖 Mojang sessionserver，玩家数据依赖 PostgreSQL 与 Valkey；这些网络第三方的 SLA、超时与降级见 `docs/DESIGN-PROD.md` §17。
 
 内部后台任务（任务名与 §11 迁移表一致）：
 
@@ -1329,7 +1330,7 @@ flowchart LR
 | 寻路 tick 占用 P99 | < 2 ms | 连续 60 s > 5 ms | 见 `RB-M2-003` |
 | 单位快照发送失败率（序列化异常或超长被拒） | < 0.1% | 5 分钟 > 1% | 见 `RB-M2-003` |
 
-引擎侧的 tick P99、停服耗时、协议错误断线率三条 SLI 继续有效，见 `docs/DESIGN.md` §21 与其三条既有 Runbook（tick 超时、停服卡死、协议错误断线激增）。
+引擎侧的 tick P99、停服耗时、协议错误断线率三条 SLI 继续有效，见 `docs/DESIGN.md` §21 与其三条既有 Runbook（tick 超时、停服卡死、协议错误断线激增）。登录侧的验证成功率与 `hasJoined` p99 两条 SLI 见 `docs/DESIGN-PROD.md` §21（验证失败的连接到不了 configuration，不进 §3「客户端接入成功率」的分母）。
 
 **M2 没有「插件可用性」与「对局载入成功率」两条 SLI**：单插件 + 单局 + 对局在 bind 之前创建，意味着这两件事只有「进程起来了」与「进程以非零码退出」两种结果，比率型 SLI 恒等于 0 或 1，算不出有用的东西；它们随熔断器与多局一起补回（见 §28.3）。
 
@@ -1451,7 +1452,7 @@ A3（server-app 取代 smoke，`ADR-M2-003`）是可逆的，不进本表，同�
 | Open Question | 新仓库公开还是私有（沿用 `docs/DESIGN.md` §28 的同一条，当前私有）。M2 要给社区写插件，这条直接决定 `:plugin-api` 是否真的有外部消费者 | Bearisbug | 内测全量放量前 |
 | 风险 | **核心模式下区块加载由对端驱动**（攻击面盘点 2026-09-22，`docs/research/attack-surface-2026-09/README.md`）：`CoreMode` 建的平坦 `InstanceContainer` 保持自动区块加载，而引擎的 `PlayerPositionListener` 对客户端位置包只判有限与 `MAX_COORDINATE`、不判速度——对端每个位置包都可以把自己挪到任意新区块，服务端为它加载 `chunkViewDistance=10` 的一圈 441 个区块，且核心模式的实例从不卸载区块。按 `playerPacketPerTick=50` 折算，上限是每秒 1,000 次跳跃 × 441 个区块的生成与常驻内存，全由一条连接决定。对局实例整图预载、`enableAutoChunkLoad(false)`，不受影响。核心模式只服务压测与冒烟、不对玩家开放，所以只登记；要修是给核心世界关自动加载，或在引擎侧加一条按速度的位置校验（那是 `docs/DESIGN.md` 的事） | Bearisbug | 核心模式对不受控的连接来源开放之前 |
 | 风险 | **玩法模式下玩家是可见的生存玩家，位置与方块都由客户端定**：`RtsPlugin` 的准入只 `Accept(instance, team)`，没有设游戏模式，`ADR-M2-013` 写的「旁观模式、不可见、位置由镜头锚点传送驱动」是 `REQ-M2-018` 的内容、尚未落地。今天一个改过的客户端可以：① 用位置包把自己的实体挪到地图任何位置，从而自己决定兴趣集——M2 没有战争迷雾、全图单位本来就对所有人可见，所以没有信息泄露，只有「兴趣集不由锚点驱动」这一条与设计不符；② 用 `FINISHED_DIGGING` 删掉地图方块（引擎的 `PlayerActionListener` 不校验挖掘时长），导航网格是烘一次的、不跟着变，单位照旧沿旧网格走，每个方块变更都广播给全部 viewer。两条都在 `REQ-M2-018` 落地（旁观模式 + 服务端传送）时一并消失，不单独修 | Bearisbug | `REQ-M2-018` 落地时 |
-| 风险 | **原版聊天是一进 N 出的放大面**：引擎的 `ChatMessageListener#chatMessageListener` 把 `ClientChatMessagePacket` 经 `PlayerChatEvent` 广播给 `getOnlinePlayers()` 的全部玩家，客户端模组不用聊天，宿主也没有取消这个事件。上界是 `playerPacketPerTick` 折算的 1,000 包/秒 × 在线人数 × 256 字符：50 人时 12.8 MB/s 出站，全由一条连接决定。处置是宿主在 `PlayerChatEvent` 上取消或限频，属玩法决定（要不要聊天）；`ClientCommandChatPacket` 不在此列——命令只回给发送者，且宿主与插件一条命令都没注册 | Bearisbug | 内测放量前定「要不要聊天」时 |
+| 风险 | **原版聊天是一进 N 出的放大面**：引擎的 `ChatMessageListener#chatMessageListener` 把 `ClientChatMessagePacket` 经 `PlayerChatEvent` 广播给 `getOnlinePlayers()` 的全部玩家，客户端模组不用聊天，宿主也没有取消这个事件。上界是 `playerPacketPerTick` 折算的 1,000 包/秒 × 在线人数 × 256 字符：50 人时 12.8 MB/s 出站，全由一条连接决定。处置是宿主在 `PlayerChatEvent` 上取消或限频，属玩法决定（要不要聊天）；`ClientCommandChatPacket` 不在此列——命令只回给发送者，且宿主与插件一条命令都没注册。**由 `docs/DESIGN-PROD.md` `REQ-PROD-009` 承接**（攻击面 G5：引擎默认 0 收件人、由插件定，每连接 1 条/秒令牌桶，聊天一律以系统消息转发） | Bearisbug | `REQ-PROD-009` 落地时（生产就绪第 1 波） |
 | 已决 | **选中与下令不判兴趣集**（攻击面盘点 2026-09-22 复核）：`GameChannel#commands` 只判 `owner(unit, sender)`，本方单位在地图任何位置都能被选中与下令，与 `API-M2-004` 写的判据一致（存在、属于本局、归属）。M2 没有战争迷雾、全图单位对所有人可见，所以「兴趣集之外」不构成信息或权限缺口；将来加战争迷雾时这里要补一条「只能对自己看得见的单位下令」 | Bearisbug | 已于 2026-09-22 按现状确认；战争迷雾立项时重开 |
 
 ### 28.3 M2 范围裁剪清单（第二个插件 / M3 时补回）

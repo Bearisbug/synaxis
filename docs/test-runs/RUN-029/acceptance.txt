@@ -1,0 +1,24 @@
+RUN-029 验收记录（2026-09-24，验收人侧）
+
+被测版本：集成分支 prod/integrate-w3 42a66ef18d（= main c3f7e25083 + 准备三件 + 3A/3B/3C + 集成修正 + 冻结顺序修复 + DESIGN-PROD v0.6.1 + 本记录）
+范围：DESIGN-PROD 第 3 波——REQ-PROD-021（插件调度器）、005/006/007（PostgreSQL + Redis 玩家数据、会话租约、store_meta 自检）、
+008（停机：关闸 → 冻结 → 保存 → 踢人，看门狗判死接保存）、004 跨分片顶号、045（转服票据签发与验票，3D 并入 3A）、
+022（插件事件优先级与实例作用域）、035 前半（WAL 归档与每日基础备份）。
+过程：三组首轮各用满「实现 → 审查 → 两轮返工」仍有遗留，收尾轮各再修一轮后复审 APPROVED；
+3A 共修掉的缺陷包括：重试中的旧快照覆盖 commitTogether 结果、pgjdbc 无 socketTimeout/loginTimeout 致冻结与踢出不触发、
+载入被拒不还租约、同账号两次登录互还租约、转服写回失败掉出定时保存、转服写回期间断线账号被锁到分片重启。
+集成时发现 3A 与 3B 的组合缺陷：冻结节点排在插件 MONITOR 之后，MONITOR 读到未取消的拾取/丢弃；
+改为插件 LOWEST..HIGHEST = -2..2、冻结 = 3、MONITOR = 4（TC-PROD-189，修前红、修后绿）。
+
+一、验收人侧检查（带 SYNAXIS_TEST_* 连本机 synaxis-pg / synaxis-valkey）
+  ./gradlew cleanTest check --no-build-cache → BUILD SUCCESSFUL，根构建 3,379 个测试 0 失败，数据库用例 0 跳过
+  4 线程严格模式、client-fabric build、两份 lint、workflow YAML 解析：由集成者与修复者实跑通过
+
+二、验收人反证（还原后 git status 干净，synaxis-pg 里 w3a_% 库为 0）
+  冻结节点优先级 3 改成 5（排到 MONITOR 之后）→ PluginEventsIntegrationTest 9 条红 1 条
+  PlayerStore#loggedOut 里转服写回期间的 record.loggedOut = true 改成 false → PlayerStoreIntegrationTest 20 条红 2 条
+
+三、结果
+  通过：TC-PROD-140～177（3A）、TC-PROD-180～189（3B 与冻结顺序）、TC-PROD-190～193（3C） + 冒烟级 TC-029
+  备份演练：本机容器上 WAL 归档、基础备份、时间点恢复各跑通一次，耗时回填 DESIGN-PROD §15
+  记为「现状 + 待定」的设计点见 DESIGN-PROD v0.6 §28.2（写回成功后才断线仍签票据、离线 1～2 字符用户名被库约束拒绝等）

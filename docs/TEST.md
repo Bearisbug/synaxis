@@ -15,6 +15,7 @@
 
 | 日期 | 改动 | 作者 |
 | --- | --- | --- |
+| 2026-09-24 | 跟进 `docs/DESIGN-PROD.md` 第 3 波 3A（`REQ-PROD-021` 插件调度器；`REQ-PROD-005`～`REQ-PROD-007` 玩家数据持久化，含 Flyway V1、V2 与回退 SQL、`--migrate-only` 与 `store_meta` 自检、分片会话、fencing、跨分片顶号、Redis 在线名单；`REQ-PROD-008` 停机；`REQ-PROD-014` 的两条落盘场景）与 3D（`REQ-PROD-045` 转服票据）。**新增 §4「生产就绪 · 第 3 波 3A：插件调度器、玩家数据持久化与停机（含 3D 转服票据）」二十九条 `TC-PROD-140`～`TC-PROD-168`**：25 条 JUnit 或构建检查（其中 16 条要连本机共用的 `synaxis-pg` / `synaxis-valkey` 或 CI 的服务容器，节首写明环境变量与「设了地址就不许跳过」的规则）、4 条真进程（端口 25631：迁移与自检、20 个机器人 `stop`、`kill -9` 后立即接管、Redis 不可达）；每条带反证，红在哪写进期望列，与设计文档的三处口径差异写在该节末尾。§5 回归映射加生产就绪域一行 | Bearisbug |
 | 2026-09-23 | §7 登记并结案 `PluginHostIntegrationTest > theProcessAcceptsOnlyOneAdmissionProvider` 的偶发红：根因是两个集成测试类起了事件台账写线程不关，写线程在 JUnit 删临时目录时才建 `logs/`；写明复现办法（占满虚拟线程载体 + 拉长删除，修前 20 次红 6 次）与处置（`@AfterEach` 关台账，修后 100 次与严格模式 20 次全绿）。用例判据未动 | Bearisbug |
 | 2026-09-23 | 跟进 `docs/DESIGN-PROD.md` v0.4（第 1、2 波实现回写）。2A 一节末尾的口径差异从三处减为两处：`record` 模式只按 serverId 匹配已写进 `REQ-PROD-044`、`API-PROD-027` 与 §19，删去该条；2B 一节开头的口径差异改为直接引用 `REQ-PROD-036`（`API-PROD-001` 与 §19 已补上 `proxyProtocolRequired=true`）。用例判据未动 | Bearisbug |
 | 2026-09-23 | 跟进 `docs/DESIGN-PROD.md` 第 1 波 1A 的连接闸门默认值（`REQ-PROD-001`，登录桶每地址 3 个令牌、每 2 s 回 1 个）：本机连多个机器人或连续跑多次探针的起服命令补 `-Dsynaxis.connection-gate.trusted-networks=127.0.0.0/8`。**§3 环境段**：「启动」命令补这个参数并写明沿用本段起法的用例都带着它，由此覆盖协议冒烟（`TC-014`、`TC-018`、`TC-019`、`TC-026`、`TC-027`）、`TC-031`、`TC-032`、`TC-034`（经 `docs/research/soak-2026-09-18/README.md` 的起服段，同步补了参数）与 M2 起服后跑探针或压测的用例（`TC-GAME-019`、`024`、`026`、`031`、`039`～`042`、`049`、`050`、`054`、`055`、`058`、`060`～`065`、`069`、`070`）；「压测 / 长稳 harness」与「入站包发包端」两条写明服务端要带它。**`TC-GAME-068` 第 1 步**起服命令补这个参数（第 3、5 步沿用第 1 步）。判闸门本身的 `TC-PROD-060`～`TC-PROD-069` 与自带参数的 `TC-PROD-103` 不动 | Bearisbug |
@@ -2710,6 +2711,339 @@ jcmd "$pid" VM.flags | tr ' ' '\n' | grep -cxE -- '-XX:\+UseG1GC|-XX:InitialHeap
 
 后置：删掉 `<ci>` 与 CI 布局的临时目录；第 3 步的假服务已按 pid 停掉。
 
+### 生产就绪 · 第 3 波 3A：插件调度器、玩家数据持久化与停机（含 3D 转服票据）
+
+对应 `REQ-PROD-021`、`REQ-PROD-005`～`REQ-PROD-008`、`REQ-PROD-004` 跨分片部分、`REQ-PROD-036` 的三条 `store_meta` 场景、`REQ-PROD-014` 的两条落盘场景与 `REQ-PROD-045`（`API-PROD-004`～`API-PROD-007`、`API-PROD-017`、`API-PROD-028`，§11.2～§11.4，§12.2～§12.4）。`TC-PROD-140`～`TC-PROD-164` 是 JUnit 或构建检查，`TC-PROD-165`～`TC-PROD-168` 起真进程（端口 25631）。
+
+数据库前置：本机固定容器 `synaxis-pg`（`postgres:16-alpine`）与 `synaxis-valkey`（`valkey/valkey:8-alpine`），各组共用，各用自己的库与键前缀。测试经环境变量找它们：`SYNAXIS_TEST_PG_URL`（任一库的管理 JDBC URL，例 `jdbc:postgresql://127.0.0.1:5440/postgres`）、`SYNAXIS_TEST_PG_USER`、`SYNAXIS_TEST_PG_PASSWORD`（该账号要有 `CREATEDB`）、`SYNAXIS_TEST_REDIS_URL`（例 `redis://127.0.0.1:6440`）。每个测试类自建一个随机名的库（`w3a_<16 位十六进制>`）、结束时 `DROP … WITH (FORCE)`；Redis 侧用随机后缀的分片 ID，不留键。不设 `SYNAXIS_TEST_PG_URL` 且默认地址连不上时这些测试跳过，设了而连不上时失败（CI 就是后一种，见 `TC-PROD-164`）。JUnit 命令统一写作「跑 `<类>`」，即带上述变量执行 `./gradlew :server-app:test --tests <类> --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts`（引擎的类换成 `:test`，`:testing`、`:architecture-tests` 同理），结果看 `build/test-results/test/TEST-<类>.xml`。反证一律是「临时改一处实现、重跑、看红、还原」，还原后 `git status` 必须干净；真进程的反证还要在改动后重跑 `:server-app:installDist`，还原后再跑一次。
+
+#### `TC-PROD-140` 插件调度器：`runAsync` 在虚拟线程上跑、禁用或取消时被中断，`runOn` 回到实体所属 tick 线程 — 对应 `REQ-PROD-021` · 级别: 回归 · 执行者: AI
+
+前置：工作副本干净（本条不需要数据库）。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `io.github.bearisbug.synaxis.app.PluginSchedulerAsyncIntegrationTest` | 6 个 0 失败：`runAsync` 的任务体在虚拟线程上跑，句柄在任务体运行期间 `isAlive()`；`cancelAll()`（插件禁用）后睡 60 s 的任务体收到中断；对句柄 `cancel()` 后下一个 tick 任务体被中断；任务体结束后下一个 tick 句柄结束；任务体抛异常照样结束；`runOn(entity, …)` 在 `entity.acquirable().assignedThread()` 那条 `TickThread` 上执行，跑完即结束；`runOn(instance, …, tick(3))` 在插件禁用后永不执行 |
+| 2 | 反证有齿：删掉 `PluginSchedulerImpl#cancelAll` 里 `for (Thread body : asyncBodies.values()) body.interrupt();` 一行，并把 `runOn` 的 `target.scheduler().buildTask` 换成 `scheduler.buildTask`，重跑第 1 步，再还原 | `6 tests completed, 2 failed`：`runAsyncIsInterruptedWhenThePluginIsDisabled` 红 `disabling the plugin interrupts the body ==> expected: <true> but was: <false>`；`runOnRunsOnTheTickThreadOfTheEntity` 红 `an entity task runs on a tick thread ==> Unexpected type, expected: <…TickThread> but was: <java.lang.Thread>`。还原后复绿 |
+
+后置：确认 `PluginSchedulerImpl.java` 没有残留改动。
+
+#### `TC-PROD-141` Flyway V1、V2：空库迁移、从上一版本迁移、库版本领先代码拒绝、回退 SQL 正反往返 — 对应 `REQ-PROD-005` · 级别: 回归 · 执行者: AI
+
+前置：数据库前置满足。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `io.github.bearisbug.synaxis.app.store.MigrationsDbTest` | 5 个 0 失败：没迁移过的库 `Migrations.validate` 抛 `IllegalArgumentException`；`migrate` 后 `flyway_schema_history` 成功行是 `1`、`2`，`public` 下的表恰为 `account`、`character`、`character_location`、`character_section`、`flyway_schema_history`、`item_ledger`、`shard_session`、`store_meta`、`transfer_nonce`；只迁到 V1 的库 `validate` 拒绝（V2 待执行），`migrate` 后补上 V2 且 `validate` 通过；历史表里插一行 V99 后 `validate` 拒绝，信息含 `ahead of this build: V99`；依次执行 `db/rollback/V2__item_ledger.down.sql`、`V1__player_store.down.sql` 后只剩 `flyway_schema_history` 且无成功行，再 `migrate` 回到 `1`、`2` 并通过 `validate` |
+| 2 | 反证有齿：`Migrations#validate` 里 `if (future.length > 0)` 改成 `if (future.length > 1000)`，重跑第 1 步，再还原 | 红在 `aDatabaseAheadOfThisBuildIsRefused`：`Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown.`，其余 4 条仍绿。还原后复绿 |
+
+后置：确认 `Migrations.java` 没有残留改动；测试建的库已由测试删掉（`psql -c "\l w3a_*"` 无输出）。
+
+#### `TC-PROD-142` `store_meta.auth_mode` 只由 `--migrate-only` 写，分片起服按有效模式自检 — 对应 `REQ-PROD-036` · 级别: 回归 · 执行者: AI
+
+前置：数据库前置满足。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `MigrationsDbTest`（只看 `theAuthModeIsWrittenOnceByTheMigrationAndNeverChanged`）与 `io.github.bearisbug.synaxis.app.MainStoreIntegrationTest` | 前者：只经 Flyway 建表的库 `requireAuthMode` 报 `store_meta.auth_mode is not set`、库里没有该行；`migrate(ONLINE)` 写入 `online`；以 `OFFLINE` 自检报 `store_meta.auth_mode is online but this process runs offline`；再 `migrate(OFFLINE)` 报错含 `nothing was migrated`，值仍是 `online`。后者 6 个 0 失败，覆盖 §19 三条 `store_meta` 场景：空库时 `Main.openStore(postgres, Auth.Offline)` 拒绝且库里仍无该行，`Main.migrateOnly(--auth-mode=online)` 返回 0，之后 `Offline` 被拒、`Auth.Online` + Mojang 地址起得来，再 `--auth-mode=offline` 返回 1 且值仍是 `online`；在线模式指向假 sessionserver（`http://127.0.0.1:1/…`）连 `online` 库被拒（`this process runs offline`），连 `offline` 库起得来，`Auth.Offline(true)` 也起得来；缺 `--auth-mode` 或写成 `maybe` 返回 1；环境里没有 `SYNAXIS_STATE_DB_URL` 时报 `SYNAXIS_STATE_DB_URL is not set`；`synaxis.app.store` 默认 `memory`，`postgres` 取 `postgres`，`redis` 抛异常 |
+| 2 | 反证有齿：`Migrations#migrate` 开头的 `if (existing != null && !existing.equals(mode.value()))` 改成 `if (existing != null && Boolean.getBoolean("proof.never"))`，`AuthMode#effective` 改成 `return auth instanceof Auth.Online ? ONLINE : OFFLINE;`，跑第 1 步两个类，再还原 | 与 `TC-PROD-141` 第 2 步的改动同一轮跑：`11 tests completed, 4 failed`，除 `TC-PROD-141` 那一条外：`theAuthModeIsWrittenOnceByTheMigrationAndNeverChanged` 红 `store_meta.auth_mode is online and --auth-mode is offline ==> expected: <true> but was: <false>`（错误信息里没有 `nothing was migrated`，迁移已经跑过）；`anOnlineProcessVerifyingAgainstAnythingButMojangCountsAsOffline` 红 `Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown.`；`aLoadTestStoreTakesTheOnlineProcessThatVerifiesAgainstAFakeServer` 红 `store_meta.auth_mode is offline but this process runs online`。还原后复绿 |
+
+后置：确认 `Migrations.java`、`AuthMode.java` 没有残留改动。
+
+#### `TC-PROD-143` 分片会话：起服把同 `shard_id` 的旧会话置过期、续期、10 s 冻结、30 s 或库判过期即隔离、`reopen` 新纪元、`closing` 照常续期、`released` 即过期 — 对应 `REQ-PROD-005` · 级别: 回归 · 执行者: AI
+
+前置：数据库前置满足。测试把续期周期设成 1 小时，由测试调 `renewOrReopen()` 推动，本地时钟由测试拨。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `io.github.bearisbug.synaxis.app.store.ShardSessionDbTest` | 4 个 0 失败：同一 `r1-c1` 第二次 `open()` 后第一次的会话 `expires_at ≤ now()`，`r2-c1` 的会话不受影响；续期把 `expires_at` 推到 20 s 以上；把本会话 `expires_at` 改到过去后一次续期进 `ISOLATED`，下一次 `reopen` 得到比同 `shard_id` 另一活会话更大的 `session_id` 并回到 `ACTIVE`，另一活会话仍有效；切断续期连接后拨钟 9 s 仍 `ACTIVE`、11 s 进 `DEGRADED`，恢复后一次续期回 `ACTIVE`，再断开拨到失败 20 s 后 `DEGRADED`、31 s 后 `ISOLATED`；`beginClosing()` 后续期照样把 `expires_at` 推到 20 s 以上，库判过期也不隔离，`release()` 后 `RELEASED` 且行还在、已过期 |
+| 2 | 反证有齿：把 `ShardSession` 里两处 `expire.executeUpdate();`（`open()` 与 `release()`）都改成 `if (Boolean.getBoolean("proof.never")) expire.executeUpdate();`，重跑第 1 步，再还原 | `4 tests completed, 2 failed`：`startingExpiresThePreviousRunOfTheSameShardOnly` 红 `the leases of the previous run can be taken over at once ==> expected: <false> but was: <true>`；`closingKeepsRenewingAndTheReleaseExpiresTheSession` 红 `released means expired now, the row stays ==> expected: <false> but was: <true>`。还原后复绿 |
+
+后置：确认 `ShardSession.java` 没有残留改动。
+
+#### `TC-PROD-144` 登录载入：新账号恰一个角色、100 个分片抢同一新账号只一个持有、登出写脏段并释放、下次登录读回、旧格式段经升级链读入 — 对应 `REQ-PROD-005`、`REQ-PROD-006` · 级别: 回归 · 执行者: AI
+
+前置：数据库前置满足。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `io.github.bearisbug.synaxis.app.store.PlayerStoreIntegrationTest`，看 `aNewAccountGetsOneCharacterHeldByThisSession`、`aHundredShardsRacingForANewAccountLeaveOneCharacterAndOneHolder`、`theLogoutSaveWritesTheDirtySectionAndGivesTheLeaseBack`、`anOlderSectionVersionIsUpgradedOnLoad` | 全类 11 个 0 失败。这四条：新账号载入后 `character` 恰 1 行、`version = 0`、`lease_session_id` 是本会话，未存过的段是 `createDefault()`；100 个会话的 100 个虚拟线程同时对同一新账号 `load`，恰 1 个 `Acquired`、`character` 恰 1 行；在线玩家改 `probe:purse` 并 `markDirty`，被踢后（下一 tick 离开世界、`PlayerDisconnectEvent`）库里该角色 `lease_session_id` 为 NULL、`version = 1`、段为 `{"note": "", "coins": 5}`、`schema_version = 2`，同一账号再登录读到 5、下一次写基于版本 1；库里存成 v1 的 `{"gold": 12}` 经 `decode(json, 1)` 读成 12 |
+| 2 | 反证有齿：`PostgresBackend` 获取语句里 `AND (c.lease_session_id IS NULL OR c.lease_session_id = ? OR NOT EXISTS (…))` 整段换成 `AND ? > 0`，只跑 `aHundredShardsRacingForANewAccountLeaveOneCharacterAndOneHolder`，再还原 | 红：`exactly one shard holds the lease ==> expected: <1> but was: <100>`。还原后复绿 |
+
+后置：确认 `PostgresBackend.java` 没有残留改动。
+
+#### `TC-PROD-145` fencing：别的分片接管后，本分片的迟到写入被拒、玩家被踢、库里是新持有者写的版本，接管写 `EVT:lease_takeover` — 对应 `REQ-PROD-005` · 级别: 回归 · 执行者: AI
+
+前置：数据库前置满足。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `PlayerStoreIntegrationTest`，看 `aWriteAfterAnotherShardTookTheCharacterOverIsFenced` | 分片 A 持有角色后把 A 的会话改成已过期；分片 B 载入同一账号（接管）并 `saveNow` 得 `SAVED`；A 再 `saveNow` 得 `FENCED`；库里段是 B 写的 `coins = 9`、`version = 1`、`lease_session_id` 是 B 的会话；A 的玩家被踢，原因 `synaxis:state-unavailable`；A 写一条 `save_fenced`，B 写一条 `lease_takeover`，`previous_session_id` 是 A 的会话 |
+| 2 | 反证有齿：`PostgresBackend` 的保存语句 `WHERE character_id = ? AND lease_session_id = ? AND version = ?` 改成 `WHERE character_id = ? AND ? > 0 AND ? >= 0`，与 `TC-PROD-143`、`TC-PROD-146` 的改动同一轮跑 `ShardSessionDbTest` 与本类（`15 tests completed, 5 failed`），再还原 | 本处改动红在两条：`aWriteAfterAnotherShardTookTheCharacterOverIsFenced` 与 `aCommitOfTwoPlayersWritesBothOrNeither` 都是 `expected: <FENCED> but was: <SAVED>`。还原后复绿 |
+
+后置：确认 `PostgresBackend.java` 没有残留改动。
+
+#### `TC-PROD-146` 段版本高于代码、段 JSON 解不开：拒绝登录、库里原样不动、载入时取的租约还回去 — 对应 `REQ-PROD-005` · 级别: 回归 · 执行者: AI
+
+前置：数据库前置满足。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `PlayerStoreIntegrationTest`，看 `aSectionNewerThanThisBuildOrUndecodableRefusesTheLoginAndIsLeftAlone` | 一个角色的 `probe:purse` 存成 `schema_version = 3`（代码是 2），另一个存成 `{"coins": "many"}`；两次 `load` 都返回 false、玩家各收一次 `synaxis:state-unavailable`；库里两段原文与 `schema_version` 不变（没有被默认值覆盖）；两个角色 `lease_session_id` 都是 NULL |
+| 2 | 反证有齿：`PlayerStore#decode` 里段版本高于代码的分支，把 `return "section " + … + " is newer than this build";` 换成 `record.values.put(section.id(), section.createDefault()); continue;`，重跑，再还原 | 红：`expected: <false> but was: <true>`（高版本的那次登录被放行）。还原后复绿 |
+
+后置：确认 `PlayerStore.java` 没有残留改动。
+
+#### `TC-PROD-147` 登出保存被库拒绝（段超过 64 KiB）时重试到上限后放弃这次写入、租约照样还回去、下次登录读上一次成功保存的版本 — 对应 `REQ-PROD-005` · 级别: 回归 · 执行者: AI
+
+前置：数据库前置满足。测试把重试间隔设为 50 ms、上限 1 s（生产是 1/2/4/8/16/30 s、上限 30 s）。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `PlayerStoreIntegrationTest`，看 `aLogoutSaveTheDatabaseRejectsIsDroppedAndTheLeaseStillGoesBack` | 先 `saveNow` 存下 `coins = 3`（`version = 1`），再把 `note` 写成 70 KiB 并登出：`character_section` 的 `octet_length(data::text) <= 65536` 约束拒绝写入，重试到上限后租约为 NULL、`version` 仍是 1；`PlayerStore` 恰有一行 ERROR 含该 `character_id`；同一账号再登录成功，读到 3 |
+| 2 | 反证有齿：`PlayerStore#orphan` 里 `if (!saveEnded) releaseQuietly(record.characterId);` 改成 `if (!saveEnded && Boolean.getBoolean("proof.never")) releaseQuietly(record.characterId);`，只跑这一条，再还原 | 红：`not within 10 s: the lease goes back after the retries`。还原后复绿 |
+
+后置：确认 `PlayerStore.java` 没有残留改动。
+
+#### `TC-PROD-148` `commitTogether`：两人交易一个事务写、成功后下一 tick 执行 `apply`；一方版本失配时两边都不写、`apply` 不执行 — 对应 `REQ-PROD-006` · 级别: 回归 · 执行者: AI
+
+前置：数据库前置满足。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `PlayerStoreIntegrationTest`，看 `aCommitOfTwoPlayersWritesBothOrNeither` | 卖方 10、买方 20 提交得 `SAVED`，`apply` 在之后的 tick 里执行 1 次，两边 `version` 各为 1；把买方 `version` 在库里加 1 后再提交（11、21）得 `FENCED`，`apply` 仍只执行过 1 次，卖方段仍是 `coins = 10`、`version = 1`，买方段仍是 `coins = 20` |
+| 2 | 反证有齿：与 `TC-PROD-145` 第 2 步同一处改动 | 红：`aCommitOfTwoPlayersWritesBothOrNeither` 报 `expected: <FENCED> but was: <SAVED>`（版本失配的交易被写进去） |
+
+后置：同 `TC-PROD-145`。
+
+#### `TC-PROD-149` 冻结与自我隔离：会话进 `closing` 时全体冻结（交易回 `UNAVAILABLE`、拾取被取消）；会话被库判过期时踢出全部在线玩家、不再写库、重建会话后恢复登录 — 对应 `REQ-PROD-005`、`REQ-PROD-006` · 级别: 回归 · 执行者: AI
+
+前置：数据库前置满足。`degraded` 与 `closing` 走 `isFrozen` 的同一个判断，`degraded` 的进入条件由 `TC-PROD-143` 覆盖。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `PlayerStoreIntegrationTest`，看 `aDegradedShardFreezesTradesPickupsAndDrops` 与 `anIsolatedShardKicksEveryoneWritesNothingAndTakesLoginsAgainOnceReopened` | 前者：`beginClosing()` 之前 `isFrozen` 为 false，之后为 true；`commitTogether` 得 `UNAVAILABLE`，台账 `critical_commit` 带 `cause=frozen`；对该玩家派发的 `PickupItemEvent` 被取消。后者：会话被改成已过期后一次续期进 `ISOLATED`，在线玩家被踢（`synaxis:state-unavailable`），台账 `save_fenced` 带 `cause=session_isolated`，之后 5 个 tick 里库里 `version` 仍是 0，新登录被拒；再一次 `renewOrReopen()` 回到 `ACTIVE`，同一账号重新登录成功，读到的是旧纪元没存下的默认值 0 |
+| 2 | 反证有齿：`PlayerStore#isFrozen` 的 `if (current != null && (current.state() == DEGRADED \|\| current.state() == CLOSING))` 换成 `if (current != null && Boolean.getBoolean("proof.never"))`，`sessionChanged` 的 `if (next != ShardSession.State.ISOLATED) return;` 换成 `if (next != ShardSession.State.ISOLATED \|\| !Boolean.getBoolean("proof.never")) return;`，与 `TC-PROD-150`、`TC-PROD-152`、`TC-PROD-155` 的改动同一轮跑本类、`CrossShardHandoverIntegrationTest` 与 `ShutdownSaveIntegrationTest`（`20 tests completed, 5 failed`），再还原 | 本处两条都红：前者 `expected: <true> but was: <false>`（`PlayerStoreIntegrationTest.java:320`，`isFrozen` 仍为 false）；后者 `everybody on an isolated shard goes ==> expected: <[synaxis:state-unavailable]> but was: <[]>`。还原后复绿 |
+
+后置：确认 `PlayerStore.java` 没有残留改动。
+
+#### `TC-PROD-150` 定时保存按 tick 摊开，只写有脏段的玩家 — 对应 `REQ-PROD-005` · 级别: 回归 · 执行者: AI
+
+前置：数据库前置满足。测试把一轮设为 4 tick（生产 1,200 tick = 60 s）。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `PlayerStoreIntegrationTest`，看 `theAutosaveWritesDirtyPlayersSpreadOverTheTicksAndSkipsCleanOnes` | 两人在线，一人改段并 `markDirty`：该角色在一轮内被写到 `version = 1`、`coins = 7`；再跑 10 个 tick 仍是 1（没有脏段就不写、不涨版本）；另一人 `version` 始终是 0 |
+| 2 | 反证有齿：`PlayerStore#autosaveTick` 的 `final int online = autosaveOrder.size();` 改成 `final int online = Boolean.getBoolean("proof.never") ? autosaveOrder.size() : 0;`，与 `TC-PROD-149` 第 2 步同一轮跑，再还原 | 红：`not within 10 s: the dirty player is saved within one autosave period`。还原后复绿 |
+
+后置：确认 `PlayerStore.java` 没有残留改动。
+
+#### `TC-PROD-151` 插件只见本命名空间的段、只在 `onEnable` 注册；载入排在握手之后、准入之前；载入失败不进准入，准入拒绝还回租约 — 对应 `REQ-PROD-006`、`REQ-PROD-005` · 级别: 回归 · 执行者: AI
+
+前置：工作副本干净（本条用内存后端与假后端，不需要数据库）。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `io.github.bearisbug.synaxis.app.PlayerDataIntegrationTest` | 5 个 0 失败：插件在 `onEnable` 注册 `probe:coins`，玩家生成事件里读到默认值 0，改成 3 后 `saveNow` 得 `SAVED`、`isFrozen` 为 false；插件 `mmo` 注册 `other:bag`、`mmo:`、`mmobag:x` 与重复的 `mmo:inventory` 共 4 次全被 `IllegalStateException` 拒绝，`onEnable` 返回后再注册也被拒；插件 `probe` 对 `other:coins` 的 `get` 与 `markDirty` 被拒，它的注册者 `other` 读得到；后端抛 `SQLException` 时连接被断开、准入回调一次都没被调用、台账有 `client_rejected` 且 `reason` 为 `state-unavailable`；准入回调返回 `Reject` 时后端 `release` 被调用 1 次 |
+| 2 | 反证有齿：`PluginPlayerData#register` 的命名空间判断 `if (!section.id().startsWith(pluginId + ":") \|\| …)` 换成 `if (Boolean.getBoolean("proof.never"))`；另一轮把 `AdmissionGate` 的 `if (!store.load(player)) {` 换成 `if (!store.load(player) && Boolean.getBoolean("proof.never")) {` 并删掉 `Reject` 分支里的 `store.abandon(player);`，各跑一次，再还原 | 前一轮红在 `aPluginOnlyRegistersInItsNamespaceAndOnlyInOnEnable`：`another namespace, an empty name, a prefix lookalike, a second registration ==> expected: <4> but was: <1>`（只剩重复注册被拒）。后一轮 `5 tests completed, 2 failed`：`aLoadThatFailsTurnsTheConnectionAwayBeforeTheAdmission` 红在台账断言（没有 `state-unavailable` 的 `client_rejected`），`aRefusedAdmissionGivesTheLeaseBack` 红 `the lease taken for the load goes back ==> expected: <1> but was: <0>`。还原后复绿 |
+
+后置：确认 `PluginPlayerData.java`、`AdmissionGate.java` 没有残留改动。
+
+#### `TC-PROD-152` 跨分片顶号：新分片经 Redis 请持有者放手，5 s 内接管并读到旧分片离开时写的版本；Redis 不在时拒新、旧会话不受影响；离线模式不顶号 — 对应 `REQ-PROD-004`、`REQ-PROD-007` · 级别: 回归 · 执行者: AI
+
+前置：数据库前置满足，`SYNAXIS_TEST_REDIS_URL` 可达。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `io.github.bearisbug.synaxis.app.store.CrossShardHandoverIntegrationTest`，看前三条 | 全类 5 个 0 失败。分片 A、B 都连 Redis 且可顶号：A 上的玩家改段 `coins = 6`；B 载入同一账号，A 收到 `synaxis:kick:a-<run>` 的请求，旧玩家被踢、原因 `synaxis:logged-in-elsewhere`，A 登出保存并释放，B 在 5 s 内载入成功（整条用例 0.4 s）、读到 6、版本等于库里的版本、持有者是 B；两边都不连 Redis 时 B 立即（远少于 5 s）以 `synaxis:state-unavailable` 拒绝，A 的玩家没被踢、持有者仍是 A；B 为离线模式（不顶号）时拒绝，`synaxis:kick:*` 上没有任何带本轮后缀的消息 |
+| 2 | 反证有齿：`PlayerStore#loadWithin` 的 `if (!redis.requestKick(held.shardId(), account))` 换成 `if (Boolean.getBoolean("proof.never") && !redis.requestKick(held.shardId(), account))`（不发顶号请求），与 `TC-PROD-149` 第 2 步同一轮跑，再还原 | 红：`the second shard gets the character ==> expected: <true> but was: <false>`（5 s 内没人放手）。还原后复绿 |
+
+后置：确认 `PlayerStore.java` 没有残留改动；`valkey-cli --scan --pattern 'presence:*'` 里没有本轮账号的键。
+
+#### `TC-PROD-153` 在线名单是会过期的路由提示；Redis 不可达只记 10 s 一行 WARN，不报 ERROR — 对应 `REQ-PROD-007` · 级别: 回归 · 执行者: AI
+
+前置：同 `TC-PROD-152`。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `CrossShardHandoverIntegrationTest`，看 `presenceFollowsTheLoginAndAFirstLoginPublishesNothing` 与 `anUnreachableRedisIsOneWarningPerTenSecondsAndNeverAnError` | 前者：玩家准入后 `presence:<uuid>` 的值含 `"state":"online"` 与 `"shard_id":"a-<run>"`，`PTTL` 在 1～30,000 ms；新账号首次登录没有向 `synaxis:kick:*` 发任何消息；登出后键被删。后者：连 `redis://127.0.0.1:1` 的链接 20 轮各调一次 `requestKick`、`presence`、`clearPresence`，`requestKick` 都返回 false、`isUp()` 为 false，`RedisLink` 的日志恰 1 行 WARN、0 行 ERROR |
+| 2 | 反证有齿：`RedisLink#failed` 的 `failures.warn(…)` 换成 `LOGGER.warn(…)`（绕开 `LogBudget`），只跑后者，再还原 | 红：`expected: <1> but was: <60>`（每次失败一行）。还原后复绿 |
+
+后置：确认 `RedisLink.java` 没有残留改动。
+
+#### `TC-PROD-154` 引擎停机序列：关登录门 → 倒计时 → 保存（tick 仍在跑）→ 踢人 → tick 之间禁用插件 → 停 tick；看门狗判死的三条转移 — 对应 `REQ-PROD-008`、`REQ-PROD-014` · 级别: 回归 · 执行者: AI
+
+前置：工作副本干净（本条不需要数据库）。进程在回环地址上起真 `Server`，并像 `MinecraftServer#start` 一样起 dispatcher 与 `TickSchedulerThread`。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `io.github.bearisbug.synaxis.ShutdownSequenceTest`（`:test`） | 6 个 0 失败，其中约 15 s 花在判死截断那条：一名 play 态玩家在线时 `stop()` 的调用序列恰为 `gate_closed:0:true`、`save:30:true:SAVING`、（保存期间 tick 计数又涨了 3）、`save_ended:false`、`disconnect`、`plugins_disabled:true`；保存期间 `isAlive()` 为 true，`PlayerDisconnectEvent` 在 `TickThread` 上派发，关停任务在 `TickSchedulerThread` 上执行，结束后 `shutdownPhase()` 为 `STOPPED`、`isAlive()` 为 false，再调 `stop()` 立即返回；`beginShutdown(3 s)` 的倒计时里新连接的 `LoginStart` 收到 `LoginDisconnect synaxis:server-stopping`；`beginShutdown(2 min)` 的倒计时里调 `shutdownAfterWatchdogDeath()` 返回 false，倒计时立即结束，保存以 `save:15:false` 进行；没有停机在跑时判死返回 true，整个序列在报告线程上跑完，只有 `save:15:false`；保存中判死时追加一次 `save:14`～`15:false`，保存在判死后 14～30 s 之间以 `save_ended:true` 截断；参与者只能在 `start` 之前设一次 |
+| 2 | 反证有齿（`stopped` 提前、门不关）：`ServerProcessImpl#shutdownProcess` 在 `this.shutdownPhase = ShutdownPhase.GATE_CLOSED;` 之后加一行 `stopped.set(true);`，并删掉 `connection.gate().close();`，重跑，再还原 | `6 tests completed, 4 failed`：第一条红 `expected: <[gate_closed:0:true, save:30:true:SAVING, ticked_while_saving, save_ended:false, disconnect, plugins_disabled:true]> but was: <[gate_closed:0:false, save:30:true:SAVING, save_ended:true, plugins_disabled:false]>`（tick 停了，保存等满 30 s，玩家没有断线事件）；倒计时那条红 `expected: <…LoginDisconnectPacket> but was: <…SetCompressionPacket>`（登录被放行）；两条判死用例的 `gate_closed:…:false` 不符 |
+| 3 | 反证有齿（保存中判死不截断）：`ServerProcessImpl#save` 的 `if (!dead && watchdogDeath.isDone())` 换成 `if (!dead && Boolean.getBoolean("proof.never"))`，只跑保存中判死那条，再还原 | 红：`[gate_closed:0:true, save:30:true:SAVING, save_ended:true] ==> expected: <4> but was: <3>`（没有第二次 `saveAll`，保存跑满 30 s）。还原后复绿 |
+
+后置：确认 `ServerProcessImpl.java` 没有残留改动。
+
+#### `TC-PROD-155` 宿主停机保存：插件钩子在各自 tick 线程上跑、每人一次写入并释放、写 `EVT:shutdown_saved`、会话释放即过期；倒计时公告；判死时在停机线程上读、不跑钩子；超时的角色靠会话过期兜底 — 对应 `REQ-PROD-008` · 级别: 回归 · 执行者: AI
+
+前置：数据库前置满足。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `io.github.bearisbug.synaxis.app.store.ShutdownSaveIntegrationTest` | 4 个 0 失败：两人在线，`saveAll(30 s, true)` 后玩家冻结、会话进 `CLOSING`，tick 推进后钩子被调 2 次、都在 `TickThread` 上，两个角色 `version = 1`、`coins = 42`、租约为 NULL；`onSaveEnded(false)` 写一条 `shutdown_saved`，含 `online=2`、`saved=2`、`failed=0`、`timed_out=false`，会话 `RELEASED` 且 `expires_at ≤ now()`，之后的踢人不再写库；`onGateClosed(0)` 不发消息，`onGateClosed(60 s)` 给在线玩家发 `synaxis:server-stopping-in`；不推进 tick 时 `saveAll(30 s, true)` 不完成，再调 `saveAll(15 s, false)` 在调用线程上读快照并完成，钩子没被调，`coins = 8` 已写入、租约为 NULL；另一连接持有角色行锁时保存到预算结束都不完成，`onSaveEnded(true)` 为该角色记 ERROR `Not saved on shutdown … character_id=<id>`、台账 `saved=0`、`failed=1`、`timed_out=true`，之后另一分片立即载入该账号并写 `lease_takeover` |
+| 2 | 反证有齿：`PlayerStore#shutdownSnapshot` 的 `if (runHooks) {` 换成 `if (runHooks && Boolean.getBoolean("proof.never")) {`，与 `TC-PROD-149` 第 2 步同一轮跑，再还原 | 红：`one hook call per player ==> expected: <2> but was: <0>`。还原后复绿 |
+
+后置：确认 `PlayerStore.java` 没有残留改动。
+
+#### `TC-PROD-156` 转服票据编码：已知密钥签出的好票据逐字节一致，三张坏票据在各自的检查被拒；密钥变量的规则与轮换 — 对应 `REQ-PROD-045` · 级别: 回归 · 执行者: AI
+
+前置：工作副本干净。向量在 `server-app/src/test/resources/vectors/transfer/tickets.properties`，密钥是 `0x00..0x1f`。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `io.github.bearisbug.synaxis.app.transfer.TransferTicketVectorsTest`；再把 `good` 去掉末尾 64 个十六进制字符写进二进制文件，`openssl dgst -sha256 -mac HMAC -macopt hexkey:000102…1f <文件>` | 8 个 0 失败：按向量里的字段编码得到 `good` 那串十六进制，`good` 解码回同样的字段、`reference()` 为 `00112233`；`tampered-uuid` 与 `wrong-ver` 解码为 null（`bad-signature`），`expired` 签名有效、`now > expires_at`；换一把同 id 的密钥、未知 id、截短一字节、null、空数组都解不出；`3:<新>,7:<旧>` 两把时旧票据仍能解、签发用 3；三把、id 256、非数字 id、重复 id、16 字节、非 base64、缺 id 都抛 `IllegalArgumentException`，拒绝信息里不含密钥；分片 ID 255 字节的票据不超过 5,120 B、256 字节拒绝编码；冷却 5 s 内为真、以最新一次为准。`openssl` 输出 `4ef49e78143e14c1237c7d978461d1524a71838f8902a1c6cf335df33d13d821`，与 `good` 末尾 32 字节一致 |
+| 2 | 反证有齿：`TransferTicket#encode` 里把 `source_shard` 与 `target_shard` 两段的写入顺序对调，与 `TC-PROD-158`、`TC-PROD-151` 第 2 步前一轮的改动同一轮跑（四个类 `20 tests completed, 6 failed`），再还原 | 红在 `theGoodFieldsEncodeToTheGoodBytes`：`expected: <01070f0e…d821> but was: <01070f0e0d0…>`（布局变了，向量先红）。还原后复绿 |
+
+后置：确认 `TransferTicket.java` 没有残留改动；删掉 `openssl` 用的临时文件。
+
+#### `TC-PROD-157` 转服签发与验票：先存 Cookie 再发 Transfer；坏票据按检查顺序被拒、好票据只用一次；版本不一致时拒绝并还回租约；冷却跨分片生效；写回失败时玩家留在源分片 — 对应 `REQ-PROD-045` · 级别: 回归 · 执行者: AI
+
+前置：数据库前置满足。源分片 `r2-c1`、目标分片 `r1-c1` 在同一进程里，不需要 M3 的 `ShardService`（§26 3D 退出条件）。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `io.github.bearisbug.synaxis.app.store.TransferTicketsIntegrationTest` | 4 个 0 失败：源分片上 `TransferTickets#transfer` 得 `SENT`，发出的包里 `CookieStorePacket(synaxis:transfer, …)` 排在 `TransferPacket` 之前，票据的 `state_version` 等于库里版本、租约已是 NULL；改一字节、已过期、`target_shard = r2-c1`、`player_uuid` 属于别人的四张票据依次被拒，都收到 `synaxis:transfer-rejected`，台账 `transfer_rejected` 的 `reason` 依次为 `bad-signature`、`expired`、`wrong-target`、`uuid-mismatch`；好票据通过、目标分片持有角色、载入读到 `coins = 11` 且版本等于 `state_version`；同一票据再来一次被拒、`reason=nonce-reused`；`transfer_nonce` 恰 1 行。把角色 `version` 在库里加 1 后验票被拒、`reason=version-mismatch`、`TicketVerifier` 恰一行 ERROR、租约为 NULL。转入时刻 t 的玩家在目标分片 t + 3 s 转出得 `COOLDOWN` 且版本与持有者不变，t + 6 s 得 `SENT`。不在本分片的玩家得 `NOT_ONLINE`；另一连接持有角色行锁时转出得 `SAVE_FAILED`，玩家仍持有角色、不再冻结、收到 `synaxis:transfer-failed`，没有发出 Cookie |
+| 2 | 反证有齿（nonce 与版本）：`TicketVerifier#verify` 的 `if (insert.executeUpdate() == 0)` 与 `if (version != ticket.stateVersion())` 各加 `&& Boolean.getBoolean("proof.never")`，重跑，再还原 | `4 tests completed, 2 failed`：`badTicketsAreRefusedInCheckOrderAndAGoodOneOnlyOnce` 红在重放那次 `expected: <false> but was: <true>`（`TransferTicketsIntegrationTest.java:180`）；`aTicketWhoseVersionTheCharacterIsNotAtIsRefusedAndTheLeaseGivenBack` 红 `expected: <false> but was: <true>`（`:201`）。还原后复绿 |
+| 3 | 反证有齿（顺序）：`TicketIssuer#transfer` 里先 `transfer(host, port)` 再 `storeCookie(…)`，重跑，再还原 | `4 tests completed, 3 failed`，三条发票据的用例都红 `the cookie is stored before the transfer: [PluginMessagePacket[channel=minecraft:brand, …`。还原后复绿 |
+
+后置：确认 `TicketVerifier.java`、`TicketIssuer.java` 没有残留改动。
+
+#### `TC-PROD-158` 清理任务：`transfer_nonce.gc` 只删过期行，`shard_session.cleanup` 只删过期一天以上且没有租约指向的会话，别的分片在跑时跳过 — 对应 `REQ-PROD-045`、`REQ-PROD-005` · 级别: 回归 · 执行者: AI
+
+前置：数据库前置满足。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `io.github.bearisbug.synaxis.app.store.StoreHousekeepingDbTest` | 3 个 0 失败：三个 nonce（过期 1 s、过期 1 h、30 s 后过期）删 2 留 1；四个会话（两天前过期无人引用、两天前过期被角色引用、1 分钟前过期、仍有效）只删第一个；另一连接持有 `pg_advisory_lock(0x53594E5800000001)` 时本次返回 -1、一行不删，锁放开后下一次删掉 |
+| 2 | 反证有齿：`StoreHousekeeping` 的会话清理语句在 `interval '1 day'` 后加 ` OR true`，与 `TC-PROD-156` 第 2 步同一轮跑，再还原 | 红在 `onlySessionsExpiredForADayThatNoLeasePointsAtAreDeleted`：`expected: <1> but was: <-1>`（被引用的会话违反外键，整次清理失败）。还原后复绿 |
+
+后置：确认 `StoreHousekeeping.java` 没有残留改动。
+
+#### `TC-PROD-159` 接收转入要求 postgres 存储与 `SYNAXIS_TRANSFER_HMAC_KEYS`，有密钥时签发与验票两侧都建立 — 对应 `REQ-PROD-045` · 级别: 回归 · 执行者: AI
+
+前置：数据库前置满足。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `MainStoreIntegrationTest`，看 `acceptingTransfersNeedsTheDatabaseAndTheKeysAndTheKeysBringBothSides` | `synaxis.accept-transfers=true` 的进程：内存存储被拒（`needs the postgres store`）；postgres 存储而无密钥被拒（信息含 `SYNAXIS_TRANSFER_HMAC_KEYS`）；给一把 32 字节密钥后 `StoreRuntime` 同时有签发端与验票端；密钥写成 `1:short` 被拒 |
+| 2 | 反证有齿：`Main#openStore` 的 `if (keys == null && process.config().acceptTransfers())` 加 `&& Boolean.getBoolean("proof.never")`，只跑这一条，再还原 | 红：`Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown.`（`MainStoreIntegrationTest.java:143`）。还原后复绿 |
+
+后置：确认 `Main.java` 没有残留改动。
+
+#### `TC-PROD-160` 只有宿主依赖数据库与 Redis：引擎、`:plugin-api`、玩法模块不依赖 JDBC、连接池、Flyway 与 Jedis — 对应 `REQ-PROD-006` · 级别: 回归 · 执行者: AI
+
+前置：工作副本干净。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `io.github.bearisbug.synaxis.architecture.PersistenceBoundaryArchitectureTest`（`:architecture-tests:test`） | 2 个 0 失败：`io.github.bearisbug.synaxis..` 中 `app..` 以外的类不依赖 `java.sql..`、`javax.sql..`、`org.postgresql..`、`com.zaxxer..`、`org.flywaydb..`、`redis.clients..`；测试夹具 `GameClassReachingForTheDatabase`（拿 `java.sql.Connection` 直接改 `character`）被同一规则拒绝，信息含 `java.sql.Connection` |
+| 2 | 反证有齿：从规则的包列表里删掉 `"java.sql.."`，重跑，再还原 | 红在 `theRuleRejectsAGameClassHoldingAConnection`：`Expected java.lang.AssertionError to be thrown, but nothing was thrown.`。还原后复绿 |
+
+后置：确认 `PersistenceBoundaryArchitectureTest.java` 没有残留改动。
+
+#### `TC-PROD-161` `:testing` 的 `InMemoryPlayerDataStore` 供插件自测：保存恒成功、冻结时交易不写 — 对应 `REQ-PROD-006` · 级别: 回归 · 执行者: AI
+
+前置：工作副本干净。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `io.github.bearisbug.synaxis.testing.test.InMemoryPlayerDataStoreIntegrationTest`（`:testing:test`） | 2 个 0 失败：注册后读到默认值，改值并 `markDirty` 后 `dirty` 含该段，`saveNow` 得 `SAVED` 并清空；`commitTogether` 得 `SAVED`、值变为提交值、`apply` 执行 1 次；重复注册被拒；`freeze(player, true)` 后 `commitTogether` 与 `saveNow` 都得 `UNAVAILABLE`、`apply` 未执行、值不变 |
+| 2 | 反证有齿：`InMemoryPlayerDataStore#commitTogether` 的 `if (isFrozen(player))` 加 `&& Boolean.getBoolean("proof.never")`，重跑，再还原 | 红在 `aFrozenPlayerCommitsNothingAndRegistrationIsOnce`：`expected: <UNAVAILABLE> but was: <SAVED>`。还原后复绿 |
+
+后置：确认 `InMemoryPlayerDataStore.java` 没有残留改动。
+
+#### `TC-PROD-162` 客户端模组带转服拒绝、转服失败与停机倒计时三条译文 — 对应 `REQ-PROD-045`、`REQ-PROD-008` · 级别: 回归 · 执行者: AI
+
+前置：工作副本干净。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | `cd client-fabric && ./gradlew build --no-daemon` | `BUILD SUCCESSFUL`；`PlayerStoreTextTest` 2 个 0 失败：`en_us.json` 与 `zh_cn.json` 都有 `synaxis:transfer-rejected`、`synaxis:transfer-failed`、`synaxis:server-stopping-in` |
+| 2 | 反证有齿：删掉 `zh_cn.json` 的 `synaxis:transfer-rejected` 一行，`./gradlew test --tests '*PlayerStoreTextTest*' --no-daemon`，再还原 | `2 tests completed, 1 failed`，红在 `[2] "zh_cn"`：`zh_cn has no text for synaxis:transfer-rejected ==> expected: <true> but was: <false>`。还原后复绿 |
+
+后置：确认 `zh_cn.json` 没有残留改动。
+
+#### `TC-PROD-163` `:plugin-api` 的新增面过 ABI 门：新类型是新增，接口上的新方法都是默认方法 — 对应 `REQ-PROD-006`、`REQ-PROD-021` · 级别: 回归 · 执行者: AI
+
+前置：`gh release download v0.1.0 --repo Bearisbug/synaxis --dir <abi> --pattern plugin-api.jar --pattern protocol.jar`（`gradle/abi-baseline.tag` 指的基线）。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | `./gradlew :plugin-api:checkBinaryCompatibility :protocol:checkBinaryCompatibility -PbaselineJarDir=<abi> --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts` | 两个任务都执行（没有「无 baseline」提示）、`BUILD SUCCESSFUL` |
+| 2 | 反证有齿：把 `PluginContext#playerData()` 改回抽象方法（`PlayerDataStore playerData();`），重跑 `:plugin-api:checkBinaryCompatibility`，再还原 | `BUILD FAILED`：`New abstract method added to interface: io/github/bearisbug/synaxis/plugin/PluginContext#playerData()Lio/github/bearisbug/synaxis/plugin/PlayerDataStore; (breaks implementing classes)`、`ABI Check failed with 1 binary compatibility violations.`。还原后复绿 |
+
+后置：确认 `PluginContext.java` 没有残留改动；删掉 `<abi>`。
+
+#### `TC-PROD-164` CI：两个 job 都挂 PostgreSQL 与 Valkey 服务容器，存储测试在 CI 上不许被跳过 — 对应 `REQ-PROD-005` · 级别: 回归 · 执行者: AI
+
+前置：仓库根 `.venv` 里有 PyYAML；`:server-app:test` 刚完整跑过（结果文件齐全）。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 用 `.venv` 的 Python 以 `yaml.safe_load` 读 `.github/workflows/ci.yml`，列出 `check` 与 `multithreaded` 两个 job 的 `services`、`ports`、`env`，并把 `check` job 里「Check that the player store tests ran against the database」一步的 `run:` 抽成脚本；在仓库根以 `bash -e` 跑它 | 解析成功；两个 job 都是 `postgres:16-alpine`（`5432:5432`）与 `valkey/valkey:8-alpine`（`6379:6379`），`env` 都含 `SYNAXIS_TEST_PG_URL=jdbc:postgresql://127.0.0.1:5432/postgres`、`SYNAXIS_TEST_PG_USER=postgres`、`SYNAXIS_TEST_PG_PASSWORD=synaxis`、`SYNAXIS_TEST_REDIS_URL=redis://127.0.0.1:6379`；脚本退出码 0 |
+| 2 | 反证有齿：把 `server-app/build/test-results/test/TEST-io.github.bearisbug.synaxis.app.store.ShardSessionDbTest.xml` 的 `skipped="0"` 改成 `skipped="1"` 重跑脚本，再改回；另把 `SYNAXIS_TEST_PG_URL` 设成 `jdbc:postgresql://127.0.0.1:1/postgres` 跑 `MigrationsDbTest` | 前者退出码 1（一个套件有跳过即红）。后者 `5 tests completed, 5 failed`，每条都是 `java.lang.IllegalStateException: SYNAXIS_TEST_PG_URL is set and cannot be reached`，设了地址就不会悄悄跳过 |
+
+后置：删掉抽出的脚本；确认结果文件已改回。
+
+#### `TC-PROD-165` 真进程：`--migrate-only` 写模式、不重复写；空库与模式不符的分片拒绝起服、端口不 bind — 对应 `REQ-PROD-036`、`REQ-PROD-005` · 级别: 回归 · 执行者: AI
+
+前置：`:server-app:installDist` 已跑；端口 25631 空闲；`synaxis-pg` 里建一个本用例专用的空库（下称 `<db>`），`SYNAXIS_STATE_DB_URL=jdbc:postgresql://127.0.0.1:5440/<db>`、`SYNAXIS_STATE_DB_USER`、`SYNAXIS_STATE_DB_PASSWORD`、`SYNAXIS_REDIS_URL=redis://127.0.0.1:6440` 导出到环境。下文 `<run>` 指 `java -Xmx1G -Dsynaxis.app.port=25631 -Dsynaxis.app.core-mode=on -Dsynaxis.app.store=postgres -Dsynaxis.app.shard-id=w3a-proc -Dsynaxis.connection-gate.trusted-networks=127.0.0.0/8 -cp "<仓库根>/server-app/build/install/server-app/lib/*" io.github.bearisbug.synaxis.app.Main`，每步在新的临时目录里执行。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | `<run> -Dsynaxis.app.auth=offline < /dev/null` | 退出码 1，`ERROR … Main - Refusing to start: the database schema is not the one this build expects: Detected resolved migration not applied to database: 1.` |
+| 2 | 同一 classpath 跑 `Main --migrate-only --auth-mode=offline`；再跑一次 `--auth-mode=online` | 前者退出码 0、`Migrated the player store: auth_mode=offline`；后者退出码 1、`Refusing to migrate: store_meta.auth_mode is offline and --auth-mode is online; a store never changes whose identities it holds, nothing was migrated` |
+| 3 | `<run> < /dev/null`（默认在线模式，Mojang 地址） | 退出码 1，`Refusing to start: store_meta.auth_mode is offline but this process runs online; a shard only serves the identities its database holds`；`lsof -nP -iTCP:25631 -sTCP:LISTEN` 无输出 |
+| 4 | 反证有齿：`Migrations#requireAuthMode` 的 `if (!recorded.equals(effective.value()))` 加 `&& Boolean.getBoolean("proof.never")`，`installDist` 后重做第 3 步（后台起，看到就绪行后按 pid 停），再还原并重跑 `installDist` | 红：日志出现 `synaxis server-app listening on 0.0.0.0:25631`，`lsof` 看到 `java … TCP *:25631 (LISTEN)`——在线分片在离线库上起来了。还原后第 3 步复现拒绝 |
+
+后置：按 pid 停掉第 4 步的进程；删掉临时目录（`<db>` 留给 `TC-PROD-166`～`TC-PROD-168`）。
+
+#### `TC-PROD-166` 真进程：20 个机器人在线时控制台 `stop`，全部角色先写入并释放、再踢人，`EVT:shutdown_saved` 20/20 — 对应 `REQ-PROD-008`、`REQ-PROD-005` · 级别: 回归 · 执行者: AI
+
+前置：`TC-PROD-165` 第 2 步迁移过的 `<db>` 与环境变量；`javac -d <cls> tools/loadtest/PacketFlood.java`。服务端 stdin 接一个 FIFO（`exec 3<>console`），用 `echo stop >&3` 发控制台命令。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | `<run> -Dsynaxis.app.auth=offline <&3 > server.log &`；就绪后在仓库根 `java -cp <cls> PacketFlood --port 25631 --connections 20 --hz 2 --seconds 40 --out <out> &`，等 `server.log` 有 20 行 `Login success`；查 `select count(*), count(lease_session_id), min(version), max(version) from character` | `server.log` 有 `Shard session opened: shard_id=w3a-proc session_id=1` 与 `Effective store: mode=postgres auth_mode=offline StoreSettings[… password=<set> …]`；查询得 `20\|20\|0\|0` |
+| 2 | `echo stop >&3`，等进程退出；再查同一语句与 `shard_session`；读 `logs/events-w3a-proc-*.jsonl` 的 `shutdown_saved` 行与 `server.log` | 进程在约 1 s 内以退出码 0 结束；查询得 `20\|0\|1\|1`（每个角色写一次、租约全部为空）；会话 1 已过期；台账一行 `"event":"shutdown_saved","shard_id":"w3a-proc","online":20,"saved":20,"failed":0,…,"timed_out":"false"`，其时间戳早于 20 行 `Kicking … reason=synaxis:server-stopping`；日志没有 WARN 与 ERROR |
+| 3 | 反证有齿：`PlayerStore#saveAll` 里 `record.player.scheduler().scheduleNextTick(() -> shutdownSnapshot(record, entry.getValue(), true));` 前加 `if (Boolean.getBoolean("proof.never"))`，`installDist` 后在另一个新迁移的库上重做第 1、2 步，再还原并重跑 `installDist` | 红：进程 31 s 后才退出，日志 `ERROR … The shutdown save did not complete within its budget` 与 20 行 `Not saved on shutdown, its lease runs out with the session: character_id=…`；台账 `"saved":0,"failed":20,"elapsed_ms":30010,"timed_out":"true"`；查询得 `20\|20\|0\|0`（一个都没写，租约还指着已过期的会话）。还原后复绿 |
+
+后置：按 pid 停掉 PacketFlood；删掉临时目录、`<out>` 与反证用的库。
+
+#### `TC-PROD-167` 真进程：`kill -9` 后同 `shard_id` 立即重启，20 个角色当场被接管、无人被拒，写 20 条 `EVT:lease_takeover` — 对应 `REQ-PROD-005` · 级别: 回归 · 执行者: AI
+
+前置：同 `TC-PROD-166`。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 起服、20 个机器人登录（同 `TC-PROD-166` 第 1 步）后 `kill -9 <pid>`；查 `select count(*), count(lease_session_id) from character` | 退出码 137；`20\|20`（租约还指着被杀的会话） |
+| 2 | 同一 `shard_id` 立即重新起服，就绪后再起 20 个机器人；统计新日志的 `Login success`、`Refusing a login`，读台账的 `lease_takeover`；最后 `echo stop >&3` 并查租约 | 起服约 1～2 s 就绪；20 个机器人都进服，`Refusing a login` 0 行；台账 20 行 `lease_takeover`，`previous_session_id` 是被杀那次的会话，`gap_ms` 为距上次保存的毫秒数；`stop` 后 `20\|0` |
+| 3 | 反证有齿：`ShardSession#open` 里（第一处）`expire.executeUpdate();` 改成 `if (Boolean.getBoolean("proof.never")) expire.executeUpdate();`，`installDist` 后在 `TC-PROD-166` 第 3 步用过的反证库上重做第 1、2 步，再还原并重跑 `installDist` | 红：重启后 20 行 `Refusing a login: … reason=synaxis:state-unavailable cause=held by shard_id=w3a-proc`（被杀那次的会话还要约 30 s 才过期），`stop` 后仍是 `20\|20`。还原后复绿 |
+
+后置：按 pid 停掉 PacketFlood；删掉临时目录与反证用的库。
+
+#### `TC-PROD-168` 真进程：Redis 不可达时 20 次登录全部成功，Redis 失败 10 s 至多一行 WARN，且不在 tick 线程上 — 对应 `REQ-PROD-007` · 级别: 回归 · 执行者: AI
+
+前置：同 `TC-PROD-166`，但 `SYNAXIS_REDIS_URL=redis://127.0.0.1:1`。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 起服、20 个机器人 `--seconds 25`，约 25 s 后 `echo stop >&3`；`grep 'Redis is unreachable' server.log` | 20/20 进服；约 25 s 内恰 3 行 WARN：`[Syn-Redis-Kick] … (subscribe) … (1 Redis failures since the last report)`、`[Syn-Presence] … (presence) … (50 Redis failures since the last report)`、`[Syn-Presence] … (11 Redis failures since the last report)`，没有一行出自 `Syn-TickScheduler`；退出码 0 |
+| 2 | 反证有齿：`RedisLink#failed` 的 `failures.warn(…)` 换成 `LOGGER.warn(…)`，`installDist` 后重做第 1 步，再还原并重跑 `installDist` | 红：同样 25 s 里 65 行 `Redis is unreachable`，每次失败一行（出自各条虚拟线程与 `Syn-Redis-Kick`）。还原后复绿 |
+
+后置：按 pid 停掉 PacketFlood；删掉 `<db>`（`DROP DATABASE … WITH (FORCE)`）、`<cls>` 与临时目录；`lsof -nP -iTCP:25631 -sTCP:LISTEN` 无输出。
+
+本节与设计文档的口径差异：一是 §17、§19、§24 写的是 Testcontainers 与单独的 `dbTest` 任务，本节的数据库用例在普通 `test` 任务里连共用容器（本地）或服务容器（CI），CI 以「设了地址就不许跳过」加结果文件检查保证跳过数为 0；二是 §19「数据库暂停时冻结再踢出」「Redis 宕机照常登录」的进程级 `docker pause` 没有做（两个容器各组共用，暂停会打断别组），分别由 `TC-PROD-143`、`TC-PROD-149` 的断连与过期和 `TC-PROD-168` 的不可达地址覆盖；三是 §19「崩溃后丢失窗口不超过 60 s」在 `TC-PROD-167` 只验了立即接管，60 s 定时保存的丢失窗口由 `TC-PROD-150` 覆盖。
+
 ## 5. 回归策略
 
 - **全量轮**（全部用例）：首次成稿、每个阶段 gate（引擎域阶段 0、2、3；游戏域 `docs/DESIGN-M2.md` §26 的阶段 1～6b；大世界域 `docs/DESIGN-M3.md` §26 的 M3-A～M3-G）、跨功能域改动、地基变更（JDK、Gradle、镜像、协议版本、模块拆分、启动入口）。
@@ -2729,6 +3063,7 @@ jcmd "$pid" VM.flags | tr ' ' '\n' | grep -cxE -- '-XX:\+UseG1GC|-XX:InitialHeap
   - 生产就绪域（`docs/DESIGN-PROD.md`）：正版验证与加密（`REQ-PROD-002`～`REQ-PROD-004`、`REQ-PROD-044`）→ TC-PROD-090～TC-PROD-105（人工 TC-PROD-106）；动了 `Auth`、`SessionServer`、`crypto/LoginCrypt`、`network/player/SessionClient`、`LoginListener`、`PlayerSocketConnection` 的加解密或逐帧读取、`ConnectionManager#createPlayerReplacing`、`server-app` 的 `Main#auth` 就跑 TC-PROD-090～TC-PROD-101 与 TC-PROD-105，动了 `tools/fake-sessionserver`、`PacketFlood --auth` 或模组 gametest 的 authlib 参数再加 TC-PROD-102～TC-PROD-104。跨域牵连：动了 `PacketVanilla` 的 login 表 → 加 TC-036 与 TC-PROD-091；动了登录监听器的离线分支或 `DuplicateUuidLoginIntegrationTest` → 加 TC-032 与 TC-PROD-100。
   - 生产就绪域（`docs/DESIGN-PROD.md`）：代理转发模式删除与 PROXY 可信网段（`REQ-PROD-036` 前半）→ TC-PROD-120～TC-PROD-124；动了 `Auth` 的模式集合、`HandshakeListener`、`ArchitectureTest#boundedReporters`、`ServerConfig` 的 `synaxis.proxy-protocol*` 键、`ConnectionGate#parseNetworks` 或 `PlayerSocketConnection` 的 PROXY 解码就跑 TC-PROD-120～TC-PROD-123，再动了 `server-app` 的拒绝起服路径加 TC-PROD-124（真进程）。跨域牵连：动了 PROXY 解码或可信网段 → 加 TC-PROD-061。
   - 生产就绪域（`docs/DESIGN-PROD.md`）：聊天（`REQ-PROD-009`）→ TC-PROD-080～TC-PROD-083；动了 `ChatMessageListener`、`PlayerChatEvent`、`Messenger`、`ChatRateLimiter`、`ServerConfig` 的 `synaxis.chat-*` 键或 `Player` 发的 `JoinGamePacket` 就跑 TC-PROD-080～TC-PROD-082；动了模组的 `ClientPacketListenerMixin`、`synaxis.mixins.json` 或 `SpikeClientGameTest#chat` 再加 TC-PROD-083。
+  - 生产就绪域（`docs/DESIGN-PROD.md`）：插件调度器、玩家数据持久化、停机与转服票据（`REQ-PROD-021`、`REQ-PROD-005`～`REQ-PROD-008`、`REQ-PROD-004` 跨分片部分、`REQ-PROD-036` 的 `store_meta`、`REQ-PROD-045`）→ TC-PROD-140～TC-PROD-168；动了 `PluginScheduler` 或 `PluginSchedulerImpl` 就跑 TC-PROD-140；动了 `server-app` 的 `store/`、`transfer/`、`AdmissionGate`、`PluginHost` 的存储接线、`Main#openStore` / `migrateOnly` 或 `db/migration`、`db/rollback` 就跑 TC-PROD-141～TC-PROD-153、TC-PROD-155～TC-PROD-159（要数据库前置），再动了起服、停机或 Redis 路径加 TC-PROD-165～TC-PROD-168（真进程，约 3 分钟）；动了引擎 `ServerProcessImpl` 的停机序列、`ShutdownParticipant`、`ConnectionGate#close` 或 `LoginListener` 的停机分支就跑 TC-PROD-154、TC-PROD-155 与 TC-PROD-166；动了 `:plugin-api` 的接口就跑 TC-PROD-163；动了 `:testing` 的 `InMemoryPlayerDataStore` 就跑 TC-PROD-161；动了模组的 lang 就跑 TC-PROD-162；动了 `ci.yml` 的服务容器或跳过检查就跑 TC-PROD-164；动了 `architecture-tests` 的持久化边界规则就跑 TC-PROD-160。跨域牵连：动了引擎停机序列 → 加 TC-PROD-020～TC-PROD-023（看门狗判死接保存）。
   - 影响面不确定时升级为全量轮。
 - **复测轮**（上轮失败用例 + 全部冒烟级）：修复失败项之后。
 - **人工收口轮**（仅上轮「待人工」用例）：AI 轮之后由人工补测 TC-016、TC-030、TC-GAME-020、TC-GAME-038、TC-GAME-046、TC-GAME-047，不要求冒烟级。

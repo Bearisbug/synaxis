@@ -13,6 +13,7 @@ import io.github.bearisbug.synaxis.adventure.EngineAdventure;
 import io.github.bearisbug.synaxis.tag.TagHandler;
 
 import java.util.IllegalFormatException;
+import java.util.List;
 import java.util.Locale;
 import java.util.function.Consumer;
 
@@ -66,7 +67,10 @@ public class ConsoleSender implements CommandSender {
             final Component translated =
                     EngineAdventure.COMPONENT_TRANSLATOR.apply(component, EngineAdventure.getDefaultLocale());
             if (!(translated instanceof TranslatableComponent)) {
-                out.accept(translated);
+                // The translation ends with the original's children, which the flattener walks
+                // itself after this; without them here they are written once
+                final List<Component> children = translated.children();
+                out.accept(translated.children(children.subList(0, children.size() - component.children().size())));
                 return;
             }
         }

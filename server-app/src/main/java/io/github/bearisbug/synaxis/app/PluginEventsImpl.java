@@ -104,8 +104,11 @@ final class PluginEventsImpl implements PluginEvents {
         EventNode<?> node = existing != null ? existing.get() : null;
         if (node != null) return node;
         final String name = "plugin/" + pluginId + scope.suffix() + "/" + priority.name().toLowerCase(Locale.ROOT);
-        // LOWEST..MONITOR as -2..3, so that NORMAL keeps the default priority 0 of other nodes
-        node = scope.attach(name, priority.ordinal() - EventPriority.NORMAL.ordinal());
+        // LOWEST..HIGHEST as -2..2, so that NORMAL keeps the default priority 0 of other nodes, and
+        // MONITOR as 4: the store's freeze sits at 3 between them (PlayerStore#attach, API-PROD-005)
+        final int nodePriority = priority == EventPriority.MONITOR ? 4
+                : priority.ordinal() - EventPriority.NORMAL.ordinal();
+        node = scope.attach(name, nodePriority);
         tiers.put(priority, new WeakReference<>(node));
         return node;
     }

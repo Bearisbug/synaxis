@@ -1,12 +1,16 @@
 package io.github.bearisbug.synaxis.app;
 
+import io.github.bearisbug.synaxis.app.store.PlayerStore;
 import io.github.bearisbug.synaxis.coordinate.Pos;
 import io.github.bearisbug.synaxis.entity.Entity;
 import io.github.bearisbug.synaxis.entity.EntityType;
+import io.github.bearisbug.synaxis.entity.ItemEntity;
 import io.github.bearisbug.synaxis.entity.Player;
 import io.github.bearisbug.synaxis.event.Event;
 import io.github.bearisbug.synaxis.event.EventNode;
 import io.github.bearisbug.synaxis.event.entity.EntityTickEvent;
+import io.github.bearisbug.synaxis.event.item.ItemDropEvent;
+import io.github.bearisbug.synaxis.event.item.PickupItemEvent;
 import io.github.bearisbug.synaxis.event.player.PlayerChatEvent;
 import io.github.bearisbug.synaxis.event.player.PlayerCustomClickEvent;
 import io.github.bearisbug.synaxis.event.player.PlayerDisconnectEvent;
@@ -16,6 +20,8 @@ import io.github.bearisbug.synaxis.event.server.ServerTickMonitorEvent;
 import io.github.bearisbug.synaxis.event.trait.CancellableEvent;
 import io.github.bearisbug.synaxis.event.trait.PlayerInstanceEvent;
 import io.github.bearisbug.synaxis.instance.Instance;
+import io.github.bearisbug.synaxis.item.ItemStack;
+import io.github.bearisbug.synaxis.item.Material;
 import io.github.bearisbug.synaxis.plugin.PluginApi;
 import io.github.bearisbug.synaxis.plugin.PluginContext;
 import io.github.bearisbug.synaxis.plugin.PluginDescriptor;
@@ -31,6 +37,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 import java.nio.file.Path;
+import java.time.Duration;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -93,9 +100,16 @@ class PluginEventsIntegrationTest {
     }
 
     private PluginHost host(Env env, SynaxisPlugin... plugins) {
+        return host(env, null, plugins);
+    }
+
+    /** The same with the host's player store chosen by the test, an in-memory one when null. */
+    private PluginHost host(Env env, @Nullable PlayerStore store, SynaxisPlugin... plugins) {
         ledger = new EventLedger(workingDirectory.resolve("logs"), "test", EventLedger.DEFAULT_MAX_BYTES_PER_DAY);
         ledger.start();
-        final PluginHost host = new PluginHost(env.process(), workingDirectory.resolve("plugins"), ledger);
+        final PluginHost host = store == null
+                ? new PluginHost(env.process(), workingDirectory.resolve("plugins"), ledger)
+                : new PluginHost(env.process(), workingDirectory.resolve("plugins"), ledger, store);
         host.enable(List.of(plugins), Set.of());
         return host;
     }
@@ -291,6 +305,35 @@ class PluginEventsIntegrationTest {
         env.process().eventHandler().call(new PlayerChatEvent(player, List.of(), "hello"));
 
         assertEquals(List.of("instance:monitor", "global:lowest"), calls);
+        host.disableAll();
+    }
+
+    @Test
+    void theStoreFreezeOverridesHighestAndMonitorSeesItsOutcome(Env env) {
+        final Instance instance = env.createFlatInstance();
+        final Player player = env.createPlayer(instance, new Pos(0, 41, 0));
+        final List<String> calls = new CopyOnWriteArrayList<>();
+        final Plugin plugin = new Plugin("plugin", events -> {
+            events.addListener(PickupItemEvent.class, EventPriority.HIGHEST, false, event -> event.setCancelled(false));
+            events.addListener(ItemDropEvent.class, EventPriority.HIGHEST, false, event -> event.setCancelled(false));
+            events.addListener(PickupItemEvent.class, EventPriority.MONITOR, false,
+                    event -> calls.add("pickup:cancelled=" + event.isCancelled()));
+            events.addListener(ItemDropEvent.class, EventPriority.MONITOR, false,
+                    event -> calls.add("drop:cancelled=" + event.isCancelled()));
+        });
+        final PlayerStore store = PlayerStore.inMemory(env.process(), (_, _) -> {
+        });
+        final PluginHost host = host(env, store, plugin);
+        // The shutdown save phase freezes every player, the only freeze a store without a session has
+        store.saveAll(Duration.ofSeconds(1), true).join();
+
+        final PickupItemEvent pickup = new PickupItemEvent(player, new ItemEntity(ItemStack.of(Material.DIAMOND)));
+        env.process().eventHandler().call(pickup);
+        final ItemDropEvent drop = new ItemDropEvent(player, ItemStack.of(Material.DIAMOND));
+        env.process().eventHandler().call(drop);
+
+        assertEquals(List.of("pickup:cancelled=true", "drop:cancelled=true"), calls);
+        assertTrue(pickup.isCancelled() && drop.isCancelled(), "the un-cancel of HIGHEST does not win");
         host.disableAll();
     }
 

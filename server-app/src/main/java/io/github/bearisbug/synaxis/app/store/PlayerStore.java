@@ -222,9 +222,10 @@ public final class PlayerStore implements ShutdownParticipant {
      */
     public void attach(EventNode<Event> hostNode) {
         hostNode.addListener(PlayerDisconnectEvent.class, event -> loggedOut(event.getPlayer()));
-        // After every plugin listener: a frozen player's pickup or drop is cancelled whatever a
-        // plugin made of it (API-PROD-005, the HIGHEST of a plugin priority)
-        final EventNode<Event> freeze = EventNode.all("synaxis-store-freeze").setPriority(Integer.MAX_VALUE);
+        // At 3, after the plugin priorities LOWEST..HIGHEST (-2..2) and before MONITOR (4), see
+        // PluginEventsImpl#tier: a frozen player's pickup or drop is cancelled whatever a plugin made
+        // of it, and MONITOR sees it cancelled (API-PROD-005)
+        final EventNode<Event> freeze = EventNode.all("synaxis-store-freeze").setPriority(3);
         freeze.addListener(PickupItemEvent.class, event -> {
             if (event.getLivingEntity() instanceof Player player && isFrozen(player)) event.setCancelled(true);
         });

@@ -1,0 +1,121 @@
+## 1 dampening + blocks + occluded green
+> Task :testing:processResources NO-SOURCE
+> Task :testing:compileJava
+> Task :testing:classes
+> Task :testing:jar
+> Task :testClasses
+> Task :test
+BUILD SUCCESSFUL in 45s
+io.github.bearisbug.synaxis.instance.light.LightDampeningIntegrationTest tests=14 skipped=0 failures=0 errors=0
+io.github.bearisbug.synaxis.instance.light.LightBlocksTest tests=2 skipped=0 failures=0 errors=0
+io.github.bearisbug.synaxis.instance.light.BlockIsOccludedTest tests=18 skipped=0 failures=0 errors=0
+## grep DIFFUSE_SKY_LIGHT
+       0
+## 2 revert LightingChunk + LightCompute to 32e1923e47^
+> Task :testing:processResources NO-SOURCE
+> Task :testing:compileJava
+> Task :testing:classes
+> Task :testing:jar
+> Task :testClasses
+> Task :test
+LightDampeningIntegrationTest > skyThroughDampeningRoof(String, Env) > [1] "minecraft:mangrove_leaves" FAILED
+LightDampeningIntegrationTest > skyThroughDampeningRoof(String, Env) > [2] "minecraft:pale_oak_leaves" FAILED
+LightDampeningIntegrationTest > skyThroughDampeningRoof(String, Env) > [3] "minecraft:powder_snow" FAILED
+LightDampeningIntegrationTest > skyThroughDampeningRoof(String, Env) > [4] "minecraft:white_shulker_box" FAILED
+LightDampeningIntegrationTest > skyThroughDampeningRoof(String, Env) > [5] "minecraft:kelp_plant" FAILED
+LightDampeningIntegrationTest > skyReachesIntoLowBlock(String, Env) > [1] "minecraft:white_carpet" FAILED
+LightDampeningIntegrationTest > skyReachesIntoLowBlock(String, Env) > [2] "minecraft:oak_slab" FAILED
+LightDampeningIntegrationTest > skyReachesIntoLowBlock(String, Env) > [3] "minecraft:enchanting_table" FAILED
+LightDampeningIntegrationTest > skyReachesIntoLowBlock(String, Env) > [4] "minecraft:snow" FAILED
+LightDampeningIntegrationTest > tintedGlassStopsBlockLight(Env) FAILED
+LightDampeningIntegrationTest > tintedGlassStopsSky(Env) FAILED
+14 tests completed, 11 failed
+> Task :test FAILED
+BUILD FAILED in 48s
+io.github.bearisbug.synaxis.instance.light.LightDampeningIntegrationTest tests=14 skipped=0 failures=11 errors=0
+  <testcase name="[1] &quot;minecraft:mangrove_leaves&quot;" classname="io.github.bearisbug.synaxis.instance.light.LightDampeningIntegrationTest" time="1.787">
+    <failure message="org.opentest4j.AssertionFailedError: minecraft:mangrove_leaves roof cell ==&gt; expected: &lt;14&gt; but was: &lt;15&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: minecraft:mangrove_leaves roof cell ==&gt; expected: &lt;14&gt; but was: &lt;15&gt;
+--
+  <testcase name="[2] &quot;minecraft:pale_oak_leaves&quot;" classname="io.github.bearisbug.synaxis.instance.light.LightDampeningIntegrationTest" time="0.079">
+    <failure message="org.opentest4j.AssertionFailedError: minecraft:pale_oak_leaves roof cell ==&gt; expected: &lt;14&gt; but was: &lt;15&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: minecraft:pale_oak_leaves roof cell ==&gt; expected: &lt;14&gt; but was: &lt;15&gt;
+--
+  <testcase name="[3] &quot;minecraft:powder_snow&quot;" classname="io.github.bearisbug.synaxis.instance.light.LightDampeningIntegrationTest" time="0.067">
+    <failure message="org.opentest4j.AssertionFailedError: minecraft:powder_snow roof cell ==&gt; expected: &lt;14&gt; but was: &lt;15&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: minecraft:powder_snow roof cell ==&gt; expected: &lt;14&gt; but was: &lt;15&gt;
+--
+  <testcase name="[4] &quot;minecraft:white_shulker_box&quot;" classname="io.github.bearisbug.synaxis.instance.light.LightDampeningIntegrationTest" time="0.085">
+    <failure message="org.opentest4j.AssertionFailedError: minecraft:white_shulker_box roof cell ==&gt; expected: &lt;14&gt; but was: &lt;15&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: minecraft:white_shulker_box roof cell ==&gt; expected: &lt;14&gt; but was: &lt;15&gt;
+--
+  <testcase name="[5] &quot;minecraft:kelp_plant&quot;" classname="io.github.bearisbug.synaxis.instance.light.LightDampeningIntegrationTest" time="0.055">
+    <failure message="org.opentest4j.AssertionFailedError: minecraft:kelp_plant roof cell ==&gt; expected: &lt;14&gt; but was: &lt;15&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: minecraft:kelp_plant roof cell ==&gt; expected: &lt;14&gt; but was: &lt;15&gt;
+--
+  <testcase name="[1] &quot;minecraft:white_carpet&quot;" classname="io.github.bearisbug.synaxis.instance.light.LightDampeningIntegrationTest" time="0.171">
+    <failure message="org.opentest4j.AssertionFailedError: minecraft:white_carpet ==&gt; expected: &lt;15&gt; but was: &lt;14&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: minecraft:white_carpet ==&gt; expected: &lt;15&gt; but was: &lt;14&gt;
+--
+  <testcase name="[2] &quot;minecraft:oak_slab&quot;" classname="io.github.bearisbug.synaxis.instance.light.LightDampeningIntegrationTest" time="0.133">
+    <failure message="org.opentest4j.AssertionFailedError: minecraft:oak_slab ==&gt; expected: &lt;15&gt; but was: &lt;14&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: minecraft:oak_slab ==&gt; expected: &lt;15&gt; but was: &lt;14&gt;
+--
+  <testcase name="[3] &quot;minecraft:enchanting_table&quot;" classname="io.github.bearisbug.synaxis.instance.light.LightDampeningIntegrationTest" time="0.143">
+    <failure message="org.opentest4j.AssertionFailedError: minecraft:enchanting_table ==&gt; expected: &lt;15&gt; but was: &lt;14&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: minecraft:enchanting_table ==&gt; expected: &lt;15&gt; but was: &lt;14&gt;
+--
+  <testcase name="[4] &quot;minecraft:snow&quot;" classname="io.github.bearisbug.synaxis.instance.light.LightDampeningIntegrationTest" time="0.109">
+    <failure message="org.opentest4j.AssertionFailedError: minecraft:snow ==&gt; expected: &lt;15&gt; but was: &lt;14&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: minecraft:snow ==&gt; expected: &lt;15&gt; but was: &lt;14&gt;
+--
+  <testcase name="tintedGlassStopsBlockLight(Env)" classname="io.github.bearisbug.synaxis.instance.light.LightDampeningIntegrationTest" time="0.157">
+    <failure message="org.opentest4j.AssertionFailedError: expected: &lt;0&gt; but was: &lt;14&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: expected: &lt;0&gt; but was: &lt;14&gt;
+--
+  <testcase name="tintedGlassStopsSky(Env)" classname="io.github.bearisbug.synaxis.instance.light.LightDampeningIntegrationTest" time="0.086">
+    <failure message="org.opentest4j.AssertionFailedError: expected: &lt;0&gt; but was: &lt;15&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: expected: &lt;0&gt; but was: &lt;15&gt;
+## 3 drop fullyLit reset
+ src/main/java/io/github/bearisbug/synaxis/instance/light/SkyLight.java | 1 -
+ 1 file changed, 1 deletion(-)
+> Task :testing:processResources NO-SOURCE
+> Task :testing:compileJava
+> Task :testing:classes
+> Task :testing:jar
+> Task :testClasses
+> Task :test
+LightDampeningIntegrationTest > blockOverFullyLitSectionOnLazyRead(Env) FAILED
+LightDampeningIntegrationTest > roofOverFullyLitSectionOnRelight(Env) FAILED
+14 tests completed, 2 failed
+> Task :test FAILED
+BUILD FAILED in 31s
+io.github.bearisbug.synaxis.instance.light.LightDampeningIntegrationTest tests=14 skipped=0 failures=2 errors=0
+  <testcase name="blockOverFullyLitSectionOnLazyRead(Env)" classname="io.github.bearisbug.synaxis.instance.light.LightDampeningIntegrationTest" time="0.043">
+    <failure message="org.opentest4j.AssertionFailedError: expected: &lt;14&gt; but was: &lt;15&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: expected: &lt;14&gt; but was: &lt;15&gt;
+--
+  <testcase name="roofOverFullyLitSectionOnRelight(Env)" classname="io.github.bearisbug.synaxis.instance.light.LightDampeningIntegrationTest" time="0.06">
+    <failure message="org.opentest4j.AssertionFailedError: expected: &lt;0&gt; but was: &lt;15&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: expected: &lt;0&gt; but was: &lt;15&gt;
+## 4 drop ShapeImpl empty-rectangle guard
+ src/main/java/io/github/bearisbug/synaxis/collision/ShapeImpl.java | 1 -
+ 1 file changed, 1 deletion(-)
+> Task :testing:processResources NO-SOURCE
+> Task :testing:compileJava
+> Task :testing:classes
+> Task :testing:jar
+> Task :testClasses
+> Task :test
+BlockIsOccludedTest > pistonHeadPlateIsFullFace() FAILED
+LightParityIntegrationTest > matchesVanilla(String, Env) > [6] "surface" FAILED
+25 tests completed, 2 failed
+> Task :test FAILED
+BUILD FAILED in 39s
+io.github.bearisbug.synaxis.instance.light.BlockIsOccludedTest tests=18 skipped=0 failures=1 errors=0
+io.github.bearisbug.synaxis.instance.light.LightParityIntegrationTest tests=7 skipped=0 failures=1 errors=0
+  <testcase name="pistonHeadPlateIsFullFace()" classname="io.github.bearisbug.synaxis.instance.light.BlockIsOccludedTest" time="0.005">
+    <failure message="org.opentest4j.AssertionFailedError: expected: &lt;true&gt; but was: &lt;false&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: expected: &lt;true&gt; but was: &lt;false&gt;
+--
+  <testcase name="[6] &quot;surface&quot;" classname="io.github.bearisbug.synaxis.instance.light.LightParityIntegrationTest" time="0.064">
+    <failure message="org.opentest4j.AssertionFailedError: 2 of 589824 nibbles differ from vanilla in surface ==&gt; expected: &lt;0&gt; but was: &lt;2&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: 2 of 589824 nibbles differ from vanilla in surface ==&gt; expected: &lt;0&gt; but w
+## 5 green again
+> Task :testing:processResources NO-SOURCE
+> Task :testing:compileJava
+> Task :testing:classes
+> Task :testing:jar
+> Task :testClasses
+> Task :test
+BUILD SUCCESSFUL in 1m 11s
+io.github.bearisbug.synaxis.instance.light.LightDampeningIntegrationTest tests=14 skipped=0 failures=0 errors=0
+io.github.bearisbug.synaxis.instance.light.LightBlocksTest tests=2 skipped=0 failures=0 errors=0
+io.github.bearisbug.synaxis.instance.light.BlockIsOccludedTest tests=18 skipped=0 failures=0 errors=0
+io.github.bearisbug.synaxis.instance.light.LightParityIntegrationTest tests=7 skipped=0 failures=0 errors=0
+## status

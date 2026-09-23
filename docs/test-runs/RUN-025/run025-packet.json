@@ -1,0 +1,744 @@
+{
+  "schema": 1,
+  "startedAt": "2026-09-23T09:14:39.553628Z",
+  "machine": {
+    "os": "Mac OS X 15.3.2 aarch64",
+    "cpu": "Apple M4 Pro",
+    "availableProcessors": 12,
+    "physicalMemoryGiB": 24.0,
+    "java": "OpenJDK 64-Bit Server VM 25.0.4.1",
+    "gitCommit": "75925b315d385f9f2a5dc888c7400e06e622bbf1"
+  },
+  "childJvmArgs": [
+    "-Xms6g",
+    "-Xmx6g",
+    "-XX:+UseG1GC",
+    "-XX:+AlwaysPreTouch"
+  ],
+  "jobs": [
+    {
+      "params": {
+        "type": "packet",
+        "height": 64,
+        "minY": 0,
+        "terrain": "flat40",
+        "palettes": "optimized (indirect, as decoded from the network format)",
+        "chunks": 1024,
+        "rounds": 3,
+        "warmup": 1,
+        "compressionThreshold": 256
+      },
+      "sampleChunks": "interior 30x30 of each round, pooled over rounds",
+      "plainFirstSerializeMs": {
+        "n": 2700,
+        "median": 0.037375,
+        "p95": 0.042292,
+        "mean": 0.0379748107407408,
+        "min": 0.032583,
+        "max": 0.121875
+      },
+      "plainFramedBytes": {
+        "n": 2700,
+        "median": 136.0,
+        "p95": 153.0,
+        "mean": 136.07555555555555,
+        "min": 109.0,
+        "max": 162.0
+      },
+      "plainUncompressedBytes": {
+        "n": 2700,
+        "median": 4634.0,
+        "p95": 4634.0,
+        "mean": 4634.0,
+        "min": 4634.0,
+        "max": 4634.0
+      },
+      "lazyLightFirstSerializeMs": {
+        "n": 2700,
+        "median": 0.192917,
+        "p95": 0.21725,
+        "mean": 0.19539049333333314,
+        "min": 0.164333,
+        "max": 0.521875
+      },
+      "litSerializeMs": {
+        "n": 2700,
+        "median": 0.039125,
+        "p95": 0.044167,
+        "mean": 0.03971432185185201,
+        "min": 0.033834,
+        "max": 0.106916
+      },
+      "litFramedBytes": {
+        "n": 2700,
+        "median": 184.0,
+        "p95": 207.0,
+        "mean": 182.95333333333335,
+        "min": 136.0,
+        "max": 220.0
+      },
+      "litUncompressedBytes": {
+        "n": 2700,
+        "median": 8742.0,
+        "p95": 8742.0,
+        "mean": 8742.0,
+        "min": 8742.0,
+        "max": 8742.0
+      },
+      "skyArraysPerPacket": {
+        "n": 2700,
+        "median": 2.0,
+        "p95": 2.0,
+        "mean": 2.0,
+        "min": 2.0,
+        "max": 2.0
+      },
+      "blockArraysPerPacket": {
+        "n": 2700,
+        "median": 0.0,
+        "p95": 0.0,
+        "mean": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "heap": {
+        "plainGeneratedKiBPerChunk": {
+          "n": 3,
+          "median": 6.2050933837890625,
+          "p95": 6.615180969238281,
+          "mean": 6.340911865234375,
+          "min": 6.202461242675781,
+          "max": 6.615180969238281
+        },
+        "plainWithPacketCacheKiBPerChunk": {
+          "n": 3,
+          "median": 12.266738891601562,
+          "p95": 12.6563720703125,
+          "mean": 12.389739990234375,
+          "min": 12.246109008789062,
+          "max": 12.6563720703125
+        },
+        "lightingGeneratedKiBPerChunk": {
+          "n": 3,
+          "median": 6.385398864746094,
+          "p95": 6.389671325683594,
+          "mean": 6.3825124104817705,
+          "min": 6.372467041015625,
+          "max": 6.389671325683594
+        },
+        "lightingLitKiBPerChunk": {
+          "n": 3,
+          "median": 10.158828735351562,
+          "p95": 11.157272338867188,
+          "mean": 10.45898183186849,
+          "min": 10.060844421386719,
+          "max": 11.157272338867188
+        },
+        "lightingLitWithPacketCacheKiBPerChunk": {
+          "n": 3,
+          "median": 17.122718811035156,
+          "p95": 17.132972717285156,
+          "mean": 17.125193277994793,
+          "min": 17.119888305664062,
+          "max": 17.132972717285156
+        }
+      },
+      "wholePass": {
+        "plainWallMsPerChunk": {
+          "n": 3,
+          "median": 0.0382211103515625,
+          "p95": 0.0401571455078125,
+          "mean": 0.03846960481770833,
+          "min": 0.03703055859375,
+          "max": 0.0401571455078125
+        },
+        "plainCpuMsPerChunk": {
+          "n": 3,
+          "median": 0.098541015625,
+          "p95": 0.1439951171875,
+          "mean": 0.10120540364583334,
+          "min": 0.061080078125,
+          "max": 0.1439951171875
+        },
+        "lazyLightWallMsPerChunk": {
+          "n": 3,
+          "median": 0.220656576171875,
+          "p95": 0.227183064453125,
+          "mean": 0.22216098372395832,
+          "min": 0.218643310546875,
+          "max": 0.227183064453125
+        },
+        "lazyLightCpuMsPerChunk": {
+          "n": 3,
+          "median": 0.6740830078125,
+          "p95": 0.6768603515625,
+          "mean": 0.6262516276041666,
+          "min": 0.5278115234375,
+          "max": 0.6768603515625
+        },
+        "litWallMsPerChunk": {
+          "n": 3,
+          "median": 0.0401534833984375,
+          "p95": 0.0416629228515625,
+          "mean": 0.040176188151041674,
+          "min": 0.038712158203125,
+          "max": 0.0416629228515625
+        },
+        "litCpuMsPerChunk": {
+          "n": 3,
+          "median": 0.101462890625,
+          "p95": 0.1063369140625,
+          "mean": 0.08283170572916666,
+          "min": 0.0406953125,
+          "max": 0.1063369140625
+        }
+      },
+      "breakdown": {
+        "chunks": 1024,
+        "sectionsPerChunk": 4,
+        "singleValueSectionsPerChunk": 2.0,
+        "indirectSectionsPerChunk": 2.0,
+        "directSectionsPerChunk": 0.0,
+        "paletteValuesKiBPerChunk": 4.03125,
+        "skyLightArraysPerChunk": 1.0,
+        "blockLightArraysPerChunk": 0.0,
+        "lightArraysKiBPerChunk": 2.015625
+      },
+      "rounds": [
+        {
+          "plainPassWallMs": 41.120917,
+          "plainPassCpuMs": 62.546,
+          "lazyLightPassWallMs": 232.635458,
+          "lazyLightPassCpuMs": 690.261,
+          "litPassWallMs": 42.662833,
+          "litPassCpuMs": 108.889,
+          "plainGeneratedKiBPerChunk": 6.615180969238281,
+          "lightingLitKiBPerChunk": 10.158828735351562,
+          "lightingLitWithPacketCacheKiBPerChunk": 17.119888305664062
+        },
+        {
+          "plainPassWallMs": 39.138417,
+          "plainPassCpuMs": 100.906,
+          "lazyLightPassWallMs": 225.952334,
+          "lazyLightPassCpuMs": 693.105,
+          "litPassWallMs": 41.117167,
+          "litPassCpuMs": 103.898,
+          "plainGeneratedKiBPerChunk": 6.2050933837890625,
+          "lightingLitKiBPerChunk": 11.157272338867188,
+          "lightingLitWithPacketCacheKiBPerChunk": 17.132972717285156
+        },
+        {
+          "plainPassWallMs": 37.919292,
+          "plainPassCpuMs": 147.451,
+          "lazyLightPassWallMs": 223.89075,
+          "lazyLightPassCpuMs": 540.479,
+          "litPassWallMs": 39.64125,
+          "litPassCpuMs": 41.672,
+          "plainGeneratedKiBPerChunk": 6.202461242675781,
+          "lightingLitKiBPerChunk": 10.060844421386719,
+          "lightingLitWithPacketCacheKiBPerChunk": 17.122718811035156
+        }
+      ],
+      "job": "packet,h\u003d64,t\u003dflat40,p\u003dopt",
+      "loadAverageBefore": 67.68505859375,
+      "loadAverageAfter": 66.1083984375,
+      "jvm": {
+        "maxHeapMiB": 6144,
+        "inputArguments": [
+          "-Dhttps.proxyHost\u003d127.0.0.1",
+          "-Dhttps.proxyPort\u003d7897",
+          "-Dhttp.proxyHost\u003d127.0.0.1",
+          "-Dhttp.proxyPort\u003d7897",
+          "-Dhttp.nonProxyHosts\u003dmaven.aliyun.com|*.aliyun.com",
+          "-Xms6g",
+          "-Xmx6g",
+          "-XX:+UseG1GC",
+          "-XX:+AlwaysPreTouch"
+        ]
+      }
+    },
+    {
+      "params": {
+        "type": "packet",
+        "height": 256,
+        "minY": 0,
+        "terrain": "natural",
+        "palettes": "optimized (indirect, as decoded from the network format)",
+        "chunks": 1024,
+        "rounds": 3,
+        "warmup": 1,
+        "compressionThreshold": 256
+      },
+      "sampleChunks": "interior 30x30 of each round, pooled over rounds",
+      "plainFirstSerializeMs": {
+        "n": 2700,
+        "median": 0.245375,
+        "p95": 0.344167,
+        "mean": 0.2520156281481482,
+        "min": 0.133208,
+        "max": 0.497875
+      },
+      "plainFramedBytes": {
+        "n": 2700,
+        "median": 1378.0,
+        "p95": 1799.0,
+        "mean": 1409.6233333333332,
+        "min": 931.0,
+        "max": 2207.0
+      },
+      "plainUncompressedBytes": {
+        "n": 2700,
+        "median": 11050.0,
+        "p95": 15160.0,
+        "mean": 12119.08111111111,
+        "min": 8987.0,
+        "max": 17218.0
+      },
+      "lazyLightFirstSerializeMs": {
+        "n": 2700,
+        "median": 0.940375,
+        "p95": 1.1545,
+        "mean": 0.9632071407407417,
+        "min": 0.69225,
+        "max": 5.723833
+      },
+      "litSerializeMs": {
+        "n": 2700,
+        "median": 0.253667,
+        "p95": 0.352333,
+        "mean": 0.259900275925926,
+        "min": 0.142583,
+        "max": 0.503209
+      },
+      "litFramedBytes": {
+        "n": 2700,
+        "median": 1473.0,
+        "p95": 1921.0,
+        "mean": 1502.161111111111,
+        "min": 976.0,
+        "max": 2387.0
+      },
+      "litUncompressedBytes": {
+        "n": 2700,
+        "median": 17204.0,
+        "p95": 21317.0,
+        "mean": 17534.525555555556,
+        "min": 15144.0,
+        "max": 23376.0
+      },
+      "skyArraysPerPacket": {
+        "n": 2700,
+        "median": 3.0,
+        "p95": 3.0,
+        "mean": 2.637777777777778,
+        "min": 2.0,
+        "max": 4.0
+      },
+      "blockArraysPerPacket": {
+        "n": 2700,
+        "median": 0.0,
+        "p95": 0.0,
+        "mean": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "heap": {
+        "plainGeneratedKiBPerChunk": {
+          "n": 3,
+          "median": 16.600082397460938,
+          "p95": 17.101898193359375,
+          "mean": 16.766393025716145,
+          "min": 16.597198486328125,
+          "max": 17.101898193359375
+        },
+        "plainWithPacketCacheKiBPerChunk": {
+          "n": 3,
+          "median": 30.185768127441406,
+          "p95": 30.66436767578125,
+          "mean": 30.336598714192707,
+          "min": 30.15966033935547,
+          "max": 30.66436767578125
+        },
+        "lightingGeneratedKiBPerChunk": {
+          "n": 3,
+          "median": 16.78087615966797,
+          "p95": 16.800003051757812,
+          "mean": 16.78284454345703,
+          "min": 16.767654418945312,
+          "max": 16.800003051757812
+        },
+        "lightingLitKiBPerChunk": {
+          "n": 3,
+          "median": 21.522293090820312,
+          "p95": 22.770477294921875,
+          "mean": 21.911768595377605,
+          "min": 21.442535400390625,
+          "max": 22.770477294921875
+        },
+        "lightingLitWithPacketCacheKiBPerChunk": {
+          "n": 3,
+          "median": 36.406227111816406,
+          "p95": 36.488250732421875,
+          "mean": 36.43174489339193,
+          "min": 36.4007568359375,
+          "max": 36.488250732421875
+        }
+      },
+      "wholePass": {
+        "plainWallMsPerChunk": {
+          "n": 3,
+          "median": 0.2527414140625,
+          "p95": 0.253319376953125,
+          "mean": 0.2520609674479167,
+          "min": 0.250122111328125,
+          "max": 0.253319376953125
+        },
+        "plainCpuMsPerChunk": {
+          "n": 3,
+          "median": 0.3000234375,
+          "p95": 0.4061044921875,
+          "mean": 0.3187314453125,
+          "min": 0.25006640625,
+          "max": 0.4061044921875
+        },
+        "lazyLightWallMsPerChunk": {
+          "n": 3,
+          "median": 1.04662109375,
+          "p95": 1.053292236328125,
+          "mean": 1.0306070556640625,
+          "min": 0.9919078369140625,
+          "max": 1.053292236328125
+        },
+        "lazyLightCpuMsPerChunk": {
+          "n": 3,
+          "median": 2.023822265625,
+          "p95": 2.3601650390625,
+          "mean": 2.1047819010416666,
+          "min": 1.9303583984375,
+          "max": 2.3601650390625
+        },
+        "litWallMsPerChunk": {
+          "n": 3,
+          "median": 0.259793009765625,
+          "p95": 0.260590005859375,
+          "mean": 0.26005722363281253,
+          "min": 0.2597886552734375,
+          "max": 0.260590005859375
+        },
+        "litCpuMsPerChunk": {
+          "n": 3,
+          "median": 0.2643681640625,
+          "p95": 0.461611328125,
+          "mean": 0.32934179687500004,
+          "min": 0.2620458984375,
+          "max": 0.461611328125
+        }
+      },
+      "breakdown": {
+        "chunks": 1024,
+        "sectionsPerChunk": 16,
+        "singleValueSectionsPerChunk": 10.474609375,
+        "indirectSectionsPerChunk": 5.525390625,
+        "directSectionsPerChunk": 0.0,
+        "paletteValuesKiBPerChunk": 11.137115478515625,
+        "skyLightArraysPerChunk": 1.482421875,
+        "blockLightArraysPerChunk": 0.0,
+        "lightArraysKiBPerChunk": 2.988006591796875
+      },
+      "rounds": [
+        {
+          "plainPassWallMs": 259.399042,
+          "plainPassCpuMs": 307.224,
+          "lazyLightPassWallMs": 1078.57125,
+          "lazyLightPassCpuMs": 2416.809,
+          "litPassWallMs": 266.023583,
+          "litPassCpuMs": 472.69,
+          "plainGeneratedKiBPerChunk": 17.101898193359375,
+          "lightingLitKiBPerChunk": 21.522293090820312,
+          "lightingLitWithPacketCacheKiBPerChunk": 36.488250732421875
+        },
+        {
+          "plainPassWallMs": 258.807208,
+          "plainPassCpuMs": 415.851,
+          "lazyLightPassWallMs": 1015.713625,
+          "lazyLightPassCpuMs": 1976.687,
+          "litPassWallMs": 266.028042,
+          "litPassCpuMs": 270.713,
+          "plainGeneratedKiBPerChunk": 16.597198486328125,
+          "lightingLitKiBPerChunk": 22.770477294921875,
+          "lightingLitWithPacketCacheKiBPerChunk": 36.406227111816406
+        },
+        {
+          "plainPassWallMs": 256.125042,
+          "plainPassCpuMs": 256.068,
+          "lazyLightPassWallMs": 1071.74,
+          "lazyLightPassCpuMs": 2072.394,
+          "litPassWallMs": 266.844166,
+          "litPassCpuMs": 268.335,
+          "plainGeneratedKiBPerChunk": 16.600082397460938,
+          "lightingLitKiBPerChunk": 21.442535400390625,
+          "lightingLitWithPacketCacheKiBPerChunk": 36.4007568359375
+        }
+      ],
+      "job": "packet,h\u003d256,t\u003dnatural,p\u003dopt",
+      "loadAverageBefore": 66.1083984375,
+      "loadAverageAfter": 59.4228515625,
+      "jvm": {
+        "maxHeapMiB": 6144,
+        "inputArguments": [
+          "-Dhttps.proxyHost\u003d127.0.0.1",
+          "-Dhttps.proxyPort\u003d7897",
+          "-Dhttp.proxyHost\u003d127.0.0.1",
+          "-Dhttp.proxyPort\u003d7897",
+          "-Dhttp.nonProxyHosts\u003dmaven.aliyun.com|*.aliyun.com",
+          "-Xms6g",
+          "-Xmx6g",
+          "-XX:+UseG1GC",
+          "-XX:+AlwaysPreTouch"
+        ]
+      }
+    },
+    {
+      "params": {
+        "type": "packet",
+        "height": 384,
+        "minY": -64,
+        "terrain": "natural",
+        "palettes": "optimized (indirect, as decoded from the network format)",
+        "chunks": 1024,
+        "rounds": 3,
+        "warmup": 1,
+        "compressionThreshold": 256
+      },
+      "sampleChunks": "interior 30x30 of each round, pooled over rounds",
+      "plainFirstSerializeMs": {
+        "n": 2700,
+        "median": 0.511792,
+        "p95": 0.711792,
+        "mean": 0.5243164340740739,
+        "min": 0.278333,
+        "max": 1.48075
+      },
+      "plainFramedBytes": {
+        "n": 2700,
+        "median": 2468.0,
+        "p95": 2965.0,
+        "mean": 2485.6844444444446,
+        "min": 1779.0,
+        "max": 3377.0
+      },
+      "plainUncompressedBytes": {
+        "n": 2700,
+        "median": 19331.0,
+        "p95": 23442.0,
+        "mean": 20400.926666666666,
+        "min": 17267.0,
+        "max": 25499.0
+      },
+      "lazyLightFirstSerializeMs": {
+        "n": 2700,
+        "median": 1.479458,
+        "p95": 2.219791,
+        "mean": 1.5637423885185198,
+        "min": 1.07675,
+        "max": 5.607
+      },
+      "litSerializeMs": {
+        "n": 2700,
+        "median": 0.477458,
+        "p95": 0.688084,
+        "mean": 0.4990214266666652,
+        "min": 0.277834,
+        "max": 4.775042
+      },
+      "litFramedBytes": {
+        "n": 2700,
+        "median": 2559.0,
+        "p95": 3092.0,
+        "mean": 2582.277777777778,
+        "min": 1850.0,
+        "max": 3567.0
+      },
+      "litUncompressedBytes": {
+        "n": 2700,
+        "median": 25486.0,
+        "p95": 29599.0,
+        "mean": 25816.37111111111,
+        "min": 23425.0,
+        "max": 31657.0
+      },
+      "skyArraysPerPacket": {
+        "n": 2700,
+        "median": 3.0,
+        "p95": 3.0,
+        "mean": 2.637777777777778,
+        "min": 2.0,
+        "max": 4.0
+      },
+      "blockArraysPerPacket": {
+        "n": 2700,
+        "median": 0.0,
+        "p95": 0.0,
+        "mean": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "heap": {
+        "plainGeneratedKiBPerChunk": {
+          "n": 3,
+          "median": 27.04296875,
+          "p95": 27.54296112060547,
+          "mean": 27.209426879882812,
+          "min": 27.04235076904297,
+          "max": 27.54296112060547
+        },
+        "plainWithPacketCacheKiBPerChunk": {
+          "n": 3,
+          "median": 48.87165832519531,
+          "p95": 49.3021240234375,
+          "mean": 48.994188944498696,
+          "min": 48.80878448486328,
+          "max": 49.3021240234375
+        },
+        "lightingGeneratedKiBPerChunk": {
+          "n": 3,
+          "median": 27.203292846679688,
+          "p95": 27.225997924804688,
+          "mean": 27.210833231608074,
+          "min": 27.203208923339844,
+          "max": 27.225997924804688
+        },
+        "lightingLitKiBPerChunk": {
+          "n": 3,
+          "median": 32.06114959716797,
+          "p95": 33.664955139160156,
+          "mean": 32.580736796061196,
+          "min": 32.01610565185547,
+          "max": 33.664955139160156
+        },
+        "lightingLitWithPacketCacheKiBPerChunk": {
+          "n": 3,
+          "median": 55.04761505126953,
+          "p95": 55.07189178466797,
+          "mean": 55.05089823404948,
+          "min": 55.03318786621094,
+          "max": 55.07189178466797
+        }
+      },
+      "wholePass": {
+        "plainWallMsPerChunk": {
+          "n": 3,
+          "median": 0.4786357822265625,
+          "p95": 0.6226953935546875,
+          "mean": 0.5241042884114583,
+          "min": 0.470981689453125,
+          "max": 0.6226953935546875
+        },
+        "plainCpuMsPerChunk": {
+          "n": 3,
+          "median": 0.6051884765625,
+          "p95": 0.62901953125,
+          "mean": 0.5678251953125,
+          "min": 0.469267578125,
+          "max": 0.62901953125
+        },
+        "lazyLightWallMsPerChunk": {
+          "n": 3,
+          "median": 1.736053466796875,
+          "p95": 1.895056966796875,
+          "mean": 1.7121641168619792,
+          "min": 1.5053819169921876,
+          "max": 1.895056966796875
+        },
+        "lazyLightCpuMsPerChunk": {
+          "n": 3,
+          "median": 3.0815859375,
+          "p95": 3.4863212890625,
+          "mean": 3.127111002604167,
+          "min": 2.81342578125,
+          "max": 3.4863212890625
+        },
+        "litWallMsPerChunk": {
+          "n": 3,
+          "median": 0.4723860673828125,
+          "p95": 0.5537918701171874,
+          "mean": 0.49807817936197923,
+          "min": 0.4680566005859375,
+          "max": 0.5537918701171874
+        },
+        "litCpuMsPerChunk": {
+          "n": 3,
+          "median": 0.4843876953125,
+          "p95": 0.7001669921875,
+          "mean": 0.5526038411458333,
+          "min": 0.4732568359375,
+          "max": 0.7001669921875
+        }
+      },
+      "breakdown": {
+        "chunks": 1024,
+        "sectionsPerChunk": 24,
+        "singleValueSectionsPerChunk": 14.474609375,
+        "indirectSectionsPerChunk": 9.525390625,
+        "directSectionsPerChunk": 0.0,
+        "paletteValuesKiBPerChunk": 19.199615478515625,
+        "skyLightArraysPerChunk": 1.482421875,
+        "blockLightArraysPerChunk": 0.0,
+        "lightArraysKiBPerChunk": 2.988006591796875
+      },
+      "rounds": [
+        {
+          "plainPassWallMs": 637.640083,
+          "plainPassCpuMs": 644.116,
+          "lazyLightPassWallMs": 1777.71875,
+          "lazyLightPassCpuMs": 3569.993,
+          "litPassWallMs": 567.082875,
+          "litPassCpuMs": 716.971,
+          "plainGeneratedKiBPerChunk": 27.54296112060547,
+          "lightingLitKiBPerChunk": 32.01610565185547,
+          "lightingLitWithPacketCacheKiBPerChunk": 55.04761505126953
+        },
+        {
+          "plainPassWallMs": 490.123041,
+          "plainPassCpuMs": 619.713,
+          "lazyLightPassWallMs": 1940.538334,
+          "lazyLightPassCpuMs": 3155.544,
+          "litPassWallMs": 483.723333,
+          "litPassCpuMs": 496.013,
+          "plainGeneratedKiBPerChunk": 27.04235076904297,
+          "lightingLitKiBPerChunk": 33.664955139160156,
+          "lightingLitWithPacketCacheKiBPerChunk": 55.03318786621094
+        },
+        {
+          "plainPassWallMs": 482.28525,
+          "plainPassCpuMs": 480.53,
+          "lazyLightPassWallMs": 1541.511083,
+          "lazyLightPassCpuMs": 2880.948,
+          "litPassWallMs": 479.289959,
+          "litPassCpuMs": 484.615,
+          "plainGeneratedKiBPerChunk": 27.04296875,
+          "lightingLitKiBPerChunk": 32.06114959716797,
+          "lightingLitWithPacketCacheKiBPerChunk": 55.07189178466797
+        }
+      ],
+      "job": "packet,h\u003d384,t\u003dnatural,p\u003dopt",
+      "loadAverageBefore": 59.4228515625,
+      "loadAverageAfter": 51.03759765625,
+      "jvm": {
+        "maxHeapMiB": 6144,
+        "inputArguments": [
+          "-Dhttps.proxyHost\u003d127.0.0.1",
+          "-Dhttps.proxyPort\u003d7897",
+          "-Dhttp.proxyHost\u003d127.0.0.1",
+          "-Dhttp.proxyPort\u003d7897",
+          "-Dhttp.nonProxyHosts\u003dmaven.aliyun.com|*.aliyun.com",
+          "-Xms6g",
+          "-Xmx6g",
+          "-XX:+UseG1GC",
+          "-XX:+AlwaysPreTouch"
+        ]
+      }
+    }
+  ],
+  "finishedAt": "2026-09-23T09:15:10.818421Z"
+}

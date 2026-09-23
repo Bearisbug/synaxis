@@ -1,0 +1,15 @@
+## ./gradlew check --rerun-tasks --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts  (HEAD 75925b315d, JAVA_TOOL_OPTIONS proxy per docs/ENGINE.md 2.2)
+For more on this, please refer to https://docs.gradle.org/9.7.1/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.
+
+BUILD SUCCESSFUL in 1m 18s
+73 actionable tasks: 73 executed
+Configuration cache entry stored.
+GRADLE_EXIT=0
+
+## test-results per module right after check (root module re-counted by tc-029.txt; its XML was replaced by later filtered runs)
+architecture-tests tests=5 skipped=0 failures=0 errors=0
+game-rts tests=83 skipped=0 failures=0 errors=0  (counted 17:25 before tc-game-029 filtered runs replaced the XML)
+plugin-api tests=2 skipped=0 failures=0 errors=0
+protocol tests=78 skipped=0 failures=0 errors=0
+server-app tests=90 skipped=0 failures=0 errors=0
+testing tests=6 skipped=0 failures=0 errors=0

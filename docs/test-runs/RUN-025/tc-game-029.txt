@@ -1,0 +1,24 @@
+## TC-GAME-029 steps 1-2: server-app rts-512 Wed Sep 23 17:27:23 CST 2026
+17:27:30.924 [main] INFO  i.github.bearisbug.synaxis.app.Main - synaxis server-app listening on 0.0.0.0:25565
+Connection to 127.0.0.1 port 25565 [tcp/*] succeeded!
+nc exit=0
+{"ts":"2026-09-23T09:27:29.978438Z","event":"match_created","match_id":"1c6f0097-3a8e-4ded-ab6f-0f34b25320a6","map_id":"rts-512","dimension_name":"synaxis:match_b797407238e347fea313d47fe9e4b035"}
+{"ts":"2026-09-23T09:27:30.882252Z","event":"match_started","match_id":"1c6f0097-3a8e-4ded-ab6f-0f34b25320a6","map_id":"rts-512","chunk_count":1024,"load_ms":828,"heap_delta_kib":9455,"heap_gc_runs":4}
+GRADLE_EXIT=0
+## step 10
+BUILD SUCCESSFUL in 9s
+## step 11: supplier back to DynamicChunk
+ .../src/main/java/io/github/bearisbug/synaxis/game/rts/Match.java    | 5 ++---
+ 1 file changed, 2 insertions(+), 3 deletions(-)
+> Task :protocol:compileJava UP-TO-DATE
+> Task :compileJava UP-TO-DATE
+> Task :plugin-api:compileJava UP-TO-DATE
+> Task :testing:compileJava UP-TO-DATE
+> Task :game-rts:compileJava
+> Task :game-rts:compileTestJava UP-TO-DATE
+MatchIntegrationTest > theMapIsLitBeforeTheMatchRuns(Env) FAILED
+> Task :game-rts:test FAILED
+BUILD FAILED in 10s
+    <failure message="org.opentest4j.AssertionFailedError: column 0,0: the open air above the map is not lit by the sky ==&gt; expected: &lt;15&gt; but was: &lt;0&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFaile
+BUILD SUCCESSFUL in 6s
+## status

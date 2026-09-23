@@ -144,7 +144,8 @@ public class ConnectionGateTest {
      */
     @Test
     public void withTheProxyProtocolTheAddressIsCountedAtTheHandshake() {
-        final ConnectionGate gate = gate(ServerConfig.builder().proxyProtocol(true).maxConnectionsPerIp(2));
+        final ConnectionGate gate = gate(ServerConfig.builder().proxyProtocol(true).proxyProtocolRequired(true)
+                .proxyProtocolTrustedNetworks("10.0.0.0/8").maxConnectionsPerIp(2));
         final SocketAddress proxy = address("10.0.0.1");
         final List<ConnectionGate.Ticket> tickets = new ArrayList<>();
         for (int i = 0; i < 5; i++) {

@@ -77,6 +77,7 @@ public final class ConnectionGate {
     private final ServerConfig config;
     private final LongSupplier clock;
     private final List<Network> trustedNetworks;
+    private final List<Network> trustedProxies;
 
     private final AtomicInteger connections = new AtomicInteger();
     private final Map<Prefix, AtomicInteger> connectionsPerPrefix = new ConcurrentHashMap<>();
@@ -105,6 +106,7 @@ public final class ConnectionGate {
         this.config = config;
         this.clock = clock;
         this.trustedNetworks = parseNetworks(config.connectionGateTrustedNetworks());
+        this.trustedProxies = parseNetworks("synaxis.proxy-protocol.trusted-networks", config.proxyProtocolTrustedNetworks());
         this.lastSweep = clock.getAsLong();
         for (Reason reason : Reason.values()) {
             rejectedTotal.put(reason, new AtomicLong());
@@ -254,10 +256,23 @@ public final class ConnectionGate {
     }
 
     private boolean isTrusted(SocketAddress address) {
-        if (trustedNetworks.isEmpty()) return false;
+        return anyContains(trustedNetworks, address);
+    }
+
+    /**
+     * Whether {@code address}, the peer of the socket itself, may send a PROXY protocol header:
+     * it is in {@code synaxis.proxy-protocol.trusted-networks} ({@code docs/DESIGN-PROD.md}
+     * {@code REQ-PROD-036}).
+     */
+    public boolean isTrustedProxy(SocketAddress address) {
+        return anyContains(trustedProxies, address);
+    }
+
+    private static boolean anyContains(List<Network> networks, SocketAddress address) {
+        if (networks.isEmpty()) return false;
         if (!(address instanceof InetSocketAddress inet) || inet.getAddress() == null) return false;
         final byte[] bytes = inet.getAddress().getAddress();
-        for (Network network : trustedNetworks) {
+        for (Network network : networks) {
             if (network.contains(bytes)) return true;
         }
         return false;
@@ -271,6 +286,16 @@ public final class ConnectionGate {
      * @throws IllegalArgumentException if an entry is not a network
      */
     public static List<Network> parseNetworks(String value) {
+        return parseNetworks("synaxis.connection-gate.trusted-networks", value);
+    }
+
+    /**
+     * Parses a list of networks in the format of {@link #parseNetworks(String)}.
+     *
+     * @param property the property the value comes from, named in the error
+     * @throws IllegalArgumentException if an entry is not a network
+     */
+    public static List<Network> parseNetworks(String property, String value) {
         final List<Network> networks = new ArrayList<>();
         for (String entry : value.split(",", -1)) {
             final String trimmed = entry.strip();
@@ -281,8 +306,7 @@ public final class ConnectionGate {
             try {
                 address = InetAddress.ofLiteral(literal);
             } catch (IllegalArgumentException e) {
-                throw new IllegalArgumentException("Not a network address in synaxis.connection-gate.trusted-networks: "
-                        + trimmed, e);
+                throw new IllegalArgumentException("Not a network address in " + property + ": " + trimmed, e);
             }
             final byte[] bytes = address.getAddress();
             final int bits = bytes.length * 8;
@@ -291,19 +315,17 @@ public final class ConnectionGate {
                 try {
                     prefixLength = Integer.parseInt(trimmed.substring(slash + 1));
                 } catch (NumberFormatException e) {
-                    throw new IllegalArgumentException("Not a prefix length in synaxis.connection-gate.trusted-networks: "
-                            + trimmed, e);
+                    throw new IllegalArgumentException("Not a prefix length in " + property + ": " + trimmed, e);
                 }
                 if (prefixLength < 0 || prefixLength > bits)
-                    throw new IllegalArgumentException("Prefix length out of range in "
-                            + "synaxis.connection-gate.trusted-networks: " + trimmed);
+                    throw new IllegalArgumentException("Prefix length out of range in " + property + ": " + trimmed);
             }
             networks.add(new Network(bytes, prefixLength));
         }
         return List.copyOf(networks);
     }
 
-    /** A network of {@code synaxis.connection-gate.trusted-networks}. */
+    /** A network of {@code synaxis.connection-gate.trusted-networks} or {@code synaxis.proxy-protocol.trusted-networks}. */
     public static final class Network {
         private final byte[] address;
         private final int prefixLength;

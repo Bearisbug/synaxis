@@ -51,6 +51,8 @@ class ProxyProtocolReadTest {
         final ServerProcess process = ServerProcess.of(ServerConfig.builder()
                 .insideTest(true)
                 .proxyProtocol(true)
+                .proxyProtocolRequired(true)
+                .proxyProtocolTrustedNetworks("127.0.0.0/8")
                 .build());
         try (ServerSocketChannel server = ServerSocketChannel.open()) {
             server.bind(new InetSocketAddress(InetAddress.getLoopbackAddress(), 0));

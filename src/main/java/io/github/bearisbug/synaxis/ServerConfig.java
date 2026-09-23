@@ -91,12 +91,15 @@ public record ServerConfig(
         boolean insideTest,
         boolean fasterSocketWrites,
         boolean proxyProtocol,
-        boolean proxyProtocolRequired
+        boolean proxyProtocolRequired,
+        String proxyProtocolTrustedNetworks
 ) {
     /** Initial size of the pooled network buffers, also used by the buffer pools shared by every process. */
     public static final int DEFAULT_POOLED_BUFFER_SIZE = 16_383;
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ServerConfig.class);
+
+    private static final String PROXY_PROTOCOL_TRUSTED_NETWORKS = "synaxis.proxy-protocol.trusted-networks";
 
     /**
      * A {@code SO_TIMEOUT}, which the channel reads of the engine never honour: idle connections
@@ -135,6 +138,16 @@ public record ServerConfig(
                     + loginRatePerIp + "/" + loginBurstPerIp + ", " + statusRatePerIp + "/" + statusBurstPerIp
                     + " and " + transferRatePerIp + "/" + transferBurstPerIp);
         var _ = ConnectionGate.parseNetworks(connectionGateTrustedNetworks);
+        // A PROXY header names any address its sender likes, so only the load balancers may send
+        // one, and a peer that skips it must not pass as a direct connection (REQ-PROD-036)
+        final boolean noTrustedProxies = ConnectionGate.parseNetworks(PROXY_PROTOCOL_TRUSTED_NETWORKS,
+                proxyProtocolTrustedNetworks).isEmpty();
+        if (proxyProtocol && noTrustedProxies)
+            throw new IllegalArgumentException("synaxis.proxy-protocol needs " + PROXY_PROTOCOL_TRUSTED_NETWORKS
+                    + ", the networks of the load balancers allowed to send a PROXY header");
+        if (proxyProtocol && !proxyProtocolRequired)
+            throw new IllegalArgumentException("synaxis.proxy-protocol needs synaxis.proxy-protocol.required=true, "
+                    + "a connection without the header would otherwise pass as a direct one");
     }
 
     /**
@@ -210,6 +223,8 @@ public record ServerConfig(
                 .fasterSocketWrites(booleanProperty("synaxis.new-socket-write-lock", DEFAULTS.fasterSocketWrites))
                 .proxyProtocol(booleanProperty("synaxis.proxy-protocol", DEFAULTS.proxyProtocol))
                 .proxyProtocolRequired(booleanProperty("synaxis.proxy-protocol.required", DEFAULTS.proxyProtocolRequired))
+                .proxyProtocolTrustedNetworks(System.getProperty(PROXY_PROTOCOL_TRUSTED_NETWORKS,
+                        DEFAULTS.proxyProtocolTrustedNetworks))
                 .build();
     }
 
@@ -329,6 +344,7 @@ public record ServerConfig(
         private boolean fasterSocketWrites = false;
         private boolean proxyProtocol = false;
         private boolean proxyProtocolRequired = false;
+        private String proxyProtocolTrustedNetworks = "";
 
         private Builder() {
         }
@@ -390,6 +406,7 @@ public record ServerConfig(
             this.fasterSocketWrites = config.fasterSocketWrites;
             this.proxyProtocol = config.proxyProtocol;
             this.proxyProtocolRequired = config.proxyProtocolRequired;
+            this.proxyProtocolTrustedNetworks = config.proxyProtocolTrustedNetworks;
         }
 
         public Builder shutdownOnSignal(boolean shutdownOnSignal) {
@@ -676,6 +693,11 @@ public record ServerConfig(
             return this;
         }
 
+        public Builder proxyProtocolTrustedNetworks(String proxyProtocolTrustedNetworks) {
+            this.proxyProtocolTrustedNetworks = proxyProtocolTrustedNetworks;
+            return this;
+        }
+
         public ServerConfig build() {
             return new ServerConfig(shutdownOnSignal, maxTickCatchUp, chunkViewDistance, entityViewDistance,
                     entitySynchronizationTicks, dispatcherThreads, sendLightAfterBlockPlacementDelay, loginTimeout,
@@ -690,7 +712,8 @@ public record ServerConfig(
                     socketReceiveBufferSize, socketNoDelay, socketTimeout, pooledBufferSize, minChunksPerTick,
                     maxChunksPerTick, chunksPerTickMultiplier, viewablePacket, enforceInteractionLimit,
                     watchdogEarlyWarning, watchdogEarlyWarningEvery, watchdogTimeout, watchdogHaltAfter,
-                    registryUnsafeOps, insideTest, fasterSocketWrites, proxyProtocol, proxyProtocolRequired);
+                    registryUnsafeOps, insideTest, fasterSocketWrites, proxyProtocol, proxyProtocolRequired,
+                    proxyProtocolTrustedNetworks);
         }
     }
 }

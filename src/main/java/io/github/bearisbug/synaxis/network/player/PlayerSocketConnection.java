@@ -154,6 +154,10 @@ public class PlayerSocketConnection extends PlayerConnection {
             if (result.status() == ProxyProtocolDecoder.Status.NEED_MORE) return;
             attemptedProxyProtocolDetection = true;
             if (result.status() == ProxyProtocolDecoder.Status.PRESENT) {
+                // The header names whatever address its sender likes, only a load balancer may send one
+                if (!process().connection().gate().isTrustedProxy(remoteAddress))
+                    throw new IOException("PROXY protocol header from " + remoteAddress
+                            + ", outside synaxis.proxy-protocol.trusted-networks");
                 this.remoteAddress = result.clientAddress();
                 // Every read starts at index zero, the packet reader compacts what it leaves behind.
                 // Keeping the consumed header in front of the first packet would cost the buffer

@@ -97,7 +97,7 @@ public class ConnectionGateSocketTest {
     @Test
     public void withTheProxyProtocolTheAddressLimitIsCheckedAtTheHandshake() throws Exception {
         final AtomicInteger logins = new AtomicInteger();
-        try (Rig rig = Rig.start(base().proxyProtocol(true).maxConnectionsPerIp(2))) {
+        try (Rig rig = Rig.start(proxied().maxConnectionsPerIp(2))) {
             rig.process().eventHandler().addListener(AsyncPlayerPreLoginEvent.class, _ -> logins.incrementAndGet());
             for (int i = 0; i < 2; i++) {
                 final Peer peer = rig.connect();
@@ -138,10 +138,11 @@ public class ConnectionGateSocketTest {
      */
     @Test
     public void aConnectionThatSaysNothingIsClosedAtTheHandshakeTimeout() throws Exception {
-        try (Rig rig = Rig.start(base().handshakeTimeout(500).proxyProtocol(true).maxConnectionsPerIp(2))) {
+        try (Rig rig = Rig.start(proxied().handshakeTimeout(500).maxConnectionsPerIp(2))) {
             final List<Peer> idle = new ArrayList<>();
             for (int i = 0; i < 5; i++) idle.add(rig.connect());
             final Peer talking = rig.connect();
+            talking.proxyHeader("203.0.113.9");
             talking.handshake(Intent.STATUS);
             final long start = System.nanoTime();
 
@@ -292,6 +293,11 @@ public class ConnectionGateSocketTest {
 
     private static ServerConfig.Builder base() {
         return ServerConfig.builder().insideTest(true).handshakeTimeout(LONG_HANDSHAKE_TIMEOUT);
+    }
+
+    /** Behind a load balancer on loopback, the only way the PROXY protocol may be switched on. */
+    private static ServerConfig.Builder proxied() {
+        return base().proxyProtocol(true).proxyProtocolRequired(true).proxyProtocolTrustedNetworks("127.0.0.0/8");
     }
 
     private static void awaitUntil(BooleanSupplier condition, String what) throws InterruptedException {

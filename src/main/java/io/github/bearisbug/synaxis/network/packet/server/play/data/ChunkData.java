@@ -13,9 +13,11 @@ import io.github.bearisbug.synaxis.network.NetworkBufferTemplate;
 import io.github.bearisbug.synaxis.instance.block.BlockUtils;
 
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.stream.Collectors;
+import java.util.TreeMap;
 
 import static io.github.bearisbug.synaxis.network.NetworkBuffer.BYTE;
 import static io.github.bearisbug.synaxis.network.NetworkBuffer.BYTE_ARRAY;
@@ -26,13 +28,22 @@ import static io.github.bearisbug.synaxis.network.NetworkBuffer.VAR_INT;
 
 public record ChunkData(Map<Heightmap.Type, long[]> heightmaps, byte[] data,
                         Map<Integer, Block> blockEntities) {
+    /**
+     * Both maps are copied into a fixed iteration order (heightmap type ordinal, block index), which
+     * is the order they are encoded in: the same chunk state always yields the same packet bytes.
+     * {@code Map.copyOf} and {@code Collectors.toUnmodifiableMap} do not qualify, their iteration
+     * order changes from one JVM to the next.
+     */
     public ChunkData {
-        heightmaps = Map.copyOf(heightmaps); // TODO deep copy?
+        final Map<Heightmap.Type, long[]> sortedHeightmaps = new EnumMap<>(Heightmap.Type.class);
+        sortedHeightmaps.putAll(heightmaps); // TODO deep copy?
+        heightmaps = Collections.unmodifiableMap(sortedHeightmaps);
         data = data.clone();
-        blockEntities = blockEntities.entrySet()
-                .stream()
-                .filter((entry) -> entry.getValue().blockEntityType() != null)
-                .collect(Collectors.toUnmodifiableMap(Map.Entry::getKey, Map.Entry::getValue));
+        final Map<Integer, Block> sortedBlockEntities = new TreeMap<>();
+        blockEntities.forEach((index, block) -> {
+            if (block.blockEntityType() != null) sortedBlockEntities.put(index, block);
+        });
+        blockEntities = Collections.unmodifiableMap(sortedBlockEntities);
     }
 
     public static final NetworkBuffer.Type<ChunkData> NETWORK_TYPE = new NetworkBuffer.Type<>() {

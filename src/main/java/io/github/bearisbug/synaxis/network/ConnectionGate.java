@@ -48,21 +48,11 @@ public final class ConnectionGate {
 
     /** Why a connection was turned away, the label of {@code synaxis_gate_rejections_total}. */
     public enum Reason {
-        CLOSED_AT_ACCEPT("closed_at_accept"),
-        TOO_MANY("too_many"),
-        THROTTLED("throttled"),
-        FULL("full"),
-        HANDSHAKE_TIMEOUT("handshake_timeout");
-
-        private final String label;
-
-        Reason(String label) {
-            this.label = label;
-        }
-
-        public String label() {
-            return label;
-        }
+        CLOSED_AT_ACCEPT,
+        TOO_MANY,
+        THROTTLED,
+        FULL,
+        HANDSHAKE_TIMEOUT
     }
 
     /** What the gate makes of a handshake. */
@@ -433,12 +423,13 @@ public final class ConnectionGate {
             if (released || counted != null) return true;
             final Prefix prefix = Prefix.of(address);
             if (prefix == null || isTrusted(address)) return true;
-            final AtomicInteger count = connectionsPerPrefix.compute(prefix, (_, current) -> {
+            final int[] count = new int[1];
+            connectionsPerPrefix.compute(prefix, (_, current) -> {
                 final AtomicInteger value = current != null ? current : new AtomicInteger();
-                value.incrementAndGet();
+                count[0] = value.incrementAndGet();
                 return value;
             });
-            if (count.get() > config.maxConnectionsPerIp()) {
+            if (count[0] > config.maxConnectionsPerIp()) {
                 uncount(prefix);
                 return false;
             }

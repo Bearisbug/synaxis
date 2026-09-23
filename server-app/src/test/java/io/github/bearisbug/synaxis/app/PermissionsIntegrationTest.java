@@ -40,6 +40,7 @@ import javax.sql.DataSource;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Proxy;
 import java.nio.file.Path;
+import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.SQLTransientConnectionException;
 import java.time.Duration;
@@ -50,6 +51,7 @@ import java.util.Set;
 import java.util.TreeSet;
 import java.util.UUID;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
@@ -355,6 +357,59 @@ class PermissionsIntegrationTest {
                 "INSERT INTO role_permission (role_id, node) VALUES ('gm', 'GM.Ban')"));
         assertTrue(refused.getCause().getMessage().contains("role_permission_node_check"), refused.getCause().getMessage());
         database.execute("INSERT INTO role_permission (role_id, node) VALUES ('gm', '*'), ('gm', 'a-b.c_d.*')");
+    }
+
+    @Test
+    void aRevocationWhileALoginReadsTheRolesIsNotLost(Env env) throws Exception {
+        final AtomicBoolean hold = new AtomicBoolean();
+        final CountDownLatch rowsRead = new CountDownLatch(1);
+        final CountDownLatch release = new CountDownLatch(1);
+        // The first connection taken once armed keeps its rows but is not closed until released
+        final DataSource gated = (DataSource) Proxy.newProxyInstance(DataSource.class.getClassLoader(),
+                new Class<?>[]{DataSource.class}, (_, method, arguments) -> {
+                    final Object result;
+                    try {
+                        result = method.invoke(pool.pool(), arguments);
+                    } catch (InvocationTargetException e) {
+                        throw e.getCause();
+                    }
+                    if (!method.getName().equals("getConnection") || !hold.compareAndSet(true, false)) return result;
+                    final Connection connection = (Connection) result;
+                    return Proxy.newProxyInstance(Connection.class.getClassLoader(), new Class<?>[]{Connection.class},
+                            (_, call, callArguments) -> {
+                                if (call.getName().equals("close")) {
+                                    rowsRead.countDown();
+                                    release.await();
+                                }
+                                try {
+                                    return call.invoke(connection, callArguments);
+                                } catch (InvocationTargetException e) {
+                                    throw e.getCause();
+                                }
+                            });
+                });
+        final HostPermissions permissions = new HostPermissions(env.process(), new RoleStore(gated),
+                RedisLink.disabled("gated"), HostPermissions.REFRESH);
+        final EventNode<Event> node = EventNode.all("permissions-gated");
+        env.process().eventHandler().addChild(node);
+        permissions.attach(node);
+        env.process().command().register(new RoleCommand(env.process(), permissions, (_, _) -> { }));
+        final RecordingConsole console = new RecordingConsole(env.process());
+        final UUID account = UUID.randomUUID();
+        database.execute("INSERT INTO account_role (account_uuid, role_id) VALUES ('" + account + "', 'gm')");
+        final Player player = env.createConnection(new GameProfile(account, "Racer")).connect(env.createFlatInstance(),
+                new Pos(0, 41, 0));
+
+        hold.set(true);
+        final Thread login = Thread.ofVirtual().start(() -> permissions.load(player));
+        assertTrue(rowsRead.await(5, TimeUnit.SECONDS), "the login read its rows");
+        env.process().command().execute(console, "role revoke " + account + " gm");
+        await(env, () -> console.answers.size() == 1, Duration.ofSeconds(5), "the revocation");
+        assertEquals(List.of("synaxis:role-revoked"), console.answers);
+        release.countDown();
+        assertTrue(login.join(Duration.ofSeconds(5)), "the login ends");
+        assertFalse(permissions.has(player, "gm.ban"), "the login's older rows do not bring the revoked role back");
+        assertEquals(Set.of(), permissions.roles(player));
     }
 
     private Set<String> roleRows(UUID account) {

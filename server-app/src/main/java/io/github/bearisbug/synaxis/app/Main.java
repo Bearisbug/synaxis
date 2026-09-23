@@ -306,7 +306,7 @@ public final class Main {
      * @param housekeeping the cleanup jobs of a shard, null in memory
      * @param issuer       the source side of a transfer, null without transfer keys
      * @param verifier     the target side of a transfer, null without transfer keys
- * @param permissions  the roles of the online players, none in memory
+     * @param permissions  the roles of the online players, none in memory
      */
     record StoreRuntime(PlayerStore store, @Nullable Database database, @Nullable StoreHousekeeping housekeeping,
                         @Nullable TransferTickets issuer, @Nullable TicketVerifier verifier, HostPermissions permissions)

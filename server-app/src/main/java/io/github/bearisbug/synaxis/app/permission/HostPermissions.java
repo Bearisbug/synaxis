@@ -86,7 +86,7 @@ public final class HostPermissions implements Permissions {
         if (roles == null) return;
         // The query never runs on the tick scheduler thread: a hung database would hold the tick
         process.scheduler().scheduleTask(() -> {
-            Thread.ofVirtual().name("Syn-Role-Refresh").start(() -> read(List.copyOf(loaded.keySet()), false));
+            Thread.ofVirtual().name("Syn-Role-Refresh").start(() -> read(List.copyOf(loaded.keySet())));
             return TaskSchedule.duration(refresh);
         }, TaskSchedule.duration(refresh));
         redis.listenPermissions(this::changed);
@@ -99,7 +99,9 @@ public final class HostPermissions implements Permissions {
      */
     public void load(Player player) {
         if (roles == null) return;
-        read(List.of(player), true);
+        // Held before the query, so that a change announced while it runs reads the player again
+        loaded.putIfAbsent(player, new Entry(RoleStore.Grants.NONE, 0));
+        read(List.of(player));
         // Left while its roles were read: the disconnect listener has already run
         if (!player.isOnline()) loaded.remove(player);
     }
@@ -112,10 +114,10 @@ public final class HostPermissions implements Permissions {
     void changed(UUID account) {
         final List<Player> players = loaded.keySet().stream().filter(player -> player.getUuid().equals(account)).toList();
         if (players.isEmpty()) return;
-        Thread.ofVirtual().name("Syn-Role-Change").start(() -> read(players, false));
+        Thread.ofVirtual().name("Syn-Role-Change").start(() -> read(players));
     }
 
-    private void read(List<Player> players, boolean login) {
+    private void read(List<Player> players) {
         final RoleStore store = this.roles;
         if (store == null || players.isEmpty()) return;
         final long read = reads.incrementAndGet();
@@ -125,14 +127,11 @@ public final class HostPermissions implements Permissions {
         } catch (SQLException e) {
             failures.warn(e, "Reading the roles of {} players failed, they keep what they had until the next read",
                     players.size());
-            // Nothing at all for a login, but held, so that the next refresh reads it
-            if (login) for (Player player : players) loaded.putIfAbsent(player, new Entry(RoleStore.Grants.NONE, 0));
             return;
         }
         for (Player player : players) {
             final Entry next = new Entry(found.getOrDefault(player.getUuid(), RoleStore.Grants.NONE), read);
-            if (login) loaded.merge(player, next, HostPermissions::later);
-            else loaded.computeIfPresent(player, (_, previous) -> later(previous, next));
+            loaded.computeIfPresent(player, (_, previous) -> later(previous, next));
         }
     }
 
@@ -201,7 +200,7 @@ public final class HostPermissions implements Permissions {
         redis.publishPermissionChange(account);
         // Not through Redis: this shard sees its own change whether Redis is up or not
         final List<Player> players = loaded.keySet().stream().filter(player -> player.getUuid().equals(account)).toList();
-        read(players, false);
+        read(players);
         return change;
     }
 

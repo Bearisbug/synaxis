@@ -123,4 +123,36 @@ public class LightDampeningIntegrationTest {
         assertEquals(0, sky(instance, 8, 50, 8));
         assertEquals(0, sky(instance, 8, 49, 8));
     }
+
+    /**
+     * A section whose sky was fully lit must be recomputed after a block is placed over it: roofing the
+     * whole area at y=63 turns the sky at y=60 from 15 to 0.
+     */
+    @Test
+    public void roofOverFullyLitSectionOnRelight(Env env) {
+        Instance instance = lit(env, _ -> {
+        });
+        assertEquals(15, sky(instance, 8, 60, 8));
+
+        for (int x = -32; x < 48; x++) {
+            for (int z = -32; z < 48; z++) {
+                instance.setBlock(x, 63, z, Block.STONE);
+            }
+        }
+        LightingChunk.relight(instance, instance.getChunks());
+
+        assertEquals(0, sky(instance, 8, 60, 8));
+    }
+
+    /** Same through the lazy read path: one stone at (8, 63, 8) leaves (8, 60, 8) lit from the side only. */
+    @Test
+    public void blockOverFullyLitSectionOnLazyRead(Env env) {
+        Instance instance = lit(env, _ -> {
+        });
+        assertEquals(15, instance.getSkyLight(8, 60, 8));
+
+        instance.setBlock(8, 63, 8, Block.STONE);
+
+        assertEquals(14, instance.getSkyLight(8, 60, 8));
+    }
 }

@@ -439,4 +439,23 @@ class CommandsIntegrationTest {
         assertFalse(lastTree(declared).contains("party"));
         host.disableAll();
     }
+
+    @Test
+    void aCommandRegisteredAfterThePluginIsTakenBackIsDropped(Env env) {
+        final Instance match = env.createFlatInstance();
+        final Command party = new Command("party");
+        party.setDefaultExecutor((_, _) -> { });
+        // What an async task of the plugin still running after the failed onEnable does
+        final Probe mmo = new Probe("mmo", match, _ -> {
+            throw new IllegalStateException("enable failed");
+        });
+        final PluginHost host = host(env);
+        host.enable(List.of(mmo), Set.of());
+
+        mmo.context().commands().register(party);
+        final RecordingConsole console = new RecordingConsole(env.process());
+        assertEquals(CommandResult.Type.UNKNOWN, env.process().command().execute(console, "mmo:party").getType());
+        assertFalse(env.process().command().commandExists("party"), "the bare name stays free for the next plugin");
+        host.disableAll();
+    }
 }

@@ -40,6 +40,8 @@ final class PluginCommandsImpl implements PluginCommands {
     private final ServerProcess process;
     // Guarded by the command manager: the plugin's command → what is registered for it
     private final Map<Command, Command> registered = new HashMap<>();
+    // Guarded by the command manager: set once the plugin is taken back
+    private boolean closed;
 
     PluginCommandsImpl(String pluginId, ServerProcess process) {
         this.pluginId = pluginId;
@@ -57,6 +59,8 @@ final class PluginCommandsImpl implements PluginCommands {
         final List<String> givenUp = new ArrayList<>();
         final Command namespaced;
         synchronized (manager) {
+            // A command registered once the plugin is taken back would stay with nothing to take it back
+            if (closed) return;
             if (registered.containsKey(command))
                 throw new IllegalStateException("plugin " + pluginId + " already registered " + command.getName());
             final List<String> aliases = new ArrayList<>();
@@ -91,11 +95,13 @@ final class PluginCommandsImpl implements PluginCommands {
     }
 
     /**
-     * Takes back every command of the plugin, when it is disabled or failed to enable.
+     * Takes back every command of the plugin, when it is disabled or failed to enable. Commands
+     * registered afterwards are dropped.
      */
     void unregisterAll() {
         final CommandManager manager = process.command();
         synchronized (manager) {
+            closed = true;
             if (registered.isEmpty()) return;
             for (Command namespaced : registered.values()) manager.unregister(namespaced);
             registered.clear();

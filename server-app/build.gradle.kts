@@ -20,9 +20,19 @@ dependencies {
 // No module-info here: the host runs on the classpath (ADR-M2-005).
 application {
     mainClass.set("io.github.bearisbug.synaxis.app.Main")
-    // An exhausted heap leaves a heap dump and ends the JVM on the spot, without the stop sequence
-    // (docs/DESIGN-PROD.md API-PROD-013). The run task and the start scripts both take these.
-    applicationDefaultJvmArgs = listOf("-XX:+HeapDumpOnOutOfMemoryError", "-XX:+ExitOnOutOfMemoryError")
+    // Production defaults (docs/DESIGN-PROD.md REQ-PROD-028 and REQ-PROD-015; rationale in
+    // docs/ENGINE.md). They reach both `:server-app:run` and the start scripts of installDist and
+    // distZip. The start scripts put JAVA_OPTS and SERVER_APP_OPTS after these, so an operator
+    // overrides any of them there without a rebuild.
+    applicationDefaultJvmArgs = listOf(
+        "-XX:+UseG1GC",
+        "-Xms4G",
+        "-Xmx4G",
+        "-XX:+AlwaysPreTouch",
+        "-XX:MaxGCPauseMillis=50",
+        "-XX:+HeapDumpOnOutOfMemoryError",
+        "-XX:+ExitOnOutOfMemoryError",
+    )
 }
 
 // The git head a crash report names (API-PROD-013). A build outside a git checkout writes "unknown".

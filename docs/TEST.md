@@ -14,10 +14,11 @@
 
 | 日期 | 改动 | 作者 |
 | --- | --- | --- |
+| 2026-09-23 | 跟进 `docs/DESIGN-PROD.md` 第 0 波 0E（`REQ-PROD-028`，G25）。**新增 `TC-PROD-050`**（对应 `REQ-PROD-028`）：新开「生产就绪 · 运行参数」一节，判 `installDist` 启动脚本与 `:server-app:run` 两条入口的 JVM 都带 G1、`-Xms4G -Xmx4G`、`AlwaysPreTouch`、`MaxGCPauseMillis=50` 与两个 OOM 参数（`jcmd VM.flags` 计数 7），`JAVA_OPTS` 能覆盖、换 ZGC 须先关 G1；反证是删掉 `-Xms4G` 与 `AlwaysPreTouch` 两行，计数掉到 5。§5 加生产就绪域一行 | Bearisbug |
 | 2026-09-23 | 跟进 `docs/DESIGN-PROD.md` 第 0 波 0D（`REQ-PROD-030` 离线档，`API-PROD-026`）。**新增三条**：`TC-PROD-040`（无头容器里真客户端 R1～R8 全绿，dev 与生产启动器各一次，带 spike 时 R 行在前、spike 行追加；反证删掉 `en_us.json` 的 `synaxis:protocol-error` 译文，红在 R8）、`TC-PROD-041`（判定读报告与台账：连不上服务端时报告仍写满 8 行、全绿报告配空台账也判红、缺报告判红）、`TC-PROD-042`（工作流触发、`continue-on-error` 与判定步骤；把判定步骤原样抽出来在 CI 布局里跑，反证一条 R8 FAIL 或缺一份报告即红）。§5 局部轮加「生产就绪域」一行 | Bearisbug |
 | 2026-09-23 | 跟进 `docs/DESIGN-PROD.md` §26 第 0 波 0C（`REQ-PROD-019` 前半）。**新增 §4「生产就绪 · 第 0 波 · 线程正确性」四条**：`TC-PROD-030`（`Math.floorMod` 取模，反证改回 `Math.abs` 即 `Index -2 out of bounds for length 6`）、`TC-PROD-031`（`Entity#teleport`、`Entity#setInstance`、`Player#setInstance` 三处所有权断言，逐处反证）、`TC-PROD-032`（未分配实体放行建它的线程与非 tick 线程，别的 tick 线程仍判越权；玩家换实例的调度线程半段经 `Acquirable`；各一步反证）、`TC-PROD-033`（`-Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true` 跑全量，含「属性没转进测试 JVM」与「`Env` 没读」两步反证；登记 1 线程轮红的 5 条、4 线程首轮红的 1 条及处置）。§5 引擎域加「tick 多线程」一组 | Bearisbug |
 | 2026-09-23 | 跟进 `docs/DESIGN-PROD.md` 第 0 波 0B 组（`REQ-PROD-014` 前半：tick 看门狗打栈、判死、崩溃报告、halt）。**新增 `TC-PROD-020`～`TC-PROD-023`**，每条带反证（临时破坏实现、重跑、看红、还原），红在哪一条写进期望列；§19 的「进入落盘停机」「倒计时期间卡死仍先落盘」两处归第 3 波 3A，本波各用例只验 halt 路径。**§3 运行时产物**：崩溃报告也在看门狗判死时写，并注明判死后以退出码 70 halt 与 `synaxis.watchdog.timeout-ms=0` 关闭。§5 回归映射加生产就绪域一行，跨域牵连加一条 | Bearisbug |
-| 2026-09-23 | 0A 组返工：`TC-PROD-006` 第 1 步加 `aRecordRacingTheCloseIsWrittenOrRefusedNeverLeftInTheQueue`（`record` 与停机竞争时那一行要么落盘、要么在日志里计数），新增第 5 步反证；`TC-PROD-001` 第 1 步加引擎默认落点 10 s 限流一条，新增第 4 步反证；`TC-PROD-001`、`TC-PROD-003`、`TC-PROD-006`、`TC-PROD-007` 反证期望里的测试行号随测试文件改动更新，`TC-PROD-006` 第 3 步由红 3 条改为红 4 条 | Bearisbug |
+| 2026-09-23 | 0A 组返工：`TC-PROD-006` 第 1 步加 `aRecordRacingTheCloseIsWrittenOrRefusedNeverLeftInTheQueue`（`record` 与停机竞争时那一行要么落盘、要么在日志里计数），新增第 4 步反证；`TC-PROD-001` 第 1 步加引擎默认落点 10 s 限流一条，新增第 4 步反证；`TC-PROD-001`、`TC-PROD-003`、`TC-PROD-006`、`TC-PROD-007` 反证期望里的测试行号随测试文件改动更新，`TC-PROD-006` 第 3 步由红 3 条改为红 4 条 | Bearisbug |
 | 2026-09-23 | 跟进 `docs/DESIGN-PROD.md` 第 0 波 0A 组（`REQ-PROD-015` 崩溃报告与未捕获异常、`REQ-PROD-016` 日志文件与轮转、`REQ-PROD-017` 事件台账缓冲写入）。**新增 `TC-PROD-001`～`TC-PROD-008`**，每条带一步反证（临时破坏实现、重跑、看红、还原），红在哪一条写进期望列。**§3 环境段**：「没有服务端日志文件」改为默认另写 `logs/latest.log`（`-Dsynaxis.app.log=stdout` 时不写），台账文件名改为 `logs/events-<shard_id>-YYYYMMDD.jsonl`（`shard_id` 默认 `local`，glob `events-*.jsonl` 照旧匹配）并注明写盘最多晚 1 s；新增系统属性 `synaxis.app.shard-id`、`synaxis.app.ledger-max-bytes-per-day`、`synaxis.app.log`。**`TC-035` 保留 ID、判据未动**：第 2 步里「`EventLedgerTest` 一条」改为点名 `aFloodOfEventsIntoAnUnwritableLedgerWritesOneLine`（该类现有六条，其余五条归 `TC-PROD-006` / `TC-PROD-007`）。§5 回归映射加生产就绪域一行与跨域牵连一条 | Bearisbug |
 | 2026-09-23 | 跟进 `docs/DESIGN-M2.md` v0.44（对局世界由服务端在载入阶段整图算光照）。**`TC-GAME-029` 保留 ID**：第 2 步的实测参考值换成含光照的 2026-09-23 数字（判据 `load_ms` < 3000、`heap_gc_runs` ≥ 2、`heap_delta_kib` 在 `0` 与 `51200` 之间不变）；新增第 10 步「进场即有光照」（`MatchIntegrationTest#theMapIsLitBeforeTheMatchRuns`）与第 11 步反证（chunk supplier 改回 `DynamicChunk` 则第 10 步必红）。§5 跨域牵连补一条：动了对局的 chunk supplier、载入流程或引擎 `LightingChunk` / `instance.light` → 加 TC-GAME-029 | Bearisbug |
 | 2026-09-23 | 跟进 `docs/DESIGN.md` v0.33 与 `docs/DESIGN-M2.md` v0.43。**新增 `TC-036`**（对应 `REQ-005`）：`PacketVanillaIdTest` 把 26.2 原版 login、configuration、play 两个方向六张表的包 ID 钉死，一步绿、一步反证（删掉 `award_stats` 的占位即红）、一步还原；§2 补一条「包 ID 口径」，说明探针与压测 harness 的包 ID 来自本仓库注册表、不能证明与原版一致；§5 引擎域「删除与注册表」加 TC-036，跨域牵连加「动了包注册表」一条。**`TC-GAME-052` 保留 ID**：第 2 步当前值 4.0 → 5.0；第 7 步的公式补上 `clamp(rd / 8, 1, 2.5)`，判据由「≥ 97 格」改为「盖住渲染距离雾界」（rd 8 为 160 格、覆盖到眼高 96，rd 10 为 200 格、覆盖到眼高 120）。`TC-GAME-047` 第 4 步的 4.0 随之改 5.0 | Bearisbug |
@@ -1803,7 +1804,7 @@ REQ-M2 ↔ TC 对照（可读索引，覆盖与否由上述联检判）：
 | # | 操作 | 预期 |
 | --- | --- | --- |
 | 1 | `./gradlew :server-app:installDist --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts`，再 `grep '^DEFAULT_JVM_OPTS' server-app/build/install/server-app/bin/server-app` | `DEFAULT_JVM_OPTS='"-XX:+HeapDumpOnOutOfMemoryError" "-XX:+ExitOnOutOfMemoryError"'` |
-| 2 | `cd $W && JAVA_OPTS="-Xmx24m -Dsynaxis.app.port=25601" $REPO/server-app/build/install/server-app/bin/server-app < /dev/null > stdout.log 2>&1; echo exit=$?`，再 `ls $W`、`tail -2 stdout.log`、`grep -c 'Stopping\|Disabling plugin' stdout.log` | `exit=3`；`$W` 下多一个 `java_pid<pid>.hprof`（本轮实测 35,888,644 字节）；末两行 `Heap dump file created [… bytes in … secs]` 与 `Terminating due to java.lang.OutOfMemoryError: Java heap space`；计数 `0`（24 MB 的堆在建对局时就耗尽，停机序列一行都没跑） |
+| 2 | `cd $W && JAVA_OPTS="-Xms16m -Xmx24m -Dsynaxis.app.port=25601" $REPO/server-app/build/install/server-app/bin/server-app < /dev/null > stdout.log 2>&1; echo exit=$?`，再 `ls $W`、`tail -2 stdout.log`、`grep -c 'Stopping\|Disabling plugin' stdout.log` | `exit=3`；`$W` 下多一个 `java_pid<pid>.hprof`（本轮实测 35,888,644 字节）；末两行 `Heap dump file created [… bytes in … secs]` 与 `Terminating due to java.lang.OutOfMemoryError: Java heap space`；计数 `0`（24 MB 的堆在建对局时就耗尽，停机序列一行都没跑） |
 | 3 | `./gradlew :test --tests '*ExceptionManagerTest*' :server-app:test --tests '*HostExceptionIntegrationTest*' --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts` | `BUILD SUCCESSFUL`；`anOutOfMemoryErrorGoesToTheHandlerInsteadOfAStopSequence` 与 `aFatalErrorWritesOneCrashReportAndDoesNotStopTheProcess` 绿：没带这两个参数的进程（开发时直接跑）撞上 OOM 也只进宿主 handler，不跑停机序列 |
 | 4 | 反证有齿（两处一起改、一起还原）：`server-app/build.gradle.kts` 注释掉 `applicationDefaultJvmArgs = …` 那一行；`ExceptionManager#handleException(Throwable, UUID)` 首部插回旧的 OOM 分支 `if (e instanceof OutOfMemoryError) { e.printStackTrace(); return; }`。重做第 1～3 步（`rm -rf $W/*` 后再起），再 `git checkout --` 这两个文件并重新 `installDist` | 第 1 步 `DEFAULT_JVM_OPTS=""`；第 2 步 `exit=1`、没有 `.hprof`，stdout 只有 `Exception in thread "main" java.lang.OutOfMemoryError: Java heap space` 与栈；第 3 步红 2 条：`anOutOfMemoryError…` 断在「the host decides what an exhausted heap costs, not a stop sequence ==> expected: <1> but was: <0>」（`ExceptionManagerTest.java:53`），`aFatalError…` 断在 `expected: <1> but was: <0>`（`HostExceptionIntegrationTest.java:105`，一行 ERROR 都没有）；还原后复绿 |
 
@@ -1843,7 +1844,7 @@ REQ-M2 ↔ TC 对照（可读索引，覆盖与否由上述联检判）：
 | 1 | `./gradlew :server-app:test --tests '*EventLedgerTest*' --tests '*PluginHostIntegrationTest*' --tests '*HandshakeIntegrationTest*' --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts` | `BUILD SUCCESSFUL`；`EventLedgerTest` 里本用例看五条：`aFullQueueDropsTheNewLinesWithoutBlockingAndSaysSoFirst`（写线程未启动时记 70,000 行，10 s 超时内全部返回；启动并关闭后文件首行是 `ledger_dropped`、`reason=queue_full`、`count=4464`、`since` 为第一次丢弃的时刻，其后恰 65,536 行，`order_seq` 从 0 到 65,535 依次排列——留下的是先到的）；`aNormalStopLosesNothingFromAnyThread`（4 个线程各记 10,000 行，关闭后文件恰 40,000 行、没有 `ledger_dropped`）；`aRecordRacingTheCloseIsWrittenOrRefusedNeverLeftInTheQueue`（一次 `record` 已过了「台账关没关」的检查、还没入队时停在取时间戳那一步，此时另一线程调 `close`，300 ms 后放行：这一行照样在文件里、文件恰 1 行；`close` 返回后再记一行，文件不变，日志多 1 行 WARN 计数 `dropped_after_close=1`）；`aFewLinesWaitForTheIntervalAndAFullBufferDoesNot`（一行在 200 ms 时还没落盘，900 ms 之后才出现；随后 1,000 行、约 250 KB 的突发不等下一个间隔就写出）；`aFloodOfEventsIntoAnUnwritableLedgerWritesOneLine`（目录不可写时 10,000 次 `record` 只换来 1 行带栈的 WARN）。`PluginHostIntegrationTest` 与 `HandshakeIntegrationTest` 照旧能在关闭台账之后读到 `plugin_enabled` 与 `client_rejected` |
 | 2 | 反证「丢新」与「64 KiB」有齿（两处一起改、一起还原）：`EventLedger#offer` 队满时改成先 `queue.poll()` 再 `queue.offer(entry)`（丢旧）；`run()` 的写盘条件删掉 `buffer.size >= BUFFER_BYTES \|\| `。只重跑 `--tests '*EventLedgerTest*'`，再 `git checkout --` 该文件 | 红 2 条：`aFullQueue…` 断在第一条保留行 `…"order_seq":4464}`（`EventLedgerTest.java:141`，丢旧就留下了 4,464 之后的行）；`aFewLines…` 断在「a full buffer does not wait for the interval」（`:225`）；还原后复绿 |
 | 3 | 反证停机排空有齿：`EventLedger#close` 的 `if (thread == null) return;` 改成 `!=`（不等写线程排空就返回），只重跑 `--tests '*EventLedgerTest*'`，再还原 | 红 4 条：`aNormalStop…` 断在 `expected: <40000> but was: <39727>`（`:160`，差多少随调度而变，本轮跑 3 次红 2 次，另一次写线程恰好排空了）；`aFullQueue…` 与 `aDayStops…` 抛 `NoSuchFileException`（`:80`，文件还没写出来）；`aRecordRacing…` 断在「the racing line is in the file」（`:201`）；还原后复绿 |
-| 5 | 反证「关闭与在途 `record` 竞争」有齿：`EventLedger#drainSealed` 的 `while (recording.get() != 0)` 改成 `while (recording.get() < 0)`（不等在途的 `record` 入队就做最后一次排空），只重跑 `--tests '*EventLedgerTest*'`，再 `git checkout --` 该文件 | 红 1 条：`aRecordRacing…` 断在「the racing line is in the file ==> expected: <1> but was: <0>」（`:201`，那一行入了队却没人再取）；还原后复绿。另把 `EventLedger.java` 换成 `ab8d625eee` 的版本（先查 `closing` 再入队、写线程见空队列就退出）跑同一条，断在 `:198`：那一行被当成 `queue_full` 计数，汇总行却永远写不出来，关闭后的一行也不进日志 |
+| 4 | 反证「关闭与在途 `record` 竞争」有齿：`EventLedger#drainSealed` 的 `while (recording.get() != 0)` 改成 `while (recording.get() < 0)`（不等在途的 `record` 入队就做最后一次排空），只重跑 `--tests '*EventLedgerTest*'`，再 `git checkout --` 该文件 | 红 1 条：`aRecordRacing…` 断在「the racing line is in the file ==> expected: <1> but was: <0>」（`:201`，那一行入了队却没人再取）；还原后复绿。另把 `EventLedger.java` 换成 `ab8d625eee` 的版本（先查 `closing` 再入队、写线程见空队列就退出）跑同一条，断在 `:198`：那一行被当成 `queue_full` 计数，汇总行却永远写不出来，关闭后的一行也不进日志 |
 
 后置：`git status` 干净。
 
@@ -2025,6 +2026,30 @@ REQ-M2 ↔ TC 对照（可读索引，覆盖与否由上述联检判）：
 
 后置：删掉临时目录。
 
+### 生产就绪 · 运行参数
+
+#### `TC-PROD-050` 默认 JVM 参数在启动脚本与 `:server-app:run` 两条入口都生效 — 对应 `REQ-PROD-028` · 级别: 回归 · 执行者: AI
+
+前置：`REQ-PROD-028` 已合入；工作副本干净；端口 25605 空闲。下文 `FLAGS` 指这条命令（按端口找 pid，数七个期望参数命中了几个）：
+
+```bash
+pid=$(lsof -nP -iTCP:25605 -sTCP:LISTEN -t); echo "pid=$pid"
+jcmd "$pid" VM.flags | tr ' ' '\n' | grep -E 'UseG1GC|UseZGC|HeapSize=|AlwaysPreTouch|MaxGCPauseMillis|OnOutOfMemoryError'
+jcmd "$pid" VM.flags | tr ' ' '\n' | grep -cxE -- '-XX:\+UseG1GC|-XX:InitialHeapSize=4294967296|-XX:MaxHeapSize=4294967296|-XX:\+AlwaysPreTouch|-XX:MaxGCPauseMillis=50|-XX:\+HeapDumpOnOutOfMemoryError|-XX:\+ExitOnOutOfMemoryError'
+```
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | `./gradlew :server-app:installDist --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts`，再 `grep -n '^DEFAULT_JVM_OPTS=' server-app/build/install/server-app/bin/server-app` | `BUILD SUCCESSFUL`；恰好一行，依次是 `"-XX:+UseG1GC" "-Xms4G" "-Xmx4G" "-XX:+AlwaysPreTouch" "-XX:MaxGCPauseMillis=50" "-XX:+HeapDumpOnOutOfMemoryError" "-XX:+ExitOnOutOfMemoryError"` |
+| 2 | 建临时目录 `D=$(mktemp -d)` 并 `cd "$D"`，`tail -f /dev/null \| JAVA_OPTS=-Dsynaxis.app.port=25605 <仓库根>/server-app/build/install/server-app/bin/server-app > server.log 2>&1 &`；等 `server.log` 出现 `listening on 0.0.0.0:25605` 后执行 `FLAGS` | 列出 `-XX:+UseG1GC`、`-XX:InitialHeapSize=4294967296`、`-XX:MaxHeapSize=4294967296`、`-XX:+AlwaysPreTouch`、`-XX:MaxGCPauseMillis=50`、`-XX:+HeapDumpOnOutOfMemoryError`、`-XX:+ExitOnOutOfMemoryError`；末行计数 `7`。随后 `kill <pid>`，进程在 15 s 内退出，`server.log` 末行 `synaxis server stopped successfully.` |
+| 3 | 回仓库根，`tail -f /dev/null \| ./gradlew :server-app:run --no-daemon --console=plain --init-script gradle/init/aliyun-mirror.init.gradle.kts -Dsynaxis.app.port=25605 > <日志> 2>&1 &`；就绪后执行 `FLAGS` | 与第 2 步相同，计数 `7`（`run` 任务 fork 的 JVM 同样带默认参数）；`kill <pid>` 停机（Gradle 因子进程被信号终止报 `BUILD FAILED`，属预期） |
+| 4 | 覆盖：第 2 步的写法，`JAVA_OPTS` 改成 `-Dsynaxis.app.port=25605 -XX:+UseZGC` | 进程不起：`server.log` 为 `Error occurred during initialization of VM` 与 `Multiple garbage collectors selected`，端口 25605 无监听（换收集器必须先关 G1，`docs/ENGINE.md` §3.4 写明） |
+| 5 | 覆盖：`JAVA_OPTS` 改成 `-Dsynaxis.app.port=25605 -XX:-UseG1GC -XX:+UseZGC -Xms8G -Xmx8G`；就绪后执行 `FLAGS` | 列出 `-XX:-UseG1GC`、`-XX:+UseZGC`、`-XX:InitialHeapSize=8589934592`、`-XX:MaxHeapSize=8589934592`，其余三个参数仍在；计数 `4`（`JAVA_OPTS` 排在默认参数之后，同名参数后者生效，不用重新构建）。`kill <pid>` 停机 |
+| 6 | 反证有齿：删掉 `server-app/build.gradle.kts` 里 `"-Xms4G",` 与 `"-XX:+AlwaysPreTouch",` 两行，重跑第 1、2 步，再 `git checkout -- server-app/build.gradle.kts` 并重跑第 1 步 | 第 1 步那行少了这两个参数；第 2 步计数 `5`，红在两处：`-XX:+AlwaysPreTouch` 不出现，`InitialHeapSize` 退回 JVM 按物理内存 1/64 选的值（24 GiB 的 Apple M4 Pro 上是 `402653184`），不等于 `4294967296`。还原并重装后第 2 步回到计数 `7` |
+| 7 | `grep -n 'JVM 参数（生产默认）' docs/ENGINE.md`，读该小节 | 恰好一处命中；小节逐个写了七个参数的理由、改分代 ZGC 的条件（堆上限 > 8 GiB 或 GC 暂停 P99 > 10 ms）、`JAVA_OPTS` 覆盖方式与第 2 步的取证命令 |
+
+后置：按 pid 停掉所有服务端与对应的 `tail -f /dev/null`；删掉第 2～6 步的临时目录与第 3 步的日志；确认工作区干净（第 6 步的临时改动已还原）。
+
 ## 5. 回归策略
 
 - **全量轮**（全部用例）：首次成稿、每个阶段 gate（引擎域阶段 0、2、3；游戏域 `docs/DESIGN-M2.md` §26 的阶段 1～6b）、跨功能域改动、地基变更（JDK、Gradle、镜像、协议版本、模块拆分、启动入口）。
@@ -2037,6 +2062,8 @@ REQ-M2 ↔ TC 对照（可读索引，覆盖与否由上述联检判）：
 
   - 跨域牵连（必须一起跑）：动了 `network/packet` 下的包注册表（增删包、调顺序、升协议版本）→ 加 TC-036；动了启动入口或就绪日志 → 加 TC-GAME-048、TC-GAME-029、TC-GAME-057、TC-GAME-058 与全部以进程为前置的引擎域用例（启动序列一变，「对局在 bind 之前就绪、tick 在 bind 之后才起」这条口径就要重验）；动了握手、准入回调或探针 → 加 TC-GAME-049、TC-GAME-050、TC-GAME-060、TC-GAME-061 与 TC-004、TC-014、TC-018、TC-019、TC-020、TC-026、TC-027 七条存量 TC；动了客户端模组侧的握手或拾取 → 加 TC-GAME-066；动了 `:protocol` 消息布局 → 加 TC-GAME-017 与客户端侧同一份向量；动了引擎 `Entity` 的位置推进入口 → 加 TC-GAME-051、TC-GAME-067 与 TC-GAME-040；动了对局的 chunk supplier、`Match#load` 的载入流程或引擎 `LightingChunk` / `instance.light` → 加 TC-GAME-029（第 10、11 步是光照的先红后绿）。
   - 生产就绪域（`docs/DESIGN-PROD.md`）：真客户端回归 → TC-PROD-040～TC-PROD-042；动了 `client-fabric/**`、`protocol/**`、`server-app/**`、`game-rts/**`、`plugin-api/**`、引擎 `network` / `listener` 包或 `client-gametest.yml` 就跑 TC-PROD-040（与工作流的 PR 路径过滤同一口径），动了 `judge.sh` 或工作流再加 TC-PROD-041、TC-PROD-042。
+
+  - 生产就绪域（`docs/DESIGN-PROD.md`）：运行参数 → TC-PROD-050（动了 `server-app/build.gradle.kts` 的 `application` 块、启动脚本或部署单元的 JVM 参数就跑）。
   - 影响面不确定时升级为全量轮。
 - **复测轮**（上轮失败用例 + 全部冒烟级）：修复失败项之后。
 - **人工收口轮**（仅上轮「待人工」用例）：AI 轮之后由人工补测 TC-016、TC-030、TC-GAME-020、TC-GAME-038、TC-GAME-046、TC-GAME-047，不要求冒烟级。

@@ -56,7 +56,7 @@ export JAVA_HOME=/opt/homebrew/opt/openjdk@25/libexec/openjdk.jdk/Contents/Home
 
 三类作业：
 
-- `packet`：每轮先建 DynamicChunk 世界，逐区块首次序列化（`CachedPacket#body`，含成帧与 zlib，阈值 256）；再建 LightingChunk 世界，逐区块首次序列化（光照在这一步懒算，等同玩家进服时的路径），然后 `invalidate()` 丢掉包缓存、再序列化一遍（光照已算好，只剩编码）。耗时与字节数只统计内圈 (grid-2)² 个区块，边上一圈缺邻居。
+- `packet`：每轮先建 DynamicChunk 世界，逐区块首次序列化（`CachedPacket#body`，含成帧与 zlib，阈值 256）；再建 LightingChunk 世界，逐区块首次序列化（光照在这一步懒算，等同玩家进服时的路径），然后 `invalidate()` 丢掉包缓存、再序列化一遍（光照已算好，只剩编码）。耗时与字节数只统计内圈 (grid-2)² 个区块，边上一圈缺邻居。`plainFramedSha256` / `litFramedSha256`（成帧压缩后）与 `plainUncompressedSha256` / `litUncompressedSha256`（压缩前）是这些区块全部测量轮的包字节按轮次、行序拼接后的 SHA-256；同一作业在任何 JVM 里跑出的四个摘要都必须相同，字节复现以它为判据，不看长度分布的均值。
 - `relight`：先用一张 32×32 世界跑一次 `LightingChunk.relight` 预热，然后每轮新建 n 区块世界，量 `relight(instance, 全部区块)` 的墙钟时间、进程 CPU 时间和堆增量。
 - `local`：32×32 世界整图 relight 并全部序列化一次后，在内圈随机列的地表轮流做三种改动（放萤石、放石头、挖掉地表方块），每次改动后量两种 3×3 重算：A「懒重算」= 对 3×3 区块调 `createLightData(true)`，只重算被改动作废的 section（新观察者拿区块包时走的就是这条）；B「整块重算」= `LightingChunk.relight(instance, 3×3 区块)`。
 

@@ -28,10 +28,13 @@ import java.lang.reflect.Field;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HexFormat;
 import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -348,6 +351,11 @@ public final class LargeWorldBench {
             final Samples litMs = new Samples();
             final Samples litBytes = new Samples();
             final Samples litRawBytes = new Samples();
+            // Byte-exact reproducibility: the same job must give the same digests in every JVM
+            final MessageDigest plainDigest = sha256();
+            final MessageDigest plainRawDigest = sha256();
+            final MessageDigest litDigest = sha256();
+            final MessageDigest litRawDigest = sha256();
             final Samples skyArraysSent = new Samples();
             final Samples blockArraysSent = new Samples();
             final Map<String, Samples> heap = new LinkedHashMap<>();
@@ -376,7 +384,12 @@ public final class LargeWorldBench {
                 final double plainWall = (System.nanoTime() - wall) / 1e6;
                 final double plainCpu = (processCpuNanos() - cpu) / 1e6;
                 for (Chunk chunk : chunks) {
-                    if (measured && interior(chunk, grid)) plainRawBytes.add(uncompressedBytes(chunk));
+                    if (measured && interior(chunk, grid)) {
+                        final byte[] raw = uncompressedBytes(chunk);
+                        plainRawBytes.add(raw.length);
+                        plainRawDigest.update(raw);
+                        plainDigest.update(framed(chunk));
+                    }
                 }
                 final long plainCached = liveHeap() - base;
                 chunks = null;
@@ -413,7 +426,12 @@ public final class LargeWorldBench {
                 final double litWall = (System.nanoTime() - wall) / 1e6;
                 final double litCpu = (processCpuNanos() - cpu) / 1e6;
                 for (Chunk chunk : chunks) {
-                    if (measured && interior(chunk, grid)) litRawBytes.add(uncompressedBytes(chunk));
+                    if (measured && interior(chunk, grid)) {
+                        final byte[] raw = uncompressedBytes(chunk);
+                        litRawBytes.add(raw.length);
+                        litRawDigest.update(raw);
+                        litDigest.update(framed(chunk));
+                    }
                 }
                 if (measured) {
                     final double n = chunks.size();
@@ -454,6 +472,10 @@ public final class LargeWorldBench {
             result.add("litSerializeMs", litMs.json());
             result.add("litFramedBytes", litBytes.json());
             result.add("litUncompressedBytes", litRawBytes.json());
+            result.addProperty("plainFramedSha256", HexFormat.of().formatHex(plainDigest.digest()));
+            result.addProperty("plainUncompressedSha256", HexFormat.of().formatHex(plainRawDigest.digest()));
+            result.addProperty("litFramedSha256", HexFormat.of().formatHex(litDigest.digest()));
+            result.addProperty("litUncompressedSha256", HexFormat.of().formatHex(litRawDigest.digest()));
             result.add("skyArraysPerPacket", skyArraysSent.json());
             result.add("blockArraysPerPacket", blockArraysSent.json());
             final JsonObject heapJson = new JsonObject();
@@ -474,6 +496,14 @@ public final class LargeWorldBench {
 
         private record Serialized(double millis, int framedBytes, int skyArrays, int blockArrays) {}
 
+        private static MessageDigest sha256() {
+            try {
+                return MessageDigest.getInstance("SHA-256");
+            } catch (NoSuchAlgorithmException e) {
+                throw new IllegalStateException(e);
+            }
+        }
+
         /** Frames and compresses the chunk packet the way a send does, timing only that. */
         private Serialized serialize(Chunk chunk) {
             final CachedPacket cached = (CachedPacket) chunk.getFullDataPacket();
@@ -485,10 +515,19 @@ public final class LargeWorldBench {
                     packet.lightData().skyLight().size(), packet.lightData().blockLight().size());
         }
 
+        /** The framed, compressed bytes a send writes, from the cache the timed pass filled. */
+        private byte[] framed(Chunk chunk) {
+            final NetworkBuffer body = Objects.requireNonNull(((CachedPacket) chunk.getFullDataPacket())
+                    .body(ConnectionState.PLAY, process, COMPRESSION_THRESHOLD));
+            final byte[] bytes = new byte[(int) body.readableBytes()];
+            body.copyTo(body.readIndex(), bytes, 0, bytes.length);
+            return bytes;
+        }
+
         /** The packet body before compression, from the packet the cache already holds. */
-        private int uncompressedBytes(Chunk chunk) {
+        private byte[] uncompressedBytes(Chunk chunk) {
             final ChunkDataPacket packet = (ChunkDataPacket) ((CachedPacket) chunk.getFullDataPacket()).packet();
-            return NetworkBuffer.makeArray(ChunkDataPacket.SERIALIZER, packet, process).length;
+            return NetworkBuffer.makeArray(ChunkDataPacket.SERIALIZER, packet, process);
         }
 
         // -------------------------------------------------------------- relight

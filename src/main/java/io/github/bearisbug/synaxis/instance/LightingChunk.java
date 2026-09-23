@@ -1,15 +1,13 @@
 package io.github.bearisbug.synaxis.instance;
 
-import net.kyori.adventure.key.Key;
-import io.github.bearisbug.synaxis.collision.Shape;
 import io.github.bearisbug.synaxis.coordinate.CoordConversion;
 import io.github.bearisbug.synaxis.coordinate.Point;
 import io.github.bearisbug.synaxis.coordinate.Vec;
 import io.github.bearisbug.synaxis.instance.block.Block;
-import io.github.bearisbug.synaxis.coordinate.BlockFace;
 import io.github.bearisbug.synaxis.instance.block.BlockHandler;
 import io.github.bearisbug.synaxis.instance.heightmap.Heightmap;
 import io.github.bearisbug.synaxis.instance.light.Light;
+import io.github.bearisbug.synaxis.instance.light.LightBlocks;
 import io.github.bearisbug.synaxis.instance.palette.Palette;
 import io.github.bearisbug.synaxis.network.packet.server.CachedPacket;
 import io.github.bearisbug.synaxis.network.packet.server.play.data.LightData;
@@ -64,32 +62,6 @@ public class LightingChunk extends DynamicChunk {
         EXTERNAL
     }
 
-    private static final Set<Key> DIFFUSE_SKY_LIGHT = Set.of(
-            Block.COBWEB.key(),
-            Block.ICE.key(),
-            Block.HONEY_BLOCK.key(),
-            Block.SLIME_BLOCK.key(),
-            Block.WATER.key(),
-            Block.ACACIA_LEAVES.key(),
-            Block.AZALEA_LEAVES.key(),
-            Block.BIRCH_LEAVES.key(),
-            Block.DARK_OAK_LEAVES.key(),
-            Block.FLOWERING_AZALEA_LEAVES.key(),
-            Block.JUNGLE_LEAVES.key(),
-            Block.CHERRY_LEAVES.key(),
-            Block.OAK_LEAVES.key(),
-            Block.SPRUCE_LEAVES.key(),
-            Block.SPAWNER.key(),
-            Block.BEACON.key(),
-            Block.END_GATEWAY.key(),
-            Block.CHORUS_PLANT.key(),
-            Block.CHORUS_FLOWER.key(),
-            Block.FROSTED_ICE.key(),
-            Block.SEAGRASS.key(),
-            Block.TALL_SEAGRASS.key(),
-            Block.LAVA.key()
-    );
-
     @Override
     public void invalidate() {
         this.partialLightCache.invalidate();
@@ -104,17 +76,6 @@ public class LightingChunk extends DynamicChunk {
 
     protected LightingChunk(Instance instance, int chunkX, int chunkZ, List<Section> sections) {
         super(instance, chunkX, chunkZ, sections);
-    }
-
-    private static boolean checkSkyOcclusion(Block block) {
-        if (block == Block.AIR) return false;
-        if (DIFFUSE_SKY_LIGHT.contains(block.key())) return true;
-
-        Shape shape = block.occlusionShape();
-        boolean occludesTop = Block.AIR.occlusionShape().isOccluded(shape, BlockFace.TOP);
-        boolean occludesBottom = Block.AIR.occlusionShape().isOccluded(shape, BlockFace.BOTTOM);
-
-        return occludesBottom || occludesTop;
     }
 
     public void setFreezeInvalidation(boolean freezeInvalidation) {
@@ -229,10 +190,12 @@ public class LightingChunk extends DynamicChunk {
         for (int x = 0; x < CHUNK_SIZE_X; x++) {
             for (int z = 0; z < CHUNK_SIZE_Z; z++) {
                 int height = startY;
+                Block above = Block.AIR;
                 while (height >= minY) {
                     Block block = getBlock(x, height, z, Condition.TYPE);
                     if (block != Block.AIR) highestBlock = Math.max(highestBlock, height);
-                    if (checkSkyOcclusion(block)) break;
+                    if (LightBlocks.skyEdgeOccluded(above, block)) break;
+                    above = block;
                     height--;
                 }
                 occlusionMap[z << 4 | x] = (height + 1);

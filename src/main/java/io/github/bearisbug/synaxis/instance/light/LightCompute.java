@@ -1,7 +1,6 @@
 package io.github.bearisbug.synaxis.instance.light;
 
 import it.unimi.dsi.fastutil.shorts.ShortArrayFIFOQueue;
-import io.github.bearisbug.synaxis.collision.Shape;
 import io.github.bearisbug.synaxis.coordinate.Point;
 import io.github.bearisbug.synaxis.instance.block.Block;
 import io.github.bearisbug.synaxis.coordinate.BlockFace;
@@ -57,12 +56,12 @@ public final class LightCompute {
             };
             for (int bx = 0; bx < 16; bx++) {
                 for (int by = 0; by < 16; by++) {
-                    final byte lightEmission = (byte) Math.max(switch (face) {
-                        case NORTH, SOUTH -> (byte) otherLight.getLevel(bx, by, 15 - k);
-                        case WEST, EAST -> (byte) otherLight.getLevel(15 - k, bx, by);
-                        default -> (byte) otherLight.getLevel(bx, 15 - k, by);
-                    } - 1, 0);
-                    if (lightEmission <= 0) continue;
+                    final int fromLevel = switch (face) {
+                        case NORTH, SOUTH -> otherLight.getLevel(bx, by, 15 - k);
+                        case WEST, EAST -> otherLight.getLevel(15 - k, bx, by);
+                        default -> otherLight.getLevel(bx, 15 - k, by);
+                    };
+                    if (fromLevel <= 1) continue;
 
                     final int posTo = switch (face) {
                         case NORTH, SOUTH -> bx | (k << 4) | (by << 8);
@@ -70,33 +69,27 @@ public final class LightCompute {
                         default -> bx | (by << 4) | (k << 8);
                     };
 
+                    final Block blockTo = Objects.requireNonNullElse(switch (face) {
+                        case NORTH, SOUTH -> getBlock(blockPalette, bx, by, k);
+                        case WEST, EAST -> getBlock(blockPalette, k, bx, by);
+                        default -> getBlock(blockPalette, bx, k, by);
+                    }, Block.AIR);
+
+                    final int lightEmission = fromLevel - LightBlocks.opacity(blockTo);
+                    if (lightEmission <= 0) continue;
+
                     if (content != null) {
                         final int internalEmission = (byte) Math.max(getLight(content, posTo) - 1, 0);
                         if (lightEmission <= internalEmission) continue;
                     }
 
-                    final Block blockTo = switch (face) {
-                        case NORTH, SOUTH -> getBlock(blockPalette, bx, by, k);
-                        case WEST, EAST -> getBlock(blockPalette, k, bx, by);
-                        default -> getBlock(blockPalette, bx, k, by);
-                    };
-
-                    final Block blockFrom = switch (face) {
+                    final Block blockFrom = Objects.requireNonNullElse(switch (face) {
                         case NORTH, SOUTH -> getBlock(otherPalette, bx, by, 15 - k);
                         case WEST, EAST -> getBlock(otherPalette, 15 - k, bx, by);
                         default -> getBlock(otherPalette, bx, 15 - k, by);
-                    };
+                    }, Block.AIR);
 
-                    if (blockTo == null && blockFrom != null) {
-                        if (blockFrom.occlusionShape().isOccluded(Block.AIR.occlusionShape(), face.getOppositeFace()))
-                            continue;
-                    } else if (blockTo != null && blockFrom == null) {
-                        if (Block.AIR.occlusionShape().isOccluded(blockTo.occlusionShape(), face))
-                            continue;
-                    } else if (blockTo != null && blockFrom != null) {
-                        if (blockFrom.occlusionShape().isOccluded(blockTo.occlusionShape(), face.getOppositeFace()))
-                            continue;
-                    }
+                    if (LightBlocks.occludes(blockFrom, blockTo, face.getOppositeFace())) continue;
 
                     final int index = posTo | (lightEmission << 12);
                     lightSources.enqueue((short) index);
@@ -142,7 +135,7 @@ public final class LightCompute {
             final int z = (index >> 4) & 15;
             final int y = (index >> 8) & 15;
             final int lightLevel = (index >> 12) & 15;
-            final byte newLightLevel = (byte) (lightLevel - 1);
+            if (lightLevel <= 1) continue;
 
             for (Direction direction : DIRECTIONS) {
                 final int xO = x + direction.normalX();
@@ -156,21 +149,18 @@ public final class LightCompute {
 
                 // Section
                 final int newIndex = xO | (zO << 4) | (yO << 8);
+                final int oldLightLevel = getLight(lightArray, newIndex);
+                if (oldLightLevel >= lightLevel - 1) continue;
 
-                if (getLight(lightArray, newIndex) < newLightLevel) {
-                    final Block currentBlock = Objects.requireNonNullElse(getBlock(blockPalette, x, y, z), Block.AIR);
-                    final Block propagatedBlock = Objects.requireNonNullElse(getBlock(blockPalette, xO, yO, zO), Block.AIR);
+                final Block propagatedBlock = Objects.requireNonNullElse(getBlock(blockPalette, xO, yO, zO), Block.AIR);
+                final int newLightLevel = lightLevel - LightBlocks.opacity(propagatedBlock);
+                if (oldLightLevel >= newLightLevel) continue;
 
-                    final Shape currentShape = currentBlock.occlusionShape();
-                    final Shape propagatedShape = propagatedBlock.occlusionShape();
+                final Block currentBlock = Objects.requireNonNullElse(getBlock(blockPalette, x, y, z), Block.AIR);
+                if (LightBlocks.occludes(currentBlock, propagatedBlock, BlockFace.fromDirection(direction))) continue;
 
-                    final boolean airAir = currentBlock.air() && propagatedBlock.air();
-                    if (!airAir && currentShape.isOccluded(propagatedShape, BlockFace.fromDirection(direction)))
-                        continue;
-
-                    placeLight(lightArray, newIndex, newLightLevel);
-                    lightSources.enqueue((short) (newIndex | (newLightLevel << 12)));
-                }
+                placeLight(lightArray, newIndex, newLightLevel);
+                lightSources.enqueue((short) (newIndex | (newLightLevel << 12)));
             }
         }
         return lightArray;

@@ -14,6 +14,7 @@
 
 | 日期 | 改动 | 作者 |
 | --- | --- | --- |
+| 2026-09-23 | 跟进 `docs/DESIGN-PROD.md` 第 2 波 2B（`REQ-PROD-036` 前半，G33 前半：删除 `Auth.Velocity` / `Auth.Bungee`，PROXY protocol 可信网段的启动自检；`store_meta` 自检归第 3 波 3A）。**新增 §4「生产就绪 · 第 2 波 2B：删除代理转发模式与 PROXY 可信网段」五条 `TC-PROD-120`～`TC-PROD-124`**：`Auth` 只剩两种模式（120，反证加回 record 时两个 `switch` 编译失败、连分支加回时测试红）、`HandshakeListener` 移出日志规则豁免名单（121）、缺可信网段或缺 `required` 时配置构建即拒绝（122）、真 socket 上网段外的 PROXY 头部被断开（123）、真进程拒绝起服与断开（124，端口 25624）；每条带反证，红在哪写进期望列；与设计文档的一处口径差异（需求表要求同时开 `required`，`API-PROD-001` 与 §19 只写可信网段）写在该节开头。`TC-PROD-061` 第 2、3 步与 `TC-PROD-062` 第 3 步反证期望里的测试行号随测试文件改动加 1，`TC-PROD-061` 第 2 步 `aConnectionThatSaysNothing…` 的红改为「给按时握手那条写握手包时 `Broken pipe`」（那条连接现在先写 PROXY 头部）。§5 回归映射加生产就绪域一行 | Bearisbug |
 | 2026-09-23 | 跟进 `docs/DESIGN-PROD.md` 第 2 波 2A（`REQ-PROD-002` 正版验证与加密，G01；`REQ-PROD-003` 皮肤，G06；`REQ-PROD-004` 同分片部分，G07；`REQ-PROD-044` 假 sessionserver）。**新增 §4「生产就绪 · 第 2 波 2A：正版验证与加密」十六条 `TC-PROD-090`～`TC-PROD-105`**：`serverHash` 与 CFB8（090）、login ID 1 恢复为加密请求（091）、在线完整登录与线上无明文（092）、204 的加密断线包（093）、不可用重试一次（094）、在途上限 32（095）、非法加密握手（096）、验证期间断开、断开后不重试不排队出网（097）、加密不验证（098）、皮肤属性进 PlayerInfo（099）、同分片踢旧与 5 s 上限（100）、`server-app` 选模式（101）、假 sessionserver（102）、真进程在线模式与 Mojang 真 sessionserver 的 204（103，端口 25623）、真客户端完整正版路径（104）、模组四个新键（105）；每条带反证，红在哪写进期望列，与设计文档的三处口径差异（§19 两处、`REQ-PROD-044` 的 `record` 只按 serverId 认一处）写在该节末尾。**§3 环境段**：`server-app` 默认改为在线模式，本文档里探针、压测与无头客户端连的服务端一律加 `-Dsynaxis.app.auth=offline`（`REQ-PROD-030` 的完整正版路径档除外），启动命令与「入口」行随之改写。§5 回归映射加生产就绪域一行与跨域牵连一条 | Bearisbug |
 | 2026-09-23 | 跟进 `docs/DESIGN-PROD.md` 第 1 波 1B（`REQ-PROD-009`，G05）。**新增 `TC-PROD-080`～`TC-PROD-083`**（均对应 `REQ-PROD-009`）：新开「生产就绪 · 聊天」一节。080 判引擎默认 0 收件人（50 人在线出站聊天包 0）、只有监听器加的收件人收到 `SystemChat`，反证是换回全进程名单，红在 `expected: <0> but was: <50>`；081 判每连接 1 条/秒、burst 3 的令牌桶与 `synaxis.chat-rate-per-second`、`synaxis.chat-burst` 两个键，反证是删限频行（10 条全进事件）与 burst 边界多放一条；082 判 `JoinGame` 的 `enforcesSecureChat=false`，反证是改回 `true`；083 在无头容器里用真客户端判进服没有「Chat messages can't be verified」提示、转发的聊天是系统消息，反证是模组不注册 `ClientPacketListenerMixin`，红在 `C1 unsecure_server_toast=true`。§5 加聊天一行 | Bearisbug |
 | 2026-09-23 | 跟进 `docs/DESIGN-PROD.md` 第 1 波 1A（`REQ-PROD-001` 连接闸门，G02；`REQ-PROD-043` keep-alive 收尾，G40）。**新增 §4「生产就绪 · 第 1 波 1A：连接闸门与 keep-alive 收尾」十条 `TC-PROD-060`～`TC-PROD-069`**：闸门计数的假时钟单元（060）、真 socket 上的 L0 / L1 / 握手前超时（061）、三只令牌桶与断线键映射（062）、L3 席位与 status 的 max（063）、L4 每 tick 入场（064）、fd 耗尽的 accept 退避（065，`ulimit -n 256` 的子 JVM）、拒绝只写 10 s 汇总且被拒连接不写 `Connection closed`（066）、`synaxis:keep-alive-timeout` 与 `synaxis.socket-timeout` 弃用 WARN（067，对应 `REQ-PROD-043`）、模组四个新键的译文（068）、真进程上 50 个机器人 + 单地址 100 连接/秒 × 60 s 与 1,024 条空闲连接（069，端口 25621，新工具 `tools/loadtest/gate_flood.py`）；每条带反证，红在哪写进期望列。本波是离线模式，§19 的「RSA 解密与 `hasJoined` 计数为 0」改验登录事件没有触发，写在该节开头。§5 回归映射加生产就绪域一行与跨域牵连一条 | Bearisbug |
@@ -2077,8 +2078,8 @@ jcmd "$pid" VM.flags | tr ' ' '\n' | grep -cxE -- '-XX:\+UseG1GC|-XX:InitialHeap
 | # | 操作 | 预期 |
 | --- | --- | --- |
 | 1 | `./gradlew :test --tests '*ConnectionGateSocketTest*' --tests '*ConnectionGateTest*' --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts` | `BUILD SUCCESSFUL`。`ConnectionGateSocketTest` 真起 `Server` 在回环地址上：`theSocketPastTheProcessLimitIsClosedWithoutAByte`（`max-connections=3`，第 4 个 socket 读到 EOF、一个字节都没有，前 3 个照常拿到 status 响应）；`withoutTheProxyProtocolTheAddressLimitIsCheckedAtAccept`（`max-connections-per-ip=2`，第 3 条在 accept 被关、`TOO_MANY` 计 1、L0 计数仍是 2）；`withTheProxyProtocolTheAddressLimitIsCheckedAtTheHandshake`（开 PROXY、`max-connections-per-ip=2`，两条 PROXY v1 头写 `203.0.113.7` 的连接登录成功后，第 3 条 login 意图收到 `LoginDisconnect synaxis:too-many-connections` 随即断开，status 意图那条读到 EOF、没有响应，`203.0.113.8` 照常登录；`CLOSED_AT_ACCEPT` 为 0，`AsyncPlayerPreLoginEvent` 只触发 3 次，被拒那条没有触发）；`aConnectionThatSaysNothingIsClosedAtTheHandshakeTimeout`（开 PROXY、`handshake-timeout-ms=500`、同一 IP 5 条空闲连接：没有一条在 accept 被关，5 条都在 400 ms～5 s 之间读到 EOF，`HANDSHAKE_TIMEOUT` 计 5；按时发了握手的那条 1.1 s 后仍能拿到 status 响应）。`ConnectionGateTest` 同 `TC-PROD-060` 第 1 步 |
-| 2 | 反证「不开 PROXY 时 L1 在 accept」有齿：`src/main/java/io/github/bearisbug/synaxis/network/ConnectionGate.java` 的 `if (!config.proxyProtocol() && !ticket.countAddress(remoteAddress)) {` 改成 `if (config.proxyProtocol() && !ticket.countAddress(remoteAddress)) {`，重跑第 1 步，再 `git checkout --` 该文件 | 红 6 条：`ConnectionGateSocketTest` 3 条——`withoutTheProxyProtocol…` 第 3 条连接 5 s 内既没回包也没关（`the server neither answered nor closed the connection`，`ConnectionGateSocketTest.java:87`）、`withTheProxyProtocol…` 写第 3 条连接时 `Broken pipe`（它按代理地址在 accept 被关了）、`aConnectionThatSaysNothing…` 断在「expected: <5> but was: <2>」（`:151`，3 条在 accept 被关）；`ConnectionGateTest` 3 条——`anAddressPastItsLimitIsTurnedAwayAtAccept`（`:127`）、`withTheProxyProtocolTheAddressIsCountedAtTheHandshake`（「every connection of the proxy is accepted」，`:152`）、`trustedNetworksSkipTheAddressLimitAndTheBuckets`（`:176`）；还原后复绿 |
-| 3 | 反证握手前超时有齿：`src/main/java/io/github/bearisbug/synaxis/network/player/PlayerConnection.java` 的 `&& clientState == ConnectionState.HANDSHAKE` 改成 `&& clientState == ConnectionState.LOGIN`，只跑 `:test --tests '*ConnectionGateSocketTest*'`，再 `git checkout --` 该文件 | 红 1 条：`aConnectionThatSaysNothing…` 断在「the server neither answered nor closed the connection」（`:148`，空闲连接要等 30 s 登录超时才关）；还原后复绿 |
+| 2 | 反证「不开 PROXY 时 L1 在 accept」有齿：`src/main/java/io/github/bearisbug/synaxis/network/ConnectionGate.java` 的 `if (!config.proxyProtocol() && !ticket.countAddress(remoteAddress)) {` 改成 `if (config.proxyProtocol() && !ticket.countAddress(remoteAddress)) {`，重跑第 1 步，再 `git checkout --` 该文件 | 红 6 条：`ConnectionGateSocketTest` 3 条——`withoutTheProxyProtocol…` 第 3 条连接 5 s 内既没回包也没关（`the server neither answered nor closed the connection`，`ConnectionGateSocketTest.java:87`）、`withTheProxyProtocol…` 写第 3 条连接时 `Broken pipe`（它按代理地址在 accept 被关了）、`aConnectionThatSaysNothing…` 给按时握手那条写握手包时 `Broken pipe`（`:146`，它是同一 IP 的第 6 条，在 accept 就被关了）；`ConnectionGateTest` 3 条——`anAddressPastItsLimitIsTurnedAwayAtAccept`（`:127`）、`withTheProxyProtocolTheAddressIsCountedAtTheHandshake`（「every connection of the proxy is accepted」，`:153`）、`trustedNetworksSkipTheAddressLimitAndTheBuckets`（`:177`）；还原后复绿 |
+| 3 | 反证握手前超时有齿：`src/main/java/io/github/bearisbug/synaxis/network/player/PlayerConnection.java` 的 `&& clientState == ConnectionState.HANDSHAKE` 改成 `&& clientState == ConnectionState.LOGIN`，只跑 `:test --tests '*ConnectionGateSocketTest*'`，再 `git checkout --` 该文件 | 红 1 条：`aConnectionThatSaysNothing…` 断在「the server neither answered nor closed the connection」（`:149`，空闲连接要等 30 s 登录超时才关）；还原后复绿 |
 
 后置：`git status` 干净。
 
@@ -2090,7 +2091,7 @@ jcmd "$pid" VM.flags | tr ' ' '\n' | grep -cxE -- '-XX:\+UseG1GC|-XX:InitialHeap
 | --- | --- | --- |
 | 1 | `./gradlew :test --tests '*ConnectionGateSocketTest*' --tests '*ConnectionGateTest*' --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts` | `BUILD SUCCESSFUL`。`theFourthLoginOfAnAddressIsThrottledAndLetInTwoSecondsLater`：默认登录桶，同一地址 3 次登录都收到 `SetCompression`，第 4 次收到 `LoginDisconnect synaxis:login-throttled`，等 2.1 s 后第 5 次收到 `SetCompression`，`THROTTLED` 计 1。`statusAndTransferHandshakesCountOnTheirOwnBuckets`（`accept-transfers=true`，两只桶的回填调到 0.001/s，免得慢机器在第 10 与第 11 次之间补回一个令牌；默认回填速率由 `ConnectionGateTest` 在假时钟上验）：前 10 次 status 握手各拿到 status 响应，第 11 次读到 EOF、没有响应；10 次 transfer 意图登录都收到 `SetCompression`，第 11 次收到 `synaxis:login-throttled`；随后同一地址的 login 意图仍收到 `SetCompression`（登录桶没被动过），`THROTTLED` 计 2 |
 | 2 | 反证「三只桶互不相干」有齿：`ConnectionGate.java` 的 `case TRANSFER -> transfer;` 改成 `case TRANSFER -> login;`，重跑第 1 步，再 `git checkout --` 该文件 | 红 2 条：`statusAndTransferHandshakes…` 第 4 次 transfer 就被拒（「turned away with synaxis:login-throttled」，`ConnectionGateSocketTest.java:201`）；`ConnectionGateTest.statusAndTransferCountOnTheirOwnBuckets` 断在「expected: <PASS> but was: <THROTTLED>」（`ConnectionGateTest.java:88`）；还原后复绿 |
-| 3 | 反证断线键映射有齿：`src/main/java/io/github/bearisbug/synaxis/listener/preplay/HandshakeListener.java` 的 `? DisconnectReasons.TOO_MANY_CONNECTIONS : DisconnectReasons.LOGIN_THROTTLED` 两个键对调，只跑 `:test --tests '*ConnectionGateSocketTest*'`，再 `git checkout --` 该文件 | 红 3 条：`withTheProxyProtocol…`「expected: <synaxis:too-many-connections> but was: <synaxis:login-throttled>」（`:114`）、`theFourthLogin…`（`:168`）与 `statusAndTransfer…`（「the eleventh transfer」，`:205`）两处反过来；还原后复绿 |
+| 3 | 反证断线键映射有齿：`src/main/java/io/github/bearisbug/synaxis/listener/preplay/HandshakeListener.java` 的 `? DisconnectReasons.TOO_MANY_CONNECTIONS : DisconnectReasons.LOGIN_THROTTLED` 两个键对调，只跑 `:test --tests '*ConnectionGateSocketTest*'`，再 `git checkout --` 该文件 | 红 3 条：`withTheProxyProtocol…`「expected: <synaxis:too-many-connections> but was: <synaxis:login-throttled>」（`:114`）、`theFourthLogin…`（`:169`）与 `statusAndTransfer…`（「the eleventh transfer」，`:206`）两处反过来；还原后复绿 |
 
 后置：`git status` 干净。
 
@@ -2417,6 +2418,72 @@ jcmd "$pid" VM.flags | tr ' ' '\n' | grep -cxE -- '-XX:\+UseG1GC|-XX:InitialHeap
 
 本节与设计文档的口径差异三处，前两处对 §19：一是「非法加密握手」场景的「发两次」一档，第一把密钥是合法的，读线程处理完它就把 `hasJoined` 交给验证线程，第二把随后才到，所以假服务会收到 1 次查询而不是 0 次；本节只判第二把得到加密的 `synaxis:protocol-error`、验证结果被丢弃（`TC-PROD-096`）。二是「不可用时重试」场景的超时档按比例缩短为超时 1 s、阻塞 3 s（`TC-PROD-094`）。三是 `REQ-PROD-044` 与 `API-PROD-027` 写的 `record` 模式只对 join 过的「(用户名, serverId)」回 200，假服务实际只按 serverId 认：join 请求体只有 `selectedProfile` 与 `serverId`，不带用户名，所以 join(Steve, H1) 之后查 `hasJoined?username=Alex&serverId=H1` 也回 200，正文 `name` 是 `Alex`、`id` 是 join 时的 profile；每次登录的 serverId 都是新的，§19 的场景不受影响，`TC-PROD-102` 只判 serverId 一档。
 
+### 生产就绪 · 第 2 波 2B：删除代理转发模式与 PROXY 可信网段
+
+五条对应 `REQ-PROD-036` 的前半（清单 G33 前半，`ADR-PROD-007`，`API-PROD-001` 启动自检里 PROXY 那一句）。`store_meta.auth_mode` 的三条 §19 场景与「鉴权模式与库不一致拒绝起服」的前半归第 3 波 3A，本节不涉及；那条场景 Then 的后半「Auth 只有 Online 与 Offline 两种」由 `TC-PROD-120` 覆盖。`TC-PROD-120`～`TC-PROD-123` 是 JUnit，命令统一写作「跑 `<类>`」，即 `./gradlew :test --tests <类> --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts`，结果看 `build/test-results/test/TEST-<类>.xml`；`TC-PROD-124` 起真进程，端口 25624。反证一律是「临时改一处实现、重跑、看红、还原」，还原后 `git status` 必须干净。
+
+与设计文档的口径差异一处：`REQ-PROD-036` 写「开 PROXY protocol 时必须配可信网段并开 `proxyProtocolRequired`」，`API-PROD-001` 与 §19 只写了可信网段为空即拒绝起服；实现按需求表两项都查，所以本节的 PROXY 配置一律同时带 `synaxis.proxy-protocol.required=true`。
+
+#### `TC-PROD-120` `Auth` 只剩 `Online` 与 `Offline`，`Velocity` / `Bungee` 已删除 — 对应 `REQ-PROD-036` · 级别: 回归 · 执行者: AI
+
+前置：工作副本干净。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `io.github.bearisbug.synaxis.AuthModesTest`；再在仓库根执行 `grep -rn -e 'Auth\.Velocity' -e 'Auth\.Bungee' -e 'BungeeGuard' -e 'velocity:player_info' src server-app` | 1 个 0 失败：`Auth.class.getPermittedSubclasses()` 恰好是 `{Auth.Online, Auth.Offline}`。`grep` 无输出 |
+| 2 | 反证有齿（只加 record）：在 `Auth.java` 末尾加回 `record Bungee() implements Auth {}`，跑 `./gradlew :compileJava --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts` | 编译失败 2 处，`ConnectionManager.java:80` 与 `ServerProcessImpl.java:254` 都是「并非所有可能的输入值都包含在 switch 语句中」：按 `Auth` 分派的两个 `switch` 没有 `default`，新加一种模式不补分支就编不过 |
+| 3 | 反证有齿（连分支一起加回）：保留第 2 步的 record，再给 `ConnectionManager` 构造器的 `switch` 加 `case Auth.Bungee _ -> { this.loginKeyPair = null; this.sessionClient = null; }`、给 `ServerProcessImpl#start` 的 `switch` 加 `case Auth.Bungee _ -> LOGGER.info("Bungee");`，重跑第 1 步的测试，再 `git checkout -- src/main` | `1 tests completed, 1 failed`，红在 `theOnlyModesAreOnlineAndOffline`：`expected: <[class …Auth$Offline, class …Auth$Online]> but was: <[class …Auth$Bungee, class …Auth$Offline, class …Auth$Online]>`（`AuthModesTest.java:21`）。还原后复绿 |
+
+后置：确认 `Auth.java`、`ConnectionManager.java`、`ServerProcessImpl.java` 没有残留改动。
+
+#### `TC-PROD-121` `HandshakeListener` 不再豁免「客户端驱动路径不逐包写日志」规则 — 对应 `REQ-PROD-036` · 级别: 回归 · 执行者: AI
+
+前置：工作副本干净。`HandshakeListener` 原先因 BungeeGuard 拒绝那一行 WARN 进了 `ArchitectureTest#boundedReporters` 的豁免名单，删掉 Bungee 分支后它不再写日志，名单由九个类减为八个。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `io.github.bearisbug.synaxis.ArchitectureTest` | 7 个 0 失败；`boundedReporters()` 里没有 `HandshakeListener` |
+| 2 | 反证有齿：`HandshakeListener#listener` 里「Server address too long」的 `throw` 前加一行 `LoggerFactory.getLogger(HandshakeListener.class).warn("Server address too long: {}", address.length());`（并补 `org.slf4j.LoggerFactory` 的 import，写全限定名会先被 Error Prone 的 `UnnecessarilyFullyQualified` 拦下），重跑第 1 步，再 `git checkout --` 该文件 | `7 tests completed, 1 failed`，红在 `clientDrivenPathsDoNotWriteALinePerPacket`：`Architecture Violation … Rule 'no classes that reside in any package ['io.github.bearisbug.synaxis.network..', 'io.github.bearisbug.synaxis.listener..'] and not name …'`，违例指向 `HandshakeListener.listener`。还原后复绿 |
+
+后置：确认 `HandshakeListener.java` 没有残留改动。
+
+#### `TC-PROD-122` 开 PROXY protocol 必须配可信网段并开 `required`，否则配置构建即拒绝 — 对应 `REQ-PROD-036` · 级别: 回归 · 执行者: AI
+
+前置：工作副本干净。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `io.github.bearisbug.synaxis.network.ProxyProtocolTrustTest` | 6 个 0 失败，其中配置三条：`theProxyProtocolIsRefusedWithoutTrustedNetworks`（`proxyProtocol(true).proxyProtocolRequired(true)` 不配网段、或网段写成 `" , "`，`build()` 抛 `IllegalArgumentException`，信息含 `synaxis.proxy-protocol.trusted-networks`）；`theProxyProtocolIsRefusedWhenTheHeaderIsOptional`（配了 `10.0.0.0/8` 但不开 `required`，信息含 `synaxis.proxy-protocol.required`）；`theTrustedNetworksAreCheckedLikeTheGateOnes`（`lb.example.com` 这类主机名被拒且信息点名本键，`10.0.0.0/8, fd00::/8` 通过，不开 PROXY 时什么都不用配） |
+| 2 | 反证可信网段那一项有齿：`ServerConfig` 构造器的 `if (proxyProtocol && noTrustedProxies)` 改成 `if (proxyProtocol && noTrustedProxies && !proxyProtocolRequired)`，重跑第 1 步，再 `git checkout --` 该文件 | `6 tests completed, 1 failed`，红在 `theProxyProtocolIsRefusedWithoutTrustedNetworks`：`Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown.`（`ProxyProtocolTrustTest.java:35`）。还原后复绿 |
+| 3 | 反证 `required` 那一项有齿：`if (proxyProtocol && !proxyProtocolRequired)` 改成 `if (proxyProtocol && !proxyProtocolRequired && noTrustedProxies)`，重跑第 1 步，再 `git checkout --` 该文件 | `6 tests completed, 1 failed`，红在 `theProxyProtocolIsRefusedWhenTheHeaderIsOptional`：同一句 `nothing was thrown`（`ProxyProtocolTrustTest.java:44`）。还原后复绿 |
+
+后置：确认 `ServerConfig.java` 没有残留改动。
+
+#### `TC-PROD-123` 真 socket：可信网段外来的 PROXY 头部被断开，网段内的照常服务，不带头部的被断开 — 对应 `REQ-PROD-036` · 级别: 回归 · 执行者: AI
+
+前置：工作副本干净。测试在回环地址上起真 `Server`，对端地址是 `127.0.0.1`，PROXY v1 头部写 `203.0.113.7`。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `io.github.bearisbug.synaxis.network.ProxyProtocolTrustTest`、`io.github.bearisbug.synaxis.network.player.ProxyProtocolReadTest`、`io.github.bearisbug.synaxis.network.ConnectionGateSocketTest`、`io.github.bearisbug.synaxis.network.ConnectionGateTest` | 分别 6、2、9、12 个 0 失败。`ProxyProtocolTrustTest` 的 socket 三条：可信网段 `10.0.0.0/8` 时带头部的 status 请求一个字节都收不到就被关（`aHeaderFromOutsideTheTrustedNetworksIsDisconnected`）；网段 `10.0.0.0/8, 127.0.0.0/8` 时同样的请求拿到 status 响应（`aHeaderFromATrustedNetworkIsServed`）；不带头部的请求被关（`aConnectionWithoutTheHeaderIsDisconnected`）。另外三个类里开 PROXY 的用例改成以 `127.0.0.0/8` 为可信网段并开 `required`，判据不变 |
+| 2 | 反证有齿：删掉 `PlayerSocketConnection#read` 里 `if (!process().connection().gate().isTrustedProxy(remoteAddress))` 连同其后的 `throw` 共三行，只跑 `ProxyProtocolTrustTest`、`ProxyProtocolReadTest`、`ConnectionGateSocketTest`、`ConnectionGateTest`，再 `git checkout --` 该文件 | `35 tests completed, 1 failed`，红在 `aHeaderFromOutsideTheTrustedNetworksIsDisconnected`：`127.0.0.1 is not a load balancer of 10.0.0.0/8 ==> expected: <false> but was: <true>`（`ProxyProtocolTrustTest.java:65`）。还原后复绿 |
+
+后置：确认 `PlayerSocketConnection.java` 没有残留改动。
+
+#### `TC-PROD-124` 真进程：`server-app` 开 PROXY 缺可信网段或缺 `required` 拒绝起服，网段外来的头部被断开 — 对应 `REQ-PROD-036` · 级别: 回归 · 执行者: AI
+
+前置：`./gradlew :server-app:installDist --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts` 已跑；端口 25624 空闲；空的临时目录 `$W`。下文「起服 `<参数>`」指在 `$W` 里执行 `java -Dsynaxis.app.port=25624 -Dsynaxis.app.auth=offline -Dsynaxis.proxy-protocol=true <参数> -cp "<仓库根>/server-app/build/install/server-app/lib/*" io.github.bearisbug.synaxis.app.Main < /dev/null > server.log 2>&1`（第 3～5 步末尾加 `&` 放后台，日志出现 `listening on 0.0.0.0:25624` 即就绪）；「发 status」指 `printf 'PROXY TCP4 203.0.113.7 127.0.0.1 40000 25565\r\n\x10\x00\x88\x06\x09localhost\x64\x18\x01\x01\x00' \| nc -w 3 127.0.0.1 25624 \| wc -c`（PROXY v1 头部、协议 776 的 status 握手、StatusRequest），「发裸 status」是同一串去掉 PROXY 头部那一行。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 起服 `-Dsynaxis.proxy-protocol.required=true`（不配网段） | 进程退出码 1，`lsof -nP -iTCP:25624` 无输出；日志首行 `ERROR … Main - Refusing to start: synaxis.proxy-protocol needs synaxis.proxy-protocol.trusted-networks, the networks of the load balancers allowed to send a PROXY header` |
+| 2 | 起服 `-Dsynaxis.proxy-protocol.trusted-networks=10.0.0.0/8`（不开 `required`） | 退出码 1、端口无监听；`Refusing to start: synaxis.proxy-protocol needs synaxis.proxy-protocol.required=true, a connection without the header would otherwise pass as a direct one` |
+| 3 | 起服 `-Dsynaxis.proxy-protocol.required=true -Dsynaxis.proxy-protocol.trusted-networks=10.0.0.0/8 &`；就绪后发 status，再发裸 status | 起服成功。两次都是 `0`（一个字节都没回就被关）；`server.log` 两行 `Connection closed: … identifier=/127.0.0.1:<端口>`：头部里的 `203.0.113.7` 没有被采用。按 pid 停服 |
+| 4 | 起服 `-Dsynaxis.proxy-protocol.required=true -Dsynaxis.proxy-protocol.trusted-networks=127.0.0.0/8 &`；就绪后发 status，再发裸 status | 发 status 得 `114`（status 响应），日志 `Connection closed: … identifier=/203.0.113.7:40000`；发裸 status 仍是 `0`。按 pid 停服 |
+| 5 | 反证有齿：按 `TC-PROD-123` 第 2 步删掉 `PlayerSocketConnection` 的可信网段检查，重跑 `:server-app:installDist`，照第 3 步起服（网段 `10.0.0.0/8`）后发 status；按 pid 停服，`git checkout --` 该文件，再跑一次 `installDist` | 红：本该是 `0` 的一次得到 `114`，日志 `Connection closed: … identifier=/203.0.113.7:40000`，网段外的对端用头部换掉了自己的地址。还原并重建后第 3 步复现 `0` |
+
+后置：按 pid 停掉仍在跑的服务端，`lsof -nP -iTCP:25624` 无输出；删掉 `$W`；确认 `PlayerSocketConnection.java` 没有残留改动。
+
 ## 5. 回归策略
 
 - **全量轮**（全部用例）：首次成稿、每个阶段 gate（引擎域阶段 0、2、3；游戏域 `docs/DESIGN-M2.md` §26 的阶段 1～6b）、跨功能域改动、地基变更（JDK、Gradle、镜像、协议版本、模块拆分、启动入口）。
@@ -2433,6 +2500,7 @@ jcmd "$pid" VM.flags | tr ' ' '\n' | grep -cxE -- '-XX:\+UseG1GC|-XX:InitialHeap
 
   - 生产就绪域（`docs/DESIGN-PROD.md`）：运行参数 → TC-PROD-050（动了 `server-app/build.gradle.kts` 的 `application` 块、启动脚本或部署单元的 JVM 参数就跑）。
   - 生产就绪域（`docs/DESIGN-PROD.md`）：正版验证与加密（`REQ-PROD-002`～`REQ-PROD-004`、`REQ-PROD-044`）→ TC-PROD-090～TC-PROD-105；动了 `Auth`、`SessionServer`、`crypto/LoginCrypt`、`network/player/SessionClient`、`LoginListener`、`PlayerSocketConnection` 的加解密或逐帧读取、`ConnectionManager#createPlayerReplacing`、`server-app` 的 `Main#auth` 就跑 TC-PROD-090～TC-PROD-101 与 TC-PROD-105，动了 `tools/fake-sessionserver`、`PacketFlood --auth` 或模组 gametest 的 authlib 参数再加 TC-PROD-102～TC-PROD-104。跨域牵连：动了 `PacketVanilla` 的 login 表 → 加 TC-036 与 TC-PROD-091；动了登录监听器的离线分支或 `DuplicateUuidLoginIntegrationTest` → 加 TC-032 与 TC-PROD-100。
+  - 生产就绪域（`docs/DESIGN-PROD.md`）：代理转发模式删除与 PROXY 可信网段（`REQ-PROD-036` 前半）→ TC-PROD-120～TC-PROD-124；动了 `Auth` 的模式集合、`HandshakeListener`、`ArchitectureTest#boundedReporters`、`ServerConfig` 的 `synaxis.proxy-protocol*` 键、`ConnectionGate#parseNetworks` 或 `PlayerSocketConnection` 的 PROXY 解码就跑 TC-PROD-120～TC-PROD-123，再动了 `server-app` 的拒绝起服路径加 TC-PROD-124（真进程）。跨域牵连：动了 PROXY 解码或可信网段 → 加 TC-PROD-061。
   - 生产就绪域（`docs/DESIGN-PROD.md`）：聊天（`REQ-PROD-009`）→ TC-PROD-080～TC-PROD-083；动了 `ChatMessageListener`、`PlayerChatEvent`、`Messenger`、`ChatRateLimiter`、`ServerConfig` 的 `synaxis.chat-*` 键或 `Player` 发的 `JoinGamePacket` 就跑 TC-PROD-080～TC-PROD-082；动了模组的 `ClientPacketListenerMixin`、`synaxis.mixins.json` 或 `SpikeClientGameTest#chat` 再加 TC-PROD-083。
   - 影响面不确定时升级为全量轮。
 - **复测轮**（上轮失败用例 + 全部冒烟级）：修复失败项之后。

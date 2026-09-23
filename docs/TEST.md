@@ -14,7 +14,7 @@
 
 | 日期 | 改动 | 作者 |
 | --- | --- | --- |
-| 2026-09-23 | 跟进 `docs/DESIGN-PROD.md` 第 2 波 2A（`REQ-PROD-002` 正版验证与加密，G01；`REQ-PROD-003` 皮肤，G06；`REQ-PROD-004` 同分片部分，G07；`REQ-PROD-044` 假 sessionserver）。**新增 §4「生产就绪 · 第 2 波 2A：正版验证与加密」十六条 `TC-PROD-090`～`TC-PROD-105`**：`serverHash` 与 CFB8（090）、login ID 1 恢复为加密请求（091）、在线完整登录与线上无明文（092）、204 的加密断线包（093）、不可用重试一次（094）、在途上限 32（095）、非法加密握手（096）、验证期间断开（097）、加密不验证（098）、皮肤属性进 PlayerInfo（099）、同分片踢旧与 5 s 上限（100）、`server-app` 选模式（101）、假 sessionserver（102）、真进程在线模式与 Mojang 真 sessionserver 的 204（103，端口 25623）、真客户端完整正版路径（104）、模组四个新键（105）；每条带反证，红在哪写进期望列，与 §19 的两处口径差异写在该节末尾。**§3 环境段**：`server-app` 默认改为在线模式，本文档里探针、压测与无头客户端连的服务端一律加 `-Dsynaxis.app.auth=offline`（`REQ-PROD-030` 的完整正版路径档除外），启动命令与「入口」行随之改写。§5 回归映射加生产就绪域一行与跨域牵连一条 | Bearisbug |
+| 2026-09-23 | 跟进 `docs/DESIGN-PROD.md` 第 2 波 2A（`REQ-PROD-002` 正版验证与加密，G01；`REQ-PROD-003` 皮肤，G06；`REQ-PROD-004` 同分片部分，G07；`REQ-PROD-044` 假 sessionserver）。**新增 §4「生产就绪 · 第 2 波 2A：正版验证与加密」十六条 `TC-PROD-090`～`TC-PROD-105`**：`serverHash` 与 CFB8（090）、login ID 1 恢复为加密请求（091）、在线完整登录与线上无明文（092）、204 的加密断线包（093）、不可用重试一次（094）、在途上限 32（095）、非法加密握手（096）、验证期间断开、断开后不重试不排队出网（097）、加密不验证（098）、皮肤属性进 PlayerInfo（099）、同分片踢旧与 5 s 上限（100）、`server-app` 选模式（101）、假 sessionserver（102）、真进程在线模式与 Mojang 真 sessionserver 的 204（103，端口 25623）、真客户端完整正版路径（104）、模组四个新键（105）；每条带反证，红在哪写进期望列，与 §19 的两处口径差异写在该节末尾。**§3 环境段**：`server-app` 默认改为在线模式，本文档里探针、压测与无头客户端连的服务端一律加 `-Dsynaxis.app.auth=offline`（`REQ-PROD-030` 的完整正版路径档除外），启动命令与「入口」行随之改写。§5 回归映射加生产就绪域一行与跨域牵连一条 | Bearisbug |
 | 2026-09-23 | 跟进 `docs/DESIGN-PROD.md` 第 1 波 1B（`REQ-PROD-009`，G05）。**新增 `TC-PROD-080`～`TC-PROD-083`**（均对应 `REQ-PROD-009`）：新开「生产就绪 · 聊天」一节。080 判引擎默认 0 收件人（50 人在线出站聊天包 0）、只有监听器加的收件人收到 `SystemChat`，反证是换回全进程名单，红在 `expected: <0> but was: <50>`；081 判每连接 1 条/秒、burst 3 的令牌桶与 `synaxis.chat-rate-per-second`、`synaxis.chat-burst` 两个键，反证是删限频行（10 条全进事件）与 burst 边界多放一条；082 判 `JoinGame` 的 `enforcesSecureChat=false`，反证是改回 `true`；083 在无头容器里用真客户端判进服没有「Chat messages can't be verified」提示、转发的聊天是系统消息，反证是模组不注册 `ClientPacketListenerMixin`，红在 `C1 unsecure_server_toast=true`。§5 加聊天一行 | Bearisbug |
 | 2026-09-23 | 跟进 `docs/DESIGN-PROD.md` 第 1 波 1A（`REQ-PROD-001` 连接闸门，G02；`REQ-PROD-043` keep-alive 收尾，G40）。**新增 §4「生产就绪 · 第 1 波 1A：连接闸门与 keep-alive 收尾」十条 `TC-PROD-060`～`TC-PROD-069`**：闸门计数的假时钟单元（060）、真 socket 上的 L0 / L1 / 握手前超时（061）、三只令牌桶与断线键映射（062）、L3 席位与 status 的 max（063）、L4 每 tick 入场（064）、fd 耗尽的 accept 退避（065，`ulimit -n 256` 的子 JVM）、拒绝只写 10 s 汇总且被拒连接不写 `Connection closed`（066）、`synaxis:keep-alive-timeout` 与 `synaxis.socket-timeout` 弃用 WARN（067，对应 `REQ-PROD-043`）、模组四个新键的译文（068）、真进程上 50 个机器人 + 单地址 100 连接/秒 × 60 s 与 1,024 条空闲连接（069，端口 25621，新工具 `tools/loadtest/gate_flood.py`）；每条带反证，红在哪写进期望列。本波是离线模式，§19 的「RSA 解密与 `hasJoined` 计数为 0」改验登录事件没有触发，写在该节开头。§5 回归映射加生产就绪域一行与跨域牵连一条 | Bearisbug |
 | 2026-09-23 | 跟进 `docs/DESIGN-PROD.md` 第 0 波 0E（`REQ-PROD-028`，G25）。**新增 `TC-PROD-050`**（对应 `REQ-PROD-028`）：新开「生产就绪 · 运行参数」一节，判 `installDist` 启动脚本与 `:server-app:run` 两条入口的 JVM 都带 G1、`-Xms4G -Xmx4G`、`AlwaysPreTouch`、`MaxGCPauseMillis=50` 与两个 OOM 参数（`jcmd VM.flags` 计数 7），`JAVA_OPTS` 能覆盖、换 ZGC 须先关 G1；反证是删掉 `-Xms4G` 与 `AlwaysPreTouch` 两行，计数掉到 5。§5 加生产就绪域一行 | Bearisbug |
@@ -2258,8 +2258,8 @@ jcmd "$pid" VM.flags | tr ' ' '\n' | grep -cxE -- '-XX:\+UseG1GC|-XX:InitialHeap
 
 | # | 操作 | 预期 |
 | --- | --- | --- |
-| 1 | 跑 `io.github.bearisbug.synaxis.network.OnlineLoginSocketTest` | 13 个 0 失败，其中 `anOnlineLoginTakesTheIdentityTheSessionServerVouchesFor`：假服务给 `Steve` 的 profile 是随机 UUID `U` 与 `textures=skin-of-steve`（签名 `sig-skin-of-steve`）。加密请求的 `serverId` 为空串、`shouldAuthenticate=true`；`LoginSuccess` 里的 UUID 等于 `U`、不等于 `offlineUuid("Steve")`，名字 `Steve`，属性恰好是那一条带签名的 `textures`；假服务恰好收到 1 次查询，`username=Steve`、`serverId` 等于客户端自己算出的 `serverHash`；客户端从 socket 收到的原始字节里没有 `Steve` 这 5 个字节（`LoginSuccess` 是密文） |
-| 2 | 反证有齿：`PlayerSocketConnection#writeSendable` 里 `buffer.cipher(encryption.encrypt(), start, length)` 的长度改成 `0`（出站不再加密），只跑 `OnlineLoginSocketTest.anOnlineLoginTakesTheIdentityTheSessionServerVouchesFor`，再还原 | 红在该方法：`java.io.IOException: var-int too long`（客户端把明文的 `SetCompression` 当密文解，读出的帧长是乱码）。还原后复绿 |
+| 1 | 跑 `io.github.bearisbug.synaxis.network.OnlineLoginSocketTest` | 15 个 0 失败，其中 `anOnlineLoginTakesTheIdentityTheSessionServerVouchesFor`：假服务给 `Steve` 的 profile 是随机 UUID `U` 与 `textures=skin-of-steve`（签名 `sig-skin-of-steve`）。加密请求的 `serverId` 为空串、`shouldAuthenticate=true`；`LoginSuccess` 里的 UUID 等于 `U`、不等于 `offlineUuid("Steve")`，名字 `Steve`，属性恰好是那一条带签名的 `textures`；假服务恰好收到 1 次查询，`username=Steve`、`serverId` 等于客户端自己算出的 `serverHash`；客户端从 socket 收到的原始字节里没有 `Steve` 这 5 个字节（`LoginSuccess` 是密文） |
+| 2 | 反证有齿：`PlayerSocketConnection#writeSendable` 里 `buffer.cipher(encryption.encrypt(), start, length)` 的长度改成 `0`（出站不再加密），只跑 `OnlineLoginSocketTest.anOnlineLoginTakesTheIdentityTheSessionServerVouchesFor`，再还原 | 红在该方法：客户端把明文的 `SetCompression` 当密文解，解不出包，报错随每次随机的共享密钥变化（实测两次分别是 `java.lang.AssertionError: not a packet` 与 `java.lang.IndexOutOfBoundsException: VarInt too long`，也可能是 `var-int too long`）。还原后复绿 |
 
 后置：确认 `PlayerSocketConnection.java` 没有残留改动。
 
@@ -2270,7 +2270,7 @@ jcmd "$pid" VM.flags | tr ' ' '\n' | grep -cxE -- '-XX:\+UseG1GC|-XX:InitialHeap
 | # | 操作 | 预期 |
 | --- | --- | --- |
 | 1 | 跑 `io.github.bearisbug.synaxis.network.OnlineLoginSocketTest` | `aNameThatDidNotJoinIsRefusedWithAnEncryptedAuthFailed` 绿：假服务对第 1 次查询回 204，客户端解密后读到 `LoginDisconnect`，翻译键 `synaxis:auth-failed`；原始字节里没有 `synaxis:auth-failed`；假服务只收到 1 次查询；随后连接被关、没有别的包 |
-| 2 | 反证有齿：删掉 `LoginListener#loginEncryptionResponseListener` 里的 `socketConnection.enableEncryption(LoginCrypt.sharedSecret(secret));` 一行（服务端不开加密，即上游在失败分支上的行为），只跑该方法，再还原 | 红：`java.io.IOException: var-int too long`，客户端已切到密文，明文断线包解不出来，玩家看到的是解码错误而不是原因。还原后复绿 |
+| 2 | 反证有齿：删掉 `LoginListener#loginEncryptionResponseListener` 里的 `socketConnection.enableEncryption(LoginCrypt.sharedSecret(secret));` 一行（服务端不开加密，即上游在失败分支上的行为），只跑该方法，再还原 | 红在该方法：客户端已切到密文，解不出明文断线包，玩家看到的是解码错误而不是原因。报错随每次随机的共享密钥变化，可能是 `expected a login disconnect, got a closed connection`（实测三次都是这条）、`not a packet` 或 `var-int too long`。还原后复绿 |
 
 后置：确认 `LoginListener.java` 没有残留改动。
 
@@ -2307,14 +2307,15 @@ jcmd "$pid" VM.flags | tr ' ' '\n' | grep -cxE -- '-XX:\+UseG1GC|-XX:InitialHeap
 
 后置：确认 `LoginListener.java` 没有残留改动。§19 场景「发两次」要求假服务 0 次查询，实现做不到，见本节末尾的说明。
 
-#### `TC-PROD-097` 验证期间对端断开：结果丢弃，不进 configuration — 对应 `REQ-PROD-002` · 级别: 回归 · 执行者: AI
+#### `TC-PROD-097` 验证期间对端断开：结果丢弃，不进 configuration，不再重试也不再排队向 sessionserver 发查询 — 对应 `REQ-PROD-002` · 级别: 回归 · 执行者: AI
 
 前置：工作副本干净。
 
 | # | 操作 | 预期 |
 | --- | --- | --- |
-| 1 | 跑 `io.github.bearisbug.synaxis.network.OnlineLoginSocketTest` | `aPeerThatLeavesDuringVerificationIsForgotten` 绿：假服务 2 s 后才回 200；客户端发完密钥、等到查询已发出就关 socket；再等 3 s，`AsyncPlayerPreLoginEvent` 0 次，configuration 态玩家 0 个 |
-| 2 | 反证有齿：删掉 `LoginListener#verify` 里的 `if (!connection.isOnline()) return;`，只跑该方法，再还原 | 红：`the answer reached a connection that is gone ==> expected: <0> but was: <1>`。还原后复绿 |
+| 1 | 跑 `io.github.bearisbug.synaxis.network.OnlineLoginSocketTest` | 三条绿。`aPeerThatLeavesDuringVerificationIsForgotten`：假服务 2 s 后才回 200；客户端发完密钥、等到查询已发出就关 socket；再等 3 s，`AsyncPlayerPreLoginEvent` 0 次，configuration 态玩家 0 个。`aPeerThatLeavesDuringAnUnavailableQueryIsNotRetried`：假服务 500 ms 后回 503，客户端在这期间关 socket；再等 2.5 s，假服务只收到 1 次查询（不退避重试）。`aPeerThatLeavesWhileQueuedForASlotAsksNothing`：`maxInFlight=1`，`Holder` 占住唯一的许可并被挂起，`Queued` 发完密钥后排队、随即关 socket；放行后 `Holder` 拿到 `LoginSuccess`，假服务收到的查询只有 `Holder` 一次 |
+| 2 | 反证有齿：删掉 `LoginListener#verify` 里的 `if (!connection.isOnline()) return;`，只跑 `aPeerThatLeavesDuringVerificationIsForgotten`，再还原 | 红：`the answer reached a connection that is gone ==> expected: <0> but was: <1>`。还原后复绿 |
+| 3 | 反证有齿：`LoginListener#verify` 传给 `sessionClient.verify` 的 `connection::isOnline` 改成 `() -> true`（验证线程不再看连接是否在线），只跑 `OnlineLoginSocketTest.aPeerThatLeaves*`，再还原 | `3 tests completed, 2 failed`：`aPeerThatLeavesDuringAnUnavailableQueryIsNotRetried` 报 `a peer that left was asked for once more ==> expected: <1> but was: <2>`；`aPeerThatLeavesWhileQueuedForASlotAsksNothing` 报 `a peer that left while queued took the slot to the session server ==> expected: <[Holder]> but was: <[Holder, Queued]>`；`aPeerThatLeavesDuringVerificationIsForgotten` 仍绿。还原后复绿 |
 
 后置：确认 `LoginListener.java` 没有残留改动。
 

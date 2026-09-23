@@ -253,6 +253,51 @@ public class OnlineLoginSocketTest {
     }
 
     @Test
+    public void aPeerThatLeavesDuringAnUnavailableQueryIsNotRetried() throws Exception {
+        try (TestSessionServer sessions = new TestSessionServer();
+             Rig rig = Rig.online(sessions, GENEROUS, 32)) {
+            sessions.script(new TestSessionServer.Answer(503, Duration.ofMillis(500)), TestSessionServer.Answer.ok());
+            try (EncryptedLoginClient client = rig.client()) {
+                client.handshakeAndStart("Quitter");
+                client.answer(client.readEncryptionRequest());
+                awaitUntil(() -> sessions.queries().size() == 1, "the query is under way");
+            }
+            // The 503 comes back to a connection that is gone; the back-off would be over by now
+            Thread.sleep(2_500);
+            assertEquals(1, sessions.queries().size(), "a peer that left was asked for once more");
+        }
+    }
+
+    @Test
+    public void aPeerThatLeavesWhileQueuedForASlotAsksNothing() throws Exception {
+        try (TestSessionServer sessions = new TestSessionServer();
+             Rig rig = Rig.online(sessions, GENEROUS, 1);
+             EncryptedLoginClient first = rig.client()) {
+            sessions.hold();
+            final CompletableFuture<LoginSuccessPacket> firstResult = new CompletableFuture<>();
+            Thread.startVirtualThread(() -> {
+                try {
+                    firstResult.complete(first.login("Holder"));
+                } catch (Throwable t) {
+                    firstResult.completeExceptionally(t);
+                }
+            });
+            awaitUntil(() -> sessions.inFlight() == 1, "the only slot is taken");
+            try (EncryptedLoginClient queued = rig.client()) {
+                queued.handshakeAndStart("Queued");
+                queued.answer(queued.readEncryptionRequest());
+                Thread.sleep(300);
+            }
+            Thread.sleep(300);
+            sessions.release();
+            firstResult.get(10, TimeUnit.SECONDS);
+            Thread.sleep(500);
+            assertEquals(List.of("Holder"), sessions.queries().stream().map(TestSessionServer.Query::username).toList(),
+                    "a peer that left while queued took the slot to the session server");
+        }
+    }
+
+    @Test
     public void encryptedOfflineModeEncryptsWithoutAskingForASession() throws Exception {
         try (Rig rig = Rig.start(new Auth.Offline(true));
              EncryptedLoginClient client = rig.client()) {

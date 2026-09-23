@@ -174,7 +174,7 @@ public final class LoginListener {
      */
     private static void verify(PlayerSocketConnection connection, SessionClient sessionClient, String username,
                                String serverHash, SocketAddress address, long deadline) throws InterruptedException {
-        final SessionClient.Result result = sessionClient.verify(username, serverHash, address, deadline);
+        final SessionClient.Result result = sessionClient.verify(username, serverHash, address, deadline, connection::isOnline);
         // The peer left while the session server was asked, the answer has nobody to go to
         if (!connection.isOnline()) return;
         switch (result) {

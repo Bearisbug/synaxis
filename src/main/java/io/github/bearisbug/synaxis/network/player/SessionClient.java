@@ -30,6 +30,7 @@ import java.util.concurrent.Semaphore;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.BooleanSupplier;
 
 /**
  * Asks the session server whether a client joined this server ({@code docs/DESIGN-PROD.md}
@@ -87,18 +88,21 @@ public final class SessionClient {
      *
      * @param deadlineMillis when the login times out ({@link System#currentTimeMillis()}); a query
      *                       that cannot start before it, queue included, is unavailable
-     * @return the final answer, counted in the report of {@link #tick(long)}
+     * @param online         whether the connection is still there; checked once a query slot is
+     *                       held and before the retry, so a peer that left asks nothing more
+     * @return the final answer, counted in the report of {@link #tick(long)} unless the peer left
      */
-    public Result verify(String username, String serverHash, @Nullable SocketAddress clientAddress, long deadlineMillis)
-            throws InterruptedException {
-        Result result = query(username, serverHash, clientAddress, deadlineMillis);
-        if (result instanceof Result.Unavailable) {
+    public Result verify(String username, String serverHash, @Nullable SocketAddress clientAddress, long deadlineMillis,
+                         BooleanSupplier online) throws InterruptedException {
+        Result result = query(username, serverHash, clientAddress, deadlineMillis, online);
+        if (result instanceof Result.Unavailable && online.getAsBoolean()) {
             final long delay = ThreadLocalRandom.current().nextLong(RETRY_DELAY_MIN_MILLIS, RETRY_DELAY_MAX_MILLIS + 1);
             if (System.currentTimeMillis() + delay < deadlineMillis) {
                 Thread.sleep(delay);
-                result = query(username, serverHash, clientAddress, deadlineMillis);
+                result = query(username, serverHash, clientAddress, deadlineMillis, online);
             }
         }
+        if (!online.getAsBoolean()) return result;
         (switch (result) {
             case Result.Verified _ -> verified;
             case Result.Unverified _ -> unverified;
@@ -107,12 +111,13 @@ public final class SessionClient {
         return result;
     }
 
-    private Result query(String username, String serverHash, @Nullable SocketAddress clientAddress, long deadlineMillis)
-            throws InterruptedException {
+    private Result query(String username, String serverHash, @Nullable SocketAddress clientAddress, long deadlineMillis,
+                         BooleanSupplier online) throws InterruptedException {
         final long queueBudget = deadlineMillis - System.currentTimeMillis();
         if (queueBudget <= 0 || !inFlight.tryAcquire(queueBudget, TimeUnit.MILLISECONDS))
             return new Result.Unavailable("no query slot before the login timeout");
         try {
+            if (!online.getAsBoolean()) return new Result.Unavailable("the peer left");
             final long remaining = deadlineMillis - System.currentTimeMillis();
             if (remaining <= 0) return new Result.Unavailable("no time left before the login timeout");
             final HttpRequest request = HttpRequest.newBuilder(uri(username, serverHash, clientAddress))

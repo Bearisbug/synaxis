@@ -1,0 +1,35 @@
+# 光源：各种发光方块放在封闭的石室里（隔开天光，只看方块光），跨区块与 section 边界，
+# 旁边摆带形状的遮挡物（台阶、楼梯、附魔台）与染色玻璃，检查衰减与面遮挡。
+fill -32 0 -32 47 47 47 minecraft:stone
+fill -24 4 -24 39 44 39 minecraft:air
+set 0 15 0 minecraft:torch
+set -1 16 0 minecraft:wall_torch[facing=west]
+set 15 16 15 minecraft:glowstone
+set 16 15 16 minecraft:sea_lantern
+set 31 31 0 minecraft:jack_o_lantern[facing=south]
+set 32 32 0 minecraft:redstone_lamp[lit=true]
+set -16 20 20 minecraft:lantern[hanging=false]
+set -16 21 22 minecraft:soul_lantern[hanging=false]
+set 8 4 8 minecraft:lava
+set 20 40 20 minecraft:light[level=7]
+set 22 40 20 minecraft:light[level=15]
+set 0 30 30 minecraft:end_rod[facing=up]
+set 4 30 30 minecraft:campfire[lit=true]
+set 8 30 30 minecraft:soul_campfire[lit=true]
+set 12 30 30 minecraft:enchanting_table
+set 14 30 30 minecraft:end_portal_frame
+set 16 30 30 minecraft:magma_block
+set 18 30 30 minecraft:respawn_anchor[charges=4]
+set 20 30 30 minecraft:candle[candles=4,lit=true]
+set 22 30 30 minecraft:sculk_sensor
+set 24 30 30 minecraft:sea_pickle[pickles=4,waterlogged=true]
+set 26 30 30 minecraft:beacon
+set 28 30 30 minecraft:glow_lichen[down=true]
+# 遮挡：台阶墙、楼梯墙、染色玻璃墙、一块上半台阶盖在火把上方
+fill -6 10 -6 -6 20 6 minecraft:stone_slab[type=top]
+fill 6 10 -6 6 20 6 minecraft:stone_stairs[facing=east,half=bottom]
+fill -6 10 8 6 20 8 minecraft:tinted_glass
+set 0 16 0 minecraft:oak_slab[type=top]
+fill 14 14 14 17 14 17 minecraft:oak_slab[type=bottom]
+set 13 31 30 minecraft:oak_slab[type=bottom]
+set 12 31 30 minecraft:oak_slab[type=top]

@@ -8,7 +8,8 @@
 | Owner | Bearisbug |
 | 关联设计文档 | `docs/DESIGN.md`（引擎域 M1 / M1.5）、`docs/DESIGN-M2.md`（游戏域 M2 分册）、`docs/DESIGN-M3.md`（大世界域 M3 分册）与 `docs/DESIGN-PROD.md`（生产就绪分册）；各文档的 REQ 各自编号，M2 侧写作 `REQ-M2-*`、M3 侧写作 `REQ-M3-*`，生产就绪侧写作 `REQ-PROD-*`，对应用例写作 `TC-PROD-*` |
 | 被测系统 | 仓库 `Bearisbug/synaxis`，分支 `main` |
-| 最后更新 | 2026-09-23 |
+| 最后更新 | 2026-09-23 | 新增人工用例 `TC-PROD-106`（`REQ-PROD-002`、`REQ-PROD-003`）：正版账号进在线模式服务端、皮肤可见、无 Mojang 会话的客户端被拒——`design-auth.md` §6.2 前两条，自动化只能走假 sessionserver 所以单列成人工用例；§4 2A 一节与 §5 回归映射同步。登记 RUN-028 | Bearisbug |
+| 2026-09-23 |
 
 变更记录（登用例增改，不登执行轮次）：
 
@@ -2408,7 +2409,7 @@ jcmd "$pid" VM.flags | tr ' ' '\n' | grep -cxE -- '-XX:\+UseG1GC|-XX:InitialHeap
 
 ### 生产就绪 · 第 2 波 2A：正版验证与加密
 
-十六条对应 `REQ-PROD-002`、`REQ-PROD-003`、`REQ-PROD-004`（同分片部分）与 `REQ-PROD-044`（`API-PROD-001`、`API-PROD-002`、`API-PROD-027`，§11.1 登录验证状态机）。`TC-PROD-090`～`TC-PROD-101` 与 `TC-PROD-105` 是 JUnit，命令统一写作「跑 `<类>`」，即 `./gradlew :test --tests <类> --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts`（`server-app` 的类换成 `:server-app:test`，模组的类在 `client-fabric` 目录里跑 `./gradlew test --tests <类> --no-daemon`），结果看 `build/test-results/test/TEST-<类>.xml` 的 `tests`、`failures` 与 `<failure message>`。在线模式的引擎测试不出网：`OnlineLoginSocketTest` 与 `OnlineDuplicateLoginSocketTest` 在回环地址上起真 `Server`，一边是 JCE 写的测试客户端 `EncryptedLoginClient`（RSA/PKCS#1 加密密钥与 challenge，之后两个方向 AES/CFB8），一边是测试内的 `com.sun.net.httpserver` 假服务 `TestSessionServer`（可排定每次 `hasJoined` 的状态码与延迟、可挂起、记录查询与同时在途数）。`TC-PROD-102`～`TC-PROD-104` 起真进程，端口 25623；假 sessionserver 用 `--port 0` 取随机端口，下文记作 `<F>`。反证一律是「临时改一处实现、重跑、看红、还原」，还原后 `git status` 必须干净。
+十六条自动化用例与一条人工用例 `TC-PROD-106`，对应 `REQ-PROD-002`、`REQ-PROD-003`、`REQ-PROD-004`（同分片部分）与 `REQ-PROD-044`（`API-PROD-001`、`API-PROD-002`、`API-PROD-027`，§11.1 登录验证状态机）。`TC-PROD-090`～`TC-PROD-101` 与 `TC-PROD-105` 是 JUnit，命令统一写作「跑 `<类>`」，即 `./gradlew :test --tests <类> --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts`（`server-app` 的类换成 `:server-app:test`，模组的类在 `client-fabric` 目录里跑 `./gradlew test --tests <类> --no-daemon`），结果看 `build/test-results/test/TEST-<类>.xml` 的 `tests`、`failures` 与 `<failure message>`。在线模式的引擎测试不出网：`OnlineLoginSocketTest` 与 `OnlineDuplicateLoginSocketTest` 在回环地址上起真 `Server`，一边是 JCE 写的测试客户端 `EncryptedLoginClient`（RSA/PKCS#1 加密密钥与 challenge，之后两个方向 AES/CFB8），一边是测试内的 `com.sun.net.httpserver` 假服务 `TestSessionServer`（可排定每次 `hasJoined` 的状态码与延迟、可挂起、记录查询与同时在途数）。`TC-PROD-102`～`TC-PROD-104` 起真进程，端口 25623；假 sessionserver 用 `--port 0` 取随机端口，下文记作 `<F>`。反证一律是「临时改一处实现、重跑、看红、还原」，还原后 `git status` 必须干净。
 
 #### `TC-PROD-090` `serverHash` 是有符号十六进制，密钥对是 RSA-1024，CFB8 是跨包连续的字节流 — 对应 `REQ-PROD-002` · 级别: 回归 · 执行者: AI
 
@@ -2597,6 +2598,18 @@ jcmd "$pid" VM.flags | tr ' ' '\n' | grep -cxE -- '-XX:\+UseG1GC|-XX:InitialHeap
 
 本节与设计文档 §19 的口径差异两处：一是「非法加密握手」场景的「发两次」一档，第一把密钥是合法的，读线程处理完它就把 `hasJoined` 交给验证线程，第二把随后才到，所以假服务会收到 1 次查询而不是 0 次；本节只判第二把得到加密的 `synaxis:protocol-error`、验证结果被丢弃（`TC-PROD-096`）。二是「不可用时重试」场景的超时档按比例缩短为超时 1 s、阻塞 3 s（`TC-PROD-094`）。
 
+
+#### `TC-PROD-106` 正版账号进在线模式服务端、皮肤可见，无 Mojang 会话的客户端被拒 — 对应 `REQ-PROD-002`、`REQ-PROD-003` · 级别: 回归 · 执行者: 人工
+
+前置：一台有屏幕的机器，装好 Fabric Loader 0.19.5 / Minecraft 26.2 的 profile，`mods/` 里放 `client-fabric` 的模组 jar 与 `fabric-api-0.161.0+26.2.jar`（做法见 `docs/research/client-spikes-2026-09/README.md`「前置」）；一个正版账号 A，另备一个离线启动器（没有 Mojang 会话）；服务端在仓库根按 §3 起玩法模式，**不传** `synaxis.app.auth`（默认在线模式、sessionserver 指向 Mojang），端口 25565。自动化用例都走假 sessionserver，这一条是唯一对着真 Mojang 服务的判据（`docs/research/production-readiness-2026-09/design-auth.md` §6.2）。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 用官方启动器以账号 A 登录，多人游戏直连 `127.0.0.1:25565` | 进入世界；服务端日志的登录行里 UUID 等于账号 A 在 `https://api.minecraftservices.com/minecraft/profile` 查到的 id（按 8-4-4-4-12 加连字符后逐字相同） |
+| 2 | 按 F5 切到第三人称，截图 | 角色显示的是账号 A 的皮肤，不是默认的 Steve / Alex |
+| 3 | 退出，用离线启动器以任意用户名连同一地址 | 客户端断线界面显示 `synaxis:auth-failed` 的译文（模组 lang 里的中文或英文句子），不是「解码失败」一类的协议错误；服务端台账无该连接的 `client_verified` |
+
+后置：`stop` 停服；截图与两段日志摘录放进本轮 `docs/test-runs/RUN-xxx/`。
 ### 生产就绪 · 第 2 波 2B：删除代理转发模式与 PROXY 可信网段
 
 五条对应 `REQ-PROD-036` 的前半（清单 G33 前半，`ADR-PROD-007`，`API-PROD-001` 启动自检里 PROXY 那一句）。`store_meta.auth_mode` 的三条 §19 场景与「鉴权模式与库不一致拒绝起服」的前半归第 3 波 3A，本节不涉及；那条场景 Then 的后半「Auth 只有 Online 与 Offline 两种」由 `TC-PROD-120` 覆盖。`TC-PROD-120`～`TC-PROD-123` 是 JUnit，命令统一写作「跑 `<类>`」，即 `./gradlew :test --tests <类> --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts`，结果看 `build/test-results/test/TEST-<类>.xml`；`TC-PROD-124` 起真进程，端口 25624。反证一律是「临时改一处实现、重跑、看红、还原」，还原后 `git status` 必须干净。
@@ -2712,7 +2725,7 @@ jcmd "$pid" VM.flags | tr ' ' '\n' | grep -cxE -- '-XX:\+UseG1GC|-XX:InitialHeap
   - 生产就绪域（`docs/DESIGN-PROD.md`）：真客户端回归的完整正版路径档（`REQ-PROD-030` 第 2 波 2C）→ TC-PROD-130、TC-PROD-131；CI 只跑这一档，所以上一行触发 TC-PROD-040 的改动同时跑 TC-PROD-130 第 1～3 步；动了 `judge.sh`、`client-gametest.yml`、`RegressionClientGameTest` 的 R3、gametest 的 `ConnectionAccessor`、`build.gradle.kts` 的 authlib 参数或 `tools/fake-sessionserver` → 跑 TC-PROD-130 全部与 TC-PROD-131。
 
   - 生产就绪域（`docs/DESIGN-PROD.md`）：运行参数 → TC-PROD-050（动了 `server-app/build.gradle.kts` 的 `application` 块、启动脚本或部署单元的 JVM 参数就跑）。
-  - 生产就绪域（`docs/DESIGN-PROD.md`）：正版验证与加密（`REQ-PROD-002`～`REQ-PROD-004`、`REQ-PROD-044`）→ TC-PROD-090～TC-PROD-105；动了 `Auth`、`SessionServer`、`crypto/LoginCrypt`、`network/player/SessionClient`、`LoginListener`、`PlayerSocketConnection` 的加解密或逐帧读取、`ConnectionManager#createPlayerReplacing`、`server-app` 的 `Main#auth` 就跑 TC-PROD-090～TC-PROD-101 与 TC-PROD-105，动了 `tools/fake-sessionserver`、`PacketFlood --auth` 或模组 gametest 的 authlib 参数再加 TC-PROD-102～TC-PROD-104。跨域牵连：动了 `PacketVanilla` 的 login 表 → 加 TC-036 与 TC-PROD-091；动了登录监听器的离线分支或 `DuplicateUuidLoginIntegrationTest` → 加 TC-032 与 TC-PROD-100。
+  - 生产就绪域（`docs/DESIGN-PROD.md`）：正版验证与加密（`REQ-PROD-002`～`REQ-PROD-004`、`REQ-PROD-044`）→ TC-PROD-090～TC-PROD-105（人工 TC-PROD-106）；动了 `Auth`、`SessionServer`、`crypto/LoginCrypt`、`network/player/SessionClient`、`LoginListener`、`PlayerSocketConnection` 的加解密或逐帧读取、`ConnectionManager#createPlayerReplacing`、`server-app` 的 `Main#auth` 就跑 TC-PROD-090～TC-PROD-101 与 TC-PROD-105，动了 `tools/fake-sessionserver`、`PacketFlood --auth` 或模组 gametest 的 authlib 参数再加 TC-PROD-102～TC-PROD-104。跨域牵连：动了 `PacketVanilla` 的 login 表 → 加 TC-036 与 TC-PROD-091；动了登录监听器的离线分支或 `DuplicateUuidLoginIntegrationTest` → 加 TC-032 与 TC-PROD-100。
   - 生产就绪域（`docs/DESIGN-PROD.md`）：代理转发模式删除与 PROXY 可信网段（`REQ-PROD-036` 前半）→ TC-PROD-120～TC-PROD-124；动了 `Auth` 的模式集合、`HandshakeListener`、`ArchitectureTest#boundedReporters`、`ServerConfig` 的 `synaxis.proxy-protocol*` 键、`ConnectionGate#parseNetworks` 或 `PlayerSocketConnection` 的 PROXY 解码就跑 TC-PROD-120～TC-PROD-123，再动了 `server-app` 的拒绝起服路径加 TC-PROD-124（真进程）。跨域牵连：动了 PROXY 解码或可信网段 → 加 TC-PROD-061。
   - 生产就绪域（`docs/DESIGN-PROD.md`）：聊天（`REQ-PROD-009`）→ TC-PROD-080～TC-PROD-083；动了 `ChatMessageListener`、`PlayerChatEvent`、`Messenger`、`ChatRateLimiter`、`ServerConfig` 的 `synaxis.chat-*` 键或 `Player` 发的 `JoinGamePacket` 就跑 TC-PROD-080～TC-PROD-082；动了模组的 `ClientPacketListenerMixin`、`synaxis.mixins.json` 或 `SpikeClientGameTest#chat` 再加 TC-PROD-083。
   - 影响面不确定时升级为全量轮。
@@ -2753,6 +2766,7 @@ jcmd "$pid" VM.flags | tr ' ' '\n' | grep -cxE -- '-XX:\+UseG1GC|-XX:InitialHeap
 | RUN-025 | 2026-09-23 | 集成分支 `prod/integrate-w0`（DESIGN-PROD 第 0 波：看门狗、崩溃报告、日志轮转、台账缓冲、线程正确性、JVM 参数、真客户端回归断言） | AI（Claude Code，Gradle / Docker 无头客户端） | 局部（REQ-PROD-014、015、016、017、019、028、030→TC-PROD-001～TC-PROD-008、TC-PROD-020～TC-PROD-023、TC-PROD-030～TC-PROD-033、TC-PROD-040～TC-PROD-042、TC-PROD-050 + 冒烟级 TC-029） | 通过 6/7 · 阻塞 1 |
 | RUN-026 | 2026-09-23 | `75925b315d`（分支 `m3/integrate`：光照 parity 修复、`LargeWorldBench`、DH + Iris spike 三条分支合入 `main` `4f686b87f6`；本轮之后的两个文档提交不改代码） | AI（Claude Code，Gradle / `gen.sh` / worldBench） | 局部（REQ-M3-007→TC-WORLD-001、TC-WORLD-002；REQ-M3-005、REQ-M3-006→TC-WORLD-003；REQ-M3-027→TC-WORLD-002、TC-WORLD-004；REQ-M3-028→TC-WORLD-005；REQ-M3-013→TC-WORLD-006～TC-WORLD-008；跨域牵连（引擎 `LightingChunk` / `instance.light`）→TC-GAME-029 第 1、2、10、11 步 + 冒烟级 TC-029） | 通过 7/10 · 失败 1 · 阻塞 1 · 跳过 1 |
 | RUN-027 | 2026-09-23 | `8772698832`（分支 `m3/integrate`：引擎 `ChunkData` 编码顺序修复 `5fba33a398`、基准字节摘要 `f5a99ee031`、基准文档 `8772698832`；本轮之后的两个文档提交不改代码） | AI（Claude Code，Gradle / `gen.sh` / worldBench） | 复测（RUN-026 失败的 TC-WORLD-006，按改写后的判据）+ 局部（REQ-M3-003→TC-WORLD-009；区块包编码→TC-WORLD-006）+ 冒烟级 TC-029、TC-WORLD-001 | 通过 4/4 |
+| RUN-028 | 2026-09-23 | 集成分支 `prod/integrate-w12`（DESIGN-PROD 第 1、2 波：连接闸门、keep-alive 收尾、聊天、正版验证与加密、皮肤、同分片顶号、假 sessionserver、删除代理认证、真客户端回归切正版路径） | AI（Claude Code，Gradle / jcstress / Docker 无头客户端） | 局部（REQ-PROD-001、043、009、002、003、004、044、036、030→TC-PROD-060～TC-PROD-069、TC-PROD-080～TC-PROD-083、TC-PROD-090～TC-PROD-105、TC-PROD-106、TC-PROD-120～TC-PROD-124、TC-PROD-130～TC-PROD-131 + 冒烟级 TC-029） | 通过 5/6 · 待人工 1 |
 
 明细（仅登非「通过」项）：
 
@@ -2860,6 +2874,8 @@ TC-002 证据：`docs/test-runs/RUN-002/tc-002.txt`（5 步实际输出）（2,6
 
 | RUN-025 | TC-PROD-040 | 阻塞 | 本地已两次真客户端运行判绿、一次故意失败判红；设计的退出条件是 main 上 `client-gametest.yml` 连续 5 次绿，只能合入后由 CI 判定 | 合入 main 后看 CI |
 
+| RUN-028 | TC-PROD-106 | 待人工 | 在线模式的自动化都走假 sessionserver；design-auth.md §6.2 前两条要用户用自己的正版账号在真实客户端上登录在线模式服务端、确认皮肤显示 | 人工收口轮 |
+
 | RUN-026 | TC-WORLD-006 | 失败 | 第 1～3 步通过（未压缩字节与每包天光数组数三个作业全等）。第 4 步预期成帧字节全等，实际 `packet h=64 t=flat40` 的 `plainFramedBytes` 均值 136.0756、基线 136.1089，`litFramedBytes` 182.9533、基线 182.9733；两个 natural 作业全等。同一程序再连跑两次：第 1 次 flat40 与高 256 natural 都与基线不同，第 2 次都相同，成帧字节在两组值之间来回，未压缩字节每次都全等。入库的两轮基线互相比，7 个 `packet` 作业里有 3 个（高 384 setall、高 256 natural、flat40）成帧字节不同，与 `bench-2026-09.md` §1「字节数两轮完全一致」不符。证据 `docs/test-runs/RUN-025/worldbench-bytes-compare.txt`、`docs/test-runs/RUN-025/worldbench-repeat.txt` | 待拍板：设计文档 §19「基准程序复跑」的「字节数相同」改为只判未压缩字节，或先查清同样长度的包体为何逐次不同（若是 section 内字节顺序不稳，会碰到 `REQ-M3-003`「同输入同版本产出同一内容哈希」）；定了之后新起复测轮 |
 | RUN-026 | TC-WORLD-007 | 跳过 | 机器不空闲：本轮 worldBench 作业记录的 1 分钟负载 21.5～76.6（12 核，判据 < 6），同机有别的任务在跑 | 空闲机器上的全量轮 |
 | RUN-026 | TC-WORLD-008 | 阻塞 | 还没有美术地图，`LargeWorldBench` 也没有从 `.synx` 或 Anvil 读入的作业（设计文档 `API-M3-008` 待补作业 T1） | 第一张美术地图出来时 |
@@ -2868,6 +2884,8 @@ TC-002 证据：`docs/test-runs/RUN-002/tc-002.txt`（5 步实际输出）（2,6
 RUN-027 证据：`docs/test-runs/RUN-027/`。本轮关闭 RUN-026 明细里 TC-WORLD-006 的失败：根因是引擎 `ChunkData` 用 `Map.copyOf` / `toUnmodifiableMap` 复制高度图与方块实体，迭代顺序随 JVM 启动种子变化，同一区块在不同 JVM 里编出长度相同、字节不同的包，成帧压缩后长度随之在两组值之间来回（`docs/research/large-world-2026-09/bench-2026-09.md` §3.5）；`5fba33a398` 改为按类型序号与方块索引排序。TC-WORLD-006 的判据同批改写为「两次运行 28 个摘要相同」（§1 变更记录），按 RUN-026 的旧判据（成帧长度与 `bench-2026-09-results.json` 全等）修复后仍会在 `setall` 与 flat40 两个作业上不等，因为那份基线抽到的是修复前另一种顺序。`check-2.txt` 与 `check-2-counts.txt`：`./gradlew check --rerun-tasks --continue` BUILD SUCCESSFUL、57 个任务全部执行；按本轮新生成的结果 XML 统计 3,213 个测试、0 失败、15 跳过，其中根模块 2,925（TC-029 第 2 步判据 ≥ 2,599 且 0 失败），比 RUN-026 合并后多出的 1 个是 `ChunkPacketDeterminismTest`。`check-1.txt`：同一命令的第一次运行 BUILD FAILED，唯一失败是 `:server-app` 的 `PluginHostIntegrationTest > theProcessAcceptsOnlyOneAdmissionProvider(Env)`，测试体断言通过，JUnit 关闭扩展上下文时删 `@TempDir` 报 `DirectoryNotEmptyException`；`plugin-host-flaky.txt`：该类单独重跑 5 次全绿，第二次全量（`check-2.txt`）也绿，共 7 次红 1 次。这是 `server-app` 的偶发清理竞争，与本轮改的区块包编码无关，根因未查（疑似测试结束后仍有线程往临时目录写文件），不计入本轮四条用例的结果。`tc-world-001.txt`：TC-WORLD-001 四步，7 个场景 0 差异；篡改 `surface.light.gz` 偏移 12 后 `[6] "surface"` 红、`system-err` 为 `surface sky (-16, -64, -16) minecraft:air: vanilla 15, synaxis 0`（`1 of 589824` 那句失败信息在第 3 步重跑时被 XML 覆盖，没有留档）；`zz-copy` 经 `gen.sh` 生成后与 `surface` 逐字节相同、测试数 7 → 8；还原后 `git status --porcelain -- src` 为空。`tc-world-009.txt`：TC-WORLD-009 连跑三次绿（每次 6 个子 JVM）；换回 `1275602157` 的 `ChunkData.java` 后红，失败信息 `run 0 and run 1 differ: plain chunk 0,0: first differing byte at packet offset 2862 (blockEntities offset 1, 25 bytes)`（这次先暴露的是方块实体，不是高度图）；还原后绿。`worldbench-quick.txt`、`quick.json`：TC-WORLD-006 第 1 步，`packet` 作业带四个摘要字段。`worldbench-packet-{1,2}.txt`、`packet-{1,2}.json`、`worldbench-digest-compare.txt`：第 2～5 步，两次运行 28/28 摘要相同，与 `bench-2026-09-packet-canonical-1.json` 也是 28/28；比较脚本在仓库外的 uv 虚拟环境里跑，只用标准库，脚本原文抄在比较结果开头。两次 packet 运行的 1 分钟负载 8.9～14.4（12 核），本轮不判耗时。**本轮没执行**：TC-WORLD-002～TC-WORLD-005（光照代码本轮没动）、TC-WORLD-007（机器不空闲）、TC-WORLD-008（阻塞，同 RUN-026）、TC-029 之外的冒烟级用例（沿用 RUN-023 起的范围）、`client-fabric` 构建（本轮没改客户端代码）。
 
 RUN-026 证据：`docs/test-runs/RUN-026/`（目录内原始日志写的 `docs/test-runs/RUN-025/` 与 `run025-*.json` 是本轮改号前的路径，指的就是本目录的文件）。`check.txt`：`./gradlew check --rerun-tasks` BUILD SUCCESSFUL、73 个任务全部执行，非根模块 264 个测试 0 失败；`tc-029.txt`：根模块 `:test --continue --rerun-tasks` 2,909 个测试 0 失败 15 跳过，两者合计 3,173。`gen-sh.txt` 与 `gen-sh-wrong-jar.txt`：TC-WORLD-002 四步，真值逐字节再生、`git status` 无输出、临时目录已删、客户端 jar 冒充退 1。`parity.txt`、`light-reverse-2.txt`、`parity-new-scene.txt`：TC-WORLD-001，篡改一个 nibble 报 `1 of 589824`，`zz-copy` 场景经 `gen.sh` 生成后与 `surface` 真值逐字节相同、测试数 7 → 8。`light-reverse.txt` 与 `light-reverse-2.txt`：TC-WORLD-003～005 的绿、四组反证（修复前两文件红 11 条、`fullyLit` 红 2 条、`ShapeImpl` 红 2 条、表错位红 1 条）与还原后全绿。`worldbench-quick.txt`、`run025-quick.json`、`worldbench-packet.txt`、`run025-packet.json`、`run025-flat40-{1,2}.json`、`worldbench-bytes-compare.txt`、`worldbench-repeat.txt`：TC-WORLD-006；比较脚本在仓库外的虚拟环境里跑，只用标准库，按 `params` 五项配对。`tc-game-029.txt` 与 `tc-game-029-server.log`：`rts-512` 起服，`match_started` 的 `chunk_count` 1024、`load_ms` 828、`heap_delta_kib` 9,455、`heap_gc_runs` 4（第 2 步判据内，与 RUN-024 的 771～968 / 约 9,300 同档，光照修复没有拖慢整图载入）；第 10 步绿，第 11 步 supplier 改回 `DynamicChunk` 红在 `column 0,0: the open air above the map is not lit by the sky`，还原后绿；TC-GAME-029 的第 3～9 步本轮没跑（与 RUN-024 同范围）。基准的 JSON 都在负载 21～77 的机器上跑出，耗时数字只当上界，本轮不判耗时。**DH + Iris spike（不是验收，只登证据指针）**：`docs/research/client-spikes-2026-09/dh-iris/README.md`，报告 `report-dh.txt` / `report-dh-iris.txt`、日志摘录与 `screenshots/`，随 `75925b315d` 合入；集成合并时只编译了 gametest 源码集（`client-fabric` 的 `compileGametestJava`，同时 `check` 92 个测试 0 失败），本轮没有重跑 `runClientGameTest`。**本轮没执行**：TC-WORLD-007（机器不空闲）、TC-WORLD-008（阻塞）、真显卡项（本机只有 llvmpipe 无头容器，见 §2 不测表）、`client-fabric` 构建（代码与集成合并时同一 commit）、TC-029 之外的冒烟级用例（沿用 RUN-023、RUN-024 的范围）。
+
+RUN-028 证据：`docs/test-runs/RUN-028/acceptance.txt`。要点：第 1、2 波六组全部经独立审查通过（2A 返工两轮）；合入 main e3e16ce3b5 后全量 check、4 线程严格模式、客户端构建都绿；验收人两条反证——把「未通过 Mojang 验证」改成按离线档案放行、把席位判断改成 `>`——都红；收口轮用 jcstress 复现并修掉开 PROXY 时每 IP 上限的边界并发（修复前 0.14% 两条都被拒）。
 
 RUN-025 证据：`docs/test-runs/RUN-025/acceptance.txt`。要点：第 0 波五组全部经独立审查通过；合并后全量 check 与 4 线程 counter 严格模式全量（3,188 个测试）都绿；验收人两条反证（线程下标取模、台账停机等在途写入）都红；合并时发现 0E 的默认 `-Xms4G` 让 0A 的 OOM 用例永远验不到 OOM，已改用例并实跑确认退出码 3 与堆转储。
 

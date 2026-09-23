@@ -1,0 +1,27 @@
+RUN-028 验收记录（2026-09-23，验收人侧）
+
+被测版本：集成分支 prod/integrate-w12 2e67bca289（= main e3e16ce3b5 + 第 1 波 1A/1B + 第 2 波 2A/2B/2C + 收口提交 + 本记录）
+范围：DESIGN-PROD 第 1 波（REQ-PROD-001 连接闸门、043 keep-alive 收尾、009 聊天）与第 2 波（REQ-PROD-002 正版验证与加密、
+003 皮肤、004 同分片顶号、044 假 sessionserver、036 前半删 Velocity/Bungee 与 PROXY 自检、030 真客户端回归切正版路径）。
+各组经「实现 → 独立审查 → 至多两轮返工」：1A 1 轮、1B 1 轮、2A 3 轮（两轮返工）、2B 1 轮、2C 1 轮，全部 APPROVED；
+收口轮修了 1A 审查的 PROXY 边界并发（jcstress ConnectionGateProxyCountTest 修复前 TOO_MANY,TOO_MANY 0.14% Forbidden，修复后 0）
+与无调用方字段，给压测与本机多连接用例补可信网段参数，DESIGN-PROD 回写为 v0.4。
+
+一、验收人侧检查（合入 main e3e16ce3b5 之后）
+  ./gradlew cleanTest check --no-build-cache → BUILD SUCCESSFUL
+  ./gradlew test --rerun --continue -Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true → BUILD SUCCESSFUL
+  client-fabric ./gradlew build → BUILD SUCCESSFUL
+  test-doc lint：只剩尚未开工波次的 28 条 REQ-PROD「无 TC 引用」在途提示；design-doc lint（DESIGN-PROD）零警告
+
+二、验收人反证（还原后 git status 干净）
+  鉴权旁路：LoginListener 里把 SessionClient.Result.Unverified 的分支改成按离线档案放行进 configuration
+    → :test --tests '*OnlineLogin*' --tests '*Auth*' --tests '*Session*' 29 条红 1 条（OnlineLoginSocketTest）
+  席位边界：ConnectionGate 的 taken >= max 改成 taken > max → '*ConnectionGate*' 21 条红 4 条
+
+三、合并中处理
+  与 main（光照会话的 M3 对齐轮）在 SpikeClientGameTest 类注释与 TEST.md 变更记录、§5 回归映射冲突，两边都留。
+
+四、结果
+  通过：TC-PROD-060～069、TC-PROD-080～083、TC-PROD-090～105、TC-PROD-120～124、TC-PROD-130～131 + 冒烟级 TC-029
+  待人工：正版账号人工用例（design-auth.md §6.2 前两条：用户用自己的正版账号在真实客户端上登录在线模式服务端、看到自己的皮肤）
+  待 CI：REQ-PROD-030 B 档「main 上 client-gametest 连续 5 次绿」，合入后由 CI 判

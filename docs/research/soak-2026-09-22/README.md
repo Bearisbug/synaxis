@@ -24,13 +24,14 @@ mkdir -p /tmp/synaxis-play
 stdout 一定要重定向到文件——harness 靠它数 WARN / ERROR 行。50 个机器人都从 `127.0.0.1` 来，
 `synaxis.connection-gate.trusted-networks=127.0.0.0/8` 不能省：连接闸门的登录桶每个地址 3 个令牌，
 不放行本机时只进得来 3 个，其余收到 `synaxis:login-throttled`。
+`synaxis.app.auth=offline` 同样不能省：`server-app` 默认在线模式，机器人不做加密握手，一个也进不来。
 
 ```bash
 mkfifo /tmp/synaxis-play/stdin.fifo
 ( sleep 86400 > /tmp/synaxis-play/stdin.fifo & )   # 占住 fifo 写端
 ./gradlew :server-app:run --no-daemon --console=plain \
   --init-script gradle/init/aliyun-mirror.init.gradle.kts \
-  -Dsynaxis.app.port=25566 -Dsynaxis.app.units=1000 \
+  -Dsynaxis.app.port=25566 -Dsynaxis.app.units=1000 -Dsynaxis.app.auth=offline \
   -Dsynaxis.connection-gate.trusted-networks=127.0.0.0/8 \
   < /tmp/synaxis-play/stdin.fifo > /tmp/synaxis-play/server.log 2>&1 &
 # 就绪：server.log 出现 "synaxis server-app listening on 0.0.0.0:25566"，nc -z 127.0.0.1 25566 通

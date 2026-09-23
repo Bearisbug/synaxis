@@ -13,10 +13,14 @@ public class ServerConfigTest {
     /**
      * REQ-014: tests and production share one default table. Nothing may inject an engine setting
      * into the test JVM, so reading the system properties here has to give the plain defaults back.
+     * The one exception is the thread count, which the multi-threaded CI round hands to every test
+     * JVM (REQ-PROD-019).
      */
     @Test
     public void testJvmUsesTheProductionDefaults() {
-        assertEquals(ServerConfig.defaults(), ServerConfig.fromSystemProperties());
+        final ServerConfig defaults = ServerConfig.defaults();
+        final ServerConfig fromJvm = ServerConfig.fromSystemProperties();
+        assertEquals(defaults, fromJvm.toBuilder().dispatcherThreads(defaults.dispatcherThreads()).build());
     }
 
     @Test

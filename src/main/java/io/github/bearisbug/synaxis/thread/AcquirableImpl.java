@@ -119,10 +119,12 @@ final class AcquirableImpl<T> implements Acquirable<T> {
     @Override
     public void assertOwnership() {
         if (!ASSERTIONS_ENABLED && !ACQUIRABLE_STRICT) return;
-        if (isOwned()) return;
         TickThread assignedThread = this.assignedThread;
-        Thread initThread = this.initThread;
-        if (assignedThread == null && Thread.currentThread() == initThread) return;
+        // No tick thread runs an unassigned element, so there is nobody to race with. The creating
+        // thread is not the only legitimate caller: a player is built on its connection thread and
+        // spawned from the tick scheduler thread (REQ-PROD-019).
+        if (assignedThread == null) return;
+        if (isOwnedImpl(assignedThread)) return;
         throw new AcquirableOwnershipException(initThread, assignedThread, unwrap().toString());
     }
 

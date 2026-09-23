@@ -232,6 +232,27 @@ public class ThreadDispatcherTest {
     }
 
     @Test
+    @Timeout(30)
+    public void minValueThreadIdMapsToAValidThread() {
+        // Math.abs(Integer.MIN_VALUE) is still negative, so the index has to come from a floor modulo
+        // (REQ-PROD-019): floorMod(-2^31, 6) = 4
+        final int threadCount = 6;
+        ThreadDispatcher<World, Tickable> dispatcher = ThreadDispatcher.dispatcher(
+                _ -> Integer.MIN_VALUE, threadCount, ThreadDispatcherTest::rethrow);
+        World world = new World();
+        Set<Thread> ticked = new CopyOnWriteArraySet<>();
+        dispatcher.createPartition(world);
+        dispatcher.updateElement(_ -> ticked.add(Thread.currentThread()), world);
+        dispatcher.start();
+        try {
+            dispatcher.updateAndAwait(0);
+            assertEquals(Set.of(dispatcher.threads().get(4)), ticked);
+        } finally {
+            dispatcher.shutdown();
+        }
+    }
+
+    @Test
     public void threadUpdate() {
         // Ensure that partitions threads are properly updated every tick
         // when RefreshType.ALWAYS is used

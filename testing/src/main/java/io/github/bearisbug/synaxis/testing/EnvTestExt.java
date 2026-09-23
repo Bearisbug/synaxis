@@ -25,6 +25,9 @@ final class EnvTestExt implements
             .insideTest(true)
             // Viewable packets make tracking harder. Could be re-enabled later.
             .viewablePacket(false)
+            // The one engine setting the JVM may override: the multi-threaded CI round runs the whole
+            // suite with -Dsynaxis.dispatcher-threads=4 (REQ-PROD-019)
+            .dispatcherThreads(ServerConfig.fromSystemProperties().dispatcherThreads())
             .build();
 
     @Override

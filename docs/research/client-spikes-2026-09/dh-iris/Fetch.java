@@ -50,8 +50,10 @@ public class Fetch {
             byte[] body = null;
             for (int attempt = 1; body == null; attempt++) {
                 try {
-                    body = http.send(HttpRequest.newBuilder(URI.create(item.url())).header("User-Agent", "synaxis-spike")
-                            .build(), HttpResponse.BodyHandlers.ofByteArray()).body();
+                    final HttpResponse<byte[]> resp = http.send(HttpRequest.newBuilder(URI.create(item.url()))
+                            .header("User-Agent", "synaxis-spike").build(), HttpResponse.BodyHandlers.ofByteArray());
+                    if (resp.statusCode() != 200) throw new IllegalStateException(item.name() + " HTTP " + resp.statusCode());
+                    body = resp.body();
                 } catch (IOException e) {
                     if (attempt == 6) throw e;
                     System.out.println("retry " + item.name() + ": " + e);

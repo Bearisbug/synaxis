@@ -1,18 +1,18 @@
-S0 mod synaxis-gametest 0.1.0
 S0 mod io_github_bearisbug_synaxis_protocol dev
+S0 mod synaxis-gametest 0.1.0
 S0 mod synaxis 0.1.0
 S1 in world at BlockPos{x=256, y=40, z=256}
 DH mod distanthorizons 3.3.2
 DH mod iris absent
 DH mod sodium absent
 DH api 3.3.2 api_major 7 network_protocol 16
-DH world_loaded after 0 ticks, level 0000000000000@synaxis:match_fd8a43bd0fa54f6ea392f4ebb5f78df8
+DH world_loaded after 0 ticks, level 0000000000000@synaxis:match_96f6da9e944f418486e384e63831a9a4
 DH far view before injection: column at 736,256 empty
-DH injected 576 of 576 chunks in 153 ms, failures []
-DH column data at 736,256 after 40 ticks: top y 48 minecraft:snow_block_STATE_ sky 15, 3 non-air of 4 points, detail 0; at 560,80 top y 11 minecraft:grass_block_STATE_{snowy:false} sky 15, 2 non-air of 3 points, detail 0; control 1200,256 empty
-DH far view 100 ticks after the data: 14239 of 921600 px changed (1.5%), box 348,299..1279,362
-DH far view 400 ticks after the data: 16267 of 921600 px changed (1.8%), box 0,298..1279,366
-DH view inside the injected block, after vs before: 560740 of 921600 px changed (60.8%), box 0,211..1279,719
+DH injected 576 of 576 chunks in 148 ms, failures []
+DH column data at 736,256 after 60 ticks: top y 48 minecraft:snow_block_STATE_ sky 15, 3 non-air of 4 points, detail 0; at 560,80 top y 11 minecraft:grass_block_STATE_{snowy:false} sky 15, 2 non-air of 3 points, detail 0; control 1200,256 empty
+DH far view 100 ticks after the data: 14627 of 921600 px changed (1.6%), box 0,299..1279,367
+DH far view 400 ticks after the data: 12675 of 921600 px changed (1.4%), box 347,299..931,345
+DH view inside the injected block, after vs before: 561290 of 921600 px changed (60.9%), box 0,211..1279,719
 CAM cam-ortho-p60-d64-h96 rendered, eye (224.50000381469727, 95.42562866210938, 256.5)
 CAM cam-perspective-p60-d64 rendered, eye (224.50000381469727, 95.42562866210938, 256.5)
 CAM cam-ortho-p60-d64-h96-over-lod rendered, eye (568.0000038146973, 75.42562866210938, 256.0)

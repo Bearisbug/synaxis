@@ -266,7 +266,7 @@ public final class SpikeClientGameTest implements FabricClientGameTest {
     /** Whether SYNAXIS_SPIKES names a spike that only runs on request, such as {@code dh}. */
     private static boolean named(String spike) {
         final String spikes = System.getenv("SYNAXIS_SPIKES");
-        return spikes != null && List.of(spikes.replace(" ", "").split(",")).contains(spike);
+        return spikes != null && !spikes.isBlank() && enabled(spike);
     }
 
     private static void write(List<String> report) {

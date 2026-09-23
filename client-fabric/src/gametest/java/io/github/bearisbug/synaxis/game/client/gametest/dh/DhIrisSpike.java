@@ -13,6 +13,7 @@ import java.util.EnumSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.CompletableFuture;
+import java.util.function.BooleanSupplier;
 import javax.imageio.ImageIO;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.screenshot.TestScreenshotOptions;
@@ -158,9 +159,10 @@ public final class DhIrisSpike {
         final Object iris = call(null, api + "IrisApi", "getInstance");
         final Object config = call(iris, api + "IrisApi", "getConfig");
         final List<Path> off = new ArrayList<>();
-        // Three passes: shaders off, the pack with its defaults, then the pack with its atmospheric fog
-        // lifted. Complementary fogs everything below ATM_FOG_ALTITUDE (63), and the match world is 64
-        // blocks tall, so with the defaults the LODs sit inside that fog.
+        final List<Path> on = new ArrayList<>();
+        // Three passes: shaders off, the pack with its defaults, then the pack with its atmospheric and
+        // border fog options off, compared against both earlier passes to tell whether those options
+        // cause the haze over the LODs.
         for (String state : List.of("off", "on", "on-lowfog")) {
             final boolean enabled = !state.equals("off");
             if (state.equals("on-lowfog")) {
@@ -186,8 +188,10 @@ public final class DhIrisSpike {
                 final String name = "iris-" + state + (i == 0 ? "-far" : "-lod");
                 final Path shot = shot(context, name);
                 report.add("IRIS " + name + " pack_in_use " + call(iris, api + "IrisApi", "isShaderPackInUse")
-                        + (enabled ? " vs off: " + diff(off.get(i), shot) : ""));
-                if (!enabled) off.add(shot);
+                        + (enabled ? " vs off: " + diff(off.get(i), shot) : "")
+                        + (state.equals("on-lowfog") ? "; vs on: " + diff(on.get(i), shot) : ""));
+                if (state.equals("off")) off.add(shot);
+                if (state.equals("on")) on.add(shot);
             }
         }
     }
@@ -290,7 +294,6 @@ public final class DhIrisSpike {
         }
     }
 
-    /** DH's column at a block position: the topmost non-air data point, or why there is none. */
     /**
      * DH's column query blocks on a future its render-thread work completes, and it calls
      * Minecraft.getInstance(), which the gametest thread may not. So it runs on a thread of its own
@@ -303,6 +306,7 @@ public final class DhIrisSpike {
         return query.isDone() ? query.join() : "no answer within 600 ticks";
     }
 
+    /** DH's column at a block position: the topmost non-air data point, or why there is none. */
     private static String column(Object level, int x, int z) {
         final Object result = invoke(delayed("terrainRepo"), DH + "interfaces.data.IDhApiTerrainDataRepo", "getColumnDataAtBlockPos",
                 new Class<?>[] {type(DH + "interfaces.world.IDhApiLevelWrapper"), int.class, int.class,
@@ -332,7 +336,7 @@ public final class DhIrisSpike {
     }
 
     /** Ticks waited until the condition held, or -1 after {@code limit}. */
-    private static int waitUntil(ClientGameTestContext context, int limit, java.util.function.BooleanSupplier condition) {
+    private static int waitUntil(ClientGameTestContext context, int limit, BooleanSupplier condition) {
         for (int waited = 0; waited <= limit; waited += 20) {
             if (condition.getAsBoolean()) return waited;
             context.waitTicks(20);

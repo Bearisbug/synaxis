@@ -15,6 +15,7 @@
 
 | 日期 | 改动 | 作者 |
 | --- | --- | --- |
+| 2026-09-24 | 第 3 波集成：`TC-PROD-183` 第 1 步宿主节点下的计数改为只数插件的节点（名字以 `plugin/` 开头），宿主节点下还挂着 3A 存储的冻结节点 `synaxis-store-freeze`；判据的其余部分与反证不变 | Bearisbug |
 | 2026-09-24 | 新增第 3 波 3C 一节 `TC-PROD-190`～`TC-PROD-193`（`REQ-PROD-035` 前半）：`archive_command` 脚本的幂等、拒绝覆盖与写不进去不留半个文件（190）；在本机 `synaxis-pg` 上开归档、用自己的库 `synaxis_rpo` 测恢复点、归档失败与积压告警，修好后按 `ops/postgres/README.md` 第 4 节补一份基础备份（191）；每日基础备份、强杀留下的 `.partial` 由下一次备份清掉、保留份数与归档清理、备份过期告警（192）；恢复到 5 分钟以前的时间点、按结束时间选备份、恢复实例 `archive_mode=off` 的告警与给它另开归档（193）。每条带反证步骤（去掉同名检查、`archive_command=/bin/false`、修复前的备份脚本、备份过期、没有归档 WAL、去掉 `archive_mode` 检查）。§5 回归映射同步 | Bearisbug |
 | 2026-09-24 | 跟进 `docs/DESIGN-PROD.md` 第 3 波 3B（`REQ-PROD-022`，G19，`API-PROD-018`）。**新增 §4「生产就绪 · 第 3 波 3B：插件事件优先级与实例作用域」五条 `TC-PROD-180`～`TC-PROD-184`**：六档优先级跨插件排成一个顺序（180，反证各档节点优先级全设 0 即退化成按建节点先后）、`ignoreCancelled` 与两参形式、`MONITOR` 收到已取消事件（181，反证删掉已取消判断、或改回引擎两参的跳过规则）、`forInstance` 只收本实例事件且在实例所属 tick 线程上执行、拒绝玩家无实例时也会派发的事件、同一插件多次 `forInstance` 同一实例共用节点（182，含 4 线程严格模式一步；反证作用域失效、只拒接口、漏拒断开事件、漏拒 `PlayerPacketEvent`、实例作用域不复用节点）、禁用收回每档与实例下的节点（183，反证不登记实例节点、收回后仍接受注册）、实例作用域的监听器先于全局作用域的全部插件监听器（184，反证引擎先派发子节点、后派发映射节点）；每条红在哪写进期望列，与设计文档的四处口径差异（§19 的「HIGH 先于 NORMAL」、两参形式原本跳过已取消事件、`API-PROD-018` 未写的实例作用域拒绝清单与两种作用域先后、多次 `forInstance` 共用节点）写在该节开头。§5 回归映射加生产就绪域一行 | Bearisbug |
 | 2026-09-24 | 3A 返工第 3 轮：新增 `TC-PROD-176`（转服写回期间玩家登出：写回失败按登出保存重试并还租约，写回成功以 `offline` 收尾，快照前登出则丢弃转服、直接做登出保存）、`TC-PROD-177`（带与不带数据库变量的两次 `:server-app:test` 不判 UP-TO-DATE），均带反证。§4 该节开头的用例分类与 §5 回归映射同步 | Bearisbug |
@@ -3205,7 +3206,7 @@ jcmd "$pid" VM.flags | tr ' ' '\n' | grep -cxE -- '-XX:\+UseG1GC|-XX:InitialHeap
 
 | # | 操作 | 预期 |
 | --- | --- | --- |
-| 1 | 跑该类，看 `disablingTakesBackEveryPriorityAndEveryInstanceScope` | 通过：插件六档各注册一个监听器、再在实例下注册一个，宿主节点 `synaxis-host` 下 6 个子节点、实例节点下 1 个；派发与 tick 后两边计数为 6 与 1。`disableAll` 之后插件再用留着的 `PluginEvents` 加一个全局、一个实例下的监听器（模拟比插件活得久的任务）：宿主节点与实例节点下都是 0 个子节点，再派发与 tick，计数仍是 6 与 1 |
+| 1 | 跑该类，看 `disablingTakesBackEveryPriorityAndEveryInstanceScope` | 通过：插件六档各注册一个监听器、再在实例下注册一个，宿主节点 `synaxis-host` 下该插件的节点 6 个（只数名字以 `plugin/` 开头的；宿主自己的 `synaxis-store-freeze` 也挂在那里，不计）、实例节点下 1 个；派发与 tick 后两边计数为 6 与 1。`disableAll` 之后插件再用留着的 `PluginEvents` 加一个全局、一个实例下的监听器（模拟比插件活得久的任务）：宿主节点下该插件的节点与实例节点下的子节点都是 0 个，再派发与 tick，计数仍是 6 与 1 |
 | 2 | 反证有齿（不登记实例下的节点）：`tier` 里 `tiers.put(priority, new WeakReference<>(node));` 改为 `if (scope instanceof GlobalScope) tiers.put(priority, new WeakReference<>(node));`，重跑，再还原 | `8 tests completed, 2 failed`。本条红在 `:271`：`expected: <0> but was: <1>`，禁用后实例节点下还挂着该插件的节点；另一条红是 `TC-PROD-182` 第 3 步那条（`:233`，`but was: <[p1:a, p2:c, p1:b]>`），没登记的节点也就无从复用。还原后复绿 |
 | 3 | 反证有齿（收回后仍接受注册）：`addListener` 里 `if (registrations.detached) return;` 改为 `if (registrations.detached && priority == null) return;`，重跑，再还原 | `8 tests completed, 1 failed`，红在 `:270`：`expected: <0> but was: <1>`，禁用后新挂到宿主节点下的全局节点没人收回。还原后复绿 |
 

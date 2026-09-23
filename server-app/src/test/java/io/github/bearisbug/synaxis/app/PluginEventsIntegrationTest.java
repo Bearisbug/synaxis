@@ -254,7 +254,7 @@ class PluginEventsIntegrationTest {
         final PluginHost host = host(env, plugin);
         final EventNode<?> hostNode = env.process().eventHandler().getChildren().stream()
                 .filter(node -> node.getName().equals("synaxis-host")).findFirst().orElseThrow();
-        assertEquals(EventPriority.values().length, hostNode.getChildren().size());
+        assertEquals(EventPriority.values().length, pluginNodes(hostNode));
         assertEquals(1, instance.eventNode().getChildren().size());
 
         env.process().eventHandler().call(new ProbeEvent(new CopyOnWriteArrayList<>()));
@@ -267,7 +267,7 @@ class PluginEventsIntegrationTest {
         kept[0].addListener(ProbeEvent.class, _ -> global.incrementAndGet());
         kept[0].forInstance(instance).addListener(EntityTickEvent.class, _ -> scoped.incrementAndGet());
 
-        assertEquals(0, hostNode.getChildren().size());
+        assertEquals(0, pluginNodes(hostNode));
         assertEquals(0, instance.eventNode().getChildren().size());
         env.process().eventHandler().call(new ProbeEvent(new CopyOnWriteArrayList<>()));
         env.tick();
@@ -292,5 +292,10 @@ class PluginEventsIntegrationTest {
 
         assertEquals(List.of("instance:monitor", "global:lowest"), calls);
         host.disableAll();
+    }
+
+    /** The plugins' nodes under the host node, which also holds the host's own (the store's freeze). */
+    private static long pluginNodes(EventNode<?> hostNode) {
+        return hostNode.getChildren().stream().filter(node -> node.getName().startsWith("plugin/")).count();
     }
 }

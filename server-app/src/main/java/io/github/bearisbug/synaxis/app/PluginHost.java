@@ -139,7 +139,8 @@ final class PluginHost {
         final PluginDescriptor descriptor = plugin.descriptor();
         final String id = descriptor.id();
         final PluginSchedulerImpl scheduler = new PluginSchedulerImpl(id, process.scheduler());
-        final LoadedPlugin loaded = new LoadedPlugin(plugin, id, new PluginEventsImpl(id, hostNode), scheduler);
+        final PluginCommandsImpl commands = new PluginCommandsImpl(id, process);
+        final LoadedPlugin loaded = new LoadedPlugin(plugin, id, new PluginEventsImpl(id, hostNode), scheduler, commands);
         final Path dataDirectory = pluginsDirectory.resolve(id);
         final PluginPlayerData playerData = store.forPlugin(id);
         final long start = System.nanoTime();
@@ -148,7 +149,8 @@ final class PluginHost {
             plugin.onEnable(new PluginContextImpl(process,
                     loaded.events(), scheduler,
                     new PluginChannelsImpl(id, router), new PluginAdmissionImpl(id, admission),
-                    dataDirectory, ledger::record, playerData, playerData, permissions, LoggerFactory.getLogger("plugin." + id)));
+                    dataDirectory, ledger::record, playerData, playerData, permissions, commands,
+                    LoggerFactory.getLogger("plugin." + id)));
         } catch (Throwable throwable) {
             playerData.discard();
             LOGGER.error("Plugin failed to enable: plugin_id={}", id, throwable);
@@ -260,7 +262,8 @@ final class PluginHost {
         loaded.scheduler().cancelAll();
         router.unregisterAll(loaded.id());
         admission.unregister(loaded.id());
-        LOGGER.info("Took back the capabilities of plugin_id={}: event node, tasks, channels, admission provider",
+        loaded.commands().unregisterAll();
+        LOGGER.info("Took back the capabilities of plugin_id={}: event node, tasks, channels, admission provider, commands",
                 loaded.id());
     }
 }

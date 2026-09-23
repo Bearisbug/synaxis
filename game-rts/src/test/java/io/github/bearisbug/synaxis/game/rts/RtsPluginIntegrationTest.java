@@ -77,8 +77,14 @@ class RtsPluginIntegrationTest {
         public PluginEvents events() {
             return new PluginEvents() {
                 @Override
-                public <E extends Event> void addListener(Class<E> eventType, Consumer<E> listener) {
+                public <E extends Event> void addListener(Class<E> eventType, EventPriority priority,
+                                                          boolean ignoreCancelled, Consumer<E> listener) {
                     env.process().eventHandler().addListener(eventType, listener);
+                }
+
+                @Override
+                public PluginEvents forInstance(Instance instance) {
+                    throw new UnsupportedOperationException("the rts plugin registers no instance scoped listener");
                 }
             };
         }

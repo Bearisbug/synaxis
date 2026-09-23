@@ -117,14 +117,13 @@ final class PluginHost {
         final PluginDescriptor descriptor = plugin.descriptor();
         final String id = descriptor.id();
         final PluginSchedulerImpl scheduler = new PluginSchedulerImpl(id, process.scheduler());
-        final LoadedPlugin loaded = new LoadedPlugin(plugin, id, EventNode.all("plugin/" + id), scheduler);
+        final LoadedPlugin loaded = new LoadedPlugin(plugin, id, new PluginEventsImpl(id, hostNode), scheduler);
         final Path dataDirectory = pluginsDirectory.resolve(id);
         final long start = System.nanoTime();
         try {
             Files.createDirectories(dataDirectory);
-            hostNode.addChild(loaded.node());
             plugin.onEnable(new PluginContextImpl(process,
-                    new PluginEventsImpl(id, loaded.node()), scheduler,
+                    loaded.events(), scheduler,
                     new PluginChannelsImpl(id, router), new PluginAdmissionImpl(id, admission),
                     dataDirectory, ledger::record, LoggerFactory.getLogger("plugin." + id)));
         } catch (Throwable throwable) {
@@ -232,7 +231,7 @@ final class PluginHost {
     }
 
     private void tearDown(LoadedPlugin loaded) {
-        hostNode.removeChild(loaded.node());
+        loaded.events().detach();
         loaded.scheduler().cancelAll();
         router.unregisterAll(loaded.id());
         admission.unregister(loaded.id());

@@ -98,6 +98,19 @@ public interface PluginContext {
     }
 
     /**
+     * Permission nodes and roles of the players ({@code docs/DESIGN-PROD.md} API-PROD-010).
+     * <p>
+     * The host's context always has one; the default is there for the same reason as
+     * {@link #playerData()}'s.
+     *
+     * @return the permission capability of this plugin
+     * @throws UnsupportedOperationException from a context that is not the host's
+     */
+    default Permissions permissions() {
+        throw new UnsupportedOperationException("only the host's plugin context has permissions");
+    }
+
+    /**
      * A logger named after this plugin.
      *
      * @return the logger of this plugin

@@ -14,6 +14,7 @@
 
 | 日期 | 改动 | 作者 |
 | --- | --- | --- |
+| 2026-09-23 | 跟进 `docs/DESIGN-PROD.md` 第 0 波 0D（`REQ-PROD-030` 离线档，`API-PROD-026`）。**新增三条**：`TC-PROD-040`（无头容器里真客户端 R1～R8 全绿，dev 与生产启动器各一次，带 spike 时 R 行在前、spike 行追加；反证删掉 `en_us.json` 的 `synaxis:protocol-error` 译文，红在 R8）、`TC-PROD-041`（判定读报告与台账：连不上服务端时报告仍写满 8 行、全绿报告配空台账也判红、缺报告判红）、`TC-PROD-042`（工作流触发、`continue-on-error` 与判定步骤；把判定步骤原样抽出来在 CI 布局里跑，反证一条 R8 FAIL 或缺一份报告即红）。§5 局部轮加「生产就绪域」一行 | Bearisbug |
 | 2026-09-23 | 跟进 `docs/DESIGN-M2.md` v0.44（对局世界由服务端在载入阶段整图算光照）。**`TC-GAME-029` 保留 ID**：第 2 步的实测参考值换成含光照的 2026-09-23 数字（判据 `load_ms` < 3000、`heap_gc_runs` ≥ 2、`heap_delta_kib` 在 `0` 与 `51200` 之间不变）；新增第 10 步「进场即有光照」（`MatchIntegrationTest#theMapIsLitBeforeTheMatchRuns`）与第 11 步反证（chunk supplier 改回 `DynamicChunk` 则第 10 步必红）。§5 跨域牵连补一条：动了对局的 chunk supplier、载入流程或引擎 `LightingChunk` / `instance.light` → 加 TC-GAME-029 | Bearisbug |
 | 2026-09-23 | 跟进 `docs/DESIGN.md` v0.33 与 `docs/DESIGN-M2.md` v0.43。**新增 `TC-036`**（对应 `REQ-005`）：`PacketVanillaIdTest` 把 26.2 原版 login、configuration、play 两个方向六张表的包 ID 钉死，一步绿、一步反证（删掉 `award_stats` 的占位即红）、一步还原；§2 补一条「包 ID 口径」，说明探针与压测 harness 的包 ID 来自本仓库注册表、不能证明与原版一致；§5 引擎域「删除与注册表」加 TC-036，跨域牵连加「动了包注册表」一条。**`TC-GAME-052` 保留 ID**：第 2 步当前值 4.0 → 5.0；第 7 步的公式补上 `clamp(rd / 8, 1, 2.5)`，判据由「≥ 97 格」改为「盖住渲染距离雾界」（rd 8 为 160 格、覆盖到眼高 96，rd 10 为 200 格、覆盖到眼高 120）。`TC-GAME-047` 第 4 步的 4.0 随之改 5.0 | Bearisbug |
 | 2026-09-22 | 跟进 `docs/DESIGN-M2.md` v0.41（§15 整表阈值的正式测量，报告 `docs/research/soak-2026-09-22/report.md`）。**`TC-GAME-068` 保留 ID，操作列一字未改**：第 2、3 步的实测参考值从「待 v0.41 填」换成 2026-09-22 的实测，数字全部可从 `docs/research/soak-2026-09-22/runs/<档名>/summary.json` 复算——第 2 步四条预算里 tick、堆、寻路三条绿，`S2C_UNIT_STATE` 那条三个字段红（最坏布局把兴趣集顶到 512 条上限）；第 3 步三档 tick P99 8.617 → 9.698 → 11.096、至 4,000 未越线。第 2 步期望列的 `orders.answered = orders.sent` 补上口径：harness 到截止时刻即关连接，最后一秒内发出的下令收不到回包，差 ≤ 50 条不算红（实测差 3 条）。第 5、6 步的反证在正式测量那一轮重跑，参考值补上（`check=mismatch`、退出码 2）。§2 不测表、REQ ↔ TC 表与 §5 回归映射不动——`TC-GAME-068` 自 v0.39 起已登记在三处 | Bearisbug |
@@ -1762,6 +1763,51 @@ REQ-M2 ↔ TC 对照（可读索引，覆盖与否由上述联检判）：
 
 后置：确认工作区干净（第 2 步的临时改动已还原）。
 
+### 生产就绪 · 真客户端回归（`docs/DESIGN-PROD.md` 第 0 波 0D）
+
+三条都对应 `REQ-PROD-030` 的离线档（`API-PROD-026`）。回归断言在 `client-fabric/src/gametest/.../RegressionClientGameTest.java`，判定脚本是 `client-fabric/gametest-env/judge.sh`，工作流是 `.github/workflows/client-gametest.yml`。本地只在无头容器里跑客户端（镜像 `synaxis-mc-client:dev` 与卷 `synaxis-mc-gradle`，做法见 `docs/research/client-spikes-2026-09/README.md`「无头运行方式」），不在桌面起客户端。CI 侧「main 上连续 5 次绿」「连续 20 次绿后设为必需检查」由验收人在合并后判，不在这三条里。
+
+#### `TC-PROD-040` 真客户端 R1～R8 全绿，一条断言坏了报告与 gametest 都红 — 对应 `REQ-PROD-030` · 级别: 回归 · 执行者: AI
+
+前置：`./gradlew :protocol:publishToMavenLocal --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts` 已跑；删掉仓库根的 `logs/`，按 README 第 2 步起玩法模式服务端（离线，`handshake-phase` 用默认的 `configuration`），本轮用 `-Dsynaxis.app.port=25604`，stdout 重定向到 `<server.log>`；日志出现 `server-app listening` 后再做第 1 步。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | `SYNAXIS_GAMETEST_SERVER=host.docker.internal:25604 OUT=<out1> client-fabric/gametest-env/run.sh`；`cat <out1>/synaxis-gametest/report.txt` | `run.sh` 的退出码只记录不判定（本地 aarch64 容器恒为 1：`Stopping!` 之后 `libopenal` 段错误，Gradle 报 `exit value 134`）。报告恰 8 行、全部 `PASS`，实测：`R1 PASS mods [io_github_bearisbug_synaxis_protocol dev, synaxis 0.1.0]`、`R2 PASS state=VERIFIED schema_version=1`、`R3 PASS in world at BlockPos{x=256, y=40, z=256}`、`R4 PASS bound=66 commandable=64 unmatched_state_entries=0`、`R5 PASS unit_id=1 selected=1`、`R6 PASS unit_id=1 answers [OK] target 263.50,40.00,255.50 moved 2.27 blocks (need 2.0)`、`R7 PASS surface BlockPos{x=256, y=39, z=256} sky_above=15 sky_below=0`、`R8 PASS screen: Connection Lost. The server rejected a message from this connection as malformed.`；`<out1>/screenshots/` 有 `r3-after-connect`、`r7-in-world`、`r8-disconnected` 三张 |
+| 2 | 生产启动器那一条：把 `run.sh` 复制一份，容器里的 `runClientGameTest` 换成 `runProductionClientGameTest`、拷出目录换成 `build/run/productionClientGameTest`，其余不变，`OUT=<out2>` 跑一次 | 同第 1 步，8 行 `PASS`（本轮实测 `R5 PASS unit_id=2 selected=2`、`R6 … moved 2.10 blocks`）。R1 的模组列表来自 Loom 生产启动器装的 `remapJar`，证明嵌套的 `:protocol` 在玩家那条启动路径上同样被加载 |
+| 3 | `LAUNCHES=2 SERVER_LOG=<server.log> LEDGER_DIR=logs client-fabric/gametest-env/judge.sh <out1>/synaxis-gametest/report.txt <out2>/synaxis-gametest/report.txt` | 退出码 0，逐行 `ok`：两份 `8 PASS`、`2 reports for 2 launches`、`client_verified 2, expected 2`、`client_rejected 0, expected 0`、`unit_order_issued 2, expected >= 2`、`protocol-error kicks 2, expected 2`，末行 `client regression: all checks passed` |
+| 4 | 反证有齿：删掉 `client-fabric/src/main/resources/assets/synaxis/lang/en_us.json` 里 `"synaxis:protocol-error"` 那一行（`verifyModJar` 仍绿，它只查 lang 文件在不在），同一个服务端上 `OUT=<out3>` 重跑第 1 步，再 `git checkout -- client-fabric/src/main/resources/assets/synaxis/lang/en_us.json` | 报告 R1～R7 `PASS`，红在 R8：`R8 FAIL screen: Connection Lost. synaxis:protocol-error`（屏幕上是键本身）；`<out3>.log` 里 gametest 以 `java.lang.AssertionError: regression assertions failed:` 结束，下一行就是这条 R8。`judge.sh` 带 `LAUNCHES=3` 与三份报告：`FAIL <out3>/…/report.txt: 7 PASS, 1 FAIL`，台账四项都是 `ok`（红只来自报告），末行 `client regression: 1 check(s) failed`，退出码 1。还原后第 1 步复绿 |
+| 5 | 带 spike 跑一次（每日任务的形态）：重起服务端（先删 `logs/`），`SYNAXIS_SPIKES=s2 OUT=<out5> client-fabric/gametest-env/run.sh`，再 `LAUNCHES=1 CONNECTIONS=2 SERVER_LOG=<server.log> LEDGER_DIR=logs client-fabric/gametest-env/judge.sh <out5>/synaxis-gametest/report.txt` | 报告前 8 行 R1～R8 `PASS`，其后追加 spike 的 `S0` 3 行、`S1` 1 行、`S2` 2 行（spike 追加写，不覆盖 R 行）；`judge.sh` 退出码 0，`client_verified 2, expected 2`（spike 的 S1 每次启动多连一次）。不设 `SYNAXIS_SPIKES` 时报告只有 R1～R8 八行 |
+
+后置：`echo stop` 停服、按 pid 停掉 fifo 占位进程；删掉仓库根 `logs/`、各 `<out>` 目录与 `run.sh` 副本；`git status` 干净（第 4 步的临时改动已还原）。
+
+#### `TC-PROD-041` 判定读报告与台账，不读退出码 — 对应 `REQ-PROD-030` · 级别: 边缘 · 执行者: AI
+
+前置：`TC-PROD-040` 第 1 步留下的全绿报告 `<out1>`；一个空目录 `<empty>` 当台账目录（没有任何 `events-*.jsonl`）。第 1 步不需要服务端。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 客户端连不上服务端：`SYNAXIS_GAMETEST_SERVER=host.docker.internal:1 OUT=<out4> client-fabric/gametest-env/run.sh`；`cat <out4>/synaxis-gametest/report.txt` | 报告照样是 8 行（写在 `finally` 里，中途失败也一行不少）：`R1 PASS …`、`R2 FAIL state=IDLE`、`R3 FAIL not in world: Failed to connect to the server. finishConnect(..) failed with error(-111): Connection refused`、R4～R8 都是 `FAIL not reached: R3 failed` |
+| 2 | `LAUNCHES=1 SERVER_LOG=/dev/null LEDGER_DIR=<empty> client-fabric/gametest-env/judge.sh <out4>/synaxis-gametest/report.txt` | 退出码 1：`FAIL …: 1 PASS, 7 FAIL`（下面列出 7 条 FAIL 行）、`FAIL client_verified 0, expected 1`、`FAIL unit_order_issued 0, expected >= 1`、`FAIL protocol-error kicks 0, expected 1`，末行 `client regression: 4 check(s) failed` |
+| 3 | 台账有齿：`LAUNCHES=1 SERVER_LOG=/dev/null LEDGER_DIR=<empty> client-fabric/gametest-env/judge.sh <out1>/synaxis-gametest/report.txt`（报告全绿，服务端一侧什么都没有） | 退出码 1：`ok … 8 PASS`，但 `FAIL client_verified 0, expected 1`、`FAIL unit_order_issued 0, expected >= 1`、`FAIL protocol-error kicks 0, expected 1`，末行 `client regression: 3 check(s) failed`——只有报告、服务端没见到这次连接，判不了绿 |
+| 4 | 缺报告：`LAUNCHES=2 …/judge.sh <out1>/synaxis-gametest/report.txt <不存在的路径>/report.txt`（其余同第 3 步） | 退出码 1，其中 `FAIL no report at <不存在的路径>/report.txt` 与 `FAIL 1 reports for 2 launches` 两行来自缺的那份报告 |
+
+后置：删掉 `<out4>` 与 `<empty>`。
+
+#### `TC-PROD-042` 工作流的触发与判定步骤 — 对应 `REQ-PROD-030` · 级别: 回归 · 执行者: AI
+
+前置：`actionlint` 已装（Homebrew）；`TC-PROD-040` 的三份报告 `<out1>`（dev，全绿）、`<out2>`（生产，全绿）、`<out3>`（R8 FAIL）与 `<server.log>` 还在。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | `actionlint .github/workflows/client-gametest.yml` | 只有 2 条 shellcheck 提示，都在「Start server-app in game mode」那一步（`SC2034` 的 `i` 未用、`SC2086`），与基线 `2a315e7177` 的同一文件条数相同；本次改动的行零提示 |
+| 2 | `sed -n '/^on:/,/^permissions:/p' .github/workflows/client-gametest.yml` | `pull_request.paths` 恰 8 项（`client-fabric/**`、`protocol/**`、`server-app/**`、`game-rts/**`、`plugin-api/**`、`src/main/java/**/network/**`、`src/main/java/**/listener/**`、本工作流文件）；`push.branches: [ main ]`；`schedule` 一条 `cron: '0 18 * * *'`；`workflow_dispatch` 保留 `handshake_phase` 输入 |
+| 3 | `grep -n 'LAUNCHES:\|SYNAXIS_SPIKES:\|CONNECTIONS_PER_LAUNCH:\|continue-on-error\|judge.sh' .github/workflows/client-gametest.yml` | PR 为 `LAUNCHES=1`（dev 那一步 `if: env.LAUNCHES == '2'` 跳过，只跑生产 jar），其余触发为 2；只有 `schedule` 设 `SYNAXIS_SPIKES=all`、固定 `SYNAXIS_S3_DISTANCES` 与 `CONNECTIONS_PER_LAUNCH=2`；两个客户端步骤各一行 `continue-on-error: true`；判定步骤调用 `client-fabric/gametest-env/judge.sh` |
+| 4 | 把判定步骤的 `run:` 块原样抽出来，在一个按 CI 布局摆好的临时目录里跑（`client-fabric/build/run/{clientGameTest,productionClientGameTest}/synaxis-gametest/report.txt` 分别放 `<out1>`、`<out2>` 的报告，`server.log` 放 `<server.log>` 里的两行 `Kicking … reason=synaxis:protocol-error`，`logs/events-*.jsonl` 放两行 `client_verified` 与两行 `unit_order_issued`），`LAUNCHES=2 CONNECTIONS_PER_LAUNCH=1 SERVER_LOG=server.log LEDGER_DIR=logs bash step.sh`；再用 `LAUNCHES=1` 且删掉 dev 那份报告重跑 | 两次都退出码 0、末行 `client regression: all checks passed`：main 读两份报告，PR 只读生产那份 |
+| 5 | 反证有齿（一条断言坏了 job 判红）：生产那份换成 `<out3>` 的报告，`LAUNCHES=1` 重跑第 4 步；再换回 `<out2>`、`LAUNCHES=2` 并删掉 dev 那份报告重跑 | 前一次退出码 1：`FAIL …/productionClientGameTest/synaxis-gametest/report.txt: 7 PASS, 1 FAIL` 下接 `R8 FAIL screen: Connection Lost. synaxis:protocol-error`，末行 `client regression: 1 check(s) failed`。后一次退出码 1：`FAIL no report at client-fabric/build/run/clientGameTest/synaxis-gametest/report.txt` 与 `FAIL 1 reports for 2 launches`，末行 `client regression: 2 check(s) failed`——main 上 dev 那次启动没留下报告，job 红 |
+
+后置：删掉临时目录。
+
 ## 5. 回归策略
 
 - **全量轮**（全部用例）：首次成稿、每个阶段 gate（引擎域阶段 0、2、3；游戏域 `docs/DESIGN-M2.md` §26 的阶段 1～6b）、跨功能域改动、地基变更（JDK、Gradle、镜像、协议版本、模块拆分、启动入口）。
@@ -1769,6 +1815,7 @@ REQ-M2 ↔ TC 对照（可读索引，覆盖与否由上述联检判）：
   - 引擎域：构建与仓库 → TC-001、TC-002、TC-004、TC-006、TC-021、TC-029，删除与注册表 → TC-008、TC-009、TC-020、TC-036，命名与合规 → TC-011、TC-028，协议 → TC-014、TC-018、TC-019、TC-026、TC-027、TC-030、TC-031、TC-032、TC-034、TC-035、TC-GAME-069、TC-GAME-070、TC-GAME-071（后三条是攻击面盘点补的，动了 `network` / `listener` 包或 `ServerConfig` 的连接与超时项就跑），卫生 → TC-015、TC-016，门面与配置 → TC-023、TC-025，分层 → TC-024、TC-035。
   - 游戏域：模块与门禁 → TC-GAME-001～TC-GAME-006、TC-GAME-059、TC-GAME-067，插件宿主 → TC-GAME-009～TC-GAME-011、TC-GAME-014～TC-GAME-016、TC-GAME-053～TC-GAME-055（TC-GAME-007、TC-GAME-008、TC-GAME-012、TC-GAME-013 已废弃），协议与握手 → TC-GAME-017～TC-GAME-028、TC-GAME-049、TC-GAME-050、TC-GAME-060～TC-GAME-064（TC-GAME-021、TC-GAME-023、TC-GAME-025 已废弃），世界与对局 → TC-GAME-029、TC-GAME-031、TC-GAME-033～TC-GAME-036、TC-GAME-056、TC-GAME-057（TC-GAME-030、TC-GAME-032 已废弃），单位与寻路 → TC-GAME-052、TC-GAME-039～TC-GAME-042、TC-GAME-051、TC-GAME-065、TC-GAME-068，镜头 → TC-GAME-043、TC-GAME-044，客户端模组 → TC-GAME-038、TC-GAME-045～TC-GAME-047、TC-GAME-066，启动器 → TC-GAME-048、TC-GAME-049、TC-GAME-050、TC-GAME-058。
   - 跨域牵连（必须一起跑）：动了 `network/packet` 下的包注册表（增删包、调顺序、升协议版本）→ 加 TC-036；动了启动入口或就绪日志 → 加 TC-GAME-048、TC-GAME-029、TC-GAME-057、TC-GAME-058 与全部以进程为前置的引擎域用例（启动序列一变，「对局在 bind 之前就绪、tick 在 bind 之后才起」这条口径就要重验）；动了握手、准入回调或探针 → 加 TC-GAME-049、TC-GAME-050、TC-GAME-060、TC-GAME-061 与 TC-004、TC-014、TC-018、TC-019、TC-020、TC-026、TC-027 七条存量 TC；动了客户端模组侧的握手或拾取 → 加 TC-GAME-066；动了 `:protocol` 消息布局 → 加 TC-GAME-017 与客户端侧同一份向量；动了引擎 `Entity` 的位置推进入口 → 加 TC-GAME-051、TC-GAME-067 与 TC-GAME-040；动了对局的 chunk supplier、`Match#load` 的载入流程或引擎 `LightingChunk` / `instance.light` → 加 TC-GAME-029（第 10、11 步是光照的先红后绿）。
+  - 生产就绪域（`docs/DESIGN-PROD.md`）：真客户端回归 → TC-PROD-040～TC-PROD-042；动了 `client-fabric/**`、`protocol/**`、`server-app/**`、`game-rts/**`、`plugin-api/**`、引擎 `network` / `listener` 包或 `client-gametest.yml` 就跑 TC-PROD-040（与工作流的 PR 路径过滤同一口径），动了 `judge.sh` 或工作流再加 TC-PROD-041、TC-PROD-042。
   - 影响面不确定时升级为全量轮。
 - **复测轮**（上轮失败用例 + 全部冒烟级）：修复失败项之后。
 - **人工收口轮**（仅上轮「待人工」用例）：AI 轮之后由人工补测 TC-016、TC-030、TC-GAME-020、TC-GAME-038、TC-GAME-046、TC-GAME-047，不要求冒烟级。

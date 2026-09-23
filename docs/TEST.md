@@ -15,6 +15,7 @@
 
 | 日期 | 改动 | 作者 |
 | --- | --- | --- |
+| 2026-09-24 | 新增第 3 波 3C 一节 `TC-PROD-190`～`TC-PROD-193`（`REQ-PROD-035` 前半）：`archive_command` 脚本的幂等与拒绝覆盖、在本机 `synaxis-pg` 上开归档与告警探针、每日基础备份与保留清理、恢复到 5 分钟以前的时间点；每条带反证步骤（去掉同名检查、`archive_command=/bin/false`、备份过期、没有归档 WAL）。§5 回归映射同步 | Bearisbug |
 | 2026-09-23 | §7 登记并结案 `PluginHostIntegrationTest > theProcessAcceptsOnlyOneAdmissionProvider` 的偶发红：根因是两个集成测试类起了事件台账写线程不关，写线程在 JUnit 删临时目录时才建 `logs/`；写明复现办法（占满虚拟线程载体 + 拉长删除，修前 20 次红 6 次）与处置（`@AfterEach` 关台账，修后 100 次与严格模式 20 次全绿）。用例判据未动 | Bearisbug |
 | 2026-09-23 | 跟进 `docs/DESIGN-PROD.md` v0.4（第 1、2 波实现回写）。2A 一节末尾的口径差异从三处减为两处：`record` 模式只按 serverId 匹配已写进 `REQ-PROD-044`、`API-PROD-027` 与 §19，删去该条；2B 一节开头的口径差异改为直接引用 `REQ-PROD-036`（`API-PROD-001` 与 §19 已补上 `proxyProtocolRequired=true`）。用例判据未动 | Bearisbug |
 | 2026-09-23 | 跟进 `docs/DESIGN-PROD.md` 第 1 波 1A 的连接闸门默认值（`REQ-PROD-001`，登录桶每地址 3 个令牌、每 2 s 回 1 个）：本机连多个机器人或连续跑多次探针的起服命令补 `-Dsynaxis.connection-gate.trusted-networks=127.0.0.0/8`。**§3 环境段**：「启动」命令补这个参数并写明沿用本段起法的用例都带着它，由此覆盖协议冒烟（`TC-014`、`TC-018`、`TC-019`、`TC-026`、`TC-027`）、`TC-031`、`TC-032`、`TC-034`（经 `docs/research/soak-2026-09-18/README.md` 的起服段，同步补了参数）与 M2 起服后跑探针或压测的用例（`TC-GAME-019`、`024`、`026`、`031`、`039`～`042`、`049`、`050`、`054`、`055`、`058`、`060`～`065`、`069`、`070`）；「压测 / 长稳 harness」与「入站包发包端」两条写明服务端要带它。**`TC-GAME-068` 第 1 步**起服命令补这个参数（第 3、5 步沿用第 1 步）。判闸门本身的 `TC-PROD-060`～`TC-PROD-069` 与自带参数的 `TC-PROD-103` 不动 | Bearisbug |
@@ -2710,6 +2711,70 @@ jcmd "$pid" VM.flags | tr ' ' '\n' | grep -cxE -- '-XX:\+UseG1GC|-XX:InitialHeap
 
 后置：删掉 `<ci>` 与 CI 布局的临时目录；第 3 步的假服务已按 pid 停掉。
 
+### 生产就绪 · 第 3 波 3C：WAL 归档与每日基础备份
+
+对应 `REQ-PROD-035` 前半（§17 `backup.base` / WAL 归档一行，§21「WAL 归档延迟」SLI，Runbook `RB-PROD-008`，§19「WAL 归档与恢复演练」）。实现在 `ops/postgres/`：`archive-wal.sh` 是 `archive_command`，`enable-wal-archive.sh` 用 `ALTER SYSTEM` 开归档（`archive_timeout=60s`），`base-backup.sh` 做每日基础备份并按保留份数清理归档，`check-archive.sh` 是告警探针，`restore-pitr.sh` 准备时间点恢复的数据目录；操作步骤在 `ops/postgres/README.md`。四条用例都在本机共用容器 `synaxis-pg`（`postgres:16-alpine`，PostgreSQL 16.13，`127.0.0.1:5440`，数据卷 `synaxis-pg-data`，归档与备份卷 `synaxis-pg-backup` 挂在 `/backup`）里跑，脚本按 README 第 4 节拷到 `/backup/bin/`；下文 `PG` 是 `docker exec -u postgres synaxis-pg`，`PGI` 是 `docker exec -i -u postgres synaxis-pg`。不起 `server-app`，不占游戏端口。演练用自己的库 `synaxis_drill`，不碰别组的库。
+
+#### `TC-PROD-190` `archive_command` 脚本：压缩落盘、重复归档幂等、同名不同内容拒绝覆盖、写不进去不留半个文件 — 对应 `REQ-PROD-035` · 级别: 回归 · 执行者: AI
+
+前置：`synaxis-pg` 在跑，`/backup/bin/archive-wal.sh` 是 `ops/postgres/archive-wal.sh` 的当前版本。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | `PG mkdir -p /tmp/aw/arch`；`PG dd if=/dev/urandom of=/tmp/aw/000000010000000000000001 bs=1M count=16`，同样造一个 16 MiB 的 `/tmp/aw/other`；`PG /backup/bin/archive-wal.sh /tmp/aw/000000010000000000000001 000000010000000000000001 /tmp/aw/arch; echo rc=$?`；`PG ls -la /tmp/aw/arch` | `rc=0`；目录里只有 `000000010000000000000001.gz`（随机数据压不动，实测 16,779,794 B），没有 `.partial` |
+| 2 | `PG gunzip -k /tmp/aw/arch/000000010000000000000001.gz`，`PG cmp /tmp/aw/000000010000000000000001 /tmp/aw/arch/000000010000000000000001`，再删掉解出来的文件 | `cmp` 无输出、退出码 0：解压后与原段逐字节相同 |
+| 3 | 原样再跑一次第 1 步的 `archive-wal.sh` 命令 | `rc=0`：上次已归档、确认丢了的情形照成功处理，`.gz` 的修改时间不变 |
+| 4 | 同名、不同内容：`PG /backup/bin/archive-wal.sh /tmp/aw/other 000000010000000000000001 /tmp/aw/arch; echo rc=$?` | `rc=1`，stderr `archive-wal: /tmp/aw/arch/000000010000000000000001.gz already exists with different content`；第 2 步的 `cmp` 仍为 0，归档里的内容没被换掉 |
+| 5 | 写不进去：`PG mkdir /tmp/aw/ro`、`PG chmod 555 /tmp/aw/ro`，`PG /backup/bin/archive-wal.sh /tmp/aw/other 000000010000000000000002 /tmp/aw/ro; echo rc=$?`；`PG ls -la /tmp/aw/ro` | `rc=1`，stderr 为 `can't create /tmp/aw/ro/.000000010000000000000002.gz.partial: Permission denied`；目录为空 |
+| 6 | 反证有齿（去掉同名检查）：`PG cp /backup/bin/archive-wal.sh /tmp/aw/broken.sh`，`PG sed -i 12,19d /tmp/aw/broken.sh`（删掉 `if [ -e "$dest" ]` 整段，`PG grep -c 'already exists' /tmp/aw/broken.sh` 得 `0`），用 `broken.sh` 重跑第 4 步，再做第 2 步的解压与 `cmp` | 红：第 4 步变成 `rc=0`；`cmp` 报 `/tmp/aw/000000010000000000000001 /tmp/aw/arch/000000010000000000000001 differ: char 1, line 1`，已归档的段被静默换成了别的内容。原脚本没有改动，不用还原 |
+
+后置：`PG rm -rf /tmp/aw`。
+
+#### `TC-PROD-191` 在 `synaxis-pg` 上开归档：重启后切段即归档，提交 60 s 内可恢复，归档失败与积压都告警 — 对应 `REQ-PROD-035` · 级别: 回归 · 执行者: AI
+
+前置：`synaxis-pg` 按 `ops/postgres/README.md` 第 4 节的 `docker run` 起好，`/backup/bin/` 已拷入脚本并 `chown`；还没开归档（`PG psql -X -At -c "SHOW archive_mode"` 为 `off`）。已经开过时从第 3 步做起。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | `PG /backup/bin/enable-wal-archive.sh; echo rc=$?` | `rc=0`；四行 `archive_command pending_restart=false`、`archive_mode pending_restart=true`、`archive_timeout pending_restart=false`、`wal_level pending_restart=false`，末行 `enable-wal-archive: restart PostgreSQL to apply wal_level and archive_mode`；`/backup/wal` 与 `/backup/base` 已建 |
+| 2 | `docker restart synaxis-pg`，`docker exec synaxis-pg pg_isready -U postgres`；`PG psql -X -At -c "SHOW archive_mode" -c "SHOW archive_command" -c "SHOW archive_timeout"` | 就绪；依次 `on`、`/backup/bin/archive-wal.sh %p %f /backup/wal`、`1min` |
+| 3 | `PG psql -X -At -c "SELECT pg_walfile_name(pg_switch_wal())"`，2 s 后 `PG psql -X -At -c "SELECT archived_count, failed_count, last_archived_wal FROM pg_stat_archiver"`，`PG ls -la /backup/wal` | 切出的段名（首次实测 `000000010000000000000002`）等于 `last_archived_wal`，`failed_count` 为 0；`/backup/wal` 有同名 `.gz`（新库的段是零填充，实测 16,406 B） |
+| 4 | `PG /backup/bin/check-archive.sh; echo rc=$?`（还没有基础备份） | `check-archive: ready=0 oldest_ready_s=0 failing=f …`，下一行 `check-archive: ALERT no base backup in /backup/base`，`rc=1`。做完 `TC-PROD-192` 第 1 步后重跑为 `rc=0` |
+| 5 | 恢复点：`PGI psql -X -At -q -d synaxis_drill`，输入 `INSERT INTO drill_marker (batch, payload) VALUES ('rpo', 'x'); SELECT pg_walfile_name(pg_current_wal_insert_lsn()), clock_timestamp();`（库与表见 `TC-PROD-193` 第 1 步）；之后每 5 s 查一次第 3 步的 `pg_stat_archiver`，共 80 s | 这次提交所在的段在 60 s 内出现在 `last_archived_wal`：实测提交 `16:13:10.84`（UTC）落在 `000000010000000000000007`，`last_archived_time` 为 `16:13:37.91`，27 s。上限是 `archive_timeout` 的 60 s 加一次压缩的时间，在 5 分钟恢复点目标之内 |
+| 6 | 反证有齿（归档失败）：`PGI psql -X -At`，输入 `ALTER SYSTEM SET archive_command = '/bin/false'; SELECT pg_reload_conf();`；再切一次段（第 3 步第一条命令），等 15 s，`docker exec -u postgres -e ARCHIVE_MAX_LAG_S=5 synaxis-pg /backup/bin/check-archive.sh; echo rc=$?` | 红：`rc=1`，两行告警 `check-archive: ALERT oldest WAL waiting 16s > 5s` 与 `check-archive: ALERT archive_command is failing`，状态行 `ready=1 … failing=t … failed=3`（`/bin/false` 每次重试都计一次失败） |
+| 7 | 还原：同第 6 步，把 `archive_command` 写回 `'/backup/bin/archive-wal.sh %p %f /backup/wal'` 并 reload；65 s 后跑 `PG /backup/bin/check-archive.sh; echo rc=$?` | `rc=0`，`ready=0 oldest_ready_s=0 failing=f`：积压的段在修好后自动补归档，`last_archived_wal` 追到最新段 |
+
+后置：归档保持开着（它就是本条交付的状态）；`SHOW archive_command` 是第 2 步的值。
+
+#### `TC-PROD-192` 每日基础备份：产物齐全、连不上库时不留半份、保留份数与归档清理、备份过期告警 — 对应 `REQ-PROD-035` · 级别: 回归 · 执行者: AI
+
+前置：`TC-PROD-191` 第 1～3 步已过（归档开着）。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | `docker exec -u postgres -e BACKUP_CHECKPOINT=fast synaxis-pg /backup/bin/base-backup.sh; echo rc=$?`；`PG ls -laR /backup/base`；`PG ls /backup/wal` | `rc=0`，首次实测约 1 s；输出 `base-backup: /backup/base/<UTC 时间戳>` 与 `base-backup: kept WAL from <段>`。目录里恰三个文件：`backup_manifest`、`base.tar.gz`、`pg_wal.tar.gz`（首次实测 137,466 B、3,138,737 B、17,068 B），没有 `.partial` 目录；`/backup/wal` 多一个 `<段>.00000028.backup.gz` 标签文件，`kept WAL from` 那个段之前的归档段已删 |
+| 2 | `PG /backup/bin/check-archive.sh; echo rc=$?` | `rc=0`，末行 `check-archive: newest base backup <第 1 步的时间戳>` |
+| 3 | 连不上库：`docker exec -u postgres -e PGPORT=5499 synaxis-pg /backup/bin/base-backup.sh; echo rc=$?`；`PG ls -la /backup/base` | `rc=1`，`pg_basebackup: error: connection to server on socket "/var/run/postgresql/.s.PGSQL.5499" failed`；`/backup/base` 与第 1 步相同，没有新目录也没有 `.partial` |
+| 4 | 保留份数：隔至少 1 s 再做一份，`docker exec -u postgres -e BACKUP_CHECKPOINT=fast -e BACKUP_KEEP=1 synaxis-pg /backup/bin/base-backup.sh`；`PG ls /backup/base /backup/wal` | 输出 `base-backup: removed /backup/base/<第 1 步的时间戳>`；`/backup/base` 只剩新的一份；`/backup/wal` 里编号小于 `kept WAL from` 段的 `.gz` 段全部删掉（实测只剩该段、`…0E.gz` 起）。旧备份的 `.backup.gz` 标签文件（约 200 B）留着，PostgreSQL 16 的 `pg_archivecleanup` 不删这类文件 |
+| 5 | 反证有齿（备份过期）：等 60 s，`docker exec -u postgres -e BASE_MAX_AGE_H=0 synaxis-pg /backup/bin/check-archive.sh; echo rc=$?` | 红：`rc=1`，`check-archive: ALERT newest base backup <时间戳> is older than 0h`；默认阈值 26 h 下同一份备份是 `rc=0`（第 2 步） |
+
+后置：`/backup/base` 至少留一份备份（`check-archive.sh` 没有备份即告警）。
+
+#### `TC-PROD-193` 恢复演练：把 `synaxis_drill` 恢复到 5 分钟以前的时间点，数据与当时的快照一致；归档缺失时恢复失败 — 对应 `REQ-PROD-035` · 级别: 回归 · 执行者: AI
+
+前置：`TC-PROD-191` 第 1～3 步与 `TC-PROD-192` 第 1 步已过，且基础备份早于第 1 步；容器内端口 5499 空闲，`/var/lib/postgresql` 下只有 `data`。下文 `SNAP` 是这条 SQL：`SELECT clock_timestamp(), count(*), md5(string_agg(id || ':' || batch || ':' || payload, ',' ORDER BY id)) FROM drill_marker;`。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | `PG createdb synaxis_drill`；`PGI psql -X -q -v ON_ERROR_STOP=1 -d synaxis_drill`，输入 `CREATE TABLE drill_marker (id bigserial PRIMARY KEY, batch text NOT NULL, payload text NOT NULL, written_at timestamptz NOT NULL DEFAULT clock_timestamp()); INSERT INTO drill_marker (batch, payload) SELECT 'a', md5(g::text) FROM generate_series(1, 1000) g;`；再用 `PGI psql -X -A -t -F ' ' -d synaxis_drill` 执行 `SNAP`，记下时间 `T` 与摘要 | 首次实测 `2026-09-23 16:11:20.425783+00 1000 b876ecae055fe0808e8d86a705654e43` |
+| 2 | 之后 6 分钟里每 55 s 插一批 `INSERT INTO drill_marker (batch, payload) SELECT 'b', md5(g::text) FROM generate_series(1, 10) g;`（共 6 批），再模拟误操作：`SELECT batch, count(*) FROM drill_marker GROUP BY batch ORDER BY batch; DROP TABLE drill_marker;`，然后切一次段（`TC-PROD-191` 第 3 步第一条命令） | 删表前 `a|1000`、`b|60`（跑过 `TC-PROD-191` 第 5 步时另有 `rpo|1`）；`DROP TABLE`；`check-archive.sh` 为 `ready=0`，删表所在的段已归档 |
+| 3 | 反证有齿（没有归档 WAL）：`PG mkdir -p /var/lib/postgresql/empty-archive/wal`；`docker exec -u postgres -e BACKUP_ROOT=/var/lib/postgresql/empty-archive synaxis-pg /backup/bin/restore-pitr.sh /backup/base/<备份> "<T>" /var/lib/postgresql/drill-restore`；`PG pg_ctl -D /var/lib/postgresql/drill-restore -o "-p 5499" -l /var/lib/postgresql/drill-restore.log -w -t 60 start; echo rc=$?`；`PG tail -n 8 /var/lib/postgresql/drill-restore.log` | 红：`pg_ctl: could not start server`，`rc=1`；日志 `FATAL:  recovery ended before configured recovery target was reached`——基础备份里自带的 WAL 回放到备份结束点就没了，`T` 之前建的表与数据都在归档里，没有归档就恢复不到 `T`。随后 `PG rm -rf /var/lib/postgresql/drill-restore /var/lib/postgresql/drill-restore.log /var/lib/postgresql/empty-archive` |
+| 4 | 恢复（距 `T` 已超过 5 分钟）：宿主机记开始时间，`PG /backup/bin/restore-pitr.sh /backup/base/<备份> "<T>" /var/lib/postgresql/drill-restore`；第 3 步的 `pg_ctl … start`（不带 `BACKUP_ROOT`）；轮询 `PG psql -X -At -p 5499 -c "SELECT pg_is_in_recovery()"` 直到 `f`，记结束时间 | 输出 `restore-pitr: /var/lib/postgresql/drill-restore ready, recovery target <T>`、`server started`；首次实测从解包到 promote 完成 1.26 s（库 3 MB，回放 4 个段）。日志依次 `starting point-in-time recovery to 2026-09-23 16:11:20.425783+00`、`restored log file "000000010000000000000004" from archive` 至 `…07`、`recovery stopping before commit of transaction 746, time 2026-09-23 16:12:15.699637+00`（第 2 步第一批，晚于 `T`）、`selected new timeline ID: 2`、`archive recovery complete` |
+| 5 | 在恢复出来的实例上执行 `SNAP`（`PGI psql -X -A -t -F ' ' -p 5499 -d synaxis_drill`）与 `SELECT batch, count(*) FROM drill_marker GROUP BY batch ORDER BY batch;` | 计数 `1000`、摘要 `b876ecae055fe0808e8d86a705654e43`，与第 1 步一致；分批只有 `a|1000`，`T` 之后的 `b` 批与删表都不在 |
+| 6 | `PG psql -X -At -p 5499 -c "SHOW archive_mode"`；`PG ls /backup/wal` | `off`；`/backup/wal` 里没有 `00000002` 开头的文件：恢复实例是新时间线，不往原库的归档里写 |
+
+后置：`PG pg_ctl -D /var/lib/postgresql/drill-restore -m fast -w stop`，`PG rm -rf /var/lib/postgresql/drill-restore /var/lib/postgresql/drill-restore.log`，`/var/lib/postgresql` 下只剩 `data`；`PG dropdb synaxis_drill`。
+
 ## 5. 回归策略
 
 - **全量轮**（全部用例）：首次成稿、每个阶段 gate（引擎域阶段 0、2、3；游戏域 `docs/DESIGN-M2.md` §26 的阶段 1～6b；大世界域 `docs/DESIGN-M3.md` §26 的 M3-A～M3-G）、跨功能域改动、地基变更（JDK、Gradle、镜像、协议版本、模块拆分、启动入口）。
@@ -2729,6 +2794,7 @@ jcmd "$pid" VM.flags | tr ' ' '\n' | grep -cxE -- '-XX:\+UseG1GC|-XX:InitialHeap
   - 生产就绪域（`docs/DESIGN-PROD.md`）：正版验证与加密（`REQ-PROD-002`～`REQ-PROD-004`、`REQ-PROD-044`）→ TC-PROD-090～TC-PROD-105（人工 TC-PROD-106）；动了 `Auth`、`SessionServer`、`crypto/LoginCrypt`、`network/player/SessionClient`、`LoginListener`、`PlayerSocketConnection` 的加解密或逐帧读取、`ConnectionManager#createPlayerReplacing`、`server-app` 的 `Main#auth` 就跑 TC-PROD-090～TC-PROD-101 与 TC-PROD-105，动了 `tools/fake-sessionserver`、`PacketFlood --auth` 或模组 gametest 的 authlib 参数再加 TC-PROD-102～TC-PROD-104。跨域牵连：动了 `PacketVanilla` 的 login 表 → 加 TC-036 与 TC-PROD-091；动了登录监听器的离线分支或 `DuplicateUuidLoginIntegrationTest` → 加 TC-032 与 TC-PROD-100。
   - 生产就绪域（`docs/DESIGN-PROD.md`）：代理转发模式删除与 PROXY 可信网段（`REQ-PROD-036` 前半）→ TC-PROD-120～TC-PROD-124；动了 `Auth` 的模式集合、`HandshakeListener`、`ArchitectureTest#boundedReporters`、`ServerConfig` 的 `synaxis.proxy-protocol*` 键、`ConnectionGate#parseNetworks` 或 `PlayerSocketConnection` 的 PROXY 解码就跑 TC-PROD-120～TC-PROD-123，再动了 `server-app` 的拒绝起服路径加 TC-PROD-124（真进程）。跨域牵连：动了 PROXY 解码或可信网段 → 加 TC-PROD-061。
   - 生产就绪域（`docs/DESIGN-PROD.md`）：聊天（`REQ-PROD-009`）→ TC-PROD-080～TC-PROD-083；动了 `ChatMessageListener`、`PlayerChatEvent`、`Messenger`、`ChatRateLimiter`、`ServerConfig` 的 `synaxis.chat-*` 键或 `Player` 发的 `JoinGamePacket` 就跑 TC-PROD-080～TC-PROD-082；动了模组的 `ClientPacketListenerMixin`、`synaxis.mixins.json` 或 `SpikeClientGameTest#chat` 再加 TC-PROD-083。
+  - 生产就绪域（`docs/DESIGN-PROD.md`）：WAL 归档与每日基础备份（`REQ-PROD-035` 前半）→ TC-PROD-190～TC-PROD-193；动了 `ops/postgres/archive-wal.sh` 就跑 TC-PROD-190 与 TC-PROD-191 第 3、5 步，动了 `enable-wal-archive.sh` 或 `check-archive.sh` 跑 TC-PROD-191，动了 `base-backup.sh` 跑 TC-PROD-192，动了 `restore-pitr.sh` 或升 PostgreSQL 版本跑 TC-PROD-193（约 8 分钟，第 2 步要等满 5 分钟）。跨域牵连：Flyway 迁移新增或改表不影响这四条（演练用自己的库），但上线前按 `RB-PROD-008` 在正式库的副本上重做一次 TC-PROD-193。
   - 影响面不确定时升级为全量轮。
 - **复测轮**（上轮失败用例 + 全部冒烟级）：修复失败项之后。
 - **人工收口轮**（仅上轮「待人工」用例）：AI 轮之后由人工补测 TC-016、TC-030、TC-GAME-020、TC-GAME-038、TC-GAME-046、TC-GAME-047，不要求冒烟级。

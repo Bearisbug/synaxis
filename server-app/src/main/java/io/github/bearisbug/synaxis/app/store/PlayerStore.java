@@ -66,6 +66,7 @@ public final class PlayerStore implements ShutdownParticipant {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(PlayerStore.class);
     private static final int DEFAULT_AUTOSAVE_SECONDS = 60;
+    private static final long SAVE_ONLINE_BUDGET_SECONDS = 10;
 
     /**
      * The budgets of §17 {@code store.load} and {@code store.autosave}.
@@ -501,6 +502,39 @@ public final class PlayerStore implements ShutdownParticipant {
         submit(record, snapshot(record), false, done);
         return done.whenComplete((result, _) -> critical("save_now", result, result == SaveResult.SAVED ? null
                 : result == SaveResult.FENCED ? "version_mismatch" : "db_error", start, 1));
+    }
+
+    /**
+     * How a {@link #saveOnline()} ended.
+     *
+     * @param saved  the players whose save was written
+     * @param online the players online when it started
+     */
+    public record SaveCount(int saved, int online) {
+    }
+
+    /**
+     * Saves every online player now, for the console command {@code save}
+     * ({@code docs/DESIGN-PROD.md} {@code API-PROD-011}): each snapshot is taken on the tick thread
+     * that owns the player, like an autosave, and none of them is a critical commit. A frozen
+     * player, one that leaves before its tick comes, and a save not over within
+     * {@value #SAVE_ONLINE_BUDGET_SECONDS} s count as not saved.
+     *
+     * @return the count, completed once every save is over
+     */
+    public CompletableFuture<SaveCount> saveOnline() {
+        final List<CompletableFuture<SaveResult>> saves = new ArrayList<>();
+        for (Record record : records.values()) {
+            if (record.state != LeaseState.ONLINE) continue;
+            final CompletableFuture<SaveResult> done = new CompletableFuture<>();
+            saves.add(done.completeOnTimeout(SaveResult.UNAVAILABLE, SAVE_ONLINE_BUDGET_SECONDS, TimeUnit.SECONDS));
+            record.player.scheduler().scheduleNextTick(() -> {
+                if (record.state == LeaseState.ONLINE && !isFrozen(record.player)) submit(record, snapshot(record), false, done);
+                else done.complete(SaveResult.UNAVAILABLE);
+            });
+        }
+        return CompletableFuture.allOf(saves.toArray(CompletableFuture[]::new)).thenApply(_ -> new SaveCount(
+                (int) saves.stream().filter(save -> save.join() == SaveResult.SAVED).count(), saves.size()));
     }
 
     CompletableFuture<SaveResult> commitTogether(Map<Player, Map<DataSection<?>, Object>> staged, Runnable apply) {

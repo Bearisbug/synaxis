@@ -474,7 +474,7 @@ erDiagram
   - GM 命令执行一次写一条 `EVT:gm_command`（`API-PROD-014`）。
 - **`API-PROD-011` 命令** — 实现 `REQ-PROD-012`、`REQ-PROD-034`
   - `PluginContext#commands()` 返回 `PluginCommands`：`register(Command command)`，名字自动加 `<plugin_id>:` 命名空间并注册无前缀别名（冲突时别名让给先注册者），插件禁用时注销；执行异常经 `LogBudget` 输出。
-  - 控制台：`readConsole`（`server-app/.../Main.java:227`）把非空输入交给 `CommandManager` + `ConsoleSender`。
+  - 控制台：`readConsole`（`server-app/.../Main.java:605`）把非空输入交给 `CommandManager` + `ConsoleSender`。
   - 内置命令（宿主注册，权限节点 `synaxis.command.<名>`，控制台恒有权限）：`REQ-PROD-012` 六条 `list`、`kick <玩家> [原因]`、`broadcast <文本>`、`save`、`stop [秒数]`、`tps`（含 MSPT p50 / p95 / p99）；`REQ-PROD-034` 加 `profile [秒数]`（默认 60 s，JFR 录制，完成后回显 .jfr 绝对路径），随第 6 波交付。
 - **`API-PROD-012` 入站包速率闸** — 实现 `REQ-PROD-013`
   - 位置：`Player#addPacketToQueue`（`Player.java:2343`，调用点 `PlayerSocketConnection.java:196`），即读线程把包入 `Player` 入站队列之前。login 阶段还没有 `Player`，本闸管不到；login 段的洪泛由 L2 登录桶、握手前 5 s 超时与 30 s 登录总超时约束（`API-PROD-003`）。解压字节/秒上限挂在同一读线程的解压处，按连接计。
@@ -2056,6 +2056,9 @@ N/A — 本分册尚未开工。R2 封闭内测稳定运行 7 天后按 §3 三�
 | 技术债 | `TransferTickets` 的签发端已在分片装配时创建，`server-app` 里还没有调用方；第一个调用方是 M3-E 的 `ShardService#transfer` | Bearisbug（M3 会话） | M3-E |
 | 风险 | `account.last_name` 的 3～16 字符约束拒绝离线模式下 1～2 字符的名字，载入失败、断线 `state-unavailable`；在线模式的 Mojang 名字不受影响。默认不改；CI 或压测需要短名时用一个新迁移放宽为 1～16，不改 V1 | Bearisbug | 第 5 波压测前 |
 | Open Question | 恢复时间目标的口径（§15 备份行）：默认按端到端停服时长；是否按正式库大小从演练结果外推，6G 演练后定 | Bearisbug | 第 6 波 6G |
+| Open Question | `stop [秒数]` 的秒数没有上限（第 4 波 4C 实现只要求 ≥ 0），`stop 2147483647` 会关掉登录闸门后一直倒计时。默认不设上限：误输入可再发 SIGTERM 停机；要设就在 `API-PROD-011` 写一个上限并让超限走 `synaxis:command-stop-usage` | Bearisbug | 第 4 波合并前 |
+| Open Question | `API-PROD-011` 没写引擎已在停机时再执行 `stop` 的回执。4C 的实现回 `synaxis:command-already-stopping`（「The server is already stopping」，模组带中英译文）并在 `EVT:gm_command` 记 `result=invalid`，不改引擎的倒计时（`docs/TEST.md` `TC-PROD-243`、`TC-PROD-255`）；默认按实现写进 `API-PROD-011` 与 §20 `result` 取值 | Bearisbug | 第 4 波合并前 |
+| 风险 | `stop` 与 SIGTERM 竞态：SIGTERM 线程已在引擎里占下停机、但阶段还没离开 `RUNNING` 的几条指令内执行 `stop 5`，命令回「5 s 后停」、台账记 `ok`，引擎却忽略这次倒计时，按 SIGTERM 的 0 s 停。停机本身不受影响；要消除得让 `ServerProcess#beginShutdown` 返回是否由本次调用发起（引擎接口，`docs/DESIGN.md` `API-003`） | Bearisbug | 第 6 波管理接口 `server/stop` 接线时 |
 | 已决 | PostgreSQL 16 的 `pg_archivecleanup` 不删 `.backup` 标签文件，每份基础备份留一个约 200 B 的文件，不清理 | Bearisbug | — |
 
 未核实事项（汇总，逐条出处见清单 §8.1 与三份草案末节）：

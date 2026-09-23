@@ -15,6 +15,7 @@
 
 | 日期 | 改动 | 作者 |
 | --- | --- | --- |
+| 2026-09-24 | 跟进 `docs/DESIGN-PROD.md` 第 4 波 4C（`REQ-PROD-012`，G10，`API-PROD-011`）。**新增 §4「生产就绪 · 第 4 波 4C：控制台与插件命令」十八条 `TC-PROD-240`～`TC-PROD-257`**：控制台 `list`、`tps`、`save` 回执可读、未知与不完整命令一行 INFO 不带栈（240，§19 第一条，反证把 `ConsoleSender` 换回组件日志器即红成空行）、节点决定内置命令的执行与补全而 `permissionLevel=4` 不授权（241）、`broadcast` 与 `kick` 默认原因（242）、`stop [秒数]` 倒计时、解析不了的秒数不停机、第二次 `stop` 回已在停机（243）、`tps` 的窗口与百分位（244）、插件命令命名空间与无前缀名让给先注册者（245）、必抛的插件命令 100 次一行日志且禁用后两个名字都不存在（246，§19 第二条）、在线时注册注销命令重发命令树（247）、角色变化重发命令树（248，要数据库）、宿主日志规则覆盖新类（249）、模组九条回执译文（250）、ABI 门（251）、4 线程严格模式（252）、真进程控制台与 `stop 2` 后自行退出（253，端口 25643）、控制台一行命令抛异常只写一行 ERROR 且下一行照常执行（254）、引擎已在停机时 `stop` 回已在停机并记 `invalid`（255）、插件被收回之后再注册的命令被丢弃（256）、控制台写服务端译文时子组件不重复也不被截掉（257）；每条带真跑过的反证与红的位置。§5 生产就绪域加一行 | Bearisbug |
 | 2026-09-24 | 跟进 `docs/DESIGN-PROD.md` 第 4 波 4B（`REQ-PROD-010`，G08，`API-PROD-009`）。**新增 §4「生产就绪 · 第 4 波 4B：白名单与封禁」十七条 `TC-PROD-220`～`TC-PROD-236`**：Flyway V4 与回退往返（220）、`ban` 表的 `CHECK`（221）、`BanTarget.ByNetwork` 的解析与覆盖（222）、被封账号在预登录事件收到带理由与到期的 `synaxis:banned`（223，§19 第一条前半）、GM `ban` 命令 5 s 内踢出在线玩家并写 `EVT:player_banned`、`permissionLevel=4` 不授权（224，§19 第一条后半与权限场景的 `ban` 一支）、到期与撤销不生效且没有按名字封禁（225，§19 第二条）、网段封禁（226）、白名单开关（227，§19 第三条）、Redis 可达 5 s 内跨分片（228）、Redis 不可达时 30 s 周期刷新并踢人（229）、控制台三条命令的回执与台账（230）、内存存储与白名单开关取值（231）、`AdmissionRequest` 带 UUID 与地址（232）、模组十二条译文（233）、ABI 门（234）、4 线程严格模式（235）、真进程端口 25642（236）；每条带真跑过的反证与红的位置。`TC-PROD-141`、`TC-PROD-200` 第 1 步按 V4 改写版本、表清单与回退顺序，`TC-PROD-200` 第 2 步红的行号随 `MigrationsDbTest` 改为 `:91`。§5 生产就绪域加一行 | Bearisbug |
 | 2026-09-24 | 4A 返工：**新增 `TC-PROD-213`**（登录读角色期间收回角色，登录读到的旧行不把角色带回来；反证换回登录读完才登记玩家的实现即红在 `:411`）。`PermissionsIntegrationTest` 多一条测试、多两行 import：`TC-PROD-201`～`TC-PROD-209`、`TC-PROD-212` 的测试数与红的行号按重跑结果改，`TC-PROD-207` 的反证多红 `TC-PROD-213` 一条，`TC-PROD-208` 的反证改为去掉登录前的占位（五条红）。§5 生产就绪域那行同步 | Bearisbug |
 | 2026-09-24 | 跟进 `docs/DESIGN-PROD.md` 第 4 波 4A（`REQ-PROD-011`，G09，`API-PROD-010`）。**新增 §4「生产就绪 · 第 4 波 4A：权限与 GM 角色」十三条 `TC-PROD-200`～`TC-PROD-212`**：Flyway V3 与回退往返（200，反证回退少删 `account_role` 即红）、`role_permission.node` 的 `CHECK`（201）、通配按整段覆盖与查询语法（202）、节点决定 `role` 命令可用而 `permissionLevel=4` 不授权并写 `EVT:gm_command`（203，§19 第一条）、登录在准入之前读角色并经 `PluginContext#permissions()` 给插件（204）、Redis 可达时 5 s 内跨分片生效（205，§19 第二条）、Redis 不可达时 30 s 周期刷新补上与过期授予不生效（206）、控制台的授予收回列出与四种失败回执（207）、登录读失败按无角色放行（208）、内存存储没有角色（209）、模组七条回执译文（210）、ABI 门（211）、4 线程严格模式（212）；每条带真跑过的反证与红的位置。`TC-PROD-141` 第 1 步按 V3 改写版本、表清单与回退顺序。§5 生产就绪域加一行 | Bearisbug |
@@ -3663,6 +3664,213 @@ jcmd "$pid" VM.flags | tr ' ' '\n' | grep -cxE -- '-XX:\+UseG1GC|-XX:InitialHeap
 
 后置：按 pid 停掉进程；删掉 `<db>`、`.venv` 与临时目录；`lsof -nP -iTCP:25642 -sTCP:LISTEN` 无输出。
 
+### 生产就绪 · 第 4 波 4C：控制台与插件命令
+
+对应 `REQ-PROD-012`（清单 G10，`API-PROD-011`，§10 节点 `synaxis.command.<名>` 与「只能注销自己注册的命令」，§19 两条命令场景，§20 `EVT:gm_command`）。实现：`server-app` 的 `Main#readConsole` 把每个非空行交给 `Main#runConsoleCommand`（`CommandManager` + `ConsoleSender`，接受前导 `/`），一行抛出的 `RuntimeException` 记一行 ERROR 后接着读下一行；新包 `command/` 的 `HostCommands` 注册内置六条 `list`、`kick <玩家> [原因]`、`broadcast <文本>`、`save`、`stop [秒数]`、`tps`（`TickStats` 取最近 1,200 个 tick），`PluginCommandsImpl` 是插件经 `PluginContext#commands()` 拿到的 `PluginCommands`，插件被收回之后再注册的命令一律丢弃；`PlayerStore#saveOnline` 供 `save`；`HostPermissions` 读到节点变化时给在线玩家重发命令树；引擎 `ConsoleSender` 把翻译组件写成回退文本（此前控制台上是空行，`role` 命令的回执也受影响），开着 `synaxis.automatic-component-translation` 时写服务端译文，译文由去掉子组件的组件求得，子组件由扁平化器自己接着写。
+
+数据库前置、「跑 `<类>`」的命令与结果文件同 3A 一节；本节只有 `TC-PROD-248` 要数据库。`TC-PROD-253` 起真进程，端口 25643。反证一律是「临时改一处实现、重跑、看红、还原、重跑复绿」，还原后 `git status` 必须干净。`CommandsIntegrationTest.java:178` 是取最后一棵命令树的助手 `lastTree`，红在那里时看失败信息里的 `no command tree came`。
+
+#### `TC-PROD-240` 控制台执行 `list`、`tps`、`save`，回执可读；未知或不完整的命令只写一行 INFO、不带栈 — 对应 `REQ-PROD-012` · 级别: 冒烟 · 执行者: AI
+
+前置：工作副本干净。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `io.github.bearisbug.synaxis.app.CommandsIntegrationTest`，看 `theConsoleRunsListTpsAndSaveAndAnUnknownLineIsOneLine` | 10 个 0 失败（§19「控制台执行内置命令」）：内存存储、两名玩家 Alpha、Bravo 在线、走过 5 个 tick。经 `Main.runConsoleCommand` 依次输入 `list`、`/tps`、`  save  `，都得 `SUCCESS`；`ConsoleSender` 写出的三行依次是 `2 players online: Alpha, Bravo`、匹配 `TPS \d+\.\d, MSPT p50 \d+\.\d ms, p95 \d+\.\d ms, p99 \d+\.\d ms over the last \d+ ticks` 的一行、`Saved 2 of 2 players`。`frobnicate now` 得 `UNKNOWN`，`kick`（缺参数）得 `INVALID_SYNTAX`；`Main` 的日志恰为两行 INFO `Unknown command: frobnicate now`、`Incomplete or invalid command: kick`，都不带栈，没有 WARN 与 ERROR。台账回调三条 `gm_command`，`actor` 都是 `console`，`command` 依次 `list`、`tps`、`save` |
+| 2 | 反证有齿（控制台照旧把翻译组件交给组件日志器）：`src/main/java/io/github/bearisbug/synaxis/command/ConsoleSender.java` 的 `LOGGER.info(TEXT.serialize(message));` 改为 `LOGGER.info(message);`，跑该类与 `PermissionsIntegrationTest`，再还原 | `18 tests completed, 1 failed`，红在 `:196`：`expected: <2 players online: Alpha, Bravo> but was: <>`（引擎的扁平化器在不开自动翻译时把翻译组件写成空串）。还原后复绿 |
+| 3 | 反证有齿（未知命令带栈）：`Main#runConsoleCommand` 的 `case UNKNOWN -> LOGGER.info("Unknown command: {}", input);` 改为 `case UNKNOWN -> LOGGER.info("Unknown command: {}", input, new IllegalArgumentException(input));`，重跑，再还原 | `10 tests completed, 1 failed`，红在 `:205`：`no stack ==> expected: <true> but was: <false>`。还原后复绿 |
+
+后置：确认 `ConsoleSender.java`、`Main.java` 没有残留改动。
+
+#### `TC-PROD-241` 节点决定玩家能否执行、能否在补全里看到内置命令，`permissionLevel` 不授权；`kick` 补全在线玩家名，每次执行一条 `EVT:gm_command` — 对应 `REQ-PROD-012` · 级别: 回归 · 执行者: AI
+
+前置：工作副本干净。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `CommandsIntegrationTest`，看 `theNodeDecidesWhetherAPlayerRunsAndSeesACommandOfTheHost` | 通过：测试给的 `Permissions` 只让 Keeper 持有 `synaxis.command.kick`、`synaxis.command.list`；Ruffian 没有节点，`setPermissionLevel(4)`。Keeper 出生时收到的命令树含 `kick`、`list`、不含 `stop`；Ruffian 的命令树六条内置命令一条都没有。Ruffian 执行 `kick Keeper`、Keeper 执行 `stop` 都得 `CANCELLED`（引擎的前置条件拒绝）。Keeper 发补全 `kick Ru` 收到恰好一个 `TabCompletePacket`，候选只有 `Ruffian`。Keeper 执行 `kick Nobody`、`kick Ruffian spamming the chat` 都得 `SUCCESS`，Ruffian 收到一个 `DisconnectPacket`，文本 `spamming the chat`；台账两条 `gm_command`：`player <Keeper> kick Nobody null no_target` 与 `player <Keeper> kick Ruffian spamming the chat <Ruffian> ok` |
+| 2 | 反证有齿（按原版 op 等级放行）：`HostCommands#command` 的条件 `\|\| permissions.has(player, node));` 改为 `\|\| permissions.has(player, node) \|\| player.getPermissionLevel() == 4);`，重跑，再还原 | `10 tests completed, 1 failed`，红在 `:237`：`permission level 4 is no node ==> expected: <CANCELLED> but was: <SUCCESS>`。还原后复绿 |
+
+后置：确认 `HostCommands.java` 没有残留改动。
+
+#### `TC-PROD-242` `broadcast` 发给本分片全部在线玩家、原样保留文本；`kick` 不带原因时用原版键 — 对应 `REQ-PROD-012` · 级别: 回归 · 执行者: AI
+
+前置：工作副本干净。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `CommandsIntegrationTest`，看 `broadcastReachesEveryPlayerAndKickWithoutAReasonIsTheVanillaOne` | 通过：控制台 `broadcast restart   at noon` 之后两名玩家各收到恰好一个 `SystemChatPacket`，文本 `restart   at noon`（三个空格原样保留）；`kick Second` 之后 Second 收到的 `DisconnectPacket` 是翻译键 `multiplayer.disconnect.kicked`；控制台回执依次 `synaxis:command-broadcast` 参数 `2`、`synaxis:command-kicked` 参数 `Second` |
+| 2 | 反证有齿（只发给第一名玩家）：`HostCommands#broadcast` 循环里的 `player.sendMessage(message);` 改为 `if (players == 0) player.sendMessage(message);`，重跑，再还原 | `10 tests completed, 1 failed`，红在 `:273`：`Expected 1 element, got [] ==> expected: <1> but was: <0>`（第二名玩家没收到）。还原后复绿 |
+
+后置：确认 `HostCommands.java` 没有残留改动。
+
+#### `TC-PROD-243` `stop [秒数]` 关登录门、倒计时后停机；秒数解析不了时不停机 — 对应 `REQ-PROD-012` · 级别: 回归 · 执行者: AI
+
+前置：工作副本干净。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `CommandsIntegrationTest`，看 `stopWithSecondsClosesTheGateAndStopsAfterTheCountdown` | 通过：`stop -1`、`stop soon` 都得 `SUCCESS`，回执都是 `synaxis:command-stop-usage`，停机阶段仍是 `RUNNING`（引擎对解析不了的参数也会跑默认执行器，宿主据输入里有没有第二段拒绝）。`stop 1` 的回执是 `synaxis:command-stopping` 参数 `1`；紧接着 `stop 0` 回 `synaxis:command-already-stopping`（引擎只认第一次停机，第二次不缩短倒计时）；2 s 内阶段变为 `GATE_CLOSED`，10 s 内变为 `STOPPED`，从 `stop 1` 到 `STOPPED` 不短于 1,000 ms；台账四条的 `result` 依次 `invalid`、`invalid`、`ok`、`invalid` |
+| 2 | 反证有齿（不看第二段）：`HostCommands#stop` 里 `if (context.getInput().strip().indexOf(' ') >= 0) {` 改为 `if (Boolean.getBoolean("proof.never")) {`，重跑，再还原 | `10 tests completed, 1 failed`，红在 `:286`：`expected: <[synaxis:command-stop-usage, synaxis:command-stop-usage]> but was: <[synaxis:command-stopping 0, synaxis:command-already-stopping]>`（打错的 `stop -1` 立即停机，`stop soon` 只能回已在停机）。还原后复绿 |
+
+后置：确认 `HostCommands.java` 没有残留改动。
+
+#### `TC-PROD-244` `tps` 的算法：最近 1,200 个 tick，MSPT 取最近秩百分位，TPS 按 tick 结束时刻算 — 对应 `REQ-PROD-012` · 级别: 回归 · 执行者: AI
+
+前置：工作副本干净（本条不需要数据库）。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `io.github.bearisbug.synaxis.app.command.TickStatsTest` | 3 个 0 失败：空窗口全是 0；100 个 tick 每 50 ms 结束一个、耗时是乱序的 1～100 ms，得 `ticks=100`、`tps=20.0`、p50 `50.0`、p95 `95.0`、p99 `99.0`；先 100 个 1,000 ms 的慢 tick（10 TPS）再满满一窗 2 ms 的 tick（20 TPS），得 `ticks=1200`、`tps=20.0`、p99 `2.0`（慢 tick 已出窗） |
+| 2 | 反证有齿（百分位取整错一位）：`TickStats#rank` 的 `return sorted[Math.max(0, (int) Math.ceil(quantile * sorted.length) - 1)];` 改为 `return sorted[Math.min(sorted.length - 1, (int) (quantile * sorted.length))];`，重跑，再还原 | `3 tests completed, 1 failed`，红在 `TickStatsTest.java:31`：`expected: <50.0> but was: <51.0>`。还原后复绿 |
+
+后置：确认 `TickStats.java` 没有残留改动。
+
+#### `TC-PROD-245` 插件命令注册在 `<plugin_id>:` 命名空间下，无前缀名让给先注册者；名字带冒号拒绝，只能注销自己的命令 — 对应 `REQ-PROD-012` · 级别: 回归 · 执行者: AI
+
+前置：工作副本干净。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `CommandsIntegrationTest`，看 `aPluginCommandLivesUnderItsNamespaceAndABareNameGoesToTheFirst` | 通过：宿主先注册内置六条；插件 mmo 注册 `party`（别名 `p`）与 `list`，插件 other 注册 `party`。控制台执行 `mmo:party`、`party`、`p`、`mmo:p`、`other:party`、`mmo:list`、`list` 都得 `SUCCESS`，前六条依次落到 mmo、mmo、mmo、mmo、other、mmo 的执行器，`list` 仍是宿主的（回执以 `synaxis:command-list` 开头）。mmo 注册 `x:y` 抛 `IllegalArgumentException`，再注册一次同一个 `party` 抛 `IllegalStateException`；mmo 注销 other 的命令返回 false，`other:party` 照旧可用。`disableAll` 之后前六个名字都得 `UNKNOWN`，`list` 仍 `SUCCESS` |
+| 2 | 反证有齿（不查无前缀名是否已被占用）：`PluginCommandsImpl#register` 的 `if (manager.commandExists(name)) givenUp.add(name);` 与 `else bare.add(name);` 两行改为 `bare.add(name);`，重跑，再还原 | `10 tests completed, 1 failed`，红在 `:366`：`mmo:party ==> expected: <SUCCESS> but was: <UNKNOWN>`（mmo 抢宿主的 `list` 时 `CommandManager#register` 抛 `IllegalStateException`，mmo 启用失败）。还原后复绿 |
+
+后置：确认 `PluginCommandsImpl.java` 没有残留改动。
+
+#### `TC-PROD-246` 插件命令执行必抛异常：10 s 内 100 次只写一行，发送者收到 `command.failed`；插件禁用后两个名字都不存在 — 对应 `REQ-PROD-012` · 级别: 冒烟 · 执行者: AI
+
+前置：工作副本干净。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `CommandsIntegrationTest`，看 `aThrowingPluginCommandIsOneLinePerTenSecondsAndGoneOnceDisabled` | 通过（§19「插件命令按命名空间注册、禁用时注销、异常限流」）：插件 mmo 的 `party` 每次执行都抛 `IllegalStateException`；玩家出生时的命令树含 `mmo:party` 与 `party`。玩家执行 `mmo:party` 100 次都得 `SUCCESS`；`PluginCommandsImpl` 的日志恰好一行 ERROR，以 `Plugin command failed: plugin_id=mmo command=mmo:party` 开头；引擎 `CommandParserImpl` 零行 ERROR；玩家收到 100 条翻译键 `command.failed` 的系统消息。`disableAll` 之后控制台执行 `mmo:party`、`party` 都得 `UNKNOWN`，玩家收到的新命令树两个名字都没有 |
+| 2 | 反证有齿（执行器不包）：`PluginCommandsImpl#register` 的 `guard(command, failures);` 改为 `if (Boolean.getBoolean("proof.never")) guard(command, failures);`，重跑，再还原 | `10 tests completed, 1 failed`，红在 `:401`：`expected: <SUCCESS> but was: <CANCELLED>`（异常落回引擎，按 `EXECUTOR_EXCEPTION` 结束，每次写一行带栈的 ERROR）。还原后复绿 |
+| 3 | 反证有齿（禁用不收回命令）：`PluginHost#tearDown` 的 `loaded.commands().unregisterAll();` 改为 `if (Boolean.getBoolean("proof.never")) loaded.commands().unregisterAll();`，重跑，再还原 | `10 tests completed, 3 failed`：本条红在 `:413` `expected: <UNKNOWN> but was: <SUCCESS>`，`TC-PROD-245` 红在 `:378` `mmo:party ==> expected: <UNKNOWN> but was: <SUCCESS>`，`TC-PROD-256` 红在 `:457` `expected: <UNKNOWN> but was: <SUCCESS>`。还原后复绿 |
+
+后置：确认 `PluginCommandsImpl.java`、`PluginHost.java` 没有残留改动。
+
+#### `TC-PROD-247` 玩家在线时插件注册或注销命令，玩家的补全跟着变 — 对应 `REQ-PROD-012` · 级别: 回归 · 执行者: AI
+
+前置：工作副本干净。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `CommandsIntegrationTest`，看 `aCommandRegisteredOrTakenBackWhilePlayersAreOnlineReachesTheirCompletions` | 通过：玩家出生时的命令树没有 `party`；插件 mmo 此后注册 `party`，走一个 tick，玩家收到的新命令树含 `mmo:party` 与 `party`；`unregister(party)` 返回 true，再走一个 tick，新命令树没有 `party` |
+| 2 | 反证有齿（不重发命令树）：`PluginCommandsImpl#refreshCompletions` 的循环前加 `if (Boolean.getBoolean("proof.never"))`，重跑，再还原 | `10 tests completed, 2 failed`，都红在 `lastTree`（`:178`，`no command tree came`）：本条在 `:435`，`TC-PROD-246` 在 `:415`（禁用后没有新命令树）。还原后复绿 |
+
+后置：确认 `PluginCommandsImpl.java` 没有残留改动。
+
+#### `TC-PROD-248` 在线玩家的角色变化后，同一次读取把新命令树发给他 — 对应 `REQ-PROD-012` · 级别: 回归 · 执行者: AI
+
+前置：数据库前置满足。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `io.github.bearisbug.synaxis.app.CommandRolesIntegrationTest` | 1 个 0 失败、0 跳过：角色 `warden` 授予 `synaxis.command.kick`；`HostPermissions` 刷新周期 1 s、不连 Redis。Warden 登录时没有角色，出生时的命令树没有 `kick`，执行 `kick Target` 得 `CANCELLED`；用 SQL 授予 `warden` 后 3 s 内收到的命令树含 `kick`、不含 `stop`，`kick Target` 得 `SUCCESS`；删掉授予后 3 s 内收到的命令树没有 `kick` |
+| 2 | 反证有齿（节点变了不重发）：`HostPermissions#read` 里的 `player.refreshCommands();` 改为 `if (Boolean.getBoolean("proof.never")) player.refreshCommands();`，重跑，再还原 | `1 test completed, 1 failed`，红在 `CommandRolesIntegrationTest.java:84`（由 `:107` 调到）：`no command tree within 3 s`。还原后复绿 |
+
+后置：确认 `HostPermissions.java` 没有残留改动；测试建的库已删掉。
+
+#### `TC-PROD-249` 宿主日志规则覆盖新类：插件命令的异常只能经预算写 — 对应 `REQ-PROD-012` · 级别: 回归 · 执行者: AI
+
+前置：工作副本干净。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `io.github.bearisbug.synaxis.app.ClientDrivenLogArchitectureTest` | 2 个 0 失败：`PluginCommandsImpl`、`HostCommands`、`TickStats` 不在豁免名单里，也没有直接的 WARN / ERROR 行 |
+| 2 | 反证有齿：`PluginCommandsImpl#run` 的 `failures.error(…)` 上一行插 `LOGGER.warn("Plugin command failed: {}", input);`，重跑，再还原 | `2 tests completed, 1 failed`，红在 `hostPathsDoNotWriteALinePerPacket`：`Architecture Violation … was violated (1 times)`。还原后复绿 |
+
+后置：确认 `PluginCommandsImpl.java` 没有残留改动。
+
+#### `TC-PROD-250` 客户端模组带内置命令的九条回执译文 — 对应 `REQ-PROD-012` · 级别: 回归 · 执行者: AI
+
+前置：工作副本干净；`:protocol` 已 `publishToMavenLocal`（`docs/ENGINE.md` `client-mod.yml` 一段的本地等价）。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | `cd client-fabric && ./gradlew build --no-daemon` | `BUILD SUCCESSFUL`；`HostCommandTextTest` 2 个 0 失败：`en_us.json` 与 `zh_cn.json` 都有 `synaxis:command-list`、`synaxis:command-no-player`、`synaxis:command-kicked`、`synaxis:command-broadcast`、`synaxis:command-saved`、`synaxis:command-stopping`、`synaxis:command-stop-usage`、`synaxis:command-already-stopping`、`synaxis:command-tps` |
+| 2 | 反证有齿：删掉 `zh_cn.json` 的 `synaxis:command-stop-usage` 一行，`./gradlew test --tests '*HostCommandTextTest*' --no-daemon`，再还原 | `2 tests completed, 1 failed`（`zh_cn` 那一格）。还原后复绿 |
+
+后置：确认 `zh_cn.json` 没有残留改动。
+
+#### `TC-PROD-251` `:plugin-api` 新增 `PluginCommands` 与默认方法 `PluginContext#commands()` 过 ABI 门 — 对应 `REQ-PROD-012` · 级别: 回归 · 执行者: AI
+
+前置：按 `docs/ENGINE.md` §7.1 本地口径，在本组改动之前的提交（4A 的 `e05ade2c0e`）上 `./gradlew :plugin-api:jar :protocol:jar`，把两个 jar 改名为 `plugin-api.jar`、`protocol.jar` 放进 `<abi>`。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | `./gradlew :plugin-api:checkBinaryCompatibility :protocol:checkBinaryCompatibility -PbaselineJarDir=<abi> --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts` | 两个任务都执行（没有 `SKIPPED`）、`BUILD SUCCESSFUL`：`PluginCommands` 是新类型，`commands()` 是默认方法，`PluginApi.API_VERSION` 不动 |
+| 2 | 反证有齿：把 `PluginContext#commands()` 改成抽象方法（`PluginCommands commands();`），重跑 `:plugin-api:checkBinaryCompatibility`，再还原 | `BUILD FAILED`：`New abstract method added to interface: io/github/bearisbug/synaxis/plugin/PluginContext#commands()Lio/github/bearisbug/synaxis/plugin/PluginCommands; (breaks implementing classes)`、`ABI Check failed with 1 binary compatibility violations.`。还原后复绿 |
+
+后置：确认 `PluginContext.java` 没有残留改动；删掉 `<abi>`。
+
+#### `TC-PROD-252` 命令用例在 4 个 tick 线程的严格模式下照样成立 — 对应 `REQ-PROD-012` · 级别: 回归 · 执行者: AI
+
+前置：数据库前置满足。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | `./gradlew :server-app:test --tests io.github.bearisbug.synaxis.app.CommandsIntegrationTest --tests io.github.bearisbug.synaxis.app.CommandRolesIntegrationTest --tests io.github.bearisbug.synaxis.app.command.TickStatsTest --tests io.github.bearisbug.synaxis.app.PermissionsIntegrationTest --rerun --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts -Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true` | 22 个 0 失败、0 跳过（10 + 1 + 3 + 8）：`save` 的快照在玩家所属 tick 线程上取，控制台线程与命令虚拟线程只读在线名单、发包与踢人 |
+
+后置：无。
+
+#### `TC-PROD-253` 真进程：控制台逐行执行命令，`stop 2` 倒计时后进程自己退出 — 对应 `REQ-PROD-012` · 级别: 回归 · 执行者: AI
+
+前置：`./gradlew :server-app:installDist`；端口 25643 空闲；一个空的临时目录 `$E`，里面 `mkfifo in.fifo; sleep 100000 > in.fifo &`（保持 stdin 打开，控制台读不到 EOF）。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | `cd $E && JAVA_OPTS="-Xms256m -Xmx512m -Dsynaxis.app.port=25643 -Dsynaxis.app.auth=offline -Dsynaxis.app.core-mode=on -Dsynaxis.app.log=stdout" <仓库>/server-app/build/install/server-app/bin/server-app < in.fifo > stdout.log 2>&1 &`，等到 `listening on`；再每隔 1 s 往 `in.fifo` 写一行：`list`、`/tps`、`save`、`frobnicate now`、`kick`、`role list 00000000-0000-0000-0000-000000000001`、`stop -1`、`stop 2`；之后每秒查一次进程是否还在，最多 60 s | 进程在 `stop 2` 之后 3 s 内以退出码 0 结束。`stdout.log` 里依次有 `ConsoleSender - 0 players online: `、`ConsoleSender - TPS 20.6, MSPT p50 0.1 ms, p95 0.2 ms, p99 28.1 ms over the last 22 ticks`（本轮实测，数值随机器变）、`ConsoleSender - Saved 0 of 0 players`、`Main - Unknown command: frobnicate now`、`Main - Incomplete or invalid command: kick`、`ConsoleSender - Roles cannot be reached right now`（内存存储下 `role` 命令的回执，线程 `Syn-Role-Command`）、`ConsoleSender - Usage: stop [seconds], a whole number from 0`、`ConsoleSender - The server stops in 2 s`；`[server-app-stop]` 线程上 `Stopping synaxis server.` 与 `synaxis server stopped successfully.` 相隔 2.09 s；没有 WARN 与 ERROR |
+| 2 | 反证有齿（控制台线程不是守护线程）：`Main#start` 的 `Thread.ofPlatform().name("server-app-console").daemon().start(…)` 去掉 `.daemon()`，重新 `installDist`，重做第 1 步，再还原并重新 `installDist` | `synaxis server stopped successfully.` 照样出现，但进程 60 s 后还在（控制台线程阻塞在 `readLine`，stdin 没有 EOF）；按 PID `kill` 收尾。还原后第 1 步复绿 |
+
+后置：按 PID 停掉 `sleep` 与残留进程，删掉 `$E`；确认 `Main.java` 没有残留改动。
+
+#### `TC-PROD-254` 控制台一行命令抛异常：只写一行 ERROR，控制台线程接着执行下一行 — 对应 `REQ-PROD-012` · 级别: 回归 · 执行者: AI
+
+前置：工作副本干净。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `CommandsIntegrationTest`，看 `aConsoleLineThatThrowsIsOneLogLineAndTheNextLineRuns` | 通过：插件 mmo 注册 `party`，条件是只为玩家写的 `((Player) sender).isOnline()`（控制台执行时抛 `ClassCastException`，引擎调条件时不包 try）。`Main.readConsole` 读三行 `mmo:party`、空行、`list`：`Main` 的日志恰好一行 ERROR `Console command failed: mmo:party`，带的异常是 `java.lang.ClassCastException`；之后 `list` 照常执行，台账一条 `gm_command`：`console list` |
+| 2 | 反证有齿（异常逃出控制台线程）：`Main#readConsole` 循环里的 `try { runConsoleCommand(process, line); } catch (RuntimeException e) { LOGGER.error(…); }` 改为只剩 `runConsoleCommand(process, line);`，重跑，再还原 | `10 tests completed, 1 failed`，本条抛 `ClassCastException: class …ConsoleSender cannot be cast to class …Player`，测试里最近的一帧是 `:330`（条件那一行）：异常一路逃出 `readConsole`，`list` 没有执行（真进程里控制台线程就此结束，`stop` 也执行不了）。还原后复绿 |
+
+后置：确认 `Main.java` 没有残留改动。
+
+#### `TC-PROD-255` 引擎已在停机时执行 `stop`：回「已在停机」、记 `invalid`，不改倒计时 — 对应 `REQ-PROD-012` · 级别: 回归 · 执行者: AI
+
+前置：工作副本干净。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `CommandsIntegrationTest`，看 `stopWhileTheEngineIsAlreadyStoppingAnswersSoAndChangesNothing` | 通过：另起线程直接调 `beginShutdown(2 s)`（与 SIGTERM 同一条路，不经宿主命令），2 s 内阶段离开 `RUNNING`；控制台 `stop 0` 得 `SUCCESS`，回执只有一条 `synaxis:command-already-stopping`，台账一条 `result=invalid`；10 s 内阶段变为 `STOPPED`，从 `stop 0` 到 `STOPPED` 不短于 1,000 ms（引擎的倒计时照旧走完） |
+| 2 | 反证有齿（不看引擎的停机阶段）：`HostCommands#stop` 的 `if (process.shutdownPhase() != ServerProcess.ShutdownPhase.RUNNING \|\| !stopping.compareAndSet(false, true)) {` 改为 `if (!stopping.compareAndSet(false, true)) {`，重跑，再还原 | `10 tests completed, 1 failed`，红在 `:314`：`expected: <[synaxis:command-already-stopping]> but was: <[synaxis:command-stopping 0]>`（回执说 0 s 后停，实际还要等引擎的倒计时）。还原后复绿 |
+| 3 | 反证有齿（宿主自己不记已发起的停机）：同一行的 `!stopping.compareAndSet(false, true)` 改为 `!stopping.compareAndSet(false, false)`，重跑，再还原 | `10 tests completed, 1 failed`，红在 `TC-PROD-243` 的 `:293`：`a second stop changes nothing ==> expected: <synaxis:command-already-stopping> but was: <synaxis:command-stopping 0>`（`stop 1` 的停机线程还没让阶段离开 `RUNNING`，只看阶段挡不住紧跟着的 `stop 0`）。还原后复绿 |
+
+后置：确认 `HostCommands.java` 没有残留改动。
+
+#### `TC-PROD-256` 插件被收回之后再注册命令：丢弃，两个名字都不存在 — 对应 `REQ-PROD-012` · 级别: 回归 · 执行者: AI
+
+前置：工作副本干净。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `CommandsIntegrationTest`，看 `aCommandRegisteredAfterThePluginIsTakenBackIsDropped` | 通过（`API-PROD-011`「插件禁用时注销」）：插件 mmo 的 `onEnable` 抛异常，宿主收回它的全部能力；之后仍用 mmo 的 `PluginContext#commands()` 注册 `party`（插件异步任务在 `onEnable` 失败后才走到注册时就是这条路），不抛异常；控制台执行 `mmo:party` 得 `UNKNOWN`，`CommandManager#commandExists("party")` 为 false |
+| 2 | 反证有齿（收回之后照样注册）：`PluginCommandsImpl#register` 的 `if (closed) return;` 改为 `if (Boolean.getBoolean("proof.never") && closed) return;`，重跑，再还原 | `10 tests completed, 1 failed`，红在 `:457`：`expected: <UNKNOWN> but was: <SUCCESS>`（已收回插件的命令还能执行，无前缀名 `party` 一直被占着）。还原后复绿 |
+
+后置：确认 `PluginCommandsImpl.java` 没有残留改动。
+
+#### `TC-PROD-257` 控制台写服务端译文：不重复子组件，也不截掉译文自己的子组件 — 对应 `REQ-PROD-012` · 级别: 回归 · 执行者: AI
+
+前置：工作副本干净。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `io.github.bearisbug.synaxis.command.ConsoleSenderTranslationTest`（根项目 `:test`） | 4 个 0 失败：测试往 `GlobalTranslator` 挂一个译者，键 `synaxis-test.format` 给 `MessageFormat` `Saved {0}`，键 `synaxis-test.component` 直接给带两个子组件的整组件 `first second third`。`ConsoleSender.translation` 对带子组件 ` tail` 的 `synaxis-test.format` 得 `Saved 2`（子组件留给扁平化器写，不写两遍）；对带 1 个子组件与带 4 个子组件的 `synaxis-test.component` 都得完整的 `first second third`；没有译文的键得 null |
+| 2 | 反证有齿（按原组件翻译，再从尾部截掉原组件的子组件个数）：`ConsoleSender#translation` 的方法体改为 `final Component translated = EngineAdventure.COMPONENT_TRANSLATOR.apply(component, EngineAdventure.getDefaultLocale()); if (translated instanceof TranslatableComponent) return null; final List<Component> children = translated.children(); return translated.children(children.subList(0, children.size() - component.children().size()));`，重跑，再还原 | `4 tests completed, 2 failed`：`aComponentTranslationKeepsItsOwnLastChildren` 红在 `ConsoleSenderTranslationTest.java:69` `expected: <first second third> but was: <first second>`；`aComponentTranslationWithFewerChildrenThanTheAnswerIsKeptWhole` 在 `:77` 抛 `IllegalArgumentException: fromIndex(0) > toIndex(-2)`（真服务端里这个异常从 `sendMessage` 冒出去）。还原后复绿 |
+| 3 | 反证有齿（带着子组件翻译、不截）：`component.children(List.of())` 改为 `component.children(List.copyOf(component.children()))`，重跑，再还原 | `4 tests completed, 1 failed`，红在 `:62`：`expected: <Saved 2> but was: <Saved 2 tail>`（`MessageFormat` 译文末尾带着原组件的子组件，扁平化器再写一遍就重复）。还原后复绿 |
+
+后置：确认 `ConsoleSender.java` 没有残留改动。
+
 ## 5. 回归策略
 
 - **全量轮**（全部用例）：首次成稿、每个阶段 gate（引擎域阶段 0、2、3；游戏域 `docs/DESIGN-M2.md` §26 的阶段 1～6b；大世界域 `docs/DESIGN-M3.md` §26 的 M3-A～M3-G）、跨功能域改动、地基变更（JDK、Gradle、镜像、协议版本、模块拆分、启动入口）。
@@ -3687,6 +3895,7 @@ jcmd "$pid" VM.flags | tr ' ' '\n' | grep -cxE -- '-XX:\+UseG1GC|-XX:InitialHeap
   - 生产就绪域（`docs/DESIGN-PROD.md`）：WAL 归档与每日基础备份（`REQ-PROD-035` 前半）→ TC-PROD-190～TC-PROD-193；动了 `ops/postgres/archive-wal.sh` 就跑 TC-PROD-190 与 TC-PROD-191 第 3、5 步，动了 `enable-wal-archive.sh` 跑 TC-PROD-191 与 TC-PROD-193 第 7 步，动了 `check-archive.sh` 跑 TC-PROD-191、TC-PROD-192 第 2、6 步与 TC-PROD-193 第 6 步，动了 `base-backup.sh` 跑 TC-PROD-192，动了 `restore-pitr.sh` 或升 PostgreSQL 版本跑 TC-PROD-193（约 8 分钟，第 2 步要等满 5 分钟）。跨域牵连：Flyway 迁移新增或改表不影响这四条（演练用自己的库），但上线前按 `RB-PROD-008` 在正式库的副本上重做一次 TC-PROD-193。
   - 生产就绪域（`docs/DESIGN-PROD.md`）：权限与 GM 角色（`REQ-PROD-011`）→ TC-PROD-200～TC-PROD-213；动了 `server-app` 的 `permission/`、`AdmissionGate` 里读角色的一处、`PluginHost` 的权限接线或 `RedisLink` 的 `synaxis:permission` 收发就跑 TC-PROD-201～TC-PROD-209、TC-PROD-212 与 TC-PROD-213（要数据库前置），动了 `V3__roles.sql` 或 `V3__roles.down.sql` 跑 TC-PROD-200、TC-PROD-201，动了 `Permissions` 或 `PluginContext#permissions` 跑 TC-PROD-211，动了模组的 lang 跑 TC-PROD-210。跨域牵连：动了 `RedisLink` 的订阅线程 → 加 TC-PROD-141～TC-PROD-153 里走 Redis 的跨分片顶号用例（`CrossShardHandoverIntegrationTest`）；新增 Flyway 版本 → 重跑 TC-PROD-141 与 TC-PROD-200（`MigrationsDbTest` 的版本与表清单要跟着改）。
   - 生产就绪域（`docs/DESIGN-PROD.md`）：白名单与封禁（`REQ-PROD-010`）→ TC-PROD-220～TC-PROD-236；动了 `server-app` 的 `moderation/`、`PluginHost` 的封禁接线、`HandshakeGate` 登录阶段握手的跳过判断、`Main#openStore` / `Main#whitelist` 或 `RedisLink` 的 `synaxis:moderation` 收发就跑 TC-PROD-221 与 TC-PROD-223～TC-PROD-231、TC-PROD-235（要数据库前置），再动了起服或登录路径加 TC-PROD-236（真进程，约 3 分钟）；动了 `V4__moderation.sql` 或 `V4__moderation.down.sql` 跑 TC-PROD-220、TC-PROD-221；动了 `BanTarget` 跑 TC-PROD-222、TC-PROD-226；动了 `AdmissionRequest` 或 `AdmissionGate` 构造请求的一处跑 TC-PROD-232；动了 `Moderation`、`BanTarget`、`Ban`、`AdmissionRequest` 或 `PluginContext#moderation` 跑 TC-PROD-234；动了模组的 lang 跑 TC-PROD-233。跨域牵连：动了 `RedisLink` 的订阅线程 → 加 `CrossShardHandoverIntegrationTest` 与 TC-PROD-205；新增 Flyway 版本 → 重跑 TC-PROD-141、TC-PROD-200 与 TC-PROD-220。
+  - 生产就绪域（`docs/DESIGN-PROD.md`）：控制台与插件命令（`REQ-PROD-012`）→ TC-PROD-240～TC-PROD-257；动了 `server-app` 的 `command/`、`PluginCommandsImpl`、`PluginHost` 的命令接线、`Main#readConsole` / `runConsoleCommand` 或 `PlayerStore#saveOnline` 就跑 TC-PROD-240～TC-PROD-247、TC-PROD-249、TC-PROD-252 与 TC-PROD-254～TC-PROD-256，再动了控制台线程或起停服加 TC-PROD-253（真进程，约 30 s）；动了 `HostPermissions` 重发命令树的一处跑 TC-PROD-248（要数据库前置）；动了引擎 `ConsoleSender` 跑 TC-PROD-240、TC-PROD-257 与 TC-PROD-207；动了 `PluginCommands` 或 `PluginContext#commands` 跑 TC-PROD-251；动了模组的 lang 跑 TC-PROD-250。跨域牵连：动了 `PluginHost#tearDown` 或 `LoadedPlugin` → 加 TC-GAME-053～TC-GAME-055；动了 `HostPermissions` → 加 TC-PROD-201～TC-PROD-209、TC-PROD-212、TC-PROD-213。
   - 影响面不确定时升级为全量轮。
 - **复测轮**（上轮失败用例 + 全部冒烟级）：修复失败项之后。
 - **人工收口轮**（仅上轮「待人工」用例）：AI 轮之后由人工补测 TC-016、TC-030、TC-GAME-020、TC-GAME-038、TC-GAME-046、TC-GAME-047，不要求冒烟级。

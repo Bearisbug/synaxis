@@ -6,6 +6,7 @@ import io.github.bearisbug.synaxis.MinecraftServer;
 import io.github.bearisbug.synaxis.ServerProcess;
 import io.github.bearisbug.synaxis.SessionServer;
 import io.github.bearisbug.synaxis.Watchdog;
+import io.github.bearisbug.synaxis.app.command.HostCommands;
 import io.github.bearisbug.synaxis.app.moderation.HostModeration;
 import io.github.bearisbug.synaxis.app.moderation.ModerationCommands;
 import io.github.bearisbug.synaxis.app.moderation.ModerationStore;
@@ -26,6 +27,8 @@ import io.github.bearisbug.synaxis.app.transfer.TicketVerifier;
 import io.github.bearisbug.synaxis.app.transfer.TransferCooldowns;
 import io.github.bearisbug.synaxis.app.transfer.TransferKeys;
 import io.github.bearisbug.synaxis.app.transfer.TransferTickets;
+import io.github.bearisbug.synaxis.command.CommandManager;
+import io.github.bearisbug.synaxis.command.builder.CommandResult;
 import io.github.bearisbug.synaxis.game.protocol.ProtocolSchema;
 import io.github.bearisbug.synaxis.plugin.PluginApi;
 import io.github.bearisbug.synaxis.registry.RegistryKey;
@@ -177,6 +180,8 @@ public final class Main {
         process.command().register(new RoleCommand(process, store.permissions(), ledger::record));
         new ModerationCommands(process, store.moderation(), store.permissions(), ledger::record).commands()
                 .forEach(process.command()::register);
+        // Before the plugins, so that the bare names of the built in commands are the host's
+        new HostCommands(process, store.permissions(), store.store(), ledger::record).register();
         final CrashReports crashReports = crashReports(process, host, shardId, Path.of("crash-reports"));
         installExceptionHandler(process, crashReports);
         final Watchdog watchdog = startWatchdog(process, crashReports);
@@ -222,9 +227,10 @@ public final class Main {
         // (7) Printed after all three, so "the ready log is out" means the process is ticking.
         LOGGER.info("synaxis server-app listening on {}:{}", BIND_ADDRESS, port);
 
-        // Not a daemon: the shutdown sequence runs on this thread, and the JVM must not
-        // exit out from under it once the tick threads are gone.
-        Thread.ofPlatform().name("server-app-console").start(() -> readConsole(process));
+        // A daemon: a stop runs on a thread of its own, and a console nobody types into must not
+        // keep the JVM alive once that thread and the tick threads are gone.
+        Thread.ofPlatform().name("server-app-console").daemon().start(() -> readConsole(process,
+                new BufferedReader(new InputStreamReader(System.in, StandardCharsets.UTF_8))));
     }
 
     /**
@@ -615,17 +621,52 @@ public final class Main {
                 .collect(Collectors.toUnmodifiableSet());
     }
 
-    private static void readConsole(ServerProcess process) {
-        try (BufferedReader reader = new BufferedReader(new InputStreamReader(System.in, StandardCharsets.UTF_8))) {
+    /**
+     * Runs every line of the console until it ends. A line whose command throws, from its
+     * condition, an argument callback or a listener the engine does not guard, is one line in the
+     * log with its stack, and the next line runs.
+     *
+     * @param process the engine process
+     * @param console the console input, closed once it ends
+     */
+    static void readConsole(ServerProcess process, BufferedReader console) {
+        try (BufferedReader reader = console) {
             String line;
             while ((line = reader.readLine()) != null) {
-                if (!"stop".equals(line.strip())) continue;
-                LOGGER.info("Console requested a shutdown.");
-                process.stop();
-                return;
+                if (line.isBlank()) continue;
+                try {
+                    runConsoleCommand(process, line);
+                } catch (RuntimeException e) {
+                    LOGGER.error("Console command failed: {}", line.strip(), e);
+                }
             }
         } catch (IOException e) {
             LOGGER.error("Console reader stopped", e);
         }
+    }
+
+    /**
+     * Runs one console line as a command ({@code docs/DESIGN-PROD.md} {@code API-PROD-011}), on
+     * the calling thread and with the console sender, which may run every command. A leading
+     * {@code /} is accepted. A line that is no command gets one line in the log, never a stack.
+     *
+     * @param process the engine process
+     * @param line    what the operator typed
+     * @return the result
+     */
+    static CommandResult runConsoleCommand(ServerProcess process, String line) {
+        final String stripped = line.strip();
+        final String input = stripped.startsWith(CommandManager.COMMAND_PREFIX)
+                ? stripped.substring(CommandManager.COMMAND_PREFIX.length()) : stripped;
+        final CommandManager commands = process.command();
+        final CommandResult result = commands.execute(commands.getConsoleSender(), input);
+        switch (result.getType()) {
+            case UNKNOWN -> LOGGER.info("Unknown command: {}", input);
+            case INVALID_SYNTAX -> LOGGER.info("Incomplete or invalid command: {}", input);
+            default -> {
+                // the command answered for itself
+            }
+        }
+        return result;
     }
 }

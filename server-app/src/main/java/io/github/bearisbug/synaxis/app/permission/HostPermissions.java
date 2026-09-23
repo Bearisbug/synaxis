@@ -6,6 +6,7 @@ import io.github.bearisbug.synaxis.entity.Player;
 import io.github.bearisbug.synaxis.event.Event;
 import io.github.bearisbug.synaxis.event.EventNode;
 import io.github.bearisbug.synaxis.event.player.PlayerDisconnectEvent;
+import io.github.bearisbug.synaxis.network.ConnectionState;
 import io.github.bearisbug.synaxis.plugin.LogBudget;
 import io.github.bearisbug.synaxis.plugin.Permissions;
 import io.github.bearisbug.synaxis.timer.TaskSchedule;
@@ -131,7 +132,13 @@ public final class HostPermissions implements Permissions {
         }
         for (Player player : players) {
             final Entry next = new Entry(found.getOrDefault(player.getUuid(), RoleStore.Grants.NONE), read);
-            loaded.computeIfPresent(player, (_, previous) -> later(previous, next));
+            final Entry before = loaded.get(player);
+            final Entry after = loaded.computeIfPresent(player, (_, previous) -> later(previous, next));
+            // The commands a player may run are also its completions (API-PROD-011), sent once at
+            // spawn; a player still logging in gets them at spawn, with what was just read
+            if (before != null && after != null && !before.grants().nodes().equals(after.grants().nodes())
+                    && player.getPlayerConnection().getServerState() == ConnectionState.PLAY)
+                player.refreshCommands();
         }
     }
 

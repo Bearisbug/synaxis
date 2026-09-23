@@ -33,6 +33,9 @@ jobs:
   # mode: the regression assertions R1 to R8 (RegressionClientGameTest), plus on the daily run the
   # spikes of docs/research/client-spikes-2026-09/README.md. Xvfb gives it a display and Mesa
   # llvmpipe gives it OpenGL, the same as client-fabric/gametest-env/ does in Docker.
+  # The login is the full online path with no Mojang account: the client joins at
+  # tools/fake-sessionserver in record mode, the server in online mode asks the same one hasJoined,
+  # and the connection is encrypted.
   gametest:
     name: Run the client gametests
     runs-on: ubuntu-latest
@@ -70,11 +73,26 @@ jobs:
       - name: Publish :protocol to the local repository
         run: env -u CI ./gradlew :protocol:publishToMavenLocal
 
+      # Its first line names the port it took; the client's authlib and the server both go there.
+      - name: Start the fake sessionserver in record mode
+        run: |
+          (java tools/fake-sessionserver/FakeSessionServer.java --mode record --port 0 > sessionserver.log 2>&1 &)
+          for _ in $(seq 1 60); do
+            port=$(sed -n 's|.*listening on http://127.0.0.1:\([0-9]*\),.*|\1|p' sessionserver.log)
+            if [ -n "$port" ]; then
+              echo "SESSION_HOST=http://127.0.0.1:$port" >> "$GITHUB_ENV"
+              exit 0
+            fi
+            sleep 1
+          done
+          cat sessionserver.log
+          exit 1
+
       # server-app reads commands from stdin; `tail -f /dev/null` keeps it open for the whole job.
-      # Offline: the CI client has no Mojang account (the online path is REQ-PROD-030's B tier).
       - name: Start server-app in game mode
         run: |
-          (tail -f /dev/null | ./gradlew :server-app:run --console=plain -Dsynaxis.app.auth=offline \
+          (tail -f /dev/null | ./gradlew :server-app:run --console=plain -Dsynaxis.app.auth=online \
+            -Dsynaxis.app.auth.session-server="$SESSION_HOST/session/minecraft/hasJoined" \
             -Dsynaxis.app.port=25565 -Dsynaxis.app.handshake-phase=$HANDSHAKE_PHASE \
             > server.log 2>&1 &)
           for i in $(seq 1 300); do
@@ -92,6 +110,7 @@ jobs:
         working-directory: client-fabric
         env:
           SYNAXIS_GAMETEST_SERVER: 127.0.0.1:25565
+          SYNAXIS_GAMETEST_SESSION_HOST: ${{ env.SESSION_HOST }}
           LIBGL_ALWAYS_SOFTWARE: "1"
           GALLIUM_DRIVER: llvmpipe
         run: xvfb-run -a -s "-screen 0 1280x720x24" ./gradlew runClientGameTest --console=plain --stacktrace
@@ -103,6 +122,7 @@ jobs:
         working-directory: client-fabric
         env:
           SYNAXIS_GAMETEST_SERVER: 127.0.0.1:25565
+          SYNAXIS_GAMETEST_SESSION_HOST: ${{ env.SESSION_HOST }}
           LIBGL_ALWAYS_SOFTWARE: "1"
           GALLIUM_DRIVER: llvmpipe
         run: xvfb-run -a -s "-screen 0 1280x720x24" ./gradlew runProductionClientGameTest --console=plain --stacktrace
@@ -112,12 +132,14 @@ jobs:
         run: |
           for report in client-fabric/build/run/*/synaxis-gametest/report.txt; do echo "== $report"; cat "$report"; done || true
           cat logs/events-*.jsonl || true
+          cat sessionserver.log || true
 
       - name: Judge the regression by the reports, the ledger and the server log
         if: success() || failure()
         env:
           SERVER_LOG: server.log
           LEDGER_DIR: logs
+          SESSION_LOG: sessionserver.log
         run: |
           reports=(client-fabric/build/run/productionClientGameTest/synaxis-gametest/report.txt)
           if [ "$LAUNCHES" = 2 ]; then reports+=(client-fabric/build/run/clientGameTest/synaxis-gametest/report.txt); fi
@@ -133,5 +155,6 @@ jobs:
             client-fabric/build/run/**/synaxis-gametest/report.txt
             client-fabric/build/run/**/logs/
             server.log
+            sessionserver.log
             logs/events-*.jsonl
           retention-days: 14

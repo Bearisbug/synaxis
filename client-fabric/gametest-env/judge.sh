@@ -11,6 +11,10 @@
 #               connects once more per launch)
 # SERVER_LOG    the server-app's stdout
 # LEDGER_DIR    where the server-app writes events-YYYYMMDD.jsonl
+# SESSION_LOG   the stdout of tools/fake-sessionserver in record mode, in the full online tier: every
+#               connection has to have joined there and the server's hasJoined to have been answered
+#               200, which record mode only does for a serverId a client joined. Unset against an
+#               offline server
 set -uo pipefail
 : "${LAUNCHES:?}" "${SERVER_LOG:?}" "${LEDGER_DIR:?}"
 CONNECTIONS=${CONNECTIONS:-$LAUNCHES}
@@ -41,6 +45,17 @@ expect "client_verified $verified, expected $CONNECTIONS" "$verified" -eq "$CONN
 expect "client_rejected $rejected, expected 0" "$rejected" -eq 0
 expect "unit_order_issued $orders, expected >= $LAUNCHES" "$orders" -ge "$LAUNCHES"
 expect "protocol-error kicks $kicks, expected $LAUNCHES" "$kicks" -eq "$LAUNCHES"
+
+if [[ -n "${SESSION_LOG:-}" && ! -f "$SESSION_LOG" ]]; then
+  fail "no sessionserver log at $SESSION_LOG"
+elif [[ -n "${SESSION_LOG:-}" ]]; then
+  joins=$(grep -cE '^[0-9]+ POST /session/minecraft/join -> 204$' "$SESSION_LOG")
+  asked=$(grep -cE '^[0-9]+ GET /session/minecraft/hasJoined' "$SESSION_LOG")
+  answered=$(grep -cE '^[0-9]+ GET /session/minecraft/hasJoined.* -> 200$' "$SESSION_LOG")
+  expect "sessionserver join $joins, expected $CONNECTIONS" "$joins" -eq "$CONNECTIONS"
+  expect "sessionserver hasJoined 200 $answered of $asked, expected $CONNECTIONS of $CONNECTIONS" \
+    "$answered" -eq "$CONNECTIONS" -a "$asked" -eq "$CONNECTIONS"
+fi
 
 if [[ "$failures" -gt 0 ]]; then echo "client regression: $failures check(s) failed"; exit 1; fi
 echo "client regression: all checks passed"

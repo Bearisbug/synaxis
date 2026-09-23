@@ -147,6 +147,12 @@ public interface ServerProcess extends Registries {
     Ticker ticker();
 
     /**
+     * The tick watchdog of this process, which the host starts and stops.
+     */
+    @ApiStatus.Internal
+    Watchdog watchdog();
+
+    /**
      * The click callback manager.
      */
     ClickCallbackManager clickCallbackManager();

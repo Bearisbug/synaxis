@@ -28,6 +28,11 @@ public class ServerConfigTest {
         assertEquals(30_000, config.loginTimeout());
         assertTrue(config.viewablePacket());
         assertFalse(config.insideTest());
+        // docs/DESIGN-PROD.md API-PROD-013
+        assertEquals(10_000, config.watchdogEarlyWarning());
+        assertEquals(5_000, config.watchdogEarlyWarningEvery());
+        assertEquals(60_000, config.watchdogTimeout());
+        assertEquals(15_000, config.watchdogHaltAfter());
     }
 
     @Test

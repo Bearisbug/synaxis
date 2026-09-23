@@ -4,6 +4,7 @@ import io.github.bearisbug.synaxis.Auth;
 import io.github.bearisbug.synaxis.JvmFlags;
 import io.github.bearisbug.synaxis.MinecraftServer;
 import io.github.bearisbug.synaxis.ServerProcess;
+import io.github.bearisbug.synaxis.Watchdog;
 import io.github.bearisbug.synaxis.game.protocol.ProtocolSchema;
 import io.github.bearisbug.synaxis.plugin.PluginApi;
 import io.github.bearisbug.synaxis.registry.RegistryKey;
@@ -128,6 +129,7 @@ public final class Main {
         final PluginHost host = new PluginHost(process, Path.of("plugins"), ledger);
         final CrashReports crashReports = crashReports(process, host, shardId, Path.of("crash-reports"));
         installExceptionHandler(process, crashReports);
+        final Watchdog watchdog = startWatchdog(process, crashReports);
         if (coreMode != CoreMode.Setting.ON) host.enable(PluginHost.discover(), selectedPlugins);
 
         // (5) Which mode this process serves in. Gameplay needs both halves — an admission provider
@@ -159,6 +161,8 @@ public final class Main {
         process.scheduler().buildShutdownTask(host::disableAll);
         // After the plugins, so that what they record in onDisable is on disk (API-PROD-014)
         process.scheduler().buildShutdownTask(ledger::close);
+        // Last: a tick still in flight keeps being watched after this, see Watchdog#stop
+        process.scheduler().buildShutdownTask(watchdog::stop);
 
         // (6) bind, freeze the registries, accept, start the dispatcher and the tick thread.
         server.start(BIND_ADDRESS, port);
@@ -207,6 +211,21 @@ public final class Main {
         process.exception().setExceptionHandler(handler);
         Thread.setDefaultUncaughtExceptionHandler(handler::handleUncaught);
         return handler;
+    }
+
+    /**
+     * Starts the tick watchdog of the process ({@code docs/DESIGN-PROD.md} {@code REQ-PROD-014}),
+     * before the first tick. A process it judges dead gets a crash report, then is halted.
+     *
+     * @param process      the engine process
+     * @param crashReports the writer of the report
+     * @return the watchdog, for the stop sequence to stop
+     */
+    static Watchdog startWatchdog(ServerProcess process, CrashReports crashReports) {
+        final Watchdog watchdog = process.watchdog();
+        watchdog.start(stuckMillis -> crashReports.write(
+                "tick watchdog: the tick has been stuck for " + stuckMillis + " ms, the process is judged dead", null));
+        return watchdog;
     }
 
     /**

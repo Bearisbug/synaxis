@@ -26,6 +26,8 @@ import java.util.Map;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.LockSupport;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Matcher;
@@ -45,6 +47,12 @@ import java.util.zip.GZIPOutputStream;
  * queue within {@value #CLOSE_BUDGET_MS} ms and forces the file once. A crash therefore loses at most
  * the last second, a normal stop loses nothing.
  * <p>
+ * Connections are still served while the shutdown tasks run, so {@link #record} can race
+ * {@link #close}. Every {@code record} counts itself in {@link #recording} before it looks at
+ * {@link #sealed}; the writer seals the queue, waits for that count to reach zero and only then
+ * drains for the last time. A line is thus either in the file or refused by a {@code record} that
+ * saw the seal; those refused lines have no file left to be reported in and are counted in the log.
+ * <p>
  * Dropped lines are reported in the file itself: the next write starts with one
  * {@code {"event":"ledger_dropped","reason":…,"count":N,"since":…}} line per reason before the lines
  * it carries. The reasons are {@code queue_full} and {@code daily_cap}: a day's file stops taking
@@ -53,9 +61,9 @@ import java.util.zip.GZIPOutputStream;
  * <p>
  * A line goes to the file of the day its own {@code ts} falls on, in the zone of the clock. A line
  * whose day is earlier than the open file's — two threads racing past midnight, a few microseconds
- * apart — goes into the open file rather than reopening a file that is being compressed. Once the writer moves on to a new day, and once when it starts, every earlier file of
- * this shard is gzipped to {@code .jsonl.gz} and every file older than {@value #RETENTION_DAYS} days
- * is deleted.
+ * apart — goes into the open file rather than reopening a file that is being compressed. Once the
+ * writer moves on to a new day, and once when it starts, every earlier file of this shard is
+ * gzipped to {@code .jsonl.gz} and every file older than {@value #RETENTION_DAYS} days is deleted.
  * <p>
  * The rate is not the host's to choose: {@code PluginAnalytics} hands {@link #record} to every
  * plugin and every plugin records from its own inbound path, so every failure reports through a
@@ -93,6 +101,11 @@ final class EventLedger {
     private final LogBudget dropReports = new LogBudget(LOGGER, "ledger drop reports");
 
     private volatile boolean closing;
+    /** Set by the writer once it stops taking lines, before its last drain. */
+    private volatile boolean sealed;
+    /** The {@link #record} calls between their look at {@link #sealed} and their offer. */
+    private final AtomicInteger recording = new AtomicInteger();
+    private final AtomicLong refusedAfterSeal = new AtomicLong();
     private @Nullable Thread writer;
 
     // Owned by the writer thread
@@ -136,6 +149,20 @@ final class EventLedger {
      * @param attributes the attributes of that event, written in iteration order
      */
     void record(String event, Map<String, ?> attributes) {
+        recording.incrementAndGet();
+        try {
+            if (sealed) {
+                dropReports.warn("The event ledger is closed and dropped a line: dropped_after_close={}",
+                        refusedAfterSeal.incrementAndGet());
+                return;
+            }
+            offer(event, attributes);
+        } finally {
+            recording.decrementAndGet();
+        }
+    }
+
+    private void offer(String event, Map<String, ?> attributes) {
         final Instant now = clock.instant();
         final StringBuilder line = new StringBuilder(128);
         line.append("{\"ts\":\"").append(now).append("\",\"event\":\"").append(event).append('"');
@@ -146,7 +173,7 @@ final class EventLedger {
         line.append('}').append('\n');
         final Line entry = new Line(LocalDate.ofInstant(now, clock.getZone()).toEpochDay(),
                 line.toString().getBytes(StandardCharsets.UTF_8));
-        if (closing || !queue.offer(entry)) queueFull.count(now);
+        if (!queue.offer(entry)) queueFull.count(now);
     }
 
     /**
@@ -183,15 +210,27 @@ final class EventLedger {
             }
             if (line != null) accept(line);
             final boolean due = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - lastWrite) >= FLUSH_INTERVAL_MS;
-            if (buffer.size >= BUFFER_BYTES || due || (draining && line == null)) {
+            if (buffer.size >= BUFFER_BYTES || due) {
                 writeOut();
                 lastWrite = System.nanoTime();
             }
             if (draining && line == null) {
-                closeChannel(true);
+                drainSealed();
                 return;
             }
         }
+    }
+
+    /** Refuses new lines, waits for the {@link #record} calls already past the seal, writes the rest. */
+    private void drainSealed() {
+        sealed = true;
+        while (recording.get() != 0) LockSupport.parkNanos(TimeUnit.MILLISECONDS.toNanos(1));
+        for (Line line = queue.poll(); line != null; line = queue.poll()) {
+            accept(line);
+            if (buffer.size >= BUFFER_BYTES) writeOut();
+        }
+        writeOut();
+        closeChannel(true);
     }
 
     private void accept(Line line) {

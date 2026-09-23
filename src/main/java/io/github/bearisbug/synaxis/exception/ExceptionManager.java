@@ -5,6 +5,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * Manages the handling of exceptions.
@@ -18,7 +20,17 @@ public final class ExceptionManager {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ExceptionManager.class);
 
-    /** The sink when no handler is set: a log line, never the bare standard error stream. */
+    static final long DEFAULT_REPORT_INTERVAL = TimeUnit.SECONDS.toNanos(10);
+    static final AtomicLong defaultUnreported = new AtomicLong();
+    static final AtomicLong lastDefaultReport = new AtomicLong(System.nanoTime() - DEFAULT_REPORT_INTERVAL);
+
+    /**
+     * The sink when no handler is set: a log line, never the bare standard error stream, and at most
+     * one per {@link #DEFAULT_REPORT_INTERVAL} carrying the count of the ones it stands for, the shape
+     * of {@code PacketReading#reportUnreadBytes}. A listener that throws on every packet a client
+     * sends reports once per packet, so an unbounded sink puts the size of the log in the client's
+     * hands. The tick number is the host's to add: the engine has no process wide tick counter.
+     */
     private static final ExceptionHandler DEFAULT_HANDLER = new ExceptionHandler() {
         @Override
         public void handleException(Throwable e) {
@@ -27,7 +39,13 @@ public final class ExceptionManager {
 
         @Override
         public void handleException(Throwable e, @Nullable UUID connectionId) {
-            LOGGER.error("Unhandled exception: connection_id={}", connectionId == null ? "-" : connectionId, e);
+            defaultUnreported.incrementAndGet();
+            final long now = System.nanoTime();
+            final long last = lastDefaultReport.get();
+            if (now - last < DEFAULT_REPORT_INTERVAL) return;
+            if (!lastDefaultReport.compareAndSet(last, now)) return;
+            LOGGER.error("Unhandled exception: connection_id={} ({} exceptions since the last report)",
+                    connectionId == null ? "-" : connectionId, defaultUnreported.getAndSet(0), e);
         }
     };
 

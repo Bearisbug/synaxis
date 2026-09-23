@@ -19,6 +19,7 @@ import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.function.BooleanSupplier;
 import java.util.stream.Stream;
@@ -48,7 +49,7 @@ class EventLedgerTest {
     private static final Instant NOON = Instant.parse("2026-09-23T12:00:00Z");
 
     /** A clock the test moves across midnight. */
-    private static final class MovableClock extends Clock {
+    private static class MovableClock extends Clock {
         private volatile Instant now;
 
         MovableClock(Instant now) {
@@ -158,6 +159,47 @@ class EventLedgerTest {
         final List<String> lines = lines(dayFile(directory, "20260923"));
         assertEquals(4 * FLOOD, lines.size());
         assertFalse(lines.stream().anyMatch(line -> line.contains("ledger_dropped")), "nothing was dropped");
+    }
+
+    // A connection is still served while the shutdown task runs: its record can be past the look at
+    // the close and not yet in the queue when the writer finds the queue empty
+    @Test
+    void aRecordRacingTheCloseIsWrittenOrRefusedNeverLeftInTheQueue(@TempDir Path directory) throws Exception {
+        final CountDownLatch inRecord = new CountDownLatch(1);
+        final CountDownLatch release = new CountDownLatch(1);
+        final Clock clock = new MovableClock(NOON) {
+            @Override
+            public Instant instant() {
+                if (Thread.currentThread().getName().equals("racing-recorder")) {
+                    inRecord.countDown();
+                    try {
+                        release.await();
+                    } catch (InterruptedException _) {
+                        Thread.currentThread().interrupt();
+                    }
+                }
+                return super.instant();
+            }
+        };
+        final EventLedger ledger = ledger(directory, EventLedger.DEFAULT_MAX_BYTES_PER_DAY, clock);
+        ledger.start();
+        final Thread recorder = Thread.ofPlatform().name("racing-recorder")
+                .start(() -> ledger.record("client_verified", Map.of("connection_id", "racing")));
+        assertTrue(inRecord.await(5, TimeUnit.SECONDS));
+        final Thread closer = Thread.ofPlatform().start(ledger::close);
+        // Long enough for the writer to see the close and find the queue empty
+        TimeUnit.MILLISECONDS.sleep(300);
+        release.countDown();
+        recorder.join();
+        closer.join();
+
+        try (LogCapture logs = LogCapture.of(EventLedger.class)) {
+            ledger.record("client_verified", Map.of("connection_id", "late"));
+            assertEquals(1, logs.eventsAt(Level.WARN).size(), "a line after the close is counted in the log");
+        }
+        final List<String> lines = readQuietly(dayFile(directory, "20260923"));
+        assertEquals(1, lines.size(), "the racing line is in the file: " + lines);
+        assertTrue(lines.getFirst().contains("\"connection_id\":\"racing\""), lines.getFirst());
     }
 
     // One write per interval or per full buffer, not one per event

@@ -174,9 +174,9 @@ public class ArchitectureTest {
 
     /**
      * A WARN or ERROR line, a stack trace dumped straight to the standard error stream, or an
-     * exception handed to the host: the engine default sink of {@link ExceptionManager} is
-     * {@code Throwable::printStackTrace}, so a report per packet is a stack trace per packet. The
-     * host picks the sink, the caller is what decides how often it is written. INFO is on in the
+     * exception handed to the host: the host picks the sink of {@link ExceptionManager} and need
+     * not bound it, so a report per packet can be a stack trace per packet. The host picks the
+     * sink, the caller is what decides how often it is written. INFO is on in the
      * default configuration too ({@code server-app/src/main/resources/logback.xml} sets the root to
      * INFO); the rule stops at WARN because no client driven path writes one per packet today, and
      * a new one has to be caught in review.

@@ -16,6 +16,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Where the engine's exceptions end up ({@code docs/DESIGN-PROD.md} {@code API-PROD-013},
@@ -79,10 +80,26 @@ public class ExceptionManagerTest {
         assertEquals(List.of(boom), caught);
     }
 
+    // A listener that throws on every client packet reports once per packet
+    @Test
+    public void theDefaultHandlerWritesAtMostOneLinePerIntervalAndCountsTheRest() {
+        final ExceptionManager manager = new ExceptionManager();
+        ExceptionManager.lastDefaultReport.set(System.nanoTime());
+        final long before = ExceptionManager.defaultUnreported.get();
+
+        manager.handleException(new IllegalStateException("first"), UUID.randomUUID());
+        manager.handleException(new IllegalStateException("second"), UUID.randomUUID());
+
+        assertTrue(ExceptionManager.defaultUnreported.get() - before >= 2,
+                "inside one interval the exceptions are counted for the next line, not written");
+    }
+
     @Test
     @ResourceLock(Resources.SYSTEM_ERR)
     public void theDefaultHandlerDoesNotPrintToStandardError() {
         final String marker = "exception-manager-default-" + UUID.randomUUID();
+        // A line is due, so the default handler does write this one
+        ExceptionManager.lastDefaultReport.set(System.nanoTime() - ExceptionManager.DEFAULT_REPORT_INTERVAL);
         final PrintStream original = System.err;
         final ByteArrayOutputStream captured = new ByteArrayOutputStream();
         System.setErr(new PrintStream(captured, true, StandardCharsets.UTF_8));

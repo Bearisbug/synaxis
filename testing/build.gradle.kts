@@ -5,6 +5,8 @@ plugins {
 
 dependencies {
     api(project(":"))
+    // InMemoryPlayerDataStore stands in for the host's store in a plugin's own tests
+    api(project(":plugin-api"))
 
     implementation(libs.junit.api)
     implementation(libs.junit.params)

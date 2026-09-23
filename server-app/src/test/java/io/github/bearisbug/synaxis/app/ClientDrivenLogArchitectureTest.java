@@ -7,6 +7,9 @@ import com.tngtech.archunit.core.domain.properties.HasName;
 import com.tngtech.archunit.core.importer.ClassFileImporter;
 import com.tngtech.archunit.core.importer.ImportOption;
 import com.tngtech.archunit.lang.ArchRule;
+import io.github.bearisbug.synaxis.app.store.PlayerStore;
+import io.github.bearisbug.synaxis.app.store.ShardSession;
+import io.github.bearisbug.synaxis.app.transfer.TicketVerifier;
 import io.github.bearisbug.synaxis.exception.ExceptionManager;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
@@ -71,6 +74,16 @@ public class ClientDrivenLogArchitectureTest {
      * <li>{@link CrashReports}: it prints stack traces into a crash report file, not into the log,
      * and one report per fatal event — the exception handler writes one per process, the tick
      * watchdog one per stall. Its own failure goes through a budget.</li>
+     * <li>{@link PlayerStore}: at most one line per login that cannot be loaded (the login rate is
+     * bounded by the L2 bucket of {@code docs/DESIGN-PROD.md} {@code API-PROD-003}), per character
+     * fenced or orphaned, and per character left unsaved by a shutdown. Failures whose count a
+     * client or a plugin picks — a save or a commit going wrong, Redis down — go through a
+     * budget.</li>
+     * <li>{@link ShardSession}: one line per state change of the shard session, which the database
+     * and the shutdown drive, never a client; failed renewals go through a budget.</li>
+     * <li>{@link TicketVerifier}: one line per transfer login it refuses, whose rate the L2
+     * transfer bucket of {@code API-PROD-003} bounds; the one ERROR is the version assertion, once
+     * per ticket at most.</li>
      * </ul>
      * {@link PluginChannelRouter}, {@link PluginEventsImpl} and {@link EventLedger} are
      * deliberately absent: all three sit on a path whose rate a client picks — the first two on an
@@ -81,7 +94,7 @@ public class ClientDrivenLogArchitectureTest {
      * blind spot ① of the engine rule ({@code docs/ENGINE.md} §8), which those three therefore
      * escape.
      * <p>
-     * The five above do not: this list is by class, exactly like the engine's, so a second line
+     * The eight above do not: this list is by class, exactly like the engine's, so a second line
      * whose rate a client picks, added inside one of them, stays green. Measured, not assumed — a
      * listener on a PLAY phase event writing a plain {@code LOGGER.warn}, put inside
      * {@link AdmissionGate}, does not turn this rule red. Registered as a remaining blind spot in
@@ -92,7 +105,10 @@ public class ClientDrivenLogArchitectureTest {
                 .or(name(PluginHost.class.getName()))
                 .or(name(AdmissionGate.class.getName()))
                 .or(name(PluginSchedulerImpl.class.getName()))
-                .or(name(CrashReports.class.getName()));
+                .or(name(CrashReports.class.getName()))
+                .or(name(PlayerStore.class.getName()))
+                .or(name(ShardSession.class.getName()))
+                .or(name(TicketVerifier.class.getName()));
     }
 
     private static ArchRule hostPathsDoNotLogPerPacket() {

@@ -12,6 +12,34 @@ jobs:
   check:
     name: Check
     runs-on: ubuntu-latest
+    # The player store tests (docs/DESIGN-PROD.md REQ-PROD-005) run against a real PostgreSQL and
+    # Valkey. With SYNAXIS_TEST_PG_URL set, an unreachable database fails them instead of skipping.
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_PASSWORD: synaxis
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+      valkey:
+        image: valkey/valkey:8-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "valkey-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    env:
+      SYNAXIS_TEST_PG_URL: jdbc:postgresql://127.0.0.1:5432/postgres
+      SYNAXIS_TEST_PG_USER: postgres
+      SYNAXIS_TEST_PG_PASSWORD: synaxis
+      SYNAXIS_TEST_REDIS_URL: redis://127.0.0.1:6379
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7
@@ -31,6 +59,14 @@ jobs:
 
       - name: Run checks and coverage report
         run: ./gradlew check jacocoTestReport
+
+      # Without this a job that lost its database would pass with the store tests skipped
+      - name: Check that the player store tests ran against the database
+        run: |
+          for suite in PlayerStoreIntegrationTest ShardSessionDbTest MigrationsDbTest CrossShardHandoverIntegrationTest \
+              ShutdownSaveIntegrationTest TransferTicketsIntegrationTest StoreHousekeepingDbTest; do
+            grep -q 'skipped="0"' "server-app/build/test-results/test/TEST-io.github.bearisbug.synaxis.app.store.$suite.xml"
+          done
 
       - name: Upload test reports
         if: always()
@@ -98,6 +134,33 @@ jobs:
   multithreaded:
     name: Test with 4 tick threads (strict)
     runs-on: ubuntu-latest
+    # The same database and Valkey as the check job, the store tests are part of the suite
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_PASSWORD: synaxis
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+      valkey:
+        image: valkey/valkey:8-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "valkey-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    env:
+      SYNAXIS_TEST_PG_URL: jdbc:postgresql://127.0.0.1:5432/postgres
+      SYNAXIS_TEST_PG_USER: postgres
+      SYNAXIS_TEST_PG_PASSWORD: synaxis
+      SYNAXIS_TEST_REDIS_URL: redis://127.0.0.1:6379
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7

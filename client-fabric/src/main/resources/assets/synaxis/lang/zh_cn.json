@@ -9,6 +9,7 @@
 	"synaxis:duplicate-login": "已有同名玩家在线。",
 	"synaxis:internal-error": "服务器未能把你放进世界。",
 	"synaxis:server-stopping": "服务器正在关闭。",
+	"synaxis:server-stopping-in": "服务器将在 %s 秒后关闭。",
 	"synaxis:too-many-connections": "同一网络的连接数过多。反复出现请联系服务器管理员报障。",
 	"synaxis:login-throttled": "登录过于频繁，请稍候几秒再试。",
 	"synaxis:shard-full": "本频道已满。",
@@ -17,6 +18,8 @@
 	"synaxis:auth-unavailable": "正版验证服务暂时无法访问，请稍后重试。",
 	"synaxis:logged-in-elsewhere": "你的账号在别处登录。",
 	"synaxis:state-unavailable": "角色数据未能载入，请 30 秒后重试。",
+	"synaxis:transfer-rejected": "切换大区失败，请重新登录。",
+	"synaxis:transfer-failed": "转服失败，请稍后再试。",
 	"synaxis.order.no-path": "到不了那里。",
 	"synaxis.order.not-owner": "不是你的单位。",
 	"synaxis.order.busy": "服务器忙，请重试。"

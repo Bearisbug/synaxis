@@ -6,12 +6,27 @@ import io.github.bearisbug.synaxis.MinecraftServer;
 import io.github.bearisbug.synaxis.ServerProcess;
 import io.github.bearisbug.synaxis.SessionServer;
 import io.github.bearisbug.synaxis.Watchdog;
+import io.github.bearisbug.synaxis.app.store.AuthMode;
+import io.github.bearisbug.synaxis.app.store.Database;
+import io.github.bearisbug.synaxis.app.store.Migrations;
+import io.github.bearisbug.synaxis.app.store.PlayerStore;
+import io.github.bearisbug.synaxis.app.store.PostgresBackend;
+import io.github.bearisbug.synaxis.app.store.RedisLink;
+import io.github.bearisbug.synaxis.app.store.ShardSession;
+import io.github.bearisbug.synaxis.app.store.StoreHousekeeping;
+import io.github.bearisbug.synaxis.app.store.StoreSettings;
+import io.github.bearisbug.synaxis.app.transfer.TicketIssuer;
+import io.github.bearisbug.synaxis.app.transfer.TicketVerifier;
+import io.github.bearisbug.synaxis.app.transfer.TransferCooldowns;
+import io.github.bearisbug.synaxis.app.transfer.TransferKeys;
+import io.github.bearisbug.synaxis.app.transfer.TransferTickets;
 import io.github.bearisbug.synaxis.game.protocol.ProtocolSchema;
 import io.github.bearisbug.synaxis.plugin.PluginApi;
 import io.github.bearisbug.synaxis.registry.RegistryKey;
 import io.github.bearisbug.synaxis.timer.TaskSchedule;
 import io.github.bearisbug.synaxis.world.DimensionType;
 import net.kyori.adventure.key.Key;
+import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -22,6 +37,7 @@ import java.lang.management.ManagementFactory;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
+import java.sql.SQLException;
 import java.time.Clock;
 import java.time.ZoneId;
 import java.util.Arrays;
@@ -59,6 +75,14 @@ public final class Main {
     private static final String LEDGER_MAX_BYTES_PROPERTY = "synaxis.app.ledger-max-bytes-per-day";
     private static final String AUTH_PROPERTY = "synaxis.app.auth";
     private static final String SESSION_SERVER_PROPERTY = "synaxis.app.auth.session-server";
+    private static final String STORE_PROPERTY = "synaxis.app.store";
+    static final String STORE_MEMORY = "memory";
+    static final String STORE_POSTGRES = "postgres";
+    static final String MIGRATE_ONLY = "--migrate-only";
+    static final String AUTH_MODE_ARGUMENT = "--auth-mode=";
+    /** The exit code of a process the tick watchdog judged dead (§11.5). */
+    private static final int DEATH_EXIT_CODE = 70;
+    private static final long DEATH_POLL_MILLIS = 100;
 
     /**
      * The world height of §9, and the only one M2 has: the single shallow dimension type is built
@@ -89,6 +113,10 @@ public final class Main {
     }
 
     public static void main(String[] args) {
+        if (Arrays.asList(args).contains(MIGRATE_ONLY)) {
+            System.exit(migrateOnly(args, System.getenv()));
+            return;
+        }
         try {
             start();
         } catch (IllegalArgumentException e) {
@@ -108,6 +136,7 @@ public final class Main {
         final long ledgerMaxBytesPerDay = ledgerMaxBytesPerDay();
         final Set<String> selectedPlugins = selectedPlugins();
         final Auth auth = auth();
+        final String storeMode = storeMode();
         final CoreMode.Setting coreMode = CoreMode.setting();
         applyViewRangeDefaults();
 
@@ -132,7 +161,11 @@ public final class Main {
         // core mode is deterministic while a gameplay plugin sits on the classpath.
         final EventLedger ledger = new EventLedger(Path.of("logs"), shardId, ledgerMaxBytesPerDay);
         ledger.start();
-        final PluginHost host = new PluginHost(process, Path.of("plugins"), ledger);
+        // The player store before the plugins, which register their sections in onEnable; a shard
+        // whose database is not the one it expects refuses here, before anything is bound.
+        final StoreRuntime store = openStore(storeMode, process, auth, shardId, ledger, System.getenv());
+        process.setShutdownParticipant(store.store());
+        final PluginHost host = new PluginHost(process, Path.of("plugins"), ledger, store.store(), store.verifier());
         final CrashReports crashReports = crashReports(process, host, shardId, Path.of("crash-reports"));
         installExceptionHandler(process, crashReports);
         final Watchdog watchdog = startWatchdog(process, crashReports);
@@ -162,11 +195,13 @@ public final class Main {
         }
 
         // The only place the plugins are disabled, console and SIGINT alike: the engine drains its
-        // shutdown tasks once the tick threads are joined and before it shuts anything else down, so
-        // registering here gets onDisable the same quiet process on both paths.
+        // shutdown tasks after the players are saved and kicked, between two ticks, and before it
+        // stops ticking (docs/DESIGN-PROD.md §11.4), so onDisable runs the same way on both paths.
         process.scheduler().buildShutdownTask(host::disableAll);
         // After the plugins, so that what they record in onDisable is on disk (API-PROD-014)
         process.scheduler().buildShutdownTask(ledger::close);
+        // The save is over by now: Redis, the session renewal and the pool can go
+        process.scheduler().buildShutdownTask(store::close);
         // Last: a tick still in flight keeps being watched after this, see Watchdog#stop
         process.scheduler().buildShutdownTask(watchdog::stop);
 
@@ -229,9 +264,160 @@ public final class Main {
      */
     static Watchdog startWatchdog(ServerProcess process, CrashReports crashReports) {
         final Watchdog watchdog = process.watchdog();
-        watchdog.start(stuckMillis -> crashReports.write(
-                "tick watchdog: the tick has been stuck for " + stuckMillis + " ms, the process is judged dead", null));
+        watchdog.start(stuckMillis -> {
+            crashReports.write("tick watchdog: the tick has been stuck for " + stuckMillis
+                    + " ms, the process is judged dead", null);
+            stopAfterDeath(process);
+        });
         return watchdog;
+    }
+
+    /**
+     * What a process judged dead still does before the watchdog halts it
+     * ({@code docs/DESIGN-PROD.md} §11.4, §11.5 {@code dying → exited}): the shutdown sequence
+     * without the stuck tick, saving what can be read on this thread, then exit code 70. Whatever
+     * does not finish within {@code synaxis.watchdog.halt-after-ms} is cut short by the halt.
+     */
+    private static void stopAfterDeath(ServerProcess process) {
+        if (!process.shutdownAfterWatchdogDeath()) {
+            // A shutdown was already running; it picks the death up on its own thread
+            while (process.shutdownPhase() != ServerProcess.ShutdownPhase.STOPPED) {
+                try {
+                    Thread.sleep(DEATH_POLL_MILLIS);
+                } catch (InterruptedException _) {
+                    return;
+                }
+            }
+        }
+        LOGGER.error("The process was judged dead and has stopped, exiting with code {}", DEATH_EXIT_CODE);
+        System.exit(DEATH_EXIT_CODE);
+    }
+
+    /**
+     * The player store of the process and what it holds open.
+     *
+     * @param store        the store
+     * @param database     the pool of a shard, null in memory
+     * @param housekeeping the cleanup jobs of a shard, null in memory
+     * @param issuer       the source side of a transfer, null without transfer keys
+     * @param verifier     the target side of a transfer, null without transfer keys
+     */
+    record StoreRuntime(PlayerStore store, @Nullable Database database, @Nullable StoreHousekeeping housekeeping,
+                        @Nullable TransferTickets issuer, @Nullable TicketVerifier verifier) implements AutoCloseable {
+        @Override
+        public void close() {
+            if (housekeeping != null) housekeeping.close();
+            store.close();
+            if (database != null) database.close();
+        }
+    }
+
+    /**
+     * Opens the player store ({@code docs/DESIGN-PROD.md} {@code REQ-PROD-005}): memory for a
+     * process without a database, PostgreSQL for a shard. A shard checks its database before
+     * anything else and refuses to start on a schema that is not this build's, or on a store that
+     * holds other identities than this process lets in ({@code REQ-PROD-036}).
+     *
+     * @param mode        {@code memory} or {@code postgres}
+     * @param process     the engine process
+     * @param auth        the auth of the process
+     * @param shardId     the shard id
+     * @param ledger      the event ledger
+     * @param environment where the database settings come from
+     * @return the store
+     * @throws IllegalArgumentException if the shard must not start
+     */
+    static StoreRuntime openStore(String mode, ServerProcess process, Auth auth, String shardId, EventLedger ledger,
+                                  Map<String, String> environment) {
+        if (STORE_MEMORY.equals(mode)) {
+            // A ticket's nonce and lease live in the database, a process without one takes no transfer
+            if (process.config().acceptTransfers())
+                throw new IllegalArgumentException("synaxis.accept-transfers=true needs the postgres store "
+                        + "(-Dsynaxis.app.store=postgres): transfer tickets are checked against the database");
+            LOGGER.info("Effective store: mode=memory, player data lives as long as the process");
+            return new StoreRuntime(PlayerStore.inMemory(process, ledger::record), null, null, null, null);
+        }
+        final StoreSettings settings = StoreSettings.fromEnvironment(environment);
+        final TransferKeys keys = TransferKeys.fromEnvironment(environment);
+        if (keys == null && process.config().acceptTransfers())
+            throw new IllegalArgumentException("synaxis.accept-transfers=true needs " + TransferKeys.VARIABLE
+                    + " to check the tickets transfers come in with (see .env.example)");
+        final AuthMode effective = AuthMode.effective(auth);
+        final Database database;
+        try {
+            database = new Database(settings);
+        } catch (RuntimeException e) {
+            throw new IllegalArgumentException("the player store database cannot be reached: " + e.getMessage(), e);
+        }
+        try {
+            Migrations.validate(database.pool());
+            Migrations.requireAuthMode(database.pool(), effective);
+            final RedisLink redis = settings.redisUrl() == null ? RedisLink.disabled(shardId)
+                    : RedisLink.connect(settings.redisUrl(), shardId);
+            if (settings.redisUrl() == null)
+                LOGGER.warn("SYNAXIS_REDIS_URL is not set: a login of an account online on another shard is refused");
+            final PlayerStore store = new PlayerStore(process, new PostgresBackend(database.pool()), redis, shardId,
+                    auth instanceof Auth.Online, PlayerStore.Options.DEFAULT, ledger::record);
+            final ShardSession session = new ShardSession(database::dedicated, shardId, ShardSession.Timing.DEFAULT,
+                    System::nanoTime, store::sessionChanged);
+            store.useSession(session);
+            session.open();
+            final StoreHousekeeping housekeeping = new StoreHousekeeping(database.pool());
+            housekeeping.start();
+            LOGGER.info("Effective store: mode=postgres auth_mode={} {}", effective.value(), settings);
+            if (keys == null) return new StoreRuntime(store, database, housekeeping, null, null);
+            final TransferCooldowns cooldowns = TransferCooldowns.fromSystemProperties();
+            LOGGER.info("Effective transfers: {} accept={}", keys, process.config().acceptTransfers());
+            return new StoreRuntime(store, database, housekeeping, new TicketIssuer(store, keys, cooldowns, shardId),
+                    new TicketVerifier(database.pool(), session::sessionId, shardId, keys, cooldowns, ledger::record));
+        } catch (SQLException e) {
+            database.close();
+            throw new IllegalArgumentException("the player store database failed: " + e.getMessage(), e);
+        } catch (RuntimeException e) {
+            database.close();
+            throw e;
+        }
+    }
+
+    /**
+     * {@code server-app --migrate-only --auth-mode=online|offline}: the release job's migration of
+     * the player store ({@code docs/DESIGN-PROD.md} {@code API-PROD-004}, §25). Migrates, records
+     * whose identities the store holds, and exits; binds nothing.
+     *
+     * @param args        the command line
+     * @param environment where the database settings come from
+     * @return the exit code, 0 once migrated
+     */
+    static int migrateOnly(String[] args, Map<String, String> environment) {
+        final String mode = Arrays.stream(args).filter(arg -> arg.startsWith(AUTH_MODE_ARGUMENT))
+                .map(arg -> arg.substring(AUTH_MODE_ARGUMENT.length())).findFirst().orElse(null);
+        try {
+            if (mode == null)
+                throw new IllegalArgumentException(MIGRATE_ONLY + " needs " + AUTH_MODE_ARGUMENT + "online|offline");
+            final AuthMode authMode = AuthMode.parse(mode);
+            try (Database database = new Database(StoreSettings.fromEnvironment(environment))) {
+                Migrations.migrate(database.pool(), authMode);
+            }
+            LOGGER.info("Migrated the player store: auth_mode={}", authMode.value());
+            return 0;
+        } catch (IllegalArgumentException | SQLException e) {
+            LOGGER.error("Refusing to migrate: {}", e.getMessage());
+            return 1;
+        } catch (RuntimeException e) {
+            LOGGER.error("Refusing to migrate: {}", e.getMessage(), e);
+            return 1;
+        }
+    }
+
+    /**
+     * @return {@value #STORE_MEMORY} unless {@code synaxis.app.store} says {@value #STORE_POSTGRES}
+     * @throws IllegalArgumentException for any other value
+     */
+    static String storeMode() {
+        final String mode = System.getProperty(STORE_PROPERTY, STORE_MEMORY).strip();
+        if (!STORE_MEMORY.equals(mode) && !STORE_POSTGRES.equals(mode))
+            throw new IllegalArgumentException(STORE_PROPERTY + "=" + mode + " is not a store: memory or postgres");
+        return mode;
     }
 
     /**

@@ -70,6 +70,34 @@ public interface PluginContext {
     PluginAnalytics analytics();
 
     /**
+     * Player data of this plugin, stored by the host ({@code docs/DESIGN-PROD.md} API-PROD-005).
+     * <p>
+     * The host's context always has one. The default only exists so that a context a plugin wrote
+     * for its own tests keeps compiling; such a test uses {@code InMemoryPlayerDataStore} of
+     * {@code :testing} instead.
+     *
+     * @return the player data capability of this plugin
+     * @throws UnsupportedOperationException from a context that is not the host's
+     */
+    default PlayerDataStore playerData() {
+        throw new UnsupportedOperationException("only the host's plugin context has a player store");
+    }
+
+    /**
+     * Lifecycle hooks beyond enable and disable, such as the shutdown save
+     * ({@code docs/DESIGN-PROD.md} API-PROD-007).
+     * <p>
+     * The host's context always has one; the default is there for the same reason as
+     * {@link #playerData()}'s.
+     *
+     * @return the lifecycle capability of this plugin
+     * @throws UnsupportedOperationException from a context that is not the host's
+     */
+    default PluginLifecycle lifecycle() {
+        throw new UnsupportedOperationException("only the host's plugin context has lifecycle hooks");
+    }
+
+    /**
      * A logger named after this plugin.
      *
      * @return the logger of this plugin

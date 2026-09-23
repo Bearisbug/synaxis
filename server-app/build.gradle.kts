@@ -7,6 +7,14 @@ dependencies {
     implementation(project(":plugin-api"))
     implementation(libs.slf4j)
 
+    // The player data store (docs/DESIGN-PROD.md API-PROD-004, API-PROD-006). Host only: the engine,
+    // the plugin API and the plugins never see a driver, a pool or a Redis client (ADR-PROD-012).
+    implementation(libs.postgresql)
+    implementation(libs.hikaricp)
+    implementation(libs.flyway.core)
+    runtimeOnly(libs.flyway.postgresql)
+    implementation(libs.jedis)
+
     // The one compile time plugin of M2, found through ServiceLoader (ADR-M2-006). The host never
     // names a game class, so the dependency is runtime only.
     runtimeOnly(project(":game-rts"))

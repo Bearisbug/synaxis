@@ -37,6 +37,21 @@ public final class DisconnectKeys {
      */
     public static final String GAME_FLOOD = "synaxis:game-flood";
 
+    /**
+     * The player's data cannot be had right now: it failed to load, the shard lost the database,
+     * or another live session holds the character and did not let go in time
+     * ({@code docs/DESIGN-PROD.md} §14). Trying again after 30 seconds works once the cause is gone.
+     */
+    public static final String STATE_UNAVAILABLE = "synaxis:state-unavailable";
+
+    /**
+     * The transfer ticket the client came in with cannot be used: missing or not signed by us,
+     * expired, meant for another shard or another account, already used, or naming a version the
+     * character is not at ({@code docs/DESIGN-PROD.md} §14). The character was released before the
+     * ticket was issued, so logging in to any shard gets it back.
+     */
+    public static final String TRANSFER_REJECTED = "synaxis:transfer-rejected";
+
     private DisconnectKeys() {
     }
 }

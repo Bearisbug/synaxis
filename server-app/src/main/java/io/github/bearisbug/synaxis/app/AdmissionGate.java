@@ -1,6 +1,8 @@
 package io.github.bearisbug.synaxis.app;
 
 import net.kyori.adventure.text.Component;
+import io.github.bearisbug.synaxis.app.store.PlayerStore;
+import io.github.bearisbug.synaxis.app.transfer.TicketVerifier;
 import io.github.bearisbug.synaxis.entity.Player;
 import io.github.bearisbug.synaxis.event.Event;
 import io.github.bearisbug.synaxis.event.EventNode;
@@ -9,6 +11,7 @@ import io.github.bearisbug.synaxis.plugin.Admission;
 import io.github.bearisbug.synaxis.plugin.AdmissionProvider;
 import io.github.bearisbug.synaxis.plugin.AdmissionRequest;
 import io.github.bearisbug.synaxis.plugin.DisconnectKeys;
+import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -40,11 +43,16 @@ final class AdmissionGate {
     private final AdmissionRegistry registry;
     private final HandshakeGate handshake;
     private final EventLedger ledger;
+    private final PlayerStore store;
+    private final @Nullable TicketVerifier tickets;
 
-    AdmissionGate(AdmissionRegistry registry, HandshakeGate handshake, EventLedger ledger) {
+    AdmissionGate(AdmissionRegistry registry, HandshakeGate handshake, EventLedger ledger, PlayerStore store,
+                  @Nullable TicketVerifier tickets) {
         this.registry = registry;
         this.handshake = handshake;
         this.ledger = ledger;
+        this.store = store;
+        this.tickets = tickets;
     }
 
     void attach(EventNode<Event> node) {
@@ -65,6 +73,19 @@ final class AdmissionGate {
                     "no admission provider is registered");
             return;
         }
+        // A transfer shows its ticket before anything is loaded (docs/DESIGN-PROD.md API-PROD-028);
+        // a refused ticket has already kicked the player and written transfer_rejected
+        if (tickets != null && player.getPlayerConnection().wasTransferred() && !tickets.verify(player)) return;
+        // The player's data before the admission: a player is never let in without it
+        // (docs/DESIGN-PROD.md §12.1). A load that fails has already kicked the player.
+        if (!store.load(player)) {
+            rejected(connectionId, hello, DisconnectKeys.STATE_UNAVAILABLE);
+            return;
+        }
+        if (!player.isOnline()) {
+            store.abandon(player);
+            return;
+        }
         final Admission admission;
         final long start = System.nanoTime();
         try {
@@ -73,6 +94,7 @@ final class AdmissionGate {
         } catch (Throwable throwable) {
             LOGGER.error("Admission provider failed: plugin_id={} connection_id={}",
                     registry.pluginId(), connectionId, throwable);
+            store.abandon(player);
             refuse(player, connectionId, hello, DisconnectKeys.MATCH_UNAVAILABLE,
                     "the admission provider threw");
             return;
@@ -83,24 +105,32 @@ final class AdmissionGate {
                     + "Its answer stands, this connection just took longer to let in.",
                     BUDGET_MILLIS, registry.pluginId(), connectionId, admitMs);
         switch (admission) {
-            case Admission.Accept accept -> event.setSpawningInstance(accept.instance());
-            case Admission.Reject reject ->
-                    refuse(player, connectionId, hello, reject.reasonKey(),
-                            "the admission provider refused");
+            case Admission.Accept accept -> {
+                store.admitted(player);
+                event.setSpawningInstance(accept.instance());
+            }
+            case Admission.Reject reject -> {
+                store.abandon(player);
+                refuse(player, connectionId, hello, reject.reasonKey(), "the admission provider refused");
+            }
         }
     }
 
     private void refuse(Player player, UUID connectionId, HandshakeGate.HelloResult hello,
                         String reasonKey, String cause) {
         LOGGER.info("Refusing a connection: connection_id={} reason={} cause={}", connectionId, reasonKey, cause);
+        rejected(connectionId, hello, reasonKey);
+        // Kick and return without setting a spawning instance: the engine checks isOnline() right
+        // after this event, so a kicked player never reaches the requireNonNull on that instance.
+        player.kick(Component.translatable(reasonKey));
+    }
+
+    private void rejected(UUID connectionId, HandshakeGate.HelloResult hello, String reasonKey) {
         final Map<String, Object> attributes = new LinkedHashMap<>();
         attributes.put("connection_id", connectionId);
         // §20 names the reason without the translate prefix the disconnect key carries.
         attributes.put("reason", reasonKey.substring(reasonKey.indexOf(':') + 1));
         attributes.put("schema_version", hello.schemaVersion());
         ledger.record("client_rejected", attributes);
-        // Kick and return without setting a spawning instance: the engine checks isOnline() right
-        // after this event, so a kicked player never reaches the requireNonNull on that instance.
-        player.kick(Component.translatable(reasonKey));
     }
 }

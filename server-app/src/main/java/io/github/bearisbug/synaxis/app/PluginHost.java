@@ -1,6 +1,9 @@
 package io.github.bearisbug.synaxis.app;
 
 import io.github.bearisbug.synaxis.ServerProcess;
+import io.github.bearisbug.synaxis.app.store.PlayerStore;
+import io.github.bearisbug.synaxis.app.store.PluginPlayerData;
+import io.github.bearisbug.synaxis.app.transfer.TicketVerifier;
 import io.github.bearisbug.synaxis.event.Event;
 import io.github.bearisbug.synaxis.event.EventNode;
 import io.github.bearisbug.synaxis.plugin.AdmissionProvider;
@@ -42,6 +45,7 @@ final class PluginHost {
     private final AdmissionRegistry admission = new AdmissionRegistry();
     private final EventNode<Event> hostNode = EventNode.all("synaxis-host");
     private final HandshakeGate handshake;
+    private final PlayerStore store;
     private final List<LoadedPlugin> enabled = new ArrayList<>();
 
     /**
@@ -51,10 +55,23 @@ final class PluginHost {
      */
     private int attemptedPlugins;
 
+    /**
+     * A host whose player data lives in memory, for as long as the process does.
+     */
     PluginHost(ServerProcess process, Path pluginsDirectory, EventLedger ledger) {
+        this(process, pluginsDirectory, ledger, PlayerStore.inMemory(process, ledger::record));
+    }
+
+    PluginHost(ServerProcess process, Path pluginsDirectory, EventLedger ledger, PlayerStore store) {
+        this(process, pluginsDirectory, ledger, store, null);
+    }
+
+    PluginHost(ServerProcess process, Path pluginsDirectory, EventLedger ledger, PlayerStore store,
+               @Nullable TicketVerifier tickets) {
         this.process = process;
         this.pluginsDirectory = pluginsDirectory;
         this.ledger = ledger;
+        this.store = store;
         this.handshake = new HandshakeGate(HandshakeGate.phase(), HandshakeGate.BUDGET, ledger);
         process.eventHandler().addChild(hostNode);
         router.attach(hostNode);
@@ -63,7 +80,8 @@ final class PluginHost {
         // same way the core mode's diagnostic channel is: through the one payload listener of the
         // router, which is what keeps "an unknown channel is dropped" true for it as well.
         registerHostChannel(HandshakeGate.CHANNEL, handshake::receive);
-        new AdmissionGate(admission, handshake, ledger).attach(hostNode);
+        new AdmissionGate(admission, handshake, ledger, store, tickets).attach(hostNode);
+        store.attach(hostNode);
     }
 
     /**
@@ -119,6 +137,7 @@ final class PluginHost {
         final PluginSchedulerImpl scheduler = new PluginSchedulerImpl(id, process.scheduler());
         final LoadedPlugin loaded = new LoadedPlugin(plugin, id, EventNode.all("plugin/" + id), scheduler);
         final Path dataDirectory = pluginsDirectory.resolve(id);
+        final PluginPlayerData playerData = store.forPlugin(id);
         final long start = System.nanoTime();
         try {
             Files.createDirectories(dataDirectory);
@@ -126,12 +145,14 @@ final class PluginHost {
             plugin.onEnable(new PluginContextImpl(process,
                     new PluginEventsImpl(id, loaded.node()), scheduler,
                     new PluginChannelsImpl(id, router), new PluginAdmissionImpl(id, admission),
-                    dataDirectory, ledger::record, LoggerFactory.getLogger("plugin." + id)));
+                    dataDirectory, ledger::record, playerData, playerData, LoggerFactory.getLogger("plugin." + id)));
         } catch (Throwable throwable) {
+            playerData.enabled();
             LOGGER.error("Plugin failed to enable: plugin_id={}", id, throwable);
             tearDown(loaded);
             return;
         }
+        playerData.enabled();
         enabled.add(loaded);
         final long enableMs = (System.nanoTime() - start) / 1_000_000L;
         LOGGER.info("Plugin enabled: plugin_id={} version={} enable_ms={}", id, descriptor.version(), enableMs);

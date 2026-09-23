@@ -1,5 +1,6 @@
 module io.github.bearisbug.synaxis.testing {
     requires transitive io.github.bearisbug.synaxis;
+    requires transitive io.github.bearisbug.synaxis.plugin;
     requires org.junit.jupiter.api; // Users can bring their own version.
 
     exports io.github.bearisbug.synaxis.testing;

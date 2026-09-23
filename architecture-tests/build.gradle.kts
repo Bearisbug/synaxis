@@ -22,3 +22,9 @@ dependencies {
     testImplementation(project(":server-app"))
     testImplementation(libs.archunit.junit5)
 }
+
+// :server-app puts its logback.xml on this classpath, and that one writes logs/latest.log in the
+// working directory, which is this module's. The console mode builds no file appender.
+tasks.named<Test>("test") {
+    systemProperty("synaxis.app.log", "stdout")
+}

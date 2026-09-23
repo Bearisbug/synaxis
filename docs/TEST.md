@@ -14,6 +14,7 @@
 
 | 日期 | 改动 | 作者 |
 | --- | --- | --- |
+| 2026-09-23 | 跟进 `docs/DESIGN-PROD.md` v0.4（第 1、2 波实现回写）。2A 一节末尾的口径差异从三处减为两处：`record` 模式只按 serverId 匹配已写进 `REQ-PROD-044`、`API-PROD-027` 与 §19，删去该条；2B 一节开头的口径差异改为直接引用 `REQ-PROD-036`（`API-PROD-001` 与 §19 已补上 `proxyProtocolRequired=true`）。用例判据未动 | Bearisbug |
 | 2026-09-23 | 跟进 `docs/DESIGN-PROD.md` 第 1 波 1A 的连接闸门默认值（`REQ-PROD-001`，登录桶每地址 3 个令牌、每 2 s 回 1 个）：本机连多个机器人或连续跑多次探针的起服命令补 `-Dsynaxis.connection-gate.trusted-networks=127.0.0.0/8`。**§3 环境段**：「启动」命令补这个参数并写明沿用本段起法的用例都带着它，由此覆盖协议冒烟（`TC-014`、`TC-018`、`TC-019`、`TC-026`、`TC-027`）、`TC-031`、`TC-032`、`TC-034`（经 `docs/research/soak-2026-09-18/README.md` 的起服段，同步补了参数）与 M2 起服后跑探针或压测的用例（`TC-GAME-019`、`024`、`026`、`031`、`039`～`042`、`049`、`050`、`054`、`055`、`058`、`060`～`065`、`069`、`070`）；「压测 / 长稳 harness」与「入站包发包端」两条写明服务端要带它。**`TC-GAME-068` 第 1 步**起服命令补这个参数（第 3、5 步沿用第 1 步）。判闸门本身的 `TC-PROD-060`～`TC-PROD-069` 与自带参数的 `TC-PROD-103` 不动 | Bearisbug |
 | 2026-09-23 | 跟进 `docs/DESIGN-PROD.md` 第 2 波 2C（`REQ-PROD-030` 切完整正版路径档，`API-PROD-026`）。**新增 §4「生产就绪 · 第 2 波 2C：真客户端回归切完整正版路径」两条**：`TC-PROD-130`（无头容器里服务端在线模式指向 `record` 假 sessionserver、客户端带 authlib 三个 host 属性，dev 与生产启动器各一次 R1～R8 全绿、R3 带 `encrypted=true`，判定脚本加 `SESSION_LOG` 两项；反证以 `offline` 起服红在 R3 `encrypted=false` 与假服务两项，以 `offline-encrypted` 起服报告全绿、红在假服务两项；带 spike 一次）、`TC-PROD-131`（工作流 actionlint、假服务一步与判定步骤原样抽出来跑；反证换成没 join 过的假服务日志或删掉日志即红）。§5 生产就绪域加一行 | Bearisbug |
 | 2026-09-23 | 跟进 `docs/DESIGN-PROD.md` 第 2 波 2B（`REQ-PROD-036` 前半，G33 前半：删除 `Auth.Velocity` / `Auth.Bungee`，PROXY protocol 可信网段的启动自检；`store_meta` 自检归第 3 波 3A）。**新增 §4「生产就绪 · 第 2 波 2B：删除代理转发模式与 PROXY 可信网段」五条 `TC-PROD-120`～`TC-PROD-124`**：`Auth` 只剩两种模式（120，反证加回 record 时两个 `switch` 编译失败、连分支加回时测试红）、`HandshakeListener` 移出日志规则豁免名单（121）、缺可信网段或缺 `required` 时配置构建即拒绝（122）、真 socket 上网段外的 PROXY 头部被断开（123）、真进程拒绝起服与断开（124，端口 25624）；每条带反证，红在哪写进期望列；与设计文档的一处口径差异（需求表要求同时开 `required`，`API-PROD-001` 与 §19 只写可信网段）写在该节开头。`TC-PROD-061` 第 2、3 步与 `TC-PROD-062` 第 3 步反证期望里的测试行号随测试文件改动加 1，`TC-PROD-061` 第 2 步 `aConnectionThatSaysNothing…` 的红改为「给按时握手那条写握手包时 `Broken pipe`」（那条连接现在先写 PROXY 头部）。§5 回归映射加生产就绪域一行 | Bearisbug |
@@ -2418,13 +2419,13 @@ jcmd "$pid" VM.flags | tr ' ' '\n' | grep -cxE -- '-XX:\+UseG1GC|-XX:InitialHeap
 
 后置：确认 `zh_cn.json` 没有残留改动。
 
-本节与设计文档的口径差异三处，前两处对 §19：一是「非法加密握手」场景的「发两次」一档，第一把密钥是合法的，读线程处理完它就把 `hasJoined` 交给验证线程，第二把随后才到，所以假服务会收到 1 次查询而不是 0 次；本节只判第二把得到加密的 `synaxis:protocol-error`、验证结果被丢弃（`TC-PROD-096`）。二是「不可用时重试」场景的超时档按比例缩短为超时 1 s、阻塞 3 s（`TC-PROD-094`）。三是 `REQ-PROD-044` 与 `API-PROD-027` 写的 `record` 模式只对 join 过的「(用户名, serverId)」回 200，假服务实际只按 serverId 认：join 请求体只有 `selectedProfile` 与 `serverId`，不带用户名，所以 join(Steve, H1) 之后查 `hasJoined?username=Alex&serverId=H1` 也回 200，正文 `name` 是 `Alex`、`id` 是 join 时的 profile；每次登录的 serverId 都是新的，§19 的场景不受影响，`TC-PROD-102` 只判 serverId 一档。
+本节与设计文档 §19 的口径差异两处：一是「非法加密握手」场景的「发两次」一档，第一把密钥是合法的，读线程处理完它就把 `hasJoined` 交给验证线程，第二把随后才到，所以假服务会收到 1 次查询而不是 0 次；本节只判第二把得到加密的 `synaxis:protocol-error`、验证结果被丢弃（`TC-PROD-096`）。二是「不可用时重试」场景的超时档按比例缩短为超时 1 s、阻塞 3 s（`TC-PROD-094`）。
 
 ### 生产就绪 · 第 2 波 2B：删除代理转发模式与 PROXY 可信网段
 
 五条对应 `REQ-PROD-036` 的前半（清单 G33 前半，`ADR-PROD-007`，`API-PROD-001` 启动自检里 PROXY 那一句）。`store_meta.auth_mode` 的三条 §19 场景与「鉴权模式与库不一致拒绝起服」的前半归第 3 波 3A，本节不涉及；那条场景 Then 的后半「Auth 只有 Online 与 Offline 两种」由 `TC-PROD-120` 覆盖。`TC-PROD-120`～`TC-PROD-123` 是 JUnit，命令统一写作「跑 `<类>`」，即 `./gradlew :test --tests <类> --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts`，结果看 `build/test-results/test/TEST-<类>.xml`；`TC-PROD-124` 起真进程，端口 25624。反证一律是「临时改一处实现、重跑、看红、还原」，还原后 `git status` 必须干净。
 
-与设计文档的口径差异一处：`REQ-PROD-036` 写「开 PROXY protocol 时必须配可信网段并开 `proxyProtocolRequired`」，`API-PROD-001` 与 §19 只写了可信网段为空即拒绝起服；实现按需求表两项都查，所以本节的 PROXY 配置一律同时带 `synaxis.proxy-protocol.required=true`。
+`REQ-PROD-036` 要求开 PROXY protocol 时同时配可信网段并设 `synaxis.proxy-protocol.required=true`，缺一项拒绝起服，所以本节的 PROXY 配置一律两项都带。
 
 #### `TC-PROD-120` `Auth` 只剩 `Online` 与 `Offline`，`Velocity` / `Bungee` 已删除 — 对应 `REQ-PROD-036` · 级别: 回归 · 执行者: AI
 

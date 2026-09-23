@@ -93,7 +93,7 @@ public class WatchdogTest {
         assertEquals(60_000L, rig.deaths.poll(10, TimeUnit.SECONDS), "judged dead at 60 s, the host is told");
 
         rig.at(74_999);
-        assertTrue(rig.watchdog.patrol(rig.onDeath));
+        assertTrue(rig.watchdog.patrol(rig.onDeath), "still dying 14.999 s after the verdict");
         assertEquals(List.of(), rig.halts, "the halt waits 15 s");
         assertEquals(10, rig.warnings.size(), "no more warnings once dead");
 

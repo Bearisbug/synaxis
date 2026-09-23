@@ -14,6 +14,7 @@
 
 | 日期 | 改动 | 作者 |
 | --- | --- | --- |
+| 2026-09-23 | 跟进 `docs/DESIGN-PROD.md` 第 0 波 0B 组（`REQ-PROD-014` 前半：tick 看门狗打栈、判死、崩溃报告、halt）。**新增 `TC-PROD-020`～`TC-PROD-023`**，每条带反证（临时破坏实现、重跑、看红、还原），红在哪一条写进期望列；§19 的「进入落盘停机」「倒计时期间卡死仍先落盘」两处归第 3 波 3A，本波各用例只验 halt 路径。**§3 运行时产物**：崩溃报告也在看门狗判死时写，并注明判死后以退出码 70 halt 与 `synaxis.watchdog.timeout-ms=0` 关闭。§5 回归映射加生产就绪域一行，跨域牵连加一条 | Bearisbug |
 | 2026-09-23 | 0A 组返工：`TC-PROD-006` 第 1 步加 `aRecordRacingTheCloseIsWrittenOrRefusedNeverLeftInTheQueue`（`record` 与停机竞争时那一行要么落盘、要么在日志里计数），新增第 5 步反证；`TC-PROD-001` 第 1 步加引擎默认落点 10 s 限流一条，新增第 4 步反证；`TC-PROD-001`、`TC-PROD-003`、`TC-PROD-006`、`TC-PROD-007` 反证期望里的测试行号随测试文件改动更新，`TC-PROD-006` 第 3 步由红 3 条改为红 4 条 | Bearisbug |
 | 2026-09-23 | 跟进 `docs/DESIGN-PROD.md` 第 0 波 0A 组（`REQ-PROD-015` 崩溃报告与未捕获异常、`REQ-PROD-016` 日志文件与轮转、`REQ-PROD-017` 事件台账缓冲写入）。**新增 `TC-PROD-001`～`TC-PROD-008`**，每条带一步反证（临时破坏实现、重跑、看红、还原），红在哪一条写进期望列。**§3 环境段**：「没有服务端日志文件」改为默认另写 `logs/latest.log`（`-Dsynaxis.app.log=stdout` 时不写），台账文件名改为 `logs/events-<shard_id>-YYYYMMDD.jsonl`（`shard_id` 默认 `local`，glob `events-*.jsonl` 照旧匹配）并注明写盘最多晚 1 s；新增系统属性 `synaxis.app.shard-id`、`synaxis.app.ledger-max-bytes-per-day`、`synaxis.app.log`。**`TC-035` 保留 ID、判据未动**：第 2 步里「`EventLedgerTest` 一条」改为点名 `aFloodOfEventsIntoAnUnwritableLedgerWritesOneLine`（该类现有六条，其余五条归 `TC-PROD-006` / `TC-PROD-007`）。§5 回归映射加生产就绪域一行与跨域牵连一条 | Bearisbug |
 | 2026-09-23 | 跟进 `docs/DESIGN-M2.md` v0.44（对局世界由服务端在载入阶段整图算光照）。**`TC-GAME-029` 保留 ID**：第 2 步的实测参考值换成含光照的 2026-09-23 数字（判据 `load_ms` < 3000、`heap_gc_runs` ≥ 2、`heap_delta_kib` 在 `0` 与 `51200` 之间不变）；新增第 10 步「进场即有光照」（`MatchIntegrationTest#theMapIsLitBeforeTheMatchRuns`）与第 11 步反证（chunk supplier 改回 `DynamicChunk` 则第 10 步必红）。§5 跨域牵连补一条：动了对局的 chunk supplier、载入流程或引擎 `LightingChunk` / `instance.light` → 加 TC-GAME-029 | Bearisbug |
@@ -133,7 +134,7 @@ REQ-M2 ↔ TC 对照（可读索引，覆盖与否由上述联检判）：
 
 - 启动：`export JAVA_HOME=/opt/homebrew/opt/openjdk@25/libexec/openjdk.jdk/Contents/Home && ./gradlew :server-app:run --no-daemon --console=plain --init-script gradle/init/aliyun-mirror.init.gradle.kts`（`REQ-M2-021` 起 `server-app` 是唯一启动入口，`smoke` 已删除）。默认绑定 `0.0.0.0:25565`，端口用 `-Dsynaxis.app.port=<port>` 覆盖（`run` 任务把 `synaxis.*` 系统属性转给 fork 出来的 JVM）。TC-004 与 TC-018 要往服务端 stdin 写 `stop`，因此运行期间必须保持 stdin 打开（`:server-app:run` 已把 Gradle 进程的 stdin 转给应用；后台运行时用 FIFO 喂入或 `( sleep N; echo stop ) | ./gradlew :server-app:run …`）。
 - 就绪判定：stdout 出现 `synaxis server-app listening on 0.0.0.0:25565`，且 `nc -z 127.0.0.1 25565` 退出码为 0。
-- 运行时产物：进程在**仓库根**写 `plugins/<plugin_id>/`（插件数据目录）、`logs/events-<shard_id>-YYYYMMDD.jsonl`（事件台账，`shard_id` 由 `-Dsynaxis.app.shard-id` 给，默认 `local`）、`logs/latest.log`（服务端日志文件，按天或 256 MB 滚动成 `logs/YYYY-MM-DD.N.log.gz`）与致命错误时的 `crash-reports/<yyyyMMdd-HHmmss>-<shard_id>.txt`，四者均已 gitignore；基线重置 = `rm -rf plugins logs crash-reports` 后重启。stdout 照旧输出全部日志，就绪判定与各用例的「重定向 stdout 留证据」不变；`-Dsynaxis.app.log=stdout` 时只走 stdout、不建 `latest.log`（`REQ-PROD-016`）。启动脚本 `server-app/build/install/server-app/bin/server-app`（`:server-app:installDist` 产出）与 `:server-app:run` 都带 `-XX:+HeapDumpOnOutOfMemoryError -XX:+ExitOnOutOfMemoryError`，OOM 时在工作目录留 `java_pid<pid>.hprof` 并以退出码 3 结束（`REQ-PROD-015`）。
+- 运行时产物：进程在**仓库根**写 `plugins/<plugin_id>/`（插件数据目录）、`logs/events-<shard_id>-YYYYMMDD.jsonl`（事件台账，`shard_id` 由 `-Dsynaxis.app.shard-id` 给，默认 `local`）、`logs/latest.log`（服务端日志文件，按天或 256 MB 滚动成 `logs/YYYY-MM-DD.N.log.gz`）与致命错误或看门狗判死时的 `crash-reports/<yyyyMMdd-HHmmss>-<shard_id>.txt`，四者均已 gitignore；基线重置 = `rm -rf plugins logs crash-reports` 后重启。stdout 照旧输出全部日志，就绪判定与各用例的「重定向 stdout 留证据」不变；`-Dsynaxis.app.log=stdout` 时只走 stdout、不建 `latest.log`（`REQ-PROD-016`）。启动脚本 `server-app/build/install/server-app/bin/server-app`（`:server-app:installDist` 产出）与 `:server-app:run` 都带 `-XX:+HeapDumpOnOutOfMemoryError -XX:+ExitOnOutOfMemoryError`，OOM 时在工作目录留 `java_pid<pid>.hprof` 并以退出码 3 结束（`REQ-PROD-015`）。 tick 卡住 60 s 时看门狗判死、写崩溃报告，再过 15 s 以退出码 70 结束（`REQ-PROD-014`）；挂调试器在 tick 线程上停断点之前给 `-Dsynaxis.watchdog.timeout-ms=0`，否则进程会被 halt。
 - 日志关联：与连接相关的服务端日志行统一带 `connection_id=<uuid>` —— `Login success: username=… connection_id=… remote_address=…`、`Kicking connection_id=… identifier=… reason=synaxis:…`、`Connection closed: connection_id=… identifier=…`、`Player failed to respond to known packs query: username=… connection_id=…`；宿主侧的行带 `plugin_id=<id>`——`Plugin enabled: plugin_id=… version=… enable_ms=…`、`Registered channel: plugin_id=… channel=…`、`Dropped a payload on an unregistered channel: connection_id=… channel=… bytes=…`、`Refusing a connection: connection_id=… reason=… cause=…`、`Admission provider is over its 200 ms budget: plugin_id=… connection_id=… admit_ms=…`。启动被拒时的那一行没有这两个 id：`Refusing to start: <原因>`（非法端口属性或非法 descriptor，退出码 1，见 TC-GAME-009 / TC-GAME-010）。
 - 入口：TCP `127.0.0.1:25565`；离线模式（`Auth.Offline`），任意用户名；压缩阈值 256 字节。
 - 测试账号：
@@ -1868,6 +1869,60 @@ REQ-M2 ↔ TC 对照（可读索引，覆盖与否由上述联检判）：
 
 后置：停服（按 pid），结束占着 FIFO 的 `sleep`，`rm -rf $W`；`git status` 干净。
 
+### 生产就绪 · 第 0 波 0B：tick 看门狗
+
+`docs/DESIGN-PROD.md` 的 `REQ-PROD-014` 前半（G12），接口见 `API-PROD-013`，状态机见 §11.5。四个键 `synaxis.watchdog.early-warning-ms` 10,000、`early-warning-every-ms` 5,000、`timeout-ms` 60,000、`halt-after-ms` 15,000，`0` 关闭对应一段（`timeout-ms=0` 时整个看门狗不起线程）。**本波判死后直接进 halt 计时**：§19 里「第 60 s 写崩溃报告并进入落盘停机」只验到写崩溃报告为止，「停机倒计时期间 tick 卡死仍先落盘」整条与「落盘停机 15 s 未完成即 halt」里的「落盘停机」都归第 3 波 3A；「15 s 后以退出码 70 halt」本波验。单元用例用假时钟手动巡检；halt 会结束 JVM，所以真 halt 在测试另起的一个 JVM 里验；真进程那条用 `:server-app:installDist` 的启动脚本，端口 25602，工作目录与 FIFO 的做法同 0A 一节。
+
+#### `TC-PROD-020` 卡住的 tick：第 10 s 打栈、之后每 5 s 一次、第 60 s 判死、判死后 15 s 以 70 halt — 对应 `REQ-PROD-014` · 级别: 回归 · 执行者: AI
+
+前置：工作副本干净。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | `./gradlew :test --tests '*WatchdogTest*' --tests '*ServerConfigTest*' --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts` | `BUILD SUCCESSFUL`；`WatchdogTest#aStuckTickIsReportedAtTenSecondsThenEveryFiveAndJudgedDeadAtSixty`（默认四个值、假时钟每秒巡检一次）：9.999 s 没有警告；10 s 第一条，以 `Tick watchdog: the tick has been running for 10000 ms` 开头，带跑 tick 那条线程的名字与完整栈；14.999 s 仍是 1 条，到 59 s 共 10 条（10、15……55 s）；60 s 判死，宿主收到一次 `60000`；74.999 s 仍在等、不再警告；75 s 以 `70` halt 一次，此后巡检返回「不再看」。`#aTickThatEndsIsWatchedAfreshAndAVerdictIsNeverTakenBack`：12.5 s 结束的 tick 之后，30 s 起的新 tick 从自己的起点重新计 10 s 与 60 s；新 tick 在判死后结束也不撤回判决，照样 halt。`ServerConfigTest#defaults` 四个默认值 10000 / 5000 / 60000 / 15000，`testJvmUsesTheProductionDefaults` 照旧绿（四个新键也在「默认值 = 读系统属性」的断言里） |
+| 2 | 反证「每 5 s」有齿：`src/main/java/io/github/bearisbug/synaxis/Watchdog.java` 的 `now - lastWarning >= earlyWarningEvery)` 改成 `now - lastWarning >= earlyWarningEvery * 2)`，只跑 `:test --tests '*WatchdogTest*'`，再 `git checkout --` 该文件 | 红 2 条：`aStuckTick…` 断在「10, 15, … 55 s ==> expected: <10> but was: <5>」（`WatchdogTest.java:87`）；`aTickThatEnds…` 断在「40, 45, … 85 s ==> expected: <11> but was: <6>」（`:124`）；还原后复绿 |
+| 3 | 反证「15 s 后」有齿：同一文件 `now - dyingSince < haltAfter) return` 改成 `now - dyingSince < 0) return`（判死后下一次巡检就 halt），只跑 `:test --tests '*WatchdogTest*'`，再 `git checkout --` 该文件 | 红 1 条：`aStuckTick…` 断在「still dying 14.999 s after the verdict ==> expected: <true> but was: <false>」（`:96`）；还原后复绿 |
+
+后置：`git status` 干净。
+
+#### `TC-PROD-021` 看门狗接在每个 tick 上，`0` 关闭一段，停看门狗不放过在途的卡死 — 对应 `REQ-PROD-014` · 级别: 回归 · 执行者: AI
+
+前置：工作副本干净。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | `./gradlew :test --tests '*WatchdogTest*' --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts` | `BUILD SUCCESSFUL`；`#zeroTurnsAStageOff`：`early-warning-ms=0` 一条警告都没有、60 s 照样判死；`early-warning-every-ms=0` 只有第一条；`halt-after-ms=0` 判死后 1 小时也不 halt，停看门狗后巡检返回「不再看」；`timeout-ms=0` 时 `start` 不起线程；负值在建配置时抛 `IllegalArgumentException`。`#stopWatchesTheTickInFlightToItsEnd`：线程名 `Syn-Watchdog`、daemon，重复 `start` 抛 `IllegalStateException`；没有在途 tick 时 `stop` 后线程 10 s 内退出；有在途 tick 时 `stop` 之后 200 ms 线程仍在，时钟拨到 60 s 判死、75 s halt 后线程才退出。`#aTickOfTheProcessStuckPastTheTimeoutIsJudgedDead`：真 `ServerProcess`（警告 200 ms、判死 1,200 ms、halt 关闭），调度任务把 `ticker().tick` 卡住，10 s 内收到判死，卡住时长 ≥ 1,200 ms |
+| 2 | 反证「停不撤回在途判决」有齿：`Watchdog.java` 的 `if (halted) return false;` 改成 `if (halted \|\| stopRequested) return false;`，重跑第 1 步，再 `git checkout --` 该文件 | 红 1 条：`stopWatches…` 断在「a tick in flight is still watched ==> expected: <true> but was: <false>」（`WatchdogTest.java:193`）；还原后复绿 |
+| 3 | 反证「每个 tick 都经过看门狗」有齿：`src/main/java/io/github/bearisbug/synaxis/ServerProcessImpl.java` 的 `final long watched = watchdog.tickStarted();` 改成 `final long watched = 0;`，重跑第 1 步，再 `git checkout --` 该文件 | 红 1 条：`aTickOfTheProcess…` 等满 10 s 后断在「the watchdog saw the tick of the process ==> expected: not <null>」（`:230`）；还原后复绿 |
+
+后置：`git status` 干净。
+
+#### `TC-PROD-022` 真 JVM 卡死：警告里有 tick 线程的栈，判死写一份崩溃报告，halt 退出码 70（本波只验 halt 路径） — 对应 `REQ-PROD-014` · 级别: 回归 · 执行者: AI
+
+前置：工作副本干净。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | `./gradlew :server-app:test --tests '*WatchdogHaltTest*' --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts` | `BUILD SUCCESSFUL`，单条约 6 s。`WatchdogHaltTest` 另起一个 JVM 跑 `WatchdogHaltFixture`：`MinecraftServer` 真起在 `127.0.0.1:0`，看门狗照 `Main#startWatchdog` 接到 `CrashReports`，首个 tick 在调度任务里永久 park；四个键由 `-Dsynaxis.watchdog.*` 给成 500 / 1000 / 3000 / 2000。断言：子 JVM 退出码 `70`；日志有 `Tick watchdog on: stacks after 500 ms and every 1000 ms after that, judged dead after 3000 ms, halted with exit code 70 2000 ms later`；至少一条 `Tick watchdog: the tick has been running for` 警告，栈里有 `"Syn-TickScheduler"`、`"Syn-Tick-0"` 与卡住的帧 `WatchdogHaltFixture.stall`；`is judged dead` 那一行到进程退出 ≥ 1,500 ms；有 `halting the process with exit code 70`；`crash-reports/` 下恰 1 个 `…-watchdog-test.txt`，含 `Reason: tick watchdog: the tick has been stuck for `、`-- Thread dump --` 与 `WatchdogHaltFixture.stall`。本轮实测：警告在 1,000 ms 与 2,002 ms（巡检每 1 s 一次，所以第一条落在阈值之后的第一次巡检），判死在 3,012 ms，halt 在判死后 2,018 ms |
+| 2 | 反证「退出码 70」有齿：`src/main/java/io/github/bearisbug/synaxis/Watchdog.java` 默认构造器里的 `status -> Runtime.getRuntime().halt(status)` 改成 `status -> Runtime.getRuntime().halt(status - 69)`（**不要写成 `halt(1)`**：`status` 变成无用 lambda 参数，Error Prone 的 `UnnamedVariable` 让 `:compileJava` 先红），重跑第 1 步，再 `git checkout --` 该文件 | 红 1 条：`expected: <70> but was: <1>`（`WatchdogHaltTest.java:63`，消息是子 JVM 的全部输出）；还原后复绿 |
+| 3 | 反证「判死即写报告」有齿：同一文件判死分支的 `Thread.ofPlatform().name(THREAD_NAME + "-Report").daemon().start(() -> {` 改成 `.unstarted(() -> {`（报告线程建了不启动），重跑第 1 步，再 `git checkout --` 该文件 | 红 1 条：`NoSuchFileException: …/synaxis-watchdog-<随机>/crash-reports`（`:81`，目录都没建出来）；还原后复绿 |
+
+后置：`git status` 干净；测试在 `finally` 里删掉自己的 `synaxis-watchdog-*` 临时目录，`ls $TMPDIR \| grep -c synaxis-watchdog` 为 `0`。
+
+#### `TC-PROD-023` 真进程：宿主起停看门狗，`timeout-ms=0` 不起，负值拒启，正常停机退出码 0 — 对应 `REQ-PROD-014` · 级别: 回归 · 执行者: AI
+
+前置：`./gradlew :server-app:installDist --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts` 已跑；空的临时目录 `$W` 作工作目录，`$W/in.fifo` 按 0A 一节开头的做法保持打开；25602 空闲；起服命令前带 `JAVA_HOME=<JDK 25>`（启动脚本不带它会用系统 Java，报 `UnsupportedClassVersionError`）。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | `cd $W && (JAVA_OPTS="-Dsynaxis.app.port=25602" $REPO/server-app/build/install/server-app/bin/server-app < in.fifo > stdout.log 2>&1; echo "exit=$?" > code) &`，等 20 s，`grep -c listening stdout.log`、`grep 'Tick watchdog' stdout.log`，再 `jcmd <java pid> Thread.print \| grep '"Syn-Watchdog"'` | `1`；恰 1 行 `Tick watchdog on: stacks after 10000 ms and every 5000 ms after that, judged dead after 60000 ms, halted with exit code 70 15000 ms later`（在 `listening` 之前）；线程 `"Syn-Watchdog"` 在、`daemon` |
+| 2 | `echo stop > in.fifo`，等 8 s，`cat code`、`ls $W`、`grep -c 'Tick watchdog' stdout.log` | `exit=0`；没有 `crash-reports/`；计数仍是 `1`（正常停机不触发警告，停机任务最后一个是停看门狗） |
+| 3 | `rm -rf $W/logs $W/plugins $W/stdout.log $W/code`，加 `-Dsynaxis.watchdog.timeout-ms=0` 重做第 1、2 步 | 就绪；唯一一行 `Tick watchdog off (synaxis.watchdog.timeout-ms=0)`；`exit=0` |
+| 4 | 清空日志，以 `JAVA_OPTS="-Dsynaxis.app.port=25602 -Dsynaxis.watchdog.halt-after-ms=-1"` 起服（stdin 接 `/dev/null`），`echo exit=$?` | `exit=1`；`Refusing to start: the watchdog durations must not be negative but were 10000, 5000, 60000 and -1` |
+| 5 | 反证宿主起看门狗有齿：`server-app/src/main/java/io/github/bearisbug/synaxis/app/Main.java` 的 `final Watchdog watchdog = startWatchdog(process, crashReports);` 改成 `final Watchdog watchdog = process.watchdog();`，重新 `installDist`，清空 `$W` 后重做第 1、2 步；再 `git checkout --` 该文件并重新 `installDist`，重做第 1 步 | 改动下就绪照常，但 `grep -c 'Tick watchdog'` 为 `0`（本轮实测），`exit=0`；还原后回到第 1 步那一行 |
+
+后置：停服（按 pid），结束占着 FIFO 的 `sleep`，`rm -rf $W`；`git status` 干净。
+
 ## 5. 回归策略
 
 - **全量轮**（全部用例）：首次成稿、每个阶段 gate（引擎域阶段 0、2、3；游戏域 `docs/DESIGN-M2.md` §26 的阶段 1～6b）、跨功能域改动、地基变更（JDK、Gradle、镜像、协议版本、模块拆分、启动入口）。
@@ -1875,7 +1930,8 @@ REQ-M2 ↔ TC 对照（可读索引，覆盖与否由上述联检判）：
   - 引擎域：构建与仓库 → TC-001、TC-002、TC-004、TC-006、TC-021、TC-029，删除与注册表 → TC-008、TC-009、TC-020、TC-036，命名与合规 → TC-011、TC-028，协议 → TC-014、TC-018、TC-019、TC-026、TC-027、TC-030、TC-031、TC-032、TC-034、TC-035、TC-GAME-069、TC-GAME-070、TC-GAME-071（后三条是攻击面盘点补的，动了 `network` / `listener` 包或 `ServerConfig` 的连接与超时项就跑），卫生 → TC-015、TC-016，门面与配置 → TC-023、TC-025，分层 → TC-024、TC-035。
   - 游戏域：模块与门禁 → TC-GAME-001～TC-GAME-006、TC-GAME-059、TC-GAME-067，插件宿主 → TC-GAME-009～TC-GAME-011、TC-GAME-014～TC-GAME-016、TC-GAME-053～TC-GAME-055（TC-GAME-007、TC-GAME-008、TC-GAME-012、TC-GAME-013 已废弃），协议与握手 → TC-GAME-017～TC-GAME-028、TC-GAME-049、TC-GAME-050、TC-GAME-060～TC-GAME-064（TC-GAME-021、TC-GAME-023、TC-GAME-025 已废弃），世界与对局 → TC-GAME-029、TC-GAME-031、TC-GAME-033～TC-GAME-036、TC-GAME-056、TC-GAME-057（TC-GAME-030、TC-GAME-032 已废弃），单位与寻路 → TC-GAME-052、TC-GAME-039～TC-GAME-042、TC-GAME-051、TC-GAME-065、TC-GAME-068，镜头 → TC-GAME-043、TC-GAME-044，客户端模组 → TC-GAME-038、TC-GAME-045～TC-GAME-047、TC-GAME-066，启动器 → TC-GAME-048、TC-GAME-049、TC-GAME-050、TC-GAME-058。
   - 生产就绪域：宿主日志线（`REQ-PROD-015`～`REQ-PROD-017`）→ TC-PROD-001～TC-PROD-008。
-  - 跨域牵连（必须一起跑）：动了 `network/packet` 下的包注册表（增删包、调顺序、升协议版本）→ 加 TC-036；动了启动入口或就绪日志 → 加 TC-GAME-048、TC-GAME-029、TC-GAME-057、TC-GAME-058 与全部以进程为前置的引擎域用例（启动序列一变，「对局在 bind 之前就绪、tick 在 bind 之后才起」这条口径就要重验）；动了握手、准入回调或探针 → 加 TC-GAME-049、TC-GAME-050、TC-GAME-060、TC-GAME-061 与 TC-004、TC-014、TC-018、TC-019、TC-020、TC-026、TC-027 七条存量 TC；动了客户端模组侧的握手或拾取 → 加 TC-GAME-066；动了 `:protocol` 消息布局 → 加 TC-GAME-017 与客户端侧同一份向量；动了引擎 `Entity` 的位置推进入口 → 加 TC-GAME-051、TC-GAME-067 与 TC-GAME-040；动了对局的 chunk supplier、`Match#load` 的载入流程或引擎 `LightingChunk` / `instance.light` → 加 TC-GAME-029（第 10、11 步是光照的先红后绿）；动了 `ExceptionManager` / `ExceptionHandler`、宿主的 `EventLedger`、`logback*.xml` 或 `server-app` 的启动参数 → 加 TC-PROD-001～TC-PROD-008 与 TC-035。
+  - 生产就绪域：tick 看门狗（`REQ-PROD-014` 前半）→ TC-PROD-020～TC-PROD-023。
+  - 跨域牵连（必须一起跑）：动了 `network/packet` 下的包注册表（增删包、调顺序、升协议版本）→ 加 TC-036；动了启动入口或就绪日志 → 加 TC-GAME-048、TC-GAME-029、TC-GAME-057、TC-GAME-058 与全部以进程为前置的引擎域用例（启动序列一变，「对局在 bind 之前就绪、tick 在 bind 之后才起」这条口径就要重验）；动了握手、准入回调或探针 → 加 TC-GAME-049、TC-GAME-050、TC-GAME-060、TC-GAME-061 与 TC-004、TC-014、TC-018、TC-019、TC-020、TC-026、TC-027 七条存量 TC；动了客户端模组侧的握手或拾取 → 加 TC-GAME-066；动了 `:protocol` 消息布局 → 加 TC-GAME-017 与客户端侧同一份向量；动了引擎 `Entity` 的位置推进入口 → 加 TC-GAME-051、TC-GAME-067 与 TC-GAME-040；动了对局的 chunk supplier、`Match#load` 的载入流程或引擎 `LightingChunk` / `instance.light` → 加 TC-GAME-029（第 10、11 步是光照的先红后绿）；动了 `ExceptionManager` / `ExceptionHandler`、宿主的 `EventLedger`、`logback*.xml` 或 `server-app` 的启动参数 → 加 TC-PROD-001～TC-PROD-008 与 TC-035。动了 `ServerProcessImpl` 的 `TickerImpl`、`Watchdog`、`ServerConfig` 的 `synaxis.watchdog.*` 键或宿主的 `CrashReports` → 加 TC-PROD-020～TC-PROD-023 与 TC-PROD-002。
   - 影响面不确定时升级为全量轮。
 - **复测轮**（上轮失败用例 + 全部冒烟级）：修复失败项之后。
 - **人工收口轮**（仅上轮「待人工」用例）：AI 轮之后由人工补测 TC-016、TC-030、TC-GAME-020、TC-GAME-038、TC-GAME-046、TC-GAME-047，不要求冒烟级。

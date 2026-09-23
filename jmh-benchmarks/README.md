@@ -48,7 +48,7 @@ export JAVA_HOME=/opt/homebrew/opt/openjdk@25/libexec/openjdk.jdk/Contents/Home
 | 参数 | 默认 | 含义 |
 | --- | --- | --- |
 | `h` | 384 | 世界高度。384 用原版布局 minY=-64；256 与 64 从 y=0 起（与 M2 对局世界一致） |
-| `t` | natural | 地形：`natural`（噪声高度场 + 基岩/深板岩/石头/泥土/草/沙/水 + 约 1.2% 矿石 + 噪声隧道 + 约每区块一棵橡树）、`solid`（同一地表，地下无矿无洞）、`flat40`（M2 RTS 地图形状：石头到 y=40，每 64 列一根 3 格柱子） |
+| `t` | natural | 地形：`natural`（噪声高度场 + 基岩/深板岩/石头/泥土/草/沙/水 + 约 1.2% 矿石 + 噪声隧道 + 约每两个区块一棵橡树）、`solid`（同一地表，地下无矿无洞）、`flat40`（M2 RTS 地图形状：石头到 y=40，每 64 列一根 3 格柱子） |
 | `p` | opt | `opt`：生成后对每个 section 做 `Palette#optimize(SIZE)`，等于从网络格式（.synx / Anvil）解码出来的间接调色板；`setall`：保持 `setAllRelative` 生成的直接调色板（15 bit/方块） |
 | `grid` / `n` | 32 / —— | `packet`、`local` 用 grid×grid 区块；`relight` 用 n 个区块（必须是平方数） |
 | `rounds` / `warmup` | 3 / 1 | 测量轮数与丢弃的预热轮数；每轮新建世界 |
@@ -75,4 +75,4 @@ export JAVA_HOME=/opt/homebrew/opt/openjdk@25/libexec/openjdk.jdk/Contents/Home
 `LightingChunk` 的 work-stealing 线程池，所以另记进程 CPU 时间（`*CpuMs`）。`wholePass` 是整遍序列化的总耗时除以区块数，
 比逐区块分布更能代表平均成本：懒光照下第一个碰到某片区域的区块会顺带算邻居，逐区块数字偏斜。
 `loadAverageBefore` / `loadAverageAfter` 是作业前后的 1 分钟系统负载，高于核数一半时墙钟数字只能当上界。
-`summarize_worldbench.py <json>`（在 `.venv` 里跑，只用标准库）把结果打印成 bench-2026-09.md 用的表格。
+`tools/worldbench/summarize_worldbench.py <json>`（在 `.venv` 里跑，只用标准库）把结果打印成 bench-2026-09.md 用的表格。

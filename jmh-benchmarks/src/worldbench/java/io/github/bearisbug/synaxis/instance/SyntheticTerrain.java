@@ -13,7 +13,7 @@ import io.github.bearisbug.synaxis.instance.generator.Generator;
  * <ul>
  *   <li>{@link Kind#NATURAL}: two-scale value-noise height field (hills plus mountains), bedrock,
  *   deepslate below y=0, stone, three dirt layers, grass, sand beaches, water up to sea level,
- *   ores in about 1.2% of the stone, noise tunnels, and about one oak tree per chunk.</li>
+ *   ores in about 1.2% of the stone, noise tunnels, and about one oak tree per two chunks.</li>
  *   <li>{@link Kind#SOLID}: the same surface without ores and caves, what a hand-built map with an
  *   untouched underground looks like.</li>
  *   <li>{@link Kind#FLAT40}: the M2 RTS map shape, stone up to y=40 with a 3-block pillar on one

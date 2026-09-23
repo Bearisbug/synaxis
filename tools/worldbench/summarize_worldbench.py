@@ -1,6 +1,6 @@
 """Prints the LargeWorldBench result JSON as the markdown tables bench-2026-09.md uses.
 
-Usage: python jmh-benchmarks/summarize_worldbench.py <results.json>
+Usage: python3 tools/worldbench/summarize_worldbench.py <results.json>
 """
 import json
 import sys

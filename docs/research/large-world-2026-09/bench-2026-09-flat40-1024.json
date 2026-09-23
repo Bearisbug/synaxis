@@ -1,0 +1,133 @@
+{
+  "schema": 1,
+  "machine": {
+    "os": "Mac OS X 15.3.2 aarch64",
+    "cpu": "Apple M4 Pro",
+    "availableProcessors": 12,
+    "physicalMemoryGiB": 24.0,
+    "java": "OpenJDK 64-Bit Server VM 25.0.4.1",
+    "gitCommit": "3085e0edab091f644c0697c9f8becc7ddc59dad4"
+  },
+  "childJvmArgs": [
+    "-Xms6g",
+    "-Xmx6g",
+    "-XX:+UseG1GC",
+    "-XX:+AlwaysPreTouch"
+  ],
+  "jobs": [
+    {
+      "params": {
+        "type": "relight",
+        "height": 64,
+        "minY": 0,
+        "terrain": "flat40",
+        "palettes": "optimized (indirect, as decoded from the network format)",
+        "chunks": 1024,
+        "rounds": 5,
+        "warmup": 1,
+        "compressionThreshold": 256
+      },
+      "relightWallMs": {
+        "n": 5,
+        "median": 318.773291,
+        "p95": 1231.502916,
+        "mean": 528.3877914,
+        "min": 119.775125,
+        "max": 1231.502916
+      },
+      "relightCpuMs": {
+        "n": 5,
+        "median": 318.697,
+        "p95": 1047.711,
+        "mean": 573.0692,
+        "min": 296.248,
+        "max": 1047.711
+      },
+      "generatedKiBPerChunk": {
+        "n": 5,
+        "median": 7.306419372558594,
+        "p95": 7.3115997314453125,
+        "mean": 7.305851745605469,
+        "min": 7.3018035888671875,
+        "max": 7.3115997314453125
+      },
+      "relightHeapDeltaMiB": {
+        "n": 5,
+        "median": 3.07586669921875,
+        "p95": 3.093475341796875,
+        "mean": 3.0698486328125,
+        "min": 3.0488433837890625,
+        "max": 3.093475341796875
+      },
+      "litTotalKiBPerChunk": {
+        "n": 5,
+        "median": 10.379936218261719,
+        "p95": 10.399894714355469,
+        "mean": 10.375700378417969,
+        "min": 10.35064697265625,
+        "max": 10.399894714355469
+      },
+      "breakdown": {
+        "chunks": 1024,
+        "sectionsPerChunk": 4,
+        "singleValueSectionsPerChunk": 2.0,
+        "indirectSectionsPerChunk": 2.0,
+        "directSectionsPerChunk": 0.0,
+        "paletteValuesKiBPerChunk": 4.03125,
+        "skyLightArraysPerChunk": 1.0,
+        "blockLightArraysPerChunk": 0.0,
+        "lightArraysKiBPerChunk": 2.015625
+      },
+      "rounds": [
+        {
+          "loadMs": 510.637708,
+          "relightMs": 1231.502916,
+          "relightCpuMs": 1047.711,
+          "generatedMiB": 7.3115997314453125,
+          "relightDeltaMiB": 3.0531997680664062
+        },
+        {
+          "loadMs": 324.40375,
+          "relightMs": 714.022166,
+          "relightCpuMs": 891.448,
+          "generatedMiB": 7.3020782470703125,
+          "relightDeltaMiB": 3.0778579711914062
+        },
+        {
+          "loadMs": 246.250541,
+          "relightMs": 257.865459,
+          "relightCpuMs": 296.248,
+          "generatedMiB": 7.3018035888671875,
+          "relightDeltaMiB": 3.0488433837890625
+        },
+        {
+          "loadMs": 78.444584,
+          "relightMs": 119.775125,
+          "relightCpuMs": 318.697,
+          "generatedMiB": 7.306419372558594,
+          "relightDeltaMiB": 3.093475341796875
+        },
+        {
+          "loadMs": 105.914625,
+          "relightMs": 318.773291,
+          "relightCpuMs": 311.242,
+          "generatedMiB": 7.3073577880859375,
+          "relightDeltaMiB": 3.07586669921875
+        }
+      ],
+      "job": "relight,h=64,t=flat40,n=1024,rounds=5",
+      "loadAverageBefore": 64.80908203125,
+      "loadAverageAfter": 82.31982421875,
+      "jvm": {
+        "maxHeapMiB": 6144,
+        "inputArguments": [
+          "-Xms6g",
+          "-Xmx6g",
+          "-XX:+UseG1GC",
+          "-XX:+AlwaysPreTouch"
+        ]
+      }
+    }
+  ],
+  "note": "Separate driver invocation right after run 2, same machine and child JVM arguments: --jobs \"relight,h=64,t=flat40,n=1024,rounds=5\" (P0 map shape). startedAt/finishedAt were not kept; see the job's loadAverageBefore/After."
+}

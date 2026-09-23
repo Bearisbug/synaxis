@@ -13,6 +13,7 @@ import io.github.bearisbug.synaxis.network.packet.client.login.ClientLoginAcknow
 import io.github.bearisbug.synaxis.network.packet.client.login.ClientLoginPluginResponsePacket;
 import io.github.bearisbug.synaxis.network.packet.client.login.ClientLoginStartPacket;
 import io.github.bearisbug.synaxis.network.packet.client.play.ClientConfigurationAckPacket;
+import io.github.bearisbug.synaxis.network.packet.server.login.LoginDisconnectPacket;
 import io.github.bearisbug.synaxis.network.player.GameProfile;
 import io.github.bearisbug.synaxis.network.player.PlayerConnection;
 import io.github.bearisbug.synaxis.network.player.PlayerSocketConnection;
@@ -46,6 +47,14 @@ public final class LoginListener {
         }
         if (!StringUtils.isValidUsername(packet.username())) {
             connection.kick(ERROR_MALFORMED_USERNAME);
+            return;
+        }
+        // Connection gate L3, before any work is done for the login. Counted by the gate rather
+        // than logged, how often a full process is knocked at is up to the peers.
+        if (connection instanceof PlayerSocketConnection socketConnection
+                && !connection.process().connection().gate().takeSeat(socketConnection.gateTicket())) {
+            connection.sendPacket(new LoginDisconnectPacket(DisconnectReasons.SHARD_FULL));
+            connection.disconnectTurnedAway();
             return;
         }
 

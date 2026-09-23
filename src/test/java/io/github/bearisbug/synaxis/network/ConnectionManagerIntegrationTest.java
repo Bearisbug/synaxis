@@ -1,5 +1,6 @@
 package io.github.bearisbug.synaxis.network;
 
+import net.kyori.adventure.text.TranslatableComponent;
 import io.github.bearisbug.synaxis.coordinate.Pos;
 import io.github.bearisbug.synaxis.ServerProcess;
 import io.github.bearisbug.synaxis.entity.Player;
@@ -24,6 +25,7 @@ import java.util.concurrent.TimeUnit;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -80,7 +82,9 @@ public class ConnectionManagerIntegrationTest {
 
         connectionManager.tick(start + kickAfter);
         assertFalse(player.isOnline(), "a player that never answered the keep alive must be kicked");
-        disconnects.assertSingle();
+        disconnects.assertSingle(disconnect -> assertEquals("synaxis:keep-alive-timeout",
+                assertInstanceOf(TranslatableComponent.class, disconnect.message(),
+                        "the reason is a translate key, not plain text").key()));
     }
 
     @Test

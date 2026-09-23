@@ -7,6 +7,7 @@ import io.github.bearisbug.synaxis.entity.GameMode;
 import io.github.bearisbug.synaxis.entity.Player;
 import io.github.bearisbug.synaxis.event.ListenerHandle;
 import io.github.bearisbug.synaxis.event.player.PlayerPacketOutEvent;
+import io.github.bearisbug.synaxis.network.ConnectionGate;
 import io.github.bearisbug.synaxis.network.ConnectionState;
 import io.github.bearisbug.synaxis.network.DisconnectReasons;
 import io.github.bearisbug.synaxis.network.NetworkBuffer;
@@ -97,6 +98,7 @@ public class PlayerSocketConnection extends PlayerConnection {
     private final MessagePassingQueue<SendablePacket> packetQueue = ConcurrentMessageQueues.mpscUnboundedArrayQueue(1024);
     private final Thread readThread, writeThread;
     private volatile @Nullable Thread loginTimeoutThread;
+    private final ConnectionGate.Ticket gateTicket;
 
     private final AtomicLong sentPacketCounter = new AtomicLong();
     // Index where compression starts, linked to `sentPacketCounter`
@@ -110,7 +112,17 @@ public class PlayerSocketConnection extends PlayerConnection {
     private final ListenerHandle<PlayerPacketOutEvent> outgoing;
 
     public PlayerSocketConnection(ServerProcess process, SocketChannel channel, SocketAddress remoteAddress, Thread readThread, Thread writeThread) {
+        this(process, channel, remoteAddress, readThread, writeThread, process.connection().gate().untracked());
+    }
+
+    /**
+     * @param gateTicket what the connection holds in the connection gate, given back when it
+     *                   disconnects
+     */
+    public PlayerSocketConnection(ServerProcess process, SocketChannel channel, SocketAddress remoteAddress,
+                                  Thread readThread, Thread writeThread, ConnectionGate.Ticket gateTicket) {
         super(process);
+        this.gateTicket = gateTicket;
         this.readBuffer = NetworkBuffer.resizableBuffer(process.config().pooledBufferSize(), process.registries());
         this.outgoing = process.eventHandler().getHandle(PlayerPacketOutEvent.class);
         this.channel = channel;
@@ -562,9 +574,16 @@ public class PlayerSocketConnection extends PlayerConnection {
         this.loginTimeoutThread = thread;
     }
 
+    /** What this connection holds in the connection gate. */
+    @ApiStatus.Internal
+    public ConnectionGate.Ticket gateTicket() {
+        return gateTicket;
+    }
+
     @Override
     public void disconnect() {
         super.disconnect();
+        gateTicket.release();
         LockSupport.unpark(writeThread);
         final Thread loginTimeoutThread = this.loginTimeoutThread;
         this.loginTimeoutThread = null;

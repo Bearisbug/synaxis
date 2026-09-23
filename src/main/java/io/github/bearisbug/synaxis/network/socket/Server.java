@@ -2,6 +2,7 @@ package io.github.bearisbug.synaxis.network.socket;
 
 import io.github.bearisbug.synaxis.ServerConfig;
 import io.github.bearisbug.synaxis.ServerProcess;
+import io.github.bearisbug.synaxis.network.ConnectionGate;
 import io.github.bearisbug.synaxis.network.packet.PacketParser;
 import io.github.bearisbug.synaxis.network.DisconnectReasons;
 import io.github.bearisbug.synaxis.network.player.PlayerSocketConnection;
@@ -23,10 +24,12 @@ import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 import java.nio.file.Files;
 import java.util.Objects;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
 public final class Server {
     private static final Logger LOGGER = LoggerFactory.getLogger(Server.class);
+    private static final long ACCEPT_FAILURE_REPORT_INTERVAL = TimeUnit.SECONDS.toNanos(10);
 
     private volatile boolean stop;
 
@@ -37,6 +40,11 @@ public final class Server {
     private @UnknownNullability SocketAddress socketAddress;
     private @UnknownNullability String address;
     private int port;
+
+    // Only touched by the accept thread
+    private long acceptFailures;
+    private long lastAcceptFailureReport;
+    private boolean acceptFailureReported;
 
     public Server(ServerProcess process, PacketParser.Client packetParser) {
         this.process = process;
@@ -79,6 +87,7 @@ public final class Server {
             var writeBuilder = Thread.ofVirtual().name("Syn-Socket-Writer-", 0);
             var loginTimeoutBuilder = Thread.ofVirtual().name("Syn-Login-Timeout-", 0);
             final var serverSocket = Objects.requireNonNull(this.serverSocket, "Not bound did you forget to call #init?");
+            final ConnectionGate gate = process.connection().gate();
             while (!stop) {
                 final SocketChannel client;
                 try {
@@ -86,8 +95,24 @@ public final class Server {
                 } catch (ClosedChannelException _) {
                     break; // We are exiting, bye bye!
                 } catch (IOException e) {
-                    if (!process.config().suppressConnectionAcceptErrors())
-                        process.exception().handleException(e);
+                    // Out of file descriptors every accept fails at once, retrying right away
+                    // would spin this thread on a whole core
+                    reportAcceptFailure(e);
+                    if (!backOffAfterAcceptFailure()) break;
+                    continue;
+                }
+
+                final SocketAddress remoteAddress;
+                try {
+                    remoteAddress = client.getRemoteAddress();
+                } catch (IOException _) {
+                    closeQuietly(client); // The peer is already gone
+                    continue;
+                }
+                // Connection gate L0 and L1, before a thread or a buffer is spent on the socket
+                final ConnectionGate.Ticket ticket = gate.admit(remoteAddress);
+                if (ticket == null) {
+                    closeQuietly(client);
                     continue;
                 }
 
@@ -97,7 +122,8 @@ public final class Server {
                     Thread readThread = readBuilder.unstarted(() -> playerReadLoop(reference.get()));
                     Thread writeThread = writeBuilder.unstarted(() -> playerWriteLoop(reference.get()));
                     Thread loginTimeoutThread = loginTimeoutBuilder.unstarted(() -> loginTimeoutWatch(reference.get()));
-                    PlayerSocketConnection connection = new PlayerSocketConnection(process, client, client.getRemoteAddress(), readThread, writeThread);
+                    PlayerSocketConnection connection = new PlayerSocketConnection(process, client, remoteAddress,
+                            readThread, writeThread, ticket);
                     reference.set(connection);
                     // Handed over before the socket threads run, so a connection dying right away
                     // still cancels the watchdog instead of being held for the whole login timeout.
@@ -108,23 +134,73 @@ public final class Server {
                 } catch (IOException e) {
                     if (!process.config().suppressConnectionAcceptErrors())
                         process.exception().handleException(e);
-                    try {
-                        client.close();
-                    } catch (IOException _) {
-                        // Nothing more we can do, drop the connection
-                    }
+                    ticket.release();
+                    closeQuietly(client);
                 }
             }
         });
     }
 
+    private static void closeQuietly(SocketChannel client) {
+        try {
+            client.close();
+        } catch (IOException _) {
+            // Nothing more we can do, drop the connection
+        }
+    }
+
     /**
-     * Closes a connection that never reached the configuration state, see the internal task
+     * Reports an accept that failed, at most one line per 10 seconds carrying how many failed since
+     * the last one: running out of file descriptors fails every accept for as long as it lasts.
+     * {@code synaxis.suppress-connection-accept-errors} only decides whether the stack trace is
+     * attached.
+     */
+    private void reportAcceptFailure(IOException error) {
+        acceptFailures++;
+        final long now = System.nanoTime();
+        if (acceptFailureReported && now - lastAcceptFailureReport < ACCEPT_FAILURE_REPORT_INTERVAL) return;
+        acceptFailureReported = true;
+        lastAcceptFailureReport = now;
+        final long failures = acceptFailures;
+        acceptFailures = 0;
+        final long backoff = process.config().acceptBackoff();
+        if (process.config().suppressConnectionAcceptErrors()) {
+            LOGGER.warn("Accepting a connection failed {} times since the last report, retrying every {} ms: {}",
+                    failures, backoff, error.toString());
+        } else {
+            LOGGER.warn("Accepting a connection failed {} times since the last report, retrying every {} ms",
+                    failures, backoff, error);
+        }
+    }
+
+    /** Returns false if the accept thread was interrupted and has to end. */
+    private boolean backOffAfterAcceptFailure() {
+        try {
+            Thread.sleep(process.config().acceptBackoff());
+            return true;
+        } catch (InterruptedException _) {
+            Thread.currentThread().interrupt();
+            return false;
+        }
+    }
+
+    /**
+     * Closes a connection that did not send its handshake within {@code synaxis.handshake-timeout-ms}
+     * (connection gate), or never reached the configuration state, see the internal task
      * {@code connection.login-timeout}. No disconnect packet is sent, the socket is simply closed.
      */
     private static void loginTimeoutWatch(PlayerSocketConnection connection) {
+        final ServerConfig config = connection.process().config();
+        final long handshakeTimeout = Math.min(config.handshakeTimeout(), config.loginTimeout());
         try {
-            Thread.sleep(connection.process().config().loginTimeout());
+            Thread.sleep(handshakeTimeout);
+            if (connection.handshakeTimedOut(System.currentTimeMillis())) {
+                // Counted, not logged one by one: how many there are is up to the peers
+                connection.process().connection().gate().handshakeTimedOut();
+                connection.disconnectTurnedAway();
+                return;
+            }
+            Thread.sleep(config.loginTimeout() - handshakeTimeout);
         } catch (InterruptedException _) {
             Thread.currentThread().interrupt();
             return;
@@ -143,7 +219,6 @@ public final class Server {
             socket.setSendBufferSize(config.socketSendBufferSize());
             socket.setReceiveBufferSize(config.socketReceiveBufferSize());
             socket.setTcpNoDelay(config.socketNoDelay());
-            socket.setSoTimeout(config.socketTimeout());
         }
     }
 

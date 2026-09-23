@@ -62,6 +62,7 @@ public abstract class PlayerConnection {
     private boolean statusRequested;
     volatile boolean online;
     private volatile boolean wasTransferred;
+    private volatile boolean turnedAway;
 
     @SuppressWarnings("this-escape") // deliberate self registration during construction
     private @Nullable LoginPluginMessageProcessor loginPluginMessageProcessor = new LoginPluginMessageProcessor(this);
@@ -107,6 +108,21 @@ public abstract class PlayerConnection {
         return online
                 && clientState.ordinal() < ConnectionState.CONFIGURATION.ordinal()
                 && nowMillis - connectedAtMillis >= process.config().loginTimeout();
+    }
+
+    /**
+     * Returns whether this connection is still waiting for its handshake past
+     * {@code synaxis.handshake-timeout-ms}.
+     *
+     * @param nowMillis the current wall clock time in milliseconds
+     * @return true if the connection ran out of time to send its handshake
+     */
+    @ApiStatus.Internal
+    public boolean handshakeTimedOut(long nowMillis) {
+        // Same as the login timeout: the deadline itself counts as expired
+        return online
+                && clientState == ConnectionState.HANDSHAKE
+                && nowMillis - connectedAtMillis >= process.config().handshakeTimeout();
     }
 
     /**
@@ -240,7 +256,7 @@ public abstract class PlayerConnection {
     public void disconnect() {
         final boolean wasOnline = this.online;
         this.online = false;
-        if (wasOnline)
+        if (wasOnline && !turnedAway)
             LOGGER.info("Connection closed: connection_id={} identifier={}", connectionId, getIdentifier());
         final Player player = process.connection().getPlayer(this);
         if (player != null) {
@@ -252,6 +268,16 @@ public abstract class PlayerConnection {
                 EventsJFR.newPlayerLeave(player.getUuid()).commit();
             }
         }
+    }
+
+    /**
+     * Closes a connection the connection gate turned away. Unlike {@link #disconnect()} it writes no
+     * line: how many there are is up to the peers, the gate counts them instead.
+     */
+    @ApiStatus.Internal
+    public void disconnectTurnedAway() {
+        this.turnedAway = true;
+        disconnect();
     }
 
     /**

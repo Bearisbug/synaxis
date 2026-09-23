@@ -13,6 +13,7 @@ import io.github.bearisbug.synaxis.listener.UnboundedClientDrivenLogFixture;
 import io.github.bearisbug.synaxis.listener.manager.PacketListenerManager;
 import io.github.bearisbug.synaxis.listener.preplay.HandshakeListener;
 import io.github.bearisbug.synaxis.listener.preplay.LoginListener;
+import io.github.bearisbug.synaxis.network.ConnectionGate;
 import io.github.bearisbug.synaxis.network.ConnectionManager;
 import io.github.bearisbug.synaxis.network.UnboundedClientDrivenReportFixture;
 import io.github.bearisbug.synaxis.network.packet.PacketReading;
@@ -199,7 +200,10 @@ public class ArchitectureTest {
      * time in {@code Player#interpretPacketQueue} for every PLAY packet, which this rule does not
      * even see because {@code entity..} is not one of the packages above.</li>
      * <li>{@link Server}: one report per connection, every read and write loop report is followed
-     * by a disconnect and a break; the accept loop reports once per accept it could not complete.</li>
+     * by a disconnect and a break; the accept loop writes at most one line per 10 seconds for the
+     * accepts that failed, and reports once per accepted socket it could not set up.</li>
+     * <li>{@link ConnectionGate}: at most one line per 10 seconds, carrying the rejections it
+     * counted.</li>
      * <li>{@link ConnectionManager}: one line per player, both on the join path and both followed
      * by dropping that connection.</li>
      * <li>{@link PacketListenerManager}: one line per registered packet class for the lifetime of
@@ -209,13 +213,14 @@ public class ArchitectureTest {
      * frames queued behind the kick are never handled.</li>
      * </ul>
      * The exemption is per class rather than per call site, which is the blind spot of this rule: a
-     * second, unbounded line added inside one of these seven classes passes. The bound of each one
+     * second, unbounded line added inside one of these eight classes passes. The bound of each one
      * is stated in its own javadoc, which is where a reviewer has to look.
      */
     private static DescribedPredicate<HasName> boundedReporters() {
         return name(PacketReading.class.getName())
                 .or(name(PlayerSocketConnection.class.getName()))
                 .or(name(Server.class.getName()))
+                .or(name(ConnectionGate.class.getName()))
                 .or(name(ConnectionManager.class.getName()))
                 .or(name(PacketListenerManager.class.getName()))
                 .or(name(HandshakeListener.class.getName()))

@@ -9,6 +9,10 @@
 	"synaxis:duplicate-login": "Somebody is already playing under this name.",
 	"synaxis:internal-error": "The server failed to bring you into the world.",
 	"synaxis:server-stopping": "The server is shutting down.",
+	"synaxis:too-many-connections": "Too many connections from your network. If this keeps happening, report it to the server admins.",
+	"synaxis:login-throttled": "Logging in too often. Wait a few seconds and try again.",
+	"synaxis:shard-full": "This channel is full.",
+	"synaxis:keep-alive-timeout": "The connection timed out. Reconnect.",
 	"synaxis.order.no-path": "Cannot get there.",
 	"synaxis.order.not-owner": "Not your unit.",
 	"synaxis.order.busy": "The server is busy; try again."

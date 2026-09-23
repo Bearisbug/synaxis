@@ -1,7 +1,5 @@
 package io.github.bearisbug.synaxis.network;
 
-import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.format.NamedTextColor;
 import io.github.bearisbug.synaxis.ServerProcess;
 import io.github.bearisbug.synaxis.entity.Player;
 import io.github.bearisbug.synaxis.event.player.AsyncPlayerConfigurationEvent;
@@ -56,15 +54,25 @@ import java.util.function.Function;
 public final class ConnectionManager {
     private static final Logger LOGGER = LoggerFactory.getLogger(ConnectionManager.class);
 
-    private static final Component TIMEOUT_TEXT = Component.text("Timeout", NamedTextColor.RED);
     private static final long DISCONNECT_FLUSH_TIMEOUT = 1_000;
 
     private final ServerProcess process;
     private final CachedPacket cachedTagsPacket;
+    private final ConnectionGate gate;
 
     public ConnectionManager(ServerProcess process) {
         this.process = process;
         this.cachedTagsPacket = new CachedPacket(() -> Registries.tagsPacket(process.registries()));
+        this.gate = new ConnectionGate(process.config());
+    }
+
+    /**
+     * The connection gate every socket connection of this process goes through, see
+     * {@code docs/DESIGN-PROD.md} {@code API-PROD-003}.
+     */
+    @ApiStatus.Internal
+    public ConnectionGate gate() {
+        return gate;
     }
 
     // All players once their Player object has been instantiated.
@@ -433,12 +441,15 @@ public final class ConnectionManager {
         // Send keep alive packets
         handleKeepAlive(keepAlivePlayers, tickStart);
 
+        gate.tick(tickStart);
+
         // Interpret packets for configuration players
         configurationPlayers.forEach(Player::interpretPacketQueue);
     }
 
     /**
-     * Connects waiting players.
+     * Connects waiting players, at most {@code synaxis.max-joins-per-tick} of them when it is not 0.
+     * The others stay in the queue for the next tick.
      */
     @ApiStatus.Internal
     public void updateWaitingPlayers() {
@@ -450,7 +461,7 @@ public final class ConnectionManager {
             player.remove(false);
             player.sendPacket(new StartConfigurationPacket());
         });
-        this.playWaitingPlayers.drain(player -> {
+        final MessagePassingQueue.Consumer<Player> join = player -> {
             if (!player.isOnline()) return; // Player disconnected while in queued to join
             if (!trackPlayer(player, () -> {
                 configurationPlayers.remove(player);
@@ -483,7 +494,10 @@ public final class ConnectionManager {
                     // Already reported and disconnected above, the remaining players still join
                 }
             }
-        });
+        };
+        final int maxJoins = process.config().maxJoinsPerTick();
+        if (maxJoins == 0) this.playWaitingPlayers.drain(join);
+        else this.playWaitingPlayers.drain(join, maxJoins);
     }
 
     /**
@@ -499,7 +513,7 @@ public final class ConnectionManager {
                 player.refreshKeepAlive(tickStart);
                 player.sendPacket(keepAlivePacket);
             } else if (lastKeepAlive >= TimeUnit.MILLISECONDS.toNanos(process.config().keepAliveKick())) {
-                player.kick(TIMEOUT_TEXT);
+                player.kick(DisconnectReasons.KEEP_ALIVE_TIMEOUT);
             }
         }
     }

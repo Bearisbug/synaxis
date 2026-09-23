@@ -1,5 +1,9 @@
 package io.github.bearisbug.synaxis;
 
+import io.github.bearisbug.synaxis.network.ConnectionGate;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 /**
  * Per-process server settings, reachable through {@link ServerProcess#config()}.
  *
@@ -30,6 +34,21 @@ public record ServerConfig(
         long keepAliveDelay,
         long keepAliveKick,
         int playerChunkUpdateLimiterHistorySize,
+
+        // Connection gate (docs/DESIGN-PROD.md API-PROD-003), durations in milliseconds
+        int maxConnections,
+        long acceptBackoff,
+        int maxConnectionsPerIp,
+        long handshakeTimeout,
+        double loginRatePerIp,
+        int loginBurstPerIp,
+        double statusRatePerIp,
+        int statusBurstPerIp,
+        double transferRatePerIp,
+        int transferBurstPerIp,
+        String connectionGateTrustedNetworks,
+        int maxPlayers,
+        int maxJoinsPerTick,
 
         // Network error handling
         boolean suppressConnectionAcceptErrors,
@@ -73,6 +92,21 @@ public record ServerConfig(
     /** Initial size of the pooled network buffers, also used by the buffer pools shared by every process. */
     public static final int DEFAULT_POOLED_BUFFER_SIZE = 16_383;
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(ServerConfig.class);
+
+    /**
+     * A {@code SO_TIMEOUT}, which the channel reads of the engine never honour: idle connections
+     * are bounded by {@link #loginTimeout()} and {@link #keepAliveKick()}.
+     *
+     * @deprecated has no effect, removed in the release after the one that deprecated it
+     * ({@code docs/DESIGN-PROD.md} {@code REQ-PROD-043})
+     */
+    @Deprecated
+    @Override
+    public int socketTimeout() {
+        return socketTimeout;
+    }
+
     public ServerConfig {
         if (dispatcherThreads < 1)
             throw new IllegalArgumentException("dispatcherThreads must be at least 1 but was " + dispatcherThreads);
@@ -82,6 +116,18 @@ public record ServerConfig(
         if (watchdogEarlyWarning < 0 || watchdogEarlyWarningEvery < 0 || watchdogTimeout < 0 || watchdogHaltAfter < 0)
             throw new IllegalArgumentException("the watchdog durations must not be negative but were " + watchdogEarlyWarning
                     + ", " + watchdogEarlyWarningEvery + ", " + watchdogTimeout + " and " + watchdogHaltAfter);
+        if (maxConnections < 1 || maxConnectionsPerIp < 1 || handshakeTimeout < 1)
+            throw new IllegalArgumentException("maxConnections, maxConnectionsPerIp and handshakeTimeout must be at least 1 "
+                    + "but were " + maxConnections + ", " + maxConnectionsPerIp + " and " + handshakeTimeout);
+        if (acceptBackoff < 0 || maxPlayers < 0 || maxJoinsPerTick < 0)
+            throw new IllegalArgumentException("acceptBackoff, maxPlayers and maxJoinsPerTick must not be negative but were "
+                    + acceptBackoff + ", " + maxPlayers + " and " + maxJoinsPerTick);
+        if (!(loginRatePerIp > 0) || !(statusRatePerIp > 0) || !(transferRatePerIp > 0)
+                || loginBurstPerIp < 1 || statusBurstPerIp < 1 || transferBurstPerIp < 1)
+            throw new IllegalArgumentException("the per address rates must be positive and the bursts at least 1 but were "
+                    + loginRatePerIp + "/" + loginBurstPerIp + ", " + statusRatePerIp + "/" + statusBurstPerIp
+                    + " and " + transferRatePerIp + "/" + transferBurstPerIp);
+        var _ = ConnectionGate.parseNetworks(connectionGateTrustedNetworks);
     }
 
     /**
@@ -95,6 +141,10 @@ public record ServerConfig(
      * The engine defaults with every {@code synaxis.*} system property applied on top.
      */
     public static ServerConfig fromSystemProperties() {
+        if (System.getProperty("synaxis.socket-timeout") != null)
+            LOGGER.warn("synaxis.socket-timeout is deprecated and has no effect, the channel reads never honour it; "
+                    + "idle connections are bounded by synaxis.login-timeout and synaxis.keep-alive-kick. "
+                    + "It is removed in the next release");
         return builder()
                 .shutdownOnSignal(booleanProperty("synaxis.shutdown-on-signal", DEFAULTS.shutdownOnSignal))
                 .maxTickCatchUp(intProperty("synaxis.max-tick-catch-up", DEFAULTS.maxTickCatchUp))
@@ -112,6 +162,20 @@ public record ServerConfig(
                 .keepAliveDelay(longProperty("synaxis.keep-alive-delay", DEFAULTS.keepAliveDelay))
                 .keepAliveKick(longProperty("synaxis.keep-alive-kick", DEFAULTS.keepAliveKick))
                 .playerChunkUpdateLimiterHistorySize(intProperty("synaxis.player.chunk-update-limiter-history-size", DEFAULTS.playerChunkUpdateLimiterHistorySize))
+                .maxConnections(intProperty("synaxis.max-connections", DEFAULTS.maxConnections))
+                .acceptBackoff(longProperty("synaxis.accept-backoff-ms", DEFAULTS.acceptBackoff))
+                .maxConnectionsPerIp(intProperty("synaxis.max-connections-per-ip", DEFAULTS.maxConnectionsPerIp))
+                .handshakeTimeout(longProperty("synaxis.handshake-timeout-ms", DEFAULTS.handshakeTimeout))
+                .loginRatePerIp(doubleProperty("synaxis.login-rate-per-ip", DEFAULTS.loginRatePerIp))
+                .loginBurstPerIp(intProperty("synaxis.login-burst-per-ip", DEFAULTS.loginBurstPerIp))
+                .statusRatePerIp(doubleProperty("synaxis.status-rate-per-ip", DEFAULTS.statusRatePerIp))
+                .statusBurstPerIp(intProperty("synaxis.status-burst-per-ip", DEFAULTS.statusBurstPerIp))
+                .transferRatePerIp(doubleProperty("synaxis.transfer-rate-per-ip", DEFAULTS.transferRatePerIp))
+                .transferBurstPerIp(intProperty("synaxis.transfer-burst-per-ip", DEFAULTS.transferBurstPerIp))
+                .connectionGateTrustedNetworks(System.getProperty("synaxis.connection-gate.trusted-networks",
+                        DEFAULTS.connectionGateTrustedNetworks))
+                .maxPlayers(intProperty("synaxis.max-players", DEFAULTS.maxPlayers))
+                .maxJoinsPerTick(intProperty("synaxis.max-joins-per-tick", DEFAULTS.maxJoinsPerTick))
                 .suppressConnectionAcceptErrors(booleanProperty("synaxis.suppress-connection-accept-errors", DEFAULTS.suppressConnectionAcceptErrors))
                 .suppressConnectionIoErrors(booleanProperty("synaxis.suppress-connection-io-errors", DEFAULTS.suppressConnectionIoErrors))
                 .suppressMalformedPacketErrorLevel(intProperty("synaxis.suppress-malformed-packet-error-level", DEFAULTS.suppressMalformedPacketErrorLevel))
@@ -178,6 +242,16 @@ public record ServerConfig(
         }
     }
 
+    private static double doubleProperty(String name, double defaultValue) {
+        final String value = System.getProperty(name);
+        if (value == null) return defaultValue;
+        try {
+            return Double.parseDouble(value);
+        } catch (NumberFormatException e) {
+            throw new IllegalArgumentException("Property '" + name + "' is not a number: " + value, e);
+        }
+    }
+
     private static float floatProperty(String name, float defaultValue) {
         final String value = System.getProperty(name);
         if (value == null) return defaultValue;
@@ -206,6 +280,19 @@ public record ServerConfig(
         private long keepAliveDelay = 10_000;
         private long keepAliveKick = 15_000;
         private int playerChunkUpdateLimiterHistorySize = 5;
+        private int maxConnections = 1024;
+        private long acceptBackoff = 100;
+        private int maxConnectionsPerIp = 16;
+        private long handshakeTimeout = 5_000;
+        private double loginRatePerIp = 0.5;
+        private int loginBurstPerIp = 3;
+        private double statusRatePerIp = 1;
+        private int statusBurstPerIp = 10;
+        private double transferRatePerIp = 2;
+        private int transferBurstPerIp = 10;
+        private String connectionGateTrustedNetworks = "";
+        private int maxPlayers = 0; // 0 means no limit
+        private int maxJoinsPerTick = 0; // 0 means no limit
         private boolean suppressConnectionAcceptErrors = true;
         private boolean suppressConnectionIoErrors = true; // Like peer resets etc
         private int suppressMalformedPacketErrorLevel = 0;
@@ -252,6 +339,19 @@ public record ServerConfig(
             this.keepAliveDelay = config.keepAliveDelay;
             this.keepAliveKick = config.keepAliveKick;
             this.playerChunkUpdateLimiterHistorySize = config.playerChunkUpdateLimiterHistorySize;
+            this.maxConnections = config.maxConnections;
+            this.acceptBackoff = config.acceptBackoff;
+            this.maxConnectionsPerIp = config.maxConnectionsPerIp;
+            this.handshakeTimeout = config.handshakeTimeout;
+            this.loginRatePerIp = config.loginRatePerIp;
+            this.loginBurstPerIp = config.loginBurstPerIp;
+            this.statusRatePerIp = config.statusRatePerIp;
+            this.statusBurstPerIp = config.statusBurstPerIp;
+            this.transferRatePerIp = config.transferRatePerIp;
+            this.transferBurstPerIp = config.transferBurstPerIp;
+            this.connectionGateTrustedNetworks = config.connectionGateTrustedNetworks;
+            this.maxPlayers = config.maxPlayers;
+            this.maxJoinsPerTick = config.maxJoinsPerTick;
             this.suppressConnectionAcceptErrors = config.suppressConnectionAcceptErrors;
             this.suppressConnectionIoErrors = config.suppressConnectionIoErrors;
             this.suppressMalformedPacketErrorLevel = config.suppressMalformedPacketErrorLevel;
@@ -359,6 +459,71 @@ public record ServerConfig(
             return this;
         }
 
+        public Builder maxConnections(int maxConnections) {
+            this.maxConnections = maxConnections;
+            return this;
+        }
+
+        public Builder acceptBackoff(long acceptBackoff) {
+            this.acceptBackoff = acceptBackoff;
+            return this;
+        }
+
+        public Builder maxConnectionsPerIp(int maxConnectionsPerIp) {
+            this.maxConnectionsPerIp = maxConnectionsPerIp;
+            return this;
+        }
+
+        public Builder handshakeTimeout(long handshakeTimeout) {
+            this.handshakeTimeout = handshakeTimeout;
+            return this;
+        }
+
+        public Builder loginRatePerIp(double loginRatePerIp) {
+            this.loginRatePerIp = loginRatePerIp;
+            return this;
+        }
+
+        public Builder loginBurstPerIp(int loginBurstPerIp) {
+            this.loginBurstPerIp = loginBurstPerIp;
+            return this;
+        }
+
+        public Builder statusRatePerIp(double statusRatePerIp) {
+            this.statusRatePerIp = statusRatePerIp;
+            return this;
+        }
+
+        public Builder statusBurstPerIp(int statusBurstPerIp) {
+            this.statusBurstPerIp = statusBurstPerIp;
+            return this;
+        }
+
+        public Builder transferRatePerIp(double transferRatePerIp) {
+            this.transferRatePerIp = transferRatePerIp;
+            return this;
+        }
+
+        public Builder transferBurstPerIp(int transferBurstPerIp) {
+            this.transferBurstPerIp = transferBurstPerIp;
+            return this;
+        }
+
+        public Builder connectionGateTrustedNetworks(String connectionGateTrustedNetworks) {
+            this.connectionGateTrustedNetworks = connectionGateTrustedNetworks;
+            return this;
+        }
+
+        public Builder maxPlayers(int maxPlayers) {
+            this.maxPlayers = maxPlayers;
+            return this;
+        }
+
+        public Builder maxJoinsPerTick(int maxJoinsPerTick) {
+            this.maxJoinsPerTick = maxJoinsPerTick;
+            return this;
+        }
+
         public Builder suppressConnectionAcceptErrors(boolean suppressConnectionAcceptErrors) {
             this.suppressConnectionAcceptErrors = suppressConnectionAcceptErrors;
             return this;
@@ -404,6 +569,10 @@ public record ServerConfig(
             return this;
         }
 
+        /**
+         * @deprecated has no effect, see {@link ServerConfig#socketTimeout()}
+         */
+        @Deprecated
         public Builder socketTimeout(int socketTimeout) {
             this.socketTimeout = socketTimeout;
             return this;
@@ -489,6 +658,9 @@ public record ServerConfig(
                     entitySynchronizationTicks, dispatcherThreads, sendLightAfterBlockPlacementDelay, loginTimeout,
                     loginPluginMessageTimeout, knownPacksResponseTimeout, acceptTransfers, playerPacketPerTick,
                     playerPacketQueueSize, keepAliveDelay, keepAliveKick, playerChunkUpdateLimiterHistorySize,
+                    maxConnections, acceptBackoff, maxConnectionsPerIp, handshakeTimeout, loginRatePerIp,
+                    loginBurstPerIp, statusRatePerIp, statusBurstPerIp, transferRatePerIp, transferBurstPerIp,
+                    connectionGateTrustedNetworks, maxPlayers, maxJoinsPerTick,
                     suppressConnectionAcceptErrors, suppressConnectionIoErrors, suppressMalformedPacketErrorLevel,
                     suppressMisusedPacketErrorLevel, rejectMalformedPacket, rejectMisusedPacket, socketSendBufferSize,
                     socketReceiveBufferSize, socketNoDelay, socketTimeout, pooledBufferSize, minChunksPerTick,

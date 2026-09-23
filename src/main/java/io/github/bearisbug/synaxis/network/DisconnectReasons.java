@@ -43,6 +43,27 @@ public final class DisconnectReasons {
      */
     public static final TranslatableComponent SERVER_STOPPING = Component.translatable("synaxis:server-stopping");
 
+    /**
+     * The address of the connection already holds {@code synaxis.max-connections-per-ip}
+     * connections (connection gate L1).
+     */
+    public static final TranslatableComponent TOO_MANY_CONNECTIONS = Component.translatable("synaxis:too-many-connections");
+
+    /**
+     * The address of the connection logged in or transferred in too often (connection gate L2).
+     */
+    public static final TranslatableComponent LOGIN_THROTTLED = Component.translatable("synaxis:login-throttled");
+
+    /**
+     * Every seat of {@code synaxis.max-players} is taken (connection gate L3).
+     */
+    public static final TranslatableComponent SHARD_FULL = Component.translatable("synaxis:shard-full");
+
+    /**
+     * The client did not answer a keep alive within {@code synaxis.keep-alive-kick}.
+     */
+    public static final TranslatableComponent KEEP_ALIVE_TIMEOUT = Component.translatable("synaxis:keep-alive-timeout");
+
     private DisconnectReasons() {
     }
 }

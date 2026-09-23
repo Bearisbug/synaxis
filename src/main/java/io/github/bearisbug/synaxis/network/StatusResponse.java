@@ -20,12 +20,15 @@ public final class StatusResponse {
      */
     public static String json(ServerProcess process) {
         final int online = process.connection().getOnlinePlayerCount();
+        // The real limit: the seats of the connection gate, or its socket limit when seats are unlimited
+        final int maxPlayers = process.config().maxPlayers();
+        final int max = maxPlayers > 0 ? maxPlayers : process.config().maxConnections();
         return """
                 {"version":{"name":"%s","protocol":%d},\
                 "players":{"online":%d,"max":%d},\
                 "description":{"text":"%s"}}"""
                 .formatted(MinecraftServer.VERSION_NAME, MinecraftServer.PROTOCOL_VERSION,
-                        online, online + 1, DESCRIPTION);
+                        online, max, DESCRIPTION);
     }
 
     private StatusResponse() {

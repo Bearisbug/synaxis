@@ -1,0 +1,12 @@
+start 2026-09-24 15:20:13 +0800
+15:20  up 9 days,  7:07, 29 users, load averages: 4.44 7.46 7.74
+total = 30720.00M  used = 29034.12M  free = 1685.88M  (encrypted)
+ %CPU COMM
+100.0 /opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/Resources/Python.app/Contents/MacOS/Python
+ 13.6 /Applications/WeChat.app/Contents/MacOS/WeChat
+ 13.0 /System/Library/PrivateFrameworks/SkyLight.framework/Resources/WindowServer
+  5.8 claude
+  5.2 /System/Library/Frameworks/Virtualization.framework/Versions/A/XPCServices/com.apple.Virtualization.VirtualMachine.xpc/Contents/MacOS/com.apple.Virtualization.VirtualMachine
+end 2026-09-24 15:25:06 +0800
+15:25  up 9 days,  7:12, 29 users, load averages: 4.28 5.56 6.76
+total = 30720.00M  used = 28986.12M  free = 1733.88M  (encrypted)

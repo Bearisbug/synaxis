@@ -1,0 +1,12 @@
+start 2026-09-24 15:30:42 +0800
+15:30  up 9 days,  7:18, 29 users, load averages: 3.53 4.99 6.13
+total = 29696.00M  used = 28750.12M  free = 945.88M  (encrypted)
+ %CPU COMM
+ 99.7 /opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/Resources/Python.app/Contents/MacOS/Python
+ 15.1 /System/Library/PrivateFrameworks/SkyLight.framework/Resources/WindowServer
+ 12.7 claude
+  5.3 /Applications/Otty.app/Contents/MacOS/Otty
+  5.2 /System/Library/CoreServices/ReportCrash
+end 2026-09-24 15:33:49 +0800
+15:33  up 9 days,  7:21, 29 users, load averages: 3.25 4.28 5.61
+total = 29696.00M  used = 28718.12M  free = 977.88M  (encrypted)

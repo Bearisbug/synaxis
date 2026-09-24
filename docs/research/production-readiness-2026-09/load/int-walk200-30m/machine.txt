@@ -1,0 +1,12 @@
+start 2026-09-24 14:25:16 +0800
+14:25  up 9 days,  6:12, 27 users, load averages: 5.79 11.49 14.96
+total = 29696.00M  used = 28690.56M  free = 1005.44M  (encrypted)
+ %CPU COMM
+ 99.4 /opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/Resources/Python.app/Contents/MacOS/Python
+ 91.8 /usr/libexec/coreduetd
+ 14.2 /System/Library/PrivateFrameworks/SkyLight.framework/Resources/WindowServer
+ 12.8 claude
+  5.7 claude
+end 2026-09-24 14:56:30 +0800
+14:56  up 9 days,  6:43, 28 users, load averages: 4.21 5.69 7.17
+total = 30720.00M  used = 30147.25M  free = 572.75M  (encrypted)

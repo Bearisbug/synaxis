@@ -1,0 +1,4 @@
+ledger events-w5storm-20260924.jsonl: 401 lines, 62146 bytes
+ 400 session_entered_configuration
+   1 shutdown_saved
+synaxis_ledger_dropped_total 0.0

@@ -1,0 +1,1378 @@
+{
+  "profile": [
+    {
+      "profile": "town",
+      "bots": 500,
+      "bot_offset": 0,
+      "encryption": "off",
+      "chunks_per_tick": 9.0,
+      "duration_s": 600.0,
+      "login_rate_per_s": 20.0,
+      "warmup_s": 60.0,
+      "host": "127.0.0.1",
+      "port": 25656
+    }
+  ],
+  "bots": {
+    "requested": 500,
+    "logged_in": 500,
+    "lost": 0,
+    "login_failures": {}
+  },
+  "kicks_by_reason": {},
+  "login_latency_ms": {
+    "off": {
+      "count": 500,
+      "mean_ms": 27.418,
+      "p50_ms": 27.3,
+      "p99_ms": 31.2,
+      "max_ms": 44.2,
+      "over_50ms": 0
+    }
+  },
+  "inbound": {
+    "packets": 652766625,
+    "wire_bytes": 11956344129,
+    "connection_seconds": 293225.025,
+    "bytes_per_s_per_bot": 40775.32,
+    "chunks": {
+      "town": {
+        "packets": 2705188,
+        "wire_bytes": 226409670,
+        "connection_seconds": 293225.025,
+        "kb_per_s_per_bot": 0.754,
+        "packets_per_s_per_bot": 9.226,
+        "steady_packets": 2213141,
+        "steady_wire_bytes": 185285809,
+        "steady_connection_seconds": 263225.025,
+        "steady_kb_per_s_per_bot": 0.687,
+        "steady_packets_per_s_per_bot": 8.408,
+        "per_bot_packets": {
+          "count": 500,
+          "mean": 5410.376,
+          "p50": 5339.0,
+          "p99": 6761.0,
+          "max": 6922.0,
+          "min": 3691.0
+        }
+      }
+    },
+    "by_packet": {
+      "EntityPositionAndRotationPacket": {
+        "count": 556916233,
+        "wire_bytes": 8767264803
+      },
+      "EntityPositionSyncPacket": {
+        "count": 29297652,
+        "wire_bytes": 1867493010
+      },
+      "EntityVelocityPacket": {
+        "count": 29313620,
+        "wire_bytes": 373529054
+      },
+      "SpawnEntityPacket": {
+        "count": 5067323,
+        "wire_bytes": 272323566
+      },
+      "ChunkDataPacket": {
+        "count": 2705188,
+        "wire_bytes": 226409670
+      },
+      "EntityEquipmentPacket": {
+        "count": 5067323,
+        "wire_bytes": 115236553
+      },
+      "PlayerInfoUpdatePacket": {
+        "count": 135635,
+        "wire_bytes": 91083683
+      },
+      "EntityMetaDataPacket": {
+        "count": 5067823,
+        "wire_bytes": 69637519
+      },
+      "EntityAttributesPacket": {
+        "count": 5067823,
+        "wire_bytes": 44298404
+      },
+      "EntityHeadLookPacket": {
+        "count": 5067323,
+        "wire_bytes": 39226708
+      },
+      "DestroyEntitiesPacket": {
+        "count": 5017323,
+        "wire_bytes": 38839204
+      },
+      "UnloadChunkPacket": {
+        "count": 2470943,
+        "wire_bytes": 32122259
+      },
+      "ChunkBatchFinishedPacket": {
+        "count": 705002,
+        "wire_bytes": 4230012
+      },
+      "ChunkBatchStartPacket": {
+        "count": 705002,
+        "wire_bytes": 3525010
+      },
+      "UpdateViewPositionPacket": {
+        "count": 106927,
+        "wire_bytes": 1142369
+      },
+      "KeepAlivePacket": {
+        "count": 29479,
+        "wire_bytes": 383227
+      },
+      "PlayerPositionAndLookPacket": {
+        "count": 1000,
+        "wire_bytes": 66000
+      },
+      "WindowItemsPacket": {
+        "count": 1000,
+        "wire_bytes": 55000
+      },
+      "JoinGamePacket": {
+        "count": 500,
+        "wire_bytes": 24500
+      },
+      "InitializeWorldBorderPacket": {
+        "count": 500,
+        "wire_bytes": 22000
+      },
+      "ChangeGameStatePacket": {
+        "count": 2000,
+        "wire_bytes": 20000
+      },
+      "SetTimePacket": {
+        "count": 500,
+        "wire_bytes": 18000
+      },
+      "SpawnPositionPacket": {
+        "count": 500,
+        "wire_bytes": 17500
+      },
+      "PlayerAbilitiesPacket": {
+        "count": 500,
+        "wire_bytes": 7000
+      },
+      "UpdateHealthPacket": {
+        "count": 500,
+        "wire_bytes": 7000
+      },
+      "EntityStatusPacket": {
+        "count": 500,
+        "wire_bytes": 5000
+      },
+      "DeclareCommandsPacket": {
+        "count": 500,
+        "wire_bytes": 4500
+      },
+      "ServerDifficultyPacket": {
+        "count": 500,
+        "wire_bytes": 3500
+      },
+      "HeldItemChangePacket": {
+        "count": 500,
+        "wire_bytes": 3000
+      }
+    }
+  },
+  "chunk_batch_rtt_ms": {
+    "count": 705002,
+    "mean_ms": 0.002,
+    "p50_ms": 0.0,
+    "p99_ms": 0.0,
+    "max_ms": 26.3,
+    "over_50ms": 0
+  },
+  "chunk_batches": 705002,
+  "visible_entities": {
+    "count": 293475,
+    "mean": 99.963,
+    "p50": 100.0,
+    "p99": 100.0,
+    "max": 101.0
+  },
+  "c2s": {
+    "packets": 12465969,
+    "packets_per_s_per_bot": 42.513,
+    "by_packet": {
+      "ClientChunkBatchReceivedPacket": 705002,
+      "ClientFinishConfigurationPacket": 500,
+      "ClientHandshakePacket": 500,
+      "ClientKeepAlivePacket": 29485,
+      "ClientLoginAcknowledgedPacket": 500,
+      "ClientLoginStartPacket": 500,
+      "ClientPlayerLoadedPacket": 500,
+      "ClientPlayerPositionPacket": 5863741,
+      "ClientSelectKnownPacksPacket": 500,
+      "ClientTeleportConfirmPacket": 1000,
+      "ClientTickEndPacket": 5863741
+    },
+    "per_bot_per_1s": {
+      "count": 292975,
+      "mean": 42.489,
+      "p50": 40.0,
+      "p99": 59.0,
+      "max": 62.0
+    },
+    "per_bot_per_7s": {
+      "count": 289975,
+      "mean": 296.797,
+      "p50": 297.0,
+      "p99": 314.0,
+      "max": 422.0
+    }
+  },
+  "harness": [
+    {
+      "cpu_seconds": 637.9,
+      "cpu_percent_mean": 106.491,
+      "machine": {
+        "hostname": "Mac.local",
+        "os": "Mac OS X aarch64",
+        "cores": 12,
+        "memory_mib": 24576,
+        "java": "25.0.4.1"
+      }
+    }
+  ],
+  "server_machine": {
+    "hostname": "Mac.local",
+    "os": "Mac OS X aarch64",
+    "cores": 12,
+    "memory_mib": 24576,
+    "java": "25.0.4.1"
+  },
+  "pid": 55956,
+  "started_at": "2026-09-24T07:09:05.685372Z",
+  "elapsed_s": 630.054,
+  "ticks": {
+    "count": 12621,
+    "overall": {
+      "count": 12621,
+      "mean_ms": 4.3,
+      "p50_ms": 1.767,
+      "p99_ms": 25.541,
+      "max_ms": 163.54,
+      "over_50ms": 31
+    },
+    "per_minute": {
+      "0": {
+        "count": 1200,
+        "mean_ms": 3.359,
+        "p50_ms": 1.867,
+        "p99_ms": 17.805,
+        "max_ms": 29.11,
+        "over_50ms": 0
+      },
+      "1": {
+        "count": 1200,
+        "mean_ms": 4.709,
+        "p50_ms": 1.869,
+        "p99_ms": 25.005,
+        "max_ms": 81.291,
+        "over_50ms": 3
+      },
+      "2": {
+        "count": 1200,
+        "mean_ms": 4.761,
+        "p50_ms": 1.86,
+        "p99_ms": 26.246,
+        "max_ms": 117.25,
+        "over_50ms": 4
+      },
+      "3": {
+        "count": 1200,
+        "mean_ms": 5.37,
+        "p50_ms": 1.822,
+        "p99_ms": 42.884,
+        "max_ms": 163.54,
+        "over_50ms": 9
+      },
+      "4": {
+        "count": 1200,
+        "mean_ms": 4.677,
+        "p50_ms": 1.769,
+        "p99_ms": 26.926,
+        "max_ms": 137.191,
+        "over_50ms": 4
+      },
+      "5": {
+        "count": 1200,
+        "mean_ms": 4.665,
+        "p50_ms": 1.779,
+        "p99_ms": 27.697,
+        "max_ms": 49.125,
+        "over_50ms": 0
+      },
+      "6": {
+        "count": 1200,
+        "mean_ms": 4.701,
+        "p50_ms": 1.753,
+        "p99_ms": 25.989,
+        "max_ms": 126.954,
+        "over_50ms": 7
+      },
+      "7": {
+        "count": 1200,
+        "mean_ms": 4.343,
+        "p50_ms": 1.741,
+        "p99_ms": 25.225,
+        "max_ms": 97.556,
+        "over_50ms": 3
+      },
+      "8": {
+        "count": 1200,
+        "mean_ms": 4.055,
+        "p50_ms": 1.727,
+        "p99_ms": 23.193,
+        "max_ms": 37.087,
+        "over_50ms": 0
+      },
+      "9": {
+        "count": 1200,
+        "mean_ms": 4.109,
+        "p50_ms": 1.715,
+        "p99_ms": 24.28,
+        "max_ms": 45.056,
+        "over_50ms": 0
+      },
+      "10": {
+        "count": 621,
+        "mean_ms": 0.911,
+        "p50_ms": 0.307,
+        "p99_ms": 11.974,
+        "max_ms": 82.015,
+        "over_50ms": 1
+      }
+    }
+  },
+  "gc": {
+    "count": 50,
+    "mean_ms": 25.255,
+    "p50_ms": 22.562,
+    "p99_ms": 90.22,
+    "max_ms": 90.22,
+    "over_50ms": 5
+  },
+  "heap": {
+    "rss_mib_max": 1984.656,
+    "heap_used_mib_max": 1885.798
+  },
+  "connection_gate": {
+    "closed_at_accept": 0.0,
+    "full": 0.0,
+    "handshake_timeout": 0.0,
+    "throttled": 0.0,
+    "too_many": 0.0
+  },
+  "dispatcher_busy_ratio": {
+    "Syn-Tick-0": 0.077,
+    "Syn-Tick-1": 0.0,
+    "Syn-Tick-2": 0.0,
+    "Syn-Tick-3": 0.0,
+    "Syn-Tick-4": 0.0,
+    "Syn-Tick-5": 0.0,
+    "Syn-Tick-6": 0.061,
+    "Syn-Tick-7": 0.066,
+    "Syn-Tick-8": 0.0,
+    "Syn-Tick-9": 0.075,
+    "Syn-TickScheduler": 0.086
+  },
+  "traffic": {
+    "packets_in_per_s": 19787.142,
+    "packets_out_per_s": 1036316.014,
+    "bytes_in_per_s": 296947.267,
+    "bytes_out_per_s": 2.1052629954E7
+  },
+  "same_machine": true,
+  "load1": {
+    "min": 4.803,
+    "max": 14.201
+  },
+  "server_samples": [
+    {
+      "t": 0.0,
+      "cpu_percent": 3.3,
+      "rss_mib": 853.578,
+      "threads": 60,
+      "fds": 88,
+      "load1": 5.0888671875,
+      "players": 0.0,
+      "chunks_loaded": 0.0,
+      "entities": 0.0,
+      "heap_used_mib": 88.885,
+      "packets_in_total": 0.0,
+      "packets_out_total": 0.0,
+      "bytes_out_total": 0.0
+    },
+    {
+      "t": 10.0,
+      "cpu_percent": 53.2,
+      "rss_mib": 450.047,
+      "threads": 69,
+      "fds": 193,
+      "load1": 5.08740234375,
+      "players": 101.0,
+      "chunks_loaded": 622.0,
+      "entities": 85.0,
+      "heap_used_mib": 188.885,
+      "packets_in_total": 16146.0,
+      "packets_out_total": 453026.0,
+      "bytes_out_total": 1.2535703E7
+    },
+    {
+      "t": 20.0,
+      "cpu_percent": 77.6,
+      "rss_mib": 620.469,
+      "threads": 69,
+      "fds": 394,
+      "load1": 4.83984375,
+      "players": 301.0,
+      "chunks_loaded": 778.0,
+      "entities": 285.0,
+      "heap_used_mib": 100.383,
+      "packets_in_total": 126241.0,
+      "packets_out_total": 5289980.0,
+      "bytes_out_total": 1.19623058E8
+    },
+    {
+      "t": 30.0,
+      "cpu_percent": 92.9,
+      "rss_mib": 737.891,
+      "threads": 69,
+      "fds": 591,
+      "load1": 4.80322265625,
+      "players": 500.0,
+      "chunks_loaded": 806.0,
+      "entities": 485.0,
+      "heap_used_mib": 521.937,
+      "packets_in_total": 321268.0,
+      "packets_out_total": 1.4621462E7,
+      "bytes_out_total": 3.22497233E8
+    },
+    {
+      "t": 40.0,
+      "cpu_percent": 83.5,
+      "rss_mib": 933.516,
+      "threads": 69,
+      "fds": 591,
+      "load1": 5.99267578125,
+      "players": 500.0,
+      "chunks_loaded": 830.0,
+      "entities": 500.0,
+      "heap_used_mib": 278.634,
+      "packets_in_total": 540686.0,
+      "packets_out_total": 2.5652579E7,
+      "bytes_out_total": 5.46331485E8
+    },
+    {
+      "t": 50.0,
+      "cpu_percent": 82.7,
+      "rss_mib": 915.078,
+      "threads": 69,
+      "fds": 591,
+      "load1": 5.67333984375,
+      "players": 500.0,
+      "chunks_loaded": 830.0,
+      "entities": 500.0,
+      "heap_used_mib": 455.389,
+      "packets_in_total": 752253.0,
+      "packets_out_total": 3.6755129E7,
+      "bytes_out_total": 7.69791971E8
+    },
+    {
+      "t": 60.0,
+      "cpu_percent": 84.4,
+      "rss_mib": 984.5,
+      "threads": 69,
+      "fds": 592,
+      "load1": 5.41552734375,
+      "players": 500.0,
+      "chunks_loaded": 830.0,
+      "entities": 500.0,
+      "heap_used_mib": 1629.389,
+      "packets_in_total": 963786.0,
+      "packets_out_total": 4.7939336E7,
+      "bytes_out_total": 9.99616186E8
+    },
+    {
+      "t": 70.0,
+      "cpu_percent": 83.4,
+      "rss_mib": 1148.875,
+      "threads": 69,
+      "fds": 592,
+      "load1": 4.89599609375,
+      "players": 500.0,
+      "chunks_loaded": 830.0,
+      "entities": 500.0,
+      "heap_used_mib": 599.533,
+      "packets_in_total": 1175262.0,
+      "packets_out_total": 5.907875E7,
+      "bytes_out_total": 1.22429714E9
+    },
+    {
+      "t": 80.0,
+      "cpu_percent": 88.6,
+      "rss_mib": 1391.688,
+      "threads": 69,
+      "fds": 591,
+      "load1": 7.15380859375,
+      "players": 500.0,
+      "chunks_loaded": 830.0,
+      "entities": 500.0,
+      "heap_used_mib": 1749.533,
+      "packets_in_total": 1386787.0,
+      "packets_out_total": 7.0152887E7,
+      "bytes_out_total": 1.447332334E9
+    },
+    {
+      "t": 90.0,
+      "cpu_percent": 86.6,
+      "rss_mib": 1059.922,
+      "threads": 69,
+      "fds": 592,
+      "load1": 6.50830078125,
+      "players": 500.0,
+      "chunks_loaded": 830.0,
+      "entities": 500.0,
+      "heap_used_mib": 1094.788,
+      "packets_in_total": 1598258.0,
+      "packets_out_total": 8.1238368E7,
+      "bytes_out_total": 1.674783677E9
+    },
+    {
+      "t": 100.0,
+      "cpu_percent": 86.8,
+      "rss_mib": 786.672,
+      "threads": 69,
+      "fds": 591,
+      "load1": 8.296875,
+      "players": 500.0,
+      "chunks_loaded": 830.0,
+      "entities": 500.0,
+      "heap_used_mib": 217.415,
+      "packets_in_total": 1810744.0,
+      "packets_out_total": 9.2427426E7,
+      "bytes_out_total": 1.900200137E9
+    },
+    {
+      "t": 110.0,
+      "cpu_percent": 90.8,
+      "rss_mib": 1335.953,
+      "threads": 69,
+      "fds": 592,
+      "load1": 7.48876953125,
+      "players": 500.0,
+      "chunks_loaded": 830.0,
+      "entities": 500.0,
+      "heap_used_mib": 1385.415,
+      "packets_in_total": 2021362.0,
+      "packets_out_total": 1.0352155E8,
+      "bytes_out_total": 2.123923712E9
+    },
+    {
+      "t": 120.0,
+      "cpu_percent": 86.3,
+      "rss_mib": 1340.563,
+      "threads": 69,
+      "fds": 590,
+      "load1": 6.64404296875,
+      "players": 500.0,
+      "chunks_loaded": 830.0,
+      "entities": 500.0,
+      "heap_used_mib": 736.952,
+      "packets_in_total": 2232776.0,
+      "packets_out_total": 1.1463647E8,
+      "bytes_out_total": 2.352138075E9
+    },
+    {
+      "t": 130.0,
+      "cpu_percent": 89.0,
+      "rss_mib": 1339.969,
+      "threads": 69,
+      "fds": 591,
+      "load1": 6.25,
+      "players": 500.0,
+      "chunks_loaded": 830.0,
+      "entities": 500.0,
+      "heap_used_mib": 667.492,
+      "packets_in_total": 2444331.0,
+      "packets_out_total": 1.25726581E8,
+      "bytes_out_total": 2.57545741E9
+    },
+    {
+      "t": 140.0,
+      "cpu_percent": 83.6,
+      "rss_mib": 1290.516,
+      "threads": 69,
+      "fds": 591,
+      "load1": 7.2138671875,
+      "players": 500.0,
+      "chunks_loaded": 830.0,
+      "entities": 500.0,
+      "heap_used_mib": 446.408,
+      "packets_in_total": 2655569.0,
+      "packets_out_total": 1.3683518E8,
+      "bytes_out_total": 2.799130871E9
+    },
+    {
+      "t": 150.0,
+      "cpu_percent": 82.4,
+      "rss_mib": 987.016,
+      "threads": 69,
+      "fds": 591,
+      "load1": 9.576171875,
+      "players": 500.0,
+      "chunks_loaded": 830.0,
+      "entities": 500.0,
+      "heap_used_mib": 204.448,
+      "packets_in_total": 2867265.0,
+      "packets_out_total": 1.47979264E8,
+      "bytes_out_total": 3.028030054E9
+    },
+    {
+      "t": 160.0,
+      "cpu_percent": 95.4,
+      "rss_mib": 1344.969,
+      "threads": 69,
+      "fds": 591,
+      "load1": 9.25341796875,
+      "players": 500.0,
+      "chunks_loaded": 830.0,
+      "entities": 500.0,
+      "heap_used_mib": 1366.448,
+      "packets_in_total": 3078727.0,
+      "packets_out_total": 1.59111004E8,
+      "bytes_out_total": 3.252368715E9
+    },
+    {
+      "t": 170.0,
+      "cpu_percent": 94.5,
+      "rss_mib": 1368.422,
+      "threads": 69,
+      "fds": 591,
+      "load1": 8.43896484375,
+      "players": 500.0,
+      "chunks_loaded": 830.0,
+      "entities": 500.0,
+      "heap_used_mib": 1063.533,
+      "packets_in_total": 3290154.0,
+      "packets_out_total": 1.70224584E8,
+      "bytes_out_total": 3.476226879E9
+    },
+    {
+      "t": 180.0,
+      "cpu_percent": 91.4,
+      "rss_mib": 877.391,
+      "threads": 69,
+      "fds": 591,
+      "load1": 8.27197265625,
+      "players": 500.0,
+      "chunks_loaded": 830.0,
+      "entities": 500.0,
+      "heap_used_mib": 691.533,
+      "packets_in_total": 3501773.0,
+      "packets_out_total": 1.81329232E8,
+      "bytes_out_total": 3.704142939E9
+    },
+    {
+      "t": 190.0,
+      "cpu_percent": 91.1,
+      "rss_mib": 1453.297,
+      "threads": 69,
+      "fds": 592,
+      "load1": 7.380859375,
+      "players": 500.0,
+      "chunks_loaded": 830.0,
+      "entities": 500.0,
+      "heap_used_mib": 242.337,
+      "packets_in_total": 3713186.0,
+      "packets_out_total": 1.92456984E8,
+      "bytes_out_total": 3.928291199E9
+    },
+    {
+      "t": 200.0,
+      "cpu_percent": 97.2,
+      "rss_mib": 1072.859,
+      "threads": 69,
+      "fds": 591,
+      "load1": 6.7802734375,
+      "players": 500.0,
+      "chunks_loaded": 830.0,
+      "entities": 500.0,
+      "heap_used_mib": 1404.337,
+      "packets_in_total": 3924726.0,
+      "packets_out_total": 2.03597072E8,
+      "bytes_out_total": 4.152841466E9
+    },
+    {
+      "t": 210.0,
+      "cpu_percent": 94.1,
+      "rss_mib": 657.734,
+      "threads": 69,
+      "fds": 592,
+      "load1": 6.34619140625,
+      "players": 500.0,
+      "chunks_loaded": 830.0,
+      "entities": 500.0,
+      "heap_used_mib": 283.207,
+      "packets_in_total": 4136162.0,
+      "packets_out_total": 2.14723546E8,
+      "bytes_out_total": 4.381261252E9
+    },
+    {
+      "t": 220.0,
+      "cpu_percent": 97.1,
+      "rss_mib": 1226.766,
+      "threads": 69,
+      "fds": 591,
+      "load1": 5.91162109375,
+      "players": 500.0,
+      "chunks_loaded": 830.0,
+      "entities": 500.0,
+      "heap_used_mib": 177.773,
+      "packets_in_total": 4347799.0,
+      "packets_out_total": 2.25833393E8,
+      "bytes_out_total": 4.605076053E9
+    },
+    {
+      "t": 230.0,
+      "cpu_percent": 87.9,
+      "rss_mib": 1427.953,
+      "threads": 69,
+      "fds": 591,
+      "load1": 5.46337890625,
+      "players": 500.0,
+      "chunks_loaded": 830.0,
+      "entities": 500.0,
+      "heap_used_mib": 1337.773,
+      "packets_in_total": 4559215.0,
+      "packets_out_total": 2.36949586E8,
+      "bytes_out_total": 4.828974087E9
+    },
+    {
+      "t": 240.0,
+      "cpu_percent": 88.9,
+      "rss_mib": 1283.109,
+      "threads": 69,
+      "fds": 591,
+      "load1": 5.24462890625,
+      "players": 500.0,
+      "chunks_loaded": 830.0,
+      "entities": 500.0,
+      "heap_used_mib": 1004.64,
+      "packets_in_total": 4770684.0,
+      "packets_out_total": 2.48078485E8,
+      "bytes_out_total": 5.057402392E9
+    },
+    {
+      "t": 250.0,
+      "cpu_percent": 84.2,
+      "rss_mib": 1109.391,
+      "threads": 69,
+      "fds": 591,
+      "load1": 5.10693359375,
+      "players": 500.0,
+      "chunks_loaded": 830.0,
+      "entities": 500.0,
+      "heap_used_mib": 623.878,
+      "packets_in_total": 4982189.0,
+      "packets_out_total": 2.59209562E8,
+      "bytes_out_total": 5.281778024E9
+    },
+    {
+      "t": 260.0,
+      "cpu_percent": 88.4,
+      "rss_mib": 1292.484,
+      "threads": 69,
+      "fds": 591,
+      "load1": 5.3173828125,
+      "players": 500.0,
+      "chunks_loaded": 830.0,
+      "entities": 500.0,
+      "heap_used_mib": 187.908,
+      "packets_in_total": 5193744.0,
+      "packets_out_total": 2.70335095E8,
+      "bytes_out_total": 5.505955022E9
+    },
+    {
+      "t": 270.0,
+      "cpu_percent": 87.1,
+      "rss_mib": 858.766,
+      "threads": 69,
+      "fds": 591,
+      "load1": 5.447265625,
+      "players": 500.0,
+      "chunks_loaded": 830.0,
+      "entities": 500.0,
+      "heap_used_mib": 1343.908,
+      "packets_in_total": 5405157.0,
+      "packets_out_total": 2.81441418E8,
+      "bytes_out_total": 5.733856536E9
+    },
+    {
+      "t": 280.0,
+      "cpu_percent": 86.4,
+      "rss_mib": 1386.734,
+      "threads": 69,
+      "fds": 591,
+      "load1": 4.990234375,
+      "players": 500.0,
+      "chunks_loaded": 830.0,
+      "entities": 500.0,
+      "heap_used_mib": 921.731,
+      "packets_in_total": 5617725.0,
+      "packets_out_total": 2.92614852E8,
+      "bytes_out_total": 5.95894734E9
+    },
+    {
+      "t": 290.0,
+      "cpu_percent": 83.0,
+      "rss_mib": 1304.438,
+      "threads": 69,
+      "fds": 592,
+      "load1": 6.16650390625,
+      "players": 500.0,
+      "chunks_loaded": 830.0,
+      "entities": 500.0,
+      "heap_used_mib": 913.922,
+      "packets_in_total": 5828215.0,
+      "packets_out_total": 3.03696457E8,
+      "bytes_out_total": 6.182256957E9
+    },
+    {
+      "t": 300.0,
+      "cpu_percent": 88.5,
+      "rss_mib": 1270.516,
+      "threads": 69,
+      "fds": 591,
+      "load1": 7.74169921875,
+      "players": 500.0,
+      "chunks_loaded": 830.0,
+      "entities": 500.0,
+      "heap_used_mib": 537.127,
+      "packets_in_total": 6039707.0,
+      "packets_out_total": 3.14828647E8,
+      "bytes_out_total": 6.410829284E9
+    },
+    {
+      "t": 310.0,
+      "cpu_percent": 85.5,
+      "rss_mib": 1141.484,
+      "threads": 69,
+      "fds": 591,
+      "load1": 7.39990234375,
+      "players": 500.0,
+      "chunks_loaded": 830.0,
+      "entities": 500.0,
+      "heap_used_mib": 374.61,
+      "packets_in_total": 6251145.0,
+      "packets_out_total": 3.25941325E8,
+      "bytes_out_total": 6.63468581E9
+    },
+    {
+      "t": 320.0,
+      "cpu_percent": 79.8,
+      "rss_mib": 1424.625,
+      "threads": 69,
+      "fds": 591,
+      "load1": 6.64306640625,
+      "players": 500.0,
+      "chunks_loaded": 830.0,
+      "entities": 500.0,
+      "heap_used_mib": 281.951,
+      "packets_in_total": 6462685.0,
+      "packets_out_total": 3.37055542E8,
+      "bytes_out_total": 6.85856933E9
+    },
+    {
+      "t": 330.0,
+      "cpu_percent": 86.8,
+      "rss_mib": 898.828,
+      "threads": 69,
+      "fds": 592,
+      "load1": 7.943359375,
+      "players": 500.0,
+      "chunks_loaded": 830.0,
+      "entities": 500.0,
+      "heap_used_mib": 1441.951,
+      "packets_in_total": 6674212.0,
+      "packets_out_total": 3.48183715E8,
+      "bytes_out_total": 7.087028525E9
+    },
+    {
+      "t": 340.0,
+      "cpu_percent": 81.5,
+      "rss_mib": 874.734,
+      "threads": 69,
+      "fds": 592,
+      "load1": 7.1767578125,
+      "players": 500.0,
+      "chunks_loaded": 830.0,
+      "entities": 500.0,
+      "heap_used_mib": 1053.972,
+      "packets_in_total": 6885715.0,
+      "packets_out_total": 3.59315903E8,
+      "bytes_out_total": 7.311336976E9
+    },
+    {
+      "t": 350.0,
+      "cpu_percent": 84.6,
+      "rss_mib": 1311.672,
+      "threads": 69,
+      "fds": 591,
+      "load1": 6.38037109375,
+      "players": 500.0,
+      "chunks_loaded": 830.0,
+      "entities": 500.0,
+      "heap_used_mib": 673.978,
+      "packets_in_total": 7097100.0,
+      "packets_out_total": 3.70436392E8,
+      "bytes_out_total": 7.535401693E9
+    },
+    {
+      "t": 360.0,
+      "cpu_percent": 83.2,
+      "rss_mib": 1320.844,
+      "threads": 69,
+      "fds": 591,
+      "load1": 9.876953125,
+      "players": 500.0,
+      "chunks_loaded": 830.0,
+      "entities": 500.0,
+      "heap_used_mib": 273.352,
+      "packets_in_total": 7308570.0,
+      "packets_out_total": 3.81555737E8,
+      "bytes_out_total": 7.763634555E9
+    },
+    {
+      "t": 370.0,
+      "cpu_percent": 80.8,
+      "rss_mib": 1079.719,
+      "threads": 69,
+      "fds": 591,
+      "load1": 10.9013671875,
+      "players": 500.0,
+      "chunks_loaded": 830.0,
+      "entities": 500.0,
+      "heap_used_mib": 1431.352,
+      "packets_in_total": 7520226.0,
+      "packets_out_total": 3.92675291E8,
+      "bytes_out_total": 7.987678315E9
+    },
+    {
+      "t": 380.0,
+      "cpu_percent": 86.4,
+      "rss_mib": 1506.984,
+      "threads": 69,
+      "fds": 591,
+      "load1": 12.0693359375,
+      "players": 500.0,
+      "chunks_loaded": 830.0,
+      "entities": 500.0,
+      "heap_used_mib": 1027.047,
+      "packets_in_total": 7731706.0,
+      "packets_out_total": 4.03811052E8,
+      "bytes_out_total": 8.212084135E9
+    },
+    {
+      "t": 390.0,
+      "cpu_percent": 83.3,
+      "rss_mib": 940.828,
+      "threads": 69,
+      "fds": 591,
+      "load1": 12.375,
+      "players": 500.0,
+      "chunks_loaded": 830.0,
+      "entities": 500.0,
+      "heap_used_mib": 623.783,
+      "packets_in_total": 7943213.0,
+      "packets_out_total": 4.14935934E8,
+      "bytes_out_total": 8.440479101E9
+    },
+    {
+      "t": 400.0,
+      "cpu_percent": 87.2,
+      "rss_mib": 1041.719,
+      "threads": 69,
+      "fds": 591,
+      "load1": 11.5,
+      "players": 500.0,
+      "chunks_loaded": 830.0,
+      "entities": 500.0,
+      "heap_used_mib": 629.464,
+      "packets_in_total": 8154550.0,
+      "packets_out_total": 4.26054121E8,
+      "bytes_out_total": 8.66447689E9
+    },
+    {
+      "t": 410.0,
+      "cpu_percent": 92.3,
+      "rss_mib": 874.234,
+      "threads": 69,
+      "fds": 591,
+      "load1": 10.12548828125,
+      "players": 500.0,
+      "chunks_loaded": 830.0,
+      "entities": 500.0,
+      "heap_used_mib": 357.397,
+      "packets_in_total": 8366119.0,
+      "packets_out_total": 4.37174112E8,
+      "bytes_out_total": 8.88848511E9
+    },
+    {
+      "t": 420.0,
+      "cpu_percent": 87.7,
+      "rss_mib": 1113.281,
+      "threads": 69,
+      "fds": 591,
+      "load1": 10.30419921875,
+      "players": 500.0,
+      "chunks_loaded": 830.0,
+      "entities": 500.0,
+      "heap_used_mib": 361.109,
+      "packets_in_total": 8577629.0,
+      "packets_out_total": 4.48295642E8,
+      "bytes_out_total": 9.116825419E9
+    },
+    {
+      "t": 430.0,
+      "cpu_percent": 91.7,
+      "rss_mib": 1412.344,
+      "threads": 69,
+      "fds": 592,
+      "load1": 12.6787109375,
+      "players": 500.0,
+      "chunks_loaded": 830.0,
+      "entities": 500.0,
+      "heap_used_mib": 1519.109,
+      "packets_in_total": 8789197.0,
+      "packets_out_total": 4.59428625E8,
+      "bytes_out_total": 9.341125016E9
+    },
+    {
+      "t": 440.0,
+      "cpu_percent": 86.6,
+      "rss_mib": 1757.813,
+      "threads": 69,
+      "fds": 592,
+      "load1": 13.5537109375,
+      "players": 500.0,
+      "chunks_loaded": 830.0,
+      "entities": 500.0,
+      "heap_used_mib": 1091.654,
+      "packets_in_total": 9000602.0,
+      "packets_out_total": 4.70550084E8,
+      "bytes_out_total": 9.565182242E9
+    },
+    {
+      "t": 450.0,
+      "cpu_percent": 91.7,
+      "rss_mib": 1120.156,
+      "threads": 69,
+      "fds": 591,
+      "load1": 12.0107421875,
+      "players": 500.0,
+      "chunks_loaded": 830.0,
+      "entities": 500.0,
+      "heap_used_mib": 618.455,
+      "packets_in_total": 9212111.0,
+      "packets_out_total": 4.81666901E8,
+      "bytes_out_total": 9.793434816E9
+    },
+    {
+      "t": 460.0,
+      "cpu_percent": 84.1,
+      "rss_mib": 1573.344,
+      "threads": 69,
+      "fds": 592,
+      "load1": 11.09912109375,
+      "players": 500.0,
+      "chunks_loaded": 830.0,
+      "entities": 500.0,
+      "heap_used_mib": 1772.455,
+      "packets_in_total": 9423591.0,
+      "packets_out_total": 4.92790918E8,
+      "bytes_out_total": 1.0017535394E10
+    },
+    {
+      "t": 470.0,
+      "cpu_percent": 81.2,
+      "rss_mib": 1836.938,
+      "threads": 69,
+      "fds": 591,
+      "load1": 12.09521484375,
+      "players": 500.0,
+      "chunks_loaded": 830.0,
+      "entities": 500.0,
+      "heap_used_mib": 1252.486,
+      "packets_in_total": 9635128.0,
+      "packets_out_total": 5.03913203E8,
+      "bytes_out_total": 1.0241604659E10
+    },
+    {
+      "t": 480.0,
+      "cpu_percent": 88.7,
+      "rss_mib": 1602.938,
+      "threads": 69,
+      "fds": 591,
+      "load1": 13.24609375,
+      "players": 500.0,
+      "chunks_loaded": 830.0,
+      "entities": 500.0,
+      "heap_used_mib": 718.882,
+      "packets_in_total": 9846660.0,
+      "packets_out_total": 5.1503764E8,
+      "bytes_out_total": 1.0469969936E10
+    },
+    {
+      "t": 490.0,
+      "cpu_percent": 87.7,
+      "rss_mib": 1869.953,
+      "threads": 69,
+      "fds": 591,
+      "load1": 14.20068359375,
+      "players": 500.0,
+      "chunks_loaded": 830.0,
+      "entities": 500.0,
+      "heap_used_mib": 1872.882,
+      "packets_in_total": 1.0058076E7,
+      "packets_out_total": 5.26158103E8,
+      "bytes_out_total": 1.0694063454E10
+    },
+    {
+      "t": 500.0,
+      "cpu_percent": 80.3,
+      "rss_mib": 1923.484,
+      "threads": 69,
+      "fds": 591,
+      "load1": 12.638671875,
+      "players": 500.0,
+      "chunks_loaded": 830.0,
+      "entities": 500.0,
+      "heap_used_mib": 1220.155,
+      "packets_in_total": 1.0269488E7,
+      "packets_out_total": 5.37272405E8,
+      "bytes_out_total": 1.0917904233E10
+    },
+    {
+      "t": 510.0,
+      "cpu_percent": 80.0,
+      "rss_mib": 1571.141,
+      "threads": 69,
+      "fds": 591,
+      "load1": 11.2236328125,
+      "players": 500.0,
+      "chunks_loaded": 830.0,
+      "entities": 500.0,
+      "heap_used_mib": 559.731,
+      "packets_in_total": 1.0481024E7,
+      "packets_out_total": 5.483917E8,
+      "bytes_out_total": 1.1146230428E10
+    },
+    {
+      "t": 520.0,
+      "cpu_percent": 83.3,
+      "rss_mib": 1982.219,
+      "threads": 69,
+      "fds": 591,
+      "load1": 10.03271484375,
+      "players": 500.0,
+      "chunks_loaded": 830.0,
+      "entities": 500.0,
+      "heap_used_mib": 1713.731,
+      "packets_in_total": 1.0692583E7,
+      "packets_out_total": 5.59521355E8,
+      "bytes_out_total": 1.1370434543E10
+    },
+    {
+      "t": 530.0,
+      "cpu_percent": 80.5,
+      "rss_mib": 1984.656,
+      "threads": 69,
+      "fds": 592,
+      "load1": 9.25830078125,
+      "players": 500.0,
+      "chunks_loaded": 830.0,
+      "entities": 500.0,
+      "heap_used_mib": 1058.563,
+      "packets_in_total": 1.0904126E7,
+      "packets_out_total": 5.70642207E8,
+      "bytes_out_total": 1.1594537049E10
+    },
+    {
+      "t": 540.0,
+      "cpu_percent": 81.9,
+      "rss_mib": 1281.328,
+      "threads": 69,
+      "fds": 591,
+      "load1": 8.21533203125,
+      "players": 500.0,
+      "chunks_loaded": 830.0,
+      "entities": 500.0,
+      "heap_used_mib": 402.98,
+      "packets_in_total": 1.1115564E7,
+      "packets_out_total": 5.81771118E8,
+      "bytes_out_total": 1.1823010909E10
+    },
+    {
+      "t": 550.0,
+      "cpu_percent": 85.7,
+      "rss_mib": 1302.266,
+      "threads": 69,
+      "fds": 591,
+      "load1": 8.70703125,
+      "players": 500.0,
+      "chunks_loaded": 830.0,
+      "entities": 500.0,
+      "heap_used_mib": 1556.98,
+      "packets_in_total": 1.1327153E7,
+      "packets_out_total": 5.92886352E8,
+      "bytes_out_total": 1.2046951697E10
+    },
+    {
+      "t": 560.0,
+      "cpu_percent": 76.2,
+      "rss_mib": 1719.5,
+      "threads": 69,
+      "fds": 592,
+      "load1": 9.498046875,
+      "players": 500.0,
+      "chunks_loaded": 830.0,
+      "entities": 500.0,
+      "heap_used_mib": 898.18,
+      "packets_in_total": 1.1538581E7,
+      "packets_out_total": 6.04003482E8,
+      "bytes_out_total": 1.2270889902E10
+    },
+    {
+      "t": 570.0,
+      "cpu_percent": 84.8,
+      "rss_mib": 1576.594,
+      "threads": 69,
+      "fds": 592,
+      "load1": 8.27099609375,
+      "players": 500.0,
+      "chunks_loaded": 830.0,
+      "entities": 500.0,
+      "heap_used_mib": 238.597,
+      "packets_in_total": 1.1750049E7,
+      "packets_out_total": 6.15124821E8,
+      "bytes_out_total": 1.2499233287E10
+    },
+    {
+      "t": 580.0,
+      "cpu_percent": 87.0,
+      "rss_mib": 1848.203,
+      "threads": 69,
+      "fds": 592,
+      "load1": 7.52099609375,
+      "players": 500.0,
+      "chunks_loaded": 830.0,
+      "entities": 500.0,
+      "heap_used_mib": 1394.597,
+      "packets_in_total": 1.1961541E7,
+      "packets_out_total": 6.26251019E8,
+      "bytes_out_total": 1.2723417276E10
+    },
+    {
+      "t": 590.0,
+      "cpu_percent": 81.3,
+      "rss_mib": 1977.656,
+      "threads": 69,
+      "fds": 591,
+      "load1": 6.751953125,
+      "players": 500.0,
+      "chunks_loaded": 830.0,
+      "entities": 500.0,
+      "heap_used_mib": 731.798,
+      "packets_in_total": 1.2172996E7,
+      "packets_out_total": 6.37373246E8,
+      "bytes_out_total": 1.2947493116E10
+    },
+    {
+      "t": 600.0,
+      "cpu_percent": 91.1,
+      "rss_mib": 1752.078,
+      "threads": 69,
+      "fds": 591,
+      "load1": 6.3349609375,
+      "players": 500.0,
+      "chunks_loaded": 830.0,
+      "entities": 500.0,
+      "heap_used_mib": 1885.798,
+      "packets_in_total": 1.2384448E7,
+      "packets_out_total": 6.48487396E8,
+      "bytes_out_total": 1.3175630913E10
+    },
+    {
+      "t": 610.0,
+      "cpu_percent": 5.1,
+      "rss_mib": 1749.391,
+      "threads": 69,
+      "fds": 91,
+      "load1": 7.2216796875,
+      "players": 0.0,
+      "chunks_loaded": 830.0,
+      "entities": 0.0,
+      "heap_used_mib": 546.601,
+      "packets_in_total": 1.2465969E7,
+      "packets_out_total": 6.52882724E8,
+      "bytes_out_total": 1.3263230721E10
+    },
+    {
+      "t": 620.0,
+      "cpu_percent": 4.3,
+      "rss_mib": 1324.172,
+      "threads": 69,
+      "fds": 91,
+      "load1": 6.412109375,
+      "players": 0.0,
+      "chunks_loaded": 830.0,
+      "entities": 0.0,
+      "heap_used_mib": 548.601,
+      "packets_in_total": 1.2465969E7,
+      "packets_out_total": 6.52882724E8,
+      "bytes_out_total": 1.3263230721E10
+    },
+    {
+      "t": 630.0,
+      "cpu_percent": 3.7,
+      "rss_mib": 551.109,
+      "threads": 69,
+      "fds": 92,
+      "load1": 5.80078125,
+      "players": 0.0,
+      "chunks_loaded": 830.0,
+      "entities": 0.0,
+      "heap_used_mib": 548.601,
+      "packets_in_total": 1.2465969E7,
+      "packets_out_total": 6.52882724E8,
+      "bytes_out_total": 1.3263230721E10
+    }
+  ],
+  "verdict": {
+    "bots": {
+      "pass": true,
+      "detail": "500 of 500 logged in, 0 lost"
+    },
+    "chunks_per_bot_min": {
+      "pass": true,
+      "detail": "3691 > 9"
+    },
+    "tick_p99_ms": {
+      "pass": true,
+      "detail": "25.541 < 50.0"
+    },
+    "ticks_over_50ms": {
+      "pass": false,
+      "detail": "31 <= 0"
+    },
+    "rss_mib_max": {
+      "pass": true,
+      "detail": "1984.656 < 4096.0"
+    },
+    "pass": false
+  }
+}

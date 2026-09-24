@@ -15,6 +15,7 @@
 
 | 日期 | 改动 | 作者 |
 | --- | --- | --- |
+| 2026-09-24 | 第 5 波集成后的压测收尾（`REQ-PROD-029`，§15 tick 预算、登录风暴、闸门、台账四行）。**新增 §4「生产就绪 · 第 5 波集成后压测收尾」六条 `TC-PROD-360`～`TC-PROD-365`**，都在 `prod/integrate-w5` 上用 `bin/server-shard`（`grid` + 10 线程）加可见上限 100、区块上限 4、`max-joins-per-tick=5`、`max-players=500` 同机跑：200 人 walk 30 min 复测并与 5A 基线逐项对比（360：只差超 50 ms 的 tick 6 个，5A 是 18 个；出站 60.5 → 40.0 Mbit/s；上行 7 s P99 291 → 305）、500 人 walk 10 min（361：tick P99 12.214 ms，145.2 Mbit/s，服务端 0.78 核、机器人 1.04 核）、500 人 town 10 min（362：P99 25.541 ms，168.4 Mbit/s，实际落在 4 个分格）、200 / 500 人断开后 0.6 s 内同名重连（363：≤ 5.5 s 全部进世界、0 次 `shard-full`，风暴那一分钟 P99 6.193 / 16.538 ms）、200 人在线时单 IP 100 连接/s × 60 s（364：拒绝 5,968 次、机器人 0 掉线、汇总日志 10 s 一行，台账一项因 `flood` 进不了 configuration 而空转）、台账 0 丢弃（365）；每条带不改代码的反证。产物在 `docs/research/production-readiness-2026-09/load/int-*/`。§5 生产就绪域加一行 | Bearisbug |
 | 2026-09-24 | 第 5 波集成（5A～5D 与 `prod/w5-flake` 合入 `prod/integrate-w5`）：`ServerConfigTest` 同时带上 5C 与 5D 的用例（6 个），`TC-PROD-314` 第 1 步改为 6 个，第 2 步的反证在集成分支上重跑，红的行号 `:44` → `:48`。5B 回写的设计版本号随 `main` 已占用 v0.7.2 改记为 v0.7.3（5B 变更记录行与 5B 一节开头） | Bearisbug |
 | 2026-09-24 | **新增 `TC-PROD-350`**（`REQ-PROD-004`）：在线模式顶号时旧会话还在进世界途中（已在在线列表、在等出生区块），新连接等它进完世界并被移除之后才进，实体追踪器不再以重复 UUID 拒掉新玩家；反证删掉进世界途中的登记即红成 RUN-030 那句 `no player … reached the play state`。`TC-PROD-100` 第 1 步随同类多一条改为 2 个用例。§5 生产就绪域 2A 那行加 `TC-PROD-350` 与 `updateWaitingPlayers` 的触发条件；§7 登记该偶发红的根因、复现与处置 | Bearisbug |
 | 2026-09-24 | 跟进 `docs/DESIGN-PROD.md` 第 5 波 5D（`REQ-PROD-020` 空间分格，`API-PROD-016`、`ADR-PROD-006`；`REQ-PROD-019` 后半）。**新增 §4「生产就绪 · 第 5 波 5D：空间分格与多线程正确性余项」七条 `TC-PROD-330`～`TC-PROD-336`**：`ThreadProvider.grid` 同格同号、负坐标向下取整、相邻格不同线程（330）、`synaxis.thread-provider` / `synaxis.thread-grid-exponent` 的默认值与取值（331）、进程按分格派 tick 线程（332，§19 同名场景）、`ShardMain` 取核数 − 2 且命令行优先（333）、真进程 `bin/server-shard` 与 `bin/server-app` 的线程读数与拒启（334，§19「分片宿主线程数取核数减 2」，端口 25654）、4 线程 `grid` 严格模式跑全量与 CI job `multithreaded-grid`（335）、200 人 walk 10 min 分格与单线程同机对照（336，产物在 `docs/research/production-readiness-2026-09/load/grid-walk200-10m/` 与 `counter-walk200-10m/`）；每条带真跑过的反证与红的位置，本节开头列出与设计的三处口径差异与 `LogBudget`、`GameChannel` 的审查结论。§5 生产就绪域加一行，§5 引擎域「tick 多线程」一组补 `ThreadProvider` 与 `synaxis.thread-*` 键 | Bearisbug |
@@ -4511,6 +4512,111 @@ jcmd "$pid" VM.flags | tr ' ' '\n' | grep -cxE -- '-XX:\+UseG1GC|-XX:InitialHeap
 
 后置：服务端与采样进程都已按 pid 停掉，25654 无监听；`ls $TMPDIR | grep synaxis-loadtest` 里没有本条两次 `sample` 的录制文件（文件名带采样进程的 pid）；工作目录已删；删掉 `/tmp/remerge.json`。本条未达标的 `ticks_over_50ms` 与 `TC-PROD-271` 同源（同机压测、GC 暂停与机器负载），不是分格引入的。
 
+### 生产就绪 · 第 5 波集成后压测收尾：200 人复测、500 人两档、重连风暴、闸门与台账
+
+对应 `REQ-PROD-029`（G26，`API-PROD-025`，§19「200 人稳态与 500 人两档达标或降容量」，§15 tick 预算、登录风暴、闸门、台账四行，§26 第 5 波退出条件的后半），同时覆盖 5B～5D 合入后的真负载：`REQ-PROD-013`（入站限流）、`REQ-PROD-024`（可见上限）、`REQ-PROD-020`（分格）、`REQ-PROD-001`（闸门 L2～L4）、`REQ-PROD-016`（台账）。本节不改代码，只在集成分支 `prod/integrate-w5` 上跑 `:loadtest`。
+
+机器（所有步骤相同）：Apple M4 Pro，`hw.ncpu` 12（8 性能核 + 4 能效核），`hw.memsize` 25,769,803,776 B（24 GiB），macOS 15.3.2，JDK 25.0.4.1。**服务端与机器人在同一台机器、走回环**，本机同时有别的会话（常驻一个满核的 Python 进程与 `coreduetd`，各自约 95% 个核，见各产物目录的 `machine.txt`），swap 已用 28,690～30,147 MiB / 29,696～30,720 MiB。这不是 §15 要求的分机档（`docs/DESIGN-PROD.md` §28.1 Q11），tick 与 RSS 只记录、不据此判定 §15 的 tick 预算；RSS 是 macOS 口径（`-XX:+AlwaysPreTouch` 让 t = 0 的 RSS 最大，之后空闲页被压缩换出），与 Linux 不可比。
+
+服务端（下文「起一台集成服务端」）：空工作目录里后台跑 `server-app/build/install/server-app/bin/server-shard`（`ShardMain`：`grid` 分格、`dispatcher-threads` = 12 − 2 = 10），`JAVA_OPTS="-Xms3G -Xmx3G"`，`SERVER_APP_OPTS="-Dsynaxis.app.port=<端口> -Dsynaxis.app.auth=offline -Dsynaxis.app.core-mode=on -Dsynaxis.app.shard-id=<id> -Dsynaxis.app.metrics.bind=127.0.0.1:0 -Dsynaxis.connection-gate.trusted-networks=127.0.0.0/8 -Dsynaxis.max-visible-entities-per-player=100 -Dsynaxis.chunk-queue.max-per-tick=4 -Dsynaxis.max-joins-per-tick=5 -Dsynaxis.max-players=500"`。可见上限 100 与区块上限 4 是分片宿主应写而 `ShardMain` 还没写的两项（`docs/DESIGN-PROD.md` §28.2 待办），这里在命令行给；入站限流是引擎默认（582 包 / 7 s，5B），`max-joins-per-tick=5` 与 `max-players` 取 §23 的分片宿主值。日志里 `Effective ServerConfig[…dispatcherThreads=10, threadProvider=GRID…maxPlayers=500, maxJoinsPerTick=5…packetLimitMaxPackets=582…maxChunksPerTick=4.0…maxVisibleEntitiesPerPlayer=100…]`。核心模式平地 40 层石头，`chunk-view-distance=10`、`entity-view-distance=8`，内存存储，离线模式。
+
+前置（每条）：`./gradlew :server-app:installDist :loadtest:installDist`；本机没有别的压测（`pgrep -fl synaxis.app`、`pgrep -fl loadtest` 为空）；起跑前把 `date`、`uptime`、`sysctl -n vm.swapusage` 与 `ps -Ao pcpu,comm -r | head -6` 写进产物目录的 `machine.txt`，结束时再追加一次。`LT` 指 `loadtest/build/install/loadtest/bin/loadtest`，跑 `LT` 时不带 `JAVA_TOOL_OPTIONS`。产物在 `docs/research/production-readiness-2026-09/load/int-*/`：`bots-0.json`、`server.json`、`summary.json`、结束前的端点文本 `metrics-end.txt`、`machine.txt`、台账统计 `ledger.txt`（`wc` 与按事件名计数，取自服务端工作目录的 `logs/events-*.jsonl`）；不存 JFR。反证一律不改代码，改配置或阈值后重跑、看红。
+
+#### `TC-PROD-360` 集成后 200 人 walk 30 min 复测（5B 限流、5C 可见上限、5D 分格全开），判据与 5A 基线相同并逐项对比 — 对应 `REQ-PROD-029`、`REQ-PROD-013`、`REQ-PROD-020`、`REQ-PROD-024` · 级别: 回归 · 执行者: AI
+
+前置：本节开头的构建、空闲检查与 `machine.txt`；本机 swap 未满（`vm.swapusage` 的 free > 0）。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 起一台集成服务端（端口 25655，`shard-id` w5int）；`LT sample --pid <服务端 pid> --duration 1830s --metrics <端点> --out server.json` 放后台，5 s 后 `LT run --host 127.0.0.1 --port 25655 --bots 200 --profile walk --encryption off --duration 1800s --out bots-0.json`；采样结束后 `curl <端点> > metrics-end.txt`，`grep -c` 服务端日志的 WARN / ERROR、`Inbound packet limit exceeded`、`Outbound backlog exceeded`，按 pid 停服，`LT merge bots-0.json server.json --out summary.json` | 本轮 2026-09-24 14:25:16～14:56:30（UTC+8），起跑前 `load1` 5.79，跑的过程中 4.330～11.774。`merge` 退出码 2，判定 **未通过**，只差 `ticks_over_50ms` 6 个（阈值 0）；其余四项通过：200 人全部登录、0 掉线、`kicks_by_reason` 为空；每人最少 13,683 块；tick P99 6.985 ms；RSS 最大 1,428.203 MiB。三种日志行都是 0 行，端点 `synaxis_outbound_backlog_kicks_total 0.0`、闸门五项拒绝都是 0.0 |
+| 2 | 与 5A 基线（`TC-PROD-271`，`load/walk200-30m/summary.json`，引擎默认 `counter` + 1、无上限、无限流）逐项对比，读两份 `summary.json` 与 `bots-0.json` | 见下表。**tick**：P99 6.701 → 6.985 ms，超 50 ms 18 → 6 个，P50 2.166 → 1.157 ms，max 96.212 → 118.511 ms，逐分钟 P99 最高 7.799 → 10.514 ms；GC 117 → 68 次，暂停 P99 91.206 → 112.901 ms，超 50 ms 的暂停 23 → 7 次。两轮 `load1` 区间几乎相同（4.332～12.310 对 4.330～11.774），超 50 ms 个数少了 12 个，但单次暂停 P99 更长，同机数据分不出是哪一波代码的作用。**线程**：`Syn-Tick-0` 0.037 → 10 条线程 0.002～0.020、合计 0.095，有玩家的 0、6、7、9 号 0.016～0.020；`Syn-TickScheduler` 0.054 → 0.033。**出站**：服务端 60.5 → 40.0 Mbit/s（−33.9%），机器人每人收 34,703.3 → 22,921.3 B/s；可见实体 P50 61、P99 100（5A 没有这个字段）。**上行**：7 s 窗口 P50 286 → 293、P99 291 → 305、max 345 → 421（上限 582 的 72.3%）；多出的是区块回执，`ClientChunkBatchReceivedPacket` 327,012 → 765,966 个（区块上限 4 把每批切小，批数 2.34 倍），位置包与 `ClientTickEnd` 两轮都是 7,175,493～7,175,494 个。**区块**：预热后 0.647 → 0.646 KB/s/人，每人最少 13,705 → 13,683 块。**内存**：RSS 最大 1,804.766 → 1,428.203 MiB（都出现在 t = 0），200 人在线的采样点 436.5～1,318.1 → 164.0～1,052.8 MiB；堆最大 1,132.12 → 984.132 MiB。**CPU**：200 人在线时服务端进程均值 36.2% → 33.2%（一个核为 100%）；机器人进程均值 48.287% → 30.532%。登录延迟 P99 40.5 → 35.6 ms |
+| 3 | 台账（`TC-PROD-365` 的主档数据）：读 `ledger.txt` | 201 行、31,149 B：`session_entered_configuration` 200、`shutdown_saved` 1；`synaxis_ledger_dropped_total 0.0` |
+| 4 | 反证有齿（判定读的是实测的慢 tick 数）：同两份文件 `LT merge … --max-over-50ms 6`，再 `--max-over-50ms 5` | 第一次退出码 0、判定通过；第二次退出码 2，`ticks_over_50ms` 判 `6 <= 5` 不通过 |
+| 5 | 复算：产物目录里 `LT merge bots-0.json server.json --out /tmp/w5load/remerge.json`，`cmp` 提交的 `summary.json` | 退出码 2，`cmp` 无输出 |
+
+| 项 | 5A `walk200-30m` | 集成 `int-walk200-30m` |
+| --- | --- | --- |
+| 线程与上限 | `counter` + 1；无可见上限、区块上限 64、无入站限流 | `grid` + 10；可见 100、区块 4、入站 582 / 7 s、`max-joins-per-tick` 5 |
+| tick P50 / P99 / max，超 50 ms | 2.166 / 6.701 / 96.212 ms，18 | 1.157 / 6.985 / 118.511 ms，6 |
+| GC 次数、暂停 P99、超 50 ms | 117、91.206 ms、23 | 68、112.901 ms、7 |
+| 服务端出站 | 60.5 Mbit/s | 40.0 Mbit/s |
+| 上行 7 s P50 / P99 / max | 286 / 291 / 345 | 293 / 305 / 421 |
+| RSS 最大（200 人在线区间） | 1,804.8 MiB（436.5～1,318.1） | 1,428.2 MiB（164.0～1,052.8） |
+| 服务端 / 机器人 CPU 均值 | 36.2% / 48.3% | 33.2% / 30.5% |
+
+后置：服务端与采样进程已按 pid 停掉，25655 无监听；工作目录 `/tmp/w5load/srv1` 已删；`ls $TMPDIR | grep -c synaxis-loadtest` 为 0。`ticks_over_50ms` 6 个是未达标项，同机数据判不了归属（`docs/DESIGN-PROD.md` §28.2 同机压测一行）。
+
+#### `TC-PROD-361` 500 人 walk 10 min（同机），记 tick P99、每人出口与两个进程各自的 CPU — 对应 `REQ-PROD-029`、`REQ-PROD-020` · 级别: 回归 · 执行者: AI
+
+前置：同 `TC-PROD-360`，且上一轮服务端已停、25656 无监听。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 起一台集成服务端（端口 25656，`shard-id` w5int500）；`sample --duration 630s` 放后台，5 s 后 `LT run … --bots 500 --profile walk --duration 600s --out bots-0.json`（登录 20/s，25 s 进完）；其余同 `TC-PROD-360` 第 1 步 | 本轮 14:57:24～15:08:41，起跑前 `load1` 4.02，过程中 4.017～14.986。500 人全部登录、0 掉线、0 次被踢，登录延迟 P99 32.0 ms；每人最少 4,734 块；三种日志行 0 行、WARN / ERROR 0 行。`merge` 退出码 2，只差 `ticks_over_50ms` 6 个。**tick**：12,619 个，P50 1.755、**P99 12.214 ms**、max 97.831 ms，逐分钟 P99 7.767～14.848 ms；GC 34 次，暂停 P99 86.928 ms、超 50 ms 5 次。**线程**：10 条 0.002～0.044、合计 0.177，有玩家的 0、6、7、9 号 0.033～0.044，`Syn-TickScheduler` 0.057。**出口**：服务端出站 18,147,302 B/s（145.2 Mbit/s），每人 36,294.6 B/s；机器人每人收 35,142.7 B/s；可见实体 P50、P99 都是 100，max 101。**上行** 7 s P99 314、max 422。**内存**：RSS 最大 1,513.781 MiB，堆最大 1,416.633 MiB（上限 3,072）|
+| 2 | 机器人与服务端争 CPU：读 `server.json` 500 人在线的 58 个采样点的 `cpu_percent`，与 `bots-0.json` 的 `harness` | 服务端进程均值 78.3%、最高 121.6%；机器人进程均值 103.749%、最高 118.63%（一个核为 100%）。两者合计约 1.8 个核，本机 12 核里其余负载来自别的会话（起跑前那一满核的 Python 与 `coreduetd`）。机器人没有成为瓶颈：它发出的每人上行包速率 42.36 个/s 与 200 人档（42.23）相同，500 人全部按时登录 |
+| 3 | 反证有齿（tick P99 判定读实测）：`LT merge … --max-over-50ms 6 --tick-p99-ms 12` | 退出码 2，`tick_p99_ms` 判 `12.214 < 12.0` 不通过（慢 tick 一项放宽后通过） |
+| 4 | 复算：同 `TC-PROD-360` 第 5 步 | `cmp` 无输出 |
+
+后置：同 `TC-PROD-360`，工作目录 `/tmp/w5load/srv2` 已删。
+
+#### `TC-PROD-362` 500 人 town 10 min（挤在出生点周围 64 格内）— 对应 `REQ-PROD-029`、`REQ-PROD-024`、`REQ-PROD-020` · 级别: 回归 · 执行者: AI
+
+前置：同 `TC-PROD-361`。
+
+`town` 画像让每个机器人绕半径 4～32 格、经过出生点的圆走，全部在出生点 64 格内。出生点 (0, 0) 正好是四个分格的公共角，所以这 500 人落在 (−1,−1)、(−1,0)、(0,−1)、(0,0) 四个格，不是 §15 写的「挤在 1 个分格」（`docs/DESIGN-PROD.md` §28.2 `:loadtest` 待办 ①）。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 起一台集成服务端（端口 25656，`shard-id` w5int500t）；同 `TC-PROD-361` 第 1 步，`LT run` 改 `--profile town` | 本轮 15:08:58～15:20:01，起跑前 `load1` 4.00，过程中 4.803～14.201。500 人全部登录、0 掉线、0 次被踢；三种日志行 0 行、WARN / ERROR 0 行。`merge` 退出码 2，只差 `ticks_over_50ms` 31 个。**tick**：12,621 个，P50 1.767、**P99 25.541 ms**、max 163.54 ms，逐分钟 P99 11.974～42.884 ms（第 3 分钟最高，超 50 ms 9 个）；GC 50 次，暂停 P99 90.22 ms、超 50 ms 5 次。**线程**：0、6、7、9 号 0.061～0.077，其余 6 条 0.0，`Syn-TickScheduler` 0.086。**出口**：服务端出站 21,052,630 B/s（168.4 Mbit/s），每人 42,105.3 B/s；可见实体 P50、P99 100，max 101。**内存**：RSS 最大 1,984.656 MiB，堆最大 1,885.798 MiB。**CPU**：服务端均值 86.5%、最高 97.2%；机器人均值 106.491%、最高 113.848% |
+| 2 | 反证有齿：`LT merge … --max-over-50ms 31 --tick-p99-ms 25` | 退出码 2，`tick_p99_ms` 判 `25.541 < 25.0` 不通过 |
+| 3 | 复算 | `cmp` 无输出 |
+
+后置：同 `TC-PROD-360`，工作目录 `/tmp/w5load/srv3` 已删。
+
+#### `TC-PROD-363` 重连风暴：200 人与 500 人同时断开、1 s 内同名重连，`max-joins-per-tick=5`、`max-players=500` — 对应 `REQ-PROD-029`、`REQ-PROD-001` · 级别: 回归 · 执行者: AI
+
+前置：同 `TC-PROD-360`；A、B 两个 `LT run` 用同一段机器人编号（都不给 `--bot-offset`）。
+
+做法：第一个 `LT run`（A）以 20/s 登录、跑 100 s，结束时所有机器人在同一循环里关连接，JVM 写完结果即退出；紧接着第二个 `LT run`（B）用同一段名字（`--bot-offset 0`，离线模式同名即同 UUID）以 1000/s 登录。机器人的「登录」计到 `FinishConfiguration`，之后在服务端 L4 队列里等进世界，所以「进 play」取服务端端点 `synaxis_players_online`（`sample --every 5s`，分辨率 5 s）。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 起一台集成服务端（端口 25657，`shard-id` w5storm）；`LT sample --pid <pid> --duration 260s --every 5s --metrics <端点> --out server.json` 放后台；5 s 后 `LT run … --bots 200 --profile walk --duration 100s --warmup 30s --out bots-before.json`，它退出后立即 `LT run … --bots 200 --profile walk --duration 120s --warmup 30s --login-rate 1000/s --sample-every 1s --out bots-0.json`；采样结束后 `curl` 端点、停服、`LT merge bots-0.json server.json --out summary.json`，产物 `load/int-storm200/` | 本轮 15:20:13～15:25:06，`load1` 3.192～5.084。A 结束于 07:22:00.596Z（`started_at` + `elapsed_s`），B 的 `started_at` 07:22:01.233Z，断开到重连起点相隔 0.64 s，200 条连接在 0.2 s 内发起。B：200 人全部登录、0 掉线、`login_failures` 为空，登录延迟（TCP 接入到 `LoginSuccess`）P50 25.9、P99 52.1、max 54.7 ms；端点 `synaxis_players_online` 在采样 t = 105 s 为 35、t = 110 s 为 200（B 起于 t = 104.6 s），**全部进 play ≤ 5.4 s**；`synaxis_gate_rejections_total{reason="full"}` 0.0，日志没有 `shard-full` 与 `duplicate-login`；风暴那一分钟（采样第 1 分钟，60～120 s）**tick P99 6.193 ms**、超 50 ms 0 个；全程 P99 6.573 ms、超 50 ms 2 个（在第 3、4 分钟）；台账 400 行 `session_entered_configuration`、0 丢弃 |
+| 2 | 同第 1 步，500 人（端口 25657，`shard-id` w5storm5），产物 `load/int-storm500/` | 本轮 15:25:22～15:30:18，`load1` 3.089～7.465。A 500 人全部登录；A 结束于 07:27:08.747Z，B 起于 07:27:09.374Z，相隔 0.63 s，500 条连接在 0.5 s 内发起。B：500 人全部登录、0 掉线、`login_failures` 为空，登录延迟 P50 25.4、P99 49.2、max 50.0 ms；`synaxis_players_online` 在 t = 105 s 为 35、t = 110 s 为 500（B 起于 t = 104.5 s），**全部进 play ≤ 5.5 s**，与 L4 每 tick 5 人的下限 100 tick = 5.0 s 相符；`full` 0.0，没有 `shard-full`；风暴那一分钟 **tick P99 16.538 ms**、超 50 ms 3 个；全程 P99 12.896 ms、超 50 ms 5 个；服务端 CPU 在 t = 110 s 的采样点 123.0%（稳态 78～93%）；台账 1,000 行、0 丢弃 |
+| 3 | 反证有齿（`shard-full` 真的会被数到）：起服改 `-Dsynaxis.max-players=150`（另加 `-Dsynaxis.app.ledger-max-bytes-per-day=20000` 供 `TC-PROD-365` 用），端口 25659，`LT run --port 25659 --bots 200 --duration 30s --warmup 10s` | `150/200 logged in, 0 lost`，`login_failures` 为 `login refused: synaxis:shard-full` 50；端点 `full` 50.0；日志两行汇总 `full=28`、`full=22` |
+| 4 | 复算：两个产物目录各做 `TC-PROD-360` 第 5 步 | 两次 `cmp` 都无输出 |
+
+后置：三台服务端都已按 pid 停掉，25657、25659 无监听；工作目录 `/tmp/w5load/srv4`、`srv5`、`srv7` 已删。§15 登录风暴行的三项判据（30 s 内全部进 play、0 次 `shard-full`、风暴那一分钟 tick P99 < 50 ms）在 200 人与 500 人两档都满足，同机数据。
+
+#### `TC-PROD-364` 闸门档：200 人在线时单个攻击 IP 以 100 连接/s 开合 60 s — 对应 `REQ-PROD-029`、`REQ-PROD-001` · 级别: 回归 · 执行者: AI
+
+前置：同 `TC-PROD-360`；`ifconfig` 查到本机一个不在 `127.0.0.0/8` 里的地址（本轮 192.168.1.22），`nc` 从本机连它能通。
+
+攻击源：本机的局域网地址 192.168.1.22（服务端绑 `0.0.0.0`，连 192.168.1.22 时源地址也是它），不在可信网段 `127.0.0.0/8` 里；机器人走 127.0.0.1，在可信网段里。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 起一台集成服务端（端口 25658，`shard-id` w5gate）；`LT sample --duration 170s --every 5s` 放后台，5 s 后后台跑 `LT run … --bots 200 --duration 150s --warmup 30s --sample-every 5s --out bots-0.json`；再过 40 s `curl` 端点存 `metrics-before-flood.txt`，然后 `LT flood --host 192.168.1.22 --port 25658 --ip-rate 100/s --duration 60s --out flood.json`；两者结束后 `curl` 端点、停服、`merge`，产物 `load/int-gate200/` | 本轮 15:30:42～15:33:49，`load1` 3.237～4.089。攻击在 07:31:30Z～07:32:33Z。`flood.json`：6,000 次尝试全部 `answered`；端点 `throttled` 5,968.0、`too_many` 0.0、`closed_at_accept` 0.0、`full` 0.0，日志 32 行 `Login success: username=flood… remote_address=/192.168.1.22:…`（L2 桶容量 3 + 60 s × 0.5/s）。**四项判据**：① 连接数 ≤ L0（1,024）：进程 fd 最多 301 个（5 s 一采样），攻击前 200 人在线时 292～294；② 机器人 0 掉线：200 人全部登录、0 掉线、`kicks_by_reason` 为空；③ 拒绝日志 10 s 至多 1 行：`Connection gate rejected … throttled=…` 共 7 行，时刻 15:31:33.925、:43.925、:53.925、15:32:03.975、:14.025、:24.075、:34.075，相邻间隔 10.00～10.05 s，WARN 只有这 7 行；④ 台账 0 条来自攻击 IP 的会话事件：台账 200 行 `session_entered_configuration`，等于机器人数。攻击期间 tick 不受影响：`merge` 退出码 0、判定通过，tick P99 6.015 ms、超 50 ms 0 个 |
+| 2 | 反证有齿（拒绝只落在不可信来源上）：`TC-PROD-363` 第 3 步那台服务端上 `LT flood --host 127.0.0.1 --port 25659 --ip-rate 100/s --duration 10s` | 1,000 次全部 `answered`，日志 1,000 行 `Login success: username=flood…`，端点 `throttled` 0.0：同样的攻击从可信网段来就不被节流，第 1 步的 5,968 次拒绝是按来源地址判的 |
+| 3 | 复算 | `merge` 退出码 0，`cmp` 无输出 |
+
+判据 ④ 在本条是空转的：`flood` 每条连接发 `LoginStart` 后只等第一个回包、不回 `LoginAcknowledged`，连接进不了 configuration，不写 `session_entered_configuration`。第 2 步 1,000 次放行的登录同样没有写出任何会话事件（那台服务端的台账只有机器人的 129 行与 3 行 `ledger_dropped`）。要让 ④ 有齿，`flood` 需要一个走完登录进 configuration 的选项（`docs/DESIGN-PROD.md` §28.2 `:loadtest` 待办 ②）。
+
+后置：两台服务端都已按 pid 停掉，25658、25659 无监听；工作目录 `/tmp/w5load/srv6`、`srv7` 已删。
+
+#### `TC-PROD-365` 台账档：200 人 30 min 与各档的 `ledger_dropped` — 对应 `REQ-PROD-029`、`REQ-PROD-016` · 级别: 回归 · 执行者: AI
+
+前置：`TC-PROD-360`～`TC-PROD-364` 的产物目录都在，且各有 `ledger.txt`。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 读 `TC-PROD-360`～`TC-PROD-364` 各产物目录的 `ledger.txt` | 六档 `synaxis_ledger_dropped_total` 都是 0.0，台账里没有 `ledger_dropped` 行。行数与字节：`int-walk200-30m` 201 行 / 31,149 B；`int-walk500-10m` 501 / 77,643；`int-town500-10m` 501 / 77,649；`int-storm200` 401 / 62,146；`int-storm500` 1,001 / 155,146；`int-gate200` 201 / 31,146（都是每连接 1 行 `session_entered_configuration`，外加停机时 1 行 `shutdown_saved`，平均 155 B/行） |
+| 2 | 反证有齿（丢弃会被数到）：`TC-PROD-363` 第 3 步那台服务端（`ledger-max-bytes-per-day=20000`）上 150 人进服后读端点与台账 | 端点 `synaxis_ledger_dropped_total 21.0`；日志 WARN `The event ledger dropped 7 lines: reason=daily_cap`；台账 20,389 B，含 129 行会话事件与 3 行 `ledger_dropped`（`count` 7、14、1，合计 21 = 150 − 129；最后那 1 行是停机时被挡下的 `shutdown_saved`，端点读数在停机前取，所以也是 21） |
+
+§15 台账行的「200 人 30 min，`ledger_dropped` 0 条」在同机档满足。这一档的写入量很小：核心模式不跑插件，200 人 30 min 只有 201 行，运维草案 ③ 担心的「每连接 ≤ 90 事件/秒」的插件事件没有被压到；`:loadtest` 没有产生插件事件的画像（`docs/DESIGN-PROD.md` §28.2 `:loadtest` 待办 ③）。
+
+后置：同 `TC-PROD-363`。
+
 ## 5. 回归策略
 
 - **全量轮**（全部用例）：首次成稿、每个阶段 gate（引擎域阶段 0、2、3；游戏域 `docs/DESIGN-M2.md` §26 的阶段 1～6b；大世界域 `docs/DESIGN-M3.md` §26 的 M3-A～M3-G）、跨功能域改动、地基变更（JDK、Gradle、镜像、协议版本、模块拆分、启动入口）。
@@ -4540,6 +4646,7 @@ jcmd "$pid" VM.flags | tr ' ' '\n' | grep -cxE -- '-XX:\+UseG1GC|-XX:InitialHeap
   - 生产就绪域（`docs/DESIGN-PROD.md`）：入站限流、出站积压、区块上限与 Tab 列表（`REQ-PROD-013`、`REQ-PROD-025`～`REQ-PROD-027`）→ TC-PROD-290～TC-PROD-301；动了 `InboundPacketLimits`、`WindowCounter`、`PacketLimitAction`、`ServerConfig` 的 `synaxis.packet-limit.*` 与补全键，或 `PlayerSocketConnection` 的 `processBatch` / `readClientPacket` 就跑 TC-PROD-290～TC-PROD-293；动了 `PlayerSocketConnection` 的 `sendPacket` / `offer` / `checkBacklog` / `writeMovement`、`PacketWriting#writeQueue`、`PacketViewableUtils` 或 `synaxis.outbound.max-backlog-bytes` 就跑 TC-PROD-294、TC-PROD-295（动了模组 lang 再加第 3、4 步）；动了 `Player#sendPendingChunks` / `onChunkBatchReceived` 或 `synaxis.chunk-queue.*` 就跑 TC-PROD-296；动了 `Player#UNSAFE_init` 的 PlayerInfo、`setListed`、`setSkin`、`refreshLatency`、`tabListEntry`，`ConnectionManager` 的 `sendTabListLatencies` / `setTabListVisibility` / `isListedFor` 或 `synaxis.tab-latency-interval-ms` 就跑 TC-PROD-297～TC-PROD-299；动了 `TabList`、`PluginContext#tabList`、`TabListSlot`、`PluginTabListImpl` 或 `PluginHost#tearDown` 就跑 TC-PROD-300。TC-PROD-301（200 人 walk 10 min，约 12 分钟）在改了上面任一默认值、或引擎 tick、网络、区块发送路径时跑，本机同时只能有一个压测。跨域牵连：动了 `PlayerSocketConnection` → 加 TC-PROD-090～TC-PROD-101 与 TC-PROD-263；动了 `HostMetrics` 的积压计数 → 加 TC-PROD-261；动了 `:plugin-api` 的接口 → 加 TC-PROD-163。
   - 生产就绪域（`docs/DESIGN-PROD.md`）：实体追踪范围与每玩家可见上限（`REQ-PROD-023`、`REQ-PROD-024`）→ TC-PROD-310～TC-PROD-319；动了引擎 `EntityView`、`TrackingRange` / `TrackingRanges`、`Entity` 的追踪范围与必显两组方法、`Player#update` 里的重算调用或 `ServerConfig` 的 `synaxis.max-visible-entities-per-player` 就跑 TC-PROD-310～TC-PROD-314 与 TC-PROD-319；动了 `PluginContext#entities`、`PluginEntities` 或 `PluginHost` 的接线跑 TC-PROD-315；动了 `loadtest/` 的 `Bot` 实体计数、`RunCommand` 采样或 `MergeCommand` 的 `visible_entities` 跑 TC-PROD-316、TC-PROD-317。TC-PROD-318（三轮各约 11 分钟）只在可见性、视野广播（`PacketViewableUtils`、`hasPredictableViewers`）或实体移动同步有改动时跑，本机同时只能有一个压测。跨域牵连：动了 `EntityView` 或 `Player#update` → 加 TC-PROD-033（4 线程严格模式全量，重算在玩家自己的 tick 线程上碰别的实体的视图）。
   - 生产就绪域（`docs/DESIGN-PROD.md`）：空间分格与多线程正确性余项（`REQ-PROD-020`、`REQ-PROD-019` 后半）→ TC-PROD-330～TC-PROD-336；动了 `ThreadProvider#grid` 跑 TC-PROD-330、TC-PROD-332、TC-PROD-335，动了 `ServerConfig` 的 `synaxis.thread-*` 键或 `ServerProcessImpl` 建 dispatcher 的一处跑 TC-PROD-331、TC-PROD-332、TC-PROD-334，动了 `ShardMain` 或 `server-app/build.gradle.kts` 的 `shardStartScripts` 跑 TC-PROD-333、TC-PROD-334 与 TC-PROD-050，动了 `build-src` 转给测试 JVM 的属性、`EnvTestExt` 或 `ci.yml` 的 `multithreaded-grid` 跑 TC-PROD-335；TC-PROD-336（两档各约 11 分钟）只在分格规则或 tick 调度路径有改动时跑，本机同时只能有一个压测。跨域牵连：动了 `thread` 包 → 加 TC-PROD-030～TC-PROD-033；动了 `plugin-api` 的 `package-info` 或 `docs/PLUGINS.md` §10 的线程契约 → 同步核对 `docs/DESIGN-PROD.md` `API-PROD-016` 的线程契约一条。
+  - 生产就绪域（`docs/DESIGN-PROD.md`）：第 5 波集成后压测收尾（`REQ-PROD-029`）→ TC-PROD-360～TC-PROD-365，全部是同机真进程压测，本机同时只能有一个压测。TC-PROD-360（约 35 分钟）与 TC-PROD-365 第 1 步在引擎 tick、网络、区块发送、可见性或分格路径有改动时跑，并与本条记下的读数对比；TC-PROD-361、TC-PROD-362（各约 12 分钟）在 `capacity` 定值要重评时跑；动了闸门 L3 / L4、`ConnectionManager#updateWaitingPlayers` 或登录监听器跑 TC-PROD-363（约 10 分钟）；动了 `ConnectionGate` 或闸门汇总日志跑 TC-PROD-364（约 3 分钟）；动了 `EventLedger` 跑 TC-PROD-365 第 2 步。分机档到位后六条全部在分机上重跑。
   - 影响面不确定时升级为全量轮。
 - **复测轮**（上轮失败用例 + 全部冒烟级）：修复失败项之后。
 - **人工收口轮**（仅上轮「待人工」用例）：AI 轮之后由人工补测 TC-016、TC-030、TC-GAME-020、TC-GAME-038、TC-GAME-046、TC-GAME-047，不要求冒烟级。

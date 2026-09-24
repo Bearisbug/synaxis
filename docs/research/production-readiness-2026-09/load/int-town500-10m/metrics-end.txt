@@ -1,0 +1,299 @@
+# HELP jvm_buffer_count_buffers An estimate of the number of buffers in the pool
+# TYPE jvm_buffer_count_buffers gauge
+jvm_buffer_count_buffers{id="direct"} 41240.0
+jvm_buffer_count_buffers{id="mapped"} 0.0
+jvm_buffer_count_buffers{id="mapped - 'non-volatile memory'"} 0.0
+# HELP jvm_buffer_memory_used_bytes An estimate of the memory that the Java virtual machine is using for this buffer pool
+# TYPE jvm_buffer_memory_used_bytes gauge
+jvm_buffer_memory_used_bytes{id="direct"} 1.7922048E7
+jvm_buffer_memory_used_bytes{id="mapped"} 0.0
+jvm_buffer_memory_used_bytes{id="mapped - 'non-volatile memory'"} 0.0
+# HELP jvm_buffer_total_capacity_bytes An estimate of the total capacity of the buffers in this pool
+# TYPE jvm_buffer_total_capacity_bytes gauge
+jvm_buffer_total_capacity_bytes{id="direct"} 1.768206E7
+jvm_buffer_total_capacity_bytes{id="mapped"} 0.0
+jvm_buffer_total_capacity_bytes{id="mapped - 'non-volatile memory'"} 0.0
+# HELP jvm_classes_loaded_classes The number of classes that are currently loaded in the Java virtual machine
+# TYPE jvm_classes_loaded_classes gauge
+jvm_classes_loaded_classes 8934.0
+# HELP jvm_classes_loaded_count_classes_total The number of classes loaded in the Java virtual machine
+# TYPE jvm_classes_loaded_count_classes_total counter
+jvm_classes_loaded_count_classes_total 8934.0
+# HELP jvm_classes_unloaded_classes_total The number of classes unloaded in the Java virtual machine
+# TYPE jvm_classes_unloaded_classes_total counter
+jvm_classes_unloaded_classes_total 0.0
+# HELP jvm_gc_live_data_size_bytes Size of long-lived heap memory pool after reclamation
+# TYPE jvm_gc_live_data_size_bytes gauge
+jvm_gc_live_data_size_bytes 0.0
+# HELP jvm_gc_max_data_size_bytes Max size of long-lived heap memory pool
+# TYPE jvm_gc_max_data_size_bytes gauge
+jvm_gc_max_data_size_bytes 3.221225472E9
+# HELP jvm_gc_memory_allocated_bytes_total Incremented for an increase in the size of the (young) heap memory pool after one GC to before the next
+# TYPE jvm_gc_memory_allocated_bytes_total counter
+jvm_gc_memory_allocated_bytes_total 7.1043121152E10
+# HELP jvm_gc_memory_promoted_bytes_total Count of positive increases in the size of the old generation memory pool before GC to after GC
+# TYPE jvm_gc_memory_promoted_bytes_total counter
+jvm_gc_memory_promoted_bytes_total 3.7416592E7
+# HELP jvm_gc_pause_seconds Time spent in GC pause
+# TYPE jvm_gc_pause_seconds summary
+jvm_gc_pause_seconds_count{action="end of minor GC",cause="G1 Evacuation Pause",gc="G1 Young Generation"} 50
+jvm_gc_pause_seconds_sum{action="end of minor GC",cause="G1 Evacuation Pause",gc="G1 Young Generation"} 1.267
+# HELP jvm_gc_pause_seconds_max Time spent in GC pause
+# TYPE jvm_gc_pause_seconds_max gauge
+jvm_gc_pause_seconds_max{action="end of minor GC",cause="G1 Evacuation Pause",gc="G1 Young Generation"} 0.031
+# HELP jvm_memory_committed_bytes The amount of memory in bytes that is committed for the Java virtual machine to use
+# TYPE jvm_memory_committed_bytes gauge
+jvm_memory_committed_bytes{area="heap",id="G1 Eden Space"} 1.906311168E9
+jvm_memory_committed_bytes{area="heap",id="G1 Old Gen"} 1.28974848E9
+jvm_memory_committed_bytes{area="heap",id="G1 Survivor Space"} 2.5165824E7
+jvm_memory_committed_bytes{area="nonheap",id="CodeHeap 'non-nmethods'"} 2555904.0
+jvm_memory_committed_bytes{area="nonheap",id="CodeHeap 'non-profiled nmethods'"} 5570560.0
+jvm_memory_committed_bytes{area="nonheap",id="CodeHeap 'profiled nmethods'"} 1.5663104E7
+jvm_memory_committed_bytes{area="nonheap",id="Compressed Class Space"} 5242880.0
+jvm_memory_committed_bytes{area="nonheap",id="Metaspace"} 3.4668544E7
+# HELP jvm_memory_max_bytes The maximum amount of memory in bytes that can be used for memory management
+# TYPE jvm_memory_max_bytes gauge
+jvm_memory_max_bytes{area="heap",id="G1 Eden Space"} -1.0
+jvm_memory_max_bytes{area="heap",id="G1 Old Gen"} 3.221225472E9
+jvm_memory_max_bytes{area="heap",id="G1 Survivor Space"} -1.0
+jvm_memory_max_bytes{area="nonheap",id="CodeHeap 'non-nmethods'"} 5849088.0
+jvm_memory_max_bytes{area="nonheap",id="CodeHeap 'non-profiled nmethods'"} 1.22912768E8
+jvm_memory_max_bytes{area="nonheap",id="CodeHeap 'profiled nmethods'"} 1.22912768E8
+jvm_memory_max_bytes{area="nonheap",id="Compressed Class Space"} 1.073741824E9
+jvm_memory_max_bytes{area="nonheap",id="Metaspace"} -1.0
+# HELP jvm_memory_used_bytes The amount of used memory
+# TYPE jvm_memory_used_bytes gauge
+jvm_memory_used_bytes{area="heap",id="G1 Eden Space"} 4.76053504E8
+jvm_memory_used_bytes{area="heap",id="G1 Old Gen"} 7.7807888E7
+jvm_memory_used_bytes{area="heap",id="G1 Survivor Space"} 2.348588E7
+jvm_memory_used_bytes{area="nonheap",id="CodeHeap 'non-nmethods'"} 1723456.0
+jvm_memory_used_bytes{area="nonheap",id="CodeHeap 'non-profiled nmethods'"} 5540480.0
+jvm_memory_used_bytes{area="nonheap",id="CodeHeap 'profiled nmethods'"} 1.5604032E7
+jvm_memory_used_bytes{area="nonheap",id="Compressed Class Space"} 4950496.0
+jvm_memory_used_bytes{area="nonheap",id="Metaspace"} 3.40158E7
+# HELP jvm_threads_daemon_threads The current number of live daemon threads
+# TYPE jvm_threads_daemon_threads gauge
+jvm_threads_daemon_threads 30.0
+# HELP jvm_threads_live_threads The current number of live threads including both daemon and non-daemon threads
+# TYPE jvm_threads_live_threads gauge
+jvm_threads_live_threads 43.0
+# HELP jvm_threads_peak_threads The peak live thread count since the Java virtual machine started or peak was reset
+# TYPE jvm_threads_peak_threads gauge
+jvm_threads_peak_threads 43.0
+# HELP jvm_threads_started_threads_total The total number of application threads started in the JVM
+# TYPE jvm_threads_started_threads_total counter
+jvm_threads_started_threads_total 45.0
+# HELP jvm_threads_states_threads The current number of threads
+# TYPE jvm_threads_states_threads gauge
+jvm_threads_states_threads{state="blocked"} 0.0
+jvm_threads_states_threads{state="new"} 0.0
+jvm_threads_states_threads{state="runnable"} 11.0
+jvm_threads_states_threads{state="terminated"} 0.0
+jvm_threads_states_threads{state="timed-waiting"} 9.0
+jvm_threads_states_threads{state="waiting"} 23.0
+# HELP process_cpu_time_ns_total The "cpu time" used by the Java Virtual Machine process
+# TYPE process_cpu_time_ns_total counter
+process_cpu_time_ns_total 5.45030642E11
+# HELP process_cpu_usage The "recent cpu usage" for the Java Virtual Machine process
+# TYPE process_cpu_usage gauge
+process_cpu_usage 0.0159507714743803
+# HELP process_files_max_files The maximum file descriptor count
+# TYPE process_files_max_files gauge
+process_files_max_files 1048576.0
+# HELP process_files_open_files The open file descriptor count
+# TYPE process_files_open_files gauge
+process_files_open_files 68.0
+# HELP process_start_time_seconds Start time of the process since unix epoch.
+# TYPE process_start_time_seconds gauge
+process_start_time_seconds 1.79023373908E9
+# HELP process_uptime_seconds The uptime of the Java virtual machine
+# TYPE process_uptime_seconds gauge
+process_uptime_seconds 638.841
+# HELP synaxis_auth_hasjoined_total Logins by the final answer of hasJoined
+# TYPE synaxis_auth_hasjoined_total counter
+synaxis_auth_hasjoined_total{result="unavailable"} 0.0
+synaxis_auth_hasjoined_total{result="unverified"} 0.0
+synaxis_auth_hasjoined_total{result="verified"} 0.0
+# HELP synaxis_auth_hasjoined_retries_total Retries of an unavailable hasJoined
+# TYPE synaxis_auth_hasjoined_retries_total counter
+synaxis_auth_hasjoined_retries_total 0.0
+# HELP synaxis_auth_hasjoined_seconds Duration of one hasJoined query
+# TYPE synaxis_auth_hasjoined_seconds summary
+synaxis_auth_hasjoined_seconds{quantile="0.5"} 0.0
+synaxis_auth_hasjoined_seconds{quantile="0.95"} 0.0
+synaxis_auth_hasjoined_seconds{quantile="0.99"} 0.0
+synaxis_auth_hasjoined_seconds_count 0
+synaxis_auth_hasjoined_seconds_sum 0.0
+# HELP synaxis_auth_hasjoined_seconds_max Duration of one hasJoined query
+# TYPE synaxis_auth_hasjoined_seconds_max gauge
+synaxis_auth_hasjoined_seconds_max 0.0
+# HELP synaxis_bytes_total  
+# TYPE synaxis_bytes_total counter
+synaxis_bytes_total{direction="in"} 1.8707782E8
+synaxis_bytes_total{direction="out"} 1.3263230721E10
+# HELP synaxis_chunks_loaded Chunks loaded in every instance
+# TYPE synaxis_chunks_loaded gauge
+synaxis_chunks_loaded 830.0
+# HELP synaxis_cipher_cpu_seconds_total  
+# TYPE synaxis_cipher_cpu_seconds_total counter
+synaxis_cipher_cpu_seconds_total{direction="in"} 0.0
+synaxis_cipher_cpu_seconds_total{direction="out"} 0.0
+# HELP synaxis_connections  
+# TYPE synaxis_connections gauge
+synaxis_connections{state="configuration"} 0.0
+synaxis_connections{state="login"} 0.0
+synaxis_connections{state="play"} 0.0
+# HELP synaxis_db_pool_active  
+# TYPE synaxis_db_pool_active gauge
+synaxis_db_pool_active 0.0
+# HELP synaxis_db_pool_pending  
+# TYPE synaxis_db_pool_pending gauge
+synaxis_db_pool_pending 0.0
+# HELP synaxis_db_statement_seconds Duration of one statement of the player store
+# TYPE synaxis_db_statement_seconds summary
+synaxis_db_statement_seconds{op="commit",quantile="0.5"} 0.0
+synaxis_db_statement_seconds{op="commit",quantile="0.95"} 0.0
+synaxis_db_statement_seconds{op="commit",quantile="0.99"} 0.0
+synaxis_db_statement_seconds_count{op="commit"} 0
+synaxis_db_statement_seconds_sum{op="commit"} 0.0
+synaxis_db_statement_seconds{op="load",quantile="0.5"} 0.0
+synaxis_db_statement_seconds{op="load",quantile="0.95"} 0.0
+synaxis_db_statement_seconds{op="load",quantile="0.99"} 0.0
+synaxis_db_statement_seconds_count{op="load"} 500
+synaxis_db_statement_seconds_sum{op="load"} 0.003522394
+synaxis_db_statement_seconds{op="renew",quantile="0.5"} 0.0
+synaxis_db_statement_seconds{op="renew",quantile="0.95"} 0.0
+synaxis_db_statement_seconds{op="renew",quantile="0.99"} 0.0
+synaxis_db_statement_seconds_count{op="renew"} 0
+synaxis_db_statement_seconds_sum{op="renew"} 0.0
+synaxis_db_statement_seconds{op="save",quantile="0.5"} 3.168E-6
+synaxis_db_statement_seconds{op="save",quantile="0.95"} 1.2256E-5
+synaxis_db_statement_seconds{op="save",quantile="0.99"} 2.6592E-5
+synaxis_db_statement_seconds_count{op="save"} 500
+synaxis_db_statement_seconds_sum{op="save"} 0.002967461
+# HELP synaxis_db_statement_seconds_max Duration of one statement of the player store
+# TYPE synaxis_db_statement_seconds_max gauge
+synaxis_db_statement_seconds_max{op="commit"} 0.0
+synaxis_db_statement_seconds_max{op="load"} 0.0
+synaxis_db_statement_seconds_max{op="renew"} 0.0
+synaxis_db_statement_seconds_max{op="save"} 8.08292E-4
+# HELP synaxis_entities Entities in every instance
+# TYPE synaxis_entities gauge
+synaxis_entities 0.0
+# HELP synaxis_gate_rejections_total Connections the connection gate turned away
+# TYPE synaxis_gate_rejections_total counter
+synaxis_gate_rejections_total{reason="closed_at_accept"} 0.0
+synaxis_gate_rejections_total{reason="full"} 0.0
+synaxis_gate_rejections_total{reason="handshake_timeout"} 0.0
+synaxis_gate_rejections_total{reason="throttled"} 0.0
+synaxis_gate_rejections_total{reason="too_many"} 0.0
+# HELP synaxis_ledger_dropped_total Lines the event ledger dropped
+# TYPE synaxis_ledger_dropped_total counter
+synaxis_ledger_dropped_total 0.0
+# HELP synaxis_outbound_backlog_kicks_total Connections kicked for an outbound backlog
+# TYPE synaxis_outbound_backlog_kicks_total counter
+synaxis_outbound_backlog_kicks_total 0.0
+# HELP synaxis_packets_total  
+# TYPE synaxis_packets_total counter
+synaxis_packets_total{direction="in"} 1.2465969E7
+synaxis_packets_total{direction="out"} 6.52882724E8
+# HELP synaxis_players_online Players in the play state
+# TYPE synaxis_players_online gauge
+synaxis_players_online 0.0
+# HELP synaxis_redis_up  
+# TYPE synaxis_redis_up gauge
+synaxis_redis_up 0.0
+# HELP synaxis_shard_session_state  
+# TYPE synaxis_shard_session_state gauge
+synaxis_shard_session_state{state="active"} 0.0
+synaxis_shard_session_state{state="closing"} 0.0
+synaxis_shard_session_state{state="degraded"} 0.0
+synaxis_shard_session_state{state="isolated"} 0.0
+synaxis_shard_session_state{state="released"} 0.0
+# HELP synaxis_store_save_total Saves of a character by their outcome
+# TYPE synaxis_store_save_total counter
+synaxis_store_save_total{result="fenced"} 0.0
+synaxis_store_save_total{result="saved"} 5387.0
+synaxis_store_save_total{result="unavailable"} 0.0
+# HELP synaxis_tick_duration_seconds Duration of one tick of a tick thread or of the tick scheduler
+# TYPE synaxis_tick_duration_seconds summary
+synaxis_tick_duration_seconds{thread="Syn-Tick-0",quantile="0.5"} 9.4976E-4
+synaxis_tick_duration_seconds{thread="Syn-Tick-0",quantile="0.95"} 0.011533824
+synaxis_tick_duration_seconds{thread="Syn-Tick-0",quantile="0.99"} 0.022019584
+synaxis_tick_duration_seconds_count{thread="Syn-Tick-0"} 12533
+synaxis_tick_duration_seconds_sum{thread="Syn-Tick-0"} 48.282008794
+synaxis_tick_duration_seconds{thread="Syn-Tick-1",quantile="0.5"} 0.0
+synaxis_tick_duration_seconds{thread="Syn-Tick-1",quantile="0.95"} 0.0
+synaxis_tick_duration_seconds{thread="Syn-Tick-1",quantile="0.99"} 0.0
+synaxis_tick_duration_seconds_count{thread="Syn-Tick-1"} 0
+synaxis_tick_duration_seconds_sum{thread="Syn-Tick-1"} 0.0
+synaxis_tick_duration_seconds{thread="Syn-Tick-2",quantile="0.5"} 0.0
+synaxis_tick_duration_seconds{thread="Syn-Tick-2",quantile="0.95"} 0.0
+synaxis_tick_duration_seconds{thread="Syn-Tick-2",quantile="0.99"} 0.0
+synaxis_tick_duration_seconds_count{thread="Syn-Tick-2"} 0
+synaxis_tick_duration_seconds_sum{thread="Syn-Tick-2"} 0.0
+synaxis_tick_duration_seconds{thread="Syn-Tick-3",quantile="0.5"} 0.0
+synaxis_tick_duration_seconds{thread="Syn-Tick-3",quantile="0.95"} 0.0
+synaxis_tick_duration_seconds{thread="Syn-Tick-3",quantile="0.99"} 0.0
+synaxis_tick_duration_seconds_count{thread="Syn-Tick-3"} 0
+synaxis_tick_duration_seconds_sum{thread="Syn-Tick-3"} 0.0
+synaxis_tick_duration_seconds{thread="Syn-Tick-4",quantile="0.5"} 0.0
+synaxis_tick_duration_seconds{thread="Syn-Tick-4",quantile="0.95"} 0.0
+synaxis_tick_duration_seconds{thread="Syn-Tick-4",quantile="0.99"} 0.0
+synaxis_tick_duration_seconds_count{thread="Syn-Tick-4"} 0
+synaxis_tick_duration_seconds_sum{thread="Syn-Tick-4"} 0.0
+synaxis_tick_duration_seconds{thread="Syn-Tick-5",quantile="0.5"} 0.0
+synaxis_tick_duration_seconds{thread="Syn-Tick-5",quantile="0.95"} 0.0
+synaxis_tick_duration_seconds{thread="Syn-Tick-5",quantile="0.99"} 0.0
+synaxis_tick_duration_seconds_count{thread="Syn-Tick-5"} 0
+synaxis_tick_duration_seconds_sum{thread="Syn-Tick-5"} 0.0
+synaxis_tick_duration_seconds{thread="Syn-Tick-6",quantile="0.5"} 7.2064E-4
+synaxis_tick_duration_seconds{thread="Syn-Tick-6",quantile="0.95"} 0.009961216
+synaxis_tick_duration_seconds{thread="Syn-Tick-6",quantile="0.99"} 0.020971264
+synaxis_tick_duration_seconds_count{thread="Syn-Tick-6"} 12533
+synaxis_tick_duration_seconds_sum{thread="Syn-Tick-6"} 38.15676107
+synaxis_tick_duration_seconds{thread="Syn-Tick-7",quantile="0.5"} 7.2064E-4
+synaxis_tick_duration_seconds{thread="Syn-Tick-7",quantile="0.95"} 0.010485504
+synaxis_tick_duration_seconds{thread="Syn-Tick-7",quantile="0.99"} 0.020971264
+synaxis_tick_duration_seconds_count{thread="Syn-Tick-7"} 12533
+synaxis_tick_duration_seconds_sum{thread="Syn-Tick-7"} 41.337566593
+synaxis_tick_duration_seconds{thread="Syn-Tick-8",quantile="0.5"} 0.0
+synaxis_tick_duration_seconds{thread="Syn-Tick-8",quantile="0.95"} 0.0
+synaxis_tick_duration_seconds{thread="Syn-Tick-8",quantile="0.99"} 0.0
+synaxis_tick_duration_seconds_count{thread="Syn-Tick-8"} 0
+synaxis_tick_duration_seconds_sum{thread="Syn-Tick-8"} 0.0
+synaxis_tick_duration_seconds{thread="Syn-Tick-9",quantile="0.5"} 9.4976E-4
+synaxis_tick_duration_seconds{thread="Syn-Tick-9",quantile="0.95"} 0.011533824
+synaxis_tick_duration_seconds{thread="Syn-Tick-9",quantile="0.99"} 0.020971008
+synaxis_tick_duration_seconds_count{thread="Syn-Tick-9"} 12533
+synaxis_tick_duration_seconds_sum{thread="Syn-Tick-9"} 47.540427915
+synaxis_tick_duration_seconds{thread="Syn-TickScheduler",quantile="0.5"} 0.001110016
+synaxis_tick_duration_seconds{thread="Syn-TickScheduler",quantile="0.95"} 0.012578816
+synaxis_tick_duration_seconds{thread="Syn-TickScheduler",quantile="0.99"} 0.023064576
+synaxis_tick_duration_seconds_count{thread="Syn-TickScheduler"} 12750
+synaxis_tick_duration_seconds_sum{thread="Syn-TickScheduler"} 54.15435549
+# HELP synaxis_tick_duration_seconds_max Duration of one tick of a tick thread or of the tick scheduler
+# TYPE synaxis_tick_duration_seconds_max gauge
+synaxis_tick_duration_seconds_max{thread="Syn-Tick-0"} 0.079317666
+synaxis_tick_duration_seconds_max{thread="Syn-Tick-1"} 0.0
+synaxis_tick_duration_seconds_max{thread="Syn-Tick-2"} 0.0
+synaxis_tick_duration_seconds_max{thread="Syn-Tick-3"} 0.0
+synaxis_tick_duration_seconds_max{thread="Syn-Tick-4"} 0.0
+synaxis_tick_duration_seconds_max{thread="Syn-Tick-5"} 0.0
+synaxis_tick_duration_seconds_max{thread="Syn-Tick-6"} 0.078850292
+synaxis_tick_duration_seconds_max{thread="Syn-Tick-7"} 0.078600417
+synaxis_tick_duration_seconds_max{thread="Syn-Tick-8"} 0.0
+synaxis_tick_duration_seconds_max{thread="Syn-Tick-9"} 0.079132125
+synaxis_tick_duration_seconds_max{thread="Syn-TickScheduler"} 0.081976041
+# HELP synaxis_watchdog_warnings_total Early warnings of the tick watchdog
+# TYPE synaxis_watchdog_warnings_total counter
+synaxis_watchdog_warnings_total 0.0
+# HELP system_cpu_count The number of processors available to the Java virtual machine
+# TYPE system_cpu_count gauge
+system_cpu_count 12.0
+# HELP system_cpu_usage The "recent cpu usage" of the system the application is running in
+# TYPE system_cpu_usage gauge
+system_cpu_usage 0.2254826254826255
+# HELP system_load_average_1m The sum of the number of runnable entities queued to available processors and the number of runnable entities running on the available processors averaged over a period of time
+# TYPE system_load_average_1m gauge
+system_load_average_1m 5.80078125

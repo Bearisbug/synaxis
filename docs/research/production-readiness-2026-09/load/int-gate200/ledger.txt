@@ -1,0 +1,4 @@
+ledger events-w5gate-20260924.jsonl: 201 lines, 31146 bytes
+ 200 session_entered_configuration
+   1 shutdown_saved
+synaxis_ledger_dropped_total 0.0

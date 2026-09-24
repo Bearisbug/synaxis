@@ -1,0 +1,12 @@
+start 2026-09-24 15:08:58 +0800
+15:08  up 9 days,  6:56, 28 users, load averages: 4.00 6.89 7.57
+total = 30720.00M  used = 30027.25M  free = 692.75M  (encrypted)
+ %CPU COMM
+ 99.3 /opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/Resources/Python.app/Contents/MacOS/Python
+ 30.8 /Applications/TencentMeeting.app/Contents/MacOS/TencentMeeting
+ 12.0 /System/Library/PrivateFrameworks/SkyLight.framework/Resources/WindowServer
+ 10.4 claude
+  9.2 /usr/sbin/coreaudiod
+end 2026-09-24 15:20:01 +0800
+15:20  up 9 days,  7:07, 29 users, load averages: 4.78 7.63 7.80
+total = 30720.00M  used = 29034.12M  free = 1685.88M  (encrypted)

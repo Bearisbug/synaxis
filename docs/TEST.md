@@ -15,6 +15,7 @@
 
 | 日期 | 改动 | 作者 |
 | --- | --- | --- |
+| 2026-09-24 | 跟进 `docs/DESIGN-PROD.md` 第 5 波 5C（`REQ-PROD-023` 追踪范围，G20；`REQ-PROD-024` 每玩家可见上限，G21；`API-PROD-019`）。**新增 §4「生产就绪 · 第 5 波 5C：实体追踪范围与每玩家可见上限」九条 `TC-PROD-310`～`TC-PROD-318`**：类型默认与每实体覆盖、Y 轴（310，§19 追踪范围场景）、区块内越界与换位置靠每 5 tick 的重算（311）、留最近的 100 个且必显另算（312，§19 可见上限场景）、被裁掉的实体不再经区块合并广播发移动包（313）、配置键默认 0（314）、`PluginContext#entities()` 与 ABI 门（315）、机器人数可见实体（316）、`merge` 对旧文件逐字节不变（317）、200 人 town 同格 10 min 上限 0 / 100 对照（318：每人下行 74,384.846 → 38,998.414 B/s，服务端出站 124.9 → 65.4 Mbit/s；修复合并广播之前的一轮可见数已是 100、位置包一个没少；三轮都在本机 `load1` 18.7～262.7 时跑，tick 不下结论，产物在 `docs/research/production-readiness-2026-09/load/town200-*`）；每条带真跑过的反证与红的位置，本节开头列出与设计的三处口径差异。§5 生产就绪域加一行 | Bearisbug |
 | 2026-09-24 | 跟进 `docs/DESIGN-PROD.md` 第 5 波 5A（`REQ-PROD-018` 指标导出，G16，`API-PROD-015`；`REQ-PROD-029` 压测 harness，G26，`API-PROD-025`、`ADR-PROD-013`）。**新增 §4「生产就绪 · 第 5 波 5A：指标导出与压测 harness」十二条 `TC-PROD-260`～`TC-PROD-271`**：端点答 Prometheus 文本、4 条 TickThread 与调度线程各一组 tick 时长、404 / 405、地址解析与 GC 之后台账计数仍更新（260，§19 指标场景）、`synaxis_*` 名字与 `API-PROD-015` 名单一致（261）、存储语句耗时与保存结果（262，要数据库）、引擎的包与字节、加解密耗时、`hasJoined` 结果与重试、看门狗警告（263）、真进程默认装配与绑定被占拒启（264，端口 25651）、机器人回区块回执超过首批 9 块、上行包速率窗口与被踢计入掉线（265，§19 harness 场景的缩小版）、加密档（266）、`merge` 合并与判定（267）、`sample` 读 JFR 与端点文本（268）、两个机器人进程 `--bot-offset` 分摊（269）、`flood` 与闸门计数导出（270）、200 人 walk 30 min 同机基线（271，判定未通过：18 个 tick 超 50 ms，17 个与 G1 年轻代暂停重叠，这一归因出自已删的 JFR、不可复算；产物在 `docs/research/production-readiness-2026-09/load/walk200-30m/`）；每条带真跑过的反证与红的位置，本节开头列出与设计的六处口径差异。§5 生产就绪域加一行 | Bearisbug |
 | 2026-09-24 | 跟进 `docs/DESIGN-PROD.md` v0.7.1。**新增 `TC-PROD-214`**（`REQ-PROD-005`）：进了 PLAY、还没进世界就断开的玩家照样登出保存并放租约——引擎两种断开时机各派发一次 `PlayerDisconnectEvent`、已进世界的仍只一次，存储放下该玩家且同账号马上重登成功，真进程三次 `login --hold 0` 都进得来、`stop` 不空等 30 s；两条反证（断开不交给 tick、已开始进世界的也在队列派发）与修复前的真进程现象都写进期望列。**新增 `TC-PROD-215`**（`REQ-PROD-011`）：玩家只能授予或收回节点都被自己覆盖的角色，带 `*` 的角色只有持有 `*` 的玩家能动，控制台不受限，越权回 `synaxis:role-above-sender`、记 `result=above_sender`；修复前的红与两条反证（不查发送者、`*` 当普通节点放行）写进期望列。`TC-PROD-210` 随模组多一条译文改为八条，加第 3 步新键的反证。§5 生产就绪域 3A 那行加触发条件，4A 那行加 `TC-PROD-215` | Bearisbug |
 | 2026-09-24 | 跟进 `docs/DESIGN-PROD.md` 第 4 波 4C（`REQ-PROD-012`，G10，`API-PROD-011`）。**新增 §4「生产就绪 · 第 4 波 4C：控制台与插件命令」十八条 `TC-PROD-240`～`TC-PROD-257`**：控制台 `list`、`tps`、`save` 回执可读、未知与不完整命令一行 INFO 不带栈（240，§19 第一条，反证把 `ConsoleSender` 换回组件日志器即红成空行）、节点决定内置命令的执行与补全而 `permissionLevel=4` 不授权（241）、`broadcast` 与 `kick` 默认原因（242）、`stop [秒数]` 倒计时、解析不了的秒数不停机、第二次 `stop` 回已在停机（243）、`tps` 的窗口与百分位（244）、插件命令命名空间与无前缀名让给先注册者（245）、必抛的插件命令 100 次一行日志且禁用后两个名字都不存在（246，§19 第二条）、在线时注册注销命令重发命令树（247）、角色变化重发命令树（248，要数据库）、宿主日志规则覆盖新类（249）、模组九条回执译文（250）、ABI 门（251）、4 线程严格模式（252）、真进程控制台与 `stop 2` 后自行退出（253，端口 25643）、控制台一行命令抛异常只写一行 ERROR 且下一行照常执行（254）、引擎已在停机时 `stop` 回已在停机并记 `invalid`（255）、插件被收回之后再注册的命令被丢弃（256）、控制台写服务端译文时子组件不重复也不被截掉（257）；每条带真跑过的反证与红的位置。§5 生产就绪域加一行 | Bearisbug |
@@ -4075,6 +4076,126 @@ jcmd "$pid" VM.flags | tr ' ' '\n' | grep -cxE -- '-XX:\+UseG1GC|-XX:InitialHeap
 
 后置：服务端与采样进程都已按 pid 停掉，25651 无监听；JFR 已删（`ls $TMPDIR | grep -c synaxis-loadtest` 为 0）；工作目录已删。本条的 18 个慢 tick 是未达标项，归属与处置见 5A 交付说明的 design_issues。
 
+### 生产就绪 · 第 5 波 5C：实体追踪范围与每玩家可见上限
+
+对应 `REQ-PROD-023`（清单 G20，`API-PROD-019` 追踪范围一条，§19「追踪范围按实体覆盖且含 Y 轴」）与 `REQ-PROD-024`（G21，`API-PROD-019` 可见上限一条，§19「每玩家可见非必显实体不超过 100」，§15 可见实体行）。实现：
+
+- 引擎：`TrackingRange(horizontal, vertical)` 以格为单位，水平按圆（`dx² + dz² ≤ h²`）、垂直按 `|dy| ≤ v`，两个值都必须为正。每进程一张类型默认表 `ServerProcess#trackingRanges()`（`TrackingRanges#setDefault(EntityType, h, v)`），`Entity#setTrackingRange(h, v)` 覆盖它；都没设的实体仍按 `synaxis.entity-view-distance` 的方形区块范围，范围只能在这个方形里收窄、不能放大。`synaxis.max-visible-entities-per-player` 引擎默认 0（不限）；`Entity#setAlwaysVisible(true)` 的实体不计数、不裁剪，但仍受追踪范围约束。实体经追踪器进入玩家视野时（跨区块、生成、规则变更）先过范围与上限两道判定，满额时新来的一律拒收；玩家每 5 tick 在自己的 tick 线程上重算一次（按实体 ID 错开），先撤走出了范围或被更近者挤掉的，再补进进了范围或排进前 N 的。距离按三维欧氏距离排序。乘客随载具进出、不单独计数，玩家自己的载具不会被撤走。进程里既没有范围也没有上限时跳过重算，M2 行为不变。进程里有范围或上限时，实体不再按「区块周围的玩家」合并广播（`hasPredictableViewers` 为 false），改为按各自的观察者发。
+- 插件面：`PluginContext#entities()` 返回 `PluginEntities`，`setDefaultTrackingRange(EntityType category, double horizontal, double vertical)` 写进上面那张进程表；插件禁用时不收回。
+- 压测：`:loadtest` 加画像 `town`（4.317 格/s，绕 4～32 格半径的圆，全体机器人在出生点 64 格内互相看得见），机器人按 `SpawnEntity` / `DestroyEntities` 数自己看得见的实体，每秒采样一次写进 `visible_entities`，`merge` 合并；没有这一项的旧文件合并结果逐字节不变。
+
+本节与设计的口径差异（交付说明同步列出，由主会话决定是否回写 `docs/DESIGN-PROD.md`）：
+
+- 分片宿主还不存在，`API-PROD-019`「分片宿主 100」没有接上；`server-app` 的 M2 `Main` 不设这个键，取引擎默认 0。
+- §19 追踪范围场景的 Boss 在 90 格处，引擎默认 `entity-view-distance=5` 时方形只覆盖 80～95 格，本节用例按 `server-app` 的 8 起进程。
+- 重算间隔 5 tick、满额拒收、乘客与载具的规则、合并广播关闭，设计没有写，是本节定的。
+
+「跑 `<类>`」指 `./gradlew :test --tests <类> --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts`（`:server-app`、`:loadtest` 的类换成对应模块的 `test`），结果文件同 3A 一节。`TrackingRangeTest`、`VisibleEntityLimitTest` 用 `Env.create` 起自己配置的进程（`:testing` 新增），用完停进程。`TC-PROD-318` 起真进程，端口 25653，本节只有它是压测。反证一律是「临时改一处实现、重跑、看红、还原、重跑复绿」，还原后 `git status` 必须干净。
+
+#### `TC-PROD-310` 追踪范围按类型默认、按实体覆盖，含 Y 轴（§19 场景） — 对应 `REQ-PROD-023` · 级别: 冒烟 · 执行者: AI
+
+前置：工作副本干净。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `io.github.bearisbug.synaxis.entity.TrackingRangeTest` | 5 个 0 失败。`ITEM` 与 `WITHER` 类型默认 24 × 8；水平 20、垂直 12 的掉落物看不到，水平 20、垂直 4 的看得到；自带 96 × 64 的 Boss 在 90 格处看得到，没设自身范围的另一只 `WITHER` 在 90 格处看不到。`ZOMBIE` 默认 10 × 4 时，同一区块里玩家从 14.4 格走到 8 格后看得到，僵尸升高 5 格后看不到。没设范围时区块 8（水平 130、垂直 60）的实体照旧看得到、区块 9 的看不到；自身范围 512 的实体在区块 9 也看不到。`setTrackingRange(0, 8)`、`(8, NaN)` 与默认表的 `(-1, 8)` 都抛 `IllegalArgumentException` |
+| 2 | 反证有齿（去掉垂直判定）：`TrackingRange#contains` 改为只比水平距离，重跑，再还原 | `5 tests completed, 2 failed`：`TrackingRangeTest.java:70` `12 blocks up is outside a vertical range of 8 ==> expected: <false> but was: <true>`，`:91` `5 blocks up is outside a vertical range of 4`。还原后复绿 |
+| 3 | 反证有齿（没有默认范围的类型也当作看不到）：`EntityView#withinRange` 里取默认表之后的 `if (range == null) return true;` 改为 `return false`，重跑，再还原 | `5 tests completed, 1 failed`，红在 `:100`（`withoutARangeTheSquareOfTheEntityViewDistanceStays`，区块 8 的实体 `expected: <true> but was: <false>`）。还原后复绿 |
+
+后置：确认 `TrackingRange.java`、`EntityView.java` 没有残留改动。
+
+#### `TC-PROD-311` 区块内越过范围边界、换位置后的最近者，都靠玩家每 5 tick 的重算 — 对应 `REQ-PROD-023`、`REQ-PROD-024` · 级别: 回归 · 执行者: AI
+
+前置：工作副本干净。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 同时跑 `TrackingRangeTest` 与 `VisibleEntityLimitTest` | 10 个 0 失败（两类各 5 个） |
+| 2 | 反证有齿（不重算）：删掉 `Player#update` 里的 `viewEngine.refreshVisibility(getAliveTicks());`，重跑，再还原 | `10 tests completed, 4 failed`：`TrackingRangeTest.java:87` `8 blocks away ==> expected: <true> but was: <false>`（追踪器在区块内不报告，没人发现僵尸进了范围）；`VisibleEntityLimitTest.java:100`（满额时拒收的近者补不进来）、`:116`（换位置后可见集合没变）、`:131`（标成必显的最远者没被补进）。还原后复绿 |
+
+后置：确认 `Player.java` 没有残留改动。
+
+#### `TC-PROD-312` 每玩家可见非必显实体不超过 100，留最近的 100 个，必显的另算（§19 场景） — 对应 `REQ-PROD-024` · 级别: 冒烟 · 执行者: AI
+
+前置：工作副本干净。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `io.github.bearisbug.synaxis.entity.VisibleEntityLimitTest` | 5 个 0 失败。上限 100 的进程里，玩家周围 150 个普通实体沿螺旋线排在 3～62.6 格、每个比前一个远 0.4 格，3 个必显实体在 70 格外。**从最远的开始生成**：生成完玩家看得到 100 个普通实体、最近的那个看不到（到达时已满额）；重算后看得到的正好是最近的 100 个，3 个必显的都看得到。玩家平移 40 格后，看得到的换成离新位置最近的 100 个（与原来的 100 个不同）。把最远的一个标成必显，重算后它看得到、普通实体共可见 101 个；取消必显后它又看不到、回到 100 个。上限 0 时 150 个全部看得到 |
+| 2 | 反证有齿（到达时不看上限）：`EntityView#admits` 末行改为 `return limit == 0 \|\| counted.size() < Integer.MAX_VALUE;`，重跑，再还原 | `5 tests completed, 1 failed`，红在 `VisibleEntityLimitTest.java:96`：`past the limit an entity is turned away when it arrives ==> expected: <100> but was: <150>`。还原后复绿 |
+| 3 | 反证有齿（留最远的 100 个）：`refreshVisibility` 的排序改为 `Comparator.comparingDouble(Nearby::distanceSquared).reversed()`，重跑，再还原 | `5 tests completed, 4 failed`：`:100`、`:110`、`:127`、`:153`（最后一处是上限 1 时留下了远的那个）。还原后复绿 |
+| 4 | 反证有齿（必显的也计数）：`refreshVisibility` 里 `if (candidate.isAlwaysVisible() \|\| candidate == player.getVehicle()) always.add(candidate);` 去掉 `candidate.isAlwaysVisible() \|\|`，重跑，再还原 | `5 tests completed, 2 failed`：`:101`（70 格外的必显实体被挤掉）、`:131`。还原后复绿 |
+
+后置：确认 `EntityView.java` 没有残留改动。
+
+#### `TC-PROD-313` 被裁掉的实体不把移动包发给该玩家（合并广播开着） — 对应 `REQ-PROD-024` · 级别: 回归 · 执行者: AI
+
+前置：工作副本干净。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `VisibleEntityLimitTest#aHiddenEntitySendsNoMovesToThePlayer`（上限 1、`viewablePacket(true)`，近的僵尸 3 格、远的 10 格） | 1 个 0 失败：重算后只看得到近的；远的 `hasPredictableViewers()` 为 false；两只各传送一次、走一个 tick，玩家收到的 `EntityPositionSyncPacket` 只有近的那只的 ID |
+| 2 | 反证有齿（仍按区块合并广播）：`EntityView#hasPredictableViewers` 末尾的 `return process == null \|\| (… == 0 && !… inUse());` 改为 `return process == null \|\| process.config() != null;`，重跑，再还原 | `5 tests completed, 1 failed`，红在 `VisibleEntityLimitTest.java:155`：`a packet for everyone around the chunk would reach the player ==> expected: <false> but was: <true>`。真进程里的后果见 `TC-PROD-318` 第 3 步：可见数压到 100，位置包一个没少。还原后复绿 |
+
+后置：确认 `EntityView.java` 没有残留改动。
+
+#### `TC-PROD-314` `synaxis.max-visible-entities-per-player` 引擎默认 0，负数拒绝 — 对应 `REQ-PROD-024` · 级别: 回归 · 执行者: AI
+
+前置：工作副本干净。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `io.github.bearisbug.synaxis.ServerConfigTest` | 5 个 0 失败：`ServerConfig.defaults().maxVisibleEntitiesPerPlayer()` 为 0；`builder().maxVisibleEntitiesPerPlayer(-1).build()` 抛 `IllegalArgumentException` |
+| 2 | 反证有齿（默认 100）：`ServerConfig.Builder` 的默认值改为 100，重跑，再还原 | `5 tests completed, 1 failed`，红在 `ServerConfigTest.java:44`：`expected: <0> but was: <100>`。还原后复绿 |
+
+后置：确认 `ServerConfig.java` 没有残留改动。
+
+#### `TC-PROD-315` 插件经 `PluginContext#entities()` 设类型默认范围 — 对应 `REQ-PROD-023` · 级别: 回归 · 执行者: AI
+
+前置：工作副本干净。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `io.github.bearisbug.synaxis.app.PluginHostIntegrationTest`（`:server-app:test`） | 18 个 0 失败；其中 `aPluginSetsTheTrackingRangeOfAnEntityType`：插件在 `onEnable` 里 `ctx.entities().setDefaultTrackingRange(EntityType.ITEM, 24, 8)`，之后 `process.trackingRanges().getDefault(ITEM)` 等于 `TrackingRange[horizontal=24.0, vertical=8.0]` |
+| 2 | 反证有齿（宿主给一个空实现）：`PluginHost#enableOne` 里的 `process.trackingRanges()::setDefault` 换成 `(_, _, _) -> { }`，重跑，再还原 | `18 tests completed, 1 failed`，红在 `PluginHostIntegrationTest.java:536`：`expected: <TrackingRange[horizontal=24.0, vertical=8.0]> but was: <null>`。还原后复绿 |
+| 3 | ABI 门：按 `docs/ENGINE.md` §7.1 本地口径，baseline 取 `af8ab12406` 构建的 `plugin-api.jar` 与 `protocol.jar`，跑 `:plugin-api:checkBinaryCompatibility :protocol:checkBinaryCompatibility -PbaselineJarDir=<目录>` | 两个任务真执行、不是 `SKIPPED`，0 条违规（`PluginContext#entities` 是 `default` 方法，`PluginEntities` 是新类型） |
+
+后置：确认 `PluginHost.java` 没有残留改动；删 baseline 目录。
+
+#### `TC-PROD-316` 机器人数自己看得见的实体，上限 1 时最多 1 个 — 对应 `REQ-PROD-024`、`REQ-PROD-029` · 级别: 回归 · 执行者: AI
+
+前置：工作副本干净。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `io.github.bearisbug.synaxis.loadtest.BotSocketTest`（`:loadtest:test`） | 4 个 0 失败；其中 `botsCountTheEntitiesTheServerShowsThem` 对真 tick 的进程跑两轮 3 个 walk 机器人、各 12 s：上限 0 时 `visible_entities` 最大 2（看得到另外两个），上限 1 时最大 1 |
+| 2 | 反证有齿（机器人收到 `SpawnEntity` 时不计数）：`Bot#track` 的 `visible.add(spawn.entityId())` 改为 `visible.remove(...)`，重跑，再还原 | `4 tests completed, 1 failed`，红在 `BotSocketTest.java:88`：`every bot sees the other two ==> expected: <2.0> but was: <0.0>`。还原后复绿 |
+
+后置：确认 `Bot.java` 没有残留改动。
+
+#### `TC-PROD-317` `merge` 对没有 `visible_entities` 的旧文件结果不变，对新文件可复算 — 对应 `REQ-PROD-029` · 级别: 回归 · 执行者: AI
+
+前置：`./gradlew :loadtest:installDist`；`LT` 同 `TC-PROD-269`。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 对 `load/walk200-30m/`、`load/town200-cap0-10m/`、`load/town200-cap100-10m/`、`load/town200-cap100-prefix-10m/`（都在 `docs/research/production-readiness-2026-09/` 下）各跑 `LT merge <目录>/bots-0.json <目录>/server.json --out <临时文件>`，再与该目录的 `summary.json` 做 `cmp` | 四次退出码都是 2（判定未通过，原因见 `TC-PROD-271` 与 `TC-PROD-318`），四次 `cmp` 都无输出：5A 的旧文件里没有 `visible_entities`，合并结果与 5A 提交的逐字节相同；三份 town 的 `summary.json` 可由提交的原始文件复算 |
+
+后置：删临时文件。
+
+#### `TC-PROD-318` 200 人 town 同格 10 min：上限 0 与 100 对照（服务端与机器人同机） — 对应 `REQ-PROD-024`、`REQ-PROD-029` · 级别: 回归 · 执行者: AI
+
+前置：`./gradlew :server-app:installDist :loadtest:installDist`；本机没有别的压测（`pgrep -fl synaxis.app.Main`、`pgrep -fl loadtest` 为空），起跑前记下 `uptime` 与 `sysctl -n vm.swapusage`。机器与 `TC-PROD-271` 相同（Apple M4 Pro 12 核 / 24 GiB，macOS，JDK 25.0.4.1，同机回环），**本轮三次都在本机被别的会话压满时跑**：`load1` 18.7～262.7（12 核），swap 已用 24,959～27,387 MiB / 26,624～28,672 MiB，所以 tick 读数不能用来判 §15 的 tick 预算，只看带宽与可见数。服务端是 `server-app` 核心模式（平地，40 层石头，`chunk-view-distance=10`、`entity-view-distance=8`，引擎默认 1 条 tick 线程，内存存储，离线模式）。产物目录 `docs/research/production-readiness-2026-09/load/` 下 `town200-cap0-10m/`、`town200-cap100-10m/`、`town200-cap100-prefix-10m/`，各含 `bots-0.json`、`server.json`、`summary.json`、`machine.txt`（起止时刻的 `uptime` 与 swap）；没有保留 JFR。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 空工作目录里后台起服：`JAVA_OPTS="-Xms3G -Xmx3G"`，`SERVER_APP_OPTS="-Dsynaxis.app.port=25653 -Dsynaxis.app.auth=offline -Dsynaxis.app.core-mode=on -Dsynaxis.app.shard-id=w5c -Dsynaxis.app.metrics.bind=127.0.0.1:0 -Dsynaxis.connection-gate.trusted-networks=127.0.0.0/8 -Dsynaxis.max-visible-entities-per-player=<0 或 100>"`；从日志取端点地址；`LT sample --pid <pid> --duration 630s --metrics <端点> --out server.json` 放后台，5 s 后 `LT run --host 127.0.0.1 --port 25653 --bots 200 --profile town --encryption off --duration 600s --out bots-0.json`；两者结束后按 pid 停服，`LT merge bots-0.json server.json --out summary.json` | 每轮 200 个机器人全部登录、0 掉线、0 次被踢，闸门拒绝 0，服务端 WARN / ERROR 0 行。`merge` 退出码 2，未通过项只在 tick（见第 4 步） |
+| 2 | 上限 0（`town200-cap0-10m`，2026-09-24 04:08:51Z 起）：读 `summary.json` 的 `visible_entities`、`inbound`、`traffic` | 可见实体 P50 199、P99 199、最大 199（每人看得到其余全部 199 人）；机器人一侧每人收 **74,384.846 B/s**，`EntityPositionAndRotationPacket` 447,942,103 个；服务端出站 15,611,137.537 B/s，即 **124.9 Mbit/s**，超过 §15「合计出站 < 100 Mbit/s 才放宽上限」的线，上限需要保留 |
+| 3 | 修复前的上限 100（`town200-cap100-prefix-10m`，04:19:28Z 起，二进制是合并广播修复之前的 `dd50f39ff7`）：同第 2 步 | 可见实体 P50 100、P99 100、最大 100，但每人仍收 73,934.494 B/s，`EntityPositionAndRotationPacket` 447,659,782 个，与上限 0 相差 0.06%；服务端出站 124.1 Mbit/s。只有 `EntityVelocityPacket`（按实体自己的观察者发）减半：23,465,136 → 11,813,675。这就是 `TC-PROD-313` 修的那处：位置包按区块合并广播，照样发给看不见该实体的玩家 |
+| 4 | 上限 100（`town200-cap100-10m`，04:34:26Z 起，含修复）：同第 2 步，另读 `ticks`、`dispatcher_busy_ratio`、`traffic.packets_out_per_s` | 可见实体 P50 100、P99 100、最大 100；每人收 **38,998.414 B/s**，比上限 0 少 47.6%；`EntityPositionAndRotationPacket` 225,682,360 个（上限 0 的 50.4%）；服务端出站 8,177,932.511 B/s，即 **65.4 Mbit/s**。代价：出站可发送单元从 157,734 个/s 升到 412,040 个/s（不再按区块合并成一个缓冲），`Syn-Tick-0` 忙碌比 0.035 → 0.113、`Syn-TickScheduler` 0.092 → 0.138。tick P99 三轮依次 48.603 / 51.653 / 54.295 ms，超 50 ms 的 117 / 134 / 144 个，最大 2,509.632 / 673.733 / 659.076 ms；本机 `load1` 同期最高 262.7 / 210.5 / 190.3，tick 这一项在空闲机器或分机档上重量之前不下结论 |
+
+后置：三轮服务端与采样进程都已按 pid 停掉，25653 无监听；工作目录已删。
+
 ## 5. 回归策略
 
 - **全量轮**（全部用例）：首次成稿、每个阶段 gate（引擎域阶段 0、2、3；游戏域 `docs/DESIGN-M2.md` §26 的阶段 1～6b；大世界域 `docs/DESIGN-M3.md` §26 的 M3-A～M3-G）、跨功能域改动、地基变更（JDK、Gradle、镜像、协议版本、模块拆分、启动入口）。
@@ -4101,6 +4222,7 @@ jcmd "$pid" VM.flags | tr ' ' '\n' | grep -cxE -- '-XX:\+UseG1GC|-XX:InitialHeap
   - 生产就绪域（`docs/DESIGN-PROD.md`）：白名单与封禁（`REQ-PROD-010`）→ TC-PROD-220～TC-PROD-236；动了 `server-app` 的 `moderation/`、`PluginHost` 的封禁接线、`HandshakeGate` 登录阶段握手的跳过判断、`Main#openStore` / `Main#whitelist` 或 `RedisLink` 的 `synaxis:moderation` 收发就跑 TC-PROD-221 与 TC-PROD-223～TC-PROD-231、TC-PROD-235（要数据库前置），再动了起服或登录路径加 TC-PROD-236（真进程，约 3 分钟）；动了 `V4__moderation.sql` 或 `V4__moderation.down.sql` 跑 TC-PROD-220、TC-PROD-221；动了 `BanTarget` 跑 TC-PROD-222、TC-PROD-226；动了 `AdmissionRequest` 或 `AdmissionGate` 构造请求的一处跑 TC-PROD-232；动了 `Moderation`、`BanTarget`、`Ban`、`AdmissionRequest` 或 `PluginContext#moderation` 跑 TC-PROD-234；动了模组的 lang 跑 TC-PROD-233。跨域牵连：动了 `RedisLink` 的订阅线程 → 加 `CrossShardHandoverIntegrationTest` 与 TC-PROD-205；新增 Flyway 版本 → 重跑 TC-PROD-141、TC-PROD-200 与 TC-PROD-220。
   - 生产就绪域（`docs/DESIGN-PROD.md`）：控制台与插件命令（`REQ-PROD-012`）→ TC-PROD-240～TC-PROD-257；动了 `server-app` 的 `command/`、`PluginCommandsImpl`、`PluginHost` 的命令接线、`Main#readConsole` / `runConsoleCommand` 或 `PlayerStore#saveOnline` 就跑 TC-PROD-240～TC-PROD-247、TC-PROD-249、TC-PROD-252 与 TC-PROD-254～TC-PROD-256，再动了控制台线程或起停服加 TC-PROD-253（真进程，约 30 s）；动了 `HostPermissions` 重发命令树的一处跑 TC-PROD-248（要数据库前置）；动了引擎 `ConsoleSender` 跑 TC-PROD-240、TC-PROD-257 与 TC-PROD-207；动了 `PluginCommands` 或 `PluginContext#commands` 跑 TC-PROD-251；动了模组的 lang 跑 TC-PROD-250。跨域牵连：动了 `PluginHost#tearDown` 或 `LoadedPlugin` → 加 TC-GAME-053～TC-GAME-055；动了 `HostPermissions` → 加 TC-PROD-201～TC-PROD-209、TC-PROD-212、TC-PROD-213。
   - 生产就绪域（`docs/DESIGN-PROD.md`）：指标导出与压测 harness（`REQ-PROD-018`、`REQ-PROD-029`）→ TC-PROD-260～TC-PROD-271；动了 `server-app` 的 `metrics/`、`Main` 的指标装配、`StoreMetrics` 或存储里报语句与保存的几处、`EventLedger#droppedTotal` 就跑 TC-PROD-260～TC-PROD-262（262 要数据库前置），再动了起服顺序加 TC-PROD-264（真进程，约 1 分钟）；动了引擎 `TrafficCounters`、`PlayerSocketConnection` 的计数与加解密计时、`TickThread#observeTicks`、`SessionClient` 的累计计数或 `Watchdog#warnings` 就跑 TC-PROD-263 与 TC-PROD-260；动了 `loadtest/` 的 `Bot`、`Protocol` 或 `Profile` 就跑 TC-PROD-265、TC-PROD-266，动了 `MergeCommand`、`SampleCommand`、`Histogram` 或 `Args` 就跑 TC-PROD-267、TC-PROD-268，动了 `RunCommand` 或 `FloodCommand` 再加 TC-PROD-269、TC-PROD-270（真进程，各约 1 分钟）。TC-PROD-271（200 人 walk 30 min）只在第 5 波的分格、可见性与限流合入后，或引擎 tick、网络、区块发送路径有改动时跑，一次约 35 分钟，本机同时只能有一个压测。跨域牵连：动了 `PlayerSocketConnection` → 加 TC-PROD-090～TC-PROD-101；动了 `ConnectionGate` 的拒绝计数 → 加 TC-PROD-270。
+  - 生产就绪域（`docs/DESIGN-PROD.md`）：实体追踪范围与每玩家可见上限（`REQ-PROD-023`、`REQ-PROD-024`）→ TC-PROD-310～TC-PROD-318；动了引擎 `EntityView`、`TrackingRange` / `TrackingRanges`、`Entity` 的追踪范围与必显两组方法、`Player#update` 里的重算调用或 `ServerConfig` 的 `synaxis.max-visible-entities-per-player` 就跑 TC-PROD-310～TC-PROD-314；动了 `PluginContext#entities`、`PluginEntities` 或 `PluginHost` 的接线跑 TC-PROD-315；动了 `loadtest/` 的 `Bot` 实体计数、`RunCommand` 采样或 `MergeCommand` 的 `visible_entities` 跑 TC-PROD-316、TC-PROD-317。TC-PROD-318（三轮各约 11 分钟）只在可见性、视野广播（`PacketViewableUtils`、`hasPredictableViewers`）或实体移动同步有改动时跑，本机同时只能有一个压测。跨域牵连：动了 `EntityView` 或 `Player#update` → 加 TC-PROD-033（4 线程严格模式全量，重算在玩家自己的 tick 线程上碰别的实体的视图）。
   - 影响面不确定时升级为全量轮。
 - **复测轮**（上轮失败用例 + 全部冒烟级）：修复失败项之后。
 - **人工收口轮**（仅上轮「待人工」用例）：AI 轮之后由人工补测 TC-016、TC-030、TC-GAME-020、TC-GAME-038、TC-GAME-046、TC-GAME-047，不要求冒烟级。

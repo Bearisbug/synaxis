@@ -1,5 +1,6 @@
 package io.github.bearisbug.synaxis.plugin;
 
+import org.jetbrains.annotations.ApiStatus;
 import org.jetbrains.annotations.Nullable;
 
 import java.net.InetAddress;
@@ -21,7 +22,10 @@ import java.util.concurrent.CompletableFuture;
  * <p>
  * Every method may be called from any thread, a tick thread included: the changes go to the
  * database on a virtual thread, and a future that fails carries an {@link IllegalStateException}.
+ * <p>
+ * Only the host implements this interface: a plugin is handed one and calls it.
  */
+@ApiStatus.NonExtendable
 public interface Moderation {
 
     /**

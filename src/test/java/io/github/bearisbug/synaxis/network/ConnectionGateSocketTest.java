@@ -37,6 +37,7 @@ import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.BooleanSupplier;
 import java.util.zip.DataFormatException;
 
@@ -168,21 +169,16 @@ public class ConnectionGateSocketTest {
             final Peer fourth = rig.login("player3");
             assertEquals("synaxis:login-throttled", fourth.disconnectReason());
 
-            Thread.sleep(2_100);
+            rig.advance(TimeUnit.SECONDS.toNanos(2));
             assertTrue(rig.login("player4").loggedIn(), "one token is back 2 s later");
             assertEquals(1, rig.gate().rejected(ConnectionGate.Reason.THROTTLED));
         }
     }
 
-    /**
-     * L2: status and transfer have buckets of their own. Their refill is slowed down here so that a
-     * slow machine cannot refill a token between the tenth and the eleventh handshake;
-     * {@code ConnectionGateTest} checks the default rates on a clock of its own.
-     */
+    /** L2: status and transfer have buckets of their own. */
     @Test
     public void statusAndTransferHandshakesCountOnTheirOwnBuckets() throws Exception {
-        try (Rig rig = Rig.start(base().maxConnectionsPerIp(64).acceptTransfers(true)
-                .statusRatePerIp(0.001).transferRatePerIp(0.001))) {
+        try (Rig rig = Rig.start(base().maxConnectionsPerIp(64).acceptTransfers(true))) {
             // One after the other: each connection has a read thread of its own, so handshakes sent
             // together are not handled in the order they were sent
             for (int i = 0; i < 10; i++) {
@@ -310,15 +306,25 @@ public class ConnectionGateSocketTest {
                 "a disconnect reason carries its error code as a translate key").key();
     }
 
-    /** A process with its server listening on a free loopback port. */
-    private record Rig(ServerProcess process, List<Peer> peers) implements AutoCloseable {
+    /**
+     * A process with its server listening on a free loopback port. Its gate reads the clock of the
+     * rig, which only moves when the test says so: however slow the machine, no token comes back
+     * between two steps of a test.
+     */
+    private record Rig(ServerProcess process, AtomicLong clock, List<Peer> peers) implements AutoCloseable {
 
         static Rig start(ServerConfig.Builder config) throws IOException {
             final ServerProcess process = ServerProcess.of(config.build());
+            final AtomicLong clock = new AtomicLong(System.nanoTime());
+            process.connection().gate().clock(clock::get);
             final Server server = process.server();
             server.init(new InetSocketAddress(InetAddress.getLoopbackAddress(), 0));
             server.start();
-            return new Rig(process, new ArrayList<>());
+            return new Rig(process, clock, new ArrayList<>());
+        }
+
+        void advance(long nanos) {
+            clock.addAndGet(nanos);
         }
 
         ConnectionGate gate() {

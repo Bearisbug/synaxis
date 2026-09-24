@@ -1,6 +1,7 @@
 package io.github.bearisbug.synaxis.plugin;
 
 import io.github.bearisbug.synaxis.entity.Player;
+import org.jetbrains.annotations.ApiStatus;
 
 /**
  * Custom payload channels of one plugin (API-M2-001, API-M2-008).
@@ -8,7 +9,10 @@ import io.github.bearisbug.synaxis.entity.Player;
  * Channel ids are always {@code <plugin_id>:<name>}. A name may be given with or without the
  * prefix, but a prefix that is not this plugin's id is refused, which also keeps the {@code synaxis}
  * namespace reserved for the host.
+ * <p>
+ * Only the host implements this interface: a plugin is handed one and calls it.
  */
+@ApiStatus.NonExtendable
 public interface PluginChannels {
 
     /**

@@ -65,7 +65,7 @@ public final class ConnectionGate {
     }
 
     private final ServerConfig config;
-    private final LongSupplier clock;
+    private volatile LongSupplier clock;
     private final List<Network> trustedNetworks;
     private final List<Network> trustedProxies;
 
@@ -104,6 +104,16 @@ public final class ConnectionGate {
             rejectedTotal.put(reason, new AtomicLong());
             rejectedSinceReport.put(reason, new AtomicLong());
         }
+    }
+
+    /**
+     * Swaps the clock of the token buckets and of their sweep, for tests that drive the gate of a
+     * whole process through real sockets and cannot let the wall clock refill a bucket between two
+     * of their steps. The new clock has to continue from {@link System#nanoTime()}, the time the
+     * sweep was last done on.
+     */
+    void clock(LongSupplier clock) {
+        this.clock = clock;
     }
 
     /**

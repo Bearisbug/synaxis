@@ -1118,4 +1118,17 @@ public final class PlayerStore implements ShutdownParticipant {
         final Record record = records.get(player);
         return record == null ? -1 : record.version.get();
     }
+
+    /**
+     * Whether a player's write slot is busy: a write under way or a snapshot waiting for it.
+     *
+     * @return {@code false} once every snapshot taken so far is written or given up
+     */
+    boolean isWriting(Player player) {
+        final Record record = records.get(player);
+        if (record == null) return false;
+        synchronized (record) {
+            return record.writing;
+        }
+    }
 }

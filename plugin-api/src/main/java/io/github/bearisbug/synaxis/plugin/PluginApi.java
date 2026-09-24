@@ -14,7 +14,7 @@ public final class PluginApi {
      * The major version a plugin declares in its descriptor. A plugin whose value differs from this
      * one is refused; the number goes up by one on every breaking change of this module.
      */
-    public static final int API_VERSION = 1;
+    public static final int API_VERSION = 2;
 
     /**
      * The key of the one shallow dimension type the host registers before it binds, which a plugin

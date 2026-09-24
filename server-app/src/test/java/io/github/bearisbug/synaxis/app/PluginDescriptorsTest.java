@@ -48,7 +48,7 @@ class PluginDescriptorsTest {
     }
 
     @ParameterizedTest
-    @ValueSource(ints = {0, 2})
+    @ValueSource(ints = {1, 3})
     void rejectsAnApiVersionThatIsNotTheHostOne(int apiVersion) {
         final IllegalArgumentException thrown = assertThrows(IllegalArgumentException.class,
                 () -> PluginDescriptors.validate(new PluginDescriptor("probe", "1.0.0", apiVersion)));

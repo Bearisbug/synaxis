@@ -509,8 +509,15 @@ class PlayerStoreIntegrationTest {
                 shard.store().markDirty(player, PURSE);
             }
             env.tick();
+            // Ticks run far faster than the database here: waiting for the writes keeps a snapshot
+            // from merging into the one still being written, so each round the autosave takes is
+            // one write however slow the database is
+            final long deadline = System.nanoTime() + Duration.ofSeconds(10).toNanos();
+            while (shard.store().isWriting(first) || shard.store().isWriting(second)) {
+                if (System.nanoTime() - deadline >= 0) throw new AssertionError("the autosave writes did not end within 10 s");
+                sleep(1);
+            }
         }
-        sleep(300);
 
         final long total = row(database, a).version() + row(database, b).version();
         assertTrue(total >= 8 && total <= 12,

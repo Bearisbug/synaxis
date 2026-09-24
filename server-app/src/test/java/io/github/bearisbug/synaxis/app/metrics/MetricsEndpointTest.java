@@ -13,16 +13,21 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
 
 import java.io.IOException;
+import java.lang.ref.WeakReference;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
+import java.net.ServerSocket;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.LongSupplier;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -77,13 +82,51 @@ public class MetricsEndpointTest {
                     + "/metrics/more")).GET().build(), HttpResponse.BodyHandlers.discarding()).statusCode());
             assertEquals(405, http.send(HttpRequest.newBuilder(uri).POST(HttpRequest.BodyPublishers.noBody()).build(),
                     HttpResponse.BodyHandlers.discarding()).statusCode());
-            assertThrows(IOException.class, () -> HostMetrics.register(process, new HostMetrics.Sources(() -> 0,
-                            PlayerStore.inMemory(process, (_, _) -> {
-                            }), null, null, RedisLink.disabled("second"))).serve(bound),
-                    "a second endpoint on a bound address fails");
         } finally {
             process.stop();
         }
+    }
+
+    @Test
+    @Timeout(60)
+    public void anAddressAlreadyBoundFailsToServe() throws Exception {
+        final ServerProcess process = ServerProcess.of(ServerConfig.builder().insideTest(true).build());
+        try (ServerSocket taken = new ServerSocket(0, 0, InetAddress.getLoopbackAddress());
+             HostMetrics metrics = HostMetrics.register(process, new HostMetrics.Sources(() -> 0,
+                     PlayerStore.inMemory(process, (_, _) -> {
+                     }), null, null, RedisLink.disabled("bound")))) {
+            assertThrows(IOException.class, () -> metrics.serve(new InetSocketAddress(
+                    InetAddress.getLoopbackAddress(), taken.getLocalPort())), "an endpoint on a bound address fails");
+        }
+    }
+
+    /**
+     * The host hands the ledger count in as a lambda nothing else holds, and a function counter
+     * reads its source through a weak reference: after a GC the count still moves.
+     */
+    @Test
+    @Timeout(60)
+    public void theLedgerCountStillMovesAfterAGc() throws Exception {
+        final ServerProcess process = ServerProcess.of(ServerConfig.builder().insideTest(true).build());
+        final AtomicLong dropped = new AtomicLong(7);
+        try (HostMetrics metrics = HostMetrics.register(process, new HostMetrics.Sources(ledgerOf(dropped),
+                PlayerStore.inMemory(process, (_, _) -> {
+                }), null, null, RedisLink.disabled("gc")))) {
+            assertTrue(metrics.scrape().contains("synaxis_ledger_dropped_total 7.0"));
+            final WeakReference<Object> probe = new WeakReference<>(new Object());
+            for (int i = 0; i < 50 && probe.get() != null; i++) {
+                System.gc();
+                Thread.sleep(10);
+            }
+            assertNull(probe.get(), "a GC ran");
+            dropped.set(42);
+            assertTrue(metrics.scrape().contains("synaxis_ledger_dropped_total 42.0"), "the count after a GC");
+        }
+    }
+
+    /** A supplier made here, so that only the sources hold it — as the host's own is. */
+    private static LongSupplier ledgerOf(AtomicLong dropped) {
+        return () -> dropped.get();
     }
 
     @Test

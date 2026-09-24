@@ -122,6 +122,11 @@ public final class HostMetrics implements AutoCloseable {
     private final ExecutorService executor = Executors.newSingleThreadExecutor(
             Thread.ofPlatform().name("Syn-Metrics").daemon().factory());
     private @Nullable HttpServer http;
+    /**
+     * Held here because a {@link FunctionCounter} keeps only a weak reference to what it reads: the
+     * host hands in a lambda nothing else holds, which the first GC would take.
+     */
+    private @Nullable LongSupplier ledgerDropped;
 
     private HostMetrics() {
     }
@@ -277,8 +282,8 @@ public final class HostMetrics implements AutoCloseable {
                 .register(registry);
         final RedisLink redis = sources.redis();
         Gauge.builder("synaxis.redis.up", () -> redis.isUp() ? 1 : 0).register(registry);
-        final LongSupplier dropped = sources.ledgerDropped();
-        FunctionCounter.builder("synaxis.ledger.dropped", dropped, LongSupplier::getAsLong)
+        ledgerDropped = sources.ledgerDropped();
+        FunctionCounter.builder("synaxis.ledger.dropped", ledgerDropped, LongSupplier::getAsLong)
                 .description("Lines the event ledger dropped").register(registry);
     }
 

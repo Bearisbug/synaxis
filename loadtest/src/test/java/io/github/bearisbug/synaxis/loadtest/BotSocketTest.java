@@ -6,8 +6,10 @@ import io.github.bearisbug.synaxis.ServerConfig;
 import io.github.bearisbug.synaxis.ServerProcess;
 import io.github.bearisbug.synaxis.coordinate.Pos;
 import io.github.bearisbug.synaxis.event.player.AsyncPlayerConfigurationEvent;
+import io.github.bearisbug.synaxis.event.player.PlayerSpawnEvent;
 import io.github.bearisbug.synaxis.instance.InstanceContainer;
 import io.github.bearisbug.synaxis.instance.block.Block;
+import io.github.bearisbug.synaxis.timer.TaskSchedule;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
 import org.junit.jupiter.api.io.TempDir;
@@ -24,17 +26,18 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * {@code docs/DESIGN-PROD.md} {@code REQ-PROD-029}: bots against a real ticking server on loopback,
- * a plain and an encrypted login, chunk batch receipts that keep the chunks coming, and the packet
+ * a plain and an encrypted login, a kick counted as a lost bot, chunk batch receipts that keep the chunks coming, and the packet
  * rates the run file reports.
  */
 public class BotSocketTest {
 
     private static final int BOTS = 3;
+    private static final String KICK = "kicked by the test";
 
     @Test
     @Timeout(90)
     public void walkingBotsAcknowledgeChunkBatchesAndGetMoreThanTheFirstNine(@TempDir Path directory) throws Exception {
-        final JsonObject run = runAgainst(new Auth.Offline(false), "off", directory.resolve("bots-0.json"));
+        final JsonObject run = runAgainst(new Auth.Offline(false), "off", false, directory.resolve("bots-0.json"));
         assertEquals(BOTS, run.getAsJsonObject("bots").get("logged_in").getAsInt(), run.toString());
         assertEquals(0, run.getAsJsonObject("bots").get("lost").getAsInt(), run.toString());
         final JsonObject walk = run.getAsJsonObject("inbound").getAsJsonObject("chunks").getAsJsonObject("walk");
@@ -60,14 +63,23 @@ public class BotSocketTest {
     @Test
     @Timeout(90)
     public void botsAnswerTheEncryptionRequestOfAnEncryptingServer(@TempDir Path directory) throws Exception {
-        final JsonObject run = runAgainst(new Auth.Offline(true), "on", directory.resolve("bots-0.json"));
+        final JsonObject run = runAgainst(new Auth.Offline(true), "on", false, directory.resolve("bots-0.json"));
         assertEquals(BOTS, run.getAsJsonObject("bots").get("logged_in").getAsInt(), run.toString());
         assertEquals(BOTS, Histogram.fromJson(run.getAsJsonObject("login_latency_ms").getAsJsonObject("on")).count());
         assertTrue(Histogram.fromJson(run.getAsJsonObject("inbound").getAsJsonObject("chunks").getAsJsonObject("walk")
                 .getAsJsonObject("per_bot_packets")).min() > 9, "chunks decrypt and keep coming");
     }
 
-    private static JsonObject runAgainst(Auth auth, String encryption, Path out) throws Exception {
+    @Test
+    @Timeout(90)
+    public void aBotTheServerKicksCountsAsLostWithTheReason(@TempDir Path directory) throws Exception {
+        final JsonObject run = runAgainst(new Auth.Offline(false), "off", true, directory.resolve("bots-0.json"));
+        assertEquals(BOTS, run.getAsJsonObject("bots").get("logged_in").getAsInt(), run.toString());
+        assertEquals(BOTS, run.getAsJsonObject("bots").get("lost").getAsInt(), run.toString());
+        assertEquals(BOTS, run.getAsJsonObject("kicks_by_reason").get(KICK).getAsInt(), run.toString());
+    }
+
+    private static JsonObject runAgainst(Auth auth, String encryption, boolean kick, Path out) throws Exception {
         final ServerProcess process = ServerProcess.of(auth, ServerConfig.builder()
                 .connectionGateTrustedNetworks("127.0.0.0/8").chunkViewDistance(4).build());
         final InstanceContainer world = process.instance().createInstanceContainer();
@@ -76,6 +88,8 @@ public class BotSocketTest {
             event.setSpawningInstance(world);
             event.getPlayer().setRespawnPoint(new Pos(0.5, 40, 0.5));
         });
+        if (kick) process.eventHandler().addListener(PlayerSpawnEvent.class, event -> process.scheduler()
+                .buildTask(() -> event.getPlayer().kick(KICK)).delay(TaskSchedule.seconds(4)).schedule());
         process.start(new InetSocketAddress(InetAddress.getLoopbackAddress(), 0));
         process.dispatcher().start();
         final Thread ticker = Thread.ofPlatform().name("test-ticker").start(() -> {

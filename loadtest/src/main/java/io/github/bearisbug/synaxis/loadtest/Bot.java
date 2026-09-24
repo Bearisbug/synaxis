@@ -71,6 +71,7 @@ import java.util.Arrays;
 import java.util.Locale;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.LockSupport;
 import java.util.zip.DataFormatException;
@@ -133,6 +134,8 @@ final class Bot {
     private volatile long playSince;
     private volatile long closedAt;
     private volatile boolean closed;
+    private volatile long endNanos;
+    private final AtomicBoolean lost = new AtomicBoolean();
     private long chunks;
     private long batchStarted;
     private double spawnX, spawnY, spawnZ;
@@ -152,6 +155,7 @@ final class Bot {
      * @param endNanos when the run ends, {@link System#nanoTime()}
      */
     void run(long endNanos) {
+        this.endNanos = endNanos;
         final long connectStart = System.nanoTime();
         try {
             socket.setTcpNoDelay(true);
@@ -172,14 +176,18 @@ final class Bot {
             socket.setSoTimeout(1_000);
             play(endNanos);
         } catch (IOException | RuntimeException e) {
-            if (!closed && System.nanoTime() < endNanos) {
-                stats.lost.increment();
-                BotStats.count(stats.kicks, reason(e));
-            }
+            lose(e);
         } finally {
             close();
             account();
         }
+    }
+
+    /** Counts the bot lost once, unless the run closed it or its time was up. */
+    private void lose(Exception e) {
+        if (closed || System.nanoTime() >= endNanos || !lost.compareAndSet(false, true)) return;
+        stats.lost.increment();
+        BotStats.count(stats.kicks, reason(e));
     }
 
     private static String reason(Exception e) {
@@ -380,8 +388,10 @@ final class Bot {
                         (byte) (onGround ? ClientPlayerPositionPacket.FLAG_ON_GROUND : 0)));
                 send(ConnectionState.PLAY, new ClientTickEndPacket());
             }
-        } catch (IOException | RuntimeException _) {
-            // The read loop sees the same broken socket and reports it
+        } catch (IOException _) {
+            // Left open: the read loop sees the same broken socket and reports it with the server's reason
+        } catch (RuntimeException e) {
+            lose(e);
             close();
         }
     }

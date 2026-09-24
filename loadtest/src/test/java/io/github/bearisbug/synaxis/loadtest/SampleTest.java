@@ -10,7 +10,6 @@ import java.nio.file.Path;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.TimeUnit;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -22,30 +21,56 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 public class SampleTest {
 
     @Test
-    public void everyServerTickEventIsCountedAndTheSlowOneIsOver50(@TempDir Path directory) throws Exception {
+    public void everyServerTickEventIsCountedAndNoOtherEvent(@TempDir Path directory) throws Exception {
         final Path file = directory.resolve("ticks.jfr");
         final Instant started = Instant.now();
         try (Recording recording = new Recording()) {
             recording.enable(SampleCommand.TICK_EVENT);
+            recording.enable(EventsJFR.SERVER_PING);
             recording.start();
-            for (long millis : new long[]{0, 0, 0, 60}) {
+            for (int i = 0; i < 4; i++) {
                 final EventsJFR.EventMarker tick = EventsJFR.newServerTick();
                 tick.begin();
-                if (millis > 0) TimeUnit.MILLISECONDS.sleep(millis);
                 tick.commit();
+                final EventsJFR.EventMarker ping = EventsJFR.newServerPing("127.0.0.1");
+                ping.begin();
+                ping.commit();
             }
             recording.stop();
             recording.dump(file);
         }
-        final JsonObject gc = new JsonObject();
-        final JsonObject ticks = SampleCommand.ticks(file, started, gc);
-        assertEquals(4, ticks.get("count").getAsLong());
-        final JsonObject overall = ticks.getAsJsonObject("overall");
-        final long over = overall.get("over_50ms").getAsLong();
-        assertTrue(over >= 1 && over < 4, "the 60 ms tick is over 50, an empty one is not: " + overall);
-        assertTrue(overall.get("p99_ms").getAsDouble() >= 60, "the nearest rank P99 of 4 ticks is the slowest");
-        assertTrue(ticks.getAsJsonObject("per_minute").has("0"));
+        final JsonObject ticks = SampleCommand.ticks(file, started, new JsonObject());
+        assertEquals(4, ticks.get("count").getAsLong(), "4 ticks and 4 pings recorded: " + ticks);
+        assertEquals(4, ticks.getAsJsonObject("per_minute").getAsJsonObject("0").get("count").getAsLong());
         assertTrue(ticks.get("acquire_ms").isJsonNull(), "not exported until audit P3-3");
+    }
+
+    /**
+     * The durations are given, not measured: a JFR duration is read from the JVM's tick counter, on
+     * x86 with an invariant TSC the counter divided by the frequency in the CPU's brand string, which
+     * need not be the frequency the counter runs at, so a slept 60 ms can read as less.
+     */
+    @Test
+    public void aTickIsOver50OnlyWhenItsDurationIsAbove50() {
+        final Instant started = Instant.parse("2026-09-24T00:00:00Z");
+        final SampleCommand.Ticks ticks = new SampleCommand.Ticks(started);
+        ticks.record(started.minusSeconds(61), 0.0);
+        ticks.record(started, 0.5);
+        ticks.record(started.plusSeconds(1), 1.0);
+        ticks.record(started.plusSeconds(2), 50.0);
+        ticks.record(started.plusMillis(59_999), 50.001);
+        ticks.record(started.plusSeconds(60), 60.0);
+        final JsonObject json = ticks.toJson();
+        assertEquals(6, json.get("count").getAsLong());
+        final JsonObject overall = json.getAsJsonObject("overall");
+        assertEquals(2, overall.get("over_50ms").getAsLong(), "50.001 and 60 are over 50; 0, 0.5, 1 and 50 are not: " + overall);
+        assertEquals(60.0, overall.get("p99_ms").getAsDouble(), "the nearest rank P99 of 6 ticks is the slowest");
+        assertEquals(1.0, overall.get("p50_ms").getAsDouble());
+        final JsonObject perMinute = json.getAsJsonObject("per_minute");
+        assertEquals(List.of("0", "1"), List.copyOf(perMinute.keySet()), "a tick before the start counts in minute 0: " + perMinute);
+        assertEquals(5, perMinute.getAsJsonObject("0").get("count").getAsLong());
+        assertEquals(1, perMinute.getAsJsonObject("0").get("over_50ms").getAsLong());
+        assertEquals(1, perMinute.getAsJsonObject("1").get("over_50ms").getAsLong());
     }
 
     @Test

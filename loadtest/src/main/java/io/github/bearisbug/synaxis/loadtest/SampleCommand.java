@@ -164,8 +164,7 @@ final class SampleCommand {
      * @return count, overall distribution, per minute distributions and the acquire time
      */
     static JsonObject ticks(Path jfr, Instant startedAt, JsonObject gc) throws IOException {
-        final Histogram overall = new Histogram(0.001);
-        final Map<Long, Histogram> perMinute = new TreeMap<>();
+        final Ticks ticks = new Ticks(startedAt);
         final Histogram pauses = new Histogram(0.001);
         try (RecordingFile recording = new RecordingFile(jfr)) {
             while (recording.hasMoreEvents()) {
@@ -174,23 +173,42 @@ final class SampleCommand {
                 if (name.equals("jdk.GarbageCollection")) {
                     pauses.record(event.getDuration("sumOfPauses").toNanos() / 1e6);
                 } else if (name.equals(TICK_EVENT)) {
-                    final double millis = event.getDuration().toNanos() / 1e6;
-                    overall.record(millis);
-                    final long minute = Math.max(0, Duration.between(startedAt, event.getStartTime()).toMinutes());
-                    perMinute.computeIfAbsent(minute, _ -> new Histogram(0.001)).record(millis);
+                    ticks.record(event.getStartTime(), event.getDuration().toNanos() / 1e6);
                 }
             }
         }
         pauses.distribution("_ms").entrySet().forEach(entry -> gc.add(entry.getKey(), entry.getValue()));
-        final JsonObject ticks = new JsonObject();
-        ticks.addProperty("count", overall.count());
-        ticks.add("overall", overall.distribution("_ms"));
-        final JsonObject minutes = new JsonObject();
-        perMinute.forEach((minute, histogram) -> minutes.add(Long.toString(minute), histogram.distribution("_ms")));
-        ticks.add("per_minute", minutes);
-        // TickMonitor#getAcquisitionTime is not exported until audit P3-3 is fixed (API-PROD-015)
-        ticks.add("acquire_ms", JsonNull.INSTANCE);
-        return ticks;
+        return ticks.toJson();
+    }
+
+    /** The distributions of the ticks, overall and per minute from {@code startedAt}. */
+    static final class Ticks {
+
+        private final Instant startedAt;
+        private final Histogram overall = new Histogram(0.001);
+        private final Map<Long, Histogram> perMinute = new TreeMap<>();
+
+        Ticks(Instant startedAt) {
+            this.startedAt = startedAt;
+        }
+
+        void record(Instant start, double millis) {
+            overall.record(millis);
+            final long minute = Math.max(0, Duration.between(startedAt, start).toMinutes());
+            perMinute.computeIfAbsent(minute, _ -> new Histogram(0.001)).record(millis);
+        }
+
+        JsonObject toJson() {
+            final JsonObject ticks = new JsonObject();
+            ticks.addProperty("count", overall.count());
+            ticks.add("overall", overall.distribution("_ms"));
+            final JsonObject minutes = new JsonObject();
+            perMinute.forEach((minute, histogram) -> minutes.add(Long.toString(minute), histogram.distribution("_ms")));
+            ticks.add("per_minute", minutes);
+            // TickMonitor#getAcquisitionTime is not exported until audit P3-3 is fixed (API-PROD-015)
+            ticks.add("acquire_ms", JsonNull.INSTANCE);
+            return ticks;
+        }
     }
 
     static JsonObject gate(Map<String, Double> metrics) {

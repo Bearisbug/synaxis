@@ -1,0 +1,21 @@
+RUN-030 验收记录（2026-09-24，验收人侧）
+
+被测版本：集成分支 prod/integrate-w4 8539deaeee（= main 3914650305 + 4A/4B/4C + DESIGN-PROD v0.7 + 收尾两处修复与 v0.7.1 + 本记录）
+范围：DESIGN-PROD 第 4 波——REQ-PROD-011（权限节点与 GM 角色）、010（白名单与封禁）、012（控制台与插件命令）；
+收尾：REQ-PROD-005 的登出保存（引擎缺陷：玩家在 configuration 结束到进入世界之间断开时 PlayerDisconnectEvent 从不触发，
+角色不保存、租约不释放、停机保存卡满 30 s——由 4B 报告，收尾轮用真进程复现并修在 ConnectionManager#leftBeforeSpawn），
+以及 gm.role 的权限提升（玩家只能授予或收回节点全被自己覆盖的角色，控制台不受限，synaxis:role-above-sender）。
+各组：4A 返工 1 轮、4B 2 轮、4C 2 轮，全部 APPROVED；ABI 门每合一组一次、最终一次，0 违例，API_VERSION 保持 1。
+
+一、验收人侧检查（带 SYNAXIS_TEST_* 连本机 synaxis-pg / synaxis-valkey）
+  ./gradlew cleanTest check --no-build-cache → BUILD SUCCESSFUL，根构建 3,444 个测试 0 失败，15 跳过均为引擎原有，数据库用例 0 跳过
+
+二、验收人反证（还原后 git status 干净）
+  HostModeration#check 里把 activeBan(account, ipOf(...)) 改成 activeBan(account, null)（IP 封禁被绕过）→ Moderation 测试 12 条红 1 条
+  PlayerConnection 里去掉 leftBeforeSpawn 的调用 → PlayerStoreIntegrationTest 21 条红 1 条
+  审查者另复现：权限登录竞态 TC-PROD-213、角色提升 TC-PROD-215、各封禁与命令反证
+
+三、结果
+  通过：TC-PROD-200～215、TC-PROD-220～236、TC-PROD-240～257（4C） + 冒烟级 TC-029
+  观察：OnlineDuplicateLoginSocketTest 在修复者的一次 4 线程严格模式全量里红过 1 次（no player reached the play state），
+        单独连跑 5 次与整轮重跑都绿，记为疑似负载下偶发，待复现

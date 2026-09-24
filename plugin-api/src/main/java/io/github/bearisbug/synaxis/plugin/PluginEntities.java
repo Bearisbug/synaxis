@@ -1,6 +1,7 @@
 package io.github.bearisbug.synaxis.plugin;
 
 import io.github.bearisbug.synaxis.entity.EntityType;
+import org.jetbrains.annotations.ApiStatus;
 
 /**
  * Entity visibility settings of the process ({@code docs/DESIGN-PROD.md} {@code API-PROD-019}).
@@ -8,7 +9,10 @@ import io.github.bearisbug.synaxis.entity.EntityType;
  * What is set here is process wide and outlives the plugin that set it. A single entity overrides
  * its type with {@code Entity#setTrackingRange}, and leaves the per player visible entity limit with
  * {@code Entity#setAlwaysVisible}.
+ * <p>
+ * Only the host implements this interface: a plugin is handed one and calls it.
  */
+@ApiStatus.NonExtendable
 public interface PluginEntities {
 
     /**

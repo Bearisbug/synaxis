@@ -1,6 +1,7 @@
 package io.github.bearisbug.synaxis.plugin;
 
 import io.github.bearisbug.synaxis.entity.Player;
+import org.jetbrains.annotations.ApiStatus;
 
 import java.util.function.BiPredicate;
 
@@ -10,7 +11,10 @@ import java.util.function.BiPredicate;
  * A player left out of a viewer's list is still sent to that viewer, unlisted: the client needs
  * the entry to render the player's skin. A player always lists itself. The process has one
  * visibility; the host takes it back when the plugin that set it is disabled.
+ * <p>
+ * Only the host implements this interface: a plugin is handed one and calls it.
  */
+@ApiStatus.NonExtendable
 public interface TabList {
 
     /**

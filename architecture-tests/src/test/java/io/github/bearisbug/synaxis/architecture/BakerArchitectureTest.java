@@ -32,7 +32,9 @@ public class BakerArchitectureTest {
     private static final Set<String> ALLOWED_INTERNAL_TYPES = Set.of(
             "io.github.bearisbug.synaxis.network.packet.server.BufferedPacket",
             "io.github.bearisbug.synaxis.network.packet.server.CachedPacket",
-            "io.github.bearisbug.synaxis.instance.light.LightBlocks");
+            "io.github.bearisbug.synaxis.instance.light.LightBlocks",
+            // GeneratorSource runs an engine Generator on one chunk the way an instance does
+            "io.github.bearisbug.synaxis.instance.generator.GeneratorImpl");
 
     /** The internal members of the §6 table on types that are otherwise public. */
     private static final Set<String> ALLOWED_INTERNAL_MEMBERS = Set.of(

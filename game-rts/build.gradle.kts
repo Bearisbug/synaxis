@@ -9,6 +9,11 @@ dependencies {
     // messages itself, it does not go through the stable surface for them.
     implementation(project(":protocol"))
 
+    // RtsBakeGenerators: the M2 presets as baker sources. Compile only: the plugin never runs it, the baker
+    // finds it through ServiceLoader when it has this module on its class path
+    compileOnly(project(":baker"))
+    compileOnly(project(":synx"))
+
     testImplementation(project(":testing"))
     testImplementation(libs.archunit.junit5)
 }

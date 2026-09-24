@@ -46,6 +46,22 @@ application {
     )
 }
 
+// The launcher of an MMO shard (docs/DESIGN-PROD.md REQ-PROD-020): bin/server-shard next to
+// bin/server-app in the same distribution, with the same JVM defaults and the same SERVER_APP_OPTS.
+val shardStartScripts = tasks.register<CreateStartScripts>("shardStartScripts") {
+    applicationName = "server-shard"
+    optsEnvironmentVar = "SERVER_APP_OPTS"
+    mainClass = "io.github.bearisbug.synaxis.app.ShardMain"
+    classpath = files(tasks.jar, configurations.runtimeClasspath)
+    defaultJvmOpts = application.applicationDefaultJvmArgs
+    outputDir = layout.buildDirectory.dir("shard-scripts").get().asFile
+}
+distributions.main {
+    contents {
+        from(shardStartScripts) { into("bin") }
+    }
+}
+
 // The git head a crash report names (API-PROD-013). A build outside a git checkout writes "unknown".
 val gitHead = providers.exec {
     commandLine("git", "rev-parse", "HEAD")

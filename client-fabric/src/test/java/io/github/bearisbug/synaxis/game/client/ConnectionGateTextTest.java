@@ -11,9 +11,10 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * The disconnect reasons of the connection gate and of the keep alive ({@code docs/DESIGN-PROD.md}
- * §14, {@code REQ-PROD-001}, {@code REQ-PROD-043}) are {@code translate} keys; the disconnect
- * screen only reads as a sentence if the mod ships text for each of them.
+ * The disconnect reasons of the connection gate, of the keep alive and of the outbound backlog
+ * ({@code docs/DESIGN-PROD.md} §14, {@code REQ-PROD-001}, {@code REQ-PROD-043}, {@code REQ-PROD-025})
+ * are {@code translate} keys; the disconnect screen only reads as a sentence if the mod ships text
+ * for each of them.
  */
 class ConnectionGateTextTest {
 
@@ -27,7 +28,7 @@ class ConnectionGateTextTest {
             translations = new String(stream.readAllBytes(), StandardCharsets.UTF_8);
         }
         for (final String key : List.of("synaxis:too-many-connections", "synaxis:login-throttled",
-                "synaxis:shard-full", "synaxis:keep-alive-timeout")) {
+                "synaxis:shard-full", "synaxis:keep-alive-timeout", "synaxis:outbound-backlog")) {
             assertTrue(translations.contains('"' + key + '"'), language + " has no text for " + key);
         }
     }

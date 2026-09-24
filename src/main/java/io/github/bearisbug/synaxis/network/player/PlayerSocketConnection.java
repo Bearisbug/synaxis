@@ -124,6 +124,19 @@ public class PlayerSocketConnection extends PlayerConnection {
     // Read thread only
     private final InboundPacketLimits.Limiter inboundLimiter;
 
+    // The outbound backlog (docs/DESIGN-PROD.md API-PROD-020): the bytes offered to the write thread
+    // and not taken off the queue yet. The entity movement the viewable packets carry, the only
+    // BufferedPackets there are, is what can be shed: movementBytes is the part of the backlog that
+    // is movement, shedBytes the movement shed but still in the queue, which the write thread skips.
+    // Movement is offered and taken off under movementLock, so that the two agree on which packets
+    // were shed; while any shed movement is still queued, new movement is not queued at all.
+    private final long maxBacklogBytes;
+    private final AtomicLong backlogBytes = new AtomicLong();
+    private final Object movementLock = new Object();
+    private long movementBytes;
+    private long shedBytes;
+    private final AtomicBoolean backlogKicked = new AtomicBoolean(false);
+
     public PlayerSocketConnection(ServerProcess process, SocketChannel channel, SocketAddress remoteAddress, Thread readThread, Thread writeThread) {
         this(process, channel, remoteAddress, readThread, writeThread, process.connection().gate().untracked());
     }
@@ -140,6 +153,7 @@ public class PlayerSocketConnection extends PlayerConnection {
         this.outgoing = process.eventHandler().getHandle(PlayerPacketOutEvent.class);
         this.traffic = process.connection().traffic();
         this.inboundLimiter = process.connection().inboundLimits().newLimiter();
+        this.maxBacklogBytes = process.config().maxOutboundBacklogBytes();
         this.channel = channel;
         this.remoteAddress = remoteAddress;
         this.writeThread = writeThread;
@@ -440,14 +454,74 @@ public class PlayerSocketConnection extends PlayerConnection {
 
     @Override
     public void sendPacket(SendablePacket packet) {
-        this.packetQueue.relaxedOffer(packet);
+        offer(packet);
         unlockWriteThread();
+        checkBacklog();
     }
 
     @Override
     public void sendPackets(Collection<? extends SendablePacket> packets) {
-        for (SendablePacket packet : packets) this.packetQueue.relaxedOffer(packet);
+        for (SendablePacket packet : packets) offer(packet);
         unlockWriteThread();
+        checkBacklog();
+    }
+
+    /**
+     * What a queued packet counts for in the backlog. Only the framed ones have a known size; a
+     * packet that is still an object is serialized by the write thread and counts as
+     * {@link #UNFRAMED_PACKET_BYTES}.
+     */
+    private static long backlogSize(SendablePacket packet) {
+        return switch (packet) {
+            case BufferedPacket buffered -> buffered.length();
+            case FramedPacket framed -> framed.body().capacity();
+            case CachedPacket _, ServerPacket _ -> UNFRAMED_PACKET_BYTES;
+        };
+    }
+
+    /** What a packet that is not framed yet counts for in the backlog. */
+    static final long UNFRAMED_PACKET_BYTES = 64;
+
+    private void offer(SendablePacket packet) {
+        final long size = backlogSize(packet);
+        if (packet instanceof BufferedPacket) {
+            synchronized (movementLock) {
+                if (shedBytes > 0) return; // The peer has not caught up with the last shed yet
+                this.movementBytes += size;
+                backlogBytes.addAndGet(size);
+                this.packetQueue.relaxedOffer(packet);
+            }
+            return;
+        }
+        backlogBytes.addAndGet(size);
+        this.packetQueue.relaxedOffer(packet);
+    }
+
+    /**
+     * Over {@code synaxis.outbound.max-backlog-bytes}, sheds the queued entity movement first; the
+     * next {@code EntityPositionSync} of each entity, at most {@code synaxis.entity-synchronization-ticks}
+     * later, puts the peer's copy back in place. Still over it without the movement, the connection
+     * is kicked with {@link DisconnectReasons#OUTBOUND_BACKLOG}.
+     */
+    private void checkBacklog() {
+        if (backlogBytes.get() <= maxBacklogBytes || backlogKicked.get()) return;
+        final boolean over;
+        synchronized (movementLock) {
+            this.shedBytes += movementBytes;
+            backlogBytes.addAndGet(-movementBytes);
+            this.movementBytes = 0;
+            over = backlogBytes.get() > maxBacklogBytes;
+        }
+        if (!over || !backlogKicked.compareAndSet(false, true)) return;
+        traffic.backlogKicked();
+        LOGGER.info("Outbound backlog exceeded: connection_id={} identifier={} backlog_bytes={} limit={}",
+                connectionId(), getIdentifier(), backlogBytes.get(), maxBacklogBytes);
+        kick(DisconnectReasons.OUTBOUND_BACKLOG);
+    }
+
+    /** The bytes queued for the write thread, as {@link #checkBacklog()} counts them. */
+    long backlogBytes() {
+        return backlogBytes.get();
     }
 
     // Requires ServerConfig#fasterSocketWrites()
@@ -691,9 +765,9 @@ public class PlayerSocketConnection extends PlayerConnection {
         buffer.registries(process().registries());
         // Write to buffer
         PacketWriting.writeQueue(buffer, packetQueue, 1, (b, packet) -> {
-            final boolean compressed = sentPacketCounter.get() > compressionStart;
-            final boolean success = writeSendable(b, packet, compressed);
-            if (success) sentPacketCounter.getAndIncrement();
+            if (packet instanceof BufferedPacket movement) return writeMovement(b, movement);
+            final boolean success = writeCounted(b, packet);
+            if (success) backlogBytes.addAndGet(-backlogSize(packet));
             return success;
         });
         // Write to channel
@@ -701,6 +775,31 @@ public class PlayerSocketConnection extends PlayerConnection {
         // Keep the buffer if not fully written
         if (success) PacketVanilla.PACKET_POOL.add(buffer);
         else this.writeLeftover = buffer;
+    }
+
+    private boolean writeCounted(NetworkBuffer buffer, SendablePacket packet) {
+        final boolean compressed = sentPacketCounter.get() > compressionStart;
+        final boolean success = writeSendable(buffer, packet, compressed);
+        if (success) sentPacketCounter.getAndIncrement();
+        return success;
+    }
+
+    /** Writes queued movement, or takes it off the queue unwritten if it was shed. */
+    private boolean writeMovement(NetworkBuffer buffer, BufferedPacket movement) {
+        final long size = movement.length();
+        synchronized (movementLock) {
+            if (shedBytes > 0) {
+                this.shedBytes -= size;
+                this.pendingWrite = null;
+                return true;
+            }
+            final boolean success = writeCounted(buffer, movement);
+            if (success) {
+                this.movementBytes -= size;
+                backlogBytes.addAndGet(-size);
+            }
+            return success;
+        }
     }
 
     /**

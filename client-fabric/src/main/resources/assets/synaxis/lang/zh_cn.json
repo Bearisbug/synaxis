@@ -14,6 +14,7 @@
 	"synaxis:login-throttled": "登录过于频繁，请稍候几秒再试。",
 	"synaxis:shard-full": "本频道已满。",
 	"synaxis:keep-alive-timeout": "连接超时，请重连。",
+	"synaxis:outbound-backlog": "网络过慢，跟不上服务器发送的数据，请重连。",
 	"synaxis:auth-failed": "本服务器只接受正版账号，请用官方启动器登录后重进。",
 	"synaxis:auth-unavailable": "正版验证服务暂时无法访问，请稍后重试。",
 	"synaxis:logged-in-elsewhere": "你的账号在别处登录。",

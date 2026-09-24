@@ -22,6 +22,7 @@ public final class TrafficCounters {
     private final LongAdder bytesOut = new LongAdder();
     private final LongAdder decryptNanos = new LongAdder();
     private final LongAdder encryptNanos = new LongAdder();
+    private final LongAdder backlogKicks = new LongAdder();
 
     /** Counts bytes read off a socket. */
     public void received(long bytes) {
@@ -47,6 +48,16 @@ public final class TrafficCounters {
     /** Counts time spent encrypting. */
     public void encrypted(long nanos) {
         encryptNanos.add(nanos);
+    }
+
+    /** Counts a connection kicked for its outbound backlog ({@code API-PROD-020}). */
+    public void backlogKicked() {
+        backlogKicks.increment();
+    }
+
+    /** Connections kicked for their outbound backlog. */
+    public long backlogKicks() {
+        return backlogKicks.sum();
     }
 
     /** Packets read off the sockets, the ones a connection dropped as malformed excluded. */

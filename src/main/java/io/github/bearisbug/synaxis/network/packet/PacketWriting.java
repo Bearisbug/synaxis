@@ -201,7 +201,9 @@ public final class PacketWriting {
             } catch (IndexOutOfBoundsException _) {
                 success = false;
             }
-            assert !success || buffer.writeIndex() > 0;
+            // A writer may take a packet off the queue without writing it: cancelled by a listener, or
+            // movement shed from an outbound backlog
+            assert !success || buffer.writeIndex() >= index;
             // Poll the packet only if fully written
             if (success) {
                 // Packet fully written

@@ -60,6 +60,12 @@ public final class DisconnectReasons {
     public static final TranslatableComponent SHARD_FULL = Component.translatable("synaxis:shard-full");
 
     /**
+     * More than {@code synaxis.outbound.max-backlog-bytes} waits to be written to the client, with
+     * the entity movement already shed ({@code docs/DESIGN-PROD.md} {@code API-PROD-020}).
+     */
+    public static final TranslatableComponent OUTBOUND_BACKLOG = Component.translatable("synaxis:outbound-backlog");
+
+    /**
      * The client did not answer a keep alive within {@code synaxis.keep-alive-kick}.
      */
     public static final TranslatableComponent KEEP_ALIVE_TIMEOUT = Component.translatable("synaxis:keep-alive-timeout");

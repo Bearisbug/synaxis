@@ -149,9 +149,9 @@ public final class HostMetrics implements AutoCloseable {
         final PrometheusMeterRegistry registry = metrics.registry;
         FunctionCounter.builder("synaxis.watchdog.warnings", process.watchdog(), watchdog -> watchdog.warnings())
                 .description("Early warnings of the tick watchdog").register(registry);
-        // The outbound backlog kick is wave 5B (G22); until it lands nothing is ever counted here
-        Counter.builder("synaxis.outbound.backlog.kicks").description("Players kicked for an outbound backlog")
-                .register(registry);
+        FunctionCounter.builder("synaxis.outbound.backlog.kicks", process.connection().traffic(),
+                        TrafficCounters::backlogKicks)
+                .description("Connections kicked for an outbound backlog").register(registry);
         new JvmMemoryMetrics().bindTo(registry);
         metrics.gc.bindTo(registry);
         new JvmThreadMetrics().bindTo(registry);

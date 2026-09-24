@@ -31,6 +31,10 @@ import java.util.WeakHashMap;
  * <p>
  * One instance per {@link ServerProcess}, reachable with {@link ServerProcess#viewablePackets()},
  * so that ticking a process never flushes the packets another process is still filling.
+ * <p>
+ * Only entity movement may go through here: a connection over its outbound backlog sheds the
+ * {@link BufferedPacket}s this class hands it, which is only harmless for packets that the next
+ * position sync of the entity replaces ({@code docs/DESIGN-PROD.md} {@code API-PROD-020}).
  */
 @ApiStatus.Internal
 public final class PacketViewableUtils {

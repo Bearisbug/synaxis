@@ -1,0 +1,72 @@
+{
+  "map_id": "vectors",
+  "build_id": "vectors-d8fd4d9e5e8f-p776",
+  "content_hash": "d8fd4d9e5e8fceda24aa2319f9ecdee0d5c0df0b170337a366ac0ca64e6f1801",
+  "mc_version": "26.2",
+  "protocol_version": 776,
+  "registry_digest": "45d2a4547003a8516ec89a609048e6ab015939e4da07bea80b0b5adb2853a3c7",
+  "light_engine_version": 1,
+  "baker_version": 1,
+  "world": {
+    "min_y": 0,
+    "height": 256
+  },
+  "bounds": {
+    "min_x": -32,
+    "min_z": -32,
+    "max_x": 31,
+    "max_z": 31
+  },
+  "regions": [
+    {
+      "rx": -1,
+      "rz": -1,
+      "bytes": 16640,
+      "payload_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "chunks": 0
+    },
+    {
+      "rx": 0,
+      "rz": 0,
+      "bytes": 18891,
+      "payload_sha256": "c7ba41dc08f35ff7486874c042dcc8d0288e504e1deef7ad5eb30f6567d1d352",
+      "chunks": 1
+    },
+    {
+      "rx": -1,
+      "rz": 0,
+      "bytes": 26366,
+      "payload_sha256": "2ff524d7d38ce92ec88f0211844c8eba1fa60bdf446f54b0e0db687ba6fe1322",
+      "chunks": 4
+    },
+    {
+      "rx": 0,
+      "rz": -1,
+      "bytes": 19520,
+      "payload_sha256": "1f0e9fa5b3dfd96307d73b7784c1de4bee1e41b0bb45d4e3e8081fc07665b7c1",
+      "chunks": 1
+    }
+  ],
+  "farview": [
+    {
+      "region_id": "vectors-a",
+      "bytes": 5592405,
+      "sha256": "4bf5122f344554c53bde2ebb8cd2b7e3d1600ad631c385a5d7cce23c7785459a",
+      "levels": 9
+    }
+  ],
+  "source": {
+    "kind": "generator"
+  },
+  "bake": {
+    "started_at": "2026-09-25T00:00:00Z",
+    "wall_ms": 1234,
+    "cpu_ms": 5678,
+    "threads": 1,
+    "jdk": "25"
+  },
+  "verify": {
+    "samples": 4,
+    "diffs": 0
+  }
+}

@@ -12,6 +12,10 @@ include("plugin-api")
 include("server-app")
 include("game-rts")
 
+// The .synx region file format and the map release directory (docs/DESIGN-M3.md API-M3-001, API-M3-002).
+// An engine side module (§6): it depends on the engine, the engine never on it.
+include("synx")
+
 // The load test harness (docs/DESIGN-PROD.md ADR-PROD-013): a tool, never published
 include("loadtest")
 

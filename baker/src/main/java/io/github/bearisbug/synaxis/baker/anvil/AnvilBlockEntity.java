@@ -4,10 +4,13 @@ import net.kyori.adventure.nbt.CompoundBinaryTag;
 import org.jetbrains.annotations.Nullable;
 
 /**
- * A block entity of a source chunk, kept whole: {@code nbt} is the source compound as read, with
- * {@code id}, the coordinates and every other tag, never filtered through a block lookup (seven 26.2
- * block entity types, {@code sign}, {@code banner}, {@code skull} among them, have no block of the same
- * name). A data marker above it adds {@code handler} and merges its SNBT over {@code nbt}.
+ * A block entity of a source chunk, kept whole: for a block entity the source has, {@code nbt} is the
+ * source compound as read, with {@code id}, the coordinates and every other tag, never filtered through
+ * a block lookup (seven 26.2 block entity types, {@code sign}, {@code banner}, {@code skull} among them,
+ * have no block of the same name). A data marker above it adds {@code handler} and merges its SNBT over
+ * {@code nbt}; on a block the source has no block entity for, the marker makes the record and {@code nbt}
+ * is the marker's SNBT alone, without {@code id} or coordinates. The position is {@code sectionY} and
+ * {@code index} either way: a marker may not set {@code id}, {@code x}, {@code y} or {@code z}.
  *
  * @param sectionY section coordinate, {@code y >> 4}
  * @param index    position inside the section, {@code ((y & 15) × 16 + (z & 15)) × 16 + (x & 15)}

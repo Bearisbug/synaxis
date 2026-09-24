@@ -24,9 +24,11 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.TreeMap;
 import java.util.function.Predicate;
 import java.util.regex.Matcher;
@@ -49,7 +51,8 @@ import java.util.regex.Pattern;
  * Data markers (REQ-M3-022, API-M3-003) are applied while reading: a structure block in DATA mode whose
  * {@code metadata} is {@code <handler namespace> <SNBT>} turns into air, and the block directly below it
  * gets a block entity record carrying that handler, the marker's SNBT merged over whatever block entity
- * the source had there. The handler namespace must satisfy the {@code registeredHandlers} predicate. A
+ * the source had there. The handler namespace must satisfy the {@code registeredHandlers} predicate, the
+ * SNBT may not set {@code id}, {@code x}, {@code y} or {@code z}, and the block below may not be a marker. A
  * {@code synaxis:hidden <x1> <z1> <x2> <z2>} marker also turns into air and is reported as a
  * {@link HiddenArea}.
  * <p>
@@ -60,6 +63,7 @@ public final class AnvilWorld implements AutoCloseable {
 
     private static final String FULL = "minecraft:full";
     private static final String STRUCTURE_BLOCK = "minecraft:structure_block";
+    private static final List<String> RECORD_KEYS = List.of("id", "x", "y", "z");
     private static final Pattern REGION_NAME = Pattern.compile("r\\.(-?\\d+)\\.(-?\\d+)\\.mca");
 
     private final Path regionDir;
@@ -208,7 +212,7 @@ public final class AnvilWorld implements AutoCloseable {
             for (int i = 0; i < blockIds.length; i++) {
                 blockIds[i] = blockState(chunkX, chunkZ, sectionY, blockPalette.getCompound(i));
             }
-            load(chunkX, chunkZ, sectionY, "block_states", blocks, blockIds, blockStates);
+            load(chunkX, chunkZ, sectionY, "block_states", blocks, Palette.BLOCK_PALETTE_MIN_BITS, blockIds, blockStates);
 
             final Palette biomePalette = Palette.biomes();
             final CompoundBinaryTag biomeTag = section.getCompound("biomes");
@@ -217,7 +221,7 @@ public final class AnvilWorld implements AutoCloseable {
             for (int i = 0; i < biomeIds.length; i++) {
                 biomeIds[i] = biome(chunkX, chunkZ, sectionY, biomeNames.getString(i));
             }
-            load(chunkX, chunkZ, sectionY, "biomes", biomePalette, biomeIds, biomeTag);
+            load(chunkX, chunkZ, sectionY, "biomes", biomePalette, Palette.BIOME_PALETTE_MIN_BITS, biomeIds, biomeTag);
 
             sections.put(sectionY, new AnvilSection(sectionY, blocks, biomePalette,
                     light(section, "SkyLight"), light(section, "BlockLight")));
@@ -225,8 +229,8 @@ public final class AnvilWorld implements AutoCloseable {
         return sections;
     }
 
-    private static void load(int chunkX, int chunkZ, int sectionY, String what, Palette palette, int[] ids,
-                             CompoundBinaryTag container) throws AnvilSourceException {
+    private static void load(int chunkX, int chunkZ, int sectionY, String what, Palette palette, int minBits,
+                             int[] ids, CompoundBinaryTag container) throws AnvilSourceException {
         if (ids.length == 0) {
             throw new AnvilSourceException(chunkX, chunkZ, "section " + sectionY + " has an empty " + what + " palette");
         }
@@ -234,9 +238,22 @@ public final class AnvilWorld implements AutoCloseable {
             palette.fill(ids[0]);
             return;
         }
+        // Palette.load trusts its input: a short array throws out of bounds, an index past the palette reads as 0
         final long[] packed = container.getLongArray("data");
-        if (packed.length == 0) {
-            throw new AnvilSourceException(chunkX, chunkZ, "section " + sectionY + " has no packed " + what);
+        final int bits = Math.max(minBits, 32 - Integer.numberOfLeadingZeros(ids.length - 1));
+        final int perLong = 64 / bits, entries = palette.maxSize();
+        final int expected = (entries + perLong - 1) / perLong;
+        if (packed.length != expected) {
+            throw new AnvilSourceException(chunkX, chunkZ, "section " + sectionY + " packs " + what + " in "
+                    + packed.length + " longs, not " + expected);
+        }
+        final long mask = (1L << bits) - 1;
+        for (int i = 0; i < entries; i++) {
+            final long index = (packed[i / perLong] >>> (i % perLong * bits)) & mask;
+            if (index >= ids.length) {
+                throw new AnvilSourceException(chunkX, chunkZ, "section " + sectionY + " packs " + what + " index "
+                        + index + ", past its palette of " + ids.length);
+            }
         }
         palette.load(ids, packed);
     }
@@ -314,10 +331,12 @@ public final class AnvilWorld implements AutoCloseable {
     private List<HiddenArea> applyMarkers(int chunkX, int chunkZ, Map<Integer, AnvilSection> sections,
                                           Map<Long, AnvilBlockEntity> blockEntities) throws AnvilSourceException {
         final List<AnvilBlockEntity> markers = new ArrayList<>();
+        final Set<Long> markerKeys = new HashSet<>();
         for (AnvilBlockEntity blockEntity : blockEntities.values()) {
             final CompoundBinaryTag nbt = blockEntity.nbt();
             if (nbt.getString("id").equals(STRUCTURE_BLOCK) && nbt.getString("mode").equals("DATA")) {
                 markers.add(blockEntity);
+                markerKeys.add(blockKey(blockEntity.sectionY(), blockEntity.index()));
             }
         }
 
@@ -350,10 +369,19 @@ public final class AnvilWorld implements AutoCloseable {
                 throw new AnvilSourceException(chunkX, chunkZ, where + " carries malformed SNBT '" + argument
                         + "': " + e);
             }
+            for (String key : RECORD_KEYS) {
+                if (markerNbt.get(key) != null) {
+                    throw new AnvilSourceException(chunkX, chunkZ, where + " sets '" + key
+                            + "', which belongs to the block entity record");
+                }
+            }
 
             final int targetY = y - 1;
             section(chunkX, chunkZ, sections, targetY, where + " marks the block below it, which");
             final int sectionY = targetY >> 4, index = AnvilBlockEntity.index(x, targetY, z);
+            if (markerKeys.contains(blockKey(sectionY, index))) {
+                throw new AnvilSourceException(chunkX, chunkZ, where + " stands on another data marker");
+            }
             final AnvilBlockEntity existing = blockEntities.get(blockKey(sectionY, index));
             final CompoundBinaryTag merged = existing == null ? markerNbt
                     : CompoundBinaryTag.builder().put(existing.nbt()).put(markerNbt).build();
@@ -390,6 +418,12 @@ public final class AnvilWorld implements AutoCloseable {
         final CompoundBinaryTag data = region != null ? region.readChunk(chunkX, chunkZ) : null;
         if (data == null) return List.of();
         checkDataVersion(chunkX, chunkZ, data, "entities: ");
+        final int[] position = data.getIntArray("Position");
+        if (position.length != 2 || position[0] != chunkX || position[1] != chunkZ) {
+            throw new AnvilSourceException(chunkX, chunkZ, position.length == 2
+                    ? "entities: the entry holds chunk " + position[0] + ", " + position[1]
+                    : "entities: the entry has no Position");
+        }
         final List<CompoundBinaryTag> entities = new ArrayList<>();
         for (BinaryTag entity : data.getList("Entities", BinaryTagTypes.COMPOUND)) {
             entities.add((CompoundBinaryTag) entity);

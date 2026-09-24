@@ -16,9 +16,12 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
 import java.util.function.Predicate;
+import java.util.function.UnaryOperator;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -104,8 +107,8 @@ public class AnvilWorldTest {
     }
 
     /**
-     * {@code sign}, {@code banner} and {@code skull} have no block of the same name, so a reader that
-     * resolved block entities through {@code Block.fromKey} would drop all three.
+     * The seven 26.2 block entity types without a block of the same name (DESIGN-M3 §6): a reader that
+     * resolved block entities through {@code Block.fromKey} would drop all of them.
      */
     @Test
     public void keepsEveryBlockEntityWholeIncludingTheSignText() throws IOException {
@@ -128,6 +131,10 @@ public class AnvilWorldTest {
 
             assertEquals("minecraft:banner", blockEntityAt(chunk, 2, -60, 1).nbt().getString("id"));
             assertEquals("minecraft:skull", blockEntityAt(chunk, 3, -60, 1).nbt().getString("id"));
+            assertEquals("minecraft:hanging_sign", blockEntityAt(chunk, 6, -60, 1).nbt().getString("id"));
+            assertEquals("minecraft:mob_spawner", blockEntityAt(chunk, 7, -60, 1).nbt().getString("id"));
+            assertEquals("minecraft:shelf", blockEntityAt(chunk, 8, -60, 1).nbt().getString("id"));
+            assertEquals("minecraft:brushable_block", blockEntityAt(chunk, 10, -60, 1).nbt().getString("id"));
             assertEquals(3, blockEntityAt(chunk, 3, -60, 1).nbt().getInt("x"), "the source coordinates stay in");
         }
     }
@@ -285,8 +292,139 @@ public class AnvilWorldTest {
         }
     }
 
+    /**
+     * {@code id} and the coordinates say what and where the record is; a marker must not rewrite them.
+     */
     @Test
-    public void readsWithoutWritingAnything() throws IOException, NoSuchAlgorithmException {
+    public void rejectsAMarkerWhoseSnbtSetsTheIdOrTheCoordinates() throws IOException {
+        for (String tag : List.of("id:\"minecraft:chest\"", "x:3", "y:3", "z:3")) {
+            Path world = RegionFixtures.copyWorld(Files.createDirectory(temp.resolve(tag.substring(0, 1))));
+            RegionFixtures.rewriteChunk(world.resolve(RegionFixtures.REGION), 0, 0, chunk ->
+                    editBlockEntities(chunk, blockEntities -> blockEntities.stream()
+                            .map(blockEntity -> blockEntity.getString("metadata").startsWith("synaxis:door")
+                                    ? blockEntity.putString("metadata", "synaxis:door {" + tag + "}")
+                                    : blockEntity)
+                            .toList()));
+            try (AnvilWorld anvil = open(world)) {
+                AnvilSourceException error = assertThrows(AnvilSourceException.class, () -> anvil.readChunk(0, 0), tag);
+                assertTrue(error.getMessage().contains("5, -59, 5"), error.getMessage());
+            }
+        }
+    }
+
+    /**
+     * The lower of two stacked markers would turn into air first and the upper one would then mark that air.
+     */
+    @Test
+    public void rejectsAMarkerOnTopOfAnotherMarker() throws IOException {
+        Path world = RegionFixtures.copyWorld(temp);
+        RegionFixtures.rewriteChunk(world.resolve(RegionFixtures.REGION), 0, 0, chunk ->
+                editBlockEntities(chunk, blockEntities -> {
+                    List<CompoundBinaryTag> edited = new ArrayList<>(blockEntities);
+                    edited.add(CompoundBinaryTag.builder()
+                            .putString("id", "minecraft:structure_block")
+                            .putInt("x", 5).putInt("y", -60).putInt("z", 5)
+                            .putString("mode", "DATA")
+                            .putString("metadata", "synaxis:loot {}")
+                            .build());
+                    return edited;
+                }));
+        try (AnvilWorld anvil = open(world)) {
+            AnvilSourceException error = assertThrows(AnvilSourceException.class, () -> anvil.readChunk(0, 0));
+            assertTrue(error.getMessage().contains("5, -59, 5"), error.getMessage());
+        }
+    }
+
+    @Test
+    public void rejectsARegionEntryThatHoldsAnotherChunk() throws IOException {
+        Path world = RegionFixtures.copyWorld(temp);
+        RegionFixtures.rewriteChunk(world.resolve(RegionFixtures.REGION), 0, 0, chunk -> chunk.putInt("xPos", 5));
+        try (AnvilWorld anvil = open(world)) {
+            AnvilSourceException error = assertThrows(AnvilSourceException.class, () -> anvil.readChunk(0, 0));
+            assertTrue(error.getMessage().contains("holds chunk 5, 0"), error.getMessage());
+        }
+    }
+
+    @Test
+    public void rejectsAnEntitiesEntryThatHoldsAnotherChunk() throws IOException {
+        Path world = RegionFixtures.copyWorld(temp);
+        RegionFixtures.rewriteChunk(world.resolve(RegionFixtures.ENTITIES), 0, 0, chunk ->
+                chunk.putIntArray("Position", new int[]{5, 0}));
+        try (AnvilWorld anvil = open(world)) {
+            AnvilSourceException error = assertThrows(AnvilSourceException.class, () -> anvil.readChunk(0, 0));
+            assertTrue(error.getMessage().contains("entities") && error.getMessage().contains("5, 0"),
+                    error.getMessage());
+        }
+    }
+
+    @Test
+    public void rejectsABlockNameThatIsNotAKey() throws IOException {
+        Path world = RegionFixtures.copyWorld(temp);
+        RegionFixtures.rewriteChunk(world.resolve(RegionFixtures.REGION), 0, 0, chunk ->
+                editSurfaceBlockStates(chunk, blockStates -> {
+                    ListBinaryTag palette = blockStates.getList("palette", BinaryTagTypes.COMPOUND);
+                    return blockStates.put("palette", palette.set(0, palette.getCompound(0).putString("Name", "Not A Key"), null));
+                }));
+        try (AnvilWorld anvil = open(world)) {
+            AnvilSourceException error = assertThrows(AnvilSourceException.class, () -> anvil.readChunk(0, 0));
+            assertTrue(error.getMessage().contains("Not A Key"), error.getMessage());
+        }
+    }
+
+    @Test
+    public void rejectsPackedBlockStatesOfTheWrongLength() throws IOException {
+        Path world = RegionFixtures.copyWorld(temp);
+        RegionFixtures.rewriteChunk(world.resolve(RegionFixtures.REGION), 0, 0, chunk ->
+                editSurfaceBlockStates(chunk, blockStates -> {
+                    long[] packed = blockStates.getLongArray("data");
+                    return blockStates.putLongArray("data", Arrays.copyOf(packed, packed.length / 2));
+                }));
+        try (AnvilWorld anvil = open(world)) {
+            AnvilSourceException error = assertThrows(AnvilSourceException.class, () -> anvil.readChunk(0, 0));
+            assertTrue(error.getMessage().contains("section -4"), error.getMessage());
+        }
+    }
+
+    @Test
+    public void rejectsAPackedIndexBeyondThePalette() throws IOException {
+        Path world = RegionFixtures.copyWorld(temp);
+        RegionFixtures.rewriteChunk(world.resolve(RegionFixtures.REGION), 0, 0, chunk ->
+                editSurfaceBlockStates(chunk, blockStates -> {
+                    int paletteSize = blockStates.getList("palette").size();
+                    assertTrue(paletteSize > 1 && paletteSize < 16, "four bits per entry, index 15 unused: " + paletteSize);
+                    long[] packed = blockStates.getLongArray("data");
+                    packed[0] = -1L;
+                    return blockStates.putLongArray("data", packed);
+                }));
+        try (AnvilWorld anvil = open(world)) {
+            AnvilSourceException error = assertThrows(AnvilSourceException.class, () -> anvil.readChunk(0, 0));
+            assertTrue(error.getMessage().contains("section -4"), error.getMessage());
+        }
+    }
+
+    private static CompoundBinaryTag editBlockEntities(CompoundBinaryTag chunk,
+                                                       UnaryOperator<List<CompoundBinaryTag>> edit) {
+        List<CompoundBinaryTag> blockEntities = chunk.getList("block_entities", BinaryTagTypes.COMPOUND).stream()
+                .map(CompoundBinaryTag.class::cast).toList();
+        return chunk.put("block_entities", ListBinaryTag.from(edit.apply(blockEntities)));
+    }
+
+    /**
+     * Edits {@code block_states} of section -4, the one holding the fixture's surface and content.
+     */
+    private static CompoundBinaryTag editSurfaceBlockStates(CompoundBinaryTag chunk, UnaryOperator<CompoundBinaryTag> edit) {
+        ListBinaryTag.Builder<CompoundBinaryTag> sections = ListBinaryTag.builder(BinaryTagTypes.COMPOUND);
+        for (CompoundBinaryTag section : chunk.getList("sections", BinaryTagTypes.COMPOUND).stream()
+                .map(CompoundBinaryTag.class::cast).toList()) {
+            sections.add(section.getByte("Y") == -4
+                    ? section.put("block_states", edit.apply(section.getCompound("block_states")))
+                    : section);
+        }
+        return chunk.put("sections", sections.build());
+    }
+
+    @Test
+    public void readsWithoutWritingAnything()throws IOException, NoSuchAlgorithmException {
         Path world = RegionFixtures.copyWorld(temp);
         Path region = world.resolve(RegionFixtures.REGION);
         Path entities = world.resolve(RegionFixtures.ENTITIES);

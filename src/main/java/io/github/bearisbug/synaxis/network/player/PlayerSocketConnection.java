@@ -121,6 +121,8 @@ public class PlayerSocketConnection extends PlayerConnection {
 
     private final ListenerHandle<PlayerPacketOutEvent> outgoing;
     private final TrafficCounters traffic;
+    // Read thread only
+    private final InboundPacketLimits.Limiter inboundLimiter;
 
     public PlayerSocketConnection(ServerProcess process, SocketChannel channel, SocketAddress remoteAddress, Thread readThread, Thread writeThread) {
         this(process, channel, remoteAddress, readThread, writeThread, process.connection().gate().untracked());
@@ -137,6 +139,7 @@ public class PlayerSocketConnection extends PlayerConnection {
         this.readBuffer = NetworkBuffer.resizableBuffer(process.config().pooledBufferSize(), process.registries());
         this.outgoing = process.eventHandler().getHandle(PlayerPacketOutEvent.class);
         this.traffic = process.connection().traffic();
+        this.inboundLimiter = process.connection().inboundLimits().newLimiter();
         this.channel = channel;
         this.remoteAddress = remoteAddress;
         this.writeThread = writeThread;
@@ -216,6 +219,9 @@ public class PlayerSocketConnection extends PlayerConnection {
             );
         } catch (Throwable e) {
             rethrowFatal(e);
+            // Already kicked, and logged, by #readClientPacket; the rest of the batch is not decoded.
+            // The decoder wraps what the reader throws.
+            if (e instanceof InboundLimitExceeded || e.getCause() instanceof InboundLimitExceeded) return false;
             // Errors thrown while still in the starting state are usually garbage
             // from scanners. A packet that errors after a state change within the
             // same batch is still checked against the starting state.
@@ -243,10 +249,16 @@ public class PlayerSocketConnection extends PlayerConnection {
                             // Interpret the packet using the connection state we received it.
                             process().packetListener().processClientPacket(packet, this);
                         } else {
-                            // To be processed during the next player tick
+                            // To be processed during the next player tick, if the limits let it through
                             final Player player = getPlayer();
                             assert player != null;
-                            player.addPacketToQueue(packet);
+                            switch (inboundLimiter.admit(packet, System.nanoTime())) {
+                                case ACCEPT -> player.addPacketToQueue(packet);
+                                case DROP -> {
+                                    // Thrown away before any listener sees it
+                                }
+                                case KICK -> kickOverInboundLimit();
+                            }
                         }
                     } catch (Throwable e) {
                         rethrowFatal(e);
@@ -352,11 +364,33 @@ public class PlayerSocketConnection extends PlayerConnection {
      */
     @Nullable ClientPacket readClientPacket(PacketRegistry.PacketInfo<? extends ClientPacket> packetInfo,
                                             NetworkBuffer buffer) {
+        // What a compressed frame inflated to, the frame of the packet id aside. The frame that goes
+        // over the budget has already been inflated; the ones behind it in the batch are not.
+        if (compression() && !inboundLimiter.admitInflated(buffer.readableBytes(), System.nanoTime())) {
+            kickOverInboundLimit();
+            throw new InboundLimitExceeded();
+        }
         if (packetInfo.packetClass() == ClientCreativeInventoryActionPacket.class) {
             final Player player = getPlayer();
             if (player == null || player.getGameMode() != GameMode.CREATIVE) return null;
         }
         return packetInfo.serializer().read(buffer);
+    }
+
+    /** One line per connection, next to the disconnect it explains ({@code docs/ENGINE.md} §8). */
+    private void kickOverInboundLimit() {
+        LOGGER.info("Inbound packet limit exceeded: connection_id={} identifier={} limit={}",
+                connectionId(), getIdentifier(), inboundLimiter.exceeded());
+        kick(DisconnectReasons.PROTOCOL_ERROR);
+    }
+
+    /** Ends the batch of a connection that went over its inflated bytes, see {@link #readClientPacket}. */
+    private static final class InboundLimitExceeded extends RuntimeException {
+        private static final long serialVersionUID = 1L;
+
+        InboundLimitExceeded() {
+            super(null, null, false, false);
+        }
     }
 
     /**

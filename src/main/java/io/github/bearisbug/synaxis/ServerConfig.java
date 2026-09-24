@@ -1,8 +1,12 @@
 package io.github.bearisbug.synaxis;
 
 import io.github.bearisbug.synaxis.network.ConnectionGate;
+import io.github.bearisbug.synaxis.network.player.InboundPacketLimits;
+import io.github.bearisbug.synaxis.network.player.PacketLimitAction;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.Objects;
 
 /**
  * Per-process server settings, reachable through {@link ServerProcess#config()}.
@@ -53,6 +57,18 @@ public record ServerConfig(
         // Chat (docs/DESIGN-PROD.md API-PROD-008): a token bucket per connection
         int chatRatePerSecond,
         int chatBurst,
+
+        // Inbound packet limits (docs/DESIGN-PROD.md API-PROD-012), the window in milliseconds
+        long packetLimitWindow,
+        int packetLimitMaxPackets,
+        PacketLimitAction packetLimitAction,
+        String packetLimitOverrides,
+        long maxInflatedBytesPerSecond,
+        int tabCompleteRatePerSecond,
+
+        // Outbound (docs/DESIGN-PROD.md API-PROD-020), the tab list interval in milliseconds
+        long maxOutboundBacklogBytes,
+        long tabLatencyInterval,
 
         // Network error handling
         boolean suppressConnectionAcceptErrors,
@@ -137,6 +153,15 @@ public record ServerConfig(
             throw new IllegalArgumentException("the per address rates must be positive and the bursts at least 1 but were "
                     + loginRatePerIp + "/" + loginBurstPerIp + ", " + statusRatePerIp + "/" + statusBurstPerIp
                     + " and " + transferRatePerIp + "/" + transferBurstPerIp);
+        if (packetLimitWindow < 1 || packetLimitMaxPackets < 1 || maxInflatedBytesPerSecond < 1 || tabCompleteRatePerSecond < 1)
+            throw new IllegalArgumentException("the packet limit window, the packet limit, the inflated bytes per second "
+                    + "and the tab complete rate must be at least 1 but were " + packetLimitWindow + ", "
+                    + packetLimitMaxPackets + ", " + maxInflatedBytesPerSecond + " and " + tabCompleteRatePerSecond);
+        Objects.requireNonNull(packetLimitAction, "packetLimitAction");
+        var _ = InboundPacketLimits.parseOverrides(packetLimitOverrides);
+        if (maxOutboundBacklogBytes < 1 || tabLatencyInterval < 1)
+            throw new IllegalArgumentException("the outbound backlog and the tab list latency interval must be at least 1 "
+                    + "but were " + maxOutboundBacklogBytes + " and " + tabLatencyInterval);
         var _ = ConnectionGate.parseNetworks(connectionGateTrustedNetworks);
         // A PROXY header names any address its sender likes, so only the load balancers may send
         // one, and a peer that skips it must not pass as a direct connection (REQ-PROD-036)
@@ -198,6 +223,15 @@ public record ServerConfig(
                 .maxJoinsPerTick(intProperty("synaxis.max-joins-per-tick", DEFAULTS.maxJoinsPerTick))
                 .chatRatePerSecond(intProperty("synaxis.chat-rate-per-second", DEFAULTS.chatRatePerSecond))
                 .chatBurst(intProperty("synaxis.chat-burst", DEFAULTS.chatBurst))
+                .packetLimitWindow(longProperty("synaxis.packet-limit.window-ms", DEFAULTS.packetLimitWindow))
+                .packetLimitMaxPackets(intProperty("synaxis.packet-limit.max-packets", DEFAULTS.packetLimitMaxPackets))
+                .packetLimitAction(actionProperty("synaxis.packet-limit.action", DEFAULTS.packetLimitAction))
+                .packetLimitOverrides(System.getProperty("synaxis.packet-limit.overrides", DEFAULTS.packetLimitOverrides))
+                .maxInflatedBytesPerSecond(longProperty("synaxis.packet-limit.max-inflated-bytes-per-second",
+                        DEFAULTS.maxInflatedBytesPerSecond))
+                .tabCompleteRatePerSecond(intProperty("synaxis.tab-complete-rate-per-second", DEFAULTS.tabCompleteRatePerSecond))
+                .maxOutboundBacklogBytes(longProperty("synaxis.outbound.max-backlog-bytes", DEFAULTS.maxOutboundBacklogBytes))
+                .tabLatencyInterval(longProperty("synaxis.tab-latency-interval-ms", DEFAULTS.tabLatencyInterval))
                 .suppressConnectionAcceptErrors(booleanProperty("synaxis.suppress-connection-accept-errors", DEFAULTS.suppressConnectionAcceptErrors))
                 .suppressConnectionIoErrors(booleanProperty("synaxis.suppress-connection-io-errors", DEFAULTS.suppressConnectionIoErrors))
                 .suppressMalformedPacketErrorLevel(intProperty("synaxis.suppress-malformed-packet-error-level", DEFAULTS.suppressMalformedPacketErrorLevel))
@@ -276,6 +310,16 @@ public record ServerConfig(
         }
     }
 
+    private static PacketLimitAction actionProperty(String name, PacketLimitAction defaultValue) {
+        final String value = System.getProperty(name);
+        if (value == null) return defaultValue;
+        try {
+            return PacketLimitAction.valueOf(value);
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException("Property '" + name + "' is neither DROP nor KICK: " + value, e);
+        }
+    }
+
     private static float floatProperty(String name, float defaultValue) {
         final String value = System.getProperty(name);
         if (value == null) return defaultValue;
@@ -319,6 +363,16 @@ public record ServerConfig(
         private int maxJoinsPerTick = 0; // 0 means no limit
         private int chatRatePerSecond = 1;
         private int chatBurst = 3;
+        // Twice the P99 of the packets one walking bot sent in 7 s in the 200 bot baseline, 291
+        // (docs/TEST.md TC-PROD-271 step 5); Paper's 500 in 7 s before that baseline existed
+        private long packetLimitWindow = 7_000;
+        private int packetLimitMaxPackets = 582;
+        private PacketLimitAction packetLimitAction = PacketLimitAction.KICK;
+        private String packetLimitOverrides = "";
+        private long maxInflatedBytesPerSecond = 4L << 20;
+        private int tabCompleteRatePerSecond = 20;
+        private long maxOutboundBacklogBytes = 4L << 20;
+        private long tabLatencyInterval = 30_000;
         private boolean suppressConnectionAcceptErrors = true;
         private boolean suppressConnectionIoErrors = true; // Like peer resets etc
         private int suppressMalformedPacketErrorLevel = 0;
@@ -381,6 +435,14 @@ public record ServerConfig(
             this.maxJoinsPerTick = config.maxJoinsPerTick;
             this.chatRatePerSecond = config.chatRatePerSecond;
             this.chatBurst = config.chatBurst;
+            this.packetLimitWindow = config.packetLimitWindow;
+            this.packetLimitMaxPackets = config.packetLimitMaxPackets;
+            this.packetLimitAction = config.packetLimitAction;
+            this.packetLimitOverrides = config.packetLimitOverrides;
+            this.maxInflatedBytesPerSecond = config.maxInflatedBytesPerSecond;
+            this.tabCompleteRatePerSecond = config.tabCompleteRatePerSecond;
+            this.maxOutboundBacklogBytes = config.maxOutboundBacklogBytes;
+            this.tabLatencyInterval = config.tabLatencyInterval;
             this.suppressConnectionAcceptErrors = config.suppressConnectionAcceptErrors;
             this.suppressConnectionIoErrors = config.suppressConnectionIoErrors;
             this.suppressMalformedPacketErrorLevel = config.suppressMalformedPacketErrorLevel;
@@ -564,6 +626,46 @@ public record ServerConfig(
             return this;
         }
 
+        public Builder packetLimitWindow(long packetLimitWindow) {
+            this.packetLimitWindow = packetLimitWindow;
+            return this;
+        }
+
+        public Builder packetLimitMaxPackets(int packetLimitMaxPackets) {
+            this.packetLimitMaxPackets = packetLimitMaxPackets;
+            return this;
+        }
+
+        public Builder packetLimitAction(PacketLimitAction packetLimitAction) {
+            this.packetLimitAction = packetLimitAction;
+            return this;
+        }
+
+        public Builder packetLimitOverrides(String packetLimitOverrides) {
+            this.packetLimitOverrides = packetLimitOverrides;
+            return this;
+        }
+
+        public Builder maxInflatedBytesPerSecond(long maxInflatedBytesPerSecond) {
+            this.maxInflatedBytesPerSecond = maxInflatedBytesPerSecond;
+            return this;
+        }
+
+        public Builder tabCompleteRatePerSecond(int tabCompleteRatePerSecond) {
+            this.tabCompleteRatePerSecond = tabCompleteRatePerSecond;
+            return this;
+        }
+
+        public Builder maxOutboundBacklogBytes(long maxOutboundBacklogBytes) {
+            this.maxOutboundBacklogBytes = maxOutboundBacklogBytes;
+            return this;
+        }
+
+        public Builder tabLatencyInterval(long tabLatencyInterval) {
+            this.tabLatencyInterval = tabLatencyInterval;
+            return this;
+        }
+
         public Builder suppressConnectionAcceptErrors(boolean suppressConnectionAcceptErrors) {
             this.suppressConnectionAcceptErrors = suppressConnectionAcceptErrors;
             return this;
@@ -707,6 +809,8 @@ public record ServerConfig(
                     loginBurstPerIp, statusRatePerIp, statusBurstPerIp, transferRatePerIp, transferBurstPerIp,
                     connectionGateTrustedNetworks, maxPlayers, maxJoinsPerTick,
                     chatRatePerSecond, chatBurst,
+                    packetLimitWindow, packetLimitMaxPackets, packetLimitAction, packetLimitOverrides,
+                    maxInflatedBytesPerSecond, tabCompleteRatePerSecond, maxOutboundBacklogBytes, tabLatencyInterval,
                     suppressConnectionAcceptErrors, suppressConnectionIoErrors, suppressMalformedPacketErrorLevel,
                     suppressMisusedPacketErrorLevel, rejectMalformedPacket, rejectMisusedPacket, socketSendBufferSize,
                     socketReceiveBufferSize, socketNoDelay, socketTimeout, pooledBufferSize, minChunksPerTick,

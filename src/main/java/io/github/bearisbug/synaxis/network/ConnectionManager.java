@@ -20,6 +20,7 @@ import io.github.bearisbug.synaxis.network.packet.server.configuration.UpdateEna
 import io.github.bearisbug.synaxis.network.packet.server.login.LoginSuccessPacket;
 import io.github.bearisbug.synaxis.network.packet.server.play.StartConfigurationPacket;
 import io.github.bearisbug.synaxis.network.player.GameProfile;
+import io.github.bearisbug.synaxis.network.player.InboundPacketLimits;
 import io.github.bearisbug.synaxis.network.player.PlayerConnection;
 import io.github.bearisbug.synaxis.network.player.PlayerSocketConnection;
 import io.github.bearisbug.synaxis.network.player.SessionClient;
@@ -75,9 +76,11 @@ public final class ConnectionManager {
     private final @Nullable KeyPair loginKeyPair;
     private final @Nullable SessionClient sessionClient;
     private final TrafficCounters traffic = new TrafficCounters();
+    private final InboundPacketLimits inboundLimits;
 
     public ConnectionManager(ServerProcess process) {
         this.process = process;
+        this.inboundLimits = InboundPacketLimits.of(process.config());
         this.cachedTagsPacket = new CachedPacket(() -> Registries.tagsPacket(process.registries()));
         this.gate = new ConnectionGate(process.config());
         switch (process.auth()) {
@@ -123,6 +126,15 @@ public final class ConnectionManager {
     @ApiStatus.Internal
     public TrafficCounters traffic() {
         return traffic;
+    }
+
+    /**
+     * The inbound packet limits every socket connection of this process counts against, see
+     * {@code docs/DESIGN-PROD.md} {@code API-PROD-012}.
+     */
+    @ApiStatus.Internal
+    public InboundPacketLimits inboundLimits() {
+        return inboundLimits;
     }
 
     // All players once their Player object has been instantiated.

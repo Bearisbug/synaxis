@@ -4,7 +4,7 @@
 
 | 字段 | 值 |
 | --- | --- |
-| 状态 | 草稿（2026-09-23 初稿，同日按第 1 轮两份评审意见修订为 v0.2，再按第 0 波五个组（0A～0E）的实现回写为 v0.3，再按第 1 波（1A、1B）与第 2 波（2A～2C）的实现回写为 v0.4，再收回转服票据的定义、拆出不依赖 M3 的票据组为 v0.5，再按第 3 波（3A～3D）的实现回写为 v0.6，再改存储冻结节点的优先级为 v0.6.1，再按第 4 波（4A～4C）的实现回写为 v0.7，再修第 4 波集成时登记的缺陷、堵上 `gm.role` 的提权为 v0.7.1，再给只由宿主实现的插件接口标 `@ApiStatus.NonExtendable`、把 `PluginApi.API_VERSION` 升到 2 为 v0.7.2，再按第 5 波 5B 的实现回写为 v0.7.3，再按第 5 波四组（5A～5D）合入后的集成结果回写为 v0.8）。用户同日已拍板七项方向（下表）；其余待拍板点一律按三份草案的默认值定，逐项见 §28.1 |
+| 状态 | 草稿（2026-09-23 初稿，同日按第 1 轮两份评审意见修订为 v0.2，再按第 0 波五个组（0A～0E）的实现回写为 v0.3，再按第 1 波（1A、1B）与第 2 波（2A～2C）的实现回写为 v0.4，再收回转服票据的定义、拆出不依赖 M3 的票据组为 v0.5，再按第 3 波（3A～3D）的实现回写为 v0.6，再改存储冻结节点的优先级为 v0.6.1，再按第 4 波（4A～4C）的实现回写为 v0.7，再修第 4 波集成时登记的缺陷、堵上 `gm.role` 的提权为 v0.7.1，再给只由宿主实现的插件接口标 `@ApiStatus.NonExtendable`、把 `PluginApi.API_VERSION` 升到 2 为 v0.7.2，再按第 5 波 5B 的实现回写为 v0.7.3，再按第 5 波四组（5A～5D）合入后的集成结果回写为 v0.8，再按集成后的压测收尾补 §15 的 500 人档与 `capacity` 建议值为 v0.8.1）。用户同日已拍板七项方向（下表）；其余待拍板点一律按三份草案的默认值定，逐项见 §28.1 |
 | 项目画像 | 生产产品（对外真实玩家：内测单分片 50～200 人，正式档每分片 200～500 人，见 §2；全部 `[核心]` 节生效） |
 | Owner | Bearisbug |
 | 评审人 | Bearisbug |
@@ -44,6 +44,7 @@
 | 2026-09-24 | v0.7.2 | **插件 API 升到 2，ABI baseline 换成 `v0.2.0`**。`main` 自 `3914650305` 起 ABI 门红：3B 给 `PluginEvents` 加的四参 `addListener` 与 `forInstance` 是抽象方法，对 `v0.1.0` 报 `New abstract method added to interface`。`PluginEvents` 只由宿主实现，对插件不是破坏，于是按「谁实现」给 `:plugin-api` 的接口分两类：只由宿主实现、插件拿来调用的 12 个标 `@ApiStatus.NonExtendable`，之后加抽象方法是兼容变更；插件实现的 4 个不标，新方法只能带默认实现（§8）。标注本身与常量值变化对 `v0.1.0` 报 7 条违例（逐条见 §1），由新 baseline `v0.2.0` 吸收；`PluginDescriptorsTest` 拒绝的版本号由 0、2 改为 1、3。§1「插件 API 版本」行改写，§8 首段改写，§28.2 `AdmissionRequest` 一行的「`API_VERSION` 仍为 1」改为「未因此变化」，§28.3 `docs/DESIGN-M2.md` §24 一行改为已定的规则。同批改的其他文档：`docs/DESIGN-M2.md` §8 版本方案的当前值、`docs/PLUGINS.md` §3、`docs/ENGINE.md` §7.1（加标注本身报违例、每次合入后看 `main` 的 ABI 门）、`gradle/abi-baseline.tag` | Bearisbug |
 | 2026-09-24 | v0.7.3 | 按第 5 波 5B 的实现回写设计。**G11**（`REQ-PROD-013`）：`API-PROD-012` 的 `max-packets` 由初值 500 改为 582（5A 的 200 人 walk 基线每人 7 s 上行包数 P99 291 × 2，`docs/TEST.md` TC-PROD-271 第 5 步）；计数位置写实为 `PlayerSocketConnection` 交给 `Player#addPacketToQueue` 之前（只数 socket 上来的、进入站队列的包，握手登录配置期的 11 个即时处理包与模拟包不计）；滑动窗口分 20 格；`overrides` 的包类型写引擎客户端包类简名（原写「包资源名」，引擎注册表里没有资源名）；解压字节在解码回调计、只在开了压缩之后计；各键须 ≥ 1。§15 入站限流行与 §19 两条场景同步（解压场景改为 150 / 100 个解压后 30,000 B 的包：原写的 64 KiB 超过插件消息 32,767 B 的上限，造不出来）。**G22**（`REQ-PROD-025`）：`API-PROD-020` 写明积压的计法（已成帧的按实际字节，还是对象的每个按 64 B）与超限处置——丢掉队列里全部实体移动包（不是「同实体只留最新一条」），丢掉的包被写线程取完前新的移动包不入队，靠下一次 `EntityPositionSync` 拉回；新键 `synaxis:outbound-backlog` 住引擎 `DisconnectReasons`，模组两份 lang 加文案；§19 场景同步。**G23**（`REQ-PROD-026`）：引擎兜底 64 块/tick 的「未核实」去掉（`docs/DESIGN-M3.md` v0.4 `API-M3-006` 已写入同一口径）；引擎本来就在两处夹住（回报与每次待发额度），本波只补测试；分片宿主还不存在，4 块/tick 没有写入点，§28.2 那条开放问题按 M3 v0.4 的答复关闭，另登记「分片宿主写 4」的待办。**G24**（`REQ-PROD-027`）：`API-PROD-020` Tab 列表段写明自己的条目广播、已在线全体合一包、延迟按 `synaxis.tab-latency-interval-ms` 批量、可见性每进程一份（`PluginContext#tabList()`，默认方法）与收回、判定抛异常按列出。§28.3 加 `docs/DESIGN.md` §15 限流行的改法 | Bearisbug |
 | 2026-09-24 | v0.8 | 按第 5 波四组（5A～5D）与偶发红修复（`prod/w5-flake`）合入后的集成结果回写设计，各组交付说明的 design_issues 逐条对照集成分支代码核实。**§1**：「插件 API 版本」行加 5C 的 `entities()`、`TabList` 与 `PluginEntities` 补标 `@ApiStatus.NonExtendable`（§8 清单由 12 个改为 14 个）与集成分支的 ABI 门结果。**5A**（`REQ-PROD-018`、`REQ-PROD-029`）：`API-PROD-015` 写明出站包数按可发送单元计、`synaxis_connections` 的 `login` 由差值得出、积压断线计数随 5B 接上真实值；`API-PROD-025` 写明画像是 `walk` / `ride` / `fly` / `town`（没有 `rts`）、`chunk_batch_rtt_ms` 的区间、`inbound.chunks` 的 `steady_*` 一组、`ticks.acquire_ms` 写 `null`、`visible_entities`。**5C**（`REQ-PROD-023`、`REQ-PROD-024`）：`API-PROD-019` 写明范围的几何（水平按圆、垂直按绝对差）、只在 `entity-view-distance` 方形内收窄、每 5 tick 重算、满额拒收、按三维距离裁剪、乘客随载具、有范围或上限时不再合并广播、插件禁用不收回。**5D**（`REQ-PROD-020`、`REQ-PROD-019` 后半）：`API-PROD-016` 的签名改为 `grid(exponent, chunkX, chunkZ)`，线程号写明 `3 × 格x + 格z` 与依据，写明各实例共用一张格网、分片宿主 `ShardMain` 与 `bin/server-shard` 已落地（只写线程两项）。**§15**：新增「第 5 波实测」表，列 5A 的 30 min 基线与 5B、5C、5D 的九档同机读数；200 人档 tick 判据在同机上一档都没过，只记录不判定。**§28.2**：分片宿主写入点一条由「还不存在」改为「`ShardMain` 已有、4 块/tick 与可见上限 100 都还没写」；新增同机压测判不了 tick 预算的风险、5D 退出判据待 CI、包缓冲池被大包撑大、Tab 可见性没有按单人刷新的接口四条。**§28.3**：`docs/DESIGN-M3.md` 加一行，`ShardMain` 已由本分册 5D 建出 | Bearisbug |
+| 2026-09-24 | v0.8.1 | 按第 5 波集成后的压测收尾（`docs/TEST.md` TC-PROD-360～TC-PROD-365，产物 `load/int-*/`）回写。**§15**：「第 5 波实测」的读法末句改为指向新增的「集成后复测与 `capacity`」一段：分片入口 `grid` + 10 线程、可见上限 100、区块上限 4 同机跑了 200 人 walk 30 min、500 人 walk 与 town 各 10 min、200 / 500 人重连风暴、闸门、台账六档；`capacity` 建议值内测 200、正式档暂定 500，写明降到 300 的条件与分机档的机器规格（机器人一侧按 500 人实测 1.04～1.06 个核）。**§26**：合计之后加第 5 波退出条件的现状。**§28.2**：「500 人档全部数字外推」一行补同机实测；G11 阈值一行补区块上限 4 让上行 7 s P99 由 291 升到 305、max 421；新增一条待办：`town` 画像落在 4 个分格、`flood` 进不了 configuration、没有产生插件事件的画像、机器人「进 play」计到 configuration 结束 | Bearisbug |
 
 ## 2. 背景 / 目标 / 非目标
 
@@ -1208,7 +1209,20 @@ L0、L0′、accept 时的 L1 超限与握手前超时都不发包，没有键�
 | `grid-walk200-10m`（5D） | walk 200，630 s，`grid` 10 条线程 | 8.6～62.0 | 28.6 ms / 50 | 171.2 ms | 1,204.2 MiB | 60.8 Mbit/s | 玩家所在 4 个格分到 0、6、7、9 号线程；10 条 tick 线程忙碌比 0.003～0.010，合计 0.062 |
 | `counter-walk200-10m`（5D 对照） | walk 200，630 s，`counter` 1 条线程 | 6.9～105.1 | 30.3 ms / 58 | 161.0 ms | 1,755.0 MiB | 60.8 Mbit/s | `Syn-Tick-0` 忙碌比 0.033；与 `grid` 档出站字节差 0.0075% |
 
-读法：十档里除 20 人的反证档都有超 50 ms 的 tick，数量跟着本机 load1 与 GC 暂停走（5B 的 A/B 与 5D 的 grid / counter 两组对照里，同机同时段的两档慢 tick 数相差 ≤ 8 个），分不出哪一波代码引入；200 人 walk 的 tick 线程忙碌比 0.028～0.033，单线程离瓶颈还远，分格的收益要在 500 人档量。500 人两档、登录风暴、闸门、台账、加密与持久化各档第 5 波没有跑（§26 第 5 波的退出判据还差这些）。
+读法：十档里除 20 人的反证档都有超 50 ms 的 tick，数量跟着本机 load1 与 GC 暂停走（5B 的 A/B 与 5D 的 grid / counter 两组对照里，同机同时段的两档慢 tick 数相差 ≤ 8 个），分不出哪一波代码引入；200 人 walk 的 tick 线程忙碌比 0.028～0.033，单线程离瓶颈还远，分格的收益要在 500 人档量。500 人两档、登录风暴、闸门、台账四类在集成后补跑，见下一段；加密与持久化两档第 5 波没有跑。
+
+**集成后复测与 `capacity`（v0.8.1）**。第 5 波四组合入 `prod/integrate-w5` 后，同一台机器上用分片入口 `bin/server-shard`（`grid` + 10 条 tick 线程），命令行补上 `ShardMain` 还没写的可见上限 100 与区块上限 4（§28.2），加 `max-joins-per-tick=5`、`max-players=500`，跑了六档（`docs/TEST.md` TC-PROD-360～TC-PROD-365，产物 `load/int-*/`，`summary.json` 都能由同目录的 `bots-0.json` 与 `server.json` 复算）。六档跑的时候本机 `load1` 3.1～15.0，低于上表十档（最高 262.7）；仍是同机，tick 与 RSS 同样只记录不判定。
+
+| 档 | 画像与人数，时长 | 本机 load1 | tick P99 / 超 50 ms | 服务端出站（每人） | 读数与对应的 §15 行 |
+| --- | --- | --- | --- | --- | --- |
+| `int-walk200-30m` | walk 200，1,830 s | 4.3～11.8 | 6.985 ms / 6 | 40.0 Mbit/s（24,971 B/s） | tick 预算行 200 人判据只差「超 50 ms 为 0」（5A 基线 18 个）；0 掉线、0 次被踢；出站比 5A 的 60.5 Mbit/s 少 33.9%（可见上限）；上行 7 s P99 305、max 421，是 582 的 72.3%，比 5A 高出的部分是区块回执（区块上限 4 让批数变成 2.34 倍） |
+| `int-walk500-10m` | walk 500，630 s | 4.0～15.0 | 12.214 ms / 6 | 145.2 Mbit/s（36,295 B/s） | tick 预算行 500 人 walk 档；500 人全部进服、0 掉线，10 条 tick 线程忙碌比最高 0.044；服务端进程 0.78 个核，机器人进程 1.04 个核 |
+| `int-town500-10m` | town 500（出生点 64 格内），630 s | 4.8～14.2 | 25.541 ms / 31 | 168.4 Mbit/s（42,105 B/s） | tick 预算行的同格档，但出生点在四个分格的公共角，500 人落在 4 个格（§28.2）；逐分钟 P99 最高 42.884 ms；可见实体 P99 100；堆最高 1,885.8 / 3,072 MiB；服务端 0.87 个核，机器人 1.06 个核 |
+| `int-storm200`、`int-storm500` | 200 / 500 人断开后 0.6 s 内同名重连，`max-players=500` | 3.1～7.5 | 风暴那一分钟 6.193 / 16.538 ms | — | 登录风暴行三项都满足：全部进世界 ≤ 5.5 s（500 人时与 L4 每 tick 5 人的下限 5.0 s 相符）、0 次 `shard-full`、风暴那一分钟 P99 < 50 ms |
+| `int-gate200` | 200 人在线，单 IP 100 连接/s × 60 s | 3.2～4.1 | 6.015 ms / 0 | 34.6 Mbit/s | 闸门行：进程 fd 最多 301（L0 1,024）；机器人 0 掉线；拒绝 5,968 次，汇总日志 7 行、间隔 10.00～10.05 s；台账 0 条攻击方会话事件，但这一项空转：`flood` 不回 `LoginAcknowledged`，本来就进不了 configuration（§28.2） |
+| 台账（六档） | — | — | — | — | 台账行：六档 `ledger_dropped` 都是 0；200 人 30 min 只写 201 行、31,149 B，核心模式没有插件事件，写入压力没有被压到（§28.2） |
+
+`capacity` 建议值：内测期每频道 **200**（§2 的内测规模，也是唯一跑满 30 min 的档）；正式档**暂定 500**。依据：两个 500 人档的 tick P99 是 12.214 与 25.541 ms，都 < 50 ms，按 `docs/DESIGN-M3.md` §15「tick P99 ≥ 50 ms 才把 `capacity` 降到 300」不降；500 人时 10 条 tick 线程的忙碌比最高 0.077，tick 线程远没到瓶颈；每分片出站 145.2～168.4 Mbit/s，千兆网卡够一个分片。同机档的超 50 ms tick（500 人两档 6 与 31 个）不作降容依据：200 人档也有 6 个，同机分不出是分片自身还是机器负载与 GC 暂停。500 定值要等分机档：服务端一台 Linux ≥ 8 核 / 16 GiB，机器人另一台 ≥ 4 核 / 8 GiB（500 人档机器人进程实测均值 1.04～1.06 个核、最高 1.19 个核，堆上限 2 GiB），千兆内网；在那里重跑 TC-PROD-361、TC-PROD-362（town 档出生点改到格中心），town 档 tick P99 ≥ 50 ms、或任一档有一分钟 P99 ≥ 50 ms 且那一分钟的慢 tick 不与 GC 暂停重叠，正式档就降到 300；RSS 判据（< 4 GiB）也在那一档量。
 
 ## 16. 并发与一致性
 
@@ -2010,6 +2024,8 @@ flowchart LR
 
 合计：第 0～5 波 95～126.5 人日（清单 G01～G27 的 88～117，加上移入的 G40 0.5、G33 0.5～1、G32 前半 1、G28 前半 2～3，以及从 M3 划过来的分格 3～4），第 6 波 17～20.5 人日，条件项 2 人日。
 
+第 5 波退出条件的现状（v0.8.1）：200 人 walk 30 min 在同机档只差「超 50 ms 为 0」一项（集成后 6 个，5A 基线 18 个）；G11 阈值已写回 `API-PROD-012`（v0.7.3）；4 线程 `grid` 严格模式 job 待 `main` 上连续 3 次绿（§28.2）；500 人两档、重连风暴、闸门、台账档已在同机档记录，`capacity` 建议值写回 §15「集成后复测与 `capacity`」：内测 200，正式档暂定 500，定值等分机档按该段的条件重跑。
+
 改同一批文件、不宜并行的组（合并顺序即上表）：
 
 | 文件 | 被哪些组改 | 处置 |
@@ -2083,7 +2099,7 @@ N/A — 本分册尚未开工。R2 封闭内测稳定运行 7 天后按 §3 三�
 | 风险 | 目标机房（尤其中国大陆）到 `sessionserver.mojang.com` 的延迟与连通性没有数据；连不稳时 U2 的「故障即拒绝登录」会变成常态停服 | Bearisbug | 选定机房时 |
 | 已决 | authlib 9.0.75 接受 `http://` 会话主机：第 2 波 2C 的完整正版路径档里，客户端带 `minecraft.api.session.host=http://…` 连 `record` 模式假 sessionserver 进服，R1～R8 全绿、R3 `encrypted=true`（`docs/TEST.md` `TC-PROD-104`、`TC-PROD-130`）；假服务不需要自签证书 | Bearisbug | — |
 | 风险 | `enforcesSecureChat=false` + 系统消息转发时真客户端是否出现聊天警告**未核实**（`REQ-PROD-009` 的人工截图判据） | Bearisbug | 第 1 波 |
-| 风险 | 500 人档全部数字从 50 连接 soak 与 200 人档线性外推；主城实体流量按 n² 增长，没有模型；G21 的 200 人同格 25 MB/s 是推算 | Bearisbug | 第 5 波 500 人压测 |
+| 风险 | 500 人档全部数字从 50 连接 soak 与 200 人档线性外推；主城实体流量按 n² 增长，没有模型；G21 的 200 人同格 25 MB/s 是推算。v0.8.1 同机档已量到 500 人 walk 145.2 Mbit/s、town 168.4 Mbit/s（§15「集成后复测与 `capacity`」），分机档未测 | Bearisbug | 第 5 波 500 人压测 |
 | 风险 | 持久化的耗时目标（tick P99 增量 ≤ 1 ms、快照 P99 ≤ 0.2 ms、写入 P99 ≤ 50 ms、载入 5 s、停机 < 10 s）全部按预算推，没有测量 | Bearisbug | 第 5 波首次压测后回写 §15 |
 | 风险 | `LogBudget` 与 `GameChannel` 在多 tick 线程下的线程安全性未审（清单 §8.1 第 12 条）；`GameSession.java:22` Javadoc 的单数「the tick thread」要改 | Bearisbug | 第 0 波 0C 组 |
 | 风险 | 顶号可能被盗号者利用来反复踢正主下线 | Bearisbug | 出现投诉时按 D7 切换条件改拒新 |
@@ -2093,9 +2109,10 @@ N/A — 本分册尚未开工。R2 封闭内测稳定运行 7 天后按 §3 三�
 | 待办 | 分片宿主入口 `ShardMain`（`server-app`，`bin/server-shard`）已由 5D 建出，目前只写 `thread-provider=grid` 与线程数两项（`ShardMain#threadDefaults`）。本分册要它写的另两项都还没写：`API-PROD-020` 的 `synaxis.chunk-queue.max-per-tick=4`（引擎侧夹值与测试已在 5B 落地，`docs/TEST.md` TC-PROD-296）与 `API-PROD-019` 的 `synaxis.max-visible-entities-per-player=100`（5C 落地，`server-app` 的 M2 `Main` 取引擎默认 0）。按同一写法（命令行显式给的值优先）加进 `threadDefaults` 旁边，把 TC-PROD-296 第 1 步改成从 `bin/server-shard` 起，另加一条用例读 `bin/server-shard` 起的进程里可见上限为 100 | Bearisbug（M3 会话） | M3-C 接手 `ShardMain` 时，或第 5 波 500 人压测之前（500 人档要用分片宿主的值） |
 | 风险 | 第 5 波十档压测都是服务端与机器人同机（§15「第 5 波实测」），200 人 walk 的超 50 ms tick 在 18～85 个之间、没有一档达到「0 个」，同时段对照档之间只差 4～8 个，跟着本机 load1（最高 262.7）与 GC 暂停走；同机数据判不了 §15 的 tick 预算与 RSS 两项 | Bearisbug | 分机档（§28.1 Q11）重跑 200 人 walk 30 min；仍不为 0 时先按 JFR 看是否全与 GC 暂停重叠，是则调 G1 暂停目标，不是再查 tick 本身 |
 | 待办 | 5D 的退出判据「4 线程 `grid` 严格模式 job 在 `main` 上连续 3 次绿」只能由 CI 判：本地只证明了 5D 分支上 3 次、集成分支上 1 次都绿 | Bearisbug | 第 5 波合入 `main` 后看 `multithreaded-grid` 连续 3 次运行 |
+| 待办 | `:loadtest` 离 §15 四行判据还差四处（v0.8.1 压测收尾发现）：① `town` 画像绕出生点走，出生点 (0, 0) 是四个分格的公共角，「500 人挤在 1 个分格」实际落在 4 个格，要加一个把圆心移到格中心的选项；② `flood` 每条连接只等第一个回包、不回 `LoginAcknowledged`，进不了 configuration，闸门行「台账 0 条来自攻击 IP 的会话事件」对它永远成立，要加一个走完登录的选项才有齿；③ 核心模式没有插件事件，台账行只压到每连接 1 行，运维草案 ③ 的「每连接 ≤ 90 事件/秒」要一个产生插件事件的画像；④ 机器人的「登录成功」计到 configuration 结束，进世界时刻只能从 `synaxis_players_online` 的 5 s 采样读，登录风暴行「30 s 内全部进 play」的分辨率是 5 s | Bearisbug | 分机档之前 |
 | 技术债 | 引擎共享的包缓冲池会被大包撑大后放回池里，下一个借到它的人拿到的是大缓冲；`ObjectPoolTest.autoClose` 与 `SocketWriteStateTransitionIntegrationTest` 都依赖池的状态，5B 的新测试结束时清空池才不互相影响，池本身没改。`SocketWriteStateTransitionIntegrationTest` 另有一次未查明的偶发红（`docs/TEST.md` §7） | Bearisbug（主会话） | 下次动 `network` 包的缓冲池时；偶发红再出现就先查它与池状态的关系 |
 | Open Question | Tab 列表可见性没有按单个玩家刷新的接口：依赖别的状态的可见性要重算时，插件只能再调一次 `setVisibility`，每次向每个在线玩家各发一个带全体条目的 `UPDATE_LISTED` 包（一轮 N 个包、N² 个条目）。默认不加接口；有插件按队伍或阵营频繁切换可见性、且 500 人档实测这类包的出站字节超过 Tab 列表包总量的一半时，加 `TabList#refresh(Player subject)` | Bearisbug | 第 6 波或第一个用到的插件 |
-| 风险 | G11 的 582 包 / 7 s 按机器人基线定：机器人每 tick 只发位置包与 `ClientTickEnd`，原版客户端的转头、挥手、挖掘、交互包没有计入，真实玩家的 7 s 上行包数 P99 未测，阈值可能偏低而误踢 | Bearisbug | 真客户端回归或内测首周；误踢按那一档的 P99 × 2 重定 `API-PROD-012` |
+| 风险 | G11 的 582 包 / 7 s 按机器人基线定：机器人每 tick 只发位置包与 `ClientTickEnd`，原版客户端的转头、挥手、挖掘、交互包没有计入，真实玩家的 7 s 上行包数 P99 未测，阈值可能偏低而误踢。另：分片宿主的区块上限 4 把区块批切小，机器人的区块回执变成 2.34 倍，集成后 200 人 walk 的 7 s 上行 P99 由 291 升到 305、max 由 345 升到 421（582 的 72.3%） | Bearisbug | 真客户端回归或内测首周；误踢按那一档的 P99 × 2 重定 `API-PROD-012` |
 | Open Question | `docs/DESIGN.md` §17 `process.shutdown` 的 10 s join 上限与 §21「`stop()` < 10 s」SLO 与本分册 30 s 保存预算冲突，需主会话改写（§28.3） | Bearisbug（主会话） | 第 3 波合并前 |
 | 已决 | `AdmissionRequest` 加 `uuid`、`remoteAddress` 两个组件改了 record 的 canonical 构造器；第 4 波 4B 保留旧的四参构造器（`@Deprecated`，用离线 UUID 与回环地址补齐），`checkBinaryCompatibility` 不报破坏，`API_VERSION` 未因此变化（§1）。去掉旧构造器的 `public` 时 ABI 门报 `Public/protected method removed`（`docs/TEST.md` `TC-PROD-234`） | Bearisbug | — |
 | 技术债 | `LegacyServerListPingPacket` 未注册，是死代码（清单 G34 附带发现），本分册不处理 | Bearisbug | 下次清理 network 包时 |

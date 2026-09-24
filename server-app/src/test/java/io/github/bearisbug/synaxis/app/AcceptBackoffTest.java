@@ -81,7 +81,10 @@ public class AcceptBackoffTest {
 
             final String cpu = awaitLine(output, AcceptBackoffFixture.CPU);
             final double share = Double.parseDouble(cpu.substring(cpu.indexOf('=') + 1));
-            assertTrue(share < 0.05, "the process used " + share + " of a core while every accept failed: " + log);
+            // Backing off, the loop takes 0.006 to 0.039 of a core on Linux (each retry costs the
+            // carriers 1 to 4 ms) and 0.003 to 0.011 on macOS; without the backoff it takes 1.5 to
+            // 1.8 on Linux. A quarter of a core is several times away from both.
+            assertTrue(share < 0.25, "the accept loop used " + share + " of a core while every accept failed: " + log);
 
             final List<Integer> reported = output.stream().map(FAILED::matcher).filter(Matcher::find)
                     .map(matcher -> Integer.parseInt(matcher.group(1))).toList();

@@ -46,6 +46,7 @@
 
 | 日期 | 版本 | 改动 | 作者 |
 | --- | --- | --- | --- |
+| 2026-09-24 | v0.8 | `ShardMain` 写入 `API-M3-006` 分片宿主设置表里可直接设的四项，都在 `Main` 读取之前写、命令行显式给的值优先，线程两项不变：`ShardMain#viewDefaults` 写 `synaxis.chunk-view-distance=12`、`synaxis.chunk-queue.max-per-tick=4`、`synaxis.max-visible-entities-per-player=100`；`ShardMain#transferDefaults` 只在 `synaxis.app.store=postgres` 时写 `synaxis.accept-transfers=true`，内存存储不写（无条件写会让 `docs/DESIGN-PROD.md` 第 5 波那种内存存储、无票据密钥的压测分片起不了服；PostgreSQL 存储缺密钥时仍由 `Main` 拒启）。§4 分片宿主术语、`API-M3-006`（设置段、接收转入行与表后说明）、`API-M3-009` 现状段、`API-M3-010` 接收转入段同步。视距行的「大于 16 拒启」校验与模拟距离一起随 M3-C 加。§28.2「`ShardMain` 只写了线程两项」技术债改为「分片设置没写全」，记下四项已落地、模拟距离与卸载宽限待 M3-C，并写明 `docs/DESIGN-PROD.md` §28.2 那条待办由此完成、该分册的改写交给生产就绪会话 | Bearisbug |
 | 2026-09-24 | v0.7 | 按 `docs/DESIGN-PROD.md` v0.8.2 §28.3 核对指向本文档的各行。**分片宿主**：§4、`API-M3-006`、`API-M3-009`、`API-M3-010` 写明 `ShardMain` 已由该分册第 5 波 5D 建在 `server-app`（启动脚本 `bin/server-shard`，经 `Main` 起服），目前只写线程两项；`API-M3-006` 新增分片宿主设置表，列出 M3 往里加的视距 12、模拟距离 4、卸载宽限 100、`accept-transfers`，与该分册 §28.2 待办要求的区块上限 4、可见上限 100；视距改为直接写引擎属性 `synaxis.chunk-view-distance`，不再另设 `shard.view-distance`。**区块上限**：原文写「分片宿主不覆盖兜底 64、另设 4」，与该分册 `API-PROD-020` 不符，改为同一个键 `synaxis.chunk-queue.max-per-tick` 引擎默认 64、分片宿主写 4，§2 限速行与 §15 带宽行同步。**线程号**：`API-M3-009` 与 §19「同一分格的区块归同一线程」引用 `API-PROD-016` 的 `3x + z`。`API-M3-010` 写明接收转入要求 PostgreSQL 存储与票据密钥。**补引用**：§10 指向该分册 §10 行级规则与 `API-PROD-004` 写入条件，§17 指向该分册的 `shard_session.renew`、`store.autosave`、`transfer_nonce.gc`，§19 指向 `REQ-PROD-004`、`005`、`007` 的场景。§28.2 新增「`ShardMain` 只写了线程两项」技术债；§1 关联行改指该分册 v0.8.2 | Bearisbug |
 | 2026-09-24 | v0.6 | 按 `docs/DESIGN-PROD.md` v0.7.1 §28.3 改写对转服票据与迁移版本号的引用。**票据**：§1 末段、§3 首批区块耗时行、§4 转服术语、`REQ-M3-017`、`ADR-M3-008`、§12.2 两步（`StoreCookie` 与 `Transfer`、验票并获取写权）改指该分册 `REQ-PROD-045`、`API-PROD-028`（Cookie 布局含 `character_id`，检查 ④ 加票据 `player_uuid` 与本次验证 UUID 的一致校验）；`API-M3-010` 插件面写明 `ShardService#transfer` 选好频道后调宿主接口 `TransferTickets#transfer(player, targetShardId, host, port)`，三种失败结果交还插件；§14 两个键改为由该分册 §14 定义，`synaxis:state-unavailable` 补齐转入验票的两种来源；§20 注明 `EVT:transfer_rejected` 由该分册 §20 定义；§28.2 冒名风险行补检查 ④。**清理**：删去 §17 `nonce.gc` 行，`transfer_nonce` 过期行由该分册 §17 `transfer_nonce.gc` 清理，§15 数据增长行同步。**排期**：§26 M3-E 的转服只依赖该分册第 3 波 3D 组（`TransferTickets` 已在 `main`），不再依赖 6A。**迁移**：§25 与 `API-M3-013` 写明 `world_flag` 版本号在合并时取下一个空号、不开 `outOfOrder`（`main` 已有 V1～V4，当前预计 `shard_heartbeat` = V5、`world_flag` = V6，以该分册 §25 为准）。§1 关联行改指该分册 v0.7.1；§28.2 两条技术债（生产就绪分册按 v0.2 引用、`world_flag` 未分版本号）转已决 | Bearisbug |
 | 2026-09-23 | v0.5 | 区块包字节确定性：引擎 `ChunkData` 修复前用 `Map.copyOf` / `toUnmodifiableMap` 复制高度图与方块实体，同一区块在不同 JVM 里编出长度相同、字节不同的包（`5fba33a398` 修复）。`REQ-M3-003` 补「区块包逐字节确定」；`API-M3-001` 段① 加「字节可复现」（编码集合的固定顺序、禁止直接决定编码顺序的集合、编码前 `optimize(SIZE)`、验收门 `ChunkPacketDeterminismTest`）；`API-M3-003` 确定性条目改为解压后包体跨 JDK 相同、成帧字节同一 JDK 构建相同；`API-M3-008` 输出加 `packet` 作业的四个 SHA-256 摘要；§19 新增「区块包跨 JVM 逐字节确定」「基准的区块包字节两次运行逐字节相同」两条场景，「基准程序复跑」的字节判据改为与 `bench-2026-09-packet-canonical-1.json` 的摘要相同；§28.2 加跨区块写入未覆盖的风险 | Bearisbug |
@@ -149,7 +150,7 @@
 | 票据 | 让区块保持加载的引用；玩家视野与插件显式持有各算一张 | `chunk_ticket` | `ENT-ChunkResidency` |
 | 视距 | 服务端给玩家发区块的半径（区块数） | `synaxis.chunk-view-distance` | — |
 | 模拟距离 | 区块内实体与方块 tick 的半径；超出的区块只发包、不 tick。按实例设置，默认不限 | `Instance#setSimulationDistance` | — |
-| 分片宿主 | MMO 分片的启动入口，与 M2 的 `Main` 分开：先写分片的默认属性（命令行显式给的值优先），再交给 `Main` 起服。已由生产就绪分册第 5 波 5D 建出（`docs/DESIGN-PROD.md` `API-PROD-016`），目前只写线程两项；视距、模拟距离、卸载宽限、`accept-transfers`、区块上限 4 与可见上限 100 由 M3 加进去（`API-M3-006`、`API-M3-010`）。M3 的线程模型、模拟距离、自动卸载都只在这里开启 | `server-app` 的 `ShardMain`，启动脚本 `bin/server-shard` | `ENT-Shard` |
+| 分片宿主 | MMO 分片的启动入口，与 M2 的 `Main` 分开：先写分片的默认属性（命令行显式给的值优先），再交给 `Main` 起服。已由生产就绪分册第 5 波 5D 建出（`docs/DESIGN-PROD.md` `API-PROD-016`），写线程两项、区块视距 12、区块上限 4、可见上限 100，PostgreSQL 存储时另写 `accept-transfers=true`；模拟距离与卸载宽限由 M3 加进去（`API-M3-006`、`API-M3-010`）。M3 的线程模型、模拟距离、自动卸载都只在这里开启 | `server-app` 的 `ShardMain`，启动脚本 `bin/server-shard` | `ENT-Shard` |
 | 分格 | 16×16 区块的空间格，同一格内的区块归同一 tick 线程 | `grid_cell` | — |
 | 大区 | 按地理切出的一块地图（正式档 4k×4k 格） | `region_id` | `ENT-Shard` |
 | 频道 | 同一大区的一个进程副本；人数超上限时同一大区开多个频道 | `channel` | `ENT-Shard` |
@@ -461,18 +462,18 @@ M3 的契约有四类：① 文件格式（`.synx`、清单、覆盖存储、高
 - **`API-M3-006` 视距、模拟距离与区块票据** — 实现 `REQ-M3-009`、`REQ-M3-010`
   - 引擎默认值不变：`synaxis.chunk-view-distance` 仍默认 8（M2 的 `Main.java:68` 设 10），模拟距离默认「不限」（全部已加载区块照常 tick），自动卸载默认关闭（`InstanceManager.java:93` 的「注销实例时卸载」是唯一卸载路径，与现状相同）。M2 对局的 `Match` 不调用下列任何方法，行为不变。
   - Java（按实例）：`Instance#setSimulationDistance(int chunks)`（`-1` = 不限，默认 `-1`）；`Instance#setChunkUnloadGraceTicks(int ticks)`（`-1` = 不自动卸载，默认 `-1`）；`Instance#addChunkTicket(int cx, int cz, Object owner)` / `removeChunkTicket(...)`。玩家视野进出由引擎自动加减票据；开启了自动卸载的实例上，票据数归零并空闲满宽限期的区块在 tick 末尾卸载（内部任务 `chunk.unload`）。
-  - 分片宿主的设置：`ShardMain`（`server-app`，启动脚本 `bin/server-shard`）已由 `docs/DESIGN-PROD.md` 第 5 波 5D 建出，`ShardMain#threadDefaults` 目前只写线程两项（`API-M3-009`），之后调 `Main.main` 起服。M3 按同一写法（进程属性在 `Main` 读取之前写入，命令行显式给的值优先，`Main#applyViewRangeDefaults` 只补没设的键）加入下表各项：
+  - 分片宿主的设置：`ShardMain`（`server-app`，启动脚本 `bin/server-shard`）已由 `docs/DESIGN-PROD.md` 第 5 波 5D 建出，`ShardMain#threadDefaults` 写线程两项（`API-M3-009`），之后调 `Main.main` 起服。M3 按同一写法（进程属性在 `Main` 读取之前写入，命令行显式给的值优先，`Main#applyViewRangeDefaults` 只补没设的键）加入下表各项；属性类的四项中，视距与两个上限由 `ShardMain#viewDefaults` 写入，接收转入由 `ShardMain#transferDefaults` 写入：
 
     | 设置 | 写法 | 分片宿主的值 | 引擎 / `Main` 的值 | 出处 |
     | --- | --- | --- | --- | --- |
-    | 区块视距 | 属性 `synaxis.chunk-view-distance` | 12；宿主校验大于 16 即起服报错 | 引擎 8，`Main` 设 10 | 本接口 |
+    | 区块视距 | 属性 `synaxis.chunk-view-distance` | 12；宿主校验大于 16 即起服报错（校验与模拟距离一起在 M3-C 加） | 引擎 8，`Main` 设 10 | 本接口 |
     | 模拟距离 | 分片宿主建 MMO 实例时调 `setSimulationDistance`，值读宿主配置 `shard.simulation-distance` | 4，必须 ≤ 视距 | `-1`（不限） | 本接口 |
     | 卸载宽限 | 同上，`setChunkUnloadGraceTicks`，值读 `shard.unload-grace-ticks` | 100 tick | `-1`（不自动卸载） | 本接口 |
-    | 接收转入 | 属性 `synaxis.accept-transfers` | `true` | `false` | `API-M3-010` |
+    | 接收转入 | 属性 `synaxis.accept-transfers` | `synaxis.app.store=postgres` 时写 `true`；内存存储（`Main` 的默认）不写，取引擎的 `false` | `false` | `API-M3-010` |
     | 区块发送上限 | 属性 `synaxis.chunk-queue.max-per-tick` | 4 | 64 | `docs/DESIGN-PROD.md` `REQ-PROD-026`、`API-PROD-020` |
     | 每玩家可见实体上限 | 属性 `synaxis.max-visible-entities-per-player` | 100 | 0（不限） | `docs/DESIGN-PROD.md` `REQ-PROD-024`、`API-PROD-019` |
 
-    实体视距沿用 `Main` 设的 8，追踪范围归该分册 `API-PROD-019`。最后两项是该分册 §28.2 登记给 M3 的待办，时限是 M3-C 接手 `ShardMain` 时或该分册第 5 波 500 人压测之前，以先到者为准（§28.2）。
+    实体视距沿用 `Main` 设的 8，追踪范围归该分册 `API-PROD-019`。最后两项是该分册 §28.2 登记给 M3 的待办。已写入的是区块视距、区块发送上限、可见实体上限与接收转入四项；模拟距离与卸载宽限要等引擎的按实例接口，随 M3-C 加（§28.2）。接收转入只在 PostgreSQL 存储时写，因为设了它的进程必须配好 PostgreSQL 与票据密钥（`API-M3-010`）：无条件写 `true` 会让内存存储的分片起不了服（`docs/DESIGN-PROD.md` 第 5 波压测就是 `bin/server-shard` 加内存存储，没有 PostgreSQL 与 `SYNAXIS_TRANSFER_HMAC_KEYS`）；PostgreSQL 存储而缺密钥时仍由 `Main` 拒绝起服。
   - 模拟距离外的区块不进 `ThreadDispatcher` 的 tick 分区：区块内实体与方块不 tick，但照常发包、照常可见。
   - 下发速率：由客户端 `ChunkBatchReceived` 回报决定，回报被夹到 `synaxis.chunk-queue.max-per-tick`（`ServerConfig.maxChunksPerTick`，`Player#onChunkBatchReceived`），每次发送前的待发额度也不超过它（`Player#sendPendingChunks`）。引擎默认值 64（1,280 区块/s）不变，M2 的 `Main` 与 RTS 进程用它兜底；分片宿主把同一个属性写成 4（80 区块/s），所以分片上的实际速率 = min(客户端回报, 4) 区块/tick。「兜底 64」与「分片 4」是同一个键在两类进程里的值，分片里不存在第二道限速。4 区块/tick 下首批 9 个区块 3 个 tick 内发完，与 §15 转服行「首批 9 块 P95 < 5 s」不冲突；飞行档新进视野 46.9 区块/s，低于 80 区块/s；填满视距 12 的 625 个区块约 156 tick ≈ 7.8 s，M3 对填满时间没有目标，要不要设在 M3-C 实测 P1③（§17）之后定。
 
@@ -495,13 +496,13 @@ M3 的契约有四类：① 文件格式（`.synx`、清单、覆盖存储、高
 
 - **`API-M3-009` 空间分格 `ThreadProvider`** — 实现 `REQ-M3-015`
   - 需求：同一 16×16 区块格的区块归同一 tick 线程；MMO 分片宿主选用分格并把 tick 线程数设为核数 − 2（留 2 个核给调度线程、网络读写与 `overlay.relight`），命令行显式给的值优先；引擎默认仍是 `counter` + 1 线程，M2 的 `Main` 与 RTS 进程不设。
-  - 现状：这两项已由 `docs/DESIGN-PROD.md` 第 5 波 5D 写进 `ShardMain#threadDefaults`（`synaxis.thread-provider=grid`、`synaxis.dispatcher-threads = max(1, 核数 − 2)`），M3 不重写，只在同一处追加 `API-M3-006` 表里的各项。
+  - 现状：这两项已由 `docs/DESIGN-PROD.md` 第 5 波 5D 写进 `ShardMain#threadDefaults`（`synaxis.thread-provider=grid`、`synaxis.dispatcher-threads = max(1, 核数 − 2)`），M3 不重写，`API-M3-006` 表里的各项写在同一个类的 `viewDefaults` 与建实例处。
   - 接口与引擎侧设计以 `docs/DESIGN-PROD.md` `API-PROD-016` 为准，本节不复述：`ThreadProvider.grid(exponent, chunkX, chunkZ)` 与三个配置键、线程号公式（格 (x, z) 的线程号 = `3x + z`，下标取 `Math.floorMod(线程号, 线程数)`）、各实例共用一张格网、`Acquirable` 未分配态与线程契约、4 线程严格模式测试、`acquire_ms` 指标。
 
 - **`API-M3-010` 分片目录与频道** — 实现 `REQ-M3-016`、`REQ-M3-017`
   - `shards.json`（与地图版本一起放在发布目录，但**不进 `content_hash`**：它含机器地址，加频道或换机器只改这个文件，不需要重烘）：`regions[]`（`region_id`、区块边界、`build_id`）与 `channels[]`（`shard_id`、`region_id`、`channel`、`host`、`port`、`capacity`，`capacity` ∈ [200, 500]）。
   - 心跳：每分片每 5 s 写 `shard_heartbeat(shard_id, online, updated_at)`；超过 15 s 未更新视为下线。表结构随 `server-app` 的迁移脚本管理，版本号 V5 与回退策略见 `docs/DESIGN-PROD.md` §25，脚本内容由本分册提供（本分册 §25）。
-  - 接收转入：分片宿主起服时设 `synaxis.accept-transfers=true`（引擎既有属性，默认 false；由 `ShardMain` 写入，写法同 `API-M3-006` 分片宿主设置表，命令行显式给的值优先）。设了它的进程必须用 PostgreSQL 存储（`-Dsynaxis.app.store=postgres`）并配好 `SYNAXIS_TRANSFER_HMAC_KEYS`，缺一项 `Main` 拒绝起服（`docs/DESIGN-PROD.md` `API-PROD-028` 密钥段）。M2 的 `Main` 不设，仍拒绝 intent=transfer 的握手。
+  - 接收转入：分片宿主以 PostgreSQL 存储（`-Dsynaxis.app.store=postgres`）起服时设 `synaxis.accept-transfers=true`（引擎既有属性，默认 false；由 `ShardMain#transferDefaults` 写入，写法同 `API-M3-006` 分片宿主设置表，命令行显式给的值优先）；内存存储的分片不写，不接收转入。设了它的进程必须用 PostgreSQL 存储并配好 `SYNAXIS_TRANSFER_HMAC_KEYS`，缺一项 `Main` 拒绝起服（`docs/DESIGN-PROD.md` `API-PROD-028` 密钥段），所以 PostgreSQL 存储的分片漏配密钥时起不了服。M2 的 `Main` 不设，仍拒绝 intent=transfer 的握手。
   - 容量：分片宿主把 `capacity` 写进 `synaxis.max-players`，由连接闸门 L3 在处理 `LoginStart` 时按已占席位判定，满员以 `LoginDisconnect` 断线 `synaxis:shard-full`（`docs/DESIGN-PROD.md` `API-PROD-003` 与 §14）。频道满只有这一个键，login 与 transfer 意图同一判定：转服进来的连接在发加密请求、读 Cookie 之前就被拒，票据 nonce 不消耗；L3 拒绝不写台账，只计 `synaxis_gate_rejections_total{reason="full"}`。
   - 插件面：`PluginContext#shards()` 返回 `ShardService`，`transfer(Player, String regionId)` 选该大区 `online / capacity` 最低且在线的频道，再调宿主接口 `TransferTickets#transfer(player, targetShardId, host, port)`（`docs/DESIGN-PROD.md` `API-PROD-028`，`server-app` 包 `io.github.bearisbug.synaxis.app.transfer`，`ShardService` 的实现在同一模块内经构造器拿到它）。写回并释放写权、签票、先 `StoreCookie` 再 `Transfer`、每玩家转服冷却 5 s 都在该接口里完成；它回的 `COOLDOWN`、`NOT_ONLINE`、`SAVE_FAILED` 由 `ShardService` 交还插件（`TransferOutcome` 在 `server-app` 里，`:plugin-api` 侧的对应类型随 M3-E 定）。属 `:plugin-api` 新增方法，兼容变更，`api_version` 不变。
   - 首批区块：目标分片验票通过、玩家进世界后，按普通进场路径发区块；发完首批 9 个区块的 `ChunkBatchFinished` 时写 `EVT:transfer_completed`。
@@ -1511,7 +1512,7 @@ N/A — M3 的服务端阶段尚未开工（M3-A 的光照与基准部分已完�
 | 技术债 | 高度场包的采样布局还没定：路线报告的 4 B 采样只有一个高度，远景备忘录要求水面列另写水底，需要多一个 12 bit 高度或单独的水深层 | Bearisbug | M3-G 开工时，随 V2 定稿 |
 | 技术债 | `synaxis:farview` 负载要登记进 `docs/DESIGN-M2.md` §8 的协议消息表（跨分册改动） | Bearisbug | M3-G 开工时 |
 | 技术债 | 静态实体（展示框、盔甲架、`*_display`）的运行期改动不持久化：玩家打掉的展示框在区块重新载入后复原；需要持久时建模成世界状态标志 | Bearisbug | 玩法首次允许玩家改静态实体时 |
-| 技术债 | **`ShardMain` 只写了线程两项**：`API-M3-006` 分片宿主设置表的六项都还没写，在写上之前 `bin/server-shard` 起的进程区块视距是 `Main` 的 10、不接收转入、区块上限 64、可见实体不限，只能在命令行逐项给。其中区块上限 4 与可见上限 100 是 `docs/DESIGN-PROD.md` §28.2 登记给本分册的待办，该分册第 5 波 500 人档要用这两个值 | Bearisbug | M3-C 接手 `ShardMain` 时，或该分册第 5 波 500 人压测之前，以先到者为准 |
+| 技术债 | **`ShardMain` 的分片设置没写全**：`API-M3-006` 分片宿主设置表的六项，v0.8 写上了四项：区块视距 12、区块上限 4、可见上限 100（`ShardMain#viewDefaults`），PostgreSQL 存储时的 `accept-transfers=true`（`ShardMain#transferDefaults`，内存存储不写）；都是命令行显式给的值优先（`docs/TEST.md` RUN-032）。`docs/DESIGN-PROD.md` §28.2 登记给本分册的两项待办（区块上限 4、可见上限 100）由此完成，该分册的待办行与 `API-PROD-016`、`API-PROD-020` 里「`ShardMain` 还没写」的句子由生产就绪会话改写。余下模拟距离与卸载宽限两项要引擎的按实例接口，连同视距大于 16 拒启的校验随 M3-C 加 | Bearisbug | M3-C 接手 `ShardMain` 时 |
 | 已决 | **生产就绪分册按本文档 v0.2 引用转服票据**：`docs/DESIGN-PROD.md` v0.5 起把票据布局（加 `character_id`）、密钥、检查 ①～⑥（④ 加 UUID 一致校验）、`transfer_nonce` 表与清理、两个断线键写进自身（`REQ-PROD-045`、`API-PROD-028`、§14、§17 `transfer_nonce.gc`），本文档 v0.6 把 §1、§3、§4、`REQ-M3-017`、`API-M3-010`、§12.2、§14、§15、`ADR-M3-008` 改指这些 ID，删去本分册的 `nonce.gc` | Bearisbug | 已于 2026-09-24 处置 |
 | 已决 | `world_flag` 的迁移版本号：`docs/DESIGN-PROD.md` §25 版本表已列入，与 `shard_heartbeat` 同随 M3-E，合并时取下一个空号（当前预计 V6），见 §25 | Bearisbug | 已于 2026-09-24 处置 |
 | 说明 | **M2 soak 判据不需要因 M3 重跑**：M3 不改引擎任何既有默认值（视距 8、`counter`、1 线程），模拟距离与自动卸载是按实例开启、默认关闭的新能力，M2 的 `Main` 与 `Match` 都不调用；由 §19「引擎默认值下 M2 对局行为不变」守住。例外是光照：光照修复改了 M2 整图 relight 的结果，M2 的 `load_ms` 与光照断言在 M3-A 退出条件里重跑 | Bearisbug | M3-A |

@@ -8,7 +8,10 @@
 # fixture content in chunk 0,0 through console commands, saves, stops, then copies the chunks above
 # byte for byte into fresh region files (TrimRegion.java) so the fixture is a few KiB, not the whole
 # spawn area. Content of chunk 0,0 (the superflat surface is grass at y -61):
+#   the seven block entity types without a block of the same name (DESIGN-M3 §6):
 #   (1,-60,1) oak_sign "Hello" / "Synaxis"   (2,-60,1) white_banner   (3,-60,1) player_head
+#   (6,-60,1) oak_hanging_sign, hung from stone at (6,-59,1)   (7,-60,1) spawner   (8,-60,1) oak_shelf
+#   (10,-60,1) suspicious_sand
 #   (4,-60,1) chest, under a DATA structure block at (4,-59,1): metadata synaxis:loot {table:"t1"}
 #   (5,-60,5) lever, under a DATA structure block at (5,-59,5): metadata synaxis:door {locked:1b}
 #   (9,-60,9) DATA structure block: metadata synaxis:hidden 0 0 15 15
@@ -84,6 +87,11 @@ cat >&3 <<'EOF'
 setblock 1 -60 1 minecraft:oak_sign[rotation=0]{front_text:{messages:["Hello","Synaxis","",""]}}
 setblock 2 -60 1 minecraft:white_banner
 setblock 3 -60 1 minecraft:player_head
+setblock 6 -59 1 minecraft:stone
+setblock 6 -60 1 minecraft:oak_hanging_sign
+setblock 7 -60 1 minecraft:spawner
+setblock 8 -60 1 minecraft:oak_shelf
+setblock 10 -60 1 minecraft:suspicious_sand
 setblock 4 -60 1 minecraft:chest
 setblock 4 -59 1 minecraft:structure_block[mode=data]{mode:"DATA",metadata:'synaxis:loot {table:"t1"}'}
 setblock 5 -60 5 minecraft:lever[face=floor]
@@ -101,15 +109,21 @@ server_pid=""
 
 placed="$(grep -c 'Changed the block' server.log || true)"
 summoned="$(grep -c 'Summoned new' server.log || true)"
-if [[ "$placed" != 8 || "$summoned" != 2 ]]; then
+if [[ "$placed" != 13 || "$summoned" != 2 ]]; then
   grep -v '^\s*at ' server.log >&2
-  echo "expected 8 blocks and 2 entities, the server reports $placed and $summoned" >&2
+  echo "expected 13 blocks and 2 entities, the server reports $placed and $summoned" >&2
   exit 1
 fi
 
 cp="$(find "$work/libraries" "$work/versions" -name '*.jar' | sort | tr '\n' ':')"
 world="$work/world/dimensions/minecraft/overworld"
 mkdir -p "$out/region" "$out/entities"
-"$java" -cp "$cp" "$here/TrimRegion.java" "$world/region/r.0.0.mca" "$out/region/r.0.0.mca" 0,0 +proto
+proto="$("$java" -cp "$cp" "$here/TrimRegion.java" "$world/region/r.0.0.mca" "$out/region/r.0.0.mca" 0,0 +proto)"
+echo "$proto"
+# AnvilWorldTest names the non-full chunk 3,0; another one means vanilla changed its generation order
+if [[ "$proto" != "proto chunk 3,0 "* ]]; then
+  echo "expected the non-full chunk to be 3,0, update AnvilWorldTest for the chunk above" >&2
+  exit 1
+fi
 "$java" -cp "$cp" "$here/TrimRegion.java" "$world/entities/r.0.0.mca" "$out/entities/r.0.0.mca" 0,0
 ls -l "$out/region" "$out/entities"

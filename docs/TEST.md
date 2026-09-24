@@ -15,6 +15,7 @@
 
 | 日期 | 改动 | 作者 |
 | --- | --- | --- |
+| 2026-09-24 | 第 5 波集成（5A～5D 与 `prod/w5-flake` 合入 `prod/integrate-w5`）：`ServerConfigTest` 同时带上 5C 与 5D 的用例（6 个），`TC-PROD-314` 第 1 步改为 6 个，第 2 步的反证在集成分支上重跑，红的行号 `:44` → `:48`。5B 回写的设计版本号随 `main` 已占用 v0.7.2 改记为 v0.7.3（5B 变更记录行与 5B 一节开头） | Bearisbug |
 | 2026-09-24 | **新增 `TC-PROD-350`**（`REQ-PROD-004`）：在线模式顶号时旧会话还在进世界途中（已在在线列表、在等出生区块），新连接等它进完世界并被移除之后才进，实体追踪器不再以重复 UUID 拒掉新玩家；反证删掉进世界途中的登记即红成 RUN-030 那句 `no player … reached the play state`。`TC-PROD-100` 第 1 步随同类多一条改为 2 个用例。§5 生产就绪域 2A 那行加 `TC-PROD-350` 与 `updateWaitingPlayers` 的触发条件；§7 登记该偶发红的根因、复现与处置 | Bearisbug |
 | 2026-09-24 | 跟进 `docs/DESIGN-PROD.md` 第 5 波 5D（`REQ-PROD-020` 空间分格，`API-PROD-016`、`ADR-PROD-006`；`REQ-PROD-019` 后半）。**新增 §4「生产就绪 · 第 5 波 5D：空间分格与多线程正确性余项」七条 `TC-PROD-330`～`TC-PROD-336`**：`ThreadProvider.grid` 同格同号、负坐标向下取整、相邻格不同线程（330）、`synaxis.thread-provider` / `synaxis.thread-grid-exponent` 的默认值与取值（331）、进程按分格派 tick 线程（332，§19 同名场景）、`ShardMain` 取核数 − 2 且命令行优先（333）、真进程 `bin/server-shard` 与 `bin/server-app` 的线程读数与拒启（334，§19「分片宿主线程数取核数减 2」，端口 25654）、4 线程 `grid` 严格模式跑全量与 CI job `multithreaded-grid`（335）、200 人 walk 10 min 分格与单线程同机对照（336，产物在 `docs/research/production-readiness-2026-09/load/grid-walk200-10m/` 与 `counter-walk200-10m/`）；每条带真跑过的反证与红的位置，本节开头列出与设计的三处口径差异与 `LogBudget`、`GameChannel` 的审查结论。§5 生产就绪域加一行，§5 引擎域「tick 多线程」一组补 `ThreadProvider` 与 `synaxis.thread-*` 键 | Bearisbug |
 | 2026-09-24 | 第 5 波 5C 返工：**新增 `TC-PROD-319`**（乘客只随载具被看见：追踪器单独报告乘客时看载具是否可见，重算收回骑上不可见载具的乘客；两条反证）。`TrackingRangeTest`、`VisibleEntityLimitTest` 各多一个用例（5 → 6），`TC-PROD-310`～`TC-PROD-313` 的用例数与反证的红改为两类同跑的实测值（`TrackingRangeTest` 里区块 8 那条的行号 `:100` → `:126`）；§5 生产就绪域的 5C 一行加 TC-PROD-319 | Bearisbug |
@@ -4335,8 +4336,8 @@ jcmd "$pid" VM.flags | tr ' ' '\n' | grep -cxE -- '-XX:\+UseG1GC|-XX:InitialHeap
 
 | # | 操作 | 预期 |
 | --- | --- | --- |
-| 1 | 跑 `io.github.bearisbug.synaxis.ServerConfigTest` | 5 个 0 失败：`ServerConfig.defaults().maxVisibleEntitiesPerPlayer()` 为 0；`builder().maxVisibleEntitiesPerPlayer(-1).build()` 抛 `IllegalArgumentException` |
-| 2 | 反证有齿（默认 100）：`ServerConfig.Builder` 的默认值改为 100，重跑，再还原 | `5 tests completed, 1 failed`，红在 `ServerConfigTest.java:44`：`expected: <0> but was: <100>`。还原后复绿 |
+| 1 | 跑 `io.github.bearisbug.synaxis.ServerConfigTest` | 6 个 0 失败：`ServerConfig.defaults().maxVisibleEntitiesPerPlayer()` 为 0；`builder().maxVisibleEntitiesPerPlayer(-1).build()` 抛 `IllegalArgumentException` |
+| 2 | 反证有齿（默认 100）：`ServerConfig.Builder` 的默认值改为 100，重跑，再还原 | `6 tests completed, 1 failed`，红在 `ServerConfigTest.java:48`：`expected: <0> but was: <100>`。还原后复绿 |
 
 后置：确认 `ServerConfig.java` 没有残留改动。
 

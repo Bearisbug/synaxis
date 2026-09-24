@@ -12,6 +12,7 @@ import io.github.bearisbug.synaxis.plugin.PluginContext;
 import io.github.bearisbug.synaxis.plugin.PluginEvents;
 import io.github.bearisbug.synaxis.plugin.PluginLifecycle;
 import io.github.bearisbug.synaxis.plugin.PluginScheduler;
+import io.github.bearisbug.synaxis.plugin.TabList;
 import org.slf4j.Logger;
 
 import java.nio.file.Path;
@@ -31,11 +32,13 @@ import java.nio.file.Path;
  * @param permissions   the permission nodes of the players ({@code docs/DESIGN-PROD.md} API-PROD-010)
  * @param moderation    the bans and the whitelist ({@code docs/DESIGN-PROD.md} API-PROD-009)
  * @param commands      the plugin's commands ({@code docs/DESIGN-PROD.md} API-PROD-011)
+ * @param tabList       who appears in whose tab list ({@code docs/DESIGN-PROD.md} API-PROD-020)
  * @param logger        a logger named after the plugin
  */
 record PluginContextImpl(ServerProcess process, PluginEvents events, PluginScheduler scheduler,
                          PluginChannels channels, PluginAdmission admission, Path dataDirectory,
                          PluginAnalytics analytics, PlayerDataStore playerData, PluginLifecycle lifecycle,
-                         Permissions permissions, Moderation moderation, PluginCommands commands, Logger logger)
+                         Permissions permissions, Moderation moderation, PluginCommands commands, TabList tabList,
+                         Logger logger)
         implements PluginContext {
 }

@@ -138,6 +138,19 @@ public interface PluginContext {
     }
 
     /**
+     * Who appears in whose tab list ({@code docs/DESIGN-PROD.md} API-PROD-020).
+     * <p>
+     * The host's context always has one; the default is there for the same reason as
+     * {@link #playerData()}'s.
+     *
+     * @return the tab list capability of this plugin
+     * @throws UnsupportedOperationException from a context that is not the host's
+     */
+    default TabList tabList() {
+        throw new UnsupportedOperationException("only the host's plugin context has a tab list");
+    }
+
+    /**
      * A logger named after this plugin.
      *
      * @return the logger of this plugin

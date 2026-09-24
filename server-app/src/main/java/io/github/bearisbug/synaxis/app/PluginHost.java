@@ -50,6 +50,7 @@ final class PluginHost {
     private final PlayerStore store;
     private final HostPermissions permissions;
     private final HostModeration moderation;
+    private final TabListSlot tabList;
     private final List<LoadedPlugin> enabled = new ArrayList<>();
 
     /**
@@ -83,6 +84,7 @@ final class PluginHost {
         this.store = store;
         this.permissions = permissions;
         this.moderation = moderation;
+        this.tabList = new TabListSlot(process.connection());
         this.handshake = new HandshakeGate(HandshakeGate.phase(), HandshakeGate.BUDGET, ledger);
         process.eventHandler().addChild(hostNode);
         router.attach(hostNode);
@@ -160,7 +162,7 @@ final class PluginHost {
                     loaded.events(), scheduler,
                     new PluginChannelsImpl(id, router), new PluginAdmissionImpl(id, admission),
                     dataDirectory, ledger::record, playerData, playerData, permissions, moderation, commands,
-                    LoggerFactory.getLogger("plugin." + id)));
+                    new PluginTabListImpl(id, tabList), LoggerFactory.getLogger("plugin." + id)));
         } catch (Throwable throwable) {
             playerData.discard();
             LOGGER.error("Plugin failed to enable: plugin_id={}", id, throwable);
@@ -273,7 +275,8 @@ final class PluginHost {
         router.unregisterAll(loaded.id());
         admission.unregister(loaded.id());
         loaded.commands().unregisterAll();
-        LOGGER.info("Took back the capabilities of plugin_id={}: event node, tasks, channels, admission provider, commands",
-                loaded.id());
+        tabList.unregister(loaded.id());
+        LOGGER.info("Took back the capabilities of plugin_id={}: event node, tasks, channels, admission provider, commands, "
+                + "tab list visibility", loaded.id());
     }
 }

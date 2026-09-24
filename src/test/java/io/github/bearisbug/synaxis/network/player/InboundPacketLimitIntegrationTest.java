@@ -175,6 +175,9 @@ public class InboundPacketLimitIntegrationTest {
             peer.close();
             accepted.close();
             server.close();
+            // The pooled buffers are shared by the whole JVM and this test grows some of them past
+            // pooledBufferSize, which other tests size their packets by
+            PacketVanilla.PACKET_POOL.clear();
         }
     }
 }

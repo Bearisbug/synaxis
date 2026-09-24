@@ -4,6 +4,7 @@ import io.github.bearisbug.synaxis.entity.Player;
 import io.github.bearisbug.synaxis.event.player.PlayerPacketOutEvent;
 import io.github.bearisbug.synaxis.network.ConnectionState;
 import io.github.bearisbug.synaxis.network.NetworkBuffer;
+import io.github.bearisbug.synaxis.network.packet.PacketVanilla;
 import io.github.bearisbug.synaxis.network.packet.PacketWriting;
 import io.github.bearisbug.synaxis.network.packet.server.BufferedPacket;
 import io.github.bearisbug.synaxis.network.packet.server.FramedPacket;
@@ -168,6 +169,9 @@ public class OutboundBacklogIntegrationTest {
             peer.close();
             accepted.close();
             server.close();
+            // The pooled buffers are shared by the whole JVM and this test grows some of them past
+            // pooledBufferSize, which other tests size their packets by
+            PacketVanilla.PACKET_POOL.clear();
             try {
                 reader.join(5_000);
             } catch (InterruptedException _) {

@@ -301,11 +301,15 @@ public class PlayerIntegrationTest {
         tracker.assertCount(1, packet ->
                 packet.actions().contains(PlayerInfoUpdatePacket.Action.UPDATE_LATENCY));
 
+        // A keep alive answer only stores the latency; the tab list gets it with everyone else's
         var tracker2 = connection.trackIncoming(PlayerInfoUpdatePacket.class);
         player.refreshLatency(100);
-
-        tracker2.assertCount(1, packet ->
+        tracker2.assertCount(0, packet ->
                 packet.actions().contains(PlayerInfoUpdatePacket.Action.UPDATE_LATENCY));
+
+        var tracker3 = connection.trackIncoming(PlayerInfoUpdatePacket.class);
+        env.process().connection().sendTabListLatencies();
+        tracker3.assertSingle(packet -> assertEquals(100, packet.entries().getFirst().latency()));
     }
 
     @Test

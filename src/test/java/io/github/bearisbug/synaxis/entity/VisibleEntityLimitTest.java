@@ -48,15 +48,20 @@ public class VisibleEntityLimitTest {
         return entity;
     }
 
-    /** 150 entities on a spiral out from the center, each farther than the one before, 3 to 63 blocks. */
-    private static List<Entity> spiral(Instance instance, Pos center) {
-        final List<Entity> entities = new ArrayList<>(ORDINARY);
-        for (int i = 0; i < ORDINARY; i++) {
+    /**
+     * 150 entities on a spiral out from the center, each farther than the one before, 3 to 63 blocks.
+     *
+     * @return the entities, nearest first whatever order they were spawned in
+     */
+    private static List<Entity> spiral(Instance instance, Pos center, boolean farthestFirst) {
+        final Entity[] entities = new Entity[ORDINARY];
+        for (int n = 0; n < ORDINARY; n++) {
+            final int i = farthestFirst ? ORDINARY - 1 - n : n;
             final double radius = 3 + i * 0.4;
             final double angle = i * 2.399963229728653;
-            entities.add(spawn(instance, center.add(radius * Math.cos(angle), 0, radius * Math.sin(angle))));
+            entities[i] = spawn(instance, center.add(radius * Math.cos(angle), 0, radius * Math.sin(angle)));
         }
-        return entities;
+        return List.of(entities);
     }
 
     private void refresh() {
@@ -87,8 +92,9 @@ public class VisibleEntityLimitTest {
             boss.setInstance(instance, CENTER.add(70, 0, i * 4)).join();
             alwaysVisible.add(boss);
         }
-        final List<Entity> ordinary = spiral(instance, CENTER).reversed();
+        final List<Entity> ordinary = spiral(instance, CENTER, true);
         assertEquals(LIMIT, seenBy(player, ordinary).size(), "past the limit an entity is turned away when it arrives");
+        assertFalse(ordinary.getFirst().isViewer(player), "the nearest one arrived last, with no place left");
 
         refresh();
         assertEquals(nearest(ordinary, CENTER, LIMIT), seenBy(player, ordinary));
@@ -99,7 +105,7 @@ public class VisibleEntityLimitTest {
     public void movingChangesWhichOnesAreNearest() {
         final Instance instance = start(LIMIT);
         final Player player = env.createPlayer(instance, CENTER);
-        final List<Entity> ordinary = spiral(instance, CENTER);
+        final List<Entity> ordinary = spiral(instance, CENTER, false);
         refresh();
         assertEquals(nearest(ordinary, CENTER, LIMIT), seenBy(player, ordinary));
 
@@ -115,7 +121,7 @@ public class VisibleEntityLimitTest {
     public void markingAnEntityAlwaysVisibleTakesItOutOfTheCount() {
         final Instance instance = start(LIMIT);
         final Player player = env.createPlayer(instance, CENTER);
-        final List<Entity> ordinary = spiral(instance, CENTER);
+        final List<Entity> ordinary = spiral(instance, CENTER, false);
         refresh();
         final Entity farthest = ordinary.getLast();
         assertFalse(farthest.isViewer(player));
@@ -146,6 +152,7 @@ public class VisibleEntityLimitTest {
         refresh();
         assertTrue(near.isViewer(player));
         assertFalse(far.isViewer(player));
+        assertFalse(far.hasPredictableViewers(), "a packet for everyone around the chunk would reach the player");
 
         final Collector<EntityPositionSyncPacket> moves = connection.trackIncoming(EntityPositionSyncPacket.class);
         near.acquirable().sync(owned -> owned.teleport(CENTER.add(4, 0, 0)).join());
@@ -159,7 +166,7 @@ public class VisibleEntityLimitTest {
     public void withoutALimitThePlayerSeesThemAll() {
         final Instance instance = start(0);
         final Player player = env.createPlayer(instance, CENTER);
-        final List<Entity> ordinary = spiral(instance, CENTER);
+        final List<Entity> ordinary = spiral(instance, CENTER, false);
         refresh();
         assertEquals(ORDINARY, seenBy(player, ordinary).size());
     }

@@ -15,6 +15,7 @@
 
 | 日期 | 改动 | 作者 |
 | --- | --- | --- |
+| 2026-09-24 | 跟进 `docs/DESIGN-PROD.md` 第 5 波 5B（v0.7.2；`REQ-PROD-013` 入站包速率闸，G11，`API-PROD-012`；`REQ-PROD-025` 出站积压，G22；`REQ-PROD-026` 区块下发上限，G23；`REQ-PROD-027` Tab 列表，G24；后三条都在 `API-PROD-020`）。**新增 §4「生产就绪 · 第 5 波 5B：入站限流、出站积压、区块上限与 Tab 列表」十二条 `TC-PROD-290`～`TC-PROD-301`**：7 s 内 600 包被踢、582 包不踢（290）、解压 4,500,000 B/s 被踢与 3,000,000 B/s 不踢（291）、补全 20 次/秒（292）、窗口滑动与按类型覆盖、配置写错拒启（293）、只有移动包时先丢不踢且丢掉的不写出（294）、丢完仍超限断线 `synaxis:outbound-backlog` 与计数、模组文案（295）、回报 1000 块/tick 时每 tick ≤ 4 与引擎默认 64（296）、新人一个多条目 PlayerInfo（297）、延迟批量（298）、可见性 `listed=false` 与撤销（299）、`PluginContext#tabList()` 的持有、拒绝、收回与异常（300）、200 人 walk 10 min 压测（301）；每条带真跑过的反证与红的位置。`PlayerIntegrationTest#latencyTest` 按批量延迟改了预期。§5 生产就绪域加一行 | Bearisbug |
 | 2026-09-24 | 跟进 `docs/DESIGN-PROD.md` 第 5 波 5A（`REQ-PROD-018` 指标导出，G16，`API-PROD-015`；`REQ-PROD-029` 压测 harness，G26，`API-PROD-025`、`ADR-PROD-013`）。**新增 §4「生产就绪 · 第 5 波 5A：指标导出与压测 harness」十二条 `TC-PROD-260`～`TC-PROD-271`**：端点答 Prometheus 文本、4 条 TickThread 与调度线程各一组 tick 时长、404 / 405、地址解析与 GC 之后台账计数仍更新（260，§19 指标场景）、`synaxis_*` 名字与 `API-PROD-015` 名单一致（261）、存储语句耗时与保存结果（262，要数据库）、引擎的包与字节、加解密耗时、`hasJoined` 结果与重试、看门狗警告（263）、真进程默认装配与绑定被占拒启（264，端口 25651）、机器人回区块回执超过首批 9 块、上行包速率窗口与被踢计入掉线（265，§19 harness 场景的缩小版）、加密档（266）、`merge` 合并与判定（267）、`sample` 读 JFR 与端点文本（268）、两个机器人进程 `--bot-offset` 分摊（269）、`flood` 与闸门计数导出（270）、200 人 walk 30 min 同机基线（271，判定未通过：18 个 tick 超 50 ms，17 个与 G1 年轻代暂停重叠，这一归因出自已删的 JFR、不可复算；产物在 `docs/research/production-readiness-2026-09/load/walk200-30m/`）；每条带真跑过的反证与红的位置，本节开头列出与设计的六处口径差异。§5 生产就绪域加一行 | Bearisbug |
 | 2026-09-24 | 跟进 `docs/DESIGN-PROD.md` v0.7.1。**新增 `TC-PROD-214`**（`REQ-PROD-005`）：进了 PLAY、还没进世界就断开的玩家照样登出保存并放租约——引擎两种断开时机各派发一次 `PlayerDisconnectEvent`、已进世界的仍只一次，存储放下该玩家且同账号马上重登成功，真进程三次 `login --hold 0` 都进得来、`stop` 不空等 30 s；两条反证（断开不交给 tick、已开始进世界的也在队列派发）与修复前的真进程现象都写进期望列。**新增 `TC-PROD-215`**（`REQ-PROD-011`）：玩家只能授予或收回节点都被自己覆盖的角色，带 `*` 的角色只有持有 `*` 的玩家能动，控制台不受限，越权回 `synaxis:role-above-sender`、记 `result=above_sender`；修复前的红与两条反证（不查发送者、`*` 当普通节点放行）写进期望列。`TC-PROD-210` 随模组多一条译文改为八条，加第 3 步新键的反证。§5 生产就绪域 3A 那行加触发条件，4A 那行加 `TC-PROD-215` | Bearisbug |
 | 2026-09-24 | 跟进 `docs/DESIGN-PROD.md` 第 4 波 4C（`REQ-PROD-012`，G10，`API-PROD-011`）。**新增 §4「生产就绪 · 第 4 波 4C：控制台与插件命令」十八条 `TC-PROD-240`～`TC-PROD-257`**：控制台 `list`、`tps`、`save` 回执可读、未知与不完整命令一行 INFO 不带栈（240，§19 第一条，反证把 `ConsoleSender` 换回组件日志器即红成空行）、节点决定内置命令的执行与补全而 `permissionLevel=4` 不授权（241）、`broadcast` 与 `kick` 默认原因（242）、`stop [秒数]` 倒计时、解析不了的秒数不停机、第二次 `stop` 回已在停机（243）、`tps` 的窗口与百分位（244）、插件命令命名空间与无前缀名让给先注册者（245）、必抛的插件命令 100 次一行日志且禁用后两个名字都不存在（246，§19 第二条）、在线时注册注销命令重发命令树（247）、角色变化重发命令树（248，要数据库）、宿主日志规则覆盖新类（249）、模组九条回执译文（250）、ABI 门（251）、4 线程严格模式（252）、真进程控制台与 `stop 2` 后自行退出（253，端口 25643）、控制台一行命令抛异常只写一行 ERROR 且下一行照常执行（254）、引擎已在停机时 `stop` 回已在停机并记 `invalid`（255）、插件被收回之后再注册的命令被丢弃（256）、控制台写服务端译文时子组件不重复也不被截掉（257）；每条带真跑过的反证与红的位置。§5 生产就绪域加一行 | Bearisbug |
@@ -4075,6 +4076,162 @@ jcmd "$pid" VM.flags | tr ' ' '\n' | grep -cxE -- '-XX:\+UseG1GC|-XX:InitialHeap
 
 后置：服务端与采样进程都已按 pid 停掉，25651 无监听；JFR 已删（`ls $TMPDIR | grep -c synaxis-loadtest` 为 0）；工作目录已删。本条的 18 个慢 tick 是未达标项，归属与处置见 5A 交付说明的 design_issues。
 
+### 生产就绪 · 第 5 波 5B：入站限流、出站积压、区块上限与 Tab 列表
+
+对应 `REQ-PROD-013`（清单 G11，`API-PROD-012`，§19「入站包超速被踢」「解压字节超速被踢」「补全限频」，§15 入站限流行）、`REQ-PROD-025`（G22，`API-PROD-020`，§19「出站积压超限先丢位置包再断线」，§21 出站积压断线 SLI）、`REQ-PROD-026`（G23，§19「改过的客户端不能抬高区块下发速率」）与 `REQ-PROD-027`（G24，§19「进服只收一个多条目 PlayerInfo 包」）。实现：
+
+- 入站（引擎 `network/player`）：`InboundPacketLimits` 按进程配置建每连接的计数器（`WindowCounter`，20 格滑动窗口），`PlayerSocketConnection` 在把包交给 `Player#addPacketToQueue` 之前问它接收、丢弃还是断线，解码回调 `readClientPacket` 在开了压缩的连接上累计每帧解出的负载字节；超限断线前写一行 INFO `Inbound packet limit exceeded`。新键见 `API-PROD-012`，`max-packets` 默认 582 = `TC-PROD-271` 第 5 步的 7 s 上行 P99 291 × 2。
+- 出站（引擎）：`PlayerSocketConnection#sendPacket` 记积压字节（已成帧的按实际字节，还是对象的每个 64 B），超过 `synaxis.outbound.max-backlog-bytes` 先丢排队的实体移动包（`BufferedPacket`），写线程取完这批之前新的移动包不入队，丢完仍超限以新键 `synaxis:outbound-backlog`（`DisconnectReasons.OUTBOUND_BACKLOG`）断线并计 `TrafficCounters#backlogKicks`；宿主 `HostMetrics` 的 `synaxis_outbound_backlog_kicks_total` 改读这个数（5A 注册的是恒为 0 的占位计数器）。模组 `en_us` / `zh_cn` 加这个键的文案。
+- 区块：引擎本来就在 `Player#onChunkBatchReceived`（夹回报）与 `Player#sendPendingChunks`（夹每次待发额度）两处按 `synaxis.chunk-queue.max-per-tick` 封顶，本波只补测试；分片宿主还不存在，4 块/tick 只能在命令行给（`docs/DESIGN-PROD.md` §28.2 待办）。
+- Tab 列表：`Player#UNSAFE_init` 把已在线的全体条目合成一个包发给新人，自己的条目按「谁列出它」分两组广播；`Player#refreshLatency` 只存值，`ConnectionManager#tick` 每 `synaxis.tab-latency-interval-ms` 调一次 `sendTabListLatencies`（全体延迟一个包发给每人）；`ConnectionManager#setTabListVisibility` / `isListedFor` 管谁列出谁。插件面 `PluginContext#tabList()`（默认方法，`plugin-api` 新接口 `TabList`），宿主 `TabListSlot` 每进程一份、禁用时收回，判定抛异常按列出、经 `LogBudget` 输出。
+
+本节与 `docs/DESIGN-PROD.md` v0.7.2 一致（设计已按实现回写，差异见其 §1 v0.7.2 行）。§19 场景的缩小处：Tab 合包用 5 个在线玩家代替 499 个；出站积压用测试线程当写线程、先不冲刷，代替把对端接收窗口压到 4 KB；两处缩小不改判据的形状。
+
+前置与「跑 `<类>`」的写法同 3A 一节；本节不要数据库，`TC-PROD-301` 起真进程，端口 25652。反证一律是「临时改一处实现、重跑、看红、还原、重跑复绿」，还原后 `git status` 必须干净。
+
+#### `TC-PROD-290` 一条连接 7 s 内发 600 个包被踢 `synaxis:protocol-error`，恰好 582 个不踢 — 对应 `REQ-PROD-013` · 级别: 冒烟 · 执行者: AI
+
+前置：工作副本干净。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `io.github.bearisbug.synaxis.network.player.InboundPacketLimitIntegrationTest`（根项目 `:test`），看 `sixHundredPacketsInSevenSecondsKickWithProtocolError` 与 `theLimitItselfIsLetThrough` | 5 个 0 失败。测试在回环上开一对真 socket，服务端一侧是 PLAY 状态、带 `Player` 的 `PlayerSocketConnection`，由测试线程调 `read` 读；对端一次写入 600 个 `ClientTickEnd` 帧：连接离线，冲刷出去的恰好 1 个 `DisconnectPacket`、键 `synaxis:protocol-error`。写入 582 个：连接在线，582 个全部进了玩家入站队列 |
+| 2 | 反证有齿（超限不踢）：`PlayerSocketConnection#processBatch` 里的 `case KICK -> kickOverInboundLimit();` 改为 `case KICK -> player.addPacketToQueue(packet);`，重跑，再还原 | `5 tests completed, 1 failed`，红在 `InboundPacketLimitIntegrationTest.java:51`：`600 packets at once are over 582 in 7 s ==> expected: <false> but was: <true>`。还原后复绿 |
+
+后置：确认 `PlayerSocketConnection.java` 没有残留改动。
+
+#### `TC-PROD-291` 开了压缩的连接 1 s 内解压 4,500,000 B 被踢，3,000,000 B 不踢 — 对应 `REQ-PROD-013` · 级别: 回归 · 执行者: AI
+
+前置：工作副本干净。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 同一类，看 `inflatingMoreThanFourMebibytesInOneSecondKicks` 与 `inflatingThreeMegabytesInOneSecondIsFine` | 通过。连接先在 LOGIN 状态开压缩再转 PLAY；对端按阈值 256 压缩写入 150 个负载 30,000 B（全零）的插件消息，共 4,500,000 B > 4 MiB（4,194,304）：连接离线，`DisconnectPacket` 键 `synaxis:protocol-error`。写入 100 个（3,000,000 B）：在线，100 个全部进队列 |
+| 2 | 反证有齿（不计解压字节）：`readClientPacket` 里的 `admitInflated(buffer.readableBytes(), System.nanoTime())` 改为 `admitInflated(0, System.nanoTime())`，重跑，再还原 | `5 tests completed, 1 failed`，红在 `:74`：`expected: <false> but was: <true>`。还原后复绿 |
+
+后置：确认 `PlayerSocketConnection.java` 没有残留改动。
+
+#### `TC-PROD-292` 1 s 内 100 个补全只有 20 个到 tick 线程，其余丢弃、不断线 — 对应 `REQ-PROD-013` · 级别: 回归 · 执行者: AI
+
+前置：工作副本干净。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 同一类，看 `tabCompletionsOverTwentyInOneSecondAreDropped` | 通过：对端一次写入 100 个 `ClientTabComplete`，连接在线，`interpretPacketQueue` 派发出的补全恰好 20 个（数 `PlayerPacketEvent`，测试把事件取消掉，补全本身不执行） |
+| 2 | 反证有齿（补全不限）：`InboundPacketLimits.Limiter#admit` 里的 `if (count > tabCompletesPerSecond) verdict` 改为 `if (count > tabCompletesPerSecond + 1000L) verdict`，重跑，再还原 | `5 tests completed, 1 failed`，红在 `:97`：`expected: <20> but was: <100>`。还原后复绿 |
+
+后置：确认 `InboundPacketLimits.java` 没有残留改动。
+
+#### `TC-PROD-293` 计数规则：窗口会滑走、全部包可改为丢弃、按类型覆盖只管自己的类型、配置写错拒启 — 对应 `REQ-PROD-013` · 级别: 回归 · 执行者: AI
+
+前置：工作副本干净。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `io.github.bearisbug.synaxis.network.player.InboundPacketLimitsTest` | 7 个 0 失败：引擎默认 7,000 ms / 582 / `KICK` / 4 MiB / 20；1,000 ms 窗口 10 包时第 11 个 `KICK`、1,100 ms 之后再来一个 `ACCEPT`；`action=DROP` 时超出的丢弃；`ClientAnimationPacket=2:DROP` 让第 3、4 个动画包丢弃、别的类型照收；前后带空格、动作小写的 ` ClientAnimationPacket = 2 : kick ` 第 3 个 `KICK`；`ClientAnimationPacket`、`=2`、不存在的类名、上限 0、动作 `WARN`、同一类型两次，以及四个数值键取 0，都让 `ServerConfig` 构造抛 `IllegalArgumentException`；解压字节 100 B/s 时 60 + 60 超限，1.2 s 后再 60 放行 |
+| 2 | 反证有齿（格子过期不减）：`WindowCounter#add` 里删去 `this.sum -= buckets[index];` 一行，重跑，再还原 | `7 tests completed, 1 failed`，红在 `InboundPacketLimitsTest.java:48`：`expected: <ACCEPT> but was: <KICK>`。还原后复绿 |
+| 3 | 反证有齿（覆盖不看动作）：`admit` 里 `over(verdict, override.action(),` 改为 `over(verdict, PacketLimitAction.DROP,`，重跑，再还原 | `7 tests completed, 1 failed`，红在 `:70`：`expected: <[ACCEPT, ACCEPT, KICK]> but was: <[ACCEPT, ACCEPT, DROP]>`。还原后复绿 |
+
+后置：确认 `WindowCounter.java`、`InboundPacketLimits.java` 没有残留改动。
+
+#### `TC-PROD-294` 只有实体移动包时积压超限先丢、不断线，丢掉的包不写出，写线程取完后移动包恢复 — 对应 `REQ-PROD-025` · 级别: 冒烟 · 执行者: AI
+
+前置：工作副本干净。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `io.github.bearisbug.synaxis.network.player.OutboundBacklogIntegrationTest`，看 `movementOverTheBacklogIsShedWithoutAKick` | 2 个 0 失败。PLAY 状态带 `Player` 的连接，写线程就是测试线程、发包时不冲刷（对端等于停读）。连发 400 个 16 KiB 的 `BufferedPacket`：第 257 个越过 4 MiB，前 257 个全部丢弃，后 143 个不入队；连接在线、积压读数 0、`backlogKicks` 0。再冲刷 3 次：对端收到 0 字节。再发 10 个：对端收到 163,840 字节（10 × 16 KiB），连接在线 |
+| 2 | 反证有齿（超限不丢移动包）：`checkBacklog` 里 `this.shedBytes += movementBytes;`、`backlogBytes.addAndGet(-movementBytes);`、`this.movementBytes = 0;` 三行换成一行 `if (movementBytes < 0) this.shedBytes = 0;`，重跑，再还原 | `2 tests completed, 2 failed`：本条红在 `:51`（连接被踢，`expected: <true> but was: <false>`），`TC-PROD-295` 那一条红在 `:73`：`shedding the movement brings the backlog under the limit`。还原后复绿 |
+| 3 | 反证有齿（写线程照写丢掉的包）：`writeMovement` 里 `if (shedBytes > 0) {` 改为 `if (shedBytes < 0) {`，重跑，再还原 | `2 tests completed, 1 failed`，红在 `:57`：`shed movement must not reach the peer ==> expected: <0> but was: <49152>`（3 次冲刷各写出一个 16 KiB 的包）。还原后复绿 |
+| 4 | 反证有齿（丢包期间新移动包照常入队）：`offer` 里 `if (shedBytes > 0) return;` 改为 `if (shedBytes < 0) return;`，重跑，再还原 | `2 tests completed, 1 failed`，红在 `:52`：`the shed movement no longer counts ==> expected: <0> but was: <2342912>`（143 × 16,384）。还原后复绿 |
+
+后置：确认 `PlayerSocketConnection.java` 没有残留改动。
+
+#### `TC-PROD-295` 丢完移动包仍超限时断线 `synaxis:outbound-backlog`、计数加 1，模组带这个键的文案 — 对应 `REQ-PROD-025` · 级别: 回归 · 执行者: AI
+
+前置：工作副本干净；第 3 步要先在仓库根跑 `./gradlew :protocol:publishToMavenLocal --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts`，JVM 带代理（`client-fabric` 自己声明 `maven.fabricmc.net`）。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 同一类，看 `movementIsShedBeforeTheConnectionIsKicked` | 通过：先发 100 个 16 KiB 移动包、再发 200 个 16 KiB 的 `FramedPacket`（共 4.69 MiB）：越限时丢掉 100 个移动包，剩 200 × 16,384 = 3,276,800 B，连接在线、计数 0；再发 57 个 `FramedPacket`（257 × 16 KiB > 4 MiB）：连接离线，`backlogKicks` 1，冲刷后对端收到的 `DisconnectPacket` 键 `synaxis:outbound-backlog` |
+| 2 | 反证有齿（断线不计数）：删去 `checkBacklog` 里的 `traffic.backlogKicked();`，重跑，再还原 | `2 tests completed, 1 failed`，红在 `:80`：`expected: <1> but was: <0>`。还原后复绿 |
+| 3 | `cd client-fabric && ./gradlew build --no-daemon`，看 `ConnectionGateTextTest` | `BUILD SUCCESSFUL`，模组 104 个测试 0 失败；`ConnectionGateTextTest` 的两个参数 `en_us`、`zh_cn` 都通过，它要求的键里加了 `synaxis:outbound-backlog` |
+| 4 | 反证有齿（缺文案）：删去 `client-fabric/src/main/resources/assets/synaxis/lang/zh_cn.json` 的 `synaxis:outbound-backlog` 一行，`./gradlew test --tests '*ConnectionGateTextTest' --no-daemon`，再还原 | `2 tests completed, 1 failed`：`[2] "zh_cn"` 红在 `ConnectionGateTextTest.java:32`：`zh_cn has no text for synaxis:outbound-backlog`。还原后复绿 |
+
+后置：确认 `PlayerSocketConnection.java` 与 `zh_cn.json` 没有残留改动。
+
+#### `TC-PROD-296` 客户端回报 1000 块/tick，每 tick 发给它的区块仍不超过 `synaxis.chunk-queue.max-per-tick`：设 4 时首个 tick 也是 4，引擎默认仍是 64 — 对应 `REQ-PROD-026` · 级别: 冒烟 · 执行者: AI
+
+前置：工作副本干净。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `io.github.bearisbug.synaxis.entity.player.ChunkSendCapTest` | 2 个 0 失败。测试自建进程（`maxChunksPerTick` 4 或引擎默认），一个玩家按视距 8（289 块）进平地，每 tick 之后以 `onChunkBatchReceived(1000f)` 回执。设 4：40 个 tick 里每 tick 最多 4 块，进场那个 tick 恰好 4 块（原本首批直接发 9 块）。默认配置：`ServerConfig.defaults().maxChunksPerTick()` 为 64，20 个 tick 里单 tick 最多恰好 64 块 |
+| 2 | 反证有齿（待发额度不封顶）：`Player#sendPendingChunks` 里 `pendingChunkCount = Math.min(pendingChunkCount + targetChunksPerTick, process().config().maxChunksPerTick());` 改为 `pendingChunkCount = pendingChunkCount + targetChunksPerTick;`，重跑，再还原 | `2 tests completed, 1 failed`，红在 `ChunkSendCapTest.java:39`：`[9, 4, 4, …] ==> expected: <4> but was: <9>`（首批 9 块在进场 tick 一次发出）。还原后复绿 |
+| 3 | 对照（回报处的夹值单独拿掉）：`onChunkBatchReceived` 里 `config.maxChunksPerTick()` 改为 `Float.MAX_VALUE`，重跑，再还原 | 仍 `BUILD SUCCESSFUL`：发送处的封顶单独就挡住了 1000 块的回报。两处是双保险，本条只对发送处有齿 |
+
+后置：确认 `Player.java` 没有残留改动。分片宿主落地前本条从测试自建的进程起；落地后第 1 步改为从分片宿主的默认配置起（`docs/DESIGN-PROD.md` §28.2 待办）。
+
+#### `TC-PROD-297` 新人进服时已在线的全体玩家合成一个 `PlayerInfoUpdatePacket`，已在线的每人只收到新人一次 — 对应 `REQ-PROD-027` · 级别: 冒烟 · 执行者: AI
+
+前置：工作副本干净。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `io.github.bearisbug.synaxis.entity.player.TabListIntegrationTest`，看 `aJoiningPlayerGetsEveryoneOnlineInOnePacket` | 3 个 0 失败。5 人在线时第 6 人进服：他收到的带 `ADD_PLAYER` 的包里，一个只含他自己，恰好一个含其余 5 人（UUID 集合相等）；5 个老玩家各收到 1 个带 `ADD_PLAYER` 的包、只含新人 |
+| 2 | 反证有齿（逐人一包）：`UNSAFE_init` 里 `if (!online.isEmpty()) sendPacket(new PlayerInfoUpdatePacket(EnumSet.allOf(...), online));` 改为对 `online` 逐条 `sendPacket(new PlayerInfoUpdatePacket(EnumSet.allOf(...), List.of(entry)))`，重跑，再还原 | `3 tests completed, 1 failed`，红在 `TabListIntegrationTest.java:57`：`every player online, in the same packet`（收到的是 5 个单条目包）。还原后复绿 |
+
+后置：确认 `Player.java` 没有残留改动。
+
+#### `TC-PROD-298` keep-alive 应答只存延迟，全体延迟每批一个包发给每人 — 对应 `REQ-PROD-027` · 级别: 回归 · 执行者: AI
+
+前置：工作副本干净。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 同一类，看 `latenciesOnlyGoOutAllTogether`；再跑 `io.github.bearisbug.synaxis.entity.player.PlayerIntegrationTest` 的 `latencyTest` | 通过。3 人在线，10 轮 `refreshLatency` 各夹一次 tick（远不到 30 s 间隔）：3 人一个 `UPDATE_LATENCY` 包都没收到；调一次 `ConnectionManager#sendTabListLatencies`：每人恰好 1 个，含 3 条，延迟是各自最后一次的值（9、109、209）。`latencyTest`：进服那个包带自己的延迟，之后 `refreshLatency(100)` 不发包，批量发出的包里延迟为 100 |
+| 2 | 反证有齿（应答即广播，原写法）：`refreshLatency` 方法体末尾加回 `PacketSendingUtils.broadcastPlayPacket(process(), new PlayerInfoUpdatePacket(PlayerInfoUpdatePacket.Action.UPDATE_LATENCY, infoEntry()));`，重跑前一条，再还原 | `3 tests completed, 1 failed`，红在 `:88`：`no latency before the batch ==> expected: <[]> but was: <[PlayerInfoUpdatePacket[actions=[UPDATE_LATENCY], …`。还原后复绿 |
+
+后置：确认 `Player.java` 没有残留改动。
+
+#### `TC-PROD-299` 可见性让玩家在别人的列表里 `listed=false` 但照样收到条目，自己总列出自己；撤掉后每人收到一个 `UPDATE_LISTED` 包 — 对应 `REQ-PROD-027` · 级别: 回归 · 执行者: AI
+
+前置：工作副本干净。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 同一类，看 `theVisibilityUnlistsWithoutHidingTheEntry` | 通过。`setTabListVisibility((_, subject) -> !名字是 hidden)` 后 `watching`、`hidden` 先后进服：`watching` 收到 `hidden` 的条目、`listed` 为 false；`hidden` 自己的列表里自己与 `watching` 都是 true。`setTabListVisibility(null)`：`watching` 恰好收到 1 个包，带 `UPDATE_LISTED`，`hidden` 为 true |
+| 2 | 反证有齿（不问可见性）：`ConnectionManager#isListedFor` 的 `return visibility == null \|\| visibility.test(viewer, subject);` 改为 `return visibility == null \|\| visibility != null;`，重跑，再还原 | `3 tests completed, 1 failed`，红在 `:117`：`expected: <false> but was: <true>`。还原后复绿 |
+
+后置：确认 `ConnectionManager.java` 没有残留改动。
+
+#### `TC-PROD-300` `PluginContext#tabList()`：每进程一份、第二个插件再设被拒、持有者禁用时收回、判定抛异常按列出 — 对应 `REQ-PROD-027` · 级别: 回归 · 执行者: AI
+
+前置：工作副本干净。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `io.github.bearisbug.synaxis.app.TabListVisibilityIntegrationTest`（`:server-app:test`） | 2 个 0 失败。插件 `hider` 设「名字是 hidden 的不列出」，插件 `latecomer` 再设时 `setVisibility` 抛 `IllegalStateException`；`isListedFor(viewer, hidden)` 为 false、`isListedFor(viewer, viewer)` 为 true；`disableAll` 之后为 true。插件 `broken` 的判定必抛：`isListedFor` 返回 true，异常不外溢 |
+| 2 | 反证有齿（禁用不收回）：删去 `PluginHost#tearDown` 里的 `tabList.unregister(loaded.id());`，重跑，再还原 | `2 tests completed, 1 failed`，红在 `TabListVisibilityIntegrationTest.java:74`：`disabling the owner lists everyone again ==> expected: <true> but was: <false>`。还原后复绿 |
+| 3 | 反证有齿（不拦第二个插件）：`TabListSlot#set` 的 `if (current != null && !current.equals(pluginId))` 改为 `if (current != null && current.equals("no such plugin"))`，重跑，再还原 | `2 tests completed, 1 failed`，红在 `:71`：`a second plugin cannot take the slot ==> Unexpected null value`。还原后复绿 |
+| 4 | 反证有齿（异常外溢）：`TabListSlot#set` 里 `catch (RuntimeException e)` 改为 `catch (UnsupportedOperationException e)`，重跑，再还原 | `2 tests completed, 1 failed`：`aVisibilityThatThrowsListsThePlayer` 抛 `IllegalStateException: probe visibility failure`，栈经 `TabListSlot.java:42`、`ConnectionManager.java:639` 到测试 `:81`。还原后复绿 |
+
+后置：确认 `PluginHost.java`、`TabListSlot.java` 没有残留改动。
+
+#### `TC-PROD-301` 200 人 walk 10 min（服务端与机器人同机）：入站限流 0 误踢、出站积压 0 断线，Tab 列表包数降到基线的零头 — 对应 `REQ-PROD-013`、`REQ-PROD-025`、`REQ-PROD-027` · 级别: 回归 · 执行者: AI
+
+前置：`./gradlew :server-app:installDist :loadtest:installDist`；本机没有别的压测（`pgrep -fl synaxis.app.Main`、`pgrep -fl loadtest` 为空）；起跑前记下 `uptime` 与 `sysctl -n vm.swapusage`。机器：Apple M4 Pro 12 核 / 24 GiB，macOS，JDK 25.0.4.1，**服务端与机器人在同一台机器、走回环**，本机同时有别的会话在跑构建与测试（各步写出当时的 `load1`）。服务端设置与 `TC-PROD-271` 相同，只换端口 25652、`shard-id` w5b；限流与出站键都是引擎默认（582 包 / 7 s、4 MiB、30 s）。`LT` 指 `loadtest/build/install/loadtest/bin/loadtest`。产物目录 `docs/research/production-readiness-2026-09/load/`：`walk200-10m/`（`bots-0.json`、`server.json`、`summary.json`、结束时的端点文本 `metrics-end.txt`）、`walk200-5m-ab/5a/` 与 `walk200-5m-ab/5b/`（各三份）、`limit250-20bots-60s/summary.json`；不存 JFR。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 空工作目录里后台起服：`JAVA_OPTS="-Xms3G -Xmx3G"`，`SERVER_APP_OPTS="-Dsynaxis.app.port=25652 -Dsynaxis.app.auth=offline -Dsynaxis.app.core-mode=on -Dsynaxis.app.shard-id=w5b -Dsynaxis.app.metrics.bind=127.0.0.1:0 -Dsynaxis.connection-gate.trusted-networks=127.0.0.0/8"`；从日志取端点地址 | 就绪，日志一行 `Metrics endpoint listening on …` |
+| 2 | `LT sample --pid <服务端 pid> --duration 630s --metrics <端点> --out server.json` 放后台；5 s 后 `LT run --host 127.0.0.1 --port 25652 --bots 200 --profile walk --encryption off --duration 600s --out bots-0.json`；采样结束后 `curl <端点> > metrics-end.txt`，按 pid 停服，`LT merge bots-0.json server.json --out summary.json`；`grep -c` 服务端日志里的 `Inbound packet limit exceeded`、`Outbound backlog exceeded` 与 WARN / ERROR | 本轮 2026-09-24 13:09:48～13:20:18（UTC+8），起跑前 `load1` 42.68、swap 已用 27,642.88 MiB / 28,672 MiB，跑的过程中 `load1` 14.824～69.875。**本条的三项判据都满足**：① 200 个机器人全部登录、0 掉线、`kicks_by_reason` 为空，日志里两种超限行都是 0 行、WARN / ERROR 0 行，端点 `synaxis_outbound_backlog_kicks_total 0.0`；② 上行 7 s 窗口 P50 287、P99 291、max 347（5A 基线是 286 / 291 / 345），最高的窗口是上限 582 的 59.6%；③ `PlayerInfoUpdatePacket` 共 24,299 个、14,913,094 字节，按 118,787.97 连接秒折合每人 0.205 个/s、125.5 B/s，5A 基线（`TC-PROD-271`）是每人 20.02 个/s、482.2 B/s。24,299 能逐项对上：200 人依次进服，第 k 个进服时已在线的 k 人各收 1 个、新人收 2 个（自己一个、已在线全体一个），合计 19,900 + 399 = 20,299；600 s 里 20 批延迟 × 200 人 = 4,000。`merge` 退出码 2，判定 **未通过**，只差 `ticks_over_50ms` 85 个（阈值 0）：`ticks` 12,597 个，P50 2.055 ms、P99 38.002 ms、max 328.64 ms，85 个慢 tick 里 65 个在第 8、9 分钟（这两分钟的 P99 83.609、94.927 ms）；GC 97 次，单次暂停 P99 251.218 ms、超 50 ms 21 次；`dispatcher_busy_ratio` `Syn-Tick-0` 0.036、`Syn-TickScheduler` 0.081；RSS 最大 1,444.609 MiB（macOS 口径，不作判据，同 `TC-PROD-271`） |
+| 3 | 慢 tick 归属 A/B（第 2 步的 tick P99 比 5A 基线的 6.701 ms 高，要分出是本波的代码还是机器）：把 5A 的 HEAD `e785a35a92` 导出到临时目录（`git archive`）、`./gradlew :server-app:installDist`；两个服务端先后各跑一次第 1、2 步，时长改为 `--duration 300s`（采样 330 s），机器人都用本分支的 `LT` | 2026-09-24 13:22～13:33 接连跑完。5A：`load1` 9.632～25.248，tick P99 18.013 ms、超 50 ms 16 个，`Syn-TickScheduler` 0.055、`Syn-Tick-0` 0.028，GC P99 100.501 ms；本分支：`load1` 7.398～54.437，tick P99 23.309 ms、超 50 ms 20 个且全部在前 2 分钟（`load1` 升到 54 的那一段），第 3～5 分钟 P99 6.742 / 6.937 / 4.239 ms，`Syn-TickScheduler` 0.058、`Syn-Tick-0` 0.028，GC P99 253.831 ms。调度线程忙碌比只差 0.003，tick 线程相同，慢 tick 跟着 `load1` 与 GC 暂停走。结论：本机同时有别的压测与构建时，tick P99 与超 50 ms 的数判不了 §15 的 tick 预算，要到分机档重量（§28.1 Q11）。同一对跑次里 `PlayerInfoUpdatePacket` 由 1,209,736 个 / 29,673,664 字节降到 22,299 个 / 8,072,658 字节（300 s），上行 7 s P99 都是 292 |
+| 4 | 反证有齿（真进程里限流是活的）：第 1 步另加 `-Dsynaxis.packet-limit.max-packets=250`（低于 7 s 窗口的 P50 287），`LT run … --bots 20 --duration 60s` | 2026-09-24 13:36～13:37：20 个全部登录、20 个掉线，`kicks_by_reason` 为 `synaxis:protocol-error` 20；服务端日志 20 行 `Inbound packet limit exceeded: … limit=packets 251 > 250 in 7000 ms`，第一行在登录后 4.9 s。同样的机器人在默认 582 下 0 踢（第 2 步） |
+| 5 | 判定可复算：`LT merge walk200-10m/bots-0.json walk200-10m/server.json --out <临时文件>`，与提交的 `summary.json` 逐字节比较 | 退出码 2，`cmp` 无输出：提交的 `summary.json` 可由两份原始文件复算 |
+
+后置：各轮服务端与采样进程都已按 pid 停掉，25652 无监听；工作目录与 5A 的临时构建目录已删。本条的慢 tick 是未达标项，归属见第 3 步与 5B 交付说明的 design_issues。
+
 ## 5. 回归策略
 
 - **全量轮**（全部用例）：首次成稿、每个阶段 gate（引擎域阶段 0、2、3；游戏域 `docs/DESIGN-M2.md` §26 的阶段 1～6b；大世界域 `docs/DESIGN-M3.md` §26 的 M3-A～M3-G）、跨功能域改动、地基变更（JDK、Gradle、镜像、协议版本、模块拆分、启动入口）。
@@ -4101,6 +4258,7 @@ jcmd "$pid" VM.flags | tr ' ' '\n' | grep -cxE -- '-XX:\+UseG1GC|-XX:InitialHeap
   - 生产就绪域（`docs/DESIGN-PROD.md`）：白名单与封禁（`REQ-PROD-010`）→ TC-PROD-220～TC-PROD-236；动了 `server-app` 的 `moderation/`、`PluginHost` 的封禁接线、`HandshakeGate` 登录阶段握手的跳过判断、`Main#openStore` / `Main#whitelist` 或 `RedisLink` 的 `synaxis:moderation` 收发就跑 TC-PROD-221 与 TC-PROD-223～TC-PROD-231、TC-PROD-235（要数据库前置），再动了起服或登录路径加 TC-PROD-236（真进程，约 3 分钟）；动了 `V4__moderation.sql` 或 `V4__moderation.down.sql` 跑 TC-PROD-220、TC-PROD-221；动了 `BanTarget` 跑 TC-PROD-222、TC-PROD-226；动了 `AdmissionRequest` 或 `AdmissionGate` 构造请求的一处跑 TC-PROD-232；动了 `Moderation`、`BanTarget`、`Ban`、`AdmissionRequest` 或 `PluginContext#moderation` 跑 TC-PROD-234；动了模组的 lang 跑 TC-PROD-233。跨域牵连：动了 `RedisLink` 的订阅线程 → 加 `CrossShardHandoverIntegrationTest` 与 TC-PROD-205；新增 Flyway 版本 → 重跑 TC-PROD-141、TC-PROD-200 与 TC-PROD-220。
   - 生产就绪域（`docs/DESIGN-PROD.md`）：控制台与插件命令（`REQ-PROD-012`）→ TC-PROD-240～TC-PROD-257；动了 `server-app` 的 `command/`、`PluginCommandsImpl`、`PluginHost` 的命令接线、`Main#readConsole` / `runConsoleCommand` 或 `PlayerStore#saveOnline` 就跑 TC-PROD-240～TC-PROD-247、TC-PROD-249、TC-PROD-252 与 TC-PROD-254～TC-PROD-256，再动了控制台线程或起停服加 TC-PROD-253（真进程，约 30 s）；动了 `HostPermissions` 重发命令树的一处跑 TC-PROD-248（要数据库前置）；动了引擎 `ConsoleSender` 跑 TC-PROD-240、TC-PROD-257 与 TC-PROD-207；动了 `PluginCommands` 或 `PluginContext#commands` 跑 TC-PROD-251；动了模组的 lang 跑 TC-PROD-250。跨域牵连：动了 `PluginHost#tearDown` 或 `LoadedPlugin` → 加 TC-GAME-053～TC-GAME-055；动了 `HostPermissions` → 加 TC-PROD-201～TC-PROD-209、TC-PROD-212、TC-PROD-213。
   - 生产就绪域（`docs/DESIGN-PROD.md`）：指标导出与压测 harness（`REQ-PROD-018`、`REQ-PROD-029`）→ TC-PROD-260～TC-PROD-271；动了 `server-app` 的 `metrics/`、`Main` 的指标装配、`StoreMetrics` 或存储里报语句与保存的几处、`EventLedger#droppedTotal` 就跑 TC-PROD-260～TC-PROD-262（262 要数据库前置），再动了起服顺序加 TC-PROD-264（真进程，约 1 分钟）；动了引擎 `TrafficCounters`、`PlayerSocketConnection` 的计数与加解密计时、`TickThread#observeTicks`、`SessionClient` 的累计计数或 `Watchdog#warnings` 就跑 TC-PROD-263 与 TC-PROD-260；动了 `loadtest/` 的 `Bot`、`Protocol` 或 `Profile` 就跑 TC-PROD-265、TC-PROD-266，动了 `MergeCommand`、`SampleCommand`、`Histogram` 或 `Args` 就跑 TC-PROD-267、TC-PROD-268，动了 `RunCommand` 或 `FloodCommand` 再加 TC-PROD-269、TC-PROD-270（真进程，各约 1 分钟）。TC-PROD-271（200 人 walk 30 min）只在第 5 波的分格、可见性与限流合入后，或引擎 tick、网络、区块发送路径有改动时跑，一次约 35 分钟，本机同时只能有一个压测。跨域牵连：动了 `PlayerSocketConnection` → 加 TC-PROD-090～TC-PROD-101；动了 `ConnectionGate` 的拒绝计数 → 加 TC-PROD-270。
+  - 生产就绪域（`docs/DESIGN-PROD.md`）：入站限流、出站积压、区块上限与 Tab 列表（`REQ-PROD-013`、`REQ-PROD-025`～`REQ-PROD-027`）→ TC-PROD-290～TC-PROD-301；动了 `InboundPacketLimits`、`WindowCounter`、`PacketLimitAction`、`ServerConfig` 的 `synaxis.packet-limit.*` 与补全键，或 `PlayerSocketConnection` 的 `processBatch` / `readClientPacket` 就跑 TC-PROD-290～TC-PROD-293；动了 `PlayerSocketConnection` 的 `sendPacket` / `offer` / `checkBacklog` / `writeMovement`、`PacketWriting#writeQueue`、`PacketViewableUtils` 或 `synaxis.outbound.max-backlog-bytes` 就跑 TC-PROD-294、TC-PROD-295（动了模组 lang 再加第 3、4 步）；动了 `Player#sendPendingChunks` / `onChunkBatchReceived` 或 `synaxis.chunk-queue.*` 就跑 TC-PROD-296；动了 `Player#UNSAFE_init` 的 PlayerInfo、`setListed`、`setSkin`、`refreshLatency`、`tabListEntry`，`ConnectionManager` 的 `sendTabListLatencies` / `setTabListVisibility` / `isListedFor` 或 `synaxis.tab-latency-interval-ms` 就跑 TC-PROD-297～TC-PROD-299；动了 `TabList`、`PluginContext#tabList`、`TabListSlot`、`PluginTabListImpl` 或 `PluginHost#tearDown` 就跑 TC-PROD-300。TC-PROD-301（200 人 walk 10 min，约 12 分钟）在改了上面任一默认值、或引擎 tick、网络、区块发送路径时跑，本机同时只能有一个压测。跨域牵连：动了 `PlayerSocketConnection` → 加 TC-PROD-090～TC-PROD-101 与 TC-PROD-263；动了 `HostMetrics` 的积压计数 → 加 TC-PROD-261；动了 `:plugin-api` 的接口 → 加 TC-PROD-163。
   - 影响面不确定时升级为全量轮。
 - **复测轮**（上轮失败用例 + 全部冒烟级）：修复失败项之后。
 - **人工收口轮**（仅上轮「待人工」用例）：AI 轮之后由人工补测 TC-016、TC-030、TC-GAME-020、TC-GAME-038、TC-GAME-046、TC-GAME-047，不要求冒烟级。

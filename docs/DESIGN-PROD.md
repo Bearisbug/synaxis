@@ -4,11 +4,11 @@
 
 | 字段 | 值 |
 | --- | --- |
-| 状态 | 草稿（2026-09-23 初稿，同日按第 1 轮两份评审意见修订为 v0.2，再按第 0 波五个组（0A～0E）的实现回写为 v0.3，再按第 1 波（1A、1B）与第 2 波（2A～2C）的实现回写为 v0.4，再收回转服票据的定义、拆出不依赖 M3 的票据组为 v0.5，再按第 3 波（3A～3D）的实现回写为 v0.6，再改存储冻结节点的优先级为 v0.6.1，再按第 4 波（4A～4C）的实现回写为 v0.7，再修第 4 波集成时登记的缺陷、堵上 `gm.role` 的提权为 v0.7.1）。用户同日已拍板七项方向（下表）；其余待拍板点一律按三份草案的默认值定，逐项见 §28.1 |
+| 状态 | 草稿（2026-09-23 初稿，同日按第 1 轮两份评审意见修订为 v0.2，再按第 0 波五个组（0A～0E）的实现回写为 v0.3，再按第 1 波（1A、1B）与第 2 波（2A～2C）的实现回写为 v0.4，再收回转服票据的定义、拆出不依赖 M3 的票据组为 v0.5，再按第 3 波（3A～3D）的实现回写为 v0.6，再改存储冻结节点的优先级为 v0.6.1，再按第 4 波（4A～4C）的实现回写为 v0.7，再修第 4 波集成时登记的缺陷、堵上 `gm.role` 的提权为 v0.7.1，再按第 5 波 5B 的实现回写为 v0.7.2）。用户同日已拍板七项方向（下表）；其余待拍板点一律按三份草案的默认值定，逐项见 §28.1 |
 | 项目画像 | 生产产品（对外真实玩家：内测单分片 50～200 人，正式档每分片 200～500 人，见 §2；全部 `[核心]` 节生效） |
 | Owner | Bearisbug |
 | 评审人 | Bearisbug |
-| 插件 API 版本 | `PluginApi.API_VERSION` 第 4 波之后仍为 1：4A～4C 给 `PluginContext` 加的 `permissions()`、`moderation()`、`commands()` 都是默认方法，`AdmissionRequest` 加组件时保留旧的四参构造器（`@Deprecated`）。ABI 门以 `main` `3914650305` 的 `plugin-api.jar`、`protocol.jar` 为 baseline（`docs/ENGINE.md` §7.1 本地口径），按 A → B → C 每合一组跑一次，三次都真执行、0 条违例 |
+| 插件 API 版本 | `PluginApi.API_VERSION` 第 5 波 5B 之后仍为 1：4A～4C 给 `PluginContext` 加的 `permissions()`、`moderation()`、`commands()` 与 5B 加的 `tabList()` 都是默认方法，`AdmissionRequest` 加组件时保留旧的四参构造器（`@Deprecated`）。ABI 门以 `main` `3914650305` 的 `plugin-api.jar`、`protocol.jar` 为 baseline（`docs/ENGINE.md` §7.1 本地口径），按 A → B → C 每合一组跑一次，三次都真执行、0 条违例；5B 以 `af8ab12406` 的两个 jar 为 baseline，两个 `checkBinaryCompatibility` 都真执行、0 条违例 |
 | 最后更新 | 2026-09-24 |
 | 关联 | 引擎单一事实源 `docs/DESIGN.md` · M2 分册 `docs/DESIGN-M2.md` · M3 分册 `docs/DESIGN-M3.md`（大世界：区块存储、流送、远景、光照烘焙） · 差距清单 `docs/research/production-readiness-2026-09/README.md`（下称「清单」，G01～G40 是本分册的输入） · 草案 `design-auth.md`、`design-persistence.md`、`design-ops-scale.md`（同目录，下称「auth 草案」「持久化草案」「运维草案」） · 攻击面盘点 `docs/research/attack-surface-2026-09/README.md` · 测试文档 `docs/TEST.md` · 仓库 `https://github.com/Bearisbug/synaxis`（基线 `main` `4f686b87f6`） |
 
@@ -41,6 +41,7 @@
 | 2026-09-24 | v0.6.1 | 存储冻结节点排到插件 `MONITOR` 之前（v0.6 §28.2 登记的技术债）：插件档位 `MONITOR` 的引擎优先级由 3 改为 4，`LOWEST`～`HIGHEST` 仍为 −2～2；冻结节点由 `Integer.MAX_VALUE` 改为 3。`API-PROD-018` 写出档位到引擎优先级的映射，`API-PROD-005` 冻结一条改写为 `HIGHEST` 撤销取消不生效、`MONITOR` 读到取消后的结果；删去 §28.2 该行 | Bearisbug |
 | 2026-09-24 | v0.7 | 按第 4 波实现回写设计。**§1**：新增「插件 API 版本」行，`API_VERSION` 仍为 1，ABI 门以 `main` `3914650305` 为 baseline 按 A → B → C 每合一组跑一次，三次都真执行、0 条违例。**4A**（`REQ-PROD-011`）：`API-PROD-010` 写明节点通配与非法节点、角色未读进来时的返回值、登录读取前先以「无角色」登记（读取期间的变更都触发重读，读编号大者胜出）、每 30 s 重读全部在线玩家、读取失败保留已有角色、内存存储没有角色、`expires_at` 到期不发通知最迟晚 30 s 失效、`role` 命令语法、`grant` 不带到期、`role` 与 `role_permission` 由运维用 SQL 维护；§16 加「角色变更与登录读角色同时发生」一行。**4B**（`REQ-PROD-010`）：`API-PROD-009` 写出四个方法的返回类型与线程、`activeBan` 的 `ip` 可空与多条命中取最晚到期、`BanTarget.ByNetwork` 的前缀范围、判定挂在宿主节点并排在登录阶段握手之前（引擎 `ConnectionManager.java` 不用改）、`synaxis:banned` 的第二个参数、`AdmissionRequest` 保留旧四参构造器、缓存的三种重读时机与重读后踢人、首次读取失败拒绝起服、白名单开关取值与内存存储、移出白名单不踢人、三条 GM 命令语法；§7 ER 与 `ENT-Ban`、§9 补 `reason`、`created_at`、`created_by`、`revoked_by` 与 `whitelist.added_at`；`API-PROD-006` 写出 `synaxis:moderation` 的 `kind` 取值、收到后全量重读；§14 补 `synaxis:banned-until` 与九个回执键；§16 封禁行改写；§20 `EVT:player_banned` 注明只在发起分片写；§23 `synaxis.app.whitelist` 补取值规则；§26 第 4 波与冲突表去掉 4B 改 `ConnectionManager.java`，`Main.java`、`PluginHost.java` 两行补上 4A～4C。**4C**（`REQ-PROD-012`）：`API-PROD-011` 写出 `unregister`、名字含冒号与重名的异常、收回之后再注册静默丢弃、执行器所在线程与 `command.failed`、控制台接受前导 `/` 与一行抛异常只记一行 ERROR、`ConsoleSender` 的翻译回退、内置命令先于插件注册、`kick` 的原版默认键、`tps` 取最近 1,200 个 tick，`readConsole` 行号改为 `Main.java:632`；`stop` 秒数按默认不设上限，已在停机时回 `synaxis:command-already-stopping` 并记 `result=invalid`；§14 补 `role-*` 七个、`command-*` 九个回执键；§20 `EVT:gm_command` 列出 `result` 全部取值。**§28.2**：删去 `stop` 秒数上限与已在停机回执两条（已写进 `API-PROD-011`、§20）；`AdmissionRequest` 加组件一条改为已决；新增 `EVT:player_banned` 跨分片漏计、角色到期延迟两条 Open Question，与 4B 报告的 3A 缺陷（core mode 立刻断开不保存）一条风险 | Bearisbug |
 | 2026-09-24 | v0.7.1 | **§28.2 风险「core mode 进 play 后立刻断开不保存」定位并修复，改为已决**。根因在引擎而不在 `PlayerStore`：服务端写出 `FinishConfigurationPacket` 时连接已是 PLAY 状态，玩家要到之后某个 tick 才由 `ConnectionManager#updateWaitingPlayers` 放进世界；这段时间里断开，`PlayerConnection#disconnect` 按 PLAY 玩家的做法把移除排在实体调度器上，而实体不在实例里就没有 tick，`PlayerDisconnectEvent` 永不派发，存储的记录停在 `online`、租约不放、停机保存排在同一个调度器上也永不执行。修法：这样断开的玩家由下一个 tick 的 `updateWaitingPlayers` 在 tick 线程上派发断线事件，已开始进世界的仍由实体移除派发，恰好一次。§11.3 `online → saving` 行写明「登出」即该事件及这一来源；§28.3 加 `docs/DESIGN.md` 登记这条引擎保证。**`gm.role` 提权堵上**：原先持有 `gm.role` 的玩家能把任何角色授予任何人，包括自己、包括带 `*` 的角色，`gm.role` 等于全部节点。现在玩家发送者只能授予或收回「角色的每个节点都被自己的有效节点覆盖」的角色，带 `*` 的角色只有自己持有 `*` 的发送者能动，控制台不受限；越权回新键 `synaxis:role-above-sender`，`EVT:gm_command` 记 `result=above_sender`。`API-PROD-010`、§10 权限矩阵、§14、§20 同步，§28.2 登记为已决并写切换条件 | Bearisbug |
+| 2026-09-24 | v0.7.2 | 按第 5 波 5B 的实现回写设计。**G11**（`REQ-PROD-013`）：`API-PROD-012` 的 `max-packets` 由初值 500 改为 582（5A 的 200 人 walk 基线每人 7 s 上行包数 P99 291 × 2，`docs/TEST.md` TC-PROD-271 第 5 步）；计数位置写实为 `PlayerSocketConnection` 交给 `Player#addPacketToQueue` 之前（只数 socket 上来的、进入站队列的包，握手登录配置期的 11 个即时处理包与模拟包不计）；滑动窗口分 20 格；`overrides` 的包类型写引擎客户端包类简名（原写「包资源名」，引擎注册表里没有资源名）；解压字节在解码回调计、只在开了压缩之后计；各键须 ≥ 1。§15 入站限流行与 §19 两条场景同步（解压场景改为 150 / 100 个解压后 30,000 B 的包：原写的 64 KiB 超过插件消息 32,767 B 的上限，造不出来）。**G22**（`REQ-PROD-025`）：`API-PROD-020` 写明积压的计法（已成帧的按实际字节，还是对象的每个按 64 B）与超限处置——丢掉队列里全部实体移动包（不是「同实体只留最新一条」），丢掉的包被写线程取完前新的移动包不入队，靠下一次 `EntityPositionSync` 拉回；新键 `synaxis:outbound-backlog` 住引擎 `DisconnectReasons`，模组两份 lang 加文案；§19 场景同步。**G23**（`REQ-PROD-026`）：引擎兜底 64 块/tick 的「未核实」去掉（`docs/DESIGN-M3.md` v0.4 `API-M3-006` 已写入同一口径）；引擎本来就在两处夹住（回报与每次待发额度），本波只补测试；分片宿主还不存在，4 块/tick 没有写入点，§28.2 那条开放问题按 M3 v0.4 的答复关闭，另登记「分片宿主写 4」的待办。**G24**（`REQ-PROD-027`）：`API-PROD-020` Tab 列表段写明自己的条目广播、已在线全体合一包、延迟按 `synaxis.tab-latency-interval-ms` 批量、可见性每进程一份（`PluginContext#tabList()`，默认方法）与收回、判定抛异常按列出。§28.3 加 `docs/DESIGN.md` §15 限流行的改法 | Bearisbug |
 
 ## 2. 背景 / 目标 / 非目标
 
@@ -489,9 +490,10 @@ erDiagram
   - 内置命令（宿主在插件启用之前注册，所以无前缀名归宿主；权限节点 `synaxis.command.<名>`，控制台恒有权限）：`REQ-PROD-012` 六条 `list`、`kick <玩家> [原因]`（不带原因时用原版键 `multiplayer.disconnect.kicked`）、`broadcast <文本>`、`save`、`stop [秒数]`、`tps`（最近 1,200 个 tick 的 TPS 与 MSPT p50 / p95 / p99）；`REQ-PROD-034` 加 `profile [秒数]`（默认 60 s，JFR 录制，完成后回显 .jfr 绝对路径），随第 6 波交付。回执键见 §14。
   - `stop [秒数]`：秒数为不小于 0 的整数，不设上限（误输入可再发 SIGTERM 停机）；解析不了时回 `synaxis:command-stop-usage`、不停机。引擎已在停机时再执行 `stop` 回 `synaxis:command-already-stopping`，`EVT:gm_command` 记 `result=invalid`，不改引擎的倒计时。停机序列跑在单独的非 daemon 线程上。
 - **`API-PROD-012` 入站包速率闸** — 实现 `REQ-PROD-013`
-  - 位置：`Player#addPacketToQueue`（`Player.java:2343`，调用点 `PlayerSocketConnection.java:196`），即读线程把包入 `Player` 入站队列之前。login 阶段还没有 `Player`，本闸管不到；login 段的洪泛由 L2 登录桶、握手前 5 s 超时与 30 s 登录总超时约束（`API-PROD-003`）。解压字节/秒上限挂在同一读线程的解压处，按连接计。
-  - 键：`synaxis.packet-limit.window-ms` 7,000、`synaxis.packet-limit.max-packets` 500、`synaxis.packet-limit.action` `KICK`（`DROP` 可选）、`synaxis.packet-limit.overrides`（`<包资源名>=<窗口内上限>:<DROP|KICK>` 逗号分隔）、`synaxis.packet-limit.max-inflated-bytes-per-second`（初值 4 MiB/s，本分册定，**未核实**）、`synaxis.tab-complete-rate-per-second` 20。
-  - 初值取 Paper 的 500 包 / 7 s，200 人压测后改为入站 P99 × 2（清单 G11）。KICK 用既有 `synaxis:protocol-error`（与 `docs/DESIGN.md` §15 限流行同一语义）。
+  - 位置：`PlayerSocketConnection#processBatch` 把包交给 `Player#addPacketToQueue` 之前（读线程），只数客户端从 socket 发来、要进 `Player` 入站队列的包；`IMMEDIATE_PROCESS_PACKETS` 里握手、登录、配置期的 11 个即时处理包（含 keep-alive）不经这里、不计数，宿主或测试直接调 `addPacketToQueue` 模拟的包也不计。login 阶段还没有 `Player`，本闸管不到；login 段的洪泛由 L2 登录桶、握手前 5 s 超时与 30 s 登录总超时约束（`API-PROD-003`）。解压字节/秒上限挂在同一读线程的解码回调（`PlayerSocketConnection#readClientPacket`），按连接计，连接开了压缩之后每个帧解出的负载字节（去掉包 ID）都计入；超限的那一帧已经解压完，同一批里排在它后面的帧不再解压。
+  - 计数：每连接一组滑动窗口计数器，窗口分 20 格（7 s 窗口每格 350 ms），读数覆盖最近 19/20～20/20 个窗口。全部包计入 `max-packets`；`overrides` 列出的类型另计各自的上限（同一窗口），同时照样计入全部包；补全另有 1 s 窗口，超出的一律丢弃、不断线。任一条超限且动作为 KICK 即断线，否则丢掉这个包（丢掉的包仍计数）。
+  - 键：`synaxis.packet-limit.window-ms` 7,000、`synaxis.packet-limit.max-packets` 582、`synaxis.packet-limit.action` `KICK`（`DROP` 可选）、`synaxis.packet-limit.overrides`（`<包类型>=<窗口内上限>:<DROP|KICK>` 逗号分隔；包类型写引擎客户端包的类简名，如 `ClientTabCompletePacket=40:DROP`，须是 configuration 或 play 状态的包；写错、上限 < 1、同一类型写两次都拒启）、`synaxis.packet-limit.max-inflated-bytes-per-second` 4 MiB（本分册定，**未核实**）、`synaxis.tab-complete-rate-per-second` 20。窗口、上限、解压字节、补全速率都须 ≥ 1，否则拒启。
+  - 582 = 200 人 walk 基线（`docs/TEST.md` TC-PROD-271 第 5 步，2026-09-24）每人 7 s 窗口上行包数 P99 291 × 2（清单 G11），取代初值 Paper 的 500 包 / 7 s。机器人每 tick 只发一个位置包加一个 `ClientTickEnd`，原版客户端还会发转头、动作与交互包，这个 P99 是下限；真客户端回归或内测里出现误踢时，按那一档的 P99 × 2 重定（§28.2）。KICK 用既有 `synaxis:protocol-error`（与 `docs/DESIGN.md` §15 限流行同一语义），断线前写一行 INFO `Inbound packet limit exceeded: connection_id=… limit=…`，每连接至多一行、紧跟断开。
 - **`API-PROD-013` 看门狗、崩溃报告与异常落点** — 实现 `REQ-PROD-014`、`REQ-PROD-015`
   - 看门狗键（引擎 `ServerConfig`，负数拒启）：`synaxis.watchdog.early-warning-ms` 10,000、`synaxis.watchdog.early-warning-every-ms` 5,000、`synaxis.watchdog.timeout-ms` 60,000、`synaxis.watchdog.halt-after-ms` 15,000。判死后退出码 70。各键取 0 的含义：
 
@@ -562,10 +564,10 @@ erDiagram
   - 视距：`Player#setMaxViewDistance(int)`，有效视距 = min(客户端, 实例, 玩家上限)，变更时发 `UpdateViewDistance`；`JoinGamePacket` 改用实例视距（`Player.java:349`）。
   - 休眠：`Entity#setDormancyPolicy(DormancyPolicy)`，按最近玩家距离分档返回「每 N tick 跑一次」；休眠实体跳过物理与位置同步，AI 降频由插件在钩子里做。引擎默认不休眠。
 - **`API-PROD-020` 出站与发送节流** — 实现 `REQ-PROD-025`、`REQ-PROD-026`、`REQ-PROD-027`、`REQ-PROD-038`
-  - `synaxis.outbound.max-backlog-bytes` 引擎默认 4 MiB；超限先丢队列里可合并的位置包（同实体只留最新一条），仍超限断线 `synaxis:outbound-backlog`。
+  - `synaxis.outbound.max-backlog-bytes` 引擎默认 4 MiB（须 ≥ 1）。积压 = 交给写线程、还没被写线程取走的字节：已成帧的（视野广播的 `BufferedPacket`、`FramedPacket`）按实际字节，还是对象的（`ServerPacket`、`CachedPacket`，写线程才序列化）每个按 64 B 计。超限时先丢队列里全部实体移动包——视野广播每 tick 按区块攒成的 `BufferedPacket`，引擎只让实体位置、转头与位置同步走这条路（`PacketViewableUtils`）；写线程把这批丢掉的包取完之前，新的移动包也不入队；各实体下一次 `EntityPositionSync`（至多 `synaxis.entity-synchronization-ticks` 之后，默认 20 tick）把客户端上的位置拉回来。丢完仍超限断线 `synaxis:outbound-backlog`，`synaxis_outbound_backlog_kicks_total` 加 1，断线前写一行 INFO `Outbound backlog exceeded: connection_id=… backlog_bytes=… limit=…`。不做「同实体只留最新一条」：移动包在视野缓冲里已按区块拼成字节，拆出单个实体要逐帧解析，而且相对移动包丢掉一条客户端就已经偏了，只留最新一条并不比全丢准。
   - 实体位置同步间隔沿用现有键 `synaxis.entity-synchronization-ticks`（默认 20，`ServerConfig.java:94`、`:184`），不新增键；默认值改动前先用 soak 的 `EntityPositionSync` 字节占比验证收益。
-  - 区块：`synaxis.chunk-queue.max-per-tick`（`ServerConfig.java:208`）引擎默认 64 保持不变（协调会话口径，**未核实**，见 §1 v0.1），这是不随客户端回报抬高的兜底；分片宿主写 4（清单 G23 默认值，80 块/s），与客户端 `ChunkBatchReceived` 回报取小。
-  - Tab 列表：进服时一个多条目 `PlayerInfoUpdatePacket`；延迟 `synaxis.tab-latency-interval-ms` 默认 30,000 批量一包；`PluginContext#tabList().setVisibility(BiPredicate<Player, Player>)` 决定谁出现在谁的列表里，不在列表里的仍发 PlayerInfo（皮肤渲染依赖）但 `listed=false`。
+  - 区块：`synaxis.chunk-queue.max-per-tick`（`ServerConfig` 的 `maxChunksPerTick`）引擎默认 64 保持不变（`docs/DESIGN-M3.md` v0.4 `API-M3-006` 已写入同一口径），这是不随客户端回报抬高的兜底：客户端 `ChunkBatchReceived` 的回报被夹到这个值（`Player#onChunkBatchReceived`），每次发送前的待发额度也不超过它（`Player#sendPendingChunks`），首批 9 块同样受它约束。分片宿主写 4（清单 G23 默认值，80 块/s，首批 9 块 3 个 tick 发完）；分片宿主（`ShardMain`，M3-C）还不存在，在它落地之前这个值只能在命令行给（§28.2）。
+  - Tab 列表：新人进服时自己的条目广播给全体（含自己），已在线的全体条目合成一个多条目 `PlayerInfoUpdatePacket` 发给新人。延迟只由 keep-alive 应答存进 `Player`，每 `synaxis.tab-latency-interval-ms`（默认 30,000，须 ≥ 1）由调度线程把全体在线玩家的延迟合成一个 `UPDATE_LATENCY` 包发给每个人，一轮 N 个包（原先每个 keep-alive 周期 N² 个）。`PluginContext#tabList().setVisibility(BiPredicate<Player, Player>)`（`(viewer, subject) -> 是否列出`，默认方法）决定谁出现在谁的列表里：不在列表里的仍发 PlayerInfo（皮肤渲染依赖）但 `listed=false`；只对本身 `isListed()` 的玩家调用，玩家总是列出自己；可见性每进程一份，由设它的插件持有，别的插件再设抛 `IllegalStateException`，持有者禁用时宿主收回、全体恢复列出；设置与收回时每个在线玩家收到一个 `UPDATE_LISTED` 包（一轮 N 个），依赖别的状态的可见性要重算时插件再调一次 `setVisibility`；判定抛异常按列出处理，经 `LogBudget` 10 s 至多一行。引擎侧入口 `ConnectionManager#setTabListVisibility` / `isListedFor`。
   - 压缩：`synaxis.compression-threshold` 默认 256、`synaxis.compression-level` 默认 6（`ServerProcessImpl.java:77`、`NetworkBufferImpl.java:301`）。
 - **`API-PROD-021` 转服与 Cookie 插件面** — 实现 `REQ-PROD-031`
   - `Player`（经 `PluginContext#transfers()` 的 `Transfers`）：`transfer(Player, String host, int port)`、`boolean wasTransferred(Player)`、`storeCookie(Player, Key, byte[])`（≤ 5,120 B，超过抛 `IllegalArgumentException`，不发包）、`CompletableFuture<byte[]> fetchCookie(Player, Key)`。这里的 `transfer` 是不带票据的原版转服（送往外部服务器）；跨大区转服走 M3 `ShardService#transfer`（`API-M3-010`），它经 `API-PROD-028` 的宿主接口签发票据。
@@ -1178,7 +1180,7 @@ L0、L0′、accept 时的 L1 超限与握手前超时都不发包，没有键�
 | 台账 | 200 人 30 min | `ledger_dropped` 0 条；崩溃最多丢 1 s；正常停机丢 0 条（运维草案 ③ 3.3） |
 | 带宽 | 200 人步行 / 骑乘 | 分片出站与 68 / 90 Mbit/s 偏差 ≤ ±20%（M3 口径，阈值归 M3）；每连接出站积压 ≤ 4 MiB |
 | 可见实体 | 200 人同格 | 每玩家可见非必显实体 ≤ 100；200 人同格合计出站 < 100 Mbit/s 时才放宽上限（清单 G21） |
-| 入站限流 | 单连接 | 7 s 窗口 > 500 包 KICK（初值），200 人压测后改为入站 P99 × 2；补全 > 20 次/秒丢弃 |
+| 入站限流 | 单连接 | 7 s 窗口 > 582 包 KICK（200 人 walk 基线每人上行 P99 291 × 2）；解压后负载 > 4 MiB/s KICK；补全 > 20 次/秒丢弃 |
 | 聊天 | 单连接 | > 1 条/秒（burst 3）丢弃；引擎默认 0 收件人，一进 0 出 |
 | 看门狗 | tick 卡住 | 10～11 s 首次打印栈；60～61 s 判死（巡检间隔 1 s）；判死后 ≤ 16 s 进程退出 |
 | 日志与磁盘 | 12 个月 | 服务日志总量 ≤ 10 GB、保留 14 天；台账每日 ≤ 1 GiB、保留 30 天；崩溃报告与堆转储不自动删，由 `RB-PROD-003` 处理后归档 |
@@ -1560,14 +1562,14 @@ L0、L0′、accept 时的 L1 超限与握手前超时都不发包，没有键�
   Then 日志经 LogBudget 10 s 至多一行；禁用后 /mmo:party 与 /party 都不存在
 
 场景: 入站包超速被踢 (REQ-PROD-013)
-  Given packet-limit 7 s 窗口 500 包、KICK
+  Given packet-limit 7 s 窗口 582 包、KICK
   When 一条连接 7 s 内发 600 个 PLAY 包
   Then 断线 synaxis:protocol-error；按包类型覆盖为 DROP 的包超限时只丢弃不断线
 
 场景: 解压字节超速被踢 (REQ-PROD-013)
   Given max-inflated-bytes-per-second=4 MiB
-  When 一条连接每秒发 100 个压缩后 1 KiB、解压后 64 KiB 的包，持续 2 s
-  Then 断线 synaxis:protocol-error；同一连接每秒解压 3 MiB 时不断线
+  When 一条开了压缩的连接 1 s 内发 150 个解压后 30,000 B 的包（共 4,500,000 B）
+  Then 断线 synaxis:protocol-error；1 s 内发 100 个（3,000,000 B）时不断线
 
 场景: 补全限频 (REQ-PROD-013)
   Given 补全每连接 20 次/秒
@@ -1672,7 +1674,7 @@ L0、L0′、accept 时的 L1 超限与握手前超时都不发包，没有键�
 场景: 出站积压超限先丢位置包再断线 (REQ-PROD-025)
   Given max-backlog-bytes=4 MiB，对端接收窗口被压到 4 KB
   When 服务端持续向该连接发实体移动与其他包
-  Then 积压超限时同实体只保留最新位置包；仍超限时断线 synaxis:outbound-backlog，synaxis_outbound_backlog_kicks_total 加 1
+  Then 积压超限时排队的实体移动包全部丢弃、不断线；丢完仍超限时断线 synaxis:outbound-backlog，synaxis_outbound_backlog_kicks_total 加 1
 
 场景: 改过的客户端不能抬高区块下发速率 (REQ-PROD-026)
   Given 分片宿主 chunk-queue.max-per-tick=4
@@ -2066,7 +2068,9 @@ N/A — 本分册尚未开工。R2 封闭内测稳定运行 7 天后按 §3 三�
 | 风险 | 顶号可能被盗号者利用来反复踢正主下线 | Bearisbug | 出现投诉时按 D7 切换条件改拒新 |
 | 风险 | 按 IP 网段封禁会连带封掉同一 CGNAT / 网吧出口的其他玩家；`BanTarget.ByNetwork` 只给 GM 用于攻击来源 | Bearisbug | 第 4 波评审 |
 | 风险 | 客户端每账号「30 s 内最多 6 次 join」只来自 minecraft.wiki，转服冷却 5 s 建在它上面 | Bearisbug | 第 6 波 |
-| Open Question | 分片宿主区块发送上限取 4 块/tick（清单 G23）时，进场填满视距 12 的 625 个区块要 156 tick ≈ 7.8 s；这与 M3 对进场与转服的体验目标（首批 9 块 P95 < 5 s 不受影响，填满时间 M3 未定）是否冲突，由 M3 会话确认或给出分片宿主值 | Bearisbug（M3 会话） | 第 5 波 5B 组开工前 |
+| 已决 | 分片宿主区块发送上限取 4 块/tick（清单 G23）时，进场填满视距 12 的 625 个区块要 156 tick ≈ 7.8 s，是否与 M3 的进场与转服目标冲突：`docs/DESIGN-M3.md` v0.4 `API-M3-006` 答复不冲突——首批 9 块 3 个 tick 内发完，与 §15 转服行「首批 9 块 P95 < 5 s」无关；M3 对填满时间没有目标，要不要设在 M3-C 实测 P1③ 之后定 | Bearisbug（M3 会话） | 已于 M3 v0.4 答复 |
+| 待办 | 分片宿主（`ShardMain`，`docs/DESIGN-M3.md` M3-C）还不存在，`API-PROD-020` 的「分片宿主写 `synaxis.chunk-queue.max-per-tick=4`」没有写入点；引擎侧的夹值与测试已在 5B 落地（`docs/TEST.md` TC-PROD-296）。分片宿主落地时按 `API-M3-009` 的写法（命令行显式给的值优先）写入，并把 TC-PROD-296 第 1 步改成从宿主起 | Bearisbug（M3 会话） | M3-C 分片宿主落地时 |
+| 风险 | G11 的 582 包 / 7 s 按机器人基线定：机器人每 tick 只发位置包与 `ClientTickEnd`，原版客户端的转头、挥手、挖掘、交互包没有计入，真实玩家的 7 s 上行包数 P99 未测，阈值可能偏低而误踢 | Bearisbug | 真客户端回归或内测首周；误踢按那一档的 P99 × 2 重定 `API-PROD-012` |
 | Open Question | `docs/DESIGN.md` §17 `process.shutdown` 的 10 s join 上限与 §21「`stop()` < 10 s」SLO 与本分册 30 s 保存预算冲突，需主会话改写（§28.3） | Bearisbug（主会话） | 第 3 波合并前 |
 | 已决 | `AdmissionRequest` 加 `uuid`、`remoteAddress` 两个组件改了 record 的 canonical 构造器；第 4 波 4B 保留旧的四参构造器（`@Deprecated`，用离线 UUID 与回环地址补齐），`checkBinaryCompatibility` 不报破坏，`API_VERSION` 仍为 1（§1）。去掉旧构造器的 `public` 时 ABI 门报 `Public/protected method removed`（`docs/TEST.md` `TC-PROD-234`） | Bearisbug | — |
 | 技术债 | `LegacyServerListPingPacket` 未注册，是死代码（清单 G34 附带发现），本分册不处理 | Bearisbug | 下次清理 network 包时 |
@@ -2105,6 +2109,7 @@ N/A — 本分册尚未开工。R2 封闭内测稳定运行 7 天后按 §3 三�
 | `docs/DESIGN.md` | §1 关联行、§26 里程碑表 | 加「生产就绪分册 `docs/DESIGN-PROD.md`」一行，范围内的需求 / 接口 / 状态机 / ADR 以分册为准 | 主会话 |
 | `docs/DESIGN.md` | §17 `process.shutdown` 行、§21「`stop()` 到进程退出用时」行、`RB-002` | 10 s 上限改为「保存 30 s + 踢人 5 s + 台账 2 s + 倒计时」，SLO 引用本分册 §11.4 | 主会话 |
 | `docs/DESIGN.md` | §28 技术债：台账逐条写、连接数无上限、`socketTimeout` 空操作、「每秒 > 500 包断线」未实现、`ExceptionManager` 默认 `printStackTrace` | 分别改为「由 `REQ-PROD-017` / `REQ-PROD-001` / `REQ-PROD-043` / `REQ-PROD-013` / `REQ-PROD-015` 承接」；台账那条「缓冲写入即可与 churn 脱钩」按 `ADR-PROD-005` 改写；§28 `Acquirable` 未分配态风险行按 `API-PROD-016` 所有权断言的未分配态语义关闭 | 主会话 |
+| `docs/DESIGN.md` | §15 非功能表「限流」行「每秒 > 500 包或单包 > 2 MB 断线」 | 包数那半句改为「7 s 窗口 > 582 包断线 `synaxis:protocol-error`，另有解压后负载 > 4 MiB/s 断线、补全 > 20 次/秒丢弃，见 `docs/DESIGN-PROD.md` `API-PROD-012`」；单包 2 MB 不变。§28「每秒 > 500 包断线未实现」那条技术债随之关闭（第 5 波 5B 落地） | 主会话 |
 | `docs/DESIGN.md` | §28 技术债「`Auth.Velocity` / `Auth.Bungee` 代理转发模式暂留」行 | 关闭：两种模式已在第 2 波 2B 删除（`REQ-PROD-036`、`ADR-PROD-007`）；同行提到的 `MojangUtils.authenticateSession` 已随 REQ-014 删除（`87901a7bfa`），整行不留 | 主会话 |
 | `docs/DESIGN.md` | §28 `SOAK-3` 同形状路径清点的「已决」行（约第 663 行） | ② 档「每连接至多一行、同一分支紧跟断开」删去 `HandshakeListener` BungeeGuard 一处（随 `Auth.Bungee` 删除），5 处改为 4 处；`clientDrivenPathsDoNotWriteALinePerPacket` 的豁免名单由七个类改为八个类：`PacketReading`、`PlayerSocketConnection`、`Server`、`ConnectionGate`、`SessionClient`、`ConnectionManager`、`PacketListenerManager`、`LoginListener`（`HandshakeListener` 移出；`ConnectionGate`（1A）与 `SessionClient`（2A）加入，上界都是 10 s 至多一行汇总）；已知盲点 ① 的「这七个类」同步改为「这八个类」 | 主会话 |
 | `docs/DESIGN.md` | §8 `API-001` 鉴权行、§11.1、§14 | 鉴权行改「在线 / 离线两种，见 `API-PROD-001`」；§11.1 login 态注明展开在本分册 §11.1；§14 表尾注明新增键见本分册 §14 | 主会话 |

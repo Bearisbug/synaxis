@@ -1,0 +1,486 @@
+{
+  "profile": [
+    {
+      "profile": "walk",
+      "bots": 20,
+      "bot_offset": 0,
+      "encryption": "off",
+      "chunks_per_tick": 9.0,
+      "duration_s": 60.0,
+      "login_rate_per_s": 20.0,
+      "warmup_s": 60.0,
+      "host": "127.0.0.1",
+      "port": 25652
+    }
+  ],
+  "bots": {
+    "requested": 20,
+    "logged_in": 20,
+    "lost": 20,
+    "login_failures": {}
+  },
+  "kicks_by_reason": {
+    "synaxis:protocol-error": 20
+  },
+  "login_latency_ms": {
+    "off": {
+      "count": 20,
+      "mean_ms": 29.725,
+      "p50_ms": 27.7,
+      "p99_ms": 50.4,
+      "max_ms": 50.4,
+      "over_50ms": 1
+    }
+  },
+  "inbound": {
+    "packets": 52991,
+    "wire_bytes": 1999111,
+    "connection_seconds": 94.626,
+    "bytes_per_s_per_bot": 21126.445,
+    "chunks": {
+      "walk": {
+        "packets": 11002,
+        "wire_bytes": 918335,
+        "connection_seconds": 94.626,
+        "kb_per_s_per_bot": 9.477,
+        "packets_per_s_per_bot": 116.268,
+        "steady_packets": 0,
+        "steady_wire_bytes": 0,
+        "steady_connection_seconds": 0.0,
+        "steady_kb_per_s_per_bot": 0.0,
+        "steady_packets_per_s_per_bot": 0.0,
+        "per_bot_packets": {
+          "count": 20,
+          "mean": 550.1,
+          "p50": 552.0,
+          "p99": 575.0,
+          "max": 575.0,
+          "min": 529.0
+        }
+      }
+    },
+    "by_packet": {
+      "ChunkDataPacket": {
+        "count": 11002,
+        "wire_bytes": 918335
+      },
+      "EntityPositionAndRotationPacket": {
+        "count": 31511,
+        "wire_bytes": 472665
+      },
+      "EntityPositionSyncPacket": {
+        "count": 1916,
+        "wire_bytes": 120708
+      },
+      "SpawnEntityPacket": {
+        "count": 380,
+        "wire_bytes": 20140
+      },
+      "EntityVelocityPacket": {
+        "count": 1553,
+        "wire_bytes": 18636
+      },
+      "PlayerInfoUpdatePacket": {
+        "count": 229,
+        "wire_bytes": 13388
+      },
+      "UnloadChunkPacket": {
+        "count": 873,
+        "wire_bytes": 11349
+      },
+      "EntityEquipmentPacket": {
+        "count": 380,
+        "wire_bytes": 8360
+      },
+      "ChunkBatchFinishedPacket": {
+        "count": 1233,
+        "wire_bytes": 7398
+      },
+      "ChunkBatchStartPacket": {
+        "count": 1233,
+        "wire_bytes": 6165
+      },
+      "EntityMetaDataPacket": {
+        "count": 400,
+        "wire_bytes": 5200
+      },
+      "PlayerInfoRemovePacket": {
+        "count": 182,
+        "wire_bytes": 4004
+      },
+      "EntityAttributesPacket": {
+        "count": 400,
+        "wire_bytes": 3200
+      },
+      "EntityHeadLookPacket": {
+        "count": 380,
+        "wire_bytes": 2660
+      },
+      "PlayerPositionAndLookPacket": {
+        "count": 40,
+        "wire_bytes": 2640
+      },
+      "WindowItemsPacket": {
+        "count": 40,
+        "wire_bytes": 2200
+      },
+      "DisconnectPacket": {
+        "count": 20,
+        "wire_bytes": 1280
+      },
+      "DestroyEntitiesPacket": {
+        "count": 182,
+        "wire_bytes": 1274
+      },
+      "JoinGamePacket": {
+        "count": 20,
+        "wire_bytes": 980
+      },
+      "InitializeWorldBorderPacket": {
+        "count": 20,
+        "wire_bytes": 880
+      },
+      "ChangeGameStatePacket": {
+        "count": 80,
+        "wire_bytes": 800
+      },
+      "SpawnPositionPacket": {
+        "count": 20,
+        "wire_bytes": 700
+      },
+      "SetTimePacket": {
+        "count": 20,
+        "wire_bytes": 690
+      },
+      "UpdateViewPositionPacket": {
+        "count": 57,
+        "wire_bytes": 559
+      },
+      "PlayerAbilitiesPacket": {
+        "count": 20,
+        "wire_bytes": 280
+      },
+      "UpdateHealthPacket": {
+        "count": 20,
+        "wire_bytes": 280
+      },
+      "EntityStatusPacket": {
+        "count": 20,
+        "wire_bytes": 200
+      },
+      "DeclareCommandsPacket": {
+        "count": 20,
+        "wire_bytes": 180
+      },
+      "ServerDifficultyPacket": {
+        "count": 20,
+        "wire_bytes": 140
+      },
+      "HeldItemChangePacket": {
+        "count": 20,
+        "wire_bytes": 120
+      },
+      "KeepAlivePacket": {
+        "count": 2,
+        "wire_bytes": 26
+      }
+    }
+  },
+  "chunk_batch_rtt_ms": {
+    "count": 1233,
+    "mean_ms": 0.004,
+    "p50_ms": 0.0,
+    "p99_ms": 0.1,
+    "max_ms": 0.4,
+    "over_50ms": 0
+  },
+  "chunk_batches": 1233,
+  "c2s": {
+    "packets": 5143,
+    "packets_per_s_per_bot": 54.351,
+    "by_packet": {
+      "ClientChunkBatchReceivedPacket": 1233,
+      "ClientFinishConfigurationPacket": 20,
+      "ClientHandshakePacket": 20,
+      "ClientKeepAlivePacket": 20,
+      "ClientLoginAcknowledgedPacket": 20,
+      "ClientLoginStartPacket": 20,
+      "ClientPlayerLoadedPacket": 20,
+      "ClientPlayerPositionPacket": 1865,
+      "ClientSelectKnownPacksPacket": 20,
+      "ClientTeleportConfirmPacket": 40,
+      "ClientTickEndPacket": 1865
+    },
+    "per_bot_per_1s": {
+      "count": 79,
+      "mean": 53.203,
+      "p50": 59.0,
+      "p99": 62.0,
+      "max": 62.0
+    },
+    "per_bot_per_7s": {
+      "count": 0
+    }
+  },
+  "harness": [
+    {
+      "cpu_seconds": 0.933,
+      "cpu_percent_mean": 1.581,
+      "machine": {
+        "hostname": "Mac.local",
+        "os": "Mac OS X aarch64",
+        "cores": 12,
+        "memory_mib": 24576,
+        "java": "25.0.4.1"
+      }
+    }
+  ],
+  "server_machine": {
+    "hostname": "Mac.local",
+    "os": "Mac OS X aarch64",
+    "cores": 12,
+    "memory_mib": 24576,
+    "java": "25.0.4.1"
+  },
+  "pid": 81264,
+  "started_at": "2026-09-24T05:36:16.929679Z",
+  "elapsed_s": 90.052,
+  "ticks": {
+    "count": 1808,
+    "overall": {
+      "count": 1808,
+      "mean_ms": 0.488,
+      "p50_ms": 0.213,
+      "p99_ms": 4.247,
+      "max_ms": 48.665,
+      "over_50ms": 0
+    },
+    "per_minute": {
+      "0": {
+        "count": 1201,
+        "mean_ms": 0.569,
+        "p50_ms": 0.233,
+        "p99_ms": 5.091,
+        "max_ms": 48.665,
+        "over_50ms": 0
+      },
+      "1": {
+        "count": 607,
+        "mean_ms": 0.328,
+        "p50_ms": 0.182,
+        "p99_ms": 0.892,
+        "max_ms": 29.375,
+        "over_50ms": 0
+      }
+    }
+  },
+  "gc": {
+    "count": 1,
+    "mean_ms": 28.872,
+    "p50_ms": 28.872,
+    "p99_ms": 28.872,
+    "max_ms": 28.872,
+    "over_50ms": 0
+  },
+  "heap": {
+    "rss_mib_max": 383.688,
+    "heap_used_mib_max": 184.412
+  },
+  "connection_gate": {
+    "closed_at_accept": 0.0,
+    "full": 0.0,
+    "handshake_timeout": 0.0,
+    "throttled": 0.0,
+    "too_many": 0.0
+  },
+  "dispatcher_busy_ratio": {
+    "Syn-Tick-0": 0.004,
+    "Syn-TickScheduler": 0.009
+  },
+  "traffic": {
+    "packets_in_per_s": 57.142,
+    "packets_out_per_s": 444.206,
+    "bytes_in_per_s": 759.595,
+    "bytes_out_per_s": 24989.364
+  },
+  "same_machine": true,
+  "load1": {
+    "min": 17.398,
+    "max": 59.031
+  },
+  "server_samples": [
+    {
+      "t": 0.0,
+      "cpu_percent": 65.4,
+      "rss_mib": 383.688,
+      "threads": 52,
+      "fds": 88,
+      "load1": 59.03076171875,
+      "players": 0.0,
+      "chunks_loaded": 0.0,
+      "entities": 0.0,
+      "heap_used_mib": 84.412,
+      "packets_in_total": 0.0,
+      "packets_out_total": 0.0,
+      "bytes_out_total": 0.0
+    },
+    {
+      "t": 10.0,
+      "cpu_percent": 72.5,
+      "rss_mib": 255.094,
+      "threads": 70,
+      "fds": 98,
+      "load1": 50.56298828125,
+      "players": 7.0,
+      "chunks_loaded": 669.0,
+      "entities": 20.0,
+      "heap_used_mib": 148.412,
+      "packets_in_total": 5078.0,
+      "packets_out_total": 35497.0,
+      "bytes_out_total": 2180544.0
+    },
+    {
+      "t": 20.0,
+      "cpu_percent": 3.4,
+      "rss_mib": 209.563,
+      "threads": 70,
+      "fds": 91,
+      "load1": 43.7978515625,
+      "players": 0.0,
+      "chunks_loaded": 672.0,
+      "entities": 0.0,
+      "heap_used_mib": 154.412,
+      "packets_in_total": 5143.0,
+      "packets_out_total": 39980.0,
+      "bytes_out_total": 2249123.0
+    },
+    {
+      "t": 30.0,
+      "cpu_percent": 9.4,
+      "rss_mib": 139.609,
+      "threads": 70,
+      "fds": 92,
+      "load1": 37.5986328125,
+      "players": 0.0,
+      "chunks_loaded": 672.0,
+      "entities": 0.0,
+      "heap_used_mib": 160.412,
+      "packets_in_total": 5143.0,
+      "packets_out_total": 39980.0,
+      "bytes_out_total": 2249123.0
+    },
+    {
+      "t": 40.0,
+      "cpu_percent": 3.7,
+      "rss_mib": 92.172,
+      "threads": 70,
+      "fds": 92,
+      "load1": 32.7880859375,
+      "players": 0.0,
+      "chunks_loaded": 672.0,
+      "entities": 0.0,
+      "heap_used_mib": 164.412,
+      "packets_in_total": 5143.0,
+      "packets_out_total": 39980.0,
+      "bytes_out_total": 2249123.0
+    },
+    {
+      "t": 50.0,
+      "cpu_percent": 3.6,
+      "rss_mib": 79.125,
+      "threads": 70,
+      "fds": 92,
+      "load1": 28.4287109375,
+      "players": 0.0,
+      "chunks_loaded": 672.0,
+      "entities": 0.0,
+      "heap_used_mib": 170.412,
+      "packets_in_total": 5143.0,
+      "packets_out_total": 39980.0,
+      "bytes_out_total": 2249123.0
+    },
+    {
+      "t": 60.0,
+      "cpu_percent": 2.9,
+      "rss_mib": 79.594,
+      "threads": 70,
+      "fds": 91,
+      "load1": 24.986328125,
+      "players": 0.0,
+      "chunks_loaded": 672.0,
+      "entities": 0.0,
+      "heap_used_mib": 174.412,
+      "packets_in_total": 5143.0,
+      "packets_out_total": 39980.0,
+      "bytes_out_total": 2249123.0
+    },
+    {
+      "t": 70.0,
+      "cpu_percent": 3.2,
+      "rss_mib": 94.547,
+      "threads": 70,
+      "fds": 92,
+      "load1": 21.75927734375,
+      "players": 0.0,
+      "chunks_loaded": 672.0,
+      "entities": 0.0,
+      "heap_used_mib": 180.412,
+      "packets_in_total": 5143.0,
+      "packets_out_total": 39980.0,
+      "bytes_out_total": 2249123.0
+    },
+    {
+      "t": 80.0,
+      "cpu_percent": 4.3,
+      "rss_mib": 100.906,
+      "threads": 70,
+      "fds": 91,
+      "load1": 19.47705078125,
+      "players": 0.0,
+      "chunks_loaded": 672.0,
+      "entities": 0.0,
+      "heap_used_mib": 184.412,
+      "packets_in_total": 5143.0,
+      "packets_out_total": 39980.0,
+      "bytes_out_total": 2249123.0
+    },
+    {
+      "t": 90.0,
+      "cpu_percent": 2.7,
+      "rss_mib": 203.891,
+      "threads": 70,
+      "fds": 92,
+      "load1": 17.39794921875,
+      "players": 0.0,
+      "chunks_loaded": 672.0,
+      "entities": 0.0,
+      "heap_used_mib": 67.36,
+      "packets_in_total": 5143.0,
+      "packets_out_total": 39980.0,
+      "bytes_out_total": 2249123.0
+    }
+  ],
+  "verdict": {
+    "bots": {
+      "pass": false,
+      "detail": "20 of 20 logged in, 20 lost"
+    },
+    "chunks_per_bot_min": {
+      "pass": true,
+      "detail": "529 > 9"
+    },
+    "tick_p99_ms": {
+      "pass": true,
+      "detail": "4.247 < 50.0"
+    },
+    "ticks_over_50ms": {
+      "pass": true,
+      "detail": "0 <= 0"
+    },
+    "rss_mib_max": {
+      "pass": true,
+      "detail": "383.688 < 4096.0"
+    },
+    "pass": false
+  }
+}

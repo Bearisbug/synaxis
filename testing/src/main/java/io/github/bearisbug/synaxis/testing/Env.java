@@ -1,5 +1,6 @@
 package io.github.bearisbug.synaxis.testing;
 
+import io.github.bearisbug.synaxis.ServerConfig;
 import io.github.bearisbug.synaxis.ServerProcess;
 import io.github.bearisbug.synaxis.coordinate.Pos;
 import io.github.bearisbug.synaxis.entity.Player;
@@ -14,8 +15,21 @@ import org.jetbrains.annotations.Nullable;
 import java.time.Duration;
 import java.util.UUID;
 import java.util.function.BooleanSupplier;
+import java.util.function.UnaryOperator;
 
 public interface Env {
+    /**
+     * An environment on a process of its own, configured as the {@link EnvTest} one plus
+     * {@code settings}, for a test that needs a setting that one does not have. The caller stops
+     * the process.
+     *
+     * @param settings the changes to the {@link EnvTest} configuration
+     * @return the environment
+     */
+    static Env create(UnaryOperator<ServerConfig.Builder> settings) {
+        return new EnvImpl(ServerProcess.of(settings.apply(EnvTestExt.CONFIG.toBuilder()).build()));
+    }
+
     ServerProcess process();
 
     TestConnection createConnection(GameProfile gameProfile);

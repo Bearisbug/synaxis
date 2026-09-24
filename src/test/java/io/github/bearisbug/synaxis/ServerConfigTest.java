@@ -40,6 +40,8 @@ public class ServerConfigTest {
         // docs/DESIGN-PROD.md API-PROD-008
         assertEquals(1, config.chatRatePerSecond());
         assertEquals(3, config.chatBurst());
+        // docs/DESIGN-PROD.md API-PROD-019: no visible entity limit
+        assertEquals(0, config.maxVisibleEntitiesPerPlayer());
     }
 
     @Test
@@ -57,6 +59,8 @@ public class ServerConfigTest {
                 () -> ServerConfig.builder().playerChunkUpdateLimiterHistorySize(-1).build());
         assertThrows(IllegalArgumentException.class, () -> ServerConfig.builder().chatRatePerSecond(0).build());
         assertThrows(IllegalArgumentException.class, () -> ServerConfig.builder().chatBurst(0).build());
+        assertThrows(IllegalArgumentException.class,
+                () -> ServerConfig.builder().maxVisibleEntitiesPerPlayer(-1).build());
     }
 
     @Test

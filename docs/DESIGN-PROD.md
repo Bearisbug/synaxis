@@ -4,10 +4,11 @@
 
 | 字段 | 值 |
 | --- | --- |
-| 状态 | 草稿（2026-09-23 初稿，同日按第 1 轮两份评审意见修订为 v0.2，再按第 0 波五个组（0A～0E）的实现回写为 v0.3，再按第 1 波（1A、1B）与第 2 波（2A～2C）的实现回写为 v0.4，再收回转服票据的定义、拆出不依赖 M3 的票据组为 v0.5，再按第 3 波（3A～3D）的实现回写为 v0.6，再改存储冻结节点的优先级为 v0.6.1）。用户同日已拍板七项方向（下表）；其余待拍板点一律按三份草案的默认值定，逐项见 §28.1 |
+| 状态 | 草稿（2026-09-23 初稿，同日按第 1 轮两份评审意见修订为 v0.2，再按第 0 波五个组（0A～0E）的实现回写为 v0.3，再按第 1 波（1A、1B）与第 2 波（2A～2C）的实现回写为 v0.4，再收回转服票据的定义、拆出不依赖 M3 的票据组为 v0.5，再按第 3 波（3A～3D）的实现回写为 v0.6，再改存储冻结节点的优先级为 v0.6.1，再按第 4 波（4A～4C）的实现回写为 v0.7）。用户同日已拍板七项方向（下表）；其余待拍板点一律按三份草案的默认值定，逐项见 §28.1 |
 | 项目画像 | 生产产品（对外真实玩家：内测单分片 50～200 人，正式档每分片 200～500 人，见 §2；全部 `[核心]` 节生效） |
 | Owner | Bearisbug |
 | 评审人 | Bearisbug |
+| 插件 API 版本 | `PluginApi.API_VERSION` 第 4 波之后仍为 1：4A～4C 给 `PluginContext` 加的 `permissions()`、`moderation()`、`commands()` 都是默认方法，`AdmissionRequest` 加组件时保留旧的四参构造器（`@Deprecated`）。ABI 门以 `main` `3914650305` 的 `plugin-api.jar`、`protocol.jar` 为 baseline（`docs/ENGINE.md` §7.1 本地口径），按 A → B → C 每合一组跑一次，三次都真执行、0 条违例 |
 | 最后更新 | 2026-09-24 |
 | 关联 | 引擎单一事实源 `docs/DESIGN.md` · M2 分册 `docs/DESIGN-M2.md` · M3 分册 `docs/DESIGN-M3.md`（大世界：区块存储、流送、远景、光照烘焙） · 差距清单 `docs/research/production-readiness-2026-09/README.md`（下称「清单」，G01～G40 是本分册的输入） · 草案 `design-auth.md`、`design-persistence.md`、`design-ops-scale.md`（同目录，下称「auth 草案」「持久化草案」「运维草案」） · 攻击面盘点 `docs/research/attack-surface-2026-09/README.md` · 测试文档 `docs/TEST.md` · 仓库 `https://github.com/Bearisbug/synaxis`（基线 `main` `4f686b87f6`） |
 
@@ -38,6 +39,7 @@
 | 2026-09-23 | v0.5 | 收回转服票据的定义。`docs/DESIGN-M3.md` v0.3 按分工删了 `API-M3-011` 与其 §14 的 `synaxis:transfer-rejected`、`synaxis:state-unavailable` 两行，本分册却仍把它们当 M3 的定义引用，成了循环引用。以 M3 v0.2（`7daab2623c`）原文为底写成本分册自己的定义：新增 `REQ-PROD-045`（票据签发与验票）与 `API-PROD-028`（Cookie 布局、`SYNAXIS_TRANSFER_HMAC_KEYS`、宿主接口 `TransferTickets`、检查 ①～⑥：① 由 L3 取代，④ 加「票据 `player_uuid` = 本次验证 UUID」、拒绝原因 `uuid-mismatch`，`transfer_nonce` 表结构），相对 v0.2 布局加 `character_id u64`（写权与版本按角色计），一致性断言失败定名 `version-mismatch`；冷却以转入票据的 `issued_at` 起算，来回转服也受冷却。`API-PROD-004` 密钥段、`API-PROD-021`、§4 术语、§7 `ENT-TransferNonce`、§9（`transfer_nonce.expires_at`、`reject_reason`）、§10 矩阵与行级可见性、§11.3（`in_transit → loading` 改引 `API-PROD-028`，补 `in_transit → loading` 普通登录与 `in_transit → offline` 验票不通过两条）、§12.3、§14（两个键改由本分册定义，`synaxis:state-unavailable` 列全五种来源）、§16、§19 三条场景、§20 `EVT:transfer_rejected`、§24 票据向量、§25 V1 改指本分册。`transfer_nonce` 清理从 M3 `nonce.gc` 收回为本分册 `transfer_nonce.gc`（advisory lock 互斥，不依赖 M3 的 `shard_heartbeat`）。**排期**：原 6A 依赖 M3-E 的票据、M3-E 又依赖 6A；票据签发与验票拆成第 3 波 3D 组，只依赖 3A，M3-E 只依赖 3D，6A 留插件面与 P10 并排在 3D、M3-E 之后；第 3 波工作量 +2～3、第 6 波 −2～3 人日，§28.1 Q12 同步。**迁移**：§25 给 M3 的 `world_flag` 分 V6，并写明版本号按合并顺序落地、不开 `outOfOrder`。§28.3 的 `docs/DESIGN-M3.md` 行改写为 M3 要改的引用清单 | Bearisbug |
 | 2026-09-24 | v0.6 | 按第 3 波实现回写设计。**3A**（`REQ-PROD-021`、`005`～`008`、`004` 跨分片部分）：§8 首段改为「`:plugin-api` 接口加方法写成默认方法才是兼容变更」，`API-PROD-005`、`007`、`017` 的新方法标为默认方法；`API-PROD-004` 补驱动参数（`connectTimeout` 2 s、`loginTimeout` 2 s、`socketTimeout` 4 s、`validationTimeout` 1 s）、按账号释放语句，并写明载入语句组在一个事务里；`API-PROD-005` 补「读取早于某次 `commitTogether` 的段不写库、重新标脏」与 `:testing` 内存版的语义；`API-PROD-007` 补判死时第二次 `saveAll`、引擎内部方法 `shutdownAfterWatchdogDeath()` / `shutdownPhase()` 与插件 `onDisable` 的执行线程（投递到 tick 调度线程，1 s 没被接走改在停机线程）；§11.2 `active → degraded`、`→ isolated` 加看门计时触发，`isolated → active` 先把本次运行的上一个纪元置过期；§11.3 补转服写回期间登出的三条转移（快照前登出作废转服、写回失败按登出重试、写回成功以 `offline` 收尾），`loading → offline` 改为任何原因被拒都按账号释放租约，写明同账号在同一分片串行载入与离线模式跨分片拒新；§12.4 补串行载入与轮询；§14 补 `synaxis:transfer-failed`、`synaxis:server-stopping-in` 两个系统消息键；§15 数据库故障行注明「≤ 5 s」未精确测；§17 `store.autosave` 改为每人每周期一次、余数跨 tick 结转，新增 `shard_session.watch`；§17、§19、§23、§24 与 §28.1 D13 的测试设施由 Testcontainers 与 `dbTest` 改为共用容器 / CI 服务容器 + `SYNAXIS_TEST_*`，`docker pause` 改为停止转发的 TCP 代理与不可达地址；§20 `EVT:critical_commit.kind` 只取 `commit` / `save_now`，`EVT:lease_takeover.gap_ms` 定为距上次保存的毫秒数；§21 注明存储指标随 5A 导出；§23 `synaxis.app.store` 默认改为 `memory`，新增 `synaxis.accept-transfers`（要求 postgres 存储）；§7、§9、§25 注明 `character_location` 与 `current_region` 第 3 波不读写；§28.2 登记 `last_name` 约束拒绝离线短名、`TransferTickets` 尚无调用方、验票不在串行载入保护内、顶号轮询不查断线、写回成功后才登出仍签票据五条，另登记集成时发现的一条：存储冻结节点排在插件 `MONITOR` 之后；§28.3 补 `docs/DESIGN.md` `API-003` 与 §11.2 的停机接口。**3B**（`REQ-PROD-022`）：`REQ-PROD-022`、`API-PROD-018` 写明两参形式相对 M2 由跳过已取消事件改为收到、`forInstance` 的拒绝清单与三条先后规则，回指 `docs/DESIGN-M2.md` `API-M2-008`（M2 v0.47）；§19 优先级场景改为 Paper 顺序（原文「HIGH 先于 NORMAL」与「MONITOR 在 HIGHEST 之后」矛盾），新增实例作用域先后与拒绝的场景；§26 3B 组补上实际改动的 `PluginHost.java`、`LoadedPlugin.java`；§28.3 请 `docs/DESIGN-M2.md` §24 写明只由宿主实现的接口加抽象方法算不算破坏。**3C**（`REQ-PROD-035` 前半）：工具定为 `pg_basebackup` + `archive_command`（`ops/postgres/`），§28.1 新增换 pgBackRest 的条件；`REQ-PROD-035` 与 §23 改为建库时开归档（开归档要重启 PostgreSQL），写明基础备份保留 7 份、每分钟异地同步；§17 `backup.base` 行、§21「WAL 归档延迟」改为最早待归档段的等待时间（阈值 300 s）与 `archive_mode` 检查；`RB-PROD-008` 诊断指向 `ops/postgres/`，补 `already exists with different content` 的成因与「重建数据卷必须换 `BACKUP_ROOT`」、恢复实例先开归档换目录再做基础备份一步、归档告警的恢复判据；§15 备份行定恢复时间目标按端到端停服时长计，本地演练数不回填 | Bearisbug |
 | 2026-09-24 | v0.6.1 | 存储冻结节点排到插件 `MONITOR` 之前（v0.6 §28.2 登记的技术债）：插件档位 `MONITOR` 的引擎优先级由 3 改为 4，`LOWEST`～`HIGHEST` 仍为 −2～2；冻结节点由 `Integer.MAX_VALUE` 改为 3。`API-PROD-018` 写出档位到引擎优先级的映射，`API-PROD-005` 冻结一条改写为 `HIGHEST` 撤销取消不生效、`MONITOR` 读到取消后的结果；删去 §28.2 该行 | Bearisbug |
+| 2026-09-24 | v0.7 | 按第 4 波实现回写设计。**§1**：新增「插件 API 版本」行，`API_VERSION` 仍为 1，ABI 门以 `main` `3914650305` 为 baseline 按 A → B → C 每合一组跑一次，三次都真执行、0 条违例。**4A**（`REQ-PROD-011`）：`API-PROD-010` 写明节点通配与非法节点、角色未读进来时的返回值、登录读取前先以「无角色」登记（读取期间的变更都触发重读，读编号大者胜出）、每 30 s 重读全部在线玩家、读取失败保留已有角色、内存存储没有角色、`expires_at` 到期不发通知最迟晚 30 s 失效、`role` 命令语法、`grant` 不带到期、`role` 与 `role_permission` 由运维用 SQL 维护；§16 加「角色变更与登录读角色同时发生」一行。**4B**（`REQ-PROD-010`）：`API-PROD-009` 写出四个方法的返回类型与线程、`activeBan` 的 `ip` 可空与多条命中取最晚到期、`BanTarget.ByNetwork` 的前缀范围、判定挂在宿主节点并排在登录阶段握手之前（引擎 `ConnectionManager.java` 不用改）、`synaxis:banned` 的第二个参数、`AdmissionRequest` 保留旧四参构造器、缓存的三种重读时机与重读后踢人、首次读取失败拒绝起服、白名单开关取值与内存存储、移出白名单不踢人、三条 GM 命令语法；§7 ER 与 `ENT-Ban`、§9 补 `reason`、`created_at`、`created_by`、`revoked_by` 与 `whitelist.added_at`；`API-PROD-006` 写出 `synaxis:moderation` 的 `kind` 取值、收到后全量重读；§14 补 `synaxis:banned-until` 与九个回执键；§16 封禁行改写；§20 `EVT:player_banned` 注明只在发起分片写；§23 `synaxis.app.whitelist` 补取值规则；§26 第 4 波与冲突表去掉 4B 改 `ConnectionManager.java`，`Main.java`、`PluginHost.java` 两行补上 4A～4C。**4C**（`REQ-PROD-012`）：`API-PROD-011` 写出 `unregister`、名字含冒号与重名的异常、收回之后再注册静默丢弃、执行器所在线程与 `command.failed`、控制台接受前导 `/` 与一行抛异常只记一行 ERROR、`ConsoleSender` 的翻译回退、内置命令先于插件注册、`kick` 的原版默认键、`tps` 取最近 1,200 个 tick，`readConsole` 行号改为 `Main.java:632`；`stop` 秒数按默认不设上限，已在停机时回 `synaxis:command-already-stopping` 并记 `result=invalid`；§14 补 `role-*` 七个、`command-*` 九个回执键；§20 `EVT:gm_command` 列出 `result` 全部取值。**§28.2**：删去 `stop` 秒数上限与已在停机回执两条（已写进 `API-PROD-011`、§20）；`AdmissionRequest` 加组件一条改为已决；新增 `EVT:player_banned` 跨分片漏计、角色到期延迟两条 Open Question，与 4B 报告的 3A 缺陷（core mode 立刻断开不保存）一条风险 | Bearisbug |
 
 ## 2. 背景 / 目标 / 非目标
 
@@ -271,8 +273,12 @@ erDiagram
     text kind
     uuid subject_uuid
     cidr subject_ip
+    text reason
+    timestamptz created_at
+    uuid created_by
     timestamptz expires_at
     timestamptz revoked_at
+    uuid revoked_by
   }
   WHITELIST {
     uuid account_uuid PK
@@ -309,7 +315,7 @@ erDiagram
 | `ENT-ShardSession` | `shard_session` | 分片每次起服新建一行；状态机见 §11.2 |
 | `ENT-TransferNonce` | `transfer_nonce` | 转服票据用过的 nonce，一行一张票据；目标分片验票检查 ⑤ 插入（`API-PROD-028`），过期行由 `transfer_nonce.gc` 每 10 min 删除（§17） |
 | `ENT-StoreMeta` | `store_meta` | `auth_mode = online / offline`，防离线 UUID 写进正式库；只由 `--migrate-only --auth-mode` 写入（`API-PROD-004`），分片只读 |
-| `ENT-Ban` | `ban` | 按 UUID 或 IP 网段；`subject_uuid` 不建到 `account` 的外键（预先封禁的 UUID 可能从未登录）；是否生效由 `expires_at`、`revoked_at` 派生（§11 免建理由） |
+| `ENT-Ban` | `ban` | 按 UUID 或 IP 网段；`subject_uuid` 不建到 `account` 的外键（预先封禁的 UUID 可能从未登录）；是否生效由 `expires_at`、`revoked_at` 派生（§11 免建理由）；`created_by`、`revoked_by` 记 `Moderation#ban` / `unban` 的操作者，控制台是全零 UUID |
 | `ENT-Whitelist` | `whitelist` | 白名单开关 `synaxis.app.whitelist` 打开时才判定；`account_uuid` 不建外键（受邀者加白名单时还没登录过） |
 | `ENT-Role` / `ENT-AccountRole` | `role`、`role_permission`、`account_role` | 权限串形如 `gm.ban`、`synaxis.command.kick`；`account_role.account_uuid` 不建到 `account` 的外键（可预先授予），`role_id` 建到 `role` 的外键 |
 | `ENT-ItemLedger` | `item_ledger` | 只记带 `uid` 的物品的产生、销毁与跨角色转移（D5） |
@@ -436,7 +442,7 @@ erDiagram
 - **`API-PROD-006` Redis 键空间与消息（宿主，Valkey 8，Jedis 8.0.1）** — 实现 `REQ-PROD-004`、`REQ-PROD-007`、`REQ-PROD-010`
   - `presence:{uuid}`：值 `{shard_id, session_id, state}`，`state` ∈ `loading / online / in_transit`；`PX 30000`，在线期间每 10 s 刷新。只做路由提示，以 PostgreSQL 租约为准。
   - 频道 `synaxis:kick:{shard_id}`：顶号通知，载荷 `{uuid, requester_shard, reason}`。
-  - 频道 `synaxis:moderation`：封禁与白名单变更，载荷 `{kind, subject, ban_id}`；各分片收到后清缓存并踢出在线的被封玩家。
+  - 频道 `synaxis:moderation`：封禁与白名单变更，载荷 `{kind, subject, ban_id}`，`kind` ∈ `ban / unban / whitelist-add / whitelist-remove`，`subject` 是账号 UUID 或网段，白名单变更的 `ban_id` 为 null；各分片收到后不看载荷，全量重读生效的封禁与白名单，再踢出被覆盖的在线玩家（`API-PROD-009`）。
   - 频道 `synaxis:permission`：角色变更，载荷 `{account_uuid}`；各分片重载该账号角色。
   - 不放进 Redis 的：租约、版本号、玩家数据、转服 nonce、登录令牌桶（闸门是进程内计数）。
   - 连接：`SYNAXIS_REDIS_URL`（密钥纪律同上）；不可达时每 10 s 一行 WARN（`LogBudget`）。
@@ -464,18 +470,23 @@ erDiagram
   - `JoinGamePacket` 的 `enforcesSecureChat`（`Player.java:355-357` 写死 true）改为 false；聊天以 `SystemChatPacket` 转发。
   - 客户端模组：原版客户端进入不强制安全聊天的服务器时弹「聊天消息无法验证」toast，而 Synaxis 服务器恒为 false；`client-fabric` 的 `ClientPacketListenerMixin` 拦掉 `handleLogin` 里唯一的 `addToast` 调用，玩家不会为服务器按设计工作而收到警告。
 - **`API-PROD-009` 封禁与白名单** — 实现 `REQ-PROD-010`
-  - `PluginContext#moderation()` 返回 `Moderation`：`ban(BanTarget target, String reason, @Nullable Instant expiresAt, UUID operator)`、`unban(long banId, UUID operator)`、`Optional<Ban> activeBan(UUID uuid, InetAddress ip)`、`whitelist(UUID, boolean)`。`BanTarget` 只有 `ByUuid` 与 `ByNetwork(cidr)` 两种，不按名字封。
-  - 判定点：`AsyncPlayerPreLoginEvent`，在 Mojang 验证之后、`AdmissionProvider` 之前；拒绝键 `synaxis:banned`（附理由与到期时间作翻译参数）、`synaxis:not-whitelisted`。
-  - `AdmissionRequest` 增加 `uuid` 与 `remoteAddress` 两个组件（`AdmissionRequest.java:13` 现只有 `connectionId, username, modVersion, schemaVersion`），ABI 判定见本节开头。
-  - 缓存：进程内 30 s；变更经 `synaxis:moderation` 即时生效（`API-PROD-006`）。
+  - `PluginContext#moderation()`（默认方法）返回 `Moderation`：`CompletableFuture<Ban> ban(BanTarget target, String reason, @Nullable Instant expiresAt, UUID operator)`、`CompletableFuture<Boolean> unban(long banId, UUID operator)`（没有这条生效的封禁时为 false）、`Optional<Ban> activeBan(UUID uuid, @Nullable InetAddress ip)`、`CompletableFuture<Void> whitelist(UUID account, boolean listed)`。任何线程都可调用：写库在虚拟线程上做，失败的 future 带 `IllegalStateException`；理由为空或超过 256 字符、到期时间不在将来时 `ban` 直接抛 `IllegalArgumentException`。`activeBan` 同步读本分片内存，`ip` 为 null 时只看 UUID 封禁，同时命中几条时取最晚到期的一条。`operator` 写进 `ban.created_by` / `revoked_by`，控制台传全零 UUID。`Ban` 是 `(banId, target, reason, expiresAt)`。`BanTarget` 只有 `ByUuid` 与 `ByNetwork(cidr)` 两种，不按名字封；`ByNetwork` 只收字面地址，清掉主机位，前缀 IPv4 /8～/32、IPv6 /32～/128。
+  - 判定点：宿主节点上的 `AsyncPlayerPreLoginEvent` 监听器，在 Mojang 验证之后、`AdmissionProvider` 之前，排在登录阶段握手之前（`HandshakeGate` 跳过已被踢的连接）。引擎 `transitionLoginToConfig` 本来就在验证之后触发该事件，踢人走已加密的 `LoginDisconnect`，`ConnectionManager.java` 不用改。拒绝键 `synaxis:banned`（翻译参数：理由；到期时为嵌套的 `synaxis:banned-until`，时间写成 `yyyy-MM-dd HH:mm UTC`，永久封禁时为空组件）、`synaxis:not-whitelisted`。
+  - `AdmissionRequest` 增加 `uuid`（验证所得）与 `remoteAddress`（连接的 IP）两个组件。旧的四参构造器保留并标 `@Deprecated`，用用户名的离线 UUID 与回环地址补齐新组件，所以 ABI 门不判破坏。
+  - 缓存：生效的封禁与整张白名单放在进程内存里，三种时机各全量重读一次：每 30 s、本分片每次变更之后、收到 `synaxis:moderation` 时（`API-PROD-006`）；开始得早的读取不覆盖开始得晚的。每次重读之后踢出被覆盖的在线玩家与 configuration 中的玩家，这是 Redis 不可达时「≤ 30 s 生效」成立的前提。到期在内存里判定，不需要重读。首次读取在绑定端口之前做，失败就拒绝起服；之后的读取失败保留旧数据，10 s 至多一行 WARN。
+  - 开关 `synaxis.app.whitelist` 只认 `on` / `off`（默认 `off`），其他值拒绝起服；`synaxis.app.store=memory` 时没有封禁，`ban` / `unban` / `whitelist` 的 future 失败，此时开白名单拒绝起服。移出白名单不踢在线玩家。登录已过判定、还没进入 configuration 时下的封禁，由下一次 30 s 刷新踢出。
+  - GM 命令（宿主注册，控制台恒有权限，每次执行一条 `EVT:gm_command`）：`ban <玩家名|UUID|地址[/前缀]> <perm|<n>m|<n>h|<n>d> <理由>`（玩家名只在本分片在线玩家里找）、`unban <封禁编号>`（只收编号）、`whitelist add|remove <玩家名|UUID>`；节点 `gm.ban`（`ban`、`unban`）与 `gm.whitelist`（§10）。回执键见 §14。
 - **`API-PROD-010` 权限** — 实现 `REQ-PROD-011`
-  - `PluginContext#permissions()` 返回 `Permissions`：`boolean has(Player player, String node)`、`Set<String> roles(Player player)`。节点支持末尾通配 `gm.*`。
-  - 角色在登录载入时读进内存，变更经 `synaxis:permission` 重载。`Player#permissionLevel` 只决定客户端调试界面与补全显示，不作授权依据。
-  - GM 命令执行一次写一条 `EVT:gm_command`（`API-PROD-014`）。
+  - `PluginContext#permissions()`（默认方法）返回 `Permissions`：`boolean has(Player player, String node)`、`Set<String> roles(Player player)`，任何线程都可调用。节点小写点分，授予的节点末段可为 `*`（`gm.*` 覆盖 `gm.` 之下全部节点，单独一个 `*` 覆盖全部）；查询的节点不得含 `*`，否则 `IllegalArgumentException`。角色还没读进来的玩家 `has` 为 false、`roles` 为空。
+  - 角色在登录载入时读进内存（`AdmissionGate`，configuration 线程）。读取开始之前玩家先以「无角色」登记，读取期间到来的变更通知（Redis 的与本分片自己的）都会让该玩家再读一次，读编号大的结果胜出。变更经 `synaxis:permission` 重读该账号；另外每 30 s 重读全部在线玩家，Redis 不可达时变更最迟 30 s 生效。读取失败时玩家保留已有角色（登录时的失败即无角色），等下一次读取。`synaxis.app.store=memory` 时没有角色，玩家一律无节点，控制台照常可用。
+  - 到期：`account_role.expires_at` 由每次读取的查询条件 `expires_at > now()` 判定，到期不发通知，已读进内存的授予最迟晚一个刷新周期（30 s）失效。节点集合变化时给该玩家重发命令树（`API-PROD-011`）。
+  - GM 命令 `role grant|revoke <玩家名|UUID> <角色>` 与 `role list <玩家名|UUID>`，节点 `gm.role`；玩家名只在本分片在线玩家里找，别处或从未登录的账号用 UUID。`grant` 写入的授予不到期（`expires_at` 为 null），角色不存在时回 `synaxis:role-unknown`。`role` 与 `role_permission` 的行没有命令或接口维护，由 ROLE-Operator 用 SQL 写。`Player#permissionLevel` 只决定客户端调试界面与补全显示，不作授权依据。
+  - GM 命令执行一次写一条 `EVT:gm_command`（`API-PROD-014`，`result` 取值见 §20）。
 - **`API-PROD-011` 命令** — 实现 `REQ-PROD-012`、`REQ-PROD-034`
-  - `PluginContext#commands()` 返回 `PluginCommands`：`register(Command command)`，名字自动加 `<plugin_id>:` 命名空间并注册无前缀别名（冲突时别名让给先注册者），插件禁用时注销；执行异常经 `LogBudget` 输出。
-  - 控制台：`readConsole`（`server-app/.../Main.java:605`）把非空输入交给 `CommandManager` + `ConsoleSender`。
-  - 内置命令（宿主注册，权限节点 `synaxis.command.<名>`，控制台恒有权限）：`REQ-PROD-012` 六条 `list`、`kick <玩家> [原因]`、`broadcast <文本>`、`save`、`stop [秒数]`、`tps`（含 MSPT p50 / p95 / p99）；`REQ-PROD-034` 加 `profile [秒数]`（默认 60 s，JFR 录制，完成后回显 .jfr 绝对路径），随第 6 波交付。
+  - `PluginContext#commands()`（默认方法）返回 `PluginCommands`：`register(Command command)`，名字与每个别名自动加 `<plugin_id>:` 命名空间并注册无前缀别名（冲突时别名让给先注册者），名字或别名含 `:` 抛 `IllegalArgumentException`，本插件已注册过同名时抛 `IllegalStateException`；`boolean unregister(Command command)` 只收回本插件注册过的命令，别人的返回 false 且不动。插件禁用时宿主注销它全部命令，之后再调 `register` 静默丢弃。谁能执行由命令自己的 condition 决定（同时决定补全里是否可见），condition 里查 `Permissions`，不查 `permissionLevel`。执行器在发送者所在 tick 线程上跑，控制台的在控制台读线程上跑；执行异常经 `LogBudget` 输出（每条命令 10 s 至多一行），发送者收到原版键 `command.failed`。
+  - 控制台：`Main#readConsole`（`server-app/.../Main.java:632`）把每个非空行交给 `Main#runConsoleCommand`（`CommandManager` + `ConsoleSender`，接受前导 `/`）；一行抛出的 `RuntimeException` 记一行 ERROR 带栈，接着读下一行；未知或不完整的命令只写一行 INFO、不带栈。控制台线程是 daemon。引擎 `ConsoleSender` 把翻译组件写成回退文本，开着 `synaxis.automatic-component-translation` 时写服务端译文，译文由去掉子组件的组件求得，子组件由扁平化器接着写。
+  - 内置命令（宿主在插件启用之前注册，所以无前缀名归宿主；权限节点 `synaxis.command.<名>`，控制台恒有权限）：`REQ-PROD-012` 六条 `list`、`kick <玩家> [原因]`（不带原因时用原版键 `multiplayer.disconnect.kicked`）、`broadcast <文本>`、`save`、`stop [秒数]`、`tps`（最近 1,200 个 tick 的 TPS 与 MSPT p50 / p95 / p99）；`REQ-PROD-034` 加 `profile [秒数]`（默认 60 s，JFR 录制，完成后回显 .jfr 绝对路径），随第 6 波交付。回执键见 §14。
+  - `stop [秒数]`：秒数为不小于 0 的整数，不设上限（误输入可再发 SIGTERM 停机）；解析不了时回 `synaxis:command-stop-usage`、不停机。引擎已在停机时再执行 `stop` 回 `synaxis:command-already-stopping`，`EVT:gm_command` 记 `result=invalid`，不改引擎的倒计时。停机序列跑在单独的非 daemon 线程上。
 - **`API-PROD-012` 入站包速率闸** — 实现 `REQ-PROD-013`
   - 位置：`Player#addPacketToQueue`（`Player.java:2343`，调用点 `PlayerSocketConnection.java:196`），即读线程把包入 `Player` 入站队列之前。login 阶段还没有 `Player`，本闸管不到；login 段的洪泛由 L2 登录桶、握手前 5 s 超时与 30 s 登录总超时约束（`API-PROD-003`）。解压字节/秒上限挂在同一读线程的解压处，按连接计。
   - 键：`synaxis.packet-limit.window-ms` 7,000、`synaxis.packet-limit.max-packets` 500、`synaxis.packet-limit.action` `KICK`（`DROP` 可选）、`synaxis.packet-limit.overrides`（`<包资源名>=<窗口内上限>:<DROP|KICK>` 逗号分隔）、`synaxis.packet-limit.max-inflated-bytes-per-second`（初值 4 MiB/s，本分册定，**未核实**）、`synaxis.tab-complete-rate-per-second` 20。
@@ -645,9 +656,13 @@ erDiagram
 | 封禁类型 | `kind` | `ban.kind` | enum | 是 | `uuid / network` | — | 否 |
 | 封禁 / 白名单 / 角色授予的 UUID | `subject_uuid` / `account_uuid` | `ban.subject_uuid`、`whitelist.account_uuid`、`account_role.account_uuid` | uuid | `ban` 在 `kind=uuid` 时是，其余是 | 不建到 `account` 的外键：受邀加白名单、预先封禁、预先授予角色时该 UUID 可能从未登录 | — | 是（假名标识） |
 | 封禁 IP 网段 | `subject_ip` | `ban.subject_ip` | cidr | `kind=network` 时是 | IPv4 /32～/8，IPv6 /128～/32 | — | 是 |
-| 封禁理由 | `reason` | `ban.reason` | text | 是 | ≤ 256 字符 | — | 否 |
+| 封禁理由 | `reason` | `ban.reason` | text | 是 | 1～256 字符（`CHECK`） | — | 否 |
+| 封禁时间 | `created_at` | `ban.created_at` | timestamptz | 是 | 默认 `now()` | UTC | 否 |
+| 封禁操作者 | `operator` | `ban.created_by` | uuid | 是 | `Moderation#ban` 的 `operator`；控制台为全零 UUID | — | 是（假名标识） |
 | 封禁到期 | `expires_at` | `ban.expires_at` | timestamptz | 否 | null = 永久 | UTC | 否 |
 | 封禁撤销 | `revoked_at` | `ban.revoked_at` | timestamptz | 否 | 非 null 即失效 | UTC | 否 |
+| 撤销操作者 | `operator` | `ban.revoked_by` | uuid | 否 | `Moderation#unban` 的 `operator`；控制台为全零 UUID | — | 是（假名标识） |
+| 白名单加入时间 | `added_at` | `whitelist.added_at` | timestamptz | 是 | 默认 `now()` | UTC | 否 |
 | 权限节点 | `node` | `role_permission.node` | text | 是 | 小写点分，末段可为 `*` | — | 否 |
 | 物品 uid | `item_uid` | `item_ledger.item_uid` | uuid | 是 | UUIDv7，服务端产生 | — | 否 |
 | 转服 nonce | `nonce` | `transfer_nonce.nonce` | bytea | 是 | 16 B，主键唯一；过期行由 `transfer_nonce.gc` 每 10 min 删 | — | 否 |
@@ -1125,8 +1140,12 @@ N/A — 本分册没有新页面。断线原因的文案住在客户端模组的
 | `synaxis:logged-in-elsewhere` | 引擎 | Disconnect（发给旧会话） | 同一 Mojang UUID 从别处登录（仅在线模式） | 提示账号在别处登录 |
 | `synaxis:outbound-backlog` | 引擎 | Disconnect | 出站积压超过 `max-backlog-bytes` 且无可丢的位置包 | 提示网络过慢，重连 |
 | `synaxis:keep-alive-timeout` | 引擎 | Disconnect | keep-alive 超过 `keepAliveKick` 未应答（替换纯文本 `"Timeout"`） | 提示连接超时，重连 |
-| `synaxis:banned` | plugin-api | LoginDisconnect（已加密） | 该 UUID 或 IP 网段有生效的封禁；翻译参数：理由、到期时间（永久为空） | 显示理由与到期时间 |
+| `synaxis:banned` | plugin-api | LoginDisconnect（已加密） | 该 UUID 或 IP 网段有生效的封禁；翻译参数：理由、到期说明（嵌套的 `synaxis:banned-until`，永久封禁时为空组件） | 显示理由与到期时间 |
 | `synaxis:not-whitelisted` | plugin-api | LoginDisconnect（已加密） | 白名单开启且该 UUID 不在名单 | 提示内测资格 |
+| `synaxis:banned-until` | `server-app`（`HostModeration`），模组两份 lang | `synaxis:banned` 的第二个翻译参数；参数：到期时间 `yyyy-MM-dd HH:mm UTC` | 有到期的封禁才带，永久封禁时第二个参数为空组件 | 显示「封禁到某时结束」 |
+| `synaxis:role-granted`、`role-revoked`、`role-list`、`role-unknown`、`role-not-granted`、`role-no-target`、`role-unavailable` | `server-app`（`RoleCommand`），模组两份 lang | 发给命令发送者的系统消息，不断线 | `role` 命令的回执：授予、收回、列出、角色不存在、未持有该角色、找不到目标、读不到角色数据（`API-PROD-010`） | 显示译文；控制台写回退文本 |
+| `synaxis:ban-done`、`unban-done`、`unban-none`、`whitelist-added`、`whitelist-removed`、`moderation-no-target`、`moderation-bad-duration`、`moderation-bad-reason`、`moderation-unavailable` | `server-app`（`ModerationCommands`），模组两份 lang | 发给命令发送者的系统消息，不断线 | `ban`、`unban`、`whitelist` 的回执：成功三种、没有该编号的生效封禁、找不到目标、时长写法不对、理由长度不对、读不到封禁数据（`API-PROD-009`） | 显示译文；控制台写回退文本 |
+| `synaxis:command-list`、`command-no-player`、`command-kicked`、`command-broadcast`、`command-saved`、`command-stopping`、`command-already-stopping`、`command-stop-usage`、`command-tps` | `server-app`（`HostCommands`），模组两份 lang | 发给命令发送者的系统消息，不断线 | 内置六条命令的回执（`API-PROD-011`）；`kick` 不带原因时踢人文本用原版键 `multiplayer.disconnect.kicked`，插件命令抛异常时发送者收到原版键 `command.failed` | 显示译文；控制台写回退文本 |
 | `synaxis:state-unavailable` | plugin-api | Disconnect（configuration 阶段）或 Disconnect（play 中被隔离） | 玩家数据暂时拿不到，五种来源：载入超时或解码失败（§11.3 `loading → offline`）；分片会话隔离（§11.2）；顶号 5 s 内未拿到租约，或 Redis 不可达时租约被活会话持有（§11.3 末段）；转入时写权被别处持有（`API-PROD-028` ⑥ `lease-held`）；验票时数据库错误或超时（`store-unavailable`） | 提示稍后重试；30 s 后重试（会话租约最长 30 s 过期） |
 | `synaxis:transfer-rejected` | plugin-api | Disconnect（configuration 阶段） | 转入的票据不可用：缺失或签名无效、已过期、目标分片或 UUID 不符、nonce 已用、版本不一致（`API-PROD-028` ②～⑤ 与一致性断言）。写权在签票前已释放，玩家重新登录任一分片都能取回角色 | 提示「切换大区失败，请重新登录」；10 分钟内第二次出现时提示报障并附时间 |
 | `synaxis:transfer-failed` | `server-app`（`TicketIssuer`），模组两份 lang | 系统消息，不断线 | 转服写回失败（§11.3 `saving → online`），或快照前登出作废了转服；玩家留在源分片 | 显示「转服失败，请稍后再试」 |
@@ -1190,7 +1209,8 @@ L0、L0′、accept 时的 L1 超限与握手前超时都不发包，没有键�
 | 已保存的玩家在踢人前继续操作 | tick 线程 × 停机线程 | 保存到踢人之间（≤ 30 s + 5 s）不产生会丢的归属变更：拾取与丢弃被取消，`commitTogether` 回 `UNAVAILABLE`（`cause=frozen`，不计入 fenced）；移动与战斗的变化不再落库，属可接受损失 | `saveAll` 开头对全体进入冻结（`API-PROD-005` `isFrozen`） |
 | 顶号消息丢失（Redis 抖动） | 新分片 × 旧分片 | 新分片 5 s 后 `state-unavailable`，不会双开 | 写权只由 PostgreSQL 判定；Redis 消息只加速释放 |
 | 同一票据重放 | 目标分片 × 2 | 先到者成功，后到者 `transfer-rejected`（`reason=nonce-reused`） | `transfer_nonce` 主键唯一（`API-PROD-028` ⑤） |
-| 封禁与登录同时发生 | GM × 登录分片 | 最迟 30 s（缓存 TTL）内生效；有 Redis 时即时 | `synaxis:moderation` 清缓存 + 踢在线 |
+| 封禁与登录同时发生 | GM × 登录分片 | 最迟 30 s（刷新周期）内生效；有 Redis 时即时。已过预登录判定、还没进入 configuration 的连接由下一次刷新踢出 | `synaxis:moderation` 触发全量重读 + 踢出覆盖的在线与 configuration 中玩家；开始得早的读取不覆盖开始得晚的（`API-PROD-009`） |
+| 角色变更与登录读角色同时发生 | GM × configuration 线程 | 登录读到的旧行不覆盖变更之后的读取，收回的角色不会被带回来 | 读取开始前先以「无角色」登记玩家，读取期间的变更通知都触发重读；按读编号取大者（`API-PROD-010`） |
 | 台账多线程写 | tick、configuration、准入、启动线程 | 同线程顺序不变；跨线程行序与 `ts` 可差数微秒；聚合按 `connection_id` 配对，不按相邻行 | MPSC 队列 + 单写线程（运维草案 ③ 3.4） |
 | 跨格交互 | 两个 tick 线程 | 投递到目标实体调度器，下一 tick 在目标线程执行；`Acquirable.sync` 仅当 tick 必需 | `API-PROD-016` 线程契约 |
 | 分格线程号碰到 `Integer.MIN_VALUE` | dispatcher | 下标非负 | `Math.floorMod` |
@@ -1807,8 +1827,8 @@ L0、L0′、accept 时的 L1 超限与握手前超时都不发包，没有键�
 | --- | --- | --- | --- |
 | `EVT:shutdown_saved` | §11.4 保存阶段结束 | `shard_id`、`online`、`saved`、`failed`、`elapsed_ms`、`timed_out` | 停机保存完整率 |
 | `EVT:critical_commit` | `commitTogether` / `saveNow` 完成 | `shard_id`、`kind`（`commit` / `save_now`；宿主分不出插件用 `commitTogether` 做的是交易、邮件还是商店）、`result`（`saved` / `fenced` / `unavailable`）、`cause`（`frozen` / `db_error` / `version_mismatch` / 空）、`elapsed_ms`、`participants` | 关键操作落库成功率 |
-| `EVT:player_banned` | `Moderation#ban` 成功 | `ban_id`、`kind`、`operator`、`was_online`、`kicked_within_ms` | 封禁即时生效率 |
-| `EVT:gm_command` | GM 命令或管理接口调用执行 | `actor`（`player` / `console` / `management`）、`actor_uuid`、`command`、`target`、`result` | 诊断用（审计），不进 §3 |
+| `EVT:player_banned` | `Moderation#ban` 成功，只在发起封禁的分片写一条 | `ban_id`、`kind`（`uuid` / `network`）、`operator`、`was_online`（本分片踢出了至少一人）、`kicked_within_ms`（本分片踢完的耗时，没人被踢时为 null） | 封禁即时生效率（其他分片的踢出不计入，§28.2） |
+| `EVT:gm_command` | GM 命令或管理接口调用执行 | `actor`（`player` / `console` / `management`）、`actor_uuid`（控制台为 null）、`command`（原样输入）、`target`、`result`：`ok`、`invalid`（`stop` 秒数解析不了或已在停机）、`partial`（`save` 有人没存上）、`unavailable`（读写数据库失败或内存存储）、`no_target`、`unknown_role`、`not_granted`、`bad_duration`、`bad_reason`、`no_ban` | 诊断用（审计），不进 §3 |
 | `EVT:lease_takeover` | §11.3 `orphaned → loading`，持有者是别的会话时 | `character_id`、`previous_session_id`、`gap_ms`（距该角色上一次成功保存 `last_saved_at` 的毫秒数，从没保存过时为空；事件名沿用 M3，属性按本分册取代 M3 的 `player_uuid`、`previous_owner`，M3 会话同步，§28.3） | 诊断用；停机保存完整率的兜底证据 |
 | `EVT:save_fenced` | §11.3 `online → fenced` | `character_id`、`session_id`、`cause`（`zero_rows` / `session_isolated`） | 诊断用；与 `synaxis_store_save_total{result="fenced"}` 互证 |
 | `EVT:transfer_rejected` | 目标分片验票不通过（§11.3 `in_transit → offline` 或票据作废） | `transfer_ref`、`reason`（§9 `reject_reason`）、`source_shard`、`target_shard`（票据可解析时才有）、`player_uuid`（本次验证所得） | 诊断用；`docs/DESIGN-M3.md` §3 转服成功率的失败侧明细 |
@@ -1854,7 +1874,7 @@ L0、L0′、accept 时的 L1 超限与握手前超时都不发包，没有键�
 | `synaxis.accept-transfers` | `false`；接收转入的分片设 `true` | 接收转服；要求 `synaxis.app.store=postgres` 与 `SYNAXIS_TRANSFER_HMAC_KEYS`，缺一项拒绝起服（`API-PROD-021`） | 长期保留 |
 | `synaxis.thread-provider` + `synaxis.dispatcher-threads` | 引擎 `counter` + 1；分片宿主 `grid` + 核数 − 2 | 多线程 | 长期保留 |
 | `synaxis.max-players` / `max-joins-per-tick` | 引擎 0；分片宿主 `capacity` / 5 | 闸门 L3 / L4 | 长期保留 |
-| `synaxis.app.whitelist` | `off`；封闭内测 `on` | 内测资格 | 公开内测后 `off` |
+| `synaxis.app.whitelist` | `off`；封闭内测 `on`。只认 `on` / `off`，其他值拒绝起服；`synaxis.app.store=memory` 时开 `on` 拒绝起服 | 内测资格 | 公开内测后 `off` |
 | `synaxis.app.management.enabled` | `false` | 管理接口 | 长期保留 |
 
 灰度环（门槛引用 §3 指标与 §21 SLI，不另立口径）：
@@ -1959,7 +1979,7 @@ flowchart LR
 | 1 连接闸门 | `REQ-PROD-001`（G02）、`REQ-PROD-043`（G40）、`REQ-PROD-009`（G05） | 1A 闸门 G02 + G40（`Server.java`、`HandshakeListener.java`、`ConnectionManager.java`、`StatusResponse.java`、`ServerConfig.java`、`DisconnectReasons.java`、模组 lang）；1B 聊天 G05（`ChatMessageListener.java`、`Player.java:355`、`ServerConfig.java` 两个键、客户端模组 `ClientPacketListenerMixin`）——与 1A 同改 `ServerConfig.java`，1A 先合 | 闸门五层与 fd 退避的集成测试绿；§15 闸门档（单 IP 100 连接/秒 × 60 s）在 50 人规模上跑过；聊天两条场景绿，真客户端无聊天警告截图 | 6.5～7.5 |
 | 2 正版验证 | `REQ-PROD-002`（G01）、`REQ-PROD-003`（G06）、`REQ-PROD-004`（G07，同分片部分）、`REQ-PROD-044`、`REQ-PROD-036`（G33）、`REQ-PROD-030` 切完整正版路径档 | 2A 一个 PR：G01 + G06 + G07 + 假 sessionserver（`Auth.java`、`LoginListener.java`、`ConnectionManager.java`（同分片踢旧后等旧 `Player` 移除）、`HandshakeListener.java`、`PlayerSocketConnection.java`、`PacketVanilla.java`、`crypto/`、`module-info.java`、`server-app/.../Main.java`）；2A 合并后串行：2B 删除 `Auth.Velocity` / `Bungee` 与 PROXY 可信网段自检（G33 的前半；又改 `Auth.java`、`HandshakeListener.java`，不能与 2A 并行；`store_meta` 自检要读第 3 波才建的表，挪到 3A）；2C 切 B 档（工作流、`client-fabric/gametest-env/judge.sh` 的两项假 sessionserver 日志检查、回归测试 `RegressionClientGameTest` 的 R3 与 gametest 源集的访问器 mixin `ConnectionAccessor`；不动引擎，可与 2B 并行） | 在线模式全部自动化场景绿（`REQ-PROD-002`～`004`、`044`）；B 档 R1～R8 连续 5 次绿；用户用正版账号完成 auth 草案 §6.2 前两条人工用例并登记 | 7.5～10（假 sessionserver 与 B 档切换含在 G01、G27 内） |
 | 3 持久化 | `REQ-PROD-021`（G18）→ `REQ-PROD-005`、`006`、`007`（G03）→ `REQ-PROD-008`（G04）；`REQ-PROD-004` 跨分片部分；`REQ-PROD-022`（G19）；`REQ-PROD-035` 前半（WAL 归档与每日基础备份）；`REQ-PROD-045`（G28 前半，转服票据） | 3A 主线串行（同一人）：G18（`PluginScheduler`、`PluginSchedulerImpl`）→ G03（`server-app` 新包 `store/`、`PluginContext.java`、`AdmissionGate.java`（载入插在 `handshake.await` 与 `provider.admit` 之间，`:60-71`）、Flyway V1～V2 与回退 SQL、`--migrate-only --auth-mode` 与 `store_meta` 自检）→ G04（`ServerProcessImpl.java`、`ServerProcess.java`、`Main.java`、`ConnectionManager.java`，含看门狗判死接保存阶段）；3B 事件优先级 G19（`PluginEvents.java`、`PluginEventsImpl.java`，另改 `PluginHost.java` 建节点与收回的两处和 `LoadedPlugin.java`；与 3A 并行，`PluginHost.java` 两边都改，合并时都留）；3C 运维：WAL 归档与每日基础备份（不动 Java 代码，脚本与操作步骤在 `ops/postgres/`）；3D 转服票据 G28 前半（`REQ-PROD-045`：`server-app` 新包 `transfer/`（票据编解码、`TransferTickets`、验票）、`AdmissionGate.java`（验票插在 `store.load` 之前）、`transfer_nonce.gc`、`DisconnectKeys.java` 加 `synaxis:transfer-rejected`、模组 lang、`.env.example` 登记 `SYNAXIS_TRANSFER_HMAC_KEYS`；3A 合并后开工，改 `AdmissionGate.java` 排在 3A 之后） | 持久化草案 P1～P9、P13、P14 全绿；§19 `REQ-PROD-005`、`REQ-PROD-008` 全部场景与 `REQ-PROD-014` 两条落盘场景绿；`REQ-PROD-036` 的三条 `store_meta` 场景绿；`REQ-PROD-045` 三条场景绿（由 `server-app` 的集成测试直接调 `TransferTickets` 驱动，源与目标可以是同一进程，不需要 M3 的 `ShardService`）且票据向量测试绿；WAL 归档已开并有第一份基础备份 | 17.5～22.5（G32 前半 1、G28 前半 2～3 为本分册估；从第 0 波挪来的「判死接保存」与从第 2 波挪来的 `store_meta` 自检工作量仍计在原波次） |
-| 4 治理 | `REQ-PROD-011`（G09）→ `REQ-PROD-010`（G08）、`REQ-PROD-012`（G10） | 4A 权限 G09（Flyway V3、`Permissions`）先合；之后 4B 封禁 G08（Flyway V4、`AdmissionRequest.java`、`ConnectionManager.java` 预登录事件）与 4C 命令 G10（`Main.java#readConsole`、`PluginCommands`，内置六条，`profile` 在 6B）并行。4A～4C 都往 `PluginContext.java` 加方法，合并按 A → B → C 串行，ABI 门每次过 | 封禁、白名单、权限、命令场景全绿；`API_VERSION` 是否加到 2 已由 ABI 门判定并记入 §1 | 10～13 |
+| 4 治理 | `REQ-PROD-011`（G09）→ `REQ-PROD-010`（G08）、`REQ-PROD-012`（G10） | 4A 权限 G09（Flyway V3、`Permissions`）先合；之后 4B 封禁 G08（Flyway V4、`AdmissionRequest.java`、`DisconnectKeys.java`、宿主节点上的预登录判定与 `HandshakeGate.java` 的跳过判断；引擎 `ConnectionManager.java` 不用改）与 4C 命令 G10（`Main.java#readConsole`、`PluginCommands`，内置六条，`profile` 在 6B；另改引擎 `ConsoleSender.java` 的翻译回退）并行。4A～4C 都往 `PluginContext.java` 加方法，合并按 A → B → C 串行，ABI 门每次过 | 封禁、白名单、权限、命令场景全绿；`API_VERSION` 是否加到 2 已由 ABI 门判定并记入 §1 | 10～13 |
 | 5 规模 | 前半：`REQ-PROD-018`（G16）→ `REQ-PROD-029` harness（G26）→ 200 人基线；后半：`REQ-PROD-013`（G11）、`REQ-PROD-023`（G20）、`REQ-PROD-024`（G21）、`REQ-PROD-025`（G22）、`REQ-PROD-026`（G23）、`REQ-PROD-027`（G24）→ `REQ-PROD-020` 分格 + `REQ-PROD-019` 后半 → 500 人压测 | 5A 指标与 harness（新模块 `:loadtest`、`server-app` 指标包、`Main.java` 指标装配）；基线之后：5B 入站 G11 + 出站 G22 + 区块 G23 + Tab G24（都改 `Player.java`，G11 与 G22 还同改 `PlayerSocketConnection.java`，同一人串行）；5C 可见性 G20 + G21（`EntityView.java`、`EntityTrackerImpl.java`、`Instance.java:162`，也改 `Player.java`，合并排在 5B 之后）；5D 分格（`ThreadProvider.java`、`ServerProcessImpl.java:104`、分片宿主），与 5B / 5C 只共用 `ServerConfig.java`，按 5B → 5C → 5D 合并 | 200 人 walk 30 min：tick P99 < 50 ms、超 50 ms 为 0、RSS < 4 GiB；G11 阈值按入站 P99 × 2 写回 `API-PROD-012`；4 线程 `grid` 严格模式 job 在 main 上连续 3 次绿（5D）；500 人两档与重连风暴、闸门、台账档记录在案，`capacity` 定值写回 §15 | 40～57（G17 后半 4～7、分格 3～4 为本分册估；分格从 M3-E 的 12 天中扣出，由 M3 会话同步） |
 | 6 正式运营前 | `REQ-PROD-031`（G28）、`REQ-PROD-032`（G29）、`REQ-PROD-033`（G30）、`REQ-PROD-034`（G31）、`REQ-PROD-035` 后半（G32 恢复演练）、`REQ-PROD-037`（G34）、`REQ-PROD-038`（G35）、`REQ-PROD-039`（G36）、`REQ-PROD-040`（G37）、`REQ-PROD-041`（G38） | 6A 转服 G28 后半（插件面 `Transfers`、`gm.transfer`、`HandshakeListener.java`；票据用 3D 的，P10 由 M3-E 的 `ShardService#transfer` 驱动，所以排在 3D 与 M3-E 之后）；6B 管理接口 G29 + profile G31（新 WebSocket 包、`Main.java`，6C 之前合并）；6C 配置文件 G30 + 压缩 G35（都改 `ServerConfig.java`，同一人；键表要收全本波新增的键，所以 6C 排在第 6 波最后合并）；6D 列表 G34（`StatusResponse.java`）；6E 视距 G36 + 休眠 G37（`Player.java`、`Entity.java`，同一人）；6F 翻译键门禁 G38（CI）；6G 恢复演练 G32（运维） | 各 REQ 场景全绿；两分片来回转服 100 次（P10）绿；恢复演练一次并记录耗时；§23 R4 进入门槛满足 | 17～20.5（G28 前半 2～3 已移到 3D） |
 | 条件 | `REQ-PROD-042`（G39） | — | 触发条件成立时另立波次 | 2 |
@@ -1970,15 +1990,15 @@ flowchart LR
 
 | 文件 | 被哪些组改 | 处置 |
 | --- | --- | --- |
-| `server-app/.../Main.java` | 0A（G13、G15）、0B（G12 看门狗起停）、2A（G01 模式选择）、3A（G03 装配、G04 注册 `ShutdownParticipant`）、4C（G10 控制台）、5A（指标装配）、6B（G29）、6C（G30） | 0A → 0B 串行（还共用崩溃报告写入器）；6B → 6C 串行；其余波次内只有一个组改它 |
+| `server-app/.../Main.java` | 0A（G13、G15）、0B（G12 看门狗起停）、2A（G01 模式选择）、3A（G03 装配、G04 注册 `ShutdownParticipant`）、4A（`role` 命令与权限装配）、4B（封禁装配、`synaxis.app.whitelist`、三条 GM 命令）、4C（G10 控制台、内置命令）、5A（指标装配）、6B（G29）、6C（G30） | 0A → 0B 串行（还共用崩溃报告写入器）；4A → 4B → 4C 串行，合并时各组的装配都留；6B → 6C 串行；其余波次内只有一个组改它 |
 | `ServerConfig.java` | 0B（G12）、1A（G02、G40）、1B（G05）、2B（PROXY 两项拒启）、5B（G11、G22、G23）、5C（G21）、5D（分格）、6C（G30、G35）；6D（G34 三个键）也加键 | 1A 先于 1B；5B → 5C → 5D 合并；键表是配置文件的唯一出处，6C 排在第 6 波最后，在 6D 等全部加键之后合并 |
 | `entity/Player.java` | 0C（接线）、1B（G05）、5B（G11、G22、G23、G24）、5C（G20、G21）、6E（G36） | 5B 同一人串行，5C 排其后 |
 | `PlayerSocketConnection.java` | 2A（cipher）、2B（PROXY 可信网段）、5B（G11 入站计数、G22 出站积压） | 2A → 2B → 5B |
 | `HandshakeListener.java` | 1A（L1 / L2）、2A（transfer 意图鉴权）、2B（删 Velocity / Bungee 分支）、6A（G28） | 按波次串行 |
 | `LoginListener.java` | 2A（G01、G06、G07）、2B | 2A → 2B |
-| `ConnectionManager.java` | 1A（L3 席位、L4）、2A（G07 同分片踢旧后等旧 `Player` 移除）、3A（G04 停机）、4B（G08 预登录判定） | 按波次串行 |
+| `ConnectionManager.java` | 1A（L3 席位、L4）、2A（G07 同分片踢旧后等旧 `Player` 移除）、3A（G04 停机） | 按波次串行 |
 | `server-app/.../AdmissionGate.java` | 3A（载入插在 `handshake.await` 与 `provider.admit` 之间）、3D（验票插在载入之前）、4B（`AdmissionRequest` 加组件的调用点） | 3A → 3D → 4B |
-| `server-app/.../PluginHost.java` | 3A（启用失败的插件收回数据段与停机钩子）、3B（事件节点的建与收回） | 同一波并行，合并时两边的改动都留 |
+| `server-app/.../PluginHost.java` | 3A（启用失败的插件收回数据段与停机钩子）、3B（事件节点的建与收回）、4A～4C（`PluginContextImpl` 的 `permissions`、`moderation`、`commands` 三个组件，4B 挂封禁判定，4C 收回命令） | 同一波并行，合并时两边的改动都留 |
 | `ServerProcessImpl.java` | 0B（G12）、3A（G04）、5D（`:104` 分格）、6C（G35 压缩阈值） | 按波次串行 |
 | `plugin-api/.../DisconnectKeys.java` | 3A（`synaxis:state-unavailable`）、3D（`synaxis:transfer-rejected`）、4B（`synaxis:banned`、`synaxis:not-whitelisted`） | 按 3A → 3D → 4B 串行，每次同步模组两份 lang |
 | `plugin-api/.../PluginContext.java` | 3A（`playerData`、`lifecycle`）、4A～4C（`permissions`、`moderation`、`commands`）、5B（`tabList`，G24）、5C（`entities`，G20）、6A（`transfers`） | 每次加方法单独一个提交，ABI 门逐次过 |
@@ -2047,7 +2067,7 @@ N/A — 本分册尚未开工。R2 封闭内测稳定运行 7 天后按 §3 三�
 | 风险 | 客户端每账号「30 s 内最多 6 次 join」只来自 minecraft.wiki，转服冷却 5 s 建在它上面 | Bearisbug | 第 6 波 |
 | Open Question | 分片宿主区块发送上限取 4 块/tick（清单 G23）时，进场填满视距 12 的 625 个区块要 156 tick ≈ 7.8 s；这与 M3 对进场与转服的体验目标（首批 9 块 P95 < 5 s 不受影响，填满时间 M3 未定）是否冲突，由 M3 会话确认或给出分片宿主值 | Bearisbug（M3 会话） | 第 5 波 5B 组开工前 |
 | Open Question | `docs/DESIGN.md` §17 `process.shutdown` 的 10 s join 上限与 §21「`stop()` < 10 s」SLO 与本分册 30 s 保存预算冲突，需主会话改写（§28.3） | Bearisbug（主会话） | 第 3 波合并前 |
-| 技术债 | `AdmissionRequest` 加 `uuid`、`remoteAddress` 两个组件会改 record 的 canonical 构造器，`checkBinaryCompatibility` 是否判破坏要实测；判破坏就 `API_VERSION` 1 → 2，已发布插件要重编 | Bearisbug | 第 4 波 |
+| 已决 | `AdmissionRequest` 加 `uuid`、`remoteAddress` 两个组件改了 record 的 canonical 构造器；第 4 波 4B 保留旧的四参构造器（`@Deprecated`，用离线 UUID 与回环地址补齐），`checkBinaryCompatibility` 不报破坏，`API_VERSION` 仍为 1（§1）。去掉旧构造器的 `public` 时 ABI 门报 `Public/protected method removed`（`docs/TEST.md` `TC-PROD-234`） | Bearisbug | — |
 | 技术债 | `LegacyServerListPingPacket` 未注册，是死代码（清单 G34 附带发现），本分册不处理 | Bearisbug | 下次清理 network 包时 |
 | 技术债 | `TickMonitor.acquisitionTime` 语义问题（审计 P3-3）修掉之前不导出该指标，锁争用只能从 soak `ticks.acquire_ms` 看 | Bearisbug | 第 5 波 |
 | Open Question | 转服写回途中玩家登出而写回成功时，签发端仍签一张发不出去的票据并记冷却；快照前登出时向已断开的连接发 `synaxis:transfer-failed`。默认不改：票据 30 s 过期、写权已释放，没有危害；§11.3 / `API-PROD-021` 是否要求这时不签票、是否去掉那条提示，待定 | Bearisbug | M3-E 接上 `TransferTickets` 之前 |
@@ -2056,8 +2076,9 @@ N/A — 本分册尚未开工。R2 封闭内测稳定运行 7 天后按 §3 三�
 | 技术债 | `TransferTickets` 的签发端已在分片装配时创建，`server-app` 里还没有调用方；第一个调用方是 M3-E 的 `ShardService#transfer` | Bearisbug（M3 会话） | M3-E |
 | 风险 | `account.last_name` 的 3～16 字符约束拒绝离线模式下 1～2 字符的名字，载入失败、断线 `state-unavailable`；在线模式的 Mojang 名字不受影响。默认不改；CI 或压测需要短名时用一个新迁移放宽为 1～16，不改 V1 | Bearisbug | 第 5 波压测前 |
 | Open Question | 恢复时间目标的口径（§15 备份行）：默认按端到端停服时长；是否按正式库大小从演练结果外推，6G 演练后定 | Bearisbug | 第 6 波 6G |
-| Open Question | `stop [秒数]` 的秒数没有上限（第 4 波 4C 实现只要求 ≥ 0），`stop 2147483647` 会关掉登录闸门后一直倒计时。默认不设上限：误输入可再发 SIGTERM 停机；要设就在 `API-PROD-011` 写一个上限并让超限走 `synaxis:command-stop-usage` | Bearisbug | 第 4 波合并前 |
-| Open Question | `API-PROD-011` 没写引擎已在停机时再执行 `stop` 的回执。4C 的实现回 `synaxis:command-already-stopping`（「The server is already stopping」，模组带中英译文）并在 `EVT:gm_command` 记 `result=invalid`，不改引擎的倒计时（`docs/TEST.md` `TC-PROD-243`、`TC-PROD-255`）；默认按实现写进 `API-PROD-011` 与 §20 `result` 取值 | Bearisbug | 第 4 波合并前 |
+| Open Question | `EVT:player_banned` 只在发起封禁的分片写，`was_online`、`kicked_within_ms` 只数本分片踢出的玩家，跨分片封禁时 §3「封禁即时生效率」漏计其他分片的踢出。默认接受；要准确就让每个分片在收到 `synaxis:moderation` 并踢人后各写一条，§3 按 `ban_id` 聚合 | Bearisbug | R2 封闭内测度量 §3 之前 |
+| Open Question | `account_role.expires_at` 到期不发通知，已读进内存的授予最迟晚 30 s 失效（`API-PROD-010`）。默认接受；要准时就按最近一次到期时间给在线玩家各排一次重读 | Bearisbug | 出现限时角色的需求时 |
+| 风险 | 第 4 波 4B 报告的 3A 缺陷：postgres 存储的 core mode 下玩家进 play 后立刻断开，角色不保存，该账号 5 s 内重登收到 `synaxis:state-unavailable`（日志 `the previous session of this account did not let go in time`），停机保存阶段卡满 30 s（`Not saved on shutdown … character_id=1`）。4B 在 `prod/w4-4a` 与 `prod/w4-4b` 上各复现一次，集成时没有复现，也还没定位；交 3A 的 `PlayerStore` 排查 | Bearisbug | 第 5 波压测前 |
 | 风险 | `stop` 与 SIGTERM 竞态：SIGTERM 线程已在引擎里占下停机、但阶段还没离开 `RUNNING` 的几条指令内执行 `stop 5`，命令回「5 s 后停」、台账记 `ok`，引擎却忽略这次倒计时，按 SIGTERM 的 0 s 停。停机本身不受影响；要消除得让 `ServerProcess#beginShutdown` 返回是否由本次调用发起（引擎接口，`docs/DESIGN.md` `API-003`） | Bearisbug | 第 6 波管理接口 `server/stop` 接线时 |
 | 已决 | PostgreSQL 16 的 `pg_archivecleanup` 不删 `.backup` 标签文件，每份基础备份留一个约 200 B 的文件，不清理 | Bearisbug | — |
 

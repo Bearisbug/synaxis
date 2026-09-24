@@ -15,6 +15,7 @@ import org.jetbrains.annotations.Nullable;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 
 /**
  * An engine {@link io.github.bearisbug.synaxis.instance.generator.Generator} as a bake source: each chunk is
@@ -105,7 +106,7 @@ public final class GeneratorSource implements BakeSource {
                         handler == null ? "" : handler.getKey().asString(), full));
             }
         }
-        return new SourceChunk(chunkX, chunkZ, blocks, biomes, blockEntities, List.of(), false, null, null);
+        return new SourceChunk(chunkX, chunkZ, blocks, biomes, blockEntities, List.of(), false, null, null, Set.of());
     }
 
     @Override

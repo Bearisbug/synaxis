@@ -119,6 +119,18 @@ public class AnvilBakeTest {
                 BakeTesting.events(temp.resolve("edited-bake")).toString());
     }
 
+    /**
+     * REQ-M3-021: the fixture's three data markers turn into air, which lights them and the blocks they stand
+     * on differently from the source; those cells are left out, and the rest of the fixture matches.
+     */
+    @Test
+    public void theSourceLightParityLeavesTheMarkersOut() throws Exception {
+        final Baker.Result result = bake(RegionFixtures.world(), CHUNK_0_0);
+
+        assertEquals(Baker.EXIT_PUBLISHED, result.exitCode(), result.message());
+        assertEquals(0L, result.manifest().verify().sourceLightDiff());
+    }
+
     /** §19: a chunk of another DataVersion refuses the source, exit code 2, before anything is written. */
     @Test
     public void anotherDataVersionExitsTwoAndNamesTheChunk() throws Exception {

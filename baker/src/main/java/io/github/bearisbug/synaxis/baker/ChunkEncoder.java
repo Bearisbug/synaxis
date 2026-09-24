@@ -1,5 +1,6 @@
 package io.github.bearisbug.synaxis.baker;
 
+import io.github.bearisbug.synaxis.baker.anvil.AnvilChunk;
 import io.github.bearisbug.synaxis.coordinate.CoordConversion;
 import io.github.bearisbug.synaxis.instance.block.Block;
 import io.github.bearisbug.synaxis.instance.block.BlockHandler;
@@ -29,6 +30,7 @@ import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.TreeMap;
 import java.util.function.Function;
 
@@ -197,7 +199,7 @@ final class ChunkEncoder {
 
     /**
      * REQ-M3-021: nibbles where the computed light differs from the source's own, over the sections the source
-     * has light for. 0 unless the source marked the chunk {@code isLightOn}.
+     * has light for, without {@link SourceChunk#markerCells}. 0 unless the source marked the chunk {@code isLightOn}.
      */
     static long sourceLightDiff(SourceChunk chunk, LightResult light, int minY) {
         if (!chunk.lightOn()) return 0;
@@ -205,20 +207,21 @@ final class ChunkEncoder {
         long diff = 0;
         for (int s = 0; s < chunk.blocks().length; s++) {
             diff += nibbleDiff(chunk.sourceSky() == null ? null : chunk.sourceSky()[s],
-                    light.sky(chunk.chunkX(), minSection + s, chunk.chunkZ()));
+                    light.sky(chunk.chunkX(), minSection + s, chunk.chunkZ()), minSection + s, chunk.markerCells());
             diff += nibbleDiff(chunk.sourceBlock() == null ? null : chunk.sourceBlock()[s],
-                    light.block(chunk.chunkX(), minSection + s, chunk.chunkZ()));
+                    light.block(chunk.chunkX(), minSection + s, chunk.chunkZ()), minSection + s, chunk.markerCells());
         }
         return diff;
     }
 
-    private static int nibbleDiff(byte @Nullable [] source, byte[] computed) {
+    /** Nibble {@code n} of a light array is the light of block index {@code n}, low nibble first. */
+    private static int nibbleDiff(byte @Nullable [] source, byte[] computed, int sectionY, Set<Long> skipped) {
         if (source == null) return 0;
         int diff = 0;
         for (int i = 0; i < source.length; i++) {
             final int xor = source[i] ^ computed[i];
-            if ((xor & 0x0F) != 0) diff++;
-            if ((xor & 0xF0) != 0) diff++;
+            if ((xor & 0x0F) != 0 && !skipped.contains(AnvilChunk.cellKey(sectionY, i * 2))) diff++;
+            if ((xor & 0xF0) != 0 && !skipped.contains(AnvilChunk.cellKey(sectionY, i * 2 + 1))) diff++;
         }
         return diff;
     }

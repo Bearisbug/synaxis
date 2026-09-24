@@ -172,7 +172,8 @@ public final class AnvilSource implements BakeSource {
             blockEntities.add(new SynxBlockEntity(blockEntity.sectionY(), blockEntity.index(),
                     blockEntity.handler() == null ? "" : blockEntity.handler(), blockEntity.nbt()));
         }
-        return new SourceChunk(chunkX, chunkZ, blocks, biomes, blockEntities, chunk.entities(), chunk.lightOn(), sky, block);
+        return new SourceChunk(chunkX, chunkZ, blocks, biomes, blockEntities, chunk.entities(), chunk.lightOn(), sky, block,
+                chunk.markerCells());
     }
 
     private AnvilChunk chunk(int chunkX, int chunkZ) throws IOException {

@@ -149,10 +149,11 @@ public final class AnvilWorld implements AutoCloseable {
 
         final Map<Integer, AnvilSection> sections = readSections(chunkX, chunkZ, data);
         final Map<Long, AnvilBlockEntity> blockEntities = readBlockEntities(chunkX, chunkZ, data);
-        final List<HiddenArea> hiddenAreas = applyMarkers(chunkX, chunkZ, sections, blockEntities);
+        final Set<Long> markerCells = new HashSet<>();
+        final List<HiddenArea> hiddenAreas = applyMarkers(chunkX, chunkZ, sections, blockEntities, markerCells);
         return new AnvilChunk(chunkX, chunkZ, data.getBoolean("isLightOn"),
                 List.copyOf(sections.values()), List.copyOf(blockEntities.values()),
-                readEntities(chunkX, chunkZ, fileName), List.copyOf(hiddenAreas));
+                readEntities(chunkX, chunkZ, fileName), List.copyOf(hiddenAreas), markerCells);
     }
 
     @Override
@@ -329,7 +330,7 @@ public final class AnvilWorld implements AutoCloseable {
     }
 
     private List<HiddenArea> applyMarkers(int chunkX, int chunkZ, Map<Integer, AnvilSection> sections,
-                                          Map<Long, AnvilBlockEntity> blockEntities) throws AnvilSourceException {
+                                          Map<Long, AnvilBlockEntity> blockEntities, Set<Long> markerCells) throws AnvilSourceException {
         final List<AnvilBlockEntity> markers = new ArrayList<>();
         final Set<Long> markerKeys = new HashSet<>();
         for (AnvilBlockEntity blockEntity : blockEntities.values()) {
@@ -351,6 +352,8 @@ public final class AnvilWorld implements AutoCloseable {
 
             blockEntities.remove(blockKey(marker.sectionY(), marker.index()));
             section(chunkX, chunkZ, sections, y, where).blocks().set(x & 15, y & 15, z & 15, Block.AIR.stateId());
+            markerCells.add(AnvilChunk.cellKey(marker.sectionY(), marker.index()));
+            markerCells.add(AnvilChunk.cellKey((y - 1) >> 4, AnvilBlockEntity.index(x, y - 1, z)));
 
             if (namespace.equals(HIDDEN_MARKER)) {
                 hiddenAreas.add(hiddenArea(chunkX, chunkZ, where, argument));

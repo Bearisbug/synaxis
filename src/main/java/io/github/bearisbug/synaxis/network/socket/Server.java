@@ -128,8 +128,11 @@ public final class Server {
                     // Handed over before the socket threads run, so a connection dying right away
                     // still cancels the watchdog instead of being held for the whole login timeout.
                     connection.watchLoginTimeout(loginTimeoutThread);
-                    readThread.start();
+                    // The write thread first: the read thread can turn the connection away on its
+                    // first packet, and the disconnect gives the write thread 1 s to flush the
+                    // reason by joining it, which returns at once for a thread not started yet
                     writeThread.start();
+                    readThread.start();
                     loginTimeoutThread.start();
                 } catch (IOException e) {
                     if (!process.config().suppressConnectionAcceptErrors())

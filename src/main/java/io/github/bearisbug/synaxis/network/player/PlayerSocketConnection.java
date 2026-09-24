@@ -691,6 +691,10 @@ public class PlayerSocketConnection extends PlayerConnection {
      * spent it is done from a thread of its own, and with the channel go both socket threads, the
      * read buffer and everything queued for the peer. The write thread never needs this: a call
      * from there means it is not inside a write, and it closes the channel itself right after.
+     * <p>
+     * The write thread has to be started before anything can disconnect the connection: joining a
+     * thread that has not started returns at once, and the channel would be closed before the
+     * disconnect packet is written.
      */
     private void closeOnceFlushed() {
         if (Thread.currentThread() == writeThread) return;

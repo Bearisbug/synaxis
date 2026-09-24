@@ -91,6 +91,32 @@ public class TrackingRangeTest {
         assertFalse(zombie.isViewer(player), "5 blocks up is outside a vertical range of 4");
     }
 
+    /** A passenger has no range of its own: it is seen exactly when its vehicle is. */
+    @Test
+    public void aPassengerFollowsItsVehicleOutOfRange() {
+        final Player player = env.createPlayer(instance, PLAYER);
+        final Entity vehicle = new Entity(EntityType.HORSE);
+        vehicle.setNoGravity(true);
+        vehicle.setTrackingRange(5, 5);
+        vehicle.setInstance(instance, PLAYER.add(20, 0, 0)).join();
+        final Entity passenger = spawn(EntityType.ZOMBIE, PLAYER.add(20, 0, 0));
+        vehicle.acquirable().sync(owned -> owned.addPassenger(passenger));
+        refresh();
+        refresh();
+        assertFalse(vehicle.isViewer(player), "20 blocks away, outside 5");
+        assertFalse(passenger.isViewer(player), "its vehicle is out of range");
+
+        teleport(player, PLAYER.add(18, 0, 0));
+        refresh();
+        assertTrue(vehicle.isViewer(player));
+        assertTrue(passenger.isViewer(player));
+
+        teleport(player, PLAYER);
+        refresh();
+        assertFalse(vehicle.isViewer(player));
+        assertFalse(passenger.isViewer(player));
+    }
+
     @Test
     public void withoutARangeTheSquareOfTheEntityViewDistanceStays() {
         final Player player = env.createPlayer(instance, PLAYER);

@@ -162,6 +162,30 @@ public class VisibleEntityLimitTest {
         assertEquals(List.of(near.getEntityId()), movedIds);
     }
 
+    /** A passenger does not count, and it is not seen while its vehicle is turned away by the limit. */
+    @Test
+    public void aPassengerIsNotSeenWithoutItsVehicle() {
+        final Instance instance = start(1);
+        final Player player = env.createPlayer(instance, CENTER);
+        final Entity near = spawn(instance, CENTER.add(3, 0, 0));
+        // Mounted outside the square, then brought in together: the tracker reports both at once
+        final Entity vehicle = spawn(instance, CENTER.add(200, 0, 0));
+        final Entity passenger = spawn(instance, CENTER.add(200, 0, 0));
+        vehicle.acquirable().sync(owned -> owned.addPassenger(passenger));
+        vehicle.acquirable().sync(owned -> owned.teleport(CENTER.add(20, 0, 0)).join());
+        assertTrue(near.isViewer(player));
+        assertFalse(vehicle.isViewer(player), "the limit of 1 is taken by the nearer one");
+        assertFalse(passenger.isViewer(player), "its vehicle is turned away");
+        refresh();
+        assertFalse(vehicle.isViewer(player));
+        assertFalse(passenger.isViewer(player));
+
+        near.acquirable().sync(Entity::remove);
+        refresh();
+        assertTrue(vehicle.isViewer(player));
+        assertTrue(passenger.isViewer(player), "the passenger comes in with its vehicle, outside the count");
+    }
+
     @Test
     public void withoutALimitThePlayerSeesThemAll() {
         final Instance instance = start(0);

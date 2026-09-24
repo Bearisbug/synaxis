@@ -127,8 +127,12 @@ final class EntityView {
      * both view mutexes held, this being the player's view.
      */
     private boolean admits(Entity entity, Player player) {
-        // A passenger comes and goes with its vehicle
-        if (entity.getVehicle() != null) return true;
+        // Removed on another tick thread after the caller picked it: its removal already went past
+        // this player, nothing would destroy it on the client
+        if (entity.isRemoved()) return false;
+        // A passenger comes and goes with its vehicle, which is shown before its passengers
+        final Entity vehicle = entity.getVehicle();
+        if (vehicle != null) return vehicle == player || vehicle == player.getVehicle() || viewerOption.isRegistered(vehicle);
         if (!withinRange(entity, player)) return false;
         if (entity.isAlwaysVisible()) return true;
         final int limit = player.process().config().maxVisibleEntitiesPerPlayer();
@@ -203,6 +207,19 @@ final class EntityView {
             final int id = candidate.getEntityId();
             if (registered.contains(id) && !wanted.contains(id)) hideEntityFromPlayer(candidate, player);
         }
+        // A passenger taken in on its own before it mounted is not a candidate, it leaves with a
+        // vehicle the player does not see
+        final List<Entity> stranded = new ArrayList<>();
+        synchronized (mutex) {
+            for (IntIterator it = viewerOption.bitSet.intIterator(); it.hasNext(); ) {
+                final Entity seen = trackedLocation.instance().getEntityById(it.nextInt());
+                if (seen == null) continue;
+                final Entity vehicle = seen.getVehicle();
+                if (vehicle != null && vehicle != player && vehicle != player.getVehicle()
+                        && !viewerOption.isRegistered(vehicle)) stranded.add(seen);
+            }
+        }
+        for (Entity passenger : stranded) hideEntityFromPlayer(passenger, player);
         synchronized (mutex) {
             counted.clear();
             for (Nearby visible : nearby) {

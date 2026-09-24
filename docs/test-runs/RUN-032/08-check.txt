@@ -1,0 +1,203 @@
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/9.7.1/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build 
+Isolated Projects is an incubating feature.
+Calculating task graph as no cached configuration is available for tasks: check
+
+> Configure project :build-src
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by build file 'build-src/build.gradle.kts'
+Build was configured to prefer settings repositories over project repositories but repository 'Gradle Central Plugin Repository' was added by build file 'build-src/build.gradle.kts'
+
+> Task :build-src:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :build-src:generateEntrypointForConventions
+> Task :build-src:generateEntrypointForConventionsInPluginsBlock
+> Task :build-src:generateEntrypointForLibs
+> Task :build-src:generateEntrypointForLibsInPluginsBlock
+> Task :build-src:generateExternalPluginSpecBuilders
+> Task :build-src:generateLibrariesForConventions
+> Task :build-src:generateLibrariesForLibs
+> Task :build-src:extractPrecompiledScriptPluginPlugins
+> Task :build-src:generateScriptPluginAdapters
+> Task :build-src:verifyEarlyEvaluatedBuild
+> Task :build-src:verifyTopLevelBuild
+> Task :build-src:pluginDescriptors
+> Task :build-src:processResources
+> Task :build-src:compilePluginsBlocks
+> Task :build-src:generatePrecompiledScriptPluginAccessors
+> Task :build-src:compileKotlin
+> Task :build-src:compileJava
+> Task :build-src:classes
+> Task :build-src:jar
+
+> Configure project :
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by plugin 'synaxis.java-library'
+
+> Configure project :game-rts
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by plugin 'synaxis.java-library'
+
+> Configure project :architecture-tests
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by plugin 'synaxis.java-library'
+
+> Configure project :protocol
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by plugin 'synaxis.java-library'
+
+> Configure project :loadtest
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by plugin 'synaxis.java-library'
+
+> Configure project :testing
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by plugin 'synaxis.java-library'
+
+> Configure project :plugin-api
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by plugin 'synaxis.java-library'
+
+> Configure project :server-app
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by plugin 'synaxis.java-library'
+
+> Configure project :jcstress-tests
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by plugin 'synaxis.java-library'
+
+> Configure project :jmh-benchmarks
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by plugin 'synaxis.java-library'
+
+> Task :architecture-tests:processTestResources NO-SOURCE
+> Task :protocol:processResources NO-SOURCE
+> Task :testing:processResources NO-SOURCE
+> Task :plugin-api:processResources NO-SOURCE
+> Task :architecture-tests:processResources NO-SOURCE
+> Task :architecture-tests:compileJava NO-SOURCE
+> Task :architecture-tests:classes UP-TO-DATE
+> Task :game-rts:processTestResources NO-SOURCE
+> Task :jcstress-tests:compileJava NO-SOURCE
+> Task :game-rts:processResources
+> Task :architecture-tests:testNamingCheck
+> Task :architecture-tests:forbiddenImportsCheck
+> Task :jcstress-tests:processTestResources NO-SOURCE
+> Task :jcstress-tests:testNamingCheck
+> Task :jmh-benchmarks:processResources NO-SOURCE
+> Task :jmh-benchmarks:processTestResources NO-SOURCE
+> Task :jmh-benchmarks:processJmhResources NO-SOURCE
+> Task :jmh-benchmarks:compileJava NO-SOURCE
+> Task :jmh-benchmarks:classes UP-TO-DATE
+> Task :jmh-benchmarks:compileTestJava NO-SOURCE
+> Task :jmh-benchmarks:testClasses UP-TO-DATE
+> Task :jmh-benchmarks:test NO-SOURCE
+> Task :jcstress-tests:processResources NO-SOURCE
+> Task :jcstress-tests:classes UP-TO-DATE
+> Task :jmh-benchmarks:testNamingCheck
+> Task :jcstress-tests:compileTestJava NO-SOURCE
+> Task :loadtest:processResources NO-SOURCE
+> Task :jcstress-tests:testClasses UP-TO-DATE
+> Task :jcstress-tests:forbiddenImportsCheck
+> Task :game-rts:testNamingCheck
+> Task :loadtest:processTestResources NO-SOURCE
+> Task :game-rts:forbiddenImportsCheck
+> Task :jcstress-tests:test NO-SOURCE
+> Task :loadtest:testNamingCheck
+> Task :plugin-api:processTestResources NO-SOURCE
+> Task :plugin-api:testNamingCheck
+> Task :server-app:buildInfo
+> Task :protocol:testNamingCheck
+> Task :protocol:forbiddenImportsCheck
+> Task :loadtest:forbiddenImportsCheck
+> Task :processTestResources
+> Task :plugin-api:forbiddenImportsCheck
+> Task :server-app:processTestResources
+> Task :testing:processTestResources NO-SOURCE
+> Task :jmh-benchmarks:forbiddenImportsCheck
+> Task :server-app:processResources
+> Task :protocol:processTestResources
+> Task :testing:testNamingCheck
+> Task :testing:forbiddenImportsCheck
+> Task :generateJavaTemplates
+> Task :server-app:testNamingCheck
+> Task :server-app:forbiddenImportsCheck
+> Task :processResources
+> Task :testNamingCheck
+> Task :forbiddenImportsCheck
+> Task :protocol:compileJava
+> Task :protocol:classes
+> Task :protocol:jar
+> Task :protocol:compileTestJava
+> Task :protocol:errorproneCheck
+> Task :protocol:testClasses
+> Task :protocol:test
+> Task :protocol:check
+> Task :compileJava
+> Task :classes
+> Task :jar
+> Task :jmh-benchmarks:compileWorldbenchJava
+> Task :loadtest:compileJava
+> Task :loadtest:classes
+> Task :plugin-api:compileJava
+> Task :plugin-api:classes
+> Task :plugin-api:jar
+> Task :loadtest:compileTestJava
+> Task :loadtest:errorproneCheck
+> Task :loadtest:testClasses
+> Task :jcstress-tests:compileJcstressJava
+> Task :jcstress-tests:errorproneCheck
+> Task :jcstress-tests:check
+> Task :plugin-api:compileTestJava
+> Task :plugin-api:testClasses
+> Task :plugin-api:errorproneCheck
+> Task :game-rts:compileJava
+> Task :game-rts:classes
+> Task :game-rts:jar
+> Task :plugin-api:test
+> Task :plugin-api:check
+> Task :testing:compileJava
+> Task :testing:classes
+> Task :testing:jar
+> Task :testing:compileTestJava
+> Task :testing:errorproneCheck
+> Task :testing:testClasses
+
+> Task :testing:test
+SLF4J(W): No SLF4J providers were found.
+SLF4J(W): Defaulting to no-operation (NOP) logger implementation
+SLF4J(W): See https://www.slf4j.org/codes.html#noProviders for further details.
+
+> Task :jmh-benchmarks:compileJmhJava
+> Task :jmh-benchmarks:jmhClasses
+> Task :game-rts:compileTestJava
+> Task :game-rts:errorproneCheck
+> Task :game-rts:testClasses
+> Task :jmh-benchmarks:jmhRunBytecodeGenerator
+> Task :server-app:compileJava
+> Task :server-app:classes
+> Task :server-app:jar
+> Task :testing:check
+> Task :architecture-tests:compileTestJava
+> Task :architecture-tests:testClasses
+> Task :architecture-tests:errorproneCheck
+> Task :jmh-benchmarks:jmhCompileGeneratedClasses
+> Task :jmh-benchmarks:errorproneCheck
+> Task :jmh-benchmarks:check
+> Task :loadtest:test
+> Task :server-app:compileTestJava
+> Task :server-app:testClasses
+> Task :server-app:errorproneCheck
+> Task :architecture-tests:test
+> Task :architecture-tests:check
+> Task :compileTestJava
+> Task :game-rts:test
+> Task :game-rts:check
+> Task :testClasses
+> Task :errorproneCheck
+> Task :server-app:test
+> Task :loadtest:check
+> Task :test
+> Task :check
+> Task :server-app:check
+
+[Incubating] Problems report is available at: file:///Users/bug/Documents/Projects/Minecraft/synaxis-wt/m3-shard/build/reports/problems/problems-report.html
+
+Deprecated Gradle features were used in this build, making it incompatible with Gradle 10.
+
+You can use '--warning-mode all' to show the individual deprecation warnings and determine if they come from your own scripts or plugins.
+
+For more on this, please refer to https://docs.gradle.org/9.7.1/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.
+
+BUILD SUCCESSFUL in 3m 26s
+80 actionable tasks: 80 executed
+Configuration cache entry stored.
+exit=0

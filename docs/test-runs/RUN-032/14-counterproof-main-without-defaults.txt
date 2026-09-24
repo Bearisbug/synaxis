@@ -1,0 +1,11 @@
+== 14-counterproof-main-without-defaults: bin/server-shard 
+ chunkViewDistance=10
+ entityViewDistance=8
+ dispatcherThreads=10
+ threadProvider=GRID
+ acceptTransfers=false
+ maxChunksPerTick=64.0
+ maxVisibleEntitiesPerPlayer=0
+listening on http://127.0.0.1:62535/metrics
+listening on 0.0.0.0:25655
+18:38:21.910 [Thread-3] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.

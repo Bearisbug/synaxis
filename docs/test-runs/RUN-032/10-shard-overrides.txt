@@ -1,0 +1,11 @@
+== 10-shard-overrides: bin/server-shard -Dsynaxis.chunk-view-distance=16 -Dsynaxis.chunk-queue.max-per-tick=64 -Dsynaxis.max-visible-entities-per-player=0
+ chunkViewDistance=16
+ entityViewDistance=8
+ dispatcherThreads=10
+ threadProvider=GRID
+ acceptTransfers=false
+ maxChunksPerTick=64.0
+ maxVisibleEntitiesPerPlayer=0
+listening on http://127.0.0.1:61992/metrics
+listening on 0.0.0.0:25655
+18:37:00.602 [Thread-3] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.

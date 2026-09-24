@@ -1,0 +1,37 @@
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/9.7.1/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build 
+Isolated Projects is an incubating feature.
+Reusing configuration cache.
+> Task :plugin-api:processResources NO-SOURCE
+> Task :testing:processResources NO-SOURCE
+> Task :protocol:processResources NO-SOURCE
+> Task :server-app:processTestResources UP-TO-DATE
+> Task :generateJavaTemplates UP-TO-DATE
+> Task :game-rts:processResources UP-TO-DATE
+> Task :processResources UP-TO-DATE
+> Task :protocol:compileJava UP-TO-DATE
+> Task :protocol:classes UP-TO-DATE
+> Task :server-app:buildInfo UP-TO-DATE
+> Task :server-app:processResources UP-TO-DATE
+> Task :protocol:jar UP-TO-DATE
+> Task :compileJava UP-TO-DATE
+> Task :classes UP-TO-DATE
+> Task :jar UP-TO-DATE
+> Task :plugin-api:compileJava UP-TO-DATE
+> Task :plugin-api:classes UP-TO-DATE
+> Task :plugin-api:jar UP-TO-DATE
+> Task :game-rts:compileJava UP-TO-DATE
+> Task :game-rts:classes UP-TO-DATE
+> Task :testing:compileJava UP-TO-DATE
+> Task :game-rts:jar UP-TO-DATE
+> Task :testing:classes UP-TO-DATE
+> Task :testing:jar UP-TO-DATE
+> Task :server-app:compileJava FROM-CACHE
+> Task :server-app:classes UP-TO-DATE
+> Task :server-app:compileTestJava UP-TO-DATE
+> Task :server-app:testClasses UP-TO-DATE
+> Task :server-app:test FROM-CACHE
+
+BUILD SUCCESSFUL in 2s
+19 actionable tasks: 2 from cache, 17 up-to-date
+Configuration cache entry reused.

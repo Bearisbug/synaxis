@@ -1,0 +1,2 @@
+== 19-tc-prod-334-step4: bin/server-shard -Dsynaxis.thread-provider=hex
+Refusing to start: Property 'synaxis.thread-provider' is not counter or grid: hex

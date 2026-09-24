@@ -1,0 +1,9 @@
+== 13-shard-postgres-transfers-off: bin/server-shard -Dsynaxis.app.store=postgres -Dsynaxis.accept-transfers=false
+ chunkViewDistance=12
+ entityViewDistance=8
+ dispatcherThreads=10
+ threadProvider=GRID
+ acceptTransfers=false
+ maxChunksPerTick=4.0
+ maxVisibleEntitiesPerPlayer=100
+Refusing to start: the player store database cannot be reached: Failed to initialize pool: Connection to 127.0.0.1:1 refused. Check that the hostname and port are correct and that the postmaster is accepting TCP/IP connections.

@@ -1,0 +1,9 @@
+== 12-shard-postgres-no-keys: bin/server-shard -Dsynaxis.app.store=postgres
+ chunkViewDistance=12
+ entityViewDistance=8
+ dispatcherThreads=10
+ threadProvider=GRID
+ acceptTransfers=true
+ maxChunksPerTick=4.0
+ maxVisibleEntitiesPerPlayer=100
+Refusing to start: synaxis.accept-transfers=true needs SYNAXIS_TRANSFER_HMAC_KEYS to check the tickets transfers come in with 

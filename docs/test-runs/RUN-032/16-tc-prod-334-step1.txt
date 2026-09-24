@@ -1,0 +1,13 @@
+== 16-tc-prod-334-step1: bin/server-shard 
+ chunkViewDistance=12
+ entityViewDistance=8
+ dispatcherThreads=10
+ threadProvider=GRID
+ acceptTransfers=false
+ maxChunksPerTick=4.0
+ maxVisibleEntitiesPerPlayer=100
+listening on http://127.0.0.1:62975/metrics
+listening on 0.0.0.0:25654
+Syn-Tick threads: 10
+JVM flag count: 7
+18:39:26.438 [Thread-3] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.

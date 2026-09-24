@@ -1,0 +1,162 @@
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/9.7.1/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build 
+Isolated Projects is an incubating feature.
+Calculating task graph as no cached configuration is available for tasks: :server-app:test --tests io.github.bearisbug.synaxis.app.ShardMainTest
+
+> Configure project :build-src
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by build file 'build-src/build.gradle.kts'
+Build was configured to prefer settings repositories over project repositories but repository 'Gradle Central Plugin Repository' was added by build file 'build-src/build.gradle.kts'
+
+> Task :build-src:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :build-src:generateEntrypointForConventions FROM-CACHE
+> Task :build-src:generateEntrypointForConventionsInPluginsBlock FROM-CACHE
+> Task :build-src:generateEntrypointForLibs FROM-CACHE
+> Task :build-src:generateEntrypointForLibsInPluginsBlock FROM-CACHE
+> Task :build-src:generateExternalPluginSpecBuilders FROM-CACHE
+> Task :build-src:generateLibrariesForConventions FROM-CACHE
+> Task :build-src:generateLibrariesForLibs FROM-CACHE
+> Task :build-src:extractPrecompiledScriptPluginPlugins FROM-CACHE
+> Task :build-src:compilePluginsBlocks FROM-CACHE
+> Task :build-src:generatePrecompiledScriptPluginAccessors FROM-CACHE
+> Task :build-src:generateScriptPluginAdapters FROM-CACHE
+> Task :build-src:verifyEarlyEvaluatedBuild FROM-CACHE
+> Task :build-src:verifyTopLevelBuild FROM-CACHE
+> Task :build-src:compileKotlin FROM-CACHE
+> Task :build-src:compileJava FROM-CACHE
+> Task :build-src:pluginDescriptors
+> Task :build-src:processResources
+> Task :build-src:classes
+> Task :build-src:jar
+
+> Configure project :
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by plugin 'synaxis.java-library'
+
+> Configure project :architecture-tests
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by plugin 'synaxis.java-library'
+
+> Configure project :game-rts
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by plugin 'synaxis.java-library'
+
+> Configure project :plugin-api
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by plugin 'synaxis.java-library'
+
+> Configure project :protocol
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by plugin 'synaxis.java-library'
+
+> Configure project :testing
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by plugin 'synaxis.java-library'
+
+> Configure project :loadtest
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by plugin 'synaxis.java-library'
+
+> Configure project :server-app
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by plugin 'synaxis.java-library'
+
+> Configure project :jcstress-tests
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by plugin 'synaxis.java-library'
+
+> Configure project :jmh-benchmarks
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by plugin 'synaxis.java-library'
+
+> Task :protocol:processResources NO-SOURCE
+> Task :plugin-api:processResources NO-SOURCE
+> Task :testing:processResources NO-SOURCE
+> Task :game-rts:processResources
+> Task :server-app:processTestResources
+> Task :protocol:compileJava FROM-CACHE
+> Task :server-app:buildInfo
+> Task :protocol:classes UP-TO-DATE
+> Task :protocol:jar
+> Task :server-app:processResources
+> Task :generateJavaTemplates
+> Task :processResources
+> Task :compileJava FROM-CACHE
+> Task :classes
+> Task :jar
+> Task :plugin-api:compileJava FROM-CACHE
+> Task :plugin-api:classes UP-TO-DATE
+> Task :plugin-api:jar
+> Task :testing:compileJava FROM-CACHE
+> Task :testing:classes UP-TO-DATE
+> Task :testing:jar
+> Task :game-rts:compileJava FROM-CACHE
+> Task :game-rts:classes
+> Task :game-rts:jar
+> Task :server-app:compileJava FROM-CACHE
+> Task :server-app:classes
+
+> Task :server-app:compileTestJava FAILED
+/Users/bug/Documents/Projects/Minecraft/synaxis-wt/m3-shard/server-app/src/test/java/io/github/bearisbug/synaxis/app/ShardMainTest.java:42: 错误: 找不到符号
+                ShardMain.viewDefaults(Map.<String, String>of()::get));
+                         ^
+  符号:   方法 viewDefaults(Map.<Strin[...]::get)
+  位置: 类 ShardMain
+/Users/bug/Documents/Projects/Minecraft/synaxis-wt/m3-shard/server-app/src/test/java/io/github/bearisbug/synaxis/app/ShardMainTest.java:48: 错误: 找不到符号
+                ShardMain.viewDefaults(Map.of("synaxis.chunk-view-distance", "16")::get));
+                         ^
+  符号:   方法 viewDefaults(Map.of("sy[...]::get)
+  位置: 类 ShardMain
+/Users/bug/Documents/Projects/Minecraft/synaxis-wt/m3-shard/server-app/src/test/java/io/github/bearisbug/synaxis/app/ShardMainTest.java:50: 错误: 找不到符号
+                ShardMain.viewDefaults(Map.of("synaxis.chunk-queue.max-per-tick", "64")::get));
+                         ^
+  符号:   方法 viewDefaults(Map.of("sy[...]::get)
+  位置: 类 ShardMain
+/Users/bug/Documents/Projects/Minecraft/synaxis-wt/m3-shard/server-app/src/test/java/io/github/bearisbug/synaxis/app/ShardMainTest.java:52: 错误: 找不到符号
+                ShardMain.viewDefaults(Map.of("synaxis.max-visible-entities-per-player", "0")::get));
+                         ^
+  符号:   方法 viewDefaults(Map.of("sy[...]::get)
+  位置: 类 ShardMain
+/Users/bug/Documents/Projects/Minecraft/synaxis-wt/m3-shard/server-app/src/test/java/io/github/bearisbug/synaxis/app/ShardMainTest.java:57: 错误: 找不到符号
+        assertEquals(Map.of(), ShardMain.transferDefaults(Map.<String, String>of()::get));
+                                        ^
+  符号:   方法 transferDefaults(Map.<Strin[...]::get)
+  位置: 类 ShardMain
+/Users/bug/Documents/Projects/Minecraft/synaxis-wt/m3-shard/server-app/src/test/java/io/github/bearisbug/synaxis/app/ShardMainTest.java:58: 错误: 找不到符号
+        assertEquals(Map.of(), ShardMain.transferDefaults(Map.of("synaxis.app.store", "memory")::get));
+                                        ^
+  符号:   方法 transferDefaults(Map.of("sy[...]::get)
+  位置: 类 ShardMain
+/Users/bug/Documents/Projects/Minecraft/synaxis-wt/m3-shard/server-app/src/test/java/io/github/bearisbug/synaxis/app/ShardMainTest.java:64: 错误: 找不到符号
+                ShardMain.transferDefaults(Map.of("synaxis.app.store", "postgres")::get));
+                         ^
+  符号:   方法 transferDefaults(Map.of("sy[...]::get)
+  位置: 类 ShardMain
+/Users/bug/Documents/Projects/Minecraft/synaxis-wt/m3-shard/server-app/src/test/java/io/github/bearisbug/synaxis/app/ShardMainTest.java:69: 错误: 找不到符号
+        assertEquals(Map.of(), ShardMain.transferDefaults(
+                                        ^
+  符号:   方法 transferDefaults(Map.of("sy[...]::get)
+  位置: 类 ShardMain
+/Users/bug/Documents/Projects/Minecraft/synaxis-wt/m3-shard/server-app/src/test/java/io/github/bearisbug/synaxis/app/ShardMainTest.java:71: 错误: 找不到符号
+        assertEquals(Map.of(), ShardMain.transferDefaults(
+                                        ^
+  符号:   方法 transferDefaults(Map.of("sy[...]::get)
+  位置: 类 ShardMain
+9 个错误
+
+[Incubating] Problems report is available at: file:///Users/bug/Documents/Projects/Minecraft/synaxis-wt/m3-shard/build/reports/problems/problems-report.html
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':server-app:compileTestJava' (registered by plugin class 'org.gradle.api.plugins.JavaBasePlugin').
+> Compilation failed; see the compiler output below.
+  /Users/bug/Documents/Projects/Minecraft/synaxis-wt/m3-shard/server-app/src/test/java/io/github/bearisbug/synaxis/app/ShardMainTest.java:42: 错误: 找不到符号
+                  ShardMain.viewDefaults(Map.<String, String>of()::get));
+                           ^
+    符号:   方法 viewDefaults(Map.<Strin[...]::get)
+    位置: 类 ShardMain
+  9 个错误
+
+* Try:
+> Check your code and dependencies to fix the compilation error(s)
+> Run with --scan to get full insights from a Build Scan (powered by Develocity).
+
+Deprecated Gradle features were used in this build, making it incompatible with Gradle 10.
+
+You can use '--warning-mode all' to show the individual deprecation warnings and determine if they come from your own scripts or plugins.
+
+For more on this, please refer to https://docs.gradle.org/9.7.1/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.
+
+BUILD FAILED in 9s
+36 actionable tasks: 15 executed, 21 from cache
+Configuration cache entry stored.

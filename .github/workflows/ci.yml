@@ -58,7 +58,7 @@ jobs:
           cache-read-only: ${{ github.ref != 'refs/heads/main' }}
 
       - name: Run checks and coverage report
-        run: ./gradlew check jacocoTestReport
+        run: ./gradlew check jacocoTestReport -Dsynaxis.synx.require-frozen-zlib=true
 
       # Without this a job that lost its database would pass with the store tests skipped
       - name: Check that the player store tests ran against the database
@@ -126,7 +126,7 @@ jobs:
           git fetch --no-tags origin main:refs/remotes/origin/main
           diff-cover $(find . -path '*/build/reports/jacoco/test/jacocoTestReport.xml' | sort) \
             --compare-branch=origin/main \
-            --src-roots src/main/java testing/src/main/java protocol/src/main/java plugin-api/src/main/java server-app/src/main/java game-rts/src/main/java \
+            --src-roots src/main/java testing/src/main/java protocol/src/main/java plugin-api/src/main/java server-app/src/main/java game-rts/src/main/java synx/src/main/java \
             --fail-under=80
 
   # REQ-PROD-019: the whole suite again with four tick threads and the ownership assertions on.

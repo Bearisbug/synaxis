@@ -21,6 +21,7 @@ dependencies {
     testImplementation(project(":game-rts"))
     testImplementation(project(":server-app"))
     testImplementation(project(":baker"))
+    testImplementation(project(":synx"))
     testImplementation(libs.archunit.junit5)
 }
 

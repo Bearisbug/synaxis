@@ -1,5 +1,7 @@
 package io.github.bearisbug.synaxis.app.permission;
 
+import org.jetbrains.annotations.Nullable;
+
 import javax.sql.DataSource;
 import java.sql.Array;
 import java.sql.Connection;
@@ -76,6 +78,30 @@ public final class RoleStore {
         for (Map.Entry<UUID, Set<String>> entry : roles.entrySet())
             grants.put(entry.getKey(), new Grants(Set.copyOf(entry.getValue()), Set.copyOf(nodes.get(entry.getKey()))));
         return grants;
+    }
+
+    /**
+     * The nodes a role grants.
+     *
+     * @param role the role id
+     * @return its nodes, wildcards included; null if there is no such role
+     * @throws SQLException if the database failed
+     */
+    @Nullable Set<String> nodesOf(String role) throws SQLException {
+        try (Connection connection = dataSource.getConnection();
+             PreparedStatement select = connection.prepareStatement(
+                     "SELECT rp.node FROM role r LEFT JOIN role_permission rp ON rp.role_id = r.role_id WHERE r.role_id = ?")) {
+            select.setString(1, role);
+            try (ResultSet rows = select.executeQuery()) {
+                if (!rows.next()) return null;
+                final Set<String> nodes = new TreeSet<>();
+                do {
+                    final String node = rows.getString(1);
+                    if (node != null) nodes.add(node);
+                } while (rows.next());
+                return nodes;
+            }
+        }
     }
 
     /**

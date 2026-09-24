@@ -192,6 +192,25 @@ public final class HostPermissions implements Permissions {
     }
 
     /**
+     * Whether a player may grant or take back a role: every node the role grants is covered by the
+     * nodes its own roles grant now. A role that does not exist is left to the grant or the
+     * revocation to report.
+     *
+     * @param sender the player running the command
+     * @param role   the role id
+     * @return true if the role is not above the sender
+     * @throws SQLException if the database failed
+     */
+    boolean mayHandOut(Player sender, String role) throws SQLException {
+        final Set<String> nodes = requireRoles().nodesOf(role);
+        if (nodes == null) return true;
+        final Entry entry = loaded.get(sender);
+        final Set<String> held = entry == null ? Set.of() : entry.grants().nodes();
+        for (String node : nodes) if (!PermissionNodes.includes(held, node)) return false;
+        return true;
+    }
+
+    /**
      * The roles an account holds now, online or not.
      *
      * @param account the account

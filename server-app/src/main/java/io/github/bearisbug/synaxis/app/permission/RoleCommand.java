@@ -27,8 +27,9 @@ import java.util.regex.Pattern;
  * account elsewhere, or one that has never logged in, is named by its uuid.
  * <p>
  * Only the console and a player holding {@value #NODE} can run it; for anybody else the engine
- * refuses it as a failed precondition and leaves it out of the completions. The database is reached
- * on a virtual thread, never on the thread that runs the command. Every run writes one
+ * refuses it as a failed precondition and leaves it out of the completions. A player grants or
+ * takes back only a role whose every node its own nodes cover; the console any role. The database
+ * is reached on a virtual thread, never on the thread that runs the command. Every run writes one
  * {@code gm_command} event.
  */
 public final class RoleCommand extends Command {
@@ -89,6 +90,11 @@ public final class RoleCommand extends Command {
                 return "ok";
             }
             final String roleId = role == null ? "" : role;
+            // The console hands out any role; a player none above its own nodes, itself included
+            if (sender instanceof Player player && !permissions.mayHandOut(player, roleId)) {
+                reply(sender, "synaxis:role-above-sender", "You cannot hand out %s: it grants nodes you do not hold", roleId);
+                return "above_sender";
+            }
             final RoleStore.Change change = "grant".equals(action)
                     ? permissions.grant(target, roleId) : permissions.revoke(target, roleId);
             return switch (change) {

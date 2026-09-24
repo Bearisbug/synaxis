@@ -27,6 +27,7 @@
 	"synaxis:role-not-granted": "%s does not hold the role %s.",
 	"synaxis:role-no-target": "No player online here is called %s, and it is not a UUID.",
 	"synaxis:role-unavailable": "Roles cannot be reached right now. Try again in a moment.",
+	"synaxis:role-above-sender": "You cannot hand out the role %s: it grants permissions you do not hold.",
 	"synaxis:banned": "You are banned. Reason: %s. %s",
 	"synaxis:banned-until": "The ban ends at %s.",
 	"synaxis:not-whitelisted": "This server is in closed testing and your account is not on the list.",

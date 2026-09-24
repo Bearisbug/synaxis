@@ -27,7 +27,7 @@ class RoleCommandTextTest {
         }
         for (final String key : List.of("synaxis:role-granted", "synaxis:role-revoked", "synaxis:role-list",
                 "synaxis:role-unknown", "synaxis:role-not-granted", "synaxis:role-no-target",
-                "synaxis:role-unavailable")) {
+                "synaxis:role-unavailable", "synaxis:role-above-sender")) {
             assertTrue(translations.contains('"' + key + '"'), language + " has no text for " + key);
         }
     }

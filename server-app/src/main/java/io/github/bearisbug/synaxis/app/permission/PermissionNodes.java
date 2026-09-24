@@ -34,4 +34,21 @@ final class PermissionNodes {
         }
         return false;
     }
+
+    /**
+     * Whether held nodes cover everything a node of a role grants: {@link #covers} extended to
+     * wildcards, so {@code <prefix>.*} is covered by itself, a shorter wildcard or {@code *}, and
+     * {@code *} only by {@code *}.
+     *
+     * @param held    the nodes a player's roles grant
+     * @param granted a node a role grants, wildcards included
+     * @return true if covered
+     */
+    static boolean includes(Set<String> held, String granted) {
+        if (held.contains("*") || held.contains(granted)) return true;
+        for (int dot = granted.indexOf('.'); dot >= 0; dot = granted.indexOf('.', dot + 1)) {
+            if (held.contains(granted.substring(0, dot + 1) + "*")) return true;
+        }
+        return false;
+    }
 }

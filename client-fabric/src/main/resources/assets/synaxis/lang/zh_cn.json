@@ -27,6 +27,7 @@
 	"synaxis:role-not-granted": "%s 没有角色 %s。",
 	"synaxis:role-no-target": "本分片没有叫 %s 的在线玩家，它也不是 UUID。",
 	"synaxis:role-unavailable": "暂时读不到角色数据，请稍后再试。",
+	"synaxis:role-above-sender": "不能授予或收回角色 %s：它带有你自己没有的权限。",
 	"synaxis:banned": "你已被封禁，理由：%s。%s",
 	"synaxis:banned-until": "封禁到 %s 结束。",
 	"synaxis:not-whitelisted": "本服务器处于封闭内测，你的账号不在内测名单里。",

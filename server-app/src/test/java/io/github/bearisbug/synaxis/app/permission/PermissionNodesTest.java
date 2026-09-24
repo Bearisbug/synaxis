@@ -31,6 +31,23 @@ class PermissionNodesTest {
         assertFalse(PermissionNodes.covers(Set.of(), "gm.ban"));
     }
 
+    @Test
+    void heldNodesIncludeARoleNodeOnlyWhenTheyCoverAllOfIt() {
+        final Set<String> held = Set.of("gm.*", "synaxis.command.kick");
+        assertTrue(PermissionNodes.includes(held, "gm.ban"));
+        assertTrue(PermissionNodes.includes(held, "gm.*"), "a wildcard covers itself");
+        assertTrue(PermissionNodes.includes(held, "gm.role.*"), "and a longer one");
+        assertTrue(PermissionNodes.includes(held, "synaxis.command.kick"));
+        assertFalse(PermissionNodes.includes(held, "synaxis.command.stop"));
+        assertFalse(PermissionNodes.includes(held, "synaxis.command.*"), "kick is not everything under command");
+        assertFalse(PermissionNodes.includes(held, "gm"), "gm.* is under gm, not gm");
+        assertFalse(PermissionNodes.includes(held, "*"), "only * covers *");
+        assertFalse(PermissionNodes.includes(Set.of("gm.role"), "gm.*"), "a node does not cover the wildcard above it");
+        assertTrue(PermissionNodes.includes(Set.of("*"), "*"));
+        assertTrue(PermissionNodes.includes(Set.of("*"), "gm.*"));
+        assertFalse(PermissionNodes.includes(Set.of(), "gm.ban"));
+    }
+
     @ParameterizedTest
     @ValueSource(strings = {"gm.*", "*", "GM.ban", "gm..ban", ".gm", "gm.", "gm ban", ""})
     void aQuestionOutsideTheGrammarIsRefused(String node) {

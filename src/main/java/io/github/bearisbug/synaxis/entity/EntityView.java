@@ -260,8 +260,13 @@ final class EntityView {
     public boolean hasPredictableViewers() {
         // Verify if this entity's viewers can be predicted from surrounding entities
         synchronized (mutex) {
-            return viewableOption.isAuto() && viewableOption.predicate == null && manualViewers.isEmpty();
+            if (!viewableOption.isAuto() || viewableOption.predicate != null || !manualViewers.isEmpty()) return false;
         }
+        // A tracking range or the visible entity limit keeps some of the players around from seeing
+        // it, while a packet for the players around its chunk would reach all of them
+        final ServerProcess process = entity.process();
+        return process == null
+                || (process.config().maxVisibleEntitiesPerPlayer() == 0 && !process.trackingRanges().inUse());
     }
 
     public void handleAutoViewAddition(Entity entity) {

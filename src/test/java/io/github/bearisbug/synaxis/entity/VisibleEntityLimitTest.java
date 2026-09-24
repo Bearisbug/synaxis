@@ -2,7 +2,10 @@ package io.github.bearisbug.synaxis.entity;
 
 import io.github.bearisbug.synaxis.coordinate.Pos;
 import io.github.bearisbug.synaxis.instance.Instance;
+import io.github.bearisbug.synaxis.network.packet.server.play.EntityPositionSyncPacket;
+import io.github.bearisbug.synaxis.testing.Collector;
 import io.github.bearisbug.synaxis.testing.Env;
+import io.github.bearisbug.synaxis.testing.TestConnection;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
@@ -126,6 +129,30 @@ public class VisibleEntityLimitTest {
         refresh();
         assertFalse(farthest.isViewer(player));
         assertEquals(LIMIT, seenBy(player, ordinary).size());
+    }
+
+    /**
+     * With viewable packets on, a move is sent once to every player around the chunk unless the
+     * entity says its viewers cannot be predicted from the chunk; the limit makes them unpredictable.
+     */
+    @Test
+    public void aHiddenEntitySendsNoMovesToThePlayer() {
+        env = Env.create(settings -> settings.maxVisibleEntitiesPerPlayer(1).viewablePacket(true));
+        final Instance instance = env.createFlatInstance();
+        final TestConnection connection = env.createConnection();
+        final Player player = connection.connect(instance, CENTER);
+        final Entity near = spawn(instance, CENTER.add(3, 0, 0));
+        final Entity far = spawn(instance, CENTER.add(10, 0, 0));
+        refresh();
+        assertTrue(near.isViewer(player));
+        assertFalse(far.isViewer(player));
+
+        final Collector<EntityPositionSyncPacket> moves = connection.trackIncoming(EntityPositionSyncPacket.class);
+        near.acquirable().sync(owned -> owned.teleport(CENTER.add(4, 0, 0)).join());
+        far.acquirable().sync(owned -> owned.teleport(CENTER.add(11, 0, 0)).join());
+        env.tick();
+        final List<Integer> movedIds = moves.collect().stream().map(EntityPositionSyncPacket::entityId).toList();
+        assertEquals(List.of(near.getEntityId()), movedIds);
     }
 
     @Test

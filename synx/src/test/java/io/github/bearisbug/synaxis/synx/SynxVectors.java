@@ -15,8 +15,10 @@ import net.kyori.adventure.nbt.DoubleBinaryTag;
 import net.kyori.adventure.nbt.ListBinaryTag;
 import net.kyori.adventure.nbt.StringBinaryTag;
 
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -57,10 +59,16 @@ final class SynxVectors {
             return DIR.resolve(name + ".synx");
         }
 
-        SynxRegionWriter.Encoded encode(SynxSettings settings) {
+        /** Encodes the region into a new staging file under {@code dir}. */
+        SynxRegionWriter.Encoded encode(SynxSettings settings, Path dir) throws IOException {
             final SynxRegionWriter writer = new SynxRegionWriter(regionX, regionZ, settings);
             for (ChunkInput chunk : chunks) writer.add(chunk.toRecord(settings));
-            return writer.encode();
+            return writer.encode(Files.createTempFile(dir, name, ".part"));
+        }
+
+        /** Encodes the region and returns the bytes of the finished file, written under {@code dir}. */
+        byte[] bytes(SynxSettings settings, byte[] contentHash, Path dir) throws IOException {
+            return SynxVectors.bytes(encode(settings, dir), contentHash, dir);
         }
     }
 
@@ -107,7 +115,7 @@ final class SynxVectors {
             final Vector vector = vectors.get(i);
             final SynxRegionWriter.Encoded region = encoded.get(i);
             regions.add(new SynxManifest.Region(vector.regionX(), vector.regionZ(),
-                    region.toBytes(contentHash).length, region.payloadSha256(), region.chunkCount()));
+                    region.fileSize(), region.payloadSha256(), region.chunkCount()));
         }
         final SynxSettings settings = settings();
         return new SynxManifest(MAP_ID, SynxManifest.buildId(MAP_ID, contentHash, 776), contentHash, "26.2", 776,
@@ -116,6 +124,13 @@ final class SynxVectors {
                 new SynxManifest.Source("generator", null, null),
                 new SynxManifest.Bake("2026-09-25T00:00:00Z", 1_234, 5_678, 1, "25"),
                 new SynxManifest.Verify(4, 0, null));
+    }
+
+    /** Finishes {@code encoded} into a new file under {@code dir} and reads it back. */
+    static byte[] bytes(SynxRegionWriter.Encoded encoded, byte[] contentHash, Path dir) throws IOException {
+        final Path file = Files.createTempDirectory(dir, "region").resolve("r.synx");
+        encoded.write(file, contentHash);
+        return Files.readAllBytes(file);
     }
 
     static byte[] contentHash(List<SynxRegionWriter.Encoded> encoded) {

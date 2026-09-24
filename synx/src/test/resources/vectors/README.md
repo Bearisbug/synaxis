@@ -17,7 +17,9 @@ change; `SynxVectorTest` fails on any vector file that no longer matches `manife
 `manifest.txt` holds `format_version`, a `zlib` fingerprint (SHA-256 of what `Deflater` at level
 -1 makes of a fixed 64 KiB input, see `SynxVectors#zlibFingerprint`) and the SHA-256 of each file.
 The written bytes are only compared on a JDK whose fingerprint matches; the reader, the
-uncompressed content and both region hashes are compared on every JDK.
+uncompressed content and both region hashes are compared on every JDK. CI sets
+`-Dsynaxis.synx.require-frozen-zlib=true`, which turns a fingerprint mismatch into a test failure
+instead of a skip.
 
 ## Regular vectors
 

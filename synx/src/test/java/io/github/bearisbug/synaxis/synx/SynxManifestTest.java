@@ -59,5 +59,9 @@ public class SynxManifestTest {
                 () -> SynxManifest.fromJson(json.replace("\"protocol_version\"", "\"protocol\""))).error());
         assertEquals(SynxError.MANIFEST, assertThrows(SynxException.class,
                 () -> SynxManifest.fromJson(json.replace("\"content_hash\": \"", "\"content_hash\": \"zz"))).error());
+        assertEquals(SynxError.MANIFEST, assertThrows(SynxException.class,
+                () -> SynxManifest.fromJson(json.replace("\"chunks\": 4", "\"chunks\": 4.5"))).error(), "chunks is an integer");
+        assertEquals(SynxError.MANIFEST, assertThrows(SynxException.class,
+                () -> SynxManifest.fromJson(json.replace("\"wall_ms\": 1234", "\"wall_ms\": 1234.5"))).error(), "wall_ms is an integer");
     }
 }

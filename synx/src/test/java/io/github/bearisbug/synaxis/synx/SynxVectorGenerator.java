@@ -8,6 +8,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
@@ -25,7 +26,15 @@ public final class SynxVectorGenerator {
     public static void main(String[] args) throws IOException {
         final Path dir = Path.of(args[0]);
         Files.createDirectories(dir.resolve("edge"));
-        final Map<String, byte[]> files = files();
+        final Path work = Files.createTempDirectory("synx-vectors");
+        final Map<String, byte[]> files;
+        try {
+            files = files(work);
+        } finally {
+            try (Stream<Path> scratch = Files.walk(work)) {
+                for (Path path : scratch.sorted(Comparator.reverseOrder()).toList()) Files.delete(path);
+            }
+        }
         try (Stream<Path> old = Files.walk(dir)) {
             for (Path path : old.filter(Files::isRegularFile).toList()) {
                 final String name = dir.relativize(path).toString().replace('\\', '/');
@@ -42,16 +51,19 @@ public final class SynxVectorGenerator {
         Files.writeString(dir.resolve("manifest.txt"), manifest.toString());
     }
 
-    /** Every vector file by its path under the vectors directory, sorted by path. */
-    static Map<String, byte[]> files() {
+    /**
+     * Every vector file by its path under the vectors directory, sorted by path. The regions are
+     * written through {@code work}, which is left holding them.
+     */
+    static Map<String, byte[]> files(Path work) throws IOException {
         final SynxSettings settings = SynxVectors.settings();
         final List<SynxRegionWriter.Encoded> encoded = new ArrayList<>();
-        for (SynxVectors.Vector vector : SynxVectors.vectors()) encoded.add(vector.encode(settings));
+        for (SynxVectors.Vector vector : SynxVectors.vectors()) encoded.add(vector.encode(settings, work));
         final byte[] contentHash = SynxVectors.contentHash(encoded);
 
         final Map<String, byte[]> files = new TreeMap<>();
         for (int i = 0; i < encoded.size(); i++) {
-            files.put(SynxVectors.vectors().get(i).name() + ".synx", encoded.get(i).toBytes(contentHash));
+            files.put(SynxVectors.vectors().get(i).name() + ".synx", SynxVectors.bytes(encoded.get(i), contentHash, work));
         }
         files.put(SynxManifest.FILE_NAME,
                 SynxVectors.manifest(encoded, contentHash).toJson().getBytes(StandardCharsets.UTF_8));

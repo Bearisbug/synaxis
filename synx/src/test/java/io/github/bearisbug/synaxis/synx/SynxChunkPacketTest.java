@@ -6,7 +6,10 @@ import io.github.bearisbug.synaxis.network.packet.PacketVanilla;
 import io.github.bearisbug.synaxis.network.packet.server.play.ChunkDataPacket;
 import io.github.bearisbug.synaxis.network.packet.server.play.data.ChunkData;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
+import java.io.IOException;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -61,10 +64,10 @@ public class SynxChunkPacketTest {
 
     /** §19 「内容哈希不随 zlib 实现变化」: another Deflater level stands in for another zlib. */
     @Test
-    public void contentHashDoesNotDependOnTheCompressedBytes() {
+    public void contentHashDoesNotDependOnTheCompressedBytes(@TempDir Path work) throws IOException {
         final SynxVectors.Vector vector = SynxVectors.vector("two-by-two-lit");
-        final SynxRegionWriter.Encoded fast = vector.encode(SynxVectors.settings(1));
-        final SynxRegionWriter.Encoded best = vector.encode(SynxVectors.settings(9));
+        final SynxRegionWriter.Encoded fast = vector.encode(SynxVectors.settings(1), work);
+        final SynxRegionWriter.Encoded best = vector.encode(SynxVectors.settings(9), work);
         assertFalse(Arrays.equals(fast.payloadSha256(), best.payloadSha256()), "the levels must compress differently");
         assertArrayEquals(fast.regionContentHash(), best.regionContentHash());
     }

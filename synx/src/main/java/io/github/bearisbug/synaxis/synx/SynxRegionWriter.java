@@ -1,9 +1,11 @@
 package io.github.bearisbug.synaxis.synx;
 
-import java.io.ByteArrayOutputStream;
+import java.io.BufferedOutputStream;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.nio.channels.FileChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
@@ -50,71 +52,89 @@ public final class SynxRegionWriter {
     }
 
     /**
-     * Lays out every added record and computes both region hashes.
+     * Lays out every added record in {@code staging} and computes both region hashes. The records
+     * go to the file one at a time, so the region is never held in memory a second time; the
+     * header and the index follow in {@link Encoded#write}, once the map wide
+     * {@code content_hash} is known. {@code staging} is created or overwritten, and has to be on
+     * the file system of the region file it becomes. It is deleted if encoding fails.
      *
      * @throws IllegalArgumentException if a segment ① is not a well formed frame
      */
-    public Encoded encode() {
+    public Encoded encode(Path staging) throws IOException {
         final ByteBuffer index = ByteBuffer.allocate(SynxFormat.INDEX_BYTES).order(ByteOrder.LITTLE_ENDIAN);
-        final ByteArrayOutputStream payload = new ByteArrayOutputStream();
         final MessageDigest content = SynxDigests.sha256();
+        final MessageDigest payload = SynxDigests.sha256();
         long position = SynxFormat.RECORDS_START;
         int chunks = 0;
-        for (int i = 0; i < SynxFormat.INDEX_ENTRIES; i++) {
-            final SynxChunkRecord record = records[i];
-            if (record == null) continue;
-            final long aligned = (position + SynxFormat.RECORD_ALIGNMENT - 1) & -SynxFormat.RECORD_ALIGNMENT;
-            payload.writeBytes(new byte[(int) (aligned - position)]);
-            position = aligned;
+        try (OutputStream output = new BufferedOutputStream(Files.newOutputStream(staging,
+                StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.WRITE))) {
+            output.write(new byte[SynxFormat.RECORDS_START]);
+            for (int i = 0; i < SynxFormat.INDEX_ENTRIES; i++) {
+                final SynxChunkRecord record = records[i];
+                if (record == null) continue;
+                final long aligned = (position + SynxFormat.RECORD_ALIGNMENT - 1) & -SynxFormat.RECORD_ALIGNMENT;
+                final byte[] padding = new byte[(int) (aligned - position)];
+                output.write(padding);
+                payload.update(padding);
+                position = aligned;
 
-            final byte[] packet = record.packet();
-            final byte[] navigation = record.navigation();
-            final byte[] entities = SynxEntities.encode(record.blockEntities(), record.staticEntities());
-            final byte[] storedEntities = entities.length == 0 ? entities
-                    : SynxChunkPacket.deflate(entities, settings.compressionLevel());
-            final byte[] columns = record.columns();
+                final byte[] packet = record.packet();
+                final byte[] navigation = record.navigation();
+                final byte[] entities = SynxEntities.encode(record.blockEntities(), record.staticEntities());
+                final byte[] storedEntities = entities.length == 0 ? entities
+                        : SynxChunkPacket.deflate(entities, settings.compressionLevel());
+                final byte[] columns = record.columns();
 
-            final ByteBuffer bytes = ByteBuffer.allocate(SynxFormat.SEGMENT_TABLE_BYTES + packet.length
-                    + navigation.length + storedEntities.length + columns.length).order(ByteOrder.LITTLE_ENDIAN);
-            bytes.putInt(packet.length).putInt(navigation.length).putInt(storedEntities.length).putInt(columns.length);
-            bytes.put(packet).put(navigation).put(storedEntities).put(columns);
-            final CRC32C crc = new CRC32C();
-            crc.update(bytes.array());
-            index.putLong(i * SynxFormat.INDEX_ENTRY_BYTES, position)
-                    .putInt(i * SynxFormat.INDEX_ENTRY_BYTES + 8, bytes.capacity())
-                    .putInt(i * SynxFormat.INDEX_ENTRY_BYTES + 12, (int) crc.getValue());
-            payload.writeBytes(bytes.array());
-            position += bytes.capacity();
+                final ByteBuffer bytes = ByteBuffer.allocate(SynxFormat.SEGMENT_TABLE_BYTES + packet.length
+                        + navigation.length + storedEntities.length + columns.length).order(ByteOrder.LITTLE_ENDIAN);
+                bytes.putInt(packet.length).putInt(navigation.length).putInt(storedEntities.length).putInt(columns.length);
+                bytes.put(packet).put(navigation).put(storedEntities).put(columns);
+                final CRC32C crc = new CRC32C();
+                crc.update(bytes.array());
+                index.putLong(i * SynxFormat.INDEX_ENTRY_BYTES, position)
+                        .putInt(i * SynxFormat.INDEX_ENTRY_BYTES + 8, bytes.capacity())
+                        .putInt(i * SynxFormat.INDEX_ENTRY_BYTES + 12, (int) crc.getValue());
+                output.write(bytes.array());
+                payload.update(bytes.array());
+                position += bytes.capacity();
 
-            content.update(SynxChunkPacket.body(packet));
-            content.update(navigation);
-            content.update(entities);
-            content.update(columns);
-            chunks++;
+                content.update(SynxChunkPacket.body(packet));
+                content.update(navigation);
+                content.update(entities);
+                content.update(columns);
+                chunks++;
+            }
+        } catch (IOException | RuntimeException e) {
+            Files.deleteIfExists(staging);
+            throw e;
         }
-        final byte[] payloadBytes = payload.toByteArray();
-        return new Encoded(regionX, regionZ, settings, index.array(), payloadBytes, content.digest(),
-                SynxDigests.sha256(payloadBytes), chunks);
+        return new Encoded(regionX, regionZ, settings, staging, index.array(), position, content.digest(),
+                payload.digest(), chunks);
     }
 
-    /** A region with everything but the map wide {@code content_hash}, which needs every region first. */
+    /**
+     * A region in its staging file with everything but the map wide {@code content_hash}, which
+     * needs every region first.
+     */
     public static final class Encoded {
         private final int regionX;
         private final int regionZ;
         private final SynxSettings settings;
+        private final Path staging;
         private final byte[] index;
-        private final byte[] payload;
+        private final long fileSize;
         private final byte[] regionContentHash;
         private final byte[] payloadSha256;
         private final int chunkCount;
 
-        private Encoded(int regionX, int regionZ, SynxSettings settings, byte[] index, byte[] payload,
+        private Encoded(int regionX, int regionZ, SynxSettings settings, Path staging, byte[] index, long fileSize,
                         byte[] regionContentHash, byte[] payloadSha256, int chunkCount) {
             this.regionX = regionX;
             this.regionZ = regionZ;
             this.settings = settings;
+            this.staging = staging;
             this.index = index;
-            this.payload = payload;
+            this.fileSize = fileSize;
             this.regionContentHash = regionContentHash;
             this.payloadSha256 = payloadSha256;
             this.chunkCount = chunkCount;
@@ -137,19 +157,32 @@ public final class SynxRegionWriter {
             return chunkCount;
         }
 
-        public byte[] toBytes(byte[] contentHash) {
-            final byte[] header = SynxHeader.of(settings, regionX, regionZ, contentHash, regionContentHash, payloadSha256)
-                    .encode();
-            final byte[] file = new byte[SynxFormat.RECORDS_START + payload.length];
-            System.arraycopy(header, 0, file, 0, SynxFormat.HEADER_BYTES);
-            System.arraycopy(index, 0, file, SynxFormat.HEADER_BYTES, SynxFormat.INDEX_BYTES);
-            System.arraycopy(payload, 0, file, SynxFormat.RECORDS_START, payload.length);
-            return file;
+        /** The size of the finished region file, header and index included. */
+        public long fileSize() {
+            return fileSize;
         }
 
-        /** Writes a new file; an existing one is never overwritten, released files are immutable. */
+        /**
+         * Fills in the header and the index and turns the staging file into {@code file}. An
+         * existing file is never replaced, released files are immutable: {@code file} appears
+         * complete or not at all. The staging file is gone afterwards either way.
+         *
+         * @throws java.nio.file.FileAlreadyExistsException if {@code file} exists
+         */
         public void write(Path file, byte[] contentHash) throws IOException {
-            Files.write(file, toBytes(contentHash), StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE);
+            try {
+                final byte[] header = SynxHeader.of(settings, regionX, regionZ, contentHash, regionContentHash,
+                        payloadSha256).encode();
+                try (FileChannel channel = FileChannel.open(staging, StandardOpenOption.WRITE)) {
+                    final ByteBuffer start = ByteBuffer.allocate(SynxFormat.RECORDS_START).put(header).put(index).flip();
+                    while (start.hasRemaining()) channel.write(start, start.position());
+                    channel.force(true);
+                }
+                // A hard link fails on an existing name, where a rename would replace it
+                Files.createLink(file, staging);
+            } finally {
+                Files.deleteIfExists(staging);
+            }
         }
     }
 }

@@ -10,6 +10,7 @@ import com.google.gson.JsonParser;
 import com.google.gson.JsonPrimitive;
 import org.jetbrains.annotations.Nullable;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Function;
@@ -190,16 +191,16 @@ public record SynxManifest(String mapId, String buildId, byte[] contentHash, Str
                     new Bounds(integer(boundsJson, "min_x"), integer(boundsJson, "min_z"),
                             integer(boundsJson, "max_x"), integer(boundsJson, "max_z")),
                     list(json, "regions", entry -> new Region(integer(entry, "rx"), integer(entry, "rz"),
-                            number(entry, "bytes").longValue(), digest(entry, "payload_sha256"), integer(entry, "chunks"))),
+                            longInteger(entry, "bytes"), digest(entry, "payload_sha256"), integer(entry, "chunks"))),
                     list(json, "farview", entry -> new FarView(string(entry, "region_id"),
-                            number(entry, "bytes").longValue(), digest(entry, "sha256"), integer(entry, "levels"))),
+                            longInteger(entry, "bytes"), digest(entry, "sha256"), integer(entry, "levels"))),
                     new Source(string(sourceJson, "kind"),
                             sourceJson.has("data_version") ? integer(sourceJson, "data_version") : null,
                             sourceJson.has("light_coverage") ? number(sourceJson, "light_coverage").doubleValue() : null),
-                    new Bake(string(bakeJson, "started_at"), number(bakeJson, "wall_ms").longValue(),
-                            number(bakeJson, "cpu_ms").longValue(), integer(bakeJson, "threads"), string(bakeJson, "jdk")),
+                    new Bake(string(bakeJson, "started_at"), longInteger(bakeJson, "wall_ms"),
+                            longInteger(bakeJson, "cpu_ms"), integer(bakeJson, "threads"), string(bakeJson, "jdk")),
                     new Verify(integer(verifyJson, "samples"), integer(verifyJson, "diffs"),
-                            verifyJson.has("source_light_diff") ? number(verifyJson, "source_light_diff").longValue() : null));
+                            verifyJson.has("source_light_diff") ? longInteger(verifyJson, "source_light_diff") : null));
         } catch (JsonParseException | IllegalStateException | IllegalArgumentException | ArithmeticException e) {
             throw new SynxException(SynxError.MANIFEST, FILE_NAME, String.valueOf(e.getMessage()));
         }
@@ -233,8 +234,14 @@ public record SynxManifest(String mapId, String buildId, byte[] contentHash, Str
         return value.getAsNumber();
     }
 
+    /** @throws ArithmeticException if the number has a fraction or does not fit an int */
     private static int integer(JsonObject json, String name) {
-        return Math.toIntExact(number(json, name).longValue());
+        return new BigDecimal(number(json, name).toString()).intValueExact();
+    }
+
+    /** @throws ArithmeticException if the number has a fraction or does not fit a long */
+    private static long longInteger(JsonObject json, String name) {
+        return new BigDecimal(number(json, name).toString()).longValueExact();
     }
 
     private static byte[] digest(JsonObject json, String name) {

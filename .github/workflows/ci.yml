@@ -58,7 +58,7 @@ jobs:
           cache-read-only: ${{ github.ref != 'refs/heads/main' }}
 
       - name: Run checks and coverage report
-        run: ./gradlew check jacocoTestReport
+        run: ./gradlew check jacocoTestReport -Dsynaxis.synx.require-frozen-zlib=true
 
       # Without this a job that lost its database would pass with the store tests skipped
       - name: Check that the player store tests ran against the database

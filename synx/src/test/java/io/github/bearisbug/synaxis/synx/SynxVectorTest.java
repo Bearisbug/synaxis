@@ -6,6 +6,7 @@ import io.github.bearisbug.synaxis.network.packet.server.play.ChunkDataPacket;
 import io.github.bearisbug.synaxis.network.packet.server.play.data.ChunkData;
 import io.github.bearisbug.synaxis.network.packet.server.play.data.LightData;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 import java.io.IOException;
 import java.lang.foreign.Arena;
@@ -31,9 +32,15 @@ import static org.junit.jupiter.api.Assumptions.assumeTrue;
  * The reader and the content hashes are held to the vectors on every JDK. The written bytes are
  * only held to them where {@link java.util.zip.Deflater} produces the output it produced when the
  * vectors were frozen, which {@code manifest.txt} records as a fingerprint: zlib output may differ
- * between JDK builds, the uncompressed content may not.
+ * between JDK builds, the uncompressed content may not. Elsewhere that comparison is skipped, unless
+ * {@link #REQUIRE_FROZEN_ZLIB} is set.
  */
 public class SynxVectorTest {
+    /**
+     * Set on CI (see {@code synx/build.gradle.kts}): the byte for byte comparison fails instead of
+     * being skipped when this JDK's zlib is not the one the vectors were frozen with.
+     */
+    static final String REQUIRE_FROZEN_ZLIB = "synaxis.synx.require-frozen-zlib";
 
     @Test
     public void manifestFreezesEveryVectorFile() throws IOException {
@@ -102,9 +109,9 @@ public class SynxVectorTest {
     }
 
     @Test
-    public void writerReproducesTheContentHashesOnAnyJdk() throws Exception {
+    public void writerReproducesTheContentHashesOnAnyJdk(@TempDir Path work) throws Exception {
         final List<SynxRegionWriter.Encoded> encoded = new ArrayList<>();
-        for (SynxVectors.Vector vector : SynxVectors.vectors()) encoded.add(vector.encode(SynxVectors.settings()));
+        for (SynxVectors.Vector vector : SynxVectors.vectors()) encoded.add(vector.encode(SynxVectors.settings(), work));
         final byte[] contentHash = SynxVectors.contentHash(encoded);
         for (int i = 0; i < encoded.size(); i++) {
             final SynxVectors.Vector vector = SynxVectors.vectors().get(i);
@@ -117,11 +124,18 @@ public class SynxVectorTest {
     }
 
     @Test
-    public void writerReproducesTheVectorBytesOnTheFrozenZlib() throws IOException {
+    public void writerReproducesTheVectorBytesOnTheFrozenZlib(@TempDir Path work) throws IOException {
         final String frozen = Files.readAllLines(SynxVectors.DIR.resolve("manifest.txt")).get(1);
-        assumeTrue(frozen.equals("zlib " + SynxVectors.zlibFingerprint()),
-                "this JDK's zlib differs from the one the vectors were frozen with");
-        for (Map.Entry<String, byte[]> file : SynxVectorGenerator.files().entrySet()) {
+        final boolean sameZlib = frozen.equals("zlib " + SynxVectors.zlibFingerprint());
+        final String differs = "this JDK's zlib differs from the one the vectors were frozen with";
+        if (Boolean.getBoolean(REQUIRE_FROZEN_ZLIB)) {
+            assertTrue(sameZlib, differs + "; " + REQUIRE_FROZEN_ZLIB
+                    + " is set, so either run on the JDK build the vectors were frozen with or refreeze them"
+                    + " with :synx:generateVectors");
+        } else {
+            assumeTrue(sameZlib, differs);
+        }
+        for (Map.Entry<String, byte[]> file : SynxVectorGenerator.files(work).entrySet()) {
             assertArrayEquals(Files.readAllBytes(SynxVectors.DIR.resolve(file.getKey())), file.getValue(), file.getKey());
         }
     }

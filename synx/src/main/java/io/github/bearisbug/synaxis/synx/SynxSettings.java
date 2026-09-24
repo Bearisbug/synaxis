@@ -1,5 +1,8 @@
 package io.github.bearisbug.synaxis.synx;
 
+import java.util.Arrays;
+import java.util.Objects;
+
 /**
  * What every region of one map release is encoded with; the header of each file records it.
  *
@@ -46,5 +49,21 @@ public record SynxSettings(int protocolVersion, int compressionThreshold, int co
 
     public int sectionCount() {
         return height / 16;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        return o instanceof SynxSettings other
+                && protocolVersion == other.protocolVersion && compressionThreshold == other.compressionThreshold
+                && compressionLevel == other.compressionLevel && minY == other.minY && height == other.height
+                && Arrays.equals(registryDigest, other.registryDigest)
+                && lightEngineVersion == other.lightEngineVersion && bakerVersion == other.bakerVersion
+                && hasColumns == other.hasColumns;
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(protocolVersion, compressionThreshold, compressionLevel, minY, height,
+                Arrays.hashCode(registryDigest), lightEngineVersion, bakerVersion, hasColumns);
     }
 }

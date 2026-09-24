@@ -4,18 +4,23 @@ import net.kyori.adventure.nbt.CompoundBinaryTag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
+import java.io.IOException;
 import java.lang.foreign.Arena;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Stream;
 import java.util.zip.CRC32C;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 /** The layout rules of API-M3-001 that the vectors do not spell out on their own. */
@@ -24,16 +29,17 @@ public class SynxRegionWriterTest {
     private static final byte[] NO_HASH = new byte[32];
 
     @Test
-    public void emptyRegionIsHeaderAndIndexOnly() {
-        final SynxRegionWriter.Encoded empty = new SynxRegionWriter(3, -4, SynxVectors.settings()).encode();
+    public void emptyRegionIsHeaderAndIndexOnly(@TempDir Path dir) throws IOException {
+        final SynxRegionWriter.Encoded empty = new SynxRegionWriter(3, -4, SynxVectors.settings()).encode(dir.resolve("empty.part"));
         assertEquals(0, empty.chunkCount());
-        assertEquals(SynxFormat.RECORDS_START, empty.toBytes(NO_HASH).length);
+        assertEquals(SynxFormat.RECORDS_START, empty.fileSize());
+        assertEquals(SynxFormat.RECORDS_START, SynxVectors.bytes(empty, NO_HASH, dir).length);
         assertArrayEquals(SynxDigests.sha256(new byte[0]), empty.payloadSha256());
     }
 
     @Test
-    public void recordsAreAlignedAndCarryTheirCrc() {
-        final byte[] file = SynxVectors.vector("two-by-two-lit").encode(SynxVectors.settings()).toBytes(NO_HASH);
+    public void recordsAreAlignedAndCarryTheirCrc(@TempDir Path dir) throws IOException {
+        final byte[] file = SynxVectors.vector("two-by-two-lit").bytes(SynxVectors.settings(), NO_HASH, dir);
         final ByteBuffer buffer = ByteBuffer.wrap(file).order(ByteOrder.LITTLE_ENDIAN);
         long previousEnd = SynxFormat.RECORDS_START;
         for (int index : new int[]{30, 31, 62, 63}) {
@@ -55,8 +61,8 @@ public class SynxRegionWriterTest {
     }
 
     @Test
-    public void chunkWithoutBlockOrStaticEntitiesHasAnEmptySegmentThree() throws Exception {
-        final byte[] file = SynxVectors.vector("one-chunk-flat").encode(SynxVectors.settings()).toBytes(NO_HASH);
+    public void chunkWithoutBlockOrStaticEntitiesHasAnEmptySegmentThree(@TempDir Path dir) throws Exception {
+        final byte[] file = SynxVectors.vector("one-chunk-flat").bytes(SynxVectors.settings(), NO_HASH, dir);
         final ByteBuffer buffer = ByteBuffer.wrap(file).order(ByteOrder.LITTLE_ENDIAN);
         final long offset = buffer.getLong(SynxFormat.HEADER_BYTES + SynxFormat.index(5, 7) * SynxFormat.INDEX_ENTRY_BYTES);
         assertEquals(0, buffer.getInt((int) offset + 8));
@@ -70,7 +76,10 @@ public class SynxRegionWriterTest {
         final SynxChunkRecord record = SynxVectors.chunk(3, -27, true, true).toRecord(settings);
         writer.add(record);
         final Path file = dir.resolve(SynxFormat.regionFileName(0, -1));
-        writer.encode().write(file, NO_HASH);
+        final Path staging = dir.resolve("r.0.-1.synx.part");
+        final SynxRegionWriter.Encoded encoded = writer.encode(staging);
+        encoded.write(file, NO_HASH);
+        assertFalse(Files.exists(staging), "the staging file becomes the region file");
         try (Arena arena = Arena.ofConfined()) {
             final SynxRegion region = SynxRegion.open(file, arena);
             region.verifyPayload();
@@ -80,7 +89,37 @@ public class SynxRegionWriterTest {
             assertEquals("synaxis:loot_chest", read.blockEntities().get(1).handler());
         }
         assertEquals("r.0.-1.synx", file.getFileName().toString());
-        assertEquals(Files.size(file), writer.encode().toBytes(NO_HASH).length);
+        assertEquals(Files.size(file), encoded.fileSize());
+    }
+
+    @Test
+    public void finishedRegionNeverReplacesAnExistingFile(@TempDir Path dir) throws IOException {
+        final Path file = dir.resolve(SynxFormat.regionFileName(0, 0));
+        Files.writeString(file, "released");
+        final SynxRegionWriter.Encoded encoded = SynxVectors.vector("one-chunk-flat").encode(SynxVectors.settings(), dir);
+        assertThrows(FileAlreadyExistsException.class, () -> encoded.write(file, NO_HASH));
+        assertEquals("released", Files.readString(file));
+        try (Stream<Path> left = Files.list(dir)) {
+            assertEquals(List.of(file), left.toList(), "the staging file is removed when the region cannot be finished");
+        }
+    }
+
+    @Test
+    public void failedEncodeLeavesNoStagingFile(@TempDir Path dir) {
+        final SynxChunkRecord flat = SynxVectors.chunk(5, 7, false, false).toRecord(SynxVectors.settings());
+        final SynxRegionWriter writer = new SynxRegionWriter(0, 0, SynxVectors.settings());
+        writer.add(new SynxChunkRecord(5, 7, new byte[]{3, 1, 2}, flat.navigation(), List.of(), List.of(), flat.columns()));
+        final Path staging = dir.resolve("r.0.0.synx.part");
+        assertThrows(IllegalArgumentException.class, () -> writer.encode(staging), "segment ① is not a frame");
+        assertFalse(Files.exists(staging));
+    }
+
+    @Test
+    public void settingsCompareByContent() {
+        final SynxSettings settings = SynxVectors.settings();
+        assertEquals(settings, SynxVectors.settings());
+        assertEquals(settings.hashCode(), SynxVectors.settings().hashCode());
+        assertNotEquals(settings, SynxVectors.settings(9));
     }
 
     @Test

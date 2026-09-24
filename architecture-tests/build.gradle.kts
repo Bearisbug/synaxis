@@ -20,6 +20,7 @@ dependencies {
     testImplementation(project(":protocol"))
     testImplementation(project(":game-rts"))
     testImplementation(project(":server-app"))
+    testImplementation(project(":baker"))
     testImplementation(libs.archunit.junit5)
 }
 

@@ -165,6 +165,7 @@ final class RunCommand {
         inbound.add("chunks", chunks);
         json.add("inbound", inbound);
         json.add("chunk_batch_rtt_ms", stats.chunkBatchMillis.toJson());
+        json.add("visible_entities", stats.visibleEntities.toJson());
         json.addProperty("chunk_batches", stats.chunkBatches.sum());
 
         final JsonObject outbound = new JsonObject();
@@ -188,12 +189,14 @@ final class RunCommand {
 
     /**
      * Records the packets {@code bot} sent in the last second, and in the last seven once it has
-     * been in play that long. A bot is only counted for whole seconds in play.
+     * been in play that long. A bot is only counted for whole seconds in play. Also samples how many
+     * entities it sees.
      *
      * @return whether the bot is in play
      */
     static boolean window(Bot bot, BotStats stats) {
         if (!bot.inPlay()) return false;
+        stats.visibleEntities.record((double) bot.visibleEntities());
         final long sent = bot.sent.get();
         if (bot.windowFilled < 0) {
             // The first look: the second it entered play in is only partly its own

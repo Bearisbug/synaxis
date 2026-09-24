@@ -43,7 +43,9 @@ import io.github.bearisbug.synaxis.network.packet.server.login.SetCompressionPac
 import io.github.bearisbug.synaxis.network.packet.server.play.ChunkBatchFinishedPacket;
 import io.github.bearisbug.synaxis.network.packet.server.play.ChunkBatchStartPacket;
 import io.github.bearisbug.synaxis.network.packet.server.play.ChunkDataPacket;
+import io.github.bearisbug.synaxis.network.packet.server.play.DestroyEntitiesPacket;
 import io.github.bearisbug.synaxis.network.packet.server.play.PlayerPositionAndLookPacket;
+import io.github.bearisbug.synaxis.network.packet.server.play.SpawnEntityPacket;
 import io.github.bearisbug.synaxis.network.packet.server.play.StartConfigurationPacket;
 import io.github.bearisbug.synaxis.network.player.GameProfile;
 import net.kyori.adventure.text.Component;
@@ -68,6 +70,7 @@ import java.security.GeneralSecurityException;
 import java.security.PublicKey;
 import java.security.SecureRandom;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.Locale;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
@@ -107,6 +110,8 @@ final class Bot {
     private static final int CHUNK_DATA = Protocol.serverId(ConnectionState.PLAY, ChunkDataPacket.class);
     private static final int DISCONNECT = Protocol.serverId(ConnectionState.PLAY, DisconnectPacket.class);
     private static final int START_CONFIGURATION = Protocol.serverId(ConnectionState.PLAY, StartConfigurationPacket.class);
+    private static final int SPAWN_ENTITY = Protocol.serverId(ConnectionState.PLAY, SpawnEntityPacket.class);
+    private static final int DESTROY_ENTITIES = Protocol.serverId(ConnectionState.PLAY, DestroyEntitiesPacket.class);
     private static final Set<Integer> ANSWERED = Set.of(KEEP_ALIVE, PING, TELEPORT, BATCH_FINISHED, DISCONNECT);
 
     final int index;
@@ -139,6 +144,9 @@ final class Bot {
     private long chunks;
     private long batchStarted;
     private double spawnX, spawnY, spawnZ;
+    // The entities the server has this bot see, only touched by the reading thread
+    private final Set<Integer> visible = new HashSet<>();
+    private volatile int visibleCount;
     private volatile boolean moving;
 
     Bot(int index, Settings settings, BotStats stats) {
@@ -310,6 +318,8 @@ final class Bot {
             } else if (id == START_CONFIGURATION) {
                 send(ConnectionState.PLAY, new ClientConfigurationAckPacket());
                 state = ConnectionState.CONFIGURATION;
+            } else if (id == SPAWN_ENTITY || id == DESTROY_ENTITIES) {
+                track(Protocol.decode(ConnectionState.PLAY, id, frame.body(), frame.payloadOffset()));
             } else if (ANSWERED.contains(id)) {
                 answer(Protocol.decode(ConnectionState.PLAY, id, frame.body(), frame.payloadOffset()));
             }
@@ -358,6 +368,25 @@ final class Bot {
                 // decoded but nothing to answer
             }
         }
+    }
+
+    /** Keeps count of the entities the server has this bot see ({@code docs/DESIGN-PROD.md} {@code REQ-PROD-024}). */
+    private void track(@Nullable ServerPacket packet) {
+        switch (packet) {
+            case SpawnEntityPacket spawn -> visible.add(spawn.entityId());
+            case DestroyEntitiesPacket destroy -> {
+                for (int entityId : destroy.entityIds()) visible.remove(entityId);
+            }
+            case null, default -> {
+                // not an entity packet the codec could read
+            }
+        }
+        visibleCount = visible.size();
+    }
+
+    /** How many entities the server has this bot see right now. */
+    int visibleEntities() {
+        return visibleCount;
     }
 
     private void chunk(int wireBytes) {

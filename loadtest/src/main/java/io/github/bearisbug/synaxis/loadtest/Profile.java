@@ -11,11 +11,16 @@ import java.util.Locale;
  * its own direction and radius. The ground it covers is bounded, so the server's loaded chunks stay
  * bounded over a run of any length, while the chunks entering the bot's view keep coming as they
  * would on a straight line: the circle is at least eight chunks across, wider than a view.
+ * <p>
+ * {@link #TOWN} is the exception: the crowd of a town square ({@code docs/DESIGN-PROD.md} §15, the
+ * visible entities row), every bot walking a circle of 4 to 32 blocks, so that they all stay within
+ * 64 blocks of the spawn and in sight of each other.
  */
 enum Profile {
     WALK(4.317, 64, 192, 0),
     RIDE(10.0, 128, 384, 0),
-    FLY(30.0, 256, 768, 24);
+    FLY(30.0, 256, 768, 24),
+    TOWN(4.317, 4, 32, 0);
 
     /** Blocks per second. */
     final double speed;
@@ -35,7 +40,7 @@ enum Profile {
         try {
             return valueOf(value.strip().toUpperCase(Locale.ROOT));
         } catch (IllegalArgumentException e) {
-            throw new IllegalArgumentException("--profile is walk, ride or fly, not " + value, e);
+            throw new IllegalArgumentException("--profile is walk, ride, fly or town, not " + value, e);
         }
     }
 

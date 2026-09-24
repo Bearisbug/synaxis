@@ -107,3 +107,15 @@ python3 tools/protocol-probe/probe.py echo --channel hello:echo --payload hi
 ## 9. 异常会算在谁头上
 
 事件监听器、调度任务、通道 handler 三处各有一层包装：抛出来的异常各被 catch 一次、各打一行带 `plugin_id=<你的 id>` 的 ERROR，然后就地终止那一次回调。异常不会外溢到引擎，进程继续跑，插件状态也不变——M2 没有熔断器（见 `docs/DESIGN-M2.md` §28.3）。
+
+## 10. 回调跑在哪条线程上
+
+引擎可以开多条 tick 线程：RTS 进程是 1 条，MMO 分片宿主（`bin/server-shard`）默认开「核数 − 2」条，按 16×16 区块一格分给各线程，同一格的区块与其中的实体归同一条线程，实体走到另一格就换线程。插件按下面的契约写，线程数是 1 还是 10 都不用改代码（`docs/DESIGN-PROD.md` `API-PROD-016`，`:plugin-api` 的 `package-info` 是同一份）：
+
+| 回调 | 线程 | 在这里可以做什么 |
+| --- | --- | --- |
+| 实体与玩家的事件、玩家发来的通道负载、`scheduler().runOn(实体, …)` | 该实体所属的 tick 线程 | 读写这个实体 |
+| `scheduler().scheduleTask(…)` | tick 调度线程，所有插件的任务一个接一个跑 | 每 tick 的全局逻辑；它是整个 tick 的串行段，要扩到几百人就按格或按实体拆开 |
+| `scheduler().runAsync(…)` | 自己的虚拟线程 | 阻塞的活（读写库、HTTP）；不碰实体与实例，结果用 `runOn` 送回去 |
+
+对另一个实体的影响（攻击、交易）不要在自己的线程上直接改对方：对方可能在另一条线程上，用 `scheduler().runOn(对方, 任务, TaskSchedule.immediate())` 投递，任务在对方下一次 tick 时在对方的线程上执行。只有必须在同一 tick 读到对方状态时才用 `对方.acquirable().sync(…)`，所有跨线程的 `sync` 都排同一把进程级的锁，用多了就退化成单线程。

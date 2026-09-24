@@ -13,6 +13,7 @@ import java.util.function.Supplier;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 public class LightEngineTest {
     private static final int RADIUS = 4;
@@ -77,6 +78,96 @@ public class LightEngineTest {
     public void relightAreaIsTheThreeByThreeAroundTheChunk() {
         final ArrayWorldView view = terrain();
         assertSameLight(LightEngine.computeArea(view, -3, -3, 3, 3), LightEngine.relightArea(view, 1, -1), 0, -2, 2, 0);
+    }
+
+    /**
+     * A chunk the view does not have neither emits nor passes light. Chunk (0, 0) is missing; the open chunk next
+     * to it has sky and a glowstone at its border, and the only way from there into the roofed chunk beside the
+     * missing one runs through the missing chunk. Each quarter turn makes the light enter the gap from another side.
+     */
+    @Test
+    public void aMissingChunkPassesNoLight() {
+        for (int turns = 0; turns < 4; turns++) {
+            final LightResult result = LightEngine.computeArea(pastAMissingChunk(turns), -1, -1, 1, 1);
+            final int[] glowstone = turn(turns, 0, 16);
+            assertEquals(15, result.blockLevel(glowstone[0], 50, glowstone[1]), "glowstone, turns " + turns);
+            final int[] open = turn(turns, 1, 16);
+            assertEquals(15, result.skyLevel(open[0], 50, open[1]), "open chunk, turns " + turns);
+            for (int x = -16; x < 0; x++) {
+                for (int z = 0; z < 16; z++) {
+                    final int[] cell = turn(turns, x, z);
+                    for (int y = -64; y < 100; y++) {
+                        final String where = "(" + cell[0] + ", " + y + ", " + cell[1] + "), turns " + turns;
+                        assertEquals(0, result.skyLevel(cell[0], y, cell[1]), "sky " + where);
+                        assertEquals(0, result.blockLevel(cell[0], y, cell[1]), "block " + where);
+                    }
+                }
+            }
+        }
+    }
+
+    @Test
+    public void anAreaTooLargeToIndexIsRejected() {
+        final WorldView nothing = new WorldView() {
+            @Override
+            public int minY() {
+                return -64;
+            }
+
+            @Override
+            public int height() {
+                return 384;
+            }
+
+            @Override
+            public boolean hasChunk(int chunkX, int chunkZ) {
+                return false;
+            }
+
+            @Override
+            public Block getBlock(int x, int y, int z) {
+                throw new AssertionError("no chunk");
+            }
+        };
+        // 147 x 147 chunks with their ring, 24 sections each, is the last square below 2^19 sections
+        LightEngine.computeArea(nothing, 0, 0, 144, 144);
+        assertThrows(IllegalArgumentException.class, () -> LightEngine.computeArea(nothing, 0, 0, 145, 145));
+    }
+
+    /**
+     * Chunks -2..2 with (0, 0) missing, turned {@code turns} quarter turns about the missing chunk. Before turning:
+     * (0, 1) is open air with a glowstone at (0, 50, 16), (-1, 0) is air under a stone roof at y 100, and every
+     * other chunk is stone from the bottom up to y 100, so (-1, 0) is reachable from (0, 1) only across (0, 0).
+     */
+    static ArrayWorldView pastAMissingChunk(int turns) {
+        final ArrayWorldView view = new ArrayWorldView(2, -64, 384);
+        for (int x = -32; x < 48; x++) {
+            for (int z = -32; z < 48; z++) {
+                final int chunkX = x >> 4, chunkZ = z >> 4;
+                if (chunkX == 0 && (chunkZ == 0 || chunkZ == 1)) continue;
+                final int[] cell = turn(turns, x, z);
+                if (chunkX == -1 && chunkZ == 0) {
+                    view.set(cell[0], 100, cell[1], Block.STONE);
+                    continue;
+                }
+                for (int y = -64; y <= 100; y++) view.set(cell[0], y, cell[1], Block.STONE);
+            }
+        }
+        final int[] glowstone = turn(turns, 0, 16);
+        view.set(glowstone[0], 50, glowstone[1], Block.GLOWSTONE);
+        final int[] missing = turn(turns, 0, 0);
+        view.remove(missing[0] >> 4, missing[1] >> 4);
+        return view;
+    }
+
+    /** Block column {@code (x, z)} turned {@code turns} quarter turns about the centre of chunk (0, 0). */
+    private static int[] turn(int turns, int x, int z) {
+        for (int i = 0; i < turns; i++) {
+            final int turned = 15 - z;
+            z = x;
+            x = turned;
+        }
+        return new int[]{x, z};
     }
 
     private static LightResult afterLatch(CountDownLatch latch, Supplier<LightResult> computation) {

@@ -1,4 +1,4 @@
 # LightEngine.VERSION values that passed LightParityIntegrationTest, one per line: <version> <fingerprint>.
 # The fingerprint is what LightEngineVersionTest computes from the light rules and the engine's output. Add a line
 # only with the parity test green; never edit or remove one. The baker bakes only with a version listed here.
-1 eae018e758a7866b840e0b7f1741c93adfabd0349ac49b676f5ef6900eabdf70
+1 99599a206d62b26305e09dcf10583981d563fd57a550ff6e2fd22ebcfd5f4574

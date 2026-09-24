@@ -23,11 +23,15 @@ public final class LightEngine {
      */
     public static final int VERSION = 1;
 
+    /** Sections one computation holds at most, ring included: a cell is {@code section << 12 | index}, an int. */
+    public static final int MAX_SECTIONS = 1 << 19;
+
     private static final int AIR = Block.AIR.stateId();
     private static final byte[] OPACITY;
     private static final byte[] EMISSION;
-    private static final boolean[] BLOCKS_LIGHT;
     private static final boolean[] SHAPED;
+    /** {@link LightBlocks#skyEdgeOccluded} with air on top, the edge almost every column meets first. */
+    private static final boolean[] SKY_EDGE_UNDER_AIR;
     private static final Direction[] DIRECTIONS = Direction.values();
     private static final BlockFace[] FACES = new BlockFace[DIRECTIONS.length];
     /** A section every cell of which is a sky source. Never written: no propagated level exceeds 14. */
@@ -37,15 +41,15 @@ public final class LightEngine {
         final int states = Block.statesCount();
         OPACITY = new byte[states];
         EMISSION = new byte[states];
-        BLOCKS_LIGHT = new boolean[states];
         SHAPED = new boolean[states];
+        SKY_EDGE_UNDER_AIR = new boolean[states];
         final Object noFaces = LightBlocks.shape(Block.AIR);
         for (int stateId = 0; stateId < states; stateId++) {
             final Block block = Objects.requireNonNull(Block.fromStateId(stateId));
             OPACITY[stateId] = (byte) LightBlocks.opacity(block);
             EMISSION[stateId] = (byte) block.lightEmission();
-            BLOCKS_LIGHT[stateId] = block.lightBlocked() != 0;
             SHAPED[stateId] = LightBlocks.shape(block) != noFaces;
+            SKY_EDGE_UNDER_AIR[stateId] = LightBlocks.skyEdgeOccluded(Block.AIR, block);
         }
         for (int i = 0; i < DIRECTIONS.length; i++) FACES[i] = BlockFace.fromDirection(DIRECTIONS[i]);
         Arrays.fill(SKY_SOURCES, (byte) 15);
@@ -57,11 +61,16 @@ public final class LightEngine {
     /**
      * Light of chunks {@code chunkMinX..chunkMaxX} by {@code chunkMinZ..chunkMaxZ}. The view must hold every
      * chunk it has within one chunk of that rectangle; light from further away cannot reach it. A chunk the view
-     * does not have neither emits nor passes light.
+     * does not have neither emits nor passes light. The rectangle with that ring holds at most
+     * {@value #MAX_SECTIONS} sections, 147 x 147 chunks at a height of 384.
      */
     public static LightResult computeArea(WorldView view, int chunkMinX, int chunkMinZ, int chunkMaxX, int chunkMaxZ) {
         if (chunkMaxX < chunkMinX || chunkMaxZ < chunkMinZ) {
             throw new IllegalArgumentException("empty area " + chunkMinX + "," + chunkMinZ + ".." + chunkMaxX + "," + chunkMaxZ);
+        }
+        final long sections = ((long) chunkMaxX - chunkMinX + 3) * ((long) chunkMaxZ - chunkMinZ + 3) * (view.height() >> 4);
+        if (sections > MAX_SECTIONS) {
+            throw new IllegalArgumentException(sections + " sections with the ring around the area, more than " + MAX_SECTIONS);
         }
         return new Area(view, chunkMinX - 1, chunkMinZ - 1, chunkMaxX - chunkMinX + 3, chunkMaxZ - chunkMinZ + 3)
                 .compute(chunkMinX, chunkMinZ, chunkMaxX, chunkMaxZ);
@@ -163,8 +172,7 @@ public final class LightEngine {
         }
 
         private static boolean skyEdgeOccluded(int top, int bottom) {
-            if (BLOCKS_LIGHT[bottom]) return true;
-            return (SHAPED[top] || SHAPED[bottom]) && LightBlocks.occludes(block(top), block(bottom), BlockFace.BOTTOM);
+            return top == AIR ? SKY_EDGE_UNDER_AIR[bottom] : LightBlocks.skyEdgeOccluded(block(top), block(bottom));
         }
 
         private static Block block(int stateId) {

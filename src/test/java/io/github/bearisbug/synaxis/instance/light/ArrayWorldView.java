@@ -24,6 +24,11 @@ final class ArrayWorldView implements WorldView {
         chunks[chunk(x >> 4, z >> 4)][index(x, y, z)] = (char) block.stateId();
     }
 
+    /** Takes a chunk out of the view: {@link #hasChunk} no longer accepts it. */
+    void remove(int chunkX, int chunkZ) {
+        chunks[chunk(chunkX, chunkZ)] = null;
+    }
+
     @Override
     public int minY() {
         return minY;
@@ -36,7 +41,8 @@ final class ArrayWorldView implements WorldView {
 
     @Override
     public boolean hasChunk(int chunkX, int chunkZ) {
-        return Math.abs(chunkX) <= radius && Math.abs(chunkZ) <= radius;
+        return Math.abs(chunkX) <= radius && Math.abs(chunkZ) <= radius
+                && chunks[(chunkX + radius) * (radius * 2 + 1) + chunkZ + radius] != null;
     }
 
     @Override

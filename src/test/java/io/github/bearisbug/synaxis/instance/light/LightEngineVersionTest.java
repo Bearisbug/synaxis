@@ -10,19 +10,23 @@ import java.net.URISyntaxException;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.util.HashMap;
+import java.util.ArrayList;
 import java.util.HexFormat;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Random;
+import java.util.stream.IntStream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Binds {@link LightEngine#VERSION} to what the engine outputs (docs/DESIGN-M3.md §24). The fingerprint covers
- * the per state light rules and the engine's light over every parity scene plus a seeded random scene built from
- * every block state. {@code verified-light-versions.txt} records the fingerprint of each version that passed
+ * the per state light rules and the engine's light over every parity scene, a seeded random scene built from
+ * every block state and the scenes around a missing chunk of {@code LightEngineTest#aMissingChunkPassesNoLight}.
+ * {@code verified-light-versions.txt} records the fingerprint of each version that passed
  * {@code LightParityIntegrationTest}; the baker only bakes with a version listed there.
  * <p>
  * Changing the light output without raising the version turns this red, and so does raising the version without
@@ -43,13 +47,25 @@ public class LightEngineVersionTest {
                 + fingerprint + "\" to verified-light-versions.txt");
     }
 
+    /** Versions only ever get added: one line each, counting up from 1, the last one the current version. */
+    @Test
+    public void theVersionFileCountsUpToTheCurrentVersion() throws Exception {
+        final List<Integer> versions = new ArrayList<>(verified().keySet());
+        assertEquals(IntStream.rangeClosed(1, versions.size()).boxed().toList(), versions,
+                "verified-light-versions.txt must list 1, 2, 3 ... in order, one line each");
+        assertEquals(LightEngine.VERSION, versions.getLast(), "the last line of verified-light-versions.txt is not"
+                + " LightEngine.VERSION");
+    }
+
     static Map<Integer, String> verified() throws IOException {
-        final Map<Integer, String> verified = new HashMap<>();
+        final Map<Integer, String> verified = new LinkedHashMap<>();
         try (InputStream in = Objects.requireNonNull(LightEngine.class.getResourceAsStream("verified-light-versions.txt"))) {
             for (String line : new String(in.readAllBytes(), StandardCharsets.UTF_8).lines().toList()) {
                 if (line.isBlank() || line.startsWith("#")) continue;
                 final String[] parts = line.strip().split("\\s+", -1);
-                verified.put(Integer.parseInt(parts[0]), parts[1]);
+                if (verified.putIfAbsent(Integer.parseInt(parts[0]), parts[1]) != null) {
+                    throw new IllegalStateException("version " + parts[0] + " is listed twice in verified-light-versions.txt");
+                }
             }
         }
         return verified;
@@ -71,6 +87,7 @@ public class LightEngineVersionTest {
         // The engine's output
         for (String scene : LightScenes.names()) digest(digest, LightScenes.view(LightScenes.parse(scene)));
         digest(digest, everyState());
+        for (int turns = 0; turns < 4; turns++) digest(digest, LightEngineTest.pastAMissingChunk(turns));
         return HexFormat.of().formatHex(digest.digest());
     }
 

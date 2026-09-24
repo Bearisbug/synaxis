@@ -15,6 +15,7 @@
 
 | 日期 | 改动 | 作者 |
 | --- | --- | --- |
+| 2026-09-24 | 跟进 `docs/DESIGN-PROD.md` v0.7.2（只由宿主实现的 12 个插件接口标 `@ApiStatus.NonExtendable`，`PluginApi.API_VERSION` 升到 2，ABI baseline 由 `v0.1.0` 换成 `v0.2.0`）。**新增 `TC-GAME-072`**（`REQ-M2-022`）：标注清单与 §8 一致、对 `v0.2.0` 0 违例、给 `PluginEvents` 加抽象方法不报；反证给 `SynaxisPlugin` 加抽象方法、去掉 `PluginEvents` 的标注再加抽象方法都红。**`TC-PROD-163` 保留 ID**：前置的 baseline 由 `v0.1.0` 改为 `v0.2.0`；第 2 步的反证期望改为 `Method made abstract`——`PluginContext` 已标注，不再查「新增抽象方法」，`playerData()` 在 `v0.2.0` 里是默认方法，改成抽象方法报的是这一条。`TC-PROD-211`、`TC-PROD-234` 第 3 步、`TC-PROD-251` 的反证以各组合入前的提交为 baseline，在标注之后的代码上重跑不再红在 `New abstract method added to interface`，等价的齿由 `TC-GAME-072` 第 4、5 步承担。§2 `REQ-M2-022` 一行与 §5 游戏域「模块与门禁」同步。RUN-030 未改（执行记录只追加） | Bearisbug |
 | 2026-09-24 | 跟进 `docs/DESIGN-PROD.md` v0.7.1。**新增 `TC-PROD-214`**（`REQ-PROD-005`）：进了 PLAY、还没进世界就断开的玩家照样登出保存并放租约——引擎两种断开时机各派发一次 `PlayerDisconnectEvent`、已进世界的仍只一次，存储放下该玩家且同账号马上重登成功，真进程三次 `login --hold 0` 都进得来、`stop` 不空等 30 s；两条反证（断开不交给 tick、已开始进世界的也在队列派发）与修复前的真进程现象都写进期望列。**新增 `TC-PROD-215`**（`REQ-PROD-011`）：玩家只能授予或收回节点都被自己覆盖的角色，带 `*` 的角色只有持有 `*` 的玩家能动，控制台不受限，越权回 `synaxis:role-above-sender`、记 `result=above_sender`；修复前的红与两条反证（不查发送者、`*` 当普通节点放行）写进期望列。`TC-PROD-210` 随模组多一条译文改为八条，加第 3 步新键的反证。§5 生产就绪域 3A 那行加触发条件，4A 那行加 `TC-PROD-215` | Bearisbug |
 | 2026-09-24 | 跟进 `docs/DESIGN-PROD.md` 第 4 波 4C（`REQ-PROD-012`，G10，`API-PROD-011`）。**新增 §4「生产就绪 · 第 4 波 4C：控制台与插件命令」十八条 `TC-PROD-240`～`TC-PROD-257`**：控制台 `list`、`tps`、`save` 回执可读、未知与不完整命令一行 INFO 不带栈（240，§19 第一条，反证把 `ConsoleSender` 换回组件日志器即红成空行）、节点决定内置命令的执行与补全而 `permissionLevel=4` 不授权（241）、`broadcast` 与 `kick` 默认原因（242）、`stop [秒数]` 倒计时、解析不了的秒数不停机、第二次 `stop` 回已在停机（243）、`tps` 的窗口与百分位（244）、插件命令命名空间与无前缀名让给先注册者（245）、必抛的插件命令 100 次一行日志且禁用后两个名字都不存在（246，§19 第二条）、在线时注册注销命令重发命令树（247）、角色变化重发命令树（248，要数据库）、宿主日志规则覆盖新类（249）、模组九条回执译文（250）、ABI 门（251）、4 线程严格模式（252）、真进程控制台与 `stop 2` 后自行退出（253，端口 25643）、控制台一行命令抛异常只写一行 ERROR 且下一行照常执行（254）、引擎已在停机时 `stop` 回已在停机并记 `invalid`（255）、插件被收回之后再注册的命令被丢弃（256）、控制台写服务端译文时子组件不重复也不被截掉（257）；每条带真跑过的反证与红的位置。§5 生产就绪域加一行 | Bearisbug |
 | 2026-09-24 | 跟进 `docs/DESIGN-PROD.md` 第 4 波 4B（`REQ-PROD-010`，G08，`API-PROD-009`）。**新增 §4「生产就绪 · 第 4 波 4B：白名单与封禁」十七条 `TC-PROD-220`～`TC-PROD-236`**：Flyway V4 与回退往返（220）、`ban` 表的 `CHECK`（221）、`BanTarget.ByNetwork` 的解析与覆盖（222）、被封账号在预登录事件收到带理由与到期的 `synaxis:banned`（223，§19 第一条前半）、GM `ban` 命令 5 s 内踢出在线玩家并写 `EVT:player_banned`、`permissionLevel=4` 不授权（224，§19 第一条后半与权限场景的 `ban` 一支）、到期与撤销不生效且没有按名字封禁（225，§19 第二条）、网段封禁（226）、白名单开关（227，§19 第三条）、Redis 可达 5 s 内跨分片（228）、Redis 不可达时 30 s 周期刷新并踢人（229）、控制台三条命令的回执与台账（230）、内存存储与白名单开关取值（231）、`AdmissionRequest` 带 UUID 与地址（232）、模组十二条译文（233）、ABI 门（234）、4 线程严格模式（235）、真进程端口 25642（236）；每条带真跑过的反证与红的位置。`TC-PROD-141`、`TC-PROD-200` 第 1 步按 V4 改写版本、表清单与回退顺序，`TC-PROD-200` 第 2 步红的行号随 `MigrationsDbTest` 改为 `:91`。§5 生产就绪域加一行 | Bearisbug |
@@ -141,7 +142,7 @@ REQ-M2 ↔ TC 对照（可读索引，覆盖与否由上述联检判）：
 | REQ-M2-019 客户端选中与下令 | TC-GAME-038、TC-GAME-039、TC-GAME-047、TC-GAME-066 |
 | REQ-M2-020 客户端模组工程 | TC-GAME-045、TC-GAME-046、TC-GAME-066 |
 | REQ-M2-021 server-app 取代 smoke | TC-GAME-048、TC-GAME-049、TC-GAME-058 |
-| REQ-M2-022 CI 门禁扩展 | TC-GAME-004、TC-GAME-005、TC-GAME-006 |
+| REQ-M2-022 CI 门禁扩展 | TC-GAME-004、TC-GAME-005、TC-GAME-006、TC-GAME-072 |
 | REQ-M2-023 社区上手 | TC-GAME-016 |
 | REQ-M2-024 宿主准入链 | TC-GAME-050、TC-GAME-057、TC-GAME-060 |
 | REQ-M2-025 公开的位置推进入口 | TC-GAME-051、TC-GAME-067 |
@@ -862,6 +863,20 @@ REQ-M3 ↔ TC 对照（可读索引）。「未实现」行没有用例，是已
 | 6 | **仅第一个 tag 之后可做**：`gradle/abi-baseline.tag` 已指向该 tag、其 release 有 `plugin-api.jar` 与 `protocol.jar`；新建分支 `tmp/abi-probe`，做第 4 步那次删除（连同调用点）推送并开草稿 PR，等工作流完成，随后关 PR 删分支 | 工作流结论为 `failure`，`ABI gate of the stable surface` 步骤日志含第 4 步那两行；`gh api repos/Bearisbug/synaxis/branches/tmp/abi-probe` 返回 404 |
 
 后置：`rm -rf .abi-baseline`；确认 `git status --porcelain` 无输出、`main` 未被改动。
+
+#### `TC-GAME-072` `:plugin-api` 接口按谁实现分两类：`@ApiStatus.NonExtendable` 的接口加抽象方法不报，插件实现的接口加抽象方法报 — 对应 `REQ-M2-022` · 级别: 回归 · 执行者: AI
+
+前置：`gh release download v0.2.0 --repo Bearisbug/synaxis --dir <abi> --pattern plugin-api.jar --pattern protocol.jar`（`gradle/abi-baseline.tag` 指的基线；`<abi>` 在仓库外）。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | `grep -l 'ApiStatus.NonExtendable' plugin-api/src/main/java/io/github/bearisbug/synaxis/plugin/*.java` | 恰好 12 个文件，与 `docs/DESIGN-PROD.md` §8 的清单一致：`Moderation`、`Permissions`、`PlayerDataStore`、`PluginAdmission`、`PluginAnalytics`、`PluginChannels`、`PluginCommands`、`PluginContext`、`PluginEvents`、`PluginLifecycle`、`PluginScheduler`、`ShutdownNotice`；`SynaxisPlugin`、`AdmissionProvider`、`PayloadHandler`、`DataSection` 不在其中 |
+| 2 | `./gradlew :plugin-api:checkBinaryCompatibility :protocol:checkBinaryCompatibility -PbaselineJarDir=<abi> --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts` | 两个任务都执行（没有 `SKIPPED`）、`BUILD SUCCESSFUL` |
+| 3 | 在 `PluginEvents` 的 `PluginEvents forInstance(Instance instance);` 下一行加 `void probe();`，重跑 `:plugin-api:checkBinaryCompatibility`，再 `git checkout -- plugin-api/src/main/java/io/github/bearisbug/synaxis/plugin/PluginEvents.java` | `BUILD SUCCESSFUL`：只由宿主实现的接口加抽象方法是兼容变更 |
+| 4 | 反证有齿：在 `SynaxisPlugin` 的 `void onEnable(PluginContext context);` 下一行加 `void probe();`，重跑 `:plugin-api:checkBinaryCompatibility`，再 `git checkout -- plugin-api/src/main/java/io/github/bearisbug/synaxis/plugin/SynaxisPlugin.java` | `BUILD FAILED`：`New abstract method added to interface: io/github/bearisbug/synaxis/plugin/SynaxisPlugin#probe()V (breaks implementing classes)`、`ABI Check failed with 1 binary compatibility violations.` |
+| 5 | 反证标注有齿：删掉 `PluginEvents.java` 的 `@ApiStatus.NonExtendable` 与 `import org.jetbrains.annotations.ApiStatus;` 两行，再做第 3 步的添加，重跑，再 `git checkout -- plugin-api/src/main/java/io/github/bearisbug/synaxis/plugin/PluginEvents.java` | `BUILD FAILED`：`New abstract method added to interface: io/github/bearisbug/synaxis/plugin/PluginEvents#probe()V (breaks implementing classes)`、`ABI Check failed with 1 binary compatibility violations.` |
+
+后置：`git status --porcelain` 无输出；删掉 `<abi>`。
 
 #### `TC-GAME-067` 游戏侧不得触碰引擎内部、`Entity#moveTo` 签名钉死 — 对应 `REQ-M2-002`、`REQ-M2-025` · 级别: 回归 · 执行者: AI
 
@@ -2986,12 +3001,12 @@ jcmd "$pid" VM.flags | tr ' ' '\n' | grep -cxE -- '-XX:\+UseG1GC|-XX:InitialHeap
 
 #### `TC-PROD-163` `:plugin-api` 的新增面过 ABI 门：新类型是新增，接口上的新方法都是默认方法 — 对应 `REQ-PROD-006`、`REQ-PROD-021` · 级别: 回归 · 执行者: AI
 
-前置：`gh release download v0.1.0 --repo Bearisbug/synaxis --dir <abi> --pattern plugin-api.jar --pattern protocol.jar`（`gradle/abi-baseline.tag` 指的基线）。
+前置：`gh release download v0.2.0 --repo Bearisbug/synaxis --dir <abi> --pattern plugin-api.jar --pattern protocol.jar`（`gradle/abi-baseline.tag` 指的基线）。
 
 | # | 操作 | 预期 |
 | --- | --- | --- |
 | 1 | `./gradlew :plugin-api:checkBinaryCompatibility :protocol:checkBinaryCompatibility -PbaselineJarDir=<abi> --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts` | 两个任务都执行（没有「无 baseline」提示）、`BUILD SUCCESSFUL` |
-| 2 | 反证有齿：把 `PluginContext#playerData()` 改回抽象方法（`PlayerDataStore playerData();`），重跑 `:plugin-api:checkBinaryCompatibility`，再还原 | `BUILD FAILED`：`New abstract method added to interface: io/github/bearisbug/synaxis/plugin/PluginContext#playerData()Lio/github/bearisbug/synaxis/plugin/PlayerDataStore; (breaks implementing classes)`、`ABI Check failed with 1 binary compatibility violations.`。还原后复绿 |
+| 2 | 反证有齿：把 `PluginContext#playerData()` 改成抽象方法（`PlayerDataStore playerData();`），重跑 `:plugin-api:checkBinaryCompatibility`，再还原 | `BUILD FAILED`：`Method made abstract: io/github/bearisbug/synaxis/plugin/PluginContext#playerData()Lio/github/bearisbug/synaxis/plugin/PlayerDataStore; (breaks implementing classes/subclasses)`、`ABI Check failed with 1 binary compatibility violations.`（`PluginContext` 标了 `@ApiStatus.NonExtendable`，门禁不再查新增抽象方法，但已发布的默认方法改成抽象照样报）。还原后复绿 |
 
 后置：确认 `PluginContext.java` 没有残留改动；删掉 `<abi>`。
 
@@ -3910,7 +3925,7 @@ jcmd "$pid" VM.flags | tr ' ' '\n' | grep -cxE -- '-XX:\+UseG1GC|-XX:InitialHeap
 - **全量轮**（全部用例）：首次成稿、每个阶段 gate（引擎域阶段 0、2、3；游戏域 `docs/DESIGN-M2.md` §26 的阶段 1～6b；大世界域 `docs/DESIGN-M3.md` §26 的 M3-A～M3-G）、跨功能域改动、地基变更（JDK、Gradle、镜像、协议版本、模块拆分、启动入口）。
 - **局部轮**（受影响用例 + 全部冒烟级）：单一需求改动。受影响用例 = 本次改动触及的 `REQ-*` / `REQ-M2-*` 所对应的 TC（M2 侧的对照表在 §2，机械校验查不到它）；无 REQ 变更的改动（纯 bug 修、重构）按触及的功能域圈定：
   - 引擎域：构建与仓库 → TC-001、TC-002、TC-004、TC-006、TC-021、TC-029，删除与注册表 → TC-008、TC-009、TC-020、TC-036，命名与合规 → TC-011、TC-028，协议 → TC-014、TC-018、TC-019、TC-026、TC-027、TC-030、TC-031、TC-032、TC-034、TC-035、TC-GAME-069、TC-GAME-070、TC-GAME-071（后三条是攻击面盘点补的，动了 `network` / `listener` 包或 `ServerConfig` 的连接与超时项就跑），卫生 → TC-015、TC-016，门面与配置 → TC-023、TC-025，分层 → TC-024、TC-035，tick 多线程（`thread` 包、`Entity` / `Player` 的 `setInstance` / `teleport`、`EnvTestExt`、测试 JVM 参数）→ TC-PROD-030～TC-PROD-033。
-  - 游戏域：模块与门禁 → TC-GAME-001～TC-GAME-006、TC-GAME-059、TC-GAME-067，插件宿主 → TC-GAME-009～TC-GAME-011、TC-GAME-014～TC-GAME-016、TC-GAME-053～TC-GAME-055（TC-GAME-007、TC-GAME-008、TC-GAME-012、TC-GAME-013 已废弃），协议与握手 → TC-GAME-017～TC-GAME-028、TC-GAME-049、TC-GAME-050、TC-GAME-060～TC-GAME-064（TC-GAME-021、TC-GAME-023、TC-GAME-025 已废弃），世界与对局 → TC-GAME-029、TC-GAME-031、TC-GAME-033～TC-GAME-036、TC-GAME-056、TC-GAME-057（TC-GAME-030、TC-GAME-032 已废弃），单位与寻路 → TC-GAME-052、TC-GAME-039～TC-GAME-042、TC-GAME-051、TC-GAME-065、TC-GAME-068，镜头 → TC-GAME-043、TC-GAME-044，客户端模组 → TC-GAME-038、TC-GAME-045～TC-GAME-047、TC-GAME-066，启动器 → TC-GAME-048、TC-GAME-049、TC-GAME-050、TC-GAME-058。
+  - 游戏域：模块与门禁 → TC-GAME-001～TC-GAME-006、TC-GAME-059、TC-GAME-067、TC-GAME-072，插件宿主 → TC-GAME-009～TC-GAME-011、TC-GAME-014～TC-GAME-016、TC-GAME-053～TC-GAME-055（TC-GAME-007、TC-GAME-008、TC-GAME-012、TC-GAME-013 已废弃），协议与握手 → TC-GAME-017～TC-GAME-028、TC-GAME-049、TC-GAME-050、TC-GAME-060～TC-GAME-064（TC-GAME-021、TC-GAME-023、TC-GAME-025 已废弃），世界与对局 → TC-GAME-029、TC-GAME-031、TC-GAME-033～TC-GAME-036、TC-GAME-056、TC-GAME-057（TC-GAME-030、TC-GAME-032 已废弃），单位与寻路 → TC-GAME-052、TC-GAME-039～TC-GAME-042、TC-GAME-051、TC-GAME-065、TC-GAME-068，镜头 → TC-GAME-043、TC-GAME-044，客户端模组 → TC-GAME-038、TC-GAME-045～TC-GAME-047、TC-GAME-066，启动器 → TC-GAME-048、TC-GAME-049、TC-GAME-050、TC-GAME-058。
   - 生产就绪域：宿主日志线（`REQ-PROD-015`～`REQ-PROD-017`）→ TC-PROD-001～TC-PROD-008。
   - 生产就绪域：tick 看门狗（`REQ-PROD-014` 前半）→ TC-PROD-020～TC-PROD-023。
   - 生产就绪域：连接闸门与 keep-alive 收尾（`REQ-PROD-001`、`REQ-PROD-043`）→ TC-PROD-060～TC-PROD-068；动了 accept 循环、握手或登录监听器、`ConnectionGate`、`ServerConfig` 的闸门键或 `StatusResponse` 就跑这九条，改默认值或闸门判定顺序时再加 TC-PROD-069（真进程，约 4 分钟）。跨域牵连：动了 `PlayerConnection#disconnect`、登录看门狗（`Server#loginTimeoutWatch`）或 keep-alive 踢人 → 加 TC-PROD-061、TC-PROD-066、TC-PROD-067 与 TC-GAME-071。

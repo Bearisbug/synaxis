@@ -1,0 +1,1064 @@
+{
+  "kind": "bots",
+  "profile": {
+    "profile": "walk",
+    "bots": 200,
+    "bot_offset": 0,
+    "encryption": "off",
+    "chunks_per_tick": 9.0,
+    "duration_s": 600.0,
+    "login_rate_per_s": 20.0,
+    "warmup_s": 60.0,
+    "host": "127.0.0.1",
+    "port": 25654
+  },
+  "machine": {
+    "hostname": "Mac.local",
+    "os": "Mac OS X aarch64",
+    "cores": 12,
+    "memory_mib": 24576,
+    "java": "25.0.4.1"
+  },
+  "started_at": "2026-09-24T04:57:47.115562Z",
+  "elapsed_s": 599.022,
+  "bots": {
+    "requested": 200,
+    "logged_in": 200,
+    "lost": 0,
+    "login_failures": {}
+  },
+  "kicks_by_reason": {},
+  "login_latency_ms": {
+    "off": {
+      "resolution": 0.1,
+      "buckets": {
+        "26": 1,
+        "257": 1,
+        "259": 3,
+        "260": 2,
+        "261": 2,
+        "262": 2,
+        "263": 2,
+        "265": 6,
+        "266": 2,
+        "267": 7,
+        "269": 7,
+        "270": 1,
+        "271": 5,
+        "272": 5,
+        "273": 3,
+        "274": 2,
+        "275": 5,
+        "276": 1,
+        "277": 3,
+        "278": 2,
+        "279": 3,
+        "281": 2,
+        "282": 4,
+        "283": 3,
+        "284": 4,
+        "286": 1,
+        "288": 5,
+        "289": 2,
+        "290": 5,
+        "291": 3,
+        "292": 2,
+        "293": 2,
+        "294": 3,
+        "295": 2,
+        "296": 1,
+        "298": 2,
+        "299": 3,
+        "301": 1,
+        "302": 1,
+        "303": 3,
+        "304": 3,
+        "305": 1,
+        "306": 4,
+        "307": 1,
+        "309": 2,
+        "310": 1,
+        "312": 1,
+        "313": 1,
+        "315": 1,
+        "317": 1,
+        "318": 1,
+        "319": 1,
+        "320": 3,
+        "321": 2,
+        "322": 3,
+        "323": 1,
+        "324": 2,
+        "327": 3,
+        "332": 2,
+        "333": 2,
+        "334": 3,
+        "337": 1,
+        "339": 3,
+        "340": 1,
+        "343": 1,
+        "344": 2,
+        "346": 2,
+        "348": 2,
+        "353": 2,
+        "356": 2,
+        "357": 1,
+        "358": 1,
+        "361": 1,
+        "362": 1,
+        "364": 1,
+        "366": 1,
+        "367": 1,
+        "372": 1,
+        "374": 1,
+        "377": 1,
+        "379": 1,
+        "380": 1,
+        "381": 1,
+        "382": 1,
+        "383": 1,
+        "384": 1,
+        "392": 1,
+        "400": 1,
+        "403": 1,
+        "404": 1,
+        "407": 1,
+        "414": 1,
+        "441": 1,
+        "476": 1,
+        "582": 1,
+        "600": 1,
+        "633": 1,
+        "699": 1,
+        "728": 1,
+        "738": 1,
+        "868": 1
+      }
+    }
+  },
+  "inbound": {
+    "packets": 240190912,
+    "wire_bytes": 4306450286,
+    "connection_seconds": 118788.189,
+    "by_packet": {
+      "SpawnEntityPacket": {
+        "count": 226400,
+        "wire_bytes": 12081209
+      },
+      "ServerDifficultyPacket": {
+        "count": 200,
+        "wire_bytes": 1400
+      },
+      "ChunkBatchFinishedPacket": {
+        "count": 115902,
+        "wire_bytes": 695412
+      },
+      "ChunkBatchStartPacket": {
+        "count": 115902,
+        "wire_bytes": 579510
+      },
+      "DeclareCommandsPacket": {
+        "count": 200,
+        "wire_bytes": 1800
+      },
+      "WindowItemsPacket": {
+        "count": 400,
+        "wire_bytes": 22000
+      },
+      "EntityStatusPacket": {
+        "count": 200,
+        "wire_bytes": 2000
+      },
+      "EntityPositionSyncPacket": {
+        "count": 11340902,
+        "wire_bytes": 718595165
+      },
+      "UnloadChunkPacket": {
+        "count": 941412,
+        "wire_bytes": 12238356
+      },
+      "ChangeGameStatePacket": {
+        "count": 800,
+        "wire_bytes": 8000
+      },
+      "InitializeWorldBorderPacket": {
+        "count": 200,
+        "wire_bytes": 8800
+      },
+      "KeepAlivePacket": {
+        "count": 11760,
+        "wire_bytes": 152880
+      },
+      "ChunkDataPacket": {
+        "count": 1042273,
+        "wire_bytes": 87219364
+      },
+      "JoinGamePacket": {
+        "count": 200,
+        "wire_bytes": 9800
+      },
+      "EntityPositionAndRotationPacket": {
+        "count": 214865041,
+        "wire_bytes": 3300863395
+      },
+      "PlayerAbilitiesPacket": {
+        "count": 200,
+        "wire_bytes": 2800
+      },
+      "PlayerInfoUpdatePacket": {
+        "count": 2389457,
+        "wire_bytes": 57989568
+      },
+      "PlayerPositionAndLookPacket": {
+        "count": 400,
+        "wire_bytes": 26400
+      },
+      "DestroyEntitiesPacket": {
+        "count": 215568,
+        "wire_bytes": 1587035
+      },
+      "EntityHeadLookPacket": {
+        "count": 226400,
+        "wire_bytes": 1666809
+      },
+      "UpdateViewPositionPacket": {
+        "count": 40954,
+        "wire_bytes": 446906
+      },
+      "SpawnPositionPacket": {
+        "count": 200,
+        "wire_bytes": 7000
+      },
+      "EntityMetaDataPacket": {
+        "count": 226600,
+        "wire_bytes": 3027882
+      },
+      "EntityVelocityPacket": {
+        "count": 7968761,
+        "wire_bytes": 98510364
+      },
+      "EntityEquipmentPacket": {
+        "count": 226400,
+        "wire_bytes": 5062809
+      },
+      "UpdateHealthPacket": {
+        "count": 200,
+        "wire_bytes": 2800
+      },
+      "HeldItemChangePacket": {
+        "count": 200,
+        "wire_bytes": 1200
+      },
+      "SetTimePacket": {
+        "count": 200,
+        "wire_bytes": 7200
+      },
+      "EntityAttributesPacket": {
+        "count": 226600,
+        "wire_bytes": 1894882
+      }
+    },
+    "chunks": {
+      "walk": {
+        "packets": 1042273,
+        "wire_bytes": 87219364,
+        "connection_seconds": 118788.189,
+        "steady_packets": 846017,
+        "steady_wire_bytes": 70807871,
+        "steady_connection_seconds": 106788.189,
+        "per_bot_packets": {
+          "resolution": 1.0,
+          "buckets": {
+            "4889": 1,
+            "4961": 1,
+            "4991": 1,
+            "5009": 1,
+            "5031": 1,
+            "5037": 1,
+            "5055": 2,
+            "5059": 1,
+            "5060": 1,
+            "5077": 2,
+            "5078": 1,
+            "5079": 3,
+            "5081": 1,
+            "5083": 1,
+            "5096": 1,
+            "5100": 2,
+            "5101": 1,
+            "5102": 2,
+            "5103": 3,
+            "5104": 1,
+            "5105": 1,
+            "5106": 5,
+            "5123": 2,
+            "5124": 1,
+            "5125": 1,
+            "5127": 2,
+            "5128": 1,
+            "5129": 3,
+            "5147": 4,
+            "5148": 2,
+            "5149": 1,
+            "5150": 5,
+            "5152": 3,
+            "5164": 2,
+            "5166": 1,
+            "5167": 1,
+            "5168": 1,
+            "5169": 2,
+            "5171": 3,
+            "5172": 4,
+            "5173": 1,
+            "5174": 1,
+            "5175": 4,
+            "5178": 1,
+            "5184": 1,
+            "5190": 2,
+            "5191": 1,
+            "5192": 2,
+            "5193": 1,
+            "5194": 4,
+            "5195": 1,
+            "5196": 3,
+            "5197": 1,
+            "5198": 3,
+            "5202": 2,
+            "5214": 1,
+            "5216": 1,
+            "5217": 3,
+            "5218": 1,
+            "5219": 4,
+            "5220": 2,
+            "5221": 6,
+            "5228": 1,
+            "5234": 1,
+            "5236": 1,
+            "5237": 2,
+            "5238": 2,
+            "5240": 1,
+            "5241": 4,
+            "5242": 2,
+            "5243": 5,
+            "5244": 2,
+            "5258": 1,
+            "5259": 1,
+            "5260": 1,
+            "5262": 3,
+            "5264": 1,
+            "5265": 1,
+            "5266": 1,
+            "5267": 6,
+            "5276": 1,
+            "5284": 1,
+            "5285": 3,
+            "5286": 1,
+            "5288": 2,
+            "5290": 2,
+            "5307": 1,
+            "5308": 1,
+            "5309": 2,
+            "5311": 1,
+            "5312": 1,
+            "5313": 3,
+            "5325": 1,
+            "5333": 2,
+            "5335": 2,
+            "5336": 1,
+            "5349": 1,
+            "5354": 1,
+            "5355": 2,
+            "5359": 3,
+            "5375": 1,
+            "5382": 1,
+            "5398": 1,
+            "5402": 1,
+            "5428": 4,
+            "5439": 1,
+            "5442": 1,
+            "5447": 1,
+            "5491": 1,
+            "5495": 1
+          }
+        }
+      }
+    }
+  },
+  "chunk_batch_rtt_ms": {
+    "resolution": 0.1,
+    "buckets": {
+      "0": 110832,
+      "1": 3207,
+      "2": 560,
+      "3": 284,
+      "4": 198,
+      "5": 147,
+      "6": 112,
+      "7": 76,
+      "8": 50,
+      "9": 76,
+      "10": 47,
+      "11": 37,
+      "12": 30,
+      "13": 24,
+      "14": 19,
+      "15": 21,
+      "16": 7,
+      "17": 21,
+      "18": 18,
+      "19": 12,
+      "20": 10,
+      "21": 8,
+      "22": 9,
+      "23": 3,
+      "24": 4,
+      "25": 2,
+      "26": 5,
+      "27": 5,
+      "28": 4,
+      "29": 5,
+      "30": 4,
+      "31": 1,
+      "32": 3,
+      "33": 3,
+      "34": 3,
+      "35": 4,
+      "36": 4,
+      "37": 2,
+      "38": 1,
+      "39": 4,
+      "41": 1,
+      "42": 2,
+      "43": 2,
+      "44": 2,
+      "46": 1,
+      "47": 2,
+      "49": 1,
+      "50": 1,
+      "54": 1,
+      "55": 1,
+      "57": 1,
+      "64": 1,
+      "68": 1,
+      "69": 1,
+      "70": 1,
+      "73": 1,
+      "84": 1,
+      "86": 1,
+      "90": 1,
+      "92": 1,
+      "102": 1,
+      "123": 1,
+      "147": 1,
+      "171": 1,
+      "207": 1,
+      "284": 1,
+      "288": 1,
+      "321": 1,
+      "333": 1,
+      "372": 1,
+      "384": 1,
+      "463": 1,
+      "486": 1,
+      "522": 1,
+      "523": 1,
+      "651": 1
+    }
+  },
+  "chunk_batches": 115902,
+  "c2s": {
+    "packets": 4880340,
+    "by_packet": {
+      "ClientChunkBatchReceivedPacket": 115902,
+      "ClientFinishConfigurationPacket": 200,
+      "ClientHandshakePacket": 200,
+      "ClientKeepAlivePacket": 11940,
+      "ClientLoginAcknowledgedPacket": 200,
+      "ClientLoginStartPacket": 200,
+      "ClientPlayerLoadedPacket": 200,
+      "ClientPlayerPositionPacket": 2375449,
+      "ClientSelectKnownPacksPacket": 200,
+      "ClientTeleportConfirmPacket": 400,
+      "ClientTickEndPacket": 2375449
+    },
+    "per_bot_per_1s": {
+      "resolution": 1.0,
+      "buckets": {
+        "38": 865,
+        "39": 144,
+        "40": 68298,
+        "41": 10808,
+        "42": 15718,
+        "43": 17092,
+        "44": 2380,
+        "45": 2291,
+        "46": 495,
+        "47": 69,
+        "48": 21,
+        "49": 9,
+        "50": 11,
+        "51": 9,
+        "52": 10,
+        "53": 7,
+        "54": 13,
+        "55": 8,
+        "56": 9,
+        "57": 11,
+        "58": 12,
+        "59": 11,
+        "60": 386,
+        "61": 10,
+        "62": 3
+      }
+    },
+    "per_bot_per_7s": {
+      "resolution": 1.0,
+      "buckets": {
+        "280": 8,
+        "281": 44,
+        "282": 746,
+        "283": 2980,
+        "284": 3512,
+        "285": 15388,
+        "286": 36751,
+        "287": 11139,
+        "288": 21521,
+        "289": 21224,
+        "290": 1238,
+        "291": 1971,
+        "292": 415,
+        "293": 22,
+        "294": 17,
+        "295": 12,
+        "296": 12,
+        "297": 6,
+        "298": 10,
+        "299": 13,
+        "300": 13,
+        "301": 8,
+        "302": 12,
+        "303": 8,
+        "304": 9,
+        "305": 13,
+        "306": 9,
+        "307": 9,
+        "308": 11,
+        "309": 9,
+        "310": 11,
+        "311": 15,
+        "312": 12,
+        "313": 10,
+        "314": 9,
+        "315": 12,
+        "316": 9,
+        "317": 12,
+        "318": 7,
+        "319": 13,
+        "320": 8,
+        "321": 10,
+        "322": 13,
+        "323": 8,
+        "324": 11,
+        "325": 12,
+        "326": 11,
+        "327": 8,
+        "328": 13,
+        "329": 12,
+        "330": 10,
+        "331": 15,
+        "332": 11,
+        "333": 11,
+        "334": 9,
+        "335": 7,
+        "336": 12,
+        "337": 13,
+        "338": 5,
+        "339": 12,
+        "340": 8,
+        "341": 10,
+        "342": 6,
+        "343": 11,
+        "344": 1,
+        "345": 3
+      }
+    }
+  },
+  "harness": {
+    "cpu_seconds": 270.447,
+    "cpu_percent_mean": 45.148,
+    "samples": [
+      {
+        "t": 10.0,
+        "bots_in_play": 199,
+        "c2s_packets_per_s": 5103.547,
+        "s2c_bytes_per_s": 6573110.391,
+        "harness_cpu_percent": 43.313,
+        "load1": 41.6318359375
+      },
+      {
+        "t": 20.0,
+        "bots_in_play": 200,
+        "c2s_packets_per_s": 8372.514,
+        "s2c_bytes_per_s": 1.5097859557E7,
+        "harness_cpu_percent": 60.364,
+        "load1": 55.07666015625
+      },
+      {
+        "t": 30.0,
+        "bots_in_play": 200,
+        "c2s_packets_per_s": 8200.866,
+        "s2c_bytes_per_s": 1.4307533574E7,
+        "harness_cpu_percent": 65.728,
+        "load1": 51.23388671875
+      },
+      {
+        "t": 40.0,
+        "bots_in_play": 200,
+        "c2s_packets_per_s": 8190.275,
+        "s2c_bytes_per_s": 1.0145600884E7,
+        "harness_cpu_percent": 51.105,
+        "load1": 52.978515625
+      },
+      {
+        "t": 50.0,
+        "bots_in_play": 200,
+        "c2s_packets_per_s": 8194.886,
+        "s2c_bytes_per_s": 7072840.848,
+        "harness_cpu_percent": 37.974,
+        "load1": 54.0927734375
+      },
+      {
+        "t": 60.0,
+        "bots_in_play": 200,
+        "c2s_packets_per_s": 8199.082,
+        "s2c_bytes_per_s": 5935132.831,
+        "harness_cpu_percent": 38.553,
+        "load1": 48.66162109375
+      },
+      {
+        "t": 70.1,
+        "bots_in_play": 200,
+        "c2s_packets_per_s": 8134.727,
+        "s2c_bytes_per_s": 5250702.055,
+        "harness_cpu_percent": 39.727,
+        "load1": 49.68701171875
+      },
+      {
+        "t": 80.0,
+        "bots_in_play": 200,
+        "c2s_packets_per_s": 8252.727,
+        "s2c_bytes_per_s": 4807428.994,
+        "harness_cpu_percent": 34.133,
+        "load1": 53.3701171875
+      },
+      {
+        "t": 90.0,
+        "bots_in_play": 200,
+        "c2s_packets_per_s": 8193.2,
+        "s2c_bytes_per_s": 4239621.427,
+        "harness_cpu_percent": 29.343,
+        "load1": 58.642578125
+      },
+      {
+        "t": 100.0,
+        "bots_in_play": 200,
+        "c2s_packets_per_s": 8194.892,
+        "s2c_bytes_per_s": 3766606.849,
+        "harness_cpu_percent": 24.536,
+        "load1": 68.828125
+      },
+      {
+        "t": 110.0,
+        "bots_in_play": 200,
+        "c2s_packets_per_s": 8205.016,
+        "s2c_bytes_per_s": 3816712.79,
+        "harness_cpu_percent": 32.512,
+        "load1": 71.79443359375
+      },
+      {
+        "t": 120.0,
+        "bots_in_play": 200,
+        "c2s_packets_per_s": 8187.837,
+        "s2c_bytes_per_s": 4268946.453,
+        "harness_cpu_percent": 29.962,
+        "load1": 80.42578125
+      },
+      {
+        "t": 130.0,
+        "bots_in_play": 200,
+        "c2s_packets_per_s": 8196.431,
+        "s2c_bytes_per_s": 4756521.51,
+        "harness_cpu_percent": 32.834,
+        "load1": 84.0595703125
+      },
+      {
+        "t": 140.0,
+        "bots_in_play": 200,
+        "c2s_packets_per_s": 8197.684,
+        "s2c_bytes_per_s": 5156753.813,
+        "harness_cpu_percent": 34.755,
+        "load1": 90.859375
+      },
+      {
+        "t": 150.0,
+        "bots_in_play": 200,
+        "c2s_packets_per_s": 8198.206,
+        "s2c_bytes_per_s": 5627380.369,
+        "harness_cpu_percent": 34.936,
+        "load1": 98.41748046875
+      },
+      {
+        "t": 160.0,
+        "bots_in_play": 200,
+        "c2s_packets_per_s": 8202.206,
+        "s2c_bytes_per_s": 6185879.264,
+        "harness_cpu_percent": 35.275,
+        "load1": 99.49560546875
+      },
+      {
+        "t": 170.0,
+        "bots_in_play": 200,
+        "c2s_packets_per_s": 8195.147,
+        "s2c_bytes_per_s": 6715307.884,
+        "harness_cpu_percent": 38.726,
+        "load1": 86.71875
+      },
+      {
+        "t": 180.0,
+        "bots_in_play": 200,
+        "c2s_packets_per_s": 8190.308,
+        "s2c_bytes_per_s": 7248237.645,
+        "harness_cpu_percent": 40.842,
+        "load1": 75.009765625
+      },
+      {
+        "t": 190.0,
+        "bots_in_play": 200,
+        "c2s_packets_per_s": 8194.619,
+        "s2c_bytes_per_s": 7709181.619,
+        "harness_cpu_percent": 35.698,
+        "load1": 73.7587890625
+      },
+      {
+        "t": 200.0,
+        "bots_in_play": 200,
+        "c2s_packets_per_s": 8201.38,
+        "s2c_bytes_per_s": 8275882.452,
+        "harness_cpu_percent": 40.865,
+        "load1": 72.93408203125
+      },
+      {
+        "t": 210.0,
+        "bots_in_play": 200,
+        "c2s_packets_per_s": 8190.965,
+        "s2c_bytes_per_s": 8916839.42,
+        "harness_cpu_percent": 39.212,
+        "load1": 81.19140625
+      },
+      {
+        "t": 220.0,
+        "bots_in_play": 200,
+        "c2s_packets_per_s": 8194.444,
+        "s2c_bytes_per_s": 9507868.947,
+        "harness_cpu_percent": 40.934,
+        "load1": 89.32568359375
+      },
+      {
+        "t": 230.0,
+        "bots_in_play": 200,
+        "c2s_packets_per_s": 8196.947,
+        "s2c_bytes_per_s": 9746166.455,
+        "harness_cpu_percent": 48.161,
+        "load1": 93.62158203125
+      },
+      {
+        "t": 240.0,
+        "bots_in_play": 200,
+        "c2s_packets_per_s": 8201.29,
+        "s2c_bytes_per_s": 9727408.113,
+        "harness_cpu_percent": 50.738,
+        "load1": 93.8974609375
+      },
+      {
+        "t": 250.0,
+        "bots_in_play": 200,
+        "c2s_packets_per_s": 8195.617,
+        "s2c_bytes_per_s": 9371789.819,
+        "harness_cpu_percent": 47.299,
+        "load1": 85.1298828125
+      },
+      {
+        "t": 260.0,
+        "bots_in_play": 200,
+        "c2s_packets_per_s": 8199.186,
+        "s2c_bytes_per_s": 8943484.308,
+        "harness_cpu_percent": 48.118,
+        "load1": 73.5048828125
+      },
+      {
+        "t": 270.0,
+        "bots_in_play": 200,
+        "c2s_packets_per_s": 8192.316,
+        "s2c_bytes_per_s": 8516757.116,
+        "harness_cpu_percent": 46.067,
+        "load1": 63.5009765625
+      },
+      {
+        "t": 280.0,
+        "bots_in_play": 200,
+        "c2s_packets_per_s": 8190.898,
+        "s2c_bytes_per_s": 8145613.707,
+        "harness_cpu_percent": 46.41,
+        "load1": 54.8935546875
+      },
+      {
+        "t": 290.0,
+        "bots_in_play": 200,
+        "c2s_packets_per_s": 8198.944,
+        "s2c_bytes_per_s": 7690604.002,
+        "harness_cpu_percent": 44.721,
+        "load1": 48.77587890625
+      },
+      {
+        "t": 300.0,
+        "bots_in_play": 200,
+        "c2s_packets_per_s": 8195.18,
+        "s2c_bytes_per_s": 7278619.73,
+        "harness_cpu_percent": 52.03,
+        "load1": 41.96484375
+      },
+      {
+        "t": 310.0,
+        "bots_in_play": 200,
+        "c2s_packets_per_s": 8198.707,
+        "s2c_bytes_per_s": 6857818.667,
+        "harness_cpu_percent": 47.179,
+        "load1": 35.9736328125
+      },
+      {
+        "t": 320.0,
+        "bots_in_play": 200,
+        "c2s_packets_per_s": 8196.637,
+        "s2c_bytes_per_s": 6467349.535,
+        "harness_cpu_percent": 41.853,
+        "load1": 33.4404296875
+      },
+      {
+        "t": 330.0,
+        "bots_in_play": 200,
+        "c2s_packets_per_s": 8193.658,
+        "s2c_bytes_per_s": 6168296.25,
+        "harness_cpu_percent": 41.407,
+        "load1": 28.974609375
+      },
+      {
+        "t": 340.0,
+        "bots_in_play": 200,
+        "c2s_packets_per_s": 8193.016,
+        "s2c_bytes_per_s": 5885438.183,
+        "harness_cpu_percent": 42.318,
+        "load1": 27.5849609375
+      },
+      {
+        "t": 350.0,
+        "bots_in_play": 200,
+        "c2s_packets_per_s": 8193.164,
+        "s2c_bytes_per_s": 5713817.677,
+        "harness_cpu_percent": 38.499,
+        "load1": 24.099609375
+      },
+      {
+        "t": 360.0,
+        "bots_in_play": 200,
+        "c2s_packets_per_s": 8194.291,
+        "s2c_bytes_per_s": 5540464.647,
+        "harness_cpu_percent": 44.562,
+        "load1": 21.40283203125
+      },
+      {
+        "t": 370.0,
+        "bots_in_play": 200,
+        "c2s_packets_per_s": 8198.239,
+        "s2c_bytes_per_s": 5571931.706,
+        "harness_cpu_percent": 40.836,
+        "load1": 18.96044921875
+      },
+      {
+        "t": 380.0,
+        "bots_in_play": 200,
+        "c2s_packets_per_s": 8200.06,
+        "s2c_bytes_per_s": 5707152.327,
+        "harness_cpu_percent": 43.184,
+        "load1": 16.88720703125
+      },
+      {
+        "t": 390.0,
+        "bots_in_play": 200,
+        "c2s_packets_per_s": 8193.859,
+        "s2c_bytes_per_s": 5896077.029,
+        "harness_cpu_percent": 42.45,
+        "load1": 14.9853515625
+      },
+      {
+        "t": 400.0,
+        "bots_in_play": 200,
+        "c2s_packets_per_s": 8200.934,
+        "s2c_bytes_per_s": 6117320.983,
+        "harness_cpu_percent": 46.222,
+        "load1": 14.4970703125
+      },
+      {
+        "t": 410.0,
+        "bots_in_play": 200,
+        "c2s_packets_per_s": 8193.141,
+        "s2c_bytes_per_s": 6366902.935,
+        "harness_cpu_percent": 50.43,
+        "load1": 12.802734375
+      },
+      {
+        "t": 420.0,
+        "bots_in_play": 200,
+        "c2s_packets_per_s": 8194.647,
+        "s2c_bytes_per_s": 6579992.466,
+        "harness_cpu_percent": 49.788,
+        "load1": 11.90380859375
+      },
+      {
+        "t": 430.0,
+        "bots_in_play": 200,
+        "c2s_packets_per_s": 8198.48,
+        "s2c_bytes_per_s": 6799201.565,
+        "harness_cpu_percent": 45.171,
+        "load1": 11.5302734375
+      },
+      {
+        "t": 440.0,
+        "bots_in_play": 200,
+        "c2s_packets_per_s": 8200.392,
+        "s2c_bytes_per_s": 6996875.35,
+        "harness_cpu_percent": 51.419,
+        "load1": 10.599609375
+      },
+      {
+        "t": 450.0,
+        "bots_in_play": 200,
+        "c2s_packets_per_s": 8192.404,
+        "s2c_bytes_per_s": 7159150.476,
+        "harness_cpu_percent": 54.105,
+        "load1": 12.0732421875
+      },
+      {
+        "t": 460.0,
+        "bots_in_play": 200,
+        "c2s_packets_per_s": 8193.274,
+        "s2c_bytes_per_s": 7343170.009,
+        "harness_cpu_percent": 56.903,
+        "load1": 11.29248046875
+      },
+      {
+        "t": 470.0,
+        "bots_in_play": 200,
+        "c2s_packets_per_s": 8195.783,
+        "s2c_bytes_per_s": 7522270.756,
+        "harness_cpu_percent": 63.025,
+        "load1": 10.56494140625
+      },
+      {
+        "t": 480.0,
+        "bots_in_play": 200,
+        "c2s_packets_per_s": 8198.845,
+        "s2c_bytes_per_s": 7698832.959,
+        "harness_cpu_percent": 57.871,
+        "load1": 9.4814453125
+      },
+      {
+        "t": 490.0,
+        "bots_in_play": 200,
+        "c2s_packets_per_s": 8195.893,
+        "s2c_bytes_per_s": 7832847.577,
+        "harness_cpu_percent": 59.825,
+        "load1": 8.64501953125
+      },
+      {
+        "t": 500.0,
+        "bots_in_play": 200,
+        "c2s_packets_per_s": 8189.612,
+        "s2c_bytes_per_s": 8021321.668,
+        "harness_cpu_percent": 62.597,
+        "load1": 8.22509765625
+      },
+      {
+        "t": 510.0,
+        "bots_in_play": 200,
+        "c2s_packets_per_s": 8197.412,
+        "s2c_bytes_per_s": 8082433.607,
+        "harness_cpu_percent": 58.055,
+        "load1": 7.42138671875
+      },
+      {
+        "t": 520.0,
+        "bots_in_play": 200,
+        "c2s_packets_per_s": 8195.38,
+        "s2c_bytes_per_s": 8159941.897,
+        "harness_cpu_percent": 53.065,
+        "load1": 8.46435546875
+      },
+      {
+        "t": 530.0,
+        "bots_in_play": 200,
+        "c2s_packets_per_s": 8199.399,
+        "s2c_bytes_per_s": 8097115.479,
+        "harness_cpu_percent": 50.547,
+        "load1": 9.833984375
+      },
+      {
+        "t": 540.0,
+        "bots_in_play": 200,
+        "c2s_packets_per_s": 8196.329,
+        "s2c_bytes_per_s": 7877332.298,
+        "harness_cpu_percent": 50.125,
+        "load1": 9.244140625
+      },
+      {
+        "t": 550.0,
+        "bots_in_play": 200,
+        "c2s_packets_per_s": 8196.329,
+        "s2c_bytes_per_s": 7586616.155,
+        "harness_cpu_percent": 49.069,
+        "load1": 8.58447265625
+      },
+      {
+        "t": 560.0,
+        "bots_in_play": 200,
+        "c2s_packets_per_s": 8193.071,
+        "s2c_bytes_per_s": 7334319.342,
+        "harness_cpu_percent": 51.971,
+        "load1": 8.11328125
+      },
+      {
+        "t": 570.0,
+        "bots_in_play": 200,
+        "c2s_packets_per_s": 8200.009,
+        "s2c_bytes_per_s": 7116027.776,
+        "harness_cpu_percent": 44.103,
+        "load1": 7.48046875
+      },
+      {
+        "t": 580.0,
+        "bots_in_play": 200,
+        "c2s_packets_per_s": 8193.526,
+        "s2c_bytes_per_s": 6885777.505,
+        "harness_cpu_percent": 42.904,
+        "load1": 7.24609375
+      },
+      {
+        "t": 590.0,
+        "bots_in_play": 200,
+        "c2s_packets_per_s": 8196.905,
+        "s2c_bytes_per_s": 6636473.019,
+        "harness_cpu_percent": 42.358,
+        "load1": 8.14599609375
+      }
+    ]
+  }
+}

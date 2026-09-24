@@ -15,12 +15,15 @@ import java.time.Duration;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.function.BooleanSupplier;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -66,6 +69,77 @@ public class OnlineDuplicateLoginSocketTest {
                 assertTrue(old.isRemoved(), "the old player left the world");
                 assertFalse(secondKicked.isDone(), "the newcomer stays online");
             } finally {
+                process.stop();
+            }
+        }
+    }
+
+    /**
+     * The first session is kicked while its spawn is still under way: the tick thread has taken it
+     * off the join queue and waits for its spawn chunks, so it is in no instance yet but is about to
+     * enter the entity tracker. The newcomer must wait for that spawn and the removal after it,
+     * not slip in between and have the tracker refuse its uuid.
+     */
+    @Test
+    public void aLoginReplacingASessionThatIsStillSpawningWaitsForItToLeave() throws Exception {
+        try (TestSessionServer sessions = new TestSessionServer()) {
+            final UUID account = UUID.randomUUID();
+            sessions.profile("Twin", account, "skin");
+            final MinecraftServer server = MinecraftServer.init(
+                    new Auth.Online(sessions.sessionServer(Duration.ofSeconds(10), 32)));
+            final ServerProcess process = server.process();
+            final Instance instance = process.instance().createInstanceContainer();
+            // Holds the first spawn in its chunk loading until the test lets it go
+            final CountDownLatch chunks = new CountDownLatch(1);
+            instance.setGenerator(_ -> {
+                try {
+                    chunks.await(10, TimeUnit.SECONDS);
+                } catch (InterruptedException _) {
+                    Thread.currentThread().interrupt();
+                }
+            });
+            process.eventHandler().addListener(AsyncPlayerConfigurationEvent.class,
+                    event -> event.setSpawningInstance(instance));
+            server.start(new InetSocketAddress(InetAddress.getLoopbackAddress(), 0));
+            final int port = process.server().getPort();
+            try (EncryptedLoginClient first = new EncryptedLoginClient(port, process.registries());
+                 EncryptedLoginClient second = new EncryptedLoginClient(port, process.registries())) {
+                first.login("Twin");
+                first.configure();
+                final CompletableFuture<@Nullable String> firstKicked = playInBackground(first);
+                final Player old = awaitPlayer(process, account, null);
+                assertNull(old.getInstance(), "the first spawn is held in its chunk loading");
+
+                final CompletableFuture<Void> secondConfigured = new CompletableFuture<>();
+                Thread.startVirtualThread(() -> {
+                    try {
+                        second.login("Twin");
+                        second.configure();
+                        secondConfigured.complete(null);
+                    } catch (Throwable t) {
+                        secondConfigured.completeExceptionally(t);
+                    }
+                });
+                assertEquals("synaxis:logged-in-elsewhere", firstKicked.get(10, TimeUnit.SECONDS));
+                // Long enough for a newcomer that does not wait to get through its configuration,
+                // well within the 5 second handover bound of the one that does
+                try {
+                    secondConfigured.get(1_500, TimeUnit.MILLISECONDS);
+                } catch (TimeoutException _) {
+                    // Still waiting for the first session to leave, as it should
+                }
+                chunks.countDown();
+                secondConfigured.get(10, TimeUnit.SECONDS);
+                final CompletableFuture<@Nullable String> secondKicked = playInBackground(second);
+
+                final Player replacement = awaitPlayer(process, account, old);
+                awaitUntil(() -> replacement.getInstance() == instance, "the newcomer spawns");
+                assertSame(replacement, instance.getEntityTracker().getEntityByUuid(account),
+                        "the entity tracker holds the newcomer, so other players see it");
+                assertTrue(old.isRemoved(), "the old player left the world");
+                assertFalse(secondKicked.isDone(), "the newcomer stays online");
+            } finally {
+                chunks.countDown();
                 process.stop();
             }
         }

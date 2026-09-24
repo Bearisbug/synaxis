@@ -15,6 +15,7 @@
 
 | 日期 | 改动 | 作者 |
 | --- | --- | --- |
+| 2026-09-24 | 跟进 `docs/DESIGN-PROD.md` 第 5 波 5A（`REQ-PROD-018` 指标导出，G16，`API-PROD-015`；`REQ-PROD-029` 压测 harness，G26，`API-PROD-025`、`ADR-PROD-013`）。**新增 §4「生产就绪 · 第 5 波 5A：指标导出与压测 harness」十二条 `TC-PROD-260`～`TC-PROD-271`**：端点答 Prometheus 文本、4 条 TickThread 与调度线程各一组 tick 时长、404 / 405 与地址解析（260，§19 指标场景）、`synaxis_*` 名字与 `API-PROD-015` 名单一致（261）、存储语句耗时与保存结果（262，要数据库）、引擎的包与字节、加解密耗时、`hasJoined` 结果与重试、看门狗警告（263）、真进程默认装配与绑定被占拒启（264，端口 25651）、机器人回区块回执超过首批 9 块与上行包速率窗口（265，§19 harness 场景的缩小版）、加密档（266）、`merge` 合并与判定（267）、`sample` 读 JFR 与端点文本（268）、两个机器人进程 `--bot-offset` 分摊（269）、`flood` 与闸门计数导出（270）、200 人 walk 30 min 同机基线（271，判定未通过：18 个 tick 超 50 ms，17 个与 G1 年轻代暂停重叠；产物在 `docs/research/production-readiness-2026-09/load/walk200-30m/`）；每条带真跑过的反证与红的位置，本节开头列出与设计的六处口径差异。§5 生产就绪域加一行 | Bearisbug |
 | 2026-09-24 | 跟进 `docs/DESIGN-PROD.md` v0.7.1。**新增 `TC-PROD-214`**（`REQ-PROD-005`）：进了 PLAY、还没进世界就断开的玩家照样登出保存并放租约——引擎两种断开时机各派发一次 `PlayerDisconnectEvent`、已进世界的仍只一次，存储放下该玩家且同账号马上重登成功，真进程三次 `login --hold 0` 都进得来、`stop` 不空等 30 s；两条反证（断开不交给 tick、已开始进世界的也在队列派发）与修复前的真进程现象都写进期望列。**新增 `TC-PROD-215`**（`REQ-PROD-011`）：玩家只能授予或收回节点都被自己覆盖的角色，带 `*` 的角色只有持有 `*` 的玩家能动，控制台不受限，越权回 `synaxis:role-above-sender`、记 `result=above_sender`；修复前的红与两条反证（不查发送者、`*` 当普通节点放行）写进期望列。`TC-PROD-210` 随模组多一条译文改为八条，加第 3 步新键的反证。§5 生产就绪域 3A 那行加触发条件，4A 那行加 `TC-PROD-215` | Bearisbug |
 | 2026-09-24 | 跟进 `docs/DESIGN-PROD.md` 第 4 波 4C（`REQ-PROD-012`，G10，`API-PROD-011`）。**新增 §4「生产就绪 · 第 4 波 4C：控制台与插件命令」十八条 `TC-PROD-240`～`TC-PROD-257`**：控制台 `list`、`tps`、`save` 回执可读、未知与不完整命令一行 INFO 不带栈（240，§19 第一条，反证把 `ConsoleSender` 换回组件日志器即红成空行）、节点决定内置命令的执行与补全而 `permissionLevel=4` 不授权（241）、`broadcast` 与 `kick` 默认原因（242）、`stop [秒数]` 倒计时、解析不了的秒数不停机、第二次 `stop` 回已在停机（243）、`tps` 的窗口与百分位（244）、插件命令命名空间与无前缀名让给先注册者（245）、必抛的插件命令 100 次一行日志且禁用后两个名字都不存在（246，§19 第二条）、在线时注册注销命令重发命令树（247）、角色变化重发命令树（248，要数据库）、宿主日志规则覆盖新类（249）、模组九条回执译文（250）、ABI 门（251）、4 线程严格模式（252）、真进程控制台与 `stop 2` 后自行退出（253，端口 25643）、控制台一行命令抛异常只写一行 ERROR 且下一行照常执行（254）、引擎已在停机时 `stop` 回已在停机并记 `invalid`（255）、插件被收回之后再注册的命令被丢弃（256）、控制台写服务端译文时子组件不重复也不被截掉（257）；每条带真跑过的反证与红的位置。§5 生产就绪域加一行 | Bearisbug |
 | 2026-09-24 | 跟进 `docs/DESIGN-PROD.md` 第 4 波 4B（`REQ-PROD-010`，G08，`API-PROD-009`）。**新增 §4「生产就绪 · 第 4 波 4B：白名单与封禁」十七条 `TC-PROD-220`～`TC-PROD-236`**：Flyway V4 与回退往返（220）、`ban` 表的 `CHECK`（221）、`BanTarget.ByNetwork` 的解析与覆盖（222）、被封账号在预登录事件收到带理由与到期的 `synaxis:banned`（223，§19 第一条前半）、GM `ban` 命令 5 s 内踢出在线玩家并写 `EVT:player_banned`、`permissionLevel=4` 不授权（224，§19 第一条后半与权限场景的 `ban` 一支）、到期与撤销不生效且没有按名字封禁（225，§19 第二条）、网段封禁（226）、白名单开关（227，§19 第三条）、Redis 可达 5 s 内跨分片（228）、Redis 不可达时 30 s 周期刷新并踢人（229）、控制台三条命令的回执与台账（230）、内存存储与白名单开关取值（231）、`AdmissionRequest` 带 UUID 与地址（232）、模组十二条译文（233）、ABI 门（234）、4 线程严格模式（235）、真进程端口 25642（236）；每条带真跑过的反证与红的位置。`TC-PROD-141`、`TC-PROD-200` 第 1 步按 V4 改写版本、表清单与回退顺序，`TC-PROD-200` 第 2 步红的行号随 `MigrationsDbTest` 改为 `:91`。§5 生产就绪域加一行 | Bearisbug |
@@ -3905,6 +3906,171 @@ jcmd "$pid" VM.flags | tr ' ' '\n' | grep -cxE -- '-XX:\+UseG1GC|-XX:InitialHeap
 
 后置：确认 `ConsoleSender.java` 没有残留改动。
 
+### 生产就绪 · 第 5 波 5A：指标导出与压测 harness
+
+对应 `REQ-PROD-018`（清单 G16，`API-PROD-015`，§19「指标端点只在内网暴露并含每线程 MSPT」，§21 各 SLI 的指标）与 `REQ-PROD-029`（G26，`API-PROD-025`、`ADR-PROD-013`，§19 两条压测场景，§15 tick 预算行，§26 第 5 波前半的 200 人基线）。实现：
+
+- 引擎：`network/TrafficCounters`（每进程一份，`ConnectionManager#traffic()`）累计线上入站与出站的包数、字节与加解密耗时，读线程与写线程各自往里加；`TickThread#observeTicks` 在每个 tick 线程的 tick 结束后报一次耗时；`Watchdog#warnings()` 数早期警告；`SessionClient` 另记进程级的最终结果（`outcomes()`）、重试次数（`retries()`）与单次查询耗时（`observeQueries`），原有的 10 s 汇总行不变。
+- 宿主：新包 `metrics/` 的 `HostMetrics` 用 Micrometer 1.17.1 + Prometheus 注册表注册 `API-PROD-015` 的 21 个 `synaxis_*` 名字（常量 `HostMetrics.NAMES`）与 Micrometer 自带的 `jvm_*`、`process_*` binder，JDK `HttpServer` 在 `synaxis.app.metrics.bind`（默认 `127.0.0.1:9464`）上答 `GET /metrics`，别的路径 404、别的方法 405；绑不上时 `Main` 以 `Refusing to start: synaxis.app.metrics.bind=… cannot be bound` 拒启，此时游戏端口还没绑。调度线程的 tick 时长取 `ServerTickMonitorEvent`，标签 `thread="Syn-TickScheduler"`；实体数与已载入区块数由调度器每 20 tick 数一次。存储经 `StoreMetrics` 报语句耗时（`op` = `load` / `save` / `renew` / `commit`）与保存结果，台账报丢弃行数，连接池读 HikariCP 的 MXBean。
+- 压测：新模块 `:loadtest`（`loadtest/`，不发布），子命令 `run`、`sample`、`merge`、`flood`，命令行见 `LoadTest` 的 javadoc。机器人的包 ID 与编解码取自引擎注册表；登录走真握手，服务端发加密请求时按原版做 RSA 交换与 AES/CFB8；每个 `ChunkBatchFinished` 回 `ChunkBatchReceived`（默认 9.0 块/tick）；移动画像 `walk` 4.317、`ride` 10、`fly` 30 格/s，每 tick 一个位置包加一个 `ClientTickEnd`，绕一个经过出生点的圆走（半径 walk 64～192、ride 128～384、fly 256～768 格，按机器人编号用黄金角分方向），走过的地面有界。`sample` 在服务端主机上用 `jcmd JFR.start` 录引擎事件 `synaxis.ServerTickTime` 与 GC，读完即删录制文件（`--keep-jfr on` 保留）。
+
+本节与设计的口径差异（交付说明同步列出，由主会话决定是否回写 `docs/DESIGN-PROD.md`）：
+
+- `synaxis_packets_total{direction="out"}` 数的是写进连接缓冲的可发送单元：视野广播每 tick 攒成的一个缓冲包算 1 个，不按其中的原版包拆。`TC-PROD-271` 那一轮服务端出站共计 527,088,737 个单元，机器人一侧收到的原版包是 694,899,581 个，后者是前者的 1.32 倍。
+- `synaxis_connections{state}` 取 `configuration`、`play` 两个集合的大小，`login` = 闸门计数的套接字数减去这两者（握手、状态查询与登录阶段合在一起）。
+- `synaxis_outbound_backlog_kicks_total` 已注册、恒为 0：出站积压断线是 5B 的 G22。
+- `summary.json` 的 `ticks.acquire_ms` 写 `null`：`TickMonitor.acquisitionTimeMs` 在审计 P3-3 修掉之前不导出（`API-PROD-015` 末句）。
+- `chunk_batch_rtt_ms` 取机器人从收到 `ChunkBatchStart` 到收到 `ChunkBatchFinished` 的间隔，与原版 `ChunkBatchSizeCalculator` 计时的区间相同；回环上两包常在同一次读里到达，读数在 0.3 ms 以内。
+- `inbound.chunks.<画像>` 另给 `steady_*` 一组：只算每个机器人进 play 满 `--warmup`（默认 60 s）之后收到的区块包，即去掉进场那一批的走路读数。
+
+数据库前置、「跑 `<类>`」的写法与结果文件同 3A 一节；本节只有 `TC-PROD-262` 要数据库。`TC-PROD-264`、`TC-PROD-269`～`TC-PROD-271` 起真进程，端口 25651；服务端一律 `./gradlew :server-app:installDist :loadtest:installDist` 后从 `server-app/build/install/server-app/bin/server-app` 起，在各自的空工作目录里跑（`logs/` 写在那里），用完按 pid 停进程并删目录。机器人与服务端在同一台机器（M4 Pro 12 核 / 24 GiB，macOS），这一点对所有压测读数都成立。反证一律是「临时改一处实现、重跑、看红、还原、重跑复绿」，还原后 `git status` 必须干净。
+
+#### `TC-PROD-260` 指标端点答 Prometheus 文本，4 条 TickThread 与调度线程各有一组 tick 时长 — 对应 `REQ-PROD-018` · 级别: 冒烟 · 执行者: AI
+
+前置：工作副本干净。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `io.github.bearisbug.synaxis.app.metrics.MetricsEndpointTest` | 2 个 0 失败（§19「指标端点只在内网暴露并含每线程 MSPT」）：`dispatcher-threads=4` 的进程载入 8 个区块、每区块一个实体，手动走 5 个 tick，端点在 `127.0.0.1:0` 上。`GET /metrics` 回 200、`Content-Type` 以 `text/plain` 开头；`synaxis_tick_duration_seconds_count` 在 `Syn-Tick-0`～`Syn-Tick-3` 与 `Syn-TickScheduler` 五个标签上都是 5，`Syn-Tick-0` 有 `quantile="0.99"` 一行；含 `# TYPE synaxis_db_statement_seconds summary`、`synaxis_auth_hasjoined_total{result="verified"} 0.0`；调过一次 `gate().handshakeTimedOut()` 后 `synaxis_gate_rejections_total{reason="handshake_timeout"} 1.0`；台账来源给 7 时 `synaxis_ledger_dropped_total 7.0`。`/metrics/more` 回 404，`POST /metrics` 回 405，同一地址再起一个端点抛 `IOException`。`synaxis.app.metrics.bind` 的解析：默认值得 `127.0.0.1:9464`，` 10.0.0.5:0 ` 得 `10.0.0.5:0`，`127.0.0.1`、`127.0.0.1:port`、`127.0.0.1:9464/metrics`、`:9464` 都抛 `IllegalArgumentException` |
+| 2 | 反证有齿（四条 tick 线程共用一个标签）：`HostMetrics#registerTicks` 的 `final Timer timer = tickTimer(thread.getName());` 改为 `final Timer timer = tickTimer("Syn-Tick");`，重跑，再还原 | `3 tests completed, 1 failed`（与 `MetricsNamesTest` 一起跑），红在 `MetricsEndpointTest.java:66`（取数的助手在 `:102`）：`AssertionError: no tick count of Syn-Tick-0`。还原后复绿 |
+
+后置：确认 `HostMetrics.java` 没有残留改动。
+
+#### `TC-PROD-261` 注册表里的 `synaxis_*` 名字与 `API-PROD-015` 的名单一个不多、一个不少 — 对应 `REQ-PROD-018` · 级别: 回归 · 执行者: AI
+
+前置：工作副本干净。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `io.github.bearisbug.synaxis.app.metrics.MetricsNamesTest` | 1 个 0 失败（`docs/DESIGN-PROD.md` §24「指标名」）：从文本的 `# TYPE` 行收 `synaxis_` 开头的族，计数器按 `_total` 名、summary 连带 Micrometer 附加的 `_max` 算一族，所得集合等于 `HostMetrics.NAMES` 的 21 个；文本另含 `jvm_memory_used_bytes{`、`jvm_gc_` 与 `process_cpu_usage ` |
+| 2 | 反证有齿（换掉一个名字）：`HostMetrics#registerStore` 的 `Gauge.builder("synaxis.redis.up",` 改为 `Gauge.builder("synaxis.redis.reachable",`，只跑该类，再还原 | 红在 `MetricsNamesTest.java:33`：`the synaxis_* families of the registry ==> expected: <[…]> but was: <[…]>`，期望集合里的 `synaxis_redis_up` 在实际集合里是 `synaxis_redis_reachable`。还原后复绿 |
+
+后置：确认 `HostMetrics.java` 没有残留改动。
+
+#### `TC-PROD-262` 存储的语句耗时按 `op` 计、保存按结果计，分片会话状态与连接池读得到 — 对应 `REQ-PROD-018` · 级别: 回归 · 执行者: AI
+
+前置：3A 一节的数据库前置（`SYNAXIS_TEST_PG_*`、`SYNAXIS_TEST_REDIS_URL` 指向 `synaxis-pg` / `synaxis-valkey`）。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `io.github.bearisbug.synaxis.app.store.StoreMetricsIntegrationTest`，看结果文件 `skipped="0"` | 1 个 0 失败 0 跳过：真 PostgreSQL 上一个分片载入两名玩家、`saveNow` 一次（`SAVED`）、手动续期一次、两人 `commitTogether` 一次（`SAVED`）、把其中一人的 `version` 在库里加 1 后再 `commitTogether` 一次（`FENCED`）。端点文本：`synaxis_db_statement_seconds_count{op="load"}` 2、`{op="save"}` 1、`{op="renew"}` 1、`{op="commit"}` 2；`synaxis_store_save_total{result="saved"}` 2、`{result="fenced"}` 1、`{result="unavailable"}` 0；`synaxis_shard_session_state{state="active"}` 1、`{state="degraded"}` 0；`synaxis_db_pool_active` 与 `synaxis_db_pool_pending` 都是 0；没配 Redis，`synaxis_redis_up` 0 |
+| 2 | 反证有齿（单人保存不计结果）：`PlayerStore` 里 `final SaveResult result = write(record, snapshot, release);` 下一行的 `metrics.saved(result);` 改为 `var _ = result;`，重跑，再还原 | 红在 `StoreMetricsIntegrationTest.java:72`：`the saveNow and a commit ==> expected: <2> but was: <1>`。还原后复绿 |
+
+后置：确认 `PlayerStore.java` 没有残留改动；测试库由 `TestDatabase` 删掉。
+
+#### `TC-PROD-263` 引擎侧的计数：线上包与字节、加解密耗时、`hasJoined` 的最终结果、重试与单次耗时、看门狗警告 — 对应 `REQ-PROD-018` · 级别: 回归 · 执行者: AI
+
+前置：工作副本干净。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `io.github.bearisbug.synaxis.network.OnlineLoginSocketTest`（根项目 `:test`） | 17 个 0 失败。`theTrafficAndTheCipherTimeOfAnEncryptedLoginAreCounted`：`offline-encrypted` 的一次登录前四项全是 0；拿到 `LoginSuccess` 时入站 3 个包（握手、登录开始、密钥）、解密耗时仍为 0（密钥之后客户端还没发过密文）；客户端再发一个 `LoginAcknowledged`，入站变 4、解密耗时 > 0；出站 ≥ 2 个包，入站字节 > 256（两块 128 字节的 RSA），出站字节 > 162（请求里的公钥），加密耗时 > 0。`theFinalAnswerTheRetryAndEveryQueryTimeAreCounted`：假会话服务先回 503 再回 200，`outcomes()` = `[1, 0, 0]`（一次登录只按最终结果计一次），`retries()` = 1，两次查询都报了耗时且 > 0 |
+| 2 | 跑 `io.github.bearisbug.synaxis.WatchdogTest` | 5 个 0 失败，其中 `aStuckTickIsReportedAtTenSecondsThenEveryFiveAndJudgedDeadAtSixty` 在 10、15、…、55 s 打出 10 条警告时 `warnings()` = 10 |
+| 3 | 反证有齿（入站不计包数）：`PlayerSocketConnection#processBatch` 里的 `traffic.read(success.packets().size());` 改为 `var _ = success;`，跑第 1 步，再还原 | `17 tests completed, 1 failed`，红在 `OnlineLoginSocketTest.java:330`：`packets read off the socket ==> expected: <3> but was: <0>`。还原后复绿 |
+| 4 | 反证有齿（重试不计数）：`SessionClient#verify` 里的 `retries.incrementAndGet();` 改为 `var _ = retries;`，跑第 1 步，再还原 | `17 tests completed, 1 failed`，红在 `:356`：`the unavailable answer was retried once ==> expected: <1> but was: <0>`。还原后复绿 |
+| 5 | 反证有齿（警告不计数）：`Watchdog#patrol` 里的 `warningCount.incrementAndGet();` 改为 `var _ = warningCount;`，跑第 2 步，再还原 | `5 tests completed, 1 failed`，红在 `WatchdogTest.java:88`：`synaxis_watchdog_warnings_total counts every warning ==> expected: <10> but was: <0>`。还原后复绿 |
+
+后置：确认 `PlayerSocketConnection.java`、`SessionClient.java`、`Watchdog.java` 没有残留改动。
+
+#### `TC-PROD-264` 真进程：`server-app` 默认装配指标端点，绑定被占时拒启、游戏端口不绑 — 对应 `REQ-PROD-018` · 级别: 回归 · 执行者: AI
+
+前置：`./gradlew :server-app:installDist`；两个空工作目录 `a/`、`b/`；端口 25651 空闲。两个进程都带 `JAVA_OPTS="-Xms512m -Xmx512m"` 与 `SERVER_APP_OPTS="-Dsynaxis.app.port=25651 -Dsynaxis.app.auth=offline -Dsynaxis.app.core-mode=on …"`。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 在 `a/` 后台起进程 A，另加 `-Dsynaxis.app.metrics.bind=127.0.0.1:0`，等 `listening on 0.0.0.0:25651` | 日志先有一行 INFO `Metrics endpoint listening on http://127.0.0.1:<端口 M>/metrics`，之后才是就绪行 |
+| 2 | `curl -s -o m.txt -w '%{http_code} %{content_type}' http://127.0.0.1:M/metrics`，数 `# TYPE` 行 | `200 text/plain; version=0.0.4; charset=utf-8`；`synaxis_` 开头的 `# TYPE` 行 24 条（21 个名字，三个 summary 各多一条 `_max`），`jvm_` 18 条，`process_` 6 条；`synaxis_connections` 三个状态都是 0.0，`synaxis_tick_duration_seconds_count{thread="Syn-Tick-0"} 0`（核心世界还没人进来，没有分区交给这条线程），`{thread="Syn-TickScheduler"}` 为已走的 tick 数 |
+| 3 | `curl … http://127.0.0.1:M/other`；`curl -X POST … /metrics` | 404；405 |
+| 4 | 在 `b/` 前台起进程 B，`-Dsynaxis.app.metrics.bind=127.0.0.1:M` | 退出码 1；日志一行 ERROR `Refusing to start: synaxis.app.metrics.bind=127.0.0.1:M cannot be bound: Address already in use`；没有 `listening on 0.0.0.0` 行 |
+| 5 | 按 pid 停 A，等它退出；`lsof -nP -iTCP:25651 -sTCP:LISTEN` | A 退出；0 行 |
+| 6 | 反证有齿（绑不上也照常起）：`Main#serveMetrics` 里的 `metrics.serve(bind);` 改为 `metrics.serve(new InetSocketAddress(bind.getAddress(), 0));`，重建 `installDist`，重做第 1、4 步，再还原并重建 | B 的日志先是 `Metrics endpoint listening on http://127.0.0.1:49981/metrics`（换到了别的端口），随后 `HostExceptionHandler` 一行 `Unhandled exception … BindException`：`Address already in use` 落在游戏端口上，进程不退出，10 分钟后按 pid 停掉（退出码 143）。还原后第 4 步复为拒启、退出码 1 |
+
+后置：两个进程都已按 pid 停掉，25651 无监听，删两个工作目录；确认 `Main.java` 没有残留改动。
+
+#### `TC-PROD-265` 机器人回区块回执，每个机器人收到的区块超过首批 9 块；上行包速率按整秒与 7 s 窗口计 — 对应 `REQ-PROD-029` · 级别: 冒烟 · 执行者: AI
+
+前置：工作副本干净。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `io.github.bearisbug.synaxis.loadtest.BotSocketTest`（`:loadtest:test`），看 `walkingBotsAcknowledgeChunkBatchesAndGetMoreThanTheFirstNine` | 2 个 0 失败（§19「harness 回区块回执并量出区块下行」的缩小版）：测试在回环上起一个真 tick 的进程（平地、视距 4、机器人网段 `127.0.0.0/8` 进可信网段），`RunCommand` 以 3 个机器人 walk 12 s、预热 3 s 跑完。`bots-0.json`：3 个全部登录、0 个掉线；`inbound.chunks.walk.per_bot_packets` 3 个值、最小 > 9；`chunk_batches` > 3，`chunk_batch_rtt_ms` 有样本，预热之后仍有区块到达（`steady_packets` > 0）；`c2s.per_bot_per_1s` 至少 9 个整秒、中位数在 38～46（每 tick 一个位置包加一个 tick 结束），`per_bot_per_7s` 有样本且中位数 ≥ 266；`login_latency_ms.off` 3 个样本 |
+| 2 | 反证有齿（不回执）：`Bot#answer` 里的 `send(ConnectionState.PLAY, new ClientChunkBatchReceivedPacket(settings.chunksPerTick()));` 改为 `var _ = new ClientChunkBatchReceivedPacket(settings.chunksPerTick());`，重跑，再还原 | `2 tests completed, 2 failed`：walk 一条红在 `BotSocketTest.java:43`：`every bot got past the first batch of 9: 9.0`（每个机器人恰好停在首批 9 块，`design-ops-scale.md` ⑤ 5.1 的缺口）；加密一条红在 `:66`：`chunks decrypt and keep coming`。还原后复绿 |
+
+后置：确认 `Bot.java` 没有残留改动。
+
+#### `TC-PROD-266` 服务端要加密时机器人按原版完成 RSA 交换并全程 AES/CFB8 — 对应 `REQ-PROD-029` · 级别: 回归 · 执行者: AI
+
+前置：工作副本干净。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `BotSocketTest`，看 `botsAnswerTheEncryptionRequestOfAnEncryptingServer` | 通过：服务端 `Auth.Offline(true)`，`--encryption on`，3 个全部登录，`login_latency_ms.on` 3 个样本，区块照常解密、每个机器人 > 9 块。在线模式连 `tools/fake-sessionserver` 的 `allow-all` 走的是同一段代码（机器人不 join，`API-PROD-025`），本条不另起假服务 |
+| 2 | 反证有齿（出站用错的密钥）：`Bot#encrypt` 里的 `out = new CipherOutputStream(socket.getOutputStream(), LoginCrypt.streamCipher(Cipher.ENCRYPT_MODE, key));` 把 `key` 换成 `LoginCrypt.sharedSecret(new byte[16])`，只跑这一条，再还原 | 红在 `BotSocketTest.java:64`：`logged_in` 为 0，`login_failures` 为 `closed: SocketException` 2 个、`configuration: synaxis:protocol-error` 1 个。还原后复绿 |
+
+后置：确认 `Bot.java` 没有残留改动。
+
+#### `TC-PROD-267` `merge` 把多份机器人文件合成全体的分布，判定逐项看阈值 — 对应 `REQ-PROD-029` · 级别: 回归 · 执行者: AI
+
+前置：工作副本干净。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `io.github.bearisbug.synaxis.loadtest.MergeTest` | 2 个 0 失败：两份各一个机器人的文件合成 2 人、区块 40 包 400 字节、每人最少 10 包；一份的整秒上行是 40 与 60、另一份是 50，合并后中位数 50、最大 60（直方图按桶合并，不是分位数相加）；同一主机名得 `same_machine=true`，判定通过。判定各项单独失败：tick P99 = 50 ms（阈值是小于 50）、1 个 tick 超 50 ms、RSS = 4,096 MiB、某人只收到 9 块、1 个机器人中途掉线、没有 `server.json`，六种情况各自判不通过 |
+| 2 | 反证有齿（P99 等于阈值也放行）：`MergeCommand#merge` 的 `final boolean p99Ok = p99 < criteria.tickP99Millis();` 改为 `<=`，重跑，再还原 | `2 tests completed, 1 failed`，红在 `MergeTest.java:40`：`a P99 of 50 ms is not under 50 ==> expected: <false> but was: <true>`。还原后复绿 |
+
+后置：确认 `MergeCommand.java` 没有残留改动。
+
+#### `TC-PROD-268` `sample` 的 tick 取自引擎 JFR 事件，闸门与每线程忙碌比取自端点文本 — 对应 `REQ-PROD-029` · 级别: 回归 · 执行者: AI
+
+前置：工作副本干净。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `io.github.bearisbug.synaxis.loadtest.SampleTest` | 3 个 0 失败：进程内录一段只开 `synaxis.ServerTickTime` 的 JFR，经 `EventsJFR.newServerTick()` 发 2、3、4、60 ms 四个 tick；`ticks` 得 4 个、`over_50ms` 1、P99 ≥ 60、P50 < 50，分钟 `0` 有分布，`acquire_ms` 为 `null`。两份端点文本相隔 10 s，`Syn-Tick-0` 的 `_sum` 从 1.0 到 3.0 得忙碌比 0.2，调度线程从 2.0 到 6.0 得 0.4；闸门读出 `throttled` 7、`too_many` 1。`30m`、`600s`、`12.5` 读成 1,800、600、12.5 s，`100/s` 读成 100 |
+| 2 | 反证有齿（读错事件名）：`SampleCommand#ticks` 里的 `} else if (name.equals(TICK_EVENT)) {` 改为 `} else if (name.equals("synaxis.ServerTick")) {`，重跑，再还原 | `3 tests completed, 1 failed`，红在 `SampleTest.java:42`：`expected: <4> but was: <0>`。还原后复绿 |
+
+后置：确认 `SampleCommand.java` 没有残留改动。
+
+#### `TC-PROD-269` 两个机器人进程用 `--bot-offset` 分摊，`merge` 合成一份 — 对应 `REQ-PROD-029` · 级别: 回归 · 执行者: AI
+
+前置：`./gradlew :server-app:installDist :loadtest:installDist`；本机没有别的压测（`pgrep -fl synaxis.app.Main`、`pgrep -fl loadtest` 为空）。下文 `LT` 指 `loadtest/build/install/loadtest/bin/loadtest`。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 空工作目录里后台起服：`JAVA_OPTS="-Xms1G -Xmx1G"`，`SERVER_APP_OPTS="-Dsynaxis.app.port=25651 -Dsynaxis.app.auth=offline -Dsynaxis.app.core-mode=on -Dsynaxis.app.metrics.bind=127.0.0.1:0 -Dsynaxis.connection-gate.trusted-networks=127.0.0.0/8"`；从日志取端点地址 | 就绪 |
+| 2 | 同时跑 `LT sample --pid <服务端 pid> --duration 45s --metrics <端点> --out server.json`、`LT run --port 25651 --bots 10 --bot-offset 0 --duration 30s --warmup 10s --out bots-0.json`、`LT run --port 25651 --bots 10 --bot-offset 10 --duration 30s --warmup 10s --out bots-1.json`；三者结束后按 pid 停服；`LT merge bots-0.json bots-1.json server.json --out summary.json` | 两个进程各 `10/10 logged in, 0 lost`；`merge` 退出码 0，`bots` 为 `20 of 20 logged in, 0 lost`，每人最少 712 块，tick P99 4.593 ms、超 50 ms 0 个，RSS 766.344 MiB |
+| 3 | 反证有齿（两个进程用同一段名字）：第二个进程改 `--bot-offset 0`，重做第 1、2 步 | 两个进程分别 `7/10`、`3/10 logged in`；`merge` 退出码 2，`bots` 为 `10 of 20 logged in`，`login_failures` 为 `configuration: synaxis:duplicate-login` 10 个（离线模式同名即同 UUID） |
+
+后置：服务端已按 pid 停掉，25651 无监听；删工作目录与两轮的输出目录。
+
+#### `TC-PROD-270` `flood` 以 100 连接/s 开合 10 s，闸门的拒绝数从指标端点读得到 — 对应 `REQ-PROD-018`、`REQ-PROD-029` · 级别: 回归 · 执行者: AI
+
+前置：同 `TC-PROD-269` 的构建与空闲检查。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 空工作目录里后台起服：`SERVER_APP_OPTS="-Dsynaxis.app.port=25651 -Dsynaxis.app.auth=offline -Dsynaxis.app.core-mode=on -Dsynaxis.app.metrics.bind=127.0.0.1:0"`（不设可信网段）；`LT flood --port 25651 --ip-rate 100/s --duration 10s --out flood.json`；等 11 s 后 `curl` 端点，`grep '^synaxis_gate_rejections_total'` | `flood`：1,000 次尝试，`answered` 991（`LoginDisconnect` 回 `synaxis:login-throttled`）、`failed: SocketException` 9（L1 并发上限 16 在 accept 后直接关）；端点 `throttled` 984.0、`too_many` 9.0，其余三项 0.0；服务端日志汇总行 2 条，第一条 `Connection gate rejected 984 connections in the last 10 s: too_many=9 throttled=975 …` |
+| 2 | 对照（机器人网段进可信网段）：另加 `-Dsynaxis.connection-gate.trusted-networks=127.0.0.0/8` 重做第 1 步 | `answered` 1,000；五项全部 0.0；汇总行 0 条。两次的差值说明端点读的就是闸门的计数 |
+
+后置：两轮服务端都已按 pid 停掉，删工作目录与输出目录。
+
+#### `TC-PROD-271` 200 人 walk 30 min 基线（服务端与机器人同机）：tick P99 < 50 ms、超 50 ms 的 tick 为 0、RSS < 4 GiB，并量出每人区块下行与上行包速率 P99 — 对应 `REQ-PROD-029` · 级别: 回归 · 执行者: AI
+
+前置：同 `TC-PROD-269` 的构建与空闲检查，起跑前记下 `uptime` 与 `sysctl -n vm.swapusage`。机器：Apple M4 Pro 12 核 / 24 GiB，macOS，JDK 25.0.4.1，**服务端与机器人在同一台机器、走回环**，不是 §15 要求的两台 ≥ 8 核 / 16 GiB 分机档（§28.1 Q11 的「只有本机」退路）；本机同时有别的会话在跑构建与测试。服务端是 `server-app` 核心模式（平地，40 层石头，`synaxis.chunk-view-distance=10`、`synaxis.entity-view-distance=8`，引擎默认 `dispatcher-threads=1`、`counter` 分配，内存存储，离线模式）。产物目录 `docs/research/production-readiness-2026-09/load/walk200-30m/`：`bots-0.json`、`server.json`、`summary.json`、`slow-ticks.txt`（后者由删掉之前的 JFR 读出，JFR 不提交）。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 空工作目录里后台起服：`JAVA_OPTS="-Xms3G -Xmx3G"`（§15 与运维草案 5.3 的正式档堆上限，覆盖 `REQ-PROD-028` 默认的 4 GiB），`SERVER_APP_OPTS="-Dsynaxis.app.port=25651 -Dsynaxis.app.auth=offline -Dsynaxis.app.core-mode=on -Dsynaxis.app.shard-id=w5a -Dsynaxis.app.metrics.bind=127.0.0.1:0 -Dsynaxis.connection-gate.trusted-networks=127.0.0.0/8"`；从日志取端点地址 | 就绪，日志一行 `Metrics endpoint listening on …` |
+| 2 | `LT sample --pid <服务端 pid> --duration 1830s --metrics <端点> --keep-jfr on --out server.json` 放后台；5 s 后 `LT run --host 127.0.0.1 --port 25651 --bots 200 --profile walk --encryption off --duration 1800s --out bots-0.json`（登录速率默认 20/s、预热 60 s、回执 9.0 块/tick）；两者结束后按 pid 停服；`LT merge bots-0.json server.json --out summary.json` | 本轮 2026-09-24 09:49:41～10:20:17，起跑前 `load1` 5.64、swap 已用 28,782 MiB / 29,696 MiB，跑的过程中 `load1` 4.332～12.310（`summary.json` 的 `load1`）。`merge` 退出码 2，判定 **未通过**，只差一项：`ticks_over_50ms` 18 个（阈值 0）。其余各项：200 个机器人全部登录、0 掉线、0 次被踢，登录延迟 P99 40.5 ms；`ticks` 36,627 个，P50 2.166 ms、**P99 6.701 ms**（< 50）、max 96.212 ms，逐分钟 P99 最高 7.799 ms；RSS 最大 1,804.766 MiB（< 4,096，出现在 t = 0 的堆预触之后，macOS 随后把空闲页压缩换出，稳态 RSS 800～1,000 MiB，与 Linux 的 RSS 不可比）；堆使用最大 1,132.12 MiB；GC 117 次，单次暂停 P50 12.838 ms、P99 91.206 ms、max 92.462 ms，超 50 ms 的 23 次；`dispatcher_busy_ratio` `Syn-Tick-0` 0.037、`Syn-TickScheduler` 0.054；闸门拒绝 0；服务端 WARN / ERROR 0 行 |
+| 3 | 读 `slow-ticks.txt`（`sample` 保留的 JFR 里每个超 50 ms 的 `synaxis.ServerTickTime` 与和它时间重叠的 `jdk.GCPhasePause`，读完删掉 JFR） | 18 个慢 tick 里 17 个与一次 G1 年轻代暂停重叠（暂停 49.038～92.462 ms，tick 51.766～96.212 ms）；剩下 1 个 78.196 ms 在开跑后第 45 s（01:50:31Z），前后没有 GC 暂停，归因未定。超 50 ms 这一项红在 GC 暂停，不在 tick 本身的工作量 |
+| 4 | 区块下行（给 M3 带宽行与 5B 的 G23）：读 `summary.json` 的 `inbound.chunks.walk` | 区块包 2,942,333 个、246,242,909 字节，平均 83.7 字节/包（40 层石头的平地几乎全压缩掉）；全程 0.670 KB/s/人、预热之后 **0.647 KB/s/人**、7.919 包/s/人；每人收到 13,705～15,565 个（中位数 14,697），都远超首批 9 块。`docs/DESIGN-M3.md` §2 的步行模型 10.1 KB/s/人按 1,502 B/区块算，本轮的世界不是 `.synx` 地图，偏差不可判，等 M3-C 的测试图 |
+| 5 | 上行包速率（给 5B 的 G11 阈值）：读 `summary.json` 的 `c2s` | 每人 41.014 包/s；整秒窗口 P50 40、**P99 45**、max 63；7 s 窗口（与 `API-PROD-012` 的 7 s 计数窗同长）P50 286、**P99 291**、max 345。按 §26 第 5 波「入站 P99 × 2」，7 s 窗口阈值为 582。机器人每 tick 固定发一个位置包与一个 `ClientTickEnd`，原版客户端还会发转头、动作与交互包，这个 P99 是下限 |
+| 6 | 出站与实体（给 5C 的 G20 / G21）：读 `summary.json` 的 `inbound`、`traffic` | 机器人一侧每人收 34,703.349 B/s，其中 `EntityPositionAndRotationPacket` 占字节的 76.8%（9,563,930,660 / 12,451,128,844）；服务端出站 7,564,249.859 B/s（60.5 Mbit/s）、入站 8,041.222 包/s、123,027.564 B/s |
+| 7 | 机器人一侧的代价：读 `summary.json` 的 `harness` | 机器人进程 CPU 平均 48.287%（一个核为 100%），共 868.679 CPU 秒 |
+| 8 | 反证有齿（判定读的是实测）：用同两份文件 `LT merge … --max-over-50ms 18`；再加 `--rss-mib 1800`；再不带阈值重做一次与提交的 `summary.json` 逐字节比较 | 第一次退出码 0、判定通过（只放宽了慢 tick 那一项）；第二次 `rss_mib_max` 判 `1804.766 < 1800.0` 不通过；第三次与提交的文件逐字节相同（`cmp` 无输出）：`summary.json` 可由提交的两份原始文件复算 |
+
+后置：服务端与采样进程都已按 pid 停掉，25651 无监听；JFR 已删（`ls $TMPDIR | grep -c synaxis-loadtest` 为 0）；工作目录已删。本条的 18 个慢 tick 是未达标项，归属与处置见 5A 交付说明的 design_issues。
+
 ## 5. 回归策略
 
 - **全量轮**（全部用例）：首次成稿、每个阶段 gate（引擎域阶段 0、2、3；游戏域 `docs/DESIGN-M2.md` §26 的阶段 1～6b；大世界域 `docs/DESIGN-M3.md` §26 的 M3-A～M3-G）、跨功能域改动、地基变更（JDK、Gradle、镜像、协议版本、模块拆分、启动入口）。
@@ -3930,6 +4096,7 @@ jcmd "$pid" VM.flags | tr ' ' '\n' | grep -cxE -- '-XX:\+UseG1GC|-XX:InitialHeap
   - 生产就绪域（`docs/DESIGN-PROD.md`）：权限与 GM 角色（`REQ-PROD-011`）→ TC-PROD-200～TC-PROD-213、TC-PROD-215；动了 `server-app` 的 `permission/`、`AdmissionGate` 里读角色的一处、`PluginHost` 的权限接线或 `RedisLink` 的 `synaxis:permission` 收发就跑 TC-PROD-201～TC-PROD-209、TC-PROD-212、TC-PROD-213 与 TC-PROD-215（要数据库前置），动了 `V3__roles.sql` 或 `V3__roles.down.sql` 跑 TC-PROD-200、TC-PROD-201，动了 `Permissions` 或 `PluginContext#permissions` 跑 TC-PROD-211，动了模组的 lang 跑 TC-PROD-210。跨域牵连：动了 `RedisLink` 的订阅线程 → 加 TC-PROD-141～TC-PROD-153 里走 Redis 的跨分片顶号用例（`CrossShardHandoverIntegrationTest`）；新增 Flyway 版本 → 重跑 TC-PROD-141 与 TC-PROD-200（`MigrationsDbTest` 的版本与表清单要跟着改）。
   - 生产就绪域（`docs/DESIGN-PROD.md`）：白名单与封禁（`REQ-PROD-010`）→ TC-PROD-220～TC-PROD-236；动了 `server-app` 的 `moderation/`、`PluginHost` 的封禁接线、`HandshakeGate` 登录阶段握手的跳过判断、`Main#openStore` / `Main#whitelist` 或 `RedisLink` 的 `synaxis:moderation` 收发就跑 TC-PROD-221 与 TC-PROD-223～TC-PROD-231、TC-PROD-235（要数据库前置），再动了起服或登录路径加 TC-PROD-236（真进程，约 3 分钟）；动了 `V4__moderation.sql` 或 `V4__moderation.down.sql` 跑 TC-PROD-220、TC-PROD-221；动了 `BanTarget` 跑 TC-PROD-222、TC-PROD-226；动了 `AdmissionRequest` 或 `AdmissionGate` 构造请求的一处跑 TC-PROD-232；动了 `Moderation`、`BanTarget`、`Ban`、`AdmissionRequest` 或 `PluginContext#moderation` 跑 TC-PROD-234；动了模组的 lang 跑 TC-PROD-233。跨域牵连：动了 `RedisLink` 的订阅线程 → 加 `CrossShardHandoverIntegrationTest` 与 TC-PROD-205；新增 Flyway 版本 → 重跑 TC-PROD-141、TC-PROD-200 与 TC-PROD-220。
   - 生产就绪域（`docs/DESIGN-PROD.md`）：控制台与插件命令（`REQ-PROD-012`）→ TC-PROD-240～TC-PROD-257；动了 `server-app` 的 `command/`、`PluginCommandsImpl`、`PluginHost` 的命令接线、`Main#readConsole` / `runConsoleCommand` 或 `PlayerStore#saveOnline` 就跑 TC-PROD-240～TC-PROD-247、TC-PROD-249、TC-PROD-252 与 TC-PROD-254～TC-PROD-256，再动了控制台线程或起停服加 TC-PROD-253（真进程，约 30 s）；动了 `HostPermissions` 重发命令树的一处跑 TC-PROD-248（要数据库前置）；动了引擎 `ConsoleSender` 跑 TC-PROD-240、TC-PROD-257 与 TC-PROD-207；动了 `PluginCommands` 或 `PluginContext#commands` 跑 TC-PROD-251；动了模组的 lang 跑 TC-PROD-250。跨域牵连：动了 `PluginHost#tearDown` 或 `LoadedPlugin` → 加 TC-GAME-053～TC-GAME-055；动了 `HostPermissions` → 加 TC-PROD-201～TC-PROD-209、TC-PROD-212、TC-PROD-213。
+  - 生产就绪域（`docs/DESIGN-PROD.md`）：指标导出与压测 harness（`REQ-PROD-018`、`REQ-PROD-029`）→ TC-PROD-260～TC-PROD-271；动了 `server-app` 的 `metrics/`、`Main` 的指标装配、`StoreMetrics` 或存储里报语句与保存的几处、`EventLedger#droppedTotal` 就跑 TC-PROD-260～TC-PROD-262（262 要数据库前置），再动了起服顺序加 TC-PROD-264（真进程，约 1 分钟）；动了引擎 `TrafficCounters`、`PlayerSocketConnection` 的计数与加解密计时、`TickThread#observeTicks`、`SessionClient` 的累计计数或 `Watchdog#warnings` 就跑 TC-PROD-263 与 TC-PROD-260；动了 `loadtest/` 的 `Bot`、`Protocol` 或 `Profile` 就跑 TC-PROD-265、TC-PROD-266，动了 `MergeCommand`、`SampleCommand`、`Histogram` 或 `Args` 就跑 TC-PROD-267、TC-PROD-268，动了 `RunCommand` 或 `FloodCommand` 再加 TC-PROD-269、TC-PROD-270（真进程，各约 1 分钟）。TC-PROD-271（200 人 walk 30 min）只在第 5 波的分格、可见性与限流合入后，或引擎 tick、网络、区块发送路径有改动时跑，一次约 35 分钟，本机同时只能有一个压测。跨域牵连：动了 `PlayerSocketConnection` → 加 TC-PROD-090～TC-PROD-101；动了 `ConnectionGate` 的拒绝计数 → 加 TC-PROD-270。
   - 影响面不确定时升级为全量轮。
 - **复测轮**（上轮失败用例 + 全部冒烟级）：修复失败项之后。
 - **人工收口轮**（仅上轮「待人工」用例）：AI 轮之后由人工补测 TC-016、TC-030、TC-GAME-020、TC-GAME-038、TC-GAME-046、TC-GAME-047，不要求冒烟级。

@@ -1,6 +1,7 @@
 package io.github.bearisbug.synaxis.plugin;
 
 import io.github.bearisbug.synaxis.ServerProcess;
+import org.jetbrains.annotations.ApiStatus;
 import org.slf4j.Logger;
 
 import java.nio.file.Path;
@@ -11,7 +12,10 @@ import java.nio.file.Path;
  * Every capability is a host owned wrapper rather than an engine object, so that the host can take
  * all of them back in one move when the plugin is disabled and can name the plugin in the log line
  * of any exception the plugin throws.
+ * <p>
+ * Only the host implements this interface: a plugin is handed one and calls it.
  */
+@ApiStatus.NonExtendable
 public interface PluginContext {
 
     /**

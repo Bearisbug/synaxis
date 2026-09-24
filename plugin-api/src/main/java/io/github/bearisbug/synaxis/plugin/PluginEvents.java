@@ -2,6 +2,7 @@ package io.github.bearisbug.synaxis.plugin;
 
 import io.github.bearisbug.synaxis.event.Event;
 import io.github.bearisbug.synaxis.instance.Instance;
+import org.jetbrains.annotations.ApiStatus;
 
 import java.util.function.Consumer;
 
@@ -22,7 +23,10 @@ import java.util.function.Consumer;
  * instance scoped mapped node for {@code PlayerPluginMessageEvent}: that event is also dispatched
  * during the configuration phase, where the player has no instance and the mapped branch asserts.
  * {@link #forInstance} refuses it for that reason.
+ * <p>
+ * Only the host implements this interface: a plugin is handed one and calls it.
  */
+@ApiStatus.NonExtendable
 public interface PluginEvents {
 
     /**

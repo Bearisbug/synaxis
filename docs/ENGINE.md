@@ -319,10 +319,14 @@ cp protocol/build/libs/protocol-*.jar .abi-baseline/protocol.jar
 三种结局，照着认：
 
 - **不传** `-PbaselineJarDir`：任务 `SKIPPED` + 「无 baseline，ABI 门未生效」，构建绿——这是 tag 之前的常态，不是门禁通过。
-- **传了且 baseline jar 在**：任务真的执行（输出里是 `> Task :plugin-api:checkBinaryCompatibility` 而**没有** `SKIPPED`，尾部计数含 `2 executed`）。破坏性变更打 `Public/protected method removed or signature changed: <类>#<方法><描述符>` 并以 `ABI Check failed with N binary compatibility violations.` 让构建红；只加 `default` 方法这类兼容变更不报（给接口加**抽象**方法会报 `New abstract method added to interface`，那本来就是破坏性的）。
+- **传了且 baseline jar 在**：任务真的执行（输出里是 `> Task :plugin-api:checkBinaryCompatibility` 而**没有** `SKIPPED`，尾部计数含 `2 executed`）。破坏性变更打 `Public/protected method removed or signature changed: <类>#<方法><描述符>` 并以 `ABI Check failed with N binary compatibility violations.` 让构建红；只加 `default` 方法这类兼容变更不报（给接口加**抽象**方法会报 `New abstract method added to interface`，那对自己实现它的插件是破坏；带 `@ApiStatus.NonExtendable` 的接口不查这一项，见下）。
 - **传了但 baseline jar 不在**：任务失败，`Baseline JAR does not exist: <路径>`。这是设计要的结果，不是配置出错。
 
 改稳定面签名踩到红灯时，走 `docs/DESIGN-M2.md` §8「演进与弃用」的破坏性变更流程（新方法并行 + 旧方法 `@Deprecated`），不要去放宽门禁。
+
+**给已有的类或接口加 `@ApiStatus.NonExtendable`（或改成 sealed）本身就是一条违例**：`Class made non-extendable (sealed or @NonExtendable): <类>`，对自己实现了它的插件这确实是破坏。门禁没有豁免清单，这类改动只能随一次破坏性升级走：`PluginApi.API_VERSION` 加 1（常量值变化同样报 `Constant field value changed`），按上面第 1～3 步打新 tag、上传两个 jar，再把 `gradle/abi-baseline.tag` 改成新 tag，旧 baseline 下的这批违例由新 baseline 吸收（`v0.1.0` → `v0.2.0` 就是这样，`docs/DESIGN-PROD.md` §1）。已标注的接口之后加抽象方法不报；`:plugin-api` 哪些接口标了、依据是什么，见 `docs/DESIGN-PROD.md` §8。
+
+**每次合入 `main` 之后都要看 `main` 上这一步的结果**，PR 上的绿不够：PR 只证明该分支对当时的 baseline 不破坏，几组改动各自在本地拿中间提交当 baseline 比对、各自都绿，合进 `main` 之后对 `gradle/abi-baseline.tag` 指的 tag 照样可能红。`3914650305` 给 `PluginEvents` 加了两个抽象方法，第 4 波的本地门禁都拿 `3914650305` 或更晚的提交当 baseline，所以都没看到，`main` 的 ABI 门从那个提交起一直红，直到 `v0.2.0`。
 
 ---
 

@@ -1,5 +1,7 @@
 package io.github.bearisbug.synaxis.plugin;
 
+import org.jetbrains.annotations.ApiStatus;
+
 import java.util.Map;
 
 /**
@@ -11,8 +13,11 @@ import java.util.Map;
  * events over through here.
  * <p>
  * This capability holds no state, so there is nothing to take back when the plugin is disabled.
+ * <p>
+ * Only the host implements this interface: a plugin is handed one and calls it.
  */
 @FunctionalInterface
+@ApiStatus.NonExtendable
 public interface PluginAnalytics {
 
     /**

@@ -1,6 +1,7 @@
 package io.github.bearisbug.synaxis.plugin;
 
 import io.github.bearisbug.synaxis.entity.Player;
+import org.jetbrains.annotations.ApiStatus;
 
 import java.util.Set;
 
@@ -14,7 +15,10 @@ import java.util.Set;
  * The host reads a player's roles while the player logs in and reloads them when they change.
  * {@link Player#getPermissionLevel()} is not consulted: it only drives what the client shows.
  * Both methods may be called from any thread.
+ * <p>
+ * Only the host implements this interface: a plugin is handed one and calls it.
  */
+@ApiStatus.NonExtendable
 public interface Permissions {
 
     /**

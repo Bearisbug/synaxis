@@ -46,7 +46,7 @@ dependencies {
 `hello-plugin/src/main/java/com/example/helloplugin/HelloPlugin.java`：实现 `SynaxisPlugin` 的三个方法即可，完整代码见仓内 `example-plugin/src/main/java/com/example/helloplugin/HelloPlugin.java`。三条硬规则：
 
 - **无参构造器里禁止注册任何东西**。宿主先 new 出实例只为读 `descriptor()`，一切注册都在 `onEnable`。
-- `descriptor()` 的 `id` 必须匹配 `[a-z0-9][a-z0-9_-]{0,63}` 且不得是 `synaxis`；`api_version` 必须等于 `PluginApi.API_VERSION`（当前 `1`）。三者任何一条不满足，宿主拒绝加载并以非零码退出，端口不会 bind。
+- `descriptor()` 的 `id` 必须匹配 `[a-z0-9][a-z0-9_-]{0,63}` 且不得是 `synaxis`；`api_version` 必须等于 `PluginApi.API_VERSION`（当前 `2`）。三者任何一条不满足，宿主拒绝加载并以非零码退出，端口不会 bind。
 - `onDisable()` 里只管自己持有的东西。事件节点、调度任务、通道、准入回调由宿主统一摘掉。
 
 ## 4. 让 ServiceLoader 找得到它

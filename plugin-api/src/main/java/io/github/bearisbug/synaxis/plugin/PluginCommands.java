@@ -1,6 +1,7 @@
 package io.github.bearisbug.synaxis.plugin;
 
 import io.github.bearisbug.synaxis.command.builder.Command;
+import org.jetbrains.annotations.ApiStatus;
 
 /**
  * The commands of one plugin ({@code docs/DESIGN-PROD.md} API-PROD-011).
@@ -16,7 +17,10 @@ import io.github.bearisbug.synaxis.command.builder.Command;
  * player that sent the command, and on the console reader thread for the console. What an executor
  * throws is logged by the host at most once every 10 s per command, and the sender is told the
  * command failed.
+ * <p>
+ * Only the host implements this interface: a plugin is handed one and calls it.
  */
+@ApiStatus.NonExtendable
 public interface PluginCommands {
 
     /**

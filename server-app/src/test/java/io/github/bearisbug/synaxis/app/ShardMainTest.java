@@ -8,8 +8,10 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
  * {@code docs/DESIGN-PROD.md} {@code REQ-PROD-020}: a shard spreads its chunks by the grid over all
- * cores but two, and what the command line gave wins. Read through the property lookup rather than
- * the JVM properties, which every test of this JVM shares.
+ * cores but two; {@code docs/DESIGN-M3.md} {@code API-M3-006}: it sees 12 chunks, sends at most 4 a
+ * tick and tracks at most 100 entities for a player, and takes transfers when it stores in
+ * PostgreSQL. What the command line gave wins. Read through the property lookup rather than the JVM
+ * properties, which every test of this JVM shares.
  */
 public class ShardMainTest {
 
@@ -31,5 +33,42 @@ public class ShardMainTest {
     void aSmallMachineKeepsOneThread() {
         assertEquals("1", ShardMain.threadDefaults(Map.<String, String>of()::get, 2).get("synaxis.dispatcher-threads"));
         assertEquals("1", ShardMain.threadDefaults(Map.<String, String>of()::get, 1).get("synaxis.dispatcher-threads"));
+    }
+
+    @Test
+    void aShardSeesTwelveChunksSendsFourAndTracksAHundredEntities() {
+        assertEquals(Map.of("synaxis.chunk-view-distance", "12", "synaxis.chunk-queue.max-per-tick", "4",
+                        "synaxis.max-visible-entities-per-player", "100"),
+                ShardMain.viewDefaults(Map.<String, String>of()::get));
+    }
+
+    @Test
+    void theCommandLineWinsForTheViewSettings() {
+        assertEquals(Map.of("synaxis.chunk-queue.max-per-tick", "4", "synaxis.max-visible-entities-per-player", "100"),
+                ShardMain.viewDefaults(Map.of("synaxis.chunk-view-distance", "16")::get));
+        assertEquals(Map.of("synaxis.chunk-view-distance", "12", "synaxis.max-visible-entities-per-player", "100"),
+                ShardMain.viewDefaults(Map.of("synaxis.chunk-queue.max-per-tick", "64")::get));
+        assertEquals(Map.of("synaxis.chunk-view-distance", "12", "synaxis.chunk-queue.max-per-tick", "4"),
+                ShardMain.viewDefaults(Map.of("synaxis.max-visible-entities-per-player", "0")::get));
+    }
+
+    @Test
+    void aMemoryShardTakesNoTransfers() {
+        assertEquals(Map.of(), ShardMain.transferDefaults(Map.<String, String>of()::get));
+        assertEquals(Map.of(), ShardMain.transferDefaults(Map.of("synaxis.app.store", "memory")::get));
+    }
+
+    @Test
+    void aPostgresShardTakesTransfers() {
+        assertEquals(Map.of("synaxis.accept-transfers", "true"),
+                ShardMain.transferDefaults(Map.of("synaxis.app.store", "postgres")::get));
+    }
+
+    @Test
+    void theCommandLineWinsForTransfers() {
+        assertEquals(Map.of(), ShardMain.transferDefaults(
+                Map.of("synaxis.app.store", "postgres", "synaxis.accept-transfers", "false")::get));
+        assertEquals(Map.of(), ShardMain.transferDefaults(
+                Map.of("synaxis.app.store", "memory", "synaxis.accept-transfers", "true")::get));
     }
 }

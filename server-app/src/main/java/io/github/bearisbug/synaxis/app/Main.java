@@ -86,7 +86,7 @@ public final class Main {
     private static final String LEDGER_MAX_BYTES_PROPERTY = "synaxis.app.ledger-max-bytes-per-day";
     private static final String AUTH_PROPERTY = "synaxis.app.auth";
     private static final String SESSION_SERVER_PROPERTY = "synaxis.app.auth.session-server";
-    private static final String STORE_PROPERTY = "synaxis.app.store";
+    static final String STORE_PROPERTY = "synaxis.app.store";
     private static final String WHITELIST_PROPERTY = "synaxis.app.whitelist";
     static final String STORE_MEMORY = "memory";
     static final String STORE_POSTGRES = "postgres";

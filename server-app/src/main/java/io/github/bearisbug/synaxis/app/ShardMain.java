@@ -6,10 +6,13 @@ import java.util.function.UnaryOperator;
 
 /**
  * The launcher of an MMO shard: the server application of {@link Main} with the shard defaults on
- * top ({@code docs/DESIGN-PROD.md} {@code REQ-PROD-020}, {@code API-PROD-016}). The chunks are
- * spread over the tick threads by cells of the grid, and the shard takes all cores but two for
- * them, leaving those to the tick scheduler, the network carriers and the GC. The RTS process is
- * launched through {@link Main} and keeps the engine defaults, the counter and one tick thread.
+ * top ({@code docs/DESIGN-PROD.md} {@code REQ-PROD-020}, {@code API-PROD-016};
+ * {@code docs/DESIGN-M3.md} {@code API-M3-006}). The chunks are spread over the tick threads by
+ * cells of the grid, and the shard takes all cores but two for them, leaving those to the tick
+ * scheduler, the network carriers and the GC. A player sees 12 chunks, is sent at most 4 of them a
+ * tick and is shown at most 100 entities. A shard storing in PostgreSQL takes transfers; one storing
+ * in memory does not, as {@link Main} refuses to take them there. The RTS process is launched
+ * through {@link Main} and keeps the engine defaults, the counter and one tick thread.
  * <p>
  * A value the operator passed on the command line wins, {@code -Dsynaxis.thread-provider=counter}
  * takes a shard back to the engine provider.
@@ -18,6 +21,10 @@ public final class ShardMain {
 
     static final String THREAD_PROVIDER = "synaxis.thread-provider";
     static final String DISPATCHER_THREADS = "synaxis.dispatcher-threads";
+    static final String CHUNK_VIEW_DISTANCE = "synaxis.chunk-view-distance";
+    static final String MAX_CHUNKS_PER_TICK = "synaxis.chunk-queue.max-per-tick";
+    static final String MAX_VISIBLE_ENTITIES = "synaxis.max-visible-entities-per-player";
+    static final String ACCEPT_TRANSFERS = "synaxis.accept-transfers";
 
     private ShardMain() {
     }
@@ -25,6 +32,8 @@ public final class ShardMain {
     public static void main(String[] args) {
         // Before Main reads anything: the engine takes its settings while the process is created
         threadDefaults(System::getProperty, Runtime.getRuntime().availableProcessors()).forEach(System::setProperty);
+        viewDefaults(System::getProperty).forEach(System::setProperty);
+        transferDefaults(System::getProperty).forEach(System::setProperty);
         Main.main(args);
     }
 
@@ -41,5 +50,35 @@ public final class ShardMain {
         if (properties.apply(DISPATCHER_THREADS) == null)
             defaults.put(DISPATCHER_THREADS, Integer.toString(Math.max(1, cores - 2)));
         return defaults;
+    }
+
+    /**
+     * Returns the view distance and the caps on chunks sent and entities shown to set, the ones the
+     * command line left out.
+     *
+     * @param properties the system properties already set
+     * @return the properties and their values
+     */
+    static Map<String, String> viewDefaults(UnaryOperator<String> properties) {
+        final Map<String, String> defaults = new LinkedHashMap<>();
+        if (properties.apply(CHUNK_VIEW_DISTANCE) == null) defaults.put(CHUNK_VIEW_DISTANCE, "12");
+        if (properties.apply(MAX_CHUNKS_PER_TICK) == null) defaults.put(MAX_CHUNKS_PER_TICK, "4");
+        if (properties.apply(MAX_VISIBLE_ENTITIES) == null) defaults.put(MAX_VISIBLE_ENTITIES, "100");
+        return defaults;
+    }
+
+    /**
+     * Returns {@code synaxis.accept-transfers=true} when the shard stores in PostgreSQL and the
+     * command line left the property out. A shard storing in memory is left on the engine value,
+     * {@link Main} refuses to start one that takes transfers.
+     *
+     * @param properties the system properties already set
+     * @return the property and its value, or nothing
+     */
+    static Map<String, String> transferDefaults(UnaryOperator<String> properties) {
+        final String store = properties.apply(Main.STORE_PROPERTY);
+        if (properties.apply(ACCEPT_TRANSFERS) != null || store == null || !Main.STORE_POSTGRES.equals(store.strip()))
+            return Map.of();
+        return Map.of(ACCEPT_TRANSFERS, "true");
     }
 }

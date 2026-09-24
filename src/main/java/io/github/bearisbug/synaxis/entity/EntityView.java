@@ -214,19 +214,18 @@ final class EntityView {
             for (IntIterator it = viewerOption.bitSet.intIterator(); it.hasNext(); ) {
                 final Entity seen = trackedLocation.instance().getEntityById(it.nextInt());
                 if (seen == null) continue;
+                // Counted from what the player sees, not from the candidates: another tick thread
+                // may have taken one in since they were picked, and it holds a place until hidden.
+                // What changes here is only an entity that mounted, dismounted or changed its
+                // always visible flag since it was taken in.
+                if (isCounted(seen)) counted.add(seen.getEntityId());
+                else counted.remove(seen.getEntityId());
                 final Entity vehicle = seen.getVehicle();
                 if (vehicle != null && vehicle != player && vehicle != player.getVehicle()
                         && !viewerOption.isRegistered(vehicle)) stranded.add(seen);
             }
         }
         for (Entity passenger : stranded) hideEntityFromPlayer(passenger, player);
-        synchronized (mutex) {
-            counted.clear();
-            for (Nearby visible : nearby) {
-                final int id = visible.entity().getEntityId();
-                if (viewerOption.bitSet.contains(id)) counted.add(id);
-            }
-        }
         for (Entity visible : always) {
             if (!registered.contains(visible.getEntityId())) showEntityToPlayer(visible, player);
         }

@@ -2,6 +2,7 @@ package io.github.bearisbug.synaxis.instance.light;
 
 import io.github.bearisbug.synaxis.ServerProcess;
 import io.github.bearisbug.synaxis.coordinate.Vec;
+import io.github.bearisbug.synaxis.instance.Chunk;
 import io.github.bearisbug.synaxis.instance.Instance;
 import io.github.bearisbug.synaxis.instance.LightingChunk;
 import io.github.bearisbug.synaxis.instance.block.Block;
@@ -9,9 +10,12 @@ import io.github.bearisbug.synaxis.testing.Env;
 import io.github.bearisbug.synaxis.testing.EnvTest;
 import org.junit.jupiter.api.Test;
 
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import static java.util.Map.entry;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static io.github.bearisbug.synaxis.instance.BlockLightMergeIntegrationTest.assertLightInstance;
 
 @EnvTest
@@ -42,6 +46,19 @@ public class WorldRelightIntegrationTest {
 
         LightingChunk.relight(instance, instance.getChunks());
         assertLightInstance(instance, expectedLights);
+    }
+
+    /** Chunks far apart are lit without room for everything between them. */
+    @Test
+    public void farApartChunksRelight(Env env) {
+        Instance instance = env.createFlatInstance();
+        instance.setChunkSupplier(LightingChunk::new);
+        final Chunk west = instance.loadChunk(-40_000, -40_000).join();
+        final Chunk east = instance.loadChunk(40_000, 40_000).join();
+
+        assertEquals(Set.of(west, east), Set.copyOf(LightingChunk.relight(instance, List.of(west, east))));
+        assertEquals(15, west.getSectionAt(100).skyLight().getLevel(0, 100 & 15, 0));
+        assertEquals(15, east.getSectionAt(100).skyLight().getLevel(0, 100 & 15, 0));
     }
 
     @Test

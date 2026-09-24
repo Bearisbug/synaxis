@@ -14,6 +14,8 @@ import io.github.bearisbug.synaxis.instance.light.WorldView;
 import io.github.bearisbug.synaxis.instance.palette.Palette;
 import io.github.bearisbug.synaxis.network.packet.server.CachedPacket;
 import io.github.bearisbug.synaxis.network.packet.server.play.data.LightData;
+import it.unimi.dsi.fastutil.longs.Long2ObjectMap;
+import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayDeque;
@@ -425,6 +427,10 @@ public class LightingChunk extends DynamicChunk {
      * <p>
      * The blocks are copied under each chunk's read lock, then {@link LightEngine} lights tiles of
      * {@value #RELIGHT_TILE}x{@value #RELIGHT_TILE} chunks in parallel on the copy. No instance-wide lock is taken.
+     * <p>
+     * Call it only while no block of these chunks or of the chunks around them changes, for instance before the
+     * instance is registered: a block set between the copy and the write-back is lit as it was before, and the
+     * write-back marks the section valid, so that light stays stale until the next change there.
      *
      * @param instance the instance
      * @param chunks   the chunks to relight
@@ -458,7 +464,7 @@ public class LightingChunk extends DynamicChunk {
         return new ArrayList<>(targets.values());
     }
 
-    private static void relightTile(WorldView view, List<LightingChunk> tile) {
+    private static void relightTile(BlockSnapshot snapshot, List<LightingChunk> tile) {
         int minX = Integer.MAX_VALUE, minZ = Integer.MAX_VALUE, maxX = Integer.MIN_VALUE, maxZ = Integer.MIN_VALUE;
         for (LightingChunk chunk : tile) {
             minX = Math.min(minX, chunk.chunkX);
@@ -466,7 +472,7 @@ public class LightingChunk extends DynamicChunk {
             maxX = Math.max(maxX, chunk.chunkX);
             maxZ = Math.max(maxZ, chunk.chunkZ);
         }
-        final LightResult result = LightEngine.computeArea(view, minX, minZ, maxX, maxZ);
+        final LightResult result = LightEngine.computeArea(snapshot.around(minX, minZ, maxX, maxZ), minX, minZ, maxX, maxZ);
         for (LightingChunk chunk : tile) {
             for (int sectionY = chunk.minSection; sectionY < chunk.maxSection; sectionY++) {
                 final Section section = chunk.getSection(sectionY);
@@ -478,35 +484,23 @@ public class LightingChunk extends DynamicChunk {
     }
 
     /** The block palettes of a set of chunks and their neighbours, copied so that lighting them needs no lock. */
-    private static final class BlockSnapshot implements WorldView {
-        private final int minY, height, originX, originZ, width;
-        private final @Nullable Palette[][] chunks;
+    private static final class BlockSnapshot {
+        private final int minY, height;
+        private final Long2ObjectMap<Palette[]> chunks = new Long2ObjectOpenHashMap<>();
 
-        private BlockSnapshot(int minY, int height, int originX, int originZ, int width, int depth) {
+        private BlockSnapshot(int minY, int height) {
             this.minY = minY;
             this.height = height;
-            this.originX = originX;
-            this.originZ = originZ;
-            this.width = width;
-            this.chunks = new Palette[width * depth][];
         }
 
         static BlockSnapshot of(Instance instance, Collection<LightingChunk> targets) {
-            int minX = Integer.MAX_VALUE, minZ = Integer.MAX_VALUE, maxX = Integer.MIN_VALUE, maxZ = Integer.MIN_VALUE;
-            for (LightingChunk chunk : targets) {
-                minX = Math.min(minX, chunk.chunkX - 1);
-                minZ = Math.min(minZ, chunk.chunkZ - 1);
-                maxX = Math.max(maxX, chunk.chunkX + 1);
-                maxZ = Math.max(maxZ, chunk.chunkZ + 1);
-            }
             final var dimension = instance.getCachedDimensionType();
-            final BlockSnapshot snapshot = new BlockSnapshot(dimension.minY(), dimension.height(),
-                    minX, minZ, maxX - minX + 1, maxZ - minZ + 1);
+            final BlockSnapshot snapshot = new BlockSnapshot(dimension.minY(), dimension.height());
             for (LightingChunk target : targets) {
                 for (int i = -1; i <= 1; i++) {
                     for (int j = -1; j <= 1; j++) {
-                        final int index = snapshot.index(target.chunkX + i, target.chunkZ + j);
-                        if (snapshot.chunks[index] != null) continue;
+                        final long index = CoordConversion.chunkIndex(target.chunkX + i, target.chunkZ + j);
+                        if (snapshot.chunks.containsKey(index)) continue;
                         if (!(instance.getChunk(target.chunkX + i, target.chunkZ + j) instanceof LightingChunk chunk)) continue;
                         final Palette[] palettes = new Palette[chunk.maxSection - chunk.minSection];
                         chunk.lockReadLock();
@@ -517,38 +511,46 @@ public class LightingChunk extends DynamicChunk {
                         } finally {
                             chunk.unlockReadLock();
                         }
-                        snapshot.chunks[index] = palettes;
+                        snapshot.chunks.put(index, palettes);
                     }
                 }
             }
             return snapshot;
         }
 
-        private int index(int chunkX, int chunkZ) {
-            return (chunkZ - originZ) * width + chunkX - originX;
-        }
+        /** The copied chunks of {@code minX..maxX} by {@code minZ..maxZ} and the ring around it, indexed by array. */
+        WorldView around(int minX, int minZ, int maxX, int maxZ) {
+            final int originX = minX - 1, originZ = minZ - 1, width = maxX - minX + 3, depth = maxZ - minZ + 3;
+            final @Nullable Palette[][] area = new Palette[width * depth][];
+            for (int x = 0; x < width; x++) {
+                for (int z = 0; z < depth; z++) {
+                    area[z * width + x] = chunks.get(CoordConversion.chunkIndex(originX + x, originZ + z));
+                }
+            }
+            return new WorldView() {
+                @Override
+                public int minY() {
+                    return minY;
+                }
 
-        @Override
-        public int minY() {
-            return minY;
-        }
+                @Override
+                public int height() {
+                    return height;
+                }
 
-        @Override
-        public int height() {
-            return height;
-        }
+                @Override
+                public boolean hasChunk(int chunkX, int chunkZ) {
+                    final int x = chunkX - originX, z = chunkZ - originZ;
+                    return x >= 0 && x < width && z >= 0 && z < depth && area[z * width + x] != null;
+                }
 
-        @Override
-        public boolean hasChunk(int chunkX, int chunkZ) {
-            final int x = chunkX - originX, z = chunkZ - originZ;
-            return x >= 0 && x < width && z >= 0 && z * width < chunks.length && chunks[z * width + x] != null;
-        }
-
-        @Override
-        public Block getBlock(int x, int y, int z) {
-            final Palette[] palettes = Objects.requireNonNull(chunks[index(x >> 4, z >> 4)]);
-            final int localY = y - minY;
-            return Objects.requireNonNull(Block.fromStateId(palettes[localY >> 4].get(x & 15, localY & 15, z & 15)));
+                @Override
+                public Block getBlock(int x, int y, int z) {
+                    final Palette[] palettes = Objects.requireNonNull(area[((z >> 4) - originZ) * width + (x >> 4) - originX]);
+                    final int localY = y - minY;
+                    return Objects.requireNonNull(Block.fromStateId(palettes[localY >> 4].get(x & 15, localY & 15, z & 15)));
+                }
+            };
         }
     }
 

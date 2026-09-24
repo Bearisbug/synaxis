@@ -88,6 +88,7 @@ public class LightParityIntegrationTest {
     }
 
     private void assertMatchesVanilla(String scene, Levels levels) throws IOException {
+        final WorldView blocks = LightScenes.view(LightScenes.parse(scene));
         List<String> diffs = new ArrayList<>();
         int compared = 0;
         try (InputStream in = Objects.requireNonNull(getClass().getResourceAsStream(DIR + scene + ".light.gz"));
@@ -106,8 +107,8 @@ public class LightParityIntegrationTest {
                                 final int actual = levels.level(layer.equals("sky"), bx, by, bz);
                                 compared++;
                                 if (expected == actual) continue;
-                                diffs.add("%s %s (%d, %d, %d): vanilla %d, synaxis %d".formatted(scene, layer,
-                                        bx, by, bz, expected, actual));
+                                diffs.add("%s %s (%d, %d, %d) %s: vanilla %d, synaxis %d".formatted(scene, layer,
+                                        bx, by, bz, blocks.getBlock(bx, by, bz).state(), expected, actual));
                             }
                         }
                     }

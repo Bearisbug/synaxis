@@ -4,6 +4,8 @@ import io.github.bearisbug.synaxis.network.ConnectionGate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Objects;
+
 /**
  * Per-process server settings, reachable through {@link ServerProcess#config()}.
  *
@@ -22,6 +24,9 @@ public record ServerConfig(
         int entityViewDistance,
         int entitySynchronizationTicks,
         int dispatcherThreads,
+        // How the chunks are spread over the dispatcher threads (docs/DESIGN-PROD.md API-PROD-016)
+        ThreadProviderKind threadProvider,
+        int threadGridExponent,
         int sendLightAfterBlockPlacementDelay,
         long loginTimeout,
         long loginPluginMessageTimeout,
@@ -114,9 +119,22 @@ public record ServerConfig(
         return socketTimeout;
     }
 
+    /**
+     * The {@code ThreadProvider} the dispatcher of a process is built with, {@code synaxis.thread-provider}.
+     */
+    public enum ThreadProviderKind {
+        /** Every new chunk goes to the next thread, the engine default. */
+        COUNTER,
+        /** The chunks of one cell of the grid share a thread, for the shards of the MMO. */
+        GRID
+    }
+
     public ServerConfig {
         if (dispatcherThreads < 1)
             throw new IllegalArgumentException("dispatcherThreads must be at least 1 but was " + dispatcherThreads);
+        Objects.requireNonNull(threadProvider, "threadProvider");
+        if (threadGridExponent < 0 || threadGridExponent > 31)
+            throw new IllegalArgumentException("threadGridExponent must be between 0 and 31 but was " + threadGridExponent);
         if (playerChunkUpdateLimiterHistorySize < 0)
             throw new IllegalArgumentException(
                     "playerChunkUpdateLimiterHistorySize must not be negative but was " + playerChunkUpdateLimiterHistorySize);
@@ -172,6 +190,8 @@ public record ServerConfig(
                 .entityViewDistance(intProperty("synaxis.entity-view-distance", DEFAULTS.entityViewDistance))
                 .entitySynchronizationTicks(intProperty("synaxis.entity-synchronization-ticks", DEFAULTS.entitySynchronizationTicks))
                 .dispatcherThreads(intProperty("synaxis.dispatcher-threads", DEFAULTS.dispatcherThreads))
+                .threadProvider(threadProviderProperty("synaxis.thread-provider", DEFAULTS.threadProvider))
+                .threadGridExponent(intProperty("synaxis.thread-grid-exponent", DEFAULTS.threadGridExponent))
                 .sendLightAfterBlockPlacementDelay(intProperty("synaxis.send-light-after-block-placement-delay", DEFAULTS.sendLightAfterBlockPlacementDelay))
                 .loginTimeout(longProperty("synaxis.login-timeout", DEFAULTS.loginTimeout))
                 .loginPluginMessageTimeout(longProperty("synaxis.login-plugin-message-timeout", DEFAULTS.loginPluginMessageTimeout))
@@ -256,6 +276,19 @@ public record ServerConfig(
         }
     }
 
+    private static ThreadProviderKind threadProviderProperty(String name, ThreadProviderKind defaultValue) {
+        final String value = System.getProperty(name);
+        return value == null ? defaultValue : threadProvider(name, value);
+    }
+
+    static ThreadProviderKind threadProvider(String name, String value) {
+        return switch (value) {
+            case "counter" -> ThreadProviderKind.COUNTER;
+            case "grid" -> ThreadProviderKind.GRID;
+            default -> throw new IllegalArgumentException("Property '" + name + "' is not counter or grid: " + value);
+        };
+    }
+
     private static long longProperty(String name, long defaultValue) {
         final String value = System.getProperty(name);
         if (value == null) return defaultValue;
@@ -294,6 +327,8 @@ public record ServerConfig(
         private int entityViewDistance = 5;
         private int entitySynchronizationTicks = 20;
         private int dispatcherThreads = 1;
+        private ThreadProviderKind threadProvider = ThreadProviderKind.COUNTER;
+        private int threadGridExponent = 4; // cells of 16 by 16 chunks
         private int sendLightAfterBlockPlacementDelay = 100;
         private long loginTimeout = 30_000; // 30s from TCP accept to the configuration state
         private long loginPluginMessageTimeout = 5_000;
@@ -356,6 +391,8 @@ public record ServerConfig(
             this.entityViewDistance = config.entityViewDistance;
             this.entitySynchronizationTicks = config.entitySynchronizationTicks;
             this.dispatcherThreads = config.dispatcherThreads;
+            this.threadProvider = config.threadProvider;
+            this.threadGridExponent = config.threadGridExponent;
             this.sendLightAfterBlockPlacementDelay = config.sendLightAfterBlockPlacementDelay;
             this.loginTimeout = config.loginTimeout;
             this.loginPluginMessageTimeout = config.loginPluginMessageTimeout;
@@ -436,6 +473,16 @@ public record ServerConfig(
 
         public Builder dispatcherThreads(int dispatcherThreads) {
             this.dispatcherThreads = dispatcherThreads;
+            return this;
+        }
+
+        public Builder threadProvider(ThreadProviderKind threadProvider) {
+            this.threadProvider = threadProvider;
+            return this;
+        }
+
+        public Builder threadGridExponent(int threadGridExponent) {
+            this.threadGridExponent = threadGridExponent;
             return this;
         }
 
@@ -700,7 +747,8 @@ public record ServerConfig(
 
         public ServerConfig build() {
             return new ServerConfig(shutdownOnSignal, maxTickCatchUp, chunkViewDistance, entityViewDistance,
-                    entitySynchronizationTicks, dispatcherThreads, sendLightAfterBlockPlacementDelay, loginTimeout,
+                    entitySynchronizationTicks, dispatcherThreads, threadProvider, threadGridExponent,
+                    sendLightAfterBlockPlacementDelay, loginTimeout,
                     loginPluginMessageTimeout, knownPacksResponseTimeout, acceptTransfers, playerPacketPerTick,
                     playerPacketQueueSize, keepAliveDelay, keepAliveKick, playerChunkUpdateLimiterHistorySize,
                     maxConnections, acceptBackoff, maxConnectionsPerIp, handshakeTimeout, loginRatePerIp,

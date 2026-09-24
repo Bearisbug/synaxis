@@ -13,20 +13,24 @@ public class ServerConfigTest {
     /**
      * REQ-014: tests and production share one default table. Nothing may inject an engine setting
      * into the test JVM, so reading the system properties here has to give the plain defaults back.
-     * The one exception is the thread count, which the multi-threaded CI round hands to every test
-     * JVM (REQ-PROD-019).
+     * The exceptions are the thread count and the thread provider, which the multi-threaded CI
+     * rounds hand to every test JVM (REQ-PROD-019, REQ-PROD-020).
      */
     @Test
     public void testJvmUsesTheProductionDefaults() {
         final ServerConfig defaults = ServerConfig.defaults();
         final ServerConfig fromJvm = ServerConfig.fromSystemProperties();
-        assertEquals(defaults, fromJvm.toBuilder().dispatcherThreads(defaults.dispatcherThreads()).build());
+        assertEquals(defaults, fromJvm.toBuilder().dispatcherThreads(defaults.dispatcherThreads())
+                .threadProvider(defaults.threadProvider()).build());
     }
 
     @Test
     public void defaults() {
         final ServerConfig config = ServerConfig.defaults();
         assertEquals(1, config.dispatcherThreads());
+        // docs/DESIGN-PROD.md API-PROD-016
+        assertEquals(ServerConfig.ThreadProviderKind.COUNTER, config.threadProvider());
+        assertEquals(4, config.threadGridExponent());
         assertEquals(8, config.chunkViewDistance());
         assertEquals(5, config.entityViewDistance());
         assertEquals(30_000, config.loginTimeout());
@@ -57,6 +61,23 @@ public class ServerConfigTest {
                 () -> ServerConfig.builder().playerChunkUpdateLimiterHistorySize(-1).build());
         assertThrows(IllegalArgumentException.class, () -> ServerConfig.builder().chatRatePerSecond(0).build());
         assertThrows(IllegalArgumentException.class, () -> ServerConfig.builder().chatBurst(0).build());
+        assertThrows(IllegalArgumentException.class, () -> ServerConfig.builder().threadGridExponent(-1).build());
+        assertThrows(IllegalArgumentException.class, () -> ServerConfig.builder().threadGridExponent(32).build());
+        assertThrows(NullPointerException.class, () -> ServerConfig.builder().threadProvider(null).build());
+    }
+
+    /**
+     * {@code synaxis.thread-provider} takes the two lower case names and nothing else. Read through
+     * the parser rather than the JVM properties: every test JVM shares them with the tests running
+     * next to this one.
+     */
+    @Test
+    public void threadProviderNames() {
+        assertEquals(ServerConfig.ThreadProviderKind.COUNTER, ServerConfig.threadProvider("p", "counter"));
+        assertEquals(ServerConfig.ThreadProviderKind.GRID, ServerConfig.threadProvider("p", "grid"));
+        final IllegalArgumentException e = assertThrows(IllegalArgumentException.class,
+                () -> ServerConfig.threadProvider("synaxis.thread-provider", "GRID"));
+        assertEquals("Property 'synaxis.thread-provider' is not counter or grid: GRID", e.getMessage());
     }
 
     @Test

@@ -106,6 +106,8 @@ final class EventLedger {
     /** The {@link #record} calls between their look at {@link #sealed} and their offer. */
     private final AtomicInteger recording = new AtomicInteger();
     private final AtomicLong refusedAfterSeal = new AtomicLong();
+    /** The lines dropped for a full queue or the daily cap since the process started. */
+    private final AtomicLong droppedTotal = new AtomicLong();
     private @Nullable Thread writer;
 
     // Owned by the writer thread
@@ -174,6 +176,15 @@ final class EventLedger {
         final Line entry = new Line(LocalDate.ofInstant(now, clock.getZone()).toEpochDay(),
                 line.toString().getBytes(StandardCharsets.UTF_8));
         if (!queue.offer(entry)) queueFull.count(now);
+    }
+
+    /**
+     * Returns the lines dropped because the queue was full or the day's file had reached its cap,
+     * since the process started ({@code synaxis_ledger_dropped_total}); the lines refused
+     * after close are not among them.
+     */
+    long droppedTotal() {
+        return droppedTotal.get();
     }
 
     /**
@@ -392,6 +403,7 @@ final class EventLedger {
         void count(Instant now) {
             since.compareAndSet(null, now);
             count.incrementAndGet();
+            droppedTotal.incrementAndGet();
         }
 
         void report(Buffer out, Instant now) {

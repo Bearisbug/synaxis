@@ -85,6 +85,7 @@ public class WatchdogTest {
         assertEquals(1, rig.warnings.size(), "not before another 5 s");
         rig.patrolEverySecond(15_000, 59_000);
         assertEquals(10, rig.warnings.size(), "10, 15, … 55 s");
+        assertEquals(10, rig.watchdog.warnings(), "synaxis_watchdog_warnings_total counts every warning");
         assertTrue(rig.warnings.get(9).startsWith("Tick watchdog: the tick has been running for 55000 ms"));
         assertNull(rig.deaths.poll(), "not dead before 60 s");
 

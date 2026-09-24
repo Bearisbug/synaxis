@@ -89,6 +89,7 @@ public final class ShardSession implements AutoCloseable {
 
     private volatile long sessionId;
     private volatile State state = State.RELEASED;
+    private volatile StoreMetrics metrics = StoreMetrics.NONE;
 
     public ShardSession(ConnectionSource source, String shardId, Timing timing, LongSupplier nanoClock, Listener listener) {
         this.source = source;
@@ -134,6 +135,15 @@ public final class ShardSession implements AutoCloseable {
         var _ = renewal.scheduleWithFixedDelay(this::renewOrReopen, every, every, TimeUnit.MILLISECONDS);
         var _ = watch.scheduleAtFixedRate(this::checkDeadlines, WATCH_EVERY_MS, WATCH_EVERY_MS, TimeUnit.MILLISECONDS);
         return sessionId;
+    }
+
+    /**
+     * Reports how long each renewal statement takes to the metrics endpoint from now on.
+     *
+     * @param metrics where it goes
+     */
+    public void useMetrics(StoreMetrics metrics) {
+        this.metrics = metrics;
     }
 
     /**
@@ -201,7 +211,14 @@ public final class ShardSession implements AutoCloseable {
                 "UPDATE shard_session SET expires_at = now() + make_interval(secs => ?) WHERE session_id = ? AND expires_at > now()")) {
             update.setLong(1, timing.lease().toSeconds());
             update.setLong(2, sessionId);
-            if (update.executeUpdate() == 1) {
+            final long statementStart = System.nanoTime();
+            final int updated;
+            try {
+                updated = update.executeUpdate();
+            } finally {
+                metrics.statement(StoreMetrics.Statement.RENEW, System.nanoTime() - statementStart);
+            }
+            if (updated == 1) {
                 final boolean recovered;
                 synchronized (this) {
                     this.lastRenewed = now;

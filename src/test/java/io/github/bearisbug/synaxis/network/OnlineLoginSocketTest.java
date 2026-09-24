@@ -5,9 +5,11 @@ import io.github.bearisbug.synaxis.ServerConfig;
 import io.github.bearisbug.synaxis.ServerProcess;
 import io.github.bearisbug.synaxis.crypto.KeyUtils;
 import io.github.bearisbug.synaxis.event.player.AsyncPlayerPreLoginEvent;
+import io.github.bearisbug.synaxis.network.packet.client.login.ClientLoginAcknowledgedPacket;
 import io.github.bearisbug.synaxis.network.packet.server.login.EncryptionRequestPacket;
 import io.github.bearisbug.synaxis.network.packet.server.login.LoginSuccessPacket;
 import io.github.bearisbug.synaxis.network.player.GameProfile;
+import io.github.bearisbug.synaxis.network.player.SessionClient;
 import io.github.bearisbug.synaxis.network.socket.Server;
 import org.junit.jupiter.api.Test;
 
@@ -21,14 +23,17 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BooleanSupplier;
 
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -308,6 +313,49 @@ public class OnlineLoginSocketTest {
             final LoginSuccessPacket success = assertInstanceOf(LoginSuccessPacket.class, client.readLoginOutcome());
             assertEquals(GameProfile.offlineUuid("Local"), success.gameProfile().uuid());
             assertFalse(contains(client.rawIncoming(), "Local"), "the login success crossed the wire in plaintext");
+        }
+    }
+
+    /** {@code API-PROD-015}: the sums behind synaxis_packets_total, synaxis_bytes_total and synaxis_cipher_cpu_seconds_total. */
+    @Test
+    public void theTrafficAndTheCipherTimeOfAnEncryptedLoginAreCounted() throws Exception {
+        try (Rig rig = Rig.start(new Auth.Offline(true));
+             EncryptedLoginClient client = rig.client()) {
+            final TrafficCounters traffic = rig.process().connection().traffic();
+            assertEquals(0, traffic.packetsIn() + traffic.packetsOut() + traffic.bytesIn() + traffic.bytesOut());
+            client.handshakeAndStart("Counted");
+            client.answer(client.readEncryptionRequest());
+            assertInstanceOf(LoginSuccessPacket.class, client.readLoginOutcome());
+            // handshake, login start, key; the success went out after the key was read
+            assertEquals(3, traffic.packetsIn(), "packets read off the socket");
+            assertEquals(0, traffic.decryptNanos(), "nothing encrypted came in yet");
+            client.send(ConnectionState.LOGIN, new ClientLoginAcknowledgedPacket());
+            awaitUntil(() -> traffic.packetsIn() == 4, "the acknowledgement is read");
+            assertTrue(traffic.decryptNanos() > 0, "the acknowledgement was decrypted");
+            assertTrue(traffic.packetsOut() >= 2, "encryption request and login success: " + traffic.packetsOut());
+            assertTrue(traffic.bytesIn() > 256, "the key alone is two 128 byte RSA blocks: " + traffic.bytesIn());
+            assertTrue(traffic.bytesOut() > 162, "the request carries a 162 byte public key: " + traffic.bytesOut());
+            assertTrue(traffic.encryptNanos() > 0, "the login success was encrypted");
+        }
+    }
+
+    /** {@code API-PROD-015}: synaxis_auth_hasjoined_total, _retries_total and _seconds. */
+    @Test
+    public void theFinalAnswerTheRetryAndEveryQueryTimeAreCounted() throws Exception {
+        try (TestSessionServer sessions = new TestSessionServer();
+             Rig rig = Rig.online(sessions, GENEROUS, 32);
+             EncryptedLoginClient client = rig.client()) {
+            final SessionClient sessionClient = rig.process().connection().sessionClient();
+            assertNotNull(sessionClient);
+            final List<Long> queries = new CopyOnWriteArrayList<>();
+            sessionClient.observeQueries(queries::add);
+            sessions.script(TestSessionServer.Answer.status(503), TestSessionServer.Answer.ok());
+
+            client.login("Retried");
+            assertArrayEquals(new long[]{1, 0, 0}, sessionClient.outcomes(), "one login, counted once as verified");
+            assertEquals(1, sessionClient.retries(), "the unavailable answer was retried once");
+            assertEquals(2, queries.size(), "both queries were timed");
+            assertTrue(queries.stream().allMatch(nanos -> nanos > 0));
         }
     }
 

@@ -12,6 +12,7 @@ import io.github.bearisbug.synaxis.network.ConnectionGate;
 import io.github.bearisbug.synaxis.network.ConnectionState;
 import io.github.bearisbug.synaxis.network.DisconnectReasons;
 import io.github.bearisbug.synaxis.network.NetworkBuffer;
+import io.github.bearisbug.synaxis.network.TrafficCounters;
 import io.github.bearisbug.synaxis.network.packet.PacketParser;
 import io.github.bearisbug.synaxis.network.packet.PacketReading;
 import io.github.bearisbug.synaxis.network.packet.PacketRegistry;
@@ -119,6 +120,7 @@ public class PlayerSocketConnection extends PlayerConnection {
     private final AtomicBoolean writeSignaled = new AtomicBoolean(false);
 
     private final ListenerHandle<PlayerPacketOutEvent> outgoing;
+    private final TrafficCounters traffic;
 
     public PlayerSocketConnection(ServerProcess process, SocketChannel channel, SocketAddress remoteAddress, Thread readThread, Thread writeThread) {
         this(process, channel, remoteAddress, readThread, writeThread, process.connection().gate().untracked());
@@ -134,6 +136,7 @@ public class PlayerSocketConnection extends PlayerConnection {
         this.gateTicket = gateTicket;
         this.readBuffer = NetworkBuffer.resizableBuffer(process.config().pooledBufferSize(), process.registries());
         this.outgoing = process.eventHandler().getHandle(PlayerPacketOutEvent.class);
+        this.traffic = process.connection().traffic();
         this.channel = channel;
         this.remoteAddress = remoteAddress;
         this.writeThread = writeThread;
@@ -144,10 +147,11 @@ public class PlayerSocketConnection extends PlayerConnection {
         NetworkBuffer readBuffer = this.readBuffer;
         final long writeIndex = readBuffer.writeIndex();
         final int length = readBuffer.readChannel(channel);
+        if (length > 0) traffic.received(length);
         // Decrypt what just arrived; what was already in the buffer when the cipher came on was
         // decrypted by #enableEncryption
         final EncryptionContext encryption = this.encryption;
-        if (encryption != null && length > 0) readBuffer.cipher(encryption.decrypt(), writeIndex, length);
+        if (encryption != null && length > 0) decrypt(readBuffer, encryption.decrypt(), writeIndex, length);
 
         if (process().config().proxyProtocol() && !attemptedProxyProtocolDetection) {
             final ProxyProtocolDecoder.Result result = ProxyProtocolDecoder.parse(remoteAddress, readBuffer);
@@ -224,6 +228,7 @@ public class PlayerSocketConnection extends PlayerConnection {
         }
         switch (result) {
             case PacketReading.Result.Success<ClientPacket> success -> {
+                traffic.read(success.packets().size());
                 for (PacketReading.ParsedPacket<ClientPacket> parsedPacket : success.packets()) {
                     // A listener that dropped the connection ends the batch. A peer fits thousands
                     // of frames into one read buffer, and handling the rest of them after the kick
@@ -326,8 +331,14 @@ public class PlayerSocketConnection extends PlayerConnection {
                 LoginCrypt.streamCipher(Cipher.DECRYPT_MODE, sharedSecret));
         final NetworkBuffer readBuffer = this.readBuffer;
         final long unread = readBuffer.readableBytes();
-        if (unread > 0) readBuffer.cipher(context.decrypt(), readBuffer.readIndex(), unread);
+        if (unread > 0) decrypt(readBuffer, context.decrypt(), readBuffer.readIndex(), unread);
         this.encryption = context;
+    }
+
+    private void decrypt(NetworkBuffer buffer, Cipher cipher, long start, long length) {
+        final long began = System.nanoTime();
+        buffer.cipher(cipher, start, length);
+        traffic.decrypted(System.nanoTime() - began);
     }
 
     /**
@@ -504,7 +515,13 @@ public class PlayerSocketConnection extends PlayerConnection {
         // it first, so the shared bytes are never touched
         final EncryptionContext encryption = this.encryption;
         final long length = buffer.writeIndex() - start;
-        if (encryption != null && length > 0) buffer.cipher(encryption.encrypt(), start, length);
+        if (length == 0) return true; // cancelled by a listener
+        if (encryption != null) {
+            final long began = System.nanoTime();
+            buffer.cipher(encryption.encrypt(), start, length);
+            traffic.encrypted(System.nanoTime() - began);
+        }
+        traffic.sent(length);
         return true;
     }
 

@@ -63,6 +63,8 @@ public final class Watchdog {
     private volatile @Nullable Thread tickingThread;
     /** The start of the tick the last warning was about, so the tick can say it recovered. */
     private final AtomicLong warnedTick = new AtomicLong(IDLE);
+    /** Every early warning so far, first and repeated ones alike ({@code synaxis_watchdog_warnings_total}). */
+    private final AtomicLong warningCount = new AtomicLong();
 
     // Only touched by the watchdog thread
     private long lastWarning;
@@ -131,6 +133,15 @@ public final class Watchdog {
     }
 
     /**
+     * The early warnings printed since the process started, first and repeated ones alike.
+     *
+     * @return the count
+     */
+    public long warnings() {
+        return warningCount.get();
+    }
+
+    /**
      * Returns the watchdog thread, {@code null} before {@link #start} and when the watchdog is off.
      */
     synchronized @Nullable Thread thread() {
@@ -189,6 +200,7 @@ public final class Watchdog {
             // tickStart above and this line loses its recovery line, nothing else.
             warnedTick.set(start);
             lastWarning = now;
+            warningCount.incrementAndGet();
             warnings.accept("Tick watchdog: the tick has been running for " + millis(stuck) + " ms\n" + stacks());
         }
         return true;

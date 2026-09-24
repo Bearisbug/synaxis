@@ -2,6 +2,7 @@ package io.github.bearisbug.synaxis.app.store;
 
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
+import com.zaxxer.hikari.HikariPoolMXBean;
 
 import javax.sql.DataSource;
 import java.sql.Connection;
@@ -59,6 +60,22 @@ public final class Database implements AutoCloseable {
      */
     public DataSource pool() {
         return pool;
+    }
+
+    /**
+     * Returns the connections of the pool in use right now ({@code synaxis_db_pool_active}).
+     */
+    public int activeConnections() {
+        final HikariPoolMXBean bean = pool.getHikariPoolMXBean();
+        return bean == null ? 0 : bean.getActiveConnections();
+    }
+
+    /**
+     * Returns the threads waiting for a connection of the pool right now ({@code synaxis_db_pool_pending}).
+     */
+    public int pendingThreads() {
+        final HikariPoolMXBean bean = pool.getHikariPoolMXBean();
+        return bean == null ? 0 : bean.getThreadsAwaitingConnection();
     }
 
     /**

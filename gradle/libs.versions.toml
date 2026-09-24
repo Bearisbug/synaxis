@@ -30,6 +30,9 @@ hikaricp = "7.1.0"
 flyway = "13.7.0"
 jedis = "8.0.1"
 
+# Metrics endpoint of the host (docs/DESIGN-PROD.md API-PROD-015)
+micrometer = "1.17.1"
+
 # Gradle plugins
 blossom = "2.2.0"
 nmcp = "1.6.2"
@@ -83,6 +86,9 @@ hikaricp = { group = "com.zaxxer", name = "HikariCP", version.ref = "hikaricp" }
 flyway-core = { group = "org.flywaydb", name = "flyway-core", version.ref = "flyway" }
 flyway-postgresql = { group = "org.flywaydb", name = "flyway-database-postgresql", version.ref = "flyway" }
 jedis = { group = "redis.clients", name = "jedis", version.ref = "jedis" }
+
+# Metrics endpoint of the host
+micrometer-registry-prometheus = { group = "io.micrometer", name = "micrometer-registry-prometheus", version.ref = "micrometer" }
 
 [bundles]
 

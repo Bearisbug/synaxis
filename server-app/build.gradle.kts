@@ -15,6 +15,9 @@ dependencies {
     runtimeOnly(libs.flyway.postgresql)
     implementation(libs.jedis)
 
+    // The metrics endpoint (docs/DESIGN-PROD.md API-PROD-015), host only like the store
+    implementation(libs.micrometer.registry.prometheus)
+
     // The one compile time plugin of M2, found through ServiceLoader (ADR-M2-006). The host never
     // names a game class, so the dependency is runtime only.
     runtimeOnly(project(":game-rts"))

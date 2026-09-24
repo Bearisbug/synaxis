@@ -7,6 +7,7 @@ import io.github.bearisbug.synaxis.ServerProcess;
 import io.github.bearisbug.synaxis.SessionServer;
 import io.github.bearisbug.synaxis.Watchdog;
 import io.github.bearisbug.synaxis.app.command.HostCommands;
+import io.github.bearisbug.synaxis.app.metrics.HostMetrics;
 import io.github.bearisbug.synaxis.app.moderation.HostModeration;
 import io.github.bearisbug.synaxis.app.moderation.ModerationCommands;
 import io.github.bearisbug.synaxis.app.moderation.ModerationStore;
@@ -43,6 +44,7 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.lang.management.ManagementFactory;
+import java.net.InetSocketAddress;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
@@ -148,6 +150,7 @@ public final class Main {
         final Auth auth = auth();
         final String storeMode = storeMode();
         final CoreMode.Setting coreMode = CoreMode.setting();
+        final InetSocketAddress metricsBind = HostMetrics.bindAddress();
         applyViewRangeDefaults();
 
         // (2) The engine facade, not a bare ServerProcess: MinecraftServer#start is the only public
@@ -185,6 +188,11 @@ public final class Main {
         final CrashReports crashReports = crashReports(process, host, shardId, Path.of("crash-reports"));
         installExceptionHandler(process, crashReports);
         final Watchdog watchdog = startWatchdog(process, crashReports);
+        // Before the first tick, so every tick is timed; served before the port opens, so a shard
+        // whose endpoint cannot be bound is refused rather than running unobserved
+        final HostMetrics metrics = HostMetrics.register(process, new HostMetrics.Sources(ledger::droppedTotal,
+                store.store(), store.session(), store.database(), store.redis()));
+        serveMetrics(metrics, metricsBind);
         if (coreMode != CoreMode.Setting.ON) host.enable(PluginHost.discover(), selectedPlugins);
 
         // (5) Which mode this process serves in. Gameplay needs both halves — an admission provider
@@ -218,6 +226,7 @@ public final class Main {
         process.scheduler().buildShutdownTask(ledger::close);
         // The save is over by now: Redis, the session renewal and the pool can go
         process.scheduler().buildShutdownTask(store::close);
+        process.scheduler().buildShutdownTask(metrics::close);
         // Last: a tick still in flight keeps being watched after this, see Watchdog#stop
         process.scheduler().buildShutdownTask(watchdog::stop);
 
@@ -290,6 +299,23 @@ public final class Main {
     }
 
     /**
+     * Serves the metrics endpoint ({@code docs/DESIGN-PROD.md} {@code API-PROD-015}).
+     *
+     * @param metrics the metrics of the process
+     * @param bind    where to serve them
+     * @throws IllegalArgumentException if the address cannot be bound, which refuses the start
+     */
+    static void serveMetrics(HostMetrics metrics, InetSocketAddress bind) {
+        try {
+            metrics.serve(bind);
+        } catch (IOException e) {
+            metrics.close();
+            throw new IllegalArgumentException(HostMetrics.BIND_PROPERTY + "=" + bind.getHostString() + ":"
+                    + bind.getPort() + " cannot be bound: " + e.getMessage(), e);
+        }
+    }
+
+    /**
      * What a process judged dead still does before the watchdog halts it
      * ({@code docs/DESIGN-PROD.md} §11.4, §11.5 {@code dying → exited}): the shutdown sequence
      * without the stuck tick, saving what can be read on this thread, then exit code 70. Whatever
@@ -320,10 +346,12 @@ public final class Main {
      * @param verifier     the target side of a transfer, null without transfer keys
      * @param permissions  the roles of the online players, none in memory
      * @param moderation   the bans and the whitelist, none in memory
+     * @param session      the shard session, null in memory
+     * @param redis        the Redis link of the store, disabled in memory or without Redis
      */
     record StoreRuntime(PlayerStore store, @Nullable Database database, @Nullable StoreHousekeeping housekeeping,
                         @Nullable TransferTickets issuer, @Nullable TicketVerifier verifier, HostPermissions permissions,
-                        HostModeration moderation)
+                        HostModeration moderation, @Nullable ShardSession session, RedisLink redis)
             implements AutoCloseable {
         @Override
         public void close() {
@@ -356,10 +384,11 @@ public final class Main {
                 throw new IllegalArgumentException("synaxis.accept-transfers=true needs the postgres store "
                         + "(-Dsynaxis.app.store=postgres): transfer tickets are checked against the database");
             LOGGER.info("Effective store: mode=memory, player data lives as long as the process");
-            final HostModeration moderation = new HostModeration(process, null, RedisLink.disabled(shardId),
+            final RedisLink noRedis = RedisLink.disabled(shardId);
+            final HostModeration moderation = new HostModeration(process, null, noRedis,
                     HostModeration.REFRESH, whitelist(), ledger::record);
             return new StoreRuntime(PlayerStore.inMemory(process, ledger::record), null, null, null, null,
-                    HostPermissions.withoutDatabase(process), moderation);
+                    HostPermissions.withoutDatabase(process), moderation, null, noRedis);
         }
         final StoreSettings settings = StoreSettings.fromEnvironment(environment);
         final TransferKeys keys = TransferKeys.fromEnvironment(environment);
@@ -396,12 +425,13 @@ public final class Main {
             moderation.start();
             LOGGER.info("Effective whitelist: {}", whitelist ? "on" : "off");
             LOGGER.info("Effective store: mode=postgres auth_mode={} {}", effective.value(), settings);
-            if (keys == null) return new StoreRuntime(store, database, housekeeping, null, null, permissions, moderation);
+            if (keys == null)
+                return new StoreRuntime(store, database, housekeeping, null, null, permissions, moderation, session, redis);
             final TransferCooldowns cooldowns = TransferCooldowns.fromSystemProperties();
             LOGGER.info("Effective transfers: {} accept={}", keys, process.config().acceptTransfers());
             return new StoreRuntime(store, database, housekeeping, new TicketIssuer(store, keys, cooldowns, shardId),
                     new TicketVerifier(database.pool(), session::sessionId, shardId, keys, cooldowns, ledger::record),
-                    permissions, moderation);
+                    permissions, moderation, session, redis);
         } catch (SQLException e) {
             database.close();
             throw new IllegalArgumentException("the player store database failed: " + e.getMessage(), e);

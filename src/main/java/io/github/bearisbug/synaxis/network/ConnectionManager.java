@@ -74,6 +74,7 @@ public final class ConnectionManager {
     private final ConnectionGate gate;
     private final @Nullable KeyPair loginKeyPair;
     private final @Nullable SessionClient sessionClient;
+    private final TrafficCounters traffic = new TrafficCounters();
 
     public ConnectionManager(ServerProcess process) {
         this.process = process;
@@ -113,6 +114,15 @@ public final class ConnectionManager {
     @ApiStatus.Internal
     public @Nullable SessionClient sessionClient() {
         return sessionClient;
+    }
+
+    /**
+     * What the socket connections of this process moved, see {@code docs/DESIGN-PROD.md}
+     * {@code API-PROD-015}.
+     */
+    @ApiStatus.Internal
+    public TrafficCounters traffic() {
+        return traffic;
     }
 
     // All players once their Player object has been instantiated.

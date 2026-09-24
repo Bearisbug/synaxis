@@ -154,6 +154,7 @@ public final class PlayerStore implements ShutdownParticipant {
     // Only touched by the autosave task: online players summed per tick, one save per period
     private long autosaveCredit;
     private volatile @Nullable ShardSession session;
+    private volatile StoreMetrics metrics = StoreMetrics.NONE;
     private volatile boolean closing;
     // Set once the shutdown save phase is over: a write still retrying is given up
     private volatile boolean saveEnded;
@@ -193,6 +194,15 @@ public final class PlayerStore implements ShutdownParticipant {
     public static PlayerStore inMemory(ServerProcess process, BiConsumer<String, Map<String, ?>> analytics) {
         return new PlayerStore(process, new MemoryBackend(), RedisLink.disabled("memory"), "memory", false,
                 Options.DEFAULT, analytics);
+    }
+
+    /**
+     * Reports the statements and the saves of this store to the metrics endpoint from now on.
+     *
+     * @param metrics where they go
+     */
+    public void useMetrics(StoreMetrics metrics) {
+        this.metrics = metrics;
     }
 
     /**
@@ -364,7 +374,13 @@ public final class PlayerStore implements ShutdownParticipant {
         boolean kickRequested = false;
         StoreBackend.LoadOutcome.Acquired acquired;
         while (true) {
-            final StoreBackend.LoadOutcome outcome = backend.load(account, player.getUsername(), sessionId());
+            final long loadStart = System.nanoTime();
+            final StoreBackend.LoadOutcome outcome;
+            try {
+                outcome = backend.load(account, player.getUsername(), sessionId());
+            } finally {
+                metrics.statement(StoreMetrics.Statement.LOAD, System.nanoTime() - loadStart);
+            }
             if (outcome instanceof StoreBackend.LoadOutcome.Acquired taken) {
                 acquired = taken;
                 break;
@@ -563,7 +579,12 @@ public final class PlayerStore implements ShutdownParticipant {
             try {
                 final List<StoreBackend.Write> writes = ordered.stream()
                         .map(r -> new StoreBackend.Write(r.characterId, r.version.get(), encoded.get(r), false)).toList();
-                backend.write(sessionId(), writes);
+                final long writeStart = System.nanoTime();
+                try {
+                    backend.write(sessionId(), writes);
+                } finally {
+                    metrics.statement(StoreMetrics.Statement.COMMIT, System.nanoTime() - writeStart);
+                }
                 for (Record record : ordered) {
                     record.version.incrementAndGet();
                     // Values first, then the count: a snapshot that read the count before it
@@ -576,14 +597,17 @@ public final class PlayerStore implements ShutdownParticipant {
                 }
                 ordered.getFirst().player.scheduler().scheduleNextTick(apply);
                 critical("commit", SaveResult.SAVED, null, start, ordered.size());
+                metrics.saved(SaveResult.SAVED);
                 done.complete(SaveResult.SAVED);
             } catch (StoreBackend.FencedException e) {
                 failures.warn("A commit was fenced: character_id={}", e.characterId());
                 critical("commit", SaveResult.FENCED, "version_mismatch", start, ordered.size());
+                metrics.saved(SaveResult.FENCED);
                 done.complete(SaveResult.FENCED);
             } catch (SQLException e) {
                 failures.warn(e, "A commit failed: participants={}", ordered.size());
                 critical("commit", SaveResult.UNAVAILABLE, "db_error", start, ordered.size());
+                metrics.saved(SaveResult.UNAVAILABLE);
                 done.complete(SaveResult.UNAVAILABLE);
             } finally {
                 for (Record record : ordered) record.writeLock.unlock();
@@ -714,6 +738,7 @@ public final class PlayerStore implements ShutdownParticipant {
                 record.waiting.clear();
             }
             final SaveResult result = write(record, snapshot, release);
+            metrics.saved(result);
             if (transfer && result == SaveResult.UNAVAILABLE) {
                 // saving → online: a transfer gets one attempt, the player stays and the snapshot
                 // waits for the next save as an ordinary one. A player that logged out meanwhile
@@ -815,7 +840,12 @@ public final class PlayerStore implements ShutdownParticipant {
                 }
             }
             if (sections.isEmpty() && !release) return SaveResult.SAVED;
-            backend.write(sessionId(), List.of(new StoreBackend.Write(record.characterId, record.version.get(), sections, release)));
+            final long writeStart = System.nanoTime();
+            try {
+                backend.write(sessionId(), List.of(new StoreBackend.Write(record.characterId, record.version.get(), sections, release)));
+            } finally {
+                metrics.statement(StoreMetrics.Statement.SAVE, System.nanoTime() - writeStart);
+            }
             record.version.incrementAndGet();
             return SaveResult.SAVED;
         } catch (StoreBackend.FencedException _) {

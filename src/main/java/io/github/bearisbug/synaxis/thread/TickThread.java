@@ -1,6 +1,7 @@
 package io.github.bearisbug.synaxis.thread;
 
 import org.jetbrains.annotations.ApiStatus;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -10,6 +11,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.LockSupport;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Consumer;
+import java.util.function.LongConsumer;
 
 /**
  * Thread responsible for ticking the partitions and elements it was handed.
@@ -26,6 +28,7 @@ public class TickThread extends EngineThread {
 
     private final AtomicReference<CountDownLatch> latchRef = new AtomicReference<>();
     private volatile long tickTimeNanos;
+    private volatile @Nullable LongConsumer tickObserver;
 
     private long tickNum = 0;
     final List<ThreadDispatcherImpl.Partition> entries = new ArrayList<>();
@@ -50,6 +53,8 @@ public class TickThread extends EngineThread {
                 continue;
             }
             final ReentrantLock lock = this.lock;
+            final LongConsumer observer = this.tickObserver;
+            final long start = observer != null ? System.nanoTime() : 0;
             lock.lock();
             try {
                 tick();
@@ -63,6 +68,7 @@ public class TickThread extends EngineThread {
                 this.latchRef.set(null);
                 latch.countDown();
             }
+            if (observer != null) observe(observer, System.nanoTime() - start);
             LockSupport.park(this);
         }
     }
@@ -87,6 +93,25 @@ public class TickThread extends EngineThread {
                     handleException(e);
                 }
             }
+        }
+    }
+
+    /**
+     * Tells {@code observer} how long each tick of this thread took, in nanoseconds, on this thread
+     * right after the tick ({@code docs/DESIGN-PROD.md} {@code API-PROD-015}). A thread handed no
+     * partition does not tick and reports nothing.
+     *
+     * @param observer the observer, null to stop observing
+     */
+    public void observeTicks(@Nullable LongConsumer observer) {
+        this.tickObserver = observer;
+    }
+
+    private void observe(LongConsumer observer, long nanos) {
+        try {
+            observer.accept(nanos);
+        } catch (Throwable e) {
+            handleException(e);
         }
     }
 

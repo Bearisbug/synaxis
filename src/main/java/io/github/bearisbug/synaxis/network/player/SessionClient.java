@@ -31,6 +31,7 @@ import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.BooleanSupplier;
+import java.util.function.LongConsumer;
 
 /**
  * Asks the session server whether a client joined this server ({@code docs/DESIGN-PROD.md}
@@ -70,6 +71,11 @@ public final class SessionClient {
     private final Semaphore inFlight;
 
     private final AtomicLong verified = new AtomicLong(), unverified = new AtomicLong(), unavailable = new AtomicLong();
+    // Since the process started, for the metrics endpoint (API-PROD-015); the three above are per report
+    private final AtomicLong verifiedTotal = new AtomicLong(), unverifiedTotal = new AtomicLong(),
+            unavailableTotal = new AtomicLong(), retries = new AtomicLong();
+    private volatile LongConsumer queryObserver = _ -> {
+    };
     private boolean reportWindowStarted;
     private long reportWindowStart;
 
@@ -98,6 +104,7 @@ public final class SessionClient {
         if (result instanceof Result.Unavailable && online.getAsBoolean()) {
             final long delay = ThreadLocalRandom.current().nextLong(RETRY_DELAY_MIN_MILLIS, RETRY_DELAY_MAX_MILLIS + 1);
             if (System.currentTimeMillis() + delay < deadlineMillis) {
+                retries.incrementAndGet();
                 Thread.sleep(delay);
                 result = query(username, serverHash, clientAddress, deadlineMillis, online);
             }
@@ -107,6 +114,11 @@ public final class SessionClient {
             case Result.Verified _ -> verified;
             case Result.Unverified _ -> unverified;
             case Result.Unavailable _ -> unavailable;
+        }).incrementAndGet();
+        (switch (result) {
+            case Result.Verified _ -> verifiedTotal;
+            case Result.Unverified _ -> unverifiedTotal;
+            case Result.Unavailable _ -> unavailableTotal;
         }).incrementAndGet();
         return result;
     }
@@ -124,10 +136,13 @@ public final class SessionClient {
                     .timeout(Duration.ofMillis(Math.min(server.timeout().toMillis(), remaining)))
                     .GET().build();
             final HttpResponse<String> response;
+            final long sent = System.nanoTime();
             try {
                 response = http.send(request, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
             } catch (IOException e) {
                 return new Result.Unavailable(e.getClass().getSimpleName());
+            } finally {
+                queryObserver.accept(System.nanoTime() - sent);
             }
             return switch (response.statusCode()) {
                 case 200 -> profile(response.body());
@@ -137,6 +152,31 @@ public final class SessionClient {
         } finally {
             inFlight.release();
         }
+    }
+
+    /**
+     * The final answers since the process started, one per login, counted like the report of
+     * {@link #tick(long)}: a login whose peer left before the answer is not counted.
+     *
+     * @return verified, unverified and unavailable, in that order
+     */
+    public long[] outcomes() {
+        return new long[]{verifiedTotal.get(), unverifiedTotal.get(), unavailableTotal.get()};
+    }
+
+    /** The retries of an unavailable answer since the process started. */
+    public long retries() {
+        return retries.get();
+    }
+
+    /**
+     * Tells {@code observer} how long each query to the session server took, in nanoseconds,
+     * failures and timeouts included, on the verification thread of the login.
+     *
+     * @param observer the observer
+     */
+    public void observeQueries(LongConsumer observer) {
+        this.queryObserver = observer;
     }
 
     private URI uri(String username, String serverHash, @Nullable SocketAddress clientAddress) {

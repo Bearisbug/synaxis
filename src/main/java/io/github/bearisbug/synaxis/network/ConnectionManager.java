@@ -129,6 +129,8 @@ public final class ConnectionManager {
     private final Set<Player> configurationPlayers = new CopyOnWriteArraySet<>();
     // Players in play state
     private final Set<Player> playPlayers = new CopyOnWriteArraySet<>();
+    // Players whose spawn has started and not completed: in no instance yet, but about to be
+    private final Set<Player> spawningPlayers = ConcurrentHashMap.newKeySet();
 
     // The players who need keep alive ticks. This was added because we may not send a keep alive in
     // the time after sending finish configuration but before receiving configuration end (to swap to play).
@@ -307,8 +309,16 @@ public final class ConnectionManager {
         }
     }
 
-    /** Read under the player's lock, the one {@code Entity#remove} holds while it writes both. */
-    private static boolean leftTheWorld(Player player) {
+    /**
+     * Whether a player whose connection has been dropped is out of the world for good. A player
+     * whose spawn is under way is in no instance yet, but enters the entity tracker once its spawn
+     * chunks are loaded, and only leaves it with the removal after that. The rest is read under the
+     * player's lock, the one {@code Entity#remove} holds while it writes both.
+     */
+    private boolean leftTheWorld(Player player) {
+        // A dropped connection cannot start a spawn anymore (see the join in #updateWaitingPlayers),
+        // so once the player is not spawning, its instance tells whether it is in the world
+        if (spawningPlayers.contains(player)) return false;
         synchronized (player) {
             return player.isRemoved() || player.getInstance() == null;
         }
@@ -520,6 +530,7 @@ public final class ConnectionManager {
         this.playPlayers.clear();
 
         this.keepAlivePlayers.clear();
+        this.spawningPlayers.clear();
         this.connectionPlayerMap.clear();
         this.uuidPlayerMap.clear();
 
@@ -572,6 +583,9 @@ public final class ConnectionManager {
                 configurationPlayers.remove(player);
                 playPlayers.add(player);
                 keepAlivePlayers.add(player);
+                // Under the same lock as #removePlayer: a connection dropped after this point finds
+                // the player spawning, one dropped before it never gets here
+                spawningPlayers.add(player);
             })) return;
 
             // This fixes a bug with Geyser. They do not reply to keep alive during config, meaning that
@@ -580,7 +594,14 @@ public final class ConnectionManager {
             player.refreshAnswerKeepAlive(true);
 
             // Spawn the player at Player#getRespawnPoint
-            CompletableFuture<Void> spawnFuture = player.UNSAFE_init();
+            final CompletableFuture<Void> spawnFuture;
+            try {
+                spawnFuture = player.UNSAFE_init();
+            } catch (RuntimeException e) {
+                spawningPlayers.remove(player);
+                throw e;
+            }
+            var _ = spawnFuture.whenComplete((_, _) -> spawningPlayers.remove(player));
             // A failed spawn (e.g. the spawn chunks could not be loaded, or the entity tracker
             // refused the player) would otherwise leave the client waiting on the join screen
             // forever, in a world its entity is not tracked in.

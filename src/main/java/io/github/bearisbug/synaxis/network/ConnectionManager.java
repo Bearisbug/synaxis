@@ -6,8 +6,10 @@ import io.github.bearisbug.synaxis.crypto.LoginCrypt;
 import io.github.bearisbug.synaxis.entity.Player;
 import io.github.bearisbug.synaxis.event.player.AsyncPlayerConfigurationEvent;
 import io.github.bearisbug.synaxis.event.player.AsyncPlayerPreLoginEvent;
+import io.github.bearisbug.synaxis.event.player.PlayerDisconnectEvent;
 import io.github.bearisbug.synaxis.instance.Instance;
 import io.github.bearisbug.synaxis.listener.preplay.LoginListener;
+import io.github.bearisbug.synaxis.monitoring.EventsJFR;
 import io.github.bearisbug.synaxis.network.packet.server.CachedPacket;
 import io.github.bearisbug.synaxis.network.packet.server.common.KeepAlivePacket;
 import io.github.bearisbug.synaxis.network.packet.server.common.PluginMessagePacket;
@@ -121,6 +123,8 @@ public final class ConnectionManager {
     private final MessagePassingQueue<Player> playWaitingPlayers = ConcurrentMessageQueues.mpscUnboundedArrayQueue(64);
     // Players waiting to be (re) configured
     private final MessagePassingQueue<Player> configWaitingPlayers = ConcurrentMessageQueues.mpscUnboundedArrayQueue(64);
+    // Players that disconnected in the play state, possibly before they spawned
+    private final MessagePassingQueue<Player> leftPlayers = ConcurrentMessageQueues.mpscUnboundedArrayQueue(64);
     // Players in configuration state
     private final Set<Player> configurationPlayers = new CopyOnWriteArraySet<>();
     // Players in play state
@@ -427,6 +431,19 @@ public final class ConnectionManager {
     }
 
     /**
+     * Reports a player that disconnected in the play state on the next tick, unless it has started
+     * to spawn: the state is play once the server wrote {@code FinishConfigurationPacket}, but the
+     * player only spawns on a later tick, and the removal its disconnect scheduled on the entity
+     * never runs for an entity that is in no instance.
+     *
+     * @param player the player whose connection was dropped
+     */
+    @ApiStatus.Internal
+    public void leftBeforeSpawn(Player player) {
+        leftPlayers.relaxedOffer(player);
+    }
+
+    /**
      * Removes a {@link Player} from the players list.
      * <p>
      * Used during disconnection, you shouldn't have to do it manually.
@@ -586,6 +603,13 @@ public final class ConnectionManager {
         final int maxJoins = process.config().maxJoinsPerTick();
         if (maxJoins == 0) this.playWaitingPlayers.drain(join);
         else this.playWaitingPlayers.drain(join, maxJoins);
+        // After the joins, on the same thread: a player that got past the online check above has
+        // started to spawn, and its entity removal reports it
+        this.leftPlayers.drain(player -> {
+            if (!player.dropPendingSpawn()) return;
+            process.eventHandler().call(new PlayerDisconnectEvent(player));
+            EventsJFR.newPlayerLeave(player.getUuid()).commit();
+        });
     }
 
     /**

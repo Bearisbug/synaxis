@@ -333,6 +333,19 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
     }
 
     /**
+     * Gives up the spawn the configuration phase decided, for a player that left before it spawned.
+     * Tick thread only, like {@link #UNSAFE_init()}, which it keeps from ever running.
+     *
+     * @return true if the player had not started to spawn
+     */
+    @ApiStatus.Internal
+    public boolean dropPendingSpawn() {
+        if (this.pendingInstance == null) return false;
+        this.pendingInstance = null;
+        return true;
+    }
+
+    /**
      * Used when the player is created.
      * Init the player and spawn him.
      * <p>

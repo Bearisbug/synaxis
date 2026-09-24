@@ -37,6 +37,7 @@ import static io.github.bearisbug.synaxis.app.store.StoreFixture.PURSE;
 import static io.github.bearisbug.synaxis.app.store.StoreFixture.await;
 import static io.github.bearisbug.synaxis.app.store.StoreFixture.connect;
 import static io.github.bearisbug.synaxis.app.store.StoreFixture.count;
+import static io.github.bearisbug.synaxis.app.store.StoreFixture.enterPlay;
 import static io.github.bearisbug.synaxis.app.store.StoreFixture.kicks;
 import static io.github.bearisbug.synaxis.app.store.StoreFixture.row;
 import static io.github.bearisbug.synaxis.app.store.StoreFixture.spawn;
@@ -170,6 +171,32 @@ class PlayerStoreIntegrationTest {
         assertTrue(shard.store().load(again));
         assertEquals(5, shard.store().get(again, PURSE).coins, "the next login reads what the logout wrote");
         assertEquals(1, shard.store().versionOf(again));
+    }
+
+    @Test
+    void aPlayerThatLeavesBeforeItSpawnsIsSavedAndLetGo(Env env) throws SQLException {
+        final StoreFixture.Shard shard = shard(env, "r1-c1");
+        final Instance instance = env.createFlatInstance();
+        final UUID account = UUID.randomUUID();
+        final Player player = connect(env.process(), account, "Hasty");
+        assertTrue(shard.store().load(player));
+        shard.store().admitted(player);
+        shard.store().get(player, PURSE).coins = 3;
+        shard.store().markDirty(player, PURSE);
+        // In the play state and queued to join, gone before the tick that would spawn it
+        enterPlay(env.process(), player, instance);
+
+        player.getPlayerConnection().disconnect();
+        await(env, () -> shard.store().loadedCount() == 0, "the logout save lets the player go");
+
+        final StoreFixture.Row saved = row(database, account);
+        assertNotNull(saved);
+        assertNull(saved.lease(), "the lease is given back");
+        assertEquals(1, saved.version(), "one write");
+        assertEquals("{\"note\": \"\", \"coins\": 3}", saved.purse());
+        final Player again = connect(env.process(), account, "Hasty");
+        assertTrue(shard.store().load(again), "the next login is not refused");
+        assertEquals(3, shard.store().get(again, PURSE).coins);
     }
 
     @Test

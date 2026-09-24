@@ -172,6 +172,15 @@ final class StoreFixture {
 
     /** Lets a connected player into the world, as the engine does once the admission gave an instance. */
     static void spawn(ServerProcess process, Player player, Instance instance) {
+        enterPlay(process, player, instance);
+        process.connection().updateWaitingPlayers();
+    }
+
+    /**
+     * Finishes a connected player's configuration and queues it to join, as a client acknowledging
+     * it does; it spawns on the next tick.
+     */
+    static void enterPlay(ServerProcess process, Player player, Instance instance) {
         player.eventNode().addListener(AsyncPlayerConfigurationEvent.class, event -> {
             event.setSpawningInstance(instance);
             event.getPlayer().setRespawnPoint(new Pos(0, 42, 0));
@@ -183,7 +192,6 @@ final class StoreFixture {
         final RecordingConnection connection = (RecordingConnection) player.getPlayerConnection();
         connection.setClientState(ConnectionState.PLAY);
         connection.setServerState(ConnectionState.PLAY);
-        process.connection().updateWaitingPlayers();
     }
 
     static List<String> messages(Player player) {

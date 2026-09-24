@@ -270,9 +270,11 @@ public abstract class PlayerConnection {
         final Player player = process.connection().getPlayer(this);
         if (player != null) {
             process.connection().removePlayer(this);
-            if (serverState == ConnectionState.PLAY && !player.isRemoved())
+            if (serverState == ConnectionState.PLAY && !player.isRemoved()) {
                 player.scheduleNextTick(Entity::remove);
-            else {
+                // Nothing ticks a player that has not spawned yet: the tick decides who reports it
+                process.connection().leftBeforeSpawn(player);
+            } else {
                 process.eventHandler().call(new PlayerDisconnectEvent(player));
                 EventsJFR.newPlayerLeave(player.getUuid()).commit();
             }

@@ -95,6 +95,8 @@ public record ServerConfig(
 
         // Entities
         boolean enforceInteractionLimit,
+        // docs/DESIGN-PROD.md API-PROD-019, 0 means no limit
+        int maxVisibleEntitiesPerPlayer,
 
         // Tick watchdog (docs/DESIGN-PROD.md API-PROD-013), in milliseconds, 0 turns the stage off
         long watchdogEarlyWarning,
@@ -145,6 +147,9 @@ public record ServerConfig(
         if (maxConnections < 1 || maxConnectionsPerIp < 1 || handshakeTimeout < 1)
             throw new IllegalArgumentException("maxConnections, maxConnectionsPerIp and handshakeTimeout must be at least 1 "
                     + "but were " + maxConnections + ", " + maxConnectionsPerIp + " and " + handshakeTimeout);
+        if (maxVisibleEntitiesPerPlayer < 0)
+            throw new IllegalArgumentException("maxVisibleEntitiesPerPlayer must not be negative but was "
+                    + maxVisibleEntitiesPerPlayer);
         if (acceptBackoff < 0 || maxPlayers < 0 || maxJoinsPerTick < 0)
             throw new IllegalArgumentException("acceptBackoff, maxPlayers and maxJoinsPerTick must not be negative but were "
                     + acceptBackoff + ", " + maxPlayers + " and " + maxJoinsPerTick);
@@ -248,6 +253,7 @@ public record ServerConfig(
                 .chunksPerTickMultiplier(floatProperty("synaxis.chunk-queue.multiplier", DEFAULTS.chunksPerTickMultiplier))
                 .viewablePacket(booleanProperty("synaxis.viewable-packet", DEFAULTS.viewablePacket))
                 .enforceInteractionLimit(booleanProperty("synaxis.enforce-entity-interaction-range", DEFAULTS.enforceInteractionLimit))
+                .maxVisibleEntitiesPerPlayer(intProperty("synaxis.max-visible-entities-per-player", DEFAULTS.maxVisibleEntitiesPerPlayer))
                 .watchdogEarlyWarning(longProperty("synaxis.watchdog.early-warning-ms", DEFAULTS.watchdogEarlyWarning))
                 .watchdogEarlyWarningEvery(longProperty("synaxis.watchdog.early-warning-every-ms", DEFAULTS.watchdogEarlyWarningEvery))
                 .watchdogTimeout(longProperty("synaxis.watchdog.timeout-ms", DEFAULTS.watchdogTimeout))
@@ -389,6 +395,7 @@ public record ServerConfig(
         private float chunksPerTickMultiplier = 1f;
         private boolean viewablePacket = true;
         private boolean enforceInteractionLimit = true;
+        private int maxVisibleEntitiesPerPlayer = 0; // 0 means no limit
         private long watchdogEarlyWarning = 10_000;
         private long watchdogEarlyWarningEvery = 5_000;
         private long watchdogTimeout = 60_000;
@@ -459,6 +466,7 @@ public record ServerConfig(
             this.chunksPerTickMultiplier = config.chunksPerTickMultiplier;
             this.viewablePacket = config.viewablePacket;
             this.enforceInteractionLimit = config.enforceInteractionLimit;
+            this.maxVisibleEntitiesPerPlayer = config.maxVisibleEntitiesPerPlayer;
             this.watchdogEarlyWarning = config.watchdogEarlyWarning;
             this.watchdogEarlyWarningEvery = config.watchdogEarlyWarningEvery;
             this.watchdogTimeout = config.watchdogTimeout;
@@ -750,6 +758,11 @@ public record ServerConfig(
             return this;
         }
 
+        public Builder maxVisibleEntitiesPerPlayer(int maxVisibleEntitiesPerPlayer) {
+            this.maxVisibleEntitiesPerPlayer = maxVisibleEntitiesPerPlayer;
+            return this;
+        }
+
         public Builder watchdogEarlyWarning(long watchdogEarlyWarning) {
             this.watchdogEarlyWarning = watchdogEarlyWarning;
             return this;
@@ -815,7 +828,7 @@ public record ServerConfig(
                     suppressMisusedPacketErrorLevel, rejectMalformedPacket, rejectMisusedPacket, socketSendBufferSize,
                     socketReceiveBufferSize, socketNoDelay, socketTimeout, pooledBufferSize, minChunksPerTick,
                     maxChunksPerTick, chunksPerTickMultiplier, viewablePacket, enforceInteractionLimit,
-                    watchdogEarlyWarning, watchdogEarlyWarningEvery, watchdogTimeout, watchdogHaltAfter,
+                    maxVisibleEntitiesPerPlayer, watchdogEarlyWarning, watchdogEarlyWarningEvery, watchdogTimeout, watchdogHaltAfter,
                     registryUnsafeOps, insideTest, fasterSocketWrites, proxyProtocol, proxyProtocolRequired,
                     proxyProtocolTrustedNetworks);
         }

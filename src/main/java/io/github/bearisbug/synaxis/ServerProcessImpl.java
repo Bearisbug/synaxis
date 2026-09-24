@@ -6,6 +6,7 @@ import io.github.bearisbug.synaxis.adventure.bossbar.BossBarManager;
 import io.github.bearisbug.synaxis.command.CommandManager;
 import io.github.bearisbug.synaxis.entity.Entity;
 import io.github.bearisbug.synaxis.entity.Player;
+import io.github.bearisbug.synaxis.entity.TrackingRanges;
 import io.github.bearisbug.synaxis.event.GlobalEventHandler;
 import io.github.bearisbug.synaxis.event.server.ServerTickMonitorEvent;
 import io.github.bearisbug.synaxis.exception.ExceptionManager;
@@ -78,6 +79,7 @@ final class ServerProcessImpl implements ServerProcess, Registries.Delegating {
     private final BossBarManager bossBar;
     private final ClickCallbackManager clickCallbackManager;
     private final Audiences audiences;
+    private final TrackingRanges trackingRanges = new TrackingRanges();
 
     private final Server server;
 
@@ -224,6 +226,11 @@ final class ServerProcessImpl implements ServerProcess, Registries.Delegating {
     @Override
     public ClickCallbackManager clickCallbackManager() {
         return clickCallbackManager;
+    }
+
+    @Override
+    public TrackingRanges trackingRanges() {
+        return trackingRanges;
     }
 
     @Override

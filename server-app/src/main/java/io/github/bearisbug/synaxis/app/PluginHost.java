@@ -162,7 +162,8 @@ final class PluginHost {
                     loaded.events(), scheduler,
                     new PluginChannelsImpl(id, router), new PluginAdmissionImpl(id, admission),
                     dataDirectory, ledger::record, playerData, playerData, permissions, moderation, commands,
-                    new PluginTabListImpl(id, tabList), LoggerFactory.getLogger("plugin." + id)));
+                    new PluginTabListImpl(id, tabList), process.trackingRanges()::setDefault,
+                    LoggerFactory.getLogger("plugin." + id)));
         } catch (Throwable throwable) {
             playerData.discard();
             LOGGER.error("Plugin failed to enable: plugin_id={}", id, throwable);

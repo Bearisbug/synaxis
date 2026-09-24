@@ -9,6 +9,7 @@ import io.github.bearisbug.synaxis.plugin.PluginAnalytics;
 import io.github.bearisbug.synaxis.plugin.PluginChannels;
 import io.github.bearisbug.synaxis.plugin.PluginCommands;
 import io.github.bearisbug.synaxis.plugin.PluginContext;
+import io.github.bearisbug.synaxis.plugin.PluginEntities;
 import io.github.bearisbug.synaxis.plugin.PluginEvents;
 import io.github.bearisbug.synaxis.plugin.PluginLifecycle;
 import io.github.bearisbug.synaxis.plugin.PluginScheduler;
@@ -33,12 +34,13 @@ import java.nio.file.Path;
  * @param moderation    the bans and the whitelist ({@code docs/DESIGN-PROD.md} API-PROD-009)
  * @param commands      the plugin's commands ({@code docs/DESIGN-PROD.md} API-PROD-011)
  * @param tabList       who appears in whose tab list ({@code docs/DESIGN-PROD.md} API-PROD-020)
+ * @param entities      the tracking ranges of the entity types ({@code docs/DESIGN-PROD.md} API-PROD-019)
  * @param logger        a logger named after the plugin
  */
 record PluginContextImpl(ServerProcess process, PluginEvents events, PluginScheduler scheduler,
                          PluginChannels channels, PluginAdmission admission, Path dataDirectory,
                          PluginAnalytics analytics, PlayerDataStore playerData, PluginLifecycle lifecycle,
                          Permissions permissions, Moderation moderation, PluginCommands commands, TabList tabList,
-                         Logger logger)
+                         PluginEntities entities, Logger logger)
         implements PluginContext {
 }

@@ -151,6 +151,19 @@ public interface PluginContext {
     }
 
     /**
+     * Tracking ranges of the entity types ({@code docs/DESIGN-PROD.md} API-PROD-019).
+     * <p>
+     * The host's context always has one; the default is there for the same reason as
+     * {@link #playerData()}'s.
+     *
+     * @return the entity visibility capability of this plugin
+     * @throws UnsupportedOperationException from a context that is not the host's
+     */
+    default PluginEntities entities() {
+        throw new UnsupportedOperationException("only the host's plugin context has entity settings");
+    }
+
+    /**
      * A logger named after this plugin.
      *
      * @return the logger of this plugin

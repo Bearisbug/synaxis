@@ -4,7 +4,9 @@ import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntIterator;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import it.unimi.dsi.fastutil.ints.IntSet;
+import io.github.bearisbug.synaxis.ServerProcess;
 import io.github.bearisbug.synaxis.coordinate.Point;
+import io.github.bearisbug.synaxis.coordinate.Pos;
 import io.github.bearisbug.synaxis.instance.EntityTracker;
 import io.github.bearisbug.synaxis.instance.Instance;
 import org.jetbrains.annotations.Nullable;
@@ -13,6 +15,7 @@ import java.util.AbstractSet;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
@@ -34,6 +37,12 @@ final class EntityView {
     private final Object mutex = this;
 
     private volatile @Nullable TrackedLocation trackedLocation;
+
+    /** How often a player applies the tracking ranges and the visible entity limit, see {@link #refreshVisibility}. */
+    static final int REFRESH_INTERVAL_TICKS = 5;
+    // Players only, guarded by the mutex: the auto viewed entities counted towards the visible
+    // entity limit, see #isCounted
+    private final IntSet counted = new IntOpenHashSet();
 
     public EntityView(Entity entity) {
         this.entity = entity;
@@ -76,10 +85,12 @@ final class EntityView {
                 if (!entity.isViewer(player) &&
                         player.getVehicle() != entity &&
                         entity.viewEngine.viewableOption.predicate(player) &&
-                        player.viewEngine.viewerOption.predicate(entity)) {
+                        player.viewEngine.viewerOption.predicate(entity) &&
+                        player.viewEngine.admits(entity, player)) {
 
                     entity.viewEngine.viewableOption.register(player);
                     player.viewEngine.viewerOption.register(entity);
+                    if (isCounted(entity)) player.viewEngine.counted.add(entity.getEntityId());
                     shouldAdd = true;
                 }
             }
@@ -99,6 +110,7 @@ final class EntityView {
             synchronized (lock2.viewEngine.mutex) {
                 entity.viewEngine.viewableOption.unregister(player);
                 player.viewEngine.viewerOption.unregister(entity);
+                player.viewEngine.counted.remove(entity.getEntityId());
             }
         }
         entity.updateOldViewer(player);
@@ -108,6 +120,122 @@ final class EntityView {
                 if (passenger != player) hideEntityFromPlayer(passenger, player);
             }
         }
+    }
+
+    /**
+     * Whether {@code player} may take {@code entity} in on top of what it already sees. Called with
+     * both view mutexes held, this being the player's view.
+     */
+    private boolean admits(Entity entity, Player player) {
+        // Removed on another tick thread after the caller picked it: its removal already went past
+        // this player, nothing would destroy it on the client
+        if (entity.isRemoved()) return false;
+        // A passenger comes and goes with its vehicle, which is shown before its passengers
+        final Entity vehicle = entity.getVehicle();
+        if (vehicle != null) return vehicle == player || vehicle == player.getVehicle() || viewerOption.isRegistered(vehicle);
+        if (!withinRange(entity, player)) return false;
+        if (entity.isAlwaysVisible()) return true;
+        final int limit = player.process().config().maxVisibleEntitiesPerPlayer();
+        return limit == 0 || counted.size() < limit;
+    }
+
+    /** Whether {@code entity} counts towards the visible entity limit of the players seeing it. */
+    private static boolean isCounted(Entity entity) {
+        return entity.getVehicle() == null && !entity.isAlwaysVisible();
+    }
+
+    private static boolean withinRange(Entity entity, Player player) {
+        TrackingRange range = entity.getTrackingRange();
+        if (range == null) {
+            final ServerProcess process = entity.process();
+            if (process == null) return true;
+            range = process.trackingRanges().getDefault(entity.getEntityType());
+            if (range == null) return true;
+        }
+        final Pos at = entity.getPosition();
+        final Pos from = player.getPosition();
+        return range.contains(at.x() - from.x(), at.y() - from.y(), at.z() - from.z());
+    }
+
+    /**
+     * Applies the tracking ranges and the visible entity limit ({@code docs/DESIGN-PROD.md}
+     * {@code API-PROD-019}) to what this player sees, every {@value #REFRESH_INTERVAL_TICKS} ticks
+     * of its own, on its tick thread.
+     * <p>
+     * The tracker only reports an entity when it crosses a chunk border, and {@link #admits} turns
+     * away whatever does not fit at that moment: this pass drops what went out of range or was
+     * pushed out by nearer ones, and takes in what came into range or now fits. The players are
+     * spread over the interval by entity id, so that the passes do not all land on the same tick.
+     * A process with neither a range nor a limit skips it.
+     *
+     * @param aliveTicks the ticks this player has been alive for
+     */
+    void refreshVisibility(long aliveTicks) {
+        if ((aliveTicks + entity.getEntityId()) % REFRESH_INTERVAL_TICKS != 0) return;
+        if (!(entity instanceof Player player) || !viewerOption.isAuto()) return;
+        final TrackedLocation trackedLocation = this.trackedLocation;
+        if (trackedLocation == null) return;
+        final ServerProcess process = trackedLocation.instance().process();
+        final int limit = process.config().maxVisibleEntitiesPerPlayer();
+        if (limit == 0 && !process.trackingRanges().inUse()) return;
+
+        final Pos origin = player.getPosition();
+        final List<Entity> candidates = viewerOption.select(Entity::isAutoViewable);
+        final List<Entity> always = new ArrayList<>();
+        final List<Nearby> nearby = new ArrayList<>();
+        for (Entity candidate : candidates) {
+            if (!candidate.viewEngine.viewableOption.predicate(player) || !viewerOption.predicate(candidate)) continue;
+            // The player's own vehicle is never taken away from it
+            if (candidate != player.getVehicle() && !withinRange(candidate, player)) continue;
+            if (candidate.isAlwaysVisible() || candidate == player.getVehicle()) always.add(candidate);
+            else nearby.add(new Nearby(candidate, candidate.getPosition().distanceSquared(origin)));
+        }
+        if (limit > 0 && nearby.size() > limit) {
+            nearby.sort(Comparator.comparingDouble(Nearby::distanceSquared));
+            nearby.subList(limit, nearby.size()).clear();
+        }
+        final IntSet wanted = new IntOpenHashSet(always.size() + nearby.size());
+        for (Entity visible : always) wanted.add(visible.getEntityId());
+        for (Nearby visible : nearby) wanted.add(visible.entity().getEntityId());
+
+        final IntSet registered;
+        synchronized (mutex) {
+            registered = new IntOpenHashSet(viewerOption.bitSet);
+        }
+        // Out first, so that the ones kept and the nearer ones taken in fit under the limit
+        for (Entity candidate : candidates) {
+            final int id = candidate.getEntityId();
+            if (registered.contains(id) && !wanted.contains(id)) hideEntityFromPlayer(candidate, player);
+        }
+        // A passenger taken in on its own before it mounted is not a candidate, it leaves with a
+        // vehicle the player does not see
+        final List<Entity> stranded = new ArrayList<>();
+        synchronized (mutex) {
+            for (IntIterator it = viewerOption.bitSet.intIterator(); it.hasNext(); ) {
+                final Entity seen = trackedLocation.instance().getEntityById(it.nextInt());
+                if (seen == null) continue;
+                final Entity vehicle = seen.getVehicle();
+                if (vehicle != null && vehicle != player && vehicle != player.getVehicle()
+                        && !viewerOption.isRegistered(vehicle)) stranded.add(seen);
+            }
+        }
+        for (Entity passenger : stranded) hideEntityFromPlayer(passenger, player);
+        synchronized (mutex) {
+            counted.clear();
+            for (Nearby visible : nearby) {
+                final int id = visible.entity().getEntityId();
+                if (viewerOption.bitSet.contains(id)) counted.add(id);
+            }
+        }
+        for (Entity visible : always) {
+            if (!registered.contains(visible.getEntityId())) showEntityToPlayer(visible, player);
+        }
+        for (Nearby visible : nearby) {
+            if (!registered.contains(visible.entity().getEntityId())) showEntityToPlayer(visible.entity(), player);
+        }
+    }
+
+    private record Nearby(Entity entity, double distanceSquared) {
     }
 
     public void updateTracker(@Nullable Instance instance, Point point) {
@@ -149,8 +277,13 @@ final class EntityView {
     public boolean hasPredictableViewers() {
         // Verify if this entity's viewers can be predicted from surrounding entities
         synchronized (mutex) {
-            return viewableOption.isAuto() && viewableOption.predicate == null && manualViewers.isEmpty();
+            if (!viewableOption.isAuto() || viewableOption.predicate != null || !manualViewers.isEmpty()) return false;
         }
+        // A tracking range or the visible entity limit keeps some of the players around from seeing
+        // it, while a packet for the players around its chunk would reach all of them
+        final ServerProcess process = entity.process();
+        return process == null
+                || (process.config().maxVisibleEntitiesPerPlayer() == 0 && !process.trackingRanges().inUse());
     }
 
     public void handleAutoViewAddition(Entity entity) {

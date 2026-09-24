@@ -201,6 +201,8 @@ public class Entity implements Viewable, Tickable, Schedulable, EventHandler<Ent
 
     @SuppressWarnings("this-escape") // deliberate self registration, entities are not usable until spawned
     protected final EntityView viewEngine = new EntityView(this);
+    private volatile @Nullable TrackingRange trackingRange;
+    private volatile boolean alwaysVisible;
     protected final Set<Player> viewers = viewEngine.set;
     private final TagHandler tagHandler = TagHandler.newHandler();
     @SuppressWarnings("this-escape") // deliberate self registration, entities are not usable until spawned
@@ -286,6 +288,7 @@ public class Entity implements Viewable, Tickable, Schedulable, EventHandler<Ent
         Check.stateCondition(this.process != null, "Entity is already bound to another server process");
         this.eventNode = process.eventHandler().map(this, EventFilter.ENTITY);
         this.process = process;
+        if (trackingRange != null) process.trackingRanges().markInUse();
         this.synchronizationTicks = process.config().entitySynchronizationTicks();
         this.nextSynchronizationTick = this.synchronizationTicks;
     }
@@ -602,6 +605,54 @@ public class Entity implements Viewable, Tickable, Schedulable, EventHandler<Ent
 
     public void updateViewerRule() {
         this.viewEngine.viewerOption.updateRule();
+    }
+
+    /**
+     * Gets the tracking range set on this entity by {@link #setTrackingRange(double, double)}.
+     *
+     * @return the range of this entity, null if it follows the default of its type
+     * @see TrackingRanges
+     */
+    public @Nullable TrackingRange getTrackingRange() {
+        return trackingRange;
+    }
+
+    /**
+     * Sets how far away players see this entity, overriding the default of its type
+     * ({@code docs/DESIGN-PROD.md} {@code API-PROD-019}). Players pick the change up within
+     * 5 ticks.
+     *
+     * @param horizontal the horizontal distance in blocks, positive
+     * @param vertical   the vertical distance in blocks, positive
+     * @throws IllegalArgumentException if a distance is not positive
+     * @see TrackingRange
+     */
+    public void setTrackingRange(double horizontal, double vertical) {
+        this.trackingRange = new TrackingRange(horizontal, vertical);
+        final ServerProcess process = this.process;
+        if (process != null) process.trackingRanges().markInUse();
+    }
+
+    /**
+     * Gets whether this entity is left out of the per player visible entity limit.
+     *
+     * @return true if this entity is always visible within its tracking range
+     * @see #setAlwaysVisible(boolean)
+     */
+    public boolean isAlwaysVisible() {
+        return alwaysVisible;
+    }
+
+    /**
+     * Leaves this entity out of {@link io.github.bearisbug.synaxis.ServerConfig#maxVisibleEntitiesPerPlayer()}
+     * ({@code docs/DESIGN-PROD.md} {@code API-PROD-019}): it is neither counted nor dropped for being
+     * too far, such as a teammate, a target or a boss. Its tracking range still applies. Players pick
+     * the change up within 5 ticks.
+     *
+     * @param alwaysVisible true to leave this entity out of the limit
+     */
+    public void setAlwaysVisible(boolean alwaysVisible) {
+        this.alwaysVisible = alwaysVisible;
     }
 
     @Override

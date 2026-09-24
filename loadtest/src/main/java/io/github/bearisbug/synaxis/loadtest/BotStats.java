@@ -43,6 +43,8 @@ final class BotStats {
     final Map<String, LongAdder> outboundByPacket = new ConcurrentHashMap<>();
     final Histogram outboundPerSecond = new Histogram(1);
     final Histogram outboundPerSevenSeconds = new Histogram(1);
+    /** The entities a bot sees, one sample per bot in play per second. */
+    final Histogram visibleEntities = new Histogram(1);
 
     final LongAdder loggedIn = new LongAdder();
     final LongAdder lost = new LongAdder();

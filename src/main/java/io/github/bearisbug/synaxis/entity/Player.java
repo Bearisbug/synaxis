@@ -509,6 +509,8 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
 
         updatePose();
 
+        viewEngine.refreshVisibility(getAliveTicks());
+
         // Tick event
         process().eventHandler().call(new PlayerTickEvent(this));
     }

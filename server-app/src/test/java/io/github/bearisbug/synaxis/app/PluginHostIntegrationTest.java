@@ -2,7 +2,9 @@ package io.github.bearisbug.synaxis.app;
 
 import ch.qos.logback.classic.Level;
 import io.github.bearisbug.synaxis.coordinate.Pos;
+import io.github.bearisbug.synaxis.entity.EntityType;
 import io.github.bearisbug.synaxis.entity.Player;
+import io.github.bearisbug.synaxis.entity.TrackingRange;
 import io.github.bearisbug.synaxis.event.Event;
 import io.github.bearisbug.synaxis.event.player.PlayerPluginMessageEvent;
 import io.github.bearisbug.synaxis.instance.Instance;
@@ -513,6 +515,28 @@ class PluginHostIntegrationTest {
         assertTrue(lines.getFirst().contains("\"plugin_enabled\""), lines.getFirst());
         assertTrue(lines.getFirst().contains("\"plugin_id\":\"probe\""), lines.getFirst());
         assertTrue(lines.getFirst().contains("\"enable_ms\""), lines.getFirst());
+    }
+
+    /** {@code docs/DESIGN-PROD.md} API-PROD-019: a plugin's category range lands in the process table. */
+    @Test
+    void aPluginSetsTheTrackingRangeOfAnEntityType(Env env) {
+        final PluginHost host = host(env);
+        host.enable(List.of(new SynaxisPlugin() {
+            @Override
+            public PluginDescriptor descriptor() {
+                return new PluginDescriptor("ranges", "1.0.0", PluginApi.API_VERSION);
+            }
+
+            @Override
+            public void onEnable(PluginContext ctx) {
+                ctx.entities().setDefaultTrackingRange(EntityType.ITEM, 24, 8);
+            }
+        }), Set.of());
+        try {
+            assertEquals(new TrackingRange(24, 8), env.process().trackingRanges().getDefault(EntityType.ITEM));
+        } finally {
+            host.disableAll();
+        }
     }
 
     private List<String> readLedger() {

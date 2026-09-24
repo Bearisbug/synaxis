@@ -80,6 +80,9 @@ final class MergeCommand {
         final Map<String, Long> c2sByPacket = new TreeMap<>();
         final Histogram perSecond = new Histogram(1);
         final Histogram perSeven = new Histogram(1);
+        // Absent from the files of a harness that did not count them yet
+        final Histogram visible = new Histogram(1);
+        boolean countedVisible = false;
         for (JsonObject file : bots) {
             profiles.add(file.get("profile"));
             final JsonObject cost = file.getAsJsonObject("harness").deepCopy();
@@ -96,6 +99,10 @@ final class MergeCommand {
                 login.computeIfAbsent(mode.getKey(), _ -> new Histogram(0.1))
                         .merge(Histogram.fromJson(mode.getValue().getAsJsonObject()));
             batches.merge(Histogram.fromJson(file.getAsJsonObject("chunk_batch_rtt_ms")));
+            if (file.has("visible_entities")) {
+                visible.merge(Histogram.fromJson(file.getAsJsonObject("visible_entities")));
+                countedVisible = true;
+            }
             batchCount += file.get("chunk_batches").getAsLong();
             final JsonObject inbound = file.getAsJsonObject("inbound");
             inboundPackets += inbound.get("packets").getAsLong();
@@ -150,6 +157,7 @@ final class MergeCommand {
         summary.add("inbound", inbound);
         summary.add("chunk_batch_rtt_ms", batches.distribution("_ms"));
         summary.addProperty("chunk_batches", batchCount);
+        if (countedVisible) summary.add("visible_entities", visible.distribution(""));
         final JsonObject c2s = new JsonObject();
         c2s.addProperty("packets", c2sPackets);
         c2s.addProperty("packets_per_s_per_bot", connectionSeconds == 0 ? 0 : Histogram.round(c2sPackets / connectionSeconds));

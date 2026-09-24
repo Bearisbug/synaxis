@@ -37,7 +37,7 @@ public class BotSocketTest {
     @Test
     @Timeout(90)
     public void walkingBotsAcknowledgeChunkBatchesAndGetMoreThanTheFirstNine(@TempDir Path directory) throws Exception {
-        final JsonObject run = runAgainst(new Auth.Offline(false), "off", false, directory.resolve("bots-0.json"));
+        final JsonObject run = runAgainst(new Auth.Offline(false), "off", false, 0, directory.resolve("bots-0.json"));
         assertEquals(BOTS, run.getAsJsonObject("bots").get("logged_in").getAsInt(), run.toString());
         assertEquals(0, run.getAsJsonObject("bots").get("lost").getAsInt(), run.toString());
         final JsonObject walk = run.getAsJsonObject("inbound").getAsJsonObject("chunks").getAsJsonObject("walk");
@@ -63,7 +63,7 @@ public class BotSocketTest {
     @Test
     @Timeout(90)
     public void botsAnswerTheEncryptionRequestOfAnEncryptingServer(@TempDir Path directory) throws Exception {
-        final JsonObject run = runAgainst(new Auth.Offline(true), "on", false, directory.resolve("bots-0.json"));
+        final JsonObject run = runAgainst(new Auth.Offline(true), "on", false, 0, directory.resolve("bots-0.json"));
         assertEquals(BOTS, run.getAsJsonObject("bots").get("logged_in").getAsInt(), run.toString());
         assertEquals(BOTS, Histogram.fromJson(run.getAsJsonObject("login_latency_ms").getAsJsonObject("on")).count());
         assertTrue(Histogram.fromJson(run.getAsJsonObject("inbound").getAsJsonObject("chunks").getAsJsonObject("walk")
@@ -73,15 +73,29 @@ public class BotSocketTest {
     @Test
     @Timeout(90)
     public void aBotTheServerKicksCountsAsLostWithTheReason(@TempDir Path directory) throws Exception {
-        final JsonObject run = runAgainst(new Auth.Offline(false), "off", true, directory.resolve("bots-0.json"));
+        final JsonObject run = runAgainst(new Auth.Offline(false), "off", true, 0, directory.resolve("bots-0.json"));
         assertEquals(BOTS, run.getAsJsonObject("bots").get("logged_in").getAsInt(), run.toString());
         assertEquals(BOTS, run.getAsJsonObject("bots").get("lost").getAsInt(), run.toString());
         assertEquals(BOTS, run.getAsJsonObject("kicks_by_reason").get(KICK).getAsInt(), run.toString());
     }
 
-    private static JsonObject runAgainst(Auth auth, String encryption, boolean kick, Path out) throws Exception {
+    /** Each bot counts the players it is shown; with a limit of 1 the server shows it one of the other two. */
+    @Test
+    @Timeout(90)
+    public void botsCountTheEntitiesTheServerShowsThem(@TempDir Path directory) throws Exception {
+        final Histogram all = Histogram.fromJson(runAgainst(new Auth.Offline(false), "off", false, 0,
+                directory.resolve("bots-0.json")).getAsJsonObject("visible_entities"));
+        assertEquals(BOTS - 1, all.max(), "every bot sees the other two");
+        final Histogram limited = Histogram.fromJson(runAgainst(new Auth.Offline(false), "off", false, 1,
+                directory.resolve("bots-1.json")).getAsJsonObject("visible_entities"));
+        assertEquals(1, limited.max(), "a limit of 1 shows one of the other two");
+    }
+
+    private static JsonObject runAgainst(Auth auth, String encryption, boolean kick, int maxVisibleEntities, Path out)
+            throws Exception {
         final ServerProcess process = ServerProcess.of(auth, ServerConfig.builder()
-                .connectionGateTrustedNetworks("127.0.0.0/8").chunkViewDistance(4).build());
+                .connectionGateTrustedNetworks("127.0.0.0/8").chunkViewDistance(4)
+                .maxVisibleEntitiesPerPlayer(maxVisibleEntities).build());
         final InstanceContainer world = process.instance().createInstanceContainer();
         world.setGenerator(unit -> unit.modifier().fillHeight(0, 40, Block.STONE));
         process.eventHandler().addListener(AsyncPlayerConfigurationEvent.class, event -> {

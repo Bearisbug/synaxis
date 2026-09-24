@@ -5,6 +5,7 @@ import io.github.bearisbug.synaxis.adventure.audience.Audiences;
 import io.github.bearisbug.synaxis.adventure.bossbar.BossBarManager;
 import io.github.bearisbug.synaxis.command.CommandManager;
 import io.github.bearisbug.synaxis.entity.Entity;
+import io.github.bearisbug.synaxis.entity.TrackingRanges;
 import io.github.bearisbug.synaxis.event.GlobalEventHandler;
 import io.github.bearisbug.synaxis.exception.ExceptionManager;
 import io.github.bearisbug.synaxis.instance.Chunk;
@@ -162,6 +163,11 @@ public interface ServerProcess extends Registries {
      * Adventure audiences backed by this process.
      */
     Audiences audiences();
+
+    /**
+     * The default tracking range of each entity type ({@code docs/DESIGN-PROD.md} {@code API-PROD-019}).
+     */
+    TrackingRanges trackingRanges();
 
     /**
      * The server brand name shown by the client (F3 screen).

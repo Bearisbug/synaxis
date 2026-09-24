@@ -12,6 +12,9 @@ include("plugin-api")
 include("server-app")
 include("game-rts")
 
+// The offline map baker (docs/DESIGN-M3.md §6, API-M3-003): an engine side tool, the engine never depends on it
+include("baker")
+
 // The load test harness (docs/DESIGN-PROD.md ADR-PROD-013): a tool, never published
 include("loadtest")
 

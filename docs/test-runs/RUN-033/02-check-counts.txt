@@ -1,0 +1,12 @@
+# test result XML written after 2026-09-25 04:18:59 (check --rerun-tasks of 01-check.txt)
+build                suites=410 tests=3066 skipped=15 failures=0 errors=0
+architecture-tests   suites=4 tests=16 skipped=0 failures=0 errors=0
+baker                suites=4 tests=46 skipped=0 failures=0 errors=0
+game-rts             suites=12 tests=83 skipped=0 failures=0 errors=0
+loadtest             suites=3 tests=10 skipped=0 failures=0 errors=0
+plugin-api           suites=2 tests=14 skipped=0 failures=0 errors=0
+protocol             suites=4 tests=78 skipped=0 failures=0 errors=0
+server-app           suites=42 tests=266 skipped=77 failures=0 errors=0
+synx                 suites=7 tests=42 skipped=0 failures=0 errors=0
+testing              suites=7 tests=10 skipped=0 failures=0 errors=0
+total tests=3631 skipped=92 failures=0 errors=0

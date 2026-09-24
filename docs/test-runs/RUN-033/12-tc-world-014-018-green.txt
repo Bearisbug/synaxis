@@ -1,0 +1,149 @@
+# 2026-09-25 04:33:05 HEAD 7d4c5867bd load { 7.71 6.28 8.56 }
+# git status: 
+# ./gradlew :synx:test :architecture-tests:test -Dsynaxis.synx.require-frozen-zlib=true --rerun-tasks --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/9.7.1/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build 
+Isolated Projects is an incubating feature.
+Calculating task graph as no cached configuration is available for tasks: :synx:test :architecture-tests:test
+Caught exception: Could not start the FSEvents stream: /Users/bug/Documents/Projects/Minecraft/synaxis-wt/m3b-integrate
+
+> Configure project :build-src
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by build file 'build-src/build.gradle.kts'
+Build was configured to prefer settings repositories over project repositories but repository 'Gradle Central Plugin Repository' was added by build file 'build-src/build.gradle.kts'
+
+> Task :build-src:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :build-src:generateEntrypointForConventions
+> Task :build-src:generateEntrypointForConventionsInPluginsBlock
+> Task :build-src:generateEntrypointForLibs
+> Task :build-src:generateEntrypointForLibsInPluginsBlock
+> Task :build-src:generateExternalPluginSpecBuilders
+> Task :build-src:generateLibrariesForConventions
+> Task :build-src:generateLibrariesForLibs
+> Task :build-src:extractPrecompiledScriptPluginPlugins
+> Task :build-src:generateScriptPluginAdapters
+> Task :build-src:verifyEarlyEvaluatedBuild
+> Task :build-src:verifyTopLevelBuild
+> Task :build-src:pluginDescriptors
+> Task :build-src:processResources
+> Task :build-src:compilePluginsBlocks
+> Task :build-src:generatePrecompiledScriptPluginAccessors
+> Task :build-src:compileKotlin
+> Task :build-src:compileJava
+> Task :build-src:classes
+> Task :build-src:jar
+
+> Configure project :
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by plugin 'synaxis.java-library'
+
+> Configure project :architecture-tests
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by plugin 'synaxis.java-library'
+
+> Configure project :game-rts
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by plugin 'synaxis.java-library'
+
+> Configure project :synx
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by plugin 'synaxis.java-library'
+
+> Configure project :loadtest
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by plugin 'synaxis.java-library'
+
+> Configure project :protocol
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by plugin 'synaxis.java-library'
+
+> Configure project :baker
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by plugin 'synaxis.java-library'
+
+> Configure project :testing
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by plugin 'synaxis.java-library'
+
+> Configure project :plugin-api
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by plugin 'synaxis.java-library'
+
+> Configure project :server-app
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by plugin 'synaxis.java-library'
+
+> Configure project :jcstress-tests
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by plugin 'synaxis.java-library'
+
+> Configure project :jmh-benchmarks
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by plugin 'synaxis.java-library'
+
+> Task :plugin-api:processResources NO-SOURCE
+> Task :architecture-tests:processTestResources NO-SOURCE
+> Task :protocol:processResources NO-SOURCE
+> Task :testing:processResources NO-SOURCE
+> Task :synx:processResources NO-SOURCE
+> Task :architecture-tests:compileJava NO-SOURCE
+> Task :baker:processResources
+> Task :architecture-tests:processResources NO-SOURCE
+> Task :architecture-tests:classes UP-TO-DATE
+> Task :game-rts:processResources
+> Task :synx:processTestResources
+> Task :server-app:buildInfo
+> Task :server-app:processResources
+> Task :generateJavaTemplates
+> Task :processResources
+
+> Task :protocol:compileJava
+
+> Task :protocol:classes
+> Task :protocol:jar
+
+> Task :compileJava
+
+> Task :classes
+> Task :jar
+> Task :plugin-api:compileJava
+> Task :plugin-api:classes
+> Task :plugin-api:jar
+> Task :synx:compileJava
+> Task :synx:classes
+> Task :synx:jar
+> Task :testing:compileJava
+> Task :testing:classes
+> Task :testing:jar
+> Task :baker:compileJava
+> Task :baker:classes
+> Task :baker:jar
+> Task :synx:compileTestJava
+> Task :synx:testClasses
+
+> Task :server-app:compileJava
+
+> Task :game-rts:compileJava
+> Task :game-rts:classes
+> Task :game-rts:jar
+
+> Task :synx:test
+
+> Task :server-app:classes
+> Task :server-app:jar
+> Task :architecture-tests:compileTestJava
+> Task :architecture-tests:testClasses
+
+> Task :architecture-tests:test
+
+[Incubating] Problems report is available at: file:///Users/bug/Documents/Projects/Minecraft/synaxis-wt/m3b-integrate/build/reports/problems/problems-report.html
+
+Deprecated Gradle features were used in this build, making it incompatible with Gradle 10.
+
+You can use '--warning-mode all' to show the individual deprecation warnings and determine if they come from your own scripts or plugins.
+
+For more on this, please refer to https://docs.gradle.org/9.7.1/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.
+
+BUILD SUCCESSFUL in 33s
+45 actionable tasks: 45 executed
+Configuration cache entry stored.
+# gradle exit 0
+# result XML written after 2026-09-25 04:33:05:
+synx/build/test-results/test/TEST-io.github.bearisbug.synaxis.synx.SynxBuildVerifierTest.xml: tests="9" skipped="0" failures="0" errors="0"
+synx/build/test-results/test/TEST-io.github.bearisbug.synaxis.synx.SynxChunkPacketTest.xml: tests="6" skipped="0" failures="0" errors="0"
+synx/build/test-results/test/TEST-io.github.bearisbug.synaxis.synx.SynxEdgeVectorTest.xml: tests="8" skipped="0" failures="0" errors="0"
+synx/build/test-results/test/TEST-io.github.bearisbug.synaxis.synx.SynxEntitiesTest.xml: tests="2" skipped="0" failures="0" errors="0"
+synx/build/test-results/test/TEST-io.github.bearisbug.synaxis.synx.SynxManifestTest.xml: tests="4" skipped="0" failures="0" errors="0"
+synx/build/test-results/test/TEST-io.github.bearisbug.synaxis.synx.SynxRegionWriterTest.xml: tests="9" skipped="0" failures="0" errors="0"
+synx/build/test-results/test/TEST-io.github.bearisbug.synaxis.synx.SynxVectorTest.xml: tests="4" skipped="0" failures="0" errors="0"
+architecture-tests/build/test-results/test/TEST-io.github.bearisbug.synaxis.architecture.BakerArchitectureTest.xml: tests="4" skipped="0" failures="0" errors="0"
+architecture-tests/build/test-results/test/TEST-io.github.bearisbug.synaxis.architecture.EngineInternalsArchitectureTest.xml: tests="5" skipped="0" failures="0" errors="0"
+architecture-tests/build/test-results/test/TEST-io.github.bearisbug.synaxis.architecture.PersistenceBoundaryArchitectureTest.xml: tests="2" skipped="0" failures="0" errors="0"
+architecture-tests/build/test-results/test/TEST-io.github.bearisbug.synaxis.architecture.SynxInternalSurfaceArchitectureTest.xml: tests="5" skipped="0" failures="0" errors="0"

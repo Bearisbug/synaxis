@@ -1,0 +1,21 @@
+# 2026-09-25 04:37:07 bash tools/anvil-fixture/gen.sh; load { 6.22 6.59 8.20 }
+proto chunk 3,0 Status=minecraft:initialize_light
+/Users/bug/Documents/Projects/Minecraft/synaxis-wt/m3b-integrate/baker/src/test/resources/io/github/bearisbug/synaxis/baker/anvil/world/dimensions/minecraft/overworld/entities:
+total 24
+-rw-r--r--@ 1 bug  staff  12288 Sep 25 04:37 r.0.0.mca
+
+/Users/bug/Documents/Projects/Minecraft/synaxis-wt/m3b-integrate/baker/src/test/resources/io/github/bearisbug/synaxis/baker/anvil/world/dimensions/minecraft/overworld/region:
+total 32
+-rw-r--r--@ 1 bug  staff  16384 Sep 25 04:37 r.0.0.mca
+# exit 0
+# sizes:
+12288 baker/src/test/resources/io/github/bearisbug/synaxis/baker/anvil/world/dimensions/minecraft/overworld/entities/r.0.0.mca
+16384 baker/src/test/resources/io/github/bearisbug/synaxis/baker/anvil/world/dimensions/minecraft/overworld/region/r.0.0.mca
+# git status --short:
+ M baker/src/test/resources/io/github/bearisbug/synaxis/baker/anvil/world/dimensions/minecraft/overworld/entities/r.0.0.mca
+ M baker/src/test/resources/io/github/bearisbug/synaxis/baker/anvil/world/dimensions/minecraft/overworld/region/r.0.0.mca
+ M docs/DESIGN-M3.md
+ M docs/MAP-SOURCE.md
+?? docs/test-runs/RUN-033/
+# $TMPDIR anvil-fixture leftovers:
+none

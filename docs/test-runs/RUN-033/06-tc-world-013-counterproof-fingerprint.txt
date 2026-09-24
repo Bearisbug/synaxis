@@ -1,0 +1,54 @@
+# 2026-09-25 04:31:45 HEAD 7d4c5867bd load { 5.29 5.90 8.68 }
+# git status:  M src/main/resources/io/github/bearisbug/synaxis/instance/light/verified-light-versions.txt 
+# ./gradlew :test --tests io.github.bearisbug.synaxis.instance.light.LightEngineVersionTest --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/9.7.1/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build 
+Isolated Projects is an incubating feature.
+Reusing configuration cache.
+> Task :protocol:processResources NO-SOURCE
+> Task :testing:processResources NO-SOURCE
+> Task :plugin-api:processResources NO-SOURCE
+
+> Task :generateJavaTemplates UP-TO-DATE
+Caught exception: Could not start the FSEvents stream: /Users/bug/Documents/Projects/Minecraft/synaxis-wt/m3b-integrate
+
+> Task :processTestResources UP-TO-DATE
+> Task :protocol:compileJava UP-TO-DATE
+> Task :protocol:classes UP-TO-DATE
+> Task :protocol:jar UP-TO-DATE
+> Task :processResources
+> Task :compileJava UP-TO-DATE
+> Task :classes
+> Task :jar
+> Task :plugin-api:compileJava UP-TO-DATE
+> Task :plugin-api:classes UP-TO-DATE
+> Task :plugin-api:jar UP-TO-DATE
+> Task :testing:compileJava UP-TO-DATE
+> Task :testing:classes UP-TO-DATE
+> Task :testing:jar UP-TO-DATE
+> Task :compileTestJava UP-TO-DATE
+> Task :testClasses UP-TO-DATE
+
+> Task :test FAILED
+
+LightEngineVersionTest > theCurrentVersionIsVerifiedWithTheCurrentOutput() FAILED
+    org.opentest4j.AssertionFailedError at LightEngineVersionTest.java:44
+
+2 tests completed, 1 failed
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':test'.
+> There were failing tests. See the report at: file:///Users/bug/Documents/Projects/Minecraft/synaxis-wt/m3b-integrate/build/reports/tests/test/index.html
+
+* Try:
+> Run with --scan to get full insights from a Build Scan (powered by Develocity).
+
+BUILD FAILED in 3s
+13 actionable tasks: 3 executed, 10 up-to-date
+Configuration cache entry reused.
+# gradle exit 1
+# result XML written after 2026-09-25 04:31:45:
+build/test-results/test/TEST-io.github.bearisbug.synaxis.instance.light.LightEngineVersionTest.xml: tests="2" skipped="0" failures="1" errors="0"
+    <failure message="org.opentest4j.AssertionFailedError: the light output changed but LightEngine.VERSION is still 1; raise it to 2 and, once LightParityIntegrationTest is green, add the line &quot;2 99599a206d62b26305e09dcf10583981d563fd57a550ff6e2fd22ebcfd5f4574&quot; to verified-light-versions.txt ==&gt; expected: &lt;99599b206d62b26305e09dcf10583981d563fd57a550ff6e2fd22ebcfd5f4574&gt; but was: &

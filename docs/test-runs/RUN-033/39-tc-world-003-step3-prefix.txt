@@ -1,0 +1,166 @@
+# 2026-09-25 04:44:00 HEAD 7d4c5867bd load { 8.06 8.30 8.41 }
+# git status: M  src/main/java/io/github/bearisbug/synaxis/instance/LightingChunk.java M  src/main/java/io/github/bearisbug/synaxis/instance/light/LightCompute.java 
+# ./gradlew :test --tests io.github.bearisbug.synaxis.instance.light.LightDampeningIntegrationTest --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/9.7.1/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build 
+Isolated Projects is an incubating feature.
+Calculating task graph as no cached configuration is available for tasks: :test --tests io.github.bearisbug.synaxis.instance.light.LightDampeningIntegrationTest
+Caught exception: Could not start the FSEvents stream: /Users/bug/Documents/Projects/Minecraft/synaxis-wt/m3b-integrate
+
+> Configure project :build-src
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by build file 'build-src/build.gradle.kts'
+Build was configured to prefer settings repositories over project repositories but repository 'Gradle Central Plugin Repository' was added by build file 'build-src/build.gradle.kts'
+
+> Task :build-src:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :build-src:generateEntrypointForConventions UP-TO-DATE
+> Task :build-src:generateEntrypointForConventionsInPluginsBlock UP-TO-DATE
+> Task :build-src:generateEntrypointForLibs UP-TO-DATE
+> Task :build-src:generateEntrypointForLibsInPluginsBlock UP-TO-DATE
+> Task :build-src:generateExternalPluginSpecBuilders UP-TO-DATE
+> Task :build-src:generateLibrariesForConventions UP-TO-DATE
+> Task :build-src:generateLibrariesForLibs UP-TO-DATE
+> Task :build-src:extractPrecompiledScriptPluginPlugins UP-TO-DATE
+> Task :build-src:compilePluginsBlocks UP-TO-DATE
+> Task :build-src:generatePrecompiledScriptPluginAccessors UP-TO-DATE
+> Task :build-src:generateScriptPluginAdapters UP-TO-DATE
+> Task :build-src:verifyEarlyEvaluatedBuild UP-TO-DATE
+> Task :build-src:verifyTopLevelBuild UP-TO-DATE
+> Task :build-src:compileKotlin UP-TO-DATE
+> Task :build-src:compileJava UP-TO-DATE
+> Task :build-src:pluginDescriptors UP-TO-DATE
+> Task :build-src:processResources UP-TO-DATE
+> Task :build-src:classes UP-TO-DATE
+> Task :build-src:jar UP-TO-DATE
+
+> Configure project :
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by plugin 'synaxis.java-library'
+
+> Configure project :architecture-tests
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by plugin 'synaxis.java-library'
+
+> Configure project :game-rts
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by plugin 'synaxis.java-library'
+
+> Configure project :synx
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by plugin 'synaxis.java-library'
+
+> Configure project :plugin-api
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by plugin 'synaxis.java-library'
+
+> Configure project :testing
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by plugin 'synaxis.java-library'
+
+> Configure project :protocol
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by plugin 'synaxis.java-library'
+
+> Configure project :loadtest
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by plugin 'synaxis.java-library'
+
+> Configure project :baker
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by plugin 'synaxis.java-library'
+
+> Configure project :server-app
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by plugin 'synaxis.java-library'
+
+> Configure project :jcstress-tests
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by plugin 'synaxis.java-library'
+
+> Configure project :jmh-benchmarks
+Build was configured to prefer settings repositories over project repositories but repository 'MavenRepo' was added by plugin 'synaxis.java-library'
+
+> Task :plugin-api:processResources NO-SOURCE
+> Task :protocol:processResources NO-SOURCE
+> Task :testing:processResources NO-SOURCE
+> Task :generateJavaTemplates UP-TO-DATE
+> Task :processTestResources UP-TO-DATE
+> Task :processResources UP-TO-DATE
+> Task :protocol:compileJava UP-TO-DATE
+> Task :protocol:classes UP-TO-DATE
+> Task :protocol:jar UP-TO-DATE
+
+> Task :compileJava
+
+> Task :classes
+> Task :jar
+> Task :plugin-api:compileJava UP-TO-DATE
+> Task :plugin-api:classes UP-TO-DATE
+> Task :plugin-api:jar UP-TO-DATE
+> Task :testing:compileJava UP-TO-DATE
+> Task :testing:classes UP-TO-DATE
+> Task :testing:jar UP-TO-DATE
+> Task :compileTestJava UP-TO-DATE
+> Task :testClasses UP-TO-DATE
+
+> Task :test
+
+LightDampeningIntegrationTest > skyThroughDampeningRoof(String, Env) > [1] "minecraft:mangrove_leaves" FAILED
+    org.opentest4j.AssertionFailedError at LightDampeningIntegrationTest.java:75
+
+LightDampeningIntegrationTest > skyThroughDampeningRoof(String, Env) > [2] "minecraft:pale_oak_leaves" FAILED
+    org.opentest4j.AssertionFailedError at LightDampeningIntegrationTest.java:75
+
+LightDampeningIntegrationTest > skyThroughDampeningRoof(String, Env) > [3] "minecraft:powder_snow" FAILED
+    org.opentest4j.AssertionFailedError at LightDampeningIntegrationTest.java:75
+
+LightDampeningIntegrationTest > skyThroughDampeningRoof(String, Env) > [4] "minecraft:white_shulker_box" FAILED
+    org.opentest4j.AssertionFailedError at LightDampeningIntegrationTest.java:75
+
+LightDampeningIntegrationTest > skyThroughDampeningRoof(String, Env) > [5] "minecraft:kelp_plant" FAILED
+    org.opentest4j.AssertionFailedError at LightDampeningIntegrationTest.java:75
+
+LightDampeningIntegrationTest > skyReachesIntoLowBlock(String, Env) > [1] "minecraft:white_carpet" FAILED
+    org.opentest4j.AssertionFailedError at LightDampeningIntegrationTest.java:114
+
+LightDampeningIntegrationTest > skyReachesIntoLowBlock(String, Env) > [2] "minecraft:oak_slab" FAILED
+    org.opentest4j.AssertionFailedError at LightDampeningIntegrationTest.java:114
+
+LightDampeningIntegrationTest > skyReachesIntoLowBlock(String, Env) > [3] "minecraft:enchanting_table" FAILED
+    org.opentest4j.AssertionFailedError at LightDampeningIntegrationTest.java:114
+
+LightDampeningIntegrationTest > skyReachesIntoLowBlock(String, Env) > [4] "minecraft:snow" FAILED
+    org.opentest4j.AssertionFailedError at LightDampeningIntegrationTest.java:114
+
+LightDampeningIntegrationTest > tintedGlassStopsBlockLight(Env) FAILED
+    org.opentest4j.AssertionFailedError at LightDampeningIntegrationTest.java:99
+
+LightDampeningIntegrationTest > tintedGlassStopsSky(Env) FAILED
+    org.opentest4j.AssertionFailedError at LightDampeningIntegrationTest.java:85
+
+14 tests completed, 11 failed
+
+> Task :test FAILED
+
+[Incubating] Problems report is available at: file:///Users/bug/Documents/Projects/Minecraft/synaxis-wt/m3b-integrate/build/reports/problems/problems-report.html
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':test'.
+> There were failing tests. See the report at: file:///Users/bug/Documents/Projects/Minecraft/synaxis-wt/m3b-integrate/build/reports/tests/test/index.html
+
+* Try:
+> Run with --scan to get full insights from a Build Scan (powered by Develocity).
+
+Deprecated Gradle features were used in this build, making it incompatible with Gradle 10.
+
+You can use '--warning-mode all' to show the individual deprecation warnings and determine if they come from your own scripts or plugins.
+
+For more on this, please refer to https://docs.gradle.org/9.7.1/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.
+
+BUILD FAILED in 9s
+31 actionable tasks: 3 executed, 28 up-to-date
+Configuration cache entry stored.
+# gradle exit 1
+# result XML written after 2026-09-25 04:44:00:
+build/test-results/test/TEST-io.github.bearisbug.synaxis.instance.light.LightDampeningIntegrationTest.xml: tests="14" skipped="0" failures="11" errors="0"
+    FAILED [1] &quot;minecraft:mangrove_leaves&quot;: org.opentest4j.AssertionFailedError: minecraft:mangrove_leaves roof cell ==&gt; expected: &lt;14&gt; but was: &lt;15&gt;
+    FAILED [2] &quot;minecraft:pale_oak_leaves&quot;: org.opentest4j.AssertionFailedError: minecraft:pale_oak_leaves roof cell ==&gt; expected: &lt;14&gt; but was: &lt;15&gt;
+    FAILED [3] &quot;minecraft:powder_snow&quot;: org.opentest4j.AssertionFailedError: minecraft:powder_snow roof cell ==&gt; expected: &lt;14&gt; but was: &lt;15&gt;
+    FAILED [4] &quot;minecraft:white_shulker_box&quot;: org.opentest4j.AssertionFailedError: minecraft:white_shulker_box roof cell ==&gt; expected: &lt;14&gt; but was: &lt;15&gt;
+    FAILED [5] &quot;minecraft:kelp_plant&quot;: org.opentest4j.AssertionFailedError: minecraft:kelp_plant roof cell ==&gt; expected: &lt;14&gt; but was: &lt;15&gt;
+    FAILED [1] &quot;minecraft:white_carpet&quot;: org.opentest4j.AssertionFailedError: minecraft:white_carpet ==&gt; expected: &lt;15&gt; but was: &lt;14&gt;
+    FAILED [2] &quot;minecraft:oak_slab&quot;: org.opentest4j.AssertionFailedError: minecraft:oak_slab ==&gt; expected: &lt;15&gt; but was: &lt;14&gt;
+    FAILED [3] &quot;minecraft:enchanting_table&quot;: org.opentest4j.AssertionFailedError: minecraft:enchanting_table ==&gt; expected: &lt;15&gt; but was: &lt;14&gt;
+    FAILED [4] &quot;minecraft:snow&quot;: org.opentest4j.AssertionFailedError: minecraft:snow ==&gt; expected: &lt;15&gt; but was: &lt;14&gt;
+    FAILED tintedGlassStopsBlockLight(Env): org.opentest4j.AssertionFailedError: expected: &lt;0&gt; but was: &lt;14&gt;
+    FAILED tintedGlassStopsSky(Env): org.opentest4j.AssertionFailedError: expected: &lt;0&gt; but was: &lt;15&gt;

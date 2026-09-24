@@ -1,0 +1,62 @@
+# 2026-09-25 04:38:25 load { 5.76 6.41 7.98 }; cores 12; no JAVA_OPTS (default max heap)
+# baker bake --map-id synth --source generator:synthetic:7 --out /tmp/run033/maps12 --logs /tmp/run033/logs12 (threads default)
+SLF4J(W): No SLF4J providers were found.
+SLF4J(W): Defaulting to no-operation (NOP) logger implementation
+SLF4J(W): See https://www.slf4j.org/codes.html#noProviders for further details.
+baker: published /tmp/run033/maps12/synth/synth-09b42ebb5dc6-p776, 213319659 bytes
+  "map_id": "synth",
+  "build_id": "synth-09b42ebb5dc6-p776",
+  "content_hash": "09b42ebb5dc678b265f1c7b3f7e4d5ae7b475b6b7aca9180e14b0981e191e273",
+  "mc_version": "26.2",
+  "protocol_version": 776,
+  "registry_digest": "45d2a4547003a8516ec89a609048e6ab015939e4da07bea80b0b5adb2853a3c7",
+  "light_engine_version": 1,
+  "baker_version": 1,
+  "world": {
+    "min_y": 0,
+    "height": 256
+  "bounds": {
+    "min_x": 0,
+    "min_z": 0,
+    "max_x": 255,
+    "max_z": 255
+  "regions": [
+  ],
+  "farview": [],
+  "source": {
+    "kind": "generator"
+  "bake": {
+    "started_at": "2026-09-24T20:38:25.657928Z",
+    "wall_ms": 16373,
+    "cpu_ms": 123763,
+    "threads": 12,
+    "jdk": "25.0.4.1"
+  "verify": {
+    "samples": 256,
+    "diffs": 0
+       17.00 real       118.77 user         6.92 sys
+          4549771264  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+              566065  page reclaims
+                7319  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                   0  messages sent
+                   0  messages received
+                 196  signals received
+                1163  voluntary context switches
+              303972  involuntary context switches
+       2276050073050  instructions retired
+        426260207458  cycles elapsed
+          3884535936  peak memory footprint
+# exit 0 (baker printed "published") at 2026-09-25 04:38:42 load { 8.90 7.08 8.20 }
+# events:
+{"event":"map_build_started","ts":"2026-09-24T20:38:25.656596Z","shard_id":"baker","map_id":"synth","source":"generator","threads":12,"baker_version":1,"light_engine_version":1}
+{"event":"map_build_finished","ts":"2026-09-24T20:38:42.034323Z","shard_id":"baker","build_id":"synth-09b42ebb5dc6-p776","outcome":"published","wall_ms":16373,"cpu_ms":123763,"bytes":213319659,"farview_bytes":0,"failed_regions":0,"verify_diffs":0}
+# du:
+      64
+208472	/tmp/run033/maps12/synth/synth-09b42ebb5dc6-p776
+region bytes 213319659

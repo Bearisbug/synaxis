@@ -1,0 +1,49 @@
+# 2026-09-25 04:37:21 HEAD 7d4c5867bd load { 5.88 6.49 8.13 }
+# git status:  M baker/src/test/resources/io/github/bearisbug/synaxis/baker/anvil/world/dimensions/minecraft/overworld/entities/r.0.0.mca  M baker/src/test/resources/io/github/bearisbug/synaxis/baker/anvil/world/dimensions/minecraft/overworld/region/r.0.0.mca 
+# ./gradlew :baker:test --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/9.7.1/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build 
+Isolated Projects is an incubating feature.
+Reusing configuration cache.
+> Task :protocol:processResources NO-SOURCE
+> Task :synx:processResources NO-SOURCE
+> Task :plugin-api:processResources NO-SOURCE
+> Task :generateJavaTemplates UP-TO-DATE
+
+> Task :baker:processResources UP-TO-DATE
+Caught exception: Could not start the FSEvents stream: /Users/bug/Documents/Projects/Minecraft/synaxis-wt/m3b-integrate
+
+> Task :game-rts:processResources UP-TO-DATE
+> Task :processResources UP-TO-DATE
+> Task :protocol:compileJava UP-TO-DATE
+> Task :protocol:classes UP-TO-DATE
+> Task :protocol:jar UP-TO-DATE
+> Task :baker:processTestResources
+> Task :compileJava UP-TO-DATE
+> Task :classes UP-TO-DATE
+> Task :jar UP-TO-DATE
+> Task :synx:compileJava UP-TO-DATE
+> Task :synx:classes UP-TO-DATE
+> Task :plugin-api:compileJava UP-TO-DATE
+> Task :plugin-api:classes UP-TO-DATE
+> Task :synx:jar UP-TO-DATE
+> Task :plugin-api:jar UP-TO-DATE
+> Task :baker:compileJava UP-TO-DATE
+> Task :baker:classes UP-TO-DATE
+> Task :game-rts:compileJava UP-TO-DATE
+> Task :game-rts:classes UP-TO-DATE
+> Task :baker:compileTestJava UP-TO-DATE
+> Task :baker:testClasses
+> Task :game-rts:jar UP-TO-DATE
+
+> Task :baker:test
+
+BUILD SUCCESSFUL in 9s
+18 actionable tasks: 2 executed, 16 up-to-date
+Configuration cache entry reused.
+# gradle exit 0
+# result XML written after 2026-09-25 04:37:21:
+baker/build/test-results/test/TEST-io.github.bearisbug.synaxis.baker.BakerMainTest.xml: tests="1" skipped="0" failures="0" errors="0"
+baker/build/test-results/test/TEST-io.github.bearisbug.synaxis.baker.GeneratorBakeTest.xml: tests="12" skipped="0" failures="0" errors="0"
+baker/build/test-results/test/TEST-io.github.bearisbug.synaxis.baker.anvil.AnvilBakeTest.xml: tests="10" skipped="0" failures="0" errors="0"
+baker/build/test-results/test/TEST-io.github.bearisbug.synaxis.baker.anvil.AnvilWorldTest.xml: tests="23" skipped="0" failures="0" errors="0"

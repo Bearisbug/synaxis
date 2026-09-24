@@ -1,0 +1,22 @@
+# (zsh) exit codes captured with $? on unpiped commands
+# 1) byte 100000 of r.3.4.synx is flipped (left so by the first attempt); baker verify --build /tmp/run033/maps12/synth/synth-09b42ebb5dc6-p776
+baker: synx-payload-hash: r.3.4.synx: payload_sha256 8cfa3446bc855b27faa4810c61fe2cd47a33723c08ed28a7aa7cbc244bb96b54, the bytes hash to ec9b0d0f4e60ccdf149087bc94e933f5740201e008833cdcae32beefc9443354
+# exit 4
+# 2) flipped back (XOR 0xFF twice); baker verify --build /tmp/run033/maps12/synth/synth-09b42ebb5dc6-p776
+baker: /tmp/run033/maps12/synth/synth-09b42ebb5dc6-p776 verified
+# exit 0
+# 3) same bake again into maps12 (build exists)
+baker: /tmp/run033/maps12/synth/synth-09b42ebb5dc6-p776 already exists
+# exit 5
+synth-09b42ebb5dc6-p776
+# last event:
+{"event":"map_build_finished","ts":"2026-09-24T20:41:37.983509Z","shard_id":"baker","build_id":"synth-09b42ebb5dc6-p776","outcome":"failed","wall_ms":17197,"cpu_ms":127844,"bytes":213319659,"farview_bytes":0,"failed_regions":0,"verify_diffs":0}
+/tmp/run033/maps1/synth/:
+.
+..
+synth-09b42ebb5dc6-p776
+
+/tmp/run033/maps12/synth/:
+.
+..
+synth-09b42ebb5dc6-p776

@@ -1,0 +1,65 @@
+# 2026-09-25 04:34:20 HEAD 7d4c5867bd load { 7.98 6.96 8.64 }
+# git status:  M synx/src/test/resources/vectors/one-chunk-flat.synx 
+# ./gradlew :synx:test --tests io.github.bearisbug.synaxis.synx.SynxVectorTest -Dsynaxis.synx.require-frozen-zlib=true --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/9.7.1/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build 
+Isolated Projects is an incubating feature.
+Reusing configuration cache.
+> Task :testing:processResources NO-SOURCE
+> Task :plugin-api:processResources NO-SOURCE
+> Task :synx:processResources NO-SOURCE
+> Task :protocol:processResources NO-SOURCE
+
+> Task :generateJavaTemplates UP-TO-DATE
+Caught exception: Could not start the FSEvents stream: /Users/bug/Documents/Projects/Minecraft/synaxis-wt/m3b-integrate
+
+> Task :processResources UP-TO-DATE
+> Task :protocol:compileJava UP-TO-DATE
+> Task :protocol:classes UP-TO-DATE
+> Task :protocol:jar UP-TO-DATE
+> Task :synx:processTestResources
+> Task :compileJava UP-TO-DATE
+> Task :classes UP-TO-DATE
+> Task :jar UP-TO-DATE
+> Task :synx:compileJava UP-TO-DATE
+> Task :synx:classes UP-TO-DATE
+> Task :plugin-api:compileJava UP-TO-DATE
+> Task :plugin-api:classes UP-TO-DATE
+> Task :plugin-api:jar UP-TO-DATE
+> Task :testing:compileJava UP-TO-DATE
+> Task :testing:classes UP-TO-DATE
+> Task :testing:jar UP-TO-DATE
+> Task :synx:compileTestJava UP-TO-DATE
+> Task :synx:testClasses
+
+> Task :synx:test FAILED
+
+SynxVectorTest > readerDecodesEveryRegularVector() FAILED
+    io.github.bearisbug.synaxis.synx.SynxException at SynxVectorTest.java:78
+
+SynxVectorTest > manifestFreezesEveryVectorFile() FAILED
+    org.opentest4j.AssertionFailedError at SynxVectorTest.java:54
+
+SynxVectorTest > writerReproducesTheVectorBytesOnTheFrozenZlib(Path) FAILED
+    org.opentest4j.AssertionFailedError at SynxVectorTest.java:139
+
+4 tests completed, 3 failed
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':synx:test'.
+> There were failing tests. See the report at: file:///Users/bug/Documents/Projects/Minecraft/synaxis-wt/m3b-integrate/synx/build/reports/tests/test/index.html
+
+* Try:
+> Run with --scan to get full insights from a Build Scan (powered by Develocity).
+
+BUILD FAILED in 3s
+14 actionable tasks: 2 executed, 12 up-to-date
+Configuration cache entry reused.
+# gradle exit 1
+# result XML written after 2026-09-25 04:34:20:
+synx/build/test-results/test/TEST-io.github.bearisbug.synaxis.synx.SynxVectorTest.xml: tests="4" skipped="0" failures="3" errors="0"
+    <failure message="io.github.bearisbug.synaxis.synx.SynxException: synx-payload-hash: one-chunk-flat.synx: payload_sha256 c7ba41dc08f35ff7486874c042dcc8d0288e504e1deef7ad5eb30f6567d1d352, the bytes hash to d3a3dea252588da8b722f4506fed204f28f79053d634a5944abae514c8fefc37
+    <failure message="org.opentest4j.AssertionFailedError: one-chunk-flat.synx changed after it was frozen ==&gt; expected: &lt;ce69ea39b20ae2132ccc8be51b98a800c31c73d68099e67ac207962af1ef1438&gt; but was: &lt;0b3fbf677beb8036ae2b9c93612903f13f6bec1f43c8d81b34ca272dc8443ce0&gt;
+    <failure message="org.opentest4j.AssertionFailedError: one-chunk-flat.synx ==&gt; array contents differ at index [17000], expected: &lt;12&gt; but was: &lt;-13&gt;

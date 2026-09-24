@@ -1,0 +1,44 @@
+# 2026-09-25 04:32:58 HEAD 7d4c5867bd load { 7.86 6.29 8.58 }
+# git status: 
+# ./gradlew :game-rts:test --tests io.github.bearisbug.synaxis.game.rts.MatchIntegrationTest.theMapIsLitBeforeTheMatchRuns --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/9.7.1/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build 
+Isolated Projects is an incubating feature.
+Reusing configuration cache.
+> Task :game-rts:processTestResources NO-SOURCE
+> Task :testing:processResources NO-SOURCE
+> Task :protocol:processResources NO-SOURCE
+> Task :plugin-api:processResources NO-SOURCE
+> Task :game-rts:processResources UP-TO-DATE
+
+> Task :generateJavaTemplates UP-TO-DATE
+Caught exception: Could not start the FSEvents stream: /Users/bug/Documents/Projects/Minecraft/synaxis-wt/m3b-integrate
+
+> Task :processResources UP-TO-DATE
+> Task :protocol:compileJava UP-TO-DATE
+> Task :protocol:classes UP-TO-DATE
+> Task :protocol:jar UP-TO-DATE
+> Task :compileJava UP-TO-DATE
+> Task :classes UP-TO-DATE
+> Task :jar UP-TO-DATE
+> Task :synx:compileJava UP-TO-DATE
+> Task :plugin-api:compileJava UP-TO-DATE
+> Task :plugin-api:classes UP-TO-DATE
+> Task :plugin-api:jar UP-TO-DATE
+> Task :baker:compileJava UP-TO-DATE
+> Task :testing:compileJava UP-TO-DATE
+> Task :testing:classes UP-TO-DATE
+> Task :testing:jar UP-TO-DATE
+> Task :game-rts:compileJava FROM-CACHE
+> Task :game-rts:classes UP-TO-DATE
+> Task :game-rts:compileTestJava UP-TO-DATE
+> Task :game-rts:testClasses UP-TO-DATE
+
+> Task :game-rts:test
+
+BUILD SUCCESSFUL in 3s
+16 actionable tasks: 1 executed, 1 from cache, 14 up-to-date
+Configuration cache entry reused.
+# gradle exit 0
+# result XML written after 2026-09-25 04:32:58:
+game-rts/build/test-results/test/TEST-io.github.bearisbug.synaxis.game.rts.MatchIntegrationTest.xml: tests="1" skipped="0" failures="0" errors="0"

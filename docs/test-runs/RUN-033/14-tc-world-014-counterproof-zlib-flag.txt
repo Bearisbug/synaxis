@@ -1,0 +1,57 @@
+# 2026-09-25 04:34:29 HEAD 7d4c5867bd load { 8.88 7.19 8.71 }
+# git status:  M synx/src/test/resources/vectors/manifest.txt 
+# ./gradlew :synx:test --tests io.github.bearisbug.synaxis.synx.SynxVectorTest -Dsynaxis.synx.require-frozen-zlib=true --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/9.7.1/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build 
+Isolated Projects is an incubating feature.
+Reusing configuration cache.
+> Task :protocol:processResources NO-SOURCE
+> Task :testing:processResources NO-SOURCE
+> Task :synx:processResources NO-SOURCE
+> Task :plugin-api:processResources NO-SOURCE
+> Task :processResources UP-TO-DATE
+
+> Task :generateJavaTemplates UP-TO-DATE
+Caught exception: Could not start the FSEvents stream: /Users/bug/Documents/Projects/Minecraft/synaxis-wt/m3b-integrate
+
+> Task :protocol:compileJava UP-TO-DATE
+> Task :protocol:classes UP-TO-DATE
+> Task :protocol:jar UP-TO-DATE
+> Task :synx:processTestResources
+> Task :compileJava UP-TO-DATE
+> Task :classes UP-TO-DATE
+> Task :jar UP-TO-DATE
+> Task :synx:compileJava UP-TO-DATE
+> Task :synx:classes UP-TO-DATE
+> Task :plugin-api:compileJava UP-TO-DATE
+> Task :plugin-api:classes UP-TO-DATE
+> Task :plugin-api:jar UP-TO-DATE
+> Task :testing:compileJava UP-TO-DATE
+> Task :testing:classes UP-TO-DATE
+> Task :testing:jar UP-TO-DATE
+> Task :synx:compileTestJava UP-TO-DATE
+> Task :synx:testClasses
+
+> Task :synx:test FAILED
+
+SynxVectorTest > writerReproducesTheVectorBytesOnTheFrozenZlib(Path) FAILED
+    org.opentest4j.AssertionFailedError at SynxVectorTest.java:132
+
+4 tests completed, 1 failed
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':synx:test'.
+> There were failing tests. See the report at: file:///Users/bug/Documents/Projects/Minecraft/synaxis-wt/m3b-integrate/synx/build/reports/tests/test/index.html
+
+* Try:
+> Run with --scan to get full insights from a Build Scan (powered by Develocity).
+
+BUILD FAILED in 3s
+14 actionable tasks: 2 executed, 12 up-to-date
+Configuration cache entry reused.
+# gradle exit 1
+# result XML written after 2026-09-25 04:34:29:
+synx/build/test-results/test/TEST-io.github.bearisbug.synaxis.synx.SynxVectorTest.xml: tests="4" skipped="0" failures="1" errors="0"
+    <failure message="org.opentest4j.AssertionFailedError: this JDK's zlib differs from the one the vectors were frozen with; synaxis.synx.require-frozen-zlib is set, so either run on the JDK build the vectors were frozen with or refreeze them with :synx:generateVectors ==&gt; expected: &lt;true&gt; but was: &lt;false&gt;

@@ -1,0 +1,31 @@
+# TC-GAME-029 steps 1-2: server-app (default map rts-512), port 25656, JAVA_OPTS=-Xms1G -Xmx1G, empty work dir, stop via stdin; load { 4.83 5.71 8.47 }
+## stdout.log
+04:32:18.272 [main] INFO  i.github.bearisbug.synaxis.app.Main - Effective ServerConfig[shutdownOnSignal=true, maxTickCatchUp=5, chunkViewDistance=10, entityViewDistance=8, entitySynchronizationTicks=20, dispatcherThreads=1, threadProvider=COUNTER, threadGridExponent=4, sendLightAfterBlockPlacementDelay=100, loginTimeout=30000, loginPluginMessageTimeout=5000, knownPacksResponseTimeout=300000, acceptTransfers=false, playerPacketPerTick=50, playerPacketQueueSize=1000, keepAliveDelay=10000, keepAliveKick=15000, playerChunkUpdateLimiterHistorySize=0, maxConnections=1024, acceptBackoff=100, maxConnectionsPerIp=16, handshakeTimeout=5000, loginRatePerIp=0.5, loginBurstPerIp=3, statusRatePerIp=1.0, statusBurstPerIp=10, transferRatePerIp=2.0, transferBurstPerIp=10, connectionGateTrustedNetworks=, maxPlayers=0, maxJoinsPerTick=0, chatRatePerSecond=1, chatBurst=3, packetLimitWindow=7000, packetLimitMaxPackets=582, packetLimitAction=KICK, packetLimitOverrides=, maxInflatedBytesPerSecond=4194304, tabCompleteRatePerSecond=20, maxOutboundBacklogBytes=4194304, tabLatencyInterval=30000, suppressConnectionAcceptErrors=true, suppressConnectionIoErrors=true, suppressMalformedPacketErrorLevel=0, suppressMisusedPacketErrorLevel=0, rejectMalformedPacket=true, rejectMisusedPacket=false, socketSendBufferSize=262143, socketReceiveBufferSize=32767, socketNoDelay=true, socketTimeout=15000, pooledBufferSize=16383, minChunksPerTick=0.01, maxChunksPerTick=64.0, chunksPerTickMultiplier=1.0, viewablePacket=true, enforceInteractionLimit=true, maxVisibleEntitiesPerPlayer=0, watchdogEarlyWarning=10000, watchdogEarlyWarningEvery=5000, watchdogTimeout=60000, watchdogHaltAfter=15000, registryUnsafeOps=false, insideTest=false, fasterSocketWrites=false, proxyProtocol=false, proxyProtocolRequired=false, proxyProtocolTrustedNetworks=]
+04:32:18.285 [main] INFO  i.github.bearisbug.synaxis.app.Main - Effective JvmFlags[serverTicksPerSecond=20, automaticComponentTranslation=false, groupedPacket=true, cachedPacket=true, maxPacketSize=2097151, maxPacketSizePreAuth=8192, warnUnreadBytesPacket=true, eventNodeAllowMultipleParents=false, templateCompiler=false, nbtMaxDepth=512, nbtMaxBytes=2097152]
+04:32:18.285 [main] INFO  i.github.bearisbug.synaxis.app.Main - Effective auth: mode=online session_server=https://sessionserver.mojang.com/session/minecraft/hasJoined
+04:32:18.287 [main] INFO  i.github.bearisbug.synaxis.app.Main - Effective store: mode=memory, player data lives as long as the process
+04:32:18.292 [main] INFO  i.g.bearisbug.synaxis.app.PluginHost - Registered channel: plugin_id=synaxis channel=synaxis:handshake
+04:32:18.300 [main] INFO  i.github.bearisbug.synaxis.Watchdog - Tick watchdog on: stacks after 10000 ms and every 5000 ms after that, judged dead after 60000 ms, halted with exit code 70 15000 ms later
+04:32:18.344 [main] INFO  i.g.b.s.app.metrics.HostMetrics - Metrics endpoint listening on http://127.0.0.1:51486/metrics
+04:32:18.347 [main] INFO  plugin.rts - Enabling: plugin_id=rts version=0.1.0 data_directory=plugins/rts
+04:32:18.686 [main] INFO  plugin.rts - Match running: match_id=ec599a74-2e22-4d09-8a00-7ef5da4d27cf map_id=rts-512 dimension_name=synaxis:match_77f2c70da6884a4f836ec09457be43cb chunk_count=1024 load_ms=305
+04:32:18.706 [main] INFO  i.g.b.synaxis.app.PluginChannelsImpl - Registered channel: plugin_id=rts channel=rts:game
+04:32:18.707 [main] INFO  i.g.bearisbug.synaxis.app.PluginHost - Plugin enabled: plugin_id=rts version=0.1.0 enable_ms=361
+04:32:18.707 [main] INFO  i.github.bearisbug.synaxis.app.Main - Gameplay mode: the running match and the admission provider come from plugin_ids=[rts], and a client has 3 s to send C2S_HELLO on synaxis:handshake in the configuration phase (schema_version=1)
+04:32:18.708 [main] INFO  i.g.b.synaxis.ServerProcessImpl - Starting synaxis (dev) server.
+04:32:18.708 [main] INFO  i.g.b.synaxis.ServerProcessImpl - Running in online mode, logins are verified against https://sessionserver.mojang.com/session/minecraft/hasJoined.
+04:32:18.708 [main] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server started successfully.
+04:32:18.708 [main] INFO  i.github.bearisbug.synaxis.app.Main - synaxis server-app listening on 0.0.0.0:25656
+04:32:19.029 [server-app-console] INFO  i.g.b.synaxis.command.ConsoleSender - The server stops in 0 s
+04:32:19.029 [server-app-stop] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+04:32:19.059 [Syn-TickScheduler] INFO  i.g.bearisbug.synaxis.app.PluginHost - Disabling plugin: plugin_id=rts
+04:32:19.067 [Syn-TickScheduler] INFO  i.g.bearisbug.synaxis.app.PluginHost - Took back the capabilities of plugin_id=rts: event node, tasks, channels, admission provider, commands, tab list visibility
+04:32:19.131 [server-app-stop] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+04:32:19.131 [server-app-stop] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+## logs/events-*.jsonl
+{"ts":"2026-09-24T20:32:18.348168Z","event":"match_created","match_id":"ec599a74-2e22-4d09-8a00-7ef5da4d27cf","map_id":"rts-512","dimension_name":"synaxis:match_77f2c70da6884a4f836ec09457be43cb"}
+{"ts":"2026-09-24T20:32:18.686578Z","event":"match_started","match_id":"ec599a74-2e22-4d09-8a00-7ef5da4d27cf","map_id":"rts-512","chunk_count":1024,"load_ms":305,"heap_delta_kib":9357,"heap_gc_runs":4}
+{"ts":"2026-09-24T20:32:18.707472Z","event":"plugin_enabled","plugin_id":"rts","version":"0.1.0","enable_ms":361}
+{"ts":"2026-09-24T20:32:19.029646Z","event":"gm_command","actor":"console","actor_uuid":"null","command":"stop","target":"null","result":"ok"}
+{"ts":"2026-09-24T20:32:19.030513Z","event":"shutdown_saved","shard_id":"memory","online":0,"saved":0,"failed":0,"elapsed_ms":0,"timed_out":"false"}
+{"ts":"2026-09-24T20:32:19.066646Z","event":"match_ended","match_id":"ec599a74-2e22-4d09-8a00-7ef5da4d27cf","reason":"normal","duration_s":0}

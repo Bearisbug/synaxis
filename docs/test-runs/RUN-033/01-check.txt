@@ -1,0 +1,234 @@
+# 2026-09-25 04:18:59 HEAD 7d4c5867bd load { 5.14 7.00 8.96 }
+# ./gradlew check jacocoTestReport -Dsynaxis.synx.require-frozen-zlib=true --rerun-tasks --continue --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts
+Picked up JAVA_TOOL_OPTIONS: -Dhttps.proxyHost=127.0.0.1 -Dhttps.proxyPort=7897 -Dhttp.proxyHost=127.0.0.1 -Dhttp.proxyPort=7897 -Dhttp.nonProxyHosts=maven.aliyun.com|*.aliyun.com
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/9.7.1/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build 
+Isolated Projects is an incubating feature.
+Reusing configuration cache.
+> Task :plugin-api:processResources NO-SOURCE
+> Task :architecture-tests:compileJava NO-SOURCE
+> Task :testing:processResources NO-SOURCE
+> Task :architecture-tests:processTestResources NO-SOURCE
+> Task :architecture-tests:processResources NO-SOURCE
+> Task :protocol:processResources NO-SOURCE
+> Task :architecture-tests:classes UP-TO-DATE
+> Task :synx:processResources NO-SOURCE
+> Task :architecture-tests:forbiddenImportsCheck
+> Task :architecture-tests:testNamingCheck
+> Task :baker:forbiddenImportsCheck
+> Task :game-rts:processTestResources NO-SOURCE
+> Task :baker:testNamingCheck
+> Task :game-rts:processResources
+> Task :baker:processTestResources
+> Task :jcstress-tests:processResources NO-SOURCE
+> Task :jcstress-tests:compileJava NO-SOURCE
+> Task :jcstress-tests:classes UP-TO-DATE
+> Task :jcstress-tests:compileTestJava NO-SOURCE
+> Task :jcstress-tests:testNamingCheck
+> Task :processTestResources
+> Task :jcstress-tests:processTestResources NO-SOURCE
+> Task :jcstress-tests:testClasses UP-TO-DATE
+> Task :jmh-benchmarks:processResources NO-SOURCE
+> Task :server-app:buildInfo
+> Task :jcstress-tests:forbiddenImportsCheck
+> Task :jmh-benchmarks:processTestResources NO-SOURCE
+> Task :game-rts:testNamingCheck
+> Task :game-rts:forbiddenImportsCheck
+> Task :jmh-benchmarks:processJmhResources NO-SOURCE
+> Task :jmh-benchmarks:compileJava NO-SOURCE
+> Task :jmh-benchmarks:testNamingCheck
+> Task :jmh-benchmarks:classes UP-TO-DATE
+> Task :loadtest:processResources NO-SOURCE
+> Task :loadtest:processTestResources NO-SOURCE
+> Task :jmh-benchmarks:compileTestJava NO-SOURCE
+> Task :jmh-benchmarks:testClasses UP-TO-DATE
+> Task :loadtest:testNamingCheck
+> Task :plugin-api:processTestResources NO-SOURCE
+> Task :jmh-benchmarks:test NO-SOURCE
+> Task :plugin-api:testNamingCheck
+> Task :loadtest:forbiddenImportsCheck
+> Task :protocol:testNamingCheck
+> Task :server-app:processResources
+> Task :jcstress-tests:test NO-SOURCE
+> Task :protocol:forbiddenImportsCheck
+> Task :server-app:processTestResources
+> Task :plugin-api:forbiddenImportsCheck
+> Task :jmh-benchmarks:forbiddenImportsCheck
+> Task :synx:testNamingCheck
+> Task :synx:forbiddenImportsCheck
+> Task :testing:processTestResources NO-SOURCE
+> Task :testing:testNamingCheck
+> Task :testing:forbiddenImportsCheck
+> Task :protocol:processTestResources
+> Task :synx:processTestResources
+> Task :server-app:testNamingCheck
+> Task :server-app:forbiddenImportsCheck
+
+> Task :generateJavaTemplates
+Caught exception: Could not start the FSEvents stream: /Users/bug/Documents/Projects/Minecraft/synaxis-wt/m3b-integrate
+
+> Task :baker:processResources
+> Task :processResources
+> Task :testNamingCheck
+> Task :forbiddenImportsCheck
+> Task :jcstress-tests:jacocoTestReport
+> Task :jmh-benchmarks:jacocoTestReport
+
+> Task :protocol:compileJava
+Picked up JAVA_TOOL_OPTIONS: -Dhttps.proxyHost=127.0.0.1 -Dhttps.proxyPort=7897 -Dhttp.proxyHost=127.0.0.1 -Dhttp.proxyPort=7897 -Dhttp.nonProxyHosts=maven.aliyun.com|*.aliyun.com
+
+> Task :protocol:classes
+> Task :protocol:jar
+
+> Task :compileJava
+Picked up JAVA_TOOL_OPTIONS: -Dhttps.proxyHost=127.0.0.1 -Dhttps.proxyPort=7897 -Dhttp.proxyHost=127.0.0.1 -Dhttp.proxyPort=7897 -Dhttp.nonProxyHosts=maven.aliyun.com|*.aliyun.com
+
+> Task :protocol:compileTestJava
+> Task :protocol:errorproneCheck
+> Task :protocol:testClasses
+
+> Task :protocol:test
+Picked up JAVA_TOOL_OPTIONS: -Dhttps.proxyHost=127.0.0.1 -Dhttps.proxyPort=7897 -Dhttp.proxyHost=127.0.0.1 -Dhttp.proxyPort=7897 -Dhttp.nonProxyHosts=maven.aliyun.com|*.aliyun.com
+
+> Task :protocol:check
+> Task :protocol:jacocoTestReport
+> Task :classes
+> Task :jar
+> Task :jmh-benchmarks:compileWorldbenchJava
+> Task :synx:compileJava
+> Task :synx:classes
+> Task :synx:jar
+
+> Task :jmh-benchmarks:compileJmhJava
+Picked up JAVA_TOOL_OPTIONS: -Dhttps.proxyHost=127.0.0.1 -Dhttps.proxyPort=7897 -Dhttp.proxyHost=127.0.0.1 -Dhttp.proxyPort=7897 -Dhttp.nonProxyHosts=maven.aliyun.com|*.aliyun.com
+
+> Task :plugin-api:compileJava
+Picked up JAVA_TOOL_OPTIONS: -Dhttps.proxyHost=127.0.0.1 -Dhttps.proxyPort=7897 -Dhttp.proxyHost=127.0.0.1 -Dhttp.proxyPort=7897 -Dhttp.nonProxyHosts=maven.aliyun.com|*.aliyun.com
+
+> Task :plugin-api:classes
+
+> Task :jcstress-tests:compileJcstressJava
+Picked up JAVA_TOOL_OPTIONS: -Dhttps.proxyHost=127.0.0.1 -Dhttps.proxyPort=7897 -Dhttp.proxyHost=127.0.0.1 -Dhttp.proxyPort=7897 -Dhttp.nonProxyHosts=maven.aliyun.com|*.aliyun.com
+
+> Task :plugin-api:jar
+
+> Task :loadtest:compileJava
+Picked up JAVA_TOOL_OPTIONS: -Dhttps.proxyHost=127.0.0.1 -Dhttps.proxyPort=7897 -Dhttp.proxyHost=127.0.0.1 -Dhttp.proxyPort=7897 -Dhttp.nonProxyHosts=maven.aliyun.com|*.aliyun.com
+
+> Task :jcstress-tests:errorproneCheck
+> Task :jcstress-tests:check
+> Task :baker:compileJava
+> Task :baker:classes
+> Task :baker:jar
+> Task :loadtest:classes
+> Task :plugin-api:compileTestJava
+> Task :plugin-api:testClasses
+> Task :plugin-api:errorproneCheck
+
+> Task :server-app:compileJava
+Picked up JAVA_TOOL_OPTIONS: -Dhttps.proxyHost=127.0.0.1 -Dhttps.proxyPort=7897 -Dhttp.proxyHost=127.0.0.1 -Dhttp.proxyPort=7897 -Dhttp.nonProxyHosts=maven.aliyun.com|*.aliyun.com
+
+> Task :testing:compileJava
+> Task :testing:classes
+> Task :testing:jar
+> Task :loadtest:compileTestJava
+> Task :loadtest:errorproneCheck
+> Task :loadtest:testClasses
+
+> Task :plugin-api:test
+Picked up JAVA_TOOL_OPTIONS: -Dhttps.proxyHost=127.0.0.1 -Dhttps.proxyPort=7897 -Dhttp.proxyHost=127.0.0.1 -Dhttp.proxyPort=7897 -Dhttp.nonProxyHosts=maven.aliyun.com|*.aliyun.com
+
+> Task :game-rts:compileJava
+> Task :game-rts:classes
+> Task :game-rts:jar
+> Task :plugin-api:check
+> Task :plugin-api:jacocoTestReport
+> Task :testing:compileTestJava
+> Task :testing:errorproneCheck
+> Task :testing:testClasses
+> Task :baker:compileTestJava
+> Task :baker:errorproneCheck
+> Task :baker:testClasses
+
+> Task :compileTestJava
+Picked up JAVA_TOOL_OPTIONS: -Dhttps.proxyHost=127.0.0.1 -Dhttps.proxyPort=7897 -Dhttp.proxyHost=127.0.0.1 -Dhttp.proxyPort=7897 -Dhttp.nonProxyHosts=maven.aliyun.com|*.aliyun.com
+
+> Task :synx:compileTestJava
+> Task :synx:testClasses
+> Task :synx:errorproneCheck
+
+> Task :loadtest:test
+Picked up JAVA_TOOL_OPTIONS: -Dhttps.proxyHost=127.0.0.1 -Dhttps.proxyPort=7897 -Dhttp.proxyHost=127.0.0.1 -Dhttp.proxyPort=7897 -Dhttp.nonProxyHosts=maven.aliyun.com|*.aliyun.com
+
+> Task :game-rts:compileTestJava
+> Task :game-rts:testClasses
+> Task :game-rts:errorproneCheck
+
+> Task :testing:test
+Picked up JAVA_TOOL_OPTIONS: -Dhttps.proxyHost=127.0.0.1 -Dhttps.proxyPort=7897 -Dhttp.proxyHost=127.0.0.1 -Dhttp.proxyPort=7897 -Dhttp.nonProxyHosts=maven.aliyun.com|*.aliyun.com
+SLF4J(W): No SLF4J providers were found.
+SLF4J(W): Defaulting to no-operation (NOP) logger implementation
+SLF4J(W): See https://www.slf4j.org/codes.html#noProviders for further details.
+
+> Task :jmh-benchmarks:jmhClasses
+
+> Task :baker:test
+Picked up JAVA_TOOL_OPTIONS: -Dhttps.proxyHost=127.0.0.1 -Dhttps.proxyPort=7897 -Dhttp.proxyHost=127.0.0.1 -Dhttp.proxyPort=7897 -Dhttp.nonProxyHosts=maven.aliyun.com|*.aliyun.com
+
+> Task :jmh-benchmarks:jmhRunBytecodeGenerator
+Picked up JAVA_TOOL_OPTIONS: -Dhttps.proxyHost=127.0.0.1 -Dhttps.proxyPort=7897 -Dhttp.proxyHost=127.0.0.1 -Dhttp.proxyPort=7897 -Dhttp.nonProxyHosts=maven.aliyun.com|*.aliyun.com
+Picked up JAVA_TOOL_OPTIONS: -Dhttps.proxyHost=127.0.0.1 -Dhttps.proxyPort=7897 -Dhttp.proxyHost=127.0.0.1 -Dhttp.proxyPort=7897 -Dhttp.nonProxyHosts=maven.aliyun.com|*.aliyun.com
+
+> Task :synx:test
+Picked up JAVA_TOOL_OPTIONS: -Dhttps.proxyHost=127.0.0.1 -Dhttps.proxyPort=7897 -Dhttp.proxyHost=127.0.0.1 -Dhttp.proxyPort=7897 -Dhttp.nonProxyHosts=maven.aliyun.com|*.aliyun.com
+
+> Task :testing:check
+
+> Task :game-rts:test
+Picked up JAVA_TOOL_OPTIONS: -Dhttps.proxyHost=127.0.0.1 -Dhttps.proxyPort=7897 -Dhttp.proxyHost=127.0.0.1 -Dhttp.proxyPort=7897 -Dhttp.nonProxyHosts=maven.aliyun.com|*.aliyun.com
+
+> Task :testing:jacocoTestReport
+> Task :server-app:classes
+> Task :server-app:jar
+> Task :synx:check
+> Task :synx:jacocoTestReport
+> Task :architecture-tests:compileTestJava
+> Task :architecture-tests:errorproneCheck
+> Task :architecture-tests:testClasses
+> Task :jmh-benchmarks:jmhCompileGeneratedClasses
+> Task :jmh-benchmarks:errorproneCheck
+> Task :jmh-benchmarks:check
+
+> Task :architecture-tests:test
+Picked up JAVA_TOOL_OPTIONS: -Dhttps.proxyHost=127.0.0.1 -Dhttps.proxyPort=7897 -Dhttp.proxyHost=127.0.0.1 -Dhttp.proxyPort=7897 -Dhttp.nonProxyHosts=maven.aliyun.com|*.aliyun.com
+
+> Task :server-app:compileTestJava
+> Task :server-app:errorproneCheck
+> Task :server-app:testClasses
+
+> Task :server-app:test
+Picked up JAVA_TOOL_OPTIONS: -Dhttps.proxyHost=127.0.0.1 -Dhttps.proxyPort=7897 -Dhttp.proxyHost=127.0.0.1 -Dhttp.proxyPort=7897 -Dhttp.nonProxyHosts=maven.aliyun.com|*.aliyun.com
+
+> Task :baker:check
+> Task :game-rts:check
+> Task :baker:jacocoTestReport
+> Task :game-rts:jacocoTestReport
+> Task :architecture-tests:check
+> Task :architecture-tests:jacocoTestReport
+> Task :errorproneCheck
+> Task :testClasses
+
+> Task :test
+Picked up JAVA_TOOL_OPTIONS: -Dhttps.proxyHost=127.0.0.1 -Dhttps.proxyPort=7897 -Dhttp.proxyHost=127.0.0.1 -Dhttp.proxyPort=7897 -Dhttp.nonProxyHosts=maven.aliyun.com|*.aliyun.com
+
+> Task :check
+> Task :jacocoTestReport
+> Task :loadtest:check
+> Task :loadtest:jacocoTestReport
+> Task :server-app:check
+> Task :server-app:jacocoTestReport
+
+BUILD SUCCESSFUL in 1m 24s
+89 actionable tasks: 89 executed
+Configuration cache entry reused.
+# exit 0 at 2026-09-25 04:20:23 load { 45.06 20.15 13.83 }

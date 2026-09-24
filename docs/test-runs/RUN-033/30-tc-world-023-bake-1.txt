@@ -1,0 +1,62 @@
+# 2026-09-25 04:40:28 start load { 7.90 6.95 8.13 }; baker bake --map-id synth --source generator:synthetic:7 --out /tmp/run033/maps1 --logs /tmp/run033/logs1 --threads 1
+SLF4J(W): No SLF4J providers were found.
+SLF4J(W): Defaulting to no-operation (NOP) logger implementation
+SLF4J(W): See https://www.slf4j.org/codes.html#noProviders for further details.
+baker: published /tmp/run033/maps1/synth/synth-09b42ebb5dc6-p776, 213319659 bytes
+  "map_id": "synth",
+  "build_id": "synth-09b42ebb5dc6-p776",
+  "content_hash": "09b42ebb5dc678b265f1c7b3f7e4d5ae7b475b6b7aca9180e14b0981e191e273",
+  "mc_version": "26.2",
+  "protocol_version": 776,
+  "registry_digest": "45d2a4547003a8516ec89a609048e6ab015939e4da07bea80b0b5adb2853a3c7",
+  "light_engine_version": 1,
+  "baker_version": 1,
+  "world": {
+    "min_y": 0,
+    "height": 256
+  "bounds": {
+    "min_x": 0,
+    "min_z": 0,
+    "max_x": 255,
+    "max_z": 255
+  "regions": [
+  ],
+  "farview": [],
+  "source": {
+    "kind": "generator"
+  "bake": {
+    "started_at": "2026-09-24T20:38:55.316327Z",
+    "wall_ms": 93359,
+    "cpu_ms": 98694,
+    "threads": 1,
+    "jdk": "25.0.4.1"
+  "verify": {
+    "samples": 256,
+    "diffs": 0
+       93.92 real        92.69 user         7.89 sys
+          1074397184  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+              215809  page reclaims
+               12138  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                   0  messages sent
+                   0  messages received
+                  48  signals received
+                 804  voluntary context switches
+               89082  involuntary context switches
+       2393513654285  instructions retired
+        398511469698  cycles elapsed
+           579356184  peak memory footprint
+# exit 0; end load { 6.33 6.53 7.83 }
+# events:
+{"event":"map_build_started","ts":"2026-09-24T20:38:55.315129Z","shard_id":"baker","map_id":"synth","source":"generator","threads":1,"baker_version":1,"light_engine_version":1}
+{"event":"map_build_finished","ts":"2026-09-24T20:40:28.678413Z","shard_id":"baker","build_id":"synth-09b42ebb5dc6-p776","outcome":"published","wall_ms":93359,"cpu_ms":98694,"bytes":213319659,"farview_bytes":0,"failed_regions":0,"verify_diffs":0}
+# content_hash 12 threads vs 1 thread:
+  "content_hash": "09b42ebb5dc678b265f1c7b3f7e4d5ae7b475b6b7aca9180e14b0981e191e273",
+  "content_hash": "09b42ebb5dc678b265f1c7b3f7e4d5ae7b475b6b7aca9180e14b0981e191e273",
+# region files byte for byte:
+compared       64 files

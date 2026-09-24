@@ -18,6 +18,7 @@ import io.github.bearisbug.synaxis.network.packet.server.configuration.ResetChat
 import io.github.bearisbug.synaxis.network.packet.server.configuration.SelectKnownPacksPacket;
 import io.github.bearisbug.synaxis.network.packet.server.configuration.UpdateEnabledFeaturesPacket;
 import io.github.bearisbug.synaxis.network.packet.server.login.LoginSuccessPacket;
+import io.github.bearisbug.synaxis.network.packet.server.play.PlayerInfoUpdatePacket;
 import io.github.bearisbug.synaxis.network.packet.server.play.StartConfigurationPacket;
 import io.github.bearisbug.synaxis.network.player.GameProfile;
 import io.github.bearisbug.synaxis.network.player.InboundPacketLimits;
@@ -53,6 +54,7 @@ import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.function.BiPredicate;
 import java.util.function.Function;
 
 /**
@@ -163,6 +165,12 @@ public final class ConnectionManager {
 
     // The player provider to have your own Player implementation
     private volatile PlayerProvider playerProvider = Player::new;
+
+    // Who lists whom in the tab list, null for everyone (docs/DESIGN-PROD.md API-PROD-020)
+    private volatile @Nullable BiPredicate<Player, Player> tabListVisibility;
+    // When the tab list latencies go out next, tick scheduler thread only
+    private long nextTabListLatencies;
+    private boolean tabListLatenciesScheduled;
 
     /**
      * Gets the number of "online" players, e.g. for the query response.
@@ -567,11 +575,68 @@ public final class ConnectionManager {
         // Send keep alive packets
         handleKeepAlive(keepAlivePlayers, tickStart);
 
+        // The latencies the keep alives measured, all players in one packet
+        final long interval = TimeUnit.MILLISECONDS.toNanos(process.config().tabLatencyInterval());
+        if (!tabListLatenciesScheduled) {
+            this.nextTabListLatencies = tickStart + interval;
+            this.tabListLatenciesScheduled = true;
+        } else if (tickStart - nextTabListLatencies >= 0) {
+            this.nextTabListLatencies = tickStart + interval;
+            sendTabListLatencies();
+        }
+
         gate.tick(tickStart);
         if (sessionClient != null) sessionClient.tick(tickStart);
 
         // Interpret packets for configuration players
         configurationPlayers.forEach(Player::interpretPacketQueue);
+    }
+
+    /**
+     * Sends the latency of every player in the play state to every one of them, one packet in all.
+     * The tick does it every {@code synaxis.tab-latency-interval-ms}; a player's own keep alive only
+     * stores its latency ({@code docs/DESIGN-PROD.md} {@code API-PROD-020}).
+     */
+    @ApiStatus.Internal
+    public void sendTabListLatencies() {
+        final List<PlayerInfoUpdatePacket.Entry> entries = new ArrayList<>();
+        for (Player player : playPlayers) entries.add(player.tabListEntry(player.isListed()));
+        if (entries.isEmpty()) return;
+        PacketSendingUtils.sendGroupedPacket(playPlayers,
+                new PlayerInfoUpdatePacket(PlayerInfoUpdatePacket.Action.UPDATE_LATENCY, entries));
+    }
+
+    /**
+     * Decides who lists whom in the tab list ({@code docs/DESIGN-PROD.md} {@code API-PROD-020}). A
+     * player that is not listed for a viewer is still sent to it, with {@code listed=false}: the
+     * client needs the entry to render the player's skin. Every online player gets the listing of
+     * every other one again, one packet per viewer.
+     *
+     * @param visibility {@code (viewer, subject) -> listed}, called from the thread that sends the
+     *                   entry; null lists everyone who is {@linkplain Player#isListed() listed}
+     */
+    public void setTabListVisibility(@Nullable BiPredicate<Player, Player> visibility) {
+        this.tabListVisibility = visibility;
+        for (Player viewer : playPlayers) {
+            final List<PlayerInfoUpdatePacket.Entry> entries = new ArrayList<>();
+            for (Player subject : playPlayers) entries.add(subject.tabListEntry(isListedFor(viewer, subject)));
+            viewer.sendPacket(new PlayerInfoUpdatePacket(PlayerInfoUpdatePacket.Action.UPDATE_LISTED, entries));
+        }
+    }
+
+    /**
+     * Whether a viewer's tab list shows a player: the player is {@linkplain Player#isListed() listed}
+     * and, unless it is the viewer itself, the visibility of {@link #setTabListVisibility} lets it.
+     *
+     * @param viewer  whose tab list
+     * @param subject the player in it
+     * @return the {@code listed} flag of the entry the viewer gets
+     */
+    public boolean isListedFor(Player viewer, Player subject) {
+        if (!subject.isListed()) return false;
+        if (viewer == subject) return true;
+        final BiPredicate<Player, Player> visibility = this.tabListVisibility;
+        return visibility == null || visibility.test(viewer, subject);
     }
 
     /**

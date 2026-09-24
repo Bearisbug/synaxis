@@ -401,14 +401,16 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
         process().eventHandler().call(skinInitEvent);
         this.skin = skinInitEvent.getSkin();
         // FIXME: when using Geyser, this line remove the skin of the client
-        PacketSendingUtils.broadcastPlayPacket(process(), getAddPlayerToList());
+        broadcastTabListEntry(EnumSet.allOf(PlayerInfoUpdatePacket.Action.class));
 
+        // Everyone already online, in one packet rather than one per player (docs/DESIGN-PROD.md API-PROD-020)
         var connectionManager = process().connection();
+        final List<PlayerInfoUpdatePacket.Entry> online = new ArrayList<>();
         for (var player : connectionManager.getOnlinePlayers()) {
-            if (player != this) {
-                sendPacket(player.getAddPlayerToList());
-            }
+            if (player != this) online.add(player.tabListEntry(connectionManager.isListedFor(this, player)));
         }
+        if (!online.isEmpty())
+            sendPacket(new PlayerInfoUpdatePacket(EnumSet.allOf(PlayerInfoUpdatePacket.Action.class), online));
 
         // Commands
         refreshCommands();
@@ -1363,7 +1365,7 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
     public void setListed(boolean listed) {
         this.listed = listed;
         if (isActive()) {
-            PacketSendingUtils.broadcastPlayPacket(process(), new PlayerInfoUpdatePacket(PlayerInfoUpdatePacket.Action.UPDATE_LISTED, infoEntry()));
+            broadcastTabListEntry(EnumSet.of(PlayerInfoUpdatePacket.Action.UPDATE_LISTED));
         }
     }
 
@@ -1439,7 +1441,7 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
             sendPacketToViewers(destroyEntitiesPacket);
 
             // Show player again
-            PacketSendingUtils.broadcastPlayPacket(process(), addPlayerPacket);
+            broadcastTabListEntry(EnumSet.allOf(PlayerInfoUpdatePacket.Action.class));
             getViewers().forEach(player -> showPlayer(player.getPlayerConnection()));
         }
 
@@ -2395,15 +2397,13 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
     }
 
     /**
-     * Changes the storage player latency and update its tab value.
+     * Changes the stored player latency. The tab list gets it with everyone else's, every
+     * {@code synaxis.tab-latency-interval-ms} ({@link ConnectionManager#sendTabListLatencies()}).
      *
      * @param latency the new player latency
      */
     public void refreshLatency(int latency) {
         this.latency = latency;
-        if (getPlayerConnection().getServerState() == ConnectionState.PLAY) {
-            PacketSendingUtils.broadcastPlayPacket(process(), new PlayerInfoUpdatePacket(PlayerInfoUpdatePacket.Action.UPDATE_LATENCY, infoEntry()));
-        }
     }
 
     public void refreshOnGround(boolean onGround) {
@@ -2513,6 +2513,17 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
     }
 
     private PlayerInfoUpdatePacket.Entry infoEntry() {
+        return tabListEntry(listed);
+    }
+
+    /**
+     * The tab list entry of this player as one viewer gets it.
+     *
+     * @param listed whether the viewer lists this player, see {@link ConnectionManager#isListedFor(Player, Player)}
+     * @return the entry
+     */
+    @ApiStatus.Internal
+    public PlayerInfoUpdatePacket.Entry tabListEntry(boolean listed) {
         final PlayerSkin skin = this.skin;
         List<PlayerInfoUpdatePacket.Property> prop = skin != null ?
                 List.of(new PlayerInfoUpdatePacket.Property("textures", skin.textures(), skin.signature())) :
@@ -2520,6 +2531,22 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
         byte hatIndex = ((MetadataDef.Entry.BitMask) MetadataDef.Player.IS_HAT_ENABLED).bitMask();
         return new PlayerInfoUpdatePacket.Entry(getUuid(), getUsername(), prop,
                 listed, getLatency(), getGameMode(), displayName, null, listOrder, (settings.displayedSkinParts() & hatIndex) == hatIndex);
+    }
+
+    /**
+     * Sends this player's entry to every online player, itself included: one packet to the players
+     * that list it and one to those that do not ({@link ConnectionManager#isListedFor(Player, Player)}).
+     */
+    private void broadcastTabListEntry(EnumSet<PlayerInfoUpdatePacket.Action> actions) {
+        final ConnectionManager connections = process().connection();
+        final List<Player> listing = new ArrayList<>();
+        final List<Player> notListing = new ArrayList<>();
+        for (Player viewer : connections.getOnlinePlayers())
+            (connections.isListedFor(viewer, this) ? listing : notListing).add(viewer);
+        if (!listing.isEmpty())
+            PacketSendingUtils.sendGroupedPacket(listing, new PlayerInfoUpdatePacket(actions, List.of(tabListEntry(true))));
+        if (!notListing.isEmpty())
+            PacketSendingUtils.sendGroupedPacket(notListing, new PlayerInfoUpdatePacket(actions, List.of(tabListEntry(false))));
     }
 
     /**

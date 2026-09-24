@@ -1,0 +1,31 @@
+RUN-031 验收记录（2026-09-24，验收人侧）
+
+被测版本：集成分支 prod/integrate-w5（= main 54bbe566fb + 5A/5B/5C/5D + prod/w5-flake + DESIGN-PROD v0.8、v0.8.1 + 本记录与 v0.8.2）
+范围：DESIGN-PROD 第 5 波——REQ-PROD-018、029（指标导出、:loadtest 压测机器人与 200 人基线）、G11 入站限速与出站积压、
+区块下发上限、Tab 列表（5B）、追踪范围与可见实体上限（5C）、空间分格多线程与 ShardMain（5D）、
+OnlineDuplicateLoginSocketTest 偶发红的引擎竞态（顶号时旧玩家还在进世界途中）、集成后六档压测。
+各组：5A 返工 3 轮、5B 1 轮、5C 2 轮、5D 1 轮，全部 APPROVED。集成时补标 TabList、PluginEntities 为 @ApiStatus.NonExtendable。
+
+一、验收人侧检查（带 SYNAXIS_TEST_* 连本机 synaxis-pg / synaxis-valkey）
+  ./gradlew check --rerun-tasks --continue → BUILD SUCCESSFUL
+  4 线程 counter 严格模式 test --rerun → BUILD SUCCESSFUL
+  4 线程 grid 严格模式 test --rerun -Dsynaxis.thread-provider=grid → BUILD SUCCESSFUL，
+    EnvDispatcherThreadsIntegrationTest 报告含 "env dispatcher threads: 4" 与 "env thread provider: grid"
+  三轮合计测试结果目录：3,611 个测试 0 失败，15 跳过（引擎原有 4 个类）
+  ABI 门：gh release download v0.2.0 的 plugin-api.jar / protocol.jar，
+    :plugin-api / :protocol checkBinaryCompatibility --rerun -PbaselineJarDir=<该目录> → 两个任务都执行，0 违例
+  design-doc lint（DESIGN-PROD.md）0 警告；test-doc lint 双向联检通过，余第 6 波 REQ 无 TC 的提示
+
+二、验收人反证（还原后 git status 干净）
+  ConnectionManager#leftTheWorld 里让 spawningPlayers 判断失效（加 && Boolean.getBoolean("cp")）
+    → OnlineDuplicateLoginSocketTest 2 条红 1 条：aLoginReplacingASessionThatIsStillSpawningWaitsForItToLeave，:168
+    还原后 2 条全绿
+  审查者与集成者另复现：TC-268 两条反证、TC-314 反证（6 个红 1 个，:48）、TC-360～365 六条反证
+
+三、结果
+  通过：TC-PROD-260～270、290～301、310～319、330～336、350、361～365（361、362 的 tick 与 RSS 同机只记录）
+  失败：TC-PROD-271（5A 200 人基线超 50 ms 的 tick 18 个）、TC-PROD-360（集成后 6 个），判据为 0；
+        服务端与机器人同机、load1 最高 262.7、swap 约 29 GiB，需分机档（DESIGN-PROD §28.1 Q11）重判
+  观察：grid 分格下可见实体偶尔 101、102（超上限 100），登记为 DESIGN-PROD v0.8.2 §28.2 缺陷行
+        TC-PROD-364 第④项在现有 flood 下恒成立、判不出（§28.2 :loadtest 待办）
+  CI 退出判据：multithreaded-grid 在 main 上连续 3 次绿，合入后由 CI 判

@@ -99,7 +99,7 @@ public class MetricsEndpointTest {
     private static long count(String text, String thread) {
         final Matcher matcher = Pattern.compile("^synaxis_tick_duration_seconds_count\\{thread=\"" + thread
                 + "\"} (\\d+)(\\.0)?$", Pattern.MULTILINE).matcher(text);
-        if (!matcher.find()) throw new AssertionError("no tick count of " + thread + " in\n" + text);
+        if (!matcher.find()) throw new AssertionError("no tick count of " + thread);
         return Long.parseLong(matcher.group(1));
     }
 }

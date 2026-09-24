@@ -244,6 +244,7 @@ python3 tools/pkgdeps.py game-rts/src/main/java   --root-package io.github.beari
 | `plugin-api/` | M2 子项目：唯一稳定面，引擎与 `protocol` 类型的受控再导出；接 ABI 门 |
 | `server-app/` | M2 子项目：插件宿主与装配层（唯一启动入口），跑 classpath，不出模块 |
 | `game-rts/` | M2 子项目：RTS 玩法插件，由宿主用 `ServiceLoader` 发现 |
+| `loadtest/` | 压测 harness（`docs/DESIGN-PROD.md` `API-PROD-025`）：Java 机器人（真握手、可选加密、回 `ChunkBatchReceived`、walk / ride / fly）与 `sample`、`merge`、`flood` 三个子命令；不发布、没有模块依赖它。`./gradlew :loadtest:installDist` 后跑 `loadtest/build/install/loadtest/bin/loadtest run …`。`tools/loadtest/soak.py` 只留给 50 人以下的冒烟、RTS `play` 画像与攻击探针 |
 | `architecture-tests/` | M2 子项目，**纯测试**：没有主源码，把引擎与四个 M2 子项目全部当 `testImplementation`，只住 `docs/DESIGN-M2.md` §24 规则 ⑥ 那两条任何单个模块都表达不了的反方向 ArchUnit 规则；不进 `pkgdeps`（§3.6），也不进 CI 的 `diff-cover --src-roots`（没有主源码行可覆盖） |
 | `client-fabric/` | M2 客户端模组工程（`REQ-M2-020`）：Fabric Loom 的**独立 Gradle 构建**，自带 wrapper，不进 `settings.gradle.kts`（`ADR-M2-015`）；`:protocol` 从 `mavenLocal()` 按坐标消费并 JiJ 进模组 jar；`check` 跑 §24 的双端向量（读 `protocol/src/test/resources/vectors/` 本身）与 `verifyModJar`，CI 见 §7 的 `client-mod.yml` |
 | `build-src/` | Gradle 约定插件（toolchain、Error Prone、发布、ABI 检查） |

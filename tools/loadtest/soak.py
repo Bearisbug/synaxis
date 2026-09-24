@@ -1,6 +1,12 @@
 #!/usr/bin/env python3
 """Load and soak harness for the synaxis server core, standard library only.
 
+For 200 to 500 players use the Java harness, module ``:loadtest`` (``docs/DESIGN-PROD.md``
+``API-PROD-025``, ``ADR-PROD-013``): its bots answer ``ChunkBatchFinished``, walk, ride or fly, can
+log in encrypted and split over processes or machines. This script stays for smoke loads under 50
+connections, the RTS ``play`` profile and the attack probes (``--attacks``); it answers no chunk
+batch, so each of its connections receives the first 9 chunks and no more.
+
 The protocol itself is not reimplemented here: the handshake, login and configuration phases come
 from ``tools/protocol-probe/probe.py`` (packet ids are still derived from the repository, see that
 file). This module adds what a soak needs on top of a single probe run:

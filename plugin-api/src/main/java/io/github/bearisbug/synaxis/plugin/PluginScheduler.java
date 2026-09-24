@@ -3,6 +3,7 @@ package io.github.bearisbug.synaxis.plugin;
 import io.github.bearisbug.synaxis.timer.Schedulable;
 import io.github.bearisbug.synaxis.timer.Task;
 import io.github.bearisbug.synaxis.timer.TaskSchedule;
+import org.jetbrains.annotations.ApiStatus;
 
 /**
  * Scheduler capability of one plugin (API-M2-008, {@code docs/DESIGN-PROD.md} API-PROD-017).
@@ -12,7 +13,10 @@ import io.github.bearisbug.synaxis.timer.TaskSchedule;
  * <p>
  * The standard path for anything slow, such as persistence, is {@link #runAsync} for the blocking
  * part and {@link #runOn} to apply its result back on the thread that owns the entity or instance.
+ * <p>
+ * Only the host implements this interface: a plugin is handed one and calls it.
  */
+@ApiStatus.NonExtendable
 public interface PluginScheduler {
 
     /**

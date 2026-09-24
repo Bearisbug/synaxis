@@ -1,6 +1,7 @@
 package io.github.bearisbug.synaxis.plugin;
 
 import io.github.bearisbug.synaxis.entity.Player;
+import org.jetbrains.annotations.ApiStatus;
 
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -14,7 +15,10 @@ import java.util.concurrent.CompletableFuture;
  * Every registered section of a player is loaded before the player enters the world, and a section
  * the player has nothing stored for starts as {@link DataSection#createDefault()}. The host saves
  * the dirty sections every 60 seconds, on logout and on shutdown.
+ * <p>
+ * Only the host implements this interface: a plugin is handed one and calls it.
  */
+@ApiStatus.NonExtendable
 public interface PlayerDataStore {
 
     /**

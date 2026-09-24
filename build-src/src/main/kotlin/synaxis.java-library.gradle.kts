@@ -70,10 +70,11 @@ tasks.withType<Test> {
     minHeapSize = "512m"
     maxHeapSize = "1024m"
 
-    // The multi-threaded test round (REQ-PROD-019) is switched on from the command line, e.g.
-    // `./gradlew check -Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true`; without
-    // them the tests keep the engine defaults above.
-    for (name in listOf("synaxis.dispatcher-threads", "synaxis.acquirable-strict")) {
+    // The multi-threaded test rounds (REQ-PROD-019, REQ-PROD-020) are switched on from the command
+    // line, e.g. `./gradlew check -Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true`,
+    // plus `-Dsynaxis.thread-provider=grid` for the grid round; without them the tests keep the
+    // engine defaults above.
+    for (name in listOf("synaxis.dispatcher-threads", "synaxis.acquirable-strict", "synaxis.thread-provider")) {
         providers.systemProperty(name).orNull?.let { systemProperty(name, it) }
     }
 }

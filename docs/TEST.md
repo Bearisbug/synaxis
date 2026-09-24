@@ -15,6 +15,7 @@
 
 | 日期 | 改动 | 作者 |
 | --- | --- | --- |
+| 2026-09-24 | 跟进 `docs/DESIGN-PROD.md` 第 5 波 5D（`REQ-PROD-020` 空间分格，`API-PROD-016`、`ADR-PROD-006`；`REQ-PROD-019` 后半）。**新增 §4「生产就绪 · 第 5 波 5D：空间分格与多线程正确性余项」七条 `TC-PROD-330`～`TC-PROD-336`**：`ThreadProvider.grid` 同格同号、负坐标向下取整、相邻格不同线程（330）、`synaxis.thread-provider` / `synaxis.thread-grid-exponent` 的默认值与取值（331）、进程按分格派 tick 线程（332，§19 同名场景）、`ShardMain` 取核数 − 2 且命令行优先（333）、真进程 `bin/server-shard` 与 `bin/server-app` 的线程读数与拒启（334，§19「分片宿主线程数取核数减 2」，端口 25654）、4 线程 `grid` 严格模式跑全量与 CI job `multithreaded-grid`（335）、200 人 walk 10 min 分格与单线程同机对照（336，产物在 `docs/research/production-readiness-2026-09/load/grid-walk200-10m/` 与 `counter-walk200-10m/`）；每条带真跑过的反证与红的位置，本节开头列出与设计的三处口径差异与 `LogBudget`、`GameChannel` 的审查结论。§5 生产就绪域加一行，§5 引擎域「tick 多线程」一组补 `ThreadProvider` 与 `synaxis.thread-*` 键 | Bearisbug |
 | 2026-09-24 | 第 5 波 5C 返工：**新增 `TC-PROD-319`**（乘客只随载具被看见：追踪器单独报告乘客时看载具是否可见，重算收回骑上不可见载具的乘客；两条反证）。`TrackingRangeTest`、`VisibleEntityLimitTest` 各多一个用例（5 → 6），`TC-PROD-310`～`TC-PROD-313` 的用例数与反证的红改为两类同跑的实测值（`TrackingRangeTest` 里区块 8 那条的行号 `:100` → `:126`）；§5 生产就绪域的 5C 一行加 TC-PROD-319 | Bearisbug |
 | 2026-09-24 | 跟进 `docs/DESIGN-PROD.md` 第 5 波 5C（`REQ-PROD-023` 追踪范围，G20；`REQ-PROD-024` 每玩家可见上限，G21；`API-PROD-019`）。**新增 §4「生产就绪 · 第 5 波 5C：实体追踪范围与每玩家可见上限」九条 `TC-PROD-310`～`TC-PROD-318`**：类型默认与每实体覆盖、Y 轴（310，§19 追踪范围场景）、区块内越界与换位置靠每 5 tick 的重算（311）、留最近的 100 个且必显另算（312，§19 可见上限场景）、被裁掉的实体不再经区块合并广播发移动包（313）、配置键默认 0（314）、`PluginContext#entities()` 与 ABI 门（315）、机器人数可见实体（316）、`merge` 对旧文件逐字节不变（317）、200 人 town 同格 10 min 上限 0 / 100 对照（318：每人下行 74,384.846 → 38,998.414 B/s，服务端出站 124.9 → 65.4 Mbit/s；修复合并广播之前的一轮可见数已是 100、位置包一个没少；三轮都在本机 `load1` 18.7～262.7 时跑，tick 不下结论，产物在 `docs/research/production-readiness-2026-09/load/town200-*`）；每条带真跑过的反证与红的位置，本节开头列出与设计的三处口径差异。§5 生产就绪域加一行 | Bearisbug |
 | 2026-09-24 | 跟进 `docs/DESIGN-PROD.md` 第 5 波 5B（v0.7.2；`REQ-PROD-013` 入站包速率闸，G11，`API-PROD-012`；`REQ-PROD-025` 出站积压，G22；`REQ-PROD-026` 区块下发上限，G23；`REQ-PROD-027` Tab 列表，G24；后三条都在 `API-PROD-020`）。**新增 §4「生产就绪 · 第 5 波 5B：入站限流、出站积压、区块上限与 Tab 列表」十二条 `TC-PROD-290`～`TC-PROD-301`**：7 s 内 600 包被踢、582 包不踢（290）、解压 4,500,000 B/s 被踢与 3,000,000 B/s 不踢（291）、补全 20 次/秒（292）、窗口滑动与按类型覆盖、配置写错拒启（293）、只有移动包时先丢不踢且丢掉的不写出（294）、丢完仍超限断线 `synaxis:outbound-backlog` 与计数、模组文案（295）、回报 1000 块/tick 时每 tick ≤ 4 与引擎默认 64（296）、新人一个多条目 PlayerInfo（297）、延迟批量（298）、可见性 `listed=false` 与撤销（299）、`PluginContext#tabList()` 的持有、拒绝、收回与异常（300）、200 人 walk 10 min 压测（301）；每条带真跑过的反证与红的位置。`PlayerIntegrationTest#latencyTest` 按批量延迟改了预期。§5 生产就绪域加一行 | Bearisbug |
@@ -4368,11 +4369,121 @@ jcmd "$pid" VM.flags | tr ' ' '\n' | grep -cxE -- '-XX:\+UseG1GC|-XX:InitialHeap
 
 `admits` 另外拒收已移除的实体（多 tick 线程时，重算取候选之后别的线程把它 `remove()` 掉，再发生成包就没有对应的销毁包）。这条竞争单 tick 线程下不出现，没有单独的用例。
 
+### 生产就绪 · 第 5 波 5D：空间分格与多线程正确性余项
+
+对应 `REQ-PROD-020`（`API-PROD-016`、`ADR-PROD-006`，§19「同一分格的区块归同一线程」「分片宿主线程数取核数减 2」）与 `REQ-PROD-019` 后半（§19「4 线程严格模式下全量测试绿」的 `grid` 一轮、插件线程契约、`LogBudget` 与 `GameChannel` 的线程安全审查）。实现：
+
+- 引擎：`ThreadProvider.grid(exponent, chunkX, chunkZ)`，区块 (cx, cz) 所在格为 (cx >> exponent, cz >> exponent)，格 (x, z) 的线程号是 `3x + z`，由 `ThreadDispatcherImpl` 按 `Math.floorMod` 落到线程表上，`RefreshType.NEVER`；`ServerConfig` 加 `threadProvider`（枚举 `ThreadProviderKind`，`synaxis.thread-provider=counter|grid`，默认 `counter`，别的值拒启）与 `threadGridExponent`（`synaxis.thread-grid-exponent`，默认 4，取 0～31）；`ServerProcessImpl` 按这两项建 dispatcher。
+- 分片宿主：`server-app` 新增入口 `ShardMain`，发行版多一个启动脚本 `bin/server-shard`（与 `bin/server-app` 同一套 JVM 默认参数、同读 `SERVER_APP_OPTS`）。它在命令行没给时写入 `synaxis.thread-provider=grid` 与 `synaxis.dispatcher-threads = max(1, 核数 − 2)`，再交给 `Main`；RTS 与核心模式仍从 `bin/server-app`（`Main`）起，保持 `counter` + 1。
+- 测试开关：`build-src` 的 `synaxis.java-library` 把 `synaxis.thread-provider` 与另两个属性一起转给测试 JVM，`EnvTestExt` 从 JVM 读线程数与提供者两项；`.github/workflows/ci.yml` 新增 job `multithreaded-grid`（「Test with 4 tick threads (strict, grid)」），与 0C 的 `multithreaded` 并列，末步 grep 两行 `env dispatcher threads: 4`、`env thread provider: grid`。
+- 线程契约写进 `plugin-api` 的 `package-info` 与 `docs/PLUGINS.md` §10。
+- 审查结论，不改代码：`LogBudget` 只有两个 `AtomicLong`，抢到 CAS 的线程写那一行，多线程下计数不丢不重；`GameChannel` 在发包玩家所属的 tick 线程上执行，跨玩家共享的只有 `GameSessions`（`ConcurrentHashMap`，增删走 `synchronized`）、`Match` 的单位归属表（`ConcurrentHashMap`）、`Units` 的寻路队列（`LinkedBlockingQueue`）与离线队列（`ConcurrentLinkedQueue`）、台账（MPSC）与三个 `LogBudget`；`GameSession` 的非 volatile 字段只在该玩家的线程上读写，玩家换线程发生在两次 tick 之间，由 dispatcher 的屏障建立先后关系。
+
+本节与设计的口径差异（交付说明同步列出，由主会话决定是否回写 `docs/DESIGN-PROD.md`）：
+
+- `API-PROD-016` 写的是 `ThreadProvider.grid(int exponent)`。实现多两个参数（取区块 x、z 的函数）：`thread` 包属于 ArchUnit 严格分层的底层集合，不能依赖 `instance.Chunk`，`ThreadProvider` 又是按分区类型泛化的，只能由调用方告诉它坐标怎么取。
+- `API-PROD-016` 只写「线程号 = 格坐标 hash」，实现取 `3 × 格x + 格z`：从 6 条线程起，相邻（含斜对角）的两格一定不在同一条线程，从 10 条起隔一格的两格也不在（6、10 正是 8 核、12 核分片的线程数）。这里不能用 `Objects.hash` 式的 `31 × 格x + 格z`：线程数整除 30 时（6、10 都是）每一格都与它斜对角的邻格同线程，玩家扎堆的相邻格会挤在一条线程上。所有实例共用一张格网，不同实例同坐标的区块在同一条线程上。
+- 分片宿主（`docs/DESIGN-M3.md` §4 的 `ShardMain`）在本仓还不存在，本组先建了它，只放线程两项；视距、模拟距离、卸载宽限与 `accept-transfers` 这些分片设置归 M3（`API-M3-006`、`API-M3-010`），还没加。它目前经 `Main` 起服，所以也带着 `Main` 给 RTS 设的视距默认值（实体 8、区块 10）。
+
+`TC-PROD-330`～`TC-PROD-333`、`TC-PROD-335` 是 JUnit 或 Gradle 命令，`TC-PROD-334` 与 `TC-PROD-336` 起真进程，端口 25654，服务端从 `server-app/build/install/server-app/bin/` 起、在各自的空工作目录里跑，用完按 pid 停进程并删目录。反证一律是「临时改一处实现、重跑、看红、还原、重跑复绿」，还原后 `git status` 必须干净。
+
+#### `TC-PROD-330` `ThreadProvider.grid`：同一格同一个线程号，负坐标向下取整，只分配一次 — 对应 `REQ-PROD-020` · 级别: 回归 · 执行者: AI
+
+前置：工作副本干净。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | `./gradlew :test --tests 'io.github.bearisbug.synaxis.thread.ThreadProviderGridTest' --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts` | `BUILD SUCCESSFUL`，该类 `tests="5"` 全绿：exponent 4 下 (0,0)、(15,15)、(7,0) 线程号相同，(16,0)、(0,16)、(−1,0) 各不相同，(−16,−16) 与 (−1,−1) 相同；(0,0) 为 0、(16,0) 为 3、(0,16) 为 1，exponent 2 下 (8,12) 为 9；格 (−3..3, −3..3) 的每一格，6 条线程时与 8 个邻格、10 条线程时与两格以内的 24 个格都不同线程；`refreshType()` 为 `NEVER`；exponent −1 与 32 抛 `IllegalArgumentException` |
+| 2 | 反证（按除法取格）：`src/main/java/io/github/bearisbug/synaxis/thread/ThreadProvider.java` 的 `grid` 里两处 `>> exponent` 改成 `/ (1 << exponent)`，重跑第 1 步，再 `git checkout --` 该文件 | `5 tests completed, 1 failed`：`theChunksOfOneCellShareAThreadId` 红在 `ThreadProviderGridTest.java:28`，`expected: not equal but was: <0>`（区块 −1 被算进 0 号格，原点两侧 16 个区块宽的一条被并成一格） |
+| 3 | 反证（换成 `Objects.hash` 式的系数）：同一行的 `3 * (chunkX` 改成 `31 * (chunkX`，重跑第 1 步，再 `git checkout --` 该文件 | `5 tests completed, 2 failed`：`theIdIsThreeTimesTheCellXPlusTheCellZ` 红在 `:35` `expected: <3> but was: <31>`；`neighbouringCellsGetDifferentThreads` 红在 `:55` `cells (-3, -3) and (-4, -2) on 6 threads ==> expected: not equal but was: <0>`（斜对角邻格同线程） |
+| 4 | 还原后重跑第 1 步 | 与第 1 步相同 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PROD-331` 配置键：默认 `counter` 与 exponent 4，只认 `counter` / `grid` 两个名字 — 对应 `REQ-PROD-020` · 级别: 回归 · 执行者: AI
+
+前置：工作副本干净。测试不设 JVM 属性（同一个测试 JVM 里的别的类会读到），名字的解析走 `ServerConfig#threadProvider(String, String)`，真进程上的读取见 `TC-PROD-334`。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | `./gradlew :test --tests 'io.github.bearisbug.synaxis.ServerConfigTest' --tests 'io.github.bearisbug.synaxis.ServerProcessDispatcherTest' --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts` | `BUILD SUCCESSFUL`，`ServerConfigTest` `tests="6"`、`ServerProcessDispatcherTest` `tests="2"` 全绿：默认 `threadProvider()` 为 `COUNTER`、`threadGridExponent()` 为 4、`dispatcherThreads()` 为 1；exponent −1、32 与 `null` 提供者被拒；`counter`、`grid` 解析成两个枚举值，`GRID` 抛 `Property 'synaxis.thread-provider' is not counter or grid: GRID` |
+| 2 | 反证（默认值改成分格）：`src/main/java/io/github/bearisbug/synaxis/ServerConfig.java` 的 `Builder` 里 `threadProvider = ThreadProviderKind.COUNTER` 改成 `GRID`，重跑第 1 步，再 `git checkout --` 该文件 | `8 tests completed, 3 failed`：`ServerConfigTest#defaults` 红在 `:32` `expected: <COUNTER> but was: <GRID>`；`ServerProcessDispatcherTest#twoProcessesTickWithTheirOwnThreadCount` 红在 `:54` `the two thread process must spread its partitions over both threads ==> expected: <2> but was: <1>`（8 个区块同在 (0,0) 格）；`theGridKeepsACellOnOneThread` 红在 `:91` `the counter gives every new chunk the next thread ==> expected: <3> but was: <2>`。引擎默认一变，M2 的进程就换了分配方式，这两条都拦得住 |
+| 3 | 还原后重跑第 1 步 | 与第 1 步相同 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PROD-332` 进程按分格派 tick 线程：(0,0) 与 (15,15) 同线程，(16,0) 在另一条 — 对应 `REQ-PROD-020` · 级别: 回归 · 执行者: AI
+
+前置：工作副本干净。§19 场景「同一分格的区块归同一线程」，用实体的 tick 线程代表区块的 tick 线程（实体随所在区块分配）。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | `./gradlew :test --tests 'io.github.bearisbug.synaxis.ServerProcessDispatcherTest' --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts` | `BUILD SUCCESSFUL`，`tests="2"` 全绿。`theGridKeepsACellOnOneThread`：`GRID`、6 条线程的进程里，放在区块 (0,0)、(15,15)、(16,0) 中心的三只僵尸 tick 5 次，前两只只在 `threads().get(0)` 上 tick、第三只只在 `threads().get(3)`（(1,0) 格的线程号 3）上，(15,15) 那只的 `acquirable().assignedThread()` 是 0 号线程；同样摆法的 `counter` 进程用了 3 条不同线程 |
+| 2 | 反证（配置读了、没用上）：`src/main/java/io/github/bearisbug/synaxis/ServerProcessImpl.java` 的 `case GRID -> ThreadProvider.grid(…);` 改成 `case GRID -> ThreadProvider.counter();`，重跑第 1 步；再跑 `./gradlew :testing:test --tests '*EnvDispatcherThreadsIntegrationTest' -Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true -Dsynaxis.thread-provider=grid --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts`；然后 `git checkout --` 该文件 | 第一条：`2 tests completed, 1 failed`，`theGridKeepsACellOnOneThread` 红在 `:85` `chunks (0, 0) and (15, 15) are in one cell ==> expected: <[Thread[#75,Syn-Tick-0,5,main]]> but was: <[Thread[#76,Syn-Tick-1,5,main]]>`（线程编号随运行变，不作判据）。第二条：`2 tests completed, 1 failed`，`envRunsTheThreadProviderOfTheJvm` 红在 `EnvDispatcherThreadsIntegrationTest.java:52`，(0,0) 与 (15,15) 两只僵尸的 `assignedThread()` 分别是 `Syn-Tick-0` 与 `Syn-Tick-1` |
+| 3 | 还原后重跑第 1 步 | 与第 1 步相同 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PROD-333` `ShardMain`：线程数取核数 − 2（至少 1），命令行给了的键不覆盖 — 对应 `REQ-PROD-020` · 级别: 回归 · 执行者: AI
+
+前置：工作副本干净。测试调 `ShardMain.threadDefaults(属性查找, 核数)`，不碰 JVM 属性。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | `./gradlew :server-app:test --tests 'io.github.bearisbug.synaxis.app.ShardMainTest' --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts` | `BUILD SUCCESSFUL`，`tests="3"` 全绿：8 核、什么都没给 → `{synaxis.thread-provider=grid, synaxis.dispatcher-threads=6}`；给了 `synaxis.dispatcher-threads=8` → 只补 `thread-provider=grid`；给了 `synaxis.thread-provider=counter` → 只补线程数 6；2 核与 1 核都是 1 |
+| 2 | 反证（不留 2 核）：`server-app/src/main/java/io/github/bearisbug/synaxis/app/ShardMain.java` 的 `Math.max(1, cores - 2)` 改成 `Math.max(1, cores)`，重跑第 1 步，再 `git checkout --` 该文件 | `3 tests completed, 3 failed`：`anEightCoreShardRunsTheGridOnSixThreads` 红在 `:18` `expected: <{synaxis.thread-provider=grid, synaxis.dispatcher-threads=6}> but was: <{…=8}>`，`theCommandLineWins` 红在 `:26`（6 对 8），`aSmallMachineKeepsOneThread` 红在 `:32` `expected: <1> but was: <2>` |
+| 3 | 还原后重跑第 1 步 | 与第 1 步相同 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PROD-334` 真进程：`bin/server-shard` 是 `grid` + 核数 − 2 条 tick 线程，命令行优先，`bin/server-app` 仍是 `counter` + 1 — 对应 `REQ-PROD-020` · 级别: 回归 · 执行者: AI
+
+前置：`./gradlew :server-app:installDist --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts`；端口 25654 空闲。机器：Apple M4 Pro，`sysctl -n hw.ncpu` 为 12。下文「起服」指：空工作目录里 `tail -f /dev/null | JAVA_OPTS="-Xms1G -Xmx1G" SERVER_APP_OPTS="-Dsynaxis.app.port=25654 -Dsynaxis.app.auth=offline -Dsynaxis.app.core-mode=on -Dsynaxis.app.metrics.bind=127.0.0.1:0 <额外参数>" <仓库根>/server-app/build/install/server-app/bin/<脚本> > stdout.log 2>&1 &`，等到 `listening on 0.0.0.0:25654`；「读数」指 `grep -o 'Effective ServerConfig\[[^]]*' stdout.log` 里的 `dispatcherThreads`、`threadProvider`、`threadGridExponent` 三项，`jcmd <pid> Thread.print | grep -c '^"Syn-Tick-[0-9]*"'`，以及 `TC-PROD-050` 那条 `jcmd VM.flags` 计数（堆两项换成 1 GiB 的 `1073741824`）；读完 `kill <pid>`。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 起服 `server-shard`，不给额外参数；读数 | `dispatcherThreads=10`、`threadProvider=GRID`、`threadGridExponent=4`；`Syn-Tick-*` 线程 10 条；JVM 参数计数 7（与 `bin/server-app` 同一套默认参数）；`kill` 后末行 `synaxis server stopped successfully.` |
+| 2 | 起服 `server-shard`，额外参数 `-Dsynaxis.dispatcher-threads=8`；读数。再以 `-Dsynaxis.thread-provider=counter` 起一次 | 前一次 `dispatcherThreads=8`、`GRID`、8 条；后一次 `dispatcherThreads=10`、`COUNTER`、10 条（命令行给的那一项不被覆盖，退回引擎分配方式只改这一个键） |
+| 3 | 起服 `server-app`，不给额外参数；读数 | `dispatcherThreads=1`、`threadProvider=COUNTER`、1 条（RTS 与核心模式的入口不变） |
+| 4 | 起服 `server-shard`，额外参数 `-Dsynaxis.thread-provider=hex` | 进程不起，日志 `Refusing to start: Property 'synaxis.thread-provider' is not counter or grid: hex`，25654 无监听 |
+| 5 | 反证（入口没写默认值）：删掉 `server-app/src/main/java/io/github/bearisbug/synaxis/app/ShardMain.java` 里 `main` 的第一行 `threadDefaults(…).forEach(System::setProperty);`，重新 `installDist`，重做第 1 步；再 `git checkout --` 该文件、重新 `installDist`、重做第 1 步 | 改动下 `server-shard` 照常就绪，但读数是 `dispatcherThreads=1`、`COUNTER`、1 条：只看「起得来」发现不了分片没开分格；还原后回到第 1 步的读数 |
+
+后置：每次都已按 pid 停服、结束 `tail`、删工作目录；25654 无监听；`git status --short` 无输出。
+
+#### `TC-PROD-335` 4 线程 `grid` 严格模式跑全量，开关确实到了每个测试 JVM — 对应 `REQ-PROD-019`、`REQ-PROD-020` · 级别: 回归 · 执行者: AI
+
+前置：工作副本干净；数据库前置同 3A 一节（`SYNAXIS_TEST_PG_URL` 等四个变量，store 各类结果文件 `skipped="0"`）。CI 上同一条命令是 `.github/workflows/ci.yml` 的 `multithreaded-grid` job。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | `./gradlew test --rerun --continue -Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true -Dsynaxis.thread-provider=grid --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts` | `BUILD SUCCESSFUL`；各模块 `build/test-results/test/*.xml` 全部 `failures="0" errors="0"`（本轮 470 个类、3,471 条，15 条跳过全在 `TestMojangUtils`、`TranslationIntegrationTest`、`PlayerSkinTest`、`TagNbtTest` 四个要外网的引擎类，数据库用例 0 跳过）。首轮即绿，没有为 `grid` 改任何测试 |
+| 2 | `grep -o 'env [a-z ]*: [a-z0-9]*' testing/build/test-results/test/TEST-io.github.bearisbug.synaxis.testing.test.EnvDispatcherThreadsIntegrationTest.xml` | 两行 `env dispatcher threads: 4`、`env thread provider: grid`（CI job 末步就是 grep 这两行） |
+| 3 | 反证 Gradle 不转发：`build-src/src/main/kotlin/synaxis.java-library.gradle.kts` 的属性表 `listOf("synaxis.dispatcher-threads", "synaxis.acquirable-strict", "synaxis.thread-provider")` 去掉第三项，跑 `./gradlew :testing:test --tests '*EnvDispatcherThreadsIntegrationTest' -Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true -Dsynaxis.thread-provider=grid --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts`，再跑第 2 步，然后 `git checkout --` 该文件 | 测试本身绿（JVM 里没有这个属性，期望值与实际都是 `counter`），第 2 步输出 `env thread provider: counter`，`grep -q 'env thread provider: grid'` 退出码 1：全量其实跑在 `counter` 上，CI 末步拦的就是这个 |
+| 4 | 反证 `Env` 不读：删掉 `testing/src/main/java/io/github/bearisbug/synaxis/testing/EnvTestExt.java` 里 `.threadProvider(ServerConfig.fromSystemProperties().threadProvider())` 那一行，跑第 3 步那条 `:testing:test` 命令，然后 `git checkout --` 该文件 | `2 tests completed, 1 failed`：`envRunsTheThreadProviderOfTheJvm` 红在 `EnvDispatcherThreadsIntegrationTest.java:41` `expected: <grid> but was: <counter>` |
+| 5 | 两处都还原后重跑第 3 步那条命令与第 2 步 | 绿，两行 `env dispatcher threads: 4`、`env thread provider: grid` |
+| 6 | 工作流能解析：仓库根 `.venv/bin/python -c "import yaml; d = yaml.safe_load(open('.github/workflows/ci.yml')); print(list(d['jobs'])); print(d['jobs']['multithreaded-grid']['name'])"` | `['check', 'multithreaded', 'multithreaded-grid']` 与 `Test with 4 tick threads (strict, grid)` |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PROD-336` 200 人 walk 10 min 同机对照：分片入口（`grid` + 10 条 tick 线程）与 `server-app`（`counter` + 1） — 对应 `REQ-PROD-020` · 级别: 回归 · 执行者: AI
+
+前置：`./gradlew :server-app:installDist :loadtest:installDist`；本机没有别的压测（`pgrep -fl synaxis.app.Main`、`pgrep -fl ShardMain`、`pgrep -fl loadtest` 为空），起跑前记下 `uptime`。机器与 `TC-PROD-271` 相同（Apple M4 Pro 12 核 / 24 GiB，macOS，JDK 25.0.4.1，服务端与机器人同机、走回环），本机同时有别的会话在跑构建与测试。服务端是核心模式（平地，40 层石头；两个入口都经 `Main`，所以都是 `chunk-view-distance=10`、`entity-view-distance=8`），内存存储，离线模式；两档只差入口脚本。机器人绕出生点走半径 64～192 格的圆，200 人落在 (−1,−1)、(−1,0)、(0,−1)、(0,0) 四个格里，按 `3x + z` 分到 10 条线程中的 6、7、9、0 号，另有视距内只载区块、没有实体的格分到其余线程。下文「跑一档」指：空工作目录里后台起服，`JAVA_OPTS="-Xms3G -Xmx3G"`，`SERVER_APP_OPTS="-Dsynaxis.app.port=25654 -Dsynaxis.app.auth=offline -Dsynaxis.app.core-mode=on -Dsynaxis.app.shard-id=w5d -Dsynaxis.app.metrics.bind=127.0.0.1:0 -Dsynaxis.connection-gate.trusted-networks=127.0.0.0/8"`；从日志取端点地址；`LT sample --pid <服务端 pid> --duration 630s --metrics <端点> --out server.json` 放后台，5 s 后 `LT run --host 127.0.0.1 --port 25654 --bots 200 --profile walk --encryption off --duration 600s --out bots-0.json`；两者结束后按 pid 停服，`LT merge bots-0.json server.json --out summary.json`（`LT` 同 `TC-PROD-269`）。产物目录 `docs/research/production-readiness-2026-09/load/grid-walk200-10m/` 与 `…/counter-walk200-10m/`，各有 `bots-0.json`、`server.json`、`summary.json`，没有保留 JFR。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 用 `bin/server-shard` 跑一档，输出到 `grid-walk200-10m/` | 本轮 2026-09-24 12:45:58～12:56（UTC+8），起跑前 `load1` 17.49，跑的过程中 8.555～62.025。日志 `dispatcherThreads=10`、`threadProvider=GRID`。`merge` 退出码 2，判定未通过，只差一项：`ticks_over_50ms` 50 个（阈值 0）。其余：200 个全部登录、0 掉线、0 次被踢，登录延迟 P99 30.6 ms；`ticks` 12,613 个，P50 1.426 ms、**P99 28.623 ms**、max 184.995 ms；`dispatcher_busy_ratio` 10 条 tick 线程 0.003～0.010、合计 0.062，有玩家的 0、6、7、9 号为 0.009～0.010，只有区块的 6 条为 0.003～0.005，`Syn-TickScheduler` 0.058；GC 118 次，暂停 P99 171.167 ms、超 50 ms 的 30 次；RSS 最大 1,204.156 MiB，堆最大 785.931 MiB；服务端出站 7,598,846.879 B/s，WARN / ERROR 0 行 |
+| 2 | 紧接着用 `bin/server-app` 跑一档，输出到 `counter-walk200-10m/` | 本轮 12:57:47～13:08，起跑前 `load1` 12.19，过程中 6.92～105.11。日志 `dispatcherThreads=1`、`threadProvider=COUNTER`。`merge` 退出码 2，同样只差 `ticks_over_50ms` 58 个。其余：200 人全部登录、0 掉线；`ticks` 12,610 个，P50 1.688 ms、**P99 30.289 ms**、max 166.199 ms；`Syn-Tick-0` 0.033、`Syn-TickScheduler` 0.069；GC 78 次，暂停 P99 161.021 ms、超 50 ms 的 24 次；RSS 最大 1,755.047 MiB；出站 7,599,413.392 B/s |
+| 3 | 对照两份 `summary.json` | 单线程档里 200 人的 tick 工作只占 `Syn-Tick-0` 3.3% 的时间；分到 10 条线程后每条 ≤ 1.0%，合计 6.2%，多出的 2.9 个百分点是 10 条线程每 tick 的唤醒与屏障（本条没有单独量这一项，是按差值推的）。两档 tick P99（28.6 对 30.3 ms）与超 50 ms 个数（50 对 58）都被同一段时间里的机器负载与 GC 暂停左右，逐分钟 P99 高的分钟与 `load1` 高峰重合，差值不能归到分格上；这一档只证明分片入口在 200 人真负载下把各格的 tick 分到了全部线程、行为与单线程档一致（登录、掉线、区块、出站字节在 0.01% 以内相同）。分格的收益要在 tick 线程本身成为瓶颈的档里量（`docs/DESIGN-PROD.md` §15 的 500 人两档） |
+| 4 | 反证（线程分配没摊开）：`ThreadProvider.java` 的 `3 * (chunkX` 改成 `31 * (chunkX`，重新 `installDist`，重做第 1 步，再 `git checkout --` 该文件并重新 `installDist` | 本轮 12:31:15 起跑，当时 `load1` 118.698～190.324（另一个会话的压测刚结束、多个构建在跑），tick 读数不可比，只看线程分配：`dispatcher_busy_ratio` 的 `Syn-Tick-3`、`Syn-Tick-4`、`Syn-Tick-5` 三条为 0.0，`Syn-Tick-9` 为 0.021（第 1 步里最忙的一条是 0.010）：(−1,0) 与 (0,−1) 两格都落在 9 号线程（−31 与 −1 对 10 取模都是 9），这正是 `TC-PROD-330` 第 3 步的斜对角碰撞在真负载下的样子。那一轮的产物没有提交 |
+| 5 | 复算：在产物目录里 `LT merge bots-0.json server.json --out /tmp/remerge.json`，`cmp /tmp/remerge.json summary.json` | 无输出：`summary.json` 可由提交的两份原始文件复算 |
+
+后置：服务端与采样进程都已按 pid 停掉，25654 无监听；`ls $TMPDIR | grep synaxis-loadtest` 里没有本条两次 `sample` 的录制文件（文件名带采样进程的 pid）；工作目录已删；删掉 `/tmp/remerge.json`。本条未达标的 `ticks_over_50ms` 与 `TC-PROD-271` 同源（同机压测、GC 暂停与机器负载），不是分格引入的。
+
 ## 5. 回归策略
 
 - **全量轮**（全部用例）：首次成稿、每个阶段 gate（引擎域阶段 0、2、3；游戏域 `docs/DESIGN-M2.md` §26 的阶段 1～6b；大世界域 `docs/DESIGN-M3.md` §26 的 M3-A～M3-G）、跨功能域改动、地基变更（JDK、Gradle、镜像、协议版本、模块拆分、启动入口）。
 - **局部轮**（受影响用例 + 全部冒烟级）：单一需求改动。受影响用例 = 本次改动触及的 `REQ-*` / `REQ-M2-*` 所对应的 TC（M2 侧的对照表在 §2，机械校验查不到它）；无 REQ 变更的改动（纯 bug 修、重构）按触及的功能域圈定：
-  - 引擎域：构建与仓库 → TC-001、TC-002、TC-004、TC-006、TC-021、TC-029，删除与注册表 → TC-008、TC-009、TC-020、TC-036，命名与合规 → TC-011、TC-028，协议 → TC-014、TC-018、TC-019、TC-026、TC-027、TC-030、TC-031、TC-032、TC-034、TC-035、TC-GAME-069、TC-GAME-070、TC-GAME-071（后三条是攻击面盘点补的，动了 `network` / `listener` 包或 `ServerConfig` 的连接与超时项就跑），卫生 → TC-015、TC-016，门面与配置 → TC-023、TC-025，分层 → TC-024、TC-035，tick 多线程（`thread` 包、`Entity` / `Player` 的 `setInstance` / `teleport`、`EnvTestExt`、测试 JVM 参数）→ TC-PROD-030～TC-PROD-033。
+  - 引擎域：构建与仓库 → TC-001、TC-002、TC-004、TC-006、TC-021、TC-029，删除与注册表 → TC-008、TC-009、TC-020、TC-036，命名与合规 → TC-011、TC-028，协议 → TC-014、TC-018、TC-019、TC-026、TC-027、TC-030、TC-031、TC-032、TC-034、TC-035、TC-GAME-069、TC-GAME-070、TC-GAME-071（后三条是攻击面盘点补的，动了 `network` / `listener` 包或 `ServerConfig` 的连接与超时项就跑），卫生 → TC-015、TC-016，门面与配置 → TC-023、TC-025，分层 → TC-024、TC-035，tick 多线程（`thread` 包、`Entity` / `Player` 的 `setInstance` / `teleport`、`EnvTestExt`、测试 JVM 参数）→ TC-PROD-030～TC-PROD-033，其中动了 `ThreadProvider`、`ServerConfig` 的 `synaxis.thread-*` 键、`ServerProcessImpl` 建 dispatcher 的一处、`EnvTestExt` 或测试 JVM 参数再加 TC-PROD-330～TC-PROD-332 与 TC-PROD-335。
   - 游戏域：模块与门禁 → TC-GAME-001～TC-GAME-006、TC-GAME-059、TC-GAME-067，插件宿主 → TC-GAME-009～TC-GAME-011、TC-GAME-014～TC-GAME-016、TC-GAME-053～TC-GAME-055（TC-GAME-007、TC-GAME-008、TC-GAME-012、TC-GAME-013 已废弃），协议与握手 → TC-GAME-017～TC-GAME-028、TC-GAME-049、TC-GAME-050、TC-GAME-060～TC-GAME-064（TC-GAME-021、TC-GAME-023、TC-GAME-025 已废弃），世界与对局 → TC-GAME-029、TC-GAME-031、TC-GAME-033～TC-GAME-036、TC-GAME-056、TC-GAME-057（TC-GAME-030、TC-GAME-032 已废弃），单位与寻路 → TC-GAME-052、TC-GAME-039～TC-GAME-042、TC-GAME-051、TC-GAME-065、TC-GAME-068，镜头 → TC-GAME-043、TC-GAME-044，客户端模组 → TC-GAME-038、TC-GAME-045～TC-GAME-047、TC-GAME-066，启动器 → TC-GAME-048、TC-GAME-049、TC-GAME-050、TC-GAME-058。
   - 生产就绪域：宿主日志线（`REQ-PROD-015`～`REQ-PROD-017`）→ TC-PROD-001～TC-PROD-008。
   - 生产就绪域：tick 看门狗（`REQ-PROD-014` 前半）→ TC-PROD-020～TC-PROD-023。
@@ -4396,6 +4507,7 @@ jcmd "$pid" VM.flags | tr ' ' '\n' | grep -cxE -- '-XX:\+UseG1GC|-XX:InitialHeap
   - 生产就绪域（`docs/DESIGN-PROD.md`）：指标导出与压测 harness（`REQ-PROD-018`、`REQ-PROD-029`）→ TC-PROD-260～TC-PROD-271；动了 `server-app` 的 `metrics/`、`Main` 的指标装配、`StoreMetrics` 或存储里报语句与保存的几处、`EventLedger#droppedTotal` 就跑 TC-PROD-260～TC-PROD-262（262 要数据库前置），再动了起服顺序加 TC-PROD-264（真进程，约 1 分钟）；动了引擎 `TrafficCounters`、`PlayerSocketConnection` 的计数与加解密计时、`TickThread#observeTicks`、`SessionClient` 的累计计数或 `Watchdog#warnings` 就跑 TC-PROD-263 与 TC-PROD-260；动了 `loadtest/` 的 `Bot`、`Protocol` 或 `Profile` 就跑 TC-PROD-265、TC-PROD-266，动了 `MergeCommand`、`SampleCommand`、`Histogram` 或 `Args` 就跑 TC-PROD-267、TC-PROD-268，动了 `RunCommand` 或 `FloodCommand` 再加 TC-PROD-269、TC-PROD-270（真进程，各约 1 分钟）。TC-PROD-271（200 人 walk 30 min）只在第 5 波的分格、可见性与限流合入后，或引擎 tick、网络、区块发送路径有改动时跑，一次约 35 分钟，本机同时只能有一个压测。跨域牵连：动了 `PlayerSocketConnection` → 加 TC-PROD-090～TC-PROD-101；动了 `ConnectionGate` 的拒绝计数 → 加 TC-PROD-270。
   - 生产就绪域（`docs/DESIGN-PROD.md`）：入站限流、出站积压、区块上限与 Tab 列表（`REQ-PROD-013`、`REQ-PROD-025`～`REQ-PROD-027`）→ TC-PROD-290～TC-PROD-301；动了 `InboundPacketLimits`、`WindowCounter`、`PacketLimitAction`、`ServerConfig` 的 `synaxis.packet-limit.*` 与补全键，或 `PlayerSocketConnection` 的 `processBatch` / `readClientPacket` 就跑 TC-PROD-290～TC-PROD-293；动了 `PlayerSocketConnection` 的 `sendPacket` / `offer` / `checkBacklog` / `writeMovement`、`PacketWriting#writeQueue`、`PacketViewableUtils` 或 `synaxis.outbound.max-backlog-bytes` 就跑 TC-PROD-294、TC-PROD-295（动了模组 lang 再加第 3、4 步）；动了 `Player#sendPendingChunks` / `onChunkBatchReceived` 或 `synaxis.chunk-queue.*` 就跑 TC-PROD-296；动了 `Player#UNSAFE_init` 的 PlayerInfo、`setListed`、`setSkin`、`refreshLatency`、`tabListEntry`，`ConnectionManager` 的 `sendTabListLatencies` / `setTabListVisibility` / `isListedFor` 或 `synaxis.tab-latency-interval-ms` 就跑 TC-PROD-297～TC-PROD-299；动了 `TabList`、`PluginContext#tabList`、`TabListSlot`、`PluginTabListImpl` 或 `PluginHost#tearDown` 就跑 TC-PROD-300。TC-PROD-301（200 人 walk 10 min，约 12 分钟）在改了上面任一默认值、或引擎 tick、网络、区块发送路径时跑，本机同时只能有一个压测。跨域牵连：动了 `PlayerSocketConnection` → 加 TC-PROD-090～TC-PROD-101 与 TC-PROD-263；动了 `HostMetrics` 的积压计数 → 加 TC-PROD-261；动了 `:plugin-api` 的接口 → 加 TC-PROD-163。
   - 生产就绪域（`docs/DESIGN-PROD.md`）：实体追踪范围与每玩家可见上限（`REQ-PROD-023`、`REQ-PROD-024`）→ TC-PROD-310～TC-PROD-319；动了引擎 `EntityView`、`TrackingRange` / `TrackingRanges`、`Entity` 的追踪范围与必显两组方法、`Player#update` 里的重算调用或 `ServerConfig` 的 `synaxis.max-visible-entities-per-player` 就跑 TC-PROD-310～TC-PROD-314 与 TC-PROD-319；动了 `PluginContext#entities`、`PluginEntities` 或 `PluginHost` 的接线跑 TC-PROD-315；动了 `loadtest/` 的 `Bot` 实体计数、`RunCommand` 采样或 `MergeCommand` 的 `visible_entities` 跑 TC-PROD-316、TC-PROD-317。TC-PROD-318（三轮各约 11 分钟）只在可见性、视野广播（`PacketViewableUtils`、`hasPredictableViewers`）或实体移动同步有改动时跑，本机同时只能有一个压测。跨域牵连：动了 `EntityView` 或 `Player#update` → 加 TC-PROD-033（4 线程严格模式全量，重算在玩家自己的 tick 线程上碰别的实体的视图）。
+  - 生产就绪域（`docs/DESIGN-PROD.md`）：空间分格与多线程正确性余项（`REQ-PROD-020`、`REQ-PROD-019` 后半）→ TC-PROD-330～TC-PROD-336；动了 `ThreadProvider#grid` 跑 TC-PROD-330、TC-PROD-332、TC-PROD-335，动了 `ServerConfig` 的 `synaxis.thread-*` 键或 `ServerProcessImpl` 建 dispatcher 的一处跑 TC-PROD-331、TC-PROD-332、TC-PROD-334，动了 `ShardMain` 或 `server-app/build.gradle.kts` 的 `shardStartScripts` 跑 TC-PROD-333、TC-PROD-334 与 TC-PROD-050，动了 `build-src` 转给测试 JVM 的属性、`EnvTestExt` 或 `ci.yml` 的 `multithreaded-grid` 跑 TC-PROD-335；TC-PROD-336（两档各约 11 分钟）只在分格规则或 tick 调度路径有改动时跑，本机同时只能有一个压测。跨域牵连：动了 `thread` 包 → 加 TC-PROD-030～TC-PROD-033；动了 `plugin-api` 的 `package-info` 或 `docs/PLUGINS.md` §10 的线程契约 → 同步核对 `docs/DESIGN-PROD.md` `API-PROD-016` 的线程契约一条。
   - 影响面不确定时升级为全量轮。
 - **复测轮**（上轮失败用例 + 全部冒烟级）：修复失败项之后。
 - **人工收口轮**（仅上轮「待人工」用例）：AI 轮之后由人工补测 TC-016、TC-030、TC-GAME-020、TC-GAME-038、TC-GAME-046、TC-GAME-047，不要求冒烟级。

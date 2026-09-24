@@ -125,7 +125,11 @@ final class ServerProcessImpl implements ServerProcess, Registries.Delegating {
         this.server = new Server(this, packetParser);
         Registries.tagChangeListener(registries, connection::invalidateTags);
 
-        this.dispatcher = ThreadDispatcher.dispatcher(ThreadProvider.counter(), config.dispatcherThreads(),
+        final ThreadProvider<Chunk> threadProvider = switch (config.threadProvider()) {
+            case COUNTER -> ThreadProvider.counter();
+            case GRID -> ThreadProvider.grid(config.threadGridExponent(), Chunk::getChunkX, Chunk::getChunkZ);
+        };
+        this.dispatcher = ThreadDispatcher.dispatcher(threadProvider, config.dispatcherThreads(),
                 exception::handleException);
         this.viewablePackets = new PacketViewableUtils(this, config.viewablePacket(), config.pooledBufferSize());
         this.ticker = new TickerImpl();

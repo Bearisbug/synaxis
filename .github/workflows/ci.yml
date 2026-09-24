@@ -193,3 +193,69 @@ jobs:
             **/build/reports/tests/
             **/build/test-results/
           retention-days: 14
+
+  # REQ-PROD-020: the same round with the chunks spread by the grid of 16 by 16 chunk cells, the
+  # provider of the MMO shards; side by side with the counter round above.
+  multithreaded-grid:
+    name: Test with 4 tick threads (strict, grid)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_PASSWORD: synaxis
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+      valkey:
+        image: valkey/valkey:8-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "valkey-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    env:
+      SYNAXIS_TEST_PG_URL: jdbc:postgresql://127.0.0.1:5432/postgres
+      SYNAXIS_TEST_PG_USER: postgres
+      SYNAXIS_TEST_PG_PASSWORD: synaxis
+      SYNAXIS_TEST_REDIS_URL: redis://127.0.0.1:6379
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Set up JDK 25
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: 25
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          cache-read-only: ${{ github.ref != 'refs/heads/main' }}
+
+      - name: Run the tests with 4 tick threads on the grid
+        run: ./gradlew test -Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true -Dsynaxis.thread-provider=grid
+
+      # Without this a build that stopped forwarding the properties would pass on the counter
+      - name: Check that the tests ran with 4 tick threads on the grid
+        run: |
+          report=testing/build/test-results/test/TEST-io.github.bearisbug.synaxis.testing.test.EnvDispatcherThreadsIntegrationTest.xml
+          grep -q 'env dispatcher threads: 4' "$report"
+          grep -q 'env thread provider: grid' "$report"
+
+      - name: Upload test reports
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: test-reports-multithreaded-grid
+          path: |
+            **/build/reports/tests/
+            **/build/test-results/
+          retention-days: 14

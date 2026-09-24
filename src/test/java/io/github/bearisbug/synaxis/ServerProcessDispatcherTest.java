@@ -61,11 +61,58 @@ public class ServerProcessDispatcherTest {
         }
     }
 
+    /**
+     * {@code docs/DESIGN-PROD.md} {@code REQ-PROD-020}: with the grid, chunks (0, 0) and (15, 15) are
+     * in one cell of 16 by 16 chunks and tick on one thread, chunk (16, 0) is in the next cell, whose
+     * id 3 lands on another of the six threads. The counter gives each of the three its own
+     * thread, so the same placement tells the two providers apart.
+     */
+    @Test
+    @Timeout(60)
+    public void theGridKeepsACellOnOneThread() {
+        final ServerProcess grid = start(ServerConfig.builder().threadProvider(ServerConfig.ThreadProviderKind.GRID)
+                .dispatcherThreads(6));
+        final ServerProcess counter = start(ServerConfig.builder().dispatcherThreads(6));
+        try {
+            final List<Recorder> onGrid = place(grid, 0, 0, 15, 15, 16, 0);
+            final List<Recorder> onCounter = place(counter, 0, 0, 15, 15, 16, 0);
+            for (int i = 0; i < TICKS; i++) {
+                grid.ticker().tick(System.nanoTime());
+                counter.ticker().tick(System.nanoTime());
+            }
+
+            assertEquals(Set.of(grid.dispatcher().threads().get(0)), onGrid.get(0).tickThreads);
+            assertEquals(onGrid.get(0).tickThreads, onGrid.get(1).tickThreads,
+                    "chunks (0, 0) and (15, 15) are in one cell");
+            assertEquals(Set.of(grid.dispatcher().threads().get(3)), onGrid.get(2).tickThreads,
+                    "chunk (16, 0) is in cell (1, 0)");
+            assertEquals(grid.dispatcher().threads().get(0), onGrid.get(1).acquirable().assignedThread());
+
+            assertEquals(3, tickThreads(onCounter).size(), "the counter gives every new chunk the next thread");
+        } finally {
+            counter.stop();
+            grid.stop();
+        }
+    }
+
+    private static List<Recorder> place(ServerProcess process, int... chunks) {
+        final InstanceContainer instance = process.instance().createInstanceContainer();
+        instance.setGenerator(unit -> unit.modifier().fillHeight(0, 40, Block.STONE));
+        final List<Recorder> entities = new ArrayList<>();
+        for (int i = 0; i < chunks.length; i += 2) {
+            final Recorder entity = new Recorder();
+            entity.setInstance(instance, new Pos(chunks[i] * 16 + 8, 42, chunks[i + 1] * 16 + 8)).join();
+            entities.add(entity);
+        }
+        return entities;
+    }
+
     private static ServerProcess start(int dispatcherThreads) {
-        final ServerProcess process = ServerProcess.of(ServerConfig.builder()
-                .insideTest(true)
-                .dispatcherThreads(dispatcherThreads)
-                .build());
+        return start(ServerConfig.builder().dispatcherThreads(dispatcherThreads));
+    }
+
+    private static ServerProcess start(ServerConfig.Builder config) {
+        final ServerProcess process = ServerProcess.of(config.insideTest(true).build());
         process.start(new InetSocketAddress(InetAddress.getLoopbackAddress(), 0));
         process.dispatcher().start();
         return process;

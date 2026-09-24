@@ -8,6 +8,9 @@ import io.github.bearisbug.synaxis.instance.block.BlockHandler;
 import io.github.bearisbug.synaxis.instance.heightmap.Heightmap;
 import io.github.bearisbug.synaxis.instance.light.Light;
 import io.github.bearisbug.synaxis.instance.light.LightBlocks;
+import io.github.bearisbug.synaxis.instance.light.LightEngine;
+import io.github.bearisbug.synaxis.instance.light.LightResult;
+import io.github.bearisbug.synaxis.instance.light.WorldView;
 import io.github.bearisbug.synaxis.instance.palette.Palette;
 import io.github.bearisbug.synaxis.network.packet.server.CachedPacket;
 import io.github.bearisbug.synaxis.network.packet.server.play.data.LightData;
@@ -17,8 +20,12 @@ import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
@@ -38,6 +45,8 @@ import static io.github.bearisbug.synaxis.instance.light.LightCompute.EMPTY_CONT
 public class LightingChunk extends DynamicChunk {
 
     private static final ExecutorService pool = Executors.newWorkStealingPool();
+    // Chunks per side of the area one LightEngine call lights; each call also reads the ring of chunks around it
+    private static final int RELIGHT_TILE = 8;
 
     private volatile @Nullable OcclusionData occlusionData;
     @SuppressWarnings("this-escape") // deliberate self registration during construction
@@ -412,54 +421,134 @@ public class LightingChunk extends DynamicChunk {
     }
 
     /**
-     * Forces a relight of the specified chunks.
+     * Relights the specified chunks and the loaded chunks next to them, whose light a change at the border reaches.
      * <p>
-     * This method is used to force a relight of the specified chunks.
-     * <p>
-     * This method is thread-safe and can be called from any thread.
+     * The blocks are copied under each chunk's read lock, then {@link LightEngine} lights tiles of
+     * {@value #RELIGHT_TILE}x{@value #RELIGHT_TILE} chunks in parallel on the copy. No instance-wide lock is taken.
      *
      * @param instance the instance
      * @param chunks   the chunks to relight
      * @return the chunks which have been relighted
      */
     public static List<Chunk> relight(Instance instance, Collection<Chunk> chunks) {
-        Set<Point> sections = new HashSet<>();
-
-        synchronized (instance) {
-            for (Chunk chunk : chunks) {
-                if (!(chunk instanceof LightingChunk lighting)) continue;
-                for (int sectionIndex = chunk.minSection; sectionIndex < chunk.maxSection; sectionIndex++) {
-                    Section section = chunk.getSection(sectionIndex);
-                    section.invalidate();
-                    sections.add(new Vec(chunk.getChunkX(), sectionIndex, chunk.getChunkZ()));
+        final Map<Long, LightingChunk> targets = new LinkedHashMap<>();
+        for (Chunk chunk : chunks) {
+            if (!(chunk instanceof LightingChunk)) continue;
+            for (int i = -1; i <= 1; i++) {
+                for (int j = -1; j <= 1; j++) {
+                    if (instance.getChunk(chunk.chunkX + i, chunk.chunkZ + j) instanceof LightingChunk lighting) {
+                        targets.putIfAbsent(CoordConversion.chunkIndex(lighting.chunkX, lighting.chunkZ), lighting);
+                    }
                 }
-                lighting.invalidate();
             }
+        }
+        if (targets.isEmpty()) return List.of();
 
-            // Expand the sections to include nearby sections
-            var blockSections = new HashSet<Point>();
-            for (Point point : sections) {
-                blockSections.addAll(getNearbyRequired(instance, point, LightType.BLOCK));
+        final BlockSnapshot snapshot = BlockSnapshot.of(instance, targets.values());
+        final Map<Long, List<LightingChunk>> tiles = new HashMap<>();
+        for (LightingChunk chunk : targets.values()) {
+            final long tile = CoordConversion.chunkIndex(Math.floorDiv(chunk.chunkX, RELIGHT_TILE), Math.floorDiv(chunk.chunkZ, RELIGHT_TILE));
+            tiles.computeIfAbsent(tile, _ -> new ArrayList<>()).add(chunk);
+        }
+        final List<CompletableFuture<Void>> tasks = new ArrayList<>();
+        for (List<LightingChunk> tile : tiles.values()) {
+            tasks.add(CompletableFuture.runAsync(() -> relightTile(snapshot, tile), pool));
+        }
+        tasks.forEach(CompletableFuture::join);
+        return new ArrayList<>(targets.values());
+    }
+
+    private static void relightTile(WorldView view, List<LightingChunk> tile) {
+        int minX = Integer.MAX_VALUE, minZ = Integer.MAX_VALUE, maxX = Integer.MIN_VALUE, maxZ = Integer.MIN_VALUE;
+        for (LightingChunk chunk : tile) {
+            minX = Math.min(minX, chunk.chunkX);
+            minZ = Math.min(minZ, chunk.chunkZ);
+            maxX = Math.max(maxX, chunk.chunkX);
+            maxZ = Math.max(maxZ, chunk.chunkZ);
+        }
+        final LightResult result = LightEngine.computeArea(view, minX, minZ, maxX, maxZ);
+        for (LightingChunk chunk : tile) {
+            for (int sectionY = chunk.minSection; sectionY < chunk.maxSection; sectionY++) {
+                final Section section = chunk.getSection(sectionY);
+                section.skyLight().set(result.sky(chunk.chunkX, sectionY, chunk.chunkZ));
+                section.blockLight().set(result.block(chunk.chunkX, sectionY, chunk.chunkZ));
             }
+            chunk.invalidate();
+        }
+    }
 
-            var skySections = new HashSet<Point>();
-            for (Point point : sections) {
-                skySections.addAll(getNearbyRequired(instance, point, LightType.SKY));
+    /** The block palettes of a set of chunks and their neighbours, copied so that lighting them needs no lock. */
+    private static final class BlockSnapshot implements WorldView {
+        private final int minY, height, originX, originZ, width;
+        private final @Nullable Palette[][] chunks;
+
+        private BlockSnapshot(int minY, int height, int originX, int originZ, int width, int depth) {
+            this.minY = minY;
+            this.height = height;
+            this.originX = originX;
+            this.originZ = originZ;
+            this.width = width;
+            this.chunks = new Palette[width * depth][];
+        }
+
+        static BlockSnapshot of(Instance instance, Collection<LightingChunk> targets) {
+            int minX = Integer.MAX_VALUE, minZ = Integer.MAX_VALUE, maxX = Integer.MIN_VALUE, maxZ = Integer.MIN_VALUE;
+            for (LightingChunk chunk : targets) {
+                minX = Math.min(minX, chunk.chunkX - 1);
+                minZ = Math.min(minZ, chunk.chunkZ - 1);
+                maxX = Math.max(maxX, chunk.chunkX + 1);
+                maxZ = Math.max(maxZ, chunk.chunkZ + 1);
             }
-
-            relight(instance, blockSections, LightType.BLOCK);
-            relight(instance, skySections, LightType.SKY);
-
-            var chunksToRelight = new HashSet<Chunk>();
-            for (Point point : blockSections) {
-                chunksToRelight.add(instance.getChunk(point.blockX(), point.blockZ()));
+            final var dimension = instance.getCachedDimensionType();
+            final BlockSnapshot snapshot = new BlockSnapshot(dimension.minY(), dimension.height(),
+                    minX, minZ, maxX - minX + 1, maxZ - minZ + 1);
+            for (LightingChunk target : targets) {
+                for (int i = -1; i <= 1; i++) {
+                    for (int j = -1; j <= 1; j++) {
+                        final int index = snapshot.index(target.chunkX + i, target.chunkZ + j);
+                        if (snapshot.chunks[index] != null) continue;
+                        if (!(instance.getChunk(target.chunkX + i, target.chunkZ + j) instanceof LightingChunk chunk)) continue;
+                        final Palette[] palettes = new Palette[chunk.maxSection - chunk.minSection];
+                        chunk.lockReadLock();
+                        try {
+                            for (int k = 0; k < palettes.length; k++) {
+                                palettes[k] = chunk.getSection(chunk.minSection + k).blockPalette().clone();
+                            }
+                        } finally {
+                            chunk.unlockReadLock();
+                        }
+                        snapshot.chunks[index] = palettes;
+                    }
+                }
             }
+            return snapshot;
+        }
 
-            for (Point point : skySections) {
-                chunksToRelight.add(instance.getChunk(point.blockX(), point.blockZ()));
-            }
+        private int index(int chunkX, int chunkZ) {
+            return (chunkZ - originZ) * width + chunkX - originX;
+        }
 
-            return new ArrayList<>(chunksToRelight);
+        @Override
+        public int minY() {
+            return minY;
+        }
+
+        @Override
+        public int height() {
+            return height;
+        }
+
+        @Override
+        public boolean hasChunk(int chunkX, int chunkZ) {
+            final int x = chunkX - originX, z = chunkZ - originZ;
+            return x >= 0 && x < width && z >= 0 && z * width < chunks.length && chunks[z * width + x] != null;
+        }
+
+        @Override
+        public Block getBlock(int x, int y, int z) {
+            final Palette[] palettes = Objects.requireNonNull(chunks[index(x >> 4, z >> 4)]);
+            final int localY = y - minY;
+            return Objects.requireNonNull(Block.fromStateId(palettes[localY >> 4].get(x & 15, localY & 15, z & 15)));
         }
     }
 

@@ -1,0 +1,446 @@
+RUN-036 记录（2026-09-25，第 6 波验收人侧）
+
+被测版本：集成分支 prod/integrate-w6 的 9ec1d99fe1（基线 origin/main a59639f3b1，验收时 git fetch 之后没有变动）。
+  本轮之后的验收提交只改 docs/DESIGN-PROD.md、docs/TEST.md 与 docs/test-runs/，代码与 9ec1d99fe1 相同。
+执行者：AI（Claude Code，Gradle 9.7.1 / OpenJDK 25.0.4.1 / 共用容器 synaxis-pg、synaxis-valkey / 镜像 synaxis-mc-client:dev / gh）
+机器：Apple M4 Pro 12 核 / 24 GiB，macOS 15.3.2；同机有别的会话在构建，本轮各段 load1 在 5.6～46.8 之间
+范围：见 docs/TEST.md §6 RUN-036 汇总行
+下文 <mirror> 指 --init-script gradle/init/aliyun-mirror.init.gradle.kts；Gradle 命令都带 --no-daemon
+
+一、合入（prod/integrate-w6，全部 --no-ff）
+
+  prod/w6-u  1fe3ecc326 → merge bb24840ecd
+  prod/w6-d  2894c1dc16 → merge 5b0bf203b0
+  prod/w6-6d 51c01950e5 → merge c325850dc0
+  prod/w6-6e abd28dc989 → merge c10d61668c
+  prod/w6-6f c9ceb8730f → merge 4243ef46bd
+  prod/w6-6b 37d0387684 → merge 897ecd019e
+  合并后续 f39b3537c3：翻译键门禁的 NOT_TEXT 加 6B 的四个 JSON-RPC 方法名（synaxis:shard/drain、synaxis:shard/status、
+    synaxis:broadcast、synaxis:profile），Map.of 改 Map.ofEntries；TC-PROD-068、105、162、210、233、250、295、396、430～433
+    的红行与键数随之改号，集成人在集成分支上逐条实跑了新预期对应的反证
+  合并后续 10f300c9a6：D 组按 main 写的 DESIGN-PROD 代码行号按合入后的代码改
+  prod/w6-6c 8af22b4bd8 → merge 9ec1d99fe1（6C 基于 10f300c9a6，无冲突）
+  git fetch origin 之后 origin/main 仍是 a59639f3b1，没有再合 main
+
+二、全量 check（带数据库环境）
+
+  export SYNAXIS_TEST_PG_URL=jdbc:postgresql://127.0.0.1:5440/postgres SYNAXIS_TEST_REDIS_URL=redis://127.0.0.1:6440
+  SYNAXIS_TEST_PG_PASSWORD 取自 docker inspect synaxis-pg 的 POSTGRES_PASSWORD（没有打印）
+  ./gradlew check --rerun-tasks <mirror>
+  起止 2026-09-25T12:27:09Z → 2026-09-25T12:30:07Z
+  BUILD SUCCESSFUL in 2m 58s
+  77 actionable tasks: 77 executed
+  按本次写出的 JUnit XML 统计（每个模块最早的时间戳都晚于起跑时刻）：
+    architecture-tests/build/test-results/test                 classes=7 tests=20 skipped=0 failures=0 errors=0 ts=2026-09-25T12:27:45.494Z..2026-09-25T12:28:04.246Z
+    baker/build/test-results/test                              classes=4 tests=52 skipped=0 failures=0 errors=0 ts=2026-09-25T12:27:41.966Z..2026-09-25T12:28:03.967Z
+    build/test-results/test                                    classes=418 tests=3101 skipped=15 failures=0 errors=0 ts=2026-09-25T12:28:05.837Z..2026-09-25T12:28:39.078Z
+    game-rts/build/test-results/test                           classes=12 tests=83 skipped=0 failures=0 errors=0 ts=2026-09-25T12:27:46.259Z..2026-09-25T12:28:02.725Z
+    loadtest/build/test-results/test                           classes=3 tests=10 skipped=0 failures=0 errors=0 ts=2026-09-25T12:27:31.271Z..2026-09-25T12:28:30.333Z
+    plugin-api/build/test-results/test                         classes=3 tests=15 skipped=0 failures=0 errors=0 ts=2026-09-25T12:27:33.182Z..2026-09-25T12:27:33.769Z
+    protocol/build/test-results/test                           classes=4 tests=78 skipped=0 failures=0 errors=0 ts=2026-09-25T12:27:15.982Z..2026-09-25T12:27:16.144Z
+    server-app/build/test-results/test                         classes=51 tests=314 skipped=0 failures=0 errors=0 ts=2026-09-25T12:28:00.603Z..2026-09-25T12:30:07.138Z
+    synx/build/test-results/test                               classes=7 tests=42 skipped=0 failures=0 errors=0 ts=2026-09-25T12:27:37.867Z..2026-09-25T12:27:42.827Z
+    testing/build/test-results/test                            classes=7 tests=10 skipped=0 failures=0 errors=0 ts=2026-09-25T12:27:36.915Z..2026-09-25T12:27:41.546Z
+  合计 10 个模块 3,725 个测试，0 失败，0 错误，15 跳过（都在根模块，合入前就有）
+  CI 点名的 7 个存储测试类（本次）：PlayerStoreIntegrationTest tests="21" skipped="0"、ShardSessionDbTest 4 / 0、
+    MigrationsDbTest 5 / 0、CrossShardHandoverIntegrationTest 6 / 0、ShutdownSaveIntegrationTest 4 / 0、
+    TransferTicketsIntegrationTest 6 / 0、StoreHousekeepingDbTest 3 / 0
+  TC-029：根模块 3,101 个测试 0 失败 0 错误（判据 ≥ 2,599）
+  EnvDispatcherThreadsIntegrationTest（默认）：env dispatcher threads: 1、env thread provider: counter
+
+三、严格模式全量（同样带数据库环境）
+
+  counter：./gradlew test --rerun --continue <mirror> -Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true
+  起止 2026-09-25T12:31:06Z → 2026-09-25T12:33:29Z
+  BUILD SUCCESSFUL in 2m 22s
+  66 actionable tasks: 10 executed, 56 up-to-date
+    architecture-tests/build/test-results/test                 classes=7 tests=20 skipped=0 failures=0 errors=0 ts=2026-09-25T12:31:15.429Z..2026-09-25T12:31:47.493Z
+    baker/build/test-results/test                              classes=4 tests=52 skipped=0 failures=0 errors=0 ts=2026-09-25T12:31:15.250Z..2026-09-25T12:31:46.176Z
+    build/test-results/test                                    classes=418 tests=3101 skipped=15 failures=0 errors=0 ts=2026-09-25T12:31:18.259Z..2026-09-25T12:32:02.439Z
+    game-rts/build/test-results/test                           classes=12 tests=83 skipped=0 failures=0 errors=0 ts=2026-09-25T12:31:15.391Z..2026-09-25T12:31:38.274Z
+    loadtest/build/test-results/test                           classes=3 tests=10 skipped=0 failures=0 errors=0 ts=2026-09-25T12:31:15.159Z..2026-09-25T12:32:15.489Z
+    plugin-api/build/test-results/test                         classes=3 tests=15 skipped=0 failures=0 errors=0 ts=2026-09-25T12:31:14.560Z..2026-09-25T12:31:15.126Z
+    protocol/build/test-results/test                           classes=4 tests=78 skipped=0 failures=0 errors=0 ts=2026-09-25T12:31:15.424Z..2026-09-25T12:31:16.231Z
+    server-app/build/test-results/test                         classes=51 tests=314 skipped=0 failures=0 errors=0 ts=2026-09-25T12:31:16.377Z..2026-09-25T12:33:28.589Z
+    synx/build/test-results/test                               classes=7 tests=42 skipped=0 failures=0 errors=0 ts=2026-09-25T12:31:15.007Z..2026-09-25T12:31:21.272Z
+    testing/build/test-results/test                            classes=7 tests=10 skipped=0 failures=0 errors=0 ts=2026-09-25T12:31:14.827Z..2026-09-25T12:31:20.313Z
+  testing/build/test-results/test/TEST-io.github.bearisbug.synaxis.testing.test.EnvDispatcherThreadsIntegrationTest.xml：env dispatcher threads: 4、env thread provider: counter
+
+  grid：同上再加 -Dsynaxis.thread-provider=grid
+  起止 2026-09-25T12:33:53Z → 2026-09-25T12:36:15Z
+  BUILD SUCCESSFUL in 2m 21s
+  66 actionable tasks: 10 executed, 56 up-to-date
+    architecture-tests/build/test-results/test                 classes=7 tests=20 skipped=0 failures=0 errors=0 ts=2026-09-25T12:34:01.681Z..2026-09-25T12:34:31.097Z
+    baker/build/test-results/test                              classes=4 tests=52 skipped=0 failures=0 errors=0 ts=2026-09-25T12:34:01.361Z..2026-09-25T12:34:29.875Z
+    build/test-results/test                                    classes=418 tests=3101 skipped=15 failures=0 errors=0 ts=2026-09-25T12:34:03.548Z..2026-09-25T12:34:45.730Z
+    game-rts/build/test-results/test                           classes=12 tests=83 skipped=0 failures=0 errors=0 ts=2026-09-25T12:34:00.718Z..2026-09-25T12:34:25.092Z
+    loadtest/build/test-results/test                           classes=3 tests=10 skipped=0 failures=0 errors=0 ts=2026-09-25T12:34:01.135Z..2026-09-25T12:35:01.552Z
+    plugin-api/build/test-results/test                         classes=3 tests=15 skipped=0 failures=0 errors=0 ts=2026-09-25T12:34:01.016Z..2026-09-25T12:34:01.852Z
+    protocol/build/test-results/test                           classes=4 tests=78 skipped=0 failures=0 errors=0 ts=2026-09-25T12:34:00.745Z..2026-09-25T12:34:01.176Z
+    server-app/build/test-results/test                         classes=51 tests=314 skipped=0 failures=0 errors=0 ts=2026-09-25T12:34:02.795Z..2026-09-25T12:36:14.560Z
+    synx/build/test-results/test                               classes=7 tests=42 skipped=0 failures=0 errors=0 ts=2026-09-25T12:34:01.121Z..2026-09-25T12:34:07.463Z
+    testing/build/test-results/test                            classes=7 tests=10 skipped=0 failures=0 errors=0 ts=2026-09-25T12:34:00.670Z..2026-09-25T12:34:06.623Z
+  同一个 XML：env dispatcher threads: 4、env thread provider: grid
+  两轮都是 10 个测试任务执行（其余 56 个是编译类任务，UP-TO-DATE），每轮 3,725 个测试 0 失败，15 跳过；
+  存储 7 个类在 grid 轮同样 skipped="0"。没有重跑任何测试
+
+四、ABI 门（baseline = release v0.3.0 的资产）
+
+  gh release download v0.3.0 --repo Bearisbug/synaxis --dir /tmp/w6acc/abi --pattern plugin-api.jar --pattern protocol.jar
+    6fe8d7dba88c400901b6515d17971655fcd6dd8cbcf629a0c70325f3390bf7c6  plugin-api.jar
+    1092232bb68905d1b5f0ecfb056e9c1387f582ab921ace8cc0ff227aa4bc2916  protocol.jar
+    与 docs/test-runs/RUN-035/sha256.txt 的 new/ 两行相同
+  ./gradlew :plugin-api:checkBinaryCompatibility :protocol:checkBinaryCompatibility --rerun-tasks <mirror> -PbaselineJarDir=/tmp/w6acc/abi
+    > Task :protocol:checkBinaryCompatibility
+    > Task :plugin-api:checkBinaryCompatibility
+    BUILD SUCCESSFUL in 29s
+    输出里没有「无 baseline，ABI 门未生效」一行；任务有违例即失败，0 违例
+  本波 :plugin-api 的改动只有 SynaxisPlugin#translationKeys()（默认方法）与 package-info 的线程契约；:protocol 没改
+
+五、客户端模组
+
+  ./gradlew :protocol:publishToMavenLocal :server-app:installDist <mirror> → BUILD SUCCESSFUL（:protocol:publishToMavenLocal 执行）
+  cd client-fabric && ./gradlew build --rerun-tasks --no-daemon（不带镜像脚本）
+    BUILD SUCCESSFUL in 4s
+    8 actionable tasks: 8 executed
+    compileJava、jar、remapJar、test、verifyModJar、check、build 都执行；build/libs/client-fabric-0.1.0.jar 59,156 B
+    test：7 个类 90 个测试，0 失败 0 跳过
+
+六、真客户端回归（完整正版路径档，TC-PROD-130 第 1～3 步）与 status
+
+  服务端用本树的 :server-app:installDist，在空临时目录里起：
+    java tools/fake-sessionserver/FakeSessionServer.java --mode record --bind 0.0.0.0 --port 0 > fake.log
+    java -Xmx1G -Dsynaxis.app.port=25696 -Dsynaxis.app.auth=online
+      -Dsynaxis.app.auth.session-server=http://127.0.0.1:<F>/session/minecraft/hasJoined
+      -cp "server-app/build/install/server-app/lib/*" io.github.bearisbug.synaxis.app.Main < /dev/null > server.log
+    启动行：Effective config file: none, /private/tmp/w6acc/srv/synaxis.properties does not exist（6C 的自检行）；
+      WARN … Effective auth: mode=online session_server=http://127.0.0.1:<F>/session/minecraft/hasJoined is not Mojang's session server …；
+      Effective ServerConfig 里 chunkViewDistance=10、compressionThreshold=256、maxPlayers=0、motd=synaxis；JvmFlags 里 compressionLevel=6
+
+  第 1 次（单独一台服务端，<F>=60218，dev 启动器）：
+    SYNAXIS_GAMETEST_SERVER=host.docker.internal:25696 SYNAXIS_GAMETEST_SESSION_HOST=http://host.docker.internal:60218 OUT=<out1> client-fabric/gametest-env/run.sh
+    run.sh 退出码 1（容器里 Minecraft Stopping! 之后 finished with non-zero exit value 134，与用例写的一致，只记录）
+    R1 PASS mods [io_github_bearisbug_synaxis_protocol dev, synaxis 0.1.0]
+    R2 PASS state=VERIFIED schema_version=1
+    R3 PASS in world at BlockPos{x=256, y=40, z=256} encrypted=true session_host=http://host.docker.internal:60218
+    R4 PASS bound=66 commandable=64 unmatched_state_entries=0
+    R5 PASS unit_id=1 selected=1
+    R6 PASS unit_id=1 answers [OK] target 263.50,40.00,255.50 moved 2.10 blocks (need 2.0)
+    R7 PASS surface BlockPos{x=256, y=39, z=256} sky_above=15 sky_below=0
+    R8 PASS screen: Connection Lost. The server rejected a message from this connection as malformed.
+    fake.log：
+      fake sessionserver mode=record listening on http://0.0.0.0:60218, hasJoined at /session/minecraft/hasJoined
+      1 POST /session/minecraft/join -> 204
+      2 GET /session/minecraft/hasJoined?username=Player0&serverId=-3b86ce1ce74700167a585d6c39179de1c3431478 -> 200
+    LAUNCHES=1 SERVER_LOG=server.log LEDGER_DIR=logs SESSION_LOG=fake.log client-fabric/gametest-env/judge.sh <out1>/synaxis-gametest/report.txt
+      ok   /tmp/w6acc/out1/synaxis-gametest/report.txt: 8 PASS
+      ok   1 reports for 1 launches
+      ok   client_verified 1, expected 1
+      ok   client_rejected 0, expected 0
+      ok   unit_order_issued 1, expected >= 1
+      ok   protocol-error kicks 1, expected 1
+      ok   sessionserver join 1, expected 1
+      ok   sessionserver hasJoined 200 1 of 1, expected 1 of 1
+      client regression: all checks passed
+      judge exit=0
+    status：printf '\x10\x00\x88\x06\x09localhost\x63\xdd\x01\x01\x00' | nc -w 2 127.0.0.1 25696 > status.bin（105 B）
+      "version":{"name":"26.2","protocol":776}
+      "players":{"online":0,"max":1024}   （max-players=0 时写 L0 上限 synaxis.max-connections，API-PROD-024）
+      "description":"synaxis"
+      没有 favicon 字段（没配 synaxis.server-icon）
+    kill <pid> 后 server.log 末行 synaxis server stopped successfully.
+
+  第 2 次（新的一台服务端与假服务，<F>=64078；同一服务端上 dev 与生产启动器各一次）：
+    dev：run.sh，OUT=<out2>；生产：run.sh 的副本（runClientGameTest → runProductionClientGameTest，
+      拷出目录 → build/run/productionClientGameTest），OUT=<out3>；两次 run 退出码都是 1（exit value 134）
+    <out2>（dev）：
+      R1 PASS mods [io_github_bearisbug_synaxis_protocol dev, synaxis 0.1.0]
+      R2 PASS state=VERIFIED schema_version=1
+      R3 PASS in world at BlockPos{x=256, y=40, z=256} encrypted=true session_host=http://host.docker.internal:64078
+      R4 PASS bound=66 commandable=64 unmatched_state_entries=0
+      R5 PASS unit_id=1 selected=1
+      R6 PASS unit_id=1 answers [OK] target 263.50,40.00,255.50 moved 2.10 blocks (need 2.0)
+      R7 PASS surface BlockPos{x=256, y=39, z=256} sky_above=15 sky_below=0
+      R8 PASS screen: Connection Lost. The server rejected a message from this connection as malformed.
+    <out3>（生产）：
+      R1 PASS mods [io_github_bearisbug_synaxis_protocol dev, synaxis 0.1.0]
+      R2 PASS state=VERIFIED schema_version=1
+      R3 PASS in world at BlockPos{x=256, y=40, z=256} encrypted=true session_host=http://host.docker.internal:64078
+      R4 PASS bound=66 commandable=64 unmatched_state_entries=0
+      R5 PASS unit_id=2 selected=2
+      R6 PASS unit_id=2 answers [OK] target 263.50,40.00,256.50 moved 2.10 blocks (need 2.0)
+      R7 PASS surface BlockPos{x=256, y=39, z=256} sky_above=15 sky_below=0
+      R8 PASS screen: Connection Lost. The server rejected a message from this connection as malformed.
+    fake.log：
+      fake sessionserver mode=record listening on http://0.0.0.0:64078, hasJoined at /session/minecraft/hasJoined
+      1 POST /session/minecraft/join -> 204
+      2 GET /session/minecraft/hasJoined?username=Player0&serverId=42d7bc59c2e98ef10fb06d86c71758a8b76bc95f -> 200
+      3 POST /session/minecraft/join -> 204
+      4 GET /session/minecraft/hasJoined?username=Player775&serverId=62455f736f3cc4a207a35542554dc3d03dc276da -> 200
+    server.log：
+      20:46:53.456 [Syn-Session-Verify] Login success: username=Player0 connection_id=f1852926-8f5a-482e-9120-8274c418457b remote_address=/127.0.0.1:64495
+      20:46:55.671 [Syn-Tick-0] Kicking connection_id=f1852926-8f5a-482e-9120-8274c418457b identifier=Player0 reason=synaxis:protocol-error
+      20:47:23.424 [Syn-Session-Verify] Login success: username=Player775 connection_id=c7f14974-2c8d-438f-b53c-96c2a76a980d remote_address=/127.0.0.1:64709
+      20:47:25.269 [Syn-Tick-0] Kicking connection_id=c7f14974-2c8d-438f-b53c-96c2a76a980d identifier=Player775 reason=synaxis:protocol-error
+    LAUNCHES=2 SERVER_LOG=server.log LEDGER_DIR=logs SESSION_LOG=fake.log client-fabric/gametest-env/judge.sh <out2>/…/report.txt <out3>/…/report.txt
+      ok   /tmp/w6acc/out2/synaxis-gametest/report.txt: 8 PASS
+      ok   /tmp/w6acc/out3/synaxis-gametest/report.txt: 8 PASS
+      ok   2 reports for 2 launches
+      ok   client_verified 2, expected 2
+      ok   client_rejected 0, expected 0
+      ok   unit_order_issued 2, expected >= 2
+      ok   protocol-error kicks 2, expected 2
+      ok   sessionserver join 2, expected 2
+      ok   sessionserver hasJoined 200 2 of 2, expected 2 of 2
+      client regression: all checks passed
+      judge exit=0
+    三次运行各有 r3-after-connect、r7-in-world、r8-disconnected 三张截图；<out3> 的 r7 看过，在世界里、地形与单位都渲染出来
+    这一档覆盖了本波改到的客户端可见路径：进世界的 JoinGame（6E 的视距）、默认阈值 256 的压缩（6C）、加密；status 由上面的 nc 覆盖。
+    没做：原版客户端的服务器列表界面（MOTD、图标、样本悬停），无头 gametest 里没有这一步
+  两台服务端与两个假服务都按 pid 停掉（kill 后 20 s 内退出），25696 与两个假服务端口无监听；
+  docker ps -a 里没有 synaxis-mc-client 容器（run.sh 用 --rm）；run.sh 副本已删
+
+七、TC-PROD-334（6C 改了 ShardMain#main，§5 牵连）
+
+  :server-app:installDist 之后，空临时目录里
+    JAVA_OPTS="-Xms1G -Xmx1G" SERVER_APP_OPTS="-Dsynaxis.app.port=25654 -Dsynaxis.app.auth=offline -Dsynaxis.app.core-mode=on
+      -Dsynaxis.app.metrics.bind=127.0.0.1:0 <额外参数>" server-app/build/install/server-app/bin/<脚本> < /dev/null > stdout.log &
+    （用例写的是 tail -f /dev/null 接 stdin；本轮用 < /dev/null，读数不受 stdin 影响）
+    读数：Effective ServerConfig 的三项、jcmd Thread.print 里 Syn-Tick-* 的条数、jcmd VM.flags 七个默认参数的计数（堆为 1 GiB）
+  第 1～4 步：
+    == server-shard 
+    dispatcherThreads=10 threadProvider=GRID threadGridExponent=4 
+    Syn-Tick threads: 10
+    JVM flag count: 7
+    stopped: synaxis server stopped successfully.
+    25654 listeners: 0
+    == server-shard -Dsynaxis.dispatcher-threads=8
+    dispatcherThreads=8 threadProvider=GRID threadGridExponent=4 
+    Syn-Tick threads: 8
+    JVM flag count: 7
+    stopped: synaxis server stopped successfully.
+    25654 listeners: 0
+    == server-shard -Dsynaxis.thread-provider=counter
+    dispatcherThreads=10 threadProvider=COUNTER threadGridExponent=4 
+    Syn-Tick threads: 10
+    JVM flag count: 7
+    stopped: synaxis server stopped successfully.
+    25654 listeners: 0
+    == server-app 
+    dispatcherThreads=1 threadProvider=COUNTER threadGridExponent=4 
+    Syn-Tick threads: 1
+    JVM flag count: 7
+    stopped: synaxis server stopped successfully.
+    25654 listeners: 0
+    == server-shard -Dsynaxis.thread-provider=hex
+    exit code 1
+    Refusing to start: Property 'synaxis.thread-provider' is not counter or grid: hex
+    listening lines: 0
+    25654 listeners: 0
+  第 5 步反证：删掉 ShardMain.java:37 的 threadDefaults(…).forEach(System::setProperty);，installDist，重做第 1 步
+    == server-shard 
+    dispatcherThreads=1 threadProvider=COUNTER threadGridExponent=4 
+    Syn-Tick threads: 1
+    JVM flag count: 7
+    stopped: synaxis server stopped successfully.
+    25654 listeners: 0
+  git checkout -- ShardMain.java，installDist，重做第 1 步：
+    == server-shard 
+    dispatcherThreads=10 threadProvider=GRID threadGridExponent=4 
+    Syn-Tick threads: 10
+    JVM flag count: 7
+    stopped: synaxis server stopped successfully.
+    25654 listeners: 0
+
+八、验收人反证（都在 9ec1d99fe1 上，改完即还原）
+
+  1. 6C 的键表收全了别组的键：从 ConfigFile.KEYS 删掉 6B 的 "synaxis.app.management.bind" 与 6D 的 "synaxis.server-icon" 两行，
+     ./gradlew :architecture-tests:test --tests io.github.bearisbug.synaxis.architecture.ConfigKeyGateTest --rerun <mirror>
+       BUILD FAILED；tests="1" failures="1"，红在 ConfigKeyGateTest.java:74：
+       Problems of the config key gate (2):
+       synaxis.app.management.bind is read (io.github.bearisbug.synaxis.app.management.ManagementSettings) but not in ConfigFile.KEYS, so the config file refuses it
+       synaxis.server-icon is read (io.github.bearisbug.synaxis.ServerConfig) but not in ConfigFile.KEYS, so the config file refuses it
+       system-out：config key gate: 105 keys read, 103 in ConfigFile.KEYS, 20 meter names left out
+     git checkout -- ConfigFile.java 后同一命令：BUILD SUCCESSFUL，tests="1" failures="0"，
+       config key gate: 105 keys read, 105 in ConfigFile.KEYS, 20 meter names left out
+  2. 进程不取配置的压缩阈值（TC-PROD-444 第 2 步的改动）：ServerProcessImpl.java:110
+     this.compressionThreshold = config.compressionThreshold(); → this.compressionThreshold = 256;
+     ./gradlew :test --tests io.github.bearisbug.synaxis.network.CompressionSocketTest --tests io.github.bearisbug.synaxis.ServerConfigTest --rerun <mirror>
+       10 tests completed, 3 failed；BUILD FAILED
+       CompressionSocketTest.java:63  expected: <512> but was: <256>
+       CompressionSocketTest.java:99  the first packet is the probe, not SetCompression ==> expected: <4> but was: <3>
+       ServerConfigTest.java:59       expected: <512> but was: <256>
+     git checkout -- ServerProcessImpl.java 后同一命令：BUILD SUCCESSFUL，CompressionSocketTest tests="3"、ServerConfigTest tests="7"，0 失败
+  两次之后 git status --short 只剩验收的两份文档改动
+
+九、D 组结案记录（原 docs/test-runs/_pending-wave6/closures.txt，原样并入；该目录已删）
+
+  第 6 波 D 组（文档收口）的执行记录与结案证据，待验收阶段并入本波的 RUN
+  
+  日期：2026-09-25
+  被测版本：分支 prod/w6-d，基于 main a59639f3b1；本组只改 docs/PLUGINS.md、docs/DESIGN-PROD.md、docs/TEST.md 与本文件，
+    代码与 main a59639f3b1 相同。
+  执行者：AI（Claude Code，Gradle / 真进程 / 协议探针 / gh）
+  机器：Apple M4 Pro 12 核 / 24 GiB，macOS 15.3.2，OpenJDK 25.0.4.1；同机另有多组在跑构建，load1 在 4.6～92 之间
+  Python：工作树内 `uv venv --python 3.10` 建的 .venv（Python 3.10.18），用完删除
+  
+  一、TC-PROD-040 结案（RUN-025 登记为阻塞，RUN-025 不改）
+  
+  阻塞原因是「main 上 client-gametest.yml 连续 5 次绿」只能合入后由 CI 判。gh run list --workflow client-gametest.yml
+  --branch main（截至 a59639f3b1）共 21 次，全部 success，没有一次红：
+    离线档 3 次：ad1f0a0cb4 run 35853684614、1aac280cae run 35853927446、e3e16ce3b5 run 35877692165
+      （日志 R3 行形如 `R3 PASS in world at BlockPos{x=256, y=40, z=256}`，不带 encrypted）
+    B 档 18 次：c3f7e25083 run 35880568590 起到 a59639f3b1 run 36105166192，16 次 push、2 次每日定时
+      （3914650305 run 35920158883、e6355f0485 run 36059549792，带 spike）
+      （日志 R3 行形如 `R3 PASS … encrypted=true session_host=http://127.0.0.1:<port>`，判定脚本
+       `ok   sessionserver join 2, expected 2`、`client regression: all checks passed`，例 run 36100715708）
+  结论：工作流连续 21 次绿，满足「连续 5 次绿」，TC-PROD-040 的阻塞解除，结果记「通过」。
+  注意：严格按「离线档」计只有 3 次，第 2 波 2C 之后同一工作流跑的是 B 档（离线档的超集），
+    docs/DESIGN-PROD.md v0.9（D）§26 已把第 0 波这一条改写为由 B 档取代。
+  另：已满足 DESIGN-PROD §28.1 ops #1「连续 20 次全绿后设为必需检查」；main 没有分支保护
+    （gh api repos/Bearisbug/synaxis/branches/main/protection → 404 Branch not protected），没有替用户改设置。
+  
+  二、TC-PROD-320（RUN-031 之后新增，首次执行）通过
+  
+    第 1 步：跑本类（grid 严格轮的系统属性）→ BUILD SUCCESSFUL，tests="1" 0 失败，1.838 s
+    第 2 步：连跑 30 次 → 30 / 30 绿，单次 1.587～1.933 s，结束时 load1 7.20
+    第 3 步：12 个 yes（pid 36351～36362）压着连跑 30 次 → 30 / 30 绿，单次 3.08～4.471 s，结束时 load1 77.16；
+      按 pid 停掉后 12 个 kill -0 都失败
+    第 4 步反证（EntityView#refreshVisibility 删掉按可见实体校正计数的两行，加回 2ae21568e1 的按候选重建一段），跑 3 次：
+      3 次都红在 VisibleEntityLimitConcurrencyTest.java:86：
+        ticks out of 1000 ending with more than 100 seen, at most 119 ==> expected: <0> but was: <392>
+        ticks out of 1000 ending with more than 100 seen, at most 126 ==> expected: <0> but was: <717>
+        ticks out of 1000 ending with more than 100 seen, at most 126 ==> expected: <0> but was: <606>
+      同一改动下把测试的 dispatcherThreads(4) 改成 1 跑本类：tests="1" 0 失败（预期列「只有一条 tick 线程时是绿的」）
+      git checkout 还原两个文件，重跑本类复绿（tests="1" 0 失败），git status 只剩本组的文档改动
+  
+  三、TC-PROD-268（RUN-031 之后改写，首次按现文执行）通过
+  
+    跑法：./gradlew :loadtest:test --tests io.github.bearisbug.synaxis.loadtest.SampleTest --rerun
+    第 1 步：tests="4" 0 失败
+    第 2 步（事件名改成 "synaxis.ServerTick"）：4 tests completed, 1 failed，红在 SampleTest.java:43：
+      4 ticks and 4 pings recorded: {"count":0,"overall":{"count":0},"per_minute":{},"acquire_ms":null} ==> expected: <4> but was: <0>
+    第 3 步（name.startsWith("synaxis.")）：4 tests completed, 1 failed，红在 SampleTest.java:43，消息里 "count":8
+    第 4 步（above(0.0)）：红在 SampleTest.java:66：… "over_50ms":5} ==> expected: <2> but was: <5>
+    第 5 步（above(1000.0)）：红在 SampleTest.java:66：… "over_50ms":0} ==> expected: <2> but was: <0>
+    第 6 步（> 改 >=）：红在 SampleTest.java:66：… "over_50ms":3} ==> expected: <2> but was: <3>
+    第 7 步（去掉 Math.max(0, …)）：红在 SampleTest.java:70：a tick before the start counts in minute 0: {"-1":{"count":1,…
+    每步之后 git checkout 还原；全部还原后重跑 tests="4" 0 失败
+  
+  四、TC-PROD-050 第 2、3 步（server-app/build.gradle.kts 在 7fec983f90 改过，RUN-025 之后没重跑）通过
+  
+    按 docs/TEST.md §3：没写 synaxis.app.auth 的起服命令一律按加了 -Dsynaxis.app.auth=offline 执行，两步都带了它。
+    第 1 步（前置）：:server-app:installDist BUILD SUCCESSFUL；bin/server-app:205
+      DEFAULT_JVM_OPTS='"-XX:+UseG1GC" "-Xms4G" "-Xmx4G" "-XX:+AlwaysPreTouch" "-XX:MaxGCPauseMillis=50" "-XX:+HeapDumpOnOutOfMemoryError" "-XX:+ExitOnOutOfMemoryError"'
+    第 2 步（启动脚本，端口 25605，临时目录）：5 s 就绪；FLAGS 列出 -XX:+AlwaysPreTouch、-XX:+ExitOnOutOfMemoryError、
+      -XX:+HeapDumpOnOutOfMemoryError、-XX:InitialHeapSize=4294967296、-XX:MaxGCPauseMillis=50、-XX:MaxHeapSize=4294967296、
+      -XX:+UseG1GC（另有 grep 顺带匹配的 MinHeapSize、SoftMaxHeapSize 与三行 CodeHeapSize），计数 7；
+      kill <pid> 后 1 s 退出，server.log 末行 `synaxis server stopped successfully.`
+    第 3 步（:server-app:run）：8 s 就绪；FLAGS 同上，计数 7；kill <pid> 后 Gradle 报
+      `Process … finished with non-zero exit value 143` 与 BUILD FAILED（预期）
+    后置：两个服务端与两个 tail -f /dev/null 都按 pid 停掉，临时目录与日志已删
+  
+  五、TC-GAME-016（RUN-016 起待人工，本次由 AI 照 docs/PLUGINS.md 执行）修文档后通过
+  
+    修前的反证：照原 §6 起服命令（不带 -Dsynaxis.app.auth=offline）起服，日志
+      `Effective auth: mode=online session_server=https://sessionserver.mojang.com/session/minecraft/hasJoined`；
+      第 4 步探针退出码 1：`recv EncryptionRequestPacket` 之后
+      `EncryptionRequest received: the probe needs an offline server, start server-app with -Dsynaxis.app.auth=offline`。
+    另一处走不通：§5 自己工程的构建命令 `cd hello-plugin && gradle build` 在只装了 JDK 25 的机器上是
+      `command not found: gradle`（说明的前置只要求 JDK 25 与仓库 clone）。
+    两处都改了 docs/PLUGINS.md（§6 起服命令加 -Dsynaxis.app.auth=offline 并写明原因；§5 改为
+      `cd hello-plugin && <服务端仓库路径>/gradlew build --no-daemon`），然后按用例执行：
+    第 1 步：只读 docs/PLUGINS.md，在 /tmp/w6d/hello-plugin 建模块（settings、build.gradle.kts、HelloPlugin.java、
+      META-INF/services 四个文件）；开篇第 3 行即「插件不支持热加载与热卸载：改插件 = 重启进程」
+    第 2 步：`<仓库>/gradlew build --no-daemon` → BUILD SUCCESSFUL，产物 build/libs/hello-plugin.jar
+    第 3 步：修后的起服命令（jar 换成自己模块的）→ 3 s 就绪；`Effective auth: mode=offline`、
+      `plugin.hello - hello-plugin is enabling, data directory: plugins/hello`、`Plugin enabled: plugin_id=hello version=1.0.0`、
+      `synaxis server-app listening on 0.0.0.0:25565`
+    第 4 步：`python tools/protocol-probe/probe.py echo --channel hello:echo --payload hi` 退出码 0，
+      打印 `echo channel=hello:echo payload=hi` 与 `exit code: 0`；服务端 `plugin.hello - echoing 2 bytes back to probe`
+    第 5 步：stdin 写 stop → `plugin.hello - hello-plugin is disabling`、`synaxis server stopped successfully.`，java 退出码 0
+    后置：删掉 /tmp/w6d/hello-plugin 与仓库根的 logs/、plugins/，git status 只剩本组的文档改动
+  
+  六、TC-GAME-033（RUN-016 阻塞）通过
+  
+    第 1 步 grep SharedInstance（六个源码目录）：退出码 1、无输出
+    第 2 步 grep getSharedInstances|createSharedInstance|areLinked：退出码 1、无输出
+    第 3 步 UnloadChunkIntegrationTest：BUILD SUCCESSFUL，tests="6" 0 失败，含 unloadingChunkWithPlayerInsideIsRejected
+    第 4 步 ./gradlew check：见第十节的全量 check
+  
+    RUN-016 的阻塞理由「第 3～5 步需探针连入对局」对现在的用例已不成立（现文只有四步，没有探针步）。
+  
+  七、TC-GAME-034（RUN-016 阻塞）失败：第 3 步复现出一条停机缺陷
+  
+    修复提交 = 8f46a85f31（fix(instance): remove a disconnected player with its chunk (REQ-M2-013)）
+    第 1 步：git checkout 8f46a85f31^ -- InstanceContainer.java 后跑 unloadingChunkRemovesADisconnectedPlayer：
+      红在 UnloadChunkIntegrationTest.java:96，`the disconnected player survived the unload of its chunk ==> expected: <true> but was: <false>`
+    第 2 步：git checkout HEAD -- InstanceContainer.java 后同一测试 tests="1" 0 失败
+    第 3 步：server-app 玩法模式（离线、内存存储，临时目录，stdin 接 FIFO），探针 `login --hold 0`（退出码 0）后立刻写 stop：
+      10 次里 5 次从 stop 到进程退出 30.1～30.7 s，另 5 次 0.53～0.57 s；java 退出码都是 0。
+      慢的 5 次都有两行 ERROR、没有线程转储：
+        [server-app-stop] ERROR i.g.b.synaxis.ServerProcessImpl - The shutdown save did not complete within its budget, going on with the shutdown.
+        [server-app-stop] ERROR i.g.b.synaxis.app.store.PlayerStore - Not saved on shutdown, its lease runs out with the session: character_id=1
+      时间线（慢的一次）：Login success 15:37:24.907 → Connection closed 15:37:25.010 → Stopping 15:37:25.033 →
+        Not saved 15:37:55.041 → stopped successfully 15:37:55.134
+      对照：断开后隔 0.2 s 再 stop 1 次、隔 2 s 再 stop 3 次，都在 0.53～0.54 s 退出、0 行 ERROR。
+      用例预期「15 秒内退出、无残留 ERROR」在立刻 stop 时约一半达不到 → 第 3 步失败。
+      这不是 REQ-M2-013 的追踪器幽灵，是停机保存与「进世界前断开」的竞态，已登记为 docs/DESIGN-PROD.md v0.9（D）§28.2 的缺陷行
+      （机制按读代码推断：PlayerStore.java:1013 把快照排在没进世界、不会 tick 的玩家实体调度器上；:932～:934 的 SAVING 分支让随后到达的断线事件直接返回）。
+    第 4 步：快的那几次停机日志没有「玩家仍在区块内」类告警；stdout 没有以 unregisterInstance 命名的完成行，
+      以台账代替：rts 插件禁用时 Match#end 先 unregisterInstance 再写 match_ended（game-rts Match.java:272、:275），
+      台账有 `"event":"match_ended",…,"reason":"normal"`。按台账判通过；用例的「unregisterInstance 完成行」写法需要改成台账这一行。
+    后置：InstanceContainer.java 已还原，git status 只剩本组的文档改动；每次的临时目录已删
+  
+  八、TC-GAME-035（RUN-016 阻塞）阻塞：用例需改写
+  
+    修复提交 = a5ec60b43f（fix(entity): keep the client chunk ring and the server accounting in step (REQ-M2-014)）
+    第 1 步：git checkout a5ec60b43f^ -- Player.java 后编译不过（:compileJava FAILED，4 个错误）：
+      ConnectionManager.java:614、:633 找不到 Player#tabListEntry(boolean)，:717 找不到 Player#dropPendingSpawn()，
+      ChatMessageListener.java:40 找不到 Player#chatRateLimiter()——修复之后 Player.java 又被 13 个提交改过（逐提交合计 +140 / −59 行，a5ec60b43f..HEAD 净差 +139 / −58），
+      整文件回退到修复前已经编不过，「先红」出不来。已 git checkout HEAD 还原。
+    第 2 步：PlayerChunkQueueIntegrationTest tests="7" 0 失败，含两条复现测试
+    第 3、4 步：探针没有「以视距 12 登录、再改报视距 4」的子命令（probe.py 的子命令里没有视距选项），做不了。
+    第 5 步：依赖第 3 步，未做。
+    需要：第 1 步改成只回退修复那几行（或给一个能编译的补丁），第 3 步先给探针加改报视距的子命令，或改用 gametest。
+  
+  九、docs/TEST.md §7 三条的实跑（都在 a59639f3b1 的代码上）
+  
+    CommandPacketFilteringTest 单独跑：./gradlew :test --tests io.github.bearisbug.synaxis.command.CommandPacketFilteringTest --rerun
+      → BUILD SUCCESSFUL，tests="16" 0 失败
+    jcstress ObjectPoolTest：./gradlew :jcstress-tests:jcstress --tests ObjectPoolTest -Dorg.gradle.isolated-projects=false
+      -Dorg.gradle.configuration-cache=false → `[OK] io.github.bearisbug.synaxis.utils.ObjectPoolTest`、`Failed tests: No matches.`、
+      BUILD SUCCESSFUL in 24s，无 NPE；CI「Concurrency」在 main 上最近 30 次全绿，a59639f3b1 那次 run 36105166256 同样两行
+    testNamingCheck：./gradlew testNamingCheck --rerun → 12 个项目的 testNamingCheck 都真执行，BUILD SUCCESSFUL；
+      反证：PacketCompressionIntegrationTest.java 临时改名 PacketCompressionTest.java，跑 :testNamingCheck →
+      `Test naming violations: PacketCompressionTest: @EnvTest classes must be named *IntegrationTest`、BUILD FAILED；改回后 --rerun 复绿
+  
+  十、门禁（带 SYNAXIS_TEST_PG_URL / SYNAXIS_TEST_PG_PASSWORD / SYNAXIS_TEST_REDIS_URL，共用容器 synaxis-pg、synaxis-valkey）
+  
+    ./gradlew cleanTest check --no-build-cache --continue → BUILD SUCCESSFUL in 2m 2s；10 个测试任务都执行，
+      3,638 个测试 0 失败 0 错误、15 个跳过（都在根模块）；server-app 266 个 0 跳过，PlayerStoreIntegrationTest tests="21" skipped="0"。
+      TC-GAME-033 第 4 步以这一次为准。
+    ./gradlew test --rerun --continue -Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true → BUILD SUCCESSFUL in 3m 6s，
+      3,638 个 0 失败、15 个跳过；EnvDispatcherThreadsIntegrationTest 报 `env dispatcher threads: 4`、`env thread provider: counter`
+    同上加 -Dsynaxis.thread-provider=grid → BUILD SUCCESSFUL in 2m 44s，3,638 个 0 失败、15 个跳过；
+      报 `env dispatcher threads: 4`、`env thread provider: grid`
+    ABI 门：gh release download v0.3.0 取 plugin-api.jar、protocol.jar 到仓库外的临时目录，
+      ./gradlew :plugin-api:checkBinaryCompatibility :protocol:checkBinaryCompatibility -PbaselineJarDir=<该目录> →
+      两个任务都真执行（没有「无 baseline」行）、BUILD SUCCESSFUL，0 处违规；本组没改这两个模块。临时目录已删
+    lint：design-doc check.sh 对 docs/DESIGN-PROD.md「lint 无警告」；test-doc check.sh 对 docs/TEST.md 的输出与改动前逐行相同
+      （已知的 RUN-031 两行「失败项缺证据引用」与 REQ-PROD-031～041 中 9 个「无任何 TC 引用」）
+
+十、文档 lint（验收提交的最终文本）
+
+  bash ~/.claude/skills/design-doc/check.sh docs/DESIGN-PROD.md → ✅ lint 无警告（只有 ℹ️ 提示）
+  bash ~/.claude/skills/test-doc/check.sh docs/TEST.md → 警告只有已知的三处：
+    RUN-031 两行「失败项缺证据引用」（TC-PROD-271、TC-PROD-360，补记在明细表后）
+    REQ-PROD-031 无任何 TC 引用（6A 未做）；REQ-PROD-033、038 本波由 6C 覆盖，已不在警告里
+    用例 401 条(冒烟 51)· 轮次 36
+
+十一、环境与回收
+
+  没有新建镜像、容器（run.sh 的容器带 --rm，每次结束即删）或卷；复用 synaxis-pg、synaxis-valkey、synaxis-mc-client:dev、卷 synaxis-mc-gradle。
+  四个 java 进程（两台服务端、两个假服务）都按 pid 停掉；TC-PROD-334 的七次起服（第 1～4 步五次，第 5 步反证与还原各一次；其中 hex 那次拒启）都按 pid 停掉或自行退出，25654 无监听。
+  /tmp/w6acc（环境脚本、计数脚本、Gradle 日志、ABI jar、两个服务端临时目录、三次客户端输出与截图）在提交前删除。
+  git status 除本轮的文档改动外无其他改动。

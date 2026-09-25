@@ -1,0 +1,92 @@
+# 2026-09-25 12:17:58 HEAD 0734c6e89d load { 6.53 5.21 5.14 }
+# git status:  M src/main/java/io/github/bearisbug/synaxis/instance/light/LightEngine.java 
+# ./gradlew --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts :architecture-tests:test --rerun --tests io.github.bearisbug.synaxis.architecture.LightEngineArchitectureTest
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/9.7.1/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build 
+Isolated Projects is an incubating feature.
+Reusing configuration cache.
+> Task :protocol:processResources NO-SOURCE
+> Task :architecture-tests:processResources NO-SOURCE
+> Task :plugin-api:processResources NO-SOURCE
+> Task :architecture-tests:processTestResources NO-SOURCE
+> Task :synx:processResources NO-SOURCE
+> Task :architecture-tests:compileJava NO-SOURCE
+> Task :architecture-tests:classes UP-TO-DATE
+> Task :game-rts:processResources UP-TO-DATE
+
+> Task :baker:processResources UP-TO-DATE
+Caught exception: Could not start the FSEvents stream: /Users/bug/Documents/Projects/Minecraft/synaxis-wt/m3b-followup
+
+> Task :generateJavaTemplates UP-TO-DATE
+> Task :protocol:compileJava UP-TO-DATE
+> Task :protocol:classes UP-TO-DATE
+> Task :processResources UP-TO-DATE
+> Task :protocol:jar UP-TO-DATE
+> Task :server-app:buildInfo UP-TO-DATE
+> Task :server-app:processResources UP-TO-DATE
+> Task :compileJava FROM-CACHE
+> Task :classes UP-TO-DATE
+> Task :synx:compileJava FROM-CACHE
+> Task :synx:classes UP-TO-DATE
+> Task :synx:jar UP-TO-DATE
+> Task :baker:compileJava FROM-CACHE
+> Task :baker:classes UP-TO-DATE
+> Task :baker:jar UP-TO-DATE
+> Task :jar
+> Task :plugin-api:compileJava FROM-CACHE
+> Task :plugin-api:classes UP-TO-DATE
+> Task :plugin-api:jar UP-TO-DATE
+> Task :game-rts:compileJava FROM-CACHE
+> Task :game-rts:classes UP-TO-DATE
+> Task :game-rts:jar UP-TO-DATE
+> Task :server-app:compileJava FROM-CACHE
+> Task :server-app:classes UP-TO-DATE
+> Task :server-app:jar UP-TO-DATE
+> Task :architecture-tests:compileTestJava FROM-CACHE
+> Task :architecture-tests:testClasses UP-TO-DATE
+
+> Task :architecture-tests:test FAILED
+
+LightEngineArchitectureTest > theBakeSideOfTheLightEngineReferencesNoInstance() FAILED
+    java.lang.AssertionError at LightEngineArchitectureTest.java:63
+
+1 test completed, 1 failed
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':architecture-tests:test'.
+> There were failing tests. See the report at: file:///Users/bug/Documents/Projects/Minecraft/synaxis-wt/m3b-followup/architecture-tests/build/reports/tests/test/index.html
+
+* Try:
+> Run with --scan to get full insights from a Build Scan (powered by Develocity).
+
+BUILD FAILED in 4s
+22 actionable tasks: 2 executed, 7 from cache, 13 up-to-date
+Configuration cache entry reused.
+# exit 1
+# result XML written by this command:
+# edit applied:
+diff --git a/src/main/java/io/github/bearisbug/synaxis/instance/light/LightEngine.java b/src/main/java/io/github/bearisbug/synaxis/instance/light/LightEngine.java
+index 605f5915f7..541960a3a7 100644
+--- a/src/main/java/io/github/bearisbug/synaxis/instance/light/LightEngine.java
++++ b/src/main/java/io/github/bearisbug/synaxis/instance/light/LightEngine.java
+@@ -2,6 +2,7 @@ package io.github.bearisbug.synaxis.instance.light;
+ 
+ import io.github.bearisbug.synaxis.coordinate.BlockFace;
+ import io.github.bearisbug.synaxis.coordinate.Direction;
++import io.github.bearisbug.synaxis.instance.Instance;
+ import io.github.bearisbug.synaxis.instance.block.Block;
+ import org.jetbrains.annotations.ApiStatus;
+ 
+@@ -17,6 +18,10 @@ import java.util.Objects;
+  */
+ @ApiStatus.Experimental
+ public final class LightEngine {
++    static int injectedInstanceReference(Instance instance) {
++        return instance.getCachedDimensionType().minY();
++    }
++
+     /**
+      * Raised by every change that changes the output. {@code verified-light-versions.txt} lists the versions that
+      * passed the vanilla parity test, and {@code LightEngineVersionTest} fails when the output changes without it.

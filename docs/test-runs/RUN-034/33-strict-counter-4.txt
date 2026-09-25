@@ -1,0 +1,10 @@
+# ./gradlew test --rerun-tasks --continue -Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true (HEAD 0734c6e89d, 2026-09-25 13:45:23, load { 39.54 22.40 12.51 })
+
+For more on this, please refer to https://docs.gradle.org/9.7.1/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.
+
+BUILD SUCCESSFUL in 1m 49s
+66 actionable tasks: 66 executed
+Configuration cache entry stored.
+# exit 0
+# counts:
+tests 3638, skipped 92, failures 0, errors 0

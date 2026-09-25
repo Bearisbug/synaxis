@@ -1,0 +1,74 @@
+# 2026-09-25 12:20:35 HEAD 0734c6e89d load { 11.94 7.77 6.18 }
+# git status:  M baker/src/main/java/io/github/bearisbug/synaxis/baker/Baker.java 
+# ./gradlew --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts :baker:test --rerun --tests io.github.bearisbug.synaxis.baker.GeneratorBakeTest.aParallelBakeEqualsASerialOne
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/9.7.1/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build 
+Isolated Projects is an incubating feature.
+Reusing configuration cache.
+> Task :plugin-api:processResources NO-SOURCE
+> Task :protocol:processResources NO-SOURCE
+> Task :synx:processResources NO-SOURCE
+> Task :game-rts:processResources UP-TO-DATE
+> Task :baker:processTestResources UP-TO-DATE
+> Task :baker:processResources UP-TO-DATE
+> Task :generateJavaTemplates UP-TO-DATE
+> Task :processResources UP-TO-DATE
+> Task :protocol:compileJava UP-TO-DATE
+> Task :protocol:classes UP-TO-DATE
+> Task :protocol:jar UP-TO-DATE
+> Task :compileJava UP-TO-DATE
+> Task :classes UP-TO-DATE
+> Task :jar UP-TO-DATE
+> Task :synx:compileJava UP-TO-DATE
+> Task :synx:classes UP-TO-DATE
+> Task :plugin-api:compileJava UP-TO-DATE
+> Task :synx:jar UP-TO-DATE
+> Task :plugin-api:classes UP-TO-DATE
+> Task :plugin-api:jar UP-TO-DATE
+
+> Task :baker:compileJava
+
+> Task :baker:classes
+> Task :baker:compileTestJava UP-TO-DATE
+> Task :game-rts:compileJava UP-TO-DATE
+> Task :baker:testClasses UP-TO-DATE
+> Task :game-rts:classes UP-TO-DATE
+> Task :game-rts:jar UP-TO-DATE
+
+> Task :baker:test
+
+GeneratorBakeTest > aParallelBakeEqualsASerialOne() FAILED
+    org.opentest4j.AssertionFailedError at GeneratorBakeTest.java:189
+
+1 test completed, 1 failed
+
+> Task :baker:test FAILED
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':baker:test'.
+> There were failing tests. See the report at: file:///Users/bug/Documents/Projects/Minecraft/synaxis-wt/m3b-followup/baker/build/reports/tests/test/index.html
+
+* Try:
+> Run with --scan to get full insights from a Build Scan (powered by Develocity).
+
+BUILD FAILED in 9s
+18 actionable tasks: 2 executed, 16 up-to-date
+Configuration cache entry reused.
+# exit 1
+# result XML written by this command:
+# edit applied:
+diff --git a/baker/src/main/java/io/github/bearisbug/synaxis/baker/Baker.java b/baker/src/main/java/io/github/bearisbug/synaxis/baker/Baker.java
+index 77dfc7a543..0cac748151 100644
+--- a/baker/src/main/java/io/github/bearisbug/synaxis/baker/Baker.java
++++ b/baker/src/main/java/io/github/bearisbug/synaxis/baker/Baker.java
+@@ -106,7 +106,7 @@ public final class Baker {
+     private Baker(Request request) {
+         this.request = request;
+         this.source = request.source();
+-        this.settings = new SynxSettings(MinecraftServer.PROTOCOL_VERSION, COMPRESSION_THRESHOLD, COMPRESSION_LEVEL,
++        this.settings = new SynxSettings(MinecraftServer.PROTOCOL_VERSION, request.threads() > 1 ? 512 : COMPRESSION_THRESHOLD, COMPRESSION_LEVEL,
+                 source.minY(), source.height(), SynxDigests.registryDigest(request.registries()), LightEngine.VERSION,
+                 VERSION, true);
+         this.events = new BakeEvents(request.logDir());

@@ -1,0 +1,12 @@
+# 2026-09-25 12:24:05 HEAD 0734c6e89d load { 12.14 9.83 7.43 }
+# git status: 
+# grep ^##  docs/MAP-SOURCE.md
+## 1. 存档要求
+## 2. 处理顺序
+## 3. 交付范围
+## 4. 制作工具
+## 5. 服务端数据标记
+## 6. 自检
+## 7. 实体
+# exit 0
+# result XML written by this command:

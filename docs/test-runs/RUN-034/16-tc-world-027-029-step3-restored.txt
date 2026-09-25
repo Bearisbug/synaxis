@@ -1,0 +1,45 @@
+# 2026-09-25 12:19:28 HEAD 0734c6e89d load { 10.49 6.85 5.77 }
+# git status: 
+# ./gradlew --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts :baker:test --rerun --tests io.github.bearisbug.synaxis.baker.anvil.AnvilBakeTest --tests io.github.bearisbug.synaxis.baker.BakerMainTest
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/9.7.1/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build 
+Isolated Projects is an incubating feature.
+Reusing configuration cache.
+> Task :plugin-api:processResources NO-SOURCE
+> Task :protocol:processResources NO-SOURCE
+> Task :synx:processResources NO-SOURCE
+> Task :generateJavaTemplates UP-TO-DATE
+> Task :game-rts:processResources UP-TO-DATE
+> Task :baker:processTestResources UP-TO-DATE
+
+> Task :baker:processResources UP-TO-DATE
+Caught exception: Could not start the FSEvents stream: /Users/bug/Documents/Projects/Minecraft/synaxis-wt/m3b-followup
+
+> Task :processResources UP-TO-DATE
+> Task :protocol:compileJava UP-TO-DATE
+> Task :protocol:classes UP-TO-DATE
+> Task :protocol:jar UP-TO-DATE
+> Task :compileJava UP-TO-DATE
+> Task :classes UP-TO-DATE
+> Task :jar UP-TO-DATE
+> Task :synx:compileJava UP-TO-DATE
+> Task :synx:classes UP-TO-DATE
+> Task :plugin-api:compileJava UP-TO-DATE
+> Task :plugin-api:classes UP-TO-DATE
+> Task :synx:jar UP-TO-DATE
+> Task :plugin-api:jar UP-TO-DATE
+> Task :baker:compileJava FROM-CACHE
+> Task :baker:classes UP-TO-DATE
+> Task :game-rts:compileJava UP-TO-DATE
+> Task :baker:compileTestJava UP-TO-DATE
+> Task :game-rts:classes UP-TO-DATE
+> Task :baker:testClasses UP-TO-DATE
+> Task :game-rts:jar UP-TO-DATE
+
+> Task :baker:test
+
+BUILD SUCCESSFUL in 4s
+18 actionable tasks: 1 executed, 1 from cache, 16 up-to-date
+Configuration cache entry reused.
+# exit 0
+# result XML written by this command:

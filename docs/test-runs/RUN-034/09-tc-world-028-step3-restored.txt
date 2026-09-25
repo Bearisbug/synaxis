@@ -1,0 +1,54 @@
+# 2026-09-25 12:18:04 HEAD 0734c6e89d load { 6.97 5.32 5.18 }
+# git status: 
+# ./gradlew --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts :architecture-tests:test --rerun --tests io.github.bearisbug.synaxis.architecture.LightEngineArchitectureTest
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/9.7.1/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build 
+Isolated Projects is an incubating feature.
+Reusing configuration cache.
+> Task :architecture-tests:compileJava NO-SOURCE
+> Task :architecture-tests:processResources NO-SOURCE
+> Task :protocol:processResources NO-SOURCE
+> Task :plugin-api:processResources NO-SOURCE
+> Task :architecture-tests:processTestResources NO-SOURCE
+> Task :synx:processResources NO-SOURCE
+> Task :architecture-tests:classes UP-TO-DATE
+> Task :generateJavaTemplates UP-TO-DATE
+> Task :game-rts:processResources UP-TO-DATE
+> Task :baker:processResources UP-TO-DATE
+> Task :processResources UP-TO-DATE
+> Task :protocol:compileJava UP-TO-DATE
+> Task :protocol:classes UP-TO-DATE
+> Task :protocol:jar UP-TO-DATE
+
+> Task :server-app:buildInfo UP-TO-DATE
+Caught exception: Could not start the FSEvents stream: /Users/bug/Documents/Projects/Minecraft/synaxis-wt/m3b-followup
+
+> Task :server-app:processResources UP-TO-DATE
+> Task :compileJava FROM-CACHE
+> Task :classes UP-TO-DATE
+> Task :synx:compileJava FROM-CACHE
+> Task :synx:classes UP-TO-DATE
+> Task :synx:jar UP-TO-DATE
+> Task :baker:compileJava FROM-CACHE
+> Task :baker:classes UP-TO-DATE
+> Task :baker:jar UP-TO-DATE
+> Task :jar
+> Task :plugin-api:compileJava FROM-CACHE
+> Task :plugin-api:classes UP-TO-DATE
+> Task :plugin-api:jar UP-TO-DATE
+> Task :game-rts:compileJava FROM-CACHE
+> Task :game-rts:classes UP-TO-DATE
+> Task :game-rts:jar UP-TO-DATE
+> Task :server-app:compileJava FROM-CACHE
+> Task :server-app:classes UP-TO-DATE
+> Task :server-app:jar UP-TO-DATE
+> Task :architecture-tests:compileTestJava FROM-CACHE
+> Task :architecture-tests:testClasses UP-TO-DATE
+
+> Task :architecture-tests:test
+
+BUILD SUCCESSFUL in 4s
+22 actionable tasks: 2 executed, 7 from cache, 13 up-to-date
+Configuration cache entry reused.
+# exit 0
+# result XML written by this command:

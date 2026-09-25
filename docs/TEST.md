@@ -15,6 +15,7 @@
 
 | 日期 | 改动 | 作者 |
 | --- | --- | --- |
+| 2026-09-25 | 跟进 `docs/DESIGN-M3.md` v0.10（高度窗口与 section 状态数两项拍板、`fullyLit` 只剩懒读路径、烘焙侧光照引擎 ArchUnit 规则）。**废弃 `TC-WORLD-005`、新增 `TC-WORLD-026`**：`LightingChunk.relight` 改走 `LightEngine` 后不设全亮标记，原用例两条测试都先整图 `relight`，删掉 `SkyLight` 里复位全亮标记那一行不再变红（RUN-033 失败项）；`LightDampeningIntegrationTest#blockOverFullyLitSectionOnLazyRead` 改为不整图 `relight`、先经懒读路径把 section 标为全亮，新用例的反证是同一行，预期 `14 tests completed, 1 failed`。**废弃 `TC-WORLD-024`、新增 `TC-WORLD-029`**：Anvil 源改按 256 格窗口，第 1 步清单 `world` 由 −64 / 384 改为 −64 / 256、段① 由 24 个 section 改为 16 个，`AnvilBakeTest` 10 → 14、`BakerMainTest` 1 → 3，第 2 步 `10 tests completed` → `14 tests completed`，其余逐字保留。**新增 `TC-WORLD-027`**（高度窗口：窗口外的方块、方块实体、静态实体与 `--min-y 0` 下的基岩各拒绝一次，`--min-y` 的两种命令行错误；反证是让窗口检查不拒绝，红 5 条）与 **`TC-WORLD-028`**（`:architecture-tests` 的 `LightEngineArchitectureTest`；反证是给 `LightEngine` 加一个引用 `Instance` 的方法）。`TC-WORLD-020` 第 3 步只改计数（`AnvilBakeTest` 14、`BakerMainTest` 3）。§2 覆盖范围、Gherkin 口径与 REQ-M3 对照表五行、§5 大世界域的局部轮映射同步 | Bearisbug |
 | 2026-09-25 | 跟进 `docs/DESIGN-M3.md` v0.9（M3-A 剩余项与 M3-B 落地）。**新增 §4 四节 14 条**，对应 `REQ-M3-001`～`REQ-M3-004`、`REQ-M3-020`～`REQ-M3-022`：「M3 · 光照引擎」`TC-WORLD-012`（引擎不依赖实例、不加锁、对拍两条路径、缺失区块不传光；反证删掉北面的缺失区块判断）、`TC-WORLD-013`（版本与已过对拍版本文件绑定；跳号与改旧行指纹两条反证）；「M3 · `.synx` 格式」`TC-WORLD-014`（向量与 zlib 指纹门；改向量字节、改指纹两条反证）、`TC-WORLD-015`（损坏与不兼容）、`TC-WORLD-016`（段① 调色板与段③ NBT 规范化；两条反证）、`TC-WORLD-017`（清单与起服校验函数）、`TC-WORLD-018`（`:synx`、`:baker` 的内部面名单）；「M3 · Anvil 读取器」`TC-WORLD-019`（门禁与完整读取；三条反证）、`TC-WORLD-020`（夹具由原版服务端再生）；「M3 · 烘焙器」`TC-WORLD-021`（生成器源烘焙与各退出码，冒烟级）、`TC-WORLD-022`（并行等于串行；压缩级别与阈值随线程变两条反证）、`TC-WORLD-023`（命令行烘焙 4k×4k 合成图、1 线程等于多线程、`verify` 与重烘退 5）、`TC-WORLD-024`（Anvil 源烘焙；反证是把标记格计入对拍）、`TC-WORLD-025`（交付规范第 6 节的自检命令）。**改写两条已有用例的计数**（`REQ-M3-004` 让对拍对 `LightEngine` 与 `LightingChunk.relight` 各跑一遍，判据的实质不变）：`TC-WORLD-001` 第 1 步 `tests="7"` → `"14"`、第 2 步 `7 tests completed, 1 failed` → `14 tests completed, 2 failed`、第 3 步 `"8"` → `"16"`；`TC-WORLD-004` 第 4 步 `25 tests completed, 2 failed` → `32 tests completed, 3 failed`。§2 覆盖范围、Gherkin 口径与 REQ-M3 对照表七行、§3 M3 环境（`.synx` 与烘焙器一条）、§5 大世界域的局部轮映射同步 | Bearisbug |
 | 2026-09-24 | 跟进 `docs/DESIGN-M3.md` v0.8（`API-M3-006` 分片宿主设置表写入四项）。**新增 §4「M3 · 分片宿主设置」两条**：`TC-WORLD-010`（`ShardMain.viewDefaults` 写视距 12、区块上限 4、可见上限 100，`ShardMain.transferDefaults` 只在 PostgreSQL 存储时写 `accept-transfers=true`，命令行给了的键不覆盖；三条反证）与 `TC-WORLD-011`（真进程 `bin/server-shard` 与 `bin/server-app` 的 `Effective ServerConfig` 读数，PostgreSQL 存储缺票据密钥时拒启，反证是入口不调这两个方法），对应 `REQ-M3-009`、`REQ-M3-017`、`REQ-PROD-024`、`REQ-PROD-026`。`ShardMainTest` 由 3 条变为 8 条：`TC-PROD-333` 第 1 步改为 `tests="8"`（线程三条的判据不变），第 2 步反证改为 `8 tests completed, 3 failed`，红的行号 `:18`、`:26`、`:32` → `:20`、`:28`、`:34`（类注释多了两行）。`ShardMain` 默认视距改为 12 牵连两处同机压测的前置：`TC-PROD-336` 的 `server-shard` 一档另加三项参数拉回 `server-app` 的值，保持两档只差线程；`TC-PROD-360` 一组写明可见上限与区块上限已由 `ShardMain` 默认写入，复跑须另加 `-Dsynaxis.chunk-view-distance=10` 才与已登记读数可比。§2 REQ-M3 对照表 `REQ-M3-009`、`REQ-M3-017` 两行、§5 大世界域一行同步 | Bearisbug |
 | 2026-09-24 | 修 `SampleTest` 在 CI 严格模式下红（§7 新增一条已结案，写根因与复现的数）。`TC-PROD-268` 第 1 步改写：JFR 那条只断言 4 个 tick 被数到、4 个 ping 不算，分类那条用测试给定的 6 个时长断言 `over_50ms` 恰为 2 与 P99、P50、分钟归属，用例数 3 → 4；第 2 步反证红的行号 `:42` → `:43`；原第 3 步（`above(1000.0)`）改为第 5 步，新增第 3、4、6、7 步反证（别的事件算成 tick、`above(0.0)` 上界、`>=` 边界、去掉分钟 0 的下限） | Bearisbug |
@@ -126,8 +127,8 @@
 
 - 覆盖（引擎域 · M1 / M1.5）：里程碑 M1 的 12 条需求的黑盒与半黑盒验收——构建产物与仓库元数据（命令、退出码、文件）、Minecraft 协议行为（裸 socket 与原版客户端可观察的包与断线原因）、文档与合规文件。
 - 覆盖（游戏域 · M2）：`docs/DESIGN-M2.md` 的 `REQ-M2-001`～`REQ-M2-025` 的黑盒与半黑盒验收——工程门禁的可观察结论（模块树、构建红绿、CI 结论）、插件宿主的生命周期与隔离行为（启停日志、退出码、回调有无、事件 JSONL）、自定义负载协议行为（探针可见的消息、结果码与断线原因键）、程序化地图生成与对局生命周期、单位 / 寻路 / 镜头的服务端权威行为，以及客户端模组的安装与 RTS 切片的端到端人工验收。
-- 覆盖（大世界域 · M3）：`docs/DESIGN-M3.md` 里**已落地**的两块——光照（`REQ-M3-005`、`REQ-M3-006`、`REQ-M3-007`、`REQ-M3-027`、`REQ-M3-028`：原版 26.2 对拍、`lightBlock` 衰减、面遮挡与 `ShapeImpl` 满面判定、`fullyLit` 重算，以及真值由 `tools/light-oracle/gen.sh` 逐字节再生）与基准程序（`REQ-M3-013`：`LargeWorldBench` 能跑、两次运行区块包字节摘要相同、空闲机器复跑），另加 `REQ-M3-003` 名下的区块包跨 JVM 逐字节确定（引擎 `ChunkData` 编码）。M3-A 剩余项与 M3-B 落地后再加三块：光照引擎抽取（`REQ-M3-004`：`LightEngine` 不依赖实例、不加锁，对拍两条路径，版本与已过对拍版本文件绑定）；`.synx` 格式（`REQ-M3-001`、`REQ-M3-002`：测试向量与 zlib 指纹门、损坏与不兼容、规范化、清单与起服校验函数、内部面名单）；烘焙器与 Anvil 读取器（`REQ-M3-003`、`REQ-M3-020`～`REQ-M3-022`：读取器门禁与夹具再生、生成器源与 Anvil 源的烘焙、各退出码、并行等于串行、4k×4k 合成图命令行烘焙、源光照对拍、交付规范的自检命令）。观察面是 JUnit 结果 XML、`gen.sh` 的退出码与 `git status`、`worldBench` 产出的 JSON、烘焙器的退出码、stdout、清单与事件 JSONL。其余 `REQ-M3-*` 尚未实现，用例随各阶段实现派生，见下方 REQ-M3 对照表。
-- Gherkin 覆盖口径（M3）：`docs/DESIGN-M3.md` §19 里光照与基准六条 REQ 的 13 个场景由 TC-WORLD-001～TC-WORLD-008 可操作化，`REQ-M3-003` 名下「区块包跨 JVM 逐字节确定」由 TC-WORLD-009 可操作化，`REQ-M3-004` 名下「M2 对局在修复后的光照下仍然有光」由 TC-GAME-029 第 1、2、10、11 步承担。M3-B 的场景：`REQ-M3-001` 三条 → TC-WORLD-014～TC-WORLD-016；`REQ-M3-002` 两条 → TC-WORLD-017（只到校验函数，进程退出与端口不 bind 随 M3-C）；`REQ-M3-003` 另八条 → TC-WORLD-021～TC-WORLD-023；`REQ-M3-004` 另三条 → TC-WORLD-012、TC-WORLD-013；`REQ-M3-020` 三条 → TC-WORLD-019、TC-WORLD-024（实体一条只到段③，分片载入生成实体随 M3-C）；`REQ-M3-021` 两条 → TC-WORLD-024；`REQ-M3-022` 两条 → TC-WORLD-024、TC-WORLD-025（标记一条只到段③ 与段①，物化后不变随 M3-C）。其余场景对应的 REQ 未实现，暂无用例。
+- 覆盖（大世界域 · M3）：`docs/DESIGN-M3.md` 里**已落地**的两块——光照（`REQ-M3-005`、`REQ-M3-006`、`REQ-M3-007`、`REQ-M3-027`、`REQ-M3-028`：原版 26.2 对拍、`lightBlock` 衰减、面遮挡与 `ShapeImpl` 满面判定、`fullyLit` 重算，以及真值由 `tools/light-oracle/gen.sh` 逐字节再生）与基准程序（`REQ-M3-013`：`LargeWorldBench` 能跑、两次运行区块包字节摘要相同、空闲机器复跑），另加 `REQ-M3-003` 名下的区块包跨 JVM 逐字节确定（引擎 `ChunkData` 编码）。M3-A 剩余项与 M3-B 落地后再加三块：光照引擎抽取（`REQ-M3-004`：`LightEngine` 不依赖实例、不加锁，对拍两条路径，版本与已过对拍版本文件绑定）；`.synx` 格式（`REQ-M3-001`、`REQ-M3-002`：测试向量与 zlib 指纹门、损坏与不兼容、规范化、清单与起服校验函数、内部面名单）；烘焙器与 Anvil 读取器（`REQ-M3-003`、`REQ-M3-020`～`REQ-M3-022`：读取器门禁与夹具再生、生成器源与 Anvil 源的烘焙、Anvil 源的 256 格高度窗口、各退出码、并行等于串行、4k×4k 合成图命令行烘焙、源光照对拍、交付规范的自检命令）。观察面是 JUnit 结果 XML、`gen.sh` 的退出码与 `git status`、`worldBench` 产出的 JSON、烘焙器的退出码、stdout、清单与事件 JSONL。其余 `REQ-M3-*` 尚未实现，用例随各阶段实现派生，见下方 REQ-M3 对照表。
+- Gherkin 覆盖口径（M3）：`docs/DESIGN-M3.md` §19 里光照与基准六条 REQ 的 13 个场景由 TC-WORLD-001～TC-WORLD-004、TC-WORLD-006～TC-WORLD-008 与 TC-WORLD-026 可操作化（`REQ-M3-028` 那条自设计文档 v0.10 改走懒读路径，由 TC-WORLD-026 取代 TC-WORLD-005），`REQ-M3-003` 名下「区块包跨 JVM 逐字节确定」由 TC-WORLD-009 可操作化，`REQ-M3-004` 名下「M2 对局在修复后的光照下仍然有光」由 TC-GAME-029 第 1、2、10、11 步承担。M3-B 的场景：`REQ-M3-001` 三条 → TC-WORLD-014～TC-WORLD-016；`REQ-M3-002` 两条 → TC-WORLD-017（只到校验函数，进程退出与端口不 bind 随 M3-C）；`REQ-M3-003` 另八条 → TC-WORLD-021～TC-WORLD-023；`REQ-M3-004` 另三条 → TC-WORLD-012、TC-WORLD-013、TC-WORLD-028；`REQ-M3-020` 五条 → TC-WORLD-019、TC-WORLD-029（实体一条只到段③，分片载入生成实体随 M3-C）与 TC-WORLD-027（v0.10 新增的高度窗口两条）；`REQ-M3-021` 两条 → TC-WORLD-029；`REQ-M3-022` 两条 → TC-WORLD-029、TC-WORLD-025（标记一条只到段③ 与段①，物化后不变随 M3-C）。其余场景对应的 REQ 未实现，暂无用例。
 - Gherkin 覆盖口径：`docs/DESIGN-M2.md` §19 的 48 个 Gherkin 场景**全部**由本文档的 TC 可操作化，没有转交自动化测试的场景；逐条对照见下方 REQ ↔ TC 表与各用例标题行。
 - 包 ID 口径：协议探针 `tools/protocol-probe/probe.py` 与压测 harness `tools/loadtest/PacketFlood.java` 的包 ID 都是解析本仓库 `PacketVanilla.java` 得到的，编码端与解码端用同一张表，表错了也照样自洽地通过，所以**以探针或压测为判据的用例不能证明包 ID 与原版一致**。与 26.2 原版一致由 TC-036 的整表测试判（REQ-005 删包打乱 ID 的那次缺陷就是这样漏过去的，见 `docs/DESIGN.md` §28）。
 - 机械校验口径：`bash ~/.claude/skills/test-doc/check.sh docs/TEST.md` 做 REQ 双向联检——本文档引用的每条 REQ 必须在某一份设计文档里存在，每份设计文档的每条 REQ 必须被至少一条 TC 引用。**三份设计文档一起联检**：`check.sh` 把上方元信息「关联设计文档」行里的**每一个** `*.md` 都解析出来，`REQ-001`～`REQ-017`、`REQ-M2-001`～`REQ-M2-025` 与 `REQ-M3-001`～`REQ-M3-028` 都在范围内。两处不能动，动了绿灯就不再代表已核：① ID 正则的域段是 `[A-Z][A-Z0-9]*`，收窄成纯字母会让带数字的 `M2`、`M3` 域段整块静默退出联检；② 元信息那一行必须保留三份文档的路径，少一份则那一份的 REQ 无人认领。M3 侧的反向联检是被下方对照表里的「未实现」行满足的，绿灯只说明每条 REQ 都登记了去向，不说明它有用例。下表因此不是唯一判据，留作可读索引——查一条 REQ 由哪些 TC 覆盖、哪些 TC 已废弃及原因。
@@ -171,7 +172,7 @@ REQ-M3 ↔ TC 对照（可读索引）。「未实现」行没有用例，是已
 | REQ-M3-001 `.synx` 区域文件格式 | TC-WORLD-014、TC-WORLD-015、TC-WORLD-016、TC-WORLD-018 |
 | REQ-M3-002 地图发布目录与清单 | TC-WORLD-017、TC-WORLD-023（起服接线随 M3-C，`rebake` 未实现） |
 | REQ-M3-003 离线烘焙器 | TC-WORLD-009、TC-WORLD-013、TC-WORLD-016、TC-WORLD-018、TC-WORLD-021、TC-WORLD-022、TC-WORLD-023（高度场包随 M3-G） |
-| REQ-M3-004 光照引擎抽取 | TC-WORLD-012、TC-WORLD-013；「M2 对局在修复后的光照下仍然有光」由 TC-GAME-029 第 1、2、10、11 步判 |
+| REQ-M3-004 光照引擎抽取 | TC-WORLD-012、TC-WORLD-013、TC-WORLD-028；「M2 对局在修复后的光照下仍然有光」由 TC-GAME-029 第 1、2、10、11 步判 |
 | REQ-M3-005 天光整列按 `lightBlock` 与面遮挡停止 | TC-WORLD-003 |
 | REQ-M3-006 BFS 按 `lightBlock` 衰减 | TC-WORLD-003 |
 | REQ-M3-007 与原版 26.2 逐值对拍 | TC-WORLD-001、TC-WORLD-002 |
@@ -186,15 +187,15 @@ REQ-M3 ↔ TC 对照（可读索引）。「未实现」行没有用例，是已
 | REQ-M3-016 大区分服 + 频道 | 未实现 |
 | REQ-M3-017 跨大区转服的世界侧 | 未实现；分片宿主在 PostgreSQL 存储时写 `accept-transfers=true` 一条由 TC-WORLD-010、TC-WORLD-011 判 |
 | REQ-M3-019 光影兼容 | 未实现（DH + Iris spike 的证据见 §6 RUN-026 证据段，spike 不是验收） |
-| REQ-M3-020 离线 Anvil 读取器 | TC-WORLD-018、TC-WORLD-019、TC-WORLD-020、TC-WORLD-024 |
-| REQ-M3-021 烘焙器第二道对拍 | TC-WORLD-024 |
-| REQ-M3-022 编辑源交付规范 | TC-WORLD-019（标记解析）、TC-WORLD-024、TC-WORLD-025（`docs/MAP-SOURCE.md` 第 6 节的自检命令） |
+| REQ-M3-020 离线 Anvil 读取器 | TC-WORLD-018、TC-WORLD-019、TC-WORLD-020、TC-WORLD-027、TC-WORLD-029（TC-WORLD-024 已废弃） |
+| REQ-M3-021 烘焙器第二道对拍 | TC-WORLD-029 |
+| REQ-M3-022 编辑源交付规范 | TC-WORLD-019（标记解析）、TC-WORLD-029、TC-WORLD-025（`docs/MAP-SOURCE.md` 第 6 节的自检命令） |
 | REQ-M3-023 世界状态标志 | 未实现 |
 | REQ-M3-024 远景高度场包 | 未实现 |
 | REQ-M3-025 客户端远景 | 未实现 |
 | REQ-M3-026 光影检测与引导 | 未实现 |
 | REQ-M3-027 光照面遮挡按原版 | TC-WORLD-002、TC-WORLD-004 |
-| REQ-M3-028 `fullyLit` 重算 | TC-WORLD-005 |
+| REQ-M3-028 `fullyLit` 重算 | TC-WORLD-026（TC-WORLD-005 已废弃） |
 
 - 不测：
 
@@ -1874,7 +1875,7 @@ REQ-M3 ↔ TC 对照（可读索引）。「未实现」行没有用例，是已
 
 ### M3 · 光照
 
-五条用例都是 JUnit 加反证，不起进程；命令里的 `<G>` 代表 `./gradlew --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts`，`<P>` 代表包名 `io.github.bearisbug.synaxis.instance.light`，`<R>` 代表目录 `src/test/resources/io/github/bearisbug/synaxis/instance/light/parity`，结果 XML 在 `build/test-results/test/TEST-<P>.<类名>.xml`。
+用例都是 JUnit 加反证，不起进程；命令里的 `<G>` 代表 `./gradlew --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts`，`<P>` 代表包名 `io.github.bearisbug.synaxis.instance.light`，`<R>` 代表目录 `src/test/resources/io/github/bearisbug/synaxis/instance/light/parity`，结果 XML 在 `build/test-results/test/TEST-<P>.<类名>.xml`。
 
 #### `TC-WORLD-001` 光照与原版 26.2 逐值对拍，场景目录里的新场景自动纳入 — 对应 `REQ-M3-007` · 级别: 冒烟 · 执行者: AI
 
@@ -1931,12 +1932,26 @@ REQ-M3 ↔ TC 对照（可读索引）。「未实现」行没有用例，是已
 
 #### `TC-WORLD-005` 曾经全亮的天光 section 被盖住后重算 — 对应 `REQ-M3-028` · 级别: 回归 · 执行者: AI
 
+**已废弃，被 `TC-WORLD-026` 取代**（`docs/DESIGN-M3.md` v0.10：`REQ-M3-004` 落地后 `LightingChunk.relight` 改由 `LightEngine` 计算、写回时不设全亮标记，第 2 步的反证不再红，RUN-033 登记为失败。本用例的两条测试都先整图 `relight`，全亮标记从未被设过，所以删掉复位那一行也不红。反证的判别力实质变更，故换 ID）。
+
 前置：同 TC-WORLD-001。
 
 | # | 操作 | 预期 |
 | --- | --- | --- |
 | 1 | `<G> :test --tests '<P>.LightDampeningIntegrationTest'` | `BUILD SUCCESSFUL`，`tests="14"` 0 失败。本用例判两条：`roofOverFullyLitSectionOnRelight`（平地整图 relight 后 (8, 60, 8) 天光 15；y=63 整片铺石头再 relight 后为 0）与 `blockOverFullyLitSectionOnLazyRead`（只在 (8, 63, 8) 放一块石头，经懒读路径 `Instance#getSkyLight` 读 (8, 60, 8) 为 14） |
 | 2 | 反证：删掉 `src/main/java/io/github/bearisbug/synaxis/instance/light/SkyLight.java` 里 `this.fullyLit = false;` 那一行，重跑第 1 步 | `BUILD FAILED`，`14 tests completed, 2 failed`，红的正是这两条：`roofOverFullyLitSectionOnRelight` 为 `expected: <0> but was: <15>`，`blockOverFullyLitSectionOnLazyRead` 为 `expected: <14> but was: <15>` |
+| 3 | `git checkout --` 该文件，重跑第 1 步 | 与第 1 步相同 |
+
+后置：`git status --porcelain -- src` 无输出。
+
+#### `TC-WORLD-026` 懒读路径标为全亮的天光 section 被盖住后重算 — 对应 `REQ-M3-028` · 级别: 回归 · 执行者: AI
+
+前置：同 TC-WORLD-001；`git status --porcelain -- src` 无输出。全亮标记只剩懒读路径会设（`Instance#getSkyLight` → `LightingChunk.relightSection` → `SkyLight#calculateInternal`），`LightingChunk.relight` 走 `LightEngine`，不设这个标记。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | `<G> :test --tests '<P>.LightDampeningIntegrationTest'` | `BUILD SUCCESSFUL`，`tests="14"` 0 失败。本用例判 `blockOverFullyLitSectionOnLazyRead`：平地生成后不整图 `relight`，第一次经懒读路径读 (8, 60, 8) 为 15（这次读把 y 48～63 的 section 标为全亮），在 (8, 63, 8) 放一块石头后再读为 14 |
+| 2 | 反证：删掉 `src/main/java/io/github/bearisbug/synaxis/instance/light/SkyLight.java` 里 `invalidate()` 中的 `this.fullyLit = false;` 那一行，重跑第 1 步 | `BUILD FAILED`，`14 tests completed, 1 failed`：`blockOverFullyLitSectionOnLazyRead` 为 `expected: <14> but was: <15>`。`roofOverFullyLitSectionOnRelight` 仍绿（它走 `relight`，不经 `SkyLight`） |
 | 3 | `git checkout --` 该文件，重跑第 1 步 | 与第 1 步相同 |
 
 后置：`git status --porcelain -- src` 无输出。
@@ -2060,6 +2075,18 @@ REQ-M3 ↔ TC 对照（可读索引）。「未实现」行没有用例，是已
 
 后置：`git status --porcelain -- src` 无输出。
 
+#### `TC-WORLD-028` 烘焙器用到的光照引擎类型不引用 `Instance` — 对应 `REQ-M3-004` · 级别: 回归 · 执行者: AI
+
+前置：同 TC-WORLD-012。规则在聚合项目 `:architecture-tests` 的 `LightEngineArchitectureTest`：被检查的类型取 `:baker` 字节码里直接引用的 `instance.light` 包类型（现为 `LightEngine`、`LightResult`、`WorldView`）。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | `<G> :architecture-tests:test --tests 'io.github.bearisbug.synaxis.architecture.LightEngineArchitectureTest'` | `BUILD SUCCESSFUL`，`tests="1"` 0 失败（`theBakeSideOfTheLightEngineReferencesNoInstance`，其中先断言名单含上述三个类型） |
+| 2 | 反证（引擎引用 `Instance`）：在 `<E>` 的 import 里加 `import io.github.bearisbug.synaxis.instance.Instance;`，类体开头加 `static int injectedInstanceReference(Instance instance) { return instance.getCachedDimensionType().minY(); }`，重跑第 1 步 | `BUILD FAILED`，`1 test completed, 1 failed`：信息为 `Rule 'no classes that are light engine types the baker uses should depend on classes that are assignable to io.github.bearisbug.synaxis.instance.Instance, …' was violated (2 times)`，两处分别是调用 `Instance.getCachedDimensionType()` 与参数类型 `Instance` |
+| 3 | `git checkout -- <E>`，重跑第 1 步 | 与第 1 步相同 |
+
+后置：`git status --porcelain -- src` 无输出。
+
 ### M3 · `.synx` 格式
 
 `<G>` 同「M3 · 光照」；`<Z>` 代表 `-Dsynaxis.synx.require-frozen-zlib=true`（CI 的 check job 带它，`:synx` 的测试任务把它转给测试 JVM）；`<X>` 代表 `synx/src/test/resources/vectors`；`<S>` 代表测试包名 `io.github.bearisbug.synaxis.synx`。结果 XML 在 `synx/build/test-results/test/` 与 `architecture-tests/build/test-results/test/`。四个用例都不起进程；分片进程的起服拒绝（非零退出、端口不 bind）随 M3-C 另派用例。
@@ -2146,7 +2173,7 @@ REQ-M3 ↔ TC 对照（可读索引）。「未实现」行没有用例，是已
 | --- | --- | --- |
 | 1 | `bash tools/anvil-fixture/gen.sh` | 退出码 0；stdout 首行 `proto chunk 3,0 Status=minecraft:initialize_light`；`ls -l` 夹具目录下 `entities/r.0.0.mca` 为 12,288 B、`region/r.0.0.mca` 为 16,384 B。两个文件与仓库版本不要求逐字节相同，判据是尺寸与第 3 步。脚本在非 full 区块不是 (3, 0) 时退出码 1、提示去改 `AnvilWorldTest`（本步不构造这种情况） |
 | 2 | `ls ${TMPDIR:-/tmp} \| grep anvil-fixture` | 无输出（脚本的临时存档目录与原版服务端进程已由 trap 清掉） |
-| 3 | 在再生的夹具上跑 `<G> :baker:test` | `BUILD SUCCESSFUL`；`AnvilWorldTest` 23、`AnvilBakeTest` 10、`GeneratorBakeTest` 12、`BakerMainTest` 1，全部 0 失败 |
+| 3 | 在再生的夹具上跑 `<G> :baker:test` | `BUILD SUCCESSFUL`；`AnvilWorldTest` 23、`AnvilBakeTest` 14、`GeneratorBakeTest` 12、`BakerMainTest` 3，全部 0 失败 |
 | 4 | `git checkout -- baker/src/test/resources` | `git status --porcelain -- baker` 无输出 |
 
 后置：同第 4 步。
@@ -2194,12 +2221,38 @@ REQ-M3 ↔ TC 对照（可读索引）。「未实现」行没有用例，是已
 
 #### `TC-WORLD-024` Anvil 源烘焙：门禁、标记映射、方块实体与实体、源光照对拍 — 对应 `REQ-M3-020`、`REQ-M3-021`、`REQ-M3-022` · 级别: 回归 · 执行者: AI
 
+**已废弃，被 `TC-WORLD-029` 取代**（`docs/DESIGN-M3.md` v0.10：Anvil 源改按 256 格窗口烘焙，第 1 步的判据「清单 `world` −64 / 384、段① 24 个 section」不再成立，改为 −64 / 256 与 16 个 section；判据实质变更，按惯例换 ID，其余判据在替代用例里保留）。
+
 前置：同 TC-WORLD-021；`<CE>` 代表 `baker/src/main/java/io/github/bearisbug/synaxis/baker/ChunkEncoder.java`。夹具只有区块 (0, 0) 是 full，测试多用 `bounds` 0,0,0,0。
 
 | # | 操作 | 预期 |
 | --- | --- | --- |
 | 1 | `<G> :baker:test --tests '<BT>.anvil.AnvilBakeTest' --tests '<BT>.BakerMainTest'` | `BUILD SUCCESSFUL`；`AnvilBakeTest` `tests="10"`、`BakerMainTest` `tests="1"`，0 失败。**门禁**：`anotherDataVersionExitsTwoAndNamesTheChunk`（DataVersion 改成 4790 → 退出码 2，信息含 `chunk 0, 0` 与 `--forceUpgrade`，没有输出目录与事件）、`aProtoChunkExitsTwoAndNamesTheChunk`（`bounds` 3,0,3,0 → 退出码 2，信息含 `chunk 3, 0` 与 `initialize_light`）、`aChunkMissingInsideTheBoundsExitsTwo`（不给 `bounds` → `chunk 1, 0` missing）、`anUnregisteredMarkerNamespaceExitsTwo`（信息含 `5, -59, 5` 与 `synaxis:door`）。**标记映射**：`dataMarkersBecomeSegmentThreeRecords`（两个标记格为空气；拉杆 (5, −60, 5) 的段③ 记录 handler 为 `synaxis:door`、`locked` 为 1；箱子 (4, −60, 1) 的记录 handler 为 `synaxis:loot`、`table` 为 `t1`、`id` 仍是 `minecraft:chest`；段① 里箱子的方块实体只有 `table:"t1"`，拉杆没有方块实体）。**方块实体与实体**：`everyBlockEntityOfTheSourceIsInSegmentThree`（七类 id 齐全，告示牌文字在）、`theSourceEntitiesAreInSegmentThree`（`item_frame` 与 `text_display`，NBT 与读取器读出的相等）。**发布与对拍**：`bakesTheFullChunkAndRecordsTheSource`（清单 `world` −64 / 384、`source` 为 `anvil` / 4903 / `light_coverage` 1.0、抽样 1 差异 0、段① 24 个 section）、`theSourceLightParityOnlyReports`（源里一格天光改 1 → `source_light_diff` 多 1，`build_id` 不变）、`theSourceLightParityLeavesTheMarkersOut`（差异 0）。**命令行**：`BakerMainTest#theCommandLineBakesASaveWithDataMarkers`（测试 classpath 登记了 `DoorHandler`、`LootHandler` 两个 `BlockHandler` 服务，命令行退出码 0） |
 | 2 | 反证（标记格计入对拍）：`<CE>` 的 `sourceLightDiff` 里两处 `minSection + s, chunk.markerCells());` 改成 `minSection + s, Set.of());`，只跑 `AnvilBakeTest`，再 `git checkout -- <CE>` | `10 tests completed, 1 failed`：`theSourceLightParityLeavesTheMarkersOut` 为 `expected: <0> but was: <5>` |
+| 3 | 重跑第 1 步 | 与第 1 步相同 |
+
+后置：`git status --porcelain -- baker` 无输出。
+
+#### `TC-WORLD-029` Anvil 源烘焙：门禁、标记映射、方块实体与实体、源光照对拍（256 格窗口） — 对应 `REQ-M3-020`、`REQ-M3-021`、`REQ-M3-022` · 级别: 回归 · 执行者: AI
+
+前置：同 TC-WORLD-021；`<CE>` 代表 `baker/src/main/java/io/github/bearisbug/synaxis/baker/ChunkEncoder.java`。夹具只有区块 (0, 0) 是 full，测试多用 `bounds` 0,0,0,0。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | `<G> :baker:test --tests '<BT>.anvil.AnvilBakeTest' --tests '<BT>.BakerMainTest'` | `BUILD SUCCESSFUL`；`AnvilBakeTest` `tests="14"`、`BakerMainTest` `tests="3"`，0 失败。**门禁**：`anotherDataVersionExitsTwoAndNamesTheChunk`（DataVersion 改成 4790 → 退出码 2，信息含 `chunk 0, 0` 与 `--forceUpgrade`，没有输出目录与事件）、`aProtoChunkExitsTwoAndNamesTheChunk`（`bounds` 3,0,3,0 → 退出码 2，信息含 `chunk 3, 0` 与 `initialize_light`）、`aChunkMissingInsideTheBoundsExitsTwo`（不给 `bounds` → `chunk 1, 0` missing）、`anUnregisteredMarkerNamespaceExitsTwo`（信息含 `5, -59, 5` 与 `synaxis:door`）。**标记映射**：`dataMarkersBecomeSegmentThreeRecords`（两个标记格为空气；拉杆 (5, −60, 5) 的段③ 记录 handler 为 `synaxis:door`、`locked` 为 1；箱子 (4, −60, 1) 的记录 handler 为 `synaxis:loot`、`table` 为 `t1`、`id` 仍是 `minecraft:chest`；段① 里箱子的方块实体只有 `table:"t1"`，拉杆没有方块实体）。**方块实体与实体**：`everyBlockEntityOfTheSourceIsInSegmentThree`（七类 id 齐全，告示牌文字在）、`theSourceEntitiesAreInSegmentThree`（`item_frame` 与 `text_display`，NBT 与读取器读出的相等）。**发布与对拍**：`bakesTheFullChunkAndRecordsTheSource`（清单 `world` −64 / 256、`source` 为 `anvil` / 4903 / `light_coverage` 1.0、抽样 1 差异 0、段① 16 个 section）、`theSourceLightParityOnlyReports`（源里一格天光改 1 → `source_light_diff` 多 1，`build_id` 不变）、`theSourceLightParityLeavesTheMarkersOut`（差异 0）。**命令行**：`BakerMainTest#theCommandLineBakesASaveWithDataMarkers`（测试 classpath 登记了 `DoorHandler`、`LootHandler` 两个 `BlockHandler` 服务，命令行退出码 0）。高度窗口的四条与 `BakerMainTest` 的两条 `--min-y` 测试由 TC-WORLD-027 判 |
+| 2 | 反证（标记格计入对拍）：`<CE>` 的 `sourceLightDiff` 里两处 `minSection + s, chunk.markerCells());` 改成 `minSection + s, Set.of());`，只跑 `AnvilBakeTest`，再 `git checkout -- <CE>` | `14 tests completed, 1 failed`：`theSourceLightParityLeavesTheMarkersOut` 为 `expected: <0> but was: <5>` |
+| 3 | 重跑第 1 步 | 与第 1 步相同 |
+
+后置：`git status --porcelain -- baker` 无输出。
+
+#### `TC-WORLD-027` Anvil 源按 256 格窗口烘焙，窗口外有内容即拒绝 — 对应 `REQ-M3-020` · 级别: 回归 · 执行者: AI
+
+前置：同 TC-WORLD-021；`<AS>` 代表 `baker/src/main/java/io/github/bearisbug/synaxis/baker/AnvilSource.java`；`git status --porcelain -- baker` 无输出。夹具区块 (0, 0) 是超平坦地形，内容都在 y −64～−59。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | `<G> :baker:test --tests '<BT>.anvil.AnvilBakeTest' --tests '<BT>.BakerMainTest'` | `BUILD SUCCESSFUL`；`AnvilBakeTest` `tests="14"`、`BakerMainTest` `tests="3"`，0 失败。本用例判七条：`bakesTheFullChunkAndRecordsTheSource`（不给 `--min-y` 时清单 `world` 为 −64 / 256，段① 16 个 section）；`aBlockAboveTheWindowExitsTwo`（section 12 即 y 192～207 整段改成石头 → 退出码 2，信息含 `chunk 0, 0: block minecraft:stone at y 192` 与 `y -64 to 191`，没有输出目录与事件）；`aBlockEntityAboveTheWindowExitsTwo`（在空气格 (3, 200, 3) 加一个箱子方块实体 → 退出码 2，`chunk 0, 0: block entity minecraft:chest at y 200`）；`anEntityAboveTheWindowExitsTwo`（`text_display` 的 `Pos` y 改成 250.5 → 退出码 2，`chunk 0, 0: entity minecraft:text_display at y 250`）；`aWindowAboveTheBedrockExitsTwo`（`--min-y` 0 → 退出码 2，`chunk 0, 0: block minecraft:bedrock at y -64` 与 `y 0 to 255`）；`BakerMainTest#aMinYTheCommandLineCannotUseExitsOne`（`--min-y -60`、生成器源带 `--min-y 0` 都退出码 1，临时目录里什么都没写）；`BakerMainTest#theCommandLinePassesMinYToTheSource`（命令行 `--min-y 0` → 退出码 2） |
+| 2 | 反证（窗口外不拒绝）：`<AS>` 的 `checkWindow` 里 `if (outside != null) {` 改成 `if (outside != null && chunk.chunkX() == Integer.MIN_VALUE) {`，重跑第 1 步，再 `git checkout -- <AS>` | `BUILD FAILED`，`17 tests completed, 5 failed`：窗口四条与 `theCommandLinePassesMinYToTheSource` 都红。越界的方块与实体被静默丢掉、照常发布（`expected: <2> but was: <0>`）；越界的方块实体（含 `--min-y 0` 时夹具在 y −60 的那些）让区域烘焙失败（`ArrayIndexOutOfBoundsException`，`expected: <2> but was: <3>`） |
 | 3 | 重跑第 1 步 | 与第 1 步相同 |
 
 后置：`git status --porcelain -- baker` 无输出。
@@ -4866,7 +4919,7 @@ jcmd "$pid" VM.flags | tr ' ' '\n' | grep -cxE -- '-XX:\+UseG1GC|-XX:InitialHeap
   - 生产就绪域：宿主日志线（`REQ-PROD-015`～`REQ-PROD-017`）→ TC-PROD-001～TC-PROD-008。
   - 生产就绪域：tick 看门狗（`REQ-PROD-014` 前半）→ TC-PROD-020～TC-PROD-023。
   - 生产就绪域：连接闸门与 keep-alive 收尾（`REQ-PROD-001`、`REQ-PROD-043`）→ TC-PROD-060～TC-PROD-068；动了 accept 循环、握手或登录监听器、`ConnectionGate`、`ServerConfig` 的闸门键或 `StatusResponse` 就跑这九条，改默认值或闸门判定顺序时再加 TC-PROD-069（真进程，约 4 分钟）。跨域牵连：动了 `PlayerConnection#disconnect`、登录看门狗（`Server#loginTimeoutWatch`）或 keep-alive 踢人 → 加 TC-PROD-061、TC-PROD-066、TC-PROD-067 与 TC-GAME-071。
-  - 大世界域：光照 → TC-WORLD-001～TC-WORLD-005，基准 → TC-WORLD-006（TC-WORLD-007 只在空闲机器上跑，属全量轮；TC-WORLD-008 等第一张美术地图），区块包编码（引擎 `ChunkData`、`ChunkDataPacket`、`LightData`、调色板的网络编码与 `optimize`）→ TC-WORLD-009 与 TC-WORLD-006，分片宿主设置（`ShardMain#viewDefaults`、`ShardMain#transferDefaults`、`Main` 的存储选择与 `accept-transfers` 拒启检查）→ TC-WORLD-010、TC-WORLD-011（后者真进程，约 1 分钟）；动了 `ShardMain` 时同时跑生产就绪域的 TC-PROD-333、TC-PROD-334。光照引擎（`instance.light` 的 `LightEngine`、`LightResult`、`WorldView`、`LightBlocks`，`LightingChunk.relight`，`verified-light-versions.txt`）→ TC-WORLD-012、TC-WORLD-013 加光照五条 TC-WORLD-001～TC-WORLD-005，再加 TC-GAME-029 第 1、2、10、11 步（M2 整图光照与 `load_ms`）与 TC-WORLD-021（烘焙器的版本门禁）。`.synx` 格式（`:synx` 模块、向量与 `manifest.txt`）→ TC-WORLD-014～TC-WORLD-018，再加 TC-WORLD-021～TC-WORLD-023（烘焙器调它写与校验）；动了 §6 内部面名单里的引擎成员 → TC-WORLD-018 加 `:synx`、`:baker` 全部测试。Anvil 读取器（`baker.anvil` 包、`tools/anvil-fixture`）→ TC-WORLD-019、TC-WORLD-024，动了 `gen.sh` 或 `TrimRegion.java` 再加 TC-WORLD-020（约 1 分钟，要 26.2 服务端 jar）。烘焙器（`baker` 包其余部分、`:game-rts` 的 `RtsBakeGenerators`）→ TC-WORLD-021～TC-WORLD-025（TC-WORLD-023 约 2 分钟）；动了 `docs/MAP-SOURCE.md` 第 6 节的命令或退出码表 → TC-WORLD-025。
+  - 大世界域：光照 → TC-WORLD-001～TC-WORLD-004、TC-WORLD-026（TC-WORLD-005 已废弃），基准 → TC-WORLD-006（TC-WORLD-007 只在空闲机器上跑，属全量轮；TC-WORLD-008 等第一张美术地图），区块包编码（引擎 `ChunkData`、`ChunkDataPacket`、`LightData`、调色板的网络编码与 `optimize`）→ TC-WORLD-009 与 TC-WORLD-006，分片宿主设置（`ShardMain#viewDefaults`、`ShardMain#transferDefaults`、`Main` 的存储选择与 `accept-transfers` 拒启检查）→ TC-WORLD-010、TC-WORLD-011（后者真进程，约 1 分钟）；动了 `ShardMain` 时同时跑生产就绪域的 TC-PROD-333、TC-PROD-334。光照引擎（`instance.light` 的 `LightEngine`、`LightResult`、`WorldView`、`LightBlocks`，`LightingChunk.relight`，`verified-light-versions.txt`）→ TC-WORLD-012、TC-WORLD-013、TC-WORLD-028 加光照五条 TC-WORLD-001～TC-WORLD-004 与 TC-WORLD-026，再加 TC-GAME-029 第 1、2、10、11 步（M2 整图光照与 `load_ms`）与 TC-WORLD-021（烘焙器的版本门禁）。`.synx` 格式（`:synx` 模块、向量与 `manifest.txt`）→ TC-WORLD-014～TC-WORLD-018，再加 TC-WORLD-021～TC-WORLD-023（烘焙器调它写与校验）；动了 §6 内部面名单里的引擎成员 → TC-WORLD-018 加 `:synx`、`:baker` 全部测试。Anvil 读取器（`baker.anvil` 包、`tools/anvil-fixture`）→ TC-WORLD-019、TC-WORLD-029，动了 `gen.sh` 或 `TrimRegion.java` 再加 TC-WORLD-020（约 1 分钟，要 26.2 服务端 jar）。烘焙器（`baker` 包其余部分、`:game-rts` 的 `RtsBakeGenerators`）→ TC-WORLD-021～TC-WORLD-023、TC-WORLD-025、TC-WORLD-027、TC-WORLD-029（TC-WORLD-023 约 2 分钟，TC-WORLD-024 已废弃）；动了 `AnvilSource` 的高度窗口或 `BakerMain` 的 `--min-y` → TC-WORLD-027；动了 `architecture-tests` 的 `LightEngineArchitectureTest` 或 `:baker` 开始引用新的 `instance.light` 类型 → TC-WORLD-028；动了 `docs/MAP-SOURCE.md` 第 6 节的命令或退出码表 → TC-WORLD-025。
   - 跨域牵连（必须一起跑）：动了 `network/packet` 下的包注册表（增删包、调顺序、升协议版本）→ 加 TC-036；动了启动入口或就绪日志 → 加 TC-GAME-048、TC-GAME-029、TC-GAME-057、TC-GAME-058 与全部以进程为前置的引擎域用例（启动序列一变，「对局在 bind 之前就绪、tick 在 bind 之后才起」这条口径就要重验）；动了握手、准入回调或探针 → 加 TC-GAME-049、TC-GAME-050、TC-GAME-060、TC-GAME-061 与 TC-004、TC-014、TC-018、TC-019、TC-020、TC-026、TC-027 七条存量 TC；动了客户端模组侧的握手或拾取 → 加 TC-GAME-066；动了 `:protocol` 消息布局 → 加 TC-GAME-017 与客户端侧同一份向量；动了引擎 `Entity` 的位置推进入口 → 加 TC-GAME-051、TC-GAME-067 与 TC-GAME-040；动了对局的 chunk supplier、`Match#load` 的载入流程或引擎 `LightingChunk` / `instance.light` → 加 TC-GAME-029（第 10、11 步是光照的先红后绿）；动了 `ExceptionManager` / `ExceptionHandler`、宿主的 `EventLedger`、`logback*.xml` 或 `server-app` 的启动参数 → 加 TC-PROD-001～TC-PROD-008 与 TC-035。动了 `ServerProcessImpl` 的 `TickerImpl`、`Watchdog`、`ServerConfig` 的 `synaxis.watchdog.*` 键或宿主的 `CrashReports` → 加 TC-PROD-020～TC-PROD-023 与 TC-PROD-002。
 
   - 生产就绪域（`docs/DESIGN-PROD.md`）：真客户端回归 → TC-PROD-040～TC-PROD-042；动了 `client-fabric/**`、`protocol/**`、`server-app/**`、`game-rts/**`、`plugin-api/**`、引擎 `network` / `listener` 包或 `client-gametest.yml` 就跑 TC-PROD-040（与工作流的 PR 路径过滤同一口径），动了 `judge.sh` 或工作流再加 TC-PROD-041、TC-PROD-042。
@@ -4931,6 +4984,7 @@ jcmd "$pid" VM.flags | tr ' ' '\n' | grep -cxE -- '-XX:\+UseG1GC|-XX:InitialHeap
 | RUN-031 | 2026-09-24 | 集成分支 `prod/integrate-w5`（DESIGN-PROD 第 5 波：指标导出与压测机器人、入站限速与出站积压、区块上限与 Tab 列表、追踪范围与可见上限、空间分格多线程；顶号时旧玩家仍在进世界途中的竞态修复；集成后六档同机压测） | AI（Claude Code，Gradle / PostgreSQL / Valkey / `:loadtest`） | 局部（REQ-PROD-018、029、012 之 G11、020、023、024、004→TC-PROD-260～TC-PROD-271、TC-PROD-290～TC-PROD-301、TC-PROD-310～TC-PROD-319、TC-PROD-330～TC-PROD-336、TC-PROD-350、TC-PROD-360～TC-PROD-365） | 通过 46/48 · 失败 2 |
 | RUN-032 | 2026-09-24 | 分支 `m3/shardmain-settings` 的 `ec77313abd`（`main` `2ae21568e1` + DESIGN-M3 v0.8 + `ShardMain` 写视距、区块上限、可见上限与 PostgreSQL 存储时的 `accept-transfers`） | AI（Claude Code，Gradle / PostgreSQL / Valkey） | 局部（REQ-M3-009、REQ-M3-017、REQ-PROD-024、REQ-PROD-026 的分片宿主写入→TC-WORLD-010、TC-WORLD-011；§5 动了 `ShardMain` 的牵连→TC-PROD-333、TC-PROD-334、TC-PROD-050；冒烟级 TC-029） | 通过 5/6 · 跳过 1 |
 | RUN-033 | 2026-09-25 | 分支 `m3/m3b-integrate` 的 `7d4c5867bd`（`main` `e6355f0485` + 合入 `m3/light-engine`、`m3/anvil-reader`、`m3/synx-format` 三条分支 + `:baker` 烘焙器与交付规范；本轮之后的两个文档提交不改代码） | AI（Claude Code，Gradle / `gen.sh` / `baker` 命令行 / `server-app`） | 局部，M3-A 剩余项与 M3-B 的阶段 gate 只跑大世界域（REQ-M3-004→TC-WORLD-012、TC-WORLD-013；REQ-M3-001、REQ-M3-002→TC-WORLD-014～TC-WORLD-018；REQ-M3-020、REQ-M3-022→TC-WORLD-019、TC-WORLD-020、TC-WORLD-025；REQ-M3-003、REQ-M3-021→TC-WORLD-021～TC-WORLD-024；§5 光照引擎的牵连→TC-WORLD-001～TC-WORLD-005、TC-GAME-029 第 1、2、3、10、11 步；区块包确定性→TC-WORLD-009；M3-A 剩余的空闲机器复跑→TC-WORLD-007、TC-WORLD-008；冒烟级 TC-029） | 通过 21/24 · 失败 1 · 跳过 1 · 阻塞 1 |
+| RUN-034 | 2026-09-25 | 分支 `m3/m3b-followup` 的 `0734c6e89d`（`main` `5be385bd54` + DESIGN-M3 v0.10、烘焙器 256 格窗口、懒读路径的 `fullyLit` 测试、`LightEngineArchitectureTest`；本轮之后的两个文档提交不改代码） | AI（Claude Code，Gradle / `baker` 命令行） | 复测（RUN-033 失败的 TC-WORLD-005 由 TC-WORLD-026 取代）+ 局部（REQ-M3-028→TC-WORLD-026，同一测试类的 TC-WORLD-003；REQ-M3-020→TC-WORLD-027、TC-WORLD-029；REQ-M3-004→TC-WORLD-012、TC-WORLD-028；烘焙器→TC-WORLD-022、TC-WORLD-023、TC-WORLD-025；冒烟级 TC-029；另跑 CI 的两种严格模式） | 通过 10/10 |
 
 明细（仅登非「通过」项）：
 
@@ -5050,6 +5104,8 @@ TC-002 证据：`docs/test-runs/RUN-002/tc-002.txt`（5 步实际输出）（2,6
 | RUN-033 | TC-WORLD-007 | 跳过 | 机器不空闲：本轮起跑与各步记录的 1 分钟负载 5.1～45.1（12 核，判据 < 6），同机有别的会话在跑 | 空闲机器上的全量轮（同时复跑 TC-WORLD-023 的墙钟与 TC-GAME-029 的 `load_ms`） |
 | RUN-033 | TC-WORLD-008 | 阻塞 | 还没有美术地图，`LargeWorldBench` 也没有从 `.synx` 或 Anvil 读入的作业（设计文档 `API-M3-008` 待补作业 T1） | 第一张美术地图出来时 |
 
+
+RUN-034 证据：`docs/test-runs/RUN-034/`。每个文件开头一行记起跑时刻、被测提交与 1 分钟负载。本轮关闭 RUN-033 明细里 TC-WORLD-005 的失败：`relight` 改走 `LightEngine` 后全亮标记只剩懒读路径会设，新用例 TC-WORLD-026 先经懒读路径把 section 标为全亮再放石头；`01`～`03`：第 1 步绿，反证（删 `SkyLight#invalidate` 里复位全亮标记那一行）`14 tests completed, 1 failed`，还原后绿。`04`～`06`：TC-WORLD-003 同一测试类的第 2～4 步，前缀反证 `14 tests completed, 11 failed`。`07`～`09`：TC-WORLD-028，给 `LightEngine` 加一个引用 `Instance` 的方法后规则红。`10`～`12`：TC-WORLD-012，反证 `21 tests completed, 2 failed`。`13`～`16`：TC-WORLD-027 与 TC-WORLD-029，窗口检查不拒绝时 `17 tests completed, 5 failed`，标记格计入对拍时 `14 tests completed, 1 failed`。`17-baker-test-all.txt` 的 `:baker:test` 是 up-to-date，没有重新执行，不作判据，`:baker` 的 52 个测试以 `32` 与两次严格模式为准。`18`～`21`：TC-WORLD-022，压缩级别与阈值两条反证都红。`22`～`28`：TC-WORLD-023，4k×4k 合成图默认线程墙钟 20,930 ms、1 线程 93,521 ms，两次 `build_id` 同为 `synth-09b42ebb5dc6-p776`、`content_hash` 相同、64 个区域文件 `cmp` 无差异，`verify` 退 0，改一字节后退 4、还原后退 0，已存在的输出目录重烘退 5；负载 8.2～16.7，墙钟只当上界。`29`～`30`：TC-WORLD-025，第 2 步烘焙器退出码 2，stderr 为 `data marker at 4, -59, 1 names handler namespace 'synaxis:loot', which is not registered`，`<O>` 为空、`<O>-logs` 不存在，与预期一致。`31-check.txt`：`./gradlew check --rerun-tasks` BUILD SUCCESSFUL。`32-check-frozen-zlib.txt`：带 `-Dsynaxis.synx.require-frozen-zlib=true` 的 `check --rerun-tasks --continue`，3,638 个测试、0 失败、0 错误、92 跳过。`33-strict-counter-4.txt` 与 `34-strict-grid-4.txt`：CI 的两种严格模式（`-Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true`，后者再加 `-Dsynaxis.thread-provider=grid`）的 `./gradlew test --rerun-tasks --continue`，都是 3,638 个测试 0 失败 92 跳过，负载 39.5 与 69.7。`35-module-counts.txt`：根模块 3,066（TC-029 判据 ≥ 2,599）、`baker` 52、`synx` 42、`architecture-tests` 17，都没有跳过。TC-WORLD-019、TC-WORLD-021 的 JUnit 部分随全量 check 绿，它们的反证步骤本轮代码没动到，没有重跑。**本轮没执行**：TC-WORLD-020（只改了第 3 步的计数，`gen.sh` 与 `TrimRegion.java` 没动）、TC-WORLD-007（机器不空闲）、TC-WORLD-008（没有美术地图）。
 
 RUN-033 证据：`docs/test-runs/RUN-033/`。每个文件开头一行记起跑时刻、被测提交与 1 分钟负载，Gradle 的文件末尾列出本次写出的结果 XML 与失败的用例名。`01-check.txt` 与 `02-check-counts.txt`：`./gradlew check jacocoTestReport -Dsynaxis.synx.require-frozen-zlib=true --rerun-tasks --continue` BUILD SUCCESSFUL，89 个任务全部执行；按本次写出的结果 XML 统计 3,631 个测试、0 失败、0 错误、92 跳过（跳过的 77 个在 `server-app`、15 个在根模块，与前几轮相同），根模块 3,066（TC-029 判据 ≥ 2,599），`baker` 46、`synx` 42 且都没有跳过，`architecture-tests` 16。光照引擎：`03`（TC-WORLD-012 第 1 步，六个测试类全绿）、`04`（删掉北面的缺失区块判断：`aMissingChunkPassesNoLight` 与版本测试红、对拍 14 条仍绿）、`05`、`06`（版本文件跳号与改指纹各红 1 条）。M2 对局：`07`、`08`（`server-app` 默认 `rts-512`：`match_started` 的 `chunk_count` 1,024、`load_ms` 305、`heap_delta_kib` 9,357、`heap_gc_runs` 4，就绪后按 stdin `stop` 退出码 0）、`09`（`MatchIntegrationTest` 10 条全绿）、`10`、`11`（换回 `DynamicChunk` 并去掉 `relight` 后 `column 0,0: the open air above the map is not lit by the sky`，还原后绿）；TC-GAME-029 第 4～9 步（探针登录、线程与文件句柄）本轮没有跑，本轮改动不涉及那几步的路径。`.synx`：`12`（`:synx:test` 与 `:architecture-tests:test` 带冻结 zlib 开关全绿，`SynxVectorTest` 跳过 0）、`13`～`15`（改向量 1 个字节红 3 条；改 zlib 指纹带开关红 1 条、不带开关跳过 1 条）、`16`、`17`（只 `optimize` 红在 `SynxChunkPacketTest.java:49`，NBT 键不排序红在 `SynxEntitiesTest.java:37`）。Anvil：`18`～`22`（读取器 23 条，三条反证分别红 2、2、1 条，还原后绿）、`23`、`24`（`gen.sh` 退出码 0，首行 `proto chunk 3,0 Status=minecraft:initialize_light`，两个文件 12,288 B 与 16,384 B，`$TMPDIR` 没有残留，再生夹具上 `:baker:test` 46 条全绿，随后 `git checkout` 还原）。烘焙器：`25`（`:baker:test` 四个类 46 条全绿，TC-WORLD-021 与 TC-WORLD-024 第 1 步）、`26`、`27`（压缩级别随线程变红在逐字节比较、阈值随线程变被校验拦下退 4）、`28`～`30`（4k×4k 合成图，种子 7：12 线程默认堆 `wall_ms` 16,373、`cpu_ms` 123,763、最大 RSS 4.55 GB；1 线程 `wall_ms` 93,359、`cpu_ms` 98,694、最大 RSS 1.07 GB；两次 `build_id` 都是 `synth-09b42ebb5dc6-p776`、213,319,659 B，64 个区域文件逐字节相同）、`31`（`verify` 通过退 0；改 `r.3.4.synx` 1 个字节退 4 报 `synx-payload-hash`，还原后退 0；同一输入重烘退 5 且没有 `.baking-*` 残留。本机 shell 是 zsh，`29` 与 `31` 的第一次记录用 `PIPESTATUS` 取退出码取成了空值：`29` 的退出码行是按 stdout 的 `published` 事后补注的 0，`31` 整个重跑了一遍、改用 `$?`）、`32`（交付规范第 6 节命令对夹具退出码 2，`synaxis:loot` 未登记）、`46`（标记格计入对拍后 `theSourceLightParityLeavesTheMarkersOut` 为 5）。回归：`33`～`36`（TC-WORLD-001：14 条全绿；篡改真值两条路径各红 1 条并打出 `surface sky (-16, -64, -16) minecraft:air: vanilla 15, synaxis 0`；`zz-copy` 经 `gen.sh` 生成后与 `surface` 真值逐字节相同、测试数 16）、`37`（TC-WORLD-002 四步）、`38`～`42`（TC-WORLD-003～005：修复前两文件红 11 条、表错位红 1 条、`ShapeImpl` 红 3 条、`fullyLit` 反证不红，见明细）、`43`～`45`（TC-WORLD-009 连跑三次绿；换回修复前的 `ChunkData.java` 红在 `blockEntities`，还原后绿）、`47`、`48`（全部反证还原后 `:synx`、`:baker` 与 `instance.light` 包的测试重跑全绿）。每条反证都用 `git checkout` 还原，本轮结束时 `git status --porcelain` 只有文档与本目录。临时目录 `/tmp/run033`（烘焙输出约 430 MB、`server-app` 工作目录、辅助脚本）已删除。
 

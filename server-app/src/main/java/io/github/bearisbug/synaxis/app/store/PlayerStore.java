@@ -47,6 +47,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.BiConsumer;
+import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
 
 /**
@@ -299,6 +300,21 @@ public final class PlayerStore implements ShutdownParticipant {
      * @return true once loaded; false if the player was kicked
      */
     public boolean load(Player player) {
+        return load(player, null);
+    }
+
+    /**
+     * {@link #load(Player)} for a login that has to claim its character first: the store half of a
+     * transfer ticket ({@code API-PROD-028} ⑤ ⑥). The claim runs in this account's turn, once a
+     * previous login of the account on this shard has let go and right before the lease is
+     * acquired, so that no other login of the account on this shard loads or plays meanwhile: the
+     * lease it takes is not given back from under it, nor does it give back theirs (§11.3 end).
+     *
+     * @param player the player
+     * @param claim  false when it refused the player, which it has kicked; null for none
+     * @return true once loaded; false if the player was kicked
+     */
+    public boolean load(Player player, @Nullable BooleanSupplier claim) {
         final UUID account = player.getUuid();
         final long deadline = System.nanoTime() + options.loadBudget().toNanos();
         final CompletableFuture<Void> mine = new CompletableFuture<>();
@@ -315,7 +331,7 @@ public final class PlayerStore implements ShutdownParticipant {
             }
         }
         try {
-            if (loadOrRefuse(player, deadline)) return true;
+            if (loadOrRefuse(player, deadline, claim)) return true;
             releaseUnused(account);
             return false;
         } finally {
@@ -339,7 +355,7 @@ public final class PlayerStore implements ShutdownParticipant {
         }
     }
 
-    private boolean loadOrRefuse(Player player, long deadline) {
+    private boolean loadOrRefuse(Player player, long deadline, @Nullable BooleanSupplier claim) {
         final UUID account = player.getUuid();
         final ShardSession current = this.session;
         if (closing || (current != null && current.state() == ShardSession.State.ISOLATED))
@@ -352,7 +368,7 @@ public final class PlayerStore implements ShutdownParticipant {
             return refuse(player, "interrupted");
         }
         try {
-            return loadWithin(player, account, deadline);
+            return loadWithin(player, account, deadline, claim);
         } catch (SQLException e) {
             failures.warn(e, "Loading a character failed: connection_id={}", player.getPlayerConnection().connectionId());
             return refuse(player, "the database failed");
@@ -361,7 +377,8 @@ public final class PlayerStore implements ShutdownParticipant {
         }
     }
 
-    private boolean loadWithin(Player player, UUID account, long deadline) throws SQLException {
+    private boolean loadWithin(Player player, UUID account, long deadline, @Nullable BooleanSupplier claim)
+            throws SQLException {
         // The same account leaving this shard first: its logout save gives the lease back (§12.4 end)
         for (Record other : List.copyOf(records.values())) {
             if (!other.account.equals(account) || other.player == player) continue;
@@ -371,6 +388,7 @@ public final class PlayerStore implements ShutdownParticipant {
                 return refuse(player, "the previous session of this account did not let go in time");
             }
         }
+        if (claim != null && !claim.getAsBoolean()) return false;
         boolean kickRequested = false;
         StoreBackend.LoadOutcome.Acquired acquired;
         while (true) {
@@ -387,6 +405,10 @@ public final class PlayerStore implements ShutdownParticipant {
             }
             final StoreBackend.LoadOutcome.Held held = (StoreBackend.LoadOutcome.Held) outcome;
             if (!displaceHolders) return refuse(player, "held by shard_id=" + held.shardId());
+            // A connection that went away takes nobody's character: it would keep a reconnect of the
+            // same account waiting behind it, and the holder would be kicked for nobody (§12.4 end)
+            if (!player.isOnline())
+                return refuse(player, "the connection closed while shard_id=" + held.shardId() + " held the character");
             if (!kickRequested) {
                 if (!redis.requestKick(held.shardId(), account))
                     return refuse(player, "held by shard_id=" + held.shardId() + " and Redis cannot ask it to let go");

@@ -7,6 +7,7 @@ import ch.qos.logback.core.read.ListAppender;
 import io.github.bearisbug.synaxis.entity.Player;
 import io.github.bearisbug.synaxis.instance.Instance;
 import io.github.bearisbug.synaxis.network.ConnectionState;
+import io.github.bearisbug.synaxis.network.DisconnectReasons;
 import io.github.bearisbug.synaxis.network.player.GameProfile;
 import io.github.bearisbug.synaxis.testing.Env;
 import io.github.bearisbug.synaxis.testing.EnvTest;
@@ -22,6 +23,7 @@ import redis.clients.jedis.RedisClient;
 
 import java.net.URI;
 import java.sql.SQLException;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -136,6 +138,48 @@ class CrossShardHandoverIntegrationTest {
         assertEquals(List.of("synaxis:state-unavailable"), kicks(fresh));
         assertEquals(List.of(), kicks(old), "the first session is not touched");
         assertEquals(first.sessionId(), row(database, account).lease());
+    }
+
+    @Test
+    void aLoginWhoseConnectionClosedWhileTheHolderHeldOnGivesWayToTheReconnect(Env env) throws Exception {
+        // The holder hears no kick request by itself: the first one is lost, the second one is
+        // delivered by the test, answered like a save that takes half a second
+        final StoreFixture.Shard holder = shard(env, "a", false, true);
+        final String shardId = "b-" + run;
+        final PlayerStore.Options twoSeconds = new PlayerStore.Options(Duration.ofSeconds(2), 2, 4,
+                List.of(Duration.ofMillis(50)), Duration.ofSeconds(1), Duration.ofMillis(50));
+        final StoreFixture.Shard shard = StoreFixture.shard(env, pool, shardId, true,
+                RedisLink.connect(TestDatabase.redisUrl(), shardId), twoSeconds);
+        shards.add(shard);
+        final List<String> published = listenToKickChannels();
+        final Instance instance = env.createFlatInstance();
+        final UUID account = UUID.randomUUID();
+        final Player old = online(env, holder, instance, account, "Rejoin");
+
+        final Player dropped = elsewhere(env, account, "Rejoin");
+        final CompletableFuture<Boolean> droppedLoaded = CompletableFuture.supplyAsync(
+                () -> shard.store().load(dropped), Thread.ofVirtual()::start);
+        await(env, () -> published.size() == 1, "the first login asks the holder to let go");
+        dropped.getPlayerConnection().disconnect();
+        Thread.ofVirtual().start(() -> {
+            try {
+                while (published.size() < 2) Thread.sleep(10);
+                Thread.sleep(500);
+            } catch (InterruptedException e) {
+                throw new AssertionError(e);
+            }
+            old.kick(DisconnectReasons.LOGGED_IN_ELSEWHERE);
+        });
+        final Player reconnect = elsewhere(env, account, "Rejoin");
+        final CompletableFuture<Boolean> reconnectLoaded = CompletableFuture.supplyAsync(
+                () -> shard.store().load(reconnect), Thread.ofVirtual()::start);
+        await(env, reconnectLoaded::isDone, "the reconnect ends");
+
+        assertTrue(reconnectLoaded.join(), "the reconnect gets the character within its own 2 s");
+        assertFalse(droppedLoaded.join(), "the closed connection gave up");
+        assertEquals(2, published.size(), "one kick request each: " + published);
+        assertEquals(List.of("synaxis:logged-in-elsewhere"), kicks(old));
+        assertEquals(shard.sessionId(), row(database, account).lease());
     }
 
     @Test

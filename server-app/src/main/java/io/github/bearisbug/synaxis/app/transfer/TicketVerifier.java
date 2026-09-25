@@ -23,7 +23,9 @@ import java.util.function.LongSupplier;
 /**
  * The target side of a transfer ({@code docs/DESIGN-PROD.md} {@code API-PROD-028} checks ② to ⑥,
  * §11.3 {@code in_transit → loading | offline}): on the configuration thread of a connection that
- * came in with the transfer intent, before its data is loaded. The first check that fails decides:
+ * came in with the transfer intent. {@link #read} reads the ticket before the load; {@link #claim}
+ * is what the load runs in the account's turn, right before its acquire (§11.3 end). The first
+ * check that fails decides:
  * <ol start="2">
  * <li>the cookie, its layout, key and signature ({@code bad-signature});</li>
  * <li>its expiry ({@code expired});</li>
@@ -102,18 +104,32 @@ public final class TicketVerifier {
     }
 
     /**
-     * Checks the ticket of a connection that came in with the transfer intent. A refused one is
-     * kicked; an accepted one holds the character's lease and goes on to the ordinary load.
+     * Reads the ticket of a connection that came in with the transfer intent and checks what needs
+     * no database, ② to ④. A refused one is kicked.
      *
      * @param player the player of the connection, in the configuration phase
+     * @return the ticket, or null if it is refused
+     */
+    public @Nullable TransferTicket read(Player player) {
+        final TransferTicket ticket = TransferTicket.decode(cookie(player), keys);
+        if (ticket == null) return rejected(player, null, Reason.BAD_SIGNATURE);
+        if (cooldowns.now() > ticket.expiresAt()) return rejected(player, ticket, Reason.EXPIRED);
+        if (!shardId.equals(ticket.targetShard())) return rejected(player, ticket, Reason.WRONG_TARGET);
+        if (!player.getUuid().equals(ticket.playerUuid())) return rejected(player, ticket, Reason.UUID_MISMATCH);
+        return ticket;
+    }
+
+    /**
+     * Uses a ticket {@link #read} accepted, ⑤ and ⑥: spends its nonce and takes the character's
+     * lease at the version it was released at. Run by the load, in the account's turn
+     * ({@code PlayerStore#load(Player, BooleanSupplier)}). A refused one is kicked; an accepted one
+     * holds the lease and goes on to the ordinary load.
+     *
+     * @param player the player of the connection
+     * @param ticket its ticket
      * @return true if the ticket is accepted
      */
-    public boolean verify(Player player) {
-        final TransferTicket ticket = TransferTicket.decode(cookie(player), keys);
-        if (ticket == null) return reject(player, null, Reason.BAD_SIGNATURE);
-        if (cooldowns.now() > ticket.expiresAt()) return reject(player, ticket, Reason.EXPIRED);
-        if (!shardId.equals(ticket.targetShard())) return reject(player, ticket, Reason.WRONG_TARGET);
-        if (!player.getUuid().equals(ticket.playerUuid())) return reject(player, ticket, Reason.UUID_MISMATCH);
+    public boolean claim(Player player, TransferTicket ticket) {
         final long session = sessionId.getAsLong();
         try (Connection connection = dataSource.getConnection()) {
             // Committed on its own: whatever fails after this, the ticket has been used
@@ -163,6 +179,11 @@ public final class TicketVerifier {
             Thread.currentThread().interrupt();
             return null;
         }
+    }
+
+    private @Nullable TransferTicket rejected(Player player, @Nullable TransferTicket ticket, Reason reason) {
+        reject(player, ticket, reason);
+        return null;
     }
 
     private boolean reject(Player player, @Nullable TransferTicket ticket, Reason reason) {

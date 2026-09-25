@@ -4,6 +4,7 @@ import net.kyori.adventure.text.Component;
 import io.github.bearisbug.synaxis.app.permission.HostPermissions;
 import io.github.bearisbug.synaxis.app.store.PlayerStore;
 import io.github.bearisbug.synaxis.app.transfer.TicketVerifier;
+import io.github.bearisbug.synaxis.app.transfer.TransferTicket;
 import io.github.bearisbug.synaxis.entity.Player;
 import io.github.bearisbug.synaxis.event.Event;
 import io.github.bearisbug.synaxis.event.EventNode;
@@ -20,6 +21,8 @@ import java.net.InetSocketAddress;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.BooleanSupplier;
 
 /**
  * The one {@code setSpawningInstance} call point of the process (API-M2-011).
@@ -77,13 +80,25 @@ final class AdmissionGate {
                     "no admission provider is registered");
             return;
         }
-        // A transfer shows its ticket before anything is loaded (docs/DESIGN-PROD.md API-PROD-028);
-        // a refused ticket has already kicked the player and written transfer_rejected
-        if (tickets != null && player.getPlayerConnection().wasTransferred() && !tickets.verify(player)) return;
+        // A transfer shows its ticket before anything is loaded (docs/DESIGN-PROD.md API-PROD-028):
+        // the cookie here, the nonce and the lease in the load, in this account's turn (§11.3 end).
+        // A refused ticket has already kicked the player and written transfer_rejected.
+        BooleanSupplier claim = null;
+        final AtomicBoolean ticketRefused = new AtomicBoolean();
+        if (tickets != null && player.getPlayerConnection().wasTransferred()) {
+            final TicketVerifier verifier = tickets;
+            final TransferTicket ticket = verifier.read(player);
+            if (ticket == null) return;
+            claim = () -> {
+                if (verifier.claim(player, ticket)) return true;
+                ticketRefused.set(true);
+                return false;
+            };
+        }
         // The player's data before the admission: a player is never let in without it
         // (docs/DESIGN-PROD.md §12.1). A load that fails has already kicked the player.
-        if (!store.load(player)) {
-            rejected(connectionId, hello, DisconnectKeys.STATE_UNAVAILABLE);
+        if (!store.load(player, claim)) {
+            if (!ticketRefused.get()) rejected(connectionId, hello, DisconnectKeys.STATE_UNAVAILABLE);
             return;
         }
         // The roles next, so that the admission provider can already ask about them (API-PROD-010)

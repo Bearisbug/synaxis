@@ -177,7 +177,11 @@ public final class Main {
         // The player store before the plugins, which register their sections in onEnable; a shard
         // whose database is not the one it expects refuses here, before anything is bound.
         final StoreRuntime store = openStore(storeMode, process, auth, shardId, ledger, System.getenv());
-        process.setShutdownParticipant(store.store());
+        // The engine takes one participant: the players save first, then the steps registered on
+        // this before the start, in their order (docs/DESIGN-PROD.md API-PROD-007). This path
+        // registers none, so the save phase is the player store's alone.
+        final ShutdownSequence shutdown = new ShutdownSequence(process, store.store());
+        process.setShutdownParticipant(shutdown);
         final PluginHost host = new PluginHost(process, Path.of("plugins"), ledger, store.store(), store.verifier(),
                 store.permissions(), store.moderation());
         process.command().register(new RoleCommand(process, store.permissions(), ledger::record));

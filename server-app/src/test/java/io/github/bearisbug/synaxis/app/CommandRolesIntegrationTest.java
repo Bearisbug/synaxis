@@ -1,6 +1,7 @@
 package io.github.bearisbug.synaxis.app;
 
 import io.github.bearisbug.synaxis.app.command.HostCommands;
+import io.github.bearisbug.synaxis.app.command.Profiler;
 import io.github.bearisbug.synaxis.app.permission.HostPermissions;
 import io.github.bearisbug.synaxis.app.permission.RoleStore;
 import io.github.bearisbug.synaxis.app.store.AuthMode;
@@ -24,7 +25,9 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import java.nio.file.Path;
 import java.sql.SQLException;
+import java.time.Clock;
 import java.time.Duration;
 import java.util.List;
 import java.util.Set;
@@ -93,7 +96,7 @@ class CommandRolesIntegrationTest {
         env.process().eventHandler().addChild(node);
         permissions.attach(node);
         new HostCommands(env.process(), permissions, PlayerStore.inMemory(env.process(), (_, _) -> { }),
-                (_, _) -> { }).register();
+                (_, _) -> { }, new Profiler(Path.of("profiles"), "test", Clock.systemUTC())).register();
         final UUID account = UUID.randomUUID();
         final TestConnection connection = env.createConnection(new GameProfile(account, "Warden"));
         final Collector<DeclareCommandsPacket> atSpawn = connection.trackIncoming(DeclareCommandsPacket.class);

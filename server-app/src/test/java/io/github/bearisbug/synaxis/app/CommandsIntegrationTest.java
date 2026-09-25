@@ -3,6 +3,7 @@ package io.github.bearisbug.synaxis.app;
 import ch.qos.logback.classic.Level;
 import io.github.bearisbug.synaxis.ServerProcess;
 import io.github.bearisbug.synaxis.app.command.HostCommands;
+import io.github.bearisbug.synaxis.app.command.Profiler;
 import io.github.bearisbug.synaxis.app.store.MemoryBackend;
 import io.github.bearisbug.synaxis.app.store.PlayerStore;
 import io.github.bearisbug.synaxis.app.store.RedisLink;
@@ -40,6 +41,7 @@ import org.junit.jupiter.api.io.TempDir;
 import java.io.BufferedReader;
 import java.io.StringReader;
 import java.nio.file.Path;
+import java.time.Clock;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
@@ -58,7 +60,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * The console, the six commands of the host and the commands of plugins
+ * The console, the seven commands of the host and the commands of plugins
  * ({@code docs/DESIGN-PROD.md} {@code REQ-PROD-012}, {@code API-PROD-011}, §19 the two command
  * scenarios): a console line is a command, a player runs a command of the host only with its node
  * and only sees it among the completions with it, a plugin command lives under the plugin's
@@ -149,13 +151,14 @@ class CommandsIntegrationTest {
         }
     }
 
-    /** The host of a process without a database, its six commands registered first as in Main. */
+    /** The host of a process without a database, its seven commands registered first as in Main. */
     private PluginHost host(Env env) {
         ledger = new EventLedger(workingDirectory.resolve("logs"), "test", EventLedger.DEFAULT_MAX_BYTES_PER_DAY);
         ledger.start();
         final PlayerStore store = new PlayerStore(env.process(), new MemoryBackend(), RedisLink.disabled("test"), "test",
                 false, PlayerStore.Options.DEFAULT, ledger::record);
-        new HostCommands(env.process(), permissions, store, (_, attributes) -> events.add(attributes)).register();
+        new HostCommands(env.process(), permissions, store, (_, attributes) -> events.add(attributes),
+                new Profiler(workingDirectory.resolve("profiles"), "test", Clock.systemUTC())).register();
         return new PluginHost(env.process(), workingDirectory.resolve("plugins"), ledger, store);
     }
 
@@ -231,7 +234,7 @@ class CommandsIntegrationTest {
         assertTrue(keeperSees.containsAll(Set.of("kick", "list")), "the completions follow the nodes: " + keeperSees);
         assertFalse(keeperSees.contains("stop"), keeperSees.toString());
         final Set<String> ruffianSees = lastTree(ruffianCommands);
-        for (String name : List.of("list", "kick", "broadcast", "save", "stop", "tps"))
+        for (String name : List.of("list", "kick", "broadcast", "save", "stop", "tps", "profile"))
             assertFalse(ruffianSees.contains(name), name + " is not among the completions of a player without its node");
 
         assertEquals(CommandResult.Type.CANCELLED, env.process().command().execute(ruffian, "kick Keeper").getType(),

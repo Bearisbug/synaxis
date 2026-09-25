@@ -1,6 +1,7 @@
 package io.github.bearisbug.synaxis.app;
 
 import ch.qos.logback.classic.AsyncAppender;
+import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.LoggerContext;
 import ch.qos.logback.classic.joran.JoranConfigurator;
@@ -28,6 +29,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -143,6 +145,26 @@ class LogbackConfigurationTest {
 
         assertEquals(List.of("STDOUT"), appenders, "the console is all there is");
         assertEquals(List.of(), files(directory));
+    }
+
+    /**
+     * Java-WebSocket writes every handshake it reads at TRACE, the management token with it
+     * ({@code docs/DESIGN-PROD.md} {@code API-PROD-022}): an operator who turns the root level down
+     * to TRACE must not turn that on.
+     */
+    @Test
+    void theWebSocketLibraryStaysAtInfoWhateverTheRootLevel(@TempDir Path directory) throws Exception {
+        final LoggerContext context = configure(resource("logback.xml").replace("<root level=\"INFO\">",
+                "<root level=\"TRACE\">"), directory, "stdout");
+        try {
+            assertNoConfigurationWarning(context);
+            assertEquals(Level.TRACE, context.getLogger(Logger.ROOT_LOGGER_NAME).getLevel());
+            final Logger library = context.getLogger("org.java_websocket.WebSocketImpl");
+            assertEquals(Level.INFO, library.getEffectiveLevel());
+            assertFalse(library.isTraceEnabled());
+        } finally {
+            context.stop();
+        }
     }
 
     @Test

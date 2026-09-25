@@ -7,6 +7,10 @@ import io.github.bearisbug.synaxis.ServerProcess;
 import io.github.bearisbug.synaxis.SessionServer;
 import io.github.bearisbug.synaxis.Watchdog;
 import io.github.bearisbug.synaxis.app.command.HostCommands;
+import io.github.bearisbug.synaxis.app.command.Profiler;
+import io.github.bearisbug.synaxis.app.management.ManagementMethods;
+import io.github.bearisbug.synaxis.app.management.ManagementServer;
+import io.github.bearisbug.synaxis.app.management.ManagementSettings;
 import io.github.bearisbug.synaxis.app.metrics.HostMetrics;
 import io.github.bearisbug.synaxis.app.moderation.HostModeration;
 import io.github.bearisbug.synaxis.app.moderation.ModerationCommands;
@@ -151,6 +155,7 @@ public final class Main {
         final String storeMode = storeMode();
         final CoreMode.Setting coreMode = CoreMode.setting();
         final InetSocketAddress metricsBind = HostMetrics.bindAddress();
+        final ManagementSettings managementSettings = ManagementSettings.fromSystemProperties(System.getenv());
         applyViewRangeDefaults();
 
         // (2) The engine facade, not a bare ServerProcess: MinecraftServer#start is the only public
@@ -184,7 +189,9 @@ public final class Main {
         new ModerationCommands(process, store.moderation(), store.permissions(), ledger::record).commands()
                 .forEach(process.command()::register);
         // Before the plugins, so that the bare names of the built in commands are the host's
-        new HostCommands(process, store.permissions(), store.store(), ledger::record).register();
+        final HostCommands commands = new HostCommands(process, store.permissions(), store.store(), ledger::record,
+                new Profiler(Path.of("profiles"), shardId, Clock.systemUTC()));
+        commands.register();
         final CrashReports crashReports = crashReports(process, host, shardId, Path.of("crash-reports"));
         installExceptionHandler(process, crashReports);
         final Watchdog watchdog = startWatchdog(process, crashReports);
@@ -193,6 +200,8 @@ public final class Main {
         final HostMetrics metrics = HostMetrics.register(process, new HostMetrics.Sources(ledger::droppedTotal,
                 store.store(), store.session(), store.database(), store.redis()));
         serveMetrics(metrics, metricsBind);
+        final ManagementServer management = ManagementServer.serve(managementSettings, process, new ManagementMethods(
+                process, commands, store.store(), store.moderation(), store.session(), shardId, ledger::record));
         if (coreMode != CoreMode.Setting.ON) host.enable(PluginHost.discover(), selectedPlugins);
 
         // (5) Which mode this process serves in. Gameplay needs both halves — an admission provider
@@ -227,6 +236,7 @@ public final class Main {
         // The save is over by now: Redis, the session renewal and the pool can go
         process.scheduler().buildShutdownTask(store::close);
         process.scheduler().buildShutdownTask(metrics::close);
+        process.scheduler().buildShutdownTask(management::close);
         // Last: a tick still in flight keeps being watched after this, see Watchdog#stop
         process.scheduler().buildShutdownTask(watchdog::stop);
 

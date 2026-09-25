@@ -15,6 +15,7 @@ import io.github.bearisbug.synaxis.plugin.Permissions;
 import net.kyori.adventure.text.Component;
 import org.jetbrains.annotations.Nullable;
 
+import java.io.IOException;
 import java.time.Duration;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -25,9 +26,10 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BiConsumer;
 
 /**
- * The six commands the host brings along ({@code docs/DESIGN-PROD.md} {@code REQ-PROD-012},
- * {@code API-PROD-011}): {@code list}, {@code kick <player> [reason]}, {@code broadcast <text>},
- * {@code save}, {@code stop [seconds]} and {@code tps}.
+ * The seven commands the host brings along ({@code docs/DESIGN-PROD.md} {@code REQ-PROD-012},
+ * {@code REQ-PROD-034}, {@code API-PROD-011}): {@code list}, {@code kick <player> [reason]},
+ * {@code broadcast <text>}, {@code save}, {@code stop [seconds]}, {@code tps} and
+ * {@code profile [seconds]}.
  * <p>
  * The console may run all of them. A player runs one only while holding
  * {@code synaxis.command.<name>}; without it the engine refuses the command as a failed
@@ -43,8 +45,12 @@ public final class HostCommands {
     private final Permissions permissions;
     private final PlayerStore store;
     private final BiConsumer<String, Map<String, ?>> analytics;
+    private final Profiler profiler;
     private final TickStats ticks = new TickStats();
-    /** Set by the first {@code stop} that starts the shutdown, before its thread calls the engine. */
+    /**
+     * Set by the first {@code stop} or management {@code minecraft:server/stop} that starts the
+     * shutdown, before its thread calls the engine.
+     */
     private final AtomicBoolean stopping = new AtomicBoolean();
 
     /**
@@ -52,22 +58,65 @@ public final class HostCommands {
      * @param permissions the permission nodes of the players
      * @param store       the player store, which {@code save} saves
      * @param analytics   the event ledger
+     * @param profiler    the one recording of the process, started by the command of that name
      */
     public HostCommands(ServerProcess process, Permissions permissions, PlayerStore store,
-                        BiConsumer<String, Map<String, ?>> analytics) {
+                        BiConsumer<String, Map<String, ?>> analytics, Profiler profiler) {
         this.process = process;
         this.permissions = permissions;
         this.store = store;
         this.analytics = analytics;
+        this.profiler = profiler;
     }
 
     /**
-     * Registers the six commands and starts counting the ticks {@code tps} reports on. Called
+     * Registers the seven commands and starts counting the ticks {@code tps} reports on. Called
      * before the plugins are enabled, so that the bare names are the host's.
      */
     public void register() {
         process.eventHandler().addListener(ServerTickMonitorEvent.class, ticks::record);
-        process.command().register(list(), kick(), broadcast(), save(), stop(), tps());
+        process.command().register(list(), kick(), broadcast(), save(), stop(), tps(), profile());
+    }
+
+    /**
+     * Claims the shutdown ({@code API-PROD-011}): the console, a player's {@code stop} and the
+     * management method {@code minecraft:server/stop} all come through here, and only the first
+     * of them gets true. Whoever gets it answers first and then calls {@link #startStop}.
+     *
+     * @return false if a shutdown was already running or claimed
+     */
+    public boolean claimStop() {
+        // The engine ignores every shutdown after the first, so a second countdown would change nothing
+        return process.shutdownPhase() == ServerProcess.ShutdownPhase.RUNNING && stopping.compareAndSet(false, true);
+    }
+
+    /**
+     * Starts the shutdown claimed by {@link #claimStop()} on a thread of its own.
+     *
+     * @param countdown how long the gate stays closed before the save
+     */
+    public void startStop(Duration countdown) {
+        // Its own thread, not a daemon: the sequence waits for every tick thread, the one running a
+        // player's command included, and the JVM exits once it is over and this thread with it
+        Thread.ofPlatform().name("server-app-stop").start(() -> process.beginShutdown(countdown));
+    }
+
+    /**
+     * Returns the last ticks, as {@code tps} reports them.
+     *
+     * @return the window of {@code tps}
+     */
+    public TickStats.Snapshot ticks() {
+        return ticks.snapshot();
+    }
+
+    /**
+     * Returns the one recording of the process, shared with the management interface.
+     *
+     * @return the recording
+     */
+    public Profiler profiler() {
+        return profiler;
     }
 
     private Command command(String name) {
@@ -168,17 +217,65 @@ public final class HostCommands {
     }
 
     private void stop(CommandSender sender, String input, int seconds) {
-        // The engine ignores every shutdown after the first, so a second countdown would change nothing
-        if (process.shutdownPhase() != ServerProcess.ShutdownPhase.RUNNING || !stopping.compareAndSet(false, true)) {
+        if (!claimStop()) {
             reply(sender, "synaxis:command-already-stopping", "The server is already stopping");
             record(sender, input, null, "invalid");
             return;
         }
         reply(sender, "synaxis:command-stopping", "The server stops in %s s", String.valueOf(seconds));
         record(sender, input, null, "ok");
-        // Its own thread, not a daemon: the sequence waits for every tick thread, the one running a
-        // player's command included, and the JVM exits once it is over and this thread with it
-        Thread.ofPlatform().name("server-app-stop").start(() -> process.beginShutdown(Duration.ofSeconds(seconds)));
+        startStop(Duration.ofSeconds(seconds));
+    }
+
+    private Command profile() {
+        final Command profile = command("profile");
+        final ArgumentInteger seconds = ArgumentType.Integer("seconds");
+        seconds.between(Profiler.MIN_SECONDS, Profiler.MAX_SECONDS);
+        profile.setDefaultExecutor((sender, context) -> {
+            // As for stop: the engine runs the default executor for a length it could not take
+            if (context.getInput().strip().indexOf(' ') >= 0) {
+                reply(sender, "synaxis:command-profile-usage", "Usage: profile [seconds], a whole number from %s to %s",
+                        String.valueOf(Profiler.MIN_SECONDS), String.valueOf(Profiler.MAX_SECONDS));
+                record(sender, context.getInput(), null, "invalid");
+                return;
+            }
+            profile(sender, context.getInput(), Profiler.DEFAULT_SECONDS);
+        });
+        profile.addSyntax((sender, context) -> profile(sender, context.getInput(), context.get(seconds)), seconds);
+        return profile;
+    }
+
+    private void profile(CommandSender sender, String input, int seconds) {
+        final Profiler.Start start;
+        try {
+            start = profiler.start(seconds);
+        } catch (IOException e) {
+            reply(sender, "synaxis:command-profile-failed", "The recording failed: %s", String.valueOf(e.getMessage()));
+            record(sender, input, null, "unavailable");
+            return;
+        }
+        switch (start) {
+            case Profiler.Busy busy -> {
+                reply(sender, "synaxis:command-profile-busy", "A recording to %s is still running",
+                        busy.path().toString());
+                record(sender, input, null, "invalid");
+            }
+            case Profiler.Started started -> {
+                reply(sender, "synaxis:command-profile-started", "Recording %s s to %s", String.valueOf(seconds),
+                        started.path().toString());
+                // Answered again on the recording's own thread once the file is written
+                var _ = started.written().whenComplete((path, failure) -> {
+                    if (failure == null) {
+                        reply(sender, "synaxis:command-profile-done", "Recorded %s", path.toString());
+                        record(sender, input, null, "ok");
+                    } else {
+                        reply(sender, "synaxis:command-profile-failed", "The recording failed: %s",
+                                String.valueOf(failure.getMessage()));
+                        record(sender, input, null, "unavailable");
+                    }
+                });
+            }
+        }
     }
 
     private Command tps() {

@@ -33,6 +33,9 @@ jedis = "8.0.1"
 # Metrics endpoint of the host (docs/DESIGN-PROD.md API-PROD-015)
 micrometer = "1.17.1"
 
+# Management interface of the host (docs/DESIGN-PROD.md API-PROD-022, ADR-PROD-014)
+javaWebsocket = "1.6.0"
+
 # Gradle plugins
 blossom = "2.2.0"
 nmcp = "1.6.2"
@@ -89,6 +92,9 @@ jedis = { group = "redis.clients", name = "jedis", version.ref = "jedis" }
 
 # Metrics endpoint of the host
 micrometer-registry-prometheus = { group = "io.micrometer", name = "micrometer-registry-prometheus", version.ref = "micrometer" }
+
+# Management interface of the host
+java-websocket = { group = "org.java-websocket", name = "Java-WebSocket", version.ref = "javaWebsocket" }
 
 [bundles]
 

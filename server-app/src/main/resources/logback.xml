@@ -20,6 +20,10 @@
         <appender-ref ref="STDOUT"/>
     </root>
 
+    <!-- At TRACE Java-WebSocket writes every handshake it reads, the management token with it
+         (docs/DESIGN-PROD.md API-PROD-022): pinned, so lowering the root level does not open it -->
+    <logger name="org.java_websocket" level="INFO"/>
+
     <!-- logback-file.xml or logback-stdout.xml, next to this file -->
     <include resource="logback-${synaxis.app.log:-file}.xml"/>
 </configuration>

@@ -50,6 +50,14 @@ public class ServerConfigTest {
         assertEquals("synaxis", config.motd());
         assertEquals("", config.serverIcon());
         assertFalse(config.hideOnlinePlayers());
+        // docs/DESIGN-PROD.md API-PROD-020: vanilla's threshold
+        assertEquals(256, config.compressionThreshold());
+    }
+
+    @Test
+    public void theProcessStartsAtTheCompressionThresholdOfItsConfiguration() {
+        assertEquals(512, ServerProcess.of(ServerConfig.builder().compressionThreshold(512).build()).compressionThreshold());
+        assertEquals(256, ServerProcess.of(ServerConfig.defaults()).compressionThreshold());
     }
 
     @Test
@@ -74,6 +82,9 @@ public class ServerConfigTest {
         assertThrows(NullPointerException.class, () -> ServerConfig.builder().threadProvider(null).build());
         assertThrows(NullPointerException.class, () -> ServerConfig.builder().motd(null).build());
         assertThrows(NullPointerException.class, () -> ServerConfig.builder().serverIcon(null).build());
+        assertEquals("compressionThreshold must not be negative but was -1, 0 turns compression off",
+                assertThrows(IllegalArgumentException.class,
+                        () -> ServerConfig.builder().compressionThreshold(-1).build()).getMessage());
     }
 
     /**

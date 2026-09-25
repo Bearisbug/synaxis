@@ -30,10 +30,14 @@ public final class ShardMain {
     }
 
     public static void main(String[] args) {
-        // Before Main reads anything: the engine takes its settings while the process is created
-        threadDefaults(System::getProperty, Runtime.getRuntime().availableProcessors()).forEach(System::setProperty);
-        viewDefaults(System::getProperty).forEach(System::setProperty);
-        transferDefaults(System::getProperty).forEach(System::setProperty);
+        // synaxis.properties first, which Main applies as it is initialised: the defaults below only
+        // fill what neither the command line nor the file set. A refused file is Main's to report.
+        if (Main.configFile().refusal() == null) {
+            // Before Main reads anything: the engine takes its settings while the process is created
+            threadDefaults(System::getProperty, Runtime.getRuntime().availableProcessors()).forEach(System::setProperty);
+            viewDefaults(System::getProperty).forEach(System::setProperty);
+            transferDefaults(System::getProperty).forEach(System::setProperty);
+        }
         Main.main(args);
     }
 

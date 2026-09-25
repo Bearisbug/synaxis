@@ -77,6 +77,15 @@ import java.util.stream.Collectors;
  */
 public final class Main {
 
+    /**
+     * {@code synaxis.properties} goes into the system properties before anything reads one of them
+     * ({@code docs/DESIGN-PROD.md} {@code API-PROD-023}): the logging setup reads
+     * {@code synaxis.app.log} as {@link #LOGGER} is created, {@code JvmFlags} is read when the
+     * engine first loads it, the rest from {@link #start()} on. So this field stays above the
+     * logger; {@link #main} reports a refused file once the logging is up.
+     */
+    private static final ConfigFile.Outcome CONFIG_FILE = ConfigFile.applyToSystemProperties();
+
     private static final Logger LOGGER = LoggerFactory.getLogger(Main.class);
 
     private static final String BIND_ADDRESS = "0.0.0.0";
@@ -128,7 +137,21 @@ public final class Main {
     private Main() {
     }
 
+    /**
+     * Returns what reading {@code synaxis.properties} came to; the first use of this class applies it.
+     *
+     * @return the outcome
+     */
+    static ConfigFile.Outcome configFile() {
+        return CONFIG_FILE;
+    }
+
     public static void main(String[] args) {
+        if (CONFIG_FILE.refusal() != null) {
+            LOGGER.error("Refusing to start: {}", CONFIG_FILE.refusal());
+            System.exit(1);
+            return;
+        }
         if (Arrays.asList(args).contains(MIGRATE_ONLY)) {
             System.exit(migrateOnly(args, System.getenv()));
             return;
@@ -165,6 +188,7 @@ public final class Main {
 
         // Boot self-check: the effective settings go in the log, so a launch argument that did not
         // land is visible here instead of at the first symptom.
+        LOGGER.info("Effective config file: {}", CONFIG_FILE.describe());
         LOGGER.info("Effective {}", process.config());
         LOGGER.info("Effective {}", JvmFlags.describe());
         logAuth(auth);

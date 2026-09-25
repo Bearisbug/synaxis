@@ -53,14 +53,18 @@ public class TranslationKeyGateTest {
      * The strings of that shape that are no text. An entry no class names any more fails the gate
      * too, so the list cannot go on hiding a name that a translate key takes later.
      */
-    private static final Map<String, String> NOT_TEXT = Map.of(
-            "synaxis:handshake", "plugin message channel of the handshake (API-M2-002)",
-            "synaxis:main", "plugin message channel the core mode echoes on",
-            "synaxis:permission", "Redis channel of role changes (API-PROD-006)",
-            "synaxis:moderation", "Redis channel of ban and whitelist changes (API-PROD-006)",
-            "synaxis:transfer", "cookie of the transfer ticket (API-PROD-028)",
-            "synaxis:match", "dimension type every match is built on (API-M2-010)",
-            "synaxis:hidden", "marker block of an Anvil map source, read by the baker (API-M3-003)");
+    private static final Map<String, String> NOT_TEXT = Map.ofEntries(
+            Map.entry("synaxis:handshake", "plugin message channel of the handshake (API-M2-002)"),
+            Map.entry("synaxis:main", "plugin message channel the core mode echoes on"),
+            Map.entry("synaxis:permission", "Redis channel of role changes (API-PROD-006)"),
+            Map.entry("synaxis:moderation", "Redis channel of ban and whitelist changes (API-PROD-006)"),
+            Map.entry("synaxis:transfer", "cookie of the transfer ticket (API-PROD-028)"),
+            Map.entry("synaxis:match", "dimension type every match is built on (API-M2-010)"),
+            Map.entry("synaxis:hidden", "marker block of an Anvil map source, read by the baker (API-M3-003)"),
+            Map.entry("synaxis:shard/drain", "JSON-RPC method of the management interface (API-PROD-022)"),
+            Map.entry("synaxis:shard/status", "JSON-RPC method of the management interface (API-PROD-022)"),
+            Map.entry("synaxis:broadcast", "JSON-RPC method of the management interface (API-PROD-022)"),
+            Map.entry("synaxis:profile", "JSON-RPC method of the management interface (API-PROD-022)"));
 
     /** The language files of the mod, in the directory the build passes as {@code synaxis.lang.dir}. */
     private static final List<String> LANGUAGE_FILES = List.of("en_us.json", "zh_cn.json");

@@ -9,6 +9,8 @@
 | 关联设计文档 | `docs/DESIGN.md`（引擎域 M1 / M1.5）、`docs/DESIGN-M2.md`（游戏域 M2 分册）、`docs/DESIGN-M3.md`（大世界域 M3 分册）与 `docs/DESIGN-PROD.md`（生产就绪分册）；各文档的 REQ 各自编号，M2 侧写作 `REQ-M2-*`、M3 侧写作 `REQ-M3-*`，生产就绪侧写作 `REQ-PROD-*`，对应用例写作 `TC-PROD-*` |
 | 被测系统 | 仓库 `Bearisbug/synaxis`，分支 `main` |
 | 最后更新 | 2026-09-23 | 新增人工用例 `TC-PROD-106`（`REQ-PROD-002`、`REQ-PROD-003`）：正版账号进在线模式服务端、皮肤可见、无 Mojang 会话的客户端被拒——`design-auth.md` §6.2 前两条，自动化只能走假 sessionserver 所以单列成人工用例；§4 2A 一节与 §5 回归映射同步。登记 RUN-028 | Bearisbug |
+| 2026-09-25 | 跟进 `docs/DESIGN-PROD.md` v0.8.6（ABI baseline 换成 `v0.3.0`）：`TC-GAME-072`、`TC-PROD-163` 前置的 baseline 由 `v0.2.0` 改为 `v0.3.0`；`TC-GAME-072` 第 1 步的标注清单由 12 个改为 14 个（第 5 波补标的 `TabList`、`PluginEntities`，此前漏改） | Bearisbug |
+| 2026-09-25 | `TC-PROD-191` 后置改为归档留给 192、193 用，`TC-PROD-193` 后置加「关掉共用容器的归档并用 `BACKUP_KEEP=1` 清旧归档」：共用容器 `synaxis-pg` 开着归档时全量测试持续写 WAL，本日积到 10.9 GB。本日已按新后置关掉归档、清掉旧归档（本机可用空间 24.6 → 36.4 GiB） | Bearisbug |
 | 2026-09-23 |
 
 变更记录（登用例增改，不登执行轮次）：
@@ -885,11 +887,11 @@ REQ-M3 ↔ TC 对照（可读索引）。「未实现」行没有用例，是已
 
 #### `TC-GAME-072` `:plugin-api` 接口按谁实现分两类：`@ApiStatus.NonExtendable` 的接口加抽象方法不报，插件实现的接口加抽象方法报 — 对应 `REQ-M2-022` · 级别: 回归 · 执行者: AI
 
-前置：`gh release download v0.2.0 --repo Bearisbug/synaxis --dir <abi> --pattern plugin-api.jar --pattern protocol.jar`（`gradle/abi-baseline.tag` 指的基线；`<abi>` 在仓库外）。
+前置：`gh release download v0.3.0 --repo Bearisbug/synaxis --dir <abi> --pattern plugin-api.jar --pattern protocol.jar`（`gradle/abi-baseline.tag` 指的基线；`<abi>` 在仓库外）。
 
 | # | 操作 | 预期 |
 | --- | --- | --- |
-| 1 | `grep -l 'ApiStatus.NonExtendable' plugin-api/src/main/java/io/github/bearisbug/synaxis/plugin/*.java` | 恰好 12 个文件，与 `docs/DESIGN-PROD.md` §8 的清单一致：`Moderation`、`Permissions`、`PlayerDataStore`、`PluginAdmission`、`PluginAnalytics`、`PluginChannels`、`PluginCommands`、`PluginContext`、`PluginEvents`、`PluginLifecycle`、`PluginScheduler`、`ShutdownNotice`；`SynaxisPlugin`、`AdmissionProvider`、`PayloadHandler`、`DataSection` 不在其中 |
+| 1 | `grep -l 'ApiStatus.NonExtendable' plugin-api/src/main/java/io/github/bearisbug/synaxis/plugin/*.java` | 恰好 14 个文件，与 `docs/DESIGN-PROD.md` §8 的清单一致：`Moderation`、`Permissions`、`PlayerDataStore`、`PluginAdmission`、`PluginAnalytics`、`PluginChannels`、`PluginCommands`、`PluginContext`、`PluginEntities`、`PluginEvents`、`PluginLifecycle`、`PluginScheduler`、`ShutdownNotice`、`TabList`；`SynaxisPlugin`、`AdmissionProvider`、`PayloadHandler`、`DataSection` 不在其中 |
 | 2 | `./gradlew :plugin-api:checkBinaryCompatibility :protocol:checkBinaryCompatibility -PbaselineJarDir=<abi> --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts` | 两个任务都执行（没有 `SKIPPED`）、`BUILD SUCCESSFUL` |
 | 3 | 在 `PluginEvents` 的 `PluginEvents forInstance(Instance instance);` 下一行加 `void probe();`，重跑 `:plugin-api:checkBinaryCompatibility`，再 `git checkout -- plugin-api/src/main/java/io/github/bearisbug/synaxis/plugin/PluginEvents.java` | `BUILD SUCCESSFUL`：只由宿主实现的接口加抽象方法是兼容变更 |
 | 4 | 反证有齿：在 `SynaxisPlugin` 的 `void onEnable(PluginContext context);` 下一行加 `void probe();`，重跑 `:plugin-api:checkBinaryCompatibility`，再 `git checkout -- plugin-api/src/main/java/io/github/bearisbug/synaxis/plugin/SynaxisPlugin.java` | `BUILD FAILED`：`New abstract method added to interface: io/github/bearisbug/synaxis/plugin/SynaxisPlugin#probe()V (breaks implementing classes)`、`ABI Check failed with 1 binary compatibility violations.` |
@@ -3300,7 +3302,7 @@ jcmd "$pid" VM.flags | tr ' ' '\n' | grep -cxE -- '-XX:\+UseG1GC|-XX:InitialHeap
 
 #### `TC-PROD-163` `:plugin-api` 的新增面过 ABI 门：新类型是新增，接口上的新方法都是默认方法 — 对应 `REQ-PROD-006`、`REQ-PROD-021` · 级别: 回归 · 执行者: AI
 
-前置：`gh release download v0.2.0 --repo Bearisbug/synaxis --dir <abi> --pattern plugin-api.jar --pattern protocol.jar`（`gradle/abi-baseline.tag` 指的基线）。
+前置：`gh release download v0.3.0 --repo Bearisbug/synaxis --dir <abi> --pattern plugin-api.jar --pattern protocol.jar`（`gradle/abi-baseline.tag` 指的基线）。
 
 | # | 操作 | 预期 |
 | --- | --- | --- |
@@ -3586,7 +3588,7 @@ jcmd "$pid" VM.flags | tr ' ' '\n' | grep -cxE -- '-XX:\+UseG1GC|-XX:InitialHeap
 | 6 | 反证有齿（归档失败）：`PGI psql -X -At`，输入 `ALTER SYSTEM SET archive_command = '/bin/false'; SELECT pg_reload_conf();`；`PG psql -X -At -d synaxis_rpo -c "INSERT INTO rpo_marker (note) VALUES ('fail')"` 后再切一次段（第 3 步第一条命令；不先写一行时当前段是空的，不会切），等 15 s，`docker exec -u postgres -e ARCHIVE_MAX_LAG_S=5 synaxis-pg /backup/bin/check-archive.sh; echo rc=$?` | 红：`rc=1`，两行告警 `check-archive: ALERT oldest WAL waiting 16s > 5s` 与 `check-archive: ALERT archive_command is failing`（返工重跑为 `15s`），状态行 `ready=1 … failing=t … failed=3 … archive_mode=on`（`/bin/false` 每次重试都计一次失败，重跑时 `failed` 从 3 涨到 6） |
 | 7 | 还原并按 `ops/postgres/README.md` 第 4 节第 3 步补备份：同第 6 步，把 `archive_command` 写回 `'/backup/bin/archive-wal.sh %p %f /backup/wal'` 并 reload；65 s 后跑 `PG /backup/bin/check-archive.sh; echo rc=$?`；然后 `docker exec -u postgres -e BACKUP_CHECKPOINT=fast synaxis-pg /backup/bin/base-backup.sh; echo rc=$?`，再跑一次 `check-archive.sh` | 第一次探针 `rc=0`，`failing=f`、`ready=0 oldest_ready_s=0`：积压的段在修好后自动补归档，`last_archived_wal` 追到第 6 步切出的段（第 2 轮返工实测恰逢 `archive_timeout` 切段，为 `ready=1 oldest_ready_s=1`，仍 `rc=0`）。备份 `rc=0`，输出 `base-backup: /backup/base/<UTC 时间戳>` 与 `base-backup: kept WAL from …`（实测 `20260923T170720Z`，1 s 内完成）；第二次探针 `rc=0`，`newest base backup` 是这份新备份 |
 
-后置：归档保持开着（它就是本条交付的状态）；`SHOW archive_command` 是第 2 步的值；`PG dropdb synaxis_rpo`。`archive_mode=off` 的告警在 `TC-PROD-193` 第 6、7 步对恢复出来的实例测，不为它重启共用容器。
+后置：归档保持开着，给 `TC-PROD-192`、`TC-PROD-193` 用，整组做完在 `TC-PROD-193` 后置里关掉；`SHOW archive_command` 是第 2 步的值；`PG dropdb synaxis_rpo`。`archive_mode=off` 的告警在 `TC-PROD-193` 第 6、7 步对恢复出来的实例测，不为它重启共用容器。
 
 #### `TC-PROD-192` 每日基础备份：产物齐全、连不上库时不留半份、保留份数与归档清理、备份过期告警 — 对应 `REQ-PROD-035` · 级别: 回归 · 执行者: AI
 
@@ -3617,7 +3619,7 @@ jcmd "$pid" VM.flags | tr ' ' '\n' | grep -cxE -- '-XX:\+UseG1GC|-XX:InitialHeap
 | 6 | `PG psql -X -At -p 5499 -c "SHOW archive_mode"`；`PG ls /backup/wal`；`docker exec -u postgres -e PGPORT=5499 synaxis-pg /backup/bin/check-archive.sh; echo rc=$?` | `off`；`/backup/wal` 里没有 `00000002` 开头的文件：恢复实例是新时间线，不往原库的归档里写。探针 `rc=1`，首行 `check-archive: ALERT archive_mode is off`，状态行 `ready=0 oldest_ready_s=0 failing=f archived=0 failed=0 last_archived=- archive_mode=off`：归档关着时没有待归档文件也没有失败，只有这一项能报出来。反证有齿：`PG cp /backup/bin/check-archive.sh /tmp/ca-broken.sh`，`PG sed -i 28,31d /tmp/ca-broken.sh`（删掉 `if [ "$mode" = off ]` 整段，`grep -c 'archive_mode is off'` 得 `0`），同样对 5499 跑，红：`rc=0`，恢复实例带着关掉的归档一声不响；之后 `PG rm -f /tmp/ca-broken.sh` |
 | 7 | 按 README 第 3 节第 5 步给恢复实例开归档：`docker exec -u postgres -e BACKUP_ROOT=/var/lib/postgresql/drill-archive -e PGPORT=5499 synaxis-pg /backup/bin/enable-wal-archive.sh`；`PG pg_ctl -D /var/lib/postgresql/drill-restore -m fast -w restart -o "-p 5499" -l /var/lib/postgresql/drill-restore.log`；切一次段（`-p 5499`）；同样带这两个环境变量加 `-e BACKUP_CHECKPOINT=fast` 跑 `base-backup.sh`，再跑 `check-archive.sh` | 四行 `pending_restart` 同 `TC-PROD-191` 第 1 步；重启后 `SHOW archive_mode` 为 `on`（`ALTER SYSTEM` 覆盖了 `restore-pitr.sh` 追加的 `off`），`archive_command` 指向 `/var/lib/postgresql/drill-archive/wal`；新归档目录里出现 `00000002…1A.gz`；备份 `rc=0`；探针 `rc=0`、`archive_mode=on`。`/backup/wal` 仍没有 `00000002` 开头的文件 |
 
-后置：`PG pg_ctl -D /var/lib/postgresql/drill-restore -m fast -w stop`，`PG rm -rf /var/lib/postgresql/drill-restore /var/lib/postgresql/drill-restore.log /var/lib/postgresql/drill-archive`，`/var/lib/postgresql` 下只剩 `data`；`PG dropdb synaxis_drill`。
+后置：`PG pg_ctl -D /var/lib/postgresql/drill-restore -m fast -w stop`，`PG rm -rf /var/lib/postgresql/drill-restore /var/lib/postgresql/drill-restore.log /var/lib/postgresql/drill-archive`，`/var/lib/postgresql` 下只剩 `data`；`PG dropdb synaxis_drill`。关掉共用容器的归档：`PG psql -X -At -c "ALTER SYSTEM SET archive_mode = off"`，`docker restart synaxis-pg`，`SHOW archive_mode` 为 `off`；再 `docker exec -u postgres -e BACKUP_CHECKPOINT=fast -e BACKUP_KEEP=1 synaxis-pg /backup/bin/base-backup.sh` 清掉旧归档。共用容器不能一直开着归档：`archive_timeout=60s` 下每跑一次带数据库的全量测试都往 `/backup/wal` 写一批 WAL，2026-09-25 积到 10.9 GB（清理阈值 1 GB）。
 
 ### 生产就绪 · 第 4 波 4A：权限与 GM 角色
 
@@ -4985,6 +4987,7 @@ jcmd "$pid" VM.flags | tr ' ' '\n' | grep -cxE -- '-XX:\+UseG1GC|-XX:InitialHeap
 | RUN-032 | 2026-09-24 | 分支 `m3/shardmain-settings` 的 `ec77313abd`（`main` `2ae21568e1` + DESIGN-M3 v0.8 + `ShardMain` 写视距、区块上限、可见上限与 PostgreSQL 存储时的 `accept-transfers`） | AI（Claude Code，Gradle / PostgreSQL / Valkey） | 局部（REQ-M3-009、REQ-M3-017、REQ-PROD-024、REQ-PROD-026 的分片宿主写入→TC-WORLD-010、TC-WORLD-011；§5 动了 `ShardMain` 的牵连→TC-PROD-333、TC-PROD-334、TC-PROD-050；冒烟级 TC-029） | 通过 5/6 · 跳过 1 |
 | RUN-033 | 2026-09-25 | 分支 `m3/m3b-integrate` 的 `7d4c5867bd`（`main` `e6355f0485` + 合入 `m3/light-engine`、`m3/anvil-reader`、`m3/synx-format` 三条分支 + `:baker` 烘焙器与交付规范；本轮之后的两个文档提交不改代码） | AI（Claude Code，Gradle / `gen.sh` / `baker` 命令行 / `server-app`） | 局部，M3-A 剩余项与 M3-B 的阶段 gate 只跑大世界域（REQ-M3-004→TC-WORLD-012、TC-WORLD-013；REQ-M3-001、REQ-M3-002→TC-WORLD-014～TC-WORLD-018；REQ-M3-020、REQ-M3-022→TC-WORLD-019、TC-WORLD-020、TC-WORLD-025；REQ-M3-003、REQ-M3-021→TC-WORLD-021～TC-WORLD-024；§5 光照引擎的牵连→TC-WORLD-001～TC-WORLD-005、TC-GAME-029 第 1、2、3、10、11 步；区块包确定性→TC-WORLD-009；M3-A 剩余的空闲机器复跑→TC-WORLD-007、TC-WORLD-008；冒烟级 TC-029） | 通过 21/24 · 失败 1 · 跳过 1 · 阻塞 1 |
 | RUN-034 | 2026-09-25 | 分支 `m3/m3b-followup` 的 `0734c6e89d`（`main` `5be385bd54` + DESIGN-M3 v0.10、烘焙器 256 格窗口、懒读路径的 `fullyLit` 测试、`LightEngineArchitectureTest`；本轮之后的两个文档提交不改代码） | AI（Claude Code，Gradle / `baker` 命令行） | 复测（RUN-033 失败的 TC-WORLD-005 由 TC-WORLD-026 取代）+ 局部（REQ-M3-028→TC-WORLD-026，同一测试类的 TC-WORLD-003；REQ-M3-020→TC-WORLD-027、TC-WORLD-029；REQ-M3-004→TC-WORLD-012、TC-WORLD-028；烘焙器→TC-WORLD-022、TC-WORLD-023、TC-WORLD-025；冒烟级 TC-029；另跑 CI 的两种严格模式） | 通过 10/10 |
+| RUN-035 | 2026-09-25 | `main` `0b6120c0e9` 之上、tag `v0.3.0` 指向的提交（ABI baseline 由 `v0.2.0` 换成 `v0.3.0`，DESIGN-PROD v0.8.6；共用容器 `synaxis-pg` 关归档） | AI（Claude Code，Gradle / `gh`） | 局部（REQ-M2-022→TC-GAME-072；REQ-PROD-006、REQ-PROD-021→TC-PROD-163） | 通过 2/2 |
 
 明细（仅登非「通过」项）：
 
@@ -5104,6 +5107,8 @@ TC-002 证据：`docs/test-runs/RUN-002/tc-002.txt`（5 步实际输出）（2,6
 | RUN-033 | TC-WORLD-007 | 跳过 | 机器不空闲：本轮起跑与各步记录的 1 分钟负载 5.1～45.1（12 核，判据 < 6），同机有别的会话在跑 | 空闲机器上的全量轮（同时复跑 TC-WORLD-023 的墙钟与 TC-GAME-029 的 `load_ms`） |
 | RUN-033 | TC-WORLD-008 | 阻塞 | 还没有美术地图，`LargeWorldBench` 也没有从 `.synx` 或 Anvil 读入的作业（设计文档 `API-M3-008` 待补作业 T1） | 第一张美术地图出来时 |
 
+
+RUN-035 证据：`docs/test-runs/RUN-035/`（`acceptance.txt` 逐步记门禁输出，`sha256.txt` 是两个 baseline jar 的摘要）。要点：新 baseline 的 `protocol.jar` 与 `v0.2.0` 的逐字节相同，`plugin-api.jar` 多了第 5 波的 `TabList`、`PluginEntities` 与 `PluginContext` 的两个默认方法；对 `v0.2.0` 0 违例，换基线不是破坏性升级，`API_VERSION` 仍为 2。`TC-GAME-072` 第 4、5 步与 `TC-PROD-163` 第 2 步的反证对新 baseline 照样红。同轮把共用容器 `synaxis-pg` 的 WAL 归档清掉并关闭，理由见 `TC-PROD-193` 后置。
 
 RUN-034 证据：`docs/test-runs/RUN-034/`。每个文件开头一行记起跑时刻、被测提交与 1 分钟负载。本轮关闭 RUN-033 明细里 TC-WORLD-005 的失败：`relight` 改走 `LightEngine` 后全亮标记只剩懒读路径会设，新用例 TC-WORLD-026 先经懒读路径把 section 标为全亮再放石头；`01`～`03`：第 1 步绿，反证（删 `SkyLight#invalidate` 里复位全亮标记那一行）`14 tests completed, 1 failed`，还原后绿。`04`～`06`：TC-WORLD-003 同一测试类的第 2～4 步，前缀反证 `14 tests completed, 11 failed`。`07`～`09`：TC-WORLD-028，给 `LightEngine` 加一个引用 `Instance` 的方法后规则红。`10`～`12`：TC-WORLD-012，反证 `21 tests completed, 2 failed`。`13`～`16`：TC-WORLD-027 与 TC-WORLD-029，窗口检查不拒绝时 `17 tests completed, 5 failed`，标记格计入对拍时 `14 tests completed, 1 failed`。`17-baker-test-all.txt` 的 `:baker:test` 是 up-to-date，没有重新执行，不作判据，`:baker` 的 52 个测试以 `32` 与两次严格模式为准。`18`～`21`：TC-WORLD-022，压缩级别与阈值两条反证都红。`22`～`28`：TC-WORLD-023，4k×4k 合成图默认线程墙钟 20,930 ms、1 线程 93,521 ms，两次 `build_id` 同为 `synth-09b42ebb5dc6-p776`、`content_hash` 相同、64 个区域文件 `cmp` 无差异，`verify` 退 0，改一字节后退 4、还原后退 0，已存在的输出目录重烘退 5；负载 8.2～16.7，墙钟只当上界。`29`～`30`：TC-WORLD-025，第 2 步烘焙器退出码 2，stderr 为 `data marker at 4, -59, 1 names handler namespace 'synaxis:loot', which is not registered`，`<O>` 为空、`<O>-logs` 不存在，与预期一致。`31-check.txt`：`./gradlew check --rerun-tasks` BUILD SUCCESSFUL。`32-check-frozen-zlib.txt`：带 `-Dsynaxis.synx.require-frozen-zlib=true` 的 `check --rerun-tasks --continue`，3,638 个测试、0 失败、0 错误、92 跳过。`33-strict-counter-4.txt` 与 `34-strict-grid-4.txt`：CI 的两种严格模式（`-Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true`，后者再加 `-Dsynaxis.thread-provider=grid`）的 `./gradlew test --rerun-tasks --continue`，都是 3,638 个测试 0 失败 92 跳过，负载 39.5 与 69.7。`35-module-counts.txt`：根模块 3,066（TC-029 判据 ≥ 2,599）、`baker` 52、`synx` 42、`architecture-tests` 17，都没有跳过。TC-WORLD-019、TC-WORLD-021 的 JUnit 部分随全量 check 绿，它们的反证步骤本轮代码没动到，没有重跑。**本轮没执行**：TC-WORLD-020（只改了第 3 步的计数，`gen.sh` 与 `TrimRegion.java` 没动）、TC-WORLD-007（机器不空闲）、TC-WORLD-008（没有美术地图）。
 

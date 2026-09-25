@@ -1,0 +1,4 @@
+6fe8d7dba88c400901b6515d17971655fcd6dd8cbcf629a0c70325f3390bf7c6  new/plugin-api.jar
+1092232bb68905d1b5f0ecfb056e9c1387f582ab921ace8cc0ff227aa4bc2916  new/protocol.jar
+b205581da5a0dab99d83a62915f3a607cf41dafc92f5c365f234aa2aa8fdfe82  old/plugin-api.jar
+1092232bb68905d1b5f0ecfb056e9c1387f582ab921ace8cc0ff227aa4bc2916  old/protocol.jar

@@ -1,0 +1,34 @@
+RUN-035 记录（2026-09-25，执行人侧）
+
+被测版本：main 0b6120c0e9 之上的本提交（tag v0.3.0 指向它）：gradle/abi-baseline.tag 由 v0.2.0 改为 v0.3.0，
+DESIGN-PROD v0.8.6，TEST.md 的 TC-GAME-072、TC-PROD-163 前置与 TC-GAME-072 第 1 步清单、TC-PROD-191 / 193 后置。
+范围：REQ-M2-022 → TC-GAME-072；REQ-PROD-006、REQ-PROD-021 → TC-PROD-163。
+
+一、baseline jar
+  ./gradlew :plugin-api:jar :protocol:jar → plugin-api-dev.jar 26,293 B，protocol-dev.jar 30,308 B，
+  重命名为 plugin-api.jar / protocol.jar 作为 release v0.3.0 的资产；sha256 见 sha256.txt（与 release 下载回来的一致性见第三节）
+
+二、门禁（-PbaselineJarDir 指向第一节的 jar，两个 checkBinaryCompatibility 都真执行，"2 executed"）
+  TC-GAME-072 第 1 步：grep -l ApiStatus.NonExtendable → 14 个文件（Moderation、Permissions、PlayerDataStore、PluginAdmission、
+    PluginAnalytics、PluginChannels、PluginCommands、PluginContext、PluginEntities、PluginEvents、PluginLifecycle、PluginScheduler、
+    ShutdownNotice、TabList）
+  对 v0.2.0 release 资产：BUILD SUCCESSFUL，0 违例（v0.2.0 → v0.3.0 只有新增）
+  TC-GAME-072 第 2 步（对新 jar）：BUILD SUCCESSFUL
+  TC-GAME-072 第 3 步（PluginEvents 加 void probe();）：BUILD SUCCESSFUL
+  TC-GAME-072 第 4 步（SynaxisPlugin 加 void probe();）：BUILD FAILED，
+    New abstract method added to interface: io/github/bearisbug/synaxis/plugin/SynaxisPlugin#probe()V (breaks implementing classes)，
+    ABI Check failed with 1 binary compatibility violations.
+  TC-GAME-072 第 5 步（去掉 PluginEvents 的标注与 import 再加 probe）：BUILD FAILED，
+    New abstract method added to interface: io/github/bearisbug/synaxis/plugin/PluginEvents#probe()V (breaks implementing classes)，1 violation
+  TC-PROD-163 第 1 步：BUILD SUCCESSFUL（同第 2 步）
+  TC-PROD-163 第 2 步（PluginContext#playerData() 改成抽象方法）：BUILD FAILED，
+    Method made abstract: io/github/bearisbug/synaxis/plugin/PluginContext#playerData()Lio/github/bearisbug/synaxis/plugin/PlayerDataStore; (breaks implementing classes/subclasses)，1 violation
+  每步之后 git checkout 还原，git status 只剩本提交的三份文档改动
+
+三、release 资产核对
+  （见下方追加）
+
+四、环境
+  共用容器 synaxis-pg：base-backup.sh（BACKUP_KEEP=1）后 /backup/wal 由 10.9 GB 降到 232 KB，/backup/base 只留 20260925T065106Z（3.2 MB）；
+  ALTER SYSTEM SET archive_mode = off，docker restart，SHOW archive_mode = off。
+  本机 /System/Volumes/Data 可用空间 25,756,600 KiB → 38,209,164 KiB（df 前后差 11.9 GiB）。

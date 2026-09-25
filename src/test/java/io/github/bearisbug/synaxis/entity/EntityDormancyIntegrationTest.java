@@ -201,7 +201,7 @@ public class EntityDormancyIntegrationTest {
         entity.setDormancyPolicy((self, _) -> {
             asked.add(tick.get());
             if (!(Thread.currentThread() instanceof TickThread) || !self.acquirable().isOwned())
-                foreign.add(Thread.currentThread().getName());
+                foreign.add(Thread.currentThread().toString());
             return 20;
         });
         for (int i = 0; i < 40; i++) {

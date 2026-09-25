@@ -48,7 +48,7 @@ public class EntityDormancyConcurrencyTest {
         final List<String> foreign = new CopyOnWriteArrayList<>();
         final DormancyPolicy policy = (entity, distance) -> {
             final Thread current = Thread.currentThread();
-            if (!(current instanceof TickThread) || !entity.acquirable().isOwned()) foreign.add(current.getName());
+            if (!(current instanceof TickThread) || !entity.acquirable().isOwned()) foreign.add(current.toString());
             threads.add(current.getName());
             return distance > FAR ? INTERVAL : 1;
         };

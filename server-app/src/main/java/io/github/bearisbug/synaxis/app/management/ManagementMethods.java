@@ -1,12 +1,15 @@
 package io.github.bearisbug.synaxis.app.management;
 
+import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonNull;
 import com.google.gson.JsonObject;
-import com.google.gson.JsonParseException;
-import com.google.gson.JsonParser;
 import com.google.gson.JsonPrimitive;
+import com.google.gson.Strictness;
+import com.google.gson.TypeAdapter;
+import com.google.gson.stream.JsonReader;
+import com.google.gson.stream.JsonToken;
 import io.github.bearisbug.synaxis.MinecraftServer;
 import io.github.bearisbug.synaxis.ServerProcess;
 import io.github.bearisbug.synaxis.app.command.HostCommands;
@@ -26,10 +29,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.io.StringReader;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.format.DateTimeParseException;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Deque;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -63,6 +69,8 @@ public final class ManagementMethods {
     /** The reason of a ban added without one, the vanilla default. */
     static final String DEFAULT_BAN_REASON = "Banned by an operator.";
     private static final int MAX_REASON = 256;
+
+    private static final TypeAdapter<JsonElement> JSON = new Gson().getAdapter(JsonElement.class);
 
     /** What a method returned: the result, what the ledger records, and what runs once it is answered. */
     record Outcome(JsonElement result, String audit, @Nullable UUID target, @Nullable Runnable afterReply) {
@@ -162,9 +170,9 @@ public final class ManagementMethods {
         final String requestId = UUID.randomUUID().toString();
         final JsonElement parsed;
         try {
-            parsed = JsonParser.parseString(message);
-        } catch (JsonParseException _) {
-            return error(JsonNull.INSTANCE, PARSE_ERROR, "Parse error", requestId);
+            parsed = parse(message);
+        } catch (Failure failure) {
+            return error(JsonNull.INSTANCE, failure.code, failure.getMessage(), requestId);
         }
         if (!parsed.isJsonObject()) return error(JsonNull.INSTANCE, INVALID_REQUEST,
                 parsed.isJsonArray() ? "Batch requests are not supported" : "A request is a JSON object", requestId);
@@ -204,6 +212,69 @@ public final class ManagementMethods {
             failures.warn(e, "Management call failed: method={} request_id={}", call.method(), requestId);
             record(call, null, "unavailable");
             return answered ? error(replyId, INTERNAL_ERROR, "Internal error", requestId) : new Reply(null, null);
+        }
+    }
+
+    /**
+     * Reads one message as RFC 8259 JSON: one value in Gson's {@link Strictness#STRICT}, then
+     * nothing but blanks. {@link com.google.gson.JsonParser#parseString} is lenient: it would run
+     * a request written with single quotes, unquoted names, comments or {@code =>} and {@code ;}
+     * separators.
+     *
+     * @param message the text frame
+     * @return the value
+     * @throws Failure {@value #PARSE_ERROR} when it is not JSON, {@value #INVALID_REQUEST} when one
+     *                 object gives a name twice, at any depth: Gson would keep the last one, while
+     *                 an audit, a proxy or a client library in front may have read the first
+     */
+    private static JsonElement parse(String message) throws Failure {
+        final UniqueNamesReader reader = new UniqueNamesReader(message);
+        try {
+            final JsonElement value = JSON.read(reader);
+            if (reader.peek() != JsonToken.END_DOCUMENT) throw new Failure(PARSE_ERROR, "Parse error", "invalid");
+            return value;
+        } catch (NameGivenTwice twice) {
+            throw new Failure(INVALID_REQUEST, "The name " + twice.getMessage() + " is given twice in one object", "invalid");
+        } catch (IOException _) {
+            throw new Failure(PARSE_ERROR, "Parse error", "invalid");
+        }
+    }
+
+    /** A name an object of the message gives a second time. */
+    private static final class NameGivenTwice extends IOException {
+        private static final long serialVersionUID = 1L;
+
+        NameGivenTwice(String name) {
+            super(name, null);
+        }
+    }
+
+    /** A strict reader that fails on the second occurrence of a name in one object. */
+    private static final class UniqueNamesReader extends JsonReader {
+        private final Deque<Set<String>> objects = new ArrayDeque<>();
+
+        UniqueNamesReader(String message) {
+            super(new StringReader(message));
+            setStrictness(Strictness.STRICT);
+        }
+
+        @Override
+        public void beginObject() throws IOException {
+            super.beginObject();
+            objects.push(new HashSet<>());
+        }
+
+        @Override
+        public void endObject() throws IOException {
+            super.endObject();
+            objects.pop();
+        }
+
+        @Override
+        public String nextName() throws IOException {
+            final String name = super.nextName();
+            if (!objects.element().add(name)) throw new NameGivenTwice(name);
+            return name;
         }
     }
 

@@ -17,7 +17,7 @@
 
 | 日期 | 改动 | 作者 |
 | --- | --- | --- |
-| 2026-09-25 | 跟进 `docs/DESIGN-PROD.md` v0.9（6F，`REQ-PROD-041` 翻译键门禁，`API-PROD-029`）。**新增 §4「生产就绪 · 第 6 波 6F：翻译键门禁」五条 `TC-PROD-430`～`TC-PROD-434`**：门禁随 `check` 运行、现有 51 个键两份语言文件都有、引擎新键缺 `zh_cn` 被报（430，§19 场景；第 5 步是删掉手写清单后的模组构建）；宿主回执的键缺 `en_us` 被报、语言文件是 `test` 任务的输入（431，反证是去掉 `inputs.dir` 后只改语言文件时任务 UP-TO-DATE）；频道与 Cookie 键不算键、名单不留死条目（432，§19 场景）；插件经 `translationKeys()` 声明的键（433，§19 场景）；`translationKeys()` 过 `v0.3.0` 的 ABI 门（434）。每条带真跑过的反证。**改写七条已有用例的译文步骤**（模组测试里手写的服务端键清单删除，由门禁取代）：`TC-PROD-068`、`TC-PROD-105`、`TC-PROD-162`、`TC-PROD-210`、`TC-PROD-233`、`TC-PROD-250` 的第 1、2 步与 `TC-PROD-295` 的第 3、4 步改为跑门禁，反证仍是删掉 `zh_cn.json` 的同一行，红的位置改为 `TranslationKeyGateTest.java:83` 与门禁的报错行（`TC-PROD-068` 删 `synaxis:shard-full` 时夹具那条也红，`2 failed`）；`TC-PROD-295` 前置去掉 `publishToMavenLocal`。`TC-GAME-066` 第 3 步的模组测试数 92 → 90、`ClientHandshakeTest` 13 → 11（删去查握手三个键的一条）。§5 生产就绪域加一行 | Bearisbug |
+| 2026-09-25 | 跟进 `docs/DESIGN-PROD.md` v0.9（6F，`REQ-PROD-041` 翻译键门禁，`API-PROD-029`）。**新增 §4「生产就绪 · 第 6 波 6F：翻译键门禁」五条 `TC-PROD-430`～`TC-PROD-434`**：门禁随 `check` 运行、现有 51 个键两份语言文件都有、引擎新键缺 `zh_cn` 被报（430，§19 场景；第 5 步是删掉手写清单后的模组构建）；宿主回执的键缺 `en_us` 被报、语言文件是 `test` 任务的输入、同一提交换一个路径检出时门禁 `FROM-CACHE`（431，两条反证：语言目录标成 `@Internal` 后只改语言文件时任务 UP-TO-DATE；把绝对路径写成系统属性后另一个路径的检出不再命中缓存）；频道与 Cookie 键不算键、名单不留死条目（432，§19 场景）；插件经 `translationKeys()` 声明的键（433，§19 场景）；`translationKeys()` 过 `v0.3.0` 的 ABI 门（434）。每条带真跑过的反证。**改写七条已有用例的译文步骤**（模组测试里手写的服务端键清单删除，由门禁取代）：`TC-PROD-068`、`TC-PROD-105`、`TC-PROD-162`、`TC-PROD-233`、`TC-PROD-250` 的第 1、2 步，`TC-PROD-210` 的第 1～3 步与 `TC-PROD-295` 的第 3、4 步改为跑门禁，反证仍是删掉语言文件的同一行（`TC-PROD-210` 第 3 步删的是 `en_us.json` 的 `synaxis:role-above-sender`），红的位置改为 `TranslationKeyGateTest.java:83` 与门禁的报错行（`TC-PROD-068` 删 `synaxis:shard-full` 时夹具那条也红，`2 failed`）；`TC-PROD-250`、`TC-PROD-295` 前置去掉 `publishToMavenLocal`。`TC-GAME-066` 第 3 步的模组测试数 92 → 90、`ClientHandshakeTest` 13 → 11（删去查握手三个键的一条）。§5 生产就绪域加一行 | Bearisbug |
 | 2026-09-25 | 跟进 `docs/DESIGN-M3.md` v0.10（高度窗口与 section 状态数两项拍板、`fullyLit` 只剩懒读路径、烘焙侧光照引擎 ArchUnit 规则）。**废弃 `TC-WORLD-005`、新增 `TC-WORLD-026`**：`LightingChunk.relight` 改走 `LightEngine` 后不设全亮标记，原用例两条测试都先整图 `relight`，删掉 `SkyLight` 里复位全亮标记那一行不再变红（RUN-033 失败项）；`LightDampeningIntegrationTest#blockOverFullyLitSectionOnLazyRead` 改为不整图 `relight`、先经懒读路径把 section 标为全亮，新用例的反证是同一行，预期 `14 tests completed, 1 failed`。**废弃 `TC-WORLD-024`、新增 `TC-WORLD-029`**：Anvil 源改按 256 格窗口，第 1 步清单 `world` 由 −64 / 384 改为 −64 / 256、段① 由 24 个 section 改为 16 个，`AnvilBakeTest` 10 → 14、`BakerMainTest` 1 → 3，第 2 步 `10 tests completed` → `14 tests completed`，其余逐字保留。**新增 `TC-WORLD-027`**（高度窗口：窗口外的方块、方块实体、静态实体与 `--min-y 0` 下的基岩各拒绝一次，`--min-y` 的两种命令行错误；反证是让窗口检查不拒绝，红 5 条）与 **`TC-WORLD-028`**（`:architecture-tests` 的 `LightEngineArchitectureTest`；反证是给 `LightEngine` 加一个引用 `Instance` 的方法）。`TC-WORLD-020` 第 3 步只改计数（`AnvilBakeTest` 14、`BakerMainTest` 3）。§2 覆盖范围、Gherkin 口径与 REQ-M3 对照表五行、§5 大世界域的局部轮映射同步 | Bearisbug |
 | 2026-09-25 | 跟进 `docs/DESIGN-M3.md` v0.9（M3-A 剩余项与 M3-B 落地）。**新增 §4 四节 14 条**，对应 `REQ-M3-001`～`REQ-M3-004`、`REQ-M3-020`～`REQ-M3-022`：「M3 · 光照引擎」`TC-WORLD-012`（引擎不依赖实例、不加锁、对拍两条路径、缺失区块不传光；反证删掉北面的缺失区块判断）、`TC-WORLD-013`（版本与已过对拍版本文件绑定；跳号与改旧行指纹两条反证）；「M3 · `.synx` 格式」`TC-WORLD-014`（向量与 zlib 指纹门；改向量字节、改指纹两条反证）、`TC-WORLD-015`（损坏与不兼容）、`TC-WORLD-016`（段① 调色板与段③ NBT 规范化；两条反证）、`TC-WORLD-017`（清单与起服校验函数）、`TC-WORLD-018`（`:synx`、`:baker` 的内部面名单）；「M3 · Anvil 读取器」`TC-WORLD-019`（门禁与完整读取；三条反证）、`TC-WORLD-020`（夹具由原版服务端再生）；「M3 · 烘焙器」`TC-WORLD-021`（生成器源烘焙与各退出码，冒烟级）、`TC-WORLD-022`（并行等于串行；压缩级别与阈值随线程变两条反证）、`TC-WORLD-023`（命令行烘焙 4k×4k 合成图、1 线程等于多线程、`verify` 与重烘退 5）、`TC-WORLD-024`（Anvil 源烘焙；反证是把标记格计入对拍）、`TC-WORLD-025`（交付规范第 6 节的自检命令）。**改写两条已有用例的计数**（`REQ-M3-004` 让对拍对 `LightEngine` 与 `LightingChunk.relight` 各跑一遍，判据的实质不变）：`TC-WORLD-001` 第 1 步 `tests="7"` → `"14"`、第 2 步 `7 tests completed, 1 failed` → `14 tests completed, 2 failed`、第 3 步 `"8"` → `"16"`；`TC-WORLD-004` 第 4 步 `25 tests completed, 2 failed` → `32 tests completed, 3 failed`。§2 覆盖范围、Gherkin 口径与 REQ-M3 对照表七行、§3 M3 环境（`.synx` 与烘焙器一条）、§5 大世界域的局部轮映射同步 | Bearisbug |
 | 2026-09-24 | 跟进 `docs/DESIGN-M3.md` v0.8（`API-M3-006` 分片宿主设置表写入四项）。**新增 §4「M3 · 分片宿主设置」两条**：`TC-WORLD-010`（`ShardMain.viewDefaults` 写视距 12、区块上限 4、可见上限 100，`ShardMain.transferDefaults` 只在 PostgreSQL 存储时写 `accept-transfers=true`，命令行给了的键不覆盖；三条反证）与 `TC-WORLD-011`（真进程 `bin/server-shard` 与 `bin/server-app` 的 `Effective ServerConfig` 读数，PostgreSQL 存储缺票据密钥时拒启，反证是入口不调这两个方法），对应 `REQ-M3-009`、`REQ-M3-017`、`REQ-PROD-024`、`REQ-PROD-026`。`ShardMainTest` 由 3 条变为 8 条：`TC-PROD-333` 第 1 步改为 `tests="8"`（线程三条的判据不变），第 2 步反证改为 `8 tests completed, 3 failed`，红的行号 `:18`、`:26`、`:32` → `:20`、`:28`、`:34`（类注释多了两行）。`ShardMain` 默认视距改为 12 牵连两处同机压测的前置：`TC-PROD-336` 的 `server-shard` 一档另加三项参数拉回 `server-app` 的值，保持两档只差线程；`TC-PROD-360` 一组写明可见上限与区块上限已由 `ShardMain` 默认写入，复跑须另加 `-Dsynaxis.chunk-view-distance=10` 才与已登记读数可比。§2 REQ-M3 对照表 `REQ-M3-009`、`REQ-M3-017` 两行、§5 大世界域一行同步 | Bearisbug |
@@ -3747,7 +3747,7 @@ jcmd "$pid" VM.flags | tr ' ' '\n' | grep -cxE -- '-XX:\+UseG1GC|-XX:InitialHeap
 | --- | --- | --- |
 | 1 | `./gradlew :architecture-tests:test --tests 'io.github.bearisbug.synaxis.architecture.TranslationKeyGateTest' --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts`（翻译键门禁，见 §4「生产就绪 · 第 6 波 6F」） | `BUILD SUCCESSFUL`，`tests="2"` 全绿：`RoleCommand` 回执的八个键 `synaxis:role-granted`、`synaxis:role-revoked`、`synaxis:role-list`、`synaxis:role-unknown`、`synaxis:role-not-granted`、`synaxis:role-no-target`、`synaxis:role-unavailable`、`synaxis:role-above-sender` 在门禁核对的键里 |
 | 2 | 反证有齿：删掉 `zh_cn.json` 的 `synaxis:role-no-target` 一行，重跑第 1 步，再还原 | `2 tests completed, 1 failed`，红在 `TranslationKeyGateTest.java:83`：`zh_cn.json has no text for synaxis:role-no-target (from io.github.bearisbug.synaxis.app.permission.RoleCommand)`。还原后复绿 |
-| 3 | 反证有齿（v0.7.1 的新键）：删掉 `en_us.json` 的 `synaxis:role-above-sender` 一行，同第 2 步重跑，再还原 | `2 tests completed, 1 failed`，红在 `[1] "en_us"`：`en_us has no text for synaxis:role-above-sender ==> expected: <true> but was: <false>`。还原后复绿 |
+| 3 | 反证有齿（v0.7.1 的新键）：删掉 `en_us.json` 的 `synaxis:role-above-sender` 一行，重跑第 1 步，再还原 | `2 tests completed, 1 failed`，红在 `TranslationKeyGateTest.java:83`：`en_us.json has no text for synaxis:role-above-sender (from io.github.bearisbug.synaxis.app.permission.RoleCommand)`。还原后复绿 |
 
 后置：确认 `zh_cn.json`、`en_us.json` 没有残留改动。
 
@@ -4135,7 +4135,7 @@ jcmd "$pid" VM.flags | tr ' ' '\n' | grep -cxE -- '-XX:\+UseG1GC|-XX:InitialHeap
 
 #### `TC-PROD-250` 客户端模组带内置命令的九条回执译文 — 对应 `REQ-PROD-012` · 级别: 回归 · 执行者: AI
 
-前置：工作副本干净；`:protocol` 已 `publishToMavenLocal`（`docs/ENGINE.md` `client-mod.yml` 一段的本地等价）。
+前置：工作副本干净。
 
 | # | 操作 | 预期 |
 | --- | --- | --- |
@@ -4918,7 +4918,7 @@ jcmd "$pid" VM.flags | tr ' ' '\n' | grep -cxE -- '-XX:\+UseG1GC|-XX:InitialHeap
 对应 `REQ-PROD-041`（G38，`API-PROD-029`，§19 三条翻译键场景，§24 翻译键门禁）。实现：
 
 - 门禁是 `:architecture-tests` 的 `TranslationKeyGateTest`，两条测试。`everyKeyTheServerCanSendHasTextInBothLanguageFiles` 读 classpath 上 `io.github.bearisbug.synaxis` 包下全部主类的常量池，取整串匹配 `synaxis:[a-z0-9_./-]+` 的字符串常量，去掉 `NOT_TEXT` 里的 7 个非文字标识，加上 `ServiceLoader` 找到的插件的 `translationKeys()`，逐个核对模组的 `en_us.json`、`zh_cn.json`，缺一处报一行。`theGateReportsAKeyOfAClassAndOfAPluginButNotAChannel` 只对夹具类 `GameClassNamingAKeyWithoutText`（带一个有译文的键、一个没有译文的键、一个频道名）与夹具插件 `GamePluginDeclaringAKeyWithoutText`（声明 `fixture:declared-without-text`，没登记成服务）跑同一套函数。
-- 语言目录由 `architecture-tests/build.gradle.kts` 以系统属性 `synaxis.lang.dir` 传给测试 JVM，并登记为 `test` 任务的输入。
+- 语言目录由 `architecture-tests/build.gradle.kts` 的参数提供器 `ModLanguageFiles` 以系统属性 `synaxis.lang.dir` 传给测试 JVM；目录是 `test` 任务的输入（`@InputDirectory`，相对路径），绝对路径不进构建缓存的键。
 - `:plugin-api` 的 `SynaxisPlugin` 加默认方法 `translationKeys()`（`SynaxisPluginTest` 一条）。
 - 模组测试里手写的服务端键清单删除：六个测试类 `ConnectionGateTextTest`、`LoginVerificationTextTest`、`PlayerStoreTextTest`、`RoleCommandTextTest`、`ModerationTextTest`、`HostCommandTextTest`，与 `ClientHandshakeTest#everyRefusalTheHandshakeCanEarnHasTextInTheModJar`。引用它们的 `TC-PROD-068`、`TC-PROD-105`、`TC-PROD-162`、`TC-PROD-210`、`TC-PROD-233`、`TC-PROD-250` 与 `TC-PROD-295` 第 3、4 步改为跑本门禁，`TC-GAME-066` 第 3 步的模组测试数随之改为 90。
 
@@ -4938,7 +4938,7 @@ jcmd "$pid" VM.flags | tr ' ' '\n' | grep -cxE -- '-XX:\+UseG1GC|-XX:InitialHeap
 
 后置：`git status --short` 无输出。
 
-#### `TC-PROD-431` 宿主回执的键缺 `en_us` 被报、来源写到宿主的类；语言文件是 `test` 任务的输入 — 对应 `REQ-PROD-041` · 级别: 回归 · 执行者: AI
+#### `TC-PROD-431` 宿主回执的键缺 `en_us` 被报、来源写到宿主的类；语言文件是 `test` 任务的输入，缓存键里没有检出路径 — 对应 `REQ-PROD-041` · 级别: 回归 · 执行者: AI
 
 前置：工作副本干净；`TC-PROD-430` 第 1 步跑过。
 
@@ -4946,11 +4946,14 @@ jcmd "$pid" VM.flags | tr ' ' '\n' | grep -cxE -- '-XX:\+UseG1GC|-XX:InitialHeap
 | --- | --- | --- |
 | 1 | 反证（缺 `en_us`）：删掉 `client-fabric/src/main/resources/assets/synaxis/lang/en_us.json` 里 `"synaxis:command-tps"` 那一行，跑门禁 | `2 tests completed, 1 failed`：红在 `:83`，`Problems of the translation key gate (1):` 下一行 `en_us.json has no text for synaxis:command-tps (from io.github.bearisbug.synaxis.app.command.HostCommands)`。这个键只在 `HostCommands` 的回执调用里以字面量出现，不在 `DisconnectReasons`、`DisconnectKeys` 里 |
 | 2 | `git checkout --` 该文件，跑门禁 | `BUILD SUCCESSFUL`，`tests="2"` 全绿 |
-| 3 | 反证（语言文件不是输入）：删掉 `architecture-tests/build.gradle.kts` 里 `inputs.dir(modLanguageFiles)…` 那一行，跑门禁；再照第 1 步删掉 `en_us.json` 的那一行，再跑门禁 | 第一次 `> Task :architecture-tests:test` 执行、全绿（构建脚本变了）；第二次 `> Task :architecture-tests:test UP-TO-DATE`、`BUILD SUCCESSFUL`：只改语言文件时门禁不重跑，缺的译文漏过 |
-| 4 | 只还原 `build.gradle.kts`（`en_us.json` 仍缺那一行），跑门禁 | `> Task :architecture-tests:test` 重新执行，红法与第 1 步相同 |
+| 3 | 反证（语言文件不是输入）：`architecture-tests/build.gradle.kts` 里 `ModLanguageFiles` 的 `@get:InputDirectory @get:PathSensitive(PathSensitivity.RELATIVE)` 改成 `@get:Internal`，跑门禁；再照第 1 步删掉 `en_us.json` 的那一行，再跑门禁 | 第一次 `> Task :architecture-tests:test` 执行、全绿（构建脚本变了）；第二次 `> Task :architecture-tests:test UP-TO-DATE`、`BUILD SUCCESSFUL`：只改语言文件时门禁不重跑，缺的译文漏过 |
+| 4 | 只 `git checkout --` `build.gradle.kts`（`en_us.json` 仍缺那一行），跑门禁 | `> Task :architecture-tests:test` 重新执行，红法与第 1 步相同 |
 | 5 | 还原 `en_us.json`，跑门禁 | 与第 2 步相同 |
+| 6 | 在仓库外的临时目录建 `<copy>`：`git clone -q --shared <工作副本> <copy>`，在 `<copy>` 里跑门禁 | `git -C <copy> rev-parse HEAD` 与工作副本相同；`> Task :architecture-tests:test FROM-CACHE`、`BUILD SUCCESSFUL`：另一个路径的检出命中了工作副本第 5 步留在本机构建缓存里的那一条 |
+| 7 | 反证（绝对路径进了缓存键）：工作副本与 `<copy>` 的 `architecture-tests/build.gradle.kts` 都在 `systemProperty("synaxis.app.log", "stdout")` 后加一行 `systemProperty("synaxis.lang.dir", layout.settingsDirectory.dir("client-fabric/src/main/resources/assets/synaxis/lang").asFile.absolutePath)`，先在工作副本、再在 `<copy>` 跑门禁，然后两处都 `git checkout --` 该文件 | 两次都是 `> Task :architecture-tests:test` 执行、全绿；`<copy>` 那次没有 `FROM-CACHE`：两处的构建脚本相同，键只差这个绝对路径 |
+| 8 | 在 `<copy>` 再跑门禁 | 与第 6 步相同 |
 
-后置：`git status --short` 无输出。
+后置：`git status --short` 无输出；删掉 `<copy>`。
 
 #### `TC-PROD-432` 与翻译键同命名空间的频道、Cookie 键不算键；非文字标识名单不留死条目（§19 场景） — 对应 `REQ-PROD-041` · 级别: 回归 · 执行者: AI
 

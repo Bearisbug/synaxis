@@ -50,6 +50,7 @@
 | 2026-09-24 | v0.8.4 | 修 v0.8.2 登记的缺陷。**§28.2**：「缺陷」行改为已决，写明根因（玩家每 5 tick 重算末尾按「这一轮的候选」重建计数，丢掉别的 tick 线程在取候选之后收进来的实体）与修法（计数改为按玩家此刻看得见的实体校正），4 线程 `grid` 严格模式下的复现测试修前 1,000 tick 里 269～865 个 tick 超上限、最多 124 个（6 次），修后 0 个（`docs/TEST.md` TC-PROD-320）。**`API-PROD-019`** 判定规则加一句并发保证：计数只在玩家自己的视图锁里改，与收进、撤走同一把锁，任何时刻玩家看得见的计数实体都不超过上限，与收进来自哪条 tick 线程无关；重算不再加锁，比修前少进一次视图锁 |
 | 2026-09-24 | v0.8.5 | 跟进 `docs/DESIGN-M3.md` v0.8（`ShardMain` 写分片默认值，RUN-032）。**`API-PROD-016`** 配置段：`ShardMain` 除线程两项外还写区块视距 12、区块上限 4、可见上限 100，`postgres` 存储时写 `accept-transfers=true`。**`API-PROD-020`** 区块段：删去「`ShardMain` 还没写、只能在命令行给」。**§15**：集成后复测一段注明当时视距 10；新增压测基线视距一段——已登记读数按视距 10 复跑，分机档新基线按 `ShardMain` 默认视距 12，`capacity` 的 500 / 300 判断以它为准。**§28.2**：`ShardMain` 待办与 5D「`main` 上连续 3 次绿」待办转已决 |
 | 2026-09-25 | v0.8.6 | **ABI baseline 换成 `v0.3.0`**（用户同日拍板：第 6 波开工前打）。§1「插件 API 版本」行写明新 baseline 含第 5 波的 `TabList`、`PluginEntities`，标注接口 14 个，`API_VERSION` 仍为 2；`v0.2.0` 到 `v0.3.0` 只有新增，对 `v0.2.0` 0 条违例。之后第 6 波给 `PluginContext` 加的 `transfers()` 与 M3-E 的 `shards()` 按「默认方法 + 新接口首次提交即标注」过门，以 `v0.3.0` 为准 |
+| 2026-09-25 | v0.9（6D） | 按第 6 波 6D 的实现回写 `REQ-PROD-037`（G34）。**`API-PROD-024`** 加「响应」一段：每个 status 请求由 `StatusResponse` 填默认值、派发一次 `ServerListPingEvent`（`AsyncEvent`，读线程上派发，不可取消）、按事件的值写 JSON；五个字段的默认值与改法列表——MOTD 按字面进文本组件，样本取 play 态前 12 人、关了「允许在服务器列表中显示」的写作 `Anonymous Player`，`hide-online-players` 只去样本（与原版同义），`setMaxPlayers` 低于真实上限抛 `IllegalArgumentException`；图标校验（PNG 签名、首块 `IHDR`、64×64、≤ 16,384 B，依据是 26.2 客户端读 status JSON 的 32,767 字符上限），配置的图标在进程创建时读一次，不合规拒绝起服；响应超过 32,767 字符时引擎不截断；`:plugin-api` 没有新类型与方法。**`API-PROD-016`** 线程契约加服务器列表事件的线程一条（`package-info` 与 `docs/PLUGINS.md` §10 同步）。§5 `REQ-PROD-037` 行补图标拒启、样本与 max 不得改低；§19 加「图标不合规拒绝起服」「隐藏在线玩家只去样本」两条场景；§26 6D 组写出实际改动的文件，冲突表 `ConnectionManager.java` 行加 6D；§28.3 加 `docs/DESIGN.md` `REQ-005` 删除清单 `ping` 一项的改法 | Bearisbug |
 
 ## 2. 背景 / 目标 / 非目标
 
@@ -165,7 +166,7 @@
 | REQ-PROD-034 | 性能剖析命令：内置命令 `profile <秒数>`（默认 60 s）开 JFR，产出 .jfr 路径；对应管理接口方法 | G31 | 运营 | P2 | `API-PROD-011`、`API-PROD-022` |
 | REQ-PROD-035 | 数据库备份与恢复演练：WAL 归档 + 每日基础备份（`pg_basebackup` + `archive_command`，脚本在 `ops/postgres/`；基础备份保留 7 份，`wal/` 与 `base/` 每分钟同步到另一台机器），恢复点目标 ≤ 5 分钟；开归档要重启 PostgreSQL，所以建库时就开，已在运行的库放到全部分片 drain 之后开；做一次恢复演练写成 Runbook | G32 | 运营 | P1 | 无对外 API，见 `RB-PROD-008` 与 §23 检查单 |
 | REQ-PROD-036 | 启动自检：`store_meta.auth_mode` 只由发布流程 `--migrate-only --auth-mode` 写入，分片只读；库里为空或与本进程有效模式不一致时拒绝起服；正式库按 `online` 迁移，所以生产分片只能以 `Auth.Online` + Mojang sessionserver 起服（清单 G33）；删除 `Auth.Velocity` / `Auth.Bungee`；开 PROXY protocol 时必须同时配可信网段且 `proxyProtocolRequired=true`，缺一项在 `ServerConfig` 构造器里拒绝；没发 PROXY 头的连接与头部来自可信网段外的连接都断开 | G33 | 运营 | P1 | `API-PROD-001` |
-| REQ-PROD-037 | 服务器列表 ping：MOTD、64×64 图标、max 读配置且等于真实上限，事件可改 | G34 | 运营 | P2 | `API-PROD-024` |
+| REQ-PROD-037 | 服务器列表 ping：MOTD、64×64 图标（不合规拒绝起服）、max 读配置且等于真实上限、至多 12 人的玩家样本（`hide-online-players` 只去样本），事件可改，max 不得改低 | G34 | 运营 | P2 | `API-PROD-024` |
 | REQ-PROD-038 | 压缩阈值与级别可配：默认阈值 256、级别 6 | G35 | 运营 | P2 | `API-PROD-020` |
 | REQ-PROD-039 | 每玩家服务端视距上限：变更时发 UpdateViewDistance；JoinGame 改用实例视距；plugin-api 暴露 | G36 | 运营 | P2 | `API-PROD-019` |
 | REQ-PROD-040 | 实体休眠机制：休眠开关 + 按最近玩家距离分档的钩子，AI 降频由插件做 | G37 | 运营 | P2 | `API-PROD-019` |
@@ -557,7 +558,7 @@ erDiagram
   - `ThreadDispatcherImpl.java:141` 的 `Math.abs(threadId) % threads.size()` 改为 `Math.floorMod(threadId, threads.size())`。
   - 所有权断言（`Acquirable#assertOwnership`，断言开或 `synaxis.acquirable-strict=true` 时生效）的未分配态：dispatcher 还没给元素分配 tick 线程时，放行创建它的线程与任何非 `TickThread` 的线程（玩家在连接线程上构造、由调度线程 spawn），其他 tick 线程判越权抛 `AcquirableOwnershipException`，因为 `setInstance` 之后到下一次 dispatcher 更新之前，元素已能经追踪器与观察者被 tick 线程碰到。未分配元素上的 `lock()` / `sync()` 仍只认创建线程。
   - 严格模式 job：`-Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true` 写在 Gradle 命令行上，由 build-src 约定插件 `synaxis.java-library` 转发给每个测试 JVM（不给时测试 JVM 不带这两个属性）。
-  - 线程契约（写进 `plugin-api` 的 `package-info` 与 `docs/PLUGINS.md`）：实体与玩家的回调在该实体所属 tick 线程上执行；跨格影响（攻击、交易）优先投递到目标实体的调度器（`runOn`，`API-PROD-017`），由目标所在线程下一 tick 执行；`Acquirable.sync` 只用于必须当 tick 读到对方状态的场合；插件每 tick 的全局逻辑跑在调度线程上，是串行段。
+  - 线程契约（写进 `plugin-api` 的 `package-info` 与 `docs/PLUGINS.md`）：实体与玩家的回调在该实体所属 tick 线程上执行；跨格影响（攻击、交易）优先投递到目标实体的调度器（`runOn`，`API-PROD-017`），由目标所在线程下一 tick 执行；`Acquirable.sync` 只用于必须当 tick 读到对方状态的场合；插件每 tick 的全局逻辑跑在调度线程上，是串行段；服务器列表事件 `ServerListPingEvent` 跑在发请求那条连接的读线程（虚拟线程）上，只改事件本身（v0.9，`API-PROD-024`）。
 - **`API-PROD-017` 插件调度器** — 实现 `REQ-PROD-021`
   - `PluginScheduler` 增加两个默认方法（默认实现抛 `UnsupportedOperationException`，宿主覆盖）：`Task runAsync(Runnable task)`（虚拟线程；插件禁用时中断未完成任务）与 `Task runOn(Schedulable target, Runnable task, TaskSchedule delay)`（投递到实例或实体所属线程）；现有 `scheduleTask(task, delay, repeat)` 不变。
 - **`API-PROD-018` 插件事件优先级与作用域** — 实现 `REQ-PROD-022`
@@ -592,6 +593,19 @@ erDiagram
 - **`API-PROD-024` 服务器列表** — 实现 `REQ-PROD-037`
   - 键：`synaxis.motd`（默认 `synaxis`）、`synaxis.server-icon`（64×64 PNG 路径，缺省不发）、`synaxis.hide-online-players`（默认 false）；`max` 见 `API-PROD-003`。
   - 事件 `ServerListPingEvent` 可改 MOTD、人数、图标、玩家样本；改后的 `max` 仍不得低于真实上限（负载均衡读它）。
+  - 响应（v0.9，按 6D 实现）：每个 status 请求（一条连接只答第一个，原有）由 `StatusResponse` 按下表填好默认值，派发一次 `ServerListPingEvent`，再把事件里的值写成 JSON 发出；没有监听器时响应就是默认值。字段顺序 `version`、`players`、`description`、`favicon`，`version` 固定为 26.2 / 776。
+
+    | 字段 | 默认值 | 事件里怎么改 |
+    | --- | --- | --- |
+    | `description` | `synaxis.motd` 按字面作为一个文本组件，不解析 JSON、MiniMessage 或 `§` 代码（值里的换行符就是第二行） | `setDescription(Component)`：带颜色或翻译键的 MOTD 在这里设 |
+    | `players.online` | play 态人数（`ConnectionManager#getOnlinePlayerCount`） | `setOnlinePlayers(int)` |
+    | `players.max` | 真实上限：`synaxis.max-players`，为 0 时写 L0 上限 `synaxis.max-connections`（`API-PROD-003`） | `setMaxPlayers(int)`：低于真实上限抛 `IllegalArgumentException`、值不变；高于它允许 |
+    | `players.sample` | play 态玩家按进入 play 的先后取前 12 个（原版的个数；原版取随机的一段，这里不随机）；客户端设置关了「允许在服务器列表中显示」（`ClientSettings#allowServerListings`）的玩家写作名字 `Anonymous Player`、全零 UUID（与原版同）；`synaxis.hide-online-players=true` 时为空，在线人数照发（与原版同义）；为空时整个字段不写 | `setSample(List<SamplePlayer>)`，`SamplePlayer(name, uuid)` |
+    | `favicon` | `synaxis.server-icon` 的文件，写成 `data:image/png;base64,…`；键为空时不写 | `setFavicon(Favicon)`，传 null 不写 |
+
+  - 图标校验：同一套规则用在配置的文件与 `Favicon.of(byte[])` 上——以 PNG 签名开头、第一个块是长 13 的 `IHDR`、宽高恰为 64×64、整个文件 ≤ 16,384 B；只读文件头，不解码像素。配置的文件在进程创建时读一次（`ConnectionManager` 构造时，`ServerProcess.of` / `MinecraftServer.init` 抛 `IllegalArgumentException`，信息以 `synaxis.server-icon` 开头并带路径与原因），读不出或不合规时 `server-app` 以 `Refusing to start` 退出、端口不 bind；不退回「不发图标」，写错的键要在起服时暴露。16,384 B 的依据：26.2 客户端读 status JSON 的上限是 32,767 字符（`ClientboundStatusResponsePacket` 的 `ByteBufCodecs.lenientJson(32767)`），16,384 B 的 base64 是 21,848 字符，余下约 1.1 万字符给 MOTD 与样本；64×64 RGBA 的像素本身就是 16,384 B，压缩过的图标都在它之下。
+  - 事件：`io.github.bearisbug.synaxis.event.server.ServerListPingEvent`（`AsyncEvent`，不可取消），在该连接的读线程（虚拟线程）上派发，`getConnection()` 给出发请求的连接。插件经 `PluginContext#events()` 监听（`API-PROD-018`），监听器抛的异常（含 `setMaxPlayers` 的拒绝）由宿主按插件记一行、10 s 至多一行，响应照发，已设的其他字段保留。`Favicon` 是不可变值，插件在 `onEnable` 里建一次、每次 ping 复用。整个响应超过 32,767 字符时客户端读不了、列表里显示连不上，引擎不截断也不记日志（status 路径由客户端驱动，`docs/DESIGN.md` §15 的日志约束）：监听器设的描述与样本自己控制长度。
+  - `:plugin-api` 没有新类型与方法：插件本来就按引擎事件类型注册监听器。线程契约（`API-PROD-016`）加一条「服务器列表事件跑在发请求那条连接的读线程上」，同时写进 `plugin-api` 的 `package-info` 与 `docs/PLUGINS.md` §10，只改 Javadoc，对 `v0.3.0` 的 ABI 门 0 条违例。
 - **`API-PROD-025` 压测 harness `:loadtest`** — 实现 `REQ-PROD-029`
   - 命令行：`run --host --port --bots N --bot-offset K --profile rts|walk|ride --encryption on|off --chunks-per-tick 9.0 --duration 600s --out bots-<n>.json`；`sample --pid P --out server.json`（服务端主机上跑）；`merge bots-*.json server.json --out summary.json`；`flood --ip-rate 100/s`（闸门攻击档）。
   - `summary.json` 字段沿用 `soak-2026-09-22` 口径，新增 `inbound.chunks`（`REQ-M3-014` 已定名）、`login_latency_ms`（按加密开关分栏）、`kicks_by_reason`、`chunk_batch_rtt_ms`、`connection_gate`、`ticks.acquire_ms`、`dispatcher_busy_ratio`（每线程）。
@@ -1828,6 +1842,16 @@ L0、L0′、accept 时的 L1 超限与握手前超时都不发包，没有键�
   When 客户端发 StatusRequest
   Then 响应 max=300、description 为配置的 MOTD、带 favicon；插件在 ServerListPingEvent 把 max 改成 100 时被拒并保持 300
 
+场景: 图标不合规拒绝起服 (REQ-PROD-037)
+  Given synaxis.server-icon 指向一张 16×16 的 PNG、一个不存在的文件或一个超过 16,384 B 的文件
+  When 起服
+  Then 进程非零码退出、日志 Refusing to start: synaxis.server-icon …、端口未 bind；指向 64×64 的 PNG 时起服成功
+
+场景: 隐藏在线玩家只去样本 (REQ-PROD-037)
+  Given 13 名玩家在 play 态，其中 1 名关了「允许在服务器列表中显示」
+  When hide-online-players=false 与 true 各发一次 StatusRequest
+  Then 前者 online=13、sample 12 条，那名玩家若在其中写作 Anonymous Player；后者 online=13、没有 sample 字段
+
 场景: 压缩阈值与级别可配 (REQ-PROD-038)
   Given synaxis.compression-threshold=512、compression-level=3
   When 客户端登录
@@ -2026,7 +2050,7 @@ flowchart LR
 | 3 持久化 | `REQ-PROD-021`（G18）→ `REQ-PROD-005`、`006`、`007`（G03）→ `REQ-PROD-008`（G04）；`REQ-PROD-004` 跨分片部分；`REQ-PROD-022`（G19）；`REQ-PROD-035` 前半（WAL 归档与每日基础备份）；`REQ-PROD-045`（G28 前半，转服票据） | 3A 主线串行（同一人）：G18（`PluginScheduler`、`PluginSchedulerImpl`）→ G03（`server-app` 新包 `store/`、`PluginContext.java`、`AdmissionGate.java`（载入插在 `handshake.await` 与 `provider.admit` 之间，`:60-71`）、Flyway V1～V2 与回退 SQL、`--migrate-only --auth-mode` 与 `store_meta` 自检）→ G04（`ServerProcessImpl.java`、`ServerProcess.java`、`Main.java`、`ConnectionManager.java`，含看门狗判死接保存阶段）；3B 事件优先级 G19（`PluginEvents.java`、`PluginEventsImpl.java`，另改 `PluginHost.java` 建节点与收回的两处和 `LoadedPlugin.java`；与 3A 并行，`PluginHost.java` 两边都改，合并时都留）；3C 运维：WAL 归档与每日基础备份（不动 Java 代码，脚本与操作步骤在 `ops/postgres/`）；3D 转服票据 G28 前半（`REQ-PROD-045`：`server-app` 新包 `transfer/`（票据编解码、`TransferTickets`、验票）、`AdmissionGate.java`（验票插在 `store.load` 之前）、`transfer_nonce.gc`、`DisconnectKeys.java` 加 `synaxis:transfer-rejected`、模组 lang、`.env.example` 登记 `SYNAXIS_TRANSFER_HMAC_KEYS`；3A 合并后开工，改 `AdmissionGate.java` 排在 3A 之后） | 持久化草案 P1～P9、P13、P14 全绿；§19 `REQ-PROD-005`、`REQ-PROD-008` 全部场景与 `REQ-PROD-014` 两条落盘场景绿；`REQ-PROD-036` 的三条 `store_meta` 场景绿；`REQ-PROD-045` 三条场景绿（由 `server-app` 的集成测试直接调 `TransferTickets` 驱动，源与目标可以是同一进程，不需要 M3 的 `ShardService`）且票据向量测试绿；WAL 归档已开并有第一份基础备份 | 17.5～22.5（G32 前半 1、G28 前半 2～3 为本分册估；从第 0 波挪来的「判死接保存」与从第 2 波挪来的 `store_meta` 自检工作量仍计在原波次） |
 | 4 治理 | `REQ-PROD-011`（G09）→ `REQ-PROD-010`（G08）、`REQ-PROD-012`（G10） | 4A 权限 G09（Flyway V3、`Permissions`）先合；之后 4B 封禁 G08（Flyway V4、`AdmissionRequest.java`、`DisconnectKeys.java`、宿主节点上的预登录判定与 `HandshakeGate.java` 的跳过判断；引擎 `ConnectionManager.java` 不用改）与 4C 命令 G10（`Main.java#readConsole`、`PluginCommands`，内置六条，`profile` 在 6B；另改引擎 `ConsoleSender.java` 的翻译回退）并行。4A～4C 都往 `PluginContext.java` 加方法，合并按 A → B → C 串行，ABI 门每次过 | 封禁、白名单、权限、命令场景全绿；`API_VERSION` 是否加到 2 已由 ABI 门判定并记入 §1 | 10～13 |
 | 5 规模 | 前半：`REQ-PROD-018`（G16）→ `REQ-PROD-029` harness（G26）→ 200 人基线；后半：`REQ-PROD-013`（G11）、`REQ-PROD-023`（G20）、`REQ-PROD-024`（G21）、`REQ-PROD-025`（G22）、`REQ-PROD-026`（G23）、`REQ-PROD-027`（G24）→ `REQ-PROD-020` 分格 + `REQ-PROD-019` 后半 → 500 人压测 | 5A 指标与 harness（新模块 `:loadtest`、`server-app` 指标包、`Main.java` 指标装配）；基线之后：5B 入站 G11 + 出站 G22 + 区块 G23 + Tab G24（都改 `Player.java`，G11 与 G22 还同改 `PlayerSocketConnection.java`，同一人串行）；5C 可见性 G20 + G21（`EntityView.java`、`EntityTrackerImpl.java`、`Instance.java:162`，也改 `Player.java`，合并排在 5B 之后）；5D 分格（`ThreadProvider.java`、`ServerProcessImpl.java:104`、分片宿主），与 5B / 5C 只共用 `ServerConfig.java`，按 5B → 5C → 5D 合并 | 200 人 walk 30 min：tick P99 < 50 ms、超 50 ms 为 0、RSS < 4 GiB；G11 阈值按入站 P99 × 2 写回 `API-PROD-012`；4 线程 `grid` 严格模式 job 在 main 上连续 3 次绿（5D）；500 人两档与重连风暴、闸门、台账档记录在案，`capacity` 定值写回 §15 | 40～57（G17 后半 4～7、分格 3～4 为本分册估；分格从 M3-E 的 12 天中扣出，由 M3 会话同步） |
-| 6 正式运营前 | `REQ-PROD-031`（G28）、`REQ-PROD-032`（G29）、`REQ-PROD-033`（G30）、`REQ-PROD-034`（G31）、`REQ-PROD-035` 后半（G32 恢复演练）、`REQ-PROD-037`（G34）、`REQ-PROD-038`（G35）、`REQ-PROD-039`（G36）、`REQ-PROD-040`（G37）、`REQ-PROD-041`（G38） | 6A 转服 G28 后半（插件面 `Transfers`、`gm.transfer`、`HandshakeListener.java`；票据用 3D 的，P10 由 M3-E 的 `ShardService#transfer` 驱动，所以排在 3D 与 M3-E 之后）；6B 管理接口 G29 + profile G31（新 WebSocket 包、`Main.java`，6C 之前合并）；6C 配置文件 G30 + 压缩 G35（都改 `ServerConfig.java`，同一人；键表要收全本波新增的键，所以 6C 排在第 6 波最后合并）；6D 列表 G34（`StatusResponse.java`）；6E 视距 G36 + 休眠 G37（`Player.java`、`Entity.java`，同一人）；6F 翻译键门禁 G38（CI）；6G 恢复演练 G32（运维） | 各 REQ 场景全绿；两分片来回转服 100 次（P10）绿；恢复演练一次并记录耗时；§23 R4 进入门槛满足 | 17～20.5（G28 前半 2～3 已移到 3D） |
+| 6 正式运营前 | `REQ-PROD-031`（G28）、`REQ-PROD-032`（G29）、`REQ-PROD-033`（G30）、`REQ-PROD-034`（G31）、`REQ-PROD-035` 后半（G32 恢复演练）、`REQ-PROD-037`（G34）、`REQ-PROD-038`（G35）、`REQ-PROD-039`（G36）、`REQ-PROD-040`（G37）、`REQ-PROD-041`（G38） | 6A 转服 G28 后半（插件面 `Transfers`、`gm.transfer`、`HandshakeListener.java`；票据用 3D 的，P10 由 M3-E 的 `ShardService#transfer` 驱动，所以排在 3D 与 M3-E 之后）；6B 管理接口 G29 + profile G31（新 WebSocket 包、`Main.java`，6C 之前合并）；6C 配置文件 G30 + 压缩 G35（都改 `ServerConfig.java`，同一人；键表要收全本波新增的键，所以 6C 排在第 6 波最后合并）；6D 列表 G34（`StatusResponse.java`、新类 `Favicon.java` 与 `event/server/ServerListPingEvent.java`、`StatusListener.java`、`ConnectionManager.java` 在构造时读图标、`ServerConfig.java` 三个键，线程契约一条进 `plugin-api` 的 `package-info` 与 `docs/PLUGINS.md` §10）；6E 视距 G36 + 休眠 G37（`Player.java`、`Entity.java`，同一人）；6F 翻译键门禁 G38（CI）；6G 恢复演练 G32（运维） | 各 REQ 场景全绿；两分片来回转服 100 次（P10）绿；恢复演练一次并记录耗时；§23 R4 进入门槛满足 | 17～20.5（G28 前半 2～3 已移到 3D） |
 | 条件 | `REQ-PROD-042`（G39） | — | 触发条件成立时另立波次 | 2 |
 
 合计：第 0～5 波 95～126.5 人日（清单 G01～G27 的 88～117，加上移入的 G40 0.5、G33 0.5～1、G32 前半 1、G28 前半 2～3，以及从 M3 划过来的分格 3～4），第 6 波 17～20.5 人日，条件项 2 人日。
@@ -2043,7 +2067,7 @@ flowchart LR
 | `PlayerSocketConnection.java` | 2A（cipher）、2B（PROXY 可信网段）、5B（G11 入站计数、G22 出站积压） | 2A → 2B → 5B |
 | `HandshakeListener.java` | 1A（L1 / L2）、2A（transfer 意图鉴权）、2B（删 Velocity / Bungee 分支）、6A（G28） | 按波次串行 |
 | `LoginListener.java` | 2A（G01、G06、G07）、2B | 2A → 2B |
-| `ConnectionManager.java` | 1A（L3 席位、L4）、2A（G07 同分片踢旧后等旧 `Player` 移除）、3A（G04 停机） | 按波次串行 |
+| `ConnectionManager.java` | 1A（L3 席位、L4）、2A（G07 同分片踢旧后等旧 `Player` 移除）、3A（G04 停机）、6D（G34 构造时读图标） | 按波次串行 |
 | `server-app/.../AdmissionGate.java` | 3A（载入插在 `handshake.await` 与 `provider.admit` 之间）、3D（验票插在载入之前）、4B（`AdmissionRequest` 加组件的调用点） | 3A → 3D → 4B |
 | `server-app/.../PluginHost.java` | 3A（启用失败的插件收回数据段与停机钩子）、3B（事件节点的建与收回）、4A～4C（`PluginContextImpl` 的 `permissions`、`moderation`、`commands` 三个组件，4B 挂封禁判定，4C 收回命令） | 同一波并行，合并时两边的改动都留 |
 | `ServerProcessImpl.java` | 0B（G12）、3A（G04）、5D（`:104` 分格）、6C（G35 压缩阈值） | 按波次串行 |
@@ -2185,6 +2209,7 @@ N/A — 本分册尚未开工。R2 封闭内测稳定运行 7 天后按 §3 三�
 | `docs/DESIGN-M3.md` | 转服票据尚未写入的六处：§1 末段「票据布局与检查顺序该分册尚未写入，见 §28.2」；§3 转服首批区块耗时行「`API-PROD-021`，布局尚未写入，见 §28.2」；`ADR-M3-008` Decision「票据布局与检查顺序该分册尚未写入，§28.2」；§12.2 时序「StoreCookie 与 Transfer (API-PROD-021)」与「验票并获取写权 (API-PROD-004)」两步；`API-M3-010` 插件面「之后的写回、Cookie 与 `Transfer` 由生产就绪分册完成（`API-PROD-021` 与 §12.3，含每玩家转服冷却 5 s）」；§14 首段两个键「归该分册 §14」 | 票据布局、密钥、检查 ①～⑥、`transfer_nonce` 一律改指本分册 `API-PROD-028`（`issued_at` 在布局里，即 §3 耗时起点）；`ShardService#transfer` 选好频道后调宿主接口 `TransferTickets#transfer(player, targetShardId, host, port)`（`API-PROD-028`），`COOLDOWN` / `NOT_ONLINE` / `SAVE_FAILED` 三种结果由 `ShardService` 返回给插件；§12.2 两步改引 `API-PROD-028`；§14 两个键的定义见本分册 §14（`synaxis:transfer-rejected` 与 `synaxis:state-unavailable` 两行）；`EVT:transfer_rejected` 由本分册 §20 定义 | 已完成（M3 v0.6） |
 | `docs/DESIGN-M3.md` | `API-M3-013` 存储段与 §25「`world_flag` 尚未分到版本号」、§26 M3-E 行「转服的票据与冷却在该分册第 6 波（6A）完成」、§1 关联行「`docs/DESIGN-PROD.md`（v0.3）」、§28.2 两条技术债（「生产就绪分册仍有按本文档 v0.2 引用的位置」「`world_flag` 表不在该分册 §25 的版本表里」） | `world_flag` = V6（本分册 §25，与 V5 同在 M3-E，合并顺序规则见 §25）；M3-E 依赖改为「该分册第 3 波 3D 组（`REQ-PROD-045` 转服票据）」，不再依赖 6A；关联行改 v0.5；两条技术债关闭 | 已完成（M3 v0.6） |
 | `docs/DESIGN.md` | §11.1 连接 `ENT-Connection`（`PlayerDisconnectEvent` 的派发） | 登记引擎保证：每个被创建的玩家离开时恰好派发一次 `PlayerDisconnectEvent`；已进 PLAY 状态、还没进世界就断开的玩家由下一个 tick 的 `ConnectionManager#updateWaitingPlayers` 在 tick 线程上派发（本分册 v0.7.1） | 主会话 |
+| `docs/DESIGN.md` | `REQ-005` 删除清单的 `ping` 一项 | 注明服务器列表的 MOTD、图标、玩家样本与可改事件已由本分册 `REQ-PROD-037` / `API-PROD-024` 以新形态加回（`network/StatusResponse`、`network/Favicon`、`event/server/ServerListPingEvent`，第 6 波 6D）；`ping` 包本身与多版本响应格式、legacy ping 不恢复 | 主会话 |
 | `CLAUDE.md` | 功能开发纪律段的单一事实源表述 | 加「生产就绪分册 `docs/DESIGN-PROD.md`」 | 主会话 |
 | `docs/TEST.md` | TC-036 第 1 步期望值；§3 探针表；新增用例 | TC-036 login ID 1 改为 `EncryptionRequestPacket`；探针表注明只打 `Offline(encrypt=false)`；按 §19 场景新增 TC 并追溯到 `REQ-PROD-*` | 主会话 |
 | `docs/TEST.md` | §4「第 3 波 3A」节末与「第 3 波 3B」节首的口径差异段 | v0.6 已把这些差异写进设计（§17、§19、§24 的测试设施与 `docker pause`；`API-PROD-018` 四处）：删去 3B 节首整段与 3A 节末的前两处（第三处是用例覆盖说明，保留），并登记一轮 RUN | 主会话 |

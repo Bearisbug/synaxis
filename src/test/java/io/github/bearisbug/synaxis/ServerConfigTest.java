@@ -46,6 +46,10 @@ public class ServerConfigTest {
         assertEquals(3, config.chatBurst());
         // docs/DESIGN-PROD.md API-PROD-019: no visible entity limit
         assertEquals(0, config.maxVisibleEntitiesPerPlayer());
+        // docs/DESIGN-PROD.md API-PROD-024: the MOTD, no icon, the sample shown
+        assertEquals("synaxis", config.motd());
+        assertEquals("", config.serverIcon());
+        assertFalse(config.hideOnlinePlayers());
     }
 
     @Test
@@ -68,6 +72,8 @@ public class ServerConfigTest {
         assertThrows(IllegalArgumentException.class, () -> ServerConfig.builder().threadGridExponent(-1).build());
         assertThrows(IllegalArgumentException.class, () -> ServerConfig.builder().threadGridExponent(32).build());
         assertThrows(NullPointerException.class, () -> ServerConfig.builder().threadProvider(null).build());
+        assertThrows(NullPointerException.class, () -> ServerConfig.builder().motd(null).build());
+        assertThrows(NullPointerException.class, () -> ServerConfig.builder().serverIcon(null).build());
     }
 
     /**

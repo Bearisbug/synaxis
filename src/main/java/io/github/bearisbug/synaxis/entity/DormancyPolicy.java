@@ -9,7 +9,9 @@ package io.github.bearisbug.synaxis.entity;
  * and its potion effects, and {@link Entity#getAliveTicks()} does not count it. Its scheduler still
  * runs every tick, so a task handed to the entity is not held back. While it runs less often than
  * every tick the entity sends no scheduled position synchronization; the first tick it runs every
- * tick again sends one.
+ * tick again sends one. A move it makes on a tick it runs, by its velocity or by
+ * {@link Entity#moveTo(io.github.bearisbug.synaxis.coordinate.Pos)}, still reaches its viewers as a
+ * relative move, except for the types only ever synchronized, such as items and projectiles.
  * <p>
  * This is also the hook for the plugin's own AI: the engine calls it on the tick thread of the
  * entity, which the caller owns, on the first tick after the policy was set and then every 5 ticks,

@@ -1659,7 +1659,8 @@ public class Entity implements Viewable, Tickable, Schedulable, EventHandler<Ent
         setPositionInternal(position, ignoreView ? headRotation : position.yaw());
         this.previousPosition = previousPosition;
         if (!position.samePoint(previousPosition)) refreshCoordinate(position);
-        if (nextSynchronizationTick <= ticks + 1 || !sendPackets) {
+        // A dormant entity sends no scheduled synchronization, its moves go out below
+        if ((dormancyInterval == 1 && nextSynchronizationTick <= ticks + 1) || !sendPackets) {
             // The entity will be synchronized at the end of its tick
             // not returning here will duplicate position packets
             return;

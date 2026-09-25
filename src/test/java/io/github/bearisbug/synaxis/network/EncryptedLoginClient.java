@@ -46,6 +46,7 @@ import java.security.GeneralSecurityException;
 import java.security.PublicKey;
 import java.security.SecureRandom;
 import java.util.UUID;
+import java.util.function.IntConsumer;
 import java.util.zip.DataFormatException;
 import java.util.zip.Inflater;
 
@@ -197,6 +198,30 @@ final class EncryptedLoginClient implements AutoCloseable {
             } else if (id == disconnect) {
                 return key(((DisconnectPacket) parse(ConnectionState.PLAY, body)).message());
             }
+        }
+    }
+
+    /**
+     * Reads play packets until one of {@code type} arrives, answering keep alives on the way.
+     *
+     * @param skipped given the id of every other packet read before it
+     * @return the packet
+     */
+    <T extends ServerPacket> T readPlay(Class<T> type, IntConsumer skipped) throws IOException {
+        final var play = PacketVanilla.SERVER_PACKET_PARSER.play();
+        final int wanted = play.packetInfo(type).id();
+        final int keepAlive = play.packetInfo(KeepAlivePacket.class).id();
+        final int disconnect = play.packetInfo(DisconnectPacket.class).id();
+        while (true) {
+            final byte[] body = readBody();
+            final int id = packetId(body);
+            if (id == wanted) return type.cast(parse(ConnectionState.PLAY, body));
+            if (id == keepAlive) {
+                send(ConnectionState.PLAY, new ClientKeepAlivePacket(((KeepAlivePacket) parse(ConnectionState.PLAY, body)).id()));
+            } else if (id == disconnect) {
+                throw new AssertionError("disconnected in play: " + key(((DisconnectPacket) parse(ConnectionState.PLAY, body)).message()));
+            }
+            skipped.accept(id);
         }
     }
 

@@ -26,14 +26,21 @@ dependencies {
 }
 
 // The translation key gate (docs/DESIGN-PROD.md §24, API-PROD-029) reads the language files of the
-// client mod, a separate build (ADR-M2-015), straight from its source tree. They are an input of the
-// test task, so editing one runs the gate again instead of finding the task up to date.
-val modLanguageFiles = layout.settingsDirectory.dir("client-fabric/src/main/resources/assets/synaxis/lang").asFile
+// client mod, a separate build (ADR-M2-015), straight from its source tree, in the directory named by
+// the system property synaxis.lang.dir. The directory is an input of the test task, so editing a
+// language file runs the gate again instead of finding the task up to date. The input takes the files
+// by their relative path, and the absolute path reaches the test JVM only as an argument, which is
+// not part of the build cache key: checkouts of the same commit at different paths share the entry.
+class ModLanguageFiles(
+    @get:InputDirectory @get:PathSensitive(PathSensitivity.RELATIVE) val directory: File,
+) : CommandLineArgumentProvider {
+    override fun asArguments() = listOf("-Dsynaxis.lang.dir=${directory.absolutePath}")
+}
 
 // :server-app puts its logback.xml on this classpath, and that one writes logs/latest.log in the
 // working directory, which is this module's. The console mode builds no file appender.
 tasks.named<Test>("test") {
     systemProperty("synaxis.app.log", "stdout")
-    systemProperty("synaxis.lang.dir", modLanguageFiles.absolutePath)
-    inputs.dir(modLanguageFiles).withPropertyName("modLanguageFiles").withPathSensitivity(PathSensitivity.RELATIVE)
+    jvmArgumentProviders.add(ModLanguageFiles(
+        layout.settingsDirectory.dir("client-fabric/src/main/resources/assets/synaxis/lang").asFile))
 }

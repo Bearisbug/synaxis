@@ -84,6 +84,8 @@ public class ClientDrivenLogArchitectureTest {
      * <li>{@link TicketVerifier}: one line per transfer login it refuses, whose rate the L2
      * transfer bucket of {@code API-PROD-003} bounds; the one ERROR is the version assertion, once
      * per ticket at most.</li>
+     * <li>{@link ShutdownSequence}: at most one line per shutdown step per shutdown, and the steps
+     * are registered while the process is assembled, never by a client.</li>
      * </ul>
      * {@link PluginChannelRouter}, {@link PluginEventsImpl} and {@link EventLedger} are
      * deliberately absent: all three sit on a path whose rate a client picks — the first two on an
@@ -94,7 +96,7 @@ public class ClientDrivenLogArchitectureTest {
      * blind spot ① of the engine rule ({@code docs/ENGINE.md} §8), which those three therefore
      * escape.
      * <p>
-     * The eight above do not: this list is by class, exactly like the engine's, so a second line
+     * The nine above do not: this list is by class, exactly like the engine's, so a second line
      * whose rate a client picks, added inside one of them, stays green. Measured, not assumed — a
      * listener on a PLAY phase event writing a plain {@code LOGGER.warn}, put inside
      * {@link AdmissionGate}, does not turn this rule red. Registered as a remaining blind spot in
@@ -108,7 +110,8 @@ public class ClientDrivenLogArchitectureTest {
                 .or(name(CrashReports.class.getName()))
                 .or(name(PlayerStore.class.getName()))
                 .or(name(ShardSession.class.getName()))
-                .or(name(TicketVerifier.class.getName()));
+                .or(name(TicketVerifier.class.getName()))
+                .or(name(ShutdownSequence.class.getName()));
     }
 
     private static ArchRule hostPathsDoNotLogPerPacket() {

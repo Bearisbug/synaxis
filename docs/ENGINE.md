@@ -245,17 +245,20 @@ python3 tools/pkgdeps.py game-rts/src/main/java   --root-package io.github.beari
 | `server-app/` | M2 子项目：插件宿主与装配层（唯一启动入口），跑 classpath，不出模块 |
 | `game-rts/` | M2 子项目：RTS 玩法插件，由宿主用 `ServiceLoader` 发现 |
 | `loadtest/` | 压测 harness（`docs/DESIGN-PROD.md` `API-PROD-025`）：Java 机器人（真握手、可选加密、回 `ChunkBatchReceived`、walk / ride / fly）与 `sample`、`merge`、`flood` 三个子命令；不发布、没有模块依赖它。`./gradlew :loadtest:installDist` 后跑 `loadtest/build/install/loadtest/bin/loadtest run …`。`tools/loadtest/soak.py` 只留给 50 人以下的冒烟、RTS `play` 画像与攻击探针 |
+| `synx/` | M3 子项目：`.synx` 区域文件与清单的编解码、起服校验函数 `SynxBuildVerifier` 与冻结的测试向量（`synx/src/test/resources/vectors/`），`docs/DESIGN-M3.md` `API-M3-001`、`API-M3-002` |
+| `baker/` | M3 子项目：离线烘焙器（`docs/DESIGN-M3.md` `API-M3-003`），把原版 26.2 Anvil 存档或生成器预设烘成 `.synx` 地图版本；Anvil 读取器在 `baker.anvil` 包；`./gradlew :baker:run --args="bake …"`，工作目录是 `baker/`，路径参数写绝对路径 |
 | `architecture-tests/` | M2 子项目，**纯测试**：没有主源码，把引擎与四个 M2 子项目全部当 `testImplementation`，只住 `docs/DESIGN-M2.md` §24 规则 ⑥ 那两条任何单个模块都表达不了的反方向 ArchUnit 规则；不进 `pkgdeps`（§3.6），也不进 CI 的 `diff-cover --src-roots`（没有主源码行可覆盖） |
 | `client-fabric/` | M2 客户端模组工程（`REQ-M2-020`）：Fabric Loom 的**独立 Gradle 构建**，自带 wrapper，不进 `settings.gradle.kts`（`ADR-M2-015`）；`:protocol` 从 `mavenLocal()` 按坐标消费并 JiJ 进模组 jar；`check` 跑 §24 的双端向量（读 `protocol/src/test/resources/vectors/` 本身）与 `verifyModJar`，CI 见 §7 的 `client-mod.yml` |
 | `build-src/` | Gradle 约定插件（toolchain、Error Prone、发布、ABI 检查） |
 | `gradle/init/` | 构建用的临时 init 脚本，目前只有阿里云镜像脚本，见 §2.1 |
 | `gradle/libs.versions.toml` | 版本目录：所有第三方版本与 `minecraft = "26.2"` 都钉在这里 |
 | `example-plugin/` | `docs/PLUGINS.md` 的成品示例插件；独立 Gradle 构建，不进 `settings.gradle.kts` |
-| `tools/` | 运维与验收脚本，协议探针在 `tools/protocol-probe/probe.py`；`tools/light-oracle/gen.sh` 用原版服务端的光照引擎生成光照形状表与对拍真值 |
+| `tools/` | 运维与验收脚本，协议探针在 `tools/protocol-probe/probe.py`；`tools/light-oracle/gen.sh` 用原版服务端的光照引擎生成光照形状表与对拍真值；`tools/anvil-fixture/gen.sh` 用原版 26.2 服务端生成 `:baker` 测试用的 Anvil 存档 |
 | `docs/DESIGN.md` | 设计文档，单一事实源 |
 | `docs/TEST.md` | 测试文档，验收执行脚本与轮次台账 |
 | `docs/ENGINE.md` | 本文 |
 | `docs/PLUGINS.md` | 一页插件开发说明（`REQ-M2-023`） |
+| `docs/MAP-SOURCE.md` | 给地图美术的编辑源交付规范：存档要求、可用高度、处理顺序、数据标记与烘焙器自检命令 |
 | `docs/research/` | 选型调研与对起点代码的六路审计、架构评审 |
 | `docs/test-runs/` | 各轮测试的证据目录（`RUN-*`） |
 

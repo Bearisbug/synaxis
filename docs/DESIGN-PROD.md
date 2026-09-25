@@ -50,6 +50,7 @@
 | 2026-09-24 | v0.8.4 | 修 v0.8.2 登记的缺陷。**§28.2**：「缺陷」行改为已决，写明根因（玩家每 5 tick 重算末尾按「这一轮的候选」重建计数，丢掉别的 tick 线程在取候选之后收进来的实体）与修法（计数改为按玩家此刻看得见的实体校正），4 线程 `grid` 严格模式下的复现测试修前 1,000 tick 里 269～865 个 tick 超上限、最多 124 个（6 次），修后 0 个（`docs/TEST.md` TC-PROD-320）。**`API-PROD-019`** 判定规则加一句并发保证：计数只在玩家自己的视图锁里改，与收进、撤走同一把锁，任何时刻玩家看得见的计数实体都不超过上限，与收进来自哪条 tick 线程无关；重算不再加锁，比修前少进一次视图锁 |
 | 2026-09-24 | v0.8.5 | 跟进 `docs/DESIGN-M3.md` v0.8（`ShardMain` 写分片默认值，RUN-032）。**`API-PROD-016`** 配置段：`ShardMain` 除线程两项外还写区块视距 12、区块上限 4、可见上限 100，`postgres` 存储时写 `accept-transfers=true`。**`API-PROD-020`** 区块段：删去「`ShardMain` 还没写、只能在命令行给」。**§15**：集成后复测一段注明当时视距 10；新增压测基线视距一段——已登记读数按视距 10 复跑，分机档新基线按 `ShardMain` 默认视距 12，`capacity` 的 500 / 300 判断以它为准。**§28.2**：`ShardMain` 待办与 5D「`main` 上连续 3 次绿」待办转已决 |
 | 2026-09-25 | v0.8.6 | **ABI baseline 换成 `v0.3.0`**（用户同日拍板：第 6 波开工前打）。§1「插件 API 版本」行写明新 baseline 含第 5 波的 `TabList`、`PluginEntities`，标注接口 14 个，`API_VERSION` 仍为 2；`v0.2.0` 到 `v0.3.0` 只有新增，对 `v0.2.0` 0 条违例。之后第 6 波给 `PluginContext` 加的 `transfers()` 与 M3-E 的 `shards()` 按「默认方法 + 新接口首次提交即标注」过门，以 `v0.3.0` 为准 |
+| 2026-09-25 | v0.9（6E） | 按第 6 波 6E 的实现回写视距与休眠。**G36**（`REQ-PROD-039`）：`API-PROD-019` 加「视距的规则」一条：玩家上限取 2～32、默认 32 即不限；告诉客户端的视距 = min(实例视距, 玩家上限)，`JoinGame` 发出生实例的这个值，之后它一变就先于区块环增删发 `UpdateViewDistance`（上限改了、实例视距改了、换到视距不同的实例三种来源）；上限在任何线程设、由玩家下一个 tick 应用；插件经转导出的引擎 `Player` 调用，`PluginContext` 不加方法。**G37**（`REQ-PROD-040`）：`API-PROD-019` 加休眠的规则、多 tick 线程与开销三条：`DormancyPolicy#tickInterval(entity, 最近玩家距离)` 就是钩子，在实体自己的 tick 线程上、设策略后第一个 tick 与之后每 5 tick 调用；跳过的 tick 不跑移动、方块接触、`update`、`EntityTickEvent` 与药水，调度器照跑；间隔大于 1 期间不发定时位置同步、醒来补发一次；玩家不能休眠；距离取 tick 调度线程在分发前拍的 `PlayerPositions` 快照，`grid` 下各 tick 线程读同一份；2,000 实体 × 200 玩家实测机制本身每 tick < 0.05 ms。§5 两条 REQ 按实现改写；§15 新增「实体休眠」行（整 tick CPU 1,060 → 369 µs）；§16 加两行；§19 加三条场景（上限进 `JoinGame`、5 tick 内醒来、多 tick 线程判距）；§26 6E 组补上实际改动的文件、写明不改 `ServerConfig.java`；§28.2 新增玩家上限不收窄实体可见范围一条 Open Question | Bearisbug |
 
 ## 2. 背景 / 目标 / 非目标
 
@@ -167,8 +168,8 @@
 | REQ-PROD-036 | 启动自检：`store_meta.auth_mode` 只由发布流程 `--migrate-only --auth-mode` 写入，分片只读；库里为空或与本进程有效模式不一致时拒绝起服；正式库按 `online` 迁移，所以生产分片只能以 `Auth.Online` + Mojang sessionserver 起服（清单 G33）；删除 `Auth.Velocity` / `Auth.Bungee`；开 PROXY protocol 时必须同时配可信网段且 `proxyProtocolRequired=true`，缺一项在 `ServerConfig` 构造器里拒绝；没发 PROXY 头的连接与头部来自可信网段外的连接都断开 | G33 | 运营 | P1 | `API-PROD-001` |
 | REQ-PROD-037 | 服务器列表 ping：MOTD、64×64 图标、max 读配置且等于真实上限，事件可改 | G34 | 运营 | P2 | `API-PROD-024` |
 | REQ-PROD-038 | 压缩阈值与级别可配：默认阈值 256、级别 6 | G35 | 运营 | P2 | `API-PROD-020` |
-| REQ-PROD-039 | 每玩家服务端视距上限：变更时发 UpdateViewDistance；JoinGame 改用实例视距；plugin-api 暴露 | G36 | 运营 | P2 | `API-PROD-019` |
-| REQ-PROD-040 | 实体休眠机制：休眠开关 + 按最近玩家距离分档的钩子，AI 降频由插件做 | G37 | 运营 | P2 | `API-PROD-019` |
+| REQ-PROD-039 | 每玩家服务端视距上限（2～32）：区块环按 min(客户端, 实例, 玩家上限)；JoinGame 改发实例视距与玩家上限的小者，之后它一变就发 UpdateViewDistance；插件经 `:plugin-api` 转导出的 `Player` 调用 | G36 | 运营 | P2 | `API-PROD-019` |
+| REQ-PROD-040 | 实体休眠机制：每实体的休眠开关（设或清休眠策略）+ 按最近玩家距离分档的钩子（在实体自己的 tick 线程上调用），`grid` 多 tick 线程下同一 tick 各线程按同一份玩家位置判距；AI 降频由插件在钩子里做 | G37 | 运营 | P2 | `API-PROD-019` |
 | REQ-PROD-041 | 多语言约定与翻译键检查：服务端只发翻译键与参数；CI 检查服务端引用的 `synaxis:*` 与插件键在 `zh_cn`、`en_us` 都存在 | G38 | 运营 | P2 | 无对外 API，见 §24 翻译键门禁 |
 | REQ-PROD-042 | 原生 AES-CFB8 / 压缩（velocity-native）：生产机型上加密 + 压缩占用超过 1 个核的 10% 时才引入 | G39 | 条件 | P3 | 无对外 API，见 `ADR-PROD-011` 与 §21 `synaxis_cipher_cpu_seconds_total` |
 | REQ-PROD-043 | keep-alive 收尾：`socketTimeout` 对 `SocketChannel` 无效，走弃用流程删除；keep-alive 超时断线改用 `synaxis:keep-alive-timeout` 键 | G40 | 条件 | P2 | `API-PROD-003` |
@@ -572,7 +573,11 @@ erDiagram
   - 可见上限：`synaxis.max-visible-entities-per-player` 引擎默认 0（不限），分片宿主 100；超出按与玩家距离裁剪；`Entity#setAlwaysVisible(boolean)` 的实体不计入、不裁剪。
   - 判定规则（v0.8，按 5C 实现）：范围是 `TrackingRange(horizontal, vertical)`，两个值须为正，水平按圆（`dx² + dz² ≤ h²`）、垂直按 `|dy| ≤ v`；类型默认表每进程一张（`ServerProcess#trackingRanges()`），插件禁用时不收回；范围只能在 `synaxis.entity-view-distance` 的方形区块范围里收窄，不能放大，所以范围超出方形的类型要同时调大 `entity-view-distance`。必显实体不计数、不裁剪，但仍受追踪范围约束。实体经追踪器进入玩家视野时（跨区块、生成、规则变更）先过范围与上限两道判定，满额时新来的一律拒收；玩家每 5 tick 在自己的 tick 线程上重算一次（按实体 ID 错开），先撤走出了范围或被更近者挤掉的，再补进进了范围或排进前 N 的，距离按三维欧氏距离排序；已移除的实体不收。上限在多 tick 线程下是硬约束（v0.8.4）：收进与计数在玩家与实体两把视图锁里一起完成，撤走时同样在锁里减计数，重算只按玩家此刻看得见的实体校正计数、不按它取的候选重建，所以别的 tick 线程在重算途中收进来的实体照样占名额，任何时刻玩家看得见的计数实体不超过上限（`docs/TEST.md` TC-PROD-320）。乘客不单独计数、不单独判范围：玩家看得见载具（或载具就是玩家本人、玩家自己骑的）才看得见乘客，乘客骑上一个玩家看不见的载具时由重算收回；玩家自己的载具不会被撤走。进程里既没有范围也没有上限时跳过重算，M2 行为不变；有范围或上限时实体不再按「区块周围的玩家」合并广播（`hasPredictableViewers` 为 false），改为按各自的观察者发——合并广播不看裁剪，开着它时被裁掉的实体照样收到移动包（`docs/TEST.md` TC-PROD-313、TC-PROD-318）。
   - 视距：`Player#setMaxViewDistance(int)`，有效视距 = min(客户端, 实例, 玩家上限)，变更时发 `UpdateViewDistance`；`JoinGamePacket` 改用实例视距（`Player.java:349`）。
+  - 视距的规则（v0.9（6E），按 6E 实现）：玩家上限取 2～32（客户端视距的取值范围），越界抛 `IllegalArgumentException`，默认 32 即不限，`getMaxViewDistance()` 读回。区块环半径 = min(客户端视距, 实例视距, 玩家上限) + 1；告诉客户端的视距 = min(实例视距, 玩家上限)，客户端按 min(自己的设置, 这个值) 渲染。`JoinGamePacket` 的视距字段发出生实例的这个值（原来发的是全局 `synaxis.chunk-view-distance`，`Player.java:365-367`），之后它一变就发 `UpdateViewDistance`，有三种来源：玩家上限改了、所在实例的 `Instance#viewDistance(int)` 改了、换到视距不同的实例；包排在区块环的增删之前（与原版相同：客户端先调好区块存储，再收区块或卸载）。上限可以在任何线程设，与客户端改视距同一做法，由玩家下一个 tick 在它自己的 tick 线程上应用，一个 tick 里设多次只按最后一次算一回区块环；进世界之前设的在出生时应用，`JoinGame` 就带着它。插件经 `:plugin-api` 转导出的引擎 `Player` 调用，与 5C 的 `Entity#setTrackingRange` 同一做法，`PluginContext` 不加方法；插件禁用时不收回。实体可见范围仍按 `synaxis.entity-view-distance` 算，不随玩家上限收窄（§28.2）。
   - 休眠：`Entity#setDormancyPolicy(DormancyPolicy)`，按最近玩家距离分档返回「每 N tick 跑一次」；休眠实体跳过物理与位置同步，AI 降频由插件在钩子里做。引擎默认不休眠。
+  - 休眠的规则（v0.9（6E），按 6E 实现）：设策略即开，`setDormancyPolicy(null)` 即关，任何线程都可以设，实体下一个 tick 应用；玩家不能休眠，对 `Player` 设非空策略抛 `IllegalArgumentException`。`DormancyPolicy` 是引擎 `entity` 包里由插件实现的函数式接口 `int tickInterval(Entity entity, double nearestPlayerDistance)`：给出实体到所在实例最近一名玩家的三维距离（格；实例里没有玩家为 `+∞`），返回每 N tick 跑一次，≤ 1 按每 tick。分档写在这个函数里（例 `(e, d) -> d > 64 ? 100 : d > 32 ? 20 : 1`）；它就是钩子：在该实体的 tick 线程上、持有该实体时被调用，插件自己的 AI 要一起降频就在这里读距离。调用时机是设了策略之后的第一个 tick，之后是「时钟 + 实体 ID」为 5 的倍数的 tick（每 5 tick 一次、按 ID 错开），所以玩家走近后至多 5 tick 恢复每 tick 跑。间隔为 N 时实体只跑「时钟 + 实体 ID」为 N 的倍数的 tick，恰好每 N tick 一次，各实体错开。跳过的 tick 不跑移动与物理、方块接触、`update`、`EntityTickEvent` 与药水效果，`getAliveTicks()` 只数跑了的 tick（药水按它计时，所以休眠期间的药水在真实时间里拉长 N 倍）；实体调度器每 tick 照跑，`runOn` 投递、`scheduleNextTick` 与 `setInstance` / `teleport` 的续延不被推迟。N > 1 期间一条定时位置同步（`EntityPositionSync` 与速度包）都不发，`synchronizeNextTick()` 的请求也留到醒来；恢复每 tick 跑的那一个 tick 补发一次，之后按原间隔。
+  - 休眠在多 tick 线程下（v0.9（6E））：距离不读别的 tick 线程上正在变的玩家对象。每个 tick 在 tick 调度线程上、分发给各 tick 线程之前，`Instance#tick` 最后一步把本实例全体玩家的位置拍成一份不可变快照（`PlayerPositions`，volatile 发布），这一 tick 所有 tick 线程上的实体读同一份，拿到的是「本 tick 开始时玩家站在哪」，与实体、玩家各在哪条线程、谁先 tick 无关。快照只在实例里有实体问过它之后才拍（之前不花任何时间）；第一次问的那个 tick 还没有快照，实体照常跑，下一个 tick 再问策略。实体的休眠状态（时钟、当前间隔、已采用的策略）只由 tick 该实体的线程读写，实体换格换线程由 dispatcher 在两个 tick 之间交接；策略本身是 volatile 字段。
+  - 休眠的开销（v0.9（6E），实测）：2,000 个实体、200 名玩家、1 条 tick 线程。机制本身（策略恒返回 1、没有实体休眠）每实体每 tick 16～22 ns，含每 5 tick 一次对 200 名玩家的判距（`jmh-benchmarks` 的 `DormancyOverheadBenchmark.entityTick`：有策略 219.7 / 221.8 ns 对无策略 203.6 / 199.8 ns，两轮各取迭代最小值），2,000 个实体合 32～44 µs；实例每 tick 拍一次 200 名玩家的快照 1.34 µs（`snapshot` 中位）。合计每 tick 不到 0.05 ms，是 50 ms tick 预算的 0.1%。收益见 §15「实体休眠」行。
 - **`API-PROD-020` 出站与发送节流** — 实现 `REQ-PROD-025`、`REQ-PROD-026`、`REQ-PROD-027`、`REQ-PROD-038`
   - `synaxis.outbound.max-backlog-bytes` 引擎默认 4 MiB（须 ≥ 1）。积压 = 交给写线程、还没被写线程取走的字节：已成帧的（视野广播的 `BufferedPacket`、`FramedPacket`）按实际字节，还是对象的（`ServerPacket`、`CachedPacket`，写线程才序列化）每个按 64 B 计。超限时先丢队列里全部实体移动包——视野广播每 tick 按区块攒成的 `BufferedPacket`，引擎只让实体位置、转头与位置同步走这条路（`PacketViewableUtils`）；写线程把这批丢掉的包取完之前，新的移动包也不入队；各实体下一次 `EntityPositionSync`（至多 `synaxis.entity-synchronization-ticks` 之后，默认 20 tick）把客户端上的位置拉回来。丢完仍超限断线 `synaxis:outbound-backlog`，`synaxis_outbound_backlog_kicks_total` 加 1，断线前写一行 INFO `Outbound backlog exceeded: connection_id=… backlog_bytes=… limit=…`。不做「同实体只留最新一条」：移动包在视野缓冲里已按区块拼成字节，拆出单个实体要逐帧解析，而且相对移动包丢掉一条客户端就已经偏了，只留最新一条并不比全丢准。
   - 实体位置同步间隔沿用现有键 `synaxis.entity-synchronization-ticks`（默认 20，`ServerConfig.java:94`、`:184`），不新增键；默认值改动前先用 soak 的 `EntityPositionSync` 字节占比验证收益。
@@ -1191,6 +1196,7 @@ L0、L0′、accept 时的 L1 超限与握手前超时都不发包，没有键�
 | 台账 | 200 人 30 min | `ledger_dropped` 0 条；崩溃最多丢 1 s；正常停机丢 0 条（运维草案 ③ 3.3） |
 | 带宽 | 200 人步行 / 骑乘 | 分片出站与 68 / 90 Mbit/s 偏差 ≤ ±20%（M3 口径，阈值归 M3）；每连接出站积压 ≤ 4 MiB |
 | 可见实体 | 200 人同格 | 每玩家可见非必显实体 ≤ 100；200 人同格合计出站 < 100 Mbit/s 时才放宽上限（清单 G21） |
+| 实体休眠 | 2,000 个实体散在 1,024 × 1,024 格、200 名玩家在出生点半径 64 格内，平地、有重力，1 条 tick 线程（`jmh-benchmarks` 的 `EntityDormancyBenchmark`） | 机制本身每 tick < 0.05 ms（`API-PROD-019` 休眠开销一条）。整 tick 的 CPU 时间（基准线程加 tick 线程）实测：不设策略 1,060 µs；分档策略（> 32 格每 20 tick、> 64 格每 100 tick；53 个每 tick 跑、40 个每 20、1,907 个每 100）369 µs；全体每 20 tick 345 µs；策略恒返回 1 为 1,075 µs，与不设策略的差在噪声内。测时本机有别的会话在编译（`load1` 8～47），各档取 13 次迭代的最小值，中位数不可比 |
 | 入站限流 | 单连接 | 7 s 窗口 > 582 包 KICK（200 人 walk 基线每人上行 P99 291 × 2）；解压后负载 > 4 MiB/s KICK；补全 > 20 次/秒丢弃 |
 | 聊天 | 单连接 | > 1 条/秒（burst 3）丢弃；引擎默认 0 收件人，一进 0 出 |
 | 看门狗 | tick 卡住 | 10～11 s 首次打印栈；60～61 s 判死（巡检间隔 1 s）；判死后 ≤ 16 s 进程退出 |
@@ -1258,6 +1264,8 @@ L0、L0′、accept 时的 L1 超限与握手前超时都不发包，没有键�
 | 角色变更与登录读角色同时发生 | GM × configuration 线程 | 登录读到的旧行不覆盖变更之后的读取，收回的角色不会被带回来 | 读取开始前先以「无角色」登记玩家，读取期间的变更通知都触发重读；按读编号取大者（`API-PROD-010`） |
 | 台账多线程写 | tick、configuration、准入、启动线程 | 同线程顺序不变；跨线程行序与 `ts` 可差数微秒；聚合按 `connection_id` 配对，不按相邻行 | MPSC 队列 + 单写线程（运维草案 ③ 3.4） |
 | 跨格交互 | 两个 tick 线程 | 投递到目标实体调度器，下一 tick 在目标线程执行；`Acquirable.sync` 仅当 tick 必需 | `API-PROD-016` 线程契约 |
+| 休眠实体与最近的玩家在不同 tick 线程 | 实体所在格的 tick 线程 × 玩家所在格的 tick 线程 | 距离取本 tick 开始时玩家的位置，同一 tick 各线程看到同一份；不读另一线程上正在改的玩家字段，结果与谁先 tick 无关 | tick 调度线程在分发前拍 `PlayerPositions` 快照、volatile 发布（`API-PROD-019` 休眠在多 tick 线程下一条） |
+| 在别的线程设视距上限或休眠策略 | 任意线程 × 玩家或实体所属 tick 线程 | 下一个 tick 由所属线程应用；区块环、`UpdateViewDistance` 与休眠状态只由所属线程改 | 设值只写 volatile 字段，应用在 `Player#update` 与 `Entity#tick`（`API-PROD-019`） |
 | 分格线程号碰到 `Integer.MIN_VALUE` | dispatcher | 下标非负 | `Math.floorMod` |
 
 一致性承诺：
@@ -1838,10 +1846,25 @@ L0、L0′、accept 时的 L1 超限与握手前超时都不发包，没有键�
   When 插件对该玩家 setMaxViewDistance(6)
   Then 客户端收到 UpdateViewDistance 6，区块环收缩到 6；JoinGame 里的视距是 12 而不是全局配置值
 
+场景: 进世界前设的视距上限进 JoinGame (REQ-PROD-039)
+  Given 实例视距 12，插件在 configuration 阶段对该玩家 setMaxViewDistance(6)
+  When 玩家进世界
+  Then JoinGame 里的视距是 6，不再另发 UpdateViewDistance；之后实例视距改为 8 也不发（仍按上限 6），改为 4 时收到 UpdateViewDistance 4
+
 场景: 休眠实体跳过 tick (REQ-PROD-040)
   Given 一个实体的休眠策略为「最近玩家 > 32 格时每 20 tick 跑一次」
   When 最近玩家在 40 格外持续 100 tick
   Then 该实体的 tick 只执行 5 次，期间不发位置同步包
+
+场景: 玩家走近后休眠实体 5 tick 内醒来 (REQ-PROD-040)
+  Given 上一场景里已休眠的实体，它的调度器上有一个每 tick 执行的任务
+  When 玩家传送到它 3 格处
+  Then 5 tick 内它恢复每 tick 跑并补发一次位置同步；休眠期间那个任务也是每 tick 执行
+
+场景: 多 tick 线程下休眠按同一份玩家位置判距 (REQ-PROD-040)
+  Given grid 分格、4 条 tick 线程，169 个实体分散在各分格，都用上面的策略
+  When 玩家静止 200 tick，再传送到另一分格后静止 200 tick
+  Then 每一段里离玩家 32 格内的实体各跑 200 次、之外的各跑 10 次；策略总在持有该实体的 tick 线程上被调用；玩家在某个 tick 中途移动时，这一 tick 各实体拿到的距离都按移动之前的位置算
 
 场景: 服务端引用的翻译键在两份语言文件里都存在 (REQ-PROD-041)
   Given 翻译键门禁在 CI 中运行
@@ -2026,7 +2049,7 @@ flowchart LR
 | 3 持久化 | `REQ-PROD-021`（G18）→ `REQ-PROD-005`、`006`、`007`（G03）→ `REQ-PROD-008`（G04）；`REQ-PROD-004` 跨分片部分；`REQ-PROD-022`（G19）；`REQ-PROD-035` 前半（WAL 归档与每日基础备份）；`REQ-PROD-045`（G28 前半，转服票据） | 3A 主线串行（同一人）：G18（`PluginScheduler`、`PluginSchedulerImpl`）→ G03（`server-app` 新包 `store/`、`PluginContext.java`、`AdmissionGate.java`（载入插在 `handshake.await` 与 `provider.admit` 之间，`:60-71`）、Flyway V1～V2 与回退 SQL、`--migrate-only --auth-mode` 与 `store_meta` 自检）→ G04（`ServerProcessImpl.java`、`ServerProcess.java`、`Main.java`、`ConnectionManager.java`，含看门狗判死接保存阶段）；3B 事件优先级 G19（`PluginEvents.java`、`PluginEventsImpl.java`，另改 `PluginHost.java` 建节点与收回的两处和 `LoadedPlugin.java`；与 3A 并行，`PluginHost.java` 两边都改，合并时都留）；3C 运维：WAL 归档与每日基础备份（不动 Java 代码，脚本与操作步骤在 `ops/postgres/`）；3D 转服票据 G28 前半（`REQ-PROD-045`：`server-app` 新包 `transfer/`（票据编解码、`TransferTickets`、验票）、`AdmissionGate.java`（验票插在 `store.load` 之前）、`transfer_nonce.gc`、`DisconnectKeys.java` 加 `synaxis:transfer-rejected`、模组 lang、`.env.example` 登记 `SYNAXIS_TRANSFER_HMAC_KEYS`；3A 合并后开工，改 `AdmissionGate.java` 排在 3A 之后） | 持久化草案 P1～P9、P13、P14 全绿；§19 `REQ-PROD-005`、`REQ-PROD-008` 全部场景与 `REQ-PROD-014` 两条落盘场景绿；`REQ-PROD-036` 的三条 `store_meta` 场景绿；`REQ-PROD-045` 三条场景绿（由 `server-app` 的集成测试直接调 `TransferTickets` 驱动，源与目标可以是同一进程，不需要 M3 的 `ShardService`）且票据向量测试绿；WAL 归档已开并有第一份基础备份 | 17.5～22.5（G32 前半 1、G28 前半 2～3 为本分册估；从第 0 波挪来的「判死接保存」与从第 2 波挪来的 `store_meta` 自检工作量仍计在原波次） |
 | 4 治理 | `REQ-PROD-011`（G09）→ `REQ-PROD-010`（G08）、`REQ-PROD-012`（G10） | 4A 权限 G09（Flyway V3、`Permissions`）先合；之后 4B 封禁 G08（Flyway V4、`AdmissionRequest.java`、`DisconnectKeys.java`、宿主节点上的预登录判定与 `HandshakeGate.java` 的跳过判断；引擎 `ConnectionManager.java` 不用改）与 4C 命令 G10（`Main.java#readConsole`、`PluginCommands`，内置六条，`profile` 在 6B；另改引擎 `ConsoleSender.java` 的翻译回退）并行。4A～4C 都往 `PluginContext.java` 加方法，合并按 A → B → C 串行，ABI 门每次过 | 封禁、白名单、权限、命令场景全绿；`API_VERSION` 是否加到 2 已由 ABI 门判定并记入 §1 | 10～13 |
 | 5 规模 | 前半：`REQ-PROD-018`（G16）→ `REQ-PROD-029` harness（G26）→ 200 人基线；后半：`REQ-PROD-013`（G11）、`REQ-PROD-023`（G20）、`REQ-PROD-024`（G21）、`REQ-PROD-025`（G22）、`REQ-PROD-026`（G23）、`REQ-PROD-027`（G24）→ `REQ-PROD-020` 分格 + `REQ-PROD-019` 后半 → 500 人压测 | 5A 指标与 harness（新模块 `:loadtest`、`server-app` 指标包、`Main.java` 指标装配）；基线之后：5B 入站 G11 + 出站 G22 + 区块 G23 + Tab G24（都改 `Player.java`，G11 与 G22 还同改 `PlayerSocketConnection.java`，同一人串行）；5C 可见性 G20 + G21（`EntityView.java`、`EntityTrackerImpl.java`、`Instance.java:162`，也改 `Player.java`，合并排在 5B 之后）；5D 分格（`ThreadProvider.java`、`ServerProcessImpl.java:104`、分片宿主），与 5B / 5C 只共用 `ServerConfig.java`，按 5B → 5C → 5D 合并 | 200 人 walk 30 min：tick P99 < 50 ms、超 50 ms 为 0、RSS < 4 GiB；G11 阈值按入站 P99 × 2 写回 `API-PROD-012`；4 线程 `grid` 严格模式 job 在 main 上连续 3 次绿（5D）；500 人两档与重连风暴、闸门、台账档记录在案，`capacity` 定值写回 §15 | 40～57（G17 后半 4～7、分格 3～4 为本分册估；分格从 M3-E 的 12 天中扣出，由 M3 会话同步） |
-| 6 正式运营前 | `REQ-PROD-031`（G28）、`REQ-PROD-032`（G29）、`REQ-PROD-033`（G30）、`REQ-PROD-034`（G31）、`REQ-PROD-035` 后半（G32 恢复演练）、`REQ-PROD-037`（G34）、`REQ-PROD-038`（G35）、`REQ-PROD-039`（G36）、`REQ-PROD-040`（G37）、`REQ-PROD-041`（G38） | 6A 转服 G28 后半（插件面 `Transfers`、`gm.transfer`、`HandshakeListener.java`；票据用 3D 的，P10 由 M3-E 的 `ShardService#transfer` 驱动，所以排在 3D 与 M3-E 之后）；6B 管理接口 G29 + profile G31（新 WebSocket 包、`Main.java`，6C 之前合并）；6C 配置文件 G30 + 压缩 G35（都改 `ServerConfig.java`，同一人；键表要收全本波新增的键，所以 6C 排在第 6 波最后合并）；6D 列表 G34（`StatusResponse.java`）；6E 视距 G36 + 休眠 G37（`Player.java`、`Entity.java`，同一人）；6F 翻译键门禁 G38（CI）；6G 恢复演练 G32（运维） | 各 REQ 场景全绿；两分片来回转服 100 次（P10）绿；恢复演练一次并记录耗时；§23 R4 进入门槛满足 | 17～20.5（G28 前半 2～3 已移到 3D） |
+| 6 正式运营前 | `REQ-PROD-031`（G28）、`REQ-PROD-032`（G29）、`REQ-PROD-033`（G30）、`REQ-PROD-034`（G31）、`REQ-PROD-035` 后半（G32 恢复演练）、`REQ-PROD-037`（G34）、`REQ-PROD-038`（G35）、`REQ-PROD-039`（G36）、`REQ-PROD-040`（G37）、`REQ-PROD-041`（G38） | 6A 转服 G28 后半（插件面 `Transfers`、`gm.transfer`、`HandshakeListener.java`；票据用 3D 的，P10 由 M3-E 的 `ShardService#transfer` 驱动，所以排在 3D 与 M3-E 之后）；6B 管理接口 G29 + profile G31（新 WebSocket 包、`Main.java`，6C 之前合并）；6C 配置文件 G30 + 压缩 G35（都改 `ServerConfig.java`，同一人；键表要收全本波新增的键，所以 6C 排在第 6 波最后合并）；6D 列表 G34（`StatusResponse.java`）；6E 视距 G36 + 休眠 G37（`Player.java`、`Entity.java`，另有 `Instance.java` 的玩家位置快照与新类 `DormancyPolicy.java`、`PlayerPositions.java`，同一人；不改 `ServerConfig.java`，没有新配置键）；6F 翻译键门禁 G38（CI）；6G 恢复演练 G32（运维） | 各 REQ 场景全绿；两分片来回转服 100 次（P10）绿；恢复演练一次并记录耗时；§23 R4 进入门槛满足 | 17～20.5（G28 前半 2～3 已移到 3D） |
 | 条件 | `REQ-PROD-042`（G39） | — | 触发条件成立时另立波次 | 2 |
 
 合计：第 0～5 波 95～126.5 人日（清单 G01～G27 的 88～117，加上移入的 G40 0.5、G33 0.5～1、G32 前半 1、G28 前半 2～3，以及从 M3 划过来的分格 3～4），第 6 波 17～20.5 人日，条件项 2 人日。
@@ -2137,6 +2160,7 @@ N/A — 本分册尚未开工。R2 封闭内测稳定运行 7 天后按 §3 三�
 | 风险 | `stop` 与 SIGTERM 竞态：SIGTERM 线程已在引擎里占下停机、但阶段还没离开 `RUNNING` 的几条指令内执行 `stop 5`，命令回「5 s 后停」、台账记 `ok`，引擎却忽略这次倒计时，按 SIGTERM 的 0 s 停。停机本身不受影响；要消除得让 `ServerProcess#beginShutdown` 返回是否由本次调用发起（引擎接口，`docs/DESIGN.md` `API-003`） | Bearisbug | 第 6 波管理接口 `server/stop` 接线时 |
 | 已决 | `gm.role` 的授予范围（v0.7.1）：玩家发送者只能授予或收回每个节点都被自己的有效节点覆盖的角色，带 `*` 的角色只有持有 `*` 的发送者能动，控制台不受限（`API-PROD-010`）；代价是给别人发高权限角色只能由持有同等节点的 GM 或控制台做。切换条件：运维需要一个能发出高于自己权限角色的代理人时，改为按角色单独配置「可授予的角色」名单，而不是放开这条限制 | Bearisbug | — |
 | 已决 | PostgreSQL 16 的 `pg_archivecleanup` 不删 `.backup` 标签文件，每份基础备份留一个约 200 B 的文件，不清理 | Bearisbug | — |
+| Open Question | 玩家视距上限（`API-PROD-019`）只收窄区块环，不收窄实体可见范围：上限低于 `synaxis.entity-view-distance`（引擎默认 5）时，这名玩家仍收到实体视距方形里、它已没有区块的那几圈实体。默认不改：上限 ≥ 4 时区块环半径 ≥ 5，不比实体视距方形小；有插件把上限设到 2～3、且这些玩家的实体包字节超过同格玩家平均值的一半时，把实体视距方形按 min(实体视距, 玩家有效视距) 收窄 | Bearisbug | 第一个把上限设到 4 以下的插件 |
 
 未核实事项（汇总，逐条出处见清单 §8.1 与三份草案末节）：
 

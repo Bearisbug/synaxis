@@ -157,13 +157,16 @@ public class ServerListPingSocketTest {
 
             final JsonObject status = ping(env.process());
             assertEquals(13, status.getAsJsonObject("players").get("online").getAsInt());
+            final List<List<String>> sample = sample(status);
+            assertEquals(12, sample.size(), "the 13th player is left out");
+            final List<String> anonymous = List.of("Anonymous Player", "00000000-0000-0000-0000-000000000000");
+            assertEquals(anonymous, sample.get(1), "player1 asked not to be listed");
             final List<List<String>> expected = new ArrayList<>();
             for (Player player : players.subList(0, 12)) {
-                expected.add(player == players.get(1)
-                        ? List.of("Anonymous Player", "00000000-0000-0000-0000-000000000000")
+                expected.add(player == players.get(1) ? anonymous
                         : List.of(player.getUsername(), player.getUuid().toString()));
             }
-            assertEquals(expected, sample(status), "the 13th player is left out");
+            assertEquals(expected, sample, "the first 12 players in the order they entered play");
         } finally {
             env.process().stop();
         }

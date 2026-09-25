@@ -17,6 +17,7 @@ import io.github.bearisbug.synaxis.network.packet.server.play.UnloadChunkPacket;
 import io.github.bearisbug.synaxis.network.packet.server.play.UpdateViewDistancePacket;
 import io.github.bearisbug.synaxis.network.player.ClientSettings;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.parallel.ResourceLock;
 
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
@@ -32,7 +33,11 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * What a client over a real socket is told about its view distance ({@code docs/DESIGN-PROD.md}
  * {@code REQ-PROD-039}, §19「服务端按玩家下调视距」): the instance's in {@code JoinGame}, then the cap
  * of the player in {@code UpdateViewDistance}, ahead of the chunks it unloads.
+ * <p>
+ * The chunks and registries it sends grow pooled buffers past their default size, so it does not run
+ * alongside {@link SocketWriteStateTransitionIntegrationTest}, which sizes its packets by that size.
  */
+@ResourceLock(SocketWriteStateTransitionIntegrationTest.PACKET_POOL)
 public class ViewDistanceSocketTest {
 
     @Test
@@ -73,6 +78,9 @@ public class ViewDistanceSocketTest {
                     "the chunks out of the capped ring are unloaded after the client is told");
         } finally {
             process.stop();
+            // The pooled buffers are shared by the whole JVM, and the chunks and registries sent here grow
+            // some of them past the default size, which other tests size their packets by
+            PacketVanilla.PACKET_POOL.clear();
         }
     }
 

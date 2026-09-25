@@ -54,6 +54,7 @@
 | 2026-09-25 | v0.9（D） | 文档收口，不改设计结论、不改代码。**§26**：按 `main` 的 CI 记录（截至 `a59639f3b1`）补第 0 波与第 2 波退出条件里由 CI 判定的三项——`counter` 严格模式 job 连续 3 次绿已满足；离线档「连续 5 次绿」在 `main` 上只跑了 3 次就被 B 档取代，改由 B 档判定；B 档连续 18 次绿已满足，「Client gametest」连同离线档 21 次全绿，达到 §28.1 ops #1 设为必需检查的条件（`main` 还没有分支保护）。第 5 波现状一段里「`grid` 严格模式 job 待连续 3 次绿」与 §28.2 已决行矛盾，改为连续 9 次绿。**§2**：规模画像「区块下行」行的依据改为引用 `docs/DESIGN-M3.md` §2「区块包体 B」「分片出站」两行，去掉「M3 工作区还是 v0.2、未核实」。**§28.2**：聊天警告一行按 `docs/TEST.md` TC-PROD-083 的截图转已决；`docs/DESIGN.md` 停机 10 s 与 30 s 冲突一行按 `docs/DESIGN.md` v0.37、v0.38 转已决；未核实事项第 2、3、5 条注明已决与证据，`ADR-PROD-009` 的 Consequences 末尾补一句指向该已决行；新增一条缺陷：停机在进世界前断开的玩家派发断线事件之前开始保存时，保存等满 30 s、这份登出保存丢失（`docs/TEST.md` TC-GAME-034 第 3 步复现 10 次中 5 次）。**§28.3**：逐行对照目标文档，14 行标已完成并写明在哪一版完成；`docs/DESIGN.md` §15 限流行与 `docs/DESIGN-M2.md` §24 ABI 门两行仍未改，写明核对结果，`docs/DESIGN-M2.md` 一行的 baseline 改为 `v0.3.0`；节标题去掉「本次未改」。**过时表述**：§1「最后更新」改为 2026-09-25；§1 后与 M3 边界一段的「本次未改」改为已登记的位置；`API-PROD-019`～`API-PROD-021` 的代码行号按现行代码改（`Player.java:349` → `:365-367`，`ServerConfig.java:94`、`:184` → `:219`、`:376`，`ServerProcessImpl.java:77` → `:101`，`HandshakeListener.java:53-57` → `:33-38`；`NetworkBufferImpl.java:301` 未变）。同批改的其他文档：`docs/PLUGINS.md` §6 的起服命令加 `-Dsynaxis.app.auth=offline`（`server-app` 默认在线模式，照原命令起服，第 8 节的探针收到加密请求就退出，`docs/TEST.md` TC-GAME-016 走不通），§5 自己工程的构建命令由 `gradle build` 改为借服务端仓库的 `gradlew`（前置只要求 JDK 25，本机没有 `gradle` 命令） | Bearisbug |
 | 2026-09-25 | v0.9（6D） | 按第 6 波 6D 的实现回写 `REQ-PROD-037`（G34）。**`API-PROD-024`** 加「响应」一段：每个 status 请求由 `StatusResponse` 填默认值、派发一次 `ServerListPingEvent`（`AsyncEvent`，读线程上派发，不可取消）、按事件的值写 JSON；五个字段的默认值与改法列表——MOTD 按字面进文本组件，样本取 play 态前 12 人、关了「允许在服务器列表中显示」的写作 `Anonymous Player`，`hide-online-players` 只去样本（与原版同义），`setMaxPlayers` 低于真实上限抛 `IllegalArgumentException`；图标校验（PNG 签名、首块 `IHDR`、64×64、≤ 16,384 B，依据是 26.2 客户端读 status JSON 的 32,767 字符上限），配置的图标在进程创建时读一次，不合规拒绝起服；响应超过 32,767 字符时引擎不截断；`:plugin-api` 没有新类型与方法。**`API-PROD-016`** 线程契约加服务器列表事件的线程一条（`package-info` 与 `docs/PLUGINS.md` §10 同步）。§5 `REQ-PROD-037` 行补图标拒启、样本与 max 不得改低；§19 加「图标不合规拒绝起服」「隐藏在线玩家只去样本」两条场景；§26 6D 组写出实际改动的文件，冲突表 `ConnectionManager.java` 行加 6D；§28.3 加 `docs/DESIGN.md` `REQ-005` 删除清单 `ping` 一项的改法 | Bearisbug |
 | 2026-09-25 | v0.9（6E） | 按第 6 波 6E 的实现回写视距与休眠。**G36**（`REQ-PROD-039`）：`API-PROD-019` 加「视距的规则」一条：玩家上限取 2～32、默认 32 即不限；告诉客户端的视距 = min(实例视距, 玩家上限)，`JoinGame` 发出生实例的这个值，之后它一变就先于区块环增删发 `UpdateViewDistance`（上限改了、实例视距改了、换到视距不同的实例三种来源）；上限在任何线程设、由玩家下一个 tick 应用，`Instance#viewDistance(int)` 在调用方线程上当场改各玩家、只能在 tick 调度线程上调；原「视距」一条的 `JoinGamePacket` 改指这条规则；插件经转导出的引擎 `Player` 调用，`PluginContext` 不加方法。**G37**（`REQ-PROD-040`）：`API-PROD-019` 加休眠的规则、多 tick 线程与开销三条：`DormancyPolicy#tickInterval(entity, 最近玩家距离)` 就是钩子，在实体自己的 tick 线程上、设策略后第一个 tick 与之后每 5 tick 调用；跳过的 tick 不跑移动、方块接触、`update`、`EntityTickEvent` 与药水，调度器照跑；间隔大于 1 期间不发定时位置同步、醒来补发一次，跑的 tick 上的移动照发相对移动包；玩家不能休眠；距离取 tick 调度线程在分发前拍的 `PlayerPositions` 快照，`grid` 下各 tick 线程读同一份；2,000 实体 × 200 玩家实测机制本身每 tick 约 0.046 ms。§5 两条 REQ 按实现改写；§15 新增「实体休眠」行（整 tick CPU 977 → 381 µs）；§16 加三行（休眠判距、别的线程设上限或策略、改实例视距）；§19 加四条场景（上限进 `JoinGame`、5 tick 内醒来、多 tick 线程判距、休眠中移动照发移动包）；§26 6E 组补上实际改动的文件、写明不改 `ServerConfig.java`；§28.2 新增玩家上限不收窄实体可见范围一条 Open Question，包缓冲池一条技术债补上 `SocketWriteStateTransitionIntegrationTest` 偶发红的一个来源（与真 socket 测试并行时借到撑大的缓冲） | Bearisbug |
+| 2026-09-25 | v0.9（6F） | 按第 6 波 6F（`REQ-PROD-041`，G38 翻译键门禁）的实现回写设计。新增 **`API-PROD-029`**：插件面给 `SynaxisPlugin` 加默认方法 `translationKeys()`（默认空集合，插件实现的接口只能加默认方法，`API_VERSION` 仍为 2），门禁是 `:architecture-tests` 的 `TranslationKeyGateTest`，随 `./gradlew check` 在 CI 跑。键的来源比原 §24 写的「`DisconnectReasons`、`DisconnectKeys` 与插件声明的键」宽：取 classpath 上本仓全部主类常量池里整串是 `synaxis:<路径>` 的字符串常量，宿主命令回执、`synaxis:banned-until`、`synaxis:server-stopping-in` 这类不住在两个键类里的键也在内；去掉 7 个非文字标识（两个插件消息频道、两个 Redis 频道、转服 Cookie 键、维度类型、烘焙器的标记方块），名单里的名字没有类再用时门禁也失败；再加插件声明的键。现有 51 个键两份语言文件都有。写明两条约束：键只能以完整常量或字面量出现，运行时拼出的键门禁看不见；门禁只看本仓 classpath 上的插件。语言目录经参数提供器传给门禁，缓存键里只有它的相对路径。模组测试里手写的服务端键清单（按功能的六个测试类与 `ClientHandshakeTest` 的一条）删除，由门禁取代。§5 `REQ-PROD-041` 的接口列、§10 权限矩阵加 `API-PROD-029` 一行、§19 加两条场景（同命名空间的非文字标识不算键、插件声明的键缺译文）、§24 翻译键门禁与 ABI 门两条同步；§28.3 加两行：`docs/DESIGN-M2.md` `API-M2-007` 的新方法；`docs/DESIGN-M3.md` §24 写明 `:baker`、`:synx` 与游戏模块里新增的 `synaxis:` 非文字标识（如数据标记的 handler 命名空间）要同一提交进门禁名单。同批改 `docs/PLUGINS.md`，新增 §11「发给玩家的文字」 | Bearisbug |
 
 ## 2. 背景 / 目标 / 非目标
 
@@ -173,7 +174,7 @@
 | REQ-PROD-038 | 压缩阈值与级别可配：默认阈值 256、级别 6 | G35 | 运营 | P2 | `API-PROD-020` |
 | REQ-PROD-039 | 每玩家服务端视距上限（2～32）：区块环按 min(客户端, 实例, 玩家上限)；JoinGame 改发实例视距与玩家上限的小者，之后它一变就发 UpdateViewDistance；插件经 `:plugin-api` 转导出的 `Player` 调用 | G36 | 运营 | P2 | `API-PROD-019` |
 | REQ-PROD-040 | 实体休眠机制：每实体的休眠开关（设或清休眠策略）+ 按最近玩家距离分档的钩子（在实体自己的 tick 线程上调用），`grid` 多 tick 线程下同一 tick 各线程按同一份玩家位置判距；AI 降频由插件在钩子里做 | G37 | 运营 | P2 | `API-PROD-019` |
-| REQ-PROD-041 | 多语言约定与翻译键检查：服务端只发翻译键与参数；CI 检查服务端引用的 `synaxis:*` 与插件键在 `zh_cn`、`en_us` 都存在 | G38 | 运营 | P2 | 无对外 API，见 §24 翻译键门禁 |
+| REQ-PROD-041 | 多语言约定与翻译键检查：服务端只发翻译键与参数；CI 检查服务端引用的 `synaxis:*` 与插件键在 `zh_cn`、`en_us` 都存在 | G38 | 运营 | P2 | `API-PROD-029`；§24 翻译键门禁 |
 | REQ-PROD-042 | 原生 AES-CFB8 / 压缩（velocity-native）：生产机型上加密 + 压缩占用超过 1 个核的 10% 时才引入 | G39 | 条件 | P3 | 无对外 API，见 `ADR-PROD-011` 与 §21 `synaxis_cipher_cpu_seconds_total` |
 | REQ-PROD-043 | keep-alive 收尾：`socketTimeout` 对 `SocketChannel` 无效，走弃用流程删除；keep-alive 超时断线改用 `synaxis:keep-alive-timeout` 键 | G40 | 条件 | P2 | `API-PROD-003` |
 | REQ-PROD-044 | 假 sessionserver：`record` 模式只对客户端 `join` 过的 serverId 回 200（join 请求体里没有用户名，不按用户名匹配），`allow-all` 模式对任何用户名回 200；两种模式都能注入延迟、204、429、503 与超时；供 CI 与压测 | G01、G26、G27 | 阻断 | P0 | `API-PROD-027` |
@@ -676,6 +677,15 @@ erDiagram
     - 断线键：②③④⑤ 与 `version-mismatch` 回 `synaxis:transfer-rejected`；`lease-held` 与 `store-unavailable` 回 `synaxis:state-unavailable`（§14）。每次拒绝写一条 `EVT:transfer_rejected`（§20），日志带 `transfer_ref`（nonce 前 8 位 hex）。全部通过走 §11.3 `in_transit → loading`，之后与普通登录同一条载入路径。
   - 表：`transfer_nonce(nonce bytea PRIMARY KEY CHECK (octet_length(nonce) = 16), expires_at timestamptz NOT NULL)`，属 Flyway V1（§25）；清理任务 `transfer_nonce.gc`（§17）。
   - 测试向量：`server-app/src/test/resources/vectors/transfer/` 放一张已知密钥签出的票据与改过 `player_uuid`、过期、`ver` 错三张坏票据，编码与验票两侧跑同一批（§24）。
+- **`API-PROD-029` 翻译键声明（`:plugin-api`）与翻译键门禁** — 实现 `REQ-PROD-041`
+  - 插件面：`SynaxisPlugin` 加默认方法 `Set<String> translationKeys()`，默认返回空集合，列出插件发给玩家、又不是 `DisconnectKeys` 常量的翻译键（断线原因、准入拒绝、系统消息），命名空间不限。宿主不调用它；门禁在按宿主的做法（`ServiceLoader`、无参构造器）建出的实例上调用。`SynaxisPlugin` 由插件实现，按 §8 只能加默认方法。
+  - 门禁：`:architecture-tests` 的 `TranslationKeyGateTest`，随 `./gradlew check` 在 CI 的 `check` job 里跑（两个严格模式 job 的 `test` 也带上它）。放在这个项目，是因为只有它的 classpath 上同时有引擎、`:plugin-api`、宿主与插件。键集合按三步得出：
+    - ① 该 classpath 上 `io.github.bearisbug.synaxis` 包下的全部主类（引擎、`:plugin-api`、`:protocol`、`:server-app`、`:game-rts`、`:synx`、`:baker`；测试类不算）常量池里整串匹配 `synaxis:[a-z0-9_./-]+` 的字符串常量。引擎 `DisconnectReasons`、`DisconnectKeys`、宿主各命令的回执与系统消息（§14）都在此列；别的类内联的常量在两处都出现，报错时两处都列。
+    - ② 去掉非文字标识：插件消息频道 `synaxis:handshake`、`synaxis:main`，Redis 频道 `synaxis:permission`、`synaxis:moderation`（`API-PROD-006`），Cookie 键 `synaxis:transfer`（`API-PROD-028`），维度类型 `synaxis:match`，烘焙器 Anvil 源里的标记方块 `synaxis:hidden`。名单写在门禁类里，名单上的名字没有任何类再用时门禁同样失败，名单只能跟着代码减，不会留着挡住以后同名的键。新增 `synaxis:` 开头的频道、Cookie 键、数据标记的 handler 命名空间（`docs/DESIGN-M3.md` `API-M3-003`；`:baker`、`:synx` 与游戏模块的主类同在 ① 的扫描范围）或管理接口的 JSON-RPC 方法名（`API-PROD-022` 的 `synaxis:shard/drain`、`synaxis:shard/status`、`synaxis:broadcast`、`synaxis:profile`，随 6B 合入）时把它加进名单，否则门禁按缺译文报它；`synaxis:transfer` 同时是 Cookie 键与方法名，已在名单里。
+    - ③ 加上 `ServiceLoader` 找到的每个插件 `translationKeys()` 的返回值。
+  - 核对：把 `client-fabric/src/main/resources/assets/synaxis/lang/en_us.json` 与 `zh_cn.json` 按 JSON 解析成键集合，每个键缺一处报一行 `<文件> has no text for <键> (from <类名或 plugin <id>>)`，全部列完再失败。语言目录由 `architecture-tests/build.gradle.kts` 的参数提供器 `ModLanguageFiles`（`CommandLineArgumentProvider`）以系统属性 `synaxis.lang.dir` 传给测试 JVM。目录是 `test` 任务的输入（`@InputDirectory`，按相对路径取指纹）：只改语言文件时门禁也重跑，不会被判为 up-to-date。绝对路径只进 JVM 参数、不进构建缓存的键：同一提交检出在不同路径（另一份 clone、CI runner）时，门禁命中同一条缓存。通过时标准输出一行 `translation key gate: <N> keys checked against [en_us.json, zh_cn.json], 7 identifiers left out`（v0.9 时 N = 51）。
+  - 约束：键必须以完整的字符串常量或字面量出现，运行时拼出来的键（如 `"synaxis:command-" + name`）门禁看不见，不允许这样写。原版键（`multiplayer.disconnect.kicked`、`command.failed`）由原版语言文件提供，不在门禁范围。门禁只核对本仓 classpath 上的插件；仓外插件的键由插件作者把译文提交到模组的两份语言文件。模组自己选的键（`OrderFeedback` 的 `synaxis.order.*`，由带内结果码映射）不是服务端发的，仍由模组的 `OrderFeedbackTest` 核对。
+  - 取代：模组测试里手写的服务端键清单删除，即按功能写的六个测试类（`ConnectionGateTextTest`、`LoginVerificationTextTest`、`PlayerStoreTextTest`、`RoleCommandTextTest`、`ModerationTextTest`、`HostCommandTextTest`）与 `ClientHandshakeTest` 里查握手三个键的一条。它们查的每个键都在门禁的集合里；新键要有人记得手动加进清单，漏加时它们照样绿。
 
 演进与弃用：
 
@@ -773,6 +783,7 @@ erDiagram
 | `API-PROD-026` 真客户端回归 | ✗ | ✗ | ✗ | ✗ | ✗ | ✓ |
 | `API-PROD-027` 假 sessionserver | ✗ | ✗ | ✗ | ✗ | ✗ | ✓（生产配置禁止指向它：地址非 Mojang 时启动 WARN） |
 | `API-PROD-028` 转服票据 | ✓（只保存与回传 Cookie，无法解读或伪造） | ✗（经 M3 `ShardService#transfer` 间接发起） | ✓（签发与验票，持有密钥） | ✗ | ✓（配置密钥） | ✗ |
+| `API-PROD-029` 翻译键声明与门禁 | ✗ | ✓（声明自己发的键） | ✗（宿主不调用） | ✗ | ✗ | ✓（CI 门禁读） |
 
 行级可见性：
 
@@ -1957,6 +1968,16 @@ L0、L0′、accept 时的 L1 超限与握手前超时都不发包，没有键�
   When 引擎 DisconnectReasons 新增一个键但 zh_cn.json 缺它
   Then 门禁失败并列出缺的键与缺的文件
 
+场景: 与翻译键同命名空间的非文字标识不算键 (REQ-PROD-041)
+  Given 握手频道 synaxis:handshake 与转服 Cookie 键 synaxis:transfer 都不在两份语言文件里
+  When 翻译键门禁运行
+  Then 门禁不报这两个名字；把 synaxis:handshake 从非文字标识名单里去掉后，门禁失败并在两份文件下各报它一次
+
+场景: 插件声明的键缺译文 (REQ-PROD-041)
+  Given 仓内插件 rts 的 translationKeys() 返回 rts:victory，两份语言文件都没有它
+  When 翻译键门禁运行
+  Then 门禁失败，两份文件各报一行 rts:victory，来源写 plugin rts
+
 场景: 加密耗时按方向计入指标 (REQ-PROD-042)
   Given 200 人 C 档压测 600 s，一轮 --encryption on、一轮 --encryption off
   When 两轮结束各读一次 /metrics
@@ -2060,9 +2081,9 @@ L0、L0′、accept 时的 L1 超限与握手前超时都不发包，没有键�
 ## 24. 契约同步与防漂移机制
 
 - **lint 口径**：`bash ~/.claude/skills/design-doc/check.sh docs/DESIGN-PROD.md` 的 ID 类机械检查对 `REQ-PROD-*` / `API-PROD-*` / `RB-PROD-*` 生效（域段正则 `[A-Z][A-Z0-9]*` 认纯字母的 `PROD`）；定义记法同 `docs/DESIGN-M2.md` §24：需求与 Runbook 是表格首格或条目，接口是 `- **`API-PROD-001`** …` 条目。回指 `docs/DESIGN.md`、M2、M3 的 ID（`API-003`、`API-M3-011` 等）由 lint 单列 ℹ️，不计警告。零警告是交付门槛。
-- **ABI 门**：`:plugin-api` 新增的 `PlayerDataStore`、`Moderation`、`Permissions`、`PluginCommands`、`PluginLifecycle`、`Transfers` 与 `PluginScheduler` / `PluginEvents` 的新方法全部过 `checkBinaryCompatibility`（`docs/DESIGN-M2.md` §24；还没打 tag 时 CI 不传 `-PbaselineJarDir`，该任务跳过），新方法按 §8 写成默认方法；`AdmissionRequest` 加组件若被判破坏，同一 PR 把 `API_VERSION` 加到 2。
+- **ABI 门**：`:plugin-api` 新增的 `PlayerDataStore`、`Moderation`、`Permissions`、`PluginCommands`、`PluginLifecycle`、`Transfers` 与 `PluginScheduler` / `PluginEvents` 的新方法、`SynaxisPlugin#translationKeys()`（`API-PROD-029`）全部过 `checkBinaryCompatibility`（`docs/DESIGN-M2.md` §24；还没打 tag 时 CI 不传 `-PbaselineJarDir`，该任务跳过），新方法按 §8 写成默认方法；`AdmissionRequest` 加组件若被判破坏，同一 PR 把 `API_VERSION` 加到 2。
 - **ArchUnit**：① 引擎、`:plugin-api`、玩法插件不依赖 `java.sql..`、`org.postgresql..`、`com.zaxxer..`、`redis.clients..`（`ADR-PROD-012`）；② 新类 `ConnectionGate`、`SessionClient` 进 `ClientDrivenLogArchitectureTest` / `ArchitectureTest` 的检查范围，豁免名单逐条写上界；第 6 波 U 组的 `ShutdownSequence` 进宿主的豁免名单，上界是每个停机步骤每次停机至多一行 ERROR（步骤只在装配时注册，客户端碰不到）；`Watchdog` 不纳入，它的日志量只随时间走（每次卡住每 5 s 一条，与客户端发什么无关）。
-- **翻译键门禁**（`REQ-PROD-041`）：CI 扫描 `DisconnectReasons`、`DisconnectKeys` 与插件声明的键，逐个核对 `client-fabric/src/main/resources/assets/synaxis/lang/zh_cn.json` 与 `en_us.json`，缺任一即失败。
+- **翻译键门禁**（`REQ-PROD-041`、`API-PROD-029`）：`:architecture-tests` 的 `TranslationKeyGateTest` 随 `./gradlew check` 在 CI 运行，收集本仓主类里整串是 `synaxis:<路径>` 的字符串常量（`DisconnectReasons`、`DisconnectKeys`、宿主的回执与系统消息都在其中），去掉非文字标识名单，加上插件 `translationKeys()` 声明的键，逐个核对 `client-fabric/src/main/resources/assets/synaxis/lang/zh_cn.json` 与 `en_us.json`，缺任一即失败并列出键、缺的文件与来源。加断线原因或回执的键只需在两份语言文件里各加一行；加 `synaxis:` 开头的频道、Cookie 键、数据标记的 handler 命名空间（含 `:baker`、`:synx` 里的）或 JSON-RPC 方法名要进名单。
 - **配置键**：`ServerConfigTest` 的 `defaults() == fromSystemProperties()` 断言扩到全部新键；配置文件的「未知键拒绝启动」由同一张键表驱动，键表是唯一出处。
 - **数据库**：Flyway 脚本只增不改；每个版本配一份 `db/rollback/V<n>__*.down.sql`；普通 `test` 任务连 `SYNAXIS_TEST_*` 指的库跑「空库 migrate」「从上一版本 migrate」「库版本领先代码时拒绝起服」（持久化草案 P13）「migrate → 回退 SQL → migrate 正反往返」（`docs/DESIGN-M3.md` §25 口径）「`store_meta` 缺失时拒绝起服」五条（前四条在 `MigrationsDbTest`，第五条在 `MainStoreIntegrationTest`）。
 - **转服票据向量**：`API-PROD-028` 的布局只有一个事实源——`server-app` 的票据编解码类；`server-app/src/test/resources/vectors/transfer/` 的一张好票据与三张坏票据由签发与验票两侧跑同一批，改布局必须同一个 PR 里升 `ver` 并重新生成向量。
@@ -2286,6 +2307,8 @@ N/A — 本分册尚未开工。R2 封闭内测稳定运行 7 天后按 §3 三�
 | `docs/DESIGN-M2.md` | §28.2 技术债「引擎 `network.plugin` 包名歧义」 | 仍开着，只改处置一句：原写「`docs/DESIGN.md` §28 已把 `Auth.Velocity` / `Auth.Bungee` 标为技术债，清掉它们时顺带解决」，两种模式已在第 2 波 2B 删除，但包里还有 `LoginPlugin` / `LoginPluginMessageProcessor`，服务 login 阶段的登录插件消息（`synaxis.app.handshake-phase=login` 的握手走它），包名歧义没有随之消失 | 已完成（`docs/DESIGN-M2.md` v0.48） |
 | `docs/DESIGN-M2.md` | §24 ABI 门 | 写明本分册 §8（v0.7.2）已定的规则：只由宿主实现的接口标 `@ApiStatus.NonExtendable`，加抽象方法不判破坏；插件实现的接口新方法只能带默认实现；给已有接口补标注本身判破坏，只能随 `api_version` 加 1 与新 baseline tag 走。baseline 现为 `gradle/abi-baseline.tag` 指的 `v0.3.0`（本分册 v0.8.6）。v0.9 核对：`docs/DESIGN-M2.md` v0.48 只写了「加方法写成默认方法才兼容」与门禁对未标注接口判破坏，只由宿主实现的接口加抽象方法仍登记为该文档 §28.2 的 Open Question，上面这条规则还没写进 §24 | 主会话 |
 | `docs/DESIGN-M2.md` | §1 元信息「最后更新」 | v0.47 改了 `API-M2-008`，「最后更新」仍是 2026-09-23，改为 2026-09-24 | 已完成（`docs/DESIGN-M2.md` v0.48） |
+| `docs/DESIGN-M2.md` | `API-M2-007` 方法行 | `SynaxisPlugin` 多一个默认方法 `Set<String> translationKeys()`（默认空集合）：插件声明自己发给玩家的翻译键，宿主不调用，由翻译键门禁读（本分册 `API-PROD-029`，v0.9） | 主会话 |
+| `docs/DESIGN-M3.md` | §24 契约同步与防漂移机制 | 加一条：`:baker`、`:synx` 与游戏模块的主类都在翻译键门禁（本分册 `API-PROD-029`，v0.9）的扫描范围里，常量池里整串是 `synaxis:<路径>` 的字符串都按翻译键核对。在这些模块里新增这种形状的非文字标识（数据标记的 handler 命名空间、方块或格式里的名字；`synaxis:hidden` 已在名单）时，同一提交把它加进 `architecture-tests` 的 `TranslationKeyGateTest#NOT_TEXT` 并写明用途，否则 `./gradlew check` 按两份语言文件缺译文报它 | M3 会话 |
 | `docs/DESIGN-M3.md` | `REQ-M3-015`、`API-M3-009`、`ADR-M3-006` | 只提需求并引用 `API-PROD-016`；线程数改为核数 − 2 | 已完成（M3 v0.4） |
 | `docs/DESIGN-M3.md` | §4 分片宿主 `ShardMain`、`API-M3-006`、`API-M3-009`、`API-M3-010` | 写明 `ShardMain` 已由本分册 5D 建在 `server-app`（启动脚本 `bin/server-shard`，经 `Main` 起服），目前只写线程两项；M3 往里加视距、模拟距离、卸载宽限与 `accept-transfers`，并按本分册 §28.2 那条待办写入区块上限 4 与可见上限 100。`API-M3-009` 的线程号公式引用 `API-PROD-016` 的 `3x + z` | 已完成（M3 v0.7） |
 | `docs/DESIGN-M3.md` | `REQ-M3-018`、`API-M3-012`、§11.4 `ENT-StateLease`、`ADR-M3-009`、§16 租约三行、§2「外部依赖只有 PostgreSQL」、§17 PostgreSQL 行 | 引用 `API-PROD-004` / `API-PROD-005` / 本分册 §11.3 / `ADR-PROD-003` / `ADR-PROD-004`；外部依赖加 Valkey 8（可丢） | 已完成（M3 v0.4） |

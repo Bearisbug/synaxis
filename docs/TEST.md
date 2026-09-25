@@ -14,6 +14,7 @@
 
 | 日期 | 改动 | 作者 |
 | --- | --- | --- |
+| 2026-09-25 | 跟进 `docs/DESIGN-PROD.md` v0.9.9（修复轮），修 §28.2 的停机保存缺陷。**新增 §4「生产就绪 · 第 6 波修复轮：没进世界的玩家赶上停机保存」两条**：`TC-PROD-460`（`REQ-PROD-008`，新类 `ShutdownSaveBeforeSpawnIntegrationTest` 三条：已进 PLAY 没进世界、还在 configuration 的玩家在保存阶段内断开都照样保存且钩子恰 1 次，保存阶段结束后的断线不调钩子不写库；修复前的红写进第 2 步，三条反证：断开不接手快照、保存阶段结束后仍写、接手时不调钩子）、`TC-PROD-461`（真进程，TC-GAME-034 第 3 步同一操作加台账判据，反证下 10 次里 8 次等满 30 s）。§5 加对应一行。`ConfigFileLaunchTest` 结束 JVM 那处的注释删去「立即停机会等满 30 s」的理由，用例本身不变 | Bearisbug |
 | 2026-09-25 | 跟进 `docs/DESIGN-PROD.md` v0.9（集成修复），第 6 波验收后审查出的三个缺陷。**`TC-PROD-382`** 标题加「分片的在超出的那一片断开」；第 2 步反证原写的构造器调用已不在代码里，改为经 `proof.never` 把 `BoundedDraft` 换成库自带的 `Draft_6455()`，重跑结果不变；新增第 3 步（新类 `ManagementFragmentsIntegrationTest`：恰 65,536 B 分三片照常执行，三个非结束片累计过上限即 1009）与第 4 步反证（换回只在首片与结束片上比的 `Draft_6455(List.of(), MAX_MESSAGE_BYTES)`，红在 `:96`）。**`TC-PROD-392`** 标题加「读不出进程的环境变量」，新增第 6 步（新类 `ProfilerTest`）与第 7 步反证（`expected: <0> but was: <84>`）。**`TC-PROD-174`** 新增第 3～5 步：`PlayerStoreIntegrationTest` 两条（被放弃那次的释放还没提交时，同账号第二次登录保有自己取得的写权；同一登录被放弃两次只释放一次）与两条反证。**`TC-PROD-376`** 新增第 4、5 步：转入的登录在同账号被放弃那次的释放还没提交时，保有 ⑥ 取得的写权。两个存储测试类的全类计数随之改：`PlayerStoreIntegrationTest` 21 → 23（`TC-PROD-214` 第 2、3 步），`TransferTicketsIntegrationTest` 6 → 7（`TC-PROD-157` 第 1～3 步，其中第 3 步红 5 → 6 条；`TC-PROD-376` 第 1、2 步；`TC-PROD-377` 第 3 步）；这几步的反证都在集成分支上重跑过，新用例排在类末，原有红行号不变。**`TC-PROD-395`** 第 2 步红行 `ManagementServer.java:208` → `:212`（该文件加了 3 个导入与一行注释），已重跑。§5 第 6 波 U 组一行的触发条件加 `PlayerStore#abandon` 与 `admitted` 的放弃判定 | Bearisbug |
 | 2026-09-25 | 登记 RUN-036（第 6 波集成分支验收，证据 `docs/test-runs/RUN-036/`）。跟进 `docs/DESIGN-PROD.md` v0.9：本表与 §4 各节里按组写的「v0.9（U）」「v0.9（6D）」等引用改为验收重编的 v0.9.1～v0.9.8。D 组记在 `docs/test-runs/_pending-wave6/closures.txt` 的结案记录原样并入 RUN-036 的证据，该目录删去。用例判据一条没改 | Bearisbug |
 | 2026-09-25 | 跟进 `docs/DESIGN-PROD.md` v0.9.8（6C，`REQ-PROD-033` 配置文件、`REQ-PROD-038` 压缩阈值与级别）。**新增 §4「生产就绪 · 第 6 波 6C：配置文件与压缩设置」六条 `TC-PROD-440`～`TC-PROD-445`**，都带实跑过的反证：文件的键在命令行没给时生效、命令行优先、文件压过分片默认值、未知键带最近的已知键拒启且一个键都不设（440，§19 场景；两条反证：去掉 `else` 让文件压过命令行、删掉未知键判断）；配置键门禁 `ConfigKeyGateTest`（441，§24；三条反证：删掉表里的 `synaxis.compression-level`、表里加一个没人读的键、`logback.xml` 换键名）；真 JVM 下分片入口读文件，日志去向、`JvmFlags`、`ServerConfig` 都拿到文件的值，文件的阈值 512 与级别 3 上线（442，§19 场景；三条反证：`LOGGER` 挪到 `CONFIG_FILE` 之前、`ShardMain` 先写默认值、`Deflater` 池不按级别建）；真 JVM 下未知键让两个入口都拒启（443；反证：`main` 不看拒启）；真 socket 下阈值边界、引擎默认 256 与 6 级、阈值 0（444，§19 场景；三条反证：进程不取配置的阈值、`>=` 改 `>`、负阈值放行）；发行版真进程（445；反证同 442 第 2 步，经 `installDist`）。§5 加本节的回归映射 | Bearisbug |
@@ -5702,6 +5703,41 @@ for (var request : System.getenv("MGMT_CALLS").split("\n")) {
 
 后置：每次都已按 pid 停服；25672 无监听；`$W` 已删；`git status --short` 无输出。
 
+### 生产就绪 · 第 6 波修复轮：没进世界的玩家赶上停机保存
+
+对应 `REQ-PROD-008`（`API-PROD-007` 插件一条，§11.4 `gate_closed → saving` 动作，§16 停机保存与断线事件一行，§19「没进世界的玩家在停机保存阶段断开照样保存」），`docs/DESIGN-PROD.md` v0.9.9（修复轮），§28.2 该行已决。缺陷：已准入、还没进世界的玩家赶上停机，停机在它的 `PlayerDisconnectEvent` 派发之前进入保存阶段时，保存等满 30 s、这份登出保存丢失（RUN-036 的 TC-GAME-034 第 3 步）。修复在 `PlayerStore#loggedOut`：被停机冻结、还没快照的玩家断开时，由派发断线事件的线程调 `onShutdownSave` 并快照。
+
+`TC-PROD-460` 是 JUnit，要 3A 一节的数据库前置，「跑 `<类>`」与反证规矩同 3A 一节；类是 `io.github.bearisbug.synaxis.app.store.ShutdownSaveBeforeSpawnIntegrationTest`（下称「本类」，3 条，约 1 s），先后由测试自己定：断开 → `saveAll` → 再推进 tick，不靠睡眠碰运气。`TC-PROD-461` 起真进程。
+
+#### `TC-PROD-460` 停机保存阶段内断开的没进世界的玩家照样保存，保存阶段结束后的断线不写 — 对应 `REQ-PROD-008` · 级别: 回归 · 执行者: AI
+
+前置：数据库前置满足；工作副本干净。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑本类 | `tests="3"` 0 失败 0 跳过。三条都是载入、`admitted`、`coins=6` 标脏的玩家，注册一个停机钩子。`aPlayerThatLeftInPlayBeforeItSpawnedIsSavedWhenTheTickReportsIt`：配置结束、排进进世界队列后断开，随即 `saveAll(30 s, true)`，此时断线事件还没派发、future 未完成；推进 tick 后 future 完成，断线事件恰派发 1 次，钩子恰 1 次（钩子写的 `note=hook` 与之前的 `coins=6` 一起落库），库里 `version=1`、`{"note": "hook", "coins": 6}`、租约为空，`shutdown_saved` 含 `online=1`、`saved=1`、`failed=0`、`timed_out=false`，存储放下该玩家。`aPlayerThatLeavesInConfigurationAfterTheSaveFrozeItIsSavedByItsDisconnect`：还在 configuration，`saveAll` 之后断开（断线事件当场派发），结果同上，段为 `{"note": "", "coins": 6}`。`aDisconnectReportedAfterTheSavePhaseWritesNothing`：`saveAll` 后不推进 tick 直接 `onSaveEnded(true)`，再断开并推进 5 个 tick：钩子 0 次，`version=0`、段为空、租约仍是本会话，没有 `save_fenced` |
+| 2 | 修复前的红：**只回退实现、保留测试**，`git checkout <修复提交>^ -- server-app/src/main/java/io/github/bearisbug/synaxis/app/store/PlayerStore.java`（`<修复提交>` 是改 `PlayerStore#loggedOut` 的那个提交，它的父提交是 `c4d9c4ad34`），跑本类，再 `git checkout HEAD -- <同一文件>` | `3 tests completed, 2 failed`：红在 `ShutdownSaveBeforeSpawnIntegrationTest.java:97` `not within 10 s: the tick that reports the disconnect takes the shutdown snapshot` 与 `:124` `not within 10 s: the disconnect takes the shutdown snapshot`；第三条绿（它守的是修复前就有的行为）。诊断时在同一回退下对第一条的场景多看了一步（临时代码，未提交；读数记在 `docs/DESIGN-PROD.md` §28.2 该行）：推进 20 个 tick 后断线事件已派发、钩子 0 次、库里 `version=0`，手动调一次该玩家的 `scheduler().processTick()` 保存立即完成，即快照一直排在从不执行的实体调度器上 |
+| 3 | 反证有齿（断开不接手停机快照）：`PlayerStore#loggedOut` 的 `if (shutdownSave != null && !saveEnded) {` 改为 `if (shutdownSave != null && !saveEnded && Boolean.getBoolean("proof.never")) {`，跑本类，再还原 | `3 tests completed, 2 failed`，红行与消息同第 2 步。还原后复绿 |
+| 4 | 反证有齿（保存阶段结束后仍写）：同一行改为 `if (shutdownSave != null) {`，跑本类，再还原 | `3 tests completed, 1 failed`：红在 `:153` `no save hook after the save phase ==> expected: <[]> but was: <[Late]>`（断开时仍调钩子并写库）。还原后复绿 |
+| 5 | 反证有齿（接手时不调钩子）：同一 `if` 块里的 `shutdownSnapshot(record, shutdownSave, true);` 改为 `…, false);`，跑本类，再还原 | `3 tests completed, 2 failed`：红在 `:101` `the save hook runs once ==> expected: <[Hasty]> but was: <[]>` 与 `:127` `… expected: <[Early]> but was: <[]>`。还原后复绿 |
+| 6 | 还原后重跑第 1 步，再跑 `io.github.bearisbug.synaxis.app.store.ShutdownSaveIntegrationTest` 与 `io.github.bearisbug.synaxis.app.store.PlayerStoreIntegrationTest` | 三个类 `tests="3"`、`tests="4"`、`tests="23"`，都 0 失败（`TC-PROD-155` 第 1 步、`TC-PROD-214` 第 2 步不受影响） |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PROD-461` 真进程：探针登录后立刻断开、随即 `stop`，10 次都不等满保存预算 — 对应 `REQ-PROD-008` · 级别: 回归 · 执行者: AI
+
+与 TC-GAME-034 第 3 步同一操作，这里补上台账判据与真进程反证。
+
+前置：`./gradlew :server-app:installDist --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts`；端口 25697 与指标端口 9464 空闲；shell 里没有 `JAVA_TOOL_OPTIONS`；探针用 `.venv` 里的 Python 跑 `tools/protocol-probe/probe.py`（下称 `<probe>`）。`<run>` 指 `java -Xmx1G -Dsynaxis.app.port=25697 -Dsynaxis.app.auth=offline -Dsynaxis.connection-gate.trusted-networks=127.0.0.0/8 -cp "<仓库根>/server-app/build/install/server-app/lib/*" io.github.bearisbug.synaxis.app.Main`（玩法模式、内存存储），每次在新的临时目录里起，stdin 接一个 FIFO，stdout 与 stderr 进 `out.log`。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 连做 10 次：`<run>` 到 `out.log` 出现 `synaxis server-app listening on 0.0.0.0:25697`；`<probe> --port 25697 login --hold 0`；探针一退出就往 FIFO 写 `stop`，计时到进程退出；看退出码、`grep -c ' ERROR ' out.log`、台账 `logs/events-local-*.jsonl` 里 `shutdown_saved` 一行的 `online`、`saved`、`failed` | 10 次探针都 `state=play`、退出码 0；进程都在 15 s 内退出（本机 0.43～0.50 s）、退出码 0，`out.log` 0 行 ERROR（没有 `The shutdown save did not complete within its budget` 与 `Not saved on shutdown`）、没有线程转储；台账每次 `failed=0`。`online=1`、`saved=1` 的那几次是保存阶段先于断线事件开始、由断线事件接手快照的（本机 10 次里 6 次），其余 `online=0`（登出保存先到） |
+| 2 | 反证有齿（真进程）：照 `TC-PROD-460` 第 3 步改 `PlayerStore.java`，重新 `installDist`，重做第 1 步；再 `git checkout --` 该文件、重新 `installDist` | 改动下至少 1 次等满预算：本机 10 次里 8 次从 `stop` 到退出 30.4～30.5 s，各记两行 ERROR `The shutdown save did not complete within its budget, going on with the shutdown.` 与 `Not saved on shutdown, its lease runs out with the session: character_id=1`，退出码仍为 0；另 2 次 0.46 s |
+| 3 | 还原后重做第 1 步 | 与第 1 步相同（本机两轮共 20 次，0 次等满，都在 0.43～0.50 s 退出） |
+
+后置：每次都已按 pid 停服、关掉 FIFO 的写端并删掉临时目录；25697 无监听；`git status --short` 无输出。
+
 ## 5. 回归策略
 
 - **全量轮**（全部用例）：首次成稿、每个阶段 gate（引擎域阶段 0、2、3；游戏域 `docs/DESIGN-M2.md` §26 的阶段 1～6b；大世界域 `docs/DESIGN-M3.md` §26 的 M3-A～M3-G）、跨功能域改动、地基变更（JDK、Gradle、镜像、协议版本、模块拆分、启动入口）。
@@ -5738,6 +5774,7 @@ for (var request : System.getenv("MGMT_CALLS").split("\n")) {
   - 生产就绪域（`docs/DESIGN-PROD.md`）：翻译键门禁（`REQ-PROD-041`）→ TC-PROD-430～TC-PROD-434；动了模组的 `en_us.json` / `zh_cn.json`、任何含 `synaxis:` 字符串常量的主类（`DisconnectReasons`、`DisconnectKeys`、宿主的命令回执与系统消息、新的频道或 Cookie 键）、`:architecture-tests` 的 `TranslationKeyGateTest` 与夹具或 `architecture-tests/build.gradle.kts` 就跑 TC-PROD-430 第 1～4 步与 TC-PROD-431～TC-PROD-433；动了 `SynaxisPlugin` 跑 TC-PROD-433、TC-PROD-434 与 TC-PROD-163；删改模组测试时跑 TC-PROD-430 第 5 步。跨域牵连：给引擎或宿主加断线原因、回执或系统消息的键 → 加 TC-PROD-430 第 1 步（按功能写的译文用例 TC-PROD-068、TC-PROD-105、TC-PROD-162、TC-PROD-210、TC-PROD-233、TC-PROD-250 与 TC-PROD-295 第 3、4 步跑的是同一个门禁）。
   - 生产就绪域（`docs/DESIGN-PROD.md`）：管理接口与性能剖析（`REQ-PROD-032`、`REQ-PROD-034`）→ TC-PROD-380～TC-PROD-397；动了 `server-app` 的 `management/` 就跑 TC-PROD-380～TC-PROD-391、TC-PROD-393、TC-PROD-395（TC-PROD-390 要数据库前置），再动了 `Main` 里管理接口的装配或起服顺序加 TC-PROD-397（真进程，约 2 分钟）；动了 `Profiler` 或 `HostCommands` 的 `profile`、`claimStop`、`startStop` 就跑 TC-PROD-389、TC-PROD-391、TC-PROD-392 与 TC-PROD-243、TC-PROD-255；动了 `logback.xml` 跑 TC-PROD-394 与 TC-PROD-004；动了模组 lang 或 `TranslationKeyGateTest` 跑 TC-PROD-396；动了 `HostModeration#activeBans` 跑 TC-PROD-390；升 Java-WebSocket 版本时全跑，并重看 TC-PROD-381 第 1 步（被拒握手的回应是否仍是 404 且逐字节相同）与 TC-PROD-383（库是否已自带握手前的上限）。
   - 生产就绪域（`docs/DESIGN-PROD.md`）：配置文件与压缩设置（`REQ-PROD-033`、`REQ-PROD-038`）→ TC-PROD-440～TC-PROD-445；动了 `server-app` 的 `ConfigFile` 或 `Main` 读文件、报拒启的几处就跑 TC-PROD-440～TC-PROD-443，再动了 `Main` 的静态字段顺序、起服顺序或 `logback.xml` 加 TC-PROD-445（真进程，约 1 分钟）；动了 `ShardMain#main` 跑 TC-PROD-440、TC-PROD-442、TC-PROD-443 与 TC-PROD-333、TC-PROD-334；给任何模块加、删或改名一个 `synaxis.*` 系统属性（`ServerConfig#fromSystemProperties`、`JvmFlags`、各包的 JVM 级开关、宿主与 RTS 插件读的键、`logback.xml` 的替换）就跑 TC-PROD-441，并在同一提交里改 `ConfigFile.KEYS` 与 `docs/DESIGN-PROD.md` `API-PROD-023` 的键表；动了 `ServerConfig#compressionThreshold`、`ServerProcessImpl` 取阈值的一处、`JvmFlags.COMPRESSION_LEVEL`、`NetworkBufferImpl` 的 `Deflater` 池、`PacketWriting#writeCompressedFormat` 或 `PlayerSocketConnection#startCompression` 就跑 TC-PROD-444 与 TC-PROD-442。跨域牵连：动了 `HostMetrics` 的指标名 → 加 TC-PROD-441（门禁按 `HostMetrics.NAMES` 认指标名）；动了引擎的压缩路径 → 加 TC-PROD-291（开了压缩的连接的解压字节限速）。
+  - 生产就绪域（`docs/DESIGN-PROD.md`）：第 6 波修复轮，没进世界的玩家赶上停机保存（`REQ-PROD-008`）→ TC-PROD-460、TC-PROD-461；动了 `PlayerStore` 的 `loggedOut`、`saveAll`、`shutdownSnapshot` 或 `onSaveEnded` 就跑 TC-PROD-460（要数据库前置）与 TC-PROD-155、TC-PROD-214 第 2 步，再动了停机序列（引擎 `ServerProcessImpl#save`、宿主 `ShutdownSequence`）加 TC-PROD-461（真进程，第 1 步约 1 分钟，第 2 步的反证约 5 分钟）。跨域牵连：动了引擎 `PlayerConnection#disconnect`、`ConnectionManager#leftBeforeSpawn` / `updateWaitingPlayers` 的断线派发 → 加 TC-PROD-460 与 TC-PROD-461。
   - 影响面不确定时升级为全量轮。
 - **复测轮**（上轮失败用例 + 全部冒烟级）：修复失败项之后。
 - **人工收口轮**（仅上轮「待人工」用例）：AI 轮之后由人工补测 TC-016、TC-030、TC-GAME-020、TC-GAME-038、TC-GAME-046、TC-GAME-047，不要求冒烟级。

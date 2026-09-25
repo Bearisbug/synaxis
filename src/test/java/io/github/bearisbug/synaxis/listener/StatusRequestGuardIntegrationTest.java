@@ -13,6 +13,9 @@ import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -24,7 +27,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 public class StatusRequestGuardIntegrationTest {
 
     @Test
-    public void onlyTheFirstStatusRequestIsAnswered(Env env) {
+    public void onlyTheFirstStatusRequestIsAnswered(Env env) throws ExecutionException, InterruptedException {
         final List<SendablePacket> sent = new ArrayList<>();
         final PlayerConnection connection = new PlayerConnection(env.process()) {
             @Override
@@ -38,11 +41,18 @@ public class StatusRequestGuardIntegrationTest {
             }
         };
 
-        StatusListener.requestListener(new StatusRequestPacket(), connection);
+        onAReadThread(() -> StatusListener.requestListener(new StatusRequestPacket(), connection));
         assertEquals(1, sent.size());
 
-        StatusListener.requestListener(new StatusRequestPacket(), connection);
+        onAReadThread(() -> StatusListener.requestListener(new StatusRequestPacket(), connection));
         assertEquals(1, sent.size(), "a repeated status request must not be answered");
         assertFalse(connection.isOnline(), "the connection must be dropped");
+    }
+
+    /** A virtual thread like the read thread of a socket connection: the server list event is an {@code AsyncEvent}. */
+    private static void onAReadThread(Runnable task) throws ExecutionException, InterruptedException {
+        try (ExecutorService readThread = Executors.newVirtualThreadPerTaskExecutor()) {
+            readThread.submit(task).get();
+        }
     }
 }

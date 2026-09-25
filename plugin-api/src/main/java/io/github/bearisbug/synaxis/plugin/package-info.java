@@ -17,7 +17,9 @@
  *     scheduler thread, one task after another: logic a plugin runs there every tick is the serial
  *     part of the tick, and a plugin that has to scale splits it by cell or by entity;</li>
  *     <li>{@link io.github.bearisbug.synaxis.plugin.PluginScheduler#runAsync} runs on a virtual
- *     thread of its own and touches no entity and no instance.</li>
+ *     thread of its own and touches no entity and no instance;</li>
+ *     <li>the server list event {@code ServerListPingEvent} runs on the read thread of the
+ *     connection that asked, a virtual thread, and changes nothing but the event.</li>
  * </ul>
  */
 @NotNullByDefault

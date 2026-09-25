@@ -57,6 +57,11 @@ public record ServerConfig(
         int maxPlayers,
         int maxJoinsPerTick,
 
+        // Server list (docs/DESIGN-PROD.md API-PROD-024), the icon is a path, empty for none
+        String motd,
+        String serverIcon,
+        boolean hideOnlinePlayers,
+
         // Chat (docs/DESIGN-PROD.md API-PROD-008): a token bucket per connection
         int chatRatePerSecond,
         int chatBurst,
@@ -154,6 +159,8 @@ public record ServerConfig(
         if (playerChunkUpdateLimiterHistorySize < 0)
             throw new IllegalArgumentException(
                     "playerChunkUpdateLimiterHistorySize must not be negative but was " + playerChunkUpdateLimiterHistorySize);
+        Objects.requireNonNull(motd, "motd");
+        Objects.requireNonNull(serverIcon, "serverIcon");
         if (chatRatePerSecond < 1 || chatBurst < 1)
             throw new IllegalArgumentException("the chat rate and burst must be at least 1 but were "
                     + chatRatePerSecond + " and " + chatBurst);
@@ -244,6 +251,9 @@ public record ServerConfig(
                         DEFAULTS.connectionGateTrustedNetworks))
                 .maxPlayers(intProperty("synaxis.max-players", DEFAULTS.maxPlayers))
                 .maxJoinsPerTick(intProperty("synaxis.max-joins-per-tick", DEFAULTS.maxJoinsPerTick))
+                .motd(System.getProperty("synaxis.motd", DEFAULTS.motd))
+                .serverIcon(System.getProperty("synaxis.server-icon", DEFAULTS.serverIcon))
+                .hideOnlinePlayers(booleanProperty("synaxis.hide-online-players", DEFAULTS.hideOnlinePlayers))
                 .chatRatePerSecond(intProperty("synaxis.chat-rate-per-second", DEFAULTS.chatRatePerSecond))
                 .chatBurst(intProperty("synaxis.chat-burst", DEFAULTS.chatBurst))
                 .packetLimitWindow(longProperty("synaxis.packet-limit.window-ms", DEFAULTS.packetLimitWindow))
@@ -400,6 +410,9 @@ public record ServerConfig(
         private String connectionGateTrustedNetworks = "";
         private int maxPlayers = 0; // 0 means no limit
         private int maxJoinsPerTick = 0; // 0 means no limit
+        private String motd = "synaxis";
+        private String serverIcon = ""; // no icon
+        private boolean hideOnlinePlayers = false;
         private int chatRatePerSecond = 1;
         private int chatBurst = 3;
         // Twice the P99 of the packets one walking bot sent in 7 s in the 200 bot baseline, 291
@@ -475,6 +488,9 @@ public record ServerConfig(
             this.connectionGateTrustedNetworks = config.connectionGateTrustedNetworks;
             this.maxPlayers = config.maxPlayers;
             this.maxJoinsPerTick = config.maxJoinsPerTick;
+            this.motd = config.motd;
+            this.serverIcon = config.serverIcon;
+            this.hideOnlinePlayers = config.hideOnlinePlayers;
             this.chatRatePerSecond = config.chatRatePerSecond;
             this.chatBurst = config.chatBurst;
             this.packetLimitWindow = config.packetLimitWindow;
@@ -666,6 +682,21 @@ public record ServerConfig(
 
         public Builder maxJoinsPerTick(int maxJoinsPerTick) {
             this.maxJoinsPerTick = maxJoinsPerTick;
+            return this;
+        }
+
+        public Builder motd(String motd) {
+            this.motd = motd;
+            return this;
+        }
+
+        public Builder serverIcon(String serverIcon) {
+            this.serverIcon = serverIcon;
+            return this;
+        }
+
+        public Builder hideOnlinePlayers(boolean hideOnlinePlayers) {
+            this.hideOnlinePlayers = hideOnlinePlayers;
             return this;
         }
 
@@ -867,6 +898,7 @@ public record ServerConfig(
                     maxConnections, acceptBackoff, maxConnectionsPerIp, handshakeTimeout, loginRatePerIp,
                     loginBurstPerIp, statusRatePerIp, statusBurstPerIp, transferRatePerIp, transferBurstPerIp,
                     connectionGateTrustedNetworks, maxPlayers, maxJoinsPerTick,
+                    motd, serverIcon, hideOnlinePlayers,
                     chatRatePerSecond, chatBurst,
                     packetLimitWindow, packetLimitMaxPackets, packetLimitAction, packetLimitOverrides,
                     maxInflatedBytesPerSecond, tabCompleteRatePerSecond, maxOutboundBacklogBytes, tabLatencyInterval,

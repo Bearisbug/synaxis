@@ -1,6 +1,7 @@
 package io.github.bearisbug.synaxis.listener.preplay;
 
 import io.github.bearisbug.synaxis.event.server.ClientPingServerEvent;
+import io.github.bearisbug.synaxis.event.server.ServerListPingEvent;
 import io.github.bearisbug.synaxis.monitoring.EventsJFR;
 import io.github.bearisbug.synaxis.network.StatusResponse;
 import io.github.bearisbug.synaxis.network.packet.client.common.ClientPingRequestPacket;
@@ -17,7 +18,9 @@ public final class StatusListener {
             connection.disconnect();
             return;
         }
-        connection.sendPacket(new ResponsePacket(StatusResponse.json(connection.process())));
+        final ServerListPingEvent event = StatusResponse.event(connection);
+        connection.process().eventHandler().call(event);
+        connection.sendPacket(new ResponsePacket(StatusResponse.json(event)));
         EventsJFR.newServerPing(connection.getRemoteAddress().toString()).commit();
     }
 

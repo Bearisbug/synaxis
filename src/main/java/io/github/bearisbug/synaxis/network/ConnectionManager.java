@@ -36,6 +36,7 @@ import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.nio.file.Path;
 import java.security.KeyPair;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -79,9 +80,17 @@ public final class ConnectionManager {
     private final @Nullable SessionClient sessionClient;
     private final TrafficCounters traffic = new TrafficCounters();
     private final InboundPacketLimits inboundLimits;
+    private final @Nullable Favicon serverIcon;
 
+    /**
+     * Creates the connection manager of a process.
+     *
+     * @param process the process
+     * @throws IllegalArgumentException if {@code synaxis.server-icon} names a file that is not a valid icon
+     */
     public ConnectionManager(ServerProcess process) {
         this.process = process;
+        this.serverIcon = serverIcon(process.config().serverIcon());
         this.inboundLimits = InboundPacketLimits.of(process.config());
         this.cachedTagsPacket = new CachedPacket(() -> Registries.tagsPacket(process.registries()));
         this.gate = new ConnectionGate(process.config());
@@ -137,6 +146,25 @@ public final class ConnectionManager {
     @ApiStatus.Internal
     public InboundPacketLimits inboundLimits() {
         return inboundLimits;
+    }
+
+    /**
+     * The server list icon of {@code synaxis.server-icon}, read once when the process is created,
+     * null when none is configured ({@code docs/DESIGN-PROD.md} {@code API-PROD-024}).
+     */
+    @ApiStatus.Internal
+    public @Nullable Favicon serverIcon() {
+        return serverIcon;
+    }
+
+    private static @Nullable Favicon serverIcon(String path) {
+        if (path.isEmpty()) return null;
+        try {
+            return Favicon.read(Path.of(path));
+        } catch (IllegalArgumentException e) {
+            // A misconfigured icon refuses the start rather than going unnoticed in the server list
+            throw new IllegalArgumentException("synaxis.server-icon is not a valid icon: " + e.getMessage(), e);
+        }
     }
 
     // All players once their Player object has been instantiated.

@@ -422,4 +422,41 @@ class TransferTicketsIntegrationTest {
         nonce[0] = (byte) seed;
         return nonce;
     }
+
+    @Test
+    void aTicketArrivingWhileAnAbandonedLoginGivesItsLeaseBackKeepsTheLeaseItClaims(Env env) throws Exception {
+        final StoreFixture.Shard source = shard(env, SOURCE);
+        final StoreFixture.ReleaseHeld backend = new StoreFixture.ReleaseHeld(pool);
+        final StoreFixture.Shard target = StoreFixture.shard(env, pool, TARGET, true, RedisLink.disabled(TARGET),
+                StoreFixture.FAST, StoreFixture.MANUAL, backend);
+        shards.add(target);
+        final TicketIssuer issuer = new TicketIssuer(source.store(), KEYS, new TransferCooldowns(5_000, sourceClock::get), SOURCE);
+        final UUID account = UUID.randomUUID();
+        final Player player = online(env, source, env.createFlatInstance(), account, "Swapper");
+        final byte[] good = transferOut(env, issuer, player);
+        final long released = TransferTicket.decode(good, KEYS).stateVersion();
+        player.getPlayerConnection().disconnect();
+        await(env, player::isRemoved, "the transferred player leaves the source");
+
+        // An ordinary login of the same account loaded on the target, which the admission gate abandons;
+        // its release statement is still on its way to the database when the transfer arrives
+        final Player ordinary = connect(env.process(), account, "Swapper");
+        assertTrue(target.store().load(ordinary), "the ordinary login loads");
+        backend.holdNextRelease();
+        final CompletableFuture<Void> abandoned = CompletableFuture.runAsync(() -> target.store().abandon(ordinary),
+                Thread.ofVirtual()::start);
+        assertTrue(backend.releasing.await(5, TimeUnit.SECONDS), "the release is under way");
+        final Player arrived = arriving(env, account, good);
+        final TicketVerifier verifier = verifier(target);
+        final CompletableFuture<Boolean> arrivedLoaded = CompletableFuture.supplyAsync(
+                () -> arrive(target, verifier, arrived), Thread.ofVirtual()::start);
+        Thread.sleep(300);
+        backend.letGo.countDown();
+        abandoned.get(5, TimeUnit.SECONDS);
+        assertTrue(arrivedLoaded.get(5, TimeUnit.SECONDS), "the transfer loads");
+
+        assertEquals(target.sessionId(), row(database, account).lease(), "the transfer holds the lease its ticket claimed");
+        assertEquals(1, count(database, "SELECT count(*) FROM transfer_nonce"));
+        assertEquals(released, target.store().versionOf(arrived), "the version the ticket was issued at");
+    }
 }

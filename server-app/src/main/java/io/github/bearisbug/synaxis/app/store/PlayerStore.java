@@ -475,8 +475,12 @@ public final class PlayerStore implements ShutdownParticipant {
      */
     public void admitted(Player player) {
         final Record record = records.get(player);
-        if (record == null || record.state != LeaseState.LOADING) return;
-        record.state = LeaseState.ONLINE;
+        if (record == null) return;
+        synchronized (record) {
+            // Abandoned meanwhile by its logout
+            if (record.state != LeaseState.LOADING) return;
+            record.state = LeaseState.ONLINE;
+        }
         autosaveOrder.add(record);
         redis.presence(record.account, sessionId(), "online");
     }
@@ -488,12 +492,22 @@ public final class PlayerStore implements ShutdownParticipant {
      * @param player the player
      */
     public void abandon(Player player) {
-        final Record record = records.remove(player);
-        if (record == null) return;
-        record.state = LeaseState.OFFLINE;
+        final Record record = records.get(player);
+        if (record != null) abandon(record);
+    }
+
+    /** {@code loading → offline} without a write; false if it was no longer loading: admitted, or abandoned already. */
+    private boolean abandon(Record record) {
+        synchronized (record) {
+            if (record.state != LeaseState.LOADING) return false;
+            record.state = LeaseState.OFFLINE;
+        }
+        // Released while still listed: a login of the same account that comes meanwhile waits for
+        // this one to be gone before it takes the lease under this session, so this release cannot
+        // give back the lease that login takes (§11.3 end)
         releaseQuietly(record.characterId);
-        redis.clearPresence(record.account);
-        record.gone.complete(null);
+        finished(record, LeaseState.OFFLINE);
+        return true;
     }
 
     private static boolean refuse(Player player, String cause) {
@@ -928,10 +942,8 @@ public final class PlayerStore implements ShutdownParticipant {
     private void loggedOut(Player player) {
         final Record record = records.get(player);
         if (record == null) return;
-        if (record.state == LeaseState.LOADING) {
-            abandon(player);
-            return;
-        }
+        // Admitted meanwhile, it goes on to the logout save below
+        if (record.state == LeaseState.LOADING && abandon(record)) return;
         final CompletableFuture<SaveResult> droppedTransfer;
         synchronized (record) {
             switch (record.state) {

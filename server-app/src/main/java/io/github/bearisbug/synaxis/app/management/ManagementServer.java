@@ -10,10 +10,13 @@ import org.java_websocket.WebSocketAdapter;
 import org.java_websocket.WebSocketImpl;
 import org.java_websocket.drafts.Draft;
 import org.java_websocket.drafts.Draft_6455;
+import org.java_websocket.enums.Opcode;
 import org.java_websocket.enums.ReadyState;
 import org.java_websocket.exceptions.InvalidDataException;
+import org.java_websocket.exceptions.LimitExceededException;
 import org.java_websocket.exceptions.WebsocketNotConnectedException;
 import org.java_websocket.framing.CloseFrame;
+import org.java_websocket.framing.Framedata;
 import org.java_websocket.handshake.ClientHandshake;
 import org.java_websocket.handshake.ServerHandshakeBuilder;
 import org.java_websocket.server.DefaultWebSocketServerFactory;
@@ -39,9 +42,10 @@ import java.util.concurrent.TimeoutException;
  * <p>
  * The token is checked while the upgrade request is read, so a peer without it never gets a
  * WebSocket and nothing it sends is ever parsed as JSON-RPC. A message longer than
- * {@value #MAX_MESSAGE_BYTES} bytes closes the connection with 1009 before it runs; before the
- * handshake, a request longer than {@value #MAX_HANDSHAKE_BYTES} bytes or one not finished within
- * 5 s closes the socket, two bounds the library does not set on its own.
+ * {@value #MAX_MESSAGE_BYTES} bytes closes the connection with 1009 before it runs, a fragmented one
+ * at the fragment that takes it past the limit; before the handshake, a request longer than
+ * {@value #MAX_HANDSHAKE_BYTES} bytes or one not finished within 5 s closes the socket, two bounds
+ * the library does not set on its own.
  */
 public final class ManagementServer implements AutoCloseable {
 
@@ -145,7 +149,7 @@ public final class ManagementServer implements AutoCloseable {
         final CompletableFuture<Void> bound = new CompletableFuture<>();
 
         Endpoint(ManagementSettings settings, ManagementMethods methods, Duration handshakeDeadline) {
-            super(settings.bind(), 1, List.of(new Draft_6455(List.of(), MAX_MESSAGE_BYTES)));
+            super(settings.bind(), 1, List.of(new BoundedDraft()));
             this.settings = settings;
             this.methods = methods;
             setDaemon(true);
@@ -215,6 +219,35 @@ public final class ManagementServer implements AutoCloseable {
             } catch (InterruptedException _) {
                 Thread.currentThread().interrupt();
             }
+        }
+    }
+
+    /**
+     * RFC 6455 with the length of a fragmented message checked at every fragment. Java-WebSocket
+     * checks it at the first and the last fragment only and keeps every fragment in between, so a
+     * peer that never sends the last one would have it buffer until the heap is full.
+     */
+    private static final class BoundedDraft extends Draft_6455 {
+        // Each connection gets its own copy, read by that connection's one decoder thread: the bytes
+        // of the message whose fragments are coming in
+        private long messageBytes;
+
+        BoundedDraft() {
+            super(List.of(), MAX_MESSAGE_BYTES);
+        }
+
+        @Override
+        public Draft copyInstance() {
+            return new BoundedDraft();
+        }
+
+        @Override
+        public void processFrame(WebSocketImpl conn, Framedata frame) throws InvalidDataException {
+            final Opcode opcode = frame.getOpcode();
+            if (opcode == Opcode.TEXT || opcode == Opcode.BINARY) messageBytes = frame.getPayloadData().remaining();
+            else if (opcode == Opcode.CONTINUOUS) messageBytes += frame.getPayloadData().remaining();
+            if (messageBytes > MAX_MESSAGE_BYTES) throw new LimitExceededException(MAX_MESSAGE_BYTES);
+            super.processFrame(conn, frame);
         }
     }
 

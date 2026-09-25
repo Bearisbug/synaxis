@@ -814,4 +814,65 @@ class PlayerStoreIntegrationTest {
         ((Logger) LoggerFactory.getLogger(PlayerStore.class)).detachAppender(appender);
         appender.stop();
     }
+
+    @Test
+    void aLoginComingWhileAnAbandonedLoginGivesItsLeaseBackKeepsTheLeaseItTakes(Env env) throws Exception {
+        final StoreFixture.ReleaseHeld backend = new StoreFixture.ReleaseHeld(pool);
+        final StoreFixture.Shard shard = StoreFixture.shard(env, pool, "r1-c1", false, RedisLink.disabled("r1-c1"),
+                StoreFixture.FAST, StoreFixture.MANUAL, backend);
+        shards.add(shard);
+        final StoreFixture.Shard other = shard(env, "r2-c1");
+        final UUID account = UUID.randomUUID();
+        final Player first = connect(env.process(), account, "Again");
+        assertTrue(shard.store().load(first), "the first login loads");
+
+        // The admission gate abandons it; its release statement is still on its way to the database
+        backend.holdNextRelease();
+        final CompletableFuture<Void> abandoned = CompletableFuture.runAsync(() -> shard.store().abandon(first),
+                Thread.ofVirtual()::start);
+        assertTrue(backend.releasing.await(5, TimeUnit.SECONDS), "the release is under way");
+        final Player second = new Player(new StoreFixture.RecordingConnection(env.process()),
+                new GameProfile(account, "Again"));
+        final CompletableFuture<Boolean> secondLoaded = CompletableFuture.supplyAsync(() -> shard.store().load(second),
+                Thread.ofVirtual()::start);
+        sleep(300);
+        backend.letGo.countDown();
+        abandoned.get(5, TimeUnit.SECONDS);
+        assertTrue(secondLoaded.get(5, TimeUnit.SECONDS), "the second login loads");
+        shard.store().admitted(second);
+
+        assertEquals(shard.sessionId(), row(database, account).lease(), "the second login holds the lease it took");
+        final Player elsewhere = new Player(new StoreFixture.RecordingConnection(env.process()),
+                new GameProfile(account, "Again"));
+        assertFalse(other.store().load(elsewhere), "so no other shard loads the character meanwhile");
+    }
+
+    @Test
+    void aLoginAbandonedTwiceGivesItsLeaseBackOnce(Env env) throws Exception {
+        final StoreFixture.ReleaseHeld backend = new StoreFixture.ReleaseHeld(pool);
+        final StoreFixture.Shard shard = StoreFixture.shard(env, pool, "r1-c1", false, RedisLink.disabled("r1-c1"),
+                StoreFixture.FAST, StoreFixture.MANUAL, backend);
+        shards.add(shard);
+        final UUID account = UUID.randomUUID();
+        final Player first = connect(env.process(), account, "Twice");
+        assertTrue(shard.store().load(first), "the first login loads");
+
+        // Its logout abandons it while its release is on its way, then the admission gate abandons it too
+        backend.holdNextRelease();
+        final CompletableFuture<Void> loggedOut = CompletableFuture.runAsync(() -> shard.store().abandon(first),
+                Thread.ofVirtual()::start);
+        assertTrue(backend.releasing.await(5, TimeUnit.SECONDS), "the release is under way");
+        shard.store().abandon(first);
+        final Player second = new Player(new StoreFixture.RecordingConnection(env.process()),
+                new GameProfile(account, "Twice"));
+        final CompletableFuture<Boolean> secondLoaded = CompletableFuture.supplyAsync(() -> shard.store().load(second),
+                Thread.ofVirtual()::start);
+        sleep(300);
+        backend.letGo.countDown();
+        loggedOut.get(5, TimeUnit.SECONDS);
+        assertTrue(secondLoaded.get(5, TimeUnit.SECONDS), "the second login loads");
+        shard.store().admitted(second);
+
+        assertEquals(shard.sessionId(), row(database, account).lease(), "the second login holds the lease it took");
+    }
 }

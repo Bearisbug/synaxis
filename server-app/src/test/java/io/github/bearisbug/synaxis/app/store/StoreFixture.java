@@ -31,7 +31,9 @@ import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BooleanSupplier;
 
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -240,6 +242,53 @@ final class StoreFixture {
              ResultSet row = select.executeQuery()) {
             row.next();
             return row.getInt(1);
+        }
+    }
+
+    /**
+     * The database, with the next release statement held once asked to: it stays on its way to
+     * the database until the test lets it go.
+     */
+    static final class ReleaseHeld implements StoreBackend {
+        final CountDownLatch releasing = new CountDownLatch(1);
+        final CountDownLatch letGo = new CountDownLatch(1);
+        private final AtomicBoolean holdNext = new AtomicBoolean();
+        private final PostgresBackend postgres;
+
+        ReleaseHeld(Database pool) {
+            this.postgres = new PostgresBackend(pool.pool());
+        }
+
+        void holdNextRelease() {
+            holdNext.set(true);
+        }
+
+        @Override
+        public LoadOutcome load(UUID account, String name, long sessionId) throws SQLException {
+            return postgres.load(account, name, sessionId);
+        }
+
+        @Override
+        public void write(long sessionId, List<Write> writes) throws FencedException, SQLException {
+            postgres.write(sessionId, writes);
+        }
+
+        @Override
+        public void release(long characterId, long sessionId) throws SQLException {
+            if (holdNext.compareAndSet(true, false)) {
+                releasing.countDown();
+                try {
+                    letGo.await();
+                } catch (InterruptedException e) {
+                    throw new AssertionError(e);
+                }
+            }
+            postgres.release(characterId, sessionId);
+        }
+
+        @Override
+        public void releaseAccount(UUID account, long sessionId) throws SQLException {
+            postgres.releaseAccount(account, sessionId);
         }
     }
 }

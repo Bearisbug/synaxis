@@ -12,6 +12,8 @@ import java.time.Clock;
 import java.time.Duration;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
 /**
@@ -19,6 +21,10 @@ import java.util.concurrent.CompletableFuture;
  * {@code API-PROD-011}), shared by the {@code profile} command and the management method
  * {@code synaxis:profile} ({@code API-PROD-022}): the JDK's own {@code profile} settings for a
  * given number of seconds, written to {@code profiles/profile-<shard_id>-<UTC time>.jfr}.
+ * <p>
+ * One event of those settings is off: {@code jdk.InitialEnvironmentVariable} writes every
+ * environment variable of the process in clear, the {@code SYNAXIS_*} secrets among them, into a
+ * file that is handed over for analysis.
  * <p>
  * Only one runs at a time. The wait and the write happen on a virtual thread; a recording still
  * running when the process ends is dropped with it.
@@ -33,6 +39,7 @@ public final class Profiler {
     public static final int MAX_SECONDS = 600;
 
     private static final String SETTINGS = "profile";
+    private static final String ENVIRONMENT = "jdk.InitialEnvironmentVariable#enabled";
     private static final DateTimeFormatter STAMP = DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss-SSS")
             .withZone(ZoneOffset.UTC);
 
@@ -89,12 +96,14 @@ public final class Profiler {
         if (running != null) return new Busy(running);
         final Path path = directory.resolve("profile-" + shardId + "-" + STAMP.format(clock.instant()) + ".jfr");
         Files.createDirectories(directory);
-        final Recording recording;
+        final Map<String, String> settings;
         try {
-            recording = new Recording(Configuration.getConfiguration(SETTINGS));
+            settings = new HashMap<>(Configuration.getConfiguration(SETTINGS).getSettings());
         } catch (ParseException e) {
             throw new IOException("the JFR settings '" + SETTINGS + "' cannot be read", e);
         }
+        settings.put(ENVIRONMENT, "false");
+        final Recording recording = new Recording(settings);
         recording.setName("synaxis-profile");
         recording.start();
         running = path;

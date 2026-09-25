@@ -444,3 +444,96 @@ RUN-036 记录（2026-09-25，第 6 波验收人侧）
   四个 java 进程（两台服务端、两个假服务）都按 pid 停掉；TC-PROD-334 的七次起服（第 1～4 步五次，第 5 步反证与还原各一次；其中 hex 那次拒启）都按 pid 停掉或自行退出，25654 无监听。
   /tmp/w6acc（环境脚本、计数脚本、Gradle 日志、ABI jar、两个服务端临时目录、三次客户端输出与截图）在提交前删除。
   git status 除本轮的文档改动外无其他改动。
+
+十二、验收后修复（2026-09-25，集成修复：验收后审查出的三个缺陷，DESIGN-PROD v0.9（集成修复））
+
+被测版本：prod/integrate-w6 的 fd21b2130e 加本节的改动（与本节同一提交）。改的代码只有 server-app：
+  command/Profiler.java、management/ManagementServer.java、store/PlayerStore.java；测试新增 command/ProfilerTest、
+  management/ManagementFragmentsIntegrationTest，store/PlayerStoreIntegrationTest 多两条、TransferTicketsIntegrationTest 多一条，
+  StoreFixture 加一个让下一次释放语句停住的后端 ReleaseHeld。新用例都排在类末，原有用例的行号不变。
+机器同上；本节各段 load1 在 3.3～14.6 之间。命令都带 --no-daemon 与 <mirror>，数据库环境同第二节。
+
+  1. profile 的 .jfr 带着进程全部环境变量的明文（阻断）
+    修法：Profiler#start 用 Configuration.getConfiguration("profile").getSettings() 的副本，
+      放入 jdk.InitialEnvironmentVariable#enabled=false，再 new Recording(settings)。其余 JDK 设置不动。
+    ./gradlew :server-app:test --tests '…command.ProfilerTest' → tests="1" 0 失败：
+      Profiler#start(1) 写出的文件里 jdk.InitialEnvironmentVariable 0 个，jdk.InitialSystemProperty 多于 0 个
+    反证（TC-PROD-392 第 7 步）：settings.put(ENVIRONMENT, "false") 改为只在 proof.never 时执行
+      → 1 test completed, 1 failed
+        ProfilerTest.java:36  the environment of the process, its secrets among them, is not in the file ==> expected: <0> but was: <84>
+      还原后复绿。审查人的探针另以随机的 SYNAXIS_MANAGEMENT_TOKEN 实测过该变量明文在文件里（equals_env=true），本节没有重做。
+
+  2. 管理接口的分片消息只在首片与结束片上比上限（主要）
+    修法：ManagementServer 的 WebSocketServer 改用 Draft_6455 的子类 BoundedDraft：processFrame 在交给父类之前，
+      TEXT / BINARY 帧把累计长度置为本帧长度，CONTINUOUS 帧累加，超过 65,536 即抛 LimitExceededException(65536)，
+      库照常以 1009 关闭；copyInstance 返回新的 BoundedDraft，每条连接一份计数。
+    ./gradlew :server-app:test --tests '…management.ManagementFragmentsIntegrationTest' → tests="1" 0 失败：
+      恰 65,536 B 的请求分 30,000 / 30,000 / 5,536 B 三片发完得结果 0；三个 30,000 B 级的非结束片、不发结束片 → 关闭码 1009；
+      台账只有第一条请求
+    反证（TC-PROD-382 第 4 步）：List.of(new BoundedDraft()) 改为
+      List.of(Boolean.getBoolean("proof.never") ? new BoundedDraft() : new Draft_6455(List.of(), MAX_MESSAGE_BYTES))（即改动前），
+      跑本类与 ManagementIntegrationTest → 14 tests completed, 1 failed
+        ManagementFragmentsIntegrationTest.java:96（ManagementClient.java:121）  the connection is still open after PT10S
+        ManagementIntegrationTest 13 个全绿（单帧与两片的 65,537 B 仍由库在首片 / 结束片上拒掉），三片恰 65,536 B 的那条也绿
+      还原后复绿。
+    TC-PROD-382 第 2 步原写的 new Draft_6455(List.of(), MAX_MESSAGE_BYTES) 已不在代码里，改为
+      ? new BoundedDraft() : new Draft_6455() 重跑 ManagementIntegrationTest → 13 tests completed, 1 failed，
+      红在 ManagementIntegrationTest.java:495（ManagementClient.java:121）the connection is still open after PT10S，与原预期相同；还原后复绿。
+    TC-PROD-395 第 2 步（onError 直接 LOGGER.warn）重跑 ClientDrivenLogArchitectureTest → 2 tests completed, 1 failed，
+      红行由 ManagementServer.java:208 变为 :212（本文件加了 3 个导入与一行类注释）；还原后复绿。
+
+  3. 载入后被放弃的登录先移出在册表、再释放（主要）
+    修法：PlayerStore#abandon 先在记录锁里把 loading 改为 offline（不是 loading 就什么都不做，登出与准入闸门两次放弃只有一次生效），
+      再执行释放语句，最后 finished(record, OFFLINE)（移出在册表、清 presence、完成 gone）；admitted 在同一把锁里判定 loading → online；
+      loggedOut 遇到 loading 时只有放弃成功才返回，否则（刚被准入）照常走登出保存。
+    ./gradlew :server-app:test --tests '…store.PlayerStoreIntegrationTest' --tests '…store.TransferTicketsIntegrationTest'
+      → 23 个 0 失败、7 个 0 失败，两类 skipped="0"。新增三条都用 ReleaseHeld 让放弃时的释放停住，300 ms 后放行：
+        aLoginComingWhileAnAbandonedLoginGivesItsLeaseBackKeepsTheLeaseItTakes：第二次登录保有写权，另一分片载入同一账号被拒
+        aLoginAbandonedTwiceGivesItsLeaseBackOnce：同一登录被放弃两次，第二次登录仍保有写权
+        aTicketArrivingWhileAnAbandonedLoginGivesItsLeaseBackKeepsTheLeaseItClaims：转入的登录保有 ⑥ 取得的写权、nonce 1 行、版本等于票据
+    反证 a（TC-PROD-174 第 4 步，改动前的顺序）：abandon(Record) 里 releaseQuietly 与 finished 两行对调 → 30 tests completed, 3 failed
+        PlayerStoreIntegrationTest.java:844  the second login holds the lease it took ==> expected: <1> but was: <null>
+        PlayerStoreIntegrationTest.java:876  the second login holds the lease it took ==> expected: <1> but was: <null>
+        TransferTicketsIntegrationTest.java:458  the transfer holds the lease its ticket claimed ==> expected: <2> but was: <null>
+      与审查人探针的两句红（expected: <1> / <2> but was: <null>）同形。还原后复绿。
+    反证 b（TC-PROD-174 第 5 步，不判定由谁放弃）：if (record.state != LeaseState.LOADING) return false; 改为只在 proof.never 时判定
+      → 30 tests completed, 1 failed：只有 PlayerStoreIntegrationTest.java:876 aLoginAbandonedTwiceGivesItsLeaseBackOnce，
+      expected: <1> but was: <null>。还原后复绿。
+
+  4. 两个存储测试类多了用例，引用全类计数的反证在本分支重跑（改动均已还原，git status 只剩本节改动）
+    TC-PROD-157 第 2 步（TicketVerifier#claim 两处加 && proof.never）→ 7 tests completed, 2 failed，红在 :239、:260，同原预期
+    TC-PROD-157 第 3 步（TicketIssuer 先 transfer 再 storeCookie）→ 7 tests completed, 6 failed，六条发票据的用例都红在 :180
+      the cookie is stored before the transfer（多出的一条是新增的转入用例）
+    TC-PROD-376 第 2 步（验票在占位之前）→ 7 tests completed, 2 failed，红在 :365、:413，同原预期；新增的转入用例绿
+    TC-PROD-377 第 3 步（占位提前到验票开始）→ 7 tests completed, 1 failed，红在 :413，同原预期
+    TC-PROD-214 第 3 步（leftBeforeSpawn 不交给 tick）→ 引擎 4 tests completed, 2 failed（PlayerRemoveIntegrationTest.java:96
+      Expected 1 element(s), got 0）；server-app 23 tests completed, 1 failed（PlayerStoreIntegrationTest.java:190
+      not within 10 s: the logout save lets the player go），同原预期
+
+  5. 全量
+    ./gradlew check jacocoTestReport --rerun-tasks（带数据库环境）
+      起止 2026-09-25T14:08:27Z → 2026-09-25T14:11:25Z，BUILD SUCCESSFUL in 2m 57s，107 actionable tasks: 107 executed
+      architecture-tests 7 / 20、baker 4 / 52、根模块 418 / 3101（skipped 15）、game-rts 12 / 83、loadtest 3 / 10、plugin-api 3 / 15、
+      protocol 4 / 78、server-app 53 / 319、synx 7 / 42、testing 7 / 10（类 / 测试），全部 0 失败 0 错误，每个模块最早的时间戳都晚于起跑
+      合计 3,730 个（比第二节多 5 个新用例），15 跳过都在根模块
+      CI 点名的 7 个存储测试类：PlayerStoreIntegrationTest 23 / 0、ShardSessionDbTest 4 / 0、MigrationsDbTest 5 / 0、
+        CrossShardHandoverIntegrationTest 6 / 0、ShutdownSaveIntegrationTest 4 / 0、TransferTicketsIntegrationTest 7 / 0、StoreHousekeepingDbTest 3 / 0
+      EnvDispatcherThreadsIntegrationTest：env dispatcher threads: 1、env thread provider: counter
+    新增行覆盖（CI 的 diff-cover 门，--compare-branch=HEAD 即只算本节改动，同一组 src-roots，--fail-under=80）：
+      Profiler.java 100%、ManagementServer.java 100%、PlayerStore.java 100%；Total 28 lines，Missing 0，Coverage 100%
+    counter：./gradlew test --rerun --continue -Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true
+      起止 14:12:12Z → 14:14:31Z，BUILD SUCCESSFUL in 2m 19s；十个模块 3,730 个 0 失败、15 跳过；
+      env dispatcher threads: 4、env thread provider: counter
+    grid：同上再加 -Dsynaxis.thread-provider=grid
+      起止 14:14:42Z → 14:17:00Z，BUILD SUCCESSFUL in 2m 18s；3,730 个 0 失败、15 跳过；
+      env dispatcher threads: 4、env thread provider: grid
+    ABI 门：gh release download v0.3.0 取 plugin-api.jar、protocol.jar 到仓库外的临时目录，
+      ./gradlew :plugin-api:checkBinaryCompatibility :protocol:checkBinaryCompatibility -PbaselineJarDir=<该目录>
+      → 两个任务都执行（没有「无 baseline」行），BUILD SUCCESSFUL，0 处违规；本节没改这两个模块
+    lint：design-doc check.sh 对 DESIGN-PROD.md「✅ lint 无警告」，与改动前逐行相同；
+      test-doc check.sh 对 TEST.md 的输出与改动前逐行相同（仍是 RUN-031 两行「失败项缺证据引用」与 REQ-PROD-031 无 TC 引用）
+
+  6. TC 结果：TC-PROD-157、174、214、376、377、382、392、395 的新步骤与改过计数的步骤在本节都通过，本轮 RUN-036 汇总行与明细行不变。
+
+  7. 环境与回收：没有新建镜像、容器或卷，复用 synaxis-pg、synaxis-valkey；没有起真进程。
+    /tmp/synx-fix（环境脚本、Gradle 日志、Java-WebSocket 源码包、ABI jar、diff-cover 用的临时 .venv）在提交前删除。

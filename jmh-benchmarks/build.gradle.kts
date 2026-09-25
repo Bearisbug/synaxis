@@ -10,6 +10,8 @@ val worldbench: SourceSet by sourceSets.creating
 dependencies {
     implementation(libs.fastutil)
     jmhImplementation(project(":"))
+    // EntityDormancyBenchmark ticks a whole process with players in it, which :testing sets up
+    jmhImplementation(project(":testing"))
     jmh(libs.jmh.core)
     jmhAnnotationProcessor(libs.jmh.annotationprocessor)
 

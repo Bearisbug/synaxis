@@ -53,6 +53,7 @@ import io.github.bearisbug.synaxis.instance.Chunk;
 import io.github.bearisbug.synaxis.instance.EntityTracker;
 import io.github.bearisbug.synaxis.instance.Instance;
 import io.github.bearisbug.synaxis.instance.InstanceManager;
+import io.github.bearisbug.synaxis.instance.PlayerPositions;
 import io.github.bearisbug.synaxis.instance.block.Block;
 import io.github.bearisbug.synaxis.coordinate.BlockFace;
 import io.github.bearisbug.synaxis.instance.block.BlockHandler;
@@ -131,6 +132,10 @@ public class Entity implements Viewable, Tickable, Schedulable, EventHandler<Ent
 
     private static final AtomicInteger LAST_ENTITY_ID = new AtomicInteger();
 
+    // How often a dormancy policy is asked again, see #sitsOutTick(): a player coming near wakes the entity
+    // within this many ticks
+    private static final int DORMANCY_EVALUATION_TICKS = 5;
+
     // Protected due to PointersSupplier.Builder#parent
     protected static final PointersSupplier<Entity> ENTITY_POINTERS_SUPPLIER = PointersSupplier.<Entity>builder()
             .resolving(Identity.DISPLAY_NAME, (entity) -> entity.get(DataComponents.CUSTOM_NAME))
@@ -203,6 +208,11 @@ public class Entity implements Viewable, Tickable, Schedulable, EventHandler<Ent
     protected final EntityView viewEngine = new EntityView(this);
     private volatile @Nullable TrackingRange trackingRange;
     private volatile boolean alwaysVisible;
+    private volatile @Nullable DormancyPolicy dormancyPolicy;
+    // The tick thread of this entity only, see #sitsOutTick()
+    private @Nullable DormancyPolicy appliedDormancyPolicy;
+    private int dormancyInterval = 1;
+    private long dormancyClock;
     protected final Set<Player> viewers = viewEngine.set;
     private final TagHandler tagHandler = TagHandler.newHandler();
     @SuppressWarnings("this-escape") // deliberate self registration, entities are not usable until spawned
@@ -655,6 +665,31 @@ public class Entity implements Viewable, Tickable, Schedulable, EventHandler<Ent
         this.alwaysVisible = alwaysVisible;
     }
 
+    /**
+     * Gets the dormancy policy set by {@link #setDormancyPolicy(DormancyPolicy)}.
+     *
+     * @return the policy, null if this entity runs every tick
+     */
+    public @Nullable DormancyPolicy getDormancyPolicy() {
+        return dormancyPolicy;
+    }
+
+    /**
+     * Has this entity sit out ticks while players are far away ({@code docs/DESIGN-PROD.md}
+     * {@code API-PROD-019}): the policy gets the distance to the nearest player of the instance and says
+     * how often the entity runs its tick, see {@link DormancyPolicy} for what a tick sat out skips. No
+     * entity has a policy unless one is set.
+     * <p>
+     * Can be called from any thread; the entity applies it on its next tick.
+     *
+     * @param policy the policy, null to run every tick again
+     * @throws IllegalArgumentException if this entity is a player, which always runs every tick
+     */
+    public void setDormancyPolicy(@Nullable DormancyPolicy policy) {
+        Check.argCondition(policy != null && this instanceof Player, "A player cannot be dormant");
+        this.dormancyPolicy = policy;
+    }
+
     @Override
     public final boolean addViewer(Player player) {
         Check.stateCondition(!isActive(), "Entities must be in an instance before adding viewers");
@@ -793,35 +828,74 @@ public class Entity implements Viewable, Tickable, Schedulable, EventHandler<Ent
         this.scheduler.processTick();
         if (isRemoved()) return;
 
-        // Entity tick
-        {
-            // handle position and velocity updates
-            movementTick();
+        if (!sitsOutTick()) {
+            // Entity tick
+            {
+                // handle position and velocity updates
+                movementTick();
 
-            // handle block contacts
-            touchTick();
+                // handle block contacts
+                touchTick();
 
-            // Call the abstract update method
-            update(time);
+                // Call the abstract update method
+                update(time);
 
-            ticks++;
-            callEvent(new EntityTickEvent(this));
+                ticks++;
+                callEvent(new EntityTickEvent(this));
 
-            // remove expired effects
-            effectTick();
-        }
-        // Scheduled synchronization
-        if (ticks >= nextSynchronizationTick) {
-            if (vehicle == null) {
-                synchronizePosition();
-                sendPacketToViewers(getVelocityPacket());
-            } else {
-                synchronizeView();
-                nextSynchronizationTick = ticks + synchronizationTicks;
+                // remove expired effects
+                effectTick();
+            }
+            // Scheduled synchronization, none while dormant
+            if (dormancyInterval == 1 && ticks >= nextSynchronizationTick) {
+                if (vehicle == null) {
+                    synchronizePosition();
+                    sendPacketToViewers(getVelocityPacket());
+                } else {
+                    synchronizeView();
+                    nextSynchronizationTick = ticks + synchronizationTicks;
+                }
             }
         }
         // End of tick scheduled tasks
         this.scheduler.processTickEnd();
+    }
+
+    /**
+     * Whether the {@link #setDormancyPolicy(DormancyPolicy) dormancy policy} has this entity sit out this
+     * tick. On the tick thread of this entity, which alone keeps the state below.
+     * <p>
+     * The policy is asked on the first tick after it was set, then on the ticks where the clock plus the
+     * entity id is a multiple of {@value #DORMANCY_EVALUATION_TICKS}. With an interval of N the entity runs
+     * the ticks where the clock plus its id is a multiple of N: exactly once every N ticks, and the
+     * entities spread over them rather than all on the same tick.
+     */
+    private boolean sitsOutTick() {
+        final DormancyPolicy policy = this.dormancyPolicy;
+        if (policy == null) {
+            this.appliedDormancyPolicy = null;
+            setDormancyInterval(1);
+            return false;
+        }
+        final long clock = dormancyClock++;
+        if (policy != appliedDormancyPolicy || Math.floorMod(clock + getEntityId(), DORMANCY_EVALUATION_TICKS) == 0) {
+            final PlayerPositions players = instance.playerPositions();
+            if (players == null) {
+                // The instance takes them from its next tick on, which asks the policy again
+                this.appliedDormancyPolicy = null;
+                setDormancyInterval(1);
+                return false;
+            }
+            this.appliedDormancyPolicy = policy;
+            setDormancyInterval(Math.max(1, policy.tickInterval(this, players.nearestDistance(position))));
+        }
+        return Math.floorMod(clock + getEntityId(), dormancyInterval) != 0;
+    }
+
+    private void setDormancyInterval(int interval) {
+        // Waking up: the viewers were sent no synchronization while it was dormant, so one is due now
+        if (interval == 1 && dormancyInterval > 1) this.nextSynchronizationTick = ticks;
+        this.dormancyInterval = interval;
     }
 
     @ApiStatus.Internal
@@ -1585,7 +1659,8 @@ public class Entity implements Viewable, Tickable, Schedulable, EventHandler<Ent
         setPositionInternal(position, ignoreView ? headRotation : position.yaw());
         this.previousPosition = previousPosition;
         if (!position.samePoint(previousPosition)) refreshCoordinate(position);
-        if (nextSynchronizationTick <= ticks + 1 || !sendPackets) {
+        // A dormant entity sends no scheduled synchronization, its moves go out below
+        if ((dormancyInterval == 1 && nextSynchronizationTick <= ticks + 1) || !sendPackets) {
             // The entity will be synchronized at the end of its tick
             // not returning here will duplicate position packets
             return;

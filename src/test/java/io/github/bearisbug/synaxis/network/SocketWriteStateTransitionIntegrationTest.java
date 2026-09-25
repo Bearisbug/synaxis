@@ -9,6 +9,7 @@ import io.github.bearisbug.synaxis.testing.Env;
 import io.github.bearisbug.synaxis.testing.EnvTest;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.parallel.ResourceLock;
 
 import java.io.IOException;
 import java.net.InetAddress;
@@ -26,7 +27,14 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * retried on the next flush, so the state must only move once the packet is really written.
  */
 @EnvTest
+@ResourceLock(SocketWriteStateTransitionIntegrationTest.PACKET_POOL)
 public class SocketWriteStateTransitionIntegrationTest {
+
+    /**
+     * The pooled buffers are shared by the whole JVM: a test that grows some of them past the default
+     * size while this one runs would hand it a buffer the filler below no longer fills.
+     */
+    static final String PACKET_POOL = "io.github.bearisbug.synaxis.network.packet.PacketVanilla#PACKET_POOL";
 
     @BeforeAll
     public static void setup(Env env) { // PACKET_POOL

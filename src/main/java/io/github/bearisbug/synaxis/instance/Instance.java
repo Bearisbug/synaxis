@@ -125,6 +125,11 @@ public abstract class Instance implements Block.Getter, Block.Setter, Biome.Gett
 
     protected int chunkViewDistance;
 
+    // Where the players stood when the tick started, for the dormancy policies of the entities: taken on
+    // the tick scheduler thread before the entities tick, and only once an entity asked for it
+    private volatile @Nullable PlayerPositions playerPositions;
+    private volatile boolean playerPositionsWanted;
+
     // the uuid of this instance
     protected UUID uuid;
 
@@ -846,6 +851,22 @@ public abstract class Instance implements Block.Getter, Block.Setter, Biome.Gett
         }
         // End of tick scheduled tasks
         this.scheduler.processTickEnd();
+        // Last, so that it holds whatever the tasks above did to the players
+        if (playerPositionsWanted) this.playerPositions = PlayerPositions.of(getPlayers());
+    }
+
+    /**
+     * Gets where the players of this instance stood when the current tick started, for the dormancy
+     * policies of its entities ({@code docs/DESIGN-PROD.md} {@code API-PROD-019}). The instance takes
+     * them at the start of every tick once this was first called.
+     *
+     * @return the player positions, null until the tick after the first call
+     */
+    @ApiStatus.Internal
+    public @Nullable PlayerPositions playerPositions() {
+        final PlayerPositions positions = this.playerPositions;
+        if (positions == null && !playerPositionsWanted) this.playerPositionsWanted = true;
+        return positions;
     }
 
     /**

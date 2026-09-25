@@ -6,9 +6,10 @@
  * number of tick threads the process runs with (an MMO shard runs all cores but two, spread by
  * cells of 16 by 16 chunks):
  * <ul>
- *     <li>a callback about an entity or a player (its events, the payloads of its channels, the
- *     tasks {@link io.github.bearisbug.synaxis.plugin.PluginScheduler#runOn} hands it) runs on the
- *     tick thread that owns that entity, so the plugin may read and change that entity there;</li>
+ *     <li>a callback about an entity or a player (its events, its dormancy policy, the payloads of
+ *     its channels, the tasks {@link io.github.bearisbug.synaxis.plugin.PluginScheduler#runOn} hands
+ *     it) runs on the tick thread that owns that entity, so the plugin may read and change that
+ *     entity there;</li>
  *     <li>an effect on another entity, which may belong to another tick thread (an attack, a
  *     trade), is handed to the target with {@code runOn} and runs on the target's thread at its
  *     next tick; {@code Acquirable#sync} is only for the case where the value has to be read in

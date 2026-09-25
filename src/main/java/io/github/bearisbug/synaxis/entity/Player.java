@@ -105,6 +105,7 @@ import io.github.bearisbug.synaxis.network.packet.server.play.SetSlotPacket;
 import io.github.bearisbug.synaxis.network.packet.server.play.SpawnPositionPacket;
 import io.github.bearisbug.synaxis.network.packet.server.play.UnloadChunkPacket;
 import io.github.bearisbug.synaxis.network.packet.server.play.UpdateHealthPacket;
+import io.github.bearisbug.synaxis.network.packet.server.play.UpdateViewDistancePacket;
 import io.github.bearisbug.synaxis.network.packet.server.play.UpdateViewPositionPacket;
 import io.github.bearisbug.synaxis.network.packet.server.play.WorldEventPacket;
 import io.github.bearisbug.synaxis.network.packet.server.play.data.PlayerSpawnInfo;
@@ -173,6 +174,9 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
     // This probably should be configurable (eg an instance field). However I(matt) am unclear
     // on what it actually does so am holding off on adding API for this until I understand.
     private static final int DEFAULT_SEA_LEVEL = 63;
+    // The view distances a client can ask for, see ClientSettings
+    private static final int MIN_VIEW_DISTANCE = 2;
+    private static final int MAX_VIEW_DISTANCE = 32;
 
     private long lastKeepAlive;
     private boolean answerKeepAlive;
@@ -233,6 +237,13 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
     // every tick and each view distance change recomputes the whole ring, so this only catches up with
     // ClientSettings#viewDistance() once per tick, in #update(long)
     private int clientViewDistance;
+    // Server side cap on the view distance, see #setMaxViewDistance(int). The chunk ring was computed from
+    // maxViewDistance, which catches up with requestedMaxViewDistance like clientViewDistance does: once per tick
+    // in #update(long), or at spawn
+    private volatile int requestedMaxViewDistance = MAX_VIEW_DISTANCE;
+    private int maxViewDistance = MAX_VIEW_DISTANCE;
+    // The view distance the client was last told, by JoinGame or UpdateViewDistance
+    private int serverViewDistance;
     private float exp;
     private int level;
     private int portalCooldown = 0;
@@ -362,9 +373,12 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
         this.removed = false;
         this.dimensionTypeId = dimensionTypeRegistry.getId(spawnInstance.getDimensionType());
 
+        // The client renders at most this far, the view distance of the instance under the cap of this player
+        this.maxViewDistance = requestedMaxViewDistance;
+        this.serverViewDistance = Math.min(spawnInstance.viewDistance(), maxViewDistance);
         final JoinGamePacket joinGamePacket = new JoinGamePacket(
                 getEntityId(), this.hardcore, List.of(), 0,
-                process().config().chunkViewDistance(), process().config().chunkViewDistance(),
+                serverViewDistance, process().config().chunkViewDistance(),
                 false, true, false,
                 new PlayerSpawnInfo(dimensionTypeId, spawnInstance.getDimensionName(), 0,
                         gameMode, null, false, levelFlat,
@@ -454,13 +468,17 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
         // It is possible to be removed during packet processing, if thats the case exit immediately.
         if (isRemoved()) return;
 
-        // Apply the view distance the client ended up with, see #refreshSettings(ClientSettings)
+        // Apply the view distance the client ended up with, see #refreshSettings(ClientSettings), and the
+        // server side cap of #setMaxViewDistance(int)
         final int requestedViewDistance = settings.viewDistance();
-        if (requestedViewDistance != clientViewDistance) {
+        final int requestedMax = requestedMaxViewDistance;
+        if (requestedViewDistance != clientViewDistance || requestedMax != maxViewDistance) {
             final int previousViewDistance = clientViewDistance;
-            this.clientViewDistance = requestedViewDistance;
             final int instanceViewDistance = instance.viewDistance();
-            updateViewDistance(previousViewDistance, instanceViewDistance, instanceViewDistance);
+            final int previousServerViewDistance = Math.min(instanceViewDistance, maxViewDistance);
+            this.clientViewDistance = requestedViewDistance;
+            this.maxViewDistance = requestedMax;
+            updateViewDistance(previousViewDistance, previousServerViewDistance, instanceViewDistance);
         }
 
         // Send any available queued chunks
@@ -793,6 +811,9 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
      */
     private void spawnPlayer(Instance instance, Pos spawnPosition,
                              boolean firstSpawn, boolean dimensionChange) {
+        // JoinGame told the client the view distance of the instance it spawned in, the new one may differ.
+        // Before the ring changes, as in #updateViewDistance(int, int, int)
+        if (!firstSpawn) tellViewDistance(Math.min(instance.viewDistance(), maxViewDistance));
         if (!firstSpawn && !dimensionChange) {
             // Player instance changed, clear current viewable collections
             final int oldViewDistance = effectiveViewDistance();
@@ -1826,12 +1847,23 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
 
     @ApiStatus.Internal
     public void updateViewDistance(int oldInstanceViewDistance, int newInstanceViewDistance) {
-        updateViewDistance(clientViewDistance, oldInstanceViewDistance, newInstanceViewDistance);
+        updateViewDistance(clientViewDistance, Math.min(oldInstanceViewDistance, maxViewDistance), newInstanceViewDistance);
     }
 
-    private void updateViewDistance(int oldViewDistance, int oldInstanceViewDistance, int newInstanceViewDistance) {
-        final int previousEffective = Math.min(oldViewDistance, oldInstanceViewDistance) + 1;
-        final int newEffective = Math.min(clientViewDistance, newInstanceViewDistance) + 1;
+    /**
+     * Resizes the chunk ring and tells the client its new view distance if that changed.
+     *
+     * @param oldViewDistance       the client view distance the ring was computed from
+     * @param oldServerViewDistance the server side bound the ring was computed from: the view distance of
+     *                              the instance under the cap of this player
+     */
+    private void updateViewDistance(int oldViewDistance, int oldServerViewDistance, int newInstanceViewDistance) {
+        final int newServerViewDistance = Math.min(newInstanceViewDistance, maxViewDistance);
+        // Before the ring changes, as vanilla does: the client grows its chunk storage before the chunks
+        // arrive, and has already dropped the ones the unloads below are for
+        tellViewDistance(newServerViewDistance);
+        final int previousEffective = Math.min(oldViewDistance, oldServerViewDistance) + 1;
+        final int newEffective = Math.min(clientViewDistance, newServerViewDistance) + 1;
         if (previousEffective == newEffective) return;
 
         // The ring is resized around the center the client was last told about, not around the player:
@@ -1853,6 +1885,43 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
                 }
             });
         }
+    }
+
+    private void tellViewDistance(int viewDistance) {
+        if (viewDistance == serverViewDistance) return;
+        this.serverViewDistance = viewDistance;
+        sendPacket(new UpdateViewDistancePacket(viewDistance));
+    }
+
+    /**
+     * Caps the view distance of this player on the server side ({@code docs/DESIGN-PROD.md}
+     * {@code API-PROD-019}), where players crowd for instance.
+     * <p>
+     * The chunk ring of the player is the smallest of its client view distance, the view distance of its
+     * instance and this cap, plus one. The client is told the view distance of the instance under this cap,
+     * in {@link JoinGamePacket} and in an {@link UpdateViewDistancePacket} whenever it changes, and renders
+     * no farther than that.
+     * <p>
+     * Can be called from any thread. The player applies the latest value on its next tick, on its own tick
+     * thread, as it does with a new client view distance; before the player spawns, it applies it at spawn.
+     *
+     * @param maxViewDistance the cap in chunks, from 2 to 32; 32 leaves the view distance uncapped
+     * @throws IllegalArgumentException if the cap is out of range
+     */
+    public void setMaxViewDistance(int maxViewDistance) {
+        Check.argCondition(maxViewDistance < MIN_VIEW_DISTANCE || maxViewDistance > MAX_VIEW_DISTANCE,
+                "The view distance cap must be from {0} to {1} but was {2}",
+                MIN_VIEW_DISTANCE, MAX_VIEW_DISTANCE, maxViewDistance);
+        this.requestedMaxViewDistance = maxViewDistance;
+    }
+
+    /**
+     * Gets the cap set by {@link #setMaxViewDistance(int)}.
+     *
+     * @return the cap in chunks, 32 if none was set
+     */
+    public int getMaxViewDistance() {
+        return requestedMaxViewDistance;
     }
 
     /**
@@ -2660,9 +2729,10 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
     }
 
     /**
-     * Gets the client's 'effective' view distance, which is the minimum of the client's view distance settings, and the local instance settings, plus one
+     * Gets the client's 'effective' view distance, which is the minimum of the client's view distance settings, the local instance settings
+     * and the cap of {@link #setMaxViewDistance(int)}, plus one
      * <p>
-     * The client view distance used here is the one the chunk ring sent to the client was computed from,
+     * The client view distance and the cap used here are the ones the chunk ring sent to the client was computed from,
      * see {@link #refreshSettings(ClientSettings)}.
      *
      * @return The effective chunk view distance range of the client
@@ -2672,8 +2742,8 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
     }
 
     private int effectiveViewDistance(@Nullable Instance instance) {
-        int maxViewDistance = instance != null ? instance.viewDistance() : process().config().chunkViewDistance();
-        return Math.min(clientViewDistance, maxViewDistance) + 1;
+        final int instanceViewDistance = instance != null ? instance.viewDistance() : process().config().chunkViewDistance();
+        return Math.min(clientViewDistance, Math.min(instanceViewDistance, maxViewDistance)) + 1;
     }
 
     @SuppressWarnings("unchecked")

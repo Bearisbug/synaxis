@@ -14,6 +14,7 @@
 
 | 日期 | 改动 | 作者 |
 | --- | --- | --- |
+| 2026-09-25 | 跟进 `docs/DESIGN-PROD.md` v0.9（6E，`REQ-PROD-039` 视距上限、`REQ-PROD-040` 实体休眠）。**新增 §4「生产就绪 · 第 6 波 6E：视距上限与实体休眠」十三条 `TC-PROD-410`～`TC-PROD-422`**：`JoinGame` 发实例视距与进世界前的上限（410）、上限收窄区块环并发 `UpdateViewDistance`（411，§19 场景）、实例视距改动与换实例（412）、真 socket 下 `JoinGame` 12、`UpdateViewDistance` 6 与 12 且卸载排在包后（413）、休眠实体 100 tick 跑 5 次不发同步（414，§19 场景）、休眠期间不同步与醒来补发（415）、每 5 tick 在持有实体的 tick 线程上问策略与 5 tick 内醒来（416）、调度器照跑与清策略、玩家不能休眠、无玩家为 +∞（417）、距离取本 tick 开始时的快照（418）、4 线程 `grid` 下 169 个实体（419，连跑 10 次）、两种严格模式与属性到达测试 JVM（420）、`jmh` 实测开销（421，§15「实体休眠」行）、休眠中还在移动的实体每个跑的 tick 都发相对移动包（422，§19 场景，两种严格模式）；每条都有实跑的反证，共 19 处。§5 生产就绪域加一行回归映射。`ViewDistanceSocketTest` 与 `SocketWriteStateTransitionIntegrationTest` 共用一把 `@ResourceLock`（`TC-PROD-413` 前置写了原因），§7 那条偶发红的一个来源见 `docs/DESIGN-PROD.md` §28.2 包缓冲池一行 | Bearisbug |
 | 2026-09-25 | 跟进 `docs/DESIGN-PROD.md` v0.9（6D，`REQ-PROD-037` 服务器列表 ping）。**新增 §4「生产就绪 · 第 6 波 6D：服务器列表 ping」六条**：`TC-PROD-400`（真 socket：配置的 MOTD、图标与真实上限，引擎默认；两条反证）、`TC-PROD-401`（监听器改响应，max 改低被拒；两条反证）、`TC-PROD-402`（样本 12 人、`Anonymous Player`、`hide-online-players` 只去样本；三条反证）、`TC-PROD-403`（图标校验与拒建进程；三条反证）、`TC-PROD-404`（插件经宿主监听，拒绝按插件记一行、响应照发；一条反证）、`TC-PROD-405`（真进程：三个键、`nc` 发 status、图标不合规拒启；反证是键名写错）。`StatusRequestGuardIntegrationTest` 改在虚拟线程上调监听器（事件是 `AsyncEvent`），断言不变。§5 加这一节的回归映射 | Bearisbug |
 | 2026-09-25 | 跟进 `docs/DESIGN-PROD.md` v0.9（D）的文档收口，用例判据一条没改。**§1**：元信息「最后更新」一行混进了一条变更记录（新增 `TC-PROD-106`，2026-09-23），下面还跟着两条 2026-09-25 的变更记录与一行只有日期的残行；元信息改回「最后更新 2026-09-25」，三条变更记录按时间移进本表，残行删去，内容一字未改。**§4**：5A、5C、5D 三节开头的「本节与设计的口径差异」段删去，各条已由 `docs/DESIGN-PROD.md` v0.8 写进设计：5A 六条在 `API-PROD-015` 的计数口径与末句、`API-PROD-025` 的实现口径（积压断线计数 5B 已接上真实值，不再恒为 0）；5C 三条在 `API-PROD-019` 判定规则（范围只能在 `entity-view-distance` 的方形里收窄；重算间隔、满额拒收、乘客与载具、合并广播）与 `API-PROD-016` 配置段（`ShardMain` 写可见上限 100，v0.8.5）；5D 三条在 `API-PROD-016`（`grid(exponent, chunkX, chunkZ)` 的签名、`3x + z` 与理由、`ShardMain`）。**§7**：`CommandPacketFilteringTest` 单独运行必挂、jcstress `ObjectPoolTest` 的 NPE、`testNamingCheck` 十个命名违规三条，原文不动，标题加删除线，各补一句结案与实跑证据 | Bearisbug |
 | 2026-09-25 | 跟进 `docs/DESIGN-PROD.md` v0.9（U）。**新增 §4「生产就绪 · 第 6 波 U：宿主停机序列、转服验票串行与顶号轮询」十条 `TC-PROD-370`～`TC-PROD-379`**，都是 JUnit、各带反证：停机步骤在玩家存完后按注册顺序跑、踢人等最后一步（370）；步骤拿剩余预算（371）；步骤超时时停机线程到截止就放手、没轮到的步骤记 ERROR，`ShutdownSequence` 进宿主日志豁免名单（372，三条反证）；`tickAlive` 原样交给步骤、判死时在跑的那一步以 false 再调一次（373，两条反证）；启动后注册被拒（374）；不注册步骤时与改动前相同（375，两条反证）；同账号载入中时转入的 ⑤⑥ 等它结束（376）；过时票据不释放同账号正在玩的那次登录的写权（377，两条反证，第二条说明 §28.2 原默认值「占位提前到验票开始」不够）；顶号轮询中新连接断开即退出（378）；准入闸门上验票被拒不另记 `client_rejected`（379）。**改写 `TC-PROD-152`、`TC-PROD-157`**：顶号类由 5 条变 6 条、票据类由 4 条变 6 条；`TicketVerifier#verify` 拆成 `read` 与 `claim`，按新代码重跑 157 的两条反证后改写方法名、红的行号（`:180`、`:201` → `:239`、`:260`）与计数（`4 tests completed, 2 failed` → `6 tests completed, 2 failed`；第 3 步 `4, 3` → `6, 5`），152 第 2 步补上只跑本类时多红的一条；157 第 1 步的重放改为首次转入离开之后。§5 加本节的回归映射 | Bearisbug |
@@ -5116,6 +5117,170 @@ jcmd "$pid" VM.flags | tr ' ' '\n' | grep -cxE -- '-XX:\+UseG1GC|-XX:InitialHeap
 
 后置：每次都已按 pid 停服；25660 无监听；临时工作目录已删；`git status --short` 无输出。
 
+### 生产就绪 · 第 6 波 6E：视距上限与实体休眠
+
+对应 `REQ-PROD-039`（清单 G36，`API-PROD-019` 视距两条，§19「服务端按玩家下调视距」「进世界前设的视距上限进 JoinGame」）与 `REQ-PROD-040`（G37，`API-PROD-019` 休眠四条，§19「休眠实体跳过 tick」「休眠中还在移动的实体照发移动包」「玩家走近后休眠实体 5 tick 内醒来」「多 tick 线程下休眠按同一份玩家位置判距」，§15「实体休眠」行）。实现：
+
+- 视距：`Player#setMaxViewDistance(int)` 取 2～32，默认 32 即不限，任何线程可设、由玩家下一个 tick 应用。区块环半径 = min(客户端, 实例, 上限) + 1；告诉客户端的是 min(实例, 上限)：`JoinGamePacket` 发出生实例的这个值（原来发进程的 `synaxis.chunk-view-distance`），之后它一变就在区块环增删之前发 `UpdateViewDistancePacket`（上限改了、`Instance#viewDistance(int)` 改了、换到视距不同的实例）。插件经 `:plugin-api` 转导出的 `Player` 调用，`PluginContext` 没有新方法。
+- 休眠：`Entity#setDormancyPolicy(DormancyPolicy)`，null 即关，对玩家设非空策略抛 `IllegalArgumentException`。策略 `tickInterval(entity, 最近玩家距离)` 在实体自己的 tick 线程上被问：设了之后的第一个 tick，之后每 5 tick（按实体 ID 错开）。间隔 N 时实体只跑「时钟 + ID」为 N 的倍数的 tick；跳过的 tick 只跑调度器；N > 1 期间不发定时位置同步，醒来那个 tick 补发一次；跑的 tick 上的移动照发相对移动包（`Entity#refreshPosition` 只在每 tick 跑时才因「本 tick 末尾要定时同步」提前返回）。距离取 `Instance#tick`（tick 调度线程，分发之前）拍下的 `PlayerPositions` 快照，实例被问过才开始拍。
+- 基准：`jmh-benchmarks` 加 `EntityDormancyBenchmark`（整 tick）与 `DormancyOverheadBenchmark`（单实体一 tick 与快照），`jmh` 源集加依赖 `:testing`。
+
+「跑本节四类」指 `./gradlew :test --tests io.github.bearisbug.synaxis.entity.player.PlayerMaxViewDistanceIntegrationTest --tests io.github.bearisbug.synaxis.network.ViewDistanceSocketTest --tests io.github.bearisbug.synaxis.entity.EntityDormancyIntegrationTest --tests io.github.bearisbug.synaxis.entity.EntityDormancyConcurrencyTest --rerun --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts`，共 19 条（8 + 1 + 9 + 1），结果读 `build/test-results/test/TEST-<类>.xml`；「跑 `<类>`」指只带那一个 `--tests`。前两类与第三类是 `@EnvTest`，严格模式属性经 `EnvTestExt` 生效；`ViewDistanceSocketTest` 用 `MinecraftServer.init` 起真 tick 的进程；`EntityDormancyConcurrencyTest` 用 `Env.create` 自起 4 条 tick 线程的 `grid` 进程。反证一律是「临时改一处实现、跑本节四类、看红、`git checkout --` 该文件、重跑复绿」，还原后 `git status --short` 必须无输出。本节的红线全部在 2026-09-25 于 `prod/w6-6e` 上实跑取得。
+
+#### `TC-PROD-410` `JoinGame` 发实例视距，进世界前设的上限也进 `JoinGame` — 对应 `REQ-PROD-039` · 级别: 冒烟 · 执行者: AI
+
+前置：工作副本干净。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `io.github.bearisbug.synaxis.entity.player.PlayerMaxViewDistanceIntegrationTest` | 8 个 0 失败。`joinGameCarriesTheViewDistanceOfTheInstance`：进程视距 8、实例视距 12，收到的 `JoinGamePacket#viewDistance()` 是 12。`aCapSetBeforeSpawnIsInJoinGame`：插件在 `AsyncPlayerConfigurationEvent` 里 `setMaxViewDistance(6)`，`JoinGame` 是 6，进世界时没有另发 `UpdateViewDistancePacket`，`effectiveViewDistance()` 是 7 |
+| 2 | 反证有齿（`JoinGame` 仍发进程视距）：`Player#UNSAFE_init` 里 `JoinGamePacket` 的 `serverViewDistance` 参数改回 `process().config().chunkViewDistance()`，跑本节四类，再还原 | `19 tests completed, 3 failed`：`PlayerMaxViewDistanceIntegrationTest.java:45` `JoinGame must carry the view distance of the instance ==> expected: <12> but was: <8>`、`:60` `JoinGame must carry the cap of the player ==> expected: <6> but was: <8>`、`ViewDistanceSocketTest.java:61` `JoinGame carries the view distance of the instance ==> expected: <12> but was: <8>`。还原后复绿 |
+
+后置：确认 `Player.java` 没有残留改动。
+
+#### `TC-PROD-411` 上限收窄区块环并告诉客户端，一个 tick 只按最后一次算，任何线程可设，越界拒绝（§19 场景） — 对应 `REQ-PROD-039` · 级别: 冒烟 · 执行者: AI
+
+前置：工作副本干净。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `PlayerMaxViewDistanceIntegrationTest` | 8 个 0 失败。`aCapShrinksTheRingAndTellsTheClient`（§19 场景）：实例 12、客户端 16，有效视距 13；`setMaxViewDistance(6)` 之后、下一个 tick 之前有效视距仍是 13；tick 之后收到恰好一个 `UpdateViewDistancePacket[viewDistance=6]`、有效视距 7、`UnloadChunkPacket` 504 个（27² − 15²）；再 `setMaxViewDistance(32)`，下一个 tick 收到 `UpdateViewDistance 12`、有效视距回到 13。`onlyTheLastCapOfATickCounts`：同一 tick 前先设 3 再设 6，只收到一个 `UpdateViewDistance 6`，卸载 136 个（19² − 15²）。`aCapCanBeSetFromAnotherThread`：在虚拟线程上设 4，下一个 tick 收到 `UpdateViewDistance 4`、有效视距 5。`aCapOutOfTheClientRangeIsRefused`：默认 32，设 1 与 33 都抛 `IllegalArgumentException`，值不变 |
+| 2 | 反证有齿（区块环不看上限）：`Player#updateViewDistance` 里 `final int newEffective = Math.min(clientViewDistance, newServerViewDistance) + 1;` 改为 `Math.min(clientViewDistance, newInstanceViewDistance) + 1`，跑本节四类，再还原 | `19 tests completed, 3 failed`：`PlayerMaxViewDistanceIntegrationTest.java:85` `every chunk out of the capped ring is unloaded ==> expected: <504> but was: <0>`、`:111` `the client view distance 8 was capped to 6 once ==> expected: <136> but was: <0>`、`ViewDistanceSocketTest.java:77` `the chunks out of the capped ring are unloaded after the client is told ==> expected: <504> but was: <0>`（包照发、`effectiveViewDistance()` 也对，区块没卸）。还原后复绿 |
+| 3 | 反证有齿（不发包）：`Player#tellViewDistance` 删掉 `sendPacket(new UpdateViewDistancePacket(viewDistance));`，跑本节四类，再还原 | `19 tests completed, 6 failed`：`PlayerMaxViewDistanceIntegrationTest.java:83`、`:110`、`:126`、`:140`、`:165` 都是 `expected: <[UpdateViewDistancePacket[viewDistance=…]]> but was: <[]>`，`ViewDistanceSocketTest.java:69` `no UpdateViewDistancePacket within 10 seconds`。还原后复绿 |
+
+后置：确认 `Player.java` 没有残留改动。
+
+#### `TC-PROD-412` 实例视距改动与换到视距不同的实例，都按玩家上限告诉客户端 — 对应 `REQ-PROD-039` · 级别: 回归 · 执行者: AI
+
+前置：工作副本干净。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `PlayerMaxViewDistanceIntegrationTest` | 8 个 0 失败。`theInstanceViewDistanceIsToldUnderTheCap`：实例 12，`Instance#viewDistance(10)` 当场收到 `UpdateViewDistance 10`；上限 6 应用后实例改为 8 不发包（仍按上限 6），改为 4 收到 `UpdateViewDistance 4`、有效视距 5。`anInstanceWithAnotherViewDistanceIsTold`：从视距 12 的实例换到视距 4 的实例收到 `UpdateViewDistance 4`、有效视距 5，换回收到 `UpdateViewDistance 12` |
+| 2 | 反证有齿（换实例不告诉客户端）：删掉 `Player#spawnPlayer` 里 `if (!firstSpawn) tellViewDistance(Math.min(instance.viewDistance(), maxViewDistance));` 一行，跑本节四类，再还原 | `19 tests completed, 1 failed`：`PlayerMaxViewDistanceIntegrationTest.java:165` `expected: <[UpdateViewDistancePacket[viewDistance=4]]> but was: <[]>`。还原后复绿 |
+
+后置：确认 `Player.java` 没有残留改动。
+
+#### `TC-PROD-413` 真 socket：客户端收到的 `JoinGame` 视距是 12，`UpdateViewDistance` 先 6 后 12，区块卸载排在包之后 — 对应 `REQ-PROD-039` · 级别: 回归 · 执行者: AI
+
+前置：工作副本干净。`ViewDistanceSocketTest` 用 `MinecraftServer.init(new Auth.Offline())` 起真 tick 的进程，绑回环随机端口，实例视距 12、进程视距 8；客户端是同包的 `EncryptedLoginClient`（离线不加密：`LoginStart` → `LoginSuccess` → configuration），读 play 包时回 keep-alive，等一个包最多 10 s。它发的区块与注册表会把 JVM 共用的包缓冲池里的缓冲撑大（跑完池里 3 个缓冲有 2 个到 35,532 B，默认 16,383 B），所以与按默认大小造包的 `SocketWriteStateTransitionIntegrationTest` 共用一把 `@ResourceLock`、不并行，跑完清空池。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `io.github.bearisbug.synaxis.network.ViewDistanceSocketTest` | 1 个 0 失败：收到的 `JoinGamePacket` 视距 12；客户端在 play 发 `ClientSettings` 视距 16，服务端玩家有效视距到 13 后 `setMaxViewDistance(6)`，客户端读到 `UpdateViewDistancePacket` 6；再 `setMaxViewDistance(32)`，读到 12，两包之间收到 504 个 `UnloadChunkPacket` |
+| 2 | 反证有齿（包排在区块环增删之后）：`Player#updateViewDistance` 开头的 `tellViewDistance(newServerViewDistance);` 挪到方法末尾，`previousEffective == newEffective` 提前返回之前也调一次，跑本节四类，再还原 | `19 tests completed, 1 failed`：只红 `ViewDistanceSocketTest.java:77` `the chunks out of the capped ring are unloaded after the client is told ==> expected: <504> but was: <0>`（504 个卸载跑到 `UpdateViewDistance 6` 前面，被第一次读包跳过）；`@EnvTest` 各类按类型收包、不看先后，都绿。还原后复绿 |
+
+后置：确认 `Player.java` 没有残留改动；测试结束时进程已 `stop()`，回环端口不留监听。
+
+#### `TC-PROD-414` 休眠实体 100 tick 只跑 5 次、不发位置同步（§19 场景） — 对应 `REQ-PROD-040` · 级别: 冒烟 · 执行者: AI
+
+前置：工作副本干净。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `io.github.bearisbug.synaxis.entity.EntityDormancyIntegrationTest` | 9 个 0 失败。`aFarEntityRunsOnceEvery20TicksAndSendsNoPositionSync`：玩家在 (0.5, 42, 0.5)，两只无重力僵尸在 40 格外，只有一只设策略 `(_, d) -> d > 32 ? 20 : 1`；热身 2 tick 后的 100 tick 里有策略的跑 5 次、`getAliveTicks()` 只加 5，没策略的跑 100 次；玩家收到没策略那只的 `EntityPositionSyncPacket` 5 个、有策略那只 0 个 |
+| 2 | 反证有齿（从不跳过）：`Entity#sitsOutTick` 末行 `return Math.floorMod(clock + getEntityId(), dormancyInterval) != 0;` 改为 `return false;`，跑本节四类，再还原 | `19 tests completed, 4 failed`：`EntityDormancyIntegrationTest.java:82` `a dormant entity runs once every 20 ticks ==> expected: <5> but was: <100>`、`:144` `expected: <1> but was: <20>`、`:186` `expected: <2> but was: <20>`、`EntityDormancyConcurrencyTest.java:82` `runs of the entity at Pos[x=-95.5, y=42.0, z=-95.5, …] … ==> expected: <10> but was: <200>`。还原后复绿 |
+
+后置：确认 `Entity.java` 没有残留改动。
+
+#### `TC-PROD-415` 休眠期间位置同步一条都不发（到期了、`synchronizeNextTick()` 也不发），醒来补发一次 — 对应 `REQ-PROD-040` · 级别: 回归 · 执行者: AI
+
+前置：工作副本干净。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `EntityDormancyIntegrationTest` | 9 个 0 失败。`noPositionSynchronizationIsSentWhileDormantEvenWhenDue`：休眠实体 `setSynchronizationTicks(1)` 并 `synchronizeNextTick()`，100 tick 里 0 个同步包；玩家传送到它 3 格处、5 tick 之后的 10 tick 里 10 个。`aPlayerComingNearWakesTheEntityWithinFiveTicks`：醒来那 5 tick 里恰好 1 个 |
+| 2 | 反证有齿（休眠也按间隔同步）：`Entity#tick` 里 `if (dormancyInterval == 1 && ticks >= nextSynchronizationTick)` 去掉 `dormancyInterval == 1 &&`，跑本节四类，再还原 | `19 tests completed, 1 failed`：`EntityDormancyIntegrationTest.java:104` `expected: <0> but was: <5>`（跑的 5 个 tick 各同步一次）。`TC-PROD-414` 那条用默认间隔 20，5 个 tick 走不到下一次同步，测不出这一处。还原后复绿 |
+| 3 | 反证有齿（醒来不补发）：删掉 `Entity#setDormancyInterval` 里 `if (interval == 1 && dormancyInterval > 1) this.nextSynchronizationTick = ticks;` 一行，跑本节四类，再还原 | `19 tests completed, 1 failed`：`EntityDormancyIntegrationTest.java:125` `waking up synchronizes the position once ==> expected: <1> but was: <0>`。还原后复绿 |
+
+后置：确认 `Entity.java` 没有残留改动。
+
+#### `TC-PROD-416` 策略每 5 tick 在持有实体的 tick 线程上被问，玩家走近 5 tick 内醒来（§19 场景） — 对应 `REQ-PROD-040` · 级别: 回归 · 执行者: AI
+
+前置：工作副本干净。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `EntityDormancyIntegrationTest` | 9 个 0 失败。`thePolicyIsAskedEveryFiveTicksOnTheTickThreadOfTheEntity`：实例已被另一只休眠实体问过快照，新设的策略在第 0 个 tick 被问，第二次在 1～5 tick 后，之后每两次相隔 5 tick；每次都在 `TickThread` 上且 `acquirable().isOwned()` 为 true。`aPlayerComingNearWakesTheEntityWithinFiveTicks`：休眠 25 tick 后玩家传送到 3 格处，5 tick 内补发 1 个同步，之后 10 tick 跑 10 次 |
+| 2 | 反证有齿（只在跑的 tick 上问策略）：`sitsOutTick` 里 `Math.floorMod(clock + getEntityId(), DORMANCY_EVALUATION_TICKS) == 0` 改为 `Math.floorMod(clock + getEntityId(), dormancyInterval) == 0`，跑本节四类，再还原 | `19 tests completed, 4 failed`：`EntityDormancyIntegrationTest.java:125` `waking up synchronizes the position once ==> expected: <1> but was: <0>`（要等到下一个 20 tick 才醒）、`:215` `asked [0, 15, 35] ==> expected: <true> but was: <false>`、`:110` `awake, it synchronizes on every tick again ==> expected: <10> but was: <0>`、`EntityDormancyConcurrencyTest.java:82` `… expected: <200> but was: <187>`。还原后复绿 |
+| 3 | 反证有齿（策略挪到 tick 线程之外）：`sitsOutTick` 里 `policy.tickInterval(this, players.nearestDistance(position))` 改为 `CompletableFuture.supplyAsync(() -> policy.tickInterval(this, players.nearestDistance(position)), Thread::startVirtualThread).join()`，跑本节四类，再还原 | `19 tests completed, 2 failed`：`EntityDormancyIntegrationTest.java:212` `asked on a thread that does not own the entity ==> expected: <[]> but was: <[VirtualThread[#14559]/runnable@ForkJoinPool-2-worker-10, …]>`、`EntityDormancyConcurrencyTest.java:70` `a policy was asked on a thread that does not own its entity ==> expected: <[]> but was: <[VirtualThread[#2128]/…, …]>`。还原后复绿 |
+
+后置：确认 `Entity.java` 没有残留改动。
+
+#### `TC-PROD-417` 跳过的 tick 照跑调度器，清策略即恢复，玩家不能休眠，实例里没有玩家时距离为 +∞ — 对应 `REQ-PROD-040` · 级别: 回归 · 执行者: AI
+
+前置：工作副本干净。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `EntityDormancyIntegrationTest` | 9 个 0 失败。`theSchedulerOfADormantEntityRunsEveryTick`：20 tick 里实体跑 1 次，它调度器上每 tick 一次的任务执行 20 次。`clearingThePolicyRunsEveryTickAgain`：`setDormancyPolicy(null)` 后 `getDormancyPolicy()` 为 null，20 tick 跑 20 次。`aPlayerCannotBeDormant`：对玩家设策略抛 `IllegalArgumentException`，设 null 不抛。`withoutPlayersTheNearestIsInfinitelyFar`：没有玩家的实例里策略拿到 `Infinity`，间隔 10 时 20 tick 跑 2 次 |
+| 2 | 反证有齿（跳过的 tick 连调度器也不跑）：`Entity#tick` 里把 `this.scheduler.processTick();` 之前加一行 `if (sitsOutTick()) return;`，原来的 `if (!sitsOutTick()) {` 改为普通代码块 `{`，跑本节四类，再还原 | `19 tests completed, 1 failed`：`EntityDormancyIntegrationTest.java:145` `a task handed to a dormant entity is not held back ==> expected: <20> but was: <1>`。还原后复绿 |
+| 3 | 反证有齿（玩家也能休眠）：删掉 `Entity#setDormancyPolicy` 里的 `Check.argCondition(policy != null && this instanceof Player, "A player cannot be dormant");`，跑本节四类，再还原 | `19 tests completed, 1 failed`：`EntityDormancyIntegrationTest.java:167` `Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown.`。还原后复绿 |
+
+后置：确认 `Entity.java` 没有残留改动。
+
+#### `TC-PROD-418` 距离按本 tick 开始时玩家的位置算，实例被问过才拍快照 — 对应 `REQ-PROD-040` · 级别: 回归 · 执行者: AI
+
+前置：工作副本干净。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `EntityDormancyIntegrationTest` | 9 个 0 失败。`theDistanceIsWhereThePlayersStoodWhenTheTickStarted`：玩家在 (2.5, 42, 2.5)、实体在 (12.5, 42, 12.5)，同一区块，所以实体的调度器可以动玩家；实体调度器在下一个 tick 开头把玩家传送到 (15.5, 42, 15.5)，这一 tick 新设的策略拿到 14.142…（`hypot(10, 10)`，移动之前的位置），再下一个 tick 拿到 4.243…（`hypot(3, 3)`） |
+| 2 | 反证有齿（读活的玩家对象）：`sitsOutTick` 里 `players.nearestDistance(position)` 改为 `instance.getPlayers().stream().mapToDouble(player -> player.getPosition().distance(position)).min().orElse(Double.POSITIVE_INFINITY)`，跑本节四类，再还原 | `19 tests completed, 1 failed`：`EntityDormancyIntegrationTest.java:241` `the player had moved to 3 blocks by then ==> expected: <[14.142135623730951]> but was: <[4.242640687119285]>`。多 tick 线程下读活对象时拿到哪个值取决于玩家与实体谁先 tick。还原后复绿 |
+| 3 | 反证有齿（实例从不拍快照）：删掉 `Instance#tick` 末行 `if (playerPositionsWanted) this.playerPositions = PlayerPositions.of(getPlayers());`，跑本节四类，再还原 | `19 tests completed, 8 failed`，例如 `EntityDormancyIntegrationTest.java:82` `a dormant entity runs once every 20 ticks ==> expected: <5> but was: <100>`、`:241` `the player had moved to 3 blocks by then ==> expected: <[14.142135623730951]> but was: <[]>`（策略一次都没被问，实体一直每 tick 跑）。还原后复绿 |
+
+后置：确认 `Entity.java`、`Instance.java` 没有残留改动。
+
+#### `TC-PROD-419` 4 条 tick 线程的 `grid` 分格下 169 个实体按与玩家的距离休眠（§19 场景） — 对应 `REQ-PROD-040` · 级别: 回归 · 执行者: AI
+
+前置：工作副本干净。`EntityDormancyConcurrencyTest` 用 `Env.create` 自起 4 条 tick 线程、`grid`、分格指数 1（2 × 2 区块一格），所以不带系统属性也在多线程下跑；169 个无重力实体在 −96～96 格、每隔 16 格一个，都用 §19「休眠实体跳过 tick」场景的策略：最近玩家 > 32 格时每 20 tick 跑一次，否则每 tick 跑。本条按 CI `grid` 严格轮的属性跑：`./gradlew :test --tests io.github.bearisbug.synaxis.entity.EntityDormancyConcurrencyTest --rerun -Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true -Dsynaxis.thread-provider=grid --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts`（下称「跑本类」）。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑本类 | 1 个 0 失败：玩家在 (0.5, 42, 0.5) 静止 200 tick，32 格内的实体各跑 200 次、之外的各跑 10 次；玩家传送到 (64.5, 42, 64.5)（另一个分格、另一条 tick 线程），过 5 tick 再数 200 tick，按新位置同样成立；策略在 4 条 tick 线程上都被调用过，没有一次在不持有该实体的线程上 |
+| 2 | 连跑 10 次（shell 循环，每次读 `build/test-results/test/TEST-io.github.bearisbug.synaxis.entity.EntityDormancyConcurrencyTest.xml` 有无 `<failure`） | 10 / 10 绿。2026-09-25 在 Apple M4 Pro 12 核上、别的会话同时编译（`load1` 约 50）时单次 1.2～10.4 s |
+| 3 | 反证有齿（休眠时钟各实体共用）：`Entity` 的 `private long dormancyClock;` 改为 `private static long dormancyClock;`，不带属性跑本节四类，再还原 | `19 tests completed, 1 failed`：`EntityDormancyConcurrencyTest.java:82` `runs of the entity at Pos[x=-95.5, y=42.0, z=-95.5, …] with the player at Pos[x=0.5, …] ==> expected: <10> but was: <16>`。`@EnvTest` 各类里同时只有一只休眠实体在一条线程上推时钟，看不出来。还原后复绿 |
+| 4 | 反证有齿（本条的计数只对前置里每 20 tick 的策略成立）：本类策略的 `return distance > FAR ? INTERVAL : 1;` 改为 §19「休眠中还在移动的实体照发移动包」场景的间隔 `return distance > FAR ? 4 : 1;`，跑本类，再还原 | `1 test completed, 1 failed`：`EntityDormancyConcurrencyTest.java:82` `runs of the entity at Pos[x=-95.5, y=42.0, z=-95.5, …] with the player at Pos[x=0.5, …] ==> expected: <10> but was: <50>`。还原后跑本类 1 个 0 失败 |
+
+后置：确认 `Entity.java` 与 `EntityDormancyConcurrencyTest.java` 没有残留改动。
+
+#### `TC-PROD-420` 两种 4 线程严格模式下本节四类全绿，属性确实到了测试 JVM — 对应 `REQ-PROD-039`、`REQ-PROD-040` · 级别: 回归 · 执行者: AI
+
+前置：工作副本干净。全量的两轮严格模式是 `TC-PROD-033`（`counter`）与 `TC-PROD-335`（`grid`），本条只跑本节的类。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 本节四类的命令后面接 `:testing:test --tests '*EnvDispatcherThreadsIntegrationTest'`，加 `-Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true`；跑完 `grep -o 'env [a-z ]*: [a-z0-9]*' testing/build/test-results/test/TEST-io.github.bearisbug.synaxis.testing.test.EnvDispatcherThreadsIntegrationTest.xml` | 四类 19 个 0 失败；两行 `env dispatcher threads: 4`、`env thread provider: counter` |
+| 2 | 同第 1 步，再加 `-Dsynaxis.thread-provider=grid` | 19 个 0 失败；`env dispatcher threads: 4`、`env thread provider: grid` |
+| 3 | 反证有齿（`grid` 严格模式下共用休眠时钟）：`TC-PROD-419` 第 3 步的改动，按第 2 步的属性跑本节四类，再还原 | `19 tests completed, 2 failed`：`EntityDormancyIntegrationTest.java:217` `asked every 5 ticks: [0, 3, 10, 15, 20, 25, 30] ==> expected: <5> but was: <7>`（`grid` 下两只休眠实体落在两个分格、两条线程上一起推同一个时钟）、`EntityDormancyConcurrencyTest.java:82` `… ==> expected: <10> but was: <12>`。还原后复绿 |
+
+后置：确认 `Entity.java` 没有残留改动。
+
+#### `TC-PROD-421` 休眠开销实测：机制本身每 tick 不到 0.05 ms，分档策略省下整 tick CPU 的大半（§15「实体休眠」行） — 对应 `REQ-PROD-040` · 级别: 回归 · 执行者: AI
+
+前置：工作副本干净；`./gradlew :jmh-benchmarks:jmhJar --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts`，得到 `jmh-benchmarks/build/libs/jmh-benchmarks-dev-jmh.jar`（下称 `JMH`）。跑基准的 shell 里 `unset JAVA_TOOL_OPTIONS`（代理参数会传进 JMH fork 的 JVM）。起跑前后记下 `uptime`。机器 Apple M4 Pro 12 核 / 24 GiB，macOS，JDK 25.0.4.1。两个基准都用 `Env.create` 起进程、1 条 tick 线程，200 名玩家在出生点半径 64 格内。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | `$JAVA_HOME/bin/java -jar JMH DormancyOverheadBenchmark.entityTick -f 3 -i 10 -rf json -rff <临时文件>`，从 JSON 取每档 30 个迭代值的中位数与最小值 | 两档各 30 个值：无策略中位 201.7 ns、最小 197.6 ns；有策略（恒返回 1）中位 224.3 ns、最小 222.0 ns；差约 22 ns/实体/tick，2,000 个实体约 45 µs。2026-09-25 16:28～16:29 跑，`load1` 17.7 → 8.9；同日更早两轮（`load1` 13～35，1 个与 3 个 fork）按最小值算差 16～22 ns |
+| 2 | `$JAVA_HOME/bin/java -jar JMH DormancyOverheadBenchmark.snapshot -p policy=none -f 3 -i 10 -rf json -rff <临时文件>` | 30 个值中位 1,331.5 ns、最小 1,308.6 ns（拍一次 200 名玩家） |
+| 3 | `$JAVA_HOME/bin/java -jar JMH EntityDormancyBenchmark -f 3 -i 10 > <临时文件>`，读每档开头的「creatures ran」一行与每次迭代的 `cpu <档>: … us/tick` 行 | 每档 3 个 fork 开头都打印同一行：`off` 与 `awake` 是 `2000 creatures ran every tick, 0 every 20, 0 every 100, 0 otherwise`，`tiered` 是 `53 creatures ran every tick, 40 every 20, 1907 every 100, 0 otherwise`，`dormant` 是 `0 creatures ran every tick, 2000 every 20, 0 every 100, 0 otherwise`。CPU 时间取 30 次测量迭代（每个 fork 的前 3 次是预热，不算）的最小值：`off` 977.1、`awake` 1,020.4、`tiered` 380.8、`dormant` 418.6 µs/tick；`awake` 比 `off` 多 43 µs，与第 1 步的 22 ns × 2,000 相符；`tiered` 比 `off` 少 61%。16:30～16:37 跑，`load1` 7.7 → 76.3，`awake`、`dormant` 两档的中位数被负载拉到 1,782 / 1,533 µs，只看最小值 |
+| 4 | 反证有齿（基准量的确实是休眠）：`TC-PROD-414` 第 2 步的改动（`sitsOutTick` 末行 `return false;`），重建 `JMH`，跑 `$JAVA_HOME/bin/java -jar JMH EntityDormancyBenchmark -p policy=dormant -wi 0 -i 1`，再还原并重建 | 输出 `dormant: 2000 creatures ran every tick, 0 every 20, 0 every 100, 0 otherwise`、`<failure>` 与 `java.lang.IllegalStateException: dormant: the creatures did not run as the policy says, 2000 every tick, 0 every 20, 0 every 100, 0 otherwise`，没有结果行（JMH 进程退出码仍是 0，判据看这几行）。还原并重建后第 3 步的四行恢复 |
+
+后置：确认 `Entity.java` 没有残留改动；删掉临时 JSON。
+
+#### `TC-PROD-422` 休眠中还在移动的实体每个跑的 tick 都发相对移动包，观察者看到的位移与服务端一致（§19 场景） — 对应 `REQ-PROD-040` · 级别: 回归 · 执行者: AI
+
+前置：工作副本干净。`EntityDormancyMovementIntegrationTest` 是 `@EnvTest`，不在「本节四类」里（本节其余各条反证的计数按四类 19 条记），本条单独跑：`./gradlew :test --tests io.github.bearisbug.synaxis.entity.EntityDormancyMovementIntegrationTest --rerun --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts`（下称「跑本类」），结果读 `build/test-results/test/TEST-io.github.bearisbug.synaxis.entity.EntityDormancyMovementIntegrationTest.xml`。被测实体是无重力僵尸，`update` 里每次调 `moveTo` 沿 x 挪 0.05 格，与插件寻路移动实体同一个入口。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑本类 | 1 个 0 失败。`aDormantEntityThatMovesSendsEveryStepToItsViewers`：玩家在 (0.5, 42, 0.5)，实体从 (40.5, 42, 0.5) 出发，策略 `(_, d) -> d > 32 ? 4 : 1`；热身 2 tick 后连数 4 段、每段 100 tick，每段里实体跑 25 次、服务端 x 增加 1.25 格，玩家收到它 25 个 `EntityPositionAndRotationPacket`、0 个 `EntityPositionSyncPacket`，25 个包的 `deltaX` 之和 ÷ 4096 与 1.25 相差不到 25/4096 格 |
+| 2 | 跑本类的命令接 `:testing:test --tests '*EnvDispatcherThreadsIntegrationTest'`，加 `-Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true` 跑一次，再加 `-Dsynaxis.thread-provider=grid` 跑一次；每次跑完按 `TC-PROD-420` 第 1 步 grep | 两次都 1 个 0 失败；grep 依次得 `env dispatcher threads: 4`、`env thread provider: counter` 与 `env dispatcher threads: 4`、`env thread provider: grid` |
+| 3 | 反证有齿（休眠时也按「本 tick 末尾会定时同步」提前返回）：`Entity#refreshPosition` 提前返回的条件里删掉 `dormancyInterval == 1 &&` 与它带来的一对括号，跑本类，再还原 | `1 test completed, 1 failed`：`EntityDormancyMovementIntegrationTest.java:72` `window 0: a relative move for every step ==> expected: <25> but was: <18>`（跑的 tick 数追上下一次同步的前一个 tick 之后，每一步都提前返回，而休眠期间那次同步不会来）。还原后复绿 |
+
+后置：确认 `Entity.java` 没有残留改动。
+
 ## 5. 回归策略
 
 - **全量轮**（全部用例）：首次成稿、每个阶段 gate（引擎域阶段 0、2、3；游戏域 `docs/DESIGN-M2.md` §26 的阶段 1～6b；大世界域 `docs/DESIGN-M3.md` §26 的 M3-A～M3-G）、跨功能域改动、地基变更（JDK、Gradle、镜像、协议版本、模块拆分、启动入口）。
@@ -5148,6 +5313,7 @@ jcmd "$pid" VM.flags | tr ' ' '\n' | grep -cxE -- '-XX:\+UseG1GC|-XX:InitialHeap
   - 生产就绪域（`docs/DESIGN-PROD.md`）：第 5 波集成后压测收尾（`REQ-PROD-029`）→ TC-PROD-360～TC-PROD-365，全部是同机真进程压测，本机同时只能有一个压测。TC-PROD-360（约 35 分钟）与 TC-PROD-365 第 1 步在引擎 tick、网络、区块发送、可见性或分格路径有改动时跑，并与本条记下的读数对比；TC-PROD-361、TC-PROD-362（各约 12 分钟）在 `capacity` 定值要重评时跑；动了闸门 L3 / L4、`ConnectionManager#updateWaitingPlayers` 或登录监听器跑 TC-PROD-363（约 10 分钟）；动了 `ConnectionGate` 或闸门汇总日志跑 TC-PROD-364（约 3 分钟）；动了 `EventLedger` 跑 TC-PROD-365 第 2 步。分机档到位后六条全部在分机上重跑。
   - 生产就绪域（`docs/DESIGN-PROD.md`）：第 6 波 U 组宿主停机序列、转服验票串行与顶号轮询（`REQ-PROD-008`、`REQ-PROD-045`、`REQ-PROD-004` 跨分片部分）→ TC-PROD-370～TC-PROD-379；动了 `ShutdownSequence` 或 `Main` 注册停机参与者的一处就跑 TC-PROD-370～TC-PROD-375（序列类约 20 s）与 TC-PROD-154、TC-PROD-155；动了 `PlayerStore#load` 的串行载入占位、`loadWithin` 的顶号轮询、`TicketVerifier` 或 `AdmissionGate` 的验票接线就跑 TC-PROD-376～TC-PROD-379 与 TC-PROD-152、TC-PROD-157、TC-PROD-174（要数据库前置）。跨域牵连：M3-C 在分片宿主路径注册覆盖层停机步骤后，`docs/DESIGN-M3.md` 覆盖层停机落盘的用例与 TC-PROD-370～TC-PROD-373 一起跑；动了引擎 `ServerProcessImpl#save` 或 `ShutdownParticipant` → 加 TC-PROD-370～TC-PROD-375。
   - 生产就绪域（`docs/DESIGN-PROD.md`）：服务器列表 ping（`REQ-PROD-037`）→ TC-PROD-400～TC-PROD-405；动了 `StatusResponse`、`Favicon`、`ServerListPingEvent`、`StatusListener`、`ConnectionManager` 读图标的一处或 `ServerConfig` 的 `synaxis.motd` / `synaxis.server-icon` / `synaxis.hide-online-players` 三个键就跑 TC-PROD-400～TC-PROD-403，动了宿主的插件事件包装（`PluginEventsImpl`）或 `StatusListener` 派发事件的一处再加 TC-PROD-404，动了 `server-app` 的拒绝起服路径或这三个键读系统属性的几行加 TC-PROD-405（真进程，约 1 分钟）。跨域牵连：动了 `StatusResponse` 的 max → 加 TC-PROD-063；动了 status 状态的监听器 → 加 TC-PROD-062（status 桶）。
+  - 生产就绪域（`docs/DESIGN-PROD.md`）：视距上限与实体休眠（`REQ-PROD-039`、`REQ-PROD-040`）→ TC-PROD-410～TC-PROD-422；动了 `Player` 的 `setMaxViewDistance`、`update` 里应用视距的一段、`updateViewDistance` / `tellViewDistance`、`UNSAFE_init` 的 `JoinGamePacket`、`spawnPlayer` 或 `Instance#viewDistance(int)` 就跑 TC-PROD-410～TC-PROD-413；动了 `Entity#tick` / `sitsOutTick` / `setDormancyPolicy`、`DormancyPolicy`、`PlayerPositions` 或 `Instance#tick` 拍快照的一行就跑 TC-PROD-414～TC-PROD-420 与 TC-PROD-422，动了 `Entity#refreshPosition` 的提前返回也跑 TC-PROD-422；TC-PROD-421（三个基准共约 9 分钟）只在休眠路径或 `Entity#tick` 有改动时重量，并与 §15「实体休眠」行对比。跨域牵连：动了 `Player#update` 的视距一段 → 加 TC-GAME-035 与 `PlayerChunkQueueIntegrationTest`（`REQ-M2-014` 的区块环收缩）；动了 `Entity#tick` → 加 TC-PROD-033、TC-PROD-335（4 线程严格模式全量）；动了测试客户端 `EncryptedLoginClient` → 加 `OnlineLoginSocketTest`、`OnlineDuplicateLoginSocketTest`（TC-PROD-092～TC-PROD-100、TC-PROD-350）；动了 `:plugin-api` 的 `package-info` 或 `docs/PLUGINS.md` §10 的线程契约 → 同步核对 `docs/DESIGN-PROD.md` `API-PROD-016` 与 `API-PROD-019` 休眠一条。
   - 影响面不确定时升级为全量轮。
 - **复测轮**（上轮失败用例 + 全部冒烟级）：修复失败项之后。
 - **人工收口轮**（仅上轮「待人工」用例）：AI 轮之后由人工补测 TC-016、TC-030、TC-GAME-020、TC-GAME-038、TC-GAME-046、TC-GAME-047，不要求冒烟级。

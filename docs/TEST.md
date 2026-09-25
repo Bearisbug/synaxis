@@ -17,6 +17,7 @@
 
 | 日期 | 改动 | 作者 |
 | --- | --- | --- |
+| 2026-09-25 | 跟进 `docs/DESIGN-PROD.md` v0.9（6D，`REQ-PROD-037` 服务器列表 ping）。**新增 §4「生产就绪 · 第 6 波 6D：服务器列表 ping」六条**：`TC-PROD-400`（真 socket：配置的 MOTD、图标与真实上限，引擎默认；两条反证）、`TC-PROD-401`（监听器改响应，max 改低被拒；两条反证）、`TC-PROD-402`（样本 12 人、`Anonymous Player`、`hide-online-players` 只去样本；三条反证）、`TC-PROD-403`（图标校验与拒建进程；三条反证）、`TC-PROD-404`（插件经宿主监听，拒绝按插件记一行、响应照发；一条反证）、`TC-PROD-405`（真进程：三个键、`nc` 发 status、图标不合规拒启；反证是键名写错）。`StatusRequestGuardIntegrationTest` 改在虚拟线程上调监听器（事件是 `AsyncEvent`），断言不变。§5 加这一节的回归映射 | Bearisbug |
 | 2026-09-25 | 跟进 `docs/DESIGN-M3.md` v0.10（高度窗口与 section 状态数两项拍板、`fullyLit` 只剩懒读路径、烘焙侧光照引擎 ArchUnit 规则）。**废弃 `TC-WORLD-005`、新增 `TC-WORLD-026`**：`LightingChunk.relight` 改走 `LightEngine` 后不设全亮标记，原用例两条测试都先整图 `relight`，删掉 `SkyLight` 里复位全亮标记那一行不再变红（RUN-033 失败项）；`LightDampeningIntegrationTest#blockOverFullyLitSectionOnLazyRead` 改为不整图 `relight`、先经懒读路径把 section 标为全亮，新用例的反证是同一行，预期 `14 tests completed, 1 failed`。**废弃 `TC-WORLD-024`、新增 `TC-WORLD-029`**：Anvil 源改按 256 格窗口，第 1 步清单 `world` 由 −64 / 384 改为 −64 / 256、段① 由 24 个 section 改为 16 个，`AnvilBakeTest` 10 → 14、`BakerMainTest` 1 → 3，第 2 步 `10 tests completed` → `14 tests completed`，其余逐字保留。**新增 `TC-WORLD-027`**（高度窗口：窗口外的方块、方块实体、静态实体与 `--min-y 0` 下的基岩各拒绝一次，`--min-y` 的两种命令行错误；反证是让窗口检查不拒绝，红 5 条）与 **`TC-WORLD-028`**（`:architecture-tests` 的 `LightEngineArchitectureTest`；反证是给 `LightEngine` 加一个引用 `Instance` 的方法）。`TC-WORLD-020` 第 3 步只改计数（`AnvilBakeTest` 14、`BakerMainTest` 3）。§2 覆盖范围、Gherkin 口径与 REQ-M3 对照表五行、§5 大世界域的局部轮映射同步 | Bearisbug |
 | 2026-09-25 | 跟进 `docs/DESIGN-M3.md` v0.9（M3-A 剩余项与 M3-B 落地）。**新增 §4 四节 14 条**，对应 `REQ-M3-001`～`REQ-M3-004`、`REQ-M3-020`～`REQ-M3-022`：「M3 · 光照引擎」`TC-WORLD-012`（引擎不依赖实例、不加锁、对拍两条路径、缺失区块不传光；反证删掉北面的缺失区块判断）、`TC-WORLD-013`（版本与已过对拍版本文件绑定；跳号与改旧行指纹两条反证）；「M3 · `.synx` 格式」`TC-WORLD-014`（向量与 zlib 指纹门；改向量字节、改指纹两条反证）、`TC-WORLD-015`（损坏与不兼容）、`TC-WORLD-016`（段① 调色板与段③ NBT 规范化；两条反证）、`TC-WORLD-017`（清单与起服校验函数）、`TC-WORLD-018`（`:synx`、`:baker` 的内部面名单）；「M3 · Anvil 读取器」`TC-WORLD-019`（门禁与完整读取；三条反证）、`TC-WORLD-020`（夹具由原版服务端再生）；「M3 · 烘焙器」`TC-WORLD-021`（生成器源烘焙与各退出码，冒烟级）、`TC-WORLD-022`（并行等于串行；压缩级别与阈值随线程变两条反证）、`TC-WORLD-023`（命令行烘焙 4k×4k 合成图、1 线程等于多线程、`verify` 与重烘退 5）、`TC-WORLD-024`（Anvil 源烘焙；反证是把标记格计入对拍）、`TC-WORLD-025`（交付规范第 6 节的自检命令）。**改写两条已有用例的计数**（`REQ-M3-004` 让对拍对 `LightEngine` 与 `LightingChunk.relight` 各跑一遍，判据的实质不变）：`TC-WORLD-001` 第 1 步 `tests="7"` → `"14"`、第 2 步 `7 tests completed, 1 failed` → `14 tests completed, 2 failed`、第 3 步 `"8"` → `"16"`；`TC-WORLD-004` 第 4 步 `25 tests completed, 2 failed` → `32 tests completed, 3 failed`。§2 覆盖范围、Gherkin 口径与 REQ-M3 对照表七行、§3 M3 环境（`.synx` 与烘焙器一条）、§5 大世界域的局部轮映射同步 | Bearisbug |
 | 2026-09-24 | 跟进 `docs/DESIGN-M3.md` v0.8（`API-M3-006` 分片宿主设置表写入四项）。**新增 §4「M3 · 分片宿主设置」两条**：`TC-WORLD-010`（`ShardMain.viewDefaults` 写视距 12、区块上限 4、可见上限 100，`ShardMain.transferDefaults` 只在 PostgreSQL 存储时写 `accept-transfers=true`，命令行给了的键不覆盖；三条反证）与 `TC-WORLD-011`（真进程 `bin/server-shard` 与 `bin/server-app` 的 `Effective ServerConfig` 读数，PostgreSQL 存储缺票据密钥时拒启，反证是入口不调这两个方法），对应 `REQ-M3-009`、`REQ-M3-017`、`REQ-PROD-024`、`REQ-PROD-026`。`ShardMainTest` 由 3 条变为 8 条：`TC-PROD-333` 第 1 步改为 `tests="8"`（线程三条的判据不变），第 2 步反证改为 `8 tests completed, 3 failed`，红的行号 `:18`、`:26`、`:32` → `:20`、`:28`、`:34`（类注释多了两行）。`ShardMain` 默认视距改为 12 牵连两处同机压测的前置：`TC-PROD-336` 的 `server-shard` 一档另加三项参数拉回 `server-app` 的值，保持两档只差线程；`TC-PROD-360` 一组写明可见上限与区块上限已由 `ShardMain` 默认写入，复跑须另加 `-Dsynaxis.chunk-view-distance=10` 才与已登记读数可比。§2 REQ-M3 对照表 `REQ-M3-009`、`REQ-M3-017` 两行、§5 大世界域一行同步 | Bearisbug |
@@ -4912,6 +4913,95 @@ jcmd "$pid" VM.flags | tr ' ' '\n' | grep -cxE -- '-XX:\+UseG1GC|-XX:InitialHeap
 
 后置：同 `TC-PROD-363`。
 
+### 生产就绪 · 第 6 波 6D：服务器列表 ping
+
+对应 `REQ-PROD-037`（`API-PROD-024`，`docs/DESIGN-PROD.md` v0.9（6D），§19「status 的 max 等于真实上限」「图标不合规拒绝起服」「隐藏在线玩家只去样本」三条场景）。实现：
+
+- 引擎：`ServerConfig` 加 `motd`（`synaxis.motd`，默认 `synaxis`）、`serverIcon`（`synaxis.server-icon`，默认空）、`hideOnlinePlayers`（`synaxis.hide-online-players`，默认 false）。新类 `network/Favicon` 校验 PNG 签名、首块 `IHDR`、64×64 与 ≤ 16,384 B，存成 data URI；`ConnectionManager` 构造时读配置的图标，不合规抛 `IllegalArgumentException`，进程建不起来。新事件 `event/server/ServerListPingEvent`（`AsyncEvent`）。`StatusListener` 对一条连接的第一个 status 请求用 `StatusResponse.event` 填默认值、派发事件、按事件写 JSON；默认样本取 play 态前 12 人，关了「允许在服务器列表中显示」的写作 `Anonymous Player` 与全零 UUID。
+- 线程契约加一条（服务器列表事件跑在发请求那条连接的读线程上），写进 `plugin-api` 的 `package-info` 与 `docs/PLUGINS.md` §10；`:plugin-api` 没有新类型与方法，对 `v0.3.0` 跑 ABI 门两个任务都真执行、0 条违例。
+- 已有测试的改动：`StatusRequestGuardIntegrationTest` 直接调 `StatusListener`，事件是 `AsyncEvent`（引擎断言它在虚拟线程上派发），改为在虚拟线程上调用，断言不变。
+
+`TC-PROD-400`～`TC-PROD-404` 是 JUnit，`TC-PROD-405` 起真进程，端口 25660，服务端从 `server-app/build/install/server-app/bin/` 起、在空的临时工作目录里跑，用完按 pid 停进程并删目录。反证一律是「临时改一处实现、重跑、看红、还原、重跑复绿」，还原后 `git status` 必须干净。
+
+#### `TC-PROD-400` 真 socket：配置的 MOTD（含第二行）、64×64 图标与真实上限进 status 响应，什么都不配时是引擎默认 — 对应 `REQ-PROD-037` · 级别: 冒烟 · 执行者: AI
+
+前置：工作副本干净。测试在回环地址上真起 `Server`（`Env.create` 的进程，端口由系统分配），像客户端一样发 status 握手与 `StatusRequest`，从 socket 读回 `ResponsePacket` 再解析 JSON；图标是测试现造的 64×64 RGBA PNG（`Pngs`），放在 JUnit 的临时目录里。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | `./gradlew :test --tests 'io.github.bearisbug.synaxis.network.ServerListPingSocketTest' --tests 'io.github.bearisbug.synaxis.ServerConfigTest' --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts` | `BUILD SUCCESSFUL`，`ServerListPingSocketTest` `tests="5"`、`ServerConfigTest` `tests="6"` 全绿。`theAnswerCarriesTheConfiguredMotdIconAndTheRealLimit`（`max-players=300`、`motd` 为 `Synaxis 内测` 换行 `第二行`、`server-icon` 为那张 PNG）：`version` 为 `26.2` / 776，`players` 为 online 0、max 300 且没有 `sample` 字段，`description` 反序列化后等于 `Component.text("Synaxis 内测\n第二行")`，`favicon` 等于 `data:image/png;base64,` 加文件的 base64；`withNothingConfiguredTheListShowsTheEngineDefaults`：max 1024（不设席位时写 L0 上限 `max-connections`）、描述 `synaxis`、没有 `favicon` 字段。`ServerConfigTest#defaults`：`motd()` 为 `synaxis`、`serverIcon()` 为空串、`hideOnlinePlayers()` 为 false；`invalidValuesAreRejected`：`motd(null)`、`serverIcon(null)` 抛 `NullPointerException` |
+| 2 | 反证（图标没写进响应）：`src/main/java/io/github/bearisbug/synaxis/network/StatusResponse.java` 的 `status.addProperty("favicon", favicon.dataUri());` 改成 `status.addProperty("favicon", "data:image/png;base64,");`，只跑 `ServerListPingSocketTest`，再 `git checkout --` 该文件 | `5 tests completed, 1 failed`：`theAnswerCarriesTheConfiguredMotdIconAndTheRealLimit` 红在 `ServerListPingSocketTest.java:82`，`expected: <data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABA…> but was: <data:image/png;base64,>` |
+| 3 | 反证（MOTD 只留第一行）：同一文件 `return Component.text(config.motd());` 改成 `return Component.text(config.motd().lines().findFirst().orElse(""));`，只跑 `ServerListPingSocketTest`，再 `git checkout --` 该文件 | `5 tests completed, 1 failed`：同一条红在 `:81`，`expected: <TextComponentImpl{content='Synaxis 内测\n第二行', …}> but was: <TextComponentImpl{content='Synaxis 内测', …}>`（`\n` 处在断言信息里是一个换行符） |
+| 4 | 还原后重跑第 1 步 | 与第 1 步相同 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PROD-401` 真 socket：监听器改描述、人数、样本与图标，max 只能调高，改低抛异常且值不变 — 对应 `REQ-PROD-037` · 级别: 回归 · 执行者: AI
+
+前置：工作副本干净。监听器直接挂在进程的全局事件节点上（插件经宿主挂的一条见 `TC-PROD-404`）。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | `./gradlew :test --tests 'io.github.bearisbug.synaxis.network.ServerListPingSocketTest' --tests 'io.github.bearisbug.synaxis.listener.StatusRequestGuardIntegrationTest' --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts` | `BUILD SUCCESSFUL`，两类 `tests="5"`、`tests="1"` 全绿。`aListenerChangesTheAnswerButCannotShowALowerLimit`（`max-players=300`，配了图标）：监听器拿到的 `getConnection().getRemoteAddress()` 含 `127.0.0.1`；它设描述为翻译组件 `synaxis:server-list.motd`、在线 42、样本一条 `GM on duty`、图标 null，然后 `setMaxPlayers(100)` 抛 `IllegalArgumentException`，信息 `the server list must not show a player limit below the real one, 300, but was given 100`，此后 `getMaxPlayers()` 仍是 300，再 `setMaxPlayers(450)`。读回的响应：max 450、online 42、`sample` 恰一条（名字 `GM on duty`、UUID 为测试给的那个）、`description` 是那个翻译组件、没有 `favicon` 字段。`StatusRequestGuardIntegrationTest`：同一连接的第二个 `StatusRequest` 不答、连接断开（两次调用都在虚拟线程上） |
+| 2 | 反证（不设下限）：`src/main/java/io/github/bearisbug/synaxis/event/server/ServerListPingEvent.java` 的 `if (maxPlayers < playerLimit)` 改成 `if (maxPlayers < 0)`，只跑 `ServerListPingSocketTest`，再 `git checkout --` 该文件 | `5 tests completed, 1 failed`：`aListenerChangesTheAnswerButCannotShowALowerLimit` 红在 `:132`，`expected: <the server list must not show a player limit below the real one, 300, but was given 100> but was: <null>` |
+| 3 | 反证（响应不按事件写）：`src/main/java/io/github/bearisbug/synaxis/listener/preplay/StatusListener.java` 的 `StatusResponse.json(event)` 改成 `StatusResponse.json(connection.process())`，只跑 `ServerListPingSocketTest`，再 `git checkout --` 该文件 | `5 tests completed, 1 failed`：同一条红在 `:136`，`a higher limit is allowed ==> expected: <450> but was: <300>`（事件照常派发、拒绝照常发生，但监听器改的值没进响应） |
+| 4 | 还原后重跑第 1 步 | 与第 1 步相同 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PROD-402` 真 socket：样本取 play 态前 12 人，关了列表显示的写作 `Anonymous Player`，`hide-online-players` 只去样本 — 对应 `REQ-PROD-037` · 级别: 回归 · 执行者: AI
+
+前置：工作副本干净。§19「隐藏在线玩家只去样本」。玩家经 `Env` 的测试连接走完 configuration 进 play，名字 `player0`～`player12`，按这个顺序进入；`player1` 的客户端设置改为 `allowServerListings=false`。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | `./gradlew :test --tests 'io.github.bearisbug.synaxis.network.ServerListPingSocketTest' --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts` | `BUILD SUCCESSFUL`，`tests="5"` 全绿。`theSampleListsTwelvePlayersAndHidesThoseWhoAskedNotToBeListed`：online 13，`sample` 12 条，第 2 条是 `Anonymous Player` 与 `00000000-0000-0000-0000-000000000000`，其余依次是 `player0`、`player2`～`player11` 的名字与 UUID，`player12` 不在；`hidingTheOnlinePlayersLeavesTheCountAndDropsTheSample`（`hide-online-players=true`，2 人在 play）：online 2，`players` 里没有 `sample` 字段 |
+| 2 | 反证（不看隐藏开关）：`src/main/java/io/github/bearisbug/synaxis/network/StatusResponse.java` 删掉 `if (process.config().hideOnlinePlayers()) return List.of();` 一行，重跑第 1 步，再 `git checkout --` 该文件 | `5 tests completed, 1 failed`：`hidingTheOnlinePlayersLeavesTheCountAndDropsTheSample` 红在 `:183`，断言信息是整段 `players`：`{"online":2,"max":1024,"sample":[{"name":"player0",…},{"name":"player1",…}]}` |
+| 3 | 反证（不封顶 12）：同一文件删掉 `if (sample.size() == SAMPLE_SIZE) break;` 一行，重跑第 1 步，再 `git checkout --` 该文件 | `5 tests completed, 1 failed`：`theSampleListsTwelvePlayers…` 红在 `:161`，`the 13th player is left out ==> expected: <12> but was: <13>` |
+| 4 | 反证（读错设置项）：同一文件 `player.getSettings().allowServerListings()` 改成 `player.getSettings().chatColors()`，重跑第 1 步，再 `git checkout --` 该文件 | `5 tests completed, 1 failed`：同一条红在 `:163`，`player1 asked not to be listed ==> expected: <[Anonymous Player, 00000000-0000-0000-0000-000000000000]> but was: <[player1, …]>` |
+| 5 | 还原后重跑第 1 步 | 与第 1 步相同 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PROD-403` 图标：64×64、≤ 16,384 B、PNG 签名与首块 `IHDR`，配了不合规图标的进程建不起来 — 对应 `REQ-PROD-037` · 级别: 回归 · 执行者: AI
+
+前置：工作副本干净。§19「图标不合规拒绝起服」的引擎一半（`server-app` 的拒启见 `TC-PROD-405`）。测试用的 PNG 由 `Pngs` 现造，带 `tEXt` 块的那几张用它把文件撑到指定大小。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | `./gradlew :test --tests 'io.github.bearisbug.synaxis.network.FaviconTest' --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts` | `BUILD SUCCESSFUL`，`tests="6"` 全绿：64×64 的 data URI 等于 `data:image/png;base64,` 加文件的 base64；16×16、64×32、128×64 依次拒绝，信息 `a server icon must be 64x64 pixels but was 16x16`（其余两张同句式）；恰好 16,384 B 的 64×64 PNG 通过，16,385 B 拒绝（`a server icon must be at most 16384 bytes but was 16385`）；GIF 文件头、截到 32 B 的 PNG 拒绝（`a server icon must be a PNG image`），首块改名 `iHDR` 的拒绝（`… starting with its IHDR chunk`）；从文件读时信息末尾带路径，20,000 B 的文件只看大小就拒，不存在的文件以 `cannot read <路径>: java.nio.file.NoSuchFileException` 开头；`ServerProcess.of` 配 16×16 图标抛 `synaxis.server-icon is not a valid icon: a server icon must be 64x64 pixels but was 16x16: <路径>`，配 64×64 时 `connection().serverIcon()` 的 data URI 与文件一致，不配时为 null |
+| 2 | 反证（只查宽）：`src/main/java/io/github/bearisbug/synaxis/network/Favicon.java` 的 `if (width != SIZE \|\| height != SIZE)` 改成 `if (width != SIZE)`，重跑第 1 步，再 `git checkout --` 该文件 | `6 tests completed, 1 failed`：`anyOtherSizeIsRefused` 红在 `FaviconTest.java:38`（64×32 那张，经 `refusal` 的 `:104`），`Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown.` |
+| 3 | 反证（上限差一）：同一文件 `if (png.length > MAX_BYTES)` 改成 `if (png.length >= MAX_BYTES)`，重跑第 1 步，再 `git checkout --` 该文件 | `6 tests completed, 1 failed`：`theFileMayBeSixteenKibibytesAndNotOneByteMore` 红在 `:47`，`java.lang.IllegalArgumentException: a server icon must be at most 16384 bytes but was 16384` |
+| 4 | 反证（不合规时退回「不发图标」）：`src/main/java/io/github/bearisbug/synaxis/network/ConnectionManager.java` 的 `serverIcon(String)` 里 `catch (IllegalArgumentException e) {` 连同其后的注释与 `throw` 换成 `catch (IllegalArgumentException _) { return null;`，重跑第 1 步，再 `git checkout --` 该文件 | `6 tests completed, 1 failed`：`aProcessWithAnInvalidIconIsNotCreated` 红在 `:84`，`Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown.`：进程照常建起来，写错的图标只会让列表里少一张图 |
+| 5 | 还原后重跑第 1 步 | 与第 1 步相同 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PROD-404` 插件经 `PluginContext#events()` 监听：把 max 改低被拒、按插件记一行 ERROR、响应照发且 max 仍为 300 — 对应 `REQ-PROD-037` · 级别: 回归 · 执行者: AI
+
+前置：工作副本干净。§19「status 的 max 等于真实上限」的后半句。插件 `lister` 由宿主 `PluginHost` 启用，监听器先设描述「from the plugin」再 `setMaxPlayers(100)`；`StatusRequest` 在虚拟线程上交给 `StatusListener`，连接是测试替身，只收发出的包。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | `./gradlew :server-app:test --tests 'io.github.bearisbug.synaxis.app.ServerListPingPluginTest' --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts` | `BUILD SUCCESSFUL`，`tests="1"` 全绿：发出恰 1 个 `ResponsePacket`，`players` 为 max 300、online 0（抛异常之后的 `setOnlinePlayers(7)` 没执行），描述是「from the plugin」；`PluginEventsImpl` 恰好一行 ERROR：`Plugin event listener failed: plugin_id=lister event=ServerListPingEvent (1 failures since the last report)` |
+| 2 | 反证（事件没派发）：`src/main/java/io/github/bearisbug/synaxis/listener/preplay/StatusListener.java` 删掉 `connection.process().eventHandler().call(event);` 一行，重跑第 1 步，再 `git checkout --` 该文件 | `1 test completed, 1 failed`：红在 `ServerListPingPluginTest.java:96`，`what the plugin set before the refusal is kept ==> expected: <TextComponentImpl{content='from the plugin', …}> but was: <TextComponentImpl{content='synaxis', …}>`（max 仍是 300，只看 max 发现不了事件根本没派发） |
+| 3 | 还原后重跑第 1 步 | 与第 1 步相同 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PROD-405` 真进程：`server-app` 读三个键，`nc` 发 status 拿到配置的 MOTD、图标与 max，图标不合规拒绝起服 — 对应 `REQ-PROD-037` · 级别: 回归 · 执行者: AI
+
+前置：`./gradlew :server-app:installDist --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts`；端口 25660 空闲。空的临时工作目录里放两张图：`sips -z 64 64 <仓库根>/client-fabric/src/main/resources/assets/synaxis/icon.png --out icon.png`（`file` 报 `PNG image data, 64 x 64`，797 B），`small.png` 是同一张原图（16×16，97 B）。下文「起服」指：在该目录里 `JAVA_OPTS="-Xms1G -Xmx1G" SERVER_APP_OPTS="-Dsynaxis.app.port=25660 -Dsynaxis.app.auth=offline -Dsynaxis.app.core-mode=on -Dsynaxis.app.metrics.bind=127.0.0.1:0 <额外参数>" <仓库根>/server-app/build/install/server-app/bin/server-app < /dev/null > stdout.log 2>&1 &`，记下 `$!`，等到 `listening on 0.0.0.0:25660`；「ping」指 `printf '\x10\x00\x88\x06\x09localhost\x63\xdd\x01\x01\x00' | nc -w 2 127.0.0.1 25660 > status.bin`（一个 status 握手包：协议 776、地址 `localhost`、意图 1，后跟一个 `StatusRequest`），再用 `grep -a -o` 取字段。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 起服，额外参数 `-Dsynaxis.max-players=300 -Dsynaxis.motd=Synaxis-TC405 -Dsynaxis.server-icon=icon.png -Dsynaxis.hide-online-players=true`；`grep -o 'motd=[^,]*, serverIcon=[^,]*, hideOnlinePlayers=[a-z]*' stdout.log` | `motd=Synaxis-TC405, serverIcon=icon.png, hideOnlinePlayers=true`（`Effective ServerConfig[…]` 行） |
+| 2 | ping；`grep -a -o '"version":{[^}]*}' status.bin`、`grep -a -o '"players":{[^}]*}' status.bin`、`grep -a -o '"description":[^,]*' status.bin`；取 `"favicon":"data:image/png;base64,…"` 的 base64 部分 `base64 -d \| cmp - icon.png`；然后 `kill <pid>` | `"version":{"name":"26.2","protocol":776}`、`"players":{"online":0,"max":300}`、`"description":"Synaxis-TC405"`（纯文本组件由引擎的 Gson 序列化器写成紧凑的字符串形式，客户端同样接受）；`cmp` 退出码 0；停机末行 `synaxis server stopped successfully.` |
+| 3 | 在同一目录前台执行起服那条命令（不加 `&`），额外参数 `-Dsynaxis.server-icon=small.png`；看退出码、`grep -o 'Refusing to start: .*'`、`grep -c 'listening on'`、`lsof -nP -iTCP:25660 -sTCP:LISTEN \| wc -l`。再以 `-Dsynaxis.server-icon=missing.png` 做一次 | 两次退出码都是 1，`listening on` 0 行，25660 无监听。前一次 `Refusing to start: synaxis.server-icon is not a valid icon: a server icon must be 64x64 pixels but was 16x16: small.png`；后一次 `Refusing to start: synaxis.server-icon is not a valid icon: cannot read missing.png: java.nio.file.NoSuchFileException: missing.png` |
+| 4 | 反证（键名写错）：`src/main/java/io/github/bearisbug/synaxis/ServerConfig.java` 的 `System.getProperty("synaxis.motd", DEFAULTS.motd)` 改成 `System.getProperty("synaxis.mod", DEFAULTS.motd)`，重新 `installDist`，重做第 1、2 步；再 `git checkout --` 该文件、重新 `installDist`、重做第 1、2 步 | 改动下进程照常就绪、图标与 max 也对，但第 1 步读数是 `motd=synaxis`，ping 回 `"description":"synaxis"`：JUnit 用例都走 builder，读系统属性的这一行只有真进程测得到；还原后回到第 1、2 步的读数 |
+
+后置：每次都已按 pid 停服；25660 无监听；临时工作目录已删；`git status --short` 无输出。
+
 ## 5. 回归策略
 
 - **全量轮**（全部用例）：首次成稿、每个阶段 gate（引擎域阶段 0、2、3；游戏域 `docs/DESIGN-M2.md` §26 的阶段 1～6b；大世界域 `docs/DESIGN-M3.md` §26 的 M3-A～M3-G）、跨功能域改动、地基变更（JDK、Gradle、镜像、协议版本、模块拆分、启动入口）。
@@ -4942,6 +5032,7 @@ jcmd "$pid" VM.flags | tr ' ' '\n' | grep -cxE -- '-XX:\+UseG1GC|-XX:InitialHeap
   - 生产就绪域（`docs/DESIGN-PROD.md`）：实体追踪范围与每玩家可见上限（`REQ-PROD-023`、`REQ-PROD-024`）→ TC-PROD-310～TC-PROD-320；动了引擎 `EntityView`、`TrackingRange` / `TrackingRanges`、`Entity` 的追踪范围与必显两组方法、`Player#update` 里的重算调用或 `ServerConfig` 的 `synaxis.max-visible-entities-per-player` 就跑 TC-PROD-310～TC-PROD-314、TC-PROD-319 与 TC-PROD-320（第 1 步；动了 `EntityView` 的计数、`admits` 或重算加跑第 2、3 步）；动了 `PluginContext#entities`、`PluginEntities` 或 `PluginHost` 的接线跑 TC-PROD-315；动了 `loadtest/` 的 `Bot` 实体计数、`RunCommand` 采样或 `MergeCommand` 的 `visible_entities` 跑 TC-PROD-316、TC-PROD-317。TC-PROD-318（三轮各约 11 分钟）只在可见性、视野广播（`PacketViewableUtils`、`hasPredictableViewers`）或实体移动同步有改动时跑，本机同时只能有一个压测。跨域牵连：动了 `EntityView` 或 `Player#update` → 加 TC-PROD-033（4 线程严格模式全量，重算在玩家自己的 tick 线程上碰别的实体的视图）。
   - 生产就绪域（`docs/DESIGN-PROD.md`）：空间分格与多线程正确性余项（`REQ-PROD-020`、`REQ-PROD-019` 后半）→ TC-PROD-330～TC-PROD-336；动了 `ThreadProvider#grid` 跑 TC-PROD-330、TC-PROD-332、TC-PROD-335，动了 `ServerConfig` 的 `synaxis.thread-*` 键或 `ServerProcessImpl` 建 dispatcher 的一处跑 TC-PROD-331、TC-PROD-332、TC-PROD-334，动了 `ShardMain` 或 `server-app/build.gradle.kts` 的 `shardStartScripts` 跑 TC-PROD-333、TC-PROD-334 与 TC-PROD-050，动了 `build-src` 转给测试 JVM 的属性、`EnvTestExt` 或 `ci.yml` 的 `multithreaded-grid` 跑 TC-PROD-335；TC-PROD-336（两档各约 11 分钟）只在分格规则或 tick 调度路径有改动时跑，本机同时只能有一个压测。跨域牵连：动了 `thread` 包 → 加 TC-PROD-030～TC-PROD-033；动了 `plugin-api` 的 `package-info` 或 `docs/PLUGINS.md` §10 的线程契约 → 同步核对 `docs/DESIGN-PROD.md` `API-PROD-016` 的线程契约一条。
   - 生产就绪域（`docs/DESIGN-PROD.md`）：第 5 波集成后压测收尾（`REQ-PROD-029`）→ TC-PROD-360～TC-PROD-365，全部是同机真进程压测，本机同时只能有一个压测。TC-PROD-360（约 35 分钟）与 TC-PROD-365 第 1 步在引擎 tick、网络、区块发送、可见性或分格路径有改动时跑，并与本条记下的读数对比；TC-PROD-361、TC-PROD-362（各约 12 分钟）在 `capacity` 定值要重评时跑；动了闸门 L3 / L4、`ConnectionManager#updateWaitingPlayers` 或登录监听器跑 TC-PROD-363（约 10 分钟）；动了 `ConnectionGate` 或闸门汇总日志跑 TC-PROD-364（约 3 分钟）；动了 `EventLedger` 跑 TC-PROD-365 第 2 步。分机档到位后六条全部在分机上重跑。
+  - 生产就绪域（`docs/DESIGN-PROD.md`）：服务器列表 ping（`REQ-PROD-037`）→ TC-PROD-400～TC-PROD-405；动了 `StatusResponse`、`Favicon`、`ServerListPingEvent`、`StatusListener`、`ConnectionManager` 读图标的一处或 `ServerConfig` 的 `synaxis.motd` / `synaxis.server-icon` / `synaxis.hide-online-players` 三个键就跑 TC-PROD-400～TC-PROD-403，动了宿主的插件事件包装（`PluginEventsImpl`）或 `StatusListener` 派发事件的一处再加 TC-PROD-404，动了 `server-app` 的拒绝起服路径或这三个键读系统属性的几行加 TC-PROD-405（真进程，约 1 分钟）。跨域牵连：动了 `StatusResponse` 的 max → 加 TC-PROD-063；动了 status 状态的监听器 → 加 TC-PROD-062（status 桶）。
   - 影响面不确定时升级为全量轮。
 - **复测轮**（上轮失败用例 + 全部冒烟级）：修复失败项之后。
 - **人工收口轮**（仅上轮「待人工」用例）：AI 轮之后由人工补测 TC-016、TC-030、TC-GAME-020、TC-GAME-038、TC-GAME-046、TC-GAME-047，不要求冒烟级。

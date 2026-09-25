@@ -119,3 +119,11 @@ python3 tools/protocol-probe/probe.py echo --channel hello:echo --payload hi
 | `scheduler().runAsync(…)` | 自己的虚拟线程 | 阻塞的活（读写库、HTTP）；不碰实体与实例，结果用 `runOn` 送回去 |
 
 对另一个实体的影响（攻击、交易）不要在自己的线程上直接改对方：对方可能在另一条线程上，用 `scheduler().runOn(对方, 任务, TaskSchedule.immediate())` 投递，任务在对方下一次 tick 时在对方的线程上执行。只有必须在同一 tick 读到对方状态时才用 `对方.acquirable().sync(…)`，所有跨线程的 `sync` 都排同一把进程级的锁，用多了就退化成单线程。
+
+## 11. 发给玩家的文字
+
+断线原因、准入拒绝与系统消息一律发翻译键（`Component.translatable(键, 参数…)`），不发拼好的句子。客户端只从 Synaxis 模组的两份语言文件取译文（`client-fabric/src/main/resources/assets/synaxis/lang/en_us.json`、`zh_cn.json`），没有译文的键会原样显示成键名。
+
+- `DisconnectKeys` 里的键已经有译文，直接用。
+- 插件自己的键：在 `SynaxisPlugin#translationKeys()` 里列出来，再把中英两行译文加进模组的两份语言文件。仓内插件由 `:architecture-tests` 的翻译键门禁核对，缺一行 `./gradlew check` 就红（`docs/DESIGN-PROD.md` `API-PROD-029`）；仓外插件门禁看不到，译文要提交到本仓的模组里。
+- 键写成完整的字符串常量，不在运行时拼（`"synaxis:command-" + name` 门禁看不见）。

@@ -1,5 +1,6 @@
 package io.github.bearisbug.synaxis.network;
 
+import io.github.bearisbug.synaxis.JvmFlags;
 import io.github.bearisbug.synaxis.registry.Registries;
 import io.github.bearisbug.synaxis.utils.ObjectPool;
 import org.jetbrains.annotations.Contract;
@@ -298,7 +299,8 @@ final class NetworkBufferImpl implements NetworkBuffer {
 
     // Use the JVM lazy loading to ignore these until compression is required.
     static class CompressionHolder {
-        private static final ObjectPool<Deflater> DEFLATER_POOL = ObjectPool.pool(Deflater::new);
+        private static final ObjectPool<Deflater> DEFLATER_POOL =
+                ObjectPool.pool(() -> new Deflater(JvmFlags.COMPRESSION_LEVEL));
         private static final ObjectPool<Inflater> INFLATER_POOL = ObjectPool.pool(Inflater::new);
     }
 

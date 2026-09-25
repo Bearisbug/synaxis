@@ -14,6 +14,7 @@
 
 | 日期 | 改动 | 作者 |
 | --- | --- | --- |
+| 2026-09-25 | 跟进 `docs/DESIGN-PROD.md` v0.9（6C，`REQ-PROD-033` 配置文件、`REQ-PROD-038` 压缩阈值与级别）。**新增 §4「生产就绪 · 第 6 波 6C：配置文件与压缩设置」六条 `TC-PROD-440`～`TC-PROD-445`**，都带实跑过的反证：文件的键在命令行没给时生效、命令行优先、文件压过分片默认值、未知键带最近的已知键拒启且一个键都不设（440，§19 场景；两条反证：去掉 `else` 让文件压过命令行、删掉未知键判断）；配置键门禁 `ConfigKeyGateTest`（441，§24；三条反证：删掉表里的 `synaxis.compression-level`、表里加一个没人读的键、`logback.xml` 换键名）；真 JVM 下分片入口读文件，日志去向、`JvmFlags`、`ServerConfig` 都拿到文件的值，文件的阈值 512 与级别 3 上线（442，§19 场景；三条反证：`LOGGER` 挪到 `CONFIG_FILE` 之前、`ShardMain` 先写默认值、`Deflater` 池不按级别建）；真 JVM 下未知键让两个入口都拒启（443；反证：`main` 不看拒启）；真 socket 下阈值边界、引擎默认 256 与 6 级、阈值 0（444，§19 场景；三条反证：进程不取配置的阈值、`>=` 改 `>`、负阈值放行）；发行版真进程（445；反证同 442 第 2 步，经 `installDist`）。§5 加本节的回归映射 | Bearisbug |
 | 2026-09-25 | 跟进 `docs/DESIGN-PROD.md` v0.9（集成），第 6 波六个分支合入后的连带修正。翻译键门禁的非文字标识名单加 6B 的四个 JSON-RPC 方法名，`TranslationKeyGateTest` 的 `NOT_TEXT` 由 `Map.of`（至多 10 对）改为 `Map.ofEntries`，两条断言下移 4 行。**`TC-PROD-396`** 改为跑门禁：6B 原先改的模组 `HostCommandTextTest` 已被 6F 删除，§5 该条的触发条件同步。**`TC-PROD-430`～`TC-PROD-433`**：键数 51 → 56、标识数 7 → 11，红行 `:82`/`:83`/`:84`/`:93` → `:86`/`:87`/`:88`/`:97`，`TC-PROD-432` 第 1 步的 grep 名单加四个方法名、第 2、3 步按 `Map.entry` 的写法删改。**`TC-PROD-068`、`TC-PROD-105`、`TC-PROD-162`、`TC-PROD-210`、`TC-PROD-233`、`TC-PROD-250`、`TC-PROD-295`** 的门禁红行 `:83` → `:87`。新预期取自集成分支上的实跑结果 | Bearisbug |
 | 2026-09-25 | 跟进 `docs/DESIGN-PROD.md` v0.9（6B，`REQ-PROD-032` 管理接口、`REQ-PROD-034` 性能剖析）。**新增 §4「生产就绪 · 第 6 波 6B：管理接口与性能剖析」十八条 `TC-PROD-380`～`TC-PROD-397`**：默认关与只绑回环、开了没令牌拒启（380）、握手鉴权且拒绝回应逐字节相同（381）、消息上限 1009（382）、握手前 8 KiB 与时限（383）、各方法经真 WebSocket（384）、JSON-RPC 错误码与通知不回复（385）、未预料异常不带栈且限流（386）、进出通知（387）、drain 只关登录门（388）、`server/stop` 先回复后停机且与控制台共用判定（389）、封禁三方法（390，要数据库）、`synaxis:profile`（391）、`profile` 命令（392）、局域网地址连不上与端口被占拒启（393）、`org.java_websocket` 钉在 INFO（394）、宿主日志门禁覆盖新包（395）、模组五条新译文（396）、真进程（397，端口 25660 / 25661）；每条带真跑过的反证与红的位置。**改用例、不改 ID**：4C 一节 `CommandsIntegrationTest` 与 `CommandRolesIntegrationTest` 的红线行号随新增的 import 与构造器参数各加 3；`TC-PROD-255` 第 2、3 步改在拆出来的 `HostCommands#claimStop` 上做（重跑过，仍红在 `:317` 与 `:296`）；`TC-PROD-004` 的 `LogbackConfigurationTest` 行号各加 2，「四条」改为「其中这四条」（该类多了 394 那一条）。§5 生产就绪域加一行 | Bearisbug |
 | 2026-09-25 | 跟进 `docs/DESIGN-PROD.md` v0.9（6F，`REQ-PROD-041` 翻译键门禁，`API-PROD-029`）。**新增 §4「生产就绪 · 第 6 波 6F：翻译键门禁」五条 `TC-PROD-430`～`TC-PROD-434`**：门禁随 `check` 运行、现有 51 个键两份语言文件都有、引擎新键缺 `zh_cn` 被报（430，§19 场景；第 5 步是删掉手写清单后的模组构建）；宿主回执的键缺 `en_us` 被报、语言文件是 `test` 任务的输入、同一提交换一个路径检出时门禁 `FROM-CACHE`（431，两条反证：语言目录标成 `@Internal` 后只改语言文件时任务 UP-TO-DATE；把绝对路径写成系统属性后另一个路径的检出不再命中缓存）；频道与 Cookie 键不算键、名单不留死条目（432，§19 场景）；插件经 `translationKeys()` 声明的键（433，§19 场景）；`translationKeys()` 过 `v0.3.0` 的 ABI 门（434）。每条带真跑过的反证。**改写七条已有用例的译文步骤**（模组测试里手写的服务端键清单删除，由门禁取代）：`TC-PROD-068`、`TC-PROD-105`、`TC-PROD-162`、`TC-PROD-233`、`TC-PROD-250` 的第 1、2 步，`TC-PROD-210` 的第 1～3 步与 `TC-PROD-295` 的第 3、4 步改为跑门禁，反证仍是删掉语言文件的同一行（`TC-PROD-210` 第 3 步删的是 `en_us.json` 的 `synaxis:role-above-sender`），红的位置改为 `TranslationKeyGateTest.java:83` 与门禁的报错行（`TC-PROD-068` 删 `synaxis:shard-full` 时夹具那条也红，`2 failed`）；`TC-PROD-250`、`TC-PROD-295` 前置去掉 `publishToMavenLocal`。`TC-GAME-066` 第 3 步的模组测试数 92 → 90、`ClientHandshakeTest` 13 → 11（删去查握手三个键的一条）：92 是改写前就过时的数，删除前实跑 104 个，六个类与那一条都按两种语言参数化，共删 14 个。§5 生产就绪域加一行 | Bearisbug |
@@ -5598,6 +5599,98 @@ for (var request : System.getenv("MGMT_CALLS").split("\n")) {
 
 后置：按 PID 停掉 `sleep` 与残留进程，删掉 `$E`（含 `.token` 与 `profiles/`）；确认 `Main.java` 没有残留改动。
 
+### 生产就绪 · 第 6 波 6C：配置文件与压缩设置
+
+对应 `REQ-PROD-033`（G30，`API-PROD-023`）与 `REQ-PROD-038`（G35，`API-PROD-020` 压缩一条），§19 三条场景，§24 配置键门禁。实现：
+
+- `server-app` 新类 `ConfigFile`：键表 `KEYS`（105 个）、`apply`（命令行没给的键设成系统属性，被拒时一个都不设）、`read`（按 UTF-8 读 `java.util.Properties`，同一键写两次即拒）、`nearest`（编辑距离最近的已知键）。`Main` 的第一个静态字段 `CONFIG_FILE` 在类初始化时读文件，排在 `LOGGER` 之前；`Main#main` 第一件事是报被拒的文件；`ShardMain#main` 先调 `Main.configFile()` 再写分片默认值。
+- 引擎：`ServerConfig` 加 `compressionThreshold`（`synaxis.compression-threshold`，默认 256，负数拒绝），`ServerProcessImpl` 以它作阈值初值；`JvmFlags` 加 `COMPRESSION_LEVEL`（`synaxis.compression-level`，默认 6，取 0～9），`NetworkBufferImpl` 的 `Deflater` 池按它建。
+- 门禁：`:architecture-tests` 的 `ConfigKeyGateTest`，一条测试。
+- 测试：`:server-app` 的 `ConfigFileTest`（11 条，写进一张属性表而不是 JVM 属性）与 `ConfigFileLaunchTest`（2 条，各自另起 JVM）；引擎的 `CompressionSocketTest`（3 条，真 socket）与 `ServerConfigTest`（加 1 条、改 2 条，共 7 条）。
+
+下文「跑单测」指 `./gradlew <任务> --tests '<类>' --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts`，结果看该模块 `build/test-results/test/TEST-<类>.xml` 的 `tests`、`failures`、`<failure message>` 与 `<system-out>`；红的行号指测试源文件。本节的用例都不连数据库。反证一律是「临时改一处、跑、看红、`git checkout --` 还原、重跑复绿」。
+
+#### `TC-PROD-440` 文件的键在命令行没给时生效，命令行优先，文件压过分片默认值；未知键带最近的已知键拒启、一个键都不设（§19 场景） — 对应 `REQ-PROD-033` · 级别: 冒烟 · 执行者: AI
+
+前置：工作副本干净。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑单测 `:server-app:test` 的 `io.github.bearisbug.synaxis.app.ConfigFileTest` | `tests="11"` 全绿。命令行给了 `synaxis.max-players=200` 时文件的 300 不生效、同文件的 `synaxis.motd` 生效，`describe()` 为 `path=<文件> keys=2 overridden_by_command_line=[synaxis.max-players]`；文件写了视距 10 与线程 3 之后，`ShardMain.viewDefaults` / `threadDefaults` 只补 `chunk-queue.max-per-tick=4`、`max-visible-entities-per-player=100` 与 `thread-provider=grid`；`synaxis.max-player=1` 被拒为 `<文件>: unknown key synaxis.max-player (nearest known key synaxis.max-players)`，同文件的 `synaxis.motd` 也没设；三处问题（`server-port`、`synaxis.app.auht`、文件里写 `synaxis.config-file`）一次列全；同一键写两次报 `is given twice`；默认位置没有文件时为 `none, <路径> does not exist`；`-Dsynaxis.config-file` 指的文件不存在时被拒，文件不是合法 UTF-8 时也被拒；`-Dsynaxis.config-file` 指的文件存在时读它而不读工作目录的那份；中文值、续行、`\n` 转义、`:` 与空格分隔、`#` 与 `!` 注释都按 `java.util.Properties` 读，值的尾随空格保留；距离相同时最近的已知键取字典序在前的（`synaxis.app.or` → `synaxis.app.log`，与 `synaxis.app.port` 都是 2） |
+| 2 | 反证（文件压过命令行）：`server-app/src/main/java/io/github/bearisbug/synaxis/app/ConfigFile.java` 的 `else set.accept(key, value);` 去掉 `else `，跑第 1 步，再 `git checkout --` 该文件 | `11 tests completed, 1 failed`：`theCommandLineWinsOverTheFile` 红在 `ConfigFileTest.java:51`，`expected: <{synaxis.motd=Synaxis, synaxis.max-players=200}> but was: <{synaxis.motd=Synaxis, synaxis.max-players=300}>` |
+| 3 | 反证（未知键放过）：删掉同一文件的 `else if (!KEYS.contains(key))` 与下一行，跑第 1 步，再还原 | `11 tests completed, 2 failed`：`anUnknownKeyIsRefusedWithTheNearestKnownKeyAndNothingIsSet` 红在 `:74`，`expected: <…/synaxis.properties: unknown key synaxis.max-player (nearest known key synaxis.max-players)> but was: <null>`；`everyUnknownKeyIsListedAndTheFileCannotNameItself` 红在 `:83`，实际只剩 `synaxis.config-file` 那一条 |
+| 4 | 还原后重跑第 1 步 | 与第 1 步相同 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PROD-441` 配置键门禁：键表正好是代码读的 105 个键；代码新读的键不在表里、表里的键没有类读、`logback.xml` 换了键名都被报（§24） — 对应 `REQ-PROD-033` · 级别: 回归 · 执行者: AI
+
+前置：工作副本干净。下文「跑门禁」指跑单测 `:architecture-tests:test` 的 `io.github.bearisbug.synaxis.architecture.ConfigKeyGateTest`；门禁不连数据库、不起进程。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑门禁；再 `./gradlew check --dry-run --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts \| grep -E '^:architecture-tests:test '` | `tests="1"` 全绿，`<system-out>` 有一行 `config key gate: 105 keys read, 105 in ConfigFile.KEYS, 20 meter names left out`；dry-run 输出 `:architecture-tests:test SKIPPED`（门禁随 `check` 运行） |
+| 2 | 反证（新键没进表）：删掉 `ConfigFile.java` 键表里 `"synaxis.compression-level",` 一行，跑门禁，再还原 | `BUILD FAILED`：红在 `ConfigKeyGateTest.java:74`，`Problems of the config key gate (1):` 下一行 `synaxis.compression-level is read (io.github.bearisbug.synaxis.JvmFlags) but not in ConfigFile.KEYS, so the config file refuses it`；`<system-out>` 为 `105 keys read, 104 in ConfigFile.KEYS, 20 meter names left out` |
+| 3 | 反证（表里的键没有类读）：键表末尾 `"synaxis.app.units"` 后加一项 `"synaxis.gone"`，跑门禁，再还原 | 红在 `:74`，`(1)` 下一行 `synaxis.gone is in ConfigFile.KEYS, but no class reads it any more`；`105 keys read, 106 in ConfigFile.KEYS`。键表类 `ConfigFile` 不算读者：它的常量池里有全部键，把它算进来这一行就永远报不出 |
+| 4 | 反证（只由 logback 读的键）：`server-app/src/main/resources/logback.xml` 的 `${synaxis.app.log:-file}` 改成 `${synaxis.app.logs:-file}`，跑门禁，再还原 | 红在 `:74`，`(2)` 下两行：`synaxis.app.logs is read (logback.xml) but not in ConfigFile.KEYS, so the config file refuses it`、`synaxis.app.log is in ConfigFile.KEYS, but no class reads it any more` |
+| 5 | 还原后跑门禁 | 与第 1 步相同 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PROD-442` 真 JVM：分片入口读工作目录的文件，命令行 > 文件 > 分片与 RTS 默认值；日志去向、`JvmFlags`、`ServerConfig` 三处读一次就固化的取值都拿到文件的值；文件写的阈值与级别上线（§19 场景） — 对应 `REQ-PROD-033`、`REQ-PROD-038` · 级别: 冒烟 · 执行者: AI
+
+前置：工作副本干净。`ConfigFileLaunchTest` 每条测试在 `@TempDir` 里写文件，以测试 classpath 另起一个 JVM（`-Xmx1g`；`-Dlogback.configurationFile=logback.xml` 用生产的日志配置，测试 classpath 上的 `logback-test.xml` 不读 `synaxis.app.log`），游戏端口取空闲端口、指标端口 `127.0.0.1:0`；测试结束时按进程句柄结束这个 JVM，JUnit 删掉临时目录。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑单测 `:server-app:test` 的 `io.github.bearisbug.synaxis.app.ConfigFileLaunchTest` | `tests="2"` 全绿（本机各约 1.2 s 与 0.4 s）。`aShardTakesTheFileOverItsDefaultsAndTheCommandLineOverTheFile`：入口 `ShardMain`，文件 11 个键（`synaxis.app.log=stdout`、离线、核心模式、端口、指标端口、`max-players=300`、视距 10、实体视距 6、线程 3、阈值 512、级别 3），命令行只给 `-Dsynaxis.max-players=200`。日志有 `Effective config file: path=<临时目录真实路径>/synaxis.properties keys=11 overridden_by_command_line=[synaxis.max-players]`；`Effective ServerConfig[…]` 里 `maxPlayers=200`、`chunkViewDistance=10`（不是分片默认 12）、`dispatcherThreads=3`（不是核数 − 2）、`entityViewDistance=6`（不是 `Main` 的 8）、`threadProvider=GRID`（文件没写，仍是分片默认）、`compressionThreshold=512`；`Effective JvmFlags[…]` 里 `compressionLevel=3`；临时目录里没有 `logs/latest.log`。随后客户端经真 socket 登录、以空列表答 known packs、读到 `FinishConfiguration`：`SetCompression` 的阈值是 512；此后数据长度为 0 的帧包体都 < 512，非 0 的都 ≥ 512、zlib 头第二字节 `0x5E`、以 3 级重新压缩逐字节相同，两类帧都有 |
+| 2 | 反证（文件晚于日志初始化）：`server-app/src/main/java/io/github/bearisbug/synaxis/app/Main.java` 把 `private static final Logger LOGGER = …;` 那一行挪到类体第一行（`CONFIG_FILE` 之前），跑第 1 步，再还原 | `2 tests completed, 1 failed`：红在 `ConfigFileLaunchTest.java:100`，`synaxis.app.log=stdout reached the logging setup, so it built no file appender ==> expected: <false> but was: <true>`：logback 先按默认的 `file` 建了 `logs/latest.log`，之后文件才进系统属性 |
+| 3 | 反证（分片默认值先写）：`server-app/src/main/java/io/github/bearisbug/synaxis/app/ShardMain.java` 删掉 `if (Main.configFile().refusal() == null) {` 与它的 `}`，跑第 1 步，再还原 | 红在 `:87`：日志里是 `overridden_by_command_line=[synaxis.chunk-view-distance, synaxis.dispatcher-threads, synaxis.max-players]`、`chunkViewDistance=12`、`dispatcherThreads=10`（本机 12 核）：分片默认值先进了系统属性，被当成命令行的值压过文件 |
+| 4 | 反证（级别没接上）：`src/main/java/io/github/bearisbug/synaxis/network/NetworkBufferImpl.java` 的 `ObjectPool.pool(() -> new Deflater(JvmFlags.COMPRESSION_LEVEL))` 改回 `ObjectPool.pool(Deflater::new)` 并删掉 `JvmFlags` 的 import，跑第 1 步，再还原 | 红在 `:113`：`the level bits of the zlib header ==> expected: <94> but was: <156>`（`0x5E` 与 `0x9C`：文件写了 3 级，线上仍是 6 级） |
+| 5 | 还原后重跑第 1 步 | 与第 1 步相同 |
+
+后置：`git status --short` 无输出；`pgrep -fl 'synaxis.app.Main\|synaxis.app.ShardMain'` 无输出。
+
+#### `TC-PROD-443` 真 JVM：文件有未知键时两个入口都拒启并给出最近的已知键，进程没建、端口没绑 — 对应 `REQ-PROD-033` · 级别: 回归 · 执行者: AI
+
+前置：同 `TC-PROD-442`。`anUnknownKeyRefusesBothLaunchersBeforeAnythingIsBound` 的两个 JVM 在命令行带离线、核心模式、空闲游戏端口与 `127.0.0.1:0` 指标端口，入口即使放过了文件也只会起在空闲端口上。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `TC-PROD-442` 第 1 步 | 这一条绿：`Main` 带 `-Dsynaxis.config-file=<临时目录>/shard.properties`（`synaxis.motd=Synaxis` 与 `synaxis.max-player=1`）起，`ShardMain` 读工作目录的 `synaxis.properties`（`synaxis.max-player=1`）；两次都在 30 s 内以退出码 1 结束，日志有 `Refusing to start: <文件>: unknown key synaxis.max-player (nearest known key synaxis.max-players)`，没有任何 `Effective` 行，也没有 `listening on` |
+| 2 | 反证（`main` 不看拒启）：删掉 `Main.java` 里 `main` 开头的 `if (CONFIG_FILE.refusal() != null) { … }` 五行，跑第 1 步，再还原 | `2 tests completed, 1 failed`，用时约 36 s：红在 `ConfigFileLaunchTest.java:312`（经 `:147`、`:132`），`the JVM exits: …`，所附日志里有 `Effective config file: none, <临时目录>/shard.properties does not exist` 与 `listening on 0.0.0.0:<空闲端口>`：被拒的文件一个键都没设，进程带着默认值起来了 |
+| 3 | 还原后重跑第 1 步 | 与第 1 步相同 |
+
+后置：`git status --short` 无输出；`pgrep -fl 'synaxis.app.Main\|synaxis.app.ShardMain'` 无输出。
+
+#### `TC-PROD-444` 真 socket：阈值 512 时包体 511 B 不压缩、512 B 压缩；引擎默认是 256 与 6 级且与改动前逐字节相同；阈值 0 不发 `SetCompression`（§19 场景） — 对应 `REQ-PROD-038` · 级别: 冒烟 · 执行者: AI
+
+前置：工作副本干净。`CompressionSocketTest` 在测试 JVM 里建进程（`ServerProcess.of(config)`，离线），绑回环空闲端口；登录停在 `AsyncPlayerPreLoginEvent` 时，由监听器发两个包体长度已知的 `LoginPluginRequestPacket`（频道 `synaxis:probe`，包体 = 16 B + 负载），没有谁等它们的回复，客户端不答。测试 JVM 没有 `-Dsynaxis.compression-level`，级别是 6。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑单测 `:test` 的 `io.github.bearisbug.synaxis.network.CompressionSocketTest` 与 `io.github.bearisbug.synaxis.ServerConfigTest` | 前者 `tests="3"`、后者 `tests="7"`，全绿。阈值 512：`SetCompression` 为 512；第一帧数据长度 0、包体 511 B；第二帧数据长度 512、包体 512 B，zlib 头 `0x78 0x9C`，以 `JvmFlags.COMPRESSION_LEVEL` 重新压缩逐字节相同；第三帧是 `LoginSuccess`。默认配置：`SetCompression` 为 256，255 B 不压缩、256 B 压缩，6 级写出的字节与 `new Deflater(Deflater.DEFAULT_COMPRESSION)` 逐字节相同。阈值 0：第一帧就是探针包（首字节是包 ID 4，没有数据长度），511 B 与 512 B 都原样发，之后是 `LoginSuccess`。`ServerConfigTest`：默认阈值 256；进程以配置的 512 为初值；`compressionThreshold(-1)` 抛 `compressionThreshold must not be negative but was -1, 0 turns compression off` |
+| 2 | 反证（进程不取配置的阈值）：`src/main/java/io/github/bearisbug/synaxis/ServerProcessImpl.java` 的 `this.compressionThreshold = config.compressionThreshold();` 改成 `this.compressionThreshold = 256;`，跑第 1 步，再还原 | `10 tests completed, 3 failed`：`CompressionSocketTest.java:63` `expected: <512> but was: <256>`；`:99` `the first packet is the probe, not SetCompression ==> expected: <4> but was: <3>`；`ServerConfigTest.java:59` `expected: <512> but was: <256>` |
+| 3 | 反证（边界）：`src/main/java/io/github/bearisbug/synaxis/network/packet/PacketWriting.java` 的 `packetSize >= compressionThreshold` 改成 `>`，只跑 `CompressionSocketTest`，再还原 | `3 tests completed, 2 failed`：`:71` `512 bytes are at the threshold ==> expected: <512> but was: <0>`；`:87` `expected: <256> but was: <0>` |
+| 4 | 反证（负阈值放行）：删掉 `src/main/java/io/github/bearisbug/synaxis/ServerConfig.java` 构造器里的 `if (compressionThreshold < 0)` 与其后两行，只跑 `ServerConfigTest`，再还原 | `7 tests completed, 1 failed`：`invalidValuesAreRejected` 红在 `ServerConfigTest.java:86`，`Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown.` |
+| 5 | 还原后重跑第 1 步 | 与第 1 步相同 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PROD-445` 真进程：发行版 `bin/server-shard` 读工作目录的 `synaxis.properties`，命令行优先；两个启动脚本对指错的文件与未知键拒启 — 对应 `REQ-PROD-033`、`REQ-PROD-038` · 级别: 回归 · 执行者: AI
+
+前置：`./gradlew :server-app:installDist --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts`；端口 25672 空闲（`lsof -nP -iTCP:25672 -sTCP:LISTEN` 无输出）；shell 里没有 `JAVA_TOOL_OPTIONS`。空的临时工作目录 `$W` 里写 `synaxis.properties` 九行：`synaxis.app.log=stdout`、`synaxis.app.auth=offline`、`synaxis.app.core-mode=on`、`synaxis.app.port=25672`、`synaxis.app.metrics.bind=127.0.0.1:0`、`synaxis.max-players=300`、`synaxis.chunk-view-distance=10`、`synaxis.compression-threshold=512`、`synaxis.compression-level=3`。下文 `<bin>` 是 `<仓库根>/server-app/build/install/server-app/bin`。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 在 `$W` 里 `JAVA_OPTS="-Xms1G -Xmx1G" SERVER_APP_OPTS="-Dsynaxis.max-players=200" <bin>/server-shard < /dev/null > stdout.log 2>&1 &`，等到 `listening on 0.0.0.0:25672`；`grep -o 'Effective config file: .*' stdout.log`；`grep -o 'chunkViewDistance=[0-9]*\|dispatcherThreads=[0-9]*\|threadProvider=[A-Z]*\|maxPlayers=[0-9]*\|compressionThreshold=[0-9]*\|compressionLevel=[0-9]*' stdout.log`；`ls logs`；然后 `kill <lsof -t 查到的 pid>` | `Effective config file: path=/private/tmp/…/synaxis.properties keys=9 overridden_by_command_line=[synaxis.max-players]`；`chunkViewDistance=10`、`dispatcherThreads=10`（12 核机器上的分片默认，文件没写）、`threadProvider=GRID`、`maxPlayers=200`、`compressionThreshold=512`、`compressionLevel=3`；`ls: logs: No such file or directory`（stdout 模式不建文件 appender）；停机末行 `synaxis server stopped successfully.` |
+| 2 | 在 `$W` 里前台 `SERVER_APP_OPTS="-Dsynaxis.config-file=missing.properties" <bin>/server-shard < /dev/null > refused1.log 2>&1`；看退出码、`grep -o 'Refusing to start: .*' refused1.log`、`grep -c 'listening on' refused1.log` | 退出码 1；`Refusing to start: /private/tmp/…/missing.properties: cannot be read: java.nio.file.NoSuchFileException: /private/tmp/…/missing.properties`；`0` |
+| 3 | 写 `bad.properties` 两行 `synaxis.app.port=25672`、`synaxis.max-player=1`；前台 `SERVER_APP_OPTS="-Dsynaxis.config-file=bad.properties -Dsynaxis.app.log=stdout" <bin>/server-app < /dev/null > refused2.log 2>&1`；看退出码、`Refusing to start` 行、`grep -c 'Effective\|listening on' refused2.log`、`lsof -nP -iTCP:25672 -sTCP:LISTEN \| wc -l` | 退出码 1；`Refusing to start: /private/tmp/…/bad.properties: unknown key synaxis.max-player (nearest known key synaxis.max-players)`；`0`；`0` |
+| 4 | 把 `$W/synaxis.properties` 的 `synaxis.compression-level=3` 改成 `=12`、端口改成 25673，前台 `<bin>/server-app < /dev/null > out.log 2>&1`；看退出码、`grep -n 'Refusing\|Exception\|Caused by\|listening' out.log`；再改回 3 与 25672 | 退出码 1；第 1 行 `Exception in thread "main" java.lang.ExceptionInInitializerError`，第 5 行 `Caused by: java.lang.IllegalArgumentException: Property 'synaxis.compression-level' value must be in range [0..9] but was 12`，没有 `Refusing to start` 与 `listening on`：JVM 级键越界在 `JvmFlags` 类初始化处退出（`docs/DESIGN-PROD.md` `API-PROD-020`） |
+| 5 | 反证（文件晚于日志初始化）：照 `TC-PROD-442` 第 2 步改 `Main.java`，重新 `installDist`，删掉 `$W/logs` 后重做第 1 步；再 `git checkout --` 该文件、重新 `installDist`、删掉 `logs` 后重做第 1 步 | 改动下进程照常就绪，`Effective config file` 行与第 1 步相同，但 `ls logs` 列出 `latest.log`：文件的键进了系统属性，logback 却已按默认的 `file` 建好了文件 appender。还原后 `ls logs` 回到 `No such file or directory` |
+
+后置：每次都已按 pid 停服；25672 无监听；`$W` 已删；`git status --short` 无输出。
+
 ## 5. 回归策略
 
 - **全量轮**（全部用例）：首次成稿、每个阶段 gate（引擎域阶段 0、2、3；游戏域 `docs/DESIGN-M2.md` §26 的阶段 1～6b；大世界域 `docs/DESIGN-M3.md` §26 的 M3-A～M3-G）、跨功能域改动、地基变更（JDK、Gradle、镜像、协议版本、模块拆分、启动入口）。
@@ -5633,6 +5726,7 @@ for (var request : System.getenv("MGMT_CALLS").split("\n")) {
   - 生产就绪域（`docs/DESIGN-PROD.md`）：视距上限与实体休眠（`REQ-PROD-039`、`REQ-PROD-040`）→ TC-PROD-410～TC-PROD-422；动了 `Player` 的 `setMaxViewDistance`、`update` 里应用视距的一段、`updateViewDistance` / `tellViewDistance`、`UNSAFE_init` 的 `JoinGamePacket`、`spawnPlayer` 或 `Instance#viewDistance(int)` 就跑 TC-PROD-410～TC-PROD-413；动了 `Entity#tick` / `sitsOutTick` / `setDormancyPolicy`、`DormancyPolicy`、`PlayerPositions` 或 `Instance#tick` 拍快照的一行就跑 TC-PROD-414～TC-PROD-420 与 TC-PROD-422，动了 `Entity#refreshPosition` 的提前返回也跑 TC-PROD-422；TC-PROD-421（三个基准共约 9 分钟）只在休眠路径或 `Entity#tick` 有改动时重量，并与 §15「实体休眠」行对比。跨域牵连：动了 `Player#update` 的视距一段 → 加 TC-GAME-035 与 `PlayerChunkQueueIntegrationTest`（`REQ-M2-014` 的区块环收缩）；动了 `Entity#tick` → 加 TC-PROD-033、TC-PROD-335（4 线程严格模式全量）；动了测试客户端 `EncryptedLoginClient` → 加 `OnlineLoginSocketTest`、`OnlineDuplicateLoginSocketTest`（TC-PROD-092～TC-PROD-100、TC-PROD-350）；动了 `:plugin-api` 的 `package-info` 或 `docs/PLUGINS.md` §10 的线程契约 → 同步核对 `docs/DESIGN-PROD.md` `API-PROD-016` 与 `API-PROD-019` 休眠一条。
   - 生产就绪域（`docs/DESIGN-PROD.md`）：翻译键门禁（`REQ-PROD-041`）→ TC-PROD-430～TC-PROD-434；动了模组的 `en_us.json` / `zh_cn.json`、任何含 `synaxis:` 字符串常量的主类（`DisconnectReasons`、`DisconnectKeys`、宿主的命令回执与系统消息、新的频道或 Cookie 键）、`:architecture-tests` 的 `TranslationKeyGateTest` 与夹具或 `architecture-tests/build.gradle.kts` 就跑 TC-PROD-430 第 1～4 步与 TC-PROD-431～TC-PROD-433；动了 `SynaxisPlugin` 跑 TC-PROD-433、TC-PROD-434 与 TC-PROD-163；删改模组测试时跑 TC-PROD-430 第 5 步。跨域牵连：给引擎或宿主加断线原因、回执或系统消息的键 → 加 TC-PROD-430 第 1 步（按功能写的译文用例 TC-PROD-068、TC-PROD-105、TC-PROD-162、TC-PROD-210、TC-PROD-233、TC-PROD-250 与 TC-PROD-295 第 3、4 步跑的是同一个门禁）。
   - 生产就绪域（`docs/DESIGN-PROD.md`）：管理接口与性能剖析（`REQ-PROD-032`、`REQ-PROD-034`）→ TC-PROD-380～TC-PROD-397；动了 `server-app` 的 `management/` 就跑 TC-PROD-380～TC-PROD-391、TC-PROD-393、TC-PROD-395（TC-PROD-390 要数据库前置），再动了 `Main` 里管理接口的装配或起服顺序加 TC-PROD-397（真进程，约 2 分钟）；动了 `Profiler` 或 `HostCommands` 的 `profile`、`claimStop`、`startStop` 就跑 TC-PROD-389、TC-PROD-391、TC-PROD-392 与 TC-PROD-243、TC-PROD-255；动了 `logback.xml` 跑 TC-PROD-394 与 TC-PROD-004；动了模组 lang 或 `TranslationKeyGateTest` 跑 TC-PROD-396；动了 `HostModeration#activeBans` 跑 TC-PROD-390；升 Java-WebSocket 版本时全跑，并重看 TC-PROD-381 第 1 步（被拒握手的回应是否仍是 404 且逐字节相同）与 TC-PROD-383（库是否已自带握手前的上限）。
+  - 生产就绪域（`docs/DESIGN-PROD.md`）：配置文件与压缩设置（`REQ-PROD-033`、`REQ-PROD-038`）→ TC-PROD-440～TC-PROD-445；动了 `server-app` 的 `ConfigFile` 或 `Main` 读文件、报拒启的几处就跑 TC-PROD-440～TC-PROD-443，再动了 `Main` 的静态字段顺序、起服顺序或 `logback.xml` 加 TC-PROD-445（真进程，约 1 分钟）；动了 `ShardMain#main` 跑 TC-PROD-440、TC-PROD-442、TC-PROD-443 与 TC-PROD-333、TC-PROD-334；给任何模块加、删或改名一个 `synaxis.*` 系统属性（`ServerConfig#fromSystemProperties`、`JvmFlags`、各包的 JVM 级开关、宿主与 RTS 插件读的键、`logback.xml` 的替换）就跑 TC-PROD-441，并在同一提交里改 `ConfigFile.KEYS` 与 `docs/DESIGN-PROD.md` `API-PROD-023` 的键表；动了 `ServerConfig#compressionThreshold`、`ServerProcessImpl` 取阈值的一处、`JvmFlags.COMPRESSION_LEVEL`、`NetworkBufferImpl` 的 `Deflater` 池、`PacketWriting#writeCompressedFormat` 或 `PlayerSocketConnection#startCompression` 就跑 TC-PROD-444 与 TC-PROD-442。跨域牵连：动了 `HostMetrics` 的指标名 → 加 TC-PROD-441（门禁按 `HostMetrics.NAMES` 认指标名）；动了引擎的压缩路径 → 加 TC-PROD-291（开了压缩的连接的解压字节限速）。
   - 影响面不确定时升级为全量轮。
 - **复测轮**（上轮失败用例 + 全部冒烟级）：修复失败项之后。
 - **人工收口轮**（仅上轮「待人工」用例）：AI 轮之后由人工补测 TC-016、TC-030、TC-GAME-020、TC-GAME-038、TC-GAME-046、TC-GAME-047，不要求冒烟级。

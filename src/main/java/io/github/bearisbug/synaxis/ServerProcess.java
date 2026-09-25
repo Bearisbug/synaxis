@@ -190,7 +190,8 @@ public interface ServerProcess extends Registries {
     void setDifficulty(Difficulty difficulty);
 
     /**
-     * The packet compression threshold, {@code 0} means that compression is disabled.
+     * The packet compression threshold, {@code 0} means that compression is disabled. Starts at
+     * {@link ServerConfig#compressionThreshold()}.
      */
     int compressionThreshold();
 

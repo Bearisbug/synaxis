@@ -98,7 +98,7 @@ final class ServerProcessImpl implements ServerProcess, Registries.Delegating {
 
     private volatile String brandName = "synaxis";
     private volatile Difficulty difficulty = Difficulty.NORMAL;
-    private volatile int compressionThreshold = 256;
+    private volatile int compressionThreshold;
     // Set by the ticker itself, so that stop() can wait for the in-flight tick to complete.
     private volatile @Nullable TickSchedulerThread tickSchedulerThread;
     // Kept so that stop() can unregister it, the JVM strongly references every registered hook.
@@ -107,6 +107,7 @@ final class ServerProcessImpl implements ServerProcess, Registries.Delegating {
     public ServerProcessImpl(Auth auth, ServerConfig config) {
         this.auth = auth;
         this.config = config;
+        this.compressionThreshold = config.compressionThreshold();
         this.exception = new ExceptionManager();
         this.registries = Registries.vanilla();
 

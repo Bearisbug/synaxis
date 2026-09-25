@@ -77,6 +77,8 @@ public record ServerConfig(
         // Outbound (docs/DESIGN-PROD.md API-PROD-020), the tab list interval in milliseconds
         long maxOutboundBacklogBytes,
         long tabLatencyInterval,
+        // A packet body of at least this many bytes is compressed, 0 turns compression off (API-PROD-020)
+        int compressionThreshold,
 
         // Network error handling
         boolean suppressConnectionAcceptErrors,
@@ -190,6 +192,9 @@ public record ServerConfig(
         if (maxOutboundBacklogBytes < 1 || tabLatencyInterval < 1)
             throw new IllegalArgumentException("the outbound backlog and the tab list latency interval must be at least 1 "
                     + "but were " + maxOutboundBacklogBytes + " and " + tabLatencyInterval);
+        if (compressionThreshold < 0)
+            throw new IllegalArgumentException("compressionThreshold must not be negative but was " + compressionThreshold
+                    + ", 0 turns compression off");
         var _ = ConnectionGate.parseNetworks(connectionGateTrustedNetworks);
         // A PROXY header names any address its sender likes, so only the load balancers may send
         // one, and a peer that skips it must not pass as a direct connection (REQ-PROD-036)
@@ -265,6 +270,7 @@ public record ServerConfig(
                 .tabCompleteRatePerSecond(intProperty("synaxis.tab-complete-rate-per-second", DEFAULTS.tabCompleteRatePerSecond))
                 .maxOutboundBacklogBytes(longProperty("synaxis.outbound.max-backlog-bytes", DEFAULTS.maxOutboundBacklogBytes))
                 .tabLatencyInterval(longProperty("synaxis.tab-latency-interval-ms", DEFAULTS.tabLatencyInterval))
+                .compressionThreshold(intProperty("synaxis.compression-threshold", DEFAULTS.compressionThreshold))
                 .suppressConnectionAcceptErrors(booleanProperty("synaxis.suppress-connection-accept-errors", DEFAULTS.suppressConnectionAcceptErrors))
                 .suppressConnectionIoErrors(booleanProperty("synaxis.suppress-connection-io-errors", DEFAULTS.suppressConnectionIoErrors))
                 .suppressMalformedPacketErrorLevel(intProperty("synaxis.suppress-malformed-packet-error-level", DEFAULTS.suppressMalformedPacketErrorLevel))
@@ -425,6 +431,7 @@ public record ServerConfig(
         private int tabCompleteRatePerSecond = 20;
         private long maxOutboundBacklogBytes = 4L << 20;
         private long tabLatencyInterval = 30_000;
+        private int compressionThreshold = 256;
         private boolean suppressConnectionAcceptErrors = true;
         private boolean suppressConnectionIoErrors = true; // Like peer resets etc
         private int suppressMalformedPacketErrorLevel = 0;
@@ -501,6 +508,7 @@ public record ServerConfig(
             this.tabCompleteRatePerSecond = config.tabCompleteRatePerSecond;
             this.maxOutboundBacklogBytes = config.maxOutboundBacklogBytes;
             this.tabLatencyInterval = config.tabLatencyInterval;
+            this.compressionThreshold = config.compressionThreshold;
             this.suppressConnectionAcceptErrors = config.suppressConnectionAcceptErrors;
             this.suppressConnectionIoErrors = config.suppressConnectionIoErrors;
             this.suppressMalformedPacketErrorLevel = config.suppressMalformedPacketErrorLevel;
@@ -750,6 +758,11 @@ public record ServerConfig(
             return this;
         }
 
+        public Builder compressionThreshold(int compressionThreshold) {
+            this.compressionThreshold = compressionThreshold;
+            return this;
+        }
+
         public Builder suppressConnectionAcceptErrors(boolean suppressConnectionAcceptErrors) {
             this.suppressConnectionAcceptErrors = suppressConnectionAcceptErrors;
             return this;
@@ -902,6 +915,7 @@ public record ServerConfig(
                     chatRatePerSecond, chatBurst,
                     packetLimitWindow, packetLimitMaxPackets, packetLimitAction, packetLimitOverrides,
                     maxInflatedBytesPerSecond, tabCompleteRatePerSecond, maxOutboundBacklogBytes, tabLatencyInterval,
+                    compressionThreshold,
                     suppressConnectionAcceptErrors, suppressConnectionIoErrors, suppressMalformedPacketErrorLevel,
                     suppressMisusedPacketErrorLevel, rejectMalformedPacket, rejectMisusedPacket, socketSendBufferSize,
                     socketReceiveBufferSize, socketNoDelay, socketTimeout, pooledBufferSize, minChunksPerTick,

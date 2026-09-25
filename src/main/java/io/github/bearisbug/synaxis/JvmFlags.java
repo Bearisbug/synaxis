@@ -76,6 +76,13 @@ public final class JvmFlags {
     public static final int NBT_MAX_BYTES = intProperty("synaxis.nbt.max-bytes", 2_097_152, 1, Integer.MAX_VALUE);
 
     /**
+     * The zlib level packets are compressed with, 0 (stored) to 9. JVM-wide because the deflaters
+     * sit in one static pool that every process shares. 6 is the zlib default, which is what a
+     * deflater built without a level uses.
+     */
+    public static final int COMPRESSION_LEVEL = intProperty("synaxis.compression-level", 6, 0, 9);
+
+    /**
      * Renders every flag as {@code name=value}, for the boot log of a launcher.
      */
     public static String describe() {
@@ -90,6 +97,7 @@ public final class JvmFlags {
                 + ", templateCompiler=" + TEMPLATE_COMPILER
                 + ", nbtMaxDepth=" + NBT_MAX_DEPTH
                 + ", nbtMaxBytes=" + NBT_MAX_BYTES
+                + ", compressionLevel=" + COMPRESSION_LEVEL
                 + ']';
     }
 

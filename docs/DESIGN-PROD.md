@@ -57,6 +57,7 @@
 | 2026-09-25 | v0.9（6F） | 按第 6 波 6F（`REQ-PROD-041`，G38 翻译键门禁）的实现回写设计。新增 **`API-PROD-029`**：插件面给 `SynaxisPlugin` 加默认方法 `translationKeys()`（默认空集合，插件实现的接口只能加默认方法，`API_VERSION` 仍为 2），门禁是 `:architecture-tests` 的 `TranslationKeyGateTest`，随 `./gradlew check` 在 CI 跑。键的来源比原 §24 写的「`DisconnectReasons`、`DisconnectKeys` 与插件声明的键」宽：取 classpath 上本仓全部主类常量池里整串是 `synaxis:<路径>` 的字符串常量，宿主命令回执、`synaxis:banned-until`、`synaxis:server-stopping-in` 这类不住在两个键类里的键也在内；去掉 7 个非文字标识（两个插件消息频道、两个 Redis 频道、转服 Cookie 键、维度类型、烘焙器的标记方块），名单里的名字没有类再用时门禁也失败；再加插件声明的键。现有 51 个键两份语言文件都有。写明两条约束：键只能以完整常量或字面量出现，运行时拼出的键门禁看不见；门禁只看本仓 classpath 上的插件。语言目录经参数提供器传给门禁，缓存键里只有它的相对路径。模组测试里手写的服务端键清单（按功能的六个测试类与 `ClientHandshakeTest` 的一条）删除，由门禁取代。§5 `REQ-PROD-041` 的接口列、§10 权限矩阵加 `API-PROD-029` 一行、§19 加两条场景（同命名空间的非文字标识不算键、插件声明的键缺译文）、§24 翻译键门禁与 ABI 门两条同步；§28.3 加两行：`docs/DESIGN-M2.md` `API-M2-007` 的新方法；`docs/DESIGN-M3.md` §24 写明 `:baker`、`:synx` 与游戏模块里新增的 `synaxis:` 非文字标识（如数据标记的 handler 命名空间）要同一提交进门禁名单。同批改 `docs/PLUGINS.md`，新增 §11「发给玩家的文字」 | Bearisbug |
 | 2026-09-25 | v0.9（6B） | 按第 6 波 6B 的实现回写设计（`REQ-PROD-032` 管理接口、`REQ-PROD-034` 性能剖析）。**`API-PROD-022`** 由三行扩成完整契约：库定为 Java-WebSocket 1.6.0（§28.1 Q10 由用户同日拍板，新增 `ADR-PROD-014` 与 §17 依赖行）；鉴权移到握手阶段，令牌不对就拒掉升级请求（库固定回 404，原版 SMP 回 401），JSON-RPC 层不再有鉴权失败这种回复，−32000 改作「此刻做不了」（§14 同步）；`enabled=true` 而令牌缺失或不合规时拒绝起服；一条消息 ≤ 65,536 B（超出以 1009 断开、不执行），握手前的请求 ≤ 8,192 B、5 s 内完成；方法表写出每个方法的参数、结果与本分片语义（`bans` 只列按 UUID 的封禁，`bans/add` 先校验全部条目再写，`server/stop` 先回复再停机，`shard/drain` 与停机关的是同一扇登录门、不可撤销）；进出通知只发给进过世界的玩家；`synaxis:transfer` 随 6A 交付，此前调用回 −32601；审计与日志各一条（`org.java_websocket` 钉在 INFO）。**`API-PROD-011`**：`profile [秒数]` 写出秒数 1～600、JFR 自带的 `profile` 设置、文件位置与名字、进程内同时只有一个录制、五个回执键（§14 同步）；「已在停机」判定由控制台、玩家命令与管理接口共用（`HostCommands#claimStop`）。**§11.1**：补上登录门已关时的 `login_start → rejected`（停机或 drain，回 `synaxis:server-stopping`），其余三条 `LoginStart` 转移的守卫加「登录门未关」。§15 加管理接口一行，§16 加三行竞态，§17 加三个后台任务，§19 改写鉴权场景、加超长消息与进出通知两条、profile 场景加管理接口，§20 `gm_command` 补管理接口的 `command` 写法与 `result` 取值。**§28.2**：`stop` 与 SIGTERM 竞态一行保持开着，写明 `server/stop` 同样受影响，关闭条件改为 `API-003` 改签名；新增 SMP 版本（已决：minecraft.wiki 核对 26.2 对应 API 3.0.0，未核实事项第 7 条随之改写）、`synaxis:transfer` 参数（待办，6A 触发）、不做 TLS（风险）三行。**§28.3**：新增 `docs/DESIGN.md` `API-003` 一行（`beginShutdown` 返回是否由本次调用发起） | Bearisbug |
 | 2026-09-25 | v0.9（集成） | 第 6 波六个分支（U、D、6D、6E、6F、6B）合入后的连带修正，不改设计结论。**`API-PROD-029`** ②：6B 的四个 JSON-RPC 方法名 `synaxis:shard/drain`、`synaxis:shard/status`、`synaxis:broadcast`、`synaxis:profile` 按 6F 写好的约定进非文字标识名单，名单由 7 个变为 11 个；门禁通过时的输出行改为 `56 keys …, 11 identifiers left out`（多出的 5 个键是 6B 的 `synaxis:command-profile-*` 回执）。**代码行号**：D 组按 `main` 写的三处引用被别组的改动挪了位置，按合入后的代码改：`API-PROD-020` 的 `ServerConfig.java:219`、`:376` → `:226`、`:386`（6D 加了三个键）；§28.2 停机保存缺陷行的 `PlayerStore.java:1013` → `:1035`、`:932`～`:934` → `:954`～`:956`（U 改了 `PlayerStore`）；§28.3 `docs/TEST.md` TC-036 一行的 `Main.java:580` → `:594`（U 与 6B 都改了 `Main`） | Bearisbug |
+| 2026-09-25 | v0.9（6C） | 按第 6 波 6C 的实现回写 `REQ-PROD-033`（G30 配置文件）与 `REQ-PROD-038`（G35 压缩阈值与级别）。**`API-PROD-023`** 由一行扩成完整契约：文件位置与只从命令行读的 `-Dsynaxis.config-file`；按 UTF-8 读的 `java.util.Properties` 格式，值原样取；四层优先级（命令行 > 文件 > 启动器默认 > 引擎与宿主默认）；拒启三种情形（未知键连同编辑距离最近的已知键一次列全、同一键写两次、文件里写 `synaxis.config-file`），被拒的文件一个键都不设；读取时机是 `Main` 类初始化的第一件事，早于 logback 读 `synaxis.app.log`、`JvmFlags` 类加载与 `ServerConfig` 建进程，`ShardMain` 先触发它再写分片默认值；起服自检行 `Effective config file: …`；写出全部 105 个键的键表，加载器校验的唯一出处是 `server-app` 的 `ConfigFile.KEYS`。**`API-PROD-020`** 压缩一条：阈值是进程级键 `ServerConfig#compressionThreshold`（默认 256、须 ≥ 0，0 关闭压缩且不发 `SetCompression`，与原版取 0 全部压缩不同），级别是 JVM 级键 `JvmFlags.COMPRESSION_LEVEL`（默认 6、取 0～9，因为 `Deflater` 池是全 JVM 共用的静态池），默认值写出的字节与改动前逐字节相同；线上按 zlib 头第二字节看级别。**§24** 配置键一条改为已实现的配置键门禁 `ConfigKeyGateTest`（`:architecture-tests`，收集主类里 `synaxis.*` 形状的常量，跳过 `ConfigFile` 本身、去掉 20 个指标名，加上 `logback.xml` 的替换，须正好等于键表）。**`API-PROD-016`**：`ShardMain` 的默认值改为「命令行与 `synaxis.properties` 都没给才写」。**§19** 两条场景按实现改写、另加一条（文件压过分片默认值、读一次就固化的键也取文件的值）；**§23** 首段指向键表；**§26** 文件表的 `ServerConfig.java` 一行写明键表的位置与此后加键的规则，另加 `ShardMain.java` 一行；**§28.2** 新增 Open Question「命令行上拼错的键不校验」，停机保存缺陷行补 6C 真 JVM 用例撞上的一次；**§28.3** 加 `docs/DESIGN.md` `REQ-014` 与 `docs/ENGINE.md` 两行。代码行号：`API-PROD-020` 的 `ServerConfig.java:226`、`:386` → `:231`、`:392`，§28.3 TC-036 一行的 `Main.java:594` → `:618`（6C 在两个文件前部加了行）。`:plugin-api` 没有改动 | Bearisbug |
 
 ## 2. 背景 / 目标 / 非目标
 
@@ -583,7 +584,7 @@ erDiagram
   - 计数口径（v0.8，按 5A 实现）：`synaxis_packets_total{direction="out"}` 数的是写进连接缓冲的可发送单元，视野广播每 tick 按区块攒成的一个缓冲包算 1 个，不拆成其中的原版包（`docs/TEST.md` TC-PROD-271 那一轮服务端计 527,088,737 个，机器人收到的原版包 694,899,581 个，是前者的 1.32 倍）；`synaxis_connections{state}` 的 `configuration`、`play` 取两个集合的大小，`login` = 闸门计数的套接字数减去这两者，握手、状态查询与登录阶段合在一起；`synaxis_outbound_backlog_kicks_total` 读引擎 `TrafficCounters#backlogKicks`（5B 接上，5A 时是恒 0 的占位）；调度线程的 tick 时长取 `ServerTickMonitorEvent`，标签 `thread="Syn-TickScheduler"`；实体数与已载入区块数由调度器每 20 tick 数一次；`synaxis.app.metrics.bind` 绑不上时拒启，此时游戏端口还没绑。
 - **`API-PROD-016` 空间分格与 tick 线程契约** — 实现 `REQ-PROD-019`、`REQ-PROD-020`
   - `ThreadProvider.grid(int exponent, ToIntFunction<? super T> chunkX, ToIntFunction<? super T> chunkZ)`：区块 (cx, cz) 归格 `(cx >> exponent, cz >> exponent)`，格 (x, z) 的线程号 = `3x + z`，下标 `Math.floorMod(线程号, 线程数)`；`RefreshType.NEVER`。多两个取坐标的参数，是因为 `thread` 包在 ArchUnit 分层的底层集合里，不能依赖 `instance.Chunk`，由调用方（`ServerProcessImpl` 传 `Chunk::getChunkX`、`Chunk::getChunkZ`）告诉它坐标怎么取。系数取 3：从 6 条线程起，相邻（含斜对角）的两格一定不同线程，从 10 条起隔一格的两格也不同线程（6、10 是 8 核、12 核分片的线程数）；不能用 `31x + z`，线程数整除 30 时（6、10 都是）每一格都与斜对角的邻格同线程，5D 第一轮压测里 12 核分片的 10 条线程有 3 条闲置（`docs/TEST.md` TC-PROD-336 第 4 步）。所有实例共用一张格网，不同实例同坐标的区块在同一条线程上。
-  - 配置：`ServerProcessImpl` 不再写死 `counter()`（`ServerProcessImpl.java:104`），读 `synaxis.thread-provider=grid|counter`（默认 `counter`）、`synaxis.thread-grid-exponent`（默认 4，16×16 区块）、`synaxis.dispatcher-threads`（引擎默认 1）。MMO 分片宿主启动时写入 `thread-provider=grid` 与 `dispatcher-threads = max(1, Runtime.availableProcessors() − 2)`（U5），命令行显式给的值优先；M2 `Main` 与 RTS 进程不设（§28.1 Q8）。`synaxis.thread-provider` 只认小写的 `counter`、`grid`，别的值拒启；`synaxis.thread-grid-exponent` 取 0～31。分片宿主入口是 `server-app` 的 `ShardMain`（发行版脚本 `bin/server-shard`，JVM 默认参数与 `bin/server-app` 相同），除线程这两项外，还写区块视距 12、区块上限 4（`API-PROD-020`）、可见上限 100（`API-PROD-019`），存储为 `postgres` 时再写 `accept-transfers=true`，都是命令行没给才写，再交给 `Main` 起服；这几项的取值与理由归 M3（`docs/DESIGN-M3.md` v0.8 `API-M3-006`、`API-M3-010`）。
+  - 配置：`ServerProcessImpl` 不再写死 `counter()`（`ServerProcessImpl.java:104`），读 `synaxis.thread-provider=grid|counter`（默认 `counter`）、`synaxis.thread-grid-exponent`（默认 4，16×16 区块）、`synaxis.dispatcher-threads`（引擎默认 1）。MMO 分片宿主启动时写入 `thread-provider=grid` 与 `dispatcher-threads = max(1, Runtime.availableProcessors() − 2)`（U5），命令行或 `synaxis.properties` 给了的值优先；M2 `Main` 与 RTS 进程不设（§28.1 Q8）。`synaxis.thread-provider` 只认小写的 `counter`、`grid`，别的值拒启；`synaxis.thread-grid-exponent` 取 0～31。分片宿主入口是 `server-app` 的 `ShardMain`（发行版脚本 `bin/server-shard`，JVM 默认参数与 `bin/server-app` 相同），除线程这两项外，还写区块视距 12、区块上限 4（`API-PROD-020`）、可见上限 100（`API-PROD-019`），存储为 `postgres` 时再写 `accept-transfers=true`，都是命令行与 `synaxis.properties` 都没给才写（`API-PROD-023`），再交给 `Main` 起服；这几项的取值与理由归 M3（`docs/DESIGN-M3.md` v0.8 `API-M3-006`、`API-M3-010`）。
   - `ThreadDispatcherImpl.java:141` 的 `Math.abs(threadId) % threads.size()` 改为 `Math.floorMod(threadId, threads.size())`。
   - 所有权断言（`Acquirable#assertOwnership`，断言开或 `synaxis.acquirable-strict=true` 时生效）的未分配态：dispatcher 还没给元素分配 tick 线程时，放行创建它的线程与任何非 `TickThread` 的线程（玩家在连接线程上构造、由调度线程 spawn），其他 tick 线程判越权抛 `AcquirableOwnershipException`，因为 `setInstance` 之后到下一次 dispatcher 更新之前，元素已能经追踪器与观察者被 tick 线程碰到。未分配元素上的 `lock()` / `sync()` 仍只认创建线程。
   - 严格模式 job：`-Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true` 写在 Gradle 命令行上，由 build-src 约定插件 `synaxis.java-library` 转发给每个测试 JVM（不给时测试 JVM 不带这两个属性）。
@@ -609,10 +610,10 @@ erDiagram
   - 休眠的开销（v0.9（6E），实测）：2,000 个实体、200 名玩家、1 条 tick 线程。机制本身（策略恒返回 1、没有实体休眠）每实体每 tick 约 22 ns，含每 5 tick 一次对 200 名玩家的判距（`jmh-benchmarks` 的 `DormancyOverheadBenchmark.entityTick`，3 个 fork × 10 次迭代：有策略中位 224.3 ns、无策略 201.7 ns），2,000 个实体合约 45 µs；实例每 tick 拍一次 200 名玩家的快照 1.33 µs（`snapshot` 中位）。合计每 tick 约 0.046 ms，是 50 ms tick 预算的 0.09%；整 tick 对照里策略恒返回 1 比不设策略多 43 µs，与此相符（§15「实体休眠」行）。
 - **`API-PROD-020` 出站与发送节流** — 实现 `REQ-PROD-025`、`REQ-PROD-026`、`REQ-PROD-027`、`REQ-PROD-038`
   - `synaxis.outbound.max-backlog-bytes` 引擎默认 4 MiB（须 ≥ 1）。积压 = 交给写线程、还没被写线程取走的字节：已成帧的（视野广播的 `BufferedPacket`、`FramedPacket`）按实际字节，还是对象的（`ServerPacket`、`CachedPacket`，写线程才序列化）每个按 64 B 计。超限时先丢队列里全部实体移动包——视野广播每 tick 按区块攒成的 `BufferedPacket`，引擎只让实体位置、转头与位置同步走这条路（`PacketViewableUtils`）；写线程把这批丢掉的包取完之前，新的移动包也不入队；各实体下一次 `EntityPositionSync`（至多 `synaxis.entity-synchronization-ticks` 之后，默认 20 tick）把客户端上的位置拉回来。丢完仍超限断线 `synaxis:outbound-backlog`，`synaxis_outbound_backlog_kicks_total` 加 1，断线前写一行 INFO `Outbound backlog exceeded: connection_id=… backlog_bytes=… limit=…`。不做「同实体只留最新一条」：移动包在视野缓冲里已按区块拼成字节，拆出单个实体要逐帧解析，而且相对移动包丢掉一条客户端就已经偏了，只留最新一条并不比全丢准。
-  - 实体位置同步间隔沿用现有键 `synaxis.entity-synchronization-ticks`（默认 20，`ServerConfig.java:226`、`:386`），不新增键；默认值改动前先用 soak 的 `EntityPositionSync` 字节占比验证收益。
+  - 实体位置同步间隔沿用现有键 `synaxis.entity-synchronization-ticks`（默认 20，`ServerConfig.java:231`、`:392`），不新增键；默认值改动前先用 soak 的 `EntityPositionSync` 字节占比验证收益。
   - 区块：`synaxis.chunk-queue.max-per-tick`（`ServerConfig` 的 `maxChunksPerTick`）引擎默认 64 保持不变（`docs/DESIGN-M3.md` v0.7 `API-M3-006` 已写入同一口径：4 与 64 是同一个键，引擎默认 64、分片宿主写 4，没有第二道限速），这是不随客户端回报抬高的兜底：客户端 `ChunkBatchReceived` 的回报被夹到这个值（`Player#onChunkBatchReceived`），每次发送前的待发额度也不超过它（`Player#sendPendingChunks`），首批 9 块同样受它约束。分片宿主写 4（清单 G23 默认值，80 块/s，首批 9 块 3 个 tick 发完）；分片宿主入口 `ShardMain` 在命令行没给时写这个值（`docs/DESIGN-M3.md` v0.8）。
   - Tab 列表：新人进服时自己的条目广播给全体（含自己），已在线的全体条目合成一个多条目 `PlayerInfoUpdatePacket` 发给新人。延迟只由 keep-alive 应答存进 `Player`，每 `synaxis.tab-latency-interval-ms`（默认 30,000，须 ≥ 1）由调度线程把全体在线玩家的延迟合成一个 `UPDATE_LATENCY` 包发给每个人，一轮 N 个包（原先每个 keep-alive 周期 N² 个）。`PluginContext#tabList().setVisibility(BiPredicate<Player, Player>)`（`(viewer, subject) -> 是否列出`，默认方法）决定谁出现在谁的列表里：不在列表里的仍发 PlayerInfo（皮肤渲染依赖）但 `listed=false`；只对本身 `isListed()` 的玩家调用，玩家总是列出自己；可见性每进程一份，由设它的插件持有，别的插件再设抛 `IllegalStateException`，持有者禁用时宿主收回、全体恢复列出；设置与收回时每个在线玩家收到一个 `UPDATE_LISTED` 包（一轮 N 个），依赖别的状态的可见性要重算时插件再调一次 `setVisibility`；判定抛异常按列出处理，经 `LogBudget` 10 s 至多一行。引擎侧入口 `ConnectionManager#setTabListVisibility` / `isListedFor`。
-  - 压缩：`synaxis.compression-threshold` 默认 256、`synaxis.compression-level` 默认 6（`ServerProcessImpl.java:101`、`NetworkBufferImpl.java:301`）。
+  - 压缩（v0.9，按 6C 实现）：阈值 `synaxis.compression-threshold` 是进程级键（`ServerConfig#compressionThreshold`，默认 256，须 ≥ 0），进程创建时成为 `ServerProcess#compressionThreshold()` 的初值（`ServerProcessImpl.java:110`），`start` 之前仍可用 `setCompressionThreshold` 改。阈值 > 0 时，服务端在 `LoginSuccess` 之前发 `SetCompression(阈值)`，此后每帧的包体（包 ID + 内容）≥ 阈值就压缩并写原长，< 阈值不压缩、数据长度写 0（`PacketWriting.java:101`）；取 0 关闭压缩，不发 `SetCompression`（`ConnectionManager.java:401`）。与原版 `network-compression-threshold` 的差异：原版取负数关闭、取 0 全部压缩，这里 0 即关闭，要全部压缩写 1。级别 `synaxis.compression-level` 是 JVM 级键（`JvmFlags.COMPRESSION_LEVEL`，默认 6，取 0～9；越界时与其余 JVM 级键一样，进程在 `JvmFlags` 类初始化处以 `ExceptionInInitializerError` 退出，退出码 1、什么都没绑，cause 是带键名与范围的 `IllegalArgumentException`，没有 `Refusing to start` 那一行）。它不能按进程分：`Deflater` 放在 `NetworkBufferImpl` 的静态池里（`NetworkBufferImpl.java:303`），同一 JVM 的全部进程共用，与 `JvmFlags` 其余各项同一条理由。6 就是 zlib 的默认级别，写出的字节与改动前的 `new Deflater()` 逐字节相同。线上看得出级别：zlib 头的第二字节在 0～1 级是 `0x01`、2～5 级是 `0x5E`、6 级是 `0x9C`、7～9 级是 `0xDA`（RFC 1950 的 FLEVEL 两位）。`docs/TEST.md` TC-PROD-442、TC-PROD-444 按这个字节与「同级别重新压缩逐字节相同」判定。
 - **`API-PROD-021` 转服与 Cookie 插件面** — 实现 `REQ-PROD-031`
   - `Player`（经 `PluginContext#transfers()` 的 `Transfers`）：`transfer(Player, String host, int port)`、`boolean wasTransferred(Player)`、`storeCookie(Player, Key, byte[])`（≤ 5,120 B，超过抛 `IllegalArgumentException`，不发包）、`CompletableFuture<byte[]> fetchCookie(Player, Key)`。这里的 `transfer` 是不带票据的原版转服（送往外部服务器）；跨大区转服走 M3 `ShardService#transfer`（`API-M3-010`），它经 `API-PROD-028` 的宿主接口签发票据。
   - 分片宿主启动时写 `synaxis.accept-transfers=true`（引擎既有键，默认 false；为 false 时 `HandshakeListener.java:33-38` 直接踢掉 transfer 意图的连接）。设为 `true` 的进程必须同时用 postgres 存储（`synaxis.app.store=postgres`，验票要查库）并配 `SYNAXIS_TRANSFER_HMAC_KEYS`，缺一项拒绝起服。
@@ -647,7 +648,120 @@ erDiagram
   - 日志：令牌不进任何日志与台账；Java-WebSocket 在 TRACE 级会把收到的握手原文（含 `Authorization`）写进日志，所以 `logback.xml` 把 `org.java_websocket` 钉在 INFO，根日志级别调低也不放开。
   - RCON 不做。
 - **`API-PROD-023` 配置文件** — 实现 `REQ-PROD-033`
-  - `synaxis.properties`（工作目录，`-Dsynaxis.config-file` 可改路径）：键名与 `synaxis.*` 系统属性逐字相同；优先级 `-D` > 文件 > 默认；出现未知键拒绝启动并列出键名；进程创建时读一次，不热重载。
+  - 文件（v0.9，按 6C 实现）：默认是工作目录下的 `synaxis.properties`；`-Dsynaxis.config-file=<路径>` 改指别的文件，这个键只从命令行读，写进文件拒启。格式是 `java.util.Properties`，按 UTF-8 读：`键=值`（也认 `键: 值` 与 `键 值`），`#`、`!` 开头的行是注释，行尾 `\` 续行，认 `\n`、`\uXXXX` 转义。值原样取、行尾空白不去掉，数值键带尾随空格时由读它的一方拒启。默认位置没有文件时照常起服；文件在却读不出或不是合法 UTF-8 时拒启，`-Dsynaxis.config-file` 指的文件不存在也拒启。只有 `server-app` 的两个入口 `Main`、`ShardMain` 读这个文件；引擎的 `ServerProcess.of()`、`MinecraftServer.init()` 不读，嵌入与测试照旧只认系统属性。
+  - 优先级：键名与 `synaxis.*` 系统属性逐字相同。文件里的键，命令行没给的就设成系统属性，之后各处照旧从系统属性读，取值校验与报错也照旧（报错带键名）。于是一共四层：命令行 `-D` > 文件 > 启动器默认（`ShardMain` 的分片默认值与 `Main` 的 RTS 视野默认值，都只填还没有的键）> 引擎与宿主的默认值。
+  - 拒启：文件里出现键表外的键时，一次列出全部未知键，每个带编辑距离（Levenshtein）最近的已知键，同距离取字典序在前的，多条以 `; ` 连接；同一个键写两次时报 `<键> is given twice`（`java.util.Properties` 会静默留下后一个）；文件里写了 `synaxis.config-file` 也拒启。日志是一行 ERROR，如 `Refusing to start: <文件绝对路径>: unknown key synaxis.max-player (nearest known key synaxis.max-players)`，退出码 1。这时进程还没创建，什么端口都没绑；被拒的文件一个键都不设。
+  - 读取时机：`Main` 类初始化的第一件事（`Main.java:87`，这个静态字段排在 `LOGGER` 之前）。它必须早于三处「读一次就固化」的取值：logback 建第一个 logger 时读 `synaxis.app.log`，`JvmFlags`、`TagFlags` 等 JVM 级开关在类加载时读，`ServerConfig` 在进程创建时读。所以 `ConfigFile` 自己不建 logger、不引用引擎类。`ShardMain#main` 先调 `Main.configFile()` 触发这一步，再写分片默认值（`ShardMain.java:35`）；文件被拒时不写默认值，由 `Main#main` 在日志建好之后报拒启。起服自检多一行 `Effective config file: path=<绝对路径> keys=<键数> overridden_by_command_line=[<命令行也给了的键>]`，没有文件时是 `Effective config file: none, <默认位置的绝对路径> does not exist`。
+  - 不热重载：进程生命周期里只读这一次，改了文件要重启（滚动重启 + 转服，§23）。
+  - 键表：下表 105 个键是文件能写的全部键，加载器校验的唯一出处是 `server-app` 的 `ConfigFile.KEYS`（`ConfigFile.java:46`）。防漂移靠 §24 的配置键门禁：代码读了表外的 `synaxis.*` 键，或者表里的键已经没有类读，`./gradlew check` 都失败。第三方插件自己读的系统属性不在表里，只能从命令行给。「读取处」写「进程」的键在进程创建时读、每个进程一份；写「JVM」的在类加载时读、同一 JVM 的全部进程共用。`ServerConfig` 与 JVM 级键的布尔值按 `Boolean.parseBoolean` 读（`true` 不分大小写，其余一律是 false），整数与小数写的不是数时拒启（`ServerConfig` 与宿主键报 `Refusing to start: …`，JVM 级键是 `ExceptionInInitializerError`，见 `API-PROD-020` 压缩一条）；宿主键的写法各自校验，见「取值与出处」一列。
+
+    | 键 | 读取处 | 默认值 | 取值与出处 |
+    | --- | --- | --- | --- |
+    | `synaxis.shutdown-on-signal` | `ServerConfig`（进程） | `true` | 引擎既有 |
+    | `synaxis.max-tick-catch-up` | `ServerConfig`（进程） | 5 | 引擎既有，单位 tick |
+    | `synaxis.chunk-view-distance` | `ServerConfig`（进程） | 8 | `Main` 写 10、`ShardMain` 写 12（`API-PROD-016`） |
+    | `synaxis.entity-view-distance` | `ServerConfig`（进程） | 5 | `Main` 写 8 |
+    | `synaxis.entity-synchronization-ticks` | `ServerConfig`（进程） | 20 | `API-PROD-020` |
+    | `synaxis.dispatcher-threads` | `ServerConfig`（进程） | 1 | ≥ 1；`ShardMain` 写核数 − 2（`API-PROD-016`） |
+    | `synaxis.thread-provider` | `ServerConfig`（进程） | `counter` | `counter` / `grid`；`ShardMain` 写 `grid`（`API-PROD-016`） |
+    | `synaxis.thread-grid-exponent` | `ServerConfig`（进程） | 4 | 0～31（`API-PROD-016`） |
+    | `synaxis.send-light-after-block-placement-delay` | `ServerConfig`（进程） | 100 | 引擎既有 |
+    | `synaxis.login-timeout` | `ServerConfig`（进程） | 30,000 ms | 引擎既有（`API-PROD-002`） |
+    | `synaxis.login-plugin-message-timeout` | `ServerConfig`（进程） | 5,000 ms | 引擎既有 |
+    | `synaxis.known-packs-response-timeout` | `ServerConfig`（进程） | 300,000 ms | 引擎既有 |
+    | `synaxis.accept-transfers` | `ServerConfig`（进程） | `false` | `ShardMain` 在 `postgres` 存储时写 `true`（`API-PROD-021`） |
+    | `synaxis.packet-per-tick` | `ServerConfig`（进程） | 50 | 引擎既有 |
+    | `synaxis.packet-queue-size` | `ServerConfig`（进程） | 1,000 | 引擎既有 |
+    | `synaxis.keep-alive-delay` | `ServerConfig`（进程） | 10,000 ms | 引擎既有 |
+    | `synaxis.keep-alive-kick` | `ServerConfig`（进程） | 15,000 ms | `REQ-PROD-043` |
+    | `synaxis.player.chunk-update-limiter-history-size` | `ServerConfig`（进程） | 5 | ≥ 0；`Main` 写 0 |
+    | `synaxis.max-connections` | `ServerConfig`（进程） | 1,024 | `API-PROD-003` |
+    | `synaxis.accept-backoff-ms` | `ServerConfig`（进程） | 100 | `API-PROD-003` |
+    | `synaxis.max-connections-per-ip` | `ServerConfig`（进程） | 16 | `API-PROD-003` |
+    | `synaxis.handshake-timeout-ms` | `ServerConfig`（进程） | 5,000 | `API-PROD-003` |
+    | `synaxis.login-rate-per-ip` | `ServerConfig`（进程） | 0.5 | `API-PROD-003` |
+    | `synaxis.login-burst-per-ip` | `ServerConfig`（进程） | 3 | `API-PROD-003` |
+    | `synaxis.status-rate-per-ip` | `ServerConfig`（进程） | 1 | `API-PROD-003` |
+    | `synaxis.status-burst-per-ip` | `ServerConfig`（进程） | 10 | `API-PROD-003` |
+    | `synaxis.transfer-rate-per-ip` | `ServerConfig`（进程） | 2 | `API-PROD-003` |
+    | `synaxis.transfer-burst-per-ip` | `ServerConfig`（进程） | 10 | `API-PROD-003` |
+    | `synaxis.connection-gate.trusted-networks` | `ServerConfig`（进程） | 空 | `API-PROD-003` |
+    | `synaxis.max-players` | `ServerConfig`（进程） | 0（不限） | `API-PROD-003` |
+    | `synaxis.max-joins-per-tick` | `ServerConfig`（进程） | 0（不限） | `API-PROD-003` |
+    | `synaxis.motd` | `ServerConfig`（进程） | `synaxis` | `API-PROD-024` |
+    | `synaxis.server-icon` | `ServerConfig`（进程） | 空（不发图标） | `API-PROD-024` |
+    | `synaxis.hide-online-players` | `ServerConfig`（进程） | `false` | `API-PROD-024` |
+    | `synaxis.chat-rate-per-second` | `ServerConfig`（进程） | 1 | `API-PROD-008` |
+    | `synaxis.chat-burst` | `ServerConfig`（进程） | 3 | `API-PROD-008` |
+    | `synaxis.packet-limit.window-ms` | `ServerConfig`（进程） | 7,000 | `API-PROD-012` |
+    | `synaxis.packet-limit.max-packets` | `ServerConfig`（进程） | 582 | `API-PROD-012` |
+    | `synaxis.packet-limit.action` | `ServerConfig`（进程） | `KICK` | `DROP` / `KICK`（`API-PROD-012`） |
+    | `synaxis.packet-limit.overrides` | `ServerConfig`（进程） | 空 | `API-PROD-012` |
+    | `synaxis.packet-limit.max-inflated-bytes-per-second` | `ServerConfig`（进程） | 4,194,304 | `API-PROD-012` |
+    | `synaxis.tab-complete-rate-per-second` | `ServerConfig`（进程） | 20 | `API-PROD-012` |
+    | `synaxis.outbound.max-backlog-bytes` | `ServerConfig`（进程） | 4,194,304 | `API-PROD-020` |
+    | `synaxis.tab-latency-interval-ms` | `ServerConfig`（进程） | 30,000 | `API-PROD-020` |
+    | `synaxis.compression-threshold` | `ServerConfig`（进程） | 256 | ≥ 0，0 关闭压缩（`API-PROD-020`） |
+    | `synaxis.suppress-connection-accept-errors` | `ServerConfig`（进程） | `true` | `API-PROD-003` |
+    | `synaxis.suppress-connection-io-errors` | `ServerConfig`（进程） | `true` | 引擎既有 |
+    | `synaxis.suppress-malformed-packet-error-level` | `ServerConfig`（进程） | 0 | 引擎既有 |
+    | `synaxis.suppress-misused-packet-error-level` | `ServerConfig`（进程） | 0 | 引擎既有 |
+    | `synaxis.reject-malformed-packet` | `ServerConfig`（进程） | `true` | 引擎既有 |
+    | `synaxis.reject-misused-packet` | `ServerConfig`（进程） | `false` | 引擎既有 |
+    | `synaxis.send-buffer-size` | `ServerConfig`（进程） | 262,143 B | 引擎既有 |
+    | `synaxis.receive-buffer-size` | `ServerConfig`（进程） | 32,767 B | 引擎既有 |
+    | `synaxis.tcp-no-delay` | `ServerConfig`（进程） | `true` | 引擎既有 |
+    | `synaxis.socket-timeout` | `ServerConfig`（进程） | 15,000 | 已弃用、不起作用，给了起服时 WARN（`API-PROD-003`、`REQ-PROD-043`） |
+    | `synaxis.pooled-buffer-size` | `ServerConfig`（进程） | 16,383 B | 引擎既有 |
+    | `synaxis.chunk-queue.min-per-tick` | `ServerConfig`（进程） | 0.01 | 引擎既有 |
+    | `synaxis.chunk-queue.max-per-tick` | `ServerConfig`（进程） | 64 | `ShardMain` 写 4（`API-PROD-020`） |
+    | `synaxis.chunk-queue.multiplier` | `ServerConfig`（进程） | 1 | 引擎既有 |
+    | `synaxis.viewable-packet` | `ServerConfig`（进程） | `true` | 引擎既有 |
+    | `synaxis.enforce-entity-interaction-range` | `ServerConfig`（进程） | `true` | 引擎既有 |
+    | `synaxis.max-visible-entities-per-player` | `ServerConfig`（进程） | 0（不限） | `ShardMain` 写 100（`API-PROD-019`） |
+    | `synaxis.watchdog.early-warning-ms` | `ServerConfig`（进程） | 10,000 | 0 关闭这一段（`API-PROD-013`） |
+    | `synaxis.watchdog.early-warning-every-ms` | `ServerConfig`（进程） | 5,000 | `API-PROD-013` |
+    | `synaxis.watchdog.timeout-ms` | `ServerConfig`（进程） | 60,000 | `API-PROD-013` |
+    | `synaxis.watchdog.halt-after-ms` | `ServerConfig`（进程） | 15,000 | `API-PROD-013` |
+    | `synaxis.registry.unsafe-ops` | `ServerConfig`（进程） | `false` | 引擎既有 |
+    | `synaxis.inside-test` | `ServerConfig`（进程） | `false` | 只给测试 |
+    | `synaxis.new-socket-write-lock` | `ServerConfig`（进程） | `false` | 引擎既有 |
+    | `synaxis.proxy-protocol` | `ServerConfig`（进程） | `false` | `API-PROD-001` |
+    | `synaxis.proxy-protocol.required` | `ServerConfig`（进程） | `false` | `API-PROD-001` |
+    | `synaxis.proxy-protocol.trusted-networks` | `ServerConfig`（进程） | 空 | `API-PROD-001` |
+    | `synaxis.tps` | `JvmFlags`（JVM） | 20 | 引擎既有 |
+    | `synaxis.automatic-component-translation` | `JvmFlags`（JVM） | `false` | 引擎既有 |
+    | `synaxis.grouped-packet` | `JvmFlags`（JVM） | `true` | 引擎既有 |
+    | `synaxis.cached-packet` | `JvmFlags`（JVM） | `true` | 引擎既有 |
+    | `synaxis.max-packet-size` | `JvmFlags`（JVM） | 2,097,151 B | 引擎既有 |
+    | `synaxis.max-packet-size-pre-auth` | `JvmFlags`（JVM） | 8,192 B | 引擎既有 |
+    | `synaxis.warn-unread-bytes-packet` | `JvmFlags`（JVM） | `true` | 引擎既有 |
+    | `synaxis.event.multiple-parents` | `JvmFlags`（JVM） | `false` | 引擎既有 |
+    | `synaxis.template-compiler` | `JvmFlags`（JVM） | `false` | 引擎既有 |
+    | `synaxis.nbt.max-depth` | `JvmFlags`（JVM） | 512 | ≥ 1 |
+    | `synaxis.nbt.max-bytes` | `JvmFlags`（JVM） | 2,097,152 | ≥ 1 |
+    | `synaxis.compression-level` | `JvmFlags`（JVM） | 6 | 0～9（`API-PROD-020`） |
+    | `synaxis.serialization.serialize-empty-nbt-compound` | `tag.TagFlags`（JVM） | `false` | 引擎既有 |
+    | `synaxis.tag-handler-cache` | `tag.TagFlags`（JVM） | `true` | 引擎既有 |
+    | `synaxis.acquirable-strict` | `thread.AcquirableImpl`（JVM） | `false` | 严格模式（`API-PROD-016`） |
+    | `synaxis.unsafe-collections` | `utils.collection.ConcurrentMessageQueues`（JVM） | `false` | 引擎既有 |
+    | `synaxis.app.port` | `Main` | 25565 | 端口号，不是数时拒启 |
+    | `synaxis.app.plugins` | `Main` | 空（全部启用） | 逗号分隔的插件 id |
+    | `synaxis.app.shard-id` | `Main` | `local` | 字母或数字开头，只含字母、数字、`.`、`_`、`-`（`API-PROD-014`） |
+    | `synaxis.app.ledger-max-bytes-per-day` | `Main` | 1,073,741,824 | > 0（`API-PROD-014`） |
+    | `synaxis.app.auth` | `Main` | `online` | `online` / `offline` / `offline-encrypted`（`API-PROD-001`） |
+    | `synaxis.app.auth.session-server` | `Main` | Mojang 的 `hasJoined` | http 或 https 地址（`API-PROD-001`） |
+    | `synaxis.app.store` | `Main` | `memory` | `memory` / `postgres`（§23） |
+    | `synaxis.app.whitelist` | `Main` | `off` | `on` / `off`（§23） |
+    | `synaxis.app.core-mode` | `CoreMode` | `auto` | `auto` / `on` / `off`（`docs/DESIGN-M2.md` `API-M2-010`） |
+    | `synaxis.app.handshake-phase` | `HandshakeGate` | `configuration` | `configuration` / `login`（`docs/DESIGN-M2.md` `API-M2-002`） |
+    | `synaxis.app.metrics.bind` | `HostMetrics` | `127.0.0.1:9464` | `host:port`（`API-PROD-015`） |
+    | `synaxis.app.management.enabled` | `ManagementSettings` | `false` | `true` / `false`（`API-PROD-022`） |
+    | `synaxis.app.management.bind` | `ManagementSettings` | `127.0.0.1:25585` | `host:port`（`API-PROD-022`） |
+    | `synaxis.app.transfer-cooldown-ms` | `TransferCooldowns` | 5,000 | ≥ 0（`API-PROD-021`） |
+    | `synaxis.app.log` | logback（`logback.xml`） | `file` | `file` / `stdout`（`API-PROD-014`） |
+    | `synaxis.app.map` | RTS 插件 `RtsPlugin` | `rts-512` | 地图预设 id（`docs/DESIGN-M2.md` §23） |
+    | `synaxis.app.units` | RTS 插件 `Roster` | 67 | > 3（`docs/DESIGN-M2.md`） |
 - **`API-PROD-024` 服务器列表** — 实现 `REQ-PROD-037`
   - 键：`synaxis.motd`（默认 `synaxis`）、`synaxis.server-icon`（64×64 PNG 路径，缺省不发）、`synaxis.hide-online-players`（默认 false）；`max` 见 `API-PROD-003`。
   - 事件 `ServerListPingEvent` 可改 MOTD、人数、图标、玩家样本；改后的 `max` 仍不得低于真实上限（负载均衡读它）。
@@ -1933,7 +2047,12 @@ L0、L0′、accept 时的 L1 超限与握手前超时都不发包，没有键�
 场景: 配置文件优先级与未知键 (REQ-PROD-033)
   Given synaxis.properties 写 synaxis.max-players=300，命令行 -Dsynaxis.max-players=200
   When 起服
-  Then 生效值 200；文件里加一行 synaxis.max-player=1 时拒绝启动并列出该键名
+  Then 生效值 200；文件里加一行 synaxis.max-player=1 时拒绝启动，日志列出该键名与最近的已知键 synaxis.max-players，文件里的其他键一个都不生效
+
+场景: 文件的值压过分片默认值，读一次就固化的键也取文件的值 (REQ-PROD-033)
+  Given synaxis.properties 写 synaxis.chunk-view-distance=10、synaxis.compression-level=3、synaxis.app.log=stdout
+  When 以分片入口 ShardMain 起服
+  Then 生效视距 10（不是分片默认 12），JvmFlags 的压缩级别 3，工作目录里没有 logs/latest.log
 
 场景: profile 命令产出 JFR 文件 (REQ-PROD-034)
   Given server-app 已就绪
@@ -1983,7 +2102,7 @@ L0、L0′、accept 时的 L1 超限与握手前超时都不发包，没有键�
 场景: 压缩阈值与级别可配 (REQ-PROD-038)
   Given synaxis.compression-threshold=512、compression-level=3
   When 客户端登录
-  Then SetCompression 的阈值为 512，Deflater 级别为 3；默认配置下为 256 与 6
+  Then SetCompression 的阈值为 512；包体 511 B 的帧数据长度为 0、不压缩，512 B 的帧压缩，zlib 头第二字节为 0x5E（2～5 级），以 3 级重新压缩逐字节相同；默认配置下为 256 与 6（0x9C），阈值 0 时不发 SetCompression
 
 场景: 服务端按玩家下调视距 (REQ-PROD-039)
   Given 实例视距 12、客户端视距 16
@@ -2092,7 +2211,7 @@ L0、L0′、accept 时的 L1 超限与握手前超时都不发包，没有键�
 
 ## 23. 发布: Feature Flag / 灰度 / 回滚
 
-开关是配置键，不是运行期 flag：多数值在进程创建时固化（`server-app/.../Main.java:53-57` 注释），切换走滚动重启 + 转服（清单 G30）。
+开关是配置键，不是运行期 flag：多数值在进程创建时固化（`server-app/.../Main.java:53-57` 注释），切换走滚动重启 + 转服（清单 G30）。下表的键与其余全部键都能写进 `synaxis.properties`，命令行给了的以命令行为准；105 个键的默认值与写法见 `API-PROD-023` 的键表。
 
 | 开关 | 默认 | 用途 | 清理计划 |
 | --- | --- | --- | --- |
@@ -2136,7 +2255,7 @@ L0、L0′、accept 时的 L1 超限与握手前超时都不发包，没有键�
 - **ABI 门**：`:plugin-api` 新增的 `PlayerDataStore`、`Moderation`、`Permissions`、`PluginCommands`、`PluginLifecycle`、`Transfers` 与 `PluginScheduler` / `PluginEvents` 的新方法、`SynaxisPlugin#translationKeys()`（`API-PROD-029`）全部过 `checkBinaryCompatibility`（`docs/DESIGN-M2.md` §24；还没打 tag 时 CI 不传 `-PbaselineJarDir`，该任务跳过），新方法按 §8 写成默认方法；`AdmissionRequest` 加组件若被判破坏，同一 PR 把 `API_VERSION` 加到 2。
 - **ArchUnit**：① 引擎、`:plugin-api`、玩法插件不依赖 `java.sql..`、`org.postgresql..`、`com.zaxxer..`、`redis.clients..`（`ADR-PROD-012`）；② 新类 `ConnectionGate`、`SessionClient` 进 `ClientDrivenLogArchitectureTest` / `ArchitectureTest` 的检查范围，豁免名单逐条写上界；第 6 波 U 组的 `ShutdownSequence` 进宿主的豁免名单，上界是每个停机步骤每次停机至多一行 ERROR（步骤只在装配时注册，客户端碰不到）；`Watchdog` 不纳入，它的日志量只随时间走（每次卡住每 5 s 一条，与客户端发什么无关）。
 - **翻译键门禁**（`REQ-PROD-041`、`API-PROD-029`）：`:architecture-tests` 的 `TranslationKeyGateTest` 随 `./gradlew check` 在 CI 运行，收集本仓主类里整串是 `synaxis:<路径>` 的字符串常量（`DisconnectReasons`、`DisconnectKeys`、宿主的回执与系统消息都在其中），去掉非文字标识名单，加上插件 `translationKeys()` 声明的键，逐个核对 `client-fabric/src/main/resources/assets/synaxis/lang/zh_cn.json` 与 `en_us.json`，缺任一即失败并列出键、缺的文件与来源。加断线原因或回执的键只需在两份语言文件里各加一行；加 `synaxis:` 开头的频道、Cookie 键、数据标记的 handler 命名空间（含 `:baker`、`:synx` 里的）或 JSON-RPC 方法名要进名单。
-- **配置键**：`ServerConfigTest` 的 `defaults() == fromSystemProperties()` 断言扩到全部新键；配置文件的「未知键拒绝启动」由同一张键表驱动，键表是唯一出处。
+- **配置键**（`REQ-PROD-033`、`API-PROD-023`，v0.9 按 6C 实现）：配置文件的「未知键拒绝启动」由 `ConfigFile.KEYS` 这一张键表驱动。`:architecture-tests` 的配置键门禁 `ConfigKeyGateTest` 随 `./gradlew check` 运行：收集本仓主类里整串匹配 `synaxis(\.[a-z0-9-]+)+` 的字符串常量，跳过键表所在的 `ConfigFile` 本身（它列着全部键，算进来的话「表里的键没有类读」永远查不出），去掉宿主的 Micrometer 指标名（`HostMetrics.NAMES` 里某个族名的点号写法，现有 20 个），再加上宿主 `logback.xml` 里 `${synaxis.…}` 形式的替换（`synaxis.app.log` 只由 logback 读，没有类提到它），得到的集合必须正好等于键表。代码新读了一个表外的键（文件会拒绝它），或表里的键已经没有类读，都各报一行并失败；通过时输出 `config key gate: 105 keys read, 105 in ConfigFile.KEYS, 20 meter names left out`。两条约束：键只能以完整常量或字面量出现，运行时拼出的键门禁看不见；门禁只看本仓 classpath。`ServerConfigTest` 的 `defaults() == fromSystemProperties()` 断言照旧覆盖全部进程级键。
 - **数据库**：Flyway 脚本只增不改；每个版本配一份 `db/rollback/V<n>__*.down.sql`；普通 `test` 任务连 `SYNAXIS_TEST_*` 指的库跑「空库 migrate」「从上一版本 migrate」「库版本领先代码时拒绝起服」（持久化草案 P13）「migrate → 回退 SQL → migrate 正反往返」（`docs/DESIGN-M3.md` §25 口径）「`store_meta` 缺失时拒绝起服」五条（前四条在 `MigrationsDbTest`，第五条在 `MainStoreIntegrationTest`）。
 - **转服票据向量**：`API-PROD-028` 的布局只有一个事实源——`server-app` 的票据编解码类；`server-app/src/test/resources/vectors/transfer/` 的一张好票据与三张坏票据由签发与验票两侧跑同一批，改布局必须同一个 PR 里升 `ver` 并重新生成向量。
 - **指标名**：`MetricsNamesTest` 把 `API-PROD-015` 的名单写成常量，注册表里多一个或少一个都失败。
@@ -2226,7 +2345,8 @@ flowchart LR
 | 文件 | 被哪些组改 | 处置 |
 | --- | --- | --- |
 | `server-app/.../Main.java` | 0A（G13、G15）、0B（G12 看门狗起停）、2A（G01 模式选择）、3A（G03 装配、G04 注册 `ShutdownParticipant`）、4A（`role` 命令与权限装配）、4B（封禁装配、`synaxis.app.whitelist`、三条 GM 命令）、4C（G10 控制台、内置命令）、5A（指标装配）、6B（G29）、6C（G30）、第 6 波 U 组（注册 `ShutdownSequence`）、M3-C（分片宿主路径注册覆盖层停机步骤，M3 会话） | 0A → 0B 串行（还共用崩溃报告写入器）；4A → 4B → 4C 串行，合并时各组的装配都留；6B → 6C 串行；U 组先于 M3-C 的注册点合入；其余波次内只有一个组改它 |
-| `ServerConfig.java` | 0B（G12）、1A（G02、G40）、1B（G05）、2B（PROXY 两项拒启）、5B（G11、G22、G23）、5C（G21）、5D（分格）、6C（G30、G35）；6D（G34 三个键）也加键 | 1A 先于 1B；5B → 5C → 5D 合并；键表是配置文件的唯一出处，6C 排在第 6 波最后，在 6D 等全部加键之后合并 |
+| `ServerConfig.java` | 0B（G12）、1A（G02、G40）、1B（G05）、2B（PROXY 两项拒启）、5B（G11、G22、G23）、5C（G21）、5D（分格）、6C（G30、G35）；6D（G34 三个键）也加键 | 1A 先于 1B；5B → 5C → 5D 合并；键表（`server-app` 的 `ConfigFile.KEYS`）是配置文件的唯一出处，6C 排在第 6 波最后，在 6D 等全部加键之后合并；此后任何组加键都在同一提交里加进键表，否则配置键门禁失败（§24） |
+| `server-app/.../ShardMain.java` | 5D（建入口与线程两项）、M3 会话（视距、区块上限、可见上限与 `accept-transfers` 的默认值，`docs/DESIGN-M3.md` v0.8）、6C（`main` 先触发读 `synaxis.properties` 再写默认值，默认值本身不动） | 默认值归 M3 会话；6C 只改 `main` 里的先后 |
 | `entity/Player.java` | 0C（接线）、1B（G05）、5B（G11、G22、G23、G24）、5C（G20、G21）、6E（G36） | 5B 同一人串行，5C 排其后 |
 | `PlayerSocketConnection.java` | 2A（cipher）、2B（PROXY 可信网段）、5B（G11 入站计数、G22 出站积压） | 2A → 2B → 5B |
 | `HandshakeListener.java` | 1A（L1 / L2）、2A（transfer 意图鉴权）、2B（删 Velocity / Bungee 分支）、6A（G28） | 按波次串行 |
@@ -2323,7 +2443,7 @@ N/A — 本分册尚未开工。R2 封闭内测稳定运行 7 天后按 §3 三�
 | Open Question | `EVT:player_banned` 只在发起封禁的分片写，`was_online`、`kicked_within_ms` 只数本分片踢出的玩家，跨分片封禁时 §3「封禁即时生效率」漏计其他分片的踢出。默认接受；要准确就让每个分片在收到 `synaxis:moderation` 并踢人后各写一条，§3 按 `ban_id` 聚合 | Bearisbug | R2 封闭内测度量 §3 之前 |
 | Open Question | `account_role.expires_at` 到期不发通知，已读进内存的授予最迟晚 30 s 失效（`API-PROD-010`）。默认接受；要准时就按最近一次到期时间给在线玩家各排一次重读 | Bearisbug | 出现限时角色的需求时 |
 | 已决 | 第 4 波 4B 报告的缺陷：postgres 存储的 core mode 下玩家进 play 后立刻断开，角色不保存，该账号重登收到 `synaxis:state-unavailable`（日志 `the previous session of this account did not let go in time`），停机保存阶段卡满 30 s（`Not saved on shutdown … character_id=1`）。v0.7.1 在 `prod/integrate-w4` 上用真进程复现（探针 `login --hold 0` 后立刻重登被拒，10 s 后再登仍被拒，`stop` 保存阶段等满 30 s），根因是引擎对「已进 PLAY、还没进世界」的断开不派发 `PlayerDisconnectEvent`（§1 v0.7.1 行），修复后同样步骤重登成功、停机不再等待（`docs/TEST.md` `TC-PROD-214`） | Bearisbug | — |
-| 缺陷 | 进了 PLAY、还没进世界就断开的玩家，若停机在下一个 tick 派发它的 `PlayerDisconnectEvent` 之前进入保存阶段，停机保存等满 30 s 预算，记两行 ERROR（`The shutdown save did not complete within its budget, going on with the shutdown.` 与 `Not saved on shutdown, its lease runs out with the session: character_id=1`），这份登出保存丢失，进程退出码仍为 0。违反 `REQ-PROD-008`「停机不漏存」与 §11.4 保存阶段的预算。复现（v0.9，`server-app` 玩法模式、内存存储、离线）：探针 `login --hold 0` 退出后立刻在控制台 `stop`，10 次里 5 次从 `stop` 到进程退出 30.1～30.7 s，另 5 次 0.53～0.57 s；断开后隔 0.2 s 或 2 s 再 `stop`，4 次都在 0.54 s 内退出。机制是读代码的推断，没有用调试器验证：`PlayerStore#saveAll` 把在线记录置 `SAVING` 后，把快照排在玩家实体调度器的下一个 tick（`PlayerStore.java:1035`），没进世界的玩家不 tick，快照永不执行；之后才到的断线事件在 `loggedOut` 里遇到 `SAVING` 且没有转服，直接返回（`:954`～`:956`）。v0.7.1 修的是运行中这类断开，停机路径没覆盖。由 `docs/TEST.md` TC-GAME-034 第 3 步发现 | Bearisbug | 第 6 波验收前；修复带一条确定性复现测试 |
+| 缺陷 | 进了 PLAY、还没进世界就断开的玩家，若停机在下一个 tick 派发它的 `PlayerDisconnectEvent` 之前进入保存阶段，停机保存等满 30 s 预算，记两行 ERROR（`The shutdown save did not complete within its budget, going on with the shutdown.` 与 `Not saved on shutdown, its lease runs out with the session: character_id=1`），这份登出保存丢失，进程退出码仍为 0。违反 `REQ-PROD-008`「停机不漏存」与 §11.4 保存阶段的预算。复现（v0.9，`server-app` 玩法模式、内存存储、离线）：探针 `login --hold 0` 退出后立刻在控制台 `stop`，10 次里 5 次从 `stop` 到进程退出 30.1～30.7 s，另 5 次 0.53～0.57 s；断开后隔 0.2 s 或 2 s 再 `stop`，4 次都在 0.54 s 内退出。机制是读代码的推断，没有用调试器验证：`PlayerStore#saveAll` 把在线记录置 `SAVING` 后，把快照排在玩家实体调度器的下一个 tick（`PlayerStore.java:1035`），没进世界的玩家不 tick，快照永不执行；之后才到的断线事件在 `loggedOut` 里遇到 `SAVING` 且没有转服，直接返回（`:954`～`:956`）。v0.7.1 修的是运行中这类断开，停机路径没覆盖。由 `docs/TEST.md` TC-GAME-034 第 3 步发现。6C 的真 JVM 用例（`docs/TEST.md` TC-PROD-442）在核心模式下同样撞上：客户端读到 `FinishConfiguration` 就断开，7 ms 后 `stop`，停机等满 30 s、记同样两行 ERROR；该用例因此直接结束进程、不走停机 | Bearisbug | 第 6 波验收前；修复带一条确定性复现测试 |
 | 风险 | `stop` 与 SIGTERM 竞态：SIGTERM 线程已在引擎里占下停机、但阶段还没离开 `RUNNING` 的几条指令内执行 `stop 5`，命令回「5 s 后停」、台账记 `ok`，引擎却忽略这次倒计时，按 SIGTERM 的 0 s 停。第 6 波 6B 接上的管理接口 `minecraft:server/stop` 走同一个判定（`HostCommands#claimStop`），同一窗口里回 `true`、台账记 `ok`。停机本身不受影响；要消除得让 `ServerProcess#beginShutdown` 返回是否由本次调用发起，这是引擎接口（`docs/DESIGN.md` `API-003`，§28.3 已登记），6B 按约束不改引擎 | Bearisbug | `docs/DESIGN.md` `API-003` 按 §28.3 改签名时，`claimStop` 改用它的返回值，本行关闭 |
 | 已决 | 管理接口对应的 SMP 版本：minecraft.wiki「Minecraft Server Management Protocol」页（2026-09-25 查）的历史表写 26.2（snap5 起）为 API 3.0.0，26.3 起 3.1.0。`API-PROD-022` 的原版方法名、参数名与 Player / Message / User Ban 结构按 3.0.0 写；与原版的差异四处（握手被拒回 404 而非 401、不收 `Sec-WebSocket-Protocol` 里的令牌、不做 TLS、没有 `rpc.discover`）写在 `API-PROD-022` | Bearisbug | — |
 | 待办 | `synaxis:transfer` 没有实现：它要经 6A 的 `Transfers` 插件面（依赖 M3-E 的 `ShardService#transfer`）把玩家送到另一个分片，参数（玩家、目标 `shard_id`，是否另给 `host` / `port` 还是由 `shards.json` 解析）与返回值（`API-PROD-028` 的 `TransferOutcome` 四种）待 6A 定；在那之前调用回 −32601 | Bearisbug | 6A 合入时，与 `Transfers` 同一个 PR 加进 `API-PROD-022` 的方法表 |
@@ -2331,6 +2451,7 @@ N/A — 本分册尚未开工。R2 封闭内测稳定运行 7 天后按 §3 三�
 | 已决 | `gm.role` 的授予范围（v0.7.1）：玩家发送者只能授予或收回每个节点都被自己的有效节点覆盖的角色，带 `*` 的角色只有持有 `*` 的发送者能动，控制台不受限（`API-PROD-010`）；代价是给别人发高权限角色只能由持有同等节点的 GM 或控制台做。切换条件：运维需要一个能发出高于自己权限角色的代理人时，改为按角色单独配置「可授予的角色」名单，而不是放开这条限制 | Bearisbug | — |
 | 已决 | PostgreSQL 16 的 `pg_archivecleanup` 不删 `.backup` 标签文件，每份基础备份留一个约 200 B 的文件，不清理 | Bearisbug | — |
 | Open Question | 玩家视距上限（`API-PROD-019`）只收窄区块环，不收窄实体可见范围：上限低于 `synaxis.entity-view-distance`（引擎默认 5）时，这名玩家仍收到实体视距方形里、它已没有区块的那几圈实体。默认不改：上限 ≥ 4 时区块环半径 ≥ 5，不比实体视距方形小；有插件把上限设到 2～3、且这些玩家的实体包字节超过同格玩家平均值的一半时，把实体视距方形按 min(实体视距, 玩家有效视距) 收窄 | Bearisbug | 第一个把上限设到 4 以下的插件 |
+| Open Question | 命令行上拼错的 `-Dsynaxis.*` 仍然静默无效：`REQ-PROD-033` 只要求校验文件，6C 不校验命令行上的键（`API-PROD-023`）。默认不改；出现一次因命令行拼错造成的误配，或部署单元改为只用 `synaxis.properties` 时，用同一张 `ConfigFile.KEYS` 校验 `Main` 起服时系统属性里的 `synaxis.*` 键。代价：凡是给服务端 JVM 传 `synaxis.*` 属性的脚本与工具，传的键都得在表里，表外的键从此拒启 | Bearisbug | 上线前（§23 检查单） |
 
 未核实事项（汇总，逐条出处见清单 §8.1 与三份草案末节）：
 
@@ -2384,6 +2505,8 @@ N/A — 本分册尚未开工。R2 封闭内测稳定运行 7 天后按 §3 三�
 | `docs/DESIGN.md` | `API-003` `ServerProcess#beginShutdown` | 返回值由 `void` 改为 `boolean`：是否由本次调用把 `stopping` 由 false 置为 true（本分册 §11.4 `started → gate_closed` 的守卫）；`stop()` 同。宿主 `HostCommands#claimStop` 据此回「已在停机」，关闭本分册 §28.2 的 `stop` 与 SIGTERM 竞态一行。改签名是引擎公开接口的破坏性变更，由主会话按 `docs/DESIGN.md` 的版本规则处置 | 主会话 |
 | `docs/DESIGN.md` | §11.1 连接 `ENT-Connection`（`PlayerDisconnectEvent` 的派发） | 登记引擎保证：每个被创建的玩家离开时恰好派发一次 `PlayerDisconnectEvent`；已进 PLAY 状态、还没进世界就断开的玩家由下一个 tick 的 `ConnectionManager#updateWaitingPlayers` 在 tick 线程上派发（本分册 v0.7.1） | 已完成（`docs/DESIGN.md` v0.38：§11.1 状态表后的「断线口径」段） |
 | `docs/DESIGN.md` | `REQ-005` 删除清单的 `ping` 一项 | 注明服务器列表的 MOTD、图标、玩家样本与可改事件已由本分册 `REQ-PROD-037` / `API-PROD-024` 以新形态加回（`network/StatusResponse`、`network/Favicon`、`event/server/ServerListPingEvent`，第 6 波 6D）；`ping` 包本身与多版本响应格式、legacy ping 不恢复 | 主会话 |
+| `docs/DESIGN.md` | `REQ-014`（配置对象）与 §28「开关结构上是 JVM 级」已决行 | 登记第 6 波 6C 的两处：`ServerConfig` 加进程级键 `synaxis.compression-threshold`（默认 256，原先是 `ServerProcessImpl` 里写死的初值）；`JvmFlags` 加 JVM 级键 `synaxis.compression-level`（默认 6，理由是 `Deflater` 池是全 JVM 共用的静态池），`JvmFlags` 现有 12 项、另 4 项归各自的包。另注明 `server-app` 起服前读 `synaxis.properties`，键与系统属性逐字相同（本分册 `API-PROD-023`） | 主会话 |
+| `docs/ENGINE.md` | `server-app` 启动一节「端口与插件选择走系统属性」一句 | 加一句：同样的键可以写进工作目录的 `synaxis.properties`（或 `-Dsynaxis.config-file` 指的文件），命令行优先；文件里有键表外的键时拒绝起服并给出最近的已知键（本分册 `API-PROD-023`） | 主会话 |
 | `CLAUDE.md` | 功能开发纪律段的单一事实源表述 | 加「生产就绪分册 `docs/DESIGN-PROD.md`」 | 已完成（`CLAUDE.md`「功能开发纪律」段已列 `docs/DESIGN-PROD.md` 与它的范围） |
-| `docs/TEST.md` | TC-036 第 1 步期望值；§3 探针表；新增用例 | TC-036 login ID 1 改为 `EncryptionRequestPacket`；探针表注明只打 `Offline(encrypt=false)`；按 §19 场景新增 TC 并追溯到 `REQ-PROD-*` | 已完成（TC-036 的六张表在 `PacketVanillaIdTest` 里，login ID 1 是 `EncryptionRequestPacket`（`PacketVanillaIdTest.java:257`），ID 1 的恢复由 `TC-PROD-091` 判；§3「启动」一条写明起服必须带 `-Dsynaxis.app.auth=offline`（即 `Auth.Offline(false)`，`server-app` `Main.java:594`），探针、压测机器人与无头客户端都没有正版账号，探针收到加密请求即退出（`probe.py:661`）；§4 生产就绪各节的 `TC-PROD-*` 追溯到 `REQ-PROD-*`） |
+| `docs/TEST.md` | TC-036 第 1 步期望值；§3 探针表；新增用例 | TC-036 login ID 1 改为 `EncryptionRequestPacket`；探针表注明只打 `Offline(encrypt=false)`；按 §19 场景新增 TC 并追溯到 `REQ-PROD-*` | 已完成（TC-036 的六张表在 `PacketVanillaIdTest` 里，login ID 1 是 `EncryptionRequestPacket`（`PacketVanillaIdTest.java:257`），ID 1 的恢复由 `TC-PROD-091` 判；§3「启动」一条写明起服必须带 `-Dsynaxis.app.auth=offline`（即 `Auth.Offline(false)`，`server-app` `Main.java:618`），探针、压测机器人与无头客户端都没有正版账号，探针收到加密请求即退出（`probe.py:661`）；§4 生产就绪各节的 `TC-PROD-*` 追溯到 `REQ-PROD-*`） |
 | `docs/TEST.md` | §4「第 3 波 3A」节末与「第 3 波 3B」节首的口径差异段 | v0.6 已把这些差异写进设计（§17、§19、§24 的测试设施与 `docker pause`；`API-PROD-018` 四处）：删去 3B 节首整段与 3A 节末的前两处（第三处是用例覆盖说明，保留），并登记一轮 RUN | 已完成（`42a66ef18d`，与本分册 v0.6.1 同批：删去 3B 节首整段与 3A 节末前两处，覆盖说明保留；这批用例由 RUN-029 执行） |

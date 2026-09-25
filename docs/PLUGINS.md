@@ -61,19 +61,22 @@ com.example.helloplugin.HelloPlugin
 
 ```bash
 ./gradlew -p example-plugin build --no-daemon     # 仓内示例
-# 自己的工程：cd hello-plugin && gradle build
+# 自己的工程：cd hello-plugin && <服务端仓库路径>/gradlew build --no-daemon
 ```
 
-产物是 `example-plugin/build/libs/hello-plugin.jar`。
+自己的工程借用服务端仓库的 Gradle wrapper，不用另装 Gradle。产物是 `example-plugin/build/libs/hello-plugin.jar`（自己的工程是 `hello-plugin/build/libs/hello-plugin.jar`）。
 
 ## 6. 带着插件起服
 
 把插件 jar 追加到服务端的 classpath：
 
 ```bash
-java -cp "server-app/build/install/server-app/lib/*:example-plugin/build/libs/hello-plugin.jar" \
+java -Dsynaxis.app.auth=offline \
+  -cp "server-app/build/install/server-app/lib/*:example-plugin/build/libs/hello-plugin.jar" \
   io.github.bearisbug.synaxis.app.Main
 ```
+
+`-Dsynaxis.app.auth=offline` 让服务端不向 Mojang 验证账号。`server-app` 默认在线模式（`docs/DESIGN-PROD.md` `API-PROD-001`），第 8 节的探针没有正版账号，在线模式下它一收到加密请求就退出（`EncryptionRequest received: the probe needs an offline server`）。离线模式下谁都能用任何名字登录，只用于本机开发，对外开服不要带这个参数。
 
 就绪日志是 `synaxis server-app listening on 0.0.0.0:25565`，它之前会出现 `Plugin enabled: plugin_id=hello ...` 与插件自己的打印。stdin 输入 `stop` 停服，停机日志里会出现 `hello-plugin is disabling`。
 

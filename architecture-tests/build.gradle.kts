@@ -25,8 +25,15 @@ dependencies {
     testImplementation(libs.archunit.junit5)
 }
 
+// The translation key gate (docs/DESIGN-PROD.md §24, API-PROD-029) reads the language files of the
+// client mod, a separate build (ADR-M2-015), straight from its source tree. They are an input of the
+// test task, so editing one runs the gate again instead of finding the task up to date.
+val modLanguageFiles = layout.settingsDirectory.dir("client-fabric/src/main/resources/assets/synaxis/lang").asFile
+
 // :server-app puts its logback.xml on this classpath, and that one writes logs/latest.log in the
 // working directory, which is this module's. The console mode builds no file appender.
 tasks.named<Test>("test") {
     systemProperty("synaxis.app.log", "stdout")
+    systemProperty("synaxis.lang.dir", modLanguageFiles.absolutePath)
+    inputs.dir(modLanguageFiles).withPropertyName("modLanguageFiles").withPathSensitivity(PathSensitivity.RELATIVE)
 }

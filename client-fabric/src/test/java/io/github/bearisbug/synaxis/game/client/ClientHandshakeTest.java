@@ -6,19 +6,13 @@ import io.github.bearisbug.synaxis.game.protocol.HandshakeMessages;
 import io.github.bearisbug.synaxis.game.protocol.MsgBuf;
 import io.github.bearisbug.synaxis.game.protocol.ProtocolSchema;
 import io.github.bearisbug.synaxis.game.protocol.S2CHello;
-import java.io.IOException;
-import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.ValueSource;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * The client half of {@code API-M2-002}, driven without a game: the sink is a list and the login
@@ -136,29 +130,6 @@ class ClientHandshakeTest {
         handshake.beginConfiguration(sink);
 
         assertEquals(List.of(OURS, OURS), sent);
-    }
-
-    /**
-     * M2 does not reconnect; showing the reason is the whole of the client's side of a refusal
-     * (§14), and the reason is a {@code translate} key that only reads as a sentence if the mod
-     * ships text for it. These three are the keys the handshake can produce.
-     */
-    @ParameterizedTest
-    @ValueSource(strings = {"en_us", "zh_cn"})
-    void everyRefusalTheHandshakeCanEarnHasTextInTheModJar(String language) throws IOException {
-        final String translations = resource("/assets/synaxis/lang/" + language + ".json");
-
-        for (final String key : List.of("synaxis:client-mod-required",
-                "synaxis:protocol-version-mismatch", "synaxis:protocol-error")) {
-            assertTrue(translations.contains('"' + key + '"'), language + " has no text for " + key);
-        }
-    }
-
-    private static String resource(String path) throws IOException {
-        try (InputStream stream = ClientHandshakeTest.class.getResourceAsStream(path)) {
-            assertNotNull(stream, "the mod does not ship " + path);
-            return new String(stream.readAllBytes(), StandardCharsets.UTF_8);
-        }
     }
 
     private static byte[] encode(HandshakeMessage message) {

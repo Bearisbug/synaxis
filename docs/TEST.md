@@ -5029,7 +5029,7 @@ jcmd "$pid" VM.flags | tr ' ' '\n' | grep -cxE -- '-XX:\+UseG1GC|-XX:InitialHeap
 
 #### `TC-PROD-419` 4 条 tick 线程的 `grid` 分格下 169 个实体按与玩家的距离休眠（§19 场景） — 对应 `REQ-PROD-040` · 级别: 回归 · 执行者: AI
 
-前置：工作副本干净。`EntityDormancyConcurrencyTest` 用 `Env.create` 自起 4 条 tick 线程、`grid`、分格指数 1（2 × 2 区块一格），所以不带系统属性也在多线程下跑；169 个无重力实体在 −96～96 格、每隔 16 格一个，都用 §19 的策略。本条按 CI `grid` 严格轮的属性跑：`./gradlew :test --tests io.github.bearisbug.synaxis.entity.EntityDormancyConcurrencyTest --rerun -Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true -Dsynaxis.thread-provider=grid --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts`（下称「跑本类」）。
+前置：工作副本干净。`EntityDormancyConcurrencyTest` 用 `Env.create` 自起 4 条 tick 线程、`grid`、分格指数 1（2 × 2 区块一格），所以不带系统属性也在多线程下跑；169 个无重力实体在 −96～96 格、每隔 16 格一个，都用 §19「休眠实体跳过 tick」场景的策略：最近玩家 > 32 格时每 20 tick 跑一次，否则每 tick 跑。本条按 CI `grid` 严格轮的属性跑：`./gradlew :test --tests io.github.bearisbug.synaxis.entity.EntityDormancyConcurrencyTest --rerun -Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true -Dsynaxis.thread-provider=grid --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts`（下称「跑本类」）。
 
 | # | 操作 | 预期 |
 | --- | --- | --- |

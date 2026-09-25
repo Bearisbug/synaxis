@@ -17,6 +17,7 @@
 
 | 日期 | 改动 | 作者 |
 | --- | --- | --- |
+| 2026-09-25 | 跟进 `docs/DESIGN-PROD.md` v0.9（U）。**新增 §4「生产就绪 · 第 6 波 U：宿主停机序列、转服验票串行与顶号轮询」十条 `TC-PROD-370`～`TC-PROD-379`**，都是 JUnit、各带反证：停机步骤在玩家存完后按注册顺序跑、踢人等最后一步（370）；步骤拿剩余预算（371）；步骤超时时停机线程到截止就放手、没轮到的步骤记 ERROR，`ShutdownSequence` 进宿主日志豁免名单（372，三条反证）；`tickAlive` 原样交给步骤、判死时在跑的那一步以 false 再调一次（373，两条反证）；启动后注册被拒（374）；不注册步骤时与改动前相同（375，两条反证）；同账号载入中时转入的 ⑤⑥ 等它结束（376）；过时票据不释放同账号正在玩的那次登录的写权（377，两条反证，第二条说明 §28.2 原默认值「占位提前到验票开始」不够）；顶号轮询中新连接断开即退出（378）；准入闸门上验票被拒不另记 `client_rejected`（379）。**改写 `TC-PROD-152`、`TC-PROD-157`**：顶号类由 5 条变 6 条、票据类由 4 条变 6 条；`TicketVerifier#verify` 拆成 `read` 与 `claim`，按新代码重跑 157 的两条反证后改写方法名、红的行号（`:180`、`:201` → `:239`、`:260`）与计数（`4 tests completed, 2 failed` → `6 tests completed, 2 failed`；第 3 步 `4, 3` → `6, 5`），152 第 2 步补上只跑本类时多红的一条；157 第 1 步的重放改为首次转入离开之后。§5 加本节的回归映射 | Bearisbug |
 | 2026-09-25 | 跟进 `docs/DESIGN-M3.md` v0.10（高度窗口与 section 状态数两项拍板、`fullyLit` 只剩懒读路径、烘焙侧光照引擎 ArchUnit 规则）。**废弃 `TC-WORLD-005`、新增 `TC-WORLD-026`**：`LightingChunk.relight` 改走 `LightEngine` 后不设全亮标记，原用例两条测试都先整图 `relight`，删掉 `SkyLight` 里复位全亮标记那一行不再变红（RUN-033 失败项）；`LightDampeningIntegrationTest#blockOverFullyLitSectionOnLazyRead` 改为不整图 `relight`、先经懒读路径把 section 标为全亮，新用例的反证是同一行，预期 `14 tests completed, 1 failed`。**废弃 `TC-WORLD-024`、新增 `TC-WORLD-029`**：Anvil 源改按 256 格窗口，第 1 步清单 `world` 由 −64 / 384 改为 −64 / 256、段① 由 24 个 section 改为 16 个，`AnvilBakeTest` 10 → 14、`BakerMainTest` 1 → 3，第 2 步 `10 tests completed` → `14 tests completed`，其余逐字保留。**新增 `TC-WORLD-027`**（高度窗口：窗口外的方块、方块实体、静态实体与 `--min-y 0` 下的基岩各拒绝一次，`--min-y` 的两种命令行错误；反证是让窗口检查不拒绝，红 5 条）与 **`TC-WORLD-028`**（`:architecture-tests` 的 `LightEngineArchitectureTest`；反证是给 `LightEngine` 加一个引用 `Instance` 的方法）。`TC-WORLD-020` 第 3 步只改计数（`AnvilBakeTest` 14、`BakerMainTest` 3）。§2 覆盖范围、Gherkin 口径与 REQ-M3 对照表五行、§5 大世界域的局部轮映射同步 | Bearisbug |
 | 2026-09-25 | 跟进 `docs/DESIGN-M3.md` v0.9（M3-A 剩余项与 M3-B 落地）。**新增 §4 四节 14 条**，对应 `REQ-M3-001`～`REQ-M3-004`、`REQ-M3-020`～`REQ-M3-022`：「M3 · 光照引擎」`TC-WORLD-012`（引擎不依赖实例、不加锁、对拍两条路径、缺失区块不传光；反证删掉北面的缺失区块判断）、`TC-WORLD-013`（版本与已过对拍版本文件绑定；跳号与改旧行指纹两条反证）；「M3 · `.synx` 格式」`TC-WORLD-014`（向量与 zlib 指纹门；改向量字节、改指纹两条反证）、`TC-WORLD-015`（损坏与不兼容）、`TC-WORLD-016`（段① 调色板与段③ NBT 规范化；两条反证）、`TC-WORLD-017`（清单与起服校验函数）、`TC-WORLD-018`（`:synx`、`:baker` 的内部面名单）；「M3 · Anvil 读取器」`TC-WORLD-019`（门禁与完整读取；三条反证）、`TC-WORLD-020`（夹具由原版服务端再生）；「M3 · 烘焙器」`TC-WORLD-021`（生成器源烘焙与各退出码，冒烟级）、`TC-WORLD-022`（并行等于串行；压缩级别与阈值随线程变两条反证）、`TC-WORLD-023`（命令行烘焙 4k×4k 合成图、1 线程等于多线程、`verify` 与重烘退 5）、`TC-WORLD-024`（Anvil 源烘焙；反证是把标记格计入对拍）、`TC-WORLD-025`（交付规范第 6 节的自检命令）。**改写两条已有用例的计数**（`REQ-M3-004` 让对拍对 `LightEngine` 与 `LightingChunk.relight` 各跑一遍，判据的实质不变）：`TC-WORLD-001` 第 1 步 `tests="7"` → `"14"`、第 2 步 `7 tests completed, 1 failed` → `14 tests completed, 2 failed`、第 3 步 `"8"` → `"16"`；`TC-WORLD-004` 第 4 步 `25 tests completed, 2 failed` → `32 tests completed, 3 failed`。§2 覆盖范围、Gherkin 口径与 REQ-M3 对照表七行、§3 M3 环境（`.synx` 与烘焙器一条）、§5 大世界域的局部轮映射同步 | Bearisbug |
 | 2026-09-24 | 跟进 `docs/DESIGN-M3.md` v0.8（`API-M3-006` 分片宿主设置表写入四项）。**新增 §4「M3 · 分片宿主设置」两条**：`TC-WORLD-010`（`ShardMain.viewDefaults` 写视距 12、区块上限 4、可见上限 100，`ShardMain.transferDefaults` 只在 PostgreSQL 存储时写 `accept-transfers=true`，命令行给了的键不覆盖；三条反证）与 `TC-WORLD-011`（真进程 `bin/server-shard` 与 `bin/server-app` 的 `Effective ServerConfig` 读数，PostgreSQL 存储缺票据密钥时拒启，反证是入口不调这两个方法），对应 `REQ-M3-009`、`REQ-M3-017`、`REQ-PROD-024`、`REQ-PROD-026`。`ShardMainTest` 由 3 条变为 8 条：`TC-PROD-333` 第 1 步改为 `tests="8"`（线程三条的判据不变），第 2 步反证改为 `8 tests completed, 3 failed`，红的行号 `:18`、`:26`、`:32` → `:20`、`:28`、`:34`（类注释多了两行）。`ShardMain` 默认视距改为 12 牵连两处同机压测的前置：`TC-PROD-336` 的 `server-shard` 一档另加三项参数拉回 `server-app` 的值，保持两档只差线程；`TC-PROD-360` 一组写明可见上限与区块上限已由 `ShardMain` 默认写入，复跑须另加 `-Dsynaxis.chunk-view-distance=10` 才与已登记读数可比。§2 REQ-M3 对照表 `REQ-M3-009`、`REQ-M3-017` 两行、§5 大世界域一行同步 | Bearisbug |
@@ -3183,8 +3184,8 @@ jcmd "$pid" VM.flags | tr ' ' '\n' | grep -cxE -- '-XX:\+UseG1GC|-XX:InitialHeap
 
 | # | 操作 | 预期 |
 | --- | --- | --- |
-| 1 | 跑 `io.github.bearisbug.synaxis.app.store.CrossShardHandoverIntegrationTest`，看前三条 | 全类 5 个 0 失败。分片 A、B 都连 Redis 且可顶号：A 上的玩家改段 `coins = 6`；B 载入同一账号，A 收到 `synaxis:kick:a-<run>` 的请求，旧玩家被踢、原因 `synaxis:logged-in-elsewhere`，A 登出保存并释放，B 在 5 s 内载入成功（整条用例 0.4 s）、读到 6、版本等于库里的版本、持有者是 B；两边都不连 Redis 时 B 立即（远少于 5 s）以 `synaxis:state-unavailable` 拒绝，A 的玩家没被踢、持有者仍是 A；B 为离线模式（不顶号）时拒绝，`synaxis:kick:*` 上没有任何带本轮后缀的消息 |
-| 2 | 反证有齿：`PlayerStore#loadWithin` 的 `if (!redis.requestKick(held.shardId(), account))` 换成 `if (Boolean.getBoolean("proof.never") && !redis.requestKick(held.shardId(), account))`（不发顶号请求），与 `TC-PROD-149` 第 2 步同一轮跑，再还原 | 红：`the second shard gets the character ==> expected: <true> but was: <false>`（5 s 内没人放手）。还原后复绿 |
+| 1 | 跑 `io.github.bearisbug.synaxis.app.store.CrossShardHandoverIntegrationTest`，看前三条 | 全类 6 个 0 失败（第 6 个归 `TC-PROD-378`）。分片 A、B 都连 Redis 且可顶号：A 上的玩家改段 `coins = 6`；B 载入同一账号，A 收到 `synaxis:kick:a-<run>` 的请求，旧玩家被踢、原因 `synaxis:logged-in-elsewhere`，A 登出保存并释放，B 在 5 s 内载入成功（整条用例 0.4 s）、读到 6、版本等于库里的版本、持有者是 B；两边都不连 Redis 时 B 立即（远少于 5 s）以 `synaxis:state-unavailable` 拒绝，A 的玩家没被踢、持有者仍是 A；B 为离线模式（不顶号）时拒绝，`synaxis:kick:*` 上没有任何带本轮后缀的消息 |
+| 2 | 反证有齿：`PlayerStore#loadWithin` 的 `if (!redis.requestKick(held.shardId(), account))` 换成 `if (Boolean.getBoolean("proof.never") && !redis.requestKick(held.shardId(), account))`（不发顶号请求），与 `TC-PROD-149` 第 2 步同一轮跑，再还原 | 红：`the second shard gets the character ==> expected: <true> but was: <false>`（5 s 内没人放手）。只跑本类时 `6 tests completed, 2 failed`，另一条是 `TC-PROD-378` 的用例红在 `:162` `not within 10 s: the first login asks the holder to let go`。还原后复绿 |
 
 后置：确认 `PlayerStore.java` 没有残留改动；`valkey-cli --scan --pattern 'presence:*'` 里没有本轮账号的键。
 
@@ -3239,9 +3240,9 @@ jcmd "$pid" VM.flags | tr ' ' '\n' | grep -cxE -- '-XX:\+UseG1GC|-XX:InitialHeap
 
 | # | 操作 | 预期 |
 | --- | --- | --- |
-| 1 | 跑 `io.github.bearisbug.synaxis.app.store.TransferTicketsIntegrationTest` | 4 个 0 失败：源分片上 `TransferTickets#transfer` 得 `SENT`，发出的包里 `CookieStorePacket(synaxis:transfer, …)` 排在 `TransferPacket` 之前，票据的 `state_version` 等于库里版本、租约已是 NULL；改一字节、已过期、`target_shard = r2-c1`、`player_uuid` 属于别人的四张票据依次被拒，都收到 `synaxis:transfer-rejected`，台账 `transfer_rejected` 的 `reason` 依次为 `bad-signature`、`expired`、`wrong-target`、`uuid-mismatch`；好票据通过、目标分片持有角色、载入读到 `coins = 11` 且版本等于 `state_version`；同一票据再来一次被拒、`reason=nonce-reused`；`transfer_nonce` 恰 1 行。把角色 `version` 在库里加 1 后验票被拒、`reason=version-mismatch`、`TicketVerifier` 恰一行 ERROR、租约为 NULL。转入时刻 t 的玩家在目标分片 t + 3 s 转出得 `COOLDOWN` 且版本与持有者不变，t + 6 s 得 `SENT`。不在本分片的玩家得 `NOT_ONLINE`；另一连接持有角色行锁时转出得 `SAVE_FAILED`，玩家仍持有角色、不再冻结、收到 `synaxis:transfer-failed`，没有发出 Cookie |
-| 2 | 反证有齿（nonce 与版本）：`TicketVerifier#verify` 的 `if (insert.executeUpdate() == 0)` 与 `if (version != ticket.stateVersion())` 各加 `&& Boolean.getBoolean("proof.never")`，重跑，再还原 | `4 tests completed, 2 failed`：`badTicketsAreRefusedInCheckOrderAndAGoodOneOnlyOnce` 红在重放那次 `expected: <false> but was: <true>`（`TransferTicketsIntegrationTest.java:180`）；`aTicketWhoseVersionTheCharacterIsNotAtIsRefusedAndTheLeaseGivenBack` 红 `expected: <false> but was: <true>`（`:201`）。还原后复绿 |
-| 3 | 反证有齿（顺序）：`TicketIssuer#transfer` 里先 `transfer(host, port)` 再 `storeCookie(…)`，重跑，再还原 | `4 tests completed, 3 failed`，三条发票据的用例都红 `the cookie is stored before the transfer: [PluginMessagePacket[channel=minecraft:brand, …`。还原后复绿 |
+| 1 | 跑 `io.github.bearisbug.synaxis.app.store.TransferTicketsIntegrationTest` | 6 个 0 失败（另两个归 `TC-PROD-376`、`TC-PROD-377`）。验票按准入闸门的做法走：先 `TicketVerifier#read`，再由 `PlayerStore#load(player, claim)` 执行 `TicketVerifier#claim`。本条的 4 个：源分片上 `TransferTickets#transfer` 得 `SENT`，发出的包里 `CookieStorePacket(synaxis:transfer, …)` 排在 `TransferPacket` 之前，票据的 `state_version` 等于库里版本、租约已是 NULL；改一字节、已过期、`target_shard = r2-c1`、`player_uuid` 属于别人的四张票据依次被拒，都收到 `synaxis:transfer-rejected`，台账 `transfer_rejected` 的 `reason` 依次为 `bad-signature`、`expired`、`wrong-target`、`uuid-mismatch`；好票据通过、目标分片持有角色、载入读到 `coins = 11` 且版本等于 `state_version`；这次登录离开（`abandon`）后同一票据再来一次被拒、`reason=nonce-reused`；`transfer_nonce` 恰 1 行。把角色 `version` 在库里加 1 后验票被拒、`reason=version-mismatch`、`TicketVerifier` 恰一行 ERROR、租约为 NULL。转入时刻 t 的玩家在目标分片 t + 3 s 转出得 `COOLDOWN` 且版本与持有者不变，t + 6 s 得 `SENT`。不在本分片的玩家得 `NOT_ONLINE`；另一连接持有角色行锁时转出得 `SAVE_FAILED`，玩家仍持有角色、不再冻结、收到 `synaxis:transfer-failed`，没有发出 Cookie |
+| 2 | 反证有齿（nonce 与版本）：`TicketVerifier#claim` 的 `if (insert.executeUpdate() == 0)` 与 `if (version != ticket.stateVersion())` 各加 `&& Boolean.getBoolean("proof.never")`，重跑，再还原 | `6 tests completed, 2 failed`：`badTicketsAreRefusedInCheckOrderAndAGoodOneOnlyOnce` 红在重放那次 `expected: <false> but was: <true>`（`TransferTicketsIntegrationTest.java:239`）；`aTicketWhoseVersionTheCharacterIsNotAtIsRefusedAndTheLeaseGivenBack` 红 `expected: <false> but was: <true>`（`:260`）。还原后复绿 |
+| 3 | 反证有齿（顺序）：`TicketIssuer#transfer` 里先 `transfer(host, port)` 再 `storeCookie(…)`，重跑，再还原 | `6 tests completed, 5 failed`，五条发票据的用例（本条三条与 `TC-PROD-376`、`TC-PROD-377`）都红在 `:180` `the cookie is stored before the transfer: [PluginMessagePacket[channel=minecraft:brand, …`。还原后复绿 |
 
 后置：确认 `TicketVerifier.java`、`TicketIssuer.java` 没有残留改动。
 
@@ -4912,6 +4913,139 @@ jcmd "$pid" VM.flags | tr ' ' '\n' | grep -cxE -- '-XX:\+UseG1GC|-XX:InitialHeap
 
 后置：同 `TC-PROD-363`。
 
+### 生产就绪 · 第 6 波 U：宿主停机序列、转服验票串行与顶号轮询
+
+对应 `REQ-PROD-008`（`API-PROD-007` 宿主停机序列一段，§11.4 `saving → saving` 宿主步骤）、`REQ-PROD-045`（`API-PROD-028` 验票段，§11.3 末段）与 `REQ-PROD-004` 跨分片部分（§12.4 末段），`docs/DESIGN-PROD.md` v0.9（U）。十条都是 JUnit：`TC-PROD-370`～`TC-PROD-375` 与 `TC-PROD-379` 不连数据库（`TC-PROD-375` 第 2 步除外），`TC-PROD-376`～`TC-PROD-378` 要 3A 一节的数据库前置（`TC-PROD-378` 另要 Valkey）。数据库前置、「跑 `<类>`」的写法与反证规矩同 3A 一节；本节的类是 `io.github.bearisbug.synaxis.app.ShutdownSequenceTest`（下称「序列类」，8 条，约 20 s，其中 15 s 花在判死那条）、`io.github.bearisbug.synaxis.app.store.TransferTicketsIntegrationTest`（下称「票据类」，6 条）、`io.github.bearisbug.synaxis.app.store.CrossShardHandoverIntegrationTest`（下称「顶号类」，6 条）与 `io.github.bearisbug.synaxis.app.TransferAdmissionIntegrationTest`（1 条）。
+
+序列类用一个假的玩家存储，把收到的调用与各步骤的动作记进同一张表：`players:<tickAlive>[:<停机阶段>]`、`players_saved`（它的 future 完成前一刻）、`<步骤名>:<tickAlive>:<停机阶段或是否在调 saveAll 的线程上>`、`<步骤名>_done:<停机阶段>`、`save_ended:<timedOut>`、`plugins_disabled`（关停任务）。起真进程的三条（顺序、判死、注册）在回环地址上起 `Server`，并像 `MinecraftServer#start` 一样起 dispatcher 与 `TickSchedulerThread`。
+
+#### `TC-PROD-370` 玩家存完后停机步骤按注册顺序跑，最后一步完成才踢人 — 对应 `REQ-PROD-008` · 级别: 回归 · 执行者: AI
+
+前置：工作副本干净。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑序列类，看 `theStepsRunAfterThePlayersInTheirOrderAndKickingWaitsForThem` | 全类 `tests="8"` 0 失败 0 跳过。进程注册 `ShutdownSequence`，装配时注册 `first`、`second` 两步（各 300 ms 后完成），玩家的 future 200 ms 后完成，`stop()` 返回后表恰为 `gate_closed:0`、`players:true:SAVING`、`players_saved`、`first:true:SAVING`、`first_done:SAVING`、`second:true:SAVING`、`second_done:SAVING`、`save_ended:false`、`plugins_disabled`；`shutdownPhase()` 为 `STOPPED`。两步完成时阶段仍是 `SAVING`：踢人等到最后一步完成 |
+| 2 | 反证有齿（不等步骤）：`ShutdownSequence#saveAll` 末行 `return done;` 改成 `return saved;`（返回玩家存储的 future），跑序列类，再 `git checkout --` 该文件 | `8 tests completed, 4 failed`。本条红在 `ShutdownSequenceTest.java:110`：`a step still saving holds kicking back ==> expected: <[…九项…]> but was: <[gate_closed:0, players:true:SAVING, players_saved, first:true:SAVING, save_ended:false, plugins_disabled]>`（玩家存完引擎就去踢人，`first` 还没完成进程就停了，`second` 没被调用）。另三条随之红：`:137`（`get` 在玩家存完时就返回，第二步还没被调用，读到 0 ms）、`:167`、`:225`（返回的 future 已完成） |
+| 3 | 还原后重跑第 1 步 | 与第 1 步相同 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PROD-371` 步骤拿到的是扣掉玩家与前面步骤用时之后的剩余预算 — 对应 `REQ-PROD-008` · 级别: 回归 · 执行者: AI
+
+前置：工作副本干净。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑序列类，看 `aStepGetsWhatIsLeftOfTheBudget` | 0 失败：`saveAll(2 s, true)`，玩家 400 ms 后存完；第一步拿到的剩余预算在 1,000～1,600 ms，它用 300 ms；第二步拿到的 ≤ 第一步 − 300 ms 且 ≥ 400 ms |
+| 2 | 反证有齿（每步都拿整份预算）：`ShutdownSequence` 加字段 `private long budgetNanos;`，`saveAll` 在 `deadline = until;` 之后加 `budgetNanos = budget.toNanos();`，`advance` 里 `call(steps.get(index), remaining, true)` 改成 `call(steps.get(index), budgetNanos, true)`，跑序列类，再 `git checkout --` 该文件 | `8 tests completed, 1 failed`，红在 `:135`：`2 s less the 400 ms the players took: 2000 ms ==> expected: <true> but was: <false>` |
+| 3 | 还原后重跑第 1 步 | 与第 1 步相同 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PROD-372` 步骤超时不拦踢人：停机线程等到截止就放手，没轮到的步骤各记一条 ERROR — 对应 `REQ-PROD-008`、`REQ-PROD-014` · 级别: 回归 · 执行者: AI
+
+前置：工作副本干净。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑序列类，看 `aStepThatDoesNotCompleteIsLeftBehindAndTheStepsAfterItDoNotRun` 与 `aDeadTickHandsTheStepsToTheShutdownThreadAndKickingFollowsTheDeadline` | 都 0 失败。前者：`saveAll(500 ms, true)`，`stuck` 步骤永不完成，800 ms 后按引擎的做法调 `onSaveEnded(true)`：表为 `players:true`、`stuck`、`save_ended:false`（玩家自己的保存按时完成，不按超时收尾），`ShutdownSequence` 的 ERROR 恰一条 `The shutdown step after did not run, the save budget was used up`；之后 `stuck` 完成也不再调 `after`，返回给引擎的 future 未完成。后者（约 15 s）：真进程上调 `shutdownAfterWatchdogDeath()`，返回 true，表为 `players:false:SAVING`、`stuck:false:true`、`save_ended:false`、`plugins_disabled`；`stuck` 拿到的剩余预算在 14,000～15,000 ms；调用在判死后 14～30 s 之间返回，阶段 `STOPPED`：步骤卡满 15 s 后引擎照常踢人、禁用插件、停服 |
+| 2 | 反证有齿（停机线程不设截止地等步骤）：`ShutdownSequence#await` 的 `future.get(Math.max(0, until - System.nanoTime()), TimeUnit.NANOSECONDS);` 改成 `future.get(Math.max(until, Long.MAX_VALUE), TimeUnit.NANOSECONDS);`，跑序列类，再 `git checkout --` 该文件 | 构建 1 min 9 s，`8 tests completed, 1 failed`：判死那条红：`java.util.concurrent.TimeoutException: aDeadTickHandsTheStepsToTheShutdownThreadAndKickingFollowsTheDeadline() timed out after 60 seconds`，栈落在 `:204` 的用时断言（停机线程卡在永不完成的步骤上，60 s 时被 JUnit 打断才放手） |
+| 3 | 反证有齿（没轮到的步骤不记）：`ShutdownSequence#onSaveEnded` 的 `for (int i = current + 1; …` 改成 `current + 2`，跑序列类，再 `git checkout --` 该文件 | `8 tests completed, 1 failed`，红在 `:170`：`expected: <[The shutdown step after did not run, the save budget was used up]> but was: <[]>` |
+| 4 | 跑 `io.github.bearisbug.synaxis.app.ClientDrivenLogArchitectureTest` | 2 个 0 失败：这些 ERROR 行由 `ShutdownSequence` 自己写，它在宿主日志豁免名单 `boundedReporters()` 里，上界是每个停机步骤每次停机至多一行（步骤只在装配时注册，客户端碰不到） |
+| 5 | 反证有齿：删掉 `ClientDrivenLogArchitectureTest#boundedReporters` 里的 `.or(name(ShutdownSequence.class.getName()))`，跑第 4 步，再还原 | `2 tests completed, 1 failed`：`hostPathsDoNotWriteALinePerPacket` 红 `Architecture Violation … was violated (2 times)`，点名 `ShutdownSequence.call(…)` 与 `ShutdownSequence.onSaveEnded(boolean)` 两处 `Logger.error` |
+| 6 | 还原后重跑第 1、4 步 | 与第 1、4 步相同 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PROD-373` `tickAlive` 原样交给步骤：判死后在停机线程上以 false 跑，已以 true 开始、没完成的那一步再调一次 — 对应 `REQ-PROD-008`、`REQ-PROD-014` · 级别: 回归 · 执行者: AI
+
+前置：工作副本干净。本条表里 `<步骤名>:<tickAlive>:true` 的第三项表示「在调 `saveAll` 的线程上」，单测里那就是扮演停机线程的测试线程。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑序列类，看 `aDeathWhileAStepRunsForTheTickCallsItAgainOnTheShutdownThread`、`aDeathWhileThePlayersSaveRunsEveryStepOnTheShutdownThreadAfterThem`，并对照 `TC-PROD-370`、`TC-PROD-372` 两条的表 | 都 0 失败。步骤 `one` 以 true 被调时交给 tick、永不完成；接着按引擎的做法 `saveAll(15 s, false)`：该调用返回时 future 已完成，表为 `players:true`、`one:true:true`、`players:false`、`one:false:true`、`two:false:true`，之后那个交给 tick 的 future 才完成也不再调任何步骤。玩家第一次保存停在 tick 上时判死：表为 `players:true`、`players:false`、`players_saved`、`one:false:true`（等玩家第二次保存完成才跑，只跑一次）。tick 活着时步骤拿到 true（`TC-PROD-370` 的 `first:true`），停机前判死时拿到 false 且在报告线程上（`TC-PROD-372` 的 `stuck:false:true`） |
+| 2 | 反证有齿（判死后仍传 true）：`ShutdownSequence#runDead` 的 `call(step, remaining, false)` 改成 `call(step, remaining, true)`，跑序列类，再 `git checkout --` 该文件 | `8 tests completed, 3 failed`：`:201` `…but was: <[players:false:SAVING, stuck:true:true, save_ended:false, plugins_disabled]>`；`:229` `the shutdown thread ran what was left ==> expected: <true> but was: <false>`（`one` 又把活交给已死的 tick，等满 15 s）；`:255` `…but was: <[players:true, players:false, players_saved, one:true:true]>` |
+| 3 | 反证有齿（在跑的那一步不再调一次）：`runDead` 的 `final boolean rerun = liveCall != null && !liveCall.isDone();` 改成 `… && liveCall.isDone() && !liveCall.isDone();`（恒假），跑序列类，再 `git checkout --` 该文件 | `8 tests completed, 1 failed`，红在 `:231`：`…expected: <[players:true, one:true:true, players:false, one:false:true, two:false:true]> but was: <[players:true, one:true:true, players:false, two:false:true]>`（交给已死 tick 的那份活没人做，序列直接跳到下一步） |
+| 4 | 还原后重跑第 1 步 | 与第 1 步相同 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PROD-374` 进程启动之后注册停机步骤被拒 — 对应 `REQ-PROD-008` · 级别: 回归 · 执行者: AI
+
+前置：工作副本干净。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑序列类，看 `aStepIsRegisteredBeforeTheStartOnly` | 0 失败：`start` 之前注册 `early` 不抛；`start` 之后注册 `late` 抛 `IllegalStateException`，信息恰为 `The shutdown step late is registered after the process started`；`stop()` 之后注册同样抛 |
+| 2 | 反证有齿：`ShutdownSequence#addAfterPlayers` 的条件去掉 `process.isAlive() \|\|`（只看停机阶段），跑序列类，再 `git checkout --` 该文件 | `8 tests completed, 1 failed`，红在 `:268`：`Expected java.lang.IllegalStateException to be thrown, but nothing was thrown.`（运行中注册被放行；停机之后那次仍被拒，所以两个条件都要） |
+| 3 | 还原后重跑第 1 步 | 与第 1 步相同 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PROD-375` 不注册步骤时停机与改动前相同：`saveAll` 返回玩家存储自己的 future，三个回调原样转交 — 对应 `REQ-PROD-008` · 级别: 回归 · 执行者: AI
+
+前置：工作副本干净；第 2 步要数据库前置。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑序列类，看 `withoutStepsTheSavePhaseIsThePlayerStoresOwn` | 0 失败：两次 `saveAll`（30 s true、15 s false）返回的都是玩家存储那次调用返回的同一个 future 对象；表为 `gate_closed:60`、`players:true`、`players:false`、`save_ended:true`（玩家的 future 已完成时 `onSaveEnded(true)` 也原样传 true） |
+| 2 | 跑 `io.github.bearisbug.synaxis.ShutdownSequenceTest`（`:test`）与 `io.github.bearisbug.synaxis.app.store.ShutdownSaveIntegrationTest`；再 `grep -rnE "setShutdownParticipant\|addAfterPlayers\(" server-app/src/main/java` | 引擎 6 个、宿主 4 个，都 0 失败（`TC-PROD-154`、`TC-PROD-155` 第 1 步，两个类都没改）。`grep` 只有两行：`Main.java` 的 `process.setShutdownParticipant(shutdown);` 与 `ShutdownSequence.java` 里 `addAfterPlayers` 的定义：RTS 的 `Main` 路径注册 `new ShutdownSequence(process, store.store())`，不注册步骤 |
+| 3 | 反证有齿（没有步骤也走步骤链）：删掉 `ShutdownSequence#saveAll` 里的 `if (steps.isEmpty()) return saved;`，`onSaveEnded` 的 `playersTimedOut = steps.isEmpty() ? timedOut : …` 只留 `:` 之后的部分，跑序列类，再 `git checkout --` 该文件 | `8 tests completed, 1 failed`，红在 `:287`：`the engine waits on the store's own future ==> expected: <java.util.concurrent.CompletableFuture@…[Not completed, 1 dependents]> but was: <java.util.concurrent.CompletableFuture@…[Not completed]>` |
+| 4 | 反证有齿（只改 `onSaveEnded`）：只做第 3 步的第二处改动，跑序列类，再 `git checkout --` 该文件 | `8 tests completed, 1 failed`，红在 `:292`：`every call passed on as it came ==> expected: <[gate_closed:60, players:true, players:false, save_ended:true]> but was: <[…, save_ended:false]>` |
+| 5 | 还原后重跑第 1 步 | 与第 1 步相同 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PROD-376` 同账号的普通登录正在本分片载入时，转入的验票 ⑤⑥ 等它结束；它被放弃后转入的登录载入到票据的版本 — 对应 `REQ-PROD-045` · 级别: 回归 · 执行者: AI
+
+前置：数据库前置满足。票据类里目标分片的后端包住 `PostgresBackend`，第一次 `load` 在获取语句之后停住，直到测试放行（该次载入已持有写权、还没解码）。源分片 `r2-c1`、目标分片 `r1-c1` 在同一进程。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑票据类，看 `aTicketWaitsForAnotherLoginOfItsAccountLoadingOnTheShard` | 全类 `tests="6"` 0 失败 0 跳过。源分片上 `coins = 9` 的玩家转出、离开源分片；目标分片上同账号的普通登录停在载入里（持有者是目标会话）；此时带票据的转入开始，300 ms 后 `transfer_nonce` 仍是 0 行；放行后普通登录载入成功，按准入闸门的做法 `abandon` 它；转入的登录随后载入成功：`transfer_nonce` 1 行，没有 `transfer_rejected`，持有者是目标会话，`versionOf` 等于票据的 `state_version`，读到 `coins = 9` |
+| 2 | 反证有齿（验票在占位之前，即改动前的顺序）：`PlayerStore#load(Player, BooleanSupplier)` 的第一行前加 `if (claim != null && !claim.getAsBoolean()) return false;`，并把 `loadOrRefuse(player, deadline, claim)` 改成 `loadOrRefuse(player, deadline, null)`，跑票据类，再 `git checkout --` 该文件 | `6 tests completed, 2 failed`。本条红在 `TransferTicketsIntegrationTest.java:365`：`the ticket is not used while another login of its account loads here ==> expected: <0> but was: <1>`；`TC-PROD-377` 那条红在 `:413` |
+| 3 | 还原后重跑第 1 步 | 与第 1 步相同 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PROD-377` 票据已过时而同账号的普通登录在本分片玩：验票不释放它的写权，它的下一次保存不被 fencing — 对应 `REQ-PROD-045`、`REQ-PROD-005` · 级别: 回归 · 执行者: AI
+
+前置：同 `TC-PROD-376`；目标分片的载入预算为 2 s（测试自己的 `Options`）。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑票据类，看 `aStaleTicketDoesNotGiveBackTheLeaseOfALoginOfItsAccountOnTheShard` | 0 失败：玩家转出后库里版本被加 1（票据已过时）；目标分片上同账号的普通登录停在载入里时带这张票据的转入开始，300 ms 后放行；普通登录准入并进世界。转入的登录约 2 s 后被拒（同账号在本分片的上一次登录未在预算内离开），`kicks` 恰为 `synaxis:state-unavailable`；持有者仍是目标会话；`saveOnline()` 得 `SaveCount[saved=1, online=1]`（正在玩的那次登录下一次保存照常写入） |
+| 2 | 反证有齿（改动前的顺序）：`TC-PROD-376` 第 2 步的改动 | 本条红在 `:413`：`the login that plays keeps its lease ==> expected: <2> but was: <null>`（⑥ 以「持有者 = 本会话」认下普通登录的写权，版本对不上又把它释放） |
+| 3 | 反证有齿（占位提前到验票开始，即 §28.2 原默认值）：`PlayerStore#load(Player, BooleanSupplier)` 的 `try {` 之后、`loadOrRefuse` 之前加 `if (claim != null && !claim.getAsBoolean()) { releaseUnused(account); return false; }`，并把 `loadOrRefuse(player, deadline, claim)` 改成 `loadOrRefuse(player, deadline, null)`，跑票据类，再 `git checkout --` 该文件 | `6 tests completed, 1 failed`：只有本条红，仍在 `:413`，`expected: <2> but was: <null>`；`TC-PROD-376` 那条绿。占位挡住了正在载入的另一次登录，挡不住已经载入、正在玩的那一次，所以 ⑤⑥ 要放在「上一次登录离开」之后 |
+| 4 | 还原后重跑第 1 步 | 与第 1 步相同 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PROD-378` 顶号轮询中新连接断开即退出，同账号立刻重连的登录在自己的预算内载入 — 对应 `REQ-PROD-004` · 级别: 回归 · 执行者: AI
+
+前置：数据库前置满足，`SYNAXIS_TEST_REDIS_URL` 可达。顶号类里持有者分片 `a-<run>` 不连 Redis（听不到顶号请求，模拟第一条消息丢失）；新分片 `b-<run>` 连 Redis、可顶号，载入预算 2 s、轮询间隔 50 ms；测试自己订阅 `synaxis:kick:*`，收到第二条请求 500 ms 后以 `synaxis:logged-in-elsewhere` 踢掉持有者上的玩家（模拟持有者收到请求后用 0.5 s 存完放手）。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑顶号类，看 `aLoginWhoseConnectionClosedWhileTheHolderHeldOnGivesWayToTheReconnect`；在 `TEST-…CrossShardHandoverIntegrationTest.xml` 里 `grep -o 'cause=the connection closed[^&<]*'` | 全类 `tests="6"` 0 失败 0 跳过。第一次登录发出第一条请求后连接断开，同账号马上重连；重连的登录载入成功（整条用例约 0.8 s），第一次登录返回 false；`synaxis:kick:a-<run>` 上恰 2 条消息（两次登录各一条）；持有者上的玩家收到 `synaxis:logged-in-elsewhere`；持有者是 `b` 的会话。`grep` 得一行 `cause=the connection closed while shard_id=a-<run> held the character` |
+| 2 | 反证有齿：`PlayerStore#loadWithin` 的 `if (!player.isOnline())` 改成 `if (!player.isOnline() && Boolean.getBoolean("proof.never"))`，跑顶号类，再 `git checkout --` 该文件 | `6 tests completed, 1 failed`，红在 `CrossShardHandoverIntegrationTest.java:178`：`the reconnect gets the character within its own 2 s ==> expected: <true> but was: <false>`；XML 里两行 `cause=held by shard_id=a-<run> past the handover budget`（断开的那次跑满 2 s，重连的那次只剩不到一轮） |
+| 3 | 还原后重跑第 1 步 | 与第 1 步相同 |
+
+后置：`git status --short` 无输出；`valkey-cli --scan --pattern 'presence:*'` 里没有本轮账号的键。
+
+#### `TC-PROD-379` 准入闸门上的转入：②～④ 与 ⑤⑥ 被拒都只记转服被拒，不再记一次载入失败 — 对应 `REQ-PROD-045` · 级别: 回归 · 执行者: AI
+
+前置：工作副本干净（不连数据库：验票的库指向 `127.0.0.1:1`，⑤ 以 `store-unavailable` 被拒）。连接是带 transfer 意图、会交出给定 Cookie 的 configuration 态连接，经 `ConnectionManager#doConfiguration` 触发准入闸门；宿主不要求握手，玩法插件注册了一个放行的准入提供者。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `io.github.bearisbug.synaxis.app.TransferAdmissionIntegrationTest` | `tests="1"` 0 失败。Cookie 是 3 个乱字节的连接收到 `synaxis:transfer-rejected`；带一张签名、目标分片与 UUID 都对的票据的连接收到 `synaxis:state-unavailable`；准入提供者一次都没被调用；台账恰 2 行 `transfer_rejected`，`reason` 依次为 `bad-signature`、`store-unavailable`，没有 `client_rejected` 行 |
+| 2 | 反证有齿：`AdmissionGate#admit` 的 `if (!ticketRefused.get()) rejected(connectionId, hello, DisconnectKeys.STATE_UNAVAILABLE);` 改成无条件的 `rejected(…)`，跑本类，再 `git checkout --` 该文件 | 红在 `TransferAdmissionIntegrationTest.java:148`：`a refused ticket is not also a failed load: […]`，台账多出 `{"event":"client_rejected",…,"reason":"state-unavailable","schema_version":0}` |
+| 3 | 还原后重跑第 1 步 | 与第 1 步相同 |
+
+后置：`git status --short` 无输出。
+
 ## 5. 回归策略
 
 - **全量轮**（全部用例）：首次成稿、每个阶段 gate（引擎域阶段 0、2、3；游戏域 `docs/DESIGN-M2.md` §26 的阶段 1～6b；大世界域 `docs/DESIGN-M3.md` §26 的 M3-A～M3-G）、跨功能域改动、地基变更（JDK、Gradle、镜像、协议版本、模块拆分、启动入口）。
@@ -4942,6 +5076,7 @@ jcmd "$pid" VM.flags | tr ' ' '\n' | grep -cxE -- '-XX:\+UseG1GC|-XX:InitialHeap
   - 生产就绪域（`docs/DESIGN-PROD.md`）：实体追踪范围与每玩家可见上限（`REQ-PROD-023`、`REQ-PROD-024`）→ TC-PROD-310～TC-PROD-320；动了引擎 `EntityView`、`TrackingRange` / `TrackingRanges`、`Entity` 的追踪范围与必显两组方法、`Player#update` 里的重算调用或 `ServerConfig` 的 `synaxis.max-visible-entities-per-player` 就跑 TC-PROD-310～TC-PROD-314、TC-PROD-319 与 TC-PROD-320（第 1 步；动了 `EntityView` 的计数、`admits` 或重算加跑第 2、3 步）；动了 `PluginContext#entities`、`PluginEntities` 或 `PluginHost` 的接线跑 TC-PROD-315；动了 `loadtest/` 的 `Bot` 实体计数、`RunCommand` 采样或 `MergeCommand` 的 `visible_entities` 跑 TC-PROD-316、TC-PROD-317。TC-PROD-318（三轮各约 11 分钟）只在可见性、视野广播（`PacketViewableUtils`、`hasPredictableViewers`）或实体移动同步有改动时跑，本机同时只能有一个压测。跨域牵连：动了 `EntityView` 或 `Player#update` → 加 TC-PROD-033（4 线程严格模式全量，重算在玩家自己的 tick 线程上碰别的实体的视图）。
   - 生产就绪域（`docs/DESIGN-PROD.md`）：空间分格与多线程正确性余项（`REQ-PROD-020`、`REQ-PROD-019` 后半）→ TC-PROD-330～TC-PROD-336；动了 `ThreadProvider#grid` 跑 TC-PROD-330、TC-PROD-332、TC-PROD-335，动了 `ServerConfig` 的 `synaxis.thread-*` 键或 `ServerProcessImpl` 建 dispatcher 的一处跑 TC-PROD-331、TC-PROD-332、TC-PROD-334，动了 `ShardMain` 或 `server-app/build.gradle.kts` 的 `shardStartScripts` 跑 TC-PROD-333、TC-PROD-334 与 TC-PROD-050，动了 `build-src` 转给测试 JVM 的属性、`EnvTestExt` 或 `ci.yml` 的 `multithreaded-grid` 跑 TC-PROD-335；TC-PROD-336（两档各约 11 分钟）只在分格规则或 tick 调度路径有改动时跑，本机同时只能有一个压测。跨域牵连：动了 `thread` 包 → 加 TC-PROD-030～TC-PROD-033；动了 `plugin-api` 的 `package-info` 或 `docs/PLUGINS.md` §10 的线程契约 → 同步核对 `docs/DESIGN-PROD.md` `API-PROD-016` 的线程契约一条。
   - 生产就绪域（`docs/DESIGN-PROD.md`）：第 5 波集成后压测收尾（`REQ-PROD-029`）→ TC-PROD-360～TC-PROD-365，全部是同机真进程压测，本机同时只能有一个压测。TC-PROD-360（约 35 分钟）与 TC-PROD-365 第 1 步在引擎 tick、网络、区块发送、可见性或分格路径有改动时跑，并与本条记下的读数对比；TC-PROD-361、TC-PROD-362（各约 12 分钟）在 `capacity` 定值要重评时跑；动了闸门 L3 / L4、`ConnectionManager#updateWaitingPlayers` 或登录监听器跑 TC-PROD-363（约 10 分钟）；动了 `ConnectionGate` 或闸门汇总日志跑 TC-PROD-364（约 3 分钟）；动了 `EventLedger` 跑 TC-PROD-365 第 2 步。分机档到位后六条全部在分机上重跑。
+  - 生产就绪域（`docs/DESIGN-PROD.md`）：第 6 波 U 组宿主停机序列、转服验票串行与顶号轮询（`REQ-PROD-008`、`REQ-PROD-045`、`REQ-PROD-004` 跨分片部分）→ TC-PROD-370～TC-PROD-379；动了 `ShutdownSequence` 或 `Main` 注册停机参与者的一处就跑 TC-PROD-370～TC-PROD-375（序列类约 20 s）与 TC-PROD-154、TC-PROD-155；动了 `PlayerStore#load` 的串行载入占位、`loadWithin` 的顶号轮询、`TicketVerifier` 或 `AdmissionGate` 的验票接线就跑 TC-PROD-376～TC-PROD-379 与 TC-PROD-152、TC-PROD-157、TC-PROD-174（要数据库前置）。跨域牵连：M3-C 在分片宿主路径注册覆盖层停机步骤后，`docs/DESIGN-M3.md` 覆盖层停机落盘的用例与 TC-PROD-370～TC-PROD-373 一起跑；动了引擎 `ServerProcessImpl#save` 或 `ShutdownParticipant` → 加 TC-PROD-370～TC-PROD-375。
   - 影响面不确定时升级为全量轮。
 - **复测轮**（上轮失败用例 + 全部冒烟级）：修复失败项之后。
 - **人工收口轮**（仅上轮「待人工」用例）：AI 轮之后由人工补测 TC-016、TC-030、TC-GAME-020、TC-GAME-038、TC-GAME-046、TC-GAME-047，不要求冒烟级。

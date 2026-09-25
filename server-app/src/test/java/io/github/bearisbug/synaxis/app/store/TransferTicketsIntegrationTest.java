@@ -27,11 +27,15 @@ import org.slf4j.LoggerFactory;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
 import static io.github.bearisbug.synaxis.app.store.StoreFixture.PURSE;
@@ -111,6 +115,60 @@ class TransferTicketsIntegrationTest {
                 new TransferCooldowns(5_000, targetClock::get), (event, attributes) -> target.ledger().add(event + " " + attributes));
     }
 
+    /** What the admission gate does with a transfer: the ticket read first, then claimed in the load. */
+    private static boolean arrive(StoreFixture.Shard target, TicketVerifier verifier, Player player) {
+        final TransferTicket ticket = verifier.read(player);
+        return ticket != null && target.store().load(player, () -> verifier.claim(player, ticket));
+    }
+
+    /** The target's store, whose first load holds on to the lease it acquired until the test lets it go. */
+    private static final class FirstLoadHeld implements StoreBackend {
+        final CountDownLatch holding = new CountDownLatch(1);
+        final CountDownLatch letGo = new CountDownLatch(1);
+        private final AtomicInteger loads = new AtomicInteger();
+        private final PostgresBackend postgres;
+
+        FirstLoadHeld(Database pool) {
+            this.postgres = new PostgresBackend(pool.pool());
+        }
+
+        @Override
+        public LoadOutcome load(UUID account, String name, long sessionId) throws SQLException {
+            final LoadOutcome outcome = postgres.load(account, name, sessionId);
+            if (loads.getAndIncrement() == 0) {
+                holding.countDown();
+                try {
+                    letGo.await();
+                } catch (InterruptedException e) {
+                    throw new AssertionError(e);
+                }
+            }
+            return outcome;
+        }
+
+        @Override
+        public void write(long sessionId, List<Write> writes) throws FencedException, SQLException {
+            postgres.write(sessionId, writes);
+        }
+
+        @Override
+        public void release(long characterId, long sessionId) throws SQLException {
+            postgres.release(characterId, sessionId);
+        }
+
+        @Override
+        public void releaseAccount(UUID account, long sessionId) throws SQLException {
+            postgres.releaseAccount(account, sessionId);
+        }
+    }
+
+    private StoreFixture.Shard heldTarget(Env env, FirstLoadHeld backend, PlayerStore.Options options) throws SQLException {
+        final StoreFixture.Shard shard = StoreFixture.shard(env, pool, TARGET, true, RedisLink.disabled(TARGET), options,
+                StoreFixture.MANUAL, backend);
+        shards.add(shard);
+        return shard;
+    }
+
     /** Transfers the player out of the source and returns the ticket the client was given. */
     private static byte[] transferOut(Env env, TicketIssuer issuer, Player player) {
         final CompletableFuture<TransferOutcome> outcome = issuer.transfer(player, TARGET, "127.0.0.1", 25631);
@@ -164,20 +222,21 @@ class TransferTicketsIntegrationTest {
                 ticket.stateVersion(), nonce(2), now, now + 30_000).encode(KEYS);
         for (byte[] bad : List.of(tampered, expired, elsewhere, someoneElses)) {
             final Player refused = arriving(env, account, bad);
-            assertFalse(verifier.verify(refused));
+            assertFalse(arrive(target, verifier, refused));
             assertEquals(List.of("synaxis:transfer-rejected"), kicks(refused));
         }
         assertEquals(List.of("bad-signature", "expired", "wrong-target", "uuid-mismatch"), reasons(target));
 
         final Player arrived = arriving(env, account, good);
-        assertTrue(verifier.verify(arrived), "the good ticket passes");
+        assertTrue(arrive(target, verifier, arrived), "the good ticket passes and the character loads like any login");
         assertEquals(target.sessionId(), row(database, account).lease(), "the target holds the character now");
-        assertTrue(target.store().load(arrived), "and loads it like any login");
         assertEquals(11, target.store().get(arrived, PURSE).coins);
         assertEquals(ticket.stateVersion(), target.store().versionOf(arrived));
 
+        // The first arrival goes away before the same ticket comes again
+        target.store().abandon(arrived);
         final Player replayed = arriving(env, account, good);
-        assertFalse(verifier.verify(replayed));
+        assertFalse(arrive(target, verifier, replayed));
         assertEquals("nonce-reused", reasons(target).getLast());
         assertEquals(List.of("synaxis:transfer-rejected"), kicks(replayed));
         assertEquals(1, count(database, "SELECT count(*) FROM transfer_nonce"), "only the good ticket used its nonce");
@@ -198,7 +257,7 @@ class TransferTicketsIntegrationTest {
         ((Logger) LoggerFactory.getLogger(TicketVerifier.class)).addAppender(log);
         final Player arrived = arriving(env, account, good);
         try {
-            assertFalse(verifier(target).verify(arrived));
+            assertFalse(arrive(target, verifier(target), arrived));
         } finally {
             ((Logger) LoggerFactory.getLogger(TicketVerifier.class)).detachAppender(log);
         }
@@ -233,8 +292,7 @@ class TransferTicketsIntegrationTest {
         final StoreFixture.RecordingConnection connection = (StoreFixture.RecordingConnection) arrived.getPlayerConnection();
         connection.markTransferred(true);
         connection.cookie = ticket;
-        assertTrue(verifier.verify(arrived));
-        assertTrue(target.store().load(arrived));
+        assertTrue(arrive(target, verifier, arrived));
         target.store().admitted(arrived);
         spawn(env.process(), arrived, env.createFlatInstance());
         final long versionBefore = row(database, account).version();
@@ -276,6 +334,87 @@ class TransferTicketsIntegrationTest {
         assertEquals(List.of("synaxis:transfer-failed"), StoreFixture.messages(player));
         assertEquals(-1, indexOf(((StoreFixture.RecordingConnection) player.getPlayerConnection()).sent, CookieStorePacket.class),
                 "no ticket for a transfer that did not happen");
+    }
+
+    @Test
+    void aTicketWaitsForAnotherLoginOfItsAccountLoadingOnTheShard(Env env) throws Exception {
+        final StoreFixture.Shard source = shard(env, SOURCE);
+        final FirstLoadHeld held = new FirstLoadHeld(pool);
+        final StoreFixture.Shard target = heldTarget(env, held, StoreFixture.FAST);
+        final TicketIssuer issuer = new TicketIssuer(source.store(), KEYS, new TransferCooldowns(5_000, sourceClock::get), SOURCE);
+        final UUID account = UUID.randomUUID();
+        final Player player = online(env, source, env.createFlatInstance(), account, "Racer");
+        source.store().get(player, PURSE).coins = 9;
+        source.store().markDirty(player, PURSE);
+        final byte[] good = transferOut(env, issuer, player);
+        final long released = TransferTicket.decode(good, KEYS).stateVersion();
+        // The client follows the transfer packet and leaves the source
+        player.getPlayerConnection().disconnect();
+        await(env, player::isRemoved, "the transferred player leaves the source");
+
+        // An ordinary login of the same account has taken the lease and is still loading
+        final Player ordinary = connect(env.process(), account, "Racer");
+        final CompletableFuture<Boolean> ordinaryLoaded = CompletableFuture.supplyAsync(
+                () -> target.store().load(ordinary), Thread.ofVirtual()::start);
+        assertTrue(held.holding.await(5, TimeUnit.SECONDS), "the ordinary login is loading");
+        final Player arrived = arriving(env, account, good);
+        final TicketVerifier verifier = verifier(target);
+        final CompletableFuture<Boolean> arrivedLoaded = CompletableFuture.supplyAsync(
+                () -> arrive(target, verifier, arrived), Thread.ofVirtual()::start);
+        Thread.sleep(300);
+        assertEquals(0, count(database, "SELECT count(*) FROM transfer_nonce"),
+                "the ticket is not used while another login of its account loads here");
+
+        held.letGo.countDown();
+        assertTrue(ordinaryLoaded.get(5, TimeUnit.SECONDS));
+        // What the admission gate does with a login whose connection was replaced meanwhile
+        target.store().abandon(ordinary);
+        assertTrue(arrivedLoaded.get(5, TimeUnit.SECONDS), "the transfer loads once the other login is gone");
+
+        assertEquals(1, count(database, "SELECT count(*) FROM transfer_nonce"));
+        assertEquals(List.of(), reasons(target));
+        assertEquals(target.sessionId(), row(database, account).lease());
+        assertEquals(released, target.store().versionOf(arrived), "the version the ticket was issued at");
+        assertEquals(9, target.store().get(arrived, PURSE).coins);
+    }
+
+    @Test
+    void aStaleTicketDoesNotGiveBackTheLeaseOfALoginOfItsAccountOnTheShard(Env env) throws Exception {
+        final StoreFixture.Shard source = shard(env, SOURCE);
+        final FirstLoadHeld held = new FirstLoadHeld(pool);
+        final PlayerStore.Options shortBudget = new PlayerStore.Options(Duration.ofSeconds(2), 2, 4,
+                List.of(Duration.ofMillis(50)), Duration.ofSeconds(1), Duration.ofMillis(50));
+        final StoreFixture.Shard target = heldTarget(env, held, shortBudget);
+        final TicketIssuer issuer = new TicketIssuer(source.store(), KEYS, new TransferCooldowns(5_000, sourceClock::get), SOURCE);
+        final UUID account = UUID.randomUUID();
+        final Instance instance = env.createFlatInstance();
+        final Player player = online(env, source, instance, account, "Stale");
+        final byte[] stale = transferOut(env, issuer, player);
+        player.getPlayerConnection().disconnect();
+        await(env, player::isRemoved, "the transferred player leaves the source");
+        // The character moved on after this ticket was issued
+        database.execute("UPDATE character SET version = version + 1 WHERE account_uuid = '" + account + "'");
+
+        final Player ordinary = connect(env.process(), account, "Stale");
+        final CompletableFuture<Boolean> ordinaryLoaded = CompletableFuture.supplyAsync(
+                () -> target.store().load(ordinary), Thread.ofVirtual()::start);
+        assertTrue(held.holding.await(5, TimeUnit.SECONDS), "the ordinary login is loading");
+        final Player arrived = arriving(env, account, stale);
+        final TicketVerifier verifier = verifier(target);
+        final CompletableFuture<Boolean> arrivedLoaded = CompletableFuture.supplyAsync(
+                () -> arrive(target, verifier, arrived), Thread.ofVirtual()::start);
+        Thread.sleep(300);
+        held.letGo.countDown();
+        assertTrue(ordinaryLoaded.get(5, TimeUnit.SECONDS));
+        target.store().admitted(ordinary);
+        spawn(env.process(), ordinary, instance);
+
+        assertFalse(arrivedLoaded.get(5, TimeUnit.SECONDS), "the stale ticket does not get in");
+        assertEquals(target.sessionId(), row(database, account).lease(), "the login that plays keeps its lease");
+        assertEquals(List.of("synaxis:state-unavailable"), kicks(arrived), "turned away as the account is playing here");
+        final CompletableFuture<PlayerStore.SaveCount> saved = target.store().saveOnline();
+        await(env, saved::isDone, "the save of the login that plays");
+        assertEquals(new PlayerStore.SaveCount(1, 1), saved.join(), "and its next save is not fenced");
     }
 
     private static byte[] nonce(int seed) {

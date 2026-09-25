@@ -9,11 +9,11 @@ package io.github.bearisbug.synaxis.entity;
  * and its potion effects, and {@link Entity#getAliveTicks()} does not count it. Its scheduler still
  * runs every tick, so a task handed to the entity is not held back. While it runs less often than
  * every tick the entity sends no scheduled position synchronization; the first tick it runs every
- * tick again sends the one that is due.
+ * tick again sends one.
  * <p>
  * This is also the hook for the plugin's own AI: the engine calls it on the tick thread of the
- * entity, which the caller owns, on the first tick after the policy was set and every 5 ticks after
- * that, so an AI that should slow down as well learns here how far the nearest player is.
+ * entity, which the caller owns, on the first tick after the policy was set and then every 5 ticks,
+ * so an AI that should slow down as well learns here how far the nearest player is.
  */
 @FunctionalInterface
 public interface DormancyPolicy {

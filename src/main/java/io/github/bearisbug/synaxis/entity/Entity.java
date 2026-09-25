@@ -134,7 +134,7 @@ public class Entity implements Viewable, Tickable, Schedulable, EventHandler<Ent
 
     // How often a dormancy policy is asked again, see #sitsOutTick(): a player coming near wakes the entity
     // within this many ticks
-    static final int DORMANCY_EVALUATION_TICKS = 5;
+    private static final int DORMANCY_EVALUATION_TICKS = 5;
 
     // Protected due to PointersSupplier.Builder#parent
     protected static final PointersSupplier<Entity> ENTITY_POINTERS_SUPPLIER = PointersSupplier.<Entity>builder()

@@ -811,6 +811,9 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
      */
     private void spawnPlayer(Instance instance, Pos spawnPosition,
                              boolean firstSpawn, boolean dimensionChange) {
+        // JoinGame told the client the view distance of the instance it spawned in, the new one may differ.
+        // Before the ring changes, as in #updateViewDistance(int, int, int)
+        if (!firstSpawn) tellViewDistance(Math.min(instance.viewDistance(), maxViewDistance));
         if (!firstSpawn && !dimensionChange) {
             // Player instance changed, clear current viewable collections
             final int oldViewDistance = effectiveViewDistance();
@@ -836,8 +839,6 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
         }
 
         if (dimensionChange) sendDimension(instance.getDimensionType(), instance.getDimensionName());
-        // JoinGame told the client the view distance of the instance it spawned in, the new one may differ
-        if (!firstSpawn) tellViewDistance(Math.min(instance.viewDistance(), maxViewDistance));
 
         final CompletableFuture<Void> spawn = super.setInstance(instance, spawnPosition);
         // AddEntityToInstanceEvent may have been cancelled, do not continue with a half-spawned player

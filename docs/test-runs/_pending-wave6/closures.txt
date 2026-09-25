@@ -120,7 +120,7 @@ Python：工作树内 `uv venv --python 3.10` 建的 .venv（Python 3.10.18）�
   修复提交 = a5ec60b43f（fix(entity): keep the client chunk ring and the server accounting in step (REQ-M2-014)）
   第 1 步：git checkout a5ec60b43f^ -- Player.java 后编译不过（:compileJava FAILED，4 个错误）：
     ConnectionManager.java:614、:633 找不到 Player#tabListEntry(boolean)，:717 找不到 Player#dropPendingSpawn()，
-    ChatMessageListener.java:40 找不到 Player#chatRateLimiter()——修复之后 Player.java 又被 13 个提交改过（+153 / −59 行），
+    ChatMessageListener.java:40 找不到 Player#chatRateLimiter()——修复之后 Player.java 又被 13 个提交改过（逐提交合计 +140 / −59 行，a5ec60b43f..HEAD 净差 +139 / −58），
     整文件回退到修复前已经编不过，「先红」出不来。已 git checkout HEAD 还原。
   第 2 步：PlayerChunkQueueIntegrationTest tests="7" 0 失败，含两条复现测试
   第 3、4 步：探针没有「以视距 12 登录、再改报视距 4」的子命令（probe.py 的子命令里没有视距选项），做不了。
@@ -140,13 +140,15 @@ Python：工作树内 `uv venv --python 3.10` 建的 .venv（Python 3.10.18）�
 
 十、门禁（带 SYNAXIS_TEST_PG_URL / SYNAXIS_TEST_PG_PASSWORD / SYNAXIS_TEST_REDIS_URL，共用容器 synaxis-pg、synaxis-valkey）
 
-  ./gradlew cleanTest check --no-build-cache --continue → BUILD SUCCESSFUL in 1m 58s；10 个测试任务都执行，
+  ./gradlew cleanTest check --no-build-cache --continue → BUILD SUCCESSFUL in 2m 2s；10 个测试任务都执行，
     3,638 个测试 0 失败 0 错误、15 个跳过（都在根模块）；server-app 266 个 0 跳过，PlayerStoreIntegrationTest tests="21" skipped="0"。
     TC-GAME-033 第 4 步以这一次为准。
-  ./gradlew test --rerun --continue -Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true → BUILD SUCCESSFUL in 1m 52s，
+  ./gradlew test --rerun --continue -Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true → BUILD SUCCESSFUL in 3m 6s，
     3,638 个 0 失败、15 个跳过；EnvDispatcherThreadsIntegrationTest 报 `env dispatcher threads: 4`、`env thread provider: counter`
-  同上加 -Dsynaxis.thread-provider=grid → BUILD SUCCESSFUL in 1m 58s，3,638 个 0 失败、15 个跳过；
+  同上加 -Dsynaxis.thread-provider=grid → BUILD SUCCESSFUL in 2m 44s，3,638 个 0 失败、15 个跳过；
     报 `env dispatcher threads: 4`、`env thread provider: grid`
-  ABI 门：本组没改 :plugin-api 与 :protocol，不适用
+  ABI 门：gh release download v0.3.0 取 plugin-api.jar、protocol.jar 到仓库外的临时目录，
+    ./gradlew :plugin-api:checkBinaryCompatibility :protocol:checkBinaryCompatibility -PbaselineJarDir=<该目录> →
+    两个任务都真执行（没有「无 baseline」行）、BUILD SUCCESSFUL，0 处违规；本组没改这两个模块。临时目录已删
   lint：design-doc check.sh 对 docs/DESIGN-PROD.md「lint 无警告」；test-doc check.sh 对 docs/TEST.md 的输出与改动前逐行相同
     （已知的 RUN-031 两行「失败项缺证据引用」与 REQ-PROD-031～041 中 9 个「无任何 TC 引用」）

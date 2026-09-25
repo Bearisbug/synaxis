@@ -6,12 +6,13 @@ import io.github.bearisbug.synaxis.baker.anvil.AnvilChunk;
 import io.github.bearisbug.synaxis.baker.anvil.AnvilSection;
 import io.github.bearisbug.synaxis.baker.anvil.AnvilSourceException;
 import io.github.bearisbug.synaxis.baker.anvil.AnvilWorld;
+import io.github.bearisbug.synaxis.instance.block.Block;
 import io.github.bearisbug.synaxis.instance.palette.Palette;
 import io.github.bearisbug.synaxis.registry.Registries;
 import io.github.bearisbug.synaxis.synx.SynxBlockEntity;
 import io.github.bearisbug.synaxis.synx.SynxManifest;
-import io.github.bearisbug.synaxis.world.DimensionType;
 import net.kyori.adventure.key.Key;
+import net.kyori.adventure.nbt.CompoundBinaryTag;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
@@ -19,6 +20,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -26,37 +28,44 @@ import java.util.concurrent.Future;
 import java.util.function.Predicate;
 
 /**
- * An edit source save (REQ-M3-020) as a bake source, read through {@link AnvilWorld}. The world is the
- * dimension type of the same key: {@code minecraft:overworld} is 384 blocks from y -64. Every chunk inside
+ * An edit source save (REQ-M3-020) as a bake source, read through {@link AnvilWorld}. The world is a window of
+ * {@value #HEIGHT} blocks from a given y, {@value #DEFAULT_MIN_Y} by default (API-M3-003): a chunk with a
+ * block other than air, a block entity or an entity outside of the window is refused. Every chunk inside
  * the bounds must be in the save and generated to full; the bounds default to the rectangle around every
  * chunk the save has, full or not, so a save whose edge was left half generated needs explicit bounds.
  */
 public final class AnvilSource implements BakeSource {
+    /** The world height a map has (Q7 of {@code docs/DESIGN-M3.md}). */
+    public static final int HEIGHT = 256;
+    /** The lowest y of the vanilla overworld, where bedrock and generated terrain start. */
+    public static final int DEFAULT_MIN_Y = -64;
+
     private final AnvilWorld world;
     private final SynxManifest.Bounds bounds;
     private final int minY;
     private final int height;
     private volatile @Nullable Double lightCoverage;
 
-    private AnvilSource(AnvilWorld world, SynxManifest.Bounds bounds, int minY, int height) {
+    private AnvilSource(AnvilWorld world, SynxManifest.Bounds bounds, int minY) {
         this.world = world;
         this.bounds = bounds;
         this.minY = minY;
-        this.height = height;
+        this.height = HEIGHT;
     }
 
     /**
      * Opens a save.
      *
      * @param bounds             the chunks to bake, or null for every chunk of the save
+     * @param minY               the lowest y of the window baked, a multiple of 16
      * @param registeredHandlers the handler namespaces a data marker may name
      * @throws IOException when the save or the dimension cannot be opened, or has no chunk at all
+     * @throws IllegalArgumentException when {@code minY} is not a multiple of 16
      */
-    public static AnvilSource open(Path save, Key dimension, @Nullable SynxManifest.Bounds bounds,
+    public static AnvilSource open(Path save, Key dimension, @Nullable SynxManifest.Bounds bounds, int minY,
                                    Registries registries, Predicate<String> registeredHandlers) throws IOException {
+        if (minY % 16 != 0) throw new IllegalArgumentException("--min-y must be a multiple of 16, got " + minY);
         if (!Files.isDirectory(save)) throw new IOException("no source save at " + save);
-        final DimensionType type = registries.dimensionType().get(dimension);
-        if (type == null) throw new IOException("no dimension type " + dimension.asString() + " to take the world height from");
         final AnvilWorld world = AnvilWorld.open(save, dimension, registries.biome(), registeredHandlers);
         try {
             SynxManifest.Bounds effective = bounds;
@@ -72,7 +81,7 @@ public final class AnvilSource implements BakeSource {
                 }
                 effective = new SynxManifest.Bounds(minX, minZ, maxX, maxZ);
             }
-            return new AnvilSource(world, effective, type.minY(), type.height());
+            return new AnvilSource(world, effective, minY);
         } catch (IOException | RuntimeException e) {
             world.close();
             throw e;
@@ -152,10 +161,7 @@ public final class AnvilSource implements BakeSource {
         final byte[][] block = new byte[sections][];
         for (AnvilSection section : chunk.sections()) {
             final int i = section.sectionY() - minSection;
-            if (i < 0 || i >= sections) {
-                throw new AnvilSourceException(chunkX, chunkZ, "section " + section.sectionY() + " holds blocks outside"
-                        + " of the world, y " + minY + " to " + (minY + height - 1));
-            }
+            if (i < 0 || i >= sections) continue; // all air, checked by chunk()
             blocks[i] = section.blocks();
             biomes[i] = section.biomes();
             sky[i] = section.skyLight();
@@ -183,7 +189,48 @@ public final class AnvilSource implements BakeSource {
                     + bounds.minX() + ", " + bounds.minZ() + " .. " + bounds.maxX() + ", " + bounds.maxZ()
                     + " must be generated to full");
         }
+        checkWindow(chunk);
         return chunk;
+    }
+
+    /** Refuses a chunk with anything outside of the window: its lowest block, block entity or entity out there. */
+    private void checkWindow(AnvilChunk chunk) throws AnvilSourceException {
+        String outside = null;
+        int outsideY = Integer.MAX_VALUE;
+        for (AnvilSection section : chunk.sections()) {
+            final int sectionMinY = section.sectionY() * 16;
+            if (sectionMinY >= minY && sectionMinY < minY + height) continue;
+            final int[] lowest = {Integer.MAX_VALUE, 0};
+            section.blocks().getAllPresent((_, y, _, state) -> {
+                if (y < lowest[0] && !Objects.requireNonNull(Block.fromStateId(state)).air()) {
+                    lowest[0] = y;
+                    lowest[1] = state;
+                }
+            });
+            if (lowest[0] != Integer.MAX_VALUE && sectionMinY + lowest[0] < outsideY) {
+                outsideY = sectionMinY + lowest[0];
+                outside = "block " + Objects.requireNonNull(Block.fromStateId(lowest[1])).name();
+            }
+        }
+        for (AnvilBlockEntity blockEntity : chunk.blockEntities()) {
+            final int y = blockEntity.y();
+            if ((y < minY || y >= minY + height) && y < outsideY) {
+                outsideY = y;
+                outside = "block entity " + blockEntity.nbt().getString("id");
+            }
+        }
+        for (CompoundBinaryTag entity : chunk.entities()) {
+            final int y = (int) Math.floor(entity.getList("Pos").getDouble(1));
+            if ((y < minY || y >= minY + height) && y < outsideY) {
+                outsideY = y;
+                outside = "entity " + entity.getString("id");
+            }
+        }
+        if (outside != null) {
+            throw new AnvilSourceException(chunk.chunkX(), chunk.chunkZ(), outside + " at y " + outsideY
+                    + " lies outside of the baked window, y " + minY + " to " + (minY + height - 1)
+                    + "; clear it from the source or move the window with --min-y");
+        }
     }
 
     @Override

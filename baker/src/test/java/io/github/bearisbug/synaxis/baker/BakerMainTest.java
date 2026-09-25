@@ -56,4 +56,24 @@ public class BakerMainTest {
                 .filter(handler -> !handler.isEmpty()).sorted().toList();
         assertEquals(List.of("synaxis:door", "synaxis:loot"), handlers);
     }
+
+    /** API-M3-003: {@code --min-y} is a multiple of 16 and belongs to an Anvil source; otherwise exit code 1. */
+    @Test
+    public void aMinYTheCommandLineCannotUseExitsOne() throws Exception {
+        final Path world = Path.of(BakerMainTest.class.getResource("anvil/world").toURI());
+        assertEquals(BakerMain.EXIT_USAGE, BakerMain.run(new String[]{"bake", "--map-id", "m", "--source", "anvil:" + world,
+                "--bounds", "0,0,0,0", "--out", temp.resolve("maps").toString(), "--min-y", "-60"}));
+        assertEquals(BakerMain.EXIT_USAGE, BakerMain.run(new String[]{"bake", "--map-id", "m", "--source", "generator:synthetic:1",
+                "--bounds", "0,0,0,0", "--out", temp.resolve("maps").toString(), "--min-y", "0"}));
+        assertEquals(List.of(), list(temp));
+    }
+
+    /** The window moves with {@code --min-y}: from y 0 the fixture's bedrock at y -64 is outside, exit code 2. */
+    @Test
+    public void theCommandLinePassesMinYToTheSource() throws Exception {
+        final Path world = Path.of(BakerMainTest.class.getResource("anvil/world").toURI());
+        assertEquals(Baker.EXIT_SOURCE, BakerMain.run(new String[]{"bake", "--map-id", "m", "--source", "anvil:" + world,
+                "--bounds", "0,0,0,0", "--out", temp.resolve("maps").toString(), "--min-y", "0",
+                "--logs", temp.resolve("logs").toString()}));
+    }
 }

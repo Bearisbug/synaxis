@@ -27,6 +27,13 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 public class LightDampeningIntegrationTest {
 
     private static Instance lit(Env env, Generator scene) {
+        Instance instance = generated(env, scene);
+        LightingChunk.relight(instance, instance.getChunks());
+        return instance;
+    }
+
+    /** The scene generated and loaded, its light not computed yet. */
+    private static Instance generated(Env env, Generator scene) {
         Instance instance = env.createEmptyInstance();
         instance.setChunkSupplier(LightingChunk::new);
         instance.setGenerator(unit -> {
@@ -38,7 +45,6 @@ public class LightDampeningIntegrationTest {
                 instance.loadChunk(x, z).join();
             }
         }
-        LightingChunk.relight(instance, instance.getChunks());
         return instance;
     }
 
@@ -144,10 +150,15 @@ public class LightDampeningIntegrationTest {
         assertEquals(0, sky(instance, 8, 60, 8));
     }
 
-    /** Same through the lazy read path: one stone at (8, 63, 8) leaves (8, 60, 8) lit from the side only. */
+    /**
+     * Same through the lazy read path, the one place a sky section is still marked fully lit: the first read
+     * lights the open section 48..63 through {@code SkyLight}, which marks it fully lit; one stone at
+     * (8, 63, 8) must clear that mark and leave (8, 60, 8) lit from the side only. {@link #lit} would not do
+     * here, since {@code LightingChunk.relight} stores the light of {@code LightEngine} and never sets the mark.
+     */
     @Test
     public void blockOverFullyLitSectionOnLazyRead(Env env) {
-        Instance instance = lit(env, _ -> {
+        Instance instance = generated(env, _ -> {
         });
         assertEquals(15, instance.getSkyLight(8, 60, 8));
 

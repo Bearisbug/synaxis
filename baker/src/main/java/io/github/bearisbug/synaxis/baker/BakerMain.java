@@ -22,7 +22,7 @@ import java.util.ServiceLoader;
  * The baker's command line, API-M3-003:
  * <pre>
  * bake --map-id &lt;id&gt; --source anvil:&lt;dir&gt;|generator:&lt;preset&gt;:&lt;seed&gt; --out &lt;maps_root&gt;
- *      [--threads N] [--bounds minX,minZ,maxX,maxZ] [--dimension minecraft:overworld] [--logs logs] [--samples 4]
+ *      [--threads N] [--bounds minX,minZ,maxX,maxZ] [--dimension minecraft:overworld] [--min-y -64] [--logs logs] [--samples 4]
  * verify --build &lt;maps_root&gt;/&lt;map_id&gt;/&lt;build_id&gt;
  * </pre>
  * The exit code is the bake's (API-M3-003); a command line that does not parse exits with 1. Handler
@@ -73,7 +73,7 @@ public final class BakerMain {
         final BakeSource source;
         try {
             source = source(sourceSpec, bounds, Key.key(options.getOrDefault("dimension", "minecraft:overworld")),
-                    registries, handlers);
+                    options.get("min-y"), registries, handlers);
         } catch (IOException e) {
             System.err.println("baker: " + e.getMessage());
             return Baker.EXIT_SOURCE;
@@ -92,11 +92,13 @@ public final class BakerMain {
     }
 
     private static BakeSource source(String spec, SynxManifest.@Nullable Bounds bounds, Key dimension,
-                                     Registries registries, BlockManager handlers) throws IOException {
+                                     @Nullable String minY, Registries registries, BlockManager handlers) throws IOException {
         if (spec.startsWith("anvil:")) {
-            return AnvilSource.open(Path.of(spec.substring("anvil:".length())), dimension, bounds, registries,
+            return AnvilSource.open(Path.of(spec.substring("anvil:".length())), dimension, bounds,
+                    minY == null ? AnvilSource.DEFAULT_MIN_Y : Integer.parseInt(minY), registries,
                     namespace -> handlers.getHandler(namespace) != null);
         }
+        if (minY != null) throw new IllegalArgumentException("--min-y applies to an anvil: source only");
         if (spec.startsWith("generator:")) {
             final String[] parts = spec.split(":", -1);
             if (parts.length != 3) throw new IllegalArgumentException("generator:<preset>:<seed>, got " + spec);
@@ -143,7 +145,7 @@ public final class BakerMain {
     private static int usage(String problem) {
         System.err.println("baker: " + problem);
         System.err.println("usage: bake --map-id <id> --source anvil:<dir>|generator:<preset>:<seed> --out <maps_root>"
-                + " [--threads N] [--bounds minX,minZ,maxX,maxZ] [--dimension <key>] [--logs <dir>] [--samples N]");
+                + " [--threads N] [--bounds minX,minZ,maxX,maxZ] [--dimension <key>] [--min-y <y>] [--logs <dir>] [--samples N]");
         System.err.println("       verify --build <maps_root>/<map_id>/<build_id>");
         return EXIT_USAGE;
     }

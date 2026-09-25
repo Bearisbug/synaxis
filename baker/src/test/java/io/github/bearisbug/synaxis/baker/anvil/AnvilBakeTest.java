@@ -14,6 +14,7 @@ import net.kyori.adventure.key.Key;
 import net.kyori.adventure.nbt.BinaryTagTypes;
 import net.kyori.adventure.nbt.ByteArrayBinaryTag;
 import net.kyori.adventure.nbt.CompoundBinaryTag;
+import net.kyori.adventure.nbt.DoubleBinaryTag;
 import net.kyori.adventure.nbt.ListBinaryTag;
 import org.jetbrains.annotations.Nullable;
 import org.junit.jupiter.api.Test;
@@ -55,7 +56,12 @@ public class AnvilBakeTest {
 
     private static Baker.Result bake(Path root, Path world, SynxManifest.@Nullable Bounds bounds,
                                      Map<String, BlockHandler> handlers) throws IOException {
-        try (AnvilSource source = AnvilSource.open(world, OVERWORLD, bounds, REGISTRIES, handlers::containsKey)) {
+        return bake(root, world, bounds, AnvilSource.DEFAULT_MIN_Y, handlers);
+    }
+
+    private static Baker.Result bake(Path root, Path world, SynxManifest.@Nullable Bounds bounds, int minY,
+                                     Map<String, BlockHandler> handlers) throws IOException {
+        try (AnvilSource source = AnvilSource.open(world, OVERWORLD, bounds, minY, REGISTRIES, handlers::containsKey)) {
             return Baker.bake(request("anvil", source, root, 2, handlers::get));
         }
     }
@@ -76,14 +82,86 @@ public class AnvilBakeTest {
         assertEquals(Baker.EXIT_PUBLISHED, result.exitCode(), result.message());
         final SynxManifest manifest = result.manifest();
         assertNotNull(manifest);
-        assertEquals(new SynxManifest.World(-64, 384), manifest.world(), "the dimension type of the save");
+        assertEquals(new SynxManifest.World(-64, 256), manifest.world(), "the default window, y -64 to 191");
         assertEquals("anvil", manifest.source().kind());
         assertEquals(4903, manifest.source().dataVersion());
         assertEquals(1.0, manifest.source().lightCoverage());
         assertEquals(1, manifest.verify().samples());
         assertEquals(0, manifest.verify().diffs());
         assertNotNull(manifest.verify().sourceLightDiff());
-        assertEquals(24, sections(record(result.directory(), 0, 0)).size());
+        assertEquals(16, sections(record(result.directory(), 0, 0)).size());
+    }
+
+    /** §19: one stone above the window refuses the source, naming the chunk, the block, its y and the window. */
+    @Test
+    public void aBlockAboveTheWindowExitsTwo() throws Exception {
+        final Path world = RegionFixtures.copyWorld(temp.resolve("save"));
+        // section 12 is y 192..207, all air in the fixture; make it all stone
+        RegionFixtures.rewriteChunk(world.resolve(RegionFixtures.REGION), 0, 0, chunk -> {
+            final ListBinaryTag.Builder<CompoundBinaryTag> sections = ListBinaryTag.builder(BinaryTagTypes.COMPOUND);
+            for (CompoundBinaryTag section : chunk.getList("sections").stream().map(CompoundBinaryTag.class::cast).toList()) {
+                sections.add(section.getByte("Y") != 12 ? section : section.put("block_states", CompoundBinaryTag.builder()
+                        .put("palette", ListBinaryTag.from(List.of(CompoundBinaryTag.builder()
+                                .putString("Name", "minecraft:stone").build())))
+                        .build()));
+            }
+            return chunk.put("sections", sections.build());
+        });
+        final Baker.Result result = bake(world, CHUNK_0_0);
+
+        assertEquals(Baker.EXIT_SOURCE, result.exitCode(), result.message());
+        assertTrue(result.message().contains("chunk 0, 0: block minecraft:stone at y 192")
+                && result.message().contains("y -64 to 191"), result.message());
+        assertNothingWritten();
+    }
+
+    /** §19: a block entity above the window is refused even where the block itself is air. */
+    @Test
+    public void aBlockEntityAboveTheWindowExitsTwo() throws Exception {
+        final Path world = RegionFixtures.copyWorld(temp.resolve("save"));
+        RegionFixtures.rewriteChunk(world.resolve(RegionFixtures.REGION), 0, 0, chunk -> {
+            final List<CompoundBinaryTag> blockEntities = new ArrayList<>(chunk.getList("block_entities").stream()
+                    .map(CompoundBinaryTag.class::cast).toList());
+            blockEntities.add(CompoundBinaryTag.builder().putString("id", "minecraft:chest")
+                    .putInt("x", 3).putInt("y", 200).putInt("z", 3).build());
+            return chunk.put("block_entities", ListBinaryTag.from(blockEntities));
+        });
+        final Baker.Result result = bake(world, CHUNK_0_0);
+
+        assertEquals(Baker.EXIT_SOURCE, result.exitCode(), result.message());
+        assertTrue(result.message().contains("chunk 0, 0: block entity minecraft:chest at y 200"), result.message());
+        assertNothingWritten();
+    }
+
+    /** §19: a static entity above the window is refused. */
+    @Test
+    public void anEntityAboveTheWindowExitsTwo() throws Exception {
+        final Path world = RegionFixtures.copyWorld(temp.resolve("save"));
+        RegionFixtures.rewriteChunk(world.resolve(RegionFixtures.ENTITIES), 0, 0, chunk -> {
+            final List<CompoundBinaryTag> entities = new ArrayList<>();
+            for (CompoundBinaryTag entity : chunk.getList("Entities").stream().map(CompoundBinaryTag.class::cast).toList()) {
+                final ListBinaryTag pos = entity.getList("Pos");
+                entities.add(!entity.getString("id").equals("minecraft:text_display") ? entity
+                        : entity.put("Pos", ListBinaryTag.from(List.of(pos.get(0), DoubleBinaryTag.doubleBinaryTag(250.5), pos.get(2)))));
+            }
+            return chunk.put("Entities", ListBinaryTag.from(entities));
+        });
+        final Baker.Result result = bake(world, CHUNK_0_0);
+
+        assertEquals(Baker.EXIT_SOURCE, result.exitCode(), result.message());
+        assertTrue(result.message().contains("chunk 0, 0: entity minecraft:text_display at y 250"), result.message());
+        assertNothingWritten();
+    }
+
+    /** §19: moving the window up to y 0 leaves the fixture's bedrock at y -64 below it. */
+    @Test
+    public void aWindowAboveTheBedrockExitsTwo() throws Exception {
+        final Baker.Result result = bake(temp, RegionFixtures.world(), CHUNK_0_0, 0, HANDLERS);
+
+        assertEquals(Baker.EXIT_SOURCE, result.exitCode(), result.message());
+        assertTrue(result.message().contains("chunk 0, 0: block minecraft:bedrock at y -64")
+                && result.message().contains("y 0 to 255"), result.message());
+        assertNothingWritten();
     }
 
     /** §19 REQ-M3-021: one nibble of the source's sky light changed is one more difference, and still published. */

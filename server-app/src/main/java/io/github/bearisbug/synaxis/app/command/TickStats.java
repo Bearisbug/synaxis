@@ -7,9 +7,10 @@ import java.util.Arrays;
 /**
  * The last {@value #WINDOW} ticks, 60 s at 20 TPS, for the {@code tps} command
  * ({@code docs/DESIGN-PROD.md} {@code API-PROD-011}): when each ended and how long it took.
- * Written by the tick scheduler thread, read by whichever thread runs the command.
+ * Written by the tick scheduler thread, read by whichever thread runs the command, and by the
+ * management method {@code synaxis:shard/status} ({@code API-PROD-022}).
  */
-final class TickStats {
+public final class TickStats {
 
     static final int WINDOW = 1200;
 
@@ -22,7 +23,7 @@ final class TickStats {
      * @param p95   the 95th percentile in ms
      * @param p99   the 99th percentile in ms
      */
-    record Snapshot(int ticks, double tps, double p50, double p95, double p99) {
+    public record Snapshot(int ticks, double tps, double p50, double p95, double p99) {
     }
 
     private final long[] endedAt = new long[WINDOW];

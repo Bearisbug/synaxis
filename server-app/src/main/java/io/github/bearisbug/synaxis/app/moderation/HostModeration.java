@@ -183,6 +183,19 @@ public final class HostModeration implements Moderation {
                 .max(Comparator.comparing(ban -> ban.expiresAt() == null ? Instant.MAX : ban.expiresAt()));
     }
 
+    /**
+     * The bans in force as this shard holds them, for the management method {@code minecraft:bans}
+     * ({@code docs/DESIGN-PROD.md} {@code API-PROD-022}).
+     *
+     * @return the bans that have not expired, in the order they were read
+     */
+    public List<Ban> activeBans() {
+        final Instant now = Instant.now();
+        return snapshot.get().bans().stream()
+                .filter(ban -> ban.expiresAt() == null || ban.expiresAt().isAfter(now))
+                .toList();
+    }
+
     @Override
     public CompletableFuture<Ban> ban(BanTarget target, String reason, @Nullable Instant expiresAt, UUID operator) {
         Objects.requireNonNull(target, "target");

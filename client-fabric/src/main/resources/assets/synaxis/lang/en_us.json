@@ -50,6 +50,11 @@
 	"synaxis:command-already-stopping": "The server is already stopping.",
 	"synaxis:command-stop-usage": "Usage: stop [seconds], a whole number from 0.",
 	"synaxis:command-tps": "TPS %s, MSPT p50 %s ms, p95 %s ms, p99 %s ms over the last %s ticks.",
+	"synaxis:command-profile-started": "Recording %s s to %s.",
+	"synaxis:command-profile-done": "Recorded %s.",
+	"synaxis:command-profile-busy": "A recording to %s is still running.",
+	"synaxis:command-profile-usage": "Usage: profile [seconds], a whole number from %s to %s.",
+	"synaxis:command-profile-failed": "The recording failed: %s",
 	"synaxis.order.no-path": "Cannot get there.",
 	"synaxis.order.not-owner": "Not your unit.",
 	"synaxis.order.busy": "The server is busy; try again."

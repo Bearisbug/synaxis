@@ -17,6 +17,7 @@
 
 | 日期 | 改动 | 作者 |
 | --- | --- | --- |
+| 2026-09-25 | 跟进 `docs/DESIGN-PROD.md` v0.9（6B，`REQ-PROD-032` 管理接口、`REQ-PROD-034` 性能剖析）。**新增 §4「生产就绪 · 第 6 波 6B：管理接口与性能剖析」十八条 `TC-PROD-380`～`TC-PROD-397`**：默认关与只绑回环、开了没令牌拒启（380）、握手鉴权且拒绝回应逐字节相同（381）、消息上限 1009（382）、握手前 8 KiB 与时限（383）、各方法经真 WebSocket（384）、JSON-RPC 错误码与通知不回复（385）、未预料异常不带栈且限流（386）、进出通知（387）、drain 只关登录门（388）、`server/stop` 先回复后停机且与控制台共用判定（389）、封禁三方法（390，要数据库）、`synaxis:profile`（391）、`profile` 命令（392）、局域网地址连不上与端口被占拒启（393）、`org.java_websocket` 钉在 INFO（394）、宿主日志门禁覆盖新包（395）、模组五条新译文（396）、真进程（397，端口 25660 / 25661）；每条带真跑过的反证与红的位置。**改用例、不改 ID**：4C 一节 `CommandsIntegrationTest` 与 `CommandRolesIntegrationTest` 的红线行号随新增的 import 与构造器参数各加 3；`TC-PROD-255` 第 2、3 步改在拆出来的 `HostCommands#claimStop` 上做（重跑过，仍红在 `:317` 与 `:296`）；`TC-PROD-004` 的 `LogbackConfigurationTest` 行号各加 2，「四条」改为「其中这四条」（该类多了 394 那一条）。§5 生产就绪域加一行 | Bearisbug |
 | 2026-09-25 | 跟进 `docs/DESIGN-M3.md` v0.10（高度窗口与 section 状态数两项拍板、`fullyLit` 只剩懒读路径、烘焙侧光照引擎 ArchUnit 规则）。**废弃 `TC-WORLD-005`、新增 `TC-WORLD-026`**：`LightingChunk.relight` 改走 `LightEngine` 后不设全亮标记，原用例两条测试都先整图 `relight`，删掉 `SkyLight` 里复位全亮标记那一行不再变红（RUN-033 失败项）；`LightDampeningIntegrationTest#blockOverFullyLitSectionOnLazyRead` 改为不整图 `relight`、先经懒读路径把 section 标为全亮，新用例的反证是同一行，预期 `14 tests completed, 1 failed`。**废弃 `TC-WORLD-024`、新增 `TC-WORLD-029`**：Anvil 源改按 256 格窗口，第 1 步清单 `world` 由 −64 / 384 改为 −64 / 256、段① 由 24 个 section 改为 16 个，`AnvilBakeTest` 10 → 14、`BakerMainTest` 1 → 3，第 2 步 `10 tests completed` → `14 tests completed`，其余逐字保留。**新增 `TC-WORLD-027`**（高度窗口：窗口外的方块、方块实体、静态实体与 `--min-y 0` 下的基岩各拒绝一次，`--min-y` 的两种命令行错误；反证是让窗口检查不拒绝，红 5 条）与 **`TC-WORLD-028`**（`:architecture-tests` 的 `LightEngineArchitectureTest`；反证是给 `LightEngine` 加一个引用 `Instance` 的方法）。`TC-WORLD-020` 第 3 步只改计数（`AnvilBakeTest` 14、`BakerMainTest` 3）。§2 覆盖范围、Gherkin 口径与 REQ-M3 对照表五行、§5 大世界域的局部轮映射同步 | Bearisbug |
 | 2026-09-25 | 跟进 `docs/DESIGN-M3.md` v0.9（M3-A 剩余项与 M3-B 落地）。**新增 §4 四节 14 条**，对应 `REQ-M3-001`～`REQ-M3-004`、`REQ-M3-020`～`REQ-M3-022`：「M3 · 光照引擎」`TC-WORLD-012`（引擎不依赖实例、不加锁、对拍两条路径、缺失区块不传光；反证删掉北面的缺失区块判断）、`TC-WORLD-013`（版本与已过对拍版本文件绑定；跳号与改旧行指纹两条反证）；「M3 · `.synx` 格式」`TC-WORLD-014`（向量与 zlib 指纹门；改向量字节、改指纹两条反证）、`TC-WORLD-015`（损坏与不兼容）、`TC-WORLD-016`（段① 调色板与段③ NBT 规范化；两条反证）、`TC-WORLD-017`（清单与起服校验函数）、`TC-WORLD-018`（`:synx`、`:baker` 的内部面名单）；「M3 · Anvil 读取器」`TC-WORLD-019`（门禁与完整读取；三条反证）、`TC-WORLD-020`（夹具由原版服务端再生）；「M3 · 烘焙器」`TC-WORLD-021`（生成器源烘焙与各退出码，冒烟级）、`TC-WORLD-022`（并行等于串行；压缩级别与阈值随线程变两条反证）、`TC-WORLD-023`（命令行烘焙 4k×4k 合成图、1 线程等于多线程、`verify` 与重烘退 5）、`TC-WORLD-024`（Anvil 源烘焙；反证是把标记格计入对拍）、`TC-WORLD-025`（交付规范第 6 节的自检命令）。**改写两条已有用例的计数**（`REQ-M3-004` 让对拍对 `LightEngine` 与 `LightingChunk.relight` 各跑一遍，判据的实质不变）：`TC-WORLD-001` 第 1 步 `tests="7"` → `"14"`、第 2 步 `7 tests completed, 1 failed` → `14 tests completed, 2 failed`、第 3 步 `"8"` → `"16"`；`TC-WORLD-004` 第 4 步 `25 tests completed, 2 failed` → `32 tests completed, 3 failed`。§2 覆盖范围、Gherkin 口径与 REQ-M3 对照表七行、§3 M3 环境（`.synx` 与烘焙器一条）、§5 大世界域的局部轮映射同步 | Bearisbug |
 | 2026-09-24 | 跟进 `docs/DESIGN-M3.md` v0.8（`API-M3-006` 分片宿主设置表写入四项）。**新增 §4「M3 · 分片宿主设置」两条**：`TC-WORLD-010`（`ShardMain.viewDefaults` 写视距 12、区块上限 4、可见上限 100，`ShardMain.transferDefaults` 只在 PostgreSQL 存储时写 `accept-transfers=true`，命令行给了的键不覆盖；三条反证）与 `TC-WORLD-011`（真进程 `bin/server-shard` 与 `bin/server-app` 的 `Effective ServerConfig` 读数，PostgreSQL 存储缺票据密钥时拒启，反证是入口不调这两个方法），对应 `REQ-M3-009`、`REQ-M3-017`、`REQ-PROD-024`、`REQ-PROD-026`。`ShardMainTest` 由 3 条变为 8 条：`TC-PROD-333` 第 1 步改为 `tests="8"`（线程三条的判据不变），第 2 步反证改为 `8 tests completed, 3 failed`，红的行号 `:18`、`:26`、`:32` → `:20`、`:28`、`:34`（类注释多了两行）。`ShardMain` 默认视距改为 12 牵连两处同机压测的前置：`TC-PROD-336` 的 `server-shard` 一档另加三项参数拉回 `server-app` 的值，保持两档只差线程；`TC-PROD-360` 一组写明可见上限与区块上限已由 `ShardMain` 默认写入，复跑须另加 `-Dsynaxis.chunk-view-distance=10` 才与已登记读数可比。§2 REQ-M3 对照表 `REQ-M3-009`、`REQ-M3-017` 两行、§5 大世界域一行同步 | Bearisbug |
@@ -2318,9 +2319,9 @@ REQ-M3 ↔ TC 对照（可读索引）。「未实现」行没有用例，是已
 
 | # | 操作 | 预期 |
 | --- | --- | --- |
-| 1 | `./gradlew :server-app:test --tests '*LogbackConfigurationTest*' --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts` | `BUILD SUCCESSFUL`，四条：`theFileModeHasTheDesignedRetentionBehindANonBlockingQueue`（生产 `logback.xml` 在 file 模式下没有任何 WARN 级配置状态；根 logger 的 `FILE` 是 `AsyncAppender`，`queueSize` 8192、`neverBlock` 为真；其下 `ROLLING` 写 `latest.log`，`maxHistory` 14、gzip 压缩、文件名按 `yyyy-MM-dd` 滚动，配置里字面量 `256MB` 与 `10GB`）；`threeMegabytesOfLogRollIntoCompressedFiles`（上限临时改 1 MB 写 3 MB，得到 `latest.log` 与至少 2 个 `.log.gz`）；`theStdoutModeWritesNoFile`（根 logger 只挂 `STDOUT`，临时目录里一个文件都没有）；`aModeThatDoesNotExistIsReportedByLogback`（`synaxis.app.log=files` 时 logback 的状态里点名找不到 `logback-files.xml`，启动时会打在控制台上） |
-| 2 | 反证有齿（两处一起改、一起还原）：`server-app/src/main/resources/logback-file.xml` 的 `<neverBlock>true</neverBlock>` 改成 `false`、`fileNamePattern` 末尾的 `.log.gz` 改成 `.log`。重跑第 1 步，再 `git checkout --` 该文件 | 红 2 条：`theFileMode…` 断在「a full queue drops a line rather than blocking a tick」（`LogbackConfigurationTest.java:103`）；`threeMegabytes…` 断在 `.log.gz` 计数，实际文件是 `[2026-09-23.0.log, 2026-09-23.1.log, 2026-09-23.2.log, latest.log]`（`:131`，日期随执行日）——同时证明 1 MB 上限确实触发了滚动；还原后复绿 |
-| 3 | 反证模式切换有齿：`server-app/src/main/resources/logback.xml` 的 `<include resource="logback-${synaxis.app.log:-file}.xml"/>` 改成固定的 `<include resource="logback-file.xml"/>`，只跑 `--tests '*LogbackConfigurationTest.theStdoutModeWritesNoFile'`，再 `git checkout --` 该文件并 `rm -rf server-app/logs`（此时 file 模式的相对路径会在模块目录里建出 `logs/latest.log`） | 红 1 条：「the console is all there is ==> expected: <[STDOUT]> but was: <[STDOUT, FILE]>」（`:144`）；还原后复绿 |
+| 1 | `./gradlew :server-app:test --tests '*LogbackConfigurationTest*' --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts` | `BUILD SUCCESSFUL`，其中这四条：`theFileModeHasTheDesignedRetentionBehindANonBlockingQueue`（生产 `logback.xml` 在 file 模式下没有任何 WARN 级配置状态；根 logger 的 `FILE` 是 `AsyncAppender`，`queueSize` 8192、`neverBlock` 为真；其下 `ROLLING` 写 `latest.log`，`maxHistory` 14、gzip 压缩、文件名按 `yyyy-MM-dd` 滚动，配置里字面量 `256MB` 与 `10GB`）；`threeMegabytesOfLogRollIntoCompressedFiles`（上限临时改 1 MB 写 3 MB，得到 `latest.log` 与至少 2 个 `.log.gz`）；`theStdoutModeWritesNoFile`（根 logger 只挂 `STDOUT`，临时目录里一个文件都没有）；`aModeThatDoesNotExistIsReportedByLogback`（`synaxis.app.log=files` 时 logback 的状态里点名找不到 `logback-files.xml`，启动时会打在控制台上） |
+| 2 | 反证有齿（两处一起改、一起还原）：`server-app/src/main/resources/logback-file.xml` 的 `<neverBlock>true</neverBlock>` 改成 `false`、`fileNamePattern` 末尾的 `.log.gz` 改成 `.log`。重跑第 1 步，再 `git checkout --` 该文件 | 红 2 条：`theFileMode…` 断在「a full queue drops a line rather than blocking a tick」（`LogbackConfigurationTest.java:105`）；`threeMegabytes…` 断在 `.log.gz` 计数，实际文件是 `[2026-09-23.0.log, 2026-09-23.1.log, 2026-09-23.2.log, latest.log]`（`:133`，日期随执行日）——同时证明 1 MB 上限确实触发了滚动；还原后复绿 |
+| 3 | 反证模式切换有齿：`server-app/src/main/resources/logback.xml` 的 `<include resource="logback-${synaxis.app.log:-file}.xml"/>` 改成固定的 `<include resource="logback-file.xml"/>`，只跑 `--tests '*LogbackConfigurationTest.theStdoutModeWritesNoFile'`，再 `git checkout --` 该文件并 `rm -rf server-app/logs`（此时 file 模式的相对路径会在模块目录里建出 `logs/latest.log`） | 红 1 条：「the console is all there is ==> expected: <[STDOUT]> but was: <[STDOUT, FILE]>」（`:146`）；还原后复绿 |
 
 后置：`git status` 干净，`server-app/logs` 不存在。
 
@@ -4018,7 +4019,7 @@ jcmd "$pid" VM.flags | tr ' ' '\n' | grep -cxE -- '-XX:\+UseG1GC|-XX:InitialHeap
 
 对应 `REQ-PROD-012`（清单 G10，`API-PROD-011`，§10 节点 `synaxis.command.<名>` 与「只能注销自己注册的命令」，§19 两条命令场景，§20 `EVT:gm_command`）。实现：`server-app` 的 `Main#readConsole` 把每个非空行交给 `Main#runConsoleCommand`（`CommandManager` + `ConsoleSender`，接受前导 `/`），一行抛出的 `RuntimeException` 记一行 ERROR 后接着读下一行；新包 `command/` 的 `HostCommands` 注册内置六条 `list`、`kick <玩家> [原因]`、`broadcast <文本>`、`save`、`stop [秒数]`、`tps`（`TickStats` 取最近 1,200 个 tick），`PluginCommandsImpl` 是插件经 `PluginContext#commands()` 拿到的 `PluginCommands`，插件被收回之后再注册的命令一律丢弃；`PlayerStore#saveOnline` 供 `save`；`HostPermissions` 读到节点变化时给在线玩家重发命令树；引擎 `ConsoleSender` 把翻译组件写成回退文本（此前控制台上是空行，`role` 命令的回执也受影响），开着 `synaxis.automatic-component-translation` 时写服务端译文，译文由去掉子组件的组件求得，子组件由扁平化器自己接着写。
 
-数据库前置、「跑 `<类>`」的命令与结果文件同 3A 一节；本节只有 `TC-PROD-248` 要数据库。`TC-PROD-253` 起真进程，端口 25643。反证一律是「临时改一处实现、重跑、看红、还原、重跑复绿」，还原后 `git status` 必须干净。`CommandsIntegrationTest.java:178` 是取最后一棵命令树的助手 `lastTree`，红在那里时看失败信息里的 `no command tree came`。
+数据库前置、「跑 `<类>`」的命令与结果文件同 3A 一节；本节只有 `TC-PROD-248` 要数据库。`TC-PROD-253` 起真进程，端口 25643。反证一律是「临时改一处实现、重跑、看红、还原、重跑复绿」，还原后 `git status` 必须干净。`CommandsIntegrationTest.java:181` 是取最后一棵命令树的助手 `lastTree`，红在那里时看失败信息里的 `no command tree came`。
 
 #### `TC-PROD-240` 控制台执行 `list`、`tps`、`save`，回执可读；未知或不完整的命令只写一行 INFO、不带栈 — 对应 `REQ-PROD-012` · 级别: 冒烟 · 执行者: AI
 
@@ -4027,8 +4028,8 @@ jcmd "$pid" VM.flags | tr ' ' '\n' | grep -cxE -- '-XX:\+UseG1GC|-XX:InitialHeap
 | # | 操作 | 预期 |
 | --- | --- | --- |
 | 1 | 跑 `io.github.bearisbug.synaxis.app.CommandsIntegrationTest`，看 `theConsoleRunsListTpsAndSaveAndAnUnknownLineIsOneLine` | 10 个 0 失败（§19「控制台执行内置命令」）：内存存储、两名玩家 Alpha、Bravo 在线、走过 5 个 tick。经 `Main.runConsoleCommand` 依次输入 `list`、`/tps`、`  save  `，都得 `SUCCESS`；`ConsoleSender` 写出的三行依次是 `2 players online: Alpha, Bravo`、匹配 `TPS \d+\.\d, MSPT p50 \d+\.\d ms, p95 \d+\.\d ms, p99 \d+\.\d ms over the last \d+ ticks` 的一行、`Saved 2 of 2 players`。`frobnicate now` 得 `UNKNOWN`，`kick`（缺参数）得 `INVALID_SYNTAX`；`Main` 的日志恰为两行 INFO `Unknown command: frobnicate now`、`Incomplete or invalid command: kick`，都不带栈，没有 WARN 与 ERROR。台账回调三条 `gm_command`，`actor` 都是 `console`，`command` 依次 `list`、`tps`、`save` |
-| 2 | 反证有齿（控制台照旧把翻译组件交给组件日志器）：`src/main/java/io/github/bearisbug/synaxis/command/ConsoleSender.java` 的 `LOGGER.info(TEXT.serialize(message));` 改为 `LOGGER.info(message);`，跑该类与 `PermissionsIntegrationTest`，再还原 | `18 tests completed, 1 failed`，红在 `:196`：`expected: <2 players online: Alpha, Bravo> but was: <>`（引擎的扁平化器在不开自动翻译时把翻译组件写成空串）。还原后复绿 |
-| 3 | 反证有齿（未知命令带栈）：`Main#runConsoleCommand` 的 `case UNKNOWN -> LOGGER.info("Unknown command: {}", input);` 改为 `case UNKNOWN -> LOGGER.info("Unknown command: {}", input, new IllegalArgumentException(input));`，重跑，再还原 | `10 tests completed, 1 failed`，红在 `:205`：`no stack ==> expected: <true> but was: <false>`。还原后复绿 |
+| 2 | 反证有齿（控制台照旧把翻译组件交给组件日志器）：`src/main/java/io/github/bearisbug/synaxis/command/ConsoleSender.java` 的 `LOGGER.info(TEXT.serialize(message));` 改为 `LOGGER.info(message);`，跑该类与 `PermissionsIntegrationTest`，再还原 | `18 tests completed, 1 failed`，红在 `:199`：`expected: <2 players online: Alpha, Bravo> but was: <>`（引擎的扁平化器在不开自动翻译时把翻译组件写成空串）。还原后复绿 |
+| 3 | 反证有齿（未知命令带栈）：`Main#runConsoleCommand` 的 `case UNKNOWN -> LOGGER.info("Unknown command: {}", input);` 改为 `case UNKNOWN -> LOGGER.info("Unknown command: {}", input, new IllegalArgumentException(input));`，重跑，再还原 | `10 tests completed, 1 failed`，红在 `:208`：`no stack ==> expected: <true> but was: <false>`。还原后复绿 |
 
 后置：确认 `ConsoleSender.java`、`Main.java` 没有残留改动。
 
@@ -4039,7 +4040,7 @@ jcmd "$pid" VM.flags | tr ' ' '\n' | grep -cxE -- '-XX:\+UseG1GC|-XX:InitialHeap
 | # | 操作 | 预期 |
 | --- | --- | --- |
 | 1 | 跑 `CommandsIntegrationTest`，看 `theNodeDecidesWhetherAPlayerRunsAndSeesACommandOfTheHost` | 通过：测试给的 `Permissions` 只让 Keeper 持有 `synaxis.command.kick`、`synaxis.command.list`；Ruffian 没有节点，`setPermissionLevel(4)`。Keeper 出生时收到的命令树含 `kick`、`list`、不含 `stop`；Ruffian 的命令树六条内置命令一条都没有。Ruffian 执行 `kick Keeper`、Keeper 执行 `stop` 都得 `CANCELLED`（引擎的前置条件拒绝）。Keeper 发补全 `kick Ru` 收到恰好一个 `TabCompletePacket`，候选只有 `Ruffian`。Keeper 执行 `kick Nobody`、`kick Ruffian spamming the chat` 都得 `SUCCESS`，Ruffian 收到一个 `DisconnectPacket`，文本 `spamming the chat`；台账两条 `gm_command`：`player <Keeper> kick Nobody null no_target` 与 `player <Keeper> kick Ruffian spamming the chat <Ruffian> ok` |
-| 2 | 反证有齿（按原版 op 等级放行）：`HostCommands#command` 的条件 `\|\| permissions.has(player, node));` 改为 `\|\| permissions.has(player, node) \|\| player.getPermissionLevel() == 4);`，重跑，再还原 | `10 tests completed, 1 failed`，红在 `:237`：`permission level 4 is no node ==> expected: <CANCELLED> but was: <SUCCESS>`。还原后复绿 |
+| 2 | 反证有齿（按原版 op 等级放行）：`HostCommands#command` 的条件 `\|\| permissions.has(player, node));` 改为 `\|\| permissions.has(player, node) \|\| player.getPermissionLevel() == 4);`，重跑，再还原 | `10 tests completed, 1 failed`，红在 `:240`：`permission level 4 is no node ==> expected: <CANCELLED> but was: <SUCCESS>`。还原后复绿 |
 
 后置：确认 `HostCommands.java` 没有残留改动。
 
@@ -4050,7 +4051,7 @@ jcmd "$pid" VM.flags | tr ' ' '\n' | grep -cxE -- '-XX:\+UseG1GC|-XX:InitialHeap
 | # | 操作 | 预期 |
 | --- | --- | --- |
 | 1 | 跑 `CommandsIntegrationTest`，看 `broadcastReachesEveryPlayerAndKickWithoutAReasonIsTheVanillaOne` | 通过：控制台 `broadcast restart   at noon` 之后两名玩家各收到恰好一个 `SystemChatPacket`，文本 `restart   at noon`（三个空格原样保留）；`kick Second` 之后 Second 收到的 `DisconnectPacket` 是翻译键 `multiplayer.disconnect.kicked`；控制台回执依次 `synaxis:command-broadcast` 参数 `2`、`synaxis:command-kicked` 参数 `Second` |
-| 2 | 反证有齿（只发给第一名玩家）：`HostCommands#broadcast` 循环里的 `player.sendMessage(message);` 改为 `if (players == 0) player.sendMessage(message);`，重跑，再还原 | `10 tests completed, 1 failed`，红在 `:273`：`Expected 1 element, got [] ==> expected: <1> but was: <0>`（第二名玩家没收到）。还原后复绿 |
+| 2 | 反证有齿（只发给第一名玩家）：`HostCommands#broadcast` 循环里的 `player.sendMessage(message);` 改为 `if (players == 0) player.sendMessage(message);`，重跑，再还原 | `10 tests completed, 1 failed`，红在 `:276`：`Expected 1 element, got [] ==> expected: <1> but was: <0>`（第二名玩家没收到）。还原后复绿 |
 
 后置：确认 `HostCommands.java` 没有残留改动。
 
@@ -4061,7 +4062,7 @@ jcmd "$pid" VM.flags | tr ' ' '\n' | grep -cxE -- '-XX:\+UseG1GC|-XX:InitialHeap
 | # | 操作 | 预期 |
 | --- | --- | --- |
 | 1 | 跑 `CommandsIntegrationTest`，看 `stopWithSecondsClosesTheGateAndStopsAfterTheCountdown` | 通过：`stop -1`、`stop soon` 都得 `SUCCESS`，回执都是 `synaxis:command-stop-usage`，停机阶段仍是 `RUNNING`（引擎对解析不了的参数也会跑默认执行器，宿主据输入里有没有第二段拒绝）。`stop 1` 的回执是 `synaxis:command-stopping` 参数 `1`；紧接着 `stop 0` 回 `synaxis:command-already-stopping`（引擎只认第一次停机，第二次不缩短倒计时）；2 s 内阶段变为 `GATE_CLOSED`，10 s 内变为 `STOPPED`，从 `stop 1` 到 `STOPPED` 不短于 1,000 ms；台账四条的 `result` 依次 `invalid`、`invalid`、`ok`、`invalid` |
-| 2 | 反证有齿（不看第二段）：`HostCommands#stop` 里 `if (context.getInput().strip().indexOf(' ') >= 0) {` 改为 `if (Boolean.getBoolean("proof.never")) {`，重跑，再还原 | `10 tests completed, 1 failed`，红在 `:286`：`expected: <[synaxis:command-stop-usage, synaxis:command-stop-usage]> but was: <[synaxis:command-stopping 0, synaxis:command-already-stopping]>`（打错的 `stop -1` 立即停机，`stop soon` 只能回已在停机）。还原后复绿 |
+| 2 | 反证有齿（不看第二段）：`HostCommands#stop` 里 `if (context.getInput().strip().indexOf(' ') >= 0) {` 改为 `if (Boolean.getBoolean("proof.never")) {`，重跑，再还原 | `10 tests completed, 1 failed`，红在 `:289`：`expected: <[synaxis:command-stop-usage, synaxis:command-stop-usage]> but was: <[synaxis:command-stopping 0, synaxis:command-already-stopping]>`（打错的 `stop -1` 立即停机，`stop soon` 只能回已在停机）。还原后复绿 |
 
 后置：确认 `HostCommands.java` 没有残留改动。
 
@@ -4083,7 +4084,7 @@ jcmd "$pid" VM.flags | tr ' ' '\n' | grep -cxE -- '-XX:\+UseG1GC|-XX:InitialHeap
 | # | 操作 | 预期 |
 | --- | --- | --- |
 | 1 | 跑 `CommandsIntegrationTest`，看 `aPluginCommandLivesUnderItsNamespaceAndABareNameGoesToTheFirst` | 通过：宿主先注册内置六条；插件 mmo 注册 `party`（别名 `p`）与 `list`，插件 other 注册 `party`。控制台执行 `mmo:party`、`party`、`p`、`mmo:p`、`other:party`、`mmo:list`、`list` 都得 `SUCCESS`，前六条依次落到 mmo、mmo、mmo、mmo、other、mmo 的执行器，`list` 仍是宿主的（回执以 `synaxis:command-list` 开头）。mmo 注册 `x:y` 抛 `IllegalArgumentException`，再注册一次同一个 `party` 抛 `IllegalStateException`；mmo 注销 other 的命令返回 false，`other:party` 照旧可用。`disableAll` 之后前六个名字都得 `UNKNOWN`，`list` 仍 `SUCCESS` |
-| 2 | 反证有齿（不查无前缀名是否已被占用）：`PluginCommandsImpl#register` 的 `if (manager.commandExists(name)) givenUp.add(name);` 与 `else bare.add(name);` 两行改为 `bare.add(name);`，重跑，再还原 | `10 tests completed, 1 failed`，红在 `:366`：`mmo:party ==> expected: <SUCCESS> but was: <UNKNOWN>`（mmo 抢宿主的 `list` 时 `CommandManager#register` 抛 `IllegalStateException`，mmo 启用失败）。还原后复绿 |
+| 2 | 反证有齿（不查无前缀名是否已被占用）：`PluginCommandsImpl#register` 的 `if (manager.commandExists(name)) givenUp.add(name);` 与 `else bare.add(name);` 两行改为 `bare.add(name);`，重跑，再还原 | `10 tests completed, 1 failed`，红在 `:369`：`mmo:party ==> expected: <SUCCESS> but was: <UNKNOWN>`（mmo 抢宿主的 `list` 时 `CommandManager#register` 抛 `IllegalStateException`，mmo 启用失败）。还原后复绿 |
 
 后置：确认 `PluginCommandsImpl.java` 没有残留改动。
 
@@ -4094,8 +4095,8 @@ jcmd "$pid" VM.flags | tr ' ' '\n' | grep -cxE -- '-XX:\+UseG1GC|-XX:InitialHeap
 | # | 操作 | 预期 |
 | --- | --- | --- |
 | 1 | 跑 `CommandsIntegrationTest`，看 `aThrowingPluginCommandIsOneLinePerTenSecondsAndGoneOnceDisabled` | 通过（§19「插件命令按命名空间注册、禁用时注销、异常限流」）：插件 mmo 的 `party` 每次执行都抛 `IllegalStateException`；玩家出生时的命令树含 `mmo:party` 与 `party`。玩家执行 `mmo:party` 100 次都得 `SUCCESS`；`PluginCommandsImpl` 的日志恰好一行 ERROR，以 `Plugin command failed: plugin_id=mmo command=mmo:party` 开头；引擎 `CommandParserImpl` 零行 ERROR；玩家收到 100 条翻译键 `command.failed` 的系统消息。`disableAll` 之后控制台执行 `mmo:party`、`party` 都得 `UNKNOWN`，玩家收到的新命令树两个名字都没有 |
-| 2 | 反证有齿（执行器不包）：`PluginCommandsImpl#register` 的 `guard(command, failures);` 改为 `if (Boolean.getBoolean("proof.never")) guard(command, failures);`，重跑，再还原 | `10 tests completed, 1 failed`，红在 `:401`：`expected: <SUCCESS> but was: <CANCELLED>`（异常落回引擎，按 `EXECUTOR_EXCEPTION` 结束，每次写一行带栈的 ERROR）。还原后复绿 |
-| 3 | 反证有齿（禁用不收回命令）：`PluginHost#tearDown` 的 `loaded.commands().unregisterAll();` 改为 `if (Boolean.getBoolean("proof.never")) loaded.commands().unregisterAll();`，重跑，再还原 | `10 tests completed, 3 failed`：本条红在 `:413` `expected: <UNKNOWN> but was: <SUCCESS>`，`TC-PROD-245` 红在 `:378` `mmo:party ==> expected: <UNKNOWN> but was: <SUCCESS>`，`TC-PROD-256` 红在 `:457` `expected: <UNKNOWN> but was: <SUCCESS>`。还原后复绿 |
+| 2 | 反证有齿（执行器不包）：`PluginCommandsImpl#register` 的 `guard(command, failures);` 改为 `if (Boolean.getBoolean("proof.never")) guard(command, failures);`，重跑，再还原 | `10 tests completed, 1 failed`，红在 `:404`：`expected: <SUCCESS> but was: <CANCELLED>`（异常落回引擎，按 `EXECUTOR_EXCEPTION` 结束，每次写一行带栈的 ERROR）。还原后复绿 |
+| 3 | 反证有齿（禁用不收回命令）：`PluginHost#tearDown` 的 `loaded.commands().unregisterAll();` 改为 `if (Boolean.getBoolean("proof.never")) loaded.commands().unregisterAll();`，重跑，再还原 | `10 tests completed, 3 failed`：本条红在 `:416` `expected: <UNKNOWN> but was: <SUCCESS>`，`TC-PROD-245` 红在 `:381` `mmo:party ==> expected: <UNKNOWN> but was: <SUCCESS>`，`TC-PROD-256` 红在 `:460` `expected: <UNKNOWN> but was: <SUCCESS>`。还原后复绿 |
 
 后置：确认 `PluginCommandsImpl.java`、`PluginHost.java` 没有残留改动。
 
@@ -4106,7 +4107,7 @@ jcmd "$pid" VM.flags | tr ' ' '\n' | grep -cxE -- '-XX:\+UseG1GC|-XX:InitialHeap
 | # | 操作 | 预期 |
 | --- | --- | --- |
 | 1 | 跑 `CommandsIntegrationTest`，看 `aCommandRegisteredOrTakenBackWhilePlayersAreOnlineReachesTheirCompletions` | 通过：玩家出生时的命令树没有 `party`；插件 mmo 此后注册 `party`，走一个 tick，玩家收到的新命令树含 `mmo:party` 与 `party`；`unregister(party)` 返回 true，再走一个 tick，新命令树没有 `party` |
-| 2 | 反证有齿（不重发命令树）：`PluginCommandsImpl#refreshCompletions` 的循环前加 `if (Boolean.getBoolean("proof.never"))`，重跑，再还原 | `10 tests completed, 2 failed`，都红在 `lastTree`（`:178`，`no command tree came`）：本条在 `:435`，`TC-PROD-246` 在 `:415`（禁用后没有新命令树）。还原后复绿 |
+| 2 | 反证有齿（不重发命令树）：`PluginCommandsImpl#refreshCompletions` 的循环前加 `if (Boolean.getBoolean("proof.never"))`，重跑，再还原 | `10 tests completed, 2 failed`，都红在 `lastTree`（`:181`，`no command tree came`）：本条在 `:438`，`TC-PROD-246` 在 `:418`（禁用后没有新命令树）。还原后复绿 |
 
 后置：确认 `PluginCommandsImpl.java` 没有残留改动。
 
@@ -4117,7 +4118,7 @@ jcmd "$pid" VM.flags | tr ' ' '\n' | grep -cxE -- '-XX:\+UseG1GC|-XX:InitialHeap
 | # | 操作 | 预期 |
 | --- | --- | --- |
 | 1 | 跑 `io.github.bearisbug.synaxis.app.CommandRolesIntegrationTest` | 1 个 0 失败、0 跳过：角色 `warden` 授予 `synaxis.command.kick`；`HostPermissions` 刷新周期 1 s、不连 Redis。Warden 登录时没有角色，出生时的命令树没有 `kick`，执行 `kick Target` 得 `CANCELLED`；用 SQL 授予 `warden` 后 3 s 内收到的命令树含 `kick`、不含 `stop`，`kick Target` 得 `SUCCESS`；删掉授予后 3 s 内收到的命令树没有 `kick` |
-| 2 | 反证有齿（节点变了不重发）：`HostPermissions#read` 里的 `player.refreshCommands();` 改为 `if (Boolean.getBoolean("proof.never")) player.refreshCommands();`，重跑，再还原 | `1 test completed, 1 failed`，红在 `CommandRolesIntegrationTest.java:84`（由 `:107` 调到）：`no command tree within 3 s`。还原后复绿 |
+| 2 | 反证有齿（节点变了不重发）：`HostPermissions#read` 里的 `player.refreshCommands();` 改为 `if (Boolean.getBoolean("proof.never")) player.refreshCommands();`，重跑，再还原 | `1 test completed, 1 failed`，红在 `CommandRolesIntegrationTest.java:87`（由 `:110` 调到）：`no command tree within 3 s`。还原后复绿 |
 
 后置：确认 `HostPermissions.java` 没有残留改动；测试建的库已删掉。
 
@@ -4182,7 +4183,7 @@ jcmd "$pid" VM.flags | tr ' ' '\n' | grep -cxE -- '-XX:\+UseG1GC|-XX:InitialHeap
 | # | 操作 | 预期 |
 | --- | --- | --- |
 | 1 | 跑 `CommandsIntegrationTest`，看 `aConsoleLineThatThrowsIsOneLogLineAndTheNextLineRuns` | 通过：插件 mmo 注册 `party`，条件是只为玩家写的 `((Player) sender).isOnline()`（控制台执行时抛 `ClassCastException`，引擎调条件时不包 try）。`Main.readConsole` 读三行 `mmo:party`、空行、`list`：`Main` 的日志恰好一行 ERROR `Console command failed: mmo:party`，带的异常是 `java.lang.ClassCastException`；之后 `list` 照常执行，台账一条 `gm_command`：`console list` |
-| 2 | 反证有齿（异常逃出控制台线程）：`Main#readConsole` 循环里的 `try { runConsoleCommand(process, line); } catch (RuntimeException e) { LOGGER.error(…); }` 改为只剩 `runConsoleCommand(process, line);`，重跑，再还原 | `10 tests completed, 1 failed`，本条抛 `ClassCastException: class …ConsoleSender cannot be cast to class …Player`，测试里最近的一帧是 `:330`（条件那一行）：异常一路逃出 `readConsole`，`list` 没有执行（真进程里控制台线程就此结束，`stop` 也执行不了）。还原后复绿 |
+| 2 | 反证有齿（异常逃出控制台线程）：`Main#readConsole` 循环里的 `try { runConsoleCommand(process, line); } catch (RuntimeException e) { LOGGER.error(…); }` 改为只剩 `runConsoleCommand(process, line);`，重跑，再还原 | `10 tests completed, 1 failed`，本条抛 `ClassCastException: class …ConsoleSender cannot be cast to class …Player`，测试里最近的一帧是 `:333`（条件那一行）：异常一路逃出 `readConsole`，`list` 没有执行（真进程里控制台线程就此结束，`stop` 也执行不了）。还原后复绿 |
 
 后置：确认 `Main.java` 没有残留改动。
 
@@ -4193,8 +4194,8 @@ jcmd "$pid" VM.flags | tr ' ' '\n' | grep -cxE -- '-XX:\+UseG1GC|-XX:InitialHeap
 | # | 操作 | 预期 |
 | --- | --- | --- |
 | 1 | 跑 `CommandsIntegrationTest`，看 `stopWhileTheEngineIsAlreadyStoppingAnswersSoAndChangesNothing` | 通过：另起线程直接调 `beginShutdown(2 s)`（与 SIGTERM 同一条路，不经宿主命令），2 s 内阶段离开 `RUNNING`；控制台 `stop 0` 得 `SUCCESS`，回执只有一条 `synaxis:command-already-stopping`，台账一条 `result=invalid`；10 s 内阶段变为 `STOPPED`，从 `stop 0` 到 `STOPPED` 不短于 1,000 ms（引擎的倒计时照旧走完） |
-| 2 | 反证有齿（不看引擎的停机阶段）：`HostCommands#stop` 的 `if (process.shutdownPhase() != ServerProcess.ShutdownPhase.RUNNING \|\| !stopping.compareAndSet(false, true)) {` 改为 `if (!stopping.compareAndSet(false, true)) {`，重跑，再还原 | `10 tests completed, 1 failed`，红在 `:314`：`expected: <[synaxis:command-already-stopping]> but was: <[synaxis:command-stopping 0]>`（回执说 0 s 后停，实际还要等引擎的倒计时）。还原后复绿 |
-| 3 | 反证有齿（宿主自己不记已发起的停机）：同一行的 `!stopping.compareAndSet(false, true)` 改为 `!stopping.compareAndSet(false, false)`，重跑，再还原 | `10 tests completed, 1 failed`，红在 `TC-PROD-243` 的 `:293`：`a second stop changes nothing ==> expected: <synaxis:command-already-stopping> but was: <synaxis:command-stopping 0>`（`stop 1` 的停机线程还没让阶段离开 `RUNNING`，只看阶段挡不住紧跟着的 `stop 0`）。还原后复绿 |
+| 2 | 反证有齿（不看引擎的停机阶段）：`HostCommands#claimStop` 的 `return process.shutdownPhase() == ServerProcess.ShutdownPhase.RUNNING && stopping.compareAndSet(false, true);` 改为 `return stopping.compareAndSet(false, true);`，重跑，再还原 | `10 tests completed, 1 failed`，红在 `:317`：`expected: <[synaxis:command-already-stopping]> but was: <[synaxis:command-stopping 0]>`（回执说 0 s 后停，实际还要等引擎的倒计时）。还原后复绿 |
+| 3 | 反证有齿（宿主自己不记已发起的停机）：同一行的 `stopping.compareAndSet(false, true)` 改为 `stopping.compareAndSet(false, false)`，重跑，再还原 | `10 tests completed, 1 failed`，红在 `TC-PROD-243` 的 `:296`：`a second stop changes nothing ==> expected: <synaxis:command-already-stopping> but was: <synaxis:command-stopping 0>`（`stop 1` 的停机线程还没让阶段离开 `RUNNING`，只看阶段挡不住紧跟着的 `stop 0`）。还原后复绿 |
 
 后置：确认 `HostCommands.java` 没有残留改动。
 
@@ -4205,7 +4206,7 @@ jcmd "$pid" VM.flags | tr ' ' '\n' | grep -cxE -- '-XX:\+UseG1GC|-XX:InitialHeap
 | # | 操作 | 预期 |
 | --- | --- | --- |
 | 1 | 跑 `CommandsIntegrationTest`，看 `aCommandRegisteredAfterThePluginIsTakenBackIsDropped` | 通过（`API-PROD-011`「插件禁用时注销」）：插件 mmo 的 `onEnable` 抛异常，宿主收回它的全部能力；之后仍用 mmo 的 `PluginContext#commands()` 注册 `party`（插件异步任务在 `onEnable` 失败后才走到注册时就是这条路），不抛异常；控制台执行 `mmo:party` 得 `UNKNOWN`，`CommandManager#commandExists("party")` 为 false |
-| 2 | 反证有齿（收回之后照样注册）：`PluginCommandsImpl#register` 的 `if (closed) return;` 改为 `if (Boolean.getBoolean("proof.never") && closed) return;`，重跑，再还原 | `10 tests completed, 1 failed`，红在 `:457`：`expected: <UNKNOWN> but was: <SUCCESS>`（已收回插件的命令还能执行，无前缀名 `party` 一直被占着）。还原后复绿 |
+| 2 | 反证有齿（收回之后照样注册）：`PluginCommandsImpl#register` 的 `if (closed) return;` 改为 `if (Boolean.getBoolean("proof.never") && closed) return;`，重跑，再还原 | `10 tests completed, 1 failed`，红在 `:460`：`expected: <UNKNOWN> but was: <SUCCESS>`（已收回插件的命令还能执行，无前缀名 `party` 一直被占着）。还原后复绿 |
 
 后置：确认 `PluginCommandsImpl.java` 没有残留改动。
 
@@ -4912,6 +4913,241 @@ jcmd "$pid" VM.flags | tr ' ' '\n' | grep -cxE -- '-XX:\+UseG1GC|-XX:InitialHeap
 
 后置：同 `TC-PROD-363`。
 
+### 生产就绪 · 第 6 波 6B：管理接口与性能剖析
+
+对应 `REQ-PROD-032`（清单 G29，`API-PROD-022`、`ADR-PROD-014`，§11.1 登录门已关的一行，§16 三行竞态，§19 四条管理接口场景）与 `REQ-PROD-034`（G31，`API-PROD-011` 的 `profile [秒数]`，§19 profile 场景）。实现：`server-app` 新包 `management/`——`ManagementSettings`（两个键与令牌，进程只留令牌的 SHA-256）、`ManagementServer`（Java-WebSocket 1.6.0 服务端：握手阶段比对令牌，一条消息 ≤ 65,536 B，握手前 ≤ 8,192 B 且 5 s 内完成，玩家进出通知）、`ManagementMethods`（JSON-RPC 2.0 与十二个方法）；`command/` 新增 `Profiler`（进程内同时一个 JFR 录制）与内置命令 `profile [秒数]`，`HostCommands` 的「已在停机」判定拆成 `claimStop` / `startStop` 供管理接口共用，`TickStats` 的快照对管理接口公开；`HostModeration#activeBans`；`Main` 在指标端口之后、游戏端口之前装配管理接口，停机任务里关掉它；`logback.xml` 把 `org.java_websocket` 钉在 INFO；模组两份 lang 加五个 `synaxis:command-profile-*` 键；`.env.example` 登记 `SYNAXIS_MANAGEMENT_TOKEN`。
+
+测试端：`ManagementClient` 用 JDK 自带的 `java.net.http.WebSocket`（与服务端不共用一行代码），直连不走代理；逐字节比较握手回应与握手前约束用裸 `Socket(Proxy.NO_PROXY)`。本机开着 TUN 模式的代理时，默认的 `new Socket()` 连本机局域网地址会被系统代理接住、看起来连上了，所以测试里的 socket 一律 `Proxy.NO_PROXY`，挑非回环地址时跳过点对点与虚拟网卡。数据库前置、「跑 `<类>`」的命令与结果文件同 3A 一节；本节只有 `TC-PROD-390` 要数据库。`TC-PROD-397` 起真进程，游戏端口 25660、管理端口 25661。反证一律是「临时改一处实现、重跑、看红、还原、重跑复绿」，还原后 `git status` 必须干净。
+
+#### `TC-PROD-380` 管理接口默认关、默认只绑回环；开了而令牌缺失或不合规时拒绝起服；设置打印出来不含令牌 — 对应 `REQ-PROD-032` · 级别: 冒烟 · 执行者: AI
+
+前置：工作副本干净。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `io.github.bearisbug.synaxis.app.management.ManagementSettingsTest` | 5 个 0 失败：不设任何键时 `enabled=false`，`bind` 为 `127.0.0.1:25585` 且是回环地址；`enabled=true` 而令牌缺失或为空串时抛 `IllegalArgumentException`，信息里有 `SYNAXIS_MANAGEMENT_TOKEN`；31 个字符、中间带空格、513 个字符的令牌都被拒，信息只写长度（`31 characters`）、不写令牌本身；32 个 `b64token` 字符并以 `==` 结尾的令牌接受；`enabled=yes`、没有端口、带路径、主机名带空格的 `bind` 都拒绝；`enabled=false` 时不检查令牌；`toString()` 恰为 `enabled=true bind=127.0.0.1:25585 token=set` 与 `enabled=false bind=127.0.0.1:25585 token=unset` |
+| 2 | 反证有齿（默认绑到全部网卡）：`ManagementSettings.DEFAULT_BIND` 的 `"127.0.0.1:25585"` 改为 `"0.0.0.0:25585"`，重跑，再还原 | `5 tests completed, 1 failed`，红在 `ManagementSettingsTest.java:29`：`expected: <localhost/127.0.0.1:25585> but was: </0.0.0.0:25585>`。还原后复绿 |
+
+后置：确认 `ManagementSettings.java` 没有残留改动。
+
+#### `TC-PROD-381` 没有令牌或令牌不对：握手即被拒，回应与「不是 WebSocket 请求」逐字节相同，没有任何方法执行；日志里没有令牌 — 对应 `REQ-PROD-032` · 级别: 冒烟 · 执行者: AI
+
+前置：工作副本干净。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `io.github.bearisbug.synaxis.app.management.ManagementIntegrationTest`，看 `aHandshakeWithoutTheTokenIsRefusedBeforeAnythingRuns` | 13 个 0 失败（§19「管理接口鉴权与只绑内网」前半）：接口绑 `127.0.0.1:0`。不带 `Authorization` 的升级请求，回应以 `HTTP/1.1 404 WebSocket Upgrade Failure` 开头并随即关连接；同长度的错令牌、`Bearer short`、`Basic <正确令牌>`、一个根本不是升级请求的 `GET /minecraft:players` 四种请求的回应与它逐字节相同；JDK 客户端带错令牌建连抛 `WebSocketHandshakeException`，状态码 404；到这里台账没有任何 `actor=management` 的 `gm_command`。带正确令牌的升级请求得 `HTTP/1.1 101`；JDK 客户端带正确令牌连上、调 `minecraft:players` 得 `[]`，台账恰一条 `minecraft:players null ok`。全过程根 logger 收到的日志里有就绪行 `Management interface listening on …`，没有一行含令牌 |
+| 2 | 跑 `ManagementSettingsTest`，看 `onlyTheBearerTokenItselfIsAccepted` | 通过：`Bearer <令牌>` 与 `bearer <令牌>` 接受；null、空串、只有令牌、`Basic <令牌>`、令牌改成大写、少一位、多一位、只有 `Bearer ` 都拒绝 |
+| 3 | 反证有齿（不比令牌）：`ManagementServer.Endpoint#onWebsocketHandshakeReceivedAsServer` 的 `if (!settings.accepts(request.getFieldValue("Authorization")))` 改为 `if (Boolean.getBoolean("proof.never") && !settings.accepts(request.getFieldValue("Authorization")))`，重跑第 1 步，再还原 | `13 tests completed, 1 failed`，红在 `ManagementIntegrationTest.java:211`，失败信息是一段完整的 `HTTP/1.1 101 Web Socket Protocol Handshake` 回应（不带令牌也升级成功）。还原后复绿 |
+
+后置：确认 `ManagementServer.java` 没有残留改动。
+
+#### `TC-PROD-382` 超过 65,536 B 的消息（单帧或分片）以 1009 断开、不执行；恰好 65,536 B 照常执行 — 对应 `REQ-PROD-032` · 级别: 边缘 · 执行者: AI
+
+前置：工作副本干净。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `ManagementIntegrationTest`，看 `aMessageOverTheLimitClosesTheConnectionAndDoesNotRun` | 通过（§19「超长的管理消息断开且不执行」）：一名玩家在线。恰 65,536 B 的 `synaxis:broadcast` 请求得结果 `1`；另一条连接单帧发 65,537 B 的同一请求，收到关闭码 1009；第三条连接把 65,537 B 分成 40,000 B 与 25,537 B 两帧发，同样收到 1009；台账只有第一条请求的 `gm_command`，玩家只收到一条系统消息 |
+| 2 | 反证有齿（不限大小）：`ManagementServer.Endpoint` 构造器的 `new Draft_6455(List.of(), MAX_MESSAGE_BYTES)` 改为 `new Draft_6455()`，重跑，再还原 | `13 tests completed, 1 failed`，红在 `:495`（`ManagementClient.java:121`）：`the connection is still open after PT10S`（65,537 B 的消息被执行，连接没有断）。还原后复绿 |
+
+后置：确认 `ManagementServer.java` 没有残留改动。
+
+#### `TC-PROD-383` 握手之前：请求超过 8,192 B 或没在时限内完成握手的连接被关掉，按时握手的不受影响 — 对应 `REQ-PROD-032` · 级别: 边缘 · 执行者: AI
+
+前置：工作副本干净。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `ManagementIntegrationTest`，看 `beforeTheHandshakeTheRequestIsBoundedInSizeAndTime` | 通过：测试把握手时限设为 300 ms（生产为 5 s）。一条连接发出超过 8,192 B 还没结束的请求头，被服务端关掉、一个字节都没回；一条连上后什么都不发的连接，不早于 150 ms 被关、没有回应；带正确令牌按时握手的连接过了 600 ms 仍能调 `minecraft:players` |
+| 2 | 反证有齿（不装握手前的约束）：`ManagementServer.Endpoint` 构造器的 `setWebSocketFactory(new GuardedFactory(handshakeDeadline));` 改为 `if (Boolean.getBoolean("proof.never")) setWebSocketFactory(new GuardedFactory(handshakeDeadline));`，重跑，再还原 | `13 tests completed, 1 failed`，红在 `:525`（`:546`）：`still open after 5 s`（Java-WebSocket 自己对握手既不限大小也不限时，那条请求头一直被收着）。还原后复绿 |
+
+后置：确认 `ManagementServer.java` 没有残留改动。
+
+#### `TC-PROD-384` 经真 WebSocket 调 `players`、`server/status`、`broadcast`、`server/save`、`players/kick`、`shard/status`，结果与台账都对 — 对应 `REQ-PROD-032` · 级别: 冒烟 · 执行者: AI
+
+前置：工作副本干净。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `ManagementIntegrationTest`，看 `everyMethodAnswersOverARealWebSocket` | 通过：Alice、Bob 在线。`minecraft:players` 两条，含 Alice 的 `{id, name}`；`minecraft:server/status` 的 `started` 等于进程的 `isAlive()`、`players` 两条、`version` 为 `26.2` 与 776；`synaxis:broadcast`（按位置传参，Message 的 `translatable` 为 `synaxis:server-stopping-in`、`translatableParams` 为 `["30"]`、`literal` 为 `soon`）得 `2`，Alice 收到的系统消息是这个翻译键、回退文本 `soon`、参数 `30`；`minecraft:server/save`（`{"flush":true}`）得 `true`；`minecraft:players/kick` 按名字点 Bob（消息 `bye`）与 Nobody（不在线），结果只有 Bob，Bob 收到的断线文本是 `bye`；按 id 点一个不在线的 UUID 得 `[]`；`synaxis:shard/status` 得 `shard_id=test`、`session=null`、`online` 等于在线人数、`draining=false`、`shutdown_phase=running`，并带 `tps` 与 `mspt.p99`。台账七条 `gm_command` 的 `command` 是方法名加紧凑 JSON 参数，踢到 Bob 那条 `target` 是 Bob 的 UUID、`result=ok`，没踢到人那条 `result=no_target` |
+| 2 | 反证有齿（`literal` 不作翻译的回退文本）：`ManagementMethods#message` 末行的 `Component.translatable(key, literal, arguments)` 改为 `Component.translatable(key, arguments)`，重跑，再还原 | `13 tests completed, 1 failed`，红在 `:270`：`expected: <soon> but was: <null>`。还原后复绿 |
+
+后置：确认 `ManagementMethods.java` 没有残留改动。
+
+#### `TC-PROD-385` JSON-RPC 错误码按标准回、错误回复不带异常名；没有 `id` 的通知照常执行、不回复；录制开不起来回 −32000，二进制帧以 1003 断开 — 对应 `REQ-PROD-032` · 级别: 回归 · 执行者: AI
+
+前置：工作副本干净。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `ManagementIntegrationTest`，看 `errorsAreJsonRpcErrorsAndNotificationsAreNotAnswered` | 通过：`{not json` 回 −32700，`id` 为 null，`error.data.request_id` 是一个 UUID；顶层数组、缺 `jsonrpc`、`jsonrpc` 是数字 `2.0`、`method` 是数字、`params` 是字符串、`id` 是布尔，都回 −32600；`synaxis:transfer` 回 −32601 `Method not found`；`kick` 缺参数、Player 既无 `id` 也无 `name`、`id` 不是 UUID、`broadcast` 的 Message 是空对象、`literal` 是数字、翻译参数是对象、`profile` 的 `seconds` 为 0、1.5、`"soon"`，都回 −32602；内存存储下 `minecraft:bans/add` 回 −32000，`minecraft:bans` 得 `[]`；每个错误回复都没有 `result`，`message` 不含 `Exception`。之后连发两条没有 `id` 的通知（一条 `synaxis:broadcast`、一条不存在的方法）与请求 18，1 s 静默之前只收到一条回复，是 18 的；那条广播照样执行，玩家收到 `quiet` |
+| 2 | 反证有齿（通知也回复）：`ManagementMethods#handle` 的 `final boolean answered = id != null;` 改为 `final boolean answered = true;`，重跑，再还原 | `13 tests completed, 1 failed`，红在 `:408`：`one answer for three messages: [{"jsonrpc":"2.0","id":null,"result":1}, …] ==> expected: <1> but was: <3>`（两条通知各得到一条 `id` 为 null 的回复，三条回复的先后随线程调度变）。还原后复绿 |
+| 3 | 同一次运行，看 `aRecordingThatCannotStartIsUnavailableAndABinaryFrameCloses` | 通过：工作目录里 `profiles` 被一个普通文件占着，`synaxis:profile` 回 −32000，`message` 以 `The recording cannot start: ` 开头，台账一条 `synaxis:profile {"seconds":1} null unavailable`；随后发一个二进制帧，连接收到关闭码 1003 |
+| 4 | 反证有齿（二进制帧不拒）：`ManagementServer.Endpoint#onMessage(WebSocket, ByteBuffer)` 的 `conn.close(CloseFrame.REFUSE, "text frames only");` 改为 `if (Boolean.getBoolean("proof.never")) conn.close(…);`，重跑，再还原 | `13 tests completed, 1 failed`，红在 `:649`（`ManagementClient.java:121`）：`the connection is still open after PT10S`。还原后复绿 |
+
+后置：确认 `ManagementMethods.java`、`ManagementServer.java` 没有残留改动。
+
+#### `TC-PROD-386` 方法里抛了未预料的异常：回 −32603、不带栈与异常名，服务端经 `LogBudget` 带同一个 `request_id` 写一行 — 对应 `REQ-PROD-032` · 级别: 回归 · 执行者: AI
+
+前置：工作副本干净。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `ManagementIntegrationTest`，看 `anUnforeseenFailureIsAnsweredWithoutItsStackAndLoggedOnceWithTheRequestId` | 通过：给 `ManagementMethods` 一个空的存储，`minecraft:server/save` 在方法里抛 `NullPointerException`：回复 −32603、`message` 为 `Internal error`，回复全文没有 `NullPointer`，`request_id` 是 36 个字符的 UUID；10 s 内第二次同样的失败只计数不写：`ManagementMethods` 恰好一行 WARN，以 `Management call failed: method=minecraft:server/save request_id=` 开头，带 `NullPointerException` 的栈；台账两条 `minecraft:server/save null unavailable` |
+| 2 | 反证有齿（把异常写进回复）：`ManagementMethods#handle` 里 `error(replyId, INTERNAL_ERROR, "Internal error", requestId)` 的 `"Internal error"` 改为 `e.toString()`，重跑，再还原 | `13 tests completed, 1 failed`，红在 `:420`（由 `:434` 调到）：回复的 `message` 为 `java.lang.NullPointerException: Cannot invoke "…PlayerStore.saveOnline()" because "this.store" is null`，`expected: <false> but was: <true>`。还原后复绿 |
+
+后置：确认 `ManagementMethods.java` 没有残留改动。
+
+#### `TC-PROD-387` 玩家进世界与离开推送给管理连接；没进过世界就离开的不推送 — 对应 `REQ-PROD-032` · 级别: 回归 · 执行者: AI
+
+前置：工作副本干净。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `ManagementIntegrationTest`，看 `playersEnteringAndLeavingAreAnnounced` | 通过（§19「玩家进出推送给管理连接」）：连上之后一名玩家进世界，连接收到 `minecraft:notification/players/joined`，`jsonrpc` 为 `2.0`、`params` 为 `[{id, name}]`；再对一个从没进过世界的玩家派发 `PlayerDisconnectEvent`，不推送；进过世界的玩家被移除后，收到的下一条 `…/left` 的 `params` 与 joined 那条相同；台账没有 `gm_command` |
+| 2 | 反证有齿（谁离开都推送）：`ManagementServer#announcePlayers` 的 `if (joined.remove(event.getPlayer()))` 改为 `if (joined.remove(event.getPlayer()) \|\| !Boolean.getBoolean("proof.never"))`，重跑，再还原 | `13 tests completed, 1 failed`，红在 `:478`：`the next left is the one who joined ==> expected: <[{"id":"…","name":"RandName"}]> but was: <[{"id":"…","name":"Ghost"}]>`。还原后复绿 |
+
+后置：确认 `ManagementServer.java` 没有残留改动。
+
+#### `TC-PROD-388` `synaxis:shard/drain` 只关登录门：新登录收 `synaxis:server-stopping`，在线玩家不受影响，第二次回 `false` — 对应 `REQ-PROD-032` · 级别: 回归 · 执行者: AI
+
+前置：工作副本干净。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `ManagementIntegrationTest`，看 `drainClosesTheLoginGateOnlyAndOnce` | 通过（§19「管理接口 drain 只关登录门」）：一名玩家在线，进程绑回环随机端口。`synaxis:shard/drain` 得 `true`；之后用裸 socket 发 Handshake（login 意图）与 `LoginStart`，收到的第一个包是 `LoginDisconnect`，翻译键 `synaxis:server-stopping`；登录门已关；再 drain 一次得 `false`；走一个 tick 后在线玩家仍在线，停机阶段仍是 `RUNNING`，`synaxis:shard/status` 的 `draining` 为 `true`；台账 `result` 依次 `ok`、`invalid`、`ok` |
+| 2 | 反证有齿（不关门）：`ManagementMethods#drain` 的 `gate.close();` 改为 `if (Boolean.getBoolean("proof.never")) gate.close();`，重跑，再还原 | `13 tests completed, 1 failed`，红在 `:317`：`Unexpected type, expected: <…login.LoginDisconnectPacket> but was: <…login.SetCompressionPacket>`（门没关，登录照常往下走）。还原后复绿 |
+
+后置：确认 `ManagementMethods.java` 没有残留改动。
+
+#### `TC-PROD-389` `minecraft:server/stop`：先回复再停机，与控制台 `stop` 共用「已在停机」判定 — 对应 `REQ-PROD-032` · 级别: 回归 · 执行者: AI
+
+前置：工作副本干净。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `ManagementIntegrationTest`，看 `stopIsAnsweredFirstAndSharesTheConsoleGuard` | 通过：`minecraft:server/stop` 得 `true`，同一连接紧接着第二次得 `false`；控制台随后执行 `stop`，回执恰为 `synaxis:command-already-stopping`；10 s 内停机阶段变为 `STOPPED`；台账 `minecraft:server/stop null ok`、`minecraft:server/stop null invalid` |
+| 2 | 反证有齿（回复之后不起停机）：`ManagementMethods#stop` 的 `claimed ? () -> commands.startStop(Duration.ZERO) : null` 改为 `claimed && Boolean.getBoolean("proof.never") ? () -> commands.startStop(Duration.ZERO) : null`，重跑，再还原 | `13 tests completed, 1 failed`，红在 `:568`（`ManagementClient.java:128`）：`not within PT10S: the process stops`。还原后复绿 |
+
+后置：确认 `ManagementMethods.java` 没有残留改动。
+
+#### `TC-PROD-390` `minecraft:bans`、`bans/add`、`bans/remove` 读写 PostgreSQL 的封禁：先校验全部条目再写，只列按 UUID 的封禁 — 对应 `REQ-PROD-032` · 级别: 回归 · 执行者: AI
+
+前置：数据库前置满足（§3 3A 一节）。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `io.github.bearisbug.synaxis.app.management.ManagementBansIntegrationTest` | 1 个 0 失败、0 跳过：新建的库迁移到最新版。`minecraft:bans` 得 `[]`；`bans/add` 两条、第二条的 `expires` 在 2020 年，回 −32602，之后 `bans` 仍是 `[]`（第一条也没写）；只给不在线的名字、理由 257 个字符，都回 −32602；按 id 封一个从没登录过的账号（理由 `griefing`、明天到期）并按名字封在线的玩家，结果两条：前者 `{player:{id}, reason:"griefing", expires:<ISO-8601>}`，后者理由为默认的 `Banned by an operator.`、没有 `expires`；随后 `bans` 与之相同，在线的那名玩家被踢下线；库里两条生效封禁的 `created_by` 都是全零 UUID；`bans/remove` 撤前者，结果只剩后者，再撤一次结果不变；台账九条，末两条 `minecraft:bans/remove [[…]] <UUID> ok` 与 `minecraft:bans/remove {…} <UUID> no_ban` |
+| 2 | 反证有齿（不校验到期时间）：`ManagementMethods#addBans` 的 `if (expires != null && !expires.isAfter(Instant.now())) throw invalid(…)` 改为 `if (Boolean.getBoolean("proof.never") && expires != null && …) throw invalid(…)`，重跑，再还原 | `1 test completed, 1 failed`，红在 `ManagementBansIntegrationTest.java:130`：`expected: <-32602> but was: <-32603>`——第一条已经写进库，第二条在 `HostModeration#ban` 里抛 `IllegalArgumentException`，成了未预料的异常，正是「先校验全部再写」要挡的半截写入。还原后复绿 |
+
+后置：确认 `ManagementMethods.java` 没有残留改动；测试自建的库已由 `TestDatabase#close` 删掉。
+
+#### `TC-PROD-391` `synaxis:profile`：录完才回复，文件可读；录制期间再调回 −32000 — 对应 `REQ-PROD-034` · 级别: 回归 · 执行者: AI
+
+前置：工作副本干净。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `ManagementIntegrationTest`，看 `profileWritesOneReadableRecordingAtATime` | 通过（§19「profile 命令产出 JFR 文件」的管理接口部分）：请求 1 `synaxis:profile`（`{"seconds":1}`）开录后，请求 2（`[1]`）立刻回 −32000，`message` 以 `A recording to ` 开头；测试边等边走 tick，请求 1 录满 1 s 后得 `{path, seconds: 1}`：`path` 是工作目录 `profiles/` 下的绝对路径，文件名匹配 `profile-test-\d{8}-\d{6}-\d{3}\.jfr`，`RecordingFile.readAllEvents` 读得出 `synaxis.ServerTickTime` 事件；台账 `synaxis:profile [1] null invalid`、`synaxis:profile {"seconds":1} null ok`；文件由测试删掉 |
+| 2 | 反证有齿（不查是否已有录制）：`Profiler#start` 的 `if (running != null) return new Busy(running);` 改为 `if (Boolean.getBoolean("proof.never") && running != null) return new Busy(running);`，跑 `ManagementIntegrationTest` 与 `io.github.bearisbug.synaxis.app.command.ProfileCommandIntegrationTest`，再还原 | `15 tests completed, 2 failed`：本条红在 `:415`（由 `:580` 调到），请求 2 得到的是 `{"path":"…/profile-test-…jfr","seconds":1}`（又开了一个录制），不是错误；另一条是 `TC-PROD-392` 第 1 步，见该条第 3 步。还原后复绿 |
+
+后置：确认 `Profiler.java` 没有残留改动。
+
+#### `TC-PROD-392` 控制台 `profile [秒数]`：秒数越界回用法，开录与写完各回一次，同时只有一个录制，文件读得出 tick 事件 — 对应 `REQ-PROD-034` · 级别: 冒烟 · 执行者: AI
+
+前置：工作副本干净。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `io.github.bearisbug.synaxis.app.command.ProfileCommandIntegrationTest` | 2 个 0 失败（§19「profile 命令产出 JFR 文件」，秒数取 1）：控制台 `profile 0`、`profile 601`、`profile soon` 都得 `SUCCESS`，回执都是 `synaxis:command-profile-usage`，参数 `1\|600`，`profiles/` 目录没有建出来；`profile 1` 回 `synaxis:command-profile-started`，参数 `1\|<绝对路径>`；紧接着不带秒数的 `profile` 回 `synaxis:command-profile-busy <同一路径>`（不带秒数本会录 60 s）；1 s 后回执 `synaxis:command-profile-done <同一路径>`，文件读得出 `synaxis.ServerTickTime`；台账五条依次 `profile 0 invalid`、`profile 601 invalid`、`profile soon invalid`、`profile invalid`、`profile 1 ok` |
+| 2 | 反证有齿（秒数不设范围）：`HostCommands#profile` 的 `seconds.between(Profiler.MIN_SECONDS, Profiler.MAX_SECONDS);` 改为 `if (Boolean.getBoolean("proof.never")) seconds.between(…);`，重跑，再还原 | `2 tests completed, 1 failed`，红在 `ProfileCommandIntegrationTest.java:80`：`profile 0 ==> expected: <SUCCESS> but was: <CANCELLED>`（`Profiler#start` 抛 `IllegalArgumentException`，引擎按执行器异常取消）。还原后复绿 |
+| 3 | 反证有齿（同时开两个录制）：`TC-PROD-391` 第 2 步那一次运行 | 本类红在 `:92`：`expected: <synaxis:command-profile-busy …/profile-test-…-670.jfr> but was: <synaxis:command-profile-started 60\|…jfr>`（不带秒数的 `profile` 又开了一个 60 s 的录制）。还原后复绿 |
+| 4 | 同一次运行，看 `aRecordingThatCannotStartIsAnsweredAsFailed` | 通过：工作目录里 `profiles` 被一个普通文件占着；`profile 1` 得 `SUCCESS`，回执恰一条，以 `synaxis:command-profile-failed ` 开头（`Files.createDirectories` 的错误信息作参数）；台账一条 `profile 1 unavailable` |
+| 5 | 反证有齿（开不起来也记 `ok`）：`HostCommands#profile` 捕获 `IOException` 那一支的 `record(sender, input, null, "unavailable");` 改为 `record(sender, input, null, "ok");`，重跑本类，再还原 | `2 tests completed, 1 failed`，红在 `:129`：`expected: <[profile 1 unavailable]> but was: <[profile 1 ok]>`。还原后复绿 |
+
+后置：确认 `HostCommands.java`、`Profiler.java` 没有残留改动。
+
+#### `TC-PROD-393` 绑在回环上时从本机的局域网地址连不上；关着时不绑端口；端口被占时拒绝起服 — 对应 `REQ-PROD-032` · 级别: 回归 · 执行者: AI
+
+前置：工作副本干净；本机有一块非回环、非点对点、非虚拟网卡的 IPv4 地址（本轮是 en0 `192.168.1.22`，没有时该条跳过）。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `ManagementIntegrationTest`，看 `boundOnLoopbackItCannotBeReachedFromAnotherAddress` 与 `disabledItBindsNothingAndAPortTakenRefusesTheStart` | 通过（§19「管理接口鉴权与只绑内网」后半）：绑 `127.0.0.1:0` 时连那个局域网地址的同一端口抛 `ConnectException`，回环上照常可调；`enabled=false` 时 `address()` 为 null、不绑端口；已被占用的端口再绑一次抛 `IllegalArgumentException`，信息以 `synaxis.app.management.bind=127.0.0.1:<端口> cannot be bound` 开头 |
+| 2 | 反证有齿（忽略配置的主机、绑全部网卡）：`ManagementServer.Endpoint` 构造器的 `super(settings.bind(), …)` 改为 `super(new InetSocketAddress(settings.bind().getPort()), …)`，重跑，再还原 | `13 tests completed, 1 failed`，红在 `:603`：`Expected java.net.ConnectException to be thrown, but nothing was thrown.`。还原后复绿 |
+
+后置：确认 `ManagementServer.java` 没有残留改动。
+
+#### `TC-PROD-394` 根日志级别调到 TRACE 也打不开 Java-WebSocket 的 TRACE（它会写出带令牌的握手原文） — 对应 `REQ-PROD-032` · 级别: 回归 · 执行者: AI
+
+前置：工作副本干净。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `io.github.bearisbug.synaxis.app.LogbackConfigurationTest`，看 `theWebSocketLibraryStaysAtInfoWhateverTheRootLevel` | 5 个 0 失败：生产 `logback.xml` 的根级别改成 TRACE 后加载，没有配置警告；根 logger 为 TRACE，`org.java_websocket.WebSocketImpl` 的有效级别仍是 INFO、`isTraceEnabled()` 为假 |
+| 2 | 反证有齿：删掉 `server-app/src/main/resources/logback.xml` 的 `<logger name="org.java_websocket" level="INFO"/>`，重跑，再还原 | `5 tests completed, 1 failed`，红在 `LogbackConfigurationTest.java:163`：`expected: <INFO> but was: <TRACE>`。还原后复绿 |
+
+后置：确认 `logback.xml` 没有残留改动。
+
+#### `TC-PROD-395` 宿主的客户端驱动日志门禁覆盖 `management/`：连接错误与方法异常都经 `LogBudget` — 对应 `REQ-PROD-032` · 级别: 回归 · 执行者: AI
+
+前置：工作副本干净。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `io.github.bearisbug.synaxis.app.ClientDrivenLogArchitectureTest` | 2 个 0 失败：`management/` 的三个类不在豁免名单里，也没有直接的 WARN / ERROR 行 |
+| 2 | 反证有齿（连接错误直接写 WARN）：`ManagementServer.Endpoint#onError` 里的 `failures.warn(ex, …)` 前加一行 `LOGGER.warn("Management interface error: remote={}", conn == null ? null : conn.getRemoteSocketAddress(), ex);`，并把原行改成只在 `proof.never` 时执行，重跑，再还原 | `2 tests completed, 1 failed`：`Method <…management.ManagementServer$Endpoint.onError(org.java_websocket.WebSocket, java.lang.Exception)> calls method <org.slf4j.Logger.warn(java.lang.String, java.lang.Object, java.lang.Object)> in (ManagementServer.java:208)`。还原后复绿 |
+
+后置：确认 `ManagementServer.java` 没有残留改动。
+
+#### `TC-PROD-396` 客户端模组带 `profile` 的五条回执译文 — 对应 `REQ-PROD-034` · 级别: 回归 · 执行者: AI
+
+前置：工作副本干净；§3 的 `JAVA_HOME` 与代理参数已设。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | `cd client-fabric && ./gradlew test --tests '*HostCommandTextTest*' --no-daemon` | `BUILD SUCCESSFUL`，2 个 0 失败：`en_us.json` 与 `zh_cn.json` 都有 `synaxis:command-profile-started`、`synaxis:command-profile-done`、`synaxis:command-profile-busy`、`synaxis:command-profile-usage`、`synaxis:command-profile-failed` 与原有的九个 `synaxis:command-*` 键 |
+| 2 | 反证有齿：删掉 `zh_cn.json` 的 `synaxis:command-profile-busy` 一行，重跑，再还原 | `2 tests completed, 1 failed`（`zh_cn` 那一格），红在 `HostCommandTextTest.java:34`：`zh_cn has no text for synaxis:command-profile-busy`。还原后复绿 |
+
+后置：确认两份 lang 没有残留改动。
+
+#### `TC-PROD-397` 真进程：开管理接口起服，握手鉴权、调状态与剖析、`server/stop` 停机；开了而没有令牌时拒绝起服 — 对应 `REQ-PROD-032`、`REQ-PROD-034` · 级别: 冒烟 · 执行者: AI
+
+前置：`./gradlew :server-app:installDist`；端口 25660、25661 空闲；一个空的临时目录 `$E`，里面 `mkfifo in.fifo; sleep 100000 > in.fifo &`（保持 stdin 打开）；`umask 077; openssl rand -hex 32 > $E/.token`，之后 `export SYNAXIS_MANAGEMENT_TOKEN="$(cat $E/.token)"`，全程不回显；`JAVA_HOME` 指向 JDK 25，`JAVA_TOOL_OPTIONS` 置空（进程与 jshell 都不走代理）。`$E/client.jsh` 是下面这段 jshell 脚本（JDK 自带的 WebSocket 客户端，带令牌连 `MGMT_PORT`，逐行发环境变量 `MGMT_CALLS` 里的请求并打印每条回复；jshell 按行判断语句是否完整，链式调用必须写在同一行）：
+
+```java
+import java.net.URI;
+import java.net.http.*;
+import java.util.concurrent.*;
+var messages = new LinkedBlockingQueue<String>();
+var listener = new WebSocket.Listener() {
+    StringBuilder partial = new StringBuilder();
+    public CompletionStage<?> onText(WebSocket w, CharSequence data, boolean last) {
+        partial.append(data);
+        if (last) { messages.add(partial.toString()); partial.setLength(0); }
+        w.request(1);
+        return null;
+    }
+};
+var ws = HttpClient.newBuilder().proxy(HttpClient.Builder.NO_PROXY).build().newWebSocketBuilder().header("Authorization", "Bearer " + System.getenv("SYNAXIS_MANAGEMENT_TOKEN")).buildAsync(URI.create("ws://127.0.0.1:" + System.getenv("MGMT_PORT") + "/"), listener).join();
+for (var request : System.getenv("MGMT_CALLS").split("\n")) {
+    ws.sendText(request, true).join();
+    System.out.println("<- " + messages.poll(20, TimeUnit.SECONDS));
+}
+/exit
+```
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | `cd $E && JAVA_OPTS="-Xms256m -Xmx512m -Dsynaxis.app.port=25660 -Dsynaxis.app.auth=offline -Dsynaxis.app.core-mode=on -Dsynaxis.app.log=stdout -Dsynaxis.app.metrics.bind=127.0.0.1:0 -Dsynaxis.app.management.enabled=true -Dsynaxis.app.management.bind=127.0.0.1:25661" <仓库>/server-app/build/install/server-app/bin/server-app < in.fifo > stdout.log 2>&1 &`，等到 `listening on 0.0.0.0` | `stdout.log` 依次有 `ManagementServer - Effective management: enabled=true bind=127.0.0.1:25661 token=set`、`Management interface listening on 127.0.0.1:25661`、`Main - synaxis server-app listening on 0.0.0.0:25660`（管理接口先于游戏端口）；`grep -c "$SYNAXIS_MANAGEMENT_TOKEN" stdout.log` 为 0 |
+| 2 | 三次 `curl -sS -i --noproxy '*' --max-time 3 -H 'Connection: Upgrade' -H 'Upgrade: websocket' -H 'Sec-WebSocket-Version: 13' -H 'Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==' http://127.0.0.1:25661/`：不带令牌、带 `Authorization: Bearer $(openssl rand -hex 32)`、带 `Authorization: Bearer $SYNAXIS_MANAGEMENT_TOKEN`（第三次 `--max-time 2`）；再对本机局域网地址（本轮 `192.168.1.22`）的 25661 做一次 | 前两次首行都是 `HTTP/1.1 404 WebSocket Upgrade Failure`，`Server: TooTallNate Java-WebSocket`；第三次首行 `HTTP/1.1 101 Web Socket Protocol Handshake`，curl 等满 2 s 以超时退出（升级后连接保持打开，属预期）；局域网地址 `Failed to connect … Couldn't connect to server` |
+| 3 | `MGMT_PORT=25661 MGMT_CALLS=<四行：minecraft:server/status、synaxis:shard/status、synaxis:profile {"seconds":1}、minecraft:server/stop 的请求，id 1～4> $JAVA_HOME/bin/jshell -q client.jsh`；3 s 后查进程 | 四条回复依次：`{"jsonrpc":"2.0","id":1,"result":{"started":true,"players":[],"version":{"name":"26.2","protocol":776}}}`；`id` 2 的 `result` 含 `"shard_id":"local","session":null,"online":0,"draining":false,"shutdown_phase":"running"` 与 `tps`（本轮 20.01）、`mspt`；`id` 3 的 `result` 为 `{"path":"<$E>/profiles/profile-local-<UTC 时间>.jfr","seconds":1}`；`id` 4 的 `result` 为 `true`。进程随后自己退出，`stdout.log` 有 `[server-app-stop] … Stopping synaxis server.` 与 `synaxis server stopped successfully.`；`jfr summary` 那个文件，`synaxis.ServerTickTime` 行计数大于 0（本轮 22）；`logs/events-local-*.jsonl` 四条 `gm_command`，`actor` 都是 `management`，`command` 依次 `minecraft:server/status`、`synaxis:shard/status`、`synaxis:profile {"seconds":1}`、`minecraft:server/stop`，`result` 都是 `ok`；台账与 `stdout.log` 都不含令牌 |
+| 4 | 不给令牌起服：`env -u SYNAXIS_MANAGEMENT_TOKEN`，其余参数同第 1 步，stdin 用 `/dev/null`，前台跑完看退出码 | 退出码 1；日志 ERROR `Refusing to start: synaxis.app.management.enabled=true needs SYNAXIS_MANAGEMENT_TOKEN (see .env.example): the management interface never runs without a token`；25660、25661 都没有进程在监听 |
+| 5 | 反证有齿（`Main` 没装配管理接口）：`Main#start` 的 `final ManagementServer management = ManagementServer.serve(…);` 改为 `if (Boolean.getBoolean("proof.never")) ManagementServer.serve(…);`、删掉 `process.scheduler().buildShutdownTask(management::close);` 一行，重新 `installDist`，重做第 1 步与第 2 步的第三次 curl，再往 `in.fifo` 写 `stop`；之后还原并重新 `installDist` | 游戏端口照常就绪（`synaxis server-app listening on 0.0.0.0:25660`），但没有 `Management interface listening` 一行；带正确令牌的 curl 得 `Failed to connect to 127.0.0.1 port 25661 … Couldn't connect to server`；`stop` 后进程退出。还原后第 1～3 步复绿 |
+
+后置：按 PID 停掉 `sleep` 与残留进程，删掉 `$E`（含 `.token` 与 `profiles/`）；确认 `Main.java` 没有残留改动。
+
 ## 5. 回归策略
 
 - **全量轮**（全部用例）：首次成稿、每个阶段 gate（引擎域阶段 0、2、3；游戏域 `docs/DESIGN-M2.md` §26 的阶段 1～6b；大世界域 `docs/DESIGN-M3.md` §26 的 M3-A～M3-G）、跨功能域改动、地基变更（JDK、Gradle、镜像、协议版本、模块拆分、启动入口）。
@@ -4942,6 +5178,7 @@ jcmd "$pid" VM.flags | tr ' ' '\n' | grep -cxE -- '-XX:\+UseG1GC|-XX:InitialHeap
   - 生产就绪域（`docs/DESIGN-PROD.md`）：实体追踪范围与每玩家可见上限（`REQ-PROD-023`、`REQ-PROD-024`）→ TC-PROD-310～TC-PROD-320；动了引擎 `EntityView`、`TrackingRange` / `TrackingRanges`、`Entity` 的追踪范围与必显两组方法、`Player#update` 里的重算调用或 `ServerConfig` 的 `synaxis.max-visible-entities-per-player` 就跑 TC-PROD-310～TC-PROD-314、TC-PROD-319 与 TC-PROD-320（第 1 步；动了 `EntityView` 的计数、`admits` 或重算加跑第 2、3 步）；动了 `PluginContext#entities`、`PluginEntities` 或 `PluginHost` 的接线跑 TC-PROD-315；动了 `loadtest/` 的 `Bot` 实体计数、`RunCommand` 采样或 `MergeCommand` 的 `visible_entities` 跑 TC-PROD-316、TC-PROD-317。TC-PROD-318（三轮各约 11 分钟）只在可见性、视野广播（`PacketViewableUtils`、`hasPredictableViewers`）或实体移动同步有改动时跑，本机同时只能有一个压测。跨域牵连：动了 `EntityView` 或 `Player#update` → 加 TC-PROD-033（4 线程严格模式全量，重算在玩家自己的 tick 线程上碰别的实体的视图）。
   - 生产就绪域（`docs/DESIGN-PROD.md`）：空间分格与多线程正确性余项（`REQ-PROD-020`、`REQ-PROD-019` 后半）→ TC-PROD-330～TC-PROD-336；动了 `ThreadProvider#grid` 跑 TC-PROD-330、TC-PROD-332、TC-PROD-335，动了 `ServerConfig` 的 `synaxis.thread-*` 键或 `ServerProcessImpl` 建 dispatcher 的一处跑 TC-PROD-331、TC-PROD-332、TC-PROD-334，动了 `ShardMain` 或 `server-app/build.gradle.kts` 的 `shardStartScripts` 跑 TC-PROD-333、TC-PROD-334 与 TC-PROD-050，动了 `build-src` 转给测试 JVM 的属性、`EnvTestExt` 或 `ci.yml` 的 `multithreaded-grid` 跑 TC-PROD-335；TC-PROD-336（两档各约 11 分钟）只在分格规则或 tick 调度路径有改动时跑，本机同时只能有一个压测。跨域牵连：动了 `thread` 包 → 加 TC-PROD-030～TC-PROD-033；动了 `plugin-api` 的 `package-info` 或 `docs/PLUGINS.md` §10 的线程契约 → 同步核对 `docs/DESIGN-PROD.md` `API-PROD-016` 的线程契约一条。
   - 生产就绪域（`docs/DESIGN-PROD.md`）：第 5 波集成后压测收尾（`REQ-PROD-029`）→ TC-PROD-360～TC-PROD-365，全部是同机真进程压测，本机同时只能有一个压测。TC-PROD-360（约 35 分钟）与 TC-PROD-365 第 1 步在引擎 tick、网络、区块发送、可见性或分格路径有改动时跑，并与本条记下的读数对比；TC-PROD-361、TC-PROD-362（各约 12 分钟）在 `capacity` 定值要重评时跑；动了闸门 L3 / L4、`ConnectionManager#updateWaitingPlayers` 或登录监听器跑 TC-PROD-363（约 10 分钟）；动了 `ConnectionGate` 或闸门汇总日志跑 TC-PROD-364（约 3 分钟）；动了 `EventLedger` 跑 TC-PROD-365 第 2 步。分机档到位后六条全部在分机上重跑。
+  - 生产就绪域（`docs/DESIGN-PROD.md`）：管理接口与性能剖析（`REQ-PROD-032`、`REQ-PROD-034`）→ TC-PROD-380～TC-PROD-397；动了 `server-app` 的 `management/` 就跑 TC-PROD-380～TC-PROD-391、TC-PROD-393、TC-PROD-395（TC-PROD-390 要数据库前置），再动了 `Main` 里管理接口的装配或起服顺序加 TC-PROD-397（真进程，约 2 分钟）；动了 `Profiler` 或 `HostCommands` 的 `profile`、`claimStop`、`startStop` 就跑 TC-PROD-389、TC-PROD-391、TC-PROD-392 与 TC-PROD-243、TC-PROD-255；动了 `logback.xml` 跑 TC-PROD-394 与 TC-PROD-004；动了模组 lang 或 `HostCommandTextTest` 跑 TC-PROD-396；动了 `HostModeration#activeBans` 跑 TC-PROD-390；升 Java-WebSocket 版本时全跑，并重看 TC-PROD-381 第 1 步（被拒握手的回应是否仍是 404 且逐字节相同）与 TC-PROD-383（库是否已自带握手前的上限）。
   - 影响面不确定时升级为全量轮。
 - **复测轮**（上轮失败用例 + 全部冒烟级）：修复失败项之后。
 - **人工收口轮**（仅上轮「待人工」用例）：AI 轮之后由人工补测 TC-016、TC-030、TC-GAME-020、TC-GAME-038、TC-GAME-046、TC-GAME-047，不要求冒烟级。

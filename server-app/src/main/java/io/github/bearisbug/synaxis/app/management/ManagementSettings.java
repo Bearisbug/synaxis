@@ -1,9 +1,9 @@
 package io.github.bearisbug.synaxis.app.management;
 
+import io.github.bearisbug.synaxis.app.BindAddress;
 import org.jetbrains.annotations.Nullable;
 
 import java.net.InetSocketAddress;
-import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -60,7 +60,7 @@ public final class ManagementSettings {
         final String enabled = enabledValue.strip();
         if (!"true".equals(enabled) && !"false".equals(enabled))
             throw new IllegalArgumentException(ENABLED_PROPERTY + "=" + enabledValue + " is not true or false");
-        final InetSocketAddress bind = bindAddress(bindValue);
+        final InetSocketAddress bind = BindAddress.parse(BIND_PROPERTY, bindValue);
         // Disabled, the token is not even looked at: nothing listens that could ask for it
         if ("false".equals(enabled)) return new ManagementSettings(false, bind, null);
         if (token == null || token.isEmpty())
@@ -72,18 +72,6 @@ public final class ManagementSettings {
                     + MAX_TOKEN_LENGTH + " characters of A-Z a-z 0-9 - . _ ~ + /, optionally ending in '=' "
                     + "(openssl rand -hex 32); the one set has " + token.length() + " characters");
         return new ManagementSettings(true, bind, sha256(token));
-    }
-
-    private static InetSocketAddress bindAddress(String value) {
-        final URI uri;
-        try {
-            uri = URI.create("ws://" + value.strip());
-        } catch (IllegalArgumentException e) {
-            throw new IllegalArgumentException(BIND_PROPERTY + "=" + value + " is not host:port", e);
-        }
-        if (uri.getHost() == null || uri.getPort() < 0 || (uri.getRawPath() != null && !uri.getRawPath().isEmpty()))
-            throw new IllegalArgumentException(BIND_PROPERTY + "=" + value + " is not host:port");
-        return new InetSocketAddress(uri.getHost(), uri.getPort());
     }
 
     /**

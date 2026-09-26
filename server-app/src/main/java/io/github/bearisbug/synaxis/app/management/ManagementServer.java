@@ -18,6 +18,7 @@ import org.java_websocket.exceptions.WebsocketNotConnectedException;
 import org.java_websocket.framing.CloseFrame;
 import org.java_websocket.framing.Framedata;
 import org.java_websocket.handshake.ClientHandshake;
+import org.java_websocket.handshake.Handshakedata;
 import org.java_websocket.handshake.ServerHandshakeBuilder;
 import org.java_websocket.server.DefaultWebSocketServerFactory;
 import org.java_websocket.server.WebSocketServer;
@@ -25,9 +26,12 @@ import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
+import java.nio.channels.ByteChannel;
 import java.time.Duration;
+import java.util.Collection;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
@@ -35,6 +39,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * The management interface of a process ({@code docs/DESIGN-PROD.md} {@code REQ-PROD-032},
@@ -46,7 +52,9 @@ import java.util.concurrent.TimeoutException;
  * at the fragment that takes it past the limit, and one in more than {@value #MAX_MESSAGE_FRAGMENTS}
  * fragments at the fragment past that count, however short; before the handshake, a request longer than
  * {@value #MAX_HANDSHAKE_BYTES} bytes or one not finished within 5 s closes the socket, two bounds
- * the library does not set on its own.
+ * the library does not set on its own. Nor does it bound what it queues to send: a message that finds
+ * {@value #MAX_QUEUED_FRAMES} frames or {@value #MAX_QUEUED_BYTES} bytes queued and not yet written
+ * closes the connection with 1008 instead.
  */
 public final class ManagementServer implements AutoCloseable {
 
@@ -59,6 +67,10 @@ public final class ManagementServer implements AutoCloseable {
     /** The longest upgrade request: a handshake with its token is well under 1 KiB. */
     static final int MAX_HANDSHAKE_BYTES = 8_192;
     static final Duration HANDSHAKE_DEADLINE = Duration.ofSeconds(5);
+    /** The frames queued and not yet written at which a connection takes no more messages. */
+    static final int MAX_QUEUED_FRAMES = 4_096;
+    /** The bytes queued and not yet written at which a connection takes no more messages. */
+    static final int MAX_QUEUED_BYTES = 1_048_576;
     private static final Duration BIND_TIMEOUT = Duration.ofSeconds(10);
     private static final int CLOSE_TIMEOUT_MILLIS = 1_000;
 
@@ -149,6 +161,7 @@ public final class ManagementServer implements AutoCloseable {
         private final ManagementSettings settings;
         private final ManagementMethods methods;
         private final LogBudget failures = new LogBudget(LOGGER, "management connection errors");
+        private final LogBudget backlogs = new LogBudget(LOGGER, "management connections closed for their backlog");
         final CompletableFuture<Void> bound = new CompletableFuture<>();
 
         Endpoint(ManagementSettings settings, ManagementMethods methods, Duration handshakeDeadline) {
@@ -157,7 +170,7 @@ public final class ManagementServer implements AutoCloseable {
             this.methods = methods;
             setDaemon(true);
             setReuseAddr(true);
-            setWebSocketFactory(new GuardedFactory(handshakeDeadline));
+            setWebSocketFactory(new GuardedFactory(handshakeDeadline, backlogs));
         }
 
         @Override
@@ -230,13 +243,16 @@ public final class ManagementServer implements AutoCloseable {
      * checks it at the first and the last fragment only and keeps every fragment in between, so a
      * peer that never sends the last one would have it buffer until the heap is full. The count of
      * fragments is held too: the library keeps a buffer for every fragment however short, and a
-     * peer sending empty ones never adds to the length.
+     * peer sending empty ones never adds to the length. Outbound, it adds up the bytes of every
+     * buffer it makes for the queue, which is how {@link GuardedSocket} knows what is queued.
      */
     private static final class BoundedDraft extends Draft_6455 {
         // Each connection gets its own copy, read by that connection's one decoder thread: the bytes
         // and the fragments of the message whose fragments are coming in
         private long messageBytes;
         private int messageFragments;
+        /** The handshake answer and every frame made to be queued, from any sending thread. */
+        final AtomicLong madeBytes = new AtomicLong();
 
         BoundedDraft() {
             super(List.of(), MAX_MESSAGE_BYTES);
@@ -261,24 +277,42 @@ public final class ManagementServer implements AutoCloseable {
             if (messageFragments > MAX_MESSAGE_FRAGMENTS) throw new LimitExceededException(MAX_MESSAGE_FRAGMENTS);
             super.processFrame(conn, frame);
         }
+
+        // The library queues exactly what these two return, each once
+
+        @Override
+        public ByteBuffer createBinaryFrame(Framedata framedata) {
+            final ByteBuffer frame = super.createBinaryFrame(framedata);
+            madeBytes.addAndGet(frame.remaining());
+            return frame;
+        }
+
+        @Override
+        public List<ByteBuffer> createHandshake(Handshakedata handshakedata, boolean withcontent) {
+            final List<ByteBuffer> handshake = super.createHandshake(handshakedata, withcontent);
+            for (ByteBuffer buffer : handshake) madeBytes.addAndGet(buffer.remaining());
+            return handshake;
+        }
     }
 
-    /** Puts the two bounds on the handshake that Java-WebSocket does not have. */
+    /** Puts the bounds on the handshake and on the outbound queue that Java-WebSocket does not have. */
     private static final class GuardedFactory extends DefaultWebSocketServerFactory {
         private final Duration deadline;
+        private final LogBudget backlogs;
 
-        GuardedFactory(Duration deadline) {
+        GuardedFactory(Duration deadline, LogBudget backlogs) {
             this.deadline = deadline;
+            this.backlogs = backlogs;
         }
 
         @Override
         public WebSocketImpl createWebSocket(WebSocketAdapter adapter, Draft draft) {
-            return guarded(new GuardedSocket(adapter, List.of(draft)));
+            return guarded(new GuardedSocket(adapter, List.of(draft), backlogs));
         }
 
         @Override
         public WebSocketImpl createWebSocket(WebSocketAdapter adapter, List<Draft> drafts) {
-            return guarded(new GuardedSocket(adapter, drafts));
+            return guarded(new GuardedSocket(adapter, drafts, backlogs));
         }
 
         private WebSocketImpl guarded(GuardedSocket socket) {
@@ -295,13 +329,95 @@ public final class ManagementServer implements AutoCloseable {
         }
     }
 
-    /** A connection that stops reading a handshake grown past {@link #MAX_HANDSHAKE_BYTES}. */
+    /**
+     * A connection that stops reading a handshake grown past {@link #MAX_HANDSHAKE_BYTES}, and that
+     * is closed rather than queue a message behind {@link #MAX_QUEUED_FRAMES} frames or
+     * {@link #MAX_QUEUED_BYTES} bytes its peer has not read. Java-WebSocket queues every outbound
+     * frame without a bound until the socket takes it, so a peer that never reads would have the
+     * replies to its calls and the pongs to its pings pile up until the heap is full.
+     */
     private static final class GuardedSocket extends WebSocketImpl {
+        private final LogBudget backlogs;
+        private final AtomicBoolean closedForBacklog = new AtomicBoolean();
+        /** What the selector thread has written to the socket, the handshake answer included. */
+        private final AtomicLong writtenBytes = new AtomicLong();
         // Only the one decoder thread of this connection touches it
         private int handshakeBytes;
 
-        GuardedSocket(WebSocketAdapter adapter, List<Draft> drafts) {
+        GuardedSocket(WebSocketAdapter adapter, List<Draft> drafts, LogBudget backlogs) {
             super(adapter, drafts);
+            this.backlogs = backlogs;
+        }
+
+        /** Set once, when the connection is accepted; every write to the socket goes through it. */
+        @Override
+        public void setChannel(ByteChannel channel) {
+            super.setChannel(new ByteChannel() {
+                @Override
+                public int read(ByteBuffer destination) throws IOException {
+                    return channel.read(destination);
+                }
+
+                @Override
+                public int write(ByteBuffer source) throws IOException {
+                    final int written = channel.write(source);
+                    writtenBytes.addAndGet(written);
+                    return written;
+                }
+
+                @Override
+                public boolean isOpen() {
+                    return channel.isOpen();
+                }
+
+                @Override
+                public void close() throws IOException {
+                    channel.close();
+                }
+            });
+        }
+
+        // Every message sent after the handshake goes through one of these four methods: the replies,
+        // the notifications, the pongs, the pings of the lost connection timer and the close frame
+
+        @Override
+        public void send(String text) {
+            if (admits()) super.send(text);
+        }
+
+        @Override
+        public void send(ByteBuffer bytes) {
+            if (admits()) super.send(bytes);
+        }
+
+        @Override
+        public void sendFrame(Framedata frame) {
+            if (admits()) super.sendFrame(frame);
+        }
+
+        @Override
+        public void sendFrame(Collection<Framedata> frames) {
+            if (admits()) super.sendFrame(frames);
+        }
+
+        /**
+         * Whether one more message may be queued; if not, the connection is closed with 1008 at once,
+         * without a close frame, which would only wait behind what the peer does not read. Both
+         * figures are counters: walking the queue takes its locks once per buffer, and thousands
+         * of calls answering at once would queue up behind each other on them.
+         */
+        private boolean admits() {
+            if (closedForBacklog.get()) return false;
+            final int frames = outQueue.size();
+            final long bytes = ((BoundedDraft) getDraft()).madeBytes.get() - writtenBytes.get();
+            if (frames < MAX_QUEUED_FRAMES && bytes < MAX_QUEUED_BYTES) return true;
+            if (closedForBacklog.compareAndSet(false, true)) {
+                backlogs.warn("Management connection closed with 1008: remote={} has {} frames and {} bytes queued "
+                        + "that it does not read", getRemoteSocketAddress(), frames, bytes);
+                closeConnection(CloseFrame.POLICY_VALIDATION, "outbound backlog");
+                outQueue.clear();
+            }
+            return false;
         }
 
         @Override

@@ -38,7 +38,8 @@ public class SynxInternalSurfaceArchitectureTest {
 
     /** Internal members of public engine types in the §6 table, as {@code owner#name}. */
     private static final Set<String> ALLOWED_MEMBERS = Set.of(
-            "io.github.bearisbug.synaxis.instance.Chunk#getFullDataPacket");
+            "io.github.bearisbug.synaxis.instance.Chunk#getFullDataPacket",
+            "io.github.bearisbug.synaxis.instance.block.BlockManager#getHandlerOrDummy");
 
     private static boolean isEngineOwned(JavaClass owner) {
         final String pkg = owner.getPackageName();

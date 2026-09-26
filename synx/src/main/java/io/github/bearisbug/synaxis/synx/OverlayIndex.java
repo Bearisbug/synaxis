@@ -9,7 +9,10 @@ import org.jetbrains.annotations.Nullable;
  */
 public interface OverlayIndex {
     /**
-     * Looks up the pending table first, then the index of records already {@code fsync}ed.
+     * Looks up the pending table first, then the index of records already {@code fsync}ed. While an
+     * unload encodes the same chunk into the pending table, waits for that encoding, at most the 1 s
+     * the unload waits for the chunk's write-lock plus the encoding: callers hold neither the
+     * instance monitor nor a chunk lock.
      *
      * @return the latest content of the chunk, null when the overlay has none
      */

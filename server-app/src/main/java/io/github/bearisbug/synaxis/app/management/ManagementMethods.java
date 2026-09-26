@@ -506,13 +506,8 @@ public final class ManagementMethods {
 
     private Outcome profile(Call call) throws Failure {
         final JsonElement given = call.param(0, "seconds");
-        final int seconds;
-        if (given == null) seconds = Profiler.DEFAULT_SECONDS;
-        else if (given.isJsonPrimitive() && given.getAsJsonPrimitive().isNumber()
-                && given.getAsDouble() == Math.rint(given.getAsDouble())
-                && given.getAsDouble() >= Profiler.MIN_SECONDS && given.getAsDouble() <= Profiler.MAX_SECONDS)
-            seconds = given.getAsInt();
-        else throw invalid("seconds is a whole number from " + Profiler.MIN_SECONDS + " to " + Profiler.MAX_SECONDS);
+        final int seconds = given == null ? Profiler.DEFAULT_SECONDS
+                : wholeNumber(given, "seconds", Profiler.MIN_SECONDS, Profiler.MAX_SECONDS);
         final Profiler.Start start;
         try {
             start = commands.profiler().start(seconds);
@@ -539,6 +534,25 @@ public final class ManagementMethods {
 
     private static Failure invalid(String message) {
         return new Failure(INVALID_PARAMS, message, "invalid");
+    }
+
+    /**
+     * A JSON number that is exactly a whole number within the bounds, read from its text: 1, 1.0 and
+     * 1e0 are 1, while 0.99999999999999999999 is refused. A double cannot tell it from 1, and
+     * {@link JsonElement#getAsInt} would then cut it to 0.
+     */
+    private static int wholeNumber(JsonElement value, String name, int min, int max) throws Failure {
+        final Failure invalid = invalid(name + " is a whole number from " + min + " to " + max);
+        if (!value.isJsonPrimitive() || !value.getAsJsonPrimitive().isNumber()) throw invalid;
+        final int number;
+        try {
+            number = value.getAsBigDecimal().intValueExact();
+        } catch (NumberFormatException | ArithmeticException _) {
+            // A fraction, a number past int, or one past Gson's limits on the length and the exponent
+            throw invalid;
+        }
+        if (number < min || number > max) throw invalid;
+        return number;
     }
 
     private static JsonArray array(@Nullable JsonElement value, String name) throws Failure {

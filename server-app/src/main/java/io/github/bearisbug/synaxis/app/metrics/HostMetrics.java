@@ -4,6 +4,7 @@ import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
 import io.github.bearisbug.synaxis.ServerProcess;
 import io.github.bearisbug.synaxis.TickSchedulerThread;
+import io.github.bearisbug.synaxis.app.BindAddress;
 import io.github.bearisbug.synaxis.app.store.Database;
 import io.github.bearisbug.synaxis.app.store.PlayerStore;
 import io.github.bearisbug.synaxis.app.store.RedisLink;
@@ -38,7 +39,6 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.net.InetSocketAddress;
-import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.util.EnumMap;
 import java.util.List;
@@ -339,15 +339,7 @@ public final class HostMetrics implements AutoCloseable {
     }
 
     static InetSocketAddress bindAddress(String value) {
-        final URI uri;
-        try {
-            uri = URI.create("http://" + value.strip());
-        } catch (IllegalArgumentException e) {
-            throw new IllegalArgumentException(BIND_PROPERTY + "=" + value + " is not host:port", e);
-        }
-        if (uri.getHost() == null || uri.getPort() < 0 || (uri.getRawPath() != null && !uri.getRawPath().isEmpty()))
-            throw new IllegalArgumentException(BIND_PROPERTY + "=" + value + " is not host:port");
-        return new InetSocketAddress(uri.getHost(), uri.getPort());
+        return BindAddress.parse(BIND_PROPERTY, value);
     }
 
     @Override

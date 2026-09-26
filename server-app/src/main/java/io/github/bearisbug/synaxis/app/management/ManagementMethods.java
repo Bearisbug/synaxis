@@ -374,10 +374,9 @@ public final class ManagementMethods {
     }
 
     private Outcome stop() {
-        // Answered before the shutdown starts: the shutdown closes this connection on its way
-        final boolean claimed = commands.claimStop();
-        return new Outcome(new JsonPrimitive(claimed), claimed ? "ok" : "invalid", null,
-                claimed ? () -> commands.startStop(Duration.ZERO) : null);
+        // The shutdown closes this connection on its way, after waiting for the answer to be sent
+        final boolean started = commands.beginStop(Duration.ZERO);
+        return new Outcome(new JsonPrimitive(started), started ? "ok" : "invalid", null, commands::stopAnswered);
     }
 
     // minecraft:bans, minecraft:bans/add, minecraft:bans/remove

@@ -259,6 +259,8 @@ public final class Main {
         // shutdown tasks after the players are saved and kicked, between two ticks, and before it
         // stops ticking (docs/DESIGN-PROD.md §11.4), so onDisable runs the same way on both paths.
         process.scheduler().buildShutdownTask(host::disableAll);
+        // A stop still answering gets its answer and its ledger line out first (API-PROD-011)
+        process.scheduler().buildShutdownTask(commands::awaitStopAnswers);
         // After the plugins, so that what they record in onDisable is on disk (API-PROD-014)
         process.scheduler().buildShutdownTask(ledger::close);
         // The save is over by now: Redis, the session renewal and the pool can go

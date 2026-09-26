@@ -18,6 +18,8 @@ import io.github.bearisbug.synaxis.app.moderation.ModerationStore;
 import io.github.bearisbug.synaxis.app.permission.HostPermissions;
 import io.github.bearisbug.synaxis.app.permission.RoleCommand;
 import io.github.bearisbug.synaxis.app.permission.RoleStore;
+import io.github.bearisbug.synaxis.app.shard.ShardSettings;
+import io.github.bearisbug.synaxis.app.shard.ShardWorld;
 import io.github.bearisbug.synaxis.app.store.AuthMode;
 import io.github.bearisbug.synaxis.app.store.Database;
 import io.github.bearisbug.synaxis.app.store.Migrations;
@@ -34,9 +36,13 @@ import io.github.bearisbug.synaxis.app.transfer.TransferKeys;
 import io.github.bearisbug.synaxis.app.transfer.TransferTickets;
 import io.github.bearisbug.synaxis.command.CommandManager;
 import io.github.bearisbug.synaxis.command.builder.CommandResult;
+import io.github.bearisbug.synaxis.event.player.AsyncPlayerConfigurationEvent;
 import io.github.bearisbug.synaxis.game.protocol.ProtocolSchema;
+import io.github.bearisbug.synaxis.plugin.Admission;
 import io.github.bearisbug.synaxis.plugin.PluginApi;
 import io.github.bearisbug.synaxis.registry.RegistryKey;
+import io.github.bearisbug.synaxis.synx.OverlayOptions;
+import io.github.bearisbug.synaxis.synx.SynxOptions;
 import io.github.bearisbug.synaxis.timer.TaskSchedule;
 import io.github.bearisbug.synaxis.world.DimensionType;
 import net.kyori.adventure.key.Key;
@@ -81,7 +87,7 @@ public final class Main {
      * {@code synaxis.properties} goes into the system properties before anything reads one of them
      * ({@code docs/DESIGN-PROD.md} {@code API-PROD-023}): the logging setup reads
      * {@code synaxis.app.log} as {@link #LOGGER} is created, {@code JvmFlags} is read when the
-     * engine first loads it, the rest from {@link #start()} on. So this field stays above the
+     * engine first loads it, the rest from {@link #start(boolean)} on. So this field stays above the
      * logger; {@link #main} reports a refused file once the logging is up.
      */
     private static final ConfigFile.Outcome CONFIG_FILE = ConfigFile.applyToSystemProperties();
@@ -147,6 +153,17 @@ public final class Main {
     }
 
     public static void main(String[] args) {
+        main(args, false);
+    }
+
+    /**
+     * Starts the server application; {@link ShardMain} starts it as the shard host, which alone may
+     * mount a map ({@code docs/DESIGN-M3.md} {@code API-M3-006}).
+     *
+     * @param args  the command line
+     * @param shard whether the shard host launches it
+     */
+    static void main(String[] args, boolean shard) {
         if (CONFIG_FILE.refusal() != null) {
             LOGGER.error("Refusing to start: {}", CONFIG_FILE.refusal());
             System.exit(1);
@@ -157,7 +174,7 @@ public final class Main {
             return;
         }
         try {
-            start();
+            start(shard);
         } catch (IllegalArgumentException e) {
             // A refused launch argument or a refused descriptor is a decision, not a crash: it gets
             // the same ERROR line and non zero exit as the missing admission provider below,
@@ -167,7 +184,7 @@ public final class Main {
         }
     }
 
-    private static void start() {
+    private static void start(boolean shard) {
         // (1) Process level configuration. The engine reads its own synaxis.* properties while the
         // process is being created, which is why this comes before init.
         final int port = port();
@@ -179,6 +196,9 @@ public final class Main {
         final CoreMode.Setting coreMode = CoreMode.setting();
         final InetSocketAddress metricsBind = HostMetrics.bindAddress();
         final ManagementSettings managementSettings = ManagementSettings.fromSystemProperties(System.getenv());
+        // A map, which only the shard host mounts (docs/DESIGN-M3.md API-M3-006): its keys are all read here,
+        // before anything touches the disk
+        final @Nullable MapMount map = mapMount(shard, coreMode);
         applyViewRangeDefaults();
 
         // (2) The engine facade, not a bare ServerProcess: MinecraftServer#start is the only public
@@ -197,6 +217,10 @@ public final class Main {
         // step (6) freezes the registries, and a dimension type registered after the port is open
         // would shift the dimension indices of the players already in game (§11.3).
         final RegistryKey<DimensionType> dimensionType = registerMatchDimensionType(process);
+        // The map release is checked, and its dimension type and block handlers registered, while the
+        // registries still take them; nothing is written yet
+        final @Nullable ShardWorld shardWorld = map == null ? null
+                : ShardWorld.prepare(process, map.settings(), map.synx(), map.overlay());
 
         // (4) Plugins, on this thread. A plugin builds its match here, before anything is bound.
         // An operator who asked for the core mode gets no plugin at all: that is the only way the
@@ -207,8 +231,9 @@ public final class Main {
         // whose database is not the one it expects refuses here, before anything is bound.
         final StoreRuntime store = openStore(storeMode, process, auth, shardId, ledger, System.getenv());
         // The engine takes one participant: the players save first, then the steps registered on
-        // this before the start, in their order (docs/DESIGN-PROD.md API-PROD-007). This path
-        // registers none, so the save phase is the player store's alone.
+        // this before the start, in their order (docs/DESIGN-PROD.md API-PROD-007). The RTS path
+        // registers none, so the save phase is the player store's alone; a map shard registers the
+        // final flush of its overlay store in step (5).
         final ShutdownSequence shutdown = new ShutdownSequence(process, store.store());
         process.setShutdownParticipant(shutdown);
         final PluginHost host = new PluginHost(process, Path.of("plugins"), ledger, store.store(), store.verifier(),
@@ -241,7 +266,10 @@ public final class Main {
         final int runningMatches = runningMatches(process);
         switch (CoreMode.decide(coreMode, host.attemptedPluginCount(),
                 host.hasAdmissionProvider(), runningMatches)) {
-            case CORE -> CoreMode.start(process, host, dimensionType, coreMode);
+            case CORE -> {
+                if (shardWorld == null) CoreMode.start(process, host, dimensionType, coreMode);
+                else serveMap(process, host, shardWorld.start(shutdown, ledger::record));
+            }
             case GAMEPLAY -> {
                 // Only a process that serves a game demands the mod that renders it; the core mode
                 // answers a handshake but never waits for one (REQ-M2-008, API-M2-010 step 5).
@@ -271,13 +299,68 @@ public final class Main {
         // (6) bind, freeze the registries, accept, start the dispatcher and the tick thread.
         server.start(BIND_ADDRESS, port);
 
-        // (7) Printed after all three, so "the ready log is out" means the process is ticking.
+        // (7) Printed after all three, so "the ready log is out" means the process is ticking. A map
+        // shard records EVT:shard_started first, now that the port is bound.
+        if (shardWorld != null) ledger.record("shard_started", shardWorld.startedAttributes());
         LOGGER.info("synaxis server-app listening on {}:{}", BIND_ADDRESS, port);
 
         // A daemon: a stop runs on a thread of its own, and a console nobody types into must not
         // keep the JVM alive once that thread and the tick threads are gone.
         Thread.ofPlatform().name("server-app-console").daemon().start(() -> readConsole(process,
                 new BufferedReader(new InputStreamReader(System.in, StandardCharsets.UTF_8))));
+    }
+
+    /**
+     * The keys of a mounted map ({@code docs/DESIGN-M3.md} {@code API-M3-006}): the host's, the
+     * {@code :synx} ones and the overlay store's.
+     *
+     * @param settings the host keys
+     * @param synx     the {@code :synx} keys
+     * @param overlay  the overlay store keys
+     */
+    record MapMount(ShardSettings settings, SynxOptions synx, OverlayOptions overlay) {
+    }
+
+    /**
+     * Reads the map keys in step (1). Without {@code synaxis.map.root} and {@code synaxis.map.build}
+     * no map is mounted and the other six keys are not read. A map is only mounted by the shard host,
+     * whose defaults (threads, view, chunk and entity caps) the server application does not write, and
+     * serves no plugin.
+     *
+     * @param shard    whether the shard host launched the process
+     * @param coreMode the core mode setting
+     * @return the keys, null without a map
+     * @throws IllegalArgumentException naming the key of a refused start
+     */
+    static @Nullable MapMount mapMount(boolean shard, CoreMode.Setting coreMode) {
+        final ShardSettings settings = ShardSettings.fromSystemProperties();
+        if (!settings.mountsMap()) return null;
+        if (!shard) {
+            throw new IllegalArgumentException(ShardSettings.MAP_ROOT + " and " + ShardSettings.MAP_BUILD
+                    + " mount a map, which only the shard host does (bin/server-shard), not bin/server-app");
+        }
+        if (coreMode != CoreMode.Setting.ON) {
+            throw new IllegalArgumentException("a map shard loads no plugin, " + CoreMode.PROPERTY + " must be on, not "
+                    + coreMode.name().toLowerCase(Locale.ROOT));
+        }
+        return new MapMount(settings, SynxOptions.fromSystemProperties(), OverlayOptions.fromSystemProperties());
+    }
+
+    /**
+     * What {@link CoreMode#start} takes from the host for the core world, for the map instance
+     * instead: every connection goes into it, spawning on the spawn point of the map.
+     *
+     * @param process the engine process
+     * @param host    the plugin host, whose admission slot the map takes
+     * @param world   the started map world
+     */
+    private static void serveMap(ServerProcess process, PluginHost host, ShardWorld.Started world) {
+        process.eventHandler().addListener(AsyncPlayerConfigurationEvent.class,
+                event -> event.getPlayer().setRespawnPoint(world.spawn()));
+        // §9: team 0 is the neutral team, as in the core world
+        host.registerHostAdmission(_ -> new Admission.Accept(world.instance(), 0));
+        LOGGER.info("Map mode ({}=on): the host serves the map instance, no plugin is loaded, spawn={}",
+                CoreMode.PROPERTY, world.spawn());
     }
 
     /**

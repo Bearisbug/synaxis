@@ -185,6 +185,8 @@ public class DynamicChunk extends Chunk {
 
     @Override
     public void tick(long time) {
+        // Outside the simulation distance of the instance no block handler ticks (docs/DESIGN-M3.md API-M3-006)
+        if (!instance.isChunkSimulated(chunkX, chunkZ)) return;
         // Snapshot under the read-lock: setBlock writes tickableMap from any thread, and a handler
         // making its own block non-tickable removes an entry, which makes an open hash map shift the
         // following entries down and an in-flight iteration skip them

@@ -2,6 +2,8 @@ package io.github.bearisbug.synaxis.instance;
 
 import io.github.bearisbug.synaxis.registry.BuiltinRegistries;
 import net.kyori.adventure.nbt.BinaryTag;
+import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
+import it.unimi.dsi.fastutil.longs.LongSet;
 import it.unimi.dsi.fastutil.objects.Object2ObjectArrayMap;
 import it.unimi.dsi.fastutil.objects.ObjectArraySet;
 import net.kyori.adventure.audience.Audience;
@@ -91,6 +93,10 @@ public abstract class Instance implements Block.Getter, Block.Setter, Biome.Gett
             .resolving(Identity.UUID, Instance::getUuid)
             .build();
 
+    // The largest view distance of a player (Player#setMaxViewDistance): a tick simulates (2d + 1)² chunks
+    // per player, docs/DESIGN-M3.md API-M3-006
+    private static final int MAX_SIMULATION_DISTANCE = 32;
+
     private boolean registered;
 
     private final RegistryKey<DimensionType> dimensionType;
@@ -129,6 +135,13 @@ public abstract class Instance implements Block.Getter, Block.Setter, Biome.Gett
     // the tick scheduler thread before the entities tick, and only once an entity asked for it
     private volatile @Nullable PlayerPositions playerPositions;
     private volatile boolean playerPositionsWanted;
+
+    // docs/DESIGN-M3.md API-M3-006: the simulation distance, the chunks it simulates this tick (null while
+    // every chunk is), the unload grace period and the chunk tickets
+    private volatile int simulationDistance = -1;
+    private volatile @Nullable SimulatedChunks simulatedChunks;
+    private volatile int chunkUnloadGraceTicks = -1;
+    final ChunkTickets tickets = new ChunkTickets();
 
     // the uuid of this instance
     protected UUID uuid;
@@ -826,6 +839,7 @@ public abstract class Instance implements Block.Getter, Block.Setter, Biome.Gett
         // Time
         {
             this.worldAge++;
+            tickets.tick();
             for (var clock : clocks.values()) clock.tick();
         }
         // Weather
@@ -853,6 +867,7 @@ public abstract class Instance implements Block.Getter, Block.Setter, Biome.Gett
         this.scheduler.processTickEnd();
         // Last, so that it holds whatever the tasks above did to the players
         if (playerPositionsWanted) this.playerPositions = PlayerPositions.of(getPlayers());
+        refreshSimulatedChunks();
     }
 
     /**
@@ -940,6 +955,206 @@ public abstract class Instance implements Block.Getter, Block.Setter, Biome.Gett
         for (Player player : getPlayers()) {
             player.updateViewDistance(oldViewDistance, newViewDistance);
         }
+    }
+
+    /**
+     * Sets how far from a player chunks run their tick ({@code docs/DESIGN-M3.md} {@code API-M3-006}):
+     * only the chunks within this Chebyshev distance of the chunk a player stands in tick their block
+     * handlers and the bodies of their entities. The other chunks stay loaded, sent and visible, and
+     * the schedulers of their entities keep running. No limit by default.
+     * <p>
+     * Can be called from any thread, it takes effect on the next tick.
+     *
+     * @param chunks the distance in chunks, from 1 to 32, or -1 for no limit
+     * @throws IllegalArgumentException for any other value
+     */
+    @ApiStatus.Experimental
+    public void setSimulationDistance(int chunks) {
+        Check.argCondition(chunks != -1 && (chunks < 1 || chunks > MAX_SIMULATION_DISTANCE),
+                "The simulation distance must be -1 or from 1 to {0} but was {1}", MAX_SIMULATION_DISTANCE, chunks);
+        this.simulationDistance = chunks;
+    }
+
+    /**
+     * Gets the simulation distance of {@link #setSimulationDistance(int)}.
+     *
+     * @return the distance in chunks, -1 for no limit
+     */
+    @ApiStatus.Experimental
+    public int simulationDistance() {
+        return simulationDistance;
+    }
+
+    /**
+     * Whether the chunk runs its tick this tick, see {@link #setSimulationDistance(int)}: always true
+     * without a limit, otherwise read from the chunks the tick started with. Any thread.
+     *
+     * @param chunkX the chunk X
+     * @param chunkZ the chunk Z
+     * @return whether the chunk is simulated
+     */
+    @ApiStatus.Experimental
+    public boolean isChunkSimulated(int chunkX, int chunkZ) {
+        final SimulatedChunks simulated = this.simulatedChunks;
+        return simulated == null || simulated.contains(CoordConversion.chunkIndex(chunkX, chunkZ));
+    }
+
+    /**
+     * Sets after how many ticks without a ticket a loaded chunk is unloaded
+     * ({@code docs/DESIGN-M3.md} {@code API-M3-006}): at the end of a tick, a chunk whose ticket count
+     * went down to 0 that many ticks ago (the tick it went down counts as tick 0, a chunk loaded
+     * without a ticket counts from its load) is unloaded, the longest idle first, at most 256 a tick.
+     * A chunk with an online player in it stays, and so does one whose {@link Chunk#readyToUnload()}
+     * says no. By default nothing is ever unloaded automatically.
+     * <p>
+     * Can be called from any thread, it takes effect on the next unload round.
+     *
+     * @param ticks the grace period in ticks, at least 1, or -1 to never unload automatically
+     * @throws IllegalArgumentException for any other value
+     */
+    @ApiStatus.Experimental
+    public void setChunkUnloadGraceTicks(int ticks) {
+        Check.argCondition(ticks != -1 && ticks < 1,
+                "The chunk unload grace period must be -1 or at least 1 tick but was {0}", ticks);
+        this.chunkUnloadGraceTicks = ticks;
+    }
+
+    /**
+     * Gets the grace period of {@link #setChunkUnloadGraceTicks(int)}.
+     *
+     * @return the period in ticks, -1 if chunks are never unloaded automatically
+     */
+    @ApiStatus.Experimental
+    public int chunkUnloadGraceTicks() {
+        return chunkUnloadGraceTicks;
+    }
+
+    /**
+     * Takes a ticket on a chunk for {@code owner}, which keeps the chunk from the automatic unload
+     * until the ticket is removed. A ticket does not load the chunk, and can be held while it is not
+     * loaded: to keep a chunk and its entities, take the ticket first, then load the chunk. Each owner
+     * holds at most one ticket per chunk. Tickets of a disabled plugin are not taken back by the
+     * engine. Any thread.
+     *
+     * @param chunkX the chunk X
+     * @param chunkZ the chunk Z
+     * @param owner  who holds the ticket, compared with {@link Object#equals(Object)}
+     * @return true if the ticket was added, false if the owner already held one
+     */
+    @ApiStatus.Experimental
+    public boolean addChunkTicket(int chunkX, int chunkZ, Object owner) {
+        return tickets.addPluginTicket(CoordConversion.chunkIndex(chunkX, chunkZ), Objects.requireNonNull(owner, "owner"));
+    }
+
+    /**
+     * Removes the ticket {@code owner} holds on a chunk, see {@link #addChunkTicket(int, int, Object)}.
+     * Any thread.
+     *
+     * @param chunkX the chunk X
+     * @param chunkZ the chunk Z
+     * @param owner  who holds the ticket
+     * @return true if a ticket was removed
+     */
+    @ApiStatus.Experimental
+    public boolean removeChunkTicket(int chunkX, int chunkZ, Object owner) {
+        return tickets.removePluginTicket(CoordConversion.chunkIndex(chunkX, chunkZ), Objects.requireNonNull(owner, "owner"));
+    }
+
+    /**
+     * Counts the tickets of a chunk: one for every player whose chunk ring covers it, plus the plugin
+     * tickets. Any thread.
+     *
+     * @param chunkX the chunk X
+     * @param chunkZ the chunk Z
+     * @return the ticket count
+     */
+    @ApiStatus.Experimental
+    public int chunkTicketCount(int chunkX, int chunkZ) {
+        return tickets.ticketCount(CoordConversion.chunkIndex(chunkX, chunkZ));
+    }
+
+    /**
+     * The chunks entering the chunk ring of a player get their view ticket, before the player asks
+     * for them to load.
+     *
+     * @param chunks the chunk indexes
+     */
+    @ApiStatus.Internal
+    public void addViewTickets(long[] chunks) {
+        tickets.addViewTickets(chunks);
+    }
+
+    /**
+     * The chunks leaving the chunk ring of a player lose their view ticket, after the player unloaded
+     * them.
+     *
+     * @param chunks the chunk indexes
+     */
+    @ApiStatus.Internal
+    public void removeViewTickets(long[] chunks) {
+        tickets.removeViewTickets(chunks);
+    }
+
+    /**
+     * Unloads the chunks idle for the grace period of {@link #setChunkUnloadGraceTicks(int)}. Called
+     * once a tick on the tick scheduler thread, after every tick thread is done with the tick. An
+     * instance that does not own its chunks unloads nothing.
+     */
+    @ApiStatus.Internal
+    public void unloadIdleChunks() {
+    }
+
+    /**
+     * Test hook: takes the view tickets off a chunk, which leaves an online player standing in a chunk
+     * without a ticket, a state no ring change can make.
+     */
+    void clearViewTickets(int chunkX, int chunkZ) {
+        tickets.clearViewTickets(CoordConversion.chunkIndex(chunkX, chunkZ));
+    }
+
+    /**
+     * The chunks within the simulation distance of the chunk some player stands in, as the tick
+     * started; replaced as a whole, never changed.
+     *
+     * @param distance the simulation distance they were computed with
+     * @param centers  the chunks the players stood in
+     * @param chunks   the simulated chunks
+     */
+    private record SimulatedChunks(int distance, LongSet centers, LongSet chunks) {
+        static SimulatedChunks of(int distance, LongSet centers) {
+            final LongOpenHashSet chunks = new LongOpenHashSet();
+            for (long center : centers) {
+                final int centerX = CoordConversion.chunkIndexGetX(center);
+                final int centerZ = CoordConversion.chunkIndexGetZ(center);
+                for (int x = centerX - distance; x <= centerX + distance; x++) {
+                    for (int z = centerZ - distance; z <= centerZ + distance; z++) {
+                        chunks.add(CoordConversion.chunkIndex(x, z));
+                    }
+                }
+            }
+            return new SimulatedChunks(distance, centers, chunks);
+        }
+
+        boolean contains(long chunk) {
+            return chunks.contains(chunk);
+        }
+    }
+
+    /**
+     * On the tick scheduler thread, before the tick threads start: the chunks the players stand in
+     * now decide what this tick simulates. Kept when neither they nor the distance changed.
+     */
+    private void refreshSimulatedChunks() {
+        final int distance = this.simulationDistance;
+        if (distance < 1) {
+            this.simulatedChunks = null;
+            return;
+        }
+        final LongOpenHashSet centers = new LongOpenHashSet();
+        for (Player player : getPlayers()) centers.add(CoordConversion.chunkIndex(player.getPosition()));
+        final SimulatedChunks previous = this.simulatedChunks;
+        if (previous != null && previous.distance() == distance && previous.centers().equals(centers)) return;
+        this.simulatedChunks = SimulatedChunks.of(distance, centers);
     }
 
     /**

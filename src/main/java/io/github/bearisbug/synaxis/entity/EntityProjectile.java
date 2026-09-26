@@ -94,6 +94,8 @@ public class EntityProjectile extends Entity {
         final Pos posBefore = getPosition();
         super.tick(time);
         if (super.isRemoved()) return;
+        // Outside the simulation distance only the scheduler runs (docs/DESIGN-M3.md ADR-M3-017)
+        if (outsideSimulation()) return;
 
         final Pos posNow = getPosition();
         boolean isStuck = isStuck(posBefore, posNow);

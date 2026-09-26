@@ -1,5 +1,7 @@
 package io.github.bearisbug.synaxis.app;
 
+import io.github.bearisbug.synaxis.app.shard.ShardSettings;
+
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.function.UnaryOperator;
@@ -12,7 +14,9 @@ import java.util.function.UnaryOperator;
  * scheduler, the network carriers and the GC. A player sees 12 chunks, is sent at most 4 of them a
  * tick and is shown at most 100 entities. A shard storing in PostgreSQL takes transfers; one storing
  * in memory does not, as {@link Main} refuses to take them there. The RTS process is launched
- * through {@link Main} and keeps the engine defaults, the counter and one tick thread.
+ * through {@link Main} and keeps the engine defaults, the counter and one tick thread. A shard given
+ * {@code synaxis.map.root} and {@code synaxis.map.build} mounts that map release and loads no plugin,
+ * which only this launcher does.
  * <p>
  * A value the operator passed on the command line wins, {@code -Dsynaxis.thread-provider=counter}
  * takes a shard back to the engine provider.
@@ -25,6 +29,8 @@ public final class ShardMain {
     static final String MAX_CHUNKS_PER_TICK = "synaxis.chunk-queue.max-per-tick";
     static final String MAX_VISIBLE_ENTITIES = "synaxis.max-visible-entities-per-player";
     static final String ACCEPT_TRANSFERS = "synaxis.accept-transfers";
+    static final String MAP_ROOT = ShardSettings.MAP_ROOT;
+    static final String MAP_BUILD = ShardSettings.MAP_BUILD;
 
     private ShardMain() {
     }
@@ -37,8 +43,9 @@ public final class ShardMain {
             threadDefaults(System::getProperty, Runtime.getRuntime().availableProcessors()).forEach(System::setProperty);
             viewDefaults(System::getProperty).forEach(System::setProperty);
             transferDefaults(System::getProperty).forEach(System::setProperty);
+            mapDefaults(System::getProperty).forEach(System::setProperty);
         }
-        Main.main(args);
+        Main.main(args, true);
     }
 
     /**
@@ -84,5 +91,21 @@ public final class ShardMain {
         if (properties.apply(ACCEPT_TRANSFERS) != null || store == null || !Main.STORE_POSTGRES.equals(store.strip()))
             return Map.of();
         return Map.of(ACCEPT_TRANSFERS, "true");
+    }
+
+    /**
+     * Returns {@code synaxis.app.core-mode=on} when the shard mounts a map ({@code docs/DESIGN-M3.md}
+     * {@code API-M3-006}): both map keys given and the command line left the core mode out. A map
+     * shard loads no plugin; {@link Main} refuses one given another core mode, and one given a single
+     * map key.
+     *
+     * @param properties the system properties already set
+     * @return the property and its value, or nothing
+     */
+    static Map<String, String> mapDefaults(UnaryOperator<String> properties) {
+        if (properties.apply(MAP_ROOT) == null || properties.apply(MAP_BUILD) == null
+                || properties.apply(CoreMode.PROPERTY) != null)
+            return Map.of();
+        return Map.of(CoreMode.PROPERTY, "on");
     }
 }

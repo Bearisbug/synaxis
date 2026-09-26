@@ -1,5 +1,6 @@
 package io.github.bearisbug.synaxis.entity;
 
+import it.unimi.dsi.fastutil.longs.LongArrayList;
 import it.unimi.dsi.fastutil.longs.LongArrayPriorityQueue;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import it.unimi.dsi.fastutil.longs.LongPriorityQueue;
@@ -226,6 +227,13 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
         sendPacket(new UnloadChunkPacket(chunkX, chunkZ));
         process().eventHandler().call(new PlayerChunkUnloadEvent(this, chunkX, chunkZ));
     };
+
+    // The chunk ring holding the view tickets of this player in its instance (docs/DESIGN-M3.md
+    // API-M3-006): the ring as it is, its instance, center and radius, whatever chunkAdder and
+    // chunkRemover were called for. Changed where the ring changes, on the tick thread of the player or,
+    // for the view distance of the instance, on the tick scheduler thread.
+    private @Nullable Instance ticketInstance;
+    private int ticketCenterX, ticketCenterZ, ticketRadius;
 
     private final AtomicInteger teleportId = new AtomicInteger();
     private int receivedTeleportId;
@@ -609,7 +617,9 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
         Pos respawnPosition = respawnEvent.getRespawnPosition();
 
         // The client unloads chunks when respawning, so resend all chunks next to spawn
-        ChunkRange.chunksInRange(respawnPosition, this.effectiveViewDistance(), chunkAdder);
+        final int ringRadius = this.effectiveViewDistance();
+        moveTicketRing(instance, respawnPosition.chunkX(), respawnPosition.chunkZ(), ringRadius,
+                () -> ChunkRange.chunksInRange(respawnPosition, ringRadius, chunkAdder));
         chunksLoadedByClient = new Vec(respawnPosition.chunkX(), respawnPosition.chunkZ());
         // Client also needs all entities resent to them, since those are unloaded as well
         this.instance.getEntityTracker().nearbyEntitiesByChunkRange(respawnPosition, this.effectiveViewDistance(),
@@ -675,7 +685,8 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
         final int chunkX = position.chunkX();
         final int chunkZ = position.chunkZ();
         // Clear all viewable chunks
-        ChunkRange.chunksInRange(chunkX, chunkZ, this.effectiveViewDistance(), chunkRemover);
+        final int ringRadius = this.effectiveViewDistance();
+        moveTicketRing(null, 0, 0, 0, () -> ChunkRange.chunksInRange(chunkX, chunkZ, ringRadius, chunkRemover));
         resetChunkQueue();
 
         // Remove from the tab-list
@@ -856,7 +867,8 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
         sendPacket(new UpdateViewPositionPacket(chunkX, chunkZ));
 
         // Load the nearby chunks and queue them to be sent to them
-        ChunkRange.chunksInRange(spawnPosition, this.effectiveViewDistance(), chunkAdder);
+        final int ringRadius = this.effectiveViewDistance();
+        moveTicketRing(instance, chunkX, chunkZ, ringRadius, () -> ChunkRange.chunksInRange(spawnPosition, ringRadius, chunkAdder));
         sendPendingChunks(); // Send available first chunk immediately to prevent falling through the floor
 
         synchronizePositionAfterTeleport(spawnPosition, Vec.ZERO, RelativeFlags.NONE, true); // So the player doesn't get stuck
@@ -955,6 +967,45 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
         } finally {
             chunkQueueLock.unlock();
         }
+    }
+
+    /**
+     * Moves the view tickets to the chunk ring of {@code radius} around the chunk (x, z) of
+     * {@code instance}, around {@code change}, which sends and unloads the chunks: the chunks entering
+     * the ring get their ticket before it asks for them to load, the chunks leaving it lose theirs after
+     * it unloaded them. So the unload of the instance never picks a chunk this player is loading.
+     *
+     * @param instance the instance of the new ring, null when the player leaves its instance
+     * @param change   what the ring change sends to the client
+     */
+    private void moveTicketRing(@Nullable Instance instance, int x, int z, int radius, Runnable change) {
+        final Instance oldInstance = this.ticketInstance;
+        final int oldX = ticketCenterX, oldZ = ticketCenterZ, oldRadius = ticketRadius;
+        final boolean sameInstance = instance == oldInstance;
+        if (instance != null) instance.addViewTickets(ringChunks(x, z, radius, sameInstance, oldX, oldZ, oldRadius));
+        try {
+            change.run();
+        } finally {
+            this.ticketInstance = instance;
+            this.ticketCenterX = x;
+            this.ticketCenterZ = z;
+            this.ticketRadius = radius;
+            if (oldInstance != null)
+                oldInstance.removeViewTickets(ringChunks(oldX, oldZ, oldRadius, sameInstance && instance != null, x, z, radius));
+        }
+    }
+
+    /** The chunks of the ring of {@code radius} around (x, z), minus those of the other ring when {@code minusOther}. */
+    private static long[] ringChunks(int x, int z, int radius, boolean minusOther, int otherX, int otherZ, int otherRadius) {
+        final LongArrayList chunks = new LongArrayList();
+        for (int chunkX = x - radius; chunkX <= x + radius; chunkX++) {
+            for (int chunkZ = z - radius; chunkZ <= z + radius; chunkZ++) {
+                if (minusOther && Math.abs(chunkX - otherX) <= otherRadius && Math.abs(chunkZ - otherZ) <= otherRadius)
+                    continue;
+                chunks.add(CoordConversion.chunkIndex(chunkX, chunkZ));
+            }
+        }
+        return chunks.toLongArray();
     }
 
     private boolean isOutOfClientRange(int chunkX, int chunkZ) {
@@ -1870,21 +1921,23 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
         // the chunk update limiter can hold a crossing back, and the two then disagree by a column
         // that would never be unloaded (REQ-M2-014)
         final int centerX = chunksLoadedByClient.blockX(), centerZ = chunksLoadedByClient.blockZ();
-        if (previousEffective < newEffective) {
-            // View distance expanded, send chunks
-            ChunkRange.chunksInRange(centerX, centerZ, newEffective, (chunkX, chunkZ) -> {
-                if (Math.abs(chunkX - centerX) > previousEffective || Math.abs(chunkZ - centerZ) > previousEffective) {
-                    chunkAdder.accept(chunkX, chunkZ);
-                }
-            });
-        } else {
-            // View distance shrunk, unload chunks
-            ChunkRange.chunksInRange(centerX, centerZ, previousEffective, (chunkX, chunkZ) -> {
-                if (Math.abs(chunkX - centerX) > newEffective || Math.abs(chunkZ - centerZ) > newEffective) {
-                    chunkRemover.accept(chunkX, chunkZ);
-                }
-            });
-        }
+        moveTicketRing(instance, centerX, centerZ, newEffective, () -> {
+            if (previousEffective < newEffective) {
+                // View distance expanded, send chunks
+                ChunkRange.chunksInRange(centerX, centerZ, newEffective, (chunkX, chunkZ) -> {
+                    if (Math.abs(chunkX - centerX) > previousEffective || Math.abs(chunkZ - centerZ) > previousEffective) {
+                        chunkAdder.accept(chunkX, chunkZ);
+                    }
+                });
+            } else {
+                // View distance shrunk, unload chunks
+                ChunkRange.chunksInRange(centerX, centerZ, previousEffective, (chunkX, chunkZ) -> {
+                    if (Math.abs(chunkX - centerX) > newEffective || Math.abs(chunkZ - centerZ) > newEffective) {
+                        chunkRemover.accept(chunkX, chunkZ);
+                    }
+                });
+            }
+        });
     }
 
     private void tellViewDistance(int viewDistance) {
@@ -2686,8 +2739,9 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
             final int newZ = newChunk.getChunkZ();
             final Vec old = chunksLoadedByClient;
             sendPacket(new UpdateViewPositionPacket(newX, newZ));
-            ChunkRange.chunksInRangeDiffering(newX, newZ, (int) old.x(), (int) old.z(),
-                    this.effectiveViewDistance(), chunkAdder, chunkRemover);
+            final int ringRadius = this.effectiveViewDistance();
+            moveTicketRing(instance, newX, newZ, ringRadius, () -> ChunkRange.chunksInRangeDiffering(newX, newZ,
+                    (int) old.x(), (int) old.z(), ringRadius, chunkAdder, chunkRemover));
             this.chunksLoadedByClient = new Vec(newX, newZ);
         }
     }

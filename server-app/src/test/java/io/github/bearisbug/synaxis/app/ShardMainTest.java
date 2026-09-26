@@ -65,6 +65,21 @@ public class ShardMainTest {
     }
 
     @Test
+    void aShardMountingAMapServesTheCoreMode() {
+        assertEquals(Map.of("synaxis.app.core-mode", "on"),
+                ShardMain.mapDefaults(Map.of("synaxis.map.root", "maps", "synaxis.map.build", "b")::get));
+    }
+
+    /** Without both map keys nothing is written; a core mode on the command line wins, and Main refuses it. */
+    @Test
+    void aShardWithoutAMapOrWithACoreModeKeepsItsCoreMode() {
+        assertEquals(Map.of(), ShardMain.mapDefaults(Map.<String, String>of()::get));
+        assertEquals(Map.of(), ShardMain.mapDefaults(Map.of("synaxis.map.build", "b")::get));
+        assertEquals(Map.of(), ShardMain.mapDefaults(Map.of("synaxis.map.root", "maps", "synaxis.map.build", "b",
+                "synaxis.app.core-mode", "auto")::get));
+    }
+
+    @Test
     void theCommandLineWinsForTransfers() {
         assertEquals(Map.of(), ShardMain.transferDefaults(
                 Map.of("synaxis.app.store", "postgres", "synaxis.accept-transfers", "false")::get));

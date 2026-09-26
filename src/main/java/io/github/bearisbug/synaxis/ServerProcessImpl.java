@@ -630,6 +630,15 @@ final class ServerProcessImpl implements ServerProcess, Registries.Delegating {
             }
             // Tick all chunks (and entities inside)
             dispatcher().updateAndAwait(nanoStart);
+            // Unload what nothing looks at any more, now that every tick thread is done with the tick
+            // (docs/DESIGN-M3.md API-M3-006)
+            for (Instance instance : instance().getInstances()) {
+                try {
+                    instance.unloadIdleChunks();
+                } catch (Exception e) {
+                    exception().handleException(e);
+                }
+            }
 
             // Clear removed entities & update threads
             // the nanoTimeout for refreshThreads is the remaining tick duration

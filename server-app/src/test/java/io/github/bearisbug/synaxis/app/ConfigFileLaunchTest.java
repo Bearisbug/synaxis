@@ -185,11 +185,11 @@ public class ConfigFileLaunchTest {
         }
     }
 
-    private static int id(ConnectionState state, Class<?> packet) {
+    static int id(ConnectionState state, Class<?> packet) {
         return PacketVanilla.SERVER_PACKET_PARSER.stateRegistry(state).packetInfo(packet).id();
     }
 
-    private static void send(SocketChannel channel, ConnectionState state, ClientPacket packet, int threshold)
+    static void send(SocketChannel channel, ConnectionState state, ClientPacket packet, int threshold)
             throws IOException {
         final NetworkBuffer framed = PacketWriting.allocateTrimmedPacket(state, packet, null, threshold);
         while (!framed.writeChannel(channel)) {
@@ -197,7 +197,7 @@ public class ConfigFileLaunchTest {
         }
     }
 
-    private static void readUntil(InputStream in, List<Frame> frames, int packetId) throws IOException, DataFormatException {
+    static void readUntil(InputStream in, List<Frame> frames, int packetId) throws IOException, DataFormatException {
         Frame frame;
         do {
             frame = compressedFrame(in);
@@ -212,7 +212,7 @@ public class ConfigFileLaunchTest {
      * @param compressed the bytes after the data length
      * @param packet     the packet id and body
      */
-    private record Frame(int dataLength, byte[] compressed, byte[] packet) {
+    record Frame(int dataLength, byte[] compressed, byte[] packet) {
         int packetId() throws IOException {
             return readVarInt(new ByteArrayInputStream(packet));
         }
@@ -234,14 +234,14 @@ public class ConfigFileLaunchTest {
         }
     }
 
-    private static byte[] frame(InputStream in) throws IOException {
+    static byte[] frame(InputStream in) throws IOException {
         final int length = readVarInt(in);
         final byte[] frame = in.readNBytes(length);
         if (frame.length < length) throw new EOFException("the server closed the connection");
         return frame;
     }
 
-    private static int readVarInt(InputStream in) throws IOException {
+    static int readVarInt(InputStream in) throws IOException {
         int value = 0;
         for (int shift = 0; ; shift += 7) {
             final int b;

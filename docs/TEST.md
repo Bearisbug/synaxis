@@ -14,6 +14,7 @@
 
 | 日期 | 改动 | 作者 |
 | --- | --- | --- |
+| 2026-09-26 | 跟进 `docs/DESIGN-PROD.md` v0.9.15（G1），修停机保存阶段的两处缺陷。**新增 §4「生产就绪 · RUN-038 后 G1 组：停机保存阶段里在途的登录与没进世界的玩家」七条 `TC-PROD-480`～`TC-PROD-486`**，除 TC-PROD-486 外每条都带实跑过的反证：在途的登录等完、获取完都不留写权（480，§19 场景；新类 `ShutdownLoginIntegrationTest`，修复前同一场景第二次载入返回 true、租约记在已释放的会话上；三处判定各一条反证）；冻结之后才准入的被拒、写权还回（481，`admitted` 改返回 boolean、`AdmissionGate` 记 `client_rejected`；两条反证）；准入与冻结同时发生（482，内存存储 100 轮；准入锁本身没有能稳定变红的反证，如实记在第 3 步）；保存阶段结束后不再写库（483，晚到的实体调度器快照、两种释放语句各一条反证，其中一条红在既有的 `ShutdownSaveIntegrationTest`）；没进世界的玩家在下一个 tick 以 `synaxis:server-stopping` 断开、在世界里的不断开（484，§19 场景；新类 `ShutdownSaveOutsideTheWorldIntegrationTest`）；真进程两种卡在 configuration 的客户端（485，§19 场景；新类 `ShutdownBeforeTheWorldLaunchTest`，修复后 0.42～0.49 s 退出，改回后 30.43 s、30.47 s）；回归（486）。**改 `TC-PROD-147` 第 2 步**：它要改的 `PlayerStore#orphan` 那一行变成了 `releaseQuietly(record.characterId);`，按新写法重写并重跑过，红行与信息不变。**改 `TC-PROD-460`、`TC-PROD-470` 第 2 步**：`AdmissionGate` 现在用 `admitted` 的返回值，「只回退实现」要连同 `AdmissionGate.java` 一起回退才编得过；两步都按新写法重跑过，红行与信息不变（470 这次 `stuck=31`）。§5 回归策略加一条。未登记执行轮次 | Bearisbug |
 | 2026-09-26 | 登记 RUN-038（最终修复提交的验收，证据 `docs/test-runs/RUN-038/`）；DESIGN-PROD 修复轮版本号定稿为 v0.9.14，本文件里的引用同步 | Bearisbug |
 | 2026-09-26 | 跟进 `docs/DESIGN-PROD.md` v0.9.14，RUN-037 之后审查出的三个缺陷。**新增 §4「生产就绪 · RUN-037 后修复轮：停机冻结与断线的交错、`profile` 与别的录制、管理消息的片数」三条**，都带实跑过的反证：`TC-PROD-470`（`REQ-PROD-008`，§19 场景；新类 `ShutdownSaveRaceIntegrationTest` 两条：持记录锁强制「断线在锁外查完、其间冻结、断线再判」的交错，与 16 名 configuration 玩家和冻结同时断开 200 轮；修复前的红写进第 2 步，反证：冻结不在锁里重查 `online`）、`TC-PROD-471`（`REQ-PROD-034`，§19 场景；`ProfilerTest` 新一条：另开 `default` 设置的录制时 `profile` 文件仍读不出该事件，`SYNAXIS_*` 的值逐字节不在文件里；两条反证：写文件不过滤、逐字节检查拦得住）、`TC-PROD-472`（`REQ-PROD-032`，§19 场景；新类 `ManagementFragmentCountIntegrationTest`；反证：不数片）。**改了三条旧用例**，改过的步骤都在本分支重跑过：`TC-PROD-392` 第 6 步 `ProfilerTest` 由 1 条变 2 条、改为看其中一条并加判「录制设置里该事件为 `false`」，第 7 步红行由 `ProfilerTest.java:36`（文件里 84 个事件）改为 `:46`（录制设置里该事件为 `true`；写文件时还会按事件名过滤，文件不再是这一步的判据）；`TC-PROD-395` 第 2 步红行 `ManagementServer.java:212` → `:215`（前面加了片数常量与注释）；`TC-PROD-460` 第 3～5 步的改动点随 `loggedOut` 改写（查停机登记挪进记录锁，接手写成锁后的 `if (!saveEnded) shutdownSnapshot(…)`），红行与消息不变。§5 加一行回归映射 | Bearisbug |
 | 2026-09-26 | 登记 RUN-037（第 6 波修复轮合入集成分支后的复验，证据 `docs/test-runs/RUN-037/`）。跟进 `docs/DESIGN-PROD.md` v0.9.13：本表与 §4、§5 里写的「v0.9（集成修复）」「v0.9.9（修复轮）」引用改为重编的版本号：集成修复 v0.9.9、F1（`TC-PROD-460`、`TC-PROD-461`）v0.9.10、F2（`TC-PROD-465`～`TC-PROD-469`）v0.9.11、F3（计数改正、`TC-GAME-034` 第 4 步、`TC-GAME-035` 改写）v0.9.12。用例判据一条没改 | Bearisbug |
@@ -3147,7 +3148,7 @@ jcmd "$pid" VM.flags | tr ' ' '\n' | grep -cxE -- '-XX:\+UseG1GC|-XX:InitialHeap
 | # | 操作 | 预期 |
 | --- | --- | --- |
 | 1 | 跑 `PlayerStoreIntegrationTest`，看 `aLogoutSaveTheDatabaseRejectsIsDroppedAndTheLeaseStillGoesBack` | 先 `saveNow` 存下 `coins = 3`（`version = 1`），再把 `note` 写成 70 KiB 并登出：`character_section` 的 `octet_length(data::text) <= 65536` 约束拒绝写入，重试到上限后租约为 NULL、`version` 仍是 1；`PlayerStore` 恰有一行 ERROR 含该 `character_id`；同一账号再登录成功，读到 3 |
-| 2 | 反证有齿：`PlayerStore#orphan` 里 `if (!saveEnded) releaseQuietly(record.characterId);` 改成 `if (!saveEnded && Boolean.getBoolean("proof.never")) releaseQuietly(record.characterId);`，只跑这一条，再还原 | 红：`not within 10 s: the lease goes back after the retries`。还原后复绿 |
+| 2 | 反证有齿：`PlayerStore#orphan` 里 `releaseQuietly(record.characterId);` 改成 `if (Boolean.getBoolean("proof.never")) releaseQuietly(record.characterId);`，只跑这一条，再还原（保存阶段结束后不释放的判断在 `releaseQuietly` 里，见 `TC-PROD-483`） | 红：`not within 10 s: the lease goes back after the retries`。还原后复绿 |
 
 后置：确认 `PlayerStore.java` 没有残留改动。
 
@@ -5723,7 +5724,7 @@ for (var request : System.getenv("MGMT_CALLS").split("\n")) {
 | # | 操作 | 预期 |
 | --- | --- | --- |
 | 1 | 跑本类 | `tests="3"` 0 失败 0 跳过。三条都是载入、`admitted`、`coins=6` 标脏的玩家，注册一个停机钩子。`aPlayerThatLeftInPlayBeforeItSpawnedIsSavedWhenTheTickReportsIt`：配置结束、排进进世界队列后断开，随即 `saveAll(30 s, true)`，此时断线事件还没派发、future 未完成；推进 tick 后 future 完成，断线事件恰派发 1 次，钩子恰 1 次（钩子写的 `note=hook` 与之前的 `coins=6` 一起落库），库里 `version=1`、`{"note": "hook", "coins": 6}`、租约为空，`shutdown_saved` 含 `online=1`、`saved=1`、`failed=0`、`timed_out=false`，存储放下该玩家。`aPlayerThatLeavesInConfigurationAfterTheSaveFrozeItIsSavedByItsDisconnect`：还在 configuration，`saveAll` 之后断开（断线事件当场派发），结果同上，段为 `{"note": "", "coins": 6}`。`aDisconnectReportedAfterTheSavePhaseWritesNothing`：`saveAll` 后不推进 tick 直接 `onSaveEnded(true)`，再断开并推进 5 个 tick：钩子 0 次，`version=0`、段为空、租约仍是本会话，没有 `save_fenced` |
-| 2 | 修复前的红：**只回退实现、保留测试**，`git checkout <修复提交>^ -- server-app/src/main/java/io/github/bearisbug/synaxis/app/store/PlayerStore.java`（`<修复提交>` 是改 `PlayerStore#loggedOut` 的那个提交，它的父提交是 `c4d9c4ad34`），跑本类，再 `git checkout HEAD -- <同一文件>` | `3 tests completed, 2 failed`：红在 `ShutdownSaveBeforeSpawnIntegrationTest.java:97` `not within 10 s: the tick that reports the disconnect takes the shutdown snapshot` 与 `:124` `not within 10 s: the disconnect takes the shutdown snapshot`；第三条绿（它守的是修复前就有的行为）。诊断时在同一回退下对第一条的场景多看了一步（临时代码，未提交；读数记在 `docs/DESIGN-PROD.md` §28.2 该行）：推进 20 个 tick 后断线事件已派发、钩子 0 次、库里 `version=0`，手动调一次该玩家的 `scheduler().processTick()` 保存立即完成，即快照一直排在从不执行的实体调度器上 |
+| 2 | 修复前的红：**只回退实现、保留测试**，`git checkout <修复提交>^ -- server-app/src/main/java/io/github/bearisbug/synaxis/app/store/PlayerStore.java`（`<修复提交>` 是改 `PlayerStore#loggedOut` 的那个提交，它的父提交是 `c4d9c4ad34`），跑本类，再 `git checkout HEAD -- <同一文件>`（v0.9.15（G1）起 `AdmissionGate` 用到 `PlayerStore#admitted` 的返回值，只回退这一个文件编不过：两条 `git checkout` 都把 `server-app/src/main/java/io/github/bearisbug/synaxis/app/AdmissionGate.java` 一起带上；这个文件在该父提交与 v0.9.15 之前相同，本组按这个写法重跑过，红行与信息不变） | `3 tests completed, 2 failed`：红在 `ShutdownSaveBeforeSpawnIntegrationTest.java:97` `not within 10 s: the tick that reports the disconnect takes the shutdown snapshot` 与 `:124` `not within 10 s: the disconnect takes the shutdown snapshot`；第三条绿（它守的是修复前就有的行为）。诊断时在同一回退下对第一条的场景多看了一步（临时代码，未提交；读数记在 `docs/DESIGN-PROD.md` §28.2 该行）：推进 20 个 tick 后断线事件已派发、钩子 0 次、库里 `version=0`，手动调一次该玩家的 `scheduler().processTick()` 保存立即完成，即快照一直排在从不执行的实体调度器上 |
 | 3 | 反证有齿（断开不接手停机快照）：`PlayerStore#loggedOut` 锁后那一段的 `if (!saveEnded) shutdownSnapshot(record, shutdownSave, true);` 改为 `if (!saveEnded && Boolean.getBoolean("proof.never")) shutdownSnapshot(record, shutdownSave, true);`，跑本类，再还原 | `3 tests completed, 2 failed`，红行与消息同第 2 步。还原后复绿 |
 | 4 | 反证有齿（保存阶段结束后仍写）：同一行改为 `if (!saveEnded \|\| !Boolean.getBoolean("proof.never")) shutdownSnapshot(record, shutdownSave, true);`，跑本类，再还原 | `3 tests completed, 1 failed`：红在 `:153` `no save hook after the save phase ==> expected: <[]> but was: <[Late]>`（断开时仍调钩子并写库）。还原后复绿 |
 | 5 | 反证有齿（接手时不调钩子）：同一行的 `shutdownSnapshot(record, shutdownSave, true);` 改为 `…, false);`，跑本类，再还原 | `3 tests completed, 2 failed`：红在 `:101` `the save hook runs once ==> expected: <[Hasty]> but was: <[]>` 与 `:127` `… expected: <[Early]> but was: <[]>`。还原后复绿 |
@@ -5825,7 +5826,7 @@ for (var request : System.getenv("MGMT_CALLS").split("\n")) {
 | # | 操作 | 预期 |
 | --- | --- | --- |
 | 1 | 跑本类 | `tests="2"` 0 失败 0 跳过（本机约 1.0～2.1 s）。`aDisconnectThatDecidesAfterTheFreezeTakesTheShutdownSnapshot`（PostgreSQL）：一名已准入、`coins=6` 标脏、还在 configuration 的玩家，注册一个停机钩子；测试线程持这名玩家的记录锁，另起平台线程断开它，等到该线程停在这把锁上（`ThreadMXBean` 读到 `BLOCKED` 且锁的持有者是测试线程），在锁里调 `saveAll(30 s, true)`，再放锁。停机保存完成，钩子恰 1 次（`[Racer]`），库里 `version=1`、`{"note": "", "coins": 6}`、租约为空，`shutdown_saved` 含 `online=1`、`saved=1`、`failed=0`、`timed_out=false`。`disconnectsAtTheSameTimeAsTheFreezeEndEveryRoundSaved`（内存存储）：200 轮，每轮新建一个存储、16 名已准入的 configuration 玩家各有脏段，16 个平台线程与调 `saveAll` 的测试线程在同一道栅栏上放行，边推进 tick 边等 2 s；断言恰为 `stuck=0 never_written=0 written_twice=0 ledger_wrong=0`：没有一轮停机保存 2 s 内没完成，每个角色 `version=1`，每轮 `shutdown_saved` 的 `failed=0` 且 `online` 等于钩子次数 |
-| 2 | 修复前的红：**只回退实现、保留测试**，`git checkout <修复提交>^ -- server-app/src/main/java/io/github/bearisbug/synaxis/app/store/PlayerStore.java`（`<修复提交>` 是改 `saveAll` 与 `loggedOut` 的那个提交，父提交 `a97fc30a76`），跑本类，再 `git checkout HEAD -- <同一文件>` | `2 tests completed, 2 failed`：`ShutdownSaveRaceIntegrationTest.java:97` `not within 10 s: the disconnect that decided after the freeze takes the shutdown snapshot`（断线在锁外查到还没冻结，进锁后看到 `saving` 直接返回，快照没人做）；`:177` `of 200 rounds of 16 disconnects at the same time as the freeze ==> expected: <stuck=0 never_written=0 written_twice=0 ledger_wrong=0> but was: <stuck=… …>`，`stuck` 至少 1（本机默认模式两次：16 与 23，`never_written` 为 0 与 1；4 线程严格 `grid` 一次：20，`never_written=1`）。用时约 44～59 s（卡住的轮次各等满 2 s） |
+| 2 | 修复前的红：**只回退实现、保留测试**，`git checkout <修复提交>^ -- server-app/src/main/java/io/github/bearisbug/synaxis/app/store/PlayerStore.java`（`<修复提交>` 是改 `saveAll` 与 `loggedOut` 的那个提交，父提交 `a97fc30a76`），跑本类，再 `git checkout HEAD -- <同一文件>`（v0.9.15（G1）起 `AdmissionGate` 用到 `PlayerStore#admitted` 的返回值，只回退这一个文件编不过：两条 `git checkout` 都把 `server-app/src/main/java/io/github/bearisbug/synaxis/app/AdmissionGate.java` 一起带上；这个文件在该父提交与 v0.9.15 之前相同，本组按这个写法重跑过，红行与信息不变） | `2 tests completed, 2 failed`：`ShutdownSaveRaceIntegrationTest.java:97` `not within 10 s: the disconnect that decided after the freeze takes the shutdown snapshot`（断线在锁外查到还没冻结，进锁后看到 `saving` 直接返回，快照没人做）；`:177` `of 200 rounds of 16 disconnects at the same time as the freeze ==> expected: <stuck=0 never_written=0 written_twice=0 ledger_wrong=0> but was: <stuck=… …>`，`stuck` 至少 1（本机默认模式两次：16 与 23，`never_written` 为 0 与 1；4 线程严格 `grid` 一次：20，`never_written=1`）。用时约 44～59 s（卡住的轮次各等满 2 s） |
 | 3 | 反证有齿（冻结时不在锁里重查 `online`）：`PlayerStore#saveAll` 里的 `if (record.state != LeaseState.ONLINE) continue;` 改为 `if (Boolean.getBoolean("proof.never") && record.state != LeaseState.ONLINE) continue;`，跑本类，再还原 | `2 tests completed, 1 failed`：只有 `:177` 红，`… but was: <stuck=99 never_written=0 written_twice=0 ledger_wrong=0>`（本机一次；断线在先、已开始登出保存的玩家又被登记一个永不完成的停机保存），用时约 3 分 20 秒；`:97` 那条绿 |
 | 4 | 还原后重跑第 1 步，再跑 `io.github.bearisbug.synaxis.app.store.ShutdownSaveBeforeSpawnIntegrationTest`、`io.github.bearisbug.synaxis.app.store.ShutdownSaveIntegrationTest` 与 `io.github.bearisbug.synaxis.app.store.PlayerStoreIntegrationTest` | 四个类 `tests="2"`、`tests="3"`、`tests="4"`、`tests="23"`，都 0 失败（`TC-PROD-460` 第 1 步、`TC-PROD-155` 第 1 步、`TC-PROD-214` 第 2 步不受影响） |
 
@@ -5855,6 +5856,106 @@ for (var request : System.getenv("MGMT_CALLS").split("\n")) {
 | 3 | 还原后重跑第 1 步，并跑 `ManagementIntegrationTest` | 与第 1 步相同；`ManagementIntegrationTest` `tests="13"` 0 失败（`TC-PROD-382` 第 1 步不受影响） |
 
 后置：确认 `ManagementServer.java` 没有残留改动。
+
+### 生产就绪 · RUN-038 后 G1 组：停机保存阶段里在途的登录与没进世界的玩家
+
+对应 `REQ-PROD-008`（§11.2 `active → closing` 与表下方一段，§11.3 `loading → online` 与 `loading → offline`，§11.4 `gate_closed → saving` 动作，§16「停机冻结与在途的登录」「停机保存与 `PlayerDisconnectEvent`」两行，§19「停机保存开始后在途的登录不取写权、不在停机保存之外进服」「卡在 configuration 不回答的客户端不拖住停机」两条场景），`docs/DESIGN-PROD.md` v0.9.15（G1），§28.2 已决两行。改动都在 `server-app`：`PlayerStore#loadWithin` 在两处等待（载入名额、同账号上一次登录离开）之后、顶号轮询每轮睡醒之后与获取语句返回之后重查 `closing`；`PlayerStore#admitted` 改为返回 boolean，与 `saveAll` 置 `closing` 共用一把准入锁，停机中返回 false、还写权、断线 `synaxis:state-unavailable`，`AdmissionGate` 据此记 `client_rejected` 后返回、不设出生实例；`saveAll(…, true)` 在下一个 tick 以 `synaxis:server-stopping` 断开被冻结、仍连着、不在任何实例里的玩家；排在实体调度器上的停机快照、`releaseQuietly` 与 `releaseUnused` 在保存阶段结束后都不做。
+
+测试：`:server-app` 新增三个类，`io.github.bearisbug.synaxis.app.store.ShutdownLoginIntegrationTest`（下称「本类」，5 条：4 条用 PostgreSQL，其中顶号那条还要 Valkey；1 条用内存存储）、`io.github.bearisbug.synaxis.app.store.ShutdownSaveOutsideTheWorldIntegrationTest`（下称「另一类」，3 条，PostgreSQL）与 `io.github.bearisbug.synaxis.app.ShutdownBeforeTheWorldLaunchTest`（2 条，各另起一个 `server-app` JVM）；`io.github.bearisbug.synaxis.app.PlayerDataIntegrationTest` 加 1 条（共 7 条）。`ConfigFileLaunchTest` 的 `id`、`send`、`readUntil`、`Frame`、`frame`、`readVarInt` 改为包内可见给真进程类用，行号不变。数据库前置同 3A 一节。「跑 `<类>`」即 `./gradlew :server-app:test --rerun --tests '<类>' --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts`，结果看 `server-app/build/test-results/test/TEST-<类>.xml`；反证一律是「临时改一处、跑、看红、还原、重跑复绿」，改法都写成 `Boolean.getBoolean("proof.never")`（恒为 false）的形式，红跑之后先把结果 XML 另存再复绿。
+
+#### `TC-PROD-480` 停机保存开始后，在途的登录等完、获取完都不留写权（§19 场景） — 对应 `REQ-PROD-008` · 级别: 回归 · 执行者: AI
+
+前置：数据库前置满足（含 Valkey）；工作副本干净。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑本类，看 `aLoginWaitingForTheSameAccountToLeaveIsRefusedOnceTheSavePhaseStarted`、`aLoginWaitingForALoadSlotTakesNoLeaseAndOneWhoseAcquireWasUnderWayGivesItBack`、`aLoginPollingForAnotherShardToLetGoTakesNoLeaseOnceTheSavePhaseStarted` | `tests="5"` 0 失败 0 跳过（本机约 1.6～4 s）。第一条：同账号的第一次登录已准入、`coins=5` 标脏，断开后登出保存停在写库途中；第二次登录开始载入，停在等它离开（线程 `TIMED_WAITING`）；`saveAll(30 s, true)` 当场完成（没人在线），`onSaveEnded(false)`，再放开那次写入。第二次载入返回 false、断线 `synaxis:state-unavailable`；获取语句共执行 1 次（第一次登录的），释放语句 0 次；库里 `version=1`、`{"note": "", "coins": 5}`、租约为空；在册 0 人；`shutdown_saved` 含 `online=0`、`saved=0`、`failed=0`。第二条（只有 1 个载入名额）：第一次登录的语句已执行、结果停在返回途中，第二次登录在等名额；`saveAll` 之后放开。两次载入都返回 false、都断线 `synaxis:state-unavailable`；第一次取得的租约已还（库里为空）；第二个账号的获取语句 0 次，库里没有这个角色。第三条（两分片，持有者 a 听不到顶号请求）：b 上的登录在顶号轮询里（获取语句已执行 ≥ 2 次）；b 执行 `saveAll` 与 `onSaveEnded` 之后，a 的玩家被踢、登出保存放掉写权。b 的载入返回 false、断线 `synaxis:state-unavailable`；保存阶段开始后 b 至多再执行 1 次获取语句；库里租约为空 |
+| 2 | 修复前的行为（等待之后、获取语句返回之后都不查 `closing`）：`PlayerStore#loadWithin` 里 `no lease taken (§11.2)` 注释下的 `if (closing) return refuse(player, STOPPING);` 与 `the lease goes back` 注释下的 `if (closing) {`，条件都加 `&& Boolean.getBoolean("proof.never")`；只跑第一条，再还原 | 红在 `ShutdownLoginIntegrationTest.java:122`：`refused: the shard stopped taking logins while it waited ==> expected: <false> but was: <true>`。修复前（`7ff65e40a8`）同一场景的读数（临时打印，未提交）：第二次载入返回 true，库里租约是已释放的会话 1，在册 1 人，获取语句 2 次 |
+| 3 | 反证有齿（等待之后不查）：只改第 2 步的第一处，跑本类，再还原 | `5 tests completed, 2 failed`：`:124` `the second login never reached the database ==> expected: <1> but was: <2>`，`:166` `the queued login never reached the database ==> expected: <0> but was: <1>`。获取语句返回之后那一处仍把租约还掉、载入仍返回 false，只是获取语句已经执行 |
+| 4 | 反证有齿（顶号轮询两轮之间不查）：`// Nor between two polls` 注释下的 `if (closing) return refuse(player, STOPPING);` 同样改，跑本类，再还原 | `5 tests completed, 1 failed`：`:208` `no lease on the released session ==> expected: <null> but was: <2>`。持有者放手后，b 以已释放的会话 2 取得写权；获取语句返回之后那一处这时保存阶段已结束，不再还 |
+| 5 | 反证有齿（获取语句返回之后不查）：只改第 2 步的第二处，跑本类，再还原 | `5 tests completed, 1 failed`：`:159` `its acquire was under way when the save phase started ==> expected: <false> but was: <true>` |
+| 6 | 还原后重跑第 1 步 | 与第 1 步相同 |
+
+后置：确认 `PlayerStore.java` 没有残留改动。
+
+#### `TC-PROD-481` 冻结之后才准入的登录被拒、写权还回，不在停机保存之外进服 — 对应 `REQ-PROD-008` · 级别: 回归 · 执行者: AI
+
+前置：数据库前置满足；工作副本干净。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑本类，看 `anAdmissionAfterTheFreezeIsRefusedAndGivesTheLeaseBack`；再跑 `io.github.bearisbug.synaxis.app.PlayerDataIntegrationTest`，看 `anAdmissionAnsweredAfterTheShutdownSaveStartedIsRefused` | 本类同 `TC-PROD-480` 第 1 步；`PlayerDataIntegrationTest` `tests="7"` 0 失败。第一条：一名已载入、`coins=3` 标脏、还没准入的玩家，注册一个停机钩子；`saveAll` 当场完成（载入中的不冻结），随后才调 `admitted`；推进 3 个 tick 后 `onSaveEnded(false)`。玩家被拒，断线 `synaxis:state-unavailable`、已离线，钩子 0 次；库里 `version=0`、段为空、租约为空；在册 0 人；`shutdown_saved` 含 `online=0`、`saved=0`、`failed=0`。第二条走宿主的 `AdmissionGate`：准入回调里先调 `saveAll`，再返回 `Accept`。玩家已离线；载入 1 次、释放 1 次；台账有 `client_rejected`，`reason` 为 `state-unavailable` |
+| 2 | 反证有齿（准入不看 `closing`）：`PlayerStore#admitted` 的 `stopping = closing;` 改为 `stopping = closing && Boolean.getBoolean("proof.never");`，跑本类与 `PlayerDataIntegrationTest`，再还原 | `12 tests completed, 3 failed`：`ShutdownLoginIntegrationTest.java:230` `refused: let in now it would play outside of the shutdown save ==> expected: <[synaxis:state-unavailable]> but was: <[]>`；`:322`（`TC-PROD-482` 那一条）；`PlayerDataIntegrationTest.java:251` `refused instead of playing outside of the shutdown save ==> expected: <false> but was: <true>` |
+| 3 | 反证有齿（宿主不理会存储的拒绝）：`AdmissionGate#admit` 的 `if (!store.admitted(player)) {` 改为 `if (!store.admitted(player) && Boolean.getBoolean("proof.never")) {`，跑 `PlayerDataIntegrationTest`，再还原 | `7 tests completed, 1 failed`：红在 `PlayerDataIntegrationTest.java:256`，台账里没有 `client_rejected`（断言信息是台账全文）；玩家照样被存储踢下线，`:251` 通过 |
+| 4 | 还原后重跑第 1 步 | 与第 1 步相同 |
+
+后置：确认 `PlayerStore.java`、`AdmissionGate.java` 没有残留改动。
+
+#### `TC-PROD-482` 准入与冻结同时发生：每名玩家要么随冻结存进停机保存，要么被拒 — 对应 `REQ-PROD-008` · 级别: 边缘 · 执行者: AI
+
+前置：工作副本干净（这一条用内存存储，不连数据库）。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑本类，看 `admissionsAtTheSameTimeAsTheFreezeAreEitherSavedWithItOrRefused` | 通过。100 轮，每轮新建一个存储、16 名已载入并有脏段的 configuration 玩家；16 个平台线程调 `admitted`，与调 `saveAll(30 s, true)` 的测试线程在同一道栅栏上放行，然后边推进 tick 边等保存完成且在册为 0（上限 2 s）。每名玩家只能是两种之一：准入在冻结之前的，随冻结进停机保存、因没进世界被保存阶段断开（`[synaxis:server-stopping]`），`version=1`；被拒的，断线 `[synaxis:state-unavailable]`，`version=0`。每轮 `shutdown_saved` 的 `online` 与 `saved` 都等于前一种的人数，在册为 0。本机两次读数（临时打印，未提交）：1,600 次准入里 1,583 与 1,589 次在冻结之前，17 与 11 次被拒 |
+| 2 | 反证有齿：`TC-PROD-481` 第 2 步的同一次运行 | 红在 `ShutdownLoginIntegrationTest.java:322`：`of 100 rounds of 16 admissions at the same time as the freeze (frozen=1586 refused=0): [version=0 kicks=[], ledger={… online=15, saved=15 …} loaded=1, …] ==> expected: <0> but was: <27>`（本机一次；此前另一次是 42）。冻结之后上线的玩家不在停机保存里：没被断开，也没写库，在册不为 0 |
+| 3 | 准入锁本身（记录在案，不是反证）：`PlayerStore#admitted` 里的 `synchronized (admissions)` 换成 `synchronized (new Object())`（不再与 `saveAll` 共享），跑这一条，再还原 | 绿（本机一次）。「读 `closing`」到「进记录锁」之间的窗口 100 轮碰不到，这把锁没有能稳定变红的反证；它的必要性见 `docs/DESIGN-PROD.md` §16「停机冻结与在途的登录」一行与 §28.2 该行 |
+| 4 | 还原后重跑第 1 步 | 与第 1 步相同 |
+
+后置：确认 `PlayerStore.java` 没有残留改动。
+
+#### `TC-PROD-483` 保存阶段结束后不再写库：晚到的实体调度器快照不做，释放语句不执行 — 对应 `REQ-PROD-008` · 级别: 回归 · 执行者: AI
+
+前置：数据库前置满足；工作副本干净。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑另一类，看 `aSnapshotWhoseTickComesAfterTheSavePhaseTakesNothing`；`TC-PROD-480` 第 1 步第一条的「释放语句 0 次」同属本条 | `tests="3"` 0 失败（本机约 0.6 s）。一名已在世界里、`coins=6` 标脏的玩家，注册停机钩子；`saveAll(30 s, true)` 之后不推进 tick，直接 `onSaveEnded(true)`，再推进 5 个 tick：钩子 0 次；库里 `version=0`、段为空、租约仍是本会话（随已释放的会话过期）；`saveAll` 的 future 没完成；这名玩家没被断开 |
+| 2 | 反证有齿（晚到的快照照做）：`PlayerStore#saveAll` 里 `// A tick late past the save phase takes nothing more` 下的 `if (!saveEnded) shutdownSnapshot(record, entry.getValue(), true);` 改为 `shutdownSnapshot(record, entry.getValue(), true);`，跑另一类，再还原 | `3 tests completed, 1 failed`：`ShutdownSaveOutsideTheWorldIntegrationTest.java:165` `no save hook after the save phase ==> expected: <[]> but was: <[Behind]>` |
+| 3 | 反证有齿（结束之后仍按账号释放）：`PlayerStore#releaseUnused` 开头的 `if (saveEnded) return;` 改为 `if (saveEnded && Boolean.getBoolean("proof.never")) return;`，跑本类，再还原 | `5 tests completed, 1 failed`：`ShutdownLoginIntegrationTest.java:125` `nothing is released past the save phase ==> expected: <0> but was: <1>` |
+| 4 | 反证有齿（结束之后仍按角色释放）：`PlayerStore#releaseQuietly` 开头的 `if (saveEnded) return;` 同样改，跑 `io.github.bearisbug.synaxis.app.store.ShutdownSaveIntegrationTest`、本类与另一类，再还原 | `12 tests completed, 1 failed`：红在既有的 `ShutdownSaveIntegrationTest.java:191` `no write left waiting ==> expected: <0> but was: <1>`（`TC-PROD-155` 那一条：保存阶段结束后放弃的登出保存又去执行释放语句，被测试持着的行锁挡住） |
+| 5 | 还原后重跑第 1 步与 `ShutdownSaveIntegrationTest` | 与第 1 步相同；`ShutdownSaveIntegrationTest` `tests="4"` 0 失败 |
+
+后置：确认 `PlayerStore.java` 没有残留改动。
+
+#### `TC-PROD-484` 保存阶段开始后的下一个 tick，没进世界的玩家以 `synaxis:server-stopping` 断开、由断线接手停机快照，在世界里的不断开（§19 场景） — 对应 `REQ-PROD-008` · 级别: 回归 · 执行者: AI
+
+前置：数据库前置满足；工作副本干净。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑另一类，看 `aPlayerStillConfiguringIsDisconnectedOnTheNextTickAndItsDisconnectSavesIt`、`aPlayerThatNeverAcknowledgesTheEndOfItsConfigurationIsDisconnectedAndSaved` | 同 `TC-PROD-483` 第 1 步的一次运行。第一条：两名已准入、`coins=6` 标脏的玩家，一名还在 configuration（客户端不回答 known packs 的那种），一名已进世界；停机钩子写 `note=hook`。`saveAll(30 s, true)` 返回时两人都还没被断开；推进 tick 到保存完成：configuration 那名断线 `[synaxis:server-stopping]`、已离线，世界里那名没被断开、仍在线；钩子各 1 次；两个角色都是 `version=1`、`{"note": "hook", "coins": 6}`、租约为空；`shutdown_saved` 含 `online=2`、`saved=2`、`failed=0`、`timed_out=false`。第二条：服务端写出 `FinishConfiguration`、连接进 PLAY，客户端不确认（玩家不排队进世界）；保存完成时它断线 `[synaxis:server-stopping]`，断线事件恰派发 1 次，钩子 1 次，`version=1`、租约为空，`online=1`、`saved=1`，存储放下这名玩家 |
+| 2 | 反证有齿（保存阶段不断开）：`PlayerStore#saveAll` 的 `if (tickAlive) process.scheduler().scheduleNextTick(this::disconnectOutsideTheWorld);` 改为 `if (tickAlive && Boolean.getBoolean("proof.never")) process.scheduler().scheduleNextTick(this::disconnectOutsideTheWorld);`，跑另一类，再还原 | `3 tests completed, 2 failed`：`:104` 与 `:135` 都是 `not within 10 s: the disconnect takes the snapshot of the player outside the world`；第三条通过 |
+| 3 | 反证有齿（连世界里的也断开）：`PlayerStore#disconnectOutsideTheWorld` 的 `if (player.isOnline() && player.getInstance() == null) player.kick` 去掉 `&& player.getInstance() == null`，跑另一类，再还原 | `3 tests completed, 2 failed`：`:109` `a player in the world is saved on its tick, not disconnected ==> expected: <[]> but was: <[synaxis:server-stopping]>`，`:170` `a player in the world is not disconnected ==> expected: <[]> but was: <[synaxis:server-stopping]>` |
+| 4 | 还原后重跑第 1 步 | 与第 1 步相同 |
+
+后置：确认 `PlayerStore.java` 没有残留改动。
+
+#### `TC-PROD-485` 真进程：客户端不回答 `SelectKnownPacks`，或收到 `FinishConfiguration` 后不确认，`stop` 都远在保存预算内退出、这名玩家照样存上（§19 场景） — 对应 `REQ-PROD-008` · 级别: 回归 · 执行者: AI
+
+测试以测试 classpath 另起 `Main`（沿用 `ConfigFileLaunchTest.Launched`）：`-Dsynaxis.app.log=stdout -Dsynaxis.app.auth=offline -Dsynaxis.app.core-mode=on -Dsynaxis.app.port=<空闲端口> -Dsynaxis.app.metrics.bind=127.0.0.1:0`，即核心模式、内存存储、离线；`stop` 写进它的 stdin。客户端是测试里的裸 socket，卡住之后照常回 keep-alive：不回的会在 15 s 时被 `synaxis:keep-alive-timeout` 踢掉（修复前本机一次 15.46 s 退出），测不到等满 30 s 的那种客户端。
+
+前置：工作副本干净；运行 Gradle 的 shell 有 `JAVA_TOOL_OPTIONS` 时子 JVM 继承，日志只多一行 `Picked up JAVA_TOOL_OPTIONS`。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `io.github.bearisbug.synaxis.app.ShutdownBeforeTheWorldLaunchTest` | `tests="2"` 0 失败（本机约 3 s）。两条都先握手、`LoginStart`、`LoginAcknowledged`，读到 `UpdateEnabledFeatures`（配置事件结束，玩家已载入、已准入）。`aClientThatNeverAnswersTheKnownPacksDoesNotHoldTheStop` 停在这里，不回答 `SelectKnownPacks`；`aClientThatNeverAcknowledgesTheEndOfItsConfigurationDoesNotHoldTheStop` 回答后读到 `FinishConfiguration`，不确认。之后两者都只回 keep-alive、保持连接，测试往 stdin 写 `stop`：10 s 内退出（本机两种各 5 次，0.42～0.49 s），退出码 0；日志有 `reason=synaxis:server-stopping`，没有 `The shutdown save did not complete within its budget` 与 `Not saved on shutdown`；台账 `shutdown_saved` 含 `"online":1`、`"saved":1`、`"failed":0`、`"timed_out":"false"` |
+| 2 | 反证有齿（真进程）：照 `TC-PROD-484` 第 2 步改 `PlayerStore.java`，跑本条的类，再还原 | `2 tests completed, 2 failed`，都红在 `ShutdownBeforeTheWorldLaunchTest.java:109` `stop took over 10 s`（信息是子 JVM 的日志全文），用时约 45 s。同一改动下把 10 s 临时放宽到 60 s 并打印用时（未提交）：不回答 known packs 的 30.43 s、不确认 `FinishConfiguration` 的 30.47 s，各记两行 ERROR `The shutdown save did not complete within its budget, going on with the shutdown.` 与 `Not saved on shutdown, its lease runs out with the session: character_id=1`，`reason=synaxis:server-stopping` 的断线发生在踢人阶段 |
+| 3 | 还原后重跑第 1 步 | 与第 1 步相同 |
+
+后置：确认 `PlayerStore.java` 没有残留改动；两个子 JVM 都已退出（`@TempDir` 由 JUnit 删掉）。
+
+#### `TC-PROD-486` 回归：既有的停机、载入、顶号与转服用例不受影响，改写过的那条孤儿保存反证仍有齿 — 对应 `REQ-PROD-005`、`REQ-PROD-008` · 级别: 回归 · 执行者: AI
+
+前置：数据库前置满足（含 Valkey）；工作副本干净。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 同一次运行跑 `io.github.bearisbug.synaxis.app.store` 下的 `ShutdownSaveBeforeSpawnIntegrationTest`、`ShutdownSaveIntegrationTest`、`ShutdownSaveRaceIntegrationTest`、`PlayerStoreIntegrationTest`、`CrossShardHandoverIntegrationTest`、`TransferTicketsIntegrationTest`，与 `io.github.bearisbug.synaxis.app.ConfigFileLaunchTest` | `tests="3"`、`"4"`、`"2"`、`"23"`、`"6"`、`"7"`、`"2"`，都 0 失败 0 跳过（`TC-PROD-460`、`TC-PROD-470`、`TC-PROD-155`、`TC-PROD-214` 第 2 步、`TC-PROD-442` 不受影响）。保存阶段开始后的下一个 tick 会断开仍连着、没进世界的玩家，这几类里这样的玩家都在那之前已自己断开，断言不变 |
+| 2 | `TC-PROD-147` 第 2 步（本组把它要改的那一行 `if (!saveEnded) releaseQuietly(record.characterId);` 改成了 `releaseQuietly(record.characterId);`，保存阶段结束的判断挪进 `releaseQuietly`；该步已按新写法改） | 红在 `PlayerStoreIntegrationTest.java:270`，`not within 10 s: the lease goes back after the retries`，与原预期相同；还原后复绿 |
+| 3 | 跑 `:server-app:test` 全量（数据库前置满足） | 344 个 0 失败 0 跳过（含本组新增 11 个） |
+
+后置：确认 `PlayerStore.java` 没有残留改动。
 
 ## 5. 回归策略
 
@@ -5895,6 +5996,7 @@ for (var request : System.getenv("MGMT_CALLS").split("\n")) {
   - 生产就绪域（`docs/DESIGN-PROD.md`）：第 6 波修复轮，没进世界的玩家赶上停机保存（`REQ-PROD-008`）→ TC-PROD-460、TC-PROD-461；动了 `PlayerStore` 的 `loggedOut`、`saveAll`、`shutdownSnapshot` 或 `onSaveEnded` 就跑 TC-PROD-460（要数据库前置）与 TC-PROD-155、TC-PROD-214 第 2 步，再动了停机序列（引擎 `ServerProcessImpl#save`、宿主 `ShutdownSequence`）加 TC-PROD-461（真进程，第 1 步约 1 分钟，第 2 步的反证约 5 分钟）。跨域牵连：动了引擎 `PlayerConnection#disconnect`、`ConnectionManager#leftBeforeSpawn` / `updateWaitingPlayers` 的断线派发 → 加 TC-PROD-460 与 TC-PROD-461。
   - 生产就绪域（`docs/DESIGN-PROD.md`）：管理消息的严格读法与布尔键（`REQ-PROD-032`、`REQ-PROD-033`，v0.9.11）→ TC-PROD-465～TC-PROD-469；动了 `ManagementMethods#parse`、`UniqueNamesReader` 或 `handle` 里读消息的一段就跑 TC-PROD-465、TC-PROD-466 与 TC-PROD-385（6B 的错误码）；动了 `ServerConfig#booleanProperty` 或给 `ServerConfig` 加、删布尔键就跑 TC-PROD-467～TC-PROD-469（TC-PROD-469 起两个 JVM，约 1 s），加、删布尔键时同步 `BooleanKeysTest` 的 15 个键与 `docs/DESIGN-PROD.md` `API-PROD-023` 键表的取值列；动了 `ConfigFileLaunchTest` 的 `Launched` 加跑 TC-PROD-442、TC-PROD-443 与 TC-PROD-469。升 Gson 版本时跑 TC-PROD-465、TC-PROD-466（`Strictness.STRICT` 与 `JsonElement` 适配器是否仍按本节的写法读）。
   - 生产就绪域（`docs/DESIGN-PROD.md`）：RUN-037 后修复轮（`REQ-PROD-008`、`REQ-PROD-034`、`REQ-PROD-032`，v0.9.14）→ TC-PROD-470～TC-PROD-472；动了 `PlayerStore` 的 `saveAll`、`loggedOut`，或别的在记录锁里改 `state` 的一处（`admitted`、`abandon`、`transferOut`），就跑 TC-PROD-470（要数据库前置；第 1 步约 2 s）与 TC-PROD-460；动了 `Profiler` 开录或写文件的一段跑 TC-PROD-471、TC-PROD-392 第 6、7 步与 TC-PROD-391；动了 `ManagementServer.BoundedDraft` 跑 TC-PROD-472 与 TC-PROD-382。升 JDK 时重跑 TC-PROD-471（`RecordingFile#write` 是否仍只写通过过滤的事件，JDK 自带设置是否仍开着 `jdk.InitialEnvironmentVariable`）；升 Java-WebSocket 时重跑 TC-PROD-472（库是否仍每片留一个缓冲、是否已自带片数上限）。
+  - 生产就绪域（`docs/DESIGN-PROD.md`）：RUN-038 后 G1 组，停机保存阶段里在途的登录与没进世界的玩家（`REQ-PROD-008`，v0.9.15（G1））→ TC-PROD-480～TC-PROD-486；动了 `PlayerStore` 的 `load` / `loadOrRefuse` / `loadWithin`、`admitted`、`abandon`、`releaseQuietly`、`releaseUnused`、`saveAll`、`disconnectOutsideTheWorld` 或 `onSaveEnded` 就跑 TC-PROD-480～TC-PROD-484（要数据库前置，TC-PROD-480 还要 Valkey）与 TC-PROD-460、TC-PROD-470；动了 `AdmissionGate` 的准入一段跑 TC-PROD-481；动了停机序列（引擎 `ServerProcessImpl#save`、宿主 `ShutdownSequence`、`Main` 的 `stop`）或 `ConfigFileLaunchTest` 的 `Launched` 与协议帮手加 TC-PROD-485（两个子 JVM，约 3 s；第 2 步的反证约 45 s）。跨域牵连：动了引擎 `ConnectionManager#doConfiguration` 的两处等待、`PlayerConnection#disconnect` 或 `updateWaitingPlayers` 的断线派发 → 加 TC-PROD-484、TC-PROD-485；改 `synaxis.known-packs-response-timeout` 的默认值或 keep-alive 的踢人时限 → 重看 TC-PROD-485 前言里「不回 keep-alive 的 15 s 被踢」一句。
   - 影响面不确定时升级为全量轮。
 - **复测轮**（上轮失败用例 + 全部冒烟级）：修复失败项之后。
 - **人工收口轮**（仅上轮「待人工」用例）：AI 轮之后由人工补测 TC-016、TC-030、TC-GAME-020、TC-GAME-038、TC-GAME-046、TC-GAME-047，不要求冒烟级。

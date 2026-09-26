@@ -68,6 +68,7 @@ public final class PlayerStore implements ShutdownParticipant {
     private static final Logger LOGGER = LoggerFactory.getLogger(PlayerStore.class);
     private static final int DEFAULT_AUTOSAVE_SECONDS = 60;
     private static final long SAVE_ONLINE_BUDGET_SECONDS = 10;
+    private static final String STOPPING = "the shard is stopping";
 
     /**
      * The budgets of §17 {@code store.load} and {@code store.autosave}.
@@ -156,6 +157,9 @@ public final class PlayerStore implements ShutdownParticipant {
     private long autosaveCredit;
     private volatile @Nullable ShardSession session;
     private volatile StoreMetrics metrics = StoreMetrics.NONE;
+    // Guards the flip of closing against an admission: a player is either let in before the
+    // shutdown save freezes everybody, and frozen with them, or refused (§11.2 closing)
+    private final Object admissions = new Object();
     private volatile boolean closing;
     // Set once the shutdown save phase is over: a write still retrying is given up
     private volatile boolean saveEnded;
@@ -347,6 +351,8 @@ public final class PlayerStore implements ShutdownParticipant {
      * login of the account is loading, {@link #load} lets one in at a time.
      */
     private void releaseUnused(UUID account) {
+        // Past the shutdown save the session is released: its expiry gives the lease back
+        if (saveEnded) return;
         for (Record record : records.values()) if (record.account.equals(account)) return;
         try {
             backend.releaseAccount(account, sessionId());
@@ -388,6 +394,9 @@ public final class PlayerStore implements ShutdownParticipant {
                 return refuse(player, "the previous session of this account did not let go in time");
             }
         }
+        // The shutdown save may have started while this login waited for its load slot or for the
+        // previous login of its account: from then on no ticket is claimed, no lease taken (§11.2)
+        if (closing) return refuse(player, STOPPING);
         if (claim != null && !claim.getAsBoolean()) return false;
         boolean kickRequested = false;
         StoreBackend.LoadOutcome.Acquired acquired;
@@ -422,12 +431,19 @@ public final class PlayerStore implements ShutdownParticipant {
                 Thread.currentThread().interrupt();
                 return refuse(player, "interrupted");
             }
+            // Nor between two polls: the holder may let go after the shutdown save started
+            if (closing) return refuse(player, STOPPING);
         }
         final Record record = new Record(player, account, acquired.characterId(), acquired.version());
         final String undecodable = decode(record, acquired.sections());
         if (undecodable != null || remaining(deadline) <= 0) {
             releaseQuietly(record.characterId);
             return refuse(player, undecodable != null ? undecodable : "the load took longer than its budget");
+        }
+        // The shutdown save started while the acquire was under way: the lease goes back
+        if (closing) {
+            releaseQuietly(record.characterId);
+            return refuse(player, STOPPING);
         }
         if (acquired.previousSession() != null) takeover(record, acquired.previousSession(), acquired.lastSavedAt());
         records.put(player, record);
@@ -469,20 +485,36 @@ public final class PlayerStore implements ShutdownParticipant {
     }
 
     /**
-     * {@code loading → online}: the admission provider let the player in.
+     * {@code loading → online}: the admission provider let the player in. Once the shutdown save
+     * has started the player is refused instead ({@code loading → offline}): the save froze
+     * everybody online without it, so it would play and be written outside of that save.
      *
      * @param player the player
+     * @return false if the player was refused, which kicked it; true otherwise, also when there
+     *         was nothing to let in because the player had already left
      */
-    public void admitted(Player player) {
+    public boolean admitted(Player player) {
         final Record record = records.get(player);
-        if (record == null) return;
-        synchronized (record) {
-            // Abandoned meanwhile by its logout
-            if (record.state != LeaseState.LOADING) return;
-            record.state = LeaseState.ONLINE;
+        if (record == null) return true;
+        final boolean stopping;
+        synchronized (admissions) {
+            stopping = closing;
+            if (!stopping) {
+                synchronized (record) {
+                    // Abandoned meanwhile by its logout
+                    if (record.state != LeaseState.LOADING) return true;
+                    record.state = LeaseState.ONLINE;
+                }
+            }
+        }
+        if (stopping) {
+            if (!abandon(record)) return true;
+            refuse(player, STOPPING);
+            return false;
         }
         autosaveOrder.add(record);
         redis.presence(record.account, sessionId(), "online");
+        return true;
     }
 
     /**
@@ -914,8 +946,7 @@ public final class PlayerStore implements ShutdownParticipant {
     private void orphan(Record record) {
         LOGGER.error("Dropping the logout save of character_id={}: it could not be written within {} s. The last "
                 + "saved version stands.", record.characterId, options.giveUpAfter().toSeconds());
-        // Past the shutdown save the session is released: its expiry gives the lease back
-        if (!saveEnded) releaseQuietly(record.characterId);
+        releaseQuietly(record.characterId);
         finished(record, LeaseState.ORPHANED);
     }
 
@@ -927,6 +958,8 @@ public final class PlayerStore implements ShutdownParticipant {
     }
 
     private void releaseQuietly(long characterId) {
+        // Past the shutdown save the session is released: its expiry gives the lease back
+        if (saveEnded) return;
         try {
             backend.release(characterId, sessionId());
         } catch (SQLException e) {
@@ -1042,7 +1075,9 @@ public final class PlayerStore implements ShutdownParticipant {
     @Override
     public CompletableFuture<?> saveAll(Duration budget, boolean tickAlive) {
         if (!closing) {
-            closing = true;
+            synchronized (admissions) {
+                closing = true;
+            }
             shutdownStartedNanos = System.nanoTime();
             final ShardSession current = this.session;
             if (current != null) current.beginClosing();
@@ -1056,11 +1091,15 @@ public final class PlayerStore implements ShutdownParticipant {
                 }
             }
             shutdownOnline = shutdownSaves.size();
+            if (tickAlive) process.scheduler().scheduleNextTick(this::disconnectOutsideTheWorld);
         }
         for (Map.Entry<Record, CompletableFuture<SaveResult>> entry : shutdownSaves.entrySet()) {
             final Record record = entry.getKey();
             if (tickAlive) {
-                record.player.scheduler().scheduleNextTick(() -> shutdownSnapshot(record, entry.getValue(), true));
+                record.player.scheduler().scheduleNextTick(() -> {
+                    // A tick late past the save phase takes nothing more
+                    if (!saveEnded) shutdownSnapshot(record, entry.getValue(), true);
+                });
             } else if (!record.shutdownSnapshot.get()) {
                 if (directSnapshotWarned.compareAndSet(false, true))
                     LOGGER.warn("The tick is stuck: the shutdown save reads the players' data on the shutdown thread, "
@@ -1069,6 +1108,20 @@ public final class PlayerStore implements ShutdownParticipant {
             }
         }
         return CompletableFuture.allOf(shutdownSaves.values().toArray(CompletableFuture[]::new));
+    }
+
+    /**
+     * Disconnects every frozen player that is in no instance, on the tick scheduler thread: nothing
+     * ticks it, so the snapshot handed to its scheduler would wait for a client that may never
+     * finish its configuration. Its disconnect takes the snapshot instead ({@link #loggedOut}), on
+     * this thread for a player still configuring, on this tick's {@code updateWaitingPlayers} for
+     * one in the play state.
+     */
+    private void disconnectOutsideTheWorld() {
+        for (Record record : shutdownSaves.keySet()) {
+            final Player player = record.player;
+            if (player.isOnline() && player.getInstance() == null) player.kick(DisconnectReasons.SERVER_STOPPING);
+        }
     }
 
     private void shutdownSnapshot(Record record, CompletableFuture<SaveResult> done, boolean runHooks) {

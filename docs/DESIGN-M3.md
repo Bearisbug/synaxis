@@ -8,8 +8,8 @@
 | 项目画像 | 生产产品（与 `docs/DESIGN-M2.md` §1 相同：交付的是面向真实玩家的 MMO 服务端；按生产产品填全部 `[核心]` 节。可观测性与埋点仍落本地文件，外部依赖是 PostgreSQL、Valkey 8（Redis 兼容，只放可丢数据）与分发高度场包的 CDN） |
 | Owner | Bearisbug |
 | 评审人 | Bearisbug |
-| 最后更新 | 2026-09-25 |
-| 关联 | 引擎单一事实源 `docs/DESIGN.md` · M2 分册 `docs/DESIGN-M2.md`（§15、§28.2、§28.3） · 技术路线报告 `docs/research/large-world-2026-09/README.md`（下称「路线报告」，第 4 节与第 8.1 节的数字已被基准重测取代） · 远景与光影备忘录 `docs/research/large-world-2026-09/far-view-vs-iris.md`（下称「远景备忘录」） · 存储对比 `docs/research/large-world-2026-09/storage-options.md`（下称「存储对比」） · 基准重测 `docs/research/large-world-2026-09/bench-2026-09.md`（下称「基准重测」） · DH spike `docs/research/client-spikes-2026-09/dh-iris/README.md` · 生产就绪分册 `docs/DESIGN-PROD.md`（v0.8.2；其输入草案在 `docs/research/production-readiness-2026-09/`，本文档不再引用草案） · 测试文档 `docs/TEST.md` · 仓库 `https://github.com/Bearisbug/synaxis` |
+| 最后更新 | 2026-09-27 |
+| 关联 | 引擎单一事实源 `docs/DESIGN.md` · M2 分册 `docs/DESIGN-M2.md`（§15、§28.2、§28.3） · 技术路线报告 `docs/research/large-world-2026-09/README.md`（下称「路线报告」，第 4 节与第 8.1 节的数字已被基准重测取代） · 远景与光影备忘录 `docs/research/large-world-2026-09/far-view-vs-iris.md`（下称「远景备忘录」） · 存储对比 `docs/research/large-world-2026-09/storage-options.md`（下称「存储对比」） · 基准重测 `docs/research/large-world-2026-09/bench-2026-09.md`（下称「基准重测」） · DH spike `docs/research/client-spikes-2026-09/dh-iris/README.md` · 生产就绪分册 `docs/DESIGN-PROD.md`（v0.9.14；其输入草案在 `docs/research/production-readiness-2026-09/`，本文档不再引用草案） · 测试文档 `docs/TEST.md` · 仓库 `https://github.com/Bearisbug/synaxis` |
 
 本文档是 `docs/DESIGN.md` 的第二个里程碑分册，写法与防腐坏机制沿用 `docs/DESIGN-M2.md` §24 最后一条：只管 M3 新增的东西，引擎侧与 M2 侧的事实一律用「见 `docs/DESIGN.md` §N」「见 `docs/DESIGN-M2.md` §N」引用。ID 独立编号：需求 `REQ-M3-*`、接口 `API-M3-*`、决策 `ADR-M3-*`、Runbook `RB-M3-*`；实体 `ENT-*`、页面 `PAGE-*`、事件 `EVT:*` 用语义命名，名字与 M1、M2 已有的不重复（已核对 `ENT-Map`、`ENT-NavGrid`、`ENT-Match` 等 M2 名字未被复用）。
 
@@ -46,6 +46,7 @@
 
 | 日期 | 版本 | 改动 | 作者 |
 | --- | --- | --- | --- |
+| 2026-09-27 | v0.11 | 把 M3-C「流送与内存」修订到可以直接照着实现，逐项对照了引擎、`:synx`、`:baker`、`server-app` 的现有代码。**停机**：`API-M3-007` 停机段按 `docs/DESIGN-PROD.md` v0.9.14 `API-PROD-007` 重写：分片宿主路径在创建覆盖存储处调 `ShutdownSequence#addAfterPlayers("overlay", overlay::finalFlush)`，RTS 路径不注册；与玩家共用 `saving` 预算，自身上限 min(2 s, 剩余预算)；`tickAlive=true` 只把最终落盘请求投给 tick 末尾写入阶段、不阻塞，`false` 由停机线程直接执行；写入权 CAS 保证最终落盘恰一方执行；落盘之后的改方块不保证落盘。§28.2 那条 Open Question 转已决，§11.1、§16、§17 同步，新增 §12.5 时序。**接口**：`API-M3-005`～`API-M3-007` 重写：类在 `:synx` 的 `io.github.bearisbug.synaxis.synx` 包，`SynxChunk` 继承 `DynamicChunk`、模式原地切换（`ADR-M3-016`）；`OverlayIndex` / `OverlayChunk` / `OverlayTracker` 契约；`view_bounds` 改为外扩 17；加载结果表；只读沿用引擎语义；运行期解码不构造 `ChunkDataPacket`；物化的时机与线程；静态实体在 `onLoad` 生成；`BufferedPacket` 加 `sheddable` 分量，区块包不被出站积压丢掉（`ADR-M3-018`）；模拟距离外只跳过 tick 体、分区与实体调度器照常，与 6E 休眠的先后（`ADR-M3-017`）；票据跟随区块环状态；卸载判定在全部 tick 线程之后跑，`Chunk#readyToUnload()` 让脏区块先落盘；分片宿主的挂地图模式（两个 `synaxis.map.*` 键、`ShardWorld` 在 `Main` 三处接入、拒启规则、出生点、世界边界、`core-mode=on`）；覆盖存储的 tick 末尾写入阶段（编码池、20 ms 编码等待）、读写方式、空洞与截尾规则、重启开新段。**配置键**：八个 `synaxis.*` 键与读取处（`ShardSettings`、`SynxOptions`、`OverlayOptions`）；`shard.simulation-distance`、`shard.unload-grace-ticks` 改为 `synaxis.simulation-distance`、`synaxis.chunk-unload-grace-ticks`（配置文件只收键表里的键），`synaxis.overlay-cap` 改为 `synaxis.overlay.cap`；§9 补 `idle_ticks`、`simulated`（取代 `sim_refcount`）、`relight_pending`、`overlay_resident`、`map_root`。**数字**：引擎的区块环半径是视距 + 1，§2 视野由 625 改为 729 区块，近圈下行、分片出站、区块吞吐、加密 CPU 与 §15 带宽行按新环重算，压测模型按机器人绕圆走修正（步行 13.9、坐骑 32.3 KB/s）。**门禁**：§24 加配置键门禁与翻译键门禁两条（后者是该分册 §28.3 登记给本分册的一行）；处理器清单由烘焙器与分片共用 `SynxHandlers.registerAll`，烘焙器退出码 1 加「处理器同键」。**验收**：§19 为 `REQ-M3-008`～`REQ-M3-011`、`REQ-M3-014` 重写并新增场景，覆盖 §26 M3-C 的退出条件；`REQ-M3-002` 两条改为进程拒启口径；`REQ-M3-022` 加四条。**排期**：§26 M3-C 行写全退出条件，新增第 0 步契约骨架、四条并行轨道与合并验收。**§28.1** 新增数据标记处理器、静态实体还原范围、出生点、只读区块反应四项并给默认值；**§28.2** 新增挂地图分片不加载插件、交给生产就绪会话的改动两行 | Bearisbug |
 | 2026-09-25 | v0.10 | 按用户 2026-09-25 拍板收尾 M3-B（`docs/TEST.md` RUN-034）。**世界高度**：§28.1「编辑源世界高度」转已决（选 ①）：烘焙器按 256 格窗口读 Anvil 源，新增命令行 `--min-y`（默认 −64、16 的倍数，与生成器源同给或不是 16 的倍数退出码 1），窗口外有非空气方块、方块实体或静态实体即退出码 2，信息带区块坐标、越界 y 与窗口范围；默认值的理由写进 `API-M3-003` Anvil 源条。§1 Q7 行、`REQ-M3-020`、`API-M3-001` 头部 `height` 行、`API-M3-003`（命令行、Anvil 源条、退出码 2）同步，§19 新增「Anvil 源按 256 格窗口烘焙」「高度窗口外有内容即拒绝」两条场景；§26 与 §28.2 的真实 Anvil 地形改按 256 格窗口。**超过 256 种状态**：§28.1 转已决，维持拒绝（退出码 3，信息带区块与 section 坐标，已有断言）。**`fullyLit`**：`LightingChunk.relight` 改走 `LightEngine` 后不再设全亮标记，`REQ-M3-028` 与 §5 末表 ⑦ 写明修复只在懒读路径（`Instance#getSkyLight` → `relightSection` → `SkyLight`）生效；§19 该场景改为先经懒读路径把 section 标为全亮，再放石头。**ArchUnit**：§24 加 `:architecture-tests` 的 `LightEngineArchitectureTest`（烘焙侧用到的 `instance.light` 类型不得引用 `Instance`）。§28.2「`docs/ENGINE.md` 目录地图」转已决；「CI 还没跑过冻结 zlib 开关」按 `5be385bd54` 的 CI 结果转已决，§26 M3-B 行删去该遗留项 | Bearisbug |
 | 2026-09-25 | v0.9 | M3-A 剩余项与 M3-B 落地后按实现同步（`docs/TEST.md` RUN-033）。**光照引擎**：`REQ-M3-004` 标已落地；`API-M3-004` 写明缺失区块不传光、`MAX_SECTIONS = 2^19` 上限、`LightResult` 共享常量不得写、规则只取自 `LightBlocks`（含天光边）、`relight` 的快照与分块做法及「调用期间不改方块」前置条件、版本文件在引擎资源里；§5 末表 ② 改为 `relight` 已不持实例锁，⑥ 改为 M3-D 前置已满足（`flushQueue` 只剩 `relightSection` 可达），§2 非目标、`REQ-M3-012`、§26 M3-D 同步；§16 加 `relight` 与 `setBlock` 并发一行。**格式**：`REQ-M3-001`、`REQ-M3-002` 标已落地（校验函数在 `:synx`，起服接线随 M3-C）；`API-M3-001` 补 `registry_digest` 文本、`crc32c` 覆盖段长表、对齐填充与 `payload_sha256` 范围、段① 规范形为 `setAll` 后 `optimize(SIZE)`、最短 VarInt 与包 id 常量、段③ 为带头 zlib 流且 NBT 键排序、`compression_threshold ≥ 1`、暂存文件加硬链接的写入语义、`open` 不核对文件名；`API-M3-002` 补 `content_hash` 算法、`bounds` 键、小写 hex、整数不许带小数与起服校验顺序；§14 新增 `synx-truncated`、`synx-world-mismatch`、`synx-manifest`。**烘焙器**：`REQ-M3-003`、`REQ-M3-020`～`REQ-M3-022` 标已落地；`API-M3-003` 按实际命令行（`--bounds`、`--dimension`、`--logs`、`--samples`，退出码 1）、Anvil 源的拒绝清单、生成器预设与 `fork` 拒绝、标记规则与 handler 来自 `ServiceLoader`、工作目录与发布步骤、`verify` 的摘要与抽样重烘、源光照对拍不计标记格、每线程 256 MB、整文件确定性重写；§11.2 把「输出目录已存在」守卫从 `[*] → baking` 移到 `verifying → published`，新增 `verifying → failed`（同名版本已发布，退出码 5）；§6 模块段写明已落地部分与 `:baker` 依赖，内部面表加 `GeneratorImpl`（只给 `:baker`）；§4 烘焙源改写、新增「已过对拍版本文件」。**数字**：§2 烘焙与磁盘行、§15 烘焙行写入 4k×4k 合成图实测。**§19**：损坏向量改为 8 个；清单不符、源实体、标记映射三条写明 M3-B 验到哪一半；并行等于串行改为整文件相同；新增 `fork`、超过 256 种状态、光照版本未过对拍、同一输入重烘、缺失区块不传光、源光照对拍不计标记六条。**§24**：向量门改为 zlib 指纹门加 CI 开关；光照门禁写明版本文件路径、指纹覆盖的四部分与只增不改；ArchUnit 与内部面名单写明落地位置；覆盖率门含 `:synx`、`:baker`。**§26**：M3-A、M3-B 标已完成并列出留给后续阶段的项。**§28**：§28.1 新增世界高度 384 对 256 与超过 256 种状态两项待拍板；§28.2 新增 CI 冻结 zlib、游戏侧 handler 未登记、烘焙器缺三个子命令、`docs/ENGINE.md` 目录地图四项，「跨区块写入与调色板顺序」转已决 | Bearisbug |
 | 2026-09-24 | v0.8 | `ShardMain` 写入 `API-M3-006` 分片宿主设置表里可直接设的四项，都在 `Main` 读取之前写、命令行显式给的值优先，线程两项不变：`ShardMain#viewDefaults` 写 `synaxis.chunk-view-distance=12`、`synaxis.chunk-queue.max-per-tick=4`、`synaxis.max-visible-entities-per-player=100`；`ShardMain#transferDefaults` 只在 `synaxis.app.store=postgres` 时写 `synaxis.accept-transfers=true`，内存存储不写（无条件写会让 `docs/DESIGN-PROD.md` 第 5 波那种内存存储、无票据密钥的压测分片起不了服；PostgreSQL 存储缺密钥时仍由 `Main` 拒启）。§4 分片宿主术语、`API-M3-006`（设置段、接收转入行与表后说明）、`API-M3-009` 现状段、`API-M3-010` 接收转入段同步。视距行的「大于 16 拒启」校验与模拟距离一起随 M3-C 加。§28.2「`ShardMain` 只写了线程两项」技术债改为「分片设置没写全」，记下四项已落地、模拟距离与卸载宽限待 M3-C，并写明 `docs/DESIGN-PROD.md` §28.2 那条待办由此完成、该分册的改写交给生产就绪会话 | Bearisbug |
@@ -95,14 +96,14 @@
 | 地图尺寸 | 内测档：4,096×4,096 格 = 65,536 区块（1 个大区）。正式档：32,768×32,768 格 = 4,194,304 区块，切成 64 个 4k×4k 大区 | 路线报告 §4.2、§4.3。正式档尺寸是技术上限，内容产能未评估（§28.2） |
 | 世界高度 | 256 格（16 个 section） | Q7 |
 | 区块包体 B（压缩后含光照，均值） | 默认 1,502 B/区块；区间 583 B（实心地下）～2,582 B（高 384） | 基准重测 §3.1、§6。块光为 0（地形没有光源方块），美术地图的火把、岩浆、方块实体会让包体变大，幅度未测。第一张美术地图实测（存储对比 T1）与 1,502 B 偏差超过 ±20% 时重算本表 |
-| 视距 / 模拟距离 | 视距 12（上限 16），视野 (2·12+1)² = 625 区块；模拟距离 4，81 区块 | 路线报告 §3.3 |
-| 每玩家近圈下行 | 进场 625 × B ≈ 0.94 MB；步行 4.317 格/s → 6.75 区块/s ≈ 10.1 KB/s；坐骑 10 格/s → 15.6 区块/s ≈ 23.5 KB/s；飞行 30 格/s → 46.9 区块/s ≈ 70.4 KB/s | 新进视野区块数 (2r+1)·v/16（`ChunkRange.java:14-17`，视野是正方形）× B；基准重测 §6.1 |
-| 实体下行 | 14.5～32.5 KB/s/人 | soak-2026-09-22，50 人 × 1,000～4,000 单位（RTS 口径）。**不是 MMO 主城上界**：主城可见对数按 n² 增长，没有模型（§28.2）。包体变小后实体流量是出站的大头：默认档步行时近圈只占 24% |
-| 分片出站 | 200 人：步行 8.5 MB/s（68 Mbit/s），全员骑乘 11.2 MB/s（90 Mbit/s）；500 人：步行 21.3 MB/s（171 Mbit/s），骑乘 28.0 MB/s（224 Mbit/s） | (近圈 + 32.5 KB/s 实体) × 人数，基准重测 §6.1、§6.2。千兆网卡够用；超过 800 Mbit/s 需重估网卡与频道上限 |
-| 区块吞吐 | 500 人 3.4k～7.8k 区块/s，全部是 mmap 读 + 内存拷贝（5.1～11.7 MB/s） | 500 × 6.75～15.6 区块/s × 1,502 B |
-| 区块发送上限 | 引擎默认 64 区块/tick = 1,280 区块/s（`ServerConfig.maxChunksPerTick`，属性 `synaxis.chunk-queue.max-per-tick`）；分片宿主把同一属性写成 4，即 80 区块/s，高于飞行档的 46.9 区块/s | 存储对比 §4 口径更正；`docs/DESIGN-PROD.md` `API-PROD-020`。正常速率由客户端 `ChunkBatchReceived` 回报决定，回报被夹到这个上限，流控不改 |
+| 视距 / 模拟距离 | 视距 12（上限 16）；引擎发区块的环半径是视距 + 1 = 13，视野 (2·13+1)² = 729 区块；模拟距离 4，81 区块 | 路线报告 §3.3。环多一圈是引擎行为：`Player#effectiveViewDistance` = min(客户端, 实例, 玩家上限) + 1，`EntityTrackerImpl` 的区块观察者按同一半径算。基准重测 §6.1 的进场行与 `docs/DESIGN-PROD.md` §28.2 区块上限一行按 625 区块算，比实际少 14% |
+| 每玩家近圈下行 | 进场 729 × B ≈ 1.09 MB。沿坐标轴直线移动：步行 4.317 格/s → 7.28 区块/s ≈ 10.9 KB/s；坐骑 10 格/s → 16.9 区块/s ≈ 25.3 KB/s；飞行 30 格/s → 50.6 区块/s ≈ 76.0 KB/s。压测机器人绕圆走（`:loadtest` 的 `Profile`），每秒跨区块边界的次数是直线的 4/π 倍：步行 ≈ 13.9 KB/s，坐骑 ≈ 32.3 KB/s | 每跨一次区块边界新进视野 2r+1 = 27 个区块（`ChunkRange#chunksInRangeDiffering`，视野是正方形），直线每秒跨 v/16 次，绕圆每秒跨 (\|vx\|+\|vz\|)/16 次、平均 4v/(16π) 次；× B；基准重测 §6.1 |
+| 实体下行 | 14.5～32.5 KB/s/人 | soak-2026-09-22，50 人 × 1,000～4,000 单位（RTS 口径）。**不是 MMO 主城上界**：主城可见对数按 n² 增长，没有模型（§28.2）。包体变小后实体流量是出站的大头：默认档直线步行时近圈只占 25% |
+| 分片出站 | 200 人：步行 8.7 MB/s（70 Mbit/s），全员骑乘 11.6 MB/s（93 Mbit/s）；500 人：步行 21.7 MB/s（174 Mbit/s），骑乘 28.9 MB/s（231 Mbit/s） | (直线近圈 + 32.5 KB/s 实体) × 人数，基准重测 §6.1、§6.2。千兆网卡够用；超过 800 Mbit/s 需重估网卡与频道上限 |
+| 区块吞吐 | 500 人 3.6k～8.4k 区块/s，全部是 mmap 读 + 内存拷贝（5.5～12.7 MB/s） | 500 × 7.28～16.9 区块/s × 1,502 B |
+| 区块发送上限 | 引擎默认 64 区块/tick = 1,280 区块/s（`ServerConfig.maxChunksPerTick`，属性 `synaxis.chunk-queue.max-per-tick`）；分片宿主把同一属性写成 4，即 80 区块/s，高于飞行档的 50.6 区块/s（绕圆 64.5 区块/s） | 存储对比 §4 口径更正；`docs/DESIGN-PROD.md` `API-PROD-020`。正常速率由客户端 `ChunkBatchReceived` 回报决定，回报被夹到这个上限，流控不改 |
 | 区块 CPU 对照 | 未改区块改走 `.synx` 之前：每区块 0.52 ms（不带光照）/ 3.95 ms（懒算光照）CPU；走 `.synx` 之后只剩读页与拷贝 | 基准重测 §3.1 整遍 CPU，高 256 自然地形 |
-| 加密 CPU（online 模式） | AES-CFB8 出站 11.2～11.6 ms/MiB；500 人步行 21.3 MB/s ≈ 0.23 核，骑乘 28.0 MB/s ≈ 0.30 核 | 本机实测（M4 Pro），出处见 `docs/DESIGN-PROD.md` `ADR-PROD-011`；核数按 11.29 ms/MiB × 本表「分片出站」推算。该分册 §2 的 0.21 核用同一速率、按 RTS 4,000 单位档 18.30 MiB/s 算，口径不同、不矛盾。`.synx` 的预压缩包体可以复用，但加密是每连接一次，不能跨连接复用 |
+| 加密 CPU（online 模式） | AES-CFB8 出站 11.2～11.6 ms/MiB；500 人步行 21.7 MB/s ≈ 0.23 核，骑乘 28.9 MB/s ≈ 0.31 核 | 本机实测（M4 Pro），出处见 `docs/DESIGN-PROD.md` `ADR-PROD-011`；核数按 11.29 ms/MiB × 本表「分片出站」推算。该分册 §2 的 0.21 核用同一速率、按 RTS 4,000 单位档 18.30 MiB/s 算，口径不同、不矛盾。`.synx` 的预压缩包体可以复用，但加密是每连接一次，不能跨连接复用 |
 | 磁盘 | 每大区 `.synx` ≈ 219 MB + 段③：段① 65,536 × 1,502 B ≈ 98 MB；段② 544 B/区块 ≈ 36 MB；段③ 只存方块实体与静态实体，合成地形为 0，美术地图未测；段④ 1.25 KiB/区块 ≈ 84 MB；索引与头部约 1 MB。正式档全世界 ≈ 14 GB + 段③。合成 4k×4k 图（种子 7，高 256、没有方块实体）实测 64 个区域文件共 213,319,659 B | `API-M3-001` 各段布局；段① 按包体区间为 38～169 MB/大区；段③ 由存储对比 T1 量；实测值出自 `docs/TEST.md` RUN-033（`TC-WORLD-023`） |
 | 远景高度场包 | 每大区 5.3～21 MiB（未压缩，从第 2 层或第 1 层起的金字塔）；正式档全部大区 0.33～1.3 GiB | 路线报告 §4.2 算式 1,024² 或 2,048² × 4 B × 4/3；压缩率未测 |
 | 服务端堆 | 覆盖层 LRU 上限：内测档 16,384 区块 × 21.1 KiB ≈ 0.33 GiB（含 SoftReference 包缓存的上界 0.56 GiB）；正式档 24,576 区块 ≈ 0.49 GiB（0.84 GiB）。堆外成帧包体 24,576 × 1,502 B ≈ 37 MB。区块解码缓存上限 256 MiB。句柄区块常驻字节未测 | 基准重测 §3.1 存活堆（光照已算、间接调色板）；句柄区块由存储对比 T3 量。进程目标 RSS < 4 GiB |
@@ -146,14 +147,17 @@
 | 光照引擎 | 从 `LightingChunk` 抽出、跑在 `WorldView` 上的纯函数式光照计算，不需要 `Instance`、不加锁（已落地，`REQ-M3-004`） | `LightEngine` | — |
 | 已过对拍版本文件 | 光照对拍绿时的 `LightEngine.VERSION` 与该版本的输出指纹，一行一个版本，只追加不改；烘焙器只接受其中列出的版本 | 引擎资源 `verified-light-versions.txt` | `ENT-MapBuild` |
 | 世界视图 | 只读的方块访问接口（坐标 → 方块），光照引擎的唯一输入 | `WorldView` | — |
-| 句柄区块 | 堆里没有 section、发包直接写已成帧字节的区块；字节来源是区域文件（未被改过的区块）或覆盖存储（改过后被淘汰的区块） | `SynxChunk`（handle 模式） | `ENT-ChunkResidency` |
-| 覆盖层区块 | 被玩法改过、已物化为 `DynamicChunk` 的区块 | `SynxChunk`（overlay 模式） | `ENT-ChunkResidency` |
+| 句柄区块 | section 里没有方块与光照数据、发包直接写已成帧字节的区块；字节来源是区域文件（未被改过的区块）或覆盖存储（改过后被淘汰的区块） | `SynxChunk`（handle 模式） | `ENT-ChunkResidency` |
+| 覆盖层区块 | 被玩法改过、section 已从段① 解码填满、按 `DynamicChunk` 的方式读写与发包的区块；与句柄区块是同一个对象，模式原地切换（`ADR-M3-016`） | `SynxChunk`（overlay 模式） | `ENT-ChunkResidency` |
 | 覆盖存储 | 覆盖层区块落盘用的只追加分段文件，索引在内存；每频道一份，与地图版本绑定 | `overlay/<build_id>/seg.<n>.synx` | `ENT-OverlayRecord` |
 | 定期落盘 | 覆盖层脏区块每 `flush_interval_s` 秒重编码追加一次，同一 tick 的全部追加合并成一次 `fsync`（group commit） | `overlay.flush` | `ENT-OverlayRecord` |
-| 票据 | 让区块保持加载的引用；玩家视野与插件显式持有各算一张 | `chunk_ticket` | `ENT-ChunkResidency` |
-| 视距 | 服务端给玩家发区块的半径（区块数） | `synaxis.chunk-view-distance` | — |
-| 模拟距离 | 区块内实体与方块 tick 的半径；超出的区块只发包、不 tick。按实例设置，默认不限 | `Instance#setSimulationDistance` | — |
-| 分片宿主 | MMO 分片的启动入口，与 M2 的 `Main` 分开：先写分片的默认属性（命令行显式给的值优先），再交给 `Main` 起服。已由生产就绪分册第 5 波 5D 建出（`docs/DESIGN-PROD.md` `API-PROD-016`），写线程两项、区块视距 12、区块上限 4、可见上限 100，PostgreSQL 存储时另写 `accept-transfers=true`；模拟距离与卸载宽限由 M3 加进去（`API-M3-006`、`API-M3-010`）。M3 的线程模型、模拟距离、自动卸载都只在这里开启 | `server-app` 的 `ShardMain`，启动脚本 `bin/server-shard` | `ENT-Shard` |
+| tick 末尾写入阶段 | 覆盖存储每 tick 一次的单线程写入：挑本批（淘汰、卸载前落盘、定期落盘、整理）、编码池并行编码、按顺序追加、一次 `fsync`、更新索引。跑在 tick 调度线程的 `TICK_END` 任务里，此时全部 tick 线程已结束本 tick | `OverlayStore#tickEnd` | `ENT-OverlayRecord` |
+| 最终落盘 | 停机保存阶段把全部脏区块写一次，之后覆盖存储不再写；由 tick 末尾写入阶段或停机线程之一执行，写入权 CAS 决定是哪一方 | `OverlayStore#finalFlush`，任务 `overlay.shutdown-flush` | `ENT-OverlayRecord` |
+| 票据 | 让区块不被自动卸载的引用：玩家的区块环覆盖到它算一张，插件显式持有按 owner 各算一张；持票不触发加载 | `chunk_ticket` | `ENT-ChunkResidency` |
+| 视距 | 服务端给玩家发区块的半径（区块数）；引擎实际发的环再多一圈 | `synaxis.chunk-view-distance` | — |
+| 模拟距离 | 区块内实体与方块跑 tick 体的半径；超出的区块照常加载、发包、可见，方块 handler 不 tick，实体只跑调度器。按实例设置，默认不限 | `Instance#setSimulationDistance` | — |
+| 分片宿主 | MMO 分片的启动入口，与 M2 的 `Main` 分开：先写分片的默认属性（命令行与配置文件给的值优先），再交给 `Main` 起服。已由生产就绪分册第 5 波 5D 建出（`docs/DESIGN-PROD.md` `API-PROD-016`），写线程两项、区块视距 12、区块上限 4、可见上限 100，PostgreSQL 存储时另写 `accept-transfers=true`；M3-C 加挂地图模式，模拟距离与卸载宽限在这个模式里读（`API-M3-006`）。M3 的线程模型、模拟距离、自动卸载都只在这里开启 | `server-app` 的 `ShardMain`，启动脚本 `bin/server-shard` | `ENT-Shard` |
+| 挂地图模式 | 分片宿主给了 `synaxis.map.root` 与 `synaxis.map.build` 时的起服方式：校验地图版本、打开覆盖存储、建挂 `SynxChunkLoader` 的实例，代替核心模式的平地世界 | `server-app` 的 `ShardWorld` | `ENT-Shard` |
 | 分格 | 16×16 区块的空间格，同一格内的区块归同一 tick 线程 | `grid_cell` | — |
 | 大区 | 按地理切出的一块地图（正式档 4k×4k 格） | `region_id` | `ENT-Shard` |
 | 频道 | 同一大区的一个进程副本；人数超上限时同一大区开多个频道 | `channel` | `ENT-Shard` |
@@ -177,13 +181,13 @@
 | REQ-M3-005 | 光照修复 ④（**已落地**，commit `32e1923e47`）：天光整列从世界顶部向下，停在第一条满足「下方方块 `lightBlock ≠ 0`，或上下两格之间的面相互遮挡」的边；删除手写的 23 种 `DIFFUSE_SKY_LIGHT`（注册表里默认状态 `lightBlock == 1` 的有 85 种方块，按任一状态计有 459 种） | 目标 2 | P0 | 无对外 API，见 §19 与 §24 光照门禁 |
 | REQ-M3-006 | 光照修复 ⑤（**已落地**，commit `32e1923e47`）：BFS 每步衰减由固定 1 改为 `max(1, lightBlock(光进入的方块))`。按 `src/main/resources/data/block.json`，`lightBlock` 只有 0 / 1 / 15 三种取值：按默认状态是 727 / 85 / 384 个方块（共 1,196），按全部 32,366 个状态是 17,476 / 12,106 / 2,784；`tinted_glass`（`lightBlock` 15、遮挡形状为空）修复前让光像空气一样通过 | 目标 2 | P0 | 无对外 API，见 §19 与 §24 光照门禁 |
 | REQ-M3-007 | 与原版 26.2 光照逐值对拍（**已落地**，commit `4ce6285d95`、`8d765c4acf`）：`LightParityIntegrationTest` 对 `parity/` 下每个 `*.scene` 建场景、跑光照，与原版 26.2 `LevelLightEngine` 隔离运行的结果（`tools/light-oracle/gen.sh` 生成的 `*.light.gz`）逐 nibble 比较 sky 与 block 两层；当前 7 个场景（surface、overhang、cave、transparent、emitters、deep、shaft），区块 −1..1、section −4..3，差异 0 是验收门 | 目标 2 | P0 | 无对外 API，见 §24 光照门禁与 §11.2 `[*] → baking` 守卫 |
-| REQ-M3-008 | `SynxChunkLoader` 与 `SynxChunk`：未改区块以句柄形式加载，发包直接把段① 写进 socket，不建调色板、不算光照、不产生 `ChunkDataPacket` 对象；`getBlock` 从段① 整块解码进全局有界缓存；方块实体只从段③ 取；载入区块时按段③ 静态实体表生成实体；被改时物化为覆盖层 | 目标 1、目标 3 | P0 | `API-M3-005`；状态机见 §11.1 |
-| REQ-M3-009 | 视距与模拟距离分离：分片宿主把视距设为 12（上限 16）、模拟距离设为 4，只有模拟距离内的区块 tick 实体与方块。模拟距离按实例设置，引擎默认「不限」，M2 对局行为不变 | 目标 3 | P0 | `API-M3-006` |
-| REQ-M3-010 | 按观察者引用计数自动卸载：开启了自动卸载的实例上，票据数归零且空闲满 100 tick 的区块卸载；插件可显式持票。按实例开启，引擎默认关闭，M2 对局整图预载的区块不受影响 | 目标 3 | P0 | `API-M3-006`；状态机见 §11.1 |
-| REQ-M3-011 | 覆盖层：被改区块物化为 `DynamicChunk`；改动写每频道一份的覆盖存储，不改 `.synx`；覆盖层常驻数有 LRU 硬上限（内测档 16,384、正式档 24,576），淘汰时写覆盖存储并退回句柄；脏区块每 10 s 定期落盘，同一 tick 的追加合并为一次 `fsync`，进程崩溃最多丢最近 10 s 的改动（F4），正常停机时全部脏区块落盘；地图换 `build_id` 时清空（F1） | 目标 3 | P0 | `API-M3-007`；状态机见 §11.1 |
+| REQ-M3-008 | `SynxChunkLoader` 与 `SynxChunk`：未改区块以句柄形式加载，发包直接把段① 写进 socket，不建调色板、不算光照、不产生 `ChunkDataPacket` 对象，积压超限时也不被丢；`getBlock` 从段① 整块解码进有界缓存，解码同样不构造 `ChunkDataPacket`；方块实体只从段③ 取；载入区块时按段③ 静态实体表生成实体；被改时原地物化为覆盖层；本大区外与记录损坏的区块只读；分片以挂地图模式从清单起服，校验不过即拒启、端口不 bind | 目标 1、目标 3 | P0 | `API-M3-005`、`API-M3-006` 分片宿主段；状态机见 §11.1 |
+| REQ-M3-009 | 视距与模拟距离分离：分片宿主把视距设为 12（上限 16）、模拟距离设为 4，只有模拟距离内的区块跑方块 handler 与实体的 tick 体，模拟距离外的实体只跑调度器。模拟距离按实例设置，引擎默认「不限」，M2 对局行为不变 | 目标 3 | P0 | `API-M3-006` |
+| REQ-M3-010 | 按观察者引用计数自动卸载：票据跟随玩家的区块环，插件可显式持票；开启了自动卸载的实例上，票据数归零且空闲满 100 tick、区块里没有在线玩家、覆盖层已落盘的区块在 tick 末尾卸载。按实例开启，引擎默认关闭，M2 对局整图预载的区块不受影响 | 目标 3 | P0 | `API-M3-006`；状态机见 §11.1 |
+| REQ-M3-011 | 覆盖层：被改区块原地物化为 overlay 模式；改动写每频道一份的覆盖存储，不改 `.synx`；覆盖层常驻数有 LRU 硬上限（内测档 16,384、正式档 24,576），淘汰时写覆盖存储并退回句柄；脏区块每 10 s 定期落盘，同一 tick 的追加合并为一次 `fsync`，进程崩溃最多丢最近 10 s 的改动（F4）；正常停机经生产就绪分册的停机序列做一次最终落盘，由 tick 末尾写入阶段或停机线程恰一方执行，落盘之后的改动不保证落盘；地图换 `build_id` 时清空（F1） | 目标 3 | P0 | `API-M3-007`；状态机见 §11.1；时序见 §12.5 |
 | REQ-M3-012 | 运行时光照：未改区块的光照随段① 下发，服务端 0 CPU；被改区块在 tick 线程外的有界线程池做 3×3 局部重算，结果只进之后发给新观察者的包；不向已在看的客户端发 `UpdateLightPacket`（前提待 P1① 验证，退路见 `ADR-M3-002`）；开工前 `flushQueue` 竞争必须已消除（§5 末表 ⑥，`REQ-M3-004` 落地后该前置已满足） | 目标 2、目标 3 | P0 | 无对外 API，见 §12.1 时序与 §17 内部任务 `overlay.relight` |
 | REQ-M3-013 | 可提交的基准程序：已完成（基准重测，`LargeWorldBench`，两轮），§2 / §15 已换成重测值；剩余三项：空闲机器复跑墙钟列、加「从 `.synx` 或 Anvil 读入」的真地图档（存储对比 T1）、补句柄区块常驻字节（T3）与段① 解码耗时（T2） | 目标 4 | P0 | `API-M3-008` |
-| REQ-M3-014 | 压测量出真实区块下行：机器人回 `ChunkBatchReceived`、按步行与坐骑两档移动，产物带 `inbound.chunks`。harness 本身（Java `:loadtest` 模块、分机、加密档）按 `docs/DESIGN-PROD.md` `API-PROD-025` 实现，本需求只定区块侧的字段与判据 | 目标 4 | P0 | 无对外 API，见 §15 测量手段与 §26 M3-C 退出条件 |
+| REQ-M3-014 | 压测量出真实区块下行：机器人回 `ChunkBatchReceived`、按步行与坐骑两档移动，产物带 `inbound.chunks`。harness 本身（Java `:loadtest` 模块、分机、加密档）按 `docs/DESIGN-PROD.md` `API-PROD-025` 实现，本需求只定区块侧的字段与判据。harness 这一侧已随该分册第 5 波落地（回 ack、`walk` / `ride` / `fly` 三档、`inbound.chunks` 的 `steady_*` 字段）；M3-C 只剩在挂地图的分片上跑，并按机器人实际走法修正的模型判定（§2 近圈下行行、§15 带宽行） | 目标 4 | P0 | 无对外 API，见 §15 测量手段与 §26 M3-C 退出条件 |
 | REQ-M3-015 | 空间分格 `ThreadProvider`：16×16 区块一格，同一格的区块归同一 tick 线程；分片宿主选用它并把 `dispatcherThreads` 设为核数 − 2。引擎默认仍是 `counter` + 1 线程。本需求只提世界侧要求，引擎侧设计（`ThreadProvider.grid`、取模、多线程测试矩阵、线程契约、`acquire_ms` 指标）归 `docs/DESIGN-PROD.md` `REQ-PROD-020` 与 `API-PROD-016` | 目标 5 | P1 | `API-M3-009` |
 | REQ-M3-016 | 大区分服 + 频道：分片目录描述大区边界与频道地址；分片心跳上报在线人数；频道满员时由连接闸门 L3 在 `LoginStart` 拒绝，键只有 `synaxis:shard-full` 一个（`docs/DESIGN-PROD.md` `API-PROD-003`，`capacity` 取自分片目录） | 目标 5 | P1 | `API-M3-010` |
 | REQ-M3-017 | 跨大区转服的世界侧：源分片按心跳与容量选目标频道；目标分片的容量由连接闸门 L3 在 `LoginStart` 判定，早于加密请求与读 Cookie；验票通过后首批 9 个区块 P95 < 5 s 发完；写转服事件。票据签发、验票与写权交接见 `docs/DESIGN-PROD.md` `REQ-PROD-045`、`API-PROD-028`，正版验证与插件面见该分册 `REQ-PROD-031`，时序见该分册 §12.3 | 目标 5 | P1 | `API-M3-010`；时序见 §12.2 |
@@ -270,19 +274,19 @@ flowchart LR
   dh -. "开光影时由 dh_* 程序着色" .-> iris
 ```
 
-模块：新增 `:synx`（格式编解码、`SynxChunkLoader`、`SynxChunk`、覆盖存储；依赖引擎）、`:baker`（烘焙器命令行、离线 Anvil 读取器、高度场包写出；依赖 `:synx` 与引擎的光照；M2 生成器的适配器放在 `:game-rts`，烘焙器按 `ServiceLoader` 发现，不编译期依赖玩法模块）。M3-B 落地的部分：`:synx` 有区域文件的读写（`SynxRegion`、`SynxRegionWriter`）、清单（`SynxManifest`）与起服校验函数（`SynxBuildVerifier`），`SynxChunkLoader`、`SynxChunk` 与覆盖存储随 M3-C；`:baker` 有 `bake` 与摘要版 `verify` 两个子命令和 Anvil 读取器（`baker.anvil` 包），高度场包写出随 M3-G。`:baker` 在编译期依赖引擎、`:synx` 与 fastutil，运行期依赖 `:game-rts`（`runtimeOnly`，只为 `ServiceLoader` 找到 `RtsBakeGenerators`）。引擎内改动：抽出 `LightEngine` / `WorldView`、区块票据与按实例开启的自动卸载、按实例设置的模拟距离、`ThreadProvider.grid` 与 `synaxis.thread-provider` 开关；**引擎的全部既有默认值不变**，M3 的行为由分片宿主显式开启（`API-M3-006`、`API-M3-009`）。依赖方向沿用 `docs/DESIGN-M2.md` §6：引擎不得依赖 `:synx` / `:baker`。世界状态标志的存储与同步在 `server-app`（宿主），插件经 `:plugin-api` 使用。客户端远景与光影检测在 `client-fabric`，DH 与 Iris 全部经反射或 API jar 的 `compileOnly` 调用，缺席时模组照常加载。
+模块：新增 `:synx`（格式编解码、`SynxChunkLoader`、`SynxChunk`、覆盖存储；依赖引擎）、`:baker`（烘焙器命令行、离线 Anvil 读取器、高度场包写出；依赖 `:synx` 与引擎的光照；M2 生成器的适配器放在 `:game-rts`，烘焙器按 `ServiceLoader` 发现，不编译期依赖玩法模块）。M3-B 落地的部分：`:synx` 有区域文件的读写（`SynxRegion`、`SynxRegionWriter`）、清单（`SynxManifest`）与起服校验函数（`SynxBuildVerifier`），`SynxChunkLoader`、`SynxChunk` 与覆盖存储随 M3-C；`:baker` 有 `bake` 与摘要版 `verify` 两个子命令和 Anvil 读取器（`baker.anvil` 包），高度场包写出随 M3-G。`:baker` 在编译期依赖引擎、`:synx` 与 fastutil，运行期依赖 `:game-rts`（`runtimeOnly`，为 `ServiceLoader` 找到 `RtsBakeGenerators` 与数据标记处理器）。M3-C 起 `server-app` 编译期依赖 `:synx`：挂地图模式的装配在新包 `io.github.bearisbug.synaxis.app.shard`（`ShardWorld`、`ShardSettings`），`SynxChunkLoader`、`SynxChunk`、`OverlayStore` 与两组选项在 `:synx` 的 `io.github.bearisbug.synaxis.synx` 包（与 `SynxEntities` 等包内类同包）。`server-app` 运行期已依赖 `:game-rts`，所以分片与烘焙器从同一个 classpath 找到同一份数据标记处理器。引擎内改动：抽出 `LightEngine` / `WorldView`、区块票据与按实例开启的自动卸载、按实例设置的模拟距离、`Chunk#readyToUnload()`、`BufferedPacket` 的 `sheddable` 分量（`ADR-M3-018`）、`ThreadProvider.grid` 与 `synaxis.thread-provider` 开关；**引擎的全部既有默认值不变**，M3 的行为由分片宿主显式开启（`API-M3-006`、`API-M3-009`）。依赖方向沿用 `docs/DESIGN-M2.md` §6：引擎不得依赖 `:synx` / `:baker`，`:synx` 不得依赖 `server-app`（停机步骤的签名按 `ShutdownSequence.Step` 的形状写成 `OverlayStore#finalFlush`，由宿主以方法引用注册）。世界状态标志的存储与同步在 `server-app`（宿主），插件经 `:plugin-api` 使用。客户端远景与光影检测在 `client-fabric`，DH 与 Iris 全部经反射或 API jar 的 `compileOnly` 调用，缺席时模组照常加载。
 
 `:synx` 与 `:baker` 是**引擎侧模块**：包名 `io.github.bearisbug.synaxis.synx` / `…baker`，落在 `docs/DESIGN-M2.md` §24 规则 ⑥ 对「引擎」的包段定义内（根包之下除去 `game` / `plugin` / `app`），因此可以使用引擎的 `@ApiStatus.Internal` 成员，引擎不为它们放宽注解。`:synx` 与 `:baker` 用到的内部面逐项登记如下，引擎改动其中任何一项必须在同一个 PR 里跑这两个模块的测试（§24）。前四行两个模块都可以用（M3-B 的代码还没用到，留给 M3-C 的 `SynxChunk`），最后一行只给 `:baker`：
 
 | 内部成员 | 位置 | `:synx` / `:baker` 怎么用 |
 | --- | --- | --- |
 | `Chunk#getFullDataPacket()` | `Chunk.java:137`，`@ApiStatus.Internal` | `SynxChunk` 覆写：handle 模式返回包住段① 的 `BufferedPacket` |
-| `BufferedPacket` | `network/packet/server/BufferedPacket.java`，`@ApiStatus.Internal` | 包住 mmap 段① 直写 socket |
-| `CachedPacket` | `network/packet/server/CachedPacket.java:43`，`@ApiStatus.Internal` | overlay 模式沿用 `DynamicChunk` 的包缓存 |
+| `BufferedPacket` | `network/packet/server/BufferedPacket.java`，`@ApiStatus.Internal` | 包住 mmap 段① 直写 socket，构造时 `sheddable = false`；这个分量由 M3-C 加，只有视野广播的实体移动包是 `true`（`ADR-M3-018`） |
+| `CachedPacket` | `network/packet/server/CachedPacket.java:43`，`@ApiStatus.Internal` | overlay 模式沿用 `DynamicChunk` 的包缓存；`SynxChunk#encodeOverlay` 经 `CachedPacket#packet()` 取包再按 `.synx` 规范成帧（`API-M3-005`） |
 | `LightBlocks` | `instance/light/LightBlocks.java`，`@ApiStatus.Internal` | 保留在名单里；`LightEngine` 落地后烘焙器只调 `LightEngine`，不直接用它 |
 | `GeneratorImpl` | `instance/generator/GeneratorImpl.java`，`@ApiStatus.Internal` | 只给 `:baker`：`GeneratorSource` 按实例生成区块的方式对单个区块跑引擎 `Generator`，生成器跨区块 `fork` 时该区域失败（`API-M3-003`） |
 
-段① 解码与段③ 编解码只用公开的 `ChunkDataPacket.SERIALIZER`、`Palette.BLOCK_SERIALIZER` 与 `Palette.biomeSerializer(int)`，不碰 `Palette` 上 5 个标 `@ApiStatus.Internal` 的成员（`Palette.java:44`、`:191-206`）；实现时若需要其中之一，先在本表加行。M2 分册 §24 规则 ⑥ 的游戏侧禁令不变：`:game-rts` 里的 `BakeSource` 适配器只能用公开面。外部依赖逐项见 §17。
+段① 解码与段③ 编解码只用公开面：运行期（`getBlock`、物化）按包体字段顺序流式读，用 `ChunkData` 与 `LightData` 的公开网络类型、`ChunkData.Section.networkType(int)`、`Palette.BLOCK_SERIALIZER`、`Palette.biomeSerializer(int)` 与 `Palette#copyFrom`，不构造 `ChunkDataPacket`；`ChunkDataPacket.SERIALIZER`（`SynxChunkPacket.decode`）只给测试与烘焙器的校验用。不碰 `Palette` 上 5 个标 `@ApiStatus.Internal` 的成员（`Palette.java:44`、`:191-206`）与 `Light#array()`；实现时若需要名单外的内部成员，先在本表加行并同步 `SynxInternalSurfaceArchitectureTest` 的常量（§24）。M2 分册 §24 规则 ⑥ 的游戏侧禁令不变：`:game-rts` 里的 `BakeSource` 适配器只能用公开面。外部依赖逐项见 §17。
 
 ### 6.1 远景与光影
 
@@ -363,7 +367,8 @@ erDiagram
     int chunk_z PK
     string residency_state
     int ticket_count
-    int sim_refcount
+    long idle_ticks
+    boolean simulated
     long generation
     boolean dirty
   }
@@ -437,17 +442,17 @@ M3 的契约有四类：① 文件格式（`.synx`、清单、覆盖存储、高
   - 目录：`<maps_root>/<map_id>/<build_id>/`，内含 `manifest.json`、`regions/r.<rx>.<rz>.synx` 与 `farview/<region_id>.hfp`。一个 `build_id` 覆盖整张地图的全部大区。`build_id` = `<map_id>-<content_hash 前 12 位 hex>-p<protocol_version>`，所以只升协议也会得到新 `build_id`（F1：覆盖层随之清空）。
   - `manifest.json` 字段：`map_id`、`build_id`、`content_hash`、`mc_version`（`"26.2"`）、`protocol_version`、`registry_digest`、`light_engine_version`、`baker_version`、`world.min_y`、`world.height`、`bounds`（区块坐标 min/max）、`regions[]`（`rx`、`rz`、`bytes`、`payload_sha256`、`chunks`）、`farview[]`（`region_id`、`bytes`、`sha256`、`levels`，见 `API-M3-014`）、`source`（`kind` = `anvil` / `generator`、`data_version`（Anvil 源必须 = 4903）、`light_coverage`（源区块 `isLightOn = true` 的比例））、`bake`（`started_at`、`wall_ms`、`cpu_ms`、`threads`、`jdk`）、`verify`（`samples` 抽样数、`diffs` 差异数、`source_light_diff`）。
   - 字段口径：`content_hash` = 各区域按 `(rx, rz)` 排序，每个区域依次写 `rx`（i32 LE）、`rz`（i32 LE）、`region_content_hash`，对整串求 SHA-256；`bounds` 的键是 `min_x`、`min_z`、`max_x`、`max_z`，单位是区块坐标，含边界；摘要一律小写 hex；`data_version`、`light_coverage`、`source_light_diff` 为空时不写；字段按固定顺序写出，文件以换行结尾。整数字段带小数（如 `chunks: 4.5`）按 `synx-manifest` 拒绝，不截断。M3-B 的 `farview[]` 恒为空，高度场包随 M3-G。
-  - 分片起服：`-Dsynaxis.map.root` + `-Dsynaxis.map.build=<build_id>`；按清单核本大区与 `view_bounds` 涉及的每个文件的 `payload_sha256` 与头部字段，任一不符以非零码退出、端口不 bind（错误码见 §14）。校验顺序：① 清单：`build_id` 等于目录名，且等于由 `map_id`、`content_hash`、`protocol_version` 推导出的值；② 协议版本与 `mc_version`，再依次是注册表摘要、`world`、光照引擎版本；③ 对「scope ∩ `bounds`」覆盖到的每个区域，依次检查清单有该项、文件存在、大小相等（不等即 `synx-payload-hash`）、头部与进程一致、头部与清单一致、实际 `payload_sha256`、区块数。M3-B 落地的是校验函数 `SynxBuildVerifier.verify`（烘焙器的 `verify` 与发布前自检都调它）；分片进程的接线随 M3-C。
+  - 分片起服：`bin/server-shard` 带 `-Dsynaxis.map.root=<maps_root>/<map_id>` 与 `-Dsynaxis.map.build=<build_id>`（也可写进 `synaxis.properties`）进入挂地图模式（`API-M3-006` 分片宿主段），发布目录是两者拼成的 `<maps_root>/<map_id>/<build_id>/`。在登记维度类型之前、端口 bind 之前跑 `SynxBuildVerifier.verify(buildDir, 期望, scope)`：期望取进程的注册表摘要、`ServerProcess#compressionThreshold()`、清单的 `world` 与当前 `LightEngine.VERSION`，scope 取 `view_bounds`；按清单核本大区与 `view_bounds` 涉及的每个文件的 `payload_sha256` 与头部字段，任一不符即拒启：日志一行 `Refusing to start: <synx 码> <文件名>: <细节>`，退出码 1，端口不 bind（§14）。校验顺序：① 清单：`build_id` 等于目录名，且等于由 `map_id`、`content_hash`、`protocol_version` 推导出的值；② 协议版本与 `mc_version`，再依次是注册表摘要、`world`、光照引擎版本；③ 对「scope ∩ `bounds`」覆盖到的每个区域，依次检查清单有该项、文件存在、大小相等（不等即 `synx-payload-hash`）、头部与进程一致、头部与清单一致、实际 `payload_sha256`、区块数。校验函数 `SynxBuildVerifier.verify` 已由 M3-B 落地（烘焙器的 `verify` 与发布前自检都调它），M3-C 由 `ShardWorld` 接进起服。分片的世界高度取清单 `world`（维度类型按它登记），所以 `synx-world-mismatch` 只会来自区域文件头部与清单不符。
   - 升版重烘：`baker rebake --from <旧 build_id> --protocol <新协议>` 产出新 `build_id`；升版清单记录每个大区的重烘墙钟与 CPU 时间（未实现，§28.2）。
 
 - **`API-M3-003` 烘焙器命令行** — 实现 `REQ-M3-003`、`REQ-M3-020`、`REQ-M3-021`、`REQ-M3-022`、`REQ-M3-024`
   - `./gradlew :baker:run --args="bake --map-id <id> --source <anvil:<dir> 或 generator:<preset>:<seed>> --out <maps_root> [--threads <N>] [--bounds <minX,minZ,maxX,maxZ>] [--dimension minecraft:overworld] [--min-y -64] [--logs logs] [--samples 4]"`：`--threads` 默认等于核数；`--bounds` 是区块坐标、含边界，Anvil 源不给时取存档里全部区块的外接矩形，生成器源不给时取预设自带的范围；`--logs` 是事件目录；`--samples` 是每个区域的抽样数；`--min-y` 只用于 Anvil 源，是 256 格窗口的起始 y（默认 −64，必须是 16 的倍数，见下方 Anvil 源条），不是 16 的倍数或与生成器源同给时按命令行错误退出码 1。`verify --build <maps_root>/<map_id>/<build_id>` 只做摘要校验（`SynxBuildVerifier.verify`），通过退 0、不通过退 4；带重新抽样的独立 `verify`、`rebake`、`retire --build <build_id>` 未实现（§28.2）。命令行解析不了退出码 1。`:baker:run` 在 `baker/` 目录里运行，路径参数写绝对路径。
   - Anvil 源：读 `<dir>/dimensions/<ns>/<path>/{region,entities}/*.mca`，只读打开，不创建缺失的区域文件，不认 26.1 之前的目录布局；只含光照、没有 `block_states` 的 section 不读。任一 `bounds` 内区块 `DataVersion ≠ 4903` → 退出码 2，错误信息给出区块坐标并提示「先用原版 26.2 专用服务端 `--forceUpgrade --eraseCache` 升级，再重跑预生成」；`Status`（或 `status`）的值必须恰好等于 `minecraft:full`，缺失视同非 full，非 full 的区块视为源缺失，同样退出码 2；`bounds` 内缺区块也是退出码 2。以下同样按源错误拒绝（退出码 2），不回退到 plains 之类的默认值：未知方块、非法方块名、未知生物群系；LZ4（压缩类型 4）与外置 `.mcc` 区块；调色板打包的 long 数不等于按位宽 `max(minBits, ⌈log2 n⌉)` 算出的值，或解包下标超出调色板；区域区块的 `xPos` / `zPos` 或实体区块的 `Position` 与所在位置不符。世界高度窗口（用户 2026-09-25 拍板）：烘焙器只读 `[--min-y, --min-y + 256)` 这 256 格（16 个 section），清单 `world` 写 `--min-y` / 256，段①～④ 都只含这 16 个 section。窗口外只要有一个非空气方块（`Block#air` 为假，`air`、`cave_air`、`void_air` 算空气）、一个方块实体或一个静态实体（按 `Pos` 的 y）就拒绝烘焙，退出码 2（与其他源错误同属门禁，任何目录都不建），错误信息给出区块坐标、越界的东西与它的 y，以及窗口范围；同一存档总是报同一处（区块按 (x, z) 顺序检查，区块内取 y 最低的一处）。`--min-y` 默认 −64，理由：原版主世界与超平坦世界都从 y −64 起铺基岩与地形，默认窗口 y −64～191 保住基岩底、深板岩层和海平面 63，美术只需清掉 y 192 以上的山顶；取 0 起则每个原版存档都因 y < 0 的深板岩与基岩被拒，要先整层清掉 64 格。整座图都做在高处时（如浮空岛）用 `--min-y` 平移窗口。窗口与源维度范围不必重合，源里没有的 section 按空气读。
   - 生成器源：`generator:<preset>:<seed>`，预设经 `ServiceLoader` 找 `BakeGeneratorProvider`；烘焙器自带 `synthetic`（4,096×4,096 格、y 0 起 256 格的合成地形，同基准程序的 natural 地形），`:game-rts` 提供 M2 的 `rts-*` 预设（y 0 起、高度随预设）。每个区块像实例那样单独生成进新 section；生成器跨区块 `fork` 时该区域失败（退出码 3），因为区块按任意顺序独立读取，`fork` 会让区块内容取决于哪个邻居先生成。
-  - 数据标记：DATA 模式结构方块的 `metadata` 写 `<handler 命名空间> <SNBT>`，作用于结构方块正下方一格；烘焙器把结构方块替换为空气，把 handler 与 NBT 合进该格方块实体的段③ 记录：目标格原本已有方块实体时，SNBT 覆盖合并到原 NBT 上，原版 `id` 保留；没有时记录的 NBT 只有 SNBT 的内容，不含 `id` 与坐标，位置以段③ 的 `section_y` / `index` 为准。以下按源错误拒绝（退出码 2，信息带标记坐标）：命名空间未登记；`metadata` 为空（按「命名空间未登记」处理）；SNBT 格式错误；SNBT 含 `id`、`x`、`y`、`z` 任一键；标记正下方一格也是 DATA 标记。命名空间清单来自烘焙器运行时 classpath 上的 `BlockHandler` 服务（`ServiceLoader`）：游戏模块把处理器写进 `META-INF/services`，处理器要有 public 无参构造；这份清单必须与分片注册的 handler 一致，因为段① 只带该 handler `getBlockEntityTags()` 声明的标签。已知缺口：游戏模块目前一个处理器都没登记，M3-C 补上，在那之前命令行遇到带标记的存档就退出码 2（`docs/MAP-SOURCE.md` 第 6 节）。隐藏区域用 metadata `synaxis:hidden <x1> <z1> <x2> <z2>` 圈出，两个角都是包含边界的方块坐标，从高度场包里排除（地表改为该区域外沿的最低高度与中性材质，随 M3-G）。
+  - 数据标记：DATA 模式结构方块的 `metadata` 写 `<handler 命名空间> <SNBT>`，作用于结构方块正下方一格；烘焙器把结构方块替换为空气，把 handler 与 NBT 合进该格方块实体的段③ 记录：目标格原本已有方块实体时，SNBT 覆盖合并到原 NBT 上，原版 `id` 保留；没有时记录的 NBT 只有 SNBT 的内容，不含 `id` 与坐标，位置以段③ 的 `section_y` / `index` 为准。以下按源错误拒绝（退出码 2，信息带标记坐标）：命名空间未登记；`metadata` 为空（按「命名空间未登记」处理）；SNBT 格式错误；SNBT 含 `id`、`x`、`y`、`z` 任一键；标记正下方一格也是 DATA 标记。命名空间清单来自运行时 classpath 上的 `BlockHandler` 服务（`ServiceLoader`）：游戏模块把处理器写进 `META-INF/services`，处理器要有 public 无参构造。这份清单必须与分片注册的 handler 一致，因为段① 只带该 handler `getBlockEntityTags()` 声明的标签，所以两边只经同一个函数登记：`SynxHandlers.registerAll(BlockManager)`（`:synx`）对 `ServiceLoader.load(BlockHandler.class)` 找到的每个处理器以 `getKey()` 登记 `() -> handler`（同一个实例），返回登记的键；两个处理器同键即抛 `IllegalArgumentException`，烘焙器按退出码 1、分片按拒启处理。烘焙器 `BakerMain` 与分片宿主 `ShardWorld` 都调它，且 `:baker` 与 `server-app` 都在运行期依赖同一个游戏模块。M3-C 由游戏模块 `:game-rts` 登记 `synaxis:door`（无客户端标签）与 `synaxis:loot`（客户端标签 `table`），与已冻结的 Anvil 夹具一致（§28.1 数据标记处理器一行，§26 M3-C 轨道 D）；在那之前命令行遇到带标记的存档就退出码 2（`docs/MAP-SOURCE.md` 第 6 节）。隐藏区域用 metadata `synaxis:hidden <x1> <z1> <x2> <z2>` 圈出，两个角都是包含边界的方块坐标，从高度场包里排除（地表改为该区域外沿的最低高度与中性材质，随 M3-G）。
   - `bake` 的步骤：`LightEngine.VERSION` 不在已过对拍版本集 → 退出码 6，任何目录都不建；源门禁（上两条）不过 → 退出码 2，同样不留目录。之后在 `<maps_root>/<map_id>/.baking-*` 建工作目录（与发布目录同一文件系统）→ 每个区域一个任务，读本区域在 `bounds` 内的区块加四周 1 区块光环进 `WorldView`（光环在 `bounds` 外的区块按缺失处理，不传光）→ `LightEngine.computeArea` → 逐 section 规范化调色板（`API-M3-001` 段①），编码四段，经暂存文件写出；一个 section 超过 256 种方块状态、放不进间接调色板时该区域失败（退出码 3，信息带区块与 section 坐标）→ 汇总 `content_hash`、推导 `build_id`，写区域文件与清单 → 跑 `verify` → 通过后若 `<maps_root>/<map_id>/<build_id>` 已存在则删掉工作目录、退出码 5，否则原子改名为发布目录。退出码 3、4 保留工作目录供排查。高度场包从段④ 汇总一步随 M3-G。
   - `verify`（发布前自检）：摘要部分先跑 `SynxBuildVerifier.verify`，再对每个区域从记录重算 `region_content_hash` 与头部比对，并检查 `bounds` 内每个区块都有可读记录；抽样部分按 `region_content_hash` 定种子，每个区域抽 `--samples` 个区块（默认 4），只带 3×3 邻居重新烘焙，与已写的整条记录逐字节比较，差异数写 `verify.diffs`，不为 0 退出码 4。Anvil 源里 `isLightOn = true` 的区块把光照输出与源 `SkyLight` / `BlockLight` 逐 nibble 比较，差异数写 `verify.source_light_diff`（只报告，不影响退出码，`REQ-M3-021`）；数据标记所在格与它正下方一格不计入，因为结构方块烘焙时换成了空气，这两格的光照必然不同。已知局限：标记下面是两格高、不遮光的方块（如门）时，更下面一格的差异仍会计入。
-  - 退出码：0 发布成功；1 命令行解析失败；2 源不可读、DataVersion 不符、区块未到 full、`bounds` 内缺区块、标记不合规或高度窗口外有内容；3 某区域烘焙失败（含超过 256 种状态的 section、生成器跨区块写入、`OutOfMemoryError`）；4 校验不通过；5 同一 `build_id` 已在输出目录里（发布前判定）；6 当前 `LightEngine.VERSION` 不在已过对拍版本集（§11.2）。退出码 0、3、4、5 写 `EVT:map_build_started` / `EVT:map_build_finished`（事件在 `--logs` 目录），1、2、6 不写。
+  - 退出码：0 发布成功；1 命令行解析失败或处理器清单有同键；2 源不可读、DataVersion 不符、区块未到 full、`bounds` 内缺区块、标记不合规或高度窗口外有内容；3 某区域烘焙失败（含超过 256 种状态的 section、生成器跨区块写入、`OutOfMemoryError`）；4 校验不通过；5 同一 `build_id` 已在输出目录里（发布前判定）；6 当前 `LightEngine.VERSION` 不在已过对拍版本集（§11.2）。退出码 0、3、4、5 写 `EVT:map_build_started` / `EVT:map_build_finished`（事件在 `--logs` 目录），1、2、6 不写。
   - 资源：每个烘焙线程约需 256 MB 堆（实测 150～190 MB，见 §2 烘焙行）；`:baker:run` 默认最大堆是物理内存的 1/4，OOM 时退出码 3，把 `--threads` 减半重跑。
   - 确定性：同一 `--source`、同一 `baker_version`（当前 1）与 `light_engine_version`，`content_hash` 必须相同；段① 解压后的包体在任何 JDK 上都相同（`API-M3-001` 段①「字节可复现」），成帧压缩后的字节只在同一 JDK 构建上保证相同（zlib 实现随 JDK 构建变化）。同一 JDK 上 1 线程与 N 线程的区域文件逐字节相同；只比 `content_hash` 不够，因为它按解压后的段① 算，压缩级别随线程变化时它不变。
 
@@ -459,42 +464,120 @@ M3 的契约有四类：① 文件格式（`.synx`、清单、覆盖存储、高
   - 版本：`LightEngine.VERSION`（当前 1）在任何改变输出的提交里加 1；清单记录它，分片起服时不等于当前值即拒绝（强制重烘，§14）。已过对拍的版本登记在引擎资源 `src/main/resources/io/github/bearisbug/synaxis/instance/light/verified-light-versions.txt`，每行 `<版本> <指纹>`，版本号从 1 起连续递增、最后一行等于 `LightEngine.VERSION`；烘焙器经 `LightVersions` 按引擎路径读它（§11.2、§24）。
 
 - **`API-M3-005` `SynxChunkLoader` 与 `SynxChunk`** — 实现 `REQ-M3-008`、`REQ-M3-011`
-  - `new SynxChunkLoader(Path buildDir, String regionId, SynxOptions)` 实现引擎 `ChunkLoader`：构造时做 `API-M3-002` 的起服校验，用 `FileChannel.map(READ_ONLY, …, Arena.ofShared())` 映射本大区的区域文件与 `view_bounds` 涉及的邻区文件；这些映射进程内常驻、不关闭。mmap 是惰性的，多出来的只是虚拟地址与 fd。
-  - 范围：`bounds` = 本大区；`view_bounds` = `bounds` 外扩 16 区块（视距上限）。`loadChunk(instance, cx, cz)`：`bounds` 内返回可写的 handle 模式 `SynxChunk`；`view_bounds` 内、`bounds` 外返回只读 handle（`setBlock` 抛 `IllegalStateException`，不进 tick 分区）；`view_bounds` 外返回 `null`。覆盖存储内存索引里有该区块时指向覆盖存储记录，否则指向区域文件。玩家由引擎世界边界挡在本大区内：分片宿主起服时按清单 `bounds` 调 `Instance#setWorldBorder`（`Instance.java:589`）。邻区边缘只读加载是存储对比 D8 的选项 1；选项 2 是规定大区边界由地形屏障保证视距内看不到邻区、`bounds` 外一律返回 `null`，省掉邻区映射与只读 handle，代价是把一条美术约束写死进 `API-M3-010` 与交付规范。默认选 1，因为它不约束地图设计；美术确认每条大区边界都有 ≥ 16 区块宽的屏障时可改为 2。
-  - `getFullDataPacket()`：handle 模式返回包住 mmap 段① 的 `BufferedPacket`（`NetworkBuffer.wrap(MemorySegment, …)`），发送路径不调用 `createChunkPacket`、不产生 `ChunkDataPacket` 对象，只持有压缩字节；overlay 模式走 `DynamicChunk` 的 `CachedPacket`。`BufferedPacket` 不触发 `PlayerPacketOutEvent`（`PlayerSocketConnection.java:430` 的既有语义）。覆写的是引擎内部方法，登记见 §6 内部面表。online 模式下这份字节仍按连接各加密一次（§2 加密 CPU 行）。
-  - `getBlock` / `getSection`（handle 模式）：先整块 inflate 段①，按 `ChunkDataPacket.SERIALIZER` 读回各 section 的方块调色板，整块解码结果进全进程共享的 LRU 缓存（`synaxis.synx.section-cache-bytes`，默认 256 MiB，计量对象是缓存里解码后的调色板字节），不解码光照：返回的 `Section` 的 `skyLight` / `blockLight` 是全 0 的空光照，所以 `Instance#getSkyLight` / `getBlockLight`（`Instance.java:1066-1100`）对句柄区块返回 0，其中的 `relightSection` 对非 `LightingChunk` 返回空集、无副作用。Q8 定了服务端玩法不读光照，这个返回值不进任何玩法路径。方块实体只从段③ 取，不经 `ChunkData.readBlockEntities`，按 handler 命名空间经 `BlockManager` 挂回 handler。段① 解码若比独立存调色板慢一个数量级以上且模拟距离内缓存命中率低（存储对比 T2），改回在段③ 保存完整调色板，升 `format_version`。
-  - 载入与卸载：区块载入时按段③ 静态实体表生成实体，卸载时移除；这些实体的运行期改动不写覆盖存储。
-  - 堆占用：handle 模式的 `SynxChunk` 带 `Chunk` 基类字段（`UUID`、`ReentrantReadWriteLock`、`TagHandler`、`Viewable`）与一个 `ThreadDispatcher` 分区（`Chunk.java:45-71`、`InstanceContainer.java:789-798`），实测值由 `REQ-M3-013` 量（存储对比 T3）；只有实测超出 §2 进程预算才改成按需创建。
-  - `setBlock`（handle 模式、`bounds` 内）：`world_writable = true` 时物化为 overlay 模式：从段① 解码全部 section 的方块与光照数组并灌回 `Section.skyLight/blockLight`（漏灌会让 `DynamicChunk.createLightData` 对该 section 置 `emptySkyMask`，新观察者看到全黑），方块实体从段③ 挂回；否则抛 `IllegalStateException`。物化后投递 `overlay.relight`，区块标记为脏。
-  - `saveChunk`：handle 模式空实现；overlay 模式写覆盖存储（`API-M3-007`）。
+  - 位置：`:synx`，包 `io.github.bearisbug.synaxis.synx`。`SynxChunkLoader implements ChunkLoader`；`SynxChunk extends DynamicChunk implements OverlayChunk`，handle、overlay、failed 三种模式是同一个对象上的字段，模式原地切换（`ADR-M3-016`）。分片进程里只有一个 `SynxChunkLoader`，解码缓存归它。
+  - 构造：`new SynxChunkLoader(Path buildDir, SynxManifest manifest, SynxManifest.Bounds bounds, SynxOptions options, OverlayIndex overlay, OverlayTracker tracker)`。调用方（`ShardWorld`）先跑完 `API-M3-002` 的起服校验，把它返回的清单传进来，构造器不再校验：经 `SynxRegion.open(path, Arena.ofShared())` 映射「`view_bounds` ∩ 清单 `bounds`」覆盖到的区域文件，映射进程内常驻、不关闭；mmap 是惰性的，多出来的只是虚拟地址与 fd。`bounds` 是本大区：M3-C 取清单 `bounds`（内测档一张图一个大区），M3-E 起取 `shards.json` 里本大区的边界（`API-M3-010`）。`supportsParallelLoading()` 为 true：映射只读、`SynxRegion#slot` 无状态，引擎在虚拟线程上并行加载。
+  - 范围与加载结果：`view_bounds` = `bounds` 外扩 17 区块，即视距上限 16 加引擎区块环多出的一圈（§2 视距行）。`loadChunk(instance, cx, cz)`：
+
+    | 区块位置 | 查什么 | 结果 | 返回 |
+    | --- | --- | --- | --- |
+    | `bounds` 内 | 先查 `OverlayIndex#find` | 命中 | handle 模式，字节来自该覆盖记录，`generation` 从记录头的值接着加 |
+    | `bounds` 内 | 再查区域文件槽位 | `Present` | handle 模式，字节来自区域文件，`generation` 从 0 起 |
+    | `bounds` 内 | 同上 | `Failed` 或 `Absent` | failed 模式（§11.1 `[*] → failed`） |
+    | `view_bounds` 内、`bounds` 外 | 只查区域文件，不查覆盖存储 | `Present` | 只读的 handle 模式 |
+    | `view_bounds` 内、`bounds` 外 | 同上 | `Failed` | 只读的 failed 模式 |
+    | `view_bounds` 内、`bounds` 外 | 同上 | `Absent` 或没有该区域文件 | `null` |
+    | `view_bounds` 外 | — | — | `null` |
+
+    返回 `null` 时引擎用实例的 `ChunkSupplier`（`DynamicChunk::new`）建空气区块，分片实例不设生成器（`InstanceContainer#retrieveChunk`）。插件在运行期把实例视距调到 16 以上时，边缘多出的环就是这种空气区块，不报错。
+  - 只读：`isReadOnly()` 在三种情形为 true：区块在 `bounds` 外、failed 模式、`world_writable = false`（`SynxOptions`）。沿用引擎对只读区块的既有语义：`InstanceContainer` 的 `setBlock` / `placeBlock` 直接返回、不发方块更新，`breakBlock` 返回 false，玩家的挖掘由引擎按原方块回正；插件收不到异常，要判断先读 `Chunk#isReadOnly()`（§28.1 只读区块一行）。
+  - handle 模式的内存形态：父类 `DynamicChunk` 构造时照常建 16 个空 section（单值空气调色板、空光照数组）与两个高度图对象，handle 模式下它们一直是空的，不参与读与发包。`SynxChunk` 另持有段① 所在记录的 `SynxSlot.Present`（映射切片，下称源记录）、包住段① 的 `BufferedPacket`（加载时建一次）、段③ 解码出的方块实体表（按区块内方块索引）与静态实体表。常驻字节由 `REQ-M3-013` 的 T3 量；超出 §2 进程预算时改成 handle 模式不建 section，那要让引擎 `DynamicChunk` 的 `sections` 可替换，另起 ADR。
+  - 发包：handle 模式的 `getFullDataPacket()` 返回那个 `BufferedPacket`（`NetworkBuffer.wrap(段① 切片, 0, 长度)`，`sheddable = false`），发送路径不调 `createChunkPacket`、不产生 `ChunkDataPacket` 对象，写线程把字节从映射直接拷进连接的写缓冲（`PlayerSocketConnection#writeSendable`）；overlay 与 failed 模式走父类的 `CachedPacket`。`BufferedPacket` 不触发 `PlayerPacketOutEvent`（`SendablePacket.java:18` 对它取不到 `ServerPacket`）。出站积压超限时引擎只丢 `sheddable = true` 的包（视野广播的实体移动），区块包照常发出（`ADR-M3-018`）。online 模式下这份字节仍按连接各加密一次（§2 加密 CPU 行）。覆写的是引擎内部方法，登记见 §6 内部面表。
+  - 映射与包的生命周期：区域文件映射在 `Arena.ofShared()`，进程内不关闭。覆盖段映射在 `Arena.ofAuto()`（`API-M3-007`）：`SynxChunk` 与它的 `BufferedPacket` 持有段切片，切片持有映射，二者都不可达之后映射才由 GC 解除，所以出站队列里排队的包、整理后被 unlink 的段都照常可读。
+  - 读方块：handle 模式的 `getBlock` / `getBiome` 取解码缓存。缓存键是记录位置（区域文件或覆盖段，加 offset），内容不可变，不需要失效；未命中时整块 inflate 段①，按包体字段顺序流式读出各 section 的方块与生物群系调色板，跳过高度图、方块实体与光照，不构造 `ChunkDataPacket`（§6）。缓存按解码后调色板的字节计量，上限 `synaxis.synx.section-cache-bytes`（默认 256 MiB），线程安全，满了按最近最少使用淘汰。`condition ≠ TYPE` 且该格在段③ 方块实体表里时，返回的 `Block` 带段③ 的完整 NBT 与按命名空间从 `BlockManager` 取的 handler，没登记的命名空间走引擎 `getHandlerOrDummy`（每个命名空间一行 WARN）。handle 模式的 `getSection` / `getSections` 返回父类那组空 section：`Instance#getSkyLight` / `getBlockLight` 对句柄区块返回 0（`relightSection` 对非 `LightingChunk` 无副作用），Q8 定了玩法不读光照；引擎里读 section 调色板的另两处（高度图、生成器 fork）只在 overlay 模式或有生成器的实例上跑，碰不到句柄区块。段① 解码比独立存调色板慢一个数量级以上、且模拟距离内缓存命中率低（存储对比 T2）时，改回在段③ 保存完整调色板，升 `format_version`。
+  - 方块 handler：清单由分片宿主经 `SynxHandlers.registerAll(process.block())` 登记（`API-M3-003` 数据标记条），与烘焙器同一个函数、同一份清单。加载时段③ 里有 handler 且 `isTickable()` 的方块实体，按该格状态（经解码缓存取）登记进父类的 `tickableMap`，在模拟距离内照常 tick；其余方块实体不预解码。
+  - 静态实体：在 `Chunk#onLoad()` 生成（引擎把区块放进实例之后、在加载它的虚拟线程上调，这时 `setInstance` 不会重入加载同一区块）；`bounds` 外的只读区块不生成。按 NBT 的 `id` 取 `EntityType`，建无 AI 的 `Entity`，位置取 `Pos`、朝向取 `Rotation`，只映射 §28.1「静态实体还原范围」一行列出的元数据，源 NBT 整份挂在 `Tag.NBT("synx_source")` 上供插件读；`id` 不在名单里的类型每种记一行 WARN 并跳过，不让区块失败。卸载时引擎 `InstanceContainer#unloadChunk` 移除区块内全部非玩家实体，静态实体随之消失；它们的运行期改动不写覆盖存储。
+  - 物化（`handle → overlay`）：发生在 `setBlock` / `setBiome` 进入 `SynxChunk` 的那一刻，线程是改方块的线程（tick 线程、插件的虚拟线程都可能），此时已持实例监视器与本区块写锁（`InstanceContainer#UNSAFE_setBlock`）。步骤：流式解码段① 全部 section 的方块、生物群系调色板与 sky / block 光照数组，用 `Palette#copyFrom` 与 `Section#setSkyLight` / `setBlockLight` 灌进父类的 section（`copyFrom` 保留调色板顺序，§19「段① 与重新编码逐字节一致」靠它；漏灌光照会让 `createLightData` 对该 section 置 `emptySkyMask`，新观察者看到全黑）；段③ 方块实体按 `(section_y, index)` 放进父类的 `entries`，要 tick 的放进 `tickableMap`，不调 `onPlace`；调 `invalidate()` 让高度图下次全量重算；模式切到 overlay，调 `OverlayTracker#materialized`。然后才执行本次改动。overlay 模式下每次改方块或生物群系（含物化那次）`generation` 加 1、`dirty = true`、调 `OverlayTracker#modified`。M3-C 不做运行时光照：物化后沿用段① 的烘焙光照，改动处的光照服务端不重算，由客户端自算；M3-D 起物化与改动后投递 `overlay.relight`（`REQ-M3-012`）。
+  - 与覆盖存储的接口（M3-C 第 0 步契约，§26）：
+
+    ```java
+    public interface OverlayIndex {                 // OverlayStore 实现，SynxChunkLoader 调
+        @Nullable SynxSlot.Present find(int chunkX, int chunkZ);  // 最新一条已 fsync 的记录
+    }
+    public interface OverlayChunk {                 // SynxChunk 实现，OverlayStore 调
+        int chunkX();
+        int chunkZ();
+        long generation();
+        boolean dirty();
+        OverlayEncoding encodeOverlay(SynxSettings settings);   // 任意线程；自己取区块锁
+        void written(long generation, SynxSlot.Present record, boolean demote); // fsync 之后调
+    }
+    public record OverlayEncoding(long generation, SynxChunkRecord record) {
+    }
+    public interface OverlayTracker {               // OverlayStore 实现，SynxChunk 调；实现须线程安全
+        void materialized(OverlayChunk chunk);      // handle → overlay，持本区块写锁
+        void modified(OverlayChunk chunk);          // overlay 模式下每次改动之后，持本区块写锁
+        void unloadRequested(OverlayChunk chunk);   // readyToUnload() 因 dirty 返回 false 时，tick 调度线程
+        void unloaded(OverlayChunk chunk);          // 区块离开实例（ChunkLoader#unloadChunk）
+    }
+    ```
+
+    `encodeOverlay` 先读 `generation`，再经父类 `CachedPacket#packet()`（引擎在区块锁下 `createChunkPacket`）取包，交给 `SynxChunkPacket.encode` 成帧压缩成段①；段② 沿用源记录（运行期不读段②，不重算）；段③ 由 `entries` 里的方块实体（完整 NBT 与 handler 键）加源记录的静态实体表组成；段④ 长度 0。`written` 取本区块写锁，先把源记录换成 `record`，再看 `generation`：仍等于编码时的值才清 `dirty`；`demote = true`（淘汰）且相符时退回 handle：section 的调色板 `fill(0)`、光照设回空数组，清 `entries` 与 `tickableMap` 后按新源记录的段③ 重登要 tick 的 handler，重建 `BufferedPacket`；不相符（编码之后又被改）时区块仍是 overlay 且 `dirty`。
+  - 卸载前检查：覆写引擎 `Chunk#readyToUnload()`（`API-M3-006`）：handle 与 failed 模式返回 true；overlay 模式在 `dirty = false` 且 `relight_pending = false` 时返回 true；`dirty` 时调 `OverlayTracker#unloadRequested` 后返回 false，写入阶段先把它落盘，下一轮判定再卸载（§11.1 `overlay → [*]`）。`ChunkLoader#saveChunk` 是空实现：覆盖层只经写入阶段落盘。
+  - 零编码的证明分两层（§19）：确定性的一层是集成测试让真实 `Player` 的发送路径发句柄区块，断言连接收到的每个区块包都是 `sheddable = false` 的 `BufferedPacket`、字节与段① 相同；统计的一层是 200 机器人压测的 JFR（§15 零编码行）。
 
 - **`API-M3-006` 视距、模拟距离与区块票据** — 实现 `REQ-M3-009`、`REQ-M3-010`
-  - 引擎默认值不变：`synaxis.chunk-view-distance` 仍默认 8（M2 的 `Main.java:68` 设 10），模拟距离默认「不限」（全部已加载区块照常 tick），自动卸载默认关闭（`InstanceManager.java:93` 的「注销实例时卸载」是唯一卸载路径，与现状相同）。M2 对局的 `Match` 不调用下列任何方法，行为不变。
-  - Java（按实例）：`Instance#setSimulationDistance(int chunks)`（`-1` = 不限，默认 `-1`）；`Instance#setChunkUnloadGraceTicks(int ticks)`（`-1` = 不自动卸载，默认 `-1`）；`Instance#addChunkTicket(int cx, int cz, Object owner)` / `removeChunkTicket(...)`。玩家视野进出由引擎自动加减票据；开启了自动卸载的实例上，票据数归零并空闲满宽限期的区块在 tick 末尾卸载（内部任务 `chunk.unload`）。
-  - 分片宿主的设置：`ShardMain`（`server-app`，启动脚本 `bin/server-shard`）已由 `docs/DESIGN-PROD.md` 第 5 波 5D 建出，`ShardMain#threadDefaults` 写线程两项（`API-M3-009`），之后调 `Main.main` 起服。M3 按同一写法（进程属性在 `Main` 读取之前写入，命令行显式给的值优先，`Main#applyViewRangeDefaults` 只补没设的键）加入下表各项；属性类的四项中，视距与两个上限由 `ShardMain#viewDefaults` 写入，接收转入由 `ShardMain#transferDefaults` 写入：
+  - 引擎默认值不变：`synaxis.chunk-view-distance` 仍默认 8（M2 的 `Main` 设 10），模拟距离默认「不限」（全部已加载区块照常 tick），自动卸载默认关闭（注销整个实例时卸载是唯一卸载路径，`InstanceManager#unregisterInstance`，与现状相同）。M2 对局的 `Match` 不调用下列任何方法，行为不变。
+  - 引擎 Java 面（`Instance` 上，`@ApiStatus.Experimental`）：
+
+    | 方法 | 语义 | 线程 |
+    | --- | --- | --- |
+    | `setSimulationDistance(int chunks)`、`simulationDistance()` | `-1` 不限（默认）；`≥ 1` 只有与某名玩家所在区块的切比雪夫距离 ≤ 该值的区块参与模拟；其他值抛 `IllegalArgumentException` | 任意线程设，下一个 tick 生效 |
+    | `isChunkSimulated(int chunkX, int chunkZ)` | 不限时恒 true，否则查本 tick 的模拟集合 | 任意线程 |
+    | `setChunkUnloadGraceTicks(int ticks)`、`chunkUnloadGraceTicks()` | `-1` 不自动卸载（默认）；`≥ 1` 票据数为 0 满这么多 tick 的区块在 tick 末尾卸载；其他值抛 `IllegalArgumentException` | 任意线程设，下一轮卸载判定生效 |
+    | `addChunkTicket(int chunkX, int chunkZ, Object owner)`、`removeChunkTicket(int chunkX, int chunkZ, Object owner)` | 插件票据，按 (区块, owner) 去重，返回是否真的加上或去掉；持票只阻止卸载，不触发加载；区块未加载时也可以持票；插件禁用时引擎不代收 | 任意线程 |
+    | `chunkTicketCount(int chunkX, int chunkZ)` | 玩家视野票据数 + 插件票据数 | 任意线程 |
+
+    `Chunk` 新增 `protected boolean readyToUnload()`，默认 true，卸载判定时由引擎在 tick 调度线程上调，子类据此推迟卸载（`SynxChunk` 的用法见 `API-M3-005`）。
+  - 模拟集合：`Instance#tick` 最后一步（tick 调度线程上、交给各 tick 线程之前，与第 6 波 6E 拍 `PlayerPositions` 快照同一处）在模拟距离 ≥ 1 时按本实例全体玩家此刻所在的区块算出；玩家所在区块与模拟距离都没变时沿用上一份。结果是不可变集合，volatile 发布，本 tick 的所有 tick 线程读同一份。
+  - 模拟距离外：区块与其中实体照常加载、照常有 `ThreadDispatcher` 分区、照常发包与可见，只是 tick 体不跑（`ADR-M3-017`）。`DynamicChunk#tick`（方块 handler）开头判 `isChunkSimulated` 为假即返回。`Entity#tick` 照跑实体调度器（`processTick` 与 `processTickEnd`，所以 `runOn`、`scheduleNextTick`、`setInstance` / `teleport` 的续延不被推迟，与 6E 休眠相同），跳过移动与物理、方块接触、`update`、`EntityTickEvent`、药水效果与定时位置同步。与 6E 休眠的次序：先判模拟再问休眠策略，模拟距离外不问策略、休眠时钟不走；回到模拟距离内的第一个 tick 补发一次位置同步（与 6E 醒来那次同一做法），客户端按最后速度外推的偏差在这时拉回。玩家所在区块与自己的距离是 0，玩家永远在模拟集合里。
+  - 玩家视野票据：跟随玩家区块环这个状态（环心 `chunksLoadedByClient`、半径 `effectiveViewDistance()`、所在实例），不跟随 `chunkAdder` / `chunkRemover` 的调用次数。三者任一变化时引擎按新旧两个环的差给区块加减票据；`Player#respawn` 对同一个环再调一遍 `chunkAdder`，票据不变；玩家离开实例（换实例、断线、`remove`）时整环退票。6E 的玩家上限（`Player#setMaxViewDistance`）与实例视距（`Instance#viewDistance(int)`）改变区块环时走同一路径。票据表每个实例一张，由实例自己的一把锁保护（不是实例监视器）：玩家在自己的 tick 线程上改，插件在任意线程上改，卸载判定在 tick 调度线程上读。
+  - 卸载判定（内部任务 `chunk.unload`）：每个 tick 在 tick 调度线程上、`ThreadDispatcher#updateAndAwait` 之后（全部 tick 线程已结束本 tick），对每个宽限期 ≥ 1 的实例挑候选：已加载 ∧ 票据数 = 0 ∧ 空闲 tick 数 ≥ 宽限期 ∧ 区块里没有在线玩家 ∧ `readyToUnload()` 为真。空闲 tick 数从票据数最后一次降到 0 算起（以 0 张票据加载的从加载算起），按实例 `worldAge` 计；空闲最久的先，每实例每 tick 至多 256 个；对每个候选调既有的 `InstanceContainer#unloadChunk`（发 `UnloadChunk`、移除区块内非玩家实体、删分区、通知 `ChunkLoader#unloadChunk`）。插件要让某区块里的实体不被卸载带走，对它持票。
+  - 分片宿主（`server-app`）：`ShardMain`（启动脚本 `bin/server-shard`）已由 `docs/DESIGN-PROD.md` 第 5 波 5D 建出，写线程两项（`API-M3-009`）与视野三项，之后调 `Main` 起服；写法是进程属性在 `Main` 读取之前写入、命令行与配置文件给的值优先（`Main#applyViewRangeDefaults` 同样只补没设的键）。M3-C 加挂地图模式，下表是分片宿主的全部设置：
 
     | 设置 | 写法 | 分片宿主的值 | 引擎 / `Main` 的值 | 出处 |
     | --- | --- | --- | --- | --- |
-    | 区块视距 | 属性 `synaxis.chunk-view-distance` | 12；宿主校验大于 16 即起服报错（校验与模拟距离一起在 M3-C 加） | 引擎 8，`Main` 设 10 | 本接口 |
-    | 模拟距离 | 分片宿主建 MMO 实例时调 `setSimulationDistance`，值读宿主配置 `shard.simulation-distance` | 4，必须 ≤ 视距 | `-1`（不限） | 本接口 |
-    | 卸载宽限 | 同上，`setChunkUnloadGraceTicks`，值读 `shard.unload-grace-ticks` | 100 tick | `-1`（不自动卸载） | 本接口 |
-    | 接收转入 | 属性 `synaxis.accept-transfers` | `synaxis.app.store=postgres` 时写 `true`；内存存储（`Main` 的默认）不写，取引擎的 `false` | `false` | `API-M3-010` |
-    | 区块发送上限 | 属性 `synaxis.chunk-queue.max-per-tick` | 4 | 64 | `docs/DESIGN-PROD.md` `REQ-PROD-026`、`API-PROD-020` |
-    | 每玩家可见实体上限 | 属性 `synaxis.max-visible-entities-per-player` | 100 | 0（不限） | `docs/DESIGN-PROD.md` `REQ-PROD-024`、`API-PROD-019` |
+    | 区块视距 | 属性 `synaxis.chunk-view-distance`，`ShardMain#viewDefaults` 写 | 12；挂地图时大于 16 拒启 | 引擎 8，`Main` 设 10 | 本接口 |
+    | 模拟距离 | 属性 `synaxis.simulation-distance`，`ShardSettings` 读，`ShardWorld` 建实例时调 `setSimulationDistance` | 4；只在挂地图时读，取值 1～区块视距 | `-1`（不限） | 本接口 |
+    | 卸载宽限 | 属性 `synaxis.chunk-unload-grace-ticks`，同上，调 `setChunkUnloadGraceTicks` | 100；只在挂地图时读，取值 `-1` 或 ≥ 1 | `-1`（不自动卸载） | 本接口 |
+    | 核心模式 | 属性 `synaxis.app.core-mode`，`ShardMain` 在挂地图时写 | `on`（不发现插件，宿主准入）；挂地图而给了别的值拒启 | `auto` | 本接口，§28.2 |
+    | 接收转入 | 属性 `synaxis.accept-transfers`，`ShardMain#transferDefaults` 写 | `synaxis.app.store=postgres` 时写 `true`；内存存储（`Main` 的默认）不写，取引擎的 `false` | `false` | `API-M3-010` |
+    | 区块发送上限 | 属性 `synaxis.chunk-queue.max-per-tick`，`ShardMain#viewDefaults` 写 | 4 | 64 | `docs/DESIGN-PROD.md` `REQ-PROD-026`、`API-PROD-020` |
+    | 每玩家可见实体上限 | 属性 `synaxis.max-visible-entities-per-player`，`ShardMain#viewDefaults` 写 | 100 | 0（不限） | `docs/DESIGN-PROD.md` `REQ-PROD-024`、`API-PROD-019` |
 
-    实体视距沿用 `Main` 设的 8，追踪范围归该分册 `API-PROD-019`。最后两项是该分册 §28.2 登记给 M3 的待办。已写入的是区块视距、区块发送上限、可见实体上限与接收转入四项；模拟距离与卸载宽限要等引擎的按实例接口，随 M3-C 加（§28.2）。接收转入只在 PostgreSQL 存储时写，因为设了它的进程必须配好 PostgreSQL 与票据密钥（`API-M3-010`）：无条件写 `true` 会让内存存储的分片起不了服（`docs/DESIGN-PROD.md` 第 5 波压测就是 `bin/server-shard` 加内存存储，没有 PostgreSQL 与 `SYNAXIS_TRANSFER_HMAC_KEYS`）；PostgreSQL 存储而缺密钥时仍由 `Main` 拒绝起服。
-  - 模拟距离外的区块不进 `ThreadDispatcher` 的 tick 分区：区块内实体与方块不 tick，但照常发包、照常可见。
-  - 下发速率：由客户端 `ChunkBatchReceived` 回报决定，回报被夹到 `synaxis.chunk-queue.max-per-tick`（`ServerConfig.maxChunksPerTick`，`Player#onChunkBatchReceived`），每次发送前的待发额度也不超过它（`Player#sendPendingChunks`）。引擎默认值 64（1,280 区块/s）不变，M2 的 `Main` 与 RTS 进程用它兜底；分片宿主把同一个属性写成 4（80 区块/s），所以分片上的实际速率 = min(客户端回报, 4) 区块/tick。「兜底 64」与「分片 4」是同一个键在两类进程里的值，分片里不存在第二道限速。4 区块/tick 下首批 9 个区块 3 个 tick 内发完，与 §15 转服行「首批 9 块 P95 < 5 s」不冲突；飞行档新进视野 46.9 区块/s，低于 80 区块/s；填满视距 12 的 625 个区块约 156 tick ≈ 7.8 s，M3 对填满时间没有目标，要不要设在 M3-C 实测 P1③（§17）之后定。
+    实体视距沿用 `Main` 设的 8，追踪范围归该分册 `API-PROD-019`。接收转入只在 PostgreSQL 存储时写，因为设了它的进程必须配好 PostgreSQL 与票据密钥（`API-M3-010`）：无条件写 `true` 会让内存存储的分片起不了服（`docs/DESIGN-PROD.md` 第 5 波压测就是 `bin/server-shard` 加内存存储，没有 PostgreSQL 与 `SYNAXIS_TRANSFER_HMAC_KEYS`）；PostgreSQL 存储而缺密钥时仍由 `Main` 拒绝起服。
+  - 挂地图模式的进入：`synaxis.map.root` 与 `synaxis.map.build` 都给了才进入；都没给时 `ShardMain` 的行为与现状相同（第 5 波压测的内存存储分片照旧起服）；只给一个拒启。经 `bin/server-app`（直接起 `Main`）给了这两个键也拒启：线程、视野与区块上限的分片默认值只有 `ShardMain` 写，挂地图只走分片宿主。`ShardMain` 调包内可见的 `Main.main(String[] args, boolean shard)`，公开的 `Main.main(String[])` 传 false。
+  - 挂地图模式的装配（`server-app` 包 `io.github.bearisbug.synaxis.app.shard` 的 `ShardWorld`，由 `Main` 在下面三处调用，都在端口 bind 之前；起服事件在 bind 之后写）：
+    1. 步骤 (3) 登记比赛维度类型之后：读 `ShardSettings` 并校验（区块视距 > 16 拒启，模拟距离不在 1～区块视距拒启）；读清单并跑 `API-M3-002` 的起服校验；按清单 `world` 登记维度类型 `synaxis:map`（代码里写 `Key.key("synaxis", "map")`，不留整串常量，§24 翻译键门禁）；`SynxHandlers.registerAll(process.block())`。这些都早于注册表冻结。
+    2. 步骤 (4) 建完 `ShutdownSequence` 之后、`host.enable` 之前：`OverlayStore.open(Path.of("overlay"), manifest, settings, OverlayOptions.fromSystemProperties())`（重建索引，`API-M3-007`），随即 `shutdown.addAfterPlayers("overlay", overlay::finalFlush)`；M3-E 起在这之后重放世界状态标志（`API-M3-013`）。RTS 路径（`Main` 不挂地图）不建覆盖存储、不注册这一步。
+    3. 步骤 (5) 选模式：挂地图时核心模式分支用 `ShardWorld.start` 代替 `CoreMode.start`：建 `SynxChunkLoader`（`SynxOptions.fromSystemProperties()`，覆盖存储同时作 `OverlayIndex` 与 `OverlayTracker`）与实例（`createInstanceContainer(地图维度类型, loader)`），调 `setSimulationDistance`、`setChunkUnloadGraceTicks`；按 `bounds` 设世界边界（中心是 `bounds` 的中心，直径是长边的格数；`bounds` 不是正方形时记一行 WARN，短边方向的玩家能走进外侧的只读区块）；出生点取 `bounds` 中心区块中心那一列的段② `surface_y`（§28.1 出生点一行）；宿主准入把全部连接放进这个实例（同 `CoreMode` 的宿主准入）；登记每 tick 一次的 `TICK_END` 任务调 `OverlayStore#tickEnd()`（`API-M3-007`）。端口 bind 成功之后（`Main` 步骤 (7)）写 `EVT:shard_started`（`flags_replayed`、`flags_ms` 在 M3-E 之前写 0）。
+  - M3 的八个配置键：`synaxis.map.root`、`synaxis.map.build`、`synaxis.simulation-distance`、`synaxis.chunk-unload-grace-ticks` 由 `ShardSettings` 读；`synaxis.world-writable`、`synaxis.synx.section-cache-bytes` 由 `:synx` 的 `SynxOptions` 读；`synaxis.overlay.cap`、`synaxis.overlay.flush-interval-s` 由 `:synx` 的 `OverlayOptions` 读（取值与默认值见 §9）。除挂地图的两个键外都只在挂地图时读；写的不是整数或越界、布尔不是小写的 `true` / `false`（与 `ServerConfig` 布尔键同一规则）即拒启，报 `Refusing to start: Property '<键>' …`。八个键同一提交进 `ConfigFile.KEYS` 与 `docs/DESIGN-PROD.md` `API-PROD-023` 键表（§24）。
+  - 下发速率：由客户端 `ChunkBatchReceived` 回报决定，回报被夹到 `synaxis.chunk-queue.max-per-tick`（`ServerConfig.maxChunksPerTick`，`Player#onChunkBatchReceived`），每次发送前的待发额度也不超过它（`Player#sendPendingChunks`）。引擎默认值 64（1,280 区块/s）不变，M2 的 `Main` 与 RTS 进程用它兜底；分片宿主把同一个属性写成 4（80 区块/s），所以分片上的实际速率 = min(客户端回报, 4) 区块/tick。「兜底 64」与「分片 4」是同一个键在两类进程里的值，分片里不存在第二道限速。4 区块/tick 下首批 9 个区块 3 个 tick 内发完，与 §15 转服行「首批 9 块 P95 < 5 s」不冲突；飞行档新进视野 50.6 区块/s（绕圆 64.5 区块/s），低于 80 区块/s；填满视距 12 的 729 个区块约 183 tick ≈ 9.1 s，M3 对填满时间没有目标，要不要设在 M3-C 实测 P1③（§17）之后定。
 
 - **`API-M3-007` 覆盖存储** — 实现 `REQ-M3-011`
-  - 目录 `<work_dir>/overlay/<build_id>/`，每个频道进程一份（`work_dir` 按 `shard_id` 分开，F2），内含只追加的分段文件 `seg.<n>.synx`（`n` 递增）。段文件头部同 `API-M3-001` 的 256 B，`flags.overlay = 1`，没有偏移索引；其后逐条追加 `{chunk_x i32, chunk_z i32, generation u64, length u32, crc32c u32}` 24 B 记录头 + 一条区块记录（段①～③ 按覆盖层当前内容重新编码，段④ 长度 0）。
-  - 映射：活动段创建时预分配 256 MiB 稀疏文件，一次映射到封口上限，读者按内存索引里的 offset 读；段文件用 `FileChannel.map(…, Arena.ofAuto())` 映射，解除映射交给 GC 可达性——出站队列（无界 `mpscUnboundedArrayQueue`）里排队的 `BufferedPacket` 持有段就不会被回收。
-  - 写入：三个来源在同一个 tick 末尾单线程阶段追加——`overlay.evict`（每 tick ≤ 64 条）、`chunk.unload`（≤ 256 条）、`overlay.flush`（脏区块距上次落盘 ≥ `synaxis.overlay.flush-interval-s`，默认 10，每 tick ≤ 64 条）。该阶段的全部追加合并为一次 `fsync`（group commit，每秒最多 20 次），`fsync` 成功后才更新内存索引 `(cx, cz) → (段号, offset, length, generation)` 并清脏标记。活动段超过 1,024 条记录或 256 MiB 即封口、开新段。**任何段文件都不截断、不原地改写**。
-  - 崩溃丢失窗口：最近 ≤ `flush-interval-s` 秒的改动（F4）。脏区块多于 64 × 20 × 10 = 12,800 个时窗口按比例拉长，实际最大值记在 `EVT:chunk_stream_stats.flush_lag_s_max`。真正要求不丢的改动建模成世界状态标志（`API-M3-013`）。
-  - 停机：`overlay.shutdown-flush` 排在玩家停机保存之后、停 tick 之前，挂在 `docs/DESIGN-PROD.md` §11.4 的 `saving` 阶段（该分册 §17 世界存储约束 ①「保存玩家 → 保存覆盖层 → 停 tick」），计入该阶段 30 s 预算。下列步骤以「停机线程是覆盖层唯一的读写者」为前提：现行关闭序列先 join tick 线程再跑 shutdown 任务（`ServerProcessImpl#shutdownProcess`），前提成立；该分册 §11.4 的新序里 `saving` 阶段 tick 仍在运行，挂载点与单写者前提要在 M3-C 前按新序重定（§28.2）。步骤：等 `overlay.relight` 的在途任务结束（单次上限 200 ms），结果由停机线程直接回写；全部脏区块重编码追加（编码在 `overlay.relight` 线程池上并行，追加单线程），合并为一次 `fsync`，成功后更新索引。预算 2 s：按编码 0.47 ms/区块 CPU（§2 烘焙行）与 `max(1, 核数 / 4)` 个线程，12 核机 2 s 约编完 12,700 个区块，与定期落盘最多积下的 12,800 个脏区块同量级（推算，未测，T10 一并量）。超出预算时停止编码，已追加的部分照常 `fsync`，剩余脏区块数记 ERROR，这些区块的丢失量退化为崩溃窗口（≤ 10 s）。
-  - 整理：已封口段里被新记录覆盖的比例超过 50% 时，把其中仍有效的记录复制进活动段（计入同一 tick 的追加与 `fsync`），更新内存索引，再 unlink 旧段文件；不显式解除映射，每 tick 最多复制 64 条。
-  - 启动：按段号升序扫描全部段文件重建内存索引，同一区块取 `generation` 最大的一条；某条记录的 `crc32c` 不符则丢弃这一条及同段之后的全部记录（写到一半崩溃的尾部），记 ERROR。进程重启保留同一 `build_id` 的记录。
-  - 生命周期：与 `build_id` 绑定；分片以新 `build_id` 起服时旧目录整体丢弃（F1，含只升协议）。起服重放世界状态标志在索引重建之后（`API-M3-013`）。
+  - 位置：`:synx` 包 `io.github.bearisbug.synaxis.synx`，类 `OverlayStore`（实现 `OverlayIndex` 与 `OverlayTracker`，接口见 `API-M3-005`）与 `OverlayOptions`。`OverlayStore.open(Path overlayRoot, SynxManifest manifest, SynxSettings settings, OverlayOptions options)`；公开方法另有 `tickEnd()`（写入阶段）与 `finalFlush(Duration remaining, boolean tickAlive)`，后者返回 `CompletableFuture<?>`，形状与 `ShutdownSequence.Step#run` 相同，宿主以方法引用注册，`:synx` 不依赖 `server-app`。
+  - 目录与段文件：`<工作目录>/overlay/<build_id>/`，每个频道进程一份（工作目录按 `shard_id` 分开，F2），内含只追加的分段文件 `seg.<n>.synx`（`n` 从 0 递增）。段文件头部同 `API-M3-001` 的 256 B，`flags.overlay = 1`，`content_hash` 是本地图版本的，没有偏移索引；其后逐条追加 24 B 记录头 `{chunk_x i32, chunk_z i32, generation u64, length u32, crc32c u32}` 加一条区块记录（段①～③ 按覆盖层当前内容重新编码，段④ 长度 0），每条 8 B 对齐、填充为 0。`crc32c` 覆盖记录头前 20 B 与记录本体。
+  - 读写方式：活动段创建时建 256 MiB 稀疏文件，整段一次映射（`FileChannel.map(READ_ONLY, …, Arena.ofAuto())`），读者按内存索引里的 offset 取切片；写入用 `FileChannel#write(ByteBuffer, long)` 按位置顺序写，`fsync` 是 `FileChannel#force(false)`。映射解除交给 GC 可达性：出站队列（无界 `mpscUnboundedArrayQueue`）里排队的 `BufferedPacket` 与句柄区块持有段切片，段就不会被回收（`API-M3-005`）。**任何段文件都不截断、不原地改写**。
+  - tick 末尾写入阶段：`ShardWorld` 登记的 `TICK_END` 任务每 tick 调一次 `tickEnd()`，跑在 tick 调度线程上；这时全部 tick 线程已结束本 tick，引擎的卸载判定也已跑完。步骤：
+    1. 取写入权（CAS `空闲 → tick`）；取不到（停机线程持有或已关闭）本 tick 跳过。
+    2. 已请求最终落盘，则改做最终落盘（见停机段），做完即结束。
+    3. 挑本批，按这个顺序：LRU 淘汰（内部任务 `overlay.evict`：`overlay_resident − overlay_cap` 个，每 tick ≤ 64，最久没改的先，跳过 `relight_pending`）；卸载前落盘（`overlay.flush`：调过 `unloadRequested` 的脏区块，≤ 256）；定期落盘（`overlay.flush`：`dirty` 且距上次落盘 ≥ `synaxis.overlay.flush-interval-s`（默认 10），≤ 64，最久的先）；整理（≤ 64 条，只拷贝已有记录的字节，不编码）。
+    4. 编码在编码池并行（`max(1, 核数 / 4)` 个平台线程，M3-C 固定；M3-D 起与 `overlay.relight` 共用一个池，线程数由 `synaxis.relight-threads` 定），本线程最多等到阶段开始后 20 ms；到时还没编完的区块不进本批，仍然脏，下一 tick 再来。
+    5. 按挑选顺序追加本批，合并为一次 `fsync`（group commit，每 tick 至多 1 次、每秒至多 20 次）；`fsync` 成功后才更新内存索引 `(cx, cz) → (段号, offset, length, generation)`，再对每条调 `OverlayChunk#written`（淘汰那几条 `demote = true`）。
+    6. 活动段超过 1,024 条记录或 256 MiB 即封口、开新段；释放写入权（`tick → 空闲`）。
+
+    `fsync` 失败或写入抛 `IOException`：本批不进索引、不调 `written`，`evict_failed` 加 1，记 ERROR；区块保持 overlay 与 `dirty`，下一 tick 重试（§11.1 落盘失败）。已写进段里但没确认的字节，重启扫描时 `crc32c` 相符照样收下（内容是真实的某一代），不相符按启动规则截掉。
+  - 崩溃丢失窗口：最近 ≤ `flush-interval-s` 秒的改动（F4）。脏区块多于 64 × 20 × 10 = 12,800 个、或 20 ms 编码预算不够时窗口按比例拉长，实际最大值记在 `EVT:chunk_stream_stats.flush_lag_s_max`，写入阶段每 tick 的最长耗时记在同一事件的 `write_phase_ms_max`。真正要求不丢的改动建模成世界状态标志（`API-M3-013`）。
+  - 停机（最终落盘，内部任务 `overlay.shutdown-flush`，时序见 §12.5）：
+    - 挂法：分片宿主路径（`ShardMain` → `Main` → `ShardWorld`）在创建覆盖存储处调 `ShutdownSequence#addAfterPlayers("overlay", overlay::finalFlush)`（`docs/DESIGN-PROD.md` `API-PROD-007`），排在玩家保存之后、踢人之前；RTS 路径不注册。步骤与玩家存储共用 `saving` 阶段 30 s（判死路径 15 s）的预算，自身上限 min(2 s, `remaining`)：截止时刻 = 调用时刻 + min(2 s, `remaining`)，第二次调用时取两次里更早的那个。
+    - 写入权：一个 `AtomicInteger`，四个值 `空闲`、`tick`、`停机`、`已关闭`。tick 末尾写入阶段做 `空闲 → tick` 与 `tick → 空闲`；停机线程做 `空闲 → 停机`；做完最终落盘的一方置 `已关闭`，之后谁都不再写。另有一个「已请求最终落盘」标志与一个 `finalDone` future。
+    - `finalFlush(remaining, true)`（tick 还活着）：置「已请求」、记截止时刻，立即返回 `finalDone`，不阻塞（这一调用在上一段 future 完成的线程上、持 `ShutdownSequence` 的锁进行）。下一个 tick 末尾写入阶段拿到写入权后做最终落盘：全部脏区块（不设每 tick 上限）交编码池编码，到截止时刻停止编码，已编完的按顺序追加，一次 `fsync`，更新索引并调 `written`，置 `已关闭`，完成 `finalDone`。那一个 tick 最长多出 2 s。
+    - `finalFlush(remaining, false)`（看门狗已判 tick 死，停机线程直接执行）：先置「已请求」，再在调用线程上循环：CAS `空闲 → 停机` 成功，就由这个线程做最终落盘（编码仍交编码池，追加与 `fsync` 在本线程），置 `已关闭`，完成 `finalDone`；读到 `tick`（tick 末尾阶段正在跑，判死不等于 tick 真停）就等它释放或完成，最多等到截止时刻，自己不写；读到 `已关闭` 直接返回。所以最终落盘只有一方执行：false 调用赶在 tick 末尾阶段开始之前，由停机线程写；tick 末尾阶段已开始，停机线程等它完成。判死时 tick 线程可能停在持有某个区块写锁的地方，`encodeOverlay` 拿不到锁的区块到截止时刻也编不完，计入剩余数；不另写无锁读法。
+    - 截止：到截止时刻 `finalDone` 还没完成时，步骤自己记 ERROR `Overlay final flush did not finish within <预算>: <n> dirty chunks left` 并完成 `finalDone`，让 `ShutdownSequence` 不再等这一步；之后若仍有一方拿到写入权，照样写完能写的（多保存一些，不破坏单写者）。正常完成记一行 INFO `Overlay final flush: chunks=<n> bytes=<b> fsync_ms=<t> left=<m> by=<tick|shutdown>`，`left > 0` 时这一行是 ERROR。
+    - 预算推算：编码 0.47 ms/区块 CPU（§2 烘焙行）、`max(1, 核数 / 4)` 个线程，12 核机 2 s 约编完 12,700 个区块，与定期落盘最多积下的 12,800 个脏区块同量级（推算，未测，T10 一并量）。
+    - 语义边界：`已关闭` 之后覆盖存储不再写任何记录。之后的改方块（`kicking` 阶段 tick 仍在跑时的玩法、`plugins_disabled` 阶段插件 `onDisable` 里的 `setBlock`）照样改内存里的区块，但不落盘，进程退出即丢；每次停机的第一处这种改动记一行 WARN（带区块坐标）。要保证不丢的状态走世界状态标志：`WorldFlags#set` 返回前已写进 PostgreSQL，下次起服在覆盖存储索引重建之后重放（`API-M3-013`）。
+  - 整理：已封口段里被新记录覆盖的比例超过 50% 时，在写入阶段第 3 步把其中仍有效的记录原样复制进活动段（计入同一 tick 的追加与 `fsync`，`generation` 不变），更新内存索引；一个段的有效记录全部搬完并 `fsync` 之后 unlink 该段文件，不显式解除映射；每 tick 最多复制 64 条。
+  - 启动（`OverlayStore.open`，在端口 bind 之前）：先删 `overlay/` 下名字不是本 `build_id` 的目录（F1，含只升协议）；再按段号升序扫描本目录的全部段文件。头部按 `SynxExpectations` 与本版本 `content_hash` 核对，不符按 §14 同名错误码拒启；逐条读记录，记录头全 0（预分配的空洞）或 `length < 16` 视为段尾；`crc32c` 不符则丢弃这一条及同段之后的全部记录（写到一半崩溃的尾部），记 ERROR（带段号与偏移）；同一区块取 `generation` 最大的一条进索引。最后开一个新的活动段（段号 = 最大段号 + 1），从不接着旧段写。进程重启保留同一 `build_id` 的记录。
+  - 生命周期与次序：与 `build_id` 绑定；分片以新 `build_id` 起服时旧目录整体丢弃（F1）。起服次序：覆盖存储索引重建 → 世界状态标志重放（M3-E，与覆盖层冲突时以标志为准，`API-M3-013`）→ bind。
 
 - **`API-M3-008` 基准程序** — 实现 `REQ-M3-013`
   - `./gradlew :jmh-benchmarks:worldBench -PworldBenchArgs="--out <json>"`（`jmh-benchmarks/src/worldbench/…/LargeWorldBench.java` 与 `SyntheticTerrain.java`；`--quick`、`--heap`、`--jobs <作业表>` 见 `jmh-benchmarks/README.md`）。每个作业一个子 JVM（`-Xms/-Xmx` 同值、G1、`AlwaysPreTouch`）。
@@ -550,19 +633,23 @@ M3 的契约有四类：① 文件格式（`.synx`、清单、覆盖存储、高
 | 字段 | API 名 | 存储名 | 类型 | 必填 | 枚举/约束 | 单位/精度 | PII |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | 区块驻留状态 | `residency_state` | 仅内存 | enum | 是 | `handle` / `overlay` / `failed`；未知值不存在（进程内） | — | 否 |
-| 票据数 | `ticket_count` | 仅内存 | int | 是 | ≥ 0 | 张 | 否 |
-| 模拟引用数 | `sim_refcount` | 仅内存 | int | 是 | ≥ 0；> 0 时区块 tick | 个玩家 | 否 |
-| 区块代次 | `generation` | 覆盖存储记录头 | long | 是 | 每次 `setBlock` 加 1；光照结果按它判是否过期 | — | 否 |
+| 票据数 | `ticket_count` | 仅内存（每实例一张票据表） | int | 是 | ≥ 0；玩家视野票据（区块在该玩家的区块环里算 1 张）+ 插件票据（按 owner 去重） | 张 | 否 |
+| 空闲 tick 数 | `idle_ticks` | 仅内存 | long | 是 | 票据数最后一次降到 0（或以 0 张票据加载）起经过的实例 tick 数；票据数 > 0 时不计 | tick | 否 |
+| 是否模拟 | `simulated` | 仅内存（每 tick 的模拟集合） | bool | 是 | 模拟距离 `-1` 时恒真；否则区块与某名玩家所在区块的切比雪夫距离 ≤ 模拟距离为真 | — | 否 |
+| 区块代次 | `generation` | 覆盖存储记录头 | long | 是 | overlay 模式下每次改方块或生物群系加 1（物化那次也加）；从覆盖记录加载时接着记录头的值；落盘与淘汰按它判编码之后是否又被改，光照结果按它判是否过期 | — | 否 |
 | 脏标记 | `dirty` | 仅内存 | bool | 是 | overlay 区块自上次成功落盘后被改过为真 | — | 否 |
-| 允许改地形 | `world_writable` | 配置 `synaxis.world-writable` | bool | 是 | 默认 `true` | — | 否 |
-| 覆盖层上限 | `overlay_cap` | 配置 `synaxis.overlay-cap` | int | 是 | 内测档 16,384，正式档 24,576 | 区块 | 否 |
-| 定期落盘间隔 | `flush_interval_s` | 配置 `synaxis.overlay.flush-interval-s` | int | 是 | 默认 10；1～60 | 秒 | 否 |
-| 解码缓存上限 | `section_cache_bytes` | 配置 `synaxis.synx.section-cache-bytes` | long | 是 | 默认 268,435,456 | 字节 | 否 |
-| 光照重算线程数 | `relight_threads` | 配置 `synaxis.relight-threads` | int | 是 | 默认 `max(1, 核数 / 4)`；≥ 1 | 个 | 否 |
-| 模拟距离 | `simulation_distance` | `Instance#setSimulationDistance` | int | 是 | `-1`（不限，引擎默认）或 1～视距；分片宿主设 4 | 区块 | 否 |
-| 卸载宽限期 | `chunk_unload_grace_ticks` | `Instance#setChunkUnloadGraceTicks` | int | 是 | `-1`（不自动卸载，引擎默认）或 ≥ 1；分片宿主设 100 | tick | 否 |
+| 待重算光照 | `relight_pending` | 仅内存 | bool | 是 | 有在途的 `overlay.relight`；M3-C 没有运行时光照，恒为假（M3-D 起用） | — | 否 |
+| 覆盖层常驻数 | `overlay_resident` | 仅内存 | int | 是 | overlay 模式的区块数 | 区块 | 否 |
+| 允许改地形 | `world_writable` | 配置 `synaxis.world-writable`（`SynxOptions`） | bool | 是 | 默认 `true`；只认小写 `true` / `false`；为假时全部区块只读 | — | 否 |
+| 覆盖层上限 | `overlay_cap` | 配置 `synaxis.overlay.cap`（`OverlayOptions`） | int | 是 | 默认 16,384（内测档）；正式档由运维设 24,576；≥ 1 | 区块 | 否 |
+| 定期落盘间隔 | `flush_interval_s` | 配置 `synaxis.overlay.flush-interval-s`（`OverlayOptions`） | int | 是 | 默认 10；1～60 | 秒 | 否 |
+| 解码缓存上限 | `section_cache_bytes` | 配置 `synaxis.synx.section-cache-bytes`（`SynxOptions`） | long | 是 | 默认 268,435,456；≥ 1 | 字节 | 否 |
+| 光照重算线程数 | `relight_threads` | 配置 `synaxis.relight-threads` | int | 是 | 默认 `max(1, 核数 / 4)`；≥ 1。M3-D 加这个键；M3-C 不读，覆盖层编码池固定 `max(1, 核数 / 4)` | 个 | 否 |
+| 模拟距离 | `simulation_distance` | `Instance#setSimulationDistance`；分片宿主取配置 `synaxis.simulation-distance`（`ShardSettings`） | int | 是 | `-1`（不限，引擎默认）或 ≥ 1；分片宿主默认 4，须 ≤ 区块视距 | 区块 | 否 |
+| 卸载宽限期 | `chunk_unload_grace_ticks` | `Instance#setChunkUnloadGraceTicks`；分片宿主取配置 `synaxis.chunk-unload-grace-ticks`（`ShardSettings`） | int | 是 | `-1`（不自动卸载，引擎默认）或 ≥ 1；分片宿主默认 100 | tick | 否 |
+| 地图目录 | `map_root` | 配置 `synaxis.map.root`（`ShardSettings`） | path | 挂地图时是 | `<maps_root>/<map_id>`；与 `synaxis.map.build` 同给或同不给 | — | 否 |
 | 地图版本状态 | `build_state` | `EVT:map_build_finished.outcome` 与发布目录位置 | enum | 是 | `baking` / `verifying` / `published` / `retired` / `failed`；读到未知值的工具按 `failed` 处理 | — | 否 |
-| 地图版本 id | `build_id` | 目录名 | string | 是 | `<map_id>-<12 位 hex>-p<协议号>` | — | 否 |
+| 地图版本 id | `build_id` | 目录名；分片挂载取配置 `synaxis.map.build`（`ShardSettings`） | string | 是 | `<map_id>-<12 位 hex>-p<协议号>` | — | 否 |
 | 内容哈希 | `content_hash` | 清单、区域文件头 | bytes(32) | 是 | SHA-256 | — | 否 |
 | 光照引擎版本 | `light_engine_version` | 清单、区域文件头 | u16 | 是 | 等于 `LightEngine.VERSION` 才可挂载 | — | 否 |
 | 源 DataVersion | `source.data_version` | 清单 | int | Anvil 源必填 | = 4903（26.2） | — | 否 |
@@ -603,34 +690,34 @@ M1 / M2 角色见 `docs/DESIGN.md` §10 与 `docs/DESIGN-M2.md` §10。M3 新增
 
 ```mermaid
 stateDiagram-v2
-  [*] --> handle : 首张票据 [记录可读 ∧ crc32c 相符]
-  [*] --> failed : 首张票据 [记录越界 ∨ crc32c 不符 ∨ bounds 内无记录]
+  [*] --> handle : 加载 [记录可读 ∧ crc32c 相符]
+  [*] --> failed : 加载 [记录越界 ∨ crc32c 不符 ∨ bounds 内无记录]
   handle --> overlay : 方块被改 [world_writable = true ∧ 区块在 bounds 内]
-  overlay --> handle : LRU 淘汰 [overlay_resident 超过 overlay_cap ∧ relight_pending = false ∧ 写入结果 = ok]
-  overlay --> overlay : 定期落盘 [dirty ∧ 距上次落盘 ≥ flush_interval_s ∧ 写入结果 = ok]
-  overlay --> overlay : 停机落盘 [dirty ∧ 进程停机中 ∧ 写入结果 = ok]
+  overlay --> handle : LRU 淘汰 [overlay_resident 超过 overlay_cap ∧ relight_pending = false ∧ 写入结果 = ok ∧ 编码后 generation 未变]
+  overlay --> overlay : 定期落盘 [dirty ∧ (距上次落盘 ≥ flush_interval_s ∨ 待卸载) ∧ 写入结果 = ok]
+  overlay --> overlay : 停机落盘 [dirty ∧ 已请求最终落盘 ∧ 持有写入权 ∧ 写入结果 = ok]
   overlay --> overlay : 落盘失败 [写入结果 ≠ ok]
-  handle --> [*] : 卸载 [ticket_count = 0 ∧ idle_ticks ≥ grace]
-  overlay --> [*] : 卸载 [ticket_count = 0 ∧ idle_ticks ≥ grace ∧ relight_pending = false ∧ 写入结果 = ok]
-  failed --> [*] : 卸载 [ticket_count = 0]
+  handle --> [*] : 卸载 [ticket_count = 0 ∧ idle_ticks ≥ grace ∧ 区块内无在线玩家]
+  overlay --> [*] : 卸载 [ticket_count = 0 ∧ idle_ticks ≥ grace ∧ 区块内无在线玩家 ∧ dirty = false ∧ relight_pending = false]
+  failed --> [*] : 卸载 [ticket_count = 0 ∧ idle_ticks ≥ grace ∧ 区块内无在线玩家]
 ```
 
 迁移表：
 
 | 源 → 目标 | 事件 | 守卫（纯布尔） | 动作（副作用） | 谁触发 | 接口/事件 |
 | --- | --- | --- | --- | --- | --- |
-| [*] → handle | 首张票据 | 记录可读（`offset ≠ 0` ∧ 未越界）∧ crc32c 相符 | 建 handle 模式 `SynxChunk`，源为区域文件或覆盖存储（覆盖存储记录优先）；按段③ 生成静态实体 | 引擎（玩家视野或插件票据） | `API-M3-006`、`API-M3-005` |
-| [*] → failed | 首张票据 | 记录越界 ∨ crc32c 不符 ∨（区块在 `bounds` 内 ∧ `offset = 0`） | 记 ERROR（带区块坐标）；发空气区块占位；计入 `EVT:chunk_stream_stats.failed` | 引擎 | `API-M3-005` |
-| handle → overlay | 方块被改 | `world_writable = true` ∧ 区块在 `bounds` 内 | 从段① 解码方块与光照、从段③ 挂回方块实体，物化为 `DynamicChunk`；`generation` 加 1；`dirty = true`；向在看的客户端发方块更新；投递 `overlay.relight` | 插件 `setBlock` 或世界状态标志重放 | `API-M3-005`、`API-M3-013` |
-| overlay → handle | LRU 淘汰 | `overlay_resident > overlay_cap` ∧ `relight_pending = false` ∧ 写入结果 = ok | 重编码三段追加到覆盖存储活动段，随本 tick 的 group commit `fsync`；丢弃 section；改指向该条覆盖记录 | 内部任务 `overlay.evict` | `API-M3-007` |
-| overlay → overlay | 定期落盘 | `dirty` ∧ 距上次落盘 ≥ `flush_interval_s` ∧ 写入结果 = ok | 重编码三段追加，随本 tick 的 group commit `fsync`；`fsync` 后更新索引、`dirty = false` | 内部任务 `overlay.flush` | `API-M3-007` |
-| overlay → overlay | 停机落盘 | `dirty` ∧ 进程停机中 ∧ 写入结果 = ok | 重编码三段追加，与其他脏区块合并为一次 `fsync`；`fsync` 后更新索引、`dirty = false` | 内部任务 `overlay.shutdown-flush` | `API-M3-007` |
-| overlay → overlay | 落盘失败 | 写入结果 ≠ ok | 保留常驻与 `dirty`；记 ERROR；`evict_failed` 计数加 1；下一轮重试（停机时不重试，计入剩余脏区块数） | 内部任务 `overlay.evict`、`overlay.flush`、`overlay.shutdown-flush` 或 `chunk.unload` | `API-M3-007` |
-| handle → [*] | 卸载 | `ticket_count = 0` ∧ `idle_ticks ≥ grace` | 移除静态实体；释放句柄；清该区块在解码缓存里的条目 | 内部任务 `chunk.unload` | `API-M3-006` |
-| overlay → [*] | 卸载 | `ticket_count = 0` ∧ `idle_ticks ≥ grace` ∧ `relight_pending = false` ∧ 写入结果 = ok | 写覆盖存储（group commit）后移除静态实体并释放 | 内部任务 `chunk.unload` | `API-M3-007` |
-| failed → [*] | 卸载 | `ticket_count = 0` | 释放占位 | 内部任务 `chunk.unload` | `API-M3-006` |
+| [*] → handle | 加载 | 记录可读（`offset ≠ 0` ∧ 未越界）∧ crc32c 相符 | 建 handle 模式 `SynxChunk`，源为区域文件或覆盖存储（`bounds` 内覆盖存储记录优先）；解码段③ 表，要 tick 的 handler 登记进 `tickableMap`；`onLoad` 时按段③ 生成静态实体（`bounds` 外不生成） | 引擎（玩家区块环的 `loadOptionalChunk` 或插件 `loadChunk`） | `API-M3-005` |
+| [*] → failed | 加载 | 记录越界 ∨ crc32c 不符 ∨（区块在 `bounds` 内 ∧ `offset = 0`） | 记 ERROR（带区块坐标）；建只读的空气占位；计入 `EVT:chunk_stream_stats.failed` | 引擎 | `API-M3-005` |
+| handle → overlay | 方块被改 | `world_writable = true` ∧ 区块在 `bounds` 内 | 在改方块的线程上、持实例监视器与区块写锁：从段① 解码方块、生物群系与光照灌进 section，从段③ 挂回方块实体；`generation` 加 1；`dirty = true`；调 `OverlayTracker#materialized`；向在看的客户端发方块更新；M3-D 起投递 `overlay.relight` | 插件 `setBlock` / `setBiome`、玩家放置或破坏方块、世界状态标志重放 | `API-M3-005`、`API-M3-013` |
+| overlay → handle | LRU 淘汰 | `overlay_resident > overlay_cap` ∧ `relight_pending = false` ∧ 写入结果 = ok ∧ 编码后 `generation` 未变 | 编码池编码三段，tick 末尾写入阶段追加并随本 tick 的 group commit `fsync`；`fsync` 后更新索引，`written(…, demote = true)` 清空 section、改指向该条覆盖记录 | 内部任务 `overlay.evict` | `API-M3-007` |
+| overlay → overlay | 定期落盘 | `dirty` ∧（距上次落盘 ≥ `flush_interval_s` ∨ 待卸载）∧ 写入结果 = ok | 编码三段追加，随本 tick 的 group commit `fsync`；`fsync` 后更新索引；编码后 `generation` 未变才 `dirty = false` | 内部任务 `overlay.flush` | `API-M3-007` |
+| overlay → overlay | 停机落盘 | `dirty` ∧ 已请求最终落盘 ∧ 持有写入权 ∧ 写入结果 = ok | 由持有写入权的一方（tick 末尾写入阶段或停机线程）编码全部脏区块、追加，合并为一次 `fsync`；`fsync` 后更新索引、`dirty = false`；覆盖存储置已关闭 | 内部任务 `overlay.shutdown-flush` | `API-M3-007` |
+| overlay → overlay | 落盘失败 | 写入结果 ≠ ok | 保留常驻与 `dirty`；记 ERROR；`evict_failed` 计数加 1；下一轮重试（最终落盘不重试，计入剩余脏区块数） | 内部任务 `overlay.evict`、`overlay.flush` 或 `overlay.shutdown-flush` | `API-M3-007` |
+| handle → [*] | 卸载 | `ticket_count = 0` ∧ `idle_ticks ≥ grace` ∧ 区块内无在线玩家 | 发 `UnloadChunk`；移除区块内非玩家实体（含静态实体）；释放句柄（解码缓存按不可变的记录位置作键，不必清） | 内部任务 `chunk.unload` | `API-M3-006` |
+| overlay → [*] | 卸载 | `ticket_count = 0` ∧ `idle_ticks ≥ grace` ∧ 区块内无在线玩家 ∧ `dirty = false` ∧ `relight_pending = false` | 同 `handle → [*]`；调 `OverlayTracker#unloaded`。`dirty` 时 `readyToUnload()` 返回假并请求卸载前落盘，本轮不卸载 | 内部任务 `chunk.unload` | `API-M3-006`、`API-M3-007` |
+| failed → [*] | 卸载 | `ticket_count = 0` ∧ `idle_ticks ≥ grace` ∧ 区块内无在线玩家 | 释放占位 | 内部任务 `chunk.unload` | `API-M3-006` |
 
-`view_bounds` 外的区块 `loadChunk` 返回 `null`，不建驻留对象，不进本状态机；`view_bounds` 内、`bounds` 外的只读 handle 没有 `handle → overlay` 出边。`sim_refcount` 是属性不是状态：它只决定区块是否进 tick 分区，与驻留形态正交，任何状态下都可增减。
+`view_bounds` 外的区块与 `bounds` 外没有记录的区块 `loadChunk` 返回 `null`，引擎建普通空气区块，不进本状态机；`view_bounds` 内、`bounds` 外的只读 handle 没有 `handle → overlay` 出边，`world_writable = false` 时全部区块都没有。`simulated` 是属性不是状态：它只决定区块与其中实体是否跑 tick 体，与驻留形态正交，任何状态下都可变。
 
 ### 11.2 地图版本 `ENT-MapBuild`
 
@@ -794,6 +881,40 @@ sequenceDiagram
 
 驱动的状态机迁移：无（客户端流程，不改服务端状态）。
 
+### 12.5 停机时的覆盖层最终落盘
+
+保存阶段的阶段划分、预算与判死路径见 `docs/DESIGN-PROD.md` §11.4 与 `API-PROD-007`，本图只画覆盖层这一步。
+
+```mermaid
+sequenceDiagram
+  autonumber
+  participant E as 停机线程
+  participant Q as ShutdownSequence
+  participant O as 覆盖存储
+  participant T as tick 末尾写入阶段
+  E->>Q: saveAll 30 s tickAlive=true (API-PROD-007)
+  Q->>Q: 等玩家存储保存完
+  Q->>O: finalFlush 剩余预算 true (API-M3-007)
+  O-->>Q: 置最终落盘请求 立即返回 future
+  alt tick 活着
+    T->>O: CAS 写入权 空闲到 tick (API-M3-007)
+    T->>O: 编码全部脏区块 追加 一次 fsync 置已关闭
+    O-->>Q: future 完成
+  else 看门狗判死
+    E->>Q: saveAll 剩余预算 false (API-PROD-007)
+    Q->>O: finalFlush 剩余预算 false (API-M3-007)
+    alt 写入权空闲
+      O->>O: 停机线程 CAS 空闲到停机 编码 追加 一次 fsync 置已关闭
+    else tick 末尾已开始
+      O->>O: 停机线程等那次完成 自己不写
+    end
+    O-->>Q: future 完成
+  end
+  Q-->>E: saveAll 的 future 完成 进 kicking
+```
+
+驱动的状态机迁移：§11.1 `overlay → overlay`（停机落盘）；`docs/DESIGN-PROD.md` §11.4 `saving → saving`（宿主步骤）与 `saving → kicking`。到截止时刻 min(2 s, 剩余预算) 还没完成时，覆盖存储自己记 ERROR 并完成 future（`API-M3-007` 停机段），图里省略。
+
 ## 13. 页面与跳转地图
 
 有前端：客户端模组。M3 新增的客户端可见界面是转服过场（原版 `Transfer` 时的连接屏）、新增的断线原因与光影引导屏；远景准备只在 HUD 上显示一条可忽略的进度提示，不是页面。游戏内界面沿用 M2 的 `PAGE-RTS-HUD`（MMO 的 HUD 不在 M3 范围）。
@@ -836,7 +957,9 @@ flowchart LR
 | `synx-light-engine-mismatch` | 清单 `light_engine_version` ≠ 当前 `LightEngine.VERSION` | 重烘（光照输出已变） |
 | `synx-world-flags-unavailable` | 起服重放世界状态标志时 PostgreSQL 读失败，重试 3 次仍失败 | 见 `RB-M3-006` |
 
-前九个码由 `:synx` 的 `SynxError` 定义，M3-B 已由校验函数 `SynxBuildVerifier.verify` 与读取器抛出，进程退出与端口不 bind 随 M3-C 接线；烘焙器的退出码见 `API-M3-003`。运行期区块记录损坏（越界、crc32c 不符或段长表不符）不拒绝起服：该区块进 §11.1 `failed`，发空气区块占位并记 ERROR，由 §21 的告警接手。客户端远景的下载与校验失败不报错给玩家，只写客户端日志并在下次进大区重试。
+前九个码由 `:synx` 的 `SynxError` 定义，M3-B 已由校验函数 `SynxBuildVerifier.verify` 与读取器抛出；M3-C 由 `ShardWorld` 接进起服（`API-M3-006` 挂地图模式），覆盖段文件头部不符同样按这几个码。烘焙器的退出码见 `API-M3-003`。
+
+挂地图的分片起服拒绝一律走 `Main` 既有的拒启路径：日志一行 `Refusing to start: …`，退出码 1，端口不 bind，不写 `EVT:shard_started`。`synx-*` 码写在这一行开头（如 `Refusing to start: synx-payload-hash r.0.0.synx: …`）；另有不带码的配置拒绝：`synaxis.map.root` 与 `synaxis.map.build` 只给了一个，或经 `bin/server-app` 给了它们；挂地图而 `synaxis.app.core-mode` 不是 `on`；区块视距 > 16；模拟距离不在 1～区块视距；宽限期不是 `-1` 也不 ≥ 1；M3 的八个键写法不对（`API-M3-006`）；`SynxHandlers` 发现同键处理器；覆盖存储目录建不了。`synx-world-flags-unavailable` 属 M3-E。运行期区块记录损坏（越界、crc32c 不符或段长表不符）不拒绝起服：该区块进 §11.1 `failed`，发空气区块占位并记 ERROR，由 §21 的告警接手。客户端远景的下载与校验失败不报错给玩家，只写客户端日志并在下次进大区重试。
 
 ## 15. 非功能需求
 
@@ -844,27 +967,27 @@ flowchart LR
 
 | 维度 | 场景 | 目标 |
 | --- | --- | --- |
-| tick 预算 | 单分片 200 机器人、视距 12、步行与坐骑两档、600 s | tick P99 < 50 ms，超 50 ms 的 tick 为 0（路线报告 P2 ⑥）；30 min 档 TPS 20、RSS < 4 GiB（P6） |
+| tick 预算 | 单分片挂 4k×4k 测试图、200 机器人、视距 12、模拟距离 4、宽限 100、步行与坐骑两档各 600 s | tick P99 < 50 ms，超 50 ms 的 tick 为 0（路线报告 P2 ⑥）；30 min 档 TPS 20、RSS < 4 GiB（P6）。覆盖层 tick 末尾写入阶段每 tick ≤ 20 ms 加一次 `fsync`（`API-M3-007`） |
 | tick 预算（正式档） | 500 机器人；另压「500 人挤在 1 个分格」一档 | 两档分别记 tick P99 与每人出口；不达标则频道 `capacity` 降到 200～300（P6） |
-| 零编码 | 未改区块的发送路径 | JFR 采样里句柄区块的发送栈不出现 `createChunkPacket`（P2 ④）；测试断言发送未改区块期间新建的 `ChunkDataPacket` 对象数为 0，发送路径只持有压缩字节；每区块服务端 CPU 只剩读页与拷贝，对照值见 §2「区块 CPU 对照」行 |
+| 零编码 | 未改区块的发送路径 | 确定性判据：集成测试经真实 `Player` 发送路径发句柄区块，连接收到的每个区块包都是 `sheddable = false` 的 `BufferedPacket`、字节与段① 相同，没有 `CachedPacket` 或 `ServerPacket` 形式的区块包，所以发送路径上 `ChunkDataPacket` 对象数为 0。压测判据（P2 ④）：200 机器人 600 s、全程不改方块，JFR `jdk.ExecutionSample` 的栈里 `createChunkPacket` 出现 0 次，`jdk.ObjectAllocationSample` 里 `objectClass` 为 `ChunkDataPacket` 的样本 0 条（运行期解码也不构造它，`API-M3-005`），`EVT:chunk_stream_stats` 的 `overlay_sent = 0`、`handle_sent > 0`。每区块服务端 CPU 只剩读页与拷贝，对照值见 §2「区块 CPU 对照」行 |
 | 调色板形态 | 烘焙产物与覆盖层物化结果 | 每个 section 的方块调色板只能是单值或间接调色板（P2 验收）。依据：生成器用 `setAll` 会转成直接调色板，高 384 自然地形堆从 27.0 涨到 81.1 KiB/区块、包体 +47%（基准重测 §1 第 4 条） |
-| 包体一致 | 抽 1,000 个区块 | 段① 字节与「段① 解码成 `DynamicChunk`（方块实体取自段③）再 `createChunkPacket`」逐字节一致（P2 ②） |
-| 带宽 | 200 机器人步行 / 坐骑 | 区块下行 KB/s/人与模型（步行 10.1、坐骑 23.5）偏差 ≤ ±20%（P2 ⑥）；分片出站实测与 §2 估算偏差 ≤ ±20%（P6）；每人收到的区块数 > 首批 9 块。下发速率由客户端回报决定，分片宿主上限 4 区块/tick（`API-M3-006`） |
-| 加密 | online 模式 500 人 | 服务端加密 CPU 与 §2 推算（0.23～0.30 核）偏差记录在案；判据与原生实现的切换条件归 `docs/DESIGN-PROD.md` §15 加密 CPU 行与 `ADR-PROD-011` |
+| 包体一致 | 测试图按固定种子抽 1,000 个区块 | 每个区块按 `API-M3-005` 物化（段① 解码灌进 section、方块实体取自段③），再经 `CachedPacket#packet()` 取 `createChunkPacket` 的结果并按同一阈值成帧压缩，解压后的包体与段① 解压后的包体逐字节一致，1,000 个不同的数为 0（P2 ②；比包体而不比成帧字节的理由见 `API-M3-001` 段①） |
+| 带宽 | 200 机器人步行 / 坐骑 | 区块下行 KB/s/人（`summary.json` 的 `inbound.chunks.<档>.steady_wire_bytes ÷ steady_connection_seconds`）与按机器人实际走法修正的模型偏差 ≤ ±20%：机器人绕圆走，模型取步行 13.9、坐骑 32.3 KB/s（§2 近圈下行行；直线口径是 10.9、25.3）；另报每区块字节（`steady_wire_bytes ÷ steady_packets`）与 B = 1,502 B 的偏差（P2 ⑥）。分片出站实测与 §2 估算偏差 ≤ ±20%（P6，估算按同一走法修正）；每人收到的区块数 > 首批 9 块。下发速率由客户端回报决定，分片宿主上限 4 区块/tick（`API-M3-006`） |
+| 加密 | online 模式 500 人 | 服务端加密 CPU 与 §2 推算（0.23～0.31 核）偏差记录在案；判据与原生实现的切换条件归 `docs/DESIGN-PROD.md` §15 加密 CPU 行与 `ADR-PROD-011` |
 | 烘焙 | 4k×4k 测试图（65,536 区块，高 256） | 烘焙成功，记墙钟、CPU 与磁盘（P2 ①）。规划值见 §2「烘焙」行，16 线程墙钟按其 CPU 时间除以 16 估 < 10 s（推算）。实测见 §2「烘焙」「磁盘」两行：1 线程 89～93 s，落在规划的 83～123 CPU·s 区间内；12 线程 16.4～24.4 s，只比 1 线程快 3.7～5.7 倍，测量时 12 核机不空闲，并行效率没有单独排查；空闲机器复跑前不据此改规划 |
 | 起服 | 挂载一个大区（≈ 219 MB + 段③ + 邻区边缘文件） | 全量 `payload_sha256` 校验 < 5 s（按 SHA-256 硬件加速约 1 GB/s 推算，未测） |
 | 覆盖层内存 | 覆盖层满载 | 堆（光照已算、间接调色板、不含包缓存）、含 SoftReference 包缓存的上界、堆外成帧包体与解码缓存各不超过 §2「服务端堆」行对应档的值；进程堆 < 2 GB 沿用 `docs/DESIGN.md` §15，正式档堆上限 3 GiB、RSS < 4 GiB。监控按堆与堆外两项（NMT 或 `BufferPoolMXBean`） |
-| 覆盖层落盘 | 进程 `kill -9`；正常 `stop` | `kill -9`：丢失的改动 ≤ 最近 10 s（F4）。`stop`：脏区块 ≤ 12,800 时 `overlay.shutdown-flush` 在 2 s 内完成、丢失 0。每 tick 末尾阶段最多 1 次 `fsync`（每秒 ≤ 20 次）；定期落盘每 tick 的开销待 T10 量，超过 5 ms 时把每 tick 上限从 64 条下调 |
+| 覆盖层落盘 | 进程 `kill -9`；正常 `stop`；看门狗判死 | `kill -9`：丢失的改动 ≤ 最近 10 s（F4）。`stop`：脏区块 ≤ 12,800 时最终落盘在 min(2 s, 剩余保存预算) 内完成、丢失 0；落盘之后到进程退出之间的改动不保证落盘（`API-M3-007` 语义边界）。判死：最终落盘由 tick 末尾写入阶段与停机线程恰一方执行，段里不出现同一区块同一 `generation` 的两条记录。每 tick 末尾阶段最多 1 次 `fsync`（每秒 ≤ 20 次），编码等待 ≤ 20 ms；定期落盘每 tick 的开销待 T10 量，`write_phase_ms_max` 持续超过 5 ms 时把每 tick 上限从 64 条下调 |
 | 运行时光照 | 放一支火把 | 不闪的判定：gametest 在两个在看的客户端上每 tick 读客户端 `LevelLightEngine` 的方块光，采样点是火把所在格与它东西南北上下六个方向各 1、4、8 格处（共 19 点），从放置那一 tick 起连读 200 tick，每个采样点的序列单调不减、≤ 2 tick 到达终值，终值等于服务端 `overlay.relight` 回写的值；服务端不发 `UpdateLightPacket`；JFR 验证 tick 线程上光照耗时为 0（路线报告 P4）；`overlay.relight` 从投递到回写 P99 < 250 ms（单次 3×3 懒重算的实测分布见基准重测 §3.3，负载依赖） |
-| 卸载 | 无人观察的区块 | 票据归零 100 tick 后卸载，有可证伪的测试（P2 ⑤） |
-| 转服 | 从点击关卡门到新大区首批 9 块可见 | P95 < 5 s（P6；「首批」是原版首批 9 块，不是填满 625 块） |
+| 卸载 | 无人观察的区块 | 票据归零后第 99 个 tick 结束时仍在实例区块表里、第 100 个 tick 结束时已卸载；宽限期 `-1` 时 1,000 tick 后仍在（可证伪，P2 ⑤） |
+| 转服 | 从点击关卡门到新大区首批 9 块可见 | P95 < 5 s（P6；「首批」是原版首批 9 块，不是填满 729 块） |
 | 世界状态标志 | 起服重放 1,000 个标志 | 重放 < 5 s；运行期变化在同大区其他频道 P99 < 1 s 可见（Redis 可用时），Redis 不可用时 ≤ 60 s |
 | 光照正确性 | 对拍 | `LightParityIntegrationTest` 全部场景与原版 26.2 逐值差异为 0（当前 7 个场景）；测试直接断言差异数为 0，没有例外表，任何差异都让测试失败 |
 | 兼容 | 客户端 | Minecraft 26.2；Apple Silicon（GL 4.1）必须能进服并正常渲染近景（Q5）；光影只在 OpenGL 后端（Iris 不支持 Vulkan；DH 与 Iris 同开固定 OpenGL）。帧率判据（远景备忘录 V7、V8）：RTX 3060、1080p、rd=12、远景 4,096 格、Complementary 默认档 P1% ≥ 60 FPS，开 DH 比关 DH 的平均帧时间多 ≤ 2 ms；Mac 1080p、LOW 档 P1% ≥ 45 FPS；低配档 GTX 1650 / M1、1080p、r=8、远景 2,048 格 P1% ≥ 45 FPS。全部由用户提供的真机测（§17） |
 | 远景准备 | 首次进一个大区 | 下载 5.3～21 MiB（50 Mbit/s 下 1～4 s）+ 本地烘焙；本地烘焙耗时 ≤ 同一库在 50 Mbit/s 下的下载时间（切换条件 2，V2 在 Windows 与 Mac 各测一次）；进服不等远景 |
 | 数据增长 | 12 个月 | 地图版本目录按版本增长，`retired/` 保留 30 天后删；覆盖存储随 `build_id` 丢弃；CDN 上的高度场包随 `retire` 下线；`world_flag` 行数 = 标志数，每大区 ≤ 1,000 行；`transfer_nonce` 的过期行由 `docs/DESIGN-PROD.md` §17 `transfer_nonce.gc` 每 10 min 删除；玩家数据（`character` + `character_section`）的增长见 `docs/DESIGN-PROD.md` §15 数据增长行 |
 
-**测量手段**：tick 与堆沿用 `docs/DESIGN-M2.md` §15 的 soak `summary.json` 字段口径，压测工具按 `docs/DESIGN-PROD.md` `API-PROD-025`；区块下行由 `REQ-M3-014` 的 `inbound.chunks`（区块包条数、字节、按移动档分栏）；零编码由 JFR `jdk.ExecutionSample` 栈过滤 `createChunkPacket` 加对象计数断言；包体一致与光照对拍是单元测试；基准数字按 `API-M3-008` 的口径，报堆必须写明是否含包缓存、调色板形态、是否预热三项。
+**测量手段**：tick 与堆沿用 `docs/DESIGN-M2.md` §15 的 soak `summary.json` 字段口径，压测工具按 `docs/DESIGN-PROD.md` `API-PROD-025`；区块下行由 `REQ-M3-014` 的 `inbound.chunks`（区块包条数、字节、按移动档分栏，取 `steady_*` 那组以排除进场的首次填满）；零编码由发送路径的包类型断言（确定性）加 JFR `jdk.ExecutionSample` 栈过滤 `createChunkPacket` 与 `jdk.ObjectAllocationSample` 按类过滤（统计）；包体一致与光照对拍是单元测试；基准数字按 `API-M3-008` 的口径，报堆必须写明是否含包缓存、调色板形态、是否预热三项。
 
 ## 16. 并发与一致性
 
@@ -877,9 +1000,17 @@ flowchart LR
 | 淘汰与新观察者同时到达 | `overlay.evict` × 玩家视野加票据 | 淘汰在 tick 末尾的单线程阶段做；新票据只增加计数，不阻塞淘汰；淘汰后的区块以 handle 形式继续服务，字节来自覆盖存储 | §11.1 `overlay → handle` 不看 `ticket_count` |
 | 覆盖存储追加或整理时有句柄区块正在读 | tick 末尾写入阶段 × 发包线程 | 读者只读索引指向的、已 `fsync` 的区间，读到的永远是完整记录 | `API-M3-007`：`fsync` 之后才更新索引；段文件只追加、不截断、不原地改写 |
 | 排队中的句柄包引用已被整理的段 | 出站队列 × 整理 | 包照常发出，字节与整理前一致；段映射在不可达后由 GC 释放 | `API-M3-007`：`Arena.ofAuto()`，整理只 unlink 不解除映射 |
-| 定期落盘与再次改动 | `overlay.flush` × 同 tick 的 `setBlock` | 落盘写的是本 tick 末尾的快照；落盘后又被改则 `dirty` 重新置真，下一轮再写 | 写入阶段在 tick 末尾单线程执行，与该区块的 tick 不并发 |
+| 定期落盘或淘汰与再次改动 | 编码池上的 `encodeOverlay` × 其他线程的 `setBlock` | 记录写的是编码那一刻的内容，照样进索引；编码之后又被改的区块不清 `dirty`、不退回 handle，下一轮再写 | `OverlayChunk#written` 比对编码时的 `generation`（`API-M3-005`）；编码在区块锁下取包，内容与读到的 `generation` 一致或更新 |
 | 进程崩溃在 `fsync` 前 | 覆盖存储 × `kill -9` | 最后一批追加可能半截；重启时按 crc32c 截掉，回到上一条完整记录 | `API-M3-007` 启动规则；丢失 ≤ `flush_interval_s` |
 | 卸载与光照未完成 | `chunk.unload` × `overlay.relight` | 等光照回写后再卸载 | §11.1 守卫 `relight_pending = false` |
+| 脏区块到了卸载条件 | `chunk.unload` × `overlay.flush` | 本轮不卸载；写入阶段先把它落盘，下一轮判定时卸载；落盘失败则一直不卸载 | `Chunk#readyToUnload()` 对 `dirty` 返回假并请求卸载前落盘（`API-M3-005`） |
+| 最终落盘的两个写入者 | tick 末尾写入阶段 × 停机线程（看门狗判死但 tick 仍在跑） | 恰一方执行最终落盘：停机线程抢到写入权就自己写；tick 末尾阶段已开始，停机线程只等它完成；之后两边都不再写 | `API-M3-007` 写入权 CAS（`空闲 → tick`、`空闲 → 停机`、做完的一方置 `已关闭`） |
+| 停机请求与本 tick 的写入阶段 | `finalFlush(…, true)` × 正在跑的 tick 末尾阶段 | 请求在阶段开始之后到：本批照常写完，下一 tick 的阶段做最终落盘 | 「已请求」只在阶段开头读一次 |
+| 最终落盘之后改方块 | `kicking` 阶段的玩法、插件 `onDisable` × 已关闭的覆盖存储 | 改动留在内存、不落盘，进程退出即丢；每次停机第一处记 WARN | `API-M3-007` 语义边界；要保住的状态走 `API-M3-013` |
+| 模拟集合与实体 tick | tick 调度线程重算 × 各 tick 线程读 | 本 tick 所有线程看到同一份集合，按本 tick 开始时玩家所在区块算 | `API-M3-006` 模拟集合 volatile 发布 |
+| 多个线程同时改票据 | 玩家区块环（各自的 tick 线程）× 插件持票 × 卸载判定 | 票据数不丢不重，卸载判定读到的是锁内一致的值 | `API-M3-006` 每实例票据表与它的锁 |
+| 区块包遇到出站积压超限 | 句柄区块的 `BufferedPacket` × 积压超限时丢移动包 | 区块包不被丢，按实际字节计入积压 | `ADR-M3-018`，`sheddable = false` |
+| 物化与并发读 | `setBlock` 物化 × 其他线程 `getBlock` | 读者看到物化前（解码缓存）或物化后（section）的完整状态之一 | 物化持本区块写锁，`getBlock` 的调用方按引擎约定持读锁（`API-M3-005`） |
 | 世界标志变化与覆盖层改动冲突 | 标志同步 × 插件 `setBlock` | 以标志为准，冲突格被改回标志规定的状态并记 WARN | `API-M3-013` |
 | 两个频道同时改同一个标志 | `WorldFlags#set` × 2 | 恰一个成功，另一个因 `version` 不符失败并返回当前值 | `world_flag` 按 `version` 条件更新 |
 | 世界标志消息丢失 | Redis × 频道进程 | 最长 60 s 后由增量拉取收敛 | `API-M3-013` 兜底拉取 |
@@ -891,7 +1022,7 @@ flowchart LR
 
 一致性承诺：
 
-- 覆盖层：客户端看到的方块以 `BlockUpdate` 为准；新观察者收到的区块包在 `overlay.relight` 回写前可能带旧光照（P99 < 250 ms 窗口），客户端会用原版 `checkBlock` 自行修正。进程崩溃丢失最近 ≤ 10 s 的覆盖层改动；正常停机（`stop` 或 SIGTERM）在 2 s 预算内写完全部脏区块则丢失 0，超出预算的剩余区块按崩溃窗口计（`API-M3-007` 停机段）。
+- 覆盖层：客户端看到的方块以 `BlockUpdate` 为准；新观察者收到的区块包在 `overlay.relight` 回写前可能带旧光照（P99 < 250 ms 窗口），客户端会用原版 `checkBlock` 自行修正。进程崩溃丢失最近 ≤ 10 s 的覆盖层改动；正常停机（`stop` 或 SIGTERM）在 min(2 s, 剩余保存预算) 内写完全部脏区块则丢失 0，超出预算的剩余区块按崩溃窗口计；最终落盘之后到进程退出之间的改动不保证落盘（`API-M3-007` 停机段）。
 - 频道之间：地形改动互不可见（F2）；世界状态标志跨频道最终一致，上界 60 s。
 - 地图版本之间：覆盖层不保留（F1）；世界状态标志保留并在新版本上重放。
 - 事件投递：本地 JSONL，单进程追加，进程崩溃丢失最后一次未刷盘的行。
@@ -912,8 +1043,8 @@ flowchart LR
 
 | 编号 | 内容 | 需要的机器 | 阻塞谁 |
 | --- | --- | --- | --- |
-| P1① 帧时间一半 | 客户端自算光照在 625 块同时到达时 `runLightUpdates` 的最坏单帧增量（1,024 与 4,225 区块两档） | RTX 3060 级机 + Apple Silicon Mac | `ADR-M3-002` 的「不发 `UpdateLightPacket`」在真机上的帧预算；逐 nibble 对拍那一半在无头容器做 |
-| P1③ | 3060 机与 150 ms RTT 下填满 625 块的实际耗时 | RTX 3060 级机 | §15 转服与进场体验 |
+| P1① 帧时间一半 | 客户端自算光照在 729 块同时到达时 `runLightUpdates` 的最坏单帧增量（1,024 与 4,225 区块两档） | RTX 3060 级机 + Apple Silicon Mac | `ADR-M3-002` 的「不发 `UpdateLightPacket`」在真机上的帧预算；逐 nibble 对拍那一半在无头容器做 |
+| P1③ | 3060 机与 150 ms RTT 下填满 729 块的实际耗时 | RTX 3060 级机 | §15 转服与进场体验 |
 | V2 | 实烘一张 4k×4k 测试图的 DH 库：库大小（含 `-wal`/`-shm`）、从高度场包本地烘焙的耗时、不写空气点时 LOD 地表亮度 | RTX 3060 级机 + Apple Silicon Mac | 切换条件 2；`API-M3-015` 每列点数 |
 | V3 | 开 Complementary 后 LOD 的光照、雾、水面、阴影与 dither 过渡带（录屏 10 s）；同时查清 llvmpipe 下的浅蓝雾 | RTX 3060 级机 | 切换条件 4 |
 | V6 | 透视 RTS 相机、eye 离地 ≤ 100 格时光影包的雾、水面、阴影；相机离开玩家时 DH 的近圈空洞 | RTX 3060 级机 | R2 的效果确认；DH 补丁的必要性 |
@@ -929,11 +1060,11 @@ flowchart LR
 
 | 任务 | 触发 | 批量/互斥 | 超时 | 失败策略 | 对应告警 |
 | --- | --- | --- | --- | --- | --- |
-| `overlay.relight` | `setBlock` 物化或再次改动后投递 | 有界线程池（线程数 = `synaxis.relight-threads`，默认 `max(1, 核数 / 4)`；队列上限 4,096，满则同区块合并） | 单次 200 ms | 超时或抛异常：记 ERROR，区块保留旧光照，下一次改动再投递 | 见 `RB-M3-003` |
-| `overlay.evict` | 每 tick 末尾，`overlay_resident > overlay_cap` 时 | 单线程阶段；每 tick 最多淘汰 64 个 | 单个 50 ms | 写入失败留常驻、下一 tick 重试（§11.1） | 见 `RB-M3-002` |
-| `overlay.flush` | 每 tick 末尾，有脏区块距上次落盘 ≥ `flush_interval_s` 时 | 单线程阶段；每 tick 最多 64 个；与淘汰、卸载的追加合并为一次 `fsync` | 整个写入阶段 20 ms | 写入失败保留 `dirty`，下一 tick 重试 | 见 `RB-M3-002` |
-| `overlay.shutdown-flush` | 进程停机，排在玩家停机保存之后、停 tick 之前，属 `docs/DESIGN-PROD.md` §11.4 `saving` 阶段（新序下的挂载方式见 §28.2） | 每分片一次；编码在 `overlay.relight` 线程池并行，追加单线程，一次 `fsync` | 2 s | 超时停止编码、`fsync` 已追加部分，剩余脏区块数记 ERROR | 见 `RB-M3-002` |
-| `chunk.unload` | 每 tick 末尾 | 单线程阶段；每 tick 最多 256 个 | — | 覆盖区块写入失败则不卸载 | 见 `RB-M3-002` |
+| `overlay.relight` | `setBlock` 物化或再次改动后投递（M3-D 起；M3-C 不投递） | 有界线程池（线程数 = `synaxis.relight-threads`，默认 `max(1, 核数 / 4)`；队列上限 4,096，满则同区块合并） | 单次 200 ms | 超时或抛异常：记 ERROR，区块保留旧光照，下一次改动再投递 | 见 `RB-M3-003` |
+| `overlay.evict` | 每 tick 的 tick 末尾写入阶段（`TICK_END` 任务），`overlay_resident > overlay_cap` 时 | 写入阶段单线程，编码在编码池；每 tick 最多淘汰 64 个，最久没改的先 | 与写入阶段共用：编码等待 ≤ 20 ms | 写入失败留常驻、下一 tick 重试（§11.1） | 见 `RB-M3-002` |
+| `overlay.flush` | 每 tick 的 tick 末尾写入阶段：有脏区块距上次落盘 ≥ `flush_interval_s`，或卸载判定因 `dirty` 请求先落盘 | 写入阶段单线程；定期落盘每 tick ≤ 64 个、卸载前落盘 ≤ 256 个；与淘汰、整理的追加合并为一次 `fsync` | 编码等待 ≤ 20 ms，之后一次 `fsync` | 写入失败保留 `dirty`，下一 tick 重试；编不完的留到下一 tick | 见 `RB-M3-002` |
+| `overlay.shutdown-flush` | 进程停机的 `saving` 阶段，玩家保存之后：`docs/DESIGN-PROD.md` `API-PROD-007` 的 `ShutdownSequence` 步骤 `overlay`（`OverlayStore#finalFlush`） | 每分片一次；tick 活着时由 tick 末尾写入阶段做，看门狗判死时由停机线程做，写入权 CAS 保证只有一方；编码在编码池并行，追加单线程，一次 `fsync` | min(2 s, 剩余保存预算) | 到时停止编码、`fsync` 已追加部分，剩余脏区块数记 ERROR 并完成步骤的 future | 见 `RB-M3-002` |
+| `chunk.unload` | 每 tick，tick 调度线程上、全部 tick 线程结束本 tick 之后，对宽限期 ≥ 1 的实例 | 每实例每 tick 最多卸载 256 个，空闲最久的先；只卸载 `readyToUnload()` 为真的区块（覆盖层脏区块先由 `overlay.flush` 落盘） | — | 不满足条件的留到下一轮 | 见 `RB-M3-002` |
 | `flags.replay` | 起服、覆盖存储索引重建之后 | 每分片一次，逐标志应用 | 30 s | 读失败重试 3 次后非零退出 | 见 `RB-M3-006` |
 | `flags.sync` | 收到 Redis 消息；每 60 s 兜底 | 每分片一个 | 2 s | 下一轮补；连续 5 次失败记 WARN | 见 `RB-M3-006` |
 | `shard.heartbeat` | 每 5 s | 每分片一个 | 2 s | 下一轮补；连续 3 次失败记 WARN | 见 `RB-M3-004` |
@@ -1015,6 +1146,21 @@ flowchart LR
   - Decision：每频道一份本地只追加分段文件（`API-M3-007`），与 `build_id` 绑定，换版本清空；10 s 定期落盘 + group commit；跨频道或跨版本要一致的东西建模成世界状态标志（`API-M3-013`）。
   - Alternatives：覆盖层进 PostgreSQL 做单写者 + 失效通知（F2 改为可见时才需要，自估 2～3 人周，数据库成为每个分片的运行时硬依赖）；覆盖层存方块级逻辑差分以跨版本保留（F1 改为保留时才需要，自估 1～2 人周）；LMDB（lmdbjava，省掉手写整理与崩溃恢复）。
   - Consequences：只升协议也会清空覆盖层；崩溃最多丢 10 s。切换条件：分段文件的整理、引用与崩溃截断在测试里反复出问题，或实现超过 2 人周 → 换 LMDB（wrapper 自估 3～5 人日）；玩法要求玩家造的地形跨版本保留，或一年升协议 2 次以上 → 改逻辑差分；玩法把地形改动与物品产出挂钩 → 窗口降到 1～2 s，先按 T10 实测每 tick 开销。
+- **`ADR-M3-016` 句柄区块与覆盖层区块是同一个 `DynamicChunk` 子类对象，模式原地切换** — Status: Accepted（2026-09-27，M3-C 设计）
+  - Context：引擎 `InstanceContainer` 把区块对象放在私有表里，`ThreadDispatcher` 的分区、`EntityTrackerImpl` 的区块视野、实体的所在区块都挂在区块对象上；`DynamicChunk` 的 `sections` 是 final 列表，`createChunkPacket` 私有，6 参的 `setBlock` 在跨包的非子类里不可见。
+  - Decision：`SynxChunk extends DynamicChunk`，handle、overlay、failed 三种模式是对象上的字段；物化与淘汰在本区块写锁下原地改父类 section 的内容；handle 模式下父类的 16 个空 section 常驻、不参与读与发包（`API-M3-005`）。
+  - Alternatives：① 物化时换一个 `DynamicChunk` 对象进实例（要给 `InstanceContainer` 加替换区块的接口，替换发生在 tick 中间时分区与实体要迁移，还停在旧对象上的读者看到过期数据）；② `SynxChunk extends Chunk`，改动委托给内部的 `DynamicChunk`（两个对象各有一把锁、一份视野与一个 `CachedPacket`，要双份加锁，6 参 `setBlock` 也调不到）；③ handle 模式不建 section（要把引擎的 `sections` 改成可替换，改动面大，等 T3 实测再定）。
+  - Consequences：每个句柄区块多 16 个空 section 与两个高度图对象的堆，由 T3 量；引擎里直接读 section 调色板的代码在 handle 模式读到空气，已逐处核对只在 overlay 模式或有生成器的实例上跑（`API-M3-005` 读方块条）；别的线程只会看到切换前或切换后的完整状态（§16 物化与并发读）。
+- **`ADR-M3-017` 模拟距离外只跳过 tick 体，分区与实体调度器照常** — Status: Accepted（2026-09-27，M3-C 设计）
+  - Context：模拟距离要让远处的区块不 tick。实体按所在区块挂在 `ThreadDispatcher` 的分区上，实体调度器（`runOn`、`scheduleNextTick`、`setInstance` / `teleport` 的续延）靠 `Entity#tick` 推进；第 6 波 6E 已规定休眠实体的调度器每 tick 照跑（`docs/DESIGN-PROD.md` `API-PROD-019`）。
+  - Decision：加载、分区、发包都不变；`DynamicChunk#tick` 与 `Entity#tick` 的 tick 体在模拟距离外跳过，实体调度器照跑；模拟集合每 tick 在 tick 调度线程上按玩家所在区块算一次（`API-M3-006`）。
+  - Alternatives：① 模拟距离外的区块不进分区（离开模拟距离的实体调度器停摆，插件等 `teleport` 的 future 永不完成；玩家来回走动时分区反复增删，每次都要经 `refreshThreads` 迁移）；② 用 6E 的休眠策略代替（休眠是按实体、按距离的降频，表达不了「完全不 tick」，还要插件给每个实体设策略）；③ 每个区块维护玩家引用计数（多 tick 线程下计数要原子操作，玩家跨一个区块边界要改 2 × 9 个区块的计数，重生、换实例、改视距都要配对加减）。
+  - Consequences：模拟距离外的区块仍占分区，`refreshThreads` 轮询的分区数不因模拟距离减少（§28.2 存储对比 T2～T10 一行）；实体在模拟距离外静止，回到模拟距离时补发一次位置同步；每 tick 最多一次模拟集合重算，只在玩家所在区块或模拟距离变了时发生。
+- **`ADR-M3-018` 句柄区块的包用 `BufferedPacket`，给它加「可丢」分量** — Status: Accepted（2026-09-27，M3-C 设计）
+  - Context：引擎里能直接发已成帧字节的只有 `BufferedPacket`；生产就绪第 5 波 5B 的出站积压规则（`docs/DESIGN-PROD.md` `API-PROD-020`）把全部 `BufferedPacket` 当作视野广播的实体移动包，积压超限时整批丢掉（`PlayerSocketConnection` 的 `offer` 与 `writeMovement`）。句柄区块的包照此处理会在积压时被丢，客户端缺区块，服务端不会重发。
+  - Decision：`BufferedPacket` 加布尔分量 `sheddable`；视野广播（`PacketViewableUtils`，现在唯一构造它的地方）传 true，其余一律 false；`PlayerSocketConnection` 只丢 `sheddable` 为真的包，积压计数仍按全部 `BufferedPacket` 的实际字节。
+  - Alternatives：① 新增一种 `SendablePacket`（封闭接口多一个子类型，`PlayerSocketConnection` 与 `SendablePacket` 里对它穷举的 `switch` 都要改）；② 用 `FramedPacket`（要带一个 `ServerPacket`，即 `ChunkDataPacket` 对象，违背零编码）；③ 区块包走 `CachedPacket`（每区块编码一次，正是 M3 要去掉的 CPU）。
+  - Consequences：改动落在生产就绪分册负责的出站代码上，`API-PROD-020` 的积压规则要同步写明「只丢 `sheddable` 的 `BufferedPacket`」（§28.2 交给生产就绪会话的一行）；积压超限时区块包不在可丢之列，积压若由区块包撑满，按既有规则断线 `synaxis:outbound-backlog`。
 
 ## 19. 验收 / 测试
 
@@ -1039,13 +1185,13 @@ flowchart LR
 场景: 清单不符时拒绝起服 (REQ-M3-002)
   Given 一个已发布的地图版本，把其中一个区域文件改动 1 个字节
   When 分片以该 build_id 起服
-  Then 进程以非零码退出，启动日志含 synx-payload-hash 与文件名，端口未 bind
-  And M3-B 先验到校验函数这一半：SynxBuildVerifier.verify 抛出 synx-payload-hash 且消息含该文件名；进程退出与端口不 bind 随 M3-C 接线
+  Then 进程以退出码 1 退出，启动日志一行 Refusing to start: synx-payload-hash 带该文件名，端口未 bind，没有 EVT:shard_started
+  And M3-B 已验到校验函数这一半（SynxBuildVerifier.verify 抛出 synx-payload-hash 且消息含该文件名），M3-C 验进程这一半
 
 场景: 光照引擎版本变化强制重烘 (REQ-M3-002)
   Given 清单 light_engine_version 比当前 LightEngine.VERSION 小 1
   When 分片起服
-  Then 进程以非零码退出并打印 synx-light-engine-mismatch
+  Then 进程以退出码 1 退出，日志含 synx-light-engine-mismatch，端口未 bind
 
 场景: 烘焙测试图并记录耗时与磁盘 (REQ-M3-003)
   Given 4k×4k、高 256 的合成测试图（generator:synthetic），烘焙器线程数取核数
@@ -1149,14 +1295,21 @@ flowchart LR
   Then 该场景被执行，无需改测试代码
 
 场景: 未改区块零编码发送 (REQ-M3-008)
-  Given 一个挂载测试图的分片，JFR 开启执行采样与对象分配计数
-  When 200 个机器人步行 600 s
-  Then 句柄区块的发送栈中 createChunkPacket 出现 0 次，新建 ChunkDataPacket 对象 0 个，EVT:chunk_stream_stats 的 handle_sent > 0
+  Given 集成测试环境里挂测试图的 SynxChunkLoader 实例，一个真实 Player 连在测试连接上站在出生点，不改任何方块
+  When 发送路径发完它区块环里的 729 个区块
+  Then 连接收到的 729 个区块包都是 sheddable=false 的 BufferedPacket，逐个与对应区块的段① 字节相同，没有 CachedPacket 或 ServerPacket 形式的区块包
+  And 这 729 个区块都还是 handle 模式
+
+场景: 压测中没有区块编码 (REQ-M3-008)
+  Given 挂测试图的分片，JFR 开 jdk.ExecutionSample 与 jdk.ObjectAllocationSample
+  When 200 个机器人步行 600 s，期间没有任何方块被改
+  Then 栈里 createChunkPacket 出现 0 次，objectClass 为 ChunkDataPacket 的分配样本 0 条，EVT:chunk_stream_stats 的 overlay_sent = 0、handle_sent > 0
 
 场景: 段① 与重新编码逐字节一致 (REQ-M3-008)
-  Given 测试图中随机抽的 1,000 个区块
-  When 把段① 解码为 DynamicChunk（方块实体取自段③）再调用 createChunkPacket 并按同一阈值成帧压缩
-  Then 1,000 个结果都与段① 逐字节相同
+  Given 测试图按固定种子抽的 1,000 个区块（方块实体那一半由告示牌与数据标记两条场景覆盖）
+  When 把每个区块按 API-M3-005 物化，再经 CachedPacket#packet() 取包、按同一阈值成帧压缩
+  Then 1,000 个结果解压后的包体都与段① 解压后的包体逐字节相同
+  And 反证：物化时不灌光照数组，1,000 个全部不同（sky mask 变成 empty sky mask）
 
 场景: 物化后新观察者不变黑 (REQ-M3-008)
   Given 一个句柄区块，段① 中地表以上 section 的 sky mask 全部置位
@@ -1168,60 +1321,172 @@ flowchart LR
   When 烘焙后以 handle 模式加载并在同区块另一格 setBlock 物化为 overlay
   Then 物化后该告示牌的 NBT 与源存档逐项相等，正面第 1 行仍为 "Synaxis"
 
-场景: 世界不可写时拒绝改方块 (REQ-M3-008)
-  Given synaxis.world-writable=false
-  When 插件对一个 handle 区块调用 setBlock
-  Then 抛 IllegalStateException，区块仍是 handle，客户端没有收到方块更新
+场景: 世界不可写时改方块不生效 (REQ-M3-008)
+  Given synaxis.world-writable=false 的分片，玩家站在一个 handle 区块旁
+  When 插件对该区块调用 setBlock，玩家挖同一区块里的另一格
+  Then setBlock 没有抛异常、该格不变，区块仍是 handle，客户端没有收到这次 setBlock 的方块更新；玩家挖的那格被引擎按原方块回正
+  And 该区块 isReadOnly() 为 true
 
 场景: 邻区边缘区块只读 (REQ-M3-008)
-  Given 分片挂载大区 R1，区块 A 在 R1 的 bounds 外 10 个区块、在 view_bounds 内
-  When 玩家站在 R1 边缘，插件对 A 调用 setBlock
-  Then A 以 handle 形式发给玩家；setBlock 抛 IllegalStateException；A 不进 tick 分区
+  Given 分片挂载大区 R1；区块 A 在 R1 的 bounds 外 10 个区块、在 view_bounds 内，区域文件里有它的记录，段③ 有 1 个静态实体与 1 个会 tick 的 handler 方块
+  When 玩家站在 R1 边缘，插件对 A 调用 setBlock，服务端运行 100 tick
+  Then A 以 handle 形式发给玩家；setBlock 不生效，A 仍是 handle；A 里没有生成静态实体，那个 handler 的 tick 次数为 0
+
+场景: view_bounds 外是引擎建的空气区块 (REQ-M3-008)
+  Given 挂地图的分片，插件在运行期把地图实例的视距调到 20，玩家站在 bounds 边缘
+  When 玩家的区块环加载到 bounds 外 18 个区块处的区块 B
+  Then B 是空气 DynamicChunk，没有异常，不计入 EVT:chunk_stream_stats.failed
+
+场景: 记录损坏的区块发空气占位 (REQ-M3-008)
+  Given 测试直接用 SynxChunkLoader 挂一个区域文件（不经起服校验），其中 bounds 内区块 C 的记录 crc32c 不符
+  When 玩家走到 C 附近
+  Then C 以空气区块发出、只读，ERROR 日志带 C 的坐标与 crc 细节，EVT:chunk_stream_stats.failed 加 1，同文件其他区块正常
+
+场景: 会 tick 的 handler 在句柄区块里照常 tick (REQ-M3-008)
+  Given 段③ 里有一个 handler 的 isTickable() 为真的方块实体，区块是 handle 模式、在模拟距离内
+  When 服务端运行 20 tick
+  Then 该 handler 的 tick 被调 20 次，区块仍是 handle
+
+场景: 名单外的静态实体被跳过 (REQ-M3-008)
+  Given 段③ 静态实体表里有 1 个 item_frame 与 1 个名单外类型（minecraft:minecart）
+  When 区块以 handle 模式加载
+  Then 生成 1 个 item_frame 实体，挂着 synx_source 标签且 NBT 与源相等；minecart 没有生成，WARN 日志 1 行含它的类型名；区块不是 failed
+
+场景: 挂地图的分片起服 (REQ-M3-008)
+  Given 4k×4k 测试图的发布目录，bin/server-shard 带 synaxis.map.root 与 synaxis.map.build 起服
+  When 起服完成
+  Then 台账有 EVT:shard_started（verify_ms、regions、bytes_mapped 为正），日志有 listening 那一行；thread-provider=grid、chunk-view-distance=12、core-mode=on；地图实例的 simulationDistance() = 4、chunkUnloadGraceTicks() = 100；世界边界覆盖 bounds；新玩家出生在 bounds 中心列段② 的 surface_y 上
+  And 不给这两个键时 bin/server-shard 照旧起服，没有 overlay/ 目录，停机序列里没有 overlay 这一步
+
+场景: 地图配置写错时拒启 (REQ-M3-008)
+  Given 分别以下列五种方式起服：只给 synaxis.map.build；经 bin/server-app 给两个地图键；两个地图键加 synaxis.app.core-mode=auto；synaxis.world-writable=TRUE；synaxis.overlay.flush-interval-s=0
+  When 起服
+  Then 每种都以 Refusing to start 一行、退出码 1 退出，行内含出错的键名，端口未 bind，没有 overlay/ 目录
 
 场景: 模拟距离外的区块不 tick (REQ-M3-009)
-  Given 视距 12、模拟距离 4，一个实体放在离玩家 6 个区块处
+  Given 视距 12、模拟距离 4，一个实体放在离玩家 6 个区块处，它所在区块里有一个会 tick 的 handler 方块
   When 服务端运行 100 tick
-  Then 该实体的 tick 计数为 0，玩家客户端仍收到该区块与实体
+  Then 该实体的 getAliveTicks() 不变、handler 的 tick 次数为 0，玩家客户端仍收到该区块与实体
+
+场景: 模拟距离外实体的调度器照跑 (REQ-M3-009)
+  Given 同上的实体，插件在它上面 scheduleNextTick 一个任务，并把它 teleport 到同一区块里的另一点
+  When 服务端运行 2 tick
+  Then 任务执行了 1 次，teleport 的 future 已完成，getAliveTicks() 不变
+
+场景: 回到模拟距离时补发位置同步 (REQ-M3-009)
+  Given 一个在模拟距离外静止了 200 tick 的实体，观察者客户端看得见它
+  When 玩家走到离它 3 个区块以内
+  Then 实体恢复 tick 的第一个 tick 向观察者发一次 EntityPositionSync
+
+场景: 模拟距离与休眠叠加 (REQ-M3-009)
+  Given 一个设了休眠策略（离最近玩家 > 32 格时每 20 tick 跑一次）的实体，先在模拟距离外待 100 tick，再移到模拟距离内、离玩家 40 格处待 100 tick
+  When 两段各运行 100 tick
+  Then 第一段 getAliveTicks() 增加 0、策略一次都没被调用；第二段增加 5、策略被调用
 
 场景: 引擎默认值下 M2 对局行为不变 (REQ-M3-009)
   Given 不设 synaxis.thread-provider 与 synaxis.dispatcher-threads，实例不调 setSimulationDistance 与 setChunkUnloadGraceTicks（M2 Main 与 Match 的现状）
   When 起一局 rts-512，单位放在离所有玩家实体 20 个区块处并下令移动，运行 200 tick
   Then 线程提供者是 counter、dispatcher 线程数为 1；该单位每 tick 都被 tick；预载的全部区块在 200 tick 后仍在实例区块表里；MatchIntegrationTest 全绿
+  And isChunkSimulated 对任意区块为 true，卸载判定没有卸载任何区块
 
 场景: 视距越界配置被拒 (REQ-M3-009)
-  Given synaxis.chunk-view-distance=17
+  Given 挂地图的分片，一次 synaxis.chunk-view-distance=17；另一次视距 12、synaxis.simulation-distance=13
   When 起服
-  Then 进程以非零码退出并说明上限 16
+  Then 两次都以 Refusing to start 一行、退出码 1 退出，前者说明上限 16，后者说明模拟距离不能超过视距；端口未 bind
+  And 不挂地图时 synaxis.chunk-view-distance=17 照常起服
+
+场景: 模拟距离参数越界 (REQ-M3-009)
+  Given 一个模拟距离为 4 的实例
+  When 分别调 setSimulationDistance(0) 与 setSimulationDistance(-2)
+  Then 都抛 IllegalArgumentException，simulationDistance() 仍是 4
 
 场景: 无人观察的区块被卸载 (REQ-M3-010)
-  Given 一个玩家站在区块 A，插件没有持票
-  When 玩家传送到 40 个区块外并等待 100 tick
-  Then 区块 A 不再在实例的区块表里；若插件对 A 持票，则 A 保持加载
+  Given 宽限期 100 的实例，一个玩家站在区块 A，插件没有持票
+  When 玩家传送到 40 个区块外，服务端继续运行
+  Then 票据归零后第 99 个 tick 结束时 A 仍在实例的区块表里，第 100 个 tick 结束时已卸载
+  And 反证：宽限期 -1 时 1,000 tick 后 A 仍在
+
+场景: 插件持票的区块不卸载 (REQ-M3-010)
+  Given 同上，插件在玩家离开前 addChunkTicket(A 的坐标, owner)
+  When 玩家离开并运行 300 tick，再 removeChunkTicket(A 的坐标, owner) 后运行 100 tick
+  Then 前 300 tick A 一直加载、chunkTicketCount 为 1；去票之后第 100 个 tick 结束时 A 卸载
+  And 对同一 owner 重复 addChunkTicket 返回 false，计数仍是 1
+
+场景: 票据跟随区块环而不是调用次数 (REQ-M3-010)
+  Given 一个视距 12 的玩家站在区块 (0, 0)，客户端视距也是 12
+  When 玩家死亡并在原地重生，再调 setMaxViewDistance(4)，再断线
+  Then 重生前后 chunkTicketCount(0, 13) 都是 1（区块环半径 13）；设上限后 (0, 13) 为 0、(0, 5) 仍是 1；断线后环内全部区块为 0
+
+场景: 卸载判定跳过有在线玩家的区块 (REQ-M3-010)
+  Given 宽限期 1 的实例，区块 A 里站着在线玩家，测试把 A 的票据数直接置 0
+  When 卸载判定运行 10 个 tick
+  Then A 没有被卸载，没有 IllegalStateException
+
+场景: 每 tick 至多卸载 256 个 (REQ-M3-010)
+  Given 宽限期 1 的实例里有 600 个空闲已满 1 tick、没有票据的区块
+  When 运行 1 个 tick
+  Then 恰卸载 256 个，是空闲最久的 256 个；再运行 2 个 tick 后全部卸载
 
 场景: 覆盖层达到上限时淘汰 (REQ-M3-011)
-  Given overlay_cap=16 的分片
+  Given synaxis.overlay.cap=16 的分片
   When 插件依次改 17 个不同区块的方块
-  Then 常驻覆盖层区块数回到 16，最久未用的那个区块以 handle 形式继续服务，新观察者收到的包含改动后的方块
+  Then 下一个 tick 末尾常驻覆盖层区块数回到 16，最先改的那个区块退回 handle、字节来自覆盖记录；新观察者收到的包含改动后的方块；再改它一次时从覆盖记录物化，之前的改动仍在
+
+场景: 脏区块卸载前先落盘 (REQ-M3-011)
+  Given 宽限期 100 的实例，一个 overlay 区块在 t0 被改后无人观察
+  When 票据归零满 100 tick
+  Then 第 100 个 tick 的卸载判定不卸载它，同一 tick 的写入阶段追加它的记录并 fsync；第 101 个 tick 卸载；重新加载后是 handle 模式、字节来自覆盖记录、含 t0 的改动
 
 场景: 覆盖层崩溃丢失窗口有上界 (REQ-M3-011)
   Given flush-interval-s = 10，一个 overlay 区块在 t = 0 s 被 setBlock
   When 进程在 t = 12 s 被 kill -9，随后以同一 build_id 重启
   Then 该区块从覆盖存储载入后含 t = 0 s 的改动
 
+场景: 一个 tick 的覆盖追加只 fsync 一次 (REQ-M3-011)
+  Given 同一 tick 末尾有 8 个待淘汰、24 个待卸载、8 个到期的脏区块，编码在 20 ms 内完成
+  When 该 tick 末尾写入阶段完成
+  Then 覆盖存储新增 40 条记录，fsync 调用计数加 1，fsync 之后内存索引才指向这些记录
+
+场景: 写入阶段超预算时留到下一 tick (REQ-M3-011)
+  Given 1,000 个到期的脏区块，测试替身把每个区块的编码拉到 5 ms
+  When 运行 1 个 tick
+  Then 本 tick 追加的记录 ≤ 64 条，编码等待不超过 20 ms，fsync 1 次；没编完的区块仍 dirty，之后的 tick 继续写
+
+场景: 编码之后又被改的区块不清脏标记 (REQ-M3-011)
+  Given 一个到期的脏区块正在编码
+  When 同一区块在 fsync 之前又被 setBlock 一次
+  Then 这条记录照样进索引，区块仍是 overlay 且 dirty；下一轮再写一条 generation 更大的记录
+
 场景: 正常停机不丢覆盖层改动 (REQ-M3-011)
   Given flush-interval-s = 10，100 个 overlay 区块在停机前 1 s 内被 setBlock
   When 分片执行 stop，随后以同一 build_id 重启
-  Then overlay.shutdown-flush 在 2 s 内完成且 fsync 调用计数加 1；重启后 100 个区块都含停机前的改动
+  Then 停机日志有 Overlay final flush: chunks=100 … left=0 by=tick，这次最终落盘 fsync 恰 1 次，步骤在 2 s 内完成；重启后 100 个区块都含停机前的改动
 
-场景: 一个 tick 的覆盖追加只 fsync 一次 (REQ-M3-011)
-  Given 同一 tick 内 overlay.evict 淘汰 64 个区块、chunk.unload 卸载 256 个 overlay 区块
-  When 该 tick 末尾阶段完成
-  Then 覆盖存储新增 320 条记录，fsync 调用计数加 1，fsync 之后内存索引才指向这些记录
+场景: 看门狗判死时停机线程做最终落盘 (REQ-M3-011)
+  Given 30 个脏 overlay 区块，测试在保存阶段之前卡住 tick，看门狗判死
+  When 引擎以 tickAlive=false 调保存
+  Then finalFlush 在停机线程上执行，日志 by=shutdown、left=0；重启后 30 个区块都含改动
+
+场景: 判死但 tick 没停时最终落盘只有一方执行 (REQ-M3-011)
+  Given finalFlush(…, true) 之后 tick 末尾写入阶段已开始最终落盘，测试让它的 fsync 停 300 ms
+  When 停机线程以 finalFlush(…, false) 再调一次
+  Then 停机线程不写、等那次完成后返回；段文件里每个区块只有一条这一代的记录，fsync 恰 1 次，日志 by=tick
+  And 反证：去掉写入权 CAS 时出现同一区块同 generation 的两条记录或 fsync 为 2 次，测试失败
+
+场景: 最终落盘之后的改动不保证落盘 (REQ-M3-011)
+  Given 最终落盘已完成
+  When 插件在 onDisable 里 setBlock 改一个区块，进程退出后以同一 build_id 重启
+  Then 停机日志有一行 WARN 带该区块坐标；重启后该区块没有这次改动
+
+场景: 最终落盘超出预算 (REQ-M3-011)
+  Given 剩余保存预算 1 s，20,000 个脏区块，测试替身把每个区块的编码拉到 1 ms
+  When 最终落盘
+  Then 1 s 时步骤的 future 完成，ERROR 日志含剩余脏区块数，已追加的部分 fsync 过；ShutdownSequence 进入下一步
 
 场景: 覆盖存储重启后重建索引并丢弃半截尾部 (REQ-M3-011)
-  Given 一个活动段文件，最后一条记录只写了一半（crc32c 不符）
+  Given 一个活动段文件，最后一条记录只写了一半（crc32c 不符），其后是预分配的全 0 空洞
   When 分片以同一 build_id 重启
-  Then 该区块回到上一条完整记录的内容，其他区块的改动都在，ERROR 日志给出段号与偏移
+  Then 该区块回到上一条完整记录的内容，其他区块的改动都在，ERROR 日志给出段号与偏移；之后的写入进段号加 1 的新段，旧段文件的长度与内容不变
 
 场景: 排队中的句柄包在覆盖段整理后仍可发出 (REQ-M3-011)
   Given 一个玩家出站队列中有 64 个引用覆盖段 seg.3 的 BufferedPacket，且 seg.3 被整理标记为待删
@@ -1229,9 +1494,9 @@ flowchart LR
   Then 64 个包全部发出且字节与整理前一致，进程无 IllegalStateException 与崩溃
 
 场景: 覆盖存储写失败时不丢改动 (REQ-M3-011)
-  Given 覆盖存储目录不可写
-  When 触发淘汰、定期落盘与卸载
-  Then 区块保留在 overlay 且 dirty 仍为真，evict_failed 计数增加，告警日志出现，改动未丢失
+  Given 起服后测试替身让覆盖段的写入抛 IOException（模拟磁盘写满）
+  When 触发淘汰、定期落盘与卸载前落盘
+  Then 区块保留在 overlay 且 dirty 仍为真，没有被卸载，evict_failed 计数增加，告警日志出现，改动未丢失；替身恢复后下一 tick 写入成功
 
 场景: 换地图版本清空覆盖层 (REQ-M3-011)
   Given 一个分片在 build_id B1 上有 10 个覆盖记录
@@ -1264,9 +1529,11 @@ flowchart LR
   Then 结果给出段① 字节/区块、方块实体数/区块与存活堆（写明是否含包缓存、调色板形态、是否预热），与 1,502 B 偏差超过 ±20% 时 §2 已重算
 
 场景: 压测量出真实区块下行 (REQ-M3-014)
-  Given 机器人对每个 ChunkBatchFinished 回 ChunkBatchReceived，按步行 4.317 与坐骑 10 格/s 移动
-  When 200 个机器人各跑 600 s
-  Then summary.json 的 inbound.chunks 给出两档的区块包条数与 KB/s/人，每人收到的区块数超过首批 9 块
+  Given 挂 4k×4k 测试图（generator:synthetic）的分片，视距 12、模拟距离 4、宽限 100、区块上限 4；机器人对每个 ChunkBatchFinished 回 ChunkBatchReceived
+  When 200 个机器人按 walk 跑 600 s，重启分片后再按 ride 跑 600 s
+  Then 两次 summary.json 的 inbound.chunks 分别给出 walk 与 ride 的区块包条数、字节与 steady_* 三项，每人收到的区块数超过首批 9 块
+  And 两档的 steady_wire_bytes ÷ steady_connection_seconds 与模型（walk 13.9 KB/s、ride 32.3 KB/s，§2 近圈下行行）的偏差都在 ±20% 以内
+  And 两档分片的 tick P99 < 50 ms，超过 50 ms 的 tick 为 0
 
 场景: 同一分格的区块归同一线程 (REQ-M3-015)
   Given thread-grid-exponent=4、dispatcher-threads=8
@@ -1337,7 +1604,7 @@ flowchart LR
   Given 源存档 entities/ 里一个区块含 1 个 item_frame 与 1 个 text_display
   When 烘焙该区块
   Then 段③ 静态实体表恰为这 2 个实体，NBT 与源逐项相等
-  And M3-C 起：分片载入该区块后生成这 2 个实体，类型、坐标与 NBT 与源一致
+  And M3-C 起：分片载入该区块后生成这 2 个实体，类型、坐标与朝向与源一致，synx_source 标签上的 NBT 与源逐项相等，§28.1 静态实体还原范围列出的元数据已映射
 
 场景: 源存档光照对拍只报告 (REQ-M3-021)
   Given 一个源存档，其中一个 isLightOn=true 的区块把某格 SkyLight 手工改掉 1
@@ -1360,6 +1627,27 @@ flowchart LR
   Given 源存档一个 DATA 结构方块 metadata = "nosuch:thing {}"
   When 运行 baker bake
   Then 退出码 2，错误信息含坐标与命名空间
+
+场景: 游戏模块登记处理器后带标记的存档可以烘焙 (REQ-M3-022)
+  Given 运行时 classpath 上只有 :game-rts 登记的 synaxis:door 与 synaxis:loot 两个处理器（:baker 测试 classpath 上不再有同键替身），夹具存档 anvil/world
+  When 在仓库根执行 baker bake --bounds 0,0,0,0
+  Then 退出码 0，输出目录下恰一个 build_id 目录，EVT:map_build_finished 的 outcome=published
+  And 反证：从 :game-rts 的 META-INF/services 删掉 synaxis:loot 那一行后换空目录重跑，退出码 2，错误信息含 "names handler namespace 'synaxis:loot', which is not registered"
+
+场景: 同键的处理器被拒绝 (REQ-M3-022)
+  Given classpath 上有两个 getKey() 都是 synaxis:door 的 BlockHandler 服务
+  When 烘焙器执行 bake；另一次分片以挂地图模式起服
+  Then 烘焙器退出码 1；分片以 Refusing to start 一行、退出码 1 退出，端口未 bind；两处信息都含 synaxis:door 与两个处理器的类名
+
+场景: 分片与烘焙器登记同一份处理器清单 (REQ-M3-022)
+  Given 同一个 server-app 运行时 classpath
+  When 分片以挂地图模式起服
+  Then process.block() 里能取到的处理器键正好是 SynxHandlers.registerAll 返回的 {synaxis:door, synaxis:loot}，与烘焙器在 :baker 运行时 classpath 上得到的集合相等
+
+场景: 翻译键门禁不把处理器命名空间当翻译键 (REQ-M3-022)
+  Given :game-rts 主类里有整串常量 "synaxis:door" 与 "synaxis:loot"
+  When 跑 architecture-tests 的 TranslationKeyGateTest
+  Then 通过，两者在 NOT_TEXT 名单里；删掉名单里任一行时失败，报该键在 en_us.json 与 zh_cn.json 都没有译文
 
 场景: 世界状态标志起服重放 (REQ-M3-023)
   Given world_flag 里本大区有标志 quest:bridge = "repaired"，对应 20 个方块
@@ -1430,8 +1718,8 @@ flowchart LR
 | --- | --- | --- | --- |
 | `EVT:map_build_started` | §11.2 `[*] → baking` | `map_id`, `source`, `source_data_version`, `threads`, `baker_version`, `light_engine_version` | 地图版本一次发布成功率（分母） |
 | `EVT:map_build_finished` | §11.2 进入 `published` 或 `failed` | `build_id`, `outcome`（published / failed）, `wall_ms`, `cpu_ms`, `bytes`, `farview_bytes`, `failed_regions`, `verify_diffs`, `source_light_diff` | 地图版本一次发布成功率 |
-| `EVT:shard_started` | 分片通过起服校验、重放标志并 bind 端口 | `build_id`, `verify_ms`, `regions`, `bytes_mapped`, `flags_replayed`, `flags_ms` | 无（诊断型：起服失败时进程不写事件，由退出码与 `RB-M3-004`、`RB-M3-006` 接手） |
-| `EVT:chunk_stream_stats` | 每 60 s 一次 | `handle_sent`, `overlay_sent`, `bytes_sent`, `failed`, `overlay_resident`, `overlay_evicted`, `evict_failed`, `flush_appended`, `flush_fsyncs`, `flush_lag_s_max`, `relight_queue_p99_ms`, `relight_ms_p99`, `unloaded`, `section_cache_bytes`, `flag_conflicts` | 零编码发送占比；§21 覆盖层与光照 SLI |
+| `EVT:shard_started` | 分片以挂地图模式通过起服校验、重建覆盖存储索引、重放标志并 bind 端口成功之后 | `build_id`, `verify_ms`, `regions`, `bytes_mapped`, `overlay_records`, `flags_replayed`, `flags_ms`（后两项 M3-E 之前写 0） | 无（诊断型：起服失败时进程不写事件，由退出码与 `RB-M3-004`、`RB-M3-006` 接手） |
+| `EVT:chunk_stream_stats` | 挂地图的分片每 60 s 一次 | `handle_sent`, `overlay_sent`, `bytes_sent`, `failed`, `loaded`, `overlay_resident`, `overlay_evicted`, `evict_failed`, `flush_appended`, `flush_fsyncs`, `flush_lag_s_max`, `write_phase_ms_max`, `relight_queue_p99_ms`, `relight_ms_p99`, `unloaded`, `section_cache_bytes`, `flag_conflicts` | 零编码发送占比；§21 覆盖层与光照 SLI |
 | `EVT:transfer_issued` | 源分片发出 `TransferPacket` | `transfer_ref`, `player_uuid`, `source_shard`, `target_shard`, `issued_at`（票据签发时刻，ms，与 Cookie 里的值相同） | 转服成功率（分母） |
 | `EVT:transfer_completed` | 目标分片发完首批 9 个区块的 `ChunkBatchFinished` | `transfer_ref`, `first_batch_ms` | 转服成功率、转服首批区块耗时 P95 |
 
@@ -1454,7 +1742,7 @@ flowchart LR
 ## 22. 运维 Runbook
 
 - **`RB-M3-001` 转服成功率骤降**：影响 玩家切不了大区 · owner Bearisbug · 诊断 用 `transfer_ref` 串起源、目标两侧日志；目标分片 `synaxis_gate_rejections_total{reason="full"}` 上升（频道满 `synaxis:shard-full` 不写台账，只进这个计数）说明目标大区频道不够，按 `API-M3-010` 加频道（只改 `shards.json`）；验票、写权、正版验证类原因按 `docs/DESIGN-PROD.md` §14 与 `RB-PROD-001`、`RB-PROD-002` 排查；`first_batch_ms` 高但成功率正常说明首批区块慢，查目标分片 tick 与 `EVT:chunk_stream_stats` · 处置 频道不够时加频道；其余按上述 Runbook 处置 · 回滚 关闭关卡门（`gates.enabled=false`）让玩家留在当前大区，`git checkout` 上一个 tag 重启分片 · 升级判据 10 分钟内成功率 < 50% 即暂停跨大区玩法并广播 · 恢复验证 成功率回到 99% 以上持续 10 分钟
-- **`RB-M3-002` 覆盖层触顶或落盘失败**：影响 堆逼近上限，或崩溃时丢失超过 10 s 的改动 · owner Bearisbug · 诊断 看 `EVT:chunk_stream_stats` 的 `overlay_resident`、`overlay_evicted`、`evict_failed`、`flush_lag_s_max`、`failed`；`evict_failed > 0` 查覆盖存储目录的磁盘空间与权限；`flush_lag_s_max` 持续 > 20 s 说明脏区块多于每 tick 64 条能消化的量；`failed > 0` 查 ERROR 日志里的区块坐标并用 `baker verify` 核对区域文件；占用长期 ≥ 95% 说明玩法改动量超出 Q3 的「基本静态」前提 · 处置 磁盘问题修复后淘汰与落盘自动重试；改动量过大时临时设 `synaxis.world-writable=false` 并重启 · 回滚 切回上一个 `build_id`（覆盖层随之清空，已知代价） · 升级判据 `evict_failed` 持续 10 分钟或堆超过 90% 即停服 · 恢复验证 `evict_failed` 与 `failed` 连续 30 分钟为 0，占用 < 80%，`flush_lag_s_max` ≤ 10 s
+- **`RB-M3-002` 覆盖层触顶或落盘失败**：影响 堆逼近上限，或崩溃时丢失超过 10 s 的改动 · owner Bearisbug · 诊断 看 `EVT:chunk_stream_stats` 的 `overlay_resident`、`overlay_evicted`、`evict_failed`、`flush_lag_s_max`、`failed`；`evict_failed > 0` 查覆盖存储目录的磁盘空间与权限；`flush_lag_s_max` 持续 > 20 s 说明脏区块多于每 tick 64 条能消化的量，或每 tick 20 ms 的编码等待不够（`write_phase_ms_max` 贴着 20 ms）；停机日志的 `Overlay final flush` 一行 `left > 0` 说明最终落盘超出了 2 s；`failed > 0` 查 ERROR 日志里的区块坐标并用 `baker verify` 核对区域文件；占用长期 ≥ 95% 说明玩法改动量超出 Q3 的「基本静态」前提 · 处置 磁盘问题修复后淘汰与落盘自动重试；改动量过大时临时设 `synaxis.world-writable=false` 并重启 · 回滚 切回上一个 `build_id`（覆盖层随之清空，已知代价） · 升级判据 `evict_failed` 持续 10 分钟或堆超过 90% 即停服 · 恢复验证 `evict_failed` 与 `failed` 连续 30 分钟为 0，占用 < 80%，`flush_lag_s_max` ≤ 10 s
 - **`RB-M3-003` 光照重算积压**：影响 新观察者看到旧光照，客户端自行修正前短暂不一致 · owner Bearisbug · 诊断 看 `relight_queue_p99_ms` 与 `relight_ms_p99`；单次耗时高说明改动集中在复杂区域，排队高说明线程池不够 · 处置 调大线程池（`synaxis.relight-threads`），或定位高频改方块的插件逻辑 · 回滚 N/A（不影响玩法正确性，服务端不读光照） · 升级判据 连续 30 分钟 > 1,000 ms 即排查插件并限制其改方块频率 · 恢复验证 `relight_queue_p99_ms` < 250 ms 持续 10 分钟
 - **`RB-M3-004` 分片起服拒绝地图**：影响 该大区或频道不可用 · owner Bearisbug · 诊断 启动日志里的 `synx-*` 错误码（§14）逐条对应处置；`synx-payload-hash` 看是哪个文件、与发布源比对大小与摘要；`shard_heartbeat` 连续失败说明数据库连接问题 · 处置 按 §14 表处置：重新分发文件、按当前协议 `rebake`、或改挂载的 `build_id` · 回滚 `-Dsynaxis.map.build` 指回上一个 `published` 版本重启 · 升级判据 同一大区全部频道都起不来即对外公告维护 · 恢复验证 `EVT:shard_started` 出现且 `verify_ms` 在 §15 目标内
 - **`RB-M3-006` 世界状态标志不可用或冲突激增**：影响 分片起不来（起服读不到标志），或同大区频道之间的门、桥状态不一致 · owner Bearisbug · 诊断 起服失败看 `synx-world-flags-unavailable` 与 PostgreSQL 连接错误；运行期看 `flags.sync` 的失败日志与 Redis 连通性（Redis 不可用只会让收敛慢到 60 s，不是故障）；`flag_conflicts` 激增说明某个插件在改标志管辖的方块，按 WARN 日志里的坐标找插件 · 处置 恢复数据库连接后重启分片；插件冲突时修插件，或临时注销该标志 · 回滚 分片回到上一个 tag；标志表的回退按 `docs/DESIGN-PROD.md` §25 的回退策略（手工执行 `db/rollback/V<n>__*.down.sql`） · 升级判据 同一大区全部频道都起不来即对外公告维护 · 恢复验证 `EVT:shard_started` 的 `flags_replayed` 等于标志数，`flags.sync` 30 分钟无失败，`flag_conflicts` 回到每小时 ≤ 10
@@ -1502,8 +1790,10 @@ Feature flag：
 - **高度场包向量**：`baker/src/test/resources/vectors/farview/` 放一个小区域的 `.hfp` 与期望采样，写入器与 `client-fabric` 的读取器跑同一批；布局定稿时（§28.2 水面与水底）冻结。
 - **光照门禁**：`LightParityIntegrationTest`（`parity/*.scene` 全部场景）、`LightDampeningIntegrationTest`、`LightBlocksTest` 进 `./gradlew check`。真值 `*.light.gz` 与 `light_shape_states.txt` 只由 `tools/light-oracle/gen.sh` 生成（核对 `server.jar` 的 SHA-1），不手改；`LightBlocksTest` 拦下状态 ID 已错位的旧表。`LightEngine.VERSION` 与引擎资源 `src/main/resources/io/github/bearisbug/synaxis/instance/light/verified-light-versions.txt` 由 `LightEngineVersionTest` 互相绑定：每行 `<版本> <指纹>`，指纹是对四部分算的 SHA-256——每个方块状态的光照规则、全部对拍场景的引擎输出、覆盖全部方块状态的随机场景，以及缺失区块场景（光从四个方向进缺口）。改光照代码而不升版本（指纹对不上），或升版本而没追加对拍绿时的指纹行，CI 都红；`theVersionFileCountsUpToTheCurrentVersion` 另要求版本号从 1 起连续递增、不重复、最后一行等于 `LightEngine.VERSION`。只增不改：扩大指纹覆盖面而引擎输出不变时，也要升 `VERSION` 并追加新行，不改旧行。烘焙器经 `LightVersions` 按引擎路径读这个文件，只接受其中列出的版本（§11.2 守卫）。
 - **数据库**：`world_flag` 与 `shard_heartbeat` 的迁移脚本是表结构的唯一事实源；版本号由 `docs/DESIGN-PROD.md` §25 的版本表统一分配，回退脚本与 CI 往返（migrate → 回退 SQL → migrate）按该分册 §24、§25。
-- **ArchUnit**：新增两条——MMO 路径的模块（`:synx`、`:baker` 与 `server-app` 的分片包）不得引用 `LightingChunk`；`LightEngine` 不得引用 `Instance`。已落地：`:synx` 部分在 `SynxInternalSurfaceArchitectureTest`，`:baker` 部分在 `BakerArchitectureTest`（另加「引擎不得依赖 `:baker`」）；「`LightEngine` 不引用 `instance` 包、不含 `synchronized`」在根模块的 `LightEngineIsolationTest`（ArchUnit 加字节码扫描，各带一个违规样例）；聚合项目 `:architecture-tests` 的 `LightEngineArchitectureTest` 另守烘焙侧：`:baker` 直接引用的 `instance.light` 包类型（现为 `LightEngine`、`LightResult`、`WorldView`，名单从 `:baker` 的字节码取，新引用的类型自动纳入）不得引用 `Instance` 及其子类型。规则不沿包内依赖传递：`LightEngine`、`LightResult` 借用 `LightCompute` 的常量与 `getLight`，而 `LightCompute` 的旧引擎部分引用 `Light`，`Light#getNeighbors` 调 `Instance#getChunk`，这是类级依赖，不是 `computeArea` 的调用路径。`server-app` 分片包那一半随 M3-C 的分片代码加。
-- **引擎内部面**：§6 内部面表是 `:synx` 与 `:baker` 可用的 `@ApiStatus.Internal` 成员的全集。聚合项目 `:architecture-tests` 的 `SynxInternalSurfaceArchitectureTest` 与 `BakerArchitectureTest` 把名单写成测试里的常量，`io.github.bearisbug.synaxis.synx..` 与 `…baker..` 访问名单外的 `@ApiStatus.Internal` 引擎成员即红（违规样例证明规则会红）；引擎改动名单内成员的 PR 必须跑 `:synx:check` 与 `:baker:check`。
+- **ArchUnit**：新增两条——MMO 路径的模块（`:synx`、`:baker` 与 `server-app` 的分片包）不得引用 `LightingChunk`；`LightEngine` 不得引用 `Instance`。已落地：`:synx` 部分在 `SynxInternalSurfaceArchitectureTest`，`:baker` 部分在 `BakerArchitectureTest`（另加「引擎不得依赖 `:baker`」）；「`LightEngine` 不引用 `instance` 包、不含 `synchronized`」在根模块的 `LightEngineIsolationTest`（ArchUnit 加字节码扫描，各带一个违规样例）；聚合项目 `:architecture-tests` 的 `LightEngineArchitectureTest` 另守烘焙侧：`:baker` 直接引用的 `instance.light` 包类型（现为 `LightEngine`、`LightResult`、`WorldView`，名单从 `:baker` 的字节码取，新引用的类型自动纳入）不得引用 `Instance` 及其子类型。规则不沿包内依赖传递：`LightEngine`、`LightResult` 借用 `LightCompute` 的常量与 `getLight`，而 `LightCompute` 的旧引擎部分引用 `Light`，`Light#getNeighbors` 调 `Instance#getChunk`，这是类级依赖，不是 `computeArea` 的调用路径。`server-app` 分片包那一半随 M3-C 加在 `server-app` 自己的测试里（模块能对自己的类表达的规则留在本模块，同 `:architecture-tests` 构建脚本的说明）：`io.github.bearisbug.synaxis.app.shard..` 不得引用 `LightingChunk`，带一个违规样例。
+- **配置键**：M3-C 新增的八个 `synaxis.*` 键（`synaxis.map.root`、`synaxis.map.build`、`synaxis.simulation-distance`、`synaxis.chunk-unload-grace-ticks`、`synaxis.world-writable`、`synaxis.synx.section-cache-bytes`、`synaxis.overlay.cap`、`synaxis.overlay.flush-interval-s`，读取处与取值见 `API-M3-006` 与 §9）必须在读它们的代码进仓的同一个提交里进 `server-app` 的 `ConfigFile.KEYS` 与 `docs/DESIGN-PROD.md` `API-PROD-023` 键表，否则 `:architecture-tests` 的 `ConfigKeyGateTest` 红（它扫 `:synx` 与 `:baker` 在内的全部主类）。键只能以完整字符串常量出现，运行时拼出来的键门禁看不见。M3-D 的 `synaxis.relight-threads` 同理，随读它的代码进表。
+- **翻译键门禁**（`docs/DESIGN-PROD.md` `API-PROD-029`，该分册 §28.3 登记给本分册的一行）：`:baker`、`:synx` 与游戏模块的主类都在 `TranslationKeyGateTest` 的扫描范围里，常量池里整串是 `synaxis:<路径>` 的字符串都按翻译键核对。在这些模块里新增这种形状的非文字标识（数据标记的 handler 命名空间、方块或格式里的名字）时，同一提交把它加进 `architecture-tests` 的 `TranslationKeyGateTest#NOT_TEXT` 并写明用途，否则 `./gradlew check` 按两份语言文件缺译文报它；名单里的项没有类再提到时同样失败。已在名单：`synaxis:hidden`（烘焙器）；M3-C 由轨道 D 加 `synaxis:door`、`synaxis:loot`（`:game-rts` 的处理器键，写成整串常量）。其余 M3 代码不写这种整串常量，要用 `synaxis` 命名空间的键时写两段式 `Key.key("synaxis", "map")`。
+- **引擎内部面**：§6 内部面表是 `:synx` 与 `:baker` 可用的 `@ApiStatus.Internal` 成员的全集（M3-C 给 `BufferedPacket` 加的 `sheddable` 分量属表内已有的类型，不另加行）。聚合项目 `:architecture-tests` 的 `SynxInternalSurfaceArchitectureTest` 与 `BakerArchitectureTest` 把名单写成测试里的常量，`io.github.bearisbug.synaxis.synx..` 与 `…baker..` 访问名单外的 `@ApiStatus.Internal` 引擎成员即红（违规样例证明规则会红）；引擎改动名单内成员的 PR 必须跑 `:synx:check` 与 `:baker:check`。
 - **覆盖率门**：CI 的 diff-cover 覆盖率门（新增行 ≥ 80%）的 `--src-roots` 含 `synx/src/main/java` 与 `baker/src/main/java`。
 - **基准结果**：`docs/research/large-world-2026-09/bench-2026-09-results.json` 与后续轮次入库；§2 与 §15 引用基准重测文档的节号，不抄数字到第三处。报堆数字必须写明是否含包缓存、调色板形态、是否预热。
 - **跨轨道引用**：玩家数据、写权、转服验票、正版验证、连接闸门、停机顺序、分格线程的引擎侧、压测 harness 的契约只在 `docs/DESIGN-PROD.md` 里写，本文档只引用它的 ID 与节号，不复述。
@@ -1526,11 +1816,39 @@ Feature flag：
 | --- | --- | --- | --- |
 | M3-A 数字与光照 | `REQ-M3-013`、`REQ-M3-004`～`REQ-M3-007`、`REQ-M3-027`、`REQ-M3-028` | **已完成**（`docs/TEST.md` RUN-026、RUN-027、RUN-033）：基准重测入库、§2 / §15 已替换；光照 ④⑤⑦⑧⑨ 修复与 7 场景对拍 0 差异；`LightEngine` 抽取，对拍对它与 `LightingChunk.relight` 两条路径都 0 差异；`verified-light-versions.txt` 与版本绑定测试；M2 对局光照测试仍绿，`load_ms` < 3000（`server-app` 默认 `rts-512` 实测 305 ms，RUN-033 的 TC-GAME-029 第 2 步；光照分支在 `MatchIntegrationTest` 的全尺寸地图上新旧实现交替各测 10 次，中位数 845 对 887 ms）。**剩余**：空闲机器复跑墙钟（基准与 `load_ms` 都是在负载 4.7～82 的机器上测的） | 剩余一次空闲机器复跑 |
 | M3-B 格式与烘焙 | `REQ-M3-001`～`REQ-M3-003`、`REQ-M3-020`～`REQ-M3-022` | **已完成**（RUN-033）：向量冻结（4 个常规 + 8 个损坏与不兼容，CI 设冻结 zlib 开关）；4k×4k 测试图烘焙成功并记墙钟、CPU 与磁盘（§2）；1 线程与 9 线程的区域文件逐字节相同；调色板形态断言；损坏与不兼容向量各有断言；Anvil 门禁、标记映射、实体读取三组用例绿；交付规范 `docs/MAP-SOURCE.md` 入库。**留给后续阶段**：高度场包（M3-G）；游戏侧 `BlockHandler` 服务登记与分片起服接线（M3-C）；`rebake`、`retire` 与带重新抽样的独立 `verify`；空闲机器与真实 Anvil 地形（256 格窗口）的耗时与内存 | 12 天（自估，含复活 Anvil 读取器 4～5 天）；实际人日未记录 |
-| M3-C 流送与内存 | `REQ-M3-008`～`REQ-M3-011`、`REQ-M3-014` | 路线报告 P2 ②④⑤⑥：1,000 区块逐字节一致、JFR 无 `createChunkPacket` 且 `ChunkDataPacket` 对象数为 0、卸载可证伪、200 机器人 600 s tick P99 < 50 ms 且下行与模型偏差 ≤ ±20%；覆盖层崩溃窗口与 group commit 用例绿 | 12 天（自估） |
+| M3-C 流送与内存 | `REQ-M3-008`～`REQ-M3-011`、`REQ-M3-014`，加 M3-B 留下的游戏侧处理器登记与分片起服接线 | 路线报告 P2 ②④⑤⑥，逐条对应 §19 场景：1,000 区块物化后重新编码的包体与段① 逐字节一致；句柄区块的发包全是 `sheddable = false` 的 `BufferedPacket`，200 机器人压测的 JFR 里发送栈无 `createChunkPacket`、`ChunkDataPacket` 分配样本 0 条；卸载可证伪（票据归零第 99 个 tick 仍在、第 100 个 tick 卸载，宽限期 `-1` 时不卸载）；200 机器人 walk 与 ride 各 600 s，tick P99 < 50 ms、超 50 ms 的 tick 为 0，区块下行与按走法修正的模型偏差 ≤ ±20%；覆盖层崩溃窗口、group commit、最终落盘两条路径与写入权 CAS 的用例绿；新测试在 CI 的两种严格模式（`-Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true`，再加 `-Dsynaxis.thread-provider=grid`）下都绿；带数据标记的夹具存档烘焙退出码 0 | 12 天（自估，串行）；按下面四条轨道并行约 6 天加合并验收 2 天（自估） |
 | M3-D 运行时光照 | `REQ-M3-012` | 开工前 `flushQueue` 竞争已消除（§5 末表 ⑥，`REQ-M3-004` 落地后 MMO 路径与烘焙器已不经过它）；路线报告 P4 的火把判据（无头容器）；P1① 逐 nibble 一半的结论；不成立时退路已实现并计入 §15 带宽 | 5 天（自估），依赖 P1① |
 | M3-E 分片 | `REQ-M3-015`～`REQ-M3-017`、`REQ-M3-023` | 路线报告 P6：200 机器人 30 min 达标、500 机器人与单分格档记录在案、转服 P95 < 5 s；世界标志四组用例绿。依赖 `docs/DESIGN-PROD.md` 第 1 波连接闸门、第 2 波正版验证、第 3 波持久化先落地；转服票据与冷却只依赖该分册第 3 波 3D 组（`REQ-PROD-045`，`TransferTickets` 在 `server-app/.../app/transfer/`，已在 `main`），不依赖第 6 波；该分册 6A（插件面与两分片来回转服）排在 M3-E 之后 | 10 天（自估） |
 | M3-F 光影兼容 | `REQ-M3-019`、`REQ-M3-026` | 无头容器里 Sodium + Iris + DH 同装用例绿；引导屏两组用例绿；P1⑧、V7 结论回写 §15 与 §28.2 | 4 天（自估），真机部分依赖外部 |
 | M3-G 远景 | `REQ-M3-024`、`REQ-M3-025` | V1 在无头容器里有结论；高度场包向量冻结；客户端远景两组用例绿；V2、V3、V6、V8 结论回写 §15，按 §6.1 切换条件判定是否换路 | 2.5～4 人周（远景备忘录 §3.2 自估） |
+
+**M3-C 的四条并行轨道**。做法是先合一个契约骨架（第 0 步），四条轨道都从它分叉、各在自己的 worktree 里做，每个文件只归一条轨道改，最后按 D → A → C → B 合并并做退出验收。各轨道不改 `docs/DESIGN-M3.md` 与 `docs/DESIGN-PROD.md`：实现中发现的设计问题写进交付说明，由协调者合并后统一回写；`docs/TEST.md` 的用例由各轨道在自己的节里起草，执行记录（RUN）只在合并验收时登记一次。
+
+- **第 0 步 契约骨架**（一个提交，分支 `m3c/base`，由轨道 B 的执行者先做、协调者确认后四条轨道再分叉）：
+  - `:synx` 包 `io.github.bearisbug.synaxis.synx`：接口 `OverlayIndex`、`OverlayChunk`、`OverlayTracker` 与记录 `OverlayEncoding`（签名见 `API-M3-005`）；`SynxOptions` 与 `OverlayOptions` 两个记录连同完整的 `fromSystemProperties()`（读键、默认值、校验与拒启信息，§9）；`SynxHandlers.registerAll`（完整实现，`API-M3-003`）；`SynxChunk`、`SynxChunkLoader`、`OverlayStore` 三个类只有 `API-M3-005`、`API-M3-007` 写出的公开构造器与方法签名，方法体抛 `UnsupportedOperationException`。
+  - 引擎：`Chunk#readyToUnload()`（`protected`，默认 true），此后由 B 调、A 覆写。
+  - `server-app`：`build.gradle.kts` 加 `implementation(project(":synx"))`；包 `io.github.bearisbug.synaxis.app.shard` 的 `ShardSettings`（四个宿主键的读取与校验）；`ConfigFile.KEYS` 按 §24 加八个键，每个键在骨架里都已有读它的常量，所以配置键门禁在骨架提交上就是绿的；`docs/DESIGN-PROD.md` `API-PROD-023` 键表的八行由协调者与生产就绪会话在同一提交写入（§28.2 交给生产就绪会话的一行）。
+  - 验证：`./gradlew check` 绿，配置键门禁输出 113 个键。
+- **轨道 A `SynxChunk`、`SynxChunkLoader` 与零编码发送**（分支 `m3c/a-chunk`）：
+  - 只归 A 改：`:synx` 的 `SynxChunk`、`SynxChunkLoader`，新文件（解码缓存、段① 流式解码、静态实体生成）；引擎 `BufferedPacket`（加 `sheddable`）、`PacketViewableUtils`（构造时传 true）、`PlayerSocketConnection`（只丢 `sheddable` 的包）；§6 内部面名单若要加行，同时改 `SynxInternalSurfaceArchitectureTest` 的常量。
+  - 接口：实现骨架里 `SynxChunk` 与 `SynxChunkLoader` 的签名与 `OverlayChunk` 的四个方法；只经 `OverlayIndex` / `OverlayTracker` 调覆盖存储，测试里用自写的内存实现，不等 C。
+  - 自测：§19 `REQ-M3-008` 里不需要分片进程的场景（零编码的确定性一条、1,000 区块逐字节、物化不变黑、告示牌、世界不可写、邻区只读、`view_bounds` 外、记录损坏、会 tick 的 handler、名单外静态实体），在 `:synx` 的测试里用 `:testing` 的进程直接建实例挂 `SynxChunkLoader`；另加 `sheddable` 的回归：积压超限时移动包照丢、区块包不丢（`docs/TEST.md` 生产就绪第 5 波 5B 一节的出站积压用例照跑）。
+  - 不碰：`Instance`、`InstanceContainer`、`Player`、`Entity`、`DynamicChunk`（B）；`OverlayStore`（C）；`server-app`；翻译键门禁（D）。
+- **轨道 B 视距 / 模拟距离分离、按观察者自动卸载与分片宿主**（分支 `m3c/b-view`）：
+  - 只归 B 改：引擎 `Instance`（模拟距离、模拟集合、票据表、宽限期）、`InstanceContainer`（卸载判定）、`ServerProcessImpl#serverTick`（在 `updateAndAwait` 之后调卸载判定）、`Player`（区块环票据）、`Entity#tick` 与 `DynamicChunk#tick`（模拟判定与回到模拟时补发同步）；`server-app` 的 `ShardMain`（挂地图模式、`core-mode` 默认值、调 `Main.main(args, true)`）、`Main`（三处调 `ShardWorld`、步骤 (7) 写 `EVT:shard_started`）、`ShardWorld`；`server-app` 自己测试里的分片包 ArchUnit 规则。
+  - 6E 的约束：动 `Player.java`、`Entity.java` 之前读懂第 6 波 6E 的改法（`docs/DESIGN-PROD.md` `API-PROD-019` 视距的规则与休眠的规则两条），不回退：`effectiveViewDistance`、`updateViewDistance`、`setMaxViewDistance` 的一 tick 生效、`sitsOutTick` 与 `PlayerPositions` 快照都保持原样，B 只在其旁边加票据调用与模拟判定；6E 的回归用例（`docs/TEST.md` 生产就绪第 6 波 6E 一节）照跑。
+  - 接口：`ShardWorld` 编译期只依赖骨架签名，所以挂地图的端到端测试要等 A、C 合并后跑；B 自测覆盖引擎部分（§19 `REQ-M3-009`、`REQ-M3-010` 全部场景）与 `ShardMain` / `ShardSettings` 的拒启（§19「地图配置写错时拒启」「视距越界配置被拒」），这些不需要 A、C 的实现。
+  - 不碰：`:synx`（骨架之后）、`BufferedPacket` 与出站代码（A）、`:game-rts`（D）。
+- **轨道 C 覆盖存储**（分支 `m3c/c-overlay`）：
+  - 只归 C 改：`:synx` 的 `OverlayStore`，新文件（段文件读写、写入阶段、写入权与最终落盘、整理、启动重建、编码池）。
+  - 接口：实现骨架里 `OverlayStore` 的签名与 `OverlayIndex`、`OverlayTracker`；只经 `OverlayChunk` 调区块，测试里用替身实现（可控的 `generation`、编码耗时与失败），不等 A；`finalFlush` 的形状对齐 `ShutdownSequence.Step#run`，注册由 B 在 `ShardWorld` 做。
+  - 自测：§19 `REQ-M3-011` 里存储侧的场景（group commit、超预算、编码后又被改、崩溃截尾与空洞、整理与排队的包、写失败、换版本、最终落盘两条路径、写入权 CAS 与反证、截止、落盘之后的改动），另加一条用真 `ShutdownSequence` 驱动 `finalFlush` 的测试：`saveAll(…, true)` 后再 `saveAll(…, false)`，断言步骤只被执行一次落盘。
+  - 不碰：引擎、`server-app`、`SynxChunk`。
+- **轨道 D 游戏侧处理器、门禁名单与用例草案**（分支 `m3c/d-handlers`）：
+  - 只归 D 改：`:game-rts` 新包 `io.github.bearisbug.synaxis.game.rts.marker` 的两个处理器（`DoorMarker`：键 `synaxis:door`，无客户端标签；`LootMarker`：键 `synaxis:loot`，客户端标签 `Tag.String("table")`，与 `BakerMainTest` 的两个替身同键同标签）与 `META-INF/services/io.github.bearisbug.synaxis.instance.block.BlockHandler`；`:baker` 的 `BakerMain` 改用 `SynxHandlers.registerAll`，删掉测试 classpath 上的两个同键替身及其 services 文件（否则同键拒绝）；`architecture-tests` 的 `TranslationKeyGateTest#NOT_TEXT` 加 `synaxis:door`、`synaxis:loot` 两行；`docs/MAP-SOURCE.md` 第 6 节改写处理器现状（游戏模块已登记这两个命名空间）。
+  - 用例草案：`TC-WORLD-025` 标废弃（它判的是「未登记即退出码 2」），起新 ID（合并时取 `TC-WORLD` 的下一个空号，当前是 `TC-WORLD-030`）「交付规范的自检命令照做，带标记的夹具存档烘焙成功」：前置同 `TC-WORLD-025`；第 1 步 `grep '^## ' docs/MAP-SOURCE.md` 仍是 7 行；第 2 步照 `TC-WORLD-025` 第 2 步的命令烘焙，预期 `BUILD SUCCESSFUL`，`<O>/fixture/` 下恰一个 `fixture-<12 位 hex>-p776` 目录，含 `manifest.json` 与 `regions/r.0.0.synx`，`<O>-logs` 下有一行 `map_build_finished` 且 `outcome=published`；第 3 步对它跑 `verify --build <该目录>`，退出码 0；第 4 步反证：删掉 `:game-rts` services 文件里 `LootMarker` 那一行，换空目录重跑第 2 步，预期退出码 2、stderr 与 `TC-WORLD-025` 第 2 步相同，再 `git checkout --` 该文件；后置 `rm -rf <O> <O>-logs`。另起一条同键拒绝的单元测试用例（§19「同键的处理器被拒绝」）。
+  - 不碰：`:synx`（骨架里的 `SynxHandlers` 已完整）、引擎、`server-app`。
+- **合并与退出验收**（协调者）：按 D → A → C → B 合并到 `m3c/integrate`，每合一条跑一次 `./gradlew check` 与两种严格模式；B 合入后跑 §19 需要分片进程的场景（挂地图起服、脏区块卸载前先落盘、正常停机、看门狗判死、压测两档与 JFR），在 `docs/TEST.md` 登记一轮 RUN，并把各轨道交付说明里的设计问题回写本文档与 `docs/DESIGN-PROD.md`。`baker verify` 的独立抽样不在这四条轨道内（§28.2 烘焙器子命令一行）。
 
 M3-A 必须在 M3-B 之前：烘焙器只接受过了对拍的光照引擎版本（§11.2），修复前烘焙的产物全部要重烘。M3-C 依赖 M3-B 的产物；M3-G 依赖 M3-B 的段④。M3-E 与 M3-C / M3-D 可并行。
 
@@ -1542,12 +1860,16 @@ N/A — M3 还没有上线：M3-A、M3-B 已完成（离线的光照、格式与
 
 ### 28.1 待用户拍板
 
-前两项已按默认值写进设计，用户可改，改动时只影响交付规范与烘焙器的标记解析；后三项已由用户确认，其中后两项是 M3-B 实现中新出现的，用户 2026-09-25 拍板。
+表中的 Open Question 都已按默认值写进设计，用户可改：前两项（F3、F3′）改动时只影响交付规范与烘焙器的标记解析；后四项是 v0.11 为 M3-C 新列的，改动面各自写在行里，何时需拍板写的是最晚时点，过了按默认实现。三条「已决」由用户确认，其中后两项是 M3-B 实现中新出现的，用户 2026-09-25 拍板。
 
 | 类型 | 描述 | 负责人 | 何时需拍板 |
 | --- | --- | --- | --- |
 | Open Question | **美术工具（F3）**。默认 WorldEdit 7.4.5（GPL-3.0-only）+ Litematica 0.28.8（LGPL-3.0-only），地形底稿可用 WorldPainter（26.2 支持未核实），不买 Axiom。切换条件：美术需要多人协作建图或 Axiom 专属笔刷。代价：购买 Axiom Commercial License（价格与「commercial purposes」定义未读原文） | Bearisbug | M3-B 交付规范定稿前 |
 | Open Question | **服务端数据标记约定（F3′）**。默认 DATA 模式结构方块，`metadata` 写 `<handler 命名空间> <SNBT>`，作用于正下方一格，烘焙时替换为空气；隐藏区域用 `synaxis:hidden` 同类标记。切换条件：美术工具链里有更顺手的标记方式（如 Litematica 的元数据或独立的 JSON 旁注文件）。代价：改烘焙器的标记解析与交付规范，格式不变 | Bearisbug | M3-B 交付规范定稿前 |
+| Open Question | **数据标记处理器放在哪、叫什么**。默认由唯一的游戏模块 `:game-rts` 登记 `synaxis:door`（无客户端标签）与 `synaxis:loot`（客户端标签 `table`），与已冻结的 Anvil 夹具里的两个标记一致；`:baker` 与 `server-app` 都在运行期依赖 `:game-rts`，两边的清单由同一个 classpath 决定（`API-M3-003`）。两个处理器目前只作标记，不带玩法。切换条件：MMO 玩法有了自己的游戏模块，或美术要用游戏自己的命名空间（如 `<game>:door`）。代价：处理器搬进新模块并改 `:baker`、`server-app` 的运行期依赖；换命名空间要用 `tools/anvil-fixture` 重生成夹具（`TC-WORLD-020`，需要 26.2 服务端 jar）并改翻译键门禁名单 | Bearisbug | M3-C 轨道 D 开工前 |
+| Open Question | **静态实体还原到什么程度**。默认只保证类型、位置与朝向，元数据只映射这几项：`item_frame` / `glow_item_frame` 的 `Facing`、`Item`、`ItemRotation`、`Invisible`、`Fixed`；`text_display` 的 `text`、`billboard`、`background`；`item_display` 的 `item`；`block_display` 的 `block_state`；`armor_stand` 的 `Small`、`ShowArms`、`NoBasePlate`、`Invisible`、`Marker`（不含装备）。这六种以外的类型记 WARN 并跳过；源 NBT 整份挂在实体的 `synx_source` 标签上供插件自己读（`API-M3-005`）。切换条件：美术用到名单外的类型或字段（画、盔甲架装备、`interaction`）。代价：每加一种类型或字段要写一段映射与一条测试，约半天 | Bearisbug | M3-C 轨道 A 开工前 |
+| Open Question | **出生点从哪来**。默认取本大区 `bounds` 中心区块中心那一列的段② `surface_y`（导航层的可站立高度），不用配置（`API-M3-006`）。切换条件：美术要指定出生点，或中心列落在水里、屋顶上。代价：加一个数据标记 `synaxis:spawn`（轨道 D 登记处理器，门禁名单加一行），分片起服时扫段③ 非空的区块找它，找到多个即拒启 | Bearisbug | 第一张美术地图挂上分片前 |
+| Open Question | **只读区块上改方块的反应**。默认沿用引擎对只读区块的既有语义：插件 `setBlock` 静默不生效、不抛异常，玩家的挖掘与放置由引擎回正（`API-M3-005`）；覆盖 `bounds` 外的邻区区块、记录损坏的区块与 `synaxis.world-writable=false` 三种情形。替代做法是对插件抛 `IllegalStateException`：异常会从玩家挖掘的包处理路径冒出来，所以要在 `InstanceContainer` 里把玩家与插件分成两条路。切换条件：插件作者反馈静默失败难以排查。代价：改引擎 `InstanceContainer` 的只读判定处，加一个插件可选的「抛异常」开关 | Bearisbug | M3-C 轨道 A 开工前 |
 | 已决 | **DH 随客户端整合分发**（用户 2026-09-23 确认）。DH 是 LGPL-3.0-only：独立 jar 放 `mods/`，承担 LGPL-3.0 §4a 显著声明、§4b 附 GPL 与 LGPL 全文、§4c 在显示版权的界面列出 DH（远景备忘录 §3.6）；允许玩家替换这个 jar；DH 的版本锁定（`API-M3-015` 版本锁）与客户端本地烘焙代码一起升级。落点：`API-M3-015` 许可段、§17 DH 行、§23 检查单 | Bearisbug | 已于 2026-09-23 决定 |
 | 已决 | **编辑源的世界高度与 Q7 的 256 格怎么对齐**（用户 2026-09-25 拍板：选 ①）。原版主世界是 y −64～319（384 格、24 个 section）；烘焙器按 256 格窗口读取，窗口起始 y 由 `--min-y` 给出、默认 −64（理由见 `API-M3-003` Anvil 源条），清单 `world` 写窗口，`.synx` 头部 `height` 与段①～④ 都按 256 格；窗口外有非空气方块、方块实体或静态实体即拒绝烘焙（退出码 2，信息带区块坐标与越界 y），美术照常用原版主世界。未选 ②（高 256 的自定义维度：美术要装数据包，WorldEdit、Litematica、WorldPainter 对自定义维度的支持未核实）与 ③（接受 384 格：段①、段④ 与每线程内存按 1.5 倍算）。落点：`REQ-M3-020`、`API-M3-001` 头部 `height` 行、`API-M3-003`、§19 两条场景、`docs/MAP-SOURCE.md` 第 1 节 | Bearisbug | 已于 2026-09-25 决定 |
 | 已决 | **超过 256 种方块状态的 section 怎么处理**（用户 2026-09-25 确认：维持拒绝）。间接调色板最多 256 项，再多只能用直接调色板，而 `REQ-M3-003` 要求只能是单值或间接。烘焙器拒绝，该区域失败、退出码 3，错误信息带区块与 section 坐标（`GeneratorBakeTest` 断言 `chunk 0, 0 section 0 holds 300 block states`，交付规范第 6 节写明）。未选「允许直接调色板」，它的代价：该 section 包体变大（高 384 自然地形下直接调色板让包体 +47%，基准重测 §1 第 4 条），并要改 `REQ-M3-003` 与 §15 的 P2 调色板验收 | Bearisbug | 已于 2026-09-25 决定 |
@@ -1558,7 +1880,7 @@ N/A — M3 还没有上线：M3-A、M3-B 已完成（离线的光照、格式与
 | --- | --- | --- | --- |
 | 风险 | **基准只覆盖合成地形**：美术地图的方块实体、群系混排、火把与岩浆（块光数组）都会让包体与堆变大，幅度未测；段③ 大小完全未知。烘焙器的 4k 实测同样是合成地形；真实 Anvil 地形（默认窗口 y −64～191，y < 0 是带矿石的深板岩，要用间接调色板）的烘焙耗时与每线程内存没有测，每线程 256 MB 是在 y < 0 全为基岩的临时配置下量的。墙钟在负载均值 4.7～82 的机器上测得，只当上界 | Bearisbug | 第一张美术地图出来时跑 T1 与一次真实存档烘焙；空闲机器复跑（`REQ-M3-013`，同时复跑 4k 烘焙与 M2 `load_ms`） |
 | 已决 | **CI 与本机的 zlib 一致**：向量在本机 Homebrew JDK 25.0.4.1 上冻结，合入 `main` 后第一次 CI（`5be385bd54`，Temurin 25）的 check job 带 `-Dsynaxis.synx.require-frozen-zlib=true` 跑绿，`writerReproducesTheVectorBytesOnTheFrozenZlib` 通过（§24）。换 CI 的 JDK 发行版或本机重冻向量时仍以这条测试为门 | Bearisbug | 已于 2026-09-25 处置 |
-| 风险 | 存储对比 T2～T10 未测：段① 解码耗时（决定段③ 是否要回存调色板）、句柄区块常驻字节、mmap 冷页对虚拟线程载体的阻塞、`refreshThreads` 轮询 65,536 分区的耗时、源存档光照对拍能否设为门禁、`--forceUpgrade` 后预生成的 `isLightOn` 覆盖率、覆盖层稳态写入率、单次 `fsync` 延迟与定期落盘的 tick 开销 | Bearisbug | 各项在对应阶段（M3-B、M3-C）开工时测 |
+| 风险 | 存储对比 T2～T10 未测：段① 解码耗时（决定段③ 是否要回存调色板）、句柄区块常驻字节（M3-C 的句柄区块带父类 `DynamicChunk` 的 16 个空 section 与两个高度图对象，`ADR-M3-016`）、mmap 冷页对虚拟线程载体的阻塞、`refreshThreads` 轮询 65,536 分区的耗时、源存档光照对拍能否设为门禁、`--forceUpgrade` 后预生成的 `isLightOn` 覆盖率、覆盖层稳态写入率、单次 `fsync` 延迟与定期落盘的 tick 开销 | Bearisbug | 各项在对应阶段（M3-B、M3-C）开工时测 |
 | 风险 | **实体流量才是出站大头**：包体变小后默认档步行时区块只占出站的 24%，而实体下行 14.5～32.5 KB/s/人来自 RTS 口径，MMO 主城可见对数按 n² 增长，没有模型 | Bearisbug | M3-E 的 500 机器人档之前补一个主城实体流量模型 |
 | 风险 | **P1① 不成立**：客户端不能正确自算光照时，`ADR-M3-002` 走退路，每次改动每个观察者多 9 × B 下行；服务端重算值与客户端自算值可能有细微差别 | Bearisbug | M3-D |
 | 风险 | 500 人每分片的全部数字从 50 连接 soak 与基准线性外推 | Bearisbug | M3-E 的 500 机器人档 |
@@ -1570,15 +1892,17 @@ N/A — M3 还没有上线：M3-A、M3-B 已完成（离线的光照、格式与
 | 风险 | 段① 依赖生物群系注册表顺序；注册表内容或顺序一变就要重烘（`registry_digest` 会拦住，不会静默出错）；只升协议也会清空全部覆盖层（F1），一年升协议 2 次以上即触发 `ADR-M3-015` 的切换条件 | Bearisbug | 每次改注册表或升版时 |
 | 风险 | 32k×32k 手工地图需要内容生产线，M3 不做编辑器；没有生产线时正式档尺寸只是技术上限 | Bearisbug | 正式档立项时 |
 | 风险 | 大量世界状态标志会把区块物化进覆盖层并占 `overlay_cap`；标志数超过 §2 假设（每大区 1,000）时要重估 | Bearisbug | 玩法首次批量使用标志时 |
-| Open Question | **覆盖层停机落盘在新关闭顺序下怎么挂**：停机预算已按 `docs/DESIGN-PROD.md` §11.4 改为倒计时之后保存 30 s（判死路径 15 s）+ 踢人 5 s + 台账 2 s，`docs/DESIGN.md` §17、§21 与 `RB-002` 同批改写（v0.37）；`overlay.shutdown-flush` 的 2 s 与玩家保存同在 30 s 的 `saving` 阶段内，预算不再冲突。剩下的是挂载方式：`API-M3-007` 停机段的步骤假定 tick 线程已 join、停机线程是覆盖层唯一读写者，而该分册 §11.4 新序里 `saving` 阶段 tick 仍在运行。可选做法有两种：在 `saving` 内先禁止改地形再由停机线程落盘；或把最后一次落盘放进 tick 末尾写入阶段，与 `overlay.flush` 同一单线程阶段 | Bearisbug | M3-C 开工前，且早于生产就绪第 3 波（停机重排）合入 |
+| 已决 | **覆盖层停机落盘在新关闭顺序下怎么挂**（2026-09-27 按 `docs/DESIGN-PROD.md` v0.9.14 `API-PROD-007` 定稿）：分片宿主路径在 `Main` 装配里创建覆盖存储处调 `ShutdownSequence#addAfterPlayers("overlay", overlay::finalFlush)`，RTS 路径不注册；与玩家存储共用 `saving` 阶段 30 s（判死 15 s）预算，自身上限 min(2 s, 剩余预算)；`tickAlive=true` 只投递最终落盘请求给 tick 末尾写入阶段、不阻塞，`false` 时停机线程直接执行；写入权 CAS 保证最终落盘只有一方执行（`false` 调用先抢，tick 末尾已开始则停机线程等它完成）；落盘之后（`kicking`、`plugins_disabled` 阶段）的改方块不保证落盘，要保住的走世界状态标志。落点：`API-M3-007` 停机段、§11.1 停机落盘行、§12.5、§16 三行、§17 `overlay.shutdown-flush` 行 | Bearisbug | 已于 2026-09-27 决定 |
 | 技术债 | `LightingChunk` 的 `flushQueue` 竞争（§5 末表 ⑥）只剩 `relightSection` 可达，M3-D 的前置已满足；懒算、`relightSection` 的实例锁、全局重发延迟与 `onGenerate` 写死 20 tick（①②③）保留给 M2，`relight` 不持锁的前提是调用期间不改方块（§16）。M2 若出现运行期改地形就会碰到这些 | Bearisbug | M2 出现可破坏地形时（①②③⑥） |
-| 技术债 | **游戏模块没有登记任何 `BlockHandler` 服务**：烘焙器的标记命名空间清单来自 `ServiceLoader`（`API-M3-003`），现在清单为空，命令行遇到带数据标记的存档就退出码 2（测试 classpath 上登记了两个处理器，证明这条路是通的） | Bearisbug | M3-C：游戏侧处理器写进 `META-INF/services`，且与分片注册的 handler 一致 |
-| 技术债 | **烘焙器还缺三个子命令**：`rebake`（升协议批量重烘并记重烘耗时，`API-M3-002`）、`retire`（§11.2 `published → retired`）、带重新抽样的独立 `verify`（现在的 `verify` 只做摘要校验） | Bearisbug | `rebake` 在第一次升协议前；`retire` 在第一次下线地图版本前；独立抽样 `verify` 随 M3-C |
+| 技术债 | **游戏模块没有登记任何 `BlockHandler` 服务**：烘焙器的标记命名空间清单来自 `ServiceLoader`（`API-M3-003`），现在清单为空，命令行遇到带数据标记的存档就退出码 2（测试 classpath 上登记了两个处理器，证明这条路是通的）。M3-C 轨道 D 在 `:game-rts` 登记 `synaxis:door` 与 `synaxis:loot`，烘焙器与分片都经 `SynxHandlers.registerAll` 登记（§26，§28.1 数据标记处理器一行） | Bearisbug | M3-C 轨道 D |
+| 技术债 | **挂地图的分片不加载插件**：M3-C 的挂地图模式由 `ShardMain` 写 `synaxis.app.core-mode=on`，插件一个都不发现，玩家由宿主准入放进地图实例（`API-M3-006`）；因为 `server-app` 运行期带着 `:game-rts`，放开插件发现会让 RTS 插件建比赛并接管准入。M3-E 的关卡门（`gates.enabled`）与分片插件要在地图分片上运行，届时改为「发现插件，但拒绝在挂地图时登记准入或建比赛的插件」或按 `synaxis.app.plugins` 白名单 | Bearisbug | M3-E 开工时 |
+| 技术债 | **烘焙器还缺三个子命令**：`rebake`（升协议批量重烘并记重烘耗时，`API-M3-002`）、`retire`（§11.2 `published → retired`）、带重新抽样的独立 `verify`（现在的 `verify` 只做摘要校验） | Bearisbug | `rebake` 在第一次升协议前；`retire` 在第一次下线地图版本前；独立抽样 `verify` 不在 M3-C 的四条轨道里，排在第一张美术地图挂上分片之前 |
 | 已决 | `docs/ENGINE.md` 的目录地图没有 `:synx`、`:baker`、`tools/anvil-fixture` 与 `docs/MAP-SOURCE.md`：四项已补进该文 §5 | Bearisbug | 已于 2026-09-25 处置 |
 | 技术债 | 高度场包的采样布局还没定：路线报告的 4 B 采样只有一个高度，远景备忘录要求水面列另写水底，需要多一个 12 bit 高度或单独的水深层 | Bearisbug | M3-G 开工时，随 V2 定稿 |
 | 技术债 | `synaxis:farview` 负载要登记进 `docs/DESIGN-M2.md` §8 的协议消息表（跨分册改动） | Bearisbug | M3-G 开工时 |
 | 技术债 | 静态实体（展示框、盔甲架、`*_display`）的运行期改动不持久化：玩家打掉的展示框在区块重新载入后复原；需要持久时建模成世界状态标志 | Bearisbug | 玩法首次允许玩家改静态实体时 |
-| 技术债 | **`ShardMain` 的分片设置没写全**：`API-M3-006` 分片宿主设置表的六项，v0.8 写上了四项：区块视距 12、区块上限 4、可见上限 100（`ShardMain#viewDefaults`），PostgreSQL 存储时的 `accept-transfers=true`（`ShardMain#transferDefaults`，内存存储不写）；都是命令行显式给的值优先（`docs/TEST.md` RUN-032）。`docs/DESIGN-PROD.md` §28.2 登记给本分册的两项待办（区块上限 4、可见上限 100）由此完成，该分册的待办行与 `API-PROD-016`、`API-PROD-020` 里「`ShardMain` 还没写」的句子由生产就绪会话改写。余下模拟距离与卸载宽限两项要引擎的按实例接口，连同视距大于 16 拒启的校验随 M3-C 加 | Bearisbug | M3-C 接手 `ShardMain` 时 |
+| 技术债 | **`ShardMain` 的分片设置没写全**：`API-M3-006` 分片宿主设置表里，v0.8 写上了区块视距 12、区块上限 4、可见上限 100（`ShardMain#viewDefaults`）与 PostgreSQL 存储时的 `accept-transfers=true`（`ShardMain#transferDefaults`，内存存储不写），都是命令行显式给的值优先（`docs/TEST.md` RUN-032）；`docs/DESIGN-PROD.md` §28.2 登记给本分册的两项待办（区块上限 4、可见上限 100）由此完成。余下的模拟距离（键 `synaxis.simulation-distance`，默认 4）、卸载宽限（键 `synaxis.chunk-unload-grace-ticks`，默认 100）、挂地图时的核心模式 `on` 与视距大于 16 拒启，由 M3-C 轨道 B 在挂地图模式里加 | Bearisbug | M3-C 轨道 B |
+| 技术债 | **交给生产就绪会话的改动（M3 v0.11）**：① `API-PROD-023` 键表加 `API-M3-006` 的八个键，键表与 §24 配置键门禁里的「105 个键」改为 113，`:synx` 的布尔键 `synaxis.world-writable` 与 `ServerConfig` 布尔键同一规则也要写进键表前的说明；② `API-PROD-020` 出站积压改为「只丢 `sheddable` 的 `BufferedPacket`」，区块包的 `BufferedPacket` 不丢、按实际字节计入积压（`ADR-M3-018`）；③ `API-PROD-007` 注册段的「注册点由 M3-C 在装配里加」写明是 `ShardWorld` 在 `Main` 步骤 (4) 建完 `ShutdownSequence` 之后；④ `API-PROD-016` 与 `API-PROD-023` 里 `ShardMain` 写的默认值加上挂地图时的 `synaxis.app.core-mode=on`；⑤ `API-PROD-019` 休眠的规则补一句模拟距离外先于休眠判定、调度器照跑（`ADR-M3-017`）；⑥ §28.2 区块上限那条已决行的「625 个区块要 156 tick ≈ 7.8 s」改为 729 个、183 tick ≈ 9.1 s（§2 视距行）；⑦ §28.3 指向本分册 §24 翻译键门禁与 `API-M3-007` 停机段的两行改为已完成（本分册 v0.11） | Bearisbug | M3-C 第 0 步合入前（①）；其余在 M3-C 合并验收前 |
 | 已决 | **生产就绪分册按本文档 v0.2 引用转服票据**：`docs/DESIGN-PROD.md` v0.5 起把票据布局（加 `character_id`）、密钥、检查 ①～⑥（④ 加 UUID 一致校验）、`transfer_nonce` 表与清理、两个断线键写进自身（`REQ-PROD-045`、`API-PROD-028`、§14、§17 `transfer_nonce.gc`），本文档 v0.6 把 §1、§3、§4、`REQ-M3-017`、`API-M3-010`、§12.2、§14、§15、`ADR-M3-008` 改指这些 ID，删去本分册的 `nonce.gc` | Bearisbug | 已于 2026-09-24 处置 |
 | 已决 | `world_flag` 的迁移版本号：`docs/DESIGN-PROD.md` §25 版本表已列入，与 `shard_heartbeat` 同随 M3-E，合并时取下一个空号（当前预计 V6），见 §25 | Bearisbug | 已于 2026-09-24 处置 |
 | 已决 | **跨区块写入与调色板顺序**：原先 `ChunkPacketDeterminismTest` 与基准的生成器都不跨区块写方块，间接调色板保留写入顺序的风险没有测试守住。M3-B 处置了三处：调色板规范形改为先 `setAll` 进空调色板再 `optimize(SIZE)`，由 `SynxChunkPacketTest` 用两种写入顺序守住；生成器跨区块 `fork` 让该区域失败（`GeneratorBakeTest#aGeneratorThatForksIntoAnotherChunkFailsItsRegion`）；「并行等于串行」比较整个区域文件的字节，不只比段②③④ | Bearisbug | 已于 2026-09-25 处置（RUN-033） |

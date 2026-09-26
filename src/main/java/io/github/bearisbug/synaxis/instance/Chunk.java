@@ -19,9 +19,11 @@ import io.github.bearisbug.synaxis.world.biome.Biome;
 import org.jetbrains.annotations.ApiStatus;
 import org.jetbrains.annotations.Nullable;
 
+import java.time.Duration;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 // TODO light data & API
@@ -309,6 +311,18 @@ public abstract class Chunk implements Block.Getter, Block.Setter, Biome.Getter,
     }
 
     /**
+     * Asked by the automatic unload of an instance before it unloads this chunk, on the tick
+     * scheduling thread ({@code docs/DESIGN-M3.md} API-M3-006). A subclass returns false to keep the
+     * chunk one more round, for instance while it still has changes to write out. The explicit
+     * {@link Instance#unloadChunk(Chunk)} does not ask.
+     *
+     * @return whether the chunk may be unloaded now
+     */
+    protected boolean readyToUnload() {
+        return true;
+    }
+
+    /**
      * Invalidate the chunk caches
      */
     public abstract void invalidate();
@@ -327,6 +341,25 @@ public abstract class Chunk implements Block.Getter, Block.Setter, Biome.Getter,
     public final void lockWriteLock() {
         assert holdsWriteLock() || lock.getReadHoldCount() == 0 : "Cannot acquire write-lock while holding read-lock for chunk " + chunkX + "," + chunkZ;
         lock.writeLock().lock();
+    }
+
+    /**
+     * Takes the write-lock {@link #lockWriteLock()} takes, waiting at most {@code timeout} for it.
+     * Reentrant like that one. An interrupt ends the wait: the method returns false and the
+     * interrupt stays set.
+     *
+     * @param timeout how long to wait at most, zero or negative to only try once
+     * @return whether the calling thread holds the write-lock now; it has to unlock it then
+     */
+    @ApiStatus.Experimental
+    public final boolean tryLockWriteLock(Duration timeout) {
+        assert holdsWriteLock() || lock.getReadHoldCount() == 0 : "Cannot acquire write-lock while holding read-lock for chunk " + chunkX + "," + chunkZ;
+        try {
+            return lock.writeLock().tryLock(Math.max(0, timeout.toNanos()), TimeUnit.NANOSECONDS);
+        } catch (InterruptedException _) {
+            Thread.currentThread().interrupt();
+            return false;
+        }
     }
 
     @ApiStatus.Experimental

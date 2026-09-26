@@ -251,6 +251,8 @@ class StopRaceIntegrationTest {
         client.send("{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"minecraft:server/stop\"}");
         assertTrue(writing.await(10, TimeUnit.SECONDS), "the call started the shutdown and is being recorded");
         assertTrue(tasksStarted.await(10, TimeUnit.SECONDS), "the sequence reached its shutdown tasks");
+        // awaitStopAnswers gives up after ANSWER_WAIT (1 s): if this thread stalls for more than about
+        // 900 ms between here and write.countDown(), "closed" shows up and this test goes red spuriously
         Thread.sleep(100);
         assertEquals(List.of(), order, "nothing closes while the stop is still being answered");
 

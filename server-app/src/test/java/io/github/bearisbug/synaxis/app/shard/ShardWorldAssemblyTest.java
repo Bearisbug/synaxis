@@ -310,8 +310,9 @@ public class ShardWorldAssemblyTest {
         }
 
         @Override
-        public void written(long generation, OverlayHit hit, boolean demote) {
+        public boolean written(long generation, OverlayHit hit, boolean demote) {
             if (generation == 1) dirty = false;
+            return true;
         }
     }
 

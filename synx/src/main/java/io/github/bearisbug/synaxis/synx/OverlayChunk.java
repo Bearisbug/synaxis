@@ -31,6 +31,9 @@ public interface OverlayChunk {
      * by the write phase afterwards. The chunk takes {@code hit} as its current source. If nothing
      * changed since the encoding it is clean again, and with {@code demote} it goes back to handle
      * mode.
+     *
+     * @return false if the chunk did not take {@code hit} and stays as it was, its write-lock not had
+     *         in time; the overlay store takes it up again
      */
-    void written(long generation, OverlayHit hit, boolean demote);
+    boolean written(long generation, OverlayHit hit, boolean demote);
 }

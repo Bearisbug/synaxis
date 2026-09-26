@@ -393,22 +393,23 @@ public final class SynxChunk extends DynamicChunk implements OverlayChunk {
      * Takes the write-lock for at most 50 ms, as {@link #encodeOverlay} does: a tick thread judged dead
      * while it holds the lock must not keep the final flush past its budget. Without the lock the
      * chunk stays as it was, and the overlay store takes it up again, a dirty chunk to write, a clean
-     * one to demote.
+     * one to demote. Returns false then.
      */
     @Override
-    public void written(long generation, OverlayHit hit, boolean demote) {
+    public boolean written(long generation, OverlayHit hit, boolean demote) {
         final Source written = loader.source(hit.record(), new SectionCache.Key(hit.segment(), hit.offset()),
                 instance.process().block());
         if (!tryLockWriteLock(Duration.ofNanos(LOCK_WAIT_NANOS))) {
             LOGGER.warn("Chunk {},{} stays as it was after its overlay record was written: its write-lock was held for 50 ms",
                     chunkX, chunkZ);
-            return;
+            return false;
         }
         try {
             this.source = written;
-            if (this.generation.get() != generation) return; // changed again since the encoding: still dirty
+            if (this.generation.get() != generation) return true; // changed again since the encoding: still dirty
             this.dirty = false;
             if (demote && mode == Mode.OVERLAY) demote(written);
+            return true;
         } finally {
             unlockWriteLock();
         }

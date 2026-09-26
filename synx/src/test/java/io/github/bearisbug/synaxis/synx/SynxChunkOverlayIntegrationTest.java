@@ -258,7 +258,8 @@ public class SynxChunkOverlayIntegrationTest {
         final Thread holder = holdWriteLock(chunk, release);
         try (LogCapture logs = LogCapture.of(SynxChunk.class)) {
             final long start = System.nanoTime();
-            CompletableFuture.runAsync(() -> chunk.written(encoding.generation(), hit, true)).get(1, TimeUnit.SECONDS);
+            assertFalse(CompletableFuture.supplyAsync(() -> chunk.written(encoding.generation(), hit, true))
+                    .get(1, TimeUnit.SECONDS), "not taken without the lock");
             final long waited = System.nanoTime() - start;
             assertTrue(waited >= TimeUnit.MILLISECONDS.toNanos(50), "waited " + waited + " ns");
             assertEquals(SynxChunk.Mode.OVERLAY, chunk.mode());
@@ -270,7 +271,7 @@ public class SynxChunkOverlayIntegrationTest {
             release.countDown();
             holder.join();
         }
-        chunk.written(encoding.generation(), hit, true);
+        assertTrue(chunk.written(encoding.generation(), hit, true), "taken once the lock is free");
         assertEquals(SynxChunk.Mode.HANDLE, chunk.mode(), "written again once the lock is free");
         assertFalse(chunk.dirty());
     }

@@ -14,8 +14,10 @@ import java.nio.file.StandardOpenOption;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Stream;
@@ -309,6 +311,80 @@ public class OverlayStoreTest {
             holder.join();
         }
         assertNull(store.find(5, -6));
+    }
+
+    @Test
+    public void anUnloadThatDoesNotEncodeLeavesThePendingEntryItWouldHaveReplaced() throws Exception {
+        final OverlayStore store = open(16_384, 1);
+        final FakeChunk first = new FakeChunk(store, 8, 8, 0);
+        first.change();
+        store.unloaded(first);
+        final FakeChunk second = new FakeChunk(store, 8, 8, 1); // loaded again from the pending entry
+        second.change();
+        second.encoding = FakeChunk.Encoding.THROW;
+
+        try (LogCapture log = LogCapture.of(OverlayStore.class)) {
+            store.unloaded(second);
+            assertEquals(1, log.messagesAt(Level.ERROR).size(), log.messagesAt(Level.ERROR)::toString);
+        }
+        final OverlayHit hit = store.find(8, 8);
+        assertEquals(-1, hit.segment());
+        assertEquals(1, hit.generation(), "the first unload's encoding is still the latest content there is");
+        store.tickEnd();
+        assertEquals(1, generation(store, first));
+    }
+
+    @Test
+    public void aLoadWhileAnUnloadEncodesTheChunkWaitsForTheEncoding() throws Exception {
+        final OverlayStore store = open(16_384, 1);
+        final FakeChunk chunk = new FakeChunk(store, 6, 6, 0);
+        chunk.change();
+        clock.advance(Duration.ofSeconds(10));
+        store.tickEnd(); // generation 1 in the index
+        chunk.change();
+        final CountDownLatch entered = new CountDownLatch(1);
+        final CountDownLatch release = new CountDownLatch(1);
+        chunk.inEncoding = () -> {
+            entered.countDown();
+            await(release);
+        };
+        final Thread unloading = Thread.ofPlatform().start(() -> store.unloaded(chunk));
+        assertTrue(entered.await(5, TimeUnit.SECONDS));
+
+        final CompletableFuture<OverlayHit> load = CompletableFuture.supplyAsync(() -> store.find(6, 6),
+                Thread::startVirtualThread);
+        assertThrows(TimeoutException.class, () -> load.get(200, TimeUnit.MILLISECONDS),
+                "the load waits for the unload's encoding instead of taking the index's older record");
+        release.countDown();
+        unloading.join();
+        assertEquals(2, load.get(5, TimeUnit.SECONDS).generation());
+    }
+
+    @Test
+    public void aChunkLoadedAgainBeforeItsOldObjectLeftIsTrackedOnItsOwn() throws Exception {
+        final OverlayStore store = open(16_384, 1);
+        final FakeChunk old = new FakeChunk(store, 4, 4, 0);
+        old.change();
+        clock.advance(Duration.ofSeconds(10));
+        store.tickEnd();
+        // The instance dropped the old object and loaded the chunk again before ChunkLoader#unloadChunk told the store
+        final FakeChunk loaded = new FakeChunk(store, 4, 4, 1);
+        loaded.change();
+        store.unloaded(old);
+
+        assertEquals(1, store.stats().resident(), "the new object stays a resident");
+        clock.advance(Duration.ofSeconds(10));
+        store.tickEnd();
+        assertFalse(loaded.dirty());
+        assertEquals(2, generation(store, loaded));
+    }
+
+    private static void await(CountDownLatch latch) {
+        try {
+            assertTrue(latch.await(5, TimeUnit.SECONDS));
+        } catch (InterruptedException e) {
+            throw new IllegalStateException(e);
+        }
     }
 
     @Test

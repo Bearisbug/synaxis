@@ -80,7 +80,7 @@ public final class OverlayStore implements OverlayIndex, OverlayTracker {
     }
 
     /** The encoding of a chunk unloaded with changes, until the write phase writes it. */
-    private record Pending(OverlayHit hit, byte[] record) {
+    private record Unloaded(OverlayHit hit, byte[] record) {
     }
 
     /** What an encode task made of a chunk: the record as a file holds it. */
@@ -90,7 +90,7 @@ public final class OverlayStore implements OverlayIndex, OverlayTracker {
     private sealed interface Item permits PendingItem, ChunkItem, CopyItem {
     }
 
-    private record PendingItem(long key, Pending entry) implements Item {
+    private record PendingItem(long key, CompletableFuture<@Nullable Unloaded> entry, Unloaded unloaded) implements Item {
     }
 
     private record ChunkItem(Resident resident, Encoded encoded, boolean demote) implements Item {
@@ -132,13 +132,16 @@ public final class OverlayStore implements OverlayIndex, OverlayTracker {
     private final OverlayTuning tuning;
     private final ThreadPoolExecutor encoders;
 
-    // What find reads
+    // What find reads. A pending entry is in the table while unloaded() encodes it, and completes
+    // with the encoding, or with null if there is none; find waits for it
     private final Map<Long, Indexed> index = new ConcurrentHashMap<>();
-    private final Map<Long, Pending> pending = new ConcurrentHashMap<>();
+    private final Map<Long, CompletableFuture<@Nullable Unloaded>> pending = new ConcurrentHashMap<>();
     private final AtomicLong pendingSequence = new AtomicLong();
 
-    // The chunks in overlay mode, by coordinates, by their last change and by their first unwritten one
-    private final Map<Long, Resident> residents = new ConcurrentHashMap<>();
+    // The chunks in overlay mode, by object (chunks keep the identity equals of Object), by their last
+    // change and by their first unwritten one. By object: the instance may load a chunk again before
+    // the unload of its old object reaches unloaded(), and both are residents until then
+    private final Map<OverlayChunk, Resident> residents = new ConcurrentHashMap<>();
     private final NavigableMap<Long, Resident> lru = new ConcurrentSkipListMap<>();
     private final NavigableMap<Long, Resident> dirtyQueue = new ConcurrentSkipListMap<>();
     private final Set<Resident> unloadQueue = ConcurrentHashMap.newKeySet();
@@ -260,12 +263,20 @@ public final class OverlayStore implements OverlayIndex, OverlayTracker {
 
     // ---- OverlayIndex
 
-    /** The pending table first, then the index; lock free, from the threads chunks load on. */
+    /**
+     * The pending table first, then the index; from the threads chunks load on. Lock free, but for a
+     * chunk an unload is encoding into the pending table right now, whose encoding it waits for: the
+     * index only has older content of it.
+     */
     @Override
     public @Nullable OverlayHit find(int chunkX, int chunkZ) {
         final long key = CoordConversion.chunkIndex(chunkX, chunkZ);
-        final Pending waiting = pending.get(key);
-        if (waiting != null) return waiting.hit();
+        CompletableFuture<@Nullable Unloaded> waiting;
+        while ((waiting = pending.get(key)) != null) {
+            final Unloaded unloaded = waiting.join();
+            if (unloaded != null) return unloaded.hit();
+            // Not encoded: unloaded() put back the entry it replaced, if any, before completing
+        }
         final Indexed indexed = index.get(key);
         return indexed != null ? indexed.hit() : null;
     }
@@ -287,9 +298,8 @@ public final class OverlayStore implements OverlayIndex, OverlayTracker {
             if (changed) changedAfterClose(chunk);
             return;
         }
-        final long key = key(chunk);
         while (true) {
-            final Resident resident = residents.computeIfAbsent(key, _ -> new Resident(chunk, key));
+            final Resident resident = residents.computeIfAbsent(chunk, _ -> new Resident(chunk, key(chunk)));
             synchronized (resident) {
                 // Evicted or unloaded while this thread got hold of it: a new one
                 if (resident.removed) continue;
@@ -310,8 +320,8 @@ public final class OverlayStore implements OverlayIndex, OverlayTracker {
 
     @Override
     public void unloadRequested(OverlayChunk chunk) {
-        final Resident resident = residents.get(key(chunk));
-        if (resident == null || resident.chunk != chunk) return;
+        final Resident resident = residents.get(chunk);
+        if (resident == null) return;
         synchronized (resident) {
             if (!resident.removed && resident.dirtyKey != 0) unloadQueue.add(resident);
         }
@@ -320,13 +330,14 @@ public final class OverlayStore implements OverlayIndex, OverlayTracker {
     /**
      * Leaves the residents; a chunk with changes the write phase has not written is encoded here, on
      * the unloading thread, into the pending table, which {@link #find} answers from until the next
-     * write phase has written it. The caller holds the instance monitor, and this takes the chunk's
+     * write phase has written it. Its entry goes in before the encoding, so that a load of the chunk
+     * meanwhile waits for it. The caller holds the instance monitor, and this takes the chunk's
      * write-lock, the order of {@code UNSAFE_setBlock}.
      */
     @Override
     public void unloaded(OverlayChunk chunk) {
-        final Resident resident = residents.get(key(chunk));
-        if (resident != null && resident.chunk == chunk) {
+        final Resident resident = residents.get(chunk);
+        if (resident != null) {
             synchronized (resident) {
                 remove(resident);
             }
@@ -336,21 +347,33 @@ public final class OverlayStore implements OverlayIndex, OverlayTracker {
             changedAfterClose(chunk);
             return;
         }
+        final long key = key(chunk);
+        final CompletableFuture<@Nullable Unloaded> entry = new CompletableFuture<>();
+        final CompletableFuture<@Nullable Unloaded> replaced = pending.put(key, entry);
+        Unloaded unloaded = null;
         try {
             final OverlayEncoding encoding = chunk.encodeOverlay(settings, System.nanoTime() + UNLOAD_ENCODE_NANOS);
             if (encoding == null) {
                 LOGGER.error("Chunk {},{} was unloaded with changes, but its write-lock was not had in time: they are lost",
                         chunk.chunkX(), chunk.chunkZ());
-                return;
+            } else {
+                final byte[] record = record(chunk, encoding);
+                unloaded = new Unloaded(new OverlayHit(present(chunk, record), encoding.generation(), -1,
+                        pendingSequence.incrementAndGet()), record);
             }
-            final byte[] record = record(chunk, encoding);
-            final OverlayHit hit = new OverlayHit(present(chunk, record), encoding.generation(), -1,
-                    pendingSequence.incrementAndGet());
-            pending.put(key(chunk), new Pending(hit, record));
         } catch (RuntimeException e) {
             LOGGER.error("Chunk {},{} was unloaded with changes that do not encode: they are lost", chunk.chunkX(),
                     chunk.chunkZ(), e);
+        } finally {
+            if (unloaded == null) {
+                // The content the table had stays the latest there is
+                if (replaced != null) pending.replace(key, entry, replaced);
+                else pending.remove(key, entry);
+            }
+            entry.complete(unloaded);
         }
+        // Closed while this encoded: the final flush left the entry out
+        if (unloaded != null && writeRight.get() == CLOSED && pending.get(key) == entry) changedAfterClose(chunk);
     }
 
     private void changedAfterClose(OverlayChunk chunk) {
@@ -395,7 +418,7 @@ public final class OverlayStore implements OverlayIndex, OverlayTracker {
         selectDue(taken, deadline);
         awaitEncodings(deadline);
         final List<Item> batch = new ArrayList<>();
-        pending.forEach((key, entry) -> batch.add(new PendingItem(key, entry)));
+        takePending(batch);
         harvest(batch, false, false);
         selectCopies(batch);
         if (!batch.isEmpty() && write(batch) != null) {
@@ -406,6 +429,14 @@ public final class OverlayStore implements OverlayIndex, OverlayTracker {
             }
             unlinkEmptySegments();
         }
+    }
+
+    /** The pending entries encoded by now, first in the batch; one still encoding waits for the next batch. */
+    private void takePending(List<Item> batch) {
+        pending.forEach((key, entry) -> {
+            final Unloaded unloaded = entry.getNow(null);
+            if (unloaded != null) batch.add(new PendingItem(key, entry, unloaded));
+        });
     }
 
     /** {@code overlay_resident − overlay_cap}, at most 64, the least recently changed first. */
@@ -632,9 +663,9 @@ public final class OverlayStore implements OverlayIndex, OverlayTracker {
     private Appended append(Item item, Set<OverlaySegment> touched) throws IOException {
         return switch (item) {
             case PendingItem written -> {
-                final SynxSlot.Present record = written.entry().hit().record();
-                yield appendRecord(item, record.chunkX(), record.chunkZ(), written.entry().hit().generation(),
-                        MemorySegment.ofArray(written.entry().record()), touched);
+                final OverlayHit hit = written.unloaded().hit();
+                yield appendRecord(item, hit.record().chunkX(), hit.record().chunkZ(), hit.generation(),
+                        MemorySegment.ofArray(written.unloaded().record()), touched);
             }
             case ChunkItem written -> appendRecord(item, written.resident().chunk.chunkX(),
                     written.resident().chunk.chunkZ(), written.encoded().generation(),
@@ -732,7 +763,7 @@ public final class OverlayStore implements OverlayIndex, OverlayTracker {
     private void remove(Resident resident) {
         if (resident.removed) return;
         resident.removed = true;
-        residents.remove(resident.key, resident);
+        residents.remove(resident.chunk, resident);
         if (resident.lruKey != 0) lru.remove(resident.lruKey);
         clean(resident);
     }
@@ -828,7 +859,7 @@ public final class OverlayStore implements OverlayIndex, OverlayTracker {
     private void finalFlushNow(String by) {
         final long deadline = finalDeadline.get();
         final List<Item> batch = new ArrayList<>();
-        pending.forEach((key, entry) -> batch.add(new PendingItem(key, entry)));
+        takePending(batch);
         awaitEncodings(deadline);
         harvest(batch, true, false);
         final Set<Resident> taken = new HashSet<>();

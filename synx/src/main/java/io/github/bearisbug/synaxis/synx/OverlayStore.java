@@ -396,7 +396,7 @@ public final class OverlayStore implements OverlayIndex, OverlayTracker {
         awaitEncodings(deadline);
         final List<Item> batch = new ArrayList<>();
         pending.forEach((key, entry) -> batch.add(new PendingItem(key, entry)));
-        harvest(batch, false);
+        harvest(batch, false, false);
         selectCopies(batch);
         if (!batch.isEmpty() && write(batch) != null) {
             final OverlaySegment current = active;
@@ -509,11 +509,12 @@ public final class OverlayStore implements OverlayIndex, OverlayTracker {
     }
 
     /**
-     * Takes the finished encodings into {@code batch}, in the order they were submitted. The write
-     * phase takes only those still at the chunk's {@code generation}, the others are encoded again;
-     * the final flush takes every one, content of a real generation newer than the index's.
+     * Takes the finished encodings into {@code batch}, in the order they were submitted: those still
+     * at the chunk's {@code generation}, or with {@code staleToo} every one, content of a real
+     * generation newer than the index's. The chunks of the others stay dirty and are encoded again.
+     * Evictions demote, but not in the final flush.
      */
-    private void harvest(List<Item> batch, boolean finalFlush) {
+    private void harvest(List<Item> batch, boolean finalFlush, boolean staleToo) {
         for (Iterator<Resident> it = inFlight.iterator(); it.hasNext(); ) {
             final Resident resident = it.next();
             final Future<Encoded> future = Objects.requireNonNull(resident.inFlight);
@@ -527,7 +528,7 @@ public final class OverlayStore implements OverlayIndex, OverlayTracker {
                 // Unloaded since: the pending table has its latest content
                 if (resident.removed) continue;
             }
-            if (!finalFlush && encoded.generation() != resident.chunk.generation()) continue;
+            if (!staleToo && encoded.generation() != resident.chunk.generation()) continue;
             batch.add(new ChunkItem(resident, encoded, resident.demote && !finalFlush));
         }
     }
@@ -818,17 +819,30 @@ public final class OverlayStore implements OverlayIndex, OverlayTracker {
         }
     }
 
-    /** With the write right: every dirty chunk, no cap, encoded until the deadline, one {@code fsync}, closed. */
+    /**
+     * With the write right: every dirty chunk, no cap, encoded until the deadline, one {@code fsync},
+     * closed. An encoding a write phase left in flight was made against that phase's deadline: it is
+     * taken if still at its chunk's {@code generation}, and the chunk encoded again if not, or if it
+     * came to null.
+     */
     private void finalFlushNow(String by) {
         final long deadline = finalDeadline.get();
-        for (Resident resident : residents.values()) {
-            if (System.nanoTime() - deadline >= 0) break;
-            if (resident.inFlight == null && resident.chunk.dirty()) submit(resident, false, deadline);
-        }
-        awaitEncodings(deadline);
         final List<Item> batch = new ArrayList<>();
         pending.forEach((key, entry) -> batch.add(new PendingItem(key, entry)));
-        harvest(batch, true);
+        awaitEncodings(deadline);
+        harvest(batch, true, false);
+        final Set<Resident> taken = new HashSet<>();
+        for (Item item : batch) {
+            if (item instanceof ChunkItem written) taken.add(written.resident());
+        }
+        for (Resident resident : residents.values()) {
+            if (System.nanoTime() - deadline >= 0) break;
+            if (resident.inFlight == null && resident.chunk.dirty() && !taken.contains(resident)) {
+                submit(resident, false, deadline);
+            }
+        }
+        awaitEncodings(deadline);
+        harvest(batch, true, true);
         final Commit written = batch.isEmpty() ? new Commit(0, 0) : write(batch);
         writeRight.set(CLOSED);
         encoders.shutdownNow();

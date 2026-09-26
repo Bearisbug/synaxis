@@ -41,6 +41,10 @@ final class FakeChunk implements OverlayChunk {
 
     volatile long encodeNanos;
     volatile Encoding encoding = Encoding.NORMAL;
+    /** The outcomes of the next encodings, before {@link #encoding} applies again. */
+    final Queue<Encoding> nextEncodings = new ConcurrentLinkedQueue<>();
+    /** Runs inside the write-lock of an encoding, before it reads the generation. */
+    volatile @Nullable Runnable inEncoding;
 
     final AtomicInteger encodes = new AtomicInteger();
     final AtomicInteger maxRunning = new AtomicInteger();
@@ -106,7 +110,10 @@ final class FakeChunk implements OverlayChunk {
             final long wait = Math.min(deadlineNanos - System.nanoTime(), LOCK_WAIT_NANOS);
             if (!lock.tryLock(Math.max(0, wait), TimeUnit.NANOSECONDS)) return null;
             try {
-                switch (encoding) {
+                final Runnable hook = inEncoding;
+                if (hook != null) hook.run();
+                final Encoding next = nextEncodings.poll();
+                switch (next != null ? next : encoding) {
                     case NULL -> {
                         return null;
                     }

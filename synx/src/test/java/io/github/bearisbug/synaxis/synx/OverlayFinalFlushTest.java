@@ -135,6 +135,95 @@ public class OverlayFinalFlushTest {
     }
 
     @Test
+    public void anEncodingAWritePhaseLeftBehindIsDoneAgainOnceTheChunkChanged() throws Exception {
+        final OverlayStore store = open(1);
+        final FakeChunk chunk = new FakeChunk(store, 2, 2, 0);
+        chunk.change();
+        clock.advance(Duration.ofSeconds(10));
+        final CountDownLatch entered = new CountDownLatch(1);
+        final CountDownLatch release = new CountDownLatch(1);
+        chunk.inEncoding = () -> {
+            entered.countDown();
+            await(release);
+        };
+        store.tickEnd(); // gives up on the encoding after 20 ms; it goes on, at generation 1
+        assertTrue(entered.await(5, TimeUnit.SECONDS));
+        chunk.inEncoding = null;
+        final Thread changing = Thread.ofPlatform().start(chunk::change); // waits for the encoding's write-lock
+        release.countDown();
+        changing.join();
+        assertEquals(2, chunk.generation());
+
+        try (LogCapture log = LogCapture.of(OverlayStore.class)) {
+            var _ = store.finalFlush(TWO_SECONDS, false);
+            final String line = flushLine(log, Level.INFO);
+            assertTrue(line.contains("chunks=1 ") && line.contains("left=0"), line);
+        }
+        assertFalse(chunk.dirty());
+        assertEquals(2, chunk.encodes.get(), "encoded again, at generation 2");
+        assertWritten(List.of(chunk));
+    }
+
+    @Test
+    public void aChunkAWritePhaseCouldNotEncodeIsEncodedAgain() throws Exception {
+        final OverlayStore store = open(1);
+        final FakeChunk slow = new FakeChunk(store, 0, 0, 0);
+        final FakeChunk refused = new FakeChunk(store, 1, 0, 0);
+        slow.change();
+        refused.change();
+        clock.advance(Duration.ofSeconds(10));
+        final CountDownLatch entered = new CountDownLatch(1);
+        final CountDownLatch release = new CountDownLatch(1);
+        slow.inEncoding = () -> {
+            entered.countDown();
+            await(release);
+        };
+        refused.nextEncodings.add(FakeChunk.Encoding.NULL); // its write-lock not had in time, say
+        store.tickEnd(); // both left in flight: the first holds up the one encode thread
+        assertTrue(entered.await(5, TimeUnit.SECONDS));
+        slow.inEncoding = null;
+        release.countDown();
+
+        try (LogCapture log = LogCapture.of(OverlayStore.class)) {
+            var _ = store.finalFlush(TWO_SECONDS, false);
+            final String line = flushLine(log, Level.INFO);
+            assertTrue(line.contains("chunks=2 ") && line.contains("left=0"), line);
+        }
+        assertEquals(1, slow.encodes.get(), "its encoding is still at its generation: taken as it is");
+        assertEquals(2, refused.encodes.get());
+        assertWritten(List.of(slow, refused));
+    }
+
+    @Test
+    public void aSecondCallTakesTheEarlierOfTheTwoDeadlines() throws Exception {
+        assertTheEarlierDeadline(root.resolve("live-earlier"), Duration.ofMillis(300), Duration.ofSeconds(30));
+        assertTheEarlierDeadline(root.resolve("dead-earlier"), Duration.ofSeconds(2), Duration.ofMillis(300));
+    }
+
+    /** 60 chunks of 20 ms on one encode thread: 1.2 s of encoding, more than the 300 ms either order leaves. */
+    private void assertTheEarlierDeadline(Path overlayRoot, Duration live, Duration dead) throws Exception {
+        final OverlayStore store = open(overlayRoot, 1, new OverlayFixture.CountingDisk());
+        final List<FakeChunk> chunks = OverlayFixture.chunks(store, 0, 60);
+        for (FakeChunk chunk : chunks) {
+            chunk.encodeNanos = TimeUnit.MILLISECONDS.toNanos(20);
+            chunk.change();
+        }
+        final long start = System.nanoTime();
+        try (LogCapture log = LogCapture.of(OverlayStore.class)) {
+            var _ = store.finalFlush(live, true);
+            var _ = store.finalFlush(dead, false);
+            final long took = System.nanoTime() - start;
+            assertTrue(took >= TimeUnit.MILLISECONDS.toNanos(300) && took < TimeUnit.MILLISECONDS.toNanos(1_000),
+                    () -> live + " then " + dead + ": the final flush took " + took / 1_000_000 + " ms");
+            final String line = flushLine(log, Level.ERROR);
+            assertTrue(line.endsWith("by=shutdown") && !line.contains("left=0"), line);
+        }
+        final long late = start + TimeUnit.MILLISECONDS.toNanos(320);
+        assertTrue(chunks.stream().flatMap(chunk -> chunk.encodeStarts.stream()).filter(at -> at - late > 0).count() <= 1,
+                () -> live + " then " + dead + ": encodings started after the earlier deadline");
+    }
+
+    @Test
     public void aLiveCallThenADeadOneWriteTheFinalFlushOnce() throws Exception {
         final OverlayStore store = open(1);
         final List<FakeChunk> chunks = dirty(store, 5);
@@ -227,6 +316,14 @@ public class OverlayFinalFlushTest {
         }
     }
 
+    private static void await(CountDownLatch latch) {
+        try {
+            assertTrue(latch.await(5, TimeUnit.SECONDS));
+        } catch (InterruptedException e) {
+            throw new IllegalStateException(e);
+        }
+    }
+
     private static void deleteTree(Path directory) throws Exception {
         try (Stream<Path> paths = Files.walk(directory)) {
             for (Path path : paths.sorted(Comparator.reverseOrder()).toList()) Files.delete(path);
@@ -289,9 +386,12 @@ public class OverlayFinalFlushTest {
             assertTrue(flushLine(log, Level.ERROR).contains("left=" + (20_000 - written)), errors::toString);
         }
         assertEquals(1, disk.forces.get());
-        final long lastStart = chunks.stream().flatMap(chunk -> chunk.encodeStarts.stream()).max(Comparator.naturalOrder()).orElseThrow();
-        assertTrue(lastStart - start < TimeUnit.MILLISECONDS.toNanos(1_010),
-                () -> "an encoding started " + (lastStart - start) / 1_000_000 + " ms in");
+        // Only an encoding that passed the deadline check just before the deadline and was then held up
+        // past it, a GC pause say, starts late: at most one per encode thread
+        final long late = start + TimeUnit.MILLISECONDS.toNanos(1_020);
+        final List<Long> lateStarts = chunks.stream().flatMap(chunk -> chunk.encodeStarts.stream())
+                .filter(at -> at - late > 0).map(at -> (at - start) / 1_000_000).sorted().toList();
+        assertTrue(lateStarts.size() <= 2, () -> "encodings started this many ms in: " + lateStarts);
     }
 
     @Test

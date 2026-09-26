@@ -21,6 +21,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -178,5 +180,31 @@ public class ShardWorldTest {
         assertEquals(4L, event.get("unloaded"));
         assertEquals(300L, event.get("section_cache_bytes"));
         assertEquals(0, event.get("flag_conflicts"));
+    }
+
+    /**
+     * The write phase of the overlay store is a repeating task at the end of the tick, which the
+     * scheduler stops for good once it throws: a throw is reported and the next tick runs it again,
+     * or no dirty chunk would be written, unloaded or flushed at the stop any more.
+     */
+    @Test
+    public void aWritePhaseThatThrowsRunsAgainOnTheNextTick() {
+        final Env env = Env.create(config -> config);
+        try {
+            final List<Throwable> reported = new CopyOnWriteArrayList<>();
+            env.process().exception().setExceptionHandler(reported::add);
+            final AtomicInteger runs = new AtomicInteger();
+            ShardWorld.scheduleWritePhase(env.process(), () -> {
+                if (runs.incrementAndGet() == 1) throw new IllegalStateException("write phase");
+            });
+
+            for (int i = 0; i < 3; i++) env.tick();
+
+            assertEquals(3, runs.get(), "the ticks after the throw run the write phase too");
+            assertEquals(1, reported.size(), reported.toString());
+            assertEquals("write phase", reported.getFirst().getMessage());
+        } finally {
+            env.process().stop();
+        }
     }
 }

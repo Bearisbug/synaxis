@@ -189,11 +189,19 @@ public final class ShardWorld {
     /** {@link #start(ShutdownSequence, BiConsumer)} with the overlay store elsewhere than the working directory, for the tests. */
     Started start(ShutdownSequence shutdown, BiConsumer<String, Map<String, ?>> events, Path overlayRoot) {
         final SynxSettings overlaySettings = overlaySettings(manifest, process.compressionThreshold());
+        final Path overlayDirectory = overlayRoot.resolve(manifest.buildId());
         final OverlayStore overlay;
-        final SynxChunkLoader loader;
         try {
             overlay = OverlayStore.open(overlayRoot, manifest, overlaySettings, overlayOptions);
-            shutdown.addAfterPlayers("overlay", overlay::finalFlush);
+        } catch (SynxException e) {
+            throw new IllegalArgumentException(e.getMessage(), e);
+        } catch (IOException e) {
+            throw new IllegalArgumentException("the overlay store " + overlayDirectory + " cannot be opened: "
+                    + e.getMessage(), e);
+        }
+        shutdown.addAfterPlayers("overlay", overlay::finalFlush);
+        final SynxChunkLoader loader;
+        try {
             loader = new SynxChunkLoader(settings.buildDir(), manifest, manifest.bounds(), synxOptions, overlay, overlay);
         } catch (SynxException e) {
             throw new IllegalArgumentException(e.getMessage(), e);
@@ -215,16 +223,30 @@ public final class ShardWorld {
         }
         final Pos spawn = spawn(settings.buildDir(), manifest);
 
-        process.scheduler().scheduleTask(overlay::tickEnd, TaskSchedule.nextTick(), TaskSchedule.nextTick(),
-                ExecutionType.TICK_END);
+        scheduleWritePhase(process, overlay::tickEnd);
         this.lastStream = loader.stats();
         this.lastOverlay = overlay.stats();
         process.scheduler().buildTask(() -> recordStreamStats(events))
                 .delay(STATS_INTERVAL).repeat(STATS_INTERVAL).schedule();
         LOGGER.info("Map mounted: build_id={} simulation_distance={} chunk_unload_grace_ticks={} spawn={} overlay={}",
-                manifest.buildId(), settings.simulationDistance(), settings.chunkUnloadGraceTicks(), spawn,
-                overlayRoot.resolve(manifest.buildId()));
+                manifest.buildId(), settings.simulationDistance(), settings.chunkUnloadGraceTicks(), spawn, overlayDirectory);
         return new Started(instance, spawn);
+    }
+
+    /**
+     * Runs the write phase of the overlay store at the end of every tick. A throw is reported to the
+     * exception handler of the process and the next tick runs it again. The scheduler stops a repeating
+     * task that throws, after which no dirty chunk would be written or unloaded again, and the final
+     * flush that a stop with a live tick hands to this phase would never run.
+     */
+    static void scheduleWritePhase(ServerProcess process, Runnable writePhase) {
+        process.scheduler().scheduleTask(() -> {
+            try {
+                writePhase.run();
+            } catch (RuntimeException e) {
+                process.exception().handleException(e);
+            }
+        }, TaskSchedule.nextTick(), TaskSchedule.nextTick(), ExecutionType.TICK_END);
     }
 
     /**

@@ -52,6 +52,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
 
 /**
  * The map shard as {@code Main} assembles it, in this JVM, on a baked release and with the real
@@ -61,6 +62,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * These need the {@code SynxChunkLoader} of the chunk track and the {@code OverlayStore} of the
  * overlay track: against the step 0 skeleton they are skipped, and they run once both are merged.
  */
+@Timeout(60)
 public class ShardWorldAssemblyTest {
 
     private static final SynxOptions SYNX = new SynxOptions(true, 1 << 24);
@@ -108,6 +110,11 @@ public class ShardWorldAssemblyTest {
         new TickSchedulerThread(process, TimeUnit.MILLISECONDS.toNanos(50), process.config().maxTickCatchUp()).start();
     }
 
+    /**
+     * Runs ticks on the test thread, on a process whose tick threads run: the first tick with a loaded
+     * chunk waits for the tick thread of its partition, forever when {@code dispatcher().start()} was
+     * not called.
+     */
     private static void tick(ServerProcess process, int count) {
         for (int i = 0; i < count; i++) process.ticker().tick(System.nanoTime());
     }
@@ -162,6 +169,7 @@ public class ShardWorldAssemblyTest {
         try {
             final Mounted mounted = mount(process, new OverlayOptions(16_384, 10));
             final InstanceContainer instance = mounted.instance();
+            process.dispatcher().start();
             assertEquals(ShardWorld.DIMENSION_TYPE, instance.getDimensionType().key().asString());
             assertEquals(4, instance.simulationDistance());
             assertEquals(100, instance.chunkUnloadGraceTicks());
@@ -184,14 +192,42 @@ public class ShardWorldAssemblyTest {
         }
     }
 
+    /**
+     * §14: an overlay store that cannot be opened refuses the start naming the overlay directory, which
+     * is where RB-M3-002 has the operator look, not the map release.
+     */
+    @Test
+    public void anOverlayStoreThatCannotBeOpenedNamesItsDirectory() throws IOException {
+        final ServerProcess process = process();
+        try {
+            final Path notADirectory = Files.createFile(overlayRoot.resolve("overlay"));
+            final ShardWorld world = ShardWorld.prepare(process, release, SYNX, new OverlayOptions(16_384, 10));
+            final ShutdownSequence shutdown = new ShutdownSequence(process, new NoPlayers());
+            try {
+                world.start(shutdown, (_, _) -> {
+                }, notADirectory);
+                fail("the start is refused");
+            } catch (UnsupportedOperationException e) {
+                skeleton(e);
+            } catch (IllegalArgumentException e) {
+                assertTrue(e.getMessage().startsWith("the overlay store " + notADirectory.resolve(release.mapBuild())
+                        + " cannot be opened: "), e.getMessage());
+            }
+        } finally {
+            process.stop();
+        }
+    }
+
     /** §19 「正常停机不丢覆盖层改动」, and 「最终落盘之后的改动不保证落盘」, the half with a shutdown task. */
     @Test
-    @Timeout(60)
     public void aNormalStopWritesEveryChangeAndNothingAfterIt() throws Exception {
         final ServerProcess process = process();
-        final OverlayOptions options = new OverlayOptions(16_384, 10);
+        // Neither a periodic flush nor an unload writes a change before the stop, however slow the machine:
+        // all 100 are the final flush's
+        final OverlayOptions options = new OverlayOptions(16_384, 60);
         final Mounted mounted = mount(process, options);
         final InstanceContainer instance = mounted.instance();
+        instance.setChunkUnloadGraceTicks(-1);
         // Where plugins' onDisable runs, after the final flush
         process.scheduler().buildShutdownTask(() -> instance.setBlock(15 * 16 + 1, 50, 15 * 16 + 1, Block.GOLD_BLOCK));
         startTicking(process);
@@ -221,7 +257,9 @@ public class ShardWorldAssemblyTest {
     public void aDirtyChunkIsWrittenBeforeItIsUnloaded() {
         final ServerProcess process = process();
         try {
-            final InstanceContainer instance = mount(process, new OverlayOptions(16_384, 10)).instance();
+            // No periodic flush within the test: the write before the unload is the one at tick 100
+            final InstanceContainer instance = mount(process, new OverlayOptions(16_384, 60)).instance();
+            process.dispatcher().start();
             instance.loadChunk(3, 3).join();
             instance.setBlock(3 * 16 + 1, 50, 3 * 16 + 1, Block.GOLD_BLOCK);
 
@@ -293,7 +331,6 @@ public class ShardWorldAssemblyTest {
      * never runs, then for a dead one; the final flush runs once, on the shutdown thread.
      */
     @Test
-    @Timeout(60)
     public void aLiveThenDeadSaveFlushesOnceOnTheShutdownThread() throws Exception {
         final OverlayOptions options = new OverlayOptions(16_384, 10);
         final OverlayStore overlay;

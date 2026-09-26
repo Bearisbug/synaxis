@@ -268,3 +268,119 @@ RUN-037 记录（2026-09-26，第 6 波修复轮合入集成分支后的复验�
   真进程共 33 次（第六节 30 次、第八节 3 次）都按 pid 等到退出或 kill 后退出，25697、25665、9464 无监听。
   /tmp/w6fix（环境脚本、计数与探针驱动脚本、Gradle 日志、ABI jar、各次临时工作目录、uv 建的 .venv）在本轮提交之后删除。
   git status 除本轮的文档改动外无其他改动。
+
+十五、RUN-037 之后的修复轮（2026-09-26 追加；上文与 docs/TEST.md 的 RUN-037 汇总行、明细一律不改，本节不另起轮次）
+
+被测版本：prod/integrate-w6 在 a97fc30a76 之上的修复提交（本节随它提交）。改动：PlayerStore.java、Profiler.java、ManagementServer.java；
+  测试新增 ShutdownSaveRaceIntegrationTest、ManagementFragmentCountIntegrationTest，ProfilerTest 加 1 条；
+  docs/DESIGN-PROD.md v0.9.14（修复轮），docs/TEST.md 新增 TC-PROD-470～TC-PROD-472。
+执行者：AI（Claude Code，Gradle 9.7.1 / OpenJDK 25.0.4.1 / 共用容器 synaxis-pg、synaxis-valkey / 探针在 uv 建的 Python 3.10.18 .venv 里跑）
+机器：Apple M4 Pro 12 核 / 24 GiB；同机有别的会话，15:30（UTC+8）load 4.92 / 11.25 / 12.50
+下文的 <mirror>、数据库环境与反证规矩同本文件开头。
+
+1. 审查报出的三个缺陷（复现证据摘自审查报告，本轮另做的复现见各条）
+
+  ① major，REQ-PROD-008：停机保存的冻结与断线同时发生。loggedOut 在记录锁外查 shutdownSaves，saveAll 冻结时不加记录锁、也不重查状态。
+    (a) loggedOut 查到还没冻结 → saveAll 置 saving 并登记 future → loggedOut 的 switch 看到 saving 返回：登出保存与停机快照都没做；
+    (b) saveAll 读到 online → loggedOut 走完 online→saving 并提交登出保存 → saveAll 再登记一个永不完成的 future。
+    审查的真进程复现：玩法模式、内存存储、离线，150 个客户端准入后停在 configuration，写入 stop 后 3～6 ms 同时断开；
+      机器空闲 35 次里 7 次 30.44～30.48 s，日志 The shutdown save did not complete within its budget… 与 1～9 行 Not saved on shutdown…，
+      台账例 online=148, saved=139, failed=9；加压 29 次里 2 次。JUnit 自然竞态默认 29/200、18/200 轮卡住，strict grid 22/200。
+  ② major，REQ-PROD-034：进程里另有开着 jdk.InitialEnvironmentVariable 的 JFR 录制时，profile / synaxis:profile 的 .jfr 带全部环境变量明文。
+    审查探针：单独录 0 个该事件；先开 default 设置的录制再 Profiler.start(1)：82 个，SYNAXIS_MANAGEMENT_TOKEN 的值逐字在文件里。
+  ③ major，REQ-PROD-032：BoundedDraft 逐片只加载荷长度，0 字节的非结束续片每片加 0，而 Java-WebSocket 1.6.0 对每个续片都往 byteBufferList 挂一个 ByteBuffer。
+    审查探针：3,000,000 个空续片（18,000,006 B）后 buffered_fragments=3000001、heap_growth_mb=223，连接仍开、ping 照回 pong。
+
+2. 修法（docs/DESIGN-PROD.md v0.9.14（修复轮）：§16 一行、§11.4 gate_closed → saving、API-PROD-011、API-PROD-022、§15、§19 三条场景、§26、§28.2）
+
+  ① saveAll 逐条在记录锁里判定 online 再置 saving、登记停机保存；loggedOut 在同一把锁里读登记与状态，钩子与快照在锁外做
+  ② Profiler 录满后先 dump 到 java.io.tmpdir 下 0600 的临时文件，再用 RecordingFile#write 滤掉 jdk.InitialEnvironmentVariable 写成最终文件，finally 删临时文件；
+     录制设置里照旧关掉这个事件
+  ③ BoundedDraft 另数片，MAX_MESSAGE_FRAGMENTS = 1,024，第 1,025 片抛 LimitExceededException（关闭码 1009）
+
+3. 新用例与反证（都是本轮实跑；红跑之后先存 XML 再复绿）
+
+  TC-PROD-470（ShutdownSaveRaceIntegrationTest，带数据库环境）
+    第 1 步：tests="2" 0 失败 0 跳过，time 1.02～2.11 s（默认模式多次；4 线程严格 counter 2.02 s、grid 1.39 s）
+    第 2 步：PlayerStore.java 换回 a97fc30a76 的版本、保留测试 → 2 tests completed, 2 failed：
+      ShutdownSaveRaceIntegrationTest.java:97  not within 10 s: the disconnect that decided after the freeze takes the shutdown snapshot
+      :177  of 200 rounds of 16 disconnects at the same time as the freeze ==> expected: <stuck=0 never_written=0 written_twice=0 ledger_wrong=0>
+            but was: <stuck=16 never_written=0 written_twice=0 ledger_wrong=0>（默认模式，time 44.5 s）
+            but was: <stuck=23 never_written=1 written_twice=0 ledger_wrong=0>（默认模式复跑，time 58.6 s）
+            but was: <stuck=20 never_written=1 written_twice=0 ledger_wrong=0>（-Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true
+                     -Dsynaxis.thread-provider=grid，time 52.4 s）
+      never_written 即交错 (a)，其余卡住的轮次是交错 (b)（角色已写入、停机保存等一个永不完成的 future）
+    第 3 步：saveAll 里 if (record.state != LeaseState.ONLINE) continue; → if (Boolean.getBoolean("proof.never") && …) continue;
+      → 2 tests completed, 1 failed：只有 :177，but was: <stuck=99 never_written=0 written_twice=0 ledger_wrong=0>（time 201.4 s）；:97 绿
+    另试（未写进用例，结果随机）：saveAll 的 synchronized (record) 换成 synchronized (proof.never ? record : new Object())
+      → 本机一次 :177 but was: <stuck=3 never_written=3 …>；锁外判定与置位之间只隔几条指令，自然竞态偶尔才撞上
+    第 4 步：还原后 --rerun 四个类 → ShutdownSaveRaceIntegrationTest 2 / ShutdownSaveBeforeSpawnIntegrationTest 3 / ShutdownSaveIntegrationTest 4 /
+      PlayerStoreIntegrationTest 23，都 0 失败 0 跳过
+  TC-PROD-471（ProfilerTest，shell 里 export SYNAXIS_MANAGEMENT_TOKEN=proof-marker-6c1e0f93d2a847b5，命令加 --rerun）
+    第 1 步：tests="2" 0 失败
+    第 2 步：writeWithoutEnvironment(recording, path); → if (proof.never) writeWithoutEnvironment(…); else recording.dump(path);
+      → 2 tests completed, 1 failed：ProfilerTest.java:70  the environment the other recording turned on is not in the profile file ==> expected: <0> but was: <85>
+    第 3 步：再把测试 :70 的 assertEquals 改成只在 proof.never 时执行
+      → 2 tests completed, 1 failed：ProfilerTest.java:80  the value of SYNAXIS_MANAGEMENT_TOKEN is not in the profile file ==> expected: <false> but was: <true>
+    第 4 步：还原两个文件后 --rerun → tests="2" 0 失败（逐字节检查在标记值存在时通过，即过滤后的文件里没有它）
+  TC-PROD-472（ManagementFragmentCountIntegrationTest）
+    第 1 步：tests="1" 0 失败（1,024 片的请求得结果 0；空续片那条连接收到 1009）
+    第 2 步：if (messageFragments > MAX_MESSAGE_FRAGMENTS) throw … → if (proof.never && …) throw …，与 ManagementFragmentsIntegrationTest 一起跑
+      → 2 tests completed, 1 failed：ManagementFragmentCountIntegrationTest.java:96（ManagementClient.java:121）the connection is still open after PT10S；
+        ManagementFragmentsIntegrationTest 绿
+    第 3 步：全量 check 里 ManagementFragmentCountIntegrationTest 1、ManagementFragmentsIntegrationTest 1、ManagementIntegrationTest 13，都 0 失败
+  原始攻击的复现（一次性探针，没有提交）：:server-app 测试里临时加一个 @EnvTest 类，原始 socket 带令牌握手（101），
+    先发 01 80 00000000，再按每批 10,000 个发 3,000,000 个 00 80 00000000，睡 2 s 后经反射读服务端连接的 Draft_6455.byteBufferList，
+    前后各 System.gc() 三次比堆用量，最后发一个空 ping 看回帧；跑完删掉该类
+    修复后：PROBE status=HTTP/1.1 101 Web Socket Protocol Handshake wire_bytes_written=840006 fragments_written=140001
+      write_error=SocketException: Broken pipe server_connections=0 buffered_fragments=-1 heap_growth_mib=0 frames_from_server=[0x88(code=1009)]
+      （服务端在第 1,025 片回 1009 并关连接，客户端此前写进 socket 缓冲的 140,001 片之后写失败）
+    片数检查经 proof.never 关掉时：PROBE status=HTTP/1.1 101 Web Socket Protocol Handshake wire_bytes_written=18000006 fragments_written=3000001
+      write_error=none server_connections=1 buffered_fragments=3000001 heap_growth_mib=222 frames_from_server=[0x8a]
+      （全部攒在缓冲表里，堆涨 222 MiB，约 78 B / 片，连接仍开、ping 照回 pong；DESIGN-PROD API-PROD-022 写的 222～223 MiB 即此数与审查的 223）
+
+4. 改过判据的旧用例，按新写法重跑
+
+  TC-PROD-392 第 6 步：ProfilerTest tests="2" 0 失败（全量 check）
+    第 7 步：settings.put(ENVIRONMENT, "false"); → if (proof.never) settings.put(…);
+      → 2 tests completed, 1 failed：ProfilerTest.java:46  the recording does not turn the environment on ==> expected: <false> but was: <true>
+      （只开 profile 一个录制时文件照样读不出该事件：写文件还会滤一次，原先 :36 的判据在这个改动下不再红）
+  TC-PROD-395 第 2 步：onError 前加一行直接 LOGGER.warn、原行只在 proof.never 时执行 → 2 tests completed, 1 failed：
+      Method <io.github.bearisbug.synaxis.app.management.ManagementServer$Endpoint.onError(org.java_websocket.WebSocket, java.lang.Exception)>
+      calls method <org.slf4j.Logger.warn(java.lang.String, java.lang.Object, java.lang.Object)> in (ManagementServer.java:215)
+      （原 :212；XML 在复绿前另存）。还原后 --rerun ClientDrivenLogArchitectureTest tests="2" 0 失败
+  TC-PROD-460 第 3～5 步（改动点随 loggedOut 改写：锁后的 if (!saveEnded) shutdownSnapshot(record, shutdownSave, true);）
+    第 3 步 if (!saveEnded && proof.never) … → 3 tests completed, 2 failed：:97 与 :124 not within 10 s: …（同原判据）
+    第 4 步 if (!saveEnded || !proof.never) … → 3 tests completed, 1 failed：:153 no save hook after the save phase ==> expected: <[]> but was: <[Late]>
+    第 5 步 …, false); → 3 tests completed, 2 failed：:101 expected: <[Hasty]> but was: <[]>、:127 expected: <[Early]> but was: <[]>
+  结果与 RUN-037 相同，都判通过；RUN-037 的汇总行与明细不改
+
+5. 门禁（本节提交前的最终代码与文档）
+
+  全量 check（带数据库环境）：./gradlew check --rerun-tasks <mirror>
+    起止 2026-09-26T07:17:56Z → 07:20:46Z，BUILD SUCCESSFUL in 2m 50s，77 actionable tasks: 77 executed
+    architecture-tests 7 / 20、baker 4 / 52、根模块 418 / 3101（skipped 15）、game-rts 12 / 83、loadtest 3 / 10、plugin-api 3 / 15、
+    protocol 4 / 78、server-app 59 / 333、synx 7 / 42、testing 7 / 10（类 / 测试），合计 524 个类 3,744 个测试，0 失败 0 错误，15 跳过（根模块，旧有）；
+    每个模块最早的时间戳都晚于起跑。比第二节的 3,740 多 4 个：ShutdownSaveRaceIntegrationTest 2、ManagementFragmentCountIntegrationTest 1、ProfilerTest 1
+    存储 9 个类都是 skipped="0"（第二节的 8 个加 ShutdownSaveRaceIntegrationTest 2 / 0）；EnvDispatcherThreadsIntegrationTest：1、counter
+  严格 counter：./gradlew test --rerun --continue <mirror> -Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true
+    起止 07:21:09Z → 07:23:33Z，BUILD SUCCESSFUL in 2m 23s；十个模块同为 524 个类 3,744 个 0 失败 0 错误、15 跳过；env dispatcher threads: 4、counter
+  严格 grid：同上再加 -Dsynaxis.thread-provider=grid
+    起止 07:23:46Z → 07:26:07Z，BUILD SUCCESSFUL in 2m 20s；同为 524 / 3,744 0 失败 0 错误、15 跳过；env dispatcher threads: 4、grid
+  没有重跑任何测试
+  文档 lint：bash ~/.claude/skills/design-doc/check.sh docs/DESIGN-PROD.md → ✅ lint 无警告，输出与 a97fc30a76 的版本逐行相同；
+    bash ~/.claude/skills/test-doc/check.sh docs/TEST.md → 警告只有已知的 RUN-031 两行与 REQ-PROD-031 无 TC，
+    与 a97fc30a76 的版本只差最后一行：用例 408 条 → 411 条（冒烟 54，轮次 37）
+
+6. 真进程：TC-PROD-461 第 1 步（同一 PlayerStore 改动的进程级回归，一个客户端；审查那种 150 个客户端的驱动本轮没有重做）
+
+  ./gradlew :server-app:installDist <mirror>（发行版的 PlayerStore#saveAll 有 monitorenter、BoundedDraft 有 messageFragments，javap 核对）
+  起法同第六节，10 次，pid 3413～3947：
+    10 次探针都 state=play、退出码 0；stop→退出 0.45～0.50 s，java 退出码 0，ERROR 0、WARN 0，末行都是 synaxis server stopped successfully.
+    shutdown_saved：online=1、saved=1、failed=0 四次（保存阶段先冻结、断线接手快照），online=0、saved=0、failed=0 六次（登出保存先到、冻结跳过）
+
+7. 环境与回收
+
+  没有新建镜像、容器或卷，复用 synaxis-pg、synaxis-valkey；synaxis-mc-client:dev 本轮没用到。
+  真进程 10 次都 wait 到退出，25697、9464 无监听；探针类 FragmentFloodProbeIntegrationTest 跑完即从源码树移走。
+  /tmp/w6r2（环境脚本、计数脚本、Gradle 日志、各次临时工作目录、uv 建的 .venv、Java-WebSocket 源码包解压的 /tmp/jws-src）在本节提交之后删除。

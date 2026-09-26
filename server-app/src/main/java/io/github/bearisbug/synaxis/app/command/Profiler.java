@@ -2,6 +2,7 @@ package io.github.bearisbug.synaxis.app.command;
 
 import jdk.jfr.Configuration;
 import jdk.jfr.Recording;
+import jdk.jfr.consumer.RecordingFile;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
@@ -24,7 +25,10 @@ import java.util.concurrent.CompletableFuture;
  * <p>
  * One event of those settings is off: {@code jdk.InitialEnvironmentVariable} writes every
  * environment variable of the process in clear, the {@code SYNAXIS_*} secrets among them, into a
- * file that is handed over for analysis.
+ * file that is handed over for analysis. It is also left out when the file is written: the
+ * recordings of a JVM share their chunks, so a dump carries the events any other recording turned
+ * on meanwhile, and the JDK's own settings, the ones {@code jcmd JFR.start},
+ * {@code -XX:StartFlightRecording} and JMC use, turn this one on.
  * <p>
  * Only one runs at a time. The wait and the write happen on a virtual thread; a recording still
  * running when the process ends is dropped with it.
@@ -39,7 +43,8 @@ public final class Profiler {
     public static final int MAX_SECONDS = 600;
 
     private static final String SETTINGS = "profile";
-    private static final String ENVIRONMENT = "jdk.InitialEnvironmentVariable#enabled";
+    private static final String ENVIRONMENT_EVENT = "jdk.InitialEnvironmentVariable";
+    private static final String ENVIRONMENT = ENVIRONMENT_EVENT + "#enabled";
     private static final DateTimeFormatter STAMP = DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss-SSS")
             .withZone(ZoneOffset.UTC);
 
@@ -113,7 +118,7 @@ public final class Profiler {
             try {
                 Thread.sleep(Duration.ofSeconds(seconds));
                 recording.stop();
-                recording.dump(path);
+                writeWithoutEnvironment(recording, path);
             } catch (IOException | InterruptedException | RuntimeException e) {
                 failure = e;
             } finally {
@@ -125,6 +130,22 @@ public final class Profiler {
             else written.completeExceptionally(failure);
         });
         return new Started(path, written);
+    }
+
+    /**
+     * Dumps the recording to a temporary file only its owner reads, then writes the file handed
+     * over from it without the events of the environment; the temporary file goes either way.
+     */
+    private static void writeWithoutEnvironment(Recording recording, Path path) throws IOException {
+        final Path dump = Files.createTempFile("synaxis-profile-", ".jfr");
+        try {
+            recording.dump(dump);
+            try (RecordingFile file = new RecordingFile(dump)) {
+                file.write(path, event -> !ENVIRONMENT_EVENT.equals(event.getEventType().getName()));
+            }
+        } finally {
+            Files.deleteIfExists(dump);
+        }
     }
 
     private synchronized void finished() {

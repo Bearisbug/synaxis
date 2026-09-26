@@ -943,18 +943,16 @@ public final class PlayerStore implements ShutdownParticipant {
     private void loggedOut(Player player) {
         final Record record = records.get(player);
         if (record == null) return;
-        // Nothing ticks a player that never entered the world: the snapshot the shutdown save
-        // handed to its scheduler would never run
-        final CompletableFuture<SaveResult> shutdownSave = shutdownSaves.get(record);
-        if (shutdownSave != null && !saveEnded) {
-            shutdownSnapshot(record, shutdownSave, true);
-            return;
-        }
         // Admitted meanwhile, it goes on to the logout save below
         if (record.state == LeaseState.LOADING && abandon(record)) return;
+        final CompletableFuture<SaveResult> shutdownSave;
         final CompletableFuture<SaveResult> droppedTransfer;
         synchronized (record) {
-            switch (record.state) {
+            // Under the lock saveAll freezes a player under: frozen before, this disconnect takes
+            // the shutdown snapshot below; frozen after, the freeze found it saving and left it out
+            shutdownSave = shutdownSaves.get(record);
+            if (shutdownSave != null) droppedTransfer = null;
+            else switch (record.state) {
                 case ONLINE -> {
                     record.state = LeaseState.SAVING;
                     submit(record, snapshot(record), true, null);
@@ -982,6 +980,12 @@ public final class PlayerStore implements ShutdownParticipant {
                     return;
                 }
             }
+        }
+        if (shutdownSave != null) {
+            // Nothing ticks a player that never entered the world: the snapshot the shutdown save
+            // handed to its scheduler would never run
+            if (!saveEnded) shutdownSnapshot(record, shutdownSave, true);
+            return;
         }
         droppedTransfer.complete(SaveResult.UNAVAILABLE);
     }
@@ -1042,12 +1046,16 @@ public final class PlayerStore implements ShutdownParticipant {
             shutdownStartedNanos = System.nanoTime();
             final ShardSession current = this.session;
             if (current != null) current.beginClosing();
-            final List<Record> online = records.values().stream().filter(r -> r.state == LeaseState.ONLINE).toList();
-            shutdownOnline = online.size();
-            for (Record record : online) {
-                record.state = LeaseState.SAVING;
-                shutdownSaves.put(record, new CompletableFuture<>());
+            // Under the lock a disconnect decides under (loggedOut): a player whose logout save
+            // came first is saving already and left out, its logout save goes on alone
+            for (Record record : records.values()) {
+                synchronized (record) {
+                    if (record.state != LeaseState.ONLINE) continue;
+                    record.state = LeaseState.SAVING;
+                    shutdownSaves.put(record, new CompletableFuture<>());
+                }
             }
+            shutdownOnline = shutdownSaves.size();
         }
         for (Map.Entry<Record, CompletableFuture<SaveResult>> entry : shutdownSaves.entrySet()) {
             final Record record = entry.getKey();

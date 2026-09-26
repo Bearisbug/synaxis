@@ -14,6 +14,7 @@
 
 | 日期 | 改动 | 作者 |
 | --- | --- | --- |
+| 2026-09-26 | 跟进 `docs/DESIGN-PROD.md` v0.9.14（修复轮），RUN-037 之后审查出的三个缺陷。**新增 §4「生产就绪 · RUN-037 后修复轮：停机冻结与断线的交错、`profile` 与别的录制、管理消息的片数」三条**，都带实跑过的反证：`TC-PROD-470`（`REQ-PROD-008`，§19 场景；新类 `ShutdownSaveRaceIntegrationTest` 两条：持记录锁强制「断线在锁外查完、其间冻结、断线再判」的交错，与 16 名 configuration 玩家和冻结同时断开 200 轮；修复前的红写进第 2 步，反证：冻结不在锁里重查 `online`）、`TC-PROD-471`（`REQ-PROD-034`，§19 场景；`ProfilerTest` 新一条：另开 `default` 设置的录制时 `profile` 文件仍读不出该事件，`SYNAXIS_*` 的值逐字节不在文件里；两条反证：写文件不过滤、逐字节检查拦得住）、`TC-PROD-472`（`REQ-PROD-032`，§19 场景；新类 `ManagementFragmentCountIntegrationTest`；反证：不数片）。**改了三条旧用例**，改过的步骤都在本分支重跑过：`TC-PROD-392` 第 6 步 `ProfilerTest` 由 1 条变 2 条、改为看其中一条并加判「录制设置里该事件为 `false`」，第 7 步红行由 `ProfilerTest.java:36`（文件里 84 个事件）改为 `:46`（录制设置里该事件为 `true`；写文件时还会按事件名过滤，文件不再是这一步的判据）；`TC-PROD-395` 第 2 步红行 `ManagementServer.java:212` → `:215`（前面加了片数常量与注释）；`TC-PROD-460` 第 3～5 步的改动点随 `loggedOut` 改写（查停机登记挪进记录锁，接手写成锁后的 `if (!saveEnded) shutdownSnapshot(…)`），红行与消息不变。§5 加一行回归映射 | Bearisbug |
 | 2026-09-26 | 登记 RUN-037（第 6 波修复轮合入集成分支后的复验，证据 `docs/test-runs/RUN-037/`）。跟进 `docs/DESIGN-PROD.md` v0.9.13：本表与 §4、§5 里写的「v0.9（集成修复）」「v0.9.9（修复轮）」引用改为重编的版本号：集成修复 v0.9.9、F1（`TC-PROD-460`、`TC-PROD-461`）v0.9.10、F2（`TC-PROD-465`～`TC-PROD-469`）v0.9.11、F3（计数改正、`TC-GAME-034` 第 4 步、`TC-GAME-035` 改写）v0.9.12。用例判据一条没改 | Bearisbug |
 | 2026-09-26 | 修复轮，跟进 `docs/DESIGN-PROD.md` v0.9.12。**计数按现有代码改正**，每条都在 `prod/w6-f3` 上重跑过（Java 代码与集成分支 `c4d9c4ad34` 相同）：`ServerConfigTest` 自 6C 起是 7 条，`TC-PROD-400` 第 1 步 `tests="6"` → `"7"`；`TC-PROD-314` 第 1 步 6 个 → 7 个、第 2 步 `6 tests completed, 1 failed` → `7 tests completed, 1 failed`（红行 `:48` 不变）；`TC-PROD-331` 第 1 步 `tests="6"` → `"7"`、第 2 步 `8 tests completed, 3 failed` → `9 tests completed, 3 failed`（红行 `:32`、`:54`、`:91` 不变）；`TC-PROD-081` 第 1 步同一类 5 个 → 7 个；`TC-PROD-174` 第 2 步 `17 tests completed, 2 failed` → `23 tests completed, 2 failed`（两条红的消息不变）。**`TC-PROD-370`** 第 2 步：`aStepGetsWhatIsLeftOfTheBudget` 的红行随线程调度落在 `:135` 或 `:137`，改为两行都写，写明原因与 16 次实测里 13 : 3 的分布；钉成一行要调换或加断言，会改动 `TC-PROD-371` 的红或其后各条的行号，测试不改。**`TC-GAME-034`** 第 4 步判据改为事件台账 `match_ended` 带 `reason=normal` 的一行（第 3 步不动）。**`TC-GAME-035`** 改写：前置写明修复改的两处与真进程的起服命令（端口 25665）；第 1 步不再整文件回退到 `a5ec60b43f^`，改为经 `proof.never` 关掉修复的两处（`7 tests completed, 2 failed`，红在 `:186`、`:221`）；第 3、4 步用探针新子命令 `view-distance`（§3 探针表加一行，没改报视距与没收到中心两种退 1 各打一行原因），判据是探针手里的列恰为以 `UpdateViewPosition` 为心、半径 5 的方形；第 5 步改为停服后看 stdout；新增第 6 步真进程反证（出队不丢越界区块时 `outside=408`、探针退出码 1）。新预期都取自实跑 | Bearisbug |
 | 2026-09-25 | 跟进 `docs/DESIGN-PROD.md` v0.9.11，第 6 波集成分支上审查出的两个安全缺陷。**新增 §4「生产就绪 · 第 6 波修复轮 F2：管理消息的严格读法与布尔键」五条 `TC-PROD-465`～`TC-PROD-469`**，都带实跑过的反证：宽松写法的请求回 −32700、一条都不执行（465，§19 场景；两条反证：改成 `Strictness.LENIENT`、不看文档结尾）；同一对象里名字重复回 −32600、不执行，不同对象的同名键照常（466；反证：不查重名）；文件里 `true` 带尾随空格时 15 个 `ServerConfig` 布尔键都拒建进程（467；反证：改回 `Boolean.parseBoolean`）；命令行上 `yes`、`TRUE` 等写法拒建进程（468，与 467 同一次反证）；真 JVM 的 `Main` 与 `ShardMain` 都拒启（469，§19 场景，同一次反证）。`ConfigFileLaunchTest` 的 `Launched` 与 `freePort` 改为包内可见供新类复用，该类的两条测试与行号不变。§5 加这一节的回归映射 | Bearisbug |
@@ -5531,8 +5532,8 @@ jcmd "$pid" VM.flags | tr ' ' '\n' | grep -cxE -- '-XX:\+UseG1GC|-XX:InitialHeap
 | 3 | 反证有齿（同时开两个录制）：`TC-PROD-391` 第 2 步那一次运行 | 本类红在 `:92`：`expected: <synaxis:command-profile-busy …/profile-test-…-670.jfr> but was: <synaxis:command-profile-started 60\|…jfr>`（不带秒数的 `profile` 又开了一个 60 s 的录制）。还原后复绿 |
 | 4 | 同一次运行，看 `aRecordingThatCannotStartIsAnsweredAsFailed` | 通过：工作目录里 `profiles` 被一个普通文件占着；`profile 1` 得 `SUCCESS`，回执恰一条，以 `synaxis:command-profile-failed ` 开头（`Files.createDirectories` 的错误信息作参数）；台账一条 `profile 1 unavailable` |
 | 5 | 反证有齿（开不起来也记 `ok`）：`HostCommands#profile` 捕获 `IOException` 那一支的 `record(sender, input, null, "unavailable");` 改为 `record(sender, input, null, "ok");`，重跑本类，再还原 | `2 tests completed, 1 failed`，红在 `:129`：`expected: <[profile 1 unavailable]> but was: <[profile 1 ok]>`。还原后复绿 |
-| 6 | 跑 `io.github.bearisbug.synaxis.app.command.ProfilerTest` | 1 个 0 失败（§19「profile 命令产出 JFR 文件」后半）：`Profiler#start(1)` 写出的文件里 `jdk.InitialEnvironmentVariable` 事件 0 个，`jdk.InitialSystemProperty` 事件多于 0 个（JDK `profile` 设置的其余事件照录） |
-| 7 | 反证有齿（照搬 JDK 设置，即改动前）：`Profiler#start` 的 `settings.put(ENVIRONMENT, "false");` 改为 `if (Boolean.getBoolean("proof.never")) settings.put(ENVIRONMENT, "false");`，重跑第 6 步，再还原 | `1 test completed, 1 failed`，红在 `ProfilerTest.java:36`：`the environment of the process, its secrets among them, is not in the file ==> expected: <0> but was: <84>`（测试 JVM 的 84 个环境变量逐个明文写进了文件）。还原后复绿 |
+| 6 | 跑 `io.github.bearisbug.synaxis.app.command.ProfilerTest`，看 `aRecordingLeavesTheEnvironmentOfTheProcessOut` | 通过（§19「profile 命令产出 JFR 文件」后半；同类另一条见 `TC-PROD-471`）：`Profiler#start(1)` 的录制在跑时，它的设置里 `jdk.InitialEnvironmentVariable#enabled` 为 `false`；写出的文件里 `jdk.InitialEnvironmentVariable` 事件 0 个，`jdk.InitialSystemProperty` 事件多于 0 个（JDK `profile` 设置的其余事件照录） |
+| 7 | 反证有齿（录制照搬 JDK 设置）：`Profiler#start` 的 `settings.put(ENVIRONMENT, "false");` 改为 `if (Boolean.getBoolean("proof.never")) settings.put(ENVIRONMENT, "false");`，跑 `ProfilerTest`，再还原 | `2 tests completed, 1 failed`，红在 `ProfilerTest.java:46`：`the recording does not turn the environment on ==> expected: <false> but was: <true>`。写出的文件在这个改动下仍读不出该事件（写文件时按事件名又滤了一次，`TC-PROD-471`），所以这一步判的是录制的设置、不是文件。还原后复绿 |
 
 后置：确认 `HostCommands.java`、`Profiler.java` 没有残留改动。
 
@@ -5565,7 +5566,7 @@ jcmd "$pid" VM.flags | tr ' ' '\n' | grep -cxE -- '-XX:\+UseG1GC|-XX:InitialHeap
 | # | 操作 | 预期 |
 | --- | --- | --- |
 | 1 | 跑 `io.github.bearisbug.synaxis.app.ClientDrivenLogArchitectureTest` | 2 个 0 失败：`management/` 的三个类不在豁免名单里，也没有直接的 WARN / ERROR 行 |
-| 2 | 反证有齿（连接错误直接写 WARN）：`ManagementServer.Endpoint#onError` 里的 `failures.warn(ex, …)` 前加一行 `LOGGER.warn("Management interface error: remote={}", conn == null ? null : conn.getRemoteSocketAddress(), ex);`，并把原行改成只在 `proof.never` 时执行，重跑，再还原 | `2 tests completed, 1 failed`：`Method <…management.ManagementServer$Endpoint.onError(org.java_websocket.WebSocket, java.lang.Exception)> calls method <org.slf4j.Logger.warn(java.lang.String, java.lang.Object, java.lang.Object)> in (ManagementServer.java:212)`。还原后复绿 |
+| 2 | 反证有齿（连接错误直接写 WARN）：`ManagementServer.Endpoint#onError` 里的 `failures.warn(ex, …)` 前加一行 `LOGGER.warn("Management interface error: remote={}", conn == null ? null : conn.getRemoteSocketAddress(), ex);`，并把原行改成只在 `proof.never` 时执行，重跑，再还原 | `2 tests completed, 1 failed`：`Method <…management.ManagementServer$Endpoint.onError(org.java_websocket.WebSocket, java.lang.Exception)> calls method <org.slf4j.Logger.warn(java.lang.String, java.lang.Object, java.lang.Object)> in (ManagementServer.java:215)`。还原后复绿 |
 
 后置：确认 `ManagementServer.java` 没有残留改动。
 
@@ -5722,9 +5723,9 @@ for (var request : System.getenv("MGMT_CALLS").split("\n")) {
 | --- | --- | --- |
 | 1 | 跑本类 | `tests="3"` 0 失败 0 跳过。三条都是载入、`admitted`、`coins=6` 标脏的玩家，注册一个停机钩子。`aPlayerThatLeftInPlayBeforeItSpawnedIsSavedWhenTheTickReportsIt`：配置结束、排进进世界队列后断开，随即 `saveAll(30 s, true)`，此时断线事件还没派发、future 未完成；推进 tick 后 future 完成，断线事件恰派发 1 次，钩子恰 1 次（钩子写的 `note=hook` 与之前的 `coins=6` 一起落库），库里 `version=1`、`{"note": "hook", "coins": 6}`、租约为空，`shutdown_saved` 含 `online=1`、`saved=1`、`failed=0`、`timed_out=false`，存储放下该玩家。`aPlayerThatLeavesInConfigurationAfterTheSaveFrozeItIsSavedByItsDisconnect`：还在 configuration，`saveAll` 之后断开（断线事件当场派发），结果同上，段为 `{"note": "", "coins": 6}`。`aDisconnectReportedAfterTheSavePhaseWritesNothing`：`saveAll` 后不推进 tick 直接 `onSaveEnded(true)`，再断开并推进 5 个 tick：钩子 0 次，`version=0`、段为空、租约仍是本会话，没有 `save_fenced` |
 | 2 | 修复前的红：**只回退实现、保留测试**，`git checkout <修复提交>^ -- server-app/src/main/java/io/github/bearisbug/synaxis/app/store/PlayerStore.java`（`<修复提交>` 是改 `PlayerStore#loggedOut` 的那个提交，它的父提交是 `c4d9c4ad34`），跑本类，再 `git checkout HEAD -- <同一文件>` | `3 tests completed, 2 failed`：红在 `ShutdownSaveBeforeSpawnIntegrationTest.java:97` `not within 10 s: the tick that reports the disconnect takes the shutdown snapshot` 与 `:124` `not within 10 s: the disconnect takes the shutdown snapshot`；第三条绿（它守的是修复前就有的行为）。诊断时在同一回退下对第一条的场景多看了一步（临时代码，未提交；读数记在 `docs/DESIGN-PROD.md` §28.2 该行）：推进 20 个 tick 后断线事件已派发、钩子 0 次、库里 `version=0`，手动调一次该玩家的 `scheduler().processTick()` 保存立即完成，即快照一直排在从不执行的实体调度器上 |
-| 3 | 反证有齿（断开不接手停机快照）：`PlayerStore#loggedOut` 的 `if (shutdownSave != null && !saveEnded) {` 改为 `if (shutdownSave != null && !saveEnded && Boolean.getBoolean("proof.never")) {`，跑本类，再还原 | `3 tests completed, 2 failed`，红行与消息同第 2 步。还原后复绿 |
-| 4 | 反证有齿（保存阶段结束后仍写）：同一行改为 `if (shutdownSave != null) {`，跑本类，再还原 | `3 tests completed, 1 failed`：红在 `:153` `no save hook after the save phase ==> expected: <[]> but was: <[Late]>`（断开时仍调钩子并写库）。还原后复绿 |
-| 5 | 反证有齿（接手时不调钩子）：同一 `if` 块里的 `shutdownSnapshot(record, shutdownSave, true);` 改为 `…, false);`，跑本类，再还原 | `3 tests completed, 2 failed`：红在 `:101` `the save hook runs once ==> expected: <[Hasty]> but was: <[]>` 与 `:127` `… expected: <[Early]> but was: <[]>`。还原后复绿 |
+| 3 | 反证有齿（断开不接手停机快照）：`PlayerStore#loggedOut` 锁后那一段的 `if (!saveEnded) shutdownSnapshot(record, shutdownSave, true);` 改为 `if (!saveEnded && Boolean.getBoolean("proof.never")) shutdownSnapshot(record, shutdownSave, true);`，跑本类，再还原 | `3 tests completed, 2 failed`，红行与消息同第 2 步。还原后复绿 |
+| 4 | 反证有齿（保存阶段结束后仍写）：同一行改为 `if (!saveEnded \|\| !Boolean.getBoolean("proof.never")) shutdownSnapshot(record, shutdownSave, true);`，跑本类，再还原 | `3 tests completed, 1 failed`：红在 `:153` `no save hook after the save phase ==> expected: <[]> but was: <[Late]>`（断开时仍调钩子并写库）。还原后复绿 |
+| 5 | 反证有齿（接手时不调钩子）：同一行的 `shutdownSnapshot(record, shutdownSave, true);` 改为 `…, false);`，跑本类，再还原 | `3 tests completed, 2 failed`：红在 `:101` `the save hook runs once ==> expected: <[Hasty]> but was: <[]>` 与 `:127` `… expected: <[Early]> but was: <[]>`。还原后复绿 |
 | 6 | 还原后重跑第 1 步，再跑 `io.github.bearisbug.synaxis.app.store.ShutdownSaveIntegrationTest` 与 `io.github.bearisbug.synaxis.app.store.PlayerStoreIntegrationTest` | 三个类 `tests="3"`、`tests="4"`、`tests="23"`，都 0 失败（`TC-PROD-155` 第 1 步、`TC-PROD-214` 第 2 步不受影响） |
 
 后置：`git status --short` 无输出。
@@ -5810,6 +5811,50 @@ for (var request : System.getenv("MGMT_CALLS").split("\n")) {
 
 后置：`git status --short` 无输出；`pgrep -fl 'synaxis.app.Main\|synaxis.app.ShardMain'` 没有本轮起的进程。
 
+### 生产就绪 · RUN-037 后修复轮：停机冻结与断线的交错、`profile` 与别的录制、管理消息的片数
+
+对应 `REQ-PROD-008`（§16 停机保存与断线事件一行，§11.4 `gate_closed → saving` 动作，§19「停机冻结与断线同时发生时每名玩家恰存一次」）、`REQ-PROD-034`（`API-PROD-011` 的 `profile` 一条，§19「别的 JFR 录制在跑时 profile 文件仍不带环境变量」）与 `REQ-PROD-032`（`API-PROD-022` 大小约束，§15 管理接口行，§19「一直发空续片的分片消息在第 1,025 片断开」），`docs/DESIGN-PROD.md` v0.9.14（修复轮），§28.2 新增的已决一行。三处修复：`PlayerStore#saveAll` 逐条在记录锁里判定 `online` 再冻结、登记停机保存，`PlayerStore#loggedOut` 在同一把锁里读登记与状态；`Profiler` 录满后先 dump 到临时文件，再经 `RecordingFile#write` 滤掉 `jdk.InitialEnvironmentVariable` 写成交出去的文件；`ManagementServer.BoundedDraft` 在比长度之外数片，`MAX_MESSAGE_FRAGMENTS` = 1,024。
+
+测试：`:server-app` 新增 `io.github.bearisbug.synaxis.app.store.ShutdownSaveRaceIntegrationTest`（2 条：一条用 PostgreSQL，要 3A 一节的数据库前置；另一条用内存存储）与 `io.github.bearisbug.synaxis.app.management.ManagementFragmentCountIntegrationTest`（1 条，真 WebSocket，客户端是 6B 一节的 `ManagementClient`），`io.github.bearisbug.synaxis.app.command.ProfilerTest` 加 1 条（共 2 条）。「跑 `<类>`」即 `./gradlew :server-app:test --tests '<类>' --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts`，结果看 `server-app/build/test-results/test/TEST-<类>.xml`；反证一律是「临时改一处、跑、看红、`git checkout --` 还原、重跑复绿」，红跑之后先把结果 XML 另存再复绿（`--rerun` 会覆盖它）。
+
+#### `TC-PROD-470` 停机冻结与断线同时发生：冻结在先的由断线接手停机快照，断线在先的走登出保存，停机保存不等满预算、每个角色恰写一次（§19 场景） — 对应 `REQ-PROD-008` · 级别: 回归 · 执行者: AI
+
+前置：数据库前置满足（3A 一节）；工作副本干净。下称「本类」为 `ShutdownSaveRaceIntegrationTest`。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑本类 | `tests="2"` 0 失败 0 跳过（本机约 1.0～2.1 s）。`aDisconnectThatDecidesAfterTheFreezeTakesTheShutdownSnapshot`（PostgreSQL）：一名已准入、`coins=6` 标脏、还在 configuration 的玩家，注册一个停机钩子；测试线程持这名玩家的记录锁，另起平台线程断开它，等到该线程停在这把锁上（`ThreadMXBean` 读到 `BLOCKED` 且锁的持有者是测试线程），在锁里调 `saveAll(30 s, true)`，再放锁。停机保存完成，钩子恰 1 次（`[Racer]`），库里 `version=1`、`{"note": "", "coins": 6}`、租约为空，`shutdown_saved` 含 `online=1`、`saved=1`、`failed=0`、`timed_out=false`。`disconnectsAtTheSameTimeAsTheFreezeEndEveryRoundSaved`（内存存储）：200 轮，每轮新建一个存储、16 名已准入的 configuration 玩家各有脏段，16 个平台线程与调 `saveAll` 的测试线程在同一道栅栏上放行，边推进 tick 边等 2 s；断言恰为 `stuck=0 never_written=0 written_twice=0 ledger_wrong=0`：没有一轮停机保存 2 s 内没完成，每个角色 `version=1`，每轮 `shutdown_saved` 的 `failed=0` 且 `online` 等于钩子次数 |
+| 2 | 修复前的红：**只回退实现、保留测试**，`git checkout <修复提交>^ -- server-app/src/main/java/io/github/bearisbug/synaxis/app/store/PlayerStore.java`（`<修复提交>` 是改 `saveAll` 与 `loggedOut` 的那个提交，父提交 `a97fc30a76`），跑本类，再 `git checkout HEAD -- <同一文件>` | `2 tests completed, 2 failed`：`ShutdownSaveRaceIntegrationTest.java:97` `not within 10 s: the disconnect that decided after the freeze takes the shutdown snapshot`（断线在锁外查到还没冻结，进锁后看到 `saving` 直接返回，快照没人做）；`:177` `of 200 rounds of 16 disconnects at the same time as the freeze ==> expected: <stuck=0 never_written=0 written_twice=0 ledger_wrong=0> but was: <stuck=… …>`，`stuck` 至少 1（本机默认模式两次：16 与 23，`never_written` 为 0 与 1；4 线程严格 `grid` 一次：20，`never_written=1`）。用时约 44～59 s（卡住的轮次各等满 2 s） |
+| 3 | 反证有齿（冻结时不在锁里重查 `online`）：`PlayerStore#saveAll` 里的 `if (record.state != LeaseState.ONLINE) continue;` 改为 `if (Boolean.getBoolean("proof.never") && record.state != LeaseState.ONLINE) continue;`，跑本类，再还原 | `2 tests completed, 1 failed`：只有 `:177` 红，`… but was: <stuck=99 never_written=0 written_twice=0 ledger_wrong=0>`（本机一次；断线在先、已开始登出保存的玩家又被登记一个永不完成的停机保存），用时约 3 分 20 秒；`:97` 那条绿 |
+| 4 | 还原后重跑第 1 步，再跑 `io.github.bearisbug.synaxis.app.store.ShutdownSaveBeforeSpawnIntegrationTest`、`io.github.bearisbug.synaxis.app.store.ShutdownSaveIntegrationTest` 与 `io.github.bearisbug.synaxis.app.store.PlayerStoreIntegrationTest` | 四个类 `tests="2"`、`tests="3"`、`tests="4"`、`tests="23"`，都 0 失败（`TC-PROD-460` 第 1 步、`TC-PROD-155` 第 1 步、`TC-PROD-214` 第 2 步不受影响） |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PROD-471` 别的 JFR 录制在跑时 `profile` 写出的文件仍读不出 `jdk.InitialEnvironmentVariable`，`SYNAXIS_*` 环境变量的值逐字节不在文件里（§19 场景） — 对应 `REQ-PROD-034` · 级别: 回归 · 执行者: AI
+
+前置：工作副本干净；运行 Gradle 的 shell 里 `export SYNAXIS_MANAGEMENT_TOKEN=proof-marker-6c1e0f93d2a847b5`（非机密的标记值，测试 JVM 继承 Gradle 的环境；它不是 `test` 任务的输入，所以命令加 `--rerun`）。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `ProfilerTest`（加 `--rerun`），看 `anotherRecordingWithTheJdkSettingsDoesNotBringTheEnvironmentIn` | `tests="2"` 0 失败。先开一个 `Configuration.getConfiguration("default")` 的录制（同 `jcmd JFR.start settings=default`），再 `Profiler#start(1)`；另一个录制自己的 dump 里 `jdk.InitialEnvironmentVariable` 事件多于 0 个（两者共用 chunk，事件确实在），`profile` 写出的文件里 0 个、`jdk.InitialSystemProperty` 多于 0 个；文件按 ISO-8859-1 读成字符串后，名字以 `SYNAXIS_` 开头、不以 `SYNAXIS_TEST_` 开头的每个非空环境变量，其 UTF-8 值都不在里面（这里就是 `SYNAXIS_MANAGEMENT_TOKEN`；断言信息只带变量名） |
+| 2 | 反证有齿（写文件不过滤，即改动前）：`Profiler#start` 里的 `writeWithoutEnvironment(recording, path);` 改为 `if (Boolean.getBoolean("proof.never")) writeWithoutEnvironment(recording, path); else recording.dump(path);`，重跑第 1 步，再还原 | `2 tests completed, 1 failed`：红在 `ProfilerTest.java:70`，`the environment the other recording turned on is not in the profile file ==> expected: <0> but was: <85>`（本机 85 个，即测试 JVM 的全部环境变量）；只开 `profile` 一个录制的那条绿（录制本身不开这个事件） |
+| 3 | 反证有齿（逐字节检查拦得住）：在第 2 步的改动之外，把测试 `:70` 起的 `assertEquals(0, count(events, ENVIRONMENT), …)` 改为只在 `proof.never` 时执行（前面加 `if (Boolean.getBoolean("proof.never"))`），重跑第 1 步，再还原两个文件 | `2 tests completed, 1 failed`：红在 `ProfilerTest.java:80`，`the value of SYNAXIS_MANAGEMENT_TOKEN is not in the profile file ==> expected: <false> but was: <true>`（标记值以明文在文件里） |
+| 4 | 还原后重跑第 1 步 | 与第 1 步相同 |
+
+后置：`git status --short` 无输出；`unset SYNAXIS_MANAGEMENT_TOKEN`。
+
+#### `TC-PROD-472` 管理消息至多 1,024 片：一直发空续片的连接在第 1,025 片以 1009 断开、不执行；恰 1,024 片的消息照常执行（§19 场景） — 对应 `REQ-PROD-032` · 级别: 边缘 · 执行者: AI
+
+前置：工作副本干净。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `ManagementFragmentCountIntegrationTest` | `tests="1"` 0 失败。一条连接把 `synaxis:broadcast` 请求分恰 1,024 片发完：首片是请求开头（非结束），中间 1,022 个 0 字节的非结束续片，结束片是请求结尾，得结果 `0`（没有玩家在线）；另一条连接发同一个开头后连发 1,024 个 0 字节的非结束续片（累计长度一直是开头的长度），第 1,025 片到达后收到关闭码 1009；台账只有第一条请求的 `gm_command` |
+| 2 | 反证有齿（不数片，即改动前）：`ManagementServer.BoundedDraft#processFrame` 的 `if (messageFragments > MAX_MESSAGE_FRAGMENTS) throw new LimitExceededException(MAX_MESSAGE_FRAGMENTS);` 改为 `if (Boolean.getBoolean("proof.never") && messageFragments > MAX_MESSAGE_FRAGMENTS) throw …;`，跑本条的类与 `ManagementFragmentsIntegrationTest`，再还原 | `2 tests completed, 1 failed`：红在 `ManagementFragmentCountIntegrationTest.java:96`（`ManagementClient.java:121`），`the connection is still open after PT10S`；`ManagementFragmentsIntegrationTest`（`TC-PROD-382` 第 3 步）绿 |
+| 3 | 还原后重跑第 1 步，并跑 `ManagementIntegrationTest` | 与第 1 步相同；`ManagementIntegrationTest` `tests="13"` 0 失败（`TC-PROD-382` 第 1 步不受影响） |
+
+后置：确认 `ManagementServer.java` 没有残留改动。
+
 ## 5. 回归策略
 
 - **全量轮**（全部用例）：首次成稿、每个阶段 gate（引擎域阶段 0、2、3；游戏域 `docs/DESIGN-M2.md` §26 的阶段 1～6b；大世界域 `docs/DESIGN-M3.md` §26 的 M3-A～M3-G）、跨功能域改动、地基变更（JDK、Gradle、镜像、协议版本、模块拆分、启动入口）。
@@ -5848,6 +5893,7 @@ for (var request : System.getenv("MGMT_CALLS").split("\n")) {
   - 生产就绪域（`docs/DESIGN-PROD.md`）：配置文件与压缩设置（`REQ-PROD-033`、`REQ-PROD-038`）→ TC-PROD-440～TC-PROD-445；动了 `server-app` 的 `ConfigFile` 或 `Main` 读文件、报拒启的几处就跑 TC-PROD-440～TC-PROD-443，再动了 `Main` 的静态字段顺序、起服顺序或 `logback.xml` 加 TC-PROD-445（真进程，约 1 分钟）；动了 `ShardMain#main` 跑 TC-PROD-440、TC-PROD-442、TC-PROD-443 与 TC-PROD-333、TC-PROD-334；给任何模块加、删或改名一个 `synaxis.*` 系统属性（`ServerConfig#fromSystemProperties`、`JvmFlags`、各包的 JVM 级开关、宿主与 RTS 插件读的键、`logback.xml` 的替换）就跑 TC-PROD-441，并在同一提交里改 `ConfigFile.KEYS` 与 `docs/DESIGN-PROD.md` `API-PROD-023` 的键表；动了 `ServerConfig#compressionThreshold`、`ServerProcessImpl` 取阈值的一处、`JvmFlags.COMPRESSION_LEVEL`、`NetworkBufferImpl` 的 `Deflater` 池、`PacketWriting#writeCompressedFormat` 或 `PlayerSocketConnection#startCompression` 就跑 TC-PROD-444 与 TC-PROD-442。跨域牵连：动了 `HostMetrics` 的指标名 → 加 TC-PROD-441（门禁按 `HostMetrics.NAMES` 认指标名）；动了引擎的压缩路径 → 加 TC-PROD-291（开了压缩的连接的解压字节限速）。
   - 生产就绪域（`docs/DESIGN-PROD.md`）：第 6 波修复轮，没进世界的玩家赶上停机保存（`REQ-PROD-008`）→ TC-PROD-460、TC-PROD-461；动了 `PlayerStore` 的 `loggedOut`、`saveAll`、`shutdownSnapshot` 或 `onSaveEnded` 就跑 TC-PROD-460（要数据库前置）与 TC-PROD-155、TC-PROD-214 第 2 步，再动了停机序列（引擎 `ServerProcessImpl#save`、宿主 `ShutdownSequence`）加 TC-PROD-461（真进程，第 1 步约 1 分钟，第 2 步的反证约 5 分钟）。跨域牵连：动了引擎 `PlayerConnection#disconnect`、`ConnectionManager#leftBeforeSpawn` / `updateWaitingPlayers` 的断线派发 → 加 TC-PROD-460 与 TC-PROD-461。
   - 生产就绪域（`docs/DESIGN-PROD.md`）：管理消息的严格读法与布尔键（`REQ-PROD-032`、`REQ-PROD-033`，v0.9.11）→ TC-PROD-465～TC-PROD-469；动了 `ManagementMethods#parse`、`UniqueNamesReader` 或 `handle` 里读消息的一段就跑 TC-PROD-465、TC-PROD-466 与 TC-PROD-385（6B 的错误码）；动了 `ServerConfig#booleanProperty` 或给 `ServerConfig` 加、删布尔键就跑 TC-PROD-467～TC-PROD-469（TC-PROD-469 起两个 JVM，约 1 s），加、删布尔键时同步 `BooleanKeysTest` 的 15 个键与 `docs/DESIGN-PROD.md` `API-PROD-023` 键表的取值列；动了 `ConfigFileLaunchTest` 的 `Launched` 加跑 TC-PROD-442、TC-PROD-443 与 TC-PROD-469。升 Gson 版本时跑 TC-PROD-465、TC-PROD-466（`Strictness.STRICT` 与 `JsonElement` 适配器是否仍按本节的写法读）。
+  - 生产就绪域（`docs/DESIGN-PROD.md`）：RUN-037 后修复轮（`REQ-PROD-008`、`REQ-PROD-034`、`REQ-PROD-032`，v0.9.14）→ TC-PROD-470～TC-PROD-472；动了 `PlayerStore` 的 `saveAll`、`loggedOut`，或别的在记录锁里改 `state` 的一处（`admitted`、`abandon`、`transferOut`），就跑 TC-PROD-470（要数据库前置；第 1 步约 2 s）与 TC-PROD-460；动了 `Profiler` 开录或写文件的一段跑 TC-PROD-471、TC-PROD-392 第 6、7 步与 TC-PROD-391；动了 `ManagementServer.BoundedDraft` 跑 TC-PROD-472 与 TC-PROD-382。升 JDK 时重跑 TC-PROD-471（`RecordingFile#write` 是否仍只写通过过滤的事件，JDK 自带设置是否仍开着 `jdk.InitialEnvironmentVariable`）；升 Java-WebSocket 时重跑 TC-PROD-472（库是否仍每片留一个缓冲、是否已自带片数上限）。
   - 影响面不确定时升级为全量轮。
 - **复测轮**（上轮失败用例 + 全部冒烟级）：修复失败项之后。
 - **人工收口轮**（仅上轮「待人工」用例）：AI 轮之后由人工补测 TC-016、TC-030、TC-GAME-020、TC-GAME-038、TC-GAME-046、TC-GAME-047，不要求冒烟级。

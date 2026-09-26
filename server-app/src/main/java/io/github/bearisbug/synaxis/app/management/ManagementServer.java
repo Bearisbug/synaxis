@@ -43,7 +43,8 @@ import java.util.concurrent.TimeoutException;
  * The token is checked while the upgrade request is read, so a peer without it never gets a
  * WebSocket and nothing it sends is ever parsed as JSON-RPC. A message longer than
  * {@value #MAX_MESSAGE_BYTES} bytes closes the connection with 1009 before it runs, a fragmented one
- * at the fragment that takes it past the limit; before the handshake, a request longer than
+ * at the fragment that takes it past the limit, and one in more than {@value #MAX_MESSAGE_FRAGMENTS}
+ * fragments at the fragment past that count, however short; before the handshake, a request longer than
  * {@value #MAX_HANDSHAKE_BYTES} bytes or one not finished within 5 s closes the socket, two bounds
  * the library does not set on its own.
  */
@@ -53,6 +54,8 @@ public final class ManagementServer implements AutoCloseable {
 
     /** The longest message, fragments counted together. */
     static final int MAX_MESSAGE_BYTES = 65_536;
+    /** The most fragments of one message, the first one counted. */
+    static final int MAX_MESSAGE_FRAGMENTS = 1_024;
     /** The longest upgrade request: a handshake with its token is well under 1 KiB. */
     static final int MAX_HANDSHAKE_BYTES = 8_192;
     static final Duration HANDSHAKE_DEADLINE = Duration.ofSeconds(5);
@@ -225,12 +228,15 @@ public final class ManagementServer implements AutoCloseable {
     /**
      * RFC 6455 with the length of a fragmented message checked at every fragment. Java-WebSocket
      * checks it at the first and the last fragment only and keeps every fragment in between, so a
-     * peer that never sends the last one would have it buffer until the heap is full.
+     * peer that never sends the last one would have it buffer until the heap is full. The count of
+     * fragments is held too: the library keeps a buffer for every fragment however short, and a
+     * peer sending empty ones never adds to the length.
      */
     private static final class BoundedDraft extends Draft_6455 {
         // Each connection gets its own copy, read by that connection's one decoder thread: the bytes
-        // of the message whose fragments are coming in
+        // and the fragments of the message whose fragments are coming in
         private long messageBytes;
+        private int messageFragments;
 
         BoundedDraft() {
             super(List.of(), MAX_MESSAGE_BYTES);
@@ -244,9 +250,15 @@ public final class ManagementServer implements AutoCloseable {
         @Override
         public void processFrame(WebSocketImpl conn, Framedata frame) throws InvalidDataException {
             final Opcode opcode = frame.getOpcode();
-            if (opcode == Opcode.TEXT || opcode == Opcode.BINARY) messageBytes = frame.getPayloadData().remaining();
-            else if (opcode == Opcode.CONTINUOUS) messageBytes += frame.getPayloadData().remaining();
+            if (opcode == Opcode.TEXT || opcode == Opcode.BINARY) {
+                messageBytes = frame.getPayloadData().remaining();
+                messageFragments = 1;
+            } else if (opcode == Opcode.CONTINUOUS) {
+                messageBytes += frame.getPayloadData().remaining();
+                messageFragments++;
+            }
             if (messageBytes > MAX_MESSAGE_BYTES) throw new LimitExceededException(MAX_MESSAGE_BYTES);
+            if (messageFragments > MAX_MESSAGE_FRAGMENTS) throw new LimitExceededException(MAX_MESSAGE_FRAGMENTS);
             super.processFrame(conn, frame);
         }
     }

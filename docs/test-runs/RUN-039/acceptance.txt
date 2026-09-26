@@ -558,3 +558,141 @@ RUN-039 记录（2026-09-26，RUN-038 之后四组合入集成分支后的复验
   7. 环境与回收
      复用 synaxis-pg、synaxis-valkey，没有新建镜像、容器与卷；手动起的 3 个 server-app 进程都已按 stop 退出，脚本等到进程结束才删目录
      /tmp 下的脚本、环境文件与日志（prodf3-*）本节写完即删
+
+十六、RUN-039 之后三轮修复的收尾验证（追加；上面各节与 TEST.md §6 的 RUN-039 各行不改）
+
+  被测版本：prod/integrate-f 的 39cbadade3（第十五节所在的提交）。本节所在的提交只改本文件与 docs/TEST.md，代码与 39cbadade3 相同。
+    审查在 a7e136b7a0 上做，三个视角各自独立、只报复现了的；修复提交是 39cbadade3；门禁在 39cbadade3 上跑。
+  执行者与机器同前；本机内存紧（swap 用到约 10.7 GB / 11 GB），同机另一会话也在跑 Gradle：本节每条 Gradle 都带 --max-workers=4、一次只跑一条，
+    开跑前等另一会话的 Gradle 结束。门禁起止时刻是 UTC。
+
+  1. RUN-039 之后的三轮修复
+     第 1 轮 d28c3f2ef4（DESIGN-PROD v0.9.20、DESIGN.md v0.41；第十三节）：修七处（三处 major、四处 minor），新增 TC-PROD-499～TC-PROD-505，改七条旧用例
+       499 停机倒计时只发给已进 PLAY 的连接；500 SIGTERM 遇上宿主发起的停机；501 指标端点每次抓取至多 10 s；502 踢人阶段之后才确认的登录；
+       503 封禁到期上限；504 日志里的 IPv6 地址；505 回归
+     第 2 轮 a7e136b7a0（DESIGN-PROD v0.9.21；第十四节）：修三处（一处 major、两处 minor），新增 TC-PROD-506～TC-PROD-510，改六条旧用例
+       506、507 起服过程中的 server/stop 回 −32000；508 同时回复的调用不越过出站上限；509 1,024 个字符及以上的 JSON 数字回 −32700（钉住现状）；
+       510 回归与挪了行号的旧用例
+     第 3 轮 39cbadade3（DESIGN-PROD v0.9.22；第十五节）：修本节第 2 小节复现的五处，新增 TC-PROD-511、TC-PROD-512，改 TC-PROD-483 第 2 步与 TC-PROD-510 第 2 步
+     三轮的绿跑、修复前的红与反证都在本分支实跑，数字见各节；三轮都没有登记执行轮次
+
+  2. 对 a7e136b7a0 的审查
+     视角一：停机来源的两两顺序（stop N、SIGTERM、管理接口 server/stop、看门狗）与停机各阶段里的登录
+       确定性测试：点名的 27 个类（引擎 6 个；server-app 17 个，带 PG 5440 与 Valkey 6440；起子 JVM 的 4 个逐个单独跑）普通 1 次，
+         再加 -Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true -Dsynaxis.thread-provider=grid 用 --rerun 跑 3 次（临时探针确认参数进了测试 JVM），
+         4 次全绿，条数与 TEST.md 一致
+       临时引擎测试（未跟踪的 ProdfPairwiseTest，事后删）补现有测试没有的五种顺序，严格 grid 下 5/5 通过：看门狗判死 → SIGTERM、SIGTERM → 看门狗、
+         管理接口 stop(0) → SIGTERM、stop 30 → 看门狗 → SIGTERM、已 STOPPED 后再来 SIGTERM
+       真进程（a7e136b7a0 的 installDist，一次一个，按 pid 回收；probe.py 写的驱动：在 play 的 P1、不回 SelectKnownPacks 的 K1、不 ack FinishConfiguration 的 F1、
+         LoginSuccess 之后压着 ack 的 H1、倒计时里才登录的 L1）：
+         S1 核心模式 stop 5：P1 与 F1（服务端状态已是 PLAY）收到倒计时，L1 收 LoginDisconnect server-stopping，H1 在倒计时里 ack、进服并被保存，
+           K1、F1 在保存开始后的下一个 tick 于 Syn-TickScheduler 上以 server-stopping 断开；shutdown_saved online=4 saved=4 failed=0，退出码 0；
+           玩法模式、核心模式加严格 grid 各跑一次，结果相同
+         S2 stop 30 → SIGTERM → 控制台 stop 5 → 管理接口 stop：倒计时被截断，退出码 143，有 stopped successfully，saved=3；
+           控制台回 already stopping，管理接口回 result:false、台账记 invalid
+         S3 管理接口 stop（true，台账 ok）→ 控制台 stop 5（invalid）→ SIGTERM：H1 在踢人之后才 ack，收 Disconnect server-stopping、不建玩家；退出码 143
+         S5 postgres 分片加 Redis（临时库 prodf_review，事后 DROP）stop 30，L1 被拒，H1 在倒计时里 ack，随后 SIGTERM：退出码 143，saved=4；
+           4 个角色都是 version=1、lease_session_id 为空，会话已过期
+         S6 玩法模式只发 SIGTERM：卡住的两名客户端都被保存，match_ended reason=normal，退出码 143
+         TC-GAME-034 第 3、4 步（玩法模式 rts-512，-Xmx1G，AlwaysPreTouch 关）10 次：退出码都是 0，约 0.55 s 退出，没有 ERROR、WARN 与线程转储，
+           match_ended 都是 reason=normal
+       复现的缺陷一处（minor；git diff --stat 7ff65e40a8..a7e136b7a0 覆盖 PluginHost.java、game-rts/、Entity.java、thread/ 为空，是合入前就有的）：
+         严格 grid 的玩法模式真进程 stop（S1 一次、TC-GAME-034 两次，3/3）：
+           [plugin-disable-rts] ERROR … PluginHost - Plugin failed to disable: plugin_id=rts
+           AcquirableOwnershipException: Thread ownership assertion failed for …game.rts.UnitEntity@…: Current thread: plugin-disable-rts, Assigned thread: Syn-Tick-0
+           at …Entity.remove(Entity.java:1889) at …rts.Units.end(Units.java:235) at …rts.RtsPlugin.onDisable(RtsPlugin.java:104)
+           at …app.PluginHost.lambda$disableWithin$0(PluginHost.java:211)
+         Match#end 不执行，events-*.jsonl 没有 match_ended（TC-GAME-034 第 4 步的判据），退出码仍为 0；默认模式同样的第 3 步 10 次没有 ERROR。
+         连带 API-PROD-007 把 onDisable 的执行线程写成 tick 调度线程（或停机线程），实际是 PluginHost#disableWithin 新起的 plugin-disable-<id>，
+         由 drain 线程 join；「不与 tick 并行」成立
+     视角二：文档对代码与反证
+       逐段读 git diff origin/main HEAD 的文档改动：docs/DESIGN-M3.md、CLAUDE.md 未改，DESIGN.md 没动 §1 关联与 §26 M3 行；
+         DESIGN-PROD 的 79 处 File.java:N 里仍有效的都指向所写代码（变更记录行与注明 8de32ab9b4 的旧位置除外）；
+         29 个被引用测试类的 @Test 静态计数与用例一致，server-app 74 类 370 个 = 357 + 9 + 4；
+         RUN-039 汇总行、明细行与本文件一致；两个 lint 只有已知警告
+       反证（改动一齐放进一次 :server-app:test --max-workers=4，跑完还原、复绿 3/3/3）：
+         G2 TC-PROD-488 第 3 步红在 BindAddressTest.java:68、G3 TC-PROD-495 第 3 步红在 StopRaceIntegrationTest.java:200，信息都与用例一致
+       复现的缺陷四处：
+         major：TC-PROD-483 第 2 步照写的改法（PlayerStore#saveAll 去掉 if (!saveEnded)）3 次都是 3 tests completed, 1 failed，
+           红在 ShutdownSaveOutsideTheWorldIntegrationTest.java:164 expected: <false> but was: <true>（assertFalse(saved.isDone())），
+           用例写的是 :165 no save hook after the save phase ==> expected: <[]> but was: <[Behind]>；反证仍然有齿，只是红行不对
+         minor：两轮修复的变更记录行仍记作「v0.9.15（RUN-039 修复…）」，与 v0.9.19 编给 G1 的 v0.9.15 重号，按惯例应取 v0.9.20、v0.9.21
+         minor：DESIGN-PROD §28.2 游戏端口一行说管理接口的线程是非 daemon；ManagementServer.java:174 setDaemon(true)，Java-WebSocket 1.6.0 的选择器、
+           解码与探活线程都随它是 daemon，调用跑在虚拟线程上；非 daemon 的是指标端点 JDK HttpServer 的 HTTP-Dispatcher（JDK 25 ServerImpl.java:190）
+         minor：TC-PROD-510 第 2 步引 TC-PROD-505 第 3 步的 366 个，那一步第 2 轮已改为 370
+     视角三：TC-PROD-494 第 3 步多出的存活堆（RUN-039 第九节 76,009K）
+       真进程：a7e136b7a0 的 installDist（ManagementServer 的 6 个类与 build/classes 逐字节相同），pid 42460，参数照第 1 步，环境里去掉 JAVA_TOOL_OPTIONS；
+         每次第 3 步脚本一返回，依次取台账 status 行数、jcmd Thread.dump_to_file、GC.run、GC.heap_info、GC.class_histogram 前 30、Thread.print、台账行数，
+         之后 +3 s、+8 s 再各读一次
+         基线 24,447K（上限 27,519K）；第 2 步 23,872 帧后被 1008 关闭，24,796K
+         第 3 步做三次：76,096、42,240、54,208 帧后被关，读数 24,802K、24,941K、25,017K；第 4 步 24,896 帧后被关，25,026K，进程仍在、没有 OutOfMemoryError；
+           排空后的 9 次读数最高 25,229K（基线加 782K），直方图前 30 名与基线是同一组类，台账在 +3 s 与 +8 s 行数不变
+         第 3 步第 1 次（本进程第一次 status 洪水）：WARN 17:28:48.363Z，4096 frames、434176 bytes，脚本 0.3 s 就返回；
+           台账 55,277 条 status，14,087 条早于关闭、41,190 条晚于关闭，最后一条在 48.794Z（关闭后 0.43 s）；
+           48.633Z 的 Thread.dump_to_file 有 10,536 条 Syn-Management-Call 虚拟线程，10,534 条 BLOCKED，都停在 ManagementMethods.java:183 UUID.randomUUID()
+           → NativePRNG$RandomIO.implNextBytes → sun.security.provider.SecureRandom.engineNextBytes（synchronized）；紧接着的 GC.run 时已排空
+         第 2、3 次代码已热：20,996、27,798 条调用在关闭后 33 ms、28 ms 排空；Thread.print 三次都是 0 行（它看不到未挂载的虚拟线程）
+       合成量（单文件 Java，-Xmx256m）：10,536 条虚拟线程阻塞在 UUID.randomUUID() 用的那把锁上，两次 GC 后堆多 22,575K、22,832K，每条约 2.2 KB，join 后回落
+       第 5 步反证（ManagementServer 换回 7ff65e40a8 的版本，重新 installDist，pid 47791）：基线 24,443K；200 MiB ping closed_by_server:false，
+         1,600,896 帧全部写出；第 15 s 373,545K，1,597,174 个 HeapByteBuffer、1,597,175 个 LinkedBlockingQueue$Node；700 MiB 在 4,679,808 帧后断开，
+         stdout 末行 Terminating due to java.lang.OutOfMemoryError: Java heap space，进程已退出；git checkout -- 还原后重新 installDist，jar 回到 341,268 B
+       结论：不是缺陷。多出的是读数那一刻仍在执行的 status 调用：解码线程每读出一条消息起一条虚拟线程，关闭前已解码的照常执行，handle() 第一行的
+         UUID.randomUUID() 让它们串行经过同一把锁；management_backlog.py 在连接被服务端关时跳过 --hold，第 3 步的读数在关闭后约 0.2～0.3 s 就做，
+         进程里第一次洪水代码还冷，要 0.43 s 才排空。RUN-039 的 51,534K 约合 23,000 条在途调用，在本次第一次洪水关闭时在途的 41,190 条之内
+       没做到的：真进程上没拿到在途窗口里的 GC 读数（第 1 次的 GC.run 落在排空之后），每条调用的大小取自合成程序；第 3 步只做了 3 次
+     三个视角的回收：临时测试源文件及其构建产物、/tmp 下的目录已删，临时库 prodf_review 已 DROP，Valkey 没有 prodf 相关键，
+       手动起的 server-app 进程（含 42460、47791）与合成程序的 JVM 都已退出，git status 为空
+
+  3. 修复提交 39cbadade3（第十五节）
+     五处都修：TC-PROD-483 第 2 步（测试里钩子断言与 assertFalse(saved.isDone()) 对调，该步改为红在 :164 的钩子断言，修复者按原顺序一次红在 :165、
+       对调后两次红在 :164）；Units#end 对已分配给 tick 线程的单位经 acquirable().sync(Entity::remove) 移除，API-PROD-007 写明 onDisable 在
+       plugin-disable-<id> 上跑（TC-PROD-511 修复前红在 RtsPluginIntegrationTest.java:227，TC-PROD-512 严格 grid 真进程 3 次退出码 0、match_ended reason=normal）；
+       两轮修复的版本号改为 v0.9.20、v0.9.21，本轮 v0.9.22；§28.2 游戏端口一行改为指标端点的 HTTP-Dispatcher；TC-PROD-510 第 2 步出处改为 357 + 9 + 4
+     视角三不是缺陷，39cbadade3 没改 TC-PROD-494 与 §28.2 在途调用那条 Open Question（见第 6 小节）
+
+  4. 门禁（39cbadade3，工作副本干净，带数据库环境）
+     ./gradlew check --rerun-tasks --continue --max-workers=4 <mirror>
+       18:10:31Z → 18:14:07Z，BUILD SUCCESSFUL in 3m 35s，77 actionable tasks: 77 executed
+       architecture-tests 7 类 20 个、baker 4 / 52、根模块 421 / 3,106（15 跳过）、game-rts 12 / 84、loadtest 3 / 10、plugin-api 3 / 15、protocol 4 / 78、
+       server-app 74 / 370、synx 7 / 42、testing 7 / 10；合计 542 类 3,787 个，0 失败 0 错误，15 跳过（与第十三、十四节同一批）；
+       比第十四节的 3,786 多 game-rts 的 1 个（TC-PROD-511）；每个模块最早的时间戳都晚于起跑时刻
+       数据库用例（tests / skipped）：PlayerStoreIntegrationTest 23 / 0、TransferTicketsIntegrationTest 7 / 0、CrossShardHandoverIntegrationTest 6 / 0、
+         ShutdownSaveIntegrationTest 4 / 0、ShutdownSaveBeforeSpawnIntegrationTest 3 / 0、ShutdownSaveRaceIntegrationTest 2 / 0、MigrationsDbTest 5 / 0、
+         ShardSessionDbTest 4 / 0、StoreHousekeepingDbTest 3 / 0、ShutdownLoginIntegrationTest 5 / 0、ShutdownSaveOutsideTheWorldIntegrationTest 3 / 0、
+         ManagementBansIntegrationTest 2 / 0，都是 0 失败
+       各模块 testNamingCheck、forbiddenImportsCheck 都执行；EnvDispatcherThreadsIntegrationTest（默认）：env dispatcher threads: 1、env thread provider: counter
+     严格 grid 全量：./gradlew test --rerun --continue --max-workers=4 <mirror> -Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true -Dsynaxis.thread-provider=grid
+       18:15:43Z → 18:18:52Z，BUILD SUCCESSFUL in 3m 8s，48 actionable tasks: 10 executed, 38 up-to-date
+       十个模块同为 542 类 3,787 个，0 失败 0 错误 15 跳过，上面 12 个数据库用例类都是 skipped=0；每个模块最早的时间戳都晚于起跑时刻
+       testing/build/test-results/test/TEST-io.github.bearisbug.synaxis.testing.test.EnvDispatcherThreadsIntegrationTest.xml：
+         env dispatcher threads: 4、env thread provider: grid
+       严格 counter 全量本节没跑（第十五节之后没有改引擎，只跑任务点名的 grid 一轮）
+     ABI 门：HTTPS_PROXY=http://127.0.0.1:7897 gh release download v0.3.0 --repo Bearisbug/synaxis --dir <仓库外临时目录> --pattern plugin-api.jar --pattern protocol.jar
+       6fe8d7dba88c400901b6515d17971655fcd6dd8cbcf629a0c70325f3390bf7c6  plugin-api.jar
+       1092232bb68905d1b5f0ecfb056e9c1387f582ab921ace8cc0ff227aa4bc2916  protocol.jar（两行与第五节相同）
+       ./gradlew :plugin-api:checkBinaryCompatibility :protocol:checkBinaryCompatibility --rerun-tasks --max-workers=4 <mirror> -PbaselineJarDir=<该目录>
+         18:19:02Z → 18:19:27Z，> Task :protocol:checkBinaryCompatibility、> Task :plugin-api:checkBinaryCompatibility 都执行，
+         BUILD SUCCESSFUL in 24s，28 actionable tasks: 28 executed；0 违例
+       7ff65e40a8..39cbadade3 在 plugin-api/ 只改了 Moderation#ban 的 Javadoc 一行，protocol/、client-fabric/ 没有改动
+     文档 lint（本节与 TEST.md 补记写完之后的文本）：
+       bash ~/.claude/skills/design-doc/check.sh docs/DESIGN-PROD.md → ✅ lint 无警告（状态图与迁移表按机分段 10 11 12 21 22 一致）；
+         同一脚本对 docs/DESIGN.md → ✅ lint 无警告（按机分段 9 14）
+       bash ~/.claude/skills/test-doc/check.sh docs/TEST.md → 只有已知三条（RUN-031 两行明细缺证据引用、REQ-PROD-031 无 TC）
+       之后 ./gradlew :architecture-tests:test --rerun --max-workers=4 <mirror>：18:23:02Z → 18:23:10Z，20 个 0 失败，其中读文档的 ConfigKeyGateTest 1、
+         TranslationKeyGateTest 2、PersistenceBoundaryArchitectureTest 2 都在本节与补记写完之后的文本上跑过
+
+  5. RUN-039 的结论是否要改
+     不改，TEST.md §6 RUN-039 的汇总行与明细行不动。在 RUN-039 证据段之后追加一段补记：RUN-039 之后新增的 TC-PROD-499～TC-PROD-512 的结果（第十三～十五节）、
+     TC-PROD-483 第 2 步的红行、TC-PROD-494 第 3 步查明的来源（本节第 2 小节视角三）与本节的门禁
+
+  6. 仍开着的
+     游戏端口绑不上时 server-app 不退出（§28.2 风险行，登记的默认是下一个修复轮修；三轮审查的缺陷单里都没有它）
+     TC-PROD-494 第 3 步的读数时机：脚本返回后先轮询 jcmd <P> Thread.dump_to_file -format=text <文件>，等 Syn-Management-Call 为 0
+       （或台账 status 行数在相隔 1.1 s 以上的两次读数里不变），再 GC.run、GC.heap_info；不能用 Thread.print 数
+     DESIGN-PROD §28.2 在途调用那条 Open Question 写「即时返回的方法堆不起来」，与视角三不符（status 一次洪水就有 10,536 条同时阻塞）；
+       是否按连接限在途调用，或把 request_id 改到只在报错路径上生成，按那条 Open Question 定
+     TC-PROD-499～TC-PROD-512 与 TC-PROD-494 的复测都没有登记执行轮次，验收时登记 RUN-040
+
+  7. 环境与回收
+     复用 synaxis-pg、synaxis-valkey，没有新建镜像、容器与卷；本节没有起 server-app 进程
+     /tmp 下的 Gradle 包装脚本、三份 Gradle 日志、计数脚本与 ABI baseline 目录（prodf4-*）本节写完即删

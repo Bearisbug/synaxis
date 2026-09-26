@@ -104,25 +104,7 @@ public final class SynxRegion {
             return new SynxSlot.Failed(SynxFault.CRC_MISMATCH, "crc32c " + Integer.toHexString(crc)
                     + ", the record hashes to " + Long.toHexString(actual.getValue()));
         }
-        final long packet = Integer.toUnsignedLong(record.get(INT, 0));
-        final long navigation = Integer.toUnsignedLong(record.get(INT, 4));
-        final long entities = Integer.toUnsignedLong(record.get(INT, 8));
-        final long columns = Integer.toUnsignedLong(record.get(INT, 12));
-        if (SynxFormat.SEGMENT_TABLE_BYTES + packet + navigation + entities + columns != length
-                || navigation != SynxFormat.NAVIGATION_BYTES
-                || columns != (header.hasColumns() ? SynxFormat.COLUMN_BYTES : 0)) {
-            return new SynxSlot.Failed(SynxFault.MALFORMED, "segments " + packet + "/" + navigation + "/" + entities
-                    + "/" + columns + " in a record of " + length);
-        }
-        long position = SynxFormat.SEGMENT_TABLE_BYTES;
-        final MemorySegment packetSegment = record.asSlice(position, packet);
-        position += packet;
-        final MemorySegment navigationSegment = record.asSlice(position, navigation);
-        position += navigation;
-        final MemorySegment entitySegment = record.asSlice(position, entities);
-        position += entities;
-        return new SynxSlot.Present(chunkX, chunkZ, packetSegment, navigationSegment, entitySegment,
-                record.asSlice(position, columns));
+        return SynxSlot.parse(chunkX, chunkZ, record, header.hasColumns());
     }
 
     /** Index entries with a record, whether or not the record reads. */

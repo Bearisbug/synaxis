@@ -2,6 +2,8 @@ package io.github.bearisbug.synaxis.synx;
 
 import net.kyori.adventure.nbt.CompoundBinaryTag;
 
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
@@ -31,6 +33,25 @@ public record SynxChunkRecord(int chunkX, int chunkZ, byte[] packet, byte[] navi
         columns = columns.clone();
         blockEntities = List.copyOf(blockEntities);
         staticEntities = List.copyOf(staticEntities);
+    }
+
+    /**
+     * The record as a file stores it (API-M3-001): the segment length table, then the four
+     * segments, segment ③ compressed at the level of {@code settings}. Region files and overlay
+     * segment files write a record this way.
+     */
+    public byte[] encode(SynxSettings settings) {
+        return encode(SynxEntities.encode(blockEntities, staticEntities), settings.compressionLevel());
+    }
+
+    /** {@link #encode(SynxSettings)} with segment ③ encoded already, uncompressed. */
+    byte[] encode(byte[] entities, int compressionLevel) {
+        final byte[] storedEntities = entities.length == 0 ? entities : SynxChunkPacket.deflate(entities, compressionLevel);
+        final ByteBuffer bytes = ByteBuffer.allocate(SynxFormat.SEGMENT_TABLE_BYTES + packet.length
+                + navigation.length + storedEntities.length + columns.length).order(ByteOrder.LITTLE_ENDIAN);
+        bytes.putInt(packet.length).putInt(navigation.length).putInt(storedEntities.length).putInt(columns.length);
+        bytes.put(packet).put(navigation).put(storedEntities).put(columns);
+        return bytes.array();
     }
 
     @Override

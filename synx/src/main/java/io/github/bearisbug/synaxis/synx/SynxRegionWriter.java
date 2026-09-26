@@ -78,30 +78,22 @@ public final class SynxRegionWriter {
                 payload.update(padding);
                 position = aligned;
 
-                final byte[] packet = record.packet();
-                final byte[] navigation = record.navigation();
+                // Segment ③ once, uncompressed for the content hash and compressed for the record
                 final byte[] entities = SynxEntities.encode(record.blockEntities(), record.staticEntities());
-                final byte[] storedEntities = entities.length == 0 ? entities
-                        : SynxChunkPacket.deflate(entities, settings.compressionLevel());
-                final byte[] columns = record.columns();
-
-                final ByteBuffer bytes = ByteBuffer.allocate(SynxFormat.SEGMENT_TABLE_BYTES + packet.length
-                        + navigation.length + storedEntities.length + columns.length).order(ByteOrder.LITTLE_ENDIAN);
-                bytes.putInt(packet.length).putInt(navigation.length).putInt(storedEntities.length).putInt(columns.length);
-                bytes.put(packet).put(navigation).put(storedEntities).put(columns);
+                final byte[] bytes = record.encode(entities, settings.compressionLevel());
                 final CRC32C crc = new CRC32C();
-                crc.update(bytes.array());
+                crc.update(bytes);
                 index.putLong(i * SynxFormat.INDEX_ENTRY_BYTES, position)
-                        .putInt(i * SynxFormat.INDEX_ENTRY_BYTES + 8, bytes.capacity())
+                        .putInt(i * SynxFormat.INDEX_ENTRY_BYTES + 8, bytes.length)
                         .putInt(i * SynxFormat.INDEX_ENTRY_BYTES + 12, (int) crc.getValue());
-                output.write(bytes.array());
-                payload.update(bytes.array());
-                position += bytes.capacity();
+                output.write(bytes);
+                payload.update(bytes);
+                position += bytes.length;
 
-                content.update(SynxChunkPacket.body(packet));
-                content.update(navigation);
+                content.update(SynxChunkPacket.body(record.packet()));
+                content.update(record.navigation());
                 content.update(entities);
-                content.update(columns);
+                content.update(record.columns());
                 chunks++;
             }
         } catch (IOException | RuntimeException e) {

@@ -231,6 +231,33 @@ class PlayerDataIntegrationTest {
     }
 
     @Test
+    void anAdmissionAnsweredAfterTheShutdownSaveStartedIsRefused(Env env) throws IOException {
+        final CountingBackend backend = new CountingBackend();
+        ledger = new EventLedger(workingDirectory.resolve("logs"), "test", EventLedger.DEFAULT_MAX_BYTES_PER_DAY);
+        ledger.start();
+        final PlayerStore store = new PlayerStore(env.process(), backend, RedisLink.disabled("test"), "test", false,
+                PlayerStore.Options.DEFAULT, ledger::record);
+        final Instance match = env.createFlatInstance();
+        // The shutdown save starts while the provider decides, which then lets the player in
+        final Probe probe = new Probe("probe", ctx -> ctx.admission().register(_ -> {
+            var _ = store.saveAll(Duration.ofSeconds(5), true);
+            return new Admission.Accept(match, 1);
+        }));
+        final PluginHost host = new PluginHost(env.process(), workingDirectory.resolve("plugins"), ledger, store);
+        host.enable(List.of(probe), Set.of());
+
+        final Player player = env.createPlayer(match, new Pos(0, 41, 0));
+
+        assertFalse(player.getPlayerConnection().isOnline(), "refused instead of playing outside of the shutdown save");
+        assertEquals(1, backend.loads.get());
+        assertEquals(1, backend.releases.get(), "the lease taken for the load goes back");
+        host.disableAll();
+        final List<String> lines = readLedger();
+        assertTrue(lines.stream().anyMatch(line -> line.contains("\"client_rejected\"")
+                && line.contains("\"reason\":\"state-unavailable\"")), lines.toString());
+    }
+
+    @Test
     void aPluginThatFailsToEnableLeavesNoSectionAndNoShutdownHookBehind(Env env) {
         final AtomicInteger defaults = new AtomicInteger();
         final AtomicInteger hooks = new AtomicInteger();

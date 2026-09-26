@@ -129,7 +129,11 @@ final class AdmissionGate {
                     BUDGET_MILLIS, registry.pluginId(), connectionId, admitMs);
         switch (admission) {
             case Admission.Accept accept -> {
-                store.admitted(player);
+                // Refused by the store once the shutdown save started, which has kicked the player
+                if (!store.admitted(player)) {
+                    rejected(connectionId, hello, DisconnectKeys.STATE_UNAVAILABLE);
+                    return;
+                }
                 event.setSpawningInstance(accept.instance());
             }
             case Admission.Reject reject -> {

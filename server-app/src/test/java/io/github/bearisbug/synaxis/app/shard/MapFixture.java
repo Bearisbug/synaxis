@@ -18,10 +18,10 @@ import java.util.stream.Stream;
  * A map release for the shard tests, baked by {@code :baker}: 16 × 16 chunks, 64 blocks high, stone up
  * to y 40, so every column stands at {@code surface_y} 40.
  */
-final class MapFixture {
-    static final String MAP_ID = "fixture";
-    static final int FLOOR = 40;
-    static final SynxManifest.Bounds BOUNDS = new SynxManifest.Bounds(0, 0, 15, 15);
+public final class MapFixture {
+    public static final String MAP_ID = "fixture";
+    public static final int FLOOR = 40;
+    public static final SynxManifest.Bounds BOUNDS = new SynxManifest.Bounds(0, 0, 15, 15);
 
     private MapFixture() {
     }
@@ -31,7 +31,7 @@ final class MapFixture {
      *
      * @return the settings of a shard mounting it
      */
-    static ShardSettings bake(Path mapsRoot) {
+    public static ShardSettings bake(Path mapsRoot) {
         final GeneratorSource source = new GeneratorSource(new GeneratorPreset(
                 unit -> unit.modifier().fillHeight(0, FLOOR, Block.STONE), 0, 64, BOUNDS), Registries.vanilla());
         final Baker.Result result = Baker.bake(new Baker.Request(MAP_ID, source, mapsRoot, 1, mapsRoot.resolve("logs"),
@@ -42,7 +42,7 @@ final class MapFixture {
     }
 
     /** Copies a release, to damage the copy. */
-    static ShardSettings copy(ShardSettings release, Path mapsRoot) {
+    public static ShardSettings copy(ShardSettings release, Path mapsRoot) {
         final Path target = mapsRoot.resolve(MAP_ID).resolve(release.mapBuild());
         try (Stream<Path> files = Files.walk(release.buildDir())) {
             Files.createDirectories(target.getParent());

@@ -1,11 +1,17 @@
 package io.github.bearisbug.synaxis.app;
 
 import io.github.bearisbug.synaxis.app.ConfigFileLaunchTest.Launched;
+import io.github.bearisbug.synaxis.app.shard.MapFixture;
+import io.github.bearisbug.synaxis.app.shard.ShardSettings;
+import io.github.bearisbug.synaxis.synx.SynxFormat;
+import io.github.bearisbug.synaxis.synx.SynxManifest;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.stream.Stream;
 
 import static io.github.bearisbug.synaxis.app.ConfigFileLaunchTest.freePort;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -15,8 +21,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 /**
  * The refusals of a map shard in a real JVM ({@code docs/DESIGN-M3.md} {@code API-M3-006}, §14; §19
  * 「地图配置写错时拒启」「视距越界配置被拒」): one line {@code Refusing to start: …} naming the key,
- * exit code 1, the port never bound and no {@code overlay/} directory. The map keys point at a
- * directory that does not exist: every one of these refusals comes before the release is read.
+ * exit code 1, the port never bound and no {@code overlay/} directory. Where the release does not
+ * matter the map keys point at a directory that does not exist, those refusals come before it is
+ * read; the start-up check of the release runs on a baked one ({@code REQ-M3-002}).
  */
 public class ShardLaunchTest {
 
@@ -84,6 +91,44 @@ public class ShardLaunchTest {
         assertRefused(directory, ShardMain.class, "synaxis.simulation-distance=13 is not from 1 to the chunk view "
                 + "distance 12: the simulation distance cannot exceed the view distance", ROOT, BUILD,
                 "-Dsynaxis.simulation-distance=13");
+    }
+
+    /** §19 「清单不符时拒绝起服」, the process half: one byte of a region file of the mounted release changed. */
+    @Test
+    public void aChangedByteOfTheReleaseRefusesTheShard(@TempDir Path directory) throws Exception {
+        final ShardSettings release = MapFixture.bake(directory.resolve("maps"));
+        final Path region = release.buildDir().resolve("regions").resolve(SynxFormat.regionFileName(0, 0));
+        final byte[] bytes = Files.readAllBytes(region);
+        bytes[bytes.length - 100] ^= 0x01;
+        Files.write(region, bytes);
+
+        assertRefused(directory, ShardMain.class, "synx-payload-hash: r.0.0.synx: ", mapKeys(release));
+        assertNoShardStarted(directory);
+    }
+
+    /** §19 「光照引擎版本变化强制重烘」, the process half. */
+    @Test
+    public void aReleaseOfAnotherLightEngineVersionRefusesTheShard(@TempDir Path directory) throws Exception {
+        final ShardSettings release = MapFixture.bake(directory.resolve("maps"));
+        final Path manifest = release.buildDir().resolve(SynxManifest.FILE_NAME);
+        Files.writeString(manifest, Files.readString(manifest)
+                .replace("\"light_engine_version\": 1,", "\"light_engine_version\": 0,"));
+
+        assertRefused(directory, ShardMain.class, "synx-light-engine-mismatch: manifest.json: ", mapKeys(release));
+        assertNoShardStarted(directory);
+    }
+
+    private static String[] mapKeys(ShardSettings release) {
+        return new String[]{"-Dsynaxis.map.root=" + release.mapRoot(), "-Dsynaxis.map.build=" + release.mapBuild()};
+    }
+
+    private static void assertNoShardStarted(Path directory) throws IOException {
+        final Path logs = directory.resolve("logs");
+        if (!Files.exists(logs)) return;
+        try (Stream<Path> files = Files.list(logs)) {
+            for (Path file : files.toList())
+                assertFalse(Files.readString(file).contains("shard_started"), file.toString());
+        }
     }
 
     /** Without a map, the view distance of a shard is not capped. */

@@ -26,7 +26,6 @@ import io.github.bearisbug.synaxis.synx.SynxRegion;
 import io.github.bearisbug.synaxis.synx.SynxSettings;
 import io.github.bearisbug.synaxis.synx.SynxSlot;
 import org.jetbrains.annotations.Nullable;
-import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
@@ -58,9 +57,6 @@ import static org.junit.jupiter.api.Assertions.fail;
  * The map shard as {@code Main} assembles it, in this JVM, on a baked release and with the real
  * {@link ShutdownSequence}, no game port bound ({@code docs/DESIGN-M3.md} §19, the entry
  * 「server-app 测试 / 集成测试」; {@code REQ-M3-008}, {@code REQ-M3-010}, {@code REQ-M3-011}).
- * <p>
- * These need the {@code SynxChunkLoader} of the chunk track and the {@code OverlayStore} of the
- * overlay track: against the step 0 skeleton they are skipped, and they run once both are merged.
  */
 @Timeout(60)
 public class ShardWorldAssemblyTest {
@@ -119,29 +115,19 @@ public class ShardWorldAssemblyTest {
         for (int i = 0; i < count; i++) process.ticker().tick(System.nanoTime());
     }
 
-    private static void skeleton(UnsupportedOperationException e) {
-        Assumptions.abort("the chunk loader or the overlay store is still the M3-C step 0 skeleton: " + e.getMessage());
-    }
-
     private record Mounted(ShardWorld world, ShardWorld.Started started, List<String> events) {
         InstanceContainer instance() {
             return started.instance();
         }
     }
 
-    /** Steps (3) and (5) of {@code Main} on a map; skips the test while a track it needs is not merged. */
+    /** Steps (3) and (5) of {@code Main} on a map. */
     private Mounted mount(ServerProcess process, OverlayOptions overlay) {
         final ShardWorld world = ShardWorld.prepare(process, release, SYNX, overlay);
         final ShutdownSequence shutdown = new ShutdownSequence(process, new NoPlayers());
         process.setShutdownParticipant(shutdown);
         final List<String> events = new CopyOnWriteArrayList<>();
-        try {
-            return new Mounted(world, world.start(shutdown, (name, _) -> events.add(name), overlayRoot), events);
-        } catch (UnsupportedOperationException e) {
-            process.stop();
-            skeleton(e);
-            throw e;
-        }
+        return new Mounted(world, world.start(shutdown, (name, _) -> events.add(name), overlayRoot), events);
     }
 
     private OverlayStore reopen(OverlayOptions options) throws IOException, SynxException {
@@ -207,8 +193,6 @@ public class ShardWorldAssemblyTest {
                 world.start(shutdown, (_, _) -> {
                 }, notADirectory);
                 fail("the start is refused");
-            } catch (UnsupportedOperationException e) {
-                skeleton(e);
             } catch (IllegalArgumentException e) {
                 assertTrue(e.getMessage().startsWith("the overlay store " + notADirectory.resolve(release.mapBuild())
                         + " cannot be opened: "), e.getMessage());
@@ -334,13 +318,7 @@ public class ShardWorldAssemblyTest {
     @Test
     public void aLiveThenDeadSaveFlushesOnceOnTheShutdownThread() throws Exception {
         final OverlayOptions options = new OverlayOptions(16_384, 10);
-        final OverlayStore overlay;
-        try {
-            overlay = reopen(options);
-        } catch (UnsupportedOperationException e) {
-            skeleton(e);
-            throw e;
-        }
+        final OverlayStore overlay = reopen(options);
         for (int i = 0; i < 5; i++) {
             final Dirty chunk = dirty(i, 0);
             overlay.materialized(chunk);

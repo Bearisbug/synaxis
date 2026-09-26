@@ -1,15 +1,26 @@
 package io.github.bearisbug.synaxis.instance;
 
+import io.github.bearisbug.synaxis.ServerProcess;
+import io.github.bearisbug.synaxis.coordinate.CoordConversion;
 import io.github.bearisbug.synaxis.coordinate.Pos;
 import io.github.bearisbug.synaxis.entity.Player;
+import io.github.bearisbug.synaxis.network.ConnectionState;
 import io.github.bearisbug.synaxis.network.packet.client.common.ClientSettingsPacket;
+import io.github.bearisbug.synaxis.network.packet.server.SendablePacket;
 import io.github.bearisbug.synaxis.network.player.ClientSettings;
+import io.github.bearisbug.synaxis.network.player.GameProfile;
+import io.github.bearisbug.synaxis.network.player.PlayerConnection;
 import io.github.bearisbug.synaxis.testing.Env;
 import io.github.bearisbug.synaxis.testing.EnvTest;
+import it.unimi.dsi.fastutil.longs.LongList;
 import org.junit.jupiter.api.Test;
 
+import java.net.InetSocketAddress;
+import java.net.SocketAddress;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -151,12 +162,32 @@ public class ChunkUnloadIntegrationTest {
         assertEquals(1, instance.chunkTicketCount(30, 30), "the ticket stays on the coordinates");
     }
 
+    /** A connection whose disconnect is the engine's, which the connection of the fixture stubs out. */
+    private static final class DroppingConnection extends PlayerConnection {
+        private DroppingConnection(ServerProcess process) {
+            super(process);
+        }
+
+        @Override
+        public void sendPacket(SendablePacket packet) {
+        }
+
+        @Override
+        public SocketAddress getRemoteAddress() {
+            return new InetSocketAddress("localhost", 25565);
+        }
+    }
+
     /** The §19 scenario: a respawn, a cap that shrinks the ring, a disconnect. */
     @Test
     public void theViewTicketsFollowTheChunkRingNotTheCallsThatSendIt(Env env) {
         final Instance instance = env.createFlatInstance();
         instance.viewDistance(12);
-        final Player player = env.createPlayer(instance, SPAWN);
+        final DroppingConnection connection = new DroppingConnection(env.process());
+        connection.setClientState(ConnectionState.PLAY);
+        connection.setServerState(ConnectionState.PLAY);
+        final Player player = env.process().connection().createPlayer(connection, new GameProfile(UUID.randomUUID(), "Ring"));
+        player.setInstance(instance, SPAWN).join();
         player.addPacketToQueue(new ClientSettingsPacket(ClientSettings.defaultSettings(12)));
         env.tick();
         assertEquals(13, player.effectiveViewDistance());
@@ -177,7 +208,10 @@ public class ChunkUnloadIntegrationTest {
         assertEquals(1, instance.chunkTicketCount(0, 5), "the capped ring reaches 5 chunks");
         assertEquals(0, instance.chunkTicketCount(0, 6));
 
-        player.acquirable().sync(Player::remove);
+        connection.disconnect();
+        env.tick();
+        env.tick();
+        assertTrue(player.isRemoved(), "the dropped connection took the player out");
         for (int x = -13; x <= 13; x++) {
             for (int z = -13; z <= 13; z++) assertEquals(0, instance.chunkTicketCount(x, z), x + "," + z);
         }
@@ -277,5 +311,81 @@ public class ChunkUnloadIntegrationTest {
         ready.set(true);
         env.tick();
         assertNull(instance.getChunk(7, 7));
+    }
+
+    /**
+     * The unload of a tick reads the idle chunks in batches rather than all of them: a backlog of
+     * 1,000 idle chunks comes out 256 at a time, the longest idle first, past the ones already read.
+     */
+    @Test
+    public void theIdleChunksAreReadInBatches(Env env) {
+        final Instance instance = env.createFlatInstance();
+        for (int x = 0; x < 1_000; x++) instance.loadChunk(x, 100).join();
+        env.tick();
+
+        final LongList first = instance.tickets.idleFor(1, 0, 256);
+        assertEquals(256, first.size());
+        assertEquals(CoordConversion.chunkIndex(0, 100), first.getLong(0));
+        assertEquals(CoordConversion.chunkIndex(255, 100), first.getLong(255));
+        final LongList next = instance.tickets.idleFor(1, 256, 256);
+        assertEquals(256, next.size());
+        assertEquals(CoordConversion.chunkIndex(256, 100), next.getLong(0));
+        assertEquals(1_000 - 768, instance.tickets.idleFor(1, 768, 512).size(), "the rest");
+        assertEquals(0, instance.tickets.idleFor(2, 0, 256).size(), "none idle for 2 ticks yet");
+    }
+
+    /** Chunks passed over, here 300 not ready, do not hold back the ready ones idle for less long. */
+    @Test
+    public void chunksPassedOverDoNotHoldBackTheOnesBehindThem(Env env) {
+        final Instance instance = env.createFlatInstance();
+        instance.setChunkSupplier((owner, chunkX, chunkZ) -> new DynamicChunk(owner, chunkX, chunkZ) {
+            @Override
+            protected boolean readyToUnload() {
+                return chunkZ != 100;
+            }
+        });
+        final List<Chunk> held = new ArrayList<>();
+        for (int x = 0; x < 300; x++) held.add(instance.loadChunk(x, 100).join());
+        env.tick();
+        final List<Chunk> ready = new ArrayList<>();
+        for (int x = 0; x < 300; x++) ready.add(instance.loadChunk(x, 101).join());
+        env.tick();
+        instance.setChunkUnloadGraceTicks(1);
+
+        env.tick();
+
+        assertEquals(300, held.stream().filter(Chunk::isLoaded).count());
+        assertEquals(300 - 256, ready.stream().filter(Chunk::isLoaded).count(), "256 of the ready ones go");
+        for (int i = 0; i < 256; i++) assertFalse(ready.get(i).isLoaded(), "the longest idle first: " + i);
+    }
+
+    /**
+     * A chunk whose {@link Chunk#readyToUnload()} throws is reported and passed over: it stays at the
+     * head of the idle chunks, and the ones behind it are still unloaded.
+     */
+    @Test
+    public void aChunkThrowingOnReadyToUnloadDoesNotHoldBackTheOthers(Env env) {
+        final List<Throwable> reported = new CopyOnWriteArrayList<>();
+        env.process().exception().setExceptionHandler(reported::add);
+        final Instance instance = env.createFlatInstance();
+        instance.setChunkSupplier((owner, chunkX, chunkZ) -> new DynamicChunk(owner, chunkX, chunkZ) {
+            @Override
+            protected boolean readyToUnload() {
+                if (chunkX == 7) throw new IllegalStateException("chunk 7 cannot tell");
+                return true;
+            }
+        });
+        instance.loadChunk(7, 7).join();
+        env.tick();
+        instance.loadChunk(8, 8).join();
+        env.tick();
+        instance.setChunkUnloadGraceTicks(1);
+
+        env.tick();
+
+        assertNotNull(instance.getChunk(7, 7));
+        assertNull(instance.getChunk(8, 8), "the chunk behind the one that threw is unloaded");
+        assertEquals(1, reported.size(), reported.toString());
+        assertEquals("chunk 7 cannot tell", reported.getFirst().getMessage());
     }
 }

@@ -115,14 +115,20 @@ final class ChunkTickets {
     }
 
     /**
-     * Returns the loaded chunks that have been without a ticket for at least {@code grace} ticks,
-     * the longest idle first.
+     * Returns at most {@code limit} of the loaded chunks that have been without a ticket for at least
+     * {@code grace} ticks, the longest idle first, after the first {@code skip} of them. The lock is
+     * held for {@code skip + limit} entries at most, however many chunks are idle.
      */
-    LongList idleFor(int grace) {
+    LongList idleFor(int grace, int skip, int limit) {
         final LongArrayList idle = new LongArrayList();
         synchronized (lock) {
+            int skipped = 0;
             for (var entry : idleSince.long2LongEntrySet()) {
-                if (clock - entry.getLongValue() < grace) break;
+                if (clock - entry.getLongValue() < grace || idle.size() == limit) break;
+                if (skipped < skip) {
+                    skipped++;
+                    continue;
+                }
                 idle.add(entry.getLongKey());
             }
         }

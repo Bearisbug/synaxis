@@ -329,27 +329,43 @@ public class InstanceContainer extends Instance {
      * {@link Chunk#readyToUnload() ready}. The ticket count is checked again under the ticket lock
      * right before a chunk goes; a ticket arriving after that no longer holds it, it stays on the
      * coordinates and protects the chunk once it loads again.
+     * <p>
+     * The idle chunks are read in batches, each twice as large as the one before: a tick that passes
+     * over none reads {@value #MAX_UNLOADS_PER_TICK} of them however many are idle, and one that passes
+     * over many (not ready, an online player in them, a throw) still reaches the chunks behind them. A
+     * chunk passed over keeps its place among the idle chunks, so the next batch starts past as many
+     * as were passed over.
      */
     @Override
     public void unloadIdleChunks() {
         final int grace = chunkUnloadGraceTicks();
         if (grace < 1) return;
-        int unloaded = 0;
-        for (long index : tickets.idleFor(grace)) {
-            if (unloaded == MAX_UNLOADS_PER_TICK) break;
-            final int chunkX = CoordConversion.chunkIndexGetX(index);
-            final int chunkZ = CoordConversion.chunkIndexGetZ(index);
-            final Chunk chunk = getChunk(chunkX, chunkZ);
-            if (chunk == null) continue;
-            final boolean onlinePlayer = getEntityTracker().chunkEntities(chunkX, chunkZ, EntityTracker.Target.PLAYERS)
-                    .stream().anyMatch(Player::isOnline);
-            if (onlinePlayer || !chunk.readyToUnload() || !tickets.stillIdle(index, chunk)) continue;
-            try {
-                unloadChunk(chunk);
-                unloaded++;
-            } catch (RuntimeException e) {
-                process().exception().handleException(e);
+        int unloaded = 0, passedOver = 0;
+        for (int batch = MAX_UNLOADS_PER_TICK; unloaded < MAX_UNLOADS_PER_TICK; batch *= 2) {
+            final LongList candidates = tickets.idleFor(grace, passedOver, batch);
+            for (int i = 0; i < candidates.size() && unloaded < MAX_UNLOADS_PER_TICK; i++) {
+                final long index = candidates.getLong(i);
+                final int chunkX = CoordConversion.chunkIndexGetX(index);
+                final int chunkZ = CoordConversion.chunkIndexGetZ(index);
+                final Chunk chunk = getChunk(chunkX, chunkZ);
+                // Not passed over: unloaded by now, it has left the idle chunks, like one with a ticket since below
+                if (chunk == null) continue;
+                try {
+                    final boolean onlinePlayer = getEntityTracker().chunkEntities(chunkX, chunkZ, EntityTracker.Target.PLAYERS)
+                            .stream().anyMatch(Player::isOnline);
+                    if (onlinePlayer || !chunk.readyToUnload()) {
+                        passedOver++;
+                        continue;
+                    }
+                    if (!tickets.stillIdle(index, chunk)) continue;
+                    unloadChunk(chunk);
+                    unloaded++;
+                } catch (RuntimeException e) {
+                    passedOver++;
+                    process().exception().handleException(e);
+                }
             }
+            if (candidates.size() < batch) return;
         }
     }
 

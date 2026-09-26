@@ -61,6 +61,8 @@ public class TranslationKeyGateTest {
             Map.entry("synaxis:transfer", "cookie of the transfer ticket (API-PROD-028)"),
             Map.entry("synaxis:match", "dimension type every match is built on (API-M2-010)"),
             Map.entry("synaxis:hidden", "marker block of an Anvil map source, read by the baker (API-M3-003)"),
+            Map.entry("synaxis:door", "block handler key of a map source's data marker, in :game-rts (API-M3-003)"),
+            Map.entry("synaxis:loot", "block handler key of a map source's data marker, in :game-rts (API-M3-003)"),
             Map.entry("synaxis:shard/drain", "JSON-RPC method of the management interface (API-PROD-022)"),
             Map.entry("synaxis:shard/status", "JSON-RPC method of the management interface (API-PROD-022)"),
             Map.entry("synaxis:broadcast", "JSON-RPC method of the management interface (API-PROD-022)"),

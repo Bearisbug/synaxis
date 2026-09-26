@@ -1,12 +1,12 @@
 package io.github.bearisbug.synaxis.baker;
 
-import io.github.bearisbug.synaxis.instance.block.BlockHandler;
 import io.github.bearisbug.synaxis.instance.block.BlockManager;
 import io.github.bearisbug.synaxis.instance.light.LightEngine;
 import io.github.bearisbug.synaxis.registry.Registries;
 import io.github.bearisbug.synaxis.synx.SynxBuildVerifier;
 import io.github.bearisbug.synaxis.synx.SynxException;
 import io.github.bearisbug.synaxis.synx.SynxExpectations;
+import io.github.bearisbug.synaxis.synx.SynxHandlers;
 import io.github.bearisbug.synaxis.synx.SynxManifest;
 import net.kyori.adventure.key.Key;
 import org.jetbrains.annotations.Nullable;
@@ -25,9 +25,9 @@ import java.util.ServiceLoader;
  *      [--threads N] [--bounds minX,minZ,maxX,maxZ] [--dimension minecraft:overworld] [--min-y -64] [--logs logs] [--samples 4]
  * verify --build &lt;maps_root&gt;/&lt;map_id&gt;/&lt;build_id&gt;
  * </pre>
- * The exit code is the bake's (API-M3-003); a command line that does not parse exits with 1. Handler
- * namespaces are the {@link BlockHandler}s listed as services on the class path, generator presets the
- * {@link BakeGeneratorProvider}s.
+ * The exit code is the bake's (API-M3-003); a command line that does not parse, or two handlers with one key,
+ * exit with 1. Handler namespaces are those {@link SynxHandlers#registerAll} registers, the same list a shard
+ * registers; generator presets are the {@link BakeGeneratorProvider}s.
  */
 public final class BakerMain {
     static final int EXIT_USAGE = 1;
@@ -66,8 +66,11 @@ public final class BakerMain {
         final SynxManifest.Bounds bounds = options.containsKey("bounds") ? bounds(options.get("bounds")) : null;
         final Registries registries = Registries.vanilla();
         final BlockManager handlers = new BlockManager();
-        for (BlockHandler handler : ServiceLoader.load(BlockHandler.class)) {
-            handlers.registerHandler(handler.getKey(), () -> handler);
+        try {
+            SynxHandlers.registerAll(handlers);
+        } catch (IllegalArgumentException e) {
+            System.err.println("baker: " + e.getMessage());
+            return EXIT_USAGE;
         }
 
         final BakeSource source;

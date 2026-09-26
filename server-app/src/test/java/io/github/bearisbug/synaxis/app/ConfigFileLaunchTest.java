@@ -314,11 +314,7 @@ public class ConfigFileLaunchTest {
             return process.exitValue();
         }
 
-        /**
-         * Ends the JVM without a graceful stop: the client of the test leaves right after the
-         * configuration, and a stop that follows at once waits out the whole save budget of 30 s
-         * ({@code docs/DESIGN-PROD.md} §28.2, the shutdown save defect), which this test is not about.
-         */
+        /** Ends the JVM without a graceful stop, which this test is not about. */
         @Override
         public void close() {
             process.destroyForcibly();

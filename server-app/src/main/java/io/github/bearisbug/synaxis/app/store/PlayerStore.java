@@ -937,11 +937,19 @@ public final class PlayerStore implements ShutdownParticipant {
     /**
      * Logout: {@code online → saving}, write the dirty sections and give the lease back. A transfer
      * still writing becomes the logout save: its write failing is retried as one, its write
-     * succeeding ends in {@code offline}.
+     * succeeding ends in {@code offline}. A player the shutdown save froze before its snapshot
+     * was taken has that snapshot taken here, during the save phase.
      */
     private void loggedOut(Player player) {
         final Record record = records.get(player);
         if (record == null) return;
+        // Nothing ticks a player that never entered the world: the snapshot the shutdown save
+        // handed to its scheduler would never run
+        final CompletableFuture<SaveResult> shutdownSave = shutdownSaves.get(record);
+        if (shutdownSave != null && !saveEnded) {
+            shutdownSnapshot(record, shutdownSave, true);
+            return;
+        }
         // Admitted meanwhile, it goes on to the logout save below
         if (record.state == LeaseState.LOADING && abandon(record)) return;
         final CompletableFuture<SaveResult> droppedTransfer;

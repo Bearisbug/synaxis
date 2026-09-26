@@ -378,3 +378,122 @@ RUN-039 记录（2026-09-26，RUN-038 之后四组合入集成分支后的复验
      复用 synaxis-pg、synaxis-valkey，没有新建镜像、容器与卷；手动复现起的 server-app 进程（pid 37718）已随 SIGTERM 退出，
        另一次 JDK 版本不对没起来的 pid 37312 当场退出；测试起的子 JVM 由测试自己收尾
      /tmp 下的临时目录（反证副本与结果 XML、JDK src.zip 解出的 jdk.httpserver、SIGTERM 复现目录、diff-cover 的 uv 环境、ABI baseline 目录）本节写完即删
+
+十四、RUN-039 之后的修复轮（第 2 轮，追加；上面各节与 TEST.md §6 的 RUN-039 各行不改）
+
+  被测版本：prod/integrate-f 的 d28c3f2ef4 之上的修复提交（本节所在的提交）。审查在 d28c3f2ef4 上复现了三处（一处 major、两处 minor）。
+    设计先改（DESIGN-PROD v0.9.15（RUN-039 修复第 2 轮）），再改代码，再改 TEST.md（新增 TC-PROD-506～TC-PROD-510，改 TC-PROD-486、
+    TC-PROD-495、TC-PROD-496、TC-PROD-498、TC-PROD-501、TC-PROD-505 六条旧用例的行号、测试数或写法），反证全部在本机实跑。
+  执行者与机器同前；同机有别的会话，1 分钟负载在 4～37 之间跳。日志里的时刻是本机时间（UTC+8），门禁起止时刻是 UTC。
+    反证的做法：把要改的文件另存到 /tmp，改一处、跑、看红、从副本拷回、cmp 确认一致，再重跑复绿；红跑的结果 XML 先另存。
+    TC-PROD-495 第 2 步要整文件换回 7ff65e40a8 的五个文件，是在先提交成临时提交之后做的，跑完 git checkout HEAD -- . 复原。
+
+  1. 起服过程中的 minecraft:server/stop（major）→ ManagementMethods#stop 在 serverStarted() 之前回 −32000、不调 beginStop；
+     Main 在 server.start 返回之后、就绪行之前调 serverStarted()；TC-PROD-506、TC-PROD-507
+     修复前的真进程复现（d28c3f2ef4 的 installDist，玩法模式、rts-512、内存存储、离线，游戏 25671、指标 127.0.0.1:25672、管理 127.0.0.1:25673，
+       令牌 openssl rand -hex 32 只进环境变量；/tmp 下的脚本每 5 ms 连一次管理端口，连上即升级并调 server/stop）：
+       回复 {"jsonrpc":"2.0","id":1,"result":true}
+       22:25:07.483 [main] Management interface listening on 127.0.0.1:25673
+       22:25:07.487 [main] Enabling: plugin_id=rts version=0.1.0 data_directory=plugins/rts
+       22:25:07.509 [Syn-Shutdown] Stopping synaxis server.
+       22:25:07.510 [Syn-Shutdown] synaxis server stopped successfully.
+       22:25:07.840 [main] Plugin enabled: plugin_id=rts version=0.1.0 enable_ms=354
+       22:25:07.842 [main] synaxis server-app listening on 0.0.0.0:25671
+       20 s 后仍活着，lsof 见 *:25671、127.0.0.1:25672、127.0.0.1:25673 都在 LISTEN；按 pid 发 SIGTERM 结束（pid 98928）。与审查的复现同序
+     修复后同一脚本、同样的起法（本分支 installDist）：
+       回复 {"jsonrpc":"2.0","id":1,"error":{"code":-32000,"message":"The server is still starting; stop it once it has started",…}}
+       22:45:10.841 Management interface listening → 10.843 Enabling: plugin_id=rts → 11.383 Plugin enabled enable_ms=540 → 11.385 listening on 0.0.0.0:25671
+       就绪行之后 5 s 进程仍在；synaxis:shard/status 得 shutdown_phase "running"、tps 20.05；再调 server/stop 得 result true，
+       16.490 [Syn-Shutdown] Stopping synaxis server. → 16.536 [Syn-TickScheduler] Disabling plugin: plugin_id=rts → 16.634 stopped successfully.，exit=0；
+       台账 gm_command 两行 minecraft:server/stop 的 result 依次为 unavailable、ok（pid 6669）。另一次只看存活的同样起法（pid 6363）20 s 后按 pid SIGTERM 结束
+     ./gradlew :server-app:test --rerun --tests '…management.ManagementStopBeforeStartIntegrationTest' --tests '…app.ManagementStopWhileStartingLaunchTest' <mirror>
+       绿：tests=1、tests=1，0 失败（0.03 s、1.7 s）
+     修复前的红（if (!serverStarted && Boolean.getBoolean("proof.never"))）：2 tests completed, 2 failed
+       ManagementStopBeforeStartIntegrationTest.java:88 refused while the server is starting: {"jsonrpc":"2.0","id":1,"result":true} ==> expected: not <null>
+       ManagementStopWhileStartingLaunchTest.java:81 a stop before the game port is bound is refused, not {"jsonrpc":"2.0","id":1,"result":true}:，
+         所附子 JVM 日志：Management interface listening on 127.0.0.1:52249 → Enabling: plugin_id=rts → [Syn-Shutdown] Stopping synaxis server. → 1 ms 后 stopped successfully.
+     反证（Main 不放行：if (Boolean.getBoolean("proof.never")) managementMethods.serverStarted();）：2 tests completed, 1 failed，
+       ManagementStopWhileStartingLaunchTest.java:90 a stop once ready ends it: {"jsonrpc":"2.0","id":2,"error":{"code":-32000,…}}
+     没在引擎里拦：从不 start 的进程靠 stop() 收尾（EnvImpl#cleanup），StopRaceIntegrationTest 等也在从不 start 的 Env 进程上 beginShutdown；
+       引擎的 started 在 start 第一步就置位，拦不住绑端口到起 tick 线程之间那段。插件在 onEnable 里经 process() 停机登记为 §28.2 风险
+
+  2. 出站上限的判定与入队不在一起（minor）→ GuardedSocket 的四个发送入口在连接对象锁里判定并入队；TC-PROD-508
+     每条回复帧先在真进程上读出来：65,000 个字符 id 的 minecraft:bans/add 回 −32602，帧 65,142 B（审查写 65,144 B），上限 1,048,576 + 65,142 = 1,113,718 B
+     修复前的真进程（d28c3f2ef4，核心模式，/tmp 下脚本：4 KiB 接收缓冲、不读、8 条一批，每轮之间隔 11 s 让 LogBudget 出一行，pid 99235）8 轮：
+       1,057,942 / 1,056,836 / 1,082,518 / 1,082,518 / 1,089,604 / 1,146,948（18 帧，超上限 33,230 B）/ 1,089,604 / 1,089,998
+     修复后同样 8 轮（pid 6819）：1,082,518 / 1,081,012 / 1,073,220 / 1,089,998 / 1,056,830 / 1,081,806 ×3，都是 17 帧、都在上限内
+     ./gradlew :server-app:test --rerun --tests '…management.ManagementBacklogRaceIntegrationTest' <mirror>：tests=1 0 失败，
+       两次共 10 轮：1,097,541 ×4、1,075,977；1,064,773、1,097,541、1,100,238、1,092,364、1,097,541（上限 1,048,576 + 60,041 = 1,108,617）
+     修复前的红（send(String) 开头加 if (!Boolean.getBoolean("proof.never")) { if (admits()) super.send(text); return; }）跑 5 次，5 次都红在
+       ManagementBacklogRaceIntegrationTest.java:182 at most one reply of 60041 B past the bound, not <字节数> B, round <轮>：
+       1,157,582（round 1）、1,157,582（round 0）、1,157,582（round 0）、1,380,943（round 1）、1,233,854（round 4）
+       测试先只做 1 轮时，同样的改法 3 次红 2 次（1,217,623、1,277,664；另一次 1,080,738），所以做 5 轮
+     没换一把自己的锁：Java-WebSocket 的 close 持连接对象锁发关闭帧、closeConnection 也要它，另一把锁会与超限时在 admits 里关连接的线程互等
+
+  3. 1,024 个字符及以上的 JSON 数字（minor）→ 不改行为：设计写明这条上限（Gson 2.14.0 JsonReader.BUFFER_SIZE = 1024，javap 核对），
+     §28.2 登记 Open Question（默认不改，触发条件：出现发长数字的客户端或升级 Gson）；ManagementMethods#wholeNumber 那句走不到的注释改正；TC-PROD-509
+     ./gradlew :server-app:test --rerun --tests '…management.ManagementLongNumbersIntegrationTest' <mirror>：tests=1 0 失败（1.07 s）
+     反证（UniqueNamesReader 改成 LENIENT）：1 test completed, 1 failed，ManagementLongNumbersIntegrationTest.java:71（经 :86）
+       {"jsonrpc":"2.0","id":2,"error":{"code":-32602,"message":"seconds is a whole number from 1 to 600",…}} ==> expected: <-32700> but was: <-32602>
+
+  4. 行号挪了的旧用例（TC-PROD-510 第 1 步）
+     StopRaceIntegrationTest 的 serve 多一行 serverStarted()，其后行号加 1；Main 多一行，buildShutdownTask 的行号加 1
+     TC-PROD-495 第 2 步（按新写法再删三处调 serverStarted 的地方）：2 tests completed, 2 failed，:195 expected: <[synaxis:command-already-stopping]>
+       but was: <[synaxis:command-stopping 5]>；:213 {"jsonrpc":"2.0","id":1,"result":true} ==> expected: <false> but was: <true>（与原写一致）
+     TC-PROD-495 第 3 步：3 tests completed, 1 failed，:200（原 :199）
+     TC-PROD-496 第 3 步：16 tests completed, 1 failed，:218（原 :217），ManagementIntegrationTest tests=13 都绿
+     TC-PROD-498 第 2 步：3 tests completed, 1 failed，:258（原 :257）nothing closes while the stop is still being answered ==> expected: <[]> but was: <[closed]>
+     TC-PROD-498 第 3 步：grep 得 :262、:264、:266、:268、:269、:270、:272（原 :261 起）
+     DESIGN-PROD 里指向 Main.java 的三处跟着挪（:261 → :262、:620 → :623、:702 → :705）；变更记录行不改
+
+  5. MetricsEndpointLimitTest 的不读回复那条（TC-PROD-501，随第 1 轮修复加入）在别的测试类同时跑时约一半次数红，本轮改了它的写法
+     现象：本轮 6 次全量跑里 3 次红在 :102（the server never closed the connection of a peer with answers never read），单独跑都绿；
+       与本轮新加的类、也与第 1 轮之前就有的 ManagementWholeNumbersIntegrationTest、ManagementBacklogIntegrationTest 各配对跑 3 次，都有红，
+       而且红绿交替出现，与本轮的改动无关
+     诊断（测试里临时记下读到的字节、HostMetrics#answer 里临时记下中断了第几次交换，跑完还原）：红的那几次对端读到 200 个回复共
+       2,803,385 B，被中断的只有另一条测试的那次交换（第 204 次）；绿的那几次中断的是第 32、34 次交换。即内核把两端的 socket 缓冲涨到装下全部
+       200 个回复，没有交换被卡住，连接当然不在 10 s 时关。把请求加到 2,000 个也照样红（28,123,332 B、2,000 个回复全送到）：缓冲慢慢涨大时，
+       卡住的那次交换起得晚，10 s 到之前测试已经开始读，读把缓冲放空了
+     改法：之后每 0.5 s 再写一个请求、一个字节都不读，45 s 内等写失败（服务端关了连接）；API-PROD-015 应答一条补一句，TC-PROD-501 第 1、3 步同步
+       改后与 ManagementWholeNumbersIntegrationTest 配对跑 4 次都绿（不读回复那条 11.1 s），之后 6 次全量跑里这条都绿
+     TC-PROD-501 第 2 步重跑：2 tests completed, 2 failed，都在 MetricsEndpointLimitTest.java:85（经 :53、:74）HttpTimeoutException: request timed out
+     TC-PROD-501 第 3 步重跑：2 tests completed, 2 failed，:102（经 :55）… a request never finished；:125（经 :78）… answers never read（46.6 s）
+
+  6. 验证时发现、没修的：游戏端口绑不上时 server-app 不退出（§28.2 新登记的风险，默认下一轮修）
+     一次严格 grid 全量里 ManagementStopWhileStartingLaunchTest 红：它先挑好的空闲端口被同时跑的别的测试占走，子 JVM 日志
+       HostExceptionHandler … BindException: Address already in use 两行之后再无输出，进程不退出，测试等满 120 s。
+       本分支的其余 launch 测试同样先挑端口再起子 JVM；本轮只把新写的这条改成三个端口都写 0、从就绪行读管理端口
+     手动核对：/tmp 下脚本占住 0.0.0.0:25671，再以 -Dsynaxis.app.port=25671、核心模式起 d28c3f2ef4 的 installDist（pid 65579），30 s 后仍活着、
+       只有两行 ERROR、没有 Refusing to start；按 pid SIGTERM，未退出时 SIGKILL，占端口的脚本随后结束
+     另一次严格 counter 全量里根模块 PlayerRespawnChunkIntegrationTest.respawnDoesNotWaitForTheRespawnChunk 红（3.645 s，它的看守 3 s 就放行，
+       当时 1 分钟负载约 22），单独重跑与之后四次全量都绿，本轮没动引擎
+
+  7. 回归与门禁（最后一次代码与测试改动之后）
+     ./gradlew check --rerun-tasks --continue <mirror>（带数据库环境）
+       16:15:01Z → 16:18:40Z，BUILD SUCCESSFUL in 3m 38s，77 actionable tasks: 77 executed
+       architecture-tests 7 类 20 个、baker 4 / 52、根模块 421 / 3,106（15 跳过）、game-rts 12 / 83、loadtest 3 / 10、plugin-api 3 / 15、protocol 4 / 78、
+       server-app 74 / 370、synx 7 / 42、testing 7 / 10；合计 542 类 3,786 个，0 失败 0 错误，15 跳过（与第 1 轮同一批）；比第 1 轮多 server-app 的 4 类 4 个。
+       client-fabric 不在 check 里，它 build 目录里的旧结果不计；ManagementBansIntegrationTest 等数据库类 skipped=0
+     严格模式全量：
+       counter：./gradlew test --rerun --continue <mirror> -Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true
+         16:20:53Z → 16:23:58Z，BUILD SUCCESSFUL in 3m 4s，542 类 3,786 个 0 失败 0 错误 15 跳过；env dispatcher threads: 4、env thread provider: counter
+       grid：同上加 -Dsynaxis.thread-provider=grid
+         16:24:07Z → 16:27:12Z，BUILD SUCCESSFUL in 3m 4s，542 类 3,786 个 0 失败 0 错误 15 跳过；env dispatcher threads: 4、env thread provider: grid
+       三轮每个模块最早的时间戳都晚于起跑时刻
+     新增行覆盖：./gradlew jacocoTestReport <mirror>（check 那次的执行数据）；diff-cover 装在 /tmp 下的 uv 环境
+       --compare-branch=origin/main（同 CI）：Total 205 lines，Missing 25 lines，Coverage 87%，退出码 0
+       --compare-branch=d28c3f2ef4：Total 20 lines，Missing 7 lines，Coverage 65%：Main.java 231-233、277（只在子 JVM 里跑，子 JVM 不挂 JaCoCo）、
+         ManagementServer.java 400-402（send(ByteBuffer)，服务端从不发二进制帧，改动前那一行同样没覆盖）
+     ABI 门：plugin-api 与 protocol 没有改动（git diff d28c3f2ef4 -- plugin-api protocol 为空），没跑
+     配置键与翻译键：没有新键，门禁随 check 通过
+     文档 lint：design-doc check.sh docs/DESIGN-PROD.md → ✅ lint 无警告（状态图与迁移表按机分段 10 11 12 21 22 一致）；
+       test-doc check.sh docs/TEST.md → 只有已知三条（RUN-031 两行缺证据引用、REQ-PROD-031 无 TC）
+
+  8. RUN-039 的结论是否要改
+     不改。RUN-039 跑过的用例按当时的写法结果不变：本轮修的两处在它们没走到的路径上（起服完成之前的 server/stop、同时回复的出站判定），
+     改的旧用例只是反证的红行行号、全量总数与 TC-PROD-501 的写法（TC-PROD-501 不在 RUN-039 的范围里）。所以 TEST.md §6 不加注
+
+  9. 环境与回收
+     复用 synaxis-pg、synaxis-valkey，没有新建镜像、容器与卷；手动起的 server-app 进程（pid 98928、6363、6669、99235、6819、7296、65579）
+       都已退出（SIGTERM 或 server/stop；65579 未退出时 SIGKILL），测试起的子 JVM 由测试自己收尾
+     /tmp 下的临时目录（改前的 installDist 副本、复现脚本与运行目录、反证副本与结果 XML、diff-cover 的 uv 环境）本节写完即删

@@ -126,6 +126,8 @@ public final class ManagementMethods {
     private final BiConsumer<String, Map<String, ?>> analytics;
     private final Map<String, Method> methods = new LinkedHashMap<>();
     private final LogBudget failures = new LogBudget(LOGGER, "management calls failed");
+    /** Set once, by {@link #serverStarted()}; until then {@code minecraft:server/stop} is refused. */
+    private volatile boolean serverStarted;
 
     /**
      * @param process    the engine process
@@ -158,6 +160,17 @@ public final class ManagementMethods {
         methods.put("synaxis:shard/status", _ -> shardStatus());
         methods.put("synaxis:broadcast", this::broadcast);
         methods.put("synaxis:profile", this::profile);
+    }
+
+    /**
+     * Lets {@code minecraft:server/stop} through to the engine, called by Main once the game port is
+     * bound and the tick runs ({@code docs/DESIGN-PROD.md} §11.4). The interface listens before that,
+     * while the plugins are enabled: a shutdown begun then would run before Main has registered its
+     * shutdown tasks, and Main would go on to open the game port of a process that no longer ticks
+     * and never exits.
+     */
+    public void serverStarted() {
+        serverStarted = true;
     }
 
     /**
@@ -219,7 +232,9 @@ public final class ManagementMethods {
      * Reads one message as RFC 8259 JSON: one value in Gson's {@link Strictness#STRICT}, then
      * nothing but blanks. {@link com.google.gson.JsonParser#parseString} is lenient: it would run
      * a request written with single quotes, unquoted names, comments or {@code =>} and {@code ;}
-     * separators.
+     * separators. A number of 1,024 characters or more fails too, valid as it is: Gson's reader
+     * holds a number in its buffer of 1,024 characters and gives up on a longer one
+     * ({@code docs/DESIGN-PROD.md} §28.2).
      *
      * @param message the text frame
      * @return the value
@@ -373,7 +388,9 @@ public final class ManagementMethods {
         return new Outcome(new JsonPrimitive(all), all ? "ok" : "partial", null);
     }
 
-    private Outcome stop() {
+    private Outcome stop() throws Failure {
+        if (!serverStarted)
+            throw new Failure(UNAVAILABLE, "The server is still starting; stop it once it has started", "unavailable");
         // The shutdown closes this connection on its way, after waiting for the answer to be sent
         final boolean started = commands.beginStop(Duration.ZERO);
         return new Outcome(new JsonPrimitive(started), started ? "ok" : "invalid", null, commands::stopAnswered);
@@ -550,7 +567,8 @@ public final class ManagementMethods {
         try {
             number = value.getAsBigDecimal().intValueExact();
         } catch (NumberFormatException | ArithmeticException _) {
-            // A fraction, a number past int, or one past Gson's limits on the length and the exponent
+            // A fraction, a number past int, or one whose exponent is past Gson's limit. A number too
+            // long for Gson never gets here: its reader gives up on one of 1,024 characters, see parse
             throw invalid;
         }
         if (number < min || number > max) throw invalid;

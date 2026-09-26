@@ -381,33 +381,47 @@ public final class ManagementServer implements AutoCloseable {
         }
 
         // Every message sent after the handshake goes through one of these four methods: the replies,
-        // the notifications, the pongs, the pings of the lost connection timer and the close frame
+        // the notifications, the pongs, the pings of the lost connection timer and the close frame.
+        // Each one is judged and queued under this connection's monitor: the replies come from one
+        // virtual thread per call, and two that passed the judgment before either had queued would
+        // take the queue past its bound by more than one message. It is the library's own lock, held
+        // by close while it sends the close frame and taken by closeConnection, so that a sender
+        // closing the connection from admits never waits on a close waiting on it.
 
         @Override
         public void send(String text) {
-            if (admits()) super.send(text);
+            synchronized (this) {
+                if (admits()) super.send(text);
+            }
         }
 
         @Override
         public void send(ByteBuffer bytes) {
-            if (admits()) super.send(bytes);
+            synchronized (this) {
+                if (admits()) super.send(bytes);
+            }
         }
 
         @Override
         public void sendFrame(Framedata frame) {
-            if (admits()) super.sendFrame(frame);
+            synchronized (this) {
+                if (admits()) super.sendFrame(frame);
+            }
         }
 
         @Override
         public void sendFrame(Collection<Framedata> frames) {
-            if (admits()) super.sendFrame(frames);
+            synchronized (this) {
+                if (admits()) super.sendFrame(frames);
+            }
         }
 
         /**
          * Whether one more message may be queued; if not, the connection is closed with 1008 at once,
          * without a close frame, which would only wait behind what the peer does not read. Both
          * figures are counters: walking the queue takes its locks once per buffer, and thousands
-         * of calls answering at once would queue up behind each other on them.
+         * of calls answering at once would queue up behind each other on them. Called with this
+         * connection's monitor held, by the four senders above.
          */
         private boolean admits() {
             if (closedForBacklog.get()) return false;

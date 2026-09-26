@@ -66,16 +66,16 @@ public class MetricsEndpointLimitTest {
             deaf.setReceiveBufferSize(1024);
             deaf.connect(served.address);
             final byte[] request = "GET /metrics HTTP/1.1\r\nHost: metrics\r\n\r\n".getBytes(StandardCharsets.US_ASCII);
-            // Far more answers than the socket buffers of both ends hold
+            // About 2.8 MB of answers, more than the socket buffers of both ends hold unless the kernel grew them
             for (int i = 0; i < 200; i++) deaf.getOutputStream().write(request);
             deaf.getOutputStream().flush();
             Thread.sleep(300);
 
             assertScrapeAnswered(served);
-            // Reading earlier would let the answers through; past the limit the connection is gone
-            Thread.sleep(CLOSED_WITHIN.toMillis());
-            deaf.setSoTimeout((int) ANSWERED_WITHIN.toMillis());
-            assertClosed(deaf.getInputStream(), "answers never read");
+            // Reading would let the answers through. The kernel may grow the socket buffers of both
+            // ends to megabytes, so the exchange that blocks on them, cut off 10 s later, can start
+            // seconds after the first
+            assertClosedWhileWriting(deaf, request, "answers never read");
         }
     }
 
@@ -103,6 +103,26 @@ public class MetricsEndpointLimitTest {
         } catch (SocketException _) {
             // Reset: the server closed with bytes of the peer it had not read
         }
+    }
+
+    /**
+     * Writes the request again every half second, reading nothing, until a write fails because the
+     * server has closed the connection: the only way a peer that never reads can tell, reading would
+     * drain what the blocked exchange waits to write.
+     */
+    private static void assertClosedWhileWriting(Socket peer, byte[] request, String what) throws InterruptedException {
+        // Filling buffers of a few megabytes, then the limit, with room for a loaded machine
+        final long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(45);
+        while (System.nanoTime() - deadline < 0) {
+            try {
+                peer.getOutputStream().write(request);
+                peer.getOutputStream().flush();
+            } catch (IOException _) {
+                return;
+            }
+            Thread.sleep(500);
+        }
+        throw new AssertionError("the server never closed the connection of a peer with " + what);
     }
 
     private record Served(ServerProcess process, HostMetrics metrics, InetSocketAddress address)

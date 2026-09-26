@@ -228,8 +228,9 @@ public final class Main {
         final HostMetrics metrics = HostMetrics.register(process, new HostMetrics.Sources(ledger::droppedTotal,
                 store.store(), store.session(), store.database(), store.redis()));
         serveMetrics(metrics, metricsBind);
-        final ManagementServer management = ManagementServer.serve(managementSettings, process, new ManagementMethods(
-                process, commands, store.store(), store.moderation(), store.session(), shardId, ledger::record));
+        final ManagementMethods managementMethods = new ManagementMethods(process, commands, store.store(),
+                store.moderation(), store.session(), shardId, ledger::record);
+        final ManagementServer management = ManagementServer.serve(managementSettings, process, managementMethods);
         if (coreMode != CoreMode.Setting.ON) host.enable(PluginHost.discover(), selectedPlugins);
 
         // (5) Which mode this process serves in. Gameplay needs both halves — an admission provider
@@ -272,6 +273,8 @@ public final class Main {
 
         // (6) bind, freeze the registries, accept, start the dispatcher and the tick thread.
         server.start(BIND_ADDRESS, port);
+        // Not earlier: a stop begun before this would run ahead of the shutdown tasks above (§11.4)
+        managementMethods.serverStarted();
 
         // (7) Printed after all three, so "the ready log is out" means the process is ticking.
         LOGGER.info("synaxis server-app listening on {}:{}", BIND_ADDRESS, port);

@@ -553,6 +553,7 @@ class ManagementIntegrationTest {
     @Test
     void stopIsAnsweredFirstAndSharesTheConsoleGuard(Env env) throws Exception {
         final ManagementClient client = connect(serve(env, "127.0.0.1:0"));
+        methods(env).serverStarted();
 
         assertTrue(client.call(1, "minecraft:server/stop", null).get("result").getAsBoolean());
         assertFalse(client.call(2, "minecraft:server/stop", null).get("result").getAsBoolean(), "already stopping");

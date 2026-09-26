@@ -151,7 +151,7 @@ public class ConfigFileLaunchTest {
         assertFalse(log.contains("listening on"), log);
     }
 
-    private static int freePort() throws IOException {
+    static int freePort() throws IOException {
         try (ServerSocket socket = new ServerSocket(0, 0, InetAddress.getLoopbackAddress())) {
             return socket.getLocalPort();
         }
@@ -270,7 +270,7 @@ public class ConfigFileLaunchTest {
     }
 
     /** A server application in a JVM of its own, its output collected line by line. */
-    private record Launched(Process process, List<String> output, Thread reader) implements AutoCloseable {
+    record Launched(Process process, List<String> output, Thread reader) implements AutoCloseable {
 
         static Launched start(Path directory, Class<?> launcher, String... properties) throws IOException {
             final List<String> command = new ArrayList<>(List.of(

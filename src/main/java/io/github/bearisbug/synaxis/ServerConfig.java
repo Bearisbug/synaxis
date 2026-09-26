@@ -315,9 +315,20 @@ public record ServerConfig(
 
     private static final ServerConfig DEFAULTS = new Builder().build();
 
+    /**
+     * Reads a boolean key as it is written: {@code true} or {@code false}, lower case, nothing
+     * around it ({@code docs/DESIGN-PROD.md} {@code API-PROD-023}). Any other value refuses the
+     * start, since reading it as false would turn a guard that is on by default off without a word,
+     * e.g. {@code true} with a trailing blank in {@code synaxis.properties}.
+     */
     private static boolean booleanProperty(String name, boolean defaultValue) {
         final String value = System.getProperty(name);
-        return value != null ? Boolean.parseBoolean(value) : defaultValue;
+        if (value == null) return defaultValue;
+        return switch (value) {
+            case "true" -> true;
+            case "false" -> false;
+            default -> throw new IllegalArgumentException("Property '" + name + "' is not true or false: \"" + value + "\"");
+        };
     }
 
     private static int intProperty(String name, int defaultValue) {

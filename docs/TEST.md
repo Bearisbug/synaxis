@@ -14,6 +14,7 @@
 
 | 日期 | 改动 | 作者 |
 | --- | --- | --- |
+| 2026-09-25 | 跟进 `docs/DESIGN-PROD.md` v0.9.9（修复轮），第 6 波集成分支上审查出的两个安全缺陷。**新增 §4「生产就绪 · 第 6 波修复轮 F2：管理消息的严格读法与布尔键」五条 `TC-PROD-465`～`TC-PROD-469`**，都带实跑过的反证：宽松写法的请求回 −32700、一条都不执行（465，§19 场景；两条反证：改成 `Strictness.LENIENT`、不看文档结尾）；同一对象里名字重复回 −32600、不执行，不同对象的同名键照常（466；反证：不查重名）；文件里 `true` 带尾随空格时 15 个 `ServerConfig` 布尔键都拒建进程（467；反证：改回 `Boolean.parseBoolean`）；命令行上 `yes`、`TRUE` 等写法拒建进程（468，与 467 同一次反证）；真 JVM 的 `Main` 与 `ShardMain` 都拒启（469，§19 场景，同一次反证）。`ConfigFileLaunchTest` 的 `Launched` 与 `freePort` 改为包内可见供新类复用，该类的两条测试与行号不变。§5 加这一节的回归映射 | Bearisbug |
 | 2026-09-25 | 跟进 `docs/DESIGN-PROD.md` v0.9.9（修复轮），修 §28.2 的停机保存缺陷。**新增 §4「生产就绪 · 第 6 波修复轮：没进世界的玩家赶上停机保存」两条**：`TC-PROD-460`（`REQ-PROD-008`，新类 `ShutdownSaveBeforeSpawnIntegrationTest` 三条：已进 PLAY 没进世界、还在 configuration 的玩家在保存阶段内断开都照样保存且钩子恰 1 次，保存阶段结束后的断线不调钩子不写库；修复前的红写进第 2 步，三条反证：断开不接手快照、保存阶段结束后仍写、接手时不调钩子）、`TC-PROD-461`（真进程，TC-GAME-034 第 3 步同一操作加台账判据，反证下 10 次里 8 次等满 30 s）。§5 加对应一行。`ConfigFileLaunchTest` 结束 JVM 那处的注释删去「立即停机会等满 30 s」的理由，用例本身不变 | Bearisbug |
 | 2026-09-25 | 跟进 `docs/DESIGN-PROD.md` v0.9（集成修复），第 6 波验收后审查出的三个缺陷。**`TC-PROD-382`** 标题加「分片的在超出的那一片断开」；第 2 步反证原写的构造器调用已不在代码里，改为经 `proof.never` 把 `BoundedDraft` 换成库自带的 `Draft_6455()`，重跑结果不变；新增第 3 步（新类 `ManagementFragmentsIntegrationTest`：恰 65,536 B 分三片照常执行，三个非结束片累计过上限即 1009）与第 4 步反证（换回只在首片与结束片上比的 `Draft_6455(List.of(), MAX_MESSAGE_BYTES)`，红在 `:96`）。**`TC-PROD-392`** 标题加「读不出进程的环境变量」，新增第 6 步（新类 `ProfilerTest`）与第 7 步反证（`expected: <0> but was: <84>`）。**`TC-PROD-174`** 新增第 3～5 步：`PlayerStoreIntegrationTest` 两条（被放弃那次的释放还没提交时，同账号第二次登录保有自己取得的写权；同一登录被放弃两次只释放一次）与两条反证。**`TC-PROD-376`** 新增第 4、5 步：转入的登录在同账号被放弃那次的释放还没提交时，保有 ⑥ 取得的写权。两个存储测试类的全类计数随之改：`PlayerStoreIntegrationTest` 21 → 23（`TC-PROD-214` 第 2、3 步），`TransferTicketsIntegrationTest` 6 → 7（`TC-PROD-157` 第 1～3 步，其中第 3 步红 5 → 6 条；`TC-PROD-376` 第 1、2 步；`TC-PROD-377` 第 3 步）；这几步的反证都在集成分支上重跑过，新用例排在类末，原有红行号不变。**`TC-PROD-395`** 第 2 步红行 `ManagementServer.java:208` → `:212`（该文件加了 3 个导入与一行注释），已重跑。§5 第 6 波 U 组一行的触发条件加 `PlayerStore#abandon` 与 `admitted` 的放弃判定 | Bearisbug |
 | 2026-09-25 | 登记 RUN-036（第 6 波集成分支验收，证据 `docs/test-runs/RUN-036/`）。跟进 `docs/DESIGN-PROD.md` v0.9：本表与 §4 各节里按组写的「v0.9（U）」「v0.9（6D）」等引用改为验收重编的 v0.9.1～v0.9.8。D 组记在 `docs/test-runs/_pending-wave6/closures.txt` 的结案记录原样并入 RUN-036 的证据，该目录删去。用例判据一条没改 | Bearisbug |
@@ -5738,6 +5739,73 @@ for (var request : System.getenv("MGMT_CALLS").split("\n")) {
 
 后置：每次都已按 pid 停服、关掉 FIFO 的写端并删掉临时目录；25697 无监听；`git status --short` 无输出。
 
+### 生产就绪 · 第 6 波修复轮 F2：管理消息的严格读法与布尔键
+
+对应 `REQ-PROD-032`（`API-PROD-022` 的「消息」「错误」两条，§19「管理消息只按严格 JSON 读」场景）与 `REQ-PROD-033`（`API-PROD-023` 键表前的布尔键规则，§19「ServerConfig 的布尔键只认 true 与 false」场景），`docs/DESIGN-PROD.md` v0.9.9（修复轮）。实现：`ManagementMethods#parse` 用 Gson `Strictness.STRICT` 的 `JsonReader` 子类读出一个值，再要求读到文档结尾，子类在同一对象里第二次读到某个名字时失败；`ServerConfig#booleanProperty` 只认 `true`、`false`。宿主唯一的布尔键 `synaxis.app.management.enabled` 已核对：去首尾空白后只认 `true` / `false`、别的值拒启（`ManagementSettingsTest`，`TC-PROD-380` 第 1 步），本节不改它。
+
+测试：`:server-app` 新增三个类。`ManagementStrictJsonIntegrationTest` 2 条，真 WebSocket，客户端是 6B 一节的 `ManagementClient`。`BooleanKeysTest` 3 条，在测试 JVM 里把文件经 `ConfigFile.apply` 写进系统属性，再调 `ServerConfig.fromSystemProperties()`；本模块的测试类逐个执行，每条测试结束前清掉自己设的属性。`BooleanKeysLaunchTest` 2 条，各另起 JVM，沿用 `ConfigFileLaunchTest` 里包内可见的 `Launched` 与 `freePort`。「跑单测」与结果文件同 6C 一节；本节不连数据库。反证一律是「临时改一处、跑、看红、`git checkout --` 还原、重跑复绿」。
+
+#### `TC-PROD-465` 宽松写法的请求回 −32700、一条都不执行；同一请求按 RFC 8259 写照常执行（§19 场景） — 对应 `REQ-PROD-032` · 级别: 冒烟 · 执行者: AI
+
+前置：工作副本干净。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑单测 `:server-app:test` 的 `io.github.bearisbug.synaxis.app.management.ManagementStrictJsonIntegrationTest`，看 `onlyStrictJsonIsARequest` | `tests="2"` 全绿。玩家 `Witness` 在线后客户端连上，依次发 14 条消息，前 13 条都是同一个 `synaxis:broadcast`（文本 `lenient`）的宽松写法：单引号、不带引号的名字、`/* */` 注释、`//` 注释行、`#` 注释行、`=>` 分隔、`=` 分隔、`;` 分隔、数组末尾多一个逗号、`)]}'` 前缀、字符串里的制表符、`\'` 转义、对象后面跟 ` x`，第 14 条是空消息。每条都回 −32700、`message` 为 `Parse error`、`id` 为 null、`error.data.request_id` 是 UUID，没有 `result`；这时台账没有 `actor=management` 的 `gm_command`。随后按 RFC 8259 写的 `synaxis:broadcast`（`[{"literal":"strict"}]`）得结果 `1`，前后带空格、换行与制表符的 `minecraft:players` 得 1 个玩家；台账恰为这两条，玩家只收到 `strict` 一条系统消息 |
+| 2 | 反证（宽松读法，即改动前的行为）：`server-app/src/main/java/io/github/bearisbug/synaxis/app/management/ManagementMethods.java` 的 `setStrictness(Strictness.STRICT);` 改为 `setStrictness(Strictness.LENIENT);`，跑第 1 步，再还原 | `2 tests completed, 1 failed`：`onlyStrictJsonIsARequest` 红在 `ManagementStrictJsonIntegrationTest.java:126`（经 `:142`），`an error for {'jsonrpc':'2.0','id':1,'method':'synaxis:broadcast','params':[{'literal':'lenient'}]}: {"jsonrpc":"2.0","id":1,"result":1} ==> expected: <true> but was: <false>`：单引号写的请求被执行，广播发到了 1 名玩家。名字重复那一条照常绿 |
+| 3 | 反证（不看文档结尾）：同一文件的 `if (reader.peek() != JsonToken.END_DOCUMENT)` 改为 `if (Boolean.getBoolean("proof.never") && reader.peek() != JsonToken.END_DOCUMENT)`，跑第 1 步，再还原 | `2 tests completed, 1 failed`：红在同一行，这回是第 13 条：`an error for {"jsonrpc":"2.0","id":13,"method":"synaxis:broadcast","params":[{"literal":"lenient"}]} x: {"jsonrpc":"2.0","id":13,"result":1} ==> expected: <true> but was: <false>`。严格模式读完第一个值就停，后面的 ` x` 没人看，请求被执行；前 12 条仍回 −32700 |
+| 4 | 还原后重跑第 1 步 | 与第 1 步相同 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PROD-466` 同一对象里名字出现两次回 −32600、不执行，任何一层都算；不同对象里的同名键照常 — 对应 `REQ-PROD-032` · 级别: 边缘 · 执行者: AI
+
+前置：工作副本干净。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `TC-PROD-465` 第 1 步的单测，看 `aNameGivenTwiceInOneObjectIsAnInvalidRequest` | 通过：`{"jsonrpc":"2.0","id":1,"method":"minecraft:players","method":"synaxis:broadcast","params":[{"literal":"twice"}]}` 回 −32600，`message` 为 `The name method is given twice in one object`，`id` 为 null；写了两个 `id`（2 与 3）的请求回 −32600；`params` 的 Message 里写了两个 `literal` 的请求回 −32600，`message` 为 `The name literal is given twice in one object`。到这里台账没有 `gm_command`，玩家没有收到系统消息。`minecraft:players/kick` 的两个条目都是 `{"player":{"name":"Nobody"}}`（同名键在不同对象里），照常执行、得 `[]`，台账一条 |
+| 2 | 反证（不查重名，即改动前的后一个生效）：`ManagementMethods.java` 的 `if (!objects.element().add(name)) throw new NameGivenTwice(name);` 改为 `if (!objects.element().add(name) && Boolean.getBoolean("proof.never")) throw new NameGivenTwice(name);`，跑单测，再还原 | `2 tests completed, 1 failed`：`aNameGivenTwiceInOneObjectIsAnInvalidRequest` 红在 `ManagementStrictJsonIntegrationTest.java:126`（经 `:167`），`an error for {"jsonrpc":"2.0","id":1,"method":"minecraft:players","method":"synaxis:broadcast","params":[{"literal":"twice"}]}: {"jsonrpc":"2.0","id":1,"result":1} ==> expected: <true> but was: <false>`：后一个 `method` 生效，广播被执行 |
+| 3 | 还原后重跑第 1 步 | 与第 1 步相同 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PROD-467` 文件里写 `true` 再多一个空格：15 个 `ServerConfig` 布尔键都拒建进程，报键名与带引号的原值；`true`、`false` 照常读 — 对应 `REQ-PROD-033` · 级别: 冒烟 · 执行者: AI
+
+前置：工作副本干净；测试 JVM 没有从命令行拿到这 15 个键（`build-src` 只转 `dispatcher-threads`、`acquirable-strict`、`thread-provider` 三个）。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑单测 `:server-app:test` 的 `io.github.bearisbug.synaxis.app.BooleanKeysTest` | `tests="3"` 全绿。`aTrailingBlankAfterTrueInTheFileRefusesTheProcess`：15 个键逐个写一行 `<键>=true `，`ConfigFile.apply` 不拒这个文件，系统属性里的值是带空格的 `true `，`ServerConfig.fromSystemProperties()` 抛 `IllegalArgumentException`，信息恰为 `Property '<键>' is not true or false: "true "`。`exactlyTrueAndFalseAreRead`：不设键时 `enforceInteractionLimit`、`rejectMalformedPacket` 为 true，`hideOnlinePlayers` 为 false；文件写 `synaxis.enforce-entity-interaction-range=false`、`synaxis.reject-malformed-packet=false`、`synaxis.hide-online-players=true` 后三者依次为 false、false、true |
+| 2 | 反证（改回 `Boolean.parseBoolean`，即改动前的读法）：`src/main/java/io/github/bearisbug/synaxis/ServerConfig.java` 的 `booleanProperty` 方法体从 `if (value == null) return defaultValue;` 到 `};` 换回一行 `return value != null ? Boolean.parseBoolean(value) : defaultValue;`，一次跑 `BooleanKeysTest` 与 `BooleanKeysLaunchTest`（命令接 `--tests '*BooleanKeysTest' --tests '*BooleanKeysLaunchTest'`），再还原 | `5 tests completed, 4 failed`，用时约 1 分 18 秒。本条的一处：`aTrailingBlankAfterTrueInTheFileRefusesTheProcess` 红在 `BooleanKeysTest.java:71`，`synaxis.shutdown-on-signal ==> Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown.`（第一个键的 `true ` 就被读成 false）；`exactlyTrueAndFalseAreRead` 照常绿。另三处见 `TC-PROD-468`、`TC-PROD-469` 第 2 步 |
+| 3 | 还原后重跑第 1 步 | 与第 1 步相同 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PROD-468` 命令行上 `true`、`false` 以外的写法（`yes`、`1`、`on`、`TRUE`、`True`、`False`、前后带空白、空值）都拒建进程 — 对应 `REQ-PROD-033` · 级别: 边缘 · 执行者: AI
+
+前置：同 `TC-PROD-467`。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `TC-PROD-467` 第 1 步，看 `otherSpellingsOnTheCommandLineRefuseTheProcess` | 通过：`synaxis.reject-malformed-packet` 依次设为 `yes`、`1`、`on`、`TRUE`、`True`、`False`、` true`、`true` 后跟制表符、空串，每次 `fromSystemProperties()` 都抛 `Property 'synaxis.reject-malformed-packet' is not true or false: "<原值>"`。按改动前的读法，这 9 个里 `TRUE`、`True` 读作 true，其余读作 false（`docs/DESIGN-PROD.md` `API-PROD-023` 写明这是有意的变化） |
+| 2 | 反证：`TC-PROD-467` 第 2 步的同一次运行 | `otherSpellingsOnTheCommandLineRefuseTheProcess` 红在 `BooleanKeysTest.java:104`，`"yes" ==> Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown.` |
+| 3 | 还原后重跑第 1 步 | 与第 1 步相同 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PROD-469` 真 JVM：`Main` 命令行给 `-Dsynaxis.reject-malformed-packet=yes`、分片入口读到文件里的 `synaxis.enforce-entity-interaction-range=true `（行尾一个空格），都拒启、游戏端口没绑（§19 场景） — 对应 `REQ-PROD-033` · 级别: 冒烟 · 执行者: AI
+
+前置：同 `TC-PROD-442`（`Launched` 以测试 classpath 另起 JVM，用生产的 `logback.xml`，测试结束时按进程句柄结束它，JUnit 删掉临时目录）。两个 JVM 都在命令行带 `synaxis.app.log=stdout`、离线、核心模式、空闲游戏端口与 `127.0.0.1:0` 指标端口，入口即使放过了坏值也只会起在空闲端口上。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑单测 `:server-app:test` 的 `io.github.bearisbug.synaxis.app.BooleanKeysLaunchTest` | `tests="2"` 全绿（本机各约 0.3 s 与 0.2 s）。`anotherWordOnTheCommandLineRefusesMain`：`Main` 带 `-Dsynaxis.reject-malformed-packet=yes`，退出码 1，日志有 `Refusing to start: Property 'synaxis.reject-malformed-packet' is not true or false: "yes"`，没有 `listening on`。`aTrailingBlankInTheFileRefusesAShard`：`ShardMain` 读工作目录的 `synaxis.properties`（一行 `synaxis.enforce-entity-interaction-range=true `），退出码 1，日志有 `Refusing to start: Property 'synaxis.enforce-entity-interaction-range' is not true or false: "true "`，没有 `listening on` |
+| 2 | 反证：`TC-PROD-467` 第 2 步的同一次运行 | 两条都红，各等满 30 s：红在 `BooleanKeysLaunchTest.java:34`（经 `ConfigFileLaunchTest.java:312` 的 `the JVM exits: …`）。所附日志里 `Main` 那个 JVM 是 `rejectMalformedPacket=false` 与 `listening on 0.0.0.0:<空闲端口>`；`ShardMain` 那个是 `Effective config file: path=<临时目录>/synaxis.properties keys=1 overridden_by_command_line=[]`、`enforceInteractionLimit=false` 与 `listening on 0.0.0.0:<空闲端口>`：改动前的读法把两个默认开着的护栏静默关掉，进程照常起来 |
+| 3 | 还原后重跑第 1 步 | 与第 1 步相同 |
+
+后置：`git status --short` 无输出；`pgrep -fl 'synaxis.app.Main\|synaxis.app.ShardMain'` 没有本轮起的进程。
+
 ## 5. 回归策略
 
 - **全量轮**（全部用例）：首次成稿、每个阶段 gate（引擎域阶段 0、2、3；游戏域 `docs/DESIGN-M2.md` §26 的阶段 1～6b；大世界域 `docs/DESIGN-M3.md` §26 的 M3-A～M3-G）、跨功能域改动、地基变更（JDK、Gradle、镜像、协议版本、模块拆分、启动入口）。
@@ -5775,6 +5843,7 @@ for (var request : System.getenv("MGMT_CALLS").split("\n")) {
   - 生产就绪域（`docs/DESIGN-PROD.md`）：管理接口与性能剖析（`REQ-PROD-032`、`REQ-PROD-034`）→ TC-PROD-380～TC-PROD-397；动了 `server-app` 的 `management/` 就跑 TC-PROD-380～TC-PROD-391、TC-PROD-393、TC-PROD-395（TC-PROD-390 要数据库前置），再动了 `Main` 里管理接口的装配或起服顺序加 TC-PROD-397（真进程，约 2 分钟）；动了 `Profiler` 或 `HostCommands` 的 `profile`、`claimStop`、`startStop` 就跑 TC-PROD-389、TC-PROD-391、TC-PROD-392 与 TC-PROD-243、TC-PROD-255；动了 `logback.xml` 跑 TC-PROD-394 与 TC-PROD-004；动了模组 lang 或 `TranslationKeyGateTest` 跑 TC-PROD-396；动了 `HostModeration#activeBans` 跑 TC-PROD-390；升 Java-WebSocket 版本时全跑，并重看 TC-PROD-381 第 1 步（被拒握手的回应是否仍是 404 且逐字节相同）与 TC-PROD-383（库是否已自带握手前的上限）。
   - 生产就绪域（`docs/DESIGN-PROD.md`）：配置文件与压缩设置（`REQ-PROD-033`、`REQ-PROD-038`）→ TC-PROD-440～TC-PROD-445；动了 `server-app` 的 `ConfigFile` 或 `Main` 读文件、报拒启的几处就跑 TC-PROD-440～TC-PROD-443，再动了 `Main` 的静态字段顺序、起服顺序或 `logback.xml` 加 TC-PROD-445（真进程，约 1 分钟）；动了 `ShardMain#main` 跑 TC-PROD-440、TC-PROD-442、TC-PROD-443 与 TC-PROD-333、TC-PROD-334；给任何模块加、删或改名一个 `synaxis.*` 系统属性（`ServerConfig#fromSystemProperties`、`JvmFlags`、各包的 JVM 级开关、宿主与 RTS 插件读的键、`logback.xml` 的替换）就跑 TC-PROD-441，并在同一提交里改 `ConfigFile.KEYS` 与 `docs/DESIGN-PROD.md` `API-PROD-023` 的键表；动了 `ServerConfig#compressionThreshold`、`ServerProcessImpl` 取阈值的一处、`JvmFlags.COMPRESSION_LEVEL`、`NetworkBufferImpl` 的 `Deflater` 池、`PacketWriting#writeCompressedFormat` 或 `PlayerSocketConnection#startCompression` 就跑 TC-PROD-444 与 TC-PROD-442。跨域牵连：动了 `HostMetrics` 的指标名 → 加 TC-PROD-441（门禁按 `HostMetrics.NAMES` 认指标名）；动了引擎的压缩路径 → 加 TC-PROD-291（开了压缩的连接的解压字节限速）。
   - 生产就绪域（`docs/DESIGN-PROD.md`）：第 6 波修复轮，没进世界的玩家赶上停机保存（`REQ-PROD-008`）→ TC-PROD-460、TC-PROD-461；动了 `PlayerStore` 的 `loggedOut`、`saveAll`、`shutdownSnapshot` 或 `onSaveEnded` 就跑 TC-PROD-460（要数据库前置）与 TC-PROD-155、TC-PROD-214 第 2 步，再动了停机序列（引擎 `ServerProcessImpl#save`、宿主 `ShutdownSequence`）加 TC-PROD-461（真进程，第 1 步约 1 分钟，第 2 步的反证约 5 分钟）。跨域牵连：动了引擎 `PlayerConnection#disconnect`、`ConnectionManager#leftBeforeSpawn` / `updateWaitingPlayers` 的断线派发 → 加 TC-PROD-460 与 TC-PROD-461。
+  - 生产就绪域（`docs/DESIGN-PROD.md`）：管理消息的严格读法与布尔键（`REQ-PROD-032`、`REQ-PROD-033`，v0.9.9）→ TC-PROD-465～TC-PROD-469；动了 `ManagementMethods#parse`、`UniqueNamesReader` 或 `handle` 里读消息的一段就跑 TC-PROD-465、TC-PROD-466 与 TC-PROD-385（6B 的错误码）；动了 `ServerConfig#booleanProperty` 或给 `ServerConfig` 加、删布尔键就跑 TC-PROD-467～TC-PROD-469（TC-PROD-469 起两个 JVM，约 1 s），加、删布尔键时同步 `BooleanKeysTest` 的 15 个键与 `docs/DESIGN-PROD.md` `API-PROD-023` 键表的取值列；动了 `ConfigFileLaunchTest` 的 `Launched` 加跑 TC-PROD-442、TC-PROD-443 与 TC-PROD-469。升 Gson 版本时跑 TC-PROD-465、TC-PROD-466（`Strictness.STRICT` 与 `JsonElement` 适配器是否仍按本节的写法读）。
   - 影响面不确定时升级为全量轮。
 - **复测轮**（上轮失败用例 + 全部冒烟级）：修复失败项之后。
 - **人工收口轮**（仅上轮「待人工」用例）：AI 轮之后由人工补测 TC-016、TC-030、TC-GAME-020、TC-GAME-038、TC-GAME-046、TC-GAME-047，不要求冒烟级。

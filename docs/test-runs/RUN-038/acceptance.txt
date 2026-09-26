@@ -1,0 +1,33 @@
+RUN-038 验收记录（2026-09-26，验收人侧）
+
+被测版本：集成分支 prod/integrate-w6 d7929c27ec（RUN-037 之后的修复提交：停机冻结与断线的交错、profile 文件与别的 JFR 录制、
+管理消息的片数）加本记录所在的文档提交（v0.9.14 版本号定稿，只改 docs/**）。
+范围：REQ-PROD-008 → TC-PROD-470；REQ-PROD-034 → TC-PROD-471；REQ-PROD-032 → TC-PROD-472；另跑全量回归与 ABI 门。
+
+一、门禁（全部 --rerun-tasks / --rerun，带 SYNAXIS_TEST_PG_URL / REDIS_URL / PG_PASSWORD，起跑 load1 4.23，结束 16.19）
+  ./gradlew check --rerun-tasks --continue → BUILD SUCCESSFUL；根构建 3,744 个测试，0 失败，15 跳过（根模块原有 4 个类）
+  严格 counter：test --rerun -Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true → 3,744 个 0 失败
+  严格 grid：再加 -Dsynaxis.thread-provider=grid → 3,744 个 0 失败；
+    EnvDispatcherThreadsIntegrationTest 报告含 "env dispatcher threads: 4"、"env thread provider: grid"
+  数据库用例（grid 那一轮的结果文件）：PlayerStoreIntegrationTest 23、TransferTicketsIntegrationTest 7、CrossShardHandoverIntegrationTest 6、
+    ShutdownSaveIntegrationTest 4、ShutdownSaveBeforeSpawnIntegrationTest 3、ShutdownSaveRaceIntegrationTest 2、MigrationsDbTest 5、
+    ShardSessionDbTest 4、StoreHousekeepingDbTest 3，都 skipped=0、0 失败
+  ABI 门：gh release download v0.3.0（plugin-api.jar、protocol.jar）→ :plugin-api / :protocol checkBinaryCompatibility --rerun 都执行，BUILD SUCCESSFUL，0 违例
+
+二、用例
+  TC-PROD-470 第 1 步：ShutdownSaveRaceIntegrationTest tests=2 0 失败（三轮门禁各一次）；第 4 步的四个类见第一节
+  TC-PROD-471 第 1 步：ProfilerTest tests=2 0 失败
+  TC-PROD-472 第 1 步：ManagementFragmentCountIntegrationTest tests=1 0 失败
+  验收人反证（两处同时改，跑三个类，再 git checkout 还原）：
+    Profiler#start 的 writeWithoutEnvironment(recording, path); 改为 proof.never 时才过滤、否则 recording.dump(path)（TC-PROD-471 第 2 步）
+    BoundedDraft#processFrame 的片数判断前加 Boolean.getBoolean("proof.never") &&（TC-PROD-472 第 2 步）
+    → 4 tests completed, 2 failed：ProfilerTest.java:70（anotherRecordingWithTheJdkSettingsDoesNotBringTheEnvironmentIn），
+      ManagementFragmentCountIntegrationTest.java:96（TimeoutException，连接 10 s 后仍开着）；ManagementFragmentsIntegrationTest 绿
+    还原后同三个类 --rerun：BUILD SUCCESSFUL
+  TC-PROD-470 第 2、3 步反证由修复人在 d7929c27ec 上实跑，原文见 docs/test-runs/RUN-037/acceptance.txt 第十五节，本轮未重跑
+
+三、本轮之后仍开着的（未修，按严重度，见对话记录与 DESIGN-PROD §28.2 后续登记）
+  停机开始时已在载入的登录，保存阶段之后照样被准入并在 onSaveEnded 之后写库；
+  客户端被准入后一直不回 SelectKnownPacks 时停机保存等满 30 s（knownPacksResponseTimeout 默认 300 s）；
+  management / metrics 的 bind 接受 host@host:port 形式、绑到全部网卡；synaxis:profile 的 seconds=0.99999999999999999999 回 -32603；
+  管理接口出站无上限（只读代码推断，未复现）

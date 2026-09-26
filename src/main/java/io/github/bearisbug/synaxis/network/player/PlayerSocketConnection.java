@@ -125,9 +125,10 @@ public class PlayerSocketConnection extends PlayerConnection {
     private final InboundPacketLimits.Limiter inboundLimiter;
 
     // The outbound backlog (docs/DESIGN-PROD.md API-PROD-020): the bytes offered to the write thread
-    // and not taken off the queue yet. The entity movement the viewable packets carry, the only
-    // BufferedPackets there are, is what can be shed: movementBytes is the part of the backlog that
-    // is movement, shedBytes the movement shed but still in the queue, which the write thread skips.
+    // and not taken off the queue yet. The entity movement the viewable packets carry, the sheddable
+    // BufferedPackets (docs/DESIGN-M3.md ADR-M3-018), is what can be shed: movementBytes is the part of
+    // the backlog that is movement, shedBytes the movement shed but still in the queue, which the write
+    // thread skips. Any other BufferedPacket, such as the chunk packet of a handle chunk, is never shed.
     // Movement is offered and taken off under movementLock, so that the two agree on which packets
     // were shed; while any shed movement is still queued, new movement is not queued at all.
     private final long maxBacklogBytes;
@@ -484,7 +485,7 @@ public class PlayerSocketConnection extends PlayerConnection {
 
     private void offer(SendablePacket packet) {
         final long size = backlogSize(packet);
-        if (packet instanceof BufferedPacket) {
+        if (packet instanceof BufferedPacket buffered && buffered.sheddable()) {
             synchronized (movementLock) {
                 if (shedBytes > 0) return; // The peer has not caught up with the last shed yet
                 this.movementBytes += size;
@@ -765,7 +766,7 @@ public class PlayerSocketConnection extends PlayerConnection {
         buffer.registries(process().registries());
         // Write to buffer
         PacketWriting.writeQueue(buffer, packetQueue, 1, (b, packet) -> {
-            if (packet instanceof BufferedPacket movement) return writeMovement(b, movement);
+            if (packet instanceof BufferedPacket movement && movement.sheddable()) return writeMovement(b, movement);
             final boolean success = writeCounted(b, packet);
             if (success) backlogBytes.addAndGet(-backlogSize(packet));
             return success;

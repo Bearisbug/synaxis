@@ -83,8 +83,11 @@ public class OutboundBacklogIntegrationTest {
         }
     }
 
-    /** A connection in the play state with a player whose write thread is the test thread. */
-    private static final class Harness implements AutoCloseable {
+    /**
+     * A connection in the play state with a player whose write thread is the test thread; the sheddable
+     * backlog test uses it too.
+     */
+    static final class Harness implements AutoCloseable {
         private final Env env;
         private final ServerSocketChannel server;
         private final SocketChannel peer;
@@ -92,6 +95,7 @@ public class OutboundBacklogIntegrationTest {
         final PlayerSocketConnection connection;
         final List<DisconnectPacket> peerDisconnects = new CopyOnWriteArrayList<>();
         final AtomicLong received = new AtomicLong();
+        private final List<byte[]> receivedParts = new CopyOnWriteArrayList<>();
         private final Thread reader;
         private int flushes;
         private final NetworkBuffer framedBody;
@@ -122,7 +126,12 @@ public class OutboundBacklogIntegrationTest {
                 final ByteBuffer buffer = ByteBuffer.allocate(65_536);
                 try {
                     int read;
-                    while ((read = peer.read(buffer.clear())) >= 0) received.addAndGet(read);
+                    while ((read = peer.read(buffer.clear())) >= 0) {
+                        final byte[] part = new byte[read];
+                        buffer.flip().get(part);
+                        receivedParts.add(part);
+                        received.addAndGet(read);
+                    }
                 } catch (IOException _) {
                     // Closed by the test
                 }
@@ -135,7 +144,22 @@ public class OutboundBacklogIntegrationTest {
         }
 
         BufferedPacket movement() {
-            return new BufferedPacket(movementBody, 0, PACKET_BYTES);
+            return new BufferedPacket(movementBody, 0, PACKET_BYTES, true);
+        }
+
+        /** Entity movement of {@code size} bytes, as the viewable packets hand it over. */
+        static BufferedPacket movement(int size) {
+            final NetworkBuffer body = NetworkBuffer.resizableBuffer();
+            body.write(NetworkBuffer.RAW_BYTES, new byte[size]);
+            return new BufferedPacket(body, 0, size, true);
+        }
+
+        /** What the peer has read so far. */
+        byte[] receivedBytes() {
+            final List<byte[]> parts = List.copyOf(receivedParts);
+            final ByteBuffer all = ByteBuffer.allocate(parts.stream().mapToInt(part -> part.length).sum());
+            for (byte[] part : parts) all.put(part);
+            return all.array();
         }
 
         FramedPacket framed() {

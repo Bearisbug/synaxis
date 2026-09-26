@@ -32,9 +32,10 @@ import java.util.WeakHashMap;
  * One instance per {@link ServerProcess}, reachable with {@link ServerProcess#viewablePackets()},
  * so that ticking a process never flushes the packets another process is still filling.
  * <p>
- * Only entity movement may go through here: a connection over its outbound backlog sheds the
- * {@link BufferedPacket}s this class hands it, which is only harmless for packets that the next
- * position sync of the entity replaces ({@code docs/DESIGN-PROD.md} {@code API-PROD-020}).
+ * Only entity movement may go through here: the {@link BufferedPacket}s this class hands out are
+ * sheddable, a connection over its outbound backlog drops them, which is only harmless for packets
+ * that the next position sync of the entity replaces ({@code docs/DESIGN-PROD.md} {@code API-PROD-020},
+ * {@code docs/DESIGN-M3.md} {@code ADR-M3-018}).
  */
 @ApiStatus.Internal
 public final class PacketViewableUtils {
@@ -141,7 +142,7 @@ public final class PacketViewableUtils {
 
         private static void writeTo(PlayerConnection connection, NetworkBuffer buffer, long offset, long length) {
             if (connection instanceof PlayerSocketConnection socketConnection) {
-                socketConnection.sendPacket(new BufferedPacket(buffer, offset, length));
+                socketConnection.sendPacket(new BufferedPacket(buffer, offset, length, true));
                 return;
             }
             // TODO for non-socket connection

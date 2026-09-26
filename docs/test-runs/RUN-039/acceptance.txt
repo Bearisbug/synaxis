@@ -1,0 +1,259 @@
+RUN-039 记录（2026-09-26，RUN-038 之后四组合入集成分支后的复验）
+
+被测版本：集成分支 prod/integrate-f 的 55d77b67b5（origin/main 7ff65e40a8 + prod/f-g1、prod/f-g3、prod/f-g2、prod/f-g4 四个 --no-ff 合并）。
+  本记录所在的提交只改 docs/DESIGN-PROD.md、docs/DESIGN.md、docs/TEST.md 与 docs/test-runs/，代码与 55d77b67b5 相同。
+执行者：AI（Claude Code，Gradle 9.7.1 / OpenJDK 25.0.4.1 / 共用容器 synaxis-pg、synaxis-valkey / 镜像 synaxis-mc-client:dev 与卷 synaxis-mc-gradle /
+  仓库 .venv 的 Python 3.10 / gh）
+机器：Apple M4 Pro 12 核 / 24 GiB，macOS 15.3.2；同机有别的会话，本轮 1 分钟负载 4.68～14.17，本地时间 UTC+8
+范围：见 docs/TEST.md §6 RUN-039 汇总行
+下文 <mirror> 指 --init-script gradle/init/aliyun-mirror.init.gradle.kts；Gradle 命令都带 --no-daemon；
+  数据库环境 SYNAXIS_TEST_PG_URL=jdbc:postgresql://127.0.0.1:5440/postgres、SYNAXIS_TEST_REDIS_URL=redis://127.0.0.1:6440，
+  SYNAXIS_TEST_PG_PASSWORD 取自 docker inspect synaxis-pg 的 POSTGRES_PASSWORD（没有打印）。
+  「反证」一律是临时改一处、跑、看红、git checkout 还原、重跑复绿；每次还原后 git status 只剩本轮的文档改动。
+
+一、合入（prod/integrate-f，全部 --no-ff，顺序 g1、g3、g2、g4）
+
+  git fetch origin 之后 origin/main 仍是 7ff65e40a8；其上最大的执行记录号是 RUN-038，本轮用 RUN-039
+  四个分支都是 approved=true，合入前逐个看过提交与改动面，没有开着的缺陷，一个都没跳过
+  prod/f-g1 49f2892cc8 → merge 5f6226335b（无冲突）
+    PlayerStore：保存阶段开始后在途的登录在等待之后、顶号轮询之间、获取返回之后与准入时查 closing；准入与冻结同锁；
+    保存阶段开始后的下一个 tick 断开没进世界的玩家（synaxis:server-stopping）
+  prod/f-g3 7278dba965、b16a061721 → merge 513cb0546d
+    ServerProcess#stop() / beginShutdown(Duration) 返回是否占下停机；HostCommands#beginStop；ManagementMethods#stop
+    冲突都在文档，两边都留：DESIGN-PROD 变更记录（G1 行在前）；API-PROD-007 两行（G3 改进程标志一行、G1 改插件一行，各取改过的那一行）；
+    §11.4 迁移表两行（G3 改 started → gate_closed，G1 改 gate_closed → saving，同样各取一行）；§26 两条都留；
+    §28.2：G1 新增的已决一行 + G3 把「stop 与 SIGTERM 竞态」风险行改成的已决行与新增的风险行（原风险行按 G3 删去）；
+    TEST.md 变更记录、§4（G1 一节之后接 G3 一节）、§5 回归映射两行
+  prod/f-g2 b8afe8857d、f9cb93f36b、d5f5ba47ea → merge 871bfc2efc
+    冲突只在 DESIGN-PROD 变更记录与 TEST.md 变更记录、§4、§5，两边都留；ManagementMethods.java 自动合并（G3 改 stop()，G2 改 profile()，不相邻）
+  prod/f-g4 79936a2e78 → merge 55d77b67b5
+    冲突：DESIGN-PROD 变更记录；API-PROD-007 进程标志那一行两边都改了（G3 改写内容，G4 按 main 改行号 :354 → :571、:235 → :275），
+    取 G3 的内容，行号按合入后的代码写成 ServerProcessImpl.java:581（isAlive）与 :275（setCompressionThreshold 的检查）；
+    DESIGN.md 变更记录两行都记作 v0.39（G3 的「v0.39（G3）」与 G4 的「v0.39」）；TEST.md 变更记录
+  合入后的文档提交：
+    DESIGN-PROD 四行「v0.9.15（组名）」按合入顺序编为 v0.9.15（G1）、v0.9.16（G3）、v0.9.17（G2）、v0.9.18（G4），加 v0.9.19（本次合入）；
+      正文七处 v0.9.15 按所属组改号；§1 状态行补四组；§26 加 G2、G4 与合入三条
+    DESIGN.md 按合入顺序 G3 为 v0.39、G4 为 v0.40（新在上），DESIGN-PROD 里引用 G4 那一版的五处改为 v0.40
+    TEST.md 变更记录四行按新在上排为 G4、G2、G3、G1，引用的版本号同步
+  跨分支的代码行号：写了一个脚本，对 DESIGN-PROD、TEST.md、DESIGN.md、DESIGN-M2.md、ENGINE.md 里每个 File.java:N，按 git blame 找到写这一行时的提交，
+    用 difflib 把那个提交里的第 N 行映射到合入后的代码；变更记录行是历史，不改。结果：
+    DESIGN-PROD 三处被 G3 挪了（G4 按 main 核对的）：ServerProcessImpl.java:571 → :581（上面冲突里已改）、API-PROD-011 控制台 Main.java:700 → :702、
+      §28.3 TC-036 一行 Main.java:618 → :620（G3 给 server-app Main.java 加了两行）；
+    TEST.md 一处被 G2 挪了：TC-PROD-395 第 2 步的红行 ManagementServer.java:215，G2 在它前面加了 13 行，见第八节 1；其余映射后行号不变
+
+二、全量 check（带数据库环境）
+
+  ./gradlew check --rerun-tasks --continue <mirror>
+  起止 2026-09-26T10:01:27Z → 10:04:34Z，BUILD SUCCESSFUL in 3m 6s，95 actionable tasks: 95 executed
+  按本次写出的 JUnit XML 统计（每个模块最早的时间戳都晚于起跑时刻）：
+    architecture-tests/build/test-results/test   classes=7 tests=20 skipped=0 failures=0 errors=0 ts=10:02:10.582Z..10:02:21.286Z
+    baker/build/test-results/test                classes=4 tests=52 skipped=0 failures=0 errors=0 ts=10:02:00.118Z..10:02:18.028Z
+    build/test-results/test                      classes=419 tests=3103 skipped=15 failures=0 errors=0 ts=10:02:21.315Z..10:02:54.234Z
+    game-rts/build/test-results/test             classes=12 tests=83 skipped=0 failures=0 errors=0 ts=10:02:04.405Z..10:02:17.591Z
+    loadtest/build/test-results/test             classes=3 tests=10 skipped=0 failures=0 errors=0 ts=10:01:56.357Z..10:02:54.942Z
+    plugin-api/build/test-results/test           classes=3 tests=15 skipped=0 failures=0 errors=0 ts=10:01:57.899Z..10:01:58.103Z
+    protocol/build/test-results/test             classes=4 tests=78 skipped=0 failures=0 errors=0 ts=10:01:42.357Z..10:01:42.482Z
+    server-app/build/test-results/test           classes=67 tests=357 skipped=0 failures=0 errors=0 ts=10:02:18.161Z..10:04:33.553Z
+    synx/build/test-results/test                 classes=7 tests=42 skipped=0 failures=0 errors=0 ts=10:02:03.385Z..10:02:06.983Z
+    testing/build/test-results/test              classes=7 tests=10 skipped=0 failures=0 errors=0 ts=10:02:01.299Z..10:02:05.430Z
+  合计 10 个模块 533 个类 3,770 个测试，0 失败，0 错误，15 跳过（都在根模块，合入前就有）。
+    比 RUN-038 的 3,744 多 26 个：G1 11 个（ShutdownLoginIntegrationTest 5、ShutdownSaveOutsideTheWorldIntegrationTest 3、
+    ShutdownBeforeTheWorldLaunchTest 2、PlayerDataIntegrationTest 6 → 7），G2 10 个（BindAddressTest 3、BindKeysLaunchTest 2、
+    ManagementBacklogIntegrationTest 3、ManagementWholeNumbersIntegrationTest 2），G3 5 个（StopRaceIntegrationTest 3、根模块 ShutdownClaimTest 2）
+  数据库用例（tests / skipped）：PlayerStoreIntegrationTest 23 / 0、TransferTicketsIntegrationTest 7 / 0、CrossShardHandoverIntegrationTest 6 / 0、
+    ShutdownSaveIntegrationTest 4 / 0、ShutdownSaveBeforeSpawnIntegrationTest 3 / 0、ShutdownSaveRaceIntegrationTest 2 / 0、MigrationsDbTest 5 / 0、
+    ShardSessionDbTest 4 / 0、StoreHousekeepingDbTest 3 / 0，G1 新增的 ShutdownLoginIntegrationTest 5 / 0、ShutdownSaveOutsideTheWorldIntegrationTest 3 / 0，
+    都是 0 失败
+  check 里的门禁任务都执行了：各模块 testNamingCheck、forbiddenImportsCheck，architecture-tests（ArchUnit）20 个 0 失败，
+    ConfigKeyGateTest tests=1、ClientDrivenLogArchitectureTest tests=2 都 0 失败；编译带 Error Prone 与 -Werror（build-src synaxis.style），全部通过
+  EnvDispatcherThreadsIntegrationTest（默认）：env dispatcher threads: 1、env thread provider: counter
+
+三、严格模式全量（同样带数据库环境）
+
+  counter：./gradlew test --rerun --continue <mirror> -Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true
+    起止 10:07:01Z → 10:09:29Z，BUILD SUCCESSFUL in 2m 27s，66 actionable tasks: 10 executed, 56 up-to-date
+    十个模块同为 533 个类 3,770 个 0 失败 0 错误、15 跳过，每个模块最早的时间戳（10:07:08.264Z 起）都晚于起跑
+    testing/build/test-results/test/TEST-io.github.bearisbug.synaxis.testing.test.EnvDispatcherThreadsIntegrationTest.xml：
+      env dispatcher threads: 4、env thread provider: counter
+  grid：同上再加 -Dsynaxis.thread-provider=grid
+    起止 10:09:40Z → 10:12:08Z，BUILD SUCCESSFUL in 2m 27s，66 actionable tasks: 10 executed, 56 up-to-date
+    十个模块同为 533 个类 3,770 个 0 失败 0 错误、15 跳过，每个模块最早的时间戳（10:09:47.228Z 起）都晚于起跑
+    同一个 XML：env dispatcher threads: 4、env thread provider: grid
+  两轮上面列的 11 个数据库用例类都是 skipped="0"、0 失败。没有重跑任何测试
+
+四、新增行覆盖（CI 在 pull request 上跑的 diff-cover，本地照做）
+
+  ./gradlew jacocoTestReport <mirror>（用第二节那次测试的执行数据）；diff-cover 10.6.0 装在仓库外的临时 uv 环境里
+  diff-cover <各模块 jacocoTestReport.xml> --compare-branch=origin/main --src-roots <同 ci.yml> --fail-under=80
+    Total 141 lines，Missing 7 lines，Coverage 95%，退出码 0
+    未覆盖：HostCommands.java 114-115、Main.java 263、ManagementServer.java 310、370、390-391
+
+五、ABI 门（baseline = release v0.3.0 的资产）
+
+  gh release download v0.3.0 --repo Bearisbug/synaxis --dir <仓库外临时目录> --pattern plugin-api.jar --pattern protocol.jar
+    6fe8d7dba88c400901b6515d17971655fcd6dd8cbcf629a0c70325f3390bf7c6  plugin-api.jar
+    1092232bb68905d1b5f0ecfb056e9c1387f582ab921ace8cc0ff227aa4bc2916  protocol.jar
+    与 RUN-037 第四节的两行相同
+  ./gradlew :plugin-api:checkBinaryCompatibility :protocol:checkBinaryCompatibility --rerun-tasks <mirror> -PbaselineJarDir=<该目录>
+    > Task :protocol:checkBinaryCompatibility
+    > Task :plugin-api:checkBinaryCompatibility
+    BUILD SUCCESSFUL in 23s，28 actionable tasks: 28 executed；0 违例
+  四组都没改 plugin-api/ 与 protocol/（git diff --stat origin/main -- plugin-api protocol client-fabric 无输出）。
+    G3 改了引擎 ServerProcess 两个方法的返回类型，引擎不在这道门里；二进制不兼容已写进 DESIGN.md v0.39 与 DESIGN-PROD §28.3
+
+六、客户端模组
+
+  ./gradlew :protocol:publishToMavenLocal :server-app:installDist <mirror> → BUILD SUCCESSFUL in 4s（:protocol:publishToMavenLocal 执行）
+  cd client-fabric && ./gradlew build --rerun-tasks --no-daemon（不带镜像脚本）
+    10:13:01Z → 10:13:12Z，BUILD SUCCESSFUL in 8s，8 actionable tasks: 8 executed
+    compileJava、jar、remapJar、test、verifyModJar、check、build 都执行；build/libs/client-fabric-0.1.0.jar 59,156 B
+    test：7 个类 90 个测试，0 失败 0 跳过
+
+七、真客户端回归 R1～R8（TC-PROD-130 第 1～3 步，在线模式 + 假 sessionserver record 模式，服务端是本分支 installDist 的产物）
+
+  起服前 25625、9464 无监听；docker ps --filter volume=synaxis-mc-gradle 为空；没有 synaxis-mc-client* 容器
+  在空临时目录 <srv> 里（环境里去掉 JAVA_TOOL_OPTIONS）：
+    java tools/fake-sessionserver/FakeSessionServer.java --mode record --bind 0.0.0.0 --port 0 > fake.log   pid 64690，<F>=64372
+    java -Xmx1G -Dsynaxis.app.port=25625 -Dsynaxis.app.auth=online
+      -Dsynaxis.app.auth.session-server=http://127.0.0.1:64372/session/minecraft/hasJoined
+      -cp "server-app/build/install/server-app/lib/*" io.github.bearisbug.synaxis.app.Main < /dev/null > server.log   pid 64704
+    启动行：Effective config file: none, /private/tmp/…/synaxis.properties does not exist；
+      WARN … Effective auth: mode=online session_server=http://127.0.0.1:64372/session/minecraft/hasJoined is not Mojang's session server …；
+      Metrics endpoint listening on http://127.0.0.1:9464/metrics；synaxis server-app listening on 0.0.0.0:25625
+
+  第 1 步（dev 启动器）：
+    SYNAXIS_GAMETEST_SERVER=host.docker.internal:25625 SYNAXIS_GAMETEST_SESSION_HOST=http://host.docker.internal:64372 OUT=<out1> client-fabric/gametest-env/run.sh
+    10:14:50Z → 10:15:15Z；run.sh 退出码 1（容器里 Minecraft Stopping! 之后 finished with non-zero exit value 134，与用例写的一致，只记录）
+    客户端日志：Environment[sessionHost=http://host.docker.internal:64372, …]
+    R1 PASS mods [io_github_bearisbug_synaxis_protocol dev, synaxis 0.1.0]
+    R2 PASS state=VERIFIED schema_version=1
+    R3 PASS in world at BlockPos{x=256, y=40, z=256} encrypted=true session_host=http://host.docker.internal:64372
+    R4 PASS bound=66 commandable=64 unmatched_state_entries=0
+    R5 PASS unit_id=1 selected=1
+    R6 PASS unit_id=1 answers [OK] target 263.50,40.00,255.50 moved 2.10 blocks (need 2.0)
+    R7 PASS surface BlockPos{x=256, y=39, z=256} sky_above=15 sky_below=0
+    R8 PASS screen: Connection Lost. The server rejected a message from this connection as malformed.
+
+  第 2 步（生产启动器）：run.sh 的副本放在 client-fabric/gametest-env/ 下（runClientGameTest → runProductionClientGameTest，
+    拷出目录 → build/run/productionClientGameTest），OUT=<out2>；10:15:33Z → 10:15:54Z，退出码 1（exit value 134）；跑完即删副本
+    R1 PASS mods [io_github_bearisbug_synaxis_protocol dev, synaxis 0.1.0]
+    R2 PASS state=VERIFIED schema_version=1
+    R3 PASS in world at BlockPos{x=256, y=40, z=256} encrypted=true session_host=http://host.docker.internal:64372
+    R4 PASS bound=66 commandable=64 unmatched_state_entries=0
+    R5 PASS unit_id=2 selected=2
+    R6 PASS unit_id=2 answers [OK] target 263.50,40.00,256.50 moved 2.10 blocks (need 2.0)
+    R7 PASS surface BlockPos{x=256, y=39, z=256} sky_above=15 sky_below=0
+    R8 PASS screen: Connection Lost. The server rejected a message from this connection as malformed.
+    fake.log（首行之后恰四行）：
+      fake sessionserver mode=record listening on http://0.0.0.0:64372, hasJoined at /session/minecraft/hasJoined
+      1 POST /session/minecraft/join -> 204
+      2 GET /session/minecraft/hasJoined?username=Player0&serverId=-69dae9ec46852bff74e18567032d92a32646c708 -> 200
+      3 POST /session/minecraft/join -> 204
+      4 GET /session/minecraft/hasJoined?username=Player525&serverId=1a66783f55be1dc1ea202d8bc4c3258c7e5dce1d -> 200
+    server.log：
+      18:15:12.230 [Syn-Session-Verify] … Login success: username=Player0 connection_id=d553b91e-fb50-4356-9f7a-c2321a21d071 remote_address=/127.0.0.1:64639
+      18:15:14.304 [Syn-Tick-0] … Kicking connection_id=d553b91e-… identifier=Player0 reason=synaxis:protocol-error
+      18:15:51.598 [Syn-Session-Verify] … Login success: username=Player525 connection_id=c8a38491-9461-4a32-b4e9-76e4b5491e23 remote_address=/127.0.0.1:64888
+      18:15:53.603 [Syn-Tick-0] … Kicking connection_id=c8a38491-… identifier=Player525 reason=synaxis:protocol-error
+    两次各有 r3-after-connect、r7-in-world、r8-disconnected 三张截图；<out2> 的 r7 看过：在世界里，地形与单位都渲染出来
+
+  第 3 步：在 <srv> 里 LAUNCHES=2 SERVER_LOG=server.log LEDGER_DIR=logs SESSION_LOG=fake.log client-fabric/gametest-env/judge.sh <out1>/…/report.txt <out2>/…/report.txt
+      ok   <out1>/synaxis-gametest/report.txt: 8 PASS
+      ok   <out2>/synaxis-gametest/report.txt: 8 PASS
+      ok   2 reports for 2 launches
+      ok   client_verified 2, expected 2
+      ok   client_rejected 0, expected 0
+      ok   unit_order_issued 2, expected >= 2
+      ok   protocol-error kicks 2, expected 2
+      ok   sessionserver join 2, expected 2
+      ok   sessionserver hasJoined 200 2 of 2, expected 2 of 2
+      client regression: all checks passed
+      judge exit=0
+  kill 64704（SIGTERM，G3 之后走关闭钩子的 stop()）：约 1 s 退出，server.log 末行 [Thread-3] … synaxis server stopped successfully.，0 行 ERROR；
+    kill 64690 后假服务退出；25625、9464、64372 无监听，docker ps -a 没有 synaxis-mc-client* 容器
+  第 4～6 步（拿掉加密或验证的反证、带 spike）本轮没跑：四组都没改客户端、加密与验证路径
+
+八、反证在合入后的代码上重跑（改了共用文件或行号漂移的几条；其余反证由各组在自己的分支上实跑，它们改的文件没有被别的组改过）
+
+  1. TC-PROD-395 第 2 步（G2 给 ManagementServer.java 加了 13 行，用例原写红在 :215）
+    ManagementServer.Endpoint#onError 的 failures.warn(ex, …) 前加 LOGGER.warn("Management interface error: remote={}", …, ex);，
+    原行改成只在 proof.never 时执行；:server-app:test --tests …ClientDrivenLogArchitectureTest --rerun
+    → 2 tests completed, 1 failed：Method <io.github.bearisbug.synaxis.app.management.ManagementServer$Endpoint.onError(org.java_websocket.WebSocket,
+      java.lang.Exception)> calls method <org.slf4j.Logger.warn(java.lang.String, java.lang.Object, java.lang.Object)> in (ManagementServer.java:228)
+    git checkout -- 该文件，--rerun：tests="2" 0 失败。用例红行改为 :228
+  2. TC-PROD-490 第 2 步（ManagementMethods.java 被 G2、G3 都改了）
+    照原写法 git show 7ff65e40a8:<ManagementMethods.java> > <同一路径>：:server-app:compileJava 失败，2 个错误
+      ManagementMethods.java:378: 错误: 找不到符号 commands.claimStop()；:380: 错误: 找不到符号 commands.startStop(Duration)（G3 删了这两个方法）
+    改为只撤回 G2 对该文件的改动：git show f9cb93f36b -- <ManagementMethods.java> | git apply -R，重跑第 1 步
+    → 2 tests completed, 1 failed：ManagementWholeNumbersIntegrationTest.java:88，0.99999999999999999999 -> {"jsonrpc":"2.0","id":1,"error":{"code":-32603,
+      "message":"Internal error","data":{"request_id":"419281fa-…"}}} ==> expected: <-32602> but was: <-32603>；输出里有
+      WARN … Management call failed: method=synaxis:profile request_id=419281fa-…（与用例写的相同）
+    git checkout -- 该文件，--rerun：tests="2" 0 失败。用例第 2 步改成这个写法
+  3. TC-PROD-495、TC-PROD-496 第 2 步（修复前的红；回退的五个文件里有 ManagementMethods.java）
+    git checkout 7ff65e40a8 -- ServerProcess.java ServerProcessImpl.java HostCommands.java ManagementMethods.java server-app/…/Main.java，
+    竞态类照用例删改。只删字段那一行时（3 行）红在 StopRaceIntegrationTest.java:196 与 :214；字段上面还有一行 Javadoc，连它一起删（4 行）后：
+    → 2 tests completed, 2 failed：
+      aConsoleStopWhileASignalHoldsTheShutdownSaysItIsAlreadyStopping：StopRaceIntegrationTest.java:195，
+        expected: <[synaxis:command-already-stopping]> but was: <[synaxis:command-stopping 5]>
+      aManagementStopWhileASignalHoldsTheShutdownAnswersFalse：StopRaceIntegrationTest.java:213，
+        {"jsonrpc":"2.0","id":1,"result":true} ==> expected: <false> but was: <true>
+    与用例写的红行、信息相同；用例第 2 步写明「连同它上面一行 Javadoc」。git checkout HEAD -- 六个文件，--rerun：tests="3" 0 失败
+  4. TC-PROD-496 第 3 步（ManagementMethods#stop 又按阶段判）
+    final boolean started = commands.beginStop(Duration.ZERO) || process.shutdownPhase() == ServerProcess.ShutdownPhase.RUNNING;
+    跑竞态类与 ManagementIntegrationTest → 16 tests completed, 1 failed：StopRaceIntegrationTest.java:217，
+      {"jsonrpc":"2.0","id":1,"result":true} ==> expected: <false> but was: <true>；ManagementIntegrationTest 13 条都绿。还原后 --rerun 复绿
+  5. TC-PROD-484、TC-PROD-485 第 2 步（G1 的修复与 G3 改了停机序列所在线程的交叉）
+    PlayerStore#saveAll 的 if (tickAlive) process.scheduler().scheduleNextTick(this::disconnectOutsideTheWorld); 前加 && Boolean.getBoolean("proof.never")，
+    同一次运行跑 ShutdownSaveOutsideTheWorldIntegrationTest 与 ShutdownBeforeTheWorldLaunchTest（10:21:46Z → 10:22:57Z）
+    → 5 tests completed, 4 failed：
+      ShutdownSaveOutsideTheWorldIntegrationTest.java:104 与 :135 都是 not within 10 s: the disconnect takes the snapshot of the player outside the world；第三条通过
+      ShutdownBeforeTheWorldLaunchTest.java:109 两条都是 stop took over 10 s（信息是子 JVM 的日志全文），类用时 42.2 s
+    还原后 --rerun：tests="3"、tests="2" 都 0 失败（后者 2.96 s）
+
+九、TC-PROD-494 第 1～4 步（真进程，本分支 installDist 的产物；第 5 步反证没跑，要换回 G2 之前的 ManagementServer 并等到 OOM 退出）
+
+  W 在仓库外的临时目录；SYNAXIS_MANAGEMENT_TOKEN 用 openssl rand -hex 32 现造，没有回显；环境里去掉 JAVA_TOOL_OPTIONS；起服前 25611、25612 无监听
+  JAVA_OPTS="-Xms1G -Xmx1G -XX:-AlwaysPreTouch -XX:-HeapDumpOnOutOfMemoryError -Dsynaxis.app.port=25611 -Dsynaxis.app.core-mode=on -Dsynaxis.app.auth=offline
+    -Dsynaxis.app.management.enabled=true -Dsynaxis.app.management.bind=127.0.0.1:25612 -Dsynaxis.app.metrics.bind=127.0.0.1:0" server-app/bin/server-app   pid 68285
+  每次读数都是 jcmd <pid> GC.run 后 jcmd <pid> GC.heap_info 的 used
+  第 1 步：基线 used 24,475K
+  第 2 步：management_backlog.py --port 25612 --mode ping --megabytes 200 --hold 5
+    {"mode": "ping", "frames_written": 22272, "bytes_written": 2917632, "closed_by_server": true, "closed_after_frames": 22272}
+    used 24,821K（上限：基线 + 3 MiB = 27,547K）；WARN … Management connection closed with 1008: remote=/127.0.0.1:52325 has 4096 frames and 520192 bytes queued that it does not read
+  第 3 步：等 10 s，--mode status --megabytes 30 --hold 5
+    {"mode": "status", "frames_written": 65728, "bytes_written": 4272320, "closed_by_server": true, "closed_after_frames": 65728}
+    used 76,009K，超出上限 48,462K（约 47.3 MiB）→ 本步判失败
+    WARN … has 4096 frames and 598264 bytes queued that it does not read（在 Syn-Management-Call 线程上）
+    台账 minecraft:server/status 的 gm_command：读数之后马上数是 42,188 行，稍后数是 42,346 行（少于 65,728 帧；读数时台账还在写）；
+      这些调用的 ts 从 10:24:36.419Z 到 10:24:36.828Z，都在脚本 5 s 的保持期内
+    比基线多的 51,534K 是什么没查明：那一次没取 GC.class_histogram
+  第 4 步：等 10 s，--mode ping --megabytes 700 --hold 5
+    {"mode": "ping", "frames_written": 24640, "bytes_written": 3227840, "closed_by_server": true, "closed_after_frames": 24640}
+    used 24,947K；进程仍在（etime 00:24）；stdout 没有 OutOfMemoryError
+  之后同一进程上再做四次第 3 步（每次前等 10 s），读数后马上取直方图：
+    closed_after_frames 34,048 → used 24,987K（台账 +9,906 行）；40,256 → 25,488K（+22,005）；44,096 → 25,045K（+18,980）；52,160 → 25,113K（+19,732）
+    四次直方图前五名都是 [B、RegistryData$BlockEntry、String、Object[]、Class，与空闲时相同；四次都在上限内
+  即五次 status 洪水里第一次超出、后四次没有；第一次执行的调用最多（42,346 条）。与 DESIGN-PROD §28.2「每条管理连接的在途调用不设上限」
+    那条 Open Question 写的「即时返回的方法堆不起来（… GC 后存活堆 25.1 MiB）」对不上一次，已补进该行
+  stdout 共 7 行 closed with 1008；kill 68285 后约 2 s 退出，末行 synaxis server stopped successfully.；25611、25612 无监听；W 已删
+
+十、文档 lint（本轮提交的最终文本）
+
+  bash ~/.claude/skills/design-doc/check.sh docs/DESIGN-PROD.md → ✅ lint 无警告
+  bash ~/.claude/skills/test-doc/check.sh docs/TEST.md → 三条都是已知的：RUN-031 两行明细缺证据引用、REQ-PROD-031 无 TC；没有新警告
+  文档改完之后 ./gradlew :architecture-tests:test --rerun <mirror>：20 个 0 失败，其中读文档的 ConfigKeyGateTest 1、TranslationKeyGateTest 2、
+    PersistenceBoundaryArchitectureTest 2 都在本轮最终文本上跑过（10:33Z）
+
+十一、环境与回收
+
+  复用 synaxis-pg、synaxis-valkey、镜像 synaxis-mc-client:dev、卷 synaxis-mc-gradle，没有新建镜像、容器与卷；run.sh 的 --rm 容器跑完即删
+  本轮手动起的真进程三个（假 sessionserver pid 64690、在线服务端 pid 64704、TC-PROD-494 的服务端 pid 68285）都按 pid 停掉并确认退出；
+    ShutdownBeforeTheWorldLaunchTest 等测试起的子 JVM 由测试自己收尾
+  临时目录（<srv>、<out1>、<out2>、TC-PROD-494 的 W、ABI baseline 目录、diff-cover 的 uv 环境、各轮 Gradle 输出）都在 /tmp 下，本轮结束时已删
+  生产启动器那份 run.sh 副本跑完即删；反证改过的文件每次都已还原，git status 只剩本轮的文档改动
+
+十二、本轮之后仍开着的
+
+  TC-PROD-494 第 3 步：五次里一次存活堆 76,009K（见第九节），来源待查；下一次超出时先取 GC.class_histogram 与 Syn-Management-Call 虚拟线程数，
+    再按 DESIGN-PROD §28.2 那条 Open Question 决定是否按连接限在途调用
+  TC-PROD-494 第 5 步、TC-PROD-130 第 4～6 步本轮没跑（理由见各节）

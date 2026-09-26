@@ -1442,8 +1442,11 @@ def cmd_view_distance(args: argparse.Namespace) -> int:
                 session.read_payload(reader)
     finally:
         session.close()
-    if not switched or center is None:
+    if not switched:
         session.log(f"never lowered the view distance: batches={batches} center={center}")
+        return 1
+    if center is None:
+        session.log(f"lowered the view distance but the server never sent UpdateViewPosition: batches={batches}")
         return 1
     radius = args.to_distance + 1
     ring = {(center[0] + dx, center[1] + dz)

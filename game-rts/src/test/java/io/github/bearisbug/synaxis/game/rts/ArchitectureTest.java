@@ -49,8 +49,10 @@ public class ArchitectureTest {
      * <p>
      * The ban is unconditional, not "not on client supplied compounds": where a compound came from
      * is a runtime taint, and bytecode analysis cannot see it, so a rule phrased that way would
-     * enforce nothing. The game side pays for it by not using the tag system at all, which costs it
-     * nothing: the gameplay data model is its own and travels over custom payloads.
+     * enforce nothing. The game side pays for it by keeping its gameplay data out of the tag system,
+     * which costs it nothing: the gameplay data model is its own and travels over custom payloads.
+     * The only tags it names are the client tags a data marker handler declares
+     * ({@code marker.LootMarker}), plain tags read by key, never through {@link TagHandler#fromCompound}.
      * <p>
      * Blind spot, shared with every bytecode rule: a class name produced by reflection or by string
      * concatenation ({@code Class.forName("…TagHandler")}) is invisible here. So is the reverse

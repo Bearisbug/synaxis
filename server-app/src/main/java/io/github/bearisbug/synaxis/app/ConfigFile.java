@@ -151,6 +151,11 @@ public final class ConfigFile {
             "synaxis.app.management.enabled",
             "synaxis.app.management.bind",
             "synaxis.app.transfer-cooldown-ms",
+            // The map shard, :synx SynxOptions and OverlayOptions
+            "synaxis.world-writable",
+            "synaxis.synx.section-cache-bytes",
+            "synaxis.overlay.cap",
+            "synaxis.overlay.flush-interval-s",
             // The logging setup, logback.xml
             "synaxis.app.log",
             // The RTS plugin, game-rts

@@ -766,6 +766,10 @@ erDiagram
     | `synaxis.app.management.enabled` | `ManagementSettings` | `false` | `true` / `false`（`API-PROD-022`） |
     | `synaxis.app.management.bind` | `ManagementSettings` | `127.0.0.1:25585` | `host:port`（`API-PROD-022`） |
     | `synaxis.app.transfer-cooldown-ms` | `TransferCooldowns` | 5,000 | ≥ 0（`API-PROD-021`） |
+    | `synaxis.world-writable` | `:synx` `SynxOptions` | `true` | `true` / `false`，只认小写（`docs/DESIGN-M3.md` `API-M3-005`） |
+    | `synaxis.synx.section-cache-bytes` | `:synx` `SynxOptions` | 268,435,456 | ≥ 1（`docs/DESIGN-M3.md` `API-M3-005`） |
+    | `synaxis.overlay.cap` | `:synx` `OverlayOptions` | 16,384 | ≥ 1；正式档 24,576；软上限（`docs/DESIGN-M3.md` `API-M3-007`） |
+    | `synaxis.overlay.flush-interval-s` | `:synx` `OverlayOptions` | 10 | 1～60（`docs/DESIGN-M3.md` `API-M3-007`） |
     | `synaxis.app.log` | logback（`logback.xml`） | `file` | `file` / `stdout`（`API-PROD-014`） |
     | `synaxis.app.map` | RTS 插件 `RtsPlugin` | `rts-512` | 地图预设 id（`docs/DESIGN-M2.md` §23） |
     | `synaxis.app.units` | RTS 插件 `Roster` | 67 | > 3（`docs/DESIGN-M2.md`） |

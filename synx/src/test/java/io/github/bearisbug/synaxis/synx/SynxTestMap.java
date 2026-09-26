@@ -49,6 +49,12 @@ final class SynxTestMap {
     /** The region the loader serves in the tests, {@code bounds} of API-M3-005. */
     static final SynxManifest.Bounds REGION = new SynxManifest.Bounds(0, 0, 31, 31);
     static final int FEATURE_Y = 200;
+    /**
+     * The y of the cave air every chunk has in its corner column, void air one block east of it: the
+     * client and the baker count both as air, the engine's palette count does not, and real maps have
+     * cave air in every cave.
+     */
+    static final int OTHER_AIR_Y = FEATURE_Y + 4;
 
     /** An oak sign, source NBT like a 26.2 save writes it, first front line {@code "Synaxis"}. */
     static final int SIGN_CHUNK_X = 5, SIGN_CHUNK_Z = 5;
@@ -246,16 +252,18 @@ final class SynxTestMap {
         @Override
         public SourceChunk read(int chunkX, int chunkZ) {
             final SourceChunk chunk = terrain.read(chunkX, chunkZ);
+            set(chunk, chunkX * 16, OTHER_AIR_Y, chunkZ * 16, Block.CAVE_AIR);
+            set(chunk, chunkX * 16 + 1, OTHER_AIR_Y, chunkZ * 16, Block.VOID_AIR);
             final List<SynxBlockEntity> blockEntities = new ArrayList<>(chunk.blockEntities());
             final List<CompoundBinaryTag> entities = new ArrayList<>(chunk.entities());
             if (chunkX == SIGN_CHUNK_X && chunkZ == SIGN_CHUNK_Z) {
-                set(chunk, SIGN_X, SIGN_Z, Block.OAK_SIGN);
+                set(chunk, SIGN_X, FEATURE_Y, SIGN_Z, Block.OAK_SIGN);
                 blockEntities.add(blockEntity(SIGN_X, SIGN_Z, "", signNbt()));
             } else if (chunkX == UNKNOWN_CHUNK_X && chunkZ == UNKNOWN_CHUNK_Z) {
-                set(chunk, UNKNOWN_X, UNKNOWN_Z, Block.CHEST);
+                set(chunk, UNKNOWN_X, FEATURE_Y, UNKNOWN_Z, Block.CHEST);
                 blockEntities.add(blockEntity(UNKNOWN_X, UNKNOWN_Z, UNKNOWN_HANDLER, unknownChestNbt()));
             } else if (chunkX == TICKER_CHUNK_X && chunkZ == TICKER_CHUNK_Z) {
-                set(chunk, TICKER_X, TICKER_Z, Block.STONE);
+                set(chunk, TICKER_X, FEATURE_Y, TICKER_Z, Block.STONE);
                 blockEntities.add(blockEntity(TICKER_X, TICKER_Z, TICKER_HANDLER, CompoundBinaryTag.empty()));
             } else if (chunkX == STATICS_CHUNK_X && chunkZ == STATICS_CHUNK_Z) {
                 entities.add(itemFrame(chunkX * 16 + 2.5, FEATURE_Y, chunkZ * 16 + 2.5));
@@ -263,7 +271,7 @@ final class SynxTestMap {
             } else if (chunkX == MAPPED_CHUNK_X && chunkZ == MAPPED_CHUNK_Z) {
                 entities.addAll(mappedEntities());
             } else if (chunkX == NEIGHBOUR_CHUNK_X && chunkZ == NEIGHBOUR_CHUNK_Z) {
-                set(chunk, NEIGHBOUR_TICKER_X, NEIGHBOUR_TICKER_Z, Block.STONE);
+                set(chunk, NEIGHBOUR_TICKER_X, FEATURE_Y, NEIGHBOUR_TICKER_Z, Block.STONE);
                 blockEntities.add(blockEntity(NEIGHBOUR_TICKER_X, NEIGHBOUR_TICKER_Z, TICKER_HANDLER,
                         CompoundBinaryTag.empty()));
                 entities.add(itemFrame(chunkX * 16 + 2.5, FEATURE_Y, chunkZ * 16 + 2.5));
@@ -274,9 +282,9 @@ final class SynxTestMap {
                     chunk.lightOn(), chunk.sourceSky(), chunk.sourceBlock(), chunk.markerCells());
         }
 
-        private static void set(SourceChunk chunk, int x, int z, Block block) {
-            final Palette section = chunk.blocks()[FEATURE_Y >> 4];
-            section.set(x & 15, FEATURE_Y & 15, z & 15, block.stateId());
+        private static void set(SourceChunk chunk, int x, int y, int z, Block block) {
+            final Palette section = chunk.blocks()[y >> 4];
+            section.set(x & 15, y & 15, z & 15, block.stateId());
         }
 
         private static SynxBlockEntity blockEntity(int x, int z, String handler, CompoundBinaryTag nbt) {

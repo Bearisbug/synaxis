@@ -5,8 +5,15 @@ import io.github.bearisbug.synaxis.network.packet.server.BufferedPacket;
 import io.github.bearisbug.synaxis.testing.Env;
 import io.github.bearisbug.synaxis.testing.EnvTest;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.lang.foreign.Arena;
+import java.lang.foreign.MemorySegment;
+import java.nio.channels.FileChannel;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -20,7 +27,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * a handle chunk is a {@link BufferedPacket} too, built not sheddable, and a connection over its
  * backlog keeps it while it sheds the movement queued around it. The connection is the one of
  * {@link OutboundBacklogIntegrationTest}, on a process with {@code synaxis.outbound.max-backlog-bytes}
- * at 64 KiB.
+ * at 64 KiB, and writes to a real socket; the chunk packets wrap a file mapping, as the ones of a
+ * region file do.
  */
 @EnvTest
 public class SheddableBacklogIntegrationTest {
@@ -31,10 +39,11 @@ public class SheddableBacklogIntegrationTest {
     private static final int CHUNKS = 20;
 
     @Test
-    public void onlySheddablePacketsAreShed() throws Exception {
+    public void onlySheddablePacketsAreShed(@TempDir Path dir) throws Exception {
         final Env env = Env.create(builder -> builder.maxOutboundBacklogBytes(BACKLOG_64_KIB));
-        try (OutboundBacklogIntegrationTest.Harness harness = new OutboundBacklogIntegrationTest.Harness(env)) {
-            final List<byte[]> chunks = queueMovementThenChunks(harness, false);
+        try (Arena arena = Arena.ofShared();
+             OutboundBacklogIntegrationTest.Harness harness = new OutboundBacklogIntegrationTest.Harness(env)) {
+            final List<byte[]> chunks = queueMovementThenChunks(harness, false, dir, arena);
             // One more 16 KiB of movement: 70 KiB queued, over the 64 KiB limit
             harness.connection.sendPacket(OutboundBacklogIntegrationTest.Harness.movement(LAST_MOVEMENT_BYTES));
             assertTrue(harness.connection.isOnline(), "shedding the movement brings the backlog under the limit");
@@ -57,10 +66,11 @@ public class SheddableBacklogIntegrationTest {
 
     /** The counter proof: built sheddable, the chunk packets are shed with the movement. */
     @Test
-    public void chunkPacketsBuiltSheddableAreShedWithTheMovement() throws Exception {
+    public void chunkPacketsBuiltSheddableAreShedWithTheMovement(@TempDir Path dir) throws Exception {
         final Env env = Env.create(builder -> builder.maxOutboundBacklogBytes(BACKLOG_64_KIB));
-        try (OutboundBacklogIntegrationTest.Harness harness = new OutboundBacklogIntegrationTest.Harness(env)) {
-            queueMovementThenChunks(harness, true);
+        try (Arena arena = Arena.ofShared();
+             OutboundBacklogIntegrationTest.Harness harness = new OutboundBacklogIntegrationTest.Harness(env)) {
+            queueMovementThenChunks(harness, true, dir, arena);
             harness.connection.sendPacket(OutboundBacklogIntegrationTest.Harness.movement(LAST_MOVEMENT_BYTES));
             assertTrue(harness.connection.isOnline());
             assertEquals(0, harness.connection.backlogBytes());
@@ -73,10 +83,12 @@ public class SheddableBacklogIntegrationTest {
 
     /**
      * 20 movement packets of 1,228 B (24 KiB), then 20 chunk packets of 1.5 KiB (30 KiB), each chunk
-     * filled with its own number so that order and content show on the peer.
+     * filled with its own number so that order and content show on the peer. The chunks are written
+     * to one file under {@code dir}, mapped read only in {@code arena}, and each packet wraps its slice.
      */
     private static List<byte[]> queueMovementThenChunks(OutboundBacklogIntegrationTest.Harness harness,
-                                                        boolean chunksSheddable) {
+                                                        boolean chunksSheddable, Path dir, Arena arena)
+            throws IOException {
         for (int i = 0; i < 20; i++) {
             harness.connection.sendPacket(OutboundBacklogIntegrationTest.Harness.movement(MOVEMENT_BYTES));
         }
@@ -85,8 +97,16 @@ public class SheddableBacklogIntegrationTest {
             final byte[] bytes = new byte[CHUNK_BYTES];
             Arrays.fill(bytes, (byte) (i + 1));
             chunks.add(bytes);
-            harness.connection.sendPacket(new BufferedPacket(NetworkBuffer.wrap(bytes, 0, bytes.length), 0,
-                    bytes.length, chunksSheddable));
+        }
+        final Path file = Files.write(dir.resolve("segments"), concat(chunks));
+        final MemorySegment mapped;
+        try (FileChannel channel = FileChannel.open(file)) {
+            mapped = channel.map(FileChannel.MapMode.READ_ONLY, 0, channel.size(), arena);
+        }
+        for (int i = 0; i < CHUNKS; i++) {
+            final MemorySegment slice = mapped.asSlice((long) i * CHUNK_BYTES, CHUNK_BYTES);
+            harness.connection.sendPacket(new BufferedPacket(NetworkBuffer.wrap(slice, 0, CHUNK_BYTES), 0,
+                    CHUNK_BYTES, chunksSheddable));
         }
         assertEquals(20L * MOVEMENT_BYTES + CHUNKS * (long) CHUNK_BYTES, harness.connection.backlogBytes(),
                 "55,280 B queued, under the limit");

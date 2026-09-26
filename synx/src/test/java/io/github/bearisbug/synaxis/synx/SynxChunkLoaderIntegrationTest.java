@@ -24,6 +24,7 @@ import io.github.bearisbug.synaxis.item.Material;
 import io.github.bearisbug.synaxis.network.packet.client.play.ClientPlayerActionPacket;
 import io.github.bearisbug.synaxis.network.packet.server.BufferedPacket;
 import io.github.bearisbug.synaxis.network.packet.server.CachedPacket;
+import io.github.bearisbug.synaxis.network.packet.server.SendablePacket;
 import io.github.bearisbug.synaxis.network.packet.server.play.AcknowledgeBlockChangePacket;
 import io.github.bearisbug.synaxis.network.packet.server.play.BlockChangePacket;
 import io.github.bearisbug.synaxis.network.packet.server.play.ChunkDataPacket;
@@ -36,6 +37,7 @@ import io.github.bearisbug.synaxis.world.biome.Biome;
 import net.kyori.adventure.nbt.CompoundBinaryTag;
 import net.kyori.adventure.nbt.ListBinaryTag;
 import net.kyori.adventure.text.Component;
+import org.jetbrains.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -49,13 +51,17 @@ import java.util.BitSet;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -190,17 +196,26 @@ public class SynxChunkLoaderIntegrationTest {
         }
     }
 
-    /** 场景「view_bounds 外是引擎建的空气区块」, and the chunks of view_bounds without a region file. */
+    /**
+     * 场景「view_bounds 外是引擎建的空气区块」, and the chunks of view_bounds without a region file. The
+     * client asks for 20 chunks; the map instance starts at 12, as a map shard runs, and the test turns
+     * it up to 20 at run time.
+     */
     @Test
     public void outsideTheViewBoundsTheEngineBuildsAir() {
         final Env env = Env.create(builder -> builder.chunkViewDistance(20));
         try {
             final SynxChunkLoader loader = SynxWorlds.loader(SynxWorlds.WRITABLE, new MemoryOverlay());
             final Instance instance = SynxWorlds.instance(env.process(), loader);
+            instance.viewDistance(12);
             final RecordingConnection connection = new RecordingConnection(env.process());
             final Player player = RecordingConnection.connect(env.process(), connection, instance,
                     new Pos(31 * 16 + 8, 190, 16 * 16 + 8));
             final int bx = 31 + 18;
+            SynxWorlds.tickUntil(env, () -> instance.getChunk(31 + 13, 16) != null, () -> player.onChunkBatchReceived(64));
+            assertNull(instance.getChunk(bx, 16), "the ring of radius 13 does not reach 18 chunks out");
+
+            instance.viewDistance(20);
             SynxWorlds.tickUntil(env, () -> instance.getChunk(bx, 16) != null && instance.getChunk(45, 16) != null
                     && instance.getChunk(40, 35) != null, () -> player.onChunkBatchReceived(64));
 
@@ -220,7 +235,7 @@ public class SynxChunkLoaderIntegrationTest {
         }
     }
 
-    /** 场景「记录损坏的区块发空气占位」. */
+    /** 场景「记录损坏的区块发空气占位」: what the player's connection is sent for it, framed as the write thread frames it. */
     @Test
     public void aCorruptRecordLoadsAsLitAir(Env env, @TempDir Path dir) throws Exception {
         final Path build = SynxTestMap.get().copyTo(dir);
@@ -228,16 +243,21 @@ public class SynxChunkLoaderIntegrationTest {
         corrupt(SynxTestMap.regionFile(build, cx, cz), cx, cz);
         final SynxChunkLoader loader = SynxWorlds.loader(build, SynxTestMap.REGION, SynxWorlds.WRITABLE, new MemoryOverlay());
         final Instance instance = SynxWorlds.instance(env.process(), loader);
-        final SynxChunk c;
+        final ChunkDataPacket packet;
         try (LogCapture logs = LogCapture.of(SynxChunkLoader.class)) {
-            c = (SynxChunk) instance.loadChunk(cx, cz).join();
+            final RecordingConnection connection = new RecordingConnection(env.process());
+            final Player player = RecordingConnection.connect(env.process(), connection, instance,
+                    new Pos(cx * 16 + 8, 190, cz * 16 + 8));
+            SynxWorlds.tickUntil(env, () -> sentFor(connection, cx, cz) != null, () -> player.onChunkBatchReceived(64));
+            packet = SynxChunkPacket.decode(RecordingConnection.framed(Objects.requireNonNull(sentFor(connection, cx, cz))),
+                    SynxTestMap.REGISTRIES);
             final List<String> errors = logs.messagesAt(Level.ERROR);
             assertEquals(1, errors.size(), errors.toString());
             assertTrue(errors.getFirst().contains(cx + "," + cz) && errors.getFirst().contains("crc32c"), errors.getFirst());
         }
+        final SynxChunk c = assertInstanceOf(SynxChunk.class, instance.getChunk(cx, cz));
         assertEquals(SynxChunk.Mode.FAILED, c.mode());
         assertTrue(c.isReadOnly());
-        final ChunkDataPacket packet = (ChunkDataPacket) ((CachedPacket) c.getFullDataPacket()).packet();
         final LightData light = packet.lightData();
         final BitSet sections = new BitSet();
         sections.set(1, SynxTestMap.HEIGHT / 16 + 1);
@@ -282,6 +302,35 @@ public class SynxChunkLoaderIntegrationTest {
         final Block block = instance.getBlock(SynxTestMap.TICKER_X, SynxTestMap.FEATURE_Y, SynxTestMap.TICKER_Z);
         assertEquals(Block.STONE.stateId(), block.stateId());
         assertEquals(ticker, block.handler());
+    }
+
+    /**
+     * A block entity's handler is taken from the {@code BlockManager} once per record: with a
+     * registration that makes a new handler on every call, {@code getBlock}, the tick and the overlay
+     * entries still share one instance.
+     */
+    @Test
+    public void aBlockEntityKeepsOneHandlerInstance(Env env) {
+        final List<SynxWorlds.Ticker> made = new CopyOnWriteArrayList<>();
+        env.process().block().registerHandler(SynxTestMap.TICKER_HANDLER, () -> {
+            final SynxWorlds.Ticker ticker = new SynxWorlds.Ticker(SynxTestMap.TICKER_HANDLER);
+            made.add(ticker);
+            return ticker;
+        });
+        final Instance instance = SynxWorlds.instance(env.process(), SynxWorlds.loader(SynxWorlds.WRITABLE, new MemoryOverlay()));
+        final SynxChunk chunk = (SynxChunk) instance.loadChunk(SynxTestMap.TICKER_CHUNK_X, SynxTestMap.TICKER_CHUNK_Z).join();
+        final int x = SynxTestMap.TICKER_X, y = SynxTestMap.FEATURE_Y, z = SynxTestMap.TICKER_Z;
+        final SynxWorlds.Ticker handler = assertInstanceOf(SynxWorlds.Ticker.class, instance.getBlock(x, y, z).handler());
+        assertSame(handler, instance.getBlock(x, y, z).handler(), "read twice");
+        for (int i = 0; i < 5; i++) env.tick();
+        assertEquals(5, handler.ticksAt(x, z), "the instance getBlock returns is the one that ticks");
+
+        instance.setBlock(x + 2, y, z, Block.STONE);
+        assertEquals(SynxChunk.Mode.OVERLAY, chunk.mode());
+        assertSame(handler, instance.getBlock(x, y, z).handler(), "materialized");
+        env.tick();
+        assertEquals(6, handler.ticksAt(x, z));
+        assertEquals(1, made.size(), made.toString());
     }
 
     /** 场景「名单外的静态实体被跳过」. */
@@ -433,6 +482,20 @@ public class SynxChunkLoaderIntegrationTest {
         } finally {
             chunk.unlockReadLock();
         }
+    }
+
+    /**
+     * The cached packet {@code connection} was sent for chunk {@code chunkX, chunkZ}, if any: the form a
+     * chunk in failed or overlay mode sends, where handle mode sends a buffered one.
+     */
+    private static @Nullable CachedPacket sentFor(RecordingConnection connection, int chunkX, int chunkZ) {
+        for (SendablePacket packet : connection.sent) {
+            if (packet instanceof CachedPacket cached && cached.packet() instanceof ChunkDataPacket chunk
+                    && chunk.chunkX() == chunkX && chunk.chunkZ() == chunkZ) {
+                return cached;
+            }
+        }
+        return null;
     }
 
     /** The y of the highest non air block of a column. */

@@ -6,16 +6,17 @@ import io.github.bearisbug.synaxis.entity.Player;
 import io.github.bearisbug.synaxis.instance.Instance;
 import io.github.bearisbug.synaxis.instance.Section;
 import io.github.bearisbug.synaxis.instance.block.Block;
+import io.github.bearisbug.synaxis.instance.block.BlockHandler;
 import io.github.bearisbug.synaxis.instance.block.BlockManager;
-import io.github.bearisbug.synaxis.network.NetworkBuffer;
 import io.github.bearisbug.synaxis.network.packet.server.BufferedPacket;
-import io.github.bearisbug.synaxis.network.packet.server.CachedPacket;
+import io.github.bearisbug.synaxis.network.packet.server.SendablePacket;
 import io.github.bearisbug.synaxis.network.packet.server.play.ChunkDataPacket;
 import io.github.bearisbug.synaxis.network.packet.server.play.data.LightData;
 import io.github.bearisbug.synaxis.registry.RegistryKey;
 import io.github.bearisbug.synaxis.testing.Env;
 import io.github.bearisbug.synaxis.testing.EnvTest;
 import io.github.bearisbug.synaxis.world.biome.Biome;
+import net.kyori.adventure.key.Key;
 import net.kyori.adventure.nbt.CompoundBinaryTag;
 import net.kyori.adventure.nbt.StringBinaryTag;
 import org.junit.jupiter.api.Test;
@@ -26,6 +27,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Random;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
@@ -36,6 +38,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -45,7 +48,10 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  */
 @EnvTest
 public class SynxChunkOverlayIntegrationTest {
-    /** 场景「段① 与重新编码逐字节一致」, with its counter proof. */
+    /**
+     * 场景「段① 与重新编码逐字节一致」, with its counter proof. Every chunk of the test map holds cave
+     * air and void air ({@link SynxTestMap#OTHER_AIR_Y}), which the client and the baker count as air.
+     */
     @Test
     public void aThousandMaterializedChunksEncodeBackToTheirSegmentOne(Env env) {
         final SynxTestMap map = SynxTestMap.get();
@@ -58,13 +64,12 @@ public class SynxChunkOverlayIntegrationTest {
         int equal = 0, equalWithoutLight = 0;
         for (int[] at : chunks.subList(0, 1_000)) {
             final SynxChunk chunk = (SynxChunk) instance.loadChunk(at[0], at[1]).join();
-            final byte[] segment = map.record(at[0], at[1]).packet();
+            final byte[] segment = SynxChunkPacket.body(map.record(at[0], at[1]).packet());
+            assertEquals(Block.CAVE_AIR, chunk.getBlock(at[0] * 16, SynxTestMap.OTHER_AIR_Y, at[1] * 16));
             materialize(chunk);
-            final ChunkDataPacket packet = packet(chunk);
-            // The engine's own packet body, palettes as copied, and the canonical re-encoding encodeOverlay uses
-            final boolean same = Arrays.equals(SynxChunkPacket.body(segment), body(packet))
-                    && Arrays.equals(SynxChunkPacket.body(segment),
-                    SynxChunkPacket.body(SynxChunkPacket.encode(packet, map.settings(), SynxTestMap.REGISTRIES)));
+            // What a new viewer is sent, framed as the write thread frames it, and the overlay record
+            final boolean same = Arrays.equals(segment, SynxChunkPacket.body(RecordingConnection.framed(chunk.getFullDataPacket())))
+                    && Arrays.equals(segment, SynxChunkPacket.body(encode(chunk, map).record().packet()));
             if (same) equal++;
 
             // Counter proof: the same chunk with the light arrays left out of the sections
@@ -78,11 +83,41 @@ public class SynxChunkOverlayIntegrationTest {
             } finally {
                 chunk.unlockWriteLock();
             }
-            if (Arrays.equals(SynxChunkPacket.body(segment), body(packet(chunk)))) equalWithoutLight++;
+            if (Arrays.equals(segment, SynxChunkPacket.body(RecordingConnection.framed(chunk.getFullDataPacket())))) {
+                equalWithoutLight++;
+            }
             instance.unloadChunk(chunk);
         }
-        assertEquals(1_000, equal, "every materialized chunk encodes back to its segment ①");
+        assertEquals(1_000, equal, "every materialized chunk sends and records its segment ①");
         assertEquals(0, equalWithoutLight, "without the light arrays every one differs (empty sky mask)");
+    }
+
+    /**
+     * 场景「淘汰后已交出的包不变空」: the packet an overlay chunk hands a connection keeps the content
+     * it was handed out with. Demoted before the write thread frames it, or framed again once the
+     * frame is dropped under memory pressure, it still holds the chunk, not the empty sections handle
+     * mode leaves behind.
+     */
+    @Test
+    public void aPacketHandedOutBeforeADemotionKeepsItsContent(Env env) {
+        final SynxTestMap map = SynxTestMap.get();
+        final MemoryOverlay overlay = new MemoryOverlay();
+        final Instance instance = SynxWorlds.instance(env.process(), SynxWorlds.loader(SynxWorlds.WRITABLE, overlay));
+        final int cx = 16, cz = 16;
+        final SynxChunk chunk = (SynxChunk) instance.loadChunk(cx, cz).join();
+        instance.setBlock(cx * 16 + 8, SynxTestMap.FEATURE_Y, cz * 16 + 8, Block.GLASS);
+        final SendablePacket queued = chunk.getFullDataPacket();
+
+        final OverlayEncoding encoding = encode(chunk, map);
+        chunk.written(encoding.generation(), overlay.store(encoding), true);
+        assertEquals(SynxChunk.Mode.HANDLE, chunk.mode());
+
+        final byte[] expected = SynxChunkPacket.body(encoding.record().packet());
+        final ChunkDataPacket framed = SynxChunkPacket.decode(RecordingConnection.framed(queued), SynxTestMap.REGISTRIES);
+        assertFalse(framed.lightData().skyMask().isEmpty(), "framed after the demotion, still lit");
+        assertArrayEquals(expected, canonicalBody(framed, map), "framed after the demotion");
+        final ChunkDataPacket again = assertInstanceOf(ChunkDataPacket.class, RecordingConnection.serverPacket(queued));
+        assertArrayEquals(expected, canonicalBody(again, map), "taken again, as after its frame is dropped");
     }
 
     /** 场景「物化后新观察者不变黑」. */
@@ -183,21 +218,9 @@ public class SynxChunkOverlayIntegrationTest {
         final Instance instance = SynxWorlds.instance(env.process(), SynxWorlds.loader(SynxWorlds.WRITABLE, new MemoryOverlay()));
         final SynxChunk chunk = (SynxChunk) instance.loadChunk(2, 2).join();
         instance.setBlock(40, SynxTestMap.FEATURE_Y, 40, Block.STONE);
-        final CountDownLatch held = new CountDownLatch(1);
         final CountDownLatch release = new CountDownLatch(1);
-        final Thread holder = Thread.ofPlatform().start(() -> {
-            chunk.lockWriteLock();
-            try {
-                held.countDown();
-                release.await();
-            } catch (InterruptedException _) {
-                Thread.currentThread().interrupt();
-            } finally {
-                chunk.unlockWriteLock();
-            }
-        });
+        final Thread holder = holdWriteLock(chunk, release);
         try {
-            assertTrue(held.await(5, TimeUnit.SECONDS));
             final long start = System.nanoTime();
             assertNull(chunk.encodeOverlay(map.settings(), start + TimeUnit.SECONDS.toNanos(2)));
             final long waited = System.nanoTime() - start;
@@ -214,6 +237,76 @@ public class SynxChunkOverlayIntegrationTest {
         final OverlayEncoding encoding = chunk.encodeOverlay(map.settings(), System.nanoTime() + TimeUnit.SECONDS.toNanos(1));
         assertNotNull(encoding, "the lock is free again");
         assertEquals(1, encoding.generation());
+    }
+
+    /**
+     * API-M3-005 {@code written} waits at most 50 ms for the write-lock as well, so that a tick thread
+     * judged dead while it holds one cannot hold the final flush past its budget. The chunk then stays
+     * as it was, overlay and dirty, and is written again.
+     */
+    @Test
+    public void writtenGivesUpAfter50msWhenTheLockIsHeld(Env env) throws Exception {
+        final SynxTestMap map = SynxTestMap.get();
+        final MemoryOverlay overlay = new MemoryOverlay();
+        final Instance instance = SynxWorlds.instance(env.process(), SynxWorlds.loader(SynxWorlds.WRITABLE, overlay));
+        final int cx = 13, cz = 13;
+        final SynxChunk chunk = (SynxChunk) instance.loadChunk(cx, cz).join();
+        instance.setBlock(cx * 16, SynxTestMap.FEATURE_Y, cz * 16, Block.STONE);
+        final OverlayEncoding encoding = encode(chunk, map);
+        final OverlayHit hit = overlay.store(encoding);
+        final CountDownLatch release = new CountDownLatch(1);
+        final Thread holder = holdWriteLock(chunk, release);
+        try (LogCapture logs = LogCapture.of(SynxChunk.class)) {
+            final long start = System.nanoTime();
+            CompletableFuture.runAsync(() -> chunk.written(encoding.generation(), hit, true)).get(1, TimeUnit.SECONDS);
+            final long waited = System.nanoTime() - start;
+            assertTrue(waited >= TimeUnit.MILLISECONDS.toNanos(50), "waited " + waited + " ns");
+            assertEquals(SynxChunk.Mode.OVERLAY, chunk.mode());
+            assertTrue(chunk.dirty());
+            final List<String> warnings = logs.messagesAt(Level.WARN);
+            assertEquals(1, warnings.size(), warnings.toString());
+            assertTrue(warnings.getFirst().contains(cx + "," + cz), warnings.getFirst());
+        } finally {
+            release.countDown();
+            holder.join();
+        }
+        chunk.written(encoding.generation(), hit, true);
+        assertEquals(SynxChunk.Mode.HANDLE, chunk.mode(), "written again once the lock is free");
+        assertFalse(chunk.dirty());
+    }
+
+    /**
+     * A change the engine throws out of halfway, from a handler's {@code onPlace} say, counts all the
+     * same: the palette has it. A biome that is not registered throws before it changes anything, but
+     * the chunk it materialized is dirty and written like any other.
+     */
+    @Test
+    public void aChangeThatThrowsCountsAllTheSame(Env env) {
+        final Instance instance = SynxWorlds.instance(env.process(), SynxWorlds.loader(SynxWorlds.WRITABLE, new MemoryOverlay()));
+        final int cx = 14, cz = 14, x = cx * 16 + 4, y = SynxTestMap.FEATURE_Y, z = cz * 16 + 4;
+        final SynxChunk chunk = (SynxChunk) instance.loadChunk(cx, cz).join();
+        final BlockHandler throwing = new BlockHandler() {
+            @Override
+            public Key getKey() {
+                return Key.key("synaxis:throws");
+            }
+
+            @Override
+            public void onPlace(Placement placement) {
+                throw new IllegalStateException("onPlace");
+            }
+        };
+        assertThrows(IllegalStateException.class, () -> instance.setBlock(x, y, z, Block.STONE.withHandler(throwing)));
+        assertEquals(Block.STONE.stateId(), instance.getBlock(x, y, z).stateId(), "the palette has the change");
+        assertEquals(1, chunk.generation());
+        assertTrue(chunk.dirty());
+
+        final SynxChunk other = (SynxChunk) instance.loadChunk(cx + 1, cz).join();
+        assertThrows(IllegalStateException.class,
+                () -> instance.setBiome(x + 16, y, z, RegistryKey.unsafeOf("synaxis:nowhere")));
+        assertEquals(SynxChunk.Mode.OVERLAY, other.mode());
+        assertEquals(1, other.generation());
+        assertTrue(other.dirty());
     }
 
     /** API-M3-005 {@code written}: back to handle mode on the new record, unless changed since. */
@@ -382,6 +475,24 @@ public class SynxChunkOverlayIntegrationTest {
         return encoding;
     }
 
+    /** A platform thread that holds the write-lock of {@code chunk} until {@code release}; it holds it on return. */
+    private static Thread holdWriteLock(SynxChunk chunk, CountDownLatch release) throws InterruptedException {
+        final CountDownLatch held = new CountDownLatch(1);
+        final Thread holder = Thread.ofPlatform().start(() -> {
+            chunk.lockWriteLock();
+            try {
+                held.countDown();
+                release.await();
+            } catch (InterruptedException _) {
+                Thread.currentThread().interrupt();
+            } finally {
+                chunk.unlockWriteLock();
+            }
+        });
+        assertTrue(held.await(5, TimeUnit.SECONDS));
+        return holder;
+    }
+
     /** Materializes a chunk without changing it: sets a block to what it already is. */
     private static void materialize(SynxChunk chunk) {
         final int x = chunk.getChunkX() * 16, z = chunk.getChunkZ() * 16;
@@ -395,15 +506,12 @@ public class SynxChunkOverlayIntegrationTest {
     }
 
     private static ChunkDataPacket packet(SynxChunk chunk) {
-        return assertInstanceOf(ChunkDataPacket.class, ((CachedPacket) chunk.getFullDataPacket()).packet());
+        return assertInstanceOf(ChunkDataPacket.class, RecordingConnection.serverPacket(chunk.getFullDataPacket()));
     }
 
-    /** The body the engine sends for {@code packet}, packet id first, as it is. */
-    private static byte[] body(ChunkDataPacket packet) {
-        return NetworkBuffer.makeArray(buffer -> {
-            buffer.write(NetworkBuffer.VAR_INT, SynxFormat.CHUNK_DATA_PACKET_ID);
-            buffer.write(ChunkDataPacket.SERIALIZER, packet);
-        }, SynxTestMap.REGISTRIES);
+    /** The body of {@code packet} with its palettes in canonical order: equal when the content is. */
+    private static byte[] canonicalBody(ChunkDataPacket packet, SynxTestMap map) {
+        return SynxChunkPacket.body(SynxChunkPacket.encode(packet, map.settings(), SynxTestMap.REGISTRIES));
     }
 
     /** A block entity's NBT without the keys of the record around it, which the block itself carries. */

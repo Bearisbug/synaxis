@@ -4,6 +4,7 @@ import io.github.bearisbug.synaxis.coordinate.CoordConversion;
 import io.github.bearisbug.synaxis.instance.Chunk;
 import io.github.bearisbug.synaxis.instance.ChunkLoader;
 import io.github.bearisbug.synaxis.instance.Instance;
+import io.github.bearisbug.synaxis.instance.block.BlockManager;
 import io.github.bearisbug.synaxis.network.NetworkBuffer;
 import io.github.bearisbug.synaxis.network.packet.server.BufferedPacket;
 import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
@@ -144,7 +145,7 @@ public final class SynxChunkLoader implements ChunkLoader {
                              SectionCache.Key key, long generation) {
         final SynxChunk.Source source;
         try {
-            source = source(record, key);
+            source = source(record, key, instance.process().block());
         } catch (IllegalArgumentException e) {
             return failed(instance, chunkX, chunkZ, inRegion, "segment ③: " + e.getMessage());
         }
@@ -161,18 +162,19 @@ public final class SynxChunkLoader implements ChunkLoader {
     }
 
     /**
-     * What a chunk reads and sends from {@code record}: segment ③ decoded, segment ① wrapped for the
-     * socket as it is.
+     * What a chunk reads and sends from {@code record}: segment ③ decoded, the handlers of its block
+     * entities taken from {@code blocks}, segment ① wrapped for the socket as it is.
      *
      * @throws IllegalArgumentException if segment ③ does not decode
      */
-    SynxChunk.Source source(SynxSlot.Present record, SectionCache.Key key) {
+    SynxChunk.Source source(SynxSlot.Present record, SectionCache.Key key, BlockManager blocks) {
         final SynxEntities.Tables tables = SynxEntities.decode(record.entityTables());
-        final Int2ObjectMap<SynxBlockEntity> blockEntities = tables.blockEntities().isEmpty()
+        final Int2ObjectMap<SynxChunk.BlockEntity> blockEntities = tables.blockEntities().isEmpty()
                 ? Int2ObjectMaps.emptyMap() : new Int2ObjectOpenHashMap<>(tables.blockEntities().size());
         for (SynxBlockEntity entity : tables.blockEntities()) {
             final int y = entity.sectionY() * 16 + (entity.index() >> 8);
-            blockEntities.put(CoordConversion.chunkBlockIndex(entity.index() & 15, y, (entity.index() >> 4) & 15), entity);
+            blockEntities.put(CoordConversion.chunkBlockIndex(entity.index() & 15, y, (entity.index() >> 4) & 15),
+                    SynxChunk.BlockEntity.of(entity, blocks));
         }
         final long length = record.packet().byteSize();
         final BufferedPacket packet = new BufferedPacket(NetworkBuffer.wrap(record.packet(), 0, length), 0, length, false);
@@ -180,7 +182,7 @@ public final class SynxChunkLoader implements ChunkLoader {
     }
 
     /** The section palettes of a source, from the cache. */
-    SynxPacketDecoder.Sections sections(SynxChunk.Source source, Instance instance) {
+    SectionCache.Entry sections(SynxChunk.Source source, Instance instance) {
         return cache.get(source.key(), source.slot().packet(), instance.registries(), manifest.world().height() / 16);
     }
 

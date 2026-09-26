@@ -7,12 +7,17 @@ import io.github.bearisbug.synaxis.registry.Registries;
 import java.lang.foreign.MemorySegment;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
-import java.util.Map;
 
 /**
  * The decoded section palettes of handle chunks ({@code docs/DESIGN-M3.md} API-M3-005 读方块), one
  * per loader, least recently used first out once the decoded palettes pass {@code section_cache_bytes}.
  * Thread safe; two threads missing the same key may both decode it, the first to finish is kept.
+ * <p>
+ * A chunk keeps the {@link Entry} it took, weakly, and reads through it without the lock of the
+ * cache (tick threads would otherwise queue on it for every block they read); such a read marks the
+ * entry, and eviction passes a marked entry over once instead of taking it, which stands in for the
+ * reordering those reads do not do. The weak reference keeps nothing alive: an evicted entry is read
+ * until the garbage collector takes it, then the chunk asks the cache again.
  * <p>
  * A key names content that never changes, so nothing is ever invalidated: a record of a region file
  * by its chunk, an overlay record by segment and offset (segment numbers are not reused within a
@@ -35,7 +40,28 @@ final class SectionCache {
         }
     }
 
-    private record Entry(SynxPacketDecoder.Sections sections, long bytes) {
+    /** The palettes of one key, and whether a chunk has read them since the last eviction pass. */
+    static final class Entry {
+        private final Key key;
+        private final SynxPacketDecoder.Sections sections;
+        private final long bytes;
+        private volatile boolean referenced;
+
+        private Entry(Key key, SynxPacketDecoder.Sections sections, long bytes) {
+            this.key = key;
+            this.sections = sections;
+            this.bytes = bytes;
+        }
+
+        Key key() {
+            return key;
+        }
+
+        /** The palettes, marking the entry as read. */
+        SynxPacketDecoder.Sections sections() {
+            if (!referenced) this.referenced = true;
+            return sections;
+        }
     }
 
     private final long maxBytes;
@@ -47,31 +73,46 @@ final class SectionCache {
     }
 
     /**
-     * The palettes of {@code framed}, from the cache or decoded into it.
+     * The entry of {@code framed}, from the cache or decoded into it.
      *
      * @throws IllegalArgumentException if {@code framed} is not a chunk packet of {@code sectionCount} sections
      */
-    SynxPacketDecoder.Sections get(Key key, MemorySegment framed, Registries registries, int sectionCount) {
+    Entry get(Key key, MemorySegment framed, Registries registries, int sectionCount) {
         synchronized (this) {
             final Entry entry = entries.get(key);
-            if (entry != null) return entry.sections();
+            if (entry != null) return entry;
         }
         final SynxPacketDecoder.Sections decoded = SynxPacketDecoder.sections(framed, registries, sectionCount);
-        final long size = size(decoded);
+        final Entry inserted = new Entry(key, decoded, size(decoded));
         synchronized (this) {
             final Entry raced = entries.get(key);
-            if (raced != null) return raced.sections();
-            entries.put(key, new Entry(decoded, size));
-            this.bytes += size;
-            final Iterator<Map.Entry<Key, Entry>> eldest = entries.entrySet().iterator();
-            while (this.bytes > maxBytes && entries.size() > 1) {
-                final Map.Entry<Key, Entry> out = eldest.next();
-                if (out.getKey().equals(key)) continue;
-                this.bytes -= out.getValue().bytes();
+            if (raced != null) return raced;
+            entries.put(key, inserted);
+            this.bytes += inserted.bytes;
+            evict(inserted);
+        }
+        return inserted;
+    }
+
+    /**
+     * Takes the least recently used entries out until the cache is within its budget again, all but
+     * {@code keep}. The first pass spares an entry read through a chunk since the pass before, and
+     * clears the mark; the second takes what it has to.
+     */
+    private void evict(Entry keep) {
+        for (int pass = 0; pass < 2 && this.bytes > maxBytes; pass++) {
+            final Iterator<Entry> eldest = entries.values().iterator();
+            while (this.bytes > maxBytes && eldest.hasNext()) {
+                final Entry out = eldest.next();
+                if (out == keep) continue;
+                if (pass == 0 && out.referenced) {
+                    out.referenced = false;
+                    continue;
+                }
+                this.bytes -= out.bytes;
                 eldest.remove();
             }
         }
-        return decoded;
     }
 
     synchronized long bytes() {

@@ -1,11 +1,13 @@
 package io.github.bearisbug.synaxis.synx;
 
 import io.github.bearisbug.synaxis.ServerProcess;
+import io.github.bearisbug.synaxis.baker.Baker;
 import io.github.bearisbug.synaxis.coordinate.Pos;
 import io.github.bearisbug.synaxis.entity.Player;
 import io.github.bearisbug.synaxis.event.player.AsyncPlayerConfigurationEvent;
 import io.github.bearisbug.synaxis.instance.Instance;
 import io.github.bearisbug.synaxis.network.ConnectionState;
+import io.github.bearisbug.synaxis.network.NetworkBuffer;
 import io.github.bearisbug.synaxis.network.packet.server.BufferedPacket;
 import io.github.bearisbug.synaxis.network.packet.server.CachedPacket;
 import io.github.bearisbug.synaxis.network.packet.server.FramedPacket;
@@ -18,6 +20,7 @@ import org.jetbrains.annotations.Nullable;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -88,6 +91,25 @@ final class RecordingConnection extends PlayerConnection {
         final byte[] bytes = new byte[(int) packet.length()];
         packet.buffer().copyTo(packet.index(), bytes, 0, bytes.length);
         return bytes;
+    }
+
+    /**
+     * The bytes the write thread puts on the wire for a chunk packet, encryption aside: a buffered
+     * packet as it is, a cached one framed as {@code PlayerSocketConnection} frames it, with the
+     * compression threshold of the release, which the start-up check makes the process's.
+     */
+    static byte[] framed(SendablePacket packet) {
+        return switch (packet) {
+            case BufferedPacket buffered -> bytes(buffered);
+            case CachedPacket cached -> {
+                final NetworkBuffer body = Objects.requireNonNull(cached.body(ConnectionState.PLAY,
+                        SynxTestMap.REGISTRIES, Baker.COMPRESSION_THRESHOLD));
+                final byte[] bytes = new byte[(int) body.capacity()];
+                body.copyTo(0, bytes, 0, bytes.length);
+                yield bytes;
+            }
+            default -> throw new AssertionError("not a form a chunk packet takes: " + packet);
+        };
     }
 
     @Override

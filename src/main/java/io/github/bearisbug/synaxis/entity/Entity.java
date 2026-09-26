@@ -882,6 +882,11 @@ public class Entity implements Viewable, Tickable, Schedulable, EventHandler<Ent
         return false;
     }
 
+    /** Whether this tick found the entity outside the simulation distance, see {@link #isSimulated()}. */
+    boolean outsideSimulation() {
+        return outsideSimulation;
+    }
+
     /**
      * Whether the {@link #setDormancyPolicy(DormancyPolicy) dormancy policy} has this entity sit out this
      * tick. On the tick thread of this entity, which alone keeps the state below.

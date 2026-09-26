@@ -3,6 +3,7 @@ package io.github.bearisbug.synaxis.instance;
 import io.github.bearisbug.synaxis.coordinate.Pos;
 import io.github.bearisbug.synaxis.entity.DormancyPolicy;
 import io.github.bearisbug.synaxis.entity.Entity;
+import io.github.bearisbug.synaxis.entity.EntityProjectile;
 import io.github.bearisbug.synaxis.entity.EntityType;
 import io.github.bearisbug.synaxis.entity.Player;
 import io.github.bearisbug.synaxis.instance.block.Block;
@@ -240,5 +241,42 @@ public class SimulationDistanceTest {
         ticks(10);
         assertEquals(10, entity.updates.get());
         assertTrue(instance.isChunkSimulated(6, 0));
+    }
+
+    /**
+     * At most 32, the largest view distance of a player: the chunks a tick simulates are (2d + 1)² per
+     * player, and a distance near {@link Integer#MAX_VALUE} never ends that loop.
+     */
+    @Test
+    public void aSimulationDistanceAboveThirtyTwoIsRefused() {
+        final Instance instance = env.createFlatInstance();
+        instance.setSimulationDistance(4);
+        assertThrows(IllegalArgumentException.class, () -> instance.setSimulationDistance(33));
+        assertThrows(IllegalArgumentException.class, () -> instance.setSimulationDistance(Integer.MAX_VALUE));
+        assertEquals(4, instance.simulationDistance());
+        instance.setSimulationDistance(32);
+        assertEquals(32, instance.simulationDistance());
+    }
+
+    /**
+     * ADR-M3-017 for a projectile: outside the simulation distance only its scheduler runs, not its
+     * check for being stuck either. An arrow inside the stone of the floor is found stuck at once
+     * where it is simulated.
+     */
+    @Test
+    public void aProjectileOutsideTheSimulationDistanceIsNotFoundStuck() {
+        final Instance instance = env.createFlatInstance();
+        instance.setSimulationDistance(4);
+        env.createPlayer(instance, PLAYER);
+        final EntityProjectile arrow = new EntityProjectile(null, EntityType.ARROW);
+        arrow.setInstance(instance, FAR.withY(20)).join();
+
+        ticks(10);
+        assertFalse(arrow.isOnGround(), "outside the simulation distance the arrow is not found stuck");
+        assertFalse(arrow.hasNoGravity());
+
+        instance.setSimulationDistance(-1);
+        env.tick();
+        assertTrue(arrow.isOnGround(), "simulated, it is");
     }
 }

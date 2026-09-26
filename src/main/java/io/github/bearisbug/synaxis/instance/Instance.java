@@ -93,6 +93,10 @@ public abstract class Instance implements Block.Getter, Block.Setter, Biome.Gett
             .resolving(Identity.UUID, Instance::getUuid)
             .build();
 
+    // The largest view distance of a player (Player#setMaxViewDistance): a tick simulates (2d + 1)² chunks
+    // per player, docs/DESIGN-M3.md API-M3-006
+    private static final int MAX_SIMULATION_DISTANCE = 32;
+
     private boolean registered;
 
     private final RegistryKey<DimensionType> dimensionType;
@@ -961,13 +965,13 @@ public abstract class Instance implements Block.Getter, Block.Setter, Biome.Gett
      * <p>
      * Can be called from any thread, it takes effect on the next tick.
      *
-     * @param chunks the distance in chunks, at least 1, or -1 for no limit
+     * @param chunks the distance in chunks, from 1 to 32, or -1 for no limit
      * @throws IllegalArgumentException for any other value
      */
     @ApiStatus.Experimental
     public void setSimulationDistance(int chunks) {
-        Check.argCondition(chunks != -1 && chunks < 1,
-                "The simulation distance must be -1 or at least 1 but was {0}", chunks);
+        Check.argCondition(chunks != -1 && (chunks < 1 || chunks > MAX_SIMULATION_DISTANCE),
+                "The simulation distance must be -1 or from 1 to {0} but was {1}", MAX_SIMULATION_DISTANCE, chunks);
         this.simulationDistance = chunks;
     }
 

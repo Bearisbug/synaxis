@@ -497,3 +497,64 @@ RUN-039 记录（2026-09-26，RUN-038 之后四组合入集成分支后的复验
      复用 synaxis-pg、synaxis-valkey，没有新建镜像、容器与卷；手动起的 server-app 进程（pid 98928、6363、6669、99235、6819、7296、65579）
        都已退出（SIGTERM 或 server/stop；65579 未退出时 SIGKILL），测试起的子 JVM 由测试自己收尾
      /tmp 下的临时目录（改前的 installDist 副本、复现脚本与运行目录、反证副本与结果 XML、diff-cover 的 uv 环境）本节写完即删
+
+十五、RUN-039 之后的修复轮（第 3 轮，追加；上面各节与 TEST.md §6 的 RUN-039 各行不改）
+
+  被测版本：prod/integrate-f 的 a7e136b7a0 之上的修复提交（本节所在的提交）。审查在 a7e136b7a0 上报出五处（一处 major、四处 minor）。
+    设计先改（DESIGN-PROD v0.9.22（RUN-039 修复第 3 轮）；前两轮的版本号由「v0.9.15（RUN-039 修复）」「v0.9.15（RUN-039 修复第 2 轮）」改为
+    v0.9.20、v0.9.21，本文件第十三、十四节仍写原记法），再改代码，再改 TEST.md（新增 TC-PROD-511、TC-PROD-512，改 TC-PROD-483 第 2 步与
+    TC-PROD-510 第 2 步），反证在本机实跑。
+  执行者与机器同前；同机有别的会话在跑 Gradle，本机内存紧（swap 用到约 10.8 GB / 11 GB）：每条 Gradle 都带 --max-workers=4、一次只跑一条，
+    同一时刻至多一个手动起的 server-app 进程。反证的做法：改一处、跑、看红、git checkout -- 还原、确认 git diff 为空，再重跑复绿。
+
+  1. TC-PROD-483 第 2 步的红行（major）
+     原写法照做一次（PlayerStore#saveAll 里 if (!saveEnded) shutdownSnapshot(…) 去掉判断，跑 ShutdownSaveOutsideTheWorldIntegrationTest，数据库环境）：
+       3 tests completed, 1 failed，ShutdownSaveOutsideTheWorldIntegrationTest.java:165 no save hook after the save phase ==> expected: <[]> but was: <[Behind]>
+       本机这一次与原写一致，审查 3 次都红在 :164（assertFalse(saved.isDone())，expected: <false> but was: <true>）。原因：晚到的快照在 tick 上
+       先调钩子、再交给 Syn-Store-Write 虚拟线程写库，写库在这 5 个 tick 内完成时 saveAll 的 future 已完成，:164 先红；红行随写库快慢变
+     改法：测试里钩子断言与 assertFalse(saved.isDone()) 对调（两行号互换，其余行号不变，TC-PROD-484 第 3 步的 :170 照旧）；
+       TC-PROD-483 第 2 步改为红在 :164 的钩子断言，并写明顺序为什么不能换回
+     对调后同一反证跑 2 次（--rerun）：都是 3 tests completed, 1 failed，:164 no save hook after the save phase ==> expected: <[]> but was: <[Behind]>
+     还原后：tests=3 0 失败
+
+  2. 所有权断言开着时 rts 插件的 onDisable 失败（minor，7ff65e40a8 之前就有）→ Units#end 对已分配给 tick 线程的单位经
+     acquirable().sync(Entity::remove) 移除，未分配的直接 remove()；API-PROD-007 写明 onDisable 所在的线程；TC-PROD-511、TC-PROD-512
+     先写测试（RtsPluginIntegrationTest.disablingOffTheTickThreadsTakesTheUnitsOffAndEndsTheMatch），在未改的 Units 上跑（默认模式，测试 JVM 带 -ea）：
+       3 tests completed, 1 failed，RtsPluginIntegrationTest.java:227 onDisable failed: io.github.bearisbug.synaxis.thread.AcquirableOwnershipException:
+       Thread ownership assertion failed for io.github.bearisbug.synaxis.game.rts.UnitEntity@45b2d17b，Current thread: plugin-disable-rts，Assigned thread: Syn-Tick-0
+     改后 ./gradlew :game-rts:test <mirror>：12 类 84 个 0 失败；
+       加 -Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true -Dsynaxis.thread-provider=grid 再跑：84 个 0 失败
+     真进程（本分支 installDist，严格 grid，玩法模式 rts-512，内存存储，离线，游戏端口 25697；/tmp 下脚本：FIFO 接 stdin，
+       探针 login --hold 0 退出后写 stop，每次在 mktemp 目录里起、跑完删掉）3 次：
+       探针都 state=play、退出码 0；进程退出码 0，从 stop 到退出 0.61 s、0.60 s、0.59 s；out.log 0 行 ERROR，没有 AcquirableOwnershipException；
+       [Syn-TickScheduler] Disabling plugin: plugin_id=rts → [Syn-Shutdown] synaxis server stopped successfully.；台账 match_ended reason=normal 各一行；
+       shutdown_saved 的 online/saved 为 0/0、1/1、0/0，failed=0；第 3 次核对 Effective ServerConfig 含 dispatcherThreads=4、threadProvider=GRID
+     修复前的真进程红本轮没跑，依据是审查在 a7e136b7a0 的 installDist 上的 3 次复现（Plugin failed to disable: plugin_id=rts，没有 match_ended）
+     ./gradlew :architecture-tests:test <mirror>：20 个 0 失败（game-rts 新调的 Acquirable#assignedThread、sync 都不是 @ApiStatus.Internal）
+
+  3. 文档三处（minor）
+     DESIGN-PROD 前两轮的版本号改为 v0.9.20、v0.9.21：正文五处（§26 两条、§28.2 三行）、DESIGN.md v0.41 一行、TEST.md 六处同步，
+       §1 状态行补 v0.9.20～v0.9.22
+     §28.2 游戏端口一行：让 JVM 活着的是指标端点的 HTTP-Dispatcher（JDK 25 src.zip 里 sun/net/httpserver/ServerImpl.java:190 在调用线程上
+       new Thread(null, dispatcher, "HTTP-Dispatcher", 0, false)，由 main 起，继承非 daemon）；ManagementServer.java:174 setDaemon(true)
+     TC-PROD-510 第 2 步 370 的出处改为 357 + 9 + 4
+
+  4. 回归与门禁（最后一次代码与测试改动之后）
+     ./gradlew :game-rts:check :server-app:check :architecture-tests:check --rerun-tasks --continue --max-workers=4 <mirror>（带数据库环境）
+       18:00:59Z → 18:04:17Z，BUILD SUCCESSFUL in 3m 17s，53 actionable tasks: 53 executed
+       game-rts 12 类 84 个、server-app 74 类 370 个（skipped=0）、architecture-tests 7 类 20 个，0 失败 0 错误
+     没跑的：根构建的全量 check 与两种严格模式全量（本轮没动引擎；server-app 只改 PluginHost 一段注释与一个测试的断言顺序；本机内存紧），
+       新增行覆盖；ABI 门（plugin-api、protocol 没有改动）
+     文档 lint：design-doc check.sh docs/DESIGN-PROD.md → ✅ lint 无警告；test-doc check.sh docs/TEST.md → 只有已知的（RUN-031 明细行、REQ-PROD-031 无 TC）
+
+  5. 仍开着的
+     游戏端口绑不上时 server-app 不退出（§28.2 风险行，登记的默认是下一个修复轮修）：本轮审查的五处不含它，本轮没修
+
+  6. RUN-039 的结论是否要改
+     不改。RUN-039 跑过的用例按当时的写法结果不变：rts 的 onDisable 只在所有权断言开着、单位已分配给 tick 线程之后才出错，RUN-039 的
+     严格模式全量里没有测试这样调 onDisable，真进程用例也没在严格模式下起过玩法模式；TC-PROD-483 第 2 步的反证不在第八节重跑的
+     反证里。所以 TEST.md §6 不加注
+
+  7. 环境与回收
+     复用 synaxis-pg、synaxis-valkey，没有新建镜像、容器与卷；手动起的 3 个 server-app 进程都已按 stop 退出，脚本等到进程结束才删目录
+     /tmp 下的脚本、环境文件与日志（prodf3-*）本节写完即删

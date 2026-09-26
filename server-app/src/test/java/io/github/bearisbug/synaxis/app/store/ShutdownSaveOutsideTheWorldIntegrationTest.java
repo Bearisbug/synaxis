@@ -161,8 +161,8 @@ class ShutdownSaveOutsideTheWorldIntegrationTest {
         shard.store().onSaveEnded(true);
         for (int i = 0; i < 5; i++) env.tick();
 
-        assertFalse(saved.isDone());
         assertEquals(List.of(), hooks, "no save hook after the save phase");
+        assertFalse(saved.isDone());
         final StoreFixture.Row row = row(database, account);
         assertEquals(0, row.version(), "nothing written after the save phase");
         assertNull(row.purse());

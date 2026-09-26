@@ -2,6 +2,7 @@ package io.github.bearisbug.synaxis.game.rts;
 
 import io.github.bearisbug.synaxis.ServerProcess;
 import io.github.bearisbug.synaxis.coordinate.Pos;
+import io.github.bearisbug.synaxis.entity.Entity;
 import io.github.bearisbug.synaxis.entity.Player;
 import io.github.bearisbug.synaxis.event.Event;
 import io.github.bearisbug.synaxis.instance.Instance;
@@ -32,12 +33,14 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -181,5 +184,48 @@ class RtsPluginIntegrationTest {
         assertEquals(match, player.getInstance());
         assertTrue(context.sent.stream().allMatch(GameChannel.NAME::equals),
                 "the units were announced on a channel that is not the plugin's");
+    }
+
+    /**
+     * The host runs {@code onDisable} on a platform thread of its own, {@code plugin-disable-rts},
+     * which owns no tick thread (API-PROD-007), while a tick thread owns every unit by then.
+     */
+    @Test
+    void disablingOffTheTickThreadsTakesTheUnitsOffAndEndsTheMatch(Env env) throws InterruptedException {
+        MatchSupport.registerMatchDimension(env);
+        final String previousMap = System.getProperty("synaxis.app.map");
+        System.setProperty("synaxis.app.map", MapPreset.SMALL.id());
+        final RtsPlugin plugin = new RtsPlugin();
+        final ProbeContext context = new ProbeContext(env, dataDirectory);
+        try {
+            plugin.onEnable(context);
+        } finally {
+            if (previousMap == null) System.clearProperty("synaxis.app.map");
+            else System.setProperty("synaxis.app.map", previousMap);
+        }
+        final AdmissionProvider provider = context.provider;
+        assertNotNull(provider, "the plugin registered no admission provider");
+        final Instance match = assertInstanceOf(Admission.Accept.class,
+                provider.admit(new AdmissionRequest(UUID.randomUUID(), "tester", 0, 0, UUID.randomUUID(),
+                        InetAddress.getLoopbackAddress()))).instance();
+        final List<Entity> units = List.copyOf(match.getEntities());
+        assertEquals(Roster.DEFAULT_UNITS, units.size());
+        env.tick();
+        assertTrue(units.stream().allMatch(unit -> unit.acquirable().assignedThread() != null),
+                "the dispatcher has not handed the units to a tick thread yet");
+
+        final AtomicReference<@Nullable Throwable> failure = new AtomicReference<>();
+        final Thread disabling = Thread.ofPlatform().name("plugin-disable-rts").start(() -> {
+            try {
+                plugin.onDisable();
+            } catch (Throwable throwable) {
+                failure.set(throwable);
+            }
+        });
+        disabling.join();
+
+        assertNull(failure.get(), () -> "onDisable failed: " + failure.get());
+        assertTrue(units.stream().allMatch(Entity::isRemoved), "a unit outlived the match");
+        assertEquals("match_ended", context.events.names().getLast(), "the match did not end");
     }
 }

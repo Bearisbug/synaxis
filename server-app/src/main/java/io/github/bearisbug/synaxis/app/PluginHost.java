@@ -183,7 +183,9 @@ final class PluginHost {
 
     /**
      * Disables every enabled plugin in reverse enable order. Registered as the shutdown task of the
-     * engine scheduler, which drains it once the tick threads are joined; safe to call twice.
+     * engine scheduler, which drains it on the tick scheduler thread between two ticks, or on the
+     * stop thread when the ticker does not pick it up; safe to call twice. Each {@code onDisable}
+     * runs on a thread of its own that owns no tick thread (API-PROD-007).
      * <p>
      * The plugin side of the shutdown gets the {@value #DISABLE_BUDGET_SECONDS} s of the 15 s
      * budget of {@code docs/DESIGN-M2.md} §17. A plugin still inside {@code onDisable} when the

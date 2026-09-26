@@ -51,13 +51,19 @@ public class OverlayShardProcessTest {
     private record Fixture(Process process, List<String> output, Thread reader) implements AutoCloseable {
 
         static Fixture start(Path directory, ShardSettings release, int count, long periodMillis) throws IOException {
-            final Process process = new ProcessBuilder(
+            final List<String> command = new ArrayList<>(List.of(
                     Path.of(System.getProperty("java.home"), "bin", "java").toString(), "-Xmx512m",
                     "-cp", System.getProperty("java.class.path"),
                     "-Dlogback.configurationFile=logback.xml", "-Dsynaxis.app.log=stdout",
                     "-Dsynaxis.map.root=" + release.mapRoot(), "-Dsynaxis.map.build=" + release.mapBuild(),
-                    "-Dsynaxis.overlay.flush-interval-s=" + FLUSH_INTERVAL_S,
-                    OverlayShardFixture.class.getName(), Integer.toString(count), Long.toString(periodMillis))
+                    "-Dsynaxis.overlay.flush-interval-s=" + FLUSH_INTERVAL_S));
+            // The multi-threaded rounds of CI reach the fixture as they reach this JVM
+            for (String name : List.of("synaxis.dispatcher-threads", "synaxis.acquirable-strict", "synaxis.thread-provider")) {
+                final String value = System.getProperty(name);
+                if (value != null) command.add("-D" + name + "=" + value);
+            }
+            command.addAll(List.of(OverlayShardFixture.class.getName(), Integer.toString(count), Long.toString(periodMillis)));
+            final Process process = new ProcessBuilder(command)
                     .directory(directory.toFile())
                     .redirectErrorStream(true)
                     .start();

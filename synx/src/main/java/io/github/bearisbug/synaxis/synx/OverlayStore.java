@@ -646,7 +646,7 @@ public final class OverlayStore implements OverlayIndex, OverlayTracker {
             abandon(touched);
             return null;
         }
-        flushFsyncs.increment();
+        flushFsyncs.add(touched.size());
         flushAppended.add(appended.size());
         final long writtenAt = tuning.clock().getAsLong();
         final List<OverlayHit> hits = new ArrayList<>(appended.size());

@@ -146,6 +146,24 @@ public class OverlayStoreTest {
     }
 
     @Test
+    public void aBatchPastTheEndOfItsSegmentGoesOnInANewOneAndForcesEach() throws Exception {
+        // Room for three records of a FakeChunk, 600 bytes each with their record header
+        final OverlayStore store = open(16_384, new OverlayTuning(1, SynxFormat.HEADER_BYTES + 3 * 600,
+                OverlayTuning.SEGMENT_RECORDS, clock, disk));
+        final List<FakeChunk> chunks = OverlayFixture.chunks(store, 0, 7);
+        chunks.forEach(FakeChunk::change);
+        clock.advance(Duration.ofSeconds(10));
+
+        store.tickEnd();
+
+        assertEquals(List.of(0, 0, 0, 1, 1, 1, 2), chunks.stream().map(c -> store.find(c.chunkX(), 0).segment()).toList());
+        assertEquals(3, disk.forces.get());
+        assertEquals(3, store.stats().flushFsyncs(), "fsync calls");
+        final OverlayStore reopened = open(16_384, 1);
+        for (FakeChunk chunk : chunks) assertEquals(1, generation(reopened, chunk));
+    }
+
+    @Test
     public void aChunkChangedAfterItsEncodingStaysDirtyAndIsWrittenAgain() throws Exception {
         final OverlayStore store = open(16_384, 1);
         final FakeChunk chunk = new FakeChunk(store, 3, 4, 0);

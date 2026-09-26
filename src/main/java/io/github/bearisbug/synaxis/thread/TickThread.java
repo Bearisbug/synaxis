@@ -3,8 +3,9 @@ package io.github.bearisbug.synaxis.thread;
 import org.jetbrains.annotations.ApiStatus;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
@@ -31,7 +32,9 @@ public class TickThread extends EngineThread {
     private volatile @Nullable LongConsumer tickObserver;
 
     private long tickNum = 0;
-    final List<ThreadDispatcherImpl.Partition> entries = new ArrayList<>();
+    // In the order they were handed over, which is the tick order; a hash set so that unloading a chunk
+    // drops its partition without a scan (docs/DESIGN-M3.md API-M3-006)
+    final Set<ThreadDispatcherImpl.Partition> entries = new LinkedHashSet<>();
 
     public TickThread(int number, Consumer<Throwable> exceptionHandler) {
         this(THREAD_NAME_TICK + "-" + number, exceptionHandler);

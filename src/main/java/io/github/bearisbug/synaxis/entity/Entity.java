@@ -213,6 +213,8 @@ public class Entity implements Viewable, Tickable, Schedulable, EventHandler<Ent
     private @Nullable DormancyPolicy appliedDormancyPolicy;
     private int dormancyInterval = 1;
     private long dormancyClock;
+    // The tick thread of this entity only, see #isSimulated()
+    private boolean outsideSimulation;
     protected final Set<Player> viewers = viewEngine.set;
     private final TagHandler tagHandler = TagHandler.newHandler();
     @SuppressWarnings("this-escape") // deliberate self registration, entities are not usable until spawned
@@ -828,7 +830,7 @@ public class Entity implements Viewable, Tickable, Schedulable, EventHandler<Ent
         this.scheduler.processTick();
         if (isRemoved()) return;
 
-        if (!sitsOutTick()) {
+        if (isSimulated() && !sitsOutTick()) {
             // Entity tick
             {
                 // handle position and velocity updates
@@ -859,6 +861,25 @@ public class Entity implements Viewable, Tickable, Schedulable, EventHandler<Ent
         }
         // End of tick scheduled tasks
         this.scheduler.processTickEnd();
+    }
+
+    /**
+     * Whether the chunk of this entity is within the simulation distance of its instance this tick
+     * ({@code docs/DESIGN-M3.md} {@code API-M3-006}, {@code ADR-M3-017}); outside it only the
+     * scheduler runs. Asked before the dormancy policy, which is not asked outside it and whose clock
+     * does not move there. A player is always simulated. Coming back, a position synchronization is
+     * due, as when waking up from dormancy.
+     */
+    private boolean isSimulated() {
+        if (this instanceof Player || instance.isChunkSimulated(currentChunk.getChunkX(), currentChunk.getChunkZ())) {
+            if (outsideSimulation) {
+                this.outsideSimulation = false;
+                this.nextSynchronizationTick = ticks;
+            }
+            return true;
+        }
+        this.outsideSimulation = true;
+        return false;
     }
 
     /**

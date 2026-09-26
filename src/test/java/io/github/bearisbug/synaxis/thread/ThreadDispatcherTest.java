@@ -4,6 +4,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
 
 import java.lang.ref.WeakReference;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -13,6 +14,7 @@ import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -501,6 +503,81 @@ public class ThreadDispatcherTest {
         waitUntilCleared(worldRef);
         waitUntilCleared(elementRef);
 
+        dispatcher.shutdown();
+    }
+
+    /**
+     * Unloading a chunk deletes its partition, and an MMO shard unloads up to 256 chunks a tick
+     * ({@code docs/DESIGN-M3.md} API-M3-006): a deletion must not scan the other partitions. Counted
+     * through equals, which a scan calls on every partition it passes, a hash lookup about once.
+     */
+    @Test
+    public void deletingAPartitionComparesItWithNoOtherPartition() {
+        final AtomicLong comparisons = new AtomicLong();
+        final class Key {
+            private final int id;
+
+            Key(int id) {
+                this.id = id;
+            }
+
+            @Override
+            public boolean equals(Object other) {
+                comparisons.incrementAndGet();
+                return other instanceof Key key && key.id == id;
+            }
+
+            @Override
+            public int hashCode() {
+                return Integer.hashCode(id);
+            }
+        }
+        ThreadDispatcher<Key, Tickable> dispatcher = ThreadDispatcher.singleThread(ThreadDispatcherTest::rethrow);
+        dispatcher.start();
+        final List<Key> keys = IntStream.range(0, 20_000).mapToObj(Key::new).toList();
+        keys.forEach(dispatcher::createPartition);
+        // A tick drains at most 4,096 updates
+        for (int i = 0; i < 6; i++) dispatcher.updateAndAwait(0);
+
+        comparisons.set(0);
+        keys.subList(keys.size() - 256, keys.size()).forEach(dispatcher::deletePartition);
+        dispatcher.updateAndAwait(0);
+
+        assertTrue(comparisons.get() <= 2 * 256, "deleting 256 of 20,000 partitions compared keys "
+                + comparisons.get() + " times");
+        dispatcher.shutdown();
+    }
+
+    /** The tick thread drops a deleted partition by hash and still ticks the others in the order they came. */
+    @Test
+    public void aTickThreadKeepsTheOrderOfItsPartitionsAcrossDeletions() {
+        final List<Integer> ticked = new CopyOnWriteArrayList<>();
+        final class Numbered implements Tickable {
+            private final int number;
+
+            Numbered(int number) {
+                this.number = number;
+            }
+
+            @Override
+            public void tick(long time) {
+                ticked.add(number);
+            }
+        }
+        ThreadDispatcher<Tickable, Tickable> dispatcher = ThreadDispatcher.singleThread(ThreadDispatcherTest::rethrow);
+        dispatcher.start();
+        final List<Numbered> partitions = IntStream.range(0, 10).mapToObj(Numbered::new).toList();
+        partitions.forEach(dispatcher::createPartition);
+        dispatcher.updateAndAwait(0);
+        dispatcher.deletePartition(partitions.get(3));
+        dispatcher.deletePartition(partitions.get(7));
+        ticked.clear();
+
+        dispatcher.updateAndAwait(0);
+
+        assertEquals(List.of(0, 1, 2, 4, 5, 6, 8, 9), ticked);
+        assertInstanceOf(LinkedHashSet.class, dispatcher.threads().getFirst().entries,
+                "a tick thread removes a partition by hash, not by a scan of the list");
         dispatcher.shutdown();
     }
 }

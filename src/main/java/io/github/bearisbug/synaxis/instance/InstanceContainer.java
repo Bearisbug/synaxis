@@ -67,6 +67,9 @@ public class InstanceContainer extends Instance {
 
     private static final NoopChunkLoaderImpl DEFAULT_LOADER = NoopChunkLoaderImpl.INSTANCE;
 
+    // docs/DESIGN-M3.md API-M3-006
+    private static final int MAX_UNLOADS_PER_TICK = 256;
+
     // vanilla's NeighborUpdater.UPDATE_ORDER
     private static final BlockFace[] BLOCK_UPDATE_FACES = new BlockFace[]{
             BlockFace.WEST, BlockFace.EAST, BlockFace.BOTTOM, BlockFace.TOP, BlockFace.NORTH, BlockFace.SOUTH
@@ -301,6 +304,7 @@ public class InstanceContainer extends Instance {
             }
             // Clear cache
             this.chunks.remove(CoordConversion.chunkIndex(chunkX, chunkZ));
+            tickets.unloaded(CoordConversion.chunkIndex(chunkX, chunkZ), chunk);
             chunk.unload();
             chunkLoader.unloadChunk(chunk);
             getEntityTracker().unregisterViewable(chunk.viewable);
@@ -315,6 +319,37 @@ public class InstanceContainer extends Instance {
             // No tick thread owns the entity yet, nothing can be racing with us
             if (acquirable.assignedThread() == null) entity.remove();
             else acquirable.sync(Entity::remove);
+        }
+    }
+
+    /**
+     * The automatic unload ({@code docs/DESIGN-M3.md} {@code API-M3-006}, internal task
+     * {@code chunk.unload}): the chunks without a ticket for the grace period, the longest idle first,
+     * at most {@value #MAX_UNLOADS_PER_TICK} a tick, unless an online player stands in one or it is not
+     * {@link Chunk#readyToUnload() ready}. The ticket count is checked again under the ticket lock
+     * right before a chunk goes; a ticket arriving after that no longer holds it, it stays on the
+     * coordinates and protects the chunk once it loads again.
+     */
+    @Override
+    public void unloadIdleChunks() {
+        final int grace = chunkUnloadGraceTicks();
+        if (grace < 1) return;
+        int unloaded = 0;
+        for (long index : tickets.idleFor(grace)) {
+            if (unloaded == MAX_UNLOADS_PER_TICK) break;
+            final int chunkX = CoordConversion.chunkIndexGetX(index);
+            final int chunkZ = CoordConversion.chunkIndexGetZ(index);
+            final Chunk chunk = getChunk(chunkX, chunkZ);
+            if (chunk == null) continue;
+            final boolean onlinePlayer = getEntityTracker().chunkEntities(chunkX, chunkZ, EntityTracker.Target.PLAYERS)
+                    .stream().anyMatch(Player::isOnline);
+            if (onlinePlayer || !chunk.readyToUnload() || !tickets.stillIdle(index, chunk)) continue;
+            try {
+                unloadChunk(chunk);
+                unloaded++;
+            } catch (RuntimeException e) {
+                process().exception().handleException(e);
+            }
         }
     }
 
@@ -787,7 +822,9 @@ public class InstanceContainer extends Instance {
     }
 
     private void cacheChunk(Chunk chunk) {
-        this.chunks.put(CoordConversion.chunkIndex(chunk.getChunkX(), chunk.getChunkZ()), chunk);
+        final long index = CoordConversion.chunkIndex(chunk.getChunkX(), chunk.getChunkZ());
+        this.chunks.put(index, chunk);
+        tickets.loaded(index, chunk);
         // Only a registered instance may hand chunks to the dispatcher: partitions are released on
         // unregistration, so an unregistered instance would leak them. InstanceManager#registerInstance
         // creates the partitions of the chunks cached before registration.

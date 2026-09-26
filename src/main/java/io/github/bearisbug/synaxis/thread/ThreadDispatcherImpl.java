@@ -21,12 +21,15 @@ final class ThreadDispatcherImpl<P, E extends Tickable> implements ThreadDispatc
     // Partition -> dispatching context
     // Defines how computation is dispatched to the threads
     // Entries live and die with the PartitionLoad/PartitionUnload signals, never with the garbage
-    // collector: the keys are kept alive by partitionUpdateQueue anyway.
+    // collector.
     private final Map<P, Partition> partitions = new HashMap<>();
     // Cache to retrieve the threading context from a tickable element
     // Same as above, entries are driven by the ElementUpdate/ElementRemove signals.
     private final Map<Tickable, Partition> elements = new HashMap<>();
-    // Queue to update partition linked thread
+    // Queue to update partition linked thread. Only a provider refreshing its threads reads it, the
+    // others (counter and grid) never move a partition, so it stays empty for them and removing a
+    // partition scans nothing (docs/DESIGN-M3.md API-M3-006)
+    private final boolean refreshesThreads;
     private final ArrayDeque<P> partitionUpdateQueue = new ArrayDeque<>();
 
     // Requests consumed at the end of each tick
@@ -35,6 +38,7 @@ final class ThreadDispatcherImpl<P, E extends Tickable> implements ThreadDispatc
     ThreadDispatcherImpl(ThreadProvider<P> provider, int threadCount,
                          IntFunction<? extends TickThread> threadGenerator) {
         this.provider = provider;
+        this.refreshesThreads = provider.refreshType() == ThreadProvider.RefreshType.ALWAYS;
         TickThread[] threads = new TickThread[threadCount];
         Arrays.setAll(threads, threadGenerator);
         this.threads = List.of(threads);
@@ -153,7 +157,7 @@ final class ThreadDispatcherImpl<P, E extends Tickable> implements ThreadDispatc
         final Partition partitionEntry = new Partition(thread);
         thread.entries.add(partitionEntry);
         this.partitions.put(partition, partitionEntry);
-        this.partitionUpdateQueue.add(partition);
+        if (refreshesThreads) this.partitionUpdateQueue.add(partition);
         if (partition instanceof Tickable tickable) {
             processUpdatedElement(tickable, partition);
         }
@@ -166,7 +170,7 @@ final class ThreadDispatcherImpl<P, E extends Tickable> implements ThreadDispatc
             thread.entries.remove(partitionEntry);
             for (Tickable element : partitionEntry.elements) this.elements.remove(element);
         }
-        this.partitionUpdateQueue.remove(partition);
+        if (refreshesThreads) this.partitionUpdateQueue.remove(partition);
         if (partition instanceof Tickable tickable) {
             processRemovedElement(tickable);
         }

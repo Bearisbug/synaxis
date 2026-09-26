@@ -5,6 +5,9 @@ plugins {
 
 dependencies {
     implementation(project(":plugin-api"))
+    // The map mounting mode of the shard host (docs/DESIGN-M3.md API-M3-006): the region files, the
+    // chunk loader and the overlay store
+    implementation(project(":synx"))
     implementation(libs.slf4j)
 
     // The player data store (docs/DESIGN-PROD.md API-PROD-004, API-PROD-006). Host only: the engine,
@@ -27,6 +30,8 @@ dependencies {
     runtimeOnly(libs.bundles.logback)
 
     testImplementation(project(":testing"))
+    // The map releases of the shard tests are baked, as a shard mounts them
+    testImplementation(project(":baker"))
     testImplementation(libs.bundles.logback)
     testImplementation(libs.archunit.junit5)
 }

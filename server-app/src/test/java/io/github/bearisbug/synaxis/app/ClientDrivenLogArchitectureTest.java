@@ -7,6 +7,7 @@ import com.tngtech.archunit.core.domain.properties.HasName;
 import com.tngtech.archunit.core.importer.ClassFileImporter;
 import com.tngtech.archunit.core.importer.ImportOption;
 import com.tngtech.archunit.lang.ArchRule;
+import io.github.bearisbug.synaxis.app.shard.ShardWorld;
 import io.github.bearisbug.synaxis.app.store.PlayerStore;
 import io.github.bearisbug.synaxis.app.store.ShardSession;
 import io.github.bearisbug.synaxis.app.transfer.TicketVerifier;
@@ -86,6 +87,8 @@ public class ClientDrivenLogArchitectureTest {
      * per ticket at most.</li>
      * <li>{@link ShutdownSequence}: at most one line per shutdown step per shutdown, and the steps
      * are registered while the process is assembled, never by a client.</li>
+     * <li>{@link ShardWorld}: the start of a map shard, a fixed number of lines per process (bounds
+     * that are not square, a center chunk without a readable record).</li>
      * </ul>
      * {@link PluginChannelRouter}, {@link PluginEventsImpl} and {@link EventLedger} are
      * deliberately absent: all three sit on a path whose rate a client picks — the first two on an
@@ -96,7 +99,7 @@ public class ClientDrivenLogArchitectureTest {
      * blind spot ① of the engine rule ({@code docs/ENGINE.md} §8), which those three therefore
      * escape.
      * <p>
-     * The nine above do not: this list is by class, exactly like the engine's, so a second line
+     * The ten above do not: this list is by class, exactly like the engine's, so a second line
      * whose rate a client picks, added inside one of them, stays green. Measured, not assumed — a
      * listener on a PLAY phase event writing a plain {@code LOGGER.warn}, put inside
      * {@link AdmissionGate}, does not turn this rule red. Registered as a remaining blind spot in
@@ -111,7 +114,8 @@ public class ClientDrivenLogArchitectureTest {
                 .or(name(PlayerStore.class.getName()))
                 .or(name(ShardSession.class.getName()))
                 .or(name(TicketVerifier.class.getName()))
-                .or(name(ShutdownSequence.class.getName()));
+                .or(name(ShutdownSequence.class.getName()))
+                .or(name(ShardWorld.class.getName()));
     }
 
     private static ArchRule hostPathsDoNotLogPerPacket() {

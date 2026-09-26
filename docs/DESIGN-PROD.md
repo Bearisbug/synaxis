@@ -766,6 +766,10 @@ erDiagram
     | `synaxis.app.management.enabled` | `ManagementSettings` | `false` | `true` / `false`（`API-PROD-022`） |
     | `synaxis.app.management.bind` | `ManagementSettings` | `127.0.0.1:25585` | `host:port`（`API-PROD-022`） |
     | `synaxis.app.transfer-cooldown-ms` | `TransferCooldowns` | 5,000 | ≥ 0（`API-PROD-021`） |
+    | `synaxis.map.root` | `ShardSettings`（宿主，`Main` 步骤 (1)） | 空（不挂地图） | `<maps_root>/<map_id>`；与 `synaxis.map.build` 同给或同不给，只由 `bin/server-shard` 读（`docs/DESIGN-M3.md` `API-M3-006`） |
+    | `synaxis.map.build` | `ShardSettings` | 空 | `<map_id>-<12 位 hex>-p<协议号>`（同上） |
+    | `synaxis.simulation-distance` | `ShardSettings` | 4（只在挂地图时读） | 1～区块视距（`docs/DESIGN-M3.md` `API-M3-006`） |
+    | `synaxis.chunk-unload-grace-ticks` | `ShardSettings` | 100（只在挂地图时读） | `-1` 或 ≥ 1（`docs/DESIGN-M3.md` `API-M3-006`） |
     | `synaxis.world-writable` | `:synx` `SynxOptions` | `true` | `true` / `false`，只认小写（`docs/DESIGN-M3.md` `API-M3-005`） |
     | `synaxis.synx.section-cache-bytes` | `:synx` `SynxOptions` | 268,435,456 | ≥ 1（`docs/DESIGN-M3.md` `API-M3-005`） |
     | `synaxis.overlay.cap` | `:synx` `OverlayOptions` | 16,384 | ≥ 1；正式档 24,576；软上限（`docs/DESIGN-M3.md` `API-M3-007`） |

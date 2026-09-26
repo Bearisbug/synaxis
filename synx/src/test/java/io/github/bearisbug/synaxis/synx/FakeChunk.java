@@ -45,6 +45,8 @@ final class FakeChunk implements OverlayChunk {
     final Queue<Encoding> nextEncodings = new ConcurrentLinkedQueue<>();
     /** Runs inside the write-lock of an encoding, before it reads the generation. */
     volatile @Nullable Runnable inEncoding;
+    /** {@link #written} leaves the chunk as it is, as {@code SynxChunk} does without its write-lock. */
+    volatile boolean refuseWritten;
 
     final AtomicInteger encodes = new AtomicInteger();
     final AtomicInteger maxRunning = new AtomicInteger();
@@ -136,13 +138,15 @@ final class FakeChunk implements OverlayChunk {
     }
 
     @Override
-    public void written(long generation, OverlayHit hit, boolean demote) {
+    public boolean written(long generation, OverlayHit hit, boolean demote) {
         written.add(new Written(generation, hit, demote));
+        if (refuseWritten) return false;
         lock.lock();
         try {
-            if (this.generation.get() != generation) return;
+            if (this.generation.get() != generation) return true;
             dirty = false;
             if (demote) overlay = false;
+            return true;
         } finally {
             lock.unlock();
         }

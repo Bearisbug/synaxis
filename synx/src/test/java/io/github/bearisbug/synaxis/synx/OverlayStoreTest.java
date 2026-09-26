@@ -231,6 +231,53 @@ public class OverlayStoreTest {
     }
 
     @Test
+    public void aCleanChunkThatDoesNotTakeItsDemotionStaysAResident() throws Exception {
+        final OverlayStore store = open(2, 1);
+        final List<FakeChunk> chunks = OverlayFixture.chunks(store, 0, 3);
+        chunks.get(0).change();
+        chunks.get(1).change();
+        clock.advance(Duration.ofSeconds(10));
+        store.tickEnd();
+        chunks.get(2).change(); // three in overlay mode, the cap is two
+        final FakeChunk evicted = chunks.getFirst();
+        evicted.refuseWritten = true; // its write-lock held for 50 ms, say
+
+        store.tickEnd();
+
+        assertTrue(evicted.written.getLast().demote(), "asked to go back to handle mode");
+        assertTrue(evicted.overlay());
+        OverlayStats stats = store.stats();
+        assertEquals(3, stats.resident(), "still in overlay mode, still counted");
+        assertEquals(0, stats.evicted());
+
+        evicted.refuseWritten = false;
+        store.tickEnd();
+
+        assertFalse(evicted.overlay(), "evicted by the next tick");
+        stats = store.stats();
+        assertEquals(2, stats.resident());
+        assertEquals(1, stats.evicted());
+    }
+
+    @Test
+    public void aDirtyChunkThatDoesNotTakeItsRecordIsWrittenAgain() throws Exception {
+        final OverlayStore store = open(16_384, 1);
+        final FakeChunk chunk = new FakeChunk(store, 0, 0, 0);
+        chunk.change();
+        clock.advance(Duration.ofSeconds(10));
+        chunk.refuseWritten = true;
+
+        store.tickEnd();
+
+        assertEquals(1, generation(store, chunk), "indexed all the same");
+        assertTrue(chunk.dirty());
+        chunk.refuseWritten = false;
+        store.tickEnd();
+        assertFalse(chunk.dirty());
+        assertEquals(2, store.stats().flushAppended());
+    }
+
+    @Test
     public void anExplicitlyUnloadedDirtyChunkIsEncodedAtOnceAndWrittenByTheNextTick() throws Exception {
         final OverlayStore store = open(16_384, 1);
         final FakeChunk chunk = new FakeChunk(store, 7, -3, 0);

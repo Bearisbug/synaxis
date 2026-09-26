@@ -451,8 +451,7 @@ public final class OverlayStore implements OverlayIndex, OverlayTracker {
             final Indexed indexed = index.get(resident.key);
             if (!chunk.dirty() && indexed != null && indexed.hit().generation() == generation) {
                 // Clean: back to handle mode on the record it was written to, nothing to append
-                chunk.written(generation, indexed.hit(), true);
-                afterWritten(resident, true, 0);
+                if (chunk.written(generation, indexed.hit(), true)) afterWritten(resident, true, 0);
             } else {
                 submit(resident, true, deadline);
             }
@@ -650,8 +649,9 @@ public final class OverlayStore implements OverlayIndex, OverlayTracker {
         for (int i = 0; i < appended.size(); i++) {
             if (appended.get(i).item() instanceof ChunkItem written) {
                 final Resident resident = written.resident();
-                resident.chunk.written(written.encoded().generation(), hits.get(i), written.demote());
-                afterWritten(resident, written.demote(), writtenAt);
+                if (resident.chunk.written(written.encoded().generation(), hits.get(i), written.demote())) {
+                    afterWritten(resident, written.demote(), writtenAt);
+                }
             }
         }
         for (OverlaySegment segment : touched) {
@@ -738,7 +738,7 @@ public final class OverlayStore implements OverlayIndex, OverlayTracker {
     /** A chunk heard about its record: clean now unless it changed since, and out of the residents if evicted. */
     private void afterWritten(Resident resident, boolean demote, long writtenAt) {
         synchronized (resident) {
-            // Changed after the encoding, or its write-lock was not had in time: still dirty
+            // Changed after the encoding: still dirty
             if (resident.removed || resident.chunk.dirty()) return;
             if (resident.dirtyKey != 0 && writtenAt != 0) {
                 flushLagMaxNanos.accumulateAndGet(writtenAt - resident.dirtySince, Math::max);

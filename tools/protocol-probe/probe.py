@@ -31,6 +31,8 @@ Subcommands, see docs/TEST.md section 3:
     no-hello                      log in and never send C2S_HELLO, the client without the mod
     bad-schema --schema N         send C2S_HELLO announcing a schema_version of N
     duplicate-hello               send a second C2S_HELLO on a connection that already handshook
+    view-distance [--from N] [--to N]
+                                  log in at view distance N, lower it and check the chunks held
 
 Every subcommand that reaches the configuration phase sends C2S_HELLO on synaxis:handshake first
 (REQ-M2-008), which is what keeps the pre-handshake subcommands working against a server that
@@ -442,6 +444,21 @@ def plugin_message_payload(channel: str, data: bytes) -> bytes:
     return Writer().string(channel).raw(data).bytes()
 
 
+def client_settings_payload(view_distance: int) -> bytes:
+    """ClientSettingsPacket with the values of ClientSettings.defaultSettings but the view distance."""
+    return (Writer()
+            .string("en_us")  # locale
+            .raw(bytes([view_distance]))
+            .varint(0)  # chat mode FULL
+            .boolean(True)  # chat colors
+            .raw(b"\x7f")  # every skin part
+            .varint(1)  # main hand RIGHT
+            .boolean(True)  # text filtering
+            .boolean(True)  # server listings
+            .varint(0)  # particles ALL
+            .bytes())
+
+
 def hello_body(mod_version: int, schema_version: int) -> bytes:
     """C2S_HELLO{msg_id=0x01, mod_version, schema_version}, see docs/DESIGN-M2.md API-M2-002."""
     return Writer().varint(C2S_HELLO).varint(mod_version).varint(schema_version).bytes()
@@ -621,6 +638,8 @@ class Session:
         # Set once this session has handshaken, so that the login phase form of it is not followed
         # by a second C2S_HELLO in the configuration phase (which is a protocol error).
         self.handshook = False
+        # The view distance this session announces in the configuration phase, none by default
+        self.view_distance: int | None = None
 
     def close(self) -> None:
         self.connection.close()
@@ -737,6 +756,11 @@ class Session:
             # Sent first thing in the phase: the server starts its bounded wait when the connection
             # gets here, and answers on the same channel (API-M2-011).
             self.send_hello()
+        if self.view_distance is not None:
+            # A vanilla client sends its settings first thing in the phase; the first chunk ring
+            # is built from them
+            self.connection.send("ClientSettingsPacket", client_settings_payload(self.view_distance))
+            self.log(f"sent ClientSettings view_distance={self.view_distance}")
         while True:
             packet, reader, body = self.recv()
             if packet == "PluginMessagePacket":
@@ -1359,6 +1383,82 @@ def cmd_duplicate_hello(args: argparse.Namespace) -> int:
         session.close()
 
 
+def cmd_view_distance(args: argparse.Namespace) -> int:
+    """Logs in at one view distance, lowers it and checks the chunks it is left holding (REQ-M2-014).
+
+    The probe keeps the books a client keeps: a ChunkData adds its column, an UnloadChunk removes
+    it, and the last UpdateViewPosition is the center. It lowers the view distance once
+    ``--switch-after`` chunk batches have arrived, while most of the first ring is still queued on
+    the server, then acknowledges every batch until no chunk packet has come for ``--settle``
+    seconds. What it holds must then be the square of radius ``--to`` + 1 around the center: the
+    engine sends one column past the client's view distance (Player#effectiveViewDistance), so
+    ``--to`` has to be below the view distance of the server's instance.
+    """
+    session = Session(args)
+    session.view_distance = args.from_distance
+    held: set[tuple[int, int]] = set()
+    unloaded: set[tuple[int, int]] = set()
+    center: tuple[int, int] | None = None
+    batches = 0
+    sent_after_unload = 0
+    switched = False
+    try:
+        session.enter_play()
+        last_chunk_packet = time.monotonic()
+        deadline = time.monotonic() + args.wait
+        session.connection.socket.settimeout(0.5)
+        while time.monotonic() < deadline:
+            if switched and time.monotonic() - last_chunk_packet >= args.settle:
+                break
+            try:
+                packet, reader, _ = session.recv()
+            except socket.timeout:
+                continue
+            if packet == "ChunkDataPacket":
+                column = (reader.int32(), reader.int32())
+                if column in unloaded:
+                    sent_after_unload += 1
+                held.add(column)
+                last_chunk_packet = time.monotonic()
+            elif packet == "UnloadChunkPacket":
+                # Written z first, the client reads the two as one long
+                chunk_z, chunk_x = reader.int32(), reader.int32()
+                held.discard((chunk_x, chunk_z))
+                unloaded.add((chunk_x, chunk_z))
+                last_chunk_packet = time.monotonic()
+            elif packet == "UpdateViewPositionPacket":
+                center = (reader.varint(), reader.varint())
+            elif packet == "ChunkBatchFinishedPacket":
+                batches += 1
+                session.connection.send("ClientChunkBatchReceivedPacket", Writer().float32(64.0).bytes())
+                if not switched and batches >= args.switch_after:
+                    session.connection.send("ClientSettingsPacket", client_settings_payload(args.to_distance))
+                    session.log(f"sent ClientSettings view_distance={args.to_distance} after {batches} batches "
+                                f"holding {len(held)} chunks")
+                    switched = True
+            elif packet == "KeepAlivePacket":
+                session.answer_keep_alive(reader)
+            elif packet == "PluginMessagePacket":
+                session.read_payload(reader)
+    finally:
+        session.close()
+    if not switched or center is None:
+        session.log(f"never lowered the view distance: batches={batches} center={center}")
+        return 1
+    radius = args.to_distance + 1
+    ring = {(center[0] + dx, center[1] + dz)
+            for dx in range(-radius, radius + 1) for dz in range(-radius, radius + 1)}
+    outside = sorted(held - ring)
+    missing = sorted(ring - held)
+    session.log(f"center={center} radius={radius} held={len(held)} ring={len(ring)} outside={len(outside)} "
+                f"missing={len(missing)} sent_after_unload={sent_after_unload} batches={batches}")
+    if outside:
+        session.log(f"held outside the ring, first ones: {outside[:8]}")
+    if missing:
+        session.log(f"missing from the ring, first ones: {missing[:8]}")
+    return 0 if not outside and not missing else 1
+
+
 def cmd_record_registry(args: argparse.Namespace) -> int:
     session = Session(args)
     try:
@@ -1494,6 +1594,16 @@ def build_parser() -> argparse.ArgumentParser:
     slow.add_argument("--wait", type=float, default=30.0,
                       help="seconds to hold the socket without reading, past the keep alive kick")
     slow.set_defaults(run=cmd_slow_reader)
+
+    view = subparsers.add_parser("view-distance",
+                                 help="log in at one view distance, lower it and check the chunks held")
+    view.add_argument("--from", dest="from_distance", type=int, default=12, help="the view distance to log in at")
+    view.add_argument("--to", dest="to_distance", type=int, default=4, help="the view distance to lower it to")
+    view.add_argument("--switch-after", type=int, default=1, help="chunk batches to receive before lowering it")
+    view.add_argument("--settle", type=float, default=3.0,
+                      help="seconds without a chunk packet after which the books are closed")
+    view.add_argument("--wait", type=float, default=60.0, help="seconds before giving up")
+    view.set_defaults(run=cmd_view_distance)
 
     record = subparsers.add_parser("record-registry", help="dump every RegistryData packet")
     record.add_argument("--out", required=True)

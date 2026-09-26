@@ -127,13 +127,15 @@ ls -d "$TMPDIR"minestom-* 2>/dev/null | wc -l   # 期望 0
   -Dsynaxis.app.port=25570 -Dsynaxis.app.plugins=rts
 ```
 
+同样的键可以写进工作目录下的 `synaxis.properties`（`:server-app:run` 的工作目录是仓库根），或用 `-Dsynaxis.config-file=<路径>` 指别的文件，这个键只从命令行读。文件是 `java.util.Properties` 格式、按 UTF-8 读，一行 `键=值`，键名与系统属性逐字相同。优先级是命令行 `-D` > 文件 > 启动器默认（`ShardMain` 的分片默认值、`Main` 的 RTS 视野默认值）> 引擎与宿主的默认值。文件里有键表外的键、同一个键写两次、或写了 `synaxis.config-file` 时拒绝起服，一次列出全部未知键并各给出最近的已知键，如 `Refusing to start: <文件绝对路径>: unknown key synaxis.max-player (nearest known key synaxis.max-players)`，退出码 1、端口不 bind。文件在 `Main` 类初始化的第一步就设成系统属性，早于 logback 读 `synaxis.app.log`、早于 `JvmFlags` 等 JVM 级开关类加载、早于进程读 `ServerConfig`，所以 JVM 级键（如 `synaxis.compression-level`）写在文件里同样生效。只在起服时读一次，改了要重启。起服日志的 `Effective config file: path=… keys=… overridden_by_command_line=[…]` 一行写明读的是哪个文件、几个键、哪些被命令行盖掉；105 个键的默认值与写法见 `docs/DESIGN-PROD.md` `API-PROD-023` 的键表。
+
 另开一个终端探活：
 
 ```bash
 nc -z 127.0.0.1 25565 && echo "server is up"
 ```
 
-在服务端 stdin 输入 `stop` 回车即可停服（15 秒内退出：插件 5 秒 + 引擎 10 秒）。进程会在仓库根写两处运行时产物：插件数据目录 `plugins/<plugin_id>/` 与事件台账 `logs/events-YYYYMMDD.jsonl`，两者都已 gitignore，删掉即回到基线。
+在服务端 stdin 输入 `stop` 回车即可停服：先关登录门，再保存在线玩家（≤ 30 s）、踢人（≤ 5 s）、禁用插件、台账落盘（≤ 2 s）后退出，阶段与预算见 `docs/DESIGN-PROD.md` §11.4；`stop <秒数>` 在关登录门之后先倒计时再保存。进程会在仓库根写两处运行时产物：插件数据目录 `plugins/<plugin_id>/` 与事件台账 `logs/events-YYYYMMDD.jsonl`，两者都已 gitignore，删掉即回到基线。
 
 #### 核心模式（不带任何玩法插件跑服务端核心）
 

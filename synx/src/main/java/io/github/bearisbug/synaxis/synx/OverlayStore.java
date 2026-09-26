@@ -244,7 +244,15 @@ public final class OverlayStore implements OverlayIndex, OverlayTracker {
             final OverlaySegment segment = OverlaySegment.scan(file.getValue(), file.getKey(), expectations,
                     contentHash, this::found);
             if (segment == null) {
-                LOGGER.warn("Overlay segment {} has no header, a crash while it was made: skipped", file.getValue().getFileName());
+                // The first fsync of a segment makes its header durable too: no record of this one was confirmed
+                try {
+                    Files.delete(file.getValue());
+                    LOGGER.warn("Overlay segment {} has no header, a crash while it was made: deleted",
+                            file.getValue().getFileName());
+                } catch (IOException e) {
+                    LOGGER.warn("Overlay segment {} has no header, a crash while it was made, and could not be deleted: {}",
+                            file.getValue().getFileName(), e.toString());
+                }
                 continue;
             }
             segments.put(file.getKey(), segment);

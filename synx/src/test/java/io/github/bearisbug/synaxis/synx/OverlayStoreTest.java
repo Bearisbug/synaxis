@@ -644,18 +644,24 @@ public class OverlayStoreTest {
     }
 
     @Test
-    public void aSegmentWhoseHeaderNeverReachedTheFileIsSkipped() throws Exception {
+    public void aSegmentWhoseHeaderNeverReachedTheFileIsDeleted() throws Exception {
         final Path directory = Files.createDirectories(root.resolve(manifest.buildId()));
-        Files.write(directory.resolve("seg.3.synx"), new byte[100]); // a crash right after the file was made
+        // A crash right after the file was made, and one before its first fsync
+        final Path shorter = Files.write(directory.resolve("seg.3.synx"), new byte[100]);
+        final Path zeros = Files.write(directory.resolve("seg.4.synx"), new byte[4_096]);
         final OverlayStore store;
         try (LogCapture log = LogCapture.of(OverlayStore.class)) {
             store = open(16_384, 1);
-            assertEquals(1, log.messagesAt(Level.WARN).size(), log.messagesAt(Level.WARN)::toString);
+            final List<String> warnings = log.messagesAt(Level.WARN);
+            assertEquals(2, warnings.size(), warnings::toString);
+            assertTrue(warnings.stream().allMatch(line -> line.contains("deleted")), warnings::toString);
         }
+        assertFalse(Files.exists(shorter));
+        assertFalse(Files.exists(zeros));
         new FakeChunk(store, 0, 0, 0).change();
         clock.advance(Duration.ofSeconds(10));
         store.tickEnd();
-        assertEquals(4, store.find(0, 0).segment());
+        assertEquals(5, store.find(0, 0).segment(), "numbered after the files deleted");
     }
 
     @Test

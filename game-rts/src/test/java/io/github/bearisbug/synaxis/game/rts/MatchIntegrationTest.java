@@ -157,6 +157,31 @@ class MatchIntegrationTest {
                 + heapDeltaKib + ", the §15 budget is 50 MB");
     }
 
+    /**
+     * {@code docs/DESIGN-M3.md} §19 「引擎默认值下 M2 对局行为不变」, the half of the match: its instance
+     * keeps the engine defaults, no simulation distance and no automatic unload, so the whole map stays
+     * loaded and simulated with a player in one corner of it. The engine half is
+     * {@code SimulationDistanceTest#theEngineDefaultsSimulateEveryChunkAndUnloadNothing}.
+     */
+    @Test
+    void theMatchKeepsEveryChunkLoadedAndSimulated(Env env) {
+        final Match match = match(env);
+        match.load(MapPreset.DEFAULT.id());
+        final InstanceContainer instance = match.instance();
+        assertNotNull(instance);
+        assertEquals(-1, instance.simulationDistance());
+        assertEquals(-1, instance.chunkUnloadGraceTicks());
+        env.createPlayer(instance, new Pos(8.5, MapTerrain.GROUND_HEIGHT, 8.5));
+
+        for (int i = 0; i < 200; i++) env.tick();
+
+        assertEquals(1024, instance.getChunks().size(), "no chunk of the map is unloaded");
+        for (Chunk chunk : instance.getChunks()) {
+            assertTrue(instance.isChunkSimulated(chunk.getChunkX(), chunk.getChunkZ()),
+                    "chunk " + chunk.getChunkX() + "," + chunk.getChunkZ() + " is simulated");
+        }
+    }
+
     @Test
     void theSpawnPointStandsOnTheMap(Env env) {
         final Match match = match(env);

@@ -317,22 +317,32 @@ final class ServerProcessImpl implements ServerProcess, Registries.Delegating {
     }
 
     @Override
-    public void stop() {
-        beginShutdown(Duration.ZERO);
-    }
-
-    @Override
-    public void beginShutdown(Duration countdown) {
-        if (countdown.isNegative()) throw new IllegalArgumentException("countdown " + countdown + " is negative");
-        if (!stopping.compareAndSet(false, true)) return;
+    public boolean stop() {
         // The shutdown sequence waits for every tick thread to exit, which can never happen while the
         // caller is one of them (e.g. a /stop command running on a TickThread, upstream issue #2907).
         final Thread caller = Thread.currentThread();
-        if (caller instanceof TickThread || caller instanceof TickSchedulerThread) {
-            new Thread(() -> shutdownProcess(countdown, false), "Syn-Shutdown").start();
-        } else {
+        return shutdown(Duration.ZERO, !(caller instanceof TickThread || caller instanceof TickSchedulerThread));
+    }
+
+    @Override
+    public boolean beginShutdown(Duration countdown) {
+        if (countdown.isNegative()) throw new IllegalArgumentException("countdown " + countdown + " is negative");
+        return shutdown(countdown, false);
+    }
+
+    /**
+     * @param onThisThread whether the sequence runs on the calling thread rather than a new one
+     * @return whether this call started the shutdown
+     */
+    private boolean shutdown(Duration countdown, boolean onThisThread) {
+        if (!stopping.compareAndSet(false, true)) return false;
+        if (onThisThread) {
             shutdownProcess(countdown, false);
+        } else {
+            // Not a daemon: once the tick threads are joined, it is what keeps the JVM up until the end
+            Thread.ofPlatform().name("Syn-Shutdown").daemon(false).start(() -> shutdownProcess(countdown, false));
         }
+        return true;
     }
 
     @Override

@@ -151,6 +151,9 @@ public final class ConfigFile {
             "synaxis.app.management.enabled",
             "synaxis.app.management.bind",
             "synaxis.app.transfer-cooldown-ms",
+            // The overlay store of :synx, read by the shard host: OverlayOptions
+            "synaxis.overlay.cap",
+            "synaxis.overlay.flush-interval-s",
             // The logging setup, logback.xml
             "synaxis.app.log",
             // The RTS plugin, game-rts

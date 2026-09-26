@@ -7,8 +7,11 @@ plugins {
 // other modules above the engine: it runs on the classpath of the shard host.
 dependencies {
     api(project(":"))
+    implementation(libs.slf4j)
 
     testImplementation(project(":testing"))
+    // The overlay store tests read the log lines the store writes
+    testImplementation(libs.bundles.logback)
 }
 
 // CI runs `./gradlew check -Dsynaxis.synx.require-frozen-zlib=true`: there SynxVectorTest fails instead

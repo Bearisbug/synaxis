@@ -7,8 +7,15 @@ plugins {
 // other modules above the engine: it runs on the classpath of the shard host.
 dependencies {
     api(project(":"))
+    // SynxChunk works on the fastutil maps DynamicChunk keeps its block entities in, and logs through slf4j as the engine does
+    implementation(libs.fastutil)
+    implementation(libs.slf4j)
 
     testImplementation(project(":testing"))
+    // The integration tests of SynxChunkLoader run on a map the real baker bakes, and read the log
+    // lines the loader writes for broken records and skipped entities
+    testImplementation(project(":baker"))
+    testImplementation(libs.bundles.logback)
 }
 
 // CI runs `./gradlew check -Dsynaxis.synx.require-frozen-zlib=true`: there SynxVectorTest fails instead

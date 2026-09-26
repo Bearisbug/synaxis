@@ -25,7 +25,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 public class ShutdownClaimTest {
 
     /** Records the countdowns the engine hands over and the thread the gate closes on. */
-    private static final class Recorder implements ShutdownParticipant {
+    static final class Recorder implements ShutdownParticipant {
         final List<String> calls = new CopyOnWriteArrayList<>();
         final CompletableFuture<Thread> gateClosedOn = new CompletableFuture<>();
 
@@ -87,7 +87,7 @@ public class ShutdownClaimTest {
         assertEquals(List.of("gate_closed:0", "save", "save_ended:false"), recorder.calls);
     }
 
-    private static ServerProcess started(Recorder recorder) {
+    static ServerProcess started(Recorder recorder) {
         final ServerProcess process = ServerProcess.of(ServerConfig.builder().insideTest(true).shutdownOnSignal(false).build());
         process.setShutdownParticipant(recorder);
         // What MinecraftServer#start does: bind, then the tick threads and the ticker

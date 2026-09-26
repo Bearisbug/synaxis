@@ -61,6 +61,18 @@ public final class BindAddress {
         return new InetSocketAddress(host, port);
     }
 
+    /**
+     * Writes an address the way {@link #parse} reads it: an IPv6 address in brackets, so that it
+     * stays apart from the port and the line can be fed back into the key.
+     *
+     * @param address the address, resolved or not
+     * @return {@code host:port}, or {@code [address]:port} for an IPv6 address
+     */
+    public static String format(InetSocketAddress address) {
+        final String host = address.getHostString();
+        return (host.indexOf(':') >= 0 ? "[" + host + "]" : host) + ":" + address.getPort();
+    }
+
     private static IllegalArgumentException malformed(String key, String value) {
         return new IllegalArgumentException(key + "=" + value + " is not host:port: an IPv4 address, a host name "
                 + "or an IPv6 address in brackets, ':' and a port from 0 to " + MAX_PORT

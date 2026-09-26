@@ -121,7 +121,7 @@ public final class ManagementSettings {
     /** The token is written as whether it is set, never as itself. */
     @Override
     public String toString() {
-        return "enabled=" + enabled + " bind=" + bind.getHostString() + ":" + bind.getPort()
+        return "enabled=" + enabled + " bind=" + BindAddress.format(bind)
                 + " token=" + (tokenDigest == null ? "unset" : "set");
     }
 }

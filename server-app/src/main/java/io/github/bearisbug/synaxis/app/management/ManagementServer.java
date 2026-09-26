@@ -1,6 +1,7 @@
 package io.github.bearisbug.synaxis.app.management;
 
 import io.github.bearisbug.synaxis.ServerProcess;
+import io.github.bearisbug.synaxis.app.BindAddress;
 import io.github.bearisbug.synaxis.entity.Player;
 import io.github.bearisbug.synaxis.event.player.PlayerDisconnectEvent;
 import io.github.bearisbug.synaxis.event.player.PlayerSpawnEvent;
@@ -109,8 +110,8 @@ public final class ManagementServer implements AutoCloseable {
         } catch (ExecutionException | TimeoutException e) {
             endpoint.shutDown();
             final Throwable cause = e instanceof ExecutionException ? e.getCause() : e;
-            throw new IllegalArgumentException(ManagementSettings.BIND_PROPERTY + "=" + settings.bind().getHostString()
-                    + ":" + settings.bind().getPort() + " cannot be bound: " + cause.getMessage(), cause);
+            throw new IllegalArgumentException(ManagementSettings.BIND_PROPERTY + "="
+                    + BindAddress.format(settings.bind()) + " cannot be bound: " + cause.getMessage(), cause);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             endpoint.shutDown();
@@ -119,7 +120,9 @@ public final class ManagementServer implements AutoCloseable {
         final ManagementServer server = new ManagementServer(endpoint);
         server.announcePlayers(process);
         LOGGER.info("Effective management: {}", settings);
-        LOGGER.info("Management interface listening on {}:{}", settings.bind().getHostString(), endpoint.getPort());
+        final InetSocketAddress listening = InetSocketAddress.createUnresolved(settings.bind().getHostString(),
+                endpoint.getPort());
+        LOGGER.info("Management interface listening on {}", BindAddress.format(listening));
         return server;
     }
 

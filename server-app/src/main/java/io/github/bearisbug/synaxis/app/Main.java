@@ -350,8 +350,8 @@ public final class Main {
             metrics.serve(bind);
         } catch (IOException e) {
             metrics.close();
-            throw new IllegalArgumentException(HostMetrics.BIND_PROPERTY + "=" + bind.getHostString() + ":"
-                    + bind.getPort() + " cannot be bound: " + e.getMessage(), e);
+            throw new IllegalArgumentException(HostMetrics.BIND_PROPERTY + "=" + BindAddress.format(bind)
+                    + " cannot be bound: " + e.getMessage(), e);
         }
     }
 

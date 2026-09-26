@@ -257,3 +257,124 @@ RUN-039 记录（2026-09-26，RUN-038 之后四组合入集成分支后的复验
   TC-PROD-494 第 3 步：五次里一次存活堆 76,009K（见第九节），来源待查；下一次超出时先取 GC.class_histogram 与 Syn-Management-Call 虚拟线程数，
     再按 DESIGN-PROD §28.2 那条 Open Question 决定是否按连接限在途调用
   TC-PROD-494 第 5 步、TC-PROD-130 第 4～6 步本轮没跑（理由见各节）
+
+十三、RUN-039 之后的修复轮（第 1 轮，追加；上面各节与 TEST.md §6 的 RUN-039 各行不改）
+
+  被测版本：prod/integrate-f 的 91d4f66369 之上的修复提交（本节所在的提交）。审查在 91d4f66369 上复现了七处缺陷（三处 major、四处 minor），
+    本轮全修，没有改登记到 §28.2 的；设计先改（DESIGN-PROD v0.9.15（RUN-039 修复）、DESIGN.md v0.41（RUN-039 修复）），再改代码，
+    再改 TEST.md（新增 TC-PROD-499～TC-PROD-505，改七条旧用例），反证全部在本机实跑。
+  执行者与机器同前；本节开跑时 1 分钟负载 6～13（同机有别的会话）。反证的做法：先把要改的文件另存到 /tmp，改一处、跑、看红、
+    从另存的副本拷回（不用 git checkout：工作副本里本来就有本轮未提交的修复）、diff 确认一致，再重跑复绿；每次红跑的结果 XML 先另存。
+
+  1. 停机倒计时的广播（major）→ PlayerStore#onGateClosed 只发给 getServerState() == PLAY 的连接；TC-PROD-499
+     ./gradlew :server-app:test --rerun --tests 'io.github.bearisbug.synaxis.app.ShutdownBeforeTheWorldLaunchTest' <mirror>
+       绿：tests=4 0 失败 9.48 s；aCountdownLeavesAClientThatStillConfiguresInTheShutdownSave 3.36 s、aCountdownIsAnnouncedToAClientInThePlayState 3.35 s
+     修复前的红（条件加 || !Boolean.getBoolean("proof.never")）：4 tests completed, 1 failed，ShutdownBeforeTheWorldLaunchTest.java:138（经 :80）
+       a packet the connection's state cannot carry:；子 JVM 日志里
+       [Syn-Socket-Writer-0] ERROR i.g.b.s.app.HostExceptionHandler - Unhandled exception: tick=4 connection_id=- (1 IllegalStateException since the last report)
+       java.lang.IllegalStateException: Packet type class io.github.bearisbug.synaxis.network.packet.server.play.SystemChatPacket cannot be sent in state SERVER_CONFIGURATION!
+       Connection closed: connection_id=d2db855b-… identifier=Stuck
+     反证（条件加 && Boolean.getBoolean("proof.never")，谁都不发）：4 tests completed, 1 failed，:87
+       the countdown notice reached the client in the play state: [32] ==> expected: <true> but was: <false>
+
+  2. SIGTERM 在宿主发起的停机中到达（major，原 §28.2 风险行按其默认建议转已决）→ ServerProcessImpl#stopOnSignal：
+     stop() 得 false 时 signalled.complete(null) 截断倒计时，再 sequenceOver.join() 等序列跑完；TC-PROD-500
+     ./gradlew :test --rerun --tests 'io.github.bearisbug.synaxis.ShutdownSignalHookTest' <mirror>：tests=1 0 失败（1.02 s）
+     ./gradlew :server-app:test --rerun --tests 'io.github.bearisbug.synaxis.app.ShutdownSignalLaunchTest' <mirror>：tests=1 0 失败（1.26 s）
+       子 JVM stop 30 之后经 ProcessHandle#destroy 发 SIGTERM，退出码 143，日志有 synaxis server stopped successfully.，台账有 shutdown_saved
+       第一次写这条测试用的是 Process#destroy，同样的修复却红（日志停在 The server stops in 30 s）：JDK 在 destroy 里同时关掉了父进程读子进程输出的管道，
+       信号之后的日志到不了测试。按审查的做法手动复现（installDist，fifo 写 stop 30，2 s 后 kill -TERM）：SIGTERM 之后约 0.1 s 打出
+       Shutting down all thread pools. 与 synaxis server stopped successfully.，进程退出；测试随后改用 ProcessHandle#destroy（不关管道）
+     修复前的红（if (stop() || !Boolean.getBoolean("proof.never")) return;）：
+       ShutdownSignalHookTest.java:33 the hook returned before the sequence it did not start was over ==> expected: <STOPPED> but was: <GATE_CLOSED>
+       ShutdownSignalLaunchTest.java:53 the sequence the console started ran to its end before the JVM halted (325 ms):，日志末行 The server stops in 30 s
+     反证（等但不截断：if (Boolean.getBoolean("proof.never")) signalled.complete(null);）：
+       ShutdownSignalHookTest.java:35 the signal cut the 30 s countdown: 30099 ms；ShutdownSignalLaunchTest.java:51 the signal cut the 30 s countdown:（10 s 没退出，测试收尾时强杀）
+
+  3. 指标端点（major）→ HostMetrics 每次抓取一条虚拟线程 Syn-Metrics，另一条 Syn-Metrics-Limit 在 EXCHANGE_LIMIT = 10 s 时中断它；TC-PROD-501
+     没用 -Dsun.net.httpserver.maxReqTime / maxRspTime：JVM 级、只在第一次建 HttpServer 时读，JDK 25 的模块文档写毫秒、ServerImpl#getTimeMillis 按秒乘 1000
+       （/opt/homebrew/opt/openjdk@25 的 src.zip，jdk.httpserver/module-info.java:84 与 sun/net/httpserver/ServerImpl.java:1149），且单靠时限仍只有一条线程
+     ./gradlew :server-app:test --rerun --tests 'io.github.bearisbug.synaxis.app.metrics.MetricsEndpointLimitTest' <mirror>
+       绿：tests=2 0 失败 23.39 s（半个请求那条 10.04 s，不读回复那条 13.35 s）
+     修复前的红（setExecutor 换回 Executors.newSingleThreadExecutor()）：2 tests completed, 2 failed，都在 MetricsEndpointLimitTest.java:85
+       java.net.http.HttpTimeoutException: request timed out
+     反证（不中断）：2 tests completed, 2 failed，都在 :102，the server never closed the connection of a peer with a request never finished / … with answers never read
+
+  4. 踢人阶段之后才到的 LoginAcknowledged（minor）→ ConnectionManager#shutdown 置 shutDown，trackOrPrevious 同锁判定后不建玩家，
+     LoginListener#refusal 按 isShutDown() 选 synaxis:server-stopping；TC-PROD-502
+     ./gradlew :test --rerun --tests 'io.github.bearisbug.synaxis.network.LoginAfterConnectionShutdownIntegrationTest' <mirror>：tests=2 0 失败（0.94 s）
+     修复前的红（if (shutDown && Boolean.getBoolean("proof.never")) return player;）：2 tests completed, 2 failed，:46 与 :67
+       the connection was never kicked ==> expected: not <null>
+     反证（refusal 不看 isShutDown）：:46 … but was: <synaxis:duplicate-login>；:67 … but was: <synaxis:state-unavailable>
+
+  5. bans/add 的到期时间（minor）→ HostModeration.EXPIRY_LIMIT = +10000-01-01T00:00:00Z，ManagementMethods#addBans 与 HostModeration#ban 都查；TC-PROD-503
+     ./gradlew :server-app:test --rerun --tests 'io.github.bearisbug.synaxis.app.management.ManagementBansIntegrationTest' <mirror>：tests=2 0 失败 0 跳过
+     修复前的红（两处都加 && Boolean.getBoolean("proof.never")）：2 tests completed, 1 failed，ManagementBansIntegrationTest.java:197
+       +1000000000-12-31T23:59:59.999999999Z -> {"jsonrpc":"2.0","id":1,"error":{"code":-32603,"message":"Internal error",…}} ==> expected: <-32602> but was: <-32603>
+       WARN i.g.b.s.a.m.ManagementMethods - Management call failed: method=minecraft:bans/add request_id=342793c5-…，
+       Caused by: java.time.DateTimeException: Invalid value for EpochDay (valid values -365243219162 - 365241780471): 365241780837
+     反证（只有管理接口不查）：同一处红，原因换成 IllegalArgumentException: a ban cannot expire at +1000000000-12-31T23:59:59.999999999Z, only before +10000-01-01T00:00:00Z
+     反证（只有插件接口不查）：:208 the plugin API refuses it before the database ==> Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown.
+
+  6. 日志里的 IPv6 地址（minor）→ BindAddress#format，Main#serveMetrics、ManagementServer 两行、ManagementSettings#toString、HostMetrics 就绪行都经它；TC-PROD-504
+     ./gradlew :server-app:test --rerun --tests '…BindAddressFormatTest' --tests '…management.ManagementSettingsTest' <mirror>：tests=2、tests=6，0 失败
+     反证（不加方括号）：8 tests completed, 3 failed：BindAddressFormatTest.java:33 synaxis.app.metrics.bind=0:0:0:0:0:0:0:1:9464 is not host:port: …；
+       :52 synaxis.app.metrics.bind=0:0:0:0:0:0:0:1:59075 cannot be bound: Address already in use；
+       ManagementSettingsTest.java:103 … but was: <enabled=true bind=0:0:0:0:0:0:0:1:25653 token=set>
+
+  7. TEST.md TC-PROD-169 第 2 步的测试数（minor）→ 31 改为 32，写明三个类各几个
+     五处改动同一轮（169 的 PlayerStore#write、170 看门那轮的 ShardSession#open、171 的 PlayerStore#load 与 PostgresBackend 先提交、172 的 autosaveTick、
+       173 的 PluginHost#enableOne），跑 PlayerStoreIntegrationTest、DatabaseHangIntegrationTest、PlayerDataIntegrationTest：
+       32 tests completed, 6 failed（23 / 2 / 7，failures 4 / 1 / 1）；169 红在 PlayerStoreIntegrationTest.java:465，
+       the retry of the snapshot from before the trade is not written over it ==> expected: <{"note": "", "coins": 50}> but was: <{"note": "", "coins": 100}>；
+       171 两条 :481、:491，172 :523，170 DatabaseHangIntegrationTest.java:116 not within 3000 ms: frozen，173 PlayerDataIntegrationTest.java:311，消息都与用例一致
+       还原后三个类 23 / 2 / 7 都 0 失败
+
+  8. 本轮改了条数或行号、按新写法重跑过的旧用例反证（TC-PROD-505 第 2 步）
+     TC-PROD-380 第 2 步：6 tests completed, 1 failed，ManagementSettingsTest.java:29
+     TC-PROD-390 第 2 步：2 tests completed, 1 failed，ManagementBansIntegrationTest.java:133（加了两个 import 与一个字段，原 :130）
+     TC-PROD-395 第 2 步：2 tests completed, 1 failed，… in (ManagementServer.java:231)（加了一个 import 与两行，原 :228）
+     TC-PROD-485 第 2 步：4 tests completed, 4 failed，都在 ShutdownBeforeTheWorldLaunchTest.java:136（原 :109），stop took over 10 s / 12 s，用时 88 s
+     TC-PROD-489 第 2 步：整文件换回 7ff65e40a8 的两个文件编译不过（MetricsEndpointLimitTest 用到 HostMetrics.EXCHANGE_LIMIT），
+       改为只把两处 BindAddress.parse 换回 URI 读法：2 tests completed, 2 failed，各 30 s，BindKeysLaunchTest.java:29；
+       日志 Effective management: enabled=false bind=0.0.0.0:63146 token=unset、Metrics endpoint listening on http://127.0.0.1:62951/metrics、
+       两个都有 synaxis server-app listening on 0.0.0.0:<端口>，与原写一致
+     文档里指向本轮改动文件的行号：按 HEAD 与工作副本的逐行对照，DESIGN-PROD 四处跟着挪（ConnectionManager.java:210-212 → :212-214、:401 → :405，
+       ServerProcessImpl.java:581 → :598、:275 → :279、:129-131 → :133-135、:110 → :114）；变更记录行与注明 8de32ab9b4 的旧位置不改。
+       TEST.md :2979 的 ServerProcessImpl.java:254、:4552 的 ConnectionManager.java:639 与 DESIGN.md :318 的 ConnectionManager.java:606-612
+       在 91d4f66369 上就已不指向所写的代码（与本轮无关），没改
+
+  9. 回归与门禁
+     ./gradlew check --rerun-tasks --continue <mirror>（带数据库环境）
+       12:25:49Z → 12:29:23Z，BUILD SUCCESSFUL in 3m 33s，77 actionable tasks: 77 executed
+       architecture-tests 7 类 20 个、baker 4 / 52、根模块 421 / 3,106（15 跳过）、game-rts 12 / 83、loadtest 3 / 10、plugin-api 3 / 15、protocol 4 / 78、
+       server-app 70 / 366、synx 7 / 42、testing 7 / 10；合计 538 类 3,782 个，0 失败 0 错误，15 跳过（与 RUN-039 同一批）；
+       比第二节的 3,770 多 12 个：根模块 3（ShutdownSignalHookTest 1、LoginAfterConnectionShutdownIntegrationTest 2），server-app 9
+       （ShutdownBeforeTheWorldLaunchTest 2 → 4、ShutdownSignalLaunchTest 1、MetricsEndpointLimitTest 2、BindAddressFormatTest 2、ManagementSettingsTest 5 → 6、
+       ManagementBansIntegrationTest 1 → 2）；ManagementBansIntegrationTest、PlayerStoreIntegrationTest、ShutdownLoginIntegrationTest 等数据库类 skipped=0
+     严格模式全量：
+       counter：./gradlew test --rerun --continue <mirror> -Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true
+         12:31:26Z → 12:34:28Z，BUILD SUCCESSFUL in 3m 1s，538 类 3,782 个 0 失败 0 错误 15 跳过；env dispatcher threads: 4、env thread provider: counter
+       grid：同上加 -Dsynaxis.thread-provider=grid
+         12:34:47Z → 12:37:49Z，BUILD SUCCESSFUL in 3m 1s，538 类 3,782 个 0 失败 0 错误 15 跳过；env dispatcher threads: 4、env thread provider: grid
+       两轮每个模块最早的时间戳都晚于起跑时刻
+     新增行覆盖：./gradlew jacocoTestReport <mirror>（check 那次的执行数据）；diff-cover 装在 /tmp 下的 uv 环境
+       --compare-branch=91d4f66369：Total 49 lines，Missing 2 lines（HostMetrics.java 329-330，看守线程被中断的 catch），Coverage 95%
+       --compare-branch=origin/main（同 CI）：Total 171 lines，Missing 8 lines，Coverage 95%，退出码 0
+     ABI 门：plugin-api 只改了 Moderation#ban 的 Javadoc（@throws 加一种情况）
+       gh release download v0.3.0 --pattern plugin-api.jar --pattern protocol.jar，两个 sha256 与第五节相同
+       ./gradlew :plugin-api:checkBinaryCompatibility :protocol:checkBinaryCompatibility --rerun-tasks <mirror> -PbaselineJarDir=<该目录>
+         BUILD SUCCESSFUL in 24s，28 actionable tasks: 28 executed；0 违例
+     文档 lint：design-doc check.sh docs/DESIGN-PROD.md → ✅ lint 无警告（状态图与迁移表按机分段 10 11 12 21 22 一致）；
+       同一脚本对 docs/DESIGN.md → ✅ 无警告（§11.2 由 8 行变 9 行，与状态图一致）；
+       test-doc check.sh docs/TEST.md → 只有已知三条（RUN-031 两行缺证据引用、REQ-PROD-031 无 TC）
+
+  10. RUN-039 的结论是否要改
+     不改。RUN-039 跑过的 20 条用例按当时的写法结果不变：TC-PROD-485、TC-PROD-497 等在 91d4f66369 上照样通过，本轮修的缺陷都在它们没走到的路径上
+     （0 s 以外的倒计时、宿主先占下停机再来 SIGTERM、停住的抓取方、踢人之后才确认登录、库存不下的到期时间、IPv6 绑定）；
+     TC-PROD-169 不在 RUN-039 的范围里。所以 TEST.md §6 不加注
+
+  11. 环境与回收
+     复用 synaxis-pg、synaxis-valkey，没有新建镜像、容器与卷；手动复现起的 server-app 进程（pid 37718）已随 SIGTERM 退出，
+       另一次 JDK 版本不对没起来的 pid 37312 当场退出；测试起的子 JVM 由测试自己收尾
+     /tmp 下的临时目录（反证副本与结果 XML、JDK src.zip 解出的 jdk.httpserver、SIGTERM 复现目录、diff-cover 的 uv 环境、ABI baseline 目录）本节写完即删

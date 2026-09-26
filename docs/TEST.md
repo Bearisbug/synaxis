@@ -14,6 +14,7 @@
 
 | 日期 | 改动 | 作者 |
 | --- | --- | --- |
+| 2026-09-26 | 跟进 `docs/DESIGN-PROD.md` v0.9.15（RUN-039 修复）与 `docs/DESIGN.md` v0.41（RUN-039 修复），修 RUN-039 之后审查出的缺陷。**新增 §4「生产就绪 · RUN-039 后修复轮」七条 `TC-PROD-499`～`TC-PROD-505`**，前六条都带实跑过的反证：停机倒计时只发给已进 PLAY 的连接（499，§19 场景；修复前的红、谁都不发各一条）、SIGTERM 遇上宿主发起的停机（500，§19 场景；新类 `ShutdownSignalHookTest`、`ShutdownSignalLaunchTest`；修复前的红、等而不截断各一条）、指标端点的时限（501，§19 场景；新类 `MetricsEndpointLimitTest`；一条线程不设时限、每次一条线程但不中断各一条）、踢人阶段之后的登录（502，§19 场景；新类 `LoginAfterConnectionShutdownIntegrationTest`；两条反证）、封禁到期上限（503，§19 场景；修复前的红、只有一处不查各一条）、日志里的 IPv6 地址（504，§19 场景；新类 `BindAddressFormatTest`）、回归（505）。**改了七条旧用例**，改过的步骤都在本分支重跑过：`TC-PROD-169` 第 2 步合并反证的测试数 31 → 32（同批合入的 G1 给 `PlayerDataIntegrationTest` 加了一条，`TC-PROD-481` 已写 `tests="7"`；三个类 23 + 2 + 7，重跑得 `32 tests completed, 6 failed`，六处红与原写一致）；`TC-PROD-380` 第 1、2 步 5 → 6 个（`ManagementSettingsTest` 加了 504 的一条）；`TC-PROD-390` 第 1 步 1 → 2 个，第 2 步 `1 test completed` → `2 tests completed`、红行 `:130` → `:133`（加了两个 import 与一个字段）；`TC-PROD-395` 第 2 步红行 `ManagementServer.java:228` → `:231`；`TC-PROD-485` 第 1 步 `tests="2"` → `"4"`，第 2 步 `2 tests completed, 2 failed` → `4 tests completed, 4 failed`、红行 `:109` → `:136`（共用的起停方法加了倒计时参数）；`TC-PROD-486` 第 3 步 357 → 366 个；`TC-PROD-489` 第 2 步不再整文件换回 `7ff65e40a8` 的两个文件（`MetricsEndpointLimitTest` 用到 `HostMetrics.EXCHANGE_LIMIT`，整文件换回编译不过），改为只把两处 `BindAddress.parse` 换回 URI 读法，红行与日志不变。§5 加一行。未登记执行轮次 | Bearisbug |
 | 2026-09-26 | 登记 RUN-039（RUN-038 之后四组合入集成分支 `prod/integrate-f` 后的复验，证据 `docs/test-runs/RUN-039/`）。跟进 `docs/DESIGN-PROD.md` v0.9.19：本表与 §4、§5 里写的「v0.9.15（G1）」「v0.9.15（G3）」「v0.9.15（G2）」「v0.9.15（G4，…）」改为重编的版本号 v0.9.15、v0.9.16、v0.9.17、v0.9.18，`docs/DESIGN.md` 的「v0.39（G3）」改为 v0.39（G4 那一版为 v0.40）；本表 G1～G4 四行按新在上重排。**改了四条用例**，改过的步骤都在合入后的代码上重跑过：`TC-PROD-395` 第 2 步红行 `ManagementServer.java:215` → `:228`（G2 在它前面加了 13 行）；`TC-PROD-490` 第 2 步改为 `git show f9cb93f36b -- <ManagementMethods.java> \| git apply -R`，只撤回 G2 的改动（整文件换回 `7ff65e40a8` 的版本编译不过：那个版本的 `stop()` 调的 `claimStop` / `startStop` 被 G3 删了），红行与信息不变；`TC-PROD-495` 第 2 步写明删 `hookStarted` 字段时连同它上面一行 Javadoc（只删字段时红在 `:196`、`:214`，与写的 `:195`、`:213` 差一行）；`TC-PROD-486` 第 3 步 `:server-app:test` 344 个 → 357 个（同批合入的 G2 10 个、G3 3 个）。用例判据没改 | Bearisbug |
 | 2026-09-26 | 跟进 `docs/DESIGN-PROD.md` v0.9.18（G4，文档收口与代码行号核对）。**`TC-PROD-169`～`TC-PROD-173` 照原写法重跑**（`SYNAXIS_TEST_PG_*` 指向 `synaxis-pg`，三个类 0 跳过）：第 1 步三个类共 31 个测试 0 失败；三个类同一轮的合并反证原记 `23 tests completed, 7 failed`，那是 `PlayerStoreIntegrationTest` 一个类的测试数，实为 `31 tests completed, 6 failed`（169、170 看门那轮、172、173 各 1 个，171 两个），`TC-PROD-169` 第 2 步改正，并写明 6 个各落在哪条；169 的红行 `PlayerStoreIntegrationTest.java:437` → `:465`，消息不变；`TC-PROD-171` 第 2 步要改的那一行已是 `releaseUnused(account);`（原写 `releaseUnused(player.getUuid());`，同账号串行载入的 `d75d0ad758` 改的），照新写法改后两条都红、消息与原写一致；`TC-PROD-170` 两轮单独重跑各 `2 tests completed, 1 failed`、`TC-PROD-172`、`TC-PROD-173` 的红行消息都与原写一致，不改。还原后三个类不走缓存重跑复绿。§4 第 2 波 2A 节末的「口径差异两处」段核对：两处都还没写进 `docs/DESIGN-PROD.md` §19（「非法加密握手」场景仍写「发两次」时假服务请求计数为 0，「不可用时重试」场景仍写阻塞 6 s），该段保留 | Bearisbug |
 | 2026-09-26 | 跟进 `docs/DESIGN-PROD.md` v0.9.17，G2 审查出的管理接口与指标端点三处缺陷。**新增 §4「生产就绪 · G2：管理接口与指标端点加固」七条 `TC-PROD-488`～`TC-PROD-494`**，都带实跑过的反证：绑定键的写法（488，新类 `BindAddressTest`；两条反证：URI 读法放过的写法、越界端口交给 JDK 报）、真 JVM 拒启（489，§19 场景；新类 `BindKeysLaunchTest`；反证：换回改动前的两个文件）、`synaxis:profile` 的秒数（490，§19 场景；新类 `ManagementWholeNumbersIntegrationTest`；反证：换回改动前的 `ManagementMethods`）、出站上限三条（491～493，§19 场景；新类 `ManagementBacklogIntegrationTest`；五条反证：不设上限、只限字节、只限帧数、按发出的总帧数计、按编码出的总字节计）、真进程（494；新脚本 `tools/loadtest/management_backlog.py`；反证：换回改动前的 `ManagementServer`，进程 OOM 退出）。§5 局部轮加一条。旧用例一条没改 | Bearisbug |
@@ -3400,7 +3401,7 @@ jcmd "$pid" VM.flags | tr ' ' '\n' | grep -cxE -- '-XX:\+UseG1GC|-XX:InitialHeap
 | # | 操作 | 预期 |
 | --- | --- | --- |
 | 1 | 跑 `PlayerStoreIntegrationTest`，看 `aSaveRetryingFromBeforeACommitDoesNotWriteOverTheCommit` | 玩家 `coins` 改成 100 并 `markDirty`，`saveNow` 第一次写失败、得 `UNAVAILABLE` 并进入退避；退避期间 `commitTogether` 把 `coins` 写成 50、得 `SAVED`；再跑 1.5 s 的 tick 后内存里是 50，库里 `probe:purse` 是 `{"note": "", "coins": 50}`（退避醒来的旧快照在写锁内被丢弃，该段重新标脏，下一轮定时保存写的是内存里的 50） |
-| 2 | 反证有齿：`PlayerStore#write` 里的 `if (entry.getValue().takenAt() >= record.committedAt.getOrDefault(entry.getKey(), 0L)) {` 换成 `if (!Boolean.getBoolean("proof.never")) {`，与 `TC-PROD-170`～`TC-PROD-173` 的改动同一轮跑本类、`DatabaseHangIntegrationTest` 与 `PlayerDataIntegrationTest`（三个类共 31 个测试，`31 tests completed, 6 failed`：本处 1 个、`TC-PROD-170` 看门那轮 1 个、`TC-PROD-171` 2 个、`TC-PROD-172` 与 `TC-PROD-173` 各 1 个），再还原 | 本处红：`the retry of the snapshot from before the trade is not written over it ==> expected: <{"note": "", "coins": 50}> but was: <{"note": "", "coins": 100}>`（`PlayerStoreIntegrationTest.java:465`，内存是交易后的 50，库里是交易前的 100）。还原后复绿 |
+| 2 | 反证有齿：`PlayerStore#write` 里的 `if (entry.getValue().takenAt() >= record.committedAt.getOrDefault(entry.getKey(), 0L)) {` 换成 `if (!Boolean.getBoolean("proof.never")) {`，与 `TC-PROD-170`～`TC-PROD-173` 的改动同一轮跑本类、`DatabaseHangIntegrationTest` 与 `PlayerDataIntegrationTest`（三个类共 32 个测试：`PlayerStoreIntegrationTest` 23 个、`DatabaseHangIntegrationTest` 2 个、`PlayerDataIntegrationTest` 7 个；`32 tests completed, 6 failed`：本处 1 个、`TC-PROD-170` 看门那轮 1 个、`TC-PROD-171` 2 个、`TC-PROD-172` 与 `TC-PROD-173` 各 1 个），再还原 | 本处红：`the retry of the snapshot from before the trade is not written over it ==> expected: <{"note": "", "coins": 50}> but was: <{"note": "", "coins": 100}>`（`PlayerStoreIntegrationTest.java:465`，内存是交易后的 50，库里是交易前的 100）。还原后复绿 |
 
 后置：确认 `PlayerStore.java` 没有残留改动。
 
@@ -5396,8 +5397,8 @@ jcmd "$pid" VM.flags | tr ' ' '\n' | grep -cxE -- '-XX:\+UseG1GC|-XX:InitialHeap
 
 | # | 操作 | 预期 |
 | --- | --- | --- |
-| 1 | 跑 `io.github.bearisbug.synaxis.app.management.ManagementSettingsTest` | 5 个 0 失败：不设任何键时 `enabled=false`，`bind` 为 `127.0.0.1:25585` 且是回环地址；`enabled=true` 而令牌缺失或为空串时抛 `IllegalArgumentException`，信息里有 `SYNAXIS_MANAGEMENT_TOKEN`；31 个字符、中间带空格、513 个字符的令牌都被拒，信息只写长度（`31 characters`）、不写令牌本身；32 个 `b64token` 字符并以 `==` 结尾的令牌接受；`enabled=yes`、没有端口、带路径、主机名带空格的 `bind` 都拒绝；`enabled=false` 时不检查令牌；`toString()` 恰为 `enabled=true bind=127.0.0.1:25585 token=set` 与 `enabled=false bind=127.0.0.1:25585 token=unset` |
-| 2 | 反证有齿（默认绑到全部网卡）：`ManagementSettings.DEFAULT_BIND` 的 `"127.0.0.1:25585"` 改为 `"0.0.0.0:25585"`，重跑，再还原 | `5 tests completed, 1 failed`，红在 `ManagementSettingsTest.java:29`：`expected: <localhost/127.0.0.1:25585> but was: </0.0.0.0:25585>`。还原后复绿 |
+| 1 | 跑 `io.github.bearisbug.synaxis.app.management.ManagementSettingsTest` | 6 个 0 失败（第 6 个 `anIpv6BindIsPrintedInBracketsTheWayTheKeyReadsIt` 属 `TC-PROD-504`）：不设任何键时 `enabled=false`，`bind` 为 `127.0.0.1:25585` 且是回环地址；`enabled=true` 而令牌缺失或为空串时抛 `IllegalArgumentException`，信息里有 `SYNAXIS_MANAGEMENT_TOKEN`；31 个字符、中间带空格、513 个字符的令牌都被拒，信息只写长度（`31 characters`）、不写令牌本身；32 个 `b64token` 字符并以 `==` 结尾的令牌接受；`enabled=yes`、没有端口、带路径、主机名带空格的 `bind` 都拒绝；`enabled=false` 时不检查令牌；`toString()` 恰为 `enabled=true bind=127.0.0.1:25585 token=set` 与 `enabled=false bind=127.0.0.1:25585 token=unset` |
+| 2 | 反证有齿（默认绑到全部网卡）：`ManagementSettings.DEFAULT_BIND` 的 `"127.0.0.1:25585"` 改为 `"0.0.0.0:25585"`，重跑，再还原 | `6 tests completed, 1 failed`，红在 `ManagementSettingsTest.java:29`：`expected: <localhost/127.0.0.1:25585> but was: </0.0.0.0:25585>`。还原后复绿 |
 
 后置：确认 `ManagementSettings.java` 没有残留改动。
 
@@ -5511,8 +5512,8 @@ jcmd "$pid" VM.flags | tr ' ' '\n' | grep -cxE -- '-XX:\+UseG1GC|-XX:InitialHeap
 
 | # | 操作 | 预期 |
 | --- | --- | --- |
-| 1 | 跑 `io.github.bearisbug.synaxis.app.management.ManagementBansIntegrationTest` | 1 个 0 失败、0 跳过：新建的库迁移到最新版。`minecraft:bans` 得 `[]`；`bans/add` 两条、第二条的 `expires` 在 2020 年，回 −32602，之后 `bans` 仍是 `[]`（第一条也没写）；只给不在线的名字、理由 257 个字符，都回 −32602；按 id 封一个从没登录过的账号（理由 `griefing`、明天到期）并按名字封在线的玩家，结果两条：前者 `{player:{id}, reason:"griefing", expires:<ISO-8601>}`，后者理由为默认的 `Banned by an operator.`、没有 `expires`；随后 `bans` 与之相同，在线的那名玩家被踢下线；库里两条生效封禁的 `created_by` 都是全零 UUID；`bans/remove` 撤前者，结果只剩后者，再撤一次结果不变；台账九条，末两条 `minecraft:bans/remove [[…]] <UUID> ok` 与 `minecraft:bans/remove {…} <UUID> no_ban` |
-| 2 | 反证有齿（不校验到期时间）：`ManagementMethods#addBans` 的 `if (expires != null && !expires.isAfter(Instant.now())) throw invalid(…)` 改为 `if (Boolean.getBoolean("proof.never") && expires != null && …) throw invalid(…)`，重跑，再还原 | `1 test completed, 1 failed`，红在 `ManagementBansIntegrationTest.java:130`：`expected: <-32602> but was: <-32603>`——第一条已经写进库，第二条在 `HostModeration#ban` 里抛 `IllegalArgumentException`，成了未预料的异常，正是「先校验全部再写」要挡的半截写入。还原后复绿 |
+| 1 | 跑 `io.github.bearisbug.synaxis.app.management.ManagementBansIntegrationTest`，看 `bansAreListedAddedAllOrNothingAndRemoved` | 2 个 0 失败、0 跳过（另一个属 `TC-PROD-503`）：新建的库迁移到最新版。`minecraft:bans` 得 `[]`；`bans/add` 两条、第二条的 `expires` 在 2020 年，回 −32602，之后 `bans` 仍是 `[]`（第一条也没写）；只给不在线的名字、理由 257 个字符，都回 −32602；按 id 封一个从没登录过的账号（理由 `griefing`、明天到期）并按名字封在线的玩家，结果两条：前者 `{player:{id}, reason:"griefing", expires:<ISO-8601>}`，后者理由为默认的 `Banned by an operator.`、没有 `expires`；随后 `bans` 与之相同，在线的那名玩家被踢下线；库里两条生效封禁的 `created_by` 都是全零 UUID；`bans/remove` 撤前者，结果只剩后者，再撤一次结果不变；台账九条，末两条 `minecraft:bans/remove [[…]] <UUID> ok` 与 `minecraft:bans/remove {…} <UUID> no_ban` |
+| 2 | 反证有齿（不校验到期时间）：`ManagementMethods#addBans` 的 `if (expires != null && !expires.isAfter(Instant.now())) throw invalid(…)` 改为 `if (Boolean.getBoolean("proof.never") && expires != null && …) throw invalid(…)`，重跑，再还原 | `2 tests completed, 1 failed`，红在 `ManagementBansIntegrationTest.java:133`：`{"jsonrpc":"2.0","id":2,"error":{"code":-32603,…}} ==> expected: <-32602> but was: <-32603>`——第一条已经写进库，第二条在 `HostModeration#ban` 里抛 `IllegalArgumentException`，成了未预料的异常，正是「先校验全部再写」要挡的半截写入。还原后复绿 |
 
 后置：确认 `ManagementMethods.java` 没有残留改动；测试自建的库已由 `TestDatabase#close` 删掉。
 
@@ -5572,7 +5573,7 @@ jcmd "$pid" VM.flags | tr ' ' '\n' | grep -cxE -- '-XX:\+UseG1GC|-XX:InitialHeap
 | # | 操作 | 预期 |
 | --- | --- | --- |
 | 1 | 跑 `io.github.bearisbug.synaxis.app.ClientDrivenLogArchitectureTest` | 2 个 0 失败：`management/` 的三个类不在豁免名单里，也没有直接的 WARN / ERROR 行 |
-| 2 | 反证有齿（连接错误直接写 WARN）：`ManagementServer.Endpoint#onError` 里的 `failures.warn(ex, …)` 前加一行 `LOGGER.warn("Management interface error: remote={}", conn == null ? null : conn.getRemoteSocketAddress(), ex);`，并把原行改成只在 `proof.never` 时执行，重跑，再还原 | `2 tests completed, 1 failed`：`Method <…management.ManagementServer$Endpoint.onError(org.java_websocket.WebSocket, java.lang.Exception)> calls method <org.slf4j.Logger.warn(java.lang.String, java.lang.Object, java.lang.Object)> in (ManagementServer.java:228)`。还原后复绿 |
+| 2 | 反证有齿（连接错误直接写 WARN）：`ManagementServer.Endpoint#onError` 里的 `failures.warn(ex, …)` 前加一行 `LOGGER.warn("Management interface error: remote={}", conn == null ? null : conn.getRemoteSocketAddress(), ex);`，并把原行改成只在 `proof.never` 时执行，重跑，再还原 | `2 tests completed, 1 failed`：`Method <…management.ManagementServer$Endpoint.onError(org.java_websocket.WebSocket, java.lang.Exception)> calls method <org.slf4j.Logger.warn(java.lang.String, java.lang.Object, java.lang.Object)> in (ManagementServer.java:231)`。还原后复绿 |
 
 后置：确认 `ManagementServer.java` 没有残留改动。
 
@@ -5943,8 +5944,8 @@ for (var request : System.getenv("MGMT_CALLS").split("\n")) {
 
 | # | 操作 | 预期 |
 | --- | --- | --- |
-| 1 | 跑 `io.github.bearisbug.synaxis.app.ShutdownBeforeTheWorldLaunchTest` | `tests="2"` 0 失败（本机约 3 s）。两条都先握手、`LoginStart`、`LoginAcknowledged`，读到 `UpdateEnabledFeatures`（配置事件结束，玩家已载入、已准入）。`aClientThatNeverAnswersTheKnownPacksDoesNotHoldTheStop` 停在这里，不回答 `SelectKnownPacks`；`aClientThatNeverAcknowledgesTheEndOfItsConfigurationDoesNotHoldTheStop` 回答后读到 `FinishConfiguration`，不确认。之后两者都只回 keep-alive、保持连接，测试往 stdin 写 `stop`：10 s 内退出（本机两种各 5 次，0.42～0.49 s），退出码 0；日志有 `reason=synaxis:server-stopping`，没有 `The shutdown save did not complete within its budget` 与 `Not saved on shutdown`；台账 `shutdown_saved` 含 `"online":1`、`"saved":1`、`"failed":0`、`"timed_out":"false"` |
-| 2 | 反证有齿（真进程）：照 `TC-PROD-484` 第 2 步改 `PlayerStore.java`，跑本条的类，再还原 | `2 tests completed, 2 failed`，都红在 `ShutdownBeforeTheWorldLaunchTest.java:109` `stop took over 10 s`（信息是子 JVM 的日志全文），用时约 45 s。同一改动下把 10 s 临时放宽到 60 s 并打印用时（未提交）：不回答 known packs 的 30.43 s、不确认 `FinishConfiguration` 的 30.47 s，各记两行 ERROR `The shutdown save did not complete within its budget, going on with the shutdown.` 与 `Not saved on shutdown, its lease runs out with the session: character_id=1`，`reason=synaxis:server-stopping` 的断线发生在踢人阶段 |
+| 1 | 跑 `io.github.bearisbug.synaxis.app.ShutdownBeforeTheWorldLaunchTest`，看 `aClientThatNeverAnswersTheKnownPacksDoesNotHoldTheStop`、`aClientThatNeverAcknowledgesTheEndOfItsConfigurationDoesNotHoldTheStop` | `tests="4"` 0 失败（本机约 9.5 s，这两条各约 1.4 s；另两条属 `TC-PROD-499`）。两条都先握手、`LoginStart`、`LoginAcknowledged`，读到 `UpdateEnabledFeatures`（配置事件结束，玩家已载入、已准入）。`aClientThatNeverAnswersTheKnownPacksDoesNotHoldTheStop` 停在这里，不回答 `SelectKnownPacks`；`aClientThatNeverAcknowledgesTheEndOfItsConfigurationDoesNotHoldTheStop` 回答后读到 `FinishConfiguration`，不确认。之后两者都只回 keep-alive、保持连接，测试往 stdin 写 `stop`：10 s 内退出（本机两种各 5 次，0.42～0.49 s），退出码 0；日志有 `reason=synaxis:server-stopping`，没有 `The shutdown save did not complete within its budget` 与 `Not saved on shutdown`；台账 `shutdown_saved` 含 `"online":1`、`"saved":1`、`"failed":0`、`"timed_out":"false"` |
+| 2 | 反证有齿（真进程）：照 `TC-PROD-484` 第 2 步改 `PlayerStore.java`，跑本条的类，再还原 | `4 tests completed, 4 failed`，都红在 `ShutdownBeforeTheWorldLaunchTest.java:136`，本条的两个是 `stop took over 10 s`（信息是子 JVM 的日志全文），`TC-PROD-499` 的两个是 `stop took over 12 s`，用时约 88 s。同一改动下把 10 s 临时放宽到 60 s 并打印用时（未提交）：不回答 known packs 的 30.43 s、不确认 `FinishConfiguration` 的 30.47 s，各记两行 ERROR `The shutdown save did not complete within its budget, going on with the shutdown.` 与 `Not saved on shutdown, its lease runs out with the session: character_id=1`，`reason=synaxis:server-stopping` 的断线发生在踢人阶段 |
 | 3 | 还原后重跑第 1 步 | 与第 1 步相同 |
 
 后置：确认 `PlayerStore.java` 没有残留改动；两个子 JVM 都已退出（`@TempDir` 由 JUnit 删掉）。
@@ -5957,7 +5958,7 @@ for (var request : System.getenv("MGMT_CALLS").split("\n")) {
 | --- | --- | --- |
 | 1 | 同一次运行跑 `io.github.bearisbug.synaxis.app.store` 下的 `ShutdownSaveBeforeSpawnIntegrationTest`、`ShutdownSaveIntegrationTest`、`ShutdownSaveRaceIntegrationTest`、`PlayerStoreIntegrationTest`、`CrossShardHandoverIntegrationTest`、`TransferTicketsIntegrationTest`，与 `io.github.bearisbug.synaxis.app.ConfigFileLaunchTest` | `tests="3"`、`"4"`、`"2"`、`"23"`、`"6"`、`"7"`、`"2"`，都 0 失败 0 跳过（`TC-PROD-460`、`TC-PROD-470`、`TC-PROD-155`、`TC-PROD-214` 第 2 步、`TC-PROD-442` 不受影响）。保存阶段开始后的下一个 tick 会断开仍连着、没进世界的玩家，这几类里这样的玩家都在那之前已自己断开，断言不变 |
 | 2 | `TC-PROD-147` 第 2 步（本组把它要改的那一行 `if (!saveEnded) releaseQuietly(record.characterId);` 改成了 `releaseQuietly(record.characterId);`，保存阶段结束的判断挪进 `releaseQuietly`；该步已按新写法改） | 红在 `PlayerStoreIntegrationTest.java:270`，`not within 10 s: the lease goes back after the retries`，与原预期相同；还原后复绿 |
-| 3 | 跑 `:server-app:test` 全量（数据库前置满足） | 357 个 0 失败 0 跳过（含本组新增 11 个，另有同批合入的 G2 10 个、G3 3 个） |
+| 3 | 跑 `:server-app:test` 全量（数据库前置满足） | 366 个 0 失败 0 跳过（含本组新增 11 个，另有同批合入的 G2 10 个、G3 3 个与 RUN-039 修复轮的 9 个） |
 
 后置：确认 `PlayerStore.java` 没有残留改动。
 
@@ -6046,7 +6047,7 @@ for (var request : System.getenv("MGMT_CALLS").split("\n")) {
 | # | 操作 | 预期 |
 | --- | --- | --- |
 | 1 | 跑 `BindKeysLaunchTest` | `tests="2"` 0 失败。两个 JVM 都以 `Main`、离线、核心模式、空闲游戏端口起，一个带 `-Dsynaxis.app.management.bind=127.0.0.1@0.0.0.0:<空闲端口>`，一个带 `-Dsynaxis.app.metrics.bind=127.0.0.1:<空闲端口>?x`；都以退出码 1 结束，日志分别有 `Refusing to start: synaxis.app.management.bind=127.0.0.1@0.0.0.0:<端口> is not host:port` 与 `Refusing to start: synaxis.app.metrics.bind=127.0.0.1:<端口>?x is not host:port`，都没有 `listening on` |
-| 2 | 反证有齿（改动前的读法）：用 `git show 7ff65e40a8:<路径> > <路径>` 换回改动前的 `server-app/src/main/java/io/github/bearisbug/synaxis/app/management/ManagementSettings.java` 与 `server-app/src/main/java/io/github/bearisbug/synaxis/app/metrics/HostMetrics.java`，重跑第 1 步，再 `git checkout --` 两个文件 | `2 tests completed, 2 failed`，各等满 30 s：红在 `BindKeysLaunchTest.java:29`（经 `ConfigFileLaunchTest.java:312` 的 `the JVM exits: …`）。所附日志里管理那个 JVM 的自检行是 `Effective management: enabled=false bind=0.0.0.0:<端口>`（用户信息后面的 `0.0.0.0` 成了主机，开着管理接口就绑到全部网卡），指标那个 JVM 打 `Metrics endpoint listening on http://127.0.0.1:<端口>/metrics`（`?x` 被丢掉）；两个都打了 `synaxis server-app listening on 0.0.0.0:<游戏端口>` |
+| 2 | 反证有齿（改动前的 URI 读法）：`ManagementSettings#parse` 的 `final InetSocketAddress bind = BindAddress.parse(BIND_PROPERTY, bindValue);` 换成 `final URI uri = URI.create("ws://" + bindValue.strip());` 与 `final InetSocketAddress bind = new InetSocketAddress(uri.getHost(), uri.getPort());` 两行，`HostMetrics#bindAddress` 的 `return BindAddress.parse(BIND_PROPERTY, value);` 换成 `final URI uri = URI.create("http://" + value.strip());` 与 `return new InetSocketAddress(uri.getHost(), uri.getPort());`，两个文件都加 `import java.net.URI;`，重跑第 1 步，再还原（整文件换回 `7ff65e40a8` 的版本编译不过：RUN-039 修复轮的 `MetricsEndpointLimitTest` 用到 `HostMetrics.EXCHANGE_LIMIT`；改动前另有的空主机、缺端口与路径检查对这两个值不起作用，所以只换取主机与端口的两行） | `2 tests completed, 2 failed`，各等满 30 s：红在 `BindKeysLaunchTest.java:29`（经 `ConfigFileLaunchTest.java:312` 的 `the JVM exits: …`）。所附日志里管理那个 JVM 的自检行是 `Effective management: enabled=false bind=0.0.0.0:<端口>`（用户信息后面的 `0.0.0.0` 成了主机，开着管理接口就绑到全部网卡），指标那个 JVM 打 `Metrics endpoint listening on http://127.0.0.1:<端口>/metrics`（`?x` 被丢掉）；两个都打了 `synaxis server-app listening on 0.0.0.0:<游戏端口>` |
 | 3 | 还原后重跑第 1 步 | 与第 1 步相同 |
 
 后置：`git status --short` 无输出。
@@ -6116,6 +6117,102 @@ for (var request : System.getenv("MGMT_CALLS").split("\n")) {
 
 后置：进程还在就 `kill $P`；`rm -rf $W`；`unset SYNAXIS_MANAGEMENT_TOKEN`；`git status --short` 无输出（`server-app/` 没有残留改动）。
 
+### 生产就绪 · RUN-039 后修复轮：停机倒计时的广播、SIGTERM 遇上宿主发起的停机、指标端点时限、踢人之后的登录、封禁到期上限与日志里的 IPv6 地址
+
+对应 `REQ-PROD-008`（§11.4 `started → gate_closed`、`gate_closed → saving` 的 SIGTERM 一行、`kicking → plugins_disabled`，§11.1 末段，§16 SIGTERM 一行与「踢人阶段与晚到的 `LoginAcknowledged`」一行，§19 三条场景）、`REQ-PROD-018`（`API-PROD-015` 应答一条，§15 指标端点行，§17 `metrics.scrape`，§19「停住的对端不拖住指标端点」）、`REQ-PROD-032`（`API-PROD-022` 方法表 `bans/add` 一行与传输一条，§19 两条场景）与 `REQ-PROD-010`（`API-PROD-009` 的到期上限），`docs/DESIGN-PROD.md` v0.9.15（RUN-039 修复）与 `docs/DESIGN.md` v0.41（RUN-039 修复），§28.2 转已决的风险一行与新增的已决一行。改动：`PlayerStore#onGateClosed` 只给服务端状态已是 PLAY 的连接发倒计时；引擎 `ServerProcessImpl#stopOnSignal`（关闭钩子）在 `stop()` 得 false 时结束剩余倒计时、等序列跑完；`HostMetrics` 每次抓取一条虚拟线程、至多 `EXCHANGE_LIMIT` = 10 s；引擎 `ConnectionManager#shutdown` 之后不再建玩家，`LoginListener` 以 `synaxis:server-stopping` 断开；`HostModeration.EXPIRY_LIMIT` = `+10000-01-01T00:00:00Z`，`bans/add` 与 `Moderation#ban` 都查；`BindAddress#format` 把日志里的地址按键的写法写。
+
+测试：引擎（`:test`）新增 `io.github.bearisbug.synaxis.ShutdownSignalHookTest`（1 条；借用 `ShutdownClaimTest` 的 `Recorder` 与 `started`，两者改为包内可见，行号不变）与 `io.github.bearisbug.synaxis.network.LoginAfterConnectionShutdownIntegrationTest`（2 条；借用 `DuplicateUuidLoginIntegrationTest` 的 `KickCapturingConnection`，改为包内可见，行号不变）；`:server-app` 新增 `io.github.bearisbug.synaxis.app.ShutdownSignalLaunchTest`（1 条，另起一个 JVM）、`io.github.bearisbug.synaxis.app.metrics.MetricsEndpointLimitTest`（2 条，约 23 s）与 `io.github.bearisbug.synaxis.app.BindAddressFormatTest`（2 条），`ShutdownBeforeTheWorldLaunchTest` 加 2 条（共 4 条，共用的起停方法多了倒计时参数，行号随之变了，`TC-PROD-485` 已按新行号重跑），`ManagementBansIntegrationTest` 与 `ManagementSettingsTest` 各加 1 条（共 2 条、6 条；`TC-PROD-390`、`TC-PROD-380` 已按新的条数重跑）。「跑 `<类>`」即 `./gradlew :server-app:test --rerun --tests '<类>' --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts`（引擎的类换成 `:test`），结果看 `server-app/build/test-results/test/TEST-<类>.xml`（引擎是 `build/test-results/test/`）；反证一律是「临时改一处、跑、看红、还原、重跑复绿」，改法都写成 `Boolean.getBoolean("proof.never")`（恒为 false）的形式，红跑之后先把结果 XML 另存再复绿。
+
+#### `TC-PROD-499` 停机倒计时只发给已进 PLAY 的连接：还在 configuration 的玩家不被写线程断开、照样进停机保存，已进 PLAY 的收到倒计时（§19 场景） — 对应 `REQ-PROD-008` · 级别: 回归 · 执行者: AI
+
+前置：工作副本干净；运行 Gradle 的 shell 有 `JAVA_TOOL_OPTIONS` 时子 JVM 继承，日志只多一行 `Picked up JAVA_TOOL_OPTIONS`。子 JVM 与客户端同 `TC-PROD-485`。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `io.github.bearisbug.synaxis.app.ShutdownBeforeTheWorldLaunchTest`，看 `aCountdownLeavesAClientThatStillConfiguresInTheShutdownSave`、`aCountdownIsAnnouncedToAClientInThePlayState` | `tests="4"` 0 失败（本机约 9.5 s，这两条各约 3.4 s）。两条分别用 `TC-PROD-485` 的两种客户端（不回答 `SelectKnownPacks`；回答后读到 `FinishConfiguration`、不确认），stdin 写 `stop 2`：都在 12 s 内退出、退出码 0；日志没有 `cannot be sent in state`，有 `reason=synaxis:server-stopping`，没有 `The shutdown save did not complete within its budget` 与 `Not saved on shutdown`；台账 `shutdown_saved` 含 `"online":1`、`"saved":1`、`"failed":0`、`"timed_out":"false"`。已进 PLAY 的那个客户端收到的未压缩包里有 PLAY 状态的 `SystemChat`（倒计时） |
+| 2 | 修复前的红（发给在册的全部玩家）：`PlayerStore#onGateClosed` 的 `if (record.player.getPlayerConnection().getServerState() == ConnectionState.PLAY)` 改为 `if (… == ConnectionState.PLAY \|\| !Boolean.getBoolean("proof.never"))`，跑本类，再还原 | `4 tests completed, 1 failed`：红在 `ShutdownBeforeTheWorldLaunchTest.java:138`（经 `:80`），`a packet the connection's state cannot carry:`，信息是子 JVM 的日志全文，其中有 `[Syn-Socket-Writer-0] ERROR i.g.b.s.app.HostExceptionHandler - Unhandled exception: …`、`java.lang.IllegalStateException: Packet type class io.github.bearisbug.synaxis.network.packet.server.play.SystemChatPacket cannot be sent in state SERVER_CONFIGURATION!` 与随后的 `Connection closed: … identifier=Stuck`，与审查的真进程复现相同 |
+| 3 | 反证有齿（谁都不发）：同一行改为 `if (… == ConnectionState.PLAY && Boolean.getBoolean("proof.never"))`，跑本类，再还原 | `4 tests completed, 1 failed`：红在 `:87`，`the countdown notice reached the client in the play state: [32] ==> expected: <true> but was: <false>`（那个客户端只收到断线包） |
+| 4 | 还原后重跑第 1 步 | 与第 1 步相同 |
+
+后置：确认 `PlayerStore.java` 没有残留改动；子 JVM 都已退出（`@TempDir` 由 JUnit 删掉）。
+
+#### `TC-PROD-500` SIGTERM 在宿主发起的停机倒计时中到达：钩子截断倒计时、等序列跑完，JVM 才退出（§19 场景） — 对应 `REQ-PROD-008` · 级别: 回归 · 执行者: AI
+
+前置：工作副本干净。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `io.github.bearisbug.synaxis.ShutdownSignalHookTest`（`:test`），再跑 `io.github.bearisbug.synaxis.app.ShutdownSignalLaunchTest` | 都是 `tests="1"` 0 失败。前者：进程同 `TC-PROD-497` 第 1 步，`beginShutdown(30 s)` 得 true，`onGateClosed` 被调之后在测试线程上调关闭钩子跑的 `stopOnSignal()`：返回时阶段已是 `STOPPED`，用时 < 10 s（本机整条约 1 s），参与者的调用恰为 `gate_closed:30`、`save`、`save_ended:false`。后者：子 JVM 以 `Main`、核心模式、内存存储、离线起服，stdin 写 `stop 30`，读到 `The server stops in 30 s` 之后经 `ProcessHandle#destroy` 发 SIGTERM（不用 `Process#destroy`：它同时关掉管道，信号之后的日志读不到）：10 s 内退出（本机整条 1.26 s），退出码 143，日志有 `synaxis server stopped successfully.`，台账有 `shutdown_saved`、`"timed_out":"false"` |
+| 2 | 修复前的红（钩子得 false 就返回）：`ServerProcessImpl#stopOnSignal` 的 `if (stop()) return;` 改为 `if (stop() \|\| !Boolean.getBoolean("proof.never")) return;`，跑两个类，再还原 | 前者红在 `ShutdownSignalHookTest.java:33`，`the hook returned before the sequence it did not start was over ==> expected: <STOPPED> but was: <GATE_CLOSED>`；后者红在 `ShutdownSignalLaunchTest.java:53`，`the sequence the console started ran to its end before the JVM halted (325 ms):`，所附日志停在 `The server stops in 30 s`，没有 `stopped successfully.`（与审查的复现相同，退出码同为 143） |
+| 3 | 反证有齿（等，但不截断倒计时）：`signalled.complete(null);` 改为 `if (Boolean.getBoolean("proof.never")) signalled.complete(null);`，跑两个类，再还原 | 前者红在 `:35`，`the signal cut the 30 s countdown: 30099 ms ==> expected: <true> but was: <false>`（这一条约 31 s）；后者红在 `:51`，`the signal cut the 30 s countdown:`（10 s 内没退出，测试收尾时强杀子 JVM） |
+| 4 | 还原后重跑第 1 步，再跑 `io.github.bearisbug.synaxis.ShutdownClaimTest`、`io.github.bearisbug.synaxis.ShutdownSequenceTest` 与 `io.github.bearisbug.synaxis.ServerProcessTest`（都是 `:test`） | 与第 1 步相同；另三个类 `tests="2"`、`"6"`、`"5"`，都 0 失败（`TC-PROD-497`、`TC-PROD-154` 不受影响） |
+
+后置：确认 `ServerProcessImpl.java` 没有残留改动；子 JVM 已退出。
+
+#### `TC-PROD-501` 停住的对端不拖住指标端点：别的抓取 5 s 内应答，停住的连接在它那次抓取开始后约 10 s 被关（§19 场景） — 对应 `REQ-PROD-018` · 级别: 边缘 · 执行者: AI
+
+前置：工作副本干净。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `io.github.bearisbug.synaxis.app.metrics.MetricsEndpointLimitTest` | `tests="2"` 0 失败（本机约 23 s）。`aPeerThatStopsHalfwayThroughItsRequestHoldsNoOtherScrapeAndIsCutOff`：一条 socket 只写 `GET /metrics HTTP/1.1\r\n`，300 ms 后另用 `HttpClient` 抓 `/metrics`，5 s 内得 200、正文含 `synaxis_tick_duration_seconds`；停住的那条在写出之后 9～13 s 之间读到服务端关闭（本机这一条 10.04 s）。`aPeerThatReadsNoAnswerHoldsNoOtherScrapeAndIsCutOff`：接收缓冲 1 KiB 的 socket 流水线写 200 个 `GET /metrics`，一个字节都不读，同样 5 s 内抓到；再等 13 s 才开始读，读到服务端关闭（EOF 或 reset）为止，没有 5 s 读超时 |
+| 2 | 修复前的红（一条线程、不设时限）：`HostMetrics#serve` 的 `server.setExecutor(HostMetrics::answer);` 改为 `server.setExecutor(Boolean.getBoolean("proof.never") ? HostMetrics::answer : Executors.newSingleThreadExecutor());`，并加 `import java.util.concurrent.Executors;`（Error Prone 不收全限定名），跑本类，再还原 | `2 tests completed, 2 failed`：都红在 `MetricsEndpointLimitTest.java:85`（`assertScrapeAnswered` 里的 `send`，分别经 `:53`、`:74`），`java.net.http.HttpTimeoutException: request timed out` |
+| 3 | 反证有齿（每次一条线程，但不中断）：`HostMetrics#answer` 的 `if (!thread.join(EXCHANGE_LIMIT)) thread.interrupt();` 改为 `if (!thread.join(EXCHANGE_LIMIT) && Boolean.getBoolean("proof.never")) thread.interrupt();`，跑本类，再还原 | `2 tests completed, 2 failed`：两条的抓取都在 5 s 内应答，都红在 `:102`（`assertClosed`，分别经 `:55`、`:78`），`the server never closed the connection of a peer with a request never finished` 与 `… with answers never read` |
+| 4 | 还原后重跑第 1 步，并跑 `io.github.bearisbug.synaxis.app.metrics.MetricsEndpointTest` | 与第 1 步相同；`tests="4"` 0 失败（`TC-PROD-260` 不受影响） |
+
+后置：确认 `HostMetrics.java` 没有残留改动。
+
+#### `TC-PROD-502` 踢人阶段之后才回 `LoginAcknowledged` 的连接不建玩家，收到 `synaxis:server-stopping`（§19 场景） — 对应 `REQ-PROD-008` · 级别: 回归 · 执行者: AI
+
+前置：工作副本干净。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `io.github.bearisbug.synaxis.network.LoginAfterConnectionShutdownIntegrationTest`（`:test`） | `tests="2"` 0 失败（本机约 1 s）。离线：`ConnectionManager#shutdown()` 之后 `isShutDown()` 为 true；一条已在 configuration 状态、带档案的连接调 `LoginListener#loginAckListener`：踢它的是 `DisconnectPacket`，键 `synaxis:server-stopping`；`getPlayer` 为 null，configuration 玩家集合为空。在线（`Auth.Online` 的进程，不起服）：同样得 `synaxis:server-stopping`，用时 < 1 s，不等 5 s 的同账号交接 |
+| 2 | 修复前的红（`shutdown` 之后照样建玩家）：`ConnectionManager#trackOrPrevious` 的 `if (shutDown) return player;` 改为 `if (shutDown && Boolean.getBoolean("proof.never")) return player;`，跑本类，再还原 | `2 tests completed, 2 failed`：`LoginAfterConnectionShutdownIntegrationTest.java:46` 与 `:67` 都是 `the connection was never kicked ==> expected: not <null>`（断言在 `DuplicateUuidLoginIntegrationTest.java:161` 的 `kickPacket`）：玩家建成，被交给 configuration |
+| 3 | 反证有齿（断线原因不看 `isShutDown`）：`LoginListener#refusal` 的 `return connection.process().connection().isShutDown() ? DisconnectReasons.SERVER_STOPPING : live;` 改为 `return connection.process().connection().isShutDown() && Boolean.getBoolean("proof.never") ? … : live;`，跑本类，再还原 | `2 tests completed, 2 failed`：`:46` `refused for the stop, not for a live reason ==> expected: <synaxis:server-stopping> but was: <synaxis:duplicate-login>`；`:67` `refused for the stop, not state-unavailable ==> expected: <synaxis:server-stopping> but was: <synaxis:state-unavailable>` |
+| 4 | 还原后重跑第 1 步，并跑 `io.github.bearisbug.synaxis.network.DuplicateUuidLoginIntegrationTest` | 与第 1 步相同；`tests="3"` 0 失败（`TC-032` 不受影响） |
+
+后置：确认 `ConnectionManager.java`、`LoginListener.java` 没有残留改动。
+
+#### `TC-PROD-503` `minecraft:bans/add` 的到期时间库里存不下时回 −32602、一条都不封；插件 `Moderation#ban` 同一上限（§19 场景） — 对应 `REQ-PROD-032`、`REQ-PROD-010` · 级别: 回归 · 执行者: AI
+
+前置：数据库前置满足（§3 3A 一节）；工作副本干净。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `io.github.bearisbug.synaxis.app.management.ManagementBansIntegrationTest`，看 `anExpiryTheBanTableCannotHoldIsRefusedBeforeAnyBanIsWritten` | `tests="2"` 0 失败、0 跳过。四批，每批两条：第一条 2031 年到期，第二条依次到期 `+1000000000-12-31T23:59:59.999999999Z`、`+1000000-01-01T00:00:00Z`、`+294276-12-31T23:59:59Z`、`+10000-01-01T00:00:00Z`；四批都回 −32602，信息以 `is not before +10000-01-01T00:00:00Z` 结尾，每批之后 `minecraft:bans` 为 `[]`。到期 `9999-12-31T23:59:59Z` 的一条写进库，列表里 `expires` 原样。`HostModeration#ban` 传 `Instant.MAX` 抛 `IllegalArgumentException`。台账 `bans/add` 五行的 `result` 依次为 `invalid` ×4、`ok` |
+| 2 | 修复前的红（两处都不查）：`ManagementMethods#addBans` 的 `if (expires != null && !expires.isBefore(HostModeration.EXPIRY_LIMIT))` 与 `HostModeration#ban` 的 `if (expiresAt != null && !expiresAt.isBefore(EXPIRY_LIMIT))` 条件末尾都加 `&& Boolean.getBoolean("proof.never")`，跑本类，再还原 | `2 tests completed, 1 failed`：红在 `ManagementBansIntegrationTest.java:197`，`+1000000000-12-31T23:59:59.999999999Z -> {"jsonrpc":"2.0","id":1,"error":{"code":-32603,"message":"Internal error","data":{"request_id":"<UUID>"}}} ==> expected: <-32602> but was: <-32603>`；输出里一行 `WARN … Management call failed: method=minecraft:bans/add request_id=<同一 UUID>`，根因 `java.time.DateTimeException: Invalid value for EpochDay (valid values -365243219162 - 365241780471): 365241780837`（pgjdbc 写参数时抛），与审查的读数相同 |
+| 3 | 反证有齿（只有管理接口不查）：只改第 2 步的第一处，跑本类，再还原 | 同一处红、同一消息；WARN 的原因换成宿主在写库循环里抛的 `IllegalArgumentException: a ban cannot expire at +1000000000-12-31T23:59:59.999999999Z, only before +10000-01-01T00:00:00Z` |
+| 4 | 反证有齿（只有插件接口不查）：只改第 2 步的第二处，跑本类，再还原 | `2 tests completed, 1 failed`：红在 `:208`，`the plugin API refuses it before the database ==> Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown.`；四批的 −32602 都通过 |
+| 5 | 还原后重跑第 1 步 | 与第 1 步相同，另一条 `bansAreListedAddedAllOrNothingAndRemoved` 同时通过（`TC-PROD-390`） |
+
+后置：确认 `ManagementMethods.java`、`HostModeration.java` 没有残留改动；测试自建的库已由 `TestDatabase#close` 删掉。
+
+#### `TC-PROD-504` 日志里的绑定地址按键的写法写：IPv6 带方括号、读得回同一地址（§19 场景） — 对应 `REQ-PROD-032`、`REQ-PROD-018` · 级别: 回归 · 执行者: AI
+
+前置：工作副本干净；本机有 IPv6 回环 `::1`。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `io.github.bearisbug.synaxis.app.BindAddressFormatTest`；再跑 `io.github.bearisbug.synaxis.app.management.ManagementSettingsTest`，看 `anIpv6BindIsPrintedInBracketsTheWayTheKeyReadsIt` | `tests="2"` 与 `tests="6"`，都 0 失败。`anAddressIsWrittenTheWayTheKeysReadIt`：`127.0.0.1:25585`、`0.0.0.0:0`、`localhost:9464`、`[::1]:9464`、`[::]:1`、`[fe80::1]:25585` 读成地址、经 `BindAddress#format` 写回、再读，得同一地址；`[::1]:9464` 写成 `[0:0:0:0:0:0:0:1]:9464`，IPv4 与主机名原样。`theMetricsLinesWriteAnIpv6AddressInBrackets`：`Main#serveMetrics` 绑 `::1` 上已被占的端口，拒启信息以 `synaxis.app.metrics.bind=[0:0:0:0:0:0:0:1]:<端口> cannot be bound: ` 开头；绑 `[::1]:0` 时 `HostMetrics` 恰一行 INFO `Metrics endpoint listening on http://[0:0:0:0:0:0:0:1]:<端口>/metrics`。管理设置 `[::1]:25653` 的 `toString()` 恰为 `enabled=true bind=[0:0:0:0:0:0:0:1]:25653 token=set`，其中的地址读回同一地址 |
+| 2 | 反证有齿（不加方括号，即改动前的写法）：`BindAddress#format` 的 `host.indexOf(':') >= 0 ?` 改为 `host.indexOf(':') >= 0 && Boolean.getBoolean("proof.never") ?`，跑两个类，再还原 | `8 tests completed, 3 failed`：`BindAddressFormatTest.java:33` `IllegalArgumentException: synaxis.app.metrics.bind=0:0:0:0:0:0:0:1:9464 is not host:port: …`（印出的值读不回来）；`:52` `synaxis.app.metrics.bind=0:0:0:0:0:0:0:1:<端口> cannot be bound: Address already in use ==> expected: <true> but was: <false>`；`ManagementSettingsTest.java:103` `expected: <enabled=true bind=[0:0:0:0:0:0:0:1]:25653 token=set> but was: <enabled=true bind=0:0:0:0:0:0:0:1:25653 token=set>`（与审查实测的自检行同形） |
+| 3 | 还原后重跑第 1 步，并跑 `io.github.bearisbug.synaxis.app.BindAddressTest` | 与第 1 步相同；`tests="3"` 0 失败（`TC-PROD-488` 不受影响） |
+
+后置：确认 `BindAddress.java` 没有残留改动。
+
+#### `TC-PROD-505` 回归：停机、管理接口、封禁与指标的既有用例不受影响，本组改了条数或行号的旧用例按新写法重跑过 — 对应 `REQ-PROD-008`、`REQ-PROD-032`、`REQ-PROD-018` · 级别: 回归 · 执行者: AI
+
+前置：数据库前置满足（含 Valkey）；工作副本干净。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 同一次运行跑 `:server-app:test` 的 `io.github.bearisbug.synaxis.app.management.StopRaceIntegrationTest`、`io.github.bearisbug.synaxis.app.store.ShutdownSaveOutsideTheWorldIntegrationTest`、`io.github.bearisbug.synaxis.app.management.ManagementIntegrationTest`、`io.github.bearisbug.synaxis.app.ModerationIntegrationTest`、`io.github.bearisbug.synaxis.app.ShutdownSequenceTest` 与 `io.github.bearisbug.synaxis.app.BindKeysLaunchTest` | `tests="3"`、`"3"`、`"13"`、`"12"`、`"8"`、`"2"`，都 0 失败 0 跳过（`TC-PROD-495`、`TC-PROD-496`、`TC-PROD-498`、`TC-PROD-483`、`TC-PROD-484`、`TC-PROD-381`～`TC-PROD-388`、`TC-PROD-221`～`TC-PROD-227`、`TC-PROD-370`～`TC-PROD-375` 与 `TC-PROD-489` 跑的类不受影响） |
+| 2 | 按新写法重跑本组改过的旧用例反证：`TC-PROD-380` 第 2 步、`TC-PROD-390` 第 2 步、`TC-PROD-395` 第 2 步、`TC-PROD-485` 第 2 步、`TC-PROD-489` 第 2 步，与 `TC-PROD-169` 第 2 步的合并反证 | 各条写的红行与消息，即 `6 tests completed, 1 failed`（`ManagementSettingsTest.java:29`）、`2 tests completed, 1 failed`（`ManagementBansIntegrationTest.java:133`）、`2 tests completed, 1 failed`（`(ManagementServer.java:231)`）、`4 tests completed, 4 failed`（`ShutdownBeforeTheWorldLaunchTest.java:136`）、`2 tests completed, 2 failed`（`BindKeysLaunchTest.java:29`）、`32 tests completed, 6 failed`；每次还原后复绿 |
+| 3 | 跑 `:server-app:test` 全量（数据库前置满足）与根构建 `:test` 全量 | `:server-app:test` 366 个 0 失败 0 跳过（`TC-PROD-486` 第 3 步原写的 357 个加本组 9 个）；`:test` 3,106 个 0 失败、15 跳过（比 RUN-039 多本组的 3 个，15 个跳过合入前就有） |
+
+后置：确认反证改过的文件都已还原（`git status --short` 只剩本组的改动）。
+
 ## 5. 回归策略
 
 - **全量轮**（全部用例）：首次成稿、每个阶段 gate（引擎域阶段 0、2、3；游戏域 `docs/DESIGN-M2.md` §26 的阶段 1～6b；大世界域 `docs/DESIGN-M3.md` §26 的 M3-A～M3-G）、跨功能域改动、地基变更（JDK、Gradle、镜像、协议版本、模块拆分、启动入口）。
@@ -6158,6 +6255,7 @@ for (var request : System.getenv("MGMT_CALLS").split("\n")) {
   - 生产就绪域（`docs/DESIGN-PROD.md`）：RUN-038 后 G1 组，停机保存阶段里在途的登录与没进世界的玩家（`REQ-PROD-008`，v0.9.15）→ TC-PROD-480～TC-PROD-486；动了 `PlayerStore` 的 `load` / `loadOrRefuse` / `loadWithin`、`admitted`、`abandon`、`releaseQuietly`、`releaseUnused`、`saveAll`、`disconnectOutsideTheWorld` 或 `onSaveEnded` 就跑 TC-PROD-480～TC-PROD-484（要数据库前置，TC-PROD-480 还要 Valkey）与 TC-PROD-460、TC-PROD-470；动了 `AdmissionGate` 的准入一段跑 TC-PROD-481；动了停机序列（引擎 `ServerProcessImpl#save`、宿主 `ShutdownSequence`、`Main` 的 `stop`）或 `ConfigFileLaunchTest` 的 `Launched` 与协议帮手加 TC-PROD-485（两个子 JVM，约 3 s；第 2 步的反证约 45 s）。跨域牵连：动了引擎 `ConnectionManager#doConfiguration` 的两处等待、`PlayerConnection#disconnect` 或 `updateWaitingPlayers` 的断线派发 → 加 TC-PROD-484、TC-PROD-485；改 `synaxis.known-packs-response-timeout` 的默认值或 keep-alive 的踢人时限 → 重看 TC-PROD-485 前言里「不回 keep-alive 的 15 s 被踢」一句。
   - 生产就绪域（`docs/DESIGN-PROD.md`）：G3 `stop` 与 SIGTERM 竞态（`REQ-PROD-012`、`REQ-PROD-032`、`REQ-PROD-008`，v0.9.16）→ TC-PROD-495～TC-PROD-498；动了 `HostCommands` 的 `beginStop` / `stopAnswered` / `awaitStopAnswers`、`ManagementMethods#stop` 或 `Main` 里挂 `awaitStopAnswers` 的一处，就跑 TC-PROD-495、TC-PROD-496、TC-PROD-498（竞态类约 0.2 s）与 TC-PROD-243、TC-PROD-255、TC-PROD-389；动了引擎 `ServerProcessImpl` 的 `stop` / `beginShutdown` / `shutdown`、`shutdownProcess` 第一行的日志（竞态类靠这一行拦住 SIGTERM 线程）或 `ServerProcess` 这两个方法的契约，跑 TC-PROD-497 与 TC-PROD-154，再跑竞态类；改了停机序列跑在哪条线程上（`Syn-Shutdown` 这个线程名，或 `beginShutdown` / `stop()` 的线程规则），再加 TC-PROD-253 第 1 步与 TC-PROD-397 第 1、3 步（真进程，预期里写着停机线程名）。
   - 生产就绪域（`docs/DESIGN-PROD.md`）：G2 管理接口与指标端点加固（`REQ-PROD-032`、`REQ-PROD-018`、`REQ-PROD-034`，v0.9.17）→ TC-PROD-488～TC-PROD-494；动了 `server-app` 的 `BindAddress`，或 `ManagementSettings`、`HostMetrics` 读绑定键的一处，就跑 TC-PROD-488、TC-PROD-489（起两个 JVM）；动了 `ManagementMethods#wholeNumber` 或给管理方法加数值参数，就跑 TC-PROD-490，新参数照 `seconds` 的写法加进同一个测试类；动了 `ManagementServer.GuardedSocket` 的发送入口、`admits`、`setChannel`，或 `BoundedDraft` 的 `createBinaryFrame`、`createHandshake`，就跑 TC-PROD-491～TC-PROD-493 与 TC-PROD-472、TC-PROD-382，改了两个上限的值再加 TC-PROD-494（真进程，约 2 分钟；第 5 步的反证要重新构建两次，约 4 分钟）。升 Java-WebSocket 时重跑 TC-PROD-491～TC-PROD-494（库是否仍把每帧放进 `outQueue`、是否仍只经这四个发送入口与 `createBinaryFrame` 入队、是否已自带出站上限）。
+  - 生产就绪域（`docs/DESIGN-PROD.md`）：RUN-039 后修复轮（`REQ-PROD-008`、`REQ-PROD-018`、`REQ-PROD-032`、`REQ-PROD-010`，v0.9.15（RUN-039 修复））→ TC-PROD-499～TC-PROD-505；动了 `PlayerStore#onGateClosed` 就跑 TC-PROD-499（两个子 JVM，约 7 s）与 TC-PROD-485；动了引擎 `ServerProcessImpl` 的 `stopOnSignal`、`awaitCountdown` 或 `shutdownProcess` 收尾处的 `sequenceOver` 就跑 TC-PROD-500 与 TC-PROD-497、TC-PROD-154；动了 `HostMetrics` 的 `serve`、`answer` 或 `EXCHANGE_LIMIT` 就跑 TC-PROD-501（约 23 s）与 TC-PROD-260；动了引擎 `ConnectionManager` 的 `shutdown`、`trackOrPrevious`、`createPlayerReplacing` 或 `LoginListener#refusal` 就跑 TC-PROD-502 与 TC-032、TC-PROD-100；动了 `ManagementMethods#addBans`、`HostModeration#ban` 的参数检查或 `EXPIRY_LIMIT` 就跑 TC-PROD-503 与 TC-PROD-390（要数据库前置）；动了 `BindAddress#format` 或写地址的几行日志就跑 TC-PROD-504 与 TC-PROD-488、TC-PROD-489。升 JDK 时重跑 TC-PROD-501（中断阻塞在 socket 通道上的线程是否仍关掉通道，`HttpServer` 是否仍在执行器线程上读请求头）。
   - 影响面不确定时升级为全量轮。
 - **复测轮**（上轮失败用例 + 全部冒烟级）：修复失败项之后。
 - **人工收口轮**（仅上轮「待人工」用例）：AI 轮之后由人工补测 TC-016、TC-030、TC-GAME-020、TC-GAME-038、TC-GAME-046、TC-GAME-047，不要求冒烟级。

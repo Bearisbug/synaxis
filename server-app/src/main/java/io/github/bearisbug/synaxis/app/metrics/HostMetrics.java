@@ -40,12 +40,11 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.LongSupplier;
@@ -68,6 +67,11 @@ public final class HostMetrics implements AutoCloseable {
     public static final String BIND_PROPERTY = "synaxis.app.metrics.bind";
     public static final String DEFAULT_BIND = "127.0.0.1:9464";
     public static final String PATH = "/metrics";
+    /**
+     * How long one scrape may take, from the first byte of its request to the last of its answer:
+     * a scrape Prometheus has not got by then it gave up on already (its default timeout is 10 s).
+     */
+    static final Duration EXCHANGE_LIMIT = Duration.ofSeconds(10);
 
     /**
      * The metric families of {@code API-PROD-015}, as they appear in the Prometheus text: a counter
@@ -118,9 +122,6 @@ public final class HostMetrics implements AutoCloseable {
     private final JvmGcMetrics gc = new JvmGcMetrics();
     private final AtomicLong entities = new AtomicLong();
     private final AtomicLong chunks = new AtomicLong();
-    /** One thread answers the scrapes, one every 15 s is what the endpoint is for (§17). */
-    private final ExecutorService executor = Executors.newSingleThreadExecutor(
-            Thread.ofPlatform().name("Syn-Metrics").daemon().factory());
     private @Nullable HttpServer http;
     /**
      * Held here because a {@link FunctionCounter} keeps only a weak reference to what it reads: the
@@ -305,12 +306,30 @@ public final class HostMetrics implements AutoCloseable {
         if (http != null) throw new IllegalStateException("The metrics endpoint is already served");
         final HttpServer server = HttpServer.create(address, 0);
         server.createContext(PATH, this::handle);
-        server.setExecutor(executor);
+        server.setExecutor(HostMetrics::answer);
         server.start();
         this.http = server;
         final InetSocketAddress bound = server.getAddress();
-        LOGGER.info("Metrics endpoint listening on http://{}:{}{}", bound.getHostString(), bound.getPort(), PATH);
+        LOGGER.info("Metrics endpoint listening on http://{}{}", BindAddress.format(bound), PATH);
         return bound;
+    }
+
+    /**
+     * Runs one exchange of the HTTP server on a thread of its own, and cuts it short once it has
+     * taken {@link #EXCHANGE_LIMIT}. A peer that stops halfway through its request, or stops reading
+     * the answer, then holds its own thread for that long and no other scrape waits behind it; the
+     * JDK server has no time limit of its own. Interrupting a thread blocked on a socket channel
+     * closes the channel, the one way to end a read or a write that does not return.
+     */
+    private static void answer(Runnable exchange) {
+        final Thread thread = Thread.ofVirtual().name("Syn-Metrics").start(exchange);
+        Thread.ofVirtual().name("Syn-Metrics-Limit").start(() -> {
+            try {
+                if (!thread.join(EXCHANGE_LIMIT)) thread.interrupt();
+            } catch (InterruptedException _) {
+                Thread.currentThread().interrupt();
+            }
+        });
     }
 
     private void handle(HttpExchange exchange) throws IOException {
@@ -349,7 +368,6 @@ public final class HostMetrics implements AutoCloseable {
             server.stop(0);
             http = null;
         }
-        executor.shutdownNow();
         gc.close();
         registry.close();
     }

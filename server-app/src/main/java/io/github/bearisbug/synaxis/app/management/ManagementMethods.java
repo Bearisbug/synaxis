@@ -417,6 +417,8 @@ public final class ManagementMethods {
                 throw invalid("expires is not an ISO-8601 instant: " + expiresText);
             }
             if (expires != null && !expires.isAfter(Instant.now())) throw invalid("expires " + expires + " is not in the future");
+            if (expires != null && !expires.isBefore(HostModeration.EXPIRY_LIMIT))
+                throw invalid("expires " + expires + " is not before " + HostModeration.EXPIRY_LIMIT);
             bans.add(new NewBan(uuid, reason, expires));
         }
         for (NewBan ban : bans) {

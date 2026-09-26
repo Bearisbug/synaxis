@@ -13,6 +13,7 @@ import io.github.bearisbug.synaxis.network.packet.server.configuration.FinishCon
 import io.github.bearisbug.synaxis.network.packet.server.configuration.UpdateEnabledFeaturesPacket;
 import io.github.bearisbug.synaxis.network.packet.server.login.LoginSuccessPacket;
 import io.github.bearisbug.synaxis.network.packet.server.login.SetCompressionPacket;
+import io.github.bearisbug.synaxis.network.packet.server.play.SystemChatPacket;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -30,6 +31,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Stream;
 
@@ -58,16 +60,39 @@ public class ShutdownBeforeTheWorldLaunchTest {
 
     @Test
     public void aClientThatNeverAnswersTheKnownPacksDoesNotHoldTheStop(@TempDir Path directory) throws Exception {
-        stopWhileAClientIsStuck(directory, false);
+        stopWhileAClientIsStuck(directory, false, 0);
     }
 
     @Test
     public void aClientThatNeverAcknowledgesTheEndOfItsConfigurationDoesNotHoldTheStop(@TempDir Path directory)
             throws Exception {
-        stopWhileAClientIsStuck(directory, true);
+        stopWhileAClientIsStuck(directory, true, 0);
     }
 
-    private static void stopWhileAClientIsStuck(Path directory, boolean answerKnownPacks) throws Exception {
+    /**
+     * {@code stop 2} while the client still configures: the countdown notice is a play packet, which
+     * that connection's write thread cannot write, so the client is left out of the notice and stays
+     * in the shutdown save ({@code docs/DESIGN-PROD.md} §14 {@code synaxis:server-stopping-in}, §11.4
+     * {@code started → gate_closed}).
+     */
+    @Test
+    public void aCountdownLeavesAClientThatStillConfiguresInTheShutdownSave(@TempDir Path directory) throws Exception {
+        stopWhileAClientIsStuck(directory, false, 2);
+    }
+
+    /** {@code stop 2} once the connection is in the play state: that client is told the countdown. */
+    @Test
+    public void aCountdownIsAnnouncedToAClientInThePlayState(@TempDir Path directory) throws Exception {
+        final List<Integer> received = stopWhileAClientIsStuck(directory, true, 2);
+        assertTrue(received.contains(id(ConnectionState.PLAY, SystemChatPacket.class)),
+                "the countdown notice reached the client in the play state: " + received);
+    }
+
+    /**
+     * @return the ids of the uncompressed packets the client received once stuck
+     */
+    private static List<Integer> stopWhileAClientIsStuck(Path directory, boolean answerKnownPacks, int countdown)
+            throws Exception {
         final int port = freePort();
         try (ConfigFileLaunchTest.Launched server = ConfigFileLaunchTest.Launched.start(directory, Main.class,
                 "-Dsynaxis.app.log=stdout", "-Dsynaxis.app.auth=offline", "-Dsynaxis.app.core-mode=on",
@@ -96,33 +121,42 @@ public class ShutdownBeforeTheWorldLaunchTest {
             // From here on the client only answers keep-alives, and stays connected
             client.socket().setSoTimeout(0);
             final int keepAlive = id(ConnectionState.CONFIGURATION, KeepAlivePacket.class);
-            Thread.ofVirtual().start(() -> answerKeepAlives(client, in, keepAlive, threshold));
+            final List<Integer> received = new CopyOnWriteArrayList<>();
+            final Thread answering = Thread.ofVirtual().start(() -> answerKeepAlives(client, in, keepAlive, threshold,
+                    received));
             final long start = System.nanoTime();
             final OutputStream console = server.process().getOutputStream();
-            console.write("stop\n".getBytes(StandardCharsets.UTF_8));
+            console.write(("stop" + (countdown == 0 ? "" : " " + countdown) + "\n").getBytes(StandardCharsets.UTF_8));
             console.flush();
-            final boolean exited = server.process().waitFor(STOP_WITHIN_SECONDS, TimeUnit.SECONDS);
+            final boolean exited = server.process().waitFor(STOP_WITHIN_SECONDS + countdown, TimeUnit.SECONDS);
             final long tookMillis = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - start);
             server.reader().join(TimeUnit.SECONDS.toMillis(10));
             final String log = server.log();
 
-            assertTrue(exited, "stop took over " + STOP_WITHIN_SECONDS + " s:\n" + log);
+            assertTrue(exited, "stop took over " + (STOP_WITHIN_SECONDS + countdown) + " s:\n" + log);
             assertEquals(0, server.process().exitValue(), log);
+            assertFalse(log.contains("cannot be sent in state"), "a packet the connection's state cannot carry:\n" + log);
             assertTrue(log.contains("reason=synaxis:server-stopping"), "the stuck client is disconnected:\n" + log);
             assertFalse(log.contains("The shutdown save did not complete within its budget"), log);
             assertFalse(log.contains("Not saved on shutdown"), log);
             final String saved = ledgerLine(directory, "\"shutdown_saved\"");
             assertTrue(saved.contains("\"online\":1") && saved.contains("\"saved\":1") && saved.contains("\"failed\":0")
                     && saved.contains("\"timed_out\":\"false\""), saved + " (stop took " + tookMillis + " ms)");
+            answering.join(TimeUnit.SECONDS.toMillis(10));
+            return received;
         }
     }
 
-    private static void answerKeepAlives(SocketChannel client, InputStream in, int keepAlive, int threshold) {
+    private static void answerKeepAlives(SocketChannel client, InputStream in, int keepAlive, int threshold,
+                                         List<Integer> received) {
         try {
             while (true) {
                 final DataInputStream packet = new DataInputStream(new ByteArrayInputStream(frame(in)));
                 // A compressed frame is no keep-alive, which is a few bytes
-                if (readVarInt(packet) != 0 || readVarInt(packet) != keepAlive) continue;
+                if (readVarInt(packet) != 0) continue;
+                final int packetId = readVarInt(packet);
+                received.add(packetId);
+                if (packetId != keepAlive) continue;
                 send(client, ConnectionState.CONFIGURATION, new ClientKeepAlivePacket(packet.readLong()), threshold);
             }
         } catch (IOException _) {
@@ -130,7 +164,7 @@ public class ShutdownBeforeTheWorldLaunchTest {
         }
     }
 
-    private static String ledgerLine(Path directory, String event) throws Exception {
+    static String ledgerLine(Path directory, String event) throws Exception {
         try (Stream<Path> files = Files.list(directory.resolve("logs"))) {
             for (Path file : files.filter(path -> path.getFileName().toString().startsWith("events-")).toList()) {
                 for (String line : Files.readAllLines(file)) if (line.contains(event)) return line;

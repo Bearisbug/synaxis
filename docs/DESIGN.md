@@ -15,6 +15,7 @@
 
 | 日期 | 版本 | 改动 | 作者 |
 | --- | --- | --- | --- |
+| 2026-09-26 | v0.41（RUN-039 修复） | 按 `docs/DESIGN-PROD.md` v0.9.15（RUN-039 修复）改停机的信号路径，关闭该分册 §28.2「SIGTERM 在宿主发起的停机进行中到达」。原先关闭钩子的 `stop()` 得 false（停机已由控制台 `stop 30`、管理接口或看门狗判死占下）就立即返回，JVM 跑完关闭钩子即 halt，非 daemon 的 `Syn-Shutdown` 拦不住，倒计时之后的保存、踢人、插件禁用都不执行。**`API-003`** 约束：写明非 daemon 只在非信号的退出里拦得住 JVM；钩子（`ServerProcessImpl#stopOnSignal`）得 false 时结束剩余倒计时、等那次序列跑完才返回。**§11.2** 状态图与迁移表加 `stopping → stopping`（SIGTERM 关闭钩子）一行。**§16** 两线程同时发起停机一行：「停机按得 true 者的倒计时走」加上钩子后到这个例外（该行举的例子就是它）。`ServerProcess` 接口不变 | Bearisbug |
 | 2026-09-26 | v0.40 | 按 `docs/DESIGN-PROD.md` §28.3 登记生产就绪第 5、6 波已落地的改动，本版只改文档，引擎代码未动。**限流**：§15「限流」行由「每秒 > 500 包」改为 7 s 窗口 > 582 包断线，另有解压后负载 > 4 MiB/s 断线、补全 > 20 次/秒丢弃（该分册 `API-PROD-012`）；§28 那条「没有按秒计数的速率闸」技术债转已决（第 5 波 5B，commit `d130557a5d`），初值由 500 改为 582。**服务器列表**：`REQ-005` 注明 `ping` 的 MOTD、图标、玩家样本与 `ServerListPingEvent` 已由第 6 波 6D 以新形态加回（`REQ-PROD-037` / `API-PROD-024`），`ping` 包本身、多版本响应格式与 legacy ping 不恢复。**配置**：`REQ-014` 补现状——`ServerConfig` 72 个进程级键，6C 加 `synaxis.compression-threshold`（进程级）与 `synaxis.compression-level`（`JvmFlags`，JVM 级），`server-app` 起服前读 `synaxis.properties`，该分册 v0.9.11 起 15 个 `ServerConfig` 布尔键只认 `true` / `false`；§28「开关结构上是 JVM 级」已决行补现状 16 个与读文件先于 `JvmFlags` 类加载。§1「最后更新」改为 2026-09-26 | Bearisbug |
 | 2026-09-26 | v0.39 | 按 `docs/DESIGN-PROD.md` §28.3 改 `API-003` 的签名，关闭该分册 §28.2「`stop` 与 SIGTERM 竞态」。**`API-003`**：`stop()` 与 `beginShutdown(Duration)` 由 `void` 改为返回 `boolean`，即这次调用是否把 `stopping` 由 false 置为 true；已在停机时立即返回 false，不等那次停机、不改它的倒计时。`beginShutdown` 从任何线程调用都在新起的非 daemon 线程 `Syn-Shutdown` 上跑停机序列、立即返回（原先从非 tick 线程调用时要等进程停下），调用方因此能先拿到结果再回复；`stop()` 的线程规则不变，SIGTERM 的关闭钩子仍在自己线程上跑完序列。只丢弃返回值的调用照常编译，但二进制不兼容：方法描述符变了，按旧引擎编译、调这两个方法的类（包括经 `PluginContext#process()` 调用的插件）运行时抛 `NoSuchMethodError`，要按新引擎重编（`process()` 不作兼容承诺，`docs/PLUGINS.md` §7）。**§11.2**：`started → stopping` 按调用拆成三行（`stop` 非 tick 线程、`stop` tick 线程、`beginShutdown`），守卫加「`stopping` CAS 成功」，新增 `stopping → stopping`（再次调用，返回 false）；状态图同步。**§16** 加一行：两条线程同时发起停机 | Bearisbug |
 | 2026-09-24 | v0.38 | 按 `docs/DESIGN-PROD.md` v0.7.1 §28.3 登记引擎侧已落地的改动，本版只改文档。**断线**：§11.1 `play → disconnected` 行与表后写明每个被创建的玩家离开时恰好派发一次 `PlayerDisconnectEvent`；configuration 结束到进世界之间断开的玩家，由 `PlayerConnection#disconnect` 同时交给 `ConnectionManager#leftBeforeSpawn`，下一 tick 在 tick 线程上补发，已开始进世界的由实体移除派发（commit `b2b7af2a3c`）。**停机**：`API-003` 登记 `beginShutdown(Duration)`、`setShutdownParticipant(ShutdownParticipant)` 与 `stop()` 的新语义；§11.2 `stopping → stopped` 的动作改为该分册 §11.4 的顺序；§17 `process.shutdown` 删去「第 3 波落地前仍是 10 s join」一句（第 3 波已落地）。**§28**：`Auth.Velocity` / `Auth.Bungee` 技术债整行删去（第 2 波 2B 已删两种模式，`MojangUtils.authenticateSession` 已随 REQ-014 删除）；`SOAK-3` 清点行 ② 档改为 4 处，`clientDrivenPathsDoNotWriteALinePerPacket` 豁免名单改为八个类（加 `ConnectionGate`、`SessionClient`，移出 `HandshakeListener`） | Bearisbug |
@@ -227,7 +228,7 @@ erDiagram
   - 缓存与超时：不缓存；单条负载超过 1,024 字节断线
 - **`API-003` 服务进程生命周期 Java API** — 实现 `REQ-003`、`REQ-011`
   - 方法：`ServerProcess.start(address)`、`boolean ServerProcess.stop()`、`boolean ServerProcess.beginShutdown(Duration countdown)`、`ServerProcess.setShutdownParticipant(ShutdownParticipant)`、`ServerProcess.isAlive()`
-  - 约束：两者都按 `docs/DESIGN-PROD.md` §11.4 的顺序停机，都以 CAS 把 `stopping` 由 false 置为 true 来占下停机，返回值就是这次 CAS 的结果：整个进程只有一次调用得 true，之后的调用（看门狗判死路径已占下之后也一样）立即返回 false，不等那次停机、不改它的倒计时。`beginShutdown(countdown)` 占下之后在新起的非 daemon 平台线程 `Syn-Shutdown` 上跑序列，从任何线程调用都立即返回，所以调用方能先拿到结果再回复（宿主的控制台 `stop` 与管理接口 `minecraft:server/stop`，该分册 `API-PROD-011`、`API-PROD-022`）；`countdown` 为负抛 `IllegalArgumentException`、不占停机。`stop()` 以 0 s 倒计时占下停机：从 tick 线程（`TickThread` 或 tick 调度线程）调用时同样另起 `Syn-Shutdown`、立即返回（对应审计 P0 停服死锁，已修）；从其他线程调用时在调用线程上跑完序列，等进程停下（监听关闭、tick 线程 join）再返回，SIGTERM 的关闭钩子走这一条。`Syn-Shutdown` 不是 daemon：序列 join 完 tick 线程之后，JVM 不会在它跑完之前因为只剩 daemon 线程而退出。`isAlive()` 所读的 `stopped` 推迟到该节最后一步才置位，保存、踢人、插件禁用期间 tick 照常运行。`setShutdownParticipant` 只能在 `start` 之前调用一次，重复或晚于 `start` 抛 `IllegalStateException`；不注册时保存阶段立即结束（`ServerProcess.java:207-240`）
+  - 约束：两者都按 `docs/DESIGN-PROD.md` §11.4 的顺序停机，都以 CAS 把 `stopping` 由 false 置为 true 来占下停机，返回值就是这次 CAS 的结果：整个进程只有一次调用得 true，之后的调用（看门狗判死路径已占下之后也一样）立即返回 false，不等那次停机、不改它的倒计时。`beginShutdown(countdown)` 占下之后在新起的非 daemon 平台线程 `Syn-Shutdown` 上跑序列，从任何线程调用都立即返回，所以调用方能先拿到结果再回复（宿主的控制台 `stop` 与管理接口 `minecraft:server/stop`，该分册 `API-PROD-011`、`API-PROD-022`）；`countdown` 为负抛 `IllegalArgumentException`、不占停机。`stop()` 以 0 s 倒计时占下停机：从 tick 线程（`TickThread` 或 tick 调度线程）调用时同样另起 `Syn-Shutdown`、立即返回（对应审计 P0 停服死锁，已修）；从其他线程调用时在调用线程上跑完序列，等进程停下（监听关闭、tick 线程 join）再返回，SIGTERM 的关闭钩子走这一条。`Syn-Shutdown` 不是 daemon：序列 join 完 tick 线程之后，JVM 不会在它跑完之前因为只剩 daemon 线程而退出；但信号触发的退出不看非 daemon 线程，JVM 跑完关闭钩子就 halt。所以关闭钩子（`ServerProcessImpl#stopOnSignal`）的 `stop()` 得 false 时（停机已由 `beginShutdown` 或看门狗判死路径占下），钩子结束剩余倒计时（该分册 §11.4 `gate_closed → saving` 的 SIGTERM 一行），再等那次序列跑完才返回，保存、踢人与插件禁用都做完 JVM 才退出。`isAlive()` 所读的 `stopped` 推迟到该节最后一步才置位，保存、踢人、插件禁用期间 tick 照常运行。`setShutdownParticipant` 只能在 `start` 之前调用一次，重复或晚于 `start` 抛 `IllegalStateException`；不注册时保存阶段立即结束（`ServerProcess.java:207-240`）
   - 错误：绑定失败抛 `IOException`，进程进入 `stopped`（§11）
 - **`API-004` 注册表访问 Java API** — 实现 `REQ-007`
   - 方法：`Registries.dimensionType()` 等 4 个语义注册表返回类型化对象；`Registries.opaque(key)` 返回 `RegistryKey → BinaryTag`
@@ -327,6 +328,7 @@ stateDiagram-v2
   started --> stopping : stop(ROLE-GameApp 或 ROLE-Operator) [stopping CAS 成功 ∧ 调用线程是 tick 线程]
   started --> stopping : beginShutdown(ROLE-GameApp 或 ROLE-Operator) [stopping CAS 成功]
   stopping --> stopping : stop 或 beginShutdown(ROLE-GameApp 或 ROLE-Operator) [stopping 已为 true]
+  stopping --> stopping : SIGTERM 关闭钩子(ROLE-Operator) [stopping 已为 true]
   stopping --> stopped : 关闭完成(系统) [监听已关且 tick 线程已 join]
   stopped --> [*]
 ```
@@ -342,9 +344,10 @@ stateDiagram-v2
 | started → stopping | stop | `stopping` CAS 成功 ∧ 调用线程是 tick 线程 | 把关闭序列投递到非 tick 线程 `Syn-Shutdown` 执行，本次调用立即返回 true（审计 P0-1 修复） | ROLE-GameApp / ROLE-Operator | `API-003` |
 | started → stopping | beginShutdown | `stopping` CAS 成功 | 在新起的非 daemon 线程 `Syn-Shutdown` 上执行关闭序列（先关登录门，再按 `countdown` 倒计时），本次调用立即返回 true | ROLE-GameApp / ROLE-Operator | `API-003` |
 | stopping → stopping | stop 或 beginShutdown | `stopping` 已为 true（CAS 失败） | 立即返回 false；不等正在跑的关闭序列，不改它的倒计时 | ROLE-GameApp / ROLE-Operator | `API-003` |
+| stopping → stopping | SIGTERM（关闭钩子） | `stopping` 已为 true（钩子里的 `stop()` 得 false） | 结束剩余倒计时（该分册 §11.4 `gate_closed → saving` 的 SIGTERM 一行），等正在跑的关闭序列跑完才返回：JVM 跑完关闭钩子就 halt，不等 `Syn-Shutdown` | ROLE-Operator（发信号） | `API-003` |
 | stopping → stopped | 关闭完成 | 监听已关且 tick 线程已 join | 依次关登录门、倒计时、保存、踢人、执行 scheduler shutdown 任务（含插件禁用），最后置 `stopped`、join tick 线程、关监听 | 系统 | 内部任务 `process.shutdown`（无对外 API） |
 
-`stopping` 由 `docs/DESIGN-PROD.md` §11.4 展开为关登录门、倒计时、保存、踢人、插件禁用五个阶段，关闭顺序与各阶段预算以该节为准（实现 `ServerProcessImpl#shutdownProcess`）；上表三条 `started → stopping` 与 `stopping → stopping` 判的是同一个 `stopping` 标志，该分册 §11.4 的看门狗判死路径也以它占下停机。
+`stopping` 由 `docs/DESIGN-PROD.md` §11.4 展开为关登录门、倒计时、保存、踢人、插件禁用五个阶段，关闭顺序与各阶段预算以该节为准（实现 `ServerProcessImpl#shutdownProcess`）；上表三条 `started → stopping` 与两条 `stopping → stopping` 判的是同一个 `stopping` 标志，该分册 §11.4 的看门狗判死路径也以它占下停机。
 
 其余实体：`ENT-Instance`、`ENT-Chunk`、`ENT-Entity`、`ENT-Player`、`ENT-Registry` 的状态由他机翻转或为极简态（加载/卸载、注册/移除、冻结），免建理由：`ENT-Chunk` 的 loaded/unloaded 由 `Instance.loadChunk/unloadChunk` 单向驱动且无多步流程；`ENT-Entity` 的 spawned/removed 同理；`ENT-Player` 随 `ENT-Connection` 的 configuration→play 与 play→disconnected 翻转；`ENT-Registry` 创建即冻结无第二态。每个目标态的产生转移已在 11.1 迁移表的动作列核到。
 
@@ -421,7 +424,7 @@ N/A — 无前端。客户端 Fabric 模组与其界面属于 M2。
 | 竞态场景 | 参与方 | 期望结果 | 依据（约束/守卫） |
 | --- | --- | --- | --- |
 | tick 线程内调用 `stop()` | tick 线程 × `API-003` | 立即返回，关闭序列在另一线程完成，不死锁 | §11.2 守卫「调用线程是 tick 线程」；`ThreadDispatcher.shutdown` 不再持 monitor |
-| 两条线程同时发起停机（如 SIGTERM 的关闭钩子与宿主控制台 `stop 5`） | 任意两条线程 × `API-003` | 恰一个调用得 true，停机按它的倒计时走；另一个得 false，倒计时不变，宿主据此回「已在停机」 | `stopping` 的 CAS，返回值即 CAS 结果（§11.2 `started → stopping` 与 `stopping → stopping`） |
+| 两条线程同时发起停机（如 SIGTERM 的关闭钩子与宿主控制台 `stop 5`） | 任意两条线程 × `API-003` | 恰一个调用得 true，另一个得 false、不改倒计时，宿主据此回「已在停机」。停机按得 true 那一方的倒计时走，只有一个例外：得 false 的是 SIGTERM 的关闭钩子时，它结束剩余倒计时、等序列跑完才返回，因为 JVM 跑完关闭钩子就 halt | `stopping` 的 CAS，返回值即 CAS 结果（§11.2 `started → stopping` 与两条 `stopping → stopping`）；钩子等序列最后一步完成的 future（`ServerProcessImpl#stopOnSignal`） |
 | 非 tick 线程卸载区块，区块内有实体 | 调用线程 × 实体所属 tick 线程 | 区块内有在线玩家时整个卸载被拒绝（`IllegalStateException`，状态零变更）；否则在实例监视器内清缓存、监视器外逐个实体通过 `Acquirable.sync` 获取所有权后移除 | `InstanceContainer.unloadChunk`（审计 F27、F29）；`assertOwnership` 在测试 JVM 强制开启 |
 | 两个线程同时首次触发同一事件类型的监听器重建 | tick 线程 × 虚拟线程 | 只重建一次，之后不丢事件 | `EventNodeImpl.Handle` 缓存合并为一个 volatile 不可变记录 |
 | 区块加载 future 异常完成时玩家 `setInstance().join()` | 加载线程 × 调用线程 | `join` 在 5 秒内抛出，不永久阻塞 | `whenComplete` 两条路径都 countDown |

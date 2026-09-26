@@ -10,6 +10,7 @@ import io.github.bearisbug.synaxis.event.EventNode;
 import io.github.bearisbug.synaxis.event.item.ItemDropEvent;
 import io.github.bearisbug.synaxis.event.item.PickupItemEvent;
 import io.github.bearisbug.synaxis.event.player.PlayerDisconnectEvent;
+import io.github.bearisbug.synaxis.network.ConnectionState;
 import io.github.bearisbug.synaxis.network.DisconnectReasons;
 import io.github.bearisbug.synaxis.plugin.DataSection;
 import io.github.bearisbug.synaxis.plugin.DisconnectKeys;
@@ -1069,7 +1070,14 @@ public final class PlayerStore implements ShutdownParticipant {
     public void onGateClosed(Duration countdown) {
         if (countdown.isZero()) return;
         final Component notice = Component.translatable("synaxis:server-stopping-in", Component.text(countdown.toSeconds()));
-        for (Record record : records.values()) record.player.sendMessage(notice);
+        // A play packet cannot go to a connection still configuring: its write thread throws and
+        // drops the connection without a reason, and the player out of the shutdown save. That
+        // thread turns the state to play once it wrote FinishConfiguration, so what is queued
+        // after it is written as play
+        for (Record record : records.values()) {
+            if (record.player.getPlayerConnection().getServerState() == ConnectionState.PLAY)
+                record.player.sendMessage(notice);
+        }
     }
 
     @Override

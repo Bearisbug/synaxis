@@ -15,6 +15,7 @@ import io.github.bearisbug.synaxis.app.store.RedisLink;
 import io.github.bearisbug.synaxis.app.store.TestDatabase;
 import io.github.bearisbug.synaxis.coordinate.Pos;
 import io.github.bearisbug.synaxis.entity.Player;
+import io.github.bearisbug.synaxis.plugin.BanTarget;
 import io.github.bearisbug.synaxis.plugin.Permissions;
 import io.github.bearisbug.synaxis.testing.Env;
 import io.github.bearisbug.synaxis.testing.EnvTest;
@@ -41,6 +42,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import static io.github.bearisbug.synaxis.app.management.ManagementSettingsTest.TOKEN;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -58,6 +60,7 @@ class ManagementBansIntegrationTest {
     private Database pool;
     private final List<Map<String, ?>> events = new CopyOnWriteArrayList<>();
     private final List<AutoCloseable> opened = new ArrayList<>();
+    private HostModeration moderation;
 
     @BeforeEach
     void create() throws SQLException {
@@ -74,7 +77,7 @@ class ManagementBansIntegrationTest {
     }
 
     private ManagementClient serve(Env env) throws Exception {
-        final HostModeration moderation = new HostModeration(env.process(), new ModerationStore(pool.pool()),
+        moderation = new HostModeration(env.process(), new ModerationStore(pool.pool()),
                 RedisLink.disabled("bans"), HostModeration.REFRESH, false, (_, _) -> { });
         moderation.start();
         final PlayerStore store = PlayerStore.inMemory(env.process(), (_, _) -> { });
@@ -172,4 +175,40 @@ class ManagementBansIntegrationTest {
                 managementCommands());
     }
 
+    /**
+     * An expiry the ban table cannot hold is a bad parameter like a past one: {@code bans/add} checks
+     * it with the rest of the batch and answers −32602 before the first ban is written, the plugin
+     * API throws before the database ({@code docs/DESIGN-PROD.md} {@code API-PROD-022},
+     * {@code API-PROD-009}). It used to reach the driver: −32603 with a WARN and its stack, or −32000
+     * for a write that could never succeed, the entries before it banned already.
+     */
+    @Test
+    void anExpiryTheBanTableCannotHoldIsRefusedBeforeAnyBanIsWritten(Env env) throws Exception {
+        final ManagementClient client = serve(env);
+        final UUID first = UUID.randomUUID();
+        final UUID second = UUID.randomUUID();
+        final List<String> tooLate = List.of("+1000000000-12-31T23:59:59.999999999Z", "+1000000-01-01T00:00:00Z",
+                "+294276-12-31T23:59:59Z", "+10000-01-01T00:00:00Z");
+        int id = 1;
+        for (String expires : tooLate) {
+            final JsonObject refused = client.call(id++, "minecraft:bans/add", "[[{\"player\":{\"id\":\"" + first
+                    + "\"},\"expires\":\"2031-01-01T00:00:00Z\"},{\"player\":{\"id\":\"" + second
+                    + "\"},\"expires\":\"" + expires + "\"}]]");
+            assertEquals(-32602, refused.getAsJsonObject("error").get("code").getAsInt(), expires + " -> " + refused);
+            assertTrue(refused.getAsJsonObject("error").get("message").getAsString()
+                    .endsWith("is not before +10000-01-01T00:00:00Z"), refused.toString());
+            assertEquals(new JsonArray(), client.call(id++, "minecraft:bans", null).get("result"),
+                    "the valid entry before it is not banned either: " + expires);
+        }
+
+        final JsonArray added = client.call(id, "minecraft:bans/add", "[[{\"player\":{\"id\":\"" + second
+                + "\"},\"expires\":\"9999-12-31T23:59:59Z\"}]]").getAsJsonArray("result");
+        final JsonObject last = entry(added, second);
+        assertEquals("9999-12-31T23:59:59Z", last == null ? null : last.get("expires").getAsString(), added.toString());
+        assertThrows(IllegalArgumentException.class, () -> moderation.ban(new BanTarget.ByUuid(first), "late",
+                Instant.MAX, HostModeration.CONSOLE), "the plugin API refuses it before the database");
+        assertEquals(List.of("invalid", "invalid", "invalid", "invalid", "ok"), managementCommands().stream()
+                .filter(command -> command.startsWith("minecraft:bans/add"))
+                .map(command -> command.substring(command.lastIndexOf(' ') + 1)).toList());
+    }
 }

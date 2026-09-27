@@ -3,6 +3,7 @@ package io.github.bearisbug.synaxis.loadtest;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.sun.management.OperatingSystemMXBean;
+import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
 import java.lang.management.ManagementFactory;
@@ -29,15 +30,25 @@ final class RunCommand {
     }
 
     static int run(Args args) throws IOException, InterruptedException {
+        final Profile movement = Profile.parse(args.string("profile", "walk"));
+        final List<Profile.Frame> frames = args.gates("gates");
+        final @Nullable String dwell = args.optional("dwell");
+        if (movement == Profile.GATE && frames.isEmpty())
+            throw new IllegalArgumentException("--profile gate needs --gates");
+        if (movement != Profile.GATE && (!frames.isEmpty() || dwell != null))
+            throw new IllegalArgumentException("--gates and --dwell are only read by --profile gate");
         final Bot.Settings settings = new Bot.Settings(
                 args.string("host", "127.0.0.1"),
                 args.integer("port", 25565),
-                Profile.parse(args.string("profile", "walk")),
+                movement,
                 args.onOff("encryption", false),
                 (float) args.number("chunks-per-tick", 9.0),
                 args.onOff("hello", false),
                 args.seconds("warmup", 60),
-                (int) (args.seconds("timeout", 30) * 1000));
+                (int) (args.seconds("timeout", 30) * 1000),
+                frames,
+                dwell == null ? 6 : Args.seconds(dwell),
+                Bot.NO_TRANSFER_NANOS);
         final int count = args.integer("bots", 10);
         final int offset = args.integer("bot-offset", 0);
         final double duration = args.seconds("duration", 600);
@@ -131,6 +142,14 @@ final class RunCommand {
         profile.addProperty("warmup_s", settings.warmupSeconds());
         profile.addProperty("host", settings.host());
         profile.addProperty("port", settings.port());
+        if (settings.profile() == Profile.GATE) {
+            final JsonArray gates = new JsonArray();
+            for (Profile.Frame gate : settings.gates())
+                gates.add(String.format(Locale.ROOT, "%d,%d,%d,%d,%d,%d", gate.minX(), gate.minY(), gate.minZ(),
+                        gate.maxX(), gate.maxY(), gate.maxZ()));
+            profile.add("gates", gates);
+            profile.addProperty("dwell_s", settings.dwellSeconds());
+        }
         json.add("profile", profile);
         json.add("machine", machine());
         json.addProperty("started_at", startedAt.toString());
@@ -167,6 +186,8 @@ final class RunCommand {
         json.add("chunk_batch_rtt_ms", stats.chunkBatchMillis.toJson());
         json.add("visible_entities", stats.visibleEntities.toJson());
         json.addProperty("chunk_batches", stats.chunkBatches.sum());
+        json.add("transfers", stats.transfers());
+        json.add("connections", stats.connections());
 
         final JsonObject outbound = new JsonObject();
         outbound.addProperty("packets", stats.outboundPackets.sum());
@@ -182,6 +203,12 @@ final class RunCommand {
         json.add("harness", harness);
 
         Json.write(out, json);
+        if (settings.profile() == Profile.GATE) {
+            final JsonObject transfers = json.getAsJsonObject("transfers");
+            System.out.printf(Locale.ROOT, "run: %d transfer tries, %d completed, P95 %.1f ms, failed %s%n",
+                    transfers.get("count").getAsLong(), transfers.get("completed").getAsLong(),
+                    stats.transferMillis.percentile(0.95), transfers.get("failed_by_reason"));
+        }
         System.out.printf(Locale.ROOT, "run: %d/%d logged in, %d lost, %d chunk packets; wrote %s%n",
                 stats.loggedIn.sum(), count, stats.lost.sum(), stats.chunkPackets.sum(), out);
         return 0;
@@ -198,9 +225,11 @@ final class RunCommand {
         if (!bot.inPlay()) return false;
         stats.visibleEntities.record((double) bot.visibleEntities());
         final long sent = bot.sent.get();
-        if (bot.windowFilled < 0) {
-            // The first look: the second it entered play in is only partly its own
+        final int connection = bot.connections();
+        if (bot.windowFilled < 0 || connection != bot.lastConnection) {
+            // The first look, or the first after a transfer: the second it entered play in is only partly its own
             bot.lastSent = sent;
+            bot.lastConnection = connection;
             bot.windowFilled = 0;
             return true;
         }

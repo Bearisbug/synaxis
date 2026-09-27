@@ -33,7 +33,8 @@ final class Args {
         return options.getOrDefault(name, fallback);
     }
 
-    private @Nullable String optional(String name) {
+    /** The value of {@code --name}, null when it is not given. */
+    @Nullable String optional(String name) {
         read.add(name);
         return options.get(name);
     }
@@ -92,6 +93,34 @@ final class Args {
         if (value == null) return fallback;
         final String text = value.strip();
         return Double.parseDouble(text.endsWith("/s") ? text.substring(0, text.length() - 2) : text);
+    }
+
+    /**
+     * Gate frames: {@code minX,minY,minZ,maxX,maxY,maxZ} in block coordinates, both corners included,
+     * several separated by {@code ;}.
+     *
+     * @return the frames, none when the option is not given
+     */
+    List<Profile.Frame> gates(String name) {
+        final String value = optional(name);
+        if (value == null) return List.of();
+        final List<Profile.Frame> frames = new ArrayList<>();
+        for (String frame : value.split(";", -1)) {
+            final String[] parts = frame.split(",", -1);
+            if (parts.length != 6)
+                throw new IllegalArgumentException(
+                        "--" + name + " takes minX,minY,minZ,maxX,maxY,maxZ per gate, not " + frame);
+            final int[] corners = new int[6];
+            for (int i = 0; i < corners.length; i++) {
+                try {
+                    corners[i] = Integer.parseInt(parts[i].strip());
+                } catch (NumberFormatException e) {
+                    throw new IllegalArgumentException("--" + name + ": " + parts[i] + " is not a block coordinate", e);
+                }
+            }
+            frames.add(new Profile.Frame(corners[0], corners[1], corners[2], corners[3], corners[4], corners[5]));
+        }
+        return List.copyOf(frames);
     }
 
     /** Fails on an option nobody read: a misspelt one would otherwise be ignored silently. */

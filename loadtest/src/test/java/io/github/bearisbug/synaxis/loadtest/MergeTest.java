@@ -4,8 +4,12 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import org.jetbrains.annotations.Nullable;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
+import java.io.IOException;
+import java.nio.file.Path;
 import java.util.List;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -13,11 +17,12 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * {@code merge} ({@code API-PROD-025}): two bot processes and a sampler make one summary whose
- * percentiles are those of all the values, and whose verdict follows the criteria of the run.
+ * percentiles are those of all the values, and whose verdict follows the criteria of the run,
+ * the transfers of gate bots included.
  */
 public class MergeTest {
 
-    private static final MergeCommand.Criteria BASELINE = new MergeCommand.Criteria(50, 0, 4096, 9);
+    private static final MergeCommand.Criteria BASELINE = new MergeCommand.Criteria(50, 0, 4096, 9, 0);
 
     @Test
     public void twoBotFilesMergeIntoTheFiguresOfAllTheirBots() {
@@ -33,6 +38,9 @@ public class MergeTest {
         assertEquals(60.0, summary.getAsJsonObject("c2s").getAsJsonObject("per_bot_per_1s").get("max").getAsDouble());
         assertTrue(summary.get("same_machine").getAsBoolean());
         assertTrue(summary.getAsJsonObject("verdict").get("pass").getAsBoolean(), summary.get("verdict").toString());
+        // Files of a harness that did not count transfers merge as they did
+        assertFalse(summary.has("transfers"));
+        assertFalse(summary.getAsJsonObject("verdict").has("transfers_completed"));
     }
 
     @Test
@@ -45,7 +53,80 @@ public class MergeTest {
         lostOne.getAsJsonObject("bots").addProperty("lost", 1);
         assertFalse(pass(List.of(lostOne), server(12.5, 0, 3000)), "a bot lost during the run");
         assertFalse(pass(List.of(bots(0, 10, 20, 100)), null), "no server file");
+        assertFalse(MergeCommand.merge(List.of(bots(0, 10, 20, 100)), server(12.5, 0, 3000),
+                new MergeCommand.Criteria(50, 0, 4096, 9, 1)).getAsJsonObject("verdict").get("pass").getAsBoolean(),
+                "a transfer asked for and none made");
         assertTrue(pass(List.of(bots(0, 10, 20, 100)), server(12.5, 0, 3000)));
+    }
+
+    /**
+     * {@code docs/DESIGN-M3.md} §26 M3-E track D: the transfers of two bot processes make one
+     * distribution, failures kept by reason, and the verdict asks for enough completed trips, the
+     * samples of the P95 ({@code docs/DESIGN-M3.md} §15, the transfer row).
+     */
+    @Test
+    public void theTransfersOfTwoFilesMergeIntoOneDistribution() {
+        final JsonObject first = bots(0, 10, 20, 100);
+        transfers(first, Map.of("no-transfer", 1L), 1000, 2000, 3000);
+        final JsonObject second = bots(1, 30, 40, 300);
+        transfers(second, Map.of("shard-full", 1L), 4000, 4500);
+        final JsonObject summary = MergeCommand.merge(List.of(first, second), server(12.5, 0, 3000),
+                new MergeCommand.Criteria(50, 0, 4096, 9, 5));
+        final JsonObject transfers = summary.getAsJsonObject("transfers");
+        assertEquals(7, transfers.get("count").getAsLong(), "five completed and two failed");
+        assertEquals(5, transfers.get("completed").getAsLong());
+        assertEquals(1, transfers.getAsJsonObject("failed_by_reason").get("no-transfer").getAsLong());
+        assertEquals(1, transfers.getAsJsonObject("failed_by_reason").get("shard-full").getAsLong());
+        final JsonObject millis = transfers.getAsJsonObject("transfer_ms");
+        assertEquals(5, millis.get("count").getAsLong());
+        assertEquals(3000.0, millis.get("p50_ms").getAsDouble());
+        assertEquals(4500.0, millis.get("p95_ms").getAsDouble());
+        assertEquals(4500.0, millis.get("p99_ms").getAsDouble());
+        assertEquals(4500.0, millis.get("max_ms").getAsDouble());
+        assertTrue(summary.getAsJsonObject("verdict").get("pass").getAsBoolean(), summary.get("verdict").toString());
+        final JsonObject sixAsked = MergeCommand.merge(List.of(first, second), server(12.5, 0, 3000),
+                new MergeCommand.Criteria(50, 0, 4096, 9, 6)).getAsJsonObject("verdict");
+        assertFalse(sixAsked.get("pass").getAsBoolean(), "5 completed are fewer than 6, the 2 failed tries not counted");
+        assertFalse(sixAsked.getAsJsonObject("transfers_completed").get("pass").getAsBoolean(), sixAsked.toString());
+    }
+
+    /**
+     * {@code merge} exits with 2 when the transfer P95 is not under 5,000 ms: 18 trips of 1,000 ms and 2
+     * of 5,001 put the P95 on 5,001; one slow trip in 20 leaves it at 1,000 whatever the maximum.
+     */
+    @Test
+    public void aTransferP95Of5001MillisFailsTheMergeWithExitCode2(@TempDir Path directory) throws IOException {
+        assertEquals(2, mergeExit(directory, 2, 20), "a P95 of 5,001 ms");
+        assertEquals(0, mergeExit(directory, 1, 20), "a P95 of 1,000 ms and a maximum of 5,001");
+        assertEquals(2, mergeExit(directory, 1, 21), "20 completed where 21 were asked for");
+    }
+
+    private static int mergeExit(Path directory, int slow, int minTransfers) throws IOException {
+        final double[] millis = new double[20];
+        for (int i = 0; i < millis.length; i++) millis[i] = i < millis.length - slow ? 1000 : 5001;
+        final JsonObject bots = bots(0, 10, 20, 100);
+        transfers(bots, Map.of(), millis);
+        final Path botsFile = directory.resolve("bots-0.json");
+        final Path serverFile = directory.resolve("server.json");
+        Json.write(botsFile, bots);
+        Json.write(serverFile, server(12.5, 0, 3000));
+        return MergeCommand.run(new Args(List.of(botsFile.toString(), serverFile.toString(),
+                "--min-transfers", Integer.toString(minTransfers),
+                "--out", directory.resolve("summary.json").toString())));
+    }
+
+    /** The {@code transfers} of a bot file: the completed trips and the failed tries by reason. */
+    private static void transfers(JsonObject file, Map<String, Long> failed, double... millis) {
+        final Histogram histogram = new Histogram(0.1);
+        for (double value : millis) histogram.record(value);
+        final JsonObject transfers = new JsonObject();
+        transfers.addProperty("count", millis.length + failed.values().stream().mapToLong(Long::longValue).sum());
+        transfers.addProperty("completed", millis.length);
+        final JsonObject reasons = new JsonObject();
+        failed.forEach(reasons::addProperty);
+        transfers.add("failed_by_reason", reasons);
+        transfers.add("transfer_ms", histogram.toJson());
+        file.add("transfers", transfers);
     }
 
     private static boolean pass(List<JsonObject> bots, @Nullable JsonObject server) {

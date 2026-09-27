@@ -14,6 +14,7 @@ import org.slf4j.LoggerFactory;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.CompletionException;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -86,7 +87,9 @@ public final class ShardGates {
                           @Nullable Throwable error) {
         underWay.remove(player);
         if (result == null) {
-            errors.error(error, "A transfer through a gate failed: player={} gate={}", player.getUsername(), gate.gateId());
+            // What TransferTickets threw, wrapped once by the stages of ShardServiceImpl
+            final Throwable cause = error instanceof CompletionException && error.getCause() != null ? error.getCause() : error;
+            errors.error(cause, "A transfer through a gate failed: player={} gate={}", player.getUsername(), gate.gateId());
             return;
         }
         switch (result) {

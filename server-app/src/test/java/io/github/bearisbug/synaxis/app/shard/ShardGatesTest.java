@@ -23,6 +23,7 @@ import org.slf4j.LoggerFactory;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.UnaryOperator;
 
@@ -123,7 +124,7 @@ class ShardGatesTest {
         service.transfers.getFirst().complete(ShardTransferResult.COOLDOWN);
         walk(walker, 2045);
         assertEquals(1, service.asked.size(), "moving inside the frame");
-        walk(walker, 2050);
+        walk(walker, 2030);
         walk(walker, 2046);
         assertEquals(List.of("Walker r1", "Walker r1"), service.asked, "out and in again");
     }
@@ -133,14 +134,14 @@ class ShardGatesTest {
         attach(ExampleDirectory.as("r0-c1"));
         final Walker walker = walker("Walker");
         walk(walker, 2040);
-        walk(walker, 2050);
+        walk(walker, 2030);
         walk(walker, 2040);
         assertEquals(List.of("Walker r1"), service.asked, "the first transfer is still under way");
 
         service.transfers.getFirst().complete(ShardTransferResult.FULL);
         walk(walker, 2041);
         assertEquals(1, service.asked.size(), "still inside the frame it walked into while waiting");
-        walk(walker, 2050);
+        walk(walker, 2030);
         walk(walker, 2040);
         assertEquals(2, service.asked.size(), "out and in once the transfer is over");
     }
@@ -204,13 +205,18 @@ class ShardGatesTest {
             new ShardGates(ExampleDirectory.as("r0-c1"), service).attach(own);
             final Walker walker = walker("Thrown", own);
             walk(walker, 2040);
-            service.transfers.getLast().completeExceptionally(new IllegalStateException("the ticket does not encode"));
+            // As ShardServiceImpl passes it on: the failure of TransferTickets, wrapped by thenCompose
+            service.transfers.getLast().completeExceptionally(
+                    new CompletionException(new IllegalStateException("the ticket does not encode")));
             assertEquals(List.of(), walker.messages());
 
-            assertEquals(List.of("the shard service answers UNKNOWN_TARGET", "the shard service answers SAME_TARGET",
-                    "the ticket does not encode"), log.list.stream().filter(event -> event.getLevel() == Level.ERROR)
-                    .map(event -> event.getThrowableProxy().getMessage()).toList());
-            walk(walker, 2050);
+            assertEquals(List.of("java.lang.IllegalStateException: the shard service answers UNKNOWN_TARGET",
+                    "java.lang.IllegalStateException: the shard service answers SAME_TARGET",
+                    "java.lang.IllegalStateException: the ticket does not encode"), log.list.stream()
+                    .filter(event -> event.getLevel() == Level.ERROR)
+                    .map(event -> event.getThrowableProxy().getClassName() + ": " + event.getThrowableProxy().getMessage())
+                    .toList());
+            walk(walker, 2030);
             walk(walker, 2040);
             assertEquals(4, service.asked.size(), "the transfer that threw is over");
         } finally {

@@ -20,7 +20,9 @@ import java.util.function.LongSupplier;
  * <p>
  * Without a gate back to the source region the player keeps the spawn of the region. An arrival
  * whose player leaves before its 9th chunk writes nothing, and one still short of it 60 s after its
- * claim is dropped at the next claim: both count as transfers that did not complete.
+ * claim is dropped at the next claim: both count as transfers that did not complete. A player that
+ * leaves before it is in the map instance, still in the configuration phase, is not seen leaving by
+ * the instance's node: its arrival, and the player it holds, go with the 60 s rule.
  */
 public final class ShardArrivals {
 

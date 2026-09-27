@@ -218,11 +218,16 @@ class TransferTicketsIntegrationTest {
     void badTicketsAreRefusedInCheckOrderAndAGoodOneOnlyOnce(Env env) throws SQLException {
         final StoreFixture.Shard source = shard(env, SOURCE);
         final StoreFixture.Shard target = shard(env, TARGET);
-        final TicketIssuer issuer = new TicketIssuer(source.store(), KEYS, new TransferCooldowns(5_000, sourceClock::get), SOURCE,
-                (event, attributes) -> source.ledger().add(event + " " + attributes));
         final TicketVerifier verifier = verifier(target);
         final UUID account = UUID.randomUUID();
         final Player player = online(env, source, env.createFlatInstance(), account, "Traveller");
+        final List<SendablePacket> sent = ((StoreFixture.RecordingConnection) player.getPlayerConnection()).sent;
+        final List<Boolean> transferSentFirst = new CopyOnWriteArrayList<>();
+        final TicketIssuer issuer = new TicketIssuer(source.store(), KEYS, new TransferCooldowns(5_000, sourceClock::get), SOURCE,
+                (event, attributes) -> {
+                    transferSentFirst.add(indexOf(sent, TransferPacket.class) >= 0);
+                    source.ledger().add(event + " " + attributes);
+                });
         source.store().get(player, PURSE).coins = 11;
         source.store().markDirty(player, PURSE);
 
@@ -233,6 +238,7 @@ class TransferTicketsIntegrationTest {
         assertNull(row(database, account).lease(), "released before the ticket was sent");
         assertEquals(List.of(issued(ticket)), source.events("transfer_issued"),
                 "one event for the ticket sent, with the issued_at of the cookie");
+        assertEquals(List.of(true), transferSentFirst, "written once the client was told where to go");
 
         final byte[] tampered = good.clone();
         tampered[20] ^= 0x01;

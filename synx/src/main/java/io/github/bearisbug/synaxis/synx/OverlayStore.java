@@ -50,7 +50,7 @@ import java.util.stream.Stream;
  * looks up their latest record through {@link OverlayIndex}. Writing happens in one place, the write
  * phase the shard host runs at the end of every tick ({@link #tickEnd()}): it picks the batch
  * (encodings of chunks unloaded dirty, evictions over the cap, flushes before unload, chunks dirty
- * for {@code flush_interval_s}, compaction), encodes on a pool of platform threads for at most 20 ms,
+ * for {@code flush_interval_s} less a write phase, compaction), encodes on a pool of platform threads for at most 20 ms,
  * appends in order, makes it durable with one {@code fsync}, and only then points the index at the
  * new records and tells the chunks. At shutdown {@link #finalFlush} writes every dirty chunk once
  * more, done by the write phase while the tick runs and by the shutdown thread once the watchdog
@@ -65,6 +65,12 @@ public final class OverlayStore implements OverlayIndex, OverlayTracker {
     private static final int FLUSH_PER_TICK = 64;
     private static final int COPY_PER_TICK = 64;
     private static final long PHASE_NANOS = TimeUnit.MILLISECONDS.toNanos(20);
+    /**
+     * How long before its {@code flush_interval_s} is up a dirty chunk is due, so that a kill loses at
+     * most the changes of that interval (F4): the phase that takes it runs up to a tick (50 ms) later,
+     * an encoding over the 20 ms of that phase waits for the next one, and then comes the fsync.
+     */
+    private static final long DUE_LEAD_NANOS = TimeUnit.MILLISECONDS.toNanos(250);
     private static final long FINAL_CAP_NANOS = TimeUnit.SECONDS.toNanos(2);
     private static final long UNLOAD_ENCODE_NANOS = TimeUnit.SECONDS.toNanos(1);
     private static final long NO_DEADLINE = Long.MAX_VALUE;
@@ -477,10 +483,10 @@ public final class OverlayStore implements OverlayIndex, OverlayTracker {
         }
     }
 
-    /** Dirty for {@code flush_interval_s} or longer, at most 64, the longest first. */
+    /** Dirty for {@code flush_interval_s} less {@link #DUE_LEAD_NANOS} or longer, at most 64, the longest first. */
     private void selectDue(Set<Resident> taken, long deadline) {
         final long now = tuning.clock().getAsLong();
-        final long interval = TimeUnit.SECONDS.toNanos(options.flushIntervalSeconds());
+        final long interval = TimeUnit.SECONDS.toNanos(options.flushIntervalSeconds()) - DUE_LEAD_NANOS;
         int count = 0;
         for (Iterator<Resident> it = dirtyQueue.values().iterator(); count < FLUSH_PER_TICK && it.hasNext(); ) {
             final Resident resident = it.next();

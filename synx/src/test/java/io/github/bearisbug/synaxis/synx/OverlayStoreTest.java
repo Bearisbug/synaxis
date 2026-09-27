@@ -108,6 +108,30 @@ public class OverlayStoreTest {
         return chunks.stream().mapToLong(c -> store.find(c.chunkX(), c.chunkZ()).offset()).min().orElseThrow();
     }
 
+    /**
+     * F4, a kill loses at most the changes of the last {@code flush_interval_s}: the write phase that
+     * takes a due chunk runs up to a tick later and then encodes and forces, so a chunk is due 250 ms
+     * before its interval is up. The chunk changed at t = 0 is written by the phase at t = 9.75 s, not
+     * by the one a millisecond earlier.
+     */
+    @Test
+    public void aChunkIsDueAWritePhaseBeforeItsFlushIntervalIsUp() throws Exception {
+        final OverlayStore store = open(16_384, 1);
+        final FakeChunk chunk = OverlayFixture.chunks(store, 0, 1).getFirst();
+        chunk.change();
+
+        clock.advance(Duration.ofMillis(10_000 - 251));
+        store.tickEnd();
+        assertTrue(chunk.dirty(), "not due 251 ms before its flush interval is up");
+        assertEquals(0, disk.forces.get());
+
+        clock.advance(Duration.ofMillis(1));
+        store.tickEnd();
+        assertFalse(chunk.dirty(), "due 250 ms before its flush interval is up");
+        assertEquals(1, disk.forces.get());
+        assertEquals(1, generation(store, chunk));
+    }
+
     @Test
     public void aPhaseOverItsBudgetLeavesTheRestToTheNextTicks() throws Exception {
         final OverlayStore store = open(16_384, 1);

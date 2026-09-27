@@ -36,11 +36,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 public class OverlayShardProcessTest {
 
     private static final int FLUSH_INTERVAL_S = 10;
-    /**
-     * A change is due once it is {@code flush_interval_s} old and is on disk after the next write
-     * phase: up to one tick, its encoding and one fsync. The margin covers that on a loaded machine.
-     */
-    private static final long WRITE_MARGIN_MS = 1_000;
     /** The kill comes this long after the first change: the older half of the changes is due by then, the newer half not. */
     private static final long KILL_AFTER_MS = 20_000;
 
@@ -136,7 +131,7 @@ public class OverlayShardProcessTest {
     /**
      * §19 「覆盖层崩溃丢失窗口有上界」: a change every 100 ms from t = 0, SIGKILL at t = 20 s. The change
      * of t = 0 (chunk E of the scenario) is on disk, so is every change more than the flush interval
-     * and the write margin older than the kill; the newest ones are not, the kill wrote nothing.
+     * older than the kill (F4); the newest ones are not, the kill wrote nothing.
      */
     @Test
     public void aKilledShardKeepsEveryChangeOlderThanItsFlushInterval(@TempDir Path directory) throws Exception {
@@ -159,7 +154,7 @@ public class OverlayShardProcessTest {
         final OverlayStore store = reopen(directory, release);
         final List<Change> kept = new ArrayList<>(), lost = new ArrayList<>();
         for (Change change : changes) (written(store, change) != null ? kept : lost).add(change);
-        final long bound = TimeUnit.SECONDS.toMillis(FLUSH_INTERVAL_S) + WRITE_MARGIN_MS;
+        final long bound = TimeUnit.SECONDS.toMillis(FLUSH_INTERVAL_S);
         final long oldestLost = lost.stream().mapToLong(change -> killedAt - change.at()).max().orElse(0);
         final long newestKept = kept.stream().mapToLong(change -> killedAt - change.at()).min().orElse(-1);
         System.out.printf("crash window: %d changes, %d kept, %d lost; the oldest lost change was %d ms old at the kill, "

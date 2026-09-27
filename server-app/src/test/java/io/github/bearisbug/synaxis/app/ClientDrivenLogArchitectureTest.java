@@ -7,6 +7,7 @@ import com.tngtech.archunit.core.domain.properties.HasName;
 import com.tngtech.archunit.core.importer.ClassFileImporter;
 import com.tngtech.archunit.core.importer.ImportOption;
 import com.tngtech.archunit.lang.ArchRule;
+import io.github.bearisbug.synaxis.app.shard.ShardHeartbeat;
 import io.github.bearisbug.synaxis.app.shard.ShardWorld;
 import io.github.bearisbug.synaxis.app.store.PlayerStore;
 import io.github.bearisbug.synaxis.app.store.ShardSession;
@@ -89,6 +90,9 @@ public class ClientDrivenLogArchitectureTest {
      * are registered while the process is assembled, never by a client.</li>
      * <li>{@link ShardWorld}: the start of a map shard, a fixed number of lines per process (bounds
      * that are not square, a center chunk without a readable record).</li>
+     * <li>{@link ShardHeartbeat}: one line for every three writes of the heartbeat that fail in a row,
+     * which the write every 5 s bounds to one per 15 s, and one if the stop outwaits a write; the
+     * database drives both, never a client.</li>
      * </ul>
      * {@link PluginChannelRouter}, {@link PluginEventsImpl} and {@link EventLedger} are
      * deliberately absent: all three sit on a path whose rate a client picks — the first two on an
@@ -99,7 +103,7 @@ public class ClientDrivenLogArchitectureTest {
      * blind spot ① of the engine rule ({@code docs/ENGINE.md} §8), which those three therefore
      * escape.
      * <p>
-     * The ten above do not: this list is by class, exactly like the engine's, so a second line
+     * The eleven above do not: this list is by class, exactly like the engine's, so a second line
      * whose rate a client picks, added inside one of them, stays green. Measured, not assumed — a
      * listener on a PLAY phase event writing a plain {@code LOGGER.warn}, put inside
      * {@link AdmissionGate}, does not turn this rule red. Registered as a remaining blind spot in
@@ -115,7 +119,8 @@ public class ClientDrivenLogArchitectureTest {
                 .or(name(ShardSession.class.getName()))
                 .or(name(TicketVerifier.class.getName()))
                 .or(name(ShutdownSequence.class.getName()))
-                .or(name(ShardWorld.class.getName()));
+                .or(name(ShardWorld.class.getName()))
+                .or(name(ShardHeartbeat.class.getName()));
     }
 
     private static ArchRule hostPathsDoNotLogPerPacket() {

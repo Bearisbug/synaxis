@@ -1,0 +1,27 @@
+# RUN-044: the whole OverlayStoreTest class after the fix, 20 runs in a row (working tree = the fix, before commit 1f11d26609, same content)
+# Every run: ./gradlew :synx:test --tests 'io.github.bearisbug.synaxis.synx.OverlayStoreTest' --rerun
+#            --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts --max-workers=4, JUnit XML removed before each run
+# 28 tests a run = 26 before + the two encodingsLeftInFlight tests; aPhaseOverItsBudgetLeavesTheRestToTheNextTicks is one of them.
+# start 17:14:55; 17:14  up 12 days,  9:02, 25 users, load averages: 4.12 4.36 4.79
+run 1 exit 0 tests="28" skipped="0" failures="0" errors="0"
+run 2 exit 0 tests="28" skipped="0" failures="0" errors="0"
+run 3 exit 0 tests="28" skipped="0" failures="0" errors="0"
+run 4 exit 0 tests="28" skipped="0" failures="0" errors="0"
+run 5 exit 0 tests="28" skipped="0" failures="0" errors="0"
+run 6 exit 0 tests="28" skipped="0" failures="0" errors="0"
+run 7 exit 0 tests="28" skipped="0" failures="0" errors="0"
+run 8 exit 0 tests="28" skipped="0" failures="0" errors="0"
+run 9 exit 0 tests="28" skipped="0" failures="0" errors="0"
+run 10 exit 0 tests="28" skipped="0" failures="0" errors="0"
+run 11 exit 0 tests="28" skipped="0" failures="0" errors="0"
+run 12 exit 0 tests="28" skipped="0" failures="0" errors="0"
+run 13 exit 0 tests="28" skipped="0" failures="0" errors="0"
+run 14 exit 0 tests="28" skipped="0" failures="0" errors="0"
+run 15 exit 0 tests="28" skipped="0" failures="0" errors="0"
+run 16 exit 0 tests="28" skipped="0" failures="0" errors="0"
+run 17 exit 0 tests="28" skipped="0" failures="0" errors="0"
+run 18 exit 0 tests="28" skipped="0" failures="0" errors="0"
+run 19 exit 0 tests="28" skipped="0" failures="0" errors="0"
+run 20 exit 0 tests="28" skipped="0" failures="0" errors="0"
+# end 17:18:43; 17:18  up 12 days,  9:06, 25 users, load averages: 4.02 4.43 4.74
+# 20 of 20 green, 560 tests, 0 failures.

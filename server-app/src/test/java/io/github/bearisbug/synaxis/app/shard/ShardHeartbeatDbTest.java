@@ -32,7 +32,6 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -203,7 +202,8 @@ class ShardHeartbeatDbTest {
                 new HeartbeatRow("r1-c3", "r1", 3, "host-r1-c3", 25603, 120, 200, true, true),
                 new HeartbeatRow("r1-c4", "r1", 4, "host-r1-c4", 25604, 5, 200, true, false),
                 new HeartbeatRow("r1-c5", "r1", 5, "host-r1-c5", 25605, 5, 200, true, true)), region);
-        assertEquals(List.of(), heartbeat.region("other-map", "r1").get(5, TimeUnit.SECONDS));
+        assertEquals(List.of(new HeartbeatRow("x1-c1", "r1", 1, "host-x1-c1", 25601, 0, 200, true, true)),
+                heartbeat.region("other", "r1").get(5, TimeUnit.SECONDS));
 
         assertEquals(new HeartbeatRow("r1-c3", "r1", 3, "host-r1-c3", 25603, 120, 200, true, true),
                 heartbeat.shard("synth", "r1-c3").get(5, TimeUnit.SECONDS));
@@ -243,19 +243,20 @@ class ShardHeartbeatDbTest {
         heartbeat.start();
         final long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
         while (row() == null && System.nanoTime() < deadline) Thread.sleep(100);
-        assertNotNull(row());
+        // The first write, read within 100 ms of it; the next is due 5 s after it
+        final Row written = row();
+        assertNotNull(written);
         assertTrue(writingThreadAlive(), "a platform thread writes");
 
         heartbeat.close();
 
         assertTrue(writingThreadEnds(), "the writing thread ends");
-        final Row stopped = Objects.requireNonNull(row());
-        assertTrue(stopped.accepting(), "no last row is written");
+        assertEquals(written, row(), "no last row is written: updated_at is still the one before the close");
     }
 
     /**
      * A write that fails is only a WARN, one for every three in a row ({@code RB-M3-004}), and the next
-     * write goes on as if nothing happened.
+     * write goes on as if nothing happened; one that succeeds starts the count again.
      */
     @Test
     void failedWritesWarnOnceEveryThreeInARowAndTheNextOneWrites() throws Exception {
@@ -288,6 +289,10 @@ class ShardHeartbeatDbTest {
             assertEquals(1, warnings(appender).size(), "the fourth and fifth are part of the next three");
             heartbeat.beat();
             assertEquals(2, warnings(appender).size(), warnings(appender).toString());
+            // A seventh, so the write comes at a count that is no multiple of 3: not started again, the
+            // second failure after it would be the ninth, a WARN
+            heartbeat.beat();
+            assertEquals(2, warnings(appender).size(), warnings(appender).toString());
 
             cutOff.set(false);
             heartbeat.beat();
@@ -295,7 +300,10 @@ class ShardHeartbeatDbTest {
             cutOff.set(true);
             heartbeat.beat();
             heartbeat.beat();
-            assertEquals(2, warnings(appender).size(), "a write in between starts the count again");
+            assertEquals(2, warnings(appender).size(), "a write in between starts the count again: 2 failures, not 9");
+            heartbeat.beat();
+            assertEquals(3, warnings(appender).size(), warnings(appender).toString());
+            assertTrue(warnings(appender).getLast().contains("not written 3 times in a row"), warnings(appender).toString());
         } finally {
             logger.detachAppender(appender);
             appender.stop();

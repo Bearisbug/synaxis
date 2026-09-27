@@ -210,15 +210,40 @@ public class ShardDirectoryTest {
                 refused("\"max\": [2047, 255, 1031]", "\"max\": [2031, 255, 1031]"));
         assertEquals("regions[0] r0: gates[0] r0-east: the frame x 2032..2048, z 1016..1031 is not within the blocks "
                 + "x 0..2047, z 0..2047 of the region", refused("\"max\": [2047, 255, 1031]", "\"max\": [2048, 255, 1031]"));
+        assertEquals("regions[0] r0: gates[0] r0-east: the frame x 2032..2047, z -1..1031 is not within the blocks "
+                + "x 0..2047, z 0..2047 of the region", refused("\"min\": [2032, 0, 1016]", "\"min\": [2032, 0, -1]"));
+        assertEquals("regions[0] r0: gates[0] r0-east: the frame x 2032..2047, z 1016..2048 is not within the blocks "
+                + "x 0..2047, z 0..2047 of the region", refused("\"max\": [2047, 255, 1031]", "\"max\": [2047, 255, 2048]"));
+        assertEquals("regions[1] r1: gates[0] r1-west: the frame x 2047..2063, z 1016..1031 is not within the blocks "
+                + "x 2048..4095, z 0..2047 of the region", refused("\"min\": [2048, 0, 1016]", "\"min\": [2047, 0, 1016]"));
         assertEquals("regions[0] r0: gates[0] r0-east: arrival 2048.0, 200.0, 1024.5 is not within the blocks "
                         + "x 0..2047, z 0..2047 of the region",
                 refused("[2024.5, 200.0, 1024.5, 90.0]", "[2048.0, 200.0, 1024.5, 90.0]"));
-        // The edge block of the region is in it, x 2047.99 stands on block 2047
+        // An arrival is judged by the block it stands on: x 2031.99 is block 2031, next to the frame from 2032
         final Path edge = directory.resolve("edge.json");
         Files.writeString(edge, example().replace("[2024.5, 200.0, 1024.5, 90.0]", "[2031.99, 200.0, 1024.5, 90.0]"));
         assertEquals(new Pos(2031.99, 200.0, 1024.5, 90f, 0f), ShardDirectory.load(edge, "r0-c1").ownRegion().gates().getFirst().arrival());
         assertEquals("regions[0] r0: gates[0] r0-east: arrival 2032.0, 200.0, 1024.5 is inside the gate r0-east",
                 refused("[2024.5, 200.0, 1024.5, 90.0]", "[2032.0, 200.0, 1024.5, 90.0]"));
+    }
+
+    /** The arrival against the blocks of its region on the edges the test above leaves out, z and the west. */
+    @Test
+    public void anArrivalStandsOnABlockOfItsRegion() throws IOException {
+        // z 2047.99 is block 2047, the last row of the region
+        final Path edge = directory.resolve("edge.json");
+        Files.writeString(edge, example().replace("[2024.5, 200.0, 1024.5, 90.0]", "[2024.5, 200.0, 2047.99, 90.0]"));
+        assertEquals(new Pos(2024.5, 200.0, 2047.99, 90f, 0f), ShardDirectory.load(edge, "r0-c1").ownRegion().gates().getFirst().arrival());
+        assertEquals("regions[0] r0: gates[0] r0-east: arrival 2024.5, 200.0, 2048.0 is not within the blocks "
+                        + "x 0..2047, z 0..2047 of the region",
+                refused("[2024.5, 200.0, 1024.5, 90.0]", "[2024.5, 200.0, 2048.0, 90.0]"));
+        // z -0.5 is block -1
+        assertEquals("regions[0] r0: gates[0] r0-east: arrival 2024.5, 200.0, -0.5 is not within the blocks "
+                        + "x 0..2047, z 0..2047 of the region",
+                refused("[2024.5, 200.0, 1024.5, 90.0]", "[2024.5, 200.0, -0.5, 90.0]"));
+        assertEquals("regions[1] r1: gates[0] r1-west: arrival 2047.5, 200.0, 1024.5 is not within the blocks "
+                        + "x 2048..4095, z 0..2047 of the region",
+                refused("[2071.5, 200.0, 1024.5, -90.0]", "[2047.5, 200.0, 1024.5, -90.0]"));
     }
 
     @Test

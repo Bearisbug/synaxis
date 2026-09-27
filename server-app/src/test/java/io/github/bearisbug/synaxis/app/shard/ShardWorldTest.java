@@ -30,6 +30,7 @@ import java.util.Set;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -220,6 +221,23 @@ public class ShardWorldTest {
             assertNotNull(ShardWorld.prepare(env.process(), release, SYNX, OVERLAY, halves(MapFixture.MAP_ID, List.of(nextToIt))));
         } finally {
             env.process().stop();
+        }
+    }
+
+    /**
+     * The column is inside a gate only if both its x and its z are: a gate over x 56 but south or north
+     * of z 120, or over z 120 but west of x 56, leaves it free (east of it is the case above).
+     */
+    @Test
+    public void aGateOverTheSpawnColumnOnOneAxisOnlyPasses() {
+        final List<ShardDirectory.Frame> beside = List.of(
+                new ShardDirectory.Frame(50, 0, 121, 60, 63, 130),
+                new ShardDirectory.Frame(50, 0, 100, 60, 63, 119),
+                new ShardDirectory.Frame(40, 0, 110, 55, 63, 130));
+        for (ShardDirectory.Frame frame : beside) {
+            final ShardDirectory directory = halves(MapFixture.MAP_ID,
+                    List.of(new ShardDirectory.Gate("r0-east", frame, "r1", new Pos(30.5, 41, 30.5))));
+            assertDoesNotThrow(() -> ShardWorld.checkSpawnColumn(directory), frame.toString());
         }
     }
 

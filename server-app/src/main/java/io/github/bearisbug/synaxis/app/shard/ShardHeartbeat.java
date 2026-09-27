@@ -197,8 +197,10 @@ public final class ShardHeartbeat implements HeartbeatReader, AutoCloseable {
     }
 
     /**
-     * Stops the writing thread, waiting at most for the statement timeout of a write in flight; writes
-     * no last row. Before {@link #start} it only keeps {@code start} from starting the thread.
+     * Stops the writing thread, waiting at most 2 s, the statement timeout, for a write in flight; writes
+     * no last row. A write can take longer, up to 2 s for a connection and 4 s on the socket: one still
+     * running then fails once the pool closes after this. Before {@link #start} it only keeps
+     * {@code start} from starting the thread.
      */
     @Override
     public void close() {

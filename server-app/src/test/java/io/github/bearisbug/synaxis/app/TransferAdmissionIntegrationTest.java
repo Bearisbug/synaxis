@@ -100,8 +100,10 @@ class TransferAdmissionIntegrationTest {
         // The store half of the check meets a database that is not there
         final PGSimpleDataSource unreachable = new PGSimpleDataSource();
         unreachable.setURL("jdbc:postgresql://127.0.0.1:1/unreachable");
+        final List<TransferTicket> claimed = new CopyOnWriteArrayList<>();
         final TicketVerifier verifier = new TicketVerifier(unreachable, () -> 1L, SHARD, KEYS,
-                new TransferCooldowns(5_000, System::currentTimeMillis), ledger::record, (_, _) -> {});
+                new TransferCooldowns(5_000, System::currentTimeMillis), ledger::record,
+                (_, ticket) -> claimed.add(ticket));
         final PluginHost host = new PluginHost(env.process(), workingDirectory.resolve("plugins"), ledger, store, verifier,
                 HostPermissions.withoutDatabase(env.process()));
         final AtomicInteger admitted = new AtomicInteger();
@@ -137,6 +139,7 @@ class TransferAdmissionIntegrationTest {
         assertEquals(List.of("synaxis:transfer-rejected"), forged.kicks);
         assertEquals(List.of("synaxis:state-unavailable"), storeDown.kicks);
         assertEquals(0, admitted.get(), "neither reached the admission");
+        assertEquals(List.of(), claimed, "nor its onClaimed (docs/DESIGN-M3.md API-M3-010)");
         final List<String> lines = new ArrayList<>();
         try (var files = Files.list(workingDirectory.resolve("logs"))) {
             for (Path file : files.toList()) lines.addAll(Files.readAllLines(file));

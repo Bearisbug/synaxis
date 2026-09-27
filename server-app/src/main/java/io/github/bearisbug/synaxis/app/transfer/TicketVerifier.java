@@ -84,6 +84,7 @@ public final class TicketVerifier {
     private final TransferKeys keys;
     private final TransferCooldowns cooldowns;
     private final BiConsumer<String, Map<String, ?>> analytics;
+    private final BiConsumer<Player, TransferTicket> onClaimed;
 
     /**
      * @param dataSource the player store database
@@ -93,7 +94,7 @@ public final class TicketVerifier {
      * @param cooldowns  the cooldowns, shared with this shard's {@link TicketIssuer}
      * @param analytics  the event ledger
      * @param onClaimed  told about every ticket {@link #claim} accepts ({@code docs/DESIGN-M3.md}
-     *                   {@code API-M3-010}, the arrival on a shard in the directory mode); not called yet
+     *                   {@code API-M3-010}, the arrival on a shard in the directory mode)
      */
     public TicketVerifier(DataSource dataSource, LongSupplier sessionId, String shardId, TransferKeys keys,
                           TransferCooldowns cooldowns, BiConsumer<String, Map<String, ?>> analytics,
@@ -104,6 +105,7 @@ public final class TicketVerifier {
         this.keys = keys;
         this.cooldowns = cooldowns;
         this.analytics = analytics;
+        this.onClaimed = onClaimed;
     }
 
     /**
@@ -126,7 +128,8 @@ public final class TicketVerifier {
      * Uses a ticket {@link #read} accepted, ⑤ and ⑥: spends its nonce and takes the character's
      * lease at the version it was released at. Run by the load, in the account's turn
      * ({@code PlayerStore#load(Player, BooleanSupplier)}). A refused one is kicked; an accepted one
-     * holds the lease and goes on to the ordinary load.
+     * holds the lease and goes on to the ordinary load. An accepted one is told to
+     * {@code onClaimed} last, once its cooldown is recorded.
      *
      * @param player the player of the connection
      * @param ticket its ticket
@@ -169,6 +172,7 @@ public final class TicketVerifier {
             return reject(player, ticket, Reason.STORE_UNAVAILABLE);
         }
         cooldowns.record(ticket.playerUuid(), ticket.issuedAt());
+        onClaimed.accept(player, ticket);
         return true;
     }
 

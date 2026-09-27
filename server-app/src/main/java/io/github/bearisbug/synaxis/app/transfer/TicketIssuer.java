@@ -5,6 +5,7 @@ import io.github.bearisbug.synaxis.entity.Player;
 import net.kyori.adventure.text.Component;
 
 import java.security.SecureRandom;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.BiConsumer;
@@ -12,7 +13,9 @@ import java.util.function.BiConsumer;
 /**
  * The source side of a transfer ({@code docs/DESIGN-PROD.md} {@code API-PROD-028} issuing ① to ④):
  * cooldown, the write that gives the lease back, then the ticket stored on the client before the
- * client is told where to go.
+ * client is told where to go. Every ticket sent is one {@code EVT:transfer_issued}
+ * ({@code docs/DESIGN-M3.md} {@code API-M3-010}), written here because only here are its
+ * {@code transfer_ref} and {@code issued_at} known.
  */
 public final class TicketIssuer implements TransferTickets {
 
@@ -23,6 +26,7 @@ public final class TicketIssuer implements TransferTickets {
     private final TransferKeys keys;
     private final TransferCooldowns cooldowns;
     private final String shardId;
+    private final BiConsumer<String, Map<String, ?>> analytics;
     private final SecureRandom random = new SecureRandom();
 
     /**
@@ -31,7 +35,7 @@ public final class TicketIssuer implements TransferTickets {
      * @param cooldowns the cooldowns, shared with this shard's {@link TicketVerifier}
      * @param shardId   the id of this shard, the ticket's {@code source_shard}
      * @param analytics the event ledger, for {@code EVT:transfer_issued} ({@code docs/DESIGN-M3.md}
-     *                  {@code API-M3-010}); nothing is written to it yet
+     *                  {@code API-M3-010})
      */
     public TicketIssuer(PlayerStore store, TransferKeys keys, TransferCooldowns cooldowns, String shardId,
                         BiConsumer<String, Map<String, ?>> analytics) {
@@ -39,6 +43,7 @@ public final class TicketIssuer implements TransferTickets {
         this.keys = keys;
         this.cooldowns = cooldowns;
         this.shardId = shardId;
+        this.analytics = analytics;
     }
 
     @Override
@@ -60,6 +65,13 @@ public final class TicketIssuer implements TransferTickets {
             // The cookie first: the client stores it before it acts on the transfer
             player.getPlayerConnection().storeCookie(TransferTicket.COOKIE, ticket.encode(keys));
             player.getPlayerConnection().transfer(host, port);
+            final Map<String, Object> issued = new LinkedHashMap<>();
+            issued.put("transfer_ref", ticket.reference());
+            issued.put("player_uuid", ticket.playerUuid());
+            issued.put("source_shard", shardId);
+            issued.put("target_shard", targetShardId);
+            issued.put("issued_at", issuedAt);
+            analytics.accept("transfer_issued", issued);
             return TransferOutcome.SENT;
         });
     }

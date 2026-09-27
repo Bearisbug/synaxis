@@ -3,11 +3,14 @@ package io.github.bearisbug.synaxis.app;
 import io.github.bearisbug.synaxis.app.ConfigFileLaunchTest.Launched;
 import io.github.bearisbug.synaxis.app.shard.MapFixture;
 import io.github.bearisbug.synaxis.app.shard.ShardSettings;
+import io.github.bearisbug.synaxis.instance.block.BlockHandler;
 import io.github.bearisbug.synaxis.synx.SynxFormat;
 import io.github.bearisbug.synaxis.synx.SynxManifest;
+import net.kyori.adventure.key.Key;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -115,6 +118,38 @@ public class ShardLaunchTest {
                 .replace("\"light_engine_version\": 1,", "\"light_engine_version\": 0,"));
 
         assertRefused(directory, ShardMain.class, "synx-light-engine-mismatch: manifest.json: ", mapKeys(release));
+        assertNoShardStarted(directory);
+    }
+
+    /** A second handler with the key of the door marker of {@code :game-rts}. */
+    public static final class SecondDoor implements BlockHandler {
+        @Override
+        public Key getKey() {
+            return Key.key("synaxis:door");
+        }
+    }
+
+    /**
+     * §19 「同键的处理器被拒绝」, the shard half (REQ-M3-022): a second {@link BlockHandler} service with the
+     * key of the door marker, listed by a services file on a class path entry in front of the test's.
+     */
+    @Test
+    public void twoHandlersWithOneKeyRefuseTheShard(@TempDir Path directory) throws Exception {
+        final ShardSettings release = MapFixture.bake(directory.resolve("maps"));
+        final Path classes = directory.resolve("classes");
+        Files.writeString(Files.createDirectories(classes.resolve("META-INF/services")).resolve(BlockHandler.class.getName()),
+                SecondDoor.class.getName() + "\n");
+        final String classPath = classes + File.pathSeparator + System.getProperty("java.class.path");
+
+        try (Launched launched = Launched.start(directory, classPath, ShardMain.class, launch(mapKeys(release)))) {
+            assertEquals(1, launched.awaitExit(), launched.log());
+            final String log = launched.log();
+            assertTrue(log.contains("Refusing to start: two block handlers have the key synaxis:door: "), log);
+            assertTrue(log.contains("io.github.bearisbug.synaxis.game.rts.marker.DoorMarker"), log);
+            assertTrue(log.contains(SecondDoor.class.getName()), log);
+            assertFalse(log.contains("listening on"), log);
+        }
+        assertFalse(Files.exists(directory.resolve("overlay")), "nothing is written");
         assertNoShardStarted(directory);
     }
 

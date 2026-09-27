@@ -273,9 +273,13 @@ public class ConfigFileLaunchTest {
     record Launched(Process process, List<String> output, Thread reader) implements AutoCloseable {
 
         static Launched start(Path directory, Class<?> launcher, String... properties) throws IOException {
+            return start(directory, System.getProperty("java.class.path"), launcher, properties);
+        }
+
+        static Launched start(Path directory, String classPath, Class<?> launcher, String... properties) throws IOException {
             final List<String> command = new ArrayList<>(List.of(
                     Path.of(System.getProperty("java.home"), "bin", "java").toString(), "-Xmx1g",
-                    "-cp", System.getProperty("java.class.path"), "-Dlogback.configurationFile=logback.xml"));
+                    "-cp", classPath, "-Dlogback.configurationFile=logback.xml"));
             command.addAll(List.of(properties));
             command.add(launcher.getName());
             final Process process = new ProcessBuilder(command).directory(directory.toFile())

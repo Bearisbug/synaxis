@@ -2,13 +2,17 @@ package io.github.bearisbug.synaxis.app.shard;
 
 import io.github.bearisbug.synaxis.coordinate.Pos;
 import io.github.bearisbug.synaxis.instance.WorldBorder;
+import io.github.bearisbug.synaxis.instance.block.BlockHandler;
+import io.github.bearisbug.synaxis.instance.block.BlockManager;
 import io.github.bearisbug.synaxis.registry.RegistryKey;
 import io.github.bearisbug.synaxis.synx.OverlayOptions;
 import io.github.bearisbug.synaxis.synx.OverlayStats;
 import io.github.bearisbug.synaxis.synx.SynxFormat;
+import io.github.bearisbug.synaxis.synx.SynxHandlers;
 import io.github.bearisbug.synaxis.synx.SynxManifest;
 import io.github.bearisbug.synaxis.synx.SynxOptions;
 import io.github.bearisbug.synaxis.synx.SynxStreamStats;
+import io.github.bearisbug.synaxis.tag.Tag;
 import io.github.bearisbug.synaxis.testing.Env;
 import io.github.bearisbug.synaxis.world.DimensionType;
 import net.kyori.adventure.key.Key;
@@ -21,6 +25,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -72,6 +77,33 @@ public class ShardWorldTest {
             assertNotNull(map, "synaxis:map is registered");
             assertEquals(0, map.minY());
             assertEquals(64, map.height());
+        } finally {
+            env.process().stop();
+        }
+    }
+
+    /**
+     * §19 「分片与烘焙器登记同一份处理器清单」 (REQ-M3-022): the shard registers the handlers
+     * {@link SynxHandlers#registerAll} finds on its class path, the data markers of {@code :game-rts}, which
+     * are the handlers the baker bakes with ({@code BakerMainTest#theCommandLineBakesASaveWithDataMarkers}).
+     */
+    @Test
+    public void theShardRegistersTheHandlersOfTheBaker() {
+        final Env env = Env.create(config -> config.chunkViewDistance(12));
+        try {
+            ShardWorld.prepare(env.process(), release, SYNX, OVERLAY);
+            final Set<Key> listed = SynxHandlers.registerAll(new BlockManager());
+            assertEquals(Set.of(Key.key("synaxis:door"), Key.key("synaxis:loot")), listed);
+            for (Key key : listed) {
+                final BlockHandler handler = env.process().block().getHandler(key.asString());
+                assertNotNull(handler, key.asString() + " is registered");
+                assertEquals(key, handler.getKey());
+            }
+            assertEquals("io.github.bearisbug.synaxis.game.rts.marker.DoorMarker",
+                    env.process().block().getHandler("synaxis:door").getClass().getName());
+            final BlockHandler loot = env.process().block().getHandler("synaxis:loot");
+            assertEquals("io.github.bearisbug.synaxis.game.rts.marker.LootMarker", loot.getClass().getName());
+            assertEquals(List.of("table"), loot.getBlockEntityTags().stream().map(Tag::key).toList());
         } finally {
             env.process().stop();
         }

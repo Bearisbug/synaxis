@@ -1,0 +1,133 @@
+RUN-043 记录（2026-09-27）
+
+被测版本：分支 prod/m3c-sync 的 298beba8f1，即 origin/main 773ef6f86e（含 RUN-042 的两个修复 4ecd8fbb30、86a8fda7b4）合入本分支 e46e12d790 的合并提交。
+  本分支在 main 362f8f50a4 之上有三个提交：9a6edb4f06（DESIGN-PROD v0.9.24 与 TEST.md，M3-C 合入后的同步，只改文档）、121c181b7a（DESIGN-PROD v0.9.25，只改文档）、
+  e46e12d790（SocketWriteStateTransitionIntegrationTest 改为 @Isolated 并在 flush 前清池，ViewDistanceSocketTest 删 @ResourceLock，只改测试）。本轮之后的提交只改文档与证据。
+环境：Apple M4 Pro 12 核、24 GiB，macOS，JDK 25.0.4.1（Homebrew openjdk@25），Gradle 9.7.1；每条 Gradle 命令都带 --max-workers=4 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts，
+  同一时刻只跑一条。数据库变量 SYNAXIS_TEST_PG_URL=jdbc:postgresql://127.0.0.1:5440/postgres（容器 synaxis-pg）、SYNAXIS_TEST_PG_USER=postgres、
+  SYNAXIS_TEST_PG_PASSWORD 取自 docker inspect synaxis-pg（未回显）、SYNAXIS_TEST_REDIS_URL=redis://127.0.0.1:6440（容器 synaxis-valkey）。
+  「严格 grid」= -Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true -Dsynaxis.thread-provider=grid。
+  各次 Gradle 起止记录的 1 分钟负载 2.74～10.97，swap free 931～1,483 MB（起跑时 1,483 MB）。
+范围：本分支新增的 TC-PROD-513；本分支改了行号、条数或写法的用例步骤（v0.9.24 同步、v0.9.25 包缓冲池，以及本轮合并后查出的 ViewDistanceSocketTest 行号前移）；全量回归两道门禁。
+
+一、合并 origin/main
+  git fetch 后 origin/main 由 362f8f50a4 前进到 773ef6f86e（5 个提交：4ecd8fbb30、86a8fda7b4、0fed964fb7、8cfb391395、773ef6f86e）。
+  合并只在 docs/TEST.md §1 变更记录表冲突（两边同日各加行），两边都留，本分支两行在上。合并提交 298beba8f1。
+  合并带进的非文档文件：BinaryTagTypeImpl.java、NetworkBuffer.java、ChunkData.java、ChunkPacketDeterminismTest.java、BinaryTagTypeImplTest.java、
+  testing 的 TestConnectionImpl.java 与 TrackIncomingIntegrationTest.java。
+
+二、门禁（每道之前删掉各模块 build/test-results/test）
+  门禁 1：./gradlew check --rerun-tasks（带数据库变量）15:59:29～16:04:01，BUILD SUCCESSFUL in 4m 32s，95 actionable tasks: 95 executed
+    root classes=425 tests=3141 skipped=15 failures=0 errors=0
+    architecture-tests classes=7 tests=20 skipped=0 failures=0 errors=0
+    baker classes=4 tests=53 skipped=0 failures=0 errors=0
+    game-rts classes=13 tests=87 skipped=0 failures=0 errors=0
+    loadtest classes=3 tests=10 skipped=0 failures=0 errors=0
+    plugin-api classes=3 tests=15 skipped=0 failures=0 errors=0
+    protocol classes=4 tests=78 skipped=0 failures=0 errors=0
+    server-app classes=80 tests=411 skipped=0 failures=0 errors=0
+    synx classes=14 tests=115 skipped=0 failures=0 errors=0
+    testing classes=8 tests=11 skipped=0 failures=0 errors=0
+    TOTAL tests=3941 skipped=15 failures=0 errors=0（与 RUN-042 三道门禁的 3,941 相同；15 个跳过都在根模块，合入前就有）
+    数据库用例类（server-app 里用 TestDatabase 的 19 个类）全部 skipped="0"：CommandRolesIntegrationTest 1、CrossShardHandoverIntegrationTest 6、
+      DatabaseHangIntegrationTest 2、MainStoreIntegrationTest 6、ManagementBansIntegrationTest 2、MigrationsDbTest 5、ModerationIntegrationTest 12、
+      PermissionsIntegrationTest 8、PlayerStoreIntegrationTest 23、RoleEscalationIntegrationTest 1、ShardSessionDbTest 4、ShutdownLoginIntegrationTest 5、
+      ShutdownSaveBeforeSpawnIntegrationTest 3、ShutdownSaveIntegrationTest 4、ShutdownSaveOutsideTheWorldIntegrationTest 3、ShutdownSaveRaceIntegrationTest 2、
+      StoreHousekeepingDbTest 3、StoreMetricsIntegrationTest 1、TransferTicketsIntegrationTest 7
+    architecture-tests 的 <system-out>：
+      config key gate: 113 keys read, 113 in ConfigFile.KEYS, 20 meter names left out
+      translation key gate: 56 keys checked against [en_us.json, zh_cn.json], 14 identifiers left out
+    用例读的类（同一次门禁的 XML，都 0 失败 0 跳过）：ThreadDispatcherTest 17；ShardMainTest 10；ConfigKeyGateTest 1；TranslationKeyGateTest 2；
+      OutboundBacklogIntegrationTest 2；SheddableBacklogIntegrationTest 2；ViewDistanceSocketTest 1；SocketWriteStateTransitionIntegrationTest 1；
+      PlayerMaxViewDistanceIntegrationTest 8；EntityDormancyIntegrationTest 9；EntityDormancyConcurrencyTest 1；
+      TC-PROD-486 第 1 步的七类 3/4/2/23/6/7/2（ShutdownSaveBeforeSpawn、ShutdownSave、ShutdownSaveRace、PlayerStore、CrossShardHandover、TransferTickets、ConfigFileLaunchTest）；
+      TC-PROD-505 第 1 步的六类 3/3/13/12/8/2（StopRace、ShutdownSaveOutsideTheWorld、Management、Moderation、ShutdownSequence、BindKeysLaunchTest）；
+      BooleanKeysTest 3、BooleanKeysLaunchTest 2
+  门禁 2：./gradlew test --rerun-tasks 加严格 grid（带数据库变量）16:05:07～16:09:27，BUILD SUCCESSFUL in 4m 20s，66 actionable tasks: 66 executed
+    各模块类数与条数同门禁 1：TOTAL tests=3941 skipped=15 failures=0 errors=0，server-app 411 个 0 跳过，19 个数据库用例类全部 skipped="0"
+    testing 模块 TEST-io.github.bearisbug.synaxis.testing.test.EnvDispatcherThreadsIntegrationTest.xml：tests="2" failures="0"，<system-out>：
+      env dispatcher threads: 4
+      env thread provider: grid
+    SocketWriteStateTransitionIntegrationTest tests="1" failures="0"（§7 已结案的偶发红没有出现）
+  ABI 门：本轮不跑。plugin-api 与 protocol 自 RUN-040 跑过 ABI 门的 39cbadade3（对 v0.3.0 两个任务都执行、0 违例）以来没有改动：
+    git diff --stat 39cbadade3 298beba8f1 -- plugin-api protocol 输出为空。
+
+三、执行人在 298beba8f1 上跑的用例步骤（改文件的都用 sed 或编辑器改一处、跑、看红、git checkout -- 还原；每步之前删 build/test-results/test）
+  TC-PROD-513（新增，全部 5 步；严格 grid，--rerun）
+    第 1 步 单跑本类：BUILD SUCCESSFUL，tests="1" 0 失败（timestamp 08:10:56Z，time 0.861 s）
+    第 3 步 junit-platform.properties 改为 parallel.enabled=false、加 junit.jupiter.testclass.order.default=org.junit.jupiter.api.ClassOrderer$ClassName，
+      删掉本类的 PacketVanilla.PACKET_POOL.clear(); 一行，跑本类与三个留大缓冲的类：
+      BUILD FAILED，6 tests completed, 1 failed：SocketWriteStateTransitionIntegrationTest.java:67
+      "the state must not move while the packet is still queued ==> expected: <CONFIGURATION> but was: <PLAY>"；
+      四类 timestamp 依次 08:11:21.882Z（OnlineDuplicateLoginSocketTest）、25.438Z（PacketCompressionIntegrationTest）、25.484Z（PacketOutEventRetryIntegrationTest）、
+      25.608Z（本类，最后）。1 次红 1 次
+    第 2 步（第 3 步还原测试文件后，属性文件仍按第 2 步改）：BUILD SUCCESSFUL，6 条 0 失败（2 + 2 + 1 + 1）；本类 timestamp 08:11:45.828Z，晚于另三类（42.287Z、45.670Z、45.703Z）
+    第 5 步 git checkout -- 属性文件，删掉本类的 @Isolated 与它的 import，并行跑 io.github.bearisbug.synaxis.network.*：BUILD SUCCESSFUL，66 个类 866 条 0 失败；
+      重叠检查（仓库根没有 .venv，用主仓库 /Users/bug/Documents/Projects/Minecraft/synaxis/.venv/bin/python 跑用例里那条命令）列出 16 个类：
+      ['ConnectionGateSocketTest', 'ConnectionManagerIntegrationTest', 'DisconnectReasonsIntegrationTest', 'DuplicateUuidLoginIntegrationTest', 'JoinsPerTickTest',
+       'OnlineDuplicateLoginSocketTest', 'OnlineLoginSocketTest', 'PacketOutEventRetryIntegrationTest', 'PacketWriteReadRegistriesTest',
+       'PrematureFinishConfigurationIntegrationTest', 'ProxyProtocolTrustTest', 'ServerListPingSocketTest', 'SessionHandoverIntegrationTest',
+       'SlowReaderIntegrationTest', 'SocketReadIntegrationTest', 'UntrustedBinaryTagTest']
+    第 4 步 还原后同一命令：BUILD SUCCESSFUL，66 个类 866 条 0 失败；重叠检查 []
+      用例原写 865 条：合并带进的 BinaryTagTypeImplTest#sortedNbtWritesEveryCompoundInKeyOrder 在 network 包里多 1 条，本轮把第 4 步改为 866
+    实施人在 e46e12d790 上另跑过：修前 main 362f8f50a4 按第 2 步 3 次红 3 次（:65）；修后第 2 步连续 20 次绿；第 3 步 2 次红 2 次（:67）；第 5 步重叠 16、14 个类；
+      network 包并行连续 30 次绿（每次 865 条）；缓冲注入 16,388 B 绿、16,389 B 红
+  TC-PROD-410 第 2 步（Player#UNSAFE_init 里 JoinGamePacket 的视距参数 serverViewDistance 改为 process().config().chunkViewDistance()，跑 6E 四类）：
+    BUILD FAILED，19 tests completed, 3 failed：PlayerMaxViewDistanceIntegrationTest.java:45 "JoinGame must carry the view distance of the instance ==> expected: <12> but was: <8>"、
+    :60 "JoinGame must carry the cap of the player ==> expected: <6> but was: <8>"、ViewDistanceSocketTest.java:56 "JoinGame carries the view distance of the instance ==> expected: <12> but was: <8>"
+  TC-PROD-411 第 2 步（updateViewDistance 的 newEffective 改用 newInstanceViewDistance）：19 tests completed, 3 failed：PlayerMaxViewDistanceIntegrationTest.java:85
+    "every chunk out of the capped ring is unloaded ==> expected: <504> but was: <0>"、:111 "the client view distance 8 was capped to 6 once ==> expected: <136> but was: <0>"、
+    ViewDistanceSocketTest.java:72 "the chunks out of the capped ring are unloaded after the client is told ==> expected: <504> but was: <0>"
+  TC-PROD-411 第 3 步（tellViewDistance 删掉 sendPacket(new UpdateViewDistancePacket(viewDistance));）：19 tests completed, 6 failed：
+    PlayerMaxViewDistanceIntegrationTest.java:83、:110、:126、:140、:165 都是 "expected: <[UpdateViewDistancePacket[viewDistance=…]]> but was: <[]>"（视距值 10、4、6、4、6 各一条），
+    ViewDistanceSocketTest.java:64 java.lang.AssertionError "no UpdateViewDistancePacket within 10 seconds"
+  TC-PROD-413 第 2 步（updateViewDistance 开头的 tellViewDistance(newServerViewDistance); 挪到方法末尾，previousEffective == newEffective 提前返回之前也调一次）：
+    19 tests completed, 1 failed：只红 ViewDistanceSocketTest.java:72 "the chunks out of the capped ring are unloaded after the client is told ==> expected: <504> but was: <0>"；
+    PlayerMaxViewDistanceIntegrationTest 8、EntityDormancyIntegrationTest 9、EntityDormancyConcurrencyTest 1 都绿
+    这四处 ViewDistanceSocketTest 的红行，用例原写 :61、:77、:69、:77；e46e12d790 删了该类的一行 import、一行 @ResourceLock 与三行 Javadoc，断言整体前移 5 行
+    （362f8f50a4 的第 61、69、77 行与现在的第 56、64、72 行是同一句），消息不变。本轮把四处改为 :56、:72、:64、:72
+  TC-PROD-294 第 6 步（PlayerSocketConnection#backlogSize 的 case BufferedPacket buffered -> buffered.length(); 改为 buffered.sheddable() ? buffered.length() : UNFRAMED_PACKET_BYTES，跑 SheddableBacklogIntegrationTest）：
+    BUILD FAILED，2 tests completed, 1 failed：SheddableBacklogIntegrationTest.java:111（经 :46）"55,280 B queued, under the limit ==> expected: <55280> but was: <25840>"；
+    chunkPacketsBuiltSheddableAreShedWithTheMovement 绿
+  复绿：以上全部还原后 git status --short 为空，同一次运行跑 6E 四类与 OutboundBacklogIntegrationTest、SheddableBacklogIntegrationTest：BUILD SUCCESSFUL，
+    PlayerMaxViewDistanceIntegrationTest 8、ViewDistanceSocketTest 1、EntityDormancyIntegrationTest 9、EntityDormancyConcurrencyTest 1、OutboundBacklogIntegrationTest 2、
+    SheddableBacklogIntegrationTest 2，都 0 失败（即 TC-PROD-413 第 1 步、TC-PROD-294 第 1、5 步）
+  TC-PROD-432 第 1 步的 grep：en_us.json:0、zh_cn.json:0；门禁那一半见门禁 1（TranslationKeyGateTest 2 条绿，14 identifiers）
+  条数：TC-PROD-486 第 3 步与 TC-PROD-510 第 2 步 :server-app:test 411 个 0 失败 0 跳过；TC-PROD-505 第 3 步 :server-app:test 411 个、根构建 :test 3,141 个 0 失败 15 跳过
+    （两道门禁都是这个数）。用例原写 3,140：合并带进的 BinaryTagTypeImplTest 多 1 条，本轮改为 3,141
+
+四、实施人在 9a6edb4f06 上跑的反证（v0.9.24 同步，结果转录自实施报告；这些反证改的文件与跑的测试类在 9a6edb4f06 与 298beba8f1 之间都没有改动：
+    两者之间的非文档改动只有第一节列的 7 个文件与 SocketWriteStateTransitionIntegrationTest.java、ViewDistanceSocketTest.java；两道键门禁的输出与实施人记的相同）
+  TC-PROD-030 第 2 步：ThreadDispatcherImpl 的 Math.floorMod 改为 Math.abs %：17 tests completed, 1 failed，minValueThreadIdMapsToAValidThread "Index -2 out of bounds for length 6"；还原 17 绿
+  TC-PROD-333 第 2 步：ShardMain 的 Math.max(1, cores - 2) 改为 Math.max(1, cores)：10 tests completed, 3 failed，ShardMainTest.java:20、:28、:34（6 对 8、1 对 2）；还原 10 绿
+  TC-PROD-441 第 2 步（KEYS 删 synaxis.compression-level）红在 ConfigKeyGateTest.java:74，输出 "113 keys read, 112 in ConfigFile.KEYS"；第 3 步（加 synaxis.gone）:74，"113 keys read, 114 in"；
+    第 4 步（logback 读 synaxis.app.logs）:74，两行同用例；各自还原
+  翻译键门禁各删一行：TC-PROD-105 auth-failed、TC-PROD-162 transfer-rejected、TC-PROD-210 第 2 步 role-no-target（zh）与第 3 步 role-above-sender（en）、TC-PROD-233 banned-until、
+    TC-PROD-250 command-stop-usage、TC-PROD-295 第 4 步 outbound-backlog、TC-PROD-396 command-profile-busy、TC-PROD-431 第 1 步 command-tps（en）：
+    都是 2 tests completed, 1 failed，红在 TranslationKeyGateTest.java:90，信息同用例；TC-PROD-068 第 2 步 shard-full：2 failed，:90 与夹具那条 :101；各自还原
+  TC-PROD-430 第 3 步（GATE_PROBE 加 en_us 一行）：2 tests completed, 1 failed，:90 "zh_cn.json has no text for synaxis:gate-probe"，57 keys、14 identifiers；还原
+  TC-PROD-432 第 2 步（NOT_TEXT 删 synaxis:handshake）：2 failed，:89 与 :100，"57 keys …, 13 identifiers left out"；第 3 步（加 synaxis:gone）：1 failed，:91，"56 keys …, 15 identifiers left out"；还原
+  TC-PROD-433 第 2 步（RtsPlugin 覆盖 translationKeys 加 rts:victory）：1 failed，:90，两行 rts:victory，57 keys；还原后门禁 56 keys、14 identifiers
+  TC-PROD-294 第 2～4 步重跑：第 2 步 2 failed，OutboundBacklogIntegrationTest.java:52、:74；第 3 步 1 failed，:58 expected 0 but was 49152；第 4 步 1 failed，:53 expected 0 but was 2342912；
+    TC-PROD-295 第 2 步（删 traffic.backlogKicked()）1 failed，:81 expected 1 but was 0；各自还原复绿
+  TC-PROD-417 第 2 步（按改写：processTick 之前加 if (sitsOutTick()) return;，if (isSimulated() && !sitsOutTick()) 改为 if (isSimulated())，6E 四类 --rerun）：
+    19 tests completed, 1 failed，EntityDormancyIntegrationTest.java:145 "expected: <20> but was: <1>"；还原 8 + 1 + 9 + 1 绿
+  TC-PROD-443 第 2 步（删 Main.main(String[], boolean) 里 5 行拒启检查）：2 tests completed, 1 failed，ConfigFileLaunchTest.java:316（经 :147、:132）"the JVM exits"，
+    日志有 "Effective config file: none …" 与 "listening on 0.0.0.0:<port>"；还原
+  TC-PROD-469 第 2 步（ServerConfig 布尔键改回 Boolean.parseBoolean）：5 tests completed, 4 failed，BooleanKeysTest.java:71、:104，BooleanKeysLaunchTest.java:34 两次（经 ConfigFileLaunchTest.java:316）；还原
+  TC-PROD-489 第 2 步（ManagementSettings 与 HostMetrics 改用 URI 解析）：2 tests completed, 2 failed，BindKeysLaunchTest.java:29（经 ConfigFileLaunchTest.java:316），
+    "Effective management: enabled=false bind=0.0.0.0:<port>"；还原后 ConfigFileLaunchTest、BooleanKeys*、BindKeysLaunchTest 绿；pgrep 无残留 Main / ShardMain 进程
+  这些用例改写后的绿跑部分（第 1 步的测试数与门禁输出）由本轮门禁 1、2 覆盖，见第二节
+
+五、文档 lint（本轮文档改完后）
+  bash ~/.claude/skills/design-doc/check.sh docs/DESIGN-PROD.md：lint 无警告
+  bash ~/.claude/skills/test-doc/check.sh docs/TEST.md：两条已知警告（RUN-031 两条明细行缺证据引用；REQ-PROD-031 无 TC，6A 未做）
+
+六、结果：通过 27/27
+  TC-PROD-513；TC-PROD-410、TC-PROD-411、TC-PROD-413；TC-PROD-294、TC-PROD-295；TC-PROD-030；TC-PROD-333；TC-PROD-441、TC-PROD-443、TC-PROD-469；
+  TC-PROD-430、TC-PROD-431、TC-PROD-432、TC-PROD-433；TC-PROD-417；TC-PROD-489；TC-PROD-068、TC-PROD-105、TC-PROD-162、TC-PROD-210、TC-PROD-233、TC-PROD-250、TC-PROD-396；
+  TC-PROD-486、TC-PROD-505、TC-PROD-510（各用例跑了哪几步见第三、四节）
+
+七、清理
+  反证改过的 Player.java、PlayerSocketConnection.java、SocketWriteStateTransitionIntegrationTest.java、junit-platform.properties 都已 git checkout -- 还原，git status --short 只剩本轮的文档改动；
+  本轮没有起真服务端进程；/tmp/run043（Gradle 包装脚本与原始日志）登记后删除。

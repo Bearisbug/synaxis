@@ -3,6 +3,7 @@ package io.github.bearisbug.synaxis.loadtest;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.sun.management.OperatingSystemMXBean;
+import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
 import java.lang.management.ManagementFactory;
@@ -29,22 +30,25 @@ final class RunCommand {
     }
 
     static int run(Args args) throws IOException, InterruptedException {
+        final Profile movement = Profile.parse(args.string("profile", "walk"));
+        final List<Profile.Frame> frames = args.gates("gates");
+        final @Nullable String dwell = args.optional("dwell");
+        if (movement == Profile.GATE && frames.isEmpty())
+            throw new IllegalArgumentException("--profile gate needs --gates");
+        if (movement != Profile.GATE && (!frames.isEmpty() || dwell != null))
+            throw new IllegalArgumentException("--gates and --dwell are only read by --profile gate");
         final Bot.Settings settings = new Bot.Settings(
                 args.string("host", "127.0.0.1"),
                 args.integer("port", 25565),
-                Profile.parse(args.string("profile", "walk")),
+                movement,
                 args.onOff("encryption", false),
                 (float) args.number("chunks-per-tick", 9.0),
                 args.onOff("hello", false),
                 args.seconds("warmup", 60),
                 (int) (args.seconds("timeout", 30) * 1000),
-                args.gates("gates"),
-                args.seconds("dwell", 6),
+                frames,
+                dwell == null ? 6 : Args.seconds(dwell),
                 Bot.NO_TRANSFER_NANOS);
-        if (settings.profile() == Profile.GATE && settings.gates().isEmpty())
-            throw new IllegalArgumentException("--profile gate needs --gates");
-        if (settings.profile() != Profile.GATE && !settings.gates().isEmpty())
-            throw new IllegalArgumentException("--gates is only read by --profile gate");
         final int count = args.integer("bots", 10);
         final int offset = args.integer("bot-offset", 0);
         final double duration = args.seconds("duration", 600);
@@ -183,6 +187,7 @@ final class RunCommand {
         json.add("visible_entities", stats.visibleEntities.toJson());
         json.addProperty("chunk_batches", stats.chunkBatches.sum());
         json.add("transfers", stats.transfers());
+        json.add("connections", stats.connections());
 
         final JsonObject outbound = new JsonObject();
         outbound.addProperty("packets", stats.outboundPackets.sum());

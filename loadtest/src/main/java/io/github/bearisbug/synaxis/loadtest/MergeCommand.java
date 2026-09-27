@@ -17,7 +17,7 @@ import java.util.TreeMap;
  * the sampler into one {@code summary.json} ({@code docs/DESIGN-PROD.md} {@code API-PROD-025}),
  * with a verdict against the criteria of the run ({@code design-ops-scale.md} ⑤ 5.4). The
  * transfers of gate bots are judged too ({@code docs/DESIGN-M3.md} §15, the transfer row): a P95
- * under 5,000 ms over at least {@code --min-transfers} tries.
+ * under 5,000 ms over at least {@code --min-transfers} completed trips, the samples of that P95.
  */
 final class MergeCommand {
 
@@ -60,7 +60,7 @@ final class MergeCommand {
      * @param maxOver50Millis how many ticks may take more than 50 ms
      * @param rssMib          the server's resident set must stay under this
      * @param minChunks       every bot must receive more chunk packets than this
-     * @param minTransfers    the gate bots must have made at least this many tries, completed or failed
+     * @param minTransfers    the gate bots must have completed at least this many trips
      */
     record Criteria(double tickP99Millis, int maxOver50Millis, double rssMib, int minChunks, int minTransfers) {
     }
@@ -203,13 +203,13 @@ final class MergeCommand {
         verdict.add("chunks_per_bot_min", check(chunksOk, fewestChunks + " > " + criteria.minChunks()));
         pass &= chunksOk;
         if (transferCount > 0 || criteria.minTransfers() > 0) {
-            final boolean countOk = transferCount >= criteria.minTransfers();
-            verdict.add("transfers_count", check(countOk, transferCount + " >= " + criteria.minTransfers()));
+            final boolean completedOk = transferCompleted >= criteria.minTransfers();
+            verdict.add("transfers_completed", check(completedOk, transferCompleted + " >= " + criteria.minTransfers()));
             final double p95 = transferMillis.percentile(0.95);
             final boolean p95Ok = transferMillis.count() > 0 && p95 < TRANSFER_P95_MILLIS;
             verdict.add("transfer_ms_p95", check(p95Ok, transferMillis.count() == 0 ? "no transfer completed"
                     : Histogram.round(p95) + " < " + TRANSFER_P95_MILLIS));
-            pass &= countOk && p95Ok;
+            pass &= completedOk && p95Ok;
         }
         if (server != null) {
             for (String key : List.of("machine", "pid", "started_at", "elapsed_s", "ticks", "gc", "heap",

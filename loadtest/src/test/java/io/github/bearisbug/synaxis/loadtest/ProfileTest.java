@@ -1,7 +1,10 @@
 package io.github.bearisbug.synaxis.loadtest;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
+import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
@@ -64,6 +67,24 @@ public class ProfileTest {
         assertThrows(IllegalArgumentException.class, () -> gates("2032,0,1016,2047,255"), "five numbers");
         assertThrows(IllegalArgumentException.class, () -> gates("2032,0,1016,2047,255,x"), "not a number");
         assertThrows(IllegalArgumentException.class, () -> gates("2047,0,1016,2032,255,1031"), "min above max");
+    }
+
+    /** {@code --gates} and {@code --dwell} are the gate profile's: a run of another profile refuses both, before any bot starts. */
+    @Test
+    public void theGateOptionsAreOnlyTakenByTheGateProfile(@TempDir Path directory) {
+        final String out = directory.resolve("bots-0.json").toString();
+        final List<String> quick = List.of("--port", "1", "--bots", "0", "--duration", "1s", "--out", out);
+        assertThrows(IllegalArgumentException.class, () -> run(quick, "--profile", "gate"), "gate without frames");
+        assertThrows(IllegalArgumentException.class, () -> run(quick, "--profile", "walk", "--gates", "0,0,0,1,1,1"),
+                "frames for a walk");
+        assertThrows(IllegalArgumentException.class, () -> run(quick, "--profile", "walk", "--dwell", "3s"),
+                "a dwell for a walk");
+    }
+
+    private static void run(List<String> common, String... more) throws Exception {
+        final List<String> arguments = new ArrayList<>(common);
+        arguments.addAll(List.of(more));
+        RunCommand.run(new Args(arguments));
     }
 
     /**

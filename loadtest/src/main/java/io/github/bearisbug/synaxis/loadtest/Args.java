@@ -33,7 +33,8 @@ final class Args {
         return options.getOrDefault(name, fallback);
     }
 
-    private @Nullable String optional(String name) {
+    /** The value of {@code --name}, null when it is not given. */
+    @Nullable String optional(String name) {
         read.add(name);
         return options.get(name);
     }

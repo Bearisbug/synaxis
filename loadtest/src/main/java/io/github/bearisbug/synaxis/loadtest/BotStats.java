@@ -1,12 +1,17 @@
 package io.github.bearisbug.synaxis.loadtest;
 
+import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import io.github.bearisbug.synaxis.network.ConnectionState;
 
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.Queue;
 import java.util.TreeMap;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicLongArray;
 import java.util.concurrent.atomic.DoubleAdder;
 import java.util.concurrent.atomic.LongAdder;
@@ -57,6 +62,13 @@ final class BotStats {
      */
     final Histogram transferMillis = new Histogram(0.1);
     final Map<String, LongAdder> transferFailures = new ConcurrentHashMap<>();
+    /**
+     * The {@code connections} of the run file, one entry per connection a bot opened: {@code bot},
+     * {@code connection} (1 for its first), {@code intent} ({@code login} or {@code transfer}),
+     * {@code address}, {@code first_position} (where the first teleport put it, absent when it was
+     * never spawned) and {@code stored_cookies} (key to the Base64 of the value, as stored during play).
+     */
+    final Queue<JsonObject> connectionLog = new ConcurrentLinkedQueue<>();
 
     void received(ConnectionState state, int id, int wireBytes) {
         inboundPackets.increment();
@@ -91,6 +103,16 @@ final class BotStats {
         json.addProperty("completed", transferMillis.count());
         json.add("failed_by_reason", counts(transferFailures));
         json.add("transfer_ms", transferMillis.toJson());
+        return json;
+    }
+
+    /** The entries of {@link #connectionLog}, by bot and then in the order it opened them. */
+    JsonArray connections() {
+        final List<JsonObject> sorted = new ArrayList<>(connectionLog);
+        sorted.sort(Comparator.comparingInt((JsonObject entry) -> entry.get("bot").getAsInt())
+                .thenComparingInt(entry -> entry.get("connection").getAsInt()));
+        final JsonArray json = new JsonArray();
+        sorted.forEach(json::add);
         return json;
     }
 

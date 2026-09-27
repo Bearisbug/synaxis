@@ -1,5 +1,7 @@
 package io.github.bearisbug.synaxis.loadtest;
 
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
 import io.github.bearisbug.synaxis.coordinate.Vec;
 import io.github.bearisbug.synaxis.crypto.KeyUtils;
 import io.github.bearisbug.synaxis.crypto.LoginCrypt;
@@ -73,6 +75,7 @@ import java.security.GeneralSecurityException;
 import java.security.PublicKey;
 import java.security.SecureRandom;
 import java.util.Arrays;
+import java.util.Base64;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -99,7 +102,11 @@ import java.util.zip.Inflater;
  * the cookies stored during play are kept, the connection is dropped, a new one to the given
  * address says intent transfer and answers the new server's cookie requests with them, and plays on
  * as the same bot. A gate bot times each try from its first position in a frame to the 9th chunk
- * on the new connection.
+ * on the new connection. A try that fails on the way, the next server refusing the bot or the
+ * connection breaking before that chunk, counts under its reason, and the bot logs in again at
+ * {@code --host} and {@code --port} without the cookies, as a player reconnects. Every connection
+ * leaves an entry in the run file: how it was opened, where the server spawned the bot and the
+ * cookies stored on it.
  * <p>
  * One virtual thread reads, one moves. A frame is only inflated as far as its packet id unless the
  * bot has to answer it, so a bot costs little more than the bytes it receives.
@@ -173,6 +180,9 @@ final class Bot {
 
     /** The cookies the servers stored, answered on the next connection as a client does. Reading thread only. */
     private final Map<String, byte[]> cookies = new HashMap<>();
+    /** The run file entry of the current connection and the cookies stored on it; reading thread only. */
+    private @Nullable JsonObject log;
+    private JsonObject logCookies = new JsonObject();
     /** The connections made so far, the first login included. */
     private final AtomicInteger connectionCount = new AtomicInteger();
     /** The chunk packets of the current connection, only touched by the reading thread. */
@@ -204,32 +214,62 @@ final class Bot {
         final long connectStart = System.nanoTime();
         Socket connection;
         try {
-            connection = connect(settings.host(), settings.port());
-            login(settings.host(), settings.port(), ClientHandshakePacket.Intent.LOGIN, connectStart);
-            configure();
+            connection = open(settings.host(), settings.port(), ClientHandshakePacket.Intent.LOGIN, connectStart);
         } catch (IOException | RuntimeException e) {
             BotStats.count(stats.loginFailures, reason(e));
             close();
+            logged();
             return;
         }
         stats.loggedIn.increment();
         playSince = System.nanoTime();
         try {
             while (true) {
-                connection.setSoTimeout(1_000);
-                final TransferPacket transfer = play(endNanos);
-                if (transfer == null) break;
-                // The same bot on the next server: its try, if any, runs on until the 9th chunk there
-                connection = connect(transfer.host(), transfer.port());
-                login(transfer.host(), transfer.port(), ClientHandshakePacket.Intent.TRANSFER, 0);
-                configure();
+                try {
+                    connection.setSoTimeout(1_000);
+                    final TransferPacket transfer = play(endNanos);
+                    if (transfer == null) break;
+                    // The same bot on the next server: its try, if any, runs on until the 9th chunk there
+                    connection = open(transfer.host(), transfer.port(), ClientHandshakePacket.Intent.TRANSFER, 0);
+                } catch (IOException | RuntimeException e) {
+                    if (!tryFailed(e)) throw e;
+                    // As a player reconnects after a failed transfer: at the start, with no cookie kept
+                    cookies.clear();
+                    connection = open(settings.host(), settings.port(), ClientHandshakePacket.Intent.LOGIN, 0);
+                }
             }
         } catch (IOException | RuntimeException e) {
             lose(e);
         } finally {
             close();
+            logged();
             account();
         }
+    }
+
+    /**
+     * Connects, logs in and configures: the bot plays on the returned connection next.
+     *
+     * @param connectStart see {@link #login}
+     */
+    private Socket open(String host, int port, ClientHandshakePacket.Intent intent, long connectStart)
+            throws IOException {
+        final Socket next = connect(host, port, intent);
+        login(host, port, intent, connectStart);
+        configure();
+        return next;
+    }
+
+    /**
+     * Ends the running try of a gate bot as failed, under the reason of {@code e}, unless the run
+     * closed the bot or its time was up.
+     *
+     * @return whether a try failed: the bot was on its way to another server and starts over
+     */
+    private boolean tryFailed(Exception e) {
+        if (closed || System.nanoTime() >= endNanos || tryStart.getAndSet(0) == 0) return false;
+        BotStats.count(stats.transferFailures, tryFailure(e));
+        return true;
     }
 
     /**
@@ -262,9 +302,10 @@ final class Bot {
      *
      * @return the new connection
      */
-    private Socket connect(String host, int port) throws IOException {
+    private Socket connect(String host, int port, ClientHandshakePacket.Intent intent) throws IOException {
         final Socket next = new Socket();
         final Socket previous;
+        final int number;
         synchronized (writeLock) {
             if (closed) throw new EOFException("closed");
             previous = socket;
@@ -272,9 +313,17 @@ final class Bot {
             leg = null;
             state = ConnectionState.LOGIN;
             compressionThreshold = -1;
-            connectionCount.incrementAndGet();
+            number = connectionCount.incrementAndGet();
         }
         if (previous != null) closeQuietly(previous);
+        logged();
+        final JsonObject entry = new JsonObject();
+        entry.addProperty("bot", index);
+        entry.addProperty("connection", number);
+        entry.addProperty("intent", intent == ClientHandshakePacket.Intent.TRANSFER ? "transfer" : "login");
+        entry.addProperty("address", host + ":" + port);
+        log = entry;
+        logCookies = new JsonObject();
         connectionChunks = 0;
         batchStarted = 0;
         midFrame = false;
@@ -424,7 +473,10 @@ final class Bot {
             } else if (id == COOKIE_STORE) {
                 final ServerPacket packet =
                         Protocol.decode(ConnectionState.PLAY, id, frame.body(), frame.payloadOffset());
-                if (packet instanceof CookieStorePacket cookie) cookies.put(cookie.key(), cookie.value());
+                if (packet instanceof CookieStorePacket cookie) {
+                    cookies.put(cookie.key(), cookie.value());
+                    logCookies.addProperty(cookie.key(), Base64.getEncoder().encodeToString(cookie.value()));
+                }
             } else if (ANSWERED.contains(id)) {
                 answer(Protocol.decode(ConnectionState.PLAY, id, frame.body(), frame.payloadOffset()));
             }
@@ -481,6 +533,13 @@ final class Bot {
         final double x = teleport.position().x();
         final double y = teleport.position().y();
         final double z = teleport.position().z();
+        if (log != null) {
+            final JsonArray position = new JsonArray();
+            position.add(x);
+            position.add(y);
+            position.add(z);
+            log.add("first_position", position);
+        }
         leg = new Leg(x, y, z, now, settings.profile() != Profile.GATE ? null
                 : new GateWalk(settings.gates(), x, y, z, now, settings.dwellSeconds(), settings.noTransferNanos()));
         if (!moving) {
@@ -553,30 +612,41 @@ final class Bot {
         }
     }
 
-    /** One tick on a leg: where the profile has the bot now, sent unless the leg's connection is gone. */
+    /**
+     * One tick on a leg: where the profile has the bot now, sent unless the leg's connection is gone
+     * or back in configuration. A gate walk only moves on a tick whose position goes out, so that a
+     * try starts with the first position in a frame the bot sends.
+     */
     private void moveOn(Leg current) throws IOException {
         final long now = System.nanoTime();
-        final double[] at;
-        boolean entered = false;
-        final GateWalk walk = current.walk();
-        if (walk != null) {
-            final GateWalk.Step step = walk.next(now);
-            if (step.noTransfer() && tryStart.getAndSet(0) != 0) BotStats.count(stats.transferFailures, NO_TRANSFER);
-            at = new double[]{step.x(), step.y(), step.z()};
-            entered = step.entered();
-        } else {
-            at = settings.profile().position(index, current.x(), current.y(), current.z(),
-                    (now - current.since()) / 1e9);
-        }
         final boolean onGround = settings.profile().lift == 0;
         synchronized (writeLock) {
             if (leg != current || state != ConnectionState.PLAY) return;
-            // Started before the packet goes out, so that the Transfer it brings finds the try running
-            if (entered) tryStart.compareAndSet(0, System.nanoTime());
+            final double[] at;
+            final GateWalk walk = current.walk();
+            if (walk != null) {
+                final GateWalk.Step step = walk.next(now);
+                if (step.noTransfer() && tryStart.getAndSet(0) != 0) BotStats.count(stats.transferFailures, NO_TRANSFER);
+                // Started before the packet goes out, so that the Transfer it brings finds the try running
+                if (step.entered()) tryStart.compareAndSet(0, System.nanoTime());
+                at = new double[]{step.x(), step.y(), step.z()};
+            } else {
+                at = settings.profile().position(index, current.x(), current.y(), current.z(),
+                        (now - current.since()) / 1e9);
+            }
             send(ConnectionState.PLAY, new ClientPlayerPositionPacket(new Vec(at[0], at[1], at[2]),
                     (byte) (onGround ? ClientPlayerPositionPacket.FLAG_ON_GROUND : 0)));
             send(ConnectionState.PLAY, new ClientTickEndPacket());
         }
+    }
+
+    /** Hands the run file entry of the connection that ended, if any, to {@link BotStats#connectionLog}. */
+    private void logged() {
+        final JsonObject entry = log;
+        if (entry == null) return;
+        entry.add("stored_cookies", logCookies);
+        stats.connectionLog.add(entry);
+        log = null;
     }
 
     private void account() {

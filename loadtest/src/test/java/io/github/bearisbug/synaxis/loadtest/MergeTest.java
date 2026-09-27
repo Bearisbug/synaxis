@@ -40,7 +40,7 @@ public class MergeTest {
         assertTrue(summary.getAsJsonObject("verdict").get("pass").getAsBoolean(), summary.get("verdict").toString());
         // Files of a harness that did not count transfers merge as they did
         assertFalse(summary.has("transfers"));
-        assertFalse(summary.getAsJsonObject("verdict").has("transfers_count"));
+        assertFalse(summary.getAsJsonObject("verdict").has("transfers_completed"));
     }
 
     @Test
@@ -61,7 +61,8 @@ public class MergeTest {
 
     /**
      * {@code docs/DESIGN-M3.md} §26 M3-E track D: the transfers of two bot processes make one
-     * distribution, failures kept by reason, and the verdict asks for enough tries.
+     * distribution, failures kept by reason, and the verdict asks for enough completed trips, the
+     * samples of the P95 ({@code docs/DESIGN-M3.md} §15, the transfer row).
      */
     @Test
     public void theTransfersOfTwoFilesMergeIntoOneDistribution() {
@@ -70,7 +71,7 @@ public class MergeTest {
         final JsonObject second = bots(1, 30, 40, 300);
         transfers(second, Map.of("shard-full", 1L), 4000, 4500);
         final JsonObject summary = MergeCommand.merge(List.of(first, second), server(12.5, 0, 3000),
-                new MergeCommand.Criteria(50, 0, 4096, 9, 7));
+                new MergeCommand.Criteria(50, 0, 4096, 9, 5));
         final JsonObject transfers = summary.getAsJsonObject("transfers");
         assertEquals(7, transfers.get("count").getAsLong(), "five completed and two failed");
         assertEquals(5, transfers.get("completed").getAsLong());
@@ -83,9 +84,10 @@ public class MergeTest {
         assertEquals(4500.0, millis.get("p99_ms").getAsDouble());
         assertEquals(4500.0, millis.get("max_ms").getAsDouble());
         assertTrue(summary.getAsJsonObject("verdict").get("pass").getAsBoolean(), summary.get("verdict").toString());
-        assertFalse(MergeCommand.merge(List.of(first, second), server(12.5, 0, 3000),
-                new MergeCommand.Criteria(50, 0, 4096, 9, 8)).getAsJsonObject("verdict").get("pass").getAsBoolean(),
-                "7 tries are fewer than 8");
+        final JsonObject sixAsked = MergeCommand.merge(List.of(first, second), server(12.5, 0, 3000),
+                new MergeCommand.Criteria(50, 0, 4096, 9, 6)).getAsJsonObject("verdict");
+        assertFalse(sixAsked.get("pass").getAsBoolean(), "5 completed are fewer than 6, the 2 failed tries not counted");
+        assertFalse(sixAsked.getAsJsonObject("transfers_completed").get("pass").getAsBoolean(), sixAsked.toString());
     }
 
     /**
@@ -96,7 +98,7 @@ public class MergeTest {
     public void aTransferP95Of5001MillisFailsTheMergeWithExitCode2(@TempDir Path directory) throws IOException {
         assertEquals(2, mergeExit(directory, 2, 20), "a P95 of 5,001 ms");
         assertEquals(0, mergeExit(directory, 1, 20), "a P95 of 1,000 ms and a maximum of 5,001");
-        assertEquals(2, mergeExit(directory, 1, 21), "20 tries where 21 were asked for");
+        assertEquals(2, mergeExit(directory, 1, 21), "20 completed where 21 were asked for");
     }
 
     private static int mergeExit(Path directory, int slow, int minTransfers) throws IOException {

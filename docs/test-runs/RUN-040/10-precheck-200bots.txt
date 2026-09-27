@@ -1,0 +1,17 @@
+# TC-WORLD-054 precheck, every 5 min, threshold swap free >= 3072 MB and no java/Gradle process
+2026-09-27 11:45:32 swap_free_mb=1074.62 java_or_gradle_processes=0 load={ 6.01 6.29 6.24 }
+2026-09-27 11:50:32 swap_free_mb=1106.62 java_or_gradle_processes=0 load={ 7.25 6.11 6.15 }
+2026-09-27 11:55:32 swap_free_mb=1146.75 java_or_gradle_processes=0 load={ 3.46 4.94 5.66 }
+2026-09-27 12:00:32 swap_free_mb=1170.75 java_or_gradle_processes=0 load={ 3.66 4.57 5.32 }
+# stopped at 2026-09-27 12:01:59 after 4 readings: the round's other work was done; the readings before 11:45 are in the run files (below)
+# swap free read at other points of this round (run files and gate time files):
+2026-09-27 10:42:41 1513.62 MB (gate 1 start)
+2026-09-27 10:46:41 1481.06 MB (gate 2 start)
+2026-09-27 10:50:55 1497.06 MB (gate 3 start)
+2026-09-27 11:14:32 1552.31 MB (bake start)
+2026-09-27 11:15:36 1552.31 MB (map-walk start)
+2026-09-27 11:19:21 1656.31 MB (map-ride start)
+2026-09-27 11:23:21 1712.31 MB (core-walk start)
+2026-09-27 11:25:15  595.69 MB (core-walk end, swap total then 11264 MB)
+2026-09-27 11:28     858.62 MB
+# verdict: never >= 3072 MB, TC-WORLD-054 BLOCKED (not run)

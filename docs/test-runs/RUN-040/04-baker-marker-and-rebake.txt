@@ -1,0 +1,36 @@
+# RUN-040 TC-WORLD-030 and TC-WORLD-033 on m3c/integrate (code = cd47d36c89), 2026-09-27 11:1x; <W> = /Users/bug/Documents/Projects/Minecraft/synaxis-wt/m3c-integrate/baker/src/test/resources/io/github/bearisbug/synaxis/baker/anvil/world, <O> = /tmp/m3cf/w30/O
+
+## TC-WORLD-030 step 1: grep '^## ' docs/MAP-SOURCE.md
+## 1. 存档要求
+## 2. 处理顺序
+## 3. 交付范围
+## 4. 制作工具
+## 5. 服务端数据标记
+## 6. 自检
+## 7. 实体
+
+## step 2: ./gradlew :baker:run --args="bake --map-id fixture --source anvil:<W> --bounds 0,0,0,0 --out <O> --logs <O>-logs --threads 8"
+baker: published /tmp/m3cf/w30/O/fixture/fixture-c235d78cca7f-p776, 20047 bytes
+BUILD SUCCESSFUL in 4s
+map_build_finished: outcome=published source_light_diff=0 verify_diffs=0 (events-*.jsonl); <O>/fixture/ held fixture-c235d78cca7f-p776 with manifest.json and regions/r.0.0.synx
+
+## step 3: verify --build <O>/fixture/fixture-c235d78cca7f-p776
+baker: /tmp/m3cf/w30/O/fixture/fixture-c235d78cca7f-p776 verified
+BUILD SUCCESSFUL in 4s
+
+## step 4: LootMarker line deleted from the services file of :game-rts, bake into <O2>, then git checkout (git status -- game-rts empty afterwards)
+baker: chunk 0, 0: data marker at 4, -59, 1 names handler namespace 'synaxis:loot', which is not registered
+> Process 'command '/opt/homebrew/Cellar/openjdk@25/25.0.4.1/libexec/openjdk.jdk/Contents/Home/bin/java'' finished with non-zero exit value 2
+BUILD FAILED in 4s
+<O2> and <O2>-logs were not created
+
+## TC-WORLD-033: the same bake as TC-WORLD-030 step 2 into the same <O>, each time a new Gradle and baker process
+step 1 (= TC-WORLD-030 step 2): published fixture-c235d78cca7f-p776, 20047 bytes
+step 2 (--threads 8):
+baker: published /tmp/m3cf/w30/O/fixture/fixture-3c3bfdec6aa2-p776, 20049 bytes
+BUILD SUCCESSFUL in 2s
+step 3 (--threads 1):
+baker: published /tmp/m3cf/w30/O/fixture/fixture-b6566bc4f5c0-p776, 20049 bytes
+BUILD SUCCESSFUL in 4s
+ls <O>/fixture: fixture-3c3bfdec6aa2-p776 fixture-b6566bc4f5c0-p776 fixture-c235d78cca7f-p776 
+expected exit value 5 and one directory; got exit 0 twice and three directories: FAILED (docs/DESIGN-M3.md §28.2, NBT key order). Track D had baked fixture-5d1eb2eae028-p776 (20049 B) and fixture-0de6eec33ba3-p776 (20050 B) from the same input.

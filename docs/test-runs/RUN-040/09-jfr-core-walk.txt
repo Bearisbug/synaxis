@@ -1,0 +1,40 @@
+# RUN-040 core-walk: 20 bots walk (TC-WORLD-053; for map-walk also TC-WORLD-052 steps 1-3)
+# core-walk start 2026-09-27 11:23:21 mode=core profile=walk bots=20 duration=90s warmup=30s load { 5.00 5.56 6.29 } vm.swapusage: total = 12288.00M  used = 10575.69M  free = 1712.31M  (encrypted)
+# server pid 74195
+# run exit 0
+# sample exit 0
+# merge exit 0
+# core-walk end 2026-09-27 11:25:15 load { 4.96 5.30 6.09 } vm.swapusage: total = 11264.00M  used = 10668.31M  free = 595.69M  (encrypted)
+# JAVA_OPTS=-Xms1G -Xmx1G SERVER_APP_OPTS=-Dsynaxis.app.port=25773 -Dsynaxis.app.auth=offline -Dsynaxis.app.shard-id=m3c-core-walk -Dsynaxis.app.metrics.bind=127.0.0.1:19773 -Dsynaxis.connection-gate.trusted-networks=127.0.0.0/8 -Dsynaxis.app.log=stdout -Dsynaxis.app.core-mode=on
+# bin/server-shard and loadtest of :server-app:installDist / :loadtest:installDist at cd47d36c89; server and bots on this machine, over loopback
+# JFR: jcmd <pid> JFR.start name=zero settings=profile 'method-timing=io.github.bearisbug.synaxis.network.packet.server.play.ChunkDataPacket::<init>;io.github.bearisbug.synaxis.instance.DynamicChunk::createChunkPacket;io.github.bearisbug.synaxis.synx.SynxChunk::getFullDataPacket' 'jdk.ObjectAllocationSample#throttle=100000/s' 'jdk.ExecutionSample#period=2ms' after the listening line, before the first bot; JFR.dump + JFR.stop after the bots left
+
+## shard log
+11:23:22.740 [main] INFO  i.github.bearisbug.synaxis.app.Main - Effective ServerConfig[shutdownOnSignal=true, maxTickCatchUp=5, chunkViewDistance=12, entityViewDistance=8, entitySynchronizationTicks=20, dispatcherThreads=10, threadProvider=GRID, threadGridExponent=4, sendLightAfterBlockPlacementDelay=100, loginTimeout=30000, log
+11:23:22.840 [main] INFO  i.g.b.s.app.metrics.HostMetrics - Metrics endpoint listening on http://127.0.0.1:19773/metrics
+11:23:22.860 [main] INFO  i.g.bearisbug.synaxis.app.CoreMode - Core mode (synaxis.app.core-mode=on): no plugin is serving gameplay, so the host serves its own flat world. spawn=Pos[x=0.5, y=40.0, z=0.5, yaw=0.0, pitch=0.0] channel=synaxis:main (echoes every payload back)
+11:23:22.863 [main] INFO  i.github.bearisbug.synaxis.app.Main - synaxis server-app listening on 0.0.0.0:25773
+11:25:14.727 [Thread-2] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+WARN/ERROR lines: 0
+overlay/ in the work dir: none
+
+## ledger (logs/*.jsonl)
+no shard_started, no chunk_stream_stats
+
+## summary.json
+{"bots":{"pass":true,"detail":"20 of 20 logged in, 0 lost"},"chunks_per_bot_min":{"pass":true,"detail":"1437 > 9"},"tick_p99_ms":{"pass":true,"detail":"5.327 < 50.0"},"ticks_over_50ms":{"pass":true,"detail":"0 <= 0"},"rss_mib_max":{"pass":true,"detail":"911.5 < 4096.0"},"pass":true}
+{"count":2206,"mean_ms":0.986,"p50_ms":0.54,"p99_ms":5.327,"max_ms":49.242,"over_50ms":0}
+
+{"walk":{"packets":29532,"wire_bytes":2471224,"connection_seconds":1768.82,"kb_per_s_per_bot":1.364,"packets_per_s_per_bot":16.696,"steady_packets":10886,"steady_wire_bytes":912081,"steady_connection_seconds":1168.82,"steady_kb_per_s_per_bot":0.762,"steady_packets_per_s_per_bot":9.314,"per_bot_packets":{"count":20,"mean":1476.6,"p50":1471.0,"p99":1526.0,"max":1526.0,"min":1437.0}}}
+{"chunk_data_packets_received":29532}
+walk: steady_wire_bytes / steady_connection_seconds / 1000 = 912081 / 1168.82 / 1000 = 0.78 KB/s per bot; steady_wire_bytes / steady_packets = 83.8 B per chunk
+
+## JFR (jfr print; counts over the whole recording)
+MethodTiming last invocations: io.github.bearisbug.synaxis.instance.DynamicChunk.createChunkPacket() = 3278
+MethodTiming last invocations: io.github.bearisbug.synaxis.network.packet.server.play.ChunkDataPacket.<init>(int, int, ChunkData, LightData) = 3278
+ExecutionSample events: 2297
+ExecutionSample events with createChunkPacket in the stack: 60
+ExecutionSample events with SynxChunk.getFullDataPacket in the stack: 0
+ObjectAllocationSample events: 301
+ObjectAllocationSample events with objectClass ChunkDataPacket: 0
+ObjectAllocationSample events with createChunkPacket in the stack: 31

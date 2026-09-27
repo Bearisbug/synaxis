@@ -1,0 +1,57 @@
+# RUN-040 real processes: TC-WORLD-011 (steps 1-6) and TC-WORLD-052 step 4-5, bin/server-app and bin/server-shard of :server-app:installDist at cd47d36c89, port 25655
+# each start: empty work dir, fifo on stdin, JAVA_OPTS=-Xms1G -Xmx1G, SERVER_APP_OPTS=-Dsynaxis.app.port=25655 -Dsynaxis.app.auth=offline -Dsynaxis.app.core-mode=on -Dsynaxis.app.metrics.bind=127.0.0.1:0 <extra>; read the Effective ServerConfig line; stopped by pid
+
+## s1
+TC-WORLD-011 step 1 / TC-WORLD-052 step 4: server-shard, no extra
+chunkViewDistance=12 entityViewDistance=8 dispatcherThreads=10 threadProvider=GRID acceptTransfers=false maxChunksPerTick=4.0 maxVisibleEntitiesPerPlayer=100 
+INFO  i.github.bearisbug.synaxis.app.Main - synaxis server-app listening on 0.0.0.0:25655
+INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+Overlay final flush lines: 0; overlay/ in the work dir: no
+
+## s2
+step 2: server-shard -Dsynaxis.chunk-view-distance=16 -Dsynaxis.chunk-queue.max-per-tick=64 -Dsynaxis.max-visible-entities-per-player=0
+chunkViewDistance=16 entityViewDistance=8 dispatcherThreads=10 threadProvider=GRID acceptTransfers=false maxChunksPerTick=64.0 maxVisibleEntitiesPerPlayer=0 
+INFO  i.github.bearisbug.synaxis.app.Main - synaxis server-app listening on 0.0.0.0:25655
+INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+Overlay final flush lines: 0; overlay/ in the work dir: no
+
+## s3
+step 3: server-app, no extra
+chunkViewDistance=10 entityViewDistance=8 dispatcherThreads=1 threadProvider=COUNTER acceptTransfers=false maxChunksPerTick=64.0 maxVisibleEntitiesPerPlayer=0 
+INFO  i.github.bearisbug.synaxis.app.Main - synaxis server-app listening on 0.0.0.0:25655
+INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+Overlay final flush lines: 0; overlay/ in the work dir: no
+
+## s4
+step 4: SYNAXIS_STATE_DB_URL=jdbc:postgresql://127.0.0.1:1/unreachable (user nobody), server-shard -Dsynaxis.app.store=postgres
+chunkViewDistance=12 entityViewDistance=8 dispatcherThreads=10 threadProvider=GRID acceptTransfers=true maxChunksPerTick=4.0 maxVisibleEntitiesPerPlayer=100 
+ERROR i.github.bearisbug.synaxis.app.Main - Refusing to start: synaxis.accept-transfers=true needs SYNAXIS_TRANSFER_HMAC_KEYS to check the tickets transfers come in with (see .env.example)
+Overlay final flush lines: 0; overlay/ in the work dir: no
+
+## s5
+step 5: as step 4 plus -Dsynaxis.accept-transfers=false
+chunkViewDistance=12 entityViewDistance=8 dispatcherThreads=10 threadProvider=GRID acceptTransfers=false maxChunksPerTick=4.0 maxVisibleEntitiesPerPlayer=100 
+ERROR i.github.bearisbug.synaxis.app.Main - Refusing to start: the player store database cannot be reached: Failed to initialize pool: Connection to 127.0.0.1:1 refused. Check that the hostname and port are correct and that the postmaster is accepting TCP/IP c
+Overlay final flush lines: 0; overlay/ in the work dir: no
+
+## s6-mutated
+step 6: ShardMain#main without the viewDefaults and transferDefaults lines, installDist, step 1
+chunkViewDistance=10 entityViewDistance=8 dispatcherThreads=10 threadProvider=GRID acceptTransfers=false maxChunksPerTick=64.0 maxVisibleEntitiesPerPlayer=0 
+INFO  i.github.bearisbug.synaxis.app.Main - synaxis server-app listening on 0.0.0.0:25655
+INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+Overlay final flush lines: 0; overlay/ in the work dir: no
+
+## s6-restored
+step 6: restored (git status -- server-app empty), installDist, step 1
+chunkViewDistance=12 entityViewDistance=8 dispatcherThreads=10 threadProvider=GRID acceptTransfers=false maxChunksPerTick=4.0 maxVisibleEntitiesPerPlayer=100 
+INFO  i.github.bearisbug.synaxis.app.Main - synaxis server-app listening on 0.0.0.0:25655
+INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+Overlay final flush lines: 0; overlay/ in the work dir: no
+
+## m17
+TC-WORLD-052 step 5: server-shard with the map keys of the 4k test map and -Dsynaxis.chunk-view-distance=17
+chunkViewDistance=17 entityViewDistance=8 dispatcherThreads=10 threadProvider=GRID acceptTransfers=false maxChunksPerTick=4.0 maxVisibleEntitiesPerPlayer=100 
+ERROR i.github.bearisbug.synaxis.app.Main - Refusing to start: synaxis.chunk-view-distance=17 is above 16, the most a map shard serves (view_bounds reach 17 chunks past its bounds)
+Overlay final flush lines: 0; overlay/ in the work dir: no
+
+## port check while each process was up (lsof -iTCP:25655 -sTCP:LISTEN): s1, s2, s3, s6-mutated, s6-restored listening; s4, s5, m17 not listening (refused before bind)

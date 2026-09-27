@@ -1,0 +1,39 @@
+# RUN-040 step 1 of TC-WORLD-031..051/055 rerun after every counterproof was restored (git status clean), one Gradle run with --rerun on each test task and the class filters of those steps
+11:45:46
+vm.swapusage: total = 12288.00M  used = 11213.38M  free = 1074.62M  (encrypted)
+exit 0
+11:46:33
+BUILD SUCCESSFUL in 47s
+# per class:
+architecture.ConfigKeyGateTest tests=1 skipped=0 failures=0 errors=0 time=3.326
+architecture.TranslationKeyGateTest tests=2 skipped=0 failures=0 errors=0 time=1.16
+baker.BakerMainTest tests=4 skipped=0 failures=0 errors=0 time=1.438
+baker.anvil.AnvilBakeTest tests=14 skipped=0 failures=0 errors=0 time=0.4
+game.rts.MatchIntegrationTest tests=11 skipped=0 failures=0 errors=0 time=3.538
+game.rts.marker.MarkerHandlersTest tests=2 skipped=0 failures=0 errors=0 time=0.009
+app.ShardLaunchTest tests=11 skipped=0 failures=0 errors=0 time=7.788
+app.ShardMainTest tests=10 skipped=0 failures=0 errors=0 time=0.005
+app.shard.OverlayShardProcessTest tests=2 skipped=0 failures=0 errors=0 time=22.373
+app.shard.ShardArchitectureTest tests=3 skipped=0 failures=0 errors=0 time=0.877
+app.shard.ShardSettingsTest tests=6 skipped=0 failures=0 errors=0 time=0.003
+app.shard.ShardWorldAssemblyTest tests=5 skipped=0 failures=0 errors=0 time=4.558
+app.shard.ShardWorldTest tests=12 skipped=0 failures=0 errors=0 time=0.155
+synx.OverlayFinalFlushTest tests=12 skipped=0 failures=0 errors=0 time=9.748
+synx.OverlayOptionsTest tests=3 skipped=0 failures=0 errors=0 time=0.004
+synx.OverlayStoreTest tests=26 skipped=0 failures=0 errors=0 time=7.372
+synx.SynxChunkLoaderIntegrationTest tests=12 skipped=0 failures=0 errors=0 time=6.173
+synx.SynxChunkOverlayIntegrationTest tests=13 skipped=0 failures=0 errors=0 time=1.805
+synx.SynxHandlersTest tests=3 skipped=0 failures=0 errors=0 time=0.003
+synx.SynxOptionsTest tests=4 skipped=0 failures=0 errors=0 time=0.001
+instance.ChunkTryLockWriteLockIntegrationTest tests=5 skipped=0 failures=0 errors=0 time=1.517
+instance.ChunkUnloadIntegrationTest tests=16 skipped=0 failures=0 errors=0 time=2.941
+instance.SimulationDistanceTest tests=9 skipped=0 failures=0 errors=0 time=2.869
+network.player.OutboundBacklogIntegrationTest tests=2 skipped=0 failures=0 errors=0 time=1.914
+network.player.SheddableBacklogIntegrationTest tests=2 skipped=0 failures=0 errors=0 time=1.592
+thread.ThreadDispatcherTest tests=17 skipped=0 failures=0 errors=0 time=0.229
+crash window: 191 changes, 98 kept, 93 lost; the oldest lost change was 9753 ms old at the kill, the newest kept one 9858 ms
+config key gate: 113 keys read, 113 in ConfigFile.KEYS, 20 meter names left out
+translation key gate: 56 keys checked against [en_us.json, zh_cn.json], 14 identifiers left out
+# after the TC-WORLD-029 step 2 counterproof (W29), :baker:test --rerun of the two classes again:
+<testsuite name="io.github.bearisbug.synaxis.baker.BakerMainTest" tests="4" skipped="0" failures="0" errors="0"
+<testsuite name="io.github.bearisbug.synaxis.baker.anvil.AnvilBakeTest" tests="14" skipped="0" failures="0" errors="0"

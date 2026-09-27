@@ -1,0 +1,75 @@
+# RUN-040 gates on m3c/integrate ae763c843e (code = cd47d36c89; the commits after it only add docs/test-runs files), each --rerun-tasks / --rerun, with SYNAXIS_TEST_PG_URL=jdbc:postgresql://127.0.0.1:5440/postgres (synaxis-pg) and SYNAXIS_TEST_REDIS_URL=redis://127.0.0.1:6440 (synaxis-valkey)
+# all: --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts --max-workers=4; machine Apple M4 Pro 12 cores, 24 GiB, macOS, JDK 25.0.4.1; another session runs builds on it
+
+## 1. ./gradlew check --rerun-tasks -Dsynaxis.synx.require-frozen-zlib=true
+# start / swap / end:
+10:42:41
+10:42  up 12 days,  2:29, 26 users, load averages: 3.16 3.43 3.95
+vm.swapusage: total = 12288.00M  used = 10774.38M  free = 1513.62M  (encrypted)
+exit 0
+10:46:21
+10:46  up 12 days,  2:33, 26 users, load averages: 10.10 12.89 8.55
+BUILD SUCCESSFUL in 3m 40s
+# per module (JUnit XML under */build/test-results/test):
+root tests=3135 skipped=15 failures=0 errors=0
+architecture-tests tests=20 skipped=0 failures=0 errors=0
+baker tests=53 skipped=0 failures=0 errors=0
+game-rts tests=86 skipped=0 failures=0 errors=0
+loadtest tests=10 skipped=0 failures=0 errors=0
+plugin-api tests=15 skipped=0 failures=0 errors=0
+protocol tests=78 skipped=0 failures=0 errors=0
+server-app tests=374 skipped=0 failures=0 errors=0
+synx tests=115 skipped=0 failures=0 errors=0
+testing tests=10 skipped=0 failures=0 errors=0
+TOTAL tests=3896 skipped=15 failures=0 errors=0
+
+## 2. ./gradlew test --rerun-tasks -Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true
+# start / swap / end:
+10:46:41
+10:46  up 12 days,  2:33, 26 users, load averages: 8.76 12.41 8.48
+vm.swapusage: total = 12288.00M  used = 10806.94M  free = 1481.06M  (encrypted)
+exit 0
+10:50:15
+10:50  up 12 days,  2:37, 26 users, load averages: 7.02 14.19 10.58
+BUILD SUCCESSFUL in 3m 33s
+# per module (JUnit XML under */build/test-results/test):
+root tests=3135 skipped=15 failures=0 errors=0
+architecture-tests tests=20 skipped=0 failures=0 errors=0
+baker tests=53 skipped=0 failures=0 errors=0
+game-rts tests=86 skipped=0 failures=0 errors=0
+loadtest tests=10 skipped=0 failures=0 errors=0
+plugin-api tests=15 skipped=0 failures=0 errors=0
+protocol tests=78 skipped=0 failures=0 errors=0
+server-app tests=374 skipped=0 failures=0 errors=0
+synx tests=115 skipped=0 failures=0 errors=0
+testing tests=10 skipped=0 failures=0 errors=0
+TOTAL tests=3896 skipped=15 failures=0 errors=0
+
+## 3. ./gradlew test --rerun-tasks -Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true -Dsynaxis.thread-provider=grid
+# start / swap / end:
+10:50:55
+10:50  up 12 days,  2:38, 26 users, load averages: 4.97 12.76 10.22
+vm.swapusage: total = 12288.00M  used = 10790.94M  free = 1497.06M  (encrypted)
+exit 0
+10:54:46
+10:54  up 12 days,  2:42, 26 users, load averages: 8.32 15.39 12.43
+BUILD SUCCESSFUL in 3m 33s
+# per module (JUnit XML under */build/test-results/test):
+root tests=3135 skipped=15 failures=0 errors=0
+architecture-tests tests=20 skipped=0 failures=0 errors=0
+baker tests=53 skipped=0 failures=0 errors=0
+game-rts tests=86 skipped=0 failures=0 errors=0
+loadtest tests=10 skipped=0 failures=0 errors=0
+plugin-api tests=15 skipped=0 failures=0 errors=0
+protocol tests=78 skipped=0 failures=0 errors=0
+server-app tests=374 skipped=0 failures=0 errors=0
+synx tests=115 skipped=0 failures=0 errors=0
+testing tests=10 skipped=0 failures=0 errors=0
+TOTAL tests=3896 skipped=15 failures=0 errors=0
+
+## gate outputs (system-out of the XML, the same in all three runs except the crash window)
+config key gate: 113 keys read, 113 in ConfigFile.KEYS, 20 meter names left out
+translation key gate: 56 keys checked against [en_us.json, zh_cn.json], 14 identifiers left out
+gate 1 crash window: 192 changes, 98 kept, 94 lost; the oldest lost change was 9712 ms old at the kill, the newest kept one 9819 ms
+gate 2 crash window: 191 changes, 98 kept, 93 lost; the oldest lost change was 9709 ms old at the kill, the newest kept one 9814 ms
+gate 3 crash window: 185 changes, 95 kept, 90 lost; the oldest lost change was 9706 ms old at the kill, the newest kept one 9815 ms

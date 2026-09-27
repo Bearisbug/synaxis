@@ -1,0 +1,1203 @@
+# RUN-040 counterproofs on m3c/integrate (code = cd47d36c89), one mutation set per run, each restored with git checkout; the line after 'restored' lists git status outside docs/ (empty = clean).
+# Which TC step each one is:
+#   A1 TC-WORLD-034/2  A2 035/2  A3 035/3  A4 035/4  A8 036/2  A9 037/2  A7 037/3  A10 038/2
+#   A11 039/2  A12 039/3  A6 039/4  A5 039/5  A13 039/6  A14 040/2  A15 040/3
+#   K1 041/2  K2 041/3  SS1 041/4  C1 042/2  C2 042/3  C3 042/4  C4 042/5  C5 043/2  C6 043/3  C7 043/4
+#   B1 044/2  B2 045/2  B3 045/3  B4b 046/2 (B4 is a first try that only changed the add: it reds deletedPartitionIsReleased instead, kept as a record)
+#   W47 047/2  B5 047/3  SW1 048/2  S1 049/2  B6a 050/2  B6b 050/3  I1 051/2  H1 055/2
+#   D1 031/2  D2 031/3  D3 031/4  D4 032/2  D5 032/3  W10a/W10b/W10c TC-WORLD-010/2,3,4  W27 TC-WORLD-027/2
+#   C4 and B4b first failed to compile (Error Prone UnusedVariable when the last read of DUE_LEAD_NANOS / refreshesThreads is removed); the logs below are the runs with the compiling mutation the TC steps name.
+
+================ A1-handle-engine-packet.log
+# A1-handle-engine-packet 2026-09-27 10:55:38 load { 5.54 13.62 11.95 }
+# diff:
+--- a/synx/src/main/java/io/github/bearisbug/synaxis/synx/SynxChunk.java
++++ b/synx/src/main/java/io/github/bearisbug/synaxis/synx/SynxChunk.java
+@@ -268,7 +268,7 @@ public final class SynxChunk extends DynamicChunk implements OverlayChunk {
+     @Override
+     public SendablePacket getFullDataPacket() {
+         // Mode first: demotion publishes the new source before it switches the mode back to handle
+-        if (mode == Mode.HANDLE) return handlePacket();
++        if (mode == Mode.HANDLE) { handlePacket(); return super.getFullDataPacket(); }
+         if (mode == Mode.FAILED) {
+             loader.overlaySent();
+             return super.getFullDataPacket();
+# gradle exit 1
+25 tests completed, 4 failed
+BUILD FAILED in 54s
+RED SynxChunkLoaderIntegrationTest#theOverlayComesFirstAndItsGenerationGoesOn(Env) @SynxChunkLoaderIntegrationTest.java:394 :: java.lang.ClassCastException: class io.github.bearisbug.synaxis.network.packet.server.CachedPacket cannot be cast to class io.github.bearisbug.synaxis.network.packet.server.BufferedPacket (io.github.bearisbug.synaxis.network.packet.server.CachedPacket and io.github.bearisbug.synaxis.network.packet.s
+RED SynxChunkLoaderIntegrationTest#neighbourRegionChunksAreReadOnly() @SynxChunkLoaderIntegrationTest.java:174 :: org.opentest4j.AssertionFailedError: timed out ==> expected: <true> but was: <false>
+RED SynxChunkLoaderIntegrationTest#untouchedChunksGoOutAsTheirSegmentOne() @SynxChunkLoaderIntegrationTest.java:86 :: org.opentest4j.AssertionFailedError: timed out ==> expected: <true> but was: <false>
+RED SynxChunkOverlayIntegrationTest#writtenDemotesOnlyWhatDidNotChangeSince(Env) @SynxChunkOverlayIntegrationTest.java:332 :: java.lang.ClassCastException: class io.github.bearisbug.synaxis.network.packet.server.CachedPacket cannot be cast to class io.github.bearisbug.synaxis.network.packet.server.BufferedPacket (io.github.bearisbug.synaxis.network.packet.server.CachedPacket and io.github.bearisbug.synaxis.network.packet.s
+# restored; git status outside docs: []
+## gradle summary:
+25 tests completed, 4 failed
+BUILD FAILED in 54s
+
+================ A2-no-sky-light.log
+# A2-no-sky-light 2026-09-27 10:56:48 load { 3.49 11.25 11.19 }
+# diff:
+--- a/synx/src/main/java/io/github/bearisbug/synaxis/synx/SynxChunk.java
++++ b/synx/src/main/java/io/github/bearisbug/synaxis/synx/SynxChunk.java
+@@ -433,7 +433,7 @@ public final class SynxChunk extends DynamicChunk implements OverlayChunk {
+             // A direct biome palette of the packet is as wide as the biome registry needs, not the storage width
+             if (biomes.bitsPerEntry() <= Palette.BIOME_PALETTE_MAX_BITS) section.biomePalette().copyFrom(biomes);
+             else section.biomePalette().setAll(biomes::get);
+-            section.setSkyLight(Objects.requireNonNullElse(decoded.sky()[i], NO_LIGHT));
++            section.setSkyLight(NO_LIGHT);
+             section.setBlockLight(Objects.requireNonNullElse(decoded.block()[i], NO_LIGHT));
+         }
+         entries.clear();
+# gradle exit 1
+25 tests completed, 3 failed
+BUILD FAILED in 11s
+RED SynxChunkOverlayIntegrationTest#aThousandMaterializedChunksEncodeBackToTheirSegmentOne(Env) @SynxChunkOverlayIntegrationTest.java:91 :: org.opentest4j.AssertionFailedError: every materialized chunk sends and records its segment ① ==> expected: <1000> but was: <0>
+RED SynxChunkOverlayIntegrationTest#aPacketHandedOutBeforeADemotionKeepsItsContent(Env) @SynxChunkOverlayIntegrationTest.java:117 :: org.opentest4j.AssertionFailedError: framed after the demotion, still lit ==> expected: <false> but was: <true>
+RED SynxChunkOverlayIntegrationTest#newViewersOfAMaterializedChunkKeepItsSkyLight(Env) @SynxChunkOverlayIntegrationTest.java:142 :: org.opentest4j.AssertionFailedError: expected: <{5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16}> but was: <{}>
+# restored; git status outside docs: []
+## gradle summary:
+25 tests completed, 3 failed
+BUILD FAILED in 11s
+
+================ A3-no-counted.log
+# A3-no-counted 2026-09-27 10:57:00 load { 3.58 11.01 11.11 }
+# diff:
+--- a/synx/src/main/java/io/github/bearisbug/synaxis/synx/SynxChunk.java
++++ b/synx/src/main/java/io/github/bearisbug/synaxis/synx/SynxChunk.java
+@@ -329,7 +329,7 @@ public final class SynxChunk extends DynamicChunk implements OverlayChunk {
+             final Palette blocks = input.read(type).blockStates();
+             int count = blocks.count();
+             for (int air : OTHER_AIR) {
+-                if (blocks.any(air)) count -= blocks.count(air);
++                if (blocks.any(air) && air < 0) count -= blocks.count(air);
+             }
+             counted[start] = (byte) (count >> 8);
+             counted[start + 1] = (byte) count;
+# gradle exit 1
+25 tests completed, 1 failed
+BUILD FAILED in 11s
+RED SynxChunkOverlayIntegrationTest#aThousandMaterializedChunksEncodeBackToTheirSegmentOne(Env) @SynxChunkOverlayIntegrationTest.java:91 :: org.opentest4j.AssertionFailedError: every materialized chunk sends and records its segment ① ==> expected: <1000> but was: <0>
+# restored; git status outside docs: []
+## gradle summary:
+25 tests completed, 1 failed
+BUILD FAILED in 11s
+
+================ A4-no-invalidation-count.log
+# A4-no-invalidation-count 2026-09-27 10:57:11 load { 3.86 10.83 11.04 }
+# diff:
+--- a/synx/src/main/java/io/github/bearisbug/synaxis/synx/SynxChunk.java
++++ b/synx/src/main/java/io/github/bearisbug/synaxis/synx/SynxChunk.java
+@@ -341,7 +341,6 @@ public final class SynxChunk extends DynamicChunk implements OverlayChunk {
+     /** Also takes the overlay snapshot again: whatever changed the sections did not change {@code generation}. */
+     @Override
+     public void invalidate() {
+-        invalidations.incrementAndGet();
+         super.invalidate();
+     }
+ 
+# gradle exit 1
+25 tests completed, 1 failed
+BUILD FAILED in 11s
+RED SynxChunkOverlayIntegrationTest#aThousandMaterializedChunksEncodeBackToTheirSegmentOne(Env) @SynxChunkOverlayIntegrationTest.java:92 :: org.opentest4j.AssertionFailedError: without the light arrays every one differs (empty sky mask) ==> expected: <0> but was: <1000>
+# restored; git status outside docs: []
+## gradle summary:
+25 tests completed, 1 failed
+BUILD FAILED in 11s
+
+================ A5-no-finally.log
+# A5-no-finally 2026-09-27 10:57:37 load { 4.23 10.35 10.86 }
+# diff:
+--- a/synx/src/main/java/io/github/bearisbug/synaxis/synx/SynxChunk.java
++++ b/synx/src/main/java/io/github/bearisbug/synaxis/synx/SynxChunk.java
+@@ -192,11 +192,8 @@ public final class SynxChunk extends DynamicChunk implements OverlayChunk {
+             return;
+         }
+         if (mode == Mode.HANDLE) materialize();
+-        try {
+-            super.setBlock(x, y, z, block, placement, destroy);
+-        } finally {
+-            changed(); // a handler that throws in onPlace or onDestroy does so after the palette has the change
+-        }
++        super.setBlock(x, y, z, block, placement, destroy);
++        changed();
+     }
+ 
+     @Override
+# gradle exit 1
+25 tests completed, 1 failed
+BUILD FAILED in 11s
+RED SynxChunkOverlayIntegrationTest#aChangeThatThrowsCountsAllTheSame(Env) @SynxChunkOverlayIntegrationTest.java:302 :: org.opentest4j.AssertionFailedError: expected: <1> but was: <0>
+# restored; git status outside docs: []
+## gradle summary:
+25 tests completed, 1 failed
+BUILD FAILED in 11s
+
+================ A6-written-unbounded.log
+# A6-written-unbounded 2026-09-27 10:57:49 load { 5.32 10.31 10.84 }
+# diff:
+--- a/synx/src/main/java/io/github/bearisbug/synaxis/synx/SynxChunk.java
++++ b/synx/src/main/java/io/github/bearisbug/synaxis/synx/SynxChunk.java
+@@ -399,7 +399,7 @@ public final class SynxChunk extends DynamicChunk implements OverlayChunk {
+     public boolean written(long generation, OverlayHit hit, boolean demote) {
+         final Source written = loader.source(hit.record(), new SectionCache.Key(hit.segment(), hit.offset()),
+                 instance.process().block());
+-        if (!tryLockWriteLock(Duration.ofNanos(LOCK_WAIT_NANOS))) {
++        if (!tryLockWriteLock(Duration.ofDays(1))) {
+             LOGGER.warn("Chunk {},{} stays as it was after its overlay record was written: its write-lock was held for 50 ms",
+                     chunkX, chunkZ);
+             return false;
+# gradle exit 1
+25 tests completed, 1 failed
+BUILD FAILED in 12s
+RED SynxChunkOverlayIntegrationTest#writtenGivesUpAfter50msWhenTheLockIsHeld(Env) @SynxChunkOverlayIntegrationTest.java:262 :: java.util.concurrent.TimeoutException
+# restored; git status outside docs: []
+## gradle summary:
+25 tests completed, 1 failed
+BUILD FAILED in 12s
+
+================ A7-tick-other-handler.log
+# A7-tick-other-handler 2026-09-27 10:58:02 load { 5.19 10.12 10.76 }
+# diff:
+--- a/synx/src/main/java/io/github/bearisbug/synaxis/synx/SynxChunk.java
++++ b/synx/src/main/java/io/github/bearisbug/synaxis/synx/SynxChunk.java
+@@ -484,7 +484,7 @@ public final class SynxChunk extends DynamicChunk implements OverlayChunk {
+             final int x = CoordConversion.chunkBlockIndexGetX(index);
+             final int y = CoordConversion.chunkBlockIndexGetY(index);
+             final int z = CoordConversion.chunkBlockIndexGetZ(index);
+-            tickableMap.put(index, entry.getValue().block(state(source, x, y, z)));
++            tickableMap.put(index, entry.getValue().block(state(source, x, y, z)).withHandler(instance.process().block().getHandlerOrDummy(handler.getKey().asString())));
+         }
+     }
+ 
+# gradle exit 1
+25 tests completed, 1 failed
+BUILD FAILED in 12s
+RED SynxChunkLoaderIntegrationTest#aBlockEntityKeepsOneHandlerInstance(Env) @SynxChunkLoaderIntegrationTest.java:326 :: org.opentest4j.AssertionFailedError: the instance getBlock returns is the one that ticks ==> expected: <5> but was: <0>
+# restored; git status outside docs: []
+## gradle summary:
+25 tests completed, 1 failed
+BUILD FAILED in 12s
+
+================ A8-no-readonly-selfcheck.log
+# A8-no-readonly-selfcheck 2026-09-27 10:58:14 load { 4.81 9.79 10.63 }
+# diff:
+--- a/synx/src/main/java/io/github/bearisbug/synaxis/synx/SynxChunk.java
++++ b/synx/src/main/java/io/github/bearisbug/synaxis/synx/SynxChunk.java
+@@ -186,7 +186,6 @@ public final class SynxChunk extends DynamicChunk implements OverlayChunk {
+     @Override
+     public void setBlock(int x, int y, int z, Block block, @Nullable BlockHandler.Placement placement,
+                          @Nullable BlockHandler.Destroy destroy) {
+-        if (isReadOnly()) return;
+         if (y < minSection * CHUNK_SECTION_SIZE || y >= maxSection * CHUNK_SECTION_SIZE) {
+             super.setBlock(x, y, z, block, placement, destroy); // warns and changes nothing
+             return;
+# gradle exit 1
+25 tests completed, 1 failed
+BUILD FAILED in 12s
+RED SynxChunkLoaderIntegrationTest#aReadOnlyWorldIgnoresEveryChange(Env) @SynxChunkLoaderIntegrationTest.java:141 :: org.opentest4j.AssertionFailedError: expected: <minecraft:grass_block{properties={snowy=>false}, nbt=null, handler=null}> but was: <minecraft:diamond_block{properties={}, nbt=null, handler=null}>
+# restored; git status outside docs: []
+## gradle summary:
+25 tests completed, 1 failed
+BUILD FAILED in 12s
+
+================ A9-no-dummy.log
+# A9-no-dummy 2026-09-27 10:58:42 load { 4.18 9.25 10.41 }
+# diff:
+--- a/synx/src/main/java/io/github/bearisbug/synaxis/synx/SynxChunk.java
++++ b/synx/src/main/java/io/github/bearisbug/synaxis/synx/SynxChunk.java
+@@ -76,7 +76,7 @@ public final class SynxChunk extends DynamicChunk implements OverlayChunk {
+         static BlockEntity of(SynxBlockEntity entity, BlockManager blocks) {
+             CompoundBinaryTag nbt = entity.nbt();
+             for (String key : RECORD_KEYS) nbt = nbt.remove(key);
+-            return new BlockEntity(nbt, entity.handler().isEmpty() ? null : blocks.getHandlerOrDummy(entity.handler()));
++            return new BlockEntity(nbt, entity.handler().isEmpty() ? null : blocks.getHandler(entity.handler()));
+         }
+ 
+         Block block(int state) {
+# gradle exit 1
+25 tests completed, 2 failed
+BUILD FAILED in 11s
+RED SynxChunkOverlayIntegrationTest#aThousandMaterializedChunksEncodeBackToTheirSegmentOne(Env) @SynxChunkOverlayIntegrationTest.java:91 :: org.opentest4j.AssertionFailedError: every materialized chunk sends and records its segment ① ==> expected: <1000> but was: <999>
+RED SynxChunkOverlayIntegrationTest#unregisteredHandlerNamespacesSurviveTheOverlay(Env) @SynxChunkOverlayIntegrationTest.java:188 :: org.opentest4j.AssertionFailedError: expected: not <null>
+# restored; git status outside docs: []
+## gradle summary:
+25 tests completed, 2 failed
+BUILD FAILED in 11s
+
+================ A10-minecart-covered.log
+# A10-minecart-covered 2026-09-27 10:58:54 load { 4.14 8.99 10.30 }
+# diff:
+--- a/synx/src/main/java/io/github/bearisbug/synaxis/synx/SynxStaticEntities.java
++++ b/synx/src/main/java/io/github/bearisbug/synaxis/synx/SynxStaticEntities.java
+@@ -49,7 +49,7 @@ final class SynxStaticEntities {
+     static final MetadataDef.Entry<Integer> FRAME_ROTATION = new MetadataDef.Entry.Index<>(10, Metadata::VarInt, 0);
+ 
+     private static final Set<EntityType> COVERED = Set.of(EntityType.ITEM_FRAME, EntityType.GLOW_ITEM_FRAME,
+-            EntityType.TEXT_DISPLAY, EntityType.ITEM_DISPLAY, EntityType.BLOCK_DISPLAY, EntityType.ARMOR_STAND);
++            EntityType.TEXT_DISPLAY, EntityType.ITEM_DISPLAY, EntityType.BLOCK_DISPLAY, EntityType.ARMOR_STAND, EntityType.MINECART);
+ 
+     private SynxStaticEntities() {
+     }
+# gradle exit 1
+25 tests completed, 1 failed
+BUILD FAILED in 11s
+RED SynxChunkLoaderIntegrationTest#staticEntitiesOutsideTheListAreSkipped(Env) @SynxChunkLoaderIntegrationTest.java:344 :: org.opentest4j.AssertionFailedError: [] ==> expected: <1> but was: <0>
+# restored; git status outside docs: []
+## gradle summary:
+25 tests completed, 1 failed
+BUILD FAILED in 11s
+
+================ A11-generation-from-zero.log
+# A11-generation-from-zero 2026-09-27 10:59:06 load { 5.37 9.11 10.33 }
+# diff:
+--- a/synx/src/main/java/io/github/bearisbug/synaxis/synx/SynxChunkLoader.java
++++ b/synx/src/main/java/io/github/bearisbug/synaxis/synx/SynxChunkLoader.java
+@@ -126,7 +126,7 @@ public final class SynxChunkLoader implements ChunkLoader {
+             final OverlayHit hit = overlay.find(chunkX, chunkZ);
+             if (hit != null) {
+                 return handle(instance, chunkX, chunkZ, true, hit.record(), new SectionCache.Key(hit.segment(), hit.offset()),
+-                        hit.generation());
++                        0);
+             }
+         }
+         final SynxRegion region = regions.get(regionKey(SynxFormat.region(chunkX), SynxFormat.region(chunkZ)));
+# gradle exit 1
+25 tests completed, 2 failed
+BUILD FAILED in 11s
+RED SynxChunkLoaderIntegrationTest#theOverlayComesFirstAndItsGenerationGoesOn(Env) @SynxChunkLoaderIntegrationTest.java:391 :: org.opentest4j.AssertionFailedError: expected: <5> but was: <0>
+RED SynxChunkOverlayIntegrationTest#anExplicitlyUnloadedDirtyChunkCanBeEncodedOnTheSpot(Env) @SynxChunkOverlayIntegrationTest.java:410 :: org.opentest4j.AssertionFailedError: expected: <3> but was: <0>
+# restored; git status outside docs: []
+## gradle summary:
+25 tests completed, 2 failed
+BUILD FAILED in 11s
+
+================ A12-no-generation-compare.log
+# A12-no-generation-compare 2026-09-27 10:59:19 load { 5.04 8.85 10.22 }
+# diff:
+--- a/synx/src/main/java/io/github/bearisbug/synaxis/synx/SynxChunk.java
++++ b/synx/src/main/java/io/github/bearisbug/synaxis/synx/SynxChunk.java
+@@ -406,7 +406,6 @@ public final class SynxChunk extends DynamicChunk implements OverlayChunk {
+         }
+         try {
+             this.source = written;
+-            if (this.generation.get() != generation) return true; // changed again since the encoding: still dirty
+             this.dirty = false;
+             if (demote && mode == Mode.OVERLAY) demote(written);
+             return true;
+# gradle exit 1
+25 tests completed, 1 failed
+BUILD FAILED in 11s
+RED SynxChunkOverlayIntegrationTest#writtenDemotesOnlyWhatDidNotChangeSince(Env) @SynxChunkOverlayIntegrationTest.java:340 :: org.opentest4j.AssertionFailedError: expected: <OVERLAY> but was: <HANDLE>
+# restored; git status outside docs: []
+## gradle summary:
+25 tests completed, 1 failed
+BUILD FAILED in 11s
+
+================ A13-parent-lazy-packet.log
+# A13-parent-lazy-packet 2026-09-27 10:59:31 load { 5.03 8.73 10.15 }
+# diff:
+--- a/synx/src/main/java/io/github/bearisbug/synaxis/synx/SynxChunk.java
++++ b/synx/src/main/java/io/github/bearisbug/synaxis/synx/SynxChunk.java
+@@ -277,7 +277,7 @@ public final class SynxChunk extends DynamicChunk implements OverlayChunk {
+         try {
+             if (mode == Mode.HANDLE) return handlePacket(); // demoted since the check above
+             loader.overlaySent();
+-            return snapshot();
++            return super.getFullDataPacket();
+         } finally {
+             unlockWriteLock();
+         }
+# gradle exit 1
+25 tests completed, 3 failed
+BUILD FAILED in 11s
+RED SynxChunkOverlayIntegrationTest#aThousandMaterializedChunksEncodeBackToTheirSegmentOne(Env) @SynxChunkOverlayIntegrationTest.java:91 :: org.opentest4j.AssertionFailedError: every materialized chunk sends and records its segment ① ==> expected: <1000> but was: <0>
+RED SynxChunkOverlayIntegrationTest#aPacketHandedOutBeforeADemotionKeepsItsContent(Env) @SynxChunkOverlayIntegrationTest.java:117 :: org.opentest4j.AssertionFailedError: framed after the demotion, still lit ==> expected: <false> but was: <true>
+RED SynxChunkOverlayIntegrationTest#biomeChangesMaterializeToo(Env) @SynxChunkOverlayIntegrationTest.java:444 :: org.opentest4j.AssertionFailedError: the new biome is in the record ==> array contents differ at index [8339], expected: <2> but was: <0>
+# restored; git status outside docs: []
+## gradle summary:
+25 tests completed, 3 failed
+BUILD FAILED in 11s
+
+================ A14-offer-sheds-all.log
+# A14-offer-sheds-all 2026-09-27 10:59:56 load { 4.80 8.38 9.99 }
+# diff:
+--- a/src/main/java/io/github/bearisbug/synaxis/network/player/PlayerSocketConnection.java
++++ b/src/main/java/io/github/bearisbug/synaxis/network/player/PlayerSocketConnection.java
+@@ -485,7 +485,7 @@ public class PlayerSocketConnection extends PlayerConnection {
+ 
+     private void offer(SendablePacket packet) {
+         final long size = backlogSize(packet);
+-        if (packet instanceof BufferedPacket buffered && buffered.sheddable()) {
++        if (packet instanceof BufferedPacket buffered && (buffered.sheddable() || buffered.length() >= 0)) {
+             synchronized (movementLock) {
+                 if (shedBytes > 0) return; // The peer has not caught up with the last shed yet
+                 this.movementBytes += size;
+# gradle exit 1
+4 tests completed, 1 failed
+BUILD FAILED in 9s
+RED SheddableBacklogIntegrationTest#onlySheddablePacketsAreShed(Path) @SheddableBacklogIntegrationTest.java:51 :: org.opentest4j.AssertionFailedError: what is left counts the chunk packets at their actual size ==> expected: <30720> but was: <0>
+# restored; git status outside docs: []
+## gradle summary:
+4 tests completed, 1 failed
+BUILD FAILED in 9s
+
+================ A15-writer-sheds-all.log
+# A15-writer-sheds-all 2026-09-27 11:00:05 load { 4.77 8.25 9.92 }
+# diff:
+--- a/src/main/java/io/github/bearisbug/synaxis/network/player/PlayerSocketConnection.java
++++ b/src/main/java/io/github/bearisbug/synaxis/network/player/PlayerSocketConnection.java
+@@ -766,7 +766,7 @@ public class PlayerSocketConnection extends PlayerConnection {
+         buffer.registries(process().registries());
+         // Write to buffer
+         PacketWriting.writeQueue(buffer, packetQueue, 1, (b, packet) -> {
+-            if (packet instanceof BufferedPacket movement && movement.sheddable()) return writeMovement(b, movement);
++            if (packet instanceof BufferedPacket movement) return writeMovement(b, movement);
+             final boolean success = writeCounted(b, packet);
+             if (success) backlogBytes.addAndGet(-backlogSize(packet));
+             return success;
+# gradle exit 1
+4 tests completed, 1 failed
+BUILD FAILED in 1m 5s
+RED SheddableBacklogIntegrationTest#onlySheddablePacketsAreShed(Path) @SheddableBacklogIntegrationTest.java:59 :: org.opentest4j.AssertionFailedError: the 20 chunk packets in queue order, nothing else ==> array lengths differ, expected: <30720> but was: <30208>
+# restored; git status outside docs: []
+## gradle summary:
+4 tests completed, 1 failed
+BUILD FAILED in 1m 5s
+
+================ C1-index-before-fsync.log
+# C1-index-before-fsync 2026-09-27 11:01:38 load { 4.01 7.10 9.31 }
+# diff:
+--- a/synx/src/main/java/io/github/bearisbug/synaxis/synx/OverlayStore.java
++++ b/synx/src/main/java/io/github/bearisbug/synaxis/synx/OverlayStore.java
+@@ -640,6 +640,7 @@ public final class OverlayStore implements OverlayIndex, OverlayTracker {
+             for (Item item : batch) {
+                 final Appended record = append(item, touched);
+                 appended.add(record);
++                index(record);
+                 bytes += OverlaySegment.RECORD_HEADER_BYTES + record.segment().length(record.offset());
+             }
+             final long start = System.nanoTime();
+# gradle exit 1
+BUILD FAILED in 7s
+RED OverlayStoreTest#aTickOfEvictionsUnloadsAndDueChunksIsOneFsync() @OverlayStoreTest.java:84 :: org.opentest4j.AssertionFailedError: the index names no record before its fsync ==> expected: <false> but was: <true>
+# restored; git status outside docs: []
+## gradle summary:
+1 test completed, 1 failed
+BUILD FAILED in 7s
+
+================ C2-touched-only-new.log
+# C2-touched-only-new 2026-09-27 11:01:45 load { 5.13 7.23 9.33 }
+# diff:
+--- a/synx/src/main/java/io/github/bearisbug/synaxis/synx/OverlayStore.java
++++ b/synx/src/main/java/io/github/bearisbug/synaxis/synx/OverlayStore.java
+@@ -706,8 +706,8 @@ public final class OverlayStore implements OverlayIndex, OverlayTracker {
+             segment = OverlaySegment.create(directory, nextSegment++, header, tuning.segmentBytes(), tuning.disk());
+             segments.put(segment.number, segment);
+             active = segment;
++            touched.add(segment);
+         }
+-        touched.add(segment);
+         return segment;
+     }
+ 
+# gradle exit 1
+BUILD FAILED in 6s
+RED OverlayStoreTest#aChunkChangedAfterItsEncodingStaysDirtyAndIsWrittenAgain() @OverlayStoreTest.java:213 :: org.opentest4j.AssertionFailedError: a phase appending to the segment an earlier phase made forces it too ==> expected: <2> but was: <1>
+# restored; git status outside docs: []
+## gradle summary:
+1 test completed, 1 failed
+BUILD FAILED in 6s
+
+================ C3-no-restore-pending.log
+# C3-no-restore-pending 2026-09-27 11:01:52 load { 5.12 7.19 9.30 }
+# diff:
+--- a/synx/src/main/java/io/github/bearisbug/synaxis/synx/OverlayStore.java
++++ b/synx/src/main/java/io/github/bearisbug/synaxis/synx/OverlayStore.java
+@@ -381,7 +381,7 @@ public final class OverlayStore implements OverlayIndex, OverlayTracker {
+         } finally {
+             if (unloaded == null) {
+                 // The content the table had stays the latest there is
+-                if (replaced != null) pending.replace(key, entry, replaced);
++                if (replaced != null && replaced.isCancelled()) pending.replace(key, entry, replaced);
+                 else pending.remove(key, entry);
+             }
+             entry.complete(unloaded);
+# gradle exit 1
+BUILD FAILED in 6s
+RED OverlayStoreTest#anUnloadThatDoesNotEncodeLeavesThePendingEntryItWouldHaveReplaced() @OverlayStoreTest.java:420 :: java.lang.NullPointerException: Cannot invoke "io.github.bearisbug.synaxis.synx.OverlayHit.segment()" because "hit" is null
+# restored; git status outside docs: []
+## gradle summary:
+1 test completed, 1 failed
+BUILD FAILED in 6s
+
+================ C4-no-due-lead.log
+# C4-no-due-lead 2026-09-27 11:02:28 load { 5.97 7.19 9.21 }
+# diff:
+--- a/synx/src/main/java/io/github/bearisbug/synaxis/synx/OverlayStore.java
++++ b/synx/src/main/java/io/github/bearisbug/synaxis/synx/OverlayStore.java
+@@ -486,7 +486,7 @@ public final class OverlayStore implements OverlayIndex, OverlayTracker {
+     /** Dirty for {@code flush_interval_s} less {@link #DUE_LEAD_NANOS} or longer, at most 64, the longest first. */
+     private void selectDue(Set<Resident> taken, long deadline) {
+         final long now = tuning.clock().getAsLong();
+-        final long interval = TimeUnit.SECONDS.toNanos(options.flushIntervalSeconds()) - DUE_LEAD_NANOS;
++        final long interval = TimeUnit.SECONDS.toNanos(options.flushIntervalSeconds()) - 0 * DUE_LEAD_NANOS;
+         int count = 0;
+         for (Iterator<Resident> it = dirtyQueue.values().iterator(); count < FLUSH_PER_TICK && it.hasNext(); ) {
+             final Resident resident = it.next();
+# gradle exit 1
+BUILD FAILED in 4s
+RED OverlayStoreTest#aChunkIsDueAWritePhaseBeforeItsFlushIntervalIsUp() @OverlayStoreTest.java:130 :: org.opentest4j.AssertionFailedError: due 250 ms before its flush interval is up ==> expected: <false> but was: <true>
+# restored; git status outside docs: []
+## gradle summary:
+1 test completed, 1 failed
+BUILD FAILED in 4s
+
+================ C5-cas-takes-tick.log
+# C5-cas-takes-tick 2026-09-27 11:02:40 load { 5.50 7.03 9.12 }
+# diff:
+--- a/synx/src/main/java/io/github/bearisbug/synaxis/synx/OverlayStore.java
++++ b/synx/src/main/java/io/github/bearisbug/synaxis/synx/OverlayStore.java
+@@ -830,8 +830,8 @@ public final class OverlayStore implements OverlayIndex, OverlayTracker {
+                 awaitFinalDone();
+                 return;
+             }
+-            if (state == IDLE) {
+-                if (!writeRight.compareAndSet(IDLE, SHUTDOWN)) continue;
++            if (state == IDLE || state == TICK) {
++                if (!writeRight.compareAndSet(state, SHUTDOWN)) continue;
+                 try {
+                     finalFlushNow("shutdown");
+                 } finally {
+# gradle exit 1
+2 tests completed, 2 failed
+BUILD FAILED in 6s
+RED OverlayFinalFlushTest#aFinalFlushTheTickStartedIsWaitedForAndNotRepeated() @OverlayFinalFlushTest.java:61 :: org.opentest4j.AssertionFailedError: one final flush line at INFO: [Overlay final flush: chunks=10 bytes=6000 fsync_ms=319 left=0 by=shutdown, Overlay final flush: chunks=10 bytes=6000 fsync_ms=322 left=0 by=tick] ==> expected: <1> but was: <2>
+RED OverlayFinalFlushTest#twoWritersRacingForTheFinalFlushWriteItExactlyOnce() @OverlayFinalFlushTest.java:299 :: org.opentest4j.AssertionFailedError: round 2 ==> expected: <10> but was: <9>
+# restored; git status outside docs: []
+## gradle summary:
+2 tests completed, 2 failed
+BUILD FAILED in 6s
+
+================ C6-no-deadline-check.log
+# C6-no-deadline-check 2026-09-27 11:02:59 load { 6.07 7.08 9.09 }
+# diff:
+--- a/synx/src/main/java/io/github/bearisbug/synaxis/synx/OverlayStore.java
++++ b/synx/src/main/java/io/github/bearisbug/synaxis/synx/OverlayStore.java
+@@ -507,8 +507,6 @@ public final class OverlayStore implements OverlayIndex, OverlayTracker {
+ 
+     /** On an encode thread; null when the chunk's write-lock was not had in time, or the final flush's deadline passed before it started. */
+     private @Nullable Encoded encode(OverlayChunk chunk, long deadline) {
+-        final long stop = finalDeadline.get();
+-        if (stop != NO_DEADLINE && System.nanoTime() - stop >= 0) return null;
+         final OverlayEncoding encoding = chunk.encodeOverlay(settings, deadline);
+         if (encoding == null) return null;
+         final byte[] record = record(chunk, encoding);
+# gradle exit 1
+BUILD FAILED in 7s
+RED OverlayFinalFlushTest#aFinalFlushOverItsBudgetCompletesAtTheDeadline() @OverlayFinalFlushTest.java:394 :: org.opentest4j.AssertionFailedError: encodings started this many ms in: [1020, 1020, 1021, 1021, 1022, 1022, 1024, 1024, 1025, 1025, 1026, 1026, 1027, 1027, 1029, 1029, 1030, 1030, 1031, 1031, 1033, 1033, 1034, 1034, 1035, 1035, 1036, 1037, 1038, 1038, 1039, 1039, 1040, 1040, 1041, 1042, 1043, 1043,
+# restored; git status outside docs: []
+## gradle summary:
+1 test completed, 1 failed
+BUILD FAILED in 7s
+
+================ C7-later-deadline.log
+# C7-later-deadline 2026-09-27 11:03:06 load { 6.14 7.08 9.08 }
+# diff:
+--- a/synx/src/main/java/io/github/bearisbug/synaxis/synx/OverlayStore.java
++++ b/synx/src/main/java/io/github/bearisbug/synaxis/synx/OverlayStore.java
+@@ -814,7 +814,7 @@ public final class OverlayStore implements OverlayIndex, OverlayTracker {
+     public CompletableFuture<?> finalFlush(Duration remaining, boolean tickAlive) {
+         final long budget = Math.min(FINAL_CAP_NANOS, Math.max(0, remaining.toNanos()));
+         final long deadline = System.nanoTime() + budget;
+-        finalDeadline.accumulateAndGet(deadline, (current, next) -> current == NO_DEADLINE || next - current < 0 ? next : current);
++        finalDeadline.accumulateAndGet(deadline, (current, next) -> current == NO_DEADLINE || next - current > 0 ? next : current);
+         finalRequested = true;
+         var _ = CompletableFuture.runAsync(() -> timedOut(budget),
+                 CompletableFuture.delayedExecutor(budget, TimeUnit.NANOSECONDS));
+# gradle exit 1
+BUILD FAILED in 7s
+RED OverlayFinalFlushTest#aSecondCallTakesTheEarlierOfTheTwoDeadlines() @OverlayFinalFlushTest.java:216 :: org.opentest4j.AssertionFailedError: PT0.3S then PT30S: the final flush took 1472 ms ==> expected: <true> but was: <false>
+# restored; git status outside docs: []
+## gradle summary:
+1 test completed, 1 failed
+BUILD FAILED in 7s
+
+================ D1-same-key-accepted.log
+# D1-same-key-accepted 2026-09-27 11:03:44 load { 5.41 6.80 8.90 }
+# diff:
+--- a/synx/src/main/java/io/github/bearisbug/synaxis/synx/SynxHandlers.java
++++ b/synx/src/main/java/io/github/bearisbug/synaxis/synx/SynxHandlers.java
+@@ -35,7 +35,7 @@ public final class SynxHandlers {
+         final Map<Key, BlockHandler> byKey = new LinkedHashMap<>();
+         for (BlockHandler handler : handlers) {
+             final BlockHandler first = byKey.putIfAbsent(handler.getKey(), handler);
+-            if (first != null) {
++            if (first != null && Boolean.getBoolean("proof.never")) {
+                 throw new IllegalArgumentException("two block handlers have the key " + handler.getKey().asString()
+                         + ": " + first.getClass().getName() + " and " + handler.getClass().getName());
+             }
+# gradle exit 1
+3 tests completed, 1 failed
+4 tests completed, 1 failed
+BUILD FAILED in 6s
+RED SynxHandlersTest#twoHandlersWithOneKeyAreRefusedBeforeAnyIsRegistered() @SynxHandlersTest.java:59 :: org.opentest4j.AssertionFailedError: Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown.
+RED BakerMainTest#twoHandlersWithOneKeyExitOne() @BakerMainTest.java:91 :: org.opentest4j.AssertionFailedError: SLF4J(W): No SLF4J providers were found.
+# restored; git status outside docs: []
+## gradle summary:
+3 tests completed, 1 failed
+4 tests completed, 1 failed
+BUILD FAILED in 6s
+
+================ D2-public-list-tags.log
+# D2-public-list-tags 2026-09-27 11:03:51 load { 5.20 6.71 8.84 }
+# diff:
+--- a/game-rts/src/main/java/io/github/bearisbug/synaxis/game/rts/marker/LootMarker.java
++++ b/game-rts/src/main/java/io/github/bearisbug/synaxis/game/rts/marker/LootMarker.java
+@@ -9,7 +9,7 @@ import java.util.List;
+ /** The {@code synaxis:loot} marker: the client gets the {@code table} tag of its block entity. */
+ public final class LootMarker implements BlockHandler {
+     private static final Key KEY = Key.key("synaxis:loot");
+-    private static final List<Tag<?>> CLIENT_TAGS = List.of(Tag.String("table"));
++    private static final List<Tag<?>> CLIENT_TAGS = List.of(Tag.String("tablex"));
+ 
+     @Override
+     public Key getKey() {
+--- a/game-rts/src/main/resources/META-INF/services/io.github.bearisbug.synaxis.instance.block.BlockHandler
++++ b/game-rts/src/main/resources/META-INF/services/io.github.bearisbug.synaxis.instance.block.BlockHandler
+@@ -1,2 +1 @@
+ io.github.bearisbug.synaxis.game.rts.marker.DoorMarker
+-io.github.bearisbug.synaxis.game.rts.marker.LootMarker
+--- a/synx/src/main/java/io/github/bearisbug/synaxis/synx/SynxHandlers.java
++++ b/synx/src/main/java/io/github/bearisbug/synaxis/synx/SynxHandlers.java
+@@ -7,7 +7,7 @@ import net.kyori.adventure.key.Key;
+ import java.util.Collections;
+ import java.util.LinkedHashMap;
+ import java.util.Map;
+-import java.util.ServiceLoader;
++import java.util.List;
+ import java.util.Set;
+ 
+ /**
+@@ -28,7 +28,7 @@ public final class SynxHandlers {
+      *                                  classes; then nothing is registered
+      */
+     public static Set<Key> registerAll(BlockManager blocks) {
+-        return registerAll(blocks, ServiceLoader.load(BlockHandler.class));
++        return registerAll(blocks, List.of());
+     }
+ 
+     static Set<Key> registerAll(BlockManager blocks, Iterable<? extends BlockHandler> handlers) {
+# gradle exit 1
+3 tests completed, 1 failed
+2 tests completed, 2 failed
+BUILD FAILED in 6s
+RED SynxHandlersTest#theServicesOnTheClassPathAreRegistered(Path) @SynxHandlersTest.java:91 :: org.opentest4j.AssertionFailedError: expected: <[synaxis:door]> but was: <[]>
+RED MarkerHandlersTest#theServicesAreTheDoorAndTheLootMarker() @MarkerHandlersTest.java:29 :: org.opentest4j.AssertionFailedError: expected: <[synaxis:door, synaxis:loot]> but was: <[synaxis:door]>
+RED MarkerHandlersTest#theClientSeesNoTagOfADoorAndOnlyTheTableOfALoot() @MarkerHandlersTest.java:40 :: org.opentest4j.AssertionFailedError: expected: <CompoundBinaryTagImpl[tags={table=StringBinaryTagImpl[value=t1]}]> but was: <CompoundBinaryTagImpl[tags={}]>
+# restored; git status outside docs: []
+## gradle summary:
+3 tests completed, 1 failed
+2 tests completed, 2 failed
+BUILD FAILED in 6s
+
+================ D3-missing-provider.log
+# D3-missing-provider 2026-09-27 11:03:57 load { 5.26 6.70 8.82 }
+# diff:
+--- a/game-rts/src/main/resources/META-INF/services/io.github.bearisbug.synaxis.instance.block.BlockHandler
++++ b/game-rts/src/main/resources/META-INF/services/io.github.bearisbug.synaxis.instance.block.BlockHandler
+@@ -1,2 +1,3 @@
+ io.github.bearisbug.synaxis.game.rts.marker.DoorMarker
+ io.github.bearisbug.synaxis.game.rts.marker.LootMarker
++io.github.bearisbug.synaxis.game.rts.marker.GateMarker
+# gradle exit 1
+2 tests completed, 1 failed
+BUILD FAILED in 4s
+RED MarkerHandlersTest#theServicesAreTheDoorAndTheLootMarker() @MarkerHandlersTest.java:27 :: java.util.ServiceConfigurationError: io.github.bearisbug.synaxis.instance.block.BlockHandler: Provider io.github.bearisbug.synaxis.game.rts.marker.GateMarker not found
+# restored; git status outside docs: []
+## gradle summary:
+2 tests completed, 1 failed
+BUILD FAILED in 4s
+
+================ D4-gate-no-loot.log
+# D4-gate-no-loot 2026-09-27 11:04:40 load { 5.20 6.52 8.65 }
+# diff:
+--- a/architecture-tests/src/test/java/io/github/bearisbug/synaxis/architecture/TranslationKeyGateTest.java
++++ b/architecture-tests/src/test/java/io/github/bearisbug/synaxis/architecture/TranslationKeyGateTest.java
+@@ -63,7 +63,6 @@ public class TranslationKeyGateTest {
+             Map.entry("synaxis:map", "dimension type of the map instance of a shard (API-M3-006)"),
+             Map.entry("synaxis:hidden", "marker block of an Anvil map source, read by the baker (API-M3-003)"),
+             Map.entry("synaxis:door", "block handler key of a map source's data marker, in :game-rts (API-M3-003)"),
+-            Map.entry("synaxis:loot", "block handler key of a map source's data marker, in :game-rts (API-M3-003)"),
+             Map.entry("synaxis:shard/drain", "JSON-RPC method of the management interface (API-PROD-022)"),
+             Map.entry("synaxis:shard/status", "JSON-RPC method of the management interface (API-PROD-022)"),
+             Map.entry("synaxis:broadcast", "JSON-RPC method of the management interface (API-PROD-022)"),
+# gradle exit 1
+2 tests completed, 1 failed
+BUILD FAILED in 7s
+RED TranslationKeyGateTest#everyKeyTheServerCanSendHasTextInBothLanguageFiles() @TranslationKeyGateTest.java:89 :: org.opentest4j.AssertionFailedError: Problems of the translation key gate (2):
+# restored; git status outside docs: []
+## gradle summary:
+2 tests completed, 1 failed
+BUILD FAILED in 7s
+
+================ D5-gate-no-map.log
+# D5-gate-no-map 2026-09-27 11:04:48 load { 5.82 6.63 8.67 }
+# diff:
+--- a/architecture-tests/src/test/java/io/github/bearisbug/synaxis/architecture/TranslationKeyGateTest.java
++++ b/architecture-tests/src/test/java/io/github/bearisbug/synaxis/architecture/TranslationKeyGateTest.java
+@@ -60,7 +60,6 @@ public class TranslationKeyGateTest {
+             Map.entry("synaxis:moderation", "Redis channel of ban and whitelist changes (API-PROD-006)"),
+             Map.entry("synaxis:transfer", "cookie of the transfer ticket (API-PROD-028)"),
+             Map.entry("synaxis:match", "dimension type every match is built on (API-M2-010)"),
+-            Map.entry("synaxis:map", "dimension type of the map instance of a shard (API-M3-006)"),
+             Map.entry("synaxis:hidden", "marker block of an Anvil map source, read by the baker (API-M3-003)"),
+             Map.entry("synaxis:door", "block handler key of a map source's data marker, in :game-rts (API-M3-003)"),
+             Map.entry("synaxis:loot", "block handler key of a map source's data marker, in :game-rts (API-M3-003)"),
+# gradle exit 1
+2 tests completed, 1 failed
+BUILD FAILED in 5s
+RED TranslationKeyGateTest#everyKeyTheServerCanSendHasTextInBothLanguageFiles() @TranslationKeyGateTest.java:89 :: org.opentest4j.AssertionFailedError: Problems of the translation key gate (2):
+# restored; git status outside docs: []
+## gradle summary:
+2 tests completed, 1 failed
+BUILD FAILED in 5s
+
+================ B1-projectile-stuck-outside.log
+# B1-projectile-stuck-outside 2026-09-27 11:05:42 load { 3.39 5.85 8.26 }
+# diff:
+--- a/src/main/java/io/github/bearisbug/synaxis/entity/EntityProjectile.java
++++ b/src/main/java/io/github/bearisbug/synaxis/entity/EntityProjectile.java
+@@ -95,7 +95,6 @@ public class EntityProjectile extends Entity {
+         super.tick(time);
+         if (super.isRemoved()) return;
+         // Outside the simulation distance only the scheduler runs (docs/DESIGN-M3.md ADR-M3-017)
+-        if (outsideSimulation()) return;
+ 
+         final Pos posNow = getPosition();
+         boolean isStuck = isStuck(posBefore, posNow);
+# gradle exit 1
+9 tests completed, 1 failed
+BUILD FAILED in 8s
+RED SimulationDistanceTest#aProjectileOutsideTheSimulationDistanceIsNotFoundStuck() @SimulationDistanceTest.java:275 :: org.opentest4j.AssertionFailedError: outside the simulation distance the arrow is not found stuck ==> expected: <false> but was: <true>
+# restored; git status outside docs: []
+## gradle summary:
+9 tests completed, 1 failed
+BUILD FAILED in 8s
+
+================ B2-remove-keeps-tickets.log
+# B2-remove-keeps-tickets 2026-09-27 11:05:51 load { 3.25 5.74 8.19 }
+# diff:
+--- a/src/main/java/io/github/bearisbug/synaxis/entity/Player.java
++++ b/src/main/java/io/github/bearisbug/synaxis/entity/Player.java
+@@ -686,7 +686,7 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
+         final int chunkZ = position.chunkZ();
+         // Clear all viewable chunks
+         final int ringRadius = this.effectiveViewDistance();
+-        moveTicketRing(null, 0, 0, 0, () -> ChunkRange.chunksInRange(chunkX, chunkZ, ringRadius, chunkRemover));
++        ChunkRange.chunksInRange(chunkX, chunkZ, ringRadius, chunkRemover);
+         resetChunkQueue();
+ 
+         // Remove from the tab-list
+# gradle exit 1
+16 tests completed, 1 failed
+BUILD FAILED in 17s
+RED ChunkUnloadIntegrationTest#theViewTicketsFollowTheChunkRingNotTheCallsThatSendIt(Env) @ChunkUnloadIntegrationTest.java:216 :: org.opentest4j.AssertionFailedError: -5,-5 ==> expected: <0> but was: <1>
+# restored; git status outside docs: []
+## gradle summary:
+16 tests completed, 1 failed
+BUILD FAILED in 17s
+
+================ B3-first-batch-only.log
+# B3-first-batch-only 2026-09-27 11:06:17 load { 3.11 5.52 8.04 }
+# diff:
+--- a/src/main/java/io/github/bearisbug/synaxis/instance/InstanceContainer.java
++++ b/src/main/java/io/github/bearisbug/synaxis/instance/InstanceContainer.java
+@@ -365,7 +365,7 @@ public class InstanceContainer extends Instance {
+                     process().exception().handleException(e);
+                 }
+             }
+-            if (candidates.size() < batch) return;
++            if (candidates.size() <= batch) return;
+         }
+     }
+ 
+# gradle exit 1
+16 tests completed, 1 failed
+BUILD FAILED in 15s
+RED ChunkUnloadIntegrationTest#chunksPassedOverDoNotHoldBackTheOnesBehindThem(Env) @ChunkUnloadIntegrationTest.java:358 :: org.opentest4j.AssertionFailedError: 256 of the ready ones go ==> expected: <44> but was: <300>
+# restored; git status outside docs: []
+## gradle summary:
+16 tests completed, 1 failed
+BUILD FAILED in 15s
+
+================ B4-queue-always.log
+# B4-queue-always 2026-09-27 11:06:33 load { 6.59 6.12 8.21 }
+# diff:
+--- a/src/main/java/io/github/bearisbug/synaxis/thread/ThreadDispatcherImpl.java
++++ b/src/main/java/io/github/bearisbug/synaxis/thread/ThreadDispatcherImpl.java
+@@ -157,7 +157,7 @@ final class ThreadDispatcherImpl<P, E extends Tickable> implements ThreadDispatc
+         final Partition partitionEntry = new Partition(thread);
+         thread.entries.add(partitionEntry);
+         this.partitions.put(partition, partitionEntry);
+-        if (refreshesThreads) this.partitionUpdateQueue.add(partition);
++        this.partitionUpdateQueue.add(partition);
+         if (partition instanceof Tickable tickable) {
+             processUpdatedElement(tickable, partition);
+         }
+# gradle exit 1
+17 tests completed, 1 failed
+BUILD FAILED in 17s
+RED ThreadDispatcherTest#deletedPartitionIsReleased() @ThreadDispatcherTest.java:503 :: org.opentest4j.AssertionFailedError: Reference was not cleared
+# restored; git status outside docs: []
+## gradle summary:
+17 tests completed, 1 failed
+BUILD FAILED in 17s
+
+================ B4b-queue-as-before.log
+# B4b-queue-as-before 2026-09-27 11:07:18 load { 6.78 6.21 8.13 }
+# diff:
+--- a/src/main/java/io/github/bearisbug/synaxis/thread/ThreadDispatcherImpl.java
++++ b/src/main/java/io/github/bearisbug/synaxis/thread/ThreadDispatcherImpl.java
+@@ -157,7 +157,7 @@ final class ThreadDispatcherImpl<P, E extends Tickable> implements ThreadDispatc
+         final Partition partitionEntry = new Partition(thread);
+         thread.entries.add(partitionEntry);
+         this.partitions.put(partition, partitionEntry);
+-        if (refreshesThreads) this.partitionUpdateQueue.add(partition);
++        if (refreshesThreads || !refreshesThreads) this.partitionUpdateQueue.add(partition);
+         if (partition instanceof Tickable tickable) {
+             processUpdatedElement(tickable, partition);
+         }
+@@ -170,7 +170,7 @@ final class ThreadDispatcherImpl<P, E extends Tickable> implements ThreadDispatc
+             thread.entries.remove(partitionEntry);
+             for (Tickable element : partitionEntry.elements) this.elements.remove(element);
+         }
+-        if (refreshesThreads) this.partitionUpdateQueue.remove(partition);
++        if (refreshesThreads || !refreshesThreads) this.partitionUpdateQueue.remove(partition);
+         if (partition instanceof Tickable tickable) {
+             processRemovedElement(tickable);
+         }
+# gradle exit 1
+17 tests completed, 1 failed
+BUILD FAILED in 14s
+RED ThreadDispatcherTest#deletingAPartitionComparesItWithNoOtherPartition() @ThreadDispatcherTest.java:546 :: org.opentest4j.AssertionFailedError: deleting 256 of 20,000 partitions compared keys 5054720 times ==> expected: <true> but was: <false>
+# restored; git status outside docs: []
+## gradle summary:
+17 tests completed, 1 failed
+BUILD FAILED in 14s
+
+================ B5-write-phase-no-catch.log
+# B5-write-phase-no-catch 2026-09-27 11:07:44 load { 6.78 6.25 8.09 }
+# diff:
+--- a/server-app/src/main/java/io/github/bearisbug/synaxis/app/shard/ShardWorld.java
++++ b/server-app/src/main/java/io/github/bearisbug/synaxis/app/shard/ShardWorld.java
+@@ -241,11 +241,7 @@ public final class ShardWorld {
+      */
+     static void scheduleWritePhase(ServerProcess process, Runnable writePhase) {
+         process.scheduler().scheduleTask(() -> {
+-            try {
+-                writePhase.run();
+-            } catch (RuntimeException e) {
+-                process.exception().handleException(e);
+-            }
++            writePhase.run();
+         }, TaskSchedule.nextTick(), TaskSchedule.nextTick(), ExecutionType.TICK_END);
+     }
+ 
+# gradle exit 1
+12 tests completed, 1 failed
+BUILD FAILED in 8s
+RED ShardWorldTest#aWritePhaseThatThrowsRunsAgainOnTheNextTick() @ShardWorldTest.java:235 :: org.opentest4j.AssertionFailedError: the ticks after the throw run the write phase too ==> expected: <3> but was: <1>
+# restored; git status outside docs: []
+## gradle summary:
+12 tests completed, 1 failed
+BUILD FAILED in 8s
+
+================ B6a-match-simulation-distance.log
+# B6a-match-simulation-distance 2026-09-27 11:07:52 load { 7.31 6.38 8.11 }
+# diff:
+--- a/game-rts/src/main/java/io/github/bearisbug/synaxis/game/rts/Match.java
++++ b/game-rts/src/main/java/io/github/bearisbug/synaxis/game/rts/Match.java
+@@ -216,6 +216,7 @@ final class Match {
+         // it must answer "there is no such chunk" instead of generating a 1025th one (REQ-M2-011).
+         loading.enableAutoChunkLoad(false);
+         process.instance().registerInstance(loading);
++        loading.setSimulationDistance(4);
+         this.instance = loading;
+         this.state = State.RUNNING;
+         logger.info("Match running: match_id={} map_id={} dimension_name={} chunk_count={} load_ms={}",
+# gradle exit 1
+11 tests completed, 1 failed
+BUILD FAILED in 8s
+RED MatchIntegrationTest#theMatchKeepsEveryChunkLoadedAndSimulated(Env) @MatchIntegrationTest.java:172 :: org.opentest4j.AssertionFailedError: expected: <-1> but was: <4>
+# restored; git status outside docs: []
+## gradle summary:
+11 tests completed, 1 failed
+BUILD FAILED in 8s
+
+================ B6b-match-unload-grace.log
+# B6b-match-unload-grace 2026-09-27 11:08:01 load { 7.03 6.35 8.08 }
+# diff:
+--- a/game-rts/src/main/java/io/github/bearisbug/synaxis/game/rts/Match.java
++++ b/game-rts/src/main/java/io/github/bearisbug/synaxis/game/rts/Match.java
+@@ -216,6 +216,7 @@ final class Match {
+         // it must answer "there is no such chunk" instead of generating a 1025th one (REQ-M2-011).
+         loading.enableAutoChunkLoad(false);
+         process.instance().registerInstance(loading);
++        loading.setChunkUnloadGraceTicks(100);
+         this.instance = loading;
+         this.state = State.RUNNING;
+         logger.info("Match running: match_id={} map_id={} dimension_name={} chunk_count={} load_ms={}",
+# gradle exit 1
+11 tests completed, 1 failed
+BUILD FAILED in 6s
+RED MatchIntegrationTest#theMatchKeepsEveryChunkLoadedAndSimulated(Env) @MatchIntegrationTest.java:173 :: org.opentest4j.AssertionFailedError: expected: <-1> but was: <100>
+# restored; git status outside docs: []
+## gradle summary:
+11 tests completed, 1 failed
+BUILD FAILED in 6s
+
+================ W47-core-mode-over-cli.log
+# W47-core-mode-over-cli 2026-09-27 11:11:14 load { 3.44 4.91 7.12 }
+# diff:
+--- a/server-app/src/main/java/io/github/bearisbug/synaxis/app/ShardMain.java
++++ b/server-app/src/main/java/io/github/bearisbug/synaxis/app/ShardMain.java
+@@ -103,8 +103,7 @@ public final class ShardMain {
+      * @return the property and its value, or nothing
+      */
+     static Map<String, String> mapDefaults(UnaryOperator<String> properties) {
+-        if (properties.apply(MAP_ROOT) == null || properties.apply(MAP_BUILD) == null
+-                || properties.apply(CoreMode.PROPERTY) != null)
++        if (properties.apply(MAP_ROOT) == null || properties.apply(MAP_BUILD) == null)
+             return Map.of();
+         return Map.of(CoreMode.PROPERTY, "on");
+     }
+# gradle exit 1
+10 tests completed, 1 failed
+BUILD FAILED in 3s
+RED ShardMainTest#aShardWithoutAMapOrWithACoreModeKeepsItsCoreMode() @ShardMainTest.java:78 :: org.opentest4j.AssertionFailedError: expected: <{}> but was: <{synaxis.app.core-mode=on}>
+# restored; git status outside docs: []
+## gradle summary:
+10 tests completed, 1 failed
+BUILD FAILED in 3s
+
+================ SW1-sim-over-view.log
+# SW1-sim-over-view 2026-09-27 11:12:21 load { 4.27 4.77 6.88 }
+# diff:
+--- a/server-app/src/main/java/io/github/bearisbug/synaxis/app/shard/ShardWorld.java
++++ b/server-app/src/main/java/io/github/bearisbug/synaxis/app/shard/ShardWorld.java
+@@ -123,7 +123,7 @@ public final class ShardWorld {
+                     + SynxChunkLoader.VIEW_MARGIN + " chunks past its bounds)");
+         }
+         final int simulationDistance = settings.simulationDistance();
+-        if (simulationDistance < 1 || simulationDistance > viewDistance) {
++        if (simulationDistance < 1) {
+             throw new IllegalArgumentException(ShardSettings.SIMULATION_DISTANCE + "=" + simulationDistance
+                     + " is not from 1 to the chunk view distance " + viewDistance
+                     + ": the simulation distance cannot exceed the view distance");
+# gradle exit 1
+23 tests completed, 2 failed
+BUILD FAILED in 10s
+RED ShardLaunchTest#theSimulationDistanceDoesNotExceedTheViewDistance(Path) @ShardLaunchTest.java:50 :: org.opentest4j.AssertionFailedError: Picked up JAVA_TOOL_OPTIONS: -Dhttps.proxyHost=127.0.0.1 -Dhttps.proxyPort=7897 -Dhttp.proxyHost=127.0.0.1 -Dhttp.proxyPort=7897 -Dhttp.nonProxyHosts=maven.aliyun.com|*.aliyun.com
+RED ShardWorldTest#aSimulationDistanceAboveTheViewDistanceIsRefused() @ShardWorldTest.java:63 :: org.opentest4j.AssertionFailedError: Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown.
+# restored; git status outside docs: []
+## gradle summary:
+23 tests completed, 2 failed
+BUILD FAILED in 10s
+
+================ S1-no-final-flush-step.log
+# S1-no-final-flush-step 2026-09-27 11:08:41 load { 5.04 5.94 7.85 }
+# diff:
+--- a/server-app/src/main/java/io/github/bearisbug/synaxis/app/shard/ShardWorld.java
++++ b/server-app/src/main/java/io/github/bearisbug/synaxis/app/shard/ShardWorld.java
+@@ -199,7 +199,6 @@ public final class ShardWorld {
+             throw new IllegalArgumentException("the overlay store " + overlayDirectory + " cannot be opened: "
+                     + e.getMessage(), e);
+         }
+-        shutdown.addAfterPlayers("overlay", overlay::finalFlush);
+         final SynxChunkLoader loader;
+         try {
+             loader = new SynxChunkLoader(settings.buildDir(), manifest, manifest.bounds(), synxOptions, overlay, overlay);
+# gradle exit 1
+5 tests completed, 1 failed
+BUILD FAILED in 8s
+RED ShardWorldAssemblyTest#aNormalStopWritesEveryChangeAndNothingAfterIt() @ShardWorldAssemblyTest.java:228 :: org.opentest4j.AssertionFailedError: expected: <true> but was: <false>
+# restored; git status outside docs: []
+## gradle summary:
+5 tests completed, 1 failed
+BUILD FAILED in 8s
+
+================ I1-process-x3-no-step.log
+# I1-process-x3-no-step 2026-09-27 11:09:12 load { 4.80 5.81 7.74 }
+# diff:
+--- a/server-app/src/main/java/io/github/bearisbug/synaxis/app/shard/ShardWorld.java
++++ b/server-app/src/main/java/io/github/bearisbug/synaxis/app/shard/ShardWorld.java
+@@ -199,7 +199,6 @@ public final class ShardWorld {
+             throw new IllegalArgumentException("the overlay store " + overlayDirectory + " cannot be opened: "
+                     + e.getMessage(), e);
+         }
+-        shutdown.addAfterPlayers("overlay", overlay::finalFlush);
+         final SynxChunkLoader loader;
+         try {
+             loader = new SynxChunkLoader(settings.buildDir(), manifest, manifest.bounds(), synxOptions, overlay, overlay);
+--- a/synx/src/main/java/io/github/bearisbug/synaxis/synx/OverlayStore.java
++++ b/synx/src/main/java/io/github/bearisbug/synaxis/synx/OverlayStore.java
+@@ -486,7 +486,7 @@ public final class OverlayStore implements OverlayIndex, OverlayTracker {
+     /** Dirty for {@code flush_interval_s} less {@link #DUE_LEAD_NANOS} or longer, at most 64, the longest first. */
+     private void selectDue(Set<Resident> taken, long deadline) {
+         final long now = tuning.clock().getAsLong();
+-        final long interval = TimeUnit.SECONDS.toNanos(options.flushIntervalSeconds()) - DUE_LEAD_NANOS;
++        final long interval = 3 * TimeUnit.SECONDS.toNanos(options.flushIntervalSeconds()) - DUE_LEAD_NANOS;
+         int count = 0;
+         for (Iterator<Resident> it = dirtyQueue.values().iterator(); count < FLUSH_PER_TICK && it.hasNext(); ) {
+             final Resident resident = it.next();
+# gradle exit 1
+2 tests completed, 2 failed
+BUILD FAILED in 29s
+RED OverlayShardProcessTest#aKilledShardKeepsEveryChangeOlderThanItsFlushInterval(Path) @OverlayShardProcessTest.java:163 :: org.opentest4j.AssertionFailedError: chunk E, changed at t = 0 s, is on disk after a kill at t = 20 s ==> expected: not <null>
+RED OverlayShardProcessTest#aStoppedShardWritesTheChangesOfItsLastSecond(Path) @OverlayShardProcessTest.java:194 :: org.opentest4j.AssertionFailedError: Picked up JAVA_TOOL_OPTIONS: -Dhttps.proxyHost=127.0.0.1 -Dhttps.proxyPort=7897 -Dhttp.proxyHost=127.0.0.1 -Dhttp.proxyPort=7897 -Dhttp.nonProxyHosts=maven.aliyun.com|*.aliyun.com
+# restored; git status outside docs: []
+## gradle summary:
+2 tests completed, 2 failed
+BUILD FAILED in 29s
+
+================ H1-shard-no-handlers.log
+# H1-shard-no-handlers 2026-09-27 11:09:58 load { 3.49 5.36 7.47 }
+# diff:
+--- a/server-app/src/main/java/io/github/bearisbug/synaxis/app/shard/ShardWorld.java
++++ b/server-app/src/main/java/io/github/bearisbug/synaxis/app/shard/ShardWorld.java
+@@ -16,7 +16,6 @@ import io.github.bearisbug.synaxis.synx.SynxError;
+ import io.github.bearisbug.synaxis.synx.SynxException;
+ import io.github.bearisbug.synaxis.synx.SynxExpectations;
+ import io.github.bearisbug.synaxis.synx.SynxFormat;
+-import io.github.bearisbug.synaxis.synx.SynxHandlers;
+ import io.github.bearisbug.synaxis.synx.SynxManifest;
+ import io.github.bearisbug.synaxis.synx.SynxOptions;
+ import io.github.bearisbug.synaxis.synx.SynxRegion;
+@@ -142,7 +141,6 @@ public final class ShardWorld {
+         final SynxManifest.World world = manifest.world();
+         final RegistryKey<DimensionType> dimensionType = process.dimensionType().register(Key.key(DIMENSION_TYPE),
+                 DimensionType.builder().minY(world.minY()).height(world.height()).logicalHeight(world.height()).build());
+-        SynxHandlers.registerAll(process.block());
+         LOGGER.info("Map release {} verified in {} ms: bounds={} world={}", manifest.buildId(), verifyMillis,
+                 manifest.bounds(), world);
+         return new ShardWorld(process, settings, synxOptions, overlayOptions, manifest, dimensionType, verifyMillis);
+# gradle exit 1
+23 tests completed, 2 failed
+BUILD FAILED in 41s
+RED ShardLaunchTest#twoHandlersWithOneKeyRefuseTheShard(Path) @ShardLaunchTest.java:145 :: org.opentest4j.AssertionFailedError: the JVM exits: Picked up JAVA_TOOL_OPTIONS: -Dhttps.proxyHost=127.0.0.1 -Dhttps.proxyPort=7897 -Dhttp.proxyHost=127.0.0.1 -Dhttp.proxyPort=7897 -Dhttp.nonProxyHosts=maven.aliyun.com|*.aliyun.com
+RED ShardWorldTest#theShardRegistersTheHandlersOfTheBaker() @ShardWorldTest.java:99 :: org.opentest4j.AssertionFailedError: synaxis:door is registered ==> expected: not <null>
+# restored; git status outside docs: []
+## gradle summary:
+23 tests completed, 2 failed
+BUILD FAILED in 41s
+
+================ K1-keys-without-overlay.log
+# K1-keys-without-overlay 2026-09-27 11:11:45 load { 2.56 4.53 6.89 }
+# diff:
+--- a/server-app/src/main/java/io/github/bearisbug/synaxis/app/ConfigFile.java
++++ b/server-app/src/main/java/io/github/bearisbug/synaxis/app/ConfigFile.java
+@@ -159,8 +159,6 @@ public final class ConfigFile {
+             // The map shard, :synx SynxOptions and OverlayOptions
+             "synaxis.world-writable",
+             "synaxis.synx.section-cache-bytes",
+-            "synaxis.overlay.cap",
+-            "synaxis.overlay.flush-interval-s",
+             // The logging setup, logback.xml
+             "synaxis.app.log",
+             // The RTS plugin, game-rts
+# gradle exit 1
+BUILD FAILED in 7s
+RED ConfigKeyGateTest#theTableOfTheConfigFileIsEveryKeyTheCodeReads() @ConfigKeyGateTest.java:74 :: org.opentest4j.AssertionFailedError: Problems of the config key gate (2):
+# restored; git status outside docs: []
+## gradle summary:
+1 test completed, 1 failed
+BUILD FAILED in 7s
+
+================ K2-options-lenient.log
+# K2-options-lenient 2026-09-27 11:11:53 load { 2.75 4.54 6.88 }
+# diff:
+--- a/synx/src/main/java/io/github/bearisbug/synaxis/synx/OverlayOptions.java
++++ b/synx/src/main/java/io/github/bearisbug/synaxis/synx/OverlayOptions.java
+@@ -46,7 +46,7 @@ public record OverlayOptions(int cap, int flushIntervalSeconds) {
+         } catch (NumberFormatException e) {
+             throw new IllegalArgumentException("Property '" + name + "' is not an integer: " + value, e);
+         }
+-        if (parsed < min || parsed > max) {
++        if (parsed < min) {
+             throw new IllegalArgumentException("Property '" + name + "' is not from " + min
+                     + (max == Integer.MAX_VALUE ? " up" : " to " + max) + ": " + value);
+         }
+--- a/synx/src/main/java/io/github/bearisbug/synaxis/synx/SynxOptions.java
++++ b/synx/src/main/java/io/github/bearisbug/synaxis/synx/SynxOptions.java
+@@ -35,7 +35,7 @@ public record SynxOptions(boolean worldWritable, long sectionCacheBytes) {
+         final String writable = properties.apply(WORLD_WRITABLE);
+         final boolean worldWritable = switch (writable) {
+             case null -> true;
+-            case "true" -> true;
++            case "true", "TRUE" -> true;
+             case "false" -> false;
+             default -> throw new IllegalArgumentException("Property '" + WORLD_WRITABLE + "' is not true or false: \""
+                     + writable + "\"");
+# gradle exit 1
+7 tests completed, 2 failed
+BUILD FAILED in 6s
+RED OverlayOptionsTest#aValueOutOfRangeOrNotAnIntegerIsRefused() @OverlayOptionsTest.java:31 :: org.opentest4j.AssertionFailedError: expected: <Property 'synaxis.overlay.flush-interval-s' is not from 1 to 60: 61> but was: <flush_interval_s must be from 1 to 60: 61>
+RED SynxOptionsTest#aBooleanOtherThanLowerCaseTrueOrFalseIsRefused() @SynxOptionsTest.java:32 :: org.opentest4j.AssertionFailedError: Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown.
+# restored; git status outside docs: []
+## gradle summary:
+7 tests completed, 2 failed
+BUILD FAILED in 6s
+
+================ SS1-grace-zero.log
+# SS1-grace-zero 2026-09-27 11:12:15 load { 4.12 4.75 6.89 }
+# diff:
+--- a/server-app/src/main/java/io/github/bearisbug/synaxis/app/shard/ShardSettings.java
++++ b/server-app/src/main/java/io/github/bearisbug/synaxis/app/shard/ShardSettings.java
+@@ -60,7 +60,7 @@ public record ShardSettings(@Nullable Path mapRoot, @Nullable String mapBuild, i
+         }
+         final int simulationDistance = intProperty(properties, SIMULATION_DISTANCE, DEFAULT_SIMULATION_DISTANCE);
+         final int grace = intProperty(properties, CHUNK_UNLOAD_GRACE_TICKS, DEFAULT_CHUNK_UNLOAD_GRACE_TICKS);
+-        if (grace != -1 && grace < 1) {
++        if (grace < -1) {
+             throw new IllegalArgumentException("Property '" + CHUNK_UNLOAD_GRACE_TICKS + "' is neither -1 nor at least 1: "
+                     + grace);
+         }
+# gradle exit 1
+6 tests completed, 1 failed
+BUILD FAILED in 6s
+RED ShardSettingsTest#aValueThatIsNotAnIntegerOrAGraceBelowOneIsRefused() @ShardSettingsTest.java:72 :: org.opentest4j.AssertionFailedError: Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown.
+# restored; git status outside docs: []
+## gradle summary:
+6 tests completed, 1 failed
+BUILD FAILED in 6s
+
+================ W10a-transfers-any-store.log
+# W10a-transfers-any-store 2026-09-27 11:10:59 load { 3.06 4.89 7.14 }
+# diff:
+--- a/server-app/src/main/java/io/github/bearisbug/synaxis/app/ShardMain.java
++++ b/server-app/src/main/java/io/github/bearisbug/synaxis/app/ShardMain.java
+@@ -88,7 +88,7 @@ public final class ShardMain {
+      */
+     static Map<String, String> transferDefaults(UnaryOperator<String> properties) {
+         final String store = properties.apply(Main.STORE_PROPERTY);
+-        if (properties.apply(ACCEPT_TRANSFERS) != null || store == null || !Main.STORE_POSTGRES.equals(store.strip()))
++        if (properties.apply(ACCEPT_TRANSFERS) != null || Main.STORE_POSTGRES.equals(store + "x"))
+             return Map.of();
+         return Map.of(ACCEPT_TRANSFERS, "true");
+     }
+# gradle exit 1
+10 tests completed, 1 failed
+BUILD FAILED in 6s
+RED ShardMainTest#aMemoryShardTakesNoTransfers() @ShardMainTest.java:57 :: org.opentest4j.AssertionFailedError: expected: <{}> but was: <{synaxis.accept-transfers=true}>
+# restored; git status outside docs: []
+## gradle summary:
+10 tests completed, 1 failed
+BUILD FAILED in 6s
+
+================ W10b-transfers-over-cli.log
+# W10b-transfers-over-cli 2026-09-27 11:11:06 load { 3.14 4.87 7.12 }
+# diff:
+--- a/server-app/src/main/java/io/github/bearisbug/synaxis/app/ShardMain.java
++++ b/server-app/src/main/java/io/github/bearisbug/synaxis/app/ShardMain.java
+@@ -88,7 +88,7 @@ public final class ShardMain {
+      */
+     static Map<String, String> transferDefaults(UnaryOperator<String> properties) {
+         final String store = properties.apply(Main.STORE_PROPERTY);
+-        if (properties.apply(ACCEPT_TRANSFERS) != null || store == null || !Main.STORE_POSTGRES.equals(store.strip()))
++        if (store == null || !Main.STORE_POSTGRES.equals(store.strip()))
+             return Map.of();
+         return Map.of(ACCEPT_TRANSFERS, "true");
+     }
+# gradle exit 1
+10 tests completed, 1 failed
+BUILD FAILED in 3s
+RED ShardMainTest#theCommandLineWinsForTransfers() @ShardMainTest.java:84 :: org.opentest4j.AssertionFailedError: expected: <{}> but was: <{synaxis.accept-transfers=true}>
+# restored; git status outside docs: []
+## gradle summary:
+10 tests completed, 1 failed
+BUILD FAILED in 3s
+
+================ W10c-visible-over-cli.log
+# W10c-visible-over-cli 2026-09-27 11:11:10 load { 3.44 4.91 7.12 }
+# diff:
+--- a/server-app/src/main/java/io/github/bearisbug/synaxis/app/ShardMain.java
++++ b/server-app/src/main/java/io/github/bearisbug/synaxis/app/ShardMain.java
+@@ -74,7 +74,7 @@ public final class ShardMain {
+         final Map<String, String> defaults = new LinkedHashMap<>();
+         if (properties.apply(CHUNK_VIEW_DISTANCE) == null) defaults.put(CHUNK_VIEW_DISTANCE, "12");
+         if (properties.apply(MAX_CHUNKS_PER_TICK) == null) defaults.put(MAX_CHUNKS_PER_TICK, "4");
+-        if (properties.apply(MAX_VISIBLE_ENTITIES) == null) defaults.put(MAX_VISIBLE_ENTITIES, "100");
++        defaults.put(MAX_VISIBLE_ENTITIES, "100");
+         return defaults;
+     }
+ 
+# gradle exit 1
+10 tests completed, 1 failed
+BUILD FAILED in 3s
+RED ShardMainTest#theCommandLineWinsForTheViewSettings() @ShardMainTest.java:51 :: org.opentest4j.AssertionFailedError: expected: <{synaxis.chunk-queue.max-per-tick=4, synaxis.chunk-view-distance=12}> but was: <{synaxis.chunk-view-distance=12, synaxis.chunk-queue.max-per-tick=4, synaxis.max-visible-entities-per-player=100}>
+# restored; git status outside docs: []
+## gradle summary:
+10 tests completed, 1 failed
+BUILD FAILED in 3s
+
+================ W27-window-not-refused.log
+# W27-window-not-refused 2026-09-27 11:12:42 load { 3.99 4.68 6.80 }
+# diff:
+--- a/baker/src/main/java/io/github/bearisbug/synaxis/baker/AnvilSource.java
++++ b/baker/src/main/java/io/github/bearisbug/synaxis/baker/AnvilSource.java
+@@ -226,7 +226,7 @@ public final class AnvilSource implements BakeSource {
+                 outside = "entity " + entity.getString("id");
+             }
+         }
+-        if (outside != null) {
++        if (outside != null && chunk.chunkX() == Integer.MIN_VALUE) {
+             throw new AnvilSourceException(chunk.chunkX(), chunk.chunkZ(), outside + " at y " + outsideY
+                     + " lies outside of the baked window, y " + minY + " to " + (minY + height - 1)
+                     + "; clear it from the source or move the window with --min-y");
+# gradle exit 1
+18 tests completed, 5 failed
+BUILD FAILED in 6s
+RED BakerMainTest#theCommandLinePassesMinYToTheSource() @BakerMainTest.java:114 :: org.opentest4j.AssertionFailedError: expected: <2> but was: <3>
+RED AnvilBakeTest#anEntityAboveTheWindowExitsTwo() @AnvilBakeTest.java:151 :: org.opentest4j.AssertionFailedError: published /var/folders/cg/30kkblns6599cnrbhx__l4jw0000gn/T/junit-16934089787848412557/maps/anvil/anvil-0ae6728d4111-p776, 20049 bytes ==> expected: <2> but was: <0>
+RED AnvilBakeTest#aBlockEntityAboveTheWindowExitsTwo() @AnvilBakeTest.java:131 :: org.opentest4j.AssertionFailedError: 1 region(s) failed; first region 0, 0: java.lang.ArrayIndexOutOfBoundsException: Index 16 out of bounds for length 16 ==> expected: <2> but was: <3>
+RED AnvilBakeTest#aWindowAboveTheBedrockExitsTwo() @AnvilBakeTest.java:161 :: org.opentest4j.AssertionFailedError: 1 region(s) failed; first region 0, 0: java.lang.ArrayIndexOutOfBoundsException: Index -4 out of bounds for length 16 ==> expected: <2> but was: <3>
+RED AnvilBakeTest#aBlockAboveTheWindowExitsTwo() @AnvilBakeTest.java:112 :: org.opentest4j.AssertionFailedError: published /var/folders/cg/30kkblns6599cnrbhx__l4jw0000gn/T/junit-10761185136048197454/maps/anvil/anvil-b6566bc4f5c0-p776, 20049 bytes ==> expected: <2> but was: <0>
+# restored; git status outside docs: []
+## gradle summary:
+18 tests completed, 5 failed
+BUILD FAILED in 6s
+
+================ system-out lines read from the JUnit XML of these runs
+I1  OverlayShardProcessTest: crash window: 191 changes, 0 kept, 191 lost; the oldest lost change was 20004 ms old at the kill, the newest kept one -1 ms
+D4  TranslationKeyGateTest: translation key gate: 57 keys checked against [en_us.json, zh_cn.json], 13 identifiers left out; problems: en_us.json / zh_cn.json has no text for synaxis:loot (from io.github.bearisbug.synaxis.game.rts.marker.LootMarker)
+D5  TranslationKeyGateTest: translation key gate: 57 keys checked against [en_us.json, zh_cn.json], 13 identifiers left out; problems: en_us.json / zh_cn.json has no text for synaxis:map (from io.github.bearisbug.synaxis.app.shard.ShardWorld)
+K1  ConfigKeyGateTest: config key gate: 113 keys read, 111 in ConfigFile.KEYS, 20 meter names left out; problems: synaxis.overlay.cap and synaxis.overlay.flush-interval-s are read (io.github.bearisbug.synaxis.synx.OverlayOptions) but not in ConfigFile.KEYS
+D1  BakerMainTest#twoHandlersWithOneKeyExitOne: message ends ==> expected: <1> but was: <0>
+C5  OverlayFinalFlushTest.java:61 is the helper flushLine, called at :266 by aFinalFlushTheTickStartedIsWaitedForAndNotRepeated
+SW1 ShardLaunchTest.java:50 is the helper assertRefused (called at :94), ShardWorldTest.java:63 the helper refused (called at :123)
+
+================ W29-markers-counted.log (TC-WORLD-029 step 2)
+# W29-markers-counted 2026-09-27 11:49:03 load { 3.39 5.45 5.95 }
+# diff:
+--- a/baker/src/main/java/io/github/bearisbug/synaxis/baker/ChunkEncoder.java
++++ b/baker/src/main/java/io/github/bearisbug/synaxis/baker/ChunkEncoder.java
+@@ -207,9 +207,9 @@ final class ChunkEncoder {
+         long diff = 0;
+         for (int s = 0; s < chunk.blocks().length; s++) {
+             diff += nibbleDiff(chunk.sourceSky() == null ? null : chunk.sourceSky()[s],
+-                    light.sky(chunk.chunkX(), minSection + s, chunk.chunkZ()), minSection + s, chunk.markerCells());
++                    light.sky(chunk.chunkX(), minSection + s, chunk.chunkZ()), minSection + s, Set.of());
+             diff += nibbleDiff(chunk.sourceBlock() == null ? null : chunk.sourceBlock()[s],
+-                    light.block(chunk.chunkX(), minSection + s, chunk.chunkZ()), minSection + s, chunk.markerCells());
++                    light.block(chunk.chunkX(), minSection + s, chunk.chunkZ()), minSection + s, Set.of());
+         }
+         return diff;
+     }
+# gradle exit 1
+14 tests completed, 1 failed
+BUILD FAILED in 7s
+RED AnvilBakeTest#theSourceLightParityLeavesTheMarkersOut() @AnvilBakeTest.java:209 :: org.opentest4j.AssertionFailedError: expected: <0> but was: <5>
+# restored; git status outside docs: []
+## gradle summary:
+14 tests completed, 1 failed
+BUILD FAILED in 7s

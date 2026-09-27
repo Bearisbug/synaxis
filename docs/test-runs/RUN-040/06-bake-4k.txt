@@ -1,0 +1,11 @@
+# RUN-040 the 4k test map for TC-WORLD-052..053, baked with baker/build/install/baker/bin/baker at cd47d36c89
+# baker bake --map-id synth --source generator:synthetic:7 --out /tmp/m3cf/load/maps --logs /tmp/m3cf/load/bakelogs --threads 4, under /usr/bin/time -l
+# 2026-09-27 11:14:32
+# { 3.15 4.20 6.36 }
+# vm.swapusage: total = 12288.00M  used = 10735.69M  free = 1552.31M  (encrypted)
+baker: published /tmp/m3cf/load/maps/synth/synth-09b42ebb5dc6-p776, 213319659 bytes
+27.34 real        91.46 user         5.40 sys
+2000355328  maximum resident set size
+1457162496  peak memory footprint
+map_build_finished: "wall_ms":25315,"cpu_ms":94984, outcome=published
+content_hash 09b42ebb5dc678b265f1c7b3f7e4d5ae7b475b6b7aca9180e14b0981e191e273 (the same as RUN-033, TC-WORLD-023); regions/: 64 files

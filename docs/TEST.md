@@ -8,12 +8,13 @@
 | Owner | Bearisbug |
 | 关联设计文档 | `docs/DESIGN.md`（引擎域 M1 / M1.5）、`docs/DESIGN-M2.md`（游戏域 M2 分册）、`docs/DESIGN-M3.md`（大世界域 M3 分册）与 `docs/DESIGN-PROD.md`（生产就绪分册）；各文档的 REQ 各自编号，M2 侧写作 `REQ-M2-*`、M3 侧写作 `REQ-M3-*`，生产就绪侧写作 `REQ-PROD-*`，对应用例写作 `TC-PROD-*` |
 | 被测系统 | 仓库 `Bearisbug/synaxis`，分支 `main` |
-| 最后更新 | 2026-09-26 |
+| 最后更新 | 2026-09-27 |
 
 变更记录（登用例增改，不登执行轮次）：
 
 | 日期 | 改动 | 作者 |
 | --- | --- | --- |
+| 2026-09-27 | 跟进 `docs/DESIGN-M3.md` v0.12（M3-C 区块流送与覆盖层，四条轨道合并后），并登记 RUN-040（证据 `docs/test-runs/RUN-040/`）。**新增 §4「M3 · 区块流送与覆盖层（M3-C）」二十六条 `TC-WORLD-030`～`TC-WORLD-055`**，JUnit 的每条都带实跑过的反证：交付规范自检与带标记夹具烘焙（030，取代 025）、处理器只经 `SynxHandlers.registerAll` 登记与烘焙器同键退出码 1（031）、翻译键门禁名单（032）、多键方块实体的 Anvil 源重烘退出码 5（033，M3-B 遗留缺陷修好前是红的）、句柄区块零编码发送（034）、物化逐字节一致与不变黑（035）、只读与记录损坏（036）、方块实体与 handler（037）、静态实体（038）、覆盖层契约的区块一侧（039）、出站积压只丢可丢的包（040）、八个配置键与配置键门禁（041）、覆盖存储的写入阶段、到期提前量、待写表与启动（042）、最终落盘与写入权（043）、模拟距离（044）、自动卸载（045）、分区删除 O(1)（046）、挂地图模式的 `ShardMain` 与 `ShardWorld`（047）、真 JVM 拒启（048）、按 `Main` 装配的分片（049）、M2 对局行为不变（050）、子 JVM 的 SIGKILL 窗口与 SIGTERM 落盘（051）、`bin/server-shard` 真进程（052）、零编码 JFR 方法计数与 20 机器人下行含阳性对照（053）、200 机器人两档（054）、分片的处理器清单与同键拒启（055）。反证里有四处为过 Error Prone 写成恒真或恒假的表达式（`TC-WORLD-035` 第 3 步、`TC-WORLD-040` 第 2 步、`TC-WORLD-042` 第 5 步、`TC-WORLD-046` 第 2 步），直接删掉最后一处读某字段的代码会让编译先红。**废弃 `TC-WORLD-025`**（「未登记即退出码 2」不再成立）。**改了六条旧用例**，改过的步骤都在本分支重跑过：`TC-WORLD-010` 第 1 步 `ShardMainTest` 8 → 10 条，第 2～4 步 `8 tests completed` → `10 tests completed`、第 3 步红行 `:69` → `:84`；`TC-WORLD-018` 预期的名单描述加 `BlockManager#getHandlerOrDummy`（只给 `:synx`）；`TC-WORLD-020` 第 3 步 `BakerMainTest` 3 → 4（本轮没跑，要 26.2 服务端 jar）；`TC-WORLD-027` 第 1 步 `BakerMainTest` 3 → 4，第 2 步 `17 tests completed` → `18 tests completed`；`TC-WORLD-029` 第 1 步 `BakerMainTest` 3 → 4、命令行一句改为 `:game-rts` 的 `DoorMarker`、`LootMarker`；「M3 · `.synx` 格式」与「M3 · 分片宿主设置」两节引言改指新用例。§2 覆盖范围、Gherkin 口径与 REQ-M3 对照表九行，§3 加 M3-C 环境一条，§5 大世界域加 M3-C 的回归映射、生产就绪域一处跨域牵连改写成用例号。生产就绪侧 `TC-PROD-*` 按分工没改，随 M3-C 过时的计数见 RUN-040 证据的 `00-index.txt` | Bearisbug |
 | 2026-09-26 | 登记 RUN-038（最终修复提交的验收，证据 `docs/test-runs/RUN-038/`）；DESIGN-PROD 修复轮版本号定稿为 v0.9.14，本文件里的引用同步 | Bearisbug |
 | 2026-09-26 | 跟进 `docs/DESIGN-PROD.md` v0.9.14，RUN-037 之后审查出的三个缺陷。**新增 §4「生产就绪 · RUN-037 后修复轮：停机冻结与断线的交错、`profile` 与别的录制、管理消息的片数」三条**，都带实跑过的反证：`TC-PROD-470`（`REQ-PROD-008`，§19 场景；新类 `ShutdownSaveRaceIntegrationTest` 两条：持记录锁强制「断线在锁外查完、其间冻结、断线再判」的交错，与 16 名 configuration 玩家和冻结同时断开 200 轮；修复前的红写进第 2 步，反证：冻结不在锁里重查 `online`）、`TC-PROD-471`（`REQ-PROD-034`，§19 场景；`ProfilerTest` 新一条：另开 `default` 设置的录制时 `profile` 文件仍读不出该事件，`SYNAXIS_*` 的值逐字节不在文件里；两条反证：写文件不过滤、逐字节检查拦得住）、`TC-PROD-472`（`REQ-PROD-032`，§19 场景；新类 `ManagementFragmentCountIntegrationTest`；反证：不数片）。**改了三条旧用例**，改过的步骤都在本分支重跑过：`TC-PROD-392` 第 6 步 `ProfilerTest` 由 1 条变 2 条、改为看其中一条并加判「录制设置里该事件为 `false`」，第 7 步红行由 `ProfilerTest.java:36`（文件里 84 个事件）改为 `:46`（录制设置里该事件为 `true`；写文件时还会按事件名过滤，文件不再是这一步的判据）；`TC-PROD-395` 第 2 步红行 `ManagementServer.java:212` → `:215`（前面加了片数常量与注释）；`TC-PROD-460` 第 3～5 步的改动点随 `loggedOut` 改写（查停机登记挪进记录锁，接手写成锁后的 `if (!saveEnded) shutdownSnapshot(…)`），红行与消息不变。§5 加一行回归映射 | Bearisbug |
 | 2026-09-26 | 登记 RUN-037（第 6 波修复轮合入集成分支后的复验，证据 `docs/test-runs/RUN-037/`）。跟进 `docs/DESIGN-PROD.md` v0.9.13：本表与 §4、§5 里写的「v0.9（集成修复）」「v0.9.9（修复轮）」引用改为重编的版本号：集成修复 v0.9.9、F1（`TC-PROD-460`、`TC-PROD-461`）v0.9.10、F2（`TC-PROD-465`～`TC-PROD-469`）v0.9.11、F3（计数改正、`TC-GAME-034` 第 4 步、`TC-GAME-035` 改写）v0.9.12。用例判据一条没改 | Bearisbug |
@@ -145,8 +146,8 @@
 
 - 覆盖（引擎域 · M1 / M1.5）：里程碑 M1 的 12 条需求的黑盒与半黑盒验收——构建产物与仓库元数据（命令、退出码、文件）、Minecraft 协议行为（裸 socket 与原版客户端可观察的包与断线原因）、文档与合规文件。
 - 覆盖（游戏域 · M2）：`docs/DESIGN-M2.md` 的 `REQ-M2-001`～`REQ-M2-025` 的黑盒与半黑盒验收——工程门禁的可观察结论（模块树、构建红绿、CI 结论）、插件宿主的生命周期与隔离行为（启停日志、退出码、回调有无、事件 JSONL）、自定义负载协议行为（探针可见的消息、结果码与断线原因键）、程序化地图生成与对局生命周期、单位 / 寻路 / 镜头的服务端权威行为，以及客户端模组的安装与 RTS 切片的端到端人工验收。
-- 覆盖（大世界域 · M3）：`docs/DESIGN-M3.md` 里**已落地**的两块——光照（`REQ-M3-005`、`REQ-M3-006`、`REQ-M3-007`、`REQ-M3-027`、`REQ-M3-028`：原版 26.2 对拍、`lightBlock` 衰减、面遮挡与 `ShapeImpl` 满面判定、`fullyLit` 重算，以及真值由 `tools/light-oracle/gen.sh` 逐字节再生）与基准程序（`REQ-M3-013`：`LargeWorldBench` 能跑、两次运行区块包字节摘要相同、空闲机器复跑），另加 `REQ-M3-003` 名下的区块包跨 JVM 逐字节确定（引擎 `ChunkData` 编码）。M3-A 剩余项与 M3-B 落地后再加三块：光照引擎抽取（`REQ-M3-004`：`LightEngine` 不依赖实例、不加锁，对拍两条路径，版本与已过对拍版本文件绑定）；`.synx` 格式（`REQ-M3-001`、`REQ-M3-002`：测试向量与 zlib 指纹门、损坏与不兼容、规范化、清单与起服校验函数、内部面名单）；烘焙器与 Anvil 读取器（`REQ-M3-003`、`REQ-M3-020`～`REQ-M3-022`：读取器门禁与夹具再生、生成器源与 Anvil 源的烘焙、Anvil 源的 256 格高度窗口、各退出码、并行等于串行、4k×4k 合成图命令行烘焙、源光照对拍、交付规范的自检命令）。观察面是 JUnit 结果 XML、`gen.sh` 的退出码与 `git status`、`worldBench` 产出的 JSON、烘焙器的退出码、stdout、清单与事件 JSONL。其余 `REQ-M3-*` 尚未实现，用例随各阶段实现派生，见下方 REQ-M3 对照表。
-- Gherkin 覆盖口径（M3）：`docs/DESIGN-M3.md` §19 里光照与基准六条 REQ 的 13 个场景由 TC-WORLD-001～TC-WORLD-004、TC-WORLD-006～TC-WORLD-008 与 TC-WORLD-026 可操作化（`REQ-M3-028` 那条自设计文档 v0.10 改走懒读路径，由 TC-WORLD-026 取代 TC-WORLD-005），`REQ-M3-003` 名下「区块包跨 JVM 逐字节确定」由 TC-WORLD-009 可操作化，`REQ-M3-004` 名下「M2 对局在修复后的光照下仍然有光」由 TC-GAME-029 第 1、2、10、11 步承担。M3-B 的场景：`REQ-M3-001` 三条 → TC-WORLD-014～TC-WORLD-016；`REQ-M3-002` 两条 → TC-WORLD-017（只到校验函数，进程退出与端口不 bind 随 M3-C）；`REQ-M3-003` 另八条 → TC-WORLD-021～TC-WORLD-023；`REQ-M3-004` 另三条 → TC-WORLD-012、TC-WORLD-013、TC-WORLD-028；`REQ-M3-020` 五条 → TC-WORLD-019、TC-WORLD-029（实体一条只到段③，分片载入生成实体随 M3-C）与 TC-WORLD-027（v0.10 新增的高度窗口两条）；`REQ-M3-021` 两条 → TC-WORLD-029；`REQ-M3-022` 两条 → TC-WORLD-029、TC-WORLD-025（标记一条只到段③ 与段①，物化后不变随 M3-C）。其余场景对应的 REQ 未实现，暂无用例。
+- 覆盖（大世界域 · M3）：`docs/DESIGN-M3.md` 里**已落地**的两块——光照（`REQ-M3-005`、`REQ-M3-006`、`REQ-M3-007`、`REQ-M3-027`、`REQ-M3-028`：原版 26.2 对拍、`lightBlock` 衰减、面遮挡与 `ShapeImpl` 满面判定、`fullyLit` 重算，以及真值由 `tools/light-oracle/gen.sh` 逐字节再生）与基准程序（`REQ-M3-013`：`LargeWorldBench` 能跑、两次运行区块包字节摘要相同、空闲机器复跑），另加 `REQ-M3-003` 名下的区块包跨 JVM 逐字节确定（引擎 `ChunkData` 编码）。M3-A 剩余项与 M3-B 落地后再加三块：光照引擎抽取（`REQ-M3-004`：`LightEngine` 不依赖实例、不加锁，对拍两条路径，版本与已过对拍版本文件绑定）；`.synx` 格式（`REQ-M3-001`、`REQ-M3-002`：测试向量与 zlib 指纹门、损坏与不兼容、规范化、清单与起服校验函数、内部面名单）；烘焙器与 Anvil 读取器（`REQ-M3-003`、`REQ-M3-020`～`REQ-M3-022`：读取器门禁与夹具再生、生成器源与 Anvil 源的烘焙、Anvil 源的 256 格高度窗口、各退出码、并行等于串行、4k×4k 合成图命令行烘焙、源光照对拍、交付规范的自检命令）。M3-C 落地后再加一块：区块流送与覆盖层（`REQ-M3-008`～`REQ-M3-011`：句柄区块零编码发送、物化与重新编码、只读情形、方块实体与静态实体、出站积压、模拟距离、按票据自动卸载、分区删除、覆盖存储的写入阶段、待写表与最终落盘；`REQ-M3-014` 的 20 机器人补充读数；`REQ-M3-002` 的分片起服接线；`REQ-M3-022` 的处理器登记与门禁名单），观察面另加分片进程的日志与事件台账、JFR 方法计数与压测 `summary.json`。观察面是 JUnit 结果 XML、`gen.sh` 的退出码与 `git status`、`worldBench` 产出的 JSON、烘焙器的退出码、stdout、清单与事件 JSONL。其余 `REQ-M3-*` 尚未实现，用例随各阶段实现派生，见下方 REQ-M3 对照表。
+- Gherkin 覆盖口径（M3）：`docs/DESIGN-M3.md` §19 里光照与基准六条 REQ 的 13 个场景由 TC-WORLD-001～TC-WORLD-004、TC-WORLD-006～TC-WORLD-008 与 TC-WORLD-026 可操作化（`REQ-M3-028` 那条自设计文档 v0.10 改走懒读路径，由 TC-WORLD-026 取代 TC-WORLD-005），`REQ-M3-003` 名下「区块包跨 JVM 逐字节确定」由 TC-WORLD-009 可操作化，`REQ-M3-004` 名下「M2 对局在修复后的光照下仍然有光」由 TC-GAME-029 第 1、2、10、11 步承担。M3-B 的场景：`REQ-M3-001` 三条 → TC-WORLD-014～TC-WORLD-016；`REQ-M3-002` 两条 → TC-WORLD-017（校验函数）与 TC-WORLD-048（M3-C 的进程一半：退出码 1、端口不 bind）；`REQ-M3-003` 另八条 → TC-WORLD-021～TC-WORLD-023；`REQ-M3-004` 另三条 → TC-WORLD-012、TC-WORLD-013、TC-WORLD-028；`REQ-M3-020` 五条 → TC-WORLD-019、TC-WORLD-029（实体一条只到段③，分片载入生成实体随 M3-C）与 TC-WORLD-027（v0.10 新增的高度窗口两条）；`REQ-M3-021` 两条 → TC-WORLD-029；`REQ-M3-022` 两条 → TC-WORLD-029、TC-WORLD-030（TC-WORLD-025 已废弃）。M3-C（设计文档 v0.12）的场景：`REQ-M3-008` → TC-WORLD-034～TC-WORLD-040、TC-WORLD-047、TC-WORLD-048、TC-WORLD-052、TC-WORLD-053（「压测中没有区块编码」的 200 机器人判据在 TC-WORLD-054）；`REQ-M3-009` → TC-WORLD-044、TC-WORLD-047、TC-WORLD-048、TC-WORLD-050；`REQ-M3-010` → TC-WORLD-045、TC-WORLD-046、TC-WORLD-049、TC-WORLD-050；`REQ-M3-011` → TC-WORLD-039、TC-WORLD-042、TC-WORLD-043、TC-WORLD-049、TC-WORLD-051；`REQ-M3-014` → TC-WORLD-053（20 机器人补充读数）与 TC-WORLD-054（判据）；`REQ-M3-022` 新增的四条 → TC-WORLD-030～TC-WORLD-032、TC-WORLD-055；`REQ-M3-003`「同一输入重烘」的 Anvil 那一句 → TC-WORLD-033。设计文档 §19 标「A、C 合并后」的六条（覆盖层达到上限时淘汰、从覆盖记录重载的区块再改后重启、显式卸载的脏区块不丢、判死时一个区块的锁被卡住、排队中的句柄包在覆盖段整理后仍可发出、覆盖存储写失败时不丢改动）只由两侧的替身测试分别覆盖（区块一侧在 TC-WORLD-039，存储一侧在 TC-WORLD-042、TC-WORLD-043），真组合没有用例，缺口登记在设计文档 §28.2。「放火把」「光照重算期间再次改动」等 M3-D 起的场景对应的 REQ 未实现，暂无用例。
 - Gherkin 覆盖口径：`docs/DESIGN-M2.md` §19 的 48 个 Gherkin 场景**全部**由本文档的 TC 可操作化，没有转交自动化测试的场景；逐条对照见下方 REQ ↔ TC 表与各用例标题行。
 - 包 ID 口径：协议探针 `tools/protocol-probe/probe.py` 与压测 harness `tools/loadtest/PacketFlood.java` 的包 ID 都是解析本仓库 `PacketVanilla.java` 得到的，编码端与解码端用同一张表，表错了也照样自洽地通过，所以**以探针或压测为判据的用例不能证明包 ID 与原版一致**。与 26.2 原版一致由 TC-036 的整表测试判（REQ-005 删包打乱 ID 的那次缺陷就是这样漏过去的，见 `docs/DESIGN.md` §28）。
 - 机械校验口径：`bash ~/.claude/skills/test-doc/check.sh docs/TEST.md` 做 REQ 双向联检——本文档引用的每条 REQ 必须在某一份设计文档里存在，每份设计文档的每条 REQ 必须被至少一条 TC 引用。**三份设计文档一起联检**：`check.sh` 把上方元信息「关联设计文档」行里的**每一个** `*.md` 都解析出来，`REQ-001`～`REQ-017`、`REQ-M2-001`～`REQ-M2-025` 与 `REQ-M3-001`～`REQ-M3-028` 都在范围内。两处不能动，动了绿灯就不再代表已核：① ID 正则的域段是 `[A-Z][A-Z0-9]*`，收窄成纯字母会让带数字的 `M2`、`M3` 域段整块静默退出联检；② 元信息那一行必须保留三份文档的路径，少一份则那一份的 REQ 无人认领。M3 侧的反向联检是被下方对照表里的「未实现」行满足的，绿灯只说明每条 REQ 都登记了去向，不说明它有用例。下表因此不是唯一判据，留作可读索引——查一条 REQ 由哪些 TC 覆盖、哪些 TC 已废弃及原因。
@@ -188,26 +189,26 @@ REQ-M3 ↔ TC 对照（可读索引）。「未实现」行没有用例，是已
 | REQ | TC |
 | --- | --- |
 | REQ-M3-001 `.synx` 区域文件格式 | TC-WORLD-014、TC-WORLD-015、TC-WORLD-016、TC-WORLD-018 |
-| REQ-M3-002 地图发布目录与清单 | TC-WORLD-017、TC-WORLD-023（起服接线随 M3-C，`rebake` 未实现） |
-| REQ-M3-003 离线烘焙器 | TC-WORLD-009、TC-WORLD-013、TC-WORLD-016、TC-WORLD-018、TC-WORLD-021、TC-WORLD-022、TC-WORLD-023（高度场包随 M3-G） |
+| REQ-M3-002 地图发布目录与清单 | TC-WORLD-017、TC-WORLD-023、TC-WORLD-047、TC-WORLD-048、TC-WORLD-052（`rebake` 未实现） |
+| REQ-M3-003 离线烘焙器 | TC-WORLD-009、TC-WORLD-013、TC-WORLD-016、TC-WORLD-018、TC-WORLD-021、TC-WORLD-022、TC-WORLD-023、TC-WORLD-033（多键方块实体的 Anvil 源重烘，缺陷修好前红；高度场包随 M3-G） |
 | REQ-M3-004 光照引擎抽取 | TC-WORLD-012、TC-WORLD-013、TC-WORLD-028；「M2 对局在修复后的光照下仍然有光」由 TC-GAME-029 第 1、2、10、11 步判 |
 | REQ-M3-005 天光整列按 `lightBlock` 与面遮挡停止 | TC-WORLD-003 |
 | REQ-M3-006 BFS 按 `lightBlock` 衰减 | TC-WORLD-003 |
 | REQ-M3-007 与原版 26.2 逐值对拍 | TC-WORLD-001、TC-WORLD-002 |
-| REQ-M3-008 `SynxChunkLoader` 与 `SynxChunk` | 未实现 |
-| REQ-M3-009 视距与模拟距离分离 | 分片宿主视距 12 由 TC-WORLD-010、TC-WORLD-011 判；模拟距离与视距大于 16 拒启未实现 |
-| REQ-M3-010 按观察者引用计数自动卸载 | 未实现 |
-| REQ-M3-011 覆盖层 | 未实现 |
+| REQ-M3-008 `SynxChunkLoader` 与 `SynxChunk` | TC-WORLD-032、TC-WORLD-034～TC-WORLD-041、TC-WORLD-047、TC-WORLD-048、TC-WORLD-052、TC-WORLD-053、TC-WORLD-054 |
+| REQ-M3-009 视距与模拟距离分离 | TC-WORLD-010、TC-WORLD-011（分片宿主视距 12）、TC-WORLD-041、TC-WORLD-044、TC-WORLD-047、TC-WORLD-048、TC-WORLD-050、TC-WORLD-052 |
+| REQ-M3-010 按观察者引用计数自动卸载 | TC-WORLD-045、TC-WORLD-046、TC-WORLD-049、TC-WORLD-050 |
+| REQ-M3-011 覆盖层 | TC-WORLD-039、TC-WORLD-041、TC-WORLD-042、TC-WORLD-043、TC-WORLD-049、TC-WORLD-051（§19 标「A、C 合并后」的六条只有两侧替身测试，见上） |
 | REQ-M3-012 运行时光照 | 未实现 |
 | REQ-M3-013 可提交的基准程序 | TC-WORLD-006、TC-WORLD-007、TC-WORLD-008 |
-| REQ-M3-014 压测量出真实区块下行 | 未实现 |
+| REQ-M3-014 压测量出真实区块下行 | TC-WORLD-053（20 机器人补充读数）、TC-WORLD-054（200 机器人判据） |
 | REQ-M3-015 空间分格 `ThreadProvider` | 未实现 |
 | REQ-M3-016 大区分服 + 频道 | 未实现 |
 | REQ-M3-017 跨大区转服的世界侧 | 未实现；分片宿主在 PostgreSQL 存储时写 `accept-transfers=true` 一条由 TC-WORLD-010、TC-WORLD-011 判 |
 | REQ-M3-019 光影兼容 | 未实现（DH + Iris spike 的证据见 §6 RUN-026 证据段，spike 不是验收） |
-| REQ-M3-020 离线 Anvil 读取器 | TC-WORLD-018、TC-WORLD-019、TC-WORLD-020、TC-WORLD-027、TC-WORLD-029（TC-WORLD-024 已废弃） |
+| REQ-M3-020 离线 Anvil 读取器 | TC-WORLD-018、TC-WORLD-019、TC-WORLD-020、TC-WORLD-027、TC-WORLD-029、TC-WORLD-038（静态实体在分片载入时生成；TC-WORLD-024 已废弃） |
 | REQ-M3-021 烘焙器第二道对拍 | TC-WORLD-029 |
-| REQ-M3-022 编辑源交付规范 | TC-WORLD-019（标记解析）、TC-WORLD-029、TC-WORLD-025（`docs/MAP-SOURCE.md` 第 6 节的自检命令） |
+| REQ-M3-022 编辑源交付规范 | TC-WORLD-019（标记解析）、TC-WORLD-029、TC-WORLD-030（`docs/MAP-SOURCE.md` 第 6 节的自检命令）、TC-WORLD-031、TC-WORLD-032、TC-WORLD-055（TC-WORLD-025 已废弃） |
 | REQ-M3-023 世界状态标志 | 未实现 |
 | REQ-M3-024 远景高度场包 | 未实现 |
 | REQ-M3-025 客户端远景 | 未实现 |
@@ -314,6 +315,7 @@ REQ-M3 ↔ TC 对照（可读索引）。「未实现」行没有用例，是已
 - 基准：`./gradlew :jmh-benchmarks:worldBench -PworldBenchArgs="<参数>"`，参数与作业表见 `jmh-benchmarks/README.md`；结果 JSON 写到 `jmh-benchmarks/` 下 `--out` 给的相对路径（默认 `build/worldbench/`，已 gitignore）。每个作业一个子 JVM，堆由 `--heap` 定（默认 6g，冒烟用 3g）。**空闲**的判据：作业 JSON 里 `loadAverageBefore` 与 `loadAverageAfter` 都低于核数的一半（本机 12 核即 < 6）；跑之前用 `sysctl -n vm.loadavg` 看一眼。基线结果是 `docs/research/large-world-2026-09/bench-2026-09-results.json`（第 2 轮）与 `bench-2026-09-run1.json`（第 1 轮）。区块包字节的基线是 `bench-2026-09-packet-canonical-1.json`（引擎修复包字节顺序之后，带四个 SHA-256 摘要）；前两份跑在修复之前，个别作业的成帧长度抽到了修复前的另一种顺序，只能当长度与耗时的参考。
 - 比较 JSON 用虚拟环境里的 Python，只用标准库。仓库的 `.gitignore` 没有忽略 `.venv`，所以虚拟环境建在仓库外（如 `uv venv --python 3.10 $TMPDIR/synaxis-venv`，用完删除），按 `params` 的 `type`、`height`、`terrain`、`palettes`、`chunks` 五项把新结果与基线逐作业配对。
 - `.synx` 与烘焙器（2026-09-25 随 RUN-033 实跑核对过）：两个模块 `:synx`、`:baker` 的测试是 JUnit，结果 XML 在 `synx/build/test-results/test/`、`baker/build/test-results/test/`。`.synx` 向量在 `synx/src/test/resources/vectors/`（`manifest.txt` 记冻结时的 zlib 指纹），逐字节那一条只在冻结时的 JDK 构建（本机 Homebrew JDK 25.0.4.1）上判，带 `-Dsynaxis.synx.require-frozen-zlib=true` 时指纹不符即失败；向量由 `./gradlew :synx:generateVectors` 再生，本文档的用例不再生向量。烘焙器命令行用 `./gradlew :baker:installDist` 产出的 `baker/build/install/baker/bin/baker`（或 `:baker:run`，它在 `baker/` 目录里运行，路径参数写绝对路径）；合成测试图是 `generator:synthetic:<seed>`（4k×4k、高 256，64 个区域、约 213 MB），输出与事件目录一律放 `mktemp -d` 建的临时目录，用完删除。Anvil 夹具在 `baker/src/test/resources/io/github/bearisbug/synaxis/baker/anvil/world/`，由 `tools/anvil-fixture/gen.sh` 从原版 26.2 服务端再生（jar 的取法同上面光照真值那一条，临时目录 `$TMPDIR/anvil-fixture.XXXXXX` 退出时删除）。
+- 区块流送与覆盖层（M3-C，2026-09-27 随 RUN-040 实跑核对过）：JUnit 的写法同上，不需要数据库。真进程用 `./gradlew :server-app:installDist :loadtest:installDist :baker:installDist` 的产物。4k 测试图用 `baker/build/install/baker/bin/baker bake --map-id synth --source generator:synthetic:7 --out <L>/maps --logs <L>/bakelogs --threads 4` 烘进 `<L>/maps/synth/synth-09b42ebb5dc6-p776`（`<L>` 是 `mktemp -d` 的目录，可用空间 ≥ 1 GB；本机约 27 s、峰值 RSS 约 2 GB；`content_hash` 与 `TC-WORLD-023` 相同）。挂图起服是 `bin/server-shard` 加 `-Dsynaxis.map.root=<L>/maps/synth -Dsynaxis.map.build=synth-09b42ebb5dc6-p776`，工作目录里会建 `overlay/<build_id>/`。压测的服务端与机器人在同一台机器上、走回环；200 机器人档的前置是 swap free ≥ 3,072 MB 且没有别的 java / Gradle 进程（`TC-WORLD-054`），20 机器人档不设这道门槛。用完删 `<L>` 与各工作目录。
 - 种子数据与重置：没有持久数据。反证步骤改的源码与资源一律用 `git checkout -- <路径>` 还原，后置统一判 `git status --porcelain -- src` 为空（`.synx` 与烘焙器的用例判 `-- synx`、`-- baker`）。
 
 ## 4. 用例库
@@ -2036,7 +2038,7 @@ REQ-M3 ↔ TC 对照（可读索引）。「未实现」行没有用例，是已
 
 ### M3 · 分片宿主设置
 
-设计文档 `docs/DESIGN-M3.md` `API-M3-006` 分片宿主设置表里属性类的四项（`ShardMain#viewDefaults` 三项、`ShardMain#transferDefaults` 一项）；线程两项归 `TC-PROD-333`、`TC-PROD-334`，模拟距离与卸载宽限随 M3-C 另派用例。`<S>` 代表 `server-app/src/main/java/io/github/bearisbug/synaxis/app/ShardMain.java`。
+设计文档 `docs/DESIGN-M3.md` `API-M3-006` 分片宿主设置表里属性类的四项（`ShardMain#viewDefaults` 三项、`ShardMain#transferDefaults` 一项）；线程两项归 `TC-PROD-333`、`TC-PROD-334`；模拟距离、卸载宽限与挂地图模式见「M3 · 区块流送与覆盖层（M3-C）」一节的 `TC-WORLD-041`、`TC-WORLD-047`、`TC-WORLD-048`、`TC-WORLD-052`。`<S>` 代表 `server-app/src/main/java/io/github/bearisbug/synaxis/app/ShardMain.java`。
 
 #### `TC-WORLD-010` `ShardMain`：视距 12、区块上限 4、可见上限 100，PostgreSQL 存储时接收转入，命令行给了的键不覆盖 — 对应 `REQ-M3-009`、`REQ-M3-017`、`REQ-PROD-024`、`REQ-PROD-026` · 级别: 回归 · 执行者: AI
 
@@ -2044,10 +2046,10 @@ REQ-M3 ↔ TC 对照（可读索引）。「未实现」行没有用例，是已
 
 | # | 操作 | 预期 |
 | --- | --- | --- |
-| 1 | `./gradlew :server-app:test --tests 'io.github.bearisbug.synaxis.app.ShardMainTest' --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts` | `BUILD SUCCESSFUL`，`TEST-io.github.bearisbug.synaxis.app.ShardMainTest.xml` 为 `tests="8" failures="0" errors="0"`（其中 3 条线程用例归 `TC-PROD-333`）。本用例的 5 条：什么都没给 → `{synaxis.chunk-view-distance=12, synaxis.chunk-queue.max-per-tick=4, synaxis.max-visible-entities-per-player=100}`；三个键各给一个（16、64、0）→ 只补另外两个；没给存储或 `synaxis.app.store=memory` → `transferDefaults` 为空；`synaxis.app.store=postgres` → `{synaxis.accept-transfers=true}`；`postgres` 且给了 `accept-transfers=false`、`memory` 且给了 `accept-transfers=true` → 都为空 |
-| 2 | 反证（不看存储）：`<S>` 的 `transferDefaults` 里 `store == null \|\| !Main.STORE_POSTGRES.equals(store.strip())` 改成 `Main.STORE_POSTGRES.equals(store + "x")`（恒假，即只要命令行没给就写 `true`），重跑第 1 步，再 `git checkout -- <S>` | `8 tests completed, 1 failed`：`aMemoryShardTakesNoTransfers` 红在 `ShardMainTest.java:57`（没给存储也被写成接收转入） |
-| 3 | 反证（覆盖命令行）：`<S>` 的 `transferDefaults` 删掉条件里的 `properties.apply(ACCEPT_TRANSFERS) != null \|\| `，重跑第 1 步，再 `git checkout -- <S>` | `8 tests completed, 1 failed`：`theCommandLineWinsForTransfers` 红在 `:69` |
-| 4 | 反证（覆盖命令行）：`<S>` 的 `viewDefaults` 里 `if (properties.apply(MAX_VISIBLE_ENTITIES) == null) ` 删掉（无条件写 100），重跑第 1 步，再 `git checkout -- <S>` | `8 tests completed, 1 failed`：`theCommandLineWinsForTheViewSettings` 红在 `:51` |
+| 1 | `./gradlew :server-app:test --tests 'io.github.bearisbug.synaxis.app.ShardMainTest' --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts` | `BUILD SUCCESSFUL`，`TEST-io.github.bearisbug.synaxis.app.ShardMainTest.xml` 为 `tests="10" failures="0" errors="0"`（其中 3 条线程用例归 `TC-PROD-333`，2 条挂地图的核心模式用例归 `TC-WORLD-047`）。本用例的 5 条：什么都没给 → `{synaxis.chunk-view-distance=12, synaxis.chunk-queue.max-per-tick=4, synaxis.max-visible-entities-per-player=100}`；三个键各给一个（16、64、0）→ 只补另外两个；没给存储或 `synaxis.app.store=memory` → `transferDefaults` 为空；`synaxis.app.store=postgres` → `{synaxis.accept-transfers=true}`；`postgres` 且给了 `accept-transfers=false`、`memory` 且给了 `accept-transfers=true` → 都为空 |
+| 2 | 反证（不看存储）：`<S>` 的 `transferDefaults` 里 `store == null \|\| !Main.STORE_POSTGRES.equals(store.strip())` 改成 `Main.STORE_POSTGRES.equals(store + "x")`（恒假，即只要命令行没给就写 `true`），重跑第 1 步，再 `git checkout -- <S>` | `10 tests completed, 1 failed`：`aMemoryShardTakesNoTransfers` 红在 `ShardMainTest.java:57`（没给存储也被写成接收转入） |
+| 3 | 反证（覆盖命令行）：`<S>` 的 `transferDefaults` 删掉条件里的 `properties.apply(ACCEPT_TRANSFERS) != null \|\| `，重跑第 1 步，再 `git checkout -- <S>` | `10 tests completed, 1 failed`：`theCommandLineWinsForTransfers` 红在 `:84` |
+| 4 | 反证（覆盖命令行）：`<S>` 的 `viewDefaults` 里 `if (properties.apply(MAX_VISIBLE_ENTITIES) == null) ` 删掉（无条件写 100），重跑第 1 步，再 `git checkout -- <S>` | `10 tests completed, 1 failed`：`theCommandLineWinsForTheViewSettings` 红在 `:51` |
 | 5 | 还原后重跑第 1 步 | 与第 1 步相同 |
 
 后置：`git status --short` 无输出。
@@ -2109,7 +2111,7 @@ REQ-M3 ↔ TC 对照（可读索引）。「未实现」行没有用例，是已
 
 ### M3 · `.synx` 格式
 
-`<G>` 同「M3 · 光照」；`<Z>` 代表 `-Dsynaxis.synx.require-frozen-zlib=true`（CI 的 check job 带它，`:synx` 的测试任务把它转给测试 JVM）；`<X>` 代表 `synx/src/test/resources/vectors`；`<S>` 代表测试包名 `io.github.bearisbug.synaxis.synx`。结果 XML 在 `synx/build/test-results/test/` 与 `architecture-tests/build/test-results/test/`。四个用例都不起进程；分片进程的起服拒绝（非零退出、端口不 bind）随 M3-C 另派用例。
+`<G>` 同「M3 · 光照」；`<Z>` 代表 `-Dsynaxis.synx.require-frozen-zlib=true`（CI 的 check job 带它，`:synx` 的测试任务把它转给测试 JVM）；`<X>` 代表 `synx/src/test/resources/vectors`；`<S>` 代表测试包名 `io.github.bearisbug.synaxis.synx`。结果 XML 在 `synx/build/test-results/test/` 与 `architecture-tests/build/test-results/test/`。四个用例都不起进程；分片进程的起服拒绝（非零退出、端口不 bind）由 M3-C 的 `TC-WORLD-048` 判。
 
 #### `TC-WORLD-014` 测试向量读写一致，写入器逐字节绑定冻结时的 zlib — 对应 `REQ-M3-001` · 级别: 回归 · 执行者: AI
 
@@ -2163,7 +2165,7 @@ REQ-M3 ↔ TC 对照（可读索引）。「未实现」行没有用例，是已
 
 | # | 操作 | 预期 |
 | --- | --- | --- |
-| 1 | `<G> :architecture-tests:test --tests 'io.github.bearisbug.synaxis.architecture.SynxInternalSurfaceArchitectureTest' --tests 'io.github.bearisbug.synaxis.architecture.BakerArchitectureTest'` | `BUILD SUCCESSFUL`；`SynxInternalSurfaceArchitectureTest` `tests="5"`（`synxNamesOnlyListedInternalTypes`、`synxTouchesOnlyListedInternalMembers`、`synxLeavesLightingChunkAlone`、`scanFindsTheSynxClasses`，以及用违规样例证明三条规则会红的 `rulesRejectUnlistedInternalsAndLightingChunk`）；`BakerArchitectureTest` `tests="4"`（`theBakerUsesOnlyTheListedEngineInternals`、`theMemberRuleRejectsABakerClassReadingAnUnlistedInternal`、`theBakerDoesNotUseLightingChunk`、`theEngineDoesNotDependOnTheBaker`），0 失败。名单与设计文档 §6 内部面表一致：两个模块共用 `BufferedPacket`、`CachedPacket`、`LightBlocks`、`Chunk#getFullDataPacket`，`GeneratorImpl` 只给 `:baker` |
+| 1 | `<G> :architecture-tests:test --tests 'io.github.bearisbug.synaxis.architecture.SynxInternalSurfaceArchitectureTest' --tests 'io.github.bearisbug.synaxis.architecture.BakerArchitectureTest'` | `BUILD SUCCESSFUL`；`SynxInternalSurfaceArchitectureTest` `tests="5"`（`synxNamesOnlyListedInternalTypes`、`synxTouchesOnlyListedInternalMembers`、`synxLeavesLightingChunkAlone`、`scanFindsTheSynxClasses`，以及用违规样例证明三条规则会红的 `rulesRejectUnlistedInternalsAndLightingChunk`）；`BakerArchitectureTest` `tests="4"`（`theBakerUsesOnlyTheListedEngineInternals`、`theMemberRuleRejectsABakerClassReadingAnUnlistedInternal`、`theBakerDoesNotUseLightingChunk`、`theEngineDoesNotDependOnTheBaker`），0 失败。名单与设计文档 §6 内部面表一致：两个模块共用 `BufferedPacket`、`CachedPacket`、`LightBlocks`、`Chunk#getFullDataPacket`，`GeneratorImpl` 只给 `:baker`，`BlockManager#getHandlerOrDummy` 只给 `:synx`（M3-C 加） |
 
 后置：无。
 
@@ -2193,7 +2195,7 @@ REQ-M3 ↔ TC 对照（可读索引）。「未实现」行没有用例，是已
 | --- | --- | --- |
 | 1 | `bash tools/anvil-fixture/gen.sh` | 退出码 0；stdout 首行 `proto chunk 3,0 Status=minecraft:initialize_light`；`ls -l` 夹具目录下 `entities/r.0.0.mca` 为 12,288 B、`region/r.0.0.mca` 为 16,384 B。两个文件与仓库版本不要求逐字节相同，判据是尺寸与第 3 步。脚本在非 full 区块不是 (3, 0) 时退出码 1、提示去改 `AnvilWorldTest`（本步不构造这种情况） |
 | 2 | `ls ${TMPDIR:-/tmp} \| grep anvil-fixture` | 无输出（脚本的临时存档目录与原版服务端进程已由 trap 清掉） |
-| 3 | 在再生的夹具上跑 `<G> :baker:test` | `BUILD SUCCESSFUL`；`AnvilWorldTest` 23、`AnvilBakeTest` 14、`GeneratorBakeTest` 12、`BakerMainTest` 3，全部 0 失败 |
+| 3 | 在再生的夹具上跑 `<G> :baker:test` | `BUILD SUCCESSFUL`；`AnvilWorldTest` 23、`AnvilBakeTest` 14、`GeneratorBakeTest` 12、`BakerMainTest` 4，全部 0 失败 |
 | 4 | `git checkout -- baker/src/test/resources` | `git status --porcelain -- baker` 无输出 |
 
 后置：同第 4 步。
@@ -2259,7 +2261,7 @@ REQ-M3 ↔ TC 对照（可读索引）。「未实现」行没有用例，是已
 
 | # | 操作 | 预期 |
 | --- | --- | --- |
-| 1 | `<G> :baker:test --tests '<BT>.anvil.AnvilBakeTest' --tests '<BT>.BakerMainTest'` | `BUILD SUCCESSFUL`；`AnvilBakeTest` `tests="14"`、`BakerMainTest` `tests="3"`，0 失败。**门禁**：`anotherDataVersionExitsTwoAndNamesTheChunk`（DataVersion 改成 4790 → 退出码 2，信息含 `chunk 0, 0` 与 `--forceUpgrade`，没有输出目录与事件）、`aProtoChunkExitsTwoAndNamesTheChunk`（`bounds` 3,0,3,0 → 退出码 2，信息含 `chunk 3, 0` 与 `initialize_light`）、`aChunkMissingInsideTheBoundsExitsTwo`（不给 `bounds` → `chunk 1, 0` missing）、`anUnregisteredMarkerNamespaceExitsTwo`（信息含 `5, -59, 5` 与 `synaxis:door`）。**标记映射**：`dataMarkersBecomeSegmentThreeRecords`（两个标记格为空气；拉杆 (5, −60, 5) 的段③ 记录 handler 为 `synaxis:door`、`locked` 为 1；箱子 (4, −60, 1) 的记录 handler 为 `synaxis:loot`、`table` 为 `t1`、`id` 仍是 `minecraft:chest`；段① 里箱子的方块实体只有 `table:"t1"`，拉杆没有方块实体）。**方块实体与实体**：`everyBlockEntityOfTheSourceIsInSegmentThree`（七类 id 齐全，告示牌文字在）、`theSourceEntitiesAreInSegmentThree`（`item_frame` 与 `text_display`，NBT 与读取器读出的相等）。**发布与对拍**：`bakesTheFullChunkAndRecordsTheSource`（清单 `world` −64 / 256、`source` 为 `anvil` / 4903 / `light_coverage` 1.0、抽样 1 差异 0、段① 16 个 section）、`theSourceLightParityOnlyReports`（源里一格天光改 1 → `source_light_diff` 多 1，`build_id` 不变）、`theSourceLightParityLeavesTheMarkersOut`（差异 0）。**命令行**：`BakerMainTest#theCommandLineBakesASaveWithDataMarkers`（测试 classpath 登记了 `DoorHandler`、`LootHandler` 两个 `BlockHandler` 服务，命令行退出码 0）。高度窗口的四条与 `BakerMainTest` 的两条 `--min-y` 测试由 TC-WORLD-027 判 |
+| 1 | `<G> :baker:test --tests '<BT>.anvil.AnvilBakeTest' --tests '<BT>.BakerMainTest'` | `BUILD SUCCESSFUL`；`AnvilBakeTest` `tests="14"`、`BakerMainTest` `tests="4"`，0 失败。**门禁**：`anotherDataVersionExitsTwoAndNamesTheChunk`（DataVersion 改成 4790 → 退出码 2，信息含 `chunk 0, 0` 与 `--forceUpgrade`，没有输出目录与事件）、`aProtoChunkExitsTwoAndNamesTheChunk`（`bounds` 3,0,3,0 → 退出码 2，信息含 `chunk 3, 0` 与 `initialize_light`）、`aChunkMissingInsideTheBoundsExitsTwo`（不给 `bounds` → `chunk 1, 0` missing）、`anUnregisteredMarkerNamespaceExitsTwo`（信息含 `5, -59, 5` 与 `synaxis:door`）。**标记映射**：`dataMarkersBecomeSegmentThreeRecords`（两个标记格为空气；拉杆 (5, −60, 5) 的段③ 记录 handler 为 `synaxis:door`、`locked` 为 1；箱子 (4, −60, 1) 的记录 handler 为 `synaxis:loot`、`table` 为 `t1`、`id` 仍是 `minecraft:chest`；段① 里箱子的方块实体只有 `table:"t1"`，拉杆没有方块实体）。**方块实体与实体**：`everyBlockEntityOfTheSourceIsInSegmentThree`（七类 id 齐全，告示牌文字在）、`theSourceEntitiesAreInSegmentThree`（`item_frame` 与 `text_display`，NBT 与读取器读出的相等）。**发布与对拍**：`bakesTheFullChunkAndRecordsTheSource`（清单 `world` −64 / 256、`source` 为 `anvil` / 4903 / `light_coverage` 1.0、抽样 1 差异 0、段① 16 个 section）、`theSourceLightParityOnlyReports`（源里一格天光改 1 → `source_light_diff` 多 1，`build_id` 不变）、`theSourceLightParityLeavesTheMarkersOut`（差异 0）。**命令行**：`BakerMainTest#theCommandLineBakesASaveWithDataMarkers`（`:game-rts` 登记的 `DoorMarker`、`LootMarker` 两个 `BlockHandler` 服务，命令行退出码 0，段① 里箱子只有 `table:"t1"`）。高度窗口的四条与 `BakerMainTest` 的两条 `--min-y` 测试由 TC-WORLD-027 判，同键退出码 1 那条由 TC-WORLD-031 判 |
 | 2 | 反证（标记格计入对拍）：`<CE>` 的 `sourceLightDiff` 里两处 `minSection + s, chunk.markerCells());` 改成 `minSection + s, Set.of());`，只跑 `AnvilBakeTest`，再 `git checkout -- <CE>` | `14 tests completed, 1 failed`：`theSourceLightParityLeavesTheMarkersOut` 为 `expected: <0> but was: <5>` |
 | 3 | 重跑第 1 步 | 与第 1 步相同 |
 
@@ -2271,13 +2273,15 @@ REQ-M3 ↔ TC 对照（可读索引）。「未实现」行没有用例，是已
 
 | # | 操作 | 预期 |
 | --- | --- | --- |
-| 1 | `<G> :baker:test --tests '<BT>.anvil.AnvilBakeTest' --tests '<BT>.BakerMainTest'` | `BUILD SUCCESSFUL`；`AnvilBakeTest` `tests="14"`、`BakerMainTest` `tests="3"`，0 失败。本用例判七条：`bakesTheFullChunkAndRecordsTheSource`（不给 `--min-y` 时清单 `world` 为 −64 / 256，段① 16 个 section）；`aBlockAboveTheWindowExitsTwo`（section 12 即 y 192～207 整段改成石头 → 退出码 2，信息含 `chunk 0, 0: block minecraft:stone at y 192` 与 `y -64 to 191`，没有输出目录与事件）；`aBlockEntityAboveTheWindowExitsTwo`（在空气格 (3, 200, 3) 加一个箱子方块实体 → 退出码 2，`chunk 0, 0: block entity minecraft:chest at y 200`）；`anEntityAboveTheWindowExitsTwo`（`text_display` 的 `Pos` y 改成 250.5 → 退出码 2，`chunk 0, 0: entity minecraft:text_display at y 250`）；`aWindowAboveTheBedrockExitsTwo`（`--min-y` 0 → 退出码 2，`chunk 0, 0: block minecraft:bedrock at y -64` 与 `y 0 to 255`）；`BakerMainTest#aMinYTheCommandLineCannotUseExitsOne`（`--min-y -60`、生成器源带 `--min-y 0` 都退出码 1，临时目录里什么都没写）；`BakerMainTest#theCommandLinePassesMinYToTheSource`（命令行 `--min-y 0` → 退出码 2） |
-| 2 | 反证（窗口外不拒绝）：`<AS>` 的 `checkWindow` 里 `if (outside != null) {` 改成 `if (outside != null && chunk.chunkX() == Integer.MIN_VALUE) {`，重跑第 1 步，再 `git checkout -- <AS>` | `BUILD FAILED`，`17 tests completed, 5 failed`：窗口四条与 `theCommandLinePassesMinYToTheSource` 都红。越界的方块与实体被静默丢掉、照常发布（`expected: <2> but was: <0>`）；越界的方块实体（含 `--min-y 0` 时夹具在 y −60 的那些）让区域烘焙失败（`ArrayIndexOutOfBoundsException`，`expected: <2> but was: <3>`） |
+| 1 | `<G> :baker:test --tests '<BT>.anvil.AnvilBakeTest' --tests '<BT>.BakerMainTest'` | `BUILD SUCCESSFUL`；`AnvilBakeTest` `tests="14"`、`BakerMainTest` `tests="4"`，0 失败。本用例判七条：`bakesTheFullChunkAndRecordsTheSource`（不给 `--min-y` 时清单 `world` 为 −64 / 256，段① 16 个 section）；`aBlockAboveTheWindowExitsTwo`（section 12 即 y 192～207 整段改成石头 → 退出码 2，信息含 `chunk 0, 0: block minecraft:stone at y 192` 与 `y -64 to 191`，没有输出目录与事件）；`aBlockEntityAboveTheWindowExitsTwo`（在空气格 (3, 200, 3) 加一个箱子方块实体 → 退出码 2，`chunk 0, 0: block entity minecraft:chest at y 200`）；`anEntityAboveTheWindowExitsTwo`（`text_display` 的 `Pos` y 改成 250.5 → 退出码 2，`chunk 0, 0: entity minecraft:text_display at y 250`）；`aWindowAboveTheBedrockExitsTwo`（`--min-y` 0 → 退出码 2，`chunk 0, 0: block minecraft:bedrock at y -64` 与 `y 0 to 255`）；`BakerMainTest#aMinYTheCommandLineCannotUseExitsOne`（`--min-y -60`、生成器源带 `--min-y 0` 都退出码 1，临时目录里什么都没写）；`BakerMainTest#theCommandLinePassesMinYToTheSource`（命令行 `--min-y 0` → 退出码 2） |
+| 2 | 反证（窗口外不拒绝）：`<AS>` 的 `checkWindow` 里 `if (outside != null) {` 改成 `if (outside != null && chunk.chunkX() == Integer.MIN_VALUE) {`，重跑第 1 步，再 `git checkout -- <AS>` | `BUILD FAILED`，`18 tests completed, 5 failed`：窗口四条与 `theCommandLinePassesMinYToTheSource` 都红。越界的方块与实体被静默丢掉、照常发布（`expected: <2> but was: <0>`）；越界的方块实体（含 `--min-y 0` 时夹具在 y −60 的那些）让区域烘焙失败（`ArrayIndexOutOfBoundsException`，`expected: <2> but was: <3>`） |
 | 3 | 重跑第 1 步 | 与第 1 步相同 |
 
 后置：`git status --porcelain -- baker` 无输出。
 
 #### `TC-WORLD-025` 交付规范的自检命令照做，游戏侧处理器未登记时报出标记 — 对应 `REQ-M3-022` · 级别: 回归 · 执行者: AI
+
+**已废弃，被 `TC-WORLD-030` 取代**（`docs/DESIGN-M3.md` v0.12：M3-C 轨道 D 在 `:game-rts` 登记了 `synaxis:door` 与 `synaxis:loot`，第 2 步的判据「未登记即退出码 2」不再成立，夹具烘焙改为退出码 0；判据实质变更，按惯例换 ID。原第 2 步的报错改作 `TC-WORLD-030` 第 4 步的反证）。
 
 前置：`docs/MAP-SOURCE.md` 存在；空的临时目录 `<O>`；`<W>` 代表夹具存档的绝对路径 `<仓库根>/baker/src/test/resources/io/github/bearisbug/synaxis/baker/anvil/world`。本用例按交付规范第 6 节原样执行，判的是规范写明的现状：游戏模块还没有登记处理器（设计文档 §28.2），M3-C 登记之后预期改为退出码 0，届时换新 ID。
 
@@ -2287,6 +2291,347 @@ REQ-M3 ↔ TC 对照（可读索引）。「未实现」行没有用例，是已
 | 2 | 仓库根目录执行 `./gradlew :baker:run --args="bake --map-id fixture --source anvil:<W> --bounds 0,0,0,0 --out <O> --logs <O>-logs --threads 8" --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts` | `BUILD FAILED`，Gradle 报 `finished with non-zero exit value 2`（烘焙器退出码 2）；stderr `baker: chunk 0, 0: data marker at 4, -59, 1 names handler namespace 'synaxis:loot', which is not registered`；`<O>` 为空，`<O>-logs` 不存在（源门禁拒绝不写事件） |
 
 后置：`rm -rf <O>`。
+
+### M3 · 区块流送与覆盖层（M3-C）
+
+对应 `docs/DESIGN-M3.md` v0.12 的 `REQ-M3-008`～`REQ-M3-011`、`REQ-M3-014`，以及 M3-C 接手的 `REQ-M3-002` 起服接线、`REQ-M3-022` 处理器登记与 `REQ-M3-003` 一处遗留缺陷（`API-M3-003`、`API-M3-005`～`API-M3-007`，§11.1，§12.5，§19 的 M3-C 场景）。`<G>` 同「M3 · 光照」；`<S>` 代表测试包名 `io.github.bearisbug.synaxis.synx`，`<E>` 代表 `io.github.bearisbug.synaxis`，`<AP>` 代表 `io.github.bearisbug.synaxis.app`。源文件代号：`<SC>` 是 `synx/src/main/java/io/github/bearisbug/synaxis/synx/SynxChunk.java`，`<SL>` 是同目录的 `SynxChunkLoader.java`，`<SE>` 是同目录的 `SynxStaticEntities.java`，`<OS>` 是同目录的 `OverlayStore.java`，`<SW>` 是 `server-app/src/main/java/io/github/bearisbug/synaxis/app/shard/ShardWorld.java`。「跑 A 组」指 `<G> :synx:test --tests '<S>.SynxChunkLoaderIntegrationTest' --tests '<S>.SynxChunkOverlayIntegrationTest'`（两类共 25 条，结果 XML 在 `synx/build/test-results/test/`）。
+
+JUnit 与反证的纪律同 3A 一节：反证一律「临时改一处实现、重跑、看红、`git checkout -- <文件>` 还原」，还原后 `git status --porcelain` 为空；改法里的「改成」都是逐字替换，改出来的代码必须过 Error Prone（删掉最后一处读某字段的代码会触发 `UnusedVariable` 让编译先红，所以有几处写成恒等的表达式）。红行号按集成分支 `m3c/integrate` 的 `cd47d36c89`。本节的 JUnit 不需要数据库；`TC-WORLD-052`～`TC-WORLD-054` 起真进程，前置见 §3「M3（大世界域）环境」的 M3-C 一条。
+
+#### `TC-WORLD-030` 交付规范的自检命令照做，带标记的夹具存档烘焙成功 — 对应 `REQ-M3-022` · 级别: 回归 · 执行者: AI
+
+前置：`docs/MAP-SOURCE.md` 存在；空的临时目录 `<O>`、`<O2>`（都不预先建）；`<W>` 代表夹具存档的绝对路径 `<仓库根>/baker/src/test/resources/io/github/bearisbug/synaxis/baker/anvil/world`；`<SV>` 代表 `game-rts/src/main/resources/META-INF/services/io.github.bearisbug.synaxis.instance.block.BlockHandler`；`git status --porcelain -- game-rts` 无输出。取代 `TC-WORLD-025`。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | `grep '^## ' docs/MAP-SOURCE.md` | 7 行，依次是存档要求、处理顺序、交付范围、制作工具、服务端数据标记、自检、实体 |
+| 2 | 仓库根执行 `./gradlew :baker:run --args="bake --map-id fixture --source anvil:<W> --bounds 0,0,0,0 --out <O> --logs <O>-logs --threads 8" --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts` | `BUILD SUCCESSFUL`；stdout 一行 `baker: published <O>/fixture/fixture-<12 位 hex>-p776, <字节数> bytes`；`<O>/fixture/` 下恰一个该目录，含 `manifest.json` 与 `regions/r.0.0.synx`；`<O>-logs/events-<日期>.jsonl` 有一行 `"event":"map_build_finished"`，带 `"outcome":"published"`、`"source_light_diff":0`、`"verify_diffs":0`（`build_id` 与字节数每次新起进程可能不同，见 `TC-WORLD-033`） |
+| 3 | `./gradlew :baker:run --args="verify --build <第 2 步的目录>" --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts` | `BUILD SUCCESSFUL`，stdout `baker: <该目录> verified` |
+| 4 | 反证（服务文件少一个处理器）：删掉 `<SV>` 里 `LootMarker` 那一行；按第 2 步的命令重跑，`--out`、`--logs` 换成 `<O2>`、`<O2>-logs`；再 `git checkout -- <SV>` | `BUILD FAILED`，`finished with non-zero exit value 2`；stderr `baker: chunk 0, 0: data marker at 4, -59, 1 names handler namespace 'synaxis:loot', which is not registered`；`<O2>` 与 `<O2>-logs` 都没有建出来 |
+
+后置：`rm -rf <O> <O>-logs <O2> <O2>-logs`；`git status --porcelain -- game-rts` 无输出。
+
+#### `TC-WORLD-031` 处理器只经 `SynxHandlers.registerAll` 登记，`:game-rts` 列出两个标记处理器，同键时烘焙器退出码 1 — 对应 `REQ-M3-022` · 级别: 回归 · 执行者: AI
+
+前置：工作副本干净。`<SH>` 代表 `synx/src/main/java/io/github/bearisbug/synaxis/synx/SynxHandlers.java`，`<LM>` 代表 `game-rts/src/main/java/io/github/bearisbug/synaxis/game/rts/marker/LootMarker.java`，`<SV>` 同 `TC-WORLD-030`；`<M>` 代表测试包 `io.github.bearisbug.synaxis.game.rts.marker`，`<BT>` 同「M3 · 烘焙器」。分片一侧的同一份清单归 `TC-WORLD-055`。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | `<G> :synx:test --tests '<S>.SynxHandlersTest' :game-rts:test --tests '<M>.MarkerHandlersTest' :baker:test --tests '<BT>.BakerMainTest'` | `BUILD SUCCESSFUL`。`SynxHandlersTest` `tests="3"`：`everyHandlerIsRegisteredUnderItsKeyAsOneInstance`（返回 `{synaxis:door, synaxis:loot}`，同一个键两次 `getHandler` 取到同一实例）、`twoHandlersWithOneKeyAreRefusedBeforeAnyIsRegistered`（抛 `IllegalArgumentException`，信息含键与两个类名，两个键都没登记）、`theServicesOnTheClassPathAreRegistered`（线程上下文类加载器多看到一个列出 `SynxHandlersTest$ListedDoor` 的服务文件，公开的 `registerAll(BlockManager)` 返回 `{synaxis:door}`）。`MarkerHandlersTest` `tests="2"`：`ServiceLoader` 找到的键依次是 `synaxis:door`、`synaxis:loot`，对应 `DoorMarker`、`LootMarker`；带 `{table:"t1", locked:1b}` 的箱子挂 `DoorMarker` 时客户端 NBT 为空复合，挂 `LootMarker` 时只有 `table:"t1"`。`BakerMainTest` `tests="4"`：`twoHandlersWithOneKeyExitOne`（多列一个同键的 `BakerMainTest$SecondDoor` 服务，退出码 1，stderr 含 `synaxis:door`、`io.github.bearisbug.synaxis.game.rts.marker.DoorMarker` 与 `…BakerMainTest$SecondDoor`，没有 `maps`、`logs` 目录）、`theCommandLineBakesASaveWithDataMarkers`（`:game-rts` 的两个处理器，退出码 0，段③ 的 handler 是 `synaxis:door`、`synaxis:loot`，段① 里箱子只有 `table:"t1"`），另两条是 `TC-WORLD-027` 的 `--min-y` |
+| 2 | 反证（同键不拒绝）：`<SH>` 的 `if (first != null) {` 改成 `if (first != null && Boolean.getBoolean("proof.never")) {`，跑 `<G> :synx:test --tests '<S>.SynxHandlersTest' :baker:test --tests '<BT>.BakerMainTest' --continue`，再 `git checkout -- <SH>` | `BUILD FAILED`。`:synx` `3 tests completed, 1 failed`，红在 `SynxHandlersTest.java:59`：`Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown.`；`:baker` `4 tests completed, 1 failed`，红在 `BakerMainTest.java:91`，`expected: <1> but was: <0>` |
+| 3 | 反证（公开入口不读服务、服务清单与客户端标签走样），三处一起改：`<SH>` 里 `registerAll(BlockManager)` 的方法体改成 `return registerAll(blocks, List.of());`，同时把 `import java.util.ServiceLoader;` 换成 `import java.util.List;`；删掉 `<SV>` 里 `LootMarker` 那一行；`<LM>` 的 `Tag.String("table")` 改成 `Tag.String("tablex")`。跑 `<G> :synx:test --tests '<S>.SynxHandlersTest' :game-rts:test --tests '<M>.MarkerHandlersTest' --continue`，再 `git checkout -- <SH> <SV> <LM>` | `BUILD FAILED`。`:synx` `3 tests completed, 1 failed`，红在 `SynxHandlersTest.java:91`：`expected: <[synaxis:door]> but was: <[]>`；`:game-rts` `2 tests completed, 2 failed`：`:29` `expected: <[synaxis:door, synaxis:loot]> but was: <[synaxis:door]>`，`:40` `expected: <CompoundBinaryTagImpl[tags={table=StringBinaryTagImpl[value=t1]}]> but was: <CompoundBinaryTagImpl[tags={}]>` |
+| 4 | 反证（服务文件列了不存在的类）：`<SV>` 末尾加一行 `io.github.bearisbug.synaxis.game.rts.marker.GateMarker`，跑 `<G> :game-rts:test --tests '<M>.MarkerHandlersTest'`，再 `git checkout -- <SV>` | `2 tests completed, 1 failed`：`theServicesAreTheDoorAndTheLootMarker` 红在 `MarkerHandlersTest.java:27`，`java.util.ServiceConfigurationError: io.github.bearisbug.synaxis.instance.block.BlockHandler: Provider io.github.bearisbug.synaxis.game.rts.marker.GateMarker not found` |
+| 5 | 重跑第 1 步 | 与第 1 步相同 |
+
+后置：`git status --porcelain -- synx baker game-rts` 无输出。
+
+#### `TC-WORLD-032` 翻译键门禁不把处理器键与地图维度类型当翻译键 — 对应 `REQ-M3-022`、`REQ-M3-008` · 级别: 回归 · 执行者: AI
+
+前置：工作副本干净。`<TK>` 代表 `architecture-tests/src/test/java/io/github/bearisbug/synaxis/architecture/TranslationKeyGateTest.java`；「跑门禁」同「生产就绪 · 第 6 波 6F」一节（`<G> :architecture-tests:test --tests 'io.github.bearisbug.synaxis.architecture.TranslationKeyGateTest'`）。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑门禁 | `tests="2"` 全绿；`<system-out>` 为 `translation key gate: 56 keys checked against [en_us.json, zh_cn.json], 14 identifiers left out`；`<TK>` 的 `NOT_TEXT` 有 `synaxis:map`（`ShardWorld` 的维度类型）、`synaxis:door`、`synaxis:loot`（`:game-rts` 的处理器键）三行并写明用途 |
+| 2 | 反证：删掉 `<TK>` 里 `Map.entry("synaxis:loot", …)` 那一行，跑门禁，再 `git checkout -- <TK>` | `2 tests completed, 1 failed`，红在 `:89`（删掉一行后的断言行），`Problems of the translation key gate (2)` 下两行：`en_us.json has no text for synaxis:loot (from io.github.bearisbug.synaxis.game.rts.marker.LootMarker)` 与同来源的 `zh_cn.json` 一行；`<system-out>` 为 `57 keys …, 13 identifiers left out` |
+| 3 | 反证：删掉 `<TK>` 里 `Map.entry("synaxis:map", …)` 那一行，跑门禁，再 `git checkout -- <TK>` | `2 tests completed, 1 failed`，红在 `:89`，两行分别是 `en_us.json has no text for synaxis:map (from io.github.bearisbug.synaxis.app.shard.ShardWorld)` 与 `zh_cn.json` 的同一行；`57 keys …, 13 identifiers left out` |
+| 4 | 重跑第 1 步 | 与第 1 步相同 |
+
+后置：`git status --porcelain -- architecture-tests` 无输出。
+
+#### `TC-WORLD-033` 带多键方块实体的 Anvil 存档，新起进程重烘到同一输出目录退出码 5 — 对应 `REQ-M3-003` · 级别: 回归 · 执行者: AI
+
+前置：`<W>` 同 `TC-WORLD-030`，夹具区块 (0, 0) 里有 `oak_sign` 与 `oak_hanging_sign`（`tools/anvil-fixture/gen.sh` 文件头），`front_text`、`back_text` 各三个键；空的临时目录 `<O>`。**`docs/DESIGN-M3.md` §28.2 的 NBT 键序缺陷修好之前本用例是红的。**
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 仓库根执行 `./gradlew :baker:run --args="bake --map-id fixture --source anvil:<W> --bounds 0,0,0,0 --out <O> --logs <O>-logs --threads 8" --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts` | `BUILD SUCCESSFUL`；stdout `baker: published <O>/fixture/fixture-<h>-p776, <字节数> bytes` |
+| 2 | 原样再执行第 1 步的命令（新的 Gradle 与烘焙器进程） | `BUILD FAILED`，`finished with non-zero exit value 5`；stderr `baker: <O>/fixture/fixture-<h>-p776 already exists`；`<O>/fixture/` 下只有这一个目录 |
+| 3 | 第 1 步命令的 `--threads 8` 换成 `--threads 1` 再执行 | 同第 2 步 |
+
+后置：`rm -rf <O> <O>-logs`。第 2、3 步各起一次新进程：缺陷还在时单次重烘也可能碰巧得到同一键序。修复落地后由修复者补一步反证：撤掉排序，第 2 步退出码 0、`<O>/fixture/` 下出现两个目录。
+
+#### `TC-WORLD-034` 句柄区块零编码发送 — 对应 `REQ-M3-008` · 级别: 冒烟 · 执行者: AI
+
+前置：工作副本干净。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 A 组 | `BUILD SUCCESSFUL`，`SynxChunkLoaderIntegrationTest` `tests="12"`、`SynxChunkOverlayIntegrationTest` `tests="13"`，0 失败。本用例看 `untouchedChunksGoOutAsTheirSegmentOne`：视距 12 的进程挂测试图（内存覆盖存储），测试连接上的玩家站在区块 (16, 16)，收到的 729 个区块包（半径 13 的环）都是 `sheddable = false` 的 `BufferedPacket`，每个区块恰一次，逐个与该区块的段① 字节相同，区块都还是 handle 模式；连接上没有 `ChunkDataPacket` 对象；`SynxStreamStats` 为 `handleSent` 729、`overlaySent` 0、`bytesSent` 等于发出的字节和、`failed` 0、`regionsMapped` 2 |
+| 2 | 反证（handle 模式交出引擎包）：`<SC>` 的 `if (mode == Mode.HANDLE) return handlePacket();`（`getFullDataPacket` 第一行）改成 `if (mode == Mode.HANDLE) { handlePacket(); return super.getFullDataPacket(); }`，跑 A 组，再 `git checkout -- <SC>` | `25 tests completed, 4 failed`：`SynxChunkLoaderIntegrationTest.java:86` 与 `:174` 为 `timed out ==> expected: <true> but was: <false>`（等不到 `BufferedPacket`），`:394` 与 `SynxChunkOverlayIntegrationTest.java:332` 为 `ClassCastException: … CachedPacket cannot be cast to … BufferedPacket` |
+| 3 | 重跑第 1 步 | 与第 1 步相同 |
+
+后置：`git status --porcelain -- synx` 无输出。
+
+#### `TC-WORLD-035` 物化后逐字节一致，新观察者不变黑 — 对应 `REQ-M3-008` · 级别: 回归 · 执行者: AI
+
+前置：同 `TC-WORLD-034`。测试图每个区块在 y 204 各有 1 格 `cave_air` 与 `void_air`（`SynxTestMap`）。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 A 组 | 同 `TC-WORLD-034` 第 1 步。本用例看两条：`aThousandMaterializedChunksEncodeBackToTheirSegmentOne`：按固定种子抽 1,000 个区块，每块先断言 (0, 204, 0) 是 `cave_air`，物化后 `getFullDataPacket` 交出的包按写线程方式成帧、`encodeOverlay` 的段①，两者解压后的包体都与段① 相同，1,000 / 1,000；清掉光照数组后 0 / 1,000。`newViewersOfAMaterializedChunkKeepItsSkyLight`：物化后新观察者收到的 sky mask 与段① 相同（section 5～16），empty sky mask 不含这些 section |
+| 2 | 反证（物化不灌天光）：`<SC>` 的 `section.setSkyLight(Objects.requireNonNullElse(decoded.sky()[i], NO_LIGHT));` 改成 `section.setSkyLight(NO_LIGHT);`，跑 A 组，再还原 | `25 tests completed, 3 failed`：`SynxChunkOverlayIntegrationTest.java:91` `every materialized chunk sends and records its segment ① ==> expected: <1000> but was: <0>`，`:117` `framed after the demotion, still lit`，`:142` `expected: <{5, 6, …, 16}> but was: <{}>` |
+| 3 | 反证（快照不改写块数）：`<SC>` 的 `if (blocks.any(air)) count -= blocks.count(air);` 改成 `if (blocks.any(air) && air < 0) count -= blocks.count(air);`（恒不扣），跑 A 组，再还原 | `25 tests completed, 1 failed`：`:91` `expected: <1000> but was: <0>` |
+| 4 | 反证（`invalidate()` 不计次，快照不因清光照而重取）：删掉 `<SC>` 里 `invalidate()` 覆写中的 `invalidations.incrementAndGet();`，跑 A 组，再还原 | `25 tests completed, 1 failed`：`:92` `without the light arrays every one differs (empty sky mask) ==> expected: <0> but was: <1000>` |
+| 5 | 重跑第 1 步 | 与第 1 步相同 |
+
+后置：同 `TC-WORLD-034`。
+
+#### `TC-WORLD-036` 只读三情形、邻区区块、`view_bounds` 外与记录损坏 — 对应 `REQ-M3-008` · 级别: 回归 · 执行者: AI
+
+前置：同 `TC-WORLD-034`。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 A 组 | 同 `TC-WORLD-034` 第 1 步。本用例看五条：`aReadOnlyWorldIgnoresEveryChange`（`world_writable = false`：`instance.setBlock`、`setBiome` 与持写锁直调 `chunk.setBlock` 都不抛异常、不生效，区块仍是 handle，没有方块更新包，`isReadOnly()` 为 true）；`neighbourRegionChunksAreReadOnly`（`bounds` 外 10 个区块、`view_bounds` 内的区块以 handle 发出，改方块不生效，没有生成静态实体，会 tick 的 handler 100 tick 里 0 次）；`outsideTheViewBoundsTheEngineBuildsAir`（实例视距先 12，`bounds` 外 18 个区块处未加载；运行期调到 20 后是空气 `DynamicChunk`，不计入 `failed`）；`aCorruptRecordLoadsAsLitAir`（crc32c 不符的区块以只读空气发出，玩家连接收到的包成帧解码后每个 section 天光全 15、empty sky mask 为空，ERROR 带坐标，`failed` 加 1，同文件其他区块正常）；`aRegionChunkWithoutARecordFails` |
+| 2 | 反证（删掉只读自判）：删掉 `<SC>` 的 6 参 `setBlock` 覆写开头的 `if (isReadOnly()) return;`，跑 A 组，再还原 | `25 tests completed, 1 failed`：`SynxChunkLoaderIntegrationTest.java:141` `expected: <minecraft:grass_block{…}> but was: <minecraft:diamond_block{…}>`（持写锁直调 `chunk.setBlock` 绕过了引擎的只读检查） |
+| 3 | 重跑第 1 步 | 与第 1 步相同 |
+
+后置：同 `TC-WORLD-034`。
+
+#### `TC-WORLD-037` 方块实体、handler 命名空间与会 tick 的 handler — 对应 `REQ-M3-008` · 级别: 回归 · 执行者: AI
+
+前置：同 `TC-WORLD-034`。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 A 组 | 同 `TC-WORLD-034` 第 1 步。本用例看：`signTextSurvivesMaterialization`（物化后告示牌 NBT 与源相等）；`unregisteredHandlerNamespacesSurviveTheOverlay`（段③ 的 `synaxis:unknown` 没登记：`getBlock` 的 handler 键仍是它，覆盖记录段③ 里仍是它、NBT 与源相等，新玩家收到的该方块实体 NBT 为空，WARN 恰 1 行）；`tickingHandlersTickInHandleMode`（handle 区块里会 tick 的 handler 20 tick 被调 20 次，区块仍是 handle）；`aBlockEntityKeepsOneHandlerInstance`（handler 登记成每次调用都新建实例：两次读、5 tick 后、物化后都是同一个实例，只新建 1 次）；`handleModeReadsWhatTheChunkHolds` |
+| 2 | 反证（没登记的命名空间不走 `getHandlerOrDummy`）：`<SC>` 里 `blocks.getHandlerOrDummy(entity.handler())` 改成 `blocks.getHandler(entity.handler())`，跑 A 组，再还原 | `25 tests completed, 2 failed`：`SynxChunkOverlayIntegrationTest.java:91` `expected: <1000> but was: <999>`，`:188` `expected: not <null>` |
+| 3 | 反证（tick 登记另取一个 handler 实例）：`<SC>` 的 `registerTickables` 里 `tickableMap.put(index, entry.getValue().block(state(source, x, y, z)));` 改成 `tickableMap.put(index, entry.getValue().block(state(source, x, y, z)).withHandler(instance.process().block().getHandlerOrDummy(handler.getKey().asString())));`，跑 A 组，再还原 | `25 tests completed, 1 failed`：`SynxChunkLoaderIntegrationTest.java:326` `the instance getBlock returns is the one that ticks ==> expected: <5> but was: <0>` |
+| 4 | 重跑第 1 步 | 与第 1 步相同 |
+
+后置：同 `TC-WORLD-034`。
+
+#### `TC-WORLD-038` 静态实体：名单内的生成并挂源 NBT，名单外的跳过 — 对应 `REQ-M3-008`、`REQ-M3-020` · 级别: 回归 · 执行者: AI
+
+前置：同 `TC-WORLD-034`。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 A 组 | 同 `TC-WORLD-034` 第 1 步。本用例看 `staticEntitiesOutsideTheListAreSkipped`（段③ 有 1 个 `item_frame` 与 1 个 `minecraft:minecart`：生成 1 个 `item_frame`，挂 `synx_source` 标签且 NBT 与源相等；minecart 没生成，WARN 1 行含它的类型名；区块不是 failed）与 `staticEntitiesKeepTheMappedFields` |
+| 2 | 反证（minecart 进名单）：`<SE>` 的 `EntityType.BLOCK_DISPLAY, EntityType.ARMOR_STAND);` 改成 `EntityType.BLOCK_DISPLAY, EntityType.ARMOR_STAND, EntityType.MINECART);`，跑 A 组，再 `git checkout -- <SE>` | `25 tests completed, 1 failed`：`SynxChunkLoaderIntegrationTest.java:344` `[] ==> expected: <1> but was: <0>`（没有 WARN 行） |
+| 3 | 重跑第 1 步 | 与第 1 步相同 |
+
+后置：同 `TC-WORLD-034`。
+
+#### `TC-WORLD-039` 覆盖层契约的区块一侧：`generation` 接续、`written` 有界、改动照计、快照不被淘汰清空 — 对应 `REQ-M3-008`、`REQ-M3-011` · 级别: 回归 · 执行者: AI
+
+前置：同 `TC-WORLD-034`。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 A 组，另跑 `<G> :test --tests '<E>.instance.ChunkTryLockWriteLockIntegrationTest'` | A 组同 `TC-WORLD-034` 第 1 步；`ChunkTryLockWriteLockIntegrationTest` `tests="5"` 0 失败（空闲时拿到、持有者可重入、别的线程持有时到时放弃、中断即放弃并保留中断标志、`readyToUnload()` 默认 true）。A 组里本用例看：`theOverlayComesFirstAndItsGenerationGoesOn`（覆盖记录优先于区域文件，`generation` 接着记录的 5）；`writtenDemotesOnlyWhatDidNotChangeSince`（编码之后又被改的区块 `written` 后仍是 overlay 且脏）；`writtenGivesUpAfter50msWhenTheLockIsHeld`（别的线程持写锁时 `written` 等 ≥ 50 ms 返回 false，区块仍是 overlay 且脏，WARN 恰 1 行带 `13,13`；放锁后再调即退回 handle）；`aChangeThatThrowsCountsAllTheSame`（`onPlace` 抛异常的改动照样 `generation` 加 1）；`aPacketHandedOutBeforeADemotionKeepsItsContent`（淘汰后再成帧，sky mask 非空、内容等于覆盖记录，再取一次仍相同）；`aDirtyChunkAsksForAFlushBeforeItUnloads`；`anExplicitlyUnloadedDirtyChunkCanBeEncodedOnTheSpot`；`biomeChangesMaterializeToo`；`theSectionCacheStaysWithinItsBudget` |
+| 2 | 反证（从覆盖记录加载时 `generation` 从 0 起）：`<SL>` 的 `loadChunk` 里 `new SectionCache.Key(hit.segment(), hit.offset()),` 下一行的 `hit.generation());` 改成 `0);`，跑 A 组，再 `git checkout -- <SL>` | `25 tests completed, 2 failed`：`SynxChunkLoaderIntegrationTest.java:391` `expected: <5> but was: <0>`，`SynxChunkOverlayIntegrationTest.java:410` `expected: <3> but was: <0>` |
+| 3 | 反证（`written` 不比 `generation`）：删掉 `<SC>` 的 `written` 里 `if (this.generation.get() != generation) return true; // changed again since the encoding: still dirty` 这一行，跑 A 组，再还原 | `25 tests completed, 1 failed`：`SynxChunkOverlayIntegrationTest.java:340` `expected: <OVERLAY> but was: <HANDLE>` |
+| 4 | 反证（`written` 取锁无界）：`<SC>` 的 `written` 里 `tryLockWriteLock(Duration.ofNanos(LOCK_WAIT_NANOS))` 改成 `tryLockWriteLock(Duration.ofDays(1))`，跑 A 组，再还原 | `25 tests completed, 1 failed`：`:262` `java.util.concurrent.TimeoutException`（测试 1 s 内等不到返回） |
+| 5 | 反证（抛异常的改动不计）：`<SC>` 的 6 参 `setBlock` 里 `try { super.setBlock(…); } finally { changed(); … }` 改成先 `super.setBlock(x, y, z, block, placement, destroy);` 再 `changed();`（去掉 `try`/`finally`），跑 A 组，再还原 | `25 tests completed, 1 failed`：`:302` `expected: <1> but was: <0>` |
+| 6 | 反证（overlay 模式交父类的惰性包）：`<SC>` 的 `getFullDataPacket` 里 `loader.overlaySent();` 之后的 `return snapshot();` 改成 `return super.getFullDataPacket();`，跑 A 组，再还原 | `25 tests completed, 3 failed`：`:91` `expected: <1000> but was: <0>`，`:117` `framed after the demotion, still lit`，`:444` `the new biome is in the record ==> array contents differ at index [8339], expected: <2> but was: <0>` |
+| 7 | 重跑第 1 步 | 与第 1 步相同 |
+
+后置：同 `TC-WORLD-034`。
+
+#### `TC-WORLD-040` 出站积压超限时只丢可丢的包，区块包不丢 — 对应 `REQ-M3-008` · 级别: 回归 · 执行者: AI
+
+前置：工作副本干净。`<PC>` 代表 `src/main/java/io/github/bearisbug/synaxis/network/player/PlayerSocketConnection.java`。第 5 波 5B 的出站积压用例（`TC-PROD-294`、`TC-PROD-295`）照旧另跑。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | `<G> :test --tests '<E>.network.player.SheddableBacklogIntegrationTest' --tests '<E>.network.player.OutboundBacklogIntegrationTest'` | `BUILD SUCCESSFUL`，两类各 `tests="2"`，0 失败。`onlySheddablePacketsAreShed`：积压上限 65,536 B、对端暂停读，队列里 20 个视野移动包（`sheddable = true`）与 20 个包住文件映射（`@TempDir`）的区块包（`sheddable = false`，各 1,536 B），再排一个 16 KiB 的移动包后越限；恢复读取后 21 个移动包全被丢，20 个区块包按序经真 socket 到达、字节与映射相同，丢包后积压计数等于 30,720 B，连接没有被 `synaxis:outbound-backlog` 断开。`chunkPacketsBuiltSheddableAreShedWithTheMovement`：区块包改以 `sheddable = true` 构造时也被丢 |
+| 2 | 反证（offer 侧把全部 `BufferedPacket` 当可丢）：`<PC>` 的 `if (packet instanceof BufferedPacket buffered && buffered.sheddable()) {` 改成 `if (packet instanceof BufferedPacket buffered && (buffered.sheddable() \|\| buffered.length() >= 0)) {`，重跑第 1 步，再 `git checkout -- <PC>` | `4 tests completed, 1 failed`：`SheddableBacklogIntegrationTest.java:51` `what is left counts the chunk packets at their actual size ==> expected: <30720> but was: <0>` |
+| 3 | 反证（写线程侧把全部 `BufferedPacket` 当移动包写）：`<PC>` 的 `if (packet instanceof BufferedPacket movement && movement.sheddable()) return writeMovement(b, movement);` 删掉 `&& movement.sheddable()`，重跑第 1 步，再还原 | `4 tests completed, 1 failed`：`:59` `the 20 chunk packets in queue order, nothing else ==> array lengths differ, expected: <30720> but was: <30208>` |
+| 4 | 重跑第 1 步 | 与第 1 步相同 |
+
+后置：`git status --porcelain -- src` 无输出。
+
+#### `TC-WORLD-041` 挂地图的八个配置键：读取、默认值、拒启文案与配置键门禁 — 对应 `REQ-M3-008`、`REQ-M3-009`、`REQ-M3-011` · 级别: 回归 · 执行者: AI
+
+前置：工作副本干净。`<CF>` 代表 `server-app/src/main/java/io/github/bearisbug/synaxis/app/ConfigFile.java`，`<SO>`、`<OO>` 代表 `synx/src/main/java/io/github/bearisbug/synaxis/synx/` 下的 `SynxOptions.java`、`OverlayOptions.java`，`<SS>` 代表 `server-app/src/main/java/io/github/bearisbug/synaxis/app/shard/ShardSettings.java`。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | `<G> :synx:test --tests '<S>.SynxOptionsTest' --tests '<S>.OverlayOptionsTest' :server-app:test --tests '<AP>.shard.ShardSettingsTest' :architecture-tests:test --tests 'io.github.bearisbug.synaxis.architecture.ConfigKeyGateTest'` | `BUILD SUCCESSFUL`：`SynxOptionsTest` `tests="4"`（默认可写、256 MiB；读到 `false` 与 `1`；`TRUE`、`true `（带空格）、`yes`、空串都拒，信息 `Property 'synaxis.world-writable' is not true or false: "<值>"`；缓存 `0`、`-1`、`256MiB` 都拒，信息以 `Property 'synaxis.synx.section-cache-bytes'` 开头）；`OverlayOptionsTest` `tests="3"`（默认 `(16_384, 10)`，读键得 `(24_576, 60)`；`flush-interval-s` 为 `0` 与 `61` 报 `Property 'synaxis.overlay.flush-interval-s' is not from 1 to 60: <值>`，`cap=0` 报 `… is not from 1 up: 0`，`cap=16k` 报 `… is not an integer: 16k`）；`ShardSettingsTest` `tests="6"`（不给地图键时不挂图、另两个键不读；挂图时默认模拟距离 4、宽限 100；只给一个地图键报 `synaxis.map.root and synaxis.map.build mount a map together, only … is given`；`build_id` 是路径时拒；`four` 报 `… is not an integer: four`，宽限 `0` 与 `-2` 报 `Property 'synaxis.chunk-unload-grace-ticks' is neither -1 nor at least 1: <值>`）；`ConfigKeyGateTest` `tests="1"`，`<system-out>` 为 `config key gate: 113 keys read, 113 in ConfigFile.KEYS, 20 meter names left out` |
+| 2 | 反证（门禁）：删掉 `<CF>` 里 `"synaxis.overlay.cap",` 与 `"synaxis.overlay.flush-interval-s",` 两行，跑第 1 步里的 `ConfigKeyGateTest`，再 `git checkout -- <CF>` | `1 test completed, 1 failed`，红在 `ConfigKeyGateTest.java:74`：`Problems of the config key gate (2)`，两行 `synaxis.overlay.cap is read (io.github.bearisbug.synaxis.synx.OverlayOptions) but not in ConfigFile.KEYS, so the config file refuses it` 与 `synaxis.overlay.flush-interval-s …` 的同一句；`<system-out>` 为 `113 keys read, 111 in ConfigFile.KEYS` |
+| 3 | 反证（读法放宽）：`<SO>` 的 `case "true" -> true;` 改成 `case "true", "TRUE" -> true;`，`<OO>` 的 `if (parsed < min \|\| parsed > max) {` 改成 `if (parsed < min) {`，跑 `<G> :synx:test --tests '<S>.SynxOptionsTest' --tests '<S>.OverlayOptionsTest'`，再 `git checkout -- <SO> <OO>` | `7 tests completed, 2 failed`：`SynxOptionsTest.java:32` `Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown.`；`OverlayOptionsTest.java:31` `expected: <Property 'synaxis.overlay.flush-interval-s' is not from 1 to 60: 61> but was: <flush_interval_s must be from 1 to 60: 61>`（记录的构造器还有一道校验，但文案不含键名） |
+| 4 | 反证（宽限 0 放行）：`<SS>` 的 `if (grace != -1 && grace < 1) {` 改成 `if (grace < -1) {`，跑 `<G> :server-app:test --tests '<AP>.shard.ShardSettingsTest'`，再 `git checkout -- <SS>` | `6 tests completed, 1 failed`：`ShardSettingsTest.java:72` `Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown.` |
+| 5 | 重跑第 1 步 | 与第 1 步相同 |
+
+后置：`git status --porcelain` 无输出。
+
+#### `TC-WORLD-042` 覆盖存储：写入阶段、到期提前量、待写表、常驻集合、淘汰、整理与启动 — 对应 `REQ-M3-011` · 级别: 回归 · 执行者: AI
+
+前置：工作副本干净。本类用 `OverlayChunk` 替身（`FakeChunk`）与可拨的时钟，不起进程。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | `<G> :synx:test --tests '<S>.OverlayStoreTest'` | `BUILD SUCCESSFUL`，`tests="26"` 0 失败。**写入阶段**：同一 tick 8 个待淘汰、24 个待卸载、8 个到期，追加 40 条、`fsync` 1 次，`fsync` 之前索引不指向它们，`evicted` 8、常驻 32，偏移按待淘汰、待卸载、到期排（`aTickOfEvictionsUnloadsAndDueChunksIsOneFsync`）；`flush-interval-s = 10` 时改动后 9.749 s 的写入阶段不写、9.750 s 的写、`fsync` 1 次（`aChunkIsDueAWritePhaseBeforeItsFlushIntervalIsUp`）；超预算留到下一 tick、同一区块不重复提交；段只容 3 条时 7 条记录落在段 0、0、0、1、1、1、2，`fsync` 3 次、`flushFsyncs` 为 3；编码之后又被改的仍脏、下一轮再写一条；编不出的区块不挡别的；`written` 返回 false 的脏区块下一 tick 再写（共 2 条）。**淘汰**：干净区块淘汰不追加记录；`written` 返回 false 时常驻 3、`evicted` 0，下一 tick 退回，常驻 2、`evicted` 1。**待写表与重载**：显式卸载的脏区块当场编码、下一 tick 写入；同一区块第二次卸载替换待写项；拿不到写锁的卸载丢这次改动并记 ERROR；第二次卸载编码抛异常时 1 行 ERROR、`find` 仍返回第一次的待写项（`segment` −1、`generation` 1）；卸载编码进行中时 `find` 200 ms 内不返回、编完后返回 `generation` 2；旧对象还没 `unloaded` 时新对象的改动单独常驻、下一次定期落盘写出 `generation` 2；干净区块卸载只移出常驻。**写失败**：全部仍脏，下一 tick 重试。**整理**：被覆盖过半的段搬到活动段后 unlink。**启动**：半截尾部丢掉、新写进段号加 1 的新段；换 `build_id` 清空；从没写过不留段；段头是覆盖段头；别的进程或版本的段拒启；没有头部的段（100 B 与 4 KiB 全 0 两种）各记 1 行含 `deleted` 的 WARN 并删除、新段号为 5。另有 `stats` 的最大值读后清零与写入阶段替换索引时 `find` 只见完整记录两条 |
+| 2 | 反证（`fsync` 前更新索引）：`<OS>` 的 `write` 里 `appended.add(record);` 之后加一行 `index(record);`，只跑 `<G> :synx:test --tests '<S>.OverlayStoreTest.aTickOfEvictionsUnloadsAndDueChunksIsOneFsync'`，再 `git checkout -- <OS>` | `1 test completed, 1 failed`：`OverlayStoreTest.java:84` `the index names no record before its fsync ==> expected: <false> but was: <true>` |
+| 3 | 反证（只 `fsync` 新建的段）：`<OS>` 的 `active()` 里把 `touched.add(segment);` 挪进它上面的 `if` 块（紧跟 `active = segment;`），只跑 `…OverlayStoreTest.aChunkChangedAfterItsEncodingStaysDirtyAndIsWrittenAgain`，再还原 | `1 test completed, 1 failed`：`:213` `a phase appending to the segment an earlier phase made forces it too ==> expected: <2> but was: <1>` |
+| 4 | 反证（卸载编码失败时不放回旧项）：`<OS>` 的 `unloaded` 里 `if (replaced != null) pending.replace(key, entry, replaced);` 改成 `if (replaced != null && replaced.isCancelled()) pending.replace(key, entry, replaced);`（直接删这一行会被 Error Prone 的 `DuplicateBranches` 拒编），只跑 `…OverlayStoreTest.anUnloadThatDoesNotEncodeLeavesThePendingEntryItWouldHaveReplaced`，再还原 | `1 test completed, 1 failed`：`:420` `NullPointerException: Cannot invoke "io.github.bearisbug.synaxis.synx.OverlayHit.segment()" because "hit" is null` |
+| 5 | 反证（按整间隔到期）：`<OS>` 的 `selectDue` 里 `toNanos(options.flushIntervalSeconds()) - DUE_LEAD_NANOS;` 改成 `toNanos(options.flushIntervalSeconds()) - 0 * DUE_LEAD_NANOS;`（直接去掉 `- DUE_LEAD_NANOS` 时 `UnusedVariable` 让编译先红），只跑 `…OverlayStoreTest.aChunkIsDueAWritePhaseBeforeItsFlushIntervalIsUp`，再还原 | `1 test completed, 1 failed`：`:130` `due 250 ms before its flush interval is up ==> expected: <false> but was: <true>` |
+| 6 | 重跑第 1 步 | 与第 1 步相同 |
+
+后置：`git status --porcelain -- synx` 无输出。
+
+#### `TC-WORLD-043` 最终落盘与写入权：两条路径恰一方执行、截止与在途编码 — 对应 `REQ-M3-011` · 级别: 回归 · 执行者: AI
+
+前置：同 `TC-WORLD-042`。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | `<G> :synx:test --tests '<S>.OverlayFinalFlushTest'` | `BUILD SUCCESSFUL`，`tests="12"` 0 失败（约 9 s）：判死时停机线程在调用线程上写 30 个区块、日志 `chunks=30 … left=0 by=shutdown`、`fsync` 1 次且在停机线程上；活着的 tick 由下一个写入阶段做；写入阶段进行中到达的请求由下一阶段做；写入阶段留下的在途编码是 `generation` 1、区块随后改到 2 时重编（`chunks=1 … left=0`，共编码 2 次，重开后 `generation` 2）；留下的编码为 null 的区块重编 1 次、仍相符的直接用（`chunks=2 … left=0`）；第二次调用取两次截止里更早的（300 ms 在先、在后两种顺序都在 300～1,000 ms 内返回，ERROR 行 `left` 不为 0）；先 true 后 false 只写一次；tick 已开始时停机线程等它、不重写（`by=tick`，`fsync` 1 次）；两条线程在屏障后争 1,000 轮，每轮 10 个区块各恰一条记录、`fsync` 恰 1 次，`by=tick` 与 `by=shutdown` 都出现；最终落盘之后的改动不写、只记一行 WARN；超预算时截止 + 20 ms 之后开始的编码 ≤ 2 个；一个区块的锁被卡住时只它计入剩余 |
+| 2 | 反证（停机线程抢走正在跑的 tick 的写入权）：`<OS>` 的 `takeOver` 里 `if (state == IDLE) {` 改成 `if (state == IDLE \|\| state == TICK) {`，下一行 `compareAndSet(IDLE, SHUTDOWN)` 改成 `compareAndSet(state, SHUTDOWN)`，只跑 `<G> :synx:test --tests '<S>.OverlayFinalFlushTest.aFinalFlushTheTickStartedIsWaitedForAndNotRepeated' --tests '<S>.OverlayFinalFlushTest.twoWritersRacingForTheFinalFlushWriteItExactlyOnce'`，再还原 | `2 tests completed, 2 failed`：前一条红在 `OverlayFinalFlushTest.java:61`（助手 `flushLine`，调用处 `:266`），信息 `one final flush line at INFO: [Overlay final flush: chunks=10 … by=shutdown, Overlay final flush: chunks=10 … by=tick] ==> expected: <1> but was: <2>`；后一条在某一轮红在 `:299`（本轮 `round 2 ==> expected: <10> but was: <9>`） |
+| 3 | 反证（截止之后仍发起编码）：删掉 `<OS>` 的 `encode` 开头两行（`final long stop = finalDeadline.get();` 与 `if (stop != NO_DEADLINE && System.nanoTime() - stop >= 0) return null;`），只跑 `…OverlayFinalFlushTest.aFinalFlushOverItsBudgetCompletesAtTheDeadline`，再还原 | `1 test completed, 1 failed`：`:394` `encodings started this many ms in: [1020, 1020, 1021, …]` |
+| 4 | 反证（第二次调用取较晚的截止）：`<OS>` 的 `finalFlush` 里 `next - current < 0 ? next : current` 改成 `next - current > 0 ? next : current`，只跑 `…OverlayFinalFlushTest.aSecondCallTakesTheEarlierOfTheTwoDeadlines`，再还原 | `1 test completed, 1 failed`：`:216` `PT0.3S then PT30S: the final flush took <约 1,500> ms ==> expected: <true> but was: <false>`（本轮 1,472 ms） |
+| 5 | 重跑第 1 步 | 与第 1 步相同 |
+
+后置：同 `TC-WORLD-042`。
+
+#### `TC-WORLD-044` 模拟距离：外面的区块与实体不跑 tick 体、调度器照跑、上限 32 — 对应 `REQ-M3-009` · 级别: 回归 · 执行者: AI
+
+前置：工作副本干净。`<EP>` 代表 `src/main/java/io/github/bearisbug/synaxis/entity/EntityProjectile.java`。第 6 波 6E 的视距与休眠用例（`TC-PROD-410`～`TC-PROD-422`）照旧另跑。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | `<G> :test --tests '<E>.instance.SimulationDistanceTest'` | `BUILD SUCCESSFUL`，`tests="9"` 0 失败：模拟距离 4、实体在 6 个区块外，100 tick 里实体 `getAliveTicks()` 不变、handler 0 次，玩家仍收到该区块与实体；模拟距离外实体的 `scheduleNextTick` 任务执行 1 次、`teleport` 的 future 完成、`getAliveTicks()` 不变；回到模拟距离内的第一个 tick 补发 1 次 `EntityPositionSync`；模拟距离先于休眠策略（模拟距离外 100 tick 策略 0 次，回到 40 格处 100 tick `getAliveTicks()` 加 5）；引擎默认值下任意区块都在模拟、不卸载；`setSimulationDistance(0)`、`(-2)` 抛异常、值仍是 4；设了下一 tick 生效、可解除；`(33)` 与 `(Integer.MAX_VALUE)` 抛异常、`(32)` 接受；箭矢在模拟距离外的石头里 10 tick 不判卡住，解除后 1 tick 内判卡住 |
+| 2 | 反证（投射物在模拟距离外仍做卡住判定）：删掉 `<EP>` 的 `if (outsideSimulation()) return;` 一行，重跑第 1 步，再 `git checkout -- <EP>` | `9 tests completed, 1 failed`：`SimulationDistanceTest.java:275` `outside the simulation distance the arrow is not found stuck ==> expected: <false> but was: <true>` |
+| 3 | 重跑第 1 步 | 与第 1 步相同 |
+
+后置：`git status --porcelain -- src` 无输出。
+
+#### `TC-WORLD-045` 按观察者引用计数自动卸载：宽限期、票据、在线玩家、每 tick 256 个与分批 — 对应 `REQ-M3-010` · 级别: 回归 · 执行者: AI
+
+前置：同 `TC-WORLD-044`。`<PL>` 代表 `src/main/java/io/github/bearisbug/synaxis/entity/Player.java`，`<IC>` 代表 `src/main/java/io/github/bearisbug/synaxis/instance/InstanceContainer.java`。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | `<G> :test --tests '<E>.instance.ChunkUnloadIntegrationTest'` | `BUILD SUCCESSFUL`，`tests="16"` 0 失败：宽限期 100 时票据降到 0 的那个 tick 记第 0 个，第 99 个 tick 结束仍在、第 100 个 tick 结束已卸载；宽限期 `-1` 不卸；宽限期 0 与 −2 抛异常；插件票据保住区块、去票后第 100 个 tick 卸载、同一 owner 重复加票返回 false；区块没加载时持的票在它加载后保护它；以 0 张票据加载的从加载那个 tick 起算；显式卸载不看票据；票据跟随区块环（重生前后 (0, 13) 都是 1，`setMaxViewDistance(4)` 并运行 1 tick 后 (0, 13) 为 0、(0, 5) 为 1，真断线后跑 2 tick 全环为 0）；换实例带走票据；两名玩家共享的区块两张票；有在线玩家的区块跳过（经包内测试钩子清票）；600 个空闲区块一 tick 恰卸 256 个、最早空闲的先；`readyToUnload()` 为假的留下；1,000 个空闲区块按 256 一批读出；300 个没就绪的区块排在前面、后面有 300 个就绪区块时，同一 tick 就绪的卸掉最早空闲的 256 个、留下 44 个，没就绪的 300 个都在；`readyToUnload()` 抛异常的跳过、上报 1 次，后面的照常卸载 |
+| 2 | 反证（离开实例时不退票）：`<PL>` 的 `remove` 里 `moveTicketRing(null, 0, 0, 0, () -> ChunkRange.chunksInRange(chunkX, chunkZ, ringRadius, chunkRemover));` 改成 `ChunkRange.chunksInRange(chunkX, chunkZ, ringRadius, chunkRemover);`，重跑第 1 步，再 `git checkout -- <PL>` | `16 tests completed, 1 failed`：`ChunkUnloadIntegrationTest.java:216` `-5,-5 ==> expected: <0> but was: <1>` |
+| 3 | 反证（只读第一批候选）：`<IC>` 的 `unloadIdleChunks` 里 `if (candidates.size() < batch) return;` 改成 `if (candidates.size() <= batch) return;`，重跑第 1 步，再还原 | `16 tests completed, 1 failed`：`:358` `256 of the ready ones go ==> expected: <44> but was: <300>` |
+| 4 | 重跑第 1 步 | 与第 1 步相同 |
+
+后置：同 `TC-WORLD-044`。
+
+#### `TC-WORLD-046` 分区删除是 O(1)，tick 顺序不变 — 对应 `REQ-M3-010` · 级别: 回归 · 执行者: AI
+
+前置：同 `TC-WORLD-044`。`<TD>` 代表 `src/main/java/io/github/bearisbug/synaxis/thread/ThreadDispatcherImpl.java`。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | `<G> :test --tests '<E>.thread.ThreadDispatcherTest'` | `BUILD SUCCESSFUL`，`tests="17"` 0 失败。本用例看 M3-C 加的两条：`deletingAPartitionComparesItWithNoOtherPartition`（2 万个分区里删 256 个，键比较 ≤ 512 次）与 `aTickThreadKeepsTheOrderOfItsPartitionsAcrossDeletions`（删掉若干分区后其余按插入顺序 tick，`entries` 是 `LinkedHashSet`）；其余 15 条是 `TC-PROD-030` 的 |
+| 2 | 反证（恢复 M3-C 之前的队列）：`<TD>` 里 `if (refreshesThreads) this.partitionUpdateQueue.add(partition);` 与 `if (refreshesThreads) this.partitionUpdateQueue.remove(partition);` 两处的 `if (refreshesThreads)` 都改成 `if (refreshesThreads \|\| !refreshesThreads)`（直接删掉条件时 `UnusedVariable` 让编译先红），重跑第 1 步，再 `git checkout -- <TD>` | `17 tests completed, 1 failed`：`ThreadDispatcherTest.java:546` `deleting 256 of 20,000 partitions compared keys 5054720 times ==> expected: <true> but was: <false>` |
+| 3 | 重跑第 1 步 | 与第 1 步相同 |
+
+后置：同 `TC-WORLD-044`。
+
+#### `TC-WORLD-047` 分片宿主的挂地图模式：`ShardMain` 写核心模式，`ShardWorld` 的起服校验、装配与统计 — 对应 `REQ-M3-008`、`REQ-M3-009`、`REQ-M3-002` · 级别: 回归 · 执行者: AI
+
+前置：工作副本干净。`<SM>` 代表 `server-app/src/main/java/io/github/bearisbug/synaxis/app/ShardMain.java`。`ShardMainTest` 其余 8 条归 `TC-WORLD-010` 与 `TC-PROD-333`。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | `<G> :server-app:test --tests '<AP>.ShardMainTest' --tests '<AP>.shard.ShardWorldTest' --tests '<AP>.shard.ShardArchitectureTest'` | `BUILD SUCCESSFUL`：`ShardMainTest` `tests="10"`，本用例看 `aShardMountingAMapServesTheCoreMode`（两个地图键都给、命令行没给核心模式 → `{synaxis.app.core-mode=on}`）与 `aShardWithoutAMapOrWithACoreModeKeepsItsCoreMode`（不挂图，或命令行给了核心模式 → 空）；`ShardWorldTest` `tests="12"`（按清单 `world` 登记维度类型 `synaxis:map`；视距 17 拒；模拟距离 13 与 0 拒，信息含键名与 `cannot exceed the view distance`；改了 1 个字节的区域文件报 `synx-payload-hash` 带文件名；另一个光照版本报 `synx-light-engine-mismatch`；没有清单报 `synx-manifest`；`view_bounds` 外扩 17；世界边界按 `bounds` 中心与长边；出生在中心列的 `surface_y`；统计事件是两次读数的差；写入阶段抛 1 次异常时 3 个 tick 跑满 3 次、上报 1 次；`theShardRegistersTheHandlersOfTheBaker` 归 `TC-WORLD-055`）；`ShardArchitectureTest` `tests="3"`（`app.shard` 包不经 `LightingChunk`，带违规样例） |
+| 2 | 反证（命令行给了核心模式仍写 `on`）：删掉 `<SM>` 的 `mapDefaults` 里 `\|\| properties.apply(CoreMode.PROPERTY) != null` 这个条件（连同它前面的换行），跑 `<G> :server-app:test --tests '<AP>.ShardMainTest'`，再 `git checkout -- <SM>` | `10 tests completed, 1 failed`：`ShardMainTest.java:78` `expected: <{}> but was: <{synaxis.app.core-mode=on}>` |
+| 3 | 反证（写入阶段抛异常就停）：`<SW>` 的 `scheduleWritePhase` 里 `try { writePhase.run(); } catch (RuntimeException e) { process.exception().handleException(e); }` 改成只剩 `writePhase.run();`，跑 `<G> :server-app:test --tests '<AP>.shard.ShardWorldTest'`，再 `git checkout -- <SW>` | `12 tests completed, 1 failed`：`ShardWorldTest.java:235` `the ticks after the throw run the write phase too ==> expected: <3> but was: <1>` |
+| 4 | 重跑第 1 步 | 与第 1 步相同 |
+
+后置：`git status --porcelain -- server-app` 无输出。
+
+#### `TC-WORLD-048` 真 JVM：挂地图的配置写错、发布版本不符时拒启，不挂图时照旧 — 对应 `REQ-M3-008`、`REQ-M3-009`、`REQ-M3-002` · 级别: 回归 · 执行者: AI
+
+前置：工作副本干净。`ShardLaunchTest` 每条起一个真 JVM（`ShardMain` 或 `Main`，测试图用 `MapFixture` 现烘），不经 `installDist`。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | `<G> :server-app:test --tests '<AP>.ShardLaunchTest'` | `BUILD SUCCESSFUL`，`tests="11"` 0 失败。拒启的每条都是退出码 1、日志一行 `Refusing to start: <信息>`、没有 `listening on`：只给 `synaxis.map.build`（`synaxis.map.root and synaxis.map.build mount a map together, only synaxis.map.build is given`）；经 `Main` 给地图键（`… which only the shard …`）；挂图加 `core-mode=auto`（`a map shard loads no plugin, synaxis.app.core-mode must be on, not auto`）；`synaxis.world-writable=TRUE`（`Property 'synaxis.world-writable' is not true or false: "TRUE"`）；`flush-interval-s=0`（`… is not from 1 to 60: 0`）；视距 17（`synaxis.chunk-view-distance=17 is above 16`）；模拟距离 13（`synaxis.simulation-distance=13 is not from 1 to the chunk view distance 12: …`）；改了 1 个字节的发布版本（`synx-payload-hash: r.0.0.synx: `）；另一个光照版本（`synx-light-engine-mismatch: manifest.json: `），后两条台账里没有 `shard_started`。不挂图的分片视距 17 照常起服。`twoHandlersWithOneKeyRefuseTheShard` 归 `TC-WORLD-055` |
+| 2 | 反证（模拟距离不与视距比）：`<SW>` 的 `prepare` 里 `if (simulationDistance < 1 \|\| simulationDistance > viewDistance) {` 改成 `if (simulationDistance < 1) {`，跑 `<G> :server-app:test --tests '<AP>.shard.ShardWorldTest' --tests '<AP>.ShardLaunchTest'`，再 `git checkout -- <SW>` | `23 tests completed, 2 failed`：`ShardLaunchTest.java:50`（助手 `assertRefused`，调用处 `:94`，进程没有拒启）与 `ShardWorldTest.java:63`（助手 `refused`，调用处 `:123`，`Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown.`） |
+| 3 | 重跑第 1 步 | 与第 1 步相同 |
+
+后置：同 `TC-WORLD-047`。
+
+#### `TC-WORLD-049` 按 `Main` 装配的挂地图分片：服务地图实例、覆盖目录拒启、正常停机全部落盘、卸载前先落盘、真停机序列只落盘一次 — 对应 `REQ-M3-008`、`REQ-M3-010`、`REQ-M3-011` · 级别: 回归 · 执行者: AI
+
+前置：同 `TC-WORLD-047`。`ShardWorldAssemblyTest` 在测试进程里按 `Main` 的步骤 (3)(5) 建 `ShardWorld` 与真 `ShutdownSequence`，真 `SynxChunkLoader` 与 `OverlayStore`，不 bind 端口；整类 60 s 超时。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | `<G> :server-app:test --tests '<AP>.shard.ShardWorldAssemblyTest'` | `BUILD SUCCESSFUL`，`tests="5" skipped="0"` 0 失败：`aMountedShardServesTheMapInstance`（维度类型 `synaxis:map`，模拟距离 4、宽限 100，世界边界，出生点 `(7·16 + 8.5, FLOOR, 7·16 + 8.5)`，`EVT:shard_started` 的 `regions`、`bytes_mapped` 为正、`overlay_records` 0，地面是石头）；`anOverlayStoreThatCannotBeOpenedNamesItsDirectory`（信息以 `the overlay store <目录>` 开头）；`aNormalStopWritesEveryChangeAndNothingAfterIt`（`flush-interval-s = 60`、宽限 −1，改 100 个区块后 `process.stop()`：日志 `Overlay final flush: chunks=100 … left=0 by=tick`，重开后 100 个都在；`buildShutdownTask` 登记的那次改动不在盘上）；`aDirtyChunkIsWrittenBeforeItIsUnloaded`（第 100 个 tick 脏区块被写而不卸，第 101 个 tick 卸载，重新加载后是覆盖记录的内容）；`aLiveThenDeadSaveFlushesOnceOnTheShutdownThread`（真 `ShutdownSequence` 先 `true` 后 `false`，最终落盘一次、`by=shutdown`） |
+| 2 | 反证（不注册覆盖层停机步骤）：删掉 `<SW>` 的 `start` 里 `shutdown.addAfterPlayers("overlay", overlay::finalFlush);` 一行，重跑第 1 步，再 `git checkout -- <SW>` | `5 tests completed, 1 failed`：`ShardWorldAssemblyTest.java:228` `expected: <true> but was: <false>`（没有 `chunks=100` 那一行） |
+| 3 | 重跑第 1 步 | 与第 1 步相同 |
+
+后置：同 `TC-WORLD-047`。
+
+#### `TC-WORLD-050` 引擎默认值下 M2 对局行为不变 — 对应 `REQ-M3-009`、`REQ-M3-010` · 级别: 回归 · 执行者: AI
+
+前置：工作副本干净。`<MT>` 代表 `game-rts/src/main/java/io/github/bearisbug/synaxis/game/rts/Match.java`。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | `<G> :game-rts:test --tests 'io.github.bearisbug.synaxis.game.rts.MatchIntegrationTest' :test --tests '<E>.instance.SimulationDistanceTest.theEngineDefaultsSimulateEveryChunkAndUnloadNothing'` | `BUILD SUCCESSFUL`：`MatchIntegrationTest` `tests="11"` 0 失败，本用例看 `theMatchKeepsEveryChunkLoadedAndSimulated`（默认 `rts-512` 的实例 `simulationDistance()` 与 `chunkUnloadGraceTicks()` 都是 −1；玩家站在一角跑 200 tick 后 1,024 个区块都还在，个个 `isChunkSimulated`）；引擎那一半 1 条 0 失败（不设线程键时 counter 与 1 个线程由 `ServerConfigTest#defaults` 覆盖） |
+| 2 | 反证（对局设了模拟距离）：`<MT>` 的 `this.instance = loading;` 前加一行 `loading.setSimulationDistance(4);`，跑第 1 步里的 `MatchIntegrationTest`，再 `git checkout -- <MT>` | `11 tests completed, 1 failed`：`MatchIntegrationTest.java:172` `expected: <-1> but was: <4>` |
+| 3 | 反证（对局开了自动卸载）：同一处改加 `loading.setChunkUnloadGraceTicks(100);`，跑第 1 步里的 `MatchIntegrationTest`，再还原 | `11 tests completed, 1 failed`：`:173` `expected: <-1> but was: <100>` |
+| 4 | 重跑第 1 步 | 与第 1 步相同 |
+
+后置：`git status --porcelain -- game-rts` 无输出。
+
+#### `TC-WORLD-051` 子 JVM 里的挂地图分片：SIGKILL 只丢最近 10 s 的改动，SIGTERM 全部落盘 — 对应 `REQ-M3-011` · 级别: 回归 · 执行者: AI
+
+前置：工作副本干净。`OverlayShardProcessTest` 起子 JVM 跑 `OverlayShardFixture`（按 `Main` 的步骤 (3)(5) 装配、bind 端口并 tick，按周期改区块），测试把 `synaxis.dispatcher-threads`、`synaxis.acquirable-strict`、`synaxis.thread-provider` 转给子 JVM。到期提前量的单元一半在 `TC-WORLD-042` 第 5 步：本用例的进程测试在本机测不出缺了提前量（去掉后 3 次仍绿，丢的最老改动 9,909～9,999 ms），第 5 步不能用本用例代替。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | `<G> :server-app:test --tests '<AP>.shard.OverlayShardProcessTest'` | `BUILD SUCCESSFUL`，`tests="2"` 0 失败（约 25 s）。`aKilledShardKeepsEveryChangeOlderThanItsFlushInterval`：`flush-interval-s = 10`，256 个区块先加票并加载，从 t = 0 起每 100 ms 改一个，t = 20 s 发 SIGKILL；日志没有 `Overlay final flush`；重开后 E（t = 0 的那个）在盘上，kill 前超过 10,000 ms 的改动都在，最近的有丢失。`<system-out>` 一行 `crash window: <n> changes, <k> kept, <l> lost; the oldest lost change was <a> ms old at the kill, the newest kept one <b> ms`，要求 a ≤ 10,000 且 l > 0。`aStoppedShardWritesTheChangesOfItsLastSecond`：先加载 100 个区块，1 s 内改完，SIGTERM；日志 `Overlay final flush: chunks=100 … left=0 by=tick`，重开后 100 个都在 |
+| 2 | 反证：`<OS>` 的 `selectDue` 里 `final long interval = TimeUnit.SECONDS.toNanos(options.flushIntervalSeconds()) - DUE_LEAD_NANOS;` 改成 `final long interval = 3 * TimeUnit.SECONDS.toNanos(options.flushIntervalSeconds()) - DUE_LEAD_NANOS;`，同时删掉 `<SW>` 的 `shutdown.addAfterPlayers("overlay", overlay::finalFlush);`，重跑第 1 步，再 `git checkout -- <OS> <SW>` | `2 tests completed, 2 failed`：`OverlayShardProcessTest.java:163` `chunk E, changed at t = 0 s, is on disk after a kill at t = 20 s ==> expected: not <null>`，`crash window` 一行为 `0 kept, <n> lost`；`:194`（没有 `chunks=100` 那一行） |
+| 3 | 第 1 步加上 `-Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true`，再加 `-Dsynaxis.thread-provider=grid` 各跑一次 | 同第 1 步 |
+
+后置：同 `TC-WORLD-047`。
+
+#### `TC-WORLD-052` 挂地图分片的真进程：`bin/server-shard` 起服、SIGTERM 停机、不挂图照旧、视距越界拒启 — 对应 `REQ-M3-008`、`REQ-M3-002`、`REQ-M3-009` · 级别: 回归 · 执行者: AI
+
+前置：§3「M3（大世界域）环境」M3-C 一条：`<M>` 是烘好的 4k 测试图 `<L>/maps/synth/synth-09b42ebb5dc6-p776`；端口 25771、19771 空闲；空工作目录 `<D>`。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 在 `<D>` 里后台起服：`JAVA_OPTS="-Xms1G -Xmx1G" SERVER_APP_OPTS="-Dsynaxis.app.port=25771 -Dsynaxis.app.auth=offline -Dsynaxis.app.metrics.bind=127.0.0.1:19771 -Dsynaxis.connection-gate.trusted-networks=127.0.0.0/8 -Dsynaxis.app.log=stdout -Dsynaxis.map.root=<L>/maps/synth -Dsynaxis.map.build=synth-09b42ebb5dc6-p776" <仓库根>/server-app/build/install/server-app/bin/server-shard > shard.log 2>&1 &`，等 `listening on 0.0.0.0:25771` | 日志依次有 `Effective ServerConfig[…chunkViewDistance=12…dispatcherThreads=10, threadProvider=GRID…]`（线程数是核数 − 2，本机 12 核）、`Map release synth-09b42ebb5dc6-p776 verified in <n> ms: bounds=Bounds[minX=0, minZ=0, maxX=255, maxZ=255] world=World[minY=0, height=256]`、`Map mounted: build_id=synth-09b42ebb5dc6-p776 simulation_distance=4 chunk_unload_grace_ticks=100 spawn=Pos[x=2040.5, y=74.0, z=2040.5, …] overlay=overlay/synth-09b42ebb5dc6-p776`、`Map mode (synaxis.app.core-mode=on): … no plugin is loaded`、`listening on 0.0.0.0:25771` |
+| 2 | 看 `<D>/logs/events-*.jsonl` | 一行 `"event":"shard_started"`，`build_id` 为 `synth-09b42ebb5dc6-p776`，`verify_ms` 为正、`regions` 64、`bytes_mapped` 213319659、`overlay_records` 0、`flags_replayed` 0 |
+| 3 | 按 pid 发 SIGTERM，等进程退出；`ls -a <D>/overlay/synth-09b42ebb5dc6-p776`；`grep -c 'WARN\|ERROR' shard.log` | 日志 `Overlay final flush: chunks=0 bytes=0 fsync_ms=0 left=0 by=tick`；覆盖目录是空的（没改过方块就不建段）；WARN / ERROR 0 行 |
+| 4 | 不挂图：`TC-WORLD-011` 第 1 步 | 同该步，另外日志没有 `Overlay final flush`，工作目录里没有 `overlay/` |
+| 5 | 挂图且视距越界：按 `TC-WORLD-011` 的起服办法，额外参数 `-Dsynaxis.map.root=<L>/maps/synth -Dsynaxis.map.build=synth-09b42ebb5dc6-p776 -Dsynaxis.chunk-view-distance=17` | `Refusing to start: synaxis.chunk-view-distance=17 is above 16, the most a map shard serves (view_bounds reach 17 chunks past its bounds)`，25655 无监听，没有 `overlay/` |
+
+后置：进程都已按 pid 停掉；删 `<D>` 与 `TC-WORLD-011` 的工作目录。
+
+#### `TC-WORLD-053` 零编码的 JFR 方法计数与 20 机器人区块下行，含阳性对照 — 对应 `REQ-M3-008`、`REQ-M3-014` · 级别: 回归 · 执行者: AI
+
+前置：同 `TC-WORLD-052`，另要 `:loadtest:installDist`（`LT` 代表 `loadtest/build/install/loadtest/bin/loadtest`）与 JDK 的 `jcmd`、`jfr`；端口 25771～25773、19771～19773 空闲。`<J>` 代表 `jcmd <pid> JFR.start name=zero settings=profile 'method-timing=io.github.bearisbug.synaxis.network.packet.server.play.ChunkDataPacket::<init>;io.github.bearisbug.synaxis.instance.DynamicChunk::createChunkPacket;io.github.bearisbug.synaxis.synx.SynxChunk::getFullDataPacket' 'jdk.ObjectAllocationSample#throttle=100000/s' 'jdk.ExecutionSample#period=2ms'`。「一档」指：按 `TC-WORLD-052` 第 1 步起服（端口与 shard-id 按档换），出现 listening 行后执行 `<J>`；`LT sample --pid <pid> --duration <时长 + 20>s --metrics http://127.0.0.1:<指标端口>/metrics --out server.json` 放后台，5 s 后 `LT run --host 127.0.0.1 --port <端口> --bots 20 --profile <档> --encryption off --duration <时长>s --warmup 30s --out bots-0.json`；两者结束后 `jcmd <pid> JFR.dump name=zero filename=zero.jfr`、`JFR.stop name=zero`，SIGTERM 停服，`LT merge bots-0.json server.json --out summary.json`。判读：`jfr print --events jdk.MethodTiming zero.jfr` 取每个方法最后一个事件的 `invocations`；`jfr print --stack-depth 64 --events jdk.ExecutionSample`（及 `jdk.ObjectAllocationSample`）数栈里含 `createChunkPacket` 的事件；KB/s = `steady_wire_bytes ÷ steady_connection_seconds ÷ 1000`，每区块字节 = `steady_wire_bytes ÷ steady_packets`。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 挂图一档，`walk`，时长 180 s | `merge` 退出码 0，20/20 登录、0 掉线；`ChunkDataPacket::<init>` 与 `createChunkPacket` 的 `invocations` 都是 0，`getFullDataPacket` ≥ `inbound.by_packet.ChunkDataPacket.count`；执行样本与分配样本的栈里 `createChunkPacket` 都是 0 次；台账每条 `chunk_stream_stats` 的 `overlay_sent` 为 0、`handle_sent` > 0、`failed` 0；停机日志 `Overlay final flush: chunks=0 … by=tick`。区块下行与模型 13.9 KB/s 的偏差 ≤ ±20%，tick P99 < 50 ms、超 50 ms 的 tick 0 个（这两项是补充读数，§15 的判据在 200 机器人档，见 `TC-WORLD-054`） |
+| 2 | 同第 1 步，`ride`，端口换一组 | 同第 1 步；模型 32.3 KB/s |
+| 3 | 阳性对照：不给地图键、加 `-Dsynaxis.app.core-mode=on`，`walk`，时长 90 s | `ChunkDataPacket::<init>` 与 `createChunkPacket` 的 `invocations` 都 > 0；执行样本栈里 `createChunkPacket` > 0；日志没有 `Map mounted` 与 `Overlay final flush`，台账没有 `shard_started`，工作目录没有 `overlay/`。按 `objectClass` 过滤 `ChunkDataPacket` 的分配样本仍是 0 条，这是这项判据不用的原因（`docs/DESIGN-M3.md` §15） |
+
+后置：三档的工作目录（含 `zero.jfr`，本轮每个 8～14 MB）删掉，只把读数抄进执行记录的证据。
+
+#### `TC-WORLD-054` 200 机器人 walk 与 ride 各 600 s：零编码与区块下行的判据 — 对应 `REQ-M3-014`、`REQ-M3-008` · 级别: 回归 · 执行者: AI
+
+前置：同 `TC-WORLD-053`；**起跑前 `sysctl vm.swapusage` 的 free ≥ 3,072 MB，且本机没有别的 java 或 Gradle 进程**（`pgrep -fl java`），不满足即本用例「阻塞」；执行者可以每 5 分钟复查一次，复查的时段与读数写进执行记录。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 挂图一档（`TC-WORLD-053` 的做法），`--bots 200`，`walk`，时长 600 s，预热 60 s | `merge` 退出码 0，200/200 登录、0 掉线；§15 零编码判据同 `TC-WORLD-053` 第 1 步；区块下行与 13.9 KB/s 偏差 ≤ ±20%，每区块字节与 1,502 B 的偏差照实登记；tick P99 < 50 ms、超 50 ms 的 tick 0 个；每人收到的区块数 > 9 |
+| 2 | 同第 1 步，`ride`（模型 32.3 KB/s），重启分片后跑 | 同第 1 步 |
+
+后置：同 `TC-WORLD-053`。
+
+#### `TC-WORLD-055` 分片与烘焙器登记同一份处理器清单，同键时分片拒启 — 对应 `REQ-M3-022` · 级别: 回归 · 执行者: AI
+
+前置：同 `TC-WORLD-047`。烘焙器一半归 `TC-WORLD-031`。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | `<G> :server-app:test --tests '<AP>.shard.ShardWorldTest' --tests '<AP>.ShardLaunchTest'` | `tests="12"` 与 `tests="11"`，0 失败。`theShardRegistersTheHandlersOfTheBaker`：`ShardWorld.prepare` 之后 `process.block()` 按 `synaxis:door`、`synaxis:loot` 取到 `:game-rts` 的 `DoorMarker`、`LootMarker`，loot 的客户端标签只有 `table`；`SynxHandlers.registerAll` 在同一 classpath 上返回 `{synaxis:door, synaxis:loot}`。`twoHandlersWithOneKeyRefuseTheShard`：classpath 前面多挂一个同键服务 `ShardLaunchTest$SecondDoor`，进程打出 `Refusing to start: two block handlers have the key synaxis:door: …`，两个类名都在，退出码 1，没有 `listening on`、没有 `overlay/`、台账没有 `shard_started` |
+| 2 | 反证（分片不登记处理器）：删掉 `<SW>` 的 `prepare` 里 `SynxHandlers.registerAll(process.block());` 与 `import io.github.bearisbug.synaxis.synx.SynxHandlers;`，重跑第 1 步，再 `git checkout -- <SW>` | `23 tests completed, 2 failed`：`ShardWorldTest.java:99` `synaxis:door is registered ==> expected: not <null>`；`ShardLaunchTest.java:145` `the JVM exits: …`（分片起服了，30 s 内不退出） |
+| 3 | 重跑第 1 步 | 与第 1 步相同 |
+
+后置：同 `TC-WORLD-047`。
 
 ### 生产就绪 · 第 0 波 0A：宿主日志线
 
@@ -5865,7 +6210,7 @@ for (var request : System.getenv("MGMT_CALLS").split("\n")) {
   - 生产就绪域：宿主日志线（`REQ-PROD-015`～`REQ-PROD-017`）→ TC-PROD-001～TC-PROD-008。
   - 生产就绪域：tick 看门狗（`REQ-PROD-014` 前半）→ TC-PROD-020～TC-PROD-023。
   - 生产就绪域：连接闸门与 keep-alive 收尾（`REQ-PROD-001`、`REQ-PROD-043`）→ TC-PROD-060～TC-PROD-068；动了 accept 循环、握手或登录监听器、`ConnectionGate`、`ServerConfig` 的闸门键或 `StatusResponse` 就跑这九条，改默认值或闸门判定顺序时再加 TC-PROD-069（真进程，约 4 分钟）。跨域牵连：动了 `PlayerConnection#disconnect`、登录看门狗（`Server#loginTimeoutWatch`）或 keep-alive 踢人 → 加 TC-PROD-061、TC-PROD-066、TC-PROD-067 与 TC-GAME-071。
-  - 大世界域：光照 → TC-WORLD-001～TC-WORLD-004、TC-WORLD-026（TC-WORLD-005 已废弃），基准 → TC-WORLD-006（TC-WORLD-007 只在空闲机器上跑，属全量轮；TC-WORLD-008 等第一张美术地图），区块包编码（引擎 `ChunkData`、`ChunkDataPacket`、`LightData`、调色板的网络编码与 `optimize`）→ TC-WORLD-009 与 TC-WORLD-006，分片宿主设置（`ShardMain#viewDefaults`、`ShardMain#transferDefaults`、`Main` 的存储选择与 `accept-transfers` 拒启检查）→ TC-WORLD-010、TC-WORLD-011（后者真进程，约 1 分钟）；动了 `ShardMain` 时同时跑生产就绪域的 TC-PROD-333、TC-PROD-334。光照引擎（`instance.light` 的 `LightEngine`、`LightResult`、`WorldView`、`LightBlocks`，`LightingChunk.relight`，`verified-light-versions.txt`）→ TC-WORLD-012、TC-WORLD-013、TC-WORLD-028 加光照五条 TC-WORLD-001～TC-WORLD-004 与 TC-WORLD-026，再加 TC-GAME-029 第 1、2、10、11 步（M2 整图光照与 `load_ms`）与 TC-WORLD-021（烘焙器的版本门禁）。`.synx` 格式（`:synx` 模块、向量与 `manifest.txt`）→ TC-WORLD-014～TC-WORLD-018，再加 TC-WORLD-021～TC-WORLD-023（烘焙器调它写与校验）；动了 §6 内部面名单里的引擎成员 → TC-WORLD-018 加 `:synx`、`:baker` 全部测试。Anvil 读取器（`baker.anvil` 包、`tools/anvil-fixture`）→ TC-WORLD-019、TC-WORLD-029，动了 `gen.sh` 或 `TrimRegion.java` 再加 TC-WORLD-020（约 1 分钟，要 26.2 服务端 jar）。烘焙器（`baker` 包其余部分、`:game-rts` 的 `RtsBakeGenerators`）→ TC-WORLD-021～TC-WORLD-023、TC-WORLD-025、TC-WORLD-027、TC-WORLD-029（TC-WORLD-023 约 2 分钟，TC-WORLD-024 已废弃）；动了 `AnvilSource` 的高度窗口或 `BakerMain` 的 `--min-y` → TC-WORLD-027；动了 `architecture-tests` 的 `LightEngineArchitectureTest` 或 `:baker` 开始引用新的 `instance.light` 类型 → TC-WORLD-028；动了 `docs/MAP-SOURCE.md` 第 6 节的命令或退出码表 → TC-WORLD-025。
+  - 大世界域：光照 → TC-WORLD-001～TC-WORLD-004、TC-WORLD-026（TC-WORLD-005 已废弃），基准 → TC-WORLD-006（TC-WORLD-007 只在空闲机器上跑，属全量轮；TC-WORLD-008 等第一张美术地图），区块包编码（引擎 `ChunkData`、`ChunkDataPacket`、`LightData`、调色板的网络编码与 `optimize`）→ TC-WORLD-009 与 TC-WORLD-006，分片宿主设置（`ShardMain#viewDefaults`、`ShardMain#transferDefaults`、`Main` 的存储选择与 `accept-transfers` 拒启检查）→ TC-WORLD-010、TC-WORLD-011（后者真进程，约 1 分钟）；动了 `ShardMain` 时同时跑生产就绪域的 TC-PROD-333、TC-PROD-334。光照引擎（`instance.light` 的 `LightEngine`、`LightResult`、`WorldView`、`LightBlocks`，`LightingChunk.relight`，`verified-light-versions.txt`）→ TC-WORLD-012、TC-WORLD-013、TC-WORLD-028 加光照五条 TC-WORLD-001～TC-WORLD-004 与 TC-WORLD-026，再加 TC-GAME-029 第 1、2、10、11 步（M2 整图光照与 `load_ms`）与 TC-WORLD-021（烘焙器的版本门禁）。`.synx` 格式（`:synx` 模块、向量与 `manifest.txt`）→ TC-WORLD-014～TC-WORLD-018，再加 TC-WORLD-021～TC-WORLD-023（烘焙器调它写与校验）；动了 §6 内部面名单里的引擎成员 → TC-WORLD-018 加 `:synx`、`:baker` 全部测试。Anvil 读取器（`baker.anvil` 包、`tools/anvil-fixture`）→ TC-WORLD-019、TC-WORLD-029，动了 `gen.sh` 或 `TrimRegion.java` 再加 TC-WORLD-020（约 1 分钟，要 26.2 服务端 jar）。烘焙器（`baker` 包其余部分、`:game-rts` 的 `RtsBakeGenerators`）→ TC-WORLD-021～TC-WORLD-023、TC-WORLD-027、TC-WORLD-029～TC-WORLD-031、TC-WORLD-033（TC-WORLD-023 约 2 分钟，TC-WORLD-024、TC-WORLD-025 已废弃）；动了 `AnvilSource` 的高度窗口或 `BakerMain` 的 `--min-y` → TC-WORLD-027；动了 `architecture-tests` 的 `LightEngineArchitectureTest` 或 `:baker` 开始引用新的 `instance.light` 类型 → TC-WORLD-028；动了 `docs/MAP-SOURCE.md` 第 6 节的命令或退出码表 → TC-WORLD-030。区块流送与覆盖层（M3-C）：`:synx` 的 `SynxChunk`、`SynxChunkLoader`、`SectionCache`、`SynxPacketDecoder`、`SynxStaticEntities` 与测试图 `SynxTestMap` → TC-WORLD-034～TC-WORLD-039；`OverlayStore`、`OverlaySegment`、`OverlayTuning` → TC-WORLD-039、TC-WORLD-042、TC-WORLD-043、TC-WORLD-049、TC-WORLD-051；`SynxHandlers`、`:game-rts` 的 `marker` 包与 `BakerMain` 的处理器登记 → TC-WORLD-030～TC-WORLD-033、TC-WORLD-055；`SynxOptions`、`OverlayOptions`、`ShardSettings` 与 `ConfigFile.KEYS` → TC-WORLD-041（另跑生产就绪域的配置键门禁用例）；翻译键门禁名单 → TC-WORLD-032；引擎 `BufferedPacket`、`PacketViewableUtils`、`PlayerSocketConnection` 的积压 → TC-WORLD-040 与 TC-PROD-294、TC-PROD-295；引擎 `Instance` 的模拟距离与票据、`ChunkTickets`、`InstanceContainer` 的卸载判定、`Player` 的区块环票据、`Entity`、`EntityProjectile` 与 `DynamicChunk` 的 tick 体 → TC-WORLD-044、TC-WORLD-045、TC-WORLD-050，动了 `Player`、`Entity` 再加第 6 波 6E 的 TC-PROD-410～TC-PROD-422；`ThreadDispatcherImpl`、`TickThread` → TC-WORLD-046 与 TC-PROD-030；`Chunk#tryLockWriteLock`、`Chunk#readyToUnload` → TC-WORLD-039、TC-WORLD-045；`server-app` 的 `ShardMain` 挂地图默认值、`Main` 步骤 (1)(3)(5)(7) 的接线与 `app.shard` 包 → TC-WORLD-010、TC-WORLD-047～TC-WORLD-049、TC-WORLD-051、TC-WORLD-055，再加真进程 TC-WORLD-011、TC-WORLD-052（两条约 3 分钟）；阶段 gate，或动了句柄区块的发送路径 → TC-WORLD-053（约 10 分钟）与 TC-WORLD-054（前置见该用例）。
   - 跨域牵连（必须一起跑）：动了 `network/packet` 下的包注册表（增删包、调顺序、升协议版本）→ 加 TC-036；动了启动入口或就绪日志 → 加 TC-GAME-048、TC-GAME-029、TC-GAME-057、TC-GAME-058 与全部以进程为前置的引擎域用例（启动序列一变，「对局在 bind 之前就绪、tick 在 bind 之后才起」这条口径就要重验）；动了握手、准入回调或探针 → 加 TC-GAME-049、TC-GAME-050、TC-GAME-060、TC-GAME-061 与 TC-004、TC-014、TC-018、TC-019、TC-020、TC-026、TC-027 七条存量 TC；动了客户端模组侧的握手或拾取 → 加 TC-GAME-066；动了 `:protocol` 消息布局 → 加 TC-GAME-017 与客户端侧同一份向量；动了引擎 `Entity` 的位置推进入口 → 加 TC-GAME-051、TC-GAME-067 与 TC-GAME-040；动了对局的 chunk supplier、`Match#load` 的载入流程或引擎 `LightingChunk` / `instance.light` → 加 TC-GAME-029（第 10、11 步是光照的先红后绿）；动了 `ExceptionManager` / `ExceptionHandler`、宿主的 `EventLedger`、`logback*.xml` 或 `server-app` 的启动参数 → 加 TC-PROD-001～TC-PROD-008 与 TC-035。动了 `ServerProcessImpl` 的 `TickerImpl`、`Watchdog`、`ServerConfig` 的 `synaxis.watchdog.*` 键或宿主的 `CrashReports` → 加 TC-PROD-020～TC-PROD-023 与 TC-PROD-002。
 
   - 生产就绪域（`docs/DESIGN-PROD.md`）：真客户端回归 → TC-PROD-040～TC-PROD-042；动了 `client-fabric/**`、`protocol/**`、`server-app/**`、`game-rts/**`、`plugin-api/**`、引擎 `network` / `listener` 包或 `client-gametest.yml` 就跑 TC-PROD-040（与工作流的 PR 路径过滤同一口径），动了 `judge.sh` 或工作流再加 TC-PROD-041、TC-PROD-042。
@@ -5886,7 +6231,7 @@ for (var request : System.getenv("MGMT_CALLS").split("\n")) {
   - 生产就绪域（`docs/DESIGN-PROD.md`）：实体追踪范围与每玩家可见上限（`REQ-PROD-023`、`REQ-PROD-024`）→ TC-PROD-310～TC-PROD-320；动了引擎 `EntityView`、`TrackingRange` / `TrackingRanges`、`Entity` 的追踪范围与必显两组方法、`Player#update` 里的重算调用或 `ServerConfig` 的 `synaxis.max-visible-entities-per-player` 就跑 TC-PROD-310～TC-PROD-314、TC-PROD-319 与 TC-PROD-320（第 1 步；动了 `EntityView` 的计数、`admits` 或重算加跑第 2、3 步）；动了 `PluginContext#entities`、`PluginEntities` 或 `PluginHost` 的接线跑 TC-PROD-315；动了 `loadtest/` 的 `Bot` 实体计数、`RunCommand` 采样或 `MergeCommand` 的 `visible_entities` 跑 TC-PROD-316、TC-PROD-317。TC-PROD-318（三轮各约 11 分钟）只在可见性、视野广播（`PacketViewableUtils`、`hasPredictableViewers`）或实体移动同步有改动时跑，本机同时只能有一个压测。跨域牵连：动了 `EntityView` 或 `Player#update` → 加 TC-PROD-033（4 线程严格模式全量，重算在玩家自己的 tick 线程上碰别的实体的视图）。
   - 生产就绪域（`docs/DESIGN-PROD.md`）：空间分格与多线程正确性余项（`REQ-PROD-020`、`REQ-PROD-019` 后半）→ TC-PROD-330～TC-PROD-336；动了 `ThreadProvider#grid` 跑 TC-PROD-330、TC-PROD-332、TC-PROD-335，动了 `ServerConfig` 的 `synaxis.thread-*` 键或 `ServerProcessImpl` 建 dispatcher 的一处跑 TC-PROD-331、TC-PROD-332、TC-PROD-334，动了 `ShardMain` 或 `server-app/build.gradle.kts` 的 `shardStartScripts` 跑 TC-PROD-333、TC-PROD-334 与 TC-PROD-050，动了 `build-src` 转给测试 JVM 的属性、`EnvTestExt` 或 `ci.yml` 的 `multithreaded-grid` 跑 TC-PROD-335；TC-PROD-336（两档各约 11 分钟）只在分格规则或 tick 调度路径有改动时跑，本机同时只能有一个压测。跨域牵连：动了 `thread` 包 → 加 TC-PROD-030～TC-PROD-033；动了 `plugin-api` 的 `package-info` 或 `docs/PLUGINS.md` §10 的线程契约 → 同步核对 `docs/DESIGN-PROD.md` `API-PROD-016` 的线程契约一条。
   - 生产就绪域（`docs/DESIGN-PROD.md`）：第 5 波集成后压测收尾（`REQ-PROD-029`）→ TC-PROD-360～TC-PROD-365，全部是同机真进程压测，本机同时只能有一个压测。TC-PROD-360（约 35 分钟）与 TC-PROD-365 第 1 步在引擎 tick、网络、区块发送、可见性或分格路径有改动时跑，并与本条记下的读数对比；TC-PROD-361、TC-PROD-362（各约 12 分钟）在 `capacity` 定值要重评时跑；动了闸门 L3 / L4、`ConnectionManager#updateWaitingPlayers` 或登录监听器跑 TC-PROD-363（约 10 分钟）；动了 `ConnectionGate` 或闸门汇总日志跑 TC-PROD-364（约 3 分钟）；动了 `EventLedger` 跑 TC-PROD-365 第 2 步。分机档到位后六条全部在分机上重跑。
-  - 生产就绪域（`docs/DESIGN-PROD.md`）：第 6 波 U 组宿主停机序列、转服验票串行与顶号轮询（`REQ-PROD-008`、`REQ-PROD-045`、`REQ-PROD-004` 跨分片部分）→ TC-PROD-370～TC-PROD-379；动了 `ShutdownSequence` 或 `Main` 注册停机参与者的一处就跑 TC-PROD-370～TC-PROD-375（序列类约 20 s）与 TC-PROD-154、TC-PROD-155；动了 `PlayerStore#load` 的串行载入占位、`loadWithin` 的顶号轮询、`PlayerStore#abandon` 与 `admitted` 的放弃判定、`TicketVerifier` 或 `AdmissionGate` 的验票接线就跑 TC-PROD-376～TC-PROD-379 与 TC-PROD-152、TC-PROD-157、TC-PROD-174（要数据库前置）。跨域牵连：M3-C 在分片宿主路径注册覆盖层停机步骤后，`docs/DESIGN-M3.md` 覆盖层停机落盘的用例与 TC-PROD-370～TC-PROD-373 一起跑；动了引擎 `ServerProcessImpl#save` 或 `ShutdownParticipant` → 加 TC-PROD-370～TC-PROD-375。
+  - 生产就绪域（`docs/DESIGN-PROD.md`）：第 6 波 U 组宿主停机序列、转服验票串行与顶号轮询（`REQ-PROD-008`、`REQ-PROD-045`、`REQ-PROD-004` 跨分片部分）→ TC-PROD-370～TC-PROD-379；动了 `ShutdownSequence` 或 `Main` 注册停机参与者的一处就跑 TC-PROD-370～TC-PROD-375（序列类约 20 s）与 TC-PROD-154、TC-PROD-155；动了 `PlayerStore#load` 的串行载入占位、`loadWithin` 的顶号轮询、`PlayerStore#abandon` 与 `admitted` 的放弃判定、`TicketVerifier` 或 `AdmissionGate` 的验票接线就跑 TC-PROD-376～TC-PROD-379 与 TC-PROD-152、TC-PROD-157、TC-PROD-174（要数据库前置）。跨域牵连：M3-C 在分片宿主路径注册了覆盖层停机步骤，覆盖层停机落盘的用例（TC-WORLD-043、TC-WORLD-049、TC-WORLD-051）与 TC-PROD-370～TC-PROD-373 一起跑；动了引擎 `ServerProcessImpl#save` 或 `ShutdownParticipant` → 加 TC-PROD-370～TC-PROD-375。
   - 生产就绪域（`docs/DESIGN-PROD.md`）：服务器列表 ping（`REQ-PROD-037`）→ TC-PROD-400～TC-PROD-405；动了 `StatusResponse`、`Favicon`、`ServerListPingEvent`、`StatusListener`、`ConnectionManager` 读图标的一处或 `ServerConfig` 的 `synaxis.motd` / `synaxis.server-icon` / `synaxis.hide-online-players` 三个键就跑 TC-PROD-400～TC-PROD-403，动了宿主的插件事件包装（`PluginEventsImpl`）或 `StatusListener` 派发事件的一处再加 TC-PROD-404，动了 `server-app` 的拒绝起服路径或这三个键读系统属性的几行加 TC-PROD-405（真进程，约 1 分钟）。跨域牵连：动了 `StatusResponse` 的 max → 加 TC-PROD-063；动了 status 状态的监听器 → 加 TC-PROD-062（status 桶）。
   - 生产就绪域（`docs/DESIGN-PROD.md`）：视距上限与实体休眠（`REQ-PROD-039`、`REQ-PROD-040`）→ TC-PROD-410～TC-PROD-422；动了 `Player` 的 `setMaxViewDistance`、`update` 里应用视距的一段、`updateViewDistance` / `tellViewDistance`、`UNSAFE_init` 的 `JoinGamePacket`、`spawnPlayer` 或 `Instance#viewDistance(int)` 就跑 TC-PROD-410～TC-PROD-413；动了 `Entity#tick` / `sitsOutTick` / `setDormancyPolicy`、`DormancyPolicy`、`PlayerPositions` 或 `Instance#tick` 拍快照的一行就跑 TC-PROD-414～TC-PROD-420 与 TC-PROD-422，动了 `Entity#refreshPosition` 的提前返回也跑 TC-PROD-422；TC-PROD-421（三个基准共约 9 分钟）只在休眠路径或 `Entity#tick` 有改动时重量，并与 §15「实体休眠」行对比。跨域牵连：动了 `Player#update` 的视距一段 → 加 TC-GAME-035 与 `PlayerChunkQueueIntegrationTest`（`REQ-M2-014` 的区块环收缩）；动了 `Entity#tick` → 加 TC-PROD-033、TC-PROD-335（4 线程严格模式全量）；动了测试客户端 `EncryptedLoginClient` → 加 `OnlineLoginSocketTest`、`OnlineDuplicateLoginSocketTest`（TC-PROD-092～TC-PROD-100、TC-PROD-350）；动了 `:plugin-api` 的 `package-info` 或 `docs/PLUGINS.md` §10 的线程契约 → 同步核对 `docs/DESIGN-PROD.md` `API-PROD-016` 与 `API-PROD-019` 休眠一条。
   - 生产就绪域（`docs/DESIGN-PROD.md`）：翻译键门禁（`REQ-PROD-041`）→ TC-PROD-430～TC-PROD-434；动了模组的 `en_us.json` / `zh_cn.json`、任何含 `synaxis:` 字符串常量的主类（`DisconnectReasons`、`DisconnectKeys`、宿主的命令回执与系统消息、新的频道或 Cookie 键）、`:architecture-tests` 的 `TranslationKeyGateTest` 与夹具或 `architecture-tests/build.gradle.kts` 就跑 TC-PROD-430 第 1～4 步与 TC-PROD-431～TC-PROD-433；动了 `SynaxisPlugin` 跑 TC-PROD-433、TC-PROD-434 与 TC-PROD-163；删改模组测试时跑 TC-PROD-430 第 5 步。跨域牵连：给引擎或宿主加断线原因、回执或系统消息的键 → 加 TC-PROD-430 第 1 步（按功能写的译文用例 TC-PROD-068、TC-PROD-105、TC-PROD-162、TC-PROD-210、TC-PROD-233、TC-PROD-250 与 TC-PROD-295 第 3、4 步跑的是同一个门禁）。
@@ -5944,6 +6289,7 @@ for (var request : System.getenv("MGMT_CALLS").split("\n")) {
 | RUN-036 | 2026-09-25 | 集成分支 `prod/integrate-w6` 的 `9ec1d99fe1`（`main` `a59639f3b1` + DESIGN-PROD 第 6 波 U、D、6D、6E、6F、6B、6C 七个分支与两个合并后续修复：宿主停机序列、转服验票串行与顶号轮询、文档收口、服务器列表 ping、视距上限与实体休眠、翻译键门禁、管理接口与性能剖析、配置文件与压缩设置；本轮之后的提交只改文档） | AI（Claude Code，Gradle / PostgreSQL / Valkey / Docker 无头客户端 / `gh`） | 局部（REQ-PROD-008、045、004 跨分片部分→TC-PROD-370～TC-PROD-379；REQ-PROD-037→TC-PROD-400～TC-PROD-405；REQ-PROD-039、040→TC-PROD-410～TC-PROD-422；REQ-PROD-041→TC-PROD-430～TC-PROD-434；REQ-PROD-032、034→TC-PROD-380～TC-PROD-397；REQ-PROD-033、038→TC-PROD-440～TC-PROD-445；D 组结案与补跑→TC-PROD-040、TC-PROD-050、TC-PROD-268、TC-PROD-320、TC-GAME-016、TC-GAME-033、TC-GAME-034、TC-GAME-035；§5 牵连→TC-PROD-130 第 1～3 步、TC-PROD-334 + 冒烟级 TC-029） | 通过 67/69 · 失败 1 · 阻塞 1 |
 | RUN-037 | 2026-09-26 | 集成分支 `prod/integrate-w6` 的 `10913638b4`（RUN-036 的 `9ec1d99fe1` + 验收后修复 `c4d9c4ad34` + 修复轮 F1、F2、F3 三个分支：没进世界的玩家赶上停机保存、管理消息只按严格 JSON 读与 `ServerConfig` 布尔键只认 `true` / `false`、堆转储风险登记与计数改正、`TC-GAME-035` 改写与探针子命令 `view-distance`；本轮之后的提交只改文档） | AI（Claude Code，Gradle / PostgreSQL / Valkey / 探针 / `gh`） | 局部（REQ-PROD-008→TC-PROD-460、TC-PROD-461、TC-PROD-370；REQ-PROD-032→TC-PROD-465、TC-PROD-466、TC-PROD-382、TC-PROD-395；REQ-PROD-033→TC-PROD-467～TC-PROD-469；REQ-PROD-034→TC-PROD-392 第 6、7 步；REQ-PROD-005、004→TC-PROD-174；REQ-PROD-045→TC-PROD-376 第 4、5 步；REQ-PROD-024→TC-PROD-314；REQ-PROD-020→TC-PROD-331；RUN-036 失败与阻塞的复测：REQ-M2-013→TC-GAME-034，REQ-M2-014→TC-GAME-035 + 冒烟级 TC-029） | 通过 18/18 |
 | RUN-038 | 2026-09-26 | 集成分支 `prod/integrate-w6` `d7929c27ec`（RUN-037 之后的修复：停机冻结与断线的交错、`profile` 文件与别的 JFR 录制、管理消息的片数；DESIGN-PROD v0.9.14） | AI（Claude Code，Gradle / PostgreSQL / Valkey / `gh`） | 局部（REQ-PROD-008→TC-PROD-470；REQ-PROD-034→TC-PROD-471；REQ-PROD-032→TC-PROD-472）+ 全量回归（`check`、4 线程 counter 与 `grid` 严格模式、ABI 门） | 通过 3/3 |
+| RUN-040 | 2026-09-27 | 集成分支 `m3c/integrate` 的 `ae763c843e`（代码与 `cd47d36c89` 相同：`main` `7ff65e40a8` + M3-C 轨道 A、B、C、D 四个合并与合并验收的修复；本轮之后的两个提交只改文档与证据） | AI（Claude Code，Gradle / PostgreSQL / Valkey / `baker` 命令行 / `bin/server-shard` / `:loadtest` / JFR） | 局部，M3-C 阶段 gate 只跑大世界域（REQ-M3-008～REQ-M3-011、REQ-M3-014、REQ-M3-002 的起服接线、REQ-M3-022 的处理器登记→TC-WORLD-030～TC-WORLD-032、TC-WORLD-034～TC-WORLD-055；REQ-M3-003 的遗留缺陷→TC-WORLD-033；牵连→TC-WORLD-010、TC-WORLD-011、TC-WORLD-018、TC-WORLD-027、TC-WORLD-029；冒烟级 TC-029）+ 全量回归（`check`、4 线程 counter 与 `grid` 严格模式） | 通过 30/32 · 失败 1 · 阻塞 1 |
 
 明细（仅登非「通过」项）：
 
@@ -6064,7 +6410,11 @@ TC-002 证据：`docs/test-runs/RUN-002/tc-002.txt`（5 步实际输出）（2,6
 | RUN-033 | TC-WORLD-008 | 阻塞 | 还没有美术地图，`LargeWorldBench` 也没有从 `.synx` 或 Anvil 读入的作业（设计文档 `API-M3-008` 待补作业 T1） | 第一张美术地图出来时 |
 | RUN-036 | TC-GAME-034 | 失败 | 第 3 步：探针 `login --hold 0` 退出后立刻 `stop`，10 次里 5 次停机等满保存预算（`stop` 到进程退出 30.1～30.7 s），记两行 ERROR：`The shutdown save did not complete within its budget, going on with the shutdown.` 与 `Not saved on shutdown, its lease runs out with the session: character_id=1`，达不到预算「15 秒内退出、无残留 ERROR」；另 5 次 0.53～0.57 s。第 1、2 步通过；第 4 步按台账 `match_ended` 的 `reason=normal` 判通过，用例写的「unregisterInstance 完成行」stdout 里没有。缺陷登记在 DESIGN-PROD §28.2。证据 `docs/test-runs/RUN-036/acceptance.txt` 第九节「七、TC-GAME-034」 | 生产会话修停机保存缺陷并补确定性复现测试后复测；第 4 步判据改写为台账那一行 |
 | RUN-036 | TC-GAME-035 | 阻塞 | 第 1 步把 `Player.java` 整文件回退到 `a5ec60b43f^` 后 `:compileJava` 失败（4 个错误：修复之后该文件又被 13 个提交改过）；第 3、4 步要的「以视距 12 登录、再改报视距 4」在 `tools/protocol-probe/probe.py` 没有子命令；第 2 步 `PlayerChunkQueueIntegrationTest` `tests="7"` 全绿，第 5 步依赖第 3 步。证据 `docs/test-runs/RUN-036/acceptance.txt` 第九节「八、TC-GAME-035」 | 改写用例后复测：第 1 步只回退修复那几行，第 3 步先给探针加改报视距的子命令或改用 gametest |
+| RUN-040 | TC-WORLD-033 | 失败 | 第 2、3 步预期退出码 5、`<O>/fixture/` 下只有一个目录；实际两次都退出码 0，各发布一个新的版本（第 1 步 `fixture-c235d78cca7f-p776`，第 2 步 `fixture-3c3bfdec6aa2-p776`，第 3 步 `fixture-b6566bc4f5c0-p776`，20,047～20,049 B），目录下三个。原因是段① 方块实体 NBT 的复合标签按 adventure-nbt 的迭代顺序写出，告示牌的 `front_text`、`back_text` 键序随 JVM 变化（`docs/DESIGN-M3.md` §28.2）。证据 `docs/test-runs/RUN-040/04-baker-marker-and-rebake.txt` | 修复引擎 `BinaryTagTypeImpl` 的写出顺序之后复测，排在第一张美术地图挂上分片之前 |
+| RUN-040 | TC-WORLD-054 | 阻塞 | 前置不满足：起跑前 swap free 要 ≥ 3,072 MB，本轮 10:42～12:00 读了 13 次（三道门禁、烘焙与三档压测的起止，11:45 起每 5 分钟一次），free 在 596～1,712 MB 之间，没有一次达到；本机另有会话常驻，占用来自非 java 进程。合并验收阶段两轮各查 90 分钟同样不满足（`merge-acceptance/12-200bots-precheck.txt`）。证据 `docs/test-runs/RUN-040/10-precheck-200bots.txt` | 在本机腾出约 3 GB swap 或换一台压测机后跑，同时补 30 min 档 |
 
+
+RUN-040 证据：`docs/test-runs/RUN-040/`（`00-index.txt` 列出每个文件，末尾列出随 M3-C 过时、留给生产就绪会话改的 `TC-PROD-*` 计数；合并验收阶段在同一代码上的证据原样移进 `merge-acceptance/`，原目录 `docs/test-runs/_pending-m3c/` 删去，那一阶段的结果不计入本轮）。要点：三道门禁（`check --rerun-tasks -Dsynaxis.synx.require-frozen-zlib=true`、4 线程 counter 严格模式、再加 `grid`）各 3,896 个测试、跳过 15（都在根模块）、0 失败，带共用容器 `synaxis-pg` 与 `synaxis-valkey` 的环境变量，门禁输出 `config key gate: 113 keys read, 113 in ConfigFile.KEYS` 与 `translation key gate: 56 keys …, 14 identifiers left out`；`TC-029` 由第一道门禁判（根模块 3,135 个 0 失败）。JUnit 反证 47 处，每处单独一次 Gradle，红行与信息都写进了用例（另有 1 次只改一半的试错记在证据里），全部还原后 `git status` 为空，再把各用例第 1 步的类一次重跑、全绿（`03-rerun.txt`）；`TC-WORLD-042` 第 5 步与 `TC-WORLD-046` 第 2 步第一次按直改的写法编译不过（Error Prone `UnusedVariable`），用例里写的是能编译的改法。覆盖层 `kill -9` 窗口在三道门禁与重跑里共 4 次：丢失的最老改动 9,706～9,753 ms，保住的最新改动 9,814～9,858 ms。`TC-WORLD-052`、`TC-WORLD-053`：4 线程烘 4k 测试图墙钟 27.3 s、峰值 RSS 2.00 GB，`content_hash` 与 RUN-033 相同；挂图分片 `verified in 409 ms`，`shard_started` 的 `regions` 64、`bytes_mapped` 213,319,659，停机 `Overlay final flush: chunks=0 … by=tick`、WARN / ERROR 0 行；20 机器人 walk 与 ride 两档 `ChunkDataPacket::<init>`、`createChunkPacket` 都是 0 次，`getFullDataPacket` 45,984 与 87,524 次（机器人收到 45,972 与 87,524 个），执行与分配样本栈里 `createChunkPacket` 0 次，`overlay_sent` 全为 0；区块下行 13.573 与 31.248 KB/s（模型 13.9、32.3，−2.3%、−3.3%），每区块 1,482.4 与 1,463.2 B，tick P99 6.899 与 8.562 ms、超 50 ms 的 0 个；阳性对照两个方法都是 3,278 次、执行样本栈里 `createChunkPacket` 60 次，按类过滤的分配样本 0 / 301。执行说明：`TC-WORLD-052` 第 1～3 步与 `TC-WORLD-053` 第 1 步是同一次起服（加了 JFR 与机器人）；`TC-WORLD-052` 第 4 步就是 `TC-WORLD-011` 第 1 步那一次。本轮起跑前与途中 swap free 在 0.6～1.7 GB 之间，20 机器人档不设内存门槛，照跑。
 
 RUN-038 证据：`docs/test-runs/RUN-038/acceptance.txt`。要点：验收人在最终修复提交上从头跑全量 `check` 与两种 4 线程严格模式（根构建各 3,744 个测试 0 失败，数据库用例 0 跳过），ABI 门对 `v0.3.0` 0 违例；`TC-PROD-471`、`TC-PROD-472` 的反证由验收人实跑，红在 `ProfilerTest.java:70` 与 `ManagementFragmentCountIntegrationTest.java:96`。第三节列出本轮之后仍开着、留给后续一轮的四处。
 

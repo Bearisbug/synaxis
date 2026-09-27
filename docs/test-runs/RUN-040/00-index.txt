@@ -1,0 +1,23 @@
+# RUN-040: M3-C stage gate on m3c/integrate ae763c843e (code = cd47d36c89), 2026-09-27 10:42 to 12:05 (UTC+8)
+# Machine: Apple M4 Pro, 12 cores, 24 GiB, macOS, JDK 25.0.4.1; another session runs builds on it; swap free 0.6 to 1.7 GB during this round.
+# Raw artefacts (baked maps, JFR recordings, summary.json, server logs, Gradle logs) stay out of the repository; the numbers below are copied out of them.
+00-index.txt                          this file
+01-gates.txt                          check --rerun-tasks and the two strict modes: 3,896 tests, 15 skipped, 0 failed each; gate outputs; crash windows
+02-counterproofs.txt                  every counterproof of TC-WORLD-010, 027, 029, 031..051, 055: diff, Gradle summary, red tests with line and message, restore check
+03-rerun.txt                          step 1 of those cases again after the last restore, one Gradle run: per class, all green
+04-baker-marker-and-rebake.txt        TC-WORLD-030 (fixture with data markers bakes, exit 0; counterproof exit 2) and TC-WORLD-033 (re-bake in new processes: exit 0 with new build_ids, FAILED)
+05-shard-processes.txt                TC-WORLD-011 steps 1-6 and TC-WORLD-052 steps 4-5 (bin/server-shard, bin/server-app)
+06-bake-4k.txt                        the 4k test map for TC-WORLD-052..053
+07-jfr-map-walk.txt                   TC-WORLD-052 steps 1-3 and TC-WORLD-053 step 1: map shard, 20 bots walk 180 s
+08-jfr-map-ride.txt                   TC-WORLD-053 step 2: 20 bots ride 180 s
+09-jfr-core-walk.txt                  TC-WORLD-053 step 3: the positive control, core mode without a map, 20 bots walk 90 s
+10-precheck-200bots.txt               TC-WORLD-054 precondition checks (swap free >= 3,072 MB): not met, BLOCKED
+merge-acceptance/                     the evidence of the merge acceptance on the same code (earlier on 2026-09-27, 08:42 to 10:36, another executor), moved here unchanged from docs/test-runs/_pending-m3c/; not counted in this round's results
+
+# TC-PROD cases whose numbers M3-C made stale (docs/TEST.md left them as they are: the production readiness session owns TC-PROD-*):
+#   TC-PROD-441   105 keys -> 113 (title and step 1 "105 keys read" -> "113 keys read"); the red line :74 is unchanged (checked, RUN-040 K1)
+#   TC-PROD-333   ShardMainTest tests="8" -> "10", "8 tests completed, 3 failed" -> "10 tests completed, 3 failed"; red lines :20 :28 :34 not re-run
+#   TC-PROD-030   ThreadDispatcherTest tests="15" -> "17", "15 tests completed, 1 failed" -> "17 tests completed, 1 failed"
+#   TC-PROD-430   11 identifiers -> 14; TranslationKeyGateTest.java:87 -> :90 (checked: the assertion is at :90 now, a deleted NOT_TEXT row makes it :89)
+#   TC-PROD-432   11 identifiers -> 14, 10 -> 13, 12 -> 15; :86 / :88 / :97 each + 3 (not re-run)
+#   TC-PROD-068, 105, 162, 210, 233, 250, 295, 396   TranslationKeyGateTest.java:87 -> :90 where a language file line is deleted (not re-run)

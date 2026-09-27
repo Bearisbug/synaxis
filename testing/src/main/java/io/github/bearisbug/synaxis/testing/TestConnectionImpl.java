@@ -14,6 +14,7 @@ import io.github.bearisbug.synaxis.network.packet.server.SendablePacket;
 import io.github.bearisbug.synaxis.network.packet.server.ServerPacket;
 import io.github.bearisbug.synaxis.network.player.GameProfile;
 import io.github.bearisbug.synaxis.network.player.PlayerConnection;
+import org.jetbrains.annotations.Nullable;
 
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
@@ -94,12 +95,14 @@ final class TestConnectionImpl implements TestConnection {
         @Override
         public void sendPacket(SendablePacket packet) {
             final var serverPacket = this.extractPacket(packet);
+            // A BufferedPacket holds encoded bytes and no packet object; the outgoing event skips it too
+            if (serverPacket == null) return;
             for (var tracker : incomingTrackers) {
                 if (tracker.type.isAssignableFrom(serverPacket.getClass())) tracker.packets.add(serverPacket);
             }
         }
 
-        private ServerPacket extractPacket(final SendablePacket packet) {
+        private @Nullable ServerPacket extractPacket(final SendablePacket packet) {
             if (!(packet instanceof ServerPacket serverPacket))
                 return SendablePacket.extractServerPacket(getServerState(), packet);
 

@@ -1,0 +1,70 @@
+# RUN-042 TC-WORLD-033 on m3c/fixes 86a8fda7b4 (working tree clean), 14:03 to 14:04; each bake a new Gradle and baker process
+# <W> = <repo>/baker/src/test/resources/io/github/bearisbug/synaxis/baker/anvil/world, <O> = /tmp/m3cfix-bake/O
+# command: ./gradlew :baker:run --args="bake --map-id fixture --source anvil:<W> --bounds 0,0,0,0 --out <O> --logs <O>-logs --threads <n>" (+ the flags of 00-index.txt)
+# "exit" below is the exit code of Gradle; the baker's own exit code is the "non-zero exit value" of the failed run task
+
+## step 1 (--threads 8) 14:03:00
+exit 0
+baker: published <O>/fixture/fixture-4a17058953f6-p776, 20046 bytes
+BUILD SUCCESSFUL in 6s
+ls <O>/fixture: fixture-4a17058953f6-p776 
+## step 2 (--threads 8) 14:03:07
+exit 1
+baker: <O>/fixture/fixture-4a17058953f6-p776 already exists
+> Process 'command '/opt/homebrew/Cellar/openjdk@25/25.0.4.1/libexec/openjdk.jdk/Contents/Home/bin/java'' finished with non-zero exit value 5
+BUILD FAILED in 2s
+ls <O>/fixture: fixture-4a17058953f6-p776 
+## step 3 (--threads 1) 14:03:09
+exit 1
+baker: <O>/fixture/fixture-4a17058953f6-p776 already exists
+> Process 'command '/opt/homebrew/Cellar/openjdk@25/25.0.4.1/libexec/openjdk.jdk/Contents/Home/bin/java'' finished with non-zero exit value 5
+BUILD FAILED in 4s
+ls <O>/fixture: fixture-4a17058953f6-p776 
+
+## three more bakes, each into its own output directory <S1>..<S3> (/tmp/m3cfix-bake/S1..S3), --threads 8
+## bake 1 into <S1> (--threads 8) 14:03:26
+exit 0
+baker: published <S1>/fixture/fixture-4a17058953f6-p776, 20046 bytes
+BUILD SUCCESSFUL in 8s
+## bake 2 into <S2> (--threads 8) 14:03:34
+exit 0
+baker: published <S2>/fixture/fixture-4a17058953f6-p776, 20046 bytes
+BUILD SUCCESSFUL in 5s
+## bake 3 into <S3> (--threads 8) 14:03:40
+exit 0
+baker: published <S3>/fixture/fixture-4a17058953f6-p776, 20046 bytes
+BUILD SUCCESSFUL in 5s
+# content_hash in manifest.json and the first 16 hex of the SHA-256 of regions/r.0.0.synx, all four directories:
+<O> "content_hash": "4a17058953f696f5923dc4b47080edc7e957505d27b53306baa41c9d4396c836" r.0.0.synx 7409d16307d8a1a8
+<S1> "content_hash": "4a17058953f696f5923dc4b47080edc7e957505d27b53306baa41c9d4396c836" r.0.0.synx 7409d16307d8a1a8
+<S2> "content_hash": "4a17058953f696f5923dc4b47080edc7e957505d27b53306baa41c9d4396c836" r.0.0.synx 7409d16307d8a1a8
+<S3> "content_hash": "4a17058953f696f5923dc4b47080edc7e957505d27b53306baa41c9d4396c836" r.0.0.synx 7409d16307d8a1a8
+# six bakes in new processes (steps 1-3 and S1..S3), one build_id: fixture-4a17058953f6-p776, 20,046 bytes
+
+## step 4 (counterproof, block entity NBT unsorted again): the diff below in ChunkData.java, the step 1 command run twice, then git checkout
+diff --git a/src/main/java/io/github/bearisbug/synaxis/network/packet/server/play/data/ChunkData.java b/src/main/java/io/github/bearisbug/synaxis/network/packet/server/play/data/ChunkData.java
+index 27f470c34b..1a835d9d5a 100644
+--- a/src/main/java/io/github/bearisbug/synaxis/network/packet/server/play/data/ChunkData.java
++++ b/src/main/java/io/github/bearisbug/synaxis/network/packet/server/play/data/ChunkData.java
+@@ -71,7 +71,7 @@ public record ChunkData(Map<Heightmap.Type, long[]> heightmaps, byte[] data,
+                 buffer.write(BlockEntityType.NETWORK_TYPE, block.blockEntityType());
+                 final CompoundBinaryTag nbt = BlockUtils.extractClientNbt(block);
+                 assert nbt != null;
+-                buffer.write(SORTED_NBT, nbt); // block nbt
++                buffer.write(Boolean.getBoolean("proof.never") ? SORTED_NBT : NBT, nbt); // block nbt
+             }
+         }
+ 
+## counterproof bake 1 into <O> (--threads 8) 14:04:03
+exit 0
+baker: published <O>/fixture/fixture-c114993518a7-p776, 20046 bytes
+BUILD SUCCESSFUL in 7s
+ls <O>/fixture: fixture-4a17058953f6-p776 fixture-c114993518a7-p776 
+## counterproof bake 2 into <O> (--threads 8) 14:04:11
+exit 0
+baker: published <O>/fixture/fixture-7556c3ac78a7-p776, 20047 bytes
+BUILD SUCCESSFUL in 3s
+ls <O>/fixture: fixture-4a17058953f6-p776 fixture-7556c3ac78a7-p776 fixture-c114993518a7-p776 
+# restored with git checkout -- src/main/java/io/github/bearisbug/synaxis/network/packet/server/play/data/ChunkData.java; git status --porcelain empty
+# the step as written in docs/TEST.md runs the command once; both runs published a build_id different from step 1, and from each other
+# unsorted bakes so far: 5d1eb2eae028, 0de6eec33ba3 (track D), c235d78cca7f, 3c3bfdec6aa2, b6566bc4f5c0 (RUN-041), c114993518a7, 7556c3ac78a7 (here)

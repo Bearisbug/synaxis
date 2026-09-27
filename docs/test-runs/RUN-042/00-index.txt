@@ -1,0 +1,31 @@
+# RUN-042: the two defects M3-C left, fixed on branch m3c/fixes, 2026-09-27 13:55 to 14:27 (UTC+8)
+# Code under test: 86a8fda7b4 = main 362f8f50a4 + 4ecd8fbb30 (block entity NBT with sorted keys) + 86a8fda7b4 (trackIncoming and BufferedPacket).
+# Gates and TC-WORLD-009 / 056 ran on 0fed964fb7 (86a8fda7b4 + docs/DESIGN-M3.md only); the TC-WORLD-033 bakes ran on 86a8fda7b4.
+# Machine: Apple M4 Pro, 12 cores, 24 GiB, macOS, Homebrew JDK 25.0.4.1; other sessions run builds on it; swap free 1.2 to 1.7 GB.
+# Every Gradle command: --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts --max-workers=4, one at a time.
+# Raw artefacts (baked maps, Gradle logs, JUnit XML) stay out of the repository and were deleted after the round; the lines below are copied out of them.
+00-index.txt              this file
+01-gates.txt              check --rerun-tasks -Dsynaxis.synx.require-frozen-zlib=true and the two strict modes: 3,941 tests, 15 skipped, 0 failed each
+02-red-before-fix.txt     each new test run before its fix: ChunkPacketDeterminismTest red on blockEntities, TrackIncomingIntegrationTest red on the NullPointerException
+03-tc-world-009-056.txt   TC-WORLD-009 steps 1-7 and TC-WORLD-056 steps 1-3, counterproofs with diff, red line and message, restore check
+04-tc-world-033.txt       TC-WORLD-033 steps 1-4 (exit 5 twice, counterproof exit 0) and three more bakes into separate directories: one build_id
+
+# Results
+TC-WORLD-009   pass   steps 1-7
+TC-WORLD-033   pass   steps 1-4 (closes the RUN-041 failure)
+TC-WORLD-056   pass   steps 1-3
+TC-029         pass   judged on the root module of gate 1 (check --rerun-tasks runs :test with every task rerun): tests=3141 >= 2,599, failures + errors = 0
+TC-WORLD-006   skipped, see below
+
+# Why TC-WORLD-006 is skipped
+# docs/TEST.md §5 maps a change of ChunkData to TC-WORLD-009 and TC-WORLD-006. The 7 packet jobs of TC-WORLD-006 encode chunks of
+# jmh-benchmarks/src/worldbench/.../SyntheticTerrain.java, which places no block entity (stone, dirt, ores, water, logs, leaves only),
+# so the block entity loop of ChunkData.NETWORK_TYPE writes a count of 0 and the only changed code (the key order of block entity NBT)
+# is not reached. Steps 2 and 3 start a child JVM with the default 6 GB heap per job; swap free on this machine was 1.2 to 1.7 GB with
+# other sessions building, so the case was not run.
+
+# .synx vectors: not refrozen, format_version stays 1. SynxVectorTest (4 tests) is green with the frozen zlib required in gate 1:
+#   synx TEST-...SynxVectorTest.xml tests="4" skipped="0" failures="0"
+# The block-entities vector builds its three NBT compounds with CompoundBinaryTag.builder() (HashMap, same order in every JVM), and
+# the HashMap order of {id, LootTable}, {id, front_text}, {id, Delay} is already the ascending one (LootTable, id / front_text, id /
+# Delay, id), so the sorted writer writes the same bytes as before.

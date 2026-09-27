@@ -1,0 +1,33 @@
+# RUN-042: each new test run before its fix (the test written first, the fix not yet in the working tree)
+
+## defect 1: working tree = main 362f8f50a4 + the ChunkPacketDeterminismTest change of 4ecd8fbb30 (a sign read back through BinaryTagIO in every chunk)
+## ./gradlew :test --tests 'io.github.bearisbug.synaxis.instance.ChunkPacketDeterminismTest'   (13:55)
+ChunkPacketDeterminismTest > samePacketBytesAcrossJvms(Path) FAILED
+1 test completed, 1 failed
+BUILD FAILED in 21s
+TEST-io.github.bearisbug.synaxis.instance.ChunkPacketDeterminismTest.xml tests="1" skipped="0" failures="1" errors="0"
+message="org.opentest4j.AssertionFailedError: run 0 and run 1 differ: plain chunk 0,0: first differing byte at packet offset 2877 (blockEntities offset 14, 215 bytes), fields 8,605,2863,3078,3100 vs 8,605,2863,3078,3100"
+# root cause: net.kyori.adventure.nbt.CompoundBinaryTagImpl.create (adventure-nbt 5.2.0) wraps Map.copyOf, whose iteration order
+# depends on the per-JVM salt of ImmutableCollections; BinaryTagIO's compound reader (BinaryTagTypes lambda$static$19) calls it.
+# src/main/java/io/github/bearisbug/synaxis/network/BinaryTagTypeImpl.java:86 (at 362f8f50a4) wrote a compound in that order,
+# reached from ChunkData.java:72 buffer.write(NBT, nbt) for every block entity. CompoundBinaryTag.builder() builds a HashMap copy
+# (fixed order), which is why the builder-made NBT of the .synx vectors never showed it.
+# measured with javap on adventure-nbt-5.2.0.jar and a 300-JVM loop: the two key sets of a sign ({front_text, back_text, is_waxed},
+# {messages, color, has_glowing_text}) come out in 12 different joint orders, roughly uniform.
+
+## defect 2: working tree = 4ecd8fbb30 + testing/src/test/.../TrackIncomingIntegrationTest.java of 86a8fda7b4
+## ./gradlew :testing:test --tests 'io.github.bearisbug.synaxis.testing.test.TrackIncomingIntegrationTest'   (14:00)
+TrackIncomingIntegrationTest > trackersPassOverABufferedChunkPacket(Env) FAILED
+    java.lang.NullPointerException at TrackIncomingIntegrationTest.java:35
+1 test completed, 1 failed
+BUILD FAILED in 7s
+TEST-io.github.bearisbug.synaxis.testing.test.TrackIncomingIntegrationTest.xml tests="1" skipped="0" failures="1" errors="0"
+    <failure message="java.lang.NullPointerException: Cannot invoke "io.github.bearisbug.synaxis.network.packet.server.ServerPacket.getClass()" because "serverPacket" is null" type="java.lang.NullPointerException">java.lang.NullPointerException: Cannot invoke "io.github.bearisbug.synaxis.network.packet.server.ServerPacket.getClass()" because "serverPacket" is null
+	at io.github.bearisbug.synaxis.testing/io.github.bearisbug.synaxis.testing.TestConnectionImpl$PlayerConnectionImpl.sendPacket(TestConnectionImpl.java:98)
+	at io.github.bearisbug.synaxis/io.github.bearisbug.synaxis.entity.Player.sendPacket(Player.java:1847)
+	at io.github.bearisbug.synaxis.testing/io.github.bearisbug.synaxis.testing.TestConnectionImpl$TestPlayerImpl.sendChunk(TestConnectionImpl.java:156)
+	at io.github.bearisbug.synaxis.testing.test/io.github.bearisbug.synaxis.testing.test.TrackIncomingIntegrationTest.trackersPassOverABufferedChunkPacket(TrackIncomingIntegrationTest.java:35)
+</failure>
+# root cause: TestConnectionImpl.java:98 (at 4ecd8fbb30) calls serverPacket.getClass() on what SendablePacket.extractServerPacket
+# returns, which is null for a BufferedPacket; TestPlayerImpl#sendChunk (:156) sends chunk.getFullDataPacket() as it is, and a
+# .synx handle chunk hands out a BufferedPacket. PlayerSocketConnection#writePacketSync skips the outgoing event for the same reason.

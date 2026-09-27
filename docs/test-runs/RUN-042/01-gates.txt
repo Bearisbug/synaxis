@@ -1,0 +1,76 @@
+# RUN-042 gates on m3c/fixes 0fed964fb7 (code = 86a8fda7b4), each --rerun-tasks, JUnit XML of every module removed before each gate,
+# with SYNAXIS_TEST_PG_URL=jdbc:postgresql://127.0.0.1:5440/postgres (synaxis-pg), SYNAXIS_TEST_PG_USER=postgres and SYNAXIS_TEST_REDIS_URL=redis://127.0.0.1:6440 (synaxis-valkey)
+# all: --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts --max-workers=4; machine Apple M4 Pro 12 cores, 24 GiB, macOS, JDK 25.0.4.1
+
+## check: ./gradlew check --rerun-tasks -Dsynaxis.synx.require-frozen-zlib=true (with --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts --max-workers=4)
+# start / swap / end:
+14:07:11
+14:07  up 12 days,  5:54, 26 users, load averages: 8.63 13.78 11.38
+vm.swapusage: total = 13312.00M  used = 11612.69M  free = 1699.31M  (encrypted)
+exit 0
+14:12:19
+14:12  up 12 days,  5:59, 26 users, load averages: 15.97 48.09 32.36
+BUILD SUCCESSFUL in 5m 7s
+# per module (JUnit XML under */build/test-results/test):
+root tests=3141 skipped=15 failures=0 errors=0
+architecture-tests tests=20 skipped=0 failures=0 errors=0
+baker tests=53 skipped=0 failures=0 errors=0
+game-rts tests=87 skipped=0 failures=0 errors=0
+loadtest tests=10 skipped=0 failures=0 errors=0
+plugin-api tests=15 skipped=0 failures=0 errors=0
+protocol tests=78 skipped=0 failures=0 errors=0
+server-app tests=411 skipped=0 failures=0 errors=0
+synx tests=115 skipped=0 failures=0 errors=0
+testing tests=11 skipped=0 failures=0 errors=0
+TOTAL tests=3941 skipped=15 failures=0 errors=0
+
+## strict4: ./gradlew test --rerun-tasks -Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true (with --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts --max-workers=4)
+# start / swap / end:
+14:13:00
+14:13  up 12 days, 6 hrs, 26 users, load averages: 13.58 43.43 31.37
+vm.swapusage: total = 14336.00M  used = 12607.00M  free = 1729.00M  (encrypted)
+exit 0
+14:17:30
+14:17  up 12 days,  6:04, 25 users, load averages: 9.94 29.66 29.14
+BUILD SUCCESSFUL in 4m 29s
+# per module (JUnit XML under */build/test-results/test):
+root tests=3141 skipped=15 failures=0 errors=0
+architecture-tests tests=20 skipped=0 failures=0 errors=0
+baker tests=53 skipped=0 failures=0 errors=0
+game-rts tests=87 skipped=0 failures=0 errors=0
+loadtest tests=10 skipped=0 failures=0 errors=0
+plugin-api tests=15 skipped=0 failures=0 errors=0
+protocol tests=78 skipped=0 failures=0 errors=0
+server-app tests=411 skipped=0 failures=0 errors=0
+synx tests=115 skipped=0 failures=0 errors=0
+testing tests=11 skipped=0 failures=0 errors=0
+TOTAL tests=3941 skipped=15 failures=0 errors=0
+
+## grid: ./gradlew test --rerun-tasks -Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true -Dsynaxis.thread-provider=grid (with --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts --max-workers=4)
+# start / swap / end:
+14:19:29
+14:19  up 12 days,  6:06, 25 users, load averages: 4.72 21.30 25.89
+vm.swapusage: total = 13312.00M  used = 12146.50M  free = 1165.50M  (encrypted)
+exit 0
+14:24:02
+14:24  up 12 days,  6:11, 25 users, load averages: 8.41 20.64 25.24
+BUILD SUCCESSFUL in 4m 31s
+# per module (JUnit XML under */build/test-results/test):
+root tests=3141 skipped=15 failures=0 errors=0
+architecture-tests tests=20 skipped=0 failures=0 errors=0
+baker tests=53 skipped=0 failures=0 errors=0
+game-rts tests=87 skipped=0 failures=0 errors=0
+loadtest tests=10 skipped=0 failures=0 errors=0
+plugin-api tests=15 skipped=0 failures=0 errors=0
+protocol tests=78 skipped=0 failures=0 errors=0
+server-app tests=411 skipped=0 failures=0 errors=0
+synx tests=115 skipped=0 failures=0 errors=0
+testing tests=11 skipped=0 failures=0 errors=0
+TOTAL tests=3941 skipped=15 failures=0 errors=0
+
+# gate outputs in gate 1 (architecture-tests system-out):
+config key gate: 113 keys read, 113 in ConfigFile.KEYS, 20 meter names left out
+translation key gate: 56 keys checked against [en_us.json, zh_cn.json], 14 identifiers left out
+# gate 1: synx SynxVectorTest tests="4" skipped="0" failures="0" (the frozen zlib byte comparison ran); root ChunkPacketDeterminismTest tests="1" failures="0"
+# grid strict mode: SocketWriteStateTransitionIntegrationTest (docs/TEST.md §7) did not fail, no rerun needed
+# 3,941 = 3,939 of the RUN-041 post-merge gates (docs/test-runs/RUN-041/90-post-merge-gates.txt) + BinaryTagTypeImplTest#sortedNbtWritesEveryCompoundInKeyOrder (root) + TrackIncomingIntegrationTest (testing)

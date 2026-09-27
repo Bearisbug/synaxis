@@ -195,7 +195,7 @@ public final class LoginListener {
                 // again, and it is the one that makes room (docs/DESIGN-PROD.md REQ-PROD-004)
                 final Player player = connection.process().connection().createPlayerReplacing(connection, gameProfile);
                 if (player == null) {
-                    connection.kick(DisconnectReasons.STATE_UNAVAILABLE);
+                    connection.kick(refusal(connection, DisconnectReasons.STATE_UNAVAILABLE));
                     return;
                 }
                 executeConfig(player, true);
@@ -208,7 +208,7 @@ public final class LoginListener {
                 // duplicate uuid and leaves an untracked player behind. The newcomer is the one
                 // rejected: in offline mode the uuid is derived from the username, so kicking the
                 // established session instead would hand anyone a way to evict anyone else.
-                connection.kick(DisconnectReasons.DUPLICATE_LOGIN);
+                connection.kick(refusal(connection, DisconnectReasons.DUPLICATE_LOGIN));
                 return;
             }
             executeConfig(player, true);
@@ -216,6 +216,15 @@ public final class LoginListener {
             connection.process().exception().handleException(t, connection.connectionId());
             connection.kick(ERROR_DURING_LOGIN);
         }
+    }
+
+    /**
+     * Why a connection is refused its player: once the connection manager has shut down it refuses
+     * every one, and the client is told the server stops ({@code docs/DESIGN-PROD.md} §11.4
+     * {@code kicking}) rather than the reason of a live process.
+     */
+    private static Component refusal(PlayerConnection connection, Component live) {
+        return connection.process().connection().isShutDown() ? DisconnectReasons.SERVER_STOPPING : live;
     }
 
     public static void configAckListener(ClientConfigurationAckPacket packet, Player player) {

@@ -93,4 +93,15 @@ class ManagementSettingsTest {
         assertEquals("enabled=false bind=127.0.0.1:25585 token=unset",
                 ManagementSettings.parse("false", "127.0.0.1:25585", null).toString());
     }
+
+    /** The self-check line keeps an IPv6 address apart from its port, in the form the key reads. */
+    @Test
+    void anIpv6BindIsPrintedInBracketsTheWayTheKeyReadsIt() {
+        final ManagementSettings settings = ManagementSettings.parse("true", "[::1]:25653", TOKEN);
+        final String printed = settings.toString();
+
+        assertEquals("enabled=true bind=[0:0:0:0:0:0:0:1]:25653 token=set", printed);
+        final String bind = printed.substring(printed.indexOf("bind=") + "bind=".length(), printed.indexOf(" token="));
+        assertEquals(settings.bind(), ManagementSettings.parse("true", bind, TOKEN).bind(), "the printed value reads back");
+    }
 }

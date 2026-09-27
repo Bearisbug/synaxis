@@ -135,7 +135,7 @@ public class ShutdownSequenceTest {
     public void aLoginDuringTheCountdownIsToldTheServerIsStopping() throws Exception {
         final Recorder recorder = new Recorder();
         final ServerProcess process = started(recorder);
-        final Thread stopper = Thread.ofPlatform().start(() -> process.beginShutdown(Duration.ofSeconds(3)));
+        assertTrue(process.beginShutdown(Duration.ofSeconds(3)));
         awaitQuietly(() -> process.shutdownPhase() == ServerProcess.ShutdownPhase.GATE_CLOSED);
 
         try (SocketChannel channel = SocketChannel.open(new InetSocketAddress(InetAddress.getLoopbackAddress(),
@@ -150,7 +150,7 @@ public class ShutdownSequenceTest {
                     assertInstanceOf(TranslatableComponent.class, disconnect.kickMessage()).key());
         }
         assertTrue(process.isAlive(), "the countdown still runs");
-        stopper.join();
+        awaitQuietly(() -> process.shutdownPhase() == ServerProcess.ShutdownPhase.STOPPED);
         assertEquals(List.of("gate_closed:3:true", "save:30:true:SAVING", "save_ended:false"), recorder.calls);
     }
 
@@ -159,13 +159,13 @@ public class ShutdownSequenceTest {
     public void aDeathDuringTheCountdownSkipsToADeadSave() throws Exception {
         final Recorder recorder = new Recorder();
         final ServerProcess process = started(recorder);
-        final Thread stopper = Thread.ofPlatform().start(() -> process.beginShutdown(Duration.ofMinutes(2)));
+        assertTrue(process.beginShutdown(Duration.ofMinutes(2)));
         awaitQuietly(() -> process.shutdownPhase() == ServerProcess.ShutdownPhase.GATE_CLOSED);
 
         assertFalse(process.shutdownAfterWatchdogDeath(), "the thread counting down runs the rest");
-        stopper.join(TimeUnit.SECONDS.toMillis(30));
+        // Within 20 s: the 120 s countdown was cut short
+        awaitQuietly(() -> process.shutdownPhase() == ServerProcess.ShutdownPhase.STOPPED);
 
-        assertFalse(stopper.isAlive(), "the 120 s countdown was cut short");
         assertEquals(List.of("gate_closed:120:true", "save:15:false:SAVING", "save_ended:false"), recorder.calls);
     }
 

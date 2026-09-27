@@ -205,21 +205,30 @@ public interface ServerProcess extends Registries {
     void start(SocketAddress socketAddress);
 
     /**
-     * Shuts down without a countdown, the same as {@code beginShutdown(Duration.ZERO)}.
+     * Shuts down without a countdown, as {@link #beginShutdown} with {@link Duration#ZERO} does,
+     * but called from anywhere but a tick thread the sequence runs on this thread and this returns
+     * once the process has stopped. The shutdown hook runs it that way.
+     *
+     * @return true if this call started the shutdown, false if one had already started: then this
+     * returns at once, without waiting for it
      */
-    void stop();
+    boolean stop();
 
     /**
      * Starts the shutdown sequence of {@code docs/DESIGN-PROD.md} §11.4: close the login gate, count
      * down, save through the {@link ShutdownParticipant}, kick everyone, disable the plugins, stop
-     * ticking. The tick keeps running until the plugins are disabled. A second call returns at once.
+     * ticking. The tick keeps running until the plugins are disabled.
      * <p>
-     * Called from a tick thread, the sequence runs on a thread of its own and this returns at once;
-     * called from anywhere else, it returns once the process has stopped.
+     * Only one call starts it: the sequence runs on a thread of its own, not a daemon, and this
+     * returns at once from any thread, so that a caller who answers someone knows what to answer
+     * while the sequence runs. Every later call, the shutdown hook's {@link #stop()} included,
+     * returns false at once and leaves the countdown as it is.
      *
      * @param countdown how long to wait between closing the gate and saving
+     * @return true if this call started the shutdown, false if one had already started
+     * @throws IllegalArgumentException if the countdown is negative
      */
-    void beginShutdown(Duration countdown);
+    boolean beginShutdown(Duration countdown);
 
     /**
      * Registers the host side of the save phase. Only once, and only before {@link #start}; without

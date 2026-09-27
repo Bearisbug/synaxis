@@ -171,6 +171,8 @@ public final class ConnectionManager {
     private final Map<PlayerConnection, Player> connectionPlayerMap = new ConcurrentHashMap<>();
     // The same players keyed by profile uuid, which owns the uuid until its connection is dropped
     private final Map<UUID, Player> uuidPlayerMap = new ConcurrentHashMap<>();
+    // Set by #shutdown under this object's lock, which #trackOrPrevious holds too
+    private boolean shutDown;
     // Players waiting to be spawned (post configuration state)
     private final MessagePassingQueue<Player> playWaitingPlayers = ConcurrentMessageQueues.mpscUnboundedArrayQueue(64);
     // Players waiting to be (re) configured
@@ -323,8 +325,8 @@ public final class ConnectionManager {
     /**
      * Creates the player of a connection which acknowledged its login, and claims its profile uuid.
      *
-     * @return the player, or null when another live connection already owns that uuid and the
-     * caller must reject this one
+     * @return the player, or null when another live connection already owns that uuid or the
+     * manager has shut down ({@link #isShutDown()}), and the caller must reject this one
      */
     @ApiStatus.Internal
     public @Nullable Player createPlayer(PlayerConnection connection, GameProfile gameProfile) {
@@ -341,7 +343,8 @@ public final class ConnectionManager {
      * one is only removed on the next tick ({@code docs/DESIGN-PROD.md} §11.1, §16). Runs on the
      * read thread of the new connection.
      *
-     * @return the player, or null when the uuid was still not free after 5 seconds
+     * @return the player, or null when the uuid was still not free after 5 seconds or the manager
+     * has shut down ({@link #isShutDown()})
      */
     @ApiStatus.Internal
     public @Nullable Player createPlayerReplacing(PlayerConnection connection, GameProfile gameProfile) {
@@ -351,6 +354,7 @@ public final class ConnectionManager {
         while (true) {
             final Player previous = trackOrPrevious(player);
             if (previous == null) return player;
+            if (previous == player) return null;
             previous.kick(DisconnectReasons.LOGGED_IN_ELSEWHERE);
             while (uuidPlayerMap.get(player.getUuid()) == previous || !leftTheWorld(previous)) {
                 if (System.nanoTime() - deadline >= 0 || !connection.isOnline()) return null;
@@ -542,16 +546,20 @@ public final class ConnectionManager {
      * mode hands out to anyone reusing a username — therefore cannot both win, whatever their
      * interleaving, and the loser never reaches the entity tracker.
      *
-     * @return false if another live connection already owns that uuid
+     * @return false if another live connection already owns that uuid, or the manager has shut down
      */
     private synchronized boolean trackNewPlayer(Player player) {
         return trackOrPrevious(player) == null;
     }
 
     /**
-     * {@link #trackNewPlayer}, returning the player owning the uuid instead when it is taken.
+     * {@link #trackNewPlayer}, returning the player owning the uuid instead when it is taken, and
+     * the player itself once the manager has shut down: {@link #shutdown} kicked every player it
+     * held, and one tracked after that would go through its configuration in a stopping process
+     * with nothing left to kick it.
      */
     private synchronized @Nullable Player trackOrPrevious(Player player) {
+        if (shutDown) return player;
         final Player previous = uuidPlayerMap.putIfAbsent(player.getUuid(), player);
         if (previous != null) return previous;
         connectionPlayerMap.put(player.getPlayerConnection(), player);
@@ -574,9 +582,21 @@ public final class ConnectionManager {
     }
 
     /**
+     * Whether {@link #shutdown()} has run: from then on no player is created, a connection that
+     * acknowledges its login later is refused its player.
+     *
+     * @return true once the manager has shut down
+     */
+    @ApiStatus.Internal
+    public synchronized boolean isShutDown() {
+        return shutDown;
+    }
+
+    /**
      * Shutdowns the connection manager by kicking all the currently connected players.
      */
     public synchronized void shutdown() {
+        this.shutDown = true;
         final List<PlayerSocketConnection> kicked = new ArrayList<>();
         for (final PlayerConnection configPlayer : connectionPlayerMap.keySet()) {
             configPlayer.kick(DisconnectReasons.SERVER_STOPPING);

@@ -37,7 +37,7 @@ public interface Moderation {
      * @param operator  who bans, the nil UUID for the console
      * @return the ban, once it is in the database
      * @throws IllegalArgumentException if the reason is empty or longer than 256 characters, or the
-     *                                  expiry is not in the future
+     *                                  expiry is not in the future or not before the year 10000
      */
     CompletableFuture<Ban> ban(BanTarget target, String reason, @Nullable Instant expiresAt, UUID operator);
 

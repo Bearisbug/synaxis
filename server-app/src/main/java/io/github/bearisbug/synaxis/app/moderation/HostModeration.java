@@ -70,6 +70,13 @@ public final class HostModeration implements Moderation {
     /** The longest reason, {@code ban.reason} in §9. */
     static final int MAX_REASON = 256;
 
+    /**
+     * A ban expires before this instant or never: {@code ban.expires_at} in §9 is a PostgreSQL
+     * {@code timestamptz}, which cannot hold much past the year 294276, and the expiry players are
+     * shown has a year of four digits.
+     */
+    public static final Instant EXPIRY_LIMIT = Instant.parse("+10000-01-01T00:00:00Z");
+
     /** The second argument of {@link DisconnectKeys#BANNED} for a ban that expires. */
     static final String BANNED_UNTIL = "synaxis:banned-until";
 
@@ -205,6 +212,8 @@ public final class HostModeration implements Moderation {
             throw new IllegalArgumentException("a ban reason has 1 to " + MAX_REASON + " characters, not " + length);
         if (expiresAt != null && !expiresAt.isAfter(Instant.now()))
             throw new IllegalArgumentException("a ban that expired at " + expiresAt + " bans nobody");
+        if (expiresAt != null && !expiresAt.isBefore(EXPIRY_LIMIT))
+            throw new IllegalArgumentException("a ban cannot expire at " + expiresAt + ", only before " + EXPIRY_LIMIT);
         final long start = System.nanoTime();
         return changing(database -> {
             final Ban ban = database.ban(target, reason, expiresAt, operator);

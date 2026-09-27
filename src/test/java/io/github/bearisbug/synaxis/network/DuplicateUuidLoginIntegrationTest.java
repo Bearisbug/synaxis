@@ -142,11 +142,11 @@ public class DuplicateUuidLoginIntegrationTest {
         return exceptions;
     }
 
-    private static final class KickCapturingConnection extends PlayerSocketConnection implements AutoCloseable {
+    static final class KickCapturingConnection extends PlayerSocketConnection implements AutoCloseable {
         private final SocketChannel channel;
         private volatile @Nullable SendablePacket kickPacket;
 
-        private KickCapturingConnection(ServerProcess process) throws IOException {
+        KickCapturingConnection(ServerProcess process) throws IOException {
             this(process, SocketChannel.open());
         }
 
@@ -156,13 +156,13 @@ public class DuplicateUuidLoginIntegrationTest {
             this.channel = channel;
         }
 
-        private SendablePacket kickPacket() {
+        SendablePacket kickPacket() {
             final SendablePacket packet = kickPacket;
             assertNotNull(packet, "the connection was never kicked");
             return packet;
         }
 
-        private String kickKey() {
+        String kickKey() {
             final SendablePacket packet = kickPacket();
             final Component reason = packet instanceof LoginDisconnectPacket login
                     ? login.kickMessage() : assertInstanceOf(DisconnectPacket.class, packet).message();

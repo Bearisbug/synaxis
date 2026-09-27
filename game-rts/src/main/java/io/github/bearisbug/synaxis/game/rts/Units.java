@@ -1,6 +1,7 @@
 package io.github.bearisbug.synaxis.game.rts;
 
 import io.github.bearisbug.synaxis.coordinate.Pos;
+import io.github.bearisbug.synaxis.entity.Entity;
 import io.github.bearisbug.synaxis.entity.Player;
 import io.github.bearisbug.synaxis.game.protocol.C2SMoveOrder;
 import io.github.bearisbug.synaxis.game.protocol.GameMessage;
@@ -225,6 +226,10 @@ final class Units {
      * Takes every unit off the board when the match ends (§11.4 {@code → removed}): every player
      * still holding a unit gets its last {@code S2C_UNIT_DESPAWN}, the display entities go, and
      * every order still in flight is written off.
+     * <p>
+     * Runs in {@code onDisable}, on a thread of the host that owns no tick thread (API-PROD-007):
+     * a unit a tick thread owns is removed under that thread's lock, one no tick thread owns yet is
+     * removed directly, since {@code sync} on it only accepts the thread that created it.
      */
     void end() {
         queue.clear();
@@ -232,7 +237,9 @@ final class Units {
             superseded(unit.stop(), "match-ended");
             for (final Player player : unit.announcedTo()) despawn(unit, player);
             unit.announcedTo().clear();
-            unit.entity().remove();
+            final UnitEntity entity = unit.entity();
+            if (entity.acquirable().assignedThread() == null) entity.remove();
+            else entity.acquirable().sync(Entity::remove);
         }
         units.clear();
         match.unregisterUnits();

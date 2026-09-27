@@ -253,8 +253,9 @@ public final class Main {
         final HostMetrics metrics = HostMetrics.register(process, new HostMetrics.Sources(ledger::droppedTotal,
                 store.store(), store.session(), store.database(), store.redis()));
         serveMetrics(metrics, metricsBind);
-        final ManagementServer management = ManagementServer.serve(managementSettings, process, new ManagementMethods(
-                process, commands, store.store(), store.moderation(), store.session(), shardId, ledger::record));
+        final ManagementMethods managementMethods = new ManagementMethods(process, commands, store.store(),
+                store.moderation(), store.session(), shardId, ledger::record);
+        final ManagementServer management = ManagementServer.serve(managementSettings, process, managementMethods);
         if (coreMode != CoreMode.Setting.ON) host.enable(PluginHost.discover(), selectedPlugins);
 
         // (5) Which mode this process serves in. Gameplay needs both halves — an admission provider
@@ -287,6 +288,8 @@ public final class Main {
         // shutdown tasks after the players are saved and kicked, between two ticks, and before it
         // stops ticking (docs/DESIGN-PROD.md §11.4), so onDisable runs the same way on both paths.
         process.scheduler().buildShutdownTask(host::disableAll);
+        // A stop still answering gets its answer and its ledger line out first (API-PROD-011)
+        process.scheduler().buildShutdownTask(commands::awaitStopAnswers);
         // After the plugins, so that what they record in onDisable is on disk (API-PROD-014)
         process.scheduler().buildShutdownTask(ledger::close);
         // The save is over by now: Redis, the session renewal and the pool can go
@@ -298,6 +301,8 @@ public final class Main {
 
         // (6) bind, freeze the registries, accept, start the dispatcher and the tick thread.
         server.start(BIND_ADDRESS, port);
+        // Not earlier: a stop begun before this would run ahead of the shutdown tasks above (§11.4)
+        managementMethods.serverStarted();
 
         // (7) Printed after all three, so "the ready log is out" means the process is ticking. A map
         // shard records EVT:shard_started first, now that the port is bound.
@@ -431,8 +436,8 @@ public final class Main {
             metrics.serve(bind);
         } catch (IOException e) {
             metrics.close();
-            throw new IllegalArgumentException(HostMetrics.BIND_PROPERTY + "=" + bind.getHostString() + ":"
-                    + bind.getPort() + " cannot be bound: " + e.getMessage(), e);
+            throw new IllegalArgumentException(HostMetrics.BIND_PROPERTY + "=" + BindAddress.format(bind)
+                    + " cannot be bound: " + e.getMessage(), e);
         }
     }
 

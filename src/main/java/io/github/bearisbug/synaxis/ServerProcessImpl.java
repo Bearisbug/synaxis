@@ -93,6 +93,10 @@ final class ServerProcessImpl implements ServerProcess, Registries.Delegating {
     // Set by the first beginShutdown; `stopped` only follows at the end of the sequence (§11.4)
     private final AtomicBoolean stopping = new AtomicBoolean();
     private final CompletableFuture<Void> watchdogDeath = new CompletableFuture<>();
+    // A signal that came while another call held the shutdown: the countdown ends there
+    private final CompletableFuture<Void> signalled = new CompletableFuture<>();
+    // Completed once the sequence is over, whichever thread ran it
+    private final CompletableFuture<Void> sequenceOver = new CompletableFuture<>();
     private volatile ShutdownPhase shutdownPhase = ShutdownPhase.RUNNING;
     private volatile @Nullable ShutdownParticipant shutdownParticipant;
 
@@ -310,29 +314,52 @@ final class ServerProcessImpl implements ServerProcess, Registries.Delegating {
 
         // Stop the server on SIGINT
         if (config.shutdownOnSignal()) {
-            final Thread hook = new Thread(this::stop);
+            final Thread hook = new Thread(this::stopOnSignal);
             Runtime.getRuntime().addShutdownHook(hook);
             this.shutdownHook = hook;
         }
     }
 
     @Override
-    public void stop() {
-        beginShutdown(Duration.ZERO);
-    }
-
-    @Override
-    public void beginShutdown(Duration countdown) {
-        if (countdown.isNegative()) throw new IllegalArgumentException("countdown " + countdown + " is negative");
-        if (!stopping.compareAndSet(false, true)) return;
+    public boolean stop() {
         // The shutdown sequence waits for every tick thread to exit, which can never happen while the
         // caller is one of them (e.g. a /stop command running on a TickThread, upstream issue #2907).
         final Thread caller = Thread.currentThread();
-        if (caller instanceof TickThread || caller instanceof TickSchedulerThread) {
-            new Thread(() -> shutdownProcess(countdown, false), "Syn-Shutdown").start();
-        } else {
+        return shutdown(Duration.ZERO, !(caller instanceof TickThread || caller instanceof TickSchedulerThread));
+    }
+
+    /**
+     * What the shutdown hook runs on SIGTERM or SIGINT. The JVM halts as soon as its shutdown hooks
+     * return, whatever other thread is still running, the non-daemon {@code Syn-Shutdown} included.
+     * So when a {@code stop} or a {@code beginShutdown} already holds the shutdown, the hook cuts
+     * what is left of that countdown and waits for that sequence to be over
+     * ({@code docs/DESIGN-PROD.md} §11.4); otherwise {@link #stop()} runs the sequence right here.
+     */
+    void stopOnSignal() {
+        if (stop()) return;
+        signalled.complete(null);
+        sequenceOver.join();
+    }
+
+    @Override
+    public boolean beginShutdown(Duration countdown) {
+        if (countdown.isNegative()) throw new IllegalArgumentException("countdown " + countdown + " is negative");
+        return shutdown(countdown, false);
+    }
+
+    /**
+     * @param onThisThread whether the sequence runs on the calling thread rather than a new one
+     * @return whether this call started the shutdown
+     */
+    private boolean shutdown(Duration countdown, boolean onThisThread) {
+        if (!stopping.compareAndSet(false, true)) return false;
+        if (onThisThread) {
             shutdownProcess(countdown, false);
+        } else {
+            // Not a daemon: once the tick threads are joined, it is what keeps the JVM up until the end
+            Thread.ofPlatform().name("Syn-Shutdown").daemon(false).start(() -> shutdownProcess(countdown, false));
         }
+        return true;
     }
 
     @Override
@@ -396,30 +423,30 @@ final class ServerProcessImpl implements ServerProcess, Registries.Delegating {
             for (TickThread tickThread : dispatcher.threads()) joinThread(tickThread);
             server.stop();
             this.shutdownPhase = ShutdownPhase.STOPPED;
+            LOGGER.info("{} server stopped successfully.", brand);
         } finally {
             stopped.set(true);
             // Whatever happened above, the JVM must stop referencing this process through the hook.
             removeShutdownHook();
+            sequenceOver.complete(null);
         }
-        LOGGER.info("{} server stopped successfully.", brand);
     }
 
     /**
-     * @return true if the watchdog judged the process dead before the countdown ran out
+     * Waits the countdown out, or until the watchdog judges the process dead or a signal cuts it.
+     *
+     * @return true if the watchdog judged the process dead
      */
     private boolean awaitCountdown(Duration countdown) {
         if (countdown.isZero()) return watchdogDeath.isDone();
         try {
-            watchdogDeath.get(countdown.toNanos(), TimeUnit.NANOSECONDS);
-            return true;
-        } catch (TimeoutException _) {
-            return false;
+            CompletableFuture.anyOf(watchdogDeath, signalled).get(countdown.toNanos(), TimeUnit.NANOSECONDS);
+        } catch (TimeoutException | ExecutionException _) {
+            // The countdown ran out
         } catch (InterruptedException _) {
             Thread.currentThread().interrupt();
-            return false;
-        } catch (ExecutionException _) {
-            return true;
         }
+        return watchdogDeath.isDone();
     }
 
     /**

@@ -126,6 +126,8 @@ public final class ManagementMethods {
     private final BiConsumer<String, Map<String, ?>> analytics;
     private final Map<String, Method> methods = new LinkedHashMap<>();
     private final LogBudget failures = new LogBudget(LOGGER, "management calls failed");
+    /** Set once, by {@link #serverStarted()}; until then {@code minecraft:server/stop} is refused. */
+    private volatile boolean serverStarted;
 
     /**
      * @param process    the engine process
@@ -158,6 +160,17 @@ public final class ManagementMethods {
         methods.put("synaxis:shard/status", _ -> shardStatus());
         methods.put("synaxis:broadcast", this::broadcast);
         methods.put("synaxis:profile", this::profile);
+    }
+
+    /**
+     * Lets {@code minecraft:server/stop} through to the engine, called by Main once the game port is
+     * bound and the tick runs ({@code docs/DESIGN-PROD.md} §11.4). The interface listens before that,
+     * while the plugins are enabled: a shutdown begun then would run before Main has registered its
+     * shutdown tasks, and Main would go on to open the game port of a process that no longer ticks
+     * and never exits.
+     */
+    public void serverStarted() {
+        serverStarted = true;
     }
 
     /**
@@ -219,7 +232,9 @@ public final class ManagementMethods {
      * Reads one message as RFC 8259 JSON: one value in Gson's {@link Strictness#STRICT}, then
      * nothing but blanks. {@link com.google.gson.JsonParser#parseString} is lenient: it would run
      * a request written with single quotes, unquoted names, comments or {@code =>} and {@code ;}
-     * separators.
+     * separators. A number of 1,024 characters or more fails too, valid as it is: Gson's reader
+     * holds a number in its buffer of 1,024 characters and gives up on a longer one
+     * ({@code docs/DESIGN-PROD.md} §28.2).
      *
      * @param message the text frame
      * @return the value
@@ -373,11 +388,12 @@ public final class ManagementMethods {
         return new Outcome(new JsonPrimitive(all), all ? "ok" : "partial", null);
     }
 
-    private Outcome stop() {
-        // Answered before the shutdown starts: the shutdown closes this connection on its way
-        final boolean claimed = commands.claimStop();
-        return new Outcome(new JsonPrimitive(claimed), claimed ? "ok" : "invalid", null,
-                claimed ? () -> commands.startStop(Duration.ZERO) : null);
+    private Outcome stop() throws Failure {
+        if (!serverStarted)
+            throw new Failure(UNAVAILABLE, "The server is still starting; stop it once it has started", "unavailable");
+        // The shutdown closes this connection on its way, after waiting for the answer to be sent
+        final boolean started = commands.beginStop(Duration.ZERO);
+        return new Outcome(new JsonPrimitive(started), started ? "ok" : "invalid", null, commands::stopAnswered);
     }
 
     // minecraft:bans, minecraft:bans/add, minecraft:bans/remove
@@ -418,6 +434,8 @@ public final class ManagementMethods {
                 throw invalid("expires is not an ISO-8601 instant: " + expiresText);
             }
             if (expires != null && !expires.isAfter(Instant.now())) throw invalid("expires " + expires + " is not in the future");
+            if (expires != null && !expires.isBefore(HostModeration.EXPIRY_LIMIT))
+                throw invalid("expires " + expires + " is not before " + HostModeration.EXPIRY_LIMIT);
             bans.add(new NewBan(uuid, reason, expires));
         }
         for (NewBan ban : bans) {
@@ -507,13 +525,8 @@ public final class ManagementMethods {
 
     private Outcome profile(Call call) throws Failure {
         final JsonElement given = call.param(0, "seconds");
-        final int seconds;
-        if (given == null) seconds = Profiler.DEFAULT_SECONDS;
-        else if (given.isJsonPrimitive() && given.getAsJsonPrimitive().isNumber()
-                && given.getAsDouble() == Math.rint(given.getAsDouble())
-                && given.getAsDouble() >= Profiler.MIN_SECONDS && given.getAsDouble() <= Profiler.MAX_SECONDS)
-            seconds = given.getAsInt();
-        else throw invalid("seconds is a whole number from " + Profiler.MIN_SECONDS + " to " + Profiler.MAX_SECONDS);
+        final int seconds = given == null ? Profiler.DEFAULT_SECONDS
+                : wholeNumber(given, "seconds", Profiler.MIN_SECONDS, Profiler.MAX_SECONDS);
         final Profiler.Start start;
         try {
             start = commands.profiler().start(seconds);
@@ -540,6 +553,26 @@ public final class ManagementMethods {
 
     private static Failure invalid(String message) {
         return new Failure(INVALID_PARAMS, message, "invalid");
+    }
+
+    /**
+     * A JSON number that is exactly a whole number within the bounds, read from its text: 1, 1.0 and
+     * 1e0 are 1, while 0.99999999999999999999 is refused. A double cannot tell it from 1, and
+     * {@link JsonElement#getAsInt} would then cut it to 0.
+     */
+    private static int wholeNumber(JsonElement value, String name, int min, int max) throws Failure {
+        final Failure invalid = invalid(name + " is a whole number from " + min + " to " + max);
+        if (!value.isJsonPrimitive() || !value.getAsJsonPrimitive().isNumber()) throw invalid;
+        final int number;
+        try {
+            number = value.getAsBigDecimal().intValueExact();
+        } catch (NumberFormatException | ArithmeticException _) {
+            // A fraction, a number past int, or one whose exponent is past Gson's limit. A number too
+            // long for Gson never gets here: its reader gives up on one of 1,024 characters, see parse
+            throw invalid;
+        }
+        if (number < min || number > max) throw invalid;
+        return number;
     }
 
     private static JsonArray array(@Nullable JsonElement value, String name) throws Failure {

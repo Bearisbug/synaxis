@@ -22,7 +22,8 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.Semaphore;
+import java.util.concurrent.TimeUnit;
 import java.util.function.BiConsumer;
 
 /**
@@ -40,6 +41,8 @@ public final class HostCommands {
 
     /** A player runs the command {@code <name>} while holding this prefix followed by the name. */
     public static final String NODE_PREFIX = "synaxis.command.";
+    /** How long the shutdown waits for a stop that is still answering, see {@link #awaitStopAnswers()}. */
+    static final Duration ANSWER_WAIT = Duration.ofSeconds(1);
 
     private final ServerProcess process;
     private final Permissions permissions;
@@ -48,10 +51,10 @@ public final class HostCommands {
     private final Profiler profiler;
     private final TickStats ticks = new TickStats();
     /**
-     * Set by the first {@code stop} or management {@code minecraft:server/stop} that starts the
-     * shutdown, before its thread calls the engine.
+     * Taken by a stop before it asks the engine and given back once it has answered, so that the
+     * answer and its ledger line come before the ledger and the management connections close.
      */
-    private final AtomicBoolean stopping = new AtomicBoolean();
+    private final Semaphore answering = new Semaphore(1);
 
     /**
      * @param process     the engine process
@@ -79,26 +82,38 @@ public final class HostCommands {
     }
 
     /**
-     * Claims the shutdown ({@code API-PROD-011}): the console, a player's {@code stop} and the
-     * management method {@code minecraft:server/stop} all come through here, and only the first
-     * of them gets true. Whoever gets it answers first and then calls {@link #startStop}.
+     * Asks the engine to shut down ({@code API-PROD-011}). The console, a player's {@code stop} and
+     * the management method {@code minecraft:server/stop} all come through here, and only the
+     * engine says whether this call started the shutdown: the host keeps no flag of its own, which
+     * a signal could get ahead of. Takes the answering permit first; whatever the engine said, the
+     * caller answers and then calls {@link #stopAnswered()}.
      *
-     * @return false if a shutdown was already running or claimed
+     * @param countdown how long the gate stays closed before the save
+     * @return true if this call started the shutdown, false if one had already started, from a
+     * signal, the watchdog or an earlier stop
      */
-    public boolean claimStop() {
-        // The engine ignores every shutdown after the first, so a second countdown would change nothing
-        return process.shutdownPhase() == ServerProcess.ShutdownPhase.RUNNING && stopping.compareAndSet(false, true);
+    public boolean beginStop(Duration countdown) {
+        answering.acquireUninterruptibly();
+        return process.beginShutdown(countdown);
     }
 
     /**
-     * Starts the shutdown claimed by {@link #claimStop()} on a thread of its own.
-     *
-     * @param countdown how long the gate stays closed before the save
+     * Gives back the permit {@link #beginStop} took, once the caller has answered.
      */
-    public void startStop(Duration countdown) {
-        // Its own thread, not a daemon: the sequence waits for every tick thread, the one running a
-        // player's command included, and the JVM exits once it is over and this thread with it
-        Thread.ofPlatform().name("server-app-stop").start(() -> process.beginShutdown(countdown));
+    public void stopAnswered() {
+        answering.release();
+    }
+
+    /**
+     * A shutdown task ahead of the ledger's and the management interface's: waits, at most
+     * {@link #ANSWER_WAIT}, for a stop that is still answering.
+     */
+    public void awaitStopAnswers() {
+        try {
+            if (answering.tryAcquire(ANSWER_WAIT.toNanos(), TimeUnit.NANOSECONDS)) answering.release();
+        } catch (InterruptedException _) {
+            Thread.currentThread().interrupt();
+        }
     }
 
     /**
@@ -217,14 +232,18 @@ public final class HostCommands {
     }
 
     private void stop(CommandSender sender, String input, int seconds) {
-        if (!claimStop()) {
-            reply(sender, "synaxis:command-already-stopping", "The server is already stopping");
-            record(sender, input, null, "invalid");
-            return;
+        final boolean started = beginStop(Duration.ofSeconds(seconds));
+        try {
+            if (!started) {
+                reply(sender, "synaxis:command-already-stopping", "The server is already stopping");
+                record(sender, input, null, "invalid");
+                return;
+            }
+            reply(sender, "synaxis:command-stopping", "The server stops in %s s", String.valueOf(seconds));
+            record(sender, input, null, "ok");
+        } finally {
+            stopAnswered();
         }
-        reply(sender, "synaxis:command-stopping", "The server stops in %s s", String.valueOf(seconds));
-        record(sender, input, null, "ok");
-        startStop(Duration.ofSeconds(seconds));
     }
 
     private Command profile() {

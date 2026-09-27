@@ -1,0 +1,25 @@
+RUN-040 记录（2026-09-27）
+
+被测版本：集成分支 prod/integrate-f 9343dbe763（代码与 39cbadade3 相同；其后只改 docs/**：RUN-039 补记、DESIGN-PROD v0.9.23、TC-PROD-494 第 3 步的测量方法）。
+范围：RUN-039 汇总行之后新增与改写的用例 TC-PROD-499～TC-PROD-512（REQ-PROD-008、010、012、018、019、032，见各用例），以及 RUN-039 判失败的 TC-PROD-494 第 3 步。
+
+一、TC-PROD-499～512（自动化用例）
+  执行：本轮记录阶段在 39cbadade3 上跑的全量门禁，证据原文在 docs/test-runs/RUN-039/acceptance.txt 第十六节：
+    ./gradlew check --rerun-tasks（带数据库环境，--max-workers=4）→ 10 个模块 3,787 个测试 0 失败，15 跳过（根模块原有），12 个数据库用例类 skipped=0
+    严格 grid 全量 → 3,787 个 0 失败，EnvDispatcherThreadsIntegrationTest 报 threads 4、provider grid
+    ABI 门对 v0.3.0 release 资产 → 两个任务都执行，0 违例
+  各用例的反证由修复人在各自提交上实跑（RUN-039 证据第十四～十六节）；TC-PROD-483 第 2 步按调换断言后的写法实跑两次，红在 :164
+  TC-PROD-512（真进程，strict grid，gameplay 登录后 stop）：三次退出码 0，0.59～0.61 s，无 ERROR，match_ended reason=normal（修复人实跑）
+
+二、TC-PROD-494 第 1～4 步（执行人本人实跑，按 v0.9.23 改写后的第 3 步）
+  installDist（--max-workers=4）后起服：-Xms1G -Xmx1G，core 模式，离线，管理接口 127.0.0.1:25612，令牌用 openssl rand -hex 32 现生成、未回显
+  第 1 步 基线：used 24,389K
+  第 2 步 ping 200 MiB：closed_by_server=true，closed_after_frames 23,936；stdout 一行
+    "Management connection closed with 1008: … has 4096 frames and 520192 bytes queued that it does not read"；GC 后 used 24,729K（限 27,461K）
+  第 3 步 等 10 s，status 30 MiB：closed_by_server=true，59,200 帧后；脚本返回后第一份 Thread.dump_to_file 里 Syn-Management-Call = 0（观察项），
+    GC 后 used 24,680K；WARN "has 4096 frames and 434176 bytes"；events-local-20260927.jsonl 里 minecraft:server/status 的 gm_command 31,442 行 < 59,200 帧
+  第 4 步 等 10 s，ping 700 MiB：closed_by_server=true，22,784 帧后；GC 后 used 25,546K；进程仍在；stdout 0 行 OutOfMemoryError
+  第 5 步反证本轮未重跑：RUN-039 证据第十六节记录了按用例复现（改动前的队列在 200 MiB 时 1,600,896 帧全部排队、700 MiB 时 OOM 退出）
+  后置：kill <pid> 后进程退出，临时目录已删，令牌变量已 unset
+
+三、结果：通过 15/15（TC-PROD-494、TC-PROD-499～512）

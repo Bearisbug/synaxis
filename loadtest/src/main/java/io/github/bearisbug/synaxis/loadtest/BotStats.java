@@ -50,6 +50,13 @@ final class BotStats {
     final LongAdder lost = new LongAdder();
     final Map<String, LongAdder> kicks = new ConcurrentHashMap<>();
     final Map<String, LongAdder> loginFailures = new ConcurrentHashMap<>();
+    /**
+     * The tries of gate bots ({@code docs/DESIGN-M3.md} §26 M3-E track D): how long the completed ones
+     * took, from the first position in a frame to the 9th chunk on the new connection, and how many
+     * failed, by reason. A try the run ended is neither.
+     */
+    final Histogram transferMillis = new Histogram(0.1);
+    final Map<String, LongAdder> transferFailures = new ConcurrentHashMap<>();
 
     void received(ConnectionState state, int id, int wireBytes) {
         inboundPackets.increment();
@@ -72,6 +79,18 @@ final class BotStats {
     static JsonObject counts(Map<String, LongAdder> map) {
         final JsonObject json = new JsonObject();
         new TreeMap<>(map).forEach((key, value) -> json.addProperty(key, value.sum()));
+        return json;
+    }
+
+    /** The {@code transfers} of the run file, in the raw form {@code merge} reads. */
+    JsonObject transfers() {
+        final JsonObject json = new JsonObject();
+        long failed = 0;
+        for (LongAdder count : transferFailures.values()) failed += count.sum();
+        json.addProperty("count", transferMillis.count() + failed);
+        json.addProperty("completed", transferMillis.count());
+        json.add("failed_by_reason", counts(transferFailures));
+        json.add("transfer_ms", transferMillis.toJson());
         return json;
     }
 

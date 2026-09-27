@@ -15,9 +15,14 @@ import java.util.TreeMap;
 /**
  * {@code merge}: puts the {@code bots-*.json} of every bot process and the {@code server.json} of
  * the sampler into one {@code summary.json} ({@code docs/DESIGN-PROD.md} {@code API-PROD-025}),
- * with a verdict against the criteria of the run ({@code design-ops-scale.md} ⑤ 5.4).
+ * with a verdict against the criteria of the run ({@code design-ops-scale.md} ⑤ 5.4). The
+ * transfers of gate bots are judged too ({@code docs/DESIGN-M3.md} §15, the transfer row): a P95
+ * under 5,000 ms over at least {@code --min-transfers} tries.
  */
 final class MergeCommand {
+
+    /** The transfer P95 must stay under this ({@code docs/DESIGN-M3.md} §15, the transfer row). */
+    static final double TRANSFER_P95_MILLIS = 5_000;
 
     private MergeCommand() {
     }
@@ -25,7 +30,7 @@ final class MergeCommand {
     static int run(Args args) throws IOException {
         final Path out = Path.of(args.required("out"));
         final Criteria criteria = new Criteria(args.number("tick-p99-ms", 50), args.integer("max-over-50ms", 0),
-                args.number("rss-mib", 4096), args.integer("min-chunks", 9));
+                args.number("rss-mib", 4096), args.integer("min-chunks", 9), args.integer("min-transfers", 0));
         args.requireAllRead();
         final List<JsonObject> bots = new ArrayList<>();
         JsonObject server = null;
@@ -55,8 +60,9 @@ final class MergeCommand {
      * @param maxOver50Millis how many ticks may take more than 50 ms
      * @param rssMib          the server's resident set must stay under this
      * @param minChunks       every bot must receive more chunk packets than this
+     * @param minTransfers    the gate bots must have made at least this many tries, completed or failed
      */
-    record Criteria(double tickP99Millis, int maxOver50Millis, double rssMib, int minChunks) {
+    record Criteria(double tickP99Millis, int maxOver50Millis, double rssMib, int minChunks, int minTransfers) {
     }
 
     static JsonObject merge(List<JsonObject> bots, @Nullable JsonObject server, Criteria criteria) {
@@ -83,6 +89,12 @@ final class MergeCommand {
         // Absent from the files of a harness that did not count them yet
         final Histogram visible = new Histogram(1);
         boolean countedVisible = false;
+        // The same for the transfers of gate bots
+        long transferCount = 0;
+        long transferCompleted = 0;
+        final Map<String, Long> transferFailures = new TreeMap<>();
+        final Histogram transferMillis = new Histogram(0.1);
+        boolean countedTransfers = false;
         for (JsonObject file : bots) {
             profiles.add(file.get("profile"));
             final JsonObject cost = file.getAsJsonObject("harness").deepCopy();
@@ -102,6 +114,14 @@ final class MergeCommand {
             if (file.has("visible_entities")) {
                 visible.merge(Histogram.fromJson(file.getAsJsonObject("visible_entities")));
                 countedVisible = true;
+            }
+            if (file.has("transfers")) {
+                final JsonObject transfers = file.getAsJsonObject("transfers");
+                transferCount += transfers.get("count").getAsLong();
+                transferCompleted += transfers.get("completed").getAsLong();
+                sum(transferFailures, transfers.getAsJsonObject("failed_by_reason"));
+                transferMillis.merge(Histogram.fromJson(transfers.getAsJsonObject("transfer_ms")));
+                countedTransfers = true;
             }
             batchCount += file.get("chunk_batches").getAsLong();
             final JsonObject inbound = file.getAsJsonObject("inbound");
@@ -158,6 +178,14 @@ final class MergeCommand {
         summary.add("chunk_batch_rtt_ms", batches.distribution("_ms"));
         summary.addProperty("chunk_batches", batchCount);
         if (countedVisible) summary.add("visible_entities", visible.distribution(""));
+        if (countedTransfers) {
+            final JsonObject transfers = new JsonObject();
+            transfers.addProperty("count", transferCount);
+            transfers.addProperty("completed", transferCompleted);
+            transfers.add("failed_by_reason", json(transferFailures));
+            transfers.add("transfer_ms", transferDistribution(transferMillis));
+            summary.add("transfers", transfers);
+        }
         final JsonObject c2s = new JsonObject();
         c2s.addProperty("packets", c2sPackets);
         c2s.addProperty("packets_per_s_per_bot", connectionSeconds == 0 ? 0 : Histogram.round(c2sPackets / connectionSeconds));
@@ -174,6 +202,15 @@ final class MergeCommand {
         final boolean chunksOk = fewestChunks > criteria.minChunks();
         verdict.add("chunks_per_bot_min", check(chunksOk, fewestChunks + " > " + criteria.minChunks()));
         pass &= chunksOk;
+        if (transferCount > 0 || criteria.minTransfers() > 0) {
+            final boolean countOk = transferCount >= criteria.minTransfers();
+            verdict.add("transfers_count", check(countOk, transferCount + " >= " + criteria.minTransfers()));
+            final double p95 = transferMillis.percentile(0.95);
+            final boolean p95Ok = transferMillis.count() > 0 && p95 < TRANSFER_P95_MILLIS;
+            verdict.add("transfer_ms_p95", check(p95Ok, transferMillis.count() == 0 ? "no transfer completed"
+                    : Histogram.round(p95) + " < " + TRANSFER_P95_MILLIS));
+            pass &= countOk && p95Ok;
+        }
         if (server != null) {
             for (String key : List.of("machine", "pid", "started_at", "elapsed_s", "ticks", "gc", "heap",
                     "connection_gate", "dispatcher_busy_ratio", "traffic", "error"))
@@ -207,6 +244,18 @@ final class MergeCommand {
         verdict.addProperty("pass", pass);
         summary.add("verdict", verdict);
         return summary;
+    }
+
+    /** The transfer times a report quotes: the P95 the verdict reads, with the P50, P99 and maximum around it. */
+    private static JsonObject transferDistribution(Histogram histogram) {
+        final JsonObject json = new JsonObject();
+        json.addProperty("count", histogram.count());
+        if (histogram.count() == 0) return json;
+        json.addProperty("p50_ms", Histogram.round(histogram.percentile(0.50)));
+        json.addProperty("p95_ms", Histogram.round(histogram.percentile(0.95)));
+        json.addProperty("p99_ms", Histogram.round(histogram.percentile(0.99)));
+        json.addProperty("max_ms", Histogram.round(histogram.max()));
+        return json;
     }
 
     private static JsonObject load(JsonArray samples) {

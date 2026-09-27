@@ -1,0 +1,118 @@
+# RUN-041 post-merge gates: m3c/integrate 4c1bd38466 = merge of origin/main ab32fdda00 into da07a8cd0e, 2026-09-27 12:38 to 13:02 (UTC+8)
+# The commits after 4c1bd38466 change docs/ only; the code under test is 4c1bd38466.
+# Environment: SYNAXIS_TEST_PG_URL=jdbc:postgresql://127.0.0.1:5440/postgres (synaxis-pg, user postgres), SYNAXIS_TEST_REDIS_URL=redis://127.0.0.1:6440 (synaxis-valkey)
+# all: --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts --max-workers=4; machine Apple M4 Pro 12 cores, 24 GiB, macOS, JDK 25.0.4.1; another session runs builds on it
+# Before gate 3 was run again, */build/test-results were deleted, so its counts come from that run alone.
+
+## 1. ./gradlew check --rerun-tasks -Dsynaxis.synx.require-frozen-zlib=true
+# start / swap / end:
+12:38:24
+12:38  up 12 days,  4:25, 26 users, load averages: 5.98 7.28 11.72
+vm.swapusage: total = 14336.00M  used = 12940.75M  free = 1395.25M  (encrypted)
+exit 0
+12:42:54
+12:42  up 12 days,  4:30, 26 users, load averages: 7.73 16.61 15.83
+BUILD SUCCESSFUL in 4m 29s
+# per module (JUnit XML under */build/test-results/test):
+root tests=3140 skipped=15 failures=0 errors=0
+architecture-tests tests=20 skipped=0 failures=0 errors=0
+baker tests=53 skipped=0 failures=0 errors=0
+game-rts tests=87 skipped=0 failures=0 errors=0
+loadtest tests=10 skipped=0 failures=0 errors=0
+plugin-api tests=15 skipped=0 failures=0 errors=0
+protocol tests=78 skipped=0 failures=0 errors=0
+server-app tests=411 skipped=0 failures=0 errors=0
+synx tests=115 skipped=0 failures=0 errors=0
+testing tests=10 skipped=0 failures=0 errors=0
+TOTAL tests=3939 skipped=15 failures=0 errors=0
+config key gate: 113 keys read, 113 in ConfigFile.KEYS, 20 meter names left out
+translation key gate: 56 keys checked against [en_us.json, zh_cn.json], 14 identifiers left out
+crash window: 191 changes, 98 kept, 93 lost; the oldest lost change was 9698 ms old at the kill, the newest kept one 9803 ms
+env thread provider: counter
+
+## 2. ./gradlew test --rerun-tasks -Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true
+# start / swap / end:
+12:44:55
+12:44  up 12 days,  4:32, 26 users, load averages: 4.04 12.45 14.29
+vm.swapusage: total = 14336.00M  used = 13022.38M  free = 1313.62M  (encrypted)
+exit 0
+12:49:13
+12:49  up 12 days,  4:36, 26 users, load averages: 8.03 15.39 15.84
+BUILD SUCCESSFUL in 4m 18s
+# per module:
+root tests=3140 skipped=15 failures=0 errors=0
+architecture-tests tests=20 skipped=0 failures=0 errors=0
+baker tests=53 skipped=0 failures=0 errors=0
+game-rts tests=87 skipped=0 failures=0 errors=0
+loadtest tests=10 skipped=0 failures=0 errors=0
+plugin-api tests=15 skipped=0 failures=0 errors=0
+protocol tests=78 skipped=0 failures=0 errors=0
+server-app tests=411 skipped=0 failures=0 errors=0
+synx tests=115 skipped=0 failures=0 errors=0
+testing tests=10 skipped=0 failures=0 errors=0
+TOTAL tests=3939 skipped=15 failures=0 errors=0
+config key gate: 113 keys read, 113 in ConfigFile.KEYS, 20 meter names left out
+translation key gate: 56 keys checked against [en_us.json, zh_cn.json], 14 identifiers left out
+crash window: 191 changes, 98 kept, 93 lost; the oldest lost change was 9686 ms old at the kill, the newest kept one 9792 ms
+env thread provider: counter
+
+## 3. ./gradlew test --rerun-tasks -Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true -Dsynaxis.thread-provider=grid
+### 3a. first run: FAILED, one test red
+# start / swap / end:
+12:49:33
+12:49  up 12 days,  4:36, 26 users, load averages: 7.26 14.72 15.59
+vm.swapusage: total = 14336.00M  used = 12902.38M  free = 1433.62M  (encrypted)
+exit 1
+12:53:48
+12:53  up 12 days,  4:41, 26 users, load averages: 6.46 14.24 15.68
+BUILD FAILED in 4m 14s
+:test  3140 tests completed, 1 failed, 15 skipped
+  SocketWriteStateTransitionIntegrationTest > aRejectedStateChangingPacketDoesNotAdvanceTheServerState(Env) FAILED
+  org.opentest4j.AssertionFailedError: the state must not move while the packet is still queued ==> expected: <CONFIGURATION> but was: <PLAY>
+    at SocketWriteStateTransitionIntegrationTest.java:65 (time 0.838 s, started 04:50:29.342Z)
+# the other modules that ran: 0 failures (architecture-tests 20, baker 53, game-rts 87, loadtest 10, plugin-api 15, protocol 78,
+#   server-app 411 skipped 0, synx 115); :testing:test did not run, Gradle stopped scheduling after :test failed, so this
+#   run has no "env thread provider" line of its own
+crash window: 191 changes, 98 kept, 93 lost; the oldest lost change was 9697 ms old at the kill, the newest kept one 9803 ms
+# where the red comes from: the test fills one pooled buffer of the default 16,383 B so that FinishConfiguration does not fit;
+#   a buffer that another class grew and put back in the shared PacketVanilla.PACKET_POOL holds both packets, and the state
+#   moves at the first flush. The known intermittent red of this test (docs/TEST.md section 7, observed 2026-09-24, then at :57)
+#   and the buffer pool row of docs/DESIGN-PROD.md section 28.2 (only this class and ViewDistanceSocketTest hold the
+#   @ResourceLock; "OnlineLoginSocketTest and the other real socket classes do not") describe the same thing.
+# classes whose run overlaps 04:50:29.342Z to 04:50:30.180Z and open real sockets without that lock: OnlineLoginSocketTest,
+#   OnlineDuplicateLoginSocketTest, ConnectionGateSocketTest, DisconnectReasonsIntegrationTest, PacketOutEventRetryIntegrationTest,
+#   all on main before the merge. The root tests M3-C adds (ChunkUnloadIntegrationTest, SimulationDistanceTest,
+#   ChunkTryLockWriteLockIntegrationTest, ThreadDispatcherTest) open no socket and do not touch the pool; SheddableBacklogIntegrationTest
+#   (M3-C, real socket) did not overlap it, and clears the pool when it closes. Neither side changed the test or PACKET_POOL.
+#   Judged pre-existing, not introduced by the merge; not fixed here (the pool belongs to docs/DESIGN-PROD.md section 28.2).
+
+### 3b. the same command again after deleting */build/test-results
+# start / swap / end:
+12:58:12
+12:58  up 12 days,  4:45, 26 users, load averages: 4.76 8.46 12.65
+vm.swapusage: total = 14336.00M  used = 12846.38M  free = 1489.62M  (encrypted)
+exit 0
+13:02:21
+13:02  up 12 days,  4:49, 26 users, load averages: 8.12 16.28 16.08
+BUILD SUCCESSFUL in 4m 8s
+# per module:
+root tests=3140 skipped=15 failures=0 errors=0
+architecture-tests tests=20 skipped=0 failures=0 errors=0
+baker tests=53 skipped=0 failures=0 errors=0
+game-rts tests=87 skipped=0 failures=0 errors=0
+loadtest tests=10 skipped=0 failures=0 errors=0
+plugin-api tests=15 skipped=0 failures=0 errors=0
+protocol tests=78 skipped=0 failures=0 errors=0
+server-app tests=411 skipped=0 failures=0 errors=0
+synx tests=115 skipped=0 failures=0 errors=0
+testing tests=10 skipped=0 failures=0 errors=0
+TOTAL tests=3939 skipped=15 failures=0 errors=0
+config key gate: 113 keys read, 113 in ConfigFile.KEYS, 20 meter names left out
+translation key gate: 56 keys checked against [en_us.json, zh_cn.json], 14 identifiers left out
+crash window: 190 changes, 97 kept, 93 lost; the oldest lost change was 9761 ms old at the kill, the newest kept one 9867 ms
+env thread provider: grid
+
+## against the gates before the merge (01-gates.txt, 3,896 tests each)
+# 3,939 = 3,896 + 43, all from the main side: root 3,135 -> 3,140 (+5), game-rts 86 -> 87 (+1), server-app 374 -> 411 (+37);
+# the other seven modules unchanged. server-app 411 = main's 370 + M3-C's 41; root 3,140 = main's 3,106 + M3-C's 34.
+# Database test classes: every server-app suite skipped="0" in gates 1, 2, 3a and 3b.

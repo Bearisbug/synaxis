@@ -1,0 +1,113 @@
+# RUN-042 TC-WORLD-009 steps 1-7 and TC-WORLD-056 steps 1-3 on m3c/fixes 0fed964fb7 (code = 86a8fda7b4), 14:24 to 14:26
+# <G> = ./gradlew --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts --max-workers=4; each JUnit run got --rerun so the
+# test task ran instead of being restored from the build cache. <C> = ChunkData.java, <N> = BinaryTagTypeImpl.java, <TC> = TestConnectionImpl.java
+
+## TC-WORLD-009 step 1: <G> :test --tests ChunkPacketDeterminismTest --rerun   14:24:45
+exit 0
+BUILD SUCCESSFUL in 10s
+TEST-io.github.bearisbug.synaxis.instance.ChunkPacketDeterminismTest.xml tests="1" skipped="0" failures="0" errors="0"
+"samePacketBytesAcrossJvms(Path)" 
+## TC-WORLD-009 step 2, first rerun   14:24:56
+exit 0
+BUILD SUCCESSFUL in 7s
+TEST-io.github.bearisbug.synaxis.instance.ChunkPacketDeterminismTest.xml tests="1" skipped="0" failures="0" errors="0"
+"samePacketBytesAcrossJvms(Path)" 
+## TC-WORLD-009 step 2, second rerun   14:25:04
+exit 0
+BUILD SUCCESSFUL in 7s
+TEST-io.github.bearisbug.synaxis.instance.ChunkPacketDeterminismTest.xml tests="1" skipped="0" failures="0" errors="0"
+"samePacketBytesAcrossJvms(Path)" 
+## TC-WORLD-009 step 3: git checkout 1275602157 -- <C>, rerun step 1   14:25:11
+exit 1
+ChunkPacketDeterminismTest > samePacketBytesAcrossJvms(Path) FAILED
+BUILD FAILED in 8s
+TEST-io.github.bearisbug.synaxis.instance.ChunkPacketDeterminismTest.xml tests="1" skipped="0" failures="1" errors="0"
+"samePacketBytesAcrossJvms(Path)" 
+failure message="org.opentest4j.AssertionFailedError: run 0 and run 1 differ: plain chunk 0,0: first differing byte at packet offset 2864 (blockEntities offset 1, 215 bytes), fields 8,605,2863,3078,3100 vs 8,605,2863,3078,3100"
+restored: git status --porcelain -- src: []
+## TC-WORLD-009 step 4: git checkout HEAD -- <C>, rerun step 1   14:25:20
+exit 0
+BUILD SUCCESSFUL in 8s
+TEST-io.github.bearisbug.synaxis.instance.ChunkPacketDeterminismTest.xml tests="1" skipped="0" failures="0" errors="0"
+"samePacketBytesAcrossJvms(Path)" 
+## TC-WORLD-009 step 5: <G> :test --tests BinaryTagTypeImplTest --rerun   14:25:29
+exit 0
+BUILD SUCCESSFUL in 4s
+TEST-io.github.bearisbug.synaxis.network.BinaryTagTypeImplTest.xml tests="10" skipped="0" failures="0" errors="0"
+"sortedNbtWritesEveryCompoundInKeyOrder()" "randomTrees()" "malformedInput()" "heterogeneousList()" "oversizedLengths()" "containers()" "deepNesting()" "truncatedInput()" "compoundRoot()" "scalars()" 
+diff --git a/src/main/java/io/github/bearisbug/synaxis/network/BinaryTagTypeImpl.java b/src/main/java/io/github/bearisbug/synaxis/network/BinaryTagTypeImpl.java
+index 1615a620a5..72b13c4974 100644
+--- a/src/main/java/io/github/bearisbug/synaxis/network/BinaryTagTypeImpl.java
++++ b/src/main/java/io/github/bearisbug/synaxis/network/BinaryTagTypeImpl.java
+@@ -89,7 +89,7 @@ record BinaryTagTypeImpl(boolean untrusted, boolean sorted) implements NetworkBu
+         switch (tag) {
+             case CompoundBinaryTag value -> {
+                 if (depth > NBT_MAX_DEPTH) throw new IllegalArgumentException("NBT is nested too deeply (max: " + NBT_MAX_DEPTH + ")");
+-                if (sorted) {
++                if (sorted && Boolean.getBoolean("proof.never")) {
+                     final String[] keys = value.keySet().toArray(new String[0]);
+                     Arrays.sort(keys);
+                     for (String key : keys) writeEntry(buffer, key, Objects.requireNonNull(value.get(key)), depth, true);
+## TC-WORLD-009 step 6: the diff above in <N>, <G> :test --tests ChunkPacketDeterminismTest --tests BinaryTagTypeImplTest --continue --rerun   14:25:34
+exit 1
+BinaryTagTypeImplTest > sortedNbtWritesEveryCompoundInKeyOrder() FAILED
+ChunkPacketDeterminismTest > samePacketBytesAcrossJvms(Path) FAILED
+11 tests completed, 2 failed
+BUILD FAILED in 7s
+TEST-io.github.bearisbug.synaxis.instance.ChunkPacketDeterminismTest.xml tests="1" skipped="0" failures="1" errors="0"
+"samePacketBytesAcrossJvms(Path)" 
+failure message="org.opentest4j.AssertionFailedError: run 0 and run 1 differ: plain chunk 0,0: first differing byte at packet offset 2875 (blockEntities offset 12, 215 bytes), fields 8,605,2863,3078,3100 vs 8,605,2863,3078,3100"
+TEST-io.github.bearisbug.synaxis.network.BinaryTagTypeImplTest.xml tests="10" skipped="0" failures="1" errors="0"
+"sortedNbtWritesEveryCompoundInKeyOrder()" "randomTrees()" "malformedInput()" "heterogeneousList()" "oversizedLengths()" "containers()" "deepNesting()" "truncatedInput()" "compoundRoot()" "scalars()" 
+failure message="org.opentest4j.AssertionFailedError: array contents differ at index [1], expected: <10> but was: <1>"
+BinaryTagTypeImplTest > sortedNbtWritesEveryCompoundInKeyOrder() FAILED
+    org.opentest4j.AssertionFailedError at BinaryTagTypeImplTest.java:142
+
+ChunkPacketDeterminismTest > samePacketBytesAcrossJvms(Path) FAILED
+restored: git status --porcelain -- src: []
+## TC-WORLD-009 step 7: steps 1 and 5 again   14:25:42
+exit 0
+BUILD SUCCESSFUL in 8s
+TEST-io.github.bearisbug.synaxis.instance.ChunkPacketDeterminismTest.xml tests="1" skipped="0" failures="0" errors="0"
+"samePacketBytesAcrossJvms(Path)" 
+TEST-io.github.bearisbug.synaxis.network.BinaryTagTypeImplTest.xml tests="10" skipped="0" failures="0" errors="0"
+"sortedNbtWritesEveryCompoundInKeyOrder()" "randomTrees()" "malformedInput()" "heterogeneousList()" "oversizedLengths()" "containers()" "deepNesting()" "truncatedInput()" "compoundRoot()" "scalars()" 
+## TC-WORLD-056 step 1: <G> :testing:test --tests TrackIncomingIntegrationTest --rerun   14:25:50
+exit 0
+BUILD SUCCESSFUL in 5s
+TEST-io.github.bearisbug.synaxis.testing.test.TrackIncomingIntegrationTest.xml tests="1" skipped="0" failures="0" errors="0"
+"trackersPassOverABufferedChunkPacket(Env)" 
+# step 3 gradle summary: 1 test completed, 1 failed
+
+# TC-WORLD-056 step 2: the diff below in <TC>, rerun step 1, then git checkout -- <TC>
+diff --git a/testing/src/main/java/io/github/bearisbug/synaxis/testing/TestConnectionImpl.java b/testing/src/main/java/io/github/bearisbug/synaxis/testing/TestConnectionImpl.java
+index e6b64d6066..03caa7e1bf 100644
+--- a/testing/src/main/java/io/github/bearisbug/synaxis/testing/TestConnectionImpl.java
++++ b/testing/src/main/java/io/github/bearisbug/synaxis/testing/TestConnectionImpl.java
+@@ -96,7 +96,6 @@ final class TestConnectionImpl implements TestConnection {
+         public void sendPacket(SendablePacket packet) {
+             final var serverPacket = this.extractPacket(packet);
+             // A BufferedPacket holds encoded bytes and no packet object; the outgoing event skips it too
+-            if (serverPacket == null) return;
+             for (var tracker : incomingTrackers) {
+                 if (tracker.type.isAssignableFrom(serverPacket.getClass())) tracker.packets.add(serverPacket);
+             }
+## TC-WORLD-056 step 2   14:26:14
+exit 1
+TrackIncomingIntegrationTest > trackersPassOverABufferedChunkPacket(Env) FAILED
+    java.lang.NullPointerException at TrackIncomingIntegrationTest.java:35
+BUILD FAILED in 4s
+tests="1" skipped="0" failures="1" errors="0"
+    <failure message="java.lang.NullPointerException: Cannot invoke "io.github.bearisbug.synaxis.network.packet.server.ServerPacket.getClass()" because "serverPacket" is null" type="java.lang.NullPointerException">java.lang.NullPointerException: Cannot invoke "io.github.bearisbug.synaxis.network.packet.server.ServerPacket.getClass()" because "serverPacket" is null
+	at io.github.bearisbug.synaxis.testing/io.github.bearisbug.synaxis.testing.TestConnectionImpl$PlayerConnectionImpl.sendPacket(TestConnectionImpl.java:100)
+	at io.github.bearisbug.synaxis/io.github.bearisbug.synaxis.entity.Player.sendPacket(Player.java:1847)
+	at io.github.bearisbug.synaxis.testing/io.github.bearisbug.synaxis.testing.TestConnectionImpl$TestPlayerImpl.sendChunk(TestConnectionImpl.java:158)
+	at io.github.bearisbug.synaxis.testing.test/io.github.bearisbug.synaxis.testing.test.TrackIncomingIntegrationTest.trackersPassOverABufferedChunkPacket(TrackIncomingIntegrationTest.java:35)
+</failure>
+restored: git status --porcelain -- testing: []
+## TC-WORLD-056 step 3: step 1 again   14:26:19
+exit 0
+BUILD SUCCESSFUL in 3s
+tests="1" skipped="0" failures="0" errors="0"
+# step 2 gradle summary: 1 test completed, 1 failed
+# git status --porcelain was empty after every restore (src and testing)

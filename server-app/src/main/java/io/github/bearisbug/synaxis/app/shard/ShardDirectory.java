@@ -109,10 +109,11 @@ public record ShardDirectory(String mapId, List<Region> regions, List<Channel> c
     /**
      * Checks the directory against the map release it serves ({@code API-M3-010}): the same
      * {@code map_id}, every region within the release's bounds, the gate frames and arrivals within
-     * the height of its world.
+     * the height of its world. The directory does not know its file: the message is the detail
+     * alone, and {@link ShardWorld} puts {@code the shard directory <path> is not valid: } in front.
      *
      * @param manifest the manifest of the release
-     * @throws IllegalArgumentException for a refused start
+     * @throws IllegalArgumentException for a refused start, naming the array index or id at fault
      */
     public void checkAgainst(SynxManifest manifest) {
         throw new UnsupportedOperationException("ShardDirectory#checkAgainst is the M3-E step 0 skeleton");

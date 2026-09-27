@@ -411,20 +411,41 @@ public final class Main {
                     + ": no such file");
         }
         final ShardDirectory directory = ShardDirectory.load(file, shardId);
+        applyDirectory(directory);
+        return directory;
+    }
+
+    /**
+     * What the shard directory decides for this process in step (1), once it is read
+     * ({@code docs/DESIGN-M3.md} {@code API-M3-010}): the shard takes transfers, and the capacity of
+     * its channel is {@code synaxis.max-players}, written when the key is not given. A given value is
+     * compared as the number the engine reads it as, so {@code 0200} is 200; one that is not an integer
+     * is left to {@code ServerConfig}, which refuses it in step (2) with its own message.
+     *
+     * @param directory the shard directory, whose channel of this shard counts
+     * @throws IllegalArgumentException for a refused start
+     */
+    static void applyDirectory(ShardDirectory directory) {
         if ("false".equals(System.getProperty(ShardMain.ACCEPT_TRANSFERS))) {
             throw new IllegalArgumentException("a shard in the shard directory takes transfers, "
                     + ShardMain.ACCEPT_TRANSFERS + " must not be false");
         }
         final ShardDirectory.Channel channel = directory.ownChannel();
-        final String capacity = Integer.toString(channel.capacity());
         final String maxPlayers = System.getProperty(MAX_PLAYERS_PROPERTY);
         if (maxPlayers == null) {
-            System.setProperty(MAX_PLAYERS_PROPERTY, capacity);
-        } else if (!maxPlayers.equals(capacity)) {
-            throw new IllegalArgumentException(MAX_PLAYERS_PROPERTY + "=" + maxPlayers + " disagrees with the capacity "
-                    + capacity + " of " + channel.shardId() + " in the shard directory");
+            System.setProperty(MAX_PLAYERS_PROPERTY, Integer.toString(channel.capacity()));
+            return;
         }
-        return directory;
+        final int given;
+        try {
+            given = Integer.parseInt(maxPlayers);
+        } catch (NumberFormatException _) {
+            return;
+        }
+        if (given != channel.capacity()) {
+            throw new IllegalArgumentException(MAX_PLAYERS_PROPERTY + "=" + maxPlayers + " disagrees with the capacity "
+                    + channel.capacity() + " of " + channel.shardId() + " in the shard directory");
+        }
     }
 
     /**

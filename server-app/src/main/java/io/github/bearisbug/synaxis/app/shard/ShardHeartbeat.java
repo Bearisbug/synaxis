@@ -31,7 +31,11 @@ public final class ShardHeartbeat implements HeartbeatReader, AutoCloseable {
         throw new UnsupportedOperationException("ShardHeartbeat is the M3-E step 0 skeleton");
     }
 
-    /** Writes the first row at once and one every 5 s after, on the daemon thread; step (7) of {@code Main}, after the bind. */
+    /**
+     * Writes the first row at once and one every 5 s after, on the daemon thread; step (7) of
+     * {@code Main}, after the bind. Does nothing after {@link #close}: a stop begun between the bind
+     * and step (7) runs {@code close} first, and the pool is closed by then.
+     */
     public void start() {
         throw new UnsupportedOperationException("ShardHeartbeat is the M3-E step 0 skeleton");
     }
@@ -46,7 +50,10 @@ public final class ShardHeartbeat implements HeartbeatReader, AutoCloseable {
         throw new UnsupportedOperationException("ShardHeartbeat is the M3-E step 0 skeleton");
     }
 
-    /** Stops the writing thread, waiting at most for the statement timeout of a write in flight; writes no last row. */
+    /**
+     * Stops the writing thread, waiting at most for the statement timeout of a write in flight; writes
+     * no last row. Before {@link #start} it only keeps {@code start} from starting the thread.
+     */
     @Override
     public void close() {
         throw new UnsupportedOperationException("ShardHeartbeat is the M3-E step 0 skeleton");

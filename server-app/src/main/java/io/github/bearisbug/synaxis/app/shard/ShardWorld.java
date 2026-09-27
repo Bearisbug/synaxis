@@ -40,6 +40,7 @@ import java.nio.file.Path;
 import java.time.Duration;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.function.BiConsumer;
 
 /**
@@ -139,7 +140,7 @@ public final class ShardWorld {
         final long started = System.nanoTime();
         final SynxManifest manifest;
         try {
-            manifest = verify(process, buildDir, directory);
+            manifest = verify(process, settings, directory);
         } catch (SynxException e) {
             throw new IllegalArgumentException(e.getMessage(), e);
         } catch (IOException e) {
@@ -162,18 +163,34 @@ public final class ShardWorld {
      * dimension type is then built on. The scope is {@code view_bounds}. A shard directory is checked
      * against the declared manifest first.
      */
-    private static SynxManifest verify(ServerProcess process, Path buildDir, @Nullable ShardDirectory directory)
+    private static SynxManifest verify(ServerProcess process, ShardSettings settings, @Nullable ShardDirectory directory)
             throws IOException, SynxException {
+        final Path buildDir = settings.buildDir();
         final Path manifestFile = buildDir.resolve(SynxManifest.FILE_NAME);
         if (!Files.isRegularFile(manifestFile)) {
             throw new SynxException(SynxError.MANIFEST, SynxManifest.FILE_NAME, "missing in " + buildDir);
         }
         final SynxManifest declared = SynxManifest.fromJson(Files.readString(manifestFile));
-        if (directory != null) directory.checkAgainst(declared);
+        if (directory != null) checkDirectory(directory, declared, settings);
         final SynxManifest.World world = declared.world();
         final SynxExpectations expectations = SynxExpectations.of(process.registries(), process.compressionThreshold(),
                 world.minY(), world.height(), LightEngine.VERSION);
         return SynxBuildVerifier.verify(buildDir, expectations, viewBounds(declared.bounds()));
+    }
+
+    /**
+     * The shard directory against the manifest it serves ({@code API-M3-010}). The directory does not
+     * know its file, so the prefix every refusal about it starts with goes in front of the detail
+     * {@link ShardDirectory#checkAgainst} gives.
+     */
+    private static void checkDirectory(ShardDirectory directory, SynxManifest declared, ShardSettings settings) {
+        try {
+            directory.checkAgainst(declared);
+        } catch (IllegalArgumentException e) {
+            final Path file = Objects.requireNonNull(settings.mapRoot(), "no map is mounted")
+                    .resolve(ShardDirectory.FILE_NAME).toAbsolutePath();
+            throw new IllegalArgumentException("the shard directory " + file + " is not valid: " + e.getMessage(), e);
+        }
     }
 
     static SynxManifest.Bounds viewBounds(SynxManifest.Bounds bounds) {

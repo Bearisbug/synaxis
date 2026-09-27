@@ -71,6 +71,13 @@ public sealed interface NetworkBuffer permits NetworkBufferImpl {
     Type<BinaryTag> UNTRUSTED_NBT = BinaryTagTypeImpl.UNTRUSTED_INSTANCE;
     /** Same wire format as {@link #NBT_COMPOUND}, but with the decoded size limited by {@code JvmFlags.NBT_MAX_BYTES}. */
     Type<CompoundBinaryTag> UNTRUSTED_NBT_COMPOUND = BinaryTagTypeImpl.UNTRUSTED_INSTANCE_COMPOUND;
+    /**
+     * Same wire format as {@link #NBT}, but writes the keys of every compound, nested ones included,
+     * in {@link String#compareTo} order: equal tags give equal bytes in every JVM. {@link #NBT} writes
+     * them in the compound's iteration order, which for a compound adventure's {@code BinaryTagIO}
+     * read changes from one JVM to the next.
+     */
+    Type<BinaryTag> SORTED_NBT = BinaryTagTypeImpl.SORTED_INSTANCE;
     Type<Point> BLOCK_POSITION = new NetworkBufferSpatialTypes.BlockPositionType();
     Type<Component> COMPONENT = new ComponentNetworkBufferTypeImpl();
     Type<Component> JSON_COMPONENT = new NetworkBufferCodecTypes.JsonComponentType();

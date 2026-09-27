@@ -19,6 +19,7 @@ import org.jetbrains.annotations.ApiStatus;
 
 import java.util.Arrays;
 import java.util.Map;
+import java.util.Objects;
 
 import static io.github.bearisbug.synaxis.JvmFlags.NBT_MAX_BYTES;
 import static io.github.bearisbug.synaxis.JvmFlags.NBT_MAX_DEPTH;
@@ -36,12 +37,17 @@ import static io.github.bearisbug.synaxis.network.NetworkBuffer.RAW_LONGS;
 import static io.github.bearisbug.synaxis.network.NetworkBuffer.SHORT;
 import static io.github.bearisbug.synaxis.network.NetworkBuffer.STRING_IO_UTF8;
 
+/**
+ * @param sorted whether the keys of every compound, nested ones included, are written in
+ *               {@link String#compareTo} order instead of the order the compound iterates them in
+ */
 @ApiStatus.Internal
-record BinaryTagTypeImpl(boolean untrusted) implements NetworkBufferTypeImpl<BinaryTag> {
-    static final NetworkBuffer.Type<BinaryTag> INSTANCE = new BinaryTagTypeImpl(false);
+record BinaryTagTypeImpl(boolean untrusted, boolean sorted) implements NetworkBufferTypeImpl<BinaryTag> {
+    static final NetworkBuffer.Type<BinaryTag> INSTANCE = new BinaryTagTypeImpl(false, false);
     static final NetworkBuffer.Type<CompoundBinaryTag> INSTANCE_COMPOUND = new CompoundType(false);
-    static final NetworkBuffer.Type<BinaryTag> UNTRUSTED_INSTANCE = new BinaryTagTypeImpl(true);
+    static final NetworkBuffer.Type<BinaryTag> UNTRUSTED_INSTANCE = new BinaryTagTypeImpl(true, false);
     static final NetworkBuffer.Type<CompoundBinaryTag> UNTRUSTED_INSTANCE_COMPOUND = new CompoundType(true);
+    static final NetworkBuffer.Type<BinaryTag> SORTED_INSTANCE = new BinaryTagTypeImpl(false, true);
 
     static final byte TAG_END = 0;
     static final byte TAG_BYTE = 1;
@@ -65,13 +71,13 @@ record BinaryTagTypeImpl(boolean untrusted) implements NetworkBufferTypeImpl<Bin
     @Override
     public void write(NetworkBuffer buffer, BinaryTag value) {
         buffer.write(BYTE, value.type().id());
-        writePayload(buffer, value, 1);
+        writePayload(buffer, value, 1, sorted);
     }
 
     static void writeNamed(NetworkBuffer buffer, String name, BinaryTag value) {
         buffer.write(BYTE, value.type().id());
         buffer.write(STRING_IO_UTF8, name);
-        writePayload(buffer, value, 1);
+        writePayload(buffer, value, 1, false);
     }
 
     @Override
@@ -79,15 +85,18 @@ record BinaryTagTypeImpl(boolean untrusted) implements NetworkBufferTypeImpl<Bin
         return readPayload(buffer, buffer.read(BYTE), 1, ReadLimiter.of(untrusted));
     }
 
-    private static void writePayload(NetworkBuffer buffer, BinaryTag tag, int depth) {
+    private static void writePayload(NetworkBuffer buffer, BinaryTag tag, int depth, boolean sorted) {
         switch (tag) {
             case CompoundBinaryTag value -> {
                 if (depth > NBT_MAX_DEPTH) throw new IllegalArgumentException("NBT is nested too deeply (max: " + NBT_MAX_DEPTH + ")");
-                for (Map.Entry<String, ? extends BinaryTag> entry : value) {
-                    final BinaryTag child = entry.getValue();
-                    buffer.write(BYTE, child.type().id());
-                    buffer.write(STRING_IO_UTF8, entry.getKey());
-                    writePayload(buffer, child, depth + 1);
+                if (sorted) {
+                    final String[] keys = value.keySet().toArray(new String[0]);
+                    Arrays.sort(keys);
+                    for (String key : keys) writeEntry(buffer, key, Objects.requireNonNull(value.get(key)), depth, true);
+                } else {
+                    for (Map.Entry<String, ? extends BinaryTag> entry : value) {
+                        writeEntry(buffer, entry.getKey(), entry.getValue(), depth, false);
+                    }
                 }
                 buffer.write(BYTE, TAG_END);
             }
@@ -97,7 +106,7 @@ record BinaryTagTypeImpl(boolean untrusted) implements NetworkBufferTypeImpl<Bin
                 final ListBinaryTag list = value.wrapHeterogeneity();
                 buffer.write(BYTE, list.elementType().id());
                 buffer.write(INT, list.size());
-                for (BinaryTag entry : list) writePayload(buffer, entry, depth + 1);
+                for (BinaryTag entry : list) writePayload(buffer, entry, depth + 1, sorted);
             }
             case StringBinaryTag value -> buffer.write(STRING_IO_UTF8, value.value());
             case IntBinaryTag value -> buffer.write(INT, value.value());
@@ -117,6 +126,12 @@ record BinaryTagTypeImpl(boolean untrusted) implements NetworkBufferTypeImpl<Bin
                 // No payload
             }
         }
+    }
+
+    private static void writeEntry(NetworkBuffer buffer, String key, BinaryTag value, int depth, boolean sorted) {
+        buffer.write(BYTE, value.type().id());
+        buffer.write(STRING_IO_UTF8, key);
+        writePayload(buffer, value, depth + 1, sorted);
     }
 
     private static BinaryTag readPayload(NetworkBuffer buffer, byte type, int depth, ReadLimiter limiter) {
@@ -259,7 +274,7 @@ record BinaryTagTypeImpl(boolean untrusted) implements NetworkBufferTypeImpl<Bin
         @Override
         public void write(NetworkBuffer buffer, CompoundBinaryTag value) {
             buffer.write(BYTE, TAG_COMPOUND);
-            writePayload(buffer, value, 1);
+            writePayload(buffer, value, 1, false);
         }
 
         @Override

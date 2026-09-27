@@ -31,6 +31,7 @@ import java.util.Random;
 import java.util.function.Consumer;
 
 import static io.github.bearisbug.synaxis.JvmFlags.NBT_MAX_DEPTH;
+import static io.github.bearisbug.synaxis.network.BinaryTagTypeImpl.TAG_BYTE;
 import static io.github.bearisbug.synaxis.network.BinaryTagTypeImpl.TAG_BYTE_ARRAY;
 import static io.github.bearisbug.synaxis.network.BinaryTagTypeImpl.TAG_COMPOUND;
 import static io.github.bearisbug.synaxis.network.BinaryTagTypeImpl.TAG_END;
@@ -41,9 +42,11 @@ import static io.github.bearisbug.synaxis.network.NetworkBuffer.BYTE;
 import static io.github.bearisbug.synaxis.network.NetworkBuffer.INT;
 import static io.github.bearisbug.synaxis.network.NetworkBuffer.NBT;
 import static io.github.bearisbug.synaxis.network.NetworkBuffer.NBT_COMPOUND;
+import static io.github.bearisbug.synaxis.network.NetworkBuffer.SORTED_NBT;
 import static io.github.bearisbug.synaxis.network.NetworkBuffer.STRING_IO_UTF8;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 public class BinaryTagTypeImplTest {
@@ -104,6 +107,40 @@ public class BinaryTagTypeImplTest {
         final byte[] scalar = bytes(IntBinaryTag.intBinaryTag(1));
         assertThrows(IllegalArgumentException.class,
                 () -> NetworkBuffer.wrap(scalar, 0, scalar.length).read(NBT_COMPOUND));
+    }
+
+    @Test
+    public void sortedNbtWritesEveryCompoundInKeyOrder() {
+        // A HashMap iterates each of these key sets out of String order, the same in every JVM
+        final CompoundBinaryTag tag = CompoundBinaryTag.builder()
+                .putByte("z", (byte) 1)
+                .put("id", CompoundBinaryTag.builder()
+                        .putByte("color", (byte) 2)
+                        .put("messages", ListBinaryTag.listBinaryTag(BinaryTagTypes.COMPOUND, List.of(
+                                CompoundBinaryTag.builder().putByte("z", (byte) 3).putByte("id", (byte) 4).build())))
+                        .putByte("has_glowing_text", (byte) 5)
+                        .build())
+                .build();
+        final byte[] expected = NetworkBuffer.makeArray(buffer -> {
+            buffer.write(BYTE, TAG_COMPOUND);
+            buffer.write(BYTE, TAG_COMPOUND);
+            buffer.write(STRING_IO_UTF8, "id");
+            writeByteEntry(buffer, "color", 2);
+            writeByteEntry(buffer, "has_glowing_text", 5);
+            buffer.write(BYTE, TAG_LIST);
+            buffer.write(STRING_IO_UTF8, "messages");
+            buffer.write(BYTE, TAG_COMPOUND);
+            buffer.write(INT, 1);
+            writeByteEntry(buffer, "id", 4);
+            writeByteEntry(buffer, "z", 3);
+            buffer.write(BYTE, TAG_END);
+            buffer.write(BYTE, TAG_END);
+            writeByteEntry(buffer, "z", 1);
+            buffer.write(BYTE, TAG_END);
+        });
+        assertFalse(Arrays.equals(expected, bytes(tag)), "NBT writes in HashMap order, which is not sorted here");
+        assertArrayEquals(expected, NetworkBuffer.makeArray(SORTED_NBT, tag));
+        assertEquals(tag, read(expected));
     }
 
     @Test
@@ -186,6 +223,12 @@ public class BinaryTagTypeImplTest {
 
     private static BinaryTag read(byte[] data) {
         return NetworkBuffer.wrap(data, 0, data.length).read(NBT);
+    }
+
+    private static void writeByteEntry(NetworkBuffer buffer, String key, int value) {
+        buffer.write(BYTE, TAG_BYTE);
+        buffer.write(STRING_IO_UTF8, key);
+        buffer.write(BYTE, (byte) value);
     }
 
     @SuppressWarnings("unchecked")

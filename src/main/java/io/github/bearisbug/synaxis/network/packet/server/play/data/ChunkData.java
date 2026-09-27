@@ -24,15 +24,17 @@ import static io.github.bearisbug.synaxis.network.NetworkBuffer.BYTE_ARRAY;
 import static io.github.bearisbug.synaxis.network.NetworkBuffer.LONG_ARRAY;
 import static io.github.bearisbug.synaxis.network.NetworkBuffer.NBT;
 import static io.github.bearisbug.synaxis.network.NetworkBuffer.SHORT;
+import static io.github.bearisbug.synaxis.network.NetworkBuffer.SORTED_NBT;
 import static io.github.bearisbug.synaxis.network.NetworkBuffer.VAR_INT;
 
 public record ChunkData(Map<Heightmap.Type, long[]> heightmaps, byte[] data,
                         Map<Integer, Block> blockEntities) {
     /**
      * Both maps are copied into a fixed iteration order (heightmap type ordinal, block index), which
-     * is the order they are encoded in: the same chunk state always yields the same packet bytes.
-     * {@code Map.copyOf} and {@code Collectors.toUnmodifiableMap} do not qualify, their iteration
-     * order changes from one JVM to the next.
+     * is the order they are encoded in, and the NBT of each block entity is written with its keys
+     * sorted: the same chunk state always yields the same packet bytes. {@code Map.copyOf} and
+     * {@code Collectors.toUnmodifiableMap} do not qualify, their iteration order changes from one
+     * JVM to the next.
      */
     public ChunkData {
         final Map<Heightmap.Type, long[]> sortedHeightmaps = new EnumMap<>(Heightmap.Type.class);
@@ -69,7 +71,7 @@ public record ChunkData(Map<Heightmap.Type, long[]> heightmaps, byte[] data,
                 buffer.write(BlockEntityType.NETWORK_TYPE, block.blockEntityType());
                 final CompoundBinaryTag nbt = BlockUtils.extractClientNbt(block);
                 assert nbt != null;
-                buffer.write(NBT, nbt); // block nbt
+                buffer.write(SORTED_NBT, nbt); // block nbt
             }
         }
 

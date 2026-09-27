@@ -9,9 +9,16 @@ import io.github.bearisbug.synaxis.network.packet.server.CachedPacket;
 import io.github.bearisbug.synaxis.network.packet.server.play.ChunkDataPacket;
 import io.github.bearisbug.synaxis.network.packet.server.play.data.ChunkData;
 import io.github.bearisbug.synaxis.network.packet.server.play.data.LightData;
+import net.kyori.adventure.nbt.BinaryTagIO;
+import net.kyori.adventure.nbt.BinaryTagTypes;
+import net.kyori.adventure.nbt.CompoundBinaryTag;
+import net.kyori.adventure.nbt.ListBinaryTag;
+import net.kyori.adventure.nbt.StringBinaryTag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -99,6 +106,11 @@ public class ChunkPacketDeterminismTest {
     /** Child JVM: generates the same small world twice (no light, lazy light) and writes every packet. */
     public static void main(String[] args) throws IOException {
         final ServerProcess process = ServerProcess.of();
+        final Block sign = Block.OAK_SIGN.withNbt(readBack(CompoundBinaryTag.builder()
+                .put("front_text", signText("\"Hello\"", "black"))
+                .put("back_text", signText("\"Synaxis\"", "blue"))
+                .putBoolean("is_waxed", false)
+                .build()));
         final List<String> lines = new ArrayList<>();
         for (boolean lighting : new boolean[]{false, true}) {
             final InstanceContainer instance = process.instance().createInstanceContainer();
@@ -116,6 +128,7 @@ public class ChunkPacketDeterminismTest {
                 for (int i = 0; i < 4; i++) {
                     unit.modifier().setBlock(baseX + 3 * i + 1, 41, baseZ + 2 * i + 3, Block.CHEST);
                 }
+                unit.modifier().setBlock(baseX + 14, 41, baseZ + 14, sign);
             });
             final List<Chunk> chunks = new ArrayList<>();
             for (int z = 0; z < GRID; z++) {
@@ -133,6 +146,27 @@ public class ChunkPacketDeterminismTest {
         }
         Files.write(Path.of(args[0]), lines);
         System.exit(0);
+    }
+
+    private static CompoundBinaryTag signText(String firstLine, String color) {
+        final StringBinaryTag empty = StringBinaryTag.stringBinaryTag("\"\"");
+        return CompoundBinaryTag.builder()
+                .put("messages", ListBinaryTag.listBinaryTag(BinaryTagTypes.STRING,
+                        List.of(StringBinaryTag.stringBinaryTag(firstLine), empty, empty, empty)))
+                .putString("color", color)
+                .putBoolean("has_glowing_text", false)
+                .build();
+    }
+
+    /**
+     * {@code tag} written and read back through adventure's {@link BinaryTagIO}, the way the Anvil
+     * source and segment ③ read block entities: every compound it reads iterates its keys in an
+     * order that changes from one JVM to the next.
+     */
+    private static CompoundBinaryTag readBack(CompoundBinaryTag tag) throws IOException {
+        final ByteArrayOutputStream output = new ByteArrayOutputStream();
+        BinaryTagIO.writer().write(tag, output);
+        return BinaryTagIO.reader().read(new ByteArrayInputStream(output.toByteArray()));
     }
 
     private static String fieldEnds(ChunkDataPacket packet, ServerProcess process) {

@@ -1,0 +1,110 @@
+# RUN-044: before the fix (the two tests written first; OverlayStore.java as on main 8e1ea850e5)
+# Working tree = main 8e1ea850e5 + OverlayStoreTest.encodingsLeftInFlightTakeTheDueCapOfTheNextTick,
+# OverlayStoreTest.encodingsLeftInFlightTakeTheEvictionAndUnloadCapsOfTheNextTick and FakeChunk.encodesDone (all three in 1f11d26609).
+# Every run: ./gradlew :synx:test --tests 'io.github.bearisbug.synaxis.synx.OverlayStoreTest.encodingsLeftInFlight*' --rerun
+#            --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts --max-workers=4, JUnit XML removed before each run
+
+## 1. the deterministic reproduction, 20 runs in a row: 20 of 20 red, the same two numbers each time
+# start 17:07:21; 17:07  up 12 days,  8:54, 25 users, load averages: 5.68 5.35 5.26
+run 1 exit 1 tests="2" skipped="0" failures="2" errors="0"
+  FAILED encodingsLeftInFlightTakeTheDueCapOfTheNextTick(): org.opentest4j.AssertionFailedError: the 64 left in flight, and none on top ==> expected: <64> but was: <128>
+  FAILED encodingsLeftInFlightTakeTheEvictionAndUnloadCapsOfTheNextTick(): org.opentest4j.AssertionFailedError: the 320 left in flight, and none on top ==> expected: <320> but was: <428>
+run 2 exit 1 tests="2" skipped="0" failures="2" errors="0"
+  FAILED encodingsLeftInFlightTakeTheDueCapOfTheNextTick(): org.opentest4j.AssertionFailedError: the 64 left in flight, and none on top ==> expected: <64> but was: <128>
+  FAILED encodingsLeftInFlightTakeTheEvictionAndUnloadCapsOfTheNextTick(): org.opentest4j.AssertionFailedError: the 320 left in flight, and none on top ==> expected: <320> but was: <428>
+run 3 exit 1 tests="2" skipped="0" failures="2" errors="0"
+  FAILED encodingsLeftInFlightTakeTheDueCapOfTheNextTick(): org.opentest4j.AssertionFailedError: the 64 left in flight, and none on top ==> expected: <64> but was: <128>
+  FAILED encodingsLeftInFlightTakeTheEvictionAndUnloadCapsOfTheNextTick(): org.opentest4j.AssertionFailedError: the 320 left in flight, and none on top ==> expected: <320> but was: <428>
+run 4 exit 1 tests="2" skipped="0" failures="2" errors="0"
+  FAILED encodingsLeftInFlightTakeTheDueCapOfTheNextTick(): org.opentest4j.AssertionFailedError: the 64 left in flight, and none on top ==> expected: <64> but was: <128>
+  FAILED encodingsLeftInFlightTakeTheEvictionAndUnloadCapsOfTheNextTick(): org.opentest4j.AssertionFailedError: the 320 left in flight, and none on top ==> expected: <320> but was: <428>
+run 5 exit 1 tests="2" skipped="0" failures="2" errors="0"
+  FAILED encodingsLeftInFlightTakeTheDueCapOfTheNextTick(): org.opentest4j.AssertionFailedError: the 64 left in flight, and none on top ==> expected: <64> but was: <128>
+  FAILED encodingsLeftInFlightTakeTheEvictionAndUnloadCapsOfTheNextTick(): org.opentest4j.AssertionFailedError: the 320 left in flight, and none on top ==> expected: <320> but was: <428>
+run 6 exit 1 tests="2" skipped="0" failures="2" errors="0"
+  FAILED encodingsLeftInFlightTakeTheDueCapOfTheNextTick(): org.opentest4j.AssertionFailedError: the 64 left in flight, and none on top ==> expected: <64> but was: <128>
+  FAILED encodingsLeftInFlightTakeTheEvictionAndUnloadCapsOfTheNextTick(): org.opentest4j.AssertionFailedError: the 320 left in flight, and none on top ==> expected: <320> but was: <428>
+run 7 exit 1 tests="2" skipped="0" failures="2" errors="0"
+  FAILED encodingsLeftInFlightTakeTheDueCapOfTheNextTick(): org.opentest4j.AssertionFailedError: the 64 left in flight, and none on top ==> expected: <64> but was: <128>
+  FAILED encodingsLeftInFlightTakeTheEvictionAndUnloadCapsOfTheNextTick(): org.opentest4j.AssertionFailedError: the 320 left in flight, and none on top ==> expected: <320> but was: <428>
+run 8 exit 1 tests="2" skipped="0" failures="2" errors="0"
+  FAILED encodingsLeftInFlightTakeTheDueCapOfTheNextTick(): org.opentest4j.AssertionFailedError: the 64 left in flight, and none on top ==> expected: <64> but was: <128>
+  FAILED encodingsLeftInFlightTakeTheEvictionAndUnloadCapsOfTheNextTick(): org.opentest4j.AssertionFailedError: the 320 left in flight, and none on top ==> expected: <320> but was: <428>
+run 9 exit 1 tests="2" skipped="0" failures="2" errors="0"
+  FAILED encodingsLeftInFlightTakeTheDueCapOfTheNextTick(): org.opentest4j.AssertionFailedError: the 64 left in flight, and none on top ==> expected: <64> but was: <128>
+  FAILED encodingsLeftInFlightTakeTheEvictionAndUnloadCapsOfTheNextTick(): org.opentest4j.AssertionFailedError: the 320 left in flight, and none on top ==> expected: <320> but was: <428>
+run 10 exit 1 tests="2" skipped="0" failures="2" errors="0"
+  FAILED encodingsLeftInFlightTakeTheDueCapOfTheNextTick(): org.opentest4j.AssertionFailedError: the 64 left in flight, and none on top ==> expected: <64> but was: <128>
+  FAILED encodingsLeftInFlightTakeTheEvictionAndUnloadCapsOfTheNextTick(): org.opentest4j.AssertionFailedError: the 320 left in flight, and none on top ==> expected: <320> but was: <428>
+run 11 exit 1 tests="2" skipped="0" failures="2" errors="0"
+  FAILED encodingsLeftInFlightTakeTheDueCapOfTheNextTick(): org.opentest4j.AssertionFailedError: the 64 left in flight, and none on top ==> expected: <64> but was: <128>
+  FAILED encodingsLeftInFlightTakeTheEvictionAndUnloadCapsOfTheNextTick(): org.opentest4j.AssertionFailedError: the 320 left in flight, and none on top ==> expected: <320> but was: <428>
+run 12 exit 1 tests="2" skipped="0" failures="2" errors="0"
+  FAILED encodingsLeftInFlightTakeTheDueCapOfTheNextTick(): org.opentest4j.AssertionFailedError: the 64 left in flight, and none on top ==> expected: <64> but was: <128>
+  FAILED encodingsLeftInFlightTakeTheEvictionAndUnloadCapsOfTheNextTick(): org.opentest4j.AssertionFailedError: the 320 left in flight, and none on top ==> expected: <320> but was: <428>
+run 13 exit 1 tests="2" skipped="0" failures="2" errors="0"
+  FAILED encodingsLeftInFlightTakeTheDueCapOfTheNextTick(): org.opentest4j.AssertionFailedError: the 64 left in flight, and none on top ==> expected: <64> but was: <128>
+  FAILED encodingsLeftInFlightTakeTheEvictionAndUnloadCapsOfTheNextTick(): org.opentest4j.AssertionFailedError: the 320 left in flight, and none on top ==> expected: <320> but was: <428>
+run 14 exit 1 tests="2" skipped="0" failures="2" errors="0"
+  FAILED encodingsLeftInFlightTakeTheDueCapOfTheNextTick(): org.opentest4j.AssertionFailedError: the 64 left in flight, and none on top ==> expected: <64> but was: <128>
+  FAILED encodingsLeftInFlightTakeTheEvictionAndUnloadCapsOfTheNextTick(): org.opentest4j.AssertionFailedError: the 320 left in flight, and none on top ==> expected: <320> but was: <428>
+run 15 exit 1 tests="2" skipped="0" failures="2" errors="0"
+  FAILED encodingsLeftInFlightTakeTheDueCapOfTheNextTick(): org.opentest4j.AssertionFailedError: the 64 left in flight, and none on top ==> expected: <64> but was: <128>
+  FAILED encodingsLeftInFlightTakeTheEvictionAndUnloadCapsOfTheNextTick(): org.opentest4j.AssertionFailedError: the 320 left in flight, and none on top ==> expected: <320> but was: <428>
+run 16 exit 1 tests="2" skipped="0" failures="2" errors="0"
+  FAILED encodingsLeftInFlightTakeTheDueCapOfTheNextTick(): org.opentest4j.AssertionFailedError: the 64 left in flight, and none on top ==> expected: <64> but was: <128>
+  FAILED encodingsLeftInFlightTakeTheEvictionAndUnloadCapsOfTheNextTick(): org.opentest4j.AssertionFailedError: the 320 left in flight, and none on top ==> expected: <320> but was: <428>
+run 17 exit 1 tests="2" skipped="0" failures="2" errors="0"
+  FAILED encodingsLeftInFlightTakeTheDueCapOfTheNextTick(): org.opentest4j.AssertionFailedError: the 64 left in flight, and none on top ==> expected: <64> but was: <128>
+  FAILED encodingsLeftInFlightTakeTheEvictionAndUnloadCapsOfTheNextTick(): org.opentest4j.AssertionFailedError: the 320 left in flight, and none on top ==> expected: <320> but was: <428>
+run 18 exit 1 tests="2" skipped="0" failures="2" errors="0"
+  FAILED encodingsLeftInFlightTakeTheDueCapOfTheNextTick(): org.opentest4j.AssertionFailedError: the 64 left in flight, and none on top ==> expected: <64> but was: <128>
+  FAILED encodingsLeftInFlightTakeTheEvictionAndUnloadCapsOfTheNextTick(): org.opentest4j.AssertionFailedError: the 320 left in flight, and none on top ==> expected: <320> but was: <428>
+run 19 exit 1 tests="2" skipped="0" failures="2" errors="0"
+  FAILED encodingsLeftInFlightTakeTheDueCapOfTheNextTick(): org.opentest4j.AssertionFailedError: the 64 left in flight, and none on top ==> expected: <64> but was: <128>
+  FAILED encodingsLeftInFlightTakeTheEvictionAndUnloadCapsOfTheNextTick(): org.opentest4j.AssertionFailedError: the 320 left in flight, and none on top ==> expected: <320> but was: <428>
+run 20 exit 1 tests="2" skipped="0" failures="2" errors="0"
+  FAILED encodingsLeftInFlightTakeTheDueCapOfTheNextTick(): org.opentest4j.AssertionFailedError: the 64 left in flight, and none on top ==> expected: <64> but was: <128>
+  FAILED encodingsLeftInFlightTakeTheEvictionAndUnloadCapsOfTheNextTick(): org.opentest4j.AssertionFailedError: the 320 left in flight, and none on top ==> expected: <320> but was: <428>
+# end 17:08:21; 17:08  up 12 days,  8:55, 25 users, load averages: 6.50 5.61 5.36
+# :196 is assertEquals(64, flushAppended) after the second tick, :223 assertEquals(64 + 256, flushAppended).
+# 128 = the 64 encodings the first tick left in flight + 64 due chunks the second tick submitted on top and harvested in its 20 ms;
+# 428 = 64 + 256 left in flight + 64 new evictions (min(64, 500 - 300 - 64)) + the 44 unload flushes left in the queue.
+
+## 2. the CI assertion itself, with a stall of the tick thread put in by hand (not committed)
+# Temporary line in aPhaseOverItsBudgetLeavesTheRestToTheNextTicks, right after clock.advance(Duration.ofSeconds(10)):
+#   disk.onForce = () -> { if (disk.forces.get() == 2) { try { Thread.sleep(<ms>); } catch (InterruptedException e) { throw new IllegalStateException(e); } } };
+# i.e. the third fsync (tick 3) sleeps; one encode thread, 5 ms of Thread.sleep per chunk (about 7 ms a chunk on this machine).
+# With 400 ms: 5 runs green (17:08:35 to 17:09:29); a run printing each tick showed tick 4 appended 60, under the cap.
+# With 800 ms, 5 runs:
+# start 17:10:15; 17:10  up 12 days,  8:57, 25 users, load averages: 4.63 5.20 5.22
+run 1 exit 1 tests="1" skipped="0" failures="1" errors="0"
+  FAILED aPhaseOverItsBudgetLeavesTheRestToTheNextTicks(): org.opentest4j.AssertionFailedError: tick 4 appended 117 ==> expected: <true> but was: <false>
+run 2 exit 1 tests="1" skipped="0" failures="1" errors="0"
+  FAILED aPhaseOverItsBudgetLeavesTheRestToTheNextTicks(): org.opentest4j.AssertionFailedError: tick 4 appended 114 ==> expected: <true> but was: <false>
+run 3 exit 1 tests="1" skipped="0" failures="1" errors="0"
+  FAILED aPhaseOverItsBudgetLeavesTheRestToTheNextTicks(): org.opentest4j.AssertionFailedError: tick 4 appended 117 ==> expected: <true> but was: <false>
+run 4 exit 1 tests="1" skipped="0" failures="1" errors="0"
+  FAILED aPhaseOverItsBudgetLeavesTheRestToTheNextTicks(): org.opentest4j.AssertionFailedError: tick 4 appended 117 ==> expected: <true> but was: <false>
+run 5 exit 1 tests="1" skipped="0" failures="1" errors="0"
+  FAILED aPhaseOverItsBudgetLeavesTheRestToTheNextTicks(): org.opentest4j.AssertionFailedError: tick 4 appended 114 ==> expected: <true> but was: <false>
+# end 17:10:35; 17:10  up 12 days,  8:57, 25 users, load averages: 4.65 5.15 5.21
+# That is the failure of CI run 36306032742 (OverlayStoreTest.java:159, "tick <n> appended <m>"): the tick after a stall appends every
+# encoding the pool finished during the stall. Root cause in OverlayStore.java at 8e1ea850e5:
+#   :490-494  selectDue counts from 0 each phase and skips the chunks in flight without counting them, so each phase submits 64 new ones
+#             while the earlier ones still queue in the encode pool (in flight grows by 64 a tick until every due chunk is submitted)
+#   :561-576  harvest takes every finished encoding into the batch, with no bound per kind
+#   the same for :458 (evictions: min(64, excess - in flight), 64 not lowered by the demotions in flight) and :477-480 (flushes before unload, 256)
+# Where Thread.sleep(5 ms) takes close to 5 ms, a stall of the tick thread over about 64 x 5 ms = 320 ms (a slow fsync, GC, a
+# descheduled test thread) is enough; an estimate, the sleep granularity of the CI machine was not measured.
+
+## 3. the same stall of 800 ms after the fix (1f11d26609 code, same temporary line), 5 runs green; the run printing each tick:
+# start 17:12:58; 17:12  up 12 days, 9 hrs, 25 users, load averages: 3.45 4.34 4.85
+run 1 exit 0 tests="1" skipped="0" failures="0" errors="0"
+run 2 exit 0 tests="1" skipped="0" failures="0" errors="0"
+run 3 exit 0 tests="1" skipped="0" failures="0" errors="0"
+run 4 exit 0 tests="1" skipped="0" failures="0" errors="0"
+run 5 exit 0 tests="1" skipped="0" failures="0" errors="0"
+# end 17:13:52; 17:13  up 12 days,  9:01, 25 users, load averages: 4.17 4.40 4.84
+#   tick 2 appended 6, tick 3 appended 3, tick 4 appended 64, tick 5 appended 2, tick 6 appended 4 (the cap holds right after the stall)
+# the temporary line and the print were removed afterwards; git diff of synx/src/test was only the two tests and FakeChunk.encodesDone

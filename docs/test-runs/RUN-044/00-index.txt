@@ -1,0 +1,29 @@
+# RUN-044: the overlay write phase appended more than its per tick cap after a stall, fixed on branch m3/overlay-flaky, 2026-09-27 17:04 to 17:50 (UTC+8)
+# Trigger: main dd64fe412c, CI run 36306032742, Check job (Temurin 25, ubuntu): OverlayStoreTest > aPhaseOverItsBudgetLeavesTheRestToTheNextTicks()
+#          red at OverlayStoreTest.java:159 ("tick <n> appended <m>", m > 64), green on --failed rerun; the same job green on 773ef6f86e.
+# Code under test: 1f11d26609 = main 8e1ea850e5 + the fix and its two tests. Gates and TC steps ran on 40b36a8db7 (1f11d26609 + docs/DESIGN-M3.md v0.15 only).
+# Machine: Apple M4 Pro, 12 cores, 24 GiB, macOS, Homebrew JDK 25.0.4.1; other sessions run builds on it; swap free 1.3 to 1.5 GB.
+# Every Gradle command: --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts --max-workers=4, one at a time.
+# Raw artefacts (Gradle logs, JUnit XML, the loop scripts) stayed in a temporary directory, deleted after the round; the lines below are copied out of them.
+00-index.txt              this file
+01-red-before-fix.txt     the two new tests on the code of 8e1ea850e5: 20 runs in a row, 20 red (64 -> 128 and 320 -> 428); the CI assertion itself with an
+                          800 ms stall put into the third fsync by hand: 5 of 5 red, "tick 4 appended 114 / 117"; the same stall after the fix: tick 4 appended 64
+02-after-fix-20x.txt      the whole OverlayStoreTest class after the fix, 20 runs in a row: 20 green, 28 tests each
+03-tc-steps.txt           TC-WORLD-042 steps 2-6 and TC-WORLD-043 steps 2-4 (counterproofs), TC-WORLD-051 steps 1-3, the rest judged on the gates
+04-gates.txt              :synx:check, :synx:test in the 4 thread strict mode and with grid (117 tests each), root check -Dsynaxis.synx.require-frozen-zlib=true
+                          (3,943 tests, 15 skipped, 0 failed), all --rerun-tasks
+
+# Root cause (OverlayStore.java at 8e1ea850e5): the per tick caps counted only what the current phase submitted. selectDue (:490-494) started from
+# 0 each phase and skipped the chunks in flight without counting them, so each phase put 64 more due chunks into the encode pool while the earlier
+# ones still queued; harvest (:561-576) took every finished encoding into the batch. After a stall of the tick thread longer than 64 encodings the
+# next batch held everything the pool finished during the stall. Evictions (:458) and flushes before unload (:477-480) had the same shape.
+# A product defect: docs/DESIGN-M3.md §17 and API-M3-007 step 3 cap each kind per tick; the test held the design's measure. v0.15 writes the
+# measure out (the encodings in flight count against the cap) in API-M3-007 step 4.
+
+# Results
+TC-WORLD-042   pass   steps 1-7 (step 6 is new; steps 3 and 4 red at :280 and :487 now, the two tests were inserted above them)
+TC-WORLD-043   pass   steps 1-5
+TC-WORLD-051   pass   steps 1-3 (step 3 in both strict modes)
+TC-WORLD-039   pass   step 1 judged on gate "check" (group A 25 tests, ChunkTryLockWriteLockIntegrationTest 5); steps 2-5 change files this branch does not touch
+TC-WORLD-049   pass   step 1 judged on gate "check" (ShardWorldAssemblyTest 5); step 2 changes ShardWorld, not touched here
+TC-029         pass   judged on the root module of gate "check": tests=3141 >= 2,599, failures + errors = 0

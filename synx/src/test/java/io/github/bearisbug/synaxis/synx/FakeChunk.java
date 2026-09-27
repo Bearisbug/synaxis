@@ -49,6 +49,8 @@ final class FakeChunk implements OverlayChunk {
     volatile boolean refuseWritten;
 
     final AtomicInteger encodes = new AtomicInteger();
+    /** Encodings that returned, whatever they returned. */
+    final AtomicInteger encodesDone = new AtomicInteger();
     final AtomicInteger maxRunning = new AtomicInteger();
     private final AtomicInteger running = new AtomicInteger();
     final Queue<Long> encodeStarts = new ConcurrentLinkedQueue<>();
@@ -134,6 +136,7 @@ final class FakeChunk implements OverlayChunk {
             return null;
         } finally {
             running.decrementAndGet();
+            encodesDone.incrementAndGet();
         }
     }
 

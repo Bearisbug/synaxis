@@ -169,6 +169,73 @@ public class OverlayStoreTest {
         }
     }
 
+    /**
+     * The 64 due chunks a tick count the encodings earlier phases left in flight: a phase whose
+     * encodings all ran over its 20 ms leaves 64 in flight, and the next tick appends those 64 and
+     * submits none on top. Otherwise the tick after a stall of the tick thread appends everything
+     * the encode pool finished meanwhile, more than 64.
+     */
+    @Test
+    public void encodingsLeftInFlightTakeTheDueCapOfTheNextTick() throws Exception {
+        final OverlayStore store = open(16_384, 1);
+        final List<FakeChunk> chunks = OverlayFixture.chunks(store, 0, 128);
+        final CountDownLatch release = new CountDownLatch(1);
+        for (FakeChunk chunk : chunks) {
+            chunk.inEncoding = () -> await(release);
+            chunk.change();
+        }
+        clock.advance(Duration.ofSeconds(10));
+
+        store.tickEnd(); // the first of the 64 holds up the one encode thread: all 64 left in flight
+        assertEquals(0, store.stats().flushAppended());
+        release.countDown();
+        awaitEncoded(chunks, 64);
+
+        store.tickEnd();
+
+        assertEquals(64, store.stats().flushAppended(), "the 64 left in flight, and none on top");
+        assertEquals(64, chunks.stream().filter(c -> c.encodes.get() == 0).count(),
+                "nothing submitted while 64 were in flight");
+    }
+
+    /** The same for the 64 evictions and the 256 flushes before unload a tick. */
+    @Test
+    public void encodingsLeftInFlightTakeTheEvictionAndUnloadCapsOfTheNextTick() throws Exception {
+        final OverlayStore store = open(300, 1);
+        final List<FakeChunk> evicting = OverlayFixture.chunks(store, 0, 200);
+        final List<FakeChunk> unloading = OverlayFixture.chunks(store, 1_000, 300);
+        final List<FakeChunk> all = Stream.concat(evicting.stream(), unloading.stream()).toList();
+        final CountDownLatch release = new CountDownLatch(1);
+        for (FakeChunk chunk : all) {
+            chunk.inEncoding = () -> await(release);
+            chunk.change(); // 500 residents over a cap of 300, the ones to evict changed first; none due
+        }
+        unloading.forEach(store::unloadRequested);
+
+        store.tickEnd(); // 64 evictions and 256 flushes before unload, all left in flight
+        assertEquals(0, store.stats().flushAppended());
+        release.countDown();
+        awaitEncoded(all, 64 + 256);
+
+        store.tickEnd();
+
+        final OverlayStats stats = store.stats();
+        assertEquals(64 + 256, stats.flushAppended(), "the 320 left in flight, and none on top");
+        assertEquals(64, stats.evicted());
+        assertEquals(256, unloading.stream().filter(c -> !c.dirty()).count());
+        assertEquals(136 + 44, all.stream().filter(c -> c.encodes.get() == 0).count(),
+                "nothing submitted while the caps were in flight");
+    }
+
+    /** Until {@code count} encodings of {@code chunks} have returned. */
+    private static void awaitEncoded(List<FakeChunk> chunks, int count) throws InterruptedException {
+        final long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
+        while (chunks.stream().mapToInt(c -> c.encodesDone.get()).sum() < count) {
+            assertTrue(System.nanoTime() - deadline < 0, "the encodings never returned");
+            Thread.sleep(1);
+        }
+    }
+
     @Test
     public void aBatchPastTheEndOfItsSegmentGoesOnInANewOneAndForcesEach() throws Exception {
         // Room for three records of a FakeChunk, 600 bytes each with their record header

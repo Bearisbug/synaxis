@@ -1,0 +1,155 @@
+# RUN-044: TC steps on 40b36a8db7 (code = 1f11d26609). Each counterproof: change one place, run only the named tests, git checkout -- the file(s);
+# git status --porcelain was empty after each. Every command with --rerun --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts --max-workers=4.
+# Lines starting with + / - are the change (git diff -U0), then the Gradle summary and the red line of each failing test.
+
+## 042-2 (17:22:42)
+# mutation:
++                index(record);
+# ./gradlew :synx:test --tests io.github.bearisbug.synaxis.synx.OverlayStoreTest.aTickOfEvictionsUnloadsAndDueChunksIsOneFsync --rerun (with --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts --max-workers=4)
+exit 1
+BUILD FAILED in 6s
+<testsuite name="io.github.bearisbug.synaxis.synx.OverlayStoreTest" tests="1" skipped="0" failures="1" errors="0"
+FAILED aTickOfEvictionsUnloadsAndDueChunksIsOneFsync(): org.opentest4j.AssertionFailedError: the index names no record before its fsync ==> expected: <false> but was: <true>
+   	at io.github.bearisbug.synaxis.synx.OverlayStoreTest.aTickOfEvictionsUnloadsAndDueChunksIsOneFsync(OverlayStoreTest.java:84)
+# restored; git status --porcelain: []
+
+## 042-3 (17:22:49)
+# mutation:
++            touched.add(segment);
+-        touched.add(segment);
+# ./gradlew :synx:test --tests io.github.bearisbug.synaxis.synx.OverlayStoreTest.aChunkChangedAfterItsEncodingStaysDirtyAndIsWrittenAgain --rerun (with --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts --max-workers=4)
+exit 1
+BUILD FAILED in 5s
+<testsuite name="io.github.bearisbug.synaxis.synx.OverlayStoreTest" tests="1" skipped="0" failures="1" errors="0"
+FAILED aChunkChangedAfterItsEncodingStaysDirtyAndIsWrittenAgain(): org.opentest4j.AssertionFailedError: a phase appending to the segment an earlier phase made forces it too ==> expected: <2> but was: <1>
+   	at io.github.bearisbug.synaxis.synx.OverlayStoreTest.aChunkChangedAfterItsEncodingStaysDirtyAndIsWrittenAgain(OverlayStoreTest.java:280)
+# restored; git status --porcelain: []
+
+## 042-4 (17:22:55)
+# mutation:
+-                if (replaced != null) pending.replace(key, entry, replaced);
++                if (replaced != null && replaced.isCancelled()) pending.replace(key, entry, replaced);
+# ./gradlew :synx:test --tests io.github.bearisbug.synaxis.synx.OverlayStoreTest.anUnloadThatDoesNotEncodeLeavesThePendingEntryItWouldHaveReplaced --rerun (with --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts --max-workers=4)
+exit 1
+BUILD FAILED in 6s
+<testsuite name="io.github.bearisbug.synaxis.synx.OverlayStoreTest" tests="1" skipped="0" failures="1" errors="0"
+FAILED anUnloadThatDoesNotEncodeLeavesThePendingEntryItWouldHaveReplaced(): java.lang.NullPointerException: Cannot invoke "io.github.bearisbug.synaxis.synx.OverlayHit.segment()" because "hit" is null
+   	at io.github.bearisbug.synaxis.synx.OverlayStoreTest.anUnloadThatDoesNotEncodeLeavesThePendingEntryItWouldHaveReplaced(OverlayStoreTest.java:487)
+# restored; git status --porcelain: []
+
+## 042-5 (17:23:02)
+# mutation:
+-        final long interval = TimeUnit.SECONDS.toNanos(options.flushIntervalSeconds()) - DUE_LEAD_NANOS;
++        final long interval = TimeUnit.SECONDS.toNanos(options.flushIntervalSeconds()) - 0 * DUE_LEAD_NANOS;
+# ./gradlew :synx:test --tests io.github.bearisbug.synaxis.synx.OverlayStoreTest.aChunkIsDueAWritePhaseBeforeItsFlushIntervalIsUp --rerun (with --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts --max-workers=4)
+exit 1
+BUILD FAILED in 6s
+<testsuite name="io.github.bearisbug.synaxis.synx.OverlayStoreTest" tests="1" skipped="0" failures="1" errors="0"
+FAILED aChunkIsDueAWritePhaseBeforeItsFlushIntervalIsUp(): org.opentest4j.AssertionFailedError: due 250 ms before its flush interval is up ==> expected: <false> but was: <true>
+   	at io.github.bearisbug.synaxis.synx.OverlayStoreTest.aChunkIsDueAWritePhaseBeforeItsFlushIntervalIsUp(OverlayStoreTest.java:130)
+# restored; git status --porcelain: []
+
+## 042-6 (17:22:19)
+# mutation:
++        evictCap.inFlight = 0; unloadCap.inFlight = 0; dueCap.inFlight = 0;
+# ./gradlew :synx:test --tests io.github.bearisbug.synaxis.synx.OverlayStoreTest.encodingsLeftInFlight* --rerun (with --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts --max-workers=4)
+exit 1
+2 tests completed, 2 failed
+BUILD FAILED in 4s
+<testsuite name="io.github.bearisbug.synaxis.synx.OverlayStoreTest" tests="2" skipped="0" failures="2" errors="0"
+FAILED encodingsLeftInFlightTakeTheDueCapOfTheNextTick(): org.opentest4j.AssertionFailedError: the 64 left in flight, and none on top ==> expected: <64> but was: <128>
+   	at io.github.bearisbug.synaxis.synx.OverlayStoreTest.encodingsLeftInFlightTakeTheDueCapOfTheNextTick(OverlayStoreTest.java:196)
+FAILED encodingsLeftInFlightTakeTheEvictionAndUnloadCapsOfTheNextTick(): org.opentest4j.AssertionFailedError: the 320 left in flight, and none on top ==> expected: <320> but was: <428>
+   	at io.github.bearisbug.synaxis.synx.OverlayStoreTest.encodingsLeftInFlightTakeTheEvictionAndUnloadCapsOfTheNextTick(OverlayStoreTest.java:223)
+# restored; git status --porcelain: []
+
+## 043-2 (17:23:29)
+# mutation:
+-            if (state == IDLE) {
+-                if (!writeRight.compareAndSet(IDLE, SHUTDOWN)) continue;
++            if (state == IDLE || state == TICK) {
++                if (!writeRight.compareAndSet(state, SHUTDOWN)) continue;
+# ./gradlew :synx:test --tests io.github.bearisbug.synaxis.synx.OverlayFinalFlushTest.aFinalFlushTheTickStartedIsWaitedForAndNotRepeated --tests io.github.bearisbug.synaxis.synx.OverlayFinalFlushTest.twoWritersRacingForTheFinalFlushWriteItExactlyOnce --rerun (with --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts --max-workers=4)
+exit 1
+2 tests completed, 2 failed
+BUILD FAILED in 6s
+<testsuite name="io.github.bearisbug.synaxis.synx.OverlayFinalFlushTest" tests="2" skipped="0" failures="2" errors="0"
+FAILED aFinalFlushTheTickStartedIsWaitedForAndNotRepeated(): org.opentest4j.AssertionFailedError: one final flush line at INFO: [Overlay final flush: chunks=10 bytes=6000 fsync_ms=317 left=0 by=tick, Overlay final flush: chunks=10 bytes=6000 fsync_ms=320 left=0 by=shutdown] ==> expected: <1> but was: <2>
+   	at io.github.bearisbug.synaxis.synx.OverlayFinalFlushTest.flushLine(OverlayFinalFlushTest.java:61)
+FAILED twoWritersRacingForTheFinalFlushWriteItExactlyOnce(): org.opentest4j.AssertionFailedError: round 19 ==> expected: <10> but was: <9>
+   	at io.github.bearisbug.synaxis.synx.OverlayFinalFlushTest.twoWritersRacingForTheFinalFlushWriteItExactlyOnce(OverlayFinalFlushTest.java:299)
+# restored; git status --porcelain: []
+
+## 043-3 (17:23:36)
+# mutation:
+-        final long stop = finalDeadline.get();
+-        if (stop != NO_DEADLINE && System.nanoTime() - stop >= 0) return null;
+# ./gradlew :synx:test --tests io.github.bearisbug.synaxis.synx.OverlayFinalFlushTest.aFinalFlushOverItsBudgetCompletesAtTheDeadline --rerun (with --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts --max-workers=4)
+exit 1
+1 test completed, 1 failed
+BUILD FAILED in 7s
+<testsuite name="io.github.bearisbug.synaxis.synx.OverlayFinalFlushTest" tests="1" skipped="0" failures="1" errors="0"
+FAILED aFinalFlushOverItsBudgetCompletesAtTheDeadline(): org.opentest4j.AssertionFailedError: encodings started this many ms in: [1020, 1020, 1022, 1022, 1023, 1023, 1025, 1025, 1027, 1027, 1028, 1028, 1030, 1030, 1031, 1031, 1033, 1033, 1034, 1034, 1036, 1036, 1037, 1037, 1039, 1039, 1040, 1040, 1042, 1042, 1043, 1043, 1045, 1045, 1046, 1046, 1048, 1048, 1049, 1049] ==> expected: <true> but was: <false>
+   	at io.github.bearisbug.synaxis.synx.OverlayFinalFlushTest.aFinalFlushOverItsBudgetCompletesAtTheDeadline(OverlayFinalFlushTest.java:394)
+# restored; git status --porcelain: []
+
+## 043-4 (17:23:43)
+# mutation:
+-        finalDeadline.accumulateAndGet(deadline, (current, next) -> current == NO_DEADLINE || next - current < 0 ? next : current);
++        finalDeadline.accumulateAndGet(deadline, (current, next) -> current == NO_DEADLINE || next - current > 0 ? next : current);
+# ./gradlew :synx:test --tests io.github.bearisbug.synaxis.synx.OverlayFinalFlushTest.aSecondCallTakesTheEarlierOfTheTwoDeadlines --rerun (with --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts --max-workers=4)
+exit 1
+1 test completed, 1 failed
+BUILD FAILED in 7s
+<testsuite name="io.github.bearisbug.synaxis.synx.OverlayFinalFlushTest" tests="1" skipped="0" failures="1" errors="0"
+FAILED aSecondCallTakesTheEarlierOfTheTwoDeadlines(): org.opentest4j.AssertionFailedError: PT0.3S then PT30S: the final flush took 1625 ms ==> expected: <true> but was: <false>
+   	at io.github.bearisbug.synaxis.synx.OverlayFinalFlushTest.assertTheEarlierDeadline(OverlayFinalFlushTest.java:216)
+# restored; git status --porcelain: []
+
+## 051-2 (17:25:20)
+# mutation:
+-        shutdown.addAfterPlayers("overlay", overlay::finalFlush);
+-        final long interval = TimeUnit.SECONDS.toNanos(options.flushIntervalSeconds()) - DUE_LEAD_NANOS;
++        final long interval = 3 * TimeUnit.SECONDS.toNanos(options.flushIntervalSeconds()) - DUE_LEAD_NANOS;
+# ./gradlew :server-app:test --tests io.github.bearisbug.synaxis.app.shard.OverlayShardProcessTest --rerun (with --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts --max-workers=4)
+exit 1
+2 tests completed, 2 failed
+BUILD FAILED in 35s
+<testsuite name="io.github.bearisbug.synaxis.app.shard.OverlayShardProcessTest" tests="2" skipped="0" failures="2" errors="0"
+FAILED aKilledShardKeepsEveryChangeOlderThanItsFlushInterval(Path): org.opentest4j.AssertionFailedError: chunk E, changed at t = 0 s, is on disk after a kill at t = 20 s ==> expected: not <null>
+   	at io.github.bearisbug.synaxis.app.shard.OverlayShardProcessTest.aKilledShardKeepsEveryChangeOlderThanItsFlushInterval(OverlayShardProcessTest.java:163)
+FAILED aStoppedShardWritesTheChangesOfItsLastSecond(Path): org.opentest4j.AssertionFailedError: Picked up JAVA_TOOL_OPTIONS: -Dhttps.proxyHost=127.0.0.1 -Dhttps.proxyPort=7897 -Dhttp.proxyHost=127.0.0 … ==> expected: <true> but was: <false>
+   	at io.github.bearisbug.synaxis.app.shard.OverlayShardProcessTest.aStoppedShardWritesTheChangesOfItsLastSecond(OverlayShardProcessTest.java:194)
+# restored; git status --porcelain: []
+# (the second message is the child JVM's stdout the test prints, cut above; it has no "Overlay final flush: chunks=100" line)
+
+## TC-WORLD-042 steps 1 and 7, TC-WORLD-043 steps 1 and 5: OverlayStoreTest tests="28" and OverlayFinalFlushTest tests="12", 0 failures,
+## in each of the four gates of 04-gates.txt, all run after the counterproofs above.
+## TC-WORLD-051 step 1 (gate "check"): OverlayShardProcessTest tests="2" 0 failures, 22.8 s;
+crash window: 187 changes, 96 kept, 91 lost; the oldest lost change was 9672 ms old at the kill, the newest kept one 9782 ms
+## TC-WORLD-051 step 3, the same class in the two strict modes (:server-app:test --tests '<AP>.shard.OverlayShardProcessTest' --rerun ...):
+## 051-strict4: ./gradlew :server-app:test --tests io.github.bearisbug.synaxis.app.shard.OverlayShardProcessTest --rerun -Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true (with --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts --max-workers=4)
+# HEAD 40b36a8db7; start / swap:
+17:38:20
+17:38  up 12 days,  9:25, 25 users, load averages: 27.09 24.37 16.65
+vm.swapusage: total = 15360.00M  used = 13988.62M  free = 1371.38M  (encrypted)
+exit 0
+17:38:54
+17:38  up 12 days,  9:26, 25 users, load averages: 25.14 24.20 16.90
+BUILD SUCCESSFUL in 34s
+server-app tests=2 skipped=0 failures=0 errors=0
+crash window: 193 changes, 99 kept, 94 lost; the oldest lost change was 9683 ms old at the kill, the newest kept one 9790 ms
+## 051-grid: ./gradlew :server-app:test --tests io.github.bearisbug.synaxis.app.shard.OverlayShardProcessTest --rerun -Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true -Dsynaxis.thread-provider=grid (with --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts --max-workers=4)
+# HEAD 40b36a8db7; start / swap:
+17:49:30
+17:49  up 12 days,  9:36, 25 users, load averages: 5.80 9.94 12.63
+vm.swapusage: total = 16384.00M  used = 15028.19M  free = 1355.81M  (encrypted)
+exit 0
+17:50:01
+17:50  up 12 days,  9:37, 25 users, load averages: 8.41 10.16 12.62
+BUILD SUCCESSFUL in 30s
+server-app tests=2 skipped=0 failures=0 errors=0
+crash window: 188 changes, 96 kept, 92 lost; the oldest lost change was 9743 ms old at the kill, the newest kept one 9853 ms
+## TC-WORLD-039 step 1 and TC-WORLD-049 step 1 (gate "check"): SynxChunkLoaderIntegrationTest tests="12" + SynxChunkOverlayIntegrationTest tests="13"
+## (group A, 25), ChunkTryLockWriteLockIntegrationTest tests="5", ShardWorldAssemblyTest tests="5", 0 failures each. Their counterproofs change
+## SynxChunkLoader, SynxChunk and ShardWorld, which this branch does not touch; not run.

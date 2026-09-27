@@ -112,6 +112,25 @@ public final class OverlayStore implements OverlayIndex, OverlayTracker {
     private record Commit(long bytes, long fsyncNanos) {
     }
 
+    /**
+     * A cap a tick of the write phase, on the encodings it submits for one kind of chunk and no
+     * phase has harvested yet, those earlier phases left in flight included: a batch then holds no
+     * more of that kind than the cap, however many the encode pool finished between two phases.
+     * The holder of the write right's.
+     */
+    private static final class Cap {
+        private final int perTick;
+        private int inFlight;
+
+        private Cap(int perTick) {
+            this.perTick = perTick;
+        }
+
+        private int left() {
+            return perTick - inFlight;
+        }
+    }
+
     /** A chunk in overlay mode. */
     private static final class Resident {
         private final OverlayChunk chunk;
@@ -123,7 +142,7 @@ public final class OverlayStore implements OverlayIndex, OverlayTracker {
         private boolean removed;
         // The holder of the write right's
         private @Nullable Future<Encoded> inFlight;
-        private boolean demote;
+        private @Nullable Cap cap;
 
         private Resident(OverlayChunk chunk, long key) {
             this.chunk = chunk;
@@ -166,7 +185,9 @@ public final class OverlayStore implements OverlayIndex, OverlayTracker {
     private int nextSegment;
     private @Nullable OverlaySegment compacting;
     private final Set<Resident> inFlight = new LinkedHashSet<>();
-    private int demotionsInFlight;
+    private final Cap evictCap = new Cap(EVICT_PER_TICK);
+    private final Cap unloadCap = new Cap(UNLOAD_FLUSH_PER_TICK);
+    private final Cap dueCap = new Cap(FLUSH_PER_TICK);
 
     private final LongAdder evicted = new LongAdder();
     private final LongAdder evictFailed = new LongAdder();
@@ -453,9 +474,9 @@ public final class OverlayStore implements OverlayIndex, OverlayTracker {
         });
     }
 
-    /** {@code overlay_resident − overlay_cap}, at most 64, the least recently changed first. */
+    /** {@code overlay_resident − overlay_cap}, at most 64 with those in flight, the least recently changed first. */
     private void selectEvictions(Set<Resident> taken, long deadline) {
-        int count = Math.min(EVICT_PER_TICK, residents.size() - options.cap() - demotionsInFlight);
+        int count = Math.min(evictCap.left(), residents.size() - options.cap() - evictCap.inFlight);
         for (Iterator<Resident> it = lru.values().iterator(); count > 0 && it.hasNext(); ) {
             final Resident resident = it.next();
             if (resident.inFlight != null || !taken.add(resident)) continue;
@@ -467,41 +488,41 @@ public final class OverlayStore implements OverlayIndex, OverlayTracker {
                 // Clean: back to handle mode on the record it was written to, nothing to append
                 if (chunk.written(generation, indexed.hit(), true)) afterWritten(resident, true, 0);
             } else {
-                submit(resident, true, deadline);
+                submit(resident, evictCap, deadline);
             }
         }
     }
 
-    /** The dirty chunks the automatic unload waits for, at most 256. */
+    /** The dirty chunks the automatic unload waits for, at most 256 with those in flight. */
     private void selectUnloads(Set<Resident> taken, long deadline) {
-        int count = 0;
-        for (Iterator<Resident> it = unloadQueue.iterator(); count < UNLOAD_FLUSH_PER_TICK && it.hasNext(); ) {
+        for (Iterator<Resident> it = unloadQueue.iterator(); unloadCap.left() > 0 && it.hasNext(); ) {
             final Resident resident = it.next();
             if (resident.inFlight != null || !resident.chunk.dirty() || !taken.add(resident)) continue;
-            submit(resident, false, deadline);
-            count++;
+            submit(resident, unloadCap, deadline);
         }
     }
 
-    /** Dirty for {@code flush_interval_s} less {@link #DUE_LEAD_NANOS} or longer, at most 64, the longest first. */
+    /**
+     * Dirty for {@code flush_interval_s} less {@link #DUE_LEAD_NANOS} or longer, at most 64 with
+     * those in flight, the longest first.
+     */
     private void selectDue(Set<Resident> taken, long deadline) {
         final long now = tuning.clock().getAsLong();
         final long interval = TimeUnit.SECONDS.toNanos(options.flushIntervalSeconds()) - DUE_LEAD_NANOS;
-        int count = 0;
-        for (Iterator<Resident> it = dirtyQueue.values().iterator(); count < FLUSH_PER_TICK && it.hasNext(); ) {
+        for (Iterator<Resident> it = dirtyQueue.values().iterator(); dueCap.left() > 0 && it.hasNext(); ) {
             final Resident resident = it.next();
             if (now - resident.dirtySince < interval) break;
             if (resident.inFlight != null || !taken.add(resident)) continue;
-            submit(resident, false, deadline);
-            count++;
+            submit(resident, dueCap, deadline);
         }
     }
 
-    private void submit(Resident resident, boolean demote, long deadline) {
+    /** {@code cap} is null for the final flush, which has none. */
+    private void submit(Resident resident, @Nullable Cap cap, long deadline) {
         final OverlayChunk chunk = resident.chunk;
         resident.inFlight = encoders.submit(() -> encode(chunk, deadline));
-        resident.demote = demote;
-        if (demote) demotionsInFlight++;
+        resident.cap = cap;
+        if (cap != null) cap.inFlight++;
         inFlight.add(resident);
     }
 
@@ -565,7 +586,8 @@ public final class OverlayStore implements OverlayIndex, OverlayTracker {
             if (!future.isDone()) continue;
             it.remove();
             resident.inFlight = null;
-            if (resident.demote) demotionsInFlight--;
+            final Cap cap = resident.cap;
+            if (cap != null) cap.inFlight--;
             final Encoded encoded = result(resident.chunk, future);
             if (encoded == null) continue;
             synchronized (resident) {
@@ -573,7 +595,7 @@ public final class OverlayStore implements OverlayIndex, OverlayTracker {
                 if (resident.removed) continue;
             }
             if (!staleToo && encoded.generation() != resident.chunk.generation()) continue;
-            batch.add(new ChunkItem(resident, encoded, resident.demote && !finalFlush));
+            batch.add(new ChunkItem(resident, encoded, cap == evictCap && !finalFlush));
         }
     }
 
@@ -883,7 +905,7 @@ public final class OverlayStore implements OverlayIndex, OverlayTracker {
         for (Resident resident : residents.values()) {
             if (System.nanoTime() - deadline >= 0) break;
             if (resident.inFlight == null && resident.chunk.dirty() && !taken.contains(resident)) {
-                submit(resident, false, deadline);
+                submit(resident, null, deadline);
             }
         }
         awaitEncodings(deadline);

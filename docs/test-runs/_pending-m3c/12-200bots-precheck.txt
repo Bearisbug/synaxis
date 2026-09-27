@@ -1,0 +1,21 @@
+# 200 bots precheck: every 5 min, at most 90 min; pass = swap free >= 3,072 MB and no java/Gradle process whose cwd is outside /Users/bug/Documents/Projects/Minecraft/synaxis-wt/m3c-*
+2026-09-27 09:06:22 check 0: swap free 1361.62 MB; load {  4.60 6.99 10.06  }; other java/Gradle: none
+2026-09-27 09:11:22 check 1: swap free 1361.62 MB; load {  5.63 6.19 8.77  }; other java/Gradle: none
+2026-09-27 09:16:22 check 2: swap free 1361.62 MB; load {  2.77 4.58 7.33  }; other java/Gradle: none
+2026-09-27 09:21:22 check 3: swap free 1369.62 MB; load {  9.78 7.33 7.69  }; other java/Gradle: none
+2026-09-27 09:26:22 check 4: swap free 1393.62 MB; load {  5.98 6.36 7.10  }; other java/Gradle: none
+2026-09-27 09:31:22 check 5: swap free 1401.62 MB; load {  3.84 5.55 6.57  }; other java/Gradle: none
+2026-09-27 09:36:22 check 6: swap free 1401.62 MB; load {  5.56 5.09 6.00  }; other java/Gradle: none
+2026-09-27 09:41:22 check 7: swap free 1409.62 MB; load {  4.30 4.90 5.64  }; other java/Gradle: none
+2026-09-27 09:46:22 check 8: swap free 1409.62 MB; load {  3.75 4.42 5.22  }; other java/Gradle: none
+2026-09-27 09:51:23 check 9: swap free 1417.62 MB; load {  7.15 5.01 5.18  }; other java/Gradle: none
+2026-09-27 09:56:23 check 10: swap free 1425.62 MB; load {  7.13 5.74 5.40  }; other java/Gradle: none
+2026-09-27 10:01:23 check 11: swap free 1425.62 MB; load {  5.80 5.81 5.52  }; other java/Gradle: none
+2026-09-27 10:06:23 check 12: swap free 1441.62 MB; load {  4.81 4.99 5.18  }; other java/Gradle: none
+2026-09-27 10:11:23 check 13: swap free 1441.62 MB; load {  3.80 4.74 5.07  }; other java/Gradle: none
+2026-09-27 10:16:23 check 14: swap free 1441.62 MB; load {  3.79 4.60 4.95  }; other java/Gradle: none
+2026-09-27 10:21:23 check 15: swap free 1457.62 MB; load {  4.22 4.42 4.75  }; other java/Gradle: none
+2026-09-27 10:26:23 check 16: swap free 1457.62 MB; load {  5.56 4.90 4.86  }; other java/Gradle: none
+2026-09-27 10:31:23 check 17: swap free 1481.62 MB; load {  3.57 4.73 4.87  }; other java/Gradle: none
+2026-09-27 10:36:23 check 18: swap free 1497.62 MB; load {  3.23 3.58 4.26  }; other java/Gradle: none
+BLOCKED after 90 min

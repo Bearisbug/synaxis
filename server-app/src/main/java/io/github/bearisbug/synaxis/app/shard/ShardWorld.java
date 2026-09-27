@@ -111,14 +111,16 @@ public final class ShardWorld {
      * entries: checks the view and simulation distances, runs the start-up check of
      * {@code API-M3-002} on the release, registers the map dimension type from the manifest's world,
      * and the block handlers the baker registered. In the directory mode it also checks the shard
-     * directory against the release. Writes nothing.
+     * directory against the release and the spawn column of the region against its gates, and the
+     * start-up check covers the view of the region instead of the whole release. Writes nothing.
      *
      * @param process        the engine process, whose configuration, registries and blocks count
      * @param settings       the host keys, with a map mounted
      * @param synxOptions    the {@code :synx} keys
      * @param overlayOptions the overlay keys
-     * @param directory      the shard directory in the directory mode ({@code API-M3-010}), null
-     *                       outside it: the bounds are then the manifest's
+     * @param directory      the shard directory in the directory mode ({@code API-M3-010}), whose
+     *                       region of this shard is the bounds; null outside it: the bounds are then
+     *                       the manifest's
      * @return the prepared world
      * @throws IllegalArgumentException for a refused start
      */
@@ -160,8 +162,9 @@ public final class ShardWorld {
     /**
      * The start-up check, on the expectations of this process: its registries and compression
      * threshold, the light engine version, and the world the manifest declares, which the map
-     * dimension type is then built on. The scope is {@code view_bounds}. A shard directory is checked
-     * against the declared manifest first.
+     * dimension type is then built on. The scope is the {@code view_bounds} of the bounds the shard
+     * serves, its region in the directory mode. A shard directory is checked against the declared
+     * manifest first.
      */
     private static SynxManifest verify(ServerProcess process, ShardSettings settings, @Nullable ShardDirectory directory)
             throws IOException, SynxException {
@@ -175,13 +178,13 @@ public final class ShardWorld {
         final SynxManifest.World world = declared.world();
         final SynxExpectations expectations = SynxExpectations.of(process.registries(), process.compressionThreshold(),
                 world.minY(), world.height(), LightEngine.VERSION);
-        return SynxBuildVerifier.verify(buildDir, expectations, viewBounds(declared.bounds()));
+        return SynxBuildVerifier.verify(buildDir, expectations, viewBounds(bounds(declared, directory)));
     }
 
     /**
-     * The shard directory against the manifest it serves ({@code API-M3-010}). The directory does not
-     * know its file, so the prefix every refusal about it starts with goes in front of the detail
-     * {@link ShardDirectory#checkAgainst} gives.
+     * The shard directory against the manifest it serves ({@code API-M3-010}), then the spawn column
+     * against the gates of the region. The directory does not know its file, so the prefix every
+     * refusal about it starts with goes in front of the detail {@link ShardDirectory#checkAgainst} gives.
      */
     private static void checkDirectory(ShardDirectory directory, SynxManifest declared, ShardSettings settings) {
         try {
@@ -191,6 +194,42 @@ public final class ShardWorld {
                     .resolve(ShardDirectory.FILE_NAME).toAbsolutePath();
             throw new IllegalArgumentException("the shard directory " + file + " is not valid: " + e.getMessage(), e);
         }
+        checkSpawnColumn(directory);
+    }
+
+    /**
+     * {@code API-M3-006} step (3): a player who joins spawns on the spawn column of the region, which
+     * its bounds alone decide; inside a gate the first move would send the player away. Judged by the
+     * column, x and z, as the y of the spawn point is only known once segment ② is read in step (5).
+     *
+     * @param directory the shard directory, whose region of this shard counts
+     * @throws IllegalArgumentException if the column is inside a gate of the region
+     */
+    static void checkSpawnColumn(ShardDirectory directory) {
+        final ShardDirectory.Region region = directory.ownRegion();
+        final SynxManifest.Bounds bounds = region.bounds();
+        final int x = centerChunk(bounds.minX(), bounds.maxX()) * 16 + 8;
+        final int z = centerChunk(bounds.minZ(), bounds.maxZ()) * 16 + 8;
+        for (ShardDirectory.Gate gate : region.gates()) {
+            final ShardDirectory.Frame frame = gate.frame();
+            if (x >= frame.minX() && x <= frame.maxX() && z >= frame.minZ() && z <= frame.maxZ()) {
+                throw new IllegalArgumentException("the spawn column " + x + ", " + z + " of " + region.regionId()
+                        + " is inside the gate " + gate.gateId() + ": a player would be sent away on joining");
+            }
+        }
+    }
+
+    /**
+     * The bounds the shard serves ({@code API-M3-005} {@code bounds}): the region of the shard in the
+     * directory mode ({@code API-M3-010}), the release's otherwise.
+     */
+    private static SynxManifest.Bounds bounds(SynxManifest manifest, @Nullable ShardDirectory directory) {
+        return directory == null ? manifest.bounds() : directory.ownRegion().bounds();
+    }
+
+    /** §28.1: the center chunk of the bounds on one axis, whose center column players spawn on. */
+    private static int centerChunk(int min, int max) {
+        return Math.floorDiv(min + max, 2);
     }
 
     static SynxManifest.Bounds viewBounds(SynxManifest.Bounds bounds) {
@@ -203,9 +242,10 @@ public final class ShardWorld {
      * Step (5) of {@code Main}: reads the world state flags (a refusal still, before the first write),
      * opens the overlay store (the first write to the disk, after every other refusal) and registers
      * its final flush after the players' save, builds the map instance with its simulation distance
-     * and unload grace period, replays the flags into it, sets its world border, and schedules the
-     * write phase of the overlay store at the end of every tick and {@code EVT:chunk_stream_stats}
-     * every 60 s.
+     * and unload grace period on the bounds the shard serves (its region in the directory mode, the
+     * chunks past them read only), replays the flags into it, sets its world border and spawn point on
+     * those bounds, and schedules the write phase of the overlay store at the end of every tick and
+     * {@code EVT:chunk_stream_stats} every 60 s.
      *
      * @param shutdown the shutdown sequence, still taking steps
      * @param events   where the events go, the event ledger of the host
@@ -239,9 +279,10 @@ public final class ShardWorld {
                     + e.getMessage(), e);
         }
         shutdown.addAfterPlayers("overlay", overlay::finalFlush);
+        final SynxManifest.Bounds bounds = bounds(manifest, directory);
         final SynxChunkLoader loader;
         try {
-            loader = new SynxChunkLoader(settings.buildDir(), manifest, manifest.bounds(), synxOptions, overlay, overlay);
+            loader = new SynxChunkLoader(settings.buildDir(), manifest, bounds, synxOptions, overlay, overlay);
         } catch (SynxException e) {
             throw new IllegalArgumentException(e.getMessage(), e);
         } catch (IOException e) {
@@ -257,13 +298,12 @@ public final class ShardWorld {
         instance.setChunkUnloadGraceTicks(settings.chunkUnloadGraceTicks());
         // Before the world border, the spawn point and the bind
         if (flags != null) flags.replay(instance);
-        final SynxManifest.Bounds bounds = manifest.bounds();
         instance.setWorldBorder(worldBorder(bounds));
         if (bounds.maxX() - bounds.minX() != bounds.maxZ() - bounds.minZ()) {
             LOGGER.warn("The bounds {} of {} are not square: the world border covers the long side, a player can walk "
                     + "into the read only chunks past the short one", bounds, manifest.buildId());
         }
-        final Pos spawn = spawn(settings.buildDir(), manifest);
+        final Pos spawn = spawn(settings.buildDir(), manifest, bounds);
 
         scheduleWritePhase(process, overlay::tickEnd);
         this.lastStream = loader.stats();
@@ -392,10 +432,9 @@ public final class ShardWorld {
      * its {@code surface_y} of segment ②. A center chunk without a readable record puts the spawn at
      * the top of the world.
      */
-    static Pos spawn(Path buildDir, SynxManifest manifest) {
-        final SynxManifest.Bounds bounds = manifest.bounds();
-        final int chunkX = Math.floorDiv(bounds.minX() + bounds.maxX(), 2);
-        final int chunkZ = Math.floorDiv(bounds.minZ() + bounds.maxZ(), 2);
+    static Pos spawn(Path buildDir, SynxManifest manifest, SynxManifest.Bounds bounds) {
+        final int chunkX = centerChunk(bounds.minX(), bounds.maxX());
+        final int chunkZ = centerChunk(bounds.minZ(), bounds.maxZ());
         final double x = chunkX * 16 + 8.5, z = chunkZ * 16 + 8.5;
         final Path file = buildDir.resolve("regions").resolve(SynxFormat.regionFileName(SynxFormat.region(chunkX),
                 SynxFormat.region(chunkZ)));

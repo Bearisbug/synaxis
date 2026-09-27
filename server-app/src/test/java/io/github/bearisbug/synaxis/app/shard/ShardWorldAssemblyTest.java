@@ -1,5 +1,6 @@
 package io.github.bearisbug.synaxis.app.shard;
 
+import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
@@ -8,9 +9,14 @@ import io.github.bearisbug.synaxis.ServerProcess;
 import io.github.bearisbug.synaxis.ShutdownParticipant;
 import io.github.bearisbug.synaxis.TickSchedulerThread;
 import io.github.bearisbug.synaxis.app.ShutdownSequence;
+import io.github.bearisbug.synaxis.baker.Baker;
+import io.github.bearisbug.synaxis.baker.GeneratorPreset;
+import io.github.bearisbug.synaxis.baker.GeneratorSource;
+import io.github.bearisbug.synaxis.baker.LightVersions;
 import io.github.bearisbug.synaxis.coordinate.Pos;
 import io.github.bearisbug.synaxis.instance.InstanceContainer;
 import io.github.bearisbug.synaxis.instance.block.Block;
+import io.github.bearisbug.synaxis.registry.Registries;
 import io.github.bearisbug.synaxis.synx.OverlayChunk;
 import io.github.bearisbug.synaxis.synx.OverlayEncoding;
 import io.github.bearisbug.synaxis.synx.OverlayHit;
@@ -40,6 +46,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -48,6 +55,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -174,6 +182,135 @@ public class ShardWorldAssemblyTest {
                 assertEquals(List.of(), files.toList(), "no segment file while no block changed");
             }
         } finally {
+            process.stop();
+        }
+    }
+
+    /**
+     * §19 「内存存储的挂地图分片不进目录模式」, the half inside the process: without a shard directory the
+     * bounds are the release's and {@code EVT:shard_started} has no region and no capacity.
+     */
+    @Test
+    public void aShardOutsideTheDirectoryModeStartsWithoutARegion() {
+        final ServerProcess process = process();
+        try {
+            final Map<String, Object> started = mount(process, new OverlayOptions(16_384, 10)).world().startedAttributes();
+            assertTrue(started.containsKey("region_id") && started.containsKey("capacity"), started.toString());
+            assertNull(started.get("region_id"));
+            assertNull(started.get("capacity"));
+            assertEquals(0, started.get("flags_replayed"));
+            assertEquals(0L, ((Number) started.get("flags_ms")).longValue());
+        } finally {
+            process.stop();
+        }
+    }
+
+    /** 34 × 1 chunks in two region files: chunks 0 to 31 in r.0.0, 32 and 33 in r.1.0. */
+    private static final SynxManifest.Bounds WIDE = new SynxManifest.Bounds(0, 0, 33, 0);
+
+    /** Bakes the wide map under {@code mapsRoot}, map id {@code wide}. */
+    private static ShardSettings bakeWide(Path mapsRoot) {
+        final GeneratorSource source = new GeneratorSource(new GeneratorPreset(
+                unit -> unit.modifier().fillHeight(0, MapFixture.FLOOR, Block.STONE), 0, 64, WIDE), Registries.vanilla());
+        final Baker.Result result = Baker.bake(new Baker.Request("wide", source, mapsRoot, 1, mapsRoot.resolve("logs"),
+                Registries.vanilla(), _ -> null, LightVersions.verified(), 1));
+        if (result.exitCode() != Baker.EXIT_PUBLISHED || result.directory() == null)
+            throw new AssertionError("the wide map did not bake: " + result);
+        return new ShardSettings(mapsRoot.resolve("wide"), result.directory().getFileName().toString(), 4, 100);
+    }
+
+    /**
+     * The directory of the wide map: r0 its first 15 chunks, whose view (17 chunks past them, to chunk
+     * 31) stays in r.0.0; r1 the rest.
+     */
+    private static ShardDirectory wideDirectory(String shardId) {
+        return new ShardDirectory("wide", List.of(
+                new ShardDirectory.Region("r0", new SynxManifest.Bounds(0, 0, 14, 0), List.of()),
+                new ShardDirectory.Region("r1", new SynxManifest.Bounds(15, 0, 33, 0), List.of())),
+                List.of(new ShardDirectory.Channel("r0-c1", "r0", 1, "127.0.0.1", 25601, 200),
+                        new ShardDirectory.Channel("r1-c1", "r1", 1, "127.0.0.1", 25602, 150)), shardId);
+    }
+
+    /**
+     * {@code API-M3-006} step (3): in the directory mode the start-up check covers the view of the region
+     * of the shard, not the whole release. A damaged r.1.0 refuses the release and r1, not r0.
+     */
+    @Test
+    public void theStartUpCheckCoversTheViewOfTheRegion(@TempDir Path maps) throws IOException {
+        final ShardSettings wide = bakeWide(maps);
+        final Path region = wide.buildDir().resolve("regions").resolve(SynxFormat.regionFileName(1, 0));
+        final byte[] bytes = Files.readAllBytes(region);
+        bytes[bytes.length - 100] ^= 0x01;
+        Files.write(region, bytes);
+
+        final ServerProcess r0 = process();
+        try {
+            assertNotNull(ShardWorld.prepare(r0, wide, SYNX, new OverlayOptions(16_384, 10), wideDirectory("r0-c1")));
+        } finally {
+            r0.stop();
+        }
+        for (ShardDirectory directory : Arrays.asList(null, wideDirectory("r1-c1"))) {
+            final ServerProcess process = process();
+            try {
+                ShardWorld.prepare(process, wide, SYNX, new OverlayOptions(16_384, 10), directory);
+                fail("the damaged r.1.0 is in the view of " + (directory == null ? "the release" : "r1"));
+            } catch (IllegalArgumentException e) {
+                assertTrue(e.getMessage().startsWith("synx-payload-hash: r.1.0.synx: "), e.getMessage());
+            } finally {
+                process.stop();
+            }
+        }
+    }
+
+    /**
+     * {@code API-M3-010} 本分片 and {@code API-M3-006} step (5): the region of the shard is the bounds of
+     * the map instance. The world border and the spawn point are the region's, a region that is not
+     * square warns, the chunks past it are read only, and {@code EVT:shard_started} reads the one region
+     * file its view maps, with the region and capacity of the shard.
+     */
+    @Test
+    public void aShardInTheDirectoryModeServesItsRegion(@TempDir Path maps) throws IOException {
+        final ShardSettings wide = bakeWide(maps);
+        final ServerProcess process = process();
+        final Logger logger = (Logger) LoggerFactory.getLogger(ShardWorld.class);
+        final ListAppender<ILoggingEvent> appender = new ListAppender<>();
+        try {
+            final ShardWorld world = ShardWorld.prepare(process, wide, SYNX, new OverlayOptions(16_384, 10),
+                    wideDirectory("r0-c1"));
+            final ShutdownSequence shutdown = new ShutdownSequence(process, new NoPlayers());
+            process.setShutdownParticipant(shutdown);
+            appender.start();
+            logger.addAppender(appender);
+            final ShardWorld.Started started;
+            try {
+                started = world.start(shutdown, (_, _) -> {
+                }, null, overlayRoot);
+            } finally {
+                logger.detachAppender(appender);
+            }
+            final InstanceContainer instance = started.instance();
+
+            final SynxManifest.Bounds r0 = new SynxManifest.Bounds(0, 0, 14, 0);
+            assertEquals(ShardWorld.worldBorder(r0), instance.getWorldBorder());
+            assertEquals(120, instance.getWorldBorder().centerX());
+            assertEquals(240, instance.getWorldBorder().diameter());
+            assertEquals(new Pos(7 * 16 + 8.5, MapFixture.FLOOR, 8.5), started.spawn());
+            assertTrue(appender.list.stream().anyMatch(event -> event.getLevel() == Level.WARN
+                    && event.getFormattedMessage().contains("are not square")), appender.list.toString());
+
+            process.dispatcher().start();
+            assertFalse(instance.loadChunk(14, 0).join().isReadOnly(), "the last chunk of r0 takes changes");
+            assertTrue(instance.loadChunk(15, 0).join().isReadOnly(), "the first chunk of r1 is read only here");
+            assertTrue(instance.loadChunk(31, 0).join().isReadOnly());
+
+            final Map<String, Object> attributes = world.startedAttributes();
+            assertEquals(1, ((Number) attributes.get("regions")).intValue(), attributes.toString());
+            assertEquals(Files.size(wide.buildDir().resolve("regions").resolve(SynxFormat.regionFileName(0, 0))),
+                    ((Number) attributes.get("bytes_mapped")).longValue());
+            assertEquals("r0", attributes.get("region_id"));
+            assertEquals(200, attributes.get("capacity"));
+        } finally {
+            appender.stop();
             process.stop();
         }
     }

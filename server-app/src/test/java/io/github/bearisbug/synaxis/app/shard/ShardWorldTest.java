@@ -25,6 +25,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -160,6 +161,79 @@ public class ShardWorldTest {
         assertTrue(refused(12, copy).getMessage().startsWith("synx-manifest: manifest.json: missing"));
     }
 
+    /**
+     * A shard directory of the fixture map built with {@code new}: r0 the west half, r1 the east half,
+     * each with the gates given.
+     */
+    private static ShardDirectory halves(String mapId, List<ShardDirectory.Gate> gatesOfR0) {
+        return new ShardDirectory(mapId, List.of(
+                new ShardDirectory.Region("r0", new SynxManifest.Bounds(0, 0, 7, 15), gatesOfR0),
+                new ShardDirectory.Region("r1", new SynxManifest.Bounds(8, 0, 15, 15), List.of())),
+                List.of(new ShardDirectory.Channel("r0-c1", "r0", 1, "127.0.0.1", 25601, 200),
+                        new ShardDirectory.Channel("r1-c1", "r1", 1, "127.0.0.1", 25602, 200)), "r0-c1");
+    }
+
+    private static IllegalArgumentException refused(ShardDirectory directory) {
+        final Env env = Env.create(config -> config.chunkViewDistance(12));
+        try {
+            return assertThrows(IllegalArgumentException.class,
+                    () -> ShardWorld.prepare(env.process(), release, SYNX, OVERLAY, directory));
+        } finally {
+            env.process().stop();
+        }
+    }
+
+    @Test
+    public void aShardDirectoryThatFitsTheReleasePasses() {
+        final Env env = Env.create(config -> config.chunkViewDistance(12));
+        try {
+            assertNotNull(ShardWorld.prepare(env.process(), release, SYNX, OVERLAY, halves(MapFixture.MAP_ID, List.of())));
+        } finally {
+            env.process().stop();
+        }
+    }
+
+    /** The directory does not know its file: the refusal of the check against the release names it. */
+    @Test
+    public void aShardDirectoryOfAnotherMapIsRefusedNamingItsFile() {
+        final IllegalArgumentException refused = refused(halves("synth", List.of()));
+        final Path file = Objects.requireNonNull(release.mapRoot()).resolve(ShardDirectory.FILE_NAME).toAbsolutePath();
+        assertTrue(refused.getMessage().startsWith("the shard directory " + file + " is not valid: map_id synth is not "
+                + MapFixture.MAP_ID + ", "), refused.getMessage());
+    }
+
+    /**
+     * §19 「分片目录写错时拒启」, the last sentence: the spawn column of r0 is x 56, z 120, the center
+     * of its center chunk 3, 7; a gate whose x and z take it in refuses in step (3), one next to it not.
+     */
+    @Test
+    public void theSpawnColumnInsideAGateOfTheRegionIsRefused() {
+        final ShardDirectory.Gate onIt = new ShardDirectory.Gate("r0-east", new ShardDirectory.Frame(50, 60, 110, 56, 63, 130),
+                "r1", new Pos(30.5, 41, 30.5));
+        assertEquals("the spawn column 56, 120 of r0 is inside the gate r0-east: a player would be sent away on joining",
+                refused(halves(MapFixture.MAP_ID, List.of(onIt))).getMessage());
+
+        final ShardDirectory.Gate nextToIt = new ShardDirectory.Gate("r0-east", new ShardDirectory.Frame(57, 0, 110, 60, 63, 130),
+                "r1", new Pos(30.5, 41, 30.5));
+        final Env env = Env.create(config -> config.chunkViewDistance(12));
+        try {
+            assertNotNull(ShardWorld.prepare(env.process(), release, SYNX, OVERLAY, halves(MapFixture.MAP_ID, List.of(nextToIt))));
+        } finally {
+            env.process().stop();
+        }
+    }
+
+    /** §19: the example of API-M3-010 with r0-east over x 1,012 to 1,020, z 1,012 to 1,020, on the 4k map. */
+    @Test
+    public void theGateOverTheSpawnColumnOfTheDesignIsFound() {
+        final ShardDirectory directory = ShardDirectory.load(ShardDirectoryTest.resource("spawn-in-gate.json"), "r0-c1");
+        final IllegalArgumentException refused = assertThrows(IllegalArgumentException.class,
+                () -> ShardWorld.checkSpawnColumn(directory));
+        assertEquals("the spawn column 1016, 1016 of r0 is inside the gate r0-east: a player would be sent away on joining",
+                refused.getMessage());
+        ShardWorld.checkSpawnColumn(ShardDirectory.load(ShardDirectoryTest.resource(ShardDirectory.FILE_NAME), "r0-c1"));
+    }
+
     @Test
     public void theViewBoundsReachSeventeenChunksPastTheBounds() {
         assertEquals(new SynxManifest.Bounds(-17, -17, 32, 32), ShardWorld.viewBounds(MapFixture.BOUNDS));
@@ -182,7 +256,15 @@ public class ShardWorldTest {
     @Test
     public void thePlayersSpawnOnTheSurfaceOfTheCenterColumn() throws Exception {
         final SynxManifest manifest = SynxManifest.fromJson(Files.readString(release.buildDir().resolve(SynxManifest.FILE_NAME)));
-        assertEquals(new Pos(7 * 16 + 8.5, MapFixture.FLOOR, 7 * 16 + 8.5), ShardWorld.spawn(release.buildDir(), manifest));
+        assertEquals(new Pos(7 * 16 + 8.5, MapFixture.FLOOR, 7 * 16 + 8.5), ShardWorld.spawn(release.buildDir(), manifest, manifest.bounds()));
+    }
+
+    /** In the directory mode the spawn point is the center column of the region, not of the release. */
+    @Test
+    public void theSpawnPointIsTheCenterColumnOfTheRegion() throws Exception {
+        final SynxManifest manifest = SynxManifest.fromJson(Files.readString(release.buildDir().resolve(SynxManifest.FILE_NAME)));
+        assertEquals(new Pos(3 * 16 + 8.5, MapFixture.FLOOR, 7 * 16 + 8.5),
+                ShardWorld.spawn(release.buildDir(), manifest, new SynxManifest.Bounds(0, 0, 7, 15)));
     }
 
     /** §20: the counters are the difference of two readings, the rest as read. */

@@ -26,6 +26,7 @@ import io.github.bearisbug.synaxis.event.player.PlayerBlockBreakEvent;
 import io.github.bearisbug.synaxis.event.player.PlayerBlockPlaceEvent;
 import io.github.bearisbug.synaxis.instance.InstanceContainer;
 import io.github.bearisbug.synaxis.instance.block.Block;
+import io.github.bearisbug.synaxis.instance.block.BlockHandler;
 import io.github.bearisbug.synaxis.item.ItemStack;
 import io.github.bearisbug.synaxis.item.Material;
 import io.github.bearisbug.synaxis.listener.BlockPlacementListener;
@@ -35,6 +36,8 @@ import io.github.bearisbug.synaxis.synx.OverlayOptions;
 import io.github.bearisbug.synaxis.synx.SynxChunk;
 import io.github.bearisbug.synaxis.synx.SynxOptions;
 import io.github.bearisbug.synaxis.testing.Env;
+import net.kyori.adventure.key.Key;
+import net.kyori.adventure.nbt.CompoundBinaryTag;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -85,6 +88,9 @@ public class WorldFlagsReplayTest {
     private static final String REGION = "r0";
     private static final String BRIDGE = "quest:bridge";
     private static final String GATE = "quest:gate";
+    private static final String CHEST = "quest:chest";
+    /** The row of chests: z 3, on the floor. */
+    private static final int CHEST_Z = 3;
     /** The bridge: 20 cells in the air at y 45, z 4, x 0 to 19, across chunks 0,0 and 1,0. */
     private static final int BRIDGE_Y = 45;
     private static final int BRIDGE_Z = 4;
@@ -172,6 +178,30 @@ public class WorldFlagsReplayTest {
         return List.of(new FlagCell(GATE_X, FLOOR, GATE_Z, block), new FlagCell(GATE_X, FLOOR + 1, GATE_Z, block));
     }
 
+    /**
+     * Three chests on the floor of chunk 0,0, each unlike what an overlay record gives back in one way
+     * only: no NBT, the record keys in its NBT, and a handler of its own where the registration makes
+     * a new one on every call.
+     */
+    static List<FlagCell> chests(JsonElement ignored) {
+        final CompoundBinaryTag withRecordKeys = CompoundBinaryTag.builder().putString("id", "minecraft:chest")
+                .putInt("x", 5).putInt("y", FLOOR).putInt("z", CHEST_Z).putBoolean("keepPacked", false)
+                .putString("synaxis_note", "kept").build();
+        return List.of(new FlagCell(3, FLOOR, CHEST_Z, Block.CHEST),
+                new FlagCell(5, FLOOR, CHEST_Z, Block.CHEST.withNbt(withRecordKeys)),
+                new FlagCell(7, FLOOR, CHEST_Z, Block.CHEST.withNbt(CompoundBinaryTag.empty()).withHandler(new ChestHandler())));
+    }
+
+    /** A handler the process registers with a supplier that makes a new one on every call. */
+    private static final class ChestHandler implements BlockHandler {
+        static final Key KEY = Key.key("synaxis_test", "flag_chest");
+
+        @Override
+        public Key getKey() {
+            return KEY;
+        }
+    }
+
     private static JsonElement json(String value) {
         return new JsonPrimitive(value);
     }
@@ -199,6 +229,7 @@ public class WorldFlagsReplayTest {
     private Mounted mount(ShardSettings settings, SynxOptions synx, WorldFlagsImpl flags) {
         final Env env = Env.create(config -> config.chunkViewDistance(4));
         envs.add(env);
+        env.process().block().registerHandler(ChestHandler.KEY, ChestHandler::new);
         final ShardWorld world = ShardWorld.prepare(env.process(), settings, synx, OVERLAY, null);
         final ShardWorld.Started started = world.start(new ShutdownSequence(env.process(), new NoPlayers()),
                 (_, _) -> {
@@ -303,6 +334,28 @@ public class WorldFlagsReplayTest {
         assertEquals(1, second.world().startedAttributes().get("flags_replayed"));
     }
 
+    /** §19 「世界状态标志起服重放」 with block entities, which the overlay record gives back in another form. */
+    @Test
+    public void aRestartOnTheSameReleaseLeavesTheBlockEntitiesOfAFlagAlone() throws Exception {
+        row(CHEST, "placed", 1);
+        final WorldFlagsImpl flags = flags();
+        flags.register(CHEST, WorldFlagsReplayTest::chests);
+        final Mounted first = mount(release, WRITABLE, flags);
+        final SynxChunk placed = (SynxChunk) first.instance().getChunk(0, 0);
+        assertTrue(placed.dirty(), "the replay placed the chests");
+        first.instance().setChunkUnloadGraceTicks(-1);
+        tickUntil(first.env(), () -> !placed.dirty(), Duration.ofSeconds(20), "the chests are written");
+        stop(first);
+
+        final WorldFlagsImpl again = flags();
+        again.register(CHEST, WorldFlagsReplayTest::chests);
+        final Mounted second = mount(release, WRITABLE, again);
+
+        assertFalse(((SynxChunk) second.instance().getChunk(0, 0)).dirty(), "the replay set no chest again");
+        assertEquals(1, again.stats().replayed());
+        for (int x = 3; x <= 7; x += 2) assertEquals(Block.CHEST.id(), second.instance().getBlock(x, FLOOR, CHEST_Z).id());
+    }
+
     /** §19 「没登记应用方式的键在重放时跳过」. */
     @Test
     public void aKeyWithoutAnApplierIsSkippedWithAWarning() throws Exception {
@@ -393,6 +446,57 @@ public class WorldFlagsReplayTest {
         assertEquals(new FlagValue(json("broken"), 4), flags.get(BRIDGE));
     }
 
+    /**
+     * §19 「标志与覆盖层冲突以标志为准」 from the other side: a block entity the overlay record gives back
+     * with an empty NBT, without the record keys or with another handler object of the same namespace
+     * holds its target, not a conflict.
+     */
+    @Test
+    public void aBlockEntityLoadedFromItsOverlayRecordIsNoConflict() throws Exception {
+        row(CHEST, "placed", 1);
+        final WorldFlagsImpl flags = flags();
+        flags.register(CHEST, WorldFlagsReplayTest::chests);
+        final Mounted mounted = mount(release, WRITABLE, flags);
+        final InstanceContainer instance = mounted.instance();
+        instance.setChunkUnloadGraceTicks(-1);
+        flags.start(instance);
+        final SynxChunk placed = (SynxChunk) instance.getChunk(0, 0);
+        tickUntil(mounted.env(), () -> !placed.dirty(), Duration.ofSeconds(20), "the chests are written");
+        instance.unloadChunk(placed);
+        instance.loadChunk(0, 0).join();
+        assertNotEquals(Block.CHEST, instance.getBlock(3, FLOOR, CHEST_Z),
+                "precondition: loaded from its overlay record, the chest has the empty NBT the record gives it");
+        final long before = flags.stats().conflicts();
+
+        flags.syncNow();
+        mounted.env().tick();
+        mounted.env().tick();
+
+        assertEquals(0, flags.stats().conflicts() - before, warnings().toString());
+        assertFalse(((SynxChunk) instance.getChunk(0, 0)).dirty(), "no chest set again");
+        assertTrue(warnings().stream().noneMatch(line -> line.contains(CHEST)), warnings().toString());
+    }
+
+    /** The warning of a conflict tells what the cell held from what it is set to, down to the properties. */
+    @Test
+    public void aConflictWarningShowsTheStateFoundAndTheStateSet() throws Exception {
+        row(GATE, "closed", 2);
+        final WorldFlagsImpl flags = flags();
+        flags.register(GATE, WorldFlagsReplayTest::gate);
+        final Mounted mounted = mount(release, WRITABLE, flags);
+        final InstanceContainer instance = mounted.instance();
+        instance.setChunkUnloadGraceTicks(-1);
+        flags.start(instance);
+
+        instance.setBlock(GATE_X, FLOOR, GATE_Z, Block.IRON_BARS.withProperty("waterlogged", "true"));
+        flags.syncNow();
+        tickUntil(mounted.env(), () -> instance.getBlock(GATE_X, FLOOR, GATE_Z).equals(Block.IRON_BARS),
+                Duration.ofSeconds(10), "the cell is set back");
+
+        assertTrue(warnings().stream().anyMatch(line -> line.contains(GATE) && line.contains("waterlogged=true")
+                && line.contains("waterlogged=false")), warnings().toString());
+    }
+
     /** §19 「起服读不到标志即拒绝」. */
     @Test
     public void flagsThatCannotBeReadRefuseTheStartBeforeTheOverlayIsOpened() throws IOException {
@@ -416,10 +520,11 @@ public class WorldFlagsReplayTest {
     public void aReadOnlyWorldStillTakesItsFlags() throws Exception {
         row(BRIDGE, "repaired", 3);
         final WorldFlagsImpl flags = flags();
-        // One cell of the applier is past the bounds, in chunk -1,0
+        // One cell of the applier is past the bounds, in chunk -1,0, and one above the world height
         flags.register(BRIDGE, value -> {
             final List<FlagCell> cells = new ArrayList<>(bridge(value));
             cells.add(new FlagCell(-5, BRIDGE_Y, BRIDGE_Z, cells.getFirst().block()));
+            cells.add(new FlagCell(1, 4_096, BRIDGE_Z, cells.getFirst().block()));
             return cells;
         });
         final Mounted mounted = mount(release, READ_ONLY, flags);
@@ -439,9 +544,10 @@ public class WorldFlagsReplayTest {
         instance.setBlock(3, BRIDGE_Y, BRIDGE_Z, Block.STONE);
         assertEquals(Block.AIR, instance.getBlock(3, BRIDGE_Y, BRIDGE_Z), "not in a flag application: read only");
         assertTrue(instance.getChunk(0, 0).isReadOnly());
+        assertNull(instance.getChunk(-1, 0), "no application loaded the chunk past the bounds");
         instance.loadChunk(-1, 0).join();
         assertEquals(Block.AIR, instance.getBlock(-5, BRIDGE_Y, BRIDGE_Z), "past the bounds");
-        assertTrue(warnings().stream().anyMatch(line -> line.contains(BRIDGE) && line.contains("outside")),
+        assertTrue(warnings().stream().anyMatch(line -> line.contains(BRIDGE) && line.contains("2 cells outside")),
                 warnings().toString());
     }
 

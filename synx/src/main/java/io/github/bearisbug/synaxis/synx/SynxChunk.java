@@ -75,9 +75,8 @@ public final class SynxChunk extends DynamicChunk implements OverlayChunk {
      */
     record BlockEntity(CompoundBinaryTag nbt, @Nullable BlockHandler handler) {
         static BlockEntity of(SynxBlockEntity entity, BlockManager blocks) {
-            CompoundBinaryTag nbt = entity.nbt();
-            for (String key : RECORD_KEYS) nbt = nbt.remove(key);
-            return new BlockEntity(nbt, entity.handler().isEmpty() ? null : blocks.getHandlerOrDummy(entity.handler()));
+            return new BlockEntity(withoutRecordKeys(entity.nbt()),
+                    entity.handler().isEmpty() ? null : blocks.getHandlerOrDummy(entity.handler()));
         }
 
         Block block(int state) {
@@ -186,6 +185,33 @@ public final class SynxChunk extends DynamicChunk implements OverlayChunk {
      */
     public static void asWorldFlag(Runnable action) {
         ScopedValue.where(WORLD_FLAG, Boolean.TRUE).run(action);
+    }
+
+    /**
+     * Whether a cell that holds {@code block} holds {@code target} as far as an overlay record and
+     * segment ③ keep a block: the same state, handlers of the same namespace or none, and the same NBT
+     * once the record keys are left out, no NBT counting as an empty one. Loaded from a record, a block
+     * entity set without NBT comes back with an empty one, without the record keys, and with the handler
+     * the {@link BlockManager} gives for its namespace ({@link BlockEntity}), which {@code Block#equals}
+     * tells from the block that was set.
+     *
+     * @param block  what the cell holds
+     * @param target what it is to hold
+     * @return true when setting {@code target} would change nothing a record keeps
+     */
+    public static boolean sameBlock(Block block, Block target) {
+        if (block.stateId() != target.stateId()) return false;
+        final BlockHandler handler = block.handler();
+        final BlockHandler targetHandler = target.handler();
+        if (handler == null ? targetHandler != null
+                : targetHandler == null || !handler.getKey().equals(targetHandler.getKey())) return false;
+        return withoutRecordKeys(block.nbtOrEmpty()).equals(withoutRecordKeys(target.nbtOrEmpty()));
+    }
+
+    private static CompoundBinaryTag withoutRecordKeys(CompoundBinaryTag nbt) {
+        CompoundBinaryTag without = nbt;
+        for (String key : RECORD_KEYS) without = without.remove(key);
+        return without;
     }
 
     /**

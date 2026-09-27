@@ -44,7 +44,7 @@ import static org.junit.jupiter.api.Assertions.fail;
  * The world state flags of two channels of one region ({@code docs/DESIGN-M3.md} {@code API-M3-013},
  * §12.6, §19 「跨频道同步与 Redis 不可用时收敛」) on the shared PostgreSQL and Valkey: a write of channel 1
  * reaches channel 2 through the Redis channel of the region, and without it the read every 60 s
- * catches up.
+ * catches up; a closed channel takes neither.
  * <p>
  * Channel 2 mounts the baked fixture and ticks by hand; channel 1 only writes. The region gets a name
  * of its own per run, so that the Redis channel is this test's alone on a Valkey other runs share.
@@ -120,6 +120,22 @@ public class WorldFlagsSyncTest {
         }
     }
 
+    private record Mounted(Env env, InstanceContainer instance) {
+    }
+
+    /** Channel 2: the fixture mounted with its flags replayed and started, ticked by hand. */
+    private Mounted mount(WorldFlagsImpl flags) {
+        final Env env = Env.create(config -> config.chunkViewDistance(4));
+        envs.add(env);
+        final ShardWorld world = ShardWorld.prepare(env.process(), release, new SynxOptions(true, 1 << 24),
+                new OverlayOptions(16_384, 10), null);
+        final InstanceContainer instance = world.start(new ShutdownSequence(env.process(), new NoPlayers()), (_, _) -> {
+        }, flags, overlayRoot).instance();
+        instance.setChunkUnloadGraceTicks(-1);
+        flags.start(instance);
+        return new Mounted(env, instance);
+    }
+
     private long subscribers() {
         final URI uri = URI.create(TestDatabase.redisUrl());
         try (Jedis single = new Jedis(uri.getHost(), uri.getPort())) {
@@ -158,14 +174,9 @@ public class WorldFlagsSyncTest {
             bridgeApplied.incrementAndGet();
             return WorldFlagsReplayTest.bridge(value);
         });
-        final Env env = Env.create(config -> config.chunkViewDistance(4));
-        envs.add(env);
-        final ShardWorld world = ShardWorld.prepare(env.process(), release, new SynxOptions(true, 1 << 24),
-                new OverlayOptions(16_384, 10), null);
-        final InstanceContainer instance = world.start(new ShutdownSequence(env.process(), new NoPlayers()), (_, _) -> {
-        }, second, overlayRoot).instance();
-        instance.setChunkUnloadGraceTicks(-1);
-        second.start(instance);
+        final Mounted mounted = mount(second);
+        final Env env = mounted.env();
+        final InstanceContainer instance = mounted.instance();
         assertEquals(Block.IRON_BARS, instance.getBlock(WorldFlagsReplayTest.GATE_X, MapFixture.FLOOR,
                 WorldFlagsReplayTest.GATE_Z));
         assertEquals(1, bridgeApplied.get(), "replayed");
@@ -196,5 +207,42 @@ public class WorldFlagsSyncTest {
         assertEquals(1, bridgeApplied.get(), "a key whose version did not change is not applied again");
         assertEquals(new FlagValue(json("repaired"), 1), second.get(BRIDGE));
         assertEquals(0, second.stats().conflicts());
+    }
+
+    /**
+     * Closed, as the stop does before the player store closes its pool and its Redis link
+     * ({@code API-M3-006} step (5)), a channel applies nothing more: neither what its Redis channel
+     * still brings nor what a read finds; nor does it check the governed cells.
+     */
+    @Test
+    void aClosedChannelDropsTheMessagesAndTheReads() throws Exception {
+        database.execute("INSERT INTO world_flag (map_id, region_id, flag_key, value, version) VALUES "
+                + "('" + MapFixture.MAP_ID + "', '" + region + "', '" + GATE + "', '\"closed\"', 1)");
+        final WorldFlagsImpl second = channel(track(RedisLink.connect(TestDatabase.redisUrl(), region + "-c2")));
+        second.register(GATE, WorldFlagsReplayTest::gate);
+        final Mounted mounted = mount(second);
+        final InstanceContainer instance = mounted.instance();
+        awaitSubscribers(1);
+        final FlagValue replayed = new FlagValue(json("closed"), 1);
+        assertEquals(replayed, second.get(GATE));
+
+        second.close();
+        final WorldFlagsImpl first = channel(track(RedisLink.connect(TestDatabase.redisUrl(), region + "-c1")));
+        first.register(GATE, WorldFlagsReplayTest::gate);
+        assertEquals(new FlagWrite.Written(2), first.set(GATE, json("open"), 1).join());
+        assertEquals(1, subscribers(), "still subscribed: the message reaches channel 2");
+        assertFalse(tickUntil(mounted.env(), () -> !replayed.equals(second.get(GATE)), Duration.ofSeconds(1)),
+                "the message is dropped");
+
+        instance.setBlock(WorldFlagsReplayTest.GATE_X, MapFixture.FLOOR, WorldFlagsReplayTest.GATE_Z, Block.STONE);
+        second.syncNow();
+        assertFalse(tickUntil(mounted.env(), () -> !replayed.equals(second.get(GATE)), Duration.ofSeconds(1)),
+                "the read applies nothing");
+        assertEquals(Block.STONE, instance.getBlock(WorldFlagsReplayTest.GATE_X, MapFixture.FLOOR,
+                WorldFlagsReplayTest.GATE_Z), "no governed cell is checked");
+        assertEquals(Block.IRON_BARS, instance.getBlock(WorldFlagsReplayTest.GATE_X, MapFixture.FLOOR + 1,
+                WorldFlagsReplayTest.GATE_Z));
+        assertEquals(0, second.stats().conflicts());
+        assertEquals(0, instance.chunkTicketCount(0, 0), "no application holds the chunk of the doorway");
     }
 }

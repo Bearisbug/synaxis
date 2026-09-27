@@ -36,6 +36,7 @@ import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -356,6 +357,44 @@ public class SynxChunkOverlayIntegrationTest {
         assertEquals(4, chunk.generation());
         assertEquals(Block.EMERALD_BLOCK, instance.getBlock(x, y, z));
         assertEquals(List.of(0L, 1L, 3L), overlay.events("materialized").stream().map(MemoryOverlay.Event::generation).toList());
+    }
+
+    /**
+     * {@link SynxChunk#sameBlock}, which a world state flag compares with (API-M3-013): a block entity
+     * read back from its overlay record is the block that was set, whatever NBT form, record keys or
+     * handler object it comes back with; the state, the other NBT keys and the handler namespace still
+     * tell two blocks apart.
+     */
+    @Test
+    public void aBlockEntityReadBackFromItsRecordIsTheSameBlock(Env env) {
+        final SynxTestMap map = SynxTestMap.get();
+        final MemoryOverlay overlay = new MemoryOverlay();
+        final Instance instance = SynxWorlds.instance(env.process(), SynxWorlds.loader(SynxWorlds.WRITABLE, overlay));
+        final Key handlerKey = Key.key("synaxis_test", "same_block");
+        // A new handler on every call, as a registration may make them
+        env.process().block().registerHandler(handlerKey, () -> (BlockHandler) () -> handlerKey);
+        final int cx = 3, cz = 4, x = cx * 16 + 2, y = SynxTestMap.FEATURE_Y, z = cz * 16 + 2;
+        final SynxChunk chunk = (SynxChunk) instance.loadChunk(cx, cz).join();
+        final List<Block> set = List.of(Block.CHEST,
+                Block.CHEST.withNbt(CompoundBinaryTag.builder().putString("id", "minecraft:chest").putInt("x", x + 1)
+                        .putBoolean("keepPacked", false).putString("note", "kept").build()),
+                Block.CHEST.withHandler(() -> handlerKey));
+        for (int i = 0; i < set.size(); i++) instance.setBlock(x + i, y, z, set.get(i));
+        final OverlayEncoding encoding = encode(chunk, map);
+        chunk.written(encoding.generation(), overlay.store(encoding), true);
+        assertEquals(SynxChunk.Mode.HANDLE, chunk.mode());
+
+        for (int i = 0; i < set.size(); i++) {
+            final Block back = instance.getBlock(x + i, y, z);
+            assertNotEquals(set.get(i), back, "precondition: the record gives the block back in another form");
+            assertTrue(SynxChunk.sameBlock(back, set.get(i)), back.toString());
+        }
+        final Block back = instance.getBlock(x + 1, y, z);
+        assertFalse(SynxChunk.sameBlock(back, Block.CHEST.withNbt(CompoundBinaryTag.builder().putString("note", "changed").build())));
+        assertFalse(SynxChunk.sameBlock(back, Block.CHEST.withProperty("facing", "south").withNbt(back.nbt())));
+        final Block handled = instance.getBlock(x + 2, y, z);
+        assertFalse(SynxChunk.sameBlock(handled, Block.CHEST), "a handler against none");
+        assertFalse(SynxChunk.sameBlock(handled, Block.CHEST.withHandler(BlockHandler.Dummy.get("synaxis_test:other"))));
     }
 
     /** API-M3-005 卸载前检查 and the unload notification. */

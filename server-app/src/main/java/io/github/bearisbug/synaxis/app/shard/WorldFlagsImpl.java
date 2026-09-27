@@ -11,11 +11,13 @@ import io.github.bearisbug.synaxis.event.player.PlayerBlockPlaceEvent;
 import io.github.bearisbug.synaxis.instance.Chunk;
 import io.github.bearisbug.synaxis.instance.InstanceContainer;
 import io.github.bearisbug.synaxis.instance.block.Block;
+import io.github.bearisbug.synaxis.instance.block.BlockHandler;
 import io.github.bearisbug.synaxis.plugin.LogBudget;
 import io.github.bearisbug.synaxis.synx.SynxChunk;
 import io.github.bearisbug.synaxis.synx.SynxManifest;
 import io.github.bearisbug.synaxis.timer.Task;
 import io.github.bearisbug.synaxis.world.DimensionType;
+import net.kyori.adventure.nbt.CompoundBinaryTag;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -410,8 +412,9 @@ public final class WorldFlagsImpl implements WorldFlags, AutoCloseable {
     }
 
     /**
-     * Sets the governed cells of loaded chunks that hold something else back to their target, at most
-     * {@value #CHECKED_PER_TICK} a tick, each a conflict. On the tick scheduling thread.
+     * Sets the governed cells of loaded chunks that hold something else ({@link SynxChunk#sameBlock}) back
+     * to their target, at most {@value #CHECKED_PER_TICK} a tick, each a conflict. On the tick scheduling
+     * thread.
      */
     private void check(InstanceContainer instance, List<Cell> cells, int from) {
         if (closed.get()) return;
@@ -424,7 +427,7 @@ public final class WorldFlagsImpl implements WorldFlags, AutoCloseable {
                 final Chunk chunk = instance.getChunk(cell.chunkX(), cell.chunkZ());
                 if (chunk == null || chunk.isReadOnly()) continue;
                 final Block now = instance.getBlock(cell.x(), cell.y(), cell.z());
-                if (now.equals(target.block())) continue;
+                if (SynxChunk.sameBlock(now, target.block())) continue;
                 conflict(target.key(), cell, now, target.block());
                 instance.setBlock(cell.x(), cell.y(), cell.z(), target.block());
             }
@@ -494,8 +497,8 @@ public final class WorldFlagsImpl implements WorldFlags, AutoCloseable {
     }
 
     /**
-     * The cells whose block differs from their target, set to it. A cell that holds neither the new
-     * target nor the one applied last was changed another way: a conflict.
+     * The cells whose block differs from their target ({@link SynxChunk#sameBlock}), set to it. A cell
+     * that holds neither the new target nor the one applied last was changed another way: a conflict.
      */
     private void setBlocks(InstanceContainer instance, Application application) {
         final Map<Cell, Block> previous = governedByKey.get(application.key);
@@ -507,9 +510,9 @@ public final class WorldFlagsImpl implements WorldFlags, AutoCloseable {
                 // A failed chunk: nothing changes it
                 if (chunk == null || chunk.isReadOnly()) continue;
                 final Block now = instance.getBlock(cell.x(), cell.y(), cell.z());
-                if (now.equals(target)) continue;
+                if (SynxChunk.sameBlock(now, target)) continue;
                 final Block last = previous == null ? null : previous.get(cell);
-                if (last != null && !now.equals(last)) conflict(application.key, cell, now, target);
+                if (last != null && !SynxChunk.sameBlock(now, last)) conflict(application.key, cell, now, target);
                 instance.setBlock(cell.x(), cell.y(), cell.z(), target);
             }
         });
@@ -556,8 +559,18 @@ public final class WorldFlagsImpl implements WorldFlags, AutoCloseable {
 
     private void conflict(String key, Cell cell, Block found, Block target) {
         conflicts.incrementAndGet();
-        conflictLog.warn("World flag {}: the cell {} held {}, changed another way, set to {}", key, cell, found.name(),
-                target.name());
+        conflictLog.warn("World flag {}: the cell {} held {}, changed another way, set to {}", key, cell, describe(found),
+                describe(target));
+    }
+
+    /** The state with its properties, then the NBT and the handler namespace of a block that has them. */
+    private static String describe(Block block) {
+        final StringBuilder text = new StringBuilder(block.state());
+        final CompoundBinaryTag nbt = block.nbt();
+        if (nbt != null) text.append(' ').append(nbt);
+        final BlockHandler handler = block.handler();
+        if (handler != null) text.append(" handler ").append(handler.getKey().asString());
+        return text.toString();
     }
 
     private long appliedVersion(String key) {

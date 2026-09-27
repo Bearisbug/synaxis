@@ -20,10 +20,10 @@ import java.util.concurrent.CompletableFuture;
  * The process binds a loopback port and ticks, and a SIGTERM stops it through the engine's shutdown
  * hook, as it stops a shard.
  * <p>
- * Once ticking it changes one block in each of {@code count} chunks of the map, one chunk every
- * {@code period} ms, and prints {@code changed <x> <z> <epoch ms>} after each change and {@link #DONE}
- * after the last. Each chunk is held by a ticket first, as a player near it would hold it, so that no
- * automatic unload writes it before its flush interval is up.
+ * Once ticking it loads {@code count} chunks of the map, then changes one block in each, one chunk
+ * every {@code period} ms, and prints {@code changed <x> <z> <epoch ms>} after each change and
+ * {@link #DONE} after the last. Each chunk is held by a ticket first, as a player near it would hold
+ * it, so that no automatic unload writes it before its flush interval is up.
  */
 final class OverlayShardFixture {
 
@@ -70,9 +70,12 @@ final class OverlayShardFixture {
 
         final Object owner = new Object();
         for (int i = 0; i < count; i++) {
+            instance.addChunkTicket(i % 16, i / 16, owner);
+            instance.loadChunk(i % 16, i / 16).join();
+        }
+        // Every chunk loaded before the first change: the changes follow each other at the period however long a load takes
+        for (int i = 0; i < count; i++) {
             final int chunkX = i % 16, chunkZ = i / 16;
-            instance.addChunkTicket(chunkX, chunkZ, owner);
-            instance.loadChunk(chunkX, chunkZ).join();
             instance.setBlock(chunkX * 16 + 1, CHANGE_Y, chunkZ * 16 + 1, Block.GOLD_BLOCK);
             System.out.println(CHANGED + chunkX + " " + chunkZ + " " + System.currentTimeMillis());
             if (periodMillis > 0) Thread.sleep(periodMillis);

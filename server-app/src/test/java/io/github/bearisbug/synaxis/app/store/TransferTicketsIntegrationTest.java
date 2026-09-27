@@ -30,9 +30,12 @@ import java.sql.Statement;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Base64;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -71,6 +74,7 @@ class TransferTicketsIntegrationTest {
     private final List<StoreFixture.Shard> shards = new ArrayList<>();
     private final AtomicLong sourceClock = new AtomicLong(System.currentTimeMillis());
     private final AtomicLong targetClock = new AtomicLong(System.currentTimeMillis());
+    private final List<Claimed> claimed = new CopyOnWriteArrayList<>();
 
     @BeforeEach
     void create() throws SQLException {
@@ -113,7 +117,22 @@ class TransferTicketsIntegrationTest {
     private TicketVerifier verifier(StoreFixture.Shard target) {
         return new TicketVerifier(pool.pool(), target::sessionId, TARGET, KEYS,
                 new TransferCooldowns(5_000, targetClock::get), (event, attributes) -> target.ledger().add(event + " " + attributes),
-                (_, _) -> {});
+                (player, ticket) -> claimed.add(new Claimed(player, ticket)));
+    }
+
+    /** What the verifier told its {@code onClaimed} ({@code docs/DESIGN-M3.md} {@code API-M3-010}). */
+    private record Claimed(Player player, TransferTicket ticket) {
+    }
+
+    /** The {@code EVT:transfer_issued} line of a ticket, as the issuer's ledger records it. */
+    private static String issued(TransferTicket ticket) {
+        final Map<String, Object> attributes = new LinkedHashMap<>();
+        attributes.put("transfer_ref", ticket.reference());
+        attributes.put("player_uuid", ticket.playerUuid());
+        attributes.put("source_shard", ticket.sourceShard());
+        attributes.put("target_shard", ticket.targetShard());
+        attributes.put("issued_at", ticket.issuedAt());
+        return "transfer_issued " + attributes;
     }
 
     /** What the admission gate does with a transfer: the ticket read first, then claimed in the load. */
@@ -199,7 +218,8 @@ class TransferTicketsIntegrationTest {
     void badTicketsAreRefusedInCheckOrderAndAGoodOneOnlyOnce(Env env) throws SQLException {
         final StoreFixture.Shard source = shard(env, SOURCE);
         final StoreFixture.Shard target = shard(env, TARGET);
-        final TicketIssuer issuer = new TicketIssuer(source.store(), KEYS, new TransferCooldowns(5_000, sourceClock::get), SOURCE, (_, _) -> {});
+        final TicketIssuer issuer = new TicketIssuer(source.store(), KEYS, new TransferCooldowns(5_000, sourceClock::get), SOURCE,
+                (event, attributes) -> source.ledger().add(event + " " + attributes));
         final TicketVerifier verifier = verifier(target);
         final UUID account = UUID.randomUUID();
         final Player player = online(env, source, env.createFlatInstance(), account, "Traveller");
@@ -211,6 +231,8 @@ class TransferTicketsIntegrationTest {
         assertEquals(account, ticket.playerUuid());
         assertEquals(row(database, account).version(), ticket.stateVersion(), "the version the release wrote");
         assertNull(row(database, account).lease(), "released before the ticket was sent");
+        assertEquals(List.of(issued(ticket)), source.events("transfer_issued"),
+                "one event for the ticket sent, with the issued_at of the cookie");
 
         final byte[] tampered = good.clone();
         tampered[20] ^= 0x01;
@@ -227,12 +249,14 @@ class TransferTicketsIntegrationTest {
             assertEquals(List.of("synaxis:transfer-rejected"), kicks(refused));
         }
         assertEquals(List.of("bad-signature", "expired", "wrong-target", "uuid-mismatch"), reasons(target));
+        assertEquals(List.of(), claimed, "a refused ticket is no arrival");
 
         final Player arrived = arriving(env, account, good);
         assertTrue(arrive(target, verifier, arrived), "the good ticket passes and the character loads like any login");
         assertEquals(target.sessionId(), row(database, account).lease(), "the target holds the character now");
         assertEquals(11, target.store().get(arrived, PURSE).coins);
         assertEquals(ticket.stateVersion(), target.store().versionOf(arrived));
+        assertEquals(List.of(new Claimed(arrived, ticket)), claimed, "the accepted ticket is told once, with its player");
 
         // The first arrival goes away before the same ticket comes again
         target.store().abandon(arrived);
@@ -241,6 +265,7 @@ class TransferTicketsIntegrationTest {
         assertEquals("nonce-reused", reasons(target).getLast());
         assertEquals(List.of("synaxis:transfer-rejected"), kicks(replayed));
         assertEquals(1, count(database, "SELECT count(*) FROM transfer_nonce"), "only the good ticket used its nonce");
+        assertEquals(1, claimed.size(), "the replayed ticket is no arrival");
     }
 
     @Test
@@ -267,6 +292,7 @@ class TransferTicketsIntegrationTest {
         assertEquals(List.of("synaxis:transfer-rejected"), kicks(arrived));
         assertEquals(1, log.list.stream().filter(event -> event.getLevel() == Level.ERROR).count(), "one consistency ERROR");
         assertNull(row(database, account).lease(), "the lease taken for the check goes back");
+        assertEquals(List.of(), claimed, "a refused ticket is no arrival");
     }
 
     @Test
@@ -279,7 +305,8 @@ class TransferTicketsIntegrationTest {
         final TransferCooldowns targetCooldowns = new TransferCooldowns(5_000, targetClock::get);
         final TicketVerifier verifier = new TicketVerifier(pool.pool(), target::sessionId, TARGET, KEYS, targetCooldowns,
                 (event, attributes) -> target.ledger().add(event + " " + attributes), (_, _) -> {});
-        final TicketIssuer outOfTarget = new TicketIssuer(target.store(), KEYS, targetCooldowns, TARGET, (_, _) -> {});
+        final TicketIssuer outOfTarget = new TicketIssuer(target.store(), KEYS, targetCooldowns, TARGET,
+                (event, attributes) -> target.ledger().add(event + " " + attributes));
         final UUID account = UUID.randomUUID();
         final Player player = online(env, source, env.createFlatInstance(), account, "Bouncer");
         final byte[] ticket = transferOut(env, outOfSource, player);
@@ -302,17 +329,20 @@ class TransferTicketsIntegrationTest {
         assertEquals(TransferOutcome.COOLDOWN, outOfTarget.transfer(arrived, SOURCE, "127.0.0.1", 25631).join());
         assertEquals(versionBefore, row(database, account).version(), "a refused transfer writes nothing");
         assertEquals(target.sessionId(), row(database, account).lease());
+        assertEquals(List.of(), target.events("transfer_issued"), "and issues nothing");
 
         targetClock.set(t + 6_000);
         final CompletableFuture<TransferOutcome> later = outOfTarget.transfer(arrived, SOURCE, "127.0.0.1", 25631);
         await(env, later::isDone, "the second transfer completes");
         assertEquals(TransferOutcome.SENT, later.join());
+        assertEquals(1, target.events("transfer_issued").size());
     }
 
     @Test
     void aTransferThatCannotWriteLeavesThePlayerWhereItIs(Env env) throws Exception {
         final StoreFixture.Shard source = shard(env, SOURCE);
-        final TicketIssuer issuer = new TicketIssuer(source.store(), KEYS, new TransferCooldowns(5_000, sourceClock::get), SOURCE, (_, _) -> {});
+        final TicketIssuer issuer = new TicketIssuer(source.store(), KEYS, new TransferCooldowns(5_000, sourceClock::get), SOURCE,
+                (event, attributes) -> source.ledger().add(event + " " + attributes));
         final UUID account = UUID.randomUUID();
         final Player player = online(env, source, env.createFlatInstance(), account, "Stuck");
         final Player stranger = connect(env.process(), UUID.randomUUID(), "Stranger");
@@ -335,6 +365,7 @@ class TransferTicketsIntegrationTest {
         assertEquals(List.of("synaxis:transfer-failed"), StoreFixture.messages(player));
         assertEquals(-1, indexOf(((StoreFixture.RecordingConnection) player.getPlayerConnection()).sent, CookieStorePacket.class),
                 "no ticket for a transfer that did not happen");
+        assertEquals(List.of(), source.events("transfer_issued"), "nor an event for one");
     }
 
     @Test
@@ -413,6 +444,7 @@ class TransferTicketsIntegrationTest {
         assertFalse(arrivedLoaded.get(5, TimeUnit.SECONDS), "the stale ticket does not get in");
         assertEquals(target.sessionId(), row(database, account).lease(), "the login that plays keeps its lease");
         assertEquals(List.of("synaxis:state-unavailable"), kicks(arrived), "turned away as the account is playing here");
+        assertEquals(List.of(), claimed, "a refused ticket is no arrival");
         final CompletableFuture<PlayerStore.SaveCount> saved = target.store().saveOnline();
         await(env, saved::isDone, "the save of the login that plays");
         assertEquals(new PlayerStore.SaveCount(1, 1), saved.join(), "and its next save is not fenced");

@@ -2,9 +2,14 @@ package io.github.bearisbug.synaxis.app.shard;
 
 import io.github.bearisbug.synaxis.app.transfer.TransferTicket;
 import io.github.bearisbug.synaxis.entity.Player;
+import io.github.bearisbug.synaxis.event.player.PlayerChunkLoadEvent;
+import io.github.bearisbug.synaxis.event.player.PlayerDisconnectEvent;
 import io.github.bearisbug.synaxis.instance.Instance;
 
+import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BiConsumer;
 import java.util.function.LongSupplier;
 
@@ -13,11 +18,25 @@ import java.util.function.LongSupplier;
  * a player whose ticket was claimed spawns at the arrival of the gate leading back to where it came
  * from, and {@code EVT:transfer_completed} is written once its first 9 chunks are sent.
  * <p>
- * The M3-E step 0 contract: the signatures {@code Main} is assembled against. The transfer track
- * replaces the bodies.
+ * Without a gate back to the source region the player keeps the spawn of the region. An arrival
+ * whose player leaves before its 9th chunk writes nothing, and one still short of it 60 s after its
+ * claim is dropped at the next claim: both count as transfers that did not complete.
  */
-@SuppressWarnings("DoNotCallSuggester") // the bodies of the skeleton, replaced by the transfer track
 public final class ShardArrivals {
+
+    /** The chunks of the first batch, the 9 a vanilla client waits for. */
+    private static final int FIRST_BATCH = 9;
+    /** How long an arrival waits for its first batch before it is dropped. */
+    private static final long FORGET_AFTER_MILLIS = 60_000;
+
+    /** An arrival waiting for its first batch; its chunks are counted on the player's tick thread. */
+    private record Arrival(String transferRef, long issuedAt, String sourceShard, long claimedAt, AtomicInteger chunks) {
+    }
+
+    private final ShardDirectory directory;
+    private final BiConsumer<String, Map<String, ?>> events;
+    private final LongSupplier clock;
+    private final Map<Player, Arrival> arrivals = new ConcurrentHashMap<>();
 
     /**
      * @param directory the shard directory of this shard
@@ -25,7 +44,9 @@ public final class ShardArrivals {
      * @param clock     the wall clock in milliseconds, what a ticket's {@code issued_at} is on
      */
     public ShardArrivals(ShardDirectory directory, BiConsumer<String, Map<String, ?>> events, LongSupplier clock) {
-        throw new UnsupportedOperationException("ShardArrivals is the M3-E step 0 skeleton");
+        this.directory = directory;
+        this.events = events;
+        this.clock = clock;
     }
 
     /**
@@ -36,7 +57,14 @@ public final class ShardArrivals {
      * @param ticket its ticket
      */
     public void claimed(Player player, TransferTicket ticket) {
-        throw new UnsupportedOperationException("ShardArrivals is the M3-E step 0 skeleton");
+        final String sourceRegion = ShardDirectory.regionOfShard(ticket.sourceShard());
+        final ShardDirectory.Gate back = sourceRegion == null ? null : directory.gateTo(sourceRegion);
+        // The spawn serveMap set on the root node came first, this one wins
+        if (back != null) player.setRespawnPoint(back.arrival());
+        final long now = clock.getAsLong();
+        arrivals.values().removeIf(arrival -> now - arrival.claimedAt() >= FORGET_AFTER_MILLIS);
+        arrivals.put(player, new Arrival(ticket.reference(), ticket.issuedAt(), ticket.sourceShard(), now,
+                new AtomicInteger()));
     }
 
     /**
@@ -45,6 +73,18 @@ public final class ShardArrivals {
      * @param instance the map instance
      */
     public void attach(Instance instance) {
-        throw new UnsupportedOperationException("ShardArrivals is the M3-E step 0 skeleton");
+        instance.eventNode().addListener(PlayerChunkLoadEvent.class, event -> chunkSent(event.getPlayer()))
+                .addListener(PlayerDisconnectEvent.class, event -> arrivals.remove(event.getPlayer()));
+    }
+
+    private void chunkSent(Player player) {
+        final Arrival arrival = arrivals.get(player);
+        if (arrival == null || arrival.chunks().incrementAndGet() != FIRST_BATCH || !arrivals.remove(player, arrival)) return;
+        final Map<String, Object> attributes = new LinkedHashMap<>();
+        attributes.put("transfer_ref", arrival.transferRef());
+        attributes.put("first_batch_ms", clock.getAsLong() - arrival.issuedAt());
+        attributes.put("source_shard", arrival.sourceShard());
+        attributes.put("target_shard", directory.shardId());
+        events.accept("transfer_completed", attributes);
     }
 }

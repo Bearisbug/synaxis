@@ -50,7 +50,8 @@ import java.util.stream.IntStream;
  *     <li>Failed: a record that does not read loads as air with full sky light, read only.</li>
  * </ul>
  * A chunk outside the region ({@code bounds}) or in a world that is not writable is read only as well:
- * changes are ignored silently, as the engine ignores them on any read only chunk.
+ * changes are ignored silently, as the engine ignores them on any read only chunk. A world state flag
+ * still changes a world that is not writable ({@link #asWorldFlag}).
  */
 public final class SynxChunk extends DynamicChunk implements OverlayChunk {
     enum Mode {HANDLE, OVERLAY, FAILED}
@@ -97,6 +98,8 @@ public final class SynxChunk extends DynamicChunk implements OverlayChunk {
     private static final long LOCK_WAIT_NANOS = TimeUnit.MILLISECONDS.toNanos(50);
     private static final byte[] NO_LIGHT = new byte[0];
     private static final byte[] FULL_LIGHT = new byte[2048];
+    /** Bound while this thread applies a world state flag ({@link #asWorldFlag}). */
+    private static final ScopedValue<Boolean> WORLD_FLAG = ScopedValue.newInstance();
     /** The keys of a block entity record the block carries itself; the baker leaves them out of segment ①. */
     private static final List<String> RECORD_KEYS = List.of("id", "x", "y", "z", "keepPacked");
     /** The states the client and the baker count as air besides air itself, state 0. */
@@ -174,13 +177,27 @@ public final class SynxChunk extends DynamicChunk implements OverlayChunk {
     }
 
     /**
-     * Outside the region, in failed mode, or with {@code synaxis.world-writable=false}. The engine
-     * checks this in {@code InstanceContainer} only; {@link #setBlock} and {@link #setBiome} check it
-     * again for the callers that come around it.
+     * Runs {@code action} as the application of a world state flag ({@code docs/DESIGN-M3.md}
+     * {@code API-M3-005}, {@code API-M3-013}): on this thread and for as long as it runs,
+     * {@link #isReadOnly()} leaves {@code synaxis.world-writable} out, so that a flag changes a world
+     * nothing else may change. Outside the region and in failed mode a chunk stays read only.
+     *
+     * @param action what changes the blocks
+     */
+    public static void asWorldFlag(Runnable action) {
+        ScopedValue.where(WORLD_FLAG, Boolean.TRUE).run(action);
+    }
+
+    /**
+     * Outside the region, in failed mode, or with {@code synaxis.world-writable=false} unless this
+     * thread applies a world state flag ({@link #asWorldFlag}). The engine checks this in
+     * {@code InstanceContainer} only; {@link #setBlock} and {@link #setBiome} check it again for the
+     * callers that come around it.
      */
     @Override
     public boolean isReadOnly() {
-        return !inRegion || mode == Mode.FAILED || !loader.options().worldWritable() || super.isReadOnly();
+        return !inRegion || mode == Mode.FAILED || (!loader.options().worldWritable() && !WORLD_FLAG.isBound())
+                || super.isReadOnly();
     }
 
     @Override

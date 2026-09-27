@@ -60,11 +60,11 @@ final class OverlayShardFixture {
         final MinecraftServer server = MinecraftServer.init();
         final ServerProcess process = server.process();
         final ShardWorld world = ShardWorld.prepare(process, ShardSettings.fromSystemProperties(),
-                SynxOptions.fromSystemProperties(), OverlayOptions.fromSystemProperties());
+                SynxOptions.fromSystemProperties(), OverlayOptions.fromSystemProperties(), null);
         final ShutdownSequence shutdown = new ShutdownSequence(process, new NoPlayers());
         process.setShutdownParticipant(shutdown);
         final InstanceContainer instance = world.start(shutdown, (_, _) -> {
-        }).instance();
+        }, null).instance();
         server.start("127.0.0.1", 0);
         System.out.println(READY);
 

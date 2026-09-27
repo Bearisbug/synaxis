@@ -112,7 +112,8 @@ class TransferTicketsIntegrationTest {
 
     private TicketVerifier verifier(StoreFixture.Shard target) {
         return new TicketVerifier(pool.pool(), target::sessionId, TARGET, KEYS,
-                new TransferCooldowns(5_000, targetClock::get), (event, attributes) -> target.ledger().add(event + " " + attributes));
+                new TransferCooldowns(5_000, targetClock::get), (event, attributes) -> target.ledger().add(event + " " + attributes),
+                (_, _) -> {});
     }
 
     /** What the admission gate does with a transfer: the ticket read first, then claimed in the load. */
@@ -198,7 +199,7 @@ class TransferTicketsIntegrationTest {
     void badTicketsAreRefusedInCheckOrderAndAGoodOneOnlyOnce(Env env) throws SQLException {
         final StoreFixture.Shard source = shard(env, SOURCE);
         final StoreFixture.Shard target = shard(env, TARGET);
-        final TicketIssuer issuer = new TicketIssuer(source.store(), KEYS, new TransferCooldowns(5_000, sourceClock::get), SOURCE);
+        final TicketIssuer issuer = new TicketIssuer(source.store(), KEYS, new TransferCooldowns(5_000, sourceClock::get), SOURCE, (_, _) -> {});
         final TicketVerifier verifier = verifier(target);
         final UUID account = UUID.randomUUID();
         final Player player = online(env, source, env.createFlatInstance(), account, "Traveller");
@@ -246,7 +247,7 @@ class TransferTicketsIntegrationTest {
     void aTicketWhoseVersionTheCharacterIsNotAtIsRefusedAndTheLeaseGivenBack(Env env) throws SQLException {
         final StoreFixture.Shard source = shard(env, SOURCE);
         final StoreFixture.Shard target = shard(env, TARGET);
-        final TicketIssuer issuer = new TicketIssuer(source.store(), KEYS, new TransferCooldowns(5_000, sourceClock::get), SOURCE);
+        final TicketIssuer issuer = new TicketIssuer(source.store(), KEYS, new TransferCooldowns(5_000, sourceClock::get), SOURCE, (_, _) -> {});
         final UUID account = UUID.randomUUID();
         final Player player = online(env, source, env.createFlatInstance(), account, "Drifter");
         final byte[] good = transferOut(env, issuer, player);
@@ -274,11 +275,11 @@ class TransferTicketsIntegrationTest {
         final StoreFixture.Shard target = shard(env, TARGET);
         final long t = sourceClock.get();
         targetClock.set(t);
-        final TicketIssuer outOfSource = new TicketIssuer(source.store(), KEYS, new TransferCooldowns(5_000, sourceClock::get), SOURCE);
+        final TicketIssuer outOfSource = new TicketIssuer(source.store(), KEYS, new TransferCooldowns(5_000, sourceClock::get), SOURCE, (_, _) -> {});
         final TransferCooldowns targetCooldowns = new TransferCooldowns(5_000, targetClock::get);
         final TicketVerifier verifier = new TicketVerifier(pool.pool(), target::sessionId, TARGET, KEYS, targetCooldowns,
-                (event, attributes) -> target.ledger().add(event + " " + attributes));
-        final TicketIssuer outOfTarget = new TicketIssuer(target.store(), KEYS, targetCooldowns, TARGET);
+                (event, attributes) -> target.ledger().add(event + " " + attributes), (_, _) -> {});
+        final TicketIssuer outOfTarget = new TicketIssuer(target.store(), KEYS, targetCooldowns, TARGET, (_, _) -> {});
         final UUID account = UUID.randomUUID();
         final Player player = online(env, source, env.createFlatInstance(), account, "Bouncer");
         final byte[] ticket = transferOut(env, outOfSource, player);
@@ -311,7 +312,7 @@ class TransferTicketsIntegrationTest {
     @Test
     void aTransferThatCannotWriteLeavesThePlayerWhereItIs(Env env) throws Exception {
         final StoreFixture.Shard source = shard(env, SOURCE);
-        final TicketIssuer issuer = new TicketIssuer(source.store(), KEYS, new TransferCooldowns(5_000, sourceClock::get), SOURCE);
+        final TicketIssuer issuer = new TicketIssuer(source.store(), KEYS, new TransferCooldowns(5_000, sourceClock::get), SOURCE, (_, _) -> {});
         final UUID account = UUID.randomUUID();
         final Player player = online(env, source, env.createFlatInstance(), account, "Stuck");
         final Player stranger = connect(env.process(), UUID.randomUUID(), "Stranger");
@@ -341,7 +342,7 @@ class TransferTicketsIntegrationTest {
         final StoreFixture.Shard source = shard(env, SOURCE);
         final FirstLoadHeld held = new FirstLoadHeld(pool);
         final StoreFixture.Shard target = heldTarget(env, held, StoreFixture.FAST);
-        final TicketIssuer issuer = new TicketIssuer(source.store(), KEYS, new TransferCooldowns(5_000, sourceClock::get), SOURCE);
+        final TicketIssuer issuer = new TicketIssuer(source.store(), KEYS, new TransferCooldowns(5_000, sourceClock::get), SOURCE, (_, _) -> {});
         final UUID account = UUID.randomUUID();
         final Player player = online(env, source, env.createFlatInstance(), account, "Racer");
         source.store().get(player, PURSE).coins = 9;
@@ -385,7 +386,7 @@ class TransferTicketsIntegrationTest {
         final PlayerStore.Options shortBudget = new PlayerStore.Options(Duration.ofSeconds(2), 2, 4,
                 List.of(Duration.ofMillis(50)), Duration.ofSeconds(1), Duration.ofMillis(50));
         final StoreFixture.Shard target = heldTarget(env, held, shortBudget);
-        final TicketIssuer issuer = new TicketIssuer(source.store(), KEYS, new TransferCooldowns(5_000, sourceClock::get), SOURCE);
+        final TicketIssuer issuer = new TicketIssuer(source.store(), KEYS, new TransferCooldowns(5_000, sourceClock::get), SOURCE, (_, _) -> {});
         final UUID account = UUID.randomUUID();
         final Instance instance = env.createFlatInstance();
         final Player player = online(env, source, instance, account, "Stale");
@@ -430,7 +431,7 @@ class TransferTicketsIntegrationTest {
         final StoreFixture.Shard target = StoreFixture.shard(env, pool, TARGET, true, RedisLink.disabled(TARGET),
                 StoreFixture.FAST, StoreFixture.MANUAL, backend);
         shards.add(target);
-        final TicketIssuer issuer = new TicketIssuer(source.store(), KEYS, new TransferCooldowns(5_000, sourceClock::get), SOURCE);
+        final TicketIssuer issuer = new TicketIssuer(source.store(), KEYS, new TransferCooldowns(5_000, sourceClock::get), SOURCE, (_, _) -> {});
         final UUID account = UUID.randomUUID();
         final Player player = online(env, source, env.createFlatInstance(), account, "Swapper");
         final byte[] good = transferOut(env, issuer, player);

@@ -18,8 +18,15 @@ import io.github.bearisbug.synaxis.app.moderation.ModerationStore;
 import io.github.bearisbug.synaxis.app.permission.HostPermissions;
 import io.github.bearisbug.synaxis.app.permission.RoleCommand;
 import io.github.bearisbug.synaxis.app.permission.RoleStore;
+import io.github.bearisbug.synaxis.app.shard.ShardArrivals;
+import io.github.bearisbug.synaxis.app.shard.ShardDirectory;
+import io.github.bearisbug.synaxis.app.shard.ShardGates;
+import io.github.bearisbug.synaxis.app.shard.ShardHeartbeat;
+import io.github.bearisbug.synaxis.app.shard.ShardService;
+import io.github.bearisbug.synaxis.app.shard.ShardServiceImpl;
 import io.github.bearisbug.synaxis.app.shard.ShardSettings;
 import io.github.bearisbug.synaxis.app.shard.ShardWorld;
+import io.github.bearisbug.synaxis.app.shard.WorldFlagsImpl;
 import io.github.bearisbug.synaxis.app.store.AuthMode;
 import io.github.bearisbug.synaxis.app.store.Database;
 import io.github.bearisbug.synaxis.app.store.Migrations;
@@ -33,9 +40,11 @@ import io.github.bearisbug.synaxis.app.transfer.TicketIssuer;
 import io.github.bearisbug.synaxis.app.transfer.TicketVerifier;
 import io.github.bearisbug.synaxis.app.transfer.TransferCooldowns;
 import io.github.bearisbug.synaxis.app.transfer.TransferKeys;
+import io.github.bearisbug.synaxis.app.transfer.TransferTicket;
 import io.github.bearisbug.synaxis.app.transfer.TransferTickets;
 import io.github.bearisbug.synaxis.command.CommandManager;
 import io.github.bearisbug.synaxis.command.builder.CommandResult;
+import io.github.bearisbug.synaxis.entity.Player;
 import io.github.bearisbug.synaxis.event.player.AsyncPlayerConfigurationEvent;
 import io.github.bearisbug.synaxis.game.protocol.ProtocolSchema;
 import io.github.bearisbug.synaxis.plugin.Admission;
@@ -57,6 +66,7 @@ import java.lang.management.ManagementFactory;
 import java.net.InetSocketAddress;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.sql.SQLException;
 import java.time.Clock;
@@ -65,8 +75,10 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.BiConsumer;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
@@ -107,6 +119,7 @@ public final class Main {
     private static final String SESSION_SERVER_PROPERTY = "synaxis.app.auth.session-server";
     static final String STORE_PROPERTY = "synaxis.app.store";
     private static final String WHITELIST_PROPERTY = "synaxis.app.whitelist";
+    private static final String MAX_PLAYERS_PROPERTY = "synaxis.max-players";
     static final String STORE_MEMORY = "memory";
     static final String STORE_POSTGRES = "postgres";
     static final String MIGRATE_ONLY = "--migrate-only";
@@ -199,6 +212,8 @@ public final class Main {
         // A map, which only the shard host mounts (docs/DESIGN-M3.md API-M3-006): its keys are all read here,
         // before anything touches the disk
         final @Nullable MapMount map = mapMount(shard, coreMode);
+        // Before the engine reads synaxis.max-players, which the directory sets
+        final @Nullable ShardDirectory directory = map == null ? null : shardDirectory(map.settings(), storeMode, shardId);
         applyViewRangeDefaults();
 
         // (2) The engine facade, not a bare ServerProcess: MinecraftServer#start is the only public
@@ -220,16 +235,24 @@ public final class Main {
         // The map release is checked, and its dimension type and block handlers registered, while the
         // registries still take them; nothing is written yet
         final @Nullable ShardWorld shardWorld = map == null ? null
-                : ShardWorld.prepare(process, map.settings(), map.synx(), map.overlay());
+                : ShardWorld.prepare(process, map.settings(), map.synx(), map.overlay(), directory);
 
         // (4) Plugins, on this thread. A plugin builds its match here, before anything is bound.
         // An operator who asked for the core mode gets no plugin at all: that is the only way the
         // core mode is deterministic while a gameplay plugin sits on the classpath.
         final EventLedger ledger = new EventLedger(Path.of("logs"), shardId, ledgerMaxBytesPerDay);
         ledger.start();
+        // A shard in the directory mode counts the first chunks of a transferred player into the
+        // ledger, and hears about its ticket from the verifier the store builds
+        final @Nullable ShardArrivals arrivals = directory == null ? null
+                : new ShardArrivals(directory, ledger::record, System::currentTimeMillis);
         // The player store before the plugins, which register their sections in onEnable; a shard
         // whose database is not the one it expects refuses here, before anything is bound.
-        final StoreRuntime store = openStore(storeMode, process, auth, shardId, ledger, System.getenv());
+        final StoreRuntime store = openStore(storeMode, process, auth, shardId, ledger,
+                arrivals == null ? (_, _) -> {} : arrivals::claimed, System.getenv());
+        // On the pool and the Redis link of the store; built only, nothing is read or started yet
+        final @Nullable DirectoryMode directoryMode = directory == null || arrivals == null || map == null ? null
+                : DirectoryMode.build(directory, arrivals, store, map.settings(), process);
         // The engine takes one participant: the players save first, then the steps registered on
         // this before the start, in their order (docs/DESIGN-PROD.md API-PROD-007). The RTS path
         // registers none, so the save phase is the player store's alone; a map shard registers the
@@ -269,7 +292,8 @@ public final class Main {
                 host.hasAdmissionProvider(), runningMatches)) {
             case CORE -> {
                 if (shardWorld == null) CoreMode.start(process, host, dimensionType, coreMode);
-                else serveMap(process, host, shardWorld.start(shutdown, ledger::record));
+                else serveMap(process, host, shardWorld.start(shutdown, ledger::record,
+                        directoryMode == null ? null : directoryMode.flags()), directoryMode);
             }
             case GAMEPLAY -> {
                 // Only a process that serves a game demands the mod that renders it; the core mode
@@ -292,6 +316,11 @@ public final class Main {
         process.scheduler().buildShutdownTask(commands::awaitStopAnswers);
         // After the plugins, so that what they record in onDisable is on disk (API-PROD-014)
         process.scheduler().buildShutdownTask(ledger::close);
+        // Before the store: both run on its pool and its Redis link
+        if (directoryMode != null) {
+            process.scheduler().buildShutdownTask(directoryMode.flags()::close);
+            process.scheduler().buildShutdownTask(directoryMode.heartbeat()::close);
+        }
         // The save is over by now: Redis, the session renewal and the pool can go
         process.scheduler().buildShutdownTask(store::close);
         process.scheduler().buildShutdownTask(metrics::close);
@@ -305,7 +334,10 @@ public final class Main {
         managementMethods.serverStarted();
 
         // (7) Printed after all three, so "the ready log is out" means the process is ticking. A map
-        // shard records EVT:shard_started first, now that the port is bound.
+        // shard records EVT:shard_started first, now that the port is bound. A shard in the directory
+        // mode writes its first heartbeat before that and not earlier, so that no source shard sends a
+        // player to a port that is not listening yet.
+        if (directoryMode != null) directoryMode.heartbeat().start();
         if (shardWorld != null) ledger.record("shard_started", shardWorld.startedAttributes());
         LOGGER.info("synaxis server-app listening on {}:{}", BIND_ADDRESS, port);
 
@@ -352,18 +384,102 @@ public final class Main {
     }
 
     /**
-     * What {@link CoreMode#start} takes from the host for the core world, for the map instance
-     * instead: every connection goes into it, spawning on the spawn point of the map.
+     * Reads the shard directory of a map shard in step (1) ({@code docs/DESIGN-M3.md} {@code API-M3-010}).
+     * The store alone decides the directory mode, the file is only checked against it: a shard storing
+     * in PostgreSQL is in the directory mode and needs {@code <map_root>/shards.json}, one storing in
+     * memory must not have it. In the directory mode the capacity of this shard's channel becomes
+     * {@code synaxis.max-players}, which the engine reads in step (2). Reads the file only, writes nothing.
      *
-     * @param process the engine process
-     * @param host    the plugin host, whose admission slot the map takes
-     * @param world   the started map world
+     * @param settings the host keys, with a map mounted
+     * @param store    {@code memory} or {@code postgres}
+     * @param shardId  the shard id, which has to be a channel of the directory
+     * @return the directory, null for a shard storing in memory
+     * @throws IllegalArgumentException for a refused start
      */
-    private static void serveMap(ServerProcess process, PluginHost host, ShardWorld.Started world) {
+    static @Nullable ShardDirectory shardDirectory(ShardSettings settings, String store, String shardId) {
+        final Path file = Objects.requireNonNull(settings.mapRoot(), "no map is mounted")
+                .resolve(ShardDirectory.FILE_NAME).toAbsolutePath();
+        if (STORE_MEMORY.equals(store)) {
+            if (Files.exists(file)) {
+                throw new IllegalArgumentException("the shard directory " + file + " is only read by a shard storing "
+                        + "in PostgreSQL (" + STORE_PROPERTY + "=" + STORE_POSTGRES + ")");
+            }
+            return null;
+        }
+        if (!Files.exists(file)) {
+            throw new IllegalArgumentException("a map shard storing in PostgreSQL needs its shard directory " + file
+                    + ": no such file");
+        }
+        final ShardDirectory directory = ShardDirectory.load(file, shardId);
+        if ("false".equals(System.getProperty(ShardMain.ACCEPT_TRANSFERS))) {
+            throw new IllegalArgumentException("a shard in the shard directory takes transfers, "
+                    + ShardMain.ACCEPT_TRANSFERS + " must not be false");
+        }
+        final ShardDirectory.Channel channel = directory.ownChannel();
+        final String capacity = Integer.toString(channel.capacity());
+        final String maxPlayers = System.getProperty(MAX_PLAYERS_PROPERTY);
+        if (maxPlayers == null) {
+            System.setProperty(MAX_PLAYERS_PROPERTY, capacity);
+        } else if (!maxPlayers.equals(capacity)) {
+            throw new IllegalArgumentException(MAX_PLAYERS_PROPERTY + "=" + maxPlayers + " disagrees with the capacity "
+                    + capacity + " of " + channel.shardId() + " in the shard directory");
+        }
+        return directory;
+    }
+
+    /**
+     * What a shard in the directory mode runs besides the map world ({@code docs/DESIGN-M3.md}
+     * {@code API-M3-010}, {@code API-M3-013}).
+     *
+     * @param directory the shard directory
+     * @param arrivals  the arrivals of transferred players
+     * @param heartbeat the heartbeat, which also reads the other shards'
+     * @param service   what sends a player to another shard, for the gates
+     * @param flags     the world state flags of the region
+     */
+    record DirectoryMode(ShardDirectory directory, ShardArrivals arrivals, ShardHeartbeat heartbeat,
+                         ShardService service, WorldFlagsImpl flags) {
+
+        /**
+         * Builds the rest in step (4), once the store is open; reads nothing and starts nothing. A
+         * shard in the directory mode stores in PostgreSQL and takes transfers, so the store has a
+         * pool and a source side of a transfer.
+         */
+        static DirectoryMode build(ShardDirectory directory, ShardArrivals arrivals, StoreRuntime store,
+                                   ShardSettings settings, ServerProcess process) {
+            final Database database = Objects.requireNonNull(store.database(), "the directory mode stores in PostgreSQL");
+            final TransferTickets issuer = Objects.requireNonNull(store.issuer(), "the directory mode takes transfers");
+            final String buildId = Objects.requireNonNull(settings.mapBuild(), "no map is mounted");
+            final ShardHeartbeat heartbeat = new ShardHeartbeat(database.pool(), directory, buildId, process);
+            final ShardDirectory.Region region = directory.ownRegion();
+            return new DirectoryMode(directory, arrivals, heartbeat, new ShardServiceImpl(directory, heartbeat, issuer),
+                    new WorldFlagsImpl(database.pool(), store.redis(), directory.mapId(), region.regionId(),
+                            region.bounds()));
+        }
+    }
+
+    /**
+     * What {@link CoreMode#start} takes from the host for the core world, for the map instance
+     * instead: every connection goes into it, spawning on the spawn point of the map. A shard in the
+     * directory mode also gets its gates, the arrivals of transferred players and the protection and
+     * synchronisation of its world state flags there.
+     *
+     * @param process       the engine process
+     * @param host          the plugin host, whose admission slot the map takes
+     * @param world         the started map world
+     * @param directoryMode what the directory mode runs, null outside it
+     */
+    private static void serveMap(ServerProcess process, PluginHost host, ShardWorld.Started world,
+                                 @Nullable DirectoryMode directoryMode) {
         process.eventHandler().addListener(AsyncPlayerConfigurationEvent.class,
                 event -> event.getPlayer().setRespawnPoint(world.spawn()));
         // §9: team 0 is the neutral team, as in the core world
         host.registerHostAdmission(_ -> new Admission.Accept(world.instance(), 0));
+        if (directoryMode != null) {
+            new ShardGates(directoryMode.directory(), directoryMode.service()).attach(world.instance());
+            directoryMode.arrivals().attach(world.instance());
+            directoryMode.flags().start(world.instance());
+        }
         LOGGER.info("Map mode ({}=on): the host serves the map instance, no plugin is loaded, spawn={}",
                 CoreMode.PROPERTY, world.spawn());
     }
@@ -488,6 +604,15 @@ public final class Main {
     }
 
     /**
+     * {@link #openStore(String, ServerProcess, Auth, String, EventLedger, BiConsumer, Map)} outside the
+     * directory mode, where nothing else hears about a claimed transfer ticket.
+     */
+    static StoreRuntime openStore(String mode, ServerProcess process, Auth auth, String shardId, EventLedger ledger,
+                                  Map<String, String> environment) {
+        return openStore(mode, process, auth, shardId, ledger, (_, _) -> {}, environment);
+    }
+
+    /**
      * Opens the player store ({@code docs/DESIGN-PROD.md} {@code REQ-PROD-005}): memory for a
      * process without a database, PostgreSQL for a shard. A shard checks its database before
      * anything else and refuses to start on a schema that is not this build's, or on a store that
@@ -498,12 +623,15 @@ public final class Main {
      * @param auth        the auth of the process
      * @param shardId     the shard id
      * @param ledger      the event ledger
+     * @param onClaimed   told about every transfer ticket the target side accepts
+     *                    ({@code docs/DESIGN-M3.md} {@code API-M3-010}, the arrivals of a shard in the
+     *                    directory mode)
      * @param environment where the database settings come from
      * @return the store
      * @throws IllegalArgumentException if the shard must not start
      */
     static StoreRuntime openStore(String mode, ServerProcess process, Auth auth, String shardId, EventLedger ledger,
-                                  Map<String, String> environment) {
+                                  BiConsumer<Player, TransferTicket> onClaimed, Map<String, String> environment) {
         if (STORE_MEMORY.equals(mode)) {
             // A ticket's nonce and lease live in the database, a process without one takes no transfer
             if (process.config().acceptTransfers())
@@ -555,8 +683,10 @@ public final class Main {
                 return new StoreRuntime(store, database, housekeeping, null, null, permissions, moderation, session, redis);
             final TransferCooldowns cooldowns = TransferCooldowns.fromSystemProperties();
             LOGGER.info("Effective transfers: {} accept={}", keys, process.config().acceptTransfers());
-            return new StoreRuntime(store, database, housekeeping, new TicketIssuer(store, keys, cooldowns, shardId),
-                    new TicketVerifier(database.pool(), session::sessionId, shardId, keys, cooldowns, ledger::record),
+            return new StoreRuntime(store, database, housekeeping,
+                    new TicketIssuer(store, keys, cooldowns, shardId, ledger::record),
+                    new TicketVerifier(database.pool(), session::sessionId, shardId, keys, cooldowns, ledger::record,
+                            onClaimed),
                     permissions, moderation, session, redis);
         } catch (SQLException e) {
             database.close();

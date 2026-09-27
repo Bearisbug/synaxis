@@ -73,12 +73,15 @@ public final class ShardWorld {
     private final SynxManifest manifest;
     private final RegistryKey<DimensionType> dimensionType;
     private final long verifyMillis;
+    private final @Nullable ShardDirectory directory;
     // Set by #start, on the startup thread, before the process ticks
     private @Nullable SynxChunkLoader loader;
     private @Nullable OverlayStore overlay;
+    private @Nullable WorldFlagsImpl flags;
     // Read and replaced by the statistics task only, on the tick scheduler thread
     private @Nullable SynxStreamStats lastStream;
     private @Nullable OverlayStats lastOverlay;
+    private long lastFlagConflicts;
 
     /**
      * The map instance and where a player spawns in it.
@@ -91,7 +94,7 @@ public final class ShardWorld {
 
     private ShardWorld(ServerProcess process, ShardSettings settings, SynxOptions synxOptions,
                        OverlayOptions overlayOptions, SynxManifest manifest, RegistryKey<DimensionType> dimensionType,
-                       long verifyMillis) {
+                       long verifyMillis, @Nullable ShardDirectory directory) {
         this.process = process;
         this.settings = settings;
         this.synxOptions = synxOptions;
@@ -99,23 +102,27 @@ public final class ShardWorld {
         this.manifest = manifest;
         this.dimensionType = dimensionType;
         this.verifyMillis = verifyMillis;
+        this.directory = directory;
     }
 
     /**
      * Step (3) of {@code Main}, after the match dimension type, while the registries still take new
      * entries: checks the view and simulation distances, runs the start-up check of
      * {@code API-M3-002} on the release, registers the map dimension type from the manifest's world,
-     * and the block handlers the baker registered. Writes nothing.
+     * and the block handlers the baker registered. In the directory mode it also checks the shard
+     * directory against the release. Writes nothing.
      *
      * @param process        the engine process, whose configuration, registries and blocks count
      * @param settings       the host keys, with a map mounted
      * @param synxOptions    the {@code :synx} keys
      * @param overlayOptions the overlay keys
+     * @param directory      the shard directory in the directory mode ({@code API-M3-010}), null
+     *                       outside it: the bounds are then the manifest's
      * @return the prepared world
      * @throws IllegalArgumentException for a refused start
      */
     public static ShardWorld prepare(ServerProcess process, ShardSettings settings, SynxOptions synxOptions,
-                                     OverlayOptions overlayOptions) {
+                                     OverlayOptions overlayOptions, @Nullable ShardDirectory directory) {
         final int viewDistance = process.config().chunkViewDistance();
         if (viewDistance > MAX_VIEW_DISTANCE) {
             throw new IllegalArgumentException("synaxis.chunk-view-distance=" + viewDistance + " is above "
@@ -132,7 +139,7 @@ public final class ShardWorld {
         final long started = System.nanoTime();
         final SynxManifest manifest;
         try {
-            manifest = verify(process, buildDir);
+            manifest = verify(process, buildDir, directory);
         } catch (SynxException e) {
             throw new IllegalArgumentException(e.getMessage(), e);
         } catch (IOException e) {
@@ -145,20 +152,24 @@ public final class ShardWorld {
         SynxHandlers.registerAll(process.block());
         LOGGER.info("Map release {} verified in {} ms: bounds={} world={}", manifest.buildId(), verifyMillis,
                 manifest.bounds(), world);
-        return new ShardWorld(process, settings, synxOptions, overlayOptions, manifest, dimensionType, verifyMillis);
+        return new ShardWorld(process, settings, synxOptions, overlayOptions, manifest, dimensionType, verifyMillis,
+                directory);
     }
 
     /**
      * The start-up check, on the expectations of this process: its registries and compression
      * threshold, the light engine version, and the world the manifest declares, which the map
-     * dimension type is then built on. The scope is {@code view_bounds}.
+     * dimension type is then built on. The scope is {@code view_bounds}. A shard directory is checked
+     * against the declared manifest first.
      */
-    private static SynxManifest verify(ServerProcess process, Path buildDir) throws IOException, SynxException {
+    private static SynxManifest verify(ServerProcess process, Path buildDir, @Nullable ShardDirectory directory)
+            throws IOException, SynxException {
         final Path manifestFile = buildDir.resolve(SynxManifest.FILE_NAME);
         if (!Files.isRegularFile(manifestFile)) {
             throw new SynxException(SynxError.MANIFEST, SynxManifest.FILE_NAME, "missing in " + buildDir);
         }
         final SynxManifest declared = SynxManifest.fromJson(Files.readString(manifestFile));
+        if (directory != null) directory.checkAgainst(declared);
         final SynxManifest.World world = declared.world();
         final SynxExpectations expectations = SynxExpectations.of(process.registries(), process.compressionThreshold(),
                 world.minY(), world.height(), LightEngine.VERSION);
@@ -172,22 +183,33 @@ public final class ShardWorld {
     }
 
     /**
-     * Step (5) of {@code Main}: opens the overlay store (the first write to the disk, after every other
-     * refusal) and registers its final flush after the players' save, builds the map instance with its
-     * simulation distance, unload grace period and world border, and schedules the write phase of the
-     * overlay store at the end of every tick and {@code EVT:chunk_stream_stats} every 60 s.
+     * Step (5) of {@code Main}: reads the world state flags (a refusal still, before the first write),
+     * opens the overlay store (the first write to the disk, after every other refusal) and registers
+     * its final flush after the players' save, builds the map instance with its simulation distance
+     * and unload grace period, replays the flags into it, sets its world border, and schedules the
+     * write phase of the overlay store at the end of every tick and {@code EVT:chunk_stream_stats}
+     * every 60 s.
      *
      * @param shutdown the shutdown sequence, still taking steps
      * @param events   where the events go, the event ledger of the host
+     * @param flags    the world state flags in the directory mode ({@code API-M3-013}), null outside
+     *                 it: nothing is then read or replayed
      * @return the map instance and the spawn point
      * @throws IllegalArgumentException for a refused start
      */
-    public Started start(ShutdownSequence shutdown, BiConsumer<String, Map<String, ?>> events) {
-        return start(shutdown, events, OVERLAY_ROOT);
+    public Started start(ShutdownSequence shutdown, BiConsumer<String, Map<String, ?>> events,
+                         @Nullable WorldFlagsImpl flags) {
+        return start(shutdown, events, flags, OVERLAY_ROOT);
     }
 
-    /** {@link #start(ShutdownSequence, BiConsumer)} with the overlay store elsewhere than the working directory, for the tests. */
-    Started start(ShutdownSequence shutdown, BiConsumer<String, Map<String, ?>> events, Path overlayRoot) {
+    /**
+     * {@link #start(ShutdownSequence, BiConsumer, WorldFlagsImpl)} with the overlay store elsewhere
+     * than the working directory, for the tests.
+     */
+    Started start(ShutdownSequence shutdown, BiConsumer<String, Map<String, ?>> events, @Nullable WorldFlagsImpl flags,
+                  Path overlayRoot) {
+        // Before the overlay store is opened: flags that cannot be read refuse the start with the disk untouched
+        if (flags != null) flags.load();
         final SynxSettings overlaySettings = overlaySettings(manifest, process.compressionThreshold());
         final Path overlayDirectory = overlayRoot.resolve(manifest.buildId());
         final OverlayStore overlay;
@@ -211,10 +233,13 @@ public final class ShardWorld {
         }
         this.overlay = overlay;
         this.loader = loader;
+        this.flags = flags;
 
         final InstanceContainer instance = process.instance().createInstanceContainer(dimensionType, loader);
         instance.setSimulationDistance(settings.simulationDistance());
         instance.setChunkUnloadGraceTicks(settings.chunkUnloadGraceTicks());
+        // Before the world border, the spawn point and the bind
+        if (flags != null) flags.replay(instance);
         final SynxManifest.Bounds bounds = manifest.bounds();
         instance.setWorldBorder(worldBorder(bounds));
         if (bounds.maxX() - bounds.minX() != bounds.maxZ() - bounds.minZ()) {
@@ -226,6 +251,7 @@ public final class ShardWorld {
         scheduleWritePhase(process, overlay::tickEnd);
         this.lastStream = loader.stats();
         this.lastOverlay = overlay.stats();
+        this.lastFlagConflicts = flags == null ? 0 : flags.stats().conflicts();
         process.scheduler().buildTask(() -> recordStreamStats(events))
                 .delay(STATS_INTERVAL).repeat(STATS_INTERVAL).schedule();
         LOGGER.info("Map mounted: build_id={} simulation_distance={} chunk_unload_grace_ticks={} spawn={} overlay={}",
@@ -277,9 +303,13 @@ public final class ShardWorld {
         attributes.put("regions", stream.regionsMapped());
         attributes.put("bytes_mapped", stream.bytesMapped());
         attributes.put("overlay_records", overlay.stats().records());
-        // M3-E replays the world state flags
-        attributes.put("flags_replayed", 0);
-        attributes.put("flags_ms", 0);
+        final WorldFlagsImpl flags = this.flags;
+        final WorldFlagsImpl.Stats flagStats = flags == null ? null : flags.stats();
+        attributes.put("flags_replayed", flagStats == null ? 0 : flagStats.replayed());
+        attributes.put("flags_ms", flagStats == null ? 0 : flagStats.replayMillis());
+        final ShardDirectory.Channel channel = directory == null ? null : directory.ownChannel();
+        attributes.put("region_id", channel == null ? null : channel.regionId());
+        attributes.put("capacity", channel == null ? null : channel.capacity());
         return attributes;
     }
 
@@ -293,7 +323,14 @@ public final class ShardWorld {
         final OverlayStats overlayStats = overlay.stats();
         this.lastStream = stream;
         this.lastOverlay = overlayStats;
-        events.accept("chunk_stream_stats", streamStats(lastStream, stream, lastOverlay, overlayStats));
+        final Map<String, Object> attributes = streamStats(lastStream, stream, lastOverlay, overlayStats);
+        final WorldFlagsImpl flags = this.flags;
+        if (flags != null) {
+            final long conflicts = flags.stats().conflicts();
+            attributes.put("flag_conflicts", conflicts - lastFlagConflicts);
+            this.lastFlagConflicts = conflicts;
+        }
+        events.accept("chunk_stream_stats", attributes);
     }
 
     /**
@@ -320,7 +357,7 @@ public final class ShardWorld {
         attributes.put("relight_ms_p99", 0);
         attributes.put("unloaded", now.unloaded() - before.unloaded());
         attributes.put("section_cache_bytes", now.sectionCacheBytes());
-        // M3-E replays the world state flags
+        // Without world state flags; the statistics task puts the difference of theirs in its place
         attributes.put("flag_conflicts", 0);
         return attributes;
     }

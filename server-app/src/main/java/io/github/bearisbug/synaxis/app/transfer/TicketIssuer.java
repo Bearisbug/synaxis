@@ -5,7 +5,9 @@ import io.github.bearisbug.synaxis.entity.Player;
 import net.kyori.adventure.text.Component;
 
 import java.security.SecureRandom;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.function.BiConsumer;
 
 /**
  * The source side of a transfer ({@code docs/DESIGN-PROD.md} {@code API-PROD-028} issuing ① to ④):
@@ -28,8 +30,11 @@ public final class TicketIssuer implements TransferTickets {
      * @param keys      the keys, the first one signs
      * @param cooldowns the cooldowns, shared with this shard's {@link TicketVerifier}
      * @param shardId   the id of this shard, the ticket's {@code source_shard}
+     * @param analytics the event ledger, for {@code EVT:transfer_issued} ({@code docs/DESIGN-M3.md}
+     *                  {@code API-M3-010}); nothing is written to it yet
      */
-    public TicketIssuer(PlayerStore store, TransferKeys keys, TransferCooldowns cooldowns, String shardId) {
+    public TicketIssuer(PlayerStore store, TransferKeys keys, TransferCooldowns cooldowns, String shardId,
+                        BiConsumer<String, Map<String, ?>> analytics) {
         this.store = store;
         this.keys = keys;
         this.cooldowns = cooldowns;

@@ -101,7 +101,7 @@ class TransferAdmissionIntegrationTest {
         final PGSimpleDataSource unreachable = new PGSimpleDataSource();
         unreachable.setURL("jdbc:postgresql://127.0.0.1:1/unreachable");
         final TicketVerifier verifier = new TicketVerifier(unreachable, () -> 1L, SHARD, KEYS,
-                new TransferCooldowns(5_000, System::currentTimeMillis), ledger::record);
+                new TransferCooldowns(5_000, System::currentTimeMillis), ledger::record, (_, _) -> {});
         final PluginHost host = new PluginHost(env.process(), workingDirectory.resolve("plugins"), ledger, store, verifier,
                 HostPermissions.withoutDatabase(env.process()));
         final AtomicInteger admitted = new AtomicInteger();

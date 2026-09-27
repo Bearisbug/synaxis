@@ -137,6 +137,32 @@ public final class RedisLink implements AutoCloseable {
         subscribe("Syn-Redis-Moderation", MODERATION_CHANNEL, _ -> listener.run());
     }
 
+    /**
+     * Starts listening on the world state flag channel of a region ({@code docs/DESIGN-M3.md}
+     * {@code API-M3-013}), the same way as {@link #listen}. The M3-E step 0 signature, the flags track
+     * gives it its body.
+     *
+     * @param channel  {@code synaxis:worldflag:<map_id>:<region_id>}
+     * @param listener told every message as it came
+     */
+    @SuppressWarnings("DoNotCallSuggester") // the M3-E step 0 skeleton, replaced by the flags track
+    public void listenWorldFlags(String channel, Consumer<String> listener) {
+        throw new UnsupportedOperationException("RedisLink#listenWorldFlags is the M3-E step 0 skeleton");
+    }
+
+    /**
+     * Announces a world state flag written ({@code docs/DESIGN-M3.md} {@code API-M3-013}). The M3-E
+     * step 0 signature, the flags track gives it its body.
+     *
+     * @param channel {@code synaxis:worldflag:<map_id>:<region_id>}
+     * @param message the flag key and its new version
+     * @return false if the message could not be sent: Redis is down, or not configured
+     */
+    @SuppressWarnings("DoNotCallSuggester") // the M3-E step 0 skeleton, replaced by the flags track
+    public boolean publishWorldFlag(String channel, String message) {
+        throw new UnsupportedOperationException("RedisLink#publishWorldFlag is the M3-E step 0 skeleton");
+    }
+
     private void subscribe(String threadName, String channel, Consumer<String> handler) {
         final RedisClient redis = this.client;
         if (redis == null) return;

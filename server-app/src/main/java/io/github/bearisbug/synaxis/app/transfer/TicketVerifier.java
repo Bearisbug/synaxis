@@ -92,9 +92,12 @@ public final class TicketVerifier {
      * @param keys       the keys a ticket may be signed with
      * @param cooldowns  the cooldowns, shared with this shard's {@link TicketIssuer}
      * @param analytics  the event ledger
+     * @param onClaimed  told about every ticket {@link #claim} accepts ({@code docs/DESIGN-M3.md}
+     *                   {@code API-M3-010}, the arrival on a shard in the directory mode); not called yet
      */
     public TicketVerifier(DataSource dataSource, LongSupplier sessionId, String shardId, TransferKeys keys,
-                          TransferCooldowns cooldowns, BiConsumer<String, Map<String, ?>> analytics) {
+                          TransferCooldowns cooldowns, BiConsumer<String, Map<String, ?>> analytics,
+                          BiConsumer<Player, TransferTicket> onClaimed) {
         this.dataSource = dataSource;
         this.sessionId = sessionId;
         this.shardId = shardId;

@@ -61,7 +61,7 @@ public class ShardWorldTest {
         final Env env = Env.create(config -> config.chunkViewDistance(viewDistance));
         try {
             return assertThrows(IllegalArgumentException.class,
-                    () -> ShardWorld.prepare(env.process(), settings, SYNX, OVERLAY));
+                    () -> ShardWorld.prepare(env.process(), settings, SYNX, OVERLAY, null));
         } finally {
             env.process().stop();
         }
@@ -71,7 +71,7 @@ public class ShardWorldTest {
     public void aReleaseThatPassesRegistersTheMapDimensionTypeFromItsWorld() {
         final Env env = Env.create(config -> config.chunkViewDistance(12));
         try {
-            final ShardWorld world = ShardWorld.prepare(env.process(), release, SYNX, OVERLAY);
+            final ShardWorld world = ShardWorld.prepare(env.process(), release, SYNX, OVERLAY, null);
             assertNotNull(world);
             final DimensionType map = env.process().dimensionType().get(RegistryKey.unsafeOf(Key.key(ShardWorld.DIMENSION_TYPE)));
             assertNotNull(map, "synaxis:map is registered");
@@ -91,7 +91,7 @@ public class ShardWorldTest {
     public void theShardRegistersTheHandlersOfTheBaker() {
         final Env env = Env.create(config -> config.chunkViewDistance(12));
         try {
-            ShardWorld.prepare(env.process(), release, SYNX, OVERLAY);
+            ShardWorld.prepare(env.process(), release, SYNX, OVERLAY, null);
             final Set<Key> listed = SynxHandlers.registerAll(new BlockManager());
             assertEquals(Set.of(Key.key("synaxis:door"), Key.key("synaxis:loot")), listed);
             for (Key key : listed) {

@@ -123,11 +123,11 @@ public class ShardWorldAssemblyTest {
 
     /** Steps (3) and (5) of {@code Main} on a map. */
     private Mounted mount(ServerProcess process, OverlayOptions overlay) {
-        final ShardWorld world = ShardWorld.prepare(process, release, SYNX, overlay);
+        final ShardWorld world = ShardWorld.prepare(process, release, SYNX, overlay, null);
         final ShutdownSequence shutdown = new ShutdownSequence(process, new NoPlayers());
         process.setShutdownParticipant(shutdown);
         final List<String> events = new CopyOnWriteArrayList<>();
-        return new Mounted(world, world.start(shutdown, (name, _) -> events.add(name), overlayRoot), events);
+        return new Mounted(world, world.start(shutdown, (name, _) -> events.add(name), null, overlayRoot), events);
     }
 
     private OverlayStore reopen(OverlayOptions options) throws IOException, SynxException {
@@ -187,11 +187,11 @@ public class ShardWorldAssemblyTest {
         final ServerProcess process = process();
         try {
             final Path notADirectory = Files.createFile(overlayRoot.resolve("overlay"));
-            final ShardWorld world = ShardWorld.prepare(process, release, SYNX, new OverlayOptions(16_384, 10));
+            final ShardWorld world = ShardWorld.prepare(process, release, SYNX, new OverlayOptions(16_384, 10), null);
             final ShutdownSequence shutdown = new ShutdownSequence(process, new NoPlayers());
             try {
                 world.start(shutdown, (_, _) -> {
-                }, notADirectory);
+                }, null, notADirectory);
                 fail("the start is refused");
             } catch (IllegalArgumentException e) {
                 assertTrue(e.getMessage().startsWith("the overlay store " + notADirectory.resolve(release.mapBuild())

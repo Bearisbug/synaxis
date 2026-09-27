@@ -1,5 +1,6 @@
 package io.github.bearisbug.synaxis.network;
 
+import io.github.bearisbug.synaxis.network.packet.PacketVanilla;
 import io.github.bearisbug.synaxis.network.packet.PacketWriting;
 import io.github.bearisbug.synaxis.network.packet.server.ServerPacket;
 import io.github.bearisbug.synaxis.network.packet.server.common.PluginMessagePacket;
@@ -9,7 +10,7 @@ import io.github.bearisbug.synaxis.testing.Env;
 import io.github.bearisbug.synaxis.testing.EnvTest;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.parallel.ResourceLock;
+import org.junit.jupiter.api.parallel.Isolated;
 
 import java.io.IOException;
 import java.net.InetAddress;
@@ -25,16 +26,16 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 /**
  * A packet that changes the connection state may be rejected by a full write buffer and
  * retried on the next flush, so the state must only move once the packet is really written.
+ * <p>
+ * The write buffer comes from {@link PacketVanilla#PACKET_POOL}, which the whole JVM shares and which
+ * keeps a buffer at the size a large packet grew it to. Only in a buffer of the default size does the
+ * filler below leave the second packet no room, so this class runs alone and starts from an empty
+ * pool: a buffer grown by a class running alongside, or left in the pool by one that ran before,
+ * takes both packets in one flush.
  */
 @EnvTest
-@ResourceLock(SocketWriteStateTransitionIntegrationTest.PACKET_POOL)
+@Isolated
 public class SocketWriteStateTransitionIntegrationTest {
-
-    /**
-     * The pooled buffers are shared by the whole JVM: a test that grows some of them past the default
-     * size while this one runs would hand it a buffer the filler below no longer fills.
-     */
-    static final String PACKET_POOL = "io.github.bearisbug.synaxis.network.packet.PacketVanilla#PACKET_POOL";
 
     @BeforeAll
     public static void setup(Env env) { // PACKET_POOL
@@ -47,6 +48,8 @@ public class SocketWriteStateTransitionIntegrationTest {
         final int overhead = framedSize(env, new PluginMessagePacket("ch", new byte[0]));
         final var filler = new PluginMessagePacket("ch", new byte[env.process().config().pooledBufferSize() - 2 - overhead]);
         assertEquals(env.process().config().pooledBufferSize() - 2, framedSize(env, filler));
+        // The flush below takes a new buffer of the default size, see the class comment
+        PacketVanilla.PACKET_POOL.clear();
 
         try (ServerSocketChannel server = ServerSocketChannel.open()) {
             server.bind(new InetSocketAddress(InetAddress.getLoopbackAddress(), 0));

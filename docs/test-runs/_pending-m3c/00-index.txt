@@ -1,0 +1,17 @@
+# M3-C merge acceptance after the review of 0706d9019a: m3c/integrate at cd47d36c89 (code) and the evidence commit on top of it.
+# The RUN number is given when this directory is registered in docs/TEST.md (RUN-039 is taken by prod/integrate-f); rename the directory then.
+# Raw artefacts (baked map, JFR recordings, summary.json, server logs) stay out of the repository; the numbers below are copied out of them.
+# Machine: Apple M4 Pro, 12 cores, 24 GiB, macOS, JDK 25.0.4.1; another session runs builds on it; swap free 1.2 to 1.4 GB during this round.
+# Server and bots on the same machine, over loopback.
+01-merge-commits.txt                     the four merge commits after the history rewrite, one check each
+02-final-gates.txt                       check and the two strict modes on cd47d36c89: 3,896 tests, 15 skipped, 0 failed each
+03-due-lead-unit-red.txt                 OverlayStoreTest#aChunkIsDueAWritePhaseBeforeItsFlushIntervalIsUp before the fix: red at :130
+04-kill-window-without-lead.txt          OverlayShardProcessTest (bound 10,000 ms) with the lead taken out, 3 runs: oldest lost 9,909 to 9,999 ms
+05-kill-window-with-lead.txt             the same with the lead, 4 runs: oldest lost 9,666 to 9,699 ms, newest kept 9,778 to 9,802 ms
+06-handlers-counterproof.txt             ShardWorld#prepare without SynxHandlers.registerAll: the two new REQ-M3-022 tests red
+07-overlay-process-counterproof.txt      due interval x3 and no addAfterPlayers: both OverlayShardProcessTest tests red (:163, :194)
+08-jfr-bandwidth-walk-20bots.txt         map shard, 20 bots walk 180 s: JFR method counts, chunk_stream_stats, bandwidth, ticks
+09-jfr-bandwidth-ride-20bots.txt         map shard, 20 bots ride 180 s: the same
+10-jfr-positive-control-20bots.txt       core mode without a map, 20 bots walk 90 s: the same recording counts 3,278 encodings
+11-bake.txt                              the 4k test map baked with 4 threads for 08 to 10
+12-200bots-precheck.txt                  the precheck of the 200 bots runs (swap free >= 3 GB, no other java/Gradle), every 5 min

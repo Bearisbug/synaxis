@@ -1,0 +1,37 @@
+# positive control: shard in core mode (flat world, no map, synaxis.app.core-mode=on), 20 bots walk 90 s (30 s warm-up), the same JFR recording
+# 2026-09-27 09:04:22 start mode=core profile=walk bots=20 duration=90s warmup=30s load {  5.46 8.02 10.83  } vm.swapusage: total = 12288.00M  used = 10926.38M  free = 1361.62M  (encrypted)
+# JAVA_OPTS=-Xms1G -Xmx1G SERVER_APP_OPTS=-Dsynaxis.app.port=25773 -Dsynaxis.app.auth=offline -Dsynaxis.app.shard-id=m3c-core-walk -Dsynaxis.app.metrics.bind=127.0.0.1:19773 -Dsynaxis.connection-gate.trusted-networks=127.0.0.0/8 -Dsynaxis.app.log=stdout -Dsynaxis.app.core-mode=on
+# script pid 21496, java pid 21496
+# 2026-09-27 09:06:15 end load {  4.81 7.11 10.14  } vm.swapusage: total = 12288.00M  used = 10926.38M  free = 1361.62M  (encrypted)
+# merge exit 0
+# bin/server-shard of :server-app:installDist at cd47d36c89; loadtest of :loadtest:installDist at cd47d36c89; server and bots on this machine (Apple M4 Pro 12 cores, 24 GiB, macOS, JDK 25.0.4.1), over loopback
+# JFR: jcmd <pid> JFR.start name=zero settings=profile 'method-timing=io.github.bearisbug.synaxis.network.packet.server.play.ChunkDataPacket::<init>;io.github.bearisbug.synaxis.instance.DynamicChunk::createChunkPacket;io.github.bearisbug.synaxis.synx.SynxChunk::getFullDataPacket' 'jdk.ObjectAllocationSample#throttle=100000/s' 'jdk.ExecutionSample#period=2ms', right after the listening line and before the first bot; JFR.dump + JFR.stop after the bots left
+# LT sample --pid <pid> --duration <run+20>s --metrics <endpoint> --out server.json; 5 s later LT run --host 127.0.0.1 --port <port> --bots <n> --profile <p> --encryption off --duration <run>s --warmup <w>s --out bots-0.json; then SIGTERM, LT merge bots-0.json server.json --out summary.json
+
+## shard log
+09:04:23.318 [main] INFO  i.github.bearisbug.synaxis.app.Main - Effective ServerConfig[shutdownOnSignal=true, maxTickCatchUp=5, chunkViewDistance=12, entityViewDistance=8, entitySynchronizationTicks=20, dispatcherThreads=10, threadProvider=GRID, threadGridExponent=4, sendLightAfterBlockPlacementDelay=100, loginTimeout=30000, loginPluginMessageTimeout=5000, knownPacksResponseTimeout=300000, acceptTransfers=false, play
+09:04:23.402 [main] INFO  i.g.b.s.app.metrics.HostMetrics - Metrics endpoint listening on http://127.0.0.1:19773/metrics
+09:04:23.420 [main] INFO  i.g.bearisbug.synaxis.app.CoreMode - Core mode (synaxis.app.core-mode=on): no plugin is serving gameplay, so the host serves its own flat world. spawn=Pos[x=0.5, y=40.0, z=0.5, yaw=0.0, pitch=0.0] channel=synaxis:main (echoes every payload back)
+09:04:23.422 [main] INFO  i.github.bearisbug.synaxis.app.Main - synaxis server-app listening on 0.0.0.0:25773
+09:06:14.503 [Thread-2] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+WARN/ERROR lines: 0
+
+## ledger (logs/*.jsonl)
+
+## summary.json
+{"bots":{"pass":true,"detail":"20 of 20 logged in, 0 lost"},"chunks_per_bot_min":{"pass":true,"detail":"1437 > 9"},"tick_p99_ms":{"pass":true,"detail":"4.684 < 50.0"},"ticks_over_50ms":{"pass":true,"detail":"0 <= 0"},"rss_mib_max":{"pass":true,"detail":"1187.422 < 4096.0"},"pass":true}
+{"count":2206,"mean_ms":1.347,"p50_ms":1.209,"p99_ms":4.684,"max_ms":22.791,"over_50ms":0}
+{"walk":{"packets":29532,"wire_bytes":2471224,"connection_seconds":1768.837,"kb_per_s_per_bot":1.364,"packets_per_s_per_bot":16.696,"steady_packets":10886,"steady_wire_bytes":912081,"steady_connection_seconds":1168.837,"steady_kb_per_s_per_bot":0.762,"steady_packets_per_s_per_bot":9.314,"per_bot_packets":{"count":20,"mean":1476.6,"p50":1471.0,"p99":1526.0,"max":1526.0,"min":1437.0}}}
+walk: steady_wire_bytes / steady_connection_seconds = 912081 / 1168.837 = 0.78 KB/s per bot (KB = 1,000 B as in DESIGN-M3 §2); steady_wire_bytes / steady_packets = 83.7 B per chunk
+{"chunk_data_packets_received":29532}
+
+## JFR (jfr print; counts over the whole recording)
+MethodTiming last invocations: io.github.bearisbug.synaxis.instance.DynamicChunk.createChunkPacket() = 3278
+MethodTiming last invocations: io.github.bearisbug.synaxis.network.packet.server.play.ChunkDataPacket.<init>(int, int, ChunkData, LightData) = 3278
+ExecutionSample events: 2362
+ExecutionSample events with createChunkPacket in the stack: 111
+ExecutionSample events with SynxChunk.getFullDataPacket in the stack: 0
+ExecutionSample events with sendChunk in the stack: 33
+ObjectAllocationSample events: 278
+ObjectAllocationSample events with objectClass ChunkDataPacket: 0
+ObjectAllocationSample events with createChunkPacket in the stack: 27

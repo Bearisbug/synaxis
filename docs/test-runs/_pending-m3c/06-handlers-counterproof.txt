@@ -1,0 +1,12 @@
+# 2026-09-27 08:38:19 HEAD e6c9b2e5e3 + working tree, counter-proof: ShardWorld#prepare without SynxHandlers.registerAll (the call and its import deleted); load {  7.05 7.04 7.47  }
+# git diff: -import io.github.bearisbug.synaxis.synx.SynxHandlers;  -        SynxHandlers.registerAll(process.block());  (restored with git checkout -- afterwards)
+# ./gradlew --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts --max-workers=4 :server-app:test --tests io.github.bearisbug.synaxis.app.shard.ShardWorldTest --tests io.github.bearisbug.synaxis.app.ShardLaunchTest
+ShardLaunchTest > twoHandlersWithOneKeyRefuseTheShard(Path) FAILED
+    org.opentest4j.AssertionFailedError at ShardLaunchTest.java:145
+ShardWorldTest > theShardRegistersTheHandlersOfTheBaker() FAILED
+    org.opentest4j.AssertionFailedError at ShardWorldTest.java:99
+23 tests completed, 2 failed
+> Task :server-app:test FAILED
+BUILD FAILED in 40s
+message="org.opentest4j.AssertionFailedError: synaxis:door is registered ==&gt; expected: not &lt;null&gt;"
+message="org.opentest4j.AssertionFailedError: the JVM exits: Picked up JAVA_TOOL_OPTIONS: -Dhttps.proxyHost=127.0.0.1 -Dhttps.proxyPort=7897 -Dhttp.proxyHost=127.0.0.1 -Dhttp.proxyPort=7897 -Dhttp.nonProxyHosts=maven.aliyun.com|*.aliyun.com&#10;08:38:27.585 [main] INFO  i.github.bearisbug.synaxis.ap

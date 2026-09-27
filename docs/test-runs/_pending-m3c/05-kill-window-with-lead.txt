@@ -1,0 +1,17 @@
+# 2026-09-27 08:41:06 HEAD cd47d36c89 (due lead 250 ms, bound 10,000 ms), git status: 0 changes; load {  6.94 6.98 7.36  }
+## run 0 (08:37, working tree of b9969e07ba before it was committed): crash window: 185 changes, 95 kept, 90 lost; the oldest lost change was 9677 ms old at the kill, the newest kept one 9787 ms
+## run 1 08:41:06 load {  6.94 6.98 7.36  }
+# ./gradlew --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts --max-workers=4 :server-app:test --rerun --tests io.github.bearisbug.synaxis.app.shard.OverlayShardProcessTest
+BUILD SUCCESSFUL in 28s
+tests="2" failures="0" errors="0" 
+crash window: 184 changes, 95 kept, 89 lost; the oldest lost change was 9699 ms old at the kill, the newest kept one 9802 ms
+## run 2 08:41:34 load {  6.13 6.79 7.28  }
+# ./gradlew --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts --max-workers=4 :server-app:test --rerun --tests io.github.bearisbug.synaxis.app.shard.OverlayShardProcessTest
+BUILD SUCCESSFUL in 25s
+tests="2" failures="0" errors="0" 
+crash window: 185 changes, 95 kept, 90 lost; the oldest lost change was 9666 ms old at the kill, the newest kept one 9778 ms
+## run 3 08:42:00 load {  5.56 6.58 7.19  }
+# ./gradlew --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts --max-workers=4 :server-app:test --rerun --tests io.github.bearisbug.synaxis.app.shard.OverlayShardProcessTest
+BUILD SUCCESSFUL in 25s
+tests="2" failures="0" errors="0" 
+crash window: 184 changes, 95 kept, 89 lost; the oldest lost change was 9671 ms old at the kill, the newest kept one 9779 ms

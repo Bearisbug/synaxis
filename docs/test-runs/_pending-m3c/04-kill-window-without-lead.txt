@@ -1,0 +1,15 @@
+# 2026-09-27 08:39:17 HEAD e6c9b2e5e3 + working tree, counter-proof: OverlayStore#selectDue without the 250 ms lead (due at the full flush_interval_s), OverlayShardProcessTest with the bound of 10,000 ms; load {  7.86 7.16 7.48  }
+# change: OverlayStore#selectDue interval = SECONDS.toNanos(flush_interval_s), the "- DUE_LEAD_NANOS" taken out (restored afterwards); the test file as committed in b9969e07ba (bound 10,000 ms)
+# result: 3 of 3 green, oldest lost 9,909 to 9,999 ms. The bound of 10,000 ms does not catch the missing lead reliably on this machine (the review of 0706d9019a saw 9,944 to 9,993, the integration round 10,024 to 10,036); OverlayStoreTest#aChunkIsDueAWritePhaseBeforeItsFlushIntervalIsUp is the deterministic check (03-due-lead-unit-red.txt)
+## run 1 08:39:17 load {  7.86 7.16 7.48  }
+# ./gradlew --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts --max-workers=4 :server-app:test --rerun --tests io.github.bearisbug.synaxis.app.shard.OverlayShardProcessTest.aKilledShardKeepsEveryChangeOlderThanItsFlushInterval
+BUILD SUCCESSFUL in 28s
+crash window: 186 changes, 93 kept, 93 lost; the oldest lost change was 9944 ms old at the kill, the newest kept one 10054 ms
+## run 2 08:39:45 load {  7.03 7.02 7.42  }
+# ./gradlew --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts --max-workers=4 :server-app:test --rerun --tests io.github.bearisbug.synaxis.app.shard.OverlayShardProcessTest.aKilledShardKeepsEveryChangeOlderThanItsFlushInterval
+BUILD SUCCESSFUL in 24s
+crash window: 185 changes, 93 kept, 92 lost; the oldest lost change was 9909 ms old at the kill, the newest kept one 10016 ms
+## run 3 08:40:09 load {  6.08 6.79 7.33  }
+# ./gradlew --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts --max-workers=4 :server-app:test --rerun --tests io.github.bearisbug.synaxis.app.shard.OverlayShardProcessTest.aKilledShardKeepsEveryChangeOlderThanItsFlushInterval
+BUILD SUCCESSFUL in 24s
+crash window: 185 changes, 92 kept, 93 lost; the oldest lost change was 9999 ms old at the kill, the newest kept one 10110 ms

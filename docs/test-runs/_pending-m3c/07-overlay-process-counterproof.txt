@@ -1,0 +1,16 @@
+# 2026-09-27 08:55:28 HEAD cd47d36c89 + working tree, counter-proof of OverlayShardProcessTest: selectDue's interval times 3, ShardWorld without addAfterPlayers("overlay", …); load {  8.54 16.06 14.45  }
+# -        shutdown.addAfterPlayers("overlay", overlay::finalFlush);
+# +        // shutdown.addAfterPlayers("overlay", overlay::finalFlush);
+# -        final long interval = TimeUnit.SECONDS.toNanos(options.flushIntervalSeconds()) - DUE_LEAD_NANOS;
+# +        final long interval = (TimeUnit.SECONDS.toNanos(options.flushIntervalSeconds()) - DUE_LEAD_NANOS) * 3;
+# ./gradlew --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts --max-workers=4 :server-app:test --rerun --tests io.github.bearisbug.synaxis.app.shard.OverlayShardProcessTest
+OverlayShardProcessTest > aKilledShardKeepsEveryChangeOlderThanItsFlushInterval(Path) FAILED
+    org.opentest4j.AssertionFailedError at OverlayShardProcessTest.java:163
+OverlayShardProcessTest > aStoppedShardWritesTheChangesOfItsLastSecond(Path) FAILED
+    org.opentest4j.AssertionFailedError at OverlayShardProcessTest.java:194
+2 tests completed, 2 failed
+BUILD FAILED in 28s
+crash window: 185 changes, 0 kept, 185 lost; the oldest lost change was 20010 ms old at the kill, the newest kept one -1 ms
+message="org.opentest4j.AssertionFailedError: chunk E, changed at t = 0 s, is on disk after a kill at t = 20 s ==&gt; expected: not &lt;null&gt;"
+message="org.opentest4j.AssertionFailedError: Picked up JAVA_TOOL_OPTIONS: -Dhttps.proxyHost=127.0.0.1 -Dhttps.proxyPort=7897 -Dhttp.proxyHost=127.0.0.1 -Dhttp.
+# restored: git checkout -- both files; git status: 0 changes

@@ -1,0 +1,30 @@
+# final head cd47d36c89 (m3c/integrate), the three CI gates, each --rerun-tasks, with SYNAXIS_TEST_PG_URL=jdbc:postgresql://127.0.0.1:5440/postgres (synaxis-pg) and SYNAXIS_TEST_REDIS_URL=redis://127.0.0.1:6440 (synaxis-valkey)
+# all three: --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts --max-workers=4
+
+## 1. ./gradlew check --rerun-tasks -Dsynaxis.synx.require-frozen-zlib=true   08:42:35-08:46:04, load1 5.19 at start, 9.30 at end (load5 14.61)
+BUILD SUCCESSFUL in 3m 28s
+config key gate: 113 keys read, 113 in ConfigFile.KEYS, 20 meter names left out
+translation key gate: 56 keys checked against [en_us.json, zh_cn.json], 14 identifiers left out
+crash window: 185 changes, 95 kept, 90 lost; the oldest lost change was 9698 ms old at the kill, the newest kept one 9807 ms
+
+## 2. ./gradlew test --rerun-tasks -Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true   08:47:01-08:50:35, load1 5.85 at start, 11.84 at end (load5 16.43)
+BUILD SUCCESSFUL in 3m 32s
+crash window: 185 changes, 95 kept, 90 lost; the oldest lost change was 9661 ms old at the kill, the newest kept one 9776 ms
+
+## 3. ./gradlew test --rerun-tasks -Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true -Dsynaxis.thread-provider=grid   08:51:03-08:54:38, load1 9.87 at start, 9.67 at end (load5 17.49)
+BUILD SUCCESSFUL in 3m 34s
+crash window: 185 changes, 95 kept, 90 lost; the oldest lost change was 9719 ms old at the kill, the newest kept one 9830 ms
+
+## per module, the same in all three runs (JUnit XML under */build/test-results/test)
+architecture-tests tests=20 skipped=0 failures=0 errors=0
+baker tests=53 skipped=0 failures=0 errors=0
+root tests=3135 skipped=15 failures=0 errors=0
+game-rts tests=86 skipped=0 failures=0 errors=0
+loadtest tests=10 skipped=0 failures=0 errors=0
+plugin-api tests=15 skipped=0 failures=0 errors=0
+protocol tests=78 skipped=0 failures=0 errors=0
+server-app tests=374 skipped=0 failures=0 errors=0
+synx tests=115 skipped=0 failures=0 errors=0
+testing tests=10 skipped=0 failures=0 errors=0
+TOTAL tests=3896 skipped=15 failures=0 errors=0
+## against 0706d9019a (3,893): +1 synx (OverlayStoreTest#aChunkIsDueAWritePhaseBeforeItsFlushIntervalIsUp), +2 server-app (ShardWorldTest#theShardRegistersTheHandlersOfTheBaker, ShardLaunchTest#twoHandlersWithOneKeyRefuseTheShard); the 15 skipped are the root module's own

@@ -1,0 +1,33 @@
+# 2026-09-27 08:19~08:33 m3c/integrate, the four merge commits after the review of 0706d9019a; load at each start/end below
+# History rewrite (branch not pushed): the fixes of 9b41030319 folded into the merges that needed them, the later commits cherry-picked;
+# the tree of the new head before this round's commits equals 0706d9019a (git diff --stat 0706d9019a e6c9b2e5e3: empty).
+#   6af2c82244  merge A (m3c/synx-chunk bf4ac71349)        unchanged
+#   abdd711563  merge B (m3c/distances 4c0acf4dd8)         unchanged
+#   2052d9ff9f -> 273c645618  merge C (m3c/overlay 08b4952012) + SynxChunk#written returns boolean, SynxChunkOverlayIntegrationTest asserts it, ShardWorldAssemblyTest stand-in returns true
+#   7f12fb6c72 -> 0ecc205466  merge D (m3c/handlers 2416a87566) + synx/build.gradle.kts: testImplementation(:baker) without :game-rts
+#   9b41030319  dropped (its tree equals 0ecc205466: git diff --stat 9b41030319 0ecc205466 empty)
+#   fc9b6d877d -> f99320b61d, eecc8f59d7 -> 529f4a0834, 1c48153ff4 -> b6264a33a7, 0706d9019a -> e6c9b2e5e3 (cherry-picked)
+# Order A -> B -> C -> D as the task gave it (DESIGN-M3 §26 names D -> A -> C -> B); one check per merge commit, the two strict modes only on the final head.
+
+## git checkout --detach 6af2c82244; ./gradlew check --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts --max-workers=4 -Dsynaxis.synx.require-frozen-zlib=true
+BUILD SUCCESSFUL in 2m 9s
+95 actionable tasks: 49 executed, 46 from cache
+
+## git checkout --detach abdd711563; ./gradlew check --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts --max-workers=4 -Dsynaxis.synx.require-frozen-zlib=true
+BUILD SUCCESSFUL in 2m 25s
+95 actionable tasks: 27 executed, 17 from cache, 51 up-to-date
+
+## git checkout --detach 273c645618; ./gradlew check --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts --max-workers=4 -Dsynaxis.synx.require-frozen-zlib=true
+BUILD SUCCESSFUL in 2m 16s
+77 actionable tasks: 14 executed, 5 from cache, 58 up-to-date
+
+## git checkout --detach 0ecc205466; ./gradlew check --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts --max-workers=4 -Dsynaxis.synx.require-frozen-zlib=true
+BUILD SUCCESSFUL in 2m 17s
+95 actionable tasks: 17 executed, 9 from cache, 69 up-to-date
+
+## per-module tallies (JUnit XML), 6af2c82244: TOTAL tests=3776 skipped=15 failures=0 errors=0 (root 3108, server-app 333, synx 67, baker 52, game-rts 83)
+## abdd711563: TOTAL tests=3849 skipped=20 failures=0 errors=0 (root 3135, server-app 370 of which 5 skipped by ShardWorldAssemblyTest's skeleton guard, synx 76)
+## 273c645618: TOTAL tests=3886 skipped=15 failures=0 errors=0 (server-app 370, synx 113)
+## 0ecc205466: TOTAL tests=3890 skipped=15 failures=0 errors=0 (baker 53, game-rts 85, synx 114)
+## load: 08:19:50-08:22:00 end 6.79; 08:23:16-08:25:42 end 7.11; 08:27:24-08:29:40 end 7.30; 08:31:15-08:33:3x end 6.31
+## "from cache" / "up-to-date": Gradle restored or kept the test results of identical inputs (the same module sources and class path had been tested in an earlier run); the four runs were not --rerun-tasks. The final head ran with --rerun-tasks (02-final-gates.txt).

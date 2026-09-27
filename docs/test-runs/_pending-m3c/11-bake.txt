@@ -1,0 +1,12 @@
+# 2026-09-27 08:56:12 load {  7.38 14.70 14.03  } cores 12
+# /usr/bin/time -l baker/build/install/baker/bin/baker bake --map-id synth --source generator:synthetic:7 --out /tmp/m3ci/load/maps --logs /tmp/m3ci/load/bakelogs --threads 4   (baker of :baker:installDist at cd47d36c89)
+baker: published /tmp/m3ci/load/maps/synth/synth-09b42ebb5dc6-p776, 213319659 bytes
+  "build_id": "synth-09b42ebb5dc6-p776",
+  "content_hash": "09b42ebb5dc678b265f1c7b3f7e4d5ae7b475b6b7aca9180e14b0981e191e273",
+  "registry_digest": "45d2a4547003a8516ec89a609048e6ab015939e4da07bea80b0b5adb2853a3c7",
+  "light_engine_version": 1,
+       27.14 real        93.66 user         5.58 sys
+          1843806208  maximum resident set size
+exit=0
+regions in the manifest: 64
+{"event":"map_build_finished","ts":"2026-09-27T00:56:39.978477Z","shard_id":"baker","build_id":"synth-09b42ebb5dc6-p776","outcome":"published","wall_ms":25382,"cpu_ms":97319,"bytes":213319659,"farview_bytes":0,"failed_regions":0,"verify_diffs":0}

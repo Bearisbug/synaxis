@@ -1,0 +1,9 @@
+# 2026-09-27 08:35:24 HEAD e6c9b2e5e3 + working tree (test only) load {  5.71 6.78 7.49  }
+# git status:  M server-app/src/test/java/io/github/bearisbug/synaxis/app/shard/OverlayShardProcessTest.java  M synx/src/test/java/io/github/bearisbug/synaxis/synx/OverlayStoreTest.java 
+# ./gradlew --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts --max-workers=4 :synx:test --tests io.github.bearisbug.synaxis.synx.OverlayStoreTest.aChunkIsDueAWritePhaseBeforeItsFlushIntervalIsUp
+Calculating task graph as no cached configuration is available for tasks: :synx:test --tests io.github.bearisbug.synaxis.synx.OverlayStoreTest.aChunkIsDueAWritePhaseBeforeItsFlushIntervalIsUp
+> Task :synx:test FAILED
+OverlayStoreTest > aChunkIsDueAWritePhaseBeforeItsFlushIntervalIsUp() FAILED
+    org.opentest4j.AssertionFailedError at OverlayStoreTest.java:130
+BUILD FAILED in 6s
+message="org.opentest4j.AssertionFailedError: due 250 ms before its flush interval is up ==&gt; expected: &lt;false&gt; but was: &lt;true&gt;"

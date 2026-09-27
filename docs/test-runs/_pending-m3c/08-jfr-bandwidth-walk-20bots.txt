@@ -1,0 +1,45 @@
+# map shard, 4k test map synth-09b42ebb5dc6-p776, 20 bots walk 180 s (30 s warm-up)
+# 2026-09-27 08:56:46 start mode=map profile=walk bots=20 duration=180s warmup=30s load {  9.70 14.49 13.98  } vm.swapusage: total = 12288.00M  used = 10926.38M  free = 1361.62M  (encrypted)
+# JAVA_OPTS=-Xms1G -Xmx1G SERVER_APP_OPTS=-Dsynaxis.app.port=25771 -Dsynaxis.app.auth=offline -Dsynaxis.app.shard-id=m3c-map-walk -Dsynaxis.app.metrics.bind=127.0.0.1:19771 -Dsynaxis.connection-gate.trusted-networks=127.0.0.0/8 -Dsynaxis.app.log=stdout -Dsynaxis.map.root=/tmp/m3ci/load/maps/synth -Dsynaxis.map.build=synth-09b42ebb5dc6-p776
+# script pid 19001, java pid 19001
+# 2026-09-27 09:00:11 end load {  6.92 10.93 12.55  } vm.swapusage: total = 12288.00M  used = 10926.38M  free = 1361.62M  (encrypted)
+# merge exit 0
+# bin/server-shard of :server-app:installDist at cd47d36c89; loadtest of :loadtest:installDist at cd47d36c89; server and bots on this machine (Apple M4 Pro 12 cores, 24 GiB, macOS, JDK 25.0.4.1), over loopback
+# JFR: jcmd <pid> JFR.start name=zero settings=profile 'method-timing=io.github.bearisbug.synaxis.network.packet.server.play.ChunkDataPacket::<init>;io.github.bearisbug.synaxis.instance.DynamicChunk::createChunkPacket;io.github.bearisbug.synaxis.synx.SynxChunk::getFullDataPacket' 'jdk.ObjectAllocationSample#throttle=100000/s' 'jdk.ExecutionSample#period=2ms', right after the listening line and before the first bot; JFR.dump + JFR.stop after the bots left
+# LT sample --pid <pid> --duration <run+20>s --metrics <endpoint> --out server.json; 5 s later LT run --host 127.0.0.1 --port <port> --bots <n> --profile <p> --encryption off --duration <run>s --warmup <w>s --out bots-0.json; then SIGTERM, LT merge bots-0.json server.json --out summary.json
+
+## shard log
+08:56:47.505 [main] INFO  i.github.bearisbug.synaxis.app.Main - Effective ServerConfig[shutdownOnSignal=true, maxTickCatchUp=5, chunkViewDistance=12, entityViewDistance=8, entitySynchronizationTicks=20, dispatcherThreads=10, threadProvider=GRID, threadGridExponent=4, sendLightAfterBlockPlacementDelay=100, loginTimeout=30000, loginPluginMessageTimeout=5000, knownPacksResponseTimeout=300000, acceptTransfers=false, play
+08:56:47.653 [main] INFO  i.g.b.synaxis.app.shard.ShardWorld - Map release synth-09b42ebb5dc6-p776 verified in 129 ms: bounds=Bounds[minX=0, minZ=0, maxX=255, maxZ=255] world=World[minY=0, height=256]
+08:56:47.726 [main] INFO  i.g.b.s.app.metrics.HostMetrics - Metrics endpoint listening on http://127.0.0.1:19771/metrics
+08:56:47.748 [main] INFO  i.g.b.synaxis.app.shard.ShardWorld - Map mounted: build_id=synth-09b42ebb5dc6-p776 simulation_distance=4 chunk_unload_grace_ticks=100 spawn=Pos[x=2040.5, y=74.0, z=2040.5, yaw=0.0, pitch=0.0] overlay=overlay/synth-09b42ebb5dc6-p776
+08:56:47.749 [main] INFO  i.github.bearisbug.synaxis.app.Main - Map mode (synaxis.app.core-mode=on): the host serves the map instance, no plugin is loaded, spawn=Pos[x=2040.5, y=74.0, z=2040.5, yaw=0.0, pitch=0.0]
+08:56:47.751 [main] INFO  i.github.bearisbug.synaxis.app.Main - synaxis server-app listening on 0.0.0.0:25771
+09:00:10.007 [Thread-2] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+09:00:10.020 [Syn-TickScheduler] INFO  i.g.b.synaxis.synx.OverlayStore - Overlay final flush: chunks=0 bytes=0 fsync_ms=0 left=0 by=tick
+WARN/ERROR lines: 0
+
+## ledger (logs/*.jsonl)
+{"ts":"2026-09-27T00:56:47.751096Z","event":"shard_started","build_id":"synth-09b42ebb5dc6-p776","verify_ms":129,"regions":64,"bytes_mapped":213319659,"overlay_records":0,"flags_replayed":0,"flags_ms":0}
+{"ts":"2026-09-27T00:57:47.801755Z","event":"chunk_stream_stats","handle_sent":22911,"overlay_sent":0,"bytes_sent":33601383,"failed":0,"loaded":2457,"overlay_resident":0,"overlay_evicted":0,"evict_failed":0,"flush_appended":0,"flush_fsyncs":0,"flush_lag_s_max":0.0,"write_phase_ms_max":0.440375,"relight_queue_p99_ms":0,"relight_ms_p99":0,"unloaded":2,"section_cache_bytes":3414976,"flag_conflicts":0}
+{"ts":"2026-09-27T00:58:47.622666Z","event":"chunk_stream_stats","handle_sent":11093,"overlay_sent":0,"bytes_sent":16373201,"failed":0,"loaded":1231,"overlay_resident":0,"overlay_evicted":0,"evict_failed":0,"flush_appended":0,"flush_fsyncs":0,"flush_lag_s_max":0.0,"write_phase_ms_max":0.456666,"relight_queue_p99_ms":0,"relight_ms_p99":0,"unloaded":390,"section_cache_bytes":6738624,"flag_conflicts":0}
+{"ts":"2026-09-27T00:59:47.670935Z","event":"chunk_stream_stats","handle_sent":11054,"overlay_sent":0,"bytes_sent":16546223,"failed":0,"loaded":440,"overlay_resident":0,"overlay_evicted":0,"evict_failed":0,"flush_appended":0,"flush_fsyncs":0,"flush_lag_s_max":0.0,"write_phase_ms_max":0.587416,"relight_queue_p99_ms":0,"relight_ms_p99":0,"unloaded":1033,"section_cache_bytes":7869504,"flag_conflicts":0}
+
+## summary.json
+{"bots":{"pass":true,"detail":"20 of 20 logged in, 0 lost"},"chunks_per_bot_min":{"pass":true,"detail":"2217 > 9"},"tick_p99_ms":{"pass":true,"detail":"4.621 < 50.0"},"ticks_over_50ms":{"pass":true,"detail":"0 <= 0"},"rss_mib_max":{"pass":true,"detail":"1289.188 < 4096.0"},"pass":true}
+{"count":4006,"mean_ms":1.41,"p50_ms":1.312,"p99_ms":4.621,"max_ms":39.613,"over_50ms":0}
+{"walk":{"packets":45976,"wire_bytes":67902559,"connection_seconds":3568.704,"kb_per_s_per_bot":18.581,"packets_per_s_per_bot":12.883,"steady_packets":27186,"steady_wire_bytes":40301940,"steady_connection_seconds":2968.704,"steady_kb_per_s_per_bot":13.257,"steady_packets_per_s_per_bot":9.158,"per_bot_packets":{"count":20,"mean":2298.8,"p50":2299.0,"p99":2353.0,"max":2353.0,"min":2217.0}}}
+walk: steady_wire_bytes / steady_connection_seconds = 40301940 / 2968.704 = 13.575 KB/s per bot (KB = 1,000 B as in DESIGN-M3 §2); steady_wire_bytes / steady_packets = 1482.4 B per chunk
+{"chunk_data_packets_received":45976}
+
+## JFR (jfr print; counts over the whole recording)
+MethodTiming last invocations: io.github.bearisbug.synaxis.instance.DynamicChunk.createChunkPacket() = 0
+MethodTiming last invocations: io.github.bearisbug.synaxis.network.packet.server.play.ChunkDataPacket.<init>(int, int, ChunkData, LightData) = 0
+MethodTiming last invocations: io.github.bearisbug.synaxis.synx.SynxChunk.getFullDataPacket() = 45976
+ExecutionSample events: 4097
+ExecutionSample events with createChunkPacket in the stack: 0
+ExecutionSample events with SynxChunk.getFullDataPacket in the stack: 10
+ExecutionSample events with sendChunk in the stack: 40
+ObjectAllocationSample events: 497
+ObjectAllocationSample events with objectClass ChunkDataPacket: 0
+ObjectAllocationSample events with createChunkPacket in the stack: 0

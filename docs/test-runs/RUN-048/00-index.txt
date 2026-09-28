@@ -1,0 +1,9 @@
+# RUN-048 evidence: the two M3-E follow-ups (docs/DESIGN-M3.md v0.20), branch m3e/follow-ups, code 9c6d457ee9 (main 21aae99eca + 5be577cefc + 9c6d457ee9)
+# 01-red.txt      the new tests before the implementation, on the working tree of 21aae99eca (the tests, ShardGates with the new constructor that writes nothing yet, TicketIssuer of main):
+#                 ShardGatesTest red on the ledger line, TicketIssuerTickThreadIntegrationTest red on the event called on a Syn-Store-Write virtual thread and on SENT for a player who left.
+#                 The class had its first two tests then; all three red on main's TicketIssuer are in 03-cases.txt, 25-tc090-3
+# 02-gates.txt    check --rerun-tasks with frozen zlib, and test --rerun-tasks in the two strict modes: 4,048 tests each, 15 skipped (root module), 0 failures
+# 03-cases.txt    TC-WORLD-064 steps 2-3, TC-WORLD-089 steps 3-5, TC-WORLD-090 steps 3-7, TC-WORLD-087 step 3: each edit, its red, the restore;
+#                 then one run of the four classes on the restored code (TC-WORLD-064/087/089/090 last step); 21b repeats 21 to keep the whole message
+# 04-scripts.txt  the scripts that produced 01-03
+# Not kept: the Gradle logs and the JUnit XML; the numbers and messages are copied into 01-03.

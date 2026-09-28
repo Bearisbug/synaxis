@@ -1,0 +1,150 @@
+# RUN-048 counterproofs on 9c6d457ee9, 2026-09-28 19:30:34
+edit server-app/src/main/java/io/github/bearisbug/synaxis/app/shard/ShardGates.java:
+-        if (gate == null || gate.equals(before) || !underWay.add(player)) return;
++        if (gate == null || gate.equals(before)) return;
++        underWay.add(player);
+---- 20-tc064-2
+7 tests completed, 1 failed
+BUILD FAILED in 8s
+# rc=1 wall=9s end 19:30:43
+shard.ShardGatesTest tests="7" skipped="0" failures="1" errors="0"
+    <failure message="org.opentest4j.AssertionFailedError: the first transfer is still under way ==> expected: <[Walker r1]> but was: <[Walker r1, Walker r1]>"
+	at io.github.bearisbug.synaxis.app.shard.ShardGatesTest.aWalkInWhileATransferIsUnderWayDoesNotTrigger(ShardGatesTest.java:147)
+restored: git status --short -> [ M docs/DESIGN-M3.md  M docs/TEST.md ]
+edit server-app/src/main/java/io/github/bearisbug/synaxis/app/shard/ShardGates.java:
+-import java.util.concurrent.CompletionException;
+-            final Throwable cause = error instanceof CompletionException && error.getCause() != null ? error.getCause() : error;
++            final Throwable cause = error;
+---- 21-tc064-3
+7 tests completed, 1 failed
+BUILD FAILED in 5s
+# rc=1 wall=6s end 19:30:49
+shard.ShardGatesTest tests="7" skipped="0" failures="1" errors="0"
+    <failure message="org.opentest4j.AssertionFailedError: expected: <[java.lang.IllegalStateException: the shard service answers UNKNOWN_TARGET, java.lang.IllegalStateException: the shard service answers SAME_TARGET, java.lang.IllegalStateException: the ticket does not encode]> but was: <[java.lang.IllegalStateException: the shard service answers UNKNOWN_TARGET, java.lang.IllegalStateException: the shard service ans
+	at io.github.bearisbug.synaxis.app.shard.ShardGatesTest.aResultTheDirectoryRulesOutAndATransferThatThrewAreErrors(ShardGatesTest.java:250)
+restored: git status --short -> [ M docs/DESIGN-M3.md  M docs/TEST.md ]
+edit server-app/src/main/java/io/github/bearisbug/synaxis/app/shard/ShardGates.java:
+-                events.accept("transfer_refused", attributes);
++                if (Boolean.getBoolean("proof.never")) events.accept("transfer_refused", attributes);
+---- 22-tc089-3
+7 tests completed, 1 failed
+BUILD FAILED in 5s
+# rc=1 wall=6s end 19:30:55
+shard.ShardGatesTest tests="7" skipped="0" failures="1" errors="0"
+    <failure message="org.opentest4j.AssertionFailedError: FULL ==> expected: <[transfer_refused {player_uuid=376d513e-9f82-4abe-b8d8-f7952c5ccec1, source_shard=r0-c1, target_region=r1, result=full}]> but was: <[]>"
+	at io.github.bearisbug.synaxis.app.shard.ShardGatesTest.onlyAChoiceThatFailedIsWrittenToTheLedger(ShardGatesTest.java:212)
+restored: git status --short -> [ M docs/DESIGN-M3.md  M docs/TEST.md ]
+edit server-app/src/main/java/io/github/bearisbug/synaxis/app/shard/ShardGates.java:
+-import java.util.Locale;
+-                attributes.put("result", result.name().toLowerCase(Locale.ROOT));
++                attributes.put("result", result.name());
+---- 23-tc089-4
+7 tests completed, 1 failed
+BUILD FAILED in 5s
+# rc=1 wall=6s end 19:31:01
+shard.ShardGatesTest tests="7" skipped="0" failures="1" errors="0"
+    <failure message="org.opentest4j.AssertionFailedError: FULL ==> expected: <[transfer_refused {player_uuid=0b975b4e-7052-40b5-a695-76f49072b7d5, source_shard=r0-c1, target_region=r1, result=full}]> but was: <[transfer_refused {player_uuid=0b975b4e-7052-40b5-a695-76f49072b7d5, source_shard=r0-c1, target_region=r1, result=FULL}]>"
+	at io.github.bearisbug.synaxis.app.shard.ShardGatesTest.onlyAChoiceThatFailedIsWrittenToTheLedger(ShardGatesTest.java:212)
+restored: git status --short -> [ M docs/DESIGN-M3.md  M docs/TEST.md ]
+edit server-app/src/main/java/io/github/bearisbug/synaxis/app/shard/ShardGates.java:
+-            case SENT, COOLDOWN, NOT_ONLINE, SAVE_FAILED -> {
++            case SENT, NOT_ONLINE, SAVE_FAILED -> {
+-            case FULL, OFFLINE, DIRECTORY_UNAVAILABLE -> {
++            case FULL, OFFLINE, DIRECTORY_UNAVAILABLE, COOLDOWN -> {
+---- 24-tc089-5
+7 tests completed, 2 failed
+BUILD FAILED in 5s
+# rc=1 wall=6s end 19:31:07
+shard.ShardGatesTest tests="7" skipped="0" failures="2" errors="0"
+    <failure message="org.opentest4j.AssertionFailedError: COOLDOWN ==> expected: <[]> but was: <[synaxis:transfer-failed]>"
+	at io.github.bearisbug.synaxis.app.shard.ShardGatesTest.onlyAChoiceThatFailedIsToldToThePlayer(ShardGatesTest.java:194)
+    <failure message="org.opentest4j.AssertionFailedError: COOLDOWN ==> expected: <[]> but was: <[transfer_refused {player_uuid=af082949-c339-416a-8ec7-7e6586ca59ab, source_shard=r0-c1, target_region=r1, result=cooldown}]>"
+	at io.github.bearisbug.synaxis.app.shard.ShardGatesTest.onlyAChoiceThatFailedIsWrittenToTheLedger(ShardGatesTest.java:212)
+restored: git status --short -> [ M docs/DESIGN-M3.md  M docs/TEST.md ]
+edit server-app/src/main/java/io/github/bearisbug/synaxis/app/transfer/TicketIssuer.java: replaced by the version of main 21aae99eca ( 1 file changed, 19 insertions(+), 59 deletions(-))
+---- 25-tc090-3
+3 tests completed, 3 failed
+BUILD FAILED in 11s
+# rc=1 wall=11s end 19:31:18
+store.TicketIssuerTickThreadIntegrationTest tests="3" skipped="0" failures="3" errors="0"
+    <failure message="org.opentest4j.AssertionFailedError: the event is called on a tick thread, not VirtualThread[#419,Syn-Store-Write]/terminated ==> Unexpected type, expected: <io.github.bearisbug.synaxis.thread.TickThread> but was: <java.lang.VirtualThread>"
+	at io.github.bearisbug.synaxis.app.store.TicketIssuerTickThreadIntegrationTest.theTransferEventIsCalledOnThePlayersTickThreadBetweenTheCookieAndTheTransfer(TicketIssuerTickThreadIntegrationTest.java:172)
+    <failure message="org.opentest4j.AssertionFailedError: expected: <NOT_ONLINE> but was: <SENT>"
+	at io.github.bearisbug.synaxis.app.store.TicketIssuerTickThreadIntegrationTest.aPlayerWhoLeavesBeforeItsTickIsSentNoTicketAndTheFutureStillCompletes(TicketIssuerTickThreadIntegrationTest.java:202)
+    <failure message="org.opentest4j.AssertionFailedError: a connected player is waited for ==> expected: <false> but was: <true>"
+	at io.github.bearisbug.synaxis.app.store.TicketIssuerTickThreadIntegrationTest.aPlayerStillConnectedGetsItsTicketHoweverLateItsTick(TicketIssuerTickThreadIntegrationTest.java:229)
+restored: git status --short -> [ M docs/DESIGN-M3.md  M docs/TEST.md ]
+edit server-app/src/main/java/io/github/bearisbug/synaxis/app/transfer/TicketIssuer.java:
+-        if (!player.isOnline()) return TransferOutcome.NOT_ONLINE;
++        if (!player.isOnline() && Boolean.getBoolean("proof.never")) return TransferOutcome.NOT_ONLINE;
+---- 26-tc090-4
+3 tests completed, 1 failed
+BUILD FAILED in 11s
+# rc=1 wall=11s end 19:31:30
+store.TicketIssuerTickThreadIntegrationTest tests="3" skipped="0" failures="1" errors="0"
+    <failure message="org.opentest4j.AssertionFailedError: expected: <NOT_ONLINE> but was: <SENT>"
+	at io.github.bearisbug.synaxis.app.store.TicketIssuerTickThreadIntegrationTest.aPlayerWhoLeavesBeforeItsTickIsSentNoTicketAndTheFutureStillCompletes(TicketIssuerTickThreadIntegrationTest.java:202)
+restored: git status --short -> [ M docs/DESIGN-M3.md  M docs/TEST.md ]
+edit server-app/src/main/java/io/github/bearisbug/synaxis/app/transfer/TicketIssuer.java:
+-            if (player.isOnline()) decideOnceGone(player, decided, sent);
++            if (player.isOnline() && Boolean.getBoolean("proof.never")) decideOnceGone(player, decided, sent);
+---- 27-tc090-5
+3 tests completed, 1 failed
+BUILD FAILED in 16s
+# rc=1 wall=17s end 19:31:47
+store.TicketIssuerTickThreadIntegrationTest tests="3" skipped="0" failures="1" errors="0"
+    <failure message="org.opentest4j.AssertionFailedError: a connected player is waited for ==> expected: <false> but was: <true>"
+	at io.github.bearisbug.synaxis.app.store.TicketIssuerTickThreadIntegrationTest.aPlayerStillConnectedGetsItsTicketHoweverLateItsTick(TicketIssuerTickThreadIntegrationTest.java:229)
+restored: git status --short -> [ M docs/DESIGN-M3.md  M docs/TEST.md ]
+edit server-app/src/main/java/io/github/bearisbug/synaxis/app/transfer/TicketIssuer.java:
+-        CompletableFuture.delayedExecutor(PluginTransfers.TICK_TIMEOUT_MILLIS, TimeUnit.MILLISECONDS, Runnable::run).execute(() -> {
++        CompletableFuture.delayedExecutor(PluginTransfers.TICK_TIMEOUT_MILLIS, TimeUnit.DAYS, Runnable::run).execute(() -> {
+---- 28-tc090-6
+3 tests completed, 1 failed
+BUILD FAILED in 18s
+# rc=1 wall=19s end 19:32:06
+store.TicketIssuerTickThreadIntegrationTest tests="3" skipped="0" failures="1" errors="0"
+    <failure message="java.util.concurrent.TimeoutException"
+	at io.github.bearisbug.synaxis.app.store.TicketIssuerTickThreadIntegrationTest.aPlayerWhoLeavesBeforeItsTickIsSentNoTicketAndTheFutureStillCompletes(TicketIssuerTickThreadIntegrationTest.java:210)
+restored: git status --short -> [ M docs/DESIGN-M3.md  M docs/TEST.md ]
+edit server-app/src/main/java/io/github/bearisbug/synaxis/app/transfer/TicketIssuer.java:
+-        player.getPlayerConnection().storeCookie(TransferTicket.COOKIE, ticket.encode(keys));
++        player.getPlayerConnection().storeCookie(TransferTicket.COOKIE, ticket.encode(keys));
+---- 29-tc090-7
+3 tests completed, 2 failed
+BUILD FAILED in 16s
+# rc=1 wall=16s end 19:32:22
+store.TicketIssuerTickThreadIntegrationTest tests="3" skipped="0" failures="2" errors="0"
+    <failure message="org.opentest4j.AssertionFailedError: the cookie is stored before the event is called ==> expected: <[true]> but was: <[false]>"
+	at io.github.bearisbug.synaxis.app.store.TicketIssuerTickThreadIntegrationTest.theTransferEventIsCalledOnThePlayersTickThreadBetweenTheCookieAndTheTransfer(TicketIssuerTickThreadIntegrationTest.java:177)
+    <failure message="org.opentest4j.AssertionFailedError: the ticket went out ==> expected: <true> but was: <false>"
+	at io.github.bearisbug.synaxis.app.store.TicketIssuerTickThreadIntegrationTest.aPlayerStillConnectedGetsItsTicketHoweverLateItsTick(TicketIssuerTickThreadIntegrationTest.java:234)
+restored: git status --short -> [ M docs/DESIGN-M3.md  M docs/TEST.md ]
+edit server-app/src/main/java/io/github/bearisbug/synaxis/app/transfer/TicketIssuer.java:
+-        // The cookie first: the client stores it before it acts on the transfer
+-        player.getPlayerConnection().storeCookie(TransferTicket.COOKIE, ticket.encode(keys));
+-        player.getPlayerConnection().transfer(host, port);
++        // The cookie first: the client stores it before it acts on the transfer
++        player.getPlayerConnection().storeCookie(TransferTicket.COOKIE, ticket.encode(keys));
++        player.getPlayerConnection().transfer(host, port);
+---- 30-tc087-3
+7 tests completed, 1 failed
+BUILD FAILED in 14s
+# rc=1 wall=16s end 19:32:38
+store.TransferTicketsIntegrationTest tests="7" skipped="0" failures="1" errors="0"
+    <failure message="org.opentest4j.AssertionFailedError: written once the client was told where to go ==> expected: <[true]> but was: <[false]>"
+	at io.github.bearisbug.synaxis.app.store.TransferTicketsIntegrationTest.badTicketsAreRefusedInCheckOrderAndAGoodOneOnlyOnce(TransferTicketsIntegrationTest.java:241)
+restored: git status --short -> [ M docs/DESIGN-M3.md  M docs/TEST.md ]
+---- 31-restored
+BUILD SUCCESSFUL in 25s
+# rc=0 wall=25s end 19:33:03
+shard.ShardGatesTest tests="7" skipped="0" failures="0" errors="0"
+store.TicketIssuerTickThreadIntegrationTest tests="3" skipped="0" failures="0" errors="0"
+store.TransferTicketsIntegrationTest tests="7" skipped="0" failures="0" errors="0"
+TransferAdmissionIntegrationTest tests="1" skipped="0" failures="0" errors="0"
+# end 19:33:03
+---- 21b-tc064-3-full (the same edit as 21-tc064-3, run again for the whole message)
+7 tests completed, 1 failed
+# rc=1 wall=4s end 19:33:22
+but was: <[java.lang.IllegalStateException: the shard service answers UNKNOWN_TARGET, java.lang.IllegalStateException: the shard service answers SAME_TARGET, java.util.concurrent.CompletionException: java.lang.IllegalStateException: the ticket does not encode]>"
+restored: git status --short -> [ M docs/DESIGN-M3.md  M docs/TEST.md ]

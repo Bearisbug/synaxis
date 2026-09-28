@@ -20,7 +20,9 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.slf4j.LoggerFactory;
 
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
@@ -33,7 +35,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
  * The gates of a region ({@code docs/DESIGN-M3.md} {@code API-M3-010}, {@code REQ-M3-017}): a walk
  * into a frame sends the player to the gate's target region once, on the block the new position is
  * in; nothing more while that transfer is under way; and only a choice that failed is told to the
- * player.
+ * player and written to the ledger ({@code EVT:transfer_refused}).
  */
 class ShardGatesTest {
 
@@ -76,6 +78,8 @@ class ShardGatesTest {
     }
 
     private final Service service = new Service();
+    /** What the gates wrote to the ledger, {@code <event> <attributes>}. */
+    private final List<String> ledger = new CopyOnWriteArrayList<>();
     private Env env;
     private Instance instance;
 
@@ -90,8 +94,12 @@ class ShardGatesTest {
         env.process().stop();
     }
 
+    private ShardGates gates(ShardDirectory directory) {
+        return new ShardGates(directory, service, (event, attributes) -> ledger.add(event + " " + attributes));
+    }
+
     private void attach(ShardDirectory directory) {
-        new ShardGates(directory, service).attach(instance);
+        gates(directory).attach(instance);
     }
 
     private Walker walker(String name) {
@@ -188,6 +196,34 @@ class ShardGatesTest {
     }
 
     @Test
+    void onlyAChoiceThatFailedIsWrittenToTheLedger() {
+        attach(ExampleDirectory.as("r0-c1"));
+        for (ShardTransferResult result : ShardTransferResult.values()) {
+            final Walker walker = walker("Walker" + result.ordinal());
+            walk(walker, 2040);
+            ledger.clear();
+            service.transfers.getLast().complete(result);
+            final List<String> written = switch (result) {
+                case FULL -> refused(walker, "full");
+                case OFFLINE -> refused(walker, "offline");
+                case DIRECTORY_UNAVAILABLE -> refused(walker, "directory_unavailable");
+                case SENT, COOLDOWN, NOT_ONLINE, SAVE_FAILED, UNKNOWN_TARGET, SAME_TARGET -> List.of();
+            };
+            assertEquals(written, ledger, result.name());
+        }
+    }
+
+    /** The one {@code EVT:transfer_refused} line of a walk into r0-east that found no channel of r1. */
+    private static List<String> refused(Walker walker, String result) {
+        final Map<String, Object> attributes = new LinkedHashMap<>();
+        attributes.put("player_uuid", walker.player().getUuid());
+        attributes.put("source_shard", "r0-c1");
+        attributes.put("target_region", "r1");
+        attributes.put("result", result);
+        return List.of("transfer_refused " + attributes);
+    }
+
+    @Test
     void aResultTheDirectoryRulesOutAndATransferThatThrewAreErrors() {
         final ListAppender<ILoggingEvent> log = new ListAppender<>();
         log.start();
@@ -197,18 +233,19 @@ class ShardGatesTest {
             // Gates of their own on an instance of their own for each: a budget writes one ERROR per 10 s
             for (ShardTransferResult result : List.of(ShardTransferResult.UNKNOWN_TARGET, ShardTransferResult.SAME_TARGET)) {
                 final Instance own = env.createFlatInstance();
-                new ShardGates(ExampleDirectory.as("r0-c1"), service).attach(own);
+                gates(ExampleDirectory.as("r0-c1")).attach(own);
                 walk(walker("Walker" + result.ordinal(), own), 2040);
                 service.transfers.getLast().complete(result);
             }
             final Instance own = env.createFlatInstance();
-            new ShardGates(ExampleDirectory.as("r0-c1"), service).attach(own);
+            gates(ExampleDirectory.as("r0-c1")).attach(own);
             final Walker walker = walker("Thrown", own);
             walk(walker, 2040);
             // As ShardServiceImpl passes it on: the failure of TransferTickets, wrapped by thenCompose
             service.transfers.getLast().completeExceptionally(
                     new CompletionException(new IllegalStateException("the ticket does not encode")));
             assertEquals(List.of(), walker.messages());
+            assertEquals(List.of(), ledger, "an error is no refusal");
 
             assertEquals(List.of("java.lang.IllegalStateException: the shard service answers UNKNOWN_TARGET",
                     "java.lang.IllegalStateException: the shard service answers SAME_TARGET",

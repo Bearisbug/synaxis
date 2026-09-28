@@ -50,7 +50,8 @@ import java.util.stream.IntStream;
  *     <li>Failed: a record that does not read loads as air with full sky light, read only.</li>
  * </ul>
  * A chunk outside the region ({@code bounds}) or in a world that is not writable is read only as well:
- * changes are ignored silently, as the engine ignores them on any read only chunk.
+ * changes are ignored silently, as the engine ignores them on any read only chunk. A world state flag
+ * still changes a world that is not writable ({@link #asWorldFlag}).
  */
 public final class SynxChunk extends DynamicChunk implements OverlayChunk {
     enum Mode {HANDLE, OVERLAY, FAILED}
@@ -74,9 +75,8 @@ public final class SynxChunk extends DynamicChunk implements OverlayChunk {
      */
     record BlockEntity(CompoundBinaryTag nbt, @Nullable BlockHandler handler) {
         static BlockEntity of(SynxBlockEntity entity, BlockManager blocks) {
-            CompoundBinaryTag nbt = entity.nbt();
-            for (String key : RECORD_KEYS) nbt = nbt.remove(key);
-            return new BlockEntity(nbt, entity.handler().isEmpty() ? null : blocks.getHandlerOrDummy(entity.handler()));
+            return new BlockEntity(withoutRecordKeys(entity.nbt()),
+                    entity.handler().isEmpty() ? null : blocks.getHandlerOrDummy(entity.handler()));
         }
 
         Block block(int state) {
@@ -97,6 +97,8 @@ public final class SynxChunk extends DynamicChunk implements OverlayChunk {
     private static final long LOCK_WAIT_NANOS = TimeUnit.MILLISECONDS.toNanos(50);
     private static final byte[] NO_LIGHT = new byte[0];
     private static final byte[] FULL_LIGHT = new byte[2048];
+    /** Bound while this thread applies a world state flag ({@link #asWorldFlag}). */
+    private static final ScopedValue<Boolean> WORLD_FLAG = ScopedValue.newInstance();
     /** The keys of a block entity record the block carries itself; the baker leaves them out of segment ①. */
     private static final List<String> RECORD_KEYS = List.of("id", "x", "y", "z", "keepPacked");
     /** The states the client and the baker count as air besides air itself, state 0. */
@@ -174,13 +176,54 @@ public final class SynxChunk extends DynamicChunk implements OverlayChunk {
     }
 
     /**
-     * Outside the region, in failed mode, or with {@code synaxis.world-writable=false}. The engine
-     * checks this in {@code InstanceContainer} only; {@link #setBlock} and {@link #setBiome} check it
-     * again for the callers that come around it.
+     * Runs {@code action} as the application of a world state flag ({@code docs/DESIGN-M3.md}
+     * {@code API-M3-005}, {@code API-M3-013}): on this thread and for as long as it runs,
+     * {@link #isReadOnly()} leaves {@code synaxis.world-writable} out, so that a flag changes a world
+     * nothing else may change. Outside the region and in failed mode a chunk stays read only.
+     *
+     * @param action what changes the blocks
+     */
+    public static void asWorldFlag(Runnable action) {
+        ScopedValue.where(WORLD_FLAG, Boolean.TRUE).run(action);
+    }
+
+    /**
+     * Whether a cell that holds {@code block} holds {@code target} as far as an overlay record and
+     * segment ③ keep a block: the same state, handlers of the same namespace or none, and the same NBT
+     * once the record keys are left out, no NBT counting as an empty one. Loaded from a record, a block
+     * entity set without NBT comes back with an empty one, without the record keys, and with the handler
+     * the {@link BlockManager} gives for its namespace ({@link BlockEntity}), which {@code Block#equals}
+     * tells from the block that was set.
+     *
+     * @param block  what the cell holds
+     * @param target what it is to hold
+     * @return true when setting {@code target} would change nothing a record keeps
+     */
+    public static boolean sameBlock(Block block, Block target) {
+        if (block.stateId() != target.stateId()) return false;
+        final BlockHandler handler = block.handler();
+        final BlockHandler targetHandler = target.handler();
+        if (handler == null ? targetHandler != null
+                : targetHandler == null || !handler.getKey().equals(targetHandler.getKey())) return false;
+        return withoutRecordKeys(block.nbtOrEmpty()).equals(withoutRecordKeys(target.nbtOrEmpty()));
+    }
+
+    private static CompoundBinaryTag withoutRecordKeys(CompoundBinaryTag nbt) {
+        CompoundBinaryTag without = nbt;
+        for (String key : RECORD_KEYS) without = without.remove(key);
+        return without;
+    }
+
+    /**
+     * Outside the region, in failed mode, or with {@code synaxis.world-writable=false} unless this
+     * thread applies a world state flag ({@link #asWorldFlag}). The engine checks this in
+     * {@code InstanceContainer} only; {@link #setBlock} and {@link #setBiome} check it again for the
+     * callers that come around it.
      */
     @Override
     public boolean isReadOnly() {
-        return !inRegion || mode == Mode.FAILED || !loader.options().worldWritable() || super.isReadOnly();
+        return !inRegion || mode == Mode.FAILED || (!loader.options().worldWritable() && !WORLD_FLAG.isBound())
+                || super.isReadOnly();
     }
 
     @Override

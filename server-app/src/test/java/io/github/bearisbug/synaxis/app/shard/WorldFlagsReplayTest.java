@@ -39,6 +39,7 @@ import io.github.bearisbug.synaxis.synx.SynxRelight;
 import io.github.bearisbug.synaxis.testing.Env;
 import net.kyori.adventure.key.Key;
 import net.kyori.adventure.nbt.CompoundBinaryTag;
+import org.jetbrains.annotations.Nullable;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -57,6 +58,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
 import java.util.function.BooleanSupplier;
 import java.util.stream.IntStream;
@@ -229,13 +231,18 @@ public class WorldFlagsReplayTest {
 
     /** Steps (3) and (5) of {@code Main} on a map, in a process of its own. */
     private Mounted mount(ShardSettings settings, SynxOptions synx, WorldFlagsImpl flags) {
+        return mount(settings, synx, flags, null);
+    }
+
+    /** As {@link #mount(ShardSettings, SynxOptions, WorldFlagsImpl)}, the light recomputations on {@code relightExecutor}. */
+    private Mounted mount(ShardSettings settings, SynxOptions synx, WorldFlagsImpl flags, @Nullable Executor relightExecutor) {
         final Env env = Env.create(config -> config.chunkViewDistance(4));
         envs.add(env);
         env.process().block().registerHandler(ChestHandler.KEY, ChestHandler::new);
         final ShardWorld world = ShardWorld.prepare(env.process(), settings, synx, OVERLAY, null);
         final ShardWorld.Started started = world.start(new ShutdownSequence(env.process(), new NoPlayers()),
                 (_, _) -> {
-                }, flags, overlayRoot);
+                }, flags, overlayRoot, relightExecutor);
         return new Mounted(env, world, started.instance(), started.relight());
     }
 
@@ -529,7 +536,9 @@ public class WorldFlagsReplayTest {
             cells.add(new FlagCell(1, 4_096, BRIDGE_Z, cells.getFirst().block()));
             return cells;
         });
-        final Mounted mounted = mount(release, READ_ONLY, flags);
+        // The light recomputations never run: only a flag application could load a chunk past the bounds
+        final Mounted mounted = mount(release, READ_ONLY, flags, _ -> {
+        });
         final InstanceContainer instance = mounted.instance();
         instance.setChunkUnloadGraceTicks(-1);
         flags.start(instance);
@@ -546,7 +555,7 @@ public class WorldFlagsReplayTest {
         instance.setBlock(3, BRIDGE_Y, BRIDGE_Z, Block.STONE);
         assertEquals(Block.AIR, instance.getBlock(3, BRIDGE_Y, BRIDGE_Z), "not in a flag application: read only");
         assertTrue(instance.getChunk(0, 0).isReadOnly());
-        // The recomputation of the bridge may have loaded it for its snapshot: the cell past the bounds is not set either way
+        assertNull(instance.getChunk(-1, 0), "no application loaded the chunk past the bounds");
         instance.loadChunk(-1, 0).join();
         assertEquals(Block.AIR, instance.getBlock(-5, BRIDGE_Y, BRIDGE_Z), "past the bounds");
         assertTrue(warnings().stream().anyMatch(line -> line.contains(BRIDGE) && line.contains("2 cells outside")),

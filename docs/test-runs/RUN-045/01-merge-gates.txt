@@ -48,3 +48,4 @@ c-strict2  2026-09-28 08:28:34 HEAD daf5f03e18 load1 9.26 swap_free 609.62M | BU
 
 # d-check: the vet step ran after strict1 had started and was not recorded; server-app skipped=0 in its tally covers the 7 store suites.
 # c-strict2 waited 08:25:03~08:28:34 for another session's Gradle (pids 88463/88477, then 90224/90242) to end before starting; only one Gradle ran at a time.
+# review round: the d-check gap is not rerun (cb8fb2f25b is an intermediate state). The seven vetted suites are all server-app classes, so the skipped=0 of that tally already implies theirs; on the final code the vet is recorded for all three runs in 06-review-round.txt.

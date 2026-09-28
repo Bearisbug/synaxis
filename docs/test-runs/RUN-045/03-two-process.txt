@@ -68,6 +68,7 @@ shard log: 08:44:04.304 WARN ConnectionGate - Connection gate rejected 1 connect
 ledger of r0-c1 00:43:30~ : only 2 session_entered_configuration (the two admitted bots) and chunk_stream_stats; nothing for the refused connection
 the two bots: run: 2/2 logged in, 0 lost, 2104 chunk packets; wrote bots-two.json
 offline mode: no encryption request is sent to any connection, so 'no encryption request' is not distinguishing here
+# review round correction: the reason above is wrong. This run used -Dsynaxis.app.auth=offline, which sends no encryption request to anybody, so the run cannot show the clause; -Dsynaxis.app.auth=offline-encrypted (Main.java:858) with the bot's --encryption off would have (the bot fails with 'the server asked for encryption'). Not rerun as a process; the clause is judged by FullChannelTransferSocketTest#aFullChannelRefusesATransferBeforeTheEncryptionRequest, 06-review-round.txt
 ### counter case: r0-c1 with -Dsynaxis.max-players=3 (work dir <L>/work-refuse, port 25614)
 exit=1
 Refusing to start: synaxis.max-players=3 disagrees with the capacity 2 of r0-c1 in the shard directory

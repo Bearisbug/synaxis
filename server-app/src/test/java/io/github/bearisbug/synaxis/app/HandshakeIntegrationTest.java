@@ -17,6 +17,7 @@ import io.github.bearisbug.synaxis.network.packet.server.SendablePacket;
 import io.github.bearisbug.synaxis.network.packet.server.ServerPacket;
 import io.github.bearisbug.synaxis.network.packet.server.common.DisconnectPacket;
 import io.github.bearisbug.synaxis.network.packet.server.common.PluginMessagePacket;
+import io.github.bearisbug.synaxis.network.packet.server.configuration.FinishConfigurationPacket;
 import io.github.bearisbug.synaxis.network.packet.server.login.LoginDisconnectPacket;
 import io.github.bearisbug.synaxis.network.packet.server.login.LoginPluginRequestPacket;
 import io.github.bearisbug.synaxis.network.player.GameProfile;
@@ -45,6 +46,7 @@ import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
@@ -113,8 +115,10 @@ class HandshakeIntegrationTest {
     private static final class Wire extends PlayerConnection {
 
         private final List<ServerPacket> sent = new CopyOnWriteArrayList<>();
+        private final CountDownLatch finished = new CountDownLatch(1);
         private boolean answersLogin;
         private byte @Nullable [] loginAnswer;
+        private volatile @Nullable Thread late;
 
         Wire(ServerProcess process, ConnectionState state) {
             super(process);
@@ -127,16 +131,37 @@ class HandshakeIntegrationTest {
             this.loginAnswer = answer;
         }
 
+        /**
+         * Holds whatever the given thread writes until {@link FinishConfigurationPacket} has been
+         * written: a tick thread that loses the processor right after its {@code complete} and gets
+         * it back only once the configuration thread it woke has finished the phase.
+         */
+        void holdUntilFinished(Thread writer) {
+            this.late = writer;
+        }
+
         @Override
         public void sendPacket(SendablePacket packet) {
             final ServerPacket server = packet instanceof ServerPacket direct ? direct
                     : SendablePacket.extractServerPacket(getServerState(), packet);
+            if (Thread.currentThread() == late) awaitFinished();
             sent.add(server);
+            if (server instanceof FinishConfigurationPacket) finished.countDown();
             if (!(server instanceof LoginPluginRequestPacket request) || !answersLogin) return;
             try {
                 loginPluginMessageProcessor().handleResponse(request.messageId(), loginAnswer);
             } catch (Exception e) {
                 throw new IllegalStateException("could not answer the login plugin request", e);
+            }
+        }
+
+        private void awaitFinished() {
+            try {
+                if (!finished.await(10, TimeUnit.SECONDS))
+                    throw new IllegalStateException("the configuration phase never finished");
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                throw new IllegalStateException(e);
             }
         }
 
@@ -398,6 +423,7 @@ class HandshakeIntegrationTest {
         assertEquals(1, requests.size(), "expected exactly one request, got " + requests);
         assertEquals(HandshakeGate.CHANNEL, requests.getFirst().channel());
         assertEquals(new HandshakeGate.HelloResult(7, ProtocolSchema.SCHEMA_VERSION), gate.await(player));
+        assertEquals(List.of(), wire.of(PluginMessagePacket.class), "the login plugin request carried S2C_HELLO");
         assertTrue(wire.isOnline());
     }
 
@@ -486,6 +512,37 @@ class HandshakeIntegrationTest {
                 7, ProtocolSchema.SCHEMA_VERSION, player.getUuid(),
                 ((InetSocketAddress) wire.getRemoteAddress()).getAddress())), seen);
         assertTrue(wire.isOnline());
+    }
+
+    @Test
+    void theAnswerIsQueuedBeforeFinishConfigurationHoweverLateTheTickThreadIs(Env env) {
+        final Wire wire = wire(env);
+        final Player player = player(env, wire);
+        final Instance match = env.createFlatInstance();
+        final PluginHost host = host(env);
+        host.registerHostAdmission(_ -> new Admission.Accept(match, 1));
+        host.requireHandshake();
+        // This thread interprets the hello, and whatever it writes waits for the configuration thread
+        // it wakes to finish the phase: the schedule of GitHub Actions run 36459937261, made certain
+        wire.holdUntilFinished(Thread.currentThread());
+
+        assertNull(configure(env, player, hello(7, ProtocolSchema.SCHEMA_VERSION)),
+                "the configuration phase must not throw");
+
+        // The write thread encodes the queue in this order and moves the connection to the play
+        // state as it writes FinishConfigurationPacket. An answer behind it goes out as a play
+        // packet, which the client mod has no codec for and drops: the client stays SENT.
+        final List<ServerPacket> order = wire.sent.stream()
+                .filter(packet -> packet instanceof FinishConfigurationPacket
+                        || (packet instanceof PluginMessagePacket message && message.channel().equals(HandshakeGate.CHANNEL)))
+                .toList();
+        assertEquals(List.of("PluginMessagePacket", "FinishConfigurationPacket"),
+                order.stream().map(packet -> packet.getClass().getSimpleName()).toList(),
+                "S2C_HELLO has to be queued before FinishConfigurationPacket");
+        final HandshakeMessage answer = HandshakeMessages.read(MsgBuf.reading(((PluginMessagePacket) order.getFirst()).data()));
+        assertEquals(ProtocolSchema.SCHEMA_VERSION, assertInstanceOf(S2CHello.class, answer).schemaVersion());
+        final String verified = onlyLedgerLine("client_verified");
+        assertTrue(verified.contains("\"mod_version\":7"), verified);
     }
 
     @Test

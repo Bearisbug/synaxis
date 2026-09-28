@@ -1,0 +1,28 @@
+RUN-050 记录（2026-09-28）
+
+被测版本：分支 prod/6a-rest 3272de56e4（代码同 a74a99b3a3，main 702169831f 已合入），推送到 GitHub 后手动触发
+  gh workflow run client-gametest.yml --ref prod/6a-rest -f p10=true
+执行：GitHub Actions run 36431726931（https://github.com/Bearisbug/synaxis/actions/runs/36431726931），job「Two shards, 100 round trips (P10)」，
+  ubuntu-latest，2026-09-28T13:52:27Z → 14:15:45Z（23 min 18 s）；同一次运行里 job「Run the client gametests」按 p10=true 跳过（触发条件生效）。
+范围：REQ-PROD-031 → TC-PROD-550（P10，DESIGN-PROD §19「两分片来回转服 100 次」）。本机因内存不足未执行（RUN-049 明细记为阻塞），本轮在 CI 上执行。
+
+步骤（全部 success）：Install Xvfb, Mesa and psql；Publish :protocol；Build the server and the baker；Bake the map and write the shard directory；
+  Generate the ticket key and the management token（掩码，未打印）；Start the fake sessionserver in record mode；Migrate the shared database；
+  Start the two shards；Start the client；Send the client back and forth 100 times；Wait for the client to leave；Stop the shards；Judge；Upload
+
+判定输出（p10.py judge，原文）：
+  ok   the driver ran to the end
+  ok   200 of 200 transfers answered sent, expected 200 of 200
+  ok   200 transfers arrived on their target shard, expected 200
+  ok   character.version read 201 times, expected 201, larger after every transfer: True
+  ok   transfer_issued {'r0-c1': 100, 'r0-c2': 100}, 200 in all, expected 200
+  ok   the client joined 201 worlds, expected 201
+  ok   the client's joins alternate between two shards: ['25611', '25612']
+  ok   the client's report ends with ['end done']
+  P10: all checks passed
+
+产物：run 36431726931 的 artifact client-gametest-p10（驱动记录、两份台账、日志）。
+回答了 RUN-049 列出的四个只有 CI 能回答的问题：真 Fabric 客户端能进目录模式分片；2 核 / 7 GB runner 同时容纳两个 1 GB 分片、客户端、其 Gradle 与 PostgreSQL；
+  首次进服未超时；整轮 23 min，低于 timeout-minutes 60。
+未覆盖：TC-PROD-550 第 11 步（间隔 1 s 的本地变体）仍待本机内存；TC-PROD-548（真进程）在 TicketIssuer 改动后的重跑仍待本机内存。
+结果：通过 1/1

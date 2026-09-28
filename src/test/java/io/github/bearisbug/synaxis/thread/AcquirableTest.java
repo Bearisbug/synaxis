@@ -161,6 +161,8 @@ public class AcquirableTest {
      * it until its callback returns, a teleport there can take hundreds of milliseconds, and trySync gives up
      * all that time. The check waits for the lock the way sync() does, interruptibly so that {@code @Timeout}
      * can end it, then trySync takes it a second time: a hold count of 2 in the callback is trySync's own.
+     * It then takes the lock from free, retried until {@code @Timeout}: another class may take it between
+     * the wait and the call, so a trySync that never succeeds from free fails as a timeout.
      */
     private static void assertTrySyncTakesTheGlobalLock(Acquirable<?> acquirable) throws InterruptedException {
         AtomicInteger holdCount = new AtomicInteger();
@@ -173,5 +175,13 @@ public class AcquirableTest {
         } finally {
             AcquirableImpl.GLOBAL_LOCK.unlock();
         }
+
+        holdCount.set(0);
+        while (!acquirable.trySync(_ -> holdCount.set(AcquirableImpl.GLOBAL_LOCK.getHoldCount()))) {
+            AcquirableImpl.GLOBAL_LOCK.lockInterruptibly();
+            AcquirableImpl.GLOBAL_LOCK.unlock();
+        }
+        assertEquals(1, holdCount.get(), "trySync acquired the tick thread lock without the free global lock");
+        assertEquals(0, AcquirableImpl.GLOBAL_LOCK.getHoldCount(), "trySync did not release the free global lock");
     }
 }

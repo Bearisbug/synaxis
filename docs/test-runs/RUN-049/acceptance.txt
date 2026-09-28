@@ -167,3 +167,58 @@ RUN-049 记录（2026-09-28）
 七、清理
   本轮没有改代码、没有起服务端进程；门禁结束后 pgrep -fl 'java|gradle' 无输出。/tmp/run049（Gradle 包装脚本、原始日志、JUnit 汇总脚本、第 10 步的伪造记录、
   第 3 步的烘焙目录）登记后删除。~/.m2 里的 protocol-dev 是 client-fabric 构建的常用输入，保留。
+
+八、合入 main 702169831f 之后的复验（2026-09-28，登记之后补）
+被测版本：分支 prod/6a-rest 的 3d47114077，即本分支 913f471443 合入 origin/main 702169831f（光照会话的 M3-E 跟进：5be577cefc ShardGates 写 EVT:transfer_refused，
+  9c6d457ee9 签发 ④ 在玩家所属 tick 线程上，DESIGN-M3 v0.20，RUN-048）。复验在这个提交加两份未提交的文档（docs/DESIGN-PROD.md v0.9.31、docs/TEST.md）上跑，代码相同。
+  合入后 Main.java 相对 913f471443 只多一处：Main#serveMap 的 Javadoc 多一行 @param ledger（第 495 行），其后行号加一；TicketIssuer.java 取 main 的版本
+  （签发 ④ 在 send 方法里，写回完成后排到玩家的下一个 tick）。
+环境：同第一节；每条 Gradle 命令带 --max-workers=4 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts --console=plain，同一时刻只跑一条；
+  数据库变量同第一节（口令取自 docker inspect synaxis-pg，未回显）。各次 Gradle 起止的 1 分钟负载 6.20～12.45，swap free 377.00～1,393.00 MB。
+  本节执行人没有起服务端进程，没有启动任何 Docker 容器。
+1. :server-app:test --rerun（带数据库变量，跑前删 server-app/build/test-results/test）20:55:40～21:00:12，BUILD SUCCESSFUL in 4m 31s
+    server-app classes=96 tests=514 skipped=0 failures=0 errors=0（本节之前 510 个、95 个类；多出的 4 个是 M3 v0.20 的 ShardGatesTest 第 7 条与新类
+      TicketIssuerTickThreadIntegrationTest 3 条）
+    用例读的类：ShardGatesTest 7、TicketIssuerTickThreadIntegrationTest 3、TransferTicketsIntegrationTest 7、TransferCommandIntegrationTest 6、
+      ManagementTransferIntegrationTest 6，都 0 失败 0 跳过
+    用 TestDatabase 的 26 个类（与第一节同一份名单）全部 skipped="0"
+2. 反证（每处改一处、只跑那个类、看红、git checkout -- 该文件还原；改法与红行按合入后的代码）
+    TC-PROD-157 第 3 步（TicketIssuer#send 里 storeCookie 与 transfer 两行对调）21:00:48～21:01:00：7 tests completed, 6 failed，
+      aTicketWhoseVersionTheCharacterIsNotAtIsRefusedAndTheLeaseGivenBack、aTicketWaitsForAnotherLoginOfItsAccountLoadingOnTheShard、
+      badTicketsAreRefusedInCheckOrderAndAGoodOneOnlyOnce、theCooldownOfATransferInCarriesToTheTargetShard、
+      aTicketArrivingWhileAnAbandonedLoginGivesItsLeaseBackKeepsTheLeaseItClaims、aStaleTicketDoesNotGiveBackTheLeaseOfALoginOfItsAccountOnTheShard
+      都红在 TransferTicketsIntegrationTest.java:200 the cookie is stored before the transfer: [PluginMessagePacket[channel=minecraft:brand, …；
+      aTransferThatCannotWriteLeavesThePlayerWhereItIs 绿
+    TC-PROD-157 第 5 步（TicketIssuer#send 里写 transfer_issued 的七行挪到 // The cookie first 之前）21:01:08～21:01:23：7 tests completed, 1 failed，
+      badTicketsAreRefusedInCheckOrderAndAGoodOneOnlyOnce 红在 :241 written once the client was told where to go ==> expected: <[true]> but was: <[false]>
+    TC-PROD-521 第 4 步（Main.java:720 new StoreRuntime(…) 末尾的 cooldowns 换成 TransferCooldowns.fromSystemProperties()）21:01:46～21:01:56：
+      3 tests completed, 2 failed：TransferCooldownTableIntegrationTest.java:91 expected: <COOLDOWN> but was: <NOT_ONLINE>；
+      :113 the verifier recorded the arrival in the table the plugins read ==> expected: <false> but was: <true>
+    TC-PROD-528 第 2 步（Main.java:674 的 TransferCooldowns.fromSystemProperties() 换成 new TransferCooldowns(5_000, System::currentTimeMillis)）
+      21:02:03～21:02:10：3 tests completed, 1 failed：:132 Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown.
+    TC-PROD-533 第 3 步（Main.java:718 的 keys, cooldowns, ledger::record 改为 keys, TransferCooldowns.fromSystemProperties(), ledger::record）
+      21:02:15～21:02:22：3 tests completed, 1 failed：:113，信息同 TC-PROD-521 第 4 步那条
+    五处还原后 git status --short 只有两份文档；复绿：两个类一起跑 21:02:28～21:02:43，BUILD SUCCESSFUL，TransferTicketsIntegrationTest 7、
+      TransferCooldownTableIntegrationTest 3，0 失败 0 跳过
+3. 严格 grid（-Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true -Dsynaxis.thread-provider=grid）
+    TC-PROD-549 第 3 步的范围（app.management.*、app.command.*、TransferTicketsIntegrationTest、TransferAdmissionIntegrationTest）21:04:37～21:05:06，
+      BUILD SUCCESSFUL in 28s：19 个类 63 个 0 失败 0 跳过，结果文件里没有 AcquirableOwnershipException
+    同样的三个参数跑 :testing:test --tests '*EnvDispatcherThreadsIntegrationTest'：tests="2" 0 失败，<system-out> 为 env dispatcher threads: 4 与
+      env thread provider: grid（参数确实进了测试 JVM）
+4. 静态核对（合入后的 Main.java）
+    TC-PROD-521 第 3 步：grep -n 'store.cooldowns()' 只有一行 264
+    TC-PROD-533 第 2 步：sed -n 718,720p 三行依次是 new TicketVerifier(database.pool(), session::sessionId, shardId, keys, cooldowns, ledger::record,、
+      onClaimed),、permissions, moderation, session, redis, cooldowns);
+    TC-PROD-498 第 3 步：grep -n buildShutdownTask 9 行，:317 host::disableAll、:319 commands::awaitStopAnswers、:321 ledger::close、
+      :324 directoryMode.flags()::close、:325 directoryMode.heartbeat()::close、:328 store::close、:329 metrics::close、:330 management::close、:332 watchdog::stop
+    TC-PROD-548 第 7 步的锚 :268 仍是 final @Nullable ShardService shardService = directoryMode == null ? null : directoryMode.service();
+    DESIGN-PROD 引用的行逐行 sed -n 看过：Main.java :106、:139～:143、:252～:253、:262、:268、:317、:479、:504（new ShardGates(…, ledger::record)）、
+      :717、:718～:719、:866、:948；TicketIssuer.java:47～:48（五参构造器）；ShardGates.java:60（三参构造器）
+5. 结果：本节复验的步骤全部通过：TC-PROD-157 第 1、3、5 步；TC-PROD-521 第 3、4 步；TC-PROD-528 第 2 步；TC-PROD-533 第 2、3 步；TC-PROD-498 第 3 步；
+    TC-PROD-486 第 3 步、TC-PROD-505 第 3 步的 :server-app:test 一半、TC-PROD-510 第 2 步、TC-PROD-529 第 4 步的 :server-app:test 一半、
+    TC-PROD-549 第 2 步的 :server-app:test 一半与第 3 步（514 个）
+6. 未覆盖：合入后没有重跑两道全量门禁（check 与严格模式的 test）、根构建 :test 与 :architecture-tests；TC-PROD-548（§5 的映射里改了 TicketIssuer
+    就要跑它：installDist、烘焙、一个 512 MB 堆的分片加一个 256 MB 堆的机器人，本节各次读数 swap free 377～1,393 MB，没起）；TC-PROD-550 仍阻塞，同第五节
+7. 文档 lint（本节文档改完后）：bash ~/.claude/skills/design-doc/check.sh docs/DESIGN-PROD.md 无警告（状态图带事件转移与迁移表行数一致）；
+    bash ~/.claude/skills/test-doc/check.sh docs/TEST.md 只剩已知的两条（RUN-031 两条明细行缺证据引用），REQ 双向联检通过
+8. 清理：/tmp/prod6a-sync（Gradle 包装脚本、日志、JUnit 结果副本、改法脚本）登记后删除；git status --short 只剩两份文档与本证据

@@ -22,6 +22,7 @@ import io.github.bearisbug.synaxis.synx.RelightStats;
 import io.github.bearisbug.synaxis.synx.SynxChunkLoader;
 import io.github.bearisbug.synaxis.synx.SynxOptions;
 import io.github.bearisbug.synaxis.synx.SynxRelight;
+import org.jetbrains.annotations.Nullable;
 
 import java.io.ByteArrayOutputStream;
 import java.nio.charset.StandardCharsets;
@@ -150,7 +151,9 @@ final class LightShardFixture {
 
         server.start("0.0.0.0", port);
         System.out.println(READY);
-        if (args.length > 2 && args[2].equals("drive")) drive(process, instance, started.relight(), workDir.resolve("drive"));
+        if (args.length > 2 && args[2].equals("drive")) {
+            drive(process, instance, started.relight(), counters, workDir.resolve("drive"));
+        }
     }
 
     /**
@@ -159,7 +162,8 @@ final class LightShardFixture {
      * once nothing is pending. For a JFR recording of where the light is computed when no container
      * can run; it replaces none of the cases of the client.
      */
-    private static void drive(ServerProcess process, InstanceContainer instance, SynxRelight relight, Path trigger) {
+    private static void drive(ServerProcess process, InstanceContainer instance, SynxRelight relight, Counters counters,
+                              Path trigger) {
         final Object tickets = new Object();
         final int spawn = SPAWN_CHUNK * 16;
         for (int x = SPAWN_CHUNK - 5; x <= SPAWN_CHUNK + 5; x++) {
@@ -177,13 +181,13 @@ final class LightShardFixture {
                 Thread.sleep(250);
             }
             RelightStats stats = relight.stats();
-            double installMax = stats.installMsMax();
+            counters.read(stats);
             while (stats.pending() > 0) {
                 Thread.sleep(200);
                 stats = relight.stats();
-                installMax = Math.max(installMax, stats.installMsMax());
+                counters.read(stats);
             }
-            System.out.println("light fixture drive done: " + stats + " install_ms_max_seen=" + installMax);
+            System.out.println("light fixture drive done: " + stats + " " + counters.seen());
         } catch (InterruptedException _) {
             Thread.currentThread().interrupt();
         }
@@ -193,10 +197,17 @@ final class LightShardFixture {
         if (System.getProperty(key) == null) System.setProperty(key, value);
     }
 
-    /** What the fixture counts: the light packets per player and chunk, and the most of the light's windows. */
+    /**
+     * What the fixture counts: the light packets per player and chunk, and the largest value each window
+     * of {@link SynxRelight#stats()} had. Every read resets the windows, the statistics task of the shard
+     * and each {@code idle} of the client read them, so no one window covers a run; a P99 below a bound in
+     * every window keeps the P99 of all the samples below it too.
+     */
     private static final class Counters {
         final Map<Player, Map<String, Integer>> sent = new ConcurrentHashMap<>();
         final AtomicReference<Double> installMsMax = new AtomicReference<>(0.0);
+        final AtomicReference<Double> queueMsP99Max = new AtomicReference<>(0.0);
+        final AtomicReference<Double> relightMsP99Max = new AtomicReference<>(0.0);
 
         void lightSent(Player player, UpdateLightPacket packet) {
             sent.computeIfAbsent(player, _ -> new ConcurrentHashMap<>()).merge(packet.chunkX() + " " + packet.chunkZ(), 1, Integer::sum);
@@ -204,11 +215,24 @@ final class LightShardFixture {
 
         void event(String name, Map<String, ?> attributes) {
             if (!name.equals("chunk_stream_stats")) return;
-            if (attributes.get("relight_install_ms_max") instanceof Number max) installMsMax.accumulateAndGet(max.doubleValue(), Math::max);
+            max(installMsMax, attributes.get("relight_install_ms_max"));
+            max(queueMsP99Max, attributes.get("relight_queue_p99_ms"));
+            max(relightMsP99Max, attributes.get("relight_ms_p99"));
         }
 
         void read(RelightStats stats) {
-            installMsMax.accumulateAndGet(stats.installMsMax(), Math::max);
+            max(installMsMax, stats.installMsMax());
+            max(queueMsP99Max, stats.queueMsP99());
+            max(relightMsP99Max, stats.relightMsP99());
+        }
+
+        String seen() {
+            return "install_ms_max_seen=" + installMsMax.get() + " queue_ms_p99_max_seen=" + queueMsP99Max.get()
+                    + " relight_ms_p99_max_seen=" + relightMsP99Max.get();
+        }
+
+        private static void max(AtomicReference<Double> most, @Nullable Object value) {
+            if (value instanceof Number number) most.accumulateAndGet(number.doubleValue(), Math::max);
         }
     }
 
@@ -264,7 +288,7 @@ final class LightShardFixture {
                     case "stats" -> {
                         final RelightStats stats = relight.stats();
                         counters.read(stats);
-                        reply(player, stats + " install_ms_max_seen=" + counters.installMsMax.get());
+                        reply(player, stats + " " + counters.seen());
                     }
                     default -> reply(player, "unknown " + request);
                 }

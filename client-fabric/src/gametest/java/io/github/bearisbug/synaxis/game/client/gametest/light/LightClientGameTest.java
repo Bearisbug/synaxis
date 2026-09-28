@@ -151,6 +151,8 @@ public final class LightClientGameTest implements FabricClientGameTest {
         private final Map<String, String> lines = new LinkedHashMap<>();
         private final List<String> samples = new ArrayList<>();
         private final Map<String, BlockPos> sites = new HashMap<>();
+        /** The fixture's answer to {@code stats} at the end of the fixture cases, for §15 ④ and the install per tick. */
+        private String stats = "";
 
         Run(ClientGameTestContext context, String mode) {
             this.context = context;
@@ -168,6 +170,7 @@ public final class LightClientGameTest implements FabricClientGameTest {
                 final List<String> report = new ArrayList<>();
                 report.add("# mode " + mode);
                 report.addAll(lines.values());
+                if (!stats.isEmpty()) report.add("# stats " + stats);
                 Files.write(dir.resolve("light-report.txt"), report, StandardCharsets.UTF_8);
                 final List<String> csv = new ArrayList<>();
                 csv.add("case,tick,point,x,y,z,sky,block");
@@ -263,6 +266,7 @@ public final class LightClientGameTest implements FabricClientGameTest {
             fresh("L10", all, changes);
             fixedPoints(all, changes);
             line("L11", all.diffs == 0 && changes.size() == 16, changes.size() + " changes " + changes + " " + all);
+            stats = askText("stats").trim();
         }
 
         private String lastEvidence = "";
@@ -483,6 +487,15 @@ public final class LightClientGameTest implements FabricClientGameTest {
                         pass = false;
                         why += " " + target.getKey() + " got " + got + " light packets, changed=" + changed;
                     }
+                    // The packets of this change are the last the chunk got; none of them may be a full one
+                    final String[] xz = target.getKey().split(",");
+                    final List<LightProbe.LightPacket> packets = LightProbe.lightPackets(Integer.parseInt(xz[0]),
+                            Integer.parseInt(xz[1]));
+                    if (packets.subList(Math.max(0, packets.size() - got), packets.size()).stream()
+                            .anyMatch(LightProbe.LightPacket::full)) {
+                        pass = false;
+                        why += " " + target.getKey() + " got a full light packet";
+                    }
                 }
                 for (Map.Entry<String, Integer> chunk : clientDelta.entrySet()) {
                     if (!after.containsKey(chunk.getKey())) {
@@ -490,8 +503,10 @@ public final class LightClientGameTest implements FabricClientGameTest {
                         why += " a light packet of " + chunk.getKey() + " outside the 3x3";
                     }
                 }
-                final long full = LightProbe.LIGHT_PACKETS.values().stream().flatMap(List::stream).filter(LightProbe.LightPacket::full).count();
-                why += " full_packets_in_all=" + full;
+                if (!clientDelta.equals(sentDelta)) {
+                    pass = false;
+                    why += " light packets: client " + clientDelta + " fixture " + sentDelta;
+                }
             } else if (!clientDelta.isEmpty() || !sentDelta.isEmpty()) {
                 pass = false;
                 why += " light packets: client " + clientDelta + " fixture " + sentDelta;

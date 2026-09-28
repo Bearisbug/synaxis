@@ -136,7 +136,7 @@ public class OverlayFinalFlushTest {
 
     @Test
     public void anEncodingAWritePhaseLeftBehindIsDoneAgainOnceTheChunkChanged() throws Exception {
-        final OverlayStore store = open(1);
+        final OverlayStore store = openWithTheShardPhase();
         final FakeChunk chunk = new FakeChunk(store, 2, 2, 0);
         chunk.change();
         clock.advance(Duration.ofSeconds(10));
@@ -166,7 +166,7 @@ public class OverlayFinalFlushTest {
 
     @Test
     public void aChunkAWritePhaseCouldNotEncodeIsEncodedAgain() throws Exception {
-        final OverlayStore store = open(1);
+        final OverlayStore store = openWithTheShardPhase();
         final FakeChunk slow = new FakeChunk(store, 0, 0, 0);
         final FakeChunk refused = new FakeChunk(store, 1, 0, 0);
         slow.change();
@@ -360,7 +360,7 @@ public class OverlayFinalFlushTest {
     public void aFinalFlushOverItsBudgetCompletesAtTheDeadline() throws Exception {
         // Two encode threads take 10 s for the lot, whatever machine runs the test
         final OverlayStore store = OverlayStore.open(root, manifest, OverlayFixture.settings(), new OverlayOptions(16_384, 10),
-                new OverlayTuning(2, 1L << 26, OverlayTuning.SEGMENT_RECORDS, clock, disk));
+                new OverlayTuning(2, 1L << 26, OverlayTuning.SEGMENT_RECORDS, OverlayFixture.TEST_PHASE_NANOS, clock, disk));
         final List<FakeChunk> chunks = OverlayFixture.chunks(store, 0, 20_000);
         for (FakeChunk chunk : chunks) {
             chunk.encodeNanos = TimeUnit.MILLISECONDS.toNanos(1);
@@ -434,5 +434,11 @@ public class OverlayFinalFlushTest {
         final Set<Integer> written = chunks.stream().filter(chunk -> !chunk.dirty()).map(FakeChunk::chunkX).collect(Collectors.toSet());
         assertEquals(19, written.size());
         assertFalse(written.contains(stuck.chunkX()));
+    }
+
+    /** A store whose write phases give up on their encodings after the 20 ms of a shard. */
+    private OverlayStore openWithTheShardPhase() throws Exception {
+        return OverlayStore.open(root, manifest, OverlayFixture.settings(), new OverlayOptions(16_384, 10),
+                OverlayFixture.shardPhase(1, clock, disk));
     }
 }

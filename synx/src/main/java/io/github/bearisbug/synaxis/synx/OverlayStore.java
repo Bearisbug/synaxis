@@ -64,7 +64,6 @@ public final class OverlayStore implements OverlayIndex, OverlayTracker {
     private static final int UNLOAD_FLUSH_PER_TICK = 256;
     private static final int FLUSH_PER_TICK = 64;
     private static final int COPY_PER_TICK = 64;
-    private static final long PHASE_NANOS = TimeUnit.MILLISECONDS.toNanos(20);
     /**
      * How long before its {@code flush_interval_s} is up a dirty chunk is due, so that a kill loses at
      * most the changes of that interval (F4): the phase that takes it runs up to a tick (50 ms) later,
@@ -446,7 +445,7 @@ public final class OverlayStore implements OverlayIndex, OverlayTracker {
     }
 
     private void writePhase(long start) {
-        final long deadline = start + PHASE_NANOS;
+        final long deadline = start + tuning.phaseNanos();
         final Set<Resident> taken = new HashSet<>();
         selectEvictions(taken, deadline);
         selectUnloads(taken, deadline);

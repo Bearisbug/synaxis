@@ -3,6 +3,7 @@ package io.github.bearisbug.synaxis.synx;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
+import java.util.concurrent.TimeUnit;
 import java.util.function.LongSupplier;
 
 /**
@@ -12,14 +13,17 @@ import java.util.function.LongSupplier;
  * @param encodeThreads  the platform threads of the encode pool
  * @param segmentBytes   the size of a segment file, and of its mapping
  * @param segmentRecords records after which the active segment is sealed
+ * @param phaseNanos     how long a write phase waits for its encodings
  * @param clock          the {@link System#nanoTime()} the flush interval and the flush lag are measured on; the
  *                       deadlines of the write phase and of the final flush are always on {@link System#nanoTime()}
  * @param disk           the writes and the {@code fsync} of the segment files
  */
-record OverlayTuning(int encodeThreads, long segmentBytes, int segmentRecords, LongSupplier clock, Disk disk) {
+record OverlayTuning(int encodeThreads, long segmentBytes, int segmentRecords, long phaseNanos, LongSupplier clock, Disk disk) {
     /** 256 MiB, the segment size of API-M3-007. */
     static final long SEGMENT_BYTES = 256L << 20;
     static final int SEGMENT_RECORDS = 1_024;
+    /** 20 ms, the encoding budget of a write phase in API-M3-007. */
+    static final long PHASE_NANOS = TimeUnit.MILLISECONDS.toNanos(20);
 
     /** Where the store's bytes reach the file. */
     interface Disk {
@@ -44,6 +48,6 @@ record OverlayTuning(int encodeThreads, long segmentBytes, int segmentRecords, L
     /** {@code max(1, cores / 4)} encode threads, fixed in M3-C (API-M3-007). */
     static OverlayTuning defaults() {
         return new OverlayTuning(Math.max(1, Runtime.getRuntime().availableProcessors() / 4), SEGMENT_BYTES,
-                SEGMENT_RECORDS, System::nanoTime, FILE);
+                SEGMENT_RECORDS, PHASE_NANOS, System::nanoTime, FILE);
     }
 }

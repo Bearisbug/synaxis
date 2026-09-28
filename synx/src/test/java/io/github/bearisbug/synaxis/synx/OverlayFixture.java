@@ -11,6 +11,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.LongSupplier;
@@ -20,6 +21,12 @@ final class OverlayFixture {
     static final String MAP_ID = "overlay-test";
     static final byte[] REGISTRY_DIGEST = SynxDigests.sha256(new byte[]{7});
     static final byte[] CONTENT_HASH = SynxDigests.sha256(new byte[]{9});
+    /**
+     * How long the write phase of the tests waits for its encodings: longer than any of them takes, so
+     * that a tick writes everything it picked however slow the machine. The tests of what a phase over
+     * the 20 ms of a shard leaves to the next ticks use {@link #shardPhase}.
+     */
+    static final long TEST_PHASE_NANOS = TimeUnit.SECONDS.toNanos(10);
 
     private OverlayFixture() {
     }
@@ -50,7 +57,13 @@ final class OverlayFixture {
     }
 
     static OverlayTuning tuning(int encodeThreads, int segmentRecords, Clock clock, CountingDisk disk) {
-        return new OverlayTuning(encodeThreads, 1L << 20, segmentRecords, clock, disk);
+        return new OverlayTuning(encodeThreads, 1L << 20, segmentRecords, TEST_PHASE_NANOS, clock, disk);
+    }
+
+    /** {@link #tuning} with the 20 ms write phase of a shard. */
+    static OverlayTuning shardPhase(int encodeThreads, Clock clock, CountingDisk disk) {
+        return new OverlayTuning(encodeThreads, 1L << 20, OverlayTuning.SEGMENT_RECORDS, OverlayTuning.PHASE_NANOS,
+                clock, disk);
     }
 
     static Path segment(Path root, SynxManifest manifest, int number) {

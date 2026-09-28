@@ -11,11 +11,14 @@ import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.BiConsumer;
 
 /**
  * The gates of this shard's region ({@code docs/DESIGN-M3.md} {@code API-M3-010}, built into the host
@@ -26,7 +29,8 @@ import java.util.concurrent.ConcurrentHashMap;
  * last move of the player was outside it (outside every frame, or in another gate's). Moving inside
  * the frame sends nothing more, and neither does a walk in while a transfer of the player is under
  * way. A choice of channel that failed ({@code FULL}, {@code OFFLINE},
- * {@code DIRECTORY_UNAVAILABLE}) is told to the player, who walks out and in again to retry. What
+ * {@code DIRECTORY_UNAVAILABLE}) is told to the player, who walks out and in again to retry, and
+ * written to the ledger as {@code EVT:transfer_refused} ({@code docs/DESIGN-PROD.md} §20). What
  * should not happen (a result the start-up check of the directory rules out, a transfer that failed
  * exceptionally) is an ERROR, through a budget: how often a player walks into a frame is the
  * client's to pick.
@@ -41,6 +45,8 @@ public final class ShardGates {
 
     private final List<ShardDirectory.Gate> gates;
     private final ShardService service;
+    private final String shardId;
+    private final BiConsumer<String, Map<String, ?>> events;
     /** The gate each player was in at its last move; a player outside every frame has none. */
     private final Map<Player, ShardDirectory.Gate> inside = new ConcurrentHashMap<>();
     /** The players whose transfer through a gate has not completed yet. */
@@ -49,10 +55,13 @@ public final class ShardGates {
     /**
      * @param directory the shard directory, whose region of this shard has the gates
      * @param service   what sends a player to the target region
+     * @param events    where the events go, the event ledger of the host
      */
-    public ShardGates(ShardDirectory directory, ShardService service) {
+    public ShardGates(ShardDirectory directory, ShardService service, BiConsumer<String, Map<String, ?>> events) {
         this.gates = directory.ownRegion().gates();
         this.service = service;
+        this.shardId = directory.shardId();
+        this.events = events;
     }
 
     /**
@@ -96,7 +105,15 @@ public final class ShardGates {
             // SAVE_FAILED: the source side of the transfer has told the player already
             case SENT, COOLDOWN, NOT_ONLINE, SAVE_FAILED -> {
             }
-            case FULL, OFFLINE, DIRECTORY_UNAVAILABLE -> player.sendMessage(Component.translatable(TRANSFER_FAILED));
+            case FULL, OFFLINE, DIRECTORY_UNAVAILABLE -> {
+                player.sendMessage(Component.translatable(TRANSFER_FAILED));
+                final Map<String, Object> attributes = new LinkedHashMap<>();
+                attributes.put("player_uuid", player.getUuid());
+                attributes.put("source_shard", shardId);
+                attributes.put("target_region", gate.targetRegion());
+                attributes.put("result", result.name().toLowerCase(Locale.ROOT));
+                events.accept("transfer_refused", attributes);
+            }
             // The start-up check of the shard directory rules both out
             case UNKNOWN_TARGET, SAME_TARGET -> errors.error(new IllegalStateException("the shard service answers " + result),
                     "A gate leads nowhere a transfer can go: player={} gate={} target_region={}", player.getUsername(),

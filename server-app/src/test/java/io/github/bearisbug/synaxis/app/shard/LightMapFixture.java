@@ -15,17 +15,18 @@ import java.nio.file.Path;
 
 /**
  * The light test map of M3-D ({@code docs/DESIGN-M3.md} §26 step 4), baked by {@code :baker}: map id
- * {@value #MAP_ID}, 32 × 32 chunks, y 0 to 255. Bedrock at y 0, stone to y 59, dirt to 62, grass at
+ * {@value #MAP_ID}, 33 × 33 chunks, y 0 to 255. Bedrock at y 0, stone to y 59, dirt to 62, grass at
  * {@value #GRASS}. Every chunk is one of five kinds by {@code (x + z) mod 5}: flat; a roof of stone
  * slabs at y 68 on four oak logs; a cave of 7 × 7 × 4 at y 30 to 33 with glowstone on its floor and a
  * shaft of one block up to the grass that caps it; a cluster of emitters among half transparent
  * blocks on the surface; a pond. Chunk (10,10) holds an air chamber at the bottom of the world with
  * glowstone in it, chunk (20,20) a stone pillar up to y 249 with glowstone and leaves on top. Players
- * spawn in the center chunk (16,16).
+ * spawn in the center chunk, which {@code ShardWorld} takes as the middle of the bounds rounded down:
+ * 33 chunks put it at (16,16), which the cases of the fixture are placed around.
  */
 public final class LightMapFixture {
     public static final String MAP_ID = "light";
-    public static final SynxManifest.Bounds BOUNDS = new SynxManifest.Bounds(0, 0, 31, 31);
+    public static final SynxManifest.Bounds BOUNDS = new SynxManifest.Bounds(0, 0, 32, 32);
     public static final int HEIGHT = 256;
     /** The grass of the surface; players stand at y 64. */
     public static final int GRASS = 63;

@@ -1,0 +1,20 @@
+== JFR supplementary (fixture drive mode, no client) 2026-09-29 02:34:22
+light fixture drive done: RelightStats[relights=60, skipped=0, lightMaterialized=41, lightPackets=0, lightSections=0, queueMsP99=100.451834, relightMsP99=32.718, installMsMax=2.193833, pending=0] install_ms_max_seen=2.193833
+io.github.bearisbug.synaxis.instance.light.LightEngine.computeArea(WorldView, @ synaxis-relight-* count=60 max_ms=31.900
+io.github.bearisbug.synaxis.synx.SynxRelight.compute(SynxRelight$Task) @ synaxis-relight-* count=60 max_ms=32.200
+io.github.bearisbug.synaxis.synx.SynxRelight.installPhase() @ Syn-TickScheduler count=327 max_ms=2.200
+io.github.bearisbug.synaxis.synx.SynxRelight.snapshot(SynxRelight$Task) @ synaxis-relight-* count=60 max_ms=7.260
+Syn-Tick-*                   samples=3 with_light_methods=0
+Syn-TickScheduler            samples=285 with_light_methods=0
+synaxis-relight-*            samples=422 with_light_methods=420
+
+# How: LightShardFixture 25740 <dir> drive (java @server-app/build/light-fixture.args -Xms1G -Xmx1G -XX:-AlwaysPreTouch),
+# defaults of ShardMain (grid, dispatcher threads = cores - 2 = 10, view distance 12), relight threads max(1, 12 / 4) = 3.
+# jcmd <pid> JFR.start name=light settings=profile
+#   'method-trace=io.github.bearisbug.synaxis.instance.light.LightEngine::computeArea;io.github.bearisbug.synaxis.synx.SynxRelight::snapshot;io.github.bearisbug.synaxis.synx.SynxRelight::compute;io.github.bearisbug.synaxis.synx.SynxRelight::installPhase'
+#   'jdk.MethodTrace#threshold=0 ms' 'jdk.ExecutionSample#period=1ms'
+# then touch <dir>/drive: 60 changes (torch or glowstone) around the spawn, one every 5 ticks, each in the scheduling
+# phase of a tick; JFR.dump once the fixture printed its counters; the fixture stopped by pid.
+# A first recording with 'jdk.ExecutionSample#period=1 ms' (a space, as docs/DESIGN-M3.md §26 step 5 writes it) had
+# 0 ExecutionSample events in 30 s; a probe recording with period=1ms on the same JVM had 86 in 5 s.
+# This is no container case: no client, no light packet. It shows where the light is computed in a ticking shard.

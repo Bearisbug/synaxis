@@ -1,0 +1,42 @@
+# Gates of M3-D. Gradle 9.7.1, JDK 25, --no-daemon --max-workers=4; the database variables of docs/TEST.md §3
+# (synaxis-pg 5440, synaxis-valkey 6440) set for every run that includes :server-app:test.
+
+== :synx:test :server-app:test on f986a36663 (default)
+synx: tests=141 skipped=0 failures=0 errors=0
+server-app: tests=505 skipped=0 failures=0 errors=0          (502 on main + ShardWorldRelightTest 2 + WorldFlagsReplayTest 1)
+
+== the same with -Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true (on f986a36663)
+synx: tests=141 skipped=0 failures=0 errors=0
+server-app: tests=505 skipped=0 failures=1 errors=0
+  ModerationIntegrationTest.theConsoleBansLiftsAndListsAndEveryRunIsOneEvent at ModerationIntegrationTest.java:475:
+  the first two gm_command events in the other order ([bad_duration …, no_target null, …] for [no_target null, bad_duration …, …]);
+  not M3-D's (the moderation of docs/DESIGN-PROD.md); the class alone in the same mode again: tests=12 failures=0
+== the same with -Dsynaxis.thread-provider=grid added (on f986a36663)
+synx: tests=141 skipped=0 failures=0 errors=0
+server-app: tests=505 skipped=0 failures=0 errors=0
+
+== :architecture-tests:test on f986a36663: SynxInternalSurfaceArchitectureTest red, 2 violations:
+   SynxRelight.<init> calls InstanceContainer.getCachedDimensionType() (@ApiStatus.Internal, not in the §6 table) at :196 and :198
+   fixed in 8186a77b5e (the world of the release instead); 20 tests, 0 failures after it
+   config key gate: 115 keys read, 115 in ConfigFile.KEYS, 20 meter names left out
+
+== check --rerun-tasks -Dsynaxis.synx.require-frozen-zlib=true on 8186a77b5e plus the 33 × 33 light map of 6f68dc306d
+BUILD SUCCESSFUL in 5m 45s, 95 actionable tasks: 95 executed
+.: tests=3141 skipped=15 failures=0 errors=0
+architecture-tests: tests=20 skipped=0 failures=0 errors=0
+baker: tests=53 skipped=0 failures=0 errors=0
+game-rts: tests=87 skipped=0 failures=0 errors=0
+loadtest: tests=23 skipped=0 failures=0 errors=0
+plugin-api: tests=15 skipped=0 failures=0 errors=0
+protocol: tests=78 skipped=0 failures=0 errors=0
+server-app: tests=505 skipped=0 failures=0 errors=0
+synx: tests=141 skipped=0 failures=0 errors=0              (SynxVectorTest tests="4" skipped="0" with the frozen zlib required)
+testing: tests=11 skipped=0 failures=0 errors=0
+0d4d593d84 changes only the test fixture LightShardFixture after it; :server-app:compileTestJava with Error Prone passed on it.
+
+== client-fabric (its own build, after :protocol:publishToMavenLocal), on 5fcfc4bff6
+compileGametestJava: BUILD SUCCESSFUL
+check: BUILD SUCCESSFUL, "mod jar: minecraft=26.2, 35 entries, ships META-INF/jars/protocol-dev.jar"
+The root init script gradle/init/aliyun-mirror.init.gradle.kts sets PREFER_SETTINGS, which drops the Fabric
+repository Loom adds ("Could not find net.fabricmc:intermediary:0.0.0"); client-fabric builds with its own
+gametest-env/mirror.init.gradle.kts, which puts Aliyun Central first and leaves Loom's repositories alone.

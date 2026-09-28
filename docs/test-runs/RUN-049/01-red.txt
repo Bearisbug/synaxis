@@ -1,0 +1,53 @@
+# M3-D red before green and counter proofs (branch m3d/runtime-light)
+
+== Step 1: SynxOverlayCombinedIntegrationTest on 9e883386f0 (then uncommitted), green on the first run: tests="6" failures="0"
+== Step 1 counter proof, six breaks of the main code at once, then `git checkout -- synx/src/main`
+break OverlayStore.selectEvictions : if (generation < 0 && !chunk.dirty() && indexed != null && ...)   (the clean chunk is encoded again)
+break SynxChunkLoader.loadChunk   : handle(..., hit.record(), ..., 0)                                   (generation 0 on an overlay hit)
+break OverlayStore.find           : returns the index before looking at the pending table
+break SynxChunk.encodeOverlay     : lockWriteLock() instead of tryLockWriteLock(min(deadline, 50 ms))
+break OverlaySegment.delete       : writes zeros over the file before it is unlinked
+break OverlayStore.harvest        : clean(resident) as soon as an encoding is taken
+overTheCapTheLeastRecentlyChangedChunkIsDemotedOnItsRecord         :144 no record appended for the clean chunk it demoted ==> expected: <17> but was: <18>
+aChunkReloadedFromItsRecordAndChangedAgainKeepsTheNewRecordAcross… :179 the source is the record of generation 5 ==> expected: <5> but was: <0>
+aDirtyChunkUnloadedExplicitlyKeepsItsChanges                        :208 expected: <3> but was: <0>
+aChunkLockHeldAtAFinalFlushByTheShutdownThreadIsTheOnlyOneLeft      :258 done within the 2 s ==> expected: <true> but was: <false>
+handlePacketsQueuedOnASegmentStillGoOutAfterItIsCompactedAway       :316 packet 0 ==> array contents differ at index [0], expected: <-89> but was: <0>
+aWriteThatFailsLosesNoChange                                        :356 timed out ==> expected: <true> but was: <false>
+
+== Step 2: the seventeen scenarios on the skeleton (SynxRelight queues nothing), working tree of 9e883386f0, committed as fb6a38acde
+SynxRelightIntegrationTest tests="10" failures="10" errors="0"
+  aTorchLightsTheThreeByThreeAsTheServerComputesIt                   :59  chunk 2,3 block section 2: the nibble at x 15 z 4 y 8 ==> expected: <1> but was: <0>
+  installedLightIsWrittenAndSurvivesTheEvictionAndARestart           :80  installed ==> expected: <true> but was: <false>
+  aChangeInTheThreeByThreeWhileARecomputationRunsSkipsTheTargets…   :121 the snapshot of center 3,3 ==> expected: <true> but was: <false>
+  changesAroundOneCenterMergeIntoOneRecomputation                    :143 five changes of center 3,3, one recomputation ==> expected: <1> but was: <0>
+  onlyTheDataOfABlockEntityOrABiomeChangedIsNotRecomputed            :156 placing the chest is recomputed ==> expected: <true> but was: <false>
+  theChunksOfARecomputationAreNeitherEvictedNorUnloaded              :187 chunk 2,2 is still the one loaded ==> expected: <SynxChunk[2:2]> but was: <null>
+  aReadOnlyNeighbourPastTheRegionKeepsItsLight                       :240 6,2 6,3 and 6,4 are skipped ==> expected: <true> but was: <false>
+  anAirChunkTheEngineMadeIsMissing                                   :259 the tunnel is recomputed ==> expected: <true> but was: <false>
+  anInstallHandlesAtMost64TargetEntriesATick                         :292 eight centers, 72 target entries: [0] ==> expected: <72> but was: <0>
+  aDrainWithNoBudgetLeavesTheOldLightToTheFinalFlush                 :311 [] ==> expected: <true> but was: <false>   (no WARN with " 9 targets")
+SynxRelightViewersIntegrationTest tests="5" failures="5" errors="0"
+  (a first run capped the viewers' view distance at 1, below Player's minimum of 2: "Server threw exception"
+   in all five, an error of the test, not of the skeleton; the viewers moved to cap 2, ring 3, and ran again)
+  viewersThatComputeTheLightThemselvesGetNoPacketTheOthersOne        :93  D, delivered 10 ticks before, must get 2,2 ==> expected: <1> but was: <0>
+  aPlayerSentTheChunksWhileTheirRecomputationWaitsGetsOneResend      :115 E, 2,3 changed=true ==> expected: <1> but was: <0>
+  aTargetWhoseThreeByThreeTheViewerDoesNotHoldIsResent               :148 round 1 (minecraft:torch): the 3×3 of 3,2 holds x 4, A must get it ==> expected: <1> but was: <0>
+  aLightPacketTurnsTheChangesOfThe100TicksAfterItIntoResends         :178 round 1 at tick 10: 2,2 ==> expected: <1> but was: <0>
+  theFallbackSendsTheChangedSectionsToEveryViewer                    :240 D, 2,2 ==> expected: <1> but was: <0>
+ShardWorldRelightTest tests="2" failures="2" errors="0"
+  theStopDrainsTheRelightBeforeTheFinalFlush                         :160 relight before overlay: [Overlay final flush: chunks=1 bytes=718 fsync_ms=4 left=0 by=tick] ==> expected: <true> but was: <false>
+  theStreamStatisticsCarryTheNineLightAttributes                     :188 expected: <15> but was: <0>
+WorldFlagsReplayTest.aReadOnlyWorldTakesTheLightOfAFlagChange tests="1" failures="1" (database variables of TEST.md §3 set, 0 skipped)
+  :572 the light of the glowstone is installed, not within PT20S
+
+== Step 3: green on f986a36663: SynxRelightIntegrationTest 10/0, SynxRelightViewersIntegrationTest 5/0, ShardWorldRelightTest 2/0, WorldFlagsReplayTest 12/0
+== Step 3 counter proofs, three breaks of SynxRelight at once (SynxRelight.java line numbers of f986a36663), then restored
+break Task.hasChunk   : return at != null;                       (an air chunk the engine made counts as present)
+break selfComputes    : only the target and the center are looked at
+break send            : delivered().putIfAbsent(player, now)      (a light packet does not refresh the delivery tick)
+SynxRelightIntegrationTest tests="10" failures="1"
+  anAirChunkTheEngineMadeIsMissing                                   :266 sky light in the tunnel at x 0 y 30 ==> expected: <0> but was: <14>
+SynxRelightViewersIntegrationTest tests="5" failures="2"
+  aTargetWhoseThreeByThreeTheViewerDoesNotHoldIsResent               :148 round 1 (minecraft:torch): the 3×3 of 3,2 holds x 4, A must get it ==> expected: <1> but was: <0>
+  aLightPacketTurnsTheChangesOfThe100TicksAfterItIntoResends         :178 round 2 at tick 105: 2,2 ==> expected: <1> but was: <0>

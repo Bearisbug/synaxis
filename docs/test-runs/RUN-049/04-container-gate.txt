@@ -1,0 +1,43 @@
+# The start gate of the container (docs/DESIGN-M3.md §26 step 5): swap free >= 2,048 MB and no Gradle or java whose
+# working directory is outside this worktree. Read every 5 minutes, 90 minutes per window. Processes of this worktree
+# are not counted; inside the windows ran the bake of the 4k map (00:45, 913 MB peak) and the JFR drive fixture (02:31 to 02:34).
+# window 1: 19 readings, swap free 710.50 to 1,739.62 MB; the others: Gradle of synaxis-wt/m3-flaky2, Gradle of Kando
+2026-09-29 00:41:46 swap_free=1195.56MB load1=7.12 others=0	GATE_CLOSED
+2026-09-29 00:46:47 swap_free=1007.31MB load1=22.19 others=5	GATE_CLOSED
+2026-09-29 00:51:47 swap_free=1159.88MB load1=373.59 others=5	GATE_CLOSED
+2026-09-29 00:56:47 swap_free=1739.62MB load1=21.96 others=3	GATE_CLOSED
+2026-09-29 01:01:47 swap_free=1091.94MB load1=25.92 others=3	GATE_CLOSED
+2026-09-29 01:06:47 swap_free=1227.94MB load1=4.76 others=0	GATE_CLOSED
+2026-09-29 01:11:50 swap_free=1224.94MB load1=28.26 others=3	GATE_CLOSED
+2026-09-29 01:16:50 swap_free=1036.44MB load1=9.65 others=0	GATE_CLOSED
+2026-09-29 01:21:51 swap_free=1191.12MB load1=4.22 others=0	GATE_CLOSED
+2026-09-29 01:26:51 swap_free=1391.12MB load1=9.26 others=0	GATE_CLOSED
+2026-09-29 01:31:51 swap_free=1583.12MB load1=8.39 others=0	GATE_CLOSED
+2026-09-29 01:36:51 swap_free=1322.81MB load1=14.49 others=0	GATE_CLOSED
+2026-09-29 01:41:51 swap_free=1701.06MB load1=10.90 others=0	GATE_CLOSED
+2026-09-29 01:46:51 swap_free=1267.75MB load1=5.98 others=0	GATE_CLOSED
+2026-09-29 01:51:51 swap_free=1680.62MB load1=4.38 others=0	GATE_CLOSED
+2026-09-29 01:56:51 swap_free=710.50MB load1=4.89 others=0	GATE_CLOSED
+2026-09-29 02:01:51 swap_free=934.56MB load1=22.38 others=4	GATE_CLOSED
+2026-09-29 02:06:52 swap_free=1505.75MB load1=30.14 others=4	GATE_CLOSED
+2026-09-29 02:11:52 swap_free=1525.88MB load1=24.89 others=4	GATE_CLOSED
+# window 2: 19 readings, swap free 450.62 to 1,627.62 MB; the others: Gradle of Kando/App/android and its Kotlin daemon, Gradle of synaxis-wt/prod-r2-flake
+2026-09-29 02:30:49 swap_free=1016.38MB load1=48.50 others=6	GATE_CLOSED
+2026-09-29 02:35:49 swap_free=797.81MB load1=15.21 others=4	GATE_CLOSED
+2026-09-29 02:40:49 swap_free=450.62MB load1=12.56 others=0	GATE_CLOSED
+2026-09-29 02:45:50 swap_free=794.62MB load1=7.05 others=6	GATE_CLOSED
+2026-09-29 02:50:50 swap_free=898.81MB load1=11.82 others=7	GATE_CLOSED
+2026-09-29 02:55:50 swap_free=1014.62MB load1=11.29 others=4	GATE_CLOSED
+2026-09-29 03:00:50 swap_free=1309.06MB load1=10.20 others=4	GATE_CLOSED
+2026-09-29 03:05:51 swap_free=1219.50MB load1=8.44 others=4	GATE_CLOSED
+2026-09-29 03:10:51 swap_free=986.56MB load1=13.29 others=4	GATE_CLOSED
+2026-09-29 03:15:51 swap_free=1118.00MB load1=12.59 others=4	GATE_CLOSED
+2026-09-29 03:20:51 swap_free=1224.19MB load1=16.96 others=4	GATE_CLOSED
+2026-09-29 03:25:52 swap_free=1038.25MB load1=7.79 others=4	GATE_CLOSED
+2026-09-29 03:30:52 swap_free=1010.75MB load1=13.14 others=5	GATE_CLOSED
+2026-09-29 03:35:52 swap_free=1627.62MB load1=6.07 others=5	GATE_CLOSED
+2026-09-29 03:40:53 swap_free=1173.88MB load1=8.59 others=4	GATE_CLOSED
+2026-09-29 03:45:53 swap_free=915.44MB load1=10.81 others=4	GATE_CLOSED
+2026-09-29 03:50:53 swap_free=1131.69MB load1=9.44 others=4	GATE_CLOSED
+2026-09-29 03:55:53 swap_free=1171.69MB load1=7.20 others=4	GATE_CLOSED
+2026-09-29 04:00:54 swap_free=1243.69MB load1=7.95 others=4	GATE_CLOSED

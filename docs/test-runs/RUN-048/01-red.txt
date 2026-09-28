@@ -1,0 +1,12 @@
+# 01-red 2026-09-28 18:48:30 HEAD 21aae99eca dirty=5 load1 12.23 swap_free 1055.06M db=0
+# ./gradlew --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts --max-workers=4 :server-app:test --tests io.github.bearisbug.synaxis.app.shard.ShardGatesTest --tests io.github.bearisbug.synaxis.app.store.TicketIssuerTickThreadIntegrationTest
+9 tests completed, 3 failed
+# rc=1 wall=8s end 18:48:38
+== app.shard.ShardGatesTest tests="7" skipped="0" failures="1" errors="0"
+    <failure message="org.opentest4j.AssertionFailedError: FULL ==> expected: <[transfer_refused {player_uuid=4b2ce4d3-3154-4052-be47-c9ce458718e3, source_shard=r0-c1, target_region=r1, result=full}]> but was: <[]>"
+	at io.github.bearisbug.synaxis.app.shard.ShardGatesTest.onlyAChoiceThatFailedIsWrittenToTheLedger(ShardGatesTest.java:212)
+== app.store.TicketIssuerTickThreadIntegrationTest tests="2" skipped="0" failures="2" errors="0"
+    <failure message="org.opentest4j.AssertionFailedError: the event is called on a tick thread, not VirtualThread[#3705,Syn-Store-Write]/terminated ==> Unexpected type, expected: <io.github.bearisbug.synaxis.thread.TickThread> but was: <java.lang.VirtualThread>"
+	at io.github.bearisbug.synaxis.app.store.TicketIssuerTickThreadIntegrationTest.theTransferEventIsCalledOnThePlayersTickThreadBetweenTheCookieAndTheTransfer(TicketIssuerTickThreadIntegrationTest.java:169)
+    <failure message="org.opentest4j.AssertionFailedError: expected: <NOT_ONLINE> but was: <SENT>"
+	at io.github.bearisbug.synaxis.app.store.TicketIssuerTickThreadIntegrationTest.aPlayerWhoLeavesBeforeItsTickIsSentNoTicketAndTheFutureStillCompletes(TicketIssuerTickThreadIntegrationTest.java:199)

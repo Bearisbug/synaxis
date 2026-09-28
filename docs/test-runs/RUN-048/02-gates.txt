@@ -1,0 +1,73 @@
+# RUN-048 three gates on m3e/follow-ups 9c6d457ee9 plus the two uncommitted documents (no test reads them); the numbers are summed from the JUnit XML of every module right after each gate
+
+=== 11-check
+# 11-check 2026-09-28 19:08:47 HEAD 9c6d457ee9 dirty=1 load1 9.75 swap_free 1178.00M db=1
+# ./gradlew --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts --max-workers=4 check --rerun-tasks -Dsynaxis.synx.require-frozen-zlib=true
+BUILD SUCCESSFUL in 5m 53s
+# rc=0 wall=354s end 19:14:41
+module build: tests=3141 skipped=15 failures=0 errors=0
+module architecture-tests: tests=20 skipped=0 failures=0 errors=0
+module baker: tests=53 skipped=0 failures=0 errors=0
+module game-rts: tests=87 skipped=0 failures=0 errors=0
+module loadtest: tests=23 skipped=0 failures=0 errors=0
+module plugin-api: tests=15 skipped=0 failures=0 errors=0
+module protocol: tests=78 skipped=0 failures=0 errors=0
+module server-app: tests=502 skipped=0 failures=0 errors=0
+module synx: tests=118 skipped=0 failures=0 errors=0
+module testing: tests=11 skipped=0 failures=0 errors=0
+total: tests=4048 skipped=15 failures=0 errors=0
+app.shard.ShardGatesTest: tests="7" skipped="0" failures="0" errors="0" ownership_exceptions=0
+app.store.TicketIssuerTickThreadIntegrationTest: tests="3" skipped="0" failures="0" errors="0" ownership_exceptions=0
+app.store.TransferTicketsIntegrationTest: tests="7" skipped="0" failures="0" errors="0" ownership_exceptions=0
+app.TransferAdmissionIntegrationTest: tests="1" skipped="0" failures="0" errors="0" ownership_exceptions=0
+app.shard.ShardServiceImplTest: tests="6" skipped="0" failures="0" errors="0" ownership_exceptions=0
+server-app classes with skipped>0: 0
+AcquirableOwnershipException in any XML: 0 files
+
+=== 12-strict-counter
+# 12-strict-counter 2026-09-28 19:14:53 HEAD 9c6d457ee9 dirty=2 load1 9.47 swap_free 1445.06M db=1
+# ./gradlew --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts --max-workers=4 test --rerun-tasks -Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true
+BUILD SUCCESSFUL in 5m 33s
+# rc=0 wall=335s end 19:20:28
+module build: tests=3141 skipped=15 failures=0 errors=0
+module architecture-tests: tests=20 skipped=0 failures=0 errors=0
+module baker: tests=53 skipped=0 failures=0 errors=0
+module game-rts: tests=87 skipped=0 failures=0 errors=0
+module loadtest: tests=23 skipped=0 failures=0 errors=0
+module plugin-api: tests=15 skipped=0 failures=0 errors=0
+module protocol: tests=78 skipped=0 failures=0 errors=0
+module server-app: tests=502 skipped=0 failures=0 errors=0
+module synx: tests=118 skipped=0 failures=0 errors=0
+module testing: tests=11 skipped=0 failures=0 errors=0
+total: tests=4048 skipped=15 failures=0 errors=0
+app.shard.ShardGatesTest: tests="7" skipped="0" failures="0" errors="0" ownership_exceptions=0
+app.store.TicketIssuerTickThreadIntegrationTest: tests="3" skipped="0" failures="0" errors="0" ownership_exceptions=0
+app.store.TransferTicketsIntegrationTest: tests="7" skipped="0" failures="0" errors="0" ownership_exceptions=0
+app.TransferAdmissionIntegrationTest: tests="1" skipped="0" failures="0" errors="0" ownership_exceptions=0
+app.shard.ShardServiceImplTest: tests="6" skipped="0" failures="0" errors="0" ownership_exceptions=0
+server-app classes with skipped>0: 0
+AcquirableOwnershipException in any XML: 0 files
+
+=== 13-strict-grid
+# 13-strict-grid 2026-09-28 19:20:35 HEAD 9c6d457ee9 dirty=2 load1 11.57 swap_free 1355.31M db=1
+# ./gradlew --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts --max-workers=4 test --rerun-tasks -Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true -Dsynaxis.thread-provider=grid
+BUILD SUCCESSFUL in 5m 33s
+# rc=0 wall=334s end 19:26:09
+module build: tests=3141 skipped=15 failures=0 errors=0
+module architecture-tests: tests=20 skipped=0 failures=0 errors=0
+module baker: tests=53 skipped=0 failures=0 errors=0
+module game-rts: tests=87 skipped=0 failures=0 errors=0
+module loadtest: tests=23 skipped=0 failures=0 errors=0
+module plugin-api: tests=15 skipped=0 failures=0 errors=0
+module protocol: tests=78 skipped=0 failures=0 errors=0
+module server-app: tests=502 skipped=0 failures=0 errors=0
+module synx: tests=118 skipped=0 failures=0 errors=0
+module testing: tests=11 skipped=0 failures=0 errors=0
+total: tests=4048 skipped=15 failures=0 errors=0
+app.shard.ShardGatesTest: tests="7" skipped="0" failures="0" errors="0" ownership_exceptions=0
+app.store.TicketIssuerTickThreadIntegrationTest: tests="3" skipped="0" failures="0" errors="0" ownership_exceptions=0
+app.store.TransferTicketsIntegrationTest: tests="7" skipped="0" failures="0" errors="0" ownership_exceptions=0
+app.TransferAdmissionIntegrationTest: tests="1" skipped="0" failures="0" errors="0" ownership_exceptions=0
+app.shard.ShardServiceImplTest: tests="6" skipped="0" failures="0" errors="0" ownership_exceptions=0
+server-app classes with skipped>0: 0
+AcquirableOwnershipException in any XML: 0 files

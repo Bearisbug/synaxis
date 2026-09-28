@@ -169,9 +169,9 @@ RUN-049 记录（2026-09-28）
   第 3 步的烘焙目录）登记后删除。~/.m2 里的 protocol-dev 是 client-fabric 构建的常用输入，保留。
 
 八、合入 main 702169831f 之后的复验（2026-09-28，登记之后补）
-被测版本：分支 prod/6a-rest 的 3d47114077，即本分支 913f471443 合入 origin/main 702169831f（光照会话的 M3-E 跟进：5be577cefc ShardGates 写 EVT:transfer_refused，
+被测版本：分支 prod/6a-rest 的 3d47114077，即本分支 6c9a9c7b4a 合入 origin/main 702169831f（光照会话的 M3-E 跟进：5be577cefc ShardGates 写 EVT:transfer_refused，
   9c6d457ee9 签发 ④ 在玩家所属 tick 线程上，DESIGN-M3 v0.20，RUN-048）。复验在这个提交加两份未提交的文档（docs/DESIGN-PROD.md v0.9.31、docs/TEST.md）上跑，代码相同。
-  合入后 Main.java 相对 913f471443 只多一处：Main#serveMap 的 Javadoc 多一行 @param ledger（第 495 行），其后行号加一；TicketIssuer.java 取 main 的版本
+  合入后 Main.java 相对 6c9a9c7b4a 只多一处：Main#serveMap 的 Javadoc 多一行 @param ledger（第 495 行），其后行号加一；TicketIssuer.java 取 main 的版本
   （签发 ④ 在 send 方法里，写回完成后排到玩家的下一个 tick）。
 环境：同第一节；每条 Gradle 命令带 --max-workers=4 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts --console=plain，同一时刻只跑一条；
   数据库变量同第一节（口令取自 docker inspect synaxis-pg，未回显）。各次 Gradle 起止的 1 分钟负载 6.20～12.45，swap free 377.00～1,393.00 MB。

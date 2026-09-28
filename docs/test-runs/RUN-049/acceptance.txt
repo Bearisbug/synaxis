@@ -222,3 +222,65 @@ RUN-049 记录（2026-09-28）
 7. 文档 lint（本节文档改完后）：bash ~/.claude/skills/design-doc/check.sh docs/DESIGN-PROD.md 无警告（状态图带事件转移与迁移表行数一致）；
     bash ~/.claude/skills/test-doc/check.sh docs/TEST.md 只剩已知的两条（RUN-031 两条明细行缺证据引用），REQ 双向联检通过
 8. 清理：/tmp/prod6a-sync（Gradle 包装脚本、日志、JUnit 结果副本、改法脚本）登记后删除；git status --short 只剩两份文档与本证据
+
+九、分支头 a74a99b3a3 上补跑第八节没有重跑的全量门禁（2026-09-28，第八节之后补）
+被测版本：分支 prod/6a-rest 的 a74a99b3a3（未推送）。它与第八节的 3d47114077 之间只有 f9a82c94b3、a74a99b3a3 两个提交，git diff --name-only 3d47114077 a74a99b3a3
+  只有 docs/DESIGN-PROD.md、docs/TEST.md 与本证据，代码与第八节相同。git fetch 后 origin/main 仍是 702169831f，已在本分支里。跑的时候工作副本干净。
+环境：同第一节；每条 Gradle 命令带 --max-workers=4 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts --console=plain，同一时刻只跑一条；
+  数据库变量同第一节（口令取自 docker inspect synaxis-pg，未回显）。两次 Gradle 起止的 1 分钟负载 4.04～9.45，swap free 1,257.31～1,639.06 MB，
+  PhysMem 未用 73～1,789 MB。本节执行人没有起服务端进程，没有启动任何 Docker 容器。
+1. 门禁 1：./gradlew check --rerun-tasks（带数据库变量，跑前删根与九个模块的 build/test-results/test）21:34:51～21:40:19，BUILD SUCCESSFUL in 5m 26s，
+    77 actionable tasks: 77 executed；十个 test 任务都执行（jcstress-tests、jmh-benchmarks 的 test 是 NO-SOURCE），没有 SKIPPED、FROM-CACHE
+    root classes=425 tests=3141 skipped=15 failures=0 errors=0
+    architecture-tests classes=7 tests=20 skipped=0 failures=0 errors=0
+    baker classes=4 tests=53 skipped=0 failures=0 errors=0
+    game-rts classes=13 tests=87 skipped=0 failures=0 errors=0
+    loadtest classes=4 tests=23 skipped=0 failures=0 errors=0
+    plugin-api classes=3 tests=15 skipped=0 failures=0 errors=0
+    protocol classes=4 tests=78 skipped=0 failures=0 errors=0
+    server-app classes=96 tests=514 skipped=0 failures=0 errors=0
+    synx classes=14 tests=118 skipped=0 failures=0 errors=0
+    testing classes=8 tests=11 skipped=0 failures=0 errors=0
+    TOTAL tests=4060 skipped=15 failures=0 errors=0（第一节 4,056 个；多出的 4 个就是第八节的 server-app 510 → 514、classes 95 → 96，即 ShardGatesTest
+      第 7 条与 TicketIssuerTickThreadIntegrationTest 3 条；其余模块的类数与条数与第一节相同，15 个跳过都在根模块）
+    用 TestDatabase 的 26 个类（与第一节同一份名单；扫描到的另外两个文件 StoreFixture、TestDatabase 是夹具，没有 XML）全部 skipped="0"
+    architecture-tests 的 <system-out>：
+      translation key gate: 60 keys checked against [en_us.json, zh_cn.json], 14 identifiers left out
+      config key gate: 113 keys read, 113 in ConfigFile.KEYS, 20 meter names left out
+    用例读的类（都 0 失败 0 跳过）：TransferCommandIntegrationTest 6、ManagementTransferIntegrationTest 6、ShardGatesTest 7、
+      TicketIssuerTickThreadIntegrationTest 3、TransferTicketsIntegrationTest 7、TransferCooldownTableIntegrationTest 3、CrossShardHandoverIntegrationTest 6、
+      MigrationsDbTest 5、PlayerStoreIntegrationTest 23、TranslationKeyGateTest 2、ConfigKeyGateTest 1
+    同一次运行的 EnvDispatcherThreadsIntegrationTest 报 env dispatcher threads: 1 与 env thread provider: counter（不带严格参数时的默认值）
+2. 门禁 2：./gradlew test --rerun-tasks 加严格 grid（-Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true -Dsynaxis.thread-provider=grid，
+    带数据库变量，跑前同样删掉结果目录）21:42:20～21:47:43，BUILD SUCCESSFUL in 5m 21s，48 actionable tasks: 48 executed；十个 test 任务都执行
+    各模块类数与条数同门禁 1：TOTAL tests=4060 skipped=15 failures=0 errors=0，server-app 96 个类 514 个 0 跳过，26 个数据库用例类全部 skipped="0"
+    testing 模块 TEST-io.github.bearisbug.synaxis.testing.test.EnvDispatcherThreadsIntegrationTest.xml：tests="2" failures="0"，<system-out>：
+      env dispatcher threads: 4
+      env thread provider: grid
+    TC-PROD-549 第 3 步的范围（app.management.*、app.command.*、TransferTicketsIntegrationTest、TransferAdmissionIntegrationTest）在这次运行里是 19 个类 63 个，
+      0 失败 0 跳过；其中 TransferCommandIntegrationTest 6、ManagementTransferIntegrationTest 6、ManagementIntegrationTest 13、TransferAdmissionIntegrationTest 1
+    合入带来的两个类在严格 grid 下：ShardGatesTest 7、TicketIssuerTickThreadIntegrationTest 3，0 失败 0 跳过
+    所有模块的结果文件里都没有 AcquirableOwnershipException；SocketWriteStateTransitionIntegrationTest tests="1" failures="0"；AcquirableTest 2 个 0 失败，
+      §7 登记的偶发红没有出现
+3. ABI 门：不适用（git diff --name-only 21aae99eca a74a99b3a3 -- plugin-api protocol 为空）
+4. 客户端模组：没有重跑。git diff --name-only e3d6f24762 a74a99b3a3 -- client-fabric 为空，两份 lang 与 gametest 源集都没变，第一节的构建结果仍适用；
+    e3d6f24762 之后改过的非文档文件只有 .github/workflows/client-gametest.yml（6c9a9c7b4a）与合入的 server-app 五个文件（Main、ShardGates、TicketIssuer、
+    ShardGatesTest、TicketIssuerTickThreadIntegrationTest）
+5. 工作流（6c9a9c7b4a 改过它：P10 改为每周日定时与手动触发）：
+    /Users/bug/Documents/Projects/Minecraft/synaxis/.venv/bin/python 用 PyYAML 6.0.3 的 yaml.safe_load 读 .github/workflows/client-gametest.yml：退出码 0，
+      jobs 两个 gametest、p10；schedule 两条 '0 18 * * *' 与 '0 19 * * 0'；workflow_dispatch 的 inputs 为 p10、handshake_phase；
+      job gametest 的 if 为 github.event.schedule != '0 19 * * 0' && !(github.event_name == 'workflow_dispatch' && inputs.p10)，
+      job p10 的 if 为 github.event.schedule == '0 19 * * 0' || (github.event_name == 'workflow_dispatch' && inputs.p10)
+    actionlint 1.7.12：只有 2 条 shellcheck 提示，都在第 101 行 job gametest 的「Start server-app in game mode」一步（SC2034 的 i 未用、SC2086），
+      即第一节第 93 行那两条（6c9a9c7b4a 在它前面加了 8 行）；job p10（第 175 行起）零提示
+6. 结果：第八节第 6 项未覆盖的两道全量门禁、根构建 :test 与 :architecture-tests 在分支头补齐，都通过。按合入后的代码整步通过的：TC-PROD-486 第 3 步、
+    TC-PROD-505 第 3 步（:server-app:test 514 个 0 失败 0 跳过，根构建 :test 3,141 个 0 失败、15 跳过）、TC-PROD-510 第 2 步、TC-PROD-529 第 4 步
+    （server-app 514、plugin-api 15、game-rts 87、architecture-tests 20，都 0 失败）、TC-PROD-549 第 2 步（server-app 514、architecture-tests 20）与
+    第 3 步（严格 grid 19 个类 63 个）、第 4 步（门禁 1 编译 :loadtest，23 个 0 失败）；TC-PROD-540～TC-PROD-546 第 1 步（两个新类各 6 个在两道门禁里都绿）；
+    TC-PROD-547 第 1 步（两个键门禁类 3 个 0 失败，输出同第一节）；TC-PROD-385 第 1 步（ManagementIntegrationTest 13 个）
+7. 仍未覆盖：TC-PROD-548（§5 的映射里改了 TicketIssuer 就要跑它）没有重跑，本节读数 swap free 1,257～1,639 MB，要起的分片与机器人没起；
+    TC-PROD-550 仍阻塞，同第五节；client-fabric 没有重建（见第 4 项）
+8. 文档 lint（本节文档改完后）：bash ~/.claude/skills/design-doc/check.sh docs/DESIGN-PROD.md 无警告（状态图带事件转移与迁移表行数一致）；
+    bash ~/.claude/skills/test-doc/check.sh docs/TEST.md 只剩已知的两条（RUN-031 两条明细行缺证据引用），REQ 双向联检通过，用例 530 条、轮次 49
+9. 清理：/tmp/prod6a-gates（Gradle 包装脚本、两份日志、JUnit 汇总脚本与两份汇总）登记后删除；门禁结束后 pgrep -fl 'java|gradle' 无输出；
+    git status --short 只剩 docs/TEST.md 与本证据

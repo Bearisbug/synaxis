@@ -15,14 +15,16 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 public class SynxOptionsTest {
 
     @Test
-    public void theDefaultsAreAWritableWorldAndA256MiBCache() {
-        assertEquals(new SynxOptions(true, 268_435_456), SynxOptions.from(Map.<String, String>of()::get));
+    public void theDefaultsAreAWritableWorldA256MiBCacheAQuarterOfTheCoresAndNoResend() {
+        final int threads = Math.max(1, Runtime.getRuntime().availableProcessors() / 4);
+        assertEquals(new SynxOptions(true, 268_435_456, threads, false), SynxOptions.from(Map.<String, String>of()::get));
     }
 
     @Test
     public void theKeysAreRead() {
-        assertEquals(new SynxOptions(false, 1), SynxOptions.from(Map.of(
-                "synaxis.world-writable", "false", "synaxis.synx.section-cache-bytes", "1")::get));
+        assertEquals(new SynxOptions(false, 1, 7, true), SynxOptions.from(Map.of(
+                "synaxis.world-writable", "false", "synaxis.synx.section-cache-bytes", "1",
+                "synaxis.relight-threads", "7", "synaxis.relight.resend-light", "true")::get));
     }
 
     /** As the boolean keys of ServerConfig: lower case true or false, nothing around it. */
@@ -33,6 +35,21 @@ public class SynxOptionsTest {
                     () -> SynxOptions.from(Map.of("synaxis.world-writable", value)::get));
             assertEquals("Property 'synaxis.world-writable' is not true or false: \"" + value + "\"", refused.getMessage());
         }
+    }
+
+    @Test
+    public void aResendThatIsNotLowerCaseTrueOrFalseIsRefused() {
+        final IllegalArgumentException refused = assertThrows(IllegalArgumentException.class,
+                () -> SynxOptions.from(Map.of("synaxis.relight.resend-light", "True")::get));
+        assertEquals("Property 'synaxis.relight.resend-light' is not true or false: \"True\"", refused.getMessage());
+    }
+
+    @Test
+    public void relightThreadsBelowOneOrNoIntegerAreRefused() {
+        assertEquals("Property 'synaxis.relight-threads' is below 1: 0", assertThrows(IllegalArgumentException.class,
+                () -> SynxOptions.from(Map.of("synaxis.relight-threads", "0")::get)).getMessage());
+        assertEquals("Property 'synaxis.relight-threads' is not an integer: two", assertThrows(IllegalArgumentException.class,
+                () -> SynxOptions.from(Map.of("synaxis.relight-threads", "two")::get)).getMessage());
     }
 
     @Test

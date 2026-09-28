@@ -36,4 +36,10 @@ public interface OverlayChunk {
      *         in time; the overlay store takes it up again
      */
     boolean written(long generation, OverlayHit hit, boolean demote);
+
+    /**
+     * Whether the chunk is one of the 3×3 of a light recomputation queued or running, its result
+     * not all installed yet ({@code relight_pending > 0}, M3-D): the eviction passes it over.
+     */
+    boolean relightPending();
 }

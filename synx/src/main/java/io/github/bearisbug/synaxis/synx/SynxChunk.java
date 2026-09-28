@@ -175,6 +175,12 @@ public final class SynxChunk extends DynamicChunk implements OverlayChunk {
         return dirty;
     }
 
+    @Override
+    public boolean relightPending() {
+        final SynxRelight relight = loader.relight();
+        return relight != null && relight.pending(chunkX, chunkZ) > 0;
+    }
+
     /**
      * Runs {@code action} as the application of a world state flag ({@code docs/DESIGN-M3.md}
      * {@code API-M3-005}, {@code API-M3-013}): on this thread and for as long as it runs,

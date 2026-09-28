@@ -4,6 +4,7 @@ import io.github.bearisbug.synaxis.coordinate.CoordConversion;
 import io.github.bearisbug.synaxis.instance.Chunk;
 import io.github.bearisbug.synaxis.instance.ChunkLoader;
 import io.github.bearisbug.synaxis.instance.Instance;
+import io.github.bearisbug.synaxis.instance.InstanceContainer;
 import io.github.bearisbug.synaxis.instance.block.BlockManager;
 import io.github.bearisbug.synaxis.network.NetworkBuffer;
 import io.github.bearisbug.synaxis.network.packet.server.BufferedPacket;
@@ -24,6 +25,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Executor;
 import java.util.concurrent.atomic.LongAdder;
 
 /**
@@ -74,6 +76,8 @@ public final class SynxChunkLoader implements ChunkLoader {
     private final LongAdder failed = new LongAdder();
     private final LongAdder loaded = new LongAdder();
     private final LongAdder unloaded = new LongAdder();
+    // Set once, by startRelight, before the instance ticks
+    private volatile @Nullable SynxRelight relight;
 
     /**
      * Maps the region files of the release that {@code view_bounds} reaches. The caller has already run
@@ -221,6 +225,41 @@ public final class SynxChunkLoader implements ChunkLoader {
                 && synx.mode() != SynxChunk.Mode.FAILED) {
             tracker.unloaded(synx);
         }
+    }
+
+    /**
+     * Starts the runtime light of {@code instance}, the instance of this loader
+     * ({@code docs/DESIGN-M3.md} {@code API-M3-005} 运行时光照): from now on a change of block state
+     * queues a recomputation of the 3×3 around its chunk, on a pool of
+     * {@link SynxOptions#relightThreads()} platform threads of its own. Without it no change queues one,
+     * as in M3-C.
+     *
+     * @throws IllegalStateException on a second call
+     */
+    public SynxRelight startRelight(InstanceContainer instance) {
+        return start(new SynxRelight(this, instance, null));
+    }
+
+    /**
+     * {@link #startRelight(InstanceContainer)} with the snapshot and the computation of each
+     * recomputation handed to {@code computeExecutor} instead of a pool: the tests stop a
+     * recomputation after its snapshot that way.
+     *
+     * @throws IllegalStateException on a second call
+     */
+    public SynxRelight startRelight(InstanceContainer instance, Executor computeExecutor) {
+        return start(new SynxRelight(this, instance, computeExecutor));
+    }
+
+    private synchronized SynxRelight start(SynxRelight started) {
+        if (relight != null) throw new IllegalStateException("the runtime light of this loader has started already");
+        this.relight = started;
+        return started;
+    }
+
+    /** The runtime light, null before {@link #startRelight}. */
+    @Nullable SynxRelight relight() {
+        return relight;
     }
 
     /** Counters since construction, and the current size of the section cache and the mappings. */

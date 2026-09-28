@@ -127,7 +127,7 @@ public class WorldFlagsSyncTest {
     private Mounted mount(WorldFlagsImpl flags) {
         final Env env = Env.create(config -> config.chunkViewDistance(4));
         envs.add(env);
-        final ShardWorld world = ShardWorld.prepare(env.process(), release, new SynxOptions(true, 1 << 24),
+        final ShardWorld world = ShardWorld.prepare(env.process(), release, new SynxOptions(true, 1 << 24, 1, false),
                 new OverlayOptions(16_384, 10), null);
         final InstanceContainer instance = world.start(new ShutdownSequence(env.process(), new NoPlayers()), (_, _) -> {
         }, flags, overlayRoot).instance();

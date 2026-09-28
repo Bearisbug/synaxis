@@ -7,6 +7,7 @@ import io.github.bearisbug.synaxis.instance.block.BlockManager;
 import io.github.bearisbug.synaxis.registry.RegistryKey;
 import io.github.bearisbug.synaxis.synx.OverlayOptions;
 import io.github.bearisbug.synaxis.synx.OverlayStats;
+import io.github.bearisbug.synaxis.synx.RelightStats;
 import io.github.bearisbug.synaxis.synx.SynxFormat;
 import io.github.bearisbug.synaxis.synx.SynxHandlers;
 import io.github.bearisbug.synaxis.synx.SynxManifest;
@@ -44,7 +45,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  */
 public class ShardWorldTest {
 
-    private static final SynxOptions SYNX = new SynxOptions(true, 1 << 20);
+    private static final SynxOptions SYNX = new SynxOptions(true, 1 << 20, 1, false);
     private static final OverlayOptions OVERLAY = new OverlayOptions(16, 1);
 
     @TempDir
@@ -292,11 +293,13 @@ public class ShardWorldTest {
                 new SynxStreamStats(10, 1, 1_000, 0, 50, 5, 100, 2, 4_000),
                 new SynxStreamStats(25, 3, 2_500, 1, 70, 9, 300, 2, 4_000),
                 new OverlayStats(3, 1, 0, 10, 4, 1.5, 2.0, 7),
-                new OverlayStats(5, 2, 1, 16, 6, 3.5, 4.0, 11));
+                new OverlayStats(5, 2, 1, 16, 6, 3.5, 4.0, 11),
+                new RelightStats(0, 0, 0, 0, 0, 0, 0, 0, 0), new RelightStats(0, 0, 0, 0, 0, 0, 0, 0, 0));
         assertEquals(List.of("handle_sent", "overlay_sent", "bytes_sent", "failed", "loaded", "overlay_resident",
                 "overlay_evicted", "evict_failed", "flush_appended", "flush_fsyncs", "flush_lag_s_max",
-                "write_phase_ms_max", "relight_queue_p99_ms", "relight_ms_p99", "unloaded", "section_cache_bytes",
-                "flag_conflicts"), List.copyOf(event.keySet()));
+                "write_phase_ms_max", "relight_queue_p99_ms", "relight_ms_p99", "relights", "relight_skipped",
+                "light_materialized", "light_packets", "light_sections", "relight_install_ms_max", "relight_pending",
+                "unloaded", "section_cache_bytes", "flag_conflicts"), List.copyOf(event.keySet()));
         assertEquals(15L, event.get("handle_sent"));
         assertEquals(2L, event.get("overlay_sent"));
         assertEquals(1_500L, event.get("bytes_sent"));

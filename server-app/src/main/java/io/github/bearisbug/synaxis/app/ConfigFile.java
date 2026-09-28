@@ -161,6 +161,8 @@ public final class ConfigFile {
             "synaxis.synx.section-cache-bytes",
             "synaxis.overlay.cap",
             "synaxis.overlay.flush-interval-s",
+            "synaxis.relight-threads",
+            "synaxis.relight.resend-light",
             // The logging setup, logback.xml
             "synaxis.app.log",
             // The RTS plugin, game-rts

@@ -487,7 +487,7 @@ public class SynxChunkOverlayIntegrationTest {
     @Test
     public void theSectionCacheStaysWithinItsBudget(Env env) throws Exception {
         final SynxChunkLoader small = SynxWorlds.loader(SynxTestMap.get().buildDir, SynxTestMap.REGION,
-                new SynxOptions(true, 64 * 1024), new MemoryOverlay());
+                new SynxOptions(true, 64 * 1024, 1, false), new MemoryOverlay());
         final Instance instance = SynxWorlds.instance(env.process(), small);
         for (int cx = 0; cx < 8; cx++) {
             instance.loadChunk(cx, 20).join();

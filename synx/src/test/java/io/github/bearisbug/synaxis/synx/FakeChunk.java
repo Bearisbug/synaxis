@@ -155,6 +155,11 @@ final class FakeChunk implements OverlayChunk {
         }
     }
 
+    @Override
+    public boolean relightPending() {
+        return false;
+    }
+
     /** The content of a chunk at a generation: segment ① holds the coordinates and the generation. */
     static SynxChunkRecord record(int chunkX, int chunkZ, long generation) {
         final byte[] packet = ByteBuffer.allocate(16).order(ByteOrder.LITTLE_ENDIAN)

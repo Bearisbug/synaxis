@@ -35,6 +35,7 @@ import io.github.bearisbug.synaxis.registry.Registries;
 import io.github.bearisbug.synaxis.synx.OverlayOptions;
 import io.github.bearisbug.synaxis.synx.SynxChunk;
 import io.github.bearisbug.synaxis.synx.SynxOptions;
+import io.github.bearisbug.synaxis.synx.SynxRelight;
 import io.github.bearisbug.synaxis.testing.Env;
 import net.kyori.adventure.key.Key;
 import net.kyori.adventure.nbt.CompoundBinaryTag;
@@ -81,14 +82,15 @@ import static org.junit.jupiter.api.Assertions.fail;
 @Timeout(120)
 public class WorldFlagsReplayTest {
 
-    private static final SynxOptions WRITABLE = new SynxOptions(true, 1 << 24);
-    private static final SynxOptions READ_ONLY = new SynxOptions(false, 1 << 24);
+    private static final SynxOptions WRITABLE = new SynxOptions(true, 1 << 24, 1, false);
+    private static final SynxOptions READ_ONLY = new SynxOptions(false, 1 << 24, 1, false);
     /** A change is written within a second, which the restart after a flush waits for. */
     private static final OverlayOptions OVERLAY = new OverlayOptions(16_384, 1);
     private static final String REGION = "r0";
     private static final String BRIDGE = "quest:bridge";
     private static final String GATE = "quest:gate";
     private static final String CHEST = "quest:chest";
+    private static final String LAMP = "quest:lamp";
     /** The row of chests: z 3, on the floor. */
     private static final int CHEST_Z = 3;
     /** The bridge: 20 cells in the air at y 45, z 4, x 0 to 19, across chunks 0,0 and 1,0. */
@@ -222,7 +224,7 @@ public class WorldFlagsReplayTest {
         }
     }
 
-    private record Mounted(Env env, ShardWorld world, InstanceContainer instance) {
+    private record Mounted(Env env, ShardWorld world, InstanceContainer instance, SynxRelight relight) {
     }
 
     /** Steps (3) and (5) of {@code Main} on a map, in a process of its own. */
@@ -234,7 +236,7 @@ public class WorldFlagsReplayTest {
         final ShardWorld.Started started = world.start(new ShutdownSequence(env.process(), new NoPlayers()),
                 (_, _) -> {
                 }, flags, overlayRoot);
-        return new Mounted(env, world, started.instance());
+        return new Mounted(env, world, started.instance(), started.relight());
     }
 
     private void stop(Mounted mounted) {
@@ -544,11 +546,48 @@ public class WorldFlagsReplayTest {
         instance.setBlock(3, BRIDGE_Y, BRIDGE_Z, Block.STONE);
         assertEquals(Block.AIR, instance.getBlock(3, BRIDGE_Y, BRIDGE_Z), "not in a flag application: read only");
         assertTrue(instance.getChunk(0, 0).isReadOnly());
-        assertNull(instance.getChunk(-1, 0), "no application loaded the chunk past the bounds");
+        // The recomputation of the bridge may have loaded it for its snapshot: the cell past the bounds is not set either way
         instance.loadChunk(-1, 0).join();
         assertEquals(Block.AIR, instance.getBlock(-5, BRIDGE_Y, BRIDGE_Z), "past the bounds");
         assertTrue(warnings().stream().anyMatch(line -> line.contains(BRIDGE) && line.contains("2 cells outside")),
                 warnings().toString());
+    }
+
+    /**
+     * §19 「只读世界里标志改方块后光照照样装回」: the flag sets a glowstone in the middle of chunk 8,8 of
+     * a world nothing else may change; the recomputation installs the light of its 3×3, and the four
+     * neighbours the glowstone lights are materialized for it, which {@code world_writable} does not stop.
+     */
+    @Test
+    public void aReadOnlyWorldTakesTheLightOfAFlagChange() throws Exception {
+        row(LAMP, "lit", 1);
+        final WorldFlagsImpl flags = flags();
+        flags.register(LAMP, _ -> List.of(new FlagCell(8 * 16 + 8, FLOOR, 8 * 16 + 8, Block.GLOWSTONE)));
+        final Mounted mounted = mount(release, READ_ONLY, flags);
+        final InstanceContainer instance = mounted.instance();
+        instance.setChunkUnloadGraceTicks(-1);
+        assertEquals(Block.GLOWSTONE, instance.getBlock(8 * 16 + 8, FLOOR, 8 * 16 + 8));
+
+        tickUntil(mounted.env(), () -> mounted.relight().stats().pending() == 0 && relit(instance, 9, 8),
+                Duration.ofSeconds(20), "the light of the glowstone is installed");
+
+        for (int x = 7; x <= 9; x++) {
+            for (int z = 7; z <= 9; z++) {
+                final SynxChunk chunk = (SynxChunk) instance.getChunk(x, z);
+                assertNull(LightTruth.firstDifference(LightTruth.sent(chunk, Registries.vanilla()),
+                        LightTruth.of(instance, x, z), x, z, 0, 4), "the light of " + x + "," + z);
+            }
+        }
+        for (int[] side : new int[][]{{7, 8}, {9, 8}, {8, 7}, {8, 9}}) {
+            final SynxChunk chunk = (SynxChunk) instance.getChunk(side[0], side[1]);
+            assertTrue(chunk.dirty() && chunk.generation() >= 1,
+                    "materialized for its light in a read only world: " + side[0] + "," + side[1]);
+        }
+    }
+
+    private static boolean relit(InstanceContainer instance, int chunkX, int chunkZ) {
+        return instance.getChunk(chunkX, chunkZ) instanceof SynxChunk chunk && LightTruth.firstDifference(
+                LightTruth.sent(chunk, Registries.vanilla()), LightTruth.of(instance, chunkX, chunkZ), chunkX, chunkZ, 0, 4) == null;
     }
 
     /** §19 「同一个键的两次应用乱序时不回退」. */

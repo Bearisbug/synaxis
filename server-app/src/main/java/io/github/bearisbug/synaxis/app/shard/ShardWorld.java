@@ -10,6 +10,7 @@ import io.github.bearisbug.synaxis.registry.RegistryKey;
 import io.github.bearisbug.synaxis.synx.OverlayOptions;
 import io.github.bearisbug.synaxis.synx.OverlayStats;
 import io.github.bearisbug.synaxis.synx.OverlayStore;
+import io.github.bearisbug.synaxis.synx.RelightStats;
 import io.github.bearisbug.synaxis.synx.SynxBuildVerifier;
 import io.github.bearisbug.synaxis.synx.SynxChunkLoader;
 import io.github.bearisbug.synaxis.synx.SynxError;
@@ -20,6 +21,7 @@ import io.github.bearisbug.synaxis.synx.SynxHandlers;
 import io.github.bearisbug.synaxis.synx.SynxManifest;
 import io.github.bearisbug.synaxis.synx.SynxOptions;
 import io.github.bearisbug.synaxis.synx.SynxRegion;
+import io.github.bearisbug.synaxis.synx.SynxRelight;
 import io.github.bearisbug.synaxis.synx.SynxSettings;
 import io.github.bearisbug.synaxis.synx.SynxSlot;
 import io.github.bearisbug.synaxis.synx.SynxStreamStats;
@@ -41,6 +43,7 @@ import java.time.Duration;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.Executor;
 import java.util.function.BiConsumer;
 
 /**
@@ -89,8 +92,9 @@ public final class ShardWorld {
      *
      * @param instance the map instance
      * @param spawn    the spawn point
+     * @param relight  the runtime light of the instance, whose counters the light fixture and the tests read
      */
-    public record Started(InstanceContainer instance, Pos spawn) {
+    public record Started(InstanceContainer instance, Pos spawn, SynxRelight relight) {
     }
 
     private ShardWorld(ServerProcess process, ShardSettings settings, SynxOptions synxOptions,
@@ -265,6 +269,17 @@ public final class ShardWorld {
      */
     Started start(ShutdownSequence shutdown, BiConsumer<String, Map<String, ?>> events, @Nullable WorldFlagsImpl flags,
                   Path overlayRoot) {
+        return start(shutdown, events, flags, overlayRoot, null);
+    }
+
+    /**
+     * {@link #start(ShutdownSequence, BiConsumer, WorldFlagsImpl, Path)} with the snapshot and the
+     * computation of the light recomputations on {@code relightExecutor} instead of their own pool
+     * ({@code SynxChunkLoader#startRelight(InstanceContainer, Executor)}), for the tests that hold a
+     * recomputation back; null for the pool.
+     */
+    Started start(ShutdownSequence shutdown, BiConsumer<String, Map<String, ?>> events, @Nullable WorldFlagsImpl flags,
+                  Path overlayRoot, @Nullable Executor relightExecutor) {
         // Before the overlay store is opened: flags that cannot be read refuse the start with the disk untouched
         if (flags != null) flags.load();
         final SynxSettings overlaySettings = overlaySettings(manifest, process.compressionThreshold());
@@ -296,6 +311,8 @@ public final class ShardWorld {
         final InstanceContainer instance = process.instance().createInstanceContainer(dimensionType, loader);
         instance.setSimulationDistance(settings.simulationDistance());
         instance.setChunkUnloadGraceTicks(settings.chunkUnloadGraceTicks());
+        final SynxRelight relight = relightExecutor == null ? loader.startRelight(instance)
+                : loader.startRelight(instance, relightExecutor);
         // Before the world border, the spawn point and the bind
         if (flags != null) flags.replay(instance);
         instance.setWorldBorder(worldBorder(bounds));
@@ -313,7 +330,7 @@ public final class ShardWorld {
                 .delay(STATS_INTERVAL).repeat(STATS_INTERVAL).schedule();
         LOGGER.info("Map mounted: build_id={} simulation_distance={} chunk_unload_grace_ticks={} spawn={} overlay={}",
                 manifest.buildId(), settings.simulationDistance(), settings.chunkUnloadGraceTicks(), spawn, overlayDirectory);
-        return new Started(instance, spawn);
+        return new Started(instance, spawn, relight);
     }
 
     /**
@@ -380,7 +397,8 @@ public final class ShardWorld {
         final OverlayStats overlayStats = overlay.stats();
         this.lastStream = stream;
         this.lastOverlay = overlayStats;
-        final Map<String, Object> attributes = streamStats(lastStream, stream, lastOverlay, overlayStats);
+        final Map<String, Object> attributes = streamStats(lastStream, stream, lastOverlay, overlayStats,
+                new RelightStats(0, 0, 0, 0, 0, 0, 0, 0, 0), new RelightStats(0, 0, 0, 0, 0, 0, 0, 0, 0));
         final WorldFlagsImpl flags = this.flags;
         if (flags != null) {
             final long conflicts = flags.stats().conflicts();
@@ -395,7 +413,7 @@ public final class ShardWorld {
      * of two readings, the current values and the window maxima as read.
      */
     static Map<String, Object> streamStats(SynxStreamStats before, SynxStreamStats now, OverlayStats overlayBefore,
-                                           OverlayStats overlayNow) {
+                                           OverlayStats overlayNow, RelightStats relightBefore, RelightStats relightNow) {
         final Map<String, Object> attributes = new LinkedHashMap<>();
         attributes.put("handle_sent", now.handleSent() - before.handleSent());
         attributes.put("overlay_sent", now.overlaySent() - before.overlaySent());
@@ -409,9 +427,15 @@ public final class ShardWorld {
         attributes.put("flush_fsyncs", overlayNow.flushFsyncs() - overlayBefore.flushFsyncs());
         attributes.put("flush_lag_s_max", overlayNow.flushLagSMax());
         attributes.put("write_phase_ms_max", overlayNow.writePhaseMsMax());
-        // M3-D computes the light at run time
         attributes.put("relight_queue_p99_ms", 0);
         attributes.put("relight_ms_p99", 0);
+        attributes.put("relights", 0);
+        attributes.put("relight_skipped", 0);
+        attributes.put("light_materialized", 0);
+        attributes.put("light_packets", 0);
+        attributes.put("light_sections", 0);
+        attributes.put("relight_install_ms_max", 0);
+        attributes.put("relight_pending", 0);
         attributes.put("unloaded", now.unloaded() - before.unloaded());
         attributes.put("section_cache_bytes", now.sectionCacheBytes());
         // Without world state flags; the statistics task puts the difference of theirs in its place

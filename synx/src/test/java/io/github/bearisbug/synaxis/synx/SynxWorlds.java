@@ -20,8 +20,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /** Builds the instances of the {@code :synx} integration tests on the {@link SynxTestMap}. */
 final class SynxWorlds {
-    static final SynxOptions WRITABLE = new SynxOptions(true, 256L << 20);
-    static final SynxOptions READ_ONLY = new SynxOptions(false, 256L << 20);
+    static final SynxOptions WRITABLE = new SynxOptions(true, 256L << 20, 1, false);
+    static final SynxOptions READ_ONLY = new SynxOptions(false, 256L << 20, 1, false);
 
     private SynxWorlds() {
     }

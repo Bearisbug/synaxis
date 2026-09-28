@@ -69,7 +69,7 @@ import static org.junit.jupiter.api.Assertions.fail;
 @Timeout(60)
 public class ShardWorldAssemblyTest {
 
-    private static final SynxOptions SYNX = new SynxOptions(true, 1 << 24);
+    private static final SynxOptions SYNX = new SynxOptions(true, 1 << 24, 1, false);
     private static final String SYNX_LOGGERS = "io.github.bearisbug.synaxis.synx";
 
     @TempDir
@@ -434,6 +434,11 @@ public class ShardWorldAssemblyTest {
         public boolean written(long generation, OverlayHit hit, boolean demote) {
             if (generation == 1) dirty = false;
             return true;
+        }
+
+        @Override
+        public boolean relightPending() {
+            return false;
         }
     }
 

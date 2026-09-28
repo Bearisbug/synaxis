@@ -55,8 +55,9 @@ import java.util.concurrent.locks.ReentrantLock;
  * that is not a {@code SynxChunk} is missing and passes no light, as in the baker. The result waits
  * for the end of a tick, where the tick scheduling thread installs it ({@link #installPhase}), each
  * target only if the 3×3 around it still holds the chunk objects and the {@code block_changes} of the
- * snapshot. The players whose client cannot compute the light of the change itself get the full light
- * of the target then; the others compute it from the block change.
+ * snapshot, and only the sections whose light it does not hold yet: the recomputation of a neighbouring
+ * change may have installed the same light before. The players whose client cannot compute the light
+ * of the change itself get the full light of the target then; the others compute it from the block change.
  */
 public final class SynxRelight {
     private static final Logger LOGGER = LoggerFactory.getLogger(SynxRelight.class);
@@ -97,7 +98,8 @@ public final class SynxRelight {
 
     /**
      * A position of a snapshot: the chunk object with its {@code block_changes} at the time and the
-     * palettes it had; chunk null for a missing position, palettes null for air.
+     * palettes it had; chunk null for a missing position, palettes null for air and once the light is
+     * computed.
      */
     private record Taken(@Nullable SynxChunk chunk, long blockChanges, Palette @Nullable [] blocks) {
     }
@@ -122,6 +124,14 @@ public final class SynxRelight {
 
         Task(Center center) {
             this.center = center;
+        }
+
+        /** Once the light is computed: the install needs the chunk objects and their {@code block_changes} only. */
+        void dropBlocks() {
+            for (int i = 0; i < taken.length; i++) {
+                final Taken at = taken[i];
+                if (at != null && at.blocks() != null) taken[i] = new Taken(at.chunk(), at.blockChanges(), null);
+            }
         }
 
         @Nullable Taken at(int chunkX, int chunkZ) {
@@ -359,6 +369,7 @@ public final class SynxRelight {
                     TimeUnit.NANOSECONDS.toMillis(took));
         }
         relights.increment();
+        task.dropBlocks();
         task.computed = true;
         waiting.addAndGet(targets.size());
         installs.addAll(targets);
@@ -457,7 +468,7 @@ public final class SynxRelight {
     }
 
     /** Null and empty arrays are all 0, as a missing section sends. */
-    private static boolean sameLight(byte @Nullable [] a, byte @Nullable [] b) {
+    static boolean sameLight(byte @Nullable [] a, byte @Nullable [] b) {
         return Arrays.equals(a == null || a.length == 0 ? DARK : a, b == null || b.length == 0 ? DARK : b);
     }
 
@@ -515,9 +526,9 @@ public final class SynxRelight {
             final SynxChunk.Installed installed = chunk.installLight(target.sky(), target.block());
             if (installed == null) return false;
             if (installed.materialized()) lightMaterialized.increment();
-            final Set<Player> resent = resend(chunk, installed.light(), true, now);
-            if (loader.options().resendLight()) {
-                final LightData changed = changedSections(target);
+            final Set<Player> resent = resend(chunk, installed.light(), installed.swapped(), now);
+            if (installed.swapped() && loader.options().resendLight()) {
+                final LightData changed = changedSections(installed.sky(), installed.block());
                 for (Player player : chunk.delivered().keySet()) {
                     if (!resent.contains(player) && online(player)) send(player, chunk, changed, now);
                 }
@@ -578,11 +589,10 @@ public final class SynxRelight {
         return player.isOnline() && player.getInstance() == instance;
     }
 
-    /** The sections whose light the target changed, and nothing else: bit i of either mask is section minSection − 1 + i. */
-    private LightData changedSections(Target target) {
+    /** The sections an install swapped, and nothing else: bit i of either mask is section minSection − 1 + i. */
+    private LightData changedSections(byte[] @Nullable [] sky, byte[] @Nullable [] block) {
         final BitSet skyMask = new BitSet(), blockMask = new BitSet(), emptySky = new BitSet(), emptyBlock = new BitSet();
         final List<byte[]> skyArrays = new ArrayList<>(), blockArrays = new ArrayList<>();
-        final byte[][] sky = target.sky(), block = target.block();
         for (int section = 0; section < sectionCount; section++) {
             add(sky[section], section + 1, skyMask, emptySky, skyArrays);
             add(block[section], section + 1, blockMask, emptyBlock, blockArrays);

@@ -245,6 +245,43 @@ public class SynxRelightViewersIntegrationTest {
         }
     }
 
+    /**
+     * Two changes of one tick in neighbouring centers, 3,3 and 4,3, both computed before either is
+     * installed: the six targets of both 3×3s take the new light once. With the fallback A, which
+     * computes the light itself, gets at most one packet of a target, and 4,3 goes up by one
+     * {@code generation} for its block and one for its light.
+     */
+    @Test
+    public void neighbouringChangesOfOneTickInstallEachTargetOnce(Env env, @TempDir Path dir) {
+        final RelightWorld world = RelightWorld.create(env, dir, RelightTestMap.BOUNDS, RelightWorld.options(true),
+                new OverlayOptions(16_384, 10), true);
+        // The ring of A, x and z 0 to 6, holds the 5×5 of both centers
+        final RelightWorld.Viewer a = world.connect(at(C, C), 2);
+        world.ticks(200);
+        a.forget();
+        final long generation = world.chunk(C + 1, C).generation();
+
+        world.instance.setBlock(56, Y, 56, Block.TORCH);
+        world.instance.setBlock(72, Y, 56, Block.TORCH);
+        world.settle();
+        world.ticks(2);
+
+        for (int x = C - 1; x <= C + 2; x++) {
+            for (int z = C - 1; z <= C + 1; z++) {
+                final boolean changed = changedSinceTheBake(world, x, z);
+                final List<UpdateLightPacket> sentToA = a.lightPackets(x, z);
+                assertEquals(changed ? 1 : 0, sentToA.size(), "A, " + x + "," + z + " changed=" + changed);
+                for (UpdateLightPacket packet : sentToA) {
+                    assertTrue(!RelightWorld.full(packet.lightData()), "only the changed sections of " + x + "," + z);
+                    assertChangedSectionsTrue(world, packet.lightData(), x, z);
+                }
+            }
+        }
+        assertTrue(changedSinceTheBake(world, C + 1, C), "4,3 is lit by the torches");
+        assertEquals(generation + 2, world.chunk(C + 1, C).generation(), "4,3: its torch and one install of its light");
+        world.assertLight(C - 1, C - 1, C + 2, C + 1);
+    }
+
     /** The sections a partial light packet carries hold the server's light; the others are left out of both masks. */
     private static void assertChangedSectionsTrue(RelightWorld world, LightData light, int chunkX, int chunkZ) {
         final LightResult truth = world.truth(chunkX, chunkZ);

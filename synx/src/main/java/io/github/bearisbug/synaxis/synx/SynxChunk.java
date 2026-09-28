@@ -637,15 +637,22 @@ public final class SynxChunk extends DynamicChunk implements OverlayChunk {
      *
      * @param light        the full light after the install, what a resend carries
      * @param materialized whether the chunk was still in handle mode and was materialized for it
+     * @param sky          the sections whose sky light it swapped, bottom up, null where the chunk held that light already
+     * @param block        the sections whose block light it swapped, as {@code sky}
+     * @param swapped      whether it swapped any section; false leaves the chunk as it was
      */
-    record Installed(LightData light, boolean materialized) {
+    record Installed(LightData light, boolean materialized, byte[] @Nullable [] sky, byte[] @Nullable [] block,
+                     boolean swapped) {
     }
 
     /**
-     * Installs the new light of a recomputation (§11.1 光照装回), on the tick scheduling thread: the
-     * sections whose light changed take new arrays, new objects that a packet already handed out does
-     * not see; the caches go, {@code generation} goes up by one and the chunk is dirty. A handle chunk is
-     * materialized for its light first. Only tries the write-lock: the encode pool may hold it.
+     * Installs the new light of a recomputation (§11.1 光照装回), on the tick scheduling thread: each
+     * section whose light the recomputation changed and the chunk does not hold yet takes the new
+     * array, a new object that a packet already handed out does not see; the caches go,
+     * {@code generation} goes up by one and the chunk is dirty. A handle chunk is materialized for its
+     * light first. The recomputation of a neighbouring change may have installed the same light
+     * already: then nothing is swapped and nothing else changes either. Only tries the write-lock: the
+     * encode pool may hold it.
      *
      * @param sky   the new sky light by section, bottom up, null where it did not change
      * @param block the new block light by section, as {@code sky}
@@ -654,15 +661,33 @@ public final class SynxChunk extends DynamicChunk implements OverlayChunk {
     @Nullable Installed installLight(byte[] @Nullable [] sky, byte[] @Nullable [] block) {
         if (!tryLockWriteLock(Duration.ZERO)) return null;
         try {
+            final Source handle = this.source;
+            final LightData held = mode == Mode.HANDLE && handle != null
+                    ? SynxPacketDecoder.light(handle.slot().packet(), instance.registries()) : createLightData(false);
+            final int count = sections.size();
+            final byte[][] heldSky = SynxPacketDecoder.sky(held, count), heldBlock = SynxPacketDecoder.block(held, count);
+            final byte[][] swapSky = new byte[count][], swapBlock = new byte[count][];
+            boolean swapped = false;
+            for (int i = 0; i < count; i++) {
+                if (sky[i] != null && !SynxRelight.sameLight(sky[i], heldSky[i])) {
+                    swapSky[i] = sky[i];
+                    swapped = true;
+                }
+                if (block[i] != null && !SynxRelight.sameLight(block[i], heldBlock[i])) {
+                    swapBlock[i] = block[i];
+                    swapped = true;
+                }
+            }
+            if (!swapped) return new Installed(held, false, swapSky, swapBlock, false);
             final boolean materialized = mode == Mode.HANDLE;
             if (materialized) materialize();
-            for (int i = 0; i < sections.size(); i++) {
-                if (sky[i] != null) sections.get(i).setSkyLight(sky[i]);
-                if (block[i] != null) sections.get(i).setBlockLight(block[i]);
+            for (int i = 0; i < count; i++) {
+                if (swapSky[i] != null) sections.get(i).setSkyLight(swapSky[i]);
+                if (swapBlock[i] != null) sections.get(i).setBlockLight(swapBlock[i]);
             }
             invalidate();
             changed();
-            return new Installed(createLightData(false), materialized);
+            return new Installed(createLightData(false), materialized, swapSky, swapBlock, true);
         } finally {
             unlockWriteLock();
         }

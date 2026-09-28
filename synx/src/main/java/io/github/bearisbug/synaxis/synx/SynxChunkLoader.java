@@ -273,6 +273,11 @@ public final class SynxChunkLoader implements ChunkLoader {
         return options;
     }
 
+    /** The world of the release. */
+    SynxManifest.World world() {
+        return manifest.world();
+    }
+
     /** Whether a chunk position is in {@code view_bounds}, where this loader has anything to load. */
     boolean inView(int chunkX, int chunkZ) {
         return contains(viewBounds, chunkX, chunkZ);

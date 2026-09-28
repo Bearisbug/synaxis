@@ -193,9 +193,10 @@ public final class SynxRelight {
     SynxRelight(SynxChunkLoader loader, InstanceContainer instance, @Nullable Executor computeExecutor) {
         this.loader = loader;
         this.instance = instance;
-        this.minY = instance.getCachedDimensionType().minY();
+        // The world of the release, which the chunks of the instance are held to (SynxChunkLoader#requireWorld)
+        this.minY = loader.world().minY();
         this.minSection = Math.floorDiv(minY, 16);
-        this.sectionCount = instance.getCachedDimensionType().height() / 16;
+        this.sectionCount = loader.world().height() / 16;
         if (computeExecutor != null) {
             this.pool = null;
             this.executor = computeExecutor;

@@ -98,7 +98,7 @@ class ManagementBacklogRaceIntegrationTest {
         final HostCommands commands = new HostCommands(env.process(), none, store, (_, _) -> { },
                 new Profiler(workingDirectory.resolve("profiles"), "test", Clock.systemUTC()));
         final ManagementMethods methods = new ManagementMethods(env.process(), commands, store,
-                HostModeration.withoutDatabase(env.process()), null, "test", ledger);
+                HostModeration.withoutDatabase(env.process()), null, null, "test", ledger);
         final ManagementServer server = ManagementServer.serve(ManagementSettings.parse("true", "127.0.0.1:0", TOKEN),
                 env.process(), methods, Duration.ofSeconds(5));
         opened.add(server);

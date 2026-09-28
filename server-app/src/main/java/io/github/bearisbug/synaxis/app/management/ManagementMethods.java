@@ -16,6 +16,8 @@ import io.github.bearisbug.synaxis.app.command.HostCommands;
 import io.github.bearisbug.synaxis.app.command.Profiler;
 import io.github.bearisbug.synaxis.app.command.TickStats;
 import io.github.bearisbug.synaxis.app.moderation.HostModeration;
+import io.github.bearisbug.synaxis.app.shard.ShardService;
+import io.github.bearisbug.synaxis.app.shard.ShardTransferResult;
 import io.github.bearisbug.synaxis.app.store.PlayerStore;
 import io.github.bearisbug.synaxis.app.store.ShardSession;
 import io.github.bearisbug.synaxis.entity.Player;
@@ -43,6 +45,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.function.BiConsumer;
 
@@ -97,8 +100,8 @@ public final class ManagementMethods {
         Outcome call(Call call) throws Failure;
     }
 
-    /** One request: its method and its parameters, by position or by name. */
-    private record Call(String method, @Nullable JsonElement params) {
+    /** One request: its method, its parameters by position or by name, and the id its log lines carry. */
+    private record Call(String method, @Nullable JsonElement params, String requestId) {
         @Nullable JsonElement param(int index, String name) {
             final JsonElement value;
             if (params == null) value = null;
@@ -122,6 +125,7 @@ public final class ManagementMethods {
     private final PlayerStore store;
     private final HostModeration moderation;
     private final @Nullable ShardSession session;
+    private final @Nullable ShardService shards;
     private final String shardId;
     private final BiConsumer<String, Map<String, ?>> analytics;
     private final Map<String, Method> methods = new LinkedHashMap<>();
@@ -135,17 +139,19 @@ public final class ManagementMethods {
      * @param store      the player store, which {@code minecraft:server/save} saves
      * @param moderation the bans
      * @param session    the shard session, null in a process without a database
+     * @param shards     what sends a player to another shard, null outside the directory mode
      * @param shardId    the shard id
      * @param analytics  the event ledger
      */
     public ManagementMethods(ServerProcess process, HostCommands commands, PlayerStore store, HostModeration moderation,
-                             @Nullable ShardSession session, String shardId,
+                             @Nullable ShardSession session, @Nullable ShardService shards, String shardId,
                              BiConsumer<String, Map<String, ?>> analytics) {
         this.process = process;
         this.commands = commands;
         this.store = store;
         this.moderation = moderation;
         this.session = session;
+        this.shards = shards;
         this.shardId = shardId;
         this.analytics = analytics;
         methods.put("minecraft:players", _ -> new Outcome(players(process.connection().getOnlinePlayers()), "ok", null));
@@ -160,6 +166,7 @@ public final class ManagementMethods {
         methods.put("synaxis:shard/status", _ -> shardStatus());
         methods.put("synaxis:broadcast", this::broadcast);
         methods.put("synaxis:profile", this::profile);
+        methods.put("synaxis:transfer", this::transfer);
     }
 
     /**
@@ -210,7 +217,7 @@ public final class ManagementMethods {
         final Method method = methods.get(name.getAsString());
         if (method == null)
             return answered ? error(replyId, METHOD_NOT_FOUND, "Method not found", requestId) : new Reply(null, null);
-        final Call call = new Call(name.getAsString(), params);
+        final Call call = new Call(name.getAsString(), params, requestId);
         try {
             final Outcome outcome = method.call(call);
             record(call, outcome.target(), outcome.audit());
@@ -484,7 +491,7 @@ public final class ManagementMethods {
         return online.getUuid();
     }
 
-    // synaxis:shard/*, synaxis:broadcast, synaxis:profile
+    // synaxis:shard/*, synaxis:broadcast, synaxis:profile, synaxis:transfer
 
     private Outcome drain() {
         final ConnectionGate gate = process.connection().gate();
@@ -547,6 +554,38 @@ public final class ManagementMethods {
         result.addProperty("path", started.path().toString());
         result.addProperty("seconds", seconds);
         return new Outcome(result, "ok", null);
+    }
+
+    /**
+     * Sends a player online here to another shard ({@code docs/DESIGN-M3.md} {@code API-M3-010}): to a
+     * channel of {@code region} or to the channel {@code shard}, exactly one of them. Answers once the
+     * transfer is known, with the result in lower case.
+     */
+    private Outcome transfer(Call call) throws Failure {
+        if (shards == null)
+            throw new Failure(UNAVAILABLE, "This shard cannot send players to other shards: it is not in the directory mode",
+                    "unavailable");
+        final JsonObject named = object(call.param(0, "player"), "player");
+        final JsonElement region = call.param(1, "region");
+        final JsonElement shard = call.param(2, "shard");
+        if ((region == null) == (shard == null)) throw invalid("give either region or shard, not both and not neither");
+        final String target = region != null ? string(region, "region") : string(shard, "shard");
+        final Player player = onlinePlayer(named);
+        if (player == null) throw invalid("the player is not online here");
+        final CompletableFuture<ShardTransferResult> transfer = region != null
+                ? shards.transfer(player, target) : shards.transferTo(player, target);
+        final ShardTransferResult result;
+        try {
+            result = transfer.join();
+        } catch (CompletionException e) {
+            // What the transfer threw, wrapped once by the stages of the shard service
+            final Throwable cause = e.getCause() == null ? e : e.getCause();
+            failures.error(cause, "Management transfer failed: player={} target={} request_id={}", player.getUsername(),
+                    target, call.requestId());
+            throw new Failure(INTERNAL_ERROR, "Internal error", "unavailable");
+        }
+        final String name = result.name().toLowerCase(Locale.ROOT);
+        return new Outcome(new JsonPrimitive(name), name, player.getUuid());
     }
 
     // Parameters

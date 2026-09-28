@@ -8,6 +8,7 @@ import io.github.bearisbug.synaxis.SessionServer;
 import io.github.bearisbug.synaxis.Watchdog;
 import io.github.bearisbug.synaxis.app.command.HostCommands;
 import io.github.bearisbug.synaxis.app.command.Profiler;
+import io.github.bearisbug.synaxis.app.command.TransferCommand;
 import io.github.bearisbug.synaxis.app.management.ManagementMethods;
 import io.github.bearisbug.synaxis.app.management.ManagementServer;
 import io.github.bearisbug.synaxis.app.management.ManagementSettings;
@@ -264,6 +265,8 @@ public final class Main {
         process.command().register(new RoleCommand(process, store.permissions(), ledger::record));
         new ModerationCommands(process, store.moderation(), store.permissions(), ledger::record).commands()
                 .forEach(process.command()::register);
+        final @Nullable ShardService shardService = directoryMode == null ? null : directoryMode.service();
+        process.command().register(new TransferCommand(process, store.permissions(), shardService, ledger::record));
         // Before the plugins, so that the bare names of the built in commands are the host's
         final HostCommands commands = new HostCommands(process, store.permissions(), store.store(), ledger::record,
                 new Profiler(Path.of("profiles"), shardId, Clock.systemUTC()));
@@ -277,7 +280,7 @@ public final class Main {
                 store.store(), store.session(), store.database(), store.redis()));
         serveMetrics(metrics, metricsBind);
         final ManagementMethods managementMethods = new ManagementMethods(process, commands, store.store(),
-                store.moderation(), store.session(), shardId, ledger::record);
+                store.moderation(), store.session(), shardService, shardId, ledger::record);
         final ManagementServer management = ManagementServer.serve(managementSettings, process, managementMethods);
         if (coreMode != CoreMode.Setting.ON) host.enable(PluginHost.discover(), selectedPlugins);
 
@@ -455,7 +458,7 @@ public final class Main {
      * @param directory the shard directory
      * @param arrivals  the arrivals of transferred players
      * @param heartbeat the heartbeat, which also reads the other shards'
-     * @param service   what sends a player to another shard, for the gates
+     * @param service   what sends a player to another shard, for the gates, {@code transfer} and {@code synaxis:transfer}
      * @param flags     the world state flags of the region
      */
     record DirectoryMode(ShardDirectory directory, ShardArrivals arrivals, ShardHeartbeat heartbeat,

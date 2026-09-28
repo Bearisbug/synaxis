@@ -61,6 +61,11 @@ public class OverlayStoreTest {
         return generation;
     }
 
+    /**
+     * The 40 encodings take 5 ms each, 50 ms on the four encode threads, more than the 20 ms of a
+     * shard's write phase, which leaves the ones not done by then to the next tick. The phase of the
+     * tests waits for all 40 ({@link OverlayFixture#TEST_PHASE_NANOS}).
+     */
     @Test
     public void aTickOfEvictionsUnloadsAndDueChunksIsOneFsync() throws Exception {
         final OverlayStore store = open(32, 4);
@@ -75,6 +80,7 @@ public class OverlayStoreTest {
         unloading.forEach(FakeChunk::change);
         unloading.forEach(store::unloadRequested);
         final List<FakeChunk> all = Stream.of(due, evicted, unloading).flatMap(List::stream).toList();
+        for (FakeChunk chunk : all) chunk.encodeNanos = TimeUnit.MILLISECONDS.toNanos(5);
         final AtomicBoolean indexedBeforeFsync = new AtomicBoolean();
         disk.onForce = () -> indexedBeforeFsync.set(all.stream().anyMatch(c -> store.find(c.chunkX(), c.chunkZ()) != null));
 
@@ -134,7 +140,7 @@ public class OverlayStoreTest {
 
     @Test
     public void aPhaseOverItsBudgetLeavesTheRestToTheNextTicks() throws Exception {
-        final OverlayStore store = open(16_384, 1);
+        final OverlayStore store = open(16_384, OverlayFixture.shardPhase(1, clock, disk));
         final List<FakeChunk> chunks = OverlayFixture.chunks(store, 0, 1_000);
         for (FakeChunk chunk : chunks) {
             chunk.encodeNanos = TimeUnit.MILLISECONDS.toNanos(5);
@@ -177,7 +183,7 @@ public class OverlayStoreTest {
      */
     @Test
     public void encodingsLeftInFlightTakeTheDueCapOfTheNextTick() throws Exception {
-        final OverlayStore store = open(16_384, 1);
+        final OverlayStore store = open(16_384, OverlayFixture.shardPhase(1, clock, disk));
         final List<FakeChunk> chunks = OverlayFixture.chunks(store, 0, 128);
         final CountDownLatch release = new CountDownLatch(1);
         for (FakeChunk chunk : chunks) {
@@ -201,7 +207,7 @@ public class OverlayStoreTest {
     /** The same for the 64 evictions and the 256 flushes before unload a tick. */
     @Test
     public void encodingsLeftInFlightTakeTheEvictionAndUnloadCapsOfTheNextTick() throws Exception {
-        final OverlayStore store = open(300, 1);
+        final OverlayStore store = open(300, OverlayFixture.shardPhase(1, clock, disk));
         final List<FakeChunk> evicting = OverlayFixture.chunks(store, 0, 200);
         final List<FakeChunk> unloading = OverlayFixture.chunks(store, 1_000, 300);
         final List<FakeChunk> all = Stream.concat(evicting.stream(), unloading.stream()).toList();
@@ -240,7 +246,7 @@ public class OverlayStoreTest {
     public void aBatchPastTheEndOfItsSegmentGoesOnInANewOneAndForcesEach() throws Exception {
         // Room for three records of a FakeChunk, 600 bytes each with their record header
         final OverlayStore store = open(16_384, new OverlayTuning(1, SynxFormat.HEADER_BYTES + 3 * 600,
-                OverlayTuning.SEGMENT_RECORDS, clock, disk));
+                OverlayTuning.SEGMENT_RECORDS, OverlayFixture.TEST_PHASE_NANOS, clock, disk));
         final List<FakeChunk> chunks = OverlayFixture.chunks(store, 0, 7);
         chunks.forEach(FakeChunk::change);
         clock.advance(Duration.ofSeconds(10));

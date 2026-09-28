@@ -501,6 +501,8 @@ class ModerationIntegrationTest {
         env.process().command().execute(console, "ban " + UUID.randomUUID() + " perm spam");
         await(env, () -> !console.answers.isEmpty(), Duration.ofSeconds(5), "the answer");
         assertEquals(List.of("synaxis:moderation-unavailable"), console.answers);
+        // The command answers first and records its gm_command line after it returns
+        await(env, () -> !recorded.isEmpty(), Duration.ofSeconds(5), "the ledger line");
         assertEquals("unavailable", recorded.getFirst().get("result"));
 
         assertThrows(IllegalArgumentException.class, () -> new HostModeration(env.process(), null,

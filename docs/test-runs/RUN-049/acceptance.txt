@@ -1,0 +1,286 @@
+RUN-049 记录（2026-09-28）
+
+被测版本：分支 prod/6a-rest 的 e3d6f24762。本分支在 main 21aae99eca 之上有两个提交：5bc87bcba6（server-app 的 TransferCommand、ManagementMethods 的
+  synaxis:transfer、Main 步骤 (4) 交出 ShardService、模组两份 lang 各加四个键、DESIGN-PROD v0.9.29、TC-PROD-540～TC-PROD-549 与随 M3-E 过时的旧用例）、
+  e3d6f24762（client-gametest.yml 的 job p10、p10.py、TransferRoundTripClientGameTest、RegressionClientGameTest 开头一行、gametest 的 fabric.mod.json、
+  run.sh、DESIGN-PROD v0.9.30、TC-PROD-550）。e3d6f24762 只改 .github/workflows、client-fabric 与两份文档，server-app、architecture-tests、loadtest 的代码与
+  5bc87bcba6 相同。本轮之后的提交只改 docs/TEST.md 与本证据。
+  git fetch 后 origin/main 仍是 21aae99eca，本分支的合并基点就是它，没有合并。
+轮次号：origin/main 上最新是 RUN-047；本机分支 m3e/follow-ups（光照会话，702169831f，未推送）已登记 RUN-048，为免合并时撞号，本轮用 RUN-049。
+环境：Apple M4 Pro 12 核、24 GiB，macOS，JDK 25.0.4.1（Homebrew openjdk@25），Gradle 9.7.1（根构建与 client-fabric 相同）；根构建的每条 Gradle 命令都带
+  --max-workers=4 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts --console=plain，client-fabric 带 --max-workers=4 --no-daemon、不带镜像脚本；
+  同一时刻只跑一条。数据库变量 SYNAXIS_TEST_PG_URL=jdbc:postgresql://127.0.0.1:5440/postgres（容器 synaxis-pg）、SYNAXIS_TEST_PG_USER=postgres、
+  SYNAXIS_TEST_PG_PASSWORD 取自 docker inspect synaxis-pg（未回显）、SYNAXIS_TEST_REDIS_URL=redis://127.0.0.1:6440（容器 synaxis-valkey）。
+  「严格 grid」= -Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true -Dsynaxis.thread-provider=grid。
+  各次 Gradle 起止的 1 分钟负载 4.98～10.26，swap free 938.75～1,376.19 MB，PhysMem 未用 100～411 MB。本轮执行人没有起服务端进程。
+范围：本分支新增的 TC-PROD-540～TC-PROD-550（REQ-PROD-031、REQ-PROD-032）；本分支改过的旧用例：TC-PROD-131 第 1、2 步，随 M3-E 过时、按实跑结果改写的
+  TC-PROD-141、157、174、200、220、265、266、267、316、376、377、378、379 的反证（TC-PROD-549 第 1 步汇总），TC-PROD-385 第 1 步，6A 插件面一节按新行号改的
+  TC-PROD-521 第 3、4 步、TC-PROD-528 第 2 步、TC-PROD-533 第 2、3 步，条数 498 → 510 的 TC-PROD-486 第 3 步、TC-PROD-505 第 3 步、TC-PROD-510 第 2 步、
+  TC-PROD-529 第 4 步；全量回归两道门禁与 client-fabric 构建。:plugin-api 与 :protocol 没有改动（git diff --name-only 21aae99eca e3d6f24762 -- plugin-api protocol
+  为空），ABI 门不适用。
+
+一、门禁（每道之前删掉各模块 build/test-results/test）
+  门禁 1：./gradlew check --rerun-tasks（带数据库变量）20:23:57～20:29:17，BUILD SUCCESSFUL in 5m 19s，95 actionable tasks: 95 executed
+    root classes=425 tests=3141 skipped=15 failures=0 errors=0
+    architecture-tests classes=7 tests=20 skipped=0 failures=0 errors=0
+    baker classes=4 tests=53 skipped=0 failures=0 errors=0
+    game-rts classes=13 tests=87 skipped=0 failures=0 errors=0
+    loadtest classes=4 tests=23 skipped=0 failures=0 errors=0
+    plugin-api classes=3 tests=15 skipped=0 failures=0 errors=0
+    protocol classes=4 tests=78 skipped=0 failures=0 errors=0
+    server-app classes=95 tests=510 skipped=0 failures=0 errors=0
+    synx classes=14 tests=118 skipped=0 failures=0 errors=0
+    testing classes=8 tests=11 skipped=0 failures=0 errors=0
+    TOTAL tests=4056 skipped=15 failures=0 errors=0（RUN-046 合并 6A 之后的三道门禁是 4,044 个；多出的 12 个就是本分支两个新类的 6 + 6，都在 server-app：
+      498 → 510，classes 93 → 95。15 个跳过都在根模块，合入前就有）
+    数据库用例类（server-app 里用 TestDatabase 的 26 个类）全部 skipped="0"：CommandRolesIntegrationTest 1、CrossShardHandoverIntegrationTest 6、
+      DatabaseHangIntegrationTest 2、FullChannelTransferSocketTest 2、MainStoreIntegrationTest 6、ManagementBansIntegrationTest 2、MigrationsDbTest 5、
+      ModerationIntegrationTest 12、PermissionsIntegrationTest 8、PlayerStoreIntegrationTest 23、RoleEscalationIntegrationTest 1、ShardHeartbeatDbTest 6、
+      ShardServiceHeartbeatDbTest 1、ShardSessionDbTest 4、ShutdownLoginIntegrationTest 5、ShutdownSaveBeforeSpawnIntegrationTest 3、ShutdownSaveIntegrationTest 4、
+      ShutdownSaveOutsideTheWorldIntegrationTest 3、ShutdownSaveRaceIntegrationTest 2、StoreHousekeepingDbTest 3、StoreMetricsIntegrationTest 1、
+      TransferCooldownTableIntegrationTest 3、TransferTicketsIntegrationTest 7、WorldFlagStoreDbTest 4、WorldFlagsReplayTest 11、WorldFlagsSyncTest 2
+      （扫描到的第 27 个文件 StoreFixture 是夹具，没有 XML）
+    architecture-tests 的 <system-out>：
+      translation key gate: 60 keys checked against [en_us.json, zh_cn.json], 14 identifiers left out
+      config key gate: 113 keys read, 113 in ConfigFile.KEYS, 20 meter names left out
+    用例读的类（同一次门禁的 XML，都 0 失败 0 跳过）：TransferCommandIntegrationTest 6（0.268 s）、ManagementTransferIntegrationTest 6（0.553 s）、
+      ManagementIntegrationTest 13、TransferTicketsIntegrationTest 7、TransferAdmissionIntegrationTest 1、CrossShardHandoverIntegrationTest 6、MigrationsDbTest 5、
+      TranslationKeyGateTest 2、ConfigKeyGateTest 1
+  门禁 2：./gradlew test --rerun-tasks 加严格 grid（带数据库变量）20:31:12～20:36:28，BUILD SUCCESSFUL in 5m 16s，66 actionable tasks: 66 executed
+    各模块类数与条数同门禁 1：TOTAL tests=4056 skipped=15 failures=0 errors=0，server-app 510 个 0 跳过，26 个数据库用例类全部 skipped="0"
+    TC-PROD-549 第 3 步的范围（app.management.*、app.command.*、TransferTicketsIntegrationTest、TransferAdmissionIntegrationTest）在这次运行里是 19 个类 63 个，
+      0 失败 0 跳过（用例写的是只跑这些类，本轮由严格 grid 全量覆盖）；其中 TransferCommandIntegrationTest 6、ManagementTransferIntegrationTest 6
+    testing 模块 TEST-io.github.bearisbug.synaxis.testing.test.EnvDispatcherThreadsIntegrationTest.xml：tests="2" failures="0"，<system-out>：
+      env dispatcher threads: 4
+      env thread provider: grid
+    SocketWriteStateTransitionIntegrationTest tests="1" failures="0"；§7 登记的 AcquirableTest 偶发红没有出现
+  ABI 门：不适用（:plugin-api、:protocol 没有改动）
+  客户端模组（本分支改了两份 lang）：
+    ./gradlew :protocol:publishToMavenLocal（带镜像脚本）20:37:55～20:38:00，> Task :protocol:publishToMavenLocal 执行，BUILD SUCCESSFUL in 4s；
+      ~/.m2/repository/io/github/bearisbug/synaxis/protocol/dev/protocol-dev.jar 30,308 B
+    cd client-fabric && ./gradlew build compileGametestJava --rerun-tasks --max-workers=4 --no-daemon（不带镜像脚本）20:38:09～20:38:21，BUILD SUCCESSFUL in 11s，
+      9 actionable tasks: 9 executed：compileJava、jar、compileTestJava、remapJar、test、verifyModJar、check、build、compileGametestJava 都执行
+      test：7 个类 90 个测试，0 失败 0 跳过；build/libs/client-fabric-0.1.0.jar 59,338 B，jar 里 assets/synaxis/lang/en_us.json 与 zh_cn.json
+      各有 4 个 synaxis:command-transfer-* 键
+      compileGametestJava 编出 TransferRoundTripClientGameTest.class（e3d6f24762 的实施人只用 javac 对缓存的 jar 编过，本轮是 Loom 类路径上的第一次）
+  工作流：
+    /Users/bug/Documents/Projects/Minecraft/synaxis/.venv/bin/python -c 'import yaml,sys; yaml.safe_load(open(sys.argv[1]))' .github/workflows/client-gametest.yml：
+      退出码 0（PyYAML 6.0.3 已装），jobs 两个：gametest、p10
+    actionlint 1.7.12 .github/workflows/client-gametest.yml：只有 2 条 shellcheck 提示，都在第 93 行，即 job gametest 的「Start server-app in game mode」一步
+      （SC2034 的 i 未用、SC2086）；job p10（第 167 行起）零提示
+
+二、执行人在 e3d6f24762 上跑的用例步骤
+  TC-PROD-131 第 1 步与 TC-PROD-550 第 1 步：即第一节的 actionlint，与预期相同
+  TC-PROD-131 第 2 步：grep -n 'fake-sessionserver\|auth=\|session-server\|SESSION_HOST\|SESSION_LOG\|sessionserver.log' .github/workflows/client-gametest.yml
+    得 20 行。job gametest：假服务一步 :79（--mode record --port 0）排在「Start server-app in game mode」:94 之前；:94～:95 -Dsynaxis.app.auth=online 与
+    -Dsynaxis.app.auth.session-server="$SESSION_HOST/session/minecraft/hasJoined"；两个客户端步骤 :113、:125 的 SYNAXIS_GAMETEST_SESSION_HOST；判定步骤 :142
+    SESSION_LOG: sessionserver.log；:135 cat sessionserver.log；上传列表 :158。job p10：:257 java -Xmx256m tools/fake-sessionserver/FakeSessionServer.java
+    --mode record --port 0；:285～:286 两个分片共用的 -Dsynaxis.app.auth=online 与 -Dsynaxis.app.auth.session-server=$SESSION_HOST/session/minecraft/hasJoined；
+    :313 客户端一步的 SYNAXIS_GAMETEST_SESSION_HOST；上传列表 :377。grep -c auth=offline 为 0
+  TC-PROD-550 第 3 步（:baker:installDist 带镜像脚本，36 actionable tasks: 36 up-to-date）：在 mktemp -d 的目录里
+    baker bake --map-id p10 --source generator:synthetic:1 --out maps --bounds 0,0,15,15 --threads 1：退出码 0，首行
+    baker: published maps/p10/p10-41d364b9d82e-p776, 883274 bytes，清单 bounds 0,0,15,15、world min_y 0 height 256；/usr/bin/time -l：1.23 s，
+    maximum resident set size 400,637,952 B；p10.py shards --host host.docker.internal --ports 25611,25612 --out maps/p10/shards.json 退出码 0，
+    maps/p10 下是 p10-41d364b9d82e-p776 与 shards.json：一个大区 r0（bounds 0,0,15,15、gates []），频道 r0-c1（25611）与 r0-c2（25612），
+    host 都是 host.docker.internal，capacity 都是 200
+  TC-PROD-550 第 10 步（CI 还没有产物 client-gametest-p10，改用按 CI 布局伪造的全绿记录；伪造脚本 /tmp/run049/step10/fab.py 不提交，写法：drive.json 200 次
+    sent、versions 3..203 逐个 +1；两份台账 logs/events-2026-09-28.jsonl 各 100 行 transfer_issued 加 1 行 transfer_completed；p10.txt 201 行 join，端口
+    25611、25612 交替，末行 end done；九份各改一处，改法同用例），全部用 .venv 的 Python 3.10 跑 p10.py judge：
+    基线：退出码 0，8 行 ok（与第 9 步预期的 8 行相同，v0 为 3、v200 为 203），末行 P10: all checks passed
+    (a) 退出码 1，FAIL transfer_issued {'r0-c1': 100, 'r0-c2': 99}, 199 in all, expected 200
+    (b) 退出码 1，FAIL 199 of 200 transfers answered sent, expected 200 of 200
+    (c) 退出码 1，FAIL character.version read 201 times, expected 201, larger after every transfer: False ([3] .. [203])
+    (d) 退出码 1，FAIL the client joined 200 worlds, expected 201
+    (e) 退出码 1，FAIL the client's report ends with ['end timeout']
+    (f) 退出码 1，FAIL the client's joins alternate between two shards: ['25611', '25612']
+    (g) 退出码 0，P10: all checks passed（r0-c1 的台账 gzip 成 events-2026-09-28.jsonl.gz）
+    (h) 退出码 1，FAIL no driver record at rec/h/drive.json
+    (i) 退出码 1，FAIL the driver stopped: transfer 7 r0-c2 -> r0-c1 was answered cooldown
+    八份红的都恰一行 FAIL、末行 P10: 1 check(s) failed，与用例相同
+  TC-PROD-550 内存门槛（前置：第 5 步之前 swap free ≥ 3,072 MB 且 PhysMem 未用 ≥ 2 GB）：20:23:57 swap free 1,376.19 MB、PhysMem 未用 100 MB；
+    20:38 前后 1,173.38 MB、169 MB；20:40:23 1,285.38 MB、411 MB。三次都不满足，第 2、4～9、11 步阻塞，只做第 1、3、10 步
+  TC-PROD-521 第 3 步：grep -n 'store.cooldowns()' Main.java 只有一行，264:                store.permissions(), store.moderation(), store.cooldowns());
+  TC-PROD-533 第 2 步：sed -n 717,719p Main.java 三行依次是 new TicketVerifier(database.pool(), session::sessionId, shardId, keys, cooldowns, ledger::record,、
+    onClaimed),、permissions, moderation, session, redis, cooldowns);，与用例相同
+  红行核对（用例写的实现行逐行 sed -n 看过，都是用例写的那一句）：TransferCommand.java:67、:78、:85、:90～:91、:98、:106、:112；
+    ManagementMethods.java:565、:571、:575、:579、:582、:587；Main.java:11、:268～:269、:283、:461、:673、:717～:719
+  其余步骤的绿跑部分由门禁覆盖：TC-PROD-540～TC-PROD-546 第 1 步在两道门禁里都是 TransferCommandIntegrationTest 6、ManagementTransferIntegrationTest 6 全绿；
+    TC-PROD-547 第 1 步即门禁 1 的两个门禁类（3 个 0 失败，输出 60 keys 与 113 keys 两行）；TC-PROD-549 第 2 步即门禁 1（server-app 510、architecture-tests 20）、
+    第 3 步即门禁 2 的 19 个类 63 个、第 4 步由门禁 1 编译 :loadtest（loadtest 23 个 0 失败）；TC-PROD-385 第 1 步即两道门禁里 ManagementIntegrationTest 13 个全绿；
+    TC-PROD-486 第 3 步、TC-PROD-505 第 3 步、TC-PROD-510 第 2 步的 :server-app:test 510 个 0 失败 0 跳过，TC-PROD-505 第 3 步根构建 :test 3,141 个 0 失败、
+    15 跳过；TC-PROD-529 第 4 步：门禁 1 里 server-app 510、plugin-api 15、game-rts 87、architecture-tests 20，都 0 失败；随 M3-E 改写的旧用例各自第 1 步的类
+    （MigrationsDbTest 5、TransferTicketsIntegrationTest 7、CrossShardHandoverIntegrationTest 6、TransferAdmissionIntegrationTest 1、PlayerStoreIntegrationTest 23、
+    TransferCooldownTableIntegrationTest 3，:loadtest 的 BotSocketTest 8、MergeTest 4、ProfileTest 7、SampleTest 4）在两道门禁里都全绿
+
+三、实施人在同一代码上跑的反证与真进程（转录自两份实施报告；5bc87bcba6 与被测版本 e3d6f24762 的 server-app、architecture-tests、loadtest 代码相同）
+  实施人记：每处反证都是改一处、跑、看红、还原、复绿；Gradle 一律 --max-workers=4 --no-daemon，一次只跑一个
+  TC-PROD-540 第 2 步（TransferCommand.java:90 不分 region 与 shard）：6 tests completed, 2 failed，TransferCommandIntegrationTest.java:152、:201，
+    expected: <[transferTo Walker r0-c2]> but was: <[transfer Walker r0-c2]>
+  TC-PROD-540 第 3 步（:112 不认 UUID）：1 failed，:160 a uuid names the same player
+  TC-PROD-540 第 4 步（:106 toLowerCase 改 toUpperCase）：3 failed，:156、:176、:202（结果名是 SENT、COOLDOWN）
+  TC-PROD-540 第 5 步（:90～:91 不等 future，getNow）：4 failed，:153 no answer before the transfer is known、:176、:202、:251
+  TC-PROD-541 第 2 步（:67 条件恒真）：:193 expected: <CANCELLED> but was: <SUCCESS>
+  TC-PROD-542 第 2 步（:78 不判 ShardService）：:213，控制台没收到 synaxis:command-transfer-unavailable（往下走到 transferTo 抛 NullPointerException）；
+    第 3 步（:85 不判玩家）：:225
+  TC-PROD-543 第 2 步（:98 不拆 CompletionException）：:253 Unexpected type … CompletionException
+  TC-PROD-544 第 2 步（ManagementMethods.java:575 region 恒走 transferTo）：2 failed，ManagementTransferIntegrationTest.java:130、:151；
+    第 3 步（:579 join 改 getNow）：:153，answer.isDone 为 true；第 4 步（:587 toUpperCase）：3 failed，:124、:166、:155
+  TC-PROD-545 第 2 步（:571 只查「都不给」）：:188，两个都给时回了 "result":"sent"
+  TC-PROD-546 第 2 步（:565 不判 ShardService）：:201，回 −32603 而不是 −32000；第 3 步（:582 不拆包）：:237
+  TC-PROD-547 第 2 步（删 zh_cn.json 的 synaxis:command-transfer-error）：TranslationKeyGateTest.java:90，
+    zh_cn.json has no text for synaxis:command-transfer-error (from io.github.bearisbug.synaxis.app.command.TransferCommand)
+  TC-PROD-548 真进程（目录模式分片 r0-c1，严格 grid，1 个机器人，管理接口加控制台 FIFO，夹具是 M3-E 一节的两进程夹具只起 r0-c1）：synaxis:transfer 依次回
+    same_target、offline、unknown_target、unknown_target、−32602、−32602；写库伪造一条活着的 r1-c1 心跳后回 sent，台账 transfer_issued 1 行；控制台回
+    Transfer of bot00000 to r1: offline 与 Nobody is not a player online on this shard；WARN / ERROR 0 行。第 7 步反证：Main.java:268 恒交 null 后
+    installDist 重跑，目录模式也回 −32000，控制台回 This shard cannot send players to other shards: it is not in the directory mode。第 8 步：另起一个
+    不在目录模式的 server-app（内存存储）回 −32000 与 unavailable。验证期间 1 分钟负载约 80、swap 接近占满；之后按 pid 停掉全部进程，删掉 p6a_* 库与 /tmp 下的
+    临时目录与脚本。第 5 步 gm_command 各行的预期是实施人按这次实跑写进用例的，报告里没有逐行转录
+  TC-PROD-549 第 1 步（随 M3-E 过时的旧用例按新写法重跑，红行已写进各用例）：MigrationsDbTest :79（141 第 2 步）、:97（200 第 2 步）、:96（220 第 2 步）；
+    TransferTicketsIntegrationTest :270 与 :292（157 第 2 步）、6 failed 都在 :200（157 第 3 步）、onClaimed 挪到最前 → :274 与 :301（157 第 4 步，新增）、
+    transfer_issued 挪到 storeCookie 之前 → :241（157 第 5 步，新增）、:497（174 第 4 步与 376 第 5 步）、:403 与 :451（376 第 2 步即 377 第 2 步）；
+    TransferAdmissionIntegrationTest :151（379 第 2 步）、:142（379 第 3 步，新增）；BotSocketTest 8 tests，4 failed 在 :88、:111、:171、:303（265 第 2 步）、
+    :120（265 第 4 步）、:109（266 第 2 步）、:130（316 第 2 步）；MergeTest 4 tests，:48（267 第 2 步）；CrossShardHandoverIntegrationTest :178 不变（378 第 2 步）。
+    与交接行推算不同的两处：377 红在 TransferTicketsIntegrationTest.java:451（不是 :450），316 第 2 步红在 BotSocketTest.java:130。
+    6A 插件面按新行号重跑：Main.java:717 → TransferCooldownTableIntegrationTest.java:113（533 第 3 步）；:673 → :132（528 第 2 步）；:719 → :91 与 :113（521 第 4 步）
+  TC-PROD-550（e3d6f24762 的实施人）：第 1 步 actionlint 同本轮；第 3 步烘焙 1.29 s、最大 RSS 440 MiB，shards.json 对 host 127.0.0.1 与 host.docker.internal 都
+    过 ShardDirectory.load 与 checkAgainst(manifest)；第 10 步九处改法的结果与本轮第二节相同；另用一个不提交的标准库假管理接口跑过 drive：3 个来回退出码 0，
+    第 2 次回 cooldown、version 不增、玩家不来、令牌错（HTTP/1.1 401）各以退出码 1 停下，done 文件照样出现。第 11 步未实跑，用例里标「推算，未实跑」
+
+四、文档 lint（本轮文档改完后）
+  bash ~/.claude/skills/design-doc/check.sh docs/DESIGN-PROD.md：lint 无警告
+  bash ~/.claude/skills/test-doc/check.sh docs/TEST.md：只剩已知的两条（RUN-031 两条明细行缺证据引用），REQ 双向联检通过
+
+五、结果：通过 32/33 · 阻塞 1
+  通过：TC-PROD-540～TC-PROD-549；TC-PROD-131（第 1、2 步）；TC-PROD-141、157、174、200、220、265、266、267、316、376、377、378、379（改写的步骤，经 TC-PROD-549
+    第 1 步）；TC-PROD-385（第 1 步）；TC-PROD-521（第 3、4 步）、TC-PROD-528（第 2 步）、TC-PROD-533（第 2、3 步）；TC-PROD-486（第 3 步）、TC-PROD-505（第 3 步）、
+    TC-PROD-510（第 2 步）、TC-PROD-529（第 4 步）
+  阻塞：TC-PROD-550。第 1、3、10 步通过（第二节）；第 2、4～9、11 步前置的内存门槛不满足（第二节三次读数），P10 本体（两个 1 GB 堆的目录模式分片、容器里的
+    真客户端、200 次 synaxis:transfer）在本机与 CI 都还没跑过
+
+六、未覆盖
+  TC-PROD-550 第 2、4～9、11 步：等 job p10 第一次跑。p10 不跑 pull_request，只在 push main、每日与手动触发；合入前要一次运行，需有推送权限的人推 prod/6a-rest
+    后执行 gh workflow run client-gametest.yml --ref prod/6a-rest，再按第 9 步判读产物 client-gametest-p10。第 11 步在 CI 上也不跑（job 只跑默认间隔）
+  TC-PROD-540～TC-PROD-547 的反证、TC-PROD-548 与 TC-PROD-549 第 1 步本轮没有重跑，结果转录自实施报告（第三节）
+  TC-PROD-131 第 3～5 步没有重跑：本分支没改 job gametest 的假服务一步与判定步骤
+  光照会话（m3e/follow-ups）在改 TicketIssuer.java：TC-PROD-157 第 3、5 步的反证锚在 TicketIssuer#transfer，合并那边之后要按新代码重跑
+
+七、清理
+  本轮没有改代码、没有起服务端进程；门禁结束后 pgrep -fl 'java|gradle' 无输出。/tmp/run049（Gradle 包装脚本、原始日志、JUnit 汇总脚本、第 10 步的伪造记录、
+  第 3 步的烘焙目录）登记后删除。~/.m2 里的 protocol-dev 是 client-fabric 构建的常用输入，保留。
+
+八、合入 main 702169831f 之后的复验（2026-09-28，登记之后补）
+被测版本：分支 prod/6a-rest 的 3d47114077，即本分支 6c9a9c7b4a 合入 origin/main 702169831f（光照会话的 M3-E 跟进：5be577cefc ShardGates 写 EVT:transfer_refused，
+  9c6d457ee9 签发 ④ 在玩家所属 tick 线程上，DESIGN-M3 v0.20，RUN-048）。复验在这个提交加两份未提交的文档（docs/DESIGN-PROD.md v0.9.31、docs/TEST.md）上跑，代码相同。
+  合入后 Main.java 相对 6c9a9c7b4a 只多一处：Main#serveMap 的 Javadoc 多一行 @param ledger（第 495 行），其后行号加一；TicketIssuer.java 取 main 的版本
+  （签发 ④ 在 send 方法里，写回完成后排到玩家的下一个 tick）。
+环境：同第一节；每条 Gradle 命令带 --max-workers=4 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts --console=plain，同一时刻只跑一条；
+  数据库变量同第一节（口令取自 docker inspect synaxis-pg，未回显）。各次 Gradle 起止的 1 分钟负载 6.20～12.45，swap free 377.00～1,393.00 MB。
+  本节执行人没有起服务端进程，没有启动任何 Docker 容器。
+1. :server-app:test --rerun（带数据库变量，跑前删 server-app/build/test-results/test）20:55:40～21:00:12，BUILD SUCCESSFUL in 4m 31s
+    server-app classes=96 tests=514 skipped=0 failures=0 errors=0（本节之前 510 个、95 个类；多出的 4 个是 M3 v0.20 的 ShardGatesTest 第 7 条与新类
+      TicketIssuerTickThreadIntegrationTest 3 条）
+    用例读的类：ShardGatesTest 7、TicketIssuerTickThreadIntegrationTest 3、TransferTicketsIntegrationTest 7、TransferCommandIntegrationTest 6、
+      ManagementTransferIntegrationTest 6，都 0 失败 0 跳过
+    用 TestDatabase 的 26 个类（与第一节同一份名单）全部 skipped="0"
+2. 反证（每处改一处、只跑那个类、看红、git checkout -- 该文件还原；改法与红行按合入后的代码）
+    TC-PROD-157 第 3 步（TicketIssuer#send 里 storeCookie 与 transfer 两行对调）21:00:48～21:01:00：7 tests completed, 6 failed，
+      aTicketWhoseVersionTheCharacterIsNotAtIsRefusedAndTheLeaseGivenBack、aTicketWaitsForAnotherLoginOfItsAccountLoadingOnTheShard、
+      badTicketsAreRefusedInCheckOrderAndAGoodOneOnlyOnce、theCooldownOfATransferInCarriesToTheTargetShard、
+      aTicketArrivingWhileAnAbandonedLoginGivesItsLeaseBackKeepsTheLeaseItClaims、aStaleTicketDoesNotGiveBackTheLeaseOfALoginOfItsAccountOnTheShard
+      都红在 TransferTicketsIntegrationTest.java:200 the cookie is stored before the transfer: [PluginMessagePacket[channel=minecraft:brand, …；
+      aTransferThatCannotWriteLeavesThePlayerWhereItIs 绿
+    TC-PROD-157 第 5 步（TicketIssuer#send 里写 transfer_issued 的七行挪到 // The cookie first 之前）21:01:08～21:01:23：7 tests completed, 1 failed，
+      badTicketsAreRefusedInCheckOrderAndAGoodOneOnlyOnce 红在 :241 written once the client was told where to go ==> expected: <[true]> but was: <[false]>
+    TC-PROD-521 第 4 步（Main.java:720 new StoreRuntime(…) 末尾的 cooldowns 换成 TransferCooldowns.fromSystemProperties()）21:01:46～21:01:56：
+      3 tests completed, 2 failed：TransferCooldownTableIntegrationTest.java:91 expected: <COOLDOWN> but was: <NOT_ONLINE>；
+      :113 the verifier recorded the arrival in the table the plugins read ==> expected: <false> but was: <true>
+    TC-PROD-528 第 2 步（Main.java:674 的 TransferCooldowns.fromSystemProperties() 换成 new TransferCooldowns(5_000, System::currentTimeMillis)）
+      21:02:03～21:02:10：3 tests completed, 1 failed：:132 Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown.
+    TC-PROD-533 第 3 步（Main.java:718 的 keys, cooldowns, ledger::record 改为 keys, TransferCooldowns.fromSystemProperties(), ledger::record）
+      21:02:15～21:02:22：3 tests completed, 1 failed：:113，信息同 TC-PROD-521 第 4 步那条
+    五处还原后 git status --short 只有两份文档；复绿：两个类一起跑 21:02:28～21:02:43，BUILD SUCCESSFUL，TransferTicketsIntegrationTest 7、
+      TransferCooldownTableIntegrationTest 3，0 失败 0 跳过
+3. 严格 grid（-Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true -Dsynaxis.thread-provider=grid）
+    TC-PROD-549 第 3 步的范围（app.management.*、app.command.*、TransferTicketsIntegrationTest、TransferAdmissionIntegrationTest）21:04:37～21:05:06，
+      BUILD SUCCESSFUL in 28s：19 个类 63 个 0 失败 0 跳过，结果文件里没有 AcquirableOwnershipException
+    同样的三个参数跑 :testing:test --tests '*EnvDispatcherThreadsIntegrationTest'：tests="2" 0 失败，<system-out> 为 env dispatcher threads: 4 与
+      env thread provider: grid（参数确实进了测试 JVM）
+4. 静态核对（合入后的 Main.java）
+    TC-PROD-521 第 3 步：grep -n 'store.cooldowns()' 只有一行 264
+    TC-PROD-533 第 2 步：sed -n 718,720p 三行依次是 new TicketVerifier(database.pool(), session::sessionId, shardId, keys, cooldowns, ledger::record,、
+      onClaimed),、permissions, moderation, session, redis, cooldowns);
+    TC-PROD-498 第 3 步：grep -n buildShutdownTask 9 行，:317 host::disableAll、:319 commands::awaitStopAnswers、:321 ledger::close、
+      :324 directoryMode.flags()::close、:325 directoryMode.heartbeat()::close、:328 store::close、:329 metrics::close、:330 management::close、:332 watchdog::stop
+    TC-PROD-548 第 7 步的锚 :268 仍是 final @Nullable ShardService shardService = directoryMode == null ? null : directoryMode.service();
+    DESIGN-PROD 引用的行逐行 sed -n 看过：Main.java :106、:139～:143、:252～:253、:262、:268、:317、:479、:504（new ShardGates(…, ledger::record)）、
+      :717、:718～:719、:866、:948；TicketIssuer.java:47～:48（五参构造器）；ShardGates.java:60（三参构造器）
+5. 结果：本节复验的步骤全部通过：TC-PROD-157 第 1、3、5 步；TC-PROD-521 第 3、4 步；TC-PROD-528 第 2 步；TC-PROD-533 第 2、3 步；TC-PROD-498 第 3 步；
+    TC-PROD-486 第 3 步、TC-PROD-505 第 3 步的 :server-app:test 一半、TC-PROD-510 第 2 步、TC-PROD-529 第 4 步的 :server-app:test 一半、
+    TC-PROD-549 第 2 步的 :server-app:test 一半与第 3 步（514 个）
+6. 未覆盖：合入后没有重跑两道全量门禁（check 与严格模式的 test）、根构建 :test 与 :architecture-tests；TC-PROD-548（§5 的映射里改了 TicketIssuer
+    就要跑它：installDist、烘焙、一个 512 MB 堆的分片加一个 256 MB 堆的机器人，本节各次读数 swap free 377～1,393 MB，没起）；TC-PROD-550 仍阻塞，同第五节
+7. 文档 lint（本节文档改完后）：bash ~/.claude/skills/design-doc/check.sh docs/DESIGN-PROD.md 无警告（状态图带事件转移与迁移表行数一致）；
+    bash ~/.claude/skills/test-doc/check.sh docs/TEST.md 只剩已知的两条（RUN-031 两条明细行缺证据引用），REQ 双向联检通过
+8. 清理：/tmp/prod6a-sync（Gradle 包装脚本、日志、JUnit 结果副本、改法脚本）登记后删除；git status --short 只剩两份文档与本证据
+
+九、分支头 a74a99b3a3 上补跑第八节没有重跑的全量门禁（2026-09-28，第八节之后补）
+被测版本：分支 prod/6a-rest 的 a74a99b3a3（未推送）。它与第八节的 3d47114077 之间只有 f9a82c94b3、a74a99b3a3 两个提交，git diff --name-only 3d47114077 a74a99b3a3
+  只有 docs/DESIGN-PROD.md、docs/TEST.md 与本证据，代码与第八节相同。git fetch 后 origin/main 仍是 702169831f，已在本分支里。跑的时候工作副本干净。
+环境：同第一节；每条 Gradle 命令带 --max-workers=4 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts --console=plain，同一时刻只跑一条；
+  数据库变量同第一节（口令取自 docker inspect synaxis-pg，未回显）。两次 Gradle 起止的 1 分钟负载 4.04～9.45，swap free 1,257.31～1,639.06 MB，
+  PhysMem 未用 73～1,789 MB。本节执行人没有起服务端进程，没有启动任何 Docker 容器。
+1. 门禁 1：./gradlew check --rerun-tasks（带数据库变量，跑前删根与九个模块的 build/test-results/test）21:34:51～21:40:19，BUILD SUCCESSFUL in 5m 26s，
+    77 actionable tasks: 77 executed；十个 test 任务都执行（jcstress-tests、jmh-benchmarks 的 test 是 NO-SOURCE），没有 SKIPPED、FROM-CACHE
+    root classes=425 tests=3141 skipped=15 failures=0 errors=0
+    architecture-tests classes=7 tests=20 skipped=0 failures=0 errors=0
+    baker classes=4 tests=53 skipped=0 failures=0 errors=0
+    game-rts classes=13 tests=87 skipped=0 failures=0 errors=0
+    loadtest classes=4 tests=23 skipped=0 failures=0 errors=0
+    plugin-api classes=3 tests=15 skipped=0 failures=0 errors=0
+    protocol classes=4 tests=78 skipped=0 failures=0 errors=0
+    server-app classes=96 tests=514 skipped=0 failures=0 errors=0
+    synx classes=14 tests=118 skipped=0 failures=0 errors=0
+    testing classes=8 tests=11 skipped=0 failures=0 errors=0
+    TOTAL tests=4060 skipped=15 failures=0 errors=0（第一节 4,056 个；多出的 4 个就是第八节的 server-app 510 → 514、classes 95 → 96，即 ShardGatesTest
+      第 7 条与 TicketIssuerTickThreadIntegrationTest 3 条；其余模块的类数与条数与第一节相同，15 个跳过都在根模块）
+    用 TestDatabase 的 26 个类（与第一节同一份名单；扫描到的另外两个文件 StoreFixture、TestDatabase 是夹具，没有 XML）全部 skipped="0"
+    architecture-tests 的 <system-out>：
+      translation key gate: 60 keys checked against [en_us.json, zh_cn.json], 14 identifiers left out
+      config key gate: 113 keys read, 113 in ConfigFile.KEYS, 20 meter names left out
+    用例读的类（都 0 失败 0 跳过）：TransferCommandIntegrationTest 6、ManagementTransferIntegrationTest 6、ShardGatesTest 7、
+      TicketIssuerTickThreadIntegrationTest 3、TransferTicketsIntegrationTest 7、TransferCooldownTableIntegrationTest 3、CrossShardHandoverIntegrationTest 6、
+      MigrationsDbTest 5、PlayerStoreIntegrationTest 23、TranslationKeyGateTest 2、ConfigKeyGateTest 1
+    同一次运行的 EnvDispatcherThreadsIntegrationTest 报 env dispatcher threads: 1 与 env thread provider: counter（不带严格参数时的默认值）
+2. 门禁 2：./gradlew test --rerun-tasks 加严格 grid（-Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true -Dsynaxis.thread-provider=grid，
+    带数据库变量，跑前同样删掉结果目录）21:42:20～21:47:43，BUILD SUCCESSFUL in 5m 21s，48 actionable tasks: 48 executed；十个 test 任务都执行
+    各模块类数与条数同门禁 1：TOTAL tests=4060 skipped=15 failures=0 errors=0，server-app 96 个类 514 个 0 跳过，26 个数据库用例类全部 skipped="0"
+    testing 模块 TEST-io.github.bearisbug.synaxis.testing.test.EnvDispatcherThreadsIntegrationTest.xml：tests="2" failures="0"，<system-out>：
+      env dispatcher threads: 4
+      env thread provider: grid
+    TC-PROD-549 第 3 步的范围（app.management.*、app.command.*、TransferTicketsIntegrationTest、TransferAdmissionIntegrationTest）在这次运行里是 19 个类 63 个，
+      0 失败 0 跳过；其中 TransferCommandIntegrationTest 6、ManagementTransferIntegrationTest 6、ManagementIntegrationTest 13、TransferAdmissionIntegrationTest 1
+    合入带来的两个类在严格 grid 下：ShardGatesTest 7、TicketIssuerTickThreadIntegrationTest 3，0 失败 0 跳过
+    所有模块的结果文件里都没有 AcquirableOwnershipException；SocketWriteStateTransitionIntegrationTest tests="1" failures="0"；AcquirableTest 2 个 0 失败，
+      §7 登记的偶发红没有出现
+3. ABI 门：不适用（git diff --name-only 21aae99eca a74a99b3a3 -- plugin-api protocol 为空）
+4. 客户端模组：没有重跑。git diff --name-only e3d6f24762 a74a99b3a3 -- client-fabric 为空，两份 lang 与 gametest 源集都没变，第一节的构建结果仍适用；
+    e3d6f24762 之后改过的非文档文件只有 .github/workflows/client-gametest.yml（6c9a9c7b4a）与合入的 server-app 五个文件（Main、ShardGates、TicketIssuer、
+    ShardGatesTest、TicketIssuerTickThreadIntegrationTest）
+5. 工作流（6c9a9c7b4a 改过它：P10 改为每周日定时与手动触发）：
+    /Users/bug/Documents/Projects/Minecraft/synaxis/.venv/bin/python 用 PyYAML 6.0.3 的 yaml.safe_load 读 .github/workflows/client-gametest.yml：退出码 0，
+      jobs 两个 gametest、p10；schedule 两条 '0 18 * * *' 与 '0 19 * * 0'；workflow_dispatch 的 inputs 为 p10、handshake_phase；
+      job gametest 的 if 为 github.event.schedule != '0 19 * * 0' && !(github.event_name == 'workflow_dispatch' && inputs.p10)，
+      job p10 的 if 为 github.event.schedule == '0 19 * * 0' || (github.event_name == 'workflow_dispatch' && inputs.p10)
+    actionlint 1.7.12：只有 2 条 shellcheck 提示，都在第 101 行 job gametest 的「Start server-app in game mode」一步（SC2034 的 i 未用、SC2086），
+      即第一节第 93 行那两条（6c9a9c7b4a 在它前面加了 8 行）；job p10（第 175 行起）零提示
+6. 结果：第八节第 6 项未覆盖的两道全量门禁、根构建 :test 与 :architecture-tests 在分支头补齐，都通过。按合入后的代码整步通过的：TC-PROD-486 第 3 步、
+    TC-PROD-505 第 3 步（:server-app:test 514 个 0 失败 0 跳过，根构建 :test 3,141 个 0 失败、15 跳过）、TC-PROD-510 第 2 步、TC-PROD-529 第 4 步
+    （server-app 514、plugin-api 15、game-rts 87、architecture-tests 20，都 0 失败）、TC-PROD-549 第 2 步（server-app 514、architecture-tests 20）与
+    第 3 步（严格 grid 19 个类 63 个）、第 4 步（门禁 1 编译 :loadtest，23 个 0 失败）；TC-PROD-540～TC-PROD-546 第 1 步（两个新类各 6 个在两道门禁里都绿）；
+    TC-PROD-547 第 1 步（两个键门禁类 3 个 0 失败，输出同第一节）；TC-PROD-385 第 1 步（ManagementIntegrationTest 13 个）
+7. 仍未覆盖：TC-PROD-548（§5 的映射里改了 TicketIssuer 就要跑它）没有重跑，本节读数 swap free 1,257～1,639 MB，要起的分片与机器人没起；
+    TC-PROD-550 仍阻塞，同第五节；client-fabric 没有重建（见第 4 项）
+8. 文档 lint（本节文档改完后）：bash ~/.claude/skills/design-doc/check.sh docs/DESIGN-PROD.md 无警告（状态图带事件转移与迁移表行数一致）；
+    bash ~/.claude/skills/test-doc/check.sh docs/TEST.md 只剩已知的两条（RUN-031 两条明细行缺证据引用），REQ 双向联检通过，用例 530 条、轮次 49
+9. 清理：/tmp/prod6a-gates（Gradle 包装脚本、两份日志、JUnit 汇总脚本与两份汇总）登记后删除；门禁结束后 pgrep -fl 'java|gradle' 无输出；
+    git status --short 只剩 docs/TEST.md 与本证据

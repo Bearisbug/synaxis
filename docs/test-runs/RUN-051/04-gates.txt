@@ -1,0 +1,89 @@
+# RUN-051 gates on m3/overlay-flaky-86 ded70eeffb (the code of this round; docs/TEST.md and this directory not committed yet), each --rerun-tasks,
+# JUnit XML of every module removed before each gate, one Gradle at a time, in this order after the counterproofs of 03-tc-steps.txt.
+# Environment of all four: SYNAXIS_TEST_PG_URL=jdbc:postgresql://127.0.0.1:5440/postgres (container synaxis-pg), SYNAXIS_TEST_PG_USER=postgres,
+# SYNAXIS_TEST_PG_PASSWORD taken from docker inspect synaxis-pg (not echoed), SYNAXIS_TEST_REDIS_URL=redis://127.0.0.1:6440 (container synaxis-valkey).
+# Machine: Apple M4 Pro, 12 cores, macOS, Homebrew JDK 25.0.4.1; other sessions build on it (see the load averages).
+# Per module lines with tests=0 are empty result directories of modules a :synx gate does not run; left out below.
+
+## synx-check: ./gradlew :synx:check --rerun-tasks (with --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts --max-workers=4)
+# HEAD ded70eeffb; uncommitted: docs/TEST.md, no code; start / swap:
+00:46:06
+ 0:46  up 13 days, 16:33, 30 users, load averages: 34.66 18.70 31.27
+vm.swapusage: total = 15360.00M  used = 14616.69M  free = 743.31M  (encrypted)
+exit 0
+00:46:52
+ 0:46  up 13 days, 16:34, 30 users, load averages: 21.54 17.47 30.17
+BUILD SUCCESSFUL in 44s
+# per module (JUnit XML under */build/test-results/test):
+synx tests=118 skipped=0 failures=0 errors=0
+TOTAL tests=118 skipped=0 failures=0 errors=0
+OverlayStoreTest" tests="28" skipped="0" failures="0" errors="0"
+OverlayFinalFlushTest" tests="12" skipped="0" failures="0" errors="0"
+
+## synx-strict4: ./gradlew :synx:test --rerun-tasks -Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true (with --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts --max-workers=4)
+# HEAD ded70eeffb; uncommitted: docs/TEST.md and docs/test-runs/RUN-051/, no code; start / swap:
+00:46:52
+ 0:46  up 13 days, 16:34, 30 users, load averages: 21.54 17.47 30.17
+vm.swapusage: total = 15360.00M  used = 14312.69M  free = 1047.31M  (encrypted)
+exit 0
+00:47:53
+ 0:47  up 13 days, 16:35, 30 users, load averages: 13.61 15.93 28.73
+BUILD SUCCESSFUL in 1m
+# per module (JUnit XML under */build/test-results/test):
+synx tests=118 skipped=0 failures=0 errors=0
+TOTAL tests=118 skipped=0 failures=0 errors=0
+OverlayStoreTest" tests="28" skipped="0" failures="0" errors="0"
+OverlayFinalFlushTest" tests="12" skipped="0" failures="0" errors="0"
+
+## synx-grid: ./gradlew :synx:test --rerun-tasks -Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true -Dsynaxis.thread-provider=grid (with --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts --max-workers=4)
+# HEAD ded70eeffb; uncommitted: docs/TEST.md and docs/test-runs/RUN-051/, no code; start / swap:
+00:47:53
+ 0:47  up 13 days, 16:35, 30 users, load averages: 13.61 15.93 28.73
+vm.swapusage: total = 16384.00M  used = 15372.31M  free = 1011.69M  (encrypted)
+exit 0
+00:48:55
+ 0:48  up 13 days, 16:36, 30 users, load averages: 11.02 14.66 27.30
+BUILD SUCCESSFUL in 1m 1s
+# per module (JUnit XML under */build/test-results/test):
+synx tests=118 skipped=0 failures=0 errors=0
+TOTAL tests=118 skipped=0 failures=0 errors=0
+OverlayStoreTest" tests="28" skipped="0" failures="0" errors="0"
+OverlayFinalFlushTest" tests="12" skipped="0" failures="0" errors="0"
+
+## check: ./gradlew check --rerun-tasks -Dsynaxis.synx.require-frozen-zlib=true (with --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts --max-workers=4)
+# HEAD ded70eeffb; uncommitted: docs/TEST.md and docs/test-runs/RUN-051/, no code; start / swap:
+00:48:55
+ 0:48  up 13 days, 16:36, 30 users, load averages: 11.02 14.66 27.30
+vm.swapusage: total = 17408.00M  used = 16081.06M  free = 1326.94M  (encrypted)
+exit 0
+00:56:23
+ 0:56  up 13 days, 16:43, 30 users, load averages: 28.56 105.36 86.31
+BUILD SUCCESSFUL in 7m 27s
+# per module (JUnit XML under */build/test-results/test):
+architecture-tests tests=20 skipped=0 failures=0 errors=0
+baker tests=53 skipped=0 failures=0 errors=0
+root tests=3141 skipped=15 failures=0 errors=0
+game-rts tests=87 skipped=0 failures=0 errors=0
+loadtest tests=23 skipped=0 failures=0 errors=0
+plugin-api tests=15 skipped=0 failures=0 errors=0
+protocol tests=78 skipped=0 failures=0 errors=0
+server-app tests=514 skipped=0 failures=0 errors=0
+synx tests=118 skipped=0 failures=0 errors=0
+testing tests=11 skipped=0 failures=0 errors=0
+TOTAL tests=4060 skipped=15 failures=0 errors=0
+OverlayStoreTest" tests="28" skipped="0" failures="0" errors="0"
+OverlayFinalFlushTest" tests="12" skipped="0" failures="0" errors="0"
+
+# gate outputs in gate "check" (architecture-tests system-out):
+config key gate: 113 keys read, 113 in ConfigFile.KEYS, 20 meter names left out
+translation key gate: 60 keys checked against [en_us.json, zh_cn.json], 14 identifiers left out
+# gate "check": synx SynxVectorTest tests="4" skipped="0" failures="0" (the frozen zlib byte comparison ran); server-app skipped=0 in all 514,
+# so the store tests ran against the database.
+# Classes the other TCs of this round are judged on, from gate "check":
+#   TC-WORLD-039 step 1: A group SynxChunkLoaderIntegrationTest 12 + SynxChunkOverlayIntegrationTest 14 = 26, ChunkTryLockWriteLockIntegrationTest 5, 0 failed
+#   TC-WORLD-049 step 1: ShardWorldAssemblyTest tests="8" skipped="0" 0 failed; 'Overlay final flush: chunks=100 bytes=72114 fsync_ms=4 left=0 by=tick'
+#   TC-WORLD-051 step 1: OverlayShardProcessTest tests="2" 0 failed;
+#     crash window: 193 changes, 99 kept, 94 lost; the oldest lost change was 9678 ms old at the kill, the newest kept one 9780 ms
+#   TC-WORLD-042 step 1 / step 8 and TC-WORLD-043 step 1 / step 5: OverlayStoreTest 28 and OverlayFinalFlushTest 12, 0 failed in all four gates
+#   TC-029: the root module of gate "check" (check --rerun-tasks runs :test with every task rerun): tests=3141 >= 2,599, failures + errors = 0.
+# This round adds and removes no test: OverlayStoreTest 28 and OverlayFinalFlushTest 12 as on main.

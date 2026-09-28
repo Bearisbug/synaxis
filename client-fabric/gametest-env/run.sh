@@ -8,10 +8,12 @@
 # SYNAXIS_SPIKES (unset runs only the regression R1-R8; all, or e.g. s2,s5, adds the spikes), SYNAXIS_GAMETEST_NIGHT_VISION (true adds
 # client-side night vision to the in-world shots), the SYNAXIS_CAMERA_* variables of the spike
 # camera (gametest camera/SpikeCamera.java) and the SYNAXIS_S3_* variables of the entity culling
-# spike (gametest EntityCullingSpike.java) pass through. SYNAXIS_LIGHT_SERVER=<host:port> and SYNAXIS_LIGHT_MODE
-# (default, resend or real) run the runtime light cases (gametest light/LightClientGameTest.java); in mode real
-# the client writes the empty file /out/light-ready, which the host waits for in $OUT while the container runs:
-# the end of this script clears /out before it copies the run's files.
+# spike (gametest EntityCullingSpike.java) pass through. So do SYNAXIS_P10_SERVER and SYNAXIS_P10_DONE, which
+# run P10 (gametest TransferRoundTripClientGameTest.java, docs/TEST.md TC-PROD-550) instead of the regression;
+# SYNAXIS_P10_DONE is a path inside the container, under /out. SYNAXIS_LIGHT_SERVER=<host:port> and
+# SYNAXIS_LIGHT_MODE (default, resend or real) run the runtime light cases (gametest light/LightClientGameTest.java);
+# in mode real the client writes the empty file /out/light-ready, which the host waits for in $OUT while the
+# container runs: the end of this script clears /out before it copies the run's files.
 set -euo pipefail
 REPO=$(cd "$(dirname "$0")/../.." && pwd)
 OUT=${OUT:-/tmp/synaxis-gametest}
@@ -32,6 +34,7 @@ docker run --rm --name "${CONTAINER:-synaxis-mc-client}" \
   -e SYNAXIS_CAMERA_MODES -e SYNAXIS_CAMERA_PITCHES -e SYNAXIS_CAMERA_DISTANCE \
   -e SYNAXIS_CAMERA_ORTHO_HEIGHT -e SYNAXIS_CAMERA_YAW -e SYNAXIS_CAMERA_ANCHOR \
   -e SYNAXIS_S3_DISTANCES -e SYNAXIS_S3_SCALINGS -e SYNAXIS_S3_HORIZONTALS \
+  -e SYNAXIS_P10_SERVER -e SYNAXIS_P10_DONE \
   -e SYNAXIS_LIGHT_SERVER -e SYNAXIS_LIGHT_MODE -e SYNAXIS_LIGHT_MARKER=/out/light-ready \
   -e JAVA_TOOL_OPTIONS="-Dhttps.proxyHost=${PROXY%:*} -Dhttps.proxyPort=${PROXY#*:} -Dhttp.proxyHost=${PROXY%:*} -Dhttp.proxyPort=${PROXY#*:} -Dhttp.nonProxyHosts=maven.aliyun.com|*.aliyun.com -Dfabric.noGui=true" \
   synaxis-mc-client:dev bash -c '

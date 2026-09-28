@@ -135,7 +135,7 @@ class ManagementIntegrationTest {
                 new Profiler(workingDirectory.resolve("profiles"), "test", Clock.systemUTC()));
         commands.register();
         methods = new ManagementMethods(env.process(), commands, store, HostModeration.withoutDatabase(env.process()),
-                null, "test", (_, attributes) -> events.add(attributes));
+                null, null, "test", (_, attributes) -> events.add(attributes));
         return methods;
     }
 
@@ -383,7 +383,7 @@ class ManagementIntegrationTest {
         client.send("{\"jsonrpc\":\"2.0\",\"id\":true,\"method\":\"minecraft:players\"}");
         assertError(client.poll(ManagementClient.WAIT), -32600);
 
-        final JsonObject unknown = client.call(6, "synaxis:transfer", "[]");
+        final JsonObject unknown = client.call(6, "synaxis:teleport", "[]");
         assertError(unknown, -32601);
         assertEquals("Method not found", unknown.getAsJsonObject("error").get("message").getAsString());
         assertError(client.call(7, "minecraft:players/kick", null), -32602);
@@ -427,7 +427,7 @@ class ManagementIntegrationTest {
                 new Profiler(workingDirectory.resolve("profiles"), "test", Clock.systemUTC()));
         // No store: saving fails in a way no method foresees
         final ManagementMethods broken = new ManagementMethods(env.process(), hostCommands, null,
-                HostModeration.withoutDatabase(env.process()), null, "test", (_, attributes) -> events.add(attributes));
+                HostModeration.withoutDatabase(env.process()), null, null, "test", (_, attributes) -> events.add(attributes));
         final List<ILoggingEvent> lines = capture(() -> {
             final ManagementMethods.Reply reply = broken.handle("{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"minecraft:server/save\"}");
             final JsonObject answer = JsonParser.parseString(reply.text()).getAsJsonObject();

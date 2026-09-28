@@ -94,7 +94,7 @@ class ManagementBansIntegrationTest {
         };
         final HostCommands commands = new HostCommands(env.process(), none, store, (_, _) -> { },
                 new Profiler(workingDirectory.resolve("profiles"), "test", Clock.systemUTC()));
-        final ManagementMethods methods = new ManagementMethods(env.process(), commands, store, moderation, null, "test",
+        final ManagementMethods methods = new ManagementMethods(env.process(), commands, store, moderation, null, null, "test",
                 (_, attributes) -> events.add(attributes));
         final ManagementServer server = ManagementServer.serve(ManagementSettings.parse("true", "127.0.0.1:0", TOKEN),
                 env.process(), methods, Duration.ofSeconds(5));

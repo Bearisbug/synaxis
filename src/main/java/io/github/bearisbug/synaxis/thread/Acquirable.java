@@ -124,7 +124,10 @@ public sealed interface Acquirable<T> permits AcquirableImpl {
     /**
      * Try to cheaply lock the acquirable element, execute {@code consumer} synchronously and unlock the thread.
      * <p>
-     * Returns false if there is contention.
+     * Returns false if there is contention, without waiting. Contention includes the global lock ordering
+     * every acquisition in the JVM: while any other thread is acquiring or holding an element of another
+     * tick thread through {@link #sync(Consumer)}, {@link #lock()} or this method, this returns false for an
+     * element the calling thread does not {@linkplain #isOwned() own}, even one no other thread uses.
      *
      * @param consumer the callback to execute once the element has been safely acquired
      * @return true if the consumer was executed, false otherwise

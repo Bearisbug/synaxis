@@ -93,6 +93,7 @@ java -Dsynaxis.app.auth=offline \
 | `admission()` | `register(准入回调)`，决定连接进哪个对局实例、属哪个队伍 | 注销该回调 |
 | `dataDirectory()` | `plugins/<plugin_id>/`，宿主保证存在 | 不删（是你的数据） |
 | `analytics()` | `record(事件名, 属性)`，写进宿主的 `logs/events-YYYYMMDD.jsonl` | 无状态，不需要收回 |
+| `transfers()` | 把玩家原版转服到外部服务器、读写本插件命名空间的 Cookie，见第 12 节 | 无状态，不需要收回 |
 | `logger()` | 名为 `plugin.<plugin_id>` 的 logger | — |
 
 ## 8. 通道命名
@@ -131,3 +132,20 @@ python3 tools/protocol-probe/probe.py echo --channel hello:echo --payload hi
 - `DisconnectKeys` 里的键已经有译文，直接用。
 - 插件自己的键：在 `SynaxisPlugin#translationKeys()` 里列出来，再把中英两行译文加进模组的两份语言文件。仓内插件由 `:architecture-tests` 的翻译键门禁核对，缺一行 `./gradlew check` 就红（`docs/DESIGN-PROD.md` `API-PROD-029`）；仓外插件门禁看不到，译文要提交到本仓的模组里。
 - 键写成完整的字符串常量，不在运行时拼（`"synaxis:command-" + name` 门禁看不见）。
+
+## 12. 转服与 Cookie
+
+`context.transfers()` 给的 `Transfers` 有四个方法，任意线程可调（`docs/DESIGN-PROD.md` `API-PROD-021`）：
+
+| 方法 | 做什么 | 什么时候不做 |
+| --- | --- | --- |
+| `transfer(玩家, host, port)` | 发原版 `Transfer` 包，把客户端送去外部服务器，不带票据；玩家断开后宿主按普通登出保存。返回 `true` | 玩家不在 PLAY（还在 configuration 或已断开）、或离上一次转服不满 `synaxis.app.transfer-cooldown-ms`（默认 5 s）时返回 `false`，什么都不发、冷却不记；`host` 空白或 `port` 不在 1～65535 抛 `IllegalArgumentException` |
+| `wasTransferred(玩家)` | 客户端握手时是否自称由别的服务器转来 | 这是客户端自报的，不能当来源证明 |
+| `storeCookie(玩家, 键, 值)` | 把至多 5,120 B 存在客户端上，客户端转服时带去下一台服务器 | 键不在本插件命名空间或值超过 5,120 B 时抛 `IllegalArgumentException`，不发包 |
+| `fetchCookie(玩家, 键)` | 向客户端要回一个 Cookie；future 以值完成，客户端没有这个 Cookie 时以 `null` 完成 | 5 s 内没回答（玩家断开，或对同一玩家同一个键在回答前又要了一次）以 `TimeoutException` 完成；键不在本插件命名空间时抛 `IllegalArgumentException` |
+
+Cookie 键必须是 `<plugin_id>:<路径>`，如 `Key.key("hello", "lobby-token")`。别的命名空间一律拒绝，包括宿主的 `synaxis:`：宿主把转服票据存在 `synaxis:transfer`，插件写它会覆盖票据，读它会抢走验票在等的那次应答，两种都会让玩家的转服被拒。
+
+冷却是整个进程一张表，宿主的分片间转服也记在里面：玩家刚以票据转入或刚被宿主转出，5 s 内 `transfer` 返回 `false`；插件转走的玩家 5 s 内宿主也不再签票据。要把玩家送去另一个 Synaxis 分片不能用 `transfer`：分片只收带宿主票据的转入，没有票据的会被拒（跨分片转服由宿主的关卡门、GM 命令与管理接口发起）。
+
+`fetchCookie` 的 future 在读到回答的连接线程上完成，超时则在 JDK 的计时线程上完成。拿到值之后要改实体，用 `scheduler().runOn(玩家, …)` 送回玩家所属的线程（第 10 节）。

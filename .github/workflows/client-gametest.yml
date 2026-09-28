@@ -17,8 +17,14 @@ on:
     branches: [ main ]
   schedule:
     - cron: '0 18 * * *'
+    # P10 only, weekly (Sunday): each run holds a runner about 45 to 60 minutes
+    - cron: '0 19 * * 0'
   workflow_dispatch:
     inputs:
+      p10:
+        description: Run only the P10 job (two shards, 100 round trips) instead of the regression
+        type: boolean
+        default: false
       handshake_phase:
         description: synaxis.app.handshake-phase of the server-app the client joins
         type: choice
@@ -38,6 +44,8 @@ jobs:
   # and the connection is encrypted.
   gametest:
     name: Run the client gametests
+    # Not on the weekly P10 schedule, and not when a manual run asks for P10 only
+    if: github.event.schedule != '0 19 * * 0' && !(github.event_name == 'workflow_dispatch' && inputs.p10)
     runs-on: ubuntu-latest
     timeout-minutes: 40
     env:
@@ -166,7 +174,8 @@ jobs:
   # locally. Not on pull requests: the 200 transfers alone hold the runner for about 1,100 s.
   p10:
     name: Two shards, 100 round trips (P10)
-    if: github.event_name != 'pull_request'
+    # Weekly on Sunday and by hand (workflow_dispatch with p10: true): not on pull requests or pushes
+    if: github.event.schedule == '0 19 * * 0' || (github.event_name == 'workflow_dispatch' && inputs.p10)
     runs-on: ubuntu-latest
     # The transfers take about 1,100 s (199 gaps of 5.5 s, more where an arrival is slower), the builds,
     # the client's start and the judge about 15 minutes more: 40 like the regression's would cut a

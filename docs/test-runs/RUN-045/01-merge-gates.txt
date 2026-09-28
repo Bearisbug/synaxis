@@ -1,0 +1,50 @@
+# 2026-09-28 07:31~08:34, worktree synaxis-wt/m3e-integrate, branch m3e/integrate from m3e/base 9640ad567d (= main 12d3839493 + design + step 0)
+# Order D -> A -> B -> C (DESIGN-M3 §26 M3-E 合并与退出验收). git merge --no-ff; no conflict in any of the four (no file is changed by two tracks).
+# After every merge commit three runs, the shared containers synaxis-pg (5440) and synaxis-valkey (6440) up and SYNAXIS_TEST_PG_URL/USER/PASSWORD, SYNAXIS_TEST_REDIS_URL set:
+#   check : ./gradlew check --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts --max-workers=4 --no-build-cache -Dsynaxis.synx.require-frozen-zlib=true
+#   strict1: ./gradlew test <same flags> -Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true
+#   strict2: strict1 + -Dsynaxis.thread-provider=grid
+# --no-build-cache: nothing restored from the other worktrees' cache; the property changes between the runs re-execute every test task (10 test tasks executed in each strict run).
+# Counts from the JUnit XML of that run (build/test-results/test of every module). After each run CI's own checks: the 7 store suites of ci.yml skipped=0; strict runs: 'env dispatcher threads: 4' (+ 'env thread provider: grid').
+# The 15 skipped are always the root classes PlayerSkinTest, TagNbtTest, TranslationIntegrationTest, TestMojangUtils (they need the internet), as in RUN-032/RUN-041.
+
+daf5f03e18 Merge branch 'm3e/c-flags' into m3e/integrate
+edded4cf65 M3-E merge acceptance: ShardService chooses by the heartbeat rows of a real database
+8108a76bd0 Merge branch 'm3e/b-transfer' into m3e/integrate
+9bb5fc6ebf Merge branch 'm3e/a-directory' into m3e/integrate
+cb8fb2f25b Merge branch 'm3e/d-loadtest' into m3e/integrate
+
+d-check    2026-09-28 07:32:46 HEAD cb8fb2f25b load1 4.31 swap_free 1391.50M | BUILD SUCCESSFUL in 4m 26s | TOTAL tests=3956 skipped=15 failures=0 errors=0 | server-app classes=80 tests=411 skipped=0 failures=0 errors=0 ; synx tests=117 ; loadtest tests=23 ; root tests=3141
+d-strict1  2026-09-28 07:37:57 HEAD cb8fb2f25b load1 6.99 swap_free 1084.94M | BUILD SUCCESSFUL in 3m 47s | TOTAL tests=3956 skipped=15 failures=0 errors=0 | server-app classes=80 tests=411 skipped=0 failures=0 errors=0 ; synx tests=117 ; loadtest tests=23 ; root tests=3141
+           env dispatcher threads: 4 found
+           vet strict1: OK (7 store suites skipped=0)
+d-strict2  2026-09-28 07:42:37 HEAD cb8fb2f25b load1 6.97 swap_free 1188.94M | BUILD SUCCESSFUL in 3m 48s | TOTAL tests=3956 skipped=15 failures=0 errors=0 | server-app classes=80 tests=411 skipped=0 failures=0 errors=0 ; synx tests=117 ; loadtest tests=23 ; root tests=3141
+           env dispatcher threads: 4 + thread provider: grid found
+           vet strict2: OK (7 store suites skipped=0)
+a-check    2026-09-28 07:46:43 HEAD 9bb5fc6ebf load1 7.94 swap_free 1333.06M | BUILD SUCCESSFUL in 4m 14s | TOTAL tests=3992 skipped=15 failures=0 errors=0 | server-app classes=83 tests=447 skipped=0 failures=0 errors=0 ; synx tests=117 ; loadtest tests=23 ; root tests=3141
+           vet check: OK (7 store suites skipped=0)
+a-strict1  2026-09-28 07:51:11 HEAD 9bb5fc6ebf load1 8.94 swap_free 1525.06M | BUILD SUCCESSFUL in 4m 10s | TOTAL tests=3992 skipped=15 failures=0 errors=0 | server-app classes=83 tests=447 skipped=0 failures=0 errors=0 ; synx tests=117 ; loadtest tests=23 ; root tests=3141
+           env dispatcher threads: 4 found
+           vet strict1: OK (7 store suites skipped=0)
+a-strict2  2026-09-28 07:55:29 HEAD 9bb5fc6ebf load1 8.44 swap_free 811.50M | BUILD SUCCESSFUL in 4m 9s | TOTAL tests=3992 skipped=15 failures=0 errors=0 | server-app classes=83 tests=447 skipped=0 failures=0 errors=0 ; synx tests=117 ; loadtest tests=23 ; root tests=3141
+           env dispatcher threads: 4 + thread provider: grid found
+           vet strict2: OK (7 store suites skipped=0)
+b-check    2026-09-28 07:59:47 HEAD 8108a76bd0 load1 8.81 swap_free 859.50M | BUILD SUCCESSFUL in 4m 13s | TOTAL tests=4009 skipped=15 failures=0 errors=0 | server-app classes=86 tests=464 skipped=0 failures=0 errors=0 ; synx tests=117 ; loadtest tests=23 ; root tests=3141
+           vet check: OK (7 store suites skipped=0)
+b-strict1  2026-09-28 08:04:08 HEAD 8108a76bd0 load1 8.45 swap_free 955.50M | BUILD SUCCESSFUL in 4m 14s | TOTAL tests=4009 skipped=15 failures=0 errors=0 | server-app classes=86 tests=464 skipped=0 failures=0 errors=0 ; synx tests=117 ; loadtest tests=23 ; root tests=3141
+           env dispatcher threads: 4 found
+           vet strict1: OK (7 store suites skipped=0)
+b-strict2  2026-09-28 08:08:36 HEAD 8108a76bd0 load1 10.10 swap_free 987.50M | BUILD SUCCESSFUL in 4m 14s | TOTAL tests=4009 skipped=15 failures=0 errors=0 | server-app classes=86 tests=464 skipped=0 failures=0 errors=0 ; synx tests=117 ; loadtest tests=23 ; root tests=3141
+           env dispatcher threads: 4 + thread provider: grid found
+           vet strict2: OK (7 store suites skipped=0)
+c-check    2026-09-28 08:15:29 HEAD daf5f03e18 load1 4.64 swap_free 1091.50M | BUILD SUCCESSFUL in 4m 28s | TOTAL tests=4028 skipped=15 failures=0 errors=0 | server-app classes=90 tests=482 skipped=0 failures=0 errors=0 ; synx tests=118 ; loadtest tests=23 ; root tests=3141
+           vet check: OK (7 store suites skipped=0)
+c-strict1  2026-09-28 08:20:14 HEAD daf5f03e18 load1 7.22 swap_free 883.62M | BUILD SUCCESSFUL in 4m 35s | TOTAL tests=4028 skipped=15 failures=0 errors=0 | server-app classes=90 tests=482 skipped=0 failures=0 errors=0 ; synx tests=118 ; loadtest tests=23 ; root tests=3141
+           env dispatcher threads: 4 found
+           vet strict1: OK (7 store suites skipped=0)
+c-strict2  2026-09-28 08:28:34 HEAD daf5f03e18 load1 9.26 swap_free 609.62M | BUILD SUCCESSFUL in 5m 8s | TOTAL tests=4028 skipped=15 failures=0 errors=0 | server-app classes=90 tests=482 skipped=0 failures=0 errors=0 ; synx tests=118 ; loadtest tests=23 ; root tests=3141
+           env dispatcher threads: 4 + thread provider: grid found
+           vet strict2: OK (7 store suites skipped=0)
+
+# d-check: the vet step ran after strict1 had started and was not recorded; server-app skipped=0 in its tally covers the 7 store suites.
+# c-strict2 waited 08:25:03~08:28:34 for another session's Gradle (pids 88463/88477, then 90224/90242) to end before starting; only one Gradle ran at a time.

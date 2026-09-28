@@ -1,0 +1,26 @@
+# 2026-09-28 08:14~08:15, m3e/integrate after the merge of B (8108a76bd0) plus the new test, committed as edded4cf65
+# DESIGN-M3 §19 「心跳按时写入，过期或关门的频道不被选中」, full version = ShardHeartbeatDbTest (track A, the writing half) + ShardServiceHeartbeatDbTest (new, the ShardService half)
+# ./gradlew :server-app:test --tests <class> ... --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts --max-workers=4 --no-build-cache, SYNAXIS_TEST_* set
+
+## green (both classes)
+BUILD SUCCESSFUL in 26s
+## exit=0 wall=27s end 08:14:28 load { 6.05 13.63 18.14 }
+ShardHeartbeatDbTest tests="6" skipped="0" failures="0"; ShardServiceHeartbeatDbTest tests="1" skipped="0" failures="0"
+
+## counterproof 1: ShardServiceImpl.java:82 filter(row -> row.live() && row.accepting()) -> filter(row -> row.accepting())
+ShardServiceHeartbeatDbTest > anExpiredOrClosedChannelIsNotChosenAndAStaleOneMakesTheRegionOffline() FAILED
+    org.opentest4j.AssertionFailedError at ShardServiceHeartbeatDbTest.java:88
+> Task :server-app:test FAILED
+message: r1-c1 is 20 s old and r1-c2 is closed, though both are emptier: r1-c3 at the address of its row ==> expected: <[r1-c3 10.0.1.3:25613]> but was: <[r1-c1 10.0.1.1:25611]>
+## counterproof 2: ShardHeartbeat.java:57 interval '15 seconds' -> '30 seconds'
+ShardServiceHeartbeatDbTest > anExpiredOrClosedChannelIsNotChosenAndAStaleOneMakesTheRegionOffline() FAILED
+    org.opentest4j.AssertionFailedError at ShardServiceHeartbeatDbTest.java:88
+> Task :server-app:test FAILED
+message: the same as counterproof 1 (the 20 s old r1-c1 is live and emptiest)
+## counterproof 3: ShardHeartbeat.java:57 interval '15 seconds' -> '17 seconds'
+ShardServiceHeartbeatDbTest > anExpiredOrClosedChannelIsNotChosenAndAStaleOneMakesTheRegionOffline() FAILED
+    org.opentest4j.AssertionFailedError at ShardServiceHeartbeatDbTest.java:92
+> Task :server-app:test FAILED
+message: 16 s is past the 15 s a row stays live ==> expected: <OFFLINE> but was: <SENT>
+## each counterproof restored with git checkout -- <file>; git status --porcelain showed only the new test file before its commit
+## the new test then ran in c-check, c-strict1, c-strict2 (01-merge-gates.txt): tests=1 skipped=0 failures=0 each time

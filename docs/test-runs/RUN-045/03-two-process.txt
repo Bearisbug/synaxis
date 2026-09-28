@@ -1,0 +1,145 @@
+# 2026-09-28 08:37~08:47, m3e/integrate daf5f03e18 (after the merge of C), installDist of server-app, loadtest, baker
+# <L> = mktemp-like work dir /tmp/m3e-int/2p (deleted afterwards). Shared containers synaxis-pg (5440) and synaxis-valkey (6440); a fresh database m3e_int_2p (dropped afterwards).
+# Every shard: bin/server-shard, JAVA_OPTS=-Xms512m -Xmx512m, -Dsynaxis.app.auth=offline -Dsynaxis.connection-gate.trusted-networks=127.0.0.0/8 -Dsynaxis.dispatcher-threads=3
+#   -Dsynaxis.map.root=<L>/maps/mini -Dsynaxis.map.build=mini-6ab2c226761b-p776 -Dsynaxis.app.store=postgres -Dsynaxis.app.shard-id=<id>, env SYNAXIS_STATE_DB_*, SYNAXIS_REDIS_URL, SYNAXIS_TRANSFER_HMAC_KEYS (one random 32-byte key, key_id 1)
+
+## bake: baker bake --map-id mini --source generator:synthetic:7 --out <L>/maps --logs <L>/bakelogs --bounds 0,0,31,15 --threads 2
+baker: published <L>/maps/mini/mini-6ab2c226761b-p776, 1692000 bytes
+        2.07 real         3.59 user         0.21 sys
+           501186560  maximum resident set size
+## migrate: bin/server-app --migrate-only --auth-mode=offline -> exit 0; flyway_schema_history: 1..6 (5 shard heartbeat, 6 world flag) success
+
+## shards.json (<L>/maps/mini/shards.json): two regions of 16x16 chunks, API-M3-010 example scaled to the small map
+{
+  "format_version": 1,
+  "map_id": "mini",
+  "regions": [
+    {"region_id": "r0", "bounds": {"min_x": 0, "min_z": 0, "max_x": 15, "max_z": 15},
+     "gates": [{"gate_id": "r0-east", "min": [240, 0, 120], "max": [255, 255, 135],
+                "target_region": "r1", "arrival": [232.5, 200.0, 128.5, 90.0]}]},
+    {"region_id": "r1", "bounds": {"min_x": 16, "min_z": 0, "max_x": 31, "max_z": 15},
+     "gates": [{"gate_id": "r1-west", "min": [256, 0, 120], "max": [271, 255, 135],
+                "target_region": "r0", "arrival": [279.5, 200.0, 128.5, -90.0]}]}
+  ],
+  "channels": [
+    {"shard_id": "r0-c1", "region_id": "r0", "channel": 1, "host": "127.0.0.1", "port": 25611, "capacity": 2},
+    {"shard_id": "r0-c2", "region_id": "r0", "channel": 2, "host": "127.0.0.1", "port": 25613, "capacity": 200},
+    {"shard_id": "r1-c1", "region_id": "r1", "channel": 1, "host": "127.0.0.1", "port": 25612, "capacity": 200}
+  ]
+}
+
+## start r0-c1 (25611, metrics 19611) and r1-c1 (25612, metrics 19612)
+08:46:08.656 [main] INFO  i.g.b.synaxis.app.shard.ShardWorld - Map release mini-6ab2c226761b-p776 verified in 43 ms: bounds=Bounds[minX=0, minZ=0, maxX=31, maxZ=15] world=World[minY=0, height=256]
+08:46:09.141 [main] INFO  i.g.b.synaxis.app.shard.ShardWorld - Map mounted: build_id=mini-6ab2c226761b-p776 simulation_distance=4 chunk_unload_grace_ticks=100 spawn=Pos[x=120.5, y=63.0, z=120.5, yaw=0.0, pitch=0.0] overlay=overlay/mini-6ab2c226761b-p776
+08:46:09.148 [main] INFO  i.github.bearisbug.synaxis.app.Main - synaxis server-app listening on 0.0.0.0:25611
+08:38:32.881 [main] INFO  i.g.b.synaxis.app.shard.ShardWorld - Map release mini-6ab2c226761b-p776 verified in 36 ms: bounds=Bounds[minX=0, minZ=0, maxX=31, maxZ=15] world=World[minY=0, height=256]
+08:38:33.397 [main] INFO  i.g.b.synaxis.app.shard.ShardWorld - Map mounted: build_id=mini-6ab2c226761b-p776 simulation_distance=4 chunk_unload_grace_ticks=100 spawn=Pos[x=376.5, y=77.0, z=120.5, yaw=0.0, pitch=0.0] overlay=overlay/mini-6ab2c226761b-p776
+08:38:33.402 [main] INFO  i.github.bearisbug.synaxis.app.Main - synaxis server-app listening on 0.0.0.0:25612
+(r0-c1 first start, log later overwritten by its restart; lines copied from the console at 08:38:33)
+08:38:32.881 ShardWorld - Map release mini-6ab2c226761b-p776 verified in 31 ms: bounds=Bounds[minX=0, minZ=0, maxX=31, maxZ=15] world=World[minY=0, height=256]
+08:38:33.396 ShardWorld - Map mounted: build_id=mini-6ab2c226761b-p776 simulation_distance=4 chunk_unload_grace_ticks=100 spawn=Pos[x=120.5, y=63.0, z=120.5, yaw=0.0, pitch=0.0] overlay=overlay/mini-6ab2c226761b-p776
+Effective ServerConfig: r0-c1 acceptTransfers=true maxPlayers=2 dispatcherThreads=3 threadProvider=GRID; r1-c1 acceptTransfers=true maxPlayers=200
+r0-c1 shard_started: {"verify_ms":31,"regions":1,"bytes_mapped":1692000,"overlay_records":0,"flags_replayed":0,"flags_ms":1,"region_id":"r0","capacity":2}
+r1-c1 shard_started: {"verify_ms":36,"regions":1,"bytes_mapped":1692000,"overlay_records":0,"flags_replayed":0,"flags_ms":1,"region_id":"r1","capacity":200}
+shard_heartbeat 3.5 s after start: r0-c1 mini r0 1 127.0.0.1 25611 build mini-6ab2c226761b-p776 online 0 capacity 2 accepting t; r1-c1 ... 25612 online 0 capacity 200 accepting t
+
+## §19 正常转服的世界侧 + 关卡门只触发一次（进程级）: loadtest run --host 127.0.0.1 --port 25611 --bots 1 --profile gate --gates "240,0,120,255,255,135;256,0,120,271,255,135" --dwell 6s --duration 240s --warmup 5s
+run: 32 transfer tries, 32 completed, P95 425.9 ms, failed {}
+run: 1/1 logged in, 0 lost, 18170 chunk packets; wrote bots-gate.json
+### analyze_transfers.py (bots-gate.json connections + both ledgers):
+transfers: {'count': 32, 'completed': 32, 'failed_by_reason': {}}
+connections: 33 intents: ['login', 'transfer', 'transfer'] ...
+connections 2..n at the arrival point of their shard: 32 of 32 bad: []
+addresses alternate 25611/25612: True
+ledger: transfer_issued 32 transfer_completed 32
+paired: 32 unpaired: 0 source/target mismatch: 0 issued in the source ledger, completed in the target ledger: True
+first_batch_ms min/median/max: 240 292 345 all < 5000: True
+directions alternate: True [('r0-c1', 'r1-c1'), ('r1-c1', 'r0-c1'), ('r0-c1', 'r1-c1')]
+cookie issued_at == ledger issued_at (by transfer_ref): 32 of 32
+last connection stores no cookie: True
+WARN/ERROR lines in the two shard logs during the round trips: 0 and 0
+
+## §19 分片目录决定容量，频道满员由 L3 拒绝: r0-c1 capacity 2, no synaxis.max-players on the command line
+before: synaxis_gate_rejections_total{reason="full"} 0.0; loadtest run --port 25611 --bots 2 --profile walk --duration 45s in the background; 15 s later synaxis_players_online 2.0
+third: loadtest run --port 25611 --bots 1 --bot-offset 2 --duration 10s -> run: 0/1 logged in, 0 lost, 0 chunk packets; wrote bots-third.json
+bots-third.json bots: {"requested": 1, "logged_in": 0, "lost": 0, "login_failures": {"login refused: synaxis:shard-full": 1}}
+after: synaxis_gate_rejections_total{reason="full"} 1.0, synaxis_players_online 2.0; next heartbeat (4.1 s old when read) r0-c1 online 2 capacity 2 accepting t
+shard log: 08:44:04.304 WARN ConnectionGate - Connection gate rejected 1 connections in the last 10 s: too_many=0 throttled=0 full=1 closed_at_accept=0 handshake_timeout=0
+ledger of r0-c1 00:43:30~ : only 2 session_entered_configuration (the two admitted bots) and chunk_stream_stats; nothing for the refused connection
+the two bots: run: 2/2 logged in, 0 lost, 2104 chunk packets; wrote bots-two.json
+offline mode: no encryption request is sent to any connection, so 'no encryption request' is not distinguishing here
+### counter case: r0-c1 with -Dsynaxis.max-players=3 (work dir <L>/work-refuse, port 25614)
+exit=1
+Refusing to start: synaxis.max-players=3 disagrees with the capacity 2 of r0-c1 in the shard directory
+work dir holds only shard.log (no logs/, no overlay/); 25614 not listening
+
+## §19 分片目录写错时拒启（进程级，13 cases, shard r0-c2 port 25613 unless noted; each <L>/refuse/<case> work dir）
+### overlapping-bounds: exit=1 listening=0 overlay_dir=no logs_dir=no
+Refusing to start: the shard directory <L>/badroots/overlapping-bounds/shards.json is not valid: regions[1] r1: bounds 15,0,31,15 overlap the bounds 0,0,15,15 of regions[0] r0
+### gate-to-itself: exit=1 listening=0 overlay_dir=no logs_dir=no
+Refusing to start: the shard directory <L>/badroots/gate-to-itself/shards.json is not valid: regions[0] r0: gates[0] r0-east: target_region r0 is its own region
+### arrival-in-gate: exit=1 listening=0 overlay_dir=no logs_dir=no
+Refusing to start: the shard directory <L>/badroots/arrival-in-gate/shards.json is not valid: regions[0] r0: gates[0] r0-east: arrival 245.5, 200.0, 128.5 is inside the gate r0-east
+### two-gates-one-pair: exit=1 listening=0 overlay_dir=no logs_dir=no
+Refusing to start: the shard directory <L>/badroots/two-gates-one-pair/shards.json is not valid: regions[0] r0: gates[1] r0-east2: a second gate to r1 after gates[0] r0-east: the arrival of a player from r1 would be ambiguous
+### shard-id-r0-1: exit=1 listening=0 overlay_dir=no logs_dir=no
+Refusing to start: the shard directory <L>/badroots/shard-id-r0-1/shards.json is not valid: channels[1] r0-1: shard_id is not r0-c2, <region_id>-c<channel>
+### capacity-501: exit=1 listening=0 overlay_dir=no logs_dir=no
+Refusing to start: the shard directory <L>/badroots/capacity-501/shards.json is not valid: channels[1] r0-c2: capacity 501 is not from 1 to 500
+### unknown-field-capcity: exit=1 listening=0 overlay_dir=no logs_dir=no
+Refusing to start: the shard directory <L>/badroots/unknown-field-capcity/shards.json is not valid: channels[1]: unknown field capcity
+### other-map-id: exit=1 listening=0 overlay_dir=no logs_dir=no
+Refusing to start: the shard directory <L>/badroots/other-map-id/shards.json is not valid: map_id synth is not mini, the map_id of the map release mini-6ab2c226761b-p776
+### spawn-in-gate: exit=1 listening=0 overlay_dir=no logs_dir=no
+Refusing to start: the spawn column 120, 120 of r0 is inside the gate r0-east: a player would be sent away on joining
+### no-file: exit=1 listening=0 overlay_dir=no logs_dir=no
+Refusing to start: a map shard storing in PostgreSQL needs its shard directory <L>/badroots/no-file/shards.json: no such file
+### memory-with-file: exit=1 listening=0 overlay_dir=no logs_dir=no
+Refusing to start: the shard directory <L>/badroots/good/shards.json is only read by a shard storing in PostgreSQL (synaxis.app.store=postgres)
+### not-a-channel: exit=1 listening=0 overlay_dir=no logs_dir=no
+Refusing to start: synaxis.app.shard-id=r0-c9 is not a channel of the shard directory <L>/badroots/good/shards.json
+### accept-transfers-false: exit=1 listening=0 overlay_dir=no logs_dir=no
+Refusing to start: a shard in the shard directory takes transfers, synaxis.accept-transfers must not be false
+### heartbeat rows now:
+r0-c1
+r1-c1
+(r0-c2 has no heartbeat row after the 13 refusals: rows are r0-c1 and r1-c1 only; nothing listens on 25613)
+
+## SIGTERM r0-c1 (pid 95003) at 08:45:53: exited after 2 s
+08:45:55.358 OverlayStore - Overlay final flush: chunks=0 bytes=0 fsync_ms=0 left=0 by=tick; 08:45:55.457 synaxis server stopped successfully
+heartbeat right after: r0-c1 online 0 accepting t, 3.0 s old: the stop took 2 s, shorter than one 5 s beat, so no row with accepting=false was written; the row drops out by expiry 15 s later
+
+## world flags, process level (wiring only: a map shard loads no plugin and Main registers no applier, so no flag reaches a block in a real process)
+INSERT INTO world_flag (map_id, region_id, flag_key, value, version) VALUES ('mini', 'r0', 'quest:bridge', '{"open": true}', 1); then r0-c1 restarted (same work dir) and r0-c2 started (25613, metrics 19613)
+== r0-c1
+08:46:09.140 [main] WARN  i.g.b.s.app.shard.WorldFlagsImpl - World flags without an applier keep the blocks of the map and the overlay: [quest:bridge] (1 world flag replay warnings since the last report)
+08:46:09.148 [main] INFO  i.github.bearisbug.synaxis.app.Main - synaxis server-app listening on 0.0.0.0:25611
+08:46:24.292 [Syn-Redis-WorldFlag] WARN  i.g.b.s.app.shard.WorldFlagsImpl - Ignoring a malformed world flag message on synaxis:worldflag:mini:r0 (1 world flag sync failures since the last report)
+	at io.github.bearisbug.synaxis.app.shard.WorldFlagsImpl.received(WorldFlagsImpl.java:349)
+{"ts":"2026-09-28T00:46:09.147928Z","event":"shard_started","build_id":"mini-6ab2c226761b-p776","verify_ms":43,"regions":1,"bytes_mapped":1692000,"overlay_records":0,"flags_replayed":0,"flags_ms":1,"region_id":"r0","capacity":2}
+== r0-c2
+08:46:09.140 [main] WARN  i.g.b.s.app.shard.WorldFlagsImpl - World flags without an applier keep the blocks of the map and the overlay: [quest:bridge] (1 world flag replay warnings since the last report)
+08:46:09.145 [main] INFO  i.github.bearisbug.synaxis.app.Main - synaxis server-app listening on 0.0.0.0:25613
+08:46:24.292 [Syn-Redis-WorldFlag] WARN  i.g.b.s.app.shard.WorldFlagsImpl - Ignoring a malformed world flag message on synaxis:worldflag:mini:r0 (1 world flag sync failures since the last report)
+	at io.github.bearisbug.synaxis.app.shard.WorldFlagsImpl.received(WorldFlagsImpl.java:349)
+{"ts":"2026-09-28T00:46:09.145382Z","event":"shard_started","build_id":"mini-6ab2c226761b-p776","verify_ms":50,"regions":1,"bytes_mapped":1692000,"overlay_records":0,"flags_replayed":0,"flags_ms":1,"region_id":"r0","capacity":200}
+PUBSUB NUMSUB synaxis:worldflag:mini:r0 = 2, synaxis:worldflag:mini:r1 = 1 (r1-c1 still running)
+UPDATE world_flag ... version=2; PUBLISH synaxis:worldflag:mini:r0 '{"flag_key":"quest:bridge","version":2}' -> 2 receivers; no log line on either channel (a key without an applier is not applied, no local WARN: DESIGN-M3 §26 track C deviation 6)
+PUBLISH synaxis:worldflag:mini:r0 'not json' -> 2 receivers; each r0 channel logs one line:
+08:46:24.292 [Syn-Redis-WorldFlag] WARN  i.g.b.s.app.shard.WorldFlagsImpl - Ignoring a malformed world flag message on synaxis:worldflag:mini:r0 (1 world flag sync failures since the last report)
+com.google.gson.JsonSyntaxException: com.google.gson.stream.MalformedJsonException: Use JsonReader.setStrictness(Strictness.LENIENT) to accept malformed JSON at line 1 column 6 path $
+See https://github.com/google/gson/blob/main/Troubleshooting.md#malformed-json
+Caused by: com.google.gson.stream.MalformedJsonException: Use JsonReader.setStrictness(Strictness.LENIENT) to accept malformed JSON at line 1 column 6 path $
+See https://github.com/google/gson/blob/main/Troubleshooting.md#malformed-json
+r1-c1 logs nothing (another channel)
+heartbeat: r0-c1 0/2 t, r0-c2 0/200 t, r1-c1 0/200 t, all < 1.1 s old
+
+## §19 内存存储的挂地图分片不进目录模式（进程级）: store memory, map root without shards.json (<L>/badroots/no-file), port 25614
+08:46:43.951 [main] INFO  i.github.bearisbug.synaxis.app.Main - Effective store: mode=memory, player data lives as long as the process
+08:46:44.034 [main] INFO  i.g.b.synaxis.app.shard.ShardWorld - Map mounted: build_id=mini-6ab2c226761b-p776 simulation_distance=4 chunk_unload_grace_ticks=100 spawn=Pos[x=248.5, y=77.0, z=120.5, yaw=0.0, pitch=0.0] overlay=overlay/mini-6ab2c226761b-p776
+08:46:44.037 [main] INFO  i.github.bearisbug.synaxis.app.Main - synaxis server-app listening on 0.0.0.0:25614
+1 walk bot 15 s: {"requested": 1, "logged_in": 1, "lost": 0, "login_failures": {}}
+{"ts":"2026-09-28T00:46:44.037588Z","event":"shard_started","build_id":"mini-6ab2c226761b-p776","verify_ms":33,"regions":1,"bytes_mapped":1692000,"overlay_records":0,"flags_replayed":0,"flags_ms":0,"region_id":"null","capacity":"null"}
+shard_heartbeat rows afterwards: r0-c1 r0-c2 r1-c1 (none for this process, shard id local); its one WARN is the non-square bounds 0,0,31,15 of the release
+
+## stop: SIGTERM r0-c1 98765, r0-c2 98768, r1-c1 95006, each exited within 30 s; each log: Overlay final flush: chunks=0 bytes=0 fsync_ms=0 left=0 by=tick

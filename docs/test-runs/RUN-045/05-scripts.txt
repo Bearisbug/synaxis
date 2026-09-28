@@ -1,0 +1,131 @@
+=== <L>/analyze_transfers.py
+import base64, glob, json, struct, sys
+L = '<L>'
+bots = json.load(open(f'{L}/bot/bots-gate.json'))
+arrival = {'127.0.0.1:25612': [279.5, 200.0, 128.5], '127.0.0.1:25611': [232.5, 200.0, 128.5]}
+conns = bots['connections']
+print('transfers:', {k: bots['transfers'][k] for k in ('count', 'completed', 'failed_by_reason')})
+print('connections:', len(conns), 'intents:', [c['intent'] for c in conns[:3]], '...')
+bad = [c for c in conns[1:] if c['intent'] != 'transfer' or c.get('first_position') != arrival[c['address']]]
+print('connections 2..n at the arrival point of their shard:', len(conns) - 1 - len(bad), 'of', len(conns) - 1, 'bad:', bad[:2])
+alt = all(conns[i]['address'] != conns[i + 1]['address'] for i in range(len(conns) - 1))
+print('addresses alternate 25611/25612:', alt)
+events = {}
+for shard in ('r0-c1', 'r1-c1'):
+    for f in glob.glob(f'{L}/work-{shard}/logs/events-*.jsonl'):
+        for line in open(f):
+            e = json.loads(line)
+            if e['event'] in ('transfer_issued', 'transfer_completed'):
+                events.setdefault(e['event'], []).append(dict(e, ledger=shard))
+issued, completed = events.get('transfer_issued', []), events.get('transfer_completed', [])
+print('ledger: transfer_issued', len(issued), 'transfer_completed', len(completed))
+by_ref = {e['transfer_ref']: e for e in completed}
+pairs = [(i, by_ref.get(i['transfer_ref'])) for i in issued]
+unpaired = [i for i, c in pairs if c is None]
+mismatch = [(i, c) for i, c in pairs if c and (i['source_shard'], i['target_shard']) != (c['source_shard'], c['target_shard'])]
+ledger_ok = all(i['ledger'] == i['source_shard'] for i in issued) and all(c['ledger'] == c['target_shard'] for c in completed)
+fb = sorted(c['first_batch_ms'] for c in completed)
+print('paired:', len(pairs) - len(unpaired), 'unpaired:', len(unpaired), 'source/target mismatch:', len(mismatch),
+      'issued in the source ledger, completed in the target ledger:', ledger_ok)
+print('first_batch_ms min/median/max:', fb[0], fb[len(fb) // 2], fb[-1], 'all < 5000:', fb[-1] < 5000)
+order = sorted(issued, key=lambda e: e['issued_at'])
+dirs = [(e['source_shard'], e['target_shard']) for e in order]
+print('directions alternate:', all(dirs[k] != dirs[k + 1] for k in range(len(dirs) - 1)), dirs[:3])
+# cookie of connection k = the ticket stored before transfer k -> k+1
+matched = 0
+for k, c in enumerate(conns[:-1]):
+    raw = base64.b64decode(c['stored_cookies']['synaxis:transfer'])
+    issued_at, = struct.unpack('>q', raw[-48:-40])
+    ref = raw[-64:-60].hex()
+    ev = [e for e in issued if e['transfer_ref'] == ref]
+    if len(ev) == 1 and ev[0]['issued_at'] == issued_at: matched += 1
+    else: print('cookie mismatch at connection', k + 1, ref, issued_at, ev)
+print('cookie issued_at == ledger issued_at (by transfer_ref):', matched, 'of', len(conns) - 1)
+print('last connection stores no cookie:', conns[-1].get('stored_cookies') in (None, {}))
+
+=== <L>/make_bad.py
+import copy, json, os
+L = '<L>'
+build = 'mini-6ab2c226761b-p776'
+good = json.load(open(f'{L}/maps/mini/shards.json'))
+def variant(name, change):
+    d = copy.deepcopy(good)
+    change(d)
+    root = f'{L}/badroots/{name}'
+    os.makedirs(root, exist_ok=True)
+    if not os.path.exists(f'{root}/{build}'): os.symlink(f'{L}/maps/mini/{build}', f'{root}/{build}')
+    if d is not None: json.dump(d, open(f'{root}/shards.json', 'w'), indent=1)
+r0, r1 = lambda d: d['regions'][0], lambda d: d['regions'][1]
+variant('overlapping-bounds', lambda d: r1(d)['bounds'].update(min_x=15))
+variant('gate-to-itself', lambda d: r0(d)['gates'][0].update(target_region='r0'))
+variant('arrival-in-gate', lambda d: r0(d)['gates'][0].update(arrival=[245.5, 200.0, 128.5, 90.0]))
+variant('two-gates-one-pair', lambda d: r0(d)['gates'].append(dict(r0(d)['gates'][0], gate_id='r0-east2', min=[240, 0, 0], max=[255, 255, 15])))
+variant('shard-id-r0-1', lambda d: d['channels'][1].update(shard_id='r0-1'))
+variant('capacity-501', lambda d: d['channels'][1].update(capacity=501))
+variant('unknown-field-capcity', lambda d: d['channels'][1].update(capcity=5))
+variant('other-map-id', lambda d: d.update(map_id='synth'))
+variant('spawn-in-gate', lambda d: r0(d)['gates'][0].update(min=[112, 0, 112], max=[127, 255, 127]))
+variant('good', lambda d: None)
+print(sorted(os.listdir(f'{L}/badroots')))
+
+=== <L>/refusals.sh
+#!/bin/zsh
+source /tmp/m3e-int/env.sh; source <L>/shard.env
+L=<L>; B=mini-6ab2c226761b-p776
+run() { # name root store shardid extra
+  local name=$1 root=$2 store=$3 id=$4 extra=$5 d=$L/refuse/$1
+  mkdir -p $d; cd $d
+  JAVA_OPTS="-Xms256m -Xmx256m" SERVER_APP_OPTS="-Dsynaxis.app.port=25613 -Dsynaxis.app.auth=offline -Dsynaxis.app.metrics.bind=127.0.0.1:19613 -Dsynaxis.app.log=stdout -Dsynaxis.dispatcher-threads=3 -Dsynaxis.map.root=$root -Dsynaxis.map.build=$B -Dsynaxis.app.store=$store -Dsynaxis.app.shard-id=$id $extra" \
+    /Users/bug/Documents/Projects/Minecraft/synaxis-wt/m3e-integrate/server-app/build/install/server-app/bin/server-shard > shard.log 2>&1
+  local rc=$?
+  echo "### $name: exit=$rc listening=$(grep -c 'listening on 0.0.0.0' shard.log) overlay_dir=$([ -d overlay ] && echo yes || echo no) logs_dir=$([ -d logs ] && echo yes || echo no)"
+  grep -o 'Refusing to start: .*' shard.log | head -1 | sed "s|$L|<L>|g" | cut -c1-330
+}
+for v in overlapping-bounds gate-to-itself arrival-in-gate two-gates-one-pair shard-id-r0-1 capacity-501 unknown-field-capcity other-map-id spawn-in-gate; do
+  run $v $L/badroots/$v postgres r0-c2 ""
+done
+run no-file $L/badroots/no-file postgres r0-c2 ""
+run memory-with-file $L/badroots/good memory r0-c2 ""
+run not-a-channel $L/badroots/good postgres r0-c9 ""
+run accept-transfers-false $L/badroots/good postgres r0-c2 "-Dsynaxis.accept-transfers=false"
+echo "### heartbeat rows now:"; docker exec synaxis-pg psql -U postgres -d m3e_int_2p -tAc "select shard_id from shard_heartbeat order by 1"
+lsof -nP -iTCP:25613 -sTCP:LISTEN | head -2
+
+=== <L>/start-shard.sh
+#!/bin/zsh
+# usage: start-shard.sh <shard_id> <port> <metrics port> [extra -D...]  -> starts in background, prints pid
+source /tmp/m3e-int/env.sh; source <L>/shard.env
+L=<L>; id=$1; port=$2; mport=$3; shift 3
+d=$L/work-$id; mkdir -p $d; cd $d
+JAVA_OPTS="-Xms512m -Xmx512m" SERVER_APP_OPTS="-Dsynaxis.app.port=$port -Dsynaxis.app.auth=offline -Dsynaxis.app.metrics.bind=127.0.0.1:$mport -Dsynaxis.connection-gate.trusted-networks=127.0.0.0/8 -Dsynaxis.app.log=stdout -Dsynaxis.dispatcher-threads=3 -Dsynaxis.map.root=$L/maps/mini -Dsynaxis.map.build=mini-6ab2c226761b-p776 -Dsynaxis.app.store=postgres -Dsynaxis.app.shard-id=$id $*" \
+  nohup /Users/bug/Documents/Projects/Minecraft/synaxis-wt/m3e-integrate/server-app/build/install/server-app/bin/server-shard > $d/shard.log 2>&1 &
+echo $!
+
+=== /tmp/m3e-int/poll.sh
+#!/bin/zsh
+# usage: poll.sh <out file> <max minutes> <pending tiers "name:MB ...">
+# every 5 min: one reading; stops early when a pending tier's swap threshold is met with no foreign java/Gradle
+out=$1; max=$2; tiers=(${=3})
+start=$(date +%s)
+while true; do
+  now=$(date '+%Y-%m-%d %H:%M:%S')
+  free=$(sysctl -n vm.swapusage | sed -E 's/.*free = ([0-9.]+)M.*/\1/')
+  load=$(sysctl -n vm.loadavg | awk '{print $2}')
+  foreign=""; mine=""
+  for p in $(pgrep -f 'java|gradle'); do
+    cmd=$(ps -o comm= -p $p 2>/dev/null) || continue
+    case "$cmd" in *java*|*gradle*) ;; *) continue;; esac
+    cwd=$(lsof -a -d cwd -p $p -Fn 2>/dev/null | grep ^n | cut -c2-)
+    case "$cwd" in /Users/bug/Documents/Projects/Minecraft/synaxis-wt/m3e-*|/tmp/m3e-int*) mine="$mine $p";; *) foreign="$foreign $p($cwd)";; esac
+  done
+  ctr=$(docker ps --format '{{.Names}}' | grep -cE '^synaxis-(pg|valkey)$')
+  top=$(ps -axo rss=,comm= | sort -n -r | head -5 | awk '{printf "%s=%dMB ", $2, $1/1024}' | sed 's|/[^ =]*/||g')
+  met=""
+  for t in $tiers; do n=${t%%:*}; mb=${t##*:}; if (( free >= mb )) && [ -z "$foreign" ] && [ "$ctr" = 2 ]; then met="$met $n"; fi; done
+  echo "$now swap_free=${free}MB load1=$load containers=$ctr foreign_java_gradle=[${foreign# }] mine=[${mine# }] top5: $top met=[${met# }]" >> $out
+  [ -n "$met" ] && { echo "MET:$met" >> $out; exit 0; }
+  el=$(( $(date +%s) - start ))
+  (( el + 300 > max * 60 )) && { echo "END: not met within $max min" >> $out; exit 1; }
+  sleep 300
+done
+

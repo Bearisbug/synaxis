@@ -1,0 +1,7 @@
+# RUN-045 evidence, M3-E merge acceptance (DESIGN-M3 v0.17 §26 M3-E 合并与退出验收), m3e/integrate
+# 01-merge-gates.txt            four merges D -> A -> B -> C, check + two strict modes after each (12 runs, all green)
+# 02-heartbeat-shardservice.txt  after B: §19 「心跳按时写入，过期或关门的频道不被选中」 full version, the new ShardServiceHeartbeatDbTest and three counterproofs
+# 03-two-process.txt            after C: directory-mode shards as real processes on a small baked map: transfer round trips (world side, gate once), channel full at L3, 13 refusals, flags wiring, memory store outside the directory mode
+# 04-load-precheck.txt          the four load tiers: 90 min of threshold readings, all blocked
+# 05-scripts.txt                the analysis and fixture scripts used by 03
+# Not kept: the baked map, bots-*.json, shard logs and ledgers, JFR (none recorded); their numbers are copied into 03.

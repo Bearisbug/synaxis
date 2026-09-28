@@ -1,0 +1,44 @@
+# RUN-051: after the fix, ded70eeffb (main da8d4f9829 + OverlayTuning.phaseNanos, 20 ms in defaults(); the test fixture's write phase 10 s,
+# OverlayFixture.shardPhase 20 ms for the five tests of a phase over its budget; aTickOfEvictionsUnloadsAndDueChunksIsOneFsync 5 ms an encoding).
+# Every Gradle command: --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts --max-workers=4, one at a time, JUnit XML removed before each run.
+
+## 1. the change of 01 section 3 on the fixed code: every FakeChunk encoding 25 ms unless a test sets its own
+## after the fixture change, the same injection: every FakeChunk encoding 25 ms unless a test sets its own (00:24:41; load averages: 13.39 45.80 61.99)
+# ./gradlew :synx:test --tests io.github.bearisbug.synaxis.synx.OverlayStoreTest --tests io.github.bearisbug.synaxis.synx.OverlayFinalFlushTest.aDeadTickLeavesTheFinalFlushToTheShutdownThread --tests io.github.bearisbug.synaxis.synx.OverlayFinalFlushTest.aLiveFinalFlushIsDoneByTheNextTickEnd --tests io.github.bearisbug.synaxis.synx.OverlayFinalFlushTest.aRequestDuringAWritePhaseIsServedByTheNextOne --tests io.github.bearisbug.synaxis.synx.OverlayFinalFlushTest.anEncodingAWritePhaseLeftBehindIsDoneAgainOnceTheChunkChanged --tests io.github.bearisbug.synaxis.synx.OverlayFinalFlushTest.aChunkAWritePhaseCouldNotEncodeIsEncodedAgain --tests io.github.bearisbug.synaxis.synx.OverlayFinalFlushTest.aSecondCallTakesTheEarlierOfTheTwoDeadlines --tests io.github.bearisbug.synaxis.synx.OverlayFinalFlushTest.aLiveCallThenADeadOneWriteTheFinalFlushOnce --tests io.github.bearisbug.synaxis.synx.OverlayFinalFlushTest.aFinalFlushTheTickStartedIsWaitedForAndNotRepeated --tests io.github.bearisbug.synaxis.synx.OverlayFinalFlushTest.changesAfterTheFinalFlushAreNotWritten --tests io.github.bearisbug.synaxis.synx.OverlayFinalFlushTest.aFinalFlushOverItsBudgetCompletesAtTheDeadline --tests io.github.bearisbug.synaxis.synx.OverlayFinalFlushTest.aStuckChunkLockLeavesOnlyThatChunk --rerun
+# exit 1; 39 tests completed, 1 failed BUILD FAILED in 36s 
+  OverlayFinalFlushTest" tests="11" skipped="0" failures="0" errors="0"
+   1 Overlay final flush: chunks=1 bytes=600 fsync_ms=4 left=0 by=shutdown
+   1 Overlay final flush: chunks=10 bytes=6000 fsync_ms=310 left=0 by=tick
+   1 Overlay final flush: chunks=11 bytes=6600 fsync_ms=4 left=49 by=shutdown
+   1 Overlay final flush: chunks=11 bytes=6600 fsync_ms=6 left=49 by=shutdown
+  OverlayStoreTest" tests="28" skipped="0" failures="1" errors="0"
+  FAILED encodingsLeftInFlightTakeTheEvictionAndUnloadCapsOfTheNextTick(): org.opentest4j.AssertionFailedError: the encodings never returned ==> expected: <true> but was: <false> at OverlayStoreTest.java:240
+# The one failure is the artefact 01 section 3 describes (320 encodings of 25 ms on one thread = 8 s, the test waits 5 s for them); main fails
+# the same way. Everything else holds with every encoding longer than the 20 ms of a shard's phase.
+
+## 2. OverlayStoreTest and OverlayFinalFlushTest, no temporary change, 20 runs in a row
+# HEAD ded70eeffb; code clean: []
+# ./gradlew :synx:test --tests io.github.bearisbug.synaxis.synx.OverlayStoreTest --tests io.github.bearisbug.synaxis.synx.OverlayFinalFlushTest --rerun --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts --max-workers=4
+# start 00:27:14;  0:27  up 13 days, 16:14, 29 users, load averages: 39.60 38.56 56.00
+run 1 exit 0 OverlayFinalFlushTest tests="12" skipped="0" failures="0" errors="0" OverlayStoreTest tests="28" skipped="0" failures="0" errors="0"
+run 2 exit 0 OverlayFinalFlushTest tests="12" skipped="0" failures="0" errors="0" OverlayStoreTest tests="28" skipped="0" failures="0" errors="0"
+run 3 exit 0 OverlayFinalFlushTest tests="12" skipped="0" failures="0" errors="0" OverlayStoreTest tests="28" skipped="0" failures="0" errors="0"
+run 4 exit 0 OverlayFinalFlushTest tests="12" skipped="0" failures="0" errors="0" OverlayStoreTest tests="28" skipped="0" failures="0" errors="0"
+run 5 exit 0 OverlayFinalFlushTest tests="12" skipped="0" failures="0" errors="0" OverlayStoreTest tests="28" skipped="0" failures="0" errors="0"
+run 6 exit 0 OverlayFinalFlushTest tests="12" skipped="0" failures="0" errors="0" OverlayStoreTest tests="28" skipped="0" failures="0" errors="0"
+run 7 exit 0 OverlayFinalFlushTest tests="12" skipped="0" failures="0" errors="0" OverlayStoreTest tests="28" skipped="0" failures="0" errors="0"
+run 8 exit 0 OverlayFinalFlushTest tests="12" skipped="0" failures="0" errors="0" OverlayStoreTest tests="28" skipped="0" failures="0" errors="0"
+run 9 exit 0 OverlayFinalFlushTest tests="12" skipped="0" failures="0" errors="0" OverlayStoreTest tests="28" skipped="0" failures="0" errors="0"
+run 10 exit 0 OverlayFinalFlushTest tests="12" skipped="0" failures="0" errors="0" OverlayStoreTest tests="28" skipped="0" failures="0" errors="0"
+run 11 exit 0 OverlayFinalFlushTest tests="12" skipped="0" failures="0" errors="0" OverlayStoreTest tests="28" skipped="0" failures="0" errors="0"
+run 12 exit 0 OverlayFinalFlushTest tests="12" skipped="0" failures="0" errors="0" OverlayStoreTest tests="28" skipped="0" failures="0" errors="0"
+run 13 exit 0 OverlayFinalFlushTest tests="12" skipped="0" failures="0" errors="0" OverlayStoreTest tests="28" skipped="0" failures="0" errors="0"
+run 14 exit 0 OverlayFinalFlushTest tests="12" skipped="0" failures="0" errors="0" OverlayStoreTest tests="28" skipped="0" failures="0" errors="0"
+run 15 exit 0 OverlayFinalFlushTest tests="12" skipped="0" failures="0" errors="0" OverlayStoreTest tests="28" skipped="0" failures="0" errors="0"
+run 16 exit 0 OverlayFinalFlushTest tests="12" skipped="0" failures="0" errors="0" OverlayStoreTest tests="28" skipped="0" failures="0" errors="0"
+run 17 exit 0 OverlayFinalFlushTest tests="12" skipped="0" failures="0" errors="0" OverlayStoreTest tests="28" skipped="0" failures="0" errors="0"
+run 18 exit 0 OverlayFinalFlushTest tests="12" skipped="0" failures="0" errors="0" OverlayStoreTest tests="28" skipped="0" failures="0" errors="0"
+run 19 exit 0 OverlayFinalFlushTest tests="12" skipped="0" failures="0" errors="0" OverlayStoreTest tests="28" skipped="0" failures="0" errors="0"
+run 20 exit 0 OverlayFinalFlushTest tests="12" skipped="0" failures="0" errors="0" OverlayStoreTest tests="28" skipped="0" failures="0" errors="0"
+# end 00:34:57;  0:34  up 13 days, 16:22, 29 users, load averages: 46.24 48.85 53.81
+# 20 of 20 green: 28 + 12 = 40 tests a run, 800 in all.

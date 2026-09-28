@@ -1,0 +1,127 @@
+# RUN-051: before the fix. OverlayStore.java, OverlayTuning.java and the overlay unit tests as on main da8d4f9829.
+# Every Gradle command: --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts --max-workers=4, one at a time
+# (a script waited while a Gradle of another synaxis worktree ran, looking every 2 minutes; JUnit XML removed before each run).
+
+## 1. the CI failure
+# main da8d4f9829, run 36437512680 attempt 1, job 108979144906 "Test with 4 tick threads (strict)" (ubuntu runner), failed;
+# attempt 2 of the same run green. From the job log and the artifact test-reports-multithreaded of attempt 1 (id 10977106672):
+2026-09-28T14:44:29.9967528Z OverlayStoreTest > aTickOfEvictionsUnloadsAndDueChunksIsOneFsync() FAILED
+2026-09-28T14:44:30.0143990Z     org.opentest4j.AssertionFailedError at OverlayStoreTest.java:86
+2026-09-28T14:45:13.8237533Z 118 tests completed, 1 failed
+TEST-io.github.bearisbug.synaxis.synx.OverlayStoreTest.xml: tests="28" failures="1" hostname="runnervmtr4k5" time="6.421"
+  testcase aTickOfEvictionsUnloadsAndDueChunksIsOneFsync() time="0.077"
+  failure: org.opentest4j.AssertionFailedError: expected: <40> but was: <38>
+  at io.github.bearisbug.synaxis.synx.OverlayStoreTest.aTickOfEvictionsUnloadsAndDueChunksIsOneFsync(OverlayStoreTest.java:86)
+
+## 2. the CI assertion made deterministic: 20 runs in a row, 20 red
+# Temporary change (not committed): each of the 40 encodings takes 5 ms, written on the line of 'all' so that the lines stay put:
+@@ -74,7 +74,7 @@ public class OverlayStoreTest {
+         due.forEach(FakeChunk::change); // changed again, so the least recently changed are the eight to evict
+         unloading.forEach(FakeChunk::change);
+         unloading.forEach(store::unloadRequested);
+-        final List<FakeChunk> all = Stream.of(due, evicted, unloading).flatMap(List::stream).toList();
++        final List<FakeChunk> all = Stream.of(due, evicted, unloading).flatMap(List::stream).toList(); for (FakeChunk c : all) c.encodeNanos = TimeUnit.MILLISECONDS.toNanos(5);
+         final AtomicBoolean indexedBeforeFsync = new AtomicBoolean();
+         disk.onForce = () -> indexedBeforeFsync.set(all.stream().anyMatch(c -> store.find(c.chunkX(), c.chunkZ()) != null));
+ 
+# Each run: ./gradlew :synx:test --tests 'io.github.bearisbug.synaxis.synx.OverlayStoreTest.aTickOfEvictionsUnloadsAndDueChunksIsOneFsync' --rerun
+# start 23:06:01; 23:06  up 13 days, 14:53, 30 users, load averages: 5.31 19.12 24.33
+run 1 exit 1 tests="1" skipped="0" failures="1" errors="0"
+  FAILED aTickOfEvictionsUnloadsAndDueChunksIsOneFsync(): org.opentest4j.AssertionFailedError: expected: <40> but was: <8> at OverlayStoreTest.java:86
+run 2 exit 1 tests="1" skipped="0" failures="1" errors="0"
+  FAILED aTickOfEvictionsUnloadsAndDueChunksIsOneFsync(): org.opentest4j.AssertionFailedError: expected: <40> but was: <8> at OverlayStoreTest.java:86
+run 3 exit 1 tests="1" skipped="0" failures="1" errors="0"
+  FAILED aTickOfEvictionsUnloadsAndDueChunksIsOneFsync(): org.opentest4j.AssertionFailedError: expected: <40> but was: <8> at OverlayStoreTest.java:86
+run 4 exit 1 tests="1" skipped="0" failures="1" errors="0"
+  FAILED aTickOfEvictionsUnloadsAndDueChunksIsOneFsync(): org.opentest4j.AssertionFailedError: expected: <40> but was: <8> at OverlayStoreTest.java:86
+run 5 exit 1 tests="1" skipped="0" failures="1" errors="0"
+  FAILED aTickOfEvictionsUnloadsAndDueChunksIsOneFsync(): org.opentest4j.AssertionFailedError: expected: <40> but was: <8> at OverlayStoreTest.java:86
+run 6 exit 1 tests="1" skipped="0" failures="1" errors="0"
+  FAILED aTickOfEvictionsUnloadsAndDueChunksIsOneFsync(): org.opentest4j.AssertionFailedError: expected: <40> but was: <8> at OverlayStoreTest.java:86
+run 7 exit 1 tests="1" skipped="0" failures="1" errors="0"
+  FAILED aTickOfEvictionsUnloadsAndDueChunksIsOneFsync(): org.opentest4j.AssertionFailedError: expected: <40> but was: <8> at OverlayStoreTest.java:86
+run 8 exit 1 tests="1" skipped="0" failures="1" errors="0"
+  FAILED aTickOfEvictionsUnloadsAndDueChunksIsOneFsync(): org.opentest4j.AssertionFailedError: expected: <40> but was: <8> at OverlayStoreTest.java:86
+run 9 exit 1 tests="1" skipped="0" failures="1" errors="0"
+  FAILED aTickOfEvictionsUnloadsAndDueChunksIsOneFsync(): org.opentest4j.AssertionFailedError: expected: <40> but was: <8> at OverlayStoreTest.java:86
+run 10 exit 1 tests="1" skipped="0" failures="1" errors="0"
+  FAILED aTickOfEvictionsUnloadsAndDueChunksIsOneFsync(): org.opentest4j.AssertionFailedError: expected: <40> but was: <8> at OverlayStoreTest.java:86
+run 11 exit 1 tests="1" skipped="0" failures="1" errors="0"
+  FAILED aTickOfEvictionsUnloadsAndDueChunksIsOneFsync(): org.opentest4j.AssertionFailedError: expected: <40> but was: <8> at OverlayStoreTest.java:86
+run 12 exit 1 tests="1" skipped="0" failures="1" errors="0"
+  FAILED aTickOfEvictionsUnloadsAndDueChunksIsOneFsync(): org.opentest4j.AssertionFailedError: expected: <40> but was: <8> at OverlayStoreTest.java:86
+run 13 exit 1 tests="1" skipped="0" failures="1" errors="0"
+  FAILED aTickOfEvictionsUnloadsAndDueChunksIsOneFsync(): org.opentest4j.AssertionFailedError: expected: <40> but was: <8> at OverlayStoreTest.java:86
+run 14 exit 1 tests="1" skipped="0" failures="1" errors="0"
+  FAILED aTickOfEvictionsUnloadsAndDueChunksIsOneFsync(): org.opentest4j.AssertionFailedError: expected: <40> but was: <8> at OverlayStoreTest.java:86
+run 15 exit 1 tests="1" skipped="0" failures="1" errors="0"
+  FAILED aTickOfEvictionsUnloadsAndDueChunksIsOneFsync(): org.opentest4j.AssertionFailedError: expected: <40> but was: <8> at OverlayStoreTest.java:86
+run 16 exit 1 tests="1" skipped="0" failures="1" errors="0"
+  FAILED aTickOfEvictionsUnloadsAndDueChunksIsOneFsync(): org.opentest4j.AssertionFailedError: expected: <40> but was: <8> at OverlayStoreTest.java:86
+run 17 exit 1 tests="1" skipped="0" failures="1" errors="0"
+  FAILED aTickOfEvictionsUnloadsAndDueChunksIsOneFsync(): org.opentest4j.AssertionFailedError: expected: <40> but was: <8> at OverlayStoreTest.java:86
+run 18 exit 1 tests="1" skipped="0" failures="1" errors="0"
+  FAILED aTickOfEvictionsUnloadsAndDueChunksIsOneFsync(): org.opentest4j.AssertionFailedError: expected: <40> but was: <8> at OverlayStoreTest.java:86
+run 19 exit 1 tests="1" skipped="0" failures="1" errors="0"
+  FAILED aTickOfEvictionsUnloadsAndDueChunksIsOneFsync(): org.opentest4j.AssertionFailedError: expected: <40> but was: <8> at OverlayStoreTest.java:86
+run 20 exit 1 tests="1" skipped="0" failures="1" errors="0"
+  FAILED aTickOfEvictionsUnloadsAndDueChunksIsOneFsync(): org.opentest4j.AssertionFailedError: expected: <40> but was: <8> at OverlayStoreTest.java:86
+# end 23:07:05; 23:07  up 13 days, 14:54, 30 users, load averages: 12.58 18.66 23.79
+# Four encode threads, each encoding sleeps at least 5 ms: a thread finishes its k-th encoding no earlier than 5k ms into the phase,
+# so at most 4 a thread, 16 in all, are done by the 20 ms deadline; here 8 (the first encoding on each new pool thread also loads classes; not measured).
+
+## 3. the whole class: every FakeChunk encoding 25 ms, longer than the 20 ms phase
+# Temporary change (not committed) in FakeChunk.java: 'volatile long encodeNanos;' -> 'volatile long encodeNanos = TimeUnit.MILLISECONDS.toNanos(25);'
+# (tests that set encodeNanos themselves keep their value). OverlayFinalFlushTest without twoWritersRacingForTheFinalFlushWriteItExactlyOnce:
+# its 1,000 rounds of 10 chunks would take 250 s at 25 ms an encoding.
+## main da8d4f9829 (the five changed files checked out from it) + every FakeChunk encoding 25 ms unless a test sets its own (00:35:32; load averages: 29.77 44.39 51.98)
+# ./gradlew :synx:test --tests io.github.bearisbug.synaxis.synx.OverlayStoreTest --tests io.github.bearisbug.synaxis.synx.OverlayFinalFlushTest.aDeadTickLeavesTheFinalFlushToTheShutdownThread --tests io.github.bearisbug.synaxis.synx.OverlayFinalFlushTest.aLiveFinalFlushIsDoneByTheNextTickEnd --tests io.github.bearisbug.synaxis.synx.OverlayFinalFlushTest.aRequestDuringAWritePhaseIsServedByTheNextOne --tests io.github.bearisbug.synaxis.synx.OverlayFinalFlushTest.anEncodingAWritePhaseLeftBehindIsDoneAgainOnceTheChunkChanged --tests io.github.bearisbug.synaxis.synx.OverlayFinalFlushTest.aChunkAWritePhaseCouldNotEncodeIsEncodedAgain --tests io.github.bearisbug.synaxis.synx.OverlayFinalFlushTest.aSecondCallTakesTheEarlierOfTheTwoDeadlines --tests io.github.bearisbug.synaxis.synx.OverlayFinalFlushTest.aLiveCallThenADeadOneWriteTheFinalFlushOnce --tests io.github.bearisbug.synaxis.synx.OverlayFinalFlushTest.aFinalFlushTheTickStartedIsWaitedForAndNotRepeated --tests io.github.bearisbug.synaxis.synx.OverlayFinalFlushTest.changesAfterTheFinalFlushAreNotWritten --tests io.github.bearisbug.synaxis.synx.OverlayFinalFlushTest.aFinalFlushOverItsBudgetCompletesAtTheDeadline --tests io.github.bearisbug.synaxis.synx.OverlayFinalFlushTest.aStuckChunkLockLeavesOnlyThatChunk --rerun
+# exit 1; 39 tests completed, 21 failed BUILD FAILED in 33s 
+  OverlayFinalFlushTest" tests="11" skipped="0" failures="1" errors="0"
+  FAILED aRequestDuringAWritePhaseIsServedByTheNextOne(): org.opentest4j.AssertionFailedError: expected: not <null> at OverlayFinalFlushTest.java:127
+   1 Overlay final flush: chunks=1 bytes=600 fsync_ms=4 left=0 by=shutdown
+   1 Overlay final flush: chunks=10 bytes=6000 fsync_ms=308 left=0 by=tick
+   1 Overlay final flush: chunks=13 bytes=7800 fsync_ms=3 left=47 by=shutdown
+   1 Overlay final flush: chunks=13 bytes=7800 fsync_ms=4 left=47 by=shutdown
+  OverlayStoreTest" tests="28" skipped="0" failures="20" errors="0"
+  FAILED aSegmentMostlyOverwrittenIsCopiedForwardAndUnlinked(): org.opentest4j.AssertionFailedError: expected: <true> but was: <false> at OverlayStoreTest.java:621
+  FAILED aSegmentOfAnotherProcessOrReleaseRefusesTheStart(): org.opentest4j.AssertionFailedError: Expected io.github.bearisbug.synaxis.synx.SynxException to be thrown, but nothing was thrown. at OverlayStoreTest.java:736
+  FAILED aCleanChunkThatDoesNotTakeItsDemotionStaysAResident(): org.opentest4j.AssertionFailedError: asked to go back to handle mode ==> expected: <true> but was: <false> at OverlayStoreTest.java:356
+  FAILED aCleanChunkIsEvictedWithoutANewRecord(): org.opentest4j.AssertionFailedError: expected: <false> but was: <true> at OverlayStoreTest.java:319
+  FAILED aChunkThatDoesNotEncodeStaysDirtyWhileTheOthersAreWritten(): org.opentest4j.AssertionFailedError: no record of 2,0 ==> expected: not <null> at OverlayStoreTest.java:58
+  FAILED theSegmentHeaderIsAnOverlayHeaderOfThisRelease(): java.nio.file.NoSuchFileException: /var/folders/cg/30kkblns6599cnrbhx__l4jw0000gn/T/junit-6183183333327736697/overlay-test-2b4c342f5433-p776/seg.0.synx at OverlayStoreTest.java:716
+  FAILED aSegmentWhoseHeaderNeverReachedTheFileIsDeleted(): java.lang.NullPointerException: Cannot invoke "io.github.bearisbug.synaxis.synx.OverlayHit.segment()" because the return value of "io.github.bearisbug.synaxis.synx.OverlayStore.find(int, int)" is null at OverlayStoreTest.java:773
+  FAILED aChunkLoadedAgainBeforeItsOldObjectLeftIsTrackedOnItsOwn(): org.opentest4j.AssertionFailedError: expected: <false> but was: <true> at OverlayStoreTest.java:534
+  FAILED aCleanChunkUnloadedOnlyLeavesTheResidents(): org.opentest4j.AssertionFailedError: not encoded for the unload ==> expected: <1> but was: <2> at OverlayStoreTest.java:558
+  FAILED aRestartDropsAHalfWrittenTailAndWritesIntoANewSegment(): java.lang.NullPointerException: Cannot invoke "io.github.bearisbug.synaxis.synx.OverlayHit.generation()" because "last" is null at OverlayStoreTest.java:648
+  FAILED findSeesWholeRecordsWhileTheWritePhaseReplacesThem(): org.opentest4j.AssertionFailedError: expected: <200> but was: <199> at OverlayStoreTest.java:836
+  FAILED aBatchPastTheEndOfItsSegmentGoesOnInANewOneAndForcesEach(): java.lang.NullPointerException: Cannot invoke "io.github.bearisbug.synaxis.synx.OverlayHit.segment()" because the return value of "io.github.bearisbug.synaxis.synx.OverlayStore.find(int, int)" is null at OverlayStoreTest.java:250
+  FAILED aDirtyChunkThatDoesNotTakeItsRecordIsWrittenAgain(): org.opentest4j.AssertionFailedError: no record of 0,0 ==> expected: not <null> at OverlayStoreTest.java:58
+  FAILED aTickOfEvictionsUnloadsAndDueChunksIsOneFsync(): org.opentest4j.AssertionFailedError: one group commit ==> expected: <1> but was: <0> at OverlayStoreTest.java:83
+  FAILED aChunkChangedAfterItsEncodingStaysDirtyAndIsWrittenAgain(): org.opentest4j.AssertionFailedError: no record of 3,4 ==> expected: not <null> at OverlayStoreTest.java:58
+  FAILED aNewBuildIdClearsTheOverlay(): org.opentest4j.AssertionFailedError: expected: <10> but was: <0> at OverlayStoreTest.java:686
+  FAILED aChunkIsDueAWritePhaseBeforeItsFlushIntervalIsUp(): org.opentest4j.AssertionFailedError: due 250 ms before its flush interval is up ==> expected: <false> but was: <true> at OverlayStoreTest.java:130
+  FAILED statsCountSinceTheOpenAndTheMaximaSinceTheLastCall(): org.opentest4j.AssertionFailedError: expected: <4> but was: <0> at OverlayStoreTest.java:786
+  FAILED encodingsLeftInFlightTakeTheEvictionAndUnloadCapsOfTheNextTick(): org.opentest4j.AssertionFailedError: the encodings never returned ==> expected: <true> but was: <false> at OverlayStoreTest.java:234
+  FAILED aFailedWriteKeepsEveryChunkDirtyAndIsRetriedByTheNextTick(): org.opentest4j.AssertionFailedError: [] ==> expected: <1> but was: <0> at OverlayStoreTest.java:575
+M  synx/src/main/java/io/github/bearisbug/synaxis/synx/OverlayStore.java
+M  synx/src/main/java/io/github/bearisbug/synaxis/synx/OverlayTuning.java
+ M synx/src/test/java/io/github/bearisbug/synaxis/synx/FakeChunk.java
+M  synx/src/test/java/io/github/bearisbug/synaxis/synx/OverlayFinalFlushTest.java
+M  synx/src/test/java/io/github/bearisbug/synaxis/synx/OverlayFixture.java
+M  synx/src/test/java/io/github/bearisbug/synaxis/synx/OverlayStoreTest.java]
+
+# 20 of 28 in OverlayStoreTest and 1 of 11 in OverlayFinalFlushTest: each calls tickEnd() once and then asserts that the phase wrote
+# what it picked. encodingsLeftInFlightTakeTheEvictionAndUnloadCapsOfTheNextTick is the one exception: its 320 encodings take 8 s on
+# its one encode thread, longer than the 5 s it waits for them to return, so it fails under this change whatever the budget (see 02).
+
+## 4. the same root cause in this round's gate: a second test of the class
+# The first change of this round touched aTickOfEvictionsUnloadsAndDueChunksIsOneFsync only (its own 10 s budget; the fixture still on 20 ms).
+# Its gate ./gradlew check --rerun-tasks -Dsynaxis.synx.require-frozen-zlib=true, 23:31:05 to 23:38:39, load averages 38.87 106.93 72.77 at the
+# start and 133.38 100.99 82.99 at the end (other sessions on the machine), went red in :synx:test, 118 tests completed, 1 failed:
+TEST-io.github.bearisbug.synaxis.synx.OverlayStoreTest.xml: tests="28" failures="1" time="19.21" (about 6 s on an idle machine)
+  testcase aSegmentOfAnotherProcessOrReleaseRefusesTheStart() time="0.747"
+  failure: org.opentest4j.AssertionFailedError: Expected io.github.bearisbug.synaxis.synx.SynxException to be thrown, but nothing was thrown.
+  at the first assertThrows of the test (OverlayStoreTest.java:743 in that change, :736 on main): its one encoding was not done by the
+  20 ms deadline, the tick wrote nothing and made no segment, so there was no segment of another process to refuse the start.
+# The other modules of that gate had run green by then (root 3,141, server-app not reached); the gate was stopped by pid after the failure.

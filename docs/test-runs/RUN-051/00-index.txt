@@ -1,0 +1,37 @@
+# RUN-051: the overlay store unit tests took the 20 ms write phase of a shard for granted to finish their encodings, fixed on branch
+# m3/overlay-flaky-86, 2026-09-28 23:00 to 2026-09-29 00:57 (UTC+8)
+# Trigger: main da8d4f9829, CI run 36437512680 attempt 1, job "Test with 4 tick threads (strict)" (ubuntu):
+#          OverlayStoreTest > aTickOfEvictionsUnloadsAndDueChunksIsOneFsync() red at OverlayStoreTest.java:86, expected: <40> but was: <38>;
+#          attempt 2 green.
+# Code under test: ded70eeffb = main da8d4f9829 + one test commit (OverlayTuning.phaseNanos, 20 ms in defaults(); OverlayFixture 10 s and
+#          shardPhase 20 ms; the five tests of a phase over its budget on shardPhase; 5 ms an encoding in aTickOfEvictionsUnloadsAndDueChunksIsOneFsync).
+#          The runs of 02, 03 and 04 are on that code; section 1 of 02 ran on a working tree with the same content, committed right after.
+# Machine: Apple M4 Pro, 12 cores, macOS, Homebrew JDK 25.0.4.1; other sessions ran builds on it, load averages from 5 to 335.
+# Every Gradle command: --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts --max-workers=4, one at a time; before each, a script
+# waited while a Gradle of another synaxis worktree ran, looking every 2 minutes.
+# Raw artefacts (Gradle logs, JUnit XML, the loop scripts, the CI job log and artifact) stayed in a temporary directory, deleted after the round;
+# the lines below are copied out of them.
+00-index.txt              this file
+01-red-before-fix.txt     the CI failure; the CI assertion with 5 ms an encoding on main: 20 runs, 20 red at :86 (but was: <8>); every encoding
+                          25 ms on main: OverlayStoreTest 20 of 28 red, OverlayFinalFlushTest 1 of 11; aSegmentOfAnotherProcessOrReleaseRefusesTheStart
+                          red in this round's first root gate, the same root cause
+02-after-fix.txt          every encoding 25 ms on the fixed code: 1 red, the artefact of the change itself (also red on main); OverlayStoreTest and
+                          OverlayFinalFlushTest with no change, 20 runs in a row: 20 green, 28 + 12 tests each
+03-tc-steps.txt           TC-WORLD-042 steps 2-7 (step 7 new), TC-WORLD-043 steps 2-4, TC-WORLD-051 step 2 (counterproofs) and step 3 (both strict modes)
+04-gates.txt              :synx:check, :synx:test in the 4 thread strict mode and with grid (118 tests each), root check -Dsynaxis.synx.require-frozen-zlib=true
+                          (4,060 tests, 15 skipped, 0 failed), all --rerun-tasks
+
+# Root cause, a test defect (OverlayStore.java and the tests at main da8d4f9829): OverlayFixture.tuning ran the write phase of every overlay unit
+# test on the 20 ms encoding budget of a shard (OverlayStore.java:67 PHASE_NANOS, :449 the deadline). awaitEncodings returns at the deadline
+# (:559-574) and harvest leaves every encoding not done by then for the next tick (:586), as docs/DESIGN-M3.md API-M3-007 step 4 says. Most tests
+# call tickEnd() once and then assert what the phase wrote (OverlayStoreTest.java:81 and :86 for the CI failure), so any encoding over 20 ms on a
+# loaded machine fails them. Not a product defect: a flush before unload that waits a tick keeps the chunk loaded (readyToUnload() is false while
+# it is dirty, API-M3-006), an eviction that waits a tick keeps it resident (a soft cap); no change is lost. docs/DESIGN-M3.md is not changed.
+
+# Results
+TC-WORLD-042   pass   steps 1-8 (step 7 is new; steps 2-6 red 6 lines lower than before, the javadoc and one line of the first test)
+TC-WORLD-043   pass   steps 1-5 (red lines unchanged)
+TC-WORLD-051   pass   step 1 judged on gate "check", steps 2 and 3 run
+TC-WORLD-039   pass   step 1 judged on gate "check" (A group 26, ChunkTryLockWriteLockIntegrationTest 5); steps 2-6 change files this round does not touch
+TC-WORLD-049   pass   step 1 judged on gate "check" (ShardWorldAssemblyTest 8); step 2 changes ShardWorld, not touched here
+TC-029         pass   judged on the root module of gate "check": tests=3141 >= 2,599, failures + errors = 0

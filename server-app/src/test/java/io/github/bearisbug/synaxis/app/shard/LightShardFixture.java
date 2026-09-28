@@ -25,6 +25,7 @@ import io.github.bearisbug.synaxis.synx.SynxRelight;
 
 import java.io.ByteArrayOutputStream;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.LinkedHashMap;
@@ -102,7 +103,8 @@ final class LightShardFixture {
     }
 
     /**
-     * @param args the port, and the working directory the map is baked into and the overlay store kept in
+     * @param args the port, the working directory the map is baked into and the overlay store kept in, and
+     *             {@code drive} for {@link #drive}
      */
     public static void main(String[] args) {
         final int port = Integer.parseInt(args[0]);
@@ -148,6 +150,43 @@ final class LightShardFixture {
 
         server.start("0.0.0.0", port);
         System.out.println(READY);
+        if (args.length > 2 && args[2].equals("drive")) drive(process, instance, started.relight(), workDir.resolve("drive"));
+    }
+
+    /**
+     * Without a client: once the file {@code trigger} exists, 60 changes of a torch around the spawn,
+     * one every 5 ticks, each in the scheduling phase of a tick, as a flag applies; then the counters
+     * once nothing is pending. For a JFR recording of where the light is computed when no container
+     * can run; it replaces none of the cases of the client.
+     */
+    private static void drive(ServerProcess process, InstanceContainer instance, SynxRelight relight, Path trigger) {
+        final Object tickets = new Object();
+        final int spawn = SPAWN_CHUNK * 16;
+        for (int x = SPAWN_CHUNK - 5; x <= SPAWN_CHUNK + 5; x++) {
+            for (int z = SPAWN_CHUNK - 5; z <= SPAWN_CHUNK + 5; z++) {
+                instance.addChunkTicket(x, z, tickets);
+                instance.loadChunk(x, z).join();
+            }
+        }
+        try {
+            while (!Files.exists(trigger)) Thread.sleep(200);
+            for (int i = 0; i < 60; i++) {
+                final int x = spawn - 40 + (i % 10) * 9, z = spawn - 40 + (i / 10) * 13;
+                final Block block = (i / 10) % 2 == 0 ? Block.TORCH : Block.GLOWSTONE;
+                process.scheduler().scheduleNextTick(() -> instance.setBlock(x, FLOOR, z, block));
+                Thread.sleep(250);
+            }
+            RelightStats stats = relight.stats();
+            double installMax = stats.installMsMax();
+            while (stats.pending() > 0) {
+                Thread.sleep(200);
+                stats = relight.stats();
+                installMax = Math.max(installMax, stats.installMsMax());
+            }
+            System.out.println("light fixture drive done: " + stats + " install_ms_max_seen=" + installMax);
+        } catch (InterruptedException _) {
+            Thread.currentThread().interrupt();
+        }
     }
 
     private static void setIfAbsent(String key, String value) {

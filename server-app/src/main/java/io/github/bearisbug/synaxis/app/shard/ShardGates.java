@@ -1,5 +1,6 @@
 package io.github.bearisbug.synaxis.app.shard;
 
+import io.github.bearisbug.synaxis.app.transfer.TicketIssuer;
 import io.github.bearisbug.synaxis.coordinate.Pos;
 import io.github.bearisbug.synaxis.entity.Player;
 import io.github.bearisbug.synaxis.event.player.PlayerDisconnectEvent;
@@ -38,8 +39,6 @@ import java.util.function.BiConsumer;
 public final class ShardGates {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ShardGates.class);
-    /** What the player is told when no channel of the target region could be chosen. */
-    private static final String TRANSFER_FAILED = "synaxis:transfer-failed";
 
     private final LogBudget errors = new LogBudget(LOGGER, "gate transfers that failed or led nowhere");
 
@@ -106,7 +105,7 @@ public final class ShardGates {
             case SENT, COOLDOWN, NOT_ONLINE, SAVE_FAILED -> {
             }
             case FULL, OFFLINE, DIRECTORY_UNAVAILABLE -> {
-                player.sendMessage(Component.translatable(TRANSFER_FAILED));
+                player.sendMessage(Component.translatable(TicketIssuer.TRANSFER_FAILED));
                 final Map<String, Object> attributes = new LinkedHashMap<>();
                 attributes.put("player_uuid", player.getUuid());
                 attributes.put("source_shard", shardId);

@@ -26,8 +26,8 @@ import java.util.function.BiConsumer;
  */
 public final class TicketIssuer implements TransferTickets {
 
-    /** What the player sees when its character could not be written for the transfer. */
-    static final String TRANSFER_FAILED = "synaxis:transfer-failed";
+    /** What a player who stays after a failed transfer sees: its character was not written, or a gate found no channel. */
+    public static final String TRANSFER_FAILED = "synaxis:transfer-failed";
 
     private final PlayerStore store;
     private final TransferKeys keys;

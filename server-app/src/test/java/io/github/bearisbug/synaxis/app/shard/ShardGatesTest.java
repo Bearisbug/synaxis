@@ -4,6 +4,7 @@ import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
+import io.github.bearisbug.synaxis.app.transfer.TicketIssuer;
 import io.github.bearisbug.synaxis.coordinate.Pos;
 import io.github.bearisbug.synaxis.entity.Player;
 import io.github.bearisbug.synaxis.event.player.PlayerMoveEvent;
@@ -187,7 +188,7 @@ class ShardGatesTest {
             walk(walker, 2040);
             service.transfers.getLast().complete(result);
             final List<String> told = switch (result) {
-                case FULL, OFFLINE, DIRECTORY_UNAVAILABLE -> List.of("synaxis:transfer-failed");
+                case FULL, OFFLINE, DIRECTORY_UNAVAILABLE -> List.of(TicketIssuer.TRANSFER_FAILED);
                 // SAVE_FAILED: the source side of the transfer already told the player
                 case SENT, COOLDOWN, NOT_ONLINE, SAVE_FAILED, UNKNOWN_TARGET, SAME_TARGET -> List.of();
             };

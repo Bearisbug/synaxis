@@ -237,7 +237,7 @@ public final class Main {
         final ShutdownSequence shutdown = new ShutdownSequence(process, store.store());
         process.setShutdownParticipant(shutdown);
         final PluginHost host = new PluginHost(process, Path.of("plugins"), ledger, store.store(), store.verifier(),
-                store.permissions(), store.moderation());
+                store.permissions(), store.moderation(), store.cooldowns());
         process.command().register(new RoleCommand(process, store.permissions(), ledger::record));
         new ModerationCommands(process, store.moderation(), store.permissions(), ledger::record).commands()
                 .forEach(process.command()::register);
@@ -474,10 +474,13 @@ public final class Main {
      * @param moderation   the bans and the whitelist, none in memory
      * @param session      the shard session, null in memory
      * @param redis        the Redis link of the store, disabled in memory or without Redis
+     * @param cooldowns    the transfer cooldowns of the process, one table for the plugins' transfers and both
+     *                     sides of a ticket (docs/DESIGN-PROD.md API-PROD-021)
      */
     record StoreRuntime(PlayerStore store, @Nullable Database database, @Nullable StoreHousekeeping housekeeping,
                         @Nullable TransferTickets issuer, @Nullable TicketVerifier verifier, HostPermissions permissions,
-                        HostModeration moderation, @Nullable ShardSession session, RedisLink redis)
+                        HostModeration moderation, @Nullable ShardSession session, RedisLink redis,
+                        TransferCooldowns cooldowns)
             implements AutoCloseable {
         @Override
         public void close() {
@@ -514,10 +517,12 @@ public final class Main {
             final HostModeration moderation = new HostModeration(process, null, noRedis,
                     HostModeration.REFRESH, whitelist(), ledger::record);
             return new StoreRuntime(PlayerStore.inMemory(process, ledger::record), null, null, null, null,
-                    HostPermissions.withoutDatabase(process), moderation, null, noRedis);
+                    HostPermissions.withoutDatabase(process), moderation, null, noRedis,
+                    TransferCooldowns.fromSystemProperties());
         }
         final StoreSettings settings = StoreSettings.fromEnvironment(environment);
         final TransferKeys keys = TransferKeys.fromEnvironment(environment);
+        final TransferCooldowns cooldowns = TransferCooldowns.fromSystemProperties();
         if (keys == null && process.config().acceptTransfers())
             throw new IllegalArgumentException("synaxis.accept-transfers=true needs " + TransferKeys.VARIABLE
                     + " to check the tickets transfers come in with (see .env.example)");
@@ -552,12 +557,12 @@ public final class Main {
             LOGGER.info("Effective whitelist: {}", whitelist ? "on" : "off");
             LOGGER.info("Effective store: mode=postgres auth_mode={} {}", effective.value(), settings);
             if (keys == null)
-                return new StoreRuntime(store, database, housekeeping, null, null, permissions, moderation, session, redis);
-            final TransferCooldowns cooldowns = TransferCooldowns.fromSystemProperties();
+                return new StoreRuntime(store, database, housekeeping, null, null, permissions, moderation, session, redis,
+                        cooldowns);
             LOGGER.info("Effective transfers: {} accept={}", keys, process.config().acceptTransfers());
             return new StoreRuntime(store, database, housekeeping, new TicketIssuer(store, keys, cooldowns, shardId),
                     new TicketVerifier(database.pool(), session::sessionId, shardId, keys, cooldowns, ledger::record),
-                    permissions, moderation, session, redis);
+                    permissions, moderation, session, redis, cooldowns);
         } catch (SQLException e) {
             database.close();
             throw new IllegalArgumentException("the player store database failed: " + e.getMessage(), e);

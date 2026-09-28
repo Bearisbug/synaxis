@@ -168,6 +168,19 @@ public interface PluginContext {
     }
 
     /**
+     * Vanilla transfers and the cookies of this plugin ({@code docs/DESIGN-PROD.md} API-PROD-021).
+     * <p>
+     * The host's context always has one; the default is there for the same reason as
+     * {@link #playerData()}'s.
+     *
+     * @return the transfer capability of this plugin
+     * @throws UnsupportedOperationException from a context that is not the host's
+     */
+    default Transfers transfers() {
+        throw new UnsupportedOperationException("only the host's plugin context has transfers");
+    }
+
+    /**
      * A logger named after this plugin.
      *
      * @return the logger of this plugin

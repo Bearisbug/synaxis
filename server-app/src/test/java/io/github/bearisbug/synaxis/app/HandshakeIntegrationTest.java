@@ -602,6 +602,33 @@ class HandshakeIntegrationTest {
         assertKickedWith(DisconnectKeys.PROTOCOL_VERSION_MISMATCH, wire);
     }
 
+    @Test
+    void aHelloAtTheEndOfTheBudgetIsEitherAnsweredOrKicked(Env env) throws Exception {
+        final Wire wire = wire(env);
+        final Player player = player(env, wire);
+        final HandshakeGate gate = gate(env, HandshakeGate.Phase.CONFIGURATION, SHORT_BUDGET);
+        gate.require();
+
+        final CompletableFuture<HandshakeGate.HelloResult> awaited = awaitOnVirtualThread(gate, player);
+        // A little after the budget. Usually the waiter has claimed the future by then and the hello
+        // changes nothing; when the waiter is held between its timeout and its claim, the hello takes
+        // the future first, and in the gameplay mode its tick thread leaves the answer to the waiter.
+        Thread.sleep(SHORT_BUDGET.toMillis() + 100);
+        gate.receive(player, hello(7, ProtocolSchema.SCHEMA_VERSION));
+        final HandshakeGate.HelloResult result = awaited.get(5, TimeUnit.SECONDS);
+
+        // §16: exactly one of the two takes effect, never both and never neither. Neither would be a
+        // connection left online with no answer and no spawning instance: synaxis:internal-error.
+        if (result == null) {
+            assertEquals(List.of(), wire.of(PluginMessagePacket.class));
+            assertKickedWith(DisconnectKeys.CLIENT_MOD_REQUIRED, wire);
+        } else {
+            assertEquals(new HandshakeGate.HelloResult(7, ProtocolSchema.SCHEMA_VERSION), result);
+            assertEquals(ProtocolSchema.SCHEMA_VERSION, onlyAnswer(wire).schemaVersion());
+            assertTrue(wire.isOnline());
+        }
+    }
+
     private PluginHost host(Env env) {
         ledger = new EventLedger(workingDirectory.resolve("logs"), "test", EventLedger.DEFAULT_MAX_BYTES_PER_DAY);
         ledger.start();

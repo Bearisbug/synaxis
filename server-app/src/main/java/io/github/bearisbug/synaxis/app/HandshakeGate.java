@@ -271,15 +271,20 @@ final class HandshakeGate {
         // It may have left between the two, and the disconnect callback had nothing to wake yet:
         // the flag is cleared before that callback runs, so re-reading it here closes the window.
         if (!connection.isOnline()) return null;
-        final HelloResult result;
+        HelloResult result;
         try {
             result = session.get(budget.toMillis(), TimeUnit.MILLISECONDS);
         } catch (TimeoutException _) {
             // Claim the future before kicking: a hello landing in this very moment must find the
             // session decided and drop, instead of answering a connection that is being closed.
-            if (session.completeExceptionally(new TimeoutException("no C2S_HELLO within " + budget)))
+            if (session.completeExceptionally(new TimeoutException("no C2S_HELLO within " + budget))) {
                 reject(connection, connectionId, DisconnectKeys.CLIENT_MOD_REQUIRED, "mod-missing", 0);
-            return null;
+                return null;
+            }
+            // Lost the claim. To the disconnect callback, and nobody is left to answer; or to a hello
+            // that landed in this very moment, and it counts: its tick thread left the answer to us.
+            if (session.isCompletedExceptionally()) return null;
+            result = session.join();
         } catch (ExecutionException _) {
             // The connection went away while we waited; the disconnect callback woke us on purpose.
             return null;

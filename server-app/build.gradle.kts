@@ -112,3 +112,16 @@ tasks.named<Test>("test") {
     inputs.property("SYNAXIS_TEST_PG_PASSWORD set",
         providers.environmentVariable("SYNAXIS_TEST_PG_PASSWORD").map { true }.orElse(false))
 }
+
+// The light fixture of M3-D (docs/DESIGN-M3.md §26 step 4) runs on the test runtime classpath, which
+// this writes as a java argument file: `java @server-app/build/light-fixture.args … LightShardFixture`
+// starts it without a Gradle process kept alive beside it.
+tasks.register("lightFixtureArgs") {
+    val classpath = sourceSets.test.get().runtimeClasspath
+    val args = layout.buildDirectory.file("light-fixture.args")
+    inputs.files(classpath)
+    outputs.file(args)
+    doLast {
+        args.get().asFile.writeText("-cp " + classpath.asPath + "\n")
+    }
+}

@@ -5,7 +5,11 @@
 	"name": "Synaxis client gametests",
 	"environment": "client",
 	"entrypoints": {
+		"client": [
+			"io.github.bearisbug.synaxis.game.client.gametest.light.LightProbe"
+		],
 		"fabric-client-gametest": [
+			"io.github.bearisbug.synaxis.game.client.gametest.light.LightClientGameTest",
 			"io.github.bearisbug.synaxis.game.client.gametest.RegressionClientGameTest",
 			"io.github.bearisbug.synaxis.game.client.gametest.SpikeClientGameTest"
 		]

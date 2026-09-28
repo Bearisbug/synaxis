@@ -1,0 +1,99 @@
+# 2026-09-28 13:19~13:24, m3e/integrate a1eeddb997: the M3-C cases whose counts or red lines moved with M3-E (TC-WORLD-034~039: 「A 组」 26 tests now, SynxChunkOverlayIntegrationTest got an import (+1 line) and a test at old line 358 (+39 after it); TC-WORLD-047/048/049/055: ShardWorldTest 18, ShardWorldAssemblyTest 8)
+# each counterproof as written in TEST.md, applied with mut.pl, run, restored with git checkout --; the first steps are the gates of 02 and the reruns at the end of 03
+# 036-2: the step deletes 'if (isReadOnly()) return;' at the head of the 6-argument setBlock
+
+== 034-2 rc=1 # rc=1 wall=55s end 13:20:37
+26 tests completed, 4 failed
+synx.SynxChunkLoaderIntegrationTest" tests="12" skipped="0" failures="3" errors="0"
+  FAIL theOverlayComesFirstAndItsGenerationGoesOn(Env) @ SynxChunkLoaderIntegrationTest.java:394 : java.lang.ClassCastException: class io.github.bearisbug.synaxis.network.packet.server.CachedPacket cannot be cast to class io.github.bearisbug.synaxis.network.packet.server.BufferedPacket (io.github.bearisbug.synaxis.network.packet.server.CachedPacket and io.github.bearisbug.synaxis.network.packet.s
+  FAIL neighbourRegionChunksAreReadOnly() @ SynxChunkLoaderIntegrationTest.java:174 : org.opentest4j.AssertionFailedError: timed out ==> expected: <true> but was: <false>
+  FAIL untouchedChunksGoOutAsTheirSegmentOne() @ SynxChunkLoaderIntegrationTest.java:86 : org.opentest4j.AssertionFailedError: timed out ==> expected: <true> but was: <false>
+synx.SynxChunkOverlayIntegrationTest" tests="14" skipped="0" failures="1" errors="0"
+  FAIL writtenDemotesOnlyWhatDidNotChangeSince(Env) @ SynxChunkOverlayIntegrationTest.java:333 : java.lang.ClassCastException: class io.github.bearisbug.synaxis.network.packet.server.CachedPacket cannot be cast to class io.github.bearisbug.synaxis.network.packet.server.BufferedPacket (io.github.bearisbug.synaxis.network.packet.server.CachedPacket and io.github.bearisbug.synaxis.network.packet.s
+== 035-2 rc=1 # rc=1 wall=12s end 13:20:49
+26 tests completed, 3 failed
+synx.SynxChunkLoaderIntegrationTest" tests="12" skipped="0" failures="0" errors="0"
+synx.SynxChunkOverlayIntegrationTest" tests="14" skipped="0" failures="3" errors="0"
+  FAIL aThousandMaterializedChunksEncodeBackToTheirSegmentOne(Env) @ SynxChunkOverlayIntegrationTest.java:92 : org.opentest4j.AssertionFailedError: every materialized chunk sends and records its segment ① ==> expected: <1000> but was: <0>
+  FAIL aPacketHandedOutBeforeADemotionKeepsItsContent(Env) @ SynxChunkOverlayIntegrationTest.java:118 : org.opentest4j.AssertionFailedError: framed after the demotion, still lit ==> expected: <false> but was: <true>
+  FAIL newViewersOfAMaterializedChunkKeepItsSkyLight(Env) @ SynxChunkOverlayIntegrationTest.java:143 : org.opentest4j.AssertionFailedError: expected: <{5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16}> but was: <{}>
+== 035-3 rc=1 # rc=1 wall=11s end 13:21:00
+26 tests completed, 1 failed
+synx.SynxChunkLoaderIntegrationTest" tests="12" skipped="0" failures="0" errors="0"
+synx.SynxChunkOverlayIntegrationTest" tests="14" skipped="0" failures="1" errors="0"
+  FAIL aThousandMaterializedChunksEncodeBackToTheirSegmentOne(Env) @ SynxChunkOverlayIntegrationTest.java:92 : org.opentest4j.AssertionFailedError: every materialized chunk sends and records its segment ① ==> expected: <1000> but was: <0>
+== 035-4 rc=1 # rc=1 wall=11s end 13:21:12
+26 tests completed, 1 failed
+synx.SynxChunkLoaderIntegrationTest" tests="12" skipped="0" failures="0" errors="0"
+synx.SynxChunkOverlayIntegrationTest" tests="14" skipped="0" failures="1" errors="0"
+  FAIL aThousandMaterializedChunksEncodeBackToTheirSegmentOne(Env) @ SynxChunkOverlayIntegrationTest.java:93 : org.opentest4j.AssertionFailedError: without the light arrays every one differs (empty sky mask) ==> expected: <0> but was: <1000>
+== 036-2 rc=1 # rc=1 wall=12s end 13:21:25
+26 tests completed, 1 failed
+synx.SynxChunkLoaderIntegrationTest" tests="12" skipped="0" failures="1" errors="0"
+  FAIL aReadOnlyWorldIgnoresEveryChange(Env) @ SynxChunkLoaderIntegrationTest.java:141 : org.opentest4j.AssertionFailedError: expected: <minecraft:grass_block{properties={snowy=>false}, nbt=null, handler=null}> but was: <minecraft:diamond_block{properties={}, nbt=null, handler=null}>
+synx.SynxChunkOverlayIntegrationTest" tests="14" skipped="0" failures="0" errors="0"
+== 037-2 rc=1 # rc=1 wall=12s end 13:21:37
+26 tests completed, 2 failed
+synx.SynxChunkLoaderIntegrationTest" tests="12" skipped="0" failures="0" errors="0"
+synx.SynxChunkOverlayIntegrationTest" tests="14" skipped="0" failures="2" errors="0"
+  FAIL aThousandMaterializedChunksEncodeBackToTheirSegmentOne(Env) @ SynxChunkOverlayIntegrationTest.java:92 : org.opentest4j.AssertionFailedError: every materialized chunk sends and records its segment ① ==> expected: <1000> but was: <999>
+  FAIL unregisteredHandlerNamespacesSurviveTheOverlay(Env) @ SynxChunkOverlayIntegrationTest.java:189 : org.opentest4j.AssertionFailedError: expected: not <null>
+== 037-3 rc=1 # rc=1 wall=12s end 13:21:49
+26 tests completed, 1 failed
+synx.SynxChunkLoaderIntegrationTest" tests="12" skipped="0" failures="1" errors="0"
+  FAIL aBlockEntityKeepsOneHandlerInstance(Env) @ SynxChunkLoaderIntegrationTest.java:326 : org.opentest4j.AssertionFailedError: the instance getBlock returns is the one that ticks ==> expected: <5> but was: <0>
+synx.SynxChunkOverlayIntegrationTest" tests="14" skipped="0" failures="0" errors="0"
+== 038-2 rc=1 # rc=1 wall=13s end 13:22:02
+26 tests completed, 1 failed
+synx.SynxChunkLoaderIntegrationTest" tests="12" skipped="0" failures="1" errors="0"
+  FAIL staticEntitiesOutsideTheListAreSkipped(Env) @ SynxChunkLoaderIntegrationTest.java:344 : org.opentest4j.AssertionFailedError: [] ==> expected: <1> but was: <0>
+synx.SynxChunkOverlayIntegrationTest" tests="14" skipped="0" failures="0" errors="0"
+== 039-2 rc=1 # rc=1 wall=12s end 13:22:14
+26 tests completed, 2 failed
+synx.SynxChunkLoaderIntegrationTest" tests="12" skipped="0" failures="1" errors="0"
+  FAIL theOverlayComesFirstAndItsGenerationGoesOn(Env) @ SynxChunkLoaderIntegrationTest.java:391 : org.opentest4j.AssertionFailedError: expected: <5> but was: <0>
+synx.SynxChunkOverlayIntegrationTest" tests="14" skipped="0" failures="1" errors="0"
+  FAIL anExplicitlyUnloadedDirtyChunkCanBeEncodedOnTheSpot(Env) @ SynxChunkOverlayIntegrationTest.java:449 : org.opentest4j.AssertionFailedError: expected: <3> but was: <0>
+== 039-3 rc=1 # rc=1 wall=12s end 13:22:27
+26 tests completed, 1 failed
+synx.SynxChunkLoaderIntegrationTest" tests="12" skipped="0" failures="0" errors="0"
+synx.SynxChunkOverlayIntegrationTest" tests="14" skipped="0" failures="1" errors="0"
+  FAIL writtenDemotesOnlyWhatDidNotChangeSince(Env) @ SynxChunkOverlayIntegrationTest.java:341 : org.opentest4j.AssertionFailedError: expected: <OVERLAY> but was: <HANDLE>
+== 039-4 rc=1 # rc=1 wall=13s end 13:22:41
+26 tests completed, 1 failed
+synx.SynxChunkLoaderIntegrationTest" tests="12" skipped="0" failures="0" errors="0"
+synx.SynxChunkOverlayIntegrationTest" tests="14" skipped="0" failures="1" errors="0"
+  FAIL writtenGivesUpAfter50msWhenTheLockIsHeld(Env) @ SynxChunkOverlayIntegrationTest.java:263 : java.util.concurrent.TimeoutException
+== 039-5 rc=1 # rc=1 wall=12s end 13:22:53
+26 tests completed, 1 failed
+synx.SynxChunkLoaderIntegrationTest" tests="12" skipped="0" failures="0" errors="0"
+synx.SynxChunkOverlayIntegrationTest" tests="14" skipped="0" failures="1" errors="0"
+  FAIL aChangeThatThrowsCountsAllTheSame(Env) @ SynxChunkOverlayIntegrationTest.java:303 : org.opentest4j.AssertionFailedError: expected: <1> but was: <0>
+== 039-6 rc=1 # rc=1 wall=12s end 13:23:05
+26 tests completed, 3 failed
+synx.SynxChunkLoaderIntegrationTest" tests="12" skipped="0" failures="0" errors="0"
+synx.SynxChunkOverlayIntegrationTest" tests="14" skipped="0" failures="3" errors="0"
+  FAIL aThousandMaterializedChunksEncodeBackToTheirSegmentOne(Env) @ SynxChunkOverlayIntegrationTest.java:92 : org.opentest4j.AssertionFailedError: every materialized chunk sends and records its segment ① ==> expected: <1000> but was: <0>
+  FAIL aPacketHandedOutBeforeADemotionKeepsItsContent(Env) @ SynxChunkOverlayIntegrationTest.java:118 : org.opentest4j.AssertionFailedError: framed after the demotion, still lit ==> expected: <false> but was: <true>
+  FAIL biomeChangesMaterializeToo(Env) @ SynxChunkOverlayIntegrationTest.java:483 : org.opentest4j.AssertionFailedError: the new biome is in the record ==> array contents differ at index [8339], expected: <2> but was: <0>
+== 047-3 rc=1 # rc=1 wall=6s end 13:23:11
+18 tests completed, 1 failed
+app.shard.ShardWorldTest" tests="18" skipped="0" failures="1" errors="0"
+  FAIL aWritePhaseThatThrowsRunsAgainOnTheNextTick() @ ShardWorldTest.java:335 : org.opentest4j.AssertionFailedError: the ticks after the throw run the write phase too ==> expected: <3> but was: <1>
+== 048-2 rc=1 # rc=1 wall=13s end 13:23:24
+29 tests completed, 2 failed
+app.shard.ShardWorldTest" tests="18" skipped="0" failures="1" errors="0"
+  FAIL aSimulationDistanceAboveTheViewDistanceIsRefused() @ ShardWorldTest.java:65,ShardWorldTest.java:125 : org.opentest4j.AssertionFailedError: Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown.
+app.ShardLaunchTest" tests="11" skipped="0" failures="1" errors="0"
+  FAIL theSimulationDistanceDoesNotExceedTheViewDistance(Path) @ ShardLaunchTest.java:50,ShardLaunchTest.java:94 : org.opentest4j.AssertionFailedError: Picked up JAVA_TOOL_OPTIONS: -Dhttps.proxyHost=127.0.0.1 -Dhttps.proxyPort=7897 -Dhttp.proxyHost=127.0.0.1 -Dhttp.proxyPort=7897 -Dhttp.nonProxyHosts=maven.aliyun.com|*.aliyun.com 13:23:19.621 [main] INFO  i.github.bearisbug.synaxis.app.Main - Effective confi
+== 049-2 rc=1 # rc=1 wall=8s end 13:23:32
+8 tests completed, 1 failed
+app.shard.ShardWorldAssemblyTest" tests="8" skipped="0" failures="1" errors="0"
+  FAIL aNormalStopWritesEveryChangeAndNothingAfterIt() @ ShardWorldAssemblyTest.java:365 : org.opentest4j.AssertionFailedError: expected: <true> but was: <false>
+== 055-2 rc=1 # rc=1 wall=40s end 13:24:12
+29 tests completed, 2 failed
+app.shard.ShardWorldTest" tests="18" skipped="0" failures="1" errors="0"
+  FAIL theShardRegistersTheHandlersOfTheBaker() @ ShardWorldTest.java:101 : org.opentest4j.AssertionFailedError: synaxis:door is registered ==> expected: not <null>
+app.ShardLaunchTest" tests="11" skipped="0" failures="1" errors="0"
+  FAIL twoHandlersWithOneKeyRefuseTheShard(Path) @ ConfigFileLaunchTest.java:316,ShardLaunchTest.java:145 : org.opentest4j.AssertionFailedError: the JVM exits: Picked up JAVA_TOOL_OPTIONS: -Dhttps.proxyHost=127.0.0.1 -Dhttps.proxyPort=7897 -Dhttp.proxyHost=127.0.0.1 -Dhttp.proxyPort=7897 -Dhttp.nonProxyHosts=maven.aliyun.com|*.aliyun.com 13:23:41.061 [main] INFO  i.github.bearisbug.synaxis.app.Main - 
+=== phase2b 13:25:49

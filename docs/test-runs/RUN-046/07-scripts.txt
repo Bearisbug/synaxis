@@ -1,0 +1,500 @@
+# the scripts of RUN-046, as run (all under /tmp/m3e-run046, deleted afterwards); the two-process scripts are those of RUN-045 05-scripts.txt with <L> and the database name (m3e_run046_2p) substituted
+
+=== env.sh
+export JAVA_HOME=/opt/homebrew/opt/openjdk@25/libexec/openjdk.jdk/Contents/Home
+export JAVA_TOOL_OPTIONS="-Dhttps.proxyHost=127.0.0.1 -Dhttps.proxyPort=7897 -Dhttp.proxyHost=127.0.0.1 -Dhttp.proxyPort=7897 -Dhttp.nonProxyHosts=maven.aliyun.com|*.aliyun.com"
+export SYNAXIS_TEST_PG_URL=jdbc:postgresql://127.0.0.1:5440/postgres
+export SYNAXIS_TEST_PG_USER=postgres
+export SYNAXIS_TEST_PG_PASSWORD="$(docker inspect synaxis-pg --format '{{range .Config.Env}}{{println .}}{{end}}' | sed -n 's/^POSTGRES_PASSWORD=//p')"
+export SYNAXIS_TEST_REDIS_URL=redis://127.0.0.1:6440
+
+=== g.sh
+#!/bin/zsh
+# usage: g.sh <label> [nodb] -- <gradle args...>   runs one Gradle in the integrate worktree, one at a time
+label=$1; shift
+nodb=0
+[ "$1" = "--" ] && shift
+if [ "$1" = nodb ]; then nodb=1; shift; fi
+source /tmp/m3e-run046/env.sh
+if (( nodb )); then unset SYNAXIS_TEST_PG_URL SYNAXIS_TEST_PG_USER SYNAXIS_TEST_PG_PASSWORD SYNAXIS_TEST_REDIS_URL; fi
+cd /Users/bug/Documents/Projects/Minecraft/synaxis-wt/m3e-integrate
+while pgrep -f 'GradleWrapperMain|GradleDaemon|GradleMain' >/dev/null; do echo "waiting for another Gradle: $(pgrep -fl 'GradleWrapperMain|GradleDaemon|GradleMain' | cut -c1-80 | tr '\n' ';')"; sleep 20; done
+log=/tmp/m3e-run046/logs/$label.log
+start=$(date +%s)
+echo "# $label $(date '+%F %T') HEAD $(git rev-parse --short=10 HEAD) load1 $(sysctl -n vm.loadavg | awk '{print $2}') swap_free $(sysctl -n vm.swapusage | sed -E 's/.*free = ([0-9.]+M).*/\1/') db=$((1-nodb))" > $log
+echo "# ./gradlew $* --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts --max-workers=4" >> $log
+./gradlew "$@" --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts --max-workers=4 >> $log 2>&1
+rc=$?
+echo "# rc=$rc wall=$(( $(date +%s) - start ))s end $(date '+%T')" >> $log
+tail -1 $log; grep -E 'BUILD (SUCCESSFUL|FAILED)|tests completed' $log | head -3
+exit $rc
+
+=== xml.sh
+#!/bin/zsh
+setopt nullglob
+# usage: xml.sh <newer-than-epoch> <class simple name>...   prints tests/skipped/failures and failure heads with test lines
+since=$1; shift
+cd /Users/bug/Documents/Projects/Minecraft/synaxis-wt/m3e-integrate
+for c in "$@"; do
+  for f in */build/test-results/test/TEST-*.$c.xml build/test-results/test/TEST-*.$c.xml; do
+    m=$(stat -f %m $f); [ $m -lt $since ] && { echo "$c: stale $f"; continue; }
+    head -2 $f | grep -o 'testsuite name="[^"]*" tests="[0-9]*" skipped="[0-9]*" failures="[0-9]*" errors="[0-9]*"' | sed 's/testsuite name="io.github.bearisbug.synaxis.//'
+    perl -0ne 'while (/<testcase name="([^"]+)"[^>]*>\s*<failure message="([^"]{0,300})[^"]*"[^>]*>(.*?)<\/failure>/sg) { my ($n,$msg,$body)=($1,$2,$3); my @l = ($body =~ /at [\w.\$]+\((\w+Test\.java:\d+)\)/g); my %s; @l = grep { !$s{$_}++ } @l; $msg =~ s/&lt;/</g; $msg =~ s/&gt;/>/g; $msg =~ s/&quot;/"/g; $msg =~ s/&#10;/ /g; print "  FAIL $n @ ", join(",", @l[0..($#l<2?$#l:2)]), " : $msg\n"; }' $f
+    perl -0ne 'if (/<skipped message="([^"]{0,200})/) { my $m=$1; $m =~ s/&quot;/"/g; print "  SKIP e.g. $m\n" }' $f
+  done
+done
+
+=== mut.pl
+#!/usr/bin/perl
+# usage: mut.pl <file> <old> <new>   literal, the old text must occur exactly once
+use strict; use warnings;
+my ($file, $old, $new) = @ARGV;
+my $root = "/Users/bug/Documents/Projects/Minecraft/synaxis-wt/m3e-integrate/";
+$file = $root . $file unless $file =~ m{^/};
+open(my $in, '<', $file) or die "open $file: $!"; local $/; my $text = <$in>; close $in;
+my $count = () = $text =~ /\Q$old\E/g;
+die "mut: '$old' occurs $count times in $file\n" unless $count == 1;
+$text =~ s/\Q$old\E/$new/;
+open(my $out, '>', $file) or die; print $out $text; close $out;
+print "mut ok: $file\n";
+
+=== cp.sh
+#!/bin/zsh
+# counterproof helpers: cp <label> <restore files (space separated)> <gradle args> <classes> ; mutations are applied before calling
+R=/Users/bug/Documents/Projects/Minecraft/synaxis-wt/m3e-integrate
+M=/tmp/m3e-run046/mut.pl
+OUT=/tmp/m3e-run046/cp.out
+run() { # run <label> <restore> <classes> -- gradle args
+  local label=$1 restore=$2 classes=$3; shift 3; [ "$1" = "--" ] && shift
+  local t0=$(date +%s)
+  /tmp/m3e-run046/g.sh $label -- "$@" > /dev/null
+  local rc=$?
+  { echo "== $label rc=$rc $(tail -1 /tmp/m3e-run046/logs/$label.log)"; grep -E 'tests completed' /tmp/m3e-run046/logs/$label.log | head -2; /tmp/m3e-run046/xml.sh $t0 ${=classes}; } >> $OUT
+  if [ -n "$restore" ]; then (cd $R && git checkout -- ${=restore}); fi
+  (cd $R && git status --porcelain | grep -v '^ M docs/' | sed 's/^/  DIRTY /') >> $OUT
+}
+
+=== phase1.sh
+#!/bin/zsh
+# three gates on the integrate worktree, as CI: check with the frozen zlib, then the two strict modes
+R=/Users/bug/Documents/Projects/Minecraft/synaxis-wt/m3e-integrate
+OUT=/tmp/m3e-run046/gates.out
+summ() { # label
+  local label=$1
+  echo "== $label $(head -1 /tmp/m3e-run046/logs/$label.log | cut -c3-) | $(grep -E '^BUILD' /tmp/m3e-run046/logs/$label.log | tail -1) | $(tail -1 /tmp/m3e-run046/logs/$label.log | cut -c3-)" >> $OUT
+  (cd $R && for mod in . server-app synx loadtest baker protocol game-rts plugin-api testing architecture-tests; do
+     d=$mod/build/test-results/test; [ -d $d ] || continue
+     perl -e 'my ($c,$t,$s,$f,$e)=(0,0,0,0,0); for my $x (@ARGV) { open my $h,"<",$x; my $l=<$h>; $l.=<$h>; if ($l =~ /tests="(\d+)" skipped="(\d+)" failures="(\d+)" errors="(\d+)"/) { $c++; $t+=$1; $s+=$2; $f+=$3; $e+=$4 } } printf "   %-18s classes=%d tests=%d skipped=%d failures=%d errors=%d\n", $ARGV[0] =~ m{^([^/]+)/build} ? $1 : "root", $c,$t,$s,$f,$e' $d/TEST-*.xml
+   done) >> $OUT
+  (cd $R && for c in PlayerStoreIntegrationTest ShardSessionDbTest MigrationsDbTest CrossShardHandoverIntegrationTest ShutdownSaveIntegrationTest TransferTicketsIntegrationTest StoreHousekeepingDbTest; do printf "%s=%s " $c $(grep -o 'skipped="[0-9]*"' server-app/build/test-results/test/TEST-*.$c.xml | head -1 | tr -dc 0-9); done; echo) | sed 's/^/   store skipped: /' >> $OUT
+  grep -ho 'env dispatcher threads: [0-9]*\|env thread provider: [a-z]*' $R/build/test-results/test/TEST-*EnvDispatcherThreadsIntegrationTest*.xml 2>/dev/null | sort -u | tr '\n' ';' | sed 's/^/   env: /' >> $OUT; echo >> $OUT
+  grep -h 'config key gate\|translation key gate' $R/architecture-tests/build/test-results/test/*.xml 2>/dev/null | grep -o 'config key gate: [^<]*\|translation key gate: [^<]*' | sort -u | sed 's/^/   /' >> $OUT
+}
+/tmp/m3e-run046/g.sh gate-check -- check --rerun-tasks --no-build-cache -Dsynaxis.synx.require-frozen-zlib=true; summ gate-check
+/tmp/m3e-run046/g.sh gate-strict1 -- test --rerun-tasks --no-build-cache -Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true; summ gate-strict1
+/tmp/m3e-run046/g.sh gate-strict2 -- test --rerun-tasks --no-build-cache -Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true -Dsynaxis.thread-provider=grid; summ gate-strict2
+echo PHASE1 DONE >> $OUT
+
+=== phase2.sh
+#!/bin/zsh
+source /tmp/m3e-run046/cp.sh
+cd $R
+AP=io.github.bearisbug.synaxis.app; SH=$AP.shard; LP=io.github.bearisbug.synaxis.loadtest; SX=io.github.bearisbug.synaxis.synx
+P=server-app/src/main/java/io/github/bearisbug/synaxis/app
+SD=$P/shard/ShardDirectory.java; SW=$P/shard/ShardWorld.java; HB=$P/shard/ShardHeartbeat.java; MN=$P/Main.java
+SI=$P/shard/ShardServiceImpl.java; GT=$P/shard/ShardGates.java; AR=$P/shard/ShardArrivals.java
+W=$P/shard/WorldFlagsImpl.java; FS=$P/shard/WorldFlagStore.java; TI=$P/transfer/TicketIssuer.java; TV=$P/transfer/TicketVerifier.java
+L=loadtest/src/main/java/io/github/bearisbug/synaxis/loadtest; BT=$L/Bot.java; MC=$L/MergeCommand.java; RC=$L/RunCommand.java
+LL=src/main/java/io/github/bearisbug/synaxis/listener/preplay/LoginListener.java
+SC=synx/src/main/java/io/github/bearisbug/synaxis/synx/SynxChunk.java
+V6D=server-app/src/main/resources/db/rollback/V6__world_flag.down.sql
+SAT=(:server-app:test --rerun)
+
+# 057
+$M $SD 'if (!known.contains(name)) throw invalid("unknown field " + name);' 'if (!known.contains(name) && name.isEmpty()) throw invalid("unknown field " + name);'
+$M $SD 'if (frame.minX() < blockMinX || frame.maxX() > blockMaxX || frame.minZ() < blockMinZ || frame.maxZ() > blockMaxZ) {' 'if (frame.minX() < blockMinX || frame.maxX() > blockMaxX) {'
+$M $SD 'if (arrivalX < blockMinX || arrivalX > blockMaxX || arrivalZ < blockMinZ || arrivalZ > blockMaxZ)' 'if (arrivalX < blockMinX || arrivalX > blockMaxX)'
+run 057-2 "$SD" ShardDirectoryTest -- $SAT --tests $SH.ShardDirectoryTest
+$M $SD 'if (frame.minX() < blockMinX || frame.maxX() > blockMaxX || frame.minZ() < blockMinZ || frame.maxZ() > blockMaxZ) {' 'if (frame.maxX() > blockMaxX || frame.minZ() < blockMinZ || frame.maxZ() > blockMaxZ) {'
+$M $SD 'if (arrivalX < blockMinX || arrivalX > blockMaxX || arrivalZ < blockMinZ || arrivalZ > blockMaxZ)' 'if (arrivalX > blockMaxX || arrivalZ < blockMinZ || arrivalZ > blockMaxZ)'
+run 057-3 "$SD" ShardDirectoryTest -- $SAT --tests $SH.ShardDirectoryTest
+
+# 058
+$M $SW '        checkSpawnColumn(directory);
+' ''
+$M $SW '"the shard directory " + file + " is not valid: " + e.getMessage()' 'e.getMessage() + " (" + file + ")"'
+$M $SW 'if (x >= frame.minX() && x <= frame.maxX() && z >= frame.minZ() && z <= frame.maxZ()) {' 'if (x >= frame.minX() && x <= frame.maxX()) {'
+run 058-2 "$SW" ShardWorldTest -- $SAT --tests $SH.ShardWorldTest
+$M $SW 'if (x >= frame.minX() && x <= frame.maxX() && z >= frame.minZ() && z <= frame.maxZ()) {' 'if (x >= frame.minX() && z >= frame.minZ() && z <= frame.maxZ()) {'
+run 058-3 "$SW" ShardWorldTest -- $SAT --tests $SH.ShardWorldTest
+
+# 059
+$M $MN 'if (given != channel.capacity()) {' 'if (given != channel.capacity() || !maxPlayers.equals(Integer.toString(given))) {'
+run 059-2 "$MN" MainDirectoryModeTest -- $SAT --tests $AP.MainDirectoryModeTest
+$M $MN '            System.setProperty(MAX_PLAYERS_PROPERTY, Integer.toString(channel.capacity()));
+' ''
+$M $MN 'if ("false".equals(System.getProperty(ShardMain.ACCEPT_TRANSFERS))) {' 'if ("never".equals(System.getProperty(ShardMain.ACCEPT_TRANSFERS))) {'
+run 059-3 "$MN" MainDirectoryModeTest -- $SAT --tests $AP.MainDirectoryModeTest
+
+# 060
+$M $SW 'return directory == null ? manifest.bounds() : directory.ownRegion().bounds();' 'return directory != null && directory.mapId().isEmpty() ? directory.ownRegion().bounds() : manifest.bounds();'
+run 060-2 "$SW" ShardWorldAssemblyTest -- $SAT --tests $SH.ShardWorldAssemblyTest
+
+# 061
+$M $HB 'write.setBoolean(10, !gate.isClosed());' 'write.setBoolean(10, true);'
+$M $HB 'if (closed || started) return;' 'if (started) return;'
+$M $HB '            failuresInARow = 0;
+' ''
+$M $HB 'READ + "WHERE map_id = ? AND region_id = ?"' 'READ + "WHERE (map_id = ? OR true) AND region_id = ?"'
+run 061-2 "$HB" ShardHeartbeatDbTest -- $SAT --tests $SH.ShardHeartbeatDbTest
+$M $HB '        synchronized (this) {
+            closed = true;' '        beat();
+        synchronized (this) {
+            closed = true;'
+run 061-3 "$HB" ShardHeartbeatDbTest -- $SAT --tests $SH.ShardHeartbeatDbTest
+
+# 062, 063
+$M $SI '.thenComparing(HeartbeatRow::shardId)' ''
+run 062-2 "$SI" ShardServiceImplTest -- $SAT --tests $SH.ShardServiceImplTest
+$M $SI '    private static Choice choose(List<HeartbeatRow> rows) {
+' '    private static Choice choose(List<HeartbeatRow> rows) {
+        if (!rows.isEmpty() && rows.stream().allMatch(row -> row.online() >= row.capacity())) return new Choice.Refused(ShardTransferResult.FULL);
+'
+run 062-3 "$SI" ShardServiceImplTest -- $SAT --tests $SH.ShardServiceImplTest
+$M $SI 'read.orTimeout(HEARTBEAT_TIMEOUT_MILLIS, TimeUnit.MILLISECONDS)' 'read.orTimeout(HEARTBEAT_TIMEOUT_MILLIS, TimeUnit.DAYS)'
+run 063-2 "$SI" ShardServiceImplTest -- $SAT --tests $SH.ShardServiceImplTest
+$M $SI '        if (!row.live() || !row.accepting()) return new Choice.Refused(ShardTransferResult.OFFLINE);
+        if (row.online() >= row.capacity()) return new Choice.Refused(ShardTransferResult.FULL);' '        if (row.online() >= row.capacity()) return new Choice.Refused(ShardTransferResult.FULL);
+        if (!row.live() || !row.accepting()) return new Choice.Refused(ShardTransferResult.OFFLINE);'
+run 063-3 "$SI" ShardServiceImplTest -- $SAT --tests $SH.ShardServiceImplTest
+
+# 064, 065
+$M $GT 'if (gate == null || gate.equals(before) || !underWay.add(player)) return;' 'if (gate == null || gate.equals(before)) return;
+        underWay.add(player);'
+run 064-2 "$GT" ShardGatesTest -- $SAT --tests $SH.ShardGatesTest
+$M $GT 'final Throwable cause = error instanceof CompletionException && error.getCause() != null ? error.getCause() : error;' 'final Throwable cause = error;'
+$M $GT 'import java.util.concurrent.CompletionException;
+' ''
+run 064-3 "$GT" ShardGatesTest -- $SAT --tests $SH.ShardGatesTest
+$M $AR 'arrivals.values().removeIf(arrival -> now - arrival.claimedAt() >= FORGET_AFTER_MILLIS);' 'if (FORGET_AFTER_MILLIS < 0) arrivals.clear();'
+run 065-2 "$AR" ShardArrivalsTest -- $SAT --tests $SH.ShardArrivalsTest
+
+# 066, 067, 068, 069, 070
+$M $SC 'ScopedValue.where(WORLD_FLAG, Boolean.TRUE).run(action);' 'action.run();'
+run 066-2 "$SC" WorldFlagsReplayTest -- $SAT --tests $SH.WorldFlagsReplayTest
+$M $W 'if (chunkX < regionBounds.minX() ||' 'if (chunkX < regionBounds.minX() - 100 ||'
+run 066-3 "$W" WorldFlagsReplayTest -- $SAT --tests $SH.WorldFlagsReplayTest
+$M $W 'cell.y() >= dimension.maxY()' 'cell.y() >= dimension.maxY() + 100_000'
+run 066-4 "$W" WorldFlagsReplayTest -- $SAT --tests $SH.WorldFlagsReplayTest
+$M $W 'if (SynxChunk.sameBlock(now, target.block())) continue;' 'if (now.equals(target.block())) continue;'
+$M $W 'if (SynxChunk.sameBlock(now, target)) continue;' 'if (now.equals(target)) continue;'
+$M $W '!SynxChunk.sameBlock(now, last)' '!now.equals(last)'
+run 066-5 "$W" WorldFlagsReplayTest -- $SAT --tests $SH.WorldFlagsReplayTest
+$M $W 'new Cell(position.blockX(), position.blockY(), position.blockZ())' 'new Cell(position.blockX(), position.blockY() + 1000, position.blockZ())'
+run 067-2 "$W" WorldFlagsReplayTest -- $SAT --tests $SH.WorldFlagsReplayTest
+$M $W 'if (last != null && !SynxChunk.sameBlock(now, last)) conflict(application.key, cell, now, target);' 'if (last != null && !SynxChunk.sameBlock(now, last) && SynxChunk.sameBlock(now, target)) conflict(application.key, cell, now, target);'
+run 067-3 "$W" WorldFlagsReplayTest -- $SAT --tests $SH.WorldFlagsReplayTest
+$M $W 'describe(found),' 'found.name(),'
+$M $W 'describe(target));' 'target.name());'
+run 067-5 "$W" WorldFlagsReplayTest -- $SAT --tests $SH.WorldFlagsReplayTest
+$M $SC 'return withoutRecordKeys(block.nbtOrEmpty()).equals(withoutRecordKeys(target.nbtOrEmpty()));' 'return true;'
+run 067-6a "$SC" SynxChunkOverlayIntegrationTest -- :synx:test --rerun --tests $SX.SynxChunkOverlayIntegrationTest
+$M $SC ': targetHandler == null || !handler.getKey().equals(targetHandler.getKey())) return false;' ': targetHandler == null) return false;'
+run 067-6b "$SC" SynxChunkOverlayIntegrationTest -- :synx:test --rerun --tests $SX.SynxChunkOverlayIntegrationTest
+$M $W '        if (closed.get()) return;
+        final String key;' '        if (!closed.get()) return;
+        final String key;'
+run 068-2 "$W" WorldFlagsSyncTest -- $SAT --tests $SH.WorldFlagsSyncTest
+$M $FS 'AND version = ?' 'AND version >= ?'
+run 068-3 "$FS" WorldFlagStoreDbTest -- $SAT --tests $SH.WorldFlagStoreDbTest
+$M $W 'final boolean newer = !closed.get() && application.version > appliedVersion(application.key);' 'final boolean newer = !closed.get();'
+run 068-4 "$W" WorldFlagsReplayTest -- $SAT --tests $SH.WorldFlagsReplayTest
+$M $W 'if (retries == retryBackoff.size()) {' 'if (retries >= 0) {'
+run 069-2 "$W" WorldFlagsReplayTest -- $SAT --tests $SH.WorldFlagsReplayTest.flagsThatCannotBeReadRefuseTheStartBeforeTheOverlayIsOpened
+run 069-3 "" WorldFlagsReplayTest -- nodb $SAT --tests $SH.WorldFlagsReplayTest
+$M $W 'if (instance == null || applier == null || closed.get() || version <= appliedVersion(key)) return;' 'if (instance == null || applier == null || version <= appliedVersion(key)) return;'
+$M $W 'final boolean newer = !closed.get() && application.version > appliedVersion(application.key);' 'final boolean newer = application.version > appliedVersion(application.key);'
+run 070-2 "$W" WorldFlagsSyncTest -- $SAT --tests $SH.WorldFlagsSyncTest.aClosedChannelDropsTheMessagesAndTheReads
+$M $W 'if (instance == null || applier == null || closed.get() || version <= appliedVersion(key)) return;' 'if (instance == null || applier == null || version <= appliedVersion(key)) return;'
+$M $W 'final boolean newer = !closed.get() && application.version > appliedVersion(application.key);' 'final boolean newer = application.version > appliedVersion(application.key);'
+$M $W '        if (closed.get()) return;
+        final String key;' '        final String key;'
+run 070-3 "$W" WorldFlagsSyncTest -- $SAT --tests $SH.WorldFlagsSyncTest.aClosedChannelDropsTheMessagesAndTheReads
+$M $W 'if (instance == null || cells.isEmpty() || closed.get()) return;' 'if (instance == null || cells.isEmpty()) return;'
+$M $W '        if (closed.get()) return;
+        final int to' '        final int to'
+run 070-4 "$W" WorldFlagsSyncTest -- $SAT --tests $SH.WorldFlagsSyncTest.aClosedChannelDropsTheMessagesAndTheReads
+
+# 075
+$M $SI 'filter(row -> row.live() && row.accepting())' 'filter(row -> row.accepting())'
+run 075-2 "$SI" ShardServiceHeartbeatDbTest -- $SAT --tests $SH.ShardServiceHeartbeatDbTest
+$M $HB "interval '15 seconds'" "interval '30 seconds'"
+run 075-3 "$HB" ShardServiceHeartbeatDbTest -- $SAT --tests $SH.ShardServiceHeartbeatDbTest
+$M $HB "interval '15 seconds'" "interval '17 seconds'"
+run 075-4 "$HB" ShardServiceHeartbeatDbTest -- $SAT --tests $SH.ShardServiceHeartbeatDbTest
+
+# 085
+$M $LL 'if (connection instanceof PlayerSocketConnection socketConnection
+                && !connection.process()' 'if (!connection.wasTransferred() && connection instanceof PlayerSocketConnection socketConnection
+                && !connection.process()'
+run 085-2 "$LL" FullChannelTransferSocketTest -- $SAT --tests $AP.FullChannelTransferSocketTest
+
+# 087
+$M $TV '        onClaimed.accept(player, ticket);
+' ''
+$M $TV 'public boolean claim(Player player, TransferTicket ticket) {
+' 'public boolean claim(Player player, TransferTicket ticket) {
+        onClaimed.accept(player, ticket);
+'
+run 087-2 "$TV" "TransferTicketsIntegrationTest TransferAdmissionIntegrationTest" -- $SAT --tests $AP.store.TransferTicketsIntegrationTest --tests $AP.TransferAdmissionIntegrationTest
+$M $TI '            final Map<String, Object> issued = new LinkedHashMap<>();
+            issued.put("transfer_ref", ticket.reference());
+            issued.put("player_uuid", ticket.playerUuid());
+            issued.put("source_shard", shardId);
+            issued.put("target_shard", targetShardId);
+            issued.put("issued_at", issuedAt);
+            analytics.accept("transfer_issued", issued);
+' ''
+$M $TI '            // The cookie first: the client stores it before it acts on the transfer
+' '            final Map<String, Object> issued = new LinkedHashMap<>();
+            issued.put("transfer_ref", ticket.reference());
+            issued.put("player_uuid", ticket.playerUuid());
+            issued.put("source_shard", shardId);
+            issued.put("target_shard", targetShardId);
+            issued.put("issued_at", issuedAt);
+            analytics.accept("transfer_issued", issued);
+            // The cookie first: the client stores it before it acts on the transfer
+'
+run 087-3 "$TI" TransferTicketsIntegrationTest -- $SAT --tests $AP.store.TransferTicketsIntegrationTest
+
+# 088
+$M $V6D 'DROP TABLE world_flag;
+' ''
+run 088-2 "$V6D" MigrationsDbTest -- $SAT --tests $AP.store.MigrationsDbTest
+
+# loadtest: 071-074, 086
+LAT=(:loadtest:test --rerun)
+BST=$LP.BotSocketTest
+$M $BT 'private static final int FIRST_BATCH = 9;' 'private static final int FIRST_BATCH = 1;'
+run 071-2 "$BT" BotSocketTest -- $LAT --tests $BST.aGateBotFollowsTransfersBackAndForthWithTheCookieItWasGiven
+$M $BT 'if (step.entered()) tryStart.compareAndSet(0, System.nanoTime());' 'if (step.entered()) tryStart.compareAndSet(0, current.since());'
+run 071-3 "$BT" BotSocketTest -- $LAT --tests $BST.aGateBotFollowsTransfersBackAndForthWithTheCookieItWasGiven --tests $BST.aGateBotInConfigurationAtTheFrameTimesItsTryFromTheFirstPositionItSends
+$M $BT 'Base64.getEncoder().encodeToString(cookie.value())' 'Base64.getEncoder().encodeToString(new byte[0])'
+run 071-4 "$BT" BotSocketTest -- $LAT --tests $BST.aGateBotFollowsTransfersBackAndForthWithTheCookieItWasGiven
+$M $RC '(!frames.isEmpty() || dwell != null)' '(!frames.isEmpty())'
+run 072-2 "$RC" ProfileTest -- $LAT --tests $LP.ProfileTest
+$M $BT 'if (!tryFailed(e)) throw e;' 'if (tryFailed(e) || !tryFailed(e)) throw e;'
+run 073-2 "$BT" BotSocketTest -- $LAT --tests $BST.aGateBotWhoseTransferIsRefusedCountsItByReasonAndLogsInAgain
+$M $BT 'return kicked.key.startsWith("synaxis:") ? kicked.key.substring("synaxis:".length()) : kicked.key;' 'return kicked.getMessage();'
+run 073-3 "$BT" BotSocketTest -- $LAT --tests $BST.aGateBotWhoseTransferIsRefusedCountsItByReasonAndLogsInAgain
+$M $BT '        synchronized (writeLock) {
+            if (leg != current || state != ConnectionState.PLAY) return;' '        if (current.walk() != null && state != ConnectionState.PLAY) { var _ = current.walk().next(now); }
+        synchronized (writeLock) {
+            if (leg != current || state != ConnectionState.PLAY) return;'
+run 074-2 "$BT" BotSocketTest -- $LAT --tests $BST.aGateBotInConfigurationAtTheFrameTimesItsTryFromTheFirstPositionItSends
+$M $MC 'final boolean completedOk = transferCompleted >= criteria.minTransfers();' 'final boolean completedOk = transferCount >= criteria.minTransfers();'
+run 086-2 "$MC" MergeTest -- $LAT --tests $LP.MergeTest
+echo PHASE2 DONE >> $OUT
+
+=== phase2b.sh
+#!/bin/zsh
+source /tmp/m3e-run046/cp.sh
+cd $R
+AP=io.github.bearisbug.synaxis.app; SH=$AP.shard; LP=io.github.bearisbug.synaxis.loadtest; SX=io.github.bearisbug.synaxis.synx
+P=server-app/src/main/java/io/github/bearisbug/synaxis/app
+SD=$P/shard/ShardDirectory.java; SW=$P/shard/ShardWorld.java; HB=$P/shard/ShardHeartbeat.java; MN=$P/Main.java
+SI=$P/shard/ShardServiceImpl.java; GT=$P/shard/ShardGates.java; AR=$P/shard/ShardArrivals.java
+W=$P/shard/WorldFlagsImpl.java; FS=$P/shard/WorldFlagStore.java; TI=$P/transfer/TicketIssuer.java; TV=$P/transfer/TicketVerifier.java
+L=loadtest/src/main/java/io/github/bearisbug/synaxis/loadtest; BT=$L/Bot.java; MC=$L/MergeCommand.java; RC=$L/RunCommand.java
+LL=src/main/java/io/github/bearisbug/synaxis/listener/preplay/LoginListener.java
+SC=synx/src/main/java/io/github/bearisbug/synaxis/synx/SynxChunk.java
+V6D=server-app/src/main/resources/db/rollback/V6__world_flag.down.sql
+SAT=(:server-app:test --rerun)
+# 057
+$M $SD 'if (!known.contains(name)) throw invalid("unknown field " + name);' 'if (!known.contains(name) && name.isEmpty()) throw invalid("unknown field " + name);'
+$M $SD 'if (frame.minX() < blockMinX || frame.maxX() > blockMaxX || frame.minZ() < blockMinZ || frame.maxZ() > blockMaxZ) {' 'if (frame.minX() < blockMinX || frame.maxX() > blockMaxX) {'
+$M $SD 'if (arrivalX < blockMinX || arrivalX > blockMaxX || arrivalZ < blockMinZ || arrivalZ > blockMaxZ)' 'if (arrivalX < blockMinX || arrivalX > blockMaxX || arrivalZ < blockMinZ - 100_000 || arrivalZ > blockMaxZ + 100_000)'
+run b057-2 "$SD" ShardDirectoryTest -- $SAT --tests $SH.ShardDirectoryTest
+$M $SD 'if (frame.minX() < blockMinX || frame.maxX() > blockMaxX || frame.minZ() < blockMinZ || frame.maxZ() > blockMaxZ) {' 'if (frame.maxX() > blockMaxX || frame.minZ() < blockMinZ || frame.maxZ() > blockMaxZ) {'
+$M $SD 'if (arrivalX < blockMinX || arrivalX > blockMaxX || arrivalZ < blockMinZ || arrivalZ > blockMaxZ)' 'if (arrivalX > blockMaxX || arrivalZ < blockMinZ || arrivalZ > blockMaxZ)'
+run b057-3 "$SD" ShardDirectoryTest -- $SAT --tests $SH.ShardDirectoryTest
+
+# 058
+$M $SW '        checkSpawnColumn(directory);
+' ''
+$M $SW '"the shard directory " + file + " is not valid: " + e.getMessage()' 'e.getMessage() + " (" + file + ")"'
+$M $SW 'if (x >= frame.minX() && x <= frame.maxX() && z >= frame.minZ() && z <= frame.maxZ()) {' 'if (x >= frame.minX() && x <= frame.maxX()) {'
+run b058-2 "$SW" ShardWorldTest -- $SAT --tests $SH.ShardWorldTest
+$M $SW 'if (x >= frame.minX() && x <= frame.maxX() && z >= frame.minZ() && z <= frame.maxZ()) {' 'if (x >= frame.minX() && z >= frame.minZ() && z <= frame.maxZ()) {'
+run b058-3 "$SW" ShardWorldTest -- $SAT --tests $SH.ShardWorldTest
+
+# 059
+$M $MN 'if (given != channel.capacity()) {' 'if (given != channel.capacity() || !maxPlayers.equals(Integer.toString(given))) {'
+run b059-2 "$MN" MainDirectoryModeTest -- $SAT --tests $AP.MainDirectoryModeTest
+$M $MN '            System.setProperty(MAX_PLAYERS_PROPERTY, Integer.toString(channel.capacity()));
+' ''
+$M $MN 'if ("false".equals(System.getProperty(ShardMain.ACCEPT_TRANSFERS))) {' 'if ("never".equals(System.getProperty(ShardMain.ACCEPT_TRANSFERS))) {'
+run b059-3 "$MN" MainDirectoryModeTest -- $SAT --tests $AP.MainDirectoryModeTest
+
+# 060
+$M $SW 'return directory == null ? manifest.bounds() : directory.ownRegion().bounds();' 'return directory != null && directory.mapId().isEmpty() ? directory.ownRegion().bounds() : manifest.bounds();'
+run b060-2 "$SW" ShardWorldAssemblyTest -- $SAT --tests $SH.ShardWorldAssemblyTest
+
+# 061
+$M $HB 'write.setBoolean(10, !gate.isClosed());' 'write.setBoolean(10, true);'
+$M $HB 'if (closed || started) return;' 'if (closed && started) return;'
+$M $HB '            failuresInARow = 0;
+' ''
+$M $HB 'READ + "WHERE map_id = ? AND region_id = ?"' 'READ + "WHERE (map_id = ? OR true) AND region_id = ?"'
+run b061-2 "$HB" ShardHeartbeatDbTest -- $SAT --tests $SH.ShardHeartbeatDbTest
+$M $HB '        synchronized (this) {
+            closed = true;' '        beat();
+        synchronized (this) {
+            closed = true;'
+run b061-3 "$HB" ShardHeartbeatDbTest -- $SAT --tests $SH.ShardHeartbeatDbTest
+
+# 062, 063
+$M $SI '.thenComparing(HeartbeatRow::shardId)' ''
+run b062-2 "$SI" ShardServiceImplTest -- $SAT --tests $SH.ShardServiceImplTest
+$M $SI '    private static Choice choose(List<HeartbeatRow> rows) {
+' '    private static Choice choose(List<HeartbeatRow> rows) {
+        if (!rows.isEmpty() && rows.stream().allMatch(row -> row.online() >= row.capacity())) return new Choice.Refused(ShardTransferResult.FULL);
+'
+run b062-3 "$SI" ShardServiceImplTest -- $SAT --tests $SH.ShardServiceImplTest
+$M $SI 'read.orTimeout(HEARTBEAT_TIMEOUT_MILLIS, TimeUnit.MILLISECONDS)' 'read.orTimeout(HEARTBEAT_TIMEOUT_MILLIS, TimeUnit.DAYS)'
+run b063-2 "$SI" ShardServiceImplTest -- $SAT --tests $SH.ShardServiceImplTest
+$M $SI '        if (!row.live() || !row.accepting()) return new Choice.Refused(ShardTransferResult.OFFLINE);
+        if (row.online() >= row.capacity()) return new Choice.Refused(ShardTransferResult.FULL);' '        if (row.online() >= row.capacity()) return new Choice.Refused(ShardTransferResult.FULL);
+        if (!row.live() || !row.accepting()) return new Choice.Refused(ShardTransferResult.OFFLINE);'
+run b063-3 "$SI" ShardServiceImplTest -- $SAT --tests $SH.ShardServiceImplTest
+
+# 067-5 with the method kept in use
+W=$P/shard/WorldFlagsImpl.java
+$M $W '        final StringBuilder text = new StringBuilder(block.state());' '        if (block.stateId() >= 0) return block.name();
+        final StringBuilder text = new StringBuilder(block.state());'
+run b067-5 "$W" WorldFlagsReplayTest -- $SAT --tests $SH.WorldFlagsReplayTest
+run b069-3 "" WorldFlagsReplayTest -- nodb $SAT --tests $SH.WorldFlagsReplayTest
+# 072-2 without the parentheses Error Prone refuses
+L=loadtest/src/main/java/io/github/bearisbug/synaxis/loadtest; RC=$L/RunCommand.java; LP=io.github.bearisbug.synaxis.loadtest
+$M $RC '(!frames.isEmpty() || dwell != null)' '!frames.isEmpty()'
+run b072-2 "$RC" ProfileTest -- :loadtest:test --rerun --tests $LP.ProfileTest
+# every first step once more, on the restored code
+SX=io.github.bearisbug.synaxis.synx
+run rerun-server-app "" "ShardDirectoryTest ShardWorldTest MainDirectoryModeTest ShardWorldAssemblyTest ShardHeartbeatDbTest ShardServiceImplTest ShardServiceHeartbeatDbTest ShardGatesTest ShardArrivalsTest WorldFlagsReplayTest WorldFlagsSyncTest WorldFlagStoreDbTest FullChannelTransferSocketTest TransferTicketsIntegrationTest TransferAdmissionIntegrationTest MigrationsDbTest ShardMainTest ShardLaunchTest ShardArchitectureTest" -- :server-app:test --rerun --tests "$SH.*" --tests $AP.MainDirectoryModeTest --tests $AP.FullChannelTransferSocketTest --tests $AP.store.TransferTicketsIntegrationTest --tests $AP.TransferAdmissionIntegrationTest --tests $AP.store.MigrationsDbTest --tests $AP.ShardMainTest --tests $AP.ShardLaunchTest
+run rerun-synx-loadtest "" "SynxChunkLoaderIntegrationTest SynxChunkOverlayIntegrationTest BotSocketTest MergeTest ProfileTest" -- :synx:test --rerun --tests $SX.SynxChunkLoaderIntegrationTest --tests $SX.SynxChunkOverlayIntegrationTest :loadtest:test --rerun
+echo PHASE2B DONE >> $OUT
+
+=== phase3.sh
+#!/bin/zsh
+# M3-C cases whose counts or red lines moved with M3-E
+source /tmp/m3e-run046/cp.sh
+cd $R
+SX=io.github.bearisbug.synaxis.synx; AP=io.github.bearisbug.synaxis.app; SH=$AP.shard
+SC=synx/src/main/java/io/github/bearisbug/synaxis/synx/SynxChunk.java; SL=synx/src/main/java/io/github/bearisbug/synaxis/synx/SynxChunkLoader.java
+SE=synx/src/main/java/io/github/bearisbug/synaxis/synx/SynxStaticEntities.java; SW=server-app/src/main/java/io/github/bearisbug/synaxis/app/shard/ShardWorld.java
+AG=(:synx:test --rerun --tests $SX.SynxChunkLoaderIntegrationTest --tests $SX.SynxChunkOverlayIntegrationTest)
+AC="SynxChunkLoaderIntegrationTest SynxChunkOverlayIntegrationTest"
+$M $SC '        // Mode first: demotion publishes the new source before it switches the mode back to handle
+        if (mode == Mode.HANDLE) return handlePacket();' '        // Mode first: demotion publishes the new source before it switches the mode back to handle
+        if (mode == Mode.HANDLE) { handlePacket(); return super.getFullDataPacket(); }'
+run 034-2 "$SC" "$AC" -- $AG
+$M $SC 'section.setSkyLight(Objects.requireNonNullElse(decoded.sky()[i], NO_LIGHT));' 'section.setSkyLight(NO_LIGHT);'
+run 035-2 "$SC" "$AC" -- $AG
+$M $SC 'if (blocks.any(air)) count -= blocks.count(air);' 'if (blocks.any(air) && air < 0) count -= blocks.count(air);'
+run 035-3 "$SC" "$AC" -- $AG
+$M $SC '        invalidations.incrementAndGet();
+' ''
+run 035-4 "$SC" "$AC" -- $AG
+$M $SC '                         @Nullable BlockHandler.Destroy destroy) {
+        if (isReadOnly()) return;
+' '                         @Nullable BlockHandler.Destroy destroy) {
+'
+run 036-2 "$SC" "$AC" -- $AG
+$M $SC 'blocks.getHandlerOrDummy(entity.handler())' 'blocks.getHandler(entity.handler())'
+run 037-2 "$SC" "$AC" -- $AG
+$M $SC 'tickableMap.put(index, entry.getValue().block(state(source, x, y, z)));' 'tickableMap.put(index, entry.getValue().block(state(source, x, y, z)).withHandler(instance.process().block().getHandlerOrDummy(handler.getKey().asString())));'
+run 037-3 "$SC" "$AC" -- $AG
+$M $SE 'EntityType.BLOCK_DISPLAY, EntityType.ARMOR_STAND);' 'EntityType.BLOCK_DISPLAY, EntityType.ARMOR_STAND, EntityType.MINECART);'
+run 038-2 "$SE" "$AC" -- $AG
+$M $SL '                        hit.generation());' '                        0);'
+run 039-2 "$SL" "$AC" -- $AG
+$M $SC '            if (this.generation.get() != generation) return true; // changed again since the encoding: still dirty
+' ''
+run 039-3 "$SC" "$AC" -- $AG
+$M $SC 'tryLockWriteLock(Duration.ofNanos(LOCK_WAIT_NANOS))' 'tryLockWriteLock(Duration.ofDays(1))'
+run 039-4 "$SC" "$AC" -- $AG
+$M $SC '        try {
+            super.setBlock(x, y, z, block, placement, destroy);
+        } finally {
+            changed(); // a handler that throws in onPlace or onDestroy does so after the palette has the change
+        }' '        super.setBlock(x, y, z, block, placement, destroy);
+        changed(); // a handler that throws in onPlace or onDestroy does so after the palette has the change'
+run 039-5 "$SC" "$AC" -- $AG
+$M $SC '            loader.overlaySent();
+            return snapshot();' '            loader.overlaySent();
+            return super.getFullDataPacket();'
+run 039-6 "$SC" "$AC" -- $AG
+# 047, 048, 049, 055 (server-app)
+$M $SW '            try {
+                writePhase.run();
+            } catch (RuntimeException e) {
+                process.exception().handleException(e);
+            }' '            writePhase.run();'
+run 047-3 "$SW" ShardWorldTest -- :server-app:test --rerun --tests $SH.ShardWorldTest
+$M $SW 'if (simulationDistance < 1 || simulationDistance > viewDistance) {' 'if (simulationDistance < 1) {'
+run 048-2 "$SW" "ShardWorldTest ShardLaunchTest" -- :server-app:test --rerun --tests $SH.ShardWorldTest --tests $AP.ShardLaunchTest
+$M $SW '        shutdown.addAfterPlayers("overlay", overlay::finalFlush);
+' ''
+run 049-2 "$SW" ShardWorldAssemblyTest -- :server-app:test --rerun --tests $SH.ShardWorldAssemblyTest
+$M $SW '        SynxHandlers.registerAll(process.block());
+' ''
+$M $SW 'import io.github.bearisbug.synaxis.synx.SynxHandlers;
+' ''
+run 055-2 "$SW" "ShardWorldTest ShardLaunchTest" -- :server-app:test --rerun --tests $SH.ShardWorldTest --tests $AP.ShardLaunchTest
+echo PHASE3 DONE >> $OUT
+
+=== setup2p.sh
+#!/bin/zsh
+# prepares <L> for the two-process cases: bake, shards.json, database, migration; prints <L>
+set -e
+source /tmp/m3e-run046/env.sh
+R=/Users/bug/Documents/Projects/Minecraft/synaxis-wt/m3e-integrate
+L=$(mktemp -d /tmp/m3e-run046/2p.XXXX)
+echo $L > /tmp/m3e-run046/L
+cd $L
+/usr/bin/time -l $R/baker/build/install/baker/bin/baker bake --map-id mini --source generator:synthetic:7 --out $L/maps --logs $L/bakelogs --bounds 0,0,31,15 --threads 2 > bake.log 2>&1
+cat > $L/maps/mini/shards.json <<'J'
+{
+  "format_version": 1,
+  "map_id": "mini",
+  "regions": [
+    {"region_id": "r0", "bounds": {"min_x": 0, "min_z": 0, "max_x": 15, "max_z": 15},
+     "gates": [{"gate_id": "r0-east", "min": [240, 0, 120], "max": [255, 255, 135],
+                "target_region": "r1", "arrival": [232.5, 200.0, 128.5, 90.0]}]},
+    {"region_id": "r1", "bounds": {"min_x": 16, "min_z": 0, "max_x": 31, "max_z": 15},
+     "gates": [{"gate_id": "r1-west", "min": [256, 0, 120], "max": [271, 255, 135],
+                "target_region": "r0", "arrival": [279.5, 200.0, 128.5, -90.0]}]}
+  ],
+  "channels": [
+    {"shard_id": "r0-c1", "region_id": "r0", "channel": 1, "host": "127.0.0.1", "port": 25611, "capacity": 2},
+    {"shard_id": "r0-c2", "region_id": "r0", "channel": 2, "host": "127.0.0.1", "port": 25613, "capacity": 200},
+    {"shard_id": "r1-c1", "region_id": "r1", "channel": 1, "host": "127.0.0.1", "port": 25612, "capacity": 200}
+  ]
+}
+J
+docker exec synaxis-pg psql -U postgres -qc "CREATE DATABASE m3e_run046_2p" 
+{
+  echo "export SYNAXIS_STATE_DB_URL=jdbc:postgresql://127.0.0.1:5440/m3e_run046_2p"
+  echo "export SYNAXIS_STATE_DB_USER=postgres"
+  echo 'export SYNAXIS_STATE_DB_PASSWORD="$SYNAXIS_TEST_PG_PASSWORD"'
+  echo "export SYNAXIS_REDIS_URL=redis://127.0.0.1:6440"
+  echo "export SYNAXIS_TRANSFER_HMAC_KEYS=1:$(openssl rand -base64 32)"
+} > $L/shard.env
+chmod 600 $L/shard.env
+source $L/shard.env
+$R/server-app/build/install/server-app/bin/server-app --migrate-only --auth-mode=offline > migrate.log 2>&1; echo "migrate exit=$?" >> migrate.log
+echo $L
+
+=== poll.sh: RUN-045 05-scripts.txt's poll.sh with two changes
+#  own processes: cwd under synaxis-wt/m3e-* or /tmp/m3e-run046* (was /tmp/m3e-int*)
+#  stop condition: (( el + 300 > max * 60 + 60 )) (was max * 60), so the reading at 90 min is taken

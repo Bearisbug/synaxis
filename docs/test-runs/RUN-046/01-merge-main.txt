@@ -1,0 +1,8 @@
+# 2026-09-28 11:20 and again 13:00, worktree synaxis-wt/m3e-integrate, branch m3e/integrate at a1eeddb997
+# git fetch origin; git merge origin/main
+origin/main = 12d3839493 (docs: TEST.md follows DESIGN-M3 v0.15 and registers RUN-044)
+merge-base m3e/integrate origin/main = 12d3839493
+git merge-base --is-ancestor origin/main HEAD: yes; git merge origin/main printed "Already up to date." both times, no merge commit; the gates of 02 are the "合后门禁"
+latest RUN on origin/main: docs/test-runs/RUN-044; RUN-045 exists on this branch only (merge acceptance evidence), so this round is RUN-046
+db/migration on origin/main: V1__player_store.sql V2__item_ledger.sql V3__roles.sql V4__moderation.sql 
+code under test: identical to f1c39684f8 (git diff --stat f1c39684f8 HEAD -- . ':!docs' is empty: '')

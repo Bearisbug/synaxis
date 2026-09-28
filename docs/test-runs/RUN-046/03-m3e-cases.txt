@@ -1,0 +1,268 @@
+# 2026-09-28 13:11~13:31, m3e/integrate a1eeddb997 (code = f1c39684f8): the steps of TC-WORLD-057~075, 085~088 on the unit level, one counterproof at a time
+# each entry: apply the change of the step (mut.pl, a literal replacement that must match once), run the Gradle of the step with --rerun (and the database variables), read the JUnit XML, git checkout -- the file, check git status
+# a line 'DIRTY' would mean a file left changed: there is none (git status only showed docs/ and the new evidence directory of this round)
+# first pass notes:
+#  - 057-2, 061-2, 067-5, 072-2 did not compile: Error Prone -Werror (UnusedVariable 'arrivalZ'; UnusedVariable field 'closed'; UnusedMethod 'describe'; UnnecessaryParentheses). The steps were rewritten so the change compiles (TEST.md has the rewritten ones) and ran again as b057-2, b061-2, b067-5, b072-2
+#  - up to 063-3 the XML reader failed on a zsh glob and printed nothing; the red lines of those runs are in the Gradle console logs, and all of 057~063 ran again as b057~b063 with the XML read
+#  - 069-3 is TC-WORLD-069 step 3: no SYNAXIS_TEST_* variables, synaxis-pg left running
+# last: every first step once more on the restored code (rerun-server-app, rerun-synx-loadtest), all green
+# the gradle line of each entry: /tmp/m3e-run046/logs/<label>.log header (kept in 07-scripts.txt as the scripts that produced them)
+
+== 057-2 rc=1 # rc=1 wall=6s end 13:11:32
+== 057-3 rc=1 # rc=1 wall=5s end 13:11:37
+13 tests completed, 2 failed
+== 058-2 rc=1 # rc=1 wall=9s end 13:11:46
+18 tests completed, 3 failed
+== 058-3 rc=1 # rc=1 wall=6s end 13:11:52
+18 tests completed, 1 failed
+== 059-2 rc=1 # rc=1 wall=6s end 13:11:58
+8 tests completed, 1 failed
+== 059-3 rc=1 # rc=1 wall=4s end 13:12:03
+8 tests completed, 3 failed
+== 060-2 rc=1 # rc=1 wall=16s end 13:12:19
+8 tests completed, 2 failed
+== 061-2 rc=1 # rc=1 wall=5s end 13:12:24
+== 061-3 rc=1 # rc=1 wall=24s end 13:12:48
+6 tests completed, 2 failed
+== 062-2 rc=1 # rc=1 wall=9s end 13:12:57
+6 tests completed, 1 failed
+== 062-3 rc=1 # rc=1 wall=7s end 13:13:04
+6 tests completed, 1 failed
+== 063-2 rc=1 # rc=1 wall=8s end 13:13:13
+6 tests completed, 1 failed
+== 063-3 rc=1 # rc=1 wall=7s end 13:13:20
+6 tests completed, 1 failed
+app.shard.ShardServiceImplTest" tests="6" skipped="0" failures="1" errors="0"
+  FAIL everyCheckDecidesInItsOrderAndOnlyAChosenChannelReachesTheTickets() @ ShardServiceImplTest.java:171 : org.opentest4j.AssertionFailedError: expired comes before full ==> expected: <OFFLINE> but was: <FULL>
+== 064-2 rc=1 # rc=1 wall=7s end 13:13:28
+6 tests completed, 1 failed
+app.shard.ShardGatesTest" tests="6" skipped="0" failures="1" errors="0"
+  FAIL aWalkInWhileATransferIsUnderWayDoesNotTrigger() @ ShardGatesTest.java:139 : org.opentest4j.AssertionFailedError: the first transfer is still under way ==> expected: <[Walker r1]> but was: <[Walker r1, Walker r1]>
+== 064-3 rc=1 # rc=1 wall=6s end 13:13:34
+6 tests completed, 1 failed
+app.shard.ShardGatesTest" tests="6" skipped="0" failures="1" errors="0"
+  FAIL aResultTheDirectoryRulesOutAndATransferThatThrewAreErrors() @ ShardGatesTest.java:213 : org.opentest4j.AssertionFailedError: expected: <[java.lang.IllegalStateException: the shard service answers UNKNOWN_TARGET, java.lang.IllegalStateException: the shard service answers SAME_TARGET, java.lang.IllegalStateException: the ticket does not encode]> but was: <[java.lang.IllegalState
+== 065-2 rc=1 # rc=1 wall=7s end 13:13:41
+5 tests completed, 1 failed
+app.shard.ShardArrivalsTest" tests="5" skipped="0" failures="1" errors="0"
+  FAIL anArrivalNotCompletedWithin60sIsDroppedAtTheNextClaim() @ ShardArrivalsTest.java:156 : org.opentest4j.AssertionFailedError: the stuck arrival was dropped without an event ==> expected: <[]> but was: <[transfer_completed {transfer_ref=050000ab, first_batch_ms=60401, source_shard=r0-c1, target_shard=r1-c1}]>
+== 066-2 rc=1 # rc=1 wall=14s end 13:13:55
+11 tests completed, 1 failed
+app.shard.WorldFlagsReplayTest" tests="11" skipped="0" failures="1" errors="0"
+  FAIL aReadOnlyWorldStillTakesItsFlags() @ WorldFlagsReplayTest.java:264,WorldFlagsReplayTest.java:535 : org.opentest4j.AssertionFailedError: the bridge at x 0 ==> expected: <minecraft:oak_planks{properties={}, nbt=null, handler=null}> but was: <minecraft:air{properties={}, nbt=null, handler=null}>
+== 066-3 rc=1 # rc=1 wall=11s end 13:14:06
+11 tests completed, 1 failed
+app.shard.WorldFlagsReplayTest" tests="11" skipped="0" failures="1" errors="0"
+  FAIL aReadOnlyWorldStillTakesItsFlags() @ WorldFlagsReplayTest.java:547 : org.opentest4j.AssertionFailedError: no application loaded the chunk past the bounds ==> expected: <null> but was: <DynamicChunk[-1:0]>
+== 066-4 rc=1 # rc=1 wall=11s end 13:14:18
+11 tests completed, 1 failed
+app.shard.WorldFlagsReplayTest" tests="11" skipped="0" failures="1" errors="0"
+  FAIL aReadOnlyWorldStillTakesItsFlags() @ WorldFlagsReplayTest.java:543 : org.opentest4j.AssertionFailedError: expected: <0> but was: <1>
+== 066-5 rc=1 # rc=1 wall=11s end 13:14:29
+11 tests completed, 2 failed
+app.shard.WorldFlagsReplayTest" tests="11" skipped="0" failures="2" errors="0"
+  FAIL aRestartOnTheSameReleaseLeavesTheBlockEntitiesOfAFlagAlone() @ WorldFlagsReplayTest.java:354 : org.opentest4j.AssertionFailedError: the replay set no chest again ==> expected: <false> but was: <true>
+  FAIL aBlockEntityLoadedFromItsOverlayRecordIsNoConflict() @ WorldFlagsReplayTest.java:475 : org.opentest4j.AssertionFailedError: [World flag quest:chest: the cell 5 40 3 held minecraft:chest[type=single,facing=north,waterlogged=false] CompoundBinaryTagImpl[tags={synaxis_note=StringBinaryTagImpl[value=kept]}], changed another way, set to minecraft:chest[type=single,facing=north,waterlogged=
+== 067-2 rc=1 # rc=1 wall=11s end 13:14:40
+11 tests completed, 1 failed
+app.shard.WorldFlagsReplayTest" tests="11" skipped="0" failures="1" errors="0"
+  FAIL thePlayersCannotChangeTheGovernedCells() @ WorldFlagsReplayTest.java:396 : org.opentest4j.AssertionFailedError: expected: <false> but was: <true>
+== 067-3 rc=1 # rc=1 wall=11s end 13:14:51
+11 tests completed, 1 failed
+app.shard.WorldFlagsReplayTest" tests="11" skipped="0" failures="1" errors="0"
+  FAIL theFlagWinsOverAChangeThatCameAroundTheProtection() @ WorldFlagsReplayTest.java:444 : org.opentest4j.AssertionFailedError: stone was neither the planks applied last nor the air of the new value ==> expected: <2> but was: <1>
+== 067-5 rc=1 # rc=1 wall=3s end 13:14:55
+WorldFlagsReplayTest: stale server-app/build/test-results/test/TEST-io.github.bearisbug.synaxis.app.shard.WorldFlagsReplayTest.xml
+== 067-6a rc=1 # rc=1 wall=13s end 13:15:08
+14 tests completed, 1 failed
+synx.SynxChunkOverlayIntegrationTest" tests="14" skipped="0" failures="1" errors="0"
+  FAIL aBlockEntityReadBackFromItsRecordIsTheSameBlock(Env) @ SynxChunkOverlayIntegrationTest.java:393 : org.opentest4j.AssertionFailedError: expected: <false> but was: <true>
+== 067-6b rc=1 # rc=1 wall=12s end 13:15:20
+14 tests completed, 1 failed
+synx.SynxChunkOverlayIntegrationTest" tests="14" skipped="0" failures="1" errors="0"
+  FAIL aBlockEntityReadBackFromItsRecordIsTheSameBlock(Env) @ SynxChunkOverlayIntegrationTest.java:397 : org.opentest4j.AssertionFailedError: expected: <false> but was: <true>
+== 068-2 rc=1 # rc=1 wall=12s end 13:15:32
+2 tests completed, 1 failed
+app.shard.WorldFlagsSyncTest" tests="2" skipped="0" failures="1" errors="0"
+  FAIL aWriteReachesTheOtherChannelThroughRedisAndTheReadEvery60sCatchesUpWithoutIt() @ WorldFlagsSyncTest.java:189 : org.opentest4j.AssertionFailedError: channel 2 applies the new value within 1 s ==> expected: <true> but was: <false>
+== 068-3 rc=1 # rc=1 wall=7s end 13:15:39
+4 tests completed, 2 failed
+app.shard.WorldFlagStoreDbTest" tests="4" skipped="0" failures="2" errors="0"
+  FAIL aNewKeyIsWrittenAsVersionOneAndThenOnlyOnTheVersionInTheDatabase() @ WorldFlagStoreDbTest.java:92 : org.opentest4j.AssertionFailedError: a stale version loses, handed the row as it is ==> expected: <Conflict[current=FlagValue[value="closed", version=2]]> but was: <Written[version=2]>
+  FAIL twoChannelsWritingTheSameVersionAtOnceHaveExactlyOneWinner() @ WorldFlagStoreDbTest.java:128,WorldFlagStoreDbTest.java:112 : org.opentest4j.AssertionFailedError: Written[version=6] / Written[version=6] ==> Unexpected type, expected: <io.github.bearisbug.synaxis.app.shard.FlagWrite.Conflict> but was: <io.github.bearisbug.synaxis.app.shard.FlagWrite.Written>
+== 068-4 rc=1 # rc=1 wall=12s end 13:15:51
+11 tests completed, 1 failed
+app.shard.WorldFlagsReplayTest" tests="11" skipped="0" failures="1" errors="0"
+  FAIL anOlderApplicationScheduledAfterANewerOneChangesNothing() @ WorldFlagsReplayTest.java:268,WorldFlagsReplayTest.java:570 : org.opentest4j.AssertionFailedError: expected: <minecraft:air{properties={}, nbt=null, handler=null}> but was: <minecraft:iron_bars{properties={south=>false, north=>false, east=>false, waterlogged=>false, west=>false}, nbt=null, handler=null}>
+== 069-2 rc=1 # rc=1 wall=7s end 13:15:58
+app.shard.WorldFlagsReplayTest" tests="1" skipped="0" failures="1" errors="0"
+  FAIL flagsThatCannotBeReadRefuseTheStartBeforeTheOverlayIsOpened() @ WorldFlagsReplayTest.java:513 : org.opentest4j.AssertionFailedError: 1 read and 3 retries ==> expected: <4> but was: <1>
+== 069-3 rc=0 # rc=0 wall=5s end 13:16:03
+app.shard.WorldFlagsReplayTest" tests="11" skipped="10" failures="0" errors="0"
+== 070-2 rc=1 # rc=1 wall=9s end 13:16:12
+app.shard.WorldFlagsSyncTest" tests="1" skipped="0" failures="1" errors="0"
+  FAIL aClosedChannelDropsTheMessagesAndTheReads() @ WorldFlagsSyncTest.java:239 : org.opentest4j.AssertionFailedError: the read applies nothing ==> expected: <false> but was: <true>
+== 070-3 rc=1 # rc=1 wall=7s end 13:16:19
+app.shard.WorldFlagsSyncTest" tests="1" skipped="0" failures="1" errors="0"
+  FAIL aClosedChannelDropsTheMessagesAndTheReads() @ WorldFlagsSyncTest.java:234 : org.opentest4j.AssertionFailedError: the message is dropped ==> expected: <false> but was: <true>
+== 070-4 rc=1 # rc=1 wall=9s end 13:16:28
+app.shard.WorldFlagsSyncTest" tests="1" skipped="0" failures="1" errors="0"
+  FAIL aClosedChannelDropsTheMessagesAndTheReads() @ WorldFlagsSyncTest.java:241 : org.opentest4j.AssertionFailedError: no governed cell is checked ==> expected: <minecraft:stone{properties={}, nbt=null, handler=null}> but was: <minecraft:iron_bars{properties={north=>false, south=>false, west=>false, waterlogged=>false, east=>false}, nbt=null, handler=nu
+== 075-2 rc=1 # rc=1 wall=8s end 13:16:36
+app.shard.ShardServiceHeartbeatDbTest" tests="1" skipped="0" failures="1" errors="0"
+  FAIL anExpiredOrClosedChannelIsNotChosenAndAStaleOneMakesTheRegionOffline() @ ShardServiceHeartbeatDbTest.java:88 : org.opentest4j.AssertionFailedError: r1-c1 is 20 s old and r1-c2 is closed, though both are emptier: r1-c3 at the address of its row ==> expected: <[r1-c3 10.0.1.3:25613]> but was: <[r1-c1 10.0.1.1:25611]>
+== 075-3 rc=1 # rc=1 wall=7s end 13:16:43
+app.shard.ShardServiceHeartbeatDbTest" tests="1" skipped="0" failures="1" errors="0"
+  FAIL anExpiredOrClosedChannelIsNotChosenAndAStaleOneMakesTheRegionOffline() @ ShardServiceHeartbeatDbTest.java:88 : org.opentest4j.AssertionFailedError: r1-c1 is 20 s old and r1-c2 is closed, though both are emptier: r1-c3 at the address of its row ==> expected: <[r1-c3 10.0.1.3:25613]> but was: <[r1-c1 10.0.1.1:25611]>
+== 075-4 rc=1 # rc=1 wall=6s end 13:16:49
+app.shard.ShardServiceHeartbeatDbTest" tests="1" skipped="0" failures="1" errors="0"
+  FAIL anExpiredOrClosedChannelIsNotChosenAndAStaleOneMakesTheRegionOffline() @ ShardServiceHeartbeatDbTest.java:92 : org.opentest4j.AssertionFailedError: 16 s is past the 15 s a row stays live ==> expected: <OFFLINE> but was: <SENT>
+== 085-2 rc=1 # rc=1 wall=8s end 13:16:57
+2 tests completed, 2 failed
+app.FullChannelTransferSocketTest" tests="2" skipped="0" failures="2" errors="0"
+  FAIL aFullChannelRefusesATransferBeforeTheEncryptionRequest() @ FullChannelTransferSocketTest.java:201,FullChannelTransferSocketTest.java:125 : org.opentest4j.AssertionFailedError: expected a login disconnect ==> Unexpected type, expected: <io.github.bearisbug.synaxis.network.packet.server.login.LoginDisconnectPacket> but was: <io.github.bearisbug.synaxis.network.packet.server.login.EncryptionRequestPacket>
+  FAIL aFullChannelRefusesATransferBeforeItsCookieIsRead() @ FullChannelTransferSocketTest.java:201,FullChannelTransferSocketTest.java:153 : org.opentest4j.AssertionFailedError: expected a login disconnect ==> Unexpected type, expected: <io.github.bearisbug.synaxis.network.packet.server.login.LoginDisconnectPacket> but was: <io.github.bearisbug.synaxis.network.packet.server.login.LoginSuccessPacket>
+== 087-2 rc=1 # rc=1 wall=16s end 13:17:13
+8 tests completed, 3 failed
+app.store.TransferTicketsIntegrationTest" tests="7" skipped="0" failures="2" errors="0"
+  FAIL aTicketWhoseVersionTheCharacterIsNotAtIsRefusedAndTheLeaseGivenBack(Env) @ TransferTicketsIntegrationTest.java:301 : org.opentest4j.AssertionFailedError: a refused ticket is no arrival ==> expected: <[]> but was: <[Claimed[player=io.github.bearisbug.synaxis.entity.Player@72ce2982, ticket=TransferTicket[ref=0f7b445b, player=4ac54127-1893-4aa8-b414-61d7dddf2aab, character=1, r2-c1 -> r1-c1, version=1]
+  FAIL badTicketsAreRefusedInCheckOrderAndAGoodOneOnlyOnce(Env) @ TransferTicketsIntegrationTest.java:274 : org.opentest4j.AssertionFailedError: the replayed ticket is no arrival ==> expected: <1> but was: <2>
+app.TransferAdmissionIntegrationTest" tests="1" skipped="0" failures="1" errors="0"
+  FAIL aTicketRefusedBeforeOrInTheLoadIsARefusedTransferAndNotAFailedLoad(Env) @ TransferAdmissionIntegrationTest.java:142 : org.opentest4j.AssertionFailedError: nor its onClaimed (docs/DESIGN-M3.md API-M3-010) ==> expected: <[]> but was: <[TransferTicket[ref=00000000, player=26125f91-6fea-4c70-a8e0-170b4bf8dafd, character=1, r2-c1 -> r1-c1, version=3]]>
+== 087-3 rc=1 # rc=1 wall=15s end 13:17:28
+7 tests completed, 1 failed
+app.store.TransferTicketsIntegrationTest" tests="7" skipped="0" failures="1" errors="0"
+  FAIL badTicketsAreRefusedInCheckOrderAndAGoodOneOnlyOnce(Env) @ TransferTicketsIntegrationTest.java:241 : org.opentest4j.AssertionFailedError: written once the client was told where to go ==> expected: <[true]> but was: <[false]>
+== 088-2 rc=1 # rc=1 wall=7s end 13:17:35
+5 tests completed, 1 failed
+app.store.MigrationsDbTest" tests="5" skipped="0" failures="1" errors="0"
+  FAIL everyVersionRollsBackAndMigratesAgain() @ MigrationsDbTest.java:90 : org.opentest4j.AssertionFailedError: expected: <true> but was: <false>
+== 071-2 rc=1 # rc=1 wall=21s end 13:17:56
+loadtest.BotSocketTest" tests="1" skipped="0" failures="1" errors="0"
+  FAIL aGateBotFollowsTransfersBackAndForthWithTheCookieItWasGiven(Path) @ BotSocketTest.java:385,BotSocketTest.java:220 : org.opentest4j.AssertionFailedError: a trip of 196.4 ms ended before the 9th chunk: the 8th went out 514.2785 ms after the first position in the frame ==> expected: <true> but was: <false>
+== 071-3 rc=1 # rc=1 wall=29s end 13:18:26
+2 tests completed, 2 failed
+loadtest.BotSocketTest" tests="2" skipped="0" failures="2" errors="0"
+  FAIL aGateBotInConfigurationAtTheFrameTimesItsTryFromTheFirstPositionItSends() @ BotSocketTest.java:310 : org.opentest4j.AssertionFailedError: a trip of 4390.3 ms started in the configuration: the 9th chunk went out 1611.218625 ms after it ended ==> expected: <true> but was: <false>
+  FAIL aGateBotFollowsTransfersBackAndForthWithTheCookieItWasGiven(Path) @ BotSocketTest.java:387,BotSocketTest.java:220 : org.opentest4j.AssertionFailedError: a trip of 2276.7 ms started before the first position in the frame: the 9th chunk went out 538.997167 ms after it ==> expected: <true> but was: <false>
+== 071-4 rc=1 # rc=1 wall=20s end 13:18:46
+loadtest.BotSocketTest" tests="1" skipped="0" failures="1" errors="0"
+  FAIL aGateBotFollowsTransfersBackAndForthWithTheCookieItWasGiven(Path) @ BotSocketTest.java:202 : org.opentest4j.AssertionFailedError: the cookie stored before transfer 1 ==> expected: <dGlja2V0IDAgZnJvbSBmaXJzdA==> but was: <>
+== 072-2 rc=1 # rc=1 wall=6s end 13:18:52
+== 073-2 rc=1 # rc=1 wall=15s end 13:19:07
+loadtest.BotSocketTest" tests="1" skipped="0" failures="1" errors="0"
+  FAIL aGateBotWhoseTransferIsRefusedCountsItByReasonAndLogsInAgain(Path) @ BotSocketTest.java:245 : org.opentest4j.AssertionFailedError: a refused transfer loses no bot: {"kind":"bots","profile":{"profile":"gate","bots":1,"bot_offset":0,"encryption":"off","chunks_per_tick":9.0,"duration_s"
+== 073-3 rc=1 # rc=1 wall=12s end 13:19:19
+loadtest.BotSocketTest" tests="1" skipped="0" failures="1" errors="0"
+  FAIL aGateBotWhoseTransferIsRefusedCountsItByReasonAndLogsInAgain(Path) @ BotSocketTest.java:253 : org.opentest4j.AssertionFailedError: the reason key without its namespace ==> expected: <{"shard-full":1}> but was: <{"login refused: synaxis:shard-full":1}>
+== 074-2 rc=1 # rc=1 wall=16s end 13:19:35
+loadtest.BotSocketTest" tests="1" skipped="0" failures="1" errors="0"
+  FAIL aGateBotInConfigurationAtTheFrameTimesItsTryFromTheFirstPositionItSends() @ BotSocketTest.java:303 : org.opentest4j.AssertionFailedError: the trip was timed: {"count":0,"completed":0,"failed_by_reason":{},"transfer_ms":{"resolution":0.1,"buckets":{}}} ==> expected: <1> but was: <0>
+== 086-2 rc=1 # rc=1 wall=6s end 13:19:41
+4 tests completed, 1 failed
+loadtest.MergeTest" tests="4" skipped="0" failures="1" errors="0"
+  FAIL theTransfersOfTwoFilesMergeIntoOneDistribution() @ MergeTest.java:89 : org.opentest4j.AssertionFailedError: 5 completed are fewer than 6, the 2 failed tries not counted ==> expected: <false> but was: <true>
+
+# ---- second pass (phase2b) ----
+== b057-2 rc=1 # rc=1 wall=6s end 13:26:01
+13 tests completed, 4 failed
+app.shard.ShardDirectoryTest" tests="13" skipped="0" failures="4" errors="0"
+  FAIL anArrivalStandsOnABlockOfItsRegion() @ ShardDirectoryTest.java:51,ShardDirectoryTest.java:63,ShardDirectoryTest.java:239 : org.opentest4j.AssertionFailedError: Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown.
+  FAIL boundsFramesAndArrivalsStayInTheirRegion() @ ShardDirectoryTest.java:51,ShardDirectoryTest.java:63,ShardDirectoryTest.java:214 : org.opentest4j.AssertionFailedError: Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown.
+  FAIL theBadVersionsOfTheDesignAreRefusedNamingWhatIsWrong() @ ShardDirectoryTest.java:51,ShardDirectoryTest.java:127 : org.opentest4j.AssertionFailedError: Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown.
+  FAIL unknownMissingAndMistypedFieldsAreRefused() @ ShardDirectoryTest.java:51,ShardDirectoryTest.java:63,ShardDirectoryTest.java:173 : org.opentest4j.AssertionFailedError: Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown.
+== b057-3 rc=1 # rc=1 wall=3s end 13:26:04
+13 tests completed, 2 failed
+app.shard.ShardDirectoryTest" tests="13" skipped="0" failures="2" errors="0"
+  FAIL anArrivalStandsOnABlockOfItsRegion() @ ShardDirectoryTest.java:51,ShardDirectoryTest.java:63,ShardDirectoryTest.java:246 : org.opentest4j.AssertionFailedError: Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown.
+  FAIL boundsFramesAndArrivalsStayInTheirRegion() @ ShardDirectoryTest.java:51,ShardDirectoryTest.java:63,ShardDirectoryTest.java:218 : org.opentest4j.AssertionFailedError: Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown.
+== b058-2 rc=1 # rc=1 wall=4s end 13:26:08
+18 tests completed, 3 failed
+app.shard.ShardWorldTest" tests="18" skipped="0" failures="3" errors="0"
+  FAIL theSpawnColumnInsideAGateOfTheRegionIsRefused() @ ShardWorldTest.java:180,ShardWorldTest.java:215 : org.opentest4j.AssertionFailedError: Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown.
+  FAIL aShardDirectoryOfAnotherMapIsRefusedNamingItsFile() @ ShardWorldTest.java:202 : org.opentest4j.AssertionFailedError: map_id synth is not fixture, the map_id of the map release fixture-53b7eb295525-p776 (<tmp> ==> expected: <true> but was: <false>
+  FAIL aGateOverTheSpawnColumnOnOneAxisOnlyPasses() @ ShardWorldTest.java:240 : org.opentest4j.AssertionFailedError: Frame[minX=50, minY=0, minZ=121, maxX=60, maxY=63, maxZ=130] ==> Unexpected exception thrown: java.lang.IllegalArgumentException: the spawn column 56, 120 of r0 is inside the gate r0-east: a player would be sent away on joining
+== b058-3 rc=1 # rc=1 wall=5s end 13:26:13
+18 tests completed, 1 failed
+app.shard.ShardWorldTest" tests="18" skipped="0" failures="1" errors="0"
+  FAIL aGateOverTheSpawnColumnOnOneAxisOnlyPasses() @ ShardWorldTest.java:240 : org.opentest4j.AssertionFailedError: Frame[minX=40, minY=0, minZ=110, maxX=55, maxY=63, maxZ=130] ==> Unexpected exception thrown: java.lang.IllegalArgumentException: the spawn column 56, 120 of r0 is inside the gate r0-east: a player would be sent away on joining
+== b059-2 rc=1 # rc=1 wall=3s end 13:26:16
+8 tests completed, 1 failed
+app.MainDirectoryModeTest" tests="8" skipped="0" failures="1" errors="0"
+  FAIL aGivenMaxPlayersHasToBeTheCapacity() @ MainDirectoryModeTest.java:122 : org.opentest4j.AssertionFailedError: Unexpected exception thrown: java.lang.IllegalArgumentException: synaxis.max-players=0200 disagrees with the capacity 200 of r0-c1 in the shard directory
+== b059-3 rc=1 # rc=1 wall=3s end 13:26:19
+8 tests completed, 3 failed
+app.MainDirectoryModeTest" tests="8" skipped="0" failures="3" errors="0"
+  FAIL aShardThatTakesNoTransfersIsRefused() @ MainDirectoryModeTest.java:63,MainDirectoryModeTest.java:106 : org.opentest4j.AssertionFailedError: Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown.
+  FAIL theCapacityIsWrittenWhenMaxPlayersIsNotGiven() @ MainDirectoryModeTest.java:115 : org.opentest4j.AssertionFailedError: expected: <2> but was: <null>
+  FAIL aShardInTheDirectoryModeReadsItsChannelAndWritesItsCapacity() @ MainDirectoryModeTest.java:99 : org.opentest4j.AssertionFailedError: expected: <200> but was: <null>
+== b060-2 rc=1 # rc=1 wall=13s end 13:26:32
+8 tests completed, 2 failed
+app.shard.ShardWorldAssemblyTest" tests="8" skipped="0" failures="2" errors="0"
+  FAIL aShardInTheDirectoryModeServesItsRegion(Path) @ ShardWorldAssemblyTest.java:294 : org.opentest4j.AssertionFailedError: expected: <WorldBorder[diameter=240.0, centerX=120.0, centerZ=8.0, warningDistance=5, warningTime=15, dimensionTeleportBoundary=29999984]> but was: <WorldBorder[diameter=544.0, centerX=272.0, centerZ=8.0, warningDistance=5, warningTime=15, dimensionTelep
+  FAIL theStartUpCheckCoversTheViewOfTheRegion(Path) @ ShardWorldAssemblyTest.java:248 : java.lang.IllegalArgumentException: synx-payload-hash: r.1.0.synx: payload_sha256 743d82a8e9540521112e9a40b9c6d1f7611015c064b867c270dda24e7562d811, the bytes hash to e192d360ab90f97f6ca7ccb4ba430c6f3100d33e02a8d13d4cc3ae00d4b59265
+== b061-2 rc=1 # rc=1 wall=22s end 13:26:55
+6 tests completed, 4 failed
+app.shard.ShardHeartbeatDbTest" tests="6" skipped="0" failures="4" errors="0"
+  FAIL aStartAfterCloseWritesNothingAndStartsNoThread() @ ShardHeartbeatDbTest.java:234 : java.util.concurrent.RejectedExecutionException: Task java.util.concurrent.ScheduledThreadPoolExecutor$ScheduledFutureTask@4e64e44c[Not completed, task = java.util.concurrent.Executors$RunnableAdapter@7dcd8e74[Wrapped task = io.github.bearisbug.synaxis.app.shard.ShardHeartbeat$$Lambda/0x000007f00159
+  FAIL failedWritesWarnOnceEveryThreeInARowAndTheNextOneWrites() @ ShardHeartbeatDbTest.java:303 : org.opentest4j.AssertionFailedError: a write in between starts the count again: 2 failures, not 9 ==> expected: <2> but was: <3>
+  FAIL theFirstRowIsWrittenAtStartThenOneEveryFiveSeconds() @ ShardHeartbeatDbTest.java:174 : org.opentest4j.AssertionFailedError: a closed login gate is written as not accepting ==> expected: <false> but was: <true>
+  FAIL theReadsTellLiveRowsFromExpiredOnesAndKeepToTheirMap() @ ShardHeartbeatDbTest.java:199 : org.opentest4j.AssertionFailedError: expected: <[HeartbeatRow[shardId=r1-c1, regionId=r1, channel=1, host=host-r1-c1, port=25601, online=0, capacity=200, accepting=true, live=false], HeartbeatRow[shardId=r1-c2, regionId=r1, channel=2, host=host-r1-c2, port=25602, online=10, capacity=200, acceptin
+== b061-3 rc=1 # rc=1 wall=23s end 13:27:18
+6 tests completed, 2 failed
+app.shard.ShardHeartbeatDbTest" tests="6" skipped="0" failures="2" errors="0"
+  FAIL aStartAfterCloseWritesNothingAndStartsNoThread() @ ShardHeartbeatDbTest.java:236 : org.opentest4j.AssertionFailedError: expected: <0> but was: <1>
+  FAIL closeStopsTheWritingThread() @ ShardHeartbeatDbTest.java:254 : org.opentest4j.AssertionFailedError: no last row is written: updated_at is still the one before the close ==> expected: <Row[mapId=synth, regionId=r0, channel=1, host=10.0.0.7, port=25601, buildId=synth-0123456789ab-p776, online=0, capacity=200, accepting=true, startedAt=2026-09-28 13:26:58.26
+== b062-2 rc=1 # rc=1 wall=6s end 13:27:24
+6 tests completed, 1 failed
+app.shard.ShardServiceImplTest" tests="6" skipped="0" failures="1" errors="0"
+  FAIL theLeastLoadedChannelIsChosenAndATieGoesToTheSmallestShardId() @ ShardServiceImplTest.java:118 : org.opentest4j.AssertionFailedError: 0.5 beats 0.6, and of the two at 0.5 the smaller shard id, with the address of its row ==> expected: <[r1-c2 127.0.0.1:25612]> but was: <[r1-c3 127.0.0.1:25613]>
+== b062-3 rc=1 # rc=1 wall=6s end 13:27:31
+6 tests completed, 1 failed
+app.shard.ShardServiceImplTest" tests="6" skipped="0" failures="1" errors="0"
+  FAIL aChannelThatIsNotLiveOrNotAcceptingIsNeverChosen() @ ShardServiceImplTest.java:139 : org.opentest4j.AssertionFailedError: full as they were, they do not take anyone now ==> expected: <OFFLINE> but was: <FULL>
+== b063-2 rc=1 # rc=1 wall=7s end 13:27:38
+6 tests completed, 1 failed
+app.shard.ShardServiceImplTest" tests="6" skipped="0" failures="1" errors="0"
+  FAIL everyCheckDecidesInItsOrderAndOnlyAChosenChannelReachesTheTickets() @ ShardServiceImplTest.java:158 : org.opentest4j.AssertionFailedError: expected: <DIRECTORY_UNAVAILABLE> but was: <SENT>
+== b063-3 rc=1 # rc=1 wall=6s end 13:27:44
+6 tests completed, 1 failed
+app.shard.ShardServiceImplTest" tests="6" skipped="0" failures="1" errors="0"
+  FAIL everyCheckDecidesInItsOrderAndOnlyAChosenChannelReachesTheTickets() @ ShardServiceImplTest.java:171 : org.opentest4j.AssertionFailedError: expired comes before full ==> expected: <OFFLINE> but was: <FULL>
+== b067-5 rc=1 # rc=1 wall=12s end 13:27:56
+11 tests completed, 1 failed
+app.shard.WorldFlagsReplayTest" tests="11" skipped="0" failures="1" errors="0"
+  FAIL aConflictWarningShowsTheStateFoundAndTheStateSet() @ WorldFlagsReplayTest.java:496 : org.opentest4j.AssertionFailedError: [World flag quest:gate: the cell 10 40 10 held minecraft:iron_bars, changed another way, set to minecraft:iron_bars (1 world flag conflicts since the last report)] ==> expected: <true> but was: <false>
+== b069-3 rc=0 # rc=0 wall=5s end 13:28:01
+app.shard.WorldFlagsReplayTest" tests="11" skipped="10" failures="0" errors="0"
+  SKIP e.g. org.opentest4j.TestAbortedException: Assumption failed: no PostgreSQL for the store tests at jdbc:postgresql://127.0.0.1:5440/postgres and SYNAXIS_TEST_PG_URL is not set: The server requested SCRAM-ba
+== b072-2 rc=1 # rc=1 wall=5s end 13:28:06
+7 tests completed, 1 failed
+loadtest.ProfileTest" tests="7" skipped="0" failures="1" errors="0"
+  FAIL theGateOptionsAreOnlyTakenByTheGateProfile(Path) @ ProfileTest.java:80 : org.opentest4j.AssertionFailedError: a dwell for a walk ==> Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown.
+== rerun-server-app rc=0 # rc=0 wall=87s end 13:29:33
+app.shard.ShardDirectoryTest" tests="13" skipped="0" failures="0" errors="0"
+app.shard.ShardWorldTest" tests="18" skipped="0" failures="0" errors="0"
+app.MainDirectoryModeTest" tests="8" skipped="0" failures="0" errors="0"
+app.shard.ShardWorldAssemblyTest" tests="8" skipped="0" failures="0" errors="0"
+app.shard.ShardHeartbeatDbTest" tests="6" skipped="0" failures="0" errors="0"
+app.shard.ShardServiceImplTest" tests="6" skipped="0" failures="0" errors="0"
+app.shard.ShardServiceHeartbeatDbTest" tests="1" skipped="0" failures="0" errors="0"
+app.shard.ShardGatesTest" tests="6" skipped="0" failures="0" errors="0"
+app.shard.ShardArrivalsTest" tests="5" skipped="0" failures="0" errors="0"
+app.shard.WorldFlagsReplayTest" tests="11" skipped="0" failures="0" errors="0"
+app.shard.WorldFlagsSyncTest" tests="2" skipped="0" failures="0" errors="0"
+app.shard.WorldFlagStoreDbTest" tests="4" skipped="0" failures="0" errors="0"
+app.FullChannelTransferSocketTest" tests="2" skipped="0" failures="0" errors="0"
+app.store.TransferTicketsIntegrationTest" tests="7" skipped="0" failures="0" errors="0"
+app.TransferAdmissionIntegrationTest" tests="1" skipped="0" failures="0" errors="0"
+app.store.MigrationsDbTest" tests="5" skipped="0" failures="0" errors="0"
+app.ShardMainTest" tests="10" skipped="0" failures="0" errors="0"
+app.ShardLaunchTest" tests="11" skipped="0" failures="0" errors="0"
+app.shard.ShardArchitectureTest" tests="3" skipped="0" failures="0" errors="0"
+== rerun-synx-loadtest rc=0 # rc=0 wall=99s end 13:31:12
+synx.SynxChunkLoaderIntegrationTest" tests="12" skipped="0" failures="0" errors="0"
+synx.SynxChunkOverlayIntegrationTest" tests="14" skipped="0" failures="0" errors="0"
+loadtest.BotSocketTest" tests="8" skipped="0" failures="0" errors="0"
+loadtest.MergeTest" tests="4" skipped="0" failures="0" errors="0"
+loadtest.ProfileTest" tests="7" skipped="0" failures="0" errors="0"

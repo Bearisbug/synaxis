@@ -1,0 +1,27 @@
+# 2026-09-28 11:23~12:54, machine precheck for the four M3-E load tiers (DESIGN-M3 §15 「压测的机器前提与登记」, same-machine tier)
+# thresholds: TC-WORLD-081 (200 bots 30 min) swap free >= 3,072 MB; TC-WORLD-082/083 (500 bots) >= 4,096 MB; TC-WORLD-084 (two regions) >= 5,120 MB; no java/Gradle of another worktree; both shared containers up
+# one window for the four tiers (DESIGN-M3 v0.18 §15: the thresholds nest). poll.sh of RUN-045 with its stop condition moved by 60 s (el + 300 > max * 60 + 60), so the reading at 90 min is taken: 19 readings
+# no Gradle of mine ran during the window (the docs were edited meanwhile)
+2026-09-28 11:23:50 swap_free=1177.50MB load1=3.52 containers=2 foreign_java_gradle=[] mine=[] top5: com.apple.Virtualization.VirtualMachine=1413MB claude=394MB claude=308MB claude=305MB mds_stores=264MB  met=[]
+2026-09-28 11:28:50 swap_free=1177.50MB load1=2.83 containers=2 foreign_java_gradle=[] mine=[] top5: com.apple.Virtualization.VirtualMachine=1360MB claude=340MB claude=284MB mds_stores=262MB Microsoft=250MB  met=[]
+2026-09-28 11:33:50 swap_free=1249.50MB load1=4.32 containers=2 foreign_java_gradle=[] mine=[] top5: com.apple.Virtualization.VirtualMachine=1174MB mds_stores=312MB claude=303MB claude=300MB claude=297MB  met=[]
+2026-09-28 11:38:50 swap_free=1257.50MB load1=3.75 containers=2 foreign_java_gradle=[] mine=[] top5: com.apple.Virtualization.VirtualMachine=1213MB mds_stores=318MB claude=306MB claude=237MB claude=223MB  met=[]
+2026-09-28 11:43:51 swap_free=1265.50MB load1=4.49 containers=2 foreign_java_gradle=[] mine=[] top5: com.apple.Virtualization.VirtualMachine=1193MB claude=356MB mds_stores=326MB claude=303MB Microsoft=299MB  met=[]
+2026-09-28 11:48:51 swap_free=1273.50MB load1=2.52 containers=2 foreign_java_gradle=[] mine=[] top5: com.apple.Virtualization.VirtualMachine=1214MB claude=350MB Microsoft=271MB mds_stores=254MB claude=245MB  met=[]
+2026-09-28 11:53:51 swap_free=1281.50MB load1=3.12 containers=2 foreign_java_gradle=[] mine=[] top5: com.apple.Virtualization.VirtualMachine=1189MB mds_stores=257MB Microsoft=257MB claude=243MB claude=228MB  met=[]
+2026-09-28 11:58:51 swap_free=1297.50MB load1=5.42 containers=2 foreign_java_gradle=[] mine=[] top5: com.apple.Virtualization.VirtualMachine=1170MB mds_stores=334MB claude=317MB Microsoft=250MB claude=243MB  met=[]
+2026-09-28 12:03:51 swap_free=1305.50MB load1=5.42 containers=2 foreign_java_gradle=[] mine=[] top5: com.apple.Virtualization.VirtualMachine=1270MB claude=350MB Microsoft=252MB claude=246MB claude=236MB  met=[]
+2026-09-28 12:08:51 swap_free=1305.50MB load1=5.85 containers=2 foreign_java_gradle=[] mine=[] top5: com.apple.Virtualization.VirtualMachine=1404MB claude=331MB claude=313MB WeChat=289MB Microsoft=263MB  met=[]
+2026-09-28 12:13:52 swap_free=1313.50MB load1=6.01 containers=2 foreign_java_gradle=[] mine=[] top5: com.apple.Virtualization.VirtualMachine=1362MB claude=309MB Microsoft=266MB mds_stores=240MB Microsoft=226MB  met=[]
+2026-09-28 12:18:52 swap_free=1313.50MB load1=5.66 containers=2 foreign_java_gradle=[] mine=[] top5: com.apple.Virtualization.VirtualMachine=1316MB claude=311MB claude=310MB claude=244MB mds_stores=242MB  met=[]
+2026-09-28 12:23:52 swap_free=1321.50MB load1=6.26 containers=2 foreign_java_gradle=[] mine=[] top5: com.apple.Virtualization.VirtualMachine=1336MB Microsoft=263MB mds_stores=239MB claude=236MB claude=232MB  met=[]
+2026-09-28 12:28:52 swap_free=1345.50MB load1=6.25 containers=2 foreign_java_gradle=[] mine=[] top5: com.apple.Virtualization.VirtualMachine=1244MB claude=308MB claude=303MB claude=245MB Microsoft=241MB  met=[]
+2026-09-28 12:33:52 swap_free=1345.50MB load1=6.25 containers=2 foreign_java_gradle=[] mine=[] top5: com.apple.Virtualization.VirtualMachine=1290MB Microsoft=250MB mds_stores=245MB claude=239MB claude=230MB  met=[]
+2026-09-28 12:38:53 swap_free=1353.50MB load1=6.05 containers=2 foreign_java_gradle=[] mine=[] top5: com.apple.Virtualization.VirtualMachine=1228MB claude=293MB mds_stores=266MB claude=243MB Microsoft=239MB  met=[]
+2026-09-28 12:43:53 swap_free=1353.50MB load1=8.38 containers=2 foreign_java_gradle=[] mine=[] top5: com.apple.Virtualization.VirtualMachine=1240MB claude=307MB Microsoft=260MB mds_stores=251MB claude=243MB  met=[]
+2026-09-28 12:48:53 swap_free=1417.50MB load1=4.27 containers=2 foreign_java_gradle=[] mine=[] top5: com.apple.Virtualization.VirtualMachine=1057MB WeChat=502MB claude=228MB claude=219MB Microsoft=218MB  met=[]
+2026-09-28 12:53:53 swap_free=1465.50MB load1=4.33 containers=2 foreign_java_gradle=[] mine=[] top5: com.apple.Virtualization.VirtualMachine=1024MB Lark=343MB WeChat=311MB Microsoft=309MB claude=242MB  met=[]
+END: not met within 90 min
+
+# result: 19 readings over 90 min, swap free 1,177.50~1,465.50 MB, none reached 3,072 MB; load1 2.52~8.38; no foreign or own java/Gradle at any reading
+# every tier recorded as 阻塞 (blocked); no smaller tier run in its place

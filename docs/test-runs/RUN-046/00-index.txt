@@ -1,0 +1,9 @@
+# RUN-046 evidence, M3-E stage gate after the merge acceptance (DESIGN-M3 v0.18 §26 M3-E, TEST.md 「M3 · 分片（M3-E）」), m3e/integrate a1eeddb997 (code = f1c39684f8)
+# 01-merge-main.txt     git fetch + git merge origin/main: origin/main is 12d3839493, already in the branch, nothing merged
+# 02-gates.txt          check (frozen zlib) and the two strict modes: 4,030 tests each, 15 skipped (root, internet), 0 failures
+# 03-m3e-cases.txt      TC-WORLD-057~075, 085~088: the counterproof of every step, one at a time, then every first step again on the restored code
+# 04-m3c-cases.txt      TC-WORLD-034~039, 047~049, 055: the counterproofs again, as M3-E moved their counts and red lines
+# 05-two-process.txt    TC-WORLD-076~080: real shard processes on the 32x16 chunk map (transfer round trips, L3 full, 13 refusals, flags wiring, memory store)
+# 06-load-precheck.txt  TC-WORLD-081~084: one 90 min window of 19 readings, swap free 1,177.50~1,465.50 MB, every tier blocked
+# 07-scripts.txt        the scripts that produced 02~06
+# Not kept: the baked map, bots-*.json, the shard logs and ledgers, the JUnit XML and Gradle logs; the numbers are copied into 02~06.

@@ -1,0 +1,55 @@
+# 2026-09-28 12:55~13:11, m3e/integrate a1eeddb997 (code = f1c39684f8), after git merge origin/main (already up to date); synaxis-pg and synaxis-valkey up, SYNAXIS_TEST_PG_URL/USER/PASSWORD and SYNAXIS_TEST_REDIS_URL set
+#   gate-check  : ./gradlew check --rerun-tasks --no-build-cache -Dsynaxis.synx.require-frozen-zlib=true --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts --max-workers=4
+#   gate-strict1: ./gradlew test --rerun-tasks --no-build-cache -Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true <same flags>
+#   gate-strict2: gate-strict1 + -Dsynaxis.thread-provider=grid
+# counts from the JUnit XML of each run, per module; 'store skipped' = the 7 store suites CI's check job vets
+== gate-check 2026-09-28 12:55:44 HEAD a1eeddb997 load1 6.48 swap_free 1481.50M db=1 | BUILD SUCCESSFUL in 5m 11s | rc=0 wall=311s end 13:00:55
+   .                  classes=425 tests=3141 skipped=15 failures=0 errors=0
+   server-app         classes=91 tests=484 skipped=0 failures=0 errors=0
+   synx               classes=14 tests=118 skipped=0 failures=0 errors=0
+   loadtest           classes=4 tests=23 skipped=0 failures=0 errors=0
+   baker              classes=4 tests=53 skipped=0 failures=0 errors=0
+   protocol           classes=4 tests=78 skipped=0 failures=0 errors=0
+   game-rts           classes=13 tests=87 skipped=0 failures=0 errors=0
+   plugin-api         classes=3 tests=15 skipped=0 failures=0 errors=0
+   testing            classes=8 tests=11 skipped=0 failures=0 errors=0
+   architecture-tests classes=7 tests=20 skipped=0 failures=0 errors=0
+   store skipped: PlayerStoreIntegrationTest=0 ShardSessionDbTest=0 MigrationsDbTest=0 CrossShardHandoverIntegrationTest=0 ShutdownSaveIntegrationTest=0 TransferTicketsIntegrationTest=0 StoreHousekeepingDbTest=0 
+
+   config key gate: 113 keys read, 113 in ConfigFile.KEYS, 20 meter names left out
+   translation key gate: 56 keys checked against [en_us.json, zh_cn.json], 14 identifiers left out
+== gate-strict1 2026-09-28 13:01:16 HEAD a1eeddb997 load1 6.12 swap_free 904.88M db=1 | BUILD SUCCESSFUL in 5m 6s | rc=0 wall=306s end 13:06:22
+   .                  classes=425 tests=3141 skipped=15 failures=0 errors=0
+   server-app         classes=91 tests=484 skipped=0 failures=0 errors=0
+   synx               classes=14 tests=118 skipped=0 failures=0 errors=0
+   loadtest           classes=4 tests=23 skipped=0 failures=0 errors=0
+   baker              classes=4 tests=53 skipped=0 failures=0 errors=0
+   protocol           classes=4 tests=78 skipped=0 failures=0 errors=0
+   game-rts           classes=13 tests=87 skipped=0 failures=0 errors=0
+   plugin-api         classes=3 tests=15 skipped=0 failures=0 errors=0
+   testing            classes=8 tests=11 skipped=0 failures=0 errors=0
+   architecture-tests classes=7 tests=20 skipped=0 failures=0 errors=0
+   store skipped: PlayerStoreIntegrationTest=0 ShardSessionDbTest=0 MigrationsDbTest=0 CrossShardHandoverIntegrationTest=0 ShutdownSaveIntegrationTest=0 TransferTicketsIntegrationTest=0 StoreHousekeepingDbTest=0 
+
+   config key gate: 113 keys read, 113 in ConfigFile.KEYS, 20 meter names left out
+   translation key gate: 56 keys checked against [en_us.json, zh_cn.json], 14 identifiers left out
+== gate-strict2 2026-09-28 13:06:22 HEAD a1eeddb997 load1 7.36 swap_free 1348.94M db=1 | BUILD SUCCESSFUL in 5m 1s | rc=0 wall=302s end 13:11:24
+   .                  classes=425 tests=3141 skipped=15 failures=0 errors=0
+   server-app         classes=91 tests=484 skipped=0 failures=0 errors=0
+   synx               classes=14 tests=118 skipped=0 failures=0 errors=0
+   loadtest           classes=4 tests=23 skipped=0 failures=0 errors=0
+   baker              classes=4 tests=53 skipped=0 failures=0 errors=0
+   protocol           classes=4 tests=78 skipped=0 failures=0 errors=0
+   game-rts           classes=13 tests=87 skipped=0 failures=0 errors=0
+   plugin-api         classes=3 tests=15 skipped=0 failures=0 errors=0
+   testing            classes=8 tests=11 skipped=0 failures=0 errors=0
+   architecture-tests classes=7 tests=20 skipped=0 failures=0 errors=0
+   store skipped: PlayerStoreIntegrationTest=0 ShardSessionDbTest=0 MigrationsDbTest=0 CrossShardHandoverIntegrationTest=0 ShutdownSaveIntegrationTest=0 TransferTicketsIntegrationTest=0 StoreHousekeepingDbTest=0 
+
+   config key gate: 113 keys read, 113 in ConfigFile.KEYS, 20 meter names left out
+   translation key gate: 56 keys checked against [en_us.json, zh_cn.json], 14 identifiers left out
+# env of the strict runs: the gate script read the root module for EnvDispatcherThreadsIntegrationTest, which is in :testing, so its lines were not taken during the gates.
+#   gate-strict2's XML (testing/build/test-results/test, written 13:07:41) holds 'env dispatcher threads: 4' and 'env thread provider: grid';
+#   gate-strict1's was overwritten by gate-strict2; rechecked afterwards: ./gradlew :testing:test --rerun --tests ...EnvDispatcherThreadsIntegrationTest -Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true -> 'env dispatcher threads: 4', 'env thread provider: counter'
+# totals: 3141 + 484 + 118 + 23 + 53 + 78 + 87 + 15 + 11 + 20 = 4,030 tests in each of the three, 15 skipped (all in the root module: PlayerSkinTest, TagNbtTest, TranslationIntegrationTest, TestMojangUtils need the internet), 0 failures
+# no intermittent red in either strict mode (AcquirableTest and SocketWriteStateTransitionIntegrationTest green in both)

@@ -1,0 +1,383 @@
+# RUN-046 addendum: merging origin/main 3fe5c5cc5d (6A plugin face of transfers, DESIGN-PROD v0.9.27, RUN-047) into m3e/integrate before M3-E goes into main
+# 2026-09-28 17:23~17:43, worktree synaxis-wt/m3e-integrate, branch m3e/integrate at 357686831f; synaxis-pg (127.0.0.1:5440) and synaxis-valkey (127.0.0.1:6440) reused, SYNAXIS_TEST_PG_URL/USER/PASSWORD and SYNAXIS_TEST_REDIS_URL set as TEST.md §3
+# Not kept: the Gradle logs and the JUnit XML (numbers copied below); the scripts are at the end of this file.
+
+== 1. merge
+git fetch; git merge --no-ff --no-commit origin/main
+origin/main = 3fe5c5cc5d (Merge remote-tracking branch 'origin/main' into prod/6a-plugin)
+merge-base m3e/integrate origin/main = d2a0844ada
+main side since d2a0844ada: 14 files (plugin-api Transfers + PluginContext#transfers(), server-app PluginTransfers, PluginHost 8-arg constructor, PluginContextImpl, Main StoreRuntime#cooldowns, two new test classes, DESIGN-M2, DESIGN-PROD v0.9.27, PLUGINS.md, TEST.md, RUN-047)
+db/migration on origin/main: V1..V4; on this branch V1..V6 (V5__shard_heartbeat, V6__world_flag): no clash
+conflicts (2 files, the rest merged by git):
+  server-app/src/main/java/io/github/bearisbug/synaxis/app/Main.java, 1 hunk (openStore, the ticketed return new StoreRuntime(...)):
+    ours  : new TicketIssuer(store, keys, cooldowns, shardId, ledger::record)
+            new TicketVerifier(database.pool(), session::sessionId, shardId, keys, cooldowns, ledger::record, onClaimed)
+            ..., session, redis)
+    theirs: new TicketIssuer(store, keys, cooldowns, shardId)
+            new TicketVerifier(database.pool(), session::sessionId, shardId, keys, cooldowns, ledger::record)
+            ..., session, redis, cooldowns)
+    kept  : ours' issuer and verifier arguments + theirs' last StoreRuntime argument cooldowns; the issuer, the verifier and
+            (through store.cooldowns() -> the 8-arg PluginHost) the plugin face hold the one TransferCooldowns built at the top
+            of openStore (DESIGN-PROD REQ-PROD-045, API-PROD-021). The other two new StoreRuntime(...) (memory, postgres
+            without keys) came from main unchanged, each with a cooldowns argument.
+  docs/TEST.md, 3 hunks, both sides kept, main's text as on main:
+    change log      : main's 6A row (a45892dd44, 14:14) above the M3-E row (f770bf02d2, 13:50), newest first
+    execution table : RUN-045, RUN-046, then RUN-047
+    evidence notes  : RUN-047 note and its two addenda, then RUN-046, then RUN-045 (newest first, as the section is)
+  check: the +/- lines of git diff HEAD -- docs/TEST.md equal main's own d2a0844ada..origin/main lines, and those of
+         git diff origin/main -- docs/TEST.md equal the branch's own d2a0844ada..357686831f lines, but for the one
+         shared line '| 最后更新 | 2026-09-28 |'
+merge commit 0ae8384aad (parents 357686831f, 3fe5c5cc5d)
+compile: ./gradlew compileJava compileTestJava -> BUILD SUCCESSFUL; ShardServiceImpl, ShardGates and the rest of M3-E do not use
+         the plugin Transfers, so the CompletableFuture<Boolean> return type needed no change; no merge fix commit
+
+== 2. gates on 0ae8384aad (each ./gradlew ... --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts --max-workers=4, one at a time)
+#   gate-check  : check --rerun-tasks -Dsynaxis.synx.require-frozen-zlib=true
+#   gate-strict1: test --rerun-tasks -Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true
+#   gate-strict2: gate-strict1 + -Dsynaxis.thread-provider=grid
+# counts from the JUnit XML of each run, per module; 'store skipped' = the 7 store suites CI's check job vets + TransferCooldownTableIntegrationTest
+== gate-check 2026-09-28 17:24:47 HEAD 0ae8384aad load1 9.61 swap_free 941.50M | BUILD SUCCESSFUL in 5m 33s | rc=0 wall=334s end 17:30:21
+   .                  classes=425 tests=3141 skipped=15 failures=0 errors=0
+   server-app         classes=93 tests=498 skipped=0 failures=0 errors=0
+   synx               classes=14 tests=118 skipped=0 failures=0 errors=0
+   loadtest           classes=4 tests=23 skipped=0 failures=0 errors=0
+   baker              classes=4 tests=53 skipped=0 failures=0 errors=0
+   protocol           classes=4 tests=78 skipped=0 failures=0 errors=0
+   game-rts           classes=13 tests=87 skipped=0 failures=0 errors=0
+   plugin-api         classes=3 tests=15 skipped=0 failures=0 errors=0
+   testing            classes=8 tests=11 skipped=0 failures=0 errors=0
+   architecture-tests classes=7 tests=20 skipped=0 failures=0 errors=0
+   store skipped: PlayerStoreIntegrationTest=0 ShardSessionDbTest=0 MigrationsDbTest=0 CrossShardHandoverIntegrationTest=0 ShutdownSaveIntegrationTest=0 TransferTicketsIntegrationTest=0 StoreHousekeepingDbTest=0 TransferCooldownTableIntegrationTest=0 
+   db classes (TestDatabase users) with skipped>0: 
+   env: env dispatcher threads: 1;env thread provider: counter;
+   config key gate: 113 keys read, 113 in ConfigFile.KEYS, 20 meter names left out
+   translation key gate: 56 keys checked against [en_us.json, zh_cn.json], 14 identifiers left out
+== gate-strict1 2026-09-28 17:30:22 HEAD 0ae8384aad load1 12.38 swap_free 1143.69M | BUILD SUCCESSFUL in 5m 22s | rc=0 wall=323s end 17:35:45
+   .                  classes=425 tests=3141 skipped=15 failures=0 errors=0
+   server-app         classes=93 tests=498 skipped=0 failures=0 errors=0
+   synx               classes=14 tests=118 skipped=0 failures=0 errors=0
+   loadtest           classes=4 tests=23 skipped=0 failures=0 errors=0
+   baker              classes=4 tests=53 skipped=0 failures=0 errors=0
+   protocol           classes=4 tests=78 skipped=0 failures=0 errors=0
+   game-rts           classes=13 tests=87 skipped=0 failures=0 errors=0
+   plugin-api         classes=3 tests=15 skipped=0 failures=0 errors=0
+   testing            classes=8 tests=11 skipped=0 failures=0 errors=0
+   architecture-tests classes=7 tests=20 skipped=0 failures=0 errors=0
+   store skipped: PlayerStoreIntegrationTest=0 ShardSessionDbTest=0 MigrationsDbTest=0 CrossShardHandoverIntegrationTest=0 ShutdownSaveIntegrationTest=0 TransferTicketsIntegrationTest=0 StoreHousekeepingDbTest=0 TransferCooldownTableIntegrationTest=0 
+   db classes (TestDatabase users) with skipped>0: 
+   env: env dispatcher threads: 4;env thread provider: counter;
+   config key gate: 113 keys read, 113 in ConfigFile.KEYS, 20 meter names left out
+   translation key gate: 56 keys checked against [en_us.json, zh_cn.json], 14 identifiers left out
+== gate-strict2 2026-09-28 17:35:46 HEAD 0ae8384aad load1 9.67 swap_free 1568.25M | BUILD SUCCESSFUL in 5m 18s | rc=0 wall=318s end 17:41:04
+   .                  classes=425 tests=3141 skipped=15 failures=0 errors=0
+   server-app         classes=93 tests=498 skipped=0 failures=0 errors=0
+   synx               classes=14 tests=118 skipped=0 failures=0 errors=0
+   loadtest           classes=4 tests=23 skipped=0 failures=0 errors=0
+   baker              classes=4 tests=53 skipped=0 failures=0 errors=0
+   protocol           classes=4 tests=78 skipped=0 failures=0 errors=0
+   game-rts           classes=13 tests=87 skipped=0 failures=0 errors=0
+   plugin-api         classes=3 tests=15 skipped=0 failures=0 errors=0
+   testing            classes=8 tests=11 skipped=0 failures=0 errors=0
+   architecture-tests classes=7 tests=20 skipped=0 failures=0 errors=0
+   store skipped: PlayerStoreIntegrationTest=0 ShardSessionDbTest=0 MigrationsDbTest=0 CrossShardHandoverIntegrationTest=0 ShutdownSaveIntegrationTest=0 TransferTicketsIntegrationTest=0 StoreHousekeepingDbTest=0 TransferCooldownTableIntegrationTest=0 
+   db classes (TestDatabase users) with skipped>0: 
+   env: env dispatcher threads: 4;env thread provider: grid;
+   config key gate: 113 keys read, 113 in ConfigFile.KEYS, 20 meter names left out
+   translation key gate: 56 keys checked against [en_us.json, zh_cn.json], 14 identifiers left out
+# totals: 3141 + 498 + 118 + 23 + 53 + 78 + 87 + 15 + 11 + 20 = 4,044 tests in each of the three, 15 skipped (all in the root module, the four
+#   classes that need the internet), 0 failures. RUN-046 had 4,030: the 14 more are 6A's PluginTransfersIntegrationTest 11 and
+#   TransferCooldownTableIntegrationTest 3 (server-app 484 -> 498, classes 91 -> 93); RUN-047's 3,957 + M3-E's 87 = 4,044.
+# the 26 server-app test classes that use TestDatabase all have skipped="0" in each gate.
+# no intermittent red in either strict mode (AcquirableTest and SocketWriteStateTransitionIntegrationTest green in both).
+# the gates found nothing the merge brought in; nothing to fix.
+
+== 3. TC-PROD-521, TC-PROD-528, TC-PROD-533 on 0ae8384aad, as docs/TEST.md writes them (the cases' text is not changed)
+# 「跑某类」 = ./gradlew :server-app:test --rerun --tests '<full name>' --max-workers=4 --no-daemon --init-script ...; database variables set.
+# The 6A section says its line numbers are those of prod/6a-plugin. M3-E adds lines above them in Main.java, so each step is
+# carried out on the same code at its merged line: Main.java 240 -> 263, 565 -> 716, 521 -> 670, 564 -> 714 (and 715);
+# PluginHost.java 102 is unchanged. Each counterproof: mutate, run, see red, git checkout -- the file, run again green.
+# phase2 2026-09-28 17:41:20 HEAD 0ae8384aad
+== 521-1 rc=0 wall=17s end 17:41:37
+   BUILD SUCCESSFUL in 16s
+app.transfer.PluginTransfersIntegrationTest" tests="11" skipped="0" failures="0" errors="0" time="11.315"
+  case aBlankHostOrAPortOutOfRangeIsRefusedBeforeAnythingHappens(Env) time=0.946
+  case wasTransferredIsTheHandshakeIntentOfTheConnection(Env) time=0.012
+  case aTransferStartsTheCooldownAndTheCooldownRefusesTheNextOne(Env) time=0.062
+  case aPlayerOutsideThePlayStateIsNotTransferredAndNotCooled(Env) time=0.009
+  case aFetchCompletesWithTheAnswerWithNullForNoCookieAndTimesOutWithoutAnAnswer(Env) time=5.017
+  case aListenerOfTheTransferRunsOnThePlayersTickThreadAndMayMoveThePlayer(Env) time=0.068
+  case aTicketThatBroughtThePlayerInCoolsThePluginDown(Env) time=0.055
+  case aCookieOfAtMost5120BytesIsStoredAndALongerOneSendsNothing(Env) time=0.006
+  case aCancelledTransferSendsNothingAndStartsNoCooldown(Env) time=0.055
+  case aCookieOutsideThePluginsNamespaceIsRefusedAndTheTicketAmongThem(Env) time=0.006
+  case aPlayerWhoLeavesBeforeItsNextTickIsNotTransferredAndTheFutureStillCompletes(Env) time=5.065
+   git status --short: []
+== 521-2 rc=0 wall=7s end 17:41:44
+   BUILD SUCCESSFUL in 6s
+app.TransferCooldownTableIntegrationTest" tests="3" skipped="0" failures="0" errors="0" time="1.897"
+  case aPluginTransferCoolsTheTicketSideDown(Env) time=1.506
+  case aProcessWithoutTransferKeysHasATableAndReadsItsKey(Env) time=0.014
+  case aTicketTheVerifierTakesCoolsThePluginAndTheIssuerDown(Env) time=0.37
+   git status --short: []
+== 521-3 grep -n 'store.cooldowns()' server-app/src/main/java/io/github/bearisbug/synaxis/app/Main.java
+   263:                store.permissions(), store.moderation(), store.cooldowns());
+== 533-2 sed -n 564p server-app/src/main/java/io/github/bearisbug/synaxis/app/Main.java, then the lines of new TicketVerifier(...) in the merged file
+   564:     /**
+   714:                    new TicketVerifier(database.pool(), session::sessionId, shardId, keys, cooldowns, ledger::record,
+   715:                            onClaimed),
+== 521-4 mutation
+mut ok: server-app/src/main/java/io/github/bearisbug/synaxis/app/Main.java:716
+ server-app/src/main/java/io/github/bearisbug/synaxis/app/Main.java | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+== 521-4 rc=1 wall=6s end 17:41:51
+   3 tests completed, 2 failed
+   BUILD FAILED in 5s
+app.TransferCooldownTableIntegrationTest" tests="3" skipped="0" failures="2" errors="0" time="1.807"
+  case aPluginTransferCoolsTheTicketSideDown(Env) time=1.477
+  case aProcessWithoutTransferKeysHasATableAndReadsItsKey(Env) time=0.014
+  case aTicketTheVerifierTakesCoolsThePluginAndTheIssuerDown(Env) time=0.309
+  FAIL aPluginTransferCoolsTheTicketSideDown(Env) @ TransferCooldownTableIntegrationTest.java:91 : org.opentest4j.AssertionFailedError: expected: <COOLDOWN> but was: <NOT_ONLINE>
+  FAIL aTicketTheVerifierTakesCoolsThePluginAndTheIssuerDown(Env) @ TransferCooldownTableIntegrationTest.java:113 : org.opentest4j.AssertionFailedError: the verifier recorded the arrival in the table the plugins read ==> expected: <false> but was: <true>
+   restored server-app/src/main/java/io/github/bearisbug/synaxis/app/Main.java
+   git status --short: []
+== 521-4-green rc=0 wall=4s end 17:41:55
+   BUILD SUCCESSFUL in 4s
+app.TransferCooldownTableIntegrationTest" tests="3" skipped="0" failures="0" errors="0" time="1.783"
+  case aPluginTransferCoolsTheTicketSideDown(Env) time=1.445
+  case aProcessWithoutTransferKeysHasATableAndReadsItsKey(Env) time=0.014
+  case aTicketTheVerifierTakesCoolsThePluginAndTheIssuerDown(Env) time=0.317
+   git status --short: []
+== 521-5 mutation
+mut ok: server-app/src/main/java/io/github/bearisbug/synaxis/app/PluginHost.java:102
+ .../src/main/java/io/github/bearisbug/synaxis/app/PluginHost.java       | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+== 521-5 rc=1 wall=6s end 17:42:02
+   3 tests completed, 2 failed
+   BUILD FAILED in 6s
+app.TransferCooldownTableIntegrationTest" tests="3" skipped="0" failures="2" errors="0" time="1.808"
+  case aPluginTransferCoolsTheTicketSideDown(Env) time=1.452
+  case aProcessWithoutTransferKeysHasATableAndReadsItsKey(Env) time=0.014
+  case aTicketTheVerifierTakesCoolsThePluginAndTheIssuerDown(Env) time=0.335
+  FAIL aPluginTransferCoolsTheTicketSideDown(Env) @ TransferCooldownTableIntegrationTest.java:91 : org.opentest4j.AssertionFailedError: expected: <COOLDOWN> but was: <NOT_ONLINE>
+  FAIL aTicketTheVerifierTakesCoolsThePluginAndTheIssuerDown(Env) @ TransferCooldownTableIntegrationTest.java:113 : org.opentest4j.AssertionFailedError: the verifier recorded the arrival in the table the plugins read ==> expected: <false> but was: <true>
+   restored server-app/src/main/java/io/github/bearisbug/synaxis/app/PluginHost.java
+   git status --short: []
+== 521-5-green rc=0 wall=5s end 17:42:07
+   BUILD SUCCESSFUL in 4s
+app.TransferCooldownTableIntegrationTest" tests="3" skipped="0" failures="0" errors="0" time="1.811"
+  case aPluginTransferCoolsTheTicketSideDown(Env) time=1.478
+  case aProcessWithoutTransferKeysHasATableAndReadsItsKey(Env) time=0.016
+  case aTicketTheVerifierTakesCoolsThePluginAndTheIssuerDown(Env) time=0.31
+   git status --short: []
+== 528-2 mutation
+mut ok: server-app/src/main/java/io/github/bearisbug/synaxis/app/Main.java:669
+ server-app/src/main/java/io/github/bearisbug/synaxis/app/Main.java | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+== 528-2 rc=1 wall=6s end 17:42:13
+   3 tests completed, 1 failed
+   BUILD FAILED in 5s
+app.TransferCooldownTableIntegrationTest" tests="3" skipped="0" failures="1" errors="0" time="1.729"
+  case aPluginTransferCoolsTheTicketSideDown(Env) time=1.4
+  case aProcessWithoutTransferKeysHasATableAndReadsItsKey(Env) time=0.018
+  case aTicketTheVerifierTakesCoolsThePluginAndTheIssuerDown(Env) time=0.306
+  FAIL aProcessWithoutTransferKeysHasATableAndReadsItsKey(Env) @ TransferCooldownTableIntegrationTest.java:132 : org.opentest4j.AssertionFailedError: Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown.
+   restored server-app/src/main/java/io/github/bearisbug/synaxis/app/Main.java
+   git status --short: []
+== 528-2-green rc=0 wall=5s end 17:42:18
+   BUILD SUCCESSFUL in 4s
+app.TransferCooldownTableIntegrationTest" tests="3" skipped="0" failures="0" errors="0" time="1.68"
+  case aPluginTransferCoolsTheTicketSideDown(Env) time=1.355
+  case aProcessWithoutTransferKeysHasATableAndReadsItsKey(Env) time=0.014
+  case aTicketTheVerifierTakesCoolsThePluginAndTheIssuerDown(Env) time=0.305
+   git status --short: []
+== 533-3 mutation
+mut ok: server-app/src/main/java/io/github/bearisbug/synaxis/app/Main.java:714
+ server-app/src/main/java/io/github/bearisbug/synaxis/app/Main.java | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+== 533-3 rc=1 wall=6s end 17:42:24
+   3 tests completed, 1 failed
+   BUILD FAILED in 6s
+app.TransferCooldownTableIntegrationTest" tests="3" skipped="0" failures="1" errors="0" time="1.909"
+  case aPluginTransferCoolsTheTicketSideDown(Env) time=1.563
+  case aProcessWithoutTransferKeysHasATableAndReadsItsKey(Env) time=0.014
+  case aTicketTheVerifierTakesCoolsThePluginAndTheIssuerDown(Env) time=0.324
+  FAIL aTicketTheVerifierTakesCoolsThePluginAndTheIssuerDown(Env) @ TransferCooldownTableIntegrationTest.java:113 : org.opentest4j.AssertionFailedError: the verifier recorded the arrival in the table the plugins read ==> expected: <false> but was: <true>
+   restored server-app/src/main/java/io/github/bearisbug/synaxis/app/Main.java
+   git status --short: []
+== 533-3-green rc=0 wall=5s end 17:42:29
+   BUILD SUCCESSFUL in 4s
+app.TransferCooldownTableIntegrationTest" tests="3" skipped="0" failures="0" errors="0" time="1.687"
+  case aPluginTransferCoolsTheTicketSideDown(Env) time=1.368
+  case aProcessWithoutTransferKeysHasATableAndReadsItsKey(Env) time=0.014
+  case aTicketTheVerifierTakesCoolsThePluginAndTheIssuerDown(Env) time=0.299
+   git status --short: []
+# (the 528-2 mutation prints :669 because the matched text starts one line above; the changed argument is on Main.java:670)
+# 521-1 is TC-PROD-521 step 1; 521-2 is TC-PROD-521 step 2, TC-PROD-528 step 1 and TC-PROD-533 step 1 (one run of the class, three cases)
+verdicts:
+  TC-PROD-521 pass. 1: aTicketThatBroughtThePlayerInCoolsThePluginDown green, class tests=11 0 failures. 2: tests=3 0 failures 0 skipped,
+              class time 1.897 s in this run (1.68~1.91 s over the six green runs; the case says about 0.5~1.8 s). 3: exactly one
+              line, 263 on the merged file (240 on prod/6a-plugin), the last argument of new PluginHost(...) in the process
+              assembly. 4: red at :91 'expected: <COOLDOWN> but was: <NOT_ONLINE>' and :113 '... ==> expected: <false> but was: <true>',
+              3 tests completed, 2 failed, as written. 5: same two reds, as written.
+  TC-PROD-528 pass. 1: aProcessWithoutTransferKeysHasATableAndReadsItsKey green. 2: 3 tests completed, 1 failed, :132
+              'Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown.', as written.
+  TC-PROD-533 pass. 1: aTicketTheVerifierTakesCoolsThePluginAndTheIssuerDown green, tests=3 0 failures 0 skipped. 2: sed -n 564p
+              prints the ' /**' of another method on the merged file; the verifier is built at 714-715,
+              'new TicketVerifier(database.pool(), session::sessionId, shardId, keys, cooldowns, ledger::record,' / 'onClaimed),':
+              it gets the cooldowns that the same new StoreRuntime(...) hands on as StoreRuntime#cooldowns (716). Not literally the
+              expected line: its number, and M3-E's onClaimed argument after ledger::record. 3: 3 tests completed, 1 failed,
+              :113 as written; aPluginTransferCoolsTheTicketSideDown green.
+  literal deviations for the production-readiness session (TEST.md unchanged here): TC-PROD-521 step 3 (240 -> 263), steps 4
+  (565 -> 716); TC-PROD-528 step 2 (521 -> 670); TC-PROD-533 steps 2 and 3 (564 -> 714, and step 2's expected text now ends in
+  'ledger::record,' followed by 'onClaimed),'); :server-app:test is 498 on the merged tree where TC-PROD-486 step 3,
+  TC-PROD-505 step 3 and TC-PROD-510 step 2 say 425 (M3-E's 73 more are in the M3-E hand-over list, DESIGN-M3 §28.2 ⑲).
+git status --short after the last restore: empty.
+
+== 4. document lint after the docs commit's edits
+design-doc check.sh docs/DESIGN-M3.md: 'lint 无警告' (0 warnings)
+test-doc check.sh docs/TEST.md: 1 warning (执行记录明细行不合格: RUN-031 TC-PROD-271 and TC-PROD-360 lack an evidence reference);
+  the same script on origin/main 3fe5c5cc5d's docs/ gives the same 1 warning.
+
+== 5. scripts (under /tmp/m3e-post6a, deleted afterwards with the logs)
+=== env.sh
+export JAVA_HOME=/opt/homebrew/opt/openjdk@25/libexec/openjdk.jdk/Contents/Home
+export JAVA_TOOL_OPTIONS="-Dhttps.proxyHost=127.0.0.1 -Dhttps.proxyPort=7897 -Dhttp.proxyHost=127.0.0.1 -Dhttp.proxyPort=7897 -Dhttp.nonProxyHosts=maven.aliyun.com|*.aliyun.com"
+export SYNAXIS_TEST_PG_URL=jdbc:postgresql://127.0.0.1:5440/postgres
+export SYNAXIS_TEST_PG_USER=postgres
+export SYNAXIS_TEST_PG_PASSWORD="$(docker inspect synaxis-pg --format '{{range .Config.Env}}{{println .}}{{end}}' | sed -n 's/^POSTGRES_PASSWORD=//p')"
+export SYNAXIS_TEST_REDIS_URL=redis://127.0.0.1:6440
+
+=== g.sh
+#!/bin/zsh
+# usage: g.sh <label> -- <gradle args...>   runs one Gradle in the integrate worktree, one at a time
+label=$1; shift
+[ "$1" = "--" ] && shift
+source /tmp/m3e-post6a/env.sh
+cd /Users/bug/Documents/Projects/Minecraft/synaxis-wt/m3e-integrate
+while pgrep -f 'GradleWrapperMain|GradleDaemon|GradleMain' >/dev/null; do echo "waiting for another Gradle: $(pgrep -fl 'GradleWrapperMain|GradleDaemon|GradleMain' | cut -c1-80 | tr '\n' ';')"; sleep 20; done
+log=/tmp/m3e-post6a/logs/$label.log
+start=$(date +%s)
+echo "# $label $(date '+%F %T') HEAD $(git rev-parse --short=10 HEAD) load1 $(sysctl -n vm.loadavg | awk '{print $2}') swap_free $(sysctl -n vm.swapusage | sed -E 's/.*free = ([0-9.]+M).*/\1/')" > $log
+echo "# ./gradlew $* --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts --max-workers=4" >> $log
+./gradlew "$@" --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts --max-workers=4 >> $log 2>&1
+rc=$?
+echo "# rc=$rc wall=$(( $(date +%s) - start ))s end $(date '+%T')" >> $log
+tail -1 $log; grep -E 'BUILD (SUCCESSFUL|FAILED)|tests completed' $log | head -3
+exit $rc
+
+=== phase1.sh
+#!/bin/zsh
+# three gates on the integrate worktree after merging origin/main 3fe5c5cc5d
+R=/Users/bug/Documents/Projects/Minecraft/synaxis-wt/m3e-integrate
+OUT=/tmp/m3e-post6a/gates.out
+summ() { # label
+  local label=$1
+  echo "== $label $(head -1 /tmp/m3e-post6a/logs/$label.log | cut -c3-) | $(grep -E '^BUILD' /tmp/m3e-post6a/logs/$label.log | tail -1) | $(tail -1 /tmp/m3e-post6a/logs/$label.log | cut -c3-)" >> $OUT
+  (cd $R && for mod in . server-app synx loadtest baker protocol game-rts plugin-api testing architecture-tests; do
+     d=$mod/build/test-results/test; [ -d $d ] || continue
+     perl -e 'my ($c,$t,$s,$f,$e)=(0,0,0,0,0); for my $x (@ARGV) { open my $h,"<",$x; my $l=<$h>; $l.=<$h>; if ($l =~ /tests="(\d+)" skipped="(\d+)" failures="(\d+)" errors="(\d+)"/) { $c++; $t+=$1; $s+=$2; $f+=$3; $e+=$4 } } printf "   %-18s classes=%d tests=%d skipped=%d failures=%d errors=%d\n", $ARGV[0] =~ m{^([^/]+)/build} ? $1 : "root", $c,$t,$s,$f,$e' $d/TEST-*.xml
+   done) >> $OUT
+  (cd $R && for c in PlayerStoreIntegrationTest ShardSessionDbTest MigrationsDbTest CrossShardHandoverIntegrationTest ShutdownSaveIntegrationTest TransferTicketsIntegrationTest StoreHousekeepingDbTest TransferCooldownTableIntegrationTest; do printf "%s=%s " $c $(grep -o 'skipped="[0-9]*"' server-app/build/test-results/test/TEST-*.$c.xml | head -1 | tr -dc 0-9); done; echo) | sed 's/^/   store skipped: /' >> $OUT
+  (cd $R && echo "   db classes (TestDatabase users) with skipped>0: $(grep -l 'TestDatabase\|SYNAXIS_TEST_PG' -r server-app/src/test/java | xargs -n1 basename | sed 's/\.java$//' | while read c; do f=$(ls server-app/build/test-results/test/TEST-*.$c.xml 2>/dev/null | head -1); [ -n "$f" ] && s=$(grep -o 'skipped="[0-9]*"' $f | head -1 | tr -dc 0-9) && [ "$s" != 0 ] && printf '%s=%s ' $c $s; done)") >> $OUT
+  grep -ho 'env dispatcher threads: [0-9]*\|env thread provider: [a-z]*' $R/testing/build/test-results/test/TEST-*EnvDispatcherThreadsIntegrationTest*.xml 2>/dev/null | sort -u | tr '\n' ';' | sed 's/^/   env: /' >> $OUT; echo >> $OUT
+  grep -h 'config key gate\|translation key gate' $R/architecture-tests/build/test-results/test/*.xml 2>/dev/null | grep -o 'config key gate: [^<]*\|translation key gate: [^<]*' | sort -u | sed 's/^/   /' >> $OUT
+  (cd $R && grep -l '<failure' */build/test-results/test/*.xml build/test-results/test/*.xml 2>/dev/null | sed 's/^/   FAILED FILE: /') >> $OUT
+}
+/tmp/m3e-post6a/g.sh gate-check -- check --rerun-tasks -Dsynaxis.synx.require-frozen-zlib=true; summ gate-check
+/tmp/m3e-post6a/g.sh gate-strict1 -- test --rerun-tasks -Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true; summ gate-strict1
+/tmp/m3e-post6a/g.sh gate-strict2 -- test --rerun-tasks -Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true -Dsynaxis.thread-provider=grid; summ gate-strict2
+echo PHASE1 DONE >> $OUT
+
+=== phase2.sh
+#!/bin/zsh
+# TC-PROD-521, TC-PROD-528, TC-PROD-533 on the merged tree, as docs/TEST.md writes them
+R=/Users/bug/Documents/Projects/Minecraft/synaxis-wt/m3e-integrate
+M=/tmp/m3e-post6a/mut.pl
+OUT=/tmp/m3e-post6a/tc.out
+AP=io.github.bearisbug.synaxis.app
+PT=$AP.transfer.PluginTransfersIntegrationTest
+CT=$AP.TransferCooldownTableIntegrationTest
+MN=server-app/src/main/java/io/github/bearisbug/synaxis/app/Main.java
+PH=server-app/src/main/java/io/github/bearisbug/synaxis/app/PluginHost.java
+cd $R
+run() { # run <label> <class> <restore file or ""> ; one class, as 「跑某类」
+  local label=$1 class=$2 restore=$3
+  local t0=$(date +%s)
+  /tmp/m3e-post6a/g.sh $label -- :server-app:test --rerun --tests "$class" > /dev/null
+  local rc=$?
+  { echo "== $label rc=$rc $(tail -1 /tmp/m3e-post6a/logs/$label.log | cut -c3-)"; grep -E 'tests completed|BUILD (SUCCESSFUL|FAILED)' /tmp/m3e-post6a/logs/$label.log | head -2 | sed 's/^/   /'; /tmp/m3e-post6a/xml.sh $t0 $class; } >> $OUT
+  if [ -n "$restore" ]; then git checkout -- $restore; echo "   restored $restore" >> $OUT; fi
+  echo "   git status --short: [$(git status --short | tr '\n' ';')]" >> $OUT
+}
+echo "# phase2 $(date '+%F %T') HEAD $(git rev-parse --short=10 HEAD)" >> $OUT
+# TC-PROD-521 step 1
+run 521-1 $PT ""
+# TC-PROD-521 step 2, TC-PROD-528 step 1, TC-PROD-533 step 1 (one class, three cases)
+run 521-2 $CT ""
+# TC-PROD-521 step 3
+echo "== 521-3 grep -n 'store.cooldowns()' $MN" >> $OUT
+grep -n 'store.cooldowns()' $MN | sed 's/^/   /' >> $OUT
+# TC-PROD-533 step 2
+echo "== 533-2 sed -n 564p $MN, then the lines of new TicketVerifier(...) in the merged file" >> $OUT
+sed -n 564p $MN | sed 's/^/   564: /' >> $OUT
+grep -n 'new TicketVerifier(database.pool()' $MN | sed 's/^/   /' >> $OUT
+n=$(grep -n 'new TicketVerifier(database.pool()' $MN | cut -d: -f1); sed -n "$((n+1))p" $MN | sed "s/^/   $((n+1)):/" >> $OUT
+# TC-PROD-521 step 4: the last argument of the ticketed new StoreRuntime(...)
+echo "== 521-4 mutation" >> $OUT
+$M $MN '                    permissions, moderation, session, redis, cooldowns);' '                    permissions, moderation, session, redis, TransferCooldowns.fromSystemProperties());' >> $OUT 2>&1
+git diff --stat >> $OUT
+run 521-4 $CT $MN
+run 521-4-green $CT ""
+# TC-PROD-521 step 5
+echo "== 521-5 mutation" >> $OUT
+$M $PH '        this.cooldowns = cooldowns;' '        this.cooldowns = TransferCooldowns.fromSystemProperties();' >> $OUT 2>&1
+git diff --stat >> $OUT
+run 521-5 $CT $PH
+run 521-5-green $CT ""
+# TC-PROD-528 step 2: the memory store's table
+echo "== 528-2 mutation" >> $OUT
+$M $MN '                    HostPermissions.withoutDatabase(process), moderation, null, noRedis,
+                    TransferCooldowns.fromSystemProperties());' '                    HostPermissions.withoutDatabase(process), moderation, null, noRedis,
+                    new TransferCooldowns(5_000, System::currentTimeMillis));' >> $OUT 2>&1
+git diff --stat >> $OUT
+run 528-2 $CT $MN
+run 528-2-green $CT ""
+# TC-PROD-533 step 3
+echo "== 533-3 mutation" >> $OUT
+$M $MN 'keys, cooldowns, ledger::record' 'keys, TransferCooldowns.fromSystemProperties(), ledger::record' >> $OUT 2>&1
+git diff --stat >> $OUT
+run 533-3 $CT $MN
+run 533-3-green $CT ""
+echo PHASE2 DONE >> $OUT
+
+=== xml.sh
+#!/bin/zsh
+setopt nullglob
+# usage: xml.sh <newer-than-epoch> <class full name>...   prints tests/skipped/failures, each test case and failure heads with test lines
+since=$1; shift
+cd /Users/bug/Documents/Projects/Minecraft/synaxis-wt/m3e-integrate
+for c in "$@"; do
+  f=server-app/build/test-results/test/TEST-$c.xml
+  [ -f $f ] || { echo "$c: no result file"; continue; }
+  m=$(stat -f %m $f); [ $m -lt $since ] && { echo "$c: stale $f"; continue; }
+  head -2 $f | grep -o 'testsuite name="[^"]*" tests="[0-9]*" skipped="[0-9]*" failures="[0-9]*" errors="[0-9]*"[^>]*time="[0-9.]*"' | sed 's/testsuite name="io.github.bearisbug.synaxis.//; s/ timestamp="[^"]*" hostname="[^"]*"//'
+  perl -0ne 'while (/<testcase name="([^"]+)"[^>]*time="([0-9.]+)"[^>]*?(\/?)>/sg) { print "  case $1 time=$2\n" }' $f
+  perl -0ne 'while (/<testcase name="([^"]+)"[^>]*>\s*<failure message="([^"]{0,300})[^"]*"[^>]*>(.*?)<\/failure>/sg) { my ($n,$msg,$body)=($1,$2,$3); my @l = ($body =~ /at [\w.\$]+\((\w+Test\.java:\d+)\)/g); my %s; @l = grep { !$s{$_}++ } @l; $msg =~ s/&lt;/</g; $msg =~ s/&gt;/>/g; $msg =~ s/&quot;/"/g; $msg =~ s/&#10;/ /g; print "  FAIL $n @ ", join(",", @l[0..($#l<2?$#l:2)]), " : $msg\n"; }' $f
+  perl -0ne 'if (/<skipped message="([^"]{0,200})/) { my $m=$1; $m =~ s/&quot;/"/g; print "  SKIP e.g. $m\n" }' $f
+done
+
+=== mut.pl
+#!/usr/bin/perl
+# usage: mut.pl <file> <old> <new>   literal, the old text must occur exactly once
+use strict; use warnings;
+my ($file, $old, $new) = @ARGV;
+my $root = "/Users/bug/Documents/Projects/Minecraft/synaxis-wt/m3e-integrate/";
+$file = $root . $file unless $file =~ m{^/};
+open(my $in, '<', $file) or die "open $file: $!"; local $/; my $text = <$in>; close $in;
+my $count = () = $text =~ /\Q$old\E/g;
+die "mut: '$old' occurs $count times in $file\n" unless $count == 1;
+$text =~ s/\Q$old\E/$new/;
+open(my $out, '>', $file) or die; print $out $text; close $out;
+my $line = 1 + (() = substr($text, 0, index($text, $new)) =~ /\n/g);
+print "mut ok: $file:$line\n";
+

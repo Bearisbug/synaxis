@@ -7,3 +7,4 @@
 # 06-load-precheck.txt  TC-WORLD-081~084: one 90 min window of 19 readings, swap free 1,177.50~1,465.50 MB, every tier blocked
 # 07-scripts.txt        the scripts that produced 02~06
 # Not kept: the baked map, bots-*.json, the shard logs and ledgers, the JUnit XML and Gradle logs; the numbers are copied into 02~06.
+# 90-post-merge-6a.txt  addendum: git merge origin/main 3fe5c5cc5d (6A) as 0ae8384aad, the three gates again (4,044 tests each, 15 skipped, 0 failures), TC-PROD-521/528/533 (all pass), document lint

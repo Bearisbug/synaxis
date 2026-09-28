@@ -55,6 +55,10 @@
 	"synaxis:command-profile-busy": "已有一个录制在进行，写到 %s。",
 	"synaxis:command-profile-usage": "用法：profile [秒数]，秒数为 %s～%s 的整数。",
 	"synaxis:command-profile-failed": "录制失败：%s",
+	"synaxis:command-transfer-unavailable": "本分片不能把玩家送到别的分片：它不在目录模式。",
+	"synaxis:command-transfer-no-target": "%s 不是本分片的在线玩家。",
+	"synaxis:command-transfer-result": "把 %s 转到 %s：%s",
+	"synaxis:command-transfer-error": "转服 %s 失败，原因见服务端日志。",
 	"synaxis.order.no-path": "到不了那里。",
 	"synaxis.order.not-owner": "不是你的单位。",
 	"synaxis.order.busy": "服务器忙，请重试。"

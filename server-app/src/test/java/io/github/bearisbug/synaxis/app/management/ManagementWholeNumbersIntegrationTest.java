@@ -60,7 +60,7 @@ class ManagementWholeNumbersIntegrationTest {
         final HostCommands commands = new HostCommands(env.process(), none, store, (_, _) -> { },
                 new Profiler(workingDirectory.resolve("profiles"), "test", Clock.systemUTC()));
         return new ManagementMethods(env.process(), commands, store, HostModeration.withoutDatabase(env.process()),
-                null, "test", (_, attributes) -> events.add(attributes));
+                null, null, "test", (_, attributes) -> events.add(attributes));
     }
 
     private static JsonObject profile(ManagementMethods methods, int id, String seconds) {

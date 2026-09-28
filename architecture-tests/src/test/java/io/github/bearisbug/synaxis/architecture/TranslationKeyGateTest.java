@@ -58,7 +58,7 @@ public class TranslationKeyGateTest {
             Map.entry("synaxis:main", "plugin message channel the core mode echoes on"),
             Map.entry("synaxis:permission", "Redis channel of role changes (API-PROD-006)"),
             Map.entry("synaxis:moderation", "Redis channel of ban and whitelist changes (API-PROD-006)"),
-            Map.entry("synaxis:transfer", "cookie of the transfer ticket (API-PROD-028)"),
+            Map.entry("synaxis:transfer", "cookie of the transfer ticket (API-PROD-028), also a JSON-RPC method (API-PROD-022)"),
             Map.entry("synaxis:match", "dimension type every match is built on (API-M2-010)"),
             Map.entry("synaxis:map", "dimension type of the map instance of a shard (API-M3-006)"),
             Map.entry("synaxis:hidden", "marker block of an Anvil map source, read by the baker (API-M3-003)"),

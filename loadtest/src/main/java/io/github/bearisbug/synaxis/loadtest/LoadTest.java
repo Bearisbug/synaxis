@@ -9,12 +9,12 @@ import java.util.List;
  * receipts and walk, ride or fly movement, split over processes or machines.
  *
  * <pre>
- * run    --host H --port P --bots N [--bot-offset K] [--profile walk|ride|fly] [--encryption on|off]
+ * run    --host H --port P --bots N [--bot-offset K] [--profile walk|ride|fly|town|gate] [--encryption on|off]
  *        [--chunks-per-tick 9.0] [--duration 600s] [--login-rate 20/s] [--warmup 60s] [--hello on|off]
- *        --out bots-&lt;n&gt;.json
+ *        [--gates "minX,minY,minZ,maxX,maxY,maxZ;…" [--dwell 6s], gate only] --out bots-&lt;n&gt;.json
  * sample --pid P [--duration 600s] [--every 10s] [--metrics http://127.0.0.1:9464/metrics] --out server.json
  * merge  bots-*.json server.json [--tick-p99-ms 50] [--max-over-50ms 0] [--rss-mib 4096] [--min-chunks 9]
- *        --out summary.json
+ *        [--min-transfers 0] --out summary.json
  * flood  --host H --port P [--ip-rate 100/s] [--duration 60s] [--hold 0.2s] --out flood.json
  * </pre>
  */

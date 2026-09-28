@@ -152,7 +152,7 @@ class StopRaceIntegrationTest {
 
     private ManagementServer serve(Env env, HostCommands commands, BiConsumer<String, Map<String, ?>> ledger) {
         final ManagementMethods methods = new ManagementMethods(env.process(), commands, PlayerStore.inMemory(
-                env.process(), (_, _) -> { }), HostModeration.withoutDatabase(env.process()), null, "test", ledger);
+                env.process(), (_, _) -> { }), HostModeration.withoutDatabase(env.process()), null, null, "test", ledger);
         methods.serverStarted();
         final ManagementServer server = ManagementServer.serve(ManagementSettings.parse("true", "127.0.0.1:0", TOKEN),
                 env.process(), methods, Duration.ofMillis(300));

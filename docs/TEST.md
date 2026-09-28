@@ -14,6 +14,7 @@
 
 | 日期 | 改动 | 作者 |
 | --- | --- | --- |
+| 2026-09-28 | 跟进 `docs/DESIGN-PROD.md` v0.9.29（第 6 波 6A 其余部分：`transfer` 命令与管理接口 `synaxis:transfer`；`docs/DESIGN-M3.md` §28.2 交接 ⑲）。**新增 §4「生产就绪 · 第 6 波 6A 其余部分」十条 `TC-PROD-540`～`TC-PROD-549`**，每条反证都实跑过：`transfer` 命令按名字或 UUID 送人、结果知道了才回、九个小写名（540，不分 region 与 shard、不认 UUID、不转小写、不等结果四条反证），节点（541），没有 `ShardService` 与找不到玩家（542），异常拆包记 ERROR（543）；`synaxis:transfer` 的调用与结果（544），参数不对与玩家不在（545），−32000 与 −32603（546）；翻译键门禁 60 个键（547）；真进程（548）：一个目录模式分片加一个机器人、严格 grid，管理接口得 `same_target`、`offline`、`unknown_target`、`sent`（另一频道的心跳行写库伪造），控制台两条，`Main` 不交 `ShardService` 的反证，另一个不在目录模式的进程回 −32000；回归（549）。**按重跑结果改随 M3-E 过时的 `TC-PROD`**（交接 ⑲）：`TC-PROD-141`、`200`、`220` 的迁移版本 `1`～`6`、16 张表、先回退 V6、V5，`MigrationsDbTest` 红行 `:97`（200）、`:96`（220），141 第 2 步补上 `:79`；`TransferTicketsIntegrationTest` 红行 `:239` → `:270`、`:260` → `:292`、`:180` → `:200`、`:365` → `:403`、`:413` → `:451`（交接行推算为 `:450`）、`:458` → `:497`；`TC-PROD-157` 第 1 步加签发端 `transfer_issued` 与 `onClaimed` 的断言，加第 4、5 步两条反证（`:274` 与 `:301`；`:241`）；`TC-PROD-379` 第 1 步加 `onClaimed`，第 2 步 `:148` → `:151`，加第 3 步反证（`:142`）；`BotSocketTest` 3 或 4 个 → 8 个，`TC-PROD-265` 第 2 步 `8 tests completed, 4 failed`（`:88`、`:111`、`:171`、`:303`）、第 4 步 `:120`，`TC-PROD-266` 第 2 步 `:109`，`TC-PROD-316` 第 2 步 `:88` → `:130`；`MergeTest` 2 → 4 个，`TC-PROD-267` 第 1 步的判不通过加 `--min-transfers` 一种（共七种）、第 2 步 `:40` → `:48`；`TC-PROD-378` 重跑与原文相同，未改。**别的旧用例**：`TC-PROD-385` 第 1 步的未知方法改为 `synaxis:teleport`；6A 插件面一节的 `Main.java` 行号随本组 +1（`TC-PROD-521` 第 3 步 `263` → `264`）或 +3（`:716` → `:719`、`:670` → `:673`、`sed -n 717,719p`、`:714` → `:717`），反证按新行号重跑过；`TC-PROD-486`、`505`、`510`、`529` 的 `:server-app:test` 498 → 510。**§5**：加 6A 其余部分的局部轮映射 | Bearisbug |
 | 2026-09-28 | 跟进 `docs/DESIGN-PROD.md` v0.9.28（M3-E 合入 `main` `80b16dfe09` 后的行号与条数，出处 `docs/test-runs/RUN-046/90-post-merge-6a.txt`）。**6A 一节**：开头写明行号是 `main` `80b16dfe09` 上的；`TC-PROD-521` 第 3 步 `240` → `263`、第 4 步 `Main.java:565` → `:716`；`TC-PROD-528` 第 2 步 `:521` → `:670`；`TC-PROD-533` 第 2 步改为 `sed -n 714,716p`，预期是验票端构造的两行（`ledger::record` 之后是 M3-E 加的 `onClaimed`）与 `new StoreRuntime(…)` 的末行，验票端与 `StoreRuntime#cooldowns` 拿的是同一个局部变量 `cooldowns`，第 3 步 `:564` → `:714`。`TC-PROD-521` 第 3、4 步与 `TC-PROD-528`、`TC-PROD-533` 的反证由 RUN-046 补记第三节在同一份代码上按新行号实跑过，改法与红行不变；`TC-PROD-533` 第 2 步的三行在 `80b16dfe09` 上对照过。**条数**：`TC-PROD-486` 第 3 步、`TC-PROD-505` 第 3 步、`TC-PROD-510` 第 2 步与 `TC-PROD-529` 第 4 步的 `:server-app:test` 425 → 498（M3-E 加 73 个）；分支 `prod/post-m3e-docs` 在 `80b16dfe09` 上带数据库变量跑 `:server-app:test --rerun` 一次，93 个类 498 个 0 失败 0 跳过；根构建 `:test` 3,141 个不变（RUN-046 补记第二节） 另：`TC-PROD-498` 第 3 步按 main 改为 9 行（M3-E 目录模式加的两个 `close`）与新行号。 | Bearisbug |
 | 2026-09-28 | 跟进 `docs/DESIGN-PROD.md` v0.9.27（第 6 波 6A 插件面，`REQ-PROD-031`），联检不再报「`REQ-PROD-031` 无任何 TC 引用」。**新增 §4「生产就绪 · 第 6 波 6A 插件面：转服与 Cookie」十四条 `TC-PROD-520`～`TC-PROD-533`**，每条都带实跑过的反证（新类 `PluginTransfersIntegrationTest` 11 条、`TransferCooldownTableIntegrationTest` 3 条）：转服发包并开始冷却（520，不查冷却即红）、冷却一张表（521，§19 场景；签发端与插件面各建一张表、宿主不用传进来的表各一条反证，都红在 `COOLDOWN` 变 `NOT_ONLINE` 与 533 那条的 `expected: <false> but was: <true>`）、不在 PLAY 不发（522，§19 场景）、空白 host 与越界端口（523，两条反证）、Cookie 命名空间拒掉 `synaxis:transfer`（524，§19 场景）、5,120 B 上限（525，反证删的是引擎 `CookieStorePacket` 的检查）、`fetchCookie` 的三种结果（526，§19 场景；不设超时即红）、`wasTransferred`（527）、没有转服密钥的进程也有冷却表且写错拒启（528）、标注接口 15 个与 ABI 门（529，`transfers()` 改成抽象方法即 `game-rts` 的测试替身编不过）、转服事件在玩家所属 tick 线程上派发（530，§19 场景，严格 grid；在调用线程上当场派发即红在 `AcquirableOwnershipException`）、被取消的转服不发包不记冷却（531，§19 场景；先记冷却、不用事件里的端口各一条反证）、玩家在下一个 tick 之前离开与 5 s 超时（532，两条反证）、进程装配里验票端的冷却表（533，验票端另拿一张表即红）。**改了四条旧用例**，改过的步骤都在本分支重跑过：`TC-GAME-072` 第 1 步标注的文件 14 → 15 个（加 `Transfers`），第 2 步对 `v0.3.0` 两个任务都执行、0 违例；`TC-PROD-486` 第 3 步、`TC-PROD-505` 第 3 步与 `TC-PROD-510` 第 2 步的 `:server-app:test` 全量 411 → 425（本节 14 个，全量 0 失败 0 跳过；`TC-PROD-505` 第 3 步只改了 `:server-app:test` 这一半，也只重跑了这一半，根构建 `:test` 的 3,141 个本分支没有改动）。§5 加一行回归映射。登记 RUN-047（证据 `docs/test-runs/RUN-047/acceptance.txt`，第八节是 `f947ded016` 上 520～533 的重跑与补跑，第九节是 `0599dc51f8` 上的两道全量门禁与 ABI 门） | Bearisbug |
 | 2026-09-28 | 跟进 `docs/DESIGN-M3.md` v0.18（M3-E 合并验收），登记 RUN-045（合并验收，证据 `docs/test-runs/RUN-045/`）与 RUN-046（证据 `docs/test-runs/RUN-046/`）。**新增 §4「M3 · 分片（M3-E）」一节 `TC-WORLD-057`～`TC-WORLD-088`**：目录格式与校验（057）、目录对清单的核对与出生点列（058）、`Main` 步骤 (1)（059）、大区装配（060）、心跳写读（061）、选频道（062）、`ShardService` 九种结果（063）、关卡门（064）、到达点与 `transfer_completed`（065）、标志的重放（066）、以标志为准（067）、跨频道同步（068）、起服依赖（069）、关掉之后不再应用（070）、机器人转服往返（071）、`gate` 画像与命令行（072）、转服被拒后重连（073）、重配置中的起算点（074）、心跳与选频道的完整版（075）、两进程的五条（076～080）、压测四档（081～084）、满员频道在读 Cookie 之前拒绝转入（085）、`merge` 的转服判定（086）、签发端写事件与验票交给到达（087）、迁移 V5、V6 往返（088）；轨道交来的草案里的 D3 原拟占生产就绪域的下一个 `TC-PROD` 编号，按「不改 `TC-PROD-*`」改为 `TC-WORLD-086`，B 对 `TC-PROD-157`、`TC-PROD-379` 的补充改为 `TC-WORLD-087`，迁移那一半改为 `TC-WORLD-088`。每条反证都在 RUN-046 实跑：`057` 第 2 步到达点 z、`061` 第 2 步 `close` 后 `start`、`067` 第 5 步冲突日志、`072` 第 2 步 `--dwell` 四处按草案直改编译不过（Error Prone 的 `UnusedVariable`、`UnusedMethod`、`UnnecessaryParentheses`），用例里写的是能编译的改法；`059` 第 3 步、`060` 第 2 步、`088` 第 2 步的改法是本轮新设计的。**改 M3-C 的用例（M3-E 挪了条数与红行，都在 RUN-046 重跑过）**：「A 组」25 → 26 条，`TC-WORLD-034` 第 1 步 `SynxChunkOverlayIntegrationTest` 13 → 14，`TC-WORLD-034`～`TC-WORLD-039` 的反证条数 25 → 26、`SynxChunkOverlayIntegrationTest` 的红行 +1（`:332` → `:333`、`:91` → `:92` 等）或 +39（`:410` → `:449`、`:444` → `:483`）；`TC-WORLD-047` `ShardWorldTest` 12 → 18、第 3 步 `:235` → `:335`；`TC-WORLD-048` 第 2 步 23 → 29、`:63`/`:123` → `:65`/`:125`；`TC-WORLD-049` 5 → 8、第 2 步 `:228` → `:365`；`TC-WORLD-055` 12 → 18、第 2 步 23 → 29、`:99` → `:101`；M3-C 一节开头写明这几条按 RUN-046。**§2**：M3 覆盖一段加 M3-E，Gherkin 口径加 M3-E 的场景对照，`REQ-M3-015`～`REQ-M3-017`、`REQ-M3-023` 四行由「未实现」改为指向用例。**§3**：M3 环境加 M3-E 一条（数据库前置、「不带库」不停容器、两进程夹具的内存）。**§5**：大世界域加 M3-E 的局部轮映射。**§7**：登记 `AcquirableTest` 在 `grid` 严格模式下的一次偶发红。**没改 `TC-PROD-*`**：随 M3-E 过时的 `TC-PROD-141`、`157`、`174`、`200`、`220`、`265`～`267`、`316`、`376`、`377`、`379`、`486`、`505`、`510` 的条数与红行交给生产就绪会话（`docs/DESIGN-M3.md` §28.2 交接行 ⑲） | Bearisbug |
@@ -3867,8 +3868,8 @@ jcmd "$pid" VM.flags | tr ' ' '\n' | grep -cxE -- '-XX:\+UseG1GC|-XX:InitialHeap
 
 | # | 操作 | 预期 |
 | --- | --- | --- |
-| 1 | 跑 `io.github.bearisbug.synaxis.app.store.MigrationsDbTest` | 5 个 0 失败：没迁移过的库 `Migrations.validate` 抛 `IllegalArgumentException`；`migrate` 后 `flyway_schema_history` 成功行是 `1`～`4`，`public` 下的表恰为 `account`、`account_role`、`ban`、`character`、`character_location`、`character_section`、`flyway_schema_history`、`item_ledger`、`role`、`role_permission`、`shard_session`、`store_meta`、`transfer_nonce`、`whitelist`；只迁到 V1 的库 `validate` 拒绝（V2～V4 待执行），`migrate` 后补上三版且 `validate` 通过；历史表里插一行 V99 后 `validate` 拒绝，信息含 `ahead of this build: V99`；依次执行 `db/rollback/V4__moderation.down.sql`（见 `TC-PROD-220`）、`V3__roles.down.sql`（见 `TC-PROD-200`）、`V2__item_ledger.down.sql`、`V1__player_store.down.sql` 后只剩 `flyway_schema_history` 且无成功行，再 `migrate` 回到 `1`～`4` 并通过 `validate` |
-| 2 | 反证有齿：`Migrations#validate` 里 `if (future.length > 0)` 改成 `if (future.length > 1000)`，重跑第 1 步，再还原 | 红在 `aDatabaseAheadOfThisBuildIsRefused`：`Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown.`，其余 4 条仍绿。还原后复绿 |
+| 1 | 跑 `io.github.bearisbug.synaxis.app.store.MigrationsDbTest` | 5 个 0 失败：没迁移过的库 `Migrations.validate` 抛 `IllegalArgumentException`；`migrate` 后 `flyway_schema_history` 成功行是 `1`～`6`（V5、V6 归 M3-E，见 `TC-WORLD-088`），`public` 下的表恰为 16 张：`account`、`account_role`、`ban`、`character`、`character_location`、`character_section`、`flyway_schema_history`、`item_ledger`、`role`、`role_permission`、`shard_heartbeat`、`shard_session`、`store_meta`、`transfer_nonce`、`whitelist`、`world_flag`；只迁到 V1 的库 `validate` 拒绝（V2～V6 待执行），`migrate` 后补上五版且 `validate` 通过；历史表里插一行 V99 后 `validate` 拒绝，信息含 `ahead of this build: V99`；依次执行 `db/rollback/V6__world_flag.down.sql`、`V5__shard_heartbeat.down.sql`、`V4__moderation.down.sql`（见 `TC-PROD-220`）、`V3__roles.down.sql`（见 `TC-PROD-200`）、`V2__item_ledger.down.sql`、`V1__player_store.down.sql` 后只剩 `flyway_schema_history` 且无成功行，再 `migrate` 回到 `1`～`6` 并通过 `validate` |
+| 2 | 反证有齿：`Migrations#validate` 里 `if (future.length > 0)` 改成 `if (future.length > 1000)`，重跑第 1 步，再还原 | `5 tests completed, 1 failed`，红在 `aDatabaseAheadOfThisBuildIsRefused`（`MigrationsDbTest.java:79`）：`Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown.`，其余 4 条仍绿。还原后复绿 |
 
 后置：确认 `Migrations.java` 没有残留改动；测试建的库已由测试删掉（`psql -c "\l w3a_*"` 无输出）。
 
@@ -4044,9 +4045,11 @@ jcmd "$pid" VM.flags | tr ' ' '\n' | grep -cxE -- '-XX:\+UseG1GC|-XX:InitialHeap
 
 | # | 操作 | 预期 |
 | --- | --- | --- |
-| 1 | 跑 `io.github.bearisbug.synaxis.app.store.TransferTicketsIntegrationTest` | 7 个 0 失败（另三个归 `TC-PROD-376` 第 1、4 步与 `TC-PROD-377`）。验票按准入闸门的做法走：先 `TicketVerifier#read`，再由 `PlayerStore#load(player, claim)` 执行 `TicketVerifier#claim`。本条的 4 个：源分片上 `TransferTickets#transfer` 得 `SENT`，发出的包里 `CookieStorePacket(synaxis:transfer, …)` 排在 `TransferPacket` 之前，票据的 `state_version` 等于库里版本、租约已是 NULL；改一字节、已过期、`target_shard = r2-c1`、`player_uuid` 属于别人的四张票据依次被拒，都收到 `synaxis:transfer-rejected`，台账 `transfer_rejected` 的 `reason` 依次为 `bad-signature`、`expired`、`wrong-target`、`uuid-mismatch`；好票据通过、目标分片持有角色、载入读到 `coins = 11` 且版本等于 `state_version`；这次登录离开（`abandon`）后同一票据再来一次被拒、`reason=nonce-reused`；`transfer_nonce` 恰 1 行。把角色 `version` 在库里加 1 后验票被拒、`reason=version-mismatch`、`TicketVerifier` 恰一行 ERROR、租约为 NULL。转入时刻 t 的玩家在目标分片 t + 3 s 转出得 `COOLDOWN` 且版本与持有者不变，t + 6 s 得 `SENT`。不在本分片的玩家得 `NOT_ONLINE`；另一连接持有角色行锁时转出得 `SAVE_FAILED`，玩家仍持有角色、不再冻结、收到 `synaxis:transfer-failed`，没有发出 Cookie |
-| 2 | 反证有齿（nonce 与版本）：`TicketVerifier#claim` 的 `if (insert.executeUpdate() == 0)` 与 `if (version != ticket.stateVersion())` 各加 `&& Boolean.getBoolean("proof.never")`，重跑，再还原 | `7 tests completed, 2 failed`：`badTicketsAreRefusedInCheckOrderAndAGoodOneOnlyOnce` 红在重放那次 `expected: <false> but was: <true>`（`TransferTicketsIntegrationTest.java:239`）；`aTicketWhoseVersionTheCharacterIsNotAtIsRefusedAndTheLeaseGivenBack` 红 `expected: <false> but was: <true>`（`:260`）。还原后复绿 |
-| 3 | 反证有齿（顺序）：`TicketIssuer#transfer` 里先 `transfer(host, port)` 再 `storeCookie(…)`，重跑，再还原 | `7 tests completed, 6 failed`，六条发票据的用例（本条三条、`TC-PROD-376` 两条与 `TC-PROD-377`）都红在 `:180` `the cookie is stored before the transfer: [PluginMessagePacket[channel=minecraft:brand, …`。还原后复绿 |
+| 1 | 跑 `io.github.bearisbug.synaxis.app.store.TransferTicketsIntegrationTest` | 7 个 0 失败（另三个归 `TC-PROD-376` 第 1、4 步与 `TC-PROD-377`）。M3-E 加的两件事也在这 4 个里（`TC-WORLD-087` 是 M3 一侧的同一批断言）：签发端台账恰 1 行 `transfer_issued`，`transfer_ref` 等于票据的 `reference()`、`issued_at` 等于 Cookie 里的值，写这一行时 `TransferPacket` 已经发出；坏票据与重放都不调验票端的 `onClaimed`，好票据恰调 1 次、带着转进来的玩家；`COOLDOWN`、`NOT_ONLINE`、`SAVE_FAILED` 都不写 `transfer_issued`。验票按准入闸门的做法走：先 `TicketVerifier#read`，再由 `PlayerStore#load(player, claim)` 执行 `TicketVerifier#claim`。本条的 4 个：源分片上 `TransferTickets#transfer` 得 `SENT`，发出的包里 `CookieStorePacket(synaxis:transfer, …)` 排在 `TransferPacket` 之前，票据的 `state_version` 等于库里版本、租约已是 NULL；改一字节、已过期、`target_shard = r2-c1`、`player_uuid` 属于别人的四张票据依次被拒，都收到 `synaxis:transfer-rejected`，台账 `transfer_rejected` 的 `reason` 依次为 `bad-signature`、`expired`、`wrong-target`、`uuid-mismatch`；好票据通过、目标分片持有角色、载入读到 `coins = 11` 且版本等于 `state_version`；这次登录离开（`abandon`）后同一票据再来一次被拒、`reason=nonce-reused`；`transfer_nonce` 恰 1 行。把角色 `version` 在库里加 1 后验票被拒、`reason=version-mismatch`、`TicketVerifier` 恰一行 ERROR、租约为 NULL。转入时刻 t 的玩家在目标分片 t + 3 s 转出得 `COOLDOWN` 且版本与持有者不变，t + 6 s 得 `SENT`。不在本分片的玩家得 `NOT_ONLINE`；另一连接持有角色行锁时转出得 `SAVE_FAILED`，玩家仍持有角色、不再冻结、收到 `synaxis:transfer-failed`，没有发出 Cookie |
+| 2 | 反证有齿（nonce 与版本）：`TicketVerifier#claim` 的 `if (insert.executeUpdate() == 0)` 与 `if (version != ticket.stateVersion())` 各加 `&& Boolean.getBoolean("proof.never")`，重跑，再还原 | `7 tests completed, 2 failed`：`badTicketsAreRefusedInCheckOrderAndAGoodOneOnlyOnce` 红在重放那次 `expected: <false> but was: <true>`（`TransferTicketsIntegrationTest.java:270`）；`aTicketWhoseVersionTheCharacterIsNotAtIsRefusedAndTheLeaseGivenBack` 红 `expected: <false> but was: <true>`（`:292`）。还原后复绿 |
+| 3 | 反证有齿（顺序）：`TicketIssuer#transfer` 里先 `transfer(host, port)` 再 `storeCookie(…)`，重跑，再还原 | `7 tests completed, 6 failed`，六条发票据的用例（本条三条、`TC-PROD-376` 两条与 `TC-PROD-377`）都红在 `:200` `the cookie is stored before the transfer: [PluginMessagePacket[channel=minecraft:brand, …`。还原后复绿 |
+| 4 | 反证有齿（到达回调先于验票）：把 `TicketVerifier#claim` 末尾的 `onClaimed.accept(player, ticket);` 挪成方法的第一行，重跑，再还原 | `7 tests completed, 2 failed`：`badTicketsAreRefusedInCheckOrderAndAGoodOneOnlyOnce` 红在 `:274` `the replayed ticket is no arrival ==> expected: <1> but was: <2>`（重放的票据在 ⑤ 拒它之前就交给了到达；四张坏票据在 `read` 里就被拒，走不到 `claim`）；`aTicketWhoseVersionTheCharacterIsNotAtIsRefusedAndTheLeaseGivenBack` 红在 `:301` `a refused ticket is no arrival ==> expected: <[]> but was: <[Claimed[…]]>`。还原后复绿 |
+| 5 | 反证有齿（先记事件、后发票据）：把 `TicketIssuer#transfer` 里写 `transfer_issued` 的七行（`final Map<String, Object> issued = new LinkedHashMap<>();` 到 `analytics.accept("transfer_issued", issued);`）挪到 `// The cookie first` 那行注释之前，重跑，再还原 | `7 tests completed, 1 failed`：`badTicketsAreRefusedInCheckOrderAndAGoodOneOnlyOnce` 红在 `:241` `written once the client was told where to go ==> expected: <[true]> but was: <[false]>`。还原后复绿 |
 
 后置：确认 `TicketVerifier.java`、`TicketIssuer.java` 没有残留改动。
 
@@ -4239,7 +4242,7 @@ jcmd "$pid" VM.flags | tr ' ' '\n' | grep -cxE -- '-XX:\+UseG1GC|-XX:InitialHeap
 | 1 | 跑 `PlayerStoreIntegrationTest`，看 `aLoginAbandonedWhileAnotherLoginOfItsAccountLoadsLeavesTheLeaseToTheOther` | 同一账号的第一次登录停在载入里时第二次登录开始载入，300 ms 后放行第一次：第一次载入成功，随后按准入闸门的做法 `abandon` 它；第二次在第一次放弃后载入成功并 `admitted`，角色的 `lease_session_id` 仍是本分片会话（同账号的登录一次只载入一个，第二次等第一次结束后再看已载入的记录、等它的 `gone`） |
 | 2 | 反证有齿：`PlayerStore#load` 里的 `if (other == null) break;` 换成 `if (other == null \|\| !Boolean.getBoolean("proof.never")) break;`（不再按账号排队），与 `TC-PROD-175` 的改动同一轮跑本类（`23 tests completed, 2 failed`），再还原 | 本处红：`the abandoned login does not give back the lease of the one that plays ==> expected: <1> but was: <null>`（第二次在第一次放行前已取得租约，第一次被放弃时按同一会话把租约还掉了）。还原后复绿 |
 | 3 | 跑 `PlayerStoreIntegrationTest`，看 `aLoginComingWhileAnAbandonedLoginGivesItsLeaseBackKeepsTheLeaseItTakes` 与 `aLoginAbandonedTwiceGivesItsLeaseBackOnce`（§16「同账号的一次登录载入后被放弃」一行） | 23 个 0 失败。这两条的后端（`StoreFixture.ReleaseHeld`）包住 `PostgresBackend`，让下一次释放语句停在发往数据库之前，直到测试放行。前者：第一次登录载入成功后，按准入闸门的做法在另一条虚拟线程上 `abandon` 它；它的释放停住时同账号第二次登录开始载入，300 ms 后放行；第二次载入成功并 `admitted`，角色的 `lease_session_id` 是本分片会话，另一分片 `r2-c1`（不顶号）载入同一账号被拒。后者：第一次登录在一条虚拟线程上 `abandon`、释放停住，测试线程上再 `abandon` 一次（登出与准入闸门各放弃一次），随后第二次登录开始载入，放行后载入成功，写权仍是本分片会话 |
-| 4 | 反证有齿（先移出在册表、再释放，即改动前的顺序）：`PlayerStore#abandon(Record)` 里 `releaseQuietly(record.characterId);` 与 `finished(record, LeaseState.OFFLINE);` 两行对调，跑本类与票据类，再还原 | `30 tests completed, 3 failed`：第 3 步两条都红 `the second login holds the lease it took ==> expected: <1> but was: <null>`（`PlayerStoreIntegrationTest.java:844`、`:876`；第二次登录没等被放弃的那次，以本会话取得写权后被它的释放还掉）；`TC-PROD-376` 第 4 步那条红在 `TransferTicketsIntegrationTest.java:458`。还原后复绿 |
+| 4 | 反证有齿（先移出在册表、再释放，即改动前的顺序）：`PlayerStore#abandon(Record)` 里 `releaseQuietly(record.characterId);` 与 `finished(record, LeaseState.OFFLINE);` 两行对调，跑本类与票据类，再还原 | `30 tests completed, 3 failed`：第 3 步两条都红 `the second login holds the lease it took ==> expected: <1> but was: <null>`（`PlayerStoreIntegrationTest.java:844`、`:876`；第二次登录没等被放弃的那次，以本会话取得写权后被它的释放还掉）；`TC-PROD-376` 第 4 步那条红在 `TransferTicketsIntegrationTest.java:497`。还原后复绿 |
 | 5 | 反证有齿（不判定由谁放弃）：`PlayerStore#abandon(Record)` 的 `if (record.state != LeaseState.LOADING) return false;` 改为 `if (Boolean.getBoolean("proof.never") && record.state != LeaseState.LOADING) return false;`，跑本类与票据类，再还原 | `30 tests completed, 1 failed`：只有 `aLoginAbandonedTwiceGivesItsLeaseBackOnce` 红在 `:876`，`expected: <1> but was: <null>`（测试线程上的第二次放弃又执行一次释放并先完成「已离开」，第二次登录随即取得写权，停住的那条释放放行后把它还掉）。还原后复绿 |
 
 后置：确认 `PlayerStore.java` 没有残留改动。
@@ -4441,8 +4444,8 @@ jcmd "$pid" VM.flags | tr ' ' '\n' | grep -cxE -- '-XX:\+UseG1GC|-XX:InitialHeap
 
 | # | 操作 | 预期 |
 | --- | --- | --- |
-| 1 | 跑 `io.github.bearisbug.synaxis.app.store.MigrationsDbTest` | 5 个 0 失败：迁移后 `flyway_schema_history` 成功行是 `1`～`4`，`public` 下的表恰为 `account`、`account_role`、`ban`、`character`、`character_location`、`character_section`、`flyway_schema_history`、`item_ledger`、`role`、`role_permission`、`shard_session`、`store_meta`、`transfer_nonce`、`whitelist`；只迁到 V1 的库 `validate` 拒绝，`migrate` 补上 V2～V4；先回退 V4（`TC-PROD-220`），再执行 `db/rollback/V3__roles.down.sql`（之后成功行是 `1`、`2`，三张表都不在）、`V2__item_ledger.down.sql`、`V1__player_store.down.sql`，再 `migrate` 回到 `1`～`4` 并通过 `validate` |
-| 2 | 反证有齿：删掉 `V3__roles.down.sql` 的 `DROP TABLE account_role;` 一行，重跑，再还原 | `5 tests completed, 1 failed`，红在 `everyVersionRollsBackAndMigratesAgain`（`MigrationsDbTest.java:91`）：`PSQLException: ERROR: cannot drop table role because other objects depend on it`（`account_role` 的外键还指着 `role`）。还原后复绿 |
+| 1 | 跑 `io.github.bearisbug.synaxis.app.store.MigrationsDbTest` | 5 个 0 失败：迁移后 `flyway_schema_history` 成功行是 `1`～`6`，`public` 下的表恰为 16 张：`account`、`account_role`、`ban`、`character`、`character_location`、`character_section`、`flyway_schema_history`、`item_ledger`、`role`、`role_permission`、`shard_heartbeat`、`shard_session`、`store_meta`、`transfer_nonce`、`whitelist`、`world_flag`；只迁到 V1 的库 `validate` 拒绝，`migrate` 补上 V2～V6；先回退 V6、V5 与 V4（`TC-PROD-220`），再执行 `db/rollback/V3__roles.down.sql`（之后成功行是 `1`、`2`，三张表都不在）、`V2__item_ledger.down.sql`、`V1__player_store.down.sql`，再 `migrate` 回到 `1`～`6` 并通过 `validate` |
+| 2 | 反证有齿：删掉 `V3__roles.down.sql` 的 `DROP TABLE account_role;` 一行，重跑，再还原 | `5 tests completed, 1 failed`，红在 `everyVersionRollsBackAndMigratesAgain`（`MigrationsDbTest.java:97`）：`PSQLException: ERROR: cannot drop table role because other objects depend on it`（`account_role` 的外键还指着 `role`）。还原后复绿 |
 
 后置：确认 `V3__roles.down.sql` 没有残留改动；测试建的库已删掉。
 
@@ -4634,8 +4637,8 @@ jcmd "$pid" VM.flags | tr ' ' '\n' | grep -cxE -- '-XX:\+UseG1GC|-XX:InitialHeap
 
 | # | 操作 | 预期 |
 | --- | --- | --- |
-| 1 | 跑 `io.github.bearisbug.synaxis.app.store.MigrationsDbTest` | 5 个 0 失败：迁移后 `flyway_schema_history` 成功行是 `1`～`4`，`public` 下的表多出 `ban` 与 `whitelist`；只迁到 V1 的库 `validate` 拒绝，`migrate` 补上 V2～V4；先执行 `db/rollback/V4__moderation.down.sql`（之后成功行是 `1`～`3`，两张表都不在），再依次回退 V3、V2、V1，最后 `migrate` 回到 `1`～`4` 并通过 `validate` |
-| 2 | 反证有齿：删掉 `V4__moderation.down.sql` 的 `DROP TABLE ban;` 一行，重跑，再还原 | `5 tests completed, 1 failed`，红在 `everyVersionRollsBackAndMigratesAgain`（`MigrationsDbTest.java:90`）：`expected: <true> but was: <false>`（回退之后 `ban` 表还在）。还原后复绿 |
+| 1 | 跑 `io.github.bearisbug.synaxis.app.store.MigrationsDbTest` | 5 个 0 失败：迁移后 `flyway_schema_history` 成功行是 `1`～`6`，`public` 下的表多出 `ban` 与 `whitelist`；只迁到 V1 的库 `validate` 拒绝，`migrate` 补上 V2～V6；先回退 V6、V5，再执行 `db/rollback/V4__moderation.down.sql`（之后成功行是 `1`～`3`，两张表都不在），再依次回退 V3、V2、V1，最后 `migrate` 回到 `1`～`6` 并通过 `validate` |
+| 2 | 反证有齿：删掉 `V4__moderation.down.sql` 的 `DROP TABLE ban;` 一行，重跑，再还原 | `5 tests completed, 1 failed`，红在 `everyVersionRollsBackAndMigratesAgain`（`MigrationsDbTest.java:96`）：`expected: <true> but was: <false>`（回退之后 `ban` 表还在）。还原后复绿 |
 
 后置：确认 `V4__moderation.down.sql` 没有残留改动；测试建的库已删掉。
 
@@ -5108,10 +5111,10 @@ jcmd "$pid" VM.flags | tr ' ' '\n' | grep -cxE -- '-XX:\+UseG1GC|-XX:InitialHeap
 
 | # | 操作 | 预期 |
 | --- | --- | --- |
-| 1 | 跑 `io.github.bearisbug.synaxis.loadtest.BotSocketTest`（`:loadtest:test`），看 `walkingBotsAcknowledgeChunkBatchesAndGetMoreThanTheFirstNine` | 3 个 0 失败（§19「harness 回区块回执并量出区块下行」的缩小版）：测试在回环上起一个真 tick 的进程（平地、视距 4、机器人网段 `127.0.0.0/8` 进可信网段），`RunCommand` 以 3 个机器人 walk 12 s、预热 3 s 跑完。`bots-0.json`：3 个全部登录、0 个掉线；`inbound.chunks.walk.per_bot_packets` 3 个值、最小 > 9；`chunk_batches` > 3，`chunk_batch_rtt_ms` 有样本，预热之后仍有区块到达（`steady_packets` > 0）；`c2s.per_bot_per_1s` 至少 9 个整秒、中位数在 38～46（每 tick 一个位置包加一个 tick 结束），`per_bot_per_7s` 有样本且中位数 ≥ 266；`login_latency_ms.off` 3 个样本 |
-| 2 | 反证有齿（不回执）：`Bot#answer` 里的 `send(ConnectionState.PLAY, new ClientChunkBatchReceivedPacket(settings.chunksPerTick()));` 改为 `var _ = new ClientChunkBatchReceivedPacket(settings.chunksPerTick());`，重跑，再还原 | `3 tests completed, 2 failed`：walk 一条红在 `BotSocketTest.java:46`：`every bot got past the first batch of 9: 9.0`（每个机器人恰好停在首批 9 块，`design-ops-scale.md` ⑤ 5.1 的缺口）；加密一条红在 `:69`：`chunks decrypt and keep coming`；踢人一条不看区块，照常通过。还原后复绿 |
+| 1 | 跑 `io.github.bearisbug.synaxis.loadtest.BotSocketTest`（`:loadtest:test`），看 `walkingBotsAcknowledgeChunkBatchesAndGetMoreThanTheFirstNine` | 8 个 0 失败（本类约 92 s；四条 `gate` 机器人归 M3-E 的 `TC-WORLD-071`～`TC-WORLD-074`，加密一条归 `TC-PROD-266`，数实体一条归 `TC-PROD-316`）。本条是 §19「harness 回区块回执并量出区块下行」的缩小版：测试在回环上起一个真 tick 的进程（平地、视距 4、机器人网段 `127.0.0.0/8` 进可信网段），`RunCommand` 以 3 个机器人 walk 12 s、预热 3 s 跑完。`bots-0.json`：3 个全部登录、0 个掉线；`inbound.chunks.walk.per_bot_packets` 3 个值、最小 > 9；`chunk_batches` > 3，`chunk_batch_rtt_ms` 有样本，预热之后仍有区块到达（`steady_packets` > 0）；`c2s.per_bot_per_1s` 至少 9 个整秒、中位数在 38～46（每 tick 一个位置包加一个 tick 结束），`per_bot_per_7s` 有样本且中位数 ≥ 266；`login_latency_ms.off` 3 个样本 |
+| 2 | 反证有齿（不回执）：`Bot#answer` 里的 `send(ConnectionState.PLAY, new ClientChunkBatchReceivedPacket(settings.chunksPerTick()));` 改为 `var _ = new ClientChunkBatchReceivedPacket(settings.chunksPerTick());`，重跑，再还原 | `8 tests completed, 4 failed`：walk 一条红在 `BotSocketTest.java:88`：`every bot got past the first batch of 9: 9.0`（每个机器人恰好停在首批 9 块，`design-ops-scale.md` ⑤ 5.1 的缺口）；加密一条红在 `:111`：`chunks decrypt and keep coming`；两条 `gate` 机器人红在 `:171` `there, back and there again: {"count":0,…}` 与 `:303` `the trip was timed: {"count":0,…}`（一趟都没转成：服务端的第 9 块等不到回执）；踢人一条不看区块，与数实体的一条、另两条 `gate` 机器人照常通过。还原后复绿 |
 | 3 | 看同一次运行的 `aBotTheServerKicksCountsAsLostWithTheReason` | 通过：服务端在每个玩家 `PlayerSpawnEvent` 后 4 s 以文本 `kicked by the test` 踢人；`bots-0.json` 3 个全部登录、`lost` 3、`kicks_by_reason` 里 `kicked by the test` 3。移动线程写失败时不关套接字，交给读循环带着服务端的原因计入 |
-| 4 | 反证有齿（读循环不计掉线）：`Bot#run` 的 `catch (IOException \| RuntimeException e) { lose(e); }` 改为 `if (e.hashCode() == 0) lose(e);`，只跑这一条，再还原 | 红在 `BotSocketTest.java:78`：`lost` 为 0（期望 3）。还原后复绿。移动线程与读线程谁先撞上断开的套接字是竞态，回环上读线程几乎总是先到，本条测不出旧写法（移动线程写失败即 `close()`、读循环随后见 `closed` 不计）的少计，这一处只靠代码审查 |
+| 4 | 反证有齿（读循环不计掉线）：`Bot#run` 的 `catch (IOException \| RuntimeException e) { lose(e); }` 改为 `if (e.hashCode() == 0) lose(e);`，只跑这一条，再还原 | 红在 `BotSocketTest.java:120`：`lost` 为 0（期望 3），`expected: <3> but was: <0>`。还原后复绿。移动线程与读线程谁先撞上断开的套接字是竞态，回环上读线程几乎总是先到，本条测不出旧写法（移动线程写失败即 `close()`、读循环随后见 `closed` 不计）的少计，这一处只靠代码审查 |
 
 后置：确认 `Bot.java` 没有残留改动。
 
@@ -5122,7 +5125,7 @@ jcmd "$pid" VM.flags | tr ' ' '\n' | grep -cxE -- '-XX:\+UseG1GC|-XX:InitialHeap
 | # | 操作 | 预期 |
 | --- | --- | --- |
 | 1 | 跑 `BotSocketTest`，看 `botsAnswerTheEncryptionRequestOfAnEncryptingServer` | 通过：服务端 `Auth.Offline(true)`，`--encryption on`，3 个全部登录，`login_latency_ms.on` 3 个样本，区块照常解密、每个机器人 > 9 块。在线模式连 `tools/fake-sessionserver` 的 `allow-all` 走的是同一段代码（机器人不 join，`API-PROD-025`），本条不另起假服务 |
-| 2 | 反证有齿（出站用错的密钥）：`Bot#encrypt` 里的 `out = new CipherOutputStream(socket.getOutputStream(), LoginCrypt.streamCipher(Cipher.ENCRYPT_MODE, key));` 把 `key` 换成 `LoginCrypt.sharedSecret(new byte[16])`，只跑这一条，再还原 | 红在 `BotSocketTest.java:67`：`logged_in` 为 0，`login_failures` 为 `closed: SocketException` 2 个、`configuration: synaxis:protocol-error` 1 个。还原后复绿 |
+| 2 | 反证有齿（出站用错的密钥）：`Bot#encrypt` 里的 `out = new CipherOutputStream(socket.getOutputStream(), LoginCrypt.streamCipher(Cipher.ENCRYPT_MODE, key));` 把 `key` 换成 `LoginCrypt.sharedSecret(new byte[16])`，只跑这一条，再还原 | 红在 `BotSocketTest.java:109`：`logged_in` 为 0，`login_failures` 为 `closed: SocketException` 2 个、`configuration: synaxis:protocol-error` 1 个。还原后复绿 |
 
 后置：确认 `Bot.java` 没有残留改动。
 
@@ -5132,8 +5135,8 @@ jcmd "$pid" VM.flags | tr ' ' '\n' | grep -cxE -- '-XX:\+UseG1GC|-XX:InitialHeap
 
 | # | 操作 | 预期 |
 | --- | --- | --- |
-| 1 | 跑 `io.github.bearisbug.synaxis.loadtest.MergeTest` | 2 个 0 失败：两份各一个机器人的文件合成 2 人、区块 40 包 400 字节、每人最少 10 包；一份的整秒上行是 40 与 60、另一份是 50，合并后中位数 50、最大 60（直方图按桶合并，不是分位数相加）；同一主机名得 `same_machine=true`，判定通过。判定各项单独失败：tick P99 = 50 ms（阈值是小于 50）、1 个 tick 超 50 ms、RSS = 4,096 MiB、某人只收到 9 块、1 个机器人中途掉线、没有 `server.json`，六种情况各自判不通过 |
-| 2 | 反证有齿（P99 等于阈值也放行）：`MergeCommand#merge` 的 `final boolean p99Ok = p99 < criteria.tickP99Millis();` 改为 `<=`，重跑，再还原 | `2 tests completed, 1 failed`，红在 `MergeTest.java:40`：`a P99 of 50 ms is not under 50 ==> expected: <false> but was: <true>`。还原后复绿 |
+| 1 | 跑 `io.github.bearisbug.synaxis.loadtest.MergeTest` | 4 个 0 失败（另两条是 M3-E 的转服合并与判定，归 `TC-WORLD-086`）。本条的两个：两份各一个机器人的文件合成 2 人、区块 40 包 400 字节、每人最少 10 包；一份的整秒上行是 40 与 60、另一份是 50，合并后中位数 50、最大 60（直方图按桶合并，不是分位数相加）；同一主机名得 `same_machine=true`，判定通过。判定各项单独失败：tick P99 = 50 ms（阈值是小于 50）、1 个 tick 超 50 ms、RSS = 4,096 MiB、某人只收到 9 块、1 个机器人中途掉线、没有 `server.json`，以及要求至少 1 次转服而一次都没有（M3-E 加的 `--min-transfers`），七种情况各自判不通过 |
+| 2 | 反证有齿（P99 等于阈值也放行）：`MergeCommand#merge` 的 `final boolean p99Ok = p99 < criteria.tickP99Millis();` 改为 `<=`，重跑，再还原 | `4 tests completed, 1 failed`，红在 `MergeTest.java:48`：`a P99 of 50 ms is not under 50 ==> expected: <false> but was: <true>`。还原后复绿 |
 
 后置：确认 `MergeCommand.java` 没有残留改动。
 
@@ -5437,8 +5440,8 @@ jcmd "$pid" VM.flags | tr ' ' '\n' | grep -cxE -- '-XX:\+UseG1GC|-XX:InitialHeap
 
 | # | 操作 | 预期 |
 | --- | --- | --- |
-| 1 | 跑 `io.github.bearisbug.synaxis.loadtest.BotSocketTest`（`:loadtest:test`） | 4 个 0 失败；其中 `botsCountTheEntitiesTheServerShowsThem` 对真 tick 的进程跑两轮 3 个 walk 机器人、各 12 s：上限 0 时 `visible_entities` 最大 2（看得到另外两个），上限 1 时最大 1 |
-| 2 | 反证有齿（机器人收到 `SpawnEntity` 时不计数）：`Bot#track` 的 `visible.add(spawn.entityId())` 改为 `visible.remove(...)`，重跑，再还原 | `4 tests completed, 1 failed`，红在 `BotSocketTest.java:88`：`every bot sees the other two ==> expected: <2.0> but was: <0.0>`。还原后复绿 |
+| 1 | 跑 `io.github.bearisbug.synaxis.loadtest.BotSocketTest`（`:loadtest:test`） | 8 个 0 失败；其中 `botsCountTheEntitiesTheServerShowsThem` 对真 tick 的进程跑两轮 3 个 walk 机器人、各 12 s：上限 0 时 `visible_entities` 最大 2（看得到另外两个），上限 1 时最大 1 |
+| 2 | 反证有齿（机器人收到 `SpawnEntity` 时不计数）：`Bot#track` 的 `visible.add(spawn.entityId())` 改为 `visible.remove(...)`，重跑，再还原 | `8 tests completed, 1 failed`，红在 `BotSocketTest.java:130`：`every bot sees the other two ==> expected: <2.0> but was: <0.0>`。还原后复绿 |
 
 后置：确认 `Bot.java` 没有残留改动。
 
@@ -5792,10 +5795,10 @@ jcmd "$pid" VM.flags | tr ' ' '\n' | grep -cxE -- '-XX:\+UseG1GC|-XX:InitialHeap
 | # | 操作 | 预期 |
 | --- | --- | --- |
 | 1 | 跑票据类，看 `aTicketWaitsForAnotherLoginOfItsAccountLoadingOnTheShard` | 全类 `tests="7"` 0 失败 0 跳过。源分片上 `coins = 9` 的玩家转出、离开源分片；目标分片上同账号的普通登录停在载入里（持有者是目标会话）；此时带票据的转入开始，300 ms 后 `transfer_nonce` 仍是 0 行；放行后普通登录载入成功，按准入闸门的做法 `abandon` 它；转入的登录随后载入成功：`transfer_nonce` 1 行，没有 `transfer_rejected`，持有者是目标会话，`versionOf` 等于票据的 `state_version`，读到 `coins = 9` |
-| 2 | 反证有齿（验票在占位之前，即改动前的顺序）：`PlayerStore#load(Player, BooleanSupplier)` 的第一行前加 `if (claim != null && !claim.getAsBoolean()) return false;`，并把 `loadOrRefuse(player, deadline, claim)` 改成 `loadOrRefuse(player, deadline, null)`，跑票据类，再 `git checkout --` 该文件 | `7 tests completed, 2 failed`。本条红在 `TransferTicketsIntegrationTest.java:365`：`the ticket is not used while another login of its account loads here ==> expected: <0> but was: <1>`；`TC-PROD-377` 那条红在 `:413` |
+| 2 | 反证有齿（验票在占位之前，即改动前的顺序）：`PlayerStore#load(Player, BooleanSupplier)` 的第一行前加 `if (claim != null && !claim.getAsBoolean()) return false;`，并把 `loadOrRefuse(player, deadline, claim)` 改成 `loadOrRefuse(player, deadline, null)`，跑票据类，再 `git checkout --` 该文件 | `7 tests completed, 2 failed`。本条红在 `TransferTicketsIntegrationTest.java:403`：`the ticket is not used while another login of its account loads here ==> expected: <0> but was: <1>`；`TC-PROD-377` 那条红在 `:451` |
 | 3 | 还原后重跑第 1 步 | 与第 1 步相同 |
 | 4 | 跑票据类，看 `aTicketArrivingWhileAnAbandonedLoginGivesItsLeaseBackKeepsTheLeaseItClaims`（§16「同账号的一次登录载入后被放弃」一行） | 全类 7 个 0 失败。目标分片的后端换成 `StoreFixture.ReleaseHeld`（下一次释放语句停在发往数据库之前，直到测试放行）。源分片玩家转出、离开源分片；目标分片上同账号的普通登录载入成功后，按准入闸门的做法在另一条虚拟线程上 `abandon` 它；它的释放停住时带票据的转入开始，300 ms 后放行；转入的登录载入成功，持有者是目标会话，`transfer_nonce` 1 行，`versionOf` 等于票据的 `state_version` |
-| 5 | 反证有齿（改动前的放弃顺序）：`TC-PROD-174` 第 4 步那一次运行 | 本条红在 `TransferTicketsIntegrationTest.java:458`：`the transfer holds the lease its ticket claimed ==> expected: <2> but was: <null>`（⑥ 以「持有者 = 本会话」认下被放弃那次的写权、用掉 nonce，随后那次的释放把写权还掉）。还原后复绿 |
+| 5 | 反证有齿（改动前的放弃顺序）：`TC-PROD-174` 第 4 步那一次运行 | 本条红在 `TransferTicketsIntegrationTest.java:497`：`the transfer holds the lease its ticket claimed ==> expected: <2> but was: <null>`（⑥ 以「持有者 = 本会话」认下被放弃那次的写权、用掉 nonce，随后那次的释放把写权还掉）。还原后复绿 |
 
 后置：`git status --short` 无输出。
 
@@ -5806,8 +5809,8 @@ jcmd "$pid" VM.flags | tr ' ' '\n' | grep -cxE -- '-XX:\+UseG1GC|-XX:InitialHeap
 | # | 操作 | 预期 |
 | --- | --- | --- |
 | 1 | 跑票据类，看 `aStaleTicketDoesNotGiveBackTheLeaseOfALoginOfItsAccountOnTheShard` | 0 失败：玩家转出后库里版本被加 1（票据已过时）；目标分片上同账号的普通登录停在载入里时带这张票据的转入开始，300 ms 后放行；普通登录准入并进世界。转入的登录约 2 s 后被拒（同账号在本分片的上一次登录未在预算内离开），`kicks` 恰为 `synaxis:state-unavailable`；持有者仍是目标会话；`saveOnline()` 得 `SaveCount[saved=1, online=1]`（正在玩的那次登录下一次保存照常写入） |
-| 2 | 反证有齿（改动前的顺序）：`TC-PROD-376` 第 2 步的改动 | 本条红在 `:413`：`the login that plays keeps its lease ==> expected: <2> but was: <null>`（⑥ 以「持有者 = 本会话」认下普通登录的写权，版本对不上又把它释放） |
-| 3 | 反证有齿（占位提前到验票开始，即 §28.2 原默认值）：`PlayerStore#load(Player, BooleanSupplier)` 的 `try {` 之后、`loadOrRefuse` 之前加 `if (claim != null && !claim.getAsBoolean()) { releaseUnused(account); return false; }`，并把 `loadOrRefuse(player, deadline, claim)` 改成 `loadOrRefuse(player, deadline, null)`，跑票据类，再 `git checkout --` 该文件 | `7 tests completed, 1 failed`：只有本条红，仍在 `:413`，`expected: <2> but was: <null>`；`TC-PROD-376` 那条绿。占位挡住了正在载入的另一次登录，挡不住已经载入、正在玩的那一次，所以 ⑤⑥ 要放在「上一次登录离开」之后 |
+| 2 | 反证有齿（改动前的顺序）：`TC-PROD-376` 第 2 步的改动 | 本条红在 `:451`：`the login that plays keeps its lease ==> expected: <2> but was: <null>`（⑥ 以「持有者 = 本会话」认下普通登录的写权，版本对不上又把它释放） |
+| 3 | 反证有齿（占位提前到验票开始，即 §28.2 原默认值）：`PlayerStore#load(Player, BooleanSupplier)` 的 `try {` 之后、`loadOrRefuse` 之前加 `if (claim != null && !claim.getAsBoolean()) { releaseUnused(account); return false; }`，并把 `loadOrRefuse(player, deadline, claim)` 改成 `loadOrRefuse(player, deadline, null)`，跑票据类，再 `git checkout --` 该文件 | `7 tests completed, 1 failed`：只有本条红，仍在 `:451`，`expected: <2> but was: <null>`；`TC-PROD-376` 那条绿。占位挡住了正在载入的另一次登录，挡不住已经载入、正在玩的那一次，所以 ⑤⑥ 要放在「上一次登录离开」之后 |
 | 4 | 还原后重跑第 1 步 | 与第 1 步相同 |
 
 后置：`git status --short` 无输出。
@@ -5830,9 +5833,10 @@ jcmd "$pid" VM.flags | tr ' ' '\n' | grep -cxE -- '-XX:\+UseG1GC|-XX:InitialHeap
 
 | # | 操作 | 预期 |
 | --- | --- | --- |
-| 1 | 跑 `io.github.bearisbug.synaxis.app.TransferAdmissionIntegrationTest` | `tests="1"` 0 失败。Cookie 是 3 个乱字节的连接收到 `synaxis:transfer-rejected`；带一张签名、目标分片与 UUID 都对的票据的连接收到 `synaxis:state-unavailable`；准入提供者一次都没被调用；台账恰 2 行 `transfer_rejected`，`reason` 依次为 `bad-signature`、`store-unavailable`，没有 `client_rejected` 行 |
-| 2 | 反证有齿：`AdmissionGate#admit` 的 `if (!ticketRefused.get()) rejected(connectionId, hello, DisconnectKeys.STATE_UNAVAILABLE);` 改成无条件的 `rejected(…)`，跑本类，再 `git checkout --` 该文件 | 红在 `TransferAdmissionIntegrationTest.java:148`：`a refused ticket is not also a failed load: […]`，台账多出 `{"event":"client_rejected",…,"reason":"state-unavailable","schema_version":0}` |
-| 3 | 还原后重跑第 1 步 | 与第 1 步相同 |
+| 1 | 跑 `io.github.bearisbug.synaxis.app.TransferAdmissionIntegrationTest` | `tests="1"` 0 失败。Cookie 是 3 个乱字节的连接收到 `synaxis:transfer-rejected`；带一张签名、目标分片与 UUID 都对的票据的连接收到 `synaxis:state-unavailable`；准入提供者一次都没被调用，两条被拒的连接也都没有调验票端的 `onClaimed`（`docs/DESIGN-M3.md` `API-M3-010`）；台账恰 2 行 `transfer_rejected`，`reason` 依次为 `bad-signature`、`store-unavailable`，没有 `client_rejected` 行 |
+| 2 | 反证有齿：`AdmissionGate#admit` 的 `if (!ticketRefused.get()) rejected(connectionId, hello, DisconnectKeys.STATE_UNAVAILABLE);` 改成无条件的 `rejected(…)`，跑本类，再 `git checkout --` 该文件 | 红在 `TransferAdmissionIntegrationTest.java:151`：`a refused ticket is not also a failed load: […]`，台账多出 `{"event":"client_rejected",…,"reason":"state-unavailable","schema_version":0}` |
+| 3 | 反证有齿（到达回调先于验票）：`TC-PROD-157` 第 4 步的改动，跑本类，再 `git checkout --` 该文件 | `1 test completed, 1 failed`：红在 `TransferAdmissionIntegrationTest.java:142`：`nor its onClaimed (docs/DESIGN-M3.md API-M3-010) ==> expected: <[]> but was: <[TransferTicket[…]]>`（带好票据的那条连接在 ⑤ 连不上库之前就交给了到达） |
+| 4 | 还原后重跑第 1 步 | 与第 1 步相同 |
 
 后置：`git status --short` 无输出。
 
@@ -6238,7 +6242,7 @@ jcmd "$pid" VM.flags | tr ' ' '\n' | grep -cxE -- '-XX:\+UseG1GC|-XX:InitialHeap
 
 | # | 操作 | 预期 |
 | --- | --- | --- |
-| 1 | 跑 `ManagementIntegrationTest`，看 `errorsAreJsonRpcErrorsAndNotificationsAreNotAnswered` | 通过：`{not json` 回 −32700，`id` 为 null，`error.data.request_id` 是一个 UUID；顶层数组、缺 `jsonrpc`、`jsonrpc` 是数字 `2.0`、`method` 是数字、`params` 是字符串、`id` 是布尔，都回 −32600；`synaxis:transfer` 回 −32601 `Method not found`；`kick` 缺参数、Player 既无 `id` 也无 `name`、`id` 不是 UUID、`broadcast` 的 Message 是空对象、`literal` 是数字、翻译参数是对象、`profile` 的 `seconds` 为 0、1.5、`"soon"`，都回 −32602；内存存储下 `minecraft:bans/add` 回 −32000，`minecraft:bans` 得 `[]`；每个错误回复都没有 `result`，`message` 不含 `Exception`。之后连发两条没有 `id` 的通知（一条 `synaxis:broadcast`、一条不存在的方法）与请求 18，1 s 静默之前只收到一条回复，是 18 的；那条广播照样执行，玩家收到 `quiet` |
+| 1 | 跑 `ManagementIntegrationTest`，看 `errorsAreJsonRpcErrorsAndNotificationsAreNotAnswered` | 通过：`{not json` 回 −32700，`id` 为 null，`error.data.request_id` 是一个 UUID；顶层数组、缺 `jsonrpc`、`jsonrpc` 是数字 `2.0`、`method` 是数字、`params` 是字符串、`id` 是布尔，都回 −32600；没有的方法 `synaxis:teleport` 回 −32601 `Method not found`（`synaxis:transfer` 自 6A 起在方法表里，见 `TC-PROD-544`～`TC-PROD-546`）；`kick` 缺参数、Player 既无 `id` 也无 `name`、`id` 不是 UUID、`broadcast` 的 Message 是空对象、`literal` 是数字、翻译参数是对象、`profile` 的 `seconds` 为 0、1.5、`"soon"`，都回 −32602；内存存储下 `minecraft:bans/add` 回 −32000，`minecraft:bans` 得 `[]`；每个错误回复都没有 `result`，`message` 不含 `Exception`。之后连发两条没有 `id` 的通知（一条 `synaxis:broadcast`、一条不存在的方法）与请求 18，1 s 静默之前只收到一条回复，是 18 的；那条广播照样执行，玩家收到 `quiet` |
 | 2 | 反证有齿（通知也回复）：`ManagementMethods#handle` 的 `final boolean answered = id != null;` 改为 `final boolean answered = true;`，重跑，再还原 | `13 tests completed, 1 failed`，红在 `:408`：`one answer for three messages: [{"jsonrpc":"2.0","id":null,"result":1}, …] ==> expected: <1> but was: <3>`（两条通知各得到一条 `id` 为 null 的回复，三条回复的先后随线程调度变）。还原后复绿 |
 | 3 | 同一次运行，看 `aRecordingThatCannotStartIsUnavailableAndABinaryFrameCloses` | 通过：工作目录里 `profiles` 被一个普通文件占着，`synaxis:profile` 回 −32000，`message` 以 `The recording cannot start: ` 开头，台账一条 `synaxis:profile {"seconds":1} null unavailable`；随后发一个二进制帧，连接收到关闭码 1003 |
 | 4 | 反证有齿（二进制帧不拒）：`ManagementServer.Endpoint#onMessage(WebSocket, ByteBuffer)` 的 `conn.close(CloseFrame.REFUSE, "text frames only");` 改为 `if (Boolean.getBoolean("proof.never")) conn.close(…);`，重跑，再还原 | `13 tests completed, 1 failed`，红在 `:649`（`ManagementClient.java:121`）：`the connection is still open after PT10S`。还原后复绿 |
@@ -6741,7 +6745,7 @@ for (var request : System.getenv("MGMT_CALLS").split("\n")) {
 | --- | --- | --- |
 | 1 | 同一次运行跑 `io.github.bearisbug.synaxis.app.store` 下的 `ShutdownSaveBeforeSpawnIntegrationTest`、`ShutdownSaveIntegrationTest`、`ShutdownSaveRaceIntegrationTest`、`PlayerStoreIntegrationTest`、`CrossShardHandoverIntegrationTest`、`TransferTicketsIntegrationTest`，与 `io.github.bearisbug.synaxis.app.ConfigFileLaunchTest` | `tests="3"`、`"4"`、`"2"`、`"23"`、`"6"`、`"7"`、`"2"`，都 0 失败 0 跳过（`TC-PROD-460`、`TC-PROD-470`、`TC-PROD-155`、`TC-PROD-214` 第 2 步、`TC-PROD-442` 不受影响）。保存阶段开始后的下一个 tick 会断开仍连着、没进世界的玩家，这几类里这样的玩家都在那之前已自己断开，断言不变 |
 | 2 | `TC-PROD-147` 第 2 步（本组把它要改的那一行 `if (!saveEnded) releaseQuietly(record.characterId);` 改成了 `releaseQuietly(record.characterId);`，保存阶段结束的判断挪进 `releaseQuietly`；该步已按新写法改） | 红在 `PlayerStoreIntegrationTest.java:270`，`not within 10 s: the lease goes back after the retries`，与原预期相同；还原后复绿 |
-| 3 | 跑 `:server-app:test` 全量（数据库前置满足） | 498 个 0 失败 0 跳过（含本组新增 11 个，另有同批合入的 G2 10 个、G3 3 个、RUN-039 修复轮的 9 个与修复第 2 轮的 4 个，合计 370 个；M3-C 合入后再加它的 41 个，6A 插件面再加 14 个，M3-E 再加 73 个） |
+| 3 | 跑 `:server-app:test` 全量（数据库前置满足） | 510 个 0 失败 0 跳过（含本组新增 11 个，另有同批合入的 G2 10 个、G3 3 个、RUN-039 修复轮的 9 个与修复第 2 轮的 4 个，合计 370 个；M3-C 合入后再加它的 41 个，6A 插件面再加 14 个，M3-E 再加 73 个，6A 其余部分再加 12 个） |
 
 后置：确认 `PlayerStore.java` 没有残留改动。
 
@@ -6992,7 +6996,7 @@ for (var request : System.getenv("MGMT_CALLS").split("\n")) {
 | --- | --- | --- |
 | 1 | 同一次运行跑 `:server-app:test` 的 `io.github.bearisbug.synaxis.app.management.StopRaceIntegrationTest`、`io.github.bearisbug.synaxis.app.store.ShutdownSaveOutsideTheWorldIntegrationTest`、`io.github.bearisbug.synaxis.app.management.ManagementIntegrationTest`、`io.github.bearisbug.synaxis.app.ModerationIntegrationTest`、`io.github.bearisbug.synaxis.app.ShutdownSequenceTest` 与 `io.github.bearisbug.synaxis.app.BindKeysLaunchTest` | `tests="3"`、`"3"`、`"13"`、`"12"`、`"8"`、`"2"`，都 0 失败 0 跳过（`TC-PROD-495`、`TC-PROD-496`、`TC-PROD-498`、`TC-PROD-483`、`TC-PROD-484`、`TC-PROD-381`～`TC-PROD-388`、`TC-PROD-221`～`TC-PROD-227`、`TC-PROD-370`～`TC-PROD-375` 与 `TC-PROD-489` 跑的类不受影响） |
 | 2 | 按新写法重跑本组改过的旧用例反证：`TC-PROD-380` 第 2 步、`TC-PROD-390` 第 2 步、`TC-PROD-395` 第 2 步、`TC-PROD-485` 第 2 步、`TC-PROD-489` 第 2 步，与 `TC-PROD-169` 第 2 步的合并反证 | 各条写的红行与消息，即 `6 tests completed, 1 failed`（`ManagementSettingsTest.java:29`）、`2 tests completed, 1 failed`（`ManagementBansIntegrationTest.java:133`）、`2 tests completed, 1 failed`（`(ManagementServer.java:231)`）、`4 tests completed, 4 failed`（`ShutdownBeforeTheWorldLaunchTest.java:136`）、`2 tests completed, 2 failed`（`BindKeysLaunchTest.java:29`）、`32 tests completed, 6 failed`；每次还原后复绿 |
-| 3 | 跑 `:server-app:test` 全量（数据库前置满足）与根构建 `:test` 全量 | `:server-app:test` 498 个 0 失败 0 跳过（`TC-PROD-486` 第 3 步原写的 357 个加本组 9 个，再加修复第 2 轮的 4 个，合计 370 个；M3-C 合入后再加它的 41 个，6A 插件面再加 14 个，M3-E 再加 73 个）；`:test` 3,141 个 0 失败、15 跳过（比 RUN-039 多本组的 3 个，合计 3,106 个；M3-C 合入后再加它的 34 个，RUN-042 的修复再加 `BinaryTagTypeImplTest` 1 个。15 个跳过合入前就有） |
+| 3 | 跑 `:server-app:test` 全量（数据库前置满足）与根构建 `:test` 全量 | `:server-app:test` 510 个 0 失败 0 跳过（`TC-PROD-486` 第 3 步原写的 357 个加本组 9 个，再加修复第 2 轮的 4 个，合计 370 个；M3-C 合入后再加它的 41 个，6A 插件面再加 14 个，M3-E 再加 73 个，6A 其余部分再加 12 个）；`:test` 3,141 个 0 失败、15 跳过（比 RUN-039 多本组的 3 个，合计 3,106 个；M3-C 合入后再加它的 34 个，RUN-042 的修复再加 `BinaryTagTypeImplTest` 1 个。15 个跳过合入前就有） |
 
 后置：确认反证改过的文件都已还原（`git status --short` 只剩本组的改动）。
 
@@ -7058,7 +7062,7 @@ for (var request : System.getenv("MGMT_CALLS").split("\n")) {
 | # | 操作 | 预期 |
 | --- | --- | --- |
 | 1 | 按新写法重跑本组改过的旧用例：`TC-PROD-495` 第 2、3 步，`TC-PROD-496` 第 3 步，`TC-PROD-498` 第 2、3 步，`TC-PROD-501` 第 2、3 步 | 各条写的结果：`2 tests completed, 2 failed`（`StopRaceIntegrationTest.java:195`、`:213`，删改后的行号不变）；`3 tests completed, 1 failed`（`:200`）；`16 tests completed, 1 failed`（`:218`，`ManagementIntegrationTest` 13 条都绿）；`3 tests completed, 1 failed`（`:258`）；`grep` 得 `:262`、`:264`、`:266`、`:270`；`2 tests completed, 2 failed`（`MetricsEndpointLimitTest.java:85`，经 `:53`、`:74`）；`2 tests completed, 2 failed`（`:102` 经 `:55`，`:125` 经 `:78`）。每次还原后复绿 |
-| 2 | 跑 `:server-app:test` 全量（数据库前置满足） | 498 个 0 失败 0 跳过（与 `TC-PROD-505` 第 3 步相同：`TC-PROD-486` 第 3 步原写的 357 个加 RUN-039 修复轮 9 个与本组 4 个，合计 370 个；M3-C 合入后再加它的 41 个，6A 插件面再加 14 个，M3-E 再加 73 个） |
+| 2 | 跑 `:server-app:test` 全量（数据库前置满足） | 510 个 0 失败 0 跳过（与 `TC-PROD-505` 第 3 步相同：`TC-PROD-486` 第 3 步原写的 357 个加 RUN-039 修复轮 9 个与本组 4 个，合计 370 个；M3-C 合入后再加它的 41 个，6A 插件面再加 14 个，M3-E 再加 73 个，6A 其余部分再加 12 个） |
 
 后置：确认反证改过的文件都已还原（`git status --short` 无输出）。
 
@@ -7114,7 +7118,7 @@ for (var request : System.getenv("MGMT_CALLS").split("\n")) {
 
 对应 `REQ-PROD-031`（`API-PROD-021`），`docs/DESIGN-PROD.md` v0.9.27，§19 的六条插件面场景：冷却一张表（含验票端）、不在 PLAY 不发、转服事件在玩家所属 tick 线程上派发、被取消的转服不记冷却、读写不了票据 Cookie、`fetchCookie` 的三种结果。改动：`:plugin-api` 新接口 `Transfers`（标 `@ApiStatus.NonExtendable`）与 `PluginContext` 的默认方法 `transfers()`；宿主实现是 `server-app` 的 `app.transfer.PluginTransfers`，每个插件一份，`transfer` 返回 `CompletableFuture<Boolean>`，判定、`OutgoingTransferEvent` 与发包都在玩家下一个 tick、玩家所属 tick 线程上；`Main#openStore` 建的 `TransferCooldowns` 挂在 `StoreRuntime#cooldowns`，与 `TicketIssuer`、`TicketVerifier` 是同一个对象，经 `PluginHost` 的八参构造器交给插件面。6A 的 `gm.transfer`、管理接口 `synaxis:transfer` 与 P10 等 M3-E，不在本节；§19「转入连接重新验证」一条里 `storeCookie` 写 5,121 B 与 5,120 B 的判据由 `TC-PROD-525` 在进程内覆盖，那条场景的其余部分随 M3-E 另立用例。
 
-测试：`server-app` 两个新类。`io.github.bearisbug.synaxis.app.transfer.PluginTransfersIntegrationTest` 11 条，不连数据库，冷却表用手动时钟：要转服成功的玩家经 `Env#createConnection` 连进一个平地实例、再跑一个 tick（分到一条 tick 线程），下行的 `TransferPacket` 用 `trackIncoming` 收；不在 PLAY、从不 tick 的玩家与 Cookie 几条挂在一条记下全部下行包的测试连接上，连接的服务端状态由测试设定。「判定」即反复 tick 直到 future 完成，上限 2 s，短于 `transfer` 自己的 5 s 超时，所以 tick 判出的 false 不会被超时的 false 冒充。`io.github.bearisbug.synaxis.app.TransferCooldownTableIntegrationTest` 3 条：第 1、3 条按 `Main#openStore` 开 postgres 存储并配 `SYNAXIS_TRANSFER_HMAC_KEYS`，玩家在建 `PluginHost` 之前连进世界（宿主的准入会拒掉没有准入回调的连接），第 2 条是内存存储。「跑某类」即 `./gradlew :server-app:test --rerun --tests '<全名>' --max-workers=4 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts`，结果看 `server-app/build/test-results/test/TEST-<全名>.xml`。「数据库前置」即环境里有 `SYNAXIS_TEST_PG_URL`、`SYNAXIS_TEST_PG_USER`、`SYNAXIS_TEST_PG_PASSWORD`（本机指向共用容器 `synaxis-pg`，`127.0.0.1:5440`）；缺了它们，`TransferCooldownTableIntegrationTest` 第 1 条跳过，本节用例判失败。「严格 grid」同上一节。反证一律是改一处、跑、看红、`git checkout --` 该文件、复绿，下表只写改哪一处和红在哪；行号是 `main` `80b16dfe09` 上的。
+测试：`server-app` 两个新类。`io.github.bearisbug.synaxis.app.transfer.PluginTransfersIntegrationTest` 11 条，不连数据库，冷却表用手动时钟：要转服成功的玩家经 `Env#createConnection` 连进一个平地实例、再跑一个 tick（分到一条 tick 线程），下行的 `TransferPacket` 用 `trackIncoming` 收；不在 PLAY、从不 tick 的玩家与 Cookie 几条挂在一条记下全部下行包的测试连接上，连接的服务端状态由测试设定。「判定」即反复 tick 直到 future 完成，上限 2 s，短于 `transfer` 自己的 5 s 超时，所以 tick 判出的 false 不会被超时的 false 冒充。`io.github.bearisbug.synaxis.app.TransferCooldownTableIntegrationTest` 3 条：第 1、3 条按 `Main#openStore` 开 postgres 存储并配 `SYNAXIS_TRANSFER_HMAC_KEYS`，玩家在建 `PluginHost` 之前连进世界（宿主的准入会拒掉没有准入回调的连接），第 2 条是内存存储。「跑某类」即 `./gradlew :server-app:test --rerun --tests '<全名>' --max-workers=4 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts`，结果看 `server-app/build/test-results/test/TEST-<全名>.xml`。「数据库前置」即环境里有 `SYNAXIS_TEST_PG_URL`、`SYNAXIS_TEST_PG_USER`、`SYNAXIS_TEST_PG_PASSWORD`（本机指向共用容器 `synaxis-pg`，`127.0.0.1:5440`）；缺了它们，`TransferCooldownTableIntegrationTest` 第 1 条跳过，本节用例判失败。「严格 grid」同上一节。反证一律是改一处、跑、看红、`git checkout --` 该文件、复绿，下表只写改哪一处和红在哪；行号是 `main` `80b16dfe09` 上的，`Main.java` 的按 6A 其余部分（`docs/DESIGN-PROD.md` v0.9.29，多一行导入与两行装配）改过。
 
 #### `TC-PROD-520` 插件转服发一个 `Transfer` 包并开始冷却，冷却内再转返回 false — 对应 `REQ-PROD-031` · 级别: 回归 · 执行者: AI
 
@@ -7135,8 +7139,8 @@ for (var request : System.getenv("MGMT_CALLS").split("\n")) {
 | --- | --- | --- |
 | 1 | 跑 `PluginTransfersIntegrationTest`，看 `aTicketThatBroughtThePlayerInCoolsThePluginDown` | 0 失败。照 `TicketVerifier#claim` 的做法在冷却表记下票据的 `issued_at` = t；t + 3 s 时 `transfer` 判定为 false，t + 6 s 判定为 true，全程恰一个 `TransferPacket` |
 | 2 | 跑 `TransferCooldownTableIntegrationTest`，看 `aPluginTransferCoolsTheTicketSideDown` | `tests="3"` 0 失败 0 跳过（本类约 0.5～1.8 s）。`--migrate-only --auth-mode=offline` 之后，`Main.openStore("postgres", …)` 带 `SYNAXIS_TRANSFER_HMAC_KEYS` 开出的 `StoreRuntime` 交给八参 `PluginHost`；探针插件经 `transfers()` 对世界里的 PLAY 玩家 `transfer` 判定为 true；随即 `runtime.issuer().transfer(玩家, "r1-c2", "127.0.0.1", 25566)` 在 5 s 内以 `COOLDOWN` 完成；全程恰一个 `TransferPacket[host=lobby.example, port=25565]` |
-| 3 | `grep -n 'store.cooldowns()' server-app/src/main/java/io/github/bearisbug/synaxis/app/Main.java` | 恰一行 `263`：进程装配里 `new PluginHost(…)` 的最后一个实参，与第 2 步走的是同一个构造器 |
-| 4 | 反证有齿（签发端与插件面各一张表）：把 `Main.java:716` `new StoreRuntime(…)` 实参末尾的 `cooldowns` 换成 `TransferCooldowns.fromSystemProperties()`，跑 `TransferCooldownTableIntegrationTest` | `3 tests completed, 2 failed`：本条红在 `TransferCooldownTableIntegrationTest.java:91` `expected: <COOLDOWN> but was: <NOT_ONLINE>`（签发端查自己那张表不在冷却，往下查到这名玩家不在存储里）；`TC-PROD-533` 那条红在 `:113` `the verifier recorded the arrival in the table the plugins read ==> expected: <false> but was: <true>`（验票端与签发端仍共用一张，插件面那张没记） |
+| 3 | `grep -n 'store.cooldowns()' server-app/src/main/java/io/github/bearisbug/synaxis/app/Main.java` | 恰一行 `264`：进程装配里 `new PluginHost(…)` 的最后一个实参，与第 2 步走的是同一个构造器 |
+| 4 | 反证有齿（签发端与插件面各一张表）：把 `Main.java:719` `new StoreRuntime(…)` 实参末尾的 `cooldowns` 换成 `TransferCooldowns.fromSystemProperties()`，跑 `TransferCooldownTableIntegrationTest` | `3 tests completed, 2 failed`：本条红在 `TransferCooldownTableIntegrationTest.java:91` `expected: <COOLDOWN> but was: <NOT_ONLINE>`（签发端查自己那张表不在冷却，往下查到这名玩家不在存储里）；`TC-PROD-533` 那条红在 `:113` `the verifier recorded the arrival in the table the plugins read ==> expected: <false> but was: <true>`（验票端与签发端仍共用一张，插件面那张没记） |
 | 5 | 反证有齿（宿主不用传进来的表）：把 `PluginHost.java:102` 的 `this.cooldowns = cooldowns;` 换成 `this.cooldowns = TransferCooldowns.fromSystemProperties();`，跑 `TransferCooldownTableIntegrationTest` | 与第 4 步相同：`3 tests completed, 2 failed`，`:91` 与 `:113` |
 
 后置：`git status --short` 无输出；测试建的库由 `TestDatabase` 删掉。
@@ -7215,7 +7219,7 @@ for (var request : System.getenv("MGMT_CALLS").split("\n")) {
 | # | 操作 | 预期 |
 | --- | --- | --- |
 | 1 | 跑 `TransferCooldownTableIntegrationTest`，看 `aProcessWithoutTransferKeysHasATableAndReadsItsKey` | 0 失败。内存存储开出的 `StoreRuntime`：`issuer()` 为 null，`cooldowns()` 不为 null；系统属性 `synaxis.app.transfer-cooldown-ms=soon` 时 `Main.openStore("memory", …)` 抛 `IllegalArgumentException`，消息含 `synaxis.app.transfer-cooldown-ms=soon`；测试结束把属性恢复原值 |
-| 2 | 反证有齿（内存存储不读这个键）：`Main.java:670` 的 `TransferCooldowns.fromSystemProperties()` 换成 `new TransferCooldowns(5_000, System::currentTimeMillis)`，跑本类 | `3 tests completed, 1 failed`：`TransferCooldownTableIntegrationTest.java:132` `Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown.` |
+| 2 | 反证有齿（内存存储不读这个键）：`Main.java:673` 的 `TransferCooldowns.fromSystemProperties()` 换成 `new TransferCooldowns(5_000, System::currentTimeMillis)`，跑本类 | `3 tests completed, 1 failed`：`TransferCooldownTableIntegrationTest.java:132` `Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown.` |
 
 后置：`git status --short` 无输出。
 
@@ -7228,7 +7232,7 @@ for (var request : System.getenv("MGMT_CALLS").split("\n")) {
 | 1 | 做 `TC-GAME-072` 第 1 步 | 恰好 15 个文件，含 `Transfers` |
 | 2 | `./gradlew :plugin-api:checkBinaryCompatibility --rerun :protocol:checkBinaryCompatibility --rerun -PbaselineJarDir=<abi> --console=plain --max-workers=4 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts` | 两个任务都执行（没有 `SKIPPED`、没有 `FROM-CACHE`）、`BUILD SUCCESSFUL`，尾部 `2 executed`：新接口与 `PluginContext` 的新默认方法都是新增，0 条违例，`API_VERSION` 仍为 2 |
 | 3 | 反证有齿（`transfers()` 必须是默认方法）：`PluginContext.java` 的 `default Transfers transfers() { throw …; }` 改为 `Transfers transfers();`，跑 `./gradlew :game-rts:compileTestJava --max-workers=4 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts`，再 `git checkout --` 该文件 | `BUILD FAILED`：`RtsPluginIntegrationTest.java:60` 的测试替身 `ProbeContext` 编不过，javac 报 `ProbeContext不是抽象的, 并且未覆盖PluginContext中的抽象方法transfers()`（英文环境是 `is not abstract and does not override abstract method transfers()`）。改成抽象方法 ABI 门不报（`PluginContext` 已标注），坏的是插件自写的替身 |
-| 4 | `./gradlew :server-app:check :plugin-api:check :game-rts:check :architecture-tests:check --max-workers=4 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts` | `BUILD SUCCESSFUL`；`:server-app:test` 498 个 0 失败 0 跳过（M3-C 合入后的 411 个加本节 14 个与 M3-E 的 73 个，与 `TC-PROD-505` 第 3 步相同），`:plugin-api` 15 个、`:game-rts` 87 个、`:architecture-tests` 20 个，都 0 失败 |
+| 4 | `./gradlew :server-app:check :plugin-api:check :game-rts:check :architecture-tests:check --max-workers=4 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts` | `BUILD SUCCESSFUL`；`:server-app:test` 510 个 0 失败 0 跳过（M3-C 合入后的 411 个加本节 14 个、M3-E 的 73 个与 6A 其余部分的 12 个，与 `TC-PROD-505` 第 3 步相同），`:plugin-api` 15 个、`:game-rts` 87 个、`:architecture-tests` 20 个，都 0 失败 |
 | 5 | 严格 grid 跑 `:server-app:test`，`--tests` 给本节两个类与 `PluginHostIntegrationTest`、`MainStoreIntegrationTest`、`TransferAdmissionIntegrationTest`（后三个在 `io.github.bearisbug.synaxis.app` 包） | 11 + 3 + 18 + 6 + 1 = 39 个 0 失败 0 跳过 |
 
 后置：`git status --short` 无输出；删掉 `<abi>`。
@@ -7275,8 +7279,139 @@ for (var request : System.getenv("MGMT_CALLS").split("\n")) {
 | # | 操作 | 预期 |
 | --- | --- | --- |
 | 1 | 跑 `TransferCooldownTableIntegrationTest`，看 `aTicketTheVerifierTakesCoolsThePluginAndTheIssuerDown` | `tests="3"` 0 失败 0 跳过。`Main.openStore("postgres", …)` 带 `SYNAXIS_TRANSFER_HMAC_KEYS` 开出 `StoreRuntime`，玩家连进世界后建八参 `PluginHost`；库里给这名玩家的账号建一个 version 0、没有写权的角色；以 `issued_at` 为当前时刻、`target_shard=r1-c1`、`state_version=0` 的票据调 `runtime.verifier().claim(玩家, 票据)` 返回 true；随即探针插件的 `transfer` 判定为 false，`runtime.issuer().transfer(…)` 以 `COOLDOWN` 完成；连接没有 `TransferPacket` |
-| 2 | `sed -n 714,716p server-app/src/main/java/io/github/bearisbug/synaxis/app/Main.java` | 三行，去掉行首空白依次是 `new TicketVerifier(database.pool(), session::sessionId, shardId, keys, cooldowns, ledger::record,`、`onClaimed),`、`permissions, moderation, session, redis, cooldowns);`：交给验票端的 `cooldowns` 与同一个 `new StoreRuntime(…)` 的最后一个实参是同一个局部变量，即 `StoreRuntime#cooldowns` 那个对象；`ledger::record` 之后的 `onClaimed` 是 M3-E 加的到达回调（`docs/DESIGN-PROD.md` `API-PROD-028` 验票末段），与冷却无关 |
-| 3 | 反证有齿（验票端另拿一张表）：`Main.java:714` 的 `keys, cooldowns, ledger::record` 改为 `keys, TransferCooldowns.fromSystemProperties(), ledger::record`，跑 `TransferCooldownTableIntegrationTest` | `3 tests completed, 1 failed`：`TransferCooldownTableIntegrationTest.java:113` `the verifier recorded the arrival in the table the plugins read ==> expected: <false> but was: <true>`；签发端与插件面仍共用一张，`TC-PROD-521` 第 2 步那条照常绿 |
+| 2 | `sed -n 717,719p server-app/src/main/java/io/github/bearisbug/synaxis/app/Main.java` | 三行，去掉行首空白依次是 `new TicketVerifier(database.pool(), session::sessionId, shardId, keys, cooldowns, ledger::record,`、`onClaimed),`、`permissions, moderation, session, redis, cooldowns);`：交给验票端的 `cooldowns` 与同一个 `new StoreRuntime(…)` 的最后一个实参是同一个局部变量，即 `StoreRuntime#cooldowns` 那个对象；`ledger::record` 之后的 `onClaimed` 是 M3-E 加的到达回调（`docs/DESIGN-PROD.md` `API-PROD-028` 验票末段），与冷却无关 |
+| 3 | 反证有齿（验票端另拿一张表）：`Main.java:717` 的 `keys, cooldowns, ledger::record` 改为 `keys, TransferCooldowns.fromSystemProperties(), ledger::record`，跑 `TransferCooldownTableIntegrationTest` | `3 tests completed, 1 failed`：`TransferCooldownTableIntegrationTest.java:113` `the verifier recorded the arrival in the table the plugins read ==> expected: <false> but was: <true>`；签发端与插件面仍共用一张，`TC-PROD-521` 第 2 步那条照常绿 |
+
+后置：`git status --short` 无输出；测试建的库由 `TestDatabase` 删掉。
+
+### 生产就绪 · 第 6 波 6A 其余部分：`transfer` 命令与管理接口 `synaxis:transfer`
+
+对应 `REQ-PROD-031`、`REQ-PROD-032`（`API-PROD-011` 的 `transfer` 命令、`API-PROD-022` 的 `synaxis:transfer`、`API-PROD-010` 的节点 `gm.transfer`），`docs/DESIGN-PROD.md` v0.9.29，§19 的五条场景：`transfer` 命令两条、`synaxis:transfer` 三条。改动：`server-app` 新类 `app.command.TransferCommand`；`ManagementMethods` 的构造器多收一个 `@Nullable ShardService`（第 6 个参数，排在 `session` 之后），方法表加 `synaxis:transfer`；`Main` 步骤 (4) 把 `DirectoryMode#service`（不在目录模式为 null）交给两者（`Main.java:268`～`:269` 与 `:283`，另有 `:11` 一行导入）；模组两份 lang 加四个回执键。已有的 11 个管理接口测试类的构造调用各多传一个 null（行数不变）；`ManagementIntegrationTest` 的未知方法由 `synaxis:transfer` 改为 `synaxis:teleport`（`TC-PROD-385`）。6A 的 P10（两个目录模式分片、真客户端来回 100 次）不在本节。
+
+测试：`server-app` 两个新类，都不连数据库，`ShardService` 是记下每次调用、由测试决定 future 何时以什么完成的替身。`io.github.bearisbug.synaxis.app.command.TransferCommandIntegrationTest` 6 条（本类约 1.3 s）：命令注册在 `Env` 的进程上，玩家连进平地实例，控制台是把每条回复记成「翻译键 参数1\|参数2\|…」的 `ConsoleSender` 子类，节点由测试给的 `Permissions` 定。`io.github.bearisbug.synaxis.app.management.ManagementTransferIntegrationTest` 6 条（本类约 0.5 s）：经 `ManagementMethods#handle` 直接调，不起 WebSocket（传输层由 6B 一节的用例覆盖）。「跑某类」「严格 grid」同 6A 插件面一节。反证一律是改一处、跑、看红、还原、复绿，下表只写改哪一处和红在哪；两个新类、`TransferCommand.java`、`ManagementMethods.java` 与 `Main.java` 的行号是分支 `prod/6a-rest` 提交时的。`TC-PROD-548` 是真进程，夹具取 M3-E 一节的「两进程夹具」，只起其中一个分片（本机内存紧，同时至多一个服务端进程）。
+
+#### `TC-PROD-540` `transfer` 命令：控制台按名字或 UUID 送人，结果知道了才回复，九个结果按小写名回复与记账 — 对应 `REQ-PROD-031` · 级别: 回归 · 执行者: AI
+
+前置：工作副本干净。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `TransferCommandIntegrationTest`，看 `theConsoleSendsAPlayerByNameOrUuidAndIsAnsweredOnceTheTransferIsKnown` 与 `everyResultIsAnsweredAndRecordedByItsLowerCaseName` | `tests="6"` 0 失败。控制台 `transfer shard Walker r0-c2`：替身恰被问一次 `transferTo Walker r0-c2`；future 完成之前控制台没有回复、台账没有行；以 `SENT` 完成后控制台恰收到 `synaxis:command-transfer-result Walker\|r0-c2\|sent`，台账一条 `gm_command {actor=console, actor_uuid=null, command=transfer shard Walker r0-c2, target=<Walker 的 UUID>, result=sent}`。`transfer region <Walker 的 UUID> r1` 问的是 `transfer Walker r1`，以 `FULL` 完成回 `…Walker\|r1\|full`、台账 `result=full`。九个结果逐个完成，回复的第三个参数与台账的 `result` 都是枚举名的小写，共 9 行台账 |
+| 2 | 反证有齿（不分 region 与 shard）：`TransferCommand.java:90` 的 `(toShard ? shards.transferTo` 改为 `(toShard && Boolean.getBoolean("proof.never") ? shards.transferTo`，跑本类 | `6 tests completed, 2 failed`：`TransferCommandIntegrationTest.java:152` 与 `:201`（`TC-PROD-541` 那条），都是 `expected: <[transferTo Walker r0-c2]> but was: <[transfer Walker r0-c2]>` |
+| 3 | 反证有齿（不认 UUID）：`TransferCommand.java:112` 的 `if (UUID_TEXT.matcher(text).matches())` 改为 `if (UUID_TEXT.matcher(text).matches() && Boolean.getBoolean("proof.never"))`，跑本类 | `6 tests completed, 1 failed`：`:160` `a uuid names the same player ==> expected: <transfer Walker r1> but was: <transferTo Walker r0-c2>`（UUID 当名字找，找不到人，替身没被再问） |
+| 4 | 反证有齿（结果名不转小写）：`TransferCommand.java:106` 的 `toLowerCase(Locale.ROOT)` 改为 `toUpperCase(Locale.ROOT)`，跑本类 | `6 tests completed, 3 failed`：`:156` `expected: <[synaxis:command-transfer-result Walker\|r0-c2\|sent]> but was: <[synaxis:command-transfer-result Walker\|r0-c2\|SENT]>`，`:176` 与 `:202` 同样是大写名 |
+| 5 | 反证有齿（不等结果就回）：`TransferCommand.java:90-91` 两行换成 `final var transfer = toShard ? shards.transferTo(player, destination) : shards.transfer(player, destination);` 与 `finished(sender, input, player, destination, transfer.getNow(ShardTransferResult.SENT), null);`，跑本类 | `6 tests completed, 4 failed`：`:153` `no answer before the transfer is known ==> expected: <[]> but was: <[synaxis:command-transfer-result Walker\|r0-c2\|sent]>`，`:176`（`COOLDOWN ==> … but was: <…\|sent>`），`:202`，`:251`（异常完成的那条没有 ERROR 行，`expected: <1> but was: <0>`） |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PROD-541` `transfer` 命令只有持 `gm.transfer` 的玩家能用 — 对应 `REQ-PROD-031` · 级别: 回归 · 执行者: AI
+
+前置：工作副本干净。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `TransferCommandIntegrationTest`，看 `onlyAPlayerHoldingTheNodeRunsIt` | 0 失败。没有节点的 `Nobody` 执行 `transfer shard Walker r0-c2` 得 `CANCELLED`，替身没被问，台账没有行（引擎按前置条件拒绝，命令没执行）；持 `gm.transfer` 的 `Gamemaster` 执行同一条得 `SUCCESS`，以 `COOLDOWN` 完成后它的连接恰收到一个系统消息 `synaxis:command-transfer-result Walker\|r0-c2\|cooldown`，台账 `actor=player`、`actor_uuid` 是它的 UUID、`target` 是 Walker 的 UUID、`result=cooldown` |
+| 2 | 反证有齿（不查节点）：`TransferCommand.java:67` 的 `\|\| permissions.has(player, NODE));` 改为 `\|\| permissions.has(player, NODE) \|\| !Boolean.getBoolean("proof.never"));`，跑本类 | `6 tests completed, 1 failed`：`TransferCommandIntegrationTest.java:193` `expected: <CANCELLED> but was: <SUCCESS>` |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PROD-542` `transfer` 命令：不在目录模式回不可用，找不到本分片的在线玩家回没有这个人，都不调 `ShardService` — 对应 `REQ-PROD-031` · 级别: 回归 · 执行者: AI
+
+前置：工作副本干净。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `TransferCommandIntegrationTest`，看 `withoutAShardServiceThisShardCannotTransfer` 与 `aPlayerNotOnlineHereIsNoTarget` | 0 失败。`ShardService` 为 null 时控制台 `transfer shard Walker r0-c2`（Walker 在线）恰收到 `synaxis:command-transfer-unavailable`（没有参数），台账 `target=null`、`result=unavailable`。有 `ShardService` 时 `transfer region Nobody r1` 与 `transfer shard <随机 UUID> r0-c2` 依次收到 `synaxis:command-transfer-no-target Nobody` 与 `…-no-target <那个 UUID>`，替身没被问，台账两条 `target=null`、`result=no_target` |
+| 2 | 反证有齿（不判 `ShardService`）：`TransferCommand.java:78` 的 `if (shards == null) {` 改为 `if (shards == null && Boolean.getBoolean("proof.never")) {`，跑本类 | `6 tests completed, 1 failed`：`TransferCommandIntegrationTest.java:213` `expected: <[synaxis:command-transfer-unavailable]> but was: <[]>`（往下走到 `shards.transferTo` 抛 `NullPointerException`，控制台什么都没收到） |
+| 3 | 反证有齿（不判玩家）：`TransferCommand.java:85` 的 `if (player == null) {` 改为 `if (player == null && Boolean.getBoolean("proof.never")) {`，跑本类 | `6 tests completed, 1 failed`：`:225` `expected: <[synaxis:command-transfer-no-target Nobody, synaxis:command-transfer-no-target <UUID>]> but was: <[]>` |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PROD-543` `transfer` 命令：`ShardService` 的 future 异常完成时记一行 ERROR，栈是原异常 — 对应 `REQ-PROD-031` · 级别: 边缘 · 执行者: AI
+
+前置：工作副本干净。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `TransferCommandIntegrationTest`，看 `aTransferThatThrewIsAnErrorWithItsOwnException` | 0 失败。替身的 future 以 `CompletionException(IllegalStateException("the ticket could not be encoded"))` 完成（`ShardServiceImpl` 的各段把 `TransferTickets` 抛的异常包一层交出来就是这样）：`TransferCommand` 的 logger 恰一行 ERROR，带的异常是 `IllegalStateException`；控制台收到 `synaxis:command-transfer-error Walker`；台账 `target` 是 Walker 的 UUID、`result=unavailable` |
+| 2 | 反证有齿（不拆包）：`TransferCommand.java:98` 的 `error instanceof CompletionException && error.getCause() != null ? error.getCause() : error` 改为 `error instanceof CompletionException && Boolean.getBoolean("proof.never") ? error.getCause() : error`，跑本类 | `6 tests completed, 1 failed`：`TransferCommandIntegrationTest.java:253` `the exception of the transfer, unwrapped ==> Unexpected type, expected: <java.lang.IllegalStateException> but was: <java.util.concurrent.CompletionException>` |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PROD-544` `synaxis:transfer`：玩家按名字或 `id`、参数按名字或按位置、按大区或按分片送人，结果知道了才回复，九个结果都是小写名 — 对应 `REQ-PROD-032`、`REQ-PROD-031` · 级别: 回归 · 执行者: AI
+
+前置：工作副本干净。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `ManagementTransferIntegrationTest`，看 `aPlayerNamedByNameOrIdIsSentByRegionOrByShardWithParamsByNameOrPosition`、`theAnswerWaitsForTheTransferToBeKnown`、`everyResultIsAnsweredAndRecordedByItsLowerCaseName` | `tests="6"` 0 失败。`{"player":{"name":"Walker"},"shard":"r0-c2"}` 回 `"result":"sent"`，替身被问 `transferTo Walker r0-c2`；`[{"id":<UUID>},"r1"]` 回 `full`，问的是 `transfer Walker r1`；`[{"id":<UUID>},null,"r0-c3"]` 回 `offline`，问的是 `transferTo Walker r0-c3`。三条台账 `result` 依次是 `sent`、`full`、`offline`，`actor=management`、`actor_uuid` 为 null、`target` 都是 Walker 的 UUID，第一条的 `command` 是 `synaxis:transfer {"player":{"name":"Walker"},"shard":"r0-c2"}`。替身返回一个未完成的 future 时，调用在另一条线程上被问到之后 200 ms 仍没有回复，以 `COOLDOWN` 完成后回 `cooldown`。九个结果逐个回，回复与台账都是枚举名的小写 |
+| 2 | 反证有齿（不分 region 与 shard）：`ManagementMethods.java:575` 的 `region != null` 改为 `region != null && Boolean.getBoolean("proof.never")`，跑本类 | `6 tests completed, 2 failed`：`ManagementTransferIntegrationTest.java:130` `expected: <[transferTo Walker r0-c2, transfer Walker r1, transferTo Walker r0-c3]> but was: <[transferTo Walker r0-c2, transferTo Walker r1, transferTo Walker r0-c3]>`，`:151` `expected: <[transfer Walker r1]> but was: <[transferTo Walker r1]>` |
+| 3 | 反证有齿（不等结果就回）：`ManagementMethods.java:579` 的 `result = transfer.join();` 改为 `result = transfer.getNow(ShardTransferResult.SENT);`，跑本类 | `6 tests completed, 1 failed`：`:153` `no answer before the transfer is known ==> expected: <false> but was: <true>` |
+| 4 | 反证有齿（结果名不转小写）：`ManagementMethods.java:587` 的 `toLowerCase(Locale.ROOT)` 改为 `toUpperCase(Locale.ROOT)`，跑本类 | `6 tests completed, 3 failed`：`:124` `expected: <sent> but was: <SENT>`，`:166` 同，`:155` `expected: <cooldown> but was: <COOLDOWN>` |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PROD-545` `synaxis:transfer`：`region` 与 `shard` 不是恰好一个、玩家不在本分片都回 −32602，不调 `ShardService` — 对应 `REQ-PROD-032` · 级别: 回归 · 执行者: AI
+
+前置：工作副本干净。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `ManagementTransferIntegrationTest`，看 `notExactlyOneTargetOrNobodyOnlineHereIsInvalidParams` | 0 失败。七组参数：`region` 与 `shard` 都给、都不给、`region` 是数字 `1`、没有 `player`、`player` 是 `{}`、名字 `Nobody` 不在线、随机 `id` 不在线，都回 −32602；替身一次都没被问；台账 7 条都是 `result=invalid` |
+| 2 | 反证有齿（两个都给也放行）：`ManagementMethods.java:571` 的 `if ((region == null) == (shard == null))` 改为 `if (region == null && shard == null)`，跑本类 | `6 tests completed, 1 failed`：`ManagementTransferIntegrationTest.java:188`，第一组参数得到的是 `{"jsonrpc":"2.0","id":1,"result":"sent"}`（按 `region` 送了） |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PROD-546` `synaxis:transfer`：进程没有 `ShardService` 回 −32000；`ShardService` 抛异常回 −32603，记一行带 `request_id` 的 ERROR — 对应 `REQ-PROD-032` · 级别: 边缘 · 执行者: AI
+
+前置：工作副本干净。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `ManagementTransferIntegrationTest`，看 `aProcessWithoutAShardServiceAnswersUnavailable` 与 `aTransferThatThrewIsAnInternalErrorLoggedWithItsOwnException` | 0 失败。`ShardService` 为 null 时合规的一次调用回 −32000 `This shard cannot send players to other shards: it is not in the directory mode`，台账一条 `result=unavailable`、`target` 为 null。替身的 future 以 `CompletionException(IllegalStateException(…))` 失败时回 −32603 `Internal error`；`ManagementMethods` 的 logger 恰一行 ERROR，信息含 `request_id=<回复里的 request_id>`，带的异常是 `IllegalStateException`，没有 WARN；台账一条 `result=unavailable` |
+| 2 | 反证有齿（不判 `ShardService`）：`ManagementMethods.java:565` 的 `if (shards == null)` 改为 `if (shards == null && Boolean.getBoolean("proof.never"))`，跑本类 | `6 tests completed, 1 failed`：`ManagementTransferIntegrationTest.java:201`，回复是 −32603 `Internal error`（走到 `shards.transferTo` 抛 `NullPointerException`，落进未预料异常那一支），不是 −32000 |
+| 3 | 反证有齿（不拆包）：`ManagementMethods.java:582` 的 `e.getCause() == null ? e : e.getCause()` 改为 `e.getCause() == null \|\| !Boolean.getBoolean("proof.never") ? e : e.getCause()`，跑本类 | `6 tests completed, 1 failed`：`:237` `the exception of the transfer, unwrapped ==> Unexpected type, expected: <java.lang.IllegalStateException> but was: <java.util.concurrent.CompletionException>` |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PROD-547` 翻译键门禁收下 `transfer` 命令的四个回执键 — 对应 `REQ-PROD-041`、`REQ-PROD-031` · 级别: 回归 · 执行者: AI
+
+前置：工作副本干净。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | `./gradlew :architecture-tests:test --rerun --tests '*TranslationKeyGateTest' --tests '*ConfigKeyGateTest' --max-workers=4 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts` | 两类共 3 个 0 失败；标准输出 `translation key gate: 60 keys checked against [en_us.json, zh_cn.json], 14 identifiers left out`（6A 之前 56 个，加 `synaxis:command-transfer-result`、`-no-target`、`-unavailable`、`-error`）与 `config key gate: 113 keys read, 113 in ConfigFile.KEYS, 20 meter names left out`（本组没有新配置键）；方法名 `synaxis:transfer` 与票据 Cookie 同名，仍是名单上的一条，14 个不变 |
+| 2 | 反证有齿：删掉 `client-fabric/src/main/resources/assets/synaxis/lang/zh_cn.json` 里 `"synaxis:command-transfer-error"` 一行，跑第 1 步的门禁，再 `git checkout --` 该文件 | `2 tests completed, 1 failed`（配置键门禁照常过）：`TranslationKeyGateTest.java:90`，列出 `zh_cn.json has no text for synaxis:command-transfer-error (from io.github.bearisbug.synaxis.app.command.TransferCommand)` |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PROD-548` 真进程：目录模式分片上的 `transfer` 命令与 `synaxis:transfer`（严格 grid）；不在目录模式的进程回不可用；`Main` 不交 `ShardService` 时目录模式也回不可用 — 对应 `REQ-PROD-031`、`REQ-PROD-032` · 级别: 回归 · 执行者: AI
+
+前置：M3-E 一节的「两进程夹具」到建库、迁移为止（`installDist` 另加 `:loadtest`，烘焙与 `shards.json` 照写，`r1-c1` 不起）；启动脚本在夹具的 `SERVER_APP_OPTS` 后再加 `-Dsynaxis.acquirable-strict=true -Dsynaxis.app.management.enabled=true -Dsynaxis.app.management.bind=127.0.0.1:<管理端口>`，环境多一个 `SYNAXIS_MANAGEMENT_TOKEN`（`openssl rand -hex 32`）；控制台是工作目录里的 FIFO `console`（`mkfifo`，先起一个 `sleep 3600 > console` 占住写端，进程以 `< console` 起）。管理接口的客户端是一个只用 Python 标准库的脚本：带 `Authorization: Bearer <令牌>` 完成 WebSocket 升级，发一帧加掩码的文本，跳过没有 `id` 的通知，打印带 `id` 的那条回复。机器人：`<LT> run --host 127.0.0.1 --port 25611 --bots 1 --profile walk --duration 180s --warmup 5s --out <L>/bot/bots.json`（`JAVA_OPTS="-Xms256m -Xmx256m"`）。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 起 `r0-c1`（25611，指标 19611，管理 19711），等 `listening on 0.0.0.0:25611`，起机器人，调 `minecraft:players` | `Effective ServerConfig` 里 `maxPlayers=2`、`acceptTransfers=true`、`threadProvider=GRID`、`dispatcherThreads=3`；`Management interface listening on 127.0.0.1:19711`；`minecraft:players` 得一名 `bot00000` |
+| 2 | 依次调 `synaxis:transfer`：`{"player":{"name":"bot00000"},"shard":"r0-c1"}`、`…,"region":"r1"}`、`…,"shard":"r1-c1"}`、`…,"region":"r9"}`、`…,"region":"r1","shard":"r1-c1"}`、`{"player":{"name":"Nobody"},"region":"r1"}` | 依次回 `same_target`、`offline`（`r1` 没有活着的频道）、`unknown_target`（`r1-c1` 没有心跳行）、`unknown_target`（目录里没有 `r9`）、−32602 `give either region or shard, not both and not neither`、−32602 `the player is not online here` |
+| 3 | 往 `console` 写 `transfer region bot00000 r1` 与 `transfer shard Nobody r1-c1` | 分片日志各一行 `ConsoleSender`：`Transfer of bot00000 to r1: offline`（在 `Syn-Shard-Heartbeat-Read` 线程上，读心跳判出的结果在那里回复）与 `Nobody is not a player online on this shard`（在 `server-app-console` 上） |
+| 4 | `docker exec synaxis-pg psql -U postgres -d <库> -tAc "INSERT INTO shard_heartbeat VALUES ('r1-c1','mini','r1',1,'127.0.0.1',25612,'mini-6ab2c226761b-p776',0,200,true,now(),now() + interval '1 hour')"`（`updated_at` 在一小时后，按 15 s 判活着），再调 `{"player":{"name":"bot00000"},"shard":"r1-c1"}` | 回 `sent`；分片台账恰 1 行 `transfer_issued`，`source_shard=r0-c1`、`target_shard=r1-c1`、`player_uuid` 是机器人的 UUID；机器人随 `Transfer` 去连 25612（没人监听），walk 画像不重连，`minecraft:players` 随后为空 |
+| 5 | 看分片台账的 `gm_command` 与日志 | 控制台两行 `actor=console`：`transfer shard Nobody r1-c1` → `result=no_target`、`target` 为空，`transfer region bot00000 r1` → `result=offline`、`target` 为机器人的 UUID；管理接口的 `synaxis:transfer` 七行，`result` 依次为 `same_target`、`offline`、`unknown_target`、`unknown_target`、`invalid`、`invalid`、`sent`，两行 `invalid` 的 `target` 为空、其余是机器人的 UUID（另有 `minecraft:players` 的 `result=ok` 行）；台账把 null 写成字符串 `"null"`（`docs/DESIGN-M3.md` §28.2 交接 ⑭，未改）。整个过程分片日志 WARN / ERROR 0 行，没有 `AcquirableOwnershipException` |
+| 6 | 停机器人，分片按 pid 发 SIGTERM | 分片退出，末行 `synaxis server stopped successfully.` |
+| 7 | 反证有齿（`Main` 不把 `ShardService` 交出去）：`Main.java:268` 的 `directoryMode == null ? null : directoryMode.service()` 改为 `directoryMode == null \|\| !Boolean.getBoolean("proof.never") ? null : directoryMode.service()`，`./gradlew :server-app:installDist`，换一个工作目录照第 1 步起 `r0-c1` 与机器人，调 `{"player":{"name":"bot00000"},"region":"r1"}`，往 `console` 写 `transfer region bot00000 r1`；停掉后还原 `Main.java`、再 `installDist` | 管理接口回 −32000 `This shard cannot send players to other shards: it is not in the directory mode`（第 2 步同一次调用回的是 `offline`）；日志 `ConsoleSender` 一行 `This shard cannot send players to other shards: it is not in the directory mode` |
+| 8 | 不在目录模式的进程：`server-app/build/install/server-app/bin/server-app`，内存存储、不挂地图，`SERVER_APP_OPTS` 给 `-Dsynaxis.app.port=25614 -Dsynaxis.app.auth=offline -Dsynaxis.app.metrics.bind=127.0.0.1:19614 -Dsynaxis.app.log=stdout -Dsynaxis.app.management.enabled=true -Dsynaxis.app.management.bind=127.0.0.1:19714`，`JAVA_OPTS="-Xms512m -Xmx512m"`；调 `{"player":{"name":"bot00000"},"shard":"r0-c2"}`，往 `console` 写 `transfer shard bot00000 r0-c2`，再 SIGTERM | `Effective store: mode=memory`；管理接口回 −32000，同一句；控制台一行同一句；台账两行 `gm_command`（`actor` 分别是 `management` 与 `console`），都是 `target` 为空、`result=unavailable` |
+
+后置：按 pid 停掉全部进程与占写端的 `sleep`；`docker exec synaxis-pg psql -U postgres -c "DROP DATABASE <库>"`；删 `<L>`；`pgrep -fl 'server-shard|server-app|loadtest'` 无输出；`git status --short` 无输出。
+
+#### `TC-PROD-549` 回归：本组改了条数或行号的旧用例按新写法重跑过，`server-app` 与门禁全量、严格 grid 的相关类不受影响 — 对应 `REQ-PROD-031`、`REQ-PROD-032` · 级别: 回归 · 执行者: AI
+
+前置：工作副本干净；数据库前置（6A 插件面一节）。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 按新写法重跑本组改过的步骤：随 M3-E 过时的反证 `TC-PROD-141` 第 2 步、`157` 第 2～5 步（第 4、5 步是新加的）、`174` 第 4、5 步、`200` 第 2 步、`220` 第 2 步、`265` 第 2、4 步、`266` 第 2 步、`267` 第 2 步、`316` 第 2 步、`376` 第 2 步（即 `377` 第 2 步）、`377` 第 3 步、`378` 第 2 步、`379` 第 2、3 步（第 3 步是新加的），这些类的基线各跑一次；`TC-PROD-385` 第 1 步；6A 插件面一节 `TC-PROD-521` 第 3、4 步、`TC-PROD-528` 第 2 步、`TC-PROD-533` 第 2、3 步。没动的步骤（如 `TC-PROD-174` 第 2 步只跑 `PlayerStoreIntegrationTest`、M3-E 没改它）由第 2 步的全量覆盖基线 | 各条写的结果；`TC-PROD-378` 与原文相同（`CrossShardHandoverIntegrationTest` 不随 M3-E 变）。`MigrationsDbTest`、`TransferTicketsIntegrationTest`、`CrossShardHandoverIntegrationTest`、`TransferAdmissionIntegrationTest` 的基线依次是 `tests="5"`、`"7"`、`"6"`、`"1"`，`:loadtest:test` 全量 23 个（`BotSocketTest` 8、`MergeTest` 4、`ProfileTest` 7、`SampleTest` 4），都 0 失败 0 跳过 |
+| 2 | `./gradlew :server-app:check :architecture-tests:check --max-workers=4 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts`（数据库前置满足） | `BUILD SUCCESSFUL`；`:server-app:test` 510 个 0 失败 0 跳过（6A 插件面之后的 498 个加本组 12 个），`:architecture-tests` 20 个 0 失败 |
+| 3 | 严格 grid 跑 `:server-app:test`，`--tests` 给 `io.github.bearisbug.synaxis.app.management.*`、`io.github.bearisbug.synaxis.app.command.*`、`TransferTicketsIntegrationTest`、`TransferAdmissionIntegrationTest` | 19 个类 63 个 0 失败 0 跳过（含本组两个新类各 6 个） |
+| 4 | `./gradlew :loadtest:compileJava --max-workers=4 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts` | `BUILD SUCCESSFUL`（`LoadTest` 的用法注释按 `docs/DESIGN-PROD.md` `API-PROD-025` 补了 `town`、`gate`、`--gates`、`--dwell`、`--min-transfers`，只改注释） |
 
 后置：`git status --short` 无输出；测试建的库由 `TestDatabase` 删掉。
 
@@ -7328,6 +7463,7 @@ for (var request : System.getenv("MGMT_CALLS").split("\n")) {
   - 生产就绪域（`docs/DESIGN-PROD.md`）：RUN-039 后修复第 3 轮（`REQ-PROD-008`、`REQ-PROD-019`，v0.9.22（RUN-039 修复第 3 轮））→ TC-PROD-511、TC-PROD-512；动了 `PluginHost#disableAll` 或 `disableWithin`（`onDisable` 所在的线程）、rts 插件的 `onDisable` 或 `Units#end`、`Match#end`，就跑 TC-PROD-511 与 TC-PROD-512（真进程，严格 grid），再跑 TC-GAME-034 第 3、4 步；动了 `ShutdownSaveOutsideTheWorldIntegrationTest` 里 `aSnapshotWhoseTickComesAfterTheSavePhaseTakesNothing` 的断言顺序，就重跑 TC-PROD-483 第 2 步。
   - 生产就绪域（`docs/DESIGN-PROD.md`）：共享包缓冲池与 `SocketWriteStateTransitionIntegrationTest`（`REQ-PROD-019`，v0.9.25）→ TC-PROD-513；动了 `PacketVanilla.PACKET_POOL`、`ObjectPool`、`PlayerSocketConnection#flushSync` 借还写缓冲的几处、`PacketWriting#writeQueue` 的扩容或这个测试类，就跑 TC-PROD-513（第 2、4 步各约 20 s）。
   - 生产就绪域（`docs/DESIGN-PROD.md`）：第 6 波 6A 插件面（`REQ-PROD-031`，v0.9.27）→ TC-PROD-520～TC-PROD-533；动了 `PluginTransfers`、`TransferCooldowns`、`:plugin-api` 的 `Transfers` 或 `PluginContext#transfers()`，就跑 TC-PROD-520～TC-PROD-527、TC-PROD-530～TC-PROD-532（一个类约 10 s，TC-PROD-530 用严格 grid）与 TC-PROD-529 第 1～3 步；动了 `Main#openStore` 建冷却表、构造 `StoreRuntime` 或 `TicketVerifier` 的几处或 `PluginHost` 的构造器，就跑 TC-PROD-521、TC-PROD-528、TC-PROD-533（M3-E 第 0 步改的是同一条 `new StoreRuntime(…)` 与 `new TicketVerifier(…)` 的相邻几行，合并后必跑）；动了引擎 `CookieStorePacket`、`PlayerConnection` 的 Cookie 方法、`OutgoingTransferEvent`、`TransferPacket`、实体调度器的 `scheduleNextTick` 或 `HandshakeListener` 的 `markTransferred`，就跑 TC-PROD-524～TC-PROD-527、TC-PROD-530～TC-PROD-532。
+  - 生产就绪域（`docs/DESIGN-PROD.md`）：第 6 波 6A 其余部分（`REQ-PROD-031`、`REQ-PROD-032`，v0.9.29）→ TC-PROD-540～TC-PROD-549；动了 `TransferCommand` 就跑 TC-PROD-540～TC-PROD-543（一个类约 1.3 s）；动了 `ManagementMethods` 的 `transfer` 或构造器，就跑 TC-PROD-544～TC-PROD-546 与 6B 一节的 TC-PROD-385；动了模组两份 lang 或回执键，就跑 TC-PROD-547；动了 `Main` 步骤 (4) 交 `ShardService` 的两行、`DirectoryMode`、`ShardServiceImpl` 或签发端 `TicketIssuer`，就跑 TC-PROD-548（真进程，一个分片加一个机器人，约 3 min）；合入前跑 TC-PROD-549 第 2、3 步。
   - 影响面不确定时升级为全量轮。
 - **复测轮**（上轮失败用例 + 全部冒烟级）：修复失败项之后。
 - **人工收口轮**（仅上轮「待人工」用例）：AI 轮之后由人工补测 TC-016、TC-030、TC-GAME-020、TC-GAME-038、TC-GAME-046、TC-GAME-047，不要求冒烟级。

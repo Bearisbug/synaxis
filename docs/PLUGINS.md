@@ -93,7 +93,7 @@ java -Dsynaxis.app.auth=offline \
 | `admission()` | `register(准入回调)`，决定连接进哪个对局实例、属哪个队伍 | 注销该回调 |
 | `dataDirectory()` | `plugins/<plugin_id>/`，宿主保证存在 | 不删（是你的数据） |
 | `analytics()` | `record(事件名, 属性)`，写进宿主的 `logs/events-YYYYMMDD.jsonl` | 无状态，不需要收回 |
-| `transfers()` | 把玩家原版转服到外部服务器、读写本插件命名空间的 Cookie，见第 12 节 | 不收回：已排上的转服在玩家下一个 tick 照常做完 |
+| `transfers()` | 把玩家原版转服到外部服务器、读写本插件命名空间的 Cookie，见第 12 节 | 不收回：已排上的转服在玩家下一个 tick 照常做完（还在载入出生区块的玩家至多 5 s） |
 | `logger()` | 名为 `plugin.<plugin_id>` 的 logger | — |
 
 ## 8. 通道命名
@@ -149,3 +149,5 @@ Cookie 键必须是 `<plugin_id>:<路径>`，如 `Key.key("hello", "lobby-token"
 冷却是整个进程一张表，M3-E 起宿主的分片间转服也记在这张表里：玩家刚以票据转入或刚被宿主转出，5 s 内 `transfer` 以 `false` 完成；插件转走的玩家 5 s 内宿主也不再签票据。要把玩家送去另一个 Synaxis 分片不能用 `transfer`：分片只收带宿主票据的转入，没有票据的会被拒。M3-E 起跨分片转服由宿主的关卡门、GM 命令 `gm.transfer` 与管理接口 `synaxis:transfer` 发起，在那之前没有发起跨分片转服的入口。
 
 `transfer` 的 future 在玩家所属的 tick 线程上完成；调用时玩家就不在 PLAY 的，拿到手时已经完成，5 s 没等到 tick 的在 JDK 的计时线程上完成。`fetchCookie` 的 future 在读到回答的连接线程上完成，超时则在 JDK 的计时线程上完成。拿到值之后要改实体，用 `scheduler().runOn(玩家, …)` 送回玩家所属的线程（第 10 节）。
+
+**不要在 tick 线程上 `join()` 或 `get()` 这个 future**（例如在玩家事件监听器里写 `transfer(p, h, port).join()`）：转服要等玩家的下一个 tick 才做，下一个 tick 要等当前 tick 结束，阻塞会让这条 tick 线程上所有实体停 5 s，最后以 `false` 完成、转服不发出。用 `thenAccept` 接结果。

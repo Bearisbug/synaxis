@@ -46,7 +46,10 @@ public interface Transfers {
      *         still cooling down from its last transfer, or a listener cancelled the event. It
      *         completes on the player's tick thread; with false on the calling thread if the player
      *         is not in the play state when this is called, and with false on the JDK's timer
-     *         thread if the player does not tick within 5 s (it left)
+     *         thread if the player does not tick within 5 s (it left). Never join or get it on a
+     *         tick thread: the transfer waits for the player's next tick, which waits for the
+     *         current one to end, so the thread stalls for 5 s and the result is false; use
+     *         {@code thenAccept}
      * @throws IllegalArgumentException if the host is blank or the port is out of range; nothing is
      *                                  sent
      */

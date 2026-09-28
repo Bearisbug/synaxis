@@ -1,0 +1,24 @@
+# The start gates of RUN-053, read every 5 minutes for 90 minutes by a shell loop (19 readings).
+# disk_free: df -m /System/Volumes/Data, column Avail; Gradle starts at >= 5,120 MB (docs/TEST.md §3, M3-D).
+# swap_free: sysctl vm.swapusage, free; the container starts at >= 2,048 MB. load1: vm.loadavg.
+# others: Gradle or java processes whose working directory (lsof -d cwd) is outside this worktree; 0 in every reading.
+# No reading met either gate: no Gradle and no container was started in this round.
+2026-09-29 06:21:39 disk_free=261MB swap_free=1514.06MB load1=4.66 others=0
+2026-09-29 06:26:39 disk_free=261MB swap_free=1667.56MB load1=3.81 others=0
+2026-09-29 06:31:39 disk_free=265MB swap_free=1739.56MB load1=4.26 others=0
+2026-09-29 06:36:39 disk_free=1292MB swap_free=1561.50MB load1=5.24 others=0
+2026-09-29 06:41:40 disk_free=1288MB swap_free=1673.50MB load1=4.72 others=0
+2026-09-29 06:46:40 disk_free=2309MB swap_free=752.62MB load1=5.26 others=0
+2026-09-29 06:51:40 disk_free=2303MB swap_free=816.62MB load1=4.04 others=0
+2026-09-29 06:56:40 disk_free=2310MB swap_free=896.62MB load1=4.05 others=0
+2026-09-29 07:01:40 disk_free=2323MB swap_free=976.62MB load1=4.36 others=0
+2026-09-29 07:06:40 disk_free=2321MB swap_free=1024.62MB load1=4.51 others=0
+2026-09-29 07:11:40 disk_free=2324MB swap_free=1152.62MB load1=4.05 others=0
+2026-09-29 07:16:40 disk_free=2317MB swap_free=1216.62MB load1=4.50 others=0
+2026-09-29 07:21:40 disk_free=2315MB swap_free=1256.62MB load1=4.29 others=0
+2026-09-29 07:26:40 disk_free=2315MB swap_free=1296.62MB load1=3.75 others=0
+2026-09-29 07:31:40 disk_free=2312MB swap_free=1448.69MB load1=5.19 others=0
+2026-09-29 07:36:40 disk_free=2305MB swap_free=1496.69MB load1=4.60 others=0
+2026-09-29 07:41:41 disk_free=2300MB swap_free=1568.69MB load1=4.34 others=0
+2026-09-29 07:46:41 disk_free=2293MB swap_free=1640.69MB load1=5.20 others=0
+2026-09-29 07:51:41 disk_free=2301MB swap_free=1688.69MB load1=4.40 others=0

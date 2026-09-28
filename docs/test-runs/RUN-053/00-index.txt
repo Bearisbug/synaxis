@@ -1,0 +1,7 @@
+# RUN-053 evidence: M3-D runtime light, the round after RUN-052, docs/DESIGN-M3.md v0.24, branch m3d/runtime-light,
+# code the same as 6027ac8079 (origin/main 6d14db9435 is merged already). The whole round is blocked: no reading of the
+# 90-minute window met the disk gate for Gradle (>= 5,120 MB) or the swap gate for the container (>= 2,048 MB).
+# 01-gate.txt          the 19 readings, 06:21:39 to 07:51:41
+# 02-environment.txt   the state at the start and the end, what was deleted, the merge, Docker not answering
+# Nothing else was run: the scope (strict mode two on the final code, TC-WORLD-091 to TC-WORLD-098, the moved line
+# numbers of TC-WORLD-066 to TC-WORLD-069, TC-WORLD-051 again) is left to the next round.

@@ -1,0 +1,15 @@
+# RUN-052 evidence (RUN-049 to RUN-051 are taken on main; renumber again if another branch registers RUN-052 first): M3-D runtime light,
+# docs/DESIGN-M3.md v0.23, branch m3d/runtime-light from main 702169831f, code 0d4d593d84; after the review 6027ac8079
+# (main 6d14db9435 merged in 26cfdb4afb); the small item before M3-D on cf1a359794. docs/TEST.md registers it with v0.24.
+# 01-red.txt                 step 1 (the six A+C scenarios on the real store and chunks: green at once, six counter proofs),
+#                            step 2 (the seventeen scenarios red on the skeleton), step 3 (three counter proofs after the implementation)
+# 02-gates.txt               :synx:test :server-app:test default and in the two strict modes, the architecture tests,
+#                            check --rerun-tasks with the frozen zlib required, client-fabric check and compileGametestJava
+# 03-jfr-drive.txt           JFR of the light fixture driven without a client: where the light is computed, the install per tick
+# 04-container-gate.txt      two 90-minute windows of the container start gate, 38 readings, all closed: no container case ran
+# 05-review-fixes.txt        after the review: the merge of main, three fixes with their red and counter proofs, the gates on
+#                            6027ac8079 (check green, strict mode one 1 failure, strict mode two stopped by a full disk)
+# 06-transfer-failed-key.txt the small item 21 on cf1a359794: red before, counter proofs of TC-WORLD-064 and TC-WORLD-089, three gates
+# Not kept: the Gradle logs, the JUnit XML, the JFR recordings (0.7 MB each) and the baked maps; numbers and messages are copied here.
+# 05 and 06 were written in RUN-053 from the reports of their rounds (the disk was full at the end of the first, the
+# second registered no run).

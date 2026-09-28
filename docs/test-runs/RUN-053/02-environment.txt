@@ -1,0 +1,26 @@
+# RUN-053 environment, 2026-09-29 06:17 to 07:53, branch m3d/runtime-light, code the same as 6027ac8079.
+
+== Start of the round (about 06:17)
+The shell tool itself failed at first: ENOSPC opening its own output file under /private/tmp.
+df -h /System/Volumes/Data   460Gi size, 421Gi used, 264Mi available
+sysctl vm.swapusage          total = 19456.00M used = 18030.00M free = 1426.00M
+no Gradle or java process on the machine
+/tmp/m3d-fix.hcbcMt          248K, left by the previous round (env.sh with the database password, logs): deleted
+$TMPDIR                      47G by du, 5,454 entries; the largest are not this session's and were left alone:
+  kando-regress-ios 15,760.8 MB, kando-base-bcbb4c5 13,402.4 MB, seven playwright_chromiumdev_profile-* of
+  about 330 MB each, many com.microsoft.edgemac.msedge_url_fetcher_.* of 100 to 155 MB each;
+  14 junit-* directories of synaxis tests, all 0 B (empty or only an empty logs/)
+  (du counts APFS clones at full size; df is what counts)
+this worktree's build directories: 170 MB in all (server-app/build 53 MB, build 40 MB, baker/build 30 MB, ...)
+
+== Merge
+git fetch origin: origin/main is 6d14db9435, the commit merged in 26cfdb4afb; nothing new to merge (07:52 again the same).
+
+== Docker
+06:48 docker image ls did not answer within 20 s (stopped by pid); an earlier docker system df did not answer in 60 s.
+Docker Desktop's processes were running (com.docker.backend, com.docker.virtualization with --memoryMiB 8092).
+
+== End of the window (07:52)
+df -m /System/Volumes/Data   Avail 2,299 MB
+sysctl vm.swapusage          total = 17408.00M used = 15703.31M free = 1704.69M
+Neither gate met at any of the 19 readings (01-gate.txt): no Gradle, no container in this round.

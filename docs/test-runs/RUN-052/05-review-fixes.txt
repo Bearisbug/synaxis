@@ -1,0 +1,67 @@
+# M3-D after the review (2026-09-29, 05:48 to 06:11): the merge of main, three fixes, the gates on 6027ac8079.
+# Written down on 2026-09-29 in the next round from the implementer's report: at 06:11 the disk of this machine
+# was full (No space left on device), so the round itself could not write this file. The numbers and messages
+# are those of the report; nothing below was run again for this file.
+
+== 26cfdb4afb: merge of main 6d14db9435
+run.sh passes the P10 variables of main and the three light variables of M3-D; docs/TEST.md conflicted in its
+change log only, both sides kept.
+
+== 21696b2a57: the install compares with the light a chunk holds (review item 2)
+new test SynxRelightViewersIntegrationTest.neighbouringChangesOfOneTickInstallEachTargetOnce
+  before the fix : SynxRelightViewersIntegrationTest.java:273  A, 3,2 changed=true ==> expected: <1> but was: <2>
+  after the fix  : green
+  counter proof  : the install does not compare, it swaps every section marked changed -> red at :273, same message
+  the four "relight fallback ... torch" lines of theFallbackSendsTheChangedSectionsToEveryViewer: the same bytes as
+  before the fix (the values were not copied into the report)
+also: a finished recomputation drops its copied palettes (review item 11)
+
+== 506e13b0ae: WorldFlagsReplayTest.aReadOnlyWorldStillTakesItsFlags asserts again that no flag application loads
+   a chunk past the bounds (review item 5)
+the read only replay mounts the shard with a light executor that never runs; green
+counter proof: back to the shard's own relight pool -> red twice at WorldFlagsReplayTest.java:557
+  no application loaded the chunk past the bounds ==> expected: <null> but was: <DynamicChunk[-1:0]>
+  (the recomputation of the bridge loads -1,0 for its snapshot)
+
+== 6027ac8079: fixture and client (review items 4 and 8)
+LightShardFixture keeps the largest window of each P99 and of the install (install_ms_max_seen,
+queue_ms_p99_max_seen, relight_ms_p99_max_seen) and answers stats with them; the client asks for stats once the
+fixture cases are done and writes "# stats ..." into light-report.txt; in mode resend L2 to L7 also fail on a full
+light packet among the packets of the change and on a difference between the packets the client handled and those
+the fixture sent. Compiled only (client-fabric compileGametestJava check); never run against a real client.
+
+== JFR arguments (review item 7), a probe JVM
+jcmd splits its arguments on spaces: 'jdk.MethodTrace#threshold=0 ms' becomes threshold=0, which still traces every
+call, so the counts of 03-jfr-drive.txt hold; 'jdk.ExecutionSample#period=1 ms' becomes period=1 and records no
+sample. Write threshold=0ms and period=1ms.
+
+== Gates on 6027ac8079 (Gradle 9.7.1, JDK 25, --no-daemon --max-workers=4, database variables of TEST.md §3 set)
+check --rerun-tasks -Dsynaxis.synx.require-frozen-zlib=true : BUILD SUCCESSFUL in 5m 40s
+  .                  tests=3142 skipped=15 failures=0
+  architecture-tests tests=20   failures=0
+  baker              tests=53   failures=0
+  game-rts           tests=87   failures=0
+  loadtest           tests=23   failures=0
+  plugin-api         tests=15   failures=0
+  protocol           tests=78   failures=0
+  server-app         tests=517  failures=0
+  synx               tests=142  failures=0   (SynxVectorTest tests=4 skipped=0)
+  testing            tests=11   failures=0
+test --rerun-tasks -Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true : 1 failure
+  server-app tests=517 failures=1, every other module 0 failures
+  OverlayShardProcessTest.aKilledShardKeepsEveryChangeOlderThanItsFlushInterval at OverlayShardProcessTest.java:166:
+  a change 10,125 ms old at the kill was not on disk (bound 10 s); the newest change on disk was 10,236 ms old.
+  06:09, swap free about 600 MB, the disk close to full. Not run again.
+the same with -Dsynaxis.thread-provider=grid added : not run; :compileJava failed with No space left on device
+client-fabric compileGametestJava check : BUILD SUCCESSFUL, mod jar 35 entries
+single runs: SynxRelightIntegrationTest 10/0, SynxRelightViewersIntegrationTest 6/0, ShardWorldRelightTest 2/0,
+  WorldFlagsReplayTest 12/0 (database variables set, skipped=0)
+
+== The container start gate (swap free >= 2,048 MB, no Gradle or java of another worktree)
+4 readings, 05:46, 05:59, 06:05, 06:06: swap free 615 to 1,117 MB, each time with the Gradle of Kando/App/android
+(pids 97032, 97582, 97583, 97614, 98296). GATE_CLOSED every time. At 06:11 the disk was full and the window ended.
+
+== Breaches of the rules in this round
+The implementer ran the system python3 once; the reviewer ran `python3 --version` of the system once (no data).
+The scratch directory /tmp/m3d-fix.hcbcMt (an env.sh with the database password, build logs) could not be deleted
+on the full disk; it was deleted at the start of RUN-053.

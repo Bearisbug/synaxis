@@ -1,0 +1,34 @@
+# The small item before M3-D (docs/DESIGN-M3.md §28.2 hand-over row item 21, v0.21), 2026-09-28, code cf1a359794:
+# TicketIssuer.TRANSFER_FAILED is public, ShardGates sends it and drops its own copy of "synaxis:transfer-failed".
+# Written down on 2026-09-29 in RUN-053 from the report of that round, which changed docs/TEST.md (TC-WORLD-064,
+# TC-WORLD-089) but registered no run. Not run again for this file.
+
+== Red before the change
+1. ShardGatesTest changed first to expect TicketIssuer.TRANSFER_FAILED while it was package private:
+   compile error at ShardGatesTest.java:191 (TRANSFER_FAILED is not public in TicketIssuer)
+2. The constant made public, both copies still there, TicketIssuer's set to "synaxis:transfer-failed-probe":
+   7 tests completed, 1 failed, ShardGatesTest.java:195
+   FULL ==> expected: <[synaxis:transfer-failed-probe]> but was: <[synaxis:transfer-failed]>
+
+== After the change
+3. the same probe value in TicketIssuer: 7 tests green (one definition left, both sides follow it);
+   the value set back: 7 tests green
+
+== Counter proofs of TC-WORLD-064 and TC-WORLD-089, each restored with git checkout, the working tree clean after
+TC-WORLD-064 step 2                         red at ShardGatesTest.java:148
+TC-WORLD-064 step 3                         red at :251
+TC-WORLD-089 steps 3 and 4                  red at :213
+TC-WORLD-089 step 5                         red at :195 and :213, 2 failed
+TC-WORLD-064 new step 4 (ShardGates sends "synaxis:transfer-failed-probe")
+                                            red at :195, FULL ==> expected: <[synaxis:transfer-failed]> but was:
+                                            <[synaxis:transfer-failed-probe]>
+Each line number is one more than on 9c6d457ee9: the test gained one import line.
+
+== Gates on cf1a359794, each with --rerun
+:server-app:test (database variables set)                              502 tests, 0 skipped, 0 failed, 271 s
+  + -Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true    502 tests, 0 failed, 267 s
+  + -Dsynaxis.thread-provider=grid                                     502 tests, 0 failed, 267 s
+In all three ShardGatesTest and TransferTicketsIntegrationTest had 7 tests each and no AcquirableOwnershipException.
+Not run: TranslationKeyGateTest of :architecture-tests ("synaxis:transfer-failed" is still a compile-time constant
+inlined into ShardGates, so the set of keys the gate reads is the same).
+Cleaned up: /tmp/m3d-tf deleted, no w3a_* test database left, no Gradle process left running.

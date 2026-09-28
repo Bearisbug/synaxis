@@ -18,3 +18,11 @@ synaxis-relight-*            samples=422 with_light_methods=420
 # A first recording with 'jdk.ExecutionSample#period=1 ms' (a space, as docs/DESIGN-M3.md §26 step 5 writes it) had
 # 0 ExecutionSample events in 30 s; a probe recording with period=1ms on the same JVM had 86 in 5 s.
 # This is no container case: no client, no light packet. It shows where the light is computed in a ticking shard.
+
+# Added after review (2026-09-29): queueMsP99=100.451834 and relightMsP99=32.718 above are the values of the last
+# window only, not the P99 of the 60 changes: the drive loop read stats() every 200 ms and the 60 s statistics task
+# of ShardWorld reads it too, and each read resets both windows. From 6027ac8079 on the fixture keeps the largest
+# window of each (queue_ms_p99_max_seen, relight_ms_p99_max_seen); this recording predates it.
+# 'jdk.MethodTrace#threshold=0 ms' has the same space as the period: jcmd splits its arguments on spaces and keeps
+# threshold=0 (JFR.check verbose=true on a probe JVM shows [threshold=0,...]; with threshold=0ms it shows [threshold=0 ms,...]).
+# A bare 0 still traces every call, so the counts above hold (computeArea 60 = relights 60); write threshold=0ms anyway.

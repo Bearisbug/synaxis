@@ -18,7 +18,8 @@ import java.util.concurrent.CompletableFuture;
  * {@code synaxis} namespace belongs to the host, which keeps the transfer ticket in
  * {@code synaxis:transfer}: a plugin can neither read nor overwrite it.
  * <p>
- * Every method may be called from any thread.
+ * Every method may be called from any thread. A transfer is carried out on the tick thread that owns
+ * the player, where {@code OutgoingTransferEvent} is called like any other event about that player.
  * <p>
  * Only the host implements this interface: a plugin is handed one and calls it.
  */
@@ -30,18 +31,26 @@ public interface Transfers {
      * transfer cooldown, {@code synaxis.app.transfer-cooldown-ms} (5 s by default), is the one the
      * host's ticketed transfers use: a player who transferred out or came in with a ticket within
      * it is refused here, and one sent here is refused by them.
+     * <p>
+     * The transfer happens at the player's next tick, on the tick thread that owns the player,
+     * whatever thread this is called from: there the host checks the play state and the cooldown,
+     * then calls {@code OutgoingTransferEvent}, whose listeners may read and change the player. Only
+     * a transfer no listener cancelled sends the {@code Transfer} packet and starts the cooldown.
      *
      * @param player the player, in the play state
      * @param host   where the client connects
      * @param port   the port it connects to, 1 to 65535
-     * @return true if the transfer went to the client and the cooldown started (a listener of
-     *         {@code OutgoingTransferEvent} can still cancel the packet); false, with nothing sent
-     *         and no cooldown started, if the player is not in the play state (still configuring,
-     *         or gone) or is still cooling down from its last transfer
+     * @return completes with true once the packet went to the client, with the host and port the
+     *         listeners left, and the cooldown started; with false, nothing sent and no cooldown
+     *         started, if the player is not in the play state (still configuring, or gone), is
+     *         still cooling down from its last transfer, or a listener cancelled the event. It
+     *         completes on the player's tick thread; with false on the calling thread if the player
+     *         is not in the play state when this is called, and with false on the JDK's timer
+     *         thread if the player does not tick within 5 s (it left)
      * @throws IllegalArgumentException if the host is blank or the port is out of range; nothing is
      *                                  sent
      */
-    boolean transfer(Player player, String host, int port);
+    CompletableFuture<Boolean> transfer(Player player, String host, int port);
 
     /**
      * Whether the client said in its handshake that it was transferred here. It is the client's

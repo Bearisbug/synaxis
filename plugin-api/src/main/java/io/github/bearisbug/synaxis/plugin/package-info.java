@@ -10,6 +10,10 @@
  *     its channels, the tasks {@link io.github.bearisbug.synaxis.plugin.PluginScheduler#runOn} hands
  *     it) runs on the tick thread that owns that entity, so the plugin may read and change that
  *     entity there;</li>
+ *     <li>that holds for the events the host calls when a plugin asks it for something: a
+ *     {@link io.github.bearisbug.synaxis.plugin.Transfers#transfer}, from whatever thread, is carried
+ *     out at the player's next tick on the player's tick thread, where its
+ *     {@code OutgoingTransferEvent} is called;</li>
  *     <li>an effect on another entity, which may belong to another tick thread (an attack, a
  *     trade), is handed to the target with {@code runOn} and runs on the target's thread at its
  *     next tick; {@code Acquirable#sync} is only for the case where the value has to be read in

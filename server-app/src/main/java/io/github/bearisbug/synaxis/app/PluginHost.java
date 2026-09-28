@@ -5,7 +5,9 @@ import io.github.bearisbug.synaxis.app.moderation.HostModeration;
 import io.github.bearisbug.synaxis.app.permission.HostPermissions;
 import io.github.bearisbug.synaxis.app.store.PlayerStore;
 import io.github.bearisbug.synaxis.app.store.PluginPlayerData;
+import io.github.bearisbug.synaxis.app.transfer.PluginTransfers;
 import io.github.bearisbug.synaxis.app.transfer.TicketVerifier;
+import io.github.bearisbug.synaxis.app.transfer.TransferCooldowns;
 import io.github.bearisbug.synaxis.event.Event;
 import io.github.bearisbug.synaxis.event.EventNode;
 import io.github.bearisbug.synaxis.plugin.AdmissionProvider;
@@ -51,6 +53,7 @@ final class PluginHost {
     private final HostPermissions permissions;
     private final HostModeration moderation;
     private final TabListSlot tabList;
+    private final TransferCooldowns cooldowns;
     private final List<LoadedPlugin> enabled = new ArrayList<>();
 
     /**
@@ -78,6 +81,17 @@ final class PluginHost {
 
     PluginHost(ServerProcess process, Path pluginsDirectory, EventLedger ledger, PlayerStore store,
                @Nullable TicketVerifier tickets, HostPermissions permissions, HostModeration moderation) {
+        this(process, pluginsDirectory, ledger, store, tickets, permissions, moderation,
+                TransferCooldowns.fromSystemProperties());
+    }
+
+    /**
+     * @param cooldowns the transfer cooldowns of the process, the table its {@code TicketIssuer} and
+     *                  {@code TicketVerifier} use ({@code docs/DESIGN-PROD.md} API-PROD-021)
+     */
+    PluginHost(ServerProcess process, Path pluginsDirectory, EventLedger ledger, PlayerStore store,
+               @Nullable TicketVerifier tickets, HostPermissions permissions, HostModeration moderation,
+               TransferCooldowns cooldowns) {
         this.process = process;
         this.pluginsDirectory = pluginsDirectory;
         this.ledger = ledger;
@@ -85,6 +99,7 @@ final class PluginHost {
         this.permissions = permissions;
         this.moderation = moderation;
         this.tabList = new TabListSlot(process.connection());
+        this.cooldowns = cooldowns;
         this.handshake = new HandshakeGate(HandshakeGate.phase(), HandshakeGate.BUDGET, ledger);
         process.eventHandler().addChild(hostNode);
         router.attach(hostNode);
@@ -163,6 +178,7 @@ final class PluginHost {
                     new PluginChannelsImpl(id, router), new PluginAdmissionImpl(id, admission),
                     dataDirectory, ledger::record, playerData, playerData, permissions, moderation, commands,
                     new PluginTabListImpl(id, tabList), process.trackingRanges()::setDefault,
+                    new PluginTransfers(id, cooldowns),
                     LoggerFactory.getLogger("plugin." + id)));
         } catch (Throwable throwable) {
             playerData.discard();

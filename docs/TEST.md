@@ -14,6 +14,7 @@
 
 | 日期 | 改动 | 作者 |
 | --- | --- | --- |
+| 2026-09-28 | 跟进 `docs/DESIGN-PROD.md` v0.9.27（第 6 波 6A 插件面，`REQ-PROD-031`），联检不再报「`REQ-PROD-031` 无任何 TC 引用」。**新增 §4「生产就绪 · 第 6 波 6A 插件面：转服与 Cookie」十四条 `TC-PROD-520`～`TC-PROD-533`**，每条都带实跑过的反证（新类 `PluginTransfersIntegrationTest` 11 条、`TransferCooldownTableIntegrationTest` 3 条）：转服发包并开始冷却（520，不查冷却即红）、冷却一张表（521，§19 场景；签发端与插件面各建一张表、宿主不用传进来的表各一条反证，都红在 `COOLDOWN` 变 `NOT_ONLINE` 与 533 那条的 `expected: <false> but was: <true>`）、不在 PLAY 不发（522，§19 场景）、空白 host 与越界端口（523，两条反证）、Cookie 命名空间拒掉 `synaxis:transfer`（524，§19 场景）、5,120 B 上限（525，反证删的是引擎 `CookieStorePacket` 的检查）、`fetchCookie` 的三种结果（526，§19 场景；不设超时即红）、`wasTransferred`（527）、没有转服密钥的进程也有冷却表且写错拒启（528）、标注接口 15 个与 ABI 门（529，`transfers()` 改成抽象方法即 `game-rts` 的测试替身编不过）、转服事件在玩家所属 tick 线程上派发（530，§19 场景，严格 grid；在调用线程上当场派发即红在 `AcquirableOwnershipException`）、被取消的转服不发包不记冷却（531，§19 场景；先记冷却、不用事件里的端口各一条反证）、玩家在下一个 tick 之前离开与 5 s 超时（532，两条反证）、进程装配里验票端的冷却表（533，验票端另拿一张表即红）。**改了四条旧用例**，改过的步骤都在本分支重跑过：`TC-GAME-072` 第 1 步标注的文件 14 → 15 个（加 `Transfers`），第 2 步对 `v0.3.0` 两个任务都执行、0 违例；`TC-PROD-486` 第 3 步、`TC-PROD-505` 第 3 步与 `TC-PROD-510` 第 2 步的 `:server-app:test` 全量 411 → 425（本节 14 个，全量 0 失败 0 跳过；`TC-PROD-505` 第 3 步只改了 `:server-app:test` 这一半，也只重跑了这一半，根构建 `:test` 的 3,141 个本分支没有改动）。§5 加一行回归映射。登记 RUN-047（证据 `docs/test-runs/RUN-047/acceptance.txt`，第八节是 `f947ded016` 上 520～533 的重跑与补跑，第九节是 `0599dc51f8` 上的两道全量门禁与 ABI 门） | Bearisbug |
 | 2026-09-28 | 跟进 `docs/DESIGN-M3.md` v0.18（M3-E 合并验收），登记 RUN-045（合并验收，证据 `docs/test-runs/RUN-045/`）与 RUN-046（证据 `docs/test-runs/RUN-046/`）。**新增 §4「M3 · 分片（M3-E）」一节 `TC-WORLD-057`～`TC-WORLD-088`**：目录格式与校验（057）、目录对清单的核对与出生点列（058）、`Main` 步骤 (1)（059）、大区装配（060）、心跳写读（061）、选频道（062）、`ShardService` 九种结果（063）、关卡门（064）、到达点与 `transfer_completed`（065）、标志的重放（066）、以标志为准（067）、跨频道同步（068）、起服依赖（069）、关掉之后不再应用（070）、机器人转服往返（071）、`gate` 画像与命令行（072）、转服被拒后重连（073）、重配置中的起算点（074）、心跳与选频道的完整版（075）、两进程的五条（076～080）、压测四档（081～084）、满员频道在读 Cookie 之前拒绝转入（085）、`merge` 的转服判定（086）、签发端写事件与验票交给到达（087）、迁移 V5、V6 往返（088）；轨道交来的草案里的 D3 原拟占生产就绪域的下一个 `TC-PROD` 编号，按「不改 `TC-PROD-*`」改为 `TC-WORLD-086`，B 对 `TC-PROD-157`、`TC-PROD-379` 的补充改为 `TC-WORLD-087`，迁移那一半改为 `TC-WORLD-088`。每条反证都在 RUN-046 实跑：`057` 第 2 步到达点 z、`061` 第 2 步 `close` 后 `start`、`067` 第 5 步冲突日志、`072` 第 2 步 `--dwell` 四处按草案直改编译不过（Error Prone 的 `UnusedVariable`、`UnusedMethod`、`UnnecessaryParentheses`），用例里写的是能编译的改法；`059` 第 3 步、`060` 第 2 步、`088` 第 2 步的改法是本轮新设计的。**改 M3-C 的用例（M3-E 挪了条数与红行，都在 RUN-046 重跑过）**：「A 组」25 → 26 条，`TC-WORLD-034` 第 1 步 `SynxChunkOverlayIntegrationTest` 13 → 14，`TC-WORLD-034`～`TC-WORLD-039` 的反证条数 25 → 26、`SynxChunkOverlayIntegrationTest` 的红行 +1（`:332` → `:333`、`:91` → `:92` 等）或 +39（`:410` → `:449`、`:444` → `:483`）；`TC-WORLD-047` `ShardWorldTest` 12 → 18、第 3 步 `:235` → `:335`；`TC-WORLD-048` 第 2 步 23 → 29、`:63`/`:123` → `:65`/`:125`；`TC-WORLD-049` 5 → 8、第 2 步 `:228` → `:365`；`TC-WORLD-055` 12 → 18、第 2 步 23 → 29、`:99` → `:101`；M3-C 一节开头写明这几条按 RUN-046。**§2**：M3 覆盖一段加 M3-E，Gherkin 口径加 M3-E 的场景对照，`REQ-M3-015`～`REQ-M3-017`、`REQ-M3-023` 四行由「未实现」改为指向用例。**§3**：M3 环境加 M3-E 一条（数据库前置、「不带库」不停容器、两进程夹具的内存）。**§5**：大世界域加 M3-E 的局部轮映射。**§7**：登记 `AcquirableTest` 在 `grid` 严格模式下的一次偶发红。**没改 `TC-PROD-*`**：随 M3-E 过时的 `TC-PROD-141`、`157`、`174`、`200`、`220`、`265`～`267`、`316`、`376`、`377`、`379`、`486`、`505`、`510` 的条数与红行交给生产就绪会话（`docs/DESIGN-M3.md` §28.2 交接行 ⑲） | Bearisbug |
 | 2026-09-27 | 跟进 `docs/DESIGN-M3.md` v0.15（覆盖存储写入阶段的每 tick 上限含在途编码），并登记 RUN-044（证据 `docs/test-runs/RUN-044/`）。**改 `TC-WORLD-042`**：第 1 步 `OverlayStoreTest` 26 → 28 条，预期补「之后每个 tick 追加的也 ≤ 64 条」与在途编码占下一 tick 额度的两条（到期区块 64；待淘汰 64 加待卸载 256）；新增第 6 步反证（写入阶段开头把三类在途计数清零，即每个阶段只数本阶段提交的编码，红在 `:196` 与 `:223`），原第 6 步改为第 7 步；两条新测试插在原第 170 行之后，第 3 步红行 `:213` → `:280`、第 4 步 `:420` → `:487`，第 2～5 步都在本分支重跑过，信息不变；M3-C 一节开头的红行出处句补 `TC-WORLD-042` 按 RUN-044 | Bearisbug |
 | 2026-09-27 | 合并 `main` `773ef6f86e`（RUN-042 的两个修复）后的用例同步，并登记 RUN-043（证据 `docs/test-runs/RUN-043/acceptance.txt`）。**红行**：`e46e12d790` 删去 `ViewDistanceSocketTest` 的 `@ResourceLock`、它的 import 与一段 Javadoc，断言前移 5 行，`TC-PROD-410` 第 2 步 `:61` → `:56`、`TC-PROD-411` 第 2 步 `:77` → `:72`、第 3 步 `:69` → `:64`、`TC-PROD-413` 第 2 步 `:77` → `:72`，四步都在合并后的代码上照写法重跑过，消息不变；6E 一节开头的出处句补这次重跑。**条数**：`main` 的 `BinaryTagTypeImplTest` 多 1 条，`TC-PROD-505` 第 3 步根构建 `:test` 3,140 → 3,141，`TC-PROD-513` 第 4 步 `network` 包 865 → 866 条（66 个类不变） | Bearisbug |
@@ -928,7 +929,7 @@ REQ-M3 ↔ TC 对照（可读索引）。「未实现」行没有用例，是已
 
 | # | 操作 | 预期 |
 | --- | --- | --- |
-| 1 | `grep -l 'ApiStatus.NonExtendable' plugin-api/src/main/java/io/github/bearisbug/synaxis/plugin/*.java` | 恰好 14 个文件，与 `docs/DESIGN-PROD.md` §8 的清单一致：`Moderation`、`Permissions`、`PlayerDataStore`、`PluginAdmission`、`PluginAnalytics`、`PluginChannels`、`PluginCommands`、`PluginContext`、`PluginEntities`、`PluginEvents`、`PluginLifecycle`、`PluginScheduler`、`ShutdownNotice`、`TabList`；`SynaxisPlugin`、`AdmissionProvider`、`PayloadHandler`、`DataSection` 不在其中 |
+| 1 | `grep -l 'ApiStatus.NonExtendable' plugin-api/src/main/java/io/github/bearisbug/synaxis/plugin/*.java` | 恰好 15 个文件，与 `docs/DESIGN-PROD.md` §8 的清单一致：`Moderation`、`Permissions`、`PlayerDataStore`、`PluginAdmission`、`PluginAnalytics`、`PluginChannels`、`PluginCommands`、`PluginContext`、`PluginEntities`、`PluginEvents`、`PluginLifecycle`、`PluginScheduler`、`ShutdownNotice`、`TabList`、`Transfers`；`SynaxisPlugin`、`AdmissionProvider`、`PayloadHandler`、`DataSection` 不在其中 |
 | 2 | `./gradlew :plugin-api:checkBinaryCompatibility :protocol:checkBinaryCompatibility -PbaselineJarDir=<abi> --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts` | 两个任务都执行（没有 `SKIPPED`）、`BUILD SUCCESSFUL` |
 | 3 | 在 `PluginEvents` 的 `PluginEvents forInstance(Instance instance);` 下一行加 `void probe();`，重跑 `:plugin-api:checkBinaryCompatibility`，再 `git checkout -- plugin-api/src/main/java/io/github/bearisbug/synaxis/plugin/PluginEvents.java` | `BUILD SUCCESSFUL`：只由宿主实现的接口加抽象方法是兼容变更 |
 | 4 | 反证有齿：在 `SynaxisPlugin` 的 `void onEnable(PluginContext context);` 下一行加 `void probe();`，重跑 `:plugin-api:checkBinaryCompatibility`，再 `git checkout -- plugin-api/src/main/java/io/github/bearisbug/synaxis/plugin/SynaxisPlugin.java` | `BUILD FAILED`：`New abstract method added to interface: io/github/bearisbug/synaxis/plugin/SynaxisPlugin#probe()V (breaks implementing classes)`、`ABI Check failed with 1 binary compatibility violations.` |
@@ -6739,7 +6740,7 @@ for (var request : System.getenv("MGMT_CALLS").split("\n")) {
 | --- | --- | --- |
 | 1 | 同一次运行跑 `io.github.bearisbug.synaxis.app.store` 下的 `ShutdownSaveBeforeSpawnIntegrationTest`、`ShutdownSaveIntegrationTest`、`ShutdownSaveRaceIntegrationTest`、`PlayerStoreIntegrationTest`、`CrossShardHandoverIntegrationTest`、`TransferTicketsIntegrationTest`，与 `io.github.bearisbug.synaxis.app.ConfigFileLaunchTest` | `tests="3"`、`"4"`、`"2"`、`"23"`、`"6"`、`"7"`、`"2"`，都 0 失败 0 跳过（`TC-PROD-460`、`TC-PROD-470`、`TC-PROD-155`、`TC-PROD-214` 第 2 步、`TC-PROD-442` 不受影响）。保存阶段开始后的下一个 tick 会断开仍连着、没进世界的玩家，这几类里这样的玩家都在那之前已自己断开，断言不变 |
 | 2 | `TC-PROD-147` 第 2 步（本组把它要改的那一行 `if (!saveEnded) releaseQuietly(record.characterId);` 改成了 `releaseQuietly(record.characterId);`，保存阶段结束的判断挪进 `releaseQuietly`；该步已按新写法改） | 红在 `PlayerStoreIntegrationTest.java:270`，`not within 10 s: the lease goes back after the retries`，与原预期相同；还原后复绿 |
-| 3 | 跑 `:server-app:test` 全量（数据库前置满足） | 411 个 0 失败 0 跳过（含本组新增 11 个，另有同批合入的 G2 10 个、G3 3 个、RUN-039 修复轮的 9 个与修复第 2 轮的 4 个，合计 370 个；M3-C 合入后再加它的 41 个） |
+| 3 | 跑 `:server-app:test` 全量（数据库前置满足） | 425 个 0 失败 0 跳过（含本组新增 11 个，另有同批合入的 G2 10 个、G3 3 个、RUN-039 修复轮的 9 个与修复第 2 轮的 4 个，合计 370 个；M3-C 合入后再加它的 41 个，6A 插件面再加 14 个） |
 
 后置：确认 `PlayerStore.java` 没有残留改动。
 
@@ -6990,7 +6991,7 @@ for (var request : System.getenv("MGMT_CALLS").split("\n")) {
 | --- | --- | --- |
 | 1 | 同一次运行跑 `:server-app:test` 的 `io.github.bearisbug.synaxis.app.management.StopRaceIntegrationTest`、`io.github.bearisbug.synaxis.app.store.ShutdownSaveOutsideTheWorldIntegrationTest`、`io.github.bearisbug.synaxis.app.management.ManagementIntegrationTest`、`io.github.bearisbug.synaxis.app.ModerationIntegrationTest`、`io.github.bearisbug.synaxis.app.ShutdownSequenceTest` 与 `io.github.bearisbug.synaxis.app.BindKeysLaunchTest` | `tests="3"`、`"3"`、`"13"`、`"12"`、`"8"`、`"2"`，都 0 失败 0 跳过（`TC-PROD-495`、`TC-PROD-496`、`TC-PROD-498`、`TC-PROD-483`、`TC-PROD-484`、`TC-PROD-381`～`TC-PROD-388`、`TC-PROD-221`～`TC-PROD-227`、`TC-PROD-370`～`TC-PROD-375` 与 `TC-PROD-489` 跑的类不受影响） |
 | 2 | 按新写法重跑本组改过的旧用例反证：`TC-PROD-380` 第 2 步、`TC-PROD-390` 第 2 步、`TC-PROD-395` 第 2 步、`TC-PROD-485` 第 2 步、`TC-PROD-489` 第 2 步，与 `TC-PROD-169` 第 2 步的合并反证 | 各条写的红行与消息，即 `6 tests completed, 1 failed`（`ManagementSettingsTest.java:29`）、`2 tests completed, 1 failed`（`ManagementBansIntegrationTest.java:133`）、`2 tests completed, 1 failed`（`(ManagementServer.java:231)`）、`4 tests completed, 4 failed`（`ShutdownBeforeTheWorldLaunchTest.java:136`）、`2 tests completed, 2 failed`（`BindKeysLaunchTest.java:29`）、`32 tests completed, 6 failed`；每次还原后复绿 |
-| 3 | 跑 `:server-app:test` 全量（数据库前置满足）与根构建 `:test` 全量 | `:server-app:test` 411 个 0 失败 0 跳过（`TC-PROD-486` 第 3 步原写的 357 个加本组 9 个，再加修复第 2 轮的 4 个，合计 370 个；M3-C 合入后再加它的 41 个）；`:test` 3,141 个 0 失败、15 跳过（比 RUN-039 多本组的 3 个，合计 3,106 个；M3-C 合入后再加它的 34 个，RUN-042 的修复再加 `BinaryTagTypeImplTest` 1 个。15 个跳过合入前就有） |
+| 3 | 跑 `:server-app:test` 全量（数据库前置满足）与根构建 `:test` 全量 | `:server-app:test` 425 个 0 失败 0 跳过（`TC-PROD-486` 第 3 步原写的 357 个加本组 9 个，再加修复第 2 轮的 4 个，合计 370 个；M3-C 合入后再加它的 41 个，6A 插件面再加 14 个）；`:test` 3,141 个 0 失败、15 跳过（比 RUN-039 多本组的 3 个，合计 3,106 个；M3-C 合入后再加它的 34 个，RUN-042 的修复再加 `BinaryTagTypeImplTest` 1 个。15 个跳过合入前就有） |
 
 后置：确认反证改过的文件都已还原（`git status --short` 只剩本组的改动）。
 
@@ -7056,7 +7057,7 @@ for (var request : System.getenv("MGMT_CALLS").split("\n")) {
 | # | 操作 | 预期 |
 | --- | --- | --- |
 | 1 | 按新写法重跑本组改过的旧用例：`TC-PROD-495` 第 2、3 步，`TC-PROD-496` 第 3 步，`TC-PROD-498` 第 2、3 步，`TC-PROD-501` 第 2、3 步 | 各条写的结果：`2 tests completed, 2 failed`（`StopRaceIntegrationTest.java:195`、`:213`，删改后的行号不变）；`3 tests completed, 1 failed`（`:200`）；`16 tests completed, 1 failed`（`:218`，`ManagementIntegrationTest` 13 条都绿）；`3 tests completed, 1 failed`（`:258`）；`grep` 得 `:262`、`:264`、`:266`、`:270`；`2 tests completed, 2 failed`（`MetricsEndpointLimitTest.java:85`，经 `:53`、`:74`）；`2 tests completed, 2 failed`（`:102` 经 `:55`，`:125` 经 `:78`）。每次还原后复绿 |
-| 2 | 跑 `:server-app:test` 全量（数据库前置满足） | 411 个 0 失败 0 跳过（与 `TC-PROD-505` 第 3 步相同：`TC-PROD-486` 第 3 步原写的 357 个加 RUN-039 修复轮 9 个与本组 4 个，合计 370 个；M3-C 合入后再加它的 41 个） |
+| 2 | 跑 `:server-app:test` 全量（数据库前置满足） | 425 个 0 失败 0 跳过（与 `TC-PROD-505` 第 3 步相同：`TC-PROD-486` 第 3 步原写的 357 个加 RUN-039 修复轮 9 个与本组 4 个，合计 370 个；M3-C 合入后再加它的 41 个，6A 插件面再加 14 个） |
 
 后置：确认反证改过的文件都已还原（`git status --short` 无输出）。
 
@@ -7108,6 +7109,176 @@ for (var request : System.getenv("MGMT_CALLS").split("\n")) {
 
 后置：`git status --short` 无输出。
 
+### 生产就绪 · 第 6 波 6A 插件面：转服与 Cookie
+
+对应 `REQ-PROD-031`（`API-PROD-021`），`docs/DESIGN-PROD.md` v0.9.27，§19 的六条插件面场景：冷却一张表（含验票端）、不在 PLAY 不发、转服事件在玩家所属 tick 线程上派发、被取消的转服不记冷却、读写不了票据 Cookie、`fetchCookie` 的三种结果。改动：`:plugin-api` 新接口 `Transfers`（标 `@ApiStatus.NonExtendable`）与 `PluginContext` 的默认方法 `transfers()`；宿主实现是 `server-app` 的 `app.transfer.PluginTransfers`，每个插件一份，`transfer` 返回 `CompletableFuture<Boolean>`，判定、`OutgoingTransferEvent` 与发包都在玩家下一个 tick、玩家所属 tick 线程上；`Main#openStore` 建的 `TransferCooldowns` 挂在 `StoreRuntime#cooldowns`，与 `TicketIssuer`、`TicketVerifier` 是同一个对象，经 `PluginHost` 的八参构造器交给插件面。6A 的 `gm.transfer`、管理接口 `synaxis:transfer` 与 P10 等 M3-E，不在本节；§19「转入连接重新验证」一条里 `storeCookie` 写 5,121 B 与 5,120 B 的判据由 `TC-PROD-525` 在进程内覆盖，那条场景的其余部分随 M3-E 另立用例。
+
+测试：`server-app` 两个新类。`io.github.bearisbug.synaxis.app.transfer.PluginTransfersIntegrationTest` 11 条，不连数据库，冷却表用手动时钟：要转服成功的玩家经 `Env#createConnection` 连进一个平地实例、再跑一个 tick（分到一条 tick 线程），下行的 `TransferPacket` 用 `trackIncoming` 收；不在 PLAY、从不 tick 的玩家与 Cookie 几条挂在一条记下全部下行包的测试连接上，连接的服务端状态由测试设定。「判定」即反复 tick 直到 future 完成，上限 2 s，短于 `transfer` 自己的 5 s 超时，所以 tick 判出的 false 不会被超时的 false 冒充。`io.github.bearisbug.synaxis.app.TransferCooldownTableIntegrationTest` 3 条：第 1、3 条按 `Main#openStore` 开 postgres 存储并配 `SYNAXIS_TRANSFER_HMAC_KEYS`，玩家在建 `PluginHost` 之前连进世界（宿主的准入会拒掉没有准入回调的连接），第 2 条是内存存储。「跑某类」即 `./gradlew :server-app:test --rerun --tests '<全名>' --max-workers=4 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts`，结果看 `server-app/build/test-results/test/TEST-<全名>.xml`。「数据库前置」即环境里有 `SYNAXIS_TEST_PG_URL`、`SYNAXIS_TEST_PG_USER`、`SYNAXIS_TEST_PG_PASSWORD`（本机指向共用容器 `synaxis-pg`，`127.0.0.1:5440`）；缺了它们，`TransferCooldownTableIntegrationTest` 第 1 条跳过，本节用例判失败。「严格 grid」同上一节。反证一律是改一处、跑、看红、`git checkout --` 该文件、复绿，下表只写改哪一处和红在哪；行号是 `prod/6a-plugin` 上的。
+
+#### `TC-PROD-520` 插件转服发一个 `Transfer` 包并开始冷却，冷却内再转返回 false — 对应 `REQ-PROD-031` · 级别: 回归 · 执行者: AI
+
+前置：工作副本干净。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `PluginTransfersIntegrationTest`，看 `aTransferStartsTheCooldownAndTheCooldownRefusesTheNextOne` | `tests="11"` 0 失败（本类约 10.4 s，其中 5.0 s 是 `TC-PROD-526` 的超时、5.0 s 是 `TC-PROD-532` 的超时）。世界里的 PLAY 玩家第一次 `transfer(玩家, "lobby.example", 25565)` 的 future 判定为 true，连接收到恰一个 `TransferPacket[host=lobby.example, port=25565]`，冷却表对这名玩家 `coolingDown` 为 true；时钟拨到 +4,999 ms 判定为 false、没有包；+5,000 ms 判定为 true、一个包 |
+| 2 | 反证有齿（不查冷却）：`PluginTransfers.java:76` 的 `if (!inPlay(player) \|\| cooldowns.coolingDown(player.getUuid())) return false;` 改为 `if (!inPlay(player)) return false;`，跑本类 | `11 tests completed, 2 failed`：本条红在 `PluginTransfersIntegrationTest.java:79` `expected: <false> but was: <true>`；`TC-PROD-521` 第 1 步那条红在 `:97`，信息相同 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PROD-521` 冷却一张表：以票据转入的玩家插件转不走，插件转走的玩家宿主不再签票据 — 对应 `REQ-PROD-031` · 级别: 回归 · 执行者: AI
+
+前置：工作副本干净；数据库前置。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `PluginTransfersIntegrationTest`，看 `aTicketThatBroughtThePlayerInCoolsThePluginDown` | 0 失败。照 `TicketVerifier#claim` 的做法在冷却表记下票据的 `issued_at` = t；t + 3 s 时 `transfer` 判定为 false，t + 6 s 判定为 true，全程恰一个 `TransferPacket` |
+| 2 | 跑 `TransferCooldownTableIntegrationTest`，看 `aPluginTransferCoolsTheTicketSideDown` | `tests="3"` 0 失败 0 跳过（本类约 0.5～1.8 s）。`--migrate-only --auth-mode=offline` 之后，`Main.openStore("postgres", …)` 带 `SYNAXIS_TRANSFER_HMAC_KEYS` 开出的 `StoreRuntime` 交给八参 `PluginHost`；探针插件经 `transfers()` 对世界里的 PLAY 玩家 `transfer` 判定为 true；随即 `runtime.issuer().transfer(玩家, "r1-c2", "127.0.0.1", 25566)` 在 5 s 内以 `COOLDOWN` 完成；全程恰一个 `TransferPacket[host=lobby.example, port=25565]` |
+| 3 | `grep -n 'store.cooldowns()' server-app/src/main/java/io/github/bearisbug/synaxis/app/Main.java` | 恰一行 `240`：进程装配里 `new PluginHost(…)` 的最后一个实参，与第 2 步走的是同一个构造器 |
+| 4 | 反证有齿（签发端与插件面各一张表）：把 `Main.java:565` `new StoreRuntime(…)` 实参末尾的 `cooldowns` 换成 `TransferCooldowns.fromSystemProperties()`，跑 `TransferCooldownTableIntegrationTest` | `3 tests completed, 2 failed`：本条红在 `TransferCooldownTableIntegrationTest.java:91` `expected: <COOLDOWN> but was: <NOT_ONLINE>`（签发端查自己那张表不在冷却，往下查到这名玩家不在存储里）；`TC-PROD-533` 那条红在 `:113` `the verifier recorded the arrival in the table the plugins read ==> expected: <false> but was: <true>`（验票端与签发端仍共用一张，插件面那张没记） |
+| 5 | 反证有齿（宿主不用传进来的表）：把 `PluginHost.java:102` 的 `this.cooldowns = cooldowns;` 换成 `this.cooldowns = TransferCooldowns.fromSystemProperties();`，跑 `TransferCooldownTableIntegrationTest` | 与第 4 步相同：`3 tests completed, 2 failed`，`:91` 与 `:113` |
+
+后置：`git status --short` 无输出；测试建的库由 `TestDatabase` 删掉。
+
+#### `TC-PROD-522` 不在 PLAY 的玩家：`transfer` 返回 false，不发包、不记冷却 — 对应 `REQ-PROD-031` · 级别: 回归 · 执行者: AI
+
+前置：工作副本干净。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `PluginTransfersIntegrationTest`，看 `aPlayerOutsideThePlayStateIsNotTransferredAndNotCooled` | 0 失败。服务端状态为 `CONFIGURATION` 的玩家与已 `disconnect()` 的玩家各调一次，两个 future 在 `transfer` 返回时已完成、都是 false（不等 tick），两条连接都没有 `TransferPacket`，两人都不在冷却 |
+| 2 | 反证有齿（不判 PLAY）：`PluginTransfers.java:89` 的 `return connection.isOnline() && connection.getServerState() == ConnectionState.PLAY;` 改为 `return connection.isOnline();`，连同随之不用的 `import io.github.bearisbug.synaxis.network.ConnectionState;`（不删导入，Error Prone 的 `RemoveUnusedImports` 先让 `compileJava` 红），跑本类 | `11 tests completed, 1 failed`：`PluginTransfersIntegrationTest.java:113` `decided on the calling thread, nothing waits for a tick ==> expected: <true> but was: <false>`（还在 configuration 的玩家的转服被排进了它从不跑的 tick） |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PROD-523` 空白 host、端口不在 1～65535 抛 `IllegalArgumentException`，不发包、不记冷却 — 对应 `REQ-PROD-031` · 级别: 边缘 · 执行者: AI
+
+前置：工作副本干净。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `PluginTransfersIntegrationTest`，看 `aBlankHostOrAPortOutOfRangeIsRefusedBeforeAnythingHappens` | 0 失败。host `" "`、端口 0、端口 65,536 各在调用线程上抛一次 `IllegalArgumentException`；随后端口 65,535 判定为 true（前三次没记冷却），连接全程恰收到这一个 `TransferPacket`（port 65535） |
+| 2 | 反证有齿（不查 host）：删掉 `PluginTransfers.java:48` 的 `if (host.isBlank()) throw …;`，跑本类 | `11 tests completed, 1 failed`：`PluginTransfersIntegrationTest.java:150` `Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown.` |
+| 3 | 反证有齿（端口下界）：`PluginTransfers.java:49` 的 `port < 1` 改为 `port < 0`，跑本类 | `11 tests completed, 1 failed`：`:151`，信息同第 2 步 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PROD-524` Cookie 键只认本插件命名空间：宿主的 `synaxis:transfer` 与别的命名空间读写都拒 — 对应 `REQ-PROD-031` · 级别: 回归 · 执行者: AI
+
+前置：工作副本干净。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `PluginTransfersIntegrationTest`，看 `aCookieOutsideThePluginsNamespaceIsRefusedAndTheTicketAmongThem` | 0 失败。plugin id 为 `probe`；`storeCookie` 与 `fetchCookie` 各用 `synaxis:transfer`（`TransferTicket.COOKIE`）与 `other:state` 调一次，四次都抛 `IllegalArgumentException`；连接上没有 `CookieStorePacket`，也没有 `CookieRequestPacket` |
+| 2 | 反证有齿（不查命名空间）：`PluginTransfers.java:115` 的 `if (!key.namespace().equals(pluginId)) {` 改为 `if (key.namespace().equals("never")) {`，跑本类 | `11 tests completed, 1 failed`：`PluginTransfersIntegrationTest.java:217` `Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown.`（这一行就是写 `synaxis:transfer`） |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PROD-525` `storeCookie` 5,120 B 发出，5,121 B 抛 `IllegalArgumentException` 且不发包 — 对应 `REQ-PROD-031` · 级别: 边缘 · 执行者: AI
+
+前置：工作副本干净。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `PluginTransfersIntegrationTest`，看 `aCookieOfAtMost5120BytesIsStoredAndALongerOneSendsNothing` | 0 失败。5,120 B 发出恰一个 `CookieStorePacket`，键 `probe:state`、值 5,120 B；5,121 B 抛 `IllegalArgumentException`，没有第二个包 |
+| 2 | 反证有齿（上限由引擎执行）：删掉根模块 `src/main/java/io/github/bearisbug/synaxis/network/packet/server/common/CookieStorePacket.java:22` 的 `Check.argCondition(value.length > MAX_VALUE_LENGTH, …);` 与随之不用的 `import io.github.bearisbug.synaxis.utils.validate.Check;`，跑本类（根模块随之重编） | `11 tests completed, 1 failed`：`PluginTransfersIntegrationTest.java:233` `Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown.` |
+
+后置：`git status --short` 无输出（根模块那个文件已还原）。
+
+#### `TC-PROD-526` `fetchCookie`：客户端回值、回「没有」与一直不回 — 对应 `REQ-PROD-031` · 级别: 回归 · 执行者: AI
+
+前置：工作副本干净。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `PluginTransfersIntegrationTest`，看 `aFetchCompletesWithTheAnswerWithNullForNoCookieAndTimesOutWithoutAnAnswer` | 0 失败（本条约 5.0 s）。三次都发出 `CookieRequestPacket[key=probe:state]`；测试以客户端身份回 `{1, 2, 3}` 的那次以这 3 个字节完成，回 null 的那次以 null 完成；不回的那次在 7 s 内以 `ExecutionException` 完成，cause 是 `TimeoutException` |
+| 2 | 反证有齿（不设超时）：`PluginTransfers.java:105-106` 改为 `return player.getPlayerConnection().fetchCookie(own(key));`（`TimeUnit` 的导入留着，`transfer` 的超时还用它），跑本类 | `11 tests completed, 1 failed`：`PluginTransfersIntegrationTest.java:258` `Unexpected exception type thrown, expected: <java.util.concurrent.ExecutionException> but was: <java.util.concurrent.TimeoutException>`（future 过了 7 s 仍未完成，是 `get` 自己超时） |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PROD-527` `wasTransferred` 即连接握手时的 transfer 意图 — 对应 `REQ-PROD-031` · 级别: 回归 · 执行者: AI
+
+前置：工作副本干净。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `PluginTransfersIntegrationTest`，看 `wasTransferredIsTheHandshakeIntentOfTheConnection` | 0 失败。连接 `markTransferred(true)`（`HandshakeListener` 在 transfer 意图时调的同一个方法）之前返回 false，之后返回 true |
+| 2 | 反证有齿：`PluginTransfers.java:94` 改为 `return false;`，跑本类 | `11 tests completed, 1 failed`：`PluginTransfersIntegrationTest.java:269` `expected: <true> but was: <false>` |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PROD-528` 没有转服密钥的进程也有冷却表，`synaxis.app.transfer-cooldown-ms` 写错拒启 — 对应 `REQ-PROD-031` · 级别: 边缘 · 执行者: AI
+
+前置：工作副本干净。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `TransferCooldownTableIntegrationTest`，看 `aProcessWithoutTransferKeysHasATableAndReadsItsKey` | 0 失败。内存存储开出的 `StoreRuntime`：`issuer()` 为 null，`cooldowns()` 不为 null；系统属性 `synaxis.app.transfer-cooldown-ms=soon` 时 `Main.openStore("memory", …)` 抛 `IllegalArgumentException`，消息含 `synaxis.app.transfer-cooldown-ms=soon`；测试结束把属性恢复原值 |
+| 2 | 反证有齿（内存存储不读这个键）：`Main.java:521` 的 `TransferCooldowns.fromSystemProperties()` 换成 `new TransferCooldowns(5_000, System::currentTimeMillis)`，跑本类 | `3 tests completed, 1 failed`：`TransferCooldownTableIntegrationTest.java:132` `Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown.` |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PROD-529` `Transfers` 只由宿主实现：标注的接口 15 个、`transfers()` 是默认方法、对 `v0.3.0` 的 ABI 门 0 违例；相关模块回归 — 对应 `REQ-PROD-031` · 级别: 回归 · 执行者: AI
+
+前置：工作副本干净；数据库前置；`<abi>` 同 `TC-GAME-072`（`gh release download v0.3.0 --repo Bearisbug/synaxis --dir <abi> --pattern plugin-api.jar --pattern protocol.jar`，`<abi>` 在仓库外）。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 做 `TC-GAME-072` 第 1 步 | 恰好 15 个文件，含 `Transfers` |
+| 2 | `./gradlew :plugin-api:checkBinaryCompatibility --rerun :protocol:checkBinaryCompatibility --rerun -PbaselineJarDir=<abi> --console=plain --max-workers=4 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts` | 两个任务都执行（没有 `SKIPPED`、没有 `FROM-CACHE`）、`BUILD SUCCESSFUL`，尾部 `2 executed`：新接口与 `PluginContext` 的新默认方法都是新增，0 条违例，`API_VERSION` 仍为 2 |
+| 3 | 反证有齿（`transfers()` 必须是默认方法）：`PluginContext.java` 的 `default Transfers transfers() { throw …; }` 改为 `Transfers transfers();`，跑 `./gradlew :game-rts:compileTestJava --max-workers=4 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts`，再 `git checkout --` 该文件 | `BUILD FAILED`：`RtsPluginIntegrationTest.java:60` 的测试替身 `ProbeContext` 编不过，javac 报 `ProbeContext不是抽象的, 并且未覆盖PluginContext中的抽象方法transfers()`（英文环境是 `is not abstract and does not override abstract method transfers()`）。改成抽象方法 ABI 门不报（`PluginContext` 已标注），坏的是插件自写的替身 |
+| 4 | `./gradlew :server-app:check :plugin-api:check :game-rts:check :architecture-tests:check --max-workers=4 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts` | `BUILD SUCCESSFUL`；`:server-app:test` 425 个 0 失败 0 跳过（M3-C 合入后的 411 个加本节 14 个，与 `TC-PROD-505` 第 3 步相同），`:plugin-api` 15 个、`:game-rts` 87 个、`:architecture-tests` 20 个，都 0 失败 |
+| 5 | 严格 grid 跑 `:server-app:test`，`--tests` 给本节两个类与 `PluginHostIntegrationTest`、`MainStoreIntegrationTest`、`TransferAdmissionIntegrationTest`（后三个在 `io.github.bearisbug.synaxis.app` 包） | 11 + 3 + 18 + 6 + 1 = 39 个 0 失败 0 跳过 |
+
+后置：`git status --short` 无输出；删掉 `<abi>`。
+
+#### `TC-PROD-530` 转服事件在玩家所属 tick 线程上派发：从虚拟线程调 `transfer`，监听器能动这名玩家（严格 grid） — 对应 `REQ-PROD-031` · 级别: 回归 · 执行者: AI
+
+前置：工作副本干净。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 严格 grid 跑 `PluginTransfersIntegrationTest`，看 `aListenerOfTheTransferRunsOnThePlayersTickThreadAndMayMoveThePlayer` | `tests="11"` 0 失败。玩家在世界里、已分到一条 tick 线程；`OutgoingTransferEvent` 的引擎监听器记下自己的线程，并把玩家 `teleport` 到 (3, 42, 3)；测试在一条虚拟线程上调 `transfer(玩家, "lobby.example", 25565)`。判定为 true；监听器没有抛异常，它所在的线程是 `TickThread`，就是 `player.acquirable().assignedThread()`；调用后立即挂上的 `whenComplete` 也在这条线程上执行（future 在那里完成）；玩家位置是 (3, 42, 3)；连接恰收到一个 `TransferPacket`，冷却已记 |
+| 2 | 反证有齿（在调用线程上当场派发）：`PluginTransfers.java:55` 的 `player.scheduler().scheduleNextTick(() -> {` 改为 `((Runnable) () -> {`，`:62` 与它配对的 `});` 改为 `}).run();`，严格 grid 跑本类 | `11 tests completed, 2 failed`：本条红在 `PluginTransfersIntegrationTest.java:181` `the listener owns the player ==> expected: <null> but was: <io.github.bearisbug.synaxis.thread.AcquirableOwnershipException: Thread ownership assertion failed for …TestPlayerImpl@…`，异常正文 `Assigned thread: Syn-Tick-0`，`Current thread` 为空（调用方是未命名的虚拟线程）；`TC-PROD-532` 第 1 步那条红在 `:131` `expected: <false> but was: <true>`（断开之前就当场发了） |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PROD-531` 被取消的转服不发包、不记冷却；放行的按事件里的端口发 — 对应 `REQ-PROD-031` · 级别: 回归 · 执行者: AI
+
+前置：工作副本干净。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `PluginTransfersIntegrationTest`，看 `aCancelledTransferSendsNothingAndStartsNoCooldown` | 0 失败。监听器先取消事件：`transfer` 判定为 false，连接没有 `TransferPacket`，冷却表对这名玩家 `coolingDown` 为 false；监听器改为把端口改成 25566，时钟不动立刻再调：判定为 true（没被冷却拒），连接恰收到一个 `TransferPacket[host=lobby.example, port=25566]` |
+| 2 | 反证有齿（先记冷却、后派发事件）：把 `PluginTransfers.java:81` 的 `cooldowns.record(player.getUuid(), cooldowns.now());` 挪到 `:79` `connection.process().eventHandler().call(event);` 之前，跑本类 | `11 tests completed, 1 failed`：`PluginTransfersIntegrationTest.java:203` `a cancelled transfer starts no cooldown ==> expected: <false> but was: <true>` |
+| 3 | 反证有齿（不用监听器改过的地址）：`PluginTransfers.java:82` 的 `new TransferPacket(event.getHost(), event.getPort())` 改为 `new TransferPacket(host, port)`，跑本类 | `11 tests completed, 1 failed`：`:208` `expected: <TransferPacket[host=lobby.example, port=25566]> but was: <TransferPacket[host=lobby.example, port=25565]>` |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PROD-532` 玩家在下一个 tick 之前离开：tick 上再判一次 PLAY；从不 tick 的玩家 5 s 后以 false 完成 — 对应 `REQ-PROD-031` · 级别: 边缘 · 执行者: AI
+
+前置：工作副本干净。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `PluginTransfersIntegrationTest`，看 `aPlayerWhoLeavesBeforeItsNextTickIsNotTransferredAndTheFutureStillCompletes` | 0 失败（本条约 5.1 s）。世界里的玩家在 `transfer` 之后、tick 之前 `disconnect()`（测试连接只把 `isOnline` 置 false，玩家照常 tick）：判定为 false，没有 `TransferPacket`，冷却没记。服务端状态为 PLAY、不在任何实例里的玩家（从不 tick，如同 tick 之前就被移除）：future 在 7 s 内以 false 完成，没有 `TransferPacket`，冷却没记 |
+| 2 | 反证有齿（tick 上不复判 PLAY）：`PluginTransfers.java:76` 改为 `if (cooldowns.coolingDown(player.getUuid())) return false;`，跑本类 | `11 tests completed, 1 failed`：`PluginTransfersIntegrationTest.java:131` `expected: <false> but was: <true>` |
+| 3 | 反证有齿（没有 5 s 超时）：删掉 `PluginTransfers.java:63-66`（注释一行与 `CompletableFuture.delayedExecutor(…).execute(…)` 三行），跑本类 | `11 tests completed, 1 failed`：`:139` 抛 `java.util.concurrent.TimeoutException`（future 过了 7 s 仍未完成，是 `get` 自己超时） |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PROD-533` 冷却一张表的验票端：进程装配里 `TicketVerifier#claim` 收下的票据让插件面与签发端都进入冷却 — 对应 `REQ-PROD-031` · 级别: 回归 · 执行者: AI
+
+前置：工作副本干净；数据库前置。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `TransferCooldownTableIntegrationTest`，看 `aTicketTheVerifierTakesCoolsThePluginAndTheIssuerDown` | `tests="3"` 0 失败 0 跳过。`Main.openStore("postgres", …)` 带 `SYNAXIS_TRANSFER_HMAC_KEYS` 开出 `StoreRuntime`，玩家连进世界后建八参 `PluginHost`；库里给这名玩家的账号建一个 version 0、没有写权的角色；以 `issued_at` 为当前时刻、`target_shard=r1-c1`、`state_version=0` 的票据调 `runtime.verifier().claim(玩家, 票据)` 返回 true；随即探针插件的 `transfer` 判定为 false，`runtime.issuer().transfer(…)` 以 `COOLDOWN` 完成；连接没有 `TransferPacket` |
+| 2 | `sed -n 564p server-app/src/main/java/io/github/bearisbug/synaxis/app/Main.java` | `new TicketVerifier(database.pool(), session::sessionId, shardId, keys, cooldowns, ledger::record),`：进程装配交给验票端的是 `StoreRuntime#cooldowns` 那个对象 |
+| 3 | 反证有齿（验票端另拿一张表）：`Main.java:564` 的 `keys, cooldowns, ledger::record` 改为 `keys, TransferCooldowns.fromSystemProperties(), ledger::record`，跑 `TransferCooldownTableIntegrationTest` | `3 tests completed, 1 failed`：`TransferCooldownTableIntegrationTest.java:113` `the verifier recorded the arrival in the table the plugins read ==> expected: <false> but was: <true>`；签发端与插件面仍共用一张，`TC-PROD-521` 第 2 步那条照常绿 |
+
+后置：`git status --short` 无输出；测试建的库由 `TestDatabase` 删掉。
+
 ## 5. 回归策略
 
 - **全量轮**（全部用例）：首次成稿、每个阶段 gate（引擎域阶段 0、2、3；游戏域 `docs/DESIGN-M2.md` §26 的阶段 1～6b；大世界域 `docs/DESIGN-M3.md` §26 的 M3-A～M3-G）、跨功能域改动、地基变更（JDK、Gradle、镜像、协议版本、模块拆分、启动入口）。
@@ -7155,6 +7326,7 @@ for (var request : System.getenv("MGMT_CALLS").split("\n")) {
   - 生产就绪域（`docs/DESIGN-PROD.md`）：RUN-039 后修复第 2 轮（`REQ-PROD-032`，v0.9.21（RUN-039 修复第 2 轮））→ TC-PROD-506～TC-PROD-510；动了 `ManagementMethods#stop` 或 `serverStarted`、`Main` 里调 `serverStarted()` 的一处或它前后的起服顺序，就跑 TC-PROD-506、TC-PROD-507（一个子 JVM，约 2 s）与 TC-PROD-496、TC-PROD-498；动了 `ManagementServer.GuardedSocket` 的发送入口、`admits` 或 `BoundedDraft` 的字节计数，就跑 TC-PROD-508 与 TC-PROD-492、TC-PROD-493；动了 `ManagementMethods#parse`、`UniqueNamesReader` 或升级 Gson，就跑 TC-PROD-509 与 TC-PROD-465、TC-PROD-490。
   - 生产就绪域（`docs/DESIGN-PROD.md`）：RUN-039 后修复第 3 轮（`REQ-PROD-008`、`REQ-PROD-019`，v0.9.22（RUN-039 修复第 3 轮））→ TC-PROD-511、TC-PROD-512；动了 `PluginHost#disableAll` 或 `disableWithin`（`onDisable` 所在的线程）、rts 插件的 `onDisable` 或 `Units#end`、`Match#end`，就跑 TC-PROD-511 与 TC-PROD-512（真进程，严格 grid），再跑 TC-GAME-034 第 3、4 步；动了 `ShutdownSaveOutsideTheWorldIntegrationTest` 里 `aSnapshotWhoseTickComesAfterTheSavePhaseTakesNothing` 的断言顺序，就重跑 TC-PROD-483 第 2 步。
   - 生产就绪域（`docs/DESIGN-PROD.md`）：共享包缓冲池与 `SocketWriteStateTransitionIntegrationTest`（`REQ-PROD-019`，v0.9.25）→ TC-PROD-513；动了 `PacketVanilla.PACKET_POOL`、`ObjectPool`、`PlayerSocketConnection#flushSync` 借还写缓冲的几处、`PacketWriting#writeQueue` 的扩容或这个测试类，就跑 TC-PROD-513（第 2、4 步各约 20 s）。
+  - 生产就绪域（`docs/DESIGN-PROD.md`）：第 6 波 6A 插件面（`REQ-PROD-031`，v0.9.27）→ TC-PROD-520～TC-PROD-533；动了 `PluginTransfers`、`TransferCooldowns`、`:plugin-api` 的 `Transfers` 或 `PluginContext#transfers()`，就跑 TC-PROD-520～TC-PROD-527、TC-PROD-530～TC-PROD-532（一个类约 10 s，TC-PROD-530 用严格 grid）与 TC-PROD-529 第 1～3 步；动了 `Main#openStore` 建冷却表、构造 `StoreRuntime` 或 `TicketVerifier` 的几处或 `PluginHost` 的构造器，就跑 TC-PROD-521、TC-PROD-528、TC-PROD-533（M3-E 第 0 步改的是同一条 `new StoreRuntime(…)` 与 `new TicketVerifier(…)` 的相邻几行，合并后必跑）；动了引擎 `CookieStorePacket`、`PlayerConnection` 的 Cookie 方法、`OutgoingTransferEvent`、`TransferPacket`、实体调度器的 `scheduleNextTick` 或 `HandshakeListener` 的 `markTransferred`，就跑 TC-PROD-524～TC-PROD-527、TC-PROD-530～TC-PROD-532。
   - 影响面不确定时升级为全量轮。
 - **复测轮**（上轮失败用例 + 全部冒烟级）：修复失败项之后。
 - **人工收口轮**（仅上轮「待人工」用例）：AI 轮之后由人工补测 TC-016、TC-030、TC-GAME-020、TC-GAME-038、TC-GAME-046、TC-GAME-047，不要求冒烟级。
@@ -7212,6 +7384,7 @@ for (var request : System.getenv("MGMT_CALLS").split("\n")) {
 | RUN-044 | 2026-09-27 | 分支 `m3/overlay-flaky` 的 `40b36a8db7`（代码与 `1f11d26609` 相同：`main` `8e1ea850e5` 加覆盖存储每 tick 上限的修复与两条新测试；`40b36a8db7` 只改 `docs/DESIGN-M3.md`；本轮之后的提交只改测试文档与证据） | AI（Claude Code，Gradle / PostgreSQL / Valkey） | 局部（REQ-M3-011 写入阶段每 tick 上限含在途编码→TC-WORLD-042 第 1～7 步、TC-WORLD-043 第 1～5 步、TC-WORLD-051 第 1～3 步，§5 `OverlayStore` 其余两条 TC-WORLD-039、TC-WORLD-049 判第 1 步；冒烟级 TC-029）+ 修复前复现 + 修复后 `OverlayStoreTest` 连跑 20 次 + 门禁（`:synx:check`、`:synx:test` 两种严格模式、根项目 `check`） | 通过 6/6 |
 | RUN-045 | 2026-09-28 | 集成分支 `m3e/integrate` 的 `a1eeddb997`（代码与 `f1c39684f8` 相同：`m3e/base` `9640ad567d`（`main` `12d3839493` 加设计 v0.16、v0.17 与第 0 步）加四条轨道按 D → A → B → C 的四个合并与合并验收的两条测试 `edded4cf65`、`f1c39684f8`；本轮之后的提交只改证据） | AI（Claude Code，Gradle / PostgreSQL / Valkey / `baker` 命令行 / `bin/server-shard` / `:loadtest`） | 局部，M3-E 合并验收（REQ-M3-016、REQ-M3-017 的合并验收与两进程场景→TC-WORLD-075～TC-WORLD-080、TC-WORLD-085；REQ-M3-015、016、017 的压测四档→TC-WORLD-081～TC-WORLD-084 的机器前提）+ 四次合并各三道门禁（`check`、4 线程 counter 与 `grid` 严格模式，共 12 次）与审查轮在最终代码上的三道门禁。轨道交来的 TC-WORLD-057～TC-WORLD-074、TC-WORLD-086～TC-WORLD-088 只由门禁跑了第 1 步的类，反证由各轨道实施人在自己的分支上跑、本轮没有重跑，不计入本轮 | 通过 7/11 · 阻塞 4 |
 | RUN-046 | 2026-09-28 | 集成分支 `m3e/integrate` 的 `f770bf02d2`（代码与 `f1c39684f8` 相同：`git merge origin/main` 时 `origin/main` 仍是 `12d3839493`，没有新提交；门禁、反证与两进程在 `a1eeddb997` 加未提交的两份文档上跑，代码相同；`f770bf02d2` 只改两份文档，本轮之后的提交只改测试文档与证据） | AI（Claude Code，Gradle / PostgreSQL / Valkey / `baker` 命令行 / `bin/server-shard` / `:loadtest`） | 局部，M3-E 阶段 gate 只跑大世界域（REQ-M3-015～REQ-M3-017、REQ-M3-023→TC-WORLD-057～TC-WORLD-088；M3-E 挪了条数与红行的 M3-C 用例→TC-WORLD-034～TC-WORLD-039、TC-WORLD-047～TC-WORLD-049、TC-WORLD-055；冒烟级 TC-029）+ 全量回归（`check`、4 线程 counter 与 `grid` 严格模式） | 通过 39/43 · 阻塞 4 |
+| RUN-047 | 2026-09-28 | 分支 `prod/6a-plugin` 的 `369ccd7d45`（`prod/m3e-rows` 的 `10bc9f832d`，已随 `d2a0844ada` 进 `main`，加三个提交：`a45892dd44` DESIGN-PROD v0.9.27、`94c3652784` 插件面 `Transfers` 的代码与测试、`369ccd7d45` 测试文档与 `PLUGINS.md`；`origin/main` `d2a0844ada` 比 `10bc9f832d` 只多两份 M3 文档，未合并；本轮之后的提交只改测试文档与证据） | AI（Claude Code，Gradle / PostgreSQL / Valkey） | 局部（REQ-PROD-031→TC-PROD-520～TC-PROD-529；REQ-M2-022 标注清单 15 个→TC-GAME-072 第 1、2 步；条数→TC-PROD-486 第 3 步、TC-PROD-505 第 3 步、TC-PROD-510 第 2 步）+ 全量回归（`check`、4 线程 `grid` 严格模式、ABI 门） | 通过 14/14 |
 
 明细（仅登非「通过」项）：
 
@@ -7345,6 +7518,12 @@ TC-002 证据：`docs/test-runs/RUN-002/tc-002.txt`（5 步实际输出）（2,6
 | RUN-046 | TC-WORLD-083 | 阻塞 | 同上，门槛 4,096 MB | 同上 |
 | RUN-046 | TC-WORLD-084 | 阻塞 | 同上，门槛 5,120 MB | 同上；转服三项判据在门槛满足的同机档也可以判 |
 
+
+RUN-047 证据：`docs/test-runs/RUN-047/acceptance.txt`。轮次号：`origin/main` 上最新是 RUN-044，本机集成分支 `m3e/integrate`（未推送）已登记 RUN-045、RUN-046，本轮取 RUN-047 免得合并时撞号。要点：两道门禁（带数据库变量的 `check --rerun-tasks`；4 线程 `grid` 严格模式的 `test --rerun-tasks`）各 3,953 个测试 0 失败、15 跳过（都在根模块），比 RUN-044 的 3,943 个多的 10 个就是两个新类（`PluginTransfersIntegrationTest` 8、`TransferCooldownTableIntegrationTest` 2），`:server-app` 421 个与用 `TestDatabase` 的 20 个类都是 `skipped="0"`，键门禁输出 `113 keys read, 113 in ConfigFile.KEYS` 与 `56 keys …, 14 identifiers left out`，`EnvDispatcherThreadsIntegrationTest` 报 `env thread provider: grid`；ABI 门对 `v0.3.0` 的 release 资产两个任务都执行、0 违例，`API_VERSION` 仍为 2；标注 `@ApiStatus.NonExtendable` 的文件 15 个，含 `Transfers`。执行人在 `369ccd7d45` 上重跑了四处反证，红行与信息都与用例相同：`TC-PROD-520` 第 2 步（`:62`、`:78`）、`TC-PROD-521` 第 4 步（`:92` `expected: <COOLDOWN> but was: <NOT_ONLINE>`）、`TC-PROD-524` 第 2 步（`:122`）、`TC-PROD-529` 第 3 步（`RtsPluginIntegrationTest.java:60` 的 `ProbeContext` 编不过）；其余七处反证由实施人在同一代码上跑，结果转录在证据第三节。门禁 1 期间本机另有 xcodebuild、模拟器与 Docker 虚拟机在跑，1 分钟负载最高 200，墙钟 10 min 53 s（RUN-043 同一道门禁 4 min 32 s）。合并 M3-E 之后要重跑 `TC-PROD-521`、`TC-PROD-528`（§5），本轮在合并前的代码上跑。
+
+RUN-047 补记（登记之后）：`f947ded016` 把 `Transfers#transfer` 改为返回 `CompletableFuture<Boolean>`，判定、`OutgoingTransferEvent` 与发包在玩家所属 tick 线程上做，事件没被取消才记冷却，并给进程装配里验票端的冷却表补了测试；上表 RUN-047 的「通过 14/14」是 `369ccd7d45` 上的结果。用例随之改动：`TC-PROD-520`～`TC-PROD-529` 改了行号、条数与判据，新增 `TC-PROD-530`～`TC-PROD-533`，`TC-PROD-486` 第 3 步、`TC-PROD-505` 第 3 步、`TC-PROD-510` 第 2 步的 `:server-app:test` 421 → 425。在 `f947ded016` 上补跑：`TC-PROD-520`～`TC-PROD-533` 14 条通过（两个类 11 + 3 个，默认与严格 grid 各跑一次，0 失败 0 跳过；17 处反证全部实跑，`TC-PROD-530` 第 2 步在严格 grid 下红在 `AcquirableOwnershipException`，`Assigned thread: Syn-Tick-0`，其余红行与信息都与改后的用例相同；`TC-PROD-529` 第 3 步沿用上表，`PluginContext.java` 没有改）；四个模块的 `check` 里 `:server-app` 425 个 0 失败 0 跳过；ABI 门对 `v0.3.0` 的 release 资产两个任务都执行、0 违例。两道全量门禁没有重跑：根模块没有改动。证据 `docs/test-runs/RUN-047/acceptance.txt` 第八节。
+
+RUN-047 再补记（第八节之后）：在分支头 `0599dc51f8`（与 `f947ded016` 之间只改文档）上补跑第八节没有重跑的两道全量门禁与 ABI 门。带数据库变量的 `check --rerun-tasks` 与 4 线程 `grid` 严格模式的 `test --rerun-tasks` 各 3,957 个测试 0 失败、15 跳过（都在根模块），比第一节的 3,953 个多的 4 个就是两个类的 8 + 2 → 11 + 3；`:server-app` 425 个与用 `TestDatabase` 的 20 个类都是 `skipped="0"`，键门禁输出 `113 keys read, 113 in ConfigFile.KEYS` 与 `56 keys …, 14 identifiers left out`，`EnvDispatcherThreadsIntegrationTest` 报 `env thread provider: grid`，`TC-PROD-530` 在严格全量里通过；ABI 门对 `v0.3.0` 的 release 资产（sha256 与第一节相同）两个任务都执行、0 违例，`API_VERSION` 仍为 2。由此 `TC-PROD-529` 第 4、5 步与 `TC-PROD-505` 第 3 步根构建 `:test` 一半（3,141 个 0 失败、15 跳过）都在 `0599dc51f8` 上跑过；用例与反证没有新的改动，`TC-PROD-520`～`TC-PROD-533` 的 14/14 与 17 处反证见第八节。证据 `docs/test-runs/RUN-047/acceptance.txt` 第九节。
 
 RUN-046 证据：`docs/test-runs/RUN-046/`（`00-index.txt` 列出每个文件）。要点：`git fetch` 后 `origin/main` 仍是 `12d3839493`，已在本分支里，`git merge origin/main` 两次都是 `Already up to date.`，合后门禁即本轮三道门禁。三道门禁（带数据库变量的 `check --rerun-tasks --no-build-cache -Dsynaxis.synx.require-frozen-zlib=true`；`test --rerun-tasks` 加 4 线程 counter 严格模式；再加 `grid`）各 4,030 个测试、跳过 15（都在根模块，要外网的四个类）、0 失败：根模块 3,141、`server-app` 484、`synx` 118、`loadtest` 23 等，CI 的 7 个 store 套件 `skipped="0"`，键门禁输出 `113 keys read, 113 in ConfigFile.KEYS, 20 meter names left out` 与 `56 keys …, 14 identifiers left out`；严格模式二的 `EnvDispatcherThreadsIntegrationTest` 报 `env dispatcher threads: 4` 与 `env thread provider: grid`，严格模式一的那份 XML 被二覆盖，事后单跑该类确认 `4` 与 `counter`；两种严格模式都没有出现 §7 登记的偶发红。`TC-029` 由第一道门禁判（根模块 3,141 个 0 失败）。JUnit 反证 64 处（M3-E 47 处、M3-C 17 处），每处单独一次 Gradle（`--rerun`，要数据库的带变量），红行与信息都写进了用例（`03-m3e-cases.txt`、`04-m3c-cases.txt`）：按草案直改的四处（`TC-WORLD-057` 第 2 步、`061` 第 2 步、`067` 第 5 步、`072` 第 2 步）Error Prone 让编译先失败，用例改成能编译的写法后重跑；前 13 次运行读 XML 的脚本没读到文件，红行取自 Gradle 控制台，之后连同改写的四处重跑、XML 读到。全部还原后 `git status` 只剩文档，再把各用例第 1 步的类一次重跑、全绿（`server-app` 19 个类、`synx` 两类、`loadtest` 三类）。两进程（`05-two-process.txt`）：小图烘焙 1.81 s、峰值 RSS 527 MB；1 个 `gate` 机器人 240 s 转服 32 趟全部完成，机器人侧 P95 436.8 ms，台账 32 对全部配对、方向交替、`first_batch_ms` 241～348 ms（中位 293），32 个 Cookie 的 `issued_at` 与台账相同，两个分片 WARN / ERROR 0 行；`capacity` 2 的频道第三个连接收 `synaxis:shard-full`、`reason="full"` 0 → 1、台账没有它的事件，多给 `-Dsynaxis.max-players=3` 拒启；13 种目录错误都拒启、不 bind、不建 `logs/` 与 `overlay/`；标志只到装配；SIGTERM 1 s 退出后那一行仍是 `accepting t`，15 s 后过期；内存存储的挂地图分片第一次因夹具少建了 `badroots/no-file` 的发布目录链接而以 `synx-manifest` 拒启（夹具的疏漏，`TC-WORLD-080` 前置已补），补上链接后照旧起服、不写心跳。压测四档阻塞，见明细。本轮之后删了 `/tmp/m3e-run046`（脚本、日志、小图与工作目录）与库 `m3e_run046_2p`，Valkey 0 个键。 **补记**：本轮登记时 `origin/main` 实际已前进到 `d2a0844ada`（`docs/DESIGN-PROD.md` v0.9.26，只改该分册），上文「仍是 `12d3839493`」与总表行的同一说法在登记时就不成立；合入 `main` 前已补做 `git merge origin/main`（合并提交 `6e0b105b94`，不冲突，代码不变），三道门禁的结果不受影响。
 

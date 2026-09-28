@@ -14,6 +14,7 @@ import io.github.bearisbug.synaxis.plugin.PluginEvents;
 import io.github.bearisbug.synaxis.plugin.PluginLifecycle;
 import io.github.bearisbug.synaxis.plugin.PluginScheduler;
 import io.github.bearisbug.synaxis.plugin.TabList;
+import io.github.bearisbug.synaxis.plugin.Transfers;
 import org.slf4j.Logger;
 
 import java.nio.file.Path;
@@ -35,12 +36,13 @@ import java.nio.file.Path;
  * @param commands      the plugin's commands ({@code docs/DESIGN-PROD.md} API-PROD-011)
  * @param tabList       who appears in whose tab list ({@code docs/DESIGN-PROD.md} API-PROD-020)
  * @param entities      the tracking ranges of the entity types ({@code docs/DESIGN-PROD.md} API-PROD-019)
+ * @param transfers     vanilla transfers and the plugin's cookies ({@code docs/DESIGN-PROD.md} API-PROD-021)
  * @param logger        a logger named after the plugin
  */
 record PluginContextImpl(ServerProcess process, PluginEvents events, PluginScheduler scheduler,
                          PluginChannels channels, PluginAdmission admission, Path dataDirectory,
                          PluginAnalytics analytics, PlayerDataStore playerData, PluginLifecycle lifecycle,
                          Permissions permissions, Moderation moderation, PluginCommands commands, TabList tabList,
-                         PluginEntities entities, Logger logger)
+                         PluginEntities entities, Transfers transfers, Logger logger)
         implements PluginContext {
 }

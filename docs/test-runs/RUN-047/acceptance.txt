@@ -1,0 +1,243 @@
+RUN-047 记录（2026-09-28）
+
+被测版本：分支 prod/6a-plugin 的 369ccd7d45。本分支在 prod/m3e-rows 的 10bc9f832d（已随合并提交 d2a0844ada 进 main）之上有三个提交：
+  a45892dd44（DESIGN-PROD v0.9.27 与 DESIGN-M2 v0.50，只改文档）、94c3652784（:plugin-api 的 Transfers 与 PluginContext#transfers()、宿主实现 PluginTransfers、
+  Main 与 PluginHost 交出同一张冷却表、两个新测试类）、369ccd7d45（TEST.md 与 PLUGINS.md，只改文档）。本轮之后的提交只改测试文档与证据。
+  git fetch 后 origin/main 为 d2a0844ada，它比 10bc9f832d 只多 docs/DESIGN-M3.md 与 docs/MAP-SOURCE.md 两个文件，本轮没有合并。
+轮次号：origin/main 上最新是 RUN-044；本机集成分支 m3e/integrate（357686831f，未推送）已登记 RUN-045、RUN-046，为免合并时撞号，本轮用 RUN-047。
+环境：Apple M4 Pro 12 核、24 GiB，macOS，JDK 25.0.4.1（Homebrew openjdk@25），Gradle 9.7.1；每条 Gradle 命令都带 --max-workers=4 --no-daemon
+  --init-script gradle/init/aliyun-mirror.init.gradle.kts --console=plain，同一时刻只跑一条。数据库变量 SYNAXIS_TEST_PG_URL=jdbc:postgresql://127.0.0.1:5440/postgres
+  （容器 synaxis-pg）、SYNAXIS_TEST_PG_USER=postgres、SYNAXIS_TEST_PG_PASSWORD 取自 docker inspect synaxis-pg（未回显）、SYNAXIS_TEST_REDIS_URL=redis://127.0.0.1:6440
+  （容器 synaxis-valkey）。「严格 grid」= -Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true -Dsynaxis.thread-provider=grid。
+  各次 Gradle 起止的 1 分钟负载 5.67～200.17（门禁 1 期间本机另有 xcodebuild、模拟器与 Docker 虚拟机在跑，门禁 1 结束时 5 分钟负载 328），swap free 1,230～2,126 MB。
+  本轮没有起真服务端进程。
+范围：本分支新增的 TC-PROD-520～TC-PROD-529（REQ-PROD-031）；本分支改过的 TC-GAME-072 第 1、2 步与 TC-PROD-486 第 3 步、TC-PROD-505 第 3 步、TC-PROD-510 第 2 步的条数；
+  全量回归两道门禁与 ABI 门。没有改语言文件（git diff --name-only 10bc9f832d 369ccd7d45 里没有 lang 或 .json），client-fabric 不构建。
+
+一、门禁（每道之前删掉各模块 build/test-results/test）
+  门禁 1：./gradlew check --rerun-tasks（带数据库变量）14:29:25～14:40:20，BUILD SUCCESSFUL in 10m 53s，95 actionable tasks: 95 executed
+    root classes=425 tests=3141 skipped=15 failures=0 errors=0
+    architecture-tests classes=7 tests=20 skipped=0 failures=0 errors=0
+    baker classes=4 tests=53 skipped=0 failures=0 errors=0
+    game-rts classes=13 tests=87 skipped=0 failures=0 errors=0
+    loadtest classes=3 tests=10 skipped=0 failures=0 errors=0
+    plugin-api classes=3 tests=15 skipped=0 failures=0 errors=0
+    protocol classes=4 tests=78 skipped=0 failures=0 errors=0
+    server-app classes=82 tests=421 skipped=0 failures=0 errors=0
+    synx classes=14 tests=117 skipped=0 failures=0 errors=0
+    testing classes=8 tests=11 skipped=0 failures=0 errors=0
+    TOTAL tests=3953 skipped=15 failures=0 errors=0（RUN-044 根项目 check 为 3,943；多出的 10 个就是本分支两个新类的 8 + 2，都在 server-app：411 → 421，
+      classes 80 → 82。15 个跳过都在根模块，合入前就有）
+    数据库用例类（server-app 里用 TestDatabase 的 20 个类）全部 skipped="0"：CommandRolesIntegrationTest 1、CrossShardHandoverIntegrationTest 6、
+      DatabaseHangIntegrationTest 2、MainStoreIntegrationTest 6、ManagementBansIntegrationTest 2、MigrationsDbTest 5、ModerationIntegrationTest 12、
+      PermissionsIntegrationTest 8、PlayerStoreIntegrationTest 23、RoleEscalationIntegrationTest 1、ShardSessionDbTest 4、ShutdownLoginIntegrationTest 5、
+      ShutdownSaveBeforeSpawnIntegrationTest 3、ShutdownSaveIntegrationTest 4、ShutdownSaveOutsideTheWorldIntegrationTest 3、ShutdownSaveRaceIntegrationTest 2、
+      StoreHousekeepingDbTest 3、StoreMetricsIntegrationTest 1、TransferCooldownTableIntegrationTest 2（本分支新增）、TransferTicketsIntegrationTest 7
+    architecture-tests 的 <system-out>：
+      config key gate: 113 keys read, 113 in ConfigFile.KEYS, 20 meter names left out
+      translation key gate: 56 keys checked against [en_us.json, zh_cn.json], 14 identifiers left out
+    用例读的类（同一次门禁的 XML，都 0 失败 0 跳过）：PluginTransfersIntegrationTest 8（5.104 s）、TransferCooldownTableIntegrationTest 2（2.044 s）、
+      PluginHostIntegrationTest 18、MainStoreIntegrationTest 6、TransferAdmissionIntegrationTest 1
+  门禁 2：./gradlew test --rerun-tasks 加严格 grid（带数据库变量）14:40:48～14:47:10，BUILD SUCCESSFUL in 6m 21s，66 actionable tasks: 66 executed
+    各模块类数与条数同门禁 1：TOTAL tests=3953 skipped=15 failures=0 errors=0，server-app 421 个 0 跳过，20 个数据库用例类全部 skipped="0"
+    TC-PROD-529 第 5 步的五个类：PluginTransfersIntegrationTest 8（5.063 s）、TransferCooldownTableIntegrationTest 2（0.398 s）、PluginHostIntegrationTest 18、
+      MainStoreIntegrationTest 6、TransferAdmissionIntegrationTest 1，合计 35 个 0 失败 0 跳过（用例写的是只跑这五个类，本轮由严格 grid 全量覆盖）
+    testing 模块 TEST-io.github.bearisbug.synaxis.testing.test.EnvDispatcherThreadsIntegrationTest.xml：tests="2" failures="0"，<system-out>：
+      env dispatcher threads: 4
+      env thread provider: grid
+    SocketWriteStateTransitionIntegrationTest tests="1" failures="0"
+  ABI 门：gh release download v0.3.0 --repo Bearisbug/synaxis --dir /tmp/run047/abi --pattern plugin-api.jar --pattern protocol.jar（经 127.0.0.1:7897 代理），
+    plugin-api.jar 26,293 B sha256 6fe8d7dba88c400901b6515d17971655fcd6dd8cbcf629a0c70325f3390bf7c6，protocol.jar 30,308 B sha256 1092232bb68905d1b5f0ecfb056e9c1387f582ab921ace8cc0ff227aa4bc2916；
+    ./gradlew :plugin-api:checkBinaryCompatibility --rerun :protocol:checkBinaryCompatibility --rerun -PbaselineJarDir=/tmp/run047/abi 14:50:33～14:50:38：
+    > Task :protocol:checkBinaryCompatibility 与 > Task :plugin-api:checkBinaryCompatibility 都执行（没有 SKIPPED、没有 FROM-CACHE），BUILD SUCCESSFUL，
+    28 actionable tasks: 2 executed, 26 up-to-date；0 条违例。PluginApi.java:17 仍是 API_VERSION = 2
+
+二、执行人在 369ccd7d45 上跑的用例步骤
+  TC-GAME-072 第 1 步 / TC-PROD-529 第 1 步：grep -l 'ApiStatus.NonExtendable' plugin-api/src/main/java/io/github/bearisbug/synaxis/plugin/*.java | wc -l 为 15：
+    Permissions、Moderation、PluginAnalytics、PluginAdmission、PlayerDataStore、PluginChannels、PluginCommands、PluginScheduler、PluginEntities、TabList、
+    PluginEvents、ShutdownNotice、PluginContext、PluginLifecycle、Transfers；与 DESIGN-PROD §8 的 15 个一致，SynaxisPlugin、AdmissionProvider、PayloadHandler、DataSection 不在其中
+  TC-GAME-072 第 2 步 / TC-PROD-529 第 2 步：即第一节的 ABI 门
+  TC-PROD-521 第 3 步：grep -n 'store.cooldowns()' server-app/.../app/Main.java 只有一行，240:                store.permissions(), store.moderation(), store.cooldowns());
+  红行核对：用例写的实现行与断言行逐行 sed -n 看过，都是用例写的那一句：PluginTransfers.java:39、:40、:44、:45、:53、:64-65、:74；Main.java:240、:521、:565；
+    PluginHost.java:102；CookieStorePacket.java:22；PluginTransfersIntegrationTest.java:62、:78、:92、:108、:109、:122、:138、:163、:174；
+    TransferCooldownTableIntegrationTest.java:92、:109；RtsPluginIntegrationTest.java:60（ProbeContext）；PluginContext.java:179（default Transfers transfers()）
+  反证（每条 sed 改一处、跑、看红、git checkout -- 还原，每次之前删 server-app/build/test-results/test）：
+    TC-PROD-520 第 2 步（删 PluginTransfers.java:45 的 if (cooldowns.coolingDown(player.getUuid())) return false;，跑 PluginTransfersIntegrationTest）：
+      BUILD FAILED，8 tests completed, 2 failed：PluginTransfersIntegrationTest.java:62 与 :78，都是 "expected: <false> but was: <true>"
+    TC-PROD-521 第 4 步（Main.java:565 new StoreRuntime(…) 末尾的 cooldowns 换成 TransferCooldowns.fromSystemProperties()，跑 TransferCooldownTableIntegrationTest）：
+      BUILD FAILED，2 tests completed, 1 failed：TransferCooldownTableIntegrationTest.java:92 "expected: <COOLDOWN> but was: <NOT_ONLINE>"；skipped="0"
+    TC-PROD-524 第 2 步（PluginTransfers.java:74 if (!key.namespace().equals(pluginId)) { 改为 if (key.namespace().equals("never")) {，跑 PluginTransfersIntegrationTest）：
+      BUILD FAILED，8 tests completed, 1 failed：PluginTransfersIntegrationTest.java:122 "Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown."
+    TC-PROD-529 第 3 步（PluginContext.java 的 default Transfers transfers() { throw …; } 改为 Transfers transfers();，跑 :game-rts:compileTestJava）：
+      BUILD FAILED，> Task :game-rts:compileTestJava FAILED，RtsPluginIntegrationTest.java:60: 错误: ProbeContext不是抽象的, 并且未覆盖PluginContext中的抽象方法transfers()
+    复绿：四处都还原后 git status --short 为空，同一次运行跑 PluginTransfersIntegrationTest 与 TransferCooldownTableIntegrationTest 加 :game-rts:compileTestJava：
+      BUILD SUCCESSFUL，8 + 2 个 0 失败 0 跳过
+  条数：TC-PROD-486 第 3 步、TC-PROD-505 第 3 步、TC-PROD-510 第 2 步的 :server-app:test 421 个 0 失败 0 跳过；TC-PROD-505 第 3 步根构建 :test 3,141 个 0 失败、
+    15 跳过（两道门禁都是这两个数）
+  其余步骤的绿跑部分由门禁覆盖：TC-PROD-520～TC-PROD-528 第 1 步（有第 2 步的连同第 2 步）在两道门禁里都是 PluginTransfersIntegrationTest 8、
+    TransferCooldownTableIntegrationTest 2 全绿；TC-PROD-529 第 4 步即门禁 1（:server-app 421、:plugin-api 15、:game-rts 87、:architecture-tests 20，都 0 失败）
+
+三、实施人在同一代码上跑的反证（转录自实施报告；94c3652784 与 369ccd7d45 之间只改 docs/TEST.md 与 docs/PLUGINS.md，改的实现文件与测试类没有变化）
+  TC-PROD-521 第 5 步（PluginHost.java:102 this.cooldowns = cooldowns; 换成 this.cooldowns = TransferCooldowns.fromSystemProperties();）：
+    TransferCooldownTableIntegrationTest.java:92 "expected: <COOLDOWN> but was: <NOT_ONLINE>"
+  TC-PROD-522 第 2 步（删 PluginTransfers.java:44 的 PLAY 判断与 ConnectionState 的 import）：PluginTransfersIntegrationTest.java:92 "expected: <false> but was: <true>"
+  TC-PROD-523 第 2 步（删 :39 的空白 host 检查）：:108 "Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown."；
+    第 3 步（:40 port < 1 改为 port < 0）：:109，信息相同
+  TC-PROD-525 第 2 步（删引擎 CookieStorePacket.java:22 的 Check.argCondition 与 Check 的 import）：PluginTransfersIntegrationTest.java:138
+    "Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown."
+  TC-PROD-526 第 2 步（fetchCookie 去掉 .orTimeout(…) 与 TimeUnit 的 import）：:163 "Unexpected exception type thrown,
+    expected: <java.util.concurrent.ExecutionException> but was: <java.util.concurrent.TimeoutException>"
+  TC-PROD-527 第 2 步（:53 改为 return false;）：:174 "expected: <true> but was: <false>"
+  TC-PROD-528 第 2 步（Main.java:521 的 TransferCooldowns.fromSystemProperties() 换成 new TransferCooldowns(5_000, System::currentTimeMillis)）：
+    TransferCooldownTableIntegrationTest.java:109 "Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown."
+  实施人记：每处都还原并用 cmp 核对，之后 :server-app:check :plugin-api:check :game-rts:check :architecture-tests:check 通过
+
+四、文档 lint（本轮文档改完后）
+  bash ~/.claude/skills/design-doc/check.sh docs/DESIGN-PROD.md：lint 无警告
+  bash ~/.claude/skills/design-doc/check.sh docs/DESIGN-M2.md：lint 无警告
+  bash ~/.claude/skills/test-doc/check.sh docs/TEST.md：只剩已知的两条（RUN-031 两条明细行缺证据引用）；「REQ-PROD-031 无任何 TC 引用」不再出现，REQ 双向联检通过
+
+五、结果：通过 14/14
+  TC-PROD-520～TC-PROD-529；TC-GAME-072（第 1、2 步）；TC-PROD-486（第 3 步）、TC-PROD-505（第 3 步）、TC-PROD-510（第 2 步）
+
+六、未覆盖
+  TC-GAME-072 第 3～5 步没有重跑：本分支没改 PluginEvents、SynaxisPlugin，这三步的判据与标注清单的条数无关。
+  M3-E 第 0 步与本分支都改 Main#openStore 里签发票据那条 new StoreRuntime(…) 的相邻几行，合并后要重跑 TC-PROD-521、TC-PROD-528（TEST.md §5）；本轮在合并前的代码上跑。
+
+七、清理
+  反证改过的 PluginTransfers.java、Main.java、PluginContext.java 都已 git checkout -- 还原，git status --short 只剩本轮的文档改动；
+  本轮没有起真服务端进程；/tmp/run047（Gradle 包装脚本、原始日志与 ABI 基线 jar）登记后删除。
+
+八、补记：f947ded016 上的重跑与补跑（2026-09-28 15:13～15:27，登记之后）
+  起因：6A 插件面的评审意见三条。① Transfers#transfer 在调用线程上经 PlayerConnection#transfer 同步派发 OutgoingTransferEvent，冷却在派发之前就记；
+    f947ded016 改为返回 CompletableFuture<Boolean>，判定、事件与发包排到玩家下一个 tick、在玩家所属 tick 线程上做，事件没被取消才记冷却。② 验票端的冷却表
+    在进程装配里没有测试；TransferCooldownTableIntegrationTest 加 aTicketTheVerifierTakesCoolsThePluginAndTheIssuerDown。③ PLUGINS.md §12 的跨分片转服
+    改写为 M3-E 起（只改文档）。上文第一至七节是 369ccd7d45 上的结果，不覆盖 f947ded016 的改动；本节是 f947ded016 上的结果。
+  被测版本：f947ded016（fdb8ad3aa6 之后的一个提交，改 Transfers.java、plugin-api 的 package-info.java、PluginTransfers.java 与两个测试类）。之后的提交只改文档与本证据。
+  环境同上；数据库变量同上（SYNAXIS_TEST_PG_PASSWORD 取自 docker inspect synaxis-pg，未回显）。各次 Gradle 起止的 1 分钟负载 3.86～6.39，swap free 1,610 MB（15:27）。
+    本节没有起真服务端进程。
+  用例改动：TC-PROD-520～TC-PROD-529 按新代码改了行号、条数与判据（TC-PROD-522 第 1 步删去「设为 PLAY 后立即转服返回 true」一句：那名玩家不在世界里、没有 tick）；
+    新增 TC-PROD-530～TC-PROD-533；TC-PROD-486 第 3 步、TC-PROD-505 第 3 步、TC-PROD-510 第 2 步的 :server-app:test 421 → 425。
+
+  1. 两个类的绿跑（提交之前的工作副本，与 f947ded016 的内容相同，之后到提交没有改代码）
+    默认：:server-app:test --rerun --tests PluginTransfersIntegrationTest --tests TransferCooldownTableIntegrationTest，BUILD SUCCESSFUL in 17s：
+      PluginTransfersIntegrationTest tests="11" skipped="0" failures="0" errors="0" time="10.399"（5.018 s 是 TC-PROD-526 的超时，5.056 s 是 TC-PROD-532 的超时）
+      TransferCooldownTableIntegrationTest tests="3" skipped="0" failures="0" errors="0" time="1.808"
+    严格 grid：同一命令加 -Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true -Dsynaxis.thread-provider=grid，BUILD SUCCESSFUL in 17s，11 + 3 个 0 失败 0 跳过
+  2. TC-PROD-529 第 4 步（f947ded016，15:21:45～15:25:17）：./gradlew :server-app:check :plugin-api:check :game-rts:check :architecture-tests:check（带数据库变量，
+    之前删掉四个模块的 build/test-results/test），BUILD SUCCESSFUL in 3m 31s，39 actionable tasks: 7 executed, 2 from cache, 30 up-to-date
+      server-app classes=82 tests=425 skipped=0 failures=0 errors=0（421 − 本节原有 10 + 现有 14）
+      plugin-api classes=3 tests=15 skipped=0 failures=0 errors=0（:plugin-api:test FROM-CACHE：15:14 同一输入的 :plugin-api:check 真跑过一次，结果相同）
+      game-rts classes=13 tests=87 skipped=0 failures=0 errors=0
+      architecture-tests classes=7 tests=20 skipped=0 failures=0 errors=0，<system-out>：
+        config key gate: 113 keys read, 113 in ConfigFile.KEYS, 20 meter names left out
+        translation key gate: 56 keys checked against [en_us.json, zh_cn.json], 14 identifiers left out
+      其中 PluginTransfersIntegrationTest 11（10.358 s）、TransferCooldownTableIntegrationTest 3（0.543 s），0 失败 0 跳过
+  3. TC-PROD-529 第 5 步（15:25:43～15:26:09）：严格 grid 跑 :server-app:test --rerun，--tests 给五个类，BUILD SUCCESSFUL in 25s：
+      PluginTransfersIntegrationTest 11（10.366 s）、TransferCooldownTableIntegrationTest 3（0.491 s）、PluginHostIntegrationTest 18、MainStoreIntegrationTest 6、
+      TransferAdmissionIntegrationTest 1，合计 39 个 0 失败 0 跳过
+    同样三个 -D 跑 :testing:test --tests EnvDispatcherThreadsIntegrationTest：tests="2" failures="0"，<system-out> env dispatcher threads: 4 / env thread provider: grid
+  4. ABI 门（TC-GAME-072 第 2 步 / TC-PROD-529 第 2 步，15:26:47～15:26:52）：gh release download v0.3.0 --repo Bearisbug/synaxis --pattern plugin-api.jar
+    --pattern protocol.jar（经 127.0.0.1:7897 代理），sha256 与第一节相同（6fe8d7dba88c…、1092232bb689…）；
+    ./gradlew :plugin-api:checkBinaryCompatibility --rerun :protocol:checkBinaryCompatibility --rerun -PbaselineJarDir=<下载目录>：两个任务都执行，
+    BUILD SUCCESSFUL，28 actionable tasks: 2 executed, 26 up-to-date，0 条违例；transfer 改签名不算违例（v0.3.0 里没有 Transfers）。PluginApi.java:17 仍是 API_VERSION = 2
+  5. grep / sed 步骤：TC-GAME-072 第 1 步 / TC-PROD-529 第 1 步 15 个文件；TC-PROD-521 第 3 步只有 240: … store.cooldowns());；
+    TC-PROD-533 第 2 步 Main.java:564 为 new TicketVerifier(database.pool(), session::sessionId, shardId, keys, cooldowns, ledger::record),
+  6. 反证（每条改一处、跑、看红、git checkout -- 还原，每次之前删 server-app/build/test-results/test，每次还原后 git status --short 为空；
+    除 TC-PROD-530 第 2 步用严格 grid 外都是默认模式；红行取自 JUnit XML 的栈）：
+    TC-PROD-530 第 2 步（PluginTransfers.java:55 scheduleNextTick(() -> { 改为 ((Runnable) () -> {，:62 的 }); 改为 }).run();）15:16:59～15:17:13：
+      11 tests completed, 2 failed：PluginTransfersIntegrationTest.java:181 "the listener owns the player ==> expected: <null> but was:
+      <io.github.bearisbug.synaxis.thread.AcquirableOwnershipException: Thread ownership assertion failed for …TestConnectionImpl$TestPlayerImpl@324ee3ca:
+      Current thread: （空） Assigned thread: Syn-Tick-0 Problem: The element is assigned to a different thread and is not currently owned. …>"；
+      :131 "expected: <false> but was: <true>"
+    TC-PROD-531 第 2 步（:81 的 cooldowns.record(…) 挪到 :79 的事件派发之前）15:17:27～15:17:45：11 tests completed, 1 failed：
+      :203 "a cancelled transfer starts no cooldown ==> expected: <false> but was: <true>"
+    TC-PROD-531 第 3 步（:82 new TransferPacket(event.getHost(), event.getPort()) 改为 new TransferPacket(host, port)）15:17:45～15:18:00：11 tests completed, 1 failed：
+      :208 "expected: <TransferPacket[host=lobby.example, port=25566]> but was: <TransferPacket[host=lobby.example, port=25565]>"
+    TC-PROD-532 第 2 步（:76 改为 if (cooldowns.coolingDown(player.getUuid())) return false;）15:18:00～15:18:11：11 tests completed, 1 failed：:131 "expected: <false> but was: <true>"
+    TC-PROD-532 第 3 步（删 :63-66 的注释与 delayedExecutor 三行）15:18:19～15:18:37：11 tests completed, 1 failed：:139 java.util.concurrent.TimeoutException
+    TC-PROD-533 第 3 步（Main.java:564 的 cooldowns 换成 TransferCooldowns.fromSystemProperties()）15:18:37～15:18:43：3 tests completed, 1 failed：
+      TransferCooldownTableIntegrationTest.java:113 "the verifier recorded the arrival in the table the plugins read ==> expected: <false> but was: <true>"；skipped="0"
+    TC-PROD-520 第 2 步（:76 改为 if (!inPlay(player)) return false;）15:18:50～15:19:06：11 tests completed, 2 failed：:79 与 :97，都是 "expected: <false> but was: <true>"
+    TC-PROD-521 第 4 步（Main.java:565 new StoreRuntime(…) 末尾的 cooldowns 换成 TransferCooldowns.fromSystemProperties()）15:19:06～15:19:12：
+      3 tests completed, 2 failed：TransferCooldownTableIntegrationTest.java:91 "expected: <COOLDOWN> but was: <NOT_ONLINE>"；:113 同 TC-PROD-533 第 3 步
+    TC-PROD-521 第 5 步（PluginHost.java:102 换成 this.cooldowns = TransferCooldowns.fromSystemProperties();）15:19:12～15:19:18：与第 4 步相同，:91 与 :113
+    TC-PROD-522 第 2 步（:89 改为 return connection.isOnline(); 并删 ConnectionState 的 import）15:19:18～15:19:34：11 tests completed, 1 failed：
+      :113 "decided on the calling thread, nothing waits for a tick ==> expected: <true> but was: <false>"
+    TC-PROD-523 第 2 步（删 :48 的空白 host 检查）15:19:44～15:20:00：:150 "Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown."
+    TC-PROD-523 第 3 步（:49 port < 1 改为 port < 0）15:20:00～15:20:16：:151，信息同上
+    TC-PROD-524 第 2 步（:115 改为 if (key.namespace().equals("never")) {）15:20:16～15:20:31：:217，信息同上
+    TC-PROD-527 第 2 步（:94 改为 return false;）15:20:32～15:20:47：:269 "expected: <true> but was: <false>"
+    TC-PROD-528 第 2 步（Main.java:521 换成 new TransferCooldowns(5_000, System::currentTimeMillis)）15:20:47～15:20:53：3 tests completed, 1 failed：
+      TransferCooldownTableIntegrationTest.java:132 "Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown."
+    TC-PROD-526 第 2 步（:105-106 改为 return player.getPlayerConnection().fetchCookie(own(key));，TimeUnit 的 import 留着）15:21:01～15:21:19：
+      :258 "Unexpected exception type thrown, expected: <java.util.concurrent.ExecutionException> but was: <java.util.concurrent.TimeoutException>"
+    TC-PROD-525 第 2 步（删引擎 CookieStorePacket.java:22 的 Check.argCondition 与 Check 的 import，根模块随之重编）15:21:19～15:21:34：:233，
+      "Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown."
+    以上 523～528 各条都是 11 或 3 tests completed, 1 failed；17 处的红行与信息都与改后的用例相同。复绿即第 2、3 步（反证之后的代码与 f947ded016 相同）
+  7. 文档 lint（本节文档改完后）：design-doc check.sh docs/DESIGN-PROD.md「lint 无警告」；test-doc check.sh docs/TEST.md 只剩已知的两条（RUN-031 两条明细行缺证据引用），
+    REQ 双向联检通过
+  结果：TC-PROD-520～TC-PROD-533 通过 14/14（在 f947ded016 上；TC-PROD-529 第 3 步沿用第二节）；TC-GAME-072 第 1、2 步，TC-PROD-486 第 3 步、TC-PROD-505 第 3 步的 :server-app:test 一半、TC-PROD-510 第 2 步通过
+  未覆盖：两道全量门禁（根项目 check --rerun-tasks、4 线程 grid 严格全量）没有重跑：f947ded016 只改 :plugin-api 与 :server-app，根模块、:synx、:baker、:loadtest、
+    :protocol、:testing 没有改动，:game-rts 与 :architecture-tests 在第 2 步里跑过；TC-PROD-505 第 3 步的根构建 :test 一半沿用第一节的 3,141 个。
+    TC-PROD-529 第 3 步没有重跑：PluginContext.java 没有改。严格 grid 下只跑了第 3 步的五个类，:server-app 其余 77 个类的严格 grid 结果沿用第一节门禁 2。
+  清理：反证改过的 PluginTransfers.java、Main.java、PluginHost.java 与引擎 CookieStorePacket.java 都已 git checkout -- 还原；本节的 Gradle 包装脚本、日志与 ABI 基线 jar
+    放在 /tmp/prod6a-fix，登记后删除。
+
+九、补记：0599dc51f8 上的两道全量门禁与 ABI 门（2026-09-28 15:49～16:02，第八节之后）
+  起因：第八节「未覆盖」里两道全量门禁没有重跑，:server-app 其余 77 个类的严格 grid 结果与 TC-PROD-505 第 3 步根构建 :test 一半沿用第一节。本节在分支头上补跑。
+  被测版本：0599dc51f8。它与 f947ded016 之间只改 docs/DESIGN-PROD.md、docs/PLUGINS.md、docs/TEST.md 与本证据，代码与测试类同第八节。之后的提交只改 docs/TEST.md 与本证据。
+  修复与用例：同第八节。f947ded016 让 Transfers#transfer 返回 CompletableFuture<Boolean>：调用线程上只查 host、端口与 PLAY，判定冷却、派发
+    OutgoingTransferEvent 与发包排到玩家下一个 tick、在玩家所属 tick 线程上做；事件没被取消才记冷却，发包用事件里的 host 与端口；玩家 5 s 内没有 tick 以 false 结束。
+    TransferCooldownTableIntegrationTest 补了进程装配里验票端的冷却表。用例 TC-PROD-520～TC-PROD-529 按新代码改写，新增 TC-PROD-530（tick 线程，严格 grid）、
+    TC-PROD-531（被取消的转服）、TC-PROD-532（下一个 tick 之前离开与 5 s 超时）、TC-PROD-533（验票端的冷却表）。17 处反证在第八节第 6 步，本节没有改代码，没有重做。
+  环境同上；数据库变量同上（SYNAXIS_TEST_PG_PASSWORD 取自 docker inspect synaxis-pg，未回显）。各次 Gradle 起止的 1 分钟负载 3.35～7.00，swap free 1,158～1,715 MB。
+    本节没有起真服务端进程。每道门禁之前删掉各模块 build/test-results/test。
+
+  1. 门禁 1：./gradlew check --rerun-tasks（带数据库变量）15:49:00～15:53:24，BUILD SUCCESSFUL in 4m 23s，77 actionable tasks: 77 executed
+    root classes=425 tests=3141 skipped=15 failures=0 errors=0
+    architecture-tests classes=7 tests=20 skipped=0 failures=0 errors=0
+    baker classes=4 tests=53 skipped=0 failures=0 errors=0
+    game-rts classes=13 tests=87 skipped=0 failures=0 errors=0
+    loadtest classes=3 tests=10 skipped=0 failures=0 errors=0
+    plugin-api classes=3 tests=15 skipped=0 failures=0 errors=0
+    protocol classes=4 tests=78 skipped=0 failures=0 errors=0
+    server-app classes=82 tests=425 skipped=0 failures=0 errors=0
+    synx classes=14 tests=117 skipped=0 failures=0 errors=0
+    testing classes=8 tests=11 skipped=0 failures=0 errors=0
+    TOTAL tests=3957 skipped=15 failures=0 errors=0（第一节 3,953；多出的 4 个就是两个类的 8 + 2 → 11 + 3，都在 server-app：421 → 425，classes 仍为 82。
+      15 个跳过都在根模块，同第一节）
+    数据库用例类（server-app 里用 TestDatabase 的 20 个类）全部 skipped="0"：CommandRolesIntegrationTest 1、CrossShardHandoverIntegrationTest 6、
+      DatabaseHangIntegrationTest 2、MainStoreIntegrationTest 6、ManagementBansIntegrationTest 2、MigrationsDbTest 5、ModerationIntegrationTest 12、
+      PermissionsIntegrationTest 8、PlayerStoreIntegrationTest 23、RoleEscalationIntegrationTest 1、ShardSessionDbTest 4、ShutdownLoginIntegrationTest 5、
+      ShutdownSaveBeforeSpawnIntegrationTest 3、ShutdownSaveIntegrationTest 4、ShutdownSaveOutsideTheWorldIntegrationTest 3、ShutdownSaveRaceIntegrationTest 2、
+      StoreHousekeepingDbTest 3、StoreMetricsIntegrationTest 1、TransferCooldownTableIntegrationTest 3、TransferTicketsIntegrationTest 7
+    architecture-tests 的 <system-out>：
+      config key gate: 113 keys read, 113 in ConfigFile.KEYS, 20 meter names left out
+      translation key gate: 56 keys checked against [en_us.json, zh_cn.json], 14 identifiers left out
+    用例读的类（同一次门禁的 XML，都 0 失败 0 跳过）：PluginTransfersIntegrationTest 11（10.382 s）、TransferCooldownTableIntegrationTest 3（0.590 s）、
+      PluginHostIntegrationTest 18、MainStoreIntegrationTest 6、TransferAdmissionIntegrationTest 1
+    这道门禁同时是 TC-PROD-529 第 4 步（:server-app 425、:plugin-api 15、:game-rts 87、:architecture-tests 20，都真跑、0 失败）与 TC-PROD-505 第 3 步
+      根构建 :test 一半（3,141 个 0 失败、15 跳过）
+  2. 门禁 2：./gradlew test --rerun-tasks 加严格 grid（带数据库变量）15:55:18～15:59:35，BUILD SUCCESSFUL in 4m 16s，48 actionable tasks: 48 executed
+    各模块类数与条数同门禁 1：TOTAL tests=3957 skipped=15 failures=0 errors=0，server-app 82 个类 425 个 0 跳过，20 个数据库用例类全部 skipped="0"
+    TC-PROD-529 第 5 步的五个类：PluginTransfersIntegrationTest 11（10.464 s）、TransferCooldownTableIntegrationTest 3（0.488 s）、PluginHostIntegrationTest 18、
+      MainStoreIntegrationTest 6、TransferAdmissionIntegrationTest 1，合计 39 个 0 失败 0 跳过；TC-PROD-530 在严格 grid 下通过
+    testing 模块 TEST-io.github.bearisbug.synaxis.testing.test.EnvDispatcherThreadsIntegrationTest.xml：tests="2" skipped="0" failures="0"，<system-out>：
+      env dispatcher threads: 4
+      env thread provider: grid
+    SocketWriteStateTransitionIntegrationTest tests="1" failures="0"
+  3. ABI 门（TC-GAME-072 第 2 步 / TC-PROD-529 第 2 步）：gh release download v0.3.0 --repo Bearisbug/synaxis --pattern plugin-api.jar --pattern protocol.jar
+    （经 127.0.0.1:7897 代理），plugin-api.jar 26,293 B sha256 6fe8d7dba88c400901b6515d17971655fcd6dd8cbcf629a0c70325f3390bf7c6，protocol.jar 30,308 B
+    sha256 1092232bb68905d1b5f0ecfb056e9c1387f582ab921ace8cc0ff227aa4bc2916（与第一节相同）；
+    ./gradlew :plugin-api:checkBinaryCompatibility --rerun :protocol:checkBinaryCompatibility --rerun -PbaselineJarDir=<下载目录> 16:01:30～16:01:34：
+    > Task :protocol:checkBinaryCompatibility 与 > Task :plugin-api:checkBinaryCompatibility 都执行（没有 SKIPPED、没有 FROM-CACHE），BUILD SUCCESSFUL，
+    28 actionable tasks: 2 executed, 26 up-to-date，0 条违例。PluginApi.java:17 仍是 API_VERSION = 2；标注 ApiStatus.NonExtendable 的文件仍为 15 个
+  4. 文档 lint（本节文档改完后）：design-doc check.sh docs/DESIGN-PROD.md「lint 无警告」；test-doc check.sh docs/TEST.md 只剩已知的两条（RUN-031 两条明细行缺证据引用），
+    REQ 双向联检通过
+  结果：两道全量门禁与 ABI 门在 0599dc51f8 上通过。第八节「未覆盖」里的两道全量门禁、:server-app 其余 77 个类的严格 grid 结果与 TC-PROD-505 第 3 步根构建 :test
+    一半由本节补上；TC-PROD-520～TC-PROD-533 通过 14/14 不变。
+  未覆盖：TC-PROD-529 第 3 步仍沿用第二节（PluginContext.java 没有改）。TicketIssuer#transfer（TicketIssuer.java:57）在 Syn-Store-Write 线程上经
+    PlayerConnection#transfer 派发 OutgoingTransferEvent，本轮没有用例覆盖，已作为 DESIGN-PROD §28.2 待办交给 M3-E 轨 B。合并 M3-E 之后要重跑
+    TC-PROD-521、TC-PROD-528、TC-PROD-533（TEST.md §5）。
+  清理：本节没有改代码；Gradle 包装脚本、日志、结果汇总与 ABI 基线 jar 放在 /tmp/prod6a-record，登记后删除。

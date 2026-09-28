@@ -600,11 +600,16 @@ public class WorldFlagsReplayTest {
         final InstanceContainer instance = mounted.instance();
         instance.setChunkUnloadGraceTicks(-1);
         assertDoorway(instance, Block.IRON_BARS);
+        // The light recomputations of a change hold the 5×5 around it until they are installed
+        tickUntil(mounted.env(), () -> mounted.relight().stats().pending() == 0, Duration.ofSeconds(20),
+                "the light of the replay is installed");
 
         flags.schedule(GATE, json("open"), 4);
         flags.schedule(GATE, json("closed"), 3);
         assertEquals(2, instance.chunkTicketCount(0, 0), "each application holds the chunk of the doorway");
         mounted.env().tick();
+        tickUntil(mounted.env(), () -> mounted.relight().stats().pending() == 0, Duration.ofSeconds(20),
+                "the light of the application is installed");
 
         assertDoorway(instance, Block.AIR);
         assertEquals(new FlagValue(json("open"), 4), flags.get(GATE));

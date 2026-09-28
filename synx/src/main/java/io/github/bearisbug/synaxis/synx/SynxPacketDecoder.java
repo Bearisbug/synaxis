@@ -66,6 +66,28 @@ final class SynxPacketDecoder {
                 light(light.blockMask(), light.blockLight(), sectionCount));
     }
 
+    /**
+     * The light of a framed segment ①, as the packet carries it: the chunk data is read past without
+     * decoding the palettes.
+     *
+     * @throws IllegalArgumentException if the bytes are not a chunk packet
+     */
+    static LightData light(MemorySegment framed, Registries registries) {
+        final NetworkBuffer buffer = body(framed, registries);
+        buffer.read(ChunkData.NETWORK_TYPE);
+        return buffer.read(LightData.NETWORK_TYPE);
+    }
+
+    /** The sky arrays of a light payload by section, bottom up; null for a section the payload marks empty or leaves out. */
+    static byte[] @Nullable [] sky(LightData light, int sectionCount) {
+        return light(light.skyMask(), light.skyLight(), sectionCount);
+    }
+
+    /** The block arrays of a light payload by section, as {@link #sky}. */
+    static byte[] @Nullable [] block(LightData light, int sectionCount) {
+        return light(light.blockMask(), light.blockLight(), sectionCount);
+    }
+
     /** The packet id and chunk coordinates read, the rest of the body left. */
     private static NetworkBuffer body(MemorySegment framed, Registries registries) {
         final byte[] body = SynxChunkPacket.body(framed);

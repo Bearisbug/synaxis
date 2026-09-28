@@ -1,6 +1,7 @@
 package io.github.bearisbug.synaxis.synx;
 
 import io.github.bearisbug.synaxis.coordinate.CoordConversion;
+import io.github.bearisbug.synaxis.entity.Player;
 import io.github.bearisbug.synaxis.instance.DynamicChunk;
 import io.github.bearisbug.synaxis.instance.Instance;
 import io.github.bearisbug.synaxis.instance.Section;
@@ -16,6 +17,7 @@ import io.github.bearisbug.synaxis.network.packet.server.CachedPacket;
 import io.github.bearisbug.synaxis.network.packet.server.SendablePacket;
 import io.github.bearisbug.synaxis.network.packet.server.play.ChunkDataPacket;
 import io.github.bearisbug.synaxis.network.packet.server.play.data.ChunkData;
+import io.github.bearisbug.synaxis.network.packet.server.play.data.LightData;
 import io.github.bearisbug.synaxis.registry.Registries;
 import io.github.bearisbug.synaxis.registry.RegistryKey;
 import io.github.bearisbug.synaxis.world.biome.Biome;
@@ -33,7 +35,9 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.IntStream;
@@ -121,6 +125,11 @@ public final class SynxChunk extends DynamicChunk implements OverlayChunk {
     private volatile @Nullable SoftReference<Snapshot> snapshot;
     // Weak: the section cache alone decides how long decoded palettes stay (SectionCache)
     private volatile @Nullable WeakReference<SectionCache.Entry> decoded;
+    // The runtime light (API-M3-005 运行时光照): changes of block state, written under the write-lock, read by
+    // the install without it; and who holds this chunk since which tick, who may hold stale light of it
+    private final AtomicLong blockChanges = new AtomicLong();
+    private final Map<Player, Long> delivered = new ConcurrentHashMap<>();
+    private final Map<Player, Boolean> lightStale = new ConcurrentHashMap<>();
 
     private SynxChunk(Instance instance, int chunkX, int chunkZ, SynxChunkLoader loader, boolean inRegion,
                       Mode mode, @Nullable Source source, long generation) {
@@ -240,11 +249,17 @@ public final class SynxChunk extends DynamicChunk implements OverlayChunk {
             super.setBlock(x, y, z, block, placement, destroy); // warns and changes nothing
             return;
         }
+        final SynxRelight relight = loader.relight();
+        final int before = relight != null ? getBlock(x, y, z, Condition.TYPE).stateId() : block.stateId();
         if (mode == Mode.HANDLE) materialize();
         try {
             super.setBlock(x, y, z, block, placement, destroy);
         } finally {
             changed(); // a handler that throws in onPlace or onDestroy does so after the palette has the change
+            if (before != block.stateId() && relight != null && relight.instance() == instance) {
+                blockChanges.incrementAndGet();
+                relight.changed(this);
+            }
         }
     }
 
@@ -394,9 +409,13 @@ public final class SynxChunk extends DynamicChunk implements OverlayChunk {
         super.invalidate();
     }
 
-    /** Dirty overlay chunks stay until the overlay store has written them; it is asked to. */
+    /**
+     * Not while a light recomputation is queued or running with this chunk in its 3×3; dirty overlay
+     * chunks stay until the overlay store has written them, which it is asked to.
+     */
     @Override
     protected boolean readyToUnload() {
+        if (relightPending()) return false;
         if (mode != Mode.OVERLAY || !dirty) return true;
         loader.tracker().unloadRequested(this);
         return false;
@@ -534,6 +553,137 @@ public final class SynxChunk extends DynamicChunk implements OverlayChunk {
             final int y = CoordConversion.chunkBlockIndexGetY(index);
             final int z = CoordConversion.chunkBlockIndexGetZ(index);
             tickableMap.put(index, entry.getValue().block(state(source, x, y, z)));
+        }
+    }
+
+    // ---- The runtime light (API-M3-005 运行时光照)
+
+    /** Whether the runtime light writes this chunk: inside the region and not failed. */
+    boolean lightWritable() {
+        return inRegion && mode != Mode.FAILED;
+    }
+
+    /** The changes of block state since the chunk loaded; a recomputation holds its result to it. */
+    long blockChanges() {
+        return blockChanges.get();
+    }
+
+    /** Player to the {@code worldAge} it was last delivered this chunk or its light in ({@code delivered}). */
+    Map<Player, Long> delivered() {
+        return delivered;
+    }
+
+    /** Player to whether a resend is due whatever the next install finds ({@code light_stale}). */
+    Map<Player, Boolean> lightStale() {
+        return lightStale;
+    }
+
+    /**
+     * The block palettes of every section for the snapshot of a recomputation, bottom up, under the
+     * read-lock the caller holds: copies of the sections in overlay mode, the shared palettes of the
+     * section cache in handle mode (read, never written), null in failed mode, which is air.
+     */
+    Palette @Nullable [] relightPalettes() {
+        assert holdsReadLock() : "taking the blocks of chunk " + chunkX + "," + chunkZ + " without its read-lock";
+        return switch (mode) {
+            case OVERLAY -> {
+                final Palette[] copies = new Palette[sections.size()];
+                for (int i = 0; i < copies.length; i++) copies[i] = sections.get(i).blockPalette().clone();
+                yield copies;
+            }
+            case HANDLE -> sections(Objects.requireNonNull(source)).blocks();
+            case FAILED -> null;
+        };
+    }
+
+    /**
+     * The light of the chunk as a new viewer gets it, which a recomputation compares its result with:
+     * segment ① in handle mode, the sections under the read-lock otherwise.
+     */
+    LightData currentLight() {
+        final Source handle = this.source;
+        if (mode == Mode.HANDLE && handle != null) return SynxPacketDecoder.light(handle.slot().packet(), instance.registries());
+        lockReadLock();
+        try {
+            final Source now = this.source;
+            if (mode == Mode.HANDLE && now != null) return SynxPacketDecoder.light(now.slot().packet(), instance.registries());
+            return createLightData(false);
+        } finally {
+            unlockReadLock();
+        }
+    }
+
+    /**
+     * Handle to overlay for its light (§11.1 为光照物化): the sections filled from the current source as it
+     * is, {@code generation} and the dirty mark left as they are. Whether the world is writable does not
+     * count: light is no change to the world. Waits at most {@code wait} for the write-lock.
+     *
+     * @return true if this call switched the chunk to overlay mode
+     */
+    boolean materializeForLight(Duration wait) {
+        if (mode != Mode.HANDLE) return false;
+        if (!tryLockWriteLock(wait)) return false;
+        try {
+            if (mode != Mode.HANDLE) return false;
+            materialize();
+            return true;
+        } finally {
+            unlockWriteLock();
+        }
+    }
+
+    /**
+     * What an install of new light did.
+     *
+     * @param light        the full light after the install, what a resend carries
+     * @param materialized whether the chunk was still in handle mode and was materialized for it
+     */
+    record Installed(LightData light, boolean materialized) {
+    }
+
+    /**
+     * Installs the new light of a recomputation (§11.1 光照装回), on the tick scheduling thread: the
+     * sections whose light changed take new arrays, new objects that a packet already handed out does
+     * not see; the caches go, {@code generation} goes up by one and the chunk is dirty. A handle chunk is
+     * materialized for its light first. Only tries the write-lock: the encode pool may hold it.
+     *
+     * @param sky   the new sky light by section, bottom up, null where it did not change
+     * @param block the new block light by section, as {@code sky}
+     * @return null without the write-lock, the result otherwise
+     */
+    @Nullable Installed installLight(byte[] @Nullable [] sky, byte[] @Nullable [] block) {
+        if (!tryLockWriteLock(Duration.ZERO)) return null;
+        try {
+            final boolean materialized = mode == Mode.HANDLE;
+            if (materialized) materialize();
+            for (int i = 0; i < sections.size(); i++) {
+                if (sky[i] != null) sections.get(i).setSkyLight(sky[i]);
+                if (block[i] != null) sections.get(i).setBlockLight(block[i]);
+            }
+            invalidate();
+            changed();
+            return new Installed(createLightData(false), materialized);
+        } finally {
+            unlockWriteLock();
+        }
+    }
+
+    /**
+     * The full light for a resend of an install that changed nothing: segment ① in handle mode, the
+     * sections otherwise, under the write-lock, which is only tried.
+     *
+     * @return null without the write-lock
+     */
+    @Nullable LightData lightForResend() {
+        final Source handle = this.source;
+        if (mode == Mode.HANDLE && handle != null) return SynxPacketDecoder.light(handle.slot().packet(), instance.registries());
+        if (!tryLockWriteLock(Duration.ZERO)) return null;
+        try {
+            final Source now = this.source;
+            if (mode == Mode.HANDLE && now != null) return SynxPacketDecoder.light(now.slot().packet(), instance.registries());
+            return createLightData(false);
+        } finally {
+            unlockWriteLock();
         }
     }
 

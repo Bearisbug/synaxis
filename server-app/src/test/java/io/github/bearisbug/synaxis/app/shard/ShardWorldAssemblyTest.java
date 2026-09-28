@@ -379,10 +379,16 @@ public class ShardWorldAssemblyTest {
         final ServerProcess process = process();
         try {
             // No periodic flush within the test: the write before the unload is the one at tick 100
-            final InstanceContainer instance = mount(process, new OverlayOptions(16_384, 60)).instance();
+            final Mounted mounted = mount(process, new OverlayOptions(16_384, 60));
+            final InstanceContainer instance = mounted.instance();
             process.dispatcher().start();
             instance.loadChunk(3, 3).join();
             instance.setBlock(3 * 16 + 1, 50, 3 * 16 + 1, Block.GOLD_BLOCK);
+            // The light recomputation of the change holds a ticket on the chunk until it is installed:
+            // the tick it goes is tick 0
+            do {
+                tick(process, 1);
+            } while (mounted.started().relight().stats().pending() > 0);
 
             tick(process, 100);
             assertNotNull(instance.getChunk(3, 3), "tick 100: dirty, it is written instead of unloaded");

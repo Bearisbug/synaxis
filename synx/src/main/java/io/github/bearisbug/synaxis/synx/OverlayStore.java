@@ -474,12 +474,15 @@ public final class OverlayStore implements OverlayIndex, OverlayTracker {
         });
     }
 
-    /** {@code overlay_resident − overlay_cap}, at most 64 with those in flight, the least recently changed first. */
+    /**
+     * {@code overlay_resident − overlay_cap}, at most 64 with those in flight, the least recently changed
+     * first, but none a light recomputation waits to install into (M3-D).
+     */
     private void selectEvictions(Set<Resident> taken, long deadline) {
         int count = Math.min(evictCap.left(), residents.size() - options.cap() - evictCap.inFlight);
         for (Iterator<Resident> it = lru.values().iterator(); count > 0 && it.hasNext(); ) {
             final Resident resident = it.next();
-            if (resident.inFlight != null || !taken.add(resident)) continue;
+            if (resident.inFlight != null || resident.chunk.relightPending() || !taken.add(resident)) continue;
             count--;
             final OverlayChunk chunk = resident.chunk;
             final long generation = chunk.generation();

@@ -43,6 +43,7 @@ import java.time.Duration;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 import java.util.function.BiConsumer;
 
@@ -85,6 +86,8 @@ public final class ShardWorld {
     // Read and replaced by the statistics task only, on the tick scheduler thread
     private @Nullable SynxStreamStats lastStream;
     private @Nullable OverlayStats lastOverlay;
+    private @Nullable RelightStats lastRelight;
+    private @Nullable SynxRelight relight;
     private long lastFlagConflicts;
 
     /**
@@ -293,6 +296,10 @@ public final class ShardWorld {
             throw new IllegalArgumentException("the overlay store " + overlayDirectory + " cannot be opened: "
                     + e.getMessage(), e);
         }
+        // The runtime light drains before the final flush writes the chunks: it is built with the instance,
+        // below, and until then its step has nothing to wait for
+        final RelightStep relightStep = new RelightStep();
+        shutdown.addAfterPlayers("relight", relightStep::drain);
         shutdown.addAfterPlayers("overlay", overlay::finalFlush);
         final SynxManifest.Bounds bounds = bounds(manifest, directory);
         final SynxChunkLoader loader;
@@ -313,6 +320,8 @@ public final class ShardWorld {
         instance.setChunkUnloadGraceTicks(settings.chunkUnloadGraceTicks());
         final SynxRelight relight = relightExecutor == null ? loader.startRelight(instance)
                 : loader.startRelight(instance, relightExecutor);
+        relightStep.relight = relight;
+        this.relight = relight;
         // Before the world border, the spawn point and the bind
         if (flags != null) flags.replay(instance);
         instance.setWorldBorder(worldBorder(bounds));
@@ -322,9 +331,18 @@ public final class ShardWorld {
         }
         final Pos spawn = spawn(settings.buildDir(), manifest, bounds);
 
-        scheduleWritePhase(process, overlay::tickEnd);
+        // One task at the end of the tick: the light first, whose installs make chunks dirty, then the write phase
+        scheduleWritePhase(process, () -> {
+            try {
+                relight.installPhase();
+            } catch (RuntimeException e) {
+                process.exception().handleException(e);
+            }
+            overlay.tickEnd();
+        });
         this.lastStream = loader.stats();
         this.lastOverlay = overlay.stats();
+        this.lastRelight = relight.stats();
         this.lastFlagConflicts = flags == null ? 0 : flags.stats().conflicts();
         process.scheduler().buildTask(() -> recordStreamStats(events))
                 .delay(STATS_INTERVAL).repeat(STATS_INTERVAL).schedule();
@@ -392,13 +410,18 @@ public final class ShardWorld {
         final OverlayStore overlay = this.overlay;
         final SynxStreamStats lastStream = this.lastStream;
         final OverlayStats lastOverlay = this.lastOverlay;
-        if (loader == null || overlay == null || lastStream == null || lastOverlay == null) return;
+        final SynxRelight relight = this.relight;
+        final RelightStats lastRelight = this.lastRelight;
+        if (loader == null || overlay == null || lastStream == null || lastOverlay == null || relight == null
+                || lastRelight == null) return;
         final SynxStreamStats stream = loader.stats();
         final OverlayStats overlayStats = overlay.stats();
+        final RelightStats relightStats = relight.stats();
         this.lastStream = stream;
         this.lastOverlay = overlayStats;
-        final Map<String, Object> attributes = streamStats(lastStream, stream, lastOverlay, overlayStats,
-                new RelightStats(0, 0, 0, 0, 0, 0, 0, 0, 0), new RelightStats(0, 0, 0, 0, 0, 0, 0, 0, 0));
+        this.lastRelight = relightStats;
+        final Map<String, Object> attributes = streamStats(lastStream, stream, lastOverlay, overlayStats, lastRelight,
+                relightStats);
         final WorldFlagsImpl flags = this.flags;
         if (flags != null) {
             final long conflicts = flags.stats().conflicts();
@@ -427,20 +450,33 @@ public final class ShardWorld {
         attributes.put("flush_fsyncs", overlayNow.flushFsyncs() - overlayBefore.flushFsyncs());
         attributes.put("flush_lag_s_max", overlayNow.flushLagSMax());
         attributes.put("write_phase_ms_max", overlayNow.writePhaseMsMax());
-        attributes.put("relight_queue_p99_ms", 0);
-        attributes.put("relight_ms_p99", 0);
-        attributes.put("relights", 0);
-        attributes.put("relight_skipped", 0);
-        attributes.put("light_materialized", 0);
-        attributes.put("light_packets", 0);
-        attributes.put("light_sections", 0);
-        attributes.put("relight_install_ms_max", 0);
-        attributes.put("relight_pending", 0);
+        attributes.put("relight_queue_p99_ms", relightNow.queueMsP99());
+        attributes.put("relight_ms_p99", relightNow.relightMsP99());
+        attributes.put("relights", relightNow.relights() - relightBefore.relights());
+        attributes.put("relight_skipped", relightNow.skipped() - relightBefore.skipped());
+        attributes.put("light_materialized", relightNow.lightMaterialized() - relightBefore.lightMaterialized());
+        attributes.put("light_packets", relightNow.lightPackets() - relightBefore.lightPackets());
+        attributes.put("light_sections", relightNow.lightSections() - relightBefore.lightSections());
+        attributes.put("relight_install_ms_max", relightNow.installMsMax());
+        attributes.put("relight_pending", relightNow.pending());
         attributes.put("unloaded", now.unloaded() - before.unloaded());
         attributes.put("section_cache_bytes", now.sectionCacheBytes());
         // Without world state flags; the statistics task puts the difference of theirs in its place
         attributes.put("flag_conflicts", 0);
         return attributes;
+    }
+
+    /**
+     * The shutdown step {@code relight}, registered before {@code overlay} when the overlay store opens,
+     * which is before the runtime light exists: called before, it has nothing to drain.
+     */
+    private static final class RelightStep {
+        volatile @Nullable SynxRelight relight;
+
+        CompletableFuture<?> drain(Duration remaining, boolean tickAlive) {
+            final SynxRelight current = relight;
+            return current == null ? CompletableFuture.completedFuture(null) : current.drain(remaining, tickAlive);
+        }
     }
 
     /** Centered on the bounds, as wide as their long side. */

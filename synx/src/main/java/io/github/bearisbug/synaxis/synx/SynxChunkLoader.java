@@ -254,6 +254,7 @@ public final class SynxChunkLoader implements ChunkLoader {
     private synchronized SynxRelight start(SynxRelight started) {
         if (relight != null) throw new IllegalStateException("the runtime light of this loader has started already");
         this.relight = started;
+        started.listen();
         return started;
     }
 
@@ -270,6 +271,11 @@ public final class SynxChunkLoader implements ChunkLoader {
 
     SynxOptions options() {
         return options;
+    }
+
+    /** Whether a chunk position is in {@code view_bounds}, where this loader has anything to load. */
+    boolean inView(int chunkX, int chunkZ) {
+        return contains(viewBounds, chunkX, chunkZ);
     }
 
     OverlayTracker tracker() {

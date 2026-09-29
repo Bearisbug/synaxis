@@ -1,4 +1,4 @@
-# RUN-052: the cases that start and stop their own process, 03:46:42 to 03:53:05, code 870054e838 unless said otherwise.
+# RUN-055: the cases that start and stop their own process, 03:46:42 to 03:53:05, code 870054e838 unless said otherwise.
 # Every start as in 03-process-gameplay.txt (installDist script from the worktree root, SERVER_APP_OPTS with -Xms2G -Xmx2G
 # -XX:-AlwaysPreTouch -Dsynaxis.app.auth=offline -Dsynaxis.connection-gate.trusted-networks=127.0.0.0/8), plus the -D flags named.
 # 'stop -> exit' is from writing "stop" to the console FIFO to the exit of the start script's JVM.

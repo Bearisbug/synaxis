@@ -1,4 +1,4 @@
-# RUN-052: the local round of the R2 state=SENT fix (HandshakeGate answers the hello on the waiting configuration thread in the gameplay
+# RUN-055: the local round of the R2 state=SENT fix (HandshakeGate answers the hello on the waiting configuration thread in the gameplay
 # mode, and a hello that wins the future after the waiter timed out is answered), branch prod/r2-flake, 2026-09-30 03:22 to 03:54 (UTC+8)
 # Code under test: 870054e838 = main 6d14db9435 + 6d60d5d80b (the answer moves to the waiting thread), b080616f6e (docs) and 870054e838
 #          (a lost claim reads how the future completed). Every run of 01 to 05 is on that code; the docs/TEST.md of this round was

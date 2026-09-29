@@ -1,4 +1,4 @@
-# RUN-052: TC-GAME-073 step 5 on the final code. GitHub Actions run 36618813492, workflow "Client gametest", workflow_dispatch on
+# RUN-055: TC-GAME-073 step 5 on the final code. GitHub Actions run 36618813492, workflow "Client gametest", workflow_dispatch on
 # branch prod/r2-flake at acc6742da2 = 870054e838 + the step's temporary pause (below). The commit was built with a temporary index and
 # pushed as that branch only; it is on no local branch. The run finished 2026-09-29 19:28:50 UTC (success; the P10 job skipped), then
 # the remote branch was deleted: git push origin --delete prod/r2-flake, git ls-remote origin 'refs/heads/prod/*' -> 0 lines.

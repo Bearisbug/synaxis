@@ -1,4 +1,4 @@
-# RUN-052: the root gate, on 870054e838, with the four SYNAXIS_TEST_* variables pointing at synaxis-pg (5440) and synaxis-valkey (6440)
+# RUN-055: the root gate, on 870054e838, with the four SYNAXIS_TEST_* variables pointing at synaxis-pg (5440) and synaxis-valkey (6440)
 # 03:31:58 load: { 10.29 10.00 8.12 }
 # ./gradlew check --continue --rerun-tasks --max-workers=4 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts
 # exit 0 at 03:38:25; BUILD SUCCESSFUL in 6m 26s; 95 actionable tasks: 95 executed

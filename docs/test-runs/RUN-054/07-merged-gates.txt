@@ -1,0 +1,110 @@
+# RUN-054, closing stage: the gates again after merging main, and two counter proofs the round had not run on the final code.
+# 2026-09-30 (UTC+8). git fetch before the merge: origin/main a7bc18b2ad (6d60d5d80b and 870054e838 change HandshakeGate,
+# HandshakeIntegrationTest 23 -> 25; RUN-055 registered, no RUN-054). git merge origin/main on m3d/runtime-light f6872d35ef:
+# only docs/TEST.md conflicted (change log, section 5, section 6 summary and details, section 7), both sides kept; the code merged
+# without conflict. Merge commit 17e6198742; the gates and counter proofs below ran on it with only docs/DESIGN-M3.md and docs/TEST.md
+# changed in the working tree.
+# Every Gradle command: --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts --max-workers=4, JAVA_TOOL_OPTIONS with the
+# proxy of docs/ENGINE.md, one at a time, the database variables of 02 (synaxis-pg, synaxis-valkey; skipped="0" in every Db/Replay/Sync class).
+# The wrapper of 00-index.txt: before each start ps + lsof cwd for GradleWrapperMain/GradleDaemon/GradleWorkerMain outside this worktree
+# (none at any start, no wait), df -m /System/Volumes/Data >= 1,500 MB to start, a watchdog reading df every 10 s that stops the Gradle
+# by pid below 1,000 MB (it never fired). Totals: the JUnit XML written after each gate's start, per module; client-fabric not in these gates.
+# A first try of the check gate (05:11:02) was stopped by pid after 20 s, before any test class had finished, to add the collection
+# of the XML between the gates (the next gate deletes them); it is not counted.
+
+## check: ./gradlew check --rerun-tasks -Dsynaxis.synx.require-frozen-zlib=true
+# start 05:12:14, disk available 84,017 MB, load 8.63 10.75 10.68, memory free 36%, swap free 1,222.44 MB (of 20,480 MB)
+# exit 0 after 351 s, BUILD SUCCESSFUL in 5m 47s, 77 actionable tasks: 77 executed (configuration cache reused, so no build-src tasks); lowest available 83,264 MB
+(root) tests=3142 skipped=15 failures=0 errors=0
+architecture-tests tests=20 skipped=0 failures=0 errors=0
+baker tests=53 skipped=0 failures=0 errors=0
+game-rts tests=87 skipped=0 failures=0 errors=0
+loadtest tests=23 skipped=0 failures=0 errors=0
+plugin-api tests=15 skipped=0 failures=0 errors=0
+protocol tests=78 skipped=0 failures=0 errors=0
+server-app tests=519 skipped=0 failures=0 errors=0
+synx tests=142 skipped=0 failures=0 errors=0
+testing tests=11 skipped=0 failures=0 errors=0
+TOTAL tests=4090 skipped=15 failures=0 errors=0
+# OverlayShardProcessTest: crash window: 188 changes, 96 kept, 92 lost; the oldest lost change was 9727 ms old at the kill, the newest kept one 9832 ms
+relight fallback edge torch at 56 40 62: 6 partial packets 635 B, 12 full packets 1375 B
+relight fallback center torch at 56 40 56: 8 partial packets 1002 B, 0 full packets 0 B
+relight fallback corner torch at 63 40 48: 8 partial packets 1744 B, 0 full packets 0 B
+relight fallback cave torch at 52 30 52: 2 partial packets 848 B, 0 full packets 0 B
+# SynxOverlayCombinedIntegrationTest:  tests="6" skipped="0" failures="0" errors="0"
+# SynxRelightIntegrationTest:  tests="10" skipped="0" failures="0" errors="0"
+# SynxRelightViewersIntegrationTest:  tests="6" skipped="0" failures="0" errors="0"
+# HandshakeIntegrationTest:  tests="25" skipped="0" failures="0" errors="0"
+
+## strict mode one: ./gradlew test --rerun-tasks -Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true
+# start 05:18:06, disk available 83,715 MB, load 8.66 13.83 13.06, memory free 40%, swap free 674.44 MB (of 21,504 MB)
+# exit 0 after 361 s, BUILD SUCCESSFUL in 5m 51s, 66 actionable tasks: 66 executed; lowest available 81,827 MB
+(root) tests=3142 skipped=15 failures=0 errors=0
+architecture-tests tests=20 skipped=0 failures=0 errors=0
+baker tests=53 skipped=0 failures=0 errors=0
+game-rts tests=87 skipped=0 failures=0 errors=0
+loadtest tests=23 skipped=0 failures=0 errors=0
+plugin-api tests=15 skipped=0 failures=0 errors=0
+protocol tests=78 skipped=0 failures=0 errors=0
+server-app tests=519 skipped=0 failures=0 errors=0
+synx tests=142 skipped=0 failures=0 errors=0
+testing tests=11 skipped=0 failures=0 errors=0
+TOTAL tests=4090 skipped=15 failures=0 errors=0
+# OverlayShardProcessTest: crash window: 187 changes, 96 kept, 91 lost; the oldest lost change was 9747 ms old at the kill, the newest kept one 9850 ms
+relight fallback edge torch at 56 40 62: 6 partial packets 635 B, 12 full packets 1375 B
+relight fallback center torch at 56 40 56: 8 partial packets 1002 B, 0 full packets 0 B
+relight fallback corner torch at 63 40 48: 8 partial packets 1744 B, 0 full packets 0 B
+relight fallback cave torch at 52 30 52: 2 partial packets 848 B, 0 full packets 0 B
+# SynxOverlayCombinedIntegrationTest:  tests="6" skipped="0" failures="0" errors="0"
+# SynxRelightIntegrationTest:  tests="10" skipped="0" failures="0" errors="0"
+# SynxRelightViewersIntegrationTest:  tests="6" skipped="0" failures="0" errors="0"
+# HandshakeIntegrationTest:  tests="25" skipped="0" failures="0" errors="0"
+# config key gate: 115 keys read, 115 in ConfigFile.KEYS, 20 meter names left out (ConfigKeyGateTest system-out, written 05:19)
+
+## strict mode two: ./gradlew test --rerun-tasks -Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true -Dsynaxis.thread-provider=grid
+# start 05:24:08, disk available 82,654 MB, load 7.76 12.75 13.43, memory free 44%, swap free 1,484.56 MB (of 22,528 MB)
+# exit 0 after 351 s, BUILD SUCCESSFUL in 5m 49s, 66 actionable tasks: 66 executed; lowest available 82,025 MB
+(root) tests=3142 skipped=15 failures=0 errors=0
+architecture-tests tests=20 skipped=0 failures=0 errors=0
+baker tests=53 skipped=0 failures=0 errors=0
+game-rts tests=87 skipped=0 failures=0 errors=0
+loadtest tests=23 skipped=0 failures=0 errors=0
+plugin-api tests=15 skipped=0 failures=0 errors=0
+protocol tests=78 skipped=0 failures=0 errors=0
+server-app tests=519 skipped=0 failures=0 errors=0
+synx tests=142 skipped=0 failures=0 errors=0
+testing tests=11 skipped=0 failures=0 errors=0
+TOTAL tests=4090 skipped=15 failures=0 errors=0
+# OverlayShardProcessTest: crash window: 187 changes, 95 kept, 92 lost; the oldest lost change was 9783 ms old at the kill, the newest kept one 9892 ms
+relight fallback edge torch at 56 40 62: 6 partial packets 635 B, 12 full packets 1375 B
+relight fallback center torch at 56 40 56: 8 partial packets 1002 B, 0 full packets 0 B
+relight fallback corner torch at 63 40 48: 8 partial packets 1744 B, 0 full packets 0 B
+relight fallback cave torch at 52 30 52: 2 partial packets 848 B, 0 full packets 0 B
+# SynxOverlayCombinedIntegrationTest:  tests="6" skipped="0" failures="0" errors="0"
+# SynxRelightIntegrationTest:  tests="10" skipped="0" failures="0" errors="0"
+# SynxRelightViewersIntegrationTest:  tests="6" skipped="0" failures="0" errors="0"
+# HandshakeIntegrationTest:  tests="25" skipped="0" failures="0" errors="0"
+
+# Against the gates before the merge (03-gates.txt): 4,088 -> 4,090, all of it server-app 517 -> 519 (main's HandshakeIntegrationTest
+# 23 -> 25); root 3,142 and synx 142 unchanged, 15 skipped as before. Disk while they ran: down by 753 / 1,888 / 629 MB from the start
+# (swap grew from 19,456 MB to 22,528 MB over the three; other sessions wrote at the same time). OverlayShardProcessTest (TC-WORLD-051,
+# section 7): 2 of 2 in each gate, the oldest lost change 9,727 / 9,747 / 9,783 ms; with the 8 runs of 02 and 03 that is 11 of 11 in
+# RUN-054, not reproduced.
+
+## TC-WORLD-049 step 2 on 17e6198742 (05:30:44): delete ShardWorld.java:303 shutdown.addAfterPlayers("overlay", overlay::finalFlush);
+# ./gradlew :server-app:test --tests 'io.github.bearisbug.synaxis.app.shard.ShardWorldAssemblyTest'
+ShardWorldAssemblyTest > aNormalStopWritesEveryChangeAndNothingAfterIt() FAILED
+    org.opentest4j.AssertionFailedError at ShardWorldAssemblyTest.java:365
+8 tests completed, 1 failed
+# failure message (the :synx log of the stop, here one line): Relight drain did not finish within 500 ms: 260 targets left, the final flush
+#   writes them with their old light ==> expected: <true> but was: <false>. No "Overlay final flush: chunks=100" line, as the step expects.
+# As the step says; the test change of 01 did not move :365. git checkout -- ShardWorld.java; git status --short: the two docs only.
+
+## TC-WORLD-092 step 2 on 17e6198742 (05:31:13): SynxRelight.java:156 return at != null && at.chunk() != null; -> return at != null;
+# ./gradlew :synx:test --tests 'io.github.bearisbug.synaxis.synx.SynxRelightIntegrationTest'
+SynxRelightIntegrationTest > anAirChunkTheEngineMadeIsMissing(Env, Path) FAILED
+    org.opentest4j.AssertionFailedError at SynxRelightIntegrationTest.java:266
+10 tests completed, 1 failed
+# failure message: sky light in the tunnel at x 0 y 30 ==> expected: <0> but was: <14>. As the step says (RUN-052 ran it only together
+# with TC-WORLD-093 step 2). git checkout -- SynxRelight.java; git status --short: the two docs only.
+# Disk at the two starts 83,441 and 83,459 MB, memory free 49% and 47%.

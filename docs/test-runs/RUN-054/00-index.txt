@@ -15,8 +15,10 @@
 # 05-container-resend.txt      TC-WORLD-096 (fallback, client mode resend): PASS; the counter proof (fallback on, client mode default):
 #                              L2 to L7 FAIL on 'light packets: client'; fallback bytes and a draft for the §15 光照下行 row
 # 06-real-shard.txt            TC-WORLD-097, bin/server-shard on the 4k map, SIGTERM after the client's marker: final flush chunks=1; PASS
+# 07-merged-gates.txt          the closing stage on the merge of origin/main a7bc18b2ad (17e6198742): the three gates again, 4,090
+#                              tests, 15 skipped, 0 failed in each; TC-WORLD-049 step 2 and TC-WORLD-092 step 2 on the final code
 # Not kept: Gradle logs, JUnit XML, the watchdog series, the JFR recording (5.0 MB) and its JSON prints, light-samples.csv (774 KB a
-# round), the container and fixture logs; the lines of 01 to 06 are copied out of them.
+# round), the container and fixture logs; the lines of 01 to 07 are copied out of them.
 #
 # Machine: Apple M4 Pro, 12 cores, macOS, Homebrew JDK 25.0.4.1; other sessions ran builds on it (the prod-r2-flake worktree, three times at the start of one of ours).
 # Every Gradle command: --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts --max-workers=4, JAVA_TOOL_OPTIONS with the
@@ -44,3 +46,14 @@
 # fixtures and the shard were stopped by pid; the round's directory (maps, overlay stores, JFR, container output) deleted.
 # synaxis-pg holds a database w3a_bd96776464534f04 created 2026-09-28 15:38 UTC, before this round (the test classes of this round
 # dropped theirs); left for the session that made it.
+#
+# Closing stage (05:05 to 05:32, about 84 GB available on the data volume): git fetch, git merge
+# origin/main (07-merged-gates.txt), the three gates and two counter proofs with the same wrapper and watchdog (never fired; disk at the
+# starts 83,441 to 84,017 MB, lowest while one ran 81,827 MB; memory free 36% to 49%; no Gradle of another worktree at any start).
+# Clean-up: the two temporary code changes reverted with git checkout; the wrapper's temporary directory, logs and XML copies deleted.
+# An independent review of the round before the closing stage (its report is not kept) reproduced, on a git archive copy outside the
+# worktree: TC-WORLD-093 step 2 in both forms (red at :148 and :177; the old form stops at [OperatorPrecedence] in SynxRelight.java:308),
+# the 25 ms an encoding on the old and the new ShardWorldAssemblyTest (old red at :396, new 8 of 8), and a counter proof that deletes
+# loader.tracker().unloadRequested(this) from SynxChunk#readyToUnload (red at :399 'written within 100 ticks after tick 100').
+# Process note: during the container part a system python3 --version was run once by mistake (the machine's rule is .venv only);
+# its output was discarded and nothing else ran on it.

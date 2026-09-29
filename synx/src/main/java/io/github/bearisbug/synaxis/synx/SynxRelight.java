@@ -482,23 +482,29 @@ public final class SynxRelight {
 
     /**
      * Installs the results in the order they came, at most {@value #INSTALL_ENTRIES_PER_TICK} target
-     * entries, and stops once it took 1 ms; the rest waits for the next tick. A target whose write-lock
-     * the encode pool holds waits for the next tick as well, and the ones behind it with it.
+     * entries, and stops once it took 1 ms; the rest waits for the next tick. While a drain runs neither
+     * limit holds: it installs every result there is and stops at the deadline of the drain only, the
+     * players frozen by then. A target whose write-lock the encode pool holds waits for the next tick as
+     * well, and the ones behind it with it.
      *
      * @return the target entries it handled: installed, found unchanged or skipped
      */
     public int installPhase() {
         if (!installing.tryLock()) return 0;
         final long start = System.nanoTime();
+        final long drainUntil = drainDeadline.get();
+        final boolean drain = drainUntil != Long.MAX_VALUE && !drained.isDone();
+        final int most = drain ? Integer.MAX_VALUE : INSTALL_ENTRIES_PER_TICK;
+        final long until = drain ? drainUntil : start + INSTALL_BUDGET_NANOS;
         int handled = 0;
         try {
             Target target;
-            while (handled < INSTALL_ENTRIES_PER_TICK && (target = installs.peek()) != null) {
+            while (handled < most && (target = installs.peek()) != null) {
                 if (!install(target)) break;
                 installs.poll();
                 handled++;
                 if (target.task().left.decrementAndGet() == 0) finish(target.task());
-                if (System.nanoTime() - start >= INSTALL_BUDGET_NANOS) break;
+                if (System.nanoTime() - until >= 0) break;
             }
         } finally {
             installing.unlock();

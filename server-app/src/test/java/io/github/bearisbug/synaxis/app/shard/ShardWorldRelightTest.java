@@ -172,6 +172,74 @@ public class ShardWorldRelightTest {
                 "the light of the final flush's record is the server's");
     }
 
+    /**
+     * 场景「停机排空不受装回上限约束」: 100 changes right before the stop, each the center of a
+     * recomputation of its own; the 100 are computed before the tick starts, so that 900 target
+     * entries wait for the install when the stop begins. With the tick alive the install at the end of
+     * the tick handles them past 64 a tick and 1 ms: the step {@code relight} is done within its 500 ms
+     * with none left, and the final flush writes every changed chunk with the new light.
+     */
+    @Test
+    public void aStopDrainsNineHundredTargetsWithinItsBudget() throws Exception {
+        final ServerProcess process = ServerProcess.of(ServerConfig.builder().insideTest(true).shutdownOnSignal(false)
+                .chunkViewDistance(12).build());
+        final ShardWorld world = ShardWorld.prepare(process, release, SYNX, new OverlayOptions(16_384, 60), null);
+        final ShutdownSequence shutdown = new ShutdownSequence(process, new NoPlayers());
+        process.setShutdownParticipant(shutdown);
+        // A thread a task and no backlog: all 100 are computed while no tick installs
+        final Gate gate = new Gate();
+        final ShardWorld.Started started = world.start(shutdown, (_, _) -> {
+        }, null, overlayRoot, gate);
+        final InstanceContainer instance = started.instance();
+        instance.setChunkUnloadGraceTicks(-1);
+        process.start(new InetSocketAddress(InetAddress.getLoopbackAddress(), 0));
+        process.dispatcher().start();
+        // The 5×5 of every center
+        for (int x = 0; x <= 15; x++) {
+            for (int z = 0; z <= 8; z++) instance.loadChunk(x, z).join();
+        }
+        for (int i = 0; i < 100; i++) instance.setBlock((i % 16) * 16 + 1, 50, (i / 16) * 16 + 1, Block.GOLD_BLOCK);
+        gate.openIn(Duration.ZERO);
+        final long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(30);
+        RelightStats computed = started.relight().stats();
+        while (computed.relights() < 100) {
+            assertTrue(System.nanoTime() < deadline, "the 100 recomputations are done within 30 s: " + computed);
+            Thread.sleep(10);
+            computed = started.relight().stats();
+        }
+        assertEquals(100, computed.pending(), "100 centers computed, none installed: 900 target entries wait");
+
+        final Logger logger = (Logger) LoggerFactory.getLogger("io.github.bearisbug.synaxis.synx");
+        final ListAppender<ILoggingEvent> log = new ListAppender<>();
+        log.start();
+        logger.addAppender(log);
+        try {
+            new TickSchedulerThread(process, TimeUnit.MILLISECONDS.toNanos(50), process.config().maxTickCatchUp()).start();
+            process.stop();
+        } finally {
+            logger.detachAppender(log);
+            log.stop();
+        }
+        final List<String> lines = log.list.stream().map(ILoggingEvent::getFormattedMessage).toList();
+        final int drained = indexOf(lines, "Relight drain");
+        assertTrue(drained >= 0 && lines.get(drained).startsWith("Relight drain: ")
+                && lines.get(drained).endsWith(" ms, left=0"), "drained within 500 ms, none left: " + lines);
+        final int flushed = indexOf(lines, "Overlay final flush: chunks=100 ");
+        assertTrue(flushed > drained && lines.get(flushed).endsWith("by=tick"), "then the final flush of the tick: " + lines);
+
+        final OverlayStore reopened = OverlayStore.open(overlayRoot, manifest, ShardWorld.overlaySettings(manifest, 256),
+                new OverlayOptions(16_384, 60));
+        for (int i = 0; i < 100; i++) {
+            final int chunkX = i % 16, chunkZ = i / 16;
+            final OverlayHit hit = reopened.find(chunkX, chunkZ);
+            assertNotNull(hit, chunkX + "," + chunkZ + " is in the final flush");
+            final ChunkDataPacket written = SynxChunkPacket.decode(hit.record().packet().toArray(ValueLayout.JAVA_BYTE),
+                    Registries.vanilla());
+            assertNull(LightTruth.firstDifference(written.lightData(), LightTruth.of(instance, chunkX, chunkZ), chunkX,
+                    chunkZ, 0, 4), "the light of the record of " + chunkX + "," + chunkZ + " is the server's");
+        }
+    }
+
     private static int indexOf(List<String> lines, String prefix) {
         for (int i = 0; i < lines.size(); i++) if (lines.get(i).startsWith(prefix)) return i;
         return -1;

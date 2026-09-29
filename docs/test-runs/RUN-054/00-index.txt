@@ -1,7 +1,8 @@
 # RUN-054 evidence: M3-D runtime light, the round after RUN-053 (the one before it stopped on a full disk), docs/DESIGN-M3.md v0.24,
 # branch m3d/runtime-light, HEAD 4a3ff9e29c plus the test commit 6d8e77157e (ShardWorldAssemblyTest). git fetch before the round: origin/main
 # registers up to RUN-051 and has no RUN-054; RUN-055 is kept for another session. The RUN row of docs/TEST.md is written by the
-# closing stage, not in this directory's commit.
+# closing stage, not in this directory's commit. git fetch before the container part (04:48): origin/main a7bc18b2ad registers RUN-055
+# (the handshake round of prod/r2-flake) and still has no RUN-052 to RUN-054 row.
 # 01-shard-world-assembly.txt  ShardWorldAssemblyTest > aDirtyChunkIsWrittenBeforeItIsUnloaded: red with 25 ms an encoding before
 #                              the change, green after (3 runs), counter proof, TC-WORLD-049 steps 3 and 4 (section 7 closed)
 # 02-tc-steps.txt              TC-WORLD-091 step 2, TC-WORLD-093 steps 2 and 3 run literally; TC-WORLD-094 steps 2 and 3;
@@ -9,7 +10,13 @@
 #                              TC-WORLD-051 in strict mode one, five runs (not reproduced)
 # 03-gates.txt                 root check --rerun-tasks with the frozen zlib required, test in the two strict modes: 4,088 tests,
 #                              15 skipped, 0 failed in each; the four fallback byte lines of TC-WORLD-093 step 1
-# Not kept: Gradle logs, JUnit XML, the watchdog series; the lines above are copied out of them. No container ran (the scope has none).
+# 04-container-default.txt     TC-WORLD-095 in the headless container: light-report.txt, per-tick torch readings, # stats, JFR counts
+#                              by thread; PASS, P1① per-nibble 0 differences
+# 05-container-resend.txt      TC-WORLD-096 (fallback, client mode resend): PASS; the counter proof (fallback on, client mode default):
+#                              L2 to L7 FAIL on 'light packets: client'; fallback bytes and a draft for the §15 光照下行 row
+# 06-real-shard.txt            TC-WORLD-097, bin/server-shard on the 4k map, SIGTERM after the client's marker: final flush chunks=1; PASS
+# Not kept: Gradle logs, JUnit XML, the watchdog series, the JFR recording (5.0 MB) and its JSON prints, light-samples.csv (774 KB a
+# round), the container and fixture logs; the lines of 01 to 06 are copied out of them.
 #
 # Machine: Apple M4 Pro, 12 cores, macOS, Homebrew JDK 25.0.4.1; other sessions ran builds on it (the prod-r2-flake worktree, three times at the start of one of ours).
 # Every Gradle command: --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts --max-workers=4, JAVA_TOOL_OPTIONS with the
@@ -22,11 +29,18 @@
 # down to 82,016 / 82,519 / 82,500 MB while they ran (by 2,007 / 468 / 481 MB). The swap files live in /System/Volumes/VM, in the same
 # APFS container (df shows the same available for both), and swap grew from 22,528 MB to 23,552 MB during the round, so these
 # differences are not the Gradle builds alone.
-# Memory (the container gate, not needed this round): memory_pressure "System-wide memory free percentage" 33% before the round,
-# 30% during the check gate, 44% and 47% at the starts of the two strict gates; swap free 1,558 / 547 / 1,324 / 1,420 MB at the same
-# times (recorded only).
+# Memory: memory_pressure "System-wide memory free percentage" 33% before the round, 30% during the check gate, 44% and 47% at the
+# starts of the two strict gates; swap free 1,558 / 547 / 1,324 / 1,420 MB at the same times (recorded only).
+# Container part (04:24 to 04:48): the container gate of docs/TEST.md section 3 (memory free >= 25%, no Gradle or java of another
+# worktree) was open at every reading, before the image build and each of the four containers: memory free 34% to 44%, swap free
+# 448 to 1,271 MB (recorded only), load1 7.5 to 9.4, no other worktree's Gradle or java; disk available 84,573 to 86,398 MB, lowest
+# while a container or Gradle ran 84,583 MB (the 53 s container of TC-WORLD-097 not sampled). The two Gradle runs of this part used
+# the same wrapper and watchdog (never fired).
 #
 # Clean-up: every temporary code change reverted with git checkout (git status after each: docs and the one test file only); the
-# temporary directory of the wrapper, logs and XML copies deleted at the end; no image, container, volume or Gradle daemon created.
+# temporary directory of the wrapper, logs and XML copies deleted at the end; no container, volume or Gradle daemon left. The image
+# synaxis-mc-client:dev was not on the machine (build cache 0 B too; removed before this part, not by it) and was rebuilt under the same tag
+# from client-fabric/gametest-env (894 MB); the volume synaxis-mc-gradle was reused. The four containers ran with --rm, one at a time;
+# fixtures and the shard were stopped by pid; the round's directory (maps, overlay stores, JFR, container output) deleted.
 # synaxis-pg holds a database w3a_bd96776464534f04 created 2026-09-28 15:38 UTC, before this round (the test classes of this round
 # dropped theirs); left for the session that made it.

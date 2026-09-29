@@ -1,0 +1,91 @@
+# TC-WORLD-095, container default round (docs/DESIGN-M3.md v0.24 §26 M3-D step 5.2), 2026-09-30 04:24 to 04:34 (UTC+8)
+# Code: branch m3d/runtime-light at 2546b512f5 (same code as 6d8e77157e). L = mktemp -d under $TMPDIR, round directory L/r1.
+#
+# Step 1: ./gradlew :protocol:publishToMavenLocal :server-app:lightFixtureArgs (the flags of docs/TEST.md section 3), BUILD SUCCESSFUL,
+#   light-fixture.args one line starting with -cp. Started 04:24:49 at 84,583 MB available, lowest while it ran 84,583 MB (watchdog every 10 s).
+# Image: synaxis-mc-client:dev was not on the machine any more (docker image ls empty for it, build cache 0 B; removed before this
+#   round, by whom is not recorded). Rebuilt under the same tag, nothing else: docker build --build-arg APT_MIRROR=http://mirrors.ustc.edu.cn/ubuntu-ports
+#   -t synaxis-mc-client:dev client-fabric/gametest-env, 55 s, 894 MB, image d27936ea29d8, after the container gate at 04:25:05 (memory free 44%, no
+#   Gradle or java of another worktree). The volume synaxis-mc-gradle was there and is reused.
+# Step 2: java @server-app/build/light-fixture.args -Xms1G -Xmx1G -XX:-AlwaysPreTouch ...LightShardFixture 25740 L/r1, pid 63602,
+#   'light fixture ready' after 3 s; map light-e1974fd47fdb-p776 (33x33 chunks) verified in 2 ms, L/r1/overlay created.
+# Step 3: jcmd 63602 JFR.start name=light settings=profile 'method-trace=...' 'jdk.MethodTrace#threshold=0ms' 'jdk.ExecutionSample#period=1ms':
+#   63602:
+#   Started recording 1. No limit specified, using maxsize=250MB as default.
+#   Use jcmd 63602 JFR.dump name=light filename=FILEPATH to copy recording data to file.
+# Step 4, container gate (gate.sh: df, memory_pressure, sysctl vm.swapusage, vm.loadavg, ps + lsof -d cwd for Gradle/java outside this worktree):
+#   2026-09-30 04:26:40 disk_avail=85653MB mem_free=35% swap_free=946.56MB load1=7.47 others=[] disk_gate=1 container_gate=1
+#   open at the first reading; the only java was the fixture (cwd this worktree).
+# Step 5: SYNAXIS_LIGHT_SERVER=host.docker.internal:25740 SYNAXIS_LIGHT_MODE=default OUT=L/r1/out client-fabric/gametest-env/run.sh
+#   started 04:26:49, login 04:27:34, disconnected 04:31:58; Gradle in the container 'BUILD FAILED in 5m 7s', exit 1:
+#   hs_err_pid204.log 'Problematic frame: C [libopenal.so+0x9c670]' (the known libopenal crash at exit). Disk while it ran: lowest 86,074 MB.
+#   report.txt (not judged in the light round): R1 PASS, R2 to R8 'not reached: SYNAXIS_GAMETEST_SERVER not set', as §26 step 4 says.
+
+## light-report.txt (verbatim)
+# mode default
+L1 PASS 64 chunks 1024 sections nibbles=8388608 diffs=0 layers={sky:zero=243, block:zero=917, sky:data=781, block:data=107}
+L2 PASS center 264, 64, 258 t0=0 client_packets={} fixture_sent={} 3x3 nibbles=1179648 diffs=0 layers={sky:zero=35, block:zero=128, sky:data=109, block:data=16}
+L3 PASS edge 271, 64, 262 t0=0 client_packets={} fixture_sent={} 3x3 nibbles=1179648 diffs=0 layers={sky:zero=35, block:zero=128, sky:data=109, block:data=16}
+L4 PASS corner 271, 64, 271 t0=0 client_packets={} fixture_sent={} 3x3 nibbles=1179648 diffs=0 layers={sky:zero=35, block:zero=128, sky:data=109, block:data=16}
+L5 PASS cave 262, 30, 262 t0=0 client_packets={} fixture_sent={} 3x3 nibbles=1179648 diffs=0 layers={sky:zero=35, block:zero=128, sky:data=109, block:data=16}
+L6 PASS own-center 261, 64, 267 t0=0 client_packets={} fixture_sent={} 3x3 nibbles=1179648 diffs=0 layers={sky:zero=35, block:zero=128, sky:data=109, block:data=16}
+L7 PASS own-edge 256, 64, 260 t0=0 client_packets={} fixture_sent={} 3x3 nibbles=1179648 diffs=0 layers={sky:zero=35, block:zero=128, sky:data=109, block:data=16}
+L8 PASS 480, 64, 264 packet at tick 0 client_packets={29,15=1, 29,16=1, 29,17=1} 3x3 nibbles=393216 diffs=0 layers={sky:zero=11, block:zero=44, sky:data=37, block:data=4}
+L9 PASS seam-source packets {29,11=1, 29,12=1} (28..29,10..13) nibbles=1048576 diffs=0 layers={sky:zero=30, block:zero=116, sky:data=98, block:data=12} 200 ticks later diffs=0;  3x3 diffs=0; seam-place packets {29,10=1, 29,11=1, 29,12=1} (28..29,10..13) nibbles=1048576 diffs=0 layers={sky:zero=30, block:zero=116, sky:data=98, block:data=12} 200 ticks later diffs=0;  3x3 diffs=0; seam-break packets {29,10=1, 29,11=1, 29,12=1} (28..29,10..13) nibbles=1048576 diffs=0 layers={sky:zero=30, block:zero=116, sky:data=98, block:data=12} 200 ticks later diffs=0;  3x3 diffs=0; 
+L10 PASS 88, 64, 88 left (3..7,3..7)=true; packets {4,4=1, 4,5=1, 4,6=1, 5,4=1, 5,5=1, 5,6=1, 6,4=1, 6,5=1, 6,6=1} (4..6,4..6) nibbles=1179648 diffs=0 layers={sky:zero=34, block:zero=131, sky:data=110, block:data=13} 200 ticks later diffs=0 3x3 diffs=0 back=true
+L11 PASS 16 changes [center:0/1179648, edge:0/1179648, corner:0/1179648, cave:0/1179648, own-center:0/1179648, own-edge:0/1179648, ring-edge:0/393216, seam-source:0/393216, seam-place:0/786432, seam-break:0/786432, fresh:0/1179648, shaft-cap:0/1179648, top-place:0/1179648, top-break:0/1179648, bottom:0/1179648, flicker:0/1179648] nibbles=16515072 diffs=0 layers={sky:zero=477, block:zero=1796, sky:data=1539, block:data=220}
+# stats RelightStats[relights=17, skipped=9, lightMaterialized=19, lightPackets=20, lightSections=320, queueMsP99=0.0, relightMsP99=0.0, installMsMax=0.002083, pending=0] install_ms_max_seen=4.901375 queue_ms_p99_max_seen=135.672334 relight_ms_p99_max_seen=33.776667
+
+## Steps 6 to 12 against the report
+# 6  L1: 64 chunks 1024 sections, 8,388,608 nibbles, diffs=0.                                                        PASS
+# 7  L2 to L7: t0=0 each, no failure reason, client_packets={} fixture_sent={}, 3x3 diffs=0 (1,179,648 nibbles each).     PASS
+# 8  L8: packets {29,15=1, 29,16=1, 29,17=1} at tick 0, nothing else; 3x3 diffs=0.                                        PASS
+# 9  L9: seam-source {29,11=1, 29,12=1} (29,13 unchanged, 0); seam-place and seam-break {29,10..12=1 each}, 28,x none; diffs 0 now and 200 ticks later.  PASS
+# 10 L10: left (3..7,3..7)=true; one packet for each of (4..6,4..6); diffs 0 now and 200 ticks later; back=true.          PASS
+# 11 L11: 16 changes, 16,515,072 nibbles, diffs=0.                                                                        PASS
+# 12 # stats: install_ms_max_seen=4.901375 (<= 5), queue_ms_p99_max_seen=135.672334 (< 250), relight_ms_p99_max_seen=33.776667.  PASS
+#    vm.loadavg right after the run: 10.99 11.80 15.43. relights=17: 15 single changes plus the flicker (five changes of one block
+#    within 5 ticks) as two recomputations, the first of which had its 9 targets skipped (skipped=9).
+#    lightPackets=20 = L8 3 + L9 2+3+3 + L10 9; lightSections=320 = 20 full packets x 16.
+
+## Per tick at the torch cell (light-samples.csv, sky/block; t0 = the first tick the client reads the torch)
+center     t0+0=15/1 t0+1=15/14 t0+2=15/14 | 19 points, ticks t0..t0+200, points whose t0+1 value is not the final: 0, points changing after t0+1: 0
+edge       t0+0=15/9 t0+1=15/14 t0+2=15/14 | 19 points, ticks t0..t0+200, points whose t0+1 value is not the final: 0, points changing after t0+1: 0
+corner     t0+0=15/5 t0+1=15/14 t0+2=15/14 | 19 points, ticks t0..t0+200, points whose t0+1 value is not the final: 0, points changing after t0+1: 0
+cave       t0+0=0/9 t0+1=0/14 t0+2=0/14 | 19 points, ticks t0..t0+200, points whose t0+1 value is not the final: 0, points changing after t0+1: 0
+own-center t0+0=15/5 t0+1=15/14 t0+2=15/14 | 19 points, ticks t0..t0+200, points whose t0+1 value is not the final: 0, points changing after t0+1: 0
+own-edge   t0+0=15/4 t0+1=15/14 t0+2=15/14 | 19 points, ticks t0..t0+200, points whose t0+1 value is not the final: 0, points changing after t0+1: 0
+# The t0 values are the light before the torch (earlier torches and the glowstone of the map); 14 at t0+1 and the same to t0+200 at all 19 points.
+ring-edge  tick -1=15/0 tick 0=15/0 tick 1=15/13 tick 2=15/13 tick 3=15/13 
+# ring-edge: 12 of 15 points change, each once, at tick 1 (packet at tick 0), none more than once: yes
+# light-samples.csv (773,768 B) is not kept in the repository.
+
+## Step 13, JFR: jcmd 63602 JFR.dump name=light filename=L/r1/light.jfr (5.0 MB, not kept); JDK 25 jfr print --json, grouped with jq
+# jdk.MethodTrace by thread (trailing digits as N) and method:
+#   6944 Syn-TickScheduler SynxRelight.installPhase
+#    407 light-truth LightEngine.computeArea
+#     17 synaxis-relight-N LightEngine.computeArea
+#     17 synaxis-relight-N SynxRelight.compute
+#     17 synaxis-relight-N SynxRelight.snapshot
+#   Syn-Tick*: computeArea 0, snapshot 0, compute 0. synaxis-relight-*: computeArea 17 >= relights 17. installPhase only on Syn-TickScheduler.
+#   light-truth is the fixture's test-channel thread (the server's result of each comparison), not part of the shard.
+# jdk.ExecutionSample (1 ms, stack depth 64) whose stack holds computeArea, snapshot or compute, by thread:
+#   2423 light-truth LightEngine.computeArea
+#    133 synaxis-relight-N LightEngine.computeArea+SynxRelight.compute
+#      8 synaxis-relight-N SynxRelight.compute
+#      3 synaxis-relight-N SynxRelight.snapshot
+#   Syn-Tick*: 0 samples with the three methods (Syn-TickScheduler 6,023 and Syn-Tick-N 540 samples in all); synaxis-relight-*: 144 > 0. Total 10,627 samples.
+# installPhase durations (MethodTrace, 6,944 calls, one a tick): mean 0.0074 ms, 41 over 0.1 ms, 8 over 1 ms; the largest five:
+#   1.292 ms at 2026-09-30T04:31:26.317229833+08:00
+#   1.647 ms at 2026-09-30T04:28:34.368704625+08:00
+#   3.251 ms at 2026-09-30T04:27:07.866431542+08:00
+#   3.603 ms at 2026-09-30T04:28:46.367223167+08:00
+#   4.905 ms at 2026-09-30T04:28:56.866355125+08:00
+#   The three over 3 ms fall on ticks with nothing to install (the 17 computations ended at 04:27:55, 04:28:14, 04:28:32, 04:28:51, 04:29:09, ...;
+#   none within 5 s before 04:28:56.866, and 04:27:07 is before the client logged in): wall time of calls with nothing to install; what held them is not recorded (load1 7 to 11).
+#   The largest installPhase within 300 ms after each computation: 0.119 to 1.292 ms. install_ms_max_seen 4.901375 is the 04:28:56 call.
+# computeArea on synaxis-relight-*: 8.20 to 30.05 ms, median 10.99 ms (the 30 ms one is the first, 04:27:55).
+
+## Step 14: kill 63602 at 04:34:11, exited within 2 s ('Relight drain: 0 ms, left=0', 'Overlay final flush: chunks=0 ... by=tick',
+#   'synaxis server stopped successfully'). Port 25740 free, no container left (docker ps -a). L/r1 deleted at the end of the round (00-index).
+# Verdict TC-WORLD-095: PASS (steps 5 to 13). P1① per-nibble half: holds, 0 differences in 8,388,608 + 16,515,072 nibbles.

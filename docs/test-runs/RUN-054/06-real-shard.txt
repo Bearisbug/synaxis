@@ -1,0 +1,46 @@
+# TC-WORLD-097, real process (docs/DESIGN-M3.md v0.24 §26 M3-D step 5.4), 2026-09-30 04:45 to 04:48 (UTC+8). Round directory L/r3.
+#
+# Step 1: ./gradlew :server-app:installDist :baker:installDist, BUILD SUCCESSFUL; started 04:45:39 at 86,314 MB available, lowest 86,314 MB.
+#   baker bake --map-id synth --source generator:synthetic:7 --out L/r3/maps --logs L/r3/bakelogs --threads 4: exit 0, 35.49 s wall,
+#   123.96 s user, maximum resident set 2,041,708,544 B; L/r3/maps/synth/synth-09b42ebb5dc6-p776 exists (204 MB). Reading before the bake:
+#   2026-09-30 04:45:55 disk_avail=86306MB mem_free=33% swap_free=722.12MB load1=13.39 others=[] disk_gate=1 container_gate=1
+# Step 2: in the empty directory L/r3/shard: JAVA_OPTS="-Xms1G -Xmx1G -XX:-AlwaysPreTouch" SERVER_APP_OPTS="-Dsynaxis.app.port=25741
+#   -Dsynaxis.app.auth=offline -Dsynaxis.app.metrics.bind=127.0.0.1:19741 -Dsynaxis.connection-gate.trusted-networks=127.0.0.0/8
+#   -Dsynaxis.app.log=stdout -Dsynaxis.map.root=L/r3/maps/synth -Dsynaxis.map.build=synth-09b42ebb5dc6-p776 -Dsynaxis.overlay.flush-interval-s=60
+#   -Dsynaxis.chunk-unload-grace-ticks=-1" server-app/build/install/server-app/bin/server-shard, pid 71986 (the script execs java; the JVM
+#   line carries -Xms1G -Xmx1G -XX:-AlwaysPreTouch after the script's defaults), listening after 5 s; memory store, no --migrate-only.
+# Step 3: container gate. The first reading counted the shard itself (its cwd shows as /private/var/folders/..., which the gate script
+#   did not match as this round's directory); fixed the match and read again:
+#   2026-09-30 04:46:58 disk_avail=86134MB mem_free=34% swap_free=448.31MB load1=9.23 others=[71986:L/r3/shard] disk_gate=1 container_gate=0
+#   (own shard 71986 excluded) 2026-09-30 04:47:06 disk_avail=86127MB mem_free=36% swap_free=456.31MB load1=8.81 others=[] disk_gate=1 container_gate=1
+#   SYNAXIS_LIGHT_SERVER=host.docker.internal:25741 SYNAXIS_LIGHT_MODE=real OUT=L/r3/out client-fabric/gametest-env/run.sh & at 04:47:13;
+#   the host looked for L/r3/out/light-ready every second: found after 47 s (04:48:00).
+# Step 4: kill -TERM 71986 at 04:48:00; the shard exited within 1 s, the container at 04:48:06 ('BUILD FAILED in 47s', exit 1, hs_err libopenal.so+0x9c670).
+
+## Shard log from the login (verbatim)
+04:47:35.083 [virtual-74] INFO  i.g.b.s.network.ConnectionManager - Login success: username=Player0 connection_id=2d97368a-594e-4e45-83f0-1f6034521dcb remote_address=/127.0.0.1:65509
+04:47:35.330 [Syn-TickScheduler] WARN  i.g.b.s.app.PluginChannelRouter - Dropped a payload on an unregistered channel: connection_id=2d97368a-594e-4e45-83f0-1f6034521dcb channel=minecraft:brand bytes=7 (1 payloads since the last report)
+04:48:00.545 [Thread-2] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+04:48:00.580 [Syn-Store-Write] INFO  i.g.b.synaxis.synx.SynxRelight - Relight drain: 0 ms, left=0
+04:48:00.672 [Syn-TickScheduler] INFO  i.g.b.synaxis.synx.OverlayStore - Overlay final flush: chunks=1 bytes=1730 fsync_ms=8 left=0 by=tick
+04:48:00.673 [Thread-2] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=2d97368a-594e-4e45-83f0-1f6034521dcb identifier=Player0 reason=synaxis:server-stopping
+04:48:00.673 [Thread-2] INFO  i.g.b.s.n.player.PlayerConnection - Connection closed: connection_id=2d97368a-594e-4e45-83f0-1f6034521dcb identifier=Player0
+04:48:00.844 [Thread-2] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+04:48:00.845 [Thread-2] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+
+## Event log L/r3/shard/logs/events-local-20260930.jsonl: shard_started, session_entered_configuration, client_verified, chunk_stream_stats, shutdown_saved;
+## the one chunk_stream_stats (60 s task, 04:47:51, before the stop):
+{"ts":"2026-09-29T20:47:51.281556Z","event":"chunk_stream_stats","handle_sent":729,"overlay_sent":0,"bytes_sent":1076077,"failed":0,"loaded":729,"overlay_resident":1,"overlay_evicted":0,"evict_failed":0,"flush_appended":0,"flush_fsyncs":0,"flush_lag_s_max":0.0,"write_phase_ms_max":2.95725,"relight_queue_p99_ms":93.59275,"relight_ms_p99":70.352459,"relights":1,"relight_skipped":0,"light_materialized":0,"light_packets":0,"light_sections":0,"relight_install_ms_max":1.310958,"relight_pending":0,"unloaded":0,"section_cache_bytes":295936,"flag_conflicts":0}
+
+## light-report.txt (verbatim)
+# mode real
+L1 PASS survival dug Block{minecraft:grass_block}[snowy=false] at 2041, 73, 2040 t0=18 light_packets=0
+L2 PASS marker /out/light-ready written, disconnected by the shard's stop after 581 ms
+
+# Step 4: 'Overlay final flush: chunks=1 bytes=1730 fsync_ms=8 left=0 by=tick', n = 1 >= 1, after 'Relight drain: 0 ms, left=0'.   PASS
+#   Before the stop the change was neither flushed (flush_appended=0 at 04:47:51; the periodic flush is due 59.75 s after the change) nor
+#   unloaded (grace -1): the final flush is what wrote it. L/r3/shard/overlay/synth-09b42ebb5dc6-p776/seg.0.synx was written.
+# Step 5: '# mode real'; L1 PASS (survival, grass block east of the spawn dug, t0=18, light_packets=0); L2 PASS (marker written,
+#   disconnected by the stop after 581 ms).                                                                                    PASS
+# Step 7: L/r3 deleted at the end (00-index). Ports 25741 and 19741 free, no container left.
+# Verdict TC-WORLD-097: PASS. Closes the §28.2 row 'the final flush of a real ShardMain process only verified at chunks=0'.

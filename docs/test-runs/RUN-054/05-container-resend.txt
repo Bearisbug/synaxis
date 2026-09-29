@@ -1,0 +1,87 @@
+# TC-WORLD-096, container fallback round (docs/DESIGN-M3.md v0.24 §26 M3-D step 5.3), 2026-09-30 04:34 to 04:46 (UTC+8), and the client-side
+# counter proof of the review (fallback on, client judging in mode default). Same code, image, volume and L as 04-container-default.txt; no JFR.
+#
+## Run A, the case: fixture -Dsynaxis.relight.resend-light=true, client SYNAXIS_LIGHT_MODE=resend (round directory L/r2)
+# java @server-app/build/light-fixture.args -Xms1G -Xmx1G -XX:-AlwaysPreTouch -Dsynaxis.relight.resend-light=true ...LightShardFixture 25740 L/r2,
+#   pid 67108, ready after 3 s. Container gate:
+#   2026-09-30 04:34:23 disk_avail=86398MB mem_free=34% swap_free=673.06MB load1=9.39 others=[] disk_gate=1 container_gate=1
+# run.sh started 04:34:29, login 04:34:50, disconnected 04:39:16; 'BUILD FAILED in 4m 46s', exit 1, hs_err libopenal.so+0x9c670.
+#   Disk while it ran: lowest 85,845 MB. kill 67108 at 04:40:11, exited within 2 s.
+
+### light-report.txt (verbatim)
+# mode resend
+L1 PASS 64 chunks 1024 sections nibbles=8388608 diffs=0 layers={sky:zero=243, block:zero=917, sky:data=781, block:data=107}
+L2 PASS center 264, 64, 258 t0=0 client_packets={15,15=1, 15,16=1, 16,15=1, 16,16=1} fixture_sent={15,15=1, 15,16=1, 16,15=1, 16,16=1} 3x3 nibbles=1179648 diffs=0 layers={sky:zero=35, block:zero=128, sky:data=109, block:data=16}
+L3 PASS edge 271, 64, 262 t0=0 client_packets={16,15=1, 16,16=1, 17,16=1} fixture_sent={16,15=1, 16,16=1, 17,16=1} 3x3 nibbles=1179648 diffs=0 layers={sky:zero=35, block:zero=128, sky:data=109, block:data=16}
+L4 PASS corner 271, 64, 271 t0=0 client_packets={16,16=1, 16,17=1, 17,16=1, 17,17=1} fixture_sent={16,16=1, 16,17=1, 17,16=1, 17,17=1} 3x3 nibbles=1179648 diffs=0 layers={sky:zero=35, block:zero=128, sky:data=109, block:data=16}
+L5 PASS cave 262, 30, 262 t0=0 client_packets={16,16=1} fixture_sent={16,16=1} 3x3 nibbles=1179648 diffs=0 layers={sky:zero=35, block:zero=128, sky:data=109, block:data=16}
+L6 PASS own-center 261, 64, 267 t0=0 client_packets={15,16=1, 16,16=1} fixture_sent={15,16=1, 16,16=1} 3x3 nibbles=1179648 diffs=0 layers={sky:zero=35, block:zero=128, sky:data=109, block:data=16}
+L7 PASS own-edge 256, 64, 260 t0=0 client_packets={15,15=1, 15,16=1, 16,15=1, 16,16=1} fixture_sent={15,15=1, 15,16=1, 16,15=1, 16,16=1} 3x3 nibbles=1179648 diffs=0 layers={sky:zero=35, block:zero=128, sky:data=109, block:data=16}
+L8 PASS 480, 64, 264 packet at tick 2 client_packets={29,15=1, 29,16=1, 29,17=1} 3x3 nibbles=393216 diffs=0 layers={sky:zero=11, block:zero=44, sky:data=37, block:data=4}
+L9 PASS seam-source packets {29,11=1, 29,12=1} (28..29,10..13) nibbles=1048576 diffs=0 layers={sky:zero=30, block:zero=116, sky:data=98, block:data=12} 200 ticks later diffs=0;  3x3 diffs=0; seam-place packets {29,10=1, 29,11=1, 29,12=1} (28..29,10..13) nibbles=1048576 diffs=0 layers={sky:zero=30, block:zero=116, sky:data=98, block:data=12} 200 ticks later diffs=0;  3x3 diffs=0; seam-break packets {29,10=1, 29,11=1, 29,12=1} (28..29,10..13) nibbles=1048576 diffs=0 layers={sky:zero=30, block:zero=116, sky:data=98, block:data=12} 200 ticks later diffs=0;  3x3 diffs=0; 
+L10 PASS 88, 64, 88 left (3..7,3..7)=true; packets {4,4=1, 4,5=1, 4,6=1, 5,4=1, 5,5=1, 5,6=1, 6,4=1, 6,5=1, 6,6=1} (4..6,4..6) nibbles=1179648 diffs=0 layers={sky:zero=34, block:zero=131, sky:data=110, block:data=13} 200 ticks later diffs=0 3x3 diffs=0 back=true
+L11 PASS 16 changes [center:0/1179648, edge:0/1179648, corner:0/1179648, cave:0/1179648, own-center:0/1179648, own-edge:0/1179648, ring-edge:0/393216, seam-source:0/393216, seam-place:0/786432, seam-break:0/786432, fresh:0/1179648, shaft-cap:0/1179648, top-place:0/1179648, top-break:0/1179648, bottom:0/1179648, flicker:0/1179648] nibbles=16515072 diffs=0 layers={sky:zero=477, block:zero=1796, sky:data=1539, block:data=220}
+# stats RelightStats[relights=17, skipped=9, lightMaterialized=19, lightPackets=46, lightSections=352, queueMsP99=0.0, relightMsP99=0.0, installMsMax=0.002875, pending=0] install_ms_max_seen=0.986541 queue_ms_p99_max_seen=99.79125 relight_ms_p99_max_seen=23.736333
+
+### Steps 2 to 4 against the report
+# 2 '# mode resend', L1 to L11 PASS, no L0.                                                                              PASS
+# 3 L2 to L7: client_packets equal fixture_sent in each (the client's count per chunk is the fixture's); every packet partial (no
+#   'got a full light packet'), one per target whose light changed, none outside the 3x3 (the client judges these per target
+#   against the truth before and after); 19 points at the final value at t0 or t0+1 and unchanged to t0+200:                 PASS
+#   center     t0+0=15/14 t0+1=15/14 t0+2=15/14 | 19 points, t0..t0+200, t0+1 not final: 0, changes after t0+1: 0
+#   edge       t0+0=15/14 t0+1=15/14 t0+2=15/14 | 19 points, t0..t0+200, t0+1 not final: 0, changes after t0+1: 0
+#   corner     t0+0=15/14 t0+1=15/14 t0+2=15/14 | 19 points, t0..t0+200, t0+1 not final: 0, changes after t0+1: 0
+#   cave       t0+0=0/14 t0+1=0/14 t0+2=0/14 | 19 points, t0..t0+200, t0+1 not final: 0, changes after t0+1: 0
+#   own-center t0+0=15/5 t0+1=15/14 t0+2=15/14 | 19 points, t0..t0+200, t0+1 not final: 0, changes after t0+1: 0
+#   own-edge   t0+0=15/4 t0+1=15/14 t0+2=15/14 | 19 points, t0..t0+200, t0+1 not final: 0, changes after t0+1: 0
+#   Partial packets per change: center 4, edge 3, corner 4, cave 1, own-center 2, own-edge 4 (18).
+# 4 L1 (64 chunks, diffs 0), L8 (packets 29,15..17 one each, at tick 2; the 12 points that change do so once, at tick 2), L9, L10, L11 (16 changes, diffs 0): as in TC-WORLD-095.  PASS
+# # stats: install_ms_max_seen=0.986541, queue_ms_p99_max_seen=99.79125 (< 250). lightPackets 46 against 20 in the default round,
+#   lightSections 352 against 320: the fallback's 26 partial packets carry 32 sections (18 in L2 to L7, 8 in the five fixed-point changes of L11).
+# Verdict TC-WORLD-096: PASS.
+
+## Run B, counter proof: fixture -Dsynaxis.relight.resend-light=true, client SYNAXIS_LIGHT_MODE=default (fresh round directory L/r2c)
+# Expected: the client judging as in the default mode sees the fallback's packets and fails L2 to L7 on 'light packets: client {...}'.
+# Fixture pid 69316, ready after 4 s. Container gate:
+#   2026-09-30 04:40:23 disk_avail=85519MB mem_free=34% swap_free=730.12MB load1=7.88 others=[] disk_gate=1 container_gate=1
+# run.sh started 04:40:29, login 04:40:53, disconnected 04:45:19; 'BUILD FAILED in 4m 49s', exit 1, hs_err libopenal.so+0x9c670.
+#   kill 69316 at 04:45:32, exited within 2 s.
+
+### light-report.txt (verbatim)
+# mode default
+L1 PASS 64 chunks 1024 sections nibbles=8388608 diffs=0 layers={sky:zero=243, block:zero=917, sky:data=781, block:data=107}
+L2 FAIL center 264, 64, 258 t0=0 light packets: client {15,15=1, 15,16=1, 16,15=1, 16,16=1} fixture {15,15=1, 15,16=1, 16,15=1, 16,16=1} client_packets={15,15=1, 15,16=1, 16,15=1, 16,16=1} fixture_sent={15,15=1, 15,16=1, 16,15=1, 16,16=1} 3x3 nibbles=1179648 diffs=0 layers={sky:zero=35, block:zero=128, sky:data=109, block:data=16}
+L3 FAIL edge 271, 64, 262 t0=0 light packets: client {16,15=1, 16,16=1, 17,16=1} fixture {16,15=1, 16,16=1, 17,16=1} client_packets={16,15=1, 16,16=1, 17,16=1} fixture_sent={16,15=1, 16,16=1, 17,16=1} 3x3 nibbles=1179648 diffs=0 layers={sky:zero=35, block:zero=128, sky:data=109, block:data=16}
+L4 FAIL corner 271, 64, 271 t0=0 light packets: client {16,16=1, 16,17=1, 17,16=1, 17,17=1} fixture {16,16=1, 16,17=1, 17,16=1, 17,17=1} client_packets={16,16=1, 16,17=1, 17,16=1, 17,17=1} fixture_sent={16,16=1, 16,17=1, 17,16=1, 17,17=1} 3x3 nibbles=1179648 diffs=0 layers={sky:zero=35, block:zero=128, sky:data=109, block:data=16}
+L5 FAIL cave 262, 30, 262 t0=0 light packets: client {16,16=1} fixture {16,16=1} client_packets={16,16=1} fixture_sent={16,16=1} 3x3 nibbles=1179648 diffs=0 layers={sky:zero=35, block:zero=128, sky:data=109, block:data=16}
+L6 FAIL own-center 261, 64, 267 t0=0 light packets: client {15,16=1, 16,16=1} fixture {15,16=1, 16,16=1} client_packets={15,16=1, 16,16=1} fixture_sent={15,16=1, 16,16=1} 3x3 nibbles=1179648 diffs=0 layers={sky:zero=35, block:zero=128, sky:data=109, block:data=16}
+L7 FAIL own-edge 256, 64, 260 t0=0 light packets: client {15,15=1, 15,16=1, 16,15=1, 16,16=1} fixture {15,15=1, 15,16=1, 16,15=1, 16,16=1} client_packets={15,15=1, 15,16=1, 16,15=1, 16,16=1} fixture_sent={15,15=1, 15,16=1, 16,15=1, 16,16=1} 3x3 nibbles=1179648 diffs=0 layers={sky:zero=35, block:zero=128, sky:data=109, block:data=16}
+L8 PASS 480, 64, 264 packet at tick 1 client_packets={29,15=1, 29,16=1, 29,17=1} 3x3 nibbles=393216 diffs=0 layers={sky:zero=11, block:zero=44, sky:data=37, block:data=4}
+L9 PASS seam-source packets {29,11=1, 29,12=1} (28..29,10..13) nibbles=1048576 diffs=0 layers={sky:zero=30, block:zero=116, sky:data=98, block:data=12} 200 ticks later diffs=0;  3x3 diffs=0; seam-place packets {29,10=1, 29,11=1, 29,12=1} (28..29,10..13) nibbles=1048576 diffs=0 layers={sky:zero=30, block:zero=116, sky:data=98, block:data=12} 200 ticks later diffs=0;  3x3 diffs=0; seam-break packets {29,10=1, 29,11=1, 29,12=1} (28..29,10..13) nibbles=1048576 diffs=0 layers={sky:zero=30, block:zero=116, sky:data=98, block:data=12} 200 ticks later diffs=0;  3x3 diffs=0; 
+L10 PASS 88, 64, 88 left (3..7,3..7)=true; packets {4,4=1, 4,5=1, 4,6=1, 5,4=1, 5,5=1, 5,6=1, 6,4=1, 6,5=1, 6,6=1} (4..6,4..6) nibbles=1179648 diffs=0 layers={sky:zero=34, block:zero=131, sky:data=110, block:data=13} 200 ticks later diffs=0 3x3 diffs=0 back=true
+L11 PASS 16 changes [center:0/1179648, edge:0/1179648, corner:0/1179648, cave:0/1179648, own-center:0/1179648, own-edge:0/1179648, ring-edge:0/393216, seam-source:0/393216, seam-place:0/786432, seam-break:0/786432, fresh:0/1179648, shaft-cap:0/1179648, top-place:0/1179648, top-break:0/1179648, bottom:0/1179648, flicker:0/1179648] nibbles=16515072 diffs=0 layers={sky:zero=477, block:zero=1796, sky:data=1539, block:data=220}
+# stats RelightStats[relights=17, skipped=9, lightMaterialized=19, lightPackets=46, lightSections=352, queueMsP99=0.0, relightMsP99=0.0, installMsMax=0.001, pending=0] install_ms_max_seen=1.053417 queue_ms_p99_max_seen=141.738667 relight_ms_p99_max_seen=40.577459
+
+# Result: L2 to L7 FAIL, each with 'light packets: client {..} fixture {..}' as its only reason (t0=0, final values and 3x3 diffs 0
+#   are fine); L1 and L8 to L11 PASS. The default-mode check of the client catches packets it must not get. Counter proof as expected.
+
+## Fallback downlink bytes (docs/DESIGN-M3.md §15 光照下行)
+# The fixture counts packets and sections per chunk, not bytes. Bytes come from where §15 puts the measurement: the multi-observer
+# integration test frames every UpdateLightPacket with threshold 256 at level 6 (TC-WORLD-093 step 1, lines copied in 03-gates.txt,
+# viewers A, B and D together, on the JUnit test map):
+#   relight fallback edge torch at 56 40 62: 6 partial packets 635 B, 12 full packets 1375 B
+#   relight fallback center torch at 56 40 56: 8 partial packets 1002 B, 0 full packets 0 B
+#   relight fallback corner torch at 63 40 48: 8 partial packets 1744 B, 0 full packets 0 B
+#   relight fallback cave torch at 52 30 52: 2 partial packets 848 B, 0 full packets 0 B
+#   Per partial packet: edge 105.8 B, center 125.3 B, corner 218.0 B, cave 424.0 B; per full packet (edge round only) 114.6 B.
+# The container adds the count per change for one self-computing viewer: 1 to 4 partial packets (18 over 6 changes); the round's 26
+# fallback packets carry 32 sections, 1.23 a packet.
+
+## Draft for the §15 光照下行 row (the closing stage decides the wording; figures above)
+实测（RUN-054）：退路包（只含变了的 section）的线上字节由多观察者集成测试按压缩阈值 256、级别 6 成帧量得，四个放火把点每包平均
+edge 105.8 B、center 125.3 B、corner 218.0 B、cave 424.0 B（L_max 取 424 B）；完整光照包只在 edge 一轮量到，每包 114.6 B（平地）。
+容器退路轮里一名能自算的客户端每次改动收 1～4 个退路包（6 次改动共 18 个；全轮 26 个退路包共 32 个 section，每包平均 1.23 个）。折算（推算，不是实测）：
+每名观察者每次改动的附加下行按容器包数乘同类火把点的每包字节约 0.3～0.9 KB，上界 9 × 424 B = 3.8 KB；按 §2「每名玩家视野里
+≤ 1 次/s」折成每人附加下行 ≤ 3.8 KB/s，高于近圈步行档 13.9 KB/s 的 20%（2.78 KB/s），四个实测点的估值 0.3～0.9 KB/s 低于它；
+500 人档全开上界约 15.3 Mbit/s，远低于 800 Mbit/s 重估线。100 tick 内连续改动按完整包算的上界 9 × 114.6 B ≈ 1.0 KB（只有平地样本）。
+P1① 逐 nibble 成立（TC-WORLD-095 差异 0），退路保持关闭，上界超 20% 这一条不触发「开退路之前回到用户」。

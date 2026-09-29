@@ -1,0 +1,172 @@
+# RUN-052: JUnit steps and counterproofs on 870054e838, each counterproof a temporary change of the file(s) shown, one Gradle run,
+# then git checkout of the file(s). Every Gradle command also has --max-workers=4 --no-daemon
+# --init-script gradle/init/aliyun-mirror.init.gradle.kts; the JUnit XML of the module was removed before each run.
+# 'restored' is git status --porcelain after the checkout.
+
+## TC-GAME-073 step 1, TC-GAME-074 step 1, TC-PROD-232 step 1 (03:54:04, the last run of the round)
+# ./gradlew :server-app:test --tests io.github.bearisbug.synaxis.app.HandshakeIntegrationTest --rerun
+# exit 0; BUILD SUCCESSFUL in 8s
+  HandshakeIntegrationTest tests="25" skipped="0" failures="0" errors="0"
+  anAnswerSentUpstreamIsAProtocolError(Env) 0.98 s
+  theLoginPhaseKicksAClientThatDoesNotKnowTheChannel(Env) 0.024 s
+  anUnknownMessageIdIsDroppedAndTheConnectionStays(Env) 0.015 s
+  aHelloThatLosesToTheTimeoutChangesNothing(Env) 0.318 s
+  aMismatchedSchemaKicksWithProtocolVersionMismatch(Env) 0.012 s
+  aRejectedConnectionIsToldTheMatchIsUnavailableRatherThanAnInternalError(Env) 0.113 s
+  theLoginPhaseKicksAClientThatNeverAnswers(Env) 0.319 s
+  aDisconnectDuringTheWaitWakesTheConfigurationThreadAtOnce(Env) 0.009 s
+  theLoginPhaseAsksForTheHelloAndLetsAModdedClientThrough(Env) 0.008 s
+  theWaitingThreadIsTheOneThatKicksAMismatchedSchema(Env) 0.007 s
+  aMalformedPayloadIsAProtocolError(Env) 0.007 s
+  aSilentConnectionIsKickedOnceTheBudgetIsSpent(Env) 0.319 s
+  theConfigurationPhaseAsksNothingDuringLogin(Env) 0.011 s
+  theConfigurationPhaseIsTheDefault() 0.001 s
+  theCoreModeDoesNotWaitButStillAnswersAHelloThatArrives(Env) 0.011 s
+  theCoreModeStillRefusesAMismatchedSchema(Env) 0.008 s
+  aHelloAtTheEndOfTheBudgetIsEitherAnsweredOrKicked(Env) 0.41 s
+  aHelloThatBeatsTheWaiterIsStillHandedOver(Env) 0.009 s
+  anUnknownPhaseIsARefusedLaunchArgument() 0.003 s
+  theAnswerIsQueuedBeforeFinishConfigurationHoweverLateTheTickThreadIs(Env) 0.109 s
+  aConnectionThatLeavesBeforeItIsAPlayerIsReclaimed(Env) 0.009 s
+  theLoginPhaseKicksAMismatchedSchema(Env) 0.007 s
+  aVerifiedConnectionReachesTheAdmissionProviderWithWhatItReported(Env) 0.072 s
+  aMatchingHelloIsAnsweredAndWakesTheWaitingConfigurationThread(Env) 0.008 s
+  aSecondHelloOnTheSameConnectionIsAProtocolError(Env) 0.009 s
+# The first run of the round (03:24:20, before any counterproof) gave the same: tests="25" skipped="0" failures="0" errors="0".
+
+## TC-GAME-073 step 2: HandshakeGate.java of 6d14db9435 (the tick thread answers after complete), five runs, then git checkout
+# git show 6d14db9435:server-app/src/main/java/io/github/bearisbug/synaxis/app/HandshakeGate.java > <the same path>
+# run 1: 25 tests completed, 1 failed
+  message="org.opentest4j.AssertionFailedError: S2C_HELLO has to be queued before FinishConfigurationPacket ==> expected: <[PluginMessagePacket, FinishConfigurationPacket]> but was: <[FinishConfigurationPacket, PluginMessagePacket]>"
+  red at HandshakeIntegrationTest.java:539
+# run 2: 25 tests completed, 1 failed
+  message="org.opentest4j.AssertionFailedError: S2C_HELLO has to be queued before FinishConfigurationPacket ==> expected: <[PluginMessagePacket, FinishConfigurationPacket]> but was: <[FinishConfigurationPacket, PluginMessagePacket]>"
+  red at HandshakeIntegrationTest.java:539
+# run 3: 25 tests completed, 1 failed
+  message="org.opentest4j.AssertionFailedError: S2C_HELLO has to be queued before FinishConfigurationPacket ==> expected: <[PluginMessagePacket, FinishConfigurationPacket]> but was: <[FinishConfigurationPacket, PluginMessagePacket]>"
+  red at HandshakeIntegrationTest.java:539
+# run 4: 25 tests completed, 1 failed
+  message="org.opentest4j.AssertionFailedError: S2C_HELLO has to be queued before FinishConfigurationPacket ==> expected: <[PluginMessagePacket, FinishConfigurationPacket]> but was: <[FinishConfigurationPacket, PluginMessagePacket]>"
+  red at HandshakeIntegrationTest.java:539
+# run 5: 25 tests completed, 1 failed
+  message="org.opentest4j.AssertionFailedError: S2C_HELLO has to be queued before FinishConfigurationPacket ==> expected: <[PluginMessagePacket, FinishConfigurationPacket]> but was: <[FinishConfigurationPacket, PluginMessagePacket]>"
+  red at HandshakeIntegrationTest.java:539
+# restored; git status --porcelain: []
+
+## TC-GAME-073 step 3: the tick thread answers in the gameplay mode too
+@@ -240 +240 @@ final class HandshakeGate {
+-        if (required) return;
++        if (required && Boolean.getBoolean("proof.never")) return;
+# 03:25:51 load: { 8.80 7.63 6.68 }
+25 tests completed, 2 failed
+BUILD FAILED in 8s
+# exit 1 at 03:25:59
+  HandshakeIntegrationTest tests=25 skipped=0 failures=2 errors=0
+  FAILED theAnswerIsQueuedBeforeFinishConfigurationHoweverLateTheTickThreadIs(Env): org.opentest4j.AssertionFailedError: S2C_HELLO has to be queued before FinishConfigurationPacket ==> expected: <[PluginMessagePacket, FinishConfigurationPacket]> but was: <[PluginMessagePacket, FinishConfigurationPacket, PluginMessagePacket]> at HandshakeIntegrationTest.java:539
+  FAILED aMatchingHelloIsAnsweredAndWakesTheWaitingConfigurationThread(Env): org.opentest4j.AssertionFailedError: expected exactly one answer, got [PluginMessagePacket[channel=synaxis:handshake, data=[B@…], PluginMessagePacket[channel=synaxis:handshake, data=[B@…]] ==> expected: <1> but was: <2> at HandshakeIntegrationTest.java:219 <- HandshakeIntegrationTest.java:246
+# restored; git status --porcelain: []
+# gradle: 25 tests completed, 2 failed
+
+## TC-GAME-073 step 4: the login phase answers in the configuration phase too
+@@ -303 +303 @@ final class HandshakeGate {
+-        if (phase == Phase.CONFIGURATION) {
++        if (phase == Phase.CONFIGURATION || Boolean.parseBoolean("true")) {
+# 03:26:07 load: { 9.13 7.78 6.75 }
+25 tests completed, 1 failed
+BUILD FAILED in 7s
+# exit 1 at 03:26:14
+  HandshakeIntegrationTest tests=25 skipped=0 failures=1 errors=0
+  FAILED theLoginPhaseAsksForTheHelloAndLetsAModdedClientThrough(Env): org.opentest4j.AssertionFailedError: the login plugin request carried S2C_HELLO ==> expected: <[]> but was: <[PluginMessagePacket[channel=synaxis:handshake, data=[B@…]]> at HandshakeIntegrationTest.java:426
+# restored; git status --porcelain: []
+# gradle: 25 tests completed, 1 failed
+
+## TC-GAME-074 step 2: the hello lands between the timeout and the claim, and a lost claim returns (the code before 870054e838)
+@@ -39,0 +40 @@ import java.util.concurrent.atomic.AtomicLong;
++import java.util.concurrent.locks.LockSupport;
+@@ -277,0 +279 @@ final class HandshakeGate {
++            LockSupport.parkNanos(200_000_000L);
+@@ -287 +289 @@ final class HandshakeGate {
+-            result = session.join();
++            return null;
+# 03:27:05 load: { 6.94 7.37 6.66 }
+BUILD FAILED in 5s
+# exit 1 at 03:27:11
+  HandshakeIntegrationTest tests=1 skipped=0 failures=1 errors=0
+  FAILED aHelloAtTheEndOfTheBudgetIsEitherAnsweredOrKicked(Env): org.opentest4j.AssertionFailedError: expected exactly one disconnect, got [] ==> expected: <1> but was: <0> at HandshakeIntegrationTest.java:229 <- HandshakeIntegrationTest.java:624
+# restored; git status --porcelain: []
+# gradle: 1 test completed, 1 failed
+
+## TC-GAME-074 step 3: the same pause alone, on the fixed code
+@@ -39,0 +40 @@ import java.util.concurrent.atomic.AtomicLong;
++import java.util.concurrent.locks.LockSupport;
+@@ -277,0 +279 @@ final class HandshakeGate {
++            LockSupport.parkNanos(200_000_000L);
+# 03:27:18 load: { 7.42 7.45 6.70 }
+BUILD SUCCESSFUL in 8s
+# exit 0 at 03:27:26
+  HandshakeIntegrationTest tests=1 skipped=0 failures=0 errors=0
+# restored; git status --porcelain: []
+
+## TC-PROD-232 step 2: the admission request loses the remote address
+@@ -116 +116 @@ final class AdmissionGate {
+-                            ? inet.getAddress() : null));
++                            && Boolean.getBoolean("proof.never") ? inet.getAddress() : null));
+# 03:27:40 load: { 9.88 8.04 6.93 }
+25 tests completed, 1 failed
+BUILD FAILED in 8s
+# exit 1 at 03:27:49
+  HandshakeIntegrationTest tests=25 skipped=0 failures=1 errors=0
+  FAILED aVerifiedConnectionReachesTheAdmissionProviderWithWhatItReported(Env): org.opentest4j.AssertionFailedError: expected: <[AdmissionRequest[connectionId=<connection>, username=tester, modVersion=7, schemaVersion=1, uuid=<player>, remoteAddress=localhost/127.0.0.1]]> but was: <[AdmissionRequest[connectionId=<connection>, username=tester, modVersion=7, schemaVersion=1, uuid=<player> at HandshakeIntegrationTest.java:511
+# restored; git status --porcelain: []
+# gradle: 25 tests completed, 1 failed
+
+## TC-GAME-017 step 6: C2SCamera#write puts cameraYaw before zoom
+@@ -46 +45,0 @@ public record C2SCamera(float anchorX, float anchorZ, float zoom, float cameraYa
+-        buf.writeFloat(zoom);
+@@ -47,0 +47 @@ public record C2SCamera(float anchorX, float anchorZ, float zoom, float cameraYa
++        buf.writeFloat(zoom);
+# 03:31:25 load: { 10.89 10.03 8.06 }
+78 tests completed, 4 failed
+BUILD FAILED in 5s
+# exit 1 at 03:31:31
+  GameMessagesTest tests=13 skipped=0 failures=2 errors=0
+  FAILED everySliceMessageRoundTrips(): org.opentest4j.AssertionFailedError: expected: <C2SCamera[anchorX=1.5, anchorZ=-2.5, zoom=24.0, cameraYaw=90.0]> but was: <C2SCamera[anchorX=1.5, anchorZ=-2.5, zoom=90.0, cameraYaw=24.0]> at GameMessagesTest.java:41
+  FAILED trailingUnknownBytesAreSkipped(): org.opentest4j.AssertionFailedError: expected: <C2SCamera[anchorX=1.5, anchorZ=-2.5, zoom=24.0, cameraYaw=90.0]> but was: <C2SCamera[anchorX=1.5, anchorZ=-2.5, zoom=90.0, cameraYaw=24.0]> at GameMessagesTest.java:51
+  ProtocolVectorTest tests=21 skipped=0 failures=2 errors=0
+  FAILED c2s_camera.bin: org.opentest4j.AssertionFailedError: c2s_camera.bin ==> array contents differ at index [9], expected: <65> but was: <66> at ProtocolVectorTest.java:107
+  FAILED edge/c2s_camera.bin: org.opentest4j.AssertionFailedError: edge/c2s_camera.bin ==> array contents differ at index [9], expected: <66> but was: <67> at ProtocolVectorTest.java:107
+# restored; git status --porcelain: []
+# gradle: 78 tests completed, 4 failed
+
+## TC-GAME-017 steps 1-2 (03:28)
+# ls protocol/src/test/resources/vectors/*.bin | wc -l  ->  10
+# ls protocol/src/test/resources/vectors/edge/*.bin | wc -l  ->  9 (the names of step 1 without archetype_box.bin, checked with diff)
+
+## TC-GAME-017 step 3 (03:27:57)
+# ./gradlew :protocol:test --rerun-tasks
+# exit 0; BUILD SUCCESSFUL in 23s
+  GameMessagesTest tests=13, HandshakeMessagesTest tests=5, MsgBufTest tests=39, ProtocolVectorTest tests=21; 0 skipped, 0 failed
+  ProtocolVectorTest: 18 vectors (9 regular, 9 edge/) round trip byte for byte, theFrozenVectorsAreBoundToTheSchemaVersion,
+  everyMessageHasACanonicalAndABoundaryVector and theArchetypeBoxTableIsFrozenWithTheMessages pass
+
+## TC-GAME-017 step 4 (03:28:34 to 03:30:44)
+# ./gradlew :protocol:publishToMavenLocal  ->  exit 0
+# cd client-fabric && ./gradlew test --no-daemon --max-workers=4 (no mirror script)  ->  exit 0; BUILD SUCCESSFUL in 2m 2s
+  FrozenVectorTest tests=20 (19 vectors incl. archetype_box.bin and the four handshake vectors, theVectorsAreTheOnesThisBuildsProtocolJarSpeaks) 0 failed;
+  ClientHandshakeTest 11, GamePayloadTest 5, OrderFeedbackTest 3, RtsClientTest 23, UnitBindingsTest 13, UnitPickerTest 15, all 0 failed
+
+## TC-GAME-017 step 5: flip the low bit of the last byte of protocol/src/test/resources/vectors/c2s_camera.bin
+0143008000c280800041c0000042b40000
+0143008000c280800041c0000042b40001
+ M protocol/src/test/resources/vectors/c2s_camera.bin
+78 tests completed, 2 failed
+BUILD FAILED in 5s
+testcase name="c2s_camera.bin"
+message="org.opentest4j.AssertionFailedError: c2s_camera.bin ==> expected: <C2SCamera[anchorX=128.5, anchorZ=-64.25, zoom=24.0, cameraYaw=90.0]> but was: <C2SCamera[anchorX=128.5, anchorZ=-64.25, zoom=24.0, cameraYaw=90.00001]>"
+testcase name="theFrozenVectorsAreBoundToTheSchemaVersion()"
+message="org.opentest4j.AssertionFailedError: 线格式变了：按 docs/DESIGN-M2.md §24，改消息布局必须在同一个改动里把 ProtocolSchema.SCHEMA_VERSION 加 1、重新生成 vectors/ 与 vectors/edge/ 下的 .bin，并把新的 schema_version 与 digest 写进 manifest.txt ==> expected: <81b4bfd19377aeb7a78fb27d671b2bf597183884351f8e28952608d6c1dd2486> but was: <d750595deccd06879f87d5c01e75a6d9a7be10c55a8da7757e01fc825b1317ed>"
+90 tests completed, 1 failed
+BUILD FAILED in 4s
+testcase name="theVectorsAreTheOnesThisBuildsProtocolJarSpeaks()"
+message="org.opentest4j.AssertionFailedError: 冻结向量的字节与 manifest.txt 的 digest 对不上：服务端侧的 ProtocolVectorTest 会红在同一处，按 §24 升 SCHEMA_VERSION 并重新冻结整套向量 ==> expected: <81b4bfd19377aeb7a78fb27d671b2bf597183884351f8e28952608d6c1dd2486> but was: <d750595deccd06879f87d5c01e75a6d9a7be10c55a8da7757e01fc825b1317ed>"
+# restored; git status --porcelain: []

@@ -1,0 +1,360 @@
+# RUN-052: the cases that start and stop their own process, 03:46:42 to 03:53:05, code 870054e838 unless said otherwise.
+# Every start as in 03-process-gameplay.txt (installDist script from the worktree root, SERVER_APP_OPTS with -Xms2G -Xmx2G
+# -XX:-AlwaysPreTouch -Dsynaxis.app.auth=offline -Dsynaxis.connection-gate.trusted-networks=127.0.0.0/8), plus the -D flags named.
+# 'stop -> exit' is from writing "stop" to the console FIFO to the exit of the start script's JVM.
+
+#################### TC-018 (a fresh gameplay process)
+## TC-018 precondition: three probes login --hold 30
+03:46:42.948 holding the connection for 30.0s
+03:46:42.949 holding the connection for 30.0s
+03:46:42.949 holding the connection for 30.0s
+## steps 1-2
+03:46:45.861 > stop
+exit code and time: 0 03:46:46.395
+stop -> exit 0.62 s
+no server-app java process left
+p1: 03:46:45.911 recv Disconnect reason=synaxis:server-stopping
+p2: 03:46:45.911 recv Disconnect reason=synaxis:server-stopping
+p3: 03:46:45.911 recv Disconnect reason=synaxis:server-stopping
+
+#################### TC-GAME-060 steps 1-6, TC-GAME-049 step 4, TC-020 steps 1-2 again (core mode: -Dsynaxis.app.core-mode=on)
+## TC-GAME-060 step 1
+03:47:05.530 [main] INFO  i.github.bearisbug.synaxis.app.Main - synaxis server-app listening on 0.0.0.0:25565
+ready after 4x0.5s; nc -z 127.0.0.1 25565: 0
+03:47:05.419 [main] INFO  i.g.bearisbug.synaxis.app.PluginHost - Registered channel: plugin_id=synaxis channel=synaxis:handshake
+03:47:05.526 [main] INFO  i.g.bearisbug.synaxis.app.PluginHost - Registered channel: plugin_id=synaxis channel=synaxis:main
+03:47:05.526 [main] INFO  i.g.bearisbug.synaxis.app.CoreMode - Core mode (synaxis.app.core-mode=on): no plugin is serving gameplay, so the host serves its own flat world. spawn=Pos[x=0.5, y=40.0, z=0.5, yaw=0.0, pitch=0.0] channel=synaxis:main (echoes every pa
+Gameplay mode lines: 0
+## step 2
+03:47:05.972 probe target=127.0.0.1:25565 protocol=776 schema_version=1 command=no-hello
+03:47:06.086 sent FinishConfiguration
+03:47:16.543 the server let the connection through instead of sending synaxis:client-mod-required
+03:47:16.543 exit code: 1
+## step 3
+03:47:16.619 probe target=127.0.0.1:25565 protocol=776 schema_version=1 command=handshake
+03:47:16.713 recv FinishConfigurationPacket
+03:47:16.713 sent FinishConfiguration
+03:47:16.713      S2C_HELLO schema_version=1 tick_rate=20 server_tick=223
+03:47:16.713 handshake ok schema_version=1 tick_rate=20 server_tick=223
+03:47:16.713 exit code: 0
+## step 4
+03:47:16.775 probe target=127.0.0.1:25565 protocol=776 schema_version=1 command=bad-schema
+03:47:16.832 recv Disconnect reason=synaxis:protocol-version-mismatch
+03:47:16.832 exit code: 0
+03:47:16.880 probe target=127.0.0.1:25565 protocol=776 schema_version=1 command=duplicate-hello
+03:47:16.906 sent C2S_HELLO mod_version=1 schema_version=1
+03:47:16.931      S2C_HELLO schema_version=1 tick_rate=20 server_tick=228
+03:47:16.963 recv FinishConfigurationPacket
+03:47:16.963 sent FinishConfiguration
+03:47:16.963 sent C2S_HELLO mod_version=1 schema_version=1
+03:47:16.989 recv Disconnect reason=synaxis:protocol-error
+03:47:16.989 exit code: 0
+## TC-GAME-060 step 6 / TC-GAME-049 step 4
+03:48:09.370 probe target=127.0.0.1:25565 protocol=776 schema_version=1 command=echo
+03:48:09.465 state=play
+03:48:09.492      echo channel=synaxis:main payload=core-ping
+03:48:09.492 exit code: 0
+## TC-020 steps 1-2 on the core mode process
+03:48:09.530 probe target=127.0.0.1:25565 protocol=776 schema_version=1 command=record-registry
+03:48:09.616 exit code: 0
+src/test/resources/protocol/registry-data-26.2.bin <tmp>/registry-core.bin differ: char 8692, line 1
+cmp exit: 1
+9409
+## step 7
+03:48:09.659 > stop
+exit code and time: 0 03:48:10.091
+stop -> exit 0.51 s
+no server-app java process left
+## TC-GAME-060 step 5
+flood: 50/50 logged in in 0.1 s, sending 100 packets/s per connection for 30 s
+t=  10.0s connected= 0 rate=  2922.1 pkt/s total=29264
+t=  20.0s connected= 0 rate=     0.0 pkt/s total=29264
+t=  30.0s connected= 0 rate=     0.0 pkt/s total=29264
+flood: achieved 974.9 packets/s over 30.0 s (29264 packets, 50 connections, 50 lost)
+flood: wrote <tmp>/flood/flood.json
+flood.json
+server lines added: kicks 50, inbound limit 50
+03:47:33.468 [Syn-Socket-Reader-30] INFO  i.g.b.s.n.p.PlayerSocketConnection - Inbound packet limit exceeded: connection_id=4f8a750c-cde5-406a-9cc1-02f083c6a319 identifier=flood0026 limit=packets 583 > 582 in 7000 ms
+03:47:33.470 [Syn-Socket-Reader-47] INFO  i.g.b.s.n.p.PlayerSocketConnection - Inbound packet limit exceeded: connection_id=9a0c8204-6d39-4b9a-bcb6-ed3940450ce0 identifier=flood0044 limit=packets 583 > 582 in 7000 ms
+# ^ failed as written: every connection is kicked by the engine's inbound packet gate (REQ-PROD-013, 582 packets in 7 s) about 6 s in,
+#   100 packets a second being over its 83; see the supplementary run below and 00-index.txt.
+
+#################### TC-GAME-060 step 7 (second half) and TC-GAME-061 step 1 (the default launch)
+## TC-GAME-060 step 7 (second half): default start
+03:48:53.450 [main] INFO  i.github.bearisbug.synaxis.app.Main - synaxis server-app listening on 0.0.0.0:25565
+ready after 4x0.5s; nc -z 127.0.0.1 25565: 0
+03:48:53.525 probe target=127.0.0.1:25565 protocol=776 schema_version=1 command=no-hello
+03:48:56.610 recv Disconnect reason=synaxis:client-mod-required
+03:48:56.610 exit code: 0
+## TC-GAME-061 step 1
+Gameplay mode: the running match and the admission provider come from plugin_ids=[rts], and a client has 3 s to send C2S_HELLO on synaxis:handshake in the configuration phase (schema_version=1)
+03:48:56.673 > stop
+exit code and time: 0 03:48:57.096
+stop -> exit 0.52 s
+no server-app java process left
+
+#################### TC-GAME-061 steps 2-7 (-Dsynaxis.app.handshake-phase=login)
+## TC-GAME-061 step 2
+03:49:09.475 [main] INFO  i.github.bearisbug.synaxis.app.Main - synaxis server-app listening on 0.0.0.0:25565
+ready after 4x0.5s; nc -z 127.0.0.1 25565: 0
+Gameplay mode: the running match and the admission provider come from plugin_ids=[rts], and a client has 3 s to send C2S_HELLO on synaxis:handshake in the login phase (schema_version=1)
+## step 3
+03:49:09.641 probe target=127.0.0.1:25565 protocol=776 schema_version=1 command=handshake
+03:49:09.675 recv LoginPluginRequestPacket
+03:49:09.675      S2C_HELLO schema_version=1 tick_rate=20 server_tick=4
+03:49:09.675 sent LoginPluginResponse channel=synaxis:handshake understood=True
+03:49:09.730 recv PluginMessagePacket
+03:49:09.768 recv FinishConfigurationPacket
+03:49:09.769 sent FinishConfiguration
+03:49:09.769 handshake ok schema_version=1 tick_rate=20 server_tick=4
+03:49:09.769 exit code: 0
+## step 4
+03:49:09.805 probe target=127.0.0.1:25565 protocol=776 schema_version=1 command=no-hello
+03:49:09.833 sent LoginPluginResponse channel=synaxis:handshake understood=False
+03:49:09.864 recv LoginDisconnect reason=synaxis:client-mod-required
+03:49:09.864 exit code: 0
+## step 5
+03:49:09.900 probe target=127.0.0.1:25565 protocol=776 schema_version=1 command=bad-schema
+03:49:09.933 sent LoginPluginResponse channel=synaxis:handshake understood=True
+03:49:09.966 recv LoginDisconnect reason=synaxis:protocol-version-mismatch
+03:49:09.966 exit code: 0
+## step 6
+03:49:10.003 probe target=127.0.0.1:25565 protocol=776 schema_version=1 command=login
+03:49:10.031      S2C_HELLO schema_version=1 tick_rate=20 server_tick=11
+03:49:10.031 sent LoginPluginResponse channel=synaxis:handshake understood=True
+03:49:10.092 recv PluginMessagePacket
+03:49:10.125 recv FinishConfigurationPacket
+03:49:10.125 sent FinishConfiguration
+03:49:10.125 state=play
+03:49:10.125 exit code: 0
+ledger of the step 6 connection:
+{"ts":"2026-09-29T19:49:10.031855Z","event":"client_verified","connection_id":"a35c6387-95d0-4031-b748-b4f4a8b28ca4","mod_version":1,"schema_version":1}
+{"ts":"2026-09-29T19:49:10.067233Z","event":"session_entered_configuration","connection_id":"a35c6387-95d0-4031-b748-b4f4a8b28ca4","protocol_version":776}
+Refusing a handshake lines: 0
+## step 7
+grep exit: 1
+03:49:11.402 > stop
+exit code and time: 0 03:49:11.828
+stop -> exit 0.50 s
+no server-app java process left
+# step 3: the one S2C_HELLO is the payload of the LoginPluginRequest; the configuration phase PluginMessagePacket is minecraft:brand
+#   (the probe prints S2C_HELLO for any payload on synaxis:handshake and printed none there).
+
+#################### TC-GAME-061 step 8 (-Dsynaxis.app.handshake-phase=later)
+start script: the JVM exited: 1 03:49:22.674
+	at io.github.bearisbug.synaxis.app.HandshakeGate.phase(HandshakeGate.java:173)
+	at io.github.bearisbug.synaxis.app.PluginHost.<init>(PluginHost.java:103)
+	at io.github.bearisbug.synaxis.app.Main.start(Main.java:264)
+	at io.github.bearisbug.synaxis.app.Main.main(Main.java:191)
+	at io.github.bearisbug.synaxis.app.Main.main(Main.java:170)
+1 03:49:22.674
+03:49:22.640 [main] ERROR i.github.bearisbug.synaxis.app.Main - Refusing to start: synaxis.app.handshake-phase=later is not one of configuration, login
+nc -z exit: 1
+no server-app java process left
+
+#################### Supplementary, not a TC step: the two cases above with the engine's inbound packet gate raised
+# (-Dsynaxis.packet-limit.max-packets=100000), to show that what they test still works once that gate is out of the way
+03:49:39.803 [main] INFO  i.github.bearisbug.synaxis.app.Main - synaxis server-app listening on 0.0.0.0:25565
+ready after 4x0.5s; nc -z 127.0.0.1 25565: 0
+packetLimitMaxPackets=100000
+flood: 50/50 logged in in 0.1 s, sending 100 packets/s per connection for 30 s
+t=  10.0s connected=50 rate=  5020.9 pkt/s total=50268
+t=  20.0s connected=50 rate=  5015.4 pkt/s total=100431
+t=  30.0s connected=50 rate=  5009.7 pkt/s total=150475
+flood: achieved 5015.9 packets/s over 30.0 s (150497 packets, 50 connections, 0 lost)
+flood: wrote <tmp>/flood2/flood.json
+kicks: 0
+03:50:10.939 > stop
+exit code and time: 0 03:50:11.370
+stop -> exit 0.51 s
+no server-app java process left
+## TC-GAME-064 steps 1-4, gameplay mode with the same flag
+03:50:25.321 [main] INFO  i.github.bearisbug.synaxis.app.Main - synaxis server-app listening on 0.0.0.0:25565
+ready after 4x0.5s; nc -z 127.0.0.1 25565: 0
+## step 1
+03:50:25.678 probe target=127.0.0.1:25565 protocol=776 schema_version=1 command=game-flood
+03:50:25.792 flooding 800 payloads a second for 3s
+03:50:28.147 recv Disconnect reason=synaxis:game-flood
+03:50:28.147 exit code: 0
+## step 2
+03:50:28.122 [Syn-Tick-0] WARN  i.g.b.synaxis.game.rts.GameChannel - Disconnecting a flooding connection: connection_id=f4ebffb3-aced-4230-b7fd-b1f6f11a43e8 reason=synaxis:game-flood (1 flooding connections since the last report)
+stack lines added: 0
+## step 3
+03:51:33.988      S2C_UNIT_STATE server_tick=1374 count=66 moving=[]
+03:51:34.078      S2C_UNIT_STATE server_tick=1376 count=66 moving=[]
+03:51:34.078 asked for 95 payloads a second, slowest window 85
+03:51:34.078 still connected, keep_alives=7
+03:51:34.078 exit code: 0
+## step 4
+03:51:34.152 probe target=127.0.0.1:25565 protocol=776 schema_version=1 command=game-flood
+03:51:34.245 flooding 299 payloads a second for 3s
+03:51:39.474 asked for 299 payloads a second, slowest window 269
+03:51:39.474 still connected, keep_alives=1
+03:51:39.474 exit code: 0
+03:51:39.515 > stop
+exit code and time: 0 03:51:39.972
+stop -> exit 0.49 s
+no server-app java process left
+
+#################### TC-GAME-050 steps 6-9: the admission provider injected, a temporary build
+# The injection the case describes (a probe plugin in the :server-app test source set, started with -Dsynaxis.app.plugins=probe) cannot be
+# started from :server-app:run or the start script, whose classpath has no test classes. The same four shapes were injected into the one
+# provider of the process instead, the rts plugin's, and a second plugin was added for step 9; built with :server-app:installDist, run,
+# then reverted with git checkout and rm (git status --porcelain empty) and installDist rebuilt on the clean tree. The temporary change:
+--- a/game-rts/src/main/java/io/github/bearisbug/synaxis/game/rts/RtsPlugin.java
++++ b/game-rts/src/main/java/io/github/bearisbug/synaxis/game/rts/RtsPlugin.java
+@@ -90,6 +90,21 @@ public final class RtsPlugin implements SynaxisPlugin {
+         // lets it move entities without taking a lock (API-M2-010 step 6 starts the tick thread)
+         context.scheduler().scheduleTask(deployed::tick, TaskSchedule.nextTick(), TaskSchedule.tick(1));
+         context.admission().register(request -> {
++            switch (System.getProperty("synaxis.proof.admission", "")) {
++                case "reject" -> {
++                    return new Admission.Reject(DisconnectKeys.MATCH_UNAVAILABLE);
++                }
++                case "throw" -> throw new IllegalStateException("proof: the admission provider throws");
++                case "sleep" -> {
++                    try {
++                        Thread.sleep(500);
++                    } catch (InterruptedException _) {
++                        Thread.currentThread().interrupt();
++                    }
++                }
++                default -> {
++                }
++            }
+             if (started.state() != Match.State.RUNNING) return new Admission.Reject(DisconnectKeys.MATCH_UNAVAILABLE);
+             // The team the connection is admitted with is the sender half of owner(unit, sender),
+             // and this is the only place it is decided (§9)
+--- a/game-rts/src/main/resources/META-INF/services/io.github.bearisbug.synaxis.plugin.SynaxisPlugin
++++ b/game-rts/src/main/resources/META-INF/services/io.github.bearisbug.synaxis.plugin.SynaxisPlugin
+@@ -1 +1,2 @@
+ io.github.bearisbug.synaxis.game.rts.RtsPlugin
++io.github.bearisbug.synaxis.game.rts.ProofSecondPlugin
+# new file game-rts/src/main/java/io/github/bearisbug/synaxis/game/rts/ProofSecondPlugin.java:
+package io.github.bearisbug.synaxis.game.rts;
+
+import io.github.bearisbug.synaxis.plugin.Admission;
+import io.github.bearisbug.synaxis.plugin.PluginApi;
+import io.github.bearisbug.synaxis.plugin.PluginContext;
+import io.github.bearisbug.synaxis.plugin.PluginDescriptor;
+import io.github.bearisbug.synaxis.plugin.SynaxisPlugin;
+
+/** Temporary, TC-GAME-050 step 9: a second plugin that also asks for the admission slot. */
+public final class ProofSecondPlugin implements SynaxisPlugin {
+
+    @Override
+    public PluginDescriptor descriptor() {
+        return new PluginDescriptor("proof2", "0.0.1", PluginApi.API_VERSION);
+    }
+
+    @Override
+    public void onEnable(PluginContext context) {
+        if (Boolean.getBoolean("synaxis.proof.second")) {
+            context.admission().register(_ -> new Admission.Reject("synaxis:match-unavailable"));
+        }
+    }
+
+    @Override
+    public void onDisable() {
+    }
+}
+
+## TC-GAME-050 step 6: the admission provider returns Reject(synaxis:match-unavailable)
+03:52:32.454 [main] INFO  i.github.bearisbug.synaxis.app.Main - synaxis server-app listening on 0.0.0.0:25565
+ready after 4x0.5s; nc -z 127.0.0.1 25565: 0
+03:52:32.681 probe target=127.0.0.1:25565 protocol=776 schema_version=1 command=handshake
+03:52:32.710 sent C2S_HELLO mod_version=1 schema_version=1
+03:52:32.744 recv PluginMessagePacket
+03:52:32.775 recv PluginMessagePacket
+03:52:32.775      S2C_HELLO schema_version=1 tick_rate=20 server_tick=6
+03:52:32.775 recv Disconnect reason=synaxis:match-unavailable
+03:52:32.776 unexpected disconnect: Disconnect reason=synaxis:match-unavailable
+03:52:32.776 exit code: 1
+$ grep client_rejected logs/events-*.jsonl | tail -1
+{"ts":"2026-09-29T19:52:32.757714Z","event":"client_rejected","connection_id":"438a8f33-b7dd-49b9-be83-ef2135b6bb1c","reason":"match-unavailable","schema_version":1}
+ledger of 438a8f33-b7dd-49b9-be83-ef2135b6bb1c:
+{"ts":"2026-09-29T19:52:32.718214Z","event":"session_entered_configuration","connection_id":"438a8f33-b7dd-49b9-be83-ef2135b6bb1c","protocol_version":776}
+{"ts":"2026-09-29T19:52:32.755778Z","event":"client_verified","connection_id":"438a8f33-b7dd-49b9-be83-ef2135b6bb1c","mod_version":1,"schema_version":1}
+{"ts":"2026-09-29T19:52:32.757714Z","event":"client_rejected","connection_id":"438a8f33-b7dd-49b9-be83-ef2135b6bb1c","reason":"match-unavailable","schema_version":1}
+server lines of 438a8f33-b7dd-49b9-be83-ef2135b6bb1c:
+03:52:32.687 [virtual-1110] INFO  i.g.b.s.network.ConnectionManager - Login success: username=probe connection_id=438a8f33-b7dd-49b9-be83-ef2135b6bb1c remote_address=/127.0.0.1:51882
+03:52:32.757 [virtual-1111] INFO  i.g.b.synaxis.app.AdmissionGate - Refusing a connection: connection_id=438a8f33-b7dd-49b9-be83-ef2135b6bb1c reason=synaxis:match-unavailable cause=the admission provider refused
+03:52:32.757 [virtual-1111] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=438a8f33-b7dd-49b9-be83-ef2135b6bb1c identifier=probe reason=synaxis:match-unavailable
+03:52:32.757 [virtual-1111] INFO  i.g.b.s.n.player.PlayerConnection - Connection closed: connection_id=438a8f33-b7dd-49b9-be83-ef2135b6bb1c identifier=probe
+internal-error lines: 0
+03:52:34.048 > stop
+exit code and time: 0 03:52:34.462
+stop -> exit 0.45 s
+no server-app java process left
+
+## TC-GAME-050 step 7: the admission provider throws
+03:52:43.284 [main] INFO  i.github.bearisbug.synaxis.app.Main - synaxis server-app listening on 0.0.0.0:25565
+ready after 4x0.5s; nc -z 127.0.0.1 25565: 0
+03:52:43.552 probe target=127.0.0.1:25565 protocol=776 schema_version=1 command=handshake
+03:52:43.583 sent C2S_HELLO mod_version=1 schema_version=1
+03:52:43.636      S2C_HELLO schema_version=1 tick_rate=20 server_tick=7
+03:52:43.668 recv Disconnect reason=synaxis:match-unavailable
+03:52:43.668 unexpected disconnect: Disconnect reason=synaxis:match-unavailable
+03:52:43.668 exit code: 1
+{"ts":"2026-09-29T19:52:43.639555Z","event":"client_rejected","connection_id":"96c6617d-8aea-4c70-8387-cad8d569dbd2","reason":"match-unavailable","schema_version":1}
+ERROR lines:
+03:52:43.637 [virtual-1111] ERROR i.g.b.synaxis.app.AdmissionGate - Admission provider failed: plugin_id=rts connection_id=96c6617d-8aea-4c70-8387-cad8d569dbd2
+java.lang.IllegalStateException: proof: the admission provider throws
+internal-error lines: 0
+03:52:44.944 > stop
+exit code and time: 0 03:52:45.381
+stop -> exit 0.52 s
+no server-app java process left
+
+## TC-GAME-050 step 8: the admission provider sleeps 500 ms and accepts
+03:52:54.285 [main] INFO  i.github.bearisbug.synaxis.app.Main - synaxis server-app listening on 0.0.0.0:25565
+ready after 5x0.5s; nc -z 127.0.0.1 25565: 0
+## one connection
+03:52:54.793 driver flow=pair target=127.0.0.1:25565 schema_version=1
+03:52:54.794 [pair0] sent Handshake protocol=776 intent=login
+03:52:54.794 [pair0] sent LoginStart username=pair0
+03:52:54.821 [pair0]      compression threshold=256
+03:52:54.821 [pair0]      LoginSuccess username=pair0 uuid=933546c4-9d3f-335c-9be4-99bd5d994333
+03:52:54.821 [pair0] sent LoginAcknowledged
+03:52:54.821 [pair0] sent C2S_HELLO mod_version=1 schema_version=1
+03:52:54.847 [pair0] sent KnownPacks entries=1
+03:52:54.847 [pair0] sent KeepAlive #1 at 03:52:54
+03:52:54.847 [pair0]      S2C_HELLO schema_version=1 tick_rate=20 server_tick=11
+03:52:55.362 [pair0] sent FinishConfiguration
+03:52:55.409 [pair0] state=play (JoinGame)
+03:52:55.409 PASS pair0: S2C_HELLO (CONFIGURATION) -> JoinGame 561 ms, connect -> JoinGame 615 ms
+03:52:55.409 exit code: 0
+## two connections at once
+03:52:55.505 [pair0]      S2C_HELLO schema_version=1 tick_rate=20 server_tick=24
+03:52:55.505 [pair1]      S2C_HELLO schema_version=1 tick_rate=20 server_tick=24
+03:52:56.062 [pair1] state=play (JoinGame)
+03:52:56.062 [pair0] state=play (JoinGame)
+03:52:56.062 PASS pair0: S2C_HELLO (CONFIGURATION) -> JoinGame 557 ms, connect -> JoinGame 620 ms
+03:52:56.062 PASS pair1: S2C_HELLO (CONFIGURATION) -> JoinGame 557 ms, connect -> JoinGame 620 ms
+03:52:56.062 exit code: 0
+WARN lines:
+03:52:55.341 [virtual-1111] WARN  i.g.b.synaxis.app.AdmissionGate - Admission provider is over its 200 ms budget: plugin_id=rts connection_id=d287549b-d03a-4387-a793-d2ff625e2184 admit_ms=503. Its answer stands, this connection just took longer to let in.
+03:52:55.992 [virtual-1126] WARN  i.g.b.synaxis.app.AdmissionGate - Admission provider is over its 200 ms budget: plugin_id=rts connection_id=c5cfbd57-a873-4336-8b66-ffe7fa194818 admit_ms=505. Its answer stands, this connection just took longer to let in.
+03:52:55.993 [virtual-1127] WARN  i.g.b.synaxis.app.AdmissionGate - Admission provider is over its 200 ms budget: plugin_id=rts connection_id=e5137f94-3fa1-4b0b-8172-2afaeac6fafd admit_ms=507. Its answer stands, this connection just took longer to let in.
+03:52:56.100 > stop
+exit code and time: 0 03:52:56.543
+stop -> exit 0.51 s
+no server-app java process left
+
+## TC-GAME-050 step 9: a second plugin (proof2) also calls admission().register(...)
+03:53:04.355 [main] INFO  i.github.bearisbug.synaxis.app.Main - synaxis server-app listening on 0.0.0.0:25565
+ready after 4x0.5s; nc -z 127.0.0.1 25565: 0
+03:53:04.351 [main] INFO  i.g.bearisbug.synaxis.app.PluginHost - Plugin enabled: plugin_id=rts version=0.1.0 enable_ms=431
+03:53:04.351 [main] ERROR i.g.bearisbug.synaxis.app.PluginHost - Plugin failed to enable: plugin_id=proof2
+java.lang.IllegalStateException: The process accepts one admission provider: plugin_id=proof2 tried to register a second one, plugin_id=rts holds the slot
+03:53:04.353 [main] INFO  i.github.bearisbug.synaxis.app.Main - Gameplay mode: the running match and the admission provider come from plugin_ids=[rts], and a client has 3 s to send C2S_HELLO on synaxis:handshake in the configuration phase (schema_version=1)
+03:53:04.614 probe target=127.0.0.1:25565 protocol=776 schema_version=1 command=handshake
+03:53:04.670      S2C_HELLO schema_version=1 tick_rate=20 server_tick=6
+03:53:04.714 handshake ok schema_version=1 tick_rate=20 server_tick=6
+03:53:04.714 exit code: 0
+03:53:04.749 > stop
+exit code and time: 0 03:53:05.183
+stop -> exit 0.49 s
+no server-app java process left
+
+# after the revert: git status --porcelain: []; :server-app:installDist BUILD SUCCESSFUL; the game-rts jar has no ProofSecondPlugin

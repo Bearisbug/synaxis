@@ -1,0 +1,67 @@
+# RUN-052: TC-GAME-073 step 5 on the final code. GitHub Actions run 36618813492, workflow "Client gametest", workflow_dispatch on
+# branch prod/r2-flake at acc6742da2 = 870054e838 + the step's temporary pause (below). The commit was built with a temporary index and
+# pushed as that branch only; it is on no local branch. The run finished 2026-09-29 19:28:50 UTC (success; the P10 job skipped), then
+# the remote branch was deleted: git push origin --delete prod/r2-flake, git ls-remote origin 'refs/heads/prod/*' -> 0 lines.
+# git diff 870054e838 acc6742da2 (the same 11 lines as 4ff688d114 on 6d60d5d80b):
+--- a/server-app/src/main/java/io/github/bearisbug/synaxis/app/HandshakeGate.java
++++ b/server-app/src/main/java/io/github/bearisbug/synaxis/app/HandshakeGate.java
+@@ -235,6 +235,15 @@ final class HandshakeGate {
+                     "version-mismatch", hello.schemaVersion());
+             return;
+         }
++        LOGGER.info("r2-verify tick thread completed the future: connection_id={} server_state={}",
++                connectionId, connection.getServerState());
++        try {
++            Thread.sleep(300);
++        } catch (InterruptedException _) {
++            Thread.currentThread().interrupt();
++        }
++        LOGGER.info("r2-verify tick thread after a 300 ms stall: connection_id={} server_state={}",
++                connectionId, connection.getServerState());
+         // The waiting thread answers. Answering from here would race the thread complete just woke,
+         // which can queue FinishConfigurationPacket first and turn this answer into a play packet.
+         if (required) return;
+@@ -301,6 +310,8 @@ final class HandshakeGate {
+         // the write thread moves the connection to the play state at that packet, and the mod reads
+         // this channel in the configuration phase only. The login phase asked with S2C_HELLO already.
+         if (phase == Phase.CONFIGURATION) {
++            LOGGER.info("r2-verify configuration thread answers: connection_id={} server_state={}",
++                    connectionId, connection.getServerState());
+             connection.sendPacket(new PluginMessagePacket(CHANNEL, answer()));
+             verified(connectionId, result.modVersion(), result.schemaVersion());
+         }
+
+## step log of the job: the two reports (dev launch first), then judge.sh (UTC)
+2026-09-29T19:28:50Z R1 PASS mods [io_github_bearisbug_synaxis_protocol dev, synaxis 0.1.0]
+2026-09-29T19:28:50Z R2 PASS state=VERIFIED schema_version=1
+2026-09-29T19:28:50Z R3 PASS in world at BlockPos{x=256, y=40, z=256} encrypted=true session_host=http://127.0.0.1:41675
+2026-09-29T19:28:50Z R4 PASS bound=66 commandable=64 unmatched_state_entries=0
+2026-09-29T19:28:50Z R5 PASS unit_id=1 selected=1
+2026-09-29T19:28:50Z R6 PASS unit_id=1 answers [OK] target 263.50,40.00,255.50 moved 2.40 blocks (need 2.0)
+2026-09-29T19:28:50Z R7 PASS surface BlockPos{x=256, y=39, z=256} sky_above=15 sky_below=0
+2026-09-29T19:28:50Z R8 PASS screen: Connection Lost. The server rejected a message from this connection as malformed.
+2026-09-29T19:28:50Z R1 PASS mods [io_github_bearisbug_synaxis_protocol dev, synaxis 0.1.0]
+2026-09-29T19:28:50Z R2 PASS state=VERIFIED schema_version=1
+2026-09-29T19:28:50Z R3 PASS in world at BlockPos{x=256, y=40, z=256} encrypted=true session_host=http://127.0.0.1:41675
+2026-09-29T19:28:50Z R4 PASS bound=66 commandable=64 unmatched_state_entries=0
+2026-09-29T19:28:50Z R5 PASS unit_id=2 selected=2
+2026-09-29T19:28:50Z R6 PASS unit_id=2 answers [OK] target 263.50,40.00,256.50 moved 2.10 blocks (need 2.0)
+2026-09-29T19:28:50Z R7 PASS surface BlockPos{x=256, y=39, z=256} sky_above=15 sky_below=0
+2026-09-29T19:28:50Z R8 PASS screen: Connection Lost. The server rejected a message from this connection as malformed.
+2026-09-29T19:28:50Z client regression: all checks passed
+
+## server.log of the artifact client-gametest-configuration (UTC)
+19:28:06.264 [Syn-TickScheduler] INFO  i.g.b.synaxis.app.HandshakeGate - r2-verify tick thread completed the future: connection_id=9d48cd90-1896-48bd-9119-e74c59ec7aac server_state=CONFIGURATION
+19:28:06.266 [virtual-1095] INFO  i.g.b.synaxis.app.HandshakeGate - r2-verify configuration thread answers: connection_id=9d48cd90-1896-48bd-9119-e74c59ec7aac server_state=CONFIGURATION
+19:28:06.572 [Syn-TickScheduler] INFO  i.g.b.synaxis.app.HandshakeGate - r2-verify tick thread after a 300 ms stall: connection_id=9d48cd90-1896-48bd-9119-e74c59ec7aac server_state=PLAY
+19:28:45.275 [Syn-TickScheduler] INFO  i.g.b.synaxis.app.HandshakeGate - r2-verify tick thread completed the future: connection_id=0c578634-49a6-4da7-9985-b3213b55b9b1 server_state=CONFIGURATION
+19:28:45.275 [virtual-1106] INFO  i.g.b.synaxis.app.HandshakeGate - r2-verify configuration thread answers: connection_id=0c578634-49a6-4da7-9985-b3213b55b9b1 server_state=CONFIGURATION
+19:28:45.578 [Syn-TickScheduler] INFO  i.g.b.synaxis.app.HandshakeGate - r2-verify tick thread after a 300 ms stall: connection_id=0c578634-49a6-4da7-9985-b3213b55b9b1 server_state=PLAY
+
+## logs/events-local-20260929.jsonl of the artifact
+{"ts":"2026-09-29T19:28:06.273389006Z","event":"client_verified","connection_id":"9d48cd90-1896-48bd-9119-e74c59ec7aac","mod_version":1,"schema_version":1}
+{"ts":"2026-09-29T19:28:45.278461296Z","event":"client_verified","connection_id":"0c578634-49a6-4da7-9985-b3213b55b9b1","mod_version":1,"schema_version":1}
+
+## client logs (dev launch clientGameTest, production launch productionClientGameTest)
+clientGameTest: [19:28:06] [Netty Epoll IO #0/INFO] (synaxis) Handshake accepted: schema_version=1 tick_rate=20 server_tick=3173
+productionClientGameTest: [19:28:45] [Netty Epoll IO #0/INFO]: Handshake accepted: schema_version=1 tick_rate=20 server_tick=3948

@@ -1,0 +1,26 @@
+# RUN-052: the root gate, on 870054e838, with the four SYNAXIS_TEST_* variables pointing at synaxis-pg (5440) and synaxis-valkey (6440)
+# 03:31:58 load: { 10.29 10.00 8.12 }
+# ./gradlew check --continue --rerun-tasks --max-workers=4 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts
+# exit 0 at 03:38:25; BUILD SUCCESSFUL in 6m 26s; 95 actionable tasks: 95 executed
+# JUnit XML per module (classes, tests, skipped, failures, errors):
+  architecture-tests   classes=   7 tests=   20 skipped=  0 failures=0 errors=0
+  baker                classes=   4 tests=   53 skipped=  0 failures=0 errors=0
+  root (build/)        classes= 425 tests= 3142 skipped= 15 failures=0 errors=0
+  game-rts             classes=  13 tests=   87 skipped=  0 failures=0 errors=0
+  loadtest             classes=   4 tests=   23 skipped=  0 failures=0 errors=0
+  plugin-api           classes=   3 tests=   15 skipped=  0 failures=0 errors=0
+  protocol             classes=   4 tests=   78 skipped=  0 failures=0 errors=0
+  server-app           classes=  96 tests=  516 skipped=  0 failures=0 errors=0
+  synx                 classes=  14 tests=  118 skipped=  0 failures=0 errors=0
+  testing              classes=   8 tests=   11 skipped=  0 failures=0 errors=0
+  total tests=4063 skipped=15 failures+errors=0
+# Read right after the gate (03:38), before the later HandshakeIntegrationTest run of 01 replaced the server-app XML with its one class.
+TC-029 step 1-2   pass   root module tests=3142 >= 2,599, failures + errors = 0 (the :test task ran with --rerun-tasks inside this check)
+TC-020 step 6     pass   ./gradlew check BUILD SUCCESSFUL
+TC-PROD-486 s3, TC-PROD-505 s3, TC-PROD-510 s2   pass   :server-app:test 516, 0 failed, 0 skipped; root :test 3,142, 0 failed, 15 skipped
+TC-PROD-529 s4    pass   :server-app 516, :plugin-api 15, :game-rts 87, :architecture-tests 20, all 0 failed (the tasks of its command run inside check)
+TC-PROD-549 s2    pass   :server-app 516 0 failed 0 skipped, :architecture-tests 20 0 failed
+516 = 514 before the R2 closure + theAnswerIsQueuedBeforeFinishConfigurationHoweverLateTheTickThreadIs (6d60d5d80b)
+      + aHelloAtTheEndOfTheBudgetIsEitherAnsweredOrKicked (870054e838)
+
+# :server-app:installDist for the process runs of 03 and 04: git.head in the jar's synaxis-build.properties is 870054e838b48fd8931368a02591f3e6d8c6fc7f

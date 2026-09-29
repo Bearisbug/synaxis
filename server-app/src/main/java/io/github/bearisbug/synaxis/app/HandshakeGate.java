@@ -16,6 +16,7 @@ import io.github.bearisbug.synaxis.game.protocol.ProtocolSchema;
 import io.github.bearisbug.synaxis.game.protocol.S2CHello;
 import io.github.bearisbug.synaxis.game.protocol.UnknownMessageException;
 import io.github.bearisbug.synaxis.network.DisconnectReasons;
+import io.github.bearisbug.synaxis.network.packet.server.common.PluginMessagePacket;
 import io.github.bearisbug.synaxis.network.player.PlayerConnection;
 import io.github.bearisbug.synaxis.network.plugin.LoginPlugin;
 import io.github.bearisbug.synaxis.plugin.DisconnectKeys;
@@ -45,10 +46,12 @@ import java.util.concurrent.atomic.AtomicLong;
  * engine interprets and dispatches from inside a tick; the connection is let into a match by
  * setting the spawning instance, which is only meaningful on the configuration virtual thread that
  * event runs on. A {@link CompletableFuture} per connection is the whole mechanism, and it is also
- * the only arbiter: the tick thread answers or refuses a hello only if its {@code complete} wins,
- * the waiting thread kicks on the budget only if its {@code completeExceptionally} wins, so a hello
- * and a timeout that happen at the same moment can never both take effect
- * ({@code docs/DESIGN-M2.md} §16).
+ * the only arbiter: the tick thread judges a hello only if its {@code complete} wins, the waiting
+ * thread kicks on the budget only if its {@code completeExceptionally} wins, so a hello and a
+ * timeout that happen at the same moment can never both take effect ({@code docs/DESIGN-M2.md}
+ * §16). The answer to a hello is the waiting thread's to send, not the tick thread's: it is the
+ * thread that goes on to queue {@code FinishConfigurationPacket}, and only an answer queued before
+ * that reaches the mod in the one phase it reads it in.
  * <p>
  * <b>Which phase the handshake runs in is a launch argument</b>, {@code configuration} by default.
  * {@code ADR-M2-010} chose the configuration phase, but that decision rests on an unproven
@@ -63,7 +66,8 @@ import java.util.concurrent.atomic.AtomicLong;
  * answers a hello and still refuses one that names another schema, but it never waits for one and
  * never kicks over its absence — otherwise excluding the gameplay plugin, which is how the core is
  * load tested and smoke tested, would also lock every tool out of the port
- * ({@code API-M2-010} step 5).
+ * ({@code API-M2-010} step 5). With nobody waiting, the tick thread answers there, and that answer
+ * can land after {@code FinishConfigurationPacket}, where the mod drops it (§16).
  */
 final class HandshakeGate {
 
@@ -231,8 +235,11 @@ final class HandshakeGate {
                     "version-mismatch", hello.schemaVersion());
             return;
         }
+        // The waiting thread answers. Answering from here would race the thread complete just woke,
+        // which can queue FinishConfigurationPacket first and turn this answer into a play packet.
+        if (required) return;
         player.sendPluginMessage(CHANNEL, answer());
-        verified(connectionId, hello);
+        verified(connectionId, hello.modVersion(), hello.schemaVersion());
     }
 
     /**
@@ -264,15 +271,20 @@ final class HandshakeGate {
         // It may have left between the two, and the disconnect callback had nothing to wake yet:
         // the flag is cleared before that callback runs, so re-reading it here closes the window.
         if (!connection.isOnline()) return null;
-        final HelloResult result;
+        HelloResult result;
         try {
             result = session.get(budget.toMillis(), TimeUnit.MILLISECONDS);
         } catch (TimeoutException _) {
             // Claim the future before kicking: a hello landing in this very moment must find the
             // session decided and drop, instead of answering a connection that is being closed.
-            if (session.completeExceptionally(new TimeoutException("no C2S_HELLO within " + budget)))
+            if (session.completeExceptionally(new TimeoutException("no C2S_HELLO within " + budget))) {
                 reject(connection, connectionId, DisconnectKeys.CLIENT_MOD_REQUIRED, "mod-missing", 0);
-            return null;
+                return null;
+            }
+            // Lost the claim. To the disconnect callback, and nobody is left to answer; or to a hello
+            // that landed in this very moment, and it counts: its tick thread left the answer to us.
+            if (session.isCompletedExceptionally()) return null;
+            result = session.join();
         } catch (ExecutionException _) {
             // The connection went away while we waited; the disconnect callback woke us on purpose.
             return null;
@@ -284,6 +296,13 @@ final class HandshakeGate {
             reject(connection, connectionId, DisconnectKeys.PROTOCOL_VERSION_MISMATCH,
                     "version-mismatch", result.schemaVersion());
             return null;
+        }
+        // Queued by the thread that later queues FinishConfigurationPacket, so it is written first:
+        // the write thread moves the connection to the play state at that packet, and the mod reads
+        // this channel in the configuration phase only. The login phase asked with S2C_HELLO already.
+        if (phase == Phase.CONFIGURATION) {
+            connection.sendPacket(new PluginMessagePacket(CHANNEL, answer()));
+            verified(connectionId, result.modVersion(), result.schemaVersion());
         }
         return result;
     }
@@ -322,7 +341,7 @@ final class HandshakeGate {
             return;
         }
         session(connection).complete(new HelloResult(hello.modVersion(), hello.schemaVersion()));
-        verified(connectionId, hello);
+        verified(connectionId, hello.modVersion(), hello.schemaVersion());
     }
 
     /**
@@ -361,9 +380,9 @@ final class HandshakeGate {
         connection.kick(Component.translatable(reasonKey));
     }
 
-    private void verified(UUID connectionId, C2SHello hello) {
+    private void verified(UUID connectionId, int modVersion, int schemaVersion) {
         ledger.record("client_verified", attributes(connectionId,
-                "mod_version", hello.modVersion(), "schema_version", hello.schemaVersion()));
+                "mod_version", modVersion, "schema_version", schemaVersion));
     }
 
     private CompletableFuture<HelloResult> session(PlayerConnection connection) {

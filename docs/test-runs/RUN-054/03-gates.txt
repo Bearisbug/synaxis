@@ -1,0 +1,62 @@
+# RUN-054 gates on m3d/runtime-light HEAD 4a3ff9e29c with the ShardWorldAssemblyTest change of 01 and docs/TEST.md uncommitted
+# (the test change was committed right after as 6d8e77157e, same content), 2026-09-30 (UTC+8), one Gradle at a time, after the steps of 02.
+# Every gate: --rerun-tasks --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts --max-workers=4, with the database
+# variables of 02 (skipped="0" in every Db/Replay/Sync class), the disk gate and watchdog of 00-index.txt.
+# Per module totals: the JUnit XML under build/test-results/test and */build/test-results/test written by that gate. client-fabric is
+# its own build and not in these gates; its result directory (7 files of 2026-09-29, 90 tests) is left out.
+
+## check: ./gradlew check --rerun-tasks -Dsynaxis.synx.require-frozen-zlib=true
+# start 03:54:21, disk available 84,023 MB, load 6.51 8.83 11.07 (memory free 30%, swap free 547.44 MB read at 03:55 while it ran)
+# exit 0 after 370 s, BUILD SUCCESSFUL in 6m, 95 actionable tasks: 95 executed; lowest available during the run 82,016 MB
+(root) tests=3142 skipped=15 failures=0 errors=0
+architecture-tests tests=20 skipped=0 failures=0 errors=0
+baker tests=53 skipped=0 failures=0 errors=0
+game-rts tests=87 skipped=0 failures=0 errors=0
+loadtest tests=23 skipped=0 failures=0 errors=0
+plugin-api tests=15 skipped=0 failures=0 errors=0
+protocol tests=78 skipped=0 failures=0 errors=0
+server-app tests=517 skipped=0 failures=0 errors=0
+synx tests=142 skipped=0 failures=0 errors=0
+testing tests=11 skipped=0 failures=0 errors=0
+TOTAL tests=4088 skipped=15 failures=0 errors=0
+# OverlayShardProcessTest: crash window: 188 changes, 96 kept, 92 lost; the oldest lost change was 9671 ms old at the kill, the newest kept one 9779 ms
+# SynxRelightViewersIntegrationTest system-out (TC-WORLD-093 step 1, the four fallback lines RUN-052 did not keep):
+relight fallback edge torch at 56 40 62: 6 partial packets 635 B, 12 full packets 1375 B
+relight fallback center torch at 56 40 56: 8 partial packets 1002 B, 0 full packets 0 B
+relight fallback corner torch at 63 40 48: 8 partial packets 1744 B, 0 full packets 0 B
+relight fallback cave torch at 52 30 52: 2 partial packets 848 B, 0 full packets 0 B
+
+## strict mode one: ./gradlew test --rerun-tasks -Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true
+# start 04:01:34, disk available 82,987 MB, load 9.35 16.65 16.24, memory free 44%, swap free 1,323.75 MB
+# exit 0 after 368 s, BUILD SUCCESSFUL in 5m 57s; lowest available 82,519 MB
+(root) tests=3142 skipped=15 failures=0 errors=0
+architecture-tests tests=20 skipped=0 failures=0 errors=0
+baker tests=53 skipped=0 failures=0 errors=0
+game-rts tests=87 skipped=0 failures=0 errors=0
+loadtest tests=23 skipped=0 failures=0 errors=0
+plugin-api tests=15 skipped=0 failures=0 errors=0
+protocol tests=78 skipped=0 failures=0 errors=0
+server-app tests=517 skipped=0 failures=0 errors=0
+synx tests=142 skipped=0 failures=0 errors=0
+testing tests=11 skipped=0 failures=0 errors=0
+TOTAL tests=4088 skipped=15 failures=0 errors=0
+# OverlayShardProcessTest: crash window: 187 changes, 96 kept, 91 lost; the oldest lost change was 9680 ms old at the kill, the newest kept one 9790 ms
+
+## strict mode two: ./gradlew test --rerun-tasks -Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true -Dsynaxis.thread-provider=grid
+# start 04:10:57, disk available 82,981 MB, load 8.34 21.42 24.36, memory free 47%, swap free 1,419.81 MB
+# exit 0 after 357 s, BUILD SUCCESSFUL in 5m 50s; lowest available 82,500 MB
+(root) tests=3142 skipped=15 failures=0 errors=0
+architecture-tests tests=20 skipped=0 failures=0 errors=0
+baker tests=53 skipped=0 failures=0 errors=0
+game-rts tests=87 skipped=0 failures=0 errors=0
+loadtest tests=23 skipped=0 failures=0 errors=0
+plugin-api tests=15 skipped=0 failures=0 errors=0
+protocol tests=78 skipped=0 failures=0 errors=0
+server-app tests=517 skipped=0 failures=0 errors=0
+synx tests=142 skipped=0 failures=0 errors=0
+testing tests=11 skipped=0 failures=0 errors=0
+TOTAL tests=4088 skipped=15 failures=0 errors=0
+# OverlayShardProcessTest: crash window: 188 changes, 96 kept, 92 lost; the oldest lost change was 9778 ms old at the kill, the newest kept one 9886 ms
+# Classes of M3-D in this gate: SynxOverlayCombinedIntegrationTest 6, SynxRelightIntegrationTest 10, SynxRelightViewersIntegrationTest 6
+# (the same four fallback lines as in check), ShardWorldRelightTest 2, WorldFlagsReplayTest 12, ShardWorldAssemblyTest 8, all 0 failures.
+# So strict mode two now ran on the final code: TC-WORLD-091 step 3, TC-WORLD-092 step 3, TC-WORLD-093 step 4, TC-WORLD-094 step 4.

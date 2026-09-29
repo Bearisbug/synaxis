@@ -1,0 +1,46 @@
+# RUN-054: ShardWorldAssemblyTest > aDirtyChunkIsWrittenBeforeItIsUnloaded took the 20 ms write phase of a shard for granted
+# (docs/TEST.md section 7, the "same risk" part of the OverlayStoreTest entry closed in RUN-051). Branch m3d/runtime-light,
+# HEAD 4a3ff9e29c, 2026-09-30 (UTC+8). Every Gradle command also has --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts
+# --max-workers=4, one at a time, after a wait while a Gradle of another worktree ran (prod-r2-flake, before three of the runs) and with the disk
+# watchdog of 00-index.txt. No database for this class.
+#
+# The risk: after the relight ticket goes, the test ticks 100 times (the unload grace), asserts the dirty chunk (3,3) is still
+# loaded, ticks once more and asserts it is unloaded. The unload at tick 100 only asks the overlay store to write the chunk; the
+# write phase of that tick waits 20 ms for its encodings (OverlayTuning.PHASE_NANOS, not settable from :server-app) and leaves a
+# slower one to a later tick (docs/DESIGN-M3.md API-M3-007 step 4). An encoding over 20 ms keeps the chunk loaded at tick 101.
+
+## 1. The old test with every encoding 25 ms slower (03:26:40, load 7.01 7.40 6.65)
+# temporary change, synx/src/main/java/io/github/bearisbug/synaxis/synx/SynxChunk.java, encodeOverlay, under the write-lock:
+-            if (source == null) return null;
++            if (source == null) return null; for (long end = System.nanoTime() + 25_000_000L; System.nanoTime() < end; ) Thread.onSpinWait();
+# (a first try with java.util.concurrent.locks.LockSupport.parkNanos did not compile: Error Prone UnnecessarilyFullyQualified)
+# ./gradlew :server-app:test --tests io.github.bearisbug.synaxis.app.shard.ShardWorldAssemblyTest
+# exit 1; 8 tests completed, 1 failed
+  ShardWorldAssemblyTest tests="8" skipped="0" failures="1" errors="0"
+  FAILED aDirtyChunkIsWrittenBeforeItIsUnloaded(): org.opentest4j.AssertionFailedError: tick 101: written, it is unloaded ==> expected: <null> but was: <SynxChunk[3:3]> at ShardWorldAssemblyTest.java:396
+# The other 7 tests of the class stay green with the slow encodings.
+
+## 2. The change of the test (server-app/src/test/java/io/github/bearisbug/synaxis/app/shard/ShardWorldAssemblyTest.java)
+# At tick 100 the chunk is still loaded, as before. Then, while chunk.dirty(): tick once and assert the chunk is still loaded
+# (it was dirty at the start of that tick), at most 100 ticks. Once it is clean (written), one more tick unloads it. The reload
+# reads the gold block from the overlay record, as before. No import added: the lines above the test keep their numbers
+# (TC-WORLD-049 step 2 at :365, TC-WORLD-060 step 2 at :248 and :294).
+
+## 3. The new test with the same 25 ms an encoding, three runs (--rerun)
+03:30:48 load 14.17 10.38 8.08  ShardWorldAssemblyTest tests="8" skipped="0" failures="0" errors="0"  aDirtyChunkIsWrittenBeforeItIsUnloaded 2.330 s
+03:39:09 load 8.23 17.33 14.77  ShardWorldAssemblyTest tests="8" skipped="0" failures="0" errors="0"  aDirtyChunkIsWrittenBeforeItIsUnloaded 2.374 s
+03:39:29 load 8.19 16.72 14.61  ShardWorldAssemblyTest tests="8" skipped="0" failures="0" errors="0"  aDirtyChunkIsWrittenBeforeItIsUnloaded 2.339 s
+# (a run in between, 03:27:50, on a draft of the change that asserted assertSame instead of assertNotNull inside the loop: green too;
+#  the draft needed a new import that would have moved the line numbers above, so the loop asserts assertNotNull)
+# restored: git checkout -- synx/src/main/java/io/github/bearisbug/synaxis/synx/SynxChunk.java
+
+## 4. Counter proof on the new test: a dirty chunk unloads at the grace like a clean one (03:40:17, load 9.73 15.63 14.32)
+# temporary change, SynxChunk.java, readyToUnload:
+-        if (mode != Mode.OVERLAY || !dirty) return true;
++        if (mode != Mode.OVERLAY || !dirty || !Boolean.getBoolean("proof.never")) return true;
+# exit 1; 8 tests completed, 1 failed
+  ShardWorldAssemblyTest tests="8" skipped="0" failures="1" errors="0"
+  FAILED aDirtyChunkIsWrittenBeforeItIsUnloaded(): org.opentest4j.AssertionFailedError: tick 100: dirty, it is written instead of unloaded ==> expected: not <null> at ShardWorldAssemblyTest.java:395
+# restored: git checkout -- synx/src/main/java/io/github/bearisbug/synaxis/synx/SynxChunk.java
+
+## 5. The new test with no change: green in the three gates of 03-gates.txt (ShardWorldAssemblyTest tests="8", 0 failures in each).

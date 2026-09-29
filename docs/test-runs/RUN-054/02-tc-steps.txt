@@ -1,0 +1,210 @@
+# RUN-054: the steps RUN-052 left or ran only in outline, on m3d/runtime-light HEAD 4a3ff9e29c (the :synx and :server-app main code
+# of 6027ac8079) with the ShardWorldAssemblyTest change of 01 in the working tree, 2026-09-30 (UTC+8).
+# Every Gradle command also has --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts --max-workers=4, one at a time.
+# Counter proofs: a temporary change of the lines shown, one Gradle run, git checkout of the file; git status --porcelain after
+# every checkout showed only docs/TEST.md and the test of 01 (no main code left changed).
+# "db" = with SYNAXIS_TEST_PG_URL=jdbc:postgresql://127.0.0.1:5440/postgres (container synaxis-pg), SYNAXIS_TEST_PG_USER=postgres,
+# SYNAXIS_TEST_PG_PASSWORD taken from docker inspect synaxis-pg (not echoed), SYNAXIS_TEST_REDIS_URL=redis://127.0.0.1:6440
+# (container synaxis-valkey). At the end of the round pg_isready answered "accepting connections" and valkey-cli SET/DEL of a probe key worked.
+# Names: <S> io.github.bearisbug.synaxis.synx, <SH> io.github.bearisbug.synaxis.app.shard.
+
+## TC-WORLD-091 step 2, the six changes at once, literally as the step is written (03:41:44, load 11.60 15.04 14.23)
+# ./gradlew :synx:test --tests '<S>.SynxOverlayCombinedIntegrationTest'
++++ OverlayStore.java
+-            if (!chunk.dirty() && indexed != null && indexed.hit().generation() == generation) {
++            if (generation < 0 && !chunk.dirty() && indexed != null && indexed.hit().generation() == generation) {
+-        while ((waiting = pending.get(key)) != null) {
++        while ((waiting = pending.get(key)) != null && Boolean.getBoolean("proof.never")) {
+-            batch.add(new ChunkItem(resident, encoded, cap == evictCap && !finalFlush));
++            synchronized (resident) { clean(resident); } batch.add(new ChunkItem(resident, encoded, cap == evictCap && !finalFlush));
++++ SynxChunkLoader.java
+-                        hit.generation());
++                        0L);
++++ SynxChunk.java
+-        if (!tryLockWriteLock(Duration.ofNanos(Math.max(0, wait)))) return null;
++        if (!tryLockWriteLock(Duration.ofDays(1).plusNanos(Math.max(0, wait)))) return null;
++++ OverlaySegment.java (delete())
+-        Files.deleteIfExists(path);
++        Files.write(path, new byte[(int) Files.size(path)]); Files.deleteIfExists(path);
+# exit 1; 6 tests completed, 6 failed
+  SynxOverlayCombinedIntegrationTest tests="6" skipped="0" failures="6" errors="0"
+  :144 overTheCapTheLeastRecentlyChangedChunkIsDemotedOnItsRecord: no record appended for the clean chunk it demoted ==> expected: <17> but was: <18>
+  :179 aChunkReloadedFromItsRecordAndChangedAgainKeepsTheNewRecordAcrossARestart: the source is the record of generation 5 ==> expected: <5> but was: <0>
+  :208 aDirtyChunkUnloadedExplicitlyKeepsItsChanges: expected: <3> but was: <0>
+  :258 aChunkLockHeldAtAFinalFlushByTheShutdownThreadIsTheOnlyOneLeft: done within the 2 s ==> expected: <true> but was: <false>
+  :316 handlePacketsQueuedOnASegmentStillGoOutAfterItIsCompactedAway: packet 0 ==> array contents differ at index [0], expected: <-89> but was: <0>
+  :356 aWriteThatFailsLosesNoChange: timed out ==> expected: <true> but was: <false> (in SynxWorlds.tickUntil, SynxWorlds.java:60)
+# all six as in the step
+
+## TC-WORLD-093 step 2 in the form the step now gives (03:40:47, load 11.21 15.57 14.35)
+# ./gradlew :synx:test --tests '<S>.SynxRelightViewersIntegrationTest'
++++ SynxRelight.java
+-                if (!ready[(dx + 2) * 5 + dz + 2]) return false;
++                if (!ready[(dx + 2) * 5 + dz + 2] && ((dx == targetX && dz == targetZ) || (dx == 0 && dz == 0))) return false;
+-        chunk.delivered().put(player, now);
++        chunk.delivered().putIfAbsent(player, now);
+# exit 1; 6 tests completed, 2 failed
+  SynxRelightViewersIntegrationTest tests="6" skipped="0" failures="2" errors="0"
+  :148 aTargetWhoseThreeByThreeTheViewerDoesNotHoldIsResent: round 1 (minecraft:torch): the 3×3 of 3,2 holds x 4, A must get it ==> expected: <1> but was: <0>
+  :177 aLightPacketTurnsTheChangesOfThe100TicksAfterItIntoResends: round 2 at tick 105: 2,2 ==> expected: <1> but was: <0>
+# the second line is :177, not the :178 RUN-052 recorded (outline only, the class had 5 tests then)
+# The form the step gave before (no parentheses around the two groups), first change only (03:54:04):
++                if (!ready[(dx + 2) * 5 + dz + 2] && (dx == targetX && dz == targetZ || dx == 0 && dz == 0)) return false;
+# ./gradlew :synx:compileJava -> exit 1:
+  SynxRelight.java:308: 错误: [OperatorPrecedence] Use grouping parenthesis to make the operator precedence explicit (twice); 2 个错误
+
+## TC-WORLD-093 step 3, literally (03:41:12, load 14.58 15.87 14.49)
+# ./gradlew :synx:test --tests '<S>.SynxRelightViewersIntegrationTest'
++++ SynxChunk.java
+-                if (sky[i] != null && !SynxRelight.sameLight(sky[i], heldSky[i])) {
++                if (sky[i] != null && (!SynxRelight.sameLight(sky[i], heldSky[i]) || !Boolean.getBoolean("proof.never"))) {
+-                if (block[i] != null && !SynxRelight.sameLight(block[i], heldBlock[i])) {
++                if (block[i] != null && (!SynxRelight.sameLight(block[i], heldBlock[i]) || !Boolean.getBoolean("proof.never"))) {
+# exit 1; 6 tests completed, 1 failed
+  :273 neighbouringChangesOfOneTickInstallEachTargetOnce: A, 3,2 changed=true ==> expected: <1> but was: <2>
+# as in the step
+
+## TC-WORLD-094 step 2, db (03:42:32, load 12.76 14.93 14.24)
+# ./gradlew :server-app:test --tests '<SH>.WorldFlagsReplayTest'
+  WorldFlagsReplayTest tests="12" skipped="0" failures="0" errors="0"  (aReadOnlyWorldTakesTheLightOfAFlagChange among them)
+# the same run is TC-WORLD-066 step 1 (and step 6)
+
+## TC-WORLD-094 step 3, db (03:43:06, load 11.73 14.43 14.09)
++++ WorldFlagsReplayTest.java, aReadOnlyWorldStillTakesItsFlags
+-        final Mounted mounted = mount(release, READ_ONLY, flags, _ -> {
+-        });
++        final Mounted mounted = mount(release, READ_ONLY, flags);
+# exit 1; 12 tests completed, 1 failed
+  :557 aReadOnlyWorldStillTakesItsFlags: no application loaded the chunk past the bounds ==> expected: <null> but was: <DynamicChunk[-1:0]>
+# as in the step
+
+## TC-WORLD-066 step 2, db (03:43:54, load 12.27 14.38 14.10)
++++ SynxChunk.java, asWorldFlag
+-        ScopedValue.where(WORLD_FLAG, Boolean.TRUE).run(action);
++        action.run();
+# exit 1; 12 tests completed, 2 failed
+  :546 (assertBridge :273) aReadOnlyWorldStillTakesItsFlags: the bridge at x 0 ==> expected: <minecraft:oak_planks{properties={}, nbt=null, handler=null}> but was: <minecraft:air{...}>
+  :578 aReadOnlyWorldTakesTheLightOfAFlagChange: expected: <minecraft:glowstone{properties={}, nbt=null, handler=null}> but was: <minecraft:air{...}>
+# both as in the step, the :578 one included
+
+## TC-WORLD-066 step 3, db (03:44:25, load 10.23 13.64 13.84)
++++ WorldFlagsImpl.java
+-            if (chunkX < regionBounds.minX() || chunkX > regionBounds.maxX() || chunkZ < regionBounds.minZ()
++            if (chunkX < regionBounds.minX() - 100 || chunkX > regionBounds.maxX() || chunkZ < regionBounds.minZ()
+# exit 1; 12 tests completed, 1 failed
+  :558 aReadOnlyWorldStillTakesItsFlags: no application loaded the chunk past the bounds ==> expected: <null> but was: <DynamicChunk[-1:0]>
+
+## TC-WORLD-066 step 4, db (03:44:45, load 9.03 13.15 13.65)
++++ WorldFlagsImpl.java
+-                    || chunkZ > regionBounds.maxZ() || cell.y() < dimension.minY() || cell.y() >= dimension.maxY()) {
++                    || chunkZ > regionBounds.maxZ() || cell.y() < dimension.minY() || cell.y() >= dimension.maxY() + 100_000) {
+# exit 1; 12 tests completed, 1 failed
+  :554 aReadOnlyWorldStillTakesItsFlags: expected: <0> but was: <1>
+
+## TC-WORLD-066 step 5 = TC-WORLD-067 step 4, db (03:45:17, load 8.78 12.66 13.46)
++++ WorldFlagsImpl.java
+-                if (SynxChunk.sameBlock(now, target.block())) continue;
++                if (now.equals(target.block())) continue;
+-                if (SynxChunk.sameBlock(now, target)) continue;
++                if (now.equals(target)) continue;
+-                if (last != null && !SynxChunk.sameBlock(now, last)) conflict(application.key, cell, now, target);
++                if (last != null && !now.equals(last)) conflict(application.key, cell, now, target);
+# exit 1; 12 tests completed, 2 failed
+  :363 aRestartOnTheSameReleaseLeavesTheBlockEntitiesOfAFlagAlone: the replay set no chest again ==> expected: <false> but was: <true>
+  :484 aBlockEntityLoadedFromItsOverlayRecordIsNoConflict: [World flag quest:chest: the cell 5 40 3 held minecraft:chest[...] ..., changed another way, set to minecraft:chest[...] ... (1 world flag conflicts since the last report)] ==> expected: <0> but was: <3>
+
+## TC-WORLD-067 step 1, the :synx half (03:47:03)
+# ./gradlew :synx:test --tests '<S>.SynxChunkOverlayIntegrationTest'
+  SynxChunkOverlayIntegrationTest tests="14" skipped="0" failures="0" errors="0"
+# the WorldFlagsReplayTest half is the run of TC-WORLD-094 step 2 above
+
+## TC-WORLD-067 step 2, db (03:45:37, load 9.58 12.60 13.42)
++++ WorldFlagsImpl.java
+-        return governed.containsKey(new Cell(position.blockX(), position.blockY(), position.blockZ()));
++        return governed.containsKey(new Cell(position.blockX(), position.blockY() + 1000, position.blockZ()));
+# exit 1; 12 tests completed, 1 failed
+  :405 thePlayersCannotChangeTheGovernedCells: expected: <false> but was: <true>
+
+## TC-WORLD-067 step 3, db (03:46:09, load 8.40 12.04 13.19)
++++ WorldFlagsImpl.java
+-                if (last != null && !SynxChunk.sameBlock(now, last)) conflict(application.key, cell, now, target);
++                if (last != null && !SynxChunk.sameBlock(now, last) && SynxChunk.sameBlock(now, target)) conflict(application.key, cell, now, target);
+# exit 1; 12 tests completed, 1 failed
+  :453 theFlagWinsOverAChangeThatCameAroundTheProtection: stone was neither the planks applied last nor the air of the new value ==> expected: <2> but was: <1>
+
+## TC-WORLD-067 step 5, db (03:46:29, load 6.96 11.48 12.96)
++++ WorldFlagsImpl.java, describe, a line before the first
++        if (block.stateId() >= 0) return block.name();
+# exit 1; 12 tests completed, 1 failed
+  :505 aConflictWarningShowsTheStateFoundAndTheStateSet: [World flag quest:gate: the cell 10 40 10 held minecraft:iron_bars, changed another way, set to minecraft:iron_bars (1 world flag conflicts since the last report)] ==> expected: <true> but was: <false>
+
+## TC-WORLD-067 step 6 (03:47:23 and 03:47:43)
+# ./gradlew :synx:test --tests '<S>.SynxChunkOverlayIntegrationTest', once for each change
++++ SynxChunk.java
+-        return withoutRecordKeys(block.nbtOrEmpty()).equals(withoutRecordKeys(target.nbtOrEmpty()));
++        return true;
+# exit 1; 14 tests completed, 1 failed
+  :393 aBlockEntityReadBackFromItsRecordIsTheSameBlock: expected: <false> but was: <true>
++++ SynxChunk.java
+-                : targetHandler == null || !handler.getKey().equals(targetHandler.getKey())) return false;
++                : targetHandler == null) return false;
+# exit 1; 14 tests completed, 1 failed
+  :397 aBlockEntityReadBackFromItsRecordIsTheSameBlock: expected: <false> but was: <true>
+
+## TC-WORLD-068 step 1, db (03:48:14, load 9.59 11.12 12.64)
+# ./gradlew :server-app:test --tests '<SH>.WorldFlagsSyncTest' --tests '<SH>.WorldFlagStoreDbTest' --tests '<SH>.WorldFlagsReplayTest'
+  WorldFlagsSyncTest tests="2" skipped="0" failures="0" errors="0"
+  WorldFlagStoreDbTest tests="4" skipped="0" failures="0" errors="0"
+  WorldFlagsReplayTest tests="12" skipped="0" failures="0" errors="0"
+# 18, 0 failures, skipped="0" in all three
+
+## TC-WORLD-068 step 2, db (03:48:44, load 9.85 11.06 12.56)
++++ WorldFlagsImpl.java, received
+-        if (closed.get()) return;
++        if (!closed.get()) return;
+# ./gradlew :server-app:test --tests '<SH>.WorldFlagsSyncTest' -> exit 1; 2 tests completed, 1 failed
+  WorldFlagsSyncTest.java:189 aWriteReachesTheOtherChannelThroughRedisAndTheReadEvery60sCatchesUpWithoutIt: channel 2 applies the new value within 1 s ==> expected: <true> but was: <false>
+
+## TC-WORLD-068 step 3, db (03:49:13, load 9.51 10.85 12.43)
++++ WorldFlagStore.java
+-            WHERE map_id = ? AND region_id = ? AND flag_key = ? AND version = ?""";
++            WHERE map_id = ? AND region_id = ? AND flag_key = ? AND version >= ?""";
+# ./gradlew :server-app:test --tests '<SH>.WorldFlagStoreDbTest' -> exit 1; 4 tests completed, 2 failed
+  WorldFlagStoreDbTest.java:92 aNewKeyIsWrittenAsVersionOneAndThenOnlyOnTheVersionInTheDatabase: a stale version loses, handed the row as it is ==> expected: <Conflict[current=FlagValue[value="closed", version=2]]> but was: <Written[version=2]>
+  WorldFlagStoreDbTest.java:128 (called at :112) twoChannelsWritingTheSameVersionAtOnceHaveExactlyOneWinner: Written[version=6] / Written[version=6] ==> Unexpected type, expected: <...FlagWrite.Conflict> but was: <...FlagWrite.Written>
+
+## TC-WORLD-068 step 4, db (03:49:33, load 8.71 10.58 12.30)
++++ WorldFlagsImpl.java
+-        final boolean newer = !closed.get() && application.version > appliedVersion(application.key);
++        final boolean newer = !closed.get();
+# exit 1; 12 tests completed, 1 failed
+  :277 (assertDoorway, called at :623) anOlderApplicationScheduledAfterANewerOneChangesNothing: expected: <minecraft:air{...}> but was: <minecraft:iron_bars{...}>
+
+## TC-WORLD-069 step 1 (03:50:07)
+# ./gradlew :server-app:test --tests '<SH>.WorldFlagsReplayTest.flagsThatCannotBeReadRefuseTheStartBeforeTheOverlayIsOpened'
+  WorldFlagsReplayTest tests="1" skipped="0" failures="0" errors="0"
+
+## TC-WORLD-069 step 2 (03:50:17)
++++ WorldFlagsImpl.java
+-                if (retries == retryBackoff.size()) {
++                if (retries >= 0) {
+# exit 1
+  :522 flagsThatCannotBeReadRefuseTheStartBeforeTheOverlayIsOpened: 1 read and 3 retries ==> expected: <4> but was: <1>
+
+## TC-WORLD-069 step 3, no database variables, containers running (03:50:27)
+# ./gradlew :server-app:test --tests '<SH>.WorldFlagsReplayTest'
+  WorldFlagsReplayTest tests="12" skipped="11" failures="0" errors="0"
+  11 x Assumption failed: no PostgreSQL for the store tests at jdbc:postgresql://127.0.0.1:5440/postgres and SYNAXIS_TEST_PG_URL is not set: The server requested SCRAM-based authentication, but the password is an empty string.
+
+# Every red line of TC-WORLD-066 to TC-WORLD-069 is the one docs/TEST.md gives since RUN-052 counted the moved lines (:273, :277, :363,
+# :405, :453, :484, :505, :522, :546, :554, :558, :578, :623); the step texts were run literally and need no change.
+
+## TC-WORLD-051 in strict mode one, five runs (docs/TEST.md section 7, OverlayShardProcessTest red once in RUN-052)
+# ./gradlew :server-app:test --tests '<SH>.OverlayShardProcessTest' --rerun -Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true
+03:50:47 load 7.63 9.96 11.93   tests="2" failures="0"  crash window: 187 changes, 96 kept, 91 lost; the oldest lost change was 9707 ms old at the kill, the newest kept one 9813 ms
+03:51:17 load 11.86 10.75 12.14 tests="2" failures="0"  crash window: 188 changes, 96 kept, 92 lost; the oldest lost change was 9765 ms old at the kill, the newest kept one 9870 ms
+03:51:47 load 9.62 10.33 11.94  tests="2" failures="0"  crash window: 188 changes, 96 kept, 92 lost; the oldest lost change was 9732 ms old at the kill, the newest kept one 9840 ms
+03:52:17 load 10.13 10.35 11.89 tests="2" failures="0"  crash window: 188 changes, 96 kept, 92 lost; the oldest lost change was 9734 ms old at the kill, the newest kept one 9844 ms
+03:52:48 load 9.26 10.11 11.75  tests="2" failures="0"  crash window: 188 changes, 97 kept, 91 lost; the oldest lost change was 9668 ms old at the kill, the newest kept one 9769 ms
+# 5 of 5 green; the oldest lost change 9,668 to 9,765 ms, within the 10,000 ms of F4 by 235 ms or more (RUN-052's red: 10,125 ms).
+# Not reproduced; the section 7 entry stays open. The runs of the class in the three gates are in 03-gates.txt.

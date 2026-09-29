@@ -1,0 +1,32 @@
+# RUN-054 evidence: M3-D runtime light, the round after RUN-053 (the one before it stopped on a full disk), docs/DESIGN-M3.md v0.24,
+# branch m3d/runtime-light, HEAD 4a3ff9e29c plus the test commit 6d8e77157e (ShardWorldAssemblyTest). git fetch before the round: origin/main
+# registers up to RUN-051 and has no RUN-054; RUN-055 is kept for another session. The RUN row of docs/TEST.md is written by the
+# closing stage, not in this directory's commit.
+# 01-shard-world-assembly.txt  ShardWorldAssemblyTest > aDirtyChunkIsWrittenBeforeItIsUnloaded: red with 25 ms an encoding before
+#                              the change, green after (3 runs), counter proof, TC-WORLD-049 steps 3 and 4 (section 7 closed)
+# 02-tc-steps.txt              TC-WORLD-091 step 2, TC-WORLD-093 steps 2 and 3 run literally; TC-WORLD-094 steps 2 and 3;
+#                              TC-WORLD-066 to TC-WORLD-069 on the moved lines (every red line as written, :578 included);
+#                              TC-WORLD-051 in strict mode one, five runs (not reproduced)
+# 03-gates.txt                 root check --rerun-tasks with the frozen zlib required, test in the two strict modes: 4,088 tests,
+#                              15 skipped, 0 failed in each; the four fallback byte lines of TC-WORLD-093 step 1
+# Not kept: Gradle logs, JUnit XML, the watchdog series; the lines above are copied out of them. No container ran (the scope has none).
+#
+# Machine: Apple M4 Pro, 12 cores, macOS, Homebrew JDK 25.0.4.1; other sessions ran builds on it (the prod-r2-flake worktree, three times at the start of one of ours).
+# Every Gradle command: --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts --max-workers=4, JAVA_TOOL_OPTIONS with the
+# proxy of docs/ENGINE.md, one at a time. A wrapper did, for each of the 38 Gradle runs of this round:
+#   - wait while a Gradle of another worktree runs (ps, lsof cwd), looking every 2 minutes: it waited three times, 03:24:40 to 03:26:40,
+#     03:28:48 to 03:30:48 and 03:31:08 to 03:39:09 (prod-r2-flake);
+#   - the disk gate of docs/TEST.md section 3 (new wording of this round): df -m /System/Volumes/Data available >= 1,500 MB to start;
+#   - a watchdog reading df every 10 s, stopping that Gradle by pid below 1,000 MB. It never fired.
+# Disk readings: at the starts 82,224 to 85,605 MB available, the lowest reading while any ran 81,731 MB; the three full gates started at 84,023 / 82,987 / 82,981 MB and went
+# down to 82,016 / 82,519 / 82,500 MB while they ran (by 2,007 / 468 / 481 MB). The swap files live in /System/Volumes/VM, in the same
+# APFS container (df shows the same available for both), and swap grew from 22,528 MB to 23,552 MB during the round, so these
+# differences are not the Gradle builds alone.
+# Memory (the container gate, not needed this round): memory_pressure "System-wide memory free percentage" 33% before the round,
+# 30% during the check gate, 44% and 47% at the starts of the two strict gates; swap free 1,558 / 547 / 1,324 / 1,420 MB at the same
+# times (recorded only).
+#
+# Clean-up: every temporary code change reverted with git checkout (git status after each: docs and the one test file only); the
+# temporary directory of the wrapper, logs and XML copies deleted at the end; no image, container, volume or Gradle daemon created.
+# synaxis-pg holds a database w3a_bd96776464534f04 created 2026-09-28 15:38 UTC, before this round (the test classes of this round
+# dropped theirs); left for the session that made it.

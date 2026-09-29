@@ -378,7 +378,7 @@ public class ShardWorldAssemblyTest {
     public void aDirtyChunkIsWrittenBeforeItIsUnloaded() {
         final ServerProcess process = process();
         try {
-            // No periodic flush within the test: the write before the unload is the one at tick 100
+            // No periodic flush within the test: the write before the unload is the one the unload asks for at tick 100
             final Mounted mounted = mount(process, new OverlayOptions(16_384, 60));
             final InstanceContainer instance = mounted.instance();
             process.dispatcher().start();
@@ -391,9 +391,17 @@ public class ShardWorldAssemblyTest {
             } while (mounted.started().relight().stats().pending() > 0);
 
             tick(process, 100);
-            assertNotNull(instance.getChunk(3, 3), "tick 100: dirty, it is written instead of unloaded");
+            final OverlayChunk chunk = (OverlayChunk) instance.getChunk(3, 3);
+            assertNotNull(chunk, "tick 100: dirty, it is written instead of unloaded");
+            // The write phase waits 20 ms for its encodings and leaves a slower one to a later tick
+            // (API-M3-007 step 4): the chunk stays while it is dirty and goes the tick after it is written
+            for (int ticks = 1; chunk.dirty(); ticks++) {
+                assertTrue(ticks <= 100, "written within 100 ticks after tick 100");
+                tick(process, 1);
+                assertNotNull(instance.getChunk(3, 3), "dirty at the start of the tick, it stays");
+            }
             tick(process, 1);
-            assertNull(instance.getChunk(3, 3), "tick 101: written, it is unloaded");
+            assertNull(instance.getChunk(3, 3), "written, it is unloaded the tick after");
 
             instance.loadChunk(3, 3).join();
             assertEquals(Block.GOLD_BLOCK, instance.getBlock(3 * 16 + 1, 50, 3 * 16 + 1), "loaded again from the overlay record");

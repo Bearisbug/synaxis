@@ -1,0 +1,54 @@
+# RUN-056 01: the stop drain of the runtime light past the per-tick install limits, TC-WORLD-094 steps 1 and 4.
+# Every Gradle command: ./gradlew --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts --max-workers=4 <task>, through the
+# wrapper of 00-index.txt. S = io.github.bearisbug.synaxis.app.shard. Lines copied from the JUnit XML system-out and the Gradle logs.
+
+## Red before the fix: f678c9fbfe plus the new test (the test file as committed in f65c9445fc), 06:26:25
+:server-app:test --tests 'S.ShardWorldRelightTest' --tests 'S.ShardWorldAssemblyTest'
+11 tests completed, 1 failed; BUILD FAILED in 18s
+ShardWorldRelightTest tests="3" failures="1": aStopDrainsNineHundredTargetsWithinItsBudget at ShardWorldRelightTest.java:225
+  org.opentest4j.AssertionFailedError: drained within 500 ms, none left: [Relight drain did not finish within 500 ms: 197 targets left,
+  the final flush writes them with their old light, Overlay final flush: chunks=100 bytes=73541 fsync_ms=4 left=0 by=tick] ==> expected: <true> but was: <false>
+ShardWorldAssemblyTest tests="8" failures="0"; aNormalStopWritesEveryChangeAndNothingAfterIt logs (the finding of the review):
+  06:26:43.689 WARN SynxRelight - Relight drain did not finish within 500 ms: 260 targets left, the final flush writes them with their old light
+  06:26:43.725 INFO OverlayStore - Overlay final flush: chunks=100 bytes=73468 fsync_ms=4 left=0 by=tick
+
+# A first version of the test opened the gate as the stop began (06:24:26, same red line): its 100 recomputations then ran on 200 threads
+# at once, took 285 to 842 ms each ("The light recomputation of center ... took <n> ms") and left 747 targets. That measured the
+# recomputation, not the install; the test was changed to compute the 100 before the tick starts (900 target entries waiting at the stop).
+# A second attempt stopped at compileTestJava on Error Prone [AssignmentExpression] (06:26:00) and was rewritten before the run above.
+
+## Green after the fix: f65c9445fc content (committed right after), 06:27:08
+:server-app:test --tests 'S.ShardWorldRelightTest' --tests 'S.ShardWorldAssemblyTest'
+BUILD SUCCESSFUL in 20s; ShardWorldRelightTest tests="3" failures="0"; ShardWorldAssemblyTest tests="8" failures="0"
+  06:27:18.003 INFO SynxRelight - Relight drain: 21 ms, left=0                                        (aStopDrainsNineHundredTargetsWithinItsBudget)
+  06:27:18.052 INFO OverlayStore - Overlay final flush: chunks=100 bytes=73541 fsync_ms=9 left=0 by=tick
+  06:27:19.158 INFO SynxRelight - Relight drain: 143 ms, left=0                                       (theStopDrainsTheRelightBeforeTheFinalFlush)
+  06:27:28.458 WARN SynxRelight - Relight drain did not finish within 500 ms: 126 targets left, ...   (aNormalStopWritesEveryChangeAndNothingAfterIt)
+The three gates of 03-gates.txt: aStopDrainsNineHundredTargetsWithinItsBudget "Relight drain: 2 ms, left=0" in each of the three.
+
+## TC-WORLD-094 step 4, counter proof on f65c9445fc (06:32:04): the per-tick limits held during the drain
+SynxRelight.java: final boolean drain = drainUntil != Long.MAX_VALUE && !drained.isDone();
+             ->  final boolean drain = drainUntil != Long.MAX_VALUE && !drained.isDone() && Boolean.getBoolean("proof.never");
+:server-app:test --tests 'S.ShardWorldRelightTest'
+3 tests completed, 1 failed; BUILD FAILED in 12s; red at ShardWorldRelightTest.java:225:
+  drained within 500 ms, none left: [Relight drain did not finish within 500 ms: 404 targets left, the final flush writes them with their old light, ...
+git checkout -- synx/src/main/java/io/github/bearisbug/synaxis/synx/SynxRelight.java; git status: docs only.
+
+## Supplementary readings: aNormalStopWritesEveryChangeAndNothingAfterIt after the fix (TC-WORLD-049's test, not a step of any case)
+# The scenario of the review: 100 changes while the tick runs, the pool of the shard (SynxOptions relightThreads 1 in the test), then
+# process.stop(). Runs 1 to 4 had a temporary line printing started().relight().stats() right before the stop; runs 5 to 7 also had
+# relightThreads 3 (max(1, 12 / 4), the default on this machine). Both temporary changes were copied back from a saved copy of the
+# test file (git status: docs only). --rerun on the test task; load1 is the wrapper's reading at the start.
+run  threads  load1  before the stop (RelightStats)                                          drain
+1    1        13.54  relights=13 skipped=21 pending=97  relightMsP99=22.1 (method alone)     Relight drain: 308 ms, left=0
+2    1        15.41  relights=12 skipped=0  pending=100 relightMsP99=5.6                     Relight drain: 346 ms, left=0
+3    1        15.94  relights=13 skipped=51 pending=93  relightMsP99=16.1                    WARN ... 63 targets left
+4    1        16.00  relights=12 skipped=0  pending=100 relightMsP99=5.1                     Relight drain: 255 ms, left=0
+5    3        14.19  relights=7  skipped=0  pending=100 relightMsP99=20.2                    WARN ... 81 targets left
+6    3        13.21  relights=7  skipped=0  pending=100 relightMsP99=18.5                    WARN ... 72 targets left
+7    3        11.22  relights=7  skipped=0  pending=100 relightMsP99=17.0                    WARN ... 143 targets left
+# Unmodified test, 1 thread: green run above (load1 14.94) WARN 126 targets left; the three gates (load1 6.78 to 7.18)
+# "Relight drain: 270 ms, left=0", "270 ms", "259 ms". So with 1 thread: 6 of 8 runs done in 255 to 346 ms, 2 left 63 and 126.
+# Before the fix: 260 left (red run above). With 3 threads more was left than with 1, at a single recomputation P99 of 17 to 20 ms;
+# not investigated (the load of the machine differed between the runs too). Two runs named measure1t-2 and -3 at 06:28:37 and
+# 06:28:43 were up to date and executed no test; they are not counted.

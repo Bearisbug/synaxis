@@ -1,0 +1,65 @@
+# RUN-056 gates on m3d/runtime-light f65c9445fc with docs/DESIGN-M3.md, docs/TEST.md and the RUN-054 index uncommitted
+# (the design doc was committed after as e3a2d225cb, docs only). 2026-09-30 (UTC+8), one Gradle at a time, after 01 and the first two
+# counter proofs of 02. Every gate: --rerun-tasks --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts --max-workers=4,
+# with the database variables of 02 (skipped="0" in every server-app class), the disk gate and watchdog of 00-index.txt.
+# Per module totals: the JUnit XML under build/test-results/test and */build/test-results/test written by that gate (client-fabric left out).
+
+## check: ./gradlew check --rerun-tasks -Dsynaxis.synx.require-frozen-zlib=true
+# start 06:36:35, disk available 84,221 MB, memory free 51%, load 6.88 9.40 9.81
+# exit 0 after 330 s, BUILD SUCCESSFUL in 5m 29s, 77 actionable tasks: 77 executed; lowest available during the run 83,872 MB
+(root) tests=3142 skipped=15 failures=0 errors=0
+architecture-tests tests=20 skipped=0 failures=0 errors=0
+baker tests=53 skipped=0 failures=0 errors=0
+game-rts tests=87 skipped=0 failures=0 errors=0
+loadtest tests=23 skipped=0 failures=0 errors=0
+plugin-api tests=15 skipped=0 failures=0 errors=0
+protocol tests=78 skipped=0 failures=0 errors=0
+server-app tests=520 skipped=0 failures=0 errors=0
+synx tests=142 skipped=0 failures=0 errors=0
+testing tests=11 skipped=0 failures=0 errors=0
+TOTAL tests=4091 skipped=15 failures=0 errors=0
+# ShardWorldRelightTest: Relight drain: 2 ms, left=0 (aStopDrainsNineHundredTargetsWithinItsBudget), then
+#   Overlay final flush: chunks=100 bytes=73541 fsync_ms=4 left=0 by=tick; Relight drain: 149 ms, left=0 (theStopDrains...)
+# ShardWorldAssemblyTest (aNormalStop...): Relight drain: 270 ms, left=0; Overlay final flush: chunks=100 bytes=73541 fsync_ms=4 left=0 by=tick
+# OverlayShardProcessTest: crash window: 188 changes, 96 kept, 92 lost; the oldest lost change was 9721 ms old at the kill, the newest kept one 9825 ms
+# SynxRelightViewersIntegrationTest system-out (TC-WORLD-093 step 1), the same four lines as RUN-054:
+relight fallback edge torch at 56 40 62: 6 partial packets 635 B, 12 full packets 1375 B
+relight fallback center torch at 56 40 56: 8 partial packets 1002 B, 0 full packets 0 B
+relight fallback corner torch at 63 40 48: 8 partial packets 1744 B, 0 full packets 0 B
+relight fallback cave torch at 52 30 52: 2 partial packets 848 B, 0 full packets 0 B
+
+## strict mode one: ./gradlew test --rerun-tasks -Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true
+# start 06:42:05, disk available 84,213 MB, memory free 45%, load 6.78 14.34 13.23
+# exit 0 after 331 s, BUILD SUCCESSFUL in 5m 29s, 66 actionable tasks: 66 executed; lowest available 83,782 MB
+(root) tests=3142 skipped=15 failures=0 errors=0
+architecture-tests tests=20 skipped=0 failures=0 errors=0
+baker tests=53 skipped=0 failures=0 errors=0
+game-rts tests=87 skipped=0 failures=0 errors=0
+loadtest tests=23 skipped=0 failures=0 errors=0
+plugin-api tests=15 skipped=0 failures=0 errors=0
+protocol tests=78 skipped=0 failures=0 errors=0
+server-app tests=520 skipped=0 failures=0 errors=0
+synx tests=142 skipped=0 failures=0 errors=0
+testing tests=11 skipped=0 failures=0 errors=0
+TOTAL tests=4091 skipped=15 failures=0 errors=0
+# ShardWorldRelightTest: Relight drain: 2 ms, left=0; 149 ms, left=0. ShardWorldAssemblyTest: Relight drain: 270 ms, left=0
+# OverlayShardProcessTest: crash window: 187 changes, 95 kept, 92 lost; the oldest lost change was 9761 ms old at the kill, the newest kept one 9870 ms
+# relight fallback lines: the same four
+
+## strict mode two: ./gradlew test --rerun-tasks -Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true -Dsynaxis.thread-provider=grid
+# start 06:47:36, disk available 84,199 MB, memory free 42%, load 7.18 11.52 12.62
+# exit 0 after 331 s, BUILD SUCCESSFUL in 5m 29s, 66 actionable tasks: 66 executed; lowest available 83,766 MB
+(root) tests=3142 skipped=15 failures=0 errors=0
+architecture-tests tests=20 skipped=0 failures=0 errors=0
+baker tests=53 skipped=0 failures=0 errors=0
+game-rts tests=87 skipped=0 failures=0 errors=0
+loadtest tests=23 skipped=0 failures=0 errors=0
+plugin-api tests=15 skipped=0 failures=0 errors=0
+protocol tests=78 skipped=0 failures=0 errors=0
+server-app tests=520 skipped=0 failures=0 errors=0
+synx tests=142 skipped=0 failures=0 errors=0
+testing tests=11 skipped=0 failures=0 errors=0
+TOTAL tests=4091 skipped=15 failures=0 errors=0
+# ShardWorldRelightTest: Relight drain: 2 ms, left=0; 148 ms, left=0. ShardWorldAssemblyTest: Relight drain: 259 ms, left=0
+# OverlayShardProcessTest: crash window: 186 changes, 95 kept, 91 lost; the oldest lost change was 9748 ms old at the kill, the newest kept one 9856 ms
+# relight fallback lines: the same four

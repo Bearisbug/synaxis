@@ -1,0 +1,55 @@
+# RUN-056 02: counter proofs run literally as docs/TEST.md writes them, on f65c9445fc (the design commit after it changes docs only).
+# Each: the literal replacement, the run, then git checkout -- <file>; git status --porcelain after each: docs only.
+# "db" = SYNAXIS_TEST_PG_URL=jdbc:postgresql://127.0.0.1:5440/postgres (container synaxis-pg), SYNAXIS_TEST_PG_USER=postgres,
+# SYNAXIS_TEST_PG_PASSWORD read from docker inspect synaxis-pg inside the wrapper (never echoed, never written to a file),
+# SYNAXIS_TEST_REDIS_URL=redis://127.0.0.1:6440. Every Gradle command as in 01-drain.txt.
+
+## TC-WORLD-051 step 2 (06:32:53; the review ran it on HEAD f678c9fbfe)
+OverlayStore.java  selectDue: final long interval = TimeUnit.SECONDS.toNanos(...) - DUE_LEAD_NANOS;  ->  3 * TimeUnit.SECONDS.toNanos(...)
+ShardWorld.java    start: the line shutdown.addAfterPlayers("overlay", overlay::finalFlush); deleted
+:server-app:test --tests 'io.github.bearisbug.synaxis.app.shard.OverlayShardProcessTest'
+2 tests completed, 2 failed; BUILD FAILED in 28s
+  OverlayShardProcessTest.java:163 chunk E, changed at t = 0 s, is on disk after a kill at t = 20 s ==> expected: not <null>
+  crash window: 186 changes, 0 kept, 186 lost; the oldest lost change was 20004 ms old at the kill, the newest kept one -1 ms
+  OverlayShardProcessTest.java:194 (the stopped shard: no "Overlay final flush: chunks=100" line)
+As the case expects. Steps 1 and 3: the three gates of 03-gates.txt, 2 tests 0 failed in each.
+
+## TC-WORLD-098 step 3 (06:33:33; the review ran it on HEAD f678c9fbfe)
+SynxRelight.java  this.minY = loader.world().minY();               ->  this.minY = instance.getCachedDimensionType().minY();
+                  this.sectionCount = loader.world().height() / 16; ->  this.sectionCount = instance.getCachedDimensionType().height() / 16;
+:architecture-tests:test
+20 tests completed, 1 failed; BUILD FAILED in 16s
+  SynxInternalSurfaceArchitectureTest > synxTouchesOnlyListedInternalMembers() FAILED, "was violated (2 times)":
+  SynxRelight.<init>(...) calls method <io.github.bearisbug.synaxis.instance.InstanceContainer.getCachedDimensionType()> in (SynxRelight.java:207)
+  and in (SynxRelight.java:209)
+As the case expects (the constructor is above installPhase, so the lines did not move). Steps 1 and 2: the check gate
+(SynxOptionsTest 6, architecture-tests 20, "config key gate: 115 keys read, 115 in ConfigFile.KEYS, 20 meter names left out").
+
+## TC-WORLD-092 step 2 (06:53:43)
+SynxRelight.java  return at != null && at.chunk() != null;  ->  return at != null;
+:synx:test --tests 'io.github.bearisbug.synaxis.synx.SynxRelightIntegrationTest'
+10 tests completed, 1 failed: SynxRelightIntegrationTest.java:266 sky light in the tunnel at x 0 y 30 ==> expected: <0> but was: <14>
+
+## TC-WORLD-093 step 2 (06:53:59)
+SynxRelight.java  if (!ready[(dx + 2) * 5 + dz + 2]) return false;
+              ->  if (!ready[(dx + 2) * 5 + dz + 2] && ((dx == targetX && dz == targetZ) || (dx == 0 && dz == 0))) return false;
+                  chunk.delivered().put(player, now);  ->  chunk.delivered().putIfAbsent(player, now);
+:synx:test --tests 'io.github.bearisbug.synaxis.synx.SynxRelightViewersIntegrationTest'
+6 tests completed, 2 failed:
+  SynxRelightViewersIntegrationTest.java:148 round 1 (minecraft:torch): the 3×3 of 3,2 holds x 4, A must get it ==> expected: <1> but was: <0>
+  SynxRelightViewersIntegrationTest.java:177 round 2 at tick 105: 2,2 ==> expected: <1> but was: <0>
+
+## TC-WORLD-093 step 3 (06:54:15)
+SynxChunk.java  if (sky[i] != null && !SynxRelight.sameLight(sky[i], heldSky[i])) {
+            ->  if (sky[i] != null && (!SynxRelight.sameLight(sky[i], heldSky[i]) || !Boolean.getBoolean("proof.never"))) {
+                (the block[i] line the same way)
+:synx:test --tests 'io.github.bearisbug.synaxis.synx.SynxRelightViewersIntegrationTest'
+6 tests completed, 1 failed: SynxRelightViewersIntegrationTest.java:273 A, 3,2 changed=true ==> expected: <1> but was: <2>
+
+## TC-WORLD-094 step 3, db (06:54:35)
+WorldFlagsReplayTest.java, aReadOnlyWorldStillTakesItsFlags: "final Mounted mounted = mount(release, READ_ONLY, flags, _ -> {" and
+"});" joined into "final Mounted mounted = mount(release, READ_ONLY, flags);"
+:server-app:test --tests 'io.github.bearisbug.synaxis.app.shard.WorldFlagsReplayTest'
+12 tests completed, 1 failed (tests="12" skipped="0"):
+  WorldFlagsReplayTest.java:557 no application loaded the chunk past the bounds ==> expected: <null> but was: <DynamicChunk[-1:0]>
+Step 4 of TC-WORLD-094 is in 01-drain.txt; steps 1, 2 and 5 are the gates (ShardWorldRelightTest 3 and WorldFlagsReplayTest 12, skipped 0).

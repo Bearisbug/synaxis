@@ -34,7 +34,7 @@
 # Memory: memory_pressure "System-wide memory free percentage" 33% before the round, 30% during the check gate, 44% and 47% at the
 # starts of the two strict gates; swap free 1,558 / 547 / 1,324 / 1,420 MB at the same times (recorded only).
 # Container part (04:24 to 04:48): the container gate of docs/TEST.md section 3 (memory free >= 25%, no Gradle or java of another
-# worktree) was open at every reading, before the image build and each of the four containers: memory free 34% to 44%, swap free
+# worktree) was open at every reading, before the image build and each of the four containers: memory free 33% to 44%, swap free
 # 448 to 1,271 MB (recorded only), load1 7.5 to 9.4, no other worktree's Gradle or java; disk available 84,573 to 86,398 MB, lowest
 # while a container or Gradle ran 84,583 MB (the 53 s container of TC-WORLD-097 not sampled). The two Gradle runs of this part used
 # the same wrapper and watchdog (never fired).

@@ -1,0 +1,39 @@
+# RUN-056 evidence: the stop drain of the M3-D runtime light past the per-tick install limits, docs/DESIGN-M3.md v0.26,
+# branch m3d/runtime-light: the fix f65c9445fc (SynxRelight#installPhase and ShardWorldRelightTest) on f678c9fbfe, the design doc
+# e3a2d225cb after it. git fetch before the registration: origin/main is still a7bc18b2ad and registers up to RUN-055; this branch
+# holds RUN-052 to RUN-054; no remote branch has RUN-056. The RUN row of docs/TEST.md is in the same commit as this directory.
+# Why: an independent review of f678c9fbfe found that with a live tick the drain relies on the install at the end of the tick, 64 target
+# entries and 1 ms a tick, about 640 in the 500 ms of the drain, while ShardWorldAssemblyTest changes 100 chunks (about 900 entries)
+# before its stop and logs "Relight drain did not finish within 500 ms: ~260 targets left" every time; the design doc said a normal stop
+# was not affected.
+# 01-drain.txt      the new test red before the fix (197 left) and green after (21 ms), the counter proof of TC-WORLD-094 step 4
+#                   (404 left, red at ShardWorldRelightTest.java:225); supplementary drain readings of ShardWorldAssemblyTest with
+#                   1 and 3 recomputation threads
+# 02-tc-steps.txt   TC-WORLD-051 step 2 and TC-WORLD-098 step 3 as the review ran them on f678c9fbfe; TC-WORLD-092 step 2,
+#                   TC-WORLD-093 steps 2 and 3, TC-WORLD-094 step 3 (the counter proofs of the cases the change maps to, section 5)
+# 03-gates.txt      root check --rerun-tasks with the frozen zlib required, test in the two strict modes: 4,091 tests, 15 skipped,
+#                   0 failed in each; the drain, crash window and fallback lines they logged
+# Not kept: Gradle logs, JUnit XML, the watchdog readings; the lines of 01 to 03 are copied out of them.
+#
+# Machine: Apple M4 Pro, 12 cores, macOS, Homebrew JDK 25.0.4.1. Every Gradle command: --no-daemon --init-script
+# gradle/init/aliyun-mirror.init.gradle.kts --max-workers=4, JAVA_TOOL_OPTIONS with the proxy of docs/ENGINE.md, one at a time.
+# A wrapper in a temporary directory did, for each of the 23 Gradle runs of this round (two of them up to date, 01):
+#   - wait while a Gradle of another checkout of this repository runs (ps, lsof cwd under Projects/Minecraft), looking every 2 minutes:
+#     there was none at any start. A Gradle of another project (Kando/App/android) ran through most of the round; the first start
+#     waited for it from 06:13:53 to 06:23:54 before the check was narrowed to this repository's checkouts, and it was not waited for after;
+#   - the disk gate of docs/TEST.md section 3: df -m /System/Volumes/Data available >= 1,500 MB to start;
+#   - a watchdog reading df every 10 s, stopping that Gradle by pid below 1,000 MB. It never fired.
+# Disk available at the starts 84,196 to 85,961 MB, lowest while any ran 83,766 MB. Memory free (memory_pressure) 32% to 51% at the
+# starts; load1 4.8 to 16.1 at the starts (other sessions built on the machine at the same time).
+#
+# The review's three side items: (1) RUN-054 00-index.txt, container part: "memory free 34% to 44%" is now "33% to 44%" (06-real-shard.txt
+# has mem_free=33% at 04:45:55); the same line's "load1 7.5 to 9.4" does not cover load1=13.39 of that reading either, left as it is
+# (not among the review's items). (2) The three Kotlin daemon logs of this worktree the review named
+# ($TMPDIR/kotlin-daemon.2026-09-30.03-54-25-918.00.log, 04-01-39-826, 04-11-02-325; their paths were this worktree and the shared
+# ~/.gradle caches only) were deleted before the round. (3) TC-WORLD-051 step 2 and TC-WORLD-098 step 3 rerun: 02-tc-steps.txt.
+#
+# Clean-up: every temporary code change reverted with git checkout, or, for the two temporary changes of ShardWorldAssemblyTest (a
+# printed line and 3 recomputation threads, 01), copied back from a saved copy; git status after each: docs only. The wrapper's
+# temporary directory (scripts, logs, XML copies) and the two Kotlin daemon logs of this round's Gradle runs deleted at the end
+# (the other new kotlin-daemon logs in $TMPDIR name only Kando/App and were left). No container, image or Gradle daemon was created;
+# synaxis-pg and synaxis-valkey were reused, and the test classes dropped their databases.

@@ -1,0 +1,21 @@
+# TC-PROD-264 steps 1-3,5 rerun (p33), 2026-09-30
+14:24:22.873 [main] INFO  i.g.b.s.app.metrics.HostMetrics - Metrics endpoint listening on http://127.0.0.1:59020/metrics
+14:24:22.997 [main] INFO  i.github.bearisbug.synaxis.app.Main - synaxis server-app listening on 0.0.0.0:25651
+200 text/plain; version=0.0.4; charset=utf-8
+synaxis TYPE lines: 26, jvm 18, process 6
+synaxis_connections{state="configuration"} 0.0
+synaxis_connections{state="login"} 0.0
+synaxis_connections{state="play"} 0.0
+# TYPE synaxis_tick_acquire_seconds summary
+synaxis_tick_acquire_seconds_count{thread="Syn-Tick-0"} 0
+synaxis_tick_acquire_seconds_sum{thread="Syn-Tick-0"} 0.0
+synaxis_tick_acquire_seconds_count{thread="Syn-TickScheduler"} 343
+synaxis_tick_acquire_seconds_sum{thread="Syn-TickScheduler"} 0.0
+# TYPE synaxis_tick_acquire_seconds_max gauge
+synaxis_tick_acquire_seconds_max{thread="Syn-Tick-0"} 0.0
+synaxis_tick_acquire_seconds_max{thread="Syn-TickScheduler"} 0.0
+# TYPE synaxis_tick_duration_seconds summary
+synaxis_tick_duration_seconds_count{thread="Syn-Tick-0"} 0
+synaxis_tick_duration_seconds_count{thread="Syn-TickScheduler"} 343
+# TYPE synaxis_tick_duration_seconds_max gauge
+/other 404, POST 405; A stopped by pid, 25651 no listener

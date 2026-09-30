@@ -1,0 +1,14 @@
+# p33 after review, 2026-09-30 15:08, load averages 35.07 66.03 64.70; heavy-work gate printed "free" before the run
+# TC-PROD-547 step 1 (expected 20 -> 21 meter names since v0.9.35)
+$ ./gradlew :architecture-tests:test --rerun --tests '*TranslationKeyGateTest' --tests '*ConfigKeyGateTest' --max-workers=4 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts
+BUILD SUCCESSFUL in 47s
+TranslationKeyGateTest  tests="2" skipped="0" failures="0" errors="0"
+  translation key gate: 60 keys checked against [en_us.json, zh_cn.json], 14 identifiers left out
+ConfigKeyGateTest       tests="1" skipped="0" failures="0" errors="0"
+  config key gate: 115 keys read, 115 in ConfigFile.KEYS, 21 meter names left out
+
+# TC-PROD-569 step 2, minimum per benchmark from p33-03-overhead.txt (base min - new min)
+plainThreadSync round 1: 49.76 - 12.66 = 37.1 ns
+plainThreadSync round 2: 46.96 - 14.95 = 32.0 ns
+tickThreadSync  round 1: 53.08 - 13.30 = 39.8 ns
+tickThreadSync  round 2: 40.09 - 15.11 = 25.0 ns

@@ -42,7 +42,7 @@ public class SampleTest {
         final JsonObject ticks = SampleCommand.ticks(file, started, new JsonObject());
         assertEquals(4, ticks.get("count").getAsLong(), "4 ticks and 4 pings recorded: " + ticks);
         assertEquals(4, ticks.getAsJsonObject("per_minute").getAsJsonObject("0").get("count").getAsLong());
-        assertTrue(ticks.get("acquire_ms").isJsonNull(), "not exported until audit P3-3");
+        assertTrue(ticks.getAsJsonObject("acquire_ms").get("count").getAsLong() == 4, "an acquisition wait per tick: " + ticks);
     }
 
     /**

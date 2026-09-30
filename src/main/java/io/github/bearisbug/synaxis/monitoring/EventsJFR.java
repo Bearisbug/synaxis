@@ -5,6 +5,7 @@ import jdk.jfr.Description;
 import jdk.jfr.Event;
 import jdk.jfr.Label;
 import jdk.jfr.Name;
+import jdk.jfr.Timespan;
 import org.jetbrains.annotations.ApiStatus;
 
 import java.util.UUID;
@@ -50,7 +51,7 @@ public final class EventsJFR {
         return JFR_AVAILABLE ? new ServerPing(remoteAddress) : NO_OP;
     }
 
-    public static EventMarker newServerTick() {
+    public static ServerTickMarker newServerTick() {
         return JFR_AVAILABLE ? new ServerTick() : NO_OP;
     }
 
@@ -103,7 +104,16 @@ public final class EventsJFR {
     @Label("Server Tick")
     @Category({"synaxis", "Server"})
     @Description("Time spent ticking the server once")
-    private static final class ServerTick extends JFREventWrapper {
+    private static final class ServerTick extends JFREventWrapper implements ServerTickMarker {
+        @Label("Acquisition Time")
+        @Description("How long the tick waited to acquire, docs/DESIGN-PROD.md API-PROD-016")
+        @Timespan(Timespan.NANOSECONDS)
+        long acquisitionTime;
+
+        @Override
+        public void acquisitionTime(long nanos) {
+            this.acquisitionTime = nanos;
+        }
     }
 
     @Name(CHUNK_GENERATION)
@@ -248,12 +258,25 @@ public final class EventsJFR {
         }
     }
 
+    /**
+     * The event of one server tick, which also carries the time the tick waited to acquire.
+     */
+    public interface ServerTickMarker extends EventMarker {
+        /**
+         * Sets the acquisition wait of the tick.
+         *
+         * @param nanos {@code TickMonitor#getAcquisitionTime}, in nanoseconds
+         */
+        default void acquisitionTime(long nanos) {
+        }
+    }
+
     private static class JFREventWrapper extends Event implements EventMarker {
     }
 
-    private static final EventMarker NO_OP = new NoOpEvent();
+    private static final NoOpEvent NO_OP = new NoOpEvent();
 
-    private static class NoOpEvent implements EventMarker {
+    private static class NoOpEvent implements ServerTickMarker {
         @Override
         public void commit() {
             // do nothing

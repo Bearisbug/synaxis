@@ -28,18 +28,6 @@ public sealed interface Acquirable<T> permits AcquirableImpl {
     }
 
     /**
-     * Retrieve and reset acquiring time.
-     * <p>
-     * The counter is shared by every thread acquiring an element, so the returned value is the sum of
-     * the time they all spent waiting since the last reset, and threads may still be adding to it
-     * while it is read. It is not comparable to a wall clock tick duration.
-     */
-    @ApiStatus.Internal
-    static long resetAcquiringTime() {
-        return AcquirableImpl.WAIT_COUNTER_NANO.getAndSet(0);
-    }
-
-    /**
      * Creates a new {@link Acquirable} object.
      * <p>
      * Mostly for internal use, as a {@link TickThread} has to be used

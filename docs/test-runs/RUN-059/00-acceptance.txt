@@ -1,0 +1,31 @@
+RUN-059 记录（2026-09-30，集成分支 prod/integrate-059）
+
+被测版本：prod/integrate-059，main 15ac990547 之上合入三组：
+  prod/limit（入站包速率闸 582 → 750 包 / 7 s，DESIGN-PROD v0.9.35、DESIGN.md v0.42、DESIGN-M2 v0.52）
+  prod/p33（审计 P3-3：每 tick 的获取等待导出为 synaxis_tick_acquire_seconds，:loadtest sample 写 ticks.acquire_ms，v0.9.36）
+  prod/refused（EVT:transfer_refused 扩到关卡门的六种拒绝结果，v0.9.37）
+  另加集成时修的 PermissionsIntegrationTest 偶发红（测试只等回复就读台账回调，与 ModerationIntegrationTest 同因）。
+范围：REQ-PROD-013 → TC-PROD-560、561，REQ-M2（游戏洪水闸）→ TC-GAME-060（改写）、TC-GAME-075；REQ-PROD-018/019、REQ-PROD-029 → TC-PROD-565～569；
+      REQ-PROD-031 → TC-PROD-570～573；全量回归。
+
+一、门禁（持 /tmp/synaxis-heavy.lock；带 SYNAXIS_TEST_PG_URL / REDIS_URL / PG_PASSWORD；--max-workers=4 --no-daemon）
+  ./gradlew check --rerun-tasks --continue（23:37～23:43，起跑 load1 4.40）→ 1 条失败：
+    PermissionsIntegrationTest > withoutADatabaseNobodyHoldsANodeAndTheCommandSaysSo  NoSuchElementException at :351（见第二节）
+    其余全绿；配置键门禁 "115 keys read, 115 in ConfigFile.KEYS, 21 meter names left out"；翻译键门禁 "60 keys …, 14 identifiers left out"
+  严格 grid 全量 test --rerun-tasks（23:43～23:50）→ BUILD SUCCESSFUL，0 失败；EnvDispatcherThreadsIntegrationTest 报 threads 4、provider grid
+  修复后 :server-app:test --rerun → BUILD SUCCESSFUL
+  各模块（修复后的结果文件）：根 3,146 个 0 失败 15 跳过；server-app 521 个 0 失败 0 跳过；loadtest 25；architecture-tests 20；game-rts 87；plugin-api 15
+  ABI 门：plugin-api 与 protocol 本轮未改，未跑
+
+二、集成时修的偶发红（TEST.md §7 已结案）
+  PermissionsIntegrationTest 断言前加 await(… !events.isEmpty() …)。反证：测试自己的台账回调里先 Thread.sleep(200)：
+    去掉等待 → "8 tests completed, 1 failed"，红在 :351 NoSuchElementException（与门禁同一句）；留着等待 → 同延迟下 BUILD SUCCESSFUL；
+    修复后默认模式与 4 线程严格 grid 各 8 个全绿。
+
+三、各组的用例与反证（组内实跑，逐条见各文件）
+  limit：limit/00-index.txt、01-junit-and-counterproofs.txt、02-process-060-075.txt、03-flood-threshold.txt
+  p33：p33-00-index.txt ～ p33-06-base-checkout.txt（含每 tick 获取等待的开销测量）
+  refused：refused-counterproofs.txt（TC-PROD-570 第 2～5 步、571、572 的反证原文）
+
+四、结果：TC-PROD-560、561、565～573，TC-GAME-060、075 通过；全量回归通过（含修复后的 server-app）。
+  已知过时：TC-WORLD-064、TC-WORLD-089 仍按「只有三种结果写 transfer_refused」写（光照会话按交接清单改，TEST.md §5 已标注）。

@@ -27,14 +27,16 @@ import java.util.stream.Stream;
 
 /**
  * {@code sample}: watches the server process from its own machine and writes {@code server.json}
- * ({@code docs/DESIGN-PROD.md} {@code API-PROD-025}). Every tick comes from the engine's JFR event
- * {@code synaxis.ServerTickTime}, recorded for the run and deleted once read; the process figures
- * from {@code ps}; the gate, the traffic and the busy time of each tick thread from the metrics
- * endpoint ({@code API-PROD-015}) when {@code --metrics} names it.
+ * ({@code docs/DESIGN-PROD.md} {@code API-PROD-025}). Every tick, with the time it waited to acquire,
+ * comes from the engine's JFR event {@code synaxis.ServerTickTime}, recorded for the run and deleted
+ * once read; the process figures from {@code ps}; the gate, the traffic and the busy time of each
+ * tick thread from the metrics endpoint ({@code API-PROD-015}) when {@code --metrics} names it.
  */
 final class SampleCommand {
 
     static final String TICK_EVENT = "synaxis.ServerTickTime";
+    /** The field of {@link #TICK_EVENT} holding the acquisition wait of the tick ({@code API-PROD-016}). */
+    static final String ACQUIRE_FIELD = "acquisitionTime";
     private static final String GATE = "synaxis_gate_rejections_total{reason=\"";
     private static final String TICK_SUM = "synaxis_tick_duration_seconds_sum{thread=\"";
     private static final Pattern WHITESPACE = Pattern.compile("\\s+");
@@ -161,7 +163,8 @@ final class SampleCommand {
      * @param jfr       the recording
      * @param startedAt when sampling began, minute 0
      * @param gc        filled with the distribution of the pauses of every collection
-     * @return count, overall distribution, per minute distributions and the acquire time
+     * @return count, overall distribution, per minute distributions and the distribution of the
+     * acquisition waits
      */
     static JsonObject ticks(Path jfr, Instant startedAt, JsonObject gc) throws IOException {
         final Ticks ticks = new Ticks(startedAt);
@@ -174,6 +177,8 @@ final class SampleCommand {
                     pauses.record(event.getDuration("sumOfPauses").toNanos() / 1e6);
                 } else if (name.equals(TICK_EVENT)) {
                     ticks.record(event.getStartTime(), event.getDuration().toNanos() / 1e6);
+                    // A server built before the field existed records none
+                    if (event.hasField(ACQUIRE_FIELD)) ticks.acquire(event.getDuration(ACQUIRE_FIELD).toNanos() / 1e6);
                 }
             }
         }
@@ -181,12 +186,16 @@ final class SampleCommand {
         return ticks.toJson();
     }
 
-    /** The distributions of the ticks, overall and per minute from {@code startedAt}. */
+    /**
+     * The distributions of the ticks, overall and per minute from {@code startedAt}, and of their
+     * acquisition waits.
+     */
     static final class Ticks {
 
         private final Instant startedAt;
         private final Histogram overall = new Histogram(0.001);
         private final Map<Long, Histogram> perMinute = new TreeMap<>();
+        private final Histogram acquire = new Histogram(0.001);
 
         Ticks(Instant startedAt) {
             this.startedAt = startedAt;
@@ -198,6 +207,11 @@ final class SampleCommand {
             perMinute.computeIfAbsent(minute, _ -> new Histogram(0.001)).record(millis);
         }
 
+        /** The acquisition wait of one tick, {@code TickMonitor#getAcquisitionTime}. */
+        void acquire(double millis) {
+            acquire.record(millis);
+        }
+
         JsonObject toJson() {
             final JsonObject ticks = new JsonObject();
             ticks.addProperty("count", overall.count());
@@ -205,8 +219,7 @@ final class SampleCommand {
             final JsonObject minutes = new JsonObject();
             perMinute.forEach((minute, histogram) -> minutes.add(Long.toString(minute), histogram.distribution("_ms")));
             ticks.add("per_minute", minutes);
-            // TickMonitor#getAcquisitionTime is not exported until audit P3-3 is fixed (API-PROD-015)
-            ticks.add("acquire_ms", JsonNull.INSTANCE);
+            ticks.add("acquire_ms", acquire.count() == 0 ? JsonNull.INSTANCE : acquire.distribution("_ms"));
             return ticks;
         }
     }

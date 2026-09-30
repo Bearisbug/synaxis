@@ -22,7 +22,7 @@ import io.github.bearisbug.synaxis.network.packet.PacketParser;
 import io.github.bearisbug.synaxis.network.packet.PacketVanilla;
 import io.github.bearisbug.synaxis.network.socket.Server;
 import io.github.bearisbug.synaxis.registry.Registries;
-import io.github.bearisbug.synaxis.thread.Acquirable;
+import io.github.bearisbug.synaxis.thread.EngineThread;
 import io.github.bearisbug.synaxis.thread.ThreadDispatcher;
 import io.github.bearisbug.synaxis.thread.ThreadProvider;
 import io.github.bearisbug.synaxis.thread.TickThread;
@@ -600,6 +600,10 @@ final class ServerProcessImpl implements ServerProcess, Registries.Delegating {
     }
 
     private final class TickerImpl implements Ticker {
+        // The acquisition wait of each tick thread when the last tick was measured, to take this
+        // tick's from their running totals (docs/DESIGN-PROD.md API-PROD-016)
+        private final long[] threadWaits = new long[dispatcher.threads().size()];
+
         @Override
         public void tick(long nanoTime) {
             final long watched = watchdog.tickStarted();
@@ -614,6 +618,7 @@ final class ServerProcessImpl implements ServerProcess, Registries.Delegating {
             if (Thread.currentThread() instanceof TickSchedulerThread self) tickSchedulerThread = self;
             var serverTickEvent = EventsJFR.newServerTick();
             serverTickEvent.begin();
+            final long serialWaitBefore = ownAcquireWait();
             scheduler().processTick();
 
             // Connection tick (let waiting clients in, send keep alives, handle configuration players packets)
@@ -637,12 +642,37 @@ final class ServerProcessImpl implements ServerProcess, Registries.Delegating {
 
             // Monitoring
             {
-                final double acquisitionTimeMs = Acquirable.resetAcquiringTime() / 1e6D;
+                final long acquisitionNanos = ownAcquireWait() - serialWaitBefore + longestThreadWait();
                 final double tickTimeMs = (System.nanoTime() - nanoTime) / 1e6D;
-                final TickMonitor tickMonitor = new TickMonitor(tickTimeMs, acquisitionTimeMs);
+                final TickMonitor tickMonitor = new TickMonitor(tickTimeMs, acquisitionNanos / 1e6D);
                 eventHandler().call(new ServerTickMonitorEvent(tickMonitor));
+                serverTickEvent.acquisitionTime(acquisitionNanos);
             }
             serverTickEvent.commit();
+        }
+
+        /**
+         * The acquisition wait of the thread running the tick, counted only on an engine thread: the
+         * tick scheduler, not a test ticking by hand.
+         */
+        private static long ownAcquireWait() {
+            return Thread.currentThread() instanceof EngineThread engineThread ? engineThread.acquireWaitNanos() : 0;
+        }
+
+        /**
+         * The longest acquisition wait of a single tick thread during this tick. Read after
+         * {@code updateAndAwait} saw every tick thread count its latch down, which orders their own
+         * writes of the totals before these reads.
+         */
+        private long longestThreadWait() {
+            final List<TickThread> threads = dispatcher.threads();
+            long longest = 0;
+            for (int i = 0; i < threads.size(); i++) {
+                final long total = threads.get(i).acquireWaitNanos();
+                longest = Math.max(longest, total - threadWaits[i]);
+                threadWaits[i] = total;
+            }
+            return longest;
         }
 
         private void serverTick(long nanoStart) {

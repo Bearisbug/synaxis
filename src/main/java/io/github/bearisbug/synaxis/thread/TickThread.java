@@ -12,7 +12,6 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.LockSupport;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Consumer;
-import java.util.function.LongConsumer;
 
 /**
  * Thread responsible for ticking the partitions and elements it was handed.
@@ -29,7 +28,7 @@ public class TickThread extends EngineThread {
 
     private final AtomicReference<CountDownLatch> latchRef = new AtomicReference<>();
     private volatile long tickTimeNanos;
-    private volatile @Nullable LongConsumer tickObserver;
+    private volatile @Nullable TickObserver tickObserver;
 
     private long tickNum = 0;
     // In the order they were handed over, which is the tick order; a hash set so that unloading a chunk
@@ -56,9 +55,12 @@ public class TickThread extends EngineThread {
                 continue;
             }
             final ReentrantLock lock = this.lock;
-            final LongConsumer observer = this.tickObserver;
+            final TickObserver observer = this.tickObserver;
             final long start = observer != null ? System.nanoTime() : 0;
-            lock.lock();
+            final long waitedBefore = acquireWaitNanos();
+            // An acquirer may hold it from before the tick, blocking on it is a wait of this tick
+            // (docs/DESIGN-PROD.md API-PROD-016)
+            if (!lock.tryLock()) waited(AcquirableImpl.lockTimed(lock));
             try {
                 tick();
             } catch (Throwable e) {
@@ -71,7 +73,7 @@ public class TickThread extends EngineThread {
                 this.latchRef.set(null);
                 latch.countDown();
             }
-            if (observer != null) observe(observer, System.nanoTime() - start);
+            if (observer != null) observe(observer, System.nanoTime() - start, acquireWaitNanos() - waitedBefore);
             LockSupport.park(this);
         }
     }
@@ -87,7 +89,7 @@ public class TickThread extends EngineThread {
                 if (lock.hasQueuedThreads()) {
                     lock.unlock();
                     // #acquire() callbacks
-                    lock.lock();
+                    if (!lock.tryLock()) waited(AcquirableImpl.lockTimed(lock));
                 }
                 try {
                     assert assertElement(element);
@@ -100,19 +102,34 @@ public class TickThread extends EngineThread {
     }
 
     /**
-     * Tells {@code observer} how long each tick of this thread took, in nanoseconds, on this thread
-     * right after the tick ({@code docs/DESIGN-PROD.md} {@code API-PROD-015}). A thread handed no
-     * partition does not tick and reports nothing.
+     * Told of every tick of a tick thread, on that thread right after the tick.
+     */
+    @FunctionalInterface
+    public interface TickObserver {
+        /**
+         * Called once per tick of the thread.
+         *
+         * @param tickNanos    how long the tick took, in nanoseconds
+         * @param acquireNanos how much of it the thread was blocked on a lock of the acquisition
+         *                     protocol, in nanoseconds ({@link TickThread#acquireWaitNanos()})
+         */
+        void ticked(long tickNanos, long acquireNanos);
+    }
+
+    /**
+     * Tells {@code observer} how long each tick of this thread took and how long the thread waited
+     * to acquire during it, on this thread right after the tick ({@code docs/DESIGN-PROD.md}
+     * {@code API-PROD-015}). A thread handed no partition does not tick and reports nothing.
      *
      * @param observer the observer, null to stop observing
      */
-    public void observeTicks(@Nullable LongConsumer observer) {
+    public void observeTicks(@Nullable TickObserver observer) {
         this.tickObserver = observer;
     }
 
-    private void observe(LongConsumer observer, long nanos) {
+    private void observe(TickObserver observer, long nanos, long acquireNanos) {
         try {
-            observer.accept(nanos);
+            observer.ticked(nanos, acquireNanos);
         } catch (Throwable e) {
             handleException(e);
         }

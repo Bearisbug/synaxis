@@ -31,6 +31,8 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.ByteChannel;
+import java.nio.channels.CancelledKeyException;
+import java.nio.channels.SelectionKey;
 import java.time.Duration;
 import java.util.Collection;
 import java.util.List;
@@ -55,7 +57,9 @@ import java.util.concurrent.atomic.AtomicLong;
  * {@value #MAX_HANDSHAKE_BYTES} bytes or one not finished within 5 s closes the socket, two bounds
  * the library does not set on its own. Nor does it bound what it queues to send: a message that finds
  * {@value #MAX_QUEUED_FRAMES} frames or {@value #MAX_QUEUED_BYTES} bytes queued and not yet written
- * closes the connection with 1008 instead.
+ * closes the connection with 1008 instead. Nor does its selector thread always write what is queued
+ * while it finishes writing a connection's queue: every {@link #WRITE_RECHECK} a connection with frames
+ * queued and no write pending is put back up for writing.
  */
 public final class ManagementServer implements AutoCloseable {
 
@@ -72,6 +76,8 @@ public final class ManagementServer implements AutoCloseable {
     static final int MAX_QUEUED_FRAMES = 4_096;
     /** The bytes queued and not yet written at which a connection takes no more messages. */
     static final int MAX_QUEUED_BYTES = 1_048_576;
+    /** How often the connections are looked at for frames queued with no write pending. */
+    static final Duration WRITE_RECHECK = Duration.ofMillis(100);
     private static final Duration BIND_TIMEOUT = Duration.ofSeconds(10);
     private static final int CLOSE_TIMEOUT_MILLIS = 1_000;
 
@@ -166,6 +172,7 @@ public final class ManagementServer implements AutoCloseable {
         private final LogBudget failures = new LogBudget(LOGGER, "management connection errors");
         private final LogBudget backlogs = new LogBudget(LOGGER, "management connections closed for their backlog");
         final CompletableFuture<Void> bound = new CompletableFuture<>();
+        private final Thread writeRecheck = Thread.ofVirtual().name("Syn-Management-Writes").unstarted(this::recheckWrites);
 
         Endpoint(ManagementSettings settings, ManagementMethods methods, Duration handshakeDeadline) {
             super(settings.bind(), 1, List.of(new BoundedDraft()));
@@ -188,7 +195,36 @@ public final class ManagementServer implements AutoCloseable {
 
         @Override
         public void onStart() {
+            writeRecheck.start();
             bound.complete(null);
+        }
+
+        /**
+         * Java-WebSocket's selector thread, once it has written out the queue of a connection, stops
+         * waiting to write to it without looking at the queue again. A frame queued between its last
+         * look and that step, a pong by the decoder thread or a reply by a call, stays queued with no
+         * write pending until something else is queued on that connection, for the last reply to a
+         * quiet peer the ping of the lost connection timer up to 60 s later. This puts such a
+         * connection back up for writing within {@link #WRITE_RECHECK}.
+         */
+        private void recheckWrites() {
+            try {
+                while (true) {
+                    Thread.sleep(WRITE_RECHECK);
+                    for (WebSocket conn : getConnections()) {
+                        final WebSocketImpl socket = (WebSocketImpl) conn;
+                        try {
+                            if (!socket.outQueue.isEmpty()
+                                    && (socket.getSelectionKey().interestOps() & SelectionKey.OP_WRITE) == 0)
+                                onWriteDemand(socket);
+                        } catch (CancelledKeyException _) {
+                            // Closed meanwhile: nothing more is written to it
+                        }
+                    }
+                }
+            } catch (InterruptedException _) {
+                // The interface is stopping
+            }
         }
 
         @Override
@@ -233,6 +269,7 @@ public final class ManagementServer implements AutoCloseable {
         }
 
         void shutDown() {
+            writeRecheck.interrupt();
             try {
                 stop(CLOSE_TIMEOUT_MILLIS, "the server is stopping");
             } catch (InterruptedException _) {

@@ -1,0 +1,41 @@
+# RUN-058 evidence: TC-WORLD-054 (M3-C, 200 bots walk and ride 600 s) again on the same machine, the shard on bin/server-shard's own JVM
+# defaults (G1, -Xms4G -Xmx4G, +AlwaysPreTouch, MaxGCPauseMillis=50) instead of RUN-057's 1 GiB heap, with a GC log, to see whether the
+# ticks over 50 ms remain and whether they overlap G1 pauses. 2026-09-30 12:37~14:38.
+# Code: branch m3/load-tests at 0e919cce6a, the head of main (the same code as RUN-057's 5c7874ed5c: the commits between change docs/
+# only). git fetch before the registration: origin/main is 0e919cce6a and registers up to RUN-057; RUN-058 is this round, RUN-059 onwards
+# belong to another session by agreement.
+#
+# 00-index.txt              this file
+# 01-gates.txt              the start gate readings (35% memory free for the 4 GiB pre-touched heap), the 90 min window of the second
+#                           ride run, other sessions' load during the steps
+# 02-build-and-bake.txt     installDist of server-app, loadtest and baker; the 4k test map baked into <L> (content_hash as RUN-057)
+# 03-jvm.txt                JVM arguments of the shard, the sampler and the bots of each step, read back with jcmd
+# 04-054-walk.txt           TC-WORLD-054 step 1: JFR counts, shard log, ledger, summary.json figures, slow ticks against GC pauses, machine
+# 05-054-ride.txt           TC-WORLD-054 step 2 (first ride run), the same
+# 06-gc-vs-slow-ticks.txt   the table of slow ticks against G1 pauses for both steps next to RUN-057, and the answer of the round
+# 07-scripts.txt            the scripts of the round: gate, wait, monitor, step runner, readers
+# Not kept (deleted with <L>): summary.json, bots-0.json, server.json, zero.jfr (120.6 and 114.2 MB), gc.log, shard logs, ledgers,
+# monitor output; the lines above are copied out of them. <L> is a mktemp -d directory under $TMPDIR.
+#
+# Machine: Apple M4 Pro, 12 cores, 24 GiB, macOS, Homebrew JDK 25.0.4.1; shard, sampler and bots on this one machine over loopback (the
+# same-machine tier of DESIGN-M3 §15); memory store (no database). Other sessions ran all along (01-gates.txt).
+#
+# JVM (03-jvm.txt). Shard: bin/server-shard's DEFAULT_JVM_OPTS only, JAVA_OPTS unset: -XX:+UseG1GC -Xms4G -Xmx4G -XX:+AlwaysPreTouch
+#   -XX:MaxGCPauseMillis=50 -XX:+HeapDumpOnOutOfMemoryError -XX:+ExitOnOutOfMemoryError, then SERVER_APP_OPTS on the shard's command line
+#   (the -D keys of TC-WORLD-053 and -Xlog:gc*:file=<step dir>/gc.log:time,uptime,level,tags). Sampler and bots: bin/loadtest's
+#   DEFAULT_JVM_OPTS only: -Xmx2G (jvm_args "-Xmx2G" read back from both). JAVA_TOOL_OPTIONS, JAVA_OPTS, LOADTEST_OPTS, _JAVA_OPTIONS and
+#   JDK_JAVA_OPTIONS were unset in the runner. This removes RUN-057's deviation (its exported JAVA_OPTS reached the bots and the sampler).
+# Deviation from the case text: TC-WORLD-053 step 1, which TC-WORLD-054 refers to, starts the shard with JAVA_OPTS="-Xms1G -Xmx1G"; this
+#   round leaves it out on purpose (the user's request) and adds the GC log.
+#
+# Results (docs/TEST.md RUN-058):
+#   TC-WORLD-054  fail: ticks over 50 ms 5 (walk) and 116 (ride), 0 required; every other criterion met: 200/200 logged in and 0 lost in
+#                 both steps, ChunkDataPacket::<init> and createChunkPacket 0, getFullDataPacket 1,229,718 and 2,654,065 against 1,229,718
+#                 and 2,653,695 packets the bots received, createChunkPacket in 0 execution and 0 allocation samples, overlay_sent 0,
+#                 handle_sent > 0, failed 0, Overlay final flush chunks=0 by=tick; chunk downlink 13.680 and 31.354 KB/s (-1.6%, -2.9%),
+#                 1,480.8 and 1,465.7 B per chunk (-1.4%, -2.4%); tick P99 5.738 and 47.863 ms; chunks per bot at least 5,775 and 12,832.
+#                 The ride's 116: 6 in minutes 0-7, all with a G1 pause; 110 from 13:00:30 when other sessions drove load1 to 47.
+#                 A second ride run was blocked by the gate (19 readings in 90 min).
+#
+# Cleanup at the end of the round: the shards, samplers, bots and monitors stopped by pid (none left, pgrep checked); <L> (map, work dirs,
+# JFR, GC logs, the uv venv) deleted; no Kotlin daemon log of this worktree was written (find -newer the round's start marker: none).

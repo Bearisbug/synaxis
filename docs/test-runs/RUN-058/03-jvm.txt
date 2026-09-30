@@ -1,0 +1,83 @@
+# JVM arguments of the three processes of each TC-WORLD-054 step, read back with jcmd <pid> VM.command_line and jcmd <pid> VM.flags 5 s
+# after the bots started (java_class_path cut at 160 characters). The runner unset JAVA_TOOL_OPTIONS, JAVA_OPTS, LOADTEST_OPTS,
+# SERVER_APP_OPTS, _JAVA_OPTIONS and JDK_JAVA_OPTIONS (run.txt prints an empty list after the unset), then started the shard with
+# SERVER_APP_OPTS on its own command line only (bin/server-shard reads DEFAULT_JVM_OPTS, JAVA_OPTS and SERVER_APP_OPTS; bin/loadtest reads
+# DEFAULT_JVM_OPTS, JAVA_OPTS and LOADTEST_OPTS, so the shard's -Xlog:gc* and -D keys cannot reach the sampler or the bots).
+# bin/server-shard DEFAULT_JVM_OPTS: '"-XX:+UseG1GC" "-Xms4G" "-Xmx4G" "-XX:+AlwaysPreTouch" "-XX:MaxGCPauseMillis=50" "-XX:+HeapDumpOnOutOfMemoryError" "-XX:+ExitOnOutOfMemoryError"'
+# bin/loadtest DEFAULT_JVM_OPTS: '"-Xmx2G"'
+
+=== w054-walk jvm-shard
+== shard pid 51931
+51931:
+VM Arguments:
+jvm_args: -XX:+UseG1GC -Xms4G -Xmx4G -XX:+AlwaysPreTouch -XX:MaxGCPauseMillis=50 -XX:+HeapDumpOnOutOfMemoryError -XX:+ExitOnOutOfMemoryError -Dsynaxis.app.port=25771 -Dsynaxis.app.auth=offline -Dsynaxis.app.shard-id=run058-w054-walk -Dsynaxis.app.metrics.bind=127.0.0.1:19771 -Dsynaxis.connection-gate.trusted-networks=127.0.0.0/8 -Dsynaxis.app.log=stdout -Dsynaxis.map.root=<L>/maps/synth -Dsynaxis.map.build=synth-09b42ebb5dc6-p776 -Xlog:gc*:file=<L>/w054-walk/gc.log:time,uptime,level,tags 
+java_command: io.github.bearisbug.synaxis.app.ShardMain
+java_class_path (initial): /Users/bug/Documents/Projects/Minecraft/synaxis-wt/load/server-app/build/install/server-app/lib/server-app-dev.jar:/Users/bug/Documen ...
+Launcher Type: SUN_STANDARD
+51931:
+-XX:-AOTInvokeDynamicLinking -XX:-AOTRecordTraining -XX:-AOTReplayTraining -XX:+AlwaysPreTouch -XX:CICompilerCount=4 -XX:ConcGCThreads=3 -XX:+ExitOnOutOfMemoryError -XX:G1ConcRefinementThreads=10 -XX:G1EagerReclaimRemSetThreshold=16 -XX:G1HeapRegionSize=2097152 -XX:G1RemSetArrayOfCardsEntries=16 -XX:G1RemSetHowlMaxNumBuckets=8 -XX:G1RemSetHowlNumBuckets=8 -XX:+HeapDumpOnOutOfMemoryError -XX:InitialHeapSize=4294967296 -XX:MarkStackSize=4194304 -XX:MarkStackSizeMax=536870912 -XX:MaxGCPauseMillis=50 -XX:MaxHeapSize=4294967296 -XX:MaxNewSize=2575302656 -XX:MinHeapDeltaBytes=2097152 -XX:MinHeapSize=4294967296 -XX:NonNMethodCodeHeapSize=5849088 -XX:NonProfiledCodeHeapSize=122912768 -XX:ProfiledCodeHeapSize=122912768 -XX:ReservedCodeCacheSize=251674624 -XX:+SegmentedCodeCache -XX:SoftMaxHeapSize=4294967296 -XX:+UseCompressedOops -XX:+UseG1GC -XX:-UseNUMA -XX:-UseNUMAInterleaving 
+
+=== w054-walk jvm-sample
+== sample pid 52081
+52081:
+VM Arguments:
+jvm_args: -Xmx2G 
+java_command: io.github.bearisbug.synaxis.loadtest.LoadTest sample --pid 51931 --duration 620s --metrics http://127.0.0.1:19771/metrics --out server.json
+java_class_path (initial): /Users/bug/Documents/Projects/Minecraft/synaxis-wt/load/loadtest/build/install/loadtest/lib/loadtest-dev.jar:/Users/bug/Documents/Pro ...
+Launcher Type: SUN_STANDARD
+52081:
+-XX:-AOTInvokeDynamicLinking -XX:-AOTRecordTraining -XX:-AOTReplayTraining -XX:CICompilerCount=4 -XX:ConcGCThreads=3 -XX:G1ConcRefinementThreads=10 -XX:G1EagerReclaimRemSetThreshold=10 -XX:G1HeapRegionSize=1048576 -XX:G1RemSetArrayOfCardsEntries=10 -XX:G1RemSetHowlMaxNumBuckets=8 -XX:G1RemSetHowlNumBuckets=4 -XX:InitialHeapSize=402653184 -XX:MarkStackSize=4194304 -XX:MarkStackSizeMax=536870912 -XX:MaxHeapSize=2147483648 -XX:MaxNewSize=1287651328 -XX:MinHeapDeltaBytes=1048576 -XX:MinHeapSize=8388608 -XX:NonNMethodCodeHeapSize=5849088 -XX:NonProfiledCodeHeapSize=122912768 -XX:ProfiledCodeHeapSize=122912768 -XX:ReservedCodeCacheSize=251674624 -XX:+SegmentedCodeCache -XX:SoftMaxHeapSize=2147483648 -XX:+UseCompressedOops -XX:+UseG1GC -XX:-UseNUMA -XX:-UseNUMAInterleaving 
+
+=== w054-walk jvm-bots
+== bots pid 52144
+52144:
+VM Arguments:
+jvm_args: -Xmx2G 
+java_command: io.github.bearisbug.synaxis.loadtest.LoadTest run --host 127.0.0.1 --port 25771 --bots 200 --profile walk --encryption off --duration 600s --warmup 60s --out bots-0.json
+java_class_path (initial): /Users/bug/Documents/Projects/Minecraft/synaxis-wt/load/loadtest/build/install/loadtest/lib/loadtest-dev.jar:/Users/bug/Documents/Pro ...
+Launcher Type: SUN_STANDARD
+52144:
+-XX:-AOTInvokeDynamicLinking -XX:-AOTRecordTraining -XX:-AOTReplayTraining -XX:CICompilerCount=4 -XX:ConcGCThreads=3 -XX:G1ConcRefinementThreads=10 -XX:G1EagerReclaimRemSetThreshold=10 -XX:G1HeapRegionSize=1048576 -XX:G1RemSetArrayOfCardsEntries=10 -XX:G1RemSetHowlMaxNumBuckets=8 -XX:G1RemSetHowlNumBuckets=4 -XX:InitialHeapSize=402653184 -XX:MarkStackSize=4194304 -XX:MarkStackSizeMax=536870912 -XX:MaxHeapSize=2147483648 -XX:MaxNewSize=1287651328 -XX:MinHeapDeltaBytes=1048576 -XX:MinHeapSize=8388608 -XX:NonNMethodCodeHeapSize=5849088 -XX:NonProfiledCodeHeapSize=122912768 -XX:ProfiledCodeHeapSize=122912768 -XX:ReservedCodeCacheSize=251674624 -XX:+SegmentedCodeCache -XX:SoftMaxHeapSize=2147483648 -XX:+UseCompressedOops -XX:+UseG1GC -XX:-UseNUMA -XX:-UseNUMAInterleaving 
+
+=== w054-walk ps -o pid,rss,args (args cut at 400)
+51931 293312 /opt/homebrew/opt/openjdk@25/libexec/openjdk.jdk/Contents/Home/bin/java -XX:+UseG1GC -Xms4G -Xmx4G -XX:+AlwaysPreTouch -XX:MaxGCPauseMillis=50 -XX:+HeapDumpOnOutOfMemoryError -XX:+ExitOnOutOfMemoryError -Dsynaxis.app.port=25771 -Dsynaxis.app.auth=offline -Dsynaxis.app.shard-id=run058-w054-walk -Dsynaxis.app.metrics.bind=127.0.0.1:19771 -Dsynaxis.connection-gate.trusted-networks=127.0.
+52081  47504 /opt/homebrew/opt/openjdk@25/libexec/openjdk.jdk/Contents/Home/bin/java -Xmx2G -classpath /Users/bug/Documents/Projects/Minecraft/synaxis-wt/load/loadtest/build/install/loadtest/lib/loadtest-dev.jar:/Users/bug/Documents/Projects/Minecraft/synaxis-wt/load/loadtest/build/install/loadtest/lib/annotations-26.1.0.jar:/Users/bug/Documents/Projects/Minecraft/synaxis-wt/load/loadtest/build/in
+52144 193472 /opt/homebrew/opt/openjdk@25/libexec/openjdk.jdk/Contents/Home/bin/java -Xmx2G -classpath /Users/bug/Documents/Projects/Minecraft/synaxis-wt/load/loadtest/build/install/loadtest/lib/loadtest-dev.jar:/Users/bug/Documents/Projects/Minecraft/synaxis-wt/load/loadtest/build/install/loadtest/lib/annotations-26.1.0.jar:/Users/bug/Documents/Projects/Minecraft/synaxis-wt/load/loadtest/build/in
+
+=== w054-ride jvm-shard
+== shard pid 75011
+75011:
+VM Arguments:
+jvm_args: -XX:+UseG1GC -Xms4G -Xmx4G -XX:+AlwaysPreTouch -XX:MaxGCPauseMillis=50 -XX:+HeapDumpOnOutOfMemoryError -XX:+ExitOnOutOfMemoryError -Dsynaxis.app.port=25772 -Dsynaxis.app.auth=offline -Dsynaxis.app.shard-id=run058-w054-ride -Dsynaxis.app.metrics.bind=127.0.0.1:19772 -Dsynaxis.connection-gate.trusted-networks=127.0.0.0/8 -Dsynaxis.app.log=stdout -Dsynaxis.map.root=<L>/maps/synth -Dsynaxis.map.build=synth-09b42ebb5dc6-p776 -Xlog:gc*:file=<L>/w054-ride/gc.log:time,uptime,level,tags 
+java_command: io.github.bearisbug.synaxis.app.ShardMain
+java_class_path (initial): /Users/bug/Documents/Projects/Minecraft/synaxis-wt/load/server-app/build/install/server-app/lib/server-app-dev.jar:/Users/bug/Documen ...
+Launcher Type: SUN_STANDARD
+75011:
+-XX:-AOTInvokeDynamicLinking -XX:-AOTRecordTraining -XX:-AOTReplayTraining -XX:+AlwaysPreTouch -XX:CICompilerCount=4 -XX:ConcGCThreads=3 -XX:+ExitOnOutOfMemoryError -XX:G1ConcRefinementThreads=10 -XX:G1EagerReclaimRemSetThreshold=16 -XX:G1HeapRegionSize=2097152 -XX:G1RemSetArrayOfCardsEntries=16 -XX:G1RemSetHowlMaxNumBuckets=8 -XX:G1RemSetHowlNumBuckets=8 -XX:+HeapDumpOnOutOfMemoryError -XX:InitialHeapSize=4294967296 -XX:MarkStackSize=4194304 -XX:MarkStackSizeMax=536870912 -XX:MaxGCPauseMillis=50 -XX:MaxHeapSize=4294967296 -XX:MaxNewSize=2575302656 -XX:MinHeapDeltaBytes=2097152 -XX:MinHeapSize=4294967296 -XX:NonNMethodCodeHeapSize=5849088 -XX:NonProfiledCodeHeapSize=122912768 -XX:ProfiledCodeHeapSize=122912768 -XX:ReservedCodeCacheSize=251674624 -XX:+SegmentedCodeCache -XX:SoftMaxHeapSize=4294967296 -XX:+UseCompressedOops -XX:+UseG1GC -XX:-UseNUMA -XX:-UseNUMAInterleaving 
+
+=== w054-ride jvm-sample
+== sample pid 75171
+75171:
+VM Arguments:
+jvm_args: -Xmx2G 
+java_command: io.github.bearisbug.synaxis.loadtest.LoadTest sample --pid 75011 --duration 620s --metrics http://127.0.0.1:19772/metrics --out server.json
+java_class_path (initial): /Users/bug/Documents/Projects/Minecraft/synaxis-wt/load/loadtest/build/install/loadtest/lib/loadtest-dev.jar:/Users/bug/Documents/Pro ...
+Launcher Type: SUN_STANDARD
+75171:
+-XX:-AOTInvokeDynamicLinking -XX:-AOTRecordTraining -XX:-AOTReplayTraining -XX:CICompilerCount=4 -XX:ConcGCThreads=3 -XX:G1ConcRefinementThreads=10 -XX:G1EagerReclaimRemSetThreshold=10 -XX:G1HeapRegionSize=1048576 -XX:G1RemSetArrayOfCardsEntries=10 -XX:G1RemSetHowlMaxNumBuckets=8 -XX:G1RemSetHowlNumBuckets=4 -XX:InitialHeapSize=402653184 -XX:MarkStackSize=4194304 -XX:MarkStackSizeMax=536870912 -XX:MaxHeapSize=2147483648 -XX:MaxNewSize=1287651328 -XX:MinHeapDeltaBytes=1048576 -XX:MinHeapSize=8388608 -XX:NonNMethodCodeHeapSize=5849088 -XX:NonProfiledCodeHeapSize=122912768 -XX:ProfiledCodeHeapSize=122912768 -XX:ReservedCodeCacheSize=251674624 -XX:+SegmentedCodeCache -XX:SoftMaxHeapSize=2147483648 -XX:+UseCompressedOops -XX:+UseG1GC -XX:-UseNUMA -XX:-UseNUMAInterleaving 
+
+=== w054-ride jvm-bots
+== bots pid 75363
+75363:
+VM Arguments:
+jvm_args: -Xmx2G 
+java_command: io.github.bearisbug.synaxis.loadtest.LoadTest run --host 127.0.0.1 --port 25772 --bots 200 --profile ride --encryption off --duration 600s --warmup 60s --out bots-0.json
+java_class_path (initial): /Users/bug/Documents/Projects/Minecraft/synaxis-wt/load/loadtest/build/install/loadtest/lib/loadtest-dev.jar:/Users/bug/Documents/Pro ...
+Launcher Type: SUN_STANDARD
+75363:
+-XX:-AOTInvokeDynamicLinking -XX:-AOTRecordTraining -XX:-AOTReplayTraining -XX:CICompilerCount=4 -XX:ConcGCThreads=3 -XX:G1ConcRefinementThreads=10 -XX:G1EagerReclaimRemSetThreshold=10 -XX:G1HeapRegionSize=1048576 -XX:G1RemSetArrayOfCardsEntries=10 -XX:G1RemSetHowlMaxNumBuckets=8 -XX:G1RemSetHowlNumBuckets=4 -XX:InitialHeapSize=402653184 -XX:MarkStackSize=4194304 -XX:MarkStackSizeMax=536870912 -XX:MaxHeapSize=2147483648 -XX:MaxNewSize=1287651328 -XX:MinHeapDeltaBytes=1048576 -XX:MinHeapSize=8388608 -XX:NonNMethodCodeHeapSize=5849088 -XX:NonProfiledCodeHeapSize=122912768 -XX:ProfiledCodeHeapSize=122912768 -XX:ReservedCodeCacheSize=251674624 -XX:+SegmentedCodeCache -XX:SoftMaxHeapSize=2147483648 -XX:+UseCompressedOops -XX:+UseG1GC -XX:-UseNUMA -XX:-UseNUMAInterleaving 
+
+=== w054-ride ps -o pid,rss,args (args cut at 400)
+75011 303600 /opt/homebrew/opt/openjdk@25/libexec/openjdk.jdk/Contents/Home/bin/java -XX:+UseG1GC -Xms4G -Xmx4G -XX:+AlwaysPreTouch -XX:MaxGCPauseMillis=50 -XX:+HeapDumpOnOutOfMemoryError -XX:+ExitOnOutOfMemoryError -Dsynaxis.app.port=25772 -Dsynaxis.app.auth=offline -Dsynaxis.app.shard-id=run058-w054-ride -Dsynaxis.app.metrics.bind=127.0.0.1:19772 -Dsynaxis.connection-gate.trusted-networks=127.0.
+75171  64992 /opt/homebrew/opt/openjdk@25/libexec/openjdk.jdk/Contents/Home/bin/java -Xmx2G -classpath /Users/bug/Documents/Projects/Minecraft/synaxis-wt/load/loadtest/build/install/loadtest/lib/loadtest-dev.jar:/Users/bug/Documents/Projects/Minecraft/synaxis-wt/load/loadtest/build/install/loadtest/lib/annotations-26.1.0.jar:/Users/bug/Documents/Projects/Minecraft/synaxis-wt/load/loadtest/build/in
+75363 254080 /opt/homebrew/opt/openjdk@25/libexec/openjdk.jdk/Contents/Home/bin/java -Xmx2G -classpath /Users/bug/Documents/Projects/Minecraft/synaxis-wt/load/loadtest/build/install/loadtest/lib/loadtest-dev.jar:/Users/bug/Documents/Projects/Minecraft/synaxis-wt/load/loadtest/build/install/loadtest/lib/annotations-26.1.0.jar:/Users/bug/Documents/Projects/Minecraft/synaxis-wt/load/loadtest/build/in

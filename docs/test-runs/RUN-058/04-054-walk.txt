@@ -1,0 +1,150 @@
+# TC-WORLD-054 step 1: 200 bots walk 600 s, warm-up 60 s, the way of TC-WORLD-053, the shard on bin/server-shard's own JVM defaults (4 GiB heap) with a GC log
+# w054-walk start 2026-09-30 12:40:39 profile=walk bots=200 duration=600s warmup=60s load { 4.90 4.33 4.30 } vm.swapusage: total = 22528.00M  used = 21736.06M  free = 791.94M  (encrypted)
+# JVM-related environment of the runner after unset: [] JAVA_HOME=/opt/homebrew/opt/openjdk@25/libexec/openjdk.jdk/Contents/Home
+# shard: SERVER_APP_OPTS="-Dsynaxis.app.port=25771 -Dsynaxis.app.auth=offline -Dsynaxis.app.shard-id=run058-w054-walk -Dsynaxis.app.metrics.bind=127.0.0.1:19771 -Dsynaxis.connection-gate.trusted-networks=127.0.0.0/8 -Dsynaxis.app.log=stdout -Dsynaxis.map.root=<L>/maps/synth -Dsynaxis.map.build=synth-09b42ebb5dc6-p776 -Xlog:gc*:file=<L>/w054-walk/gc.log:time,uptime,level,tags" (on the shard's command line only, not exported) bin/server-shard
+# server pid 51931 monitor pid 51930
+# listening 12:40:42
+# sample pid 52081 bots pid 52144
+# run exit 0
+# sample exit 0
+# merge exit 2
+# w054-walk end 2026-09-30 12:51:04 load { 4.50 4.29 4.34 } vm.swapusage: total = 23552.00M  used = 22379.06M  free = 1172.94M  (encrypted)
+# JVM arguments read back from the running processes (jcmd <pid> VM.command_line), full VM.flags in 03-jvm.txt:
+#   jvm-shard: jvm_args: -XX:+UseG1GC -Xms4G -Xmx4G -XX:+AlwaysPreTouch -XX:MaxGCPauseMillis=50 -XX:+HeapDumpOnOutOfMemoryError -XX:+ExitOnOutOfMemoryError -Xlog:gc*:file=<step dir>/gc.log:time,uptime,level,tags 
+#   jvm-sample: jvm_args: -Xmx2G 
+#   jvm-bots: jvm_args: -Xmx2G 
+
+## JFR counts, shard log, ledger, summary.json (analyze054.sh)
+## JFR (jfr print; counts over the whole recording)
+MethodTiming last invocations:io.github.bearisbug.synaxis.synx.SynxChunk.getFullDataPacket() = 1229718
+MethodTiming last invocations:io.github.bearisbug.synaxis.instance.DynamicChunk.createChunkPacket() = 0
+MethodTiming last invocations:io.github.bearisbug.synaxis.network.packet.server.play.ChunkDataPacket.<init>(int, int, ChunkData, LightData) = 0
+ExecutionSample events: 26256
+ExecutionSample events with createChunkPacket in the stack: 0
+ExecutionSample events with SynxChunk.getFullDataPacket in the stack: 22
+ObjectAllocationSample events: 58432
+ObjectAllocationSample events with objectClass ChunkDataPacket: 0
+ObjectAllocationSample events with createChunkPacket in the stack: 0
+GCHeapSummary after GC heapUsed: count 43 max 122.3 MB
+## shard log
+12:40:40.984 [main] INFO  i.github.bearisbug.synaxis.app.Main - Effective ServerConfig[shutdownOnSignal=true, maxTickCatchUp=5, chunkViewDistance=12, entityViewDistance=8, entitySynchronizationTicks=20, dispatcherThreads=10, threadProvider=GRID, threadGridExponent=4, sendLightAfterBlockPlacementDelay=100, loginTimeout=30000, loginPluginMessageTimeout=5000, knownPacksResponseTimeout=300000, acceptTransfers=false, playerPacketPerTick=50, playerPacketQueueSize=1000, keepAliveDelay=10000, keepAliveKick=15000, playerChunkUpdateLimiterHistorySize=0, maxConnections=1024, acceptBackoff=100, maxConnectionsPerIp=16, handshakeTimeout=5000, loginRatePerIp=0.5, loginBurstPerIp=3, statusRatePerIp=1.0, sta
+12:40:41.583 [main] INFO  i.g.b.synaxis.app.shard.ShardWorld - Map release synth-09b42ebb5dc6-p776 verified in 578 ms: bounds=Bounds[minX=0, minZ=0, maxX=255, maxZ=255] world=World[minY=0, height=256]
+12:40:41.666 [main] INFO  i.g.b.s.app.metrics.HostMetrics - Metrics endpoint listening on http://127.0.0.1:19771/metrics
+12:40:41.694 [main] INFO  i.g.b.synaxis.app.shard.ShardWorld - Map mounted: build_id=synth-09b42ebb5dc6-p776 simulation_distance=4 chunk_unload_grace_ticks=100 spawn=Pos[x=2040.5, y=74.0, z=2040.5, yaw=0.0, pitch=0.0] overlay=overlay/synth-09b42ebb5dc6-p776
+12:40:41.695 [main] INFO  i.github.bearisbug.synaxis.app.Main - Map mode (synaxis.app.core-mode=on): the host serves the map instance, no plugin is loaded, spawn=Pos[x=2040.5, y=74.0, z=2040.5, yaw=0.0, pitch=0.0]
+12:40:41.697 [main] INFO  i.github.bearisbug.synaxis.app.Main - synaxis server-app listening on 0.0.0.0:25771
+12:51:04.275 [Thread-2] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+12:51:04.275 [Thread-2] INFO  i.g.b.synaxis.synx.SynxRelight - Relight drain: 0 ms, left=0
+12:51:04.311 [Syn-TickScheduler] INFO  i.g.b.synaxis.synx.OverlayStore - Overlay final flush: chunks=0 bytes=0 fsync_ms=0 left=0 by=tick
+WARN/ERROR lines: 0
+kick/disconnect lines in the log: 1
+12:40:40.984 [main] INFO  i.github.bearisbug.synaxis.app.Main - Effective ServerConfig[shutdownOnSignal=true, maxTickCatchUp=5, chunkViewDistance=12, entityViewDistance=8, entitySynchronizationTicks=20, dispatcherThreads=10, threadProvider=GRID, threadGridExponent=4, sendLightAfterBlockPlacementDela
+overlay/ in the work dir: synth-09b42ebb5dc6-p776 ; files:        0
+## ledger (logs/*.jsonl)
+   1 {"ts":"2026-09-30T04:51:04.311751Z","event":"shutdown_saved","shard_id":"memory","online":0,"saved":0,"failed":0,"elapsed_ms":36,"timed_out":"false"}
+   1 {"ts":"2026-09-30T04:40:58.004468Z","event":"session_entered_configuration","connection_id":"0ce576f4-fe72-4bb8-bae0-6622134f930a","protocol_version":776}
+   1 {"ts":"2026-09-30T04:40:57.955312Z","event":"session_entered_configuration","connection_id":"21b54f92-f6ff-40a6-a0e1-a9b460639ab4","protocol_version":776}
+   1 {"ts":"2026-09-30T04:40:57.910540Z","event":"session_entered_configuration","connection_id":"91c285f1-3fad-424a-8d67-f113af0f8673","protocol_version":776}
+   1 {"ts":"2026-09-30T04:40:57.853600Z","event":"session_entered_configuration","connection_id":"83b46cc8-ae15-4127-b4ff-f3266aca78e9","protocol_version":776}
+ledger events by type:   10 chunk_stream_stats  200 session_entered_configuration    1 shard_started    1 shutdown_saved 
+{"ts":"2026-09-30T04:40:41.697396Z","event":"shard_started","build_id":"synth-09b42ebb5dc6-p776","verify_ms":578,"regions":64,"bytes_mapped":213319659,"overlay_records":0,"flags_replayed":0,"flags_ms":0,"region_id":"null","capacity":"null"}
+{"records":10,"overlay_sent_sum":0,"handle_sent_min":110528,"handle_sent_sum":1221032,"failed_sum":0,"evict_failed_sum":0,"write_phase_ms_max":3.374875,"section_cache_bytes_max":12839936}
+## summary.json
+{"bots":{"pass":true,"detail":"200 of 200 logged in, 0 lost"},"chunks_per_bot_min":{"pass":true,"detail":"5775 > 9"},"tick_p99_ms":{"pass":true,"detail":"5.738 < 50.0"},"ticks_over_50ms":{"pass":false,"detail":"5 <= 0"},"rss_mib_max":{"pass":true,"detail":"534.813 < 4096.0"},"pass":false}
+{"requested":200,"logged_in":200,"lost":0,"login_failures":{}}
+kicks_by_reason: {}
+login_failures (top level): null (bots.login_failures above is {})
+{"walk":{"packets":1229718,"wire_bytes":1818431500,"connection_seconds":118790.479,"kb_per_s_per_bot":14.949,"packets_per_s_per_bot":10.352,"steady_packets":986529,"steady_wire_bytes":1460851285,"steady_connection_seconds":106790.479,"steady_kb_per_s_per_bot":13.359,"steady_packets_per_s_per_bot":9.238,"per_bot_packets":{"count":200,"mean":6148.59,"p50":6153.0,"p99":6383.0,"max":6438.0,"min":5775.0}}}
+walk: steady_wire_bytes / steady_connection_seconds / 1000 = 1460851285 / 106790.479 / 1000 = 13.67960232672053 KB/s per bot; steady_wire_bytes / steady_packets = 1480.7991300813255 B per chunk; per_bot_packets min 5775.0
+{"chunk_data_packets_received":1229718}
+ticks.overall: {"count":12413,"mean_ms":1.511,"p50_ms":1.15,"p99_ms":5.738,"max_ms":71.236,"over_50ms":5}
+ticks per minute (P99 ms / over 50 ms / max ms): 0:10.157/0/46.714 1:6.78/0/38.238 2:6.288/0/47.449 3:6.476/2/68.741 4:5.728/0/43.906 5:4.599/0/49.468 6:4.433/0/43.136 7:3.904/0/7.436 8:4.59/2/71.236 9:4.313/1/52.122 10:2.393/0/37.302 
+gc (sample): {"count":43,"mean_ms":32.9,"p50_ms":31.711,"p99_ms":68.203,"max_ms":68.203,"over_50ms":5}
+heap: {"rss_mib_max":534.813,"heap_used_mib_max":524.061}
+dispatcher_busy_ratio: {"Syn-Tick-0":0.003,"Syn-Tick-1":0.019,"Syn-Tick-2":0.012,"Syn-Tick-3":0.003,"Syn-Tick-4":0.002,"Syn-Tick-5":0.003,"Syn-Tick-6":0.002,"Syn-Tick-7":0.002,"Syn-Tick-8":0.021,"Syn-Tick-9":0.015,"Syn-TickScheduler":0.03}
+traffic: {"packets_in_per_s":8197.627,"packets_out_per_s":258230.198,"bytes_in_per_s":122603.966,"bytes_out_per_s":7946732.599}
+login_latency_ms: {"off":{"count":200,"mean_ms":27.787,"p50_ms":27.4,"p99_ms":48.2,"max_ms":54.5,"over_50ms":2}}
+chunk_batch_rtt_ms: {"count":318025,"mean_ms":0.011,"p50_ms":0.0,"p99_ms":0.2,"max_ms":36.5,"over_50ms":0}; harness: [{"cpu_seconds":221.649,"cpu_percent_mean":37.002}]
+chunk_stream_stats per minute (ts, write_phase_ms_max): 04:41:41Z 3.374875;04:42:41Z 1.05425;04:43:41Z 2.2495;04:44:41Z 1.839542;04:45:41Z 2.926833;04:46:42Z 0.011417;04:47:42Z 0.020917;04:48:42Z 0.005125;04:49:42Z 0.021958;04:50:42Z 0.016542;
+
+## c2s, visible entities, metrics at the end (not criteria of this case)
+## c2s (uplink per bot)
+{"packets":5082543,"packets_per_s_per_bot":42.786,"per_bot_per_1s":{"count":118680,"mean":42.761,"p50":40.0,"p99":60.0,"max":62.0},"per_bot_per_7s":{"count":117480,"mean":298.722,"p50":295.0,"p99":358.0,"max":420.0}}
+## visible entities (bot side)
+{"count":118880,"mean":62.278,"p50":64.0,"p99":100.0,"max":100.0}
+## metrics at the end
+synaxis_gate_rejections_total{reason="closed_at_accept"} 0.0
+synaxis_gate_rejections_total{reason="full"} 0.0
+synaxis_gate_rejections_total{reason="handshake_timeout"} 0.0
+synaxis_gate_rejections_total{reason="throttled"} 0.0
+synaxis_gate_rejections_total{reason="too_many"} 0.0
+synaxis_ledger_dropped_total 0.0
+synaxis_outbound_backlog_kicks_total 0.0
+synaxis_packets_total{direction="in"} 5082543.0
+synaxis_packets_total{direction="out"} 1.60103176E8
+synaxis_players_online 0.0
+synaxis_watchdog_warnings_total 0.0
+
+## ticks over 50 ms against the G1 pauses (gcticks.py over jfr print --json --events synaxis.ServerTickTime,jdk.GCPhasePause,jdk.G1GarbageCollection and the -Xlog:gc* file)
+JFR synaxis.ServerTickTime: 12428 ticks, over 50 ms 5, max 71.236 ms
+JFR jdk.GCPhasePause: 43 pauses, over 50 ms 5, P50 31.711 ms, max 68.203 ms, sum 1414.7 ms
+gc.log pauses: 47, over 50 ms 5, P50 29.097 ms, P99 68.499 ms, max 68.499 ms, sum 1442.0 ms
+  Pause Cleanup: 1, max 0.021 ms
+  Pause Remark: 1, max 1.512 ms
+  Pause Young (Concurrent Start) (Metadata GC Threshold): 1, max 3.868 ms
+  Pause Young (Mixed) (G1 Evacuation Pause): 1, max 43.988 ms
+  Pause Young (Normal) (G1 Evacuation Pause): 42, max 68.499 ms
+  Pause Young (Prepare Mixed) (G1 Evacuation Pause): 1, max 24.941 ms
+slow ticks (local time; tick start, duration) and the pauses they overlap:
+  tick 12:43:50.197 50.457 ms: JFR gcId 18 Normal 12:43:50.197 48.191 ms; gc.log GC(18) Pause Young (Normal) (G1 Evacuation Pause) 426M->104M(4096M) 12:43:50.201 48.256 ms
+  tick 12:44:40.847 68.741 ms: JFR gcId 22 Normal 12:44:40.850 62.698 ms; gc.log GC(22) Pause Young (Normal) (G1 Evacuation Pause) 453M->106M(4096M) 12:44:40.854 63.115 ms
+  tick 12:48:55.247 71.236 ms: JFR gcId 37 Normal 12:48:55.247 68.203 ms; gc.log GC(37) Pause Young (Normal) (G1 Evacuation Pause) 561M->117M(4096M) 12:48:55.257 68.499 ms
+  tick 12:49:00.047 56.501 ms: no overlapping pause (nearest gc.log pause GC(37) Pause Young (Normal) (G1 Evacuation Pause) at 12:48:55.257, -4.790 s, 68.499 ms)
+  tick 12:49:49.797 52.122 ms: JFR gcId 41 Normal 12:49:49.798 49.102 ms; gc.log GC(41) Pause Young (Normal) (G1 Evacuation Pause) 411M->115M(4096M) 12:49:49.809 49.908 ms
+gc.log pauses of 30 ms or more and the longest tick overlapping each:
+  GC(4) Pause Young (Mixed) (G1 Evacuation Pause) 237M->54M(4096M) 12:41:00.898 43.988 ms: 1 tick(s), longest 46.714 ms
+  GC(5) Pause Young (Normal) (G1 Evacuation Pause) 446M->63M(4096M) 12:41:12.916 54.871 ms: 1 tick(s), longest 5.420 ms
+  GC(9) Pause Young (Normal) (G1 Evacuation Pause) 348M->82M(4096M) 12:41:52.448 36.310 ms: 1 tick(s), longest 38.238 ms
+  GC(10) Pause Young (Normal) (G1 Evacuation Pause) 302M->87M(4096M) 12:42:02.914 32.247 ms: no tick overlapping
+  GC(12) Pause Young (Normal) (G1 Evacuation Pause) 381M->98M(4096M) 12:42:32.250 42.513 ms: no tick overlapping
+  GC(13) Pause Young (Normal) (G1 Evacuation Pause) 374M->100M(4096M) 12:42:45.558 35.728 ms: no tick overlapping
+  GC(14) Pause Young (Normal) (G1 Evacuation Pause) 388M->101M(4096M) 12:43:00.310 61.368 ms: 1 tick(s), longest 3.559 ms
+  GC(18) Pause Young (Normal) (G1 Evacuation Pause) 426M->104M(4096M) 12:43:50.201 48.256 ms: 2 tick(s), longest 50.457 ms
+  GC(19) Pause Young (Normal) (G1 Evacuation Pause) 354M->103M(4096M) 12:44:01.211 31.768 ms: no tick overlapping
+  GC(22) Pause Young (Normal) (G1 Evacuation Pause) 453M->106M(4096M) 12:44:40.854 63.115 ms: 2 tick(s), longest 68.741 ms
+  GC(23) Pause Young (Normal) (G1 Evacuation Pause) 326M->105M(4096M) 12:44:49.812 39.788 ms: 1 tick(s), longest 2.321 ms
+  GC(24) Pause Young (Normal) (G1 Evacuation Pause) 415M->107M(4096M) 12:45:02.903 42.488 ms: 1 tick(s), longest 43.906 ms
+  GC(29) Pause Young (Normal) (G1 Evacuation Pause) 509M->117M(4096M) 12:46:21.163 36.038 ms: 1 tick(s), longest 0.756 ms
+  GC(30) Pause Young (Normal) (G1 Evacuation Pause) 493M->118M(4096M) 12:46:39.107 46.788 ms: 2 tick(s), longest 49.468 ms
+  GC(31) Pause Young (Normal) (G1 Evacuation Pause) 468M->118M(4096M) 12:46:55.855 39.295 ms: 1 tick(s), longest 43.136 ms
+  GC(34) Pause Young (Normal) (G1 Evacuation Pause) 604M->121M(4096M) 12:47:58.364 61.536 ms: 1 tick(s), longest 1.350 ms
+  GC(36) Pause Young (Normal) (G1 Evacuation Pause) 590M->119M(4096M) 12:48:35.061 36.545 ms: 1 tick(s), longest 1.392 ms
+  GC(37) Pause Young (Normal) (G1 Evacuation Pause) 561M->117M(4096M) 12:48:55.257 68.499 ms: 2 tick(s), longest 71.236 ms
+  GC(38) Pause Young (Normal) (G1 Evacuation Pause) 405M->114M(4096M) 12:49:08.367 32.898 ms: 1 tick(s), longest 0.897 ms
+  GC(39) Pause Young (Normal) (G1 Evacuation Pause) 454M->115M(4096M) 12:49:22.936 45.571 ms: 1 tick(s), longest 2.296 ms
+  GC(40) Pause Young (Normal) (G1 Evacuation Pause) 409M->115M(4096M) 12:49:36.274 38.510 ms: 1 tick(s), longest 1.359 ms
+  GC(41) Pause Young (Normal) (G1 Evacuation Pause) 411M->115M(4096M) 12:49:49.809 49.908 ms: 2 tick(s), longest 52.122 ms
+
+## machine during the step (monitor.sh every 30 s; summary.json load1 {"min":3.299,"max":7.024})
+memory free 32~40%, swap free 427.31~1172.94 MB, load1 3.46~7.02
+12:40:40 mem_free=34% swap_free=791.94MB load1=4.90 qemu=1 launchd_sim=2 xcodebuild=0 foreign_java_gradle=[] rss_top5: java=967MB claude=481MB com.apple.Virtualization.VirtualMachine=480MB qemu-system-aarch64-headless=395MB claude=273MB  cpu_top5: java=70.8% Input=24.5% qemu-system-aarch64-headless=21.8% claude=16.7% WindowServer=14.7% 
+12:41:10 mem_free=33% swap_free=842.69MB load1=4.75 qemu=1 launchd_sim=2 xcodebuild=0 foreign_java_gradle=[] rss_top5: claude=303MB java=297MB claude=295MB com.apple.Virtualization.VirtualMachine=278MB claude=257MB  cpu_top5: java=39.3% java=39.1% WindowServer=28.7% claude=16.2% Otty=10.3% 
+12:41:40 mem_free=32% swap_free=866.69MB load1=3.93 qemu=1 launchd_sim=2 xcodebuild=0 foreign_java_gradle=[] rss_top5: java=335MB com.apple.Virtualization.VirtualMachine=296MB claude=277MB claude=250MB claude=244MB  cpu_top5: java=35.8% java=30.8% Otty=17.0% WindowServer=15.6% com.apple.WebKit.WebContent=6.3% 
+12:42:10 mem_free=32% swap_free=678.31MB load1=5.90 qemu=1 launchd_sim=2 xcodebuild=0 foreign_java_gradle=[] rss_top5: com.apple.Virtualization.VirtualMachine=708MB claude=285MB claude=254MB claude=246MB claude=236MB  cpu_top5: com.apple.Virtualization.VirtualMachine=51.2% java=37.4% proactiveeventtrackerd=31.9% proactiveeventtrackerd=31.8% java=26.0% 
+12:42:40 mem_free=32% swap_free=694.31MB load1=4.94 qemu=1 launchd_sim=2 xcodebuild=0 foreign_java_gradle=[] rss_top5: com.apple.Virtualization.VirtualMachine=421MB claude=400MB claude=272MB java=269MB java=257MB  cpu_top5: iOS=46.7% java=34.9% WindowServer=27.6% java=26.2% com.apple.Virtualization.VirtualMachine=9.3% 
+12:43:11 mem_free=34% swap_free=667.00MB load1=5.34 qemu=1 launchd_sim=2 xcodebuild=0 foreign_java_gradle=[] rss_top5: com.apple.Virtualization.VirtualMachine=491MB claude=370MB claude=336MB java=335MB claude=285MB  cpu_top5: claude=47.9% java=31.9% java=30.3% WindowServer=27.4% claude=14.1% 
+12:43:41 mem_free=34% swap_free=683.00MB load1=7.02 qemu=1 launchd_sim=2 xcodebuild=0 foreign_java_gradle=[] rss_top5: com.apple.Virtualization.VirtualMachine=501MB claude=464MB claude=357MB claude=323MB java=304MB  cpu_top5: xpcproxy_sim=75.5% xpcproxy_sim=74.6% java=37.5% java=35.2% WindowServer=30.6% 
+12:44:11 mem_free=34% swap_free=427.31MB load1=5.55 qemu=1 launchd_sim=2 xcodebuild=0 foreign_java_gradle=[] rss_top5: com.apple.Virtualization.VirtualMachine=713MB claude=389MB claude=281MB java=273MB claude=242MB  cpu_top5: java=42.2% java=38.5% com.apple.Virtualization.VirtualMachine=35.7% WindowServer=30.6% iOS=12.4% 
+12:44:41 mem_free=34% swap_free=451.31MB load1=5.14 qemu=1 launchd_sim=2 xcodebuild=0 foreign_java_gradle=[] rss_top5: java=412MB com.apple.Virtualization.VirtualMachine=350MB claude=294MB claude=276MB claude=252MB  cpu_top5: iOS=74.7% iOS=67.5% diskimagesiod=49.0% java=38.4% java=38.0% 
+12:45:11 mem_free=38% swap_free=916.94MB load1=4.75 qemu=1 launchd_sim=2 xcodebuild=0 foreign_java_gradle=[] rss_top5: com.apple.Virtualization.VirtualMachine=819MB claude=521MB java=509MB claude=318MB qemu-system-aarch64-headless=305MB  cpu_top5: java=45.7% java=42.5% maild=34.0% WindowServer=29.8% com.apple.Virtualization.VirtualMachine=13.7% 
+12:45:42 mem_free=37% swap_free=924.94MB load1=4.02 qemu=1 launchd_sim=2 xcodebuild=0 foreign_java_gradle=[] rss_top5: com.apple.Virtualization.VirtualMachine=689MB claude=443MB java=374MB claude=363MB npm=292MB  cpu_top5: java=36.7% java=35.9% WindowServer=28.4% node=18.8% com.apple.Virtualization.VirtualMachine=10.5% 
+12:46:12 mem_free=40% swap_free=956.94MB load1=4.22 qemu=1 launchd_sim=2 xcodebuild=0 foreign_java_gradle=[] rss_top5: com.apple.Virtualization.VirtualMachine=750MB java=425MB claude=354MB claude=339MB claude=288MB  cpu_top5: iOS=69.6% xpcproxy_sim=62.8% xpcproxy_sim=62.7% java=37.0% WindowServer=32.4% 
+12:46:42 mem_free=39% swap_free=964.94MB load1=3.64 qemu=1 launchd_sim=2 xcodebuild=0 foreign_java_gradle=[] rss_top5: com.apple.Virtualization.VirtualMachine=703MB java=507MB claude=370MB claude=354MB java=282MB  cpu_top5: java=34.9% java=30.6% WindowServer=24.2% iOS=16.0% com.apple.Virtualization.VirtualMachine=11.5% 
+12:47:12 mem_free=39% swap_free=964.94MB load1=3.80 qemu=1 launchd_sim=2 xcodebuild=0 foreign_java_gradle=[] rss_top5: com.apple.Virtualization.VirtualMachine=811MB java=483MB claude=357MB claude=316MB qemu-system-aarch64-headless=301MB  cpu_top5: xpcproxy_sim=76.9% iOS=65.5% java=36.4% java=34.4% WindowServer=26.8% 
+12:47:42 mem_free=39% swap_free=988.94MB load1=3.46 qemu=1 launchd_sim=2 xcodebuild=0 foreign_java_gradle=[] rss_top5: com.apple.Virtualization.VirtualMachine=632MB java=493MB claude=317MB claude=314MB claude=297MB  cpu_top5: java=44.1% java=35.0% WindowServer=20.9% com.apple.Virtualization.VirtualMachine=18.9% xpcproxy_sim=14.4% 
+12:48:13 mem_free=38% swap_free=988.94MB load1=4.19 qemu=1 launchd_sim=2 xcodebuild=0 foreign_java_gradle=[] rss_top5: com.apple.Virtualization.VirtualMachine=785MB java=496MB claude=329MB claude=322MB qemu-system-aarch64-headless=299MB  cpu_top5: java=65.5% java=34.8% WindowServer=24.8% com.apple.Virtualization.VirtualMachine=16.5% Lark=4.2% 
+12:48:43 mem_free=36% swap_free=1100.94MB load1=4.43 qemu=1 launchd_sim=2 xcodebuild=0 foreign_java_gradle=[] rss_top5: com.apple.Virtualization.VirtualMachine=647MB claude=488MB java=412MB claude=302MB claude=278MB  cpu_top5: java=38.5% java=35.4% WindowServer=29.4% com.apple.Virtualization.VirtualMachine=24.6% AXVisualSupportAgent=17.2% 
+12:49:13 mem_free=36% swap_free=1116.94MB load1=3.92 qemu=1 launchd_sim=2 xcodebuild=0 foreign_java_gradle=[] rss_top5: com.apple.Virtualization.VirtualMachine=747MB java=408MB claude=394MB claude=359MB claude=326MB  cpu_top5: java=37.9% java=34.1% WindowServer=29.2% claude=11.6% com.apple.WebKit.WebContent=9.3% 
+12:49:43 mem_free=35% swap_free=1172.94MB load1=3.75 qemu=1 launchd_sim=2 xcodebuild=0 foreign_java_gradle=[] rss_top5: com.apple.Virtualization.VirtualMachine=421MB java=336MB claude=318MB claude=301MB java=286MB  cpu_top5: java=40.3% java=38.7% WindowServer=30.9% com.apple.WebKit.WebContent=7.2% AXVisualSupportAgent=5.7% 
+12:50:13 mem_free=36% swap_free=1172.94MB load1=3.54 qemu=1 launchd_sim=2 xcodebuild=0 foreign_java_gradle=[] rss_top5: com.apple.Virtualization.VirtualMachine=759MB java=385MB claude=292MB claude=290MB claude=267MB  cpu_top5: xpcproxy_sim=69.4% xpcproxy_sim=59.9% java=41.9% java=39.7% WindowServer=35.4% 
+12:50:44 mem_free=35% swap_free=1172.94MB load1=4.66 qemu=1 launchd_sim=2 xcodebuild=0 foreign_java_gradle=[] rss_top5: com.apple.Virtualization.VirtualMachine=483MB java=454MB claude=433MB claude=302MB java=292MB  cpu_top5: claude=45.7% java=41.2% java=41.0% WindowServer=32.4% com.apple.WebKit.WebContent=4.2% 

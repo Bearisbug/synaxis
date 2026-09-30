@@ -1,0 +1,132 @@
+# TC-GAME-060 (all steps) and TC-GAME-075 (all steps), one server-app process at a time on port 25565, code 3a53803b3c.
+# Driver lines: '## step N' headers, the probe's own lines without the packet lines (recv Disconnect, S2C_HELLO and echo kept), then
+# 'HH:MM:SS exit code: 0', the driver's echo, always 0; the probe's exit code is its own line 'exit code: N' above it. Steps 2-4 and 7 of
+# TC-GAME-060 kept only the probe's last lines; their disconnect keys are in the server lines below. Server lines copied from its stdout.
+# TC-GAME-075 steps 1-3 ran on the gameplay process that TC-GAME-060 step 7 started (the default launch).
+==================== TC-GAME-060
+free
+## step 1: core mode
+13:38:51 ready after 5x0.5s, pid 64130
+13:38:51.019 [main] INFO  i.g.bearisbug.synaxis.app.PluginHost - Registered channel: plugin_id=synaxis channel=synaxis:handshake
+13:38:51.137 [main] INFO  i.g.bearisbug.synaxis.app.CoreMode - Core mode (synaxis.app.core-mode=on): no plugin is serving gameplay, so the host serves its own flat world. spawn=Pos[x=0.5, y=40.0, z=0.5, yaw=0.0, pitch=0.0] channel=synaxis:main (echoes every payload back)
+Gameplay mode lines: 0
+packetLimitMaxPackets=750
+## step 2
+the server let the connection through instead of sending synaxis:client-mod-required
+exit code: 1
+13:39:01 exit code: 0
+## step 3
+     S2C_HELLO schema_version=1 tick_rate=20 server_tick=215
+exit code: 0
+13:39:01 exit code: 0
+## step 4
+exit code: 0
+13:39:02 exit code: 0
+exit code: 0
+13:39:02 exit code: 0
+## step 5
+free
+flood: 50/50 logged in in 0.1 s, sending 100 packets/s per connection for 30 s
+t=  10.1s connected=50 rate=  5019.9 pkt/s total=50650
+t=  20.1s connected=50 rate=  5014.1 pkt/s total=101002
+t=  30.0s connected=50 rate=  5009.4 pkt/s total=150442
+flood: achieved 5017.2 packets/s over 30.1 s (150894 packets, 50 connections, 0 lost)
+flood: wrote /tmp/synaxis-limit/flood/flood.json
+inbound limit lines: 0
+kick lines: 2
+## step 6
+     echo channel=synaxis:main payload=core-ping
+exit code: 0
+13:39:34 exit code: 0
+## step 7
+13:39:34 server exit code 0 after 0 s
+port 25565 released
+no server-app java process left
+free
+13:39:39 ready after 7x0.5s, pid 65359
+packetLimitMaxPackets=750
+exit code: 0
+13:39:42 exit code: 0
+==================== TC-GAME-075 (steps 1-3 on the gameplay process of TC-GAME-060 step 7)
+## step 1
+asked for 95 payloads a second, slowest window 85
+still connected, keep_alives=7
+exit code: 0
+13:40:48 exit code: 0
+inbound limit lines after step 1: 0
+## step 2
+     S2C_HELLO schema_version=1 tick_rate=20 server_tick=1400
+state=play
+flooding 120 payloads a second for 10s
+recv Disconnect reason=synaxis:protocol-error
+unexpected disconnect: synaxis:protocol-error
+exit code: 1
+13:40:55 exit code: 0
+13:40:55.260 [Syn-Socket-Reader-2] INFO  i.g.b.s.n.p.PlayerSocketConnection - Inbound packet limit exceeded: connection_id=ad078061-b29d-4e28-923e-8bcdd57a3b31 identifier=probe limit=packets 751 > 750 in 7000 ms
+## step 3
+13:40:55 server exit code 0 after 0 s
+port 25565 released
+no server-app java process left
+## step 4
+free
+13:41:05 ready after 13x0.5s, pid 67959
+packetLimitMaxPackets=100000
+     S2C_HELLO schema_version=1 tick_rate=20 server_tick=14
+state=play
+flooding 800 payloads a second for 3s
+recv Disconnect reason=synaxis:game-flood
+exit code: 0
+13:41:08 exit code: 0
+## step 5
+13:41:08.372 [Syn-Tick-0] WARN  i.g.b.synaxis.game.rts.GameChannel - Disconnecting a flooding connection: connection_id=e1262ba2-f8ce-4d34-a887-d6075dd464a1 reason=synaxis:game-flood (1 flooding connections since the last report)
+stack lines: 0
+## step 6
+     S2C_HELLO schema_version=1 tick_rate=20 server_tick=92
+state=play
+flooding 299 payloads a second for 3s
+asked for 299 payloads a second, slowest window 269
+still connected, keep_alives=1
+exit code: 0
+13:41:15 exit code: 0
+13:41:15 server exit code 0 after 0 s
+port 25565 released
+no server-app java process left
+==================== done 13:41:16
+
+## TC-GAME-060 step 5, flood.json: window_seconds=30.1, achieved_packets_per_second=5017.2, connections_lost=0, disconnect_reasons={}, keep_alives_answered=150, teleport_confirms=100, echoes_sent=300
+
+## server lines, core mode process (TC-GAME-060 steps 1-6): the kicks and warnings
+13:38:50.968 [main] INFO  i.github.bearisbug.synaxis.app.Main - Effective ServerConfig[... packetLimitWindow=7000, packetLimitMaxPackets=750, packetLimitAction=KICK ...]
+13:39:02.043 [Syn-TickScheduler] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=d1003106-fb66-4eda-bcc7-f9f86499a8fe identifier=probe reason=synaxis:protocol-version-mismatch
+13:39:02.296 [Syn-Tick-0] WARN  i.g.b.synaxis.app.HandshakeGate - Refusing a handshake: connection_id=e115105f-01e6-457d-b367-2d076f3cbe47 reason=synaxis:protocol-error cause=a connection sends one C2S_HELLO and this is the second (1 refused handshake payloads since the last report)
+13:39:02.296 [Syn-Tick-0] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=e115105f-01e6-457d-b367-2d076f3cbe47 identifier=probe reason=synaxis:protocol-error
+Login success lines: 55 (5 probe connections and the 50 of PacketFlood)
+
+## server lines, gameplay process (TC-GAME-060 step 7, TC-GAME-075 steps 1-3)
+13:39:37.797 [main] INFO  i.github.bearisbug.synaxis.app.Main - Effective ServerConfig[... packetLimitWindow=7000, packetLimitMaxPackets=750, packetLimitAction=KICK ...]
+13:39:39.404 [virtual-1106] INFO  i.g.b.s.network.ConnectionManager - Login success: username=probe connection_id=0ae641db-0b6d-43dc-9f9d-03edb59b1750 remote_address=/127.0.0.1:49409
+13:39:42.446 [virtual-1107] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=0ae641db-0b6d-43dc-9f9d-03edb59b1750 identifier=probe reason=synaxis:client-mod-required
+13:39:42.448 [virtual-1107] INFO  i.g.b.s.n.player.PlayerConnection - Connection closed: connection_id=0ae641db-0b6d-43dc-9f9d-03edb59b1750 identifier=probe
+13:39:42.555 [virtual-1116] INFO  i.g.b.s.network.ConnectionManager - Login success: username=probe connection_id=12be593c-8e19-4021-84d7-2ccd18fb36dd remote_address=/127.0.0.1:49444
+13:40:48.640 [Syn-Socket-Reader-1] INFO  i.g.b.s.n.player.PlayerConnection - Connection closed: connection_id=12be593c-8e19-4021-84d7-2ccd18fb36dd identifier=probe
+13:40:48.825 [virtual-1131] INFO  i.g.b.s.network.ConnectionManager - Login success: username=probe connection_id=ad078061-b29d-4e28-923e-8bcdd57a3b31 remote_address=/127.0.0.1:51725
+13:40:55.260 [Syn-Socket-Reader-2] INFO  i.g.b.s.n.p.PlayerSocketConnection - Inbound packet limit exceeded: connection_id=ad078061-b29d-4e28-923e-8bcdd57a3b31 identifier=probe limit=packets 751 > 750 in 7000 ms
+13:40:55.263 [Syn-Socket-Reader-2] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=ad078061-b29d-4e28-923e-8bcdd57a3b31 identifier=probe reason=synaxis:protocol-error
+13:40:55.263 [Syn-Socket-Reader-2] INFO  i.g.b.s.n.player.PlayerConnection - Connection closed: connection_id=ad078061-b29d-4e28-923e-8bcdd57a3b31 identifier=probe
+
+## server lines, gameplay process with -Dsynaxis.packet-limit.max-packets=100000 (TC-GAME-075 steps 4-6)
+13:41:03.015 [main] INFO  i.github.bearisbug.synaxis.app.Main - Effective ServerConfig[... packetLimitWindow=7000, packetLimitMaxPackets=100000, packetLimitAction=KICK ...]
+13:41:05.623 [virtual-1106] INFO  i.g.b.s.network.ConnectionManager - Login success: username=probe connection_id=e1262ba2-f8ce-4d34-a887-d6075dd464a1 remote_address=/127.0.0.1:52449
+13:41:08.372 [Syn-Tick-0] WARN  i.g.b.synaxis.game.rts.GameChannel - Disconnecting a flooding connection: connection_id=e1262ba2-f8ce-4d34-a887-d6075dd464a1 reason=synaxis:game-flood (1 flooding connections since the last report)
+13:41:08.376 [Syn-Tick-0] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=e1262ba2-f8ce-4d34-a887-d6075dd464a1 identifier=probe reason=synaxis:game-flood
+13:41:08.376 [Syn-Tick-0] INFO  i.g.b.s.n.player.PlayerConnection - Connection closed: connection_id=e1262ba2-f8ce-4d34-a887-d6075dd464a1 identifier=probe
+13:41:09.570 [virtual-1117] INFO  i.g.b.s.network.ConnectionManager - Login success: username=probe connection_id=2b67b155-653f-4114-89bd-de21046eec5b remote_address=/127.0.0.1:52650
+13:41:15.076 [Syn-Socket-Reader-1] INFO  i.g.b.s.n.player.PlayerConnection - Connection closed: connection_id=2b67b155-653f-4114-89bd-de21046eec5b identifier=probe
+stack trace lines in this stdout: 0
+
+## TC-GAME-075 step 1, the last lines of the probe (the S2C_UNIT_STATE lines kept): 659 S2C_UNIT_STATE lines in 60 s
+     S2C_UNIT_STATE server_tick=1396 count=66 moving=[]
+asked for 95 payloads a second, slowest window 85
+still connected, keep_alives=7
+exit code: 0
+13:40:48 exit code: 0

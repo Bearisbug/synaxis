@@ -1,0 +1,131 @@
+# TC-PROD-560 and TC-PROD-561: the two JUnit classes, IT = InboundPacketLimitIntegrationTest, UT = InboundPacketLimitsTest (root :test).
+# Each counter proof: one source edit (a Python exact replace), the run, then git checkout HEAD -- <file>; the summary lines come from
+# the Gradle log and the JUnit XML of that run. STRICT = -Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true -Dsynaxis.thread-provider=grid
+
+## TC-PROD-560 step 1 and TC-PROD-561 step 1, default: :test --tests IT --tests UT
+13:02:57 start: :test --tests io.github.bearisbug.synaxis.network.player.InboundPacketLimitIntegrationTest --tests io.github.bearisbug.synaxis.network.player.InboundPacketLimitsTest
+  > Task :test
+  BUILD SUCCESSFUL in 5m 40s
+13:08:41 exit 0
+
+## the same with STRICT
+13:08:43 start: :test --tests io.github.bearisbug.synaxis.network.player.InboundPacketLimitIntegrationTest --tests io.github.bearisbug.synaxis.network.player.InboundPacketLimitsTest -Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true -Dsynaxis.thread-provider=grid
+  > Task :test
+  BUILD SUCCESSFUL in 1m
+13:09:45 exit 0
+
+## TC-PROD-560 step 2: PlayerSocketConnection 'case KICK -> kickOverInboundLimit();' -> 'case KICK -> player.addPacketToQueue(packet);', :test --tests IT
+13:09:46 start: :test --tests io.github.bearisbug.synaxis.network.player.InboundPacketLimitIntegrationTest
+  > Task :test
+  InboundPacketLimitIntegrationTest > oneOverTheLimitKicksWithProtocolError(Env) FAILED
+      org.opentest4j.AssertionFailedError at InboundPacketLimitIntegrationTest.java:51
+  5 tests completed, 1 failed
+  > Task :test FAILED
+  BUILD FAILED in 8m 27s
+13:18:21 exit 1
+
+## TC-PROD-560 step 3 (582): ServerConfig 'packetLimitMaxPackets = 750;' -> '= 582;', :test --tests IT
+13:18:25 start: :test --tests io.github.bearisbug.synaxis.network.player.InboundPacketLimitIntegrationTest
+  > Task :test
+  InboundPacketLimitIntegrationTest > theLimitItselfIsLetThrough(Env) FAILED
+      org.opentest4j.AssertionFailedError at InboundPacketLimitIntegrationTest.java:63
+  5 tests completed, 1 failed
+  > Task :test FAILED
+  BUILD FAILED in 3m 59s
+13:22:30 exit 1
+
+## TC-PROD-560 step 3 (751): ServerConfig '= 750;' -> '= 751;', :test --tests IT
+13:23:27 start: :test --tests io.github.bearisbug.synaxis.network.player.InboundPacketLimitIntegrationTest
+  > Task :test
+  InboundPacketLimitIntegrationTest > oneOverTheLimitKicksWithProtocolError(Env) FAILED
+      org.opentest4j.AssertionFailedError at InboundPacketLimitIntegrationTest.java:51
+  5 tests completed, 1 failed
+  > Task :test FAILED
+  BUILD FAILED in 4m 38s
+13:28:06 exit 1
+
+## TC-PROD-561 step 4: ServerConfig '= 750;' -> '= 582;', :test --tests UT
+13:22:31 start: :test --tests io.github.bearisbug.synaxis.network.player.InboundPacketLimitsTest
+  > Task :test
+  InboundPacketLimitsTest > theDefaultsAreTwiceTheBaselineP99InSevenSeconds() FAILED
+      org.opentest4j.AssertionFailedError at InboundPacketLimitsTest.java:34
+  7 tests completed, 1 failed
+  > Task :test FAILED
+  BUILD FAILED in 54s
+13:23:26 exit 1
+
+## TC-PROD-561 step 2: WindowCounter#add without 'this.sum -= buckets[index];', :test --tests UT
+13:28:08 start: :test --tests io.github.bearisbug.synaxis.network.player.InboundPacketLimitsTest
+  > Task :test
+  InboundPacketLimitsTest > theWindowSlides() FAILED
+      org.opentest4j.AssertionFailedError at InboundPacketLimitsTest.java:48
+  7 tests completed, 1 failed
+  > Task :test FAILED
+  BUILD FAILED in 4m 32s
+13:32:43 exit 1
+
+## TC-PROD-561 step 3: InboundPacketLimits 'over(verdict, override.action(),' -> 'over(verdict, PacketLimitAction.DROP,', :test --tests UT
+13:32:46 start: :test --tests io.github.bearisbug.synaxis.network.player.InboundPacketLimitsTest
+  > Task :test
+  InboundPacketLimitsTest > anOverrideCanKick() FAILED
+      org.opentest4j.AssertionFailedError at InboundPacketLimitsTest.java:70
+  7 tests completed, 1 failed
+  > Task :test FAILED
+  BUILD FAILED in 5m 36s
+13:38:23 exit 1
+
+## after restoring (git status: only the docs modified), :test --tests IT --tests UT: the task came FROM-CACHE, the inputs are those of the first run
+13:38:24 start: :test --tests io.github.bearisbug.synaxis.network.player.InboundPacketLimitIntegrationTest --tests io.github.bearisbug.synaxis.network.player.InboundPacketLimitsTest
+  > Task :test FROM-CACHE
+  BUILD SUCCESSFUL in 10s
+13:38:34 exit 0
+
+## so once more with :test --rerun, executed
+13:42:46 start: :test --rerun --tests io.github.bearisbug.synaxis.network.player.InboundPacketLimitIntegrationTest --tests io.github.bearisbug.synaxis.network.player.InboundPacketLimitsTest
+  > Task :test
+  BUILD SUCCESSFUL in 19s
+13:43:05 exit 0
+
+## the JUnit XML of each run (tests, failures, the failing test and its message)
+---- r1-green-default
+InboundPacketLimitIntegrationTest tests=5 failures=0 errors=0 skipped=0 time=3.889
+InboundPacketLimitsTest tests=7 failures=0 errors=0 skipped=0 time=1.582
+---- r2-green-strict
+InboundPacketLimitIntegrationTest tests=5 failures=0 errors=0 skipped=0 time=9.315
+InboundPacketLimitsTest tests=7 failures=0 errors=0 skipped=0 time=2.891
+---- cp-a-kick-queues
+InboundPacketLimitIntegrationTest tests=5 failures=1 errors=0 skipped=0 time=35.784
+  FAILED oneOverTheLimitKicksWithProtocolError(Env) | org.opentest4j.AssertionFailedError: 751 packets at once are over 750 in 7 s ==> expected: <false> but was: <true>
+    at io.github.bearisbug.synaxis.network.player.InboundPacketLimitIntegrationTest.oneOverTheLimitKicksWithProtocolError(InboundPacketLimitIntegrationTest.java:51)
+---- cp-b-default-582-it
+InboundPacketLimitIntegrationTest tests=5 failures=1 errors=0 skipped=0 time=10.844
+  FAILED theLimitItselfIsLetThrough(Env) | org.opentest4j.AssertionFailedError: 750 packets in 7 s is the limit, not over it ==> expected: <true> but was: <false>
+    at io.github.bearisbug.synaxis.network.player.InboundPacketLimitIntegrationTest.theLimitItselfIsLetThrough(InboundPacketLimitIntegrationTest.java:63)
+---- cp-f-default-582-ut
+InboundPacketLimitsTest tests=7 failures=1 errors=0 skipped=0 time=3.61
+  FAILED theDefaultsAreTwiceTheBaselineP99InSevenSeconds() | org.opentest4j.AssertionFailedError: expected: <750> but was: <582>
+    at io.github.bearisbug.synaxis.network.player.InboundPacketLimitsTest.theDefaultsAreTwiceTheBaselineP99InSevenSeconds(InboundPacketLimitsTest.java:34)
+---- cp-c-default-751-it
+InboundPacketLimitIntegrationTest tests=5 failures=1 errors=0 skipped=0 time=20.82
+  FAILED oneOverTheLimitKicksWithProtocolError(Env) | org.opentest4j.AssertionFailedError: 751 packets at once are over 750 in 7 s ==> expected: <false> but was: <true>
+    at io.github.bearisbug.synaxis.network.player.InboundPacketLimitIntegrationTest.oneOverTheLimitKicksWithProtocolError(InboundPacketLimitIntegrationTest.java:51)
+---- cp-d-window-no-expiry
+InboundPacketLimitsTest tests=7 failures=1 errors=0 skipped=0 time=6.88
+  FAILED theWindowSlides() | org.opentest4j.AssertionFailedError: expected: <ACCEPT> but was: <KICK>
+    at io.github.bearisbug.synaxis.network.player.InboundPacketLimitsTest.theWindowSlides(InboundPacketLimitsTest.java:48)
+---- cp-e-override-drop
+InboundPacketLimitsTest tests=7 failures=1 errors=0 skipped=0 time=1.127
+  FAILED anOverrideCanKick() | org.opentest4j.AssertionFailedError: expected: <[ACCEPT, ACCEPT, KICK]> but was: <[ACCEPT, ACCEPT, DROP]>
+    at io.github.bearisbug.synaxis.network.player.InboundPacketLimitsTest.anOverrideCanKick(InboundPacketLimitsTest.java:70)
+git status after restoring:
+ M docs/DESIGN-M2.md
+ M docs/DESIGN-PROD.md
+ M docs/DESIGN.md
+ M docs/TEST.md
+---- r3-green-after-restore
+InboundPacketLimitIntegrationTest tests=5 failures=0 errors=0 skipped=0 time=3.889
+InboundPacketLimitsTest tests=7 failures=0 errors=0 skipped=0 time=1.582
+==== junit done 13:38:34
+## r4-green-rerun
+<testsuite name="io.github.bearisbug.synaxis.network.player.InboundPacketLimitIntegrationTest" tests="5" skipped="0" failures="0" errors="0"
+<testsuite name="io.github.bearisbug.synaxis.network.player.InboundPacketLimitsTest" tests="7" skipped="0" failures="0" errors="0"

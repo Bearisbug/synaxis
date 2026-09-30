@@ -1,0 +1,99 @@
+# p33 counter-proofs (2026-09-30, branch prod/p33). Each: mutate one place, run, see red, restore; after restore `git diff` equals the pre-mutation snapshot byte for byte.
+
+## sum — TC-PROD-565 step 2: TickerImpl#longestThreadWait sums instead of max
+  AcquireWaitTest > theTickCarriesTheLongestWaitOfATickThread() FAILED
+  4 tests completed, 1 failed
+  > Task :test FAILED
+  BUILD FAILED in 3m 1s
+  exit 1
+  io.github.bearisbug.synaxis.thread.AcquireWaitTest tests=4 failures=1 errors=0 at 2026-09-30T05:50:39.490Z
+    FAILED theTickCarriesTheLongestWaitOfATickThread(): org.opentest4j.AssertionFailedError: the tick's wait is the longest of one tick thread (84453542 and 56893875 ns) ==> expected: <84.453542> but was: <141.347417>
+      at io.github.bearisbug.synaxis.thread.AcquireWaitTest.theTickCarriesTheLongestWaitOfATickThread(AcquireWaitTest.java:163)
+
+## clock — TC-PROD-565 step 3: AcquirableImpl#enter always times the target lock (no tryLock first)
+  AcquireWaitTest > theTickCarriesTheLongestWaitOfATickThread() FAILED
+  4 tests completed, 1 failed
+  > Task :test FAILED
+  BUILD FAILED in 1m 27s
+  exit 1
+  io.github.bearisbug.synaxis.thread.AcquireWaitTest tests=4 failures=1 errors=0 at 2026-09-30T05:52:17.700Z
+    FAILED theTickCarriesTheLongestWaitOfATickThread(): org.opentest4j.AssertionFailedError: nothing waited in tick 0 ==> expected: <0.0> but was: <5.0E-4>
+      at io.github.bearisbug.synaxis.thread.AcquireWaitTest.theTickCarriesTheLongestWaitOfATickThread(AcquireWaitTest.java:126)
+
+## global — TC-PROD-566 step 2: audit P3-3 global AtomicLong reinstated (every thread adds, TickerImpl reads getAndSet(0))
+  AcquireWaitTest > aWaitOffTheTickPathIsNotCounted() FAILED
+  AcquireWaitTest > theTickCarriesTheLongestWaitOfATickThread() FAILED
+  AcquireWaitTest > aTickThreadBlockedAtTheStartOfItsTickCountsTheWait(Path) FAILED
+  4 tests completed, 3 failed
+  > Task :test FAILED
+  BUILD FAILED in 27s
+  exit 1
+  io.github.bearisbug.synaxis.thread.AcquireWaitTest tests=4 failures=3 errors=0 at 2026-09-30T06:12:48.784Z
+    FAILED aWaitOffTheTickPathIsNotCounted(): org.opentest4j.AssertionFailedError: the tick after a wait of 57387291 ns on a thread that is not an engine thread ==> expected: <0.0> but was: <57.310375>
+    FAILED theTickCarriesTheLongestWaitOfATickThread(): org.opentest4j.AssertionFailedError: the tick's wait is the longest of one tick thread (54174958 and 54145375 ns) ==> expected: <54.174958> but was: <108.320333>
+    FAILED aTickThreadBlockedAtTheStartOfItsTickCountsTheWait(Path): org.opentest4j.AssertionFailedError: expected: <53.588875> but was: <0.0>
+      at io.github.bearisbug.synaxis.thread.AcquireWaitTest.aWaitOffTheTickPathIsNotCounted(AcquireWaitTest.java:210)
+      at io.github.bearisbug.synaxis.thread.AcquireWaitTest.theTickCarriesTheLongestWaitOfATickThread(AcquireWaitTest.java:163)
+      at io.github.bearisbug.synaxis.thread.AcquireWaitTest.aTickThreadBlockedAtTheStartOfItsTickCountsTheWait(AcquireWaitTest.java:254)
+
+## ownlock — TC-PROD-566 step 3: TickThread#run takes its own lock untimed (lock.lock())
+  TickAcquireMetricsTest > aTickThreadKeptWaitingShowsInItsSeriesAndTheWholeTicks() FAILED
+  > Task :test FAILED
+  AcquireWaitTest > aTickThreadBlockedAtTheStartOfItsTickCountsTheWait(Path) FAILED
+  4 tests completed, 1 failed
+  > Task :server-app:test FAILED
+  BUILD FAILED in 2m 24s
+  exit 1
+  io.github.bearisbug.synaxis.app.metrics.TickAcquireMetricsTest tests=1 failures=1 errors=0 at 2026-09-30T05:59:27.872Z
+    FAILED aTickThreadKeptWaitingShowsInItsSeriesAndTheWholeTicks(): org.opentest4j.AssertionFailedError: Syn-Tick-0 waited out the holder's sleep of 0.051864708 s: 0.0 ==> expected: <true> but was: <false>
+      at io.github.bearisbug.synaxis.app.metrics.TickAcquireMetricsTest.aTickThreadKeptWaitingShowsInItsSeriesAndTheWholeTicks(TickAcquireMetricsTest.java:103)
+  io.github.bearisbug.synaxis.thread.AcquireWaitTest tests=4 failures=1 errors=0 at 2026-09-30T05:59:27.550Z
+    FAILED aTickThreadBlockedAtTheStartOfItsTickCountsTheWait(Path): org.opentest4j.AssertionFailedError: the tick thread waited out the holder's sleep of 51453250 ns: 0 ==> expected: <true> but was: <false>
+      at io.github.bearisbug.synaxis.thread.AcquireWaitTest.aTickThreadBlockedAtTheStartOfItsTickCountsTheWait(AcquireWaitTest.java:251)
+
+## serial — TC-PROD-566 step 4: TickerImpl#ownAcquireWait counts only tick threads (scheduler not counted)
+  AcquireWaitTest > theSerialPartCountsOnAnEngineThread() FAILED
+  4 tests completed, 1 failed
+  > Task :test FAILED
+  BUILD FAILED in 18s
+  exit 1
+  io.github.bearisbug.synaxis.thread.AcquireWaitTest tests=4 failures=1 errors=0 at 2026-09-30T06:11:05.579Z
+    FAILED theSerialPartCountsOnAnEngineThread(): org.opentest4j.AssertionFailedError: expected: <58.705166> but was: <0.0>
+      at io.github.bearisbug.synaxis.thread.AcquireWaitTest.theSerialPartCountsOnAnEngineThread(AcquireWaitTest.java:301)
+
+## metric — TC-PROD-567 step 2: HostMetrics tick thread observer does not record the acquire timer
+  TickAcquireMetricsTest > aTickThreadKeptWaitingShowsInItsSeriesAndTheWholeTicks() FAILED
+  > Task :server-app:test FAILED
+  BUILD FAILED in 1m 46s
+  exit 1
+  io.github.bearisbug.synaxis.app.metrics.TickAcquireMetricsTest tests=1 failures=1 errors=0 at 2026-09-30T06:03:28.023Z
+    FAILED aTickThreadKeptWaitingShowsInItsSeriesAndTheWholeTicks(): org.opentest4j.AssertionFailedError: expected: <2.0> but was: <0.0>
+      at io.github.bearisbug.synaxis.app.metrics.TickAcquireMetricsTest.aTickThreadKeptWaitingShowsInItsSeriesAndTheWholeTicks(TickAcquireMetricsTest.java:94)
+
+## names — TC-PROD-567 step 3: "synaxis_tick_acquire_seconds" removed from HostMetrics.NAMES
+  > Task :server-app:test FAILED
+  MetricsNamesTest > theRegistryHoldsExactlyTheNamesOfTheDesign() FAILED
+  ConfigKeyGateTest > theTableOfTheConfigFileIsEveryKeyTheCodeReads() FAILED
+  > Task :architecture-tests:test FAILED
+  BUILD FAILED in 3m 52s
+  exit 1
+  io.github.bearisbug.synaxis.app.metrics.MetricsNamesTest tests=1 failures=1 errors=0 at 2026-09-30T06:07:36.746Z
+    FAILED theRegistryHoldsExactlyTheNamesOfTheDesign(): org.opentest4j.AssertionFailedError: the synaxis_* families of the registry ==> expected: <[synaxis_auth_hasjoined_retries_total, synaxis_auth_hasjoined_seconds, synaxis_auth_hasjoined_total, synaxis_bytes_total, synaxis_chunks_loaded, synaxis_cipher_cpu_seconds_total, synaxis_connections, synaxis_db_pool_active, synaxis_db_pool_pending, synaxis_db_statement_seconds, synaxis_entities, synaxis_gate_rejections_total, synaxis_ledger_dropped_total, synaxis_outbound_backlog_kicks_total, synaxis_packets_total, synaxis_players_online, synaxis_redis_up, synaxis_shard_session_state, synaxis_store_save_
+      at io.github.bearisbug.synaxis.app.metrics.MetricsNamesTest.theRegistryHoldsExactlyTheNamesOfTheDesign(MetricsNamesTest.java:33)
+  io.github.bearisbug.synaxis.architecture.ConfigKeyGateTest tests=1 failures=1 errors=0 at 2026-09-30T06:07:37.159Z
+    FAILED theTableOfTheConfigFileIsEveryKeyTheCodeReads(): org.opentest4j.AssertionFailedError: Problems of the config key gate (1): | synaxis.tick.acquire is read (io.github.bearisbug.synaxis.app.metrics.HostMetrics) but not in ConfigFile.KEYS, so the config file refuses it |  ==> expected: <true> but was: <false>
+      at io.github.bearisbug.synaxis.architecture.ConfigKeyGateTest.theTableOfTheConfigFileIsEveryKeyTheCodeReads(ConfigKeyGateTest.java:74)
+
+## field — TC-PROD-568 step 2: SampleCommand.ACQUIRE_FIELD = "acquireTime"
+  > Task :loadtest:test FAILED
+  SampleAcquireTest > theAcquisitionWaitOfEveryTickEventIsDistributed(Path) FAILED
+  SampleTest > everyServerTickEventIsCountedAndNoOtherEvent(Path) FAILED
+  6 tests completed, 2 failed
+  BUILD FAILED in 22s
+  exit 1
+  io.github.bearisbug.synaxis.loadtest.SampleAcquireTest tests=2 failures=1 errors=0 at 2026-09-30T06:08:11.166Z
+    FAILED theAcquisitionWaitOfEveryTickEventIsDistributed(Path): java.lang.ClassCastException: class com.google.gson.JsonNull cannot be cast to class com.google.gson.JsonObject (com.google.gson.JsonNull and com.google.gson.JsonObject are in unnamed module of loader 'app')
+      at io.github.bearisbug.synaxis.loadtest.SampleAcquireTest.theAcquisitionWaitOfEveryTickEventIsDistributed(SampleAcquireTest.java:43)
+  io.github.bearisbug.synaxis.loadtest.SampleTest tests=4 failures=1 errors=0 at 2026-09-30T06:08:11.438Z
+    FAILED everyServerTickEventIsCountedAndNoOtherEvent(Path): java.lang.ClassCastException: class com.google.gson.JsonNull cannot be cast to class com.google.gson.JsonObject (com.google.gson.JsonNull and com.google.gson.JsonObject are in unnamed module of loader 'app')
+      at io.github.bearisbug.synaxis.loadtest.SampleTest.everyServerTickEventIsCountedAndNoOtherEvent(SampleTest.java:45)

@@ -432,10 +432,10 @@ public record ServerConfig(
         private boolean hideOnlinePlayers = false;
         private int chatRatePerSecond = 1;
         private int chatBurst = 3;
-        // Twice the P99 of the packets one walking bot sent in 7 s in the 200 bot baseline, 291
-        // (docs/TEST.md TC-PROD-271 step 5); Paper's 500 in 7 s before that baseline existed
+        // Twice the highest 7 s P99 of the packets one bot sent in the load tiers of RUN-057, 374
+        // (ride, 200 bots; docs/test-runs/RUN-057/10-limit-readings.txt), rounded up to 750
         private long packetLimitWindow = 7_000;
-        private int packetLimitMaxPackets = 582;
+        private int packetLimitMaxPackets = 750;
         private PacketLimitAction packetLimitAction = PacketLimitAction.KICK;
         private String packetLimitOverrides = "";
         private long maxInflatedBytesPerSecond = 4L << 20;

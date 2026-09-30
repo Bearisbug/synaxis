@@ -35,20 +35,20 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * The inbound packet limits on a real socket ({@code docs/DESIGN-PROD.md} {@code API-PROD-012},
- * §19 「入站包超速被踢」「解压字节超速被踢」「补全限频」), with the engine defaults: 582 packets in
+ * §19 「入站包超速被踢」「解压字节超速被踢」「补全限频」), with the engine defaults: 750 packets in
  * 7 s, 4 MiB inflated per second, 20 tab completions per second.
  */
 @EnvTest
 public class InboundPacketLimitIntegrationTest {
 
     @Test
-    public void sixHundredPacketsInSevenSecondsKickWithProtocolError(Env env) throws IOException {
+    public void oneOverTheLimitKicksWithProtocolError(Env env) throws IOException {
         try (Harness harness = new Harness(env, false)) {
             final List<ClientPacket> packets = new ArrayList<>();
-            for (int i = 0; i < 600; i++) packets.add(new ClientTickEndPacket());
+            for (int i = 0; i < 751; i++) packets.add(new ClientTickEndPacket());
             harness.send(packets, 0);
 
-            assertFalse(harness.connection.isOnline(), "600 packets at once are over 582 in 7 s");
+            assertFalse(harness.connection.isOnline(), "751 packets at once are over 750 in 7 s");
             assertEquals("synaxis:protocol-error", harness.disconnectKey());
         }
     }
@@ -57,11 +57,11 @@ public class InboundPacketLimitIntegrationTest {
     public void theLimitItselfIsLetThrough(Env env) throws IOException {
         try (Harness harness = new Harness(env, false)) {
             final List<ClientPacket> packets = new ArrayList<>();
-            for (int i = 0; i < 582; i++) packets.add(new ClientTickEndPacket());
+            for (int i = 0; i < 750; i++) packets.add(new ClientTickEndPacket());
             harness.send(packets, 0);
 
-            assertTrue(harness.connection.isOnline(), "582 packets in 7 s is the limit, not over it");
-            assertEquals(582, harness.drain(ClientTickEndPacket.class));
+            assertTrue(harness.connection.isOnline(), "750 packets in 7 s is the limit, not over it");
+            assertEquals(750, harness.drain(ClientTickEndPacket.class));
         }
     }
 

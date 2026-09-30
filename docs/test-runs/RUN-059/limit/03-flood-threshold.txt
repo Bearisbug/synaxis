@@ -1,0 +1,61 @@
+# Where synaxis:game-flood becomes reachable: the rate gate raised to 1,000 and to 2,500 (docs/DESIGN-M2.md section 2, docs/TEST.md
+# section 3 probe table, game-flood row). Code under test: 3a53803b3c (the commits after it change documents only), the same
+# :server-app:installDist as 02-process-060-075.txt. 2026-09-30 14:07 (UTC+8), load averages 56 to 65 (other groups building).
+# Each server start waited on the lighting session's load test (the gate printed free) and on port 25565 being free; one
+# server-app process at a time, default (gameplay) launch plus -Dsynaxis.packet-limit.max-packets=<N>, JAVA_OPTS -Xms2G -Xmx2G
+# -XX:-AlwaysPreTouch, SERVER_APP_OPTS -Dsynaxis.app.auth=offline -Dsynaxis.connection-gate.trusted-networks=127.0.0.0/8, stdin a
+# FIFO for stop. Probe: the venv Python, tools/protocol-probe/probe.py game-flood; its last four lines are kept (the last one is its
+# own 'exit code: N'), then the driver's 'exit code: N' read from the pipe status, the same number. Server lines: its stdout, grepped.
+# Expectation from the formula: sustained R payloads a second trip the flood gate after R + 602 to 2R + 601 payloads
+# (800/s: 1,402 to 2,201; 400/s: 1,002 to 1,401), and the rate gate counts the same payloads first, on the read thread.
+# So a gate of 1,000 (above the necessary 903) still kicks with synaxis:protocol-error at both rates. Result: as expected,
+# 1,000 at 800/s: kicked 1.25 s after login; at 400/s (5 s): 2.34 s after login, both at 'packets 1001 > 1000 in 7000 ms'.
+# 2,500 at 800/s: synaxis:game-flood 2.78 s after login, no 'Inbound packet limit exceeded'. 2,500 is above everything the probe
+# sends in 3 s (2,400 payloads and a few other play packets), so this run only shows the flood gate answers once the rate gate is
+# out of the way; it does not pin the upper end of the formula.
+# The raw directory /tmp/synaxis-limit was deleted after the run.
+==================== max-packets=1000
+free
+14:07:25 ready after 15x0.5s, pid 14182
+packetLimitMaxPackets=1000
+## --rate 800 --seconds 3
+     S2C_UNIT_STATE server_tick=32 count=66 moving=[]
+recv Disconnect reason=synaxis:protocol-error
+unexpected disconnect: synaxis:protocol-error
+exit code: 1
+exit code: 1
+## --rate 400 --seconds 5
+     S2C_UNIT_STATE server_tick=244 count=66 moving=[]
+recv Disconnect reason=synaxis:protocol-error
+unexpected disconnect: synaxis:protocol-error
+exit code: 1
+exit code: 1
+14:07:40 server exit code 0
+port 25565 released
+14:07:24.314 [main] INFO  i.github.bearisbug.synaxis.app.Main - Effective ServerConfig[... packetLimitWindow=7000, packetLimitMaxPackets=1000, packetLimitAction=KICK ...]
+14:07:25.975 [virtual-1106] INFO  i.g.b.s.network.ConnectionManager - Login success: username=probe connection_id=682fa92b-7cf0-427b-8a78-55284cd203ab remote_address=/127.0.0.1:52409
+14:07:27.221 [Syn-Socket-Reader-0] INFO  i.g.b.s.n.p.PlayerSocketConnection - Inbound packet limit exceeded: connection_id=682fa92b-7cf0-427b-8a78-55284cd203ab identifier=probe limit=packets 1001 > 1000 in 7000 ms
+14:07:27.222 [Syn-Socket-Reader-0] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=682fa92b-7cf0-427b-8a78-55284cd203ab identifier=probe reason=synaxis:protocol-error
+14:07:35.504 [virtual-1118] INFO  i.g.b.s.network.ConnectionManager - Login success: username=probe connection_id=f7d922e9-cbc2-45fa-860c-ad204bff6f77 remote_address=/127.0.0.1:52856
+14:07:37.843 [Syn-Socket-Reader-1] INFO  i.g.b.s.n.p.PlayerSocketConnection - Inbound packet limit exceeded: connection_id=f7d922e9-cbc2-45fa-860c-ad204bff6f77 identifier=probe limit=packets 1001 > 1000 in 7000 ms
+14:07:37.861 [Syn-Socket-Reader-1] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=f7d922e9-cbc2-45fa-860c-ad204bff6f77 identifier=probe reason=synaxis:protocol-error
+stack trace lines: 0
+==================== max-packets=2500
+free
+14:07:47 ready after 14x0.5s, pid 14869
+packetLimitMaxPackets=2500
+## --rate 800 --seconds 3
+recv PluginMessagePacket
+     S2C_UNIT_STATE server_tick=64 count=66 moving=[]
+recv Disconnect reason=synaxis:game-flood
+exit code: 0
+exit code: 0
+14:07:52 server exit code 0
+port 25565 released
+14:07:45.413 [main] INFO  i.github.bearisbug.synaxis.app.Main - Effective ServerConfig[... packetLimitWindow=7000, packetLimitMaxPackets=2500, packetLimitAction=KICK ...]
+14:07:47.655 [virtual-1106] INFO  i.g.b.s.network.ConnectionManager - Login success: username=probe connection_id=948cc9aa-4d4d-45f0-a764-782db220a3c8 remote_address=/127.0.0.1:53361
+14:07:50.438 [Syn-Tick-0] WARN  i.g.b.synaxis.game.rts.GameChannel - Disconnecting a flooding connection: connection_id=948cc9aa-4d4d-45f0-a764-782db220a3c8 reason=synaxis:game-flood (1 flooding connections since the last report)
+14:07:50.440 [Syn-Tick-0] INFO  i.g.b.s.n.player.PlayerConnection - Kicking connection_id=948cc9aa-4d4d-45f0-a764-782db220a3c8 identifier=probe reason=synaxis:game-flood
+stack trace lines: 0
+no server-app java process left
+==================== done 14:07:52, load: 56.39 64.47 61.97

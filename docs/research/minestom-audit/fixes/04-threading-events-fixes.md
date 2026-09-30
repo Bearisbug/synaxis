@@ -128,7 +128,7 @@ executor，属于 API 层面的改动，超出本轮范围。
 - **P2-1**（refreshThreads 纳秒预算）：计算在私有的 `ServerProcessImpl.TickerImpl.serverTick` 内，
   唯一可观测的外部效果是 `refreshThreads(nanoTimeout)` 的入参，从外部无法在不加钩子的情况下断言。
   单位错误由阅读确认（毫秒减在纳秒上），改动是 2 行。
-- **P3-1 / P3-3 / P3-4**：分别是自旋退避、javadoc 澄清、方法重命名，无行为变化可断言。
+- **P3-1 / P3-4**：分别是自旋退避、方法重命名，无行为变化可断言。P3-3 的测试见去向表该行。
 
 ## 已知的既有失败（非本轮引入）
 

@@ -1,0 +1,14 @@
+# Build and bake for TC-WORLD-054, 2026-09-30 12:38~12:39, before any step started (no Gradle of this round ran during a step)
+JAVA_HOME=/opt/homebrew/opt/openjdk@25/libexec/openjdk.jdk/Contents/Home; JAVA_TOOL_OPTIONS = the proxy settings of docs/ENGINE.md §2.2 for
+Gradle only (unset for the bake, the shards, the sampler and the bots)
+./gradlew --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts --max-workers=4 :server-app:installDist :loadtest:installDist :baker:installDist
+  BUILD SUCCESSFUL in 5s (47 actionable tasks: 6 executed, 41 up-to-date), exit 0; code at 0e919cce6a (the same code as 5c7874ed5c of
+  RUN-057: the commits between change docs/ only)
+  no Kotlin daemon log in $TMPDIR is newer than the start of the round (find -newer), no java or Gradle process left after the build
+<L> = mktemp -d under $TMPDIR (run058.XXXXXX); deleted at the end of the round
+baker/build/install/baker/bin/baker bake --map-id synth --source generator:synthetic:7 --out <L>/maps --logs <L>/bakelogs --threads 4
+  exit 0; baker: published <L>/maps/synth/synth-09b42ebb5dc6-p776, 213319659 bytes
+  wall_ms 26929, cpu_ms 99856, threads 4, jdk 25.0.4.1 (map_build_finished in <L>/bakelogs); verify samples 256, diffs 0
+  /usr/bin/time -l: 27.61 s real, 93.55 s user, 8.30 s sys, maximum resident set size 1,945,714,688 B
+  content_hash 09b42ebb5dc678b265f1c7b3f7e4d5ae7b475b6b7aca9180e14b0981e191e273 (the same as TC-WORLD-023, RUN-041 and RUN-057)
+TC-WORLD-054 mounts <L>/maps/synth (no shards.json: memory store), so no database and no server-app --migrate-only is needed.

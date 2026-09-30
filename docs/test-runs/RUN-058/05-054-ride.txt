@@ -1,0 +1,271 @@
+# TC-WORLD-054 step 2, first run: 200 bots ride 600 s on a restarted shard, the same JVM setup; other sessions' load rose from 13:00 (load1 17 to 47), see the machine section
+# w054-ride start 2026-09-30 12:52:12 profile=ride bots=200 duration=600s warmup=60s load { 3.84 4.19 4.30 } vm.swapusage: total = 23552.00M  used = 22363.06M  free = 1188.94M  (encrypted)
+# JVM-related environment of the runner after unset: [] JAVA_HOME=/opt/homebrew/opt/openjdk@25/libexec/openjdk.jdk/Contents/Home
+# shard: SERVER_APP_OPTS="-Dsynaxis.app.port=25772 -Dsynaxis.app.auth=offline -Dsynaxis.app.shard-id=run058-w054-ride -Dsynaxis.app.metrics.bind=127.0.0.1:19772 -Dsynaxis.connection-gate.trusted-networks=127.0.0.0/8 -Dsynaxis.app.log=stdout -Dsynaxis.map.root=<L>/maps/synth -Dsynaxis.map.build=synth-09b42ebb5dc6-p776 -Xlog:gc*:file=<L>/w054-ride/gc.log:time,uptime,level,tags" (on the shard's command line only, not exported) bin/server-shard
+# server pid 75011 monitor pid 75010
+# listening 12:52:14
+# sample pid 75171 bots pid 75363
+# run exit 0
+# sample exit 0
+# merge exit 2
+# w054-ride end 2026-09-30 13:02:48 load { 55.73 26.30 13.65 } vm.swapusage: total = 28672.00M  used = 27354.00M  free = 1318.00M  (encrypted)
+# JVM arguments read back from the running processes (jcmd <pid> VM.command_line), full VM.flags in 03-jvm.txt:
+#   jvm-shard: jvm_args: -XX:+UseG1GC -Xms4G -Xmx4G -XX:+AlwaysPreTouch -XX:MaxGCPauseMillis=50 -XX:+HeapDumpOnOutOfMemoryError -XX:+ExitOnOutOfMemoryError -Xlog:gc*:file=<step dir>/gc.log:time,uptime,level,tags 
+#   jvm-sample: jvm_args: -Xmx2G 
+#   jvm-bots: jvm_args: -Xmx2G 
+
+## JFR counts, shard log, ledger, summary.json (analyze054.sh)
+## JFR (jfr print; counts over the whole recording)
+MethodTiming last invocations:io.github.bearisbug.synaxis.synx.SynxChunk.getFullDataPacket() = 2654065
+MethodTiming last invocations:io.github.bearisbug.synaxis.instance.DynamicChunk.createChunkPacket() = 0
+MethodTiming last invocations:io.github.bearisbug.synaxis.network.packet.server.play.ChunkDataPacket.<init>(int, int, ChunkData, LightData) = 0
+ExecutionSample events: 28215
+ExecutionSample events with createChunkPacket in the stack: 0
+ExecutionSample events with SynxChunk.getFullDataPacket in the stack: 97
+ObjectAllocationSample events: 67149
+ObjectAllocationSample events with objectClass ChunkDataPacket: 0
+ObjectAllocationSample events with createChunkPacket in the stack: 0
+GCHeapSummary after GC heapUsed: count 51 max 302.1 MB
+## shard log
+12:52:13.476 [main] INFO  i.github.bearisbug.synaxis.app.Main - Effective ServerConfig[shutdownOnSignal=true, maxTickCatchUp=5, chunkViewDistance=12, entityViewDistance=8, entitySynchronizationTicks=20, dispatcherThreads=10, threadProvider=GRID, threadGridExponent=4, sendLightAfterBlockPlacementDelay=100, loginTimeout=30000, loginPluginMessageTimeout=5000, knownPacksResponseTimeout=300000, acceptTransfers=false, playerPacketPerTick=50, playerPacketQueueSize=1000, keepAliveDelay=10000, keepAliveKick=15000, playerChunkUpdateLimiterHistorySize=0, maxConnections=1024, acceptBackoff=100, maxConnectionsPerIp=16, handshakeTimeout=5000, loginRatePerIp=0.5, loginBurstPerIp=3, statusRatePerIp=1.0, sta
+12:52:13.924 [main] INFO  i.g.b.synaxis.app.shard.ShardWorld - Map release synth-09b42ebb5dc6-p776 verified in 422 ms: bounds=Bounds[minX=0, minZ=0, maxX=255, maxZ=255] world=World[minY=0, height=256]
+12:52:14.023 [main] INFO  i.g.b.s.app.metrics.HostMetrics - Metrics endpoint listening on http://127.0.0.1:19772/metrics
+12:52:14.052 [main] INFO  i.g.b.synaxis.app.shard.ShardWorld - Map mounted: build_id=synth-09b42ebb5dc6-p776 simulation_distance=4 chunk_unload_grace_ticks=100 spawn=Pos[x=2040.5, y=74.0, z=2040.5, yaw=0.0, pitch=0.0] overlay=overlay/synth-09b42ebb5dc6-p776
+12:52:14.054 [main] INFO  i.github.bearisbug.synaxis.app.Main - Map mode (synaxis.app.core-mode=on): the host serves the map instance, no plugin is loaded, spawn=Pos[x=2040.5, y=74.0, z=2040.5, yaw=0.0, pitch=0.0]
+12:52:14.056 [main] INFO  i.github.bearisbug.synaxis.app.Main - synaxis server-app listening on 0.0.0.0:25772
+13:02:46.534 [Thread-2] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+13:02:46.541 [Thread-2] INFO  i.g.b.synaxis.synx.SynxRelight - Relight drain: 1 ms, left=0
+13:02:46.573 [Syn-TickScheduler] INFO  i.g.b.synaxis.synx.OverlayStore - Overlay final flush: chunks=0 bytes=0 fsync_ms=0 left=0 by=tick
+WARN/ERROR lines: 0
+kick/disconnect lines in the log: 1
+12:52:13.476 [main] INFO  i.github.bearisbug.synaxis.app.Main - Effective ServerConfig[shutdownOnSignal=true, maxTickCatchUp=5, chunkViewDistance=12, entityViewDistance=8, entitySynchronizationTicks=20, dispatcherThreads=10, threadProvider=GRID, threadGridExponent=4, sendLightAfterBlockPlacementDela
+overlay/ in the work dir: synth-09b42ebb5dc6-p776 ; files:        0
+## ledger (logs/*.jsonl)
+   1 {"ts":"2026-09-30T05:02:46.575670Z","event":"shutdown_saved","shard_id":"memory","online":0,"saved":0,"failed":0,"elapsed_ms":37,"timed_out":"false"}
+   1 {"ts":"2026-09-30T04:52:30.000519Z","event":"session_entered_configuration","connection_id":"a9f0bfd6-6b55-4a98-a893-a893349a1813","protocol_version":776}
+   1 {"ts":"2026-09-30T04:52:29.942061Z","event":"session_entered_configuration","connection_id":"c76b0280-5d20-4b83-854a-27f8019fa1b7","protocol_version":776}
+   1 {"ts":"2026-09-30T04:52:29.897471Z","event":"session_entered_configuration","connection_id":"407dced1-4ffe-470b-96c0-713970c287e8","protocol_version":776}
+   1 {"ts":"2026-09-30T04:52:29.846437Z","event":"session_entered_configuration","connection_id":"1d2a86dd-0ebf-4125-87d4-26a667c330c0","protocol_version":776}
+ledger events by type:   10 chunk_stream_stats  200 session_entered_configuration    1 shard_started    1 shutdown_saved 
+{"ts":"2026-09-30T04:52:14.055958Z","event":"shard_started","build_id":"synth-09b42ebb5dc6-p776","verify_ms":422,"regions":64,"bytes_mapped":213319659,"overlay_records":0,"flags_replayed":0,"flags_ms":0,"region_id":"null","capacity":"null"}
+{"records":10,"overlay_sent_sum":0,"handle_sent_min":256411,"handle_sent_sum":2633939,"failed_sum":0,"evict_failed_sum":0,"write_phase_ms_max":33.341458,"section_cache_bytes_max":49572800}
+## summary.json
+{"bots":{"pass":true,"detail":"200 of 200 logged in, 0 lost"},"chunks_per_bot_min":{"pass":true,"detail":"12832 > 9"},"tick_p99_ms":{"pass":true,"detail":"47.863 < 50.0"},"ticks_over_50ms":{"pass":false,"detail":"116 <= 0"},"rss_mib_max":{"pass":true,"detail":"793.984 < 4096.0"},"pass":false}
+{"requested":200,"logged_in":200,"lost":0,"login_failures":{}}
+kicks_by_reason: {}
+login_failures (top level): null (bots.login_failures above is {})
+{"ride":{"packets":2653695,"wire_bytes":3887880644,"connection_seconds":118805.012,"kb_per_s_per_bot":31.958,"packets_per_s_per_bot":22.337,"steady_packets":2284685,"steady_wire_bytes":3348715536,"steady_connection_seconds":106805.012,"steady_kb_per_s_per_bot":30.619,"steady_packets_per_s_per_bot":21.391,"per_bot_packets":{"count":200,"mean":13268.475,"p50":13284.0,"p99":13546.0,"max":13613.0,"min":12832.0}}}
+ride: steady_wire_bytes / steady_connection_seconds / 1000 = 3348715536 / 106805.012 / 1000 = 31.353542996652628 KB/s per bot; steady_wire_bytes / steady_packets = 1465.7230804246537 B per chunk; per_bot_packets min 12832.0
+{"chunk_data_packets_received":2653695}
+ticks.overall: {"count":12478,"mean_ms":3.892,"p50_ms":1.256,"p99_ms":47.863,"max_ms":370.545,"over_50ms":116}
+ticks per minute (P99 ms / over 50 ms / max ms): 0:6.023/1/66.144 1:4.013/1/52.598 2:6.69/0/44.772 3:18.142/1/60.171 4:2.701/0/19.933 5:6.443/0/40.574 6:7.612/1/141.066 7:11.355/2/71.022 8:106.04/64/370.545 9:102.957/39/262.67 10:104.722/7/258.127 
+gc (sample): {"count":51,"mean_ms":70.719,"p50_ms":43.062,"p99_ms":330.161,"max_ms":330.161,"over_50ms":21}
+heap: {"rss_mib_max":793.984,"heap_used_mib_max":756.16}
+dispatcher_busy_ratio: {"Syn-Tick-0":0.02,"Syn-Tick-1":0.03,"Syn-Tick-2":0.02,"Syn-Tick-3":0.012,"Syn-Tick-4":0.02,"Syn-Tick-5":0.015,"Syn-Tick-6":0.019,"Syn-Tick-7":0.025,"Syn-Tick-8":0.029,"Syn-Tick-9":0.02,"Syn-TickScheduler":0.078}
+traffic: {"packets_in_per_s":8796.331,"packets_out_per_s":112111.374,"bytes_in_per_s":126795.932,"bytes_out_per_s":8361462.649}
+login_latency_ms: {"off":{"count":200,"mean_ms":28.637,"p50_ms":28.1,"p99_ms":34.8,"max_ms":44.0,"over_50ms":0}}
+chunk_batch_rtt_ms: {"count":689148,"mean_ms":0.055,"p50_ms":0.0,"p99_ms":0.8,"max_ms":732.4,"over_50ms":70}; harness: [{"cpu_seconds":167.253,"cpu_percent_mean":27.909}]
+chunk_stream_stats per minute (ts, write_phase_ms_max): 04:53:14Z 0.518292;04:54:14Z 0.117041;04:55:14Z 0.188292;04:56:14Z 0.508542;04:57:14Z 0.0755;04:58:14Z 0.017167;04:59:14Z 0.030833;05:00:14Z 0.077167;05:01:14Z 33.341458;05:02:14Z 0.332584;
+
+## c2s, visible entities, metrics at the end (not criteria of this case)
+## c2s (uplink per bot)
+{"packets":5453756,"packets_per_s_per_bot":45.905,"per_bot_per_1s":{"count":118679,"mean":45.886,"p50":47.0,"p99":60.0,"max":78.0},"per_bot_per_7s":{"count":117479,"mean":320.71,"p50":321.0,"p99":374.0,"max":423.0}}
+## visible entities (bot side)
+{"count":118879,"mean":24.563,"p50":18.0,"p99":100.0,"max":100.0}
+## metrics at the end
+synaxis_gate_rejections_total{reason="closed_at_accept"} 0.0
+synaxis_gate_rejections_total{reason="full"} 0.0
+synaxis_gate_rejections_total{reason="handshake_timeout"} 0.0
+synaxis_gate_rejections_total{reason="throttled"} 0.0
+synaxis_gate_rejections_total{reason="too_many"} 0.0
+synaxis_ledger_dropped_total 0.0
+synaxis_outbound_backlog_kicks_total 0.0
+synaxis_packets_total{direction="in"} 5453756.0
+synaxis_packets_total{direction="out"} 6.9509444E7
+synaxis_players_online 0.0
+synaxis_watchdog_warnings_total 0.0
+
+## ticks over 50 ms against the G1 pauses (gcticks.py over jfr print --json --events synaxis.ServerTickTime,jdk.GCPhasePause,jdk.G1GarbageCollection and the -Xlog:gc* file)
+JFR synaxis.ServerTickTime: 12558 ticks, over 50 ms 116, max 370.545 ms
+JFR jdk.GCPhasePause: 51 pauses, over 50 ms 21, P50 43.062 ms, max 330.161 ms, sum 3606.7 ms
+gc.log pauses: 55, over 50 ms 23, P50 40.723 ms, P99 330.867 ms, max 330.867 ms, sum 3655.3 ms
+  Pause Cleanup: 1, max 0.023 ms
+  Pause Remark: 1, max 1.726 ms
+  Pause Young (Concurrent Start) (Metadata GC Threshold): 1, max 9.176 ms
+  Pause Young (Mixed) (G1 Evacuation Pause): 1, max 40.723 ms
+  Pause Young (Normal) (G1 Evacuation Pause): 50, max 330.867 ms
+  Pause Young (Prepare Mixed) (G1 Evacuation Pause): 1, max 9.104 ms
+slow ticks (local time; tick start, duration) and the pauses they overlap:
+  tick 12:52:50.405 66.144 ms: JFR gcId 5 Normal 12:52:50.408 63.054 ms; gc.log GC(5) Pause Young (Normal) (G1 Evacuation Pause) 423M->87M(4096M) 12:52:50.408 63.859 ms
+  tick 12:53:35.505 52.598 ms: JFR gcId 9 Normal 12:53:35.507 49.717 ms; gc.log GC(9) Pause Young (Normal) (G1 Evacuation Pause) 556M->163M(4096M) 12:53:35.507 50.505 ms
+  tick 12:55:27.005 60.171 ms: JFR gcId 19 Normal 12:55:27.006 57.347 ms; gc.log GC(19) Pause Young (Normal) (G1 Evacuation Pause) 397M->202M(4096M) 12:55:27.010 57.719 ms
+  tick 12:58:15.805 141.066 ms: JFR gcId 31 Normal 12:58:15.806 132.522 ms; gc.log GC(31) Pause Young (Normal) (G1 Evacuation Pause) 794M->252M(4096M) 12:58:15.813 132.816 ms
+  tick 12:59:17.955 64.746 ms: JFR gcId 35 Normal 12:59:17.957 61.103 ms; gc.log GC(35) Pause Young (Normal) (G1 Evacuation Pause) 639M->258M(4096M) 12:59:17.965 61.290 ms
+  tick 12:59:45.455 71.022 ms: JFR gcId 37 Normal 12:59:45.456 65.370 ms; gc.log GC(37) Pause Young (Normal) (G1 Evacuation Pause) 585M->261M(4096M) 12:59:45.465 65.561 ms
+  tick 13:00:37.061 50.919 ms: no overlapping pause (nearest gc.log pause GC(42) Pause Young (Normal) (G1 Evacuation Pause) at 13:00:35.816, -1.245 s, 17.158 ms)
+  tick 13:00:38.705 121.823 ms: no overlapping pause (nearest gc.log pause GC(42) Pause Young (Normal) (G1 Evacuation Pause) at 13:00:35.816, -2.889 s, 17.158 ms)
+  tick 13:00:40.069 65.513 ms: no overlapping pause (nearest gc.log pause GC(42) Pause Young (Normal) (G1 Evacuation Pause) at 13:00:35.816, -4.253 s, 17.158 ms)
+  tick 13:00:40.256 93.114 ms: no overlapping pause (nearest gc.log pause GC(42) Pause Young (Normal) (G1 Evacuation Pause) at 13:00:35.816, -4.440 s, 17.158 ms)
+  tick 13:00:40.519 67.942 ms: no overlapping pause (nearest gc.log pause GC(42) Pause Young (Normal) (G1 Evacuation Pause) at 13:00:35.816, -4.702 s, 17.158 ms)
+  tick 13:00:41.255 50.083 ms: no overlapping pause (nearest gc.log pause GC(43) Pause Young (Normal) (G1 Evacuation Pause) at 13:00:45.909, +4.653 s, 330.867 ms)
+  tick 13:00:41.937 54.002 ms: no overlapping pause (nearest gc.log pause GC(43) Pause Young (Normal) (G1 Evacuation Pause) at 13:00:45.909, +3.972 s, 330.867 ms)
+  tick 13:00:42.108 83.664 ms: no overlapping pause (nearest gc.log pause GC(43) Pause Young (Normal) (G1 Evacuation Pause) at 13:00:45.909, +3.801 s, 330.867 ms)
+  tick 13:00:42.555 56.026 ms: no overlapping pause (nearest gc.log pause GC(43) Pause Young (Normal) (G1 Evacuation Pause) at 13:00:45.909, +3.353 s, 330.867 ms)
+  tick 13:00:42.767 84.537 ms: no overlapping pause (nearest gc.log pause GC(43) Pause Young (Normal) (G1 Evacuation Pause) at 13:00:45.909, +3.141 s, 330.867 ms)
+  tick 13:00:43.408 55.483 ms: no overlapping pause (nearest gc.log pause GC(43) Pause Young (Normal) (G1 Evacuation Pause) at 13:00:45.909, +2.501 s, 330.867 ms)
+  tick 13:00:43.656 73.997 ms: no overlapping pause (nearest gc.log pause GC(43) Pause Young (Normal) (G1 Evacuation Pause) at 13:00:45.909, +2.253 s, 330.867 ms)
+  tick 13:00:43.806 189.781 ms: no overlapping pause (nearest gc.log pause GC(43) Pause Young (Normal) (G1 Evacuation Pause) at 13:00:45.909, +2.102 s, 330.867 ms)
+  tick 13:00:43.996 138.707 ms: no overlapping pause (nearest gc.log pause GC(43) Pause Young (Normal) (G1 Evacuation Pause) at 13:00:45.909, +1.912 s, 330.867 ms)
+  tick 13:00:44.135 51.803 ms: no overlapping pause (nearest gc.log pause GC(43) Pause Young (Normal) (G1 Evacuation Pause) at 13:00:45.909, +1.774 s, 330.867 ms)
+  tick 13:00:44.266 89.789 ms: no overlapping pause (nearest gc.log pause GC(43) Pause Young (Normal) (G1 Evacuation Pause) at 13:00:45.909, +1.643 s, 330.867 ms)
+  tick 13:00:44.459 51.849 ms: no overlapping pause (nearest gc.log pause GC(43) Pause Young (Normal) (G1 Evacuation Pause) at 13:00:45.909, +1.450 s, 330.867 ms)
+  tick 13:00:44.562 105.174 ms: no overlapping pause (nearest gc.log pause GC(43) Pause Young (Normal) (G1 Evacuation Pause) at 13:00:45.909, +1.346 s, 330.867 ms)
+  tick 13:00:44.667 59.805 ms: no overlapping pause (nearest gc.log pause GC(43) Pause Young (Normal) (G1 Evacuation Pause) at 13:00:45.909, +1.241 s, 330.867 ms)
+  tick 13:00:45.010 98.196 ms: no overlapping pause (nearest gc.log pause GC(43) Pause Young (Normal) (G1 Evacuation Pause) at 13:00:45.909, +0.899 s, 330.867 ms)
+  tick 13:00:45.206 78.114 ms: no overlapping pause (nearest gc.log pause GC(43) Pause Young (Normal) (G1 Evacuation Pause) at 13:00:45.909, +0.703 s, 330.867 ms)
+  tick 13:00:45.517 104.636 ms: no overlapping pause (nearest gc.log pause GC(43) Pause Young (Normal) (G1 Evacuation Pause) at 13:00:45.909, +0.392 s, 330.867 ms)
+  tick 13:00:45.621 73.133 ms: no overlapping pause (nearest gc.log pause GC(43) Pause Young (Normal) (G1 Evacuation Pause) at 13:00:45.909, +0.287 s, 330.867 ms)
+  tick 13:00:45.769 100.712 ms: no overlapping pause (nearest gc.log pause GC(43) Pause Young (Normal) (G1 Evacuation Pause) at 13:00:45.909, +0.140 s, 330.867 ms)
+  tick 13:00:45.869 370.545 ms: JFR gcId 43 Normal 13:00:45.898 330.161 ms; gc.log GC(43) Pause Young (Normal) (G1 Evacuation Pause) 462M->278M(4096M) 13:00:45.909 330.867 ms
+  tick 13:00:46.645 53.593 ms: no overlapping pause (nearest gc.log pause GC(43) Pause Young (Normal) (G1 Evacuation Pause) at 13:00:45.909, -0.736 s, 330.867 ms)
+  tick 13:00:46.990 75.350 ms: no overlapping pause (nearest gc.log pause GC(43) Pause Young (Normal) (G1 Evacuation Pause) at 13:00:45.909, -1.081 s, 330.867 ms)
+  tick 13:00:47.392 103.661 ms: no overlapping pause (nearest gc.log pause GC(43) Pause Young (Normal) (G1 Evacuation Pause) at 13:00:45.909, -1.483 s, 330.867 ms)
+  tick 13:00:47.495 93.252 ms: no overlapping pause (nearest gc.log pause GC(43) Pause Young (Normal) (G1 Evacuation Pause) at 13:00:45.909, -1.587 s, 330.867 ms)
+  tick 13:00:48.390 88.742 ms: no overlapping pause (nearest gc.log pause GC(43) Pause Young (Normal) (G1 Evacuation Pause) at 13:00:45.909, -2.482 s, 330.867 ms)
+  tick 13:00:48.491 120.308 ms: no overlapping pause (nearest gc.log pause GC(43) Pause Young (Normal) (G1 Evacuation Pause) at 13:00:45.909, -2.582 s, 330.867 ms)
+  tick 13:00:48.840 96.191 ms: no overlapping pause (nearest gc.log pause GC(43) Pause Young (Normal) (G1 Evacuation Pause) at 13:00:45.909, -2.931 s, 330.867 ms)
+  tick 13:00:49.164 67.537 ms: no overlapping pause (nearest gc.log pause GC(43) Pause Young (Normal) (G1 Evacuation Pause) at 13:00:45.909, -3.255 s, 330.867 ms)
+  tick 13:00:49.290 103.874 ms: no overlapping pause (nearest gc.log pause GC(43) Pause Young (Normal) (G1 Evacuation Pause) at 13:00:45.909, -3.382 s, 330.867 ms)
+  tick 13:00:49.690 50.131 ms: no overlapping pause (nearest gc.log pause GC(43) Pause Young (Normal) (G1 Evacuation Pause) at 13:00:45.909, -3.781 s, 330.867 ms)
+  tick 13:00:49.800 106.177 ms: no overlapping pause (nearest gc.log pause GC(43) Pause Young (Normal) (G1 Evacuation Pause) at 13:00:45.909, -3.892 s, 330.867 ms)
+  tick 13:00:49.906 103.172 ms: no overlapping pause (nearest gc.log pause GC(43) Pause Young (Normal) (G1 Evacuation Pause) at 13:00:45.909, -3.998 s, 330.867 ms)
+  tick 13:00:50.010 103.899 ms: no overlapping pause (nearest gc.log pause GC(43) Pause Young (Normal) (G1 Evacuation Pause) at 13:00:45.909, -4.101 s, 330.867 ms)
+  tick 13:00:50.152 205.058 ms: no overlapping pause (nearest gc.log pause GC(43) Pause Young (Normal) (G1 Evacuation Pause) at 13:00:45.909, -4.243 s, 330.867 ms)
+  tick 13:00:50.357 91.550 ms: no overlapping pause (nearest gc.log pause GC(43) Pause Young (Normal) (G1 Evacuation Pause) at 13:00:45.909, -4.448 s, 330.867 ms)
+  tick 13:00:50.557 51.186 ms: no overlapping pause (nearest gc.log pause GC(43) Pause Young (Normal) (G1 Evacuation Pause) at 13:00:45.909, -4.649 s, 330.867 ms)
+  tick 13:00:50.608 80.799 ms: no overlapping pause (nearest gc.log pause GC(43) Pause Young (Normal) (G1 Evacuation Pause) at 13:00:45.909, -4.700 s, 330.867 ms)
+  tick 13:00:50.807 82.294 ms: no overlapping pause (nearest gc.log pause GC(44) Pause Young (Normal) (G1 Evacuation Pause) at 13:00:55.453, +4.646 s, 299.702 ms)
+  tick 13:00:50.889 134.913 ms: no overlapping pause (nearest gc.log pause GC(44) Pause Young (Normal) (G1 Evacuation Pause) at 13:00:55.453, +4.564 s, 299.702 ms)
+  tick 13:00:51.157 71.196 ms: no overlapping pause (nearest gc.log pause GC(44) Pause Young (Normal) (G1 Evacuation Pause) at 13:00:55.453, +4.296 s, 299.702 ms)
+  tick 13:00:51.407 64.088 ms: no overlapping pause (nearest gc.log pause GC(44) Pause Young (Normal) (G1 Evacuation Pause) at 13:00:55.453, +4.046 s, 299.702 ms)
+  tick 13:00:51.709 60.086 ms: no overlapping pause (nearest gc.log pause GC(44) Pause Young (Normal) (G1 Evacuation Pause) at 13:00:55.453, +3.744 s, 299.702 ms)
+  tick 13:00:51.769 88.384 ms: no overlapping pause (nearest gc.log pause GC(44) Pause Young (Normal) (G1 Evacuation Pause) at 13:00:55.453, +3.684 s, 299.702 ms)
+  tick 13:00:52.007 100.137 ms: no overlapping pause (nearest gc.log pause GC(44) Pause Young (Normal) (G1 Evacuation Pause) at 13:00:55.453, +3.446 s, 299.702 ms)
+  tick 13:00:52.757 50.477 ms: no overlapping pause (nearest gc.log pause GC(44) Pause Young (Normal) (G1 Evacuation Pause) at 13:00:55.453, +2.696 s, 299.702 ms)
+  tick 13:00:52.908 74.111 ms: no overlapping pause (nearest gc.log pause GC(44) Pause Young (Normal) (G1 Evacuation Pause) at 13:00:55.453, +2.545 s, 299.702 ms)
+  tick 13:00:53.207 64.216 ms: no overlapping pause (nearest gc.log pause GC(44) Pause Young (Normal) (G1 Evacuation Pause) at 13:00:55.453, +2.246 s, 299.702 ms)
+  tick 13:00:53.525 66.200 ms: no overlapping pause (nearest gc.log pause GC(44) Pause Young (Normal) (G1 Evacuation Pause) at 13:00:55.453, +1.928 s, 299.702 ms)
+  tick 13:00:53.591 53.008 ms: no overlapping pause (nearest gc.log pause GC(44) Pause Young (Normal) (G1 Evacuation Pause) at 13:00:55.453, +1.862 s, 299.702 ms)
+  tick 13:00:54.083 71.355 ms: no overlapping pause (nearest gc.log pause GC(44) Pause Young (Normal) (G1 Evacuation Pause) at 13:00:55.453, +1.369 s, 299.702 ms)
+  tick 13:00:54.449 55.989 ms: no overlapping pause (nearest gc.log pause GC(44) Pause Young (Normal) (G1 Evacuation Pause) at 13:00:55.453, +1.004 s, 299.702 ms)
+  tick 13:00:54.508 86.056 ms: no overlapping pause (nearest gc.log pause GC(44) Pause Young (Normal) (G1 Evacuation Pause) at 13:00:55.453, +0.945 s, 299.702 ms)
+  tick 13:00:54.859 267.843 ms: no overlapping pause (nearest gc.log pause GC(44) Pause Young (Normal) (G1 Evacuation Pause) at 13:00:55.453, +0.593 s, 299.702 ms)
+  tick 13:00:55.127 104.681 ms: no overlapping pause (nearest gc.log pause GC(44) Pause Young (Normal) (G1 Evacuation Pause) at 13:00:55.453, +0.326 s, 299.702 ms)
+  tick 13:00:55.441 329.480 ms: JFR gcId 44 Normal 13:00:55.450 291.618 ms; gc.log GC(44) Pause Young (Normal) (G1 Evacuation Pause) 464M->281M(4096M) 13:00:55.453 299.702 ms
+  tick 13:00:57.433 155.994 ms: no overlapping pause (nearest gc.log pause GC(44) Pause Young (Normal) (G1 Evacuation Pause) at 13:00:55.453, -1.981 s, 299.702 ms)
+  tick 13:01:07.621 60.938 ms: no overlapping pause (nearest gc.log pause GC(45) Pause Young (Normal) (G1 Evacuation Pause) at 13:01:04.338, -3.283 s, 74.565 ms)
+  tick 13:01:07.821 100.115 ms: no overlapping pause (nearest gc.log pause GC(45) Pause Young (Normal) (G1 Evacuation Pause) at 13:01:04.338, -3.483 s, 74.565 ms)
+  tick 13:01:13.071 106.040 ms: JFR gcId 46 Normal 13:01:13.075 97.095 ms; gc.log GC(46) Pause Young (Normal) (G1 Evacuation Pause) 470M->286M(4096M) 13:01:13.085 97.425 ms
+  tick 13:01:21.125 67.818 ms: no overlapping pause (nearest gc.log pause GC(47) Pause Young (Normal) (G1 Evacuation Pause) at 13:01:21.934, +0.810 s, 196.200 ms)
+  tick 13:01:21.921 213.683 ms: JFR gcId 47 Normal 13:01:21.923 195.968 ms; gc.log GC(47) Pause Young (Normal) (G1 Evacuation Pause) 472M->290M(4096M) 13:01:21.934 196.200 ms
+  tick 13:01:30.771 235.073 ms: JFR gcId 48 Normal 13:01:30.772 224.196 ms; gc.log GC(48) Pause Young (Normal) (G1 Evacuation Pause) 476M->291M(4096M) 13:01:30.783 224.775 ms
+  tick 13:01:32.921 83.537 ms: no overlapping pause (nearest gc.log pause GC(48) Pause Young (Normal) (G1 Evacuation Pause) at 13:01:30.783, -2.138 s, 224.775 ms)
+  tick 13:01:35.021 67.501 ms: no overlapping pause (nearest gc.log pause GC(48) Pause Young (Normal) (G1 Evacuation Pause) at 13:01:30.783, -4.238 s, 224.775 ms)
+  tick 13:01:37.171 72.542 ms: no overlapping pause (nearest gc.log pause GC(49) Pause Young (Normal) (G1 Evacuation Pause) at 13:01:39.740, +2.569 s, 253.927 ms)
+  tick 13:01:37.472 69.013 ms: no overlapping pause (nearest gc.log pause GC(49) Pause Young (Normal) (G1 Evacuation Pause) at 13:01:39.740, +2.268 s, 253.927 ms)
+  tick 13:01:37.541 79.196 ms: no overlapping pause (nearest gc.log pause GC(49) Pause Young (Normal) (G1 Evacuation Pause) at 13:01:39.740, +2.199 s, 253.927 ms)
+  tick 13:01:39.721 262.670 ms: JFR gcId 49 Normal 13:01:39.730 252.118 ms; gc.log GC(49) Pause Young (Normal) (G1 Evacuation Pause) 479M->294M(4096M) 13:01:39.740 253.927 ms
+  tick 13:01:40.797 60.221 ms: no overlapping pause (nearest gc.log pause GC(49) Pause Young (Normal) (G1 Evacuation Pause) at 13:01:39.740, -1.057 s, 253.927 ms)
+  tick 13:01:42.122 102.957 ms: no overlapping pause (nearest gc.log pause GC(49) Pause Young (Normal) (G1 Evacuation Pause) at 13:01:39.740, -2.383 s, 253.927 ms)
+  tick 13:01:44.622 146.394 ms: no overlapping pause (nearest gc.log pause GC(50) Pause Young (Normal) (G1 Evacuation Pause) at 13:01:48.724, +4.102 s, 158.397 ms)
+  tick 13:01:44.768 54.668 ms: no overlapping pause (nearest gc.log pause GC(50) Pause Young (Normal) (G1 Evacuation Pause) at 13:01:48.724, +3.956 s, 158.397 ms)
+  tick 13:01:52.871 59.459 ms: no overlapping pause (nearest gc.log pause GC(50) Pause Young (Normal) (G1 Evacuation Pause) at 13:01:48.724, -4.147 s, 158.397 ms)
+  tick 13:01:57.671 203.263 ms: JFR gcId 51 Normal 13:01:57.672 193.287 ms; gc.log GC(51) Pause Young (Normal) (G1 Evacuation Pause) 484M->298M(4096M) 13:01:57.684 193.748 ms
+  tick 13:02:00.271 66.223 ms: no overlapping pause (nearest gc.log pause GC(51) Pause Young (Normal) (G1 Evacuation Pause) at 13:01:57.684, -2.587 s, 193.748 ms)
+  tick 13:02:00.571 81.619 ms: no overlapping pause (nearest gc.log pause GC(51) Pause Young (Normal) (G1 Evacuation Pause) at 13:01:57.684, -2.887 s, 193.748 ms)
+  tick 13:02:01.621 64.540 ms: no overlapping pause (nearest gc.log pause GC(51) Pause Young (Normal) (G1 Evacuation Pause) at 13:01:57.684, -3.937 s, 193.748 ms)
+  tick 13:02:05.334 107.740 ms: no overlapping pause (nearest gc.log pause GC(52) Pause Young (Normal) (G1 Evacuation Pause) at 13:02:06.588, +1.254 s, 126.178 ms)
+  tick 13:02:05.442 74.988 ms: no overlapping pause (nearest gc.log pause GC(52) Pause Young (Normal) (G1 Evacuation Pause) at 13:02:06.588, +1.146 s, 126.178 ms)
+  tick 13:02:05.531 62.472 ms: no overlapping pause (nearest gc.log pause GC(52) Pause Young (Normal) (G1 Evacuation Pause) at 13:02:06.588, +1.058 s, 126.178 ms)
+  tick 13:02:05.636 90.876 ms: no overlapping pause (nearest gc.log pause GC(52) Pause Young (Normal) (G1 Evacuation Pause) at 13:02:06.588, +0.953 s, 126.178 ms)
+  tick 13:02:05.732 54.715 ms: no overlapping pause (nearest gc.log pause GC(52) Pause Young (Normal) (G1 Evacuation Pause) at 13:02:06.588, +0.857 s, 126.178 ms)
+  tick 13:02:05.971 67.771 ms: no overlapping pause (nearest gc.log pause GC(52) Pause Young (Normal) (G1 Evacuation Pause) at 13:02:06.588, +0.617 s, 126.178 ms)
+  tick 13:02:06.039 53.649 ms: no overlapping pause (nearest gc.log pause GC(52) Pause Young (Normal) (G1 Evacuation Pause) at 13:02:06.588, +0.550 s, 126.178 ms)
+  tick 13:02:06.271 64.539 ms: no overlapping pause (nearest gc.log pause GC(52) Pause Young (Normal) (G1 Evacuation Pause) at 13:02:06.588, +0.317 s, 126.178 ms)
+  tick 13:02:06.571 134.374 ms: JFR gcId 52 Normal 13:02:06.577 125.249 ms; gc.log GC(52) Pause Young (Normal) (G1 Evacuation Pause) 486M->300M(4096M) 13:02:06.588 126.178 ms
+  tick 13:02:08.571 106.941 ms: no overlapping pause (nearest gc.log pause GC(52) Pause Young (Normal) (G1 Evacuation Pause) at 13:02:06.588, -1.982 s, 126.178 ms)
+  tick 13:02:08.921 150.644 ms: no overlapping pause (nearest gc.log pause GC(52) Pause Young (Normal) (G1 Evacuation Pause) at 13:02:06.588, -2.332 s, 126.178 ms)
+  tick 13:02:09.271 63.752 ms: no overlapping pause (nearest gc.log pause GC(52) Pause Young (Normal) (G1 Evacuation Pause) at 13:02:06.588, -2.682 s, 126.178 ms)
+  tick 13:02:10.621 70.712 ms: no overlapping pause (nearest gc.log pause GC(52) Pause Young (Normal) (G1 Evacuation Pause) at 13:02:06.588, -4.033 s, 126.178 ms)
+  tick 13:02:10.692 223.003 ms: no overlapping pause (nearest gc.log pause GC(52) Pause Young (Normal) (G1 Evacuation Pause) at 13:02:06.588, -4.103 s, 126.178 ms)
+  tick 13:02:10.942 79.264 ms: no overlapping pause (nearest gc.log pause GC(52) Pause Young (Normal) (G1 Evacuation Pause) at 13:02:06.588, -4.353 s, 126.178 ms)
+  tick 13:02:11.079 176.383 ms: no overlapping pause (nearest gc.log pause GC(52) Pause Young (Normal) (G1 Evacuation Pause) at 13:02:06.588, -4.491 s, 126.178 ms)
+  tick 13:02:11.457 66.371 ms: no overlapping pause (nearest gc.log pause GC(53) Pause Young (Normal) (G1 Evacuation Pause) at 13:02:15.775, +4.317 s, 167.943 ms)
+  tick 13:02:11.524 56.137 ms: no overlapping pause (nearest gc.log pause GC(53) Pause Young (Normal) (G1 Evacuation Pause) at 13:02:15.775, +4.251 s, 167.943 ms)
+  tick 13:02:12.357 76.560 ms: no overlapping pause (nearest gc.log pause GC(53) Pause Young (Normal) (G1 Evacuation Pause) at 13:02:15.775, +3.417 s, 167.943 ms)
+  tick 13:02:12.434 64.771 ms: no overlapping pause (nearest gc.log pause GC(53) Pause Young (Normal) (G1 Evacuation Pause) at 13:02:15.775, +3.341 s, 167.943 ms)
+  tick 13:02:13.505 74.796 ms: no overlapping pause (nearest gc.log pause GC(53) Pause Young (Normal) (G1 Evacuation Pause) at 13:02:15.775, +2.269 s, 167.943 ms)
+  tick 13:02:14.957 134.192 ms: no overlapping pause (nearest gc.log pause GC(53) Pause Young (Normal) (G1 Evacuation Pause) at 13:02:15.775, +0.818 s, 167.943 ms)
+  tick 13:02:15.755 179.587 ms: JFR gcId 53 Normal 13:02:15.766 164.712 ms; gc.log GC(53) Pause Young (Normal) (G1 Evacuation Pause) 488M->302M(4096M) 13:02:15.775 167.943 ms
+  tick 13:02:18.905 112.771 ms: no overlapping pause (nearest gc.log pause GC(53) Pause Young (Normal) (G1 Evacuation Pause) at 13:02:15.775, -3.131 s, 167.943 ms)
+  tick 13:02:19.105 104.722 ms: no overlapping pause (nearest gc.log pause GC(53) Pause Young (Normal) (G1 Evacuation Pause) at 13:02:15.775, -3.331 s, 167.943 ms)
+  tick 13:02:19.238 258.127 ms: no overlapping pause (nearest gc.log pause GC(53) Pause Young (Normal) (G1 Evacuation Pause) at 13:02:15.775, -3.464 s, 167.943 ms)
+  tick 13:02:20.305 124.581 ms: no overlapping pause (nearest gc.log pause GC(53) Pause Young (Normal) (G1 Evacuation Pause) at 13:02:15.775, -4.531 s, 167.943 ms)
+  tick 13:02:20.915 63.515 ms: no overlapping pause (nearest gc.log pause GC(53) Pause Young (Normal) (G1 Evacuation Pause) at 13:02:15.775, -5.140 s, 167.943 ms)
+gc.log pauses of 30 ms or more and the longest tick overlapping each:
+  GC(4) Pause Young (Mixed) (G1 Evacuation Pause) 453M->67M(4096M) 12:52:36.807 40.723 ms: 1 tick(s), longest 47.544 ms
+  GC(5) Pause Young (Normal) (G1 Evacuation Pause) 423M->87M(4096M) 12:52:50.408 63.859 ms: 1 tick(s), longest 66.144 ms
+  GC(6) Pause Young (Normal) (G1 Evacuation Pause) 291M->98M(4096M) 12:52:58.006 31.041 ms: 1 tick(s), longest 32.756 ms
+  GC(9) Pause Young (Normal) (G1 Evacuation Pause) 556M->163M(4096M) 12:53:35.507 50.505 ms: 1 tick(s), longest 52.598 ms
+  GC(11) Pause Young (Normal) (G1 Evacuation Pause) 631M->188M(4096M) 12:54:04.946 79.992 ms: 1 tick(s), longest 2.481 ms
+  GC(13) Pause Young (Normal) (G1 Evacuation Pause) 524M->193M(4096M) 12:54:29.811 67.127 ms: 1 tick(s), longest 2.315 ms
+  GC(15) Pause Young (Normal) (G1 Evacuation Pause) 412M->195M(4096M) 12:54:49.609 41.296 ms: 1 tick(s), longest 44.772 ms
+  GC(17) Pause Young (Normal) (G1 Evacuation Pause) 386M->198M(4096M) 12:55:08.009 30.581 ms: 1 tick(s), longest 32.768 ms
+  GC(18) Pause Young (Normal) (G1 Evacuation Pause) 400M->201M(4096M) 12:55:17.710 35.236 ms: 1 tick(s), longest 38.334 ms
+  GC(19) Pause Young (Normal) (G1 Evacuation Pause) 397M->202M(4096M) 12:55:27.010 57.719 ms: 2 tick(s), longest 60.171 ms
+  GC(20) Pause Young (Normal) (G1 Evacuation Pause) 388M->204M(4096M) 12:55:35.682 59.457 ms: 1 tick(s), longest 5.032 ms
+  GC(21) Pause Young (Normal) (G1 Evacuation Pause) 392M->207M(4096M) 12:55:44.935 50.074 ms: 1 tick(s), longest 2.907 ms
+  GC(31) Pause Young (Normal) (G1 Evacuation Pause) 794M->252M(4096M) 12:58:15.813 132.816 ms: 1 tick(s), longest 141.066 ms
+  GC(32) Pause Young (Normal) (G1 Evacuation Pause) 416M->245M(4096M) 12:58:24.414 43.359 ms: 2 tick(s), longest 46.776 ms
+  GC(35) Pause Young (Normal) (G1 Evacuation Pause) 639M->258M(4096M) 12:59:17.965 61.290 ms: 2 tick(s), longest 64.746 ms
+  GC(36) Pause Young (Normal) (G1 Evacuation Pause) 484M->255M(4096M) 12:59:29.365 30.142 ms: 1 tick(s), longest 32.503 ms
+  GC(37) Pause Young (Normal) (G1 Evacuation Pause) 585M->261M(4096M) 12:59:45.465 65.561 ms: 2 tick(s), longest 71.022 ms
+  GC(38) Pause Young (Normal) (G1 Evacuation Pause) 443M->260M(4096M) 12:59:54.964 44.572 ms: 2 tick(s), longest 3.172 ms
+  GC(39) Pause Young (Normal) (G1 Evacuation Pause) 550M->268M(4096M) 13:00:09.086 92.706 ms: 2 tick(s), longest 6.444 ms
+  GC(40) Pause Young (Normal) (G1 Evacuation Pause) 454M->269M(4096M) 13:00:18.181 46.976 ms: 1 tick(s), longest 1.389 ms
+  GC(41) Pause Young (Normal) (G1 Evacuation Pause) 457M->272M(4096M) 13:00:27.038 95.076 ms: 2 tick(s), longest 6.770 ms
+  GC(43) Pause Young (Normal) (G1 Evacuation Pause) 462M->278M(4096M) 13:00:45.909 330.867 ms: 1 tick(s), longest 370.545 ms
+  GC(44) Pause Young (Normal) (G1 Evacuation Pause) 464M->281M(4096M) 13:00:55.453 299.702 ms: 1 tick(s), longest 329.480 ms
+  GC(45) Pause Young (Normal) (G1 Evacuation Pause) 467M->284M(4096M) 13:01:04.338 74.565 ms: 1 tick(s), longest 3.049 ms
+  GC(46) Pause Young (Normal) (G1 Evacuation Pause) 470M->286M(4096M) 13:01:13.085 97.425 ms: 3 tick(s), longest 106.040 ms
+  GC(47) Pause Young (Normal) (G1 Evacuation Pause) 472M->290M(4096M) 13:01:21.934 196.200 ms: 1 tick(s), longest 213.683 ms
+  GC(48) Pause Young (Normal) (G1 Evacuation Pause) 476M->291M(4096M) 13:01:30.783 224.775 ms: 2 tick(s), longest 235.073 ms
+  GC(49) Pause Young (Normal) (G1 Evacuation Pause) 479M->294M(4096M) 13:01:39.740 253.927 ms: 6 tick(s), longest 262.670 ms
+  GC(50) Pause Young (Normal) (G1 Evacuation Pause) 482M->296M(4096M) 13:01:48.724 158.397 ms: 1 tick(s), longest 11.310 ms
+  GC(51) Pause Young (Normal) (G1 Evacuation Pause) 484M->298M(4096M) 13:01:57.684 193.748 ms: 2 tick(s), longest 203.263 ms
+  GC(52) Pause Young (Normal) (G1 Evacuation Pause) 486M->300M(4096M) 13:02:06.588 126.178 ms: 3 tick(s), longest 134.374 ms
+  GC(53) Pause Young (Normal) (G1 Evacuation Pause) 488M->302M(4096M) 13:02:15.775 167.943 ms: 2 tick(s), longest 179.587 ms
+
+## machine during the step (monitor.sh every 30 s; summary.json load1 {"min":3.842,"max":47.224})
+memory free 30~52%, swap free 539.81~1259.38 MB, load1 3.84~43.43
+12:52:12 mem_free=39% swap_free=1188.94MB load1=3.84 qemu=1 launchd_sim=2 xcodebuild=0 foreign_java_gradle=[] rss_top5: com.apple.Virtualization.VirtualMachine=851MB claude=459MB claude=343MB claude=329MB qemu-system-aarch64-headless=307MB  cpu_top5: WindowServer=32.4% com.apple.Virtualization.VirtualMachine=30.0% ReportCrash=8.0% claude=7.6% claude=6.9% 
+12:52:42 mem_free=36% swap_free=1196.94MB load1=4.30 qemu=1 launchd_sim=2 xcodebuild=0 foreign_java_gradle=[] rss_top5: com.apple.Virtualization.VirtualMachine=669MB java=475MB claude=382MB qemu-system-aarch64-headless=324MB java=315MB  cpu_top5: java=39.6% java=37.0% WindowServer=24.5% com.apple.Virtualization.VirtualMachine=18.1% claude=9.6% 
+12:53:12 mem_free=36% swap_free=1186.06MB load1=4.84 qemu=1 launchd_sim=2 xcodebuild=0 foreign_java_gradle=[] rss_top5: com.apple.Virtualization.VirtualMachine=630MB java=456MB claude=414MB claude=350MB claude=318MB  cpu_top5: java=36.4% WindowServer=28.8% java=25.9% com.apple.Virtualization.VirtualMachine=8.3% claude=7.9% 
+12:53:43 mem_free=36% swap_free=1194.06MB load1=4.89 qemu=1 launchd_sim=2 xcodebuild=0 foreign_java_gradle=[] rss_top5: com.apple.Virtualization.VirtualMachine=728MB java=633MB claude=411MB claude=329MB java=310MB  cpu_top5: java=35.9% WindowServer=29.1% java=26.4% com.apple.Virtualization.VirtualMachine=13.9% claude=4.8% 
+12:54:13 mem_free=36% swap_free=1164.06MB load1=4.08 qemu=1 launchd_sim=2 xcodebuild=0 foreign_java_gradle=[] rss_top5: com.apple.Virtualization.VirtualMachine=762MB claude=549MB java=546MB claude=351MB claude=350MB  cpu_top5: java=40.4% java=30.8% WindowServer=30.7% com.apple.Virtualization.VirtualMachine=27.1% com.apple.WebKit.WebContent=6.7% 
+12:54:43 mem_free=34% swap_free=1016.75MB load1=3.88 qemu=1 launchd_sim=2 xcodebuild=0 foreign_java_gradle=[] rss_top5: claude=528MB com.apple.Virtualization.VirtualMachine=473MB java=383MB claude=356MB claude=254MB  cpu_top5: java=35.3% node=31.0% java=25.5% WindowServer=15.7% Microsoft=14.0% 
+12:55:13 mem_free=32% swap_free=628.25MB load1=4.76 qemu=1 launchd_sim=2 xcodebuild=0 foreign_java_gradle=[80704 80716 80861 80883] rss_top5: java=676MB com.apple.Virtualization.VirtualMachine=516MB java=288MB claude=245MB claude=236MB  cpu_top5: java=134.5% java=122.4% java=37.3% java=25.6% WindowServer=10.4% 
+12:55:44 mem_free=32% swap_free=1012.31MB load1=6.33 qemu=1 launchd_sim=2 xcodebuild=0 foreign_java_gradle=[80704 80716 80861 80883 81680] rss_top5: java=1197MB com.apple.Virtualization.VirtualMachine=306MB java=286MB java=275MB claude=275MB  cpu_top5: java=132.9% java=35.5% java=35.1% WindowServer=17.6% AXVisualSupportAgent=10.0% 
+12:56:14 mem_free=51% swap_free=859.38MB load1=4.81 qemu=1 launchd_sim=2 xcodebuild=0 foreign_java_gradle=[] rss_top5: com.apple.Virtualization.VirtualMachine=894MB claude=579MB java=508MB claude=375MB qemu-system-aarch64-headless=354MB  cpu_top5: java=44.5% iOS=26.4% iOS=26.1% java=23.3% WindowServer=13.1% 
+12:56:44 mem_free=47% swap_free=931.38MB load1=4.90 qemu=1 launchd_sim=2 xcodebuild=0 foreign_java_gradle=[] rss_top5: com.apple.Virtualization.VirtualMachine=810MB java=585MB claude=437MB claude=368MB java=319MB  cpu_top5: python3=44.8% java=30.6% WindowServer=21.6% java=21.0% Application=11.9% 
+12:57:14 mem_free=46% swap_free=939.38MB load1=5.82 qemu=1 launchd_sim=2 xcodebuild=0 foreign_java_gradle=[] rss_top5: com.apple.Virtualization.VirtualMachine=934MB java=653MB claude=441MB claude=368MB qemu-system-aarch64-headless=339MB  cpu_top5: com.apple.Virtualization.VirtualMachine=77.4% java=32.7% java=23.3% WindowServer=20.2% Application=13.8% 
+12:57:44 mem_free=52% swap_free=963.38MB load1=5.89 qemu=1 launchd_sim=2 xcodebuild=0 foreign_java_gradle=[] rss_top5: com.apple.Virtualization.VirtualMachine=1003MB java=723MB claude=547MB python3=464MB claude=392MB  cpu_top5: ctkd=52.2% Microsoft=49.6% com.apple.Virtualization.VirtualMachine=46.6% java=33.9% java=20.8% 
+12:58:15 mem_free=37% swap_free=1003.38MB load1=8.32 qemu=1 launchd_sim=2 xcodebuild=1 foreign_java_gradle=[87863 87888] rss_top5: com.apple.Virtualization.VirtualMachine=397MB java=387MB claude=297MB swift-frontend=290MB swift-frontend=289MB  cpu_top5: java=112.5% com.apple.Virtualization.VirtualMachine=58.6% swift-frontend=55.8% swift-frontend=55.3% swift-frontend=50.9% 
+12:58:45 mem_free=48% swap_free=1147.38MB load1=12.97 qemu=1 launchd_sim=2 xcodebuild=0 foreign_java_gradle=[] rss_top5: com.apple.Virtualization.VirtualMachine=734MB java=591MB claude=526MB qemu-system-aarch64-headless=367MB iOS=357MB  cpu_top5: Microsoft=57.4% ctkd=45.7% java=33.0% java=21.7% WindowServer=12.2% 
+12:59:15 mem_free=44% swap_free=1171.38MB load1=11.96 qemu=1 launchd_sim=2 xcodebuild=0 foreign_java_gradle=[90043 90064 90660] rss_top5: java=895MB com.apple.Virtualization.VirtualMachine=723MB java=483MB claude=417MB claude=349MB  cpu_top5: java=268.6% java=96.6% java=35.5% java=21.1% WindowServer=13.0% 
+12:59:45 mem_free=40% swap_free=1259.38MB load1=11.14 qemu=1 launchd_sim=2 xcodebuild=0 foreign_java_gradle=[] rss_top5: qemu-system-aarch64-headless=690MB node=630MB com.apple.Virtualization.VirtualMachine=588MB java=483MB claude=306MB  cpu_top5: node=134.6% qemu-system-aarch64-headless=127.5% fseventsd=85.1% (facetimemessages)=57.7% iOS=56.7% 
+13:00:16 mem_free=30% swap_free=539.81MB load1=17.00 qemu=1 launchd_sim=2 xcodebuild=0 foreign_java_gradle=[] rss_top5: qemu-system-aarch64-headless=532MB com.apple.Virtualization.VirtualMachine=326MB node=287MB java=260MB claude=239MB  cpu_top5: qemu-system-aarch64-headless=139.6% java=44.4% WeChat=31.4% WindowServer=27.8% java=24.2% 
+13:00:46 mem_free=31% swap_free=798.56MB load1=23.64 qemu=1 launchd_sim=2 xcodebuild=0 foreign_java_gradle=[] rss_top5: node=783MB claude=273MB java=262MB com.apple.Virtualization.VirtualMachine=258MB qemu-system-aarch64-headless=254MB  cpu_top5: node=123.9% java=53.2% java=52.1% diskimagesiod=36.3% iOS=32.9% 
+13:01:21 mem_free=31% swap_free=937.00MB load1=35.45 qemu=1 launchd_sim=2 xcodebuild=0 foreign_java_gradle=[] rss_top5: node=821MB qemu-system-aarch64-headless=530MB java=366MB claude=353MB com.apple.Virtualization.VirtualMachine=348MB  cpu_top5: qemu-system-aarch64-headless=197.6% node=131.2% java=43.8% claude=36.1% iOS=32.1% 
+13:01:53 mem_free=31% swap_free=717.44MB load1=42.34 qemu=1 launchd_sim=2 xcodebuild=1 foreign_java_gradle=[] rss_top5: node=1556MB qemu-system-aarch64-headless=469MB java=228MB claude=217MB claude=211MB  cpu_top5: qemu-system-aarch64-headless=176.5% node=114.2% com.apple.Virtualization.VirtualMachine=75.0% java=49.6% Microsoft=38.8% 
+13:02:24 mem_free=31% swap_free=899.56MB load1=43.43 qemu=1 launchd_sim=2 xcodebuild=1 foreign_java_gradle=[] rss_top5: qemu-system-aarch64-headless=1067MB node=1013MB claude=254MB com.apple.Virtualization.VirtualMachine=224MB Microsoft=209MB  cpu_top5: qemu-system-aarch64-headless=259.4% node=138.1% node=37.3% java=31.5% xcodebuild=29.4% 

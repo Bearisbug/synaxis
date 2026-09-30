@@ -1,0 +1,20 @@
+# p33 after the second review, 2026-09-30 15:26, load averages 7.41 16.27 32.43; heavy-work gate printed "free" before each Gradle run
+# TC-PROD-569 step 1 with <B> = 0e919cce6a on the committed branch (HEAD 95385883d2, src/main/java clean; the only
+# uncommitted files were this round's edits to docs/TEST.md and docs/DESIGN-PROD.md, before and after)
+
+# old step: stash on committed code saves nothing, so <base> would be built from the same sources as <new>
+$ git stash push -- src/main/java
+No local changes to save          (exit 0; git stash list: 0 entries)
+
+# corrected step
+$ ./gradlew :jmh-benchmarks:jmhJar ...        BUILD SUCCESSFUL in 11s   -> <new>
+$ git checkout 0e919cce6a -- src/main/java   7 files staged: ServerProcessImpl, EventsJFR, TickMonitor, Acquirable,
+                                             AcquirableImpl, EngineThread, TickThread (none added after 0e919cce6a)
+$ ./gradlew :jmh-benchmarks:jmhJar ...        BUILD SUCCESSFUL in 14s   -> <base>
+$ git checkout HEAD -- src/main/java         git status --short: the same two doc lines as before the checkout
+$ javap -p -cp <jar> io.github.bearisbug.synaxis.thread.AcquirableImpl
+  <base>: static final java.util.concurrent.atomic.AtomicLong WAIT_COUNTER_NANO;   WAIT_COUNTER_NANO 1, lockTimed 0
+  <new>:  static long lockTimed(java.util.concurrent.locks.ReentrantLock);         WAIT_COUNTER_NANO 0, lockTimed 1
+  both jars contain thread/AcquireWaitBenchmark; sha256 prefixes base 19b9c7f9617520b7, new b38258916890ddd1
+# step 2 (JMH) not rerun: the lighting session is measuring tick and GC outliers on this machine; the step 2 numbers in
+# p33-03-overhead.txt stand, their <base> was the 0e919cce6a engine (line 3 of that file)

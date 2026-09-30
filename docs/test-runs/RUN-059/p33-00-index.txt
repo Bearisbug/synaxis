@@ -5,3 +5,4 @@
 # p33-03-overhead.txt       JMH before/after and Timer.record cost (TC-PROD-569 steps 1-3)
 # p33-04-endpoint.txt       real server-app process, metrics endpoint scrape (TC-PROD-567 step 4 = TC-PROD-264 steps 1-3, 5)
 # p33-05-review-fixes.txt   after review: TC-PROD-547 step 1 rerun (21 meter names), TC-PROD-569 step 2 minimum differences
+# p33-06-base-checkout.txt  after the second review: TC-PROD-569 step 1 with <base> checked out from 0e919cce6a

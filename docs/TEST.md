@@ -16,6 +16,7 @@
 | --- | --- | --- |
 | 2026-09-30 | 分支 `prod/limit`（`main` `0e919cce6a` 加 `3a53803b3c`），跟进 `docs/DESIGN-PROD.md` v0.9.35（limit）、`docs/DESIGN.md` v0.42（limit）与 `docs/DESIGN-M2.md` v0.52（limit）：用户 2026-09-30 拍板把 `synaxis.packet-limit.max-packets` 的默认值由 582 提到 750（RUN-057 六档压测机器人每人 7 s 上行包数 P99 最高 374 × 2，取整）。不登执行轮次，由集成轮登记，本组证据在 `docs/test-runs/RUN-059/limit/`。**废旧 ID 换新 ID**：`TC-PROD-290` → **`TC-PROD-560`**（751 个被踢、750 个不踢；第 2 步反证照旧，加第 3 步默认值改回 582 与改成 751 各红一条）；`TC-PROD-293` → **`TC-PROD-561`**（第 1 步的引擎默认 582 → 750，第 2、3 步照旧，加第 4 步默认值改回 582 的反证）；`TC-GAME-064` → **`TC-GAME-075`**（默认配置下游戏侧洪水闸到不了：连续 3 s > 300 包/秒至少 903 包，先越过 750；改为默认进程上判 95 包/秒 60 s 不断线、120 包/秒被速率闸以 `synaxis:protocol-error` 断开，速率闸抬到 100,000 的进程上判原来的洪水闸三步）。三条新用例与 `TC-GAME-060` 都在 `3a53803b3c` 上实跑通过，JUnit 两条在默认与 4 线程 `grid` 严格模式下各跑一次，六个反证都按写的那一行变红。**保留 ID**：`TC-GAME-060` 第 5 步只补每连接 7 s 约 702 个、在 750 之下，以及约 48 个包（0.48 s 停顿）的余量与变红时怎么分辨，判据未变。§2 `REQ-M2-009` 行、§3 探针表 `game-flood` 行（默认配置下先收到 `synaxis:protocol-error`；要看到 `synaxis:game-flood`，速率闸要抬到远高于洪水闸触发时窗口里的包数，持续 R 包/秒时是 R + 602 到 2R + 601 个，抬到 1,000 不够：实跑闸 1,000 时 800 与 400 包/秒都以 `packets 1001 > 1000 in 7000 ms` 断开，证据 `docs/test-runs/RUN-059/limit/03-flood-threshold.txt`）、§4 5B 节首入站一条、§5 游戏域与生产就绪域两行随之改；§5 生产就绪域加一条牵连：改了 `synaxis.packet-limit.*` 的默认值加跑 `TC-GAME-060` 第 5 步与 `TC-GAME-075`。§7「`TC-GAME-060` 第 5 步与 `TC-GAME-064` 被引擎的入站包速率闸先踢」结案。`TC-PROD-271`、`TC-PROD-301`、`TC-PROD-360` 里与 582 比的数是那几轮的读数，不改 | Bearisbug |
 | 2026-09-30 | 跟进 `docs/DESIGN-PROD.md` v0.9.35（p33，修审计 P3-3、导出每 tick 的获取等待）。**新增 §4「生产就绪 · 审计 P3-3：每 tick 的获取等待与 `ticks.acquire_ms`」五条 `TC-PROD-565`～`TC-PROD-569`**，每条反证都实跑过：等的那条 tick 线程记自己的、整 tick 取最长的一条、没有争用记 0（565，整 tick 取之和与没有争用也读时钟两条反证）；不是引擎线程的等待不进 tick、tick 开始时被挡在自己的锁上计入并进 JFR、串行段在引擎线程上计入（566，装回审计 P3-3 的全局计数红 3 条，另两条反证）；`synaxis_tick_acquire_seconds` 与名单 22 个，真进程端点 26 条 `# TYPE`（567，tick 线程不记与名单删名两条反证，后者连配置键门禁一起红）；`sample` 的 `ticks.acquire_ms` 分布与 null（568，读错字段名反证）；开销与回归（569：JMH 前后对照、`Timer.record` 单次耗时、默认与严格 grid 的相关类）。**改了五条旧用例**：`TC-PROD-261` 第 1 步名单 21 → 22 个（重跑）；`TC-PROD-264` 第 2 步 `synaxis_` 的 `# TYPE` 24 → 26 条（第 1～3、5 步重跑）；`TC-PROD-268` 第 1 步 `acquire_ms` 由 `null` 改为 `count` 4（重跑，`SampleTest` 原地改一行、行号不变，第 2～7 步的反证行号不受影响）；`TC-PROD-441` 第 1、2 步 `20 meter names left out` → 21（第 1 步门禁重跑，第 2 步按名单改、未重跑）；`TC-PROD-547` 第 1 步 `20 meter names left out` → 21（重跑；第 2 步的预期不含这个数，未重跑）。§5 加一行回归映射；§7 加一条 `MetadataHolderConcurrencyTest` 在 `load1` 170 以上的偶发红（与本组无关）。执行轮次由集成阶段登记 | Bearisbug |
+| 2026-09-30 | 跟进 `docs/DESIGN-PROD.md` v0.9.35（refused）（用户 2026-09-30 拍板：关卡门收到 `ShardService#transfer` 的六种拒绝结果都写 `EVT:transfer_refused`），不登执行轮次。**新增 §4「生产就绪 · `EVT:transfer_refused` 扩到关卡门的六种拒绝结果」四条 `TC-PROD-570`～`TC-PROD-573`**（`REQ-PROD-031`，反证都实跑过）：六种各写一条、`result` 取小写，`SENT` 与两种被目录排除的结果不写（570，四条反证：本组之前的写法、只漏 `NOT_ONLINE`、只漏 `SAVE_FAILED`、`SENT` 也写）；玩家已离开时 `NOT_ONLINE` 照写（571）；三种新结果不给玩家发消息（572）；默认与严格 grid 下 `ShardGatesTest` 与相邻三个类（573）。`ShardGatesTest` 的 `onlyAChoiceThatFailedIsWrittenToTheLedger` 改名为 `everyRefusalIsWrittenToTheLedger`，仍是 7 条，`:server-app:test` 全量条数不变。§5 回归策略加一行。`TC-WORLD-064`、`TC-WORLD-089` 引的测试名、期望与红行随之过时，归 M3 会话改，本行不动 TC-WORLD 的文字 | Bearisbug |
 | 2026-09-30 | 分支 `m3/load-tests`（代码同 `main` `5c7874ed5c`），跟进 `docs/DESIGN-M3.md` v0.27，登记 RUN-057（证据 `docs/test-runs/RUN-057/`）。**压测起跑门槛**：`TC-WORLD-054`、`TC-WORLD-081`～`TC-WORLD-084` 的前置与 §3 M3-C 一条由 `sysctl vm.swapusage` 的 free ≥ 3,072 / 4,096 / 5,120 MB 改为 `memory_pressure` 的空闲比例 ≥ 30%（`TC-WORLD-082`、`TC-WORLD-083` ≥ 35%）、没有别的 java 或 Gradle（本轮自己起的按 pid 排除）、数据盘可用 ≥ 5,120 MB，swap 只记录；不满足每 5 分钟复查、最多 90 分钟，读数的项目加空闲比例与数据盘可用。**改 `TC-WORLD-041`**（M3-D 加了两个配置键与 `SynxOptionsTest` 两条，按 RUN-057 实跑）：第 1 步 `SynxOptionsTest` 4 → 6 条（新加的两条归 `TC-WORLD-098`）、门禁输出 113 → 115 个键；第 2 步反证的输出 `113 keys read, 111` → `115 keys read, 113`；第 3 步 `7 tests completed` → `9`，红行 `SynxOptionsTest.java:32` → `:34`。§2 `REQ-M3-015`～`REQ-M3-017` 三行去掉「阻塞」。**§7** 新增两条：`TC-WORLD-054` 同机档的慢 tick，`TC-WORLD-082`、`TC-WORLD-083` 拿不到 `ticks.acquire_ms` | Bearisbug |
 | 2026-09-30 | 跟进 `docs/DESIGN-PROD.md` v0.9.34（M3-D 合入 `main` `28a6e1bcf6` 后的同步，`docs/DESIGN-M3.md` §28.2 v0.24 交接行的 ⑦），不登执行轮次。**条数**：`TC-PROD-486` 第 3 步、`TC-PROD-505` 第 3 步、`TC-PROD-510` 第 2 步、`TC-PROD-529` 第 4 步、`TC-PROD-549` 第 2 步的 `:server-app:test` 516 → 520（M3-D 加 `ShardWorldRelightTest` 3 个与 `WorldFlagsReplayTest` 1 个），在 `main` 上带数据库变量 `--rerun` 实跑 97 个类 520 个、0 失败 0 跳过；`TC-PROD-505` 的根构建 `:test` 仍是 3,142，`TC-PROD-529` 第 4 步的 `:plugin-api` 15、`:game-rts` 87、`:architecture-tests` 20 也不变（出处是 RUN-056 `03-gates.txt` 的三道门禁，跑在 `f65c9445fc` 上，`main` 在它之后只改了文档；本轮没重跑）。**配置键门禁**：M3-D 加 `synaxis.relight-threads`、`synaxis.relight.resend-light` 两个键，`TC-PROD-441` 的标题、第 1～3 步与 6C 一节开头 113 → 115；第 1 步与第 2、3 步的反证照写法实跑，输出 `115 keys read, 115 in ConfigFile.KEYS`、`115 keys read, 114 in ConfigFile.KEYS`、`115 keys read, 116 in ConfigFile.KEYS`，两条反证都红在 `ConfigKeyGateTest.java:74`，还原后复绿；`TC-PROD-547` 第 1 步的门禁输出同步（两个门禁一起实跑，3 个 0 失败，翻译键仍是 60 个）。经 `run.sh` 跑真客户端的 `TC-PROD-*` 不改：M3-D 排在入口表首位的 `LightClientGameTest` 没设 `SYNAXIS_LIGHT_SERVER` 时直接返回（读代码，未实跑）。**§7** RUN-055 登记的两条未结案条目（`TC-GAME-060` 第 5 步与 `TC-GAME-064` 撞上入站包速率闸；`TC-020` 的注册表样本早于 `synaxis:match`）所引的 `API-PROD-012`、`REQ-PROD-013`、`docs/DESIGN-PROD.md` §28.2、`Main#registerMatchDimensionType` 与样本文件在 `main` 上都没变，条目不改 | Bearisbug |
 | 2026-09-30 | 分支 `m3d/runtime-light`（`f65c9445fc`：停机排空期间装回不受每 tick 64 个与 1 ms 的上限约束），跟进 `docs/DESIGN-M3.md` v0.26，登记 RUN-056（证据 `docs/test-runs/RUN-056/`）。**改 `TC-WORLD-094`**：标题加「排空不受装回上限约束」；第 1 步 `ShardWorldRelightTest` 由 2 条变为 3 条，新的 `aStopDrainsNineHundredTargetsWithinItsBudget` 对应设计文档 §19 新场景（900 个已算完的目标条目在 500 ms 内排空、剩 0，最终落盘的 100 个区块是服务端的光照），`Relight drain` 的毫秒数照抄进证据；加第 4 步反证（排空期间照旧受上限约束，红在 `ShardWorldRelightTest.java:225`），原第 4 步改为第 5 步（`tests="3"`），后置加查 `synx`。§2 Gherkin 覆盖口径把新场景归到 `TC-WORLD-094`；M3-D 一节开头改指 v0.26。**§7** `OverlayShardProcessTest` 一条补 RUN-056 的 3 次，仍未复现 | Bearisbug |
@@ -7757,6 +7758,63 @@ for (var request : System.getenv("MGMT_CALLS").split("\n")) {
 
 后置：删掉两个 jar 与 JMH 输出；`git diff` 与改前相同。
 
+### 生产就绪 · `EVT:transfer_refused` 扩到关卡门的六种拒绝结果
+
+对应 `REQ-PROD-031`（`docs/DESIGN-PROD.md` v0.9.35（refused），§20 `EVT:transfer_refused` 一行，用户 2026-09-30 拍板）。改动：`server-app` 的 `app.shard.ShardGates` 把写事件的那几行抽成私有方法 `refused`，`FULL`、`OFFLINE`、`DIRECTORY_UNAVAILABLE` 之外，`COOLDOWN`、`NOT_ONLINE`、`SAVE_FAILED` 也调它；给玩家的系统消息不变。`ShardGates` 属 M3 会话，本节只管写事件的那一处：走进门框只触发一次、在途不触发、消息与 ERROR 仍归 `TC-WORLD-064`，选不到频道那三种的写法与 `Main#serveMap` 的接线仍归 `TC-WORLD-089`。
+
+测试：`io.github.bearisbug.synaxis.app.shard.ShardGatesTest`，7 条，不连数据库、不起进程；替身 `ShardService` 记下每次调用、由测试决定 future 以什么完成，台账回调把每条记成 `<事件名> <属性>`。本组把其中的 `onlyAChoiceThatFailedIsWrittenToTheLedger` 改名为 `everyRefusalIsWrittenToTheLedger`：九个结果各由一名玩家走进 r0-east 触发，`NOT_ONLINE` 那名玩家先断开连接再完成（签发端对写回之后离开的玩家就回它），期望的六行属性写死在测试里；类注释改一句，行数不变。条数不变，`:server-app:test` 全量因此仍是 520 个（本组没跑全量）。「跑某类」「严格 grid」同 6A 插件面一节，本节不需要数据库前置。`<GT>` 是 `server-app/src/main/java/io/github/bearisbug/synaxis/app/shard/ShardGates.java`。反证一律是改 `<GT>` 一处、跑 `ShardGatesTest`、看红、`git checkout -- <GT>`、复绿，下表只写改哪一处和红在哪；行号是分支 `prod/refused` 提交时的。
+
+#### `TC-PROD-570` 关卡门收到六种拒绝结果各写一条 `EVT:transfer_refused`，`result` 是枚举名的小写；`SENT` 与被目录排除的两种不写 — 对应 `REQ-PROD-031` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `ShardGatesTest`，看 `everyRefusalIsWrittenToTheLedger` | `tests="7"` 0 失败 0 跳过。`FULL`、`OFFLINE`、`DIRECTORY_UNAVAILABLE`、`COOLDOWN`、`NOT_ONLINE`、`SAVE_FAILED` 各恰 1 行 `transfer_refused {player_uuid=<这名玩家的 UUID>, source_shard=r0-c1, target_region=r1, result=<小写名>}`，`result` 依次为 `full`、`offline`、`directory_unavailable`、`cooldown`、`not_online`、`save_failed`；`SENT`、`UNKNOWN_TARGET`、`SAME_TARGET` 0 行 |
+| 2 | 反证（本组之前的写法，三种新结果不写）：`git checkout 0e919cce6a -- <GT>`，跑，再 `git checkout HEAD -- <GT>` | `7 tests completed, 1 failed`：红在 `ShardGatesTest.java:218`，`COOLDOWN ==> expected: <[transfer_refused {player_uuid=…, source_shard=r0-c1, target_region=r1, result=cooldown}]> but was: <[]>` |
+| 3 | 反证（只漏 `NOT_ONLINE`）：`<GT>` 的 `case SENT -> {` 改成 `case SENT, NOT_ONLINE -> {`，`case COOLDOWN, NOT_ONLINE, SAVE_FAILED -> refused(player, gate, result);` 改成 `case COOLDOWN, SAVE_FAILED -> refused(player, gate, result);` | `7 tests completed, 1 failed`：红在 `:218`，`NOT_ONLINE ==> expected: <[transfer_refused {…, result=not_online}]> but was: <[]>` |
+| 4 | 反证（只漏 `SAVE_FAILED`）：`<GT>` 的 `case SENT -> {` 改成 `case SENT, SAVE_FAILED -> {`，`case COOLDOWN, NOT_ONLINE, SAVE_FAILED -> refused(player, gate, result);` 改成 `case COOLDOWN, NOT_ONLINE -> refused(player, gate, result);` | `7 tests completed, 1 failed`：红在 `:218`，`SAVE_FAILED ==> expected: <[transfer_refused {…, result=save_failed}]> but was: <[]>` |
+| 5 | 反证（`SENT` 也写）：`<GT>` 的 `case SENT -> {` 与下一行的 `}` 两行换成一行 `case SENT -> refused(player, gate, result);` | `7 tests completed, 1 failed`：红在 `:218`，`SENT ==> expected: <[]> but was: <[transfer_refused {…, result=sent}]>` |
+| 6 | 重跑第 1 步 | 与第 1 步相同 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PROD-571` 玩家已离开时 `NOT_ONLINE` 照样写 `EVT:transfer_refused` — 对应 `REQ-PROD-031` · 级别: 边缘 · 执行者: AI
+
+前置：本节开头。签发端对写回成功之后、签票之前离开的玩家回 `NOT_ONLINE`（`docs/DESIGN-PROD.md` `API-PROD-028` 签发 ④），关卡门收到它时玩家已经不在线。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `ShardGatesTest`，看 `everyRefusalIsWrittenToTheLedger` 里 `NOT_ONLINE` 那一轮：玩家连接先断开（`isOnline()` 为 false），替身再以 `NOT_ONLINE` 完成 | 0 失败；台账恰 1 行，`player_uuid` 是这名已断开玩家的 UUID，`result=not_online` |
+| 2 | 反证（离开的玩家不写）：`<GT>` 的 `refused` 方法体第一行 `final Map<String, Object> attributes = new LinkedHashMap<>();` 之前加一行 `if (!player.isOnline()) return;` | `7 tests completed, 1 failed`：红在 `:218`，`NOT_ONLINE ==> expected: <[transfer_refused {…, result=not_online}]> but was: <[]>` |
+| 3 | 重跑第 1 步 | 与第 1 步相同 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PROD-572` 三种新结果只写台账，不给玩家发消息 — 对应 `REQ-PROD-031` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。消息的规则没有随本组改：`synaxis:transfer-failed` 由关卡门只在选不到频道时发，`SAVE_FAILED` 时由签发端发（`docs/DESIGN-PROD.md` §14）。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `ShardGatesTest`，看 `onlyAChoiceThatFailedIsToldToThePlayer` | 0 失败：`FULL`、`OFFLINE`、`DIRECTORY_UNAVAILABLE` 各恰 1 条 `synaxis:transfer-failed`，`COOLDOWN`、`NOT_ONLINE`、`SAVE_FAILED` 与其余三种 0 条 |
+| 2 | 反证（写事件时也告诉玩家）：`<GT>` 的 `refused` 方法体第一行之前加一行 `player.sendMessage(Component.translatable(TicketIssuer.TRANSFER_FAILED));` | `7 tests completed, 1 failed`：红在 `ShardGatesTest.java:195`（`onlyAChoiceThatFailedIsToldToThePlayer`），`COOLDOWN ==> expected: <[]> but was: <[synaxis:transfer-failed]>`；`everyRefusalIsWrittenToTheLedger` 仍绿 |
+| 3 | 重跑第 1 步 | 与第 1 步相同 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PROD-573` 回归：默认与严格 grid 下的 `ShardGatesTest` 与相邻的三个类 — 对应 `REQ-PROD-031` · 级别: 回归 · 执行者: AI
+
+前置：本节开头；工作副本干净。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `:server-app:test`，`--tests` 给 `io.github.bearisbug.synaxis.app.shard.ShardGatesTest`、`io.github.bearisbug.synaxis.app.shard.ShardServiceImplTest`、`io.github.bearisbug.synaxis.app.shard.ShardArchitectureTest`、`io.github.bearisbug.synaxis.app.ClientDrivenLogArchitectureTest` | `BUILD SUCCESSFUL`；4 个类 18 个 0 失败 0 跳过：`ShardGatesTest` 7、`ShardServiceImplTest` 6、`ShardArchitectureTest` 3、`ClientDrivenLogArchitectureTest` 2 |
+| 2 | 严格 grid 跑第 1 步的四个类 | `BUILD SUCCESSFUL`；4 个类 18 个 0 失败 0 跳过：`ShardGatesTest` 7、`ShardServiceImplTest` 6、`ShardArchitectureTest` 3、`ClientDrivenLogArchitectureTest` 2 |
+| 3 | `grep -n 'new ShardGates(' server-app/src/main/java/io/github/bearisbug/synaxis/app/Main.java` | 恰 1 行，行号 504，第三个参数是 `ledger::record`（接线没随本组变） |
+
+后置：`git status --short` 无输出。
+
 ## 5. 回归策略
 
 - **全量轮**（全部用例）：首次成稿、每个阶段 gate（引擎域阶段 0、2、3；游戏域 `docs/DESIGN-M2.md` §26 的阶段 1～6b；大世界域 `docs/DESIGN-M3.md` §26 的 M3-A～M3-G）、跨功能域改动、地基变更（JDK、Gradle、镜像、协议版本、模块拆分、启动入口）。
@@ -7809,6 +7867,7 @@ for (var request : System.getenv("MGMT_CALLS").split("\n")) {
   - 生产就绪域（`docs/DESIGN-PROD.md`）：第 6 波 6A 插件面（`REQ-PROD-031`，v0.9.27）→ TC-PROD-520～TC-PROD-533；动了 `PluginTransfers`、`TransferCooldowns`、`:plugin-api` 的 `Transfers` 或 `PluginContext#transfers()`，就跑 TC-PROD-520～TC-PROD-527、TC-PROD-530～TC-PROD-532（一个类约 10 s，TC-PROD-530 用严格 grid）与 TC-PROD-529 第 1～3 步；动了 `Main#openStore` 建冷却表、构造 `StoreRuntime` 或 `TicketVerifier` 的几处或 `PluginHost` 的构造器，就跑 TC-PROD-521、TC-PROD-528、TC-PROD-533（M3-E 第 0 步改的是同一条 `new StoreRuntime(…)` 与 `new TicketVerifier(…)` 的相邻几行，合并后必跑）；动了引擎 `CookieStorePacket`、`PlayerConnection` 的 Cookie 方法、`OutgoingTransferEvent`、`TransferPacket`、实体调度器的 `scheduleNextTick` 或 `HandshakeListener` 的 `markTransferred`，就跑 TC-PROD-524～TC-PROD-527、TC-PROD-530～TC-PROD-532。
   - 生产就绪域（`docs/DESIGN-PROD.md`）：第 6 波 6A 其余部分（`REQ-PROD-031`、`REQ-PROD-032`，v0.9.29）→ TC-PROD-540～TC-PROD-549；动了 `TransferCommand` 就跑 TC-PROD-540～TC-PROD-543（一个类约 1.3 s）；动了 `ManagementMethods` 的 `transfer` 或构造器，就跑 TC-PROD-544～TC-PROD-546 与 6B 一节的 TC-PROD-385；动了模组两份 lang 或回执键，就跑 TC-PROD-547；动了 `Main` 步骤 (4) 交 `ShardService` 的两行、`DirectoryMode`、`ShardServiceImpl` 或签发端 `TicketIssuer`，就跑 TC-PROD-548（真进程，一个分片加一个机器人，约 3 min）；合入前跑 TC-PROD-549 第 2、3 步。
   - 生产就绪域（`docs/DESIGN-PROD.md`）：第 6 波 6A 的 P10（`REQ-PROD-031`，v0.9.30）→ TC-PROD-550；动了 `p10.py` 的 `judge` 就跑 TC-PROD-550 第 10 步（不起进程）；动了 `p10.py` 的 `shards` 或 `drive`、`TransferRoundTripClientGameTest`、`RegressionClientGameTest` 开头那一行判断、gametest 的 `fabric.mod.json`、`run.sh` 或 job `p10`，跑 TC-PROD-550 全部，本机不过内存门槛时手动触发 `client-gametest.yml`，以 job `p10` 判定一步的 `P10: all checks passed` 为准；动了 `ShardServiceImpl`、`TicketIssuer`、`TicketVerifier`、`ManagementMethods` 的 `synaxis:transfer` 或目录模式的装配，合入 `main` 后看下一次 job `p10`。
+  - 生产就绪域（`docs/DESIGN-PROD.md`）：`EVT:transfer_refused` 扩到关卡门的六种拒绝结果（`REQ-PROD-031`，v0.9.35（refused））→ TC-PROD-570～TC-PROD-573；动了 `ShardGates` 的 `finished` 或 `refused`、`ShardTransferResult` 的取值，或 `ShardGatesTest` 的 `everyRefusalIsWrittenToTheLedger`，就跑 TC-PROD-570～TC-PROD-573（不连数据库；本机这个类 7.7～31.7 s，多半花在第一条用例建 `Env`），同时按 M3-E 一行跑 TC-WORLD-064、TC-WORLD-089。
   - 影响面不确定时升级为全量轮。
 - **复测轮**（上轮失败用例 + 全部冒烟级）：修复失败项之后。
 - **人工收口轮**（仅上轮「待人工」用例）：AI 轮之后由人工补测 TC-016、TC-030、TC-GAME-020、TC-GAME-038、TC-GAME-046、TC-GAME-047，不要求冒烟级。

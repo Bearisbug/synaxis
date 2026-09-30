@@ -35,8 +35,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 /**
  * The gates of a region ({@code docs/DESIGN-M3.md} {@code API-M3-010}, {@code REQ-M3-017}): a walk
  * into a frame sends the player to the gate's target region once, on the block the new position is
- * in; nothing more while that transfer is under way; and only a choice that failed is told to the
- * player and written to the ledger ({@code EVT:transfer_refused}).
+ * in; nothing more while that transfer is under way; only a choice that failed is told to the
+ * player, and every refusal is written to the ledger ({@code EVT:transfer_refused}).
  */
 class ShardGatesTest {
 
@@ -197,24 +197,29 @@ class ShardGatesTest {
     }
 
     @Test
-    void onlyAChoiceThatFailedIsWrittenToTheLedger() {
+    void everyRefusalIsWrittenToTheLedger() {
         attach(ExampleDirectory.as("r0-c1"));
         for (ShardTransferResult result : ShardTransferResult.values()) {
             final Walker walker = walker("Walker" + result.ordinal());
             walk(walker, 2040);
             ledger.clear();
+            // As TicketIssuer answers a player that left after the write gave its lease back
+            if (result == ShardTransferResult.NOT_ONLINE) walker.player().getPlayerConnection().disconnect();
             service.transfers.getLast().complete(result);
             final List<String> written = switch (result) {
                 case FULL -> refused(walker, "full");
                 case OFFLINE -> refused(walker, "offline");
                 case DIRECTORY_UNAVAILABLE -> refused(walker, "directory_unavailable");
-                case SENT, COOLDOWN, NOT_ONLINE, SAVE_FAILED, UNKNOWN_TARGET, SAME_TARGET -> List.of();
+                case COOLDOWN -> refused(walker, "cooldown");
+                case NOT_ONLINE -> refused(walker, "not_online");
+                case SAVE_FAILED -> refused(walker, "save_failed");
+                case SENT, UNKNOWN_TARGET, SAME_TARGET -> List.of();
             };
             assertEquals(written, ledger, result.name());
         }
     }
 
-    /** The one {@code EVT:transfer_refused} line of a walk into r0-east that found no channel of r1. */
+    /** The one {@code EVT:transfer_refused} line of a walk into r0-east refused on its way to r1. */
     private static List<String> refused(Walker walker, String result) {
         final Map<String, Object> attributes = new LinkedHashMap<>();
         attributes.put("player_uuid", walker.player().getUuid());

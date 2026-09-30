@@ -31,7 +31,7 @@ public class InboundPacketLimitsTest {
     public void theDefaultsAreTwiceTheBaselineP99InSevenSeconds() {
         final ServerConfig defaults = ServerConfig.defaults();
         assertEquals(7_000, defaults.packetLimitWindow());
-        assertEquals(582, defaults.packetLimitMaxPackets());
+        assertEquals(750, defaults.packetLimitMaxPackets());
         assertEquals(PacketLimitAction.KICK, defaults.packetLimitAction());
         assertEquals(4L << 20, defaults.maxInflatedBytesPerSecond());
         assertEquals(20, defaults.tabCompleteRatePerSecond());

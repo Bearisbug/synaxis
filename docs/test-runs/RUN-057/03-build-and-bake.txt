@@ -1,0 +1,11 @@
+# Build and bake for the load tiers, 2026-09-30 10:21~10:27, before any tier started (no Gradle during the tiers)
+./gradlew --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts --max-workers=4 :server-app:installDist :loadtest:installDist :baker:installDist
+  BUILD SUCCESSFUL in 7s (47 actionable tasks: 24 executed, 23 from cache), exit 0; code at 5c7874ed5c
+<L> = mktemp -d under $TMPDIR (run057.XXXXXX); deleted at the end of the round
+baker/build/install/baker/bin/baker bake --map-id synth --source generator:synthetic:7 --out <L>/maps --logs <L>/bakelogs --threads 4
+  exit 0; baker: published <L>/maps/synth/synth-09b42ebb5dc6-p776, 213319659 bytes
+  bake.wall_ms 33461, bake.cpu_ms 114332, threads 4, jdk 25.0.4.1; verify samples 256, diffs 0
+  /usr/bin/time -l: 36.38 s real, 105.62 s user, 11.42 s sys, maximum resident set size 1,874,231,296 B
+  content_hash 09b42ebb5dc678b265f1c7b3f7e4d5ae7b475b6b7aca9180e14b0981e191e273 (the same as TC-WORLD-023 and RUN-041)
+The M3-E tiers mount the same release through <L>/roots/<tier>/ (their shards.json plus a symbolic link to the release directory);
+the M3-C tier TC-WORLD-054 mounts <L>/maps/synth, which has no shards.json (memory store).

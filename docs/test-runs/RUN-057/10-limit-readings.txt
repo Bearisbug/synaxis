@@ -1,0 +1,53 @@
+# Readings for the inbound packet limit and the outbound limits, per tier (asked for by the production-readiness session; not criteria of
+# the cases). Sources: summary.json (c2s, kicks_by_reason, bots, visible_entities), the shard logs, the ledgers, the metrics endpoint read
+# after the bots left (metrics-end*.txt). Limits in force (Effective ServerConfig of every shard of this round): packetLimitMaxPackets=582,
+# packetLimitWindow=7000, packetLimitAction=KICK, packetLimitOverrides empty, maxOutboundBacklogBytes=4194304, maxVisibleEntitiesPerPlayer=100.
+# What the round cannot give, and why:
+#  - the times the visible cap applied: the engine keeps no counter or log line for it (EntityView reads maxVisibleEntitiesPerPlayer and
+#    counts nothing); the bot side shows how often a bot sat at the cap (visible_entities: P50/P99/max of the per-second samples)
+#  - packets shed from the outbound backlog (sheddable movement packets): no counter either; TrafficCounters has backlogKicks only,
+#    exported as synaxis_outbound_backlog_kicks_total, which is below
+#  - the per-bot uplink is what the harness sends: one position packet and one ClientTickEnd per tick, plus the chunk batch
+#    acknowledgements, keep-alives and teleport confirmations (c2s.by_packet); a vanilla client also sends turns, actions and use packets,
+#    so these rates are lower bounds
+
+### TC-WORLD-054 walk (200 bots, 600 s)
+uplink per bot (c2s): 42.786 packets/s on average; 1 s windows P50 40.0 P99 60.0 max 60.0; 7 s windows P50 295.0 P99 358.0 max 420.0 (117479 windows)
+inbound limit kicks: kicks_by_reason {}, lost 0, login_failures {}; server log lines with kick, disconnect or protocol-error (the config line left out): 0; ledger event types: chunk_stream_stats session_entered_configuration shard_started shutdown_saved 
+metrics-end.txt: outbound backlog kicks 0.0, ledger dropped 0.0, store saves {result="fenced"} 0.0 {result="saved"} 2180.0 {result="unavailable"} 0.0 
+visible entities per bot (bot side, samples every second): P50 64.0 P99 100.0 max 100.0, 118879 samples
+
+### TC-WORLD-054 ride (200 bots, 600 s)
+uplink per bot (c2s): 45.911 packets/s on average; 1 s windows P50 47.0 P99 60.0 max 60.0; 7 s windows P50 321.0 P99 374.0 max 420.0 (117480 windows)
+inbound limit kicks: kicks_by_reason {}, lost 0, login_failures {}; server log lines with kick, disconnect or protocol-error (the config line left out): 0; ledger event types: chunk_stream_stats session_entered_configuration shard_started shutdown_saved 
+metrics-end.txt: outbound backlog kicks 0.0, ledger dropped 0.0, store saves {result="fenced"} 0.0 {result="saved"} 2180.0 {result="unavailable"} 0.0 
+visible entities per bot (bot side, samples every second): P50 18.0 P99 100.0 max 100.0, 118880 samples
+
+### TC-WORLD-082 (500 bots spread, 600 s)
+uplink per bot (c2s): 42.789 packets/s on average; 1 s windows P50 40.0 P99 60.0 max 68.0; 7 s windows P50 295.0 P99 359.0 max 420.0 (289950 windows)
+inbound limit kicks: kicks_by_reason {}, lost 0, login_failures {}; server log lines with kick, disconnect or protocol-error (the config line left out): 0; ledger event types: chunk_stream_stats session_entered_configuration shard_started shutdown_saved 
+metrics-end.txt: outbound backlog kicks 0.0, ledger dropped 0.0, store saves {result="fenced"} 0.0 {result="saved"} 5368.0 {result="unavailable"} 0.0 
+visible entities per bot (bot side, samples every second): P50 100.0 P99 100.0 max 100.0, 293450 samples
+
+### TC-WORLD-083 (500 bots in one cell, 600 s)
+uplink per bot (c2s): 42.707 packets/s on average; 1 s windows P50 40.0 P99 60.0 max 66.0; 7 s windows P50 295.0 P99 361.0 max 425.0 (289942 windows)
+inbound limit kicks: kicks_by_reason {}, lost 0, login_failures {}; server log lines with kick, disconnect or protocol-error (the config line left out): 0; ledger event types: chunk_stream_stats session_entered_configuration shard_started shutdown_saved 
+metrics-end.txt: outbound backlog kicks 0.0, ledger dropped 0.0, store saves {result="fenced"} 0.0 {result="saved"} 5009.0 {result="unavailable"} 0.0 
+visible entities per bot (bot side, samples every second): P50 100.0 P99 100.0 max 100.0, 293442 samples
+
+### TC-WORLD-081 (200 bots walk, 1,800 s)
+uplink per bot (c2s): 42.594 packets/s on average; 1 s windows P50 40.0 P99 54.0 max 68.0; 7 s windows P50 295.0 P99 309.0 max 422.0 (357480 windows)
+inbound limit kicks: kicks_by_reason {}, lost 0, login_failures {}; server log lines with kick, disconnect or protocol-error (the config line left out): 0; ledger event types: chunk_stream_stats session_entered_configuration shard_started shutdown_saved 
+metrics-end.txt: outbound backlog kicks 0.0, ledger dropped 0.0, store saves {result="fenced"} 0.0 {result="saved"} 6180.0 {result="unavailable"} 0.0 
+visible entities per bot (bot side, samples every second): P50 61.0 P99 100.0 max 100.0, 358880 samples
+
+### TC-WORLD-084 (180 walk + 20 gate bots, 900 s, two shards; the shard log and ledger counts cover both)
+uplink per bot (c2s): 44.265 packets/s on average; 1 s windows P50 41.0 P99 60.0 max 63.0; 7 s windows P50 296.0 P99 322.0 max 422.0 (161836 windows)
+inbound limit kicks: kicks_by_reason {}, lost 0, login_failures {}; server log lines with kick, disconnect or protocol-error (the config line left out): 0; ledger event types: chunk_stream_stats session_entered_configuration shard_started shutdown_saved transfer_completed transfer_issued 
+metrics-end-r0.txt: outbound backlog kicks 0.0, ledger dropped 0.0, store saves {result="fenced"} 0.0 {result="saved"} 4069.0 {result="unavailable"} 0.0 
+metrics-end-r1.txt: outbound backlog kicks 0.0, ledger dropped 0.0, store saves {result="fenced"} 0.0 {result="saved"} 1122.0 {result="unavailable"} 0.0 
+visible entities per bot (bot side, samples every second): P50 49.0 P99 100.0 max 100.0, 178713 samples
+ShardService results: see 09-084.txt (SENT 2240; FULL, OFFLINE, DIRECTORY_UNAVAILABLE 0; COOLDOWN, NOT_ONLINE, SAVE_FAILED not recorded by the server, none on the bot side)
+
+### the harness heap of the bots (a deviation, see 00-index.txt): 054 ran the bots and the sampler with -Xms1G -Xmx1G, 081~083 with
+### -Xms512m -Xmx512m, 084 with the loadtest default -Xmx2G; the uplink rates of the tiers are alike (42.6~45.9 packets/s per bot)

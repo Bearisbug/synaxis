@@ -1,0 +1,198 @@
+# TC-WORLD-084: two regions of the API-M3-010 example directory, r0-c1 (25601) and r1-c1 (25602), -Dsynaxis.dispatcher-threads=3 each;
+# 180 walk bots and 20 gate bots (10 blocks/s, dwell 6 s between r0-east and r1-west) on r0 for 900 s; merge --min-transfers 1000
+# t084 start 2026-09-30 11:47:37 180 walk + 20 gate bots on r0-c1 for 900s load { 6.00 7.26 11.06 } vm.swapusage: total = 25600.00M  used = 23897.56M  free = 1702.44M  (encrypted)
+# JAVA_OPTS=-Xms512m -Xmx512m SERVER_APP_OPTS=-Dsynaxis.app.port=<port> -Dsynaxis.app.auth=offline -Dsynaxis.app.metrics.bind=127.0.0.1:<mport> -Dsynaxis.connection-gate.trusted-networks=127.0.0.0/8 -Dsynaxis.app.log=stdout -Dsynaxis.dispatcher-threads=3 -Dsynaxis.map.root=<L>/roots/t084 -Dsynaxis.map.build=synth-09b42ebb5dc6-p776 -Dsynaxis.app.store=postgres -Dsynaxis.app.shard-id=<id>; env SYNAXIS_STATE_DB_URL=jdbc:postgresql://127.0.0.1:5440/run057_t084 SYNAXIS_REDIS_URL=redis://127.0.0.1:6440 SYNAXIS_TRANSFER_HMAC_KEYS=<one random 32-byte key, key_id 1>
+# r0-c1 pid 16352 r1-c1 pid 16356 monitor pid 16349
+# walk run exit 0
+# gate run exit 0
+# sample r0 exit 0
+# sample r1 exit 0
+# merge exit 2
+# merge (server r1) exit 0
+# t084 end 2026-09-30 12:03:08 load { 8.10 8.31 8.93 } vm.swapusage: total = 24576.00M  used = 23906.62M  free = 669.38M  (encrypted)
+# server JVM of both shards: bin/server-shard defaults followed by JAVA_OPTS=-Xms512m -Xmx512m (the two-process fixture of TEST.md M3-E)
+# bots and samples: the loadtest defaults (-Xmx2G), JAVA_OPTS not set for them
+# commands (from <L>/t084, work dirs work-r0-c1 and work-r1-c1):
+#   loadtest sample --pid <r0 pid> --duration 920s --metrics http://127.0.0.1:19601/metrics --out server-r0.json   (and r1: 19602, server-r1.json)
+#   5 s later, at the same time:
+#   loadtest run --host 127.0.0.1 --port 25601 --bots 180 --profile walk --encryption off --duration 900s --out bots-walk.json
+#   loadtest run --host 127.0.0.1 --port 25601 --bots 20 --bot-offset 180 --profile gate --gates "2032,0,1016,2047,255,1031;2048,0,1016,2063,255,1031" --dwell 6s --encryption off --duration 900s --out bots-gate.json
+#   loadtest merge bots-walk.json bots-gate.json server-r0.json --min-transfers 1000 --out summary.json (exit 2: only ticks_over_50ms of r0, 5)
+#   loadtest merge bots-walk.json bots-gate.json server-r1.json --min-transfers 1000 --out summary-r1.json (exit 0)
+# shards.json (<L>/roots/t084/shards.json = server-app/src/test/resources/shards/shards.json, the API-M3-010 example):
+#   {
+#     "format_version": 1,
+#     "map_id": "synth",
+#     "regions": [
+#       {"region_id": "r0", "bounds": {"min_x": 0, "min_z": 0, "max_x": 127, "max_z": 127},
+#        "gates": [{"gate_id": "r0-east", "min": [2032, 0, 1016], "max": [2047, 255, 1031],
+#                   "target_region": "r1", "arrival": [2024.5, 200.0, 1024.5, 90.0]}]},
+#       {"region_id": "r1", "bounds": {"min_x": 128, "min_z": 0, "max_x": 255, "max_z": 127},
+#        "gates": [{"gate_id": "r1-west", "min": [2048, 0, 1016], "max": [2063, 255, 1031],
+#                   "target_region": "r0", "arrival": [2071.5, 200.0, 1024.5, -90.0]}]}
+#     ],
+#     "channels": [
+#       {"shard_id": "r0-c1", "region_id": "r0", "channel": 1, "host": "127.0.0.1", "port": 25601, "capacity": 200},
+#       {"shard_id": "r1-c1", "region_id": "r1", "channel": 1, "host": "127.0.0.1", "port": 25602, "capacity": 200}
+#     ]
+#   }
+# database run057_t084: migrate exit=0, flyway_schema_history 1|t 2|t 3|t 4|t 5|t 6|t 
+
+## transfers: the two ledgers paired by transfer_ref (transfers084.py, stdlib only, nearest-rank percentiles) and the bot side
+ledger events by type: {'chunk_stream_stats': 30, 'session_entered_configuration': 2440, 'shard_started': 2, 'shutdown_saved': 2, 'transfer_completed': 2240, 'transfer_issued': 2240}
+  r0-c1: {'chunk_stream_stats': 15, 'session_entered_configuration': 1320, 'shard_started': 1, 'shutdown_saved': 1, 'transfer_completed': 1120, 'transfer_issued': 1120}
+  r1-c1: {'chunk_stream_stats': 15, 'session_entered_configuration': 1120, 'shard_started': 1, 'shutdown_saved': 1, 'transfer_completed': 1120, 'transfer_issued': 1120}
+transfer_issued 2240 transfer_completed 2240 completed / issued = 1.0
+paired by transfer_ref: 2240 issued without completed: 0 completed without issued: 0 refs completed twice: 0
+issued in the source ledger: True completed in the target ledger: True
+issued by direction: {'r0-c1->r1-c1': 1120, 'r1-c1->r0-c1': 1120}
+first_batch_ms: count 2240 min 157 p50 259 p95 309 p99 314 max 392 P95 < 5000: True
+transfer_refused by result (ShardService FULL / OFFLINE / DIRECTORY_UNAVAILABLE): {}
+summary.json transfers: {"count": 2240, "completed": 2240, "failed_by_reason": {}, "transfer_ms": {"count": 2240, "p50_ms": 395.0, "p95_ms": 445.7, "p99_ms": 467.1, "max_ms": 523.4}}
+
+## ShardService results (asked for by the production-readiness session)
+SENT: 2240 (one EVT:transfer_issued each, written by TicketIssuer after the Transfer went out)
+FULL, OFFLINE, DIRECTORY_UNAVAILABLE: 0 (ShardGates writes EVT:transfer_refused with the result for each; none in either ledger)
+UNKNOWN_TARGET, SAME_TARGET and exceptions: 0 (ShardGates logs ERROR for each; WARN/ERROR lines 0 in both shard logs)
+COOLDOWN, NOT_ONLINE, SAVE_FAILED: the server keeps no record of them (ShardGates#finished does nothing for them: no log line, no ledger
+  event, no counter). Each would leave the gate bot without a Transfer for 30 s, which the bot counts as no-transfer in failed_by_reason;
+  failed_by_reason is empty and 2240 of 2240 trips completed, so none of them happened on a trip.
+store saves at the end: r0-c1 {result="fenced"} 0.0 {result="saved"} 4069.0 {result="unavailable"} 0.0 ; r1-c1 {result="fenced"} 0.0 {result="saved"} 1122.0 {result="unavailable"} 0.0 
+
+## r0-c1
+## shard log
+11:47:38.755 [main] INFO  i.github.bearisbug.synaxis.app.Main - Effective ServerConfig[shutdownOnSignal=true, maxTickCatchUp=5, chunkViewDistance=12, entityViewDistance=8, entitySynchronizationTicks=20, dispatcherThreads=3, threadProvider=GRID, threadGridExponent=4, sendLightAfterBlockPlacementDelay
+11:47:39.021 [main] INFO  i.g.b.synaxis.app.shard.ShardWorld - Map release synth-09b42ebb5dc6-p776 verified in 243 ms: bounds=Bounds[minX=0, minZ=0, maxX=255, maxZ=255] world=World[minY=0, height=256]
+11:47:39.400 [main] INFO  i.github.bearisbug.synaxis.app.Main - Effective store: mode=postgres auth_mode=offline StoreSettings[jdbcUrl=jdbc:postgresql://127.0.0.1:5440/run057_t084, user=postgres, password=<set>, redis=<set>]
+11:47:39.458 [main] INFO  i.g.b.s.app.metrics.HostMetrics - Metrics endpoint listening on http://127.0.0.1:19601/metrics
+11:47:39.496 [main] INFO  i.g.b.synaxis.app.shard.ShardWorld - Map mounted: build_id=synth-09b42ebb5dc6-p776 simulation_distance=4 chunk_unload_grace_ticks=100 spawn=Pos[x=1016.5, y=63.0, z=1016.5, yaw=0.0, pitch=0.0] overlay=overlay/synth-09b42ebb5dc6-p776
+11:47:39.498 [main] INFO  i.github.bearisbug.synaxis.app.Main - Map mode (synaxis.app.core-mode=on): the host serves the map instance, no plugin is loaded, spawn=Pos[x=1016.5, y=63.0, z=1016.5, yaw=0.0, pitch=0.0]
+11:47:39.507 [main] INFO  i.github.bearisbug.synaxis.app.Main - synaxis server-app listening on 0.0.0.0:25601
+12:03:07.291 [Thread-3] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+12:03:07.292 [Thread-3] INFO  i.g.b.synaxis.synx.SynxRelight - Relight drain: 0 ms, left=0
+12:03:07.327 [Syn-TickScheduler] INFO  i.g.b.synaxis.synx.OverlayStore - Overlay final flush: chunks=0 bytes=0 fsync_ms=0 left=0 by=tick
+Effective ServerConfig fields: acceptTransfers=true chunkViewDistance=12 dispatcherThreads=3 maxOutboundBacklogBytes=4194304 maxPlayers=200 maxVisibleEntitiesPerPlayer=100 packetLimitAction=KICK packetLimitMaxPackets=582 packetLimitWindow=7000 threadProvider=GRID 
+WARN/ERROR lines: 0
+log lines with kick or disconnect other than the config line: 0
+## ledger (logs/events-*.jsonl)
+events by type: chunk_stream_stats 15, session_entered_configuration 1320, shard_started 1, shutdown_saved 1, transfer_completed 1120, transfer_issued 1120, 
+{"ts":"2026-09-30T03:47:39.506997Z","event":"shard_started","build_id":"synth-09b42ebb5dc6-p776","verify_ms":243,"regions":25,"bytes_mapped":83635613,"overlay_records":0,"flags_replayed":0,"flags_ms":4,"region_id":"r0","capacity":200}
+chunk_stream_stats over its 15 records: {"overlay_sent_max":0,"handle_sent_sum":2251802,"failed_max":0,"evict_failed_max":0,"write_phase_ms_max":0.50325,"section_cache_bytes_max":11679040}
+## heartbeat (psql every 30 s)
+readings 31, largest age_s 4.23
+11:47:45 r0-c1 online=0 capacity=200 accepting=true age_s=1.19 r1-c1 online=0 capacity=200 accepting=true age_s=1.20 
+11:48:15 r0-c1 online=200 capacity=200 accepting=true age_s=1.29 r1-c1 online=0 capacity=200 accepting=true age_s=1.30 
+11:48:45 r0-c1 online=200 capacity=200 accepting=true age_s=1.39 r1-c1 online=0 capacity=200 accepting=true age_s=1.40 
+11:49:15 r0-c1 online=200 capacity=200 accepting=true age_s=1.49 r1-c1 online=0 capacity=200 accepting=true age_s=1.50 
+11:49:46 r0-c1 online=180 capacity=200 accepting=true age_s=1.59 r1-c1 online=20 capacity=200 accepting=true age_s=1.60 
+11:50:16 r0-c1 online=186 capacity=200 accepting=true age_s=1.67 r1-c1 online=14 capacity=200 accepting=true age_s=1.67 
+11:50:46 r0-c1 online=200 capacity=200 accepting=true age_s=1.77 r1-c1 online=0 capacity=200 accepting=true age_s=1.77 
+11:51:16 r0-c1 online=200 capacity=200 accepting=true age_s=1.87 r1-c1 online=0 capacity=200 accepting=true age_s=1.88 
+11:51:46 r0-c1 online=200 capacity=200 accepting=true age_s=1.95 r1-c1 online=0 capacity=200 accepting=true age_s=1.96 
+11:52:16 r0-c1 online=200 capacity=200 accepting=true age_s=2.08 r1-c1 online=0 capacity=200 accepting=true age_s=2.08 
+11:52:46 r0-c1 online=180 capacity=200 accepting=true age_s=2.16 r1-c1 online=20 capacity=200 accepting=true age_s=2.17 
+11:53:16 r0-c1 online=180 capacity=200 accepting=true age_s=2.27 r1-c1 online=20 capacity=200 accepting=true age_s=2.27 
+11:53:46 r0-c1 online=180 capacity=200 accepting=true age_s=2.35 r1-c1 online=20 capacity=200 accepting=true age_s=2.36 
+11:54:16 r0-c1 online=180 capacity=200 accepting=true age_s=2.47 r1-c1 online=20 capacity=200 accepting=true age_s=2.48 
+11:54:47 r0-c1 online=200 capacity=200 accepting=true age_s=2.56 r1-c1 online=0 capacity=200 accepting=true age_s=2.57 
+11:55:17 r0-c1 online=200 capacity=200 accepting=true age_s=2.65 r1-c1 online=0 capacity=200 accepting=true age_s=2.66 
+11:55:47 r0-c1 online=200 capacity=200 accepting=true age_s=2.74 r1-c1 online=0 capacity=200 accepting=true age_s=2.75 
+11:56:17 r0-c1 online=200 capacity=200 accepting=true age_s=2.83 r1-c1 online=0 capacity=200 accepting=true age_s=2.83 
+11:56:47 r0-c1 online=180 capacity=200 accepting=true age_s=2.94 r1-c1 online=20 capacity=200 accepting=true age_s=2.94 
+11:57:17 r0-c1 online=180 capacity=200 accepting=true age_s=3.03 r1-c1 online=20 capacity=200 accepting=true age_s=3.04 
+11:57:47 r0-c1 online=180 capacity=200 accepting=true age_s=3.12 r1-c1 online=20 capacity=200 accepting=true age_s=3.13 
+11:58:17 r0-c1 online=180 capacity=200 accepting=true age_s=3.21 r1-c1 online=20 capacity=200 accepting=true age_s=3.23 
+11:58:47 r0-c1 online=200 capacity=200 accepting=true age_s=3.32 r1-c1 online=0 capacity=200 accepting=true age_s=3.34 
+11:59:17 r0-c1 online=200 capacity=200 accepting=true age_s=3.44 r1-c1 online=0 capacity=200 accepting=true age_s=3.44 
+11:59:47 r0-c1 online=200 capacity=200 accepting=true age_s=3.53 r1-c1 online=0 capacity=200 accepting=true age_s=3.53 
+12:00:18 r0-c1 online=200 capacity=200 accepting=true age_s=3.65 r1-c1 online=0 capacity=200 accepting=true age_s=3.66 
+12:00:48 r0-c1 online=180 capacity=200 accepting=true age_s=3.75 r1-c1 online=20 capacity=200 accepting=true age_s=3.76 
+12:01:18 r0-c1 online=180 capacity=200 accepting=true age_s=3.86 r1-c1 online=20 capacity=200 accepting=true age_s=3.87 
+12:01:48 r0-c1 online=180 capacity=200 accepting=true age_s=3.99 r1-c1 online=20 capacity=200 accepting=true age_s=3.99 
+12:02:18 r0-c1 online=180 capacity=200 accepting=true age_s=4.10 r1-c1 online=20 capacity=200 accepting=true age_s=4.10 
+12:02:48 r0-c1 online=200 capacity=200 accepting=true age_s=4.22 r1-c1 online=0 capacity=200 accepting=true age_s=4.23 
+## <L>/t084/summary.json
+{"bots":{"pass":true,"detail":"200 of 200 logged in, 0 lost"},"chunks_per_bot_min":{"pass":true,"detail":"8367 > 9"},"transfers_completed":{"pass":true,"detail":"2240 >= 1000"},"transfer_ms_p95":{"pass":true,"detail":"445.7 < 5000.0"},"tick_p99_ms":{"pass":true,"detail":"13.269 < 50.0"},"ticks_over_50ms":{"pass":false,"detail":"5 <= 0"},"rss_mib_max":{"pass":true,"detail":"537.578 < 4096.0"},"pass":false}
+bots: {"requested":200,"logged_in":200,"lost":0,"login_failures":{}} kicks_by_reason: {} login_latency_ms: {"off":{"count":200,"mean_ms":27.639,"p50_ms":27.3,"p99_ms":33.3,"max_ms":40.8,"over_50ms":0}}
+ticks: count 18415 overall {"count":18415,"mean_ms":4.297,"p50_ms":3.604,"p99_ms":13.269,"max_ms":77.75,"over_50ms":5}
+ticks per minute (P99 ms / over 50 ms): 0:14.505/1 1:10.914/0 2:13.031/1 3:13.503/0 4:13.388/0 5:13.087/0 6:13.333/0 7:12.482/1 8:11.845/0 9:12.761/0 10:13.475/0 11:12.375/1 12:13.765/1 13:13.59/0 14:14.881/0 15:10.665/0 
+ticks.acquire_ms in the server file: null
+gc: {"count":67,"mean_ms":20.963,"p50_ms":17.65,"p99_ms":51.0,"max_ms":51.0,"over_50ms":1}
+heap: {"rss_mib_max":537.578,"heap_used_mib_max":461.086}
+dispatcher_busy_ratio: {"Syn-Tick-0":0.069,"Syn-Tick-1":0.056,"Syn-Tick-2":0.016,"Syn-TickScheduler":0.086}
+traffic: {"packets_in_per_s":8094.008,"packets_out_per_s":216540.171,"bytes_in_per_s":120073.722,"bytes_out_per_s":7701668.018}
+per player egress: server bytes_out_per_s / 200 = 38508.3 B/s; bots receive inbound.bytes_per_s_per_bot 42948.464 B/s
+inbound.chunks: {"gate":{"packets":1285307,"wire_bytes":2022283661,"connection_seconds":17968.862,"kb_per_s_per_bot":109.906,"packets_per_s_per_bot":71.53,"steady_packets":1252942,"steady_wire_bytes":1977735951,"steady_connection_seconds":16768.862,"steady_kb_per_s_per_bot":115.177,"steady_packets_per_s_per_bot":74.718,"per_bot_packets":{"count":20,"mean":64265.35,"p50":64218.0,"p99":64506.0,"max":64506.0,"min":64170.0}},"walk":{"packets":1606604,"wire_bytes":2132198395,"connection_seconds":161002.013,"kb_per_s_per_bot":12.933,"packets_per_s_per_bot":9.979,"steady_packets":1387757,"steady_wire_bytes":1845579462,"steady_connection_seconds":150202.013,"steady_kb_per_s_per_bot":11.999,"steady_packets_per_s_per_bot":9.239,"per_bot_packets":{"count":180,"mean":8925.578,"p50":8920.0,"p99":9319.0,"max":9356.0,"min":8367.0}}}
+gate: steady KB/s per bot (1,000 B) 117.941; B per chunk 1578.5; per_bot_packets min 64170.0
+walk: steady KB/s per bot (1,000 B) 12.287; B per chunk 1329.9; per_bot_packets min 8367.0
+transfers: {"count":2240,"completed":2240,"failed_by_reason":{},"transfer_ms":{"count":2240,"p50_ms":395.0,"p95_ms":445.7,"p99_ms":467.1,"max_ms":523.4}}
+## readings for the inbound packet limit and the outbound limits
+c2s: {"packets":7922117,"packets_per_s_per_bot":44.265,"per_bot_per_1s":{"count":176273,"mean":44.011,"p50":41.0,"p99":60.0,"max":63.0},"per_bot_per_7s":{"count":161836,"mean":298.545,"p50":296.0,"p99":322.0,"max":422.0}}
+visible_entities: {"count":178713,"mean":52.411,"p50":49.0,"p99":100.0,"max":100.0}
+metrics-end.txt: synaxis_ledger_dropped_total 0.0;synaxis_outbound_backlog_kicks_total 0.0;synaxis_players_online 0.0;synaxis_watchdog_warnings_total 0.0; gate rejections: {reason="closed_at_accept"} 0.0 {reason="full"} 0.0 {reason="handshake_timeout"} 0.0 {reason="throttled"} 0.0 {reason="too_many"} 0.0 
+## load
+summary load1 {"min":4.54,"max":12.512}; harness [{"cpu_seconds":354.529,"cpu_percent_mean":39.435},{"cpu_seconds":63.342,"cpu_percent_mean":7.046}]
+monitor: memory free 34~45%, swap free 552.62~1734.44 MB, load1 4.18~11.64
+
+## r1-c1 (summary-r1.json: the same bot files merged with server-r1.json)
+## shard log
+11:47:38.755 [main] INFO  i.github.bearisbug.synaxis.app.Main - Effective ServerConfig[shutdownOnSignal=true, maxTickCatchUp=5, chunkViewDistance=12, entityViewDistance=8, entitySynchronizationTicks=20, dispatcherThreads=3, threadProvider=GRID, threadGridExponent=4, sendLightAfterBlockPlacementDelay
+11:47:39.039 [main] INFO  i.g.b.synaxis.app.shard.ShardWorld - Map release synth-09b42ebb5dc6-p776 verified in 263 ms: bounds=Bounds[minX=0, minZ=0, maxX=255, maxZ=255] world=World[minY=0, height=256]
+11:47:39.400 [main] INFO  i.github.bearisbug.synaxis.app.Main - Effective store: mode=postgres auth_mode=offline StoreSettings[jdbcUrl=jdbc:postgresql://127.0.0.1:5440/run057_t084, user=postgres, password=<set>, redis=<set>]
+11:47:39.458 [main] INFO  i.g.b.s.app.metrics.HostMetrics - Metrics endpoint listening on http://127.0.0.1:19602/metrics
+11:47:39.493 [main] INFO  i.g.b.synaxis.app.shard.ShardWorld - Map mounted: build_id=synth-09b42ebb5dc6-p776 simulation_distance=4 chunk_unload_grace_ticks=100 spawn=Pos[x=3064.5, y=63.0, z=1016.5, yaw=0.0, pitch=0.0] overlay=overlay/synth-09b42ebb5dc6-p776
+11:47:39.496 [main] INFO  i.github.bearisbug.synaxis.app.Main - Map mode (synaxis.app.core-mode=on): the host serves the map instance, no plugin is loaded, spawn=Pos[x=3064.5, y=63.0, z=1016.5, yaw=0.0, pitch=0.0]
+11:47:39.498 [main] INFO  i.github.bearisbug.synaxis.app.Main - synaxis server-app listening on 0.0.0.0:25602
+12:03:07.291 [Thread-3] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+12:03:07.292 [Thread-3] INFO  i.g.b.synaxis.synx.SynxRelight - Relight drain: 0 ms, left=0
+12:03:07.318 [Syn-TickScheduler] INFO  i.g.b.synaxis.synx.OverlayStore - Overlay final flush: chunks=0 bytes=0 fsync_ms=0 left=0 by=tick
+Effective ServerConfig fields: acceptTransfers=true chunkViewDistance=12 dispatcherThreads=3 maxOutboundBacklogBytes=4194304 maxPlayers=200 maxVisibleEntitiesPerPlayer=100 packetLimitAction=KICK packetLimitMaxPackets=582 packetLimitWindow=7000 threadProvider=GRID 
+WARN/ERROR lines: 0
+log lines with kick or disconnect other than the config line: 0
+## ledger (logs/events-*.jsonl)
+events by type: chunk_stream_stats 15, session_entered_configuration 1120, shard_started 1, shutdown_saved 1, transfer_completed 1120, transfer_issued 1120, 
+{"ts":"2026-09-30T03:47:39.497929Z","event":"shard_started","build_id":"synth-09b42ebb5dc6-p776","verify_ms":263,"regions":25,"bytes_mapped":83494378,"overlay_records":0,"flags_replayed":0,"flags_ms":2,"region_id":"r1","capacity":200}
+chunk_stream_stats over its 15 records: {"overlay_sent_max":0,"handle_sent_sum":617196,"failed_max":0,"evict_failed_max":0,"write_phase_ms_max":0.430666,"section_cache_bytes_max":54784}
+## heartbeat (psql every 30 s)
+{"bots":{"pass":true,"detail":"200 of 200 logged in, 0 lost"},"chunks_per_bot_min":{"pass":true,"detail":"8367 > 9"},"transfers_completed":{"pass":true,"detail":"2240 >= 1000"},"transfer_ms_p95":{"pass":true,"detail":"445.7 < 5000.0"},"tick_p99_ms":{"pass":true,"detail":"3.784 < 50.0"},"ticks_over_50ms":{"pass":true,"detail":"0 <= 0"},"rss_mib_max":{"pass":true,"detail":"369.578 < 4096.0"},"pass":true}
+ticks: count 18408 overall {"count":18408,"mean_ms":0.535,"p50_ms":0.315,"p99_ms":3.784,"max_ms":38.295,"over_50ms":0}
+ticks per minute (P99 ms / over 50 ms): 0:0.904/0 1:2.177/0 2:4.902/0 3:3.932/0 4:4.001/0 5:4.047/0 6:3.768/0 7:3.217/0 8:3.867/0 9:3.51/0 10:4.118/0 11:3.364/0 12:4.409/0 13:3.931/0 14:3.61/0 15:1.041/0 
+ticks.acquire_ms in the server file: null
+gc: {"count":11,"mean_ms":16.211,"p50_ms":15.78,"p99_ms":24.864,"max_ms":24.864,"over_50ms":0}
+heap: {"rss_mib_max":369.578,"heap_used_mib_max":336.439}
+dispatcher_busy_ratio: {"Syn-Tick-0":0.001,"Syn-Tick-1":0.006,"Syn-Tick-2":0.0,"Syn-TickScheduler":0.011}
+traffic: {"packets_in_per_s":516.901,"packets_out_per_s":2868.882,"bytes_in_per_s":6671.611,"bytes_out_per_s":1125221.451}
+metrics-end.txt: synaxis_ledger_dropped_total 0.0;synaxis_outbound_backlog_kicks_total 0.0;synaxis_players_online 0.0;synaxis_watchdog_warnings_total 0.0; gate rejections: {reason="closed_at_accept"} 0.0 {reason="full"} 0.0 {reason="handshake_timeout"} 0.0 {reason="throttled"} 0.0 {reason="too_many"} 0.0 
+
+## machine during the tier (monitor every 30 s)
+11:47:37 mem_free=45% swap_free=1702.44MB load1=6.00 rss_top5: com.apple.Virtualization.VirtualMachine=1055MB qemu-system-aarch64-headless=379MB Microsoft=373MB claude=372MB claude=284MB  cpu_top5: Microsoft=22.9% qemu-system-aarch64-headless=16.9% WindowServer=11.8% com.apple.WebKit.WebContent=11.2% syspolicyd=7.7% 
+11:48:07 mem_free=37% swap_free=1710.44MB load1=7.25 rss_top5: com.apple.Virtualization.VirtualMachine=802MB java=527MB qemu-system-aarch64-headless=403MB java=348MB claude=222MB  cpu_top5: java=62.8% java=43.9% iOS=33.2% qemu-system-aarch64-headless=19.6% Microsoft=18.1% 
+11:48:37 mem_free=36% swap_free=1718.44MB load1=6.34 rss_top5: com.apple.Virtualization.VirtualMachine=716MB java=469MB java=284MB claude=266MB claude=208MB  cpu_top5: java=47.1% java=33.4% Microsoft=19.1% WindowServer=12.5% qemu-system-aarch64-headless=6.4% 
+11:49:07 mem_free=36% swap_free=1718.44MB load1=5.98 rss_top5: com.apple.Virtualization.VirtualMachine=737MB java=432MB claude=309MB qemu-system-aarch64-headless=286MB java=282MB  cpu_top5: java=44.7% java=29.1% claude=28.7% Microsoft=18.6% com.apple.Virtualization.VirtualMachine=16.6% 
+11:49:37 mem_free=36% swap_free=1734.44MB load1=6.28 rss_top5: com.apple.Virtualization.VirtualMachine=665MB java=457MB claude=339MB claude=319MB java=284MB  cpu_top5: xpcproxy_sim=64.1% java=49.5% java=32.6% Microsoft=21.8% WindowServer=15.4% 
+11:50:08 mem_free=35% swap_free=823.00MB load1=6.27 rss_top5: com.apple.Virtualization.VirtualMachine=789MB java=506MB qemu-system-aarch64-headless=300MB java=294MB java=225MB  cpu_top5: java=45.9% java=27.3% java=26.2% com.apple.Virtualization.VirtualMachine=18.3% Microsoft=17.4% 
+11:50:38 mem_free=34% swap_free=831.00MB load1=6.42 rss_top5: com.apple.Virtualization.VirtualMachine=703MB java=466MB java=267MB claude=225MB java=220MB  cpu_top5: java=41.8% java=38.0% Microsoft=20.2% CodexBar=16.3% WindowServer=14.9% 
+11:51:08 mem_free=35% swap_free=831.00MB load1=6.80 rss_top5: com.apple.Virtualization.VirtualMachine=745MB java=490MB claude=329MB java=297MB qemu-system-aarch64-headless=297MB  cpu_top5: java=58.4% java=43.7% Microsoft=20.5% WindowServer=15.0% java=10.7% 
+11:51:38 mem_free=35% swap_free=839.00MB load1=5.37 rss_top5: com.apple.Virtualization.VirtualMachine=639MB java=486MB claude=267MB java=264MB Lark=256MB  cpu_top5: java=46.2% java=41.8% xpcproxy_sim=38.6% Microsoft=20.7% WindowServer=15.1% 
+11:52:08 mem_free=35% swap_free=795.75MB load1=6.03 rss_top5: com.apple.Virtualization.VirtualMachine=695MB java=516MB qemu-system-aarch64-headless=300MB java=281MB java=258MB  cpu_top5: iOS=79.4% java=42.5% java=33.7% java=19.5% Microsoft=18.4% 
+11:52:38 mem_free=35% swap_free=795.75MB load1=8.53 rss_top5: com.apple.Virtualization.VirtualMachine=656MB java=510MB claude=274MB qemu-system-aarch64-headless=258MB java=252MB  cpu_top5: java=62.0% java=53.6% com.apple.Virtualization.VirtualMachine=21.8% Microsoft=18.9% WindowServer=13.6% 
+11:53:08 mem_free=34% swap_free=860.00MB load1=6.93 rss_top5: com.apple.Virtualization.VirtualMachine=742MB java=491MB claude=315MB qemu-system-aarch64-headless=300MB java=275MB  cpu_top5: java=57.0% java=35.6% Microsoft=19.0% WindowServer=15.2% com.apple.Virtualization.VirtualMachine=12.6% 
+11:53:38 mem_free=34% swap_free=868.00MB load1=6.36 rss_top5: com.apple.Virtualization.VirtualMachine=620MB java=530MB claude=299MB claude=273MB java=260MB  cpu_top5: java=74.3% java=32.7% com.apple.Virtualization.VirtualMachine=23.8% node=22.5% Microsoft=17.8% 
+11:54:09 mem_free=35% swap_free=792.25MB load1=6.00 rss_top5: com.apple.Virtualization.VirtualMachine=749MB java=493MB qemu-system-aarch64-headless=294MB java=281MB claude=211MB  cpu_top5: iOS=48.7% java=41.6% java=31.6% Microsoft=19.3% WindowServer=14.4% 
+11:54:39 mem_free=35% swap_free=808.25MB load1=4.18 rss_top5: com.apple.Virtualization.VirtualMachine=670MB java=489MB Microsoft=376MB qemu-system-aarch64-headless=354MB java=286MB  cpu_top5: java=52.8% iOS=48.9% java=36.8% Microsoft=21.5% WindowServer=13.8% 
+11:55:09 mem_free=36% swap_free=749.50MB load1=5.46 rss_top5: com.apple.Virtualization.VirtualMachine=726MB java=479MB Microsoft=354MB qemu-system-aarch64-headless=322MB java=292MB  cpu_top5: java=46.7% (managedappdistri)=36.0% (managedappdistri)=35.6% java=31.6% Microsoft=18.3% 
+11:55:39 mem_free=34% swap_free=749.50MB load1=8.65 rss_top5: com.apple.Virtualization.VirtualMachine=721MB java=471MB Microsoft=353MB claude=257MB java=228MB  cpu_top5: java=46.8% java=37.4% Microsoft=20.7% com.apple.Virtualization.VirtualMachine=16.7% WindowServer=14.3% 
+11:56:09 mem_free=36% swap_free=805.12MB load1=8.50 rss_top5: com.apple.Virtualization.VirtualMachine=773MB java=489MB Microsoft=353MB qemu-system-aarch64-headless=308MB java=288MB  cpu_top5: java=54.3% java=44.7% com.apple.Virtualization.VirtualMachine=43.4% Microsoft=21.0% WindowServer=14.6% 
+11:56:39 mem_free=35% swap_free=821.12MB load1=5.46 rss_top5: com.apple.Virtualization.VirtualMachine=647MB java=495MB Microsoft=356MB qemu-system-aarch64-headless=258MB Lark=246MB  cpu_top5: java=61.7% java=40.5% xpcproxy_sim=24.6% com.apple.Virtualization.VirtualMachine=23.2% Microsoft=21.0% 
+11:57:09 mem_free=36% swap_free=709.62MB load1=7.27 rss_top5: com.apple.Virtualization.VirtualMachine=766MB java=498MB Microsoft=351MB qemu-system-aarch64-headless=325MB java=288MB  cpu_top5: java=59.2% iOS=58.9% java=43.0% Microsoft=21.4% com.apple.Virtualization.VirtualMachine=18.2% 
+11:57:39 mem_free=36% swap_free=717.62MB load1=8.05 rss_top5: com.apple.Virtualization.VirtualMachine=767MB java=496MB Microsoft=353MB claude=274MB java=235MB  cpu_top5: java=65.2% java=42.7% Microsoft=21.0% WindowServer=15.8% claude=11.3% 
+11:58:10 mem_free=36% swap_free=717.62MB load1=7.39 rss_top5: com.apple.Virtualization.VirtualMachine=784MB java=475MB qemu-system-aarch64-headless=307MB java=296MB claude=224MB  cpu_top5: java=42.4% java=29.3% Microsoft=17.4% WindowServer=13.0% qemu-system-aarch64-headless=10.6% 
+11:58:40 mem_free=36% swap_free=717.62MB load1=10.41 rss_top5: com.apple.Virtualization.VirtualMachine=753MB java=512MB qemu-system-aarch64-headless=297MB java=293MB claude=231MB  cpu_top5: java=49.5% java=36.0% Microsoft=21.0% WindowServer=13.8% qemu-system-aarch64-headless=12.7% 
+11:59:10 mem_free=35% swap_free=717.62MB load1=11.64 rss_top5: com.apple.Virtualization.VirtualMachine=882MB java=470MB qemu-system-aarch64-headless=337MB java=283MB claude=231MB  cpu_top5: java=52.6% iOS=40.9% java=39.9% Microsoft=22.3% com.apple.Virtualization.VirtualMachine=21.1% 
+11:59:40 mem_free=34% swap_free=741.62MB load1=8.68 rss_top5: com.apple.Virtualization.VirtualMachine=692MB java=456MB claude=277MB Lark=270MB java=262MB  cpu_top5: iOS=58.9% java=46.1% java=37.6% Microsoft=19.3% com.apple.Virtualization.VirtualMachine=18.7% 
+12:00:10 mem_free=36% swap_free=552.62MB load1=8.60 rss_top5: com.apple.Virtualization.VirtualMachine=755MB java=488MB qemu-system-aarch64-headless=357MB claude=309MB java=300MB  cpu_top5: fseventsd=71.5% java=56.2% java=41.9% Microsoft=19.2% claude=16.3% 
+12:00:40 mem_free=36% swap_free=568.62MB load1=7.23 rss_top5: com.apple.Virtualization.VirtualMachine=747MB java=476MB claude=270MB claude=234MB java=211MB  cpu_top5: fseventsd=64.6% java=52.2% java=34.0% Microsoft=17.4% WindowServer=12.3% 
+12:01:10 mem_free=36% swap_free=592.62MB load1=8.93 rss_top5: com.apple.Virtualization.VirtualMachine=828MB java=430MB qemu-system-aarch64-headless=319MB java=282MB claude=270MB  cpu_top5: fseventsd=77.7% java=39.2% java=29.4% com.apple.WebKit.WebContent=15.7% Microsoft=14.5% 
+12:01:40 mem_free=37% swap_free=600.62MB load1=9.24 rss_top5: com.apple.Virtualization.VirtualMachine=691MB java=467MB java=283MB Lark=266MB claude=255MB  cpu_top5: java=47.0% com.apple.Virtualization.VirtualMachine=42.3% java=36.6% java=30.6% Microsoft=17.9% 
+12:02:10 mem_free=37% swap_free=605.31MB load1=10.37 rss_top5: com.apple.Virtualization.VirtualMachine=786MB java=484MB qemu-system-aarch64-headless=298MB java=291MB claude=270MB  cpu_top5: java=59.3% java=42.0% com.apple.Virtualization.VirtualMachine=28.4% Microsoft=20.0% java=12.5% 
+12:02:41 mem_free=36% swap_free=605.31MB load1=10.18 rss_top5: com.apple.Virtualization.VirtualMachine=688MB java=464MB Microsoft=367MB java=289MB claude=269MB  cpu_top5: xpcproxy_sim=54.7% com.apple.Virtualization.VirtualMachine=51.3% java=47.7% java=30.9% Microsoft=29.5% 

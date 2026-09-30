@@ -1,0 +1,50 @@
+# RUN-057 evidence: the load tiers on the same machine after the start gate moved from swap free to memory_pressure; TC-WORLD-054 (M3-C,
+# 200 bots walk and ride 600 s), TC-WORLD-081 to TC-WORLD-084 (M3-E: directory mode 200 bots 30 min, 500 bots spread and in one cell 600 s,
+# two regions with transfers 900 s), and TC-WORLD-041 (the config key count and the counter proofs after M3-D), 2026-09-30 10:23~12:03.
+# Code: branch m3/load-tests at 5c7874ed5c, the head of main (this round changes documents only). git fetch before the registration:
+# origin/main is 5c7874ed5c and registers up to RUN-056; RUN-058 onwards belong to another session by agreement.
+#
+# 01-tc-world-041.txt   TC-WORLD-041 steps 1 to 5 (115 config keys; the counter proofs with M3-D's two SynxOptionsTest methods)
+# 02-gates.txt          the start gate reading of every tier, the order of the tiers, the other sessions' load while they ran
+# 03-build-and-bake.txt installDist of server-app, loadtest and baker; the 4k test map baked into <L> (content_hash as RUN-041)
+# 04-054-walk.txt       TC-WORLD-054 step 1: JFR counts, slow ticks against GC pauses, shard log, ledger, summary.json figures, machine
+# 05-054-ride.txt       TC-WORLD-054 step 2, the same
+# 06-081.txt            TC-WORLD-081: shard log, ledger, 61 heartbeat readings, summary.json figures, machine
+# 07-082.txt            TC-WORLD-082: the same with the five readings of DESIGN-M3 §15 (ticks.acquire_ms is null)
+# 08-083.txt            TC-WORLD-083: the same; the Map mounted line has spawn=Pos[x=1912.5, y=77.0, z=1912.5]
+# 09-084.txt            TC-WORLD-084: both shards, the ledgers paired by transfer_ref, the bot-side transfers, ShardService results
+# 10-limit-readings.txt per tier: uplink packets per bot (1 s and 7 s windows), inbound-limit kicks, outbound backlog kicks, visible
+#                       entities, ledger drops; what the round cannot give and why
+# 11-scripts.txt        the scripts of the round: gate, monitor, the tier runners, the readers of JFR, ledgers and summaries
+# Not kept (deleted with <L>): summary.json, bots-*.json, server*.json, zero.jfr, shard logs, ledgers, monitor output; the lines above are
+# copied out of them. <L> is a mktemp -d directory under $TMPDIR.
+#
+# Machine: Apple M4 Pro, 12 cores, 24 GiB, macOS, Homebrew JDK 25.0.4.1; server, bots, PostgreSQL 16 and Valkey 8 (the shared containers
+# synaxis-pg and synaxis-valkey in the Docker VM) on this one machine over loopback (the same-machine tier of DESIGN-M3 §15). Other
+# sessions ran all along (02-gates.txt): load1 while the tiers ran 3.9 to 68.2.
+#
+# JVM of the servers (bin/server-shard puts JAVA_OPTS after its defaults -XX:+UseG1GC -Xms4G -Xmx4G -XX:+AlwaysPreTouch
+# -XX:MaxGCPauseMillis=50 -XX:+HeapDumpOnOutOfMemoryError -XX:+ExitOnOutOfMemoryError, so the later -Xms/-Xmx win):
+#   TC-WORLD-054: JAVA_OPTS="-Xms1G -Xmx1G", the text of TC-WORLD-053 that TC-WORLD-054 refers to
+#   TC-WORLD-081 to 084: JAVA_OPTS="-Xms512m -Xmx512m", the two-process fixture of the M3-E section that TC-WORLD-081 refers to
+#     ("其余按两进程夹具"). Checked before 081 against 054: the largest heap after a GC was 138.1 MB (walk) and 364.0 MB (ride) in a 1 GiB
+#     heap. No shard ran out of memory; RSS at most 545.9 (081), 572.8 (082), 577.6 (083), 537.6 and 369.6 MiB (084).
+#   AlwaysPreTouch stayed on in every tier (none of the texts turns it off).
+# Deviation: the tier scripts of 054 and 081 to 083 exported JAVA_OPTS, and the loadtest start script reads JAVA_OPTS too, so the bots and
+#   the sampler of those tiers ran with the server's heap after their own -Xmx2G: 1 GiB in 054, 512 MiB in 081 to 083 (seen with pgrep
+#   during 081). 084 set JAVA_OPTS for the shards only and ran them with the default 2 GiB. Every bot logged in and none was lost, and the
+#   uplink per bot is alike in all tiers (42.6 to 45.9 packets/s), so the smaller harness heap did not starve the bots; it is not what the
+#   case texts meant, which pass JAVA_OPTS to the server only.
+#
+# Results (docs/TEST.md RUN-057):
+#   TC-WORLD-041  pass: 115 keys read, 115 in ConfigFile.KEYS; step 2 115/113, step 3 9 tests 2 failed at SynxOptionsTest.java:34
+#   TC-WORLD-054  fail: ticks over 50 ms 4 (walk) and 7 (ride), 0 required; zero encoding, bandwidth (-1.6%, -2.9%), 200/200 logins,
+#                 0 lost and chunks per bot all met
+#   TC-WORLD-081  pass on the same machine (tick P99 15.8 ms, 44 ticks over 50 ms and RSS 545.9 MiB recorded only)
+#   TC-WORLD-082  fail: ticks.acquire_ms is null, four of the five readings (the harness does not export it, DESIGN-PROD API-PROD-015)
+#   TC-WORLD-083  fail: the same
+#   TC-WORLD-084  pass: 2240 transfers, 2240 completed, P95 445.7 ms, ledger 2240/2240, first_batch_ms P95 309 ms
+#
+# Cleanup at the end of the round: the shards and bots stopped by pid (SIGTERM; none left, ps checked); databases run057_t081..t084
+# dropped; <L> (map, roots, work dirs, JFR, the venv for the JSON reading) deleted; no Kotlin daemon log of this worktree was written
+# (the $TMPDIR logs of the round's time all name Kando/App/android).

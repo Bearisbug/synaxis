@@ -1,0 +1,54 @@
+# TC-WORLD-041, run on m3/load-tests at 5c7874ed5c (the code of main 5c7874ed5c), 2026-09-30 10:23~10:26, one Gradle at a time:
+# ./gradlew --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts --max-workers=4 <tasks>, JAVA_TOOL_OPTIONS with the proxy
+# of docs/ENGINE.md. Why: M3-D added two config keys (synaxis.relight-threads, synaxis.relight.resend-light) and two SynxOptionsTest
+# methods; the case still wrote 113 keys and tests="4". The JUnit XML lines below are copied out of build/test-results.
+
+## step 1: :synx:test SynxOptionsTest OverlayOptionsTest, :server-app:test ShardSettingsTest, :architecture-tests:test ConfigKeyGateTest
+BUILD SUCCESSFUL in 10s
+SynxOptionsTest     tests="6" failures="0" errors="0" skipped="0"   (timestamp 2026-09-30T02:23:22Z, executed, not from the cache)
+OverlayOptionsTest  tests="3" failures="0" errors="0" skipped="0"
+ShardSettingsTest   tests="6" failures="0" errors="0" skipped="0"
+ConfigKeyGateTest   tests="1" failures="0" errors="0" skipped="0"
+<system-out>: config key gate: 115 keys read, 115 in ConfigFile.KEYS, 20 meter names left out
+(SynxOptionsTest: the two methods M3-D added are aResendThatIsNotLowerCaseTrueOrFalseIsRefused and
+ relightThreadsBelowOneOrNoIntegerAreRefused; they belong to TC-WORLD-098 step 1)
+
+## step 2: counter proof of the gate. ConfigFile.java lines 162-163 "synaxis.overlay.cap", "synaxis.overlay.flush-interval-s" deleted
+ConfigKeyGateTest > theTableOfTheConfigFileIsEveryKeyTheCodeReads() FAILED
+    org.opentest4j.AssertionFailedError at ConfigKeyGateTest.java:74
+1 test completed, 1 failed
+BUILD FAILED in 10s
+failure message: Problems of the config key gate (2):
+  synaxis.overlay.cap is read (io.github.bearisbug.synaxis.synx.OverlayOptions) but not in ConfigFile.KEYS, so the config file refuses it
+  synaxis.overlay.flush-interval-s is read (io.github.bearisbug.synaxis.synx.OverlayOptions) but not in ConfigFile.KEYS, so the config file refuses it
+   ==> expected: <true> but was: <false>
+<system-out>: config key gate: 115 keys read, 113 in ConfigFile.KEYS, 20 meter names left out
+git checkout -- ConfigFile.java; git status --porcelain: empty
+
+## step 3: SynxOptions.java:81 case "true" -> true;  ->  case "true", "TRUE" -> true;
+##         OverlayOptions.java:49 if (parsed < min || parsed > max) {  ->  if (parsed < min) {
+OverlayOptionsTest > aValueOutOfRangeOrNotAnIntegerIsRefused() FAILED
+    org.opentest4j.AssertionFailedError at OverlayOptionsTest.java:31
+SynxOptionsTest > aBooleanOtherThanLowerCaseTrueOrFalseIsRefused() FAILED
+    org.opentest4j.AssertionFailedError at SynxOptionsTest.java:34
+9 tests completed, 2 failed
+BUILD FAILED in 9s
+SynxOptionsTest:    Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown.
+OverlayOptionsTest: expected: <Property 'synaxis.overlay.flush-interval-s' is not from 1 to 60: 61> but was: <flush_interval_s must be from 1 to 60: 61>
+(the case wrote 7 tests and SynxOptionsTest.java:32; M3-D's two methods moved the line down)
+git checkout -- SynxOptions.java OverlayOptions.java; git status --porcelain: empty
+
+## step 4: ShardSettings.java:63 if (grace != -1 && grace < 1) {  ->  if (grace < -1) {
+ShardSettingsTest > aValueThatIsNotAnIntegerOrAGraceBelowOneIsRefused() FAILED
+    org.opentest4j.AssertionFailedError at ShardSettingsTest.java:72
+6 tests completed, 1 failed
+BUILD FAILED in 7s
+message: Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown.
+git checkout -- ShardSettings.java; git status --porcelain: empty
+
+## step 5: step 1 again. The first try came back from the build cache (the XML timestamps were those of step 1), so it was run
+## again with --rerun on the three test tasks
+BUILD SUCCESSFUL in 12s
+SynxOptionsTest tests="6", OverlayOptionsTest tests="3", ShardSettingsTest tests="6", ConfigKeyGateTest tests="1", 0 failures,
+timestamps 2026-09-30T02:26:03Z~02:26:04Z; config key gate: 115 keys read, 115 in ConfigFile.KEYS, 20 meter names left out
+post condition: git status --porcelain empty

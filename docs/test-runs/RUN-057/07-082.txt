@@ -1,0 +1,111 @@
+# TC-WORLD-082: directory mode, 500 bots walk 600 s spread (r0 0,0,255,255, r0-c1 capacity 500)
+# t082 start 2026-09-30 10:54:14 shard=r0-c1 profile=walk bots=500 duration=600s load { 4.62 5.84 6.93 } vm.swapusage: total = 22528.00M  used = 21379.62M  free = 1148.38M  (encrypted)
+# JAVA_OPTS=-Xms512m -Xmx512m SERVER_APP_OPTS=-Dsynaxis.app.port=25621 -Dsynaxis.app.auth=offline -Dsynaxis.app.metrics.bind=127.0.0.1:19621 -Dsynaxis.connection-gate.trusted-networks=127.0.0.0/8 -Dsynaxis.app.log=stdout -Dsynaxis.map.root=<L>/roots/t082 -Dsynaxis.map.build=synth-09b42ebb5dc6-p776 -Dsynaxis.app.store=postgres -Dsynaxis.app.shard-id=r0-c1 env SYNAXIS_STATE_DB_URL=jdbc:postgresql://127.0.0.1:5440/run057_t082 SYNAXIS_REDIS_URL=redis://127.0.0.1:6440 SYNAXIS_TRANSFER_HMAC_KEYS=<one random 32-byte key, key_id 1>
+# server pid 86007 monitor pid 86006
+# run exit 0
+# sample exit 0
+# merge exit 2
+# t082 end 2026-09-30 11:04:39 load { 21.24 20.92 14.92 } vm.swapusage: total = 24576.00M  used = 23529.50M  free = 1046.50M  (encrypted)
+# server JVM: bin/server-shard defaults (-XX:+UseG1GC -Xms4G -Xmx4G -XX:+AlwaysPreTouch -XX:MaxGCPauseMillis=50 -XX:+HeapDumpOnOutOfMemoryError
+#   -XX:+ExitOnOutOfMemoryError) followed by the JAVA_OPTS above, so the heap is the one JAVA_OPTS gives, pre-touched
+# shards.json (<L>/roots/t082/shards.json, next to a symbolic link to <L>/maps/synth/synth-09b42ebb5dc6-p776):
+#   {
+#     "format_version": 1,
+#     "map_id": "synth",
+#     "regions": [
+#       {"region_id": "r0", "bounds": {"min_x": 0, "min_z": 0, "max_x": 255, "max_z": 255}, "gates": []}
+#     ],
+#     "channels": [
+#       {"shard_id": "r0-c1", "region_id": "r0", "channel": 1, "host": "127.0.0.1", "port": 25621, "capacity": 500}
+#     ]
+#   }
+# database run057_t082 in synaxis-pg, bin/server-app --migrate-only --auth-mode=offline: migrate exit=0, flyway_schema_history 1|t 2|t 3|t 4|t 5|t 6|t 
+# sample: loadtest sample --pid <pid> --duration <duration + 20>s --metrics http://127.0.0.1:<metrics port>/metrics --out server.json; bots 5 s later:
+#   loadtest run --host 127.0.0.1 --port <port> --bots <n> --profile <profile> --encryption off --duration <duration>s --out bots-0.json (warm-up 60 s, login 20/s)
+# heartbeat: docker exec synaxis-pg psql -U postgres -d run057_t082 every 30 s while the shard ran
+
+## shard log
+10:54:15.508 [main] INFO  i.github.bearisbug.synaxis.app.Main - Effective ServerConfig[shutdownOnSignal=true, maxTickCatchUp=5, chunkViewDistance=12, entityViewDistance=8, entitySynchronizationTicks=20, dispatcherThreads=10, threadProvider=GRID, threadGridExponent=4, sendLightAfterBlockPlacementDela
+10:54:15.982 [main] INFO  i.g.b.synaxis.app.shard.ShardWorld - Map release synth-09b42ebb5dc6-p776 verified in 454 ms: bounds=Bounds[minX=0, minZ=0, maxX=255, maxZ=255] world=World[minY=0, height=256]
+10:54:16.341 [main] INFO  i.github.bearisbug.synaxis.app.Main - Effective store: mode=postgres auth_mode=offline StoreSettings[jdbcUrl=jdbc:postgresql://127.0.0.1:5440/run057_t082, user=postgres, password=<set>, redis=<set>]
+10:54:16.396 [main] INFO  i.g.b.s.app.metrics.HostMetrics - Metrics endpoint listening on http://127.0.0.1:19621/metrics
+10:54:16.437 [main] INFO  i.g.b.synaxis.app.shard.ShardWorld - Map mounted: build_id=synth-09b42ebb5dc6-p776 simulation_distance=4 chunk_unload_grace_ticks=100 spawn=Pos[x=2040.5, y=74.0, z=2040.5, yaw=0.0, pitch=0.0] overlay=overlay/synth-09b42ebb5dc6-p776
+10:54:16.439 [main] INFO  i.github.bearisbug.synaxis.app.Main - Map mode (synaxis.app.core-mode=on): the host serves the map instance, no plugin is loaded, spawn=Pos[x=2040.5, y=74.0, z=2040.5, yaw=0.0, pitch=0.0]
+10:54:16.441 [main] INFO  i.github.bearisbug.synaxis.app.Main - synaxis server-app listening on 0.0.0.0:25621
+11:04:39.002 [Thread-3] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+11:04:39.005 [Thread-3] INFO  i.g.b.synaxis.synx.SynxRelight - Relight drain: 0 ms, left=0
+11:04:39.043 [Syn-TickScheduler] INFO  i.g.b.synaxis.synx.OverlayStore - Overlay final flush: chunks=0 bytes=0 fsync_ms=0 left=0 by=tick
+Effective ServerConfig fields: acceptTransfers=true chunkViewDistance=12 dispatcherThreads=10 maxOutboundBacklogBytes=4194304 maxPlayers=500 maxVisibleEntitiesPerPlayer=100 packetLimitAction=KICK packetLimitMaxPackets=582 packetLimitWindow=7000 threadProvider=GRID 
+WARN/ERROR lines: 0
+log lines with kick or disconnect other than the config line: 0
+## ledger (logs/events-*.jsonl)
+events by type: chunk_stream_stats 10, session_entered_configuration 500, shard_started 1, shutdown_saved 1, 
+{"ts":"2026-09-30T02:54:16.441289Z","event":"shard_started","build_id":"synth-09b42ebb5dc6-p776","verify_ms":454,"regions":64,"bytes_mapped":213319659,"overlay_records":0,"flags_replayed":0,"flags_ms":3,"region_id":"r0","capacity":500}
+chunk_stream_stats over its 10 records: {"overlay_sent_max":0,"handle_sent_sum":3020761,"failed_max":0,"evict_failed_max":0,"write_phase_ms_max":17.746041,"section_cache_bytes_max":12884160}
+## heartbeat (psql every 30 s)
+readings 21, largest age_s 3.65
+10:54:16 r0-c1 online=0 capacity=500 accepting=true age_s=0.19 
+10:54:46 r0-c1 online=491 capacity=500 accepting=true age_s=0.27 
+10:55:16 r0-c1 online=500 capacity=500 accepting=true age_s=0.35 
+10:55:46 r0-c1 online=500 capacity=500 accepting=true age_s=0.54 
+10:56:17 r0-c1 online=500 capacity=500 accepting=true age_s=0.66 
+10:56:47 r0-c1 online=500 capacity=500 accepting=true age_s=0.75 
+10:57:17 r0-c1 online=500 capacity=500 accepting=true age_s=0.84 
+10:57:47 r0-c1 online=500 capacity=500 accepting=true age_s=0.93 
+10:58:17 r0-c1 online=500 capacity=500 accepting=true age_s=1.02 
+10:58:47 r0-c1 online=500 capacity=500 accepting=true age_s=1.14 
+10:59:17 r0-c1 online=500 capacity=500 accepting=true age_s=1.32 
+10:59:47 r0-c1 online=500 capacity=500 accepting=true age_s=1.50 
+11:00:18 r0-c1 online=500 capacity=500 accepting=true age_s=1.91 
+11:00:48 r0-c1 online=500 capacity=500 accepting=true age_s=2.36 
+11:01:18 r0-c1 online=500 capacity=500 accepting=true age_s=2.48 
+11:01:48 r0-c1 online=500 capacity=500 accepting=true age_s=2.57 
+11:02:19 r0-c1 online=500 capacity=500 accepting=true age_s=2.84 
+11:02:49 r0-c1 online=500 capacity=500 accepting=true age_s=3.08 
+11:03:19 r0-c1 online=500 capacity=500 accepting=true age_s=3.22 
+11:03:49 r0-c1 online=500 capacity=500 accepting=true age_s=3.49 
+11:04:20 r0-c1 online=500 capacity=500 accepting=true age_s=3.65 
+## summary.json
+{"bots":{"pass":true,"detail":"500 of 500 logged in, 0 lost"},"chunks_per_bot_min":{"pass":true,"detail":"5694 > 9"},"tick_p99_ms":{"pass":false,"detail":"57.183 < 50.0"},"ticks_over_50ms":{"pass":false,"detail":"163 <= 0"},"rss_mib_max":{"pass":true,"detail":"572.766 < 4096.0"},"pass":false}
+bots: {"requested":500,"logged_in":500,"lost":0,"login_failures":{}} kicks_by_reason: {} login_latency_ms: {"off":{"count":500,"mean_ms":27.479,"p50_ms":27.2,"p99_ms":31.9,"max_ms":59.9,"over_50ms":1}}
+ticks: count 12377 overall {"count":12377,"mean_ms":7.028,"p50_ms":3.046,"p99_ms":57.183,"max_ms":732.829,"over_50ms":163}
+ticks per minute (P99 ms / over 50 ms): 0:17.671/0 1:33.489/7 2:12.432/1 3:23.809/2 4:78.431/26 5:105.49/46 6:52.674/15 7:52.62/12 8:60.156/21 9:75.661/31 10:12.948/2 
+ticks.acquire_ms in the server file: null
+gc: {"count":183,"mean_ms":23.808,"p50_ms":14.958,"p99_ms":154.266,"max_ms":309.621,"over_50ms":19}
+heap: {"rss_mib_max":572.766,"heap_used_mib_max":456.078}
+dispatcher_busy_ratio: {"Syn-Tick-0":0.009,"Syn-Tick-1":0.089,"Syn-Tick-2":0.055,"Syn-Tick-3":0.01,"Syn-Tick-4":0.005,"Syn-Tick-5":0.01,"Syn-Tick-6":0.006,"Syn-Tick-7":0.002,"Syn-Tick-8":0.09,"Syn-Tick-9":0.059,"Syn-TickScheduler":0.14}
+traffic: {"packets_in_per_s":20236.774,"packets_out_per_s":910420.013,"bytes_in_per_s":302650.101,"bytes_out_per_s":25371504.653}
+per player egress: server bytes_out_per_s / 500 = 50743 B/s; bots receive inbound.bytes_per_s_per_bot 49812.51 B/s
+inbound.chunks: {"walk":{"packets":3039191,"wire_bytes":4494818683,"connection_seconds":293228.956,"kb_per_s_per_bot":14.969,"packets_per_s_per_bot":10.365,"steady_packets":2431346,"steady_wire_bytes":3600923736,"steady_connection_seconds":263228.956,"steady_kb_per_s_per_bot":13.359,"steady_packets_per_s_per_bot":9.237,"per_bot_packets":{"count":500,"mean":6078.382,"p50":6078.0,"p99":6357.0,"max":6438.0,"min":5694.0}}}
+walk: steady KB/s per bot (1,000 B) 13.68; B per chunk 1481; per_bot_packets min 5694.0
+transfers: {"count":0,"completed":0,"failed_by_reason":{},"transfer_ms":{"count":0}}
+## readings for the inbound packet limit and the outbound limits
+c2s: {"packets":12546891,"packets_per_s_per_bot":42.789,"per_bot_per_1s":{"count":292950,"mean":42.764,"p50":40.0,"p99":60.0,"max":68.0},"per_bot_per_7s":{"count":289950,"mean":298.733,"p50":295.0,"p99":359.0,"max":420.0}}
+visible_entities: {"count":293450,"mean":89.364,"p50":100.0,"p99":100.0,"max":100.0}
+metrics-end.txt: synaxis_ledger_dropped_total 0.0;synaxis_outbound_backlog_kicks_total 0.0;synaxis_players_online 0.0;synaxis_watchdog_warnings_total 0.0; gate rejections: {reason="closed_at_accept"} 0.0 {reason="full"} 0.0 {reason="handshake_timeout"} 0.0 {reason="throttled"} 0.0 {reason="too_many"} 0.0 
+## load
+summary load1 {"min":4.409,"max":52.403}; harness [{"cpu_seconds":553.598,"cpu_percent_mean":92.411}]
+monitor: memory free 29~45%, swap free 360.81~1502.12 MB, load1 4.54~45.64
+
+## machine during the tier (monitor every 30 s)
+10:54:14 mem_free=39% swap_free=1148.38MB load1=4.62 rss_top5: com.apple.Virtualization.VirtualMachine=926MB claude=393MB claude=383MB qemu-system-aarch64-headless=364MB TencentMeeting=317MB  cpu_top5: xpcproxy_sim=71.1% TencentMeeting=42.9% qemu-system-aarch64-headless=11.9% WindowServer=11.9% claude=8.5% 
+10:54:44 mem_free=36% swap_free=1172.38MB load1=4.54 rss_top5: com.apple.Virtualization.VirtualMachine=669MB java=537MB claude=466MB java=432MB TencentMeeting=290MB  cpu_top5: java=91.2% java=85.9% TencentMeeting=50.6% WindowServer=27.7% com.apple.Virtualization.VirtualMachine=25.9% 
+10:55:14 mem_free=31% swap_free=1137.00MB load1=6.62 rss_top5: java=746MB java=464MB com.apple.Virtualization.VirtualMachine=445MB claude=343MB java=301MB  cpu_top5: java=201.5% java=82.3% java=73.3% TencentMeeting=39.7% com.apple.Virtualization.VirtualMachine=27.5% 
+10:55:44 mem_free=31% swap_free=526.94MB load1=12.77 rss_top5: java=613MB java=333MB java=302MB com.apple.Virtualization.VirtualMachine=283MB swift-frontend=274MB  cpu_top5: java=98.5% java=85.9% java=69.9% swift-frontend=43.0% com.apple.Virtualization.VirtualMachine=42.3% 
+10:56:15 mem_free=33% swap_free=504.75MB load1=20.59 rss_top5: com.apple.Virtualization.VirtualMachine=639MB java=466MB java=463MB java=402MB claude=369MB  cpu_top5: java=85.8% java=70.7% TencentMeeting=27.8% WindowServer=14.6% coreaudiod=6.3% 
+10:56:45 mem_free=45% swap_free=597.81MB load1=18.43 rss_top5: com.apple.Virtualization.VirtualMachine=704MB java=549MB java=418MB claude=330MB claude=301MB  cpu_top5: java=81.8% java=74.5% coreduetd=67.0% TencentMeeting=33.6% iOS=23.7% 
+10:57:15 mem_free=40% swap_free=885.94MB load1=12.80 rss_top5: com.apple.Virtualization.VirtualMachine=480MB java=475MB java=366MB claude=340MB claude=258MB  cpu_top5: java=83.5% java=79.9% TencentMeeting=36.0% WindowServer=27.6% FaceTimeNotificationExtension=23.9% 
+10:57:45 mem_free=43% swap_free=1038.00MB load1=9.27 rss_top5: com.apple.Virtualization.VirtualMachine=788MB java=559MB Microsoft=409MB java=406MB Microsoft=347MB  cpu_top5: java=100.4% java=71.8% WindowServer=31.3% TencentMeeting=25.3% Microsoft=15.3% 
+10:58:15 mem_free=41% swap_free=1222.00MB load1=10.19 rss_top5: com.apple.Virtualization.VirtualMachine=751MB java=565MB claude=459MB java=393MB Microsoft=377MB  cpu_top5: java=105.8% java=81.1% iOS=56.1% TencentMeeting=31.0% Microsoft=22.6% 
+10:58:45 mem_free=36% swap_free=1302.00MB load1=8.29 rss_top5: Microsoft=633MB com.apple.Virtualization.VirtualMachine=627MB java=471MB claude=458MB java=388MB  cpu_top5: java=86.7% java=72.8% XCBBuildService=56.9% Microsoft=35.9% Application=31.8% 
+10:59:16 mem_free=32% swap_free=814.06MB load1=14.47 rss_top5: java=427MB com.apple.Virtualization.VirtualMachine=357MB java=353MB java=331MB qemu-system-aarch64-headless=311MB  cpu_top5: java=88.4% java=86.9% java=79.7% (proactiveeventtr)=63.8% proactiveeventtrackerd=47.8% 
+10:59:46 mem_free=34% swap_free=945.31MB load1=32.08 rss_top5: java=437MB java=432MB com.apple.Virtualization.VirtualMachine=396MB java=380MB swift-frontend=325MB  cpu_top5: java=110.0% java=86.0% java=85.3% swift-frontend=39.8% swift-frontend=39.5% 
+11:00:16 mem_free=32% swap_free=1265.38MB load1=30.59 rss_top5: java=1115MB java=370MB java=331MB com.apple.Virtualization.VirtualMachine=323MB claude=204MB  cpu_top5: java=260.5% java=101.3% java=85.1% java=57.6% CoreSimulatorBridge=42.2% 
+11:00:47 mem_free=32% swap_free=1454.12MB load1=45.64 rss_top5: Microsoft=860MB java=504MB com.apple.Virtualization.VirtualMachine=346MB claude=329MB Kando=310MB  cpu_top5: Microsoft=152.8% java=93.4% SimRenderServer=86.8% java=84.0% CodexBar=55.3% 
+11:01:17 mem_free=36% swap_free=1502.12MB load1=30.76 rss_top5: com.apple.Virtualization.VirtualMachine=734MB java=559MB claude=481MB java=394MB claude=292MB  cpu_top5: java=93.2% java=73.5% xpcproxy_sim=53.2% TencentMeeting=45.5% Microsoft=33.8% 
+11:01:47 mem_free=33% swap_free=1480.88MB load1=32.92 rss_top5: qemu-system-aarch64-headless=585MB java=415MB com.apple.Virtualization.VirtualMachine=394MB java=376MB Kando=323MB  cpu_top5: java=103.5% java=77.3% TencentMeeting=37.5% Microsoft=34.4% com.apple.Virtualization.VirtualMachine=19.0% 
+11:02:18 mem_free=29% swap_free=1340.69MB load1=26.12 rss_top5: java=374MB Kando=339MB java=278MB claude=268MB claude=241MB  cpu_top5: Kando=146.7% java=116.8% java=87.4% java=82.7% TencentMeeting=38.1% 
+11:02:48 mem_free=30% swap_free=360.81MB load1=22.10 rss_top5: java=594MB java=446MB Kando=430MB java=324MB com.apple.Virtualization.VirtualMachine=288MB  cpu_top5: java=207.8% java=115.4% java=100.8% SimRenderServer=95.4% Kando=60.2% 
+11:03:18 mem_free=39% swap_free=710.50MB load1=18.10 rss_top5: qemu-system-aarch64-headless=1533MB java=520MB com.apple.Virtualization.VirtualMachine=511MB claude=497MB java=396MB  cpu_top5: qemu-system-aarch64-headless=202.8% java=79.6% java=75.2% SimRenderServer=74.5% TencentMeeting=34.5% 
+11:03:48 mem_free=37% swap_free=926.50MB load1=18.39 rss_top5: qemu-system-aarch64-headless=1184MB java=521MB Kando=407MB com.apple.Virtualization.VirtualMachine=376MB Microsoft=350MB  cpu_top5: qemu-system-aarch64-headless=268.8% java=96.7% java=91.8% iOS=50.2% WindowServer=38.4% 
+11:04:19 mem_free=34% swap_free=974.50MB load1=24.03 rss_top5: Microsoft=527MB java=469MB claude=409MB com.apple.Virtualization.VirtualMachine=407MB Kando=382MB  cpu_top5: java=87.7% SimRenderServer=73.3% java=68.6% Microsoft=25.7% WindowServer=19.9% 

@@ -1,0 +1,375 @@
+# the scripts of RUN-057 as run (all under <L>, deleted afterwards); env.sh set JAVA_HOME (Homebrew openjdk@25), the proxy JAVA_TOOL_OPTIONS
+# of docs/ENGINE.md for Gradle (unset for the servers and bots), L and R (this worktree); pgpass held the password of synaxis-pg read from
+# docker inspect (never printed). run054.sh is the script of TC-WORLD-054 walk; ride used run054b.sh, the same with monitor2.sh.
+
+=== <L>/gate.sh
+#!/bin/zsh
+# usage: gate.sh <label> <min free %> [own pids...]
+# one reading: memory_pressure free %, swap (recorded only), load1, data-disk MB, shared containers, java/Gradle not in the own pid list, top 5 RSS
+label=$1; minfree=$2; shift 2; own=" $* "
+now=$(date '+%Y-%m-%d %H:%M:%S')
+freepct=$(memory_pressure | sed -nE 's/System-wide memory free percentage: ([0-9]+)%/\1/p')
+swap=$(sysctl -n vm.swapusage | sed -E 's/total = ([0-9.]+)M +used = ([0-9.]+)M +free = ([0-9.]+)M.*/total=\1MB used=\2MB free=\3MB/')
+load=$(sysctl -n vm.loadavg | awk '{print $2}')
+disk=$(df -m /System/Volumes/Data | awk 'NR==2{print $4}')
+ctr=$(docker ps --format '{{.Names}}' | grep -cE '^synaxis-(pg|valkey)$')
+foreign=""
+for p in $(pgrep -f 'java|gradle'); do
+  cmd=$(ps -o comm= -p $p 2>/dev/null) || continue
+  case "$cmd" in *java*|*gradle*) ;; *) continue;; esac
+  case "$own" in *" $p "*) continue;; esac
+  cwd=$(lsof -a -d cwd -p $p -Fn 2>/dev/null | grep ^n | cut -c2-)
+  foreign="$foreign $p($cwd)"
+done
+top=$(ps -axo rss=,comm= | sort -n -r | head -5 | awk '{n=$2; sub(".*/","",n); printf "%s=%dMB ", n, $1/1024}')
+ok=yes
+(( freepct >= minfree )) || ok=no
+[ -z "$foreign" ] || ok=no
+(( disk >= 5120 )) || ok=no
+echo "$now [$label] mem_free=${freepct}% (>= ${minfree}%) swap: $swap load1=$load disk_free=${disk}MB containers=$ctr foreign_java_gradle=[${foreign# }] top5: $top met=$ok"
+[ $ok = yes ]
+
+=== <L>/monitor2.sh
+#!/bin/zsh
+# usage: monitor2.sh <out> <every s>: time, memory free %, swap free, load1, top 5 by RSS and by CPU, until killed
+out=$1; every=$2
+while true; do
+  now=$(date '+%H:%M:%S')
+  freepct=$(memory_pressure | sed -nE 's/System-wide memory free percentage: ([0-9]+)%/\1/p')
+  swapfree=$(sysctl -n vm.swapusage | sed -E 's/.*free = ([0-9.]+)M.*/\1/')
+  load=$(sysctl -n vm.loadavg | awk '{print $2}')
+  top=$(ps -axo rss=,comm= | sort -n -r | head -5 | awk '{n=$2; sub(".*/","",n); printf "%s=%dMB ", n, $1/1024}')
+  cpu=$(ps -Ao pcpu=,comm= -r | head -5 | awk '{n=$2; sub(".*/","",n); printf "%s=%s%% ", n, $1}')
+  echo "$now mem_free=${freepct}% swap_free=${swapfree}MB load1=$load rss_top5: $top cpu_top5: $cpu" >> $out
+  sleep $every
+done
+
+=== <L>/run054.sh
+#!/bin/zsh
+# usage: run054.sh <tier name> <profile> <port> <metrics port>
+source <L>/env.sh; unset JAVA_TOOL_OPTIONS
+name=$1; profile=$2; port=$3; mport=$4
+LT=$R/loadtest/build/install/loadtest/bin/loadtest
+D=$L/$name; mkdir -p $D; cd $D
+log=$D/run.txt
+echo "# $name start $(date '+%F %T') profile=$profile bots=200 duration=600s warmup=60s load $(sysctl -n vm.loadavg) $(sysctl vm.swapusage)" >> $log
+$L/monitor.sh $D/monitor.txt 30 &
+mon=$!
+export JAVA_OPTS="-Xms1G -Xmx1G"
+export SERVER_APP_OPTS="-Dsynaxis.app.port=$port -Dsynaxis.app.auth=offline -Dsynaxis.app.shard-id=run057-$name -Dsynaxis.app.metrics.bind=127.0.0.1:$mport -Dsynaxis.connection-gate.trusted-networks=127.0.0.0/8 -Dsynaxis.app.log=stdout -Dsynaxis.map.root=$L/maps/synth -Dsynaxis.map.build=synth-09b42ebb5dc6-p776"
+echo "# JAVA_OPTS=$JAVA_OPTS SERVER_APP_OPTS=$SERVER_APP_OPTS" >> $log
+$R/server-app/build/install/server-app/bin/server-shard > $D/shard.log 2>&1 &
+spid=$!
+echo "# server pid $spid monitor pid $mon" >> $log
+for i in {1..120}; do grep -q "listening on 0.0.0.0:$port" $D/shard.log && break; sleep 0.5; done
+grep -q "listening on 0.0.0.0:$port" $D/shard.log || { echo "# no listening line" >> $log; kill $spid; kill $mon; exit 1; }
+jcmd $spid JFR.start name=zero settings=profile 'method-timing=io.github.bearisbug.synaxis.network.packet.server.play.ChunkDataPacket::<init>;io.github.bearisbug.synaxis.instance.DynamicChunk::createChunkPacket;io.github.bearisbug.synaxis.synx.SynxChunk::getFullDataPacket' 'jdk.ObjectAllocationSample#throttle=100000/s' 'jdk.ExecutionSample#period=2ms' >> $log 2>&1
+$LT sample --pid $spid --duration 620s --metrics http://127.0.0.1:$mport/metrics --out server.json > $D/sample.log 2>&1 &
+smp=$!
+sleep 5
+$LT run --host 127.0.0.1 --port $port --bots 200 --profile $profile --encryption off --duration 600s --warmup 60s --out bots-0.json > $D/bots.log 2>&1
+echo "# run exit $?" >> $log
+wait $smp; echo "# sample exit $?" >> $log
+jcmd $spid JFR.dump name=zero filename=$D/zero.jfr >> $log 2>&1
+jcmd $spid JFR.stop name=zero >> $log 2>&1
+curl -s --noproxy '*' http://127.0.0.1:$mport/metrics > $D/metrics-end.txt
+kill -TERM $spid
+for i in {1..60}; do kill -0 $spid 2>/dev/null || break; sleep 0.5; done
+kill -0 $spid 2>/dev/null && echo "# server still alive after 30 s" >> $log
+$LT merge bots-0.json server.json --out summary.json > $D/merge.log 2>&1
+echo "# merge exit $?" >> $log
+kill $mon
+echo "# $name end $(date '+%F %T') load $(sysctl -n vm.loadavg) $(sysctl vm.swapusage)" >> $log
+
+=== <L>/setup_tier.sh
+#!/bin/zsh
+# usage: setup_tier.sh <tier> <shards.json path>: map root <L>/roots/<tier> (shards.json + link to the release), database run057_<tier> migrated to V1..V6, <L>/<tier>.env
+set -e
+source <L>/env.sh; unset JAVA_TOOL_OPTIONS
+tier=$1; dir=$2; B=synth-09b42ebb5dc6-p776
+root=$L/roots/$tier; mkdir -p $root; cp $dir $root/shards.json
+[ -e $root/$B ] || ln -s $L/maps/synth/$B $root/$B
+docker exec synaxis-pg psql -U postgres -qc "CREATE DATABASE run057_$tier"
+umask 077
+{
+  echo "export SYNAXIS_STATE_DB_URL=jdbc:postgresql://127.0.0.1:5440/run057_$tier"
+  echo "export SYNAXIS_STATE_DB_USER=postgres"
+  echo "export SYNAXIS_STATE_DB_PASSWORD=\"\$(cat $L/pgpass)\""
+  echo "export SYNAXIS_REDIS_URL=redis://127.0.0.1:6440"
+  echo "export SYNAXIS_TRANSFER_HMAC_KEYS=1:$(openssl rand -base64 32)"
+} > $L/$tier.env
+source $L/$tier.env
+mkdir -p $L/$tier; cd $L/$tier
+$R/server-app/build/install/server-app/bin/server-app --migrate-only --auth-mode=offline > migrate.log 2>&1; echo "migrate exit=$?" >> migrate.log
+docker exec synaxis-pg psql -U postgres -d run057_$tier -tAc "select version, success from flyway_schema_history order by installed_rank" >> migrate.log
+
+=== <L>/run_m3e.sh
+#!/bin/zsh
+# usage: run_m3e.sh <tier> <shard_id> <port> <metrics port> <bots> <profile> <duration s> <JAVA_OPTS>
+source <L>/env.sh; unset JAVA_TOOL_OPTIONS
+tier=$1; id=$2; port=$3; mport=$4; bots=$5; profile=$6; dur=$7; heap=$8; B=synth-09b42ebb5dc6-p776
+source $L/$tier.env
+LT=$R/loadtest/build/install/loadtest/bin/loadtest
+D=$L/$tier; mkdir -p $D; cd $D
+log=$D/run.txt
+echo "# $tier start $(date '+%F %T') shard=$id profile=$profile bots=$bots duration=${dur}s load $(sysctl -n vm.loadavg) $(sysctl vm.swapusage)" >> $log
+$L/monitor2.sh $D/monitor.txt 30 &
+mon=$!
+export JAVA_OPTS="$heap"
+export SERVER_APP_OPTS="-Dsynaxis.app.port=$port -Dsynaxis.app.auth=offline -Dsynaxis.app.metrics.bind=127.0.0.1:$mport -Dsynaxis.connection-gate.trusted-networks=127.0.0.0/8 -Dsynaxis.app.log=stdout -Dsynaxis.map.root=$L/roots/$tier -Dsynaxis.map.build=$B -Dsynaxis.app.store=postgres -Dsynaxis.app.shard-id=$id"
+echo "# JAVA_OPTS=$JAVA_OPTS SERVER_APP_OPTS=$SERVER_APP_OPTS env SYNAXIS_STATE_DB_URL=$SYNAXIS_STATE_DB_URL SYNAXIS_REDIS_URL=$SYNAXIS_REDIS_URL SYNAXIS_TRANSFER_HMAC_KEYS=<one random 32-byte key, key_id 1>" >> $log
+$R/server-app/build/install/server-app/bin/server-shard > $D/shard.log 2>&1 &
+spid=$!
+echo "# server pid $spid monitor pid $mon" >> $log
+for i in {1..120}; do grep -q "listening on 0.0.0.0:$port" $D/shard.log && break; sleep 0.5; done
+grep -q "listening on 0.0.0.0:$port" $D/shard.log || { echo "# no listening line" >> $log; kill $spid; kill $mon; exit 1; }
+( while kill -0 $spid 2>/dev/null; do echo "$(date '+%H:%M:%S') $(docker exec synaxis-pg psql -U postgres -d run057_$tier -tAc "select shard_id||' online='||online||' capacity='||capacity||' accepting='||accepting||' age_s='||round(extract(epoch from now()-updated_at)::numeric,2) from shard_heartbeat order by 1" | tr '\n' ' ')" >> $D/heartbeat.txt; sleep 30; done ) &
+hb=$!
+$LT sample --pid $spid --duration $((dur + 20))s --metrics http://127.0.0.1:$mport/metrics --out server.json > $D/sample.log 2>&1 &
+smp=$!
+sleep 5
+$LT run --host 127.0.0.1 --port $port --bots $bots --profile $profile --encryption off --duration ${dur}s --out bots-0.json > $D/bots.log 2>&1
+echo "# run exit $?" >> $log
+wait $smp; echo "# sample exit $?" >> $log
+curl -s --noproxy '*' http://127.0.0.1:$mport/metrics > $D/metrics-end.txt
+kill -TERM $spid
+for i in {1..60}; do kill -0 $spid 2>/dev/null || break; sleep 0.5; done
+kill -0 $spid 2>/dev/null && echo "# server still alive after 30 s" >> $log
+kill $hb 2>/dev/null
+$LT merge bots-0.json server.json --out summary.json > $D/merge.log 2>&1
+echo "# merge exit $?" >> $log
+kill $mon
+echo "# $tier end $(date '+%F %T') load $(sysctl -n vm.loadavg) $(sysctl vm.swapusage)" >> $log
+
+=== <L>/run084.sh
+#!/bin/zsh
+# usage: run084.sh <JAVA_OPTS>: r0-c1 (25601) and r1-c1 (25602), 180 walk + 20 gate bots on r0 for 900 s
+source <L>/env.sh; unset JAVA_TOOL_OPTIONS
+tier=t084; heap=$1; B=synth-09b42ebb5dc6-p776; dur=900
+source $L/$tier.env
+LT=$R/loadtest/build/install/loadtest/bin/loadtest
+D=$L/$tier; mkdir -p $D; cd $D
+log=$D/run.txt
+echo "# $tier start $(date '+%F %T') 180 walk + 20 gate bots on r0-c1 for ${dur}s load $(sysctl -n vm.loadavg) $(sysctl vm.swapusage)" >> $log
+$L/monitor2.sh $D/monitor.txt 30 &
+mon=$!
+start_shard() { # id port mport
+  mkdir -p $D/work-$1; cd $D/work-$1
+  JAVA_OPTS="$heap" SERVER_APP_OPTS="-Dsynaxis.app.port=$2 -Dsynaxis.app.auth=offline -Dsynaxis.app.metrics.bind=127.0.0.1:$3 -Dsynaxis.connection-gate.trusted-networks=127.0.0.0/8 -Dsynaxis.app.log=stdout -Dsynaxis.dispatcher-threads=3 -Dsynaxis.map.root=$L/roots/$tier -Dsynaxis.map.build=$B -Dsynaxis.app.store=postgres -Dsynaxis.app.shard-id=$1" \
+    $R/server-app/build/install/server-app/bin/server-shard > $D/work-$1/shard.log 2>&1 &
+  echo $!
+  cd $D
+}
+echo "# JAVA_OPTS=$heap SERVER_APP_OPTS=-Dsynaxis.app.port=<port> -Dsynaxis.app.auth=offline -Dsynaxis.app.metrics.bind=127.0.0.1:<mport> -Dsynaxis.connection-gate.trusted-networks=127.0.0.0/8 -Dsynaxis.app.log=stdout -Dsynaxis.dispatcher-threads=3 -Dsynaxis.map.root=$L/roots/$tier -Dsynaxis.map.build=$B -Dsynaxis.app.store=postgres -Dsynaxis.app.shard-id=<id>; env SYNAXIS_STATE_DB_URL=$SYNAXIS_STATE_DB_URL SYNAXIS_REDIS_URL=$SYNAXIS_REDIS_URL SYNAXIS_TRANSFER_HMAC_KEYS=<one random 32-byte key, key_id 1>" >> $log
+p0=$(start_shard r0-c1 25601 19601)
+p1=$(start_shard r1-c1 25602 19602)
+echo "# r0-c1 pid $p0 r1-c1 pid $p1 monitor pid $mon" >> $log
+for i in {1..120}; do grep -q "listening on 0.0.0.0:25601" $D/work-r0-c1/shard.log && grep -q "listening on 0.0.0.0:25602" $D/work-r1-c1/shard.log && break; sleep 0.5; done
+grep -q "listening on 0.0.0.0:25601" $D/work-r0-c1/shard.log && grep -q "listening on 0.0.0.0:25602" $D/work-r1-c1/shard.log || { echo "# no listening line" >> $log; kill $p0 $p1 $mon; exit 1; }
+sleep 6
+( while kill -0 $p0 2>/dev/null; do echo "$(date '+%H:%M:%S') $(docker exec synaxis-pg psql -U postgres -d run057_$tier -tAc "select shard_id||' online='||online||' capacity='||capacity||' accepting='||accepting||' age_s='||round(extract(epoch from now()-updated_at)::numeric,2) from shard_heartbeat order by 1" | tr '\n' ' ')" >> $D/heartbeat.txt; sleep 30; done ) &
+hb=$!
+$LT sample --pid $p0 --duration $((dur + 20))s --metrics http://127.0.0.1:19601/metrics --out server-r0.json > $D/sample-r0.log 2>&1 &
+s0=$!
+$LT sample --pid $p1 --duration $((dur + 20))s --metrics http://127.0.0.1:19602/metrics --out server-r1.json > $D/sample-r1.log 2>&1 &
+s1=$!
+sleep 5
+$LT run --host 127.0.0.1 --port 25601 --bots 180 --profile walk --encryption off --duration ${dur}s --out bots-walk.json > $D/bots-walk.log 2>&1 &
+b0=$!
+$LT run --host 127.0.0.1 --port 25601 --bots 20 --bot-offset 180 --profile gate --gates "2032,0,1016,2047,255,1031;2048,0,1016,2063,255,1031" --dwell 6s --encryption off --duration ${dur}s --out bots-gate.json > $D/bots-gate.log 2>&1 &
+b1=$!
+wait $b0; echo "# walk run exit $?" >> $log
+wait $b1; echo "# gate run exit $?" >> $log
+wait $s0; echo "# sample r0 exit $?" >> $log
+wait $s1; echo "# sample r1 exit $?" >> $log
+curl -s --noproxy '*' http://127.0.0.1:19601/metrics > $D/metrics-end-r0.txt
+curl -s --noproxy '*' http://127.0.0.1:19602/metrics > $D/metrics-end-r1.txt
+kill -TERM $p0 $p1
+for i in {1..60}; do kill -0 $p0 2>/dev/null || kill -0 $p1 2>/dev/null || break; sleep 0.5; done
+kill -0 $p0 2>/dev/null && echo "# r0 still alive after 30 s" >> $log
+kill -0 $p1 2>/dev/null && echo "# r1 still alive after 30 s" >> $log
+kill $hb 2>/dev/null
+$LT merge bots-walk.json bots-gate.json server-r0.json --min-transfers 1000 --out summary.json > $D/merge.log 2>&1
+echo "# merge exit $?" >> $log
+$LT merge bots-walk.json bots-gate.json server-r1.json --min-transfers 1000 --out summary-r1.json > $D/merge-r1.log 2>&1
+echo "# merge (server r1) exit $?" >> $log
+kill $mon
+echo "# $tier end $(date '+%F %T') load $(sysctl -n vm.loadavg) $(sysctl vm.swapusage)" >> $log
+
+=== <L>/analyze054.sh
+#!/bin/zsh
+# usage: analyze054.sh <tier dir>: JFR counts, ledger, summary figures, metrics, log checks
+source <L>/env.sh; unset JAVA_TOOL_OPTIONS
+D=$1; cd $D
+echo "## JFR (jfr print; counts over the whole recording)"
+jfr print --events jdk.MethodTiming zero.jfr | awk '/jdk.MethodTiming/{m=""} /method = /{m=$0} /invocations = /{last[m]=$3} END{for (k in last) print "MethodTiming last invocations:", k, "=", last[k]}' | sed 's/  *method = //'
+jfr print --stack-depth 64 --events jdk.ExecutionSample zero.jfr | awk '/^jdk.ExecutionSample/{n++; if (c) cc++; if (g) gg++; c=0; g=0} /createChunkPacket/{c=1} /getFullDataPacket/{g=1} END{if (c) cc++; if (g) gg++; print "ExecutionSample events:", n; print "ExecutionSample events with createChunkPacket in the stack:", cc+0; print "ExecutionSample events with SynxChunk.getFullDataPacket in the stack:", gg+0}'
+jfr print --stack-depth 64 --events jdk.ObjectAllocationSample zero.jfr | awk '/^jdk.ObjectAllocationSample/{n++; if (c) cc++; c=0} /createChunkPacket/{c=1} /objectClass = .*ChunkDataPacket/{k++} END{if (c) cc++; print "ObjectAllocationSample events:", n; print "ObjectAllocationSample events with objectClass ChunkDataPacket:", k+0; print "ObjectAllocationSample events with createChunkPacket in the stack:", cc+0}'
+jfr print --events jdk.GCHeapSummary zero.jfr | awk '/when = "After GC"/{a=1} /when = "Before GC"/{a=0} /heapUsed = /{if (a) {v=$3; u=$4; print v, u}}' | sort -n | awk '{x[NR]=$0} END{print "GCHeapSummary after GC heapUsed: count", NR, "max", x[NR]}'
+echo "## shard log"
+grep -E "Effective ServerConfig|verified in|Map mounted|Map mode|listening on|Stopping|Overlay final flush|Relight drain" shard.log | cut -c1-700
+echo "WARN/ERROR lines: $(grep -c 'WARN\|ERROR' shard.log)"
+grep 'WARN\|ERROR' shard.log | head -20 | cut -c1-400
+echo "kick/disconnect lines in the log: $(grep -ci 'kick\|disconnect' shard.log)"
+grep -i 'kick\|disconnect' shard.log | head -10 | cut -c1-300
+echo "overlay/ in the work dir: $(ls overlay 2>/dev/null) ; files: $(ls -A overlay/* 2>/dev/null | wc -l)"
+echo "## ledger (logs/*.jsonl)"
+cat logs/events-*.jsonl | jq -c 'select(.event != "chunk_stream_stats")' | awk '{print}' | cut -c1-300 | sort | uniq -c | sort -rn | head -5
+echo "ledger events by type: $(cat logs/events-*.jsonl | jq -r .event | sort | uniq -c | tr '\n' ' ')"
+cat logs/events-*.jsonl | jq -c 'select(.event=="shard_started")'
+cat logs/events-*.jsonl | jq -s '[.[] | select(.event=="chunk_stream_stats")] | {records: length, overlay_sent_sum: (map(.overlay_sent)|add), handle_sent_min: (map(.handle_sent)|min), handle_sent_sum: (map(.handle_sent)|add), failed_sum: (map(.failed)|add), evict_failed_sum: (map(.evict_failed)|add), write_phase_ms_max: (map(.write_phase_ms_max)|max), section_cache_bytes_max: (map(.section_cache_bytes)|max)}' -c
+echo "## summary.json"
+jq -c .verdict summary.json
+jq -c '.server.ticks // .ticks' summary.json | cut -c1-600
+jq -c '.bots, .kicks_by_reason, .login_failures' summary.json
+jq -c '.inbound.chunks' summary.json
+jq -r '.inbound.chunks | to_entries[] | "\(.key): steady_wire_bytes / steady_connection_seconds / 1000 = \(.value.steady_wire_bytes) / \(.value.steady_connection_seconds) / 1000 = \(.value.steady_wire_bytes / .value.steady_connection_seconds / 1000) KB/s per bot; steady_wire_bytes / steady_packets = \(.value.steady_wire_bytes / .value.steady_packets) B per chunk; per_bot_packets min \(.value.per_bot_packets.min)"' summary.json
+jq -c '{chunk_data_packets_received: .inbound.by_packet.ChunkDataPacket.count}' summary.json
+echo "## c2s (uplink per bot)"
+jq -c '.c2s | {packets, packets_per_s_per_bot, per_bot_per_1s, per_bot_per_7s}' summary.json
+echo "## visible entities (bot side)"
+jq -c '.visible_entities' summary.json
+echo "## server (sample)"
+jq -c '.server | del(.ticks)' summary.json | cut -c1-1500
+echo "## metrics at the end"
+grep -E '^synaxis_(outbound_backlog_kicks|ledger_dropped|gate_rejections|packets|players_online|watchdog|tps)' metrics-end.txt
+echo "## load"
+jq -c '.load1' summary.json
+cat run.txt | grep '^#' | cut -c1-400
+awk '{print $2, $4}' monitor.txt | sort -t= -k2 -n | head -1 | sed 's/^/lowest mem_free sample: /'
+
+=== <L>/analyze_m3e.sh
+#!/bin/zsh
+# usage: analyze_m3e.sh <work dir> [summary file] [server json]: shard log, ledger, heartbeat, summary figures, limits readings
+source <L>/env.sh; unset JAVA_TOOL_OPTIONS
+D=$1; S=${2:-summary.json}; cd $D
+echo "## shard log"
+grep -E "Effective ServerConfig|Effective store|verified in|Map mounted|Map mode|listening on|Stopping|Overlay final flush|Relight drain|Shard directory|directory" shard.log | cut -c1-300 | sed "s|$L|<L>|g"
+echo "Effective ServerConfig fields: $(grep -o 'maxPlayers=[^,]*\|acceptTransfers=[^,]*\|dispatcherThreads=[^,]*\|threadProvider=[^,]*\|chunkViewDistance=[^,]*\|packetLimitMaxPackets=[^,]*\|packetLimitWindow=[^,]*\|packetLimitAction=[^,]*\|maxOutboundBacklogBytes=[^,]*\|maxVisibleEntitiesPerPlayer=[^,]*' shard.log | sort -u | tr '\n' ' ')"
+echo "WARN/ERROR lines: $(grep -c 'WARN\|ERROR' shard.log)"
+grep 'WARN\|ERROR' shard.log | cut -c1-300 | sort | uniq -c | sort -rn | head -10
+echo "log lines with kick or disconnect other than the config line: $(grep -i 'kick\|disconnect' shard.log | grep -vc 'Effective ServerConfig')"
+grep -i 'kick\|disconnect' shard.log | grep -v 'Effective ServerConfig' | cut -c1-300 | head -5
+echo "## ledger (logs/events-*.jsonl)"
+echo "events by type: $(cat logs/events-*.jsonl | jq -r .event | sort | uniq -c | awk '{printf "%s %s, ", $2, $1}')"
+cat logs/events-*.jsonl | jq -c 'select(.event=="shard_started")'
+echo "chunk_stream_stats over its $(cat logs/events-*.jsonl | jq -s '[.[]|select(.event=="chunk_stream_stats")]|length') records: $(cat logs/events-*.jsonl | jq -s -c '[.[] | select(.event=="chunk_stream_stats")] | {overlay_sent_max: (map(.overlay_sent)|max), handle_sent_sum: (map(.handle_sent)|add), failed_max: (map(.failed)|max), evict_failed_max: (map(.evict_failed)|max), write_phase_ms_max: (map(.write_phase_ms_max)|max), section_cache_bytes_max: (map(.section_cache_bytes)|max)}')"
+if [ -f heartbeat.txt ]; then
+echo "## heartbeat (psql every 30 s)"
+echo "readings $(wc -l < heartbeat.txt | tr -d ' '), largest age_s $(grep -o 'age_s=[0-9.]*' heartbeat.txt | sed 's/age_s=//' | sort -n | tail -1)"
+cat heartbeat.txt
+fi
+echo "## $S"
+jq -c .verdict $S
+echo "bots: $(jq -c .bots $S) kicks_by_reason: $(jq -c .kicks_by_reason $S) login_latency_ms: $(jq -c .login_latency_ms $S)"
+echo "ticks: count $(jq .ticks.count $S) overall $(jq -c .ticks.overall $S)"
+echo "ticks per minute (P99 ms / over 50 ms): $(jq -r '.ticks.per_minute | to_entries[] | "\(.key):\(.value.p99_ms)/\(.value.over_50ms)"' $S | tr '\n' ' ')"
+echo "ticks.acquire_ms in the server file: $(jq -c .ticks.acquire_ms ${3:-server.json} 2>/dev/null)"
+echo "gc: $(jq -c .gc $S)"
+echo "heap: $(jq -c .heap $S)"
+echo "dispatcher_busy_ratio: $(jq -c .dispatcher_busy_ratio $S)"
+echo "traffic: $(jq -c .traffic $S)"
+echo "per player egress: server bytes_out_per_s / $(jq .bots.requested $S) = $(jq '(.traffic.bytes_out_per_s / .bots.requested * 10 | round) / 10' $S) B/s; bots receive inbound.bytes_per_s_per_bot $(jq .inbound.bytes_per_s_per_bot $S) B/s"
+echo "inbound.chunks: $(jq -c .inbound.chunks $S)"
+jq -r '.inbound.chunks | to_entries[] | "\(.key): steady KB/s per bot (1,000 B) \((.value.steady_wire_bytes / .value.steady_connection_seconds / 1000 * 1000 | round) / 1000); B per chunk \((.value.steady_wire_bytes / .value.steady_packets * 10 | round) / 10); per_bot_packets min \(.value.per_bot_packets.min)"' $S
+echo "transfers: $(jq -c .transfers $S)"
+echo "## readings for the inbound packet limit and the outbound limits"
+echo "c2s: $(jq -c '.c2s | {packets, packets_per_s_per_bot, per_bot_per_1s, per_bot_per_7s}' $S)"
+echo "visible_entities: $(jq -c .visible_entities $S)"
+for m in metrics-end*.txt; do echo "$m: $(grep -E '^synaxis_(outbound_backlog_kicks_total|ledger_dropped_total|watchdog_warnings_total|players_online)' $m | tr '\n' ';') gate rejections: $(grep -E '^synaxis_gate_rejections_total' $m | sed 's/synaxis_gate_rejections_total//' | tr '\n' ' ')"; done
+echo "## load"
+echo "summary load1 $(jq -c .load1 $S); harness $(jq -c '[.harness[] | {cpu_seconds, cpu_percent_mean}]' $S)"
+echo "monitor: memory free $(awk '{print $2}' monitor.txt | sed 's/mem_free=//;s/%//' | sort -n | sed -n '1p;$p' | tr '\n' '~' | sed 's/~$//')%, swap free $(awk '{print $3}' monitor.txt | sed 's/swap_free=//;s/MB//' | sort -n | sed -n '1p;$p' | tr '\n' '~' | sed 's/~$//') MB, load1 $(awk '{print $4}' monitor.txt | sed 's/load1=//' | sort -n | sed -n '1p;$p' | tr '\n' '~' | sed 's/~$//')"
+
+=== <L>/limits.sh
+#!/bin/zsh
+# usage: limits.sh <label> <work dir> <summary> <metrics files...>
+L=<L>
+label=$1; D=$2; S=$3; shift 3
+echo "### $label"
+echo "uplink per bot (c2s): $(jq -r '.c2s | "\(.packets_per_s_per_bot) packets/s on average; 1 s windows P50 \(.per_bot_per_1s.p50) P99 \(.per_bot_per_1s.p99) max \(.per_bot_per_1s.max); 7 s windows P50 \(.per_bot_per_7s.p50) P99 \(.per_bot_per_7s.p99) max \(.per_bot_per_7s.max) (\(.per_bot_per_7s.count) windows)"' $D/$S)"
+echo "inbound limit kicks: kicks_by_reason $(jq -c .kicks_by_reason $D/$S), lost $(jq .bots.lost $D/$S), login_failures $(jq -c .bots.login_failures $D/$S); server log lines with kick, disconnect or protocol-error (the config line left out): $(cat $D/**/shard.log(N) 2>/dev/null | grep -i 'kick\|disconnect\|protocol-error' | grep -vc 'Effective ServerConfig'); ledger event types: $(cat $D/**/logs/events-*.jsonl(N) 2>/dev/null | jq -r .event | sort -u | tr '\n' ' ')"
+for m in $*; do
+echo "$(basename $m): outbound backlog kicks $(grep '^synaxis_outbound_backlog_kicks_total' $m | awk '{print $2}'), ledger dropped $(grep '^synaxis_ledger_dropped_total' $m | awk '{print $2}'), store saves $(grep '^synaxis_store_save_total' $m | sed 's/synaxis_store_save_total//' | tr '\n' ' ')"
+done
+echo "visible entities per bot (bot side, samples every second): $(jq -r '.visible_entities | "P50 \(.p50) P99 \(.p99) max \(.max), \(.count) samples"' $D/$S)"
+
+=== <L>/slowticks.py
+import json, sys, datetime
+# usage: slowticks.py <json of jfr print --json --events synaxis.ServerTickTime,jdk.GCPhasePause>
+d = json.load(open(sys.argv[1]))
+ev = d['recording']['events']
+def ts(s):
+    return datetime.datetime.fromisoformat(s.replace('Z', '+00:00')[:26] + '+00:00' if '.' in s else s.replace('Z', '+00:00'))
+def dur(s):  # ISO-8601 duration like PT0.088813S
+    s = s[2:]
+    total = 0.0
+    num = ''
+    for ch in s:
+        if ch.isdigit() or ch == '.': num += ch
+        else:
+            v = float(num); num = ''
+            total += v * {'H': 3600, 'M': 60, 'S': 1}[ch]
+    return total
+ticks, gcs = [], []
+for e in ev:
+    t = e['type']; v = e['values']
+    start = ts(v['startTime']); d_ = dur(v['duration'])
+    if t == 'synaxis.ServerTickTime': ticks.append((start, d_, v))
+    elif t == 'jdk.GCPhasePause': gcs.append((start, d_, v))
+slow = [x for x in ticks if x[1] > 0.050]
+print('ServerTickTime events', len(ticks), 'over 50 ms', len(slow), 'GCPhasePause', len(gcs), 'over 50 ms', sum(1 for g in gcs if g[1] > 0.050))
+for s, d_, v in slow:
+    end = s + datetime.timedelta(seconds=d_)
+    over = [(g[0], g[1], g[2].get('name')) for g in gcs if g[0] < end and g[0] + datetime.timedelta(seconds=g[1]) > s]
+    fields = {k: v[k] for k in v if k not in ('startTime', 'duration', 'eventThread', 'stackTrace')}
+    print(f'slow tick {s.isoformat()} {d_*1000:.3f} ms {fields} overlapping GC pauses:', [(o[0].isoformat(), round(o[1]*1000, 3), o[2]) for o in over])
+
+=== <L>/transfers084.py
+import glob, json, math, sys
+# usage: transfers084.py <t084 dir>: the two ledgers' transfer events, paired by transfer_ref, and the bot-side transfer figures
+D = sys.argv[1]
+def pct(values, p):
+    # nearest rank
+    if not values: return None
+    v = sorted(values)
+    return v[max(0, math.ceil(p / 100 * len(v)) - 1)]
+events = {}
+for shard in ('r0-c1', 'r1-c1'):
+    for f in glob.glob(f'{D}/work-{shard}/logs/events-*.jsonl'):
+        for line in open(f):
+            e = json.loads(line)
+            e['ledger'] = shard
+            events.setdefault(e['event'], []).append(e)
+print('ledger events by type:', {k: len(v) for k, v in sorted(events.items())})
+for shard in ('r0-c1', 'r1-c1'):
+    print(f'  {shard}:', {k: sum(1 for e in v if e['ledger'] == shard) for k, v in sorted(events.items())})
+issued, completed = events.get('transfer_issued', []), events.get('transfer_completed', [])
+print('transfer_issued', len(issued), 'transfer_completed', len(completed),
+      'completed / issued =', round(len(completed) / len(issued), 5) if issued else None)
+by_ref = {}
+for c in completed: by_ref.setdefault(c['transfer_ref'], []).append(c)
+unpaired = [i for i in issued if i['transfer_ref'] not in by_ref]
+dup = [r for r, cs in by_ref.items() if len(cs) > 1]
+iss_refs = {i['transfer_ref'] for i in issued}
+orphan = [c for c in completed if c['transfer_ref'] not in iss_refs]
+print('paired by transfer_ref:', len(issued) - len(unpaired), 'issued without completed:', len(unpaired),
+      'completed without issued:', len(orphan), 'refs completed twice:', len(dup))
+print('issued in the source ledger:', all(i['ledger'] == i['source_shard'] for i in issued),
+      'completed in the target ledger:', all(c['ledger'] == c['target_shard'] for c in completed))
+dirs = {}
+for i in issued: dirs[(i['source_shard'], i['target_shard'])] = dirs.get((i['source_shard'], i['target_shard']), 0) + 1
+print('issued by direction:', {f'{a}->{b}': n for (a, b), n in sorted(dirs.items())})
+fb = [c['first_batch_ms'] for c in completed if c.get('first_batch_ms') is not None]
+if fb:
+    print('first_batch_ms: count', len(fb), 'min', min(fb), 'p50', pct(fb, 50), 'p95', pct(fb, 95), 'p99', pct(fb, 99), 'max', max(fb),
+          'P95 < 5000:', pct(fb, 95) < 5000)
+for i in unpaired[:5]: print('  unpaired issued:', {k: i[k] for k in i if k in ('ts', 'transfer_ref', 'source_shard', 'target_shard', 'player_uuid')})
+refused = events.get('transfer_refused', [])
+res = {}
+for r in refused: res[r.get('result')] = res.get(r.get('result'), 0) + 1
+print('transfer_refused by result (ShardService FULL / OFFLINE / DIRECTORY_UNAVAILABLE):', res)
+for name in ('summary.json',):
+    s = json.load(open(f'{D}/{name}'))
+    t = s.get('transfers')
+    print(f'{name} transfers:', json.dumps(t))

@@ -1,0 +1,191 @@
+# TC-WORLD-081: directory mode, 200 bots walk 1,800 s (r0 0,0,255,255, r0-c1 capacity 200)
+# t081 start 2026-09-30 11:16:32 shard=r0-c1 profile=walk bots=200 duration=1800s load { 19.56 28.94 24.61 } vm.swapusage: total = 23552.00M  used = 22696.88M  free = 855.12M  (encrypted)
+# JAVA_OPTS=-Xms512m -Xmx512m SERVER_APP_OPTS=-Dsynaxis.app.port=25621 -Dsynaxis.app.auth=offline -Dsynaxis.app.metrics.bind=127.0.0.1:19621 -Dsynaxis.connection-gate.trusted-networks=127.0.0.0/8 -Dsynaxis.app.log=stdout -Dsynaxis.map.root=<L>/roots/t081 -Dsynaxis.map.build=synth-09b42ebb5dc6-p776 -Dsynaxis.app.store=postgres -Dsynaxis.app.shard-id=r0-c1 env SYNAXIS_STATE_DB_URL=jdbc:postgresql://127.0.0.1:5440/run057_t081 SYNAXIS_REDIS_URL=redis://127.0.0.1:6440 SYNAXIS_TRANSFER_HMAC_KEYS=<one random 32-byte key, key_id 1>
+# server pid 641 monitor pid 640
+# run exit 0
+# sample exit 0
+# merge exit 2
+# t081 end 2026-09-30 11:46:59 load { 6.33 7.51 11.33 } vm.swapusage: total = 26624.00M  used = 23922.00M  free = 2702.00M  (encrypted)
+# server JVM: bin/server-shard defaults (-XX:+UseG1GC -Xms4G -Xmx4G -XX:+AlwaysPreTouch -XX:MaxGCPauseMillis=50 -XX:+HeapDumpOnOutOfMemoryError
+#   -XX:+ExitOnOutOfMemoryError) followed by the JAVA_OPTS above, so the heap is the one JAVA_OPTS gives, pre-touched
+# shards.json (<L>/roots/t081/shards.json, next to a symbolic link to <L>/maps/synth/synth-09b42ebb5dc6-p776):
+#   {
+#     "format_version": 1,
+#     "map_id": "synth",
+#     "regions": [
+#       {"region_id": "r0", "bounds": {"min_x": 0, "min_z": 0, "max_x": 255, "max_z": 255}, "gates": []}
+#     ],
+#     "channels": [
+#       {"shard_id": "r0-c1", "region_id": "r0", "channel": 1, "host": "127.0.0.1", "port": 25621, "capacity": 200}
+#     ]
+#   }
+# database run057_t081 in synaxis-pg, bin/server-app --migrate-only --auth-mode=offline: migrate exit=0, flyway_schema_history 1|t 2|t 3|t 4|t 5|t 6|t 
+# sample: loadtest sample --pid <pid> --duration <duration + 20>s --metrics http://127.0.0.1:<metrics port>/metrics --out server.json; bots 5 s later:
+#   loadtest run --host 127.0.0.1 --port <port> --bots <n> --profile <profile> --encryption off --duration <duration>s --out bots-0.json (warm-up 60 s, login 20/s)
+# heartbeat: docker exec synaxis-pg psql -U postgres -d run057_t081 every 30 s while the shard ran
+
+## shard log
+11:16:34.057 [main] INFO  i.github.bearisbug.synaxis.app.Main - Effective ServerConfig[shutdownOnSignal=true, maxTickCatchUp=5, chunkViewDistance=12, entityViewDistance=8, entitySynchronizationTicks=20, dispatcherThreads=10, threadProvider=GRID, threadGridExponent=4, sendLightAfterBlockPlacementDela
+11:16:34.683 [main] INFO  i.g.b.synaxis.app.shard.ShardWorld - Map release synth-09b42ebb5dc6-p776 verified in 594 ms: bounds=Bounds[minX=0, minZ=0, maxX=255, maxZ=255] world=World[minY=0, height=256]
+11:16:35.089 [main] INFO  i.github.bearisbug.synaxis.app.Main - Effective store: mode=postgres auth_mode=offline StoreSettings[jdbcUrl=jdbc:postgresql://127.0.0.1:5440/run057_t081, user=postgres, password=<set>, redis=<set>]
+11:16:35.157 [main] INFO  i.g.b.s.app.metrics.HostMetrics - Metrics endpoint listening on http://127.0.0.1:19621/metrics
+11:16:35.204 [main] INFO  i.g.b.synaxis.app.shard.ShardWorld - Map mounted: build_id=synth-09b42ebb5dc6-p776 simulation_distance=4 chunk_unload_grace_ticks=100 spawn=Pos[x=2040.5, y=74.0, z=2040.5, yaw=0.0, pitch=0.0] overlay=overlay/synth-09b42ebb5dc6-p776
+11:16:35.207 [main] INFO  i.github.bearisbug.synaxis.app.Main - Map mode (synaxis.app.core-mode=on): the host serves the map instance, no plugin is loaded, spawn=Pos[x=2040.5, y=74.0, z=2040.5, yaw=0.0, pitch=0.0]
+11:16:35.209 [main] INFO  i.github.bearisbug.synaxis.app.Main - synaxis server-app listening on 0.0.0.0:25621
+11:46:58.632 [Thread-3] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+11:46:58.633 [Thread-3] INFO  i.g.b.synaxis.synx.SynxRelight - Relight drain: 0 ms, left=0
+11:46:58.648 [Syn-TickScheduler] INFO  i.g.b.synaxis.synx.OverlayStore - Overlay final flush: chunks=0 bytes=0 fsync_ms=0 left=0 by=tick
+Effective ServerConfig fields: acceptTransfers=true chunkViewDistance=12 dispatcherThreads=10 maxOutboundBacklogBytes=4194304 maxPlayers=200 maxVisibleEntitiesPerPlayer=100 packetLimitAction=KICK packetLimitMaxPackets=582 packetLimitWindow=7000 threadProvider=GRID 
+WARN/ERROR lines: 0
+log lines with kick or disconnect other than the config line: 0
+## ledger (logs/events-*.jsonl)
+events by type: chunk_stream_stats 30, session_entered_configuration 200, shard_started 1, shutdown_saved 1, 
+{"ts":"2026-09-30T03:16:35.209023Z","event":"shard_started","build_id":"synth-09b42ebb5dc6-p776","verify_ms":594,"regions":64,"bytes_mapped":213319659,"overlay_records":0,"flags_replayed":0,"flags_ms":2,"region_id":"r0","capacity":200}
+chunk_stream_stats over its 30 records: {"overlay_sent_max":0,"handle_sent_sum":3441194,"failed_max":0,"evict_failed_max":0,"write_phase_ms_max":3.390875,"section_cache_bytes_max":12839936}
+## heartbeat (psql every 30 s)
+readings 61, largest age_s 4.96
+11:16:35 r0-c1 online=0 capacity=200 accepting=true age_s=0.57 
+11:17:05 r0-c1 online=200 capacity=200 accepting=true age_s=0.71 
+11:17:35 r0-c1 online=200 capacity=200 accepting=true age_s=0.92 
+11:18:06 r0-c1 online=200 capacity=200 accepting=true age_s=1.27 
+11:18:36 r0-c1 online=200 capacity=200 accepting=true age_s=1.46 
+11:19:06 r0-c1 online=200 capacity=200 accepting=true age_s=1.57 
+11:19:36 r0-c1 online=200 capacity=200 accepting=true age_s=1.66 
+11:20:06 r0-c1 online=200 capacity=200 accepting=true age_s=1.83 
+11:20:37 r0-c1 online=200 capacity=200 accepting=true age_s=2.07 
+11:21:07 r0-c1 online=200 capacity=200 accepting=true age_s=2.57 
+11:21:37 r0-c1 online=200 capacity=200 accepting=true age_s=2.71 
+11:22:07 r0-c1 online=200 capacity=200 accepting=true age_s=2.93 
+11:22:38 r0-c1 online=200 capacity=200 accepting=true age_s=3.10 
+11:23:08 r0-c1 online=200 capacity=200 accepting=true age_s=3.24 
+11:23:38 r0-c1 online=200 capacity=200 accepting=true age_s=3.36 
+11:24:08 r0-c1 online=200 capacity=200 accepting=true age_s=3.45 
+11:24:38 r0-c1 online=200 capacity=200 accepting=true age_s=3.55 
+11:25:08 r0-c1 online=200 capacity=200 accepting=true age_s=3.63 
+11:25:38 r0-c1 online=200 capacity=200 accepting=true age_s=3.71 
+11:26:08 r0-c1 online=200 capacity=200 accepting=true age_s=3.84 
+11:26:39 r0-c1 online=200 capacity=200 accepting=true age_s=3.95 
+11:27:09 r0-c1 online=200 capacity=200 accepting=true age_s=4.05 
+11:27:39 r0-c1 online=200 capacity=200 accepting=true age_s=4.14 
+11:28:09 r0-c1 online=200 capacity=200 accepting=true age_s=4.23 
+11:28:39 r0-c1 online=200 capacity=200 accepting=true age_s=4.33 
+11:29:09 r0-c1 online=200 capacity=200 accepting=true age_s=4.44 
+11:29:39 r0-c1 online=200 capacity=200 accepting=true age_s=4.56 
+11:30:09 r0-c1 online=200 capacity=200 accepting=true age_s=4.69 
+11:30:39 r0-c1 online=200 capacity=200 accepting=true age_s=4.87 
+11:31:10 r0-c1 online=200 capacity=200 accepting=true age_s=4.96 
+11:31:40 r0-c1 online=200 capacity=200 accepting=true age_s=0.08 
+11:32:10 r0-c1 online=200 capacity=200 accepting=true age_s=0.16 
+11:32:40 r0-c1 online=200 capacity=200 accepting=true age_s=0.26 
+11:33:10 r0-c1 online=200 capacity=200 accepting=true age_s=0.37 
+11:33:40 r0-c1 online=200 capacity=200 accepting=true age_s=0.49 
+11:34:10 r0-c1 online=200 capacity=200 accepting=true age_s=0.59 
+11:34:40 r0-c1 online=200 capacity=200 accepting=true age_s=0.69 
+11:35:10 r0-c1 online=200 capacity=200 accepting=true age_s=0.78 
+11:35:41 r0-c1 online=200 capacity=200 accepting=true age_s=0.94 
+11:36:11 r0-c1 online=200 capacity=200 accepting=true age_s=1.07 
+11:36:41 r0-c1 online=200 capacity=200 accepting=true age_s=1.18 
+11:37:11 r0-c1 online=200 capacity=200 accepting=true age_s=1.26 
+11:37:41 r0-c1 online=200 capacity=200 accepting=true age_s=1.36 
+11:38:11 r0-c1 online=200 capacity=200 accepting=true age_s=1.45 
+11:38:41 r0-c1 online=200 capacity=200 accepting=true age_s=1.54 
+11:39:11 r0-c1 online=200 capacity=200 accepting=true age_s=1.64 
+11:39:41 r0-c1 online=200 capacity=200 accepting=true age_s=1.73 
+11:40:11 r0-c1 online=200 capacity=200 accepting=true age_s=1.83 
+11:40:42 r0-c1 online=200 capacity=200 accepting=true age_s=1.92 
+11:41:12 r0-c1 online=200 capacity=200 accepting=true age_s=2.00 
+11:41:42 r0-c1 online=200 capacity=200 accepting=true age_s=2.08 
+11:42:12 r0-c1 online=200 capacity=200 accepting=true age_s=2.16 
+11:42:42 r0-c1 online=200 capacity=200 accepting=true age_s=2.25 
+11:43:12 r0-c1 online=200 capacity=200 accepting=true age_s=2.34 
+11:43:42 r0-c1 online=200 capacity=200 accepting=true age_s=2.44 
+11:44:12 r0-c1 online=200 capacity=200 accepting=true age_s=2.55 
+11:44:42 r0-c1 online=200 capacity=200 accepting=true age_s=2.66 
+11:45:12 r0-c1 online=200 capacity=200 accepting=true age_s=2.76 
+11:45:43 r0-c1 online=200 capacity=200 accepting=true age_s=2.83 
+11:46:13 r0-c1 online=200 capacity=200 accepting=true age_s=2.94 
+11:46:43 r0-c1 online=200 capacity=200 accepting=true age_s=3.05 
+## summary.json
+{"bots":{"pass":true,"detail":"200 of 200 logged in, 0 lost"},"chunks_per_bot_min":{"pass":true,"detail":"16181 > 9"},"tick_p99_ms":{"pass":true,"detail":"15.833 < 50.0"},"ticks_over_50ms":{"pass":false,"detail":"44 <= 0"},"rss_mib_max":{"pass":true,"detail":"545.922 < 4096.0"},"pass":false}
+bots: {"requested":200,"logged_in":200,"lost":0,"login_failures":{}} kicks_by_reason: {} login_latency_ms: {"off":{"count":200,"mean_ms":28.141,"p50_ms":27.0,"p99_ms":42.8,"max_ms":67.8,"over_50ms":1}}
+ticks: count 36426 overall {"count":36426,"mean_ms":2.612,"p50_ms":1.687,"p99_ms":15.833,"max_ms":213.818,"over_50ms":44}
+ticks per minute (P99 ms / over 50 ms): 0:36.952/9 1:54.372/14 2:29.201/5 3:40.501/9 4:23.868/1 5:22.081/0 6:19.855/1 7:7.851/1 8:4.297/1 9:9.558/1 10:3.709/0 11:5.332/1 12:7.045/0 13:7.782/0 14:5.067/0 15:4.603/0 16:6.933/0 17:7.178/0 18:16.799/1 19:7.117/0 20:7.883/0 21:8.547/0 22:10.078/0 23:9.209/0 24:8.456/0 25:9.172/0 26:8.795/0 27:9.443/0 28:8.769/0 29:11.897/0 30:8.316/0 
+ticks.acquire_ms in the server file: null
+gc: {"count":182,"mean_ms":27.288,"p50_ms":21.026,"p99_ms":122.718,"max_ms":180.655,"over_50ms":24}
+heap: {"rss_mib_max":545.922,"heap_used_mib_max":477.407}
+dispatcher_busy_ratio: {"Syn-Tick-0":0.006,"Syn-Tick-1":0.029,"Syn-Tick-2":0.02,"Syn-Tick-3":0.006,"Syn-Tick-4":0.004,"Syn-Tick-5":0.007,"Syn-Tick-6":0.005,"Syn-Tick-7":0.003,"Syn-Tick-8":0.032,"Syn-Tick-9":0.023,"Syn-TickScheduler":0.052}
+traffic: {"packets_in_per_s":8396.969,"packets_out_per_s":252543.482,"bytes_in_per_s":125884.52,"bytes_out_per_s":7704570.727}
+per player egress: server bytes_out_per_s / 200 = 38522.9 B/s; bots receive inbound.bytes_per_s_per_bot 36538.419 B/s
+inbound.chunks: {"walk":{"packets":3447919,"wire_bytes":5102034118,"connection_seconds":358790.978,"kb_per_s_per_bot":13.887,"packets_per_s_per_bot":9.61,"steady_packets":3204682,"steady_wire_bytes":4744381071,"steady_connection_seconds":346790.978,"steady_kb_per_s_per_bot":13.36,"steady_packets_per_s_per_bot":9.241,"per_bot_packets":{"count":200,"mean":17239.595,"p50":17240.0,"p99":18005.0,"max":18088.0,"min":16181.0}}}
+walk: steady KB/s per bot (1,000 B) 13.681; B per chunk 1480.5; per_bot_packets min 16181.0
+transfers: {"count":0,"completed":0,"failed_by_reason":{},"transfer_ms":{"count":0}}
+## readings for the inbound packet limit and the outbound limits
+c2s: {"packets":15282521,"packets_per_s_per_bot":42.594,"per_bot_per_1s":{"count":358680,"mean":42.586,"p50":40.0,"p99":54.0,"max":68.0},"per_bot_per_7s":{"count":357480,"mean":297.9,"p50":295.0,"p99":309.0,"max":422.0}}
+visible_entities: {"count":358880,"mean":59.256,"p50":61.0,"p99":100.0,"max":100.0}
+metrics-end.txt: synaxis_ledger_dropped_total 0.0;synaxis_outbound_backlog_kicks_total 0.0;synaxis_players_online 0.0;synaxis_watchdog_warnings_total 0.0; gate rejections: {reason="closed_at_accept"} 0.0 {reason="full"} 0.0 {reason="handshake_timeout"} 0.0 {reason="throttled"} 0.0 {reason="too_many"} 0.0 
+## load
+summary load1 {"min":5.573,"max":39.511}; harness [{"cpu_seconds":695.301,"cpu_percent_mean":38.648}]
+monitor: memory free 30~50%, swap free 350.94~2078.44 MB, load1 5.71~36.26
+
+## machine during the tier (monitor every 30 s)
+11:16:32 mem_free=44% swap_free=855.12MB load1=19.56 rss_top5: qemu-system-aarch64-headless=2234MB com.apple.Virtualization.VirtualMachine=591MB claude=334MB claude=325MB Lark=268MB  cpu_top5: qemu-system-aarch64-headless=724.4% com.apple.Virtualization.VirtualMachine=29.2% WindowServer=22.6% claude=19.2% Microsoft=16.8% 
+11:17:02 mem_free=37% swap_free=927.12MB load1=16.39 rss_top5: qemu-system-aarch64-headless=916MB com.apple.Virtualization.VirtualMachine=539MB java=383MB java=361MB claude=284MB  cpu_top5: qemu-system-aarch64-headless=64.6% java=47.1% java=41.1% WindowServer=20.1% Microsoft=15.8% 
+11:17:32 mem_free=31% swap_free=890.56MB load1=21.22 rss_top5: claude=480MB com.apple.Virtualization.VirtualMachine=435MB Kando=345MB java=236MB KandoUITests-Runner=222MB  cpu_top5: SimRenderServer=66.8% diskimagesiod=56.1% Kando=39.8% iOS=39.6% java=38.1% 
+11:18:02 mem_free=30% swap_free=716.06MB load1=31.81 rss_top5: java=490MB com.apple.Virtualization.VirtualMachine=405MB qemu-system-aarch64-headless=352MB KandoUITests-Runner=274MB iOS=258MB  cpu_top5: SimRenderServer=120.8% java=113.8% Kando=68.6% java=62.2% jfr=45.9% 
+11:18:33 mem_free=31% swap_free=1426.00MB load1=26.18 rss_top5: java=570MB com.apple.Virtualization.VirtualMachine=370MB Microsoft=343MB claude=335MB claude=281MB  cpu_top5: SimRenderServer=100.7% com.apple.Virtualization.VirtualMachine=83.7% java=67.8% java=48.0% claude=37.3% 
+11:19:04 mem_free=43% swap_free=1118.94MB load1=36.26 rss_top5: qemu-system-aarch64-headless=1233MB com.apple.Virtualization.VirtualMachine=688MB claude=392MB Microsoft=357MB claude=349MB  cpu_top5: com.apple.Virtualization.VirtualMachine=117.5% java=47.4% java=29.8% node=24.6% WindowServer=22.8% 
+11:19:34 mem_free=44% swap_free=1494.94MB load1=26.46 rss_top5: qemu-system-aarch64-headless=1478MB com.apple.Virtualization.VirtualMachine=635MB claude=509MB claude=374MB java=361MB  cpu_top5: java=41.7% java=35.5% WindowServer=25.0% Microsoft=19.6% ReportCrash=11.5% 
+11:20:04 mem_free=30% swap_free=1211.38MB load1=27.89 rss_top5: Kando=366MB com.apple.Virtualization.VirtualMachine=324MB claude=284MB Lark=278MB claude=265MB  cpu_top5: Kando=94.2% java=81.5% SimRenderServer=54.9% proactiveeventtrackerd=53.1% proactiveeventtrackerd=49.8% 
+11:20:35 mem_free=30% swap_free=895.62MB load1=25.09 rss_top5: java=961MB com.apple.Virtualization.VirtualMachine=460MB Kando=366MB java=258MB java=256MB  cpu_top5: java=403.0% SimRenderServer=106.2% java=52.8% iOS=35.1% java=34.2% 
+11:21:05 mem_free=31% swap_free=653.12MB load1=28.42 rss_top5: qemu-system-aarch64-headless=1058MB com.apple.Virtualization.VirtualMachine=621MB Kando=345MB java=283MB claude=235MB  cpu_top5: qemu-system-aarch64-headless=379.8% SimRenderServer=62.6% java=32.9% java=29.5% WeChat=28.4% 
+11:21:36 mem_free=32% swap_free=606.12MB load1=25.79 rss_top5: qemu-system-aarch64-headless=1404MB claude=462MB com.apple.Virtualization.VirtualMachine=387MB Kando=342MB KandoUITests-Runner=220MB  cpu_top5: qemu-system-aarch64-headless=306.7% iOS=75.6% xcodebuild=66.3% diagnosticd=53.4% Kando=51.0% 
+11:22:06 mem_free=35% swap_free=1203.50MB load1=22.92 rss_top5: qemu-system-aarch64-headless=1117MB com.apple.Virtualization.VirtualMachine=675MB Kando=407MB java=363MB claude=223MB  cpu_top5: SimRenderServer=80.1% java=64.2% qemu-system-aarch64-headless=50.9% WindowServer=29.5% java=27.6% 
+11:22:36 mem_free=34% swap_free=1249.50MB load1=24.67 rss_top5: qemu-system-aarch64-headless=1289MB com.apple.Virtualization.VirtualMachine=433MB Kando=391MB claude=300MB java=293MB  cpu_top5: qemu-system-aarch64-headless=255.3% SimRenderServer=86.4% com.apple.Virtualization.VirtualMachine=46.3% java=37.0% java=30.9% 
+11:23:06 mem_free=36% swap_free=1301.38MB load1=25.39 rss_top5: qemu-system-aarch64-headless=1275MB claude=445MB com.apple.Virtualization.VirtualMachine=384MB Microsoft=357MB Kando=352MB  cpu_top5: qemu-system-aarch64-headless=716.1% java=39.6% Kando=37.8% java=32.3% Microsoft=16.0% 
+11:23:36 mem_free=47% swap_free=1557.38MB load1=20.57 rss_top5: qemu-system-aarch64-headless=1227MB com.apple.Virtualization.VirtualMachine=767MB Kando=495MB claude=454MB java=406MB  cpu_top5: SimRenderServer=54.9% java=36.7% Kando=34.3% java=29.7% WindowServer=21.9% 
+11:24:06 mem_free=44% swap_free=1629.38MB load1=15.66 rss_top5: com.apple.Virtualization.VirtualMachine=890MB qemu-system-aarch64-headless=574MB java=397MB java=387MB Kando=357MB  cpu_top5: java=41.1% java=37.5% WindowServer=23.9% com.apple.Virtualization.VirtualMachine=22.6% Microsoft=21.2% 
+11:24:36 mem_free=34% swap_free=2078.44MB load1=10.66 rss_top5: com.apple.Virtualization.VirtualMachine=562MB java=415MB Microsoft=362MB Kando=326MB java=295MB  cpu_top5: SimRenderServer=60.3% java=33.8% java=29.1% WindowServer=25.8% Kando=24.6% 
+11:25:07 mem_free=39% swap_free=1118.81MB load1=9.99 rss_top5: com.apple.Virtualization.VirtualMachine=749MB Kando=429MB java=416MB claude=391MB qemu-system-aarch64-headless=376MB  cpu_top5: secd=71.0% xcodebuild=67.8% diagnosticd=65.7% iOS=61.0% Kando=57.7% 
+11:25:37 mem_free=39% swap_free=1150.81MB load1=8.68 rss_top5: com.apple.Virtualization.VirtualMachine=722MB java=473MB claude=459MB Kando=357MB qemu-system-aarch64-headless=343MB  cpu_top5: xcodebuild=57.6% SimRenderServer=53.2% iOS=51.5% xpcproxy_sim=51.0% diagnosticd=43.9% 
+11:26:07 mem_free=31% swap_free=1222.88MB load1=10.45 rss_top5: java=833MB com.apple.Virtualization.VirtualMachine=479MB Kando=433MB java=274MB claude=244MB  cpu_top5: java=267.6% Kando=101.8% java=35.2% java=31.9% WindowServer=24.9% 
+11:26:37 mem_free=42% swap_free=1074.38MB load1=10.41 rss_top5: com.apple.Virtualization.VirtualMachine=739MB claude=513MB java=485MB Kando=434MB qemu-system-aarch64-headless=420MB  cpu_top5: SimRenderServer=59.3% iOS=42.4% WindowServer=31.9% java=30.9% java=25.9% 
+11:27:07 mem_free=38% swap_free=1298.38MB load1=10.41 rss_top5: com.apple.Virtualization.VirtualMachine=968MB java=440MB Kando=396MB qemu-system-aarch64-headless=390MB claude=375MB  cpu_top5: com.apple.Virtualization.VirtualMachine=81.4% SimRenderServer=67.5% WindowServer=33.0% java=31.5% java=27.0% 
+11:27:37 mem_free=38% swap_free=1394.38MB load1=8.87 rss_top5: com.apple.Virtualization.VirtualMachine=799MB claude=505MB java=490MB claude=382MB java=373MB  cpu_top5: java=41.4% java=40.7% WindowServer=30.7% com.apple.Virtualization.VirtualMachine=24.6% Microsoft=23.3% 
+11:28:07 mem_free=38% swap_free=1402.38MB load1=8.10 rss_top5: com.apple.Virtualization.VirtualMachine=903MB claude=494MB java=486MB qemu-system-aarch64-headless=407MB java=367MB  cpu_top5: SimRenderServer=72.8% WindowServer=34.7% java=32.1% java=28.5% Microsoft=22.1% 
+11:28:37 mem_free=33% swap_free=1442.38MB load1=9.13 rss_top5: com.apple.Virtualization.VirtualMachine=575MB claude=498MB Kando=419MB java=366MB java=319MB  cpu_top5: Kando=181.2% iOS=69.4% iOS=56.7% java=36.3% java=30.8% 
+11:29:07 mem_free=33% swap_free=1450.38MB load1=8.86 rss_top5: com.apple.Virtualization.VirtualMachine=693MB Kando=450MB java=428MB qemu-system-aarch64-headless=356MB claude=325MB  cpu_top5: Kando=199.7% SimRenderServer=65.4% WindowServer=32.2% java=31.6% java=26.3% 
+11:29:38 mem_free=31% swap_free=788.25MB load1=13.12 rss_top5: Kando=382MB java=378MB Microsoft=355MB com.apple.Virtualization.VirtualMachine=332MB claude=263MB  cpu_top5: Kando=74.9% java=33.3% SimRenderServer=32.4% java=29.8% Microsoft=29.5% 
+11:30:08 mem_free=33% swap_free=1176.94MB load1=14.13 rss_top5: com.apple.Virtualization.VirtualMachine=496MB claude=401MB Kando=398MB java=368MB Microsoft=348MB  cpu_top5: SimRenderServer=71.3% java=36.0% java=34.0% WindowServer=33.2% Kando=23.0% 
+11:30:38 mem_free=30% swap_free=922.75MB load1=13.41 rss_top5: claude=387MB Kando=383MB claude=356MB java=300MB com.apple.Virtualization.VirtualMachine=260MB  cpu_top5: Kando=160.6% SimRenderServer=37.3% WindowServer=33.9% java=32.7% linkd=30.8% 
+11:31:08 mem_free=32% swap_free=832.50MB load1=11.98 rss_top5: com.apple.Virtualization.VirtualMachine=704MB claude=366MB java=331MB claude=330MB claude=237MB  cpu_top5: iOS=74.7% java=37.7% java=37.4% WindowServer=27.0% Microsoft=23.5% 
+11:31:38 mem_free=31% swap_free=920.56MB load1=13.04 rss_top5: com.apple.Virtualization.VirtualMachine=439MB Kando=428MB java=407MB claude=359MB claude=331MB  cpu_top5: xcodebuild=101.7% iOS=89.9% diagnosticd=85.2% Kando=64.7% xpcproxy_sim=39.3% 
+11:32:08 mem_free=33% swap_free=762.25MB load1=12.22 rss_top5: com.apple.Virtualization.VirtualMachine=671MB claude=497MB Kando=420MB java=350MB claude=267MB  cpu_top5: SimRenderServer=56.9% diagnosticd=35.0% xcodebuild=34.2% Kando=33.5% java=30.5% 
+11:32:38 mem_free=39% swap_free=986.31MB load1=9.96 rss_top5: com.apple.Virtualization.VirtualMachine=688MB claude=465MB java=440MB claude=367MB java=360MB  cpu_top5: java=48.7% java=44.6% WindowServer=22.3% Microsoft=22.1% iOS=16.2% 
+11:33:08 mem_free=35% swap_free=1298.31MB load1=8.08 rss_top5: com.apple.Virtualization.VirtualMachine=456MB qemu-system-aarch64-headless=422MB java=322MB claude=292MB claude=263MB  cpu_top5: java=34.6% WindowServer=33.9% java=31.7% Microsoft=19.0% WeChat=16.3% 
+11:33:38 mem_free=34% swap_free=1378.38MB load1=8.50 rss_top5: com.apple.Virtualization.VirtualMachine=584MB claude=347MB java=342MB java=325MB claude=264MB  cpu_top5: java=40.6% WindowServer=35.4% java=34.6% Microsoft=19.4% WeChat=12.4% 
+11:34:09 mem_free=37% swap_free=1229.25MB load1=8.11 rss_top5: com.apple.Virtualization.VirtualMachine=703MB claude=411MB qemu-system-aarch64-headless=379MB java=351MB java=350MB  cpu_top5: java=42.1% java=39.4% Microsoft=19.8% WindowServer=18.7% com.apple.WebKit.WebContent=6.7% 
+11:34:39 mem_free=35% swap_free=1349.25MB load1=8.60 rss_top5: com.apple.Virtualization.VirtualMachine=469MB claude=390MB Microsoft=373MB claude=324MB java=312MB  cpu_top5: java=45.1% iOS=42.1% java=35.6% WindowServer=33.8% claude=24.5% 
+11:35:09 mem_free=31% swap_free=350.94MB load1=8.15 rss_top5: java=800MB com.apple.Virtualization.VirtualMachine=366MB claude=287MB claude=228MB claude=221MB  cpu_top5: java=261.5% Python=48.5% java=39.1% java=28.5% Microsoft=22.0% 
+11:35:39 mem_free=32% swap_free=1264.69MB load1=10.28 rss_top5: java=1259MB com.apple.Virtualization.VirtualMachine=354MB java=283MB claude=252MB claude=226MB  cpu_top5: java=341.3% java=37.1% java=27.0% com.apple.Virtualization.VirtualMachine=17.7% Microsoft=16.5% 
+11:36:09 mem_free=50% swap_free=1521.25MB load1=9.92 rss_top5: qemu-system-aarch64-headless=1860MB com.apple.Virtualization.VirtualMachine=981MB claude=471MB java=445MB java=376MB  cpu_top5: java=51.1% java=50.7% Microsoft=23.4% WindowServer=19.0% com.apple.Virtualization.VirtualMachine=15.3% 
+11:36:39 mem_free=50% swap_free=1673.38MB load1=7.76 rss_top5: com.apple.Virtualization.VirtualMachine=889MB qemu-system-aarch64-headless=856MB java=503MB claude=501MB Microsoft=375MB  cpu_top5: java=49.3% java=38.2% xpcproxy_sim=16.4% com.apple.Virtualization.VirtualMachine=16.0% WindowServer=15.6% 
+11:37:09 mem_free=48% swap_free=1729.38MB load1=7.31 rss_top5: com.apple.Virtualization.VirtualMachine=1066MB qemu-system-aarch64-headless=530MB java=503MB java=381MB Microsoft=367MB  cpu_top5: java=38.9% java=30.9% com.apple.Virtualization.VirtualMachine=21.4% WindowServer=11.4% Microsoft=11.2% 
+11:37:40 mem_free=49% swap_free=875.06MB load1=7.54 rss_top5: com.apple.Virtualization.VirtualMachine=947MB java=511MB qemu-system-aarch64-headless=462MB java=379MB Microsoft=370MB  cpu_top5: java=50.3% java=45.6% Microsoft=19.0% WindowServer=16.3% ReportCrash=10.4% 
+11:38:10 mem_free=44% swap_free=891.06MB load1=8.52 rss_top5: com.apple.Virtualization.VirtualMachine=861MB qemu-system-aarch64-headless=473MB java=470MB claude=375MB java=367MB  cpu_top5: xpcproxy_sim=61.8% java=39.6% java=30.5% Microsoft=16.3% WindowServer=14.3% 
+11:38:40 mem_free=48% swap_free=915.06MB load1=9.83 rss_top5: com.apple.Virtualization.VirtualMachine=893MB java=509MB claude=474MB qemu-system-aarch64-headless=461MB claude=402MB  cpu_top5: java=51.3% java=48.0% WindowServer=15.6% Microsoft=15.3% com.apple.Virtualization.VirtualMachine=8.1% 
+11:39:10 mem_free=47% swap_free=1083.19MB load1=8.73 rss_top5: com.apple.Virtualization.VirtualMachine=974MB java=502MB qemu-system-aarch64-headless=484MB claude=415MB java=373MB  cpu_top5: iOS=69.1% java=39.5% java=38.6% Microsoft=19.0% WindowServer=15.7% 
+11:39:40 mem_free=45% swap_free=1115.19MB load1=6.76 rss_top5: com.apple.Virtualization.VirtualMachine=924MB java=458MB Microsoft=369MB java=354MB claude=353MB  cpu_top5: java=42.8% java=42.5% node=37.5% com.apple.Virtualization.VirtualMachine=30.1% Microsoft=18.0% 
+11:40:10 mem_free=45% swap_free=1123.19MB load1=8.64 rss_top5: com.apple.Virtualization.VirtualMachine=997MB java=482MB qemu-system-aarch64-headless=387MB java=373MB Microsoft=366MB  cpu_top5: java=61.5% java=58.2% WindowServer=21.2% Microsoft=19.9% ReportCrash=12.3% 
+11:40:40 mem_free=43% swap_free=1267.25MB load1=9.58 rss_top5: com.apple.Virtualization.VirtualMachine=729MB java=479MB java=367MB WeChat=335MB Microsoft=330MB  cpu_top5: java=50.1% java=43.8% WindowServer=24.7% Microsoft=17.6% WeChat=13.3% 
+11:41:10 mem_free=41% swap_free=1331.44MB load1=8.14 rss_top5: com.apple.Virtualization.VirtualMachine=882MB java=464MB qemu-system-aarch64-headless=396MB java=367MB claude=275MB  cpu_top5: com.apple.Virtualization.VirtualMachine=55.6% java=42.1% iOS=38.5% java=30.9% iOS=24.6% 
+11:41:41 mem_free=44% swap_free=1347.44MB load1=7.12 rss_top5: com.apple.Virtualization.VirtualMachine=933MB java=514MB java=374MB claude=352MB claude=274MB  cpu_top5: java=48.9% java=32.5% Microsoft=17.0% WindowServer=12.6% ReportCrash=7.3% 
+11:42:11 mem_free=43% swap_free=1371.44MB load1=6.38 rss_top5: com.apple.Virtualization.VirtualMachine=1002MB java=480MB java=374MB Microsoft=374MB qemu-system-aarch64-headless=311MB  cpu_top5: java=57.4% java=44.2% com.apple.Virtualization.VirtualMachine=41.9% Microsoft=29.8% WindowServer=18.4% 
+11:42:41 mem_free=43% swap_free=1387.44MB load1=5.71 rss_top5: com.apple.Virtualization.VirtualMachine=762MB java=495MB java=365MB Microsoft=364MB claude=279MB  cpu_top5: java=48.9% java=47.8% Microsoft=18.2% WindowServer=17.6% claude=9.4% 
+11:43:11 mem_free=39% swap_free=1435.44MB load1=6.63 rss_top5: com.apple.Virtualization.VirtualMachine=799MB qemu-system-aarch64-headless=448MB java=386MB Microsoft=371MB java=311MB  cpu_top5: iOS=55.9% java=47.2% java=37.6% diagnosticd=22.1% iOS=20.2% 
+11:43:41 mem_free=42% swap_free=1491.44MB load1=7.65 rss_top5: com.apple.Virtualization.VirtualMachine=811MB qemu-system-aarch64-headless=604MB java=459MB Microsoft=373MB java=367MB  cpu_top5: java=50.0% java=47.6% Microsoft=20.8% WindowServer=13.1% qemu-system-aarch64-headless=7.6% 
+11:44:11 mem_free=41% swap_free=1507.44MB load1=9.45 rss_top5: com.apple.Virtualization.VirtualMachine=831MB qemu-system-aarch64-headless=483MB java=461MB java=359MB Microsoft=357MB  cpu_top5: java=61.4% java=54.9% com.apple.Virtualization.VirtualMachine=21.4% Microsoft=20.9% WindowServer=14.3% 
+11:44:41 mem_free=39% swap_free=1571.44MB load1=7.25 rss_top5: com.apple.Virtualization.VirtualMachine=614MB java=401MB Microsoft=334MB java=321MB claude=303MB  cpu_top5: java=60.0% java=54.7% Microsoft=19.1% WindowServer=15.3% iOS=13.7% 
+11:45:11 mem_free=40% swap_free=1635.44MB load1=6.42 rss_top5: com.apple.Virtualization.VirtualMachine=905MB java=458MB java=376MB Microsoft=372MB qemu-system-aarch64-headless=353MB  cpu_top5: iOS=68.6% coreduetd=66.2% java=56.6% java=48.2% Microsoft=21.2% 
+11:45:41 mem_free=37% swap_free=1667.44MB load1=6.54 rss_top5: com.apple.Virtualization.VirtualMachine=659MB java=405MB java=243MB claude=228MB Microsoft=194MB  cpu_top5: java=43.6% java=39.6% xpcproxy_sim=36.6% com.apple.Virtualization.VirtualMachine=33.7% Microsoft=18.2% 
+11:46:12 mem_free=39% swap_free=1699.44MB load1=7.25 rss_top5: com.apple.Virtualization.VirtualMachine=796MB java=471MB qemu-system-aarch64-headless=328MB java=299MB Lark=254MB  cpu_top5: java=42.9% java=36.9% Microsoft=18.2% WindowServer=12.3% claude=8.3% 
+11:46:42 mem_free=41% swap_free=1731.44MB load1=7.05 rss_top5: com.apple.Virtualization.VirtualMachine=740MB java=539MB claude=396MB Microsoft=323MB Lark=261MB  cpu_top5: Microsoft=22.8% com.apple.Virtualization.VirtualMachine=20.1% WindowServer=13.5% java=9.3% com.apple.WebKit.WebContent=8.4% 

@@ -1,0 +1,24 @@
+# Start gates of every tier (docs/DESIGN-M3.md §15 v0.27, docs/TEST.md TC-WORLD-054 and TC-WORLD-081 preconditions), one reading right
+# before each tier started; every reading met its gate, so no tier waited and no 5-minute rechecks were needed.
+# gate.sh: memory_pressure 'System-wide memory free percentage' >= the tier's threshold (30%: TC-WORLD-054 walk and ride, 081, 084;
+# 35%: 082, 083); no java or Gradle process other than this round's own (pgrep -f 'java|gradle', lsof cwd shown for any found);
+# df -m /System/Volumes/Data available >= 5,120 MB; for the M3-E tiers both shared containers up (docker ps); vm.swapusage recorded only.
+# Order: TC-WORLD-054 walk and ride first (the user's order); then the M3-E window: 082 and 083 (35%) went first because the reading
+# met the higher gate (§15: a met tier starts at once, the higher threshold first), then 081 and 084 (30%).
+#
+# Before the round: 10:20:24 a first look read memory free 41% and found a Gradle of another project running (Kando/App/android,
+# pids 65657 and 65671, JDK 17, connectedDebugAndroidTest), which the gate would not have let pass; it had ended by 10:28:42 (41%, met).
+# The builds, the bake and TC-WORLD-041 (10:21~10:27) ran before any tier; no Gradle of this round ran during a tier.
+
+2026-09-30 10:29:28 [054 walk] mem_free=41% (>= 30%) swap: total=24576.00MB used=22945.31MB free=1630.69MB load1=6.15 disk_free=79613MB containers=2 foreign_java_gradle=[] top5: com.apple.Virtualization.VirtualMachine=750MB Kando=429MB claude=379MB claude=324MB qemu-system-aarch64-headless=282MB  met=yes
+2026-09-30 10:42:00 [054 ride] mem_free=47% (>= 30%) swap: total=24576.00MB used=23022.31MB free=1553.69MB load1=3.79 disk_free=79553MB containers=2 foreign_java_gradle=[] top5: com.apple.Virtualization.VirtualMachine=1072MB qemu-system-aarch64-headless=570MB claude=400MB claude=339MB claude=285MB  met=yes
+2026-09-30 10:54:02 [M3-E window, 082/083 need 35%, 081/084 need 30%] mem_free=37% (>= 35%) swap: total=22528.00MB used=21403.62MB free=1124.38MB load1=4.84 disk_free=81406MB containers=2 foreign_java_gradle=[] top5: com.apple.Virtualization.VirtualMachine=1052MB claude=400MB claude=393MB qemu-system-aarch64-headless=342MB claude=334MB  met=yes
+2026-09-30 11:04:54 [after 082: 083 needs 35%, 081/084 need 30%] mem_free=37% (>= 35%) swap: total=24576.00MB used=23449.50MB free=1126.50MB load1=18.05 disk_free=78272MB containers=2 foreign_java_gradle=[] top5: com.apple.Virtualization.VirtualMachine=776MB qemu-system-aarch64-headless=527MB Kando=431MB claude=357MB Microsoft=279MB  met=yes
+2026-09-30 11:16:18 [after 083: 081 and 084 need 30%] mem_free=41% (>= 30%) swap: total=24576.00MB used=22871.06MB free=1704.94MB load1=21.29 disk_free=77947MB containers=2 foreign_java_gradle=[] top5: qemu-system-aarch64-headless=1852MB com.apple.Virtualization.VirtualMachine=569MB Microsoft=464MB claude=332MB TencentMeeting=284MB  met=yes
+2026-09-30 11:47:25 [084 needs 30%] mem_free=44% (>= 30%) swap: total=25600.00MB used=23897.56MB free=1702.44MB load1=5.73 disk_free=77868MB containers=2 foreign_java_gradle=[] top5: com.apple.Virtualization.VirtualMachine=1022MB Microsoft=374MB qemu-system-aarch64-headless=355MB claude=311MB claude=283MB  met=yes
+
+# During the tiers (monitor every 30 s, in 04-09): other sessions ran an iOS simulator, an Android emulator (qemu), xcodebuild, Microsoft
+# and Tencent Meeting apps and, between tiers and during some, the Gradle of Kando/App/android: its Kotlin daemon logs in $TMPDIR start at
+# 10:36:15 (during 054 walk), 10:55:20, 10:59:57, 11:02:38 (082), 11:07:49, 11:14:43 (083) and 11:17:56 (081). The gate is read at the
+# start only; the memory free percentage fell to 29% during 082 and to 30% during 081 and 083, below the start gate of 082 and 083.
+# 084 (11:47~12:03): memory free 34~45%, load1 4.2~11.6 (monitor in 09-084.txt).

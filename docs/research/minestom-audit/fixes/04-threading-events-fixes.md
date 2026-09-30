@@ -31,7 +31,7 @@
 | P2-8 `Entity.updateSnapshot` 无空值保护 | 已修（**跨文件小 hunk**，见下） | `08fab83eaf` | `EntitySnapshotTest#snapshotEntityWithoutInstance` |
 | P3-1 `AcquirableImpl.enter` 自旋无退避 | 已修 | `0a56cea764` | 无 |
 | P3-2 启动顺序（监听早于 tick 线程） | **跳过**（理由见下） | — | — |
-| P3-3 `TickMonitor.acquisitionTime` 语义可疑 | 核实后非 bug，只补文档；2026-09-30 改为每条引擎线程记自己的阻塞时间、整 tick 取串行段加最长的一条 tick 线程并导出（`docs/DESIGN-PROD.md` v0.9.35 `API-PROD-016`「获取等待」） | `0a56cea764` | 无；2026-09-30 起 `docs/TEST.md` `TC-PROD-565`～`TC-PROD-569` |
+| P3-3 `TickMonitor.acquisitionTime` 语义可疑 | 核实后非 bug，只补文档；2026-09-30 改为每条引擎线程记自己的阻塞时间、整 tick 取串行段加最长的一条 tick 线程并导出（`docs/DESIGN-PROD.md` v0.9.36 `API-PROD-016`「获取等待」） | `0a56cea764` | 无；2026-09-30 起 `docs/TEST.md` `TC-PROD-565`～`TC-PROD-569` |
 | P3-4 `mpmcSpecialUnboundedArrayQueue` 名不副实 | 已修（重命名为 `mpmcArrayQueue`） | `0a56cea764` | 无 |
 | P3-5 `ObjectPool` 死代码 | **跳过**（只提示不删，见下） | — | — |
 

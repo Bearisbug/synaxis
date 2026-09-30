@@ -46,7 +46,7 @@
 
 | 日期 | 版本 | 改动 | 作者 |
 | --- | --- | --- | --- |
-| 2026-10-01 | v0.29 | 把 M3-G「远景」修订到可以直接照着实现（分支 `m3g/design`，基于 `main` `15ac990547`），逐项对照了 `:baker` 的 `ChunkEncoder`、`Baker`、`AnvilSource`，`:synx` 的 `SynxManifest`，`server-app` 的 `Main#serveMap` 与引擎 `ConnectionManager` 的 configuration 次序，`client-fabric` 的负载登记，以及 DH 3.3.2-26.2 jar（Modrinth `9NoftEde`，SHA-1 `51cdbdd9d25b1f27c3825bfc405ca6c49b864889`）的 `javap`；代码本版不动。**DH 核实**：`IDhApiSaveStructure` 在建客户端层级时对每个层级问一次目录；`setReadOnly` 只在 `SharedApi#applyChunkUpdate`、世界生成与网络请求队列上检查，世界卸载时复位为假，所以 `overwriteChunkDataAsync` 在只读时被静默丢掉；公开的世界生成覆盖在连 Synaxis 时 DH 从不调用（`DhClientLevel#shouldDoWorldGen`）；离线写 SQLite 要已载入的层级才建得出包装对象。写库定为 W2：按 64×64 采样块建 `FullDataSourceV2` 交给 `IDhLevel#updateDataSourcesAsync`，用到的 4 个 DH core 内部成员列进 `API-M3-015` DH 接入面表（`ADR-M3-021`）；API 数据点必须连续到世界顶，空气点从开放项变成必写；DH 的最细渲染分辨率由 `maxHorizontalResolution` 定。**高度场包**：按 4,096 格瓦片切（`ADR-M3-020`），`API-M3-014` 定稿头部、生物群系表、块索引、8 B 采样（地面、液体底与顶、生物群系）、采样与降采样规则、隐藏区域替换、与地图版本的绑定（清单 `farview[]` 的 SHA-256，不进 `content_hash`）、按内容摘要的 CDN 分发与 `farview-export` 子命令；采样在编码段②、段④ 的同一遍里算，不读段④；清单 `farview[]` 的字段改为 `tile_x`、`tile_z`、`base_level`、`bytes`、`sha256`；`baker_version` 升 2。**远景宣告**：`synaxis:farview` 改在 configuration 阶段发（DH 建层级之前就要定目录），布局写进 `API-M3-015`；新配置键 `synaxis.farview.url-root`，§23 的远景开关换成它；`EVT:shard_started` 加 `farview_tiles`。**客户端**：可用性只看 DH 3.3.2 与接入面，不再绑 Iris、Sodium 的版本；缓存按内容摘要与 `view_key`，上限 1 GiB；下载续传与重试；每次 DH 世界载入设只读与渲染参数覆盖；写库线程、取消、点规则、进度与日志；新增 §11.3 `ENT-FarViewLibrary` 状态机与 §7 实体、§9 字段、§16 七行竞态，§12.4 时序重画。**验证**：V1、V2、V3、V6、V8 拆成无头容器能做的（V1、V2a、V3a、V6a、V8a）与要真显卡的（V2b、V3b、V6b、V8b），步骤写进 §26 M3-G，§17 外部依赖表改写；§19 换成 `REQ-M3-024` 九条、`REQ-M3-025` 十二条场景。**§26**：M3-G 拆成第 0 步契约骨架与轨道 S（烘焙器）、轨道 C（客户端），写明文件、接口边界、自测与验收命令，加本机重活的锁 `/tmp/synaxis-heavy.lock` 与容器门槛（`memory_pressure` 空闲 ≥ 30%）。**§28.1** 加三条 M3-G 的 Open Question（画不画相邻大区、切换条件 2 的判据、`base_level`）；**§28.2** 三行转已决或改写，加 DH 内部成员风险、段④ 没有读者，以及交给 `docs/DESIGN-M2.md` 与生产就绪分册的两行待办。`docs/MAP-SOURCE.md` 第 3 节加大区按 256 区块对齐的建议，第 5 节写实隐藏区域在远景里的样子 | Bearisbug |
+| 2026-10-01 | v0.29 | 把 M3-G「远景」修订到可以直接照着实现（分支 `m3g/design`，基于 `main` `15ac990547`），逐项对照了 `:baker` 的 `ChunkEncoder`、`Baker`、`AnvilSource`，`:synx` 的 `SynxManifest`，`server-app` 的 `Main#serveMap` 与引擎 `ConnectionManager` 的 configuration 次序，`client-fabric` 的负载登记，以及 DH 3.3.2-26.2 jar（Modrinth `9NoftEde`，SHA-1 `51cdbdd9d25b1f27c3825bfc405ca6c49b864889`）的 `javap`；代码本版不动。**DH 核实**：`IDhApiSaveStructure` 在建客户端层级时对每个层级问一次目录；`setReadOnly` 只在 `SharedApi#applyChunkUpdate`、世界生成与网络请求队列上检查，世界卸载时复位为假，所以 `overwriteChunkDataAsync` 在只读时被静默丢掉；公开的世界生成覆盖在连 Synaxis 时 DH 从不调用（`DhClientLevel#shouldDoWorldGen`）；离线写 SQLite 要已载入的层级才建得出包装对象。写库定为 W2：按 64×64 采样块建 `FullDataSourceV2`、设 `applyToParent`，交给 `IDhLevel#updateDataSourcesAsync`，用到的 8 个 DH core 内部成员与 `FullData` 表的两列列进 `API-M3-015` DH 接入面表（`ADR-M3-021`）；数据点的 y 是相对层级最低格的下标、光照是点顶面之上一格的光照，b ≥ 1 的层 DH 不补烘天光，每列写到世界顶的空气点；DH 的写库 future 在库关闭后也正常完成，所以完成标记只在 DH 自己的库连接上数行核对写全、父层传播做完之后才写，层级载入时再核对一次；`IDhApiTerrainDataRepo` 的查询只读数据细节级 0（DH spike 用的就是它），V1 用数行与按数据源位置取样核对；DH 的最细渲染分辨率由 `maxHorizontalResolution` 定。**高度场包**：按 4,096 格瓦片切（`ADR-M3-020`），`API-M3-014` 定稿头部、生物群系表、块索引、8 B 采样（地面、液体底与顶、生物群系）、采样与降采样规则、隐藏区域替换、与地图版本的绑定（清单 `farview[]` 的 SHA-256，不进 `content_hash`）、按内容摘要的 CDN 分发与 `farview-export` 子命令；采样在编码段②、段④ 的同一遍里算，不读段④；清单 `farview[]` 的字段改为 `tile_x`、`tile_z`、`base_level`、`bytes`、`sha256`；`baker_version` 升 2。**远景宣告**：`synaxis:farview` 改在 configuration 阶段发（DH 建层级之前就要定目录），只在第一次 configuration 发，布局写进 `API-M3-015`；新配置键 `synaxis.farview.url-root`，§23 的远景开关换成它；`EVT:shard_started` 加 `farview_tiles`。**客户端**：可用性只看 DH 3.3.2 与接入面，不再绑 Iris、Sodium 的版本；缓存按内容摘要与 `view_key`，上限 1 GiB；下载续传与重试；每次 DH 世界载入设只读与渲染参数覆盖；写库线程、三个取消信号、写完核对与载入核对、点规则、进度与日志；新增 §11.3 `ENT-FarViewLibrary` 状态机（13 条迁移）与 §7 实体、§9 字段、§16 七行竞态，§12.4 时序重画。**验证**：V1、V2、V3、V6、V8 拆成无头容器能做的（V1、V2a、V3a、V6a、V8a）与要真显卡的（V2b、V3b、V6b、V8b），步骤写进 §26 M3-G，容器夹具的图取 `min_y` −64，V2 的墙钟与库大小都取在写完核对通过、父层传播做完那一刻，§17 外部依赖表改写；§19 换成 `REQ-M3-024` 九条、`REQ-M3-025` 十五条场景。**§26**：M3-G 拆成第 0 步契约骨架与轨道 S（烘焙器）、轨道 C（客户端），写明文件、接口边界、自测与验收命令，跨会话与跨分册的文件单列，加本机重活的锁 `/tmp/synaxis-heavy.lock` 与容器门槛（`memory_pressure` 空闲 ≥ 30%，容器验收在起夹具之前查）。**§22** 加 `RB-M3-007`（已发布版本的远景画错或剧透）。**§28.1** 加四条 M3-G 的 Open Question（画不画相邻大区、切换条件 2 的判据、`base_level`、已发布版本的远景包出错怎么修）；**§28.2** 三行转已决或改写，加 DH 内部成员风险、段④ 没有读者，以及交给 `docs/DESIGN-M2.md` 与生产就绪分册的两行待办。`docs/MAP-SOURCE.md` 第 3 节加大区按 256 区块对齐的建议，第 5 节写实隐藏区域在远景里的样子 | Bearisbug |
 | 2026-09-30 | v0.28 | M3-C 的 tick 判据改为只在分机档判定（用户 2026-09-30 拍板，与 M3-E 同一规定），依据是按 `bin/server-shard` 的默认参数重跑的 200 机器人两档（分支 `m3/load-tests`，代码同 `main` `5c7874ed5c`；`docs/TEST.md` RUN-058）。**实测**：分片用启动脚本的默认参数（G1、4 GiB 堆、`+AlwaysPreTouch`、`MaxGCPauseMillis=50`）并开 GC 日志，机器人与采样进程只用 `:loadtest` 的 `-Xmx2G`。步行超 50 ms 的 tick 5 个（最长 71.2 ms），4 个与 G1 年轻代暂停重叠；坐骑前 8 分钟 6 个、都与 G1 暂停重叠，之后别的会话把本机 `load1` 推到 47，又有 110 个，101 个没有暂停。堆从 1 GiB 加到 4 GiB 不缩短暂停：G1 按暂停目标调年轻代，步行每次回收前堆只有 207～604 MB，暂停最长 68.5 ms（1 GiB 堆 88.8 ms）。零编码、区块下行（−1.6%、−2.9%）、登录与每人区块数与 RUN-057 一样达标。**§28.1** 新增已决一行：M3-C 的 tick 两项只在分机档判定，同机档只登记，分机档到位前 M3-C 不算完成；引导段的已决条数改为十条。**§15** tick 预算行写明 tick 两项只在分机档判定并补 RUN-058 读数（坐骑那一轮写入阶段最长 33.34 ms，出在负载最高、没有写入的一分钟）；「压测的机器前提与登记」把 M3-C 的 `TC-WORLD-054` 纳入 tick 只在分机档判定的规定，补 RUN-058 的起跑读数与坐骑档再起一次时的阻塞。**§19**「压测量出真实区块下行」的 tick 一句限定分机档。**§26** M3-C 行改为「除 tick 两项外已完成，tick 两项待分机档」，阶段依赖一段与 §27 同步。**§28.2** M3-C 慢 tick 一行补 RUN-058 与已定的处置，仍开着的是分机档上的 G1 暂停。§23 检查单的容量行同步。`docs/TEST.md` 的 `TC-WORLD-054` 按此废弃、由 `TC-WORLD-099` 取代，§15「压测的机器前提与登记」、§28.1、§28.2 里的用例引用改指 `TC-WORLD-099`；§15 门槛表里 M3-C 的 200 机器人两档单列一行，分片用 `bin/server-shard` 的默认参数、预触 4 GiB 堆，空闲比例门槛 ≥ 35%（与 RUN-058 起跑时一致），200 机器人 30 min 仍是 ≥ 30% | Bearisbug |
 | 2026-09-30 | v0.27 | 压测起跑门槛换口径，同机档跑完 M3-C 的 200 机器人两档与 M3-E 四档（分支 `m3/load-tests`，代码同 `main` `5c7874ed5c`；`docs/TEST.md` RUN-057）。**§15 门槛**：同机档每档起跑前查 `memory_pressure` 的空闲比例（200 机器人档与转服档 ≥ 30%，500 机器人两档 ≥ 35%，用户 2026-09-30 定），加没有别的 java 或 Gradle（本轮自己起的按 pid 排除）与数据盘可用 ≥ 5,120 MB，`sysctl vm.swapusage` 只记录；原先的 swap free 门槛（3,072 / 4,096 / 5,120 MB）让 RUN-041、RUN-045、RUN-046 一次都没起跑，macOS 的 swap 按需扩容，free 常年 0.5～1.7 GB，不反映内存压力（M3-D 的容器门槛在 v0.25 已这样改）；`TC-WORLD-054` 改用同一门槛。**§15 实测**：零编码两个方法在 200 机器人两档都是 0 次；区块下行步行 13.679 KB/s（−1.6%）、坐骑 31.353 KB/s（−2.9%）；M3-C 的 tick P99 6.4、12.8 ms，超 50 ms 的 tick 4 与 7 个（11 个里 9 个与 G1 暂停重叠，1 GiB 堆），不达标；M3-E 30 min 档除 tick 与 RSS 外达标（tick P99 15.8 ms、超 50 ms 的 44 个、RSS 545.9 MiB 只登记）；500 人两档记下四项读数，`ticks.acquire_ms` 导不出；转服档 2,240 趟全部完成，P95 445.7 ms，台账成功率 100%，`first_batch_ms` P95 309 ms。**§26**：M3-C 行改为只差 200 机器人两档的慢 tick，写明当时留在 §28.2 的另两项已由 M3-D 关闭；M3-E 行 ③ 达成，①② 仍待分机档，② 另缺 `ticks.acquire_ms`。**§28.2**：M3-C 的压测一行改写为慢 tick 的风险，给出默认处置（M3-C 的 tick 判据也只在分机档判）待用户定；M3-E 的压测机一行补 RUN-057；交给生产就绪会话的 v0.21、v0.22 / v0.23、v0.24 三行转已决，由 `docs/DESIGN-PROD.md` v0.9.34（`c6f5cd7ae3`，同日 `5c7874ed5c` 补排空装回的第二个停点与超时记 WARN）完成，⑥ 作废。§23 容量行同步 | Bearisbug |
 | 2026-09-30 | v0.26 | 停机排空的装回上限（分支 `m3d/runtime-light`，`f65c9445fc`；`docs/TEST.md` RUN-056）。独立核验在 `f678c9fbfe` 上发现：tick 活着时停机排空靠 tick 末尾的装回，而装回每 tick 至多 64 个目标条目、累计 1 ms 即停，500 ms 的预算约 10 个 tick，只装得下约 640 个；`ShardWorldAssemblyTest` 停机前改 100 处（约 900 个）每次都在 500 ms 时还剩约 260 个（核验与 RUN-056 的读数）、以旧光照落盘，§28.2 崩溃窗口一行却写「正常停机不受影响」。**设计更正**：排空期间（`drain` 已开始、还没完成）装回不受这两个上限约束，一次处理当时已算完的全部结果，只在排空的截止时刻停；这时处在停机的保存阶段，玩家已冻结，tick 变长可以接受；这几个 tick 的耗时照样计入 `relight_install_ms_max`，§15 与 §21 的 5 ms 判据不含它们（`API-M3-005` 装回与停机两条、§16 停机一行、§17 `overlay.relight-install` 与 `overlay.relight-drain` 两行、`ADR-M3-019` 的 Decision）。§19 新增「停机排空不受装回上限约束」（带反证），M3-D 的 JUnit 场景十八条变为十九条。**§28.2**：崩溃窗口一行改为与实现一致：已经算完的 900 个目标条目 2～21 ms 装完；排空里还要现算的中心受重算吞吐限制，登记 `ShardWorldAssemblyTest` 的量级（1 个重算线程 8 次里 2 次剩 63 与 126 个，临时改成 3 个线程 3 次剩 72～143 个，上限不放开时 260 个），剩下的照旧以旧光照落盘并记 WARN；交给生产就绪会话的 v0.24 一行 ⑦ 改为 516 → 520。§26 M3-D 行与「M3-D 实际执行与偏离」同步（RUN-056 三道门禁各 4,091 个、跳过 15、0 失败，`:server-app` 519 → 520） | Bearisbug |
@@ -232,7 +232,7 @@
 | REQ-M3-022 | 编辑源交付规范（给美术，写进 `docs/`）：26.2 存档；处理顺序固定为「需要时原版服务端 `--forceUpgrade --eraseCache` → 原版 26.2 专用服务端 + Chunky 预生成到 full 且 `isLightOn` → 校验覆盖率 100%」，升级后必须重跑预生成；默认工具 WorldEdit + Litematica（F3）；服务端专用数据用 DATA 模式结构方块标记（F3′）；隐藏区域用同类标记圈出；`server.properties` 的 `region-file-compression` 保持默认 `deflate`（**已落地**，commit `0281d9bfdd`、`7d4c5867bd`：`docs/MAP-SOURCE.md`；标记命名空间的处理器由 M3-C 轨道 D 在 `:game-rts` 登记，烘焙器与分片都经 `SynxHandlers.registerAll`，commit `98b6100174`、`c2fdec118c`、`004fd37457`、`2416a87566`、`cd47d36c89`，RUN-041） | 目标 1 | P1 | 无对外 API，见 §12.3 与 `API-M3-003` 的标记规则 |
 | REQ-M3-023 | 世界状态标志：跨频道、跨地图版本一致的世界状态存 PostgreSQL；目录模式分片起服与切换 `build_id` 时全量重放，运行期变化经 Redis 消息通知、每 60 s 读一次本大区全部标志并只应用 `version` 变大的兜底；重放幂等；玩家不能破坏或放置标志管辖的格子，别的途径改掉的格子在应用或 60 s 核对时改回、记 WARN 与冲突数。只有宿主内部的 Java 接口：挂地图的分片不加载插件（用户 2026-09-28 拍板，§28.1），该项改判时才加插件面（**已落地**，M3-E 轨道 C，commit `3dd6477a3d`、`23a99a84a2`：`WorldFlagsImpl`、`WorldFlagStore`、`RedisLink` 的标志频道、`SynxChunk.asWorldFlag` 与 `SynxChunk.sameBlock`，`docs/TEST.md` RUN-045、RUN-046。生产上还没有代码登记应用方式，真进程里只验到装配（起服重放、订阅与坏消息的日志），应用、保护与核对由集成测试登记的应用方式验证，见 §28.2） | 目标 3、目标 5 | P1 | `API-M3-013`；时序见 §12.6 |
 | REQ-M3-024 | 远景高度场包：烘焙器在编码段②、段④ 的同一遍列扫描里、从同一份方块数组为地图覆盖到的每个 4,096 格瓦片产出一个高度场包（`base_level` 2 时未压缩 8 MiB），清单 `farview[]` 记字节数与 SHA-256，随地图版本发布，经 `farview-export` 按内容摘要导出到 CDN；隐藏区域在包里换成外沿最低高度与中性材质；同一输入在同一 JDK 构建上逐字节相同；分片在 configuration 阶段向客户端宣告与本大区相交的瓦片 | 目标 6 | P1 | `API-M3-014`；状态机见 §11.2，时序见 §12.3、§12.4 |
-| REQ-M3-025 | 客户端远景：`client-fabric` 收到远景宣告后下载缺的高度场包（断点续传，失败重试 2 次）并按 SHA-256 校验，在后台平台线程上经 DH 运行中的层级把每列 1～3 点写进 DH 库，DH 库经 `IDhApiSaveStructure` 钉在按宣告内容算出的目录并设为只读，写完落完成标记、下次直接用；远景半径 4,096 格（低配档 2,048）；DH 缺席、版本不是 3.3.2 或服务端没宣告时只有原版视距，不影响进服 | 目标 6 | P1 | `API-M3-015`；状态机见 §11.3，时序见 §12.4 |
+| REQ-M3-025 | 客户端远景：`client-fabric` 收到远景宣告后下载缺的高度场包（断点续传，失败重试 2 次）并按 SHA-256 校验，在后台平台线程上经 DH 运行中的层级把每列 1～3 点写进 DH 库，DH 库经 `IDhApiSaveStructure` 钉在按宣告内容算出的目录并设为只读，在库里数行核对写全、父层传播做完才落完成标记，下次载入核对通过即直接用；远景半径 4,096 格（低配档 2,048）；DH 缺席、版本不是 3.3.2 或服务端没宣告时只有原版视距，不影响进服 | 目标 6 | P1 | `API-M3-015`；状态机见 §11.3，时序见 §12.4 |
 | REQ-M3-026 | 光影检测与引导：客户端检测 Sodium、Iris、光影包是否装好并启用，缺任一项时进世界后弹一次 `PAGE-SHADER-GUIDE` 引导，可关闭、不阻塞；没装或被 Iris 自动关闭时用原版画面兜底 | 目标 6 | P1 | 无对外 API，见 §13 `PAGE-SHADER-GUIDE` 与 `API-M3-015` |
 | REQ-M3-027 | 光照面遮挡按原版（**已落地**，commit `32e1923e47`、`7b1a16c20a`）：只有 `light_shape_states.txt` 列出的 6,762 个状态（158 个方块：台阶、楼梯、雪层、耕地、土径、活塞等）用遮挡形状判定面遮挡，其余状态对光没有面；发光方块不忽略自己的面；该表由 `tools/light-oracle/gen.sh` 从原版 26.2 服务端生成，不手改。`ShapeImpl#getRemaining` 的覆盖矩形错切修复后 38 个状态补上满面（4 个 `piston_head[facing=up]` 的遮挡形状，外加 32 个脚手架与 2 个杜鹃花丛的碰撞形状） | 目标 2 | P0 | 无对外 API，见 §19 与 §24 光照门禁 |
 | REQ-M3-028 | 光照修复 ⑦ `fullyLit`（**已落地**，commit `dcfe387a8e`）：曾经全亮的 sky section 在其上方放方块、section 被标记失效后必须重新走源队列，不得保留 15。`REQ-M3-004` 落地后 `LightingChunk.relight` 改由 `LightEngine` 计算、写回时不设全亮标记，这个标记只剩懒读路径（`Instance#getSkyLight` 经 `relightSection` 进 `SkyLight#calculateInternal`）会设，修复在那条路径上生效 | 目标 2 | P0 | 无对外 API，见 §19 与 §24 光照门禁 |
@@ -338,9 +338,9 @@ flowchart LR
 
 | 路径 | 做法 | 核对结果 | 处置 |
 | --- | --- | --- | --- |
-| W2 经 DH 运行中的层级写（默认） | DH 世界载入后，按高度场包的每个 64×64 采样块建一个 `FullDataSourceV2`，用公开接口 `IDhApiFullDataSource#setApiDataPointColumn` 填列，交给 `IDhLevel#updateDataSourcesAsync` | `FullDataUpdaterV2#updateDataSource` 与库里已有的数据合并、烘天光（`DhLightingEngine#bakeDataSourceSkyLight`）、写库、通知渲染；只读标志不拦它（只读只在 `SharedApi#applyChunkUpdate`、世界生成队列、网络请求队列与服务端事件上检查）。用到 4 个 DH core 内部成员 | 默认；V1 在无头容器里验 |
+| W2 经 DH 运行中的层级写（默认） | DH 世界载入后，按高度场包的每个 64×64 采样块建一个 `FullDataSourceV2`，用公开接口 `IDhApiFullDataSource#setApiDataPointColumn` 填列、把 `applyToParent` 设为真，交给 `IDhLevel#updateDataSourcesAsync` | `FullDataUpdaterV2#updateDataSource` 从库里取出同位置的数据合并、`FullDataSourceV2Repo#save`、通知渲染；天光只在 section 细节级 6（一格一列）时由 DH 烘（`DhLightingEngine#bakeDataSourceSkyLight` 前的判断），W2 写的 6 + b 级不烘；往上层降采样只由 DH 的父层传播做，它只取 `ApplyToParent = 1` 的行，而 `createEmpty` 把这个字段置为 null；只读标志不拦写库（只读只在 `SharedApi#applyChunkUpdate`、世界生成队列、网络请求队列与服务端事件上检查）。写库与写完核对用到 8 个 DH core 内部成员 | 默认；V1 在无头容器里验 |
 | W3 本地注入 `overwriteChunkDataAsync` | 客户端造 `LevelChunk` 调 `IDhApiTerrainDataRepo#overwriteChunkDataAsync`，入参 `[ChunkAccess, Level]` | DH spike 在 llvmpipe 下验过：576 个区块造块加调用 148～219 ms，注入后 40～60 tick 可查到列数据（`docs/research/client-spikes-2026-09/dh-iris/README.md` ①）。但它走 `SharedApi#applyChunkUpdate`，只读时整次调用被静默丢掉（仍返回成功），只能在关着只读时注入；只能按方块全分辨率写，4,096 格瓦片要造 65,536 个区块（按 spike 速率注入调用约 17～25 s，推算，不含 DH 建 LOD） | V1 里 W2 不成立时的退路 |
-| W1 离线写 SQLite | DH 打开库之前用 `FullDataSourceV2Repo` 与 `FullDataSourceV2DTO#CreateFromDataSource` 直接写库 | 映射表按名字存方块与生物群系，建包装对象要一个已载入的层级（`FullDataPointIdMap` 的反序列化与包装工厂都要 `ILevelWrapper`）；绕过 DH 的父层级降采样与天光烘焙；要在 DH 打开目录之前写完，而目录在建层级时就被打开 | 不用 |
+| W1 离线写 SQLite | DH 打开库之前用 `FullDataSourceV2Repo` 与 `FullDataSourceV2DTO#CreateFromDataSource` 直接写库 | 映射表按名字存方块与生物群系，建包装对象要一个已载入的层级（`FullDataPointIdMap` 的反序列化与包装工厂都要 `ILevelWrapper`）；要在 DH 打开目录之前写完，而目录在建层级时就被打开 | 不用 |
 | 世界生成覆盖 `IDhApiWorldGenerator`（`API_DATA_SOURCES`） | 经 `DhApi.worldGenOverrides` 登记，由 DH 来要数据 | 全是公开 API，但 `DhClientLevel#shouldDoWorldGen` 要求 `ClientNetworkState#isReady()`（服务端装了 DH 插件）且服务端的生成计划开着，连 Synaxis 时恒为假，DH 从不调它 | 不用 |
 
 切换条件（远景备忘录 §6，按先后判定；V 项的验收步骤见 §26 M3-G）：
@@ -360,11 +360,13 @@ B 的已知约束（DH spike 与远景备忘录 §2 实测或读源码所得）�
 | 与 Iris 同开固定 OpenGL | DH 3.3.2 检测到 Iris 时把渲染引擎从 `AUTO` 退回 `OPEN_GL`，不走 Blaze3D，Minecraft 切 Vulkan 后这条路径不可用 | 开光影的玩家只有 OpenGL；与 Iris 本身不支持 Vulkan 一致 |
 | 光影包在 LOD 上的效果没有有效数据 | llvmpipe 下 LOD 确实进了光影管线（LOD 机位光影开关像素 100% 改变），但整片被一层浅蓝雾盖住，改三个雾参数只变 0.2%，来源未查清（怀疑对局世界只有 64 格高、或 llvmpipe 深度合成） | V3a 在无头容器里换高 256 的 4k 测试图重跑一次，只查雾的来源；阴影、色调、雾的判定在真显卡上做（V3b，§17） |
 | 远景没有阴影贴图阴影 | 两包都写 `dhShadow.enabled = false`；阴影贴图以相机为原点，沿光方向覆盖 −100.05～156 格 | eye 离地 100 格时太阳高度角 ≥ 40° 地面仍有阴影（R2 取 100 格的依据） |
-| DH 会自己收集近圈区块 | 多人客户端上 DH 把服务端发来的区块也存成 LOD（spike 日志 `Loaded [673] waiting chunk wrappers`）。只读时 `SharedApi#applyChunkUpdate` 在入口处直接返回，这些区块不进库；DH 卸载世界时（`SharedApi#setDhWorld`）把只读复位为假（javap） | 每次 DH 世界载入都重设只读（`API-M3-015`）；V1 数库里的行数核对走动前后不变 |
-| 查询接口有线程约束 | `getColumnDataAtBlockPos` 在渲染线程上同步等结果会卡死客户端；不传 `IDhApiTerrainDataCache` 直接失败 | `API-M3-015`：写库与查询都在烘焙线程上，不在渲染线程上等结果 |
+| DH 会自己收集近圈区块 | 多人客户端上 DH 把服务端发来的区块也存成 LOD（spike 日志 `Loaded [673] waiting chunk wrappers`）。只读时 `SharedApi#applyChunkUpdate` 在入口处直接返回，这些区块不进库；DH 卸载世界时（`SharedApi#setDhWorld`）把只读复位为假（javap） | 每次 DH 世界载入都重设只读（`API-M3-015`）；DH 自己收的区块写在数据细节级 0，W2 只写 b ≥ 1，V1 ⑤ 核对库里数据细节级 0 的行数恒为 0 |
+| 公开查询接口读不到 W2 写的层 | `IDhApiTerrainDataRepo#getColumnDataAtBlockPos` 与 `#getAllTerrainDataAtDetailLevelAndPos` 都按方块列换算到 section 细节级 6、只读数据细节级 0（`DhApiTerrainDataRepo#getTerrainDataColumnArray`，javap）；在渲染线程上同步等结果会卡死客户端，不传 `IDhApiTerrainDataCache` 直接失败（DH spike） | 本设计不用它们：写完核对与 V1 走 DH 自己的库连接数 `FullData` 表的行，取样核对按数据源位置取（`API-M3-015` 写库条、接入面表），都在烘焙线程或测试线程上 |
 | 入参形状不是稳定 API | DH 3.3.x 的 `overwriteChunkDataAsync` 只收 `[ChunkAccess, Level]`（`WrapperFactory#createChunkWrapper` 反汇编），不收 `DhApiChunk`；`IDhApiWrapperFactory#getBlockStateWrapper` 只收 `[BlockState]`（`WrapperFactory#getBlockStateWrapper` 反汇编） | W2 用后者；DH 版本锁在 3.3.2，升版时 `DhSurfaceTest` 与运行期探测先红（`API-M3-015`、§24） |
-| 数据点必须连续到世界顶 | `setApiDataPointColumn` 只收 detail 0 的点，相邻点之间有空隙或重叠即抛（`LodDataBuilder#validateOrThrowApiDataColumn` 与 `#convertApiDataPointListToPackedLongArray` 的报错原文：「Empty areas should be filled with air datapoints so light propagates correctly」）；它自己按从上到下排序 | 每列都写一个到世界顶的空气点（天光 15）；远景备忘录 V2 ③「要不要写空气点」因此不再是开放项 |
-| 最细渲染分辨率由配置定 | `LodQuadTree` 的最细叶节点取 `maxHorizontalResolution` 的 `detailLevel`（javap），DH 不会去要比它更细的数据 | 连 Synaxis 时经配置 API 把它设成与包的 `base_level` 相同（`FOUR_BLOCKS`），库里只写这一层，更粗的层由 DH 自己降采样 |
+| API 数据点的形状 | `setApiDataPointColumn` 只收细节级 0 的点，相邻点之间有空隙或重叠即抛（`LodDataBuilder#validateOrThrowApiDataColumn` 与 `#convertApiDataPointListToPackedLongArray` 的报错原文：「Empty areas should be filled with air datapoints so light propagates correctly」），不要求列连到世界顶；它自己按从上到下排序 | 点规则见 `API-M3-015`；每列 1～3 点 |
+| 点的 y 是相对层级最低格的下标 | `setApiDataPointColumn` 以偏移 0 调 `convertApiDataPointListToPackedLongArray`，底 y 原样存进 12 位的 `MIN_Y` 字段；DH 自己从区块建列时存 `y + 1 − getInclusiveMinBuildHeight()`（`LodDataBuilder#createFromChunk`），渲染（`FullDataToRenderDataTransformer`）与 `DhApiTerrainDataRepo` 读出时再加层级的 `getMinHeight()`（javap）。`min_y` 为 −64 的层级上写绝对坐标，−64 被截成 4032 | 点的 y 一律写下标（绝对 y − 层级的 `getMinHeight()`，等于包里的下标；分片按清单 `world.min_y` 注册维度，`ShardWorld`）；容器夹具的图取 `min_y` −64，`min_y` 为 0 的图测不出两者混用 |
+| 点上的光照是顶面之上一格的光照 | DH 自己建列时每个点存 (x, 顶 + 1, z) 的块光与天光（`LodDataBuilder#createFromChunk` 调 `getDhBlockLight`、`getDhSkyLight`）；渲染时顶面用本点的天光、底面用下方点的天光、侧面用相邻列同一高度的点（`ColumnBox#addBoxQuadsToBuilder`、`#makeAdjVerticalQuad`，javap 读控制流）；天光烘焙只在 section 细节级 6 跑，6 + b 级不烘（`FullDataUpdaterV2#updateDataSource`） | W2 写进去的光照就是画出来的光照：露天的地面与液面点写天光 15，水下地面按液体深度减；每列写到世界顶的空气点（天光 15），相邻列的侧面从它取光，列形状也与 DH 自己建的列相同；远景备忘录 V2 ③「要不要写空气点」不再是开放项 |
+| 最细渲染分辨率由配置定 | `LodQuadTree` 的最细叶节点取 `maxHorizontalResolution` 的 `detailLevel`（javap），DH 不会去要比它更细的数据 | 连 Synaxis 时经配置 API 把它设成与包的 `base_level` 相同（`FOUR_BLOCKS`），库里只写这一层；更粗的层由 DH 的父层传播从这一层降采样，前提是交出的数据源 `applyToParent` 为真（上表 W2 行） |
 
 本文档里与远景无关的部分（`.synx` 段①～④、烘焙器、区块流送、光照、分片）不依赖远景结果；远景只消费高度场包，`.synx` 的格式不因 M3-G 改动。
 
@@ -423,6 +425,7 @@ erDiagram
     string view_key PK
     string dh_version
     int bake_code_version
+    int sources
     string library_state
     timestamp last_used
   }
@@ -977,42 +980,49 @@ M3 的契约有四类：① 文件格式（`.synx`、清单、覆盖存储、高
   - 演进：改头部或采样布局升 `format_version`，客户端读到不认识的版本即不画远景；`base_level` 在布局之内，改烘焙器的默认值只升 `baker_version`（§28.1）。
 
 - **`API-M3-015` 客户端远景与光影检测** — 实现 `REQ-M3-025`、`REQ-M3-026`
-  - 远景宣告（服务端）：通道 `synaxis:farview`，只在 configuration 阶段、由分片发给客户端，每条连接至多一条。挂地图的分片在 `Main#serveMap` 已有的 `AsyncPlayerConfigurationEvent` 监听里（与设出生点同一个监听）同步入队：这时 `FinishConfiguration` 还没入队，宣告必然排在它前面，客户端在处理 play 阶段的 `Login`、建客户端层级之前就已收到（§16）。内容由 `ShardWorld#start` 在起服时算一次，`Started#farView()` 返回编好的字节，不宣告时为 null：取清单 `farview[]` 里与本分片 `bounds`（目录模式是本大区边界，否则是清单 `bounds`）相交的瓦片，逐个核对发布目录里 `farview/t.<tx>.<tz>.hfp` 的大小与 SHA-256 等于清单。`synaxis.farview.url-root` 为空、没有相交的瓦片、或任一文件不符时整条不宣告，起服日志一行 `Far view off: <原因>`（文件不符记 WARN，其余记 INFO）；宣告时一行 `Far view: <n> tile(s) from <url_root>`。`EVT:shard_started` 的 `farview_tiles` 记宣告的瓦片数。都不拒启：远景是可选的。
+  - 远景宣告（服务端）：通道 `synaxis:farview`，只在 configuration 阶段、由分片发给客户端，每条连接至多一条：只在 `event.isFirstConfig()` 为真的那次发，连接重新进入 configuration（`Player#startConfigurationPhase`）时不再发，客户端按网络连接保存宣告、断开才清。挂地图的分片在 `Main#serveMap` 已有的 `AsyncPlayerConfigurationEvent` 监听里（与设出生点同一个监听）同步入队：这时 `FinishConfiguration` 还没入队，宣告必然排在它前面，客户端在处理 play 阶段的 `Login`、建客户端层级之前就已收到（§16）。内容由 `ShardWorld#start` 在起服时算一次，`Started#farView()` 返回编好的字节，不宣告时为 null：取清单 `farview[]` 里与本分片 `bounds`（目录模式是本大区边界，否则是清单 `bounds`）相交的瓦片，逐个核对发布目录里 `farview/t.<tx>.<tz>.hfp` 的大小与 SHA-256 等于清单。`synaxis.farview.url-root` 为空、没有相交的瓦片、或任一文件不符时整条不宣告，起服日志一行 `Far view off: <原因>`（文件不符记 WARN，其余记 INFO）；宣告时一行 `Far view: <n> tile(s) from <url_root>`。`EVT:shard_started` 的 `farview_tiles` 记宣告的瓦片数。都不拒启：远景是可选的。
   - 宣告布局（`:protocol` 的 `FarViewAnnouncement`，用 `MsgBuf` 的原语，不走 M2 的 `msg_id` 信封、不计入 `schema_version`）：`format_version` VarInt（当前 1）；`build_id` 字符串（≤ 96 字节）；`base_level` u8；`min_y` VarInt；`height` VarInt；`tiles` 计数（1～64）后接每项 `tile_x` VarInt、`tile_z` VarInt、`bytes` VarLong、`sha256` 32 B、`url` 字符串（≤ 1,024 字节），按 (`tile_x`, `tile_z`) 升序。计数与长度先按上限与剩余字节检查再分配（同 `API-M2-001` 解码器的规则）。客户端读到不认识的 `format_version` 或解码失败时，这条连接按「没有宣告」处理并记一行 WARN。该通道登记进 `docs/DESIGN-M2.md` §8 属于跨分册改动（§28.2）。
   - 可用性（客户端，收到宣告时判一次）：远景可用 = DH 已加载（`FabricLoader#isModLoaded("distanthorizons")`）∧ `DhApi.getModVersion()` 等于 `"3.3.2"` ∧ `DhApi.getApiMajorVersion()` 等于 7 ∧ 下面 DH 接入面表里的内部成员经反射逐个取到且签名相符 ∧ `farview.radius ≠ 0` ∧ 收到了能解码的宣告。Iris 与 Sodium 的有无与版本不参与判定：没装光影时 DH 自己画远景；别的 Iris 版本能否与 DH 3.3.2 同开由 `PAGE-SHADER-GUIDE` 给推荐版本（`REQ-M3-026`）。DH 缺席：模组什么都不做，只有原版视距。DH 在而版本或接入面不符：模组除查版本号外不调用 DH 的任何方法，DH 按玩家自己的设置运行，记一次 WARN `Far view off: Distant Horizons <版本> is not the supported 3.3.2`。Synaxis 连接（本连接走完了 `synaxis:handshake`）而远景不可用的其余情形（没宣告、档位为 0、宣告解码失败）：DH 世界载入时照样设只读，并把 `renderingEnabled` 设为 false，玩家只有原版视距；连别的服务器时一律不碰 DH。
   - 客户端配置：`<gameDir>/config/synaxis-client.properties` 的 `farview.radius`，取 4096（默认）、2048（低配档）或 0（关）；其他值按 4096 并记 WARN；文件不存在时模组写出带注释的默认文件。
-  - 缓存（`<gameDir>/synaxis/farview/`）：`packs/<sha256>.hfp` 是下载完并校验过的包，按内容摘要命名，跨地图版本、跨大区共用，下载中是 `packs/<sha256>.hfp.part`。`dh/<view_key>/` 是一个 DH 库目录（`ENT-FarViewLibrary`，状态机见 §11.3）：`view_key` = SHA-256（UTF-8 文本 `"synaxis-farview 1\n" + DH 版本 + "\n" + BAKE_CODE_VERSION + "\n"`，再按 (`tile_x`, `tile_z`) 升序每个瓦片一行 `"<tile_x> <tile_z> <sha256 小写 hex>\n"`）的前 16 个 hex；`BAKE_CODE_VERSION` 是 `client-fabric` 里的整数常量（当前 1），改写库代码或点规则就加 1。目录里是 DH 自己的 `DistantHorizons.sqlite`、`-wal`、`-shm`（WAL 模式，DH `sqlScripts/0031`），外加完成标记 `synaxis-library.json`（`format` = 1、`view_key`、`dh_version`、`bake_code_version`、`tiles[]`（`tile_x`、`tile_z`、`sha256`）、`sources`、`bake_ms`、`baked_at`、`last_used`），先写 `.tmp` 再原子改名；完成标记存在且字段与本次一致才算 `ready`。整个 `synaxis/farview/` 上限 1 GiB：每有一个库进入 `ready` 就检查，超了按完成标记的 `last_used` 从旧到新删库目录（没有完成标记的库目录同样可删），不删本连接在用的库，再删不被任何剩余完成标记引用的包。`last_used` 在库被本连接选中时更新。
+  - 缓存（`<gameDir>/synaxis/farview/`）：`packs/<sha256>.hfp` 是下载完并校验过的包，按内容摘要命名，跨地图版本、跨大区共用，下载中是 `packs/<sha256>.hfp.part`。`dh/<view_key>/` 是一个 DH 库目录（`ENT-FarViewLibrary`，状态机见 §11.3）：`view_key` = SHA-256（UTF-8 文本 `"synaxis-farview 1\n" + DH 版本 + "\n" + BAKE_CODE_VERSION + "\n"`，再按 (`tile_x`, `tile_z`) 升序每个瓦片一行 `"<tile_x> <tile_z> <sha256 小写 hex>\n"`）的前 16 个 hex；`BAKE_CODE_VERSION` 是 `client-fabric` 里的整数常量（当前 1），改写库代码或点规则就加 1。目录里是 DH 自己的 `DistantHorizons.sqlite`、`-wal`、`-shm`（WAL 模式，DH `sqlScripts/0031`），外加完成标记 `synaxis-library.json`（`format` = 1、`view_key`、`dh_version`、`bake_code_version`、`tiles[]`（`tile_x`、`tile_z`、`sha256`）、`sources`、`bake_ms`、`baked_at`、`last_used`），先写 `.tmp` 再原子改名；完成标记存在且字段与本次一致才算 `ready`，DH 层级载入后还要过一次库核对（写库条「载入核对」），不过就删掉标记重烘。整个 `synaxis/farview/` 上限 1 GiB：每有一个库进入 `ready` 就检查，超了按完成标记的 `last_used` 从旧到新删库目录（没有完成标记的库目录同样可删），不删本连接在用的库，再删不被任何剩余完成标记引用的包。`last_used` 在库被本连接选中时更新。
   - 下载（`FarViewDownloader`，JDK `HttpClient`，代理取 JVM 默认的 `ProxySelector`，跟随重定向）：从收到宣告起与登录并行，本地没有的包逐个下，并发 2。连接超时 10 s，30 s 收不到新字节算本次失败。每个包至多 3 次尝试（第一次加 2 次重试，重试前等 1 s、4 s）：`.part` 已有 n 字节时带 `Range: bytes=n-`，响应 206 就接着写，200 就截断从头写；收到的字节超过宣告的 `bytes` 即失败；下完核对大小与 SHA-256，并用 `FarViewPack.Reader` 读一遍头部与索引，任一不符删掉 `.part`、算一次失败。3 次都失败：这条连接不画远景，不弹窗，记一行 WARN `Far view pack <sha256 前 12 位> failed after 3 attempts: <最后一次的原因>`；下次连到宣告它的分片再试。
   - 钉目录：模组在 `DhApiAfterDhInitEvent` 里经 `DhApi.overrides.bind(IDhApiSaveStructure.class, …)` 登记一次。DH 建客户端层级时调 `overrideFilePath(默认目录, 层级)`：本连接远景可用时返回 `dh/<view_key>/`，否则返回 null（DH 用它的默认目录）。宣告在 configuration 阶段就到了，这时一定已知（§16）。
-  - 只读与渲染参数：Synaxis 连接的每次 DH 世界载入（`DhApiWorldLoadEvent`）都在事件回调里同步调 `IDhApiWorldProxy#setReadOnly(true)`：`SharedApi#setDhWorld` 先换好世界再在同一段同步块里发这个事件（javap），这时客户端层级还没建，积压的近圈区块要到层级载入时才处理（DH spike 日志 `Loaded [673] waiting chunk wrappers`），由 V1 ⑤ 核对它们没进库；DH 卸载世界时把只读复位为假，所以每次都要设。远景可用时经配置 API 设两项：`chunkRenderDistance` = `farview.radius / 16`（256 或 128），`maxHorizontalResolution` = 与 `base_level` 相同（b = 2 为 `FOUR_BLOCKS`，b = 1 为 `TWO_BLOCKS`）；不可用时只设 `renderingEnabled = false`。都是 API 覆盖值，`DhApiWorldUnloadEvent` 时逐项 `clearValue()`，玩家自己在 DH 设置里的值不被改写。配置覆盖的设与清经 `Minecraft#execute` 放到客户端主线程（只读例外，见上）。`overdrawPreventionRadius` 按 V6 的结论再定，v0.29 不设。
+  - 只读与渲染参数：Synaxis 连接的每次 DH 世界载入（`DhApiWorldLoadEvent`）都在事件回调里同步调 `IDhApiWorldProxy#setReadOnly(true)`：DH 在 `ClientPacketListener#handleLogin` 返回处（DH 的 mixin）调 `ClientApi#onClientOnlyConnected` 建世界，`SharedApi#setDhWorld` 先换好世界再在同一段同步块里发这个事件（javap），这时客户端层级还没建，积压的近圈区块要到层级载入时才处理（DH spike 日志 `Loaded [673] waiting chunk wrappers`），由 V1 ⑤ 核对它们没进库；DH 卸载世界时把只读复位为假，所以每次都要设。远景可用时经配置 API 设两项：`chunkRenderDistance` = `farview.radius / 16`（256 或 128），`maxHorizontalResolution` = 与 `base_level` 相同（b = 2 为 `FOUR_BLOCKS`，b = 1 为 `TWO_BLOCKS`）；不可用时只设 `renderingEnabled = false`。都是 API 覆盖值，`DhApiWorldUnloadEvent` 时逐项 `clearValue()`，玩家自己在 DH 设置里的值不被改写。配置覆盖的设与清经 `Minecraft#execute` 放到客户端主线程（只读例外，见上）。`overdrawPreventionRadius` 按 V6 的结论再定，v0.29 不设。
   - 写库（§11.3 的 `baking`）：包齐、且 DH 层级已载入（`DhApiLevelLoadEvent` 给出 `IDhApiLevelWrapper`）之后，以后到的为准，起一条平台线程 `synaxis-farview-bake`（优先级 `Thread.NORM_PRIORITY - 1`）：
-    1. 核对每个包的 `min_y`、`height` 等于层级的 `getMinHeight()`、`getHeight()`，`block_states` 等于 `Block.BLOCK_STATE_REGISTRY.size()`；不等则不烘，库回到 `absent`，记 WARN。
-    2. 按宣告的瓦片顺序、块内按 `bz` 再 `bx` 升序逐块：跳过两项都为 0 的块；解压出 4,096 个采样；用 `FullDataSourceV2.createEmpty(DhSectionPos.encode((byte) (6 + b), sx, sz))` 建数据源（`sx = tile_x × 每边块数 + bx`，z 同理；DH 的 section 细节级 6 是一格一列，6 + b 级每列 2^b 格，一个数据源覆盖 64 × 2^b 格）；每个采样按下面的点规则建 `DhApiTerrainDataPoint` 列表，调 `setApiDataPointColumn(块内 x, 块内 z, 列表)`。
-    3. 把 `IDhApiLevelWrapper` 强转成 DH core 的 `ILevelWrapper`，经 `getDhLevel().updateDataSourcesAsync(数据源)` 交给 DH；在途至多 16 个，满了等最早的一个完成再交。交出去的数据源由 DH 关闭，之后不再碰。
-    4. 每交出一块更新一次进度；全部 future 完成后写完成标记，库进入 `ready`，再按上限清理缓存。日志一行 `view <view_key> baked in <ms> ms: <sources> sources, <db_bytes> B`（`db_bytes` 是写完成标记那一刻目录里三个 SQLite 文件的大小之和）。
-    5. 取消：DH 世界卸载（断开、转服）时置取消标志，线程在交下一块之前看到就停，不写完成标记；已交出的 future 以异常完成的按取消处理。库目录留着，下次按 `absent` 从头重写（DH 按位置覆盖，重写同一块结果相同）。
-    6. DH 的调用抛异常或 future 以异常完成（不是取消）：停下，不写完成标记，记 WARN 带异常，库回到 `absent`；这条连接剩下的时间里 LOD 只有已写进去的那部分。
-  - 点规则（y 一律是绝对坐标 = `min_y` + 下标，区间左闭右开；块光取该方块状态的 `getLightEmission()`，空气为 0）：有地面时地面点 [`min_y`, `min_y` + `ground_y` + 1)，天光 0；只有液体而 `fluid_bottom > 0` 时底下一个空气点 [`min_y`, `min_y` + `fluid_bottom`)，天光 0；有液体时液体点 [`min_y` + `fluid_bottom`, `min_y` + `fluid_top` + 1)，天光 max(0, 15 − 液体段格数)；顶 + 1 < `height` 时顶上一个空气点到世界顶，天光 15（空列只有这一个点，从 `min_y` 起）。所以每列 1～3 点：空列 1 点；只有地面时 1～2 点；有液体时 2～3 点。方块状态经 `DhApi.Delayed.wrapperFactory.getBlockStateWrapper(new Object[]{Block.BLOCK_STATE_REGISTRY.byId(id)}, 层级)`，生物群系经 `getBiomeWrapper(名字, 层级)`，空气经 `getAirBlockStateWrapper()`，包装对象按 id 与名字缓存。DH 写入时还会跑自己的天光烘焙（`FullDataUpdaterV2#updateDataSource` 调 `DhLightingEngine#bakeDataSourceSkyLight`，前面有一个按细节级的判断，b ≥ 1 时跑不跑没核对），LOD 的亮度由 V1 看。
-  - 进度与日志：下载期间 HUD 左下一行 `synaxis.farview.downloading`（参数：已下字节占总字节的百分比），烘焙期间 `synaxis.farview.preparing`（参数：已交出块数的百分比），`ready`、失败或取消即消失；两个键进 `client-fabric` 的 `en_us.json` 与 `zh_cn.json`。客户端 `latest.log` 的远景行都带前缀 `[synaxis/farview]`：`view <view_key> ready (<n> tiles)`、上面的烘焙行、下载与失败各一行；V2 与真机测法读这几行。
+    1. 核对每个包的 `min_y`、`height` 等于层级的 `getMinHeight()`、`getHeight()`，`block_states` 等于 `Block.BLOCK_STATE_REGISTRY.size()`；不等则不烘，库留在或回到 `absent`，记 WARN `Far view off: pack <sha256 前 12 位> does not match the level`。
+    2. 按宣告的瓦片顺序、块内按 `bz` 再 `bx` 升序逐块：跳过两项都为 0 的块；解压出 4,096 个采样；用 `FullDataSourceV2.createEmpty(DhSectionPos.encode((byte) (6 + b), sx, sz))` 建数据源（`sx = tile_x × 每边块数 + bx`，z 同理；DH 的 section 细节级 6 是一格一列，6 + b 级每列 2^b 格，一个数据源覆盖 64 × 2^b 格），把它的公开字段 `applyToParent` 设为 `Boolean.TRUE`（`createEmpty` 置 null；DH 合并时只在两边有一方为真时才置真，父层传播只取 `ApplyToParent = 1` 的行，不设就没有比 b 更粗的层，`FOUR_BLOCKS` 那一圈以外什么都不画，javap）；每个采样按下面的点规则建 `DhApiTerrainDataPoint` 列表，调 `setApiDataPointColumn(块内 x, 块内 z, 列表)`。
+    3. 交出：交每一块之前查取消标志，已置即停。把 `IDhApiLevelWrapper` 强转成 DH core 的 `ILevelWrapper`，经 `getDhLevel().updateDataSourcesAsync(数据源)` 交给 DH；在途至多 16 个，满了等最早的一个完成再交，每交出一块更新一次进度。等 future 时每 250 ms 醒一次查取消标志：DH 关世界时对任务选择器调 `shutdownNow`（`ThreadPoolUtil#shutdownThreadPools`，javap），排队中的写库任务被丢掉，它们的 future 不再完成（推断）。future 完成后由烘焙线程关闭这个数据源（`close()`）：DH 在 `FullDataUpdaterV2#updateDataSource` 里关的是它从库里取出的那一份，传入的这份在任何分支都不关（javap）。
+    4. 写完核对：全部 future 完成不说明写进了库。DH 3.3.2 的这个 future 总是正常完成，更新器已关、执行器为 null 或已终止、提交被拒时直接返回已完成的 future、不写库，任务里的异常只进 DH 日志（`FullDataUpdaterV2#updateDataSourceAsync` 与它的异步体，javap）。所以全部 future 完成后，烘焙线程经 `getDhLevel().getFullDataProvider().repo.queryDictionaryFirst(…)` 在 DH 自己的库连接上查 `SELECT COUNT(*) AS n FROM FullData WHERE DetailLevel = <b>`（`DetailLevel` 是数据细节级，DH `sqlScripts/0020`），n 等于交出的数据源数才算写全；返回 null（库连接已关）或不等即不通过，库回到 `absent`，记 WARN `view <view_key> incomplete: <n> of <sources> sources in the library`。写全之后每 250 ms 查一次 `SELECT COUNT(*) AS n FROM FullData WHERE ApplyToParent = 1`，等 DH 的父层传播做完（n = 0），最多 120 s；超时或返回 null 同样回到 `absent`，记 WARN `view <view_key> parents pending: <n>`。
+    5. 完成：传播做完且取消标志未置时写完成标记，库进入 `ready`，再按上限清理缓存。日志一行 `view <view_key> baked in <ms> ms: <sources> sources, <db_bytes> B`：`ms` 从烘焙线程起跑算到这一刻，`db_bytes` 是这一刻目录里三个 SQLite 文件的大小之和；V2、V8a 都按这一刻取数。
+    6. 取消：取消标志由三个信号里最早到的一个置位：Fabric `ClientPlayConnectionEvents.DISCONNECT`、本层级的 `DhApiLevelUnloadEvent`、`DhApiWorldUnloadEvent`。它们与 DH 关库的先后不全一致：断开时 DH 在 `ClientPacketListener#close` 开头关世界（DH 的 mixin），`DhClientWorld#close` 先发 `DhApiLevelUnloadEvent` 再关层级；换维度时 `DhClientWorld#unloadLevel` 先关层级再发它；`SharedApi#setDhWorld(null)` 关世界、关线程池、关全部库连接之后才发 `DhApiWorldUnloadEvent`（javap）。`IDhApiWorldProxy#worldLoaded()` 在 DH 关世界的过程中仍为真（`ClientApi#onClientOnlyDisconnected` 先 `close()` 再 `setDhWorld(null)`，javap），不能当取消信号。所以取消标志只用来尽早停手，库写没写全只由第 4 步判。取消后不写完成标记，库目录留着，下次按 `absent` 从头重写（DH 按位置合并，重写同一块结果相同）。
+    7. 同步调用抛异常（`setApiDataPointColumn` 的 `IllegalArgumentException`、包装工厂、`updateDataSourcesAsync` 本身）：停下，不写完成标记，记 WARN 带异常，库回到 `absent`；这条连接剩下的时间里 LOD 只有已写进去的那部分。
+    8. 载入核对：完成标记命中的库，在 DH 层级载入后由同一条烘焙线程按第 4 步的写法查一次 `DetailLevel = <b>` 的行数。等于标记的 `sources` 才留在 `ready`（更新 `last_used`）；不等或返回 null 即删掉完成标记，记 WARN `view <view_key> library does not match its marker: <n> of <sources>`，包全在缓存就从第 1 步起烘，否则先下载（§11.3）。
+  - 点规则（区间左闭右开；y 一律是下标 = 绝对 y − 层级的 `getMinHeight()`，也就是包里存的值，理由见 §6.1 约束表；光照是点的顶面之上一格的光照，b ≥ 1 时 DH 不再补烘，写进去的就是画出来的：天光按下面各点给出，块光 = max(0, 该方块状态的 `getLightEmission()` − 1)（上一格从这个方块得到的块光），空气点的块光为 0；n = 液体段格数 = `fluid_top − fluid_bottom + 1`）：有地面时地面点 [0, `ground_y` + 1)，上面有液体时天光 max(0, 15 − n)，否则 15；只有液体而 `fluid_bottom > 0` 时底下一个空气点 [0, `fluid_bottom`)，天光 max(0, 15 − n)；有液体时液体点 [`fluid_bottom`, `fluid_top` + 1)，天光 15；顶 + 1 < `height` 时顶上一个空气点 [顶 + 1, `height`)，天光 15（空列只有这一个点 [0, `height`)）。所以每列 1～3 点：空列 1 点；只有地面时 1～2 点；有液体时 2～3 点。方块状态经 `DhApi.Delayed.wrapperFactory.getBlockStateWrapper(new Object[]{Block.BLOCK_STATE_REGISTRY.byId(id)}, 层级)`，生物群系经 `getBiomeWrapper(名字, 层级)`，空气经 `getAirBlockStateWrapper()`，包装对象按 id 与名字缓存。
+  - 进度与日志：下载期间 HUD 左下一行 `synaxis.farview.downloading`（参数：已下字节占总字节的百分比），烘焙期间 `synaxis.farview.preparing`（参数：已交出块数的百分比），`ready`、失败或取消即消失；两个键进 `client-fabric` 的 `en_us.json` 与 `zh_cn.json`。客户端 `latest.log` 的远景行都带前缀 `[synaxis/farview]`：`view <view_key> ready (<n> tiles)`、上面的烘焙行、写完核对与载入核对不过的两行、下载与失败各一行；V2 与真机测法读这几行。
   - DH 接入面（DH 3.3.2 jar，Modrinth 版本 `9NoftEde`，SHA-1 `51cdbdd9d25b1f27c3825bfc405ca6c49b864889`，与 `docs/research/client-spikes-2026-09/dh-iris/Fetch.java` 相同；v0.29 用 `javap` 逐项核对）：
 
     | 成员 | 公开 API | 用途 | 核对结果 | 风险 |
     | --- | --- | --- | --- | --- |
     | `DhApi.getModVersion()`、`DhApi.getApiMajorVersion()` | 是 | 版本锁 | 返回 `"3.3.2"`、7 | — |
-    | `DhApi.events.bind(…)`；`DhApiAfterDhInitEvent`、`DhApiWorldLoadEvent`、`DhApiWorldUnloadEvent`、`DhApiLevelLoadEvent` | 是 | 登记覆盖、设只读与配置、拿层级 | `DhApiLevelLoadEvent.EventParam#levelWrapper` 是 `IDhApiLevelWrapper`；`SharedApi#setDhWorld` 先换世界再发 `DhApiWorldLoadEvent` | — |
+    | `DhApi.events.bind(…)`；`DhApiAfterDhInitEvent`、`DhApiWorldLoadEvent`、`DhApiWorldUnloadEvent`、`DhApiLevelLoadEvent`、`DhApiLevelUnloadEvent` | 是 | 登记覆盖、设只读与配置、拿层级、取消烘焙 | `DhApiLevelLoadEvent.EventParam#levelWrapper` 是 `IDhApiLevelWrapper`；`SharedApi#setDhWorld` 先换世界再发 `DhApiWorldLoadEvent`，卸载时关完库连接才发 `DhApiWorldUnloadEvent`；`DhApiLevelUnloadEvent` 在断开时早于、换维度时晚于关层级（写库条第 6 步） | — |
     | `DhApi.overrides.bind(IDhApiSaveStructure.class, …)`；`IDhApiSaveStructure#overrideFilePath(File, IDhApiLevelWrapper)` | 是 | 钉目录 | `ClientOnlySaveStructure#getSaveFolder` 对每个层级包装对象只问一次（缓存在 `levelWrapperToFileMap`），返回非 null 即替换并打日志 `Save folder overridden from [...] -> [...]` | 目录在建层级时就定死，宣告必须更早到（§16） |
     | `IDhApiWorldProxy#setReadOnly(boolean)`、`getReadOnly()` | 是 | 只读 | 只读在 `SharedApi#applyChunkUpdate`（因而也拦 `overwriteChunkDataAsync`）、`WorldGenerationQueue`、`AbstractFullDataNetworkRequestQueue`、`LodRequestModule` 与服务端事件处检查，不拦 `updateDataSourcesAsync`；`SharedApi#setDhWorld` 卸载世界时复位为假 | 每次世界载入都要重设 |
     | `DhApi.Delayed.configs.graphics()` 的 `chunkRenderDistance`、`maxHorizontalResolution`、`renderingEnabled`、`overdrawPreventionRadius` | 是 | 远景半径、最细分辨率、关渲染、近圈空洞 | `IDhApiConfigValue#setValue` / `clearValue`；`LodQuadTree` 的最细叶节点取 `maxHorizontalResolution.detailLevel` | `getCanBeOverrodeByApi()` 为假的项设不上，V1 核对 |
     | `DhApi.Delayed.wrapperFactory` 的 `getBlockStateWrapper(Object[], IDhApiLevelWrapper)`、`getBiomeWrapper(String, IDhApiLevelWrapper)`、`getAirBlockStateWrapper()` | 是（`Object[]` 的内容是包装层约定） | 方块、生物群系、空气的包装对象 | `WrapperFactory#getBlockStateWrapper` 只认 `[BlockState]` | 入参形状随 DH 升版可能变 |
-    | `DhApiTerrainDataPoint.create(byte, int, int, int, int, IDhApiBlockStateWrapper, IDhApiBiomeWrapper)` | 是 | 数据点 | 参数依次是细节级（必须 0）、块光、天光、底 y、顶 y、方块、生物群系 | — |
-    | `IDhApiFullDataSource#setApiDataPointColumn(int, int, List)` | 是（接口公开，实现类是内部的 `FullDataSourceV2`） | 填列 | 自己排成从上到下；相邻点之间有空隙、重叠或细节级不是 0 即抛 | — |
-    | `DhApi.Delayed.terrainRepo` 的 `getColumnDataAtBlockPos`、`getAllTerrainDataAtDetailLevelAndPos`、`createSoftCache`；`IDhApiLevelWrapper#getDhSaveFolder()` | 是 | 只给 V1 与测试查 | 不传缓存时查询直接失败（DH spike） | 不在渲染线程上等结果 |
-    | `FullDataSourceV2.createEmpty(long)`（`core.dataObjects.fullData.sources`） | **否** | 建数据源 | 静态工厂；`WIDTH = 64` | DH 升版可能改名、改签名或改语义 |
+    | `DhApiTerrainDataPoint.create(byte, int, int, int, int, IDhApiBlockStateWrapper, IDhApiBiomeWrapper)` | 是 | 数据点 | 参数依次是细节级（必须 0）、块光、天光、底 y、顶 y（都是下标，点规则条）、方块、生物群系 | — |
+    | `IDhApiFullDataSource#setApiDataPointColumn(int, int, List)`、`#getApiDataPointColumn(int, int)` | 是（接口公开，实现类是内部的 `FullDataSourceV2`） | 填列；后者只给 V1 取样 | 前者自己排成从上到下，相邻点之间有空隙、重叠或细节级不是 0 即抛，y 以偏移 0 原样存；后者同样以偏移 0 读回 | — |
+    | `IDhApiLevelWrapper#getDhSaveFolder()` | 是 | 只给 V1 核对目录 | 返回层级的库目录 | — |
+    | `FullDataSourceV2.createEmpty(long)` 与继承来的 `close()`（`core.dataObjects.fullData.sources`） | **否** | 建数据源、用完关闭 | 静态工厂；`WIDTH = 64`；`close()` 在 `AbstractPhantomArrayList` 上，归还池化数组 | DH 升版可能改名、改签名或改语义 |
+    | `FullDataSourceV2#applyToParent`（公开字段 `Boolean`） | **否** | 让 DH 往上层降采样 | `createEmpty` 置 null；`updateFromDataSource` 在两边有一方为真且 section 细节级 < 14 时置真；DTO 原样写进 `ApplyToParent` 列 | 同上 |
     | `DhSectionPos.encode(byte, int, int)`（`core.pos`） | **否** | 数据源位置 | 细节级占低 8 位，x、z 各 28 位；`SECTION_BLOCK_DETAIL_LEVEL = 6` | 同上 |
     | `ILevelWrapper#getDhLevel()`（`core.wrapperInterfaces.world`，把 `IDhApiLevelWrapper` 强转过去） | **否** | 拿 DH 层级 | `ILevelWrapper extends IDhApiLevelWrapper` | 同上 |
-    | `IDhLevel#updateDataSourcesAsync(FullDataSourceV2)`（`core.level`） | **否** | 写库 | 返回 `CompletableFuture<Void>`；`FullDataUpdaterV2#updateDataSource` 取出库里已有的数据合并、烘天光、`FullDataSourceV2Repo#save`、通知渲染，最后关闭传入的数据源 | 同上；在途数由调用方限 |
+    | `IDhLevel#updateDataSourcesAsync(FullDataSourceV2)`（`core.level`） | **否** | 写库 | 返回 `CompletableFuture<Void>`，总是正常完成；`FullDataUpdaterV2#updateDataSource` 取出库里同位置的数据合并、只在 section 细节级 6 时烘天光、`FullDataSourceV2Repo#save`、通知渲染，关的是取出的那一份，不关传入的；更新器已关或执行器不可用时不写库、直接返回已完成的 future | 同上；在途数由调用方限；完成不等于写进库（写库条第 4 步） |
+    | `IDhLevel#getFullDataProvider()`（`core.level`）与 `FullDataSourceProviderV2#repo`（公开 final 字段，`core.file.fullDatafile.V2`） | **否** | 拿 DH 自己的库连接 | `DhClientLevel` 返回 `RemoteFullDataSourceProvider`（`FullDataSourceProviderV2` 的子类），`repo` 是 `FullData` 表的 `FullDataSourceV2Repo` | 同上 |
+    | `AbstractDhRepo#queryDictionaryFirst(String)`（`core.sql.repo`） | **否** | 写完核对、载入核对、V1 计数 | 在调用线程自己的连接上执行一条 SQL，返回第一行的列名到值；连接已关或没有结果时返回 null | 同上；SQL 依赖 DH 的表结构（下一行） |
+    | DH 库表结构：`FullData` 表的 `DetailLevel`（数据细节级）与 `ApplyToParent` 列（`sqlScripts/0020`、`0050`） | **否** | 同上 | 主键 `(DetailLevel, PosX, PosZ)`；`ApplyToParent = 1` 上有部分索引 | DH 改表结构时计数失效 |
+    | `FullDataSourceProviderV2#get(long)` | **否** | 只给 V1 按数据源位置取样 | 库里没有这一位置时返回空的数据源；调用方负责 `close()` | 同上 |
 
-    远景备忘录说的「本地烘焙依赖 DH core 内部类」落到上表最后四行，全在 `…client.farview.dh` 包里。名单由 `client-fabric` 的 `DhSurfaceTest` 在编译用的 DH jar 上逐个反射核对（类名、方法名、参数与返回类型），运行期的可用性探测用同一份名单；升 DH 时任一项不符先红这个测试（§24）。没用、也不打算用的：`FullDataSourceV2Repo`、`FullDataSourceV2DTO`、`IDhApiWorldGenerator` 与 `overwriteChunkDataAsync`，理由见 §6.1 写库路径表。
+    远景备忘录说的「本地烘焙依赖 DH core 内部类」落到上表「否」的九行：运行期用前八行（`createEmpty` 与 `close()`、`applyToParent`、`DhSectionPos.encode`、`getDhLevel`、`updateDataSourcesAsync`、`getFullDataProvider`、`repo`、`queryDictionaryFirst`，外加它查的表结构），`FullDataSourceProviderV2#get` 只在 V1 里用；全在 `…client.farview.dh` 包里。名单由 `client-fabric` 的 `DhSurfaceTest` 在编译用的 DH jar 上逐个反射核对（类名、方法名或字段名、参数与返回类型），并读 jar 里的 `sqlScripts/0020-sqlite-createFullDataSourceV2Tables.sql` 断言 `FullData` 表有这两列；运行期的可用性探测用同一份名单；升 DH 时任一项不符先红这个测试（§24）。不用 `FullDataSourceV2Repo` 写库、不建 `FullDataSourceV2DTO`、不用 `IDhApiWorldGenerator`、`overwriteChunkDataAsync` 与 `IDhApiTerrainDataRepo` 的查询，理由见 §6.1 写库路径表与约束表。
   - 退路（切换条件 2 成立时才做，v0.29 不排期）：CDN 预烘库。库由无头容器里同一份写库代码烘出（`FarViewClientGameTest` 加一个只烘不测的模式，对每个大区的宣告各烘一次），在 DH 关闭之后（WAL 已检查点）把 `dh/<view_key>/` 打包上传，宣告加一个可选字段指向它；客户端下载、校验、解到 `dh/<view_key>/` 并写完成标记。`view_key` 含 DH 版本，升 DH 时要在容器里重烘全部库。
   - 光影检测：`FabricLoader#isModLoaded("sodium")`、`isModLoaded("iris")`，Iris 在时读 `IrisApi#isShaderPackInUse()`；三者缺任一项且玩家没勾「不再提示」时，进世界后打开一次 `PAGE-SHADER-GUIDE`。检测结果不上报服务端。
   - 许可：DH 是 LGPL-3.0-only，随客户端整合分发（用户 2026-09-23 确认，§28.1）：以独立 jar 放 `mods/`，附显著声明与 GPL / LGPL 全文，在显示版权的界面列出 DH（远景备忘录 §3.6）；玩家可以替换这个 jar，换成别的版本时远景关、DH 按它自己的设置运行（可用性条）；模组 jar 不内嵌 DH（`verifyModJar` 断言）。DH 升版时版本锁、上面的接入面表与 `DhSurfaceTest`、写库代码与 `BAKE_CODE_VERSION` 一起改，§26 M3-G 的 V1 在容器里整套重跑。
@@ -1063,6 +1073,7 @@ M3 的契约有四类：① 文件格式（`.synx`、清单、覆盖存储、高
 | DH 库键 | `view_key` | 客户端目录名与完成标记 | string | 是 | 16 个小写 hex，算法见 `API-M3-015` 缓存条 | — | 否 |
 | DH 版本 | `dh_version` | 完成标记 | string | 是 | 烘焙时 `DhApi.getModVersion()`，当前只能是 `3.3.2` | — | 否 |
 | 烘焙代码版本 | `bake_code_version` | 完成标记 | int | 是 | `client-fabric` 的 `BAKE_CODE_VERSION`，当前 1 | — | 否 |
+| 数据源数 | `sources` | 完成标记 | int | 是 | 烘焙时交给 DH 的数据源个数（包里两项不都为 0 的块数之和）；写完核对与层级载入时的库核对都要求库里数据细节级 b 的行数等于它（`API-M3-015` 写库条） | 个 | 否 |
 | 最后使用 | `last_used` | 完成标记 | timestamp | 是 | ISO-8601（UTC）；库被一条连接选中时更新，缓存清理按它从旧到新删 | — | 否 |
 | DH 库状态 | `library_state` | 客户端（完成标记的有无 + 本连接的内存状态） | enum | 是 | `absent` / `downloading` / `baking` / `ready`（§11.3）；只有 `ready` 落盘，其余是本连接的内存状态 | — | 否 |
 | 大区 id | `region_id` | `shards.json` `regions[].region_id`、`shard_heartbeat.region_id`、`world_flag.region_id` | string | 是 | `[a-z0-9][a-z0-9_-]{0,31}`；目录内唯一 | — | 否 |
@@ -1178,7 +1189,7 @@ stateDiagram-v2
 
 ### 11.3 客户端 DH 库 `ENT-FarViewLibrary`
 
-一个 `view_key` 一个库（`API-M3-015` 缓存条）。`ready` 由完成标记落盘，跨连接、跨重启保留；`downloading` 与 `baking` 只存在于一条连接的内存里，DH 世界卸载（断开、转服）时回到 `absent`。远景不可用（DH 缺席、版本或接入面不符、档位为 0、没有能解码的宣告）时不选库，不进本状态机。库在 `absent` 时 DH 照样打开这个目录（目录在建层级时就钉了），上次中断留下的部分数据照样画出来，直到重写覆盖。
+一个 `view_key` 一个库（`API-M3-015` 缓存条）。`ready` 由完成标记落盘，跨连接、跨重启保留，每次 DH 层级载入后再过一次库核对；`downloading` 与 `baking` 只存在于一条连接的内存里，连接断开或层级卸载（断开、转服、换维度）时回到 `absent`。远景不可用（DH 缺席、版本或接入面不符、档位为 0、没有能解码的宣告）时不选库，不进本状态机。库在 `absent` 时 DH 照样打开这个目录（目录在建层级时就钉了），上次中断留下的部分数据照样画出来，直到重写覆盖。包全在本地缓存而层级载入时世界参数不符的，不迁移、留在 `absent`，记与 `downloading → absent` 同一行 WARN（写库条第 1 步）。「连接断开或层级卸载」指 Fabric `ClientPlayConnectionEvents.DISCONNECT`、本层级的 `DhApiLevelUnloadEvent`、`DhApiWorldUnloadEvent` 三者里最早到的一个（写库条第 6 步）。
 
 ```mermaid
 stateDiagram-v2
@@ -1188,10 +1199,13 @@ stateDiagram-v2
   downloading --> baking : 包齐与层级载入都已发生 [包的大小与 SHA-256 都相符 ∧ 世界参数相符]
   downloading --> absent : 包齐与层级载入都已发生 [某个包的世界参数与层级不等]
   downloading --> absent : 下载失败 [某个包尝试 3 次 ∧ 最后一次结果不是成功]
-  downloading --> absent : DH 世界卸载
-  baking --> ready : 全部数据源写完 [全部 future 正常完成 ∧ 取消标志未置]
-  baking --> absent : DH 世界卸载
-  baking --> absent : 写库出错 [某次 DH 调用抛异常或某个 future 异常完成 ∧ 取消标志未置]
+  downloading --> absent : 连接断开或层级卸载
+  baking --> ready : 写完核对通过 [b 层行数 = 交出数 ∧ 待传播行数 = 0 ∧ 取消标志未置]
+  baking --> absent : 写完核对不过 [b 层行数 ≠ 交出数 ∨ 查询返回 null ∨ 等传播超过 120 s]
+  baking --> absent : 连接断开或层级卸载
+  baking --> absent : 写库出错 [某次同步调用抛异常 ∧ 取消标志未置]
+  ready --> baking : 层级载入 [库核对不过 ∧ 包全在本地缓存]
+  ready --> downloading : 层级载入 [库核对不过 ∧ 有包不在本地缓存]
   ready --> absent : 缓存清理 [总占用超过 1 GiB ∧ last_used 在剩余库里最旧 ∧ 不是本连接在用的库]
 ```
 
@@ -1204,13 +1218,16 @@ stateDiagram-v2
 | downloading → baking | 包齐与层级载入都已发生 | 每个包的大小与 SHA-256 等于宣告 ∧ 世界参数与层级相符 | 同上 | 客户端（最后一个包下完的下载线程或 `DhApiLevelLoadEvent`，以后到者为准） | `API-M3-015` 写库条 |
 | downloading → absent | 包齐与层级载入都已发生 | 某个包的 `min_y`、`height` 或 `block_states` 与层级不等 | 不烘，记 WARN；本连接不画远景 | 客户端 | `API-M3-015` 写库条第 1 步 |
 | downloading → absent | 下载失败 | 某个包尝试次数 = 3 ∧ 最后一次结果不是成功 | 停掉其余下载，删掉失败包的 `.part`，记 WARN；本连接不画远景，不弹窗 | 内部任务 `farview.download` | `API-M3-014`、`API-M3-015` 下载条 |
-| downloading → absent | DH 世界卸载 | — | 停下载，已下的 `.part` 留着供下次续传 | 客户端（`DhApiWorldUnloadEvent`） | `API-M3-015` |
-| baking → ready | 全部数据源写完 | 全部 future 正常完成 ∧ 取消标志未置 | 写完成标记（先 `.tmp` 再改名），记烘焙日志行，HUD 行消失；起内部任务 `farview.cache-clean` | 内部任务 `farview.bake` | `API-M3-015` 写库条第 4 步 |
-| baking → absent | DH 世界卸载 | — | 置取消标志，线程在交下一块之前停，不写完成标记；库目录留着 | 客户端（`DhApiWorldUnloadEvent`） | `API-M3-015` 写库条第 5 步 |
-| baking → absent | 写库出错 | 某次 DH 调用抛异常或某个 future 以异常完成 ∧ 取消标志未置 | 停下，不写完成标记，记 WARN 带异常；已写进去的部分本连接照样画 | 内部任务 `farview.bake` | `API-M3-015` 写库条第 6 步 |
+| downloading → absent | 连接断开或层级卸载 | — | 停下载，已下的 `.part` 留着供下次续传 | 客户端（三个信号里最早到的一个） | `API-M3-015` 写库条第 6 步 |
+| baking → ready | 写完核对通过 | 全部 future 已完成 ∧ 库里 `DetailLevel = b` 的行数 = 交出的数据源数 ∧ `ApplyToParent = 1` 的行数 = 0 ∧ 取消标志未置 | 写完成标记（先 `.tmp` 再改名，`sources` = 交出数），记烘焙日志行，HUD 行消失；起内部任务 `farview.cache-clean` | 内部任务 `farview.bake` | `API-M3-015` 写库条第 4、5 步 |
+| baking → absent | 写完核对不过 | 全部 future 已完成 ∧（`DetailLevel = b` 的行数 ≠ 交出数 ∨ 查询返回 null ∨ 等 `ApplyToParent = 1` 归零超过 120 s） | 不写完成标记，记 WARN（`incomplete` 或 `parents pending`）；库目录留着，下次按 `absent` 重写 | 内部任务 `farview.bake` | `API-M3-015` 写库条第 4 步 |
+| baking → absent | 连接断开或层级卸载 | — | 置取消标志；线程在交下一块之前、或等 future 的下一次醒来时停，不写完成标记；库目录留着 | 客户端（三个信号里最早到的一个） | `API-M3-015` 写库条第 6 步 |
+| baking → absent | 写库出错 | 某次同步调用（`setApiDataPointColumn`、包装工厂、`updateDataSourcesAsync`）抛异常 ∧ 取消标志未置 | 停下，不写完成标记，记 WARN 带异常；已写进去的部分本连接照样画 | 内部任务 `farview.bake` | `API-M3-015` 写库条第 7 步 |
+| ready → baking | 层级载入 | 库里 `DetailLevel = b` 的行数 ≠ 完成标记的 `sources`（或查询返回 null）∧ 宣告里的包全在 `packs/` ∧ 世界参数与层级相符 | 删掉完成标记，记 WARN `library does not match its marker`；起内部任务 `farview.bake` | 内部任务 `farview.bake`（载入核对） | `API-M3-015` 写库条第 8 步 |
+| ready → downloading | 层级载入 | 库核对不过（同上）∧ 宣告里至少一个包不在 `packs/` | 删掉完成标记，记同一行 WARN；起内部任务 `farview.download` | 内部任务 `farview.bake`（载入核对） | `API-M3-015` 写库条第 8 步、下载条 |
 | ready → absent | 缓存清理 | `synaxis/farview/` 总占用 > 1 GiB ∧ 本库的 `last_used` 在剩余库里最旧 ∧ 不是本连接在用的库 | 删库目录，再删不被剩余完成标记引用的包 | 内部任务 `farview.cache-clean`（另一个库进入 `ready` 之后） | `API-M3-015` 缓存条 |
 
-`ready` 的库在下一次宣告同一 `view_key` 时不走任何迁移：DH 直接从钉住的目录载入，只更新 `last_used`。换了任一个包、DH 版本或 `BAKE_CODE_VERSION`，`view_key` 就变了，是另一个库，旧库只由缓存清理删除。
+`ready` 的库在下一次宣告同一 `view_key` 时不下载：DH 直接从钉住的目录载入，层级载入后库核对通过即留在 `ready`、只更新 `last_used`，不通过走上面两行。换了任一个包、DH 版本或 `BAKE_CODE_VERSION`，`view_key` 就变了，是另一个库，旧库只由缓存清理删除。
 
 ## 12. 关键流程时序
 
@@ -1344,25 +1361,28 @@ sequenceDiagram
     M->>M: 核对大小与 SHA-256 失败重试 2 次
   end
   SH->>M: FinishConfiguration 然后 play 阶段 Login
-  DH->>M: 建层级时 overrideFilePath (API-M3-015)
-  M-->>DH: farview/dh/view_key 目录
-  DH-->>M: DhApiWorldLoadEvent async
+  DH->>M: 处理 Login 时建世界 同步发 DhApiWorldLoadEvent
   M->>DH: setReadOnly true 与渲染参数覆盖 (API-M3-015)
+  DH->>M: 建层级时 overrideFilePath (API-M3-015)
+  M-->>DH: 返回 farview/dh/view_key 目录
+  DH->>M: DhApiLevelLoadEvent 层级包装对象
   alt 完成标记命中
-    DH->>DH: 从钉住的库载入 LOD
-  else 包齐且层级已载入
+    M-->>DH: 烘焙线程查 DetailLevel b 的行数 async (API-M3-015)
+    DH-->>M: 行数等于 sources 库留在 ready
+  else 包齐且层级已载入 或 库核对不过
     loop 每个 64x64 采样块
-      M->>DH: updateDataSourcesAsync 一个数据源 (API-M3-015)
+      M-->>DH: updateDataSourcesAsync 一个数据源 applyToParent 真 async (API-M3-015)
       DH-->>M: future 完成 async
     end
+    M-->>DH: 写完核对 查行数 再等 ApplyToParent 归零 async (API-M3-015)
     M->>M: 写完成标记 库进入 ready
-  else 下载失败 或 写库出错 或 世界卸载
-    M->>M: 本连接不画远景 下次再试
+  else 下载失败 写库出错 核对不过 或 连接断开
+    M->>M: 不写完成标记 本连接不画远景或只画已写部分 下次再试
   end
   DH-->>M: 远景 LOD 可见 开光影时由 dh_* 程序着色
 ```
 
-驱动的状态机迁移：§11.3 `absent → downloading → baking → ready`（包已在缓存时 `absent → baking`），失败与取消分支 `→ absent`；完成标记命中时不走迁移。服务端状态不变：远景宣告只读清单与包文件。第 6 条消息（`FinishConfiguration` 与 `Login`）是原版的阶段切换，不属于任何 `API-M3-*`，画出来是为了表明宣告一定先于建层级（§16）。
+驱动的状态机迁移：§11.3 `absent → downloading → baking → ready`（包已在缓存时 `absent → baking`），失败、核对不过与取消分支 `→ absent`；完成标记命中而载入核对不过时 `ready → baking`（包不全时 `ready → downloading`）；核对通过时不走迁移。服务端状态不变：远景宣告只读清单与包文件。第 6 条消息（`FinishConfiguration` 与 `Login`）是原版的阶段切换，第 7 条是 DH 自己在 `ClientPacketListener#handleLogin` 返回处建世界，都不属于任何 `API-M3-*`；画出来是为了表明宣告一定先于建层级、只读先于层级处理积压的区块（§16）。
 
 ### 12.5 停机时的覆盖层最终落盘
 
@@ -1505,9 +1525,9 @@ flowchart LR
 | 世界状态标志 | 起服重放 1,000 个标志（每个 20 格） | 重放 < 5 s（`EVT:shard_started.flags_ms`）；运行期变化在同大区其他频道 P99 < 1 s 可见（Redis 可用时），Redis 不可用时 ≤ 60 s；60 s 核对每 tick 至多 1,024 格。1,000 个标志的重放没有测；集成测试只证明单条消息 1 s 内被另一频道应用（`WorldFlagsSyncTest`，负载高时最可能偶发红的一条判据），真进程里库中只有 0 或 1 个（没登记应用方式的）标志时 `flags_ms` 为 1 ms（RUN-045） |
 | 光照正确性 | 对拍 | `LightParityIntegrationTest` 全部场景与原版 26.2 逐值差异为 0（当前 7 个场景）；测试直接断言差异数为 0，没有例外表，任何差异都让测试失败 |
 | 兼容 | 客户端 | Minecraft 26.2；Apple Silicon（GL 4.1）必须能进服并正常渲染近景（Q5）；光影只在 OpenGL 后端（Iris 不支持 Vulkan；DH 与 Iris 同开固定 OpenGL）。帧率判据（远景备忘录 V7、V8）：RTX 3060、1080p、rd=12、远景 4,096 格、Complementary 默认档 P1% ≥ 60 FPS，开 DH 比关 DH 的平均帧时间多 ≤ 2 ms；Mac 1080p、LOW 档 P1% ≥ 45 FPS；低配档 GTX 1650 / M1、1080p、r=8、远景 2,048 格 P1% ≥ 45 FPS。全部由用户提供的真机测（§17，测法见 §26 M3-G 的 V8b）；DH 的堆内存与首次载入耗时先在无头容器里量（V8a，只记录） |
-| 远景准备 | 首次进一个大区（4k 测试图一个瓦片，`base_level` 2） | 进服不等远景：登录、进世界与下载、烘焙并行，失败只关远景。判据是切换条件 2（§6.1）：Windows 与 Mac 两台真机上本地烘焙墙钟（客户端日志 `baked in <ms> ms`）≤ 同一库（日志里的 `db_bytes`）在 50 Mbit/s 下的下载时间 = `db_bytes` × 8 / 50,000,000 s，三次取中位数（V2b）。推算门槛约 0.5～1.4 s（§2），判据要不要换见 §28.1。另记下载耗时、包的压缩后字节、从 `DhApiLevelLoadEvent` 到完成标记的墙钟、在途 16 个时 DH 线程的 CPU 占用（V2a 在容器里、V2b 在真机上） |
-| 远景包与库大小 | 4k 测试图一个瓦片 | 只记录，偏差超过 §2 远景高度场包行 ±50% 时重算该行：包未压缩 8 MiB（b = 2），压缩后未测；DH 库（`DistantHorizons.sqlite` + `-wal` + `-shm`，DH 世界卸载之后）推算 2.9～8.7 MB（V2a） |
-| 远景只读 | 远景可用的连接走动 200 格 | DH 库 `FullData` 表行数在走动前后相同，近圈区块不进库（V1 ⑤） |
+| 远景准备 | 首次进一个大区（4k 测试图一个瓦片，`base_level` 2） | 进服不等远景：登录、进世界与下载、烘焙并行，失败只关远景。判据是切换条件 2（§6.1）：Windows 与 Mac 两台真机上本地烘焙墙钟（客户端日志 `baked in <ms> ms`）≤ 同一库（同一行的 `db_bytes`）在 50 Mbit/s 下的下载时间 = `db_bytes` × 8 / 50,000,000 s，三次取中位数（V2b）。两个数都取在写完核对通过、父层传播做完的那一刻（`API-M3-015` 写库条第 5 步），这时远景已完整可见、库的大小也不再因传播变化。推算门槛约 0.5～1.4 s（§2），判据要不要换见 §28.1。另记下载耗时、包的压缩后字节、在途 16 个时 DH 线程的 CPU 占用（V2a 在容器里、V2b 在真机上） |
+| 远景包与库大小 | 4k 测试图一个瓦片 | 只记录，偏差超过 §2 远景高度场包行 ±50% 时重算该行：包未压缩 8 MiB（b = 2），压缩后未测；DH 库（`DistantHorizons.sqlite` + `-wal` + `-shm`，取烘焙日志行的 `db_bytes`）推算 2.9～8.7 MB（V2a） |
+| 远景只读 | 远景可用的连接走动 200 格 | DH 库 `FullData` 表里数据细节级 0 的行数在走动前后都为 0：DH 自己收的区块写在这一层，W2 只写 b ≥ 1 与更粗的层，所以这一层非空就是近圈区块进了库（V1 ⑤） |
 | 数据增长 | 12 个月 | 地图版本目录按版本增长，`retired/` 保留 30 天后删；覆盖存储随 `build_id` 丢弃；CDN 上的高度场包按内容摘要存，不再被任何已发布版本引用的对象随 `retire` 30 天后删，正式档 64 个瓦片按块压缩前 0.5 GiB/版本；玩家机器上的远景缓存上限 1 GiB（`API-M3-015`）；`world_flag` 行数 = 标志数，每大区 ≤ 1,000 行；`transfer_nonce` 的过期行由 `docs/DESIGN-PROD.md` §17 `transfer_nonce.gc` 每 10 min 删除；玩家数据（`character` + `character_section`）的增长见 `docs/DESIGN-PROD.md` §15 数据增长行 |
 
 **测量手段**：tick 与堆沿用 `docs/DESIGN-M2.md` §15 的 soak `summary.json` 字段口径，压测工具按 `docs/DESIGN-PROD.md` `API-PROD-025`；区块下行由 `REQ-M3-014` 的 `inbound.chunks`（区块包条数、字节、按移动档分栏，取 `steady_*` 那组以排除进场的首次填满）；零编码由发送路径的包类型断言（确定性）加 JFR 的方法调用数与样本栈过滤（统计，配阳性对照）：分片打出 listening 行之后、第一个机器人进场之前 `jcmd <pid> JFR.start name=zero settings=profile 'method-timing=io.github.bearisbug.synaxis.network.packet.server.play.ChunkDataPacket::<init>;io.github.bearisbug.synaxis.instance.DynamicChunk::createChunkPacket;io.github.bearisbug.synaxis.synx.SynxChunk::getFullDataPacket' 'jdk.ObjectAllocationSample#throttle=100000/s' 'jdk.ExecutionSample#period=2ms'`，机器人退出后 `JFR.dump`、`JFR.stop`；`jfr print --events jdk.MethodTiming` 取每个方法最后一个事件的 `invocations`，`jfr print --stack-depth 64` 数栈里含 `createChunkPacket` 的执行与分配样本；包体一致与光照对拍是单元测试；基准数字按 `API-M3-008` 的口径，报堆必须写明是否含包缓存、调色板形态、是否预热三项。
@@ -1585,11 +1605,11 @@ flowchart LR
 | 并行烘焙两个相邻区域 | 烘焙任务 × 2 | 结果与串行烘焙逐字节相同（同一 JDK 上整个区域文件相同） | 每个任务只写自己区域；光环只读（`ADR-M3-004`）；生成器跨区块 `fork` 即让该区域失败（`API-M3-003`）；`GeneratorBakeTest#aParallelBakeEqualsASerialOne` 与发布前的抽样重烘守住 |
 | 烘焙期间源给出的区块前后不同 | 烘焙任务 × 抽样重烘 | 发布前被拦下，退出码 4 | `verify` 抽样只带 3×3 邻居重烘并逐字节比较整条记录（`GeneratorBakeTest#aSourceThatChangesBetweenReadsFailsTheVerification`） |
 | `LightingChunk.relight` 与 `setBlock` 同时进行 | M2 `Match` 载入 × 改方块 | 不允许发生：调用方保证调用期间这些区块及周围区块不改方块 | `API-M3-004` 的前置条件（§5 末表 ②）；M2 只在实例注册前调用。违反时快照与写回之间改的方块留旧光照，直到该 section 下一次变动 |
-| 远景宣告与 `FinishConfiguration` | 分片的 configuration 虚拟线程 × 连接的写队列 | 宣告在 `FinishConfiguration` 之前写出，客户端按 configuration 负载收到 | 宣告在 `AsyncPlayerConfigurationEvent` 的监听里同步入队，`FinishConfiguration` 在这个事件处理完之后才入队（`API-M3-015` 宣告条）；不能挪到别的线程或 `scheduleNextTick`，否则会与 `S2C_HELLO` 当年一样被当成 play 负载丢掉（`docs/DESIGN-M2.md` v0.51） |
-| 远景宣告与 DH 建层级 | 客户端处理负载的线程 × DH 在客户端层级创建时调 `overrideFilePath` | DH 问目录时宣告已存好 | 宣告在 `Login` 之前到（上一行），DH 的层级在处理 `Login` 时才建；宣告的保存与读取用 `volatile` 引用。Fabric 在哪条线程上执行 configuration 负载的接收回调没有核对，由 V1 ⑦ 在日志里核对「宣告收到」早于「Save folder overridden」 |
-| 烘焙与 DH 的库 | 烘焙线程 × DH 的更新线程、渲染线程与近圈区块收集 | 只有 DH 写库：烘焙线程只建数据源、交给 `updateDataSourcesAsync`；近圈区块被只读挡住 | `API-M3-015` 写库条与只读条；DH 按位置加锁合并（`FullDataUpdaterV2` 的 `PositionalLockProvider`，javap） |
-| 烘焙与渲染线程 | 烘焙线程 × 客户端主线程 | 渲染线程上从不等 DH 的 future，也不在它上面调写库或查询 | 写库与 V1 的查询都在烘焙线程或测试自己的线程上（DH spike ①：在渲染线程上等查询结果会卡死客户端） |
-| 断开时还在烘焙 | `DhApiWorldUnloadEvent` × 烘焙线程 | 不写完成标记，下次按 `absent` 重写；已交给 DH 的数据源由 DH 自己收尾或丢弃 | 取消标志在交下一块之前检查（§11.3 `baking → absent`）；DH 卸载世界时关闭全部库连接（`SharedApi#setDhWorld` 调 `AbstractDhRepo#closeAllConnections`，javap），之后才完成的 future 可能以异常结束，取消标志已置时一律按取消处理 |
+| 远景宣告与 `FinishConfiguration` | 分片的 configuration 虚拟线程 × 连接的写队列 | 宣告在 `FinishConfiguration` 之前写出，客户端按 configuration 负载收到 | 宣告在 `AsyncPlayerConfigurationEvent` 的监听里同步入队，`FinishConfiguration` 在这个事件处理完之后才入队（`API-M3-015` 宣告条）；连接重新进入 configuration 时 `isFirstConfig()` 为假、不再发；不能挪到别的线程或 `scheduleNextTick`，否则会与 `S2C_HELLO` 当年一样被当成 play 负载丢掉（`docs/DESIGN-M2.md` v0.51） |
+| 远景宣告与 DH 建层级 | 客户端处理负载的线程 × DH 在客户端层级创建时调 `overrideFilePath` | DH 问目录时宣告已存好 | 宣告在 `Login` 之前到（上一行），DH 在 `ClientPacketListener#handleLogin` 返回处才建世界，层级更晚；宣告的保存与读取用 `volatile` 引用。Fabric 在哪条线程上执行 configuration 负载的接收回调没有核对，由 V1 ⑦ 在日志里核对「宣告收到」早于「Save folder overridden」 |
+| 烘焙与 DH 的库 | 烘焙线程 × DH 的更新线程、渲染线程与近圈区块收集 | 只有 DH 写库：烘焙线程只建数据源、交给 `updateDataSourcesAsync`；近圈区块被只读挡住 | `API-M3-015` 写库条与只读条；DH 按位置加锁合并（`FullDataUpdaterV2` 的 `PositionalLockProvider`，javap）；父层由 DH 的 `FullDataUpdatePropagatorV2` 在自己的线程上取 `ApplyToParent = 1` 的行往上合并，烘焙线程只读计数（写完核对） |
+| 烘焙与渲染线程 | 烘焙线程 × 客户端主线程 | 渲染线程上从不等 DH 的 future，也不在它上面调写库或查询 | 写库、写完核对、载入核对与 V1 的查询都在烘焙线程或测试自己的线程上（DH spike ①：在渲染线程上等查询结果会卡死客户端）；`AbstractDhRepo` 按线程各开一条连接，库是 WAL 模式，读计数不挡 DH 写 |
+| 断开时还在烘焙 | Fabric `DISCONNECT`、`DhApiLevelUnloadEvent`、`DhApiWorldUnloadEvent` × 烘焙线程 × DH 关世界 | 库没写全时不写完成标记；写了完成标记的库在下次层级载入时仍核对得上 | DH 关世界时先把更新器置为关闭、再关线程池与全部库连接（`SharedApi#setDhWorld`，javap）：之后交出的数据源直接得到已完成的 future、不写库，排队中的任务被丢掉、future 不再完成，所以「future 全部完成」与「写进了库」无关，三个信号与关库的先后也不全一致（`API-M3-015` 写库条第 3、6 步）。取消标志只让线程尽早停；写没写全由写完核对判（库里 `DetailLevel = b` 的行数 = 交出数，库连接关了查询返回 null 即不通过），载入核对再兜一次（§11.3） |
 | 完成标记与缓存清理 | 烘焙线程写标记 × 另一个库进入 `ready` 后的清理 | 在用的库不被删；标记要么完整要么不存在 | 清理跳过本连接在用的 `view_key`；标记先写 `.tmp` 再原子改名（`API-M3-015` 缓存条） |
 | 两个游戏实例共用一个 `gameDir` | 两个客户端进程 × 同一个 DH 库目录 | 未保证：DH 自己不支持两个进程开同一个库，本设计不加锁 | 同 DH 的既有行为；只影响多开同一游戏目录的玩家 |
 
@@ -1609,7 +1629,7 @@ flowchart LR
 | CDN（对象存储 + 静态分发） | 高度场包下载，对象名是内容摘要，必须支持 `Range`（`API-M3-014` 分发条） | 按所选服务商（选型与运维归 `docs/DESIGN-PROD.md`，§28.2 交接行） | 连接 10 s；30 s 无新字节算失败；每个包 3 次尝试、续传（`API-M3-015` 下载条） | 该玩家这条连接没有远景 | 原版视距；下次连到宣告它的分片再试。全体关远景：`synaxis.farview.url-root` 置空、滚动重启（§23） |
 | Mojang sessionserver | online 模式登录鉴权（每次转服都重新登录） | 见 `docs/DESIGN-PROD.md` §17 | 同左 | online 模式下转服整体失败 | 同左 |
 | 原版 26.2 专用服务端 `server.jar`（SHA-1 `823e2250d24b3ddac457a60c92a6a941943fcd6a`） | `tools/light-oracle/gen.sh` 生成光照形状表与对拍真值；美术侧的 `--forceUpgrade` 与 Chunky 预生成。不进运行时 | — | — | 形状表与真值无法再生；源存档无法升级 | 生成物入库，平时不需要 |
-| Distant Horizons 3.3.2（26.2，LGPL-3.0-only；Modrinth `9NoftEde`，SHA-1 `51cdbdd9d25b1f27c3825bfc405ca6c49b864889`） | 客户端远景，随客户端整合分发（用户已确认，§28.1；玩家可替换 jar）；写库用到 4 个 DH core 内部成员（`API-M3-015` DH 接入面表） | 第三方，无 SLA | — | 远景不可用；DH 换了版本时远景关 | 原版视距 |
+| Distant Horizons 3.3.2（26.2，LGPL-3.0-only；Modrinth `9NoftEde`，SHA-1 `51cdbdd9d25b1f27c3825bfc405ca6c49b864889`） | 客户端远景，随客户端整合分发（用户已确认，§28.1；玩家可替换 jar）；写库与写完核对用到 8 个 DH core 内部成员与它的库表结构（`API-M3-015` DH 接入面表） | 第三方，无 SLA | — | 远景不可用；DH 换了版本时远景关 | 原版视距 |
 | Sodium 0.9.2 + Iris 1.11.4 + 光影包（Complementary Reimagined r5.9.3） | 玩家自装的光影路径（`ADR-M3-010`） | 第三方，无 SLA | — | 光影不可用或性能回归（Iris 26.2 有 #3241：同配置 138 → 84 FPS，原因未定） | 原版画面兜底，`PAGE-SHADER-GUIDE` 引导 |
 
 外部依赖（需要真显卡或真机，本机与无头容器做不了）。**机器由用户提供**：一台 RTX 3060 级 Windows、一台 Apple Silicon Mac、一台 GTX 1650 级 Windows；组合固定为 MC 26.2 + Sodium 0.9.2 + Iris 1.11.4+26.2 + Complementary r5.9.3 + DH 3.3.2-26.2。结论回写 §15 与 §28.2。
@@ -1627,7 +1647,7 @@ flowchart LR
 | P1⑧ | Complementary 与 Photon 在 26.2 + Iris 1.11.4 + 我们的模组下的帧时间；RTS 相机 mixin 与 Sodium 异步遮挡剔除、Iris 阴影剔除能否共存（无头容器已证实 mixin 能应用、不崩溃） | RTX 3060 级机 + Apple Silicon Mac | `REQ-M3-019` 验收 |
 | Vulkan | 不开光影时 DH 的 BLAZE_3D 引擎在 Vulkan 后端下的远景 | RTX 3060 级机 | 仅影响不开光影的 Vulkan 玩家 |
 
-本机或无头容器可做、不需要用户机器的（功能正确性，步骤见 §26 M3-G「容器验收」）：V1（W2 写的库在连 Synaxis 的多人客户端上能否画出、钉目录、只读、重连命中，DH spike 同一套容器）；V2a（库大小、容器里的烘焙墙钟与亮度，只记录）；V3a（换高 256 的 4k 测试图，查 llvmpipe 下浅蓝雾的来源）；V6a（RTS 透视相机离开玩家时的近圈空洞，比 `overdrawPreventionRadius` 两档）；V8a（DH 的堆内存与首次载入耗时，只记录）。容器里是 Mesa llvmpipe，帧率、显存与光影的观感一律不据此判定；P1④（harness 回 ack）归 `REQ-M3-014`；AES-CFB8 CPU 已由生产就绪侧测过（`docs/DESIGN-PROD.md` `ADR-PROD-011`）。方案 C 的 V4、V5 与 P1②（Blaze3D 画高度场）只在切换到 C 时才做。
+本机或无头容器可做、不需要用户机器的（功能正确性，步骤见 §26 M3-G「容器验收」）：V1（W2 写的库在连 Synaxis 的多人客户端上能否写全、往上层降采样并画出，钉目录、只读、重连命中，DH spike 同一套容器）；V2a（库大小、容器里的烘焙墙钟与亮度，只记录）；V3a（换高 256 的 4k 测试图，查 llvmpipe 下浅蓝雾的来源）；V6a（RTS 透视相机离开玩家时的近圈空洞，比 `overdrawPreventionRadius` 两档）；V8a（DH 的堆内存与首次载入耗时，只记录）。容器里是 Mesa llvmpipe，帧率、显存与光影的观感一律不据此判定；P1④（harness 回 ack）归 `REQ-M3-014`；AES-CFB8 CPU 已由生产就绪侧测过（`docs/DESIGN-PROD.md` `ADR-PROD-011`）。方案 C 的 V4、V5 与 P1②（Blaze3D 画高度场）只在切换到 C 时才做。
 
 内部后台任务（玩家数据与写权的任务 `shard_session.renew`、`store.autosave` 与票据清理 `transfer_nonce.gc` 见 `docs/DESIGN-PROD.md` §17）：
 
@@ -1649,7 +1669,7 @@ flowchart LR
 | 任务 | 触发 | 批量/互斥 | 超时 | 失败策略 | 对应告警 |
 | --- | --- | --- | --- | --- | --- |
 | `farview.download` | 收到远景宣告且有包不在本地缓存（§11.3 `absent → downloading`） | 每条连接一组，并发 2；同一包只有一个下载 | 连接 10 s；30 s 收不到新字节算一次失败 | 每个包 3 次尝试（重试前等 1 s、4 s，`.part` 续传）；都失败则本连接不画远景、记 WARN，下次连接再试（`API-M3-015` 下载条） | 无（客户端日志） |
-| `farview.bake` | 包齐且 DH 层级已载入（§11.3 `→ baking`） | 每条连接至多一个，平台线程 `synaxis-farview-bake`；交给 DH 的数据源在途 ≤ 16 | 不设总超时，DH 世界卸载即取消 | 异常即停、不写完成标记、记 WARN，下次连接从头重写（`API-M3-015` 写库条） | 无（客户端日志） |
+| `farview.bake` | 包齐且 DH 层级已载入（§11.3 `→ baking`）；完成标记命中时同一线程先做载入核对 | 每条连接至多一个，平台线程 `synaxis-farview-bake`；交给 DH 的数据源在途 ≤ 16；等 future 时每 250 ms 醒一次查取消标志 | 写库不设总超时，连接断开或层级卸载即取消；写全之后等父层传播至多 120 s | 同步调用抛异常、写完核对不过、等传播超时：都不写完成标记、记 WARN，下次连接从头重写；载入核对不过即删完成标记重烘（`API-M3-015` 写库条） | 无（客户端日志） |
 | `farview.cache-clean` | 有库进入 `ready` 之后 | 与 `farview.bake` 同一线程、紧接着跑，不并发 | — | 删不掉的目录记 WARN 跳过，下次再试 | 无（客户端日志） |
 
 ## 18. ADR 决策记录
@@ -1713,7 +1733,7 @@ flowchart LR
   - Context：Q1 定了画面是「高度场地形 + 颜色」，Q2 定了光影走社区光影包。Iris 开光影时，没有经 `IrisApi.assignPipeline` 登记的自定义 RenderPipeline 整体不可见（malilib #165；Iris 26.2 分支有同一段代码），自写 clipmap + 自研着色器（A）在开光影时看不到远景。
   - Decision：方案 B。烘焙器按 4,096 格瓦片产出高度场包（`API-M3-014`、`ADR-M3-020`；大区按 256 区块对齐时每大区一个，`base_level` 2 未压缩 8 MiB），客户端下载后本地按 Q1 只写地表、液面与其上的空气（每列 1～3 点），经 DH 运行中的层级写进 DH 库（`ADR-M3-021`），库经 DH API 钉住目录并设为只读（`API-M3-015`）；开光影时由光影包的 `dh_*` 程序统一着色。切换条件与退路照远景备忘录 §6（本文档 §6.1 列出五条）：本地烘焙慢于下载时改 CDN 分发预烘库；DH 写库与本地注入都不通过时转方案 C（clipmap 经 `assignPipeline` 登记）。
   - Alternatives：A 自写 clipmap + 自研着色器（开光影时远景不可见，排除）；C clipmap 经 Iris API 登记（只依赖 Iris 一个上游，但雾走光影包的非 DH 分支，边界雾要玩家手动关，Complementary 大气雾给远景混 50～70% 雾色，接缝是硬边；作退路）；B 的体素烘焙（保留建筑轮廓，每大区 0.19～0.55 GB、只能走 CDN，R3 否决）。
-  - Consequences：DH 与 Iris 两个上游要锁版本同升，每次升 MC 自估 2～4 人日（不含等待）；本地写库依赖 4 个 DH core 内部成员（`FullDataSourceV2.createEmpty`、`DhSectionPos.encode`、`ILevelWrapper#getDhLevel`、`IDhLevel#updateDataSourcesAsync`，`API-M3-015` DH 接入面表），不在 DH API 的兼容承诺内，由 `DhSurfaceTest` 与运行期探测兜住；客户端附 LGPL 声明；DH 在正交相机下不画 LOD、透视下相机周围约一个原版视距不画、与 Iris 同开固定 OpenGL（§6.1 约束表）；远景没有阴影贴图阴影；光影包在 LOD 上的效果与 DH 在 4,096 格下的运行时开销都没有有效数据，由用户提供的真机测（§17 V3b、V8b）。`.synx` 段④ 照旧写入，但高度场包不读它（`API-M3-014` 来源条）。
+  - Consequences：DH 与 Iris 两个上游要锁版本同升，每次升 MC 自估 2～4 人日（不含等待）；本地写库与写完核对依赖 8 个 DH core 内部成员与 DH 的库表结构（清单见 `API-M3-015` DH 接入面表），不在 DH API 的兼容承诺内，由 `DhSurfaceTest` 与运行期探测兜住；客户端附 LGPL 声明；DH 在正交相机下不画 LOD、透视下相机周围约一个原版视距不画、与 Iris 同开固定 OpenGL（§6.1 约束表）；远景没有阴影贴图阴影；光影包在 LOD 上的效果与 DH 在 4,096 格下的运行时开销都没有有效数据，由用户提供的真机测（§17 V3b、V8b）。`.synx` 段④ 照旧写入，但高度场包不读它（`API-M3-014` 来源条）。
 - **`ADR-M3-013` 光照对拍的真值用原版 26.2 `LevelLightEngine` 隔离运行** — Status: Accepted（2026-09-23，取代 `ADR-M3-005`，commit `4ce6285d95`）
   - Context：原版存档里的光照「可选且有条件」——只在 `isLightOn = true` 且区块状态 ≥ light 时有效，26.1 重存的夹具 1,024 个区块里 0 个带光照（存储对比 §2）；存档路线还要跑整套世界生成与 `forceload`。
   - Decision：`tools/light-oracle/LightOracle.java` 在原版 26.2 服务端的类路径上（`gen.sh` 核对 `server.jar` 的 SHA-1 后解包库文件）隔离运行 `LevelLightEngine`：读手写的 `*.scene`（`fill` / `set` 方块），算出区块 −1..1、section −4..3 的 sky 与 block 数组写成 `*.light.gz`；同一工具生成 `light_shape_states.txt`。测试用同一个 `*.scene` 建引擎场景，逐 nibble 比较。
@@ -1755,10 +1775,10 @@ flowchart LR
   - Alternatives：① 按大区切：烘焙器要多一个 `--regions` 输入或读 `shards.json`，改大区边界就要重烘，包与目录不一致时还要一条起服核对；② 整张图一个文件、客户端按 `Range` 取需要的块：要给每块单独的摘要与索引，客户端逻辑重，一块坏了整个文件的摘要都对不上。
   - Consequences：大区按 256 区块对齐时一个大区恰好一个瓦片，下载量与 v0.28 的「每大区一个包」相同；不对齐时一个大区要 2～4 个瓦片，下载量随之翻倍到 4 倍（`docs/MAP-SOURCE.md` 第 3 节建议对齐）。远景只画宣告了的瓦片，大区边界之外默认没有远景，要不要画相邻大区见 §28.1。
 - **`ADR-M3-021` 客户端经 DH 运行中的层级写 DH 库，不离线写 SQLite、不走本地注入** — Status: Accepted（2026-10-01，M3-G 设计，V1 在无头容器里定案）
-  - Context：v0.28 的写库路径是「DH core 直接写 SQLite（`FullDataSourceV2Repo`），不行再走 `overwriteChunkDataAsync`」。对 DH 3.3.2 jar 逐项 `javap` 之后：离线写要一个已载入的层级才建得出方块与生物群系的包装对象，还绕过 DH 的父层级降采样与天光烘焙；`overwriteChunkDataAsync` 在只读时被静默丢掉，而只读是挡住 DH 自己收集近圈区块（隐藏区域剧透）的唯一公开手段；公开的世界生成覆盖在连 Synaxis 时 DH 从不调用（§6.1 写库路径表）。
-  - Decision：DH 世界与层级载入之后，在后台线程上按高度场包的每个 64×64 采样块建一个 `FullDataSourceV2`，经公开接口 `setApiDataPointColumn` 填列，交给 `IDhLevel#updateDataSourcesAsync`；DH 自己合并、烘天光、写库、往上层降采样、刷新渲染（`API-M3-015` 写库条）。只读从世界载入起一直开着。
+  - Context：v0.28 的写库路径是「DH core 直接写 SQLite（`FullDataSourceV2Repo`），不行再走 `overwriteChunkDataAsync`」。对 DH 3.3.2 jar 逐项 `javap` 之后：离线写要一个已载入的层级才建得出方块与生物群系的包装对象，而库目录在建层级时就被 DH 打开；`overwriteChunkDataAsync` 在只读时被静默丢掉，而只读是挡住 DH 自己收集近圈区块（隐藏区域剧透）的唯一公开手段；公开的世界生成覆盖在连 Synaxis 时 DH 从不调用（§6.1 写库路径表）。
+  - Decision：DH 世界与层级载入之后，在后台线程上按高度场包的每个 64×64 采样块建一个 `FullDataSourceV2`，经公开接口 `setApiDataPointColumn` 填列（y 写相对层级最低格的下标，光照写点顶面之上一格的光照），把 `applyToParent` 设为真，交给 `IDhLevel#updateDataSourcesAsync`；DH 自己合并、写库、刷新渲染，父层传播往上层降采样；b ≥ 1 的层 DH 不烘天光，点上的光照就是最终值。写完之后在 DH 自己的库连接上数行核对写全、等父层传播做完才写完成标记，层级载入时再核对一次（`API-M3-015` 写库条）。只读从世界载入起一直开着。
   - Alternatives：W1 离线写 SQLite（上述理由不用）；W3 本地注入（只读要关着，只能按方块全分辨率写，一个瓦片 65,536 个假区块；作 V1 的退路）；世界生成覆盖（DH 不调用）。
-  - Consequences：第一次进大区当场就能看到远景逐块出现，不必等下次连接；依赖 4 个 DH core 内部成员，由 `DhSurfaceTest` 与运行期探测兜住，DH 升版要整套重跑 V1；写库占 DH 自己的线程池，对帧时间的影响由 V8b 量；库目录在烘焙期间已被 DH 打开，中断后留下的部分数据照样被画出，直到下次重写。
+  - Consequences：第一次进大区当场就能看到远景逐块出现，不必等下次连接；依赖 8 个 DH core 内部成员与 DH 的库表结构，由 `DhSurfaceTest` 与运行期探测兜住，DH 升版要整套重跑 V1；DH 的写库 future 在库关闭后也正常完成，完成标记只能靠数行核对来定；写库占 DH 自己的线程池，对帧时间的影响由 V8b 量；库目录在烘焙期间已被 DH 打开，中断后留下的部分数据照样被画出，直到下次重写。
 
 ## 19. 验收 / 测试
 
@@ -1795,8 +1815,8 @@ M3-G 场景同样写明入口：
 - `:protocol` 测试：`FarViewVectorTest` 读 `protocol/src/test/resources/farview-vectors/`，编解码逐字节对拍（§24）；客户端模组的 `FrozenVectorTest` 跑同一批。
 - `:baker` 测试：`GeneratorSource` 现烘小图，或 `tools/anvil-fixture` 冻结的 Anvil 夹具（含 `synaxis:hidden 0 0 15 15`，`docs/MAP-SOURCE.md` 第 5 节），读发布目录里的包。
 - `server-app` 测试：照 `ShardWorldTest` 在测试进程里建 `ShardWorld`，查 `Started#farView()`；宣告的收发用 `:testing` 的测试连接，看 configuration 阶段的出站包顺序。
-- `client-fabric` 单元测试：下载器对着测试自己起的 `com.sun.net.httpserver.HttpServer`，DH 的部分用替身（点规则与 `view_key` 是纯函数）；`DhSurfaceTest` 在编译用的 DH jar 上反射核对接入面表。
-- 容器：`server-app` 测试源码集的 `FarViewShardFixture` 挂图、起 HTTP 文件服务并宣告；`client-fabric` gametest 的 `FarViewClientGameTest` 在无头容器里连它，装 DH 3.3.2（按需加 Sodium、Iris、Complementary），结果写 `synaxis-gametest/farview-report.txt`（§26 M3-G 容器验收）。
+- `client-fabric` 单元测试：下载器对着测试自己起的 `com.sun.net.httpserver.HttpServer`，DH 的部分用替身（点规则与 `view_key` 是纯函数，点规则用 `min_y` −64 的采样断言下标与天光）；`DhSurfaceTest` 在编译用的 DH jar 上反射核对接入面表。
+- 容器：`server-app` 测试源码集的 `FarViewShardFixture` 挂图、起 HTTP 文件服务并宣告；`client-fabric` gametest 的 `FarViewClientGameTest` 在无头容器里连它，装 DH 3.3.2，`SYNAXIS_FARVIEW_MODS=dh-iris` 时（只有 V3a）另装 Sodium 0.9.2、Iris 1.11.4 与 Complementary r5.9.3，结果写 `synaxis-gametest/farview-report.txt`（§26 M3-G 容器验收）。库里的行数与取样经 DH 自己的库连接与数据源提供者查（`API-M3-015` 接入面表），不用 `IDhApiTerrainDataRepo`：它只读数据细节级 0（§6.1 约束表）。要在烘焙线程的某一步停住、或要跑反证的场景用 `…client.farview.dh` 包的静态测试钩子 `DhTestHook`（默认空，只有 gametest 设它）：`DhLibraryBaker` 在交每一块之前与写完核对之前各回调一次，gametest 经它插入等待、断开与「忽略取消标志」；另有三个开关给反证用（不设 `applyToParent`、不设只读、跳过写完核对），`DhSession` 与 `DhLibraryBaker` 读它们。
 - 真机：用户的机器跑同一个 gametest 的真机模式，按 §26 M3-G 真机验收的步骤交回日志与截图。
 
 ```gherkin
@@ -2725,23 +2745,40 @@ M3-G 场景同样写明入口：
   When url-root 写成 cdn.test/synaxis 或 https://cdn.test/synaxis/
   Then 拒启，日志一行 Refusing to start: synaxis.farview.url-root must be an http(s) URL without a trailing slash: 加上这个值
 
+场景: 采样换算成 DH 数据点 (REQ-M3-025)
+  Given FarViewColumnsTest，包的 min_y 为 −64、height 256，四个采样：只有地面、ground_y 100；地面 ground_y 60 上是 61～63 的水；只有液体 10～20；空列
+  When 按点规则换算
+  Then 只有地面那一列是地面点 [0, 101) 天光 15 与空气点 [101, 256) 天光 15
+  And 有水那一列是地面点 [0, 61) 天光 12、液体点 [61, 64) 天光 15、空气点 [64, 256) 天光 15
+  And 只有液体那一列是空气点 [0, 10) 天光 4、液体点 [10, 21) 天光 15、空气点 [21, 256) 天光 15；空列只有空气点 [0, 256) 天光 15
+  And 没有一个点的 y 是负数或等于绝对坐标；把换算改成写绝对坐标或地面天光写 0 时这条测试红
+
 场景: 首次进大区下载并本地烘焙远景，无头容器 (REQ-M3-025)
-  Given 无头容器里的客户端装 DH 3.3.2、缓存目录为空，FarViewShardFixture 宣告 4k 测试图的瓦片 (0, 0) 且 HTTP 文件服务可达
+  Given 无头容器里的客户端装 DH 3.3.2、缓存目录为空；FarViewShardFixture 以 synthetic 模式挂 33×33 区块、min_y −64 的小图，宣告合成的瓦片 (0, 0)，HTTP 文件服务可达
   When 客户端连上并进入世界
   Then 客户端日志里「收到宣告」一行早于 DH 的 Save folder overridden，后者的目标是 synaxis/farview/dh/<view_key>/，getReadOnly() 为真
-  And 包存成 packs/<sha256>.hfp 且通过校验；烘焙结束后 dh/<view_key>/ 有 DistantHorizons.sqlite 与完成标记，日志有一行 baked in
-  And 夹具给的三个点（山顶、水面、隐藏区域）用 getColumnDataAtBlockPos 查到的顶块与高度等于包里的采样；FAR_VIEW 机位截图在地平线一带比烘焙前变化超过 1% 的像素
+  And 包存成 packs/<sha256>.hfp 且通过校验；日志有一行 baked in，dh/<view_key>/ 有 DistantHorizons.sqlite 与完成标记，标记的 sources 等于包里两项不都为 0 的块数
+  And 经 DH 的库连接查 FullData：DetailLevel = 2 的行数等于 sources，ApplyToParent = 1 的行数为 0，DetailLevel = 4 的行数大于 0
+  And 夹具给的三个点（山顶、水面、隐藏区域）所在的数据源经 FullDataSourceProviderV2#get 取出，getApiDataPointColumn 最上面一个非空气点的方块与顶面下标等于包里的采样；FAR_VIEW 机位截图在地平线一带比烘焙前变化超过 1% 的像素
   And 默认目录 Distant_Horizons_server_data 下没有这台服务器的库
+  And 反证：不设 applyToParent 时 DetailLevel = 4 的行数为 0
 
 场景: 再次进入同一大区不重下不重烘 (REQ-M3-025)
   Given 上一个场景之后的缓存
   When 客户端断开并重连同一分片
   Then HTTP 文件服务没有收到请求，客户端日志有 view <view_key> ready、没有 baked in，200 tick 内 FAR_VIEW 截图出现 LOD
 
+场景: 完成标记与库不符时重烘 (REQ-M3-025)
+  Given 一个 ready 的库，测试在客户端断开期间把它完成标记里的 sources 改成 sources + 1
+  When 客户端重连同一分片
+  Then 日志一行 view <view_key> library does not match its marker，完成标记被删后重写；HTTP 文件服务没有收到请求
+  And 重烘完成后完成标记的 sources 与 DetailLevel = 2 的行数相等
+
 场景: 只读挡住近圈区块 (REQ-M3-025)
   Given 远景已 ready 的连接
   When 玩家在已发来的区块里走 200 格再走回
-  Then DH 库 FullData 表的行数在走动前后相同
+  Then DH 库 FullData 表 DetailLevel = 0 的行数在走动前后都为 0
+  And 反证：同样走动而不设只读时 DetailLevel = 0 的行数大于 0
 
 场景: 包校验失败时重试两次后放弃 (REQ-M3-025)
   Given 夹具以 --break sha 模式提供一个改过一个字节的包
@@ -2759,6 +2796,13 @@ M3-G 场景同样写明入口：
   Given 首次进大区、烘焙进行中（客户端日志第一次出现烘焙进度之后）
   When 客户端断开
   Then 烘焙线程在 5 s 内停下，没有完成标记；重连后从头烘焙，完成后库进入 ready
+
+场景: 取消信号晚到时写完核对拦下没写全的库 (REQ-M3-025)
+  Given 首次进大区；测试钩子让烘焙线程在交出最后一块之前停住，并让它忽略取消标志
+  When 客户端断开，DH 关掉世界之后放开钩子
+  Then 最后一块的 future 立即完成，写完核对的查询返回 null 或 DetailLevel = 2 的行数少于交出数，没有完成标记，日志一行 view <view_key> incomplete
+  And 重连后库按 absent 重新烘焙，完成后完成标记的 sources 与 DetailLevel = 2 的行数相等
+  And 反证：去掉写完核对、全部 future 完成即写标记时，同一步骤留下完成标记
 
 场景: DH 缺席或版本不符时只有原版视距 (REQ-M3-025)
   Given 无头容器里的客户端只装 client-fabric，不装 DH
@@ -2784,7 +2828,7 @@ M3-G 场景同样写明入口：
 场景: 真机本地烘焙耗时与库大小 (REQ-M3-025)
   Given 用户提供的 RTX 3060 级 Windows 与 Apple Silicon Mac（§26 M3-G 真机验收 V2b）
   When 每台各清空缓存进入 4k 测试图三次
-  Then 记下每次日志里的 baked in 与 db_bytes；两台的中位数墙钟都 ≤ db_bytes × 8 / 50,000,000 s 时保留本地烘焙，否则按切换条件 2 处理（§6.1、§28.1）
+  Then 记下每次烘焙日志行里的 baked in 与 db_bytes（写完核对通过、父层传播做完那一刻取的数）；两台的中位数墙钟都 ≤ db_bytes × 8 / 50,000,000 s 时保留本地烘焙，否则按切换条件 2 处理（§6.1、§28.1）
 
 场景: 真机远景画面与帧时间 (REQ-M3-025)
   Given 用户提供的 RTX 3060 级 Windows，DH 3.3.2 + Sodium 0.9.2 + Iris 1.11.4 + Complementary r5.9.3（V3b、V6b、V8b）
@@ -2854,6 +2898,7 @@ M3-G 场景同样写明入口：
 - **`RB-M3-003` 光照重算积压或光照不对**：影响 装回推迟时，能自算的玩家不受影响，推迟期间才收到区块的玩家要等装回时的补发才看到新光照，覆盖层可能先落下旧光照；客户端光照与服务端不一致时玩家看到暗块或光在区块边上断开 · owner Bearisbug · 诊断 看 `EVT:chunk_stream_stats` 的 `relight_queue_p99_ms`、`relight_ms_p99`、`relight_pending`、`relight_install_ms_max` 与 `relight_skipped`：`relight_ms_p99` 高说明改动集中在复杂区域；它正常而排队高说明线程池不够；`relight_install_ms_max` 在 1～5 ms 而 `relight_pending` 居高不下说明每 tick 64 个目标条目的装回上限不够，超过 5 ms 说明装回里为光照物化的目标多（重算线程 50 ms 内取不到写锁，查编码池是否长时间持锁）；`relight_skipped` 相对 `relights` 很高说明同一片区域在被连续改动（每次改动让上一次的部分目标作废）；以上都正常而玩家报光照不对时，看 `light_packets` 是否为 0、问清玩家是改动时就在场还是之后走过来的、离大区边界多远（边界 16 格内的接缝见 §28.1 大区边界一行），并对照 §19 的 P1① 容器场景复现 · 处置 调大 `synaxis.relight-threads` 并重启；定位高频改方块的来源；能复现客户端与服务端不一致时，先回到用户，用户同意后设 `synaxis.relight.resend-light=true` 重启该频道（`ADR-M3-002` 退路：RUN-054 折算每人附加下行上界 3.8 KB/s，超过 §15 光照下行行的 20% 阈值 2.78 KB/s） · 回滚 N/A（服务端玩法不读光照）；退路开关可以随时关回 · 升级判据 `relight_queue_p99_ms` 连续 30 分钟 > 1,000 ms 即排查改方块来源并限制其频率 · 恢复验证 `relight_queue_p99_ms` < 250 ms 且 `relight_install_ms_max` ≤ 5 ms，持续 10 分钟
 - **`RB-M3-004` 分片起服拒绝地图**：影响 该大区或频道不可用 · owner Bearisbug · 诊断 启动日志里的 `synx-*` 错误码（§14）逐条对应处置；`synx-payload-hash` 看是哪个文件、与发布源比对大小与摘要；`shard.heartbeat` 连续失败（WARN）说明数据库连接问题；目录模式的配置拒启（没有或写错 `shards.json`、`shard-id` 不在目录里、`max-players` 与容量不符、`accept-transfers=false`、出生点所在的列在门框里）按 §14、`API-M3-006` 步骤 (3) 与 `API-M3-010` 目录条的原文逐条改配置 · 处置 按 §14 表处置：重新分发文件、按当前协议 `rebake`、或改挂载的 `build_id` · 回滚 `-Dsynaxis.map.build` 指回上一个 `published` 版本重启 · 升级判据 同一大区全部频道都起不来即对外公告维护 · 恢复验证 `EVT:shard_started` 出现且 `verify_ms` 在 §15 目标内
 - **`RB-M3-006` 世界状态标志不可用或冲突激增**：影响 分片起不来（起服读不到标志），或同大区频道之间的门、桥状态不一致 · owner Bearisbug · 诊断 起服失败看 `synx-world-flags-unavailable` 与 PostgreSQL 连接错误；运行期看 `flags.sync` 的失败日志与 Redis 连通性（Redis 不可用只会让收敛慢到 60 s，不是故障）；`flag_conflicts` 激增说明有代码绕过了管辖格保护在改方块（玩家的破坏与放置已被拦下；地图分片不加载插件，§28.1 已决），按 WARN 日志里的键与坐标找改方块的代码 · 处置 恢复数据库连接后重启分片；冲突来自代码时修代码，来不及修就删掉该标志登记的应用方式并重启（它的格子保持现状，不再被改回） · 回滚 分片回到上一个 tag；标志表的回退按 `docs/DESIGN-PROD.md` §25 的回退策略（手工执行 `db/rollback/V<n>__*.down.sql`） · 升级判据 同一大区全部频道都起不来即对外公告维护 · 恢复验证 `EVT:shard_started` 的 `flags_replayed` 等于标志数，`flags.sync` 30 分钟无失败，`flag_conflicts` 回到每小时 ≤ 10
+- **`RB-M3-007` 已发布版本的远景画错或泄露隐藏区域**：影响 某个地图版本的远景地形错位、发暗或缺块，或隐藏区域在远景里露出真实地形（剧透）；进服与近景不受影响 · owner Bearisbug · 诊断 由玩家报告或美术评审（V3b 截图）发现，没有 SLI；先对照客户端 `latest.log` 的 `[synaxis/farview]` 行确认是哪个 `view_key` 与瓦片摘要，再用 `baker verify --build <maps_root>/<map_id>/<build_id>` 核对发布目录里的包与清单一致（不一致按 `RB-M3-004` 查分发）；一致则问题在包的内容或客户端点规则：用 `FarViewPack.Reader` 读出出错位置的采样，采样本身错（采样规则或隐藏矩形）归烘焙器，采样对而画面错归 `client-fabric` 的点规则 · 处置 按 §28.1「已发布版本的远景包出错怎么修」的默认做法：该版本所有分片的 `synaxis.farview.url-root` 置空并滚动重启，玩家退回原版视距，覆盖层不动；剧透时另从 CDN 删掉受影响瓦片的对象 `<map_id>/farview/<sha256>.hfp`（发布目录不动）；客户端问题随下一个客户端版本修，`BAKE_CODE_VERSION` 加 1 让全部库重烘；包的问题随下一个地图版本修，只是烘焙器代码的错、输入没变时，也可以在停服窗口里 `retire` 后用修好的烘焙器重烘同一输入（`build_id` 不变，覆盖层保留；`retire` 还没实现，§28.2） · 回滚 把 `synaxis.farview.url-root` 改回原值并滚动重启 · 升级判据 剧透类问题发现即处置，不等下一个版本；30 分钟内删不掉 CDN 对象时回到用户 · 恢复验证 修正后的版本宣告的瓦片摘要与出错的不同（客户端出现新的 `view_key`），V1 ④ 的三个核对点在该版本上通过，美术复看 V3b 机位
 
 ## 23. 发布: Feature Flag / 灰度 / 回滚
 
@@ -2868,7 +2913,7 @@ Feature flag：
 | `synaxis.relight.resend-light` | Bearisbug | `ADR-M3-002` 的退路：P1① 逐 nibble 不成立，或运行期能复现客户端光照与服务端不一致时开，装回后向全部已交付的客户端发变了的 section；默认 false。开之前回到用户（RUN-054 折算每人附加下行上界 3.8 KB/s，超过 §15 光照下行行的 20% 阈值） | P1① 的帧时间一半在真机上有结论、默认模式连续 30 天没有光照不一致的报告之后评估删除 |
 | `synaxis.thread-provider` | Bearisbug | 引擎默认 `counter`；分片宿主设 `grid`，出问题时在分片命令行显式传 `counter` 退回 | 不删：M2 进程靠它的默认值保持 `counter` |
 | `shards.json` 的 `gates` | Bearisbug | 置空即关掉本大区全部关卡门、停掉跨大区转服（起服读一次，改了要滚动重启，会踢掉该大区的在线玩家；GM 与管理接口的转服不受影响）；运行期开关是 §28.1 的一条分叉，默认不加 | 不清理，它是地图配置本身 |
-| `synaxis.farview.url-root` | Bearisbug | 置空即不宣告远景，客户端全体退回原版视距（高度场包有问题或 CDN 故障时）；起服读一次，改了要滚动重启 | 不清理：它同时是 CDN 地址的配置 |
+| `synaxis.farview.url-root` | Bearisbug | 置空即不宣告远景，客户端全体退回原版视距（高度场包有问题或 CDN 故障时，见 `RB-M3-007`）；起服读一次，改了要滚动重启 | 不清理：它同时是 CDN 地址的配置 |
 
 | 环 | 放量 | 进入门槛（指标） | 回滚动作 |
 | --- | --- | --- | --- |
@@ -2885,7 +2930,7 @@ Feature flag：
 | --- | --- |
 | 验收用例全量通过（§19） | 待 M3-C～M3-G 各阶段完成；M3-A 的光照六条（`REQ-M3-004`～`REQ-M3-007`、`REQ-M3-027`、`REQ-M3-028`）与 M3-B 的 `REQ-M3-001`～`REQ-M3-003`、`REQ-M3-020`～`REQ-M3-022` 在 M3-B 范围内的场景已过（`docs/TEST.md` RUN-033）；M3-C 的 `REQ-M3-008`～`REQ-M3-011` 与 `REQ-M3-022` 的场景在 RUN-041 过，例外是 `REQ-M3-008`「压测中没有区块编码」与 `REQ-M3-014` 的 200 机器人档没跑；`REQ-M3-003`「同一输入重烘」的 Anvil 那一句 RUN-041 失败，修复后在 RUN-042 过（§28.2 NBT 键序）；M3-E 的 `REQ-M3-016`、`REQ-M3-017`、`REQ-M3-023` 的非压测场景在 RUN-045、RUN-046 过（两进程场景用小图夹具，标志的真进程只验到装配），`REQ-M3-015` 的三档与转服压测档阻塞；M3-D 的 `REQ-M3-012` 二十七条场景（十八条 JUnit、六条容器、JFR、退路与真进程各一条）在 RUN-052、RUN-054 过（分支 `m3d/runtime-light`，待合入 `main`）；留给后续阶段的场景见 §26 |
 | 光照对拍测试绿，`verified-light-versions.txt` 含当前版本 | 过：对拍 7 个场景对 `LightEngine` 与 `LightingChunk.relight` 两条路径都 0 差异，版本文件含 `LightEngine.VERSION = 1` 及其指纹，`LightEngineVersionTest` 绿（RUN-033） |
-| 告警 ↔ Runbook 双向就绪（§21 ↔ §22） | 过：§21 八条 SLI 各指向 `RB-M3-001`～`RB-M3-004`、`RB-M3-006` 之一，五条在用 Runbook 均被引用 |
+| 告警 ↔ Runbook 双向就绪（§21 ↔ §22） | 过：§21 八条 SLI 各指向 `RB-M3-001`～`RB-M3-004`、`RB-M3-006` 之一，这五条 Runbook 均被引用；`RB-M3-007`（远景画错或剧透）由玩家报告或美术评审触发，没有 SLI，由 §23 远景开关一行与 §28.1 引用 |
 | 容量/负载按 §15 验证（200 与 500 机器人） | 未过（`docs/TEST.md` RUN-057、RUN-058，同机档）：M3-C 的 200 机器人两档 600 s 除 tick 两项外通过，tick 两项只在分机档判定（§28.1），同机档两轮都有超 50 ms 的 tick（§15 tick 预算行，§28.2）；M3-E 的目录模式 200 人 30 min 除 tick 与 RSS 外通过，两大区转服档通过，500 人分散与单分格两档读数已记、缺 `ticks.acquire_ms`；tick 与 RSS 待分机档（§15「压测的机器前提与登记」） |
 | 基准重测完成，§2 数字已替换 | 过：基准重测（`bench-2026-09.md`，数字取第 2 轮 `bench-2026-09-results.json`）；空闲机器复跑与真地图档待补 |
 | 回滚演练：`synaxis.map.build` 切回上一版实测过 | 待 M3-C |
@@ -2898,7 +2943,7 @@ Feature flag：
 
 - **`.synx` 测试向量**：唯一事实源是 `:synx` 的编解码类；向量在 `synx/src/test/resources/vectors/`（常规）与 `vectors/edge/`（损坏与不兼容），`manifest.txt` 冻结 `format_version` 与全部向量的 SHA-256。改布局必须同一个 PR 里升 `format_version` 并重新冻结，门禁写法照搬 `docs/DESIGN-M2.md` §24 的 `ProtocolVectorTest`。写入器的逐字节向量绑定冻结时的 zlib：`manifest.txt` 记下 zlib 指纹，指纹相同才比逐字节；设了 `-Dsynaxis.synx.require-frozen-zlib=true`（CI 的 check job 已设，`:synx` 的测试任务把它转给测试 JVM）时指纹不符即失败，提示重冻向量或换回 JDK；不设时只跳过逐字节那一条。读取器与内容哈希向量在所有 JDK 上断言。向量由 `./gradlew :synx:generateVectors` 生成，生成器在临时目录里写、结束时删除。CI 的 Temurin 25 与冻结时的 Homebrew 25.0.4.1 是否同一 zlib 还没核实，合入后第一次 CI 即见分晓（§28.2）。
 - **远景向量**：唯一事实源是 `:protocol` 的 `FarViewPack` 与 `FarViewAnnouncement`；向量在 `protocol/src/test/resources/farview-vectors/`（不放进 `vectors/`：那个目录的 digest 与 M2 的 `schema_version` 绑在一起，远景的格式有自己的 `format_version`），自带 `manifest.txt` 冻结两个 `format_version` 与全部文件的 SHA-256。常规向量：`announce-one-tile.bin`、`announce-four-tiles.bin`、`pack-small.hfp`（b = 2、一个瓦片只有 2×2 区块在 `bounds` 内，覆盖五种列与隐藏替换）连同 `pack-small.samples.txt`（逐个采样的期望值）；边界向量 `edge/`：未知 `format_version`、未知 `flags`、`base_level` 3、块索引越过文件末尾、两块重叠、块解压后不是 32,768 B、违反不变式的采样、宣告计数 65、宣告 `url` 超长。`:protocol` 的 `FarViewVectorTest` 与 `client-fabric` 的 `FrozenVectorTest` 跑同一批；`client-fabric` 的测试经系统属性 `synaxis.farview-vectors.dir` 找到它，`gametest-env/run.sh` 把这个目录与 `vectors/` 一起拷进容器。改布局必须同一个改动里升对应的 `format_version` 并重新冻结。`pack-small.hfp` 的逐字节比较绑定冻结时的 zlib，做法照 `.synx` 向量（`manifest.txt` 记 zlib 指纹，不符时只比解压后的采样）；第 0 步冻结，M3-G 的退出条件「高度场包向量冻结」指的就是这批。
-- **DH 接入面**：`API-M3-015` DH 接入面表是 `client-fabric` 可用的 DH 成员的全集，只有 `io.github.bearisbug.synaxis.game.client.farview.dh` 包能引用 `com.seibel.distanthorizons..`（`client-fabric` 的 `DhPackageBoundaryTest` 按字节码扫描，违规样例证明会红）。`DhSurfaceTest` 在编译用的 DH jar（`client-fabric/build.gradle.kts` 的 `fetchDistantHorizons` 任务按 SHA-1 取）上逐个反射核对表里的类、方法、参数与返回类型，运行期的可用性探测读同一份名单；升 DH 时这个测试、版本锁常量与表必须在同一个改动里一起改。
+- **DH 接入面**：`API-M3-015` DH 接入面表是 `client-fabric` 可用的 DH 成员的全集，只有 `io.github.bearisbug.synaxis.game.client.farview.dh` 包能引用 `com.seibel.distanthorizons..`（`client-fabric` 的 `DhPackageBoundaryTest` 按字节码扫描，违规样例证明会红）。`DhSurfaceTest` 在编译用的 DH jar（`client-fabric/build.gradle.kts` 的 `fetchDistantHorizons` 任务按 SHA-1 取）上逐个反射核对表里的类、方法、字段、参数与返回类型，并读 jar 里的 `sqlScripts/0020-sqlite-createFullDataSourceV2Tables.sql` 断言 `FullData` 表有 `DetailLevel` 与 `ApplyToParent` 两列（写完核对的 SQL 靠它们）；运行期的可用性探测读同一份名单；升 DH 时这个测试、版本锁常量与表必须在同一个改动里一起改。
 - **光照门禁**：`LightParityIntegrationTest`（`parity/*.scene` 全部场景）、`LightDampeningIntegrationTest`、`LightBlocksTest` 进 `./gradlew check`。真值 `*.light.gz` 与 `light_shape_states.txt` 只由 `tools/light-oracle/gen.sh` 生成（核对 `server.jar` 的 SHA-1），不手改；`LightBlocksTest` 拦下状态 ID 已错位的旧表。`LightEngine.VERSION` 与引擎资源 `src/main/resources/io/github/bearisbug/synaxis/instance/light/verified-light-versions.txt` 由 `LightEngineVersionTest` 互相绑定：每行 `<版本> <指纹>`，指纹是对四部分算的 SHA-256——每个方块状态的光照规则、全部对拍场景的引擎输出、覆盖全部方块状态的随机场景，以及缺失区块场景（光从四个方向进缺口）。改光照代码而不升版本（指纹对不上），或升版本而没追加对拍绿时的指纹行，CI 都红；`theVersionFileCountsUpToTheCurrentVersion` 另要求版本号从 1 起连续递增、不重复、最后一行等于 `LightEngine.VERSION`。只增不改：扩大指纹覆盖面而引擎输出不变时，也要升 `VERSION` 并追加新行，不改旧行。烘焙器经 `LightVersions` 按引擎路径读这个文件，只接受其中列出的版本（§11.2 守卫）。
 - **数据库**：`world_flag` 与 `shard_heartbeat` 的迁移脚本是表结构的唯一事实源；版本号由 `docs/DESIGN-PROD.md` §25 的版本表统一分配，回退脚本与 CI 往返（migrate → 回退 SQL → migrate）按该分册 §24、§25。`API-M3-010`、`API-M3-013` 里的两段 DDL 与脚本逐字一致，改表先改脚本、同一提交改这两段。
 - **分片目录**：`shards.json` 的解析与校验只在 `ShardDirectory` 一处，分片起服、测试夹具与 `docs/TEST.md` 里的示例文件都经它读；`ShardDirectoryTest` 对 `API-M3-010` 列出的每条校验各带一个坏文件，并对该条示例目录断言能读、两扇门互为回程。改字段即升 `format_version`，旧版本的文件拒启。
@@ -3093,7 +3138,7 @@ M3-D 改动的文件与归属（引擎根模块不改）：
 本机资源规则（第 0 步、两条轨道与合并验收都照做）：
 
 1. 重活指任何 Gradle 任务（`check`、`test`、`installDist`、`publishToMavenLocal`、`client-fabric` 的 `runClientGameTest`）与任何 Docker 容器（`synaxis-mc-client:dev`）。开始前 `mkdir /tmp/synaxis-heavy.lock`，成功才开工，并写 `/tmp/synaxis-heavy.lock/owner`：一行「会话名 pid 开始时刻 命令」（会话名如 `m3g-base`、`m3g-S`、`m3g-C`、`m3g-merge`，pid 是跑这件事的 shell 的 `$$`）。`mkdir` 失败说明别的会话占着：读 `owner`，每 5 分钟重试，最长 90 分钟，仍拿不到就在交付说明里记「阻塞」与每次读到的 `owner`。`owner` 里的 pid 已不在（`kill -0 <pid>` 失败）时才可以删掉这把陈旧的锁，并在交付说明里记一行。干完（含失败退出）`rm -rf /tmp/synaxis-heavy.lock`，脚本里用 `trap 'rm -rf /tmp/synaxis-heavy.lock' EXIT` 保证。锁同时保证同一时刻只有一条 Gradle 或一个容器。
-2. 起容器前另查 `memory_pressure` 输出的 `System-wide memory free percentage` ≥ 30%（§15 同一读法），不满足每 5 分钟复查、最长 90 分钟，仍不满足登记阻塞，附每次读数（时刻、空闲比例、`load1`、占用最多的 5 个进程）；`sysctl vm.swapusage` 只记录。先拿锁、再查门槛，门槛不满足时先放锁再等。
+2. 起容器前另查 `memory_pressure` 输出的 `System-wide memory free percentage` ≥ 30%（§15 同一读法；容器验收要先起夹具 JVM，就在起夹具之前查），不满足每 5 分钟复查、最长 90 分钟，仍不满足登记阻塞，附每次读数（时刻、空闲比例、`load1`、占用最多的 5 个进程）；`sysctl vm.swapusage` 只记录。先拿锁、再查门槛，门槛不满足时先放锁再等。
 3. Gradle 一律带 `--no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts --max-workers=4`；`client-fabric` 的 Gradle 用它自己的 `client-fabric/gametest-env/mirror.init.gradle.kts`（理由见 M3-D 第 5 步第 2 条）；`JAVA_HOME` 照 `CLAUDE.md`。
 4. 回收：临时目录用 `mktemp -d`，结束即删；容器带 `--rm`；镜像 `synaxis-mc-client:dev` 与卷 `synaxis-mc-gradle` 复用，不建新的 tag 与卷；夹具按 pid 停。
 
@@ -3102,7 +3147,7 @@ M3-D 改动的文件与归属（引擎根模块不改）：
   - `:synx`：`SynxManifest.FarView` 改成 `FarView(int tileX, int tileZ, int baseLevel, long bytes, byte[] sha256)`，JSON 字段名 `tile_x`、`tile_z`、`base_level`、`bytes`、`sha256`；`synx/src/test/resources/vectors/manifest.json` 里那一项、`SynxManifestTest` 与 `SynxVectors` 同步改，`vectors/manifest.txt` 里 `manifest.json` 那一行的 SHA-256 重冻。这是清单向量，区域文件的向量字节不变，`.synx` 的 `format_version` 不动。
   - `server-app`：`ShardSettings` 读 `synaxis.farview.url-root` 并校验（§9），`ConfigFile.KEYS` 加这个键；`ShardWorld#start` 按 `API-M3-015` 宣告条算宣告，`Started` 加 `farView()`，`startedAttributes` 加 `farview_tiles`，起服日志两种写法；`Main#serveMap` 在已有的 `AsyncPlayerConfigurationEvent` 监听里，`farView()` 不为 null 时 `event.getPlayer().sendPluginMessage(FarViewAnnouncement.CHANNEL, 字节)`。这一步就写完整：轨道 S 之前清单 `farview[]` 恒为空，现有测试的行为不变。
   - `architecture-tests`：`TranslationKeyGateTest#NOT_TEXT` 加 `synaxis:farview`。
-  - 夹具：`server-app` 测试源码集 `app.shard` 包的 `FarViewShardFixture`（`main(port, httpPort, workDir, mode[, urlRoot])`）。照 `LightShardFixture` 写默认属性、建进程、经 `ShardWorld.prepare` / `start` 挂 `LightMapFixture` 现烘的那张 33×33 区块、y 0～255 的小图（世界高与 4k 测试图相同，避开 DH spike 那张 64 格高的对局世界），玩家出生在地图出生点；在 `0.0.0.0:<httpPort>` 起 `com.sun.net.httpserver.HttpServer`，按 `/<map_id>/farview/<sha256>.hfp` 提供包，`url_root` 默认 `http://host.docker.internal:<httpPort>`（容器里客户端看到的地址），真机同机时由第五个参数给 `http://127.0.0.1:<httpPort>`。`mode`：`synthetic`（第 0 步的默认：包由 `FarViewPack.Writer` 按固定高度函数生成，覆盖瓦片 (0, 0)，有阶梯地形、每 64 格一根 14 格高的红色混凝土柱、一片 3 格深的水、一块按隐藏规则替换过的区域；宣告由夹具自己的 `AsyncPlayerConfigurationEvent` 监听发）、`baked`（轨道 S 之后：改挂烘焙器烘出的 4k 测试图，宣告走 `ShardWorld` 的正路）、`break-sha`（提供改过一个字节的包）、`half`（第一次请求只发一半字节就断开）。另在 `/expect.json` 给出三个核对点（山顶、水面、隐藏区域）的坐标与期望的顶块和高度，以及 V3b 的三个机位；在 `/access.log` 给出请求记录（方法、路径、`Range` 头、状态码）。就绪后打一行 `farview fixture ready`。`server-app/build.gradle.kts` 加任务 `farviewFixtureArgs`，照 `lightFixtureArgs` 写 `server-app/build/farview-fixture.args`。
+  - 夹具：`server-app` 测试源码集 `app.shard` 包的 `FarViewShardFixture`（`main(port, httpPort, workDir, mode[, urlRoot])`）。照 `LightShardFixture` 写默认属性、建进程、经 `ShardWorld.prepare` / `start` 挂一张现烘的小图：`LightMapFixture` 的生成器与 33×33 区块的 `BOUNDS`，`GeneratorPreset` 的 `minY` 取 −64、高 256（y −64～191，与 Anvil 源的默认窗口相同；世界高与 4k 测试图相同，避开 DH spike 那张 64 格高的对局世界）。`min_y` 取负数是为了让 V1 测得出把点的 y 写成绝对坐标的错（§6.1 约束表），`min_y` 为 0 的图上两种写法结果一样。玩家出生在地图出生点；在 `0.0.0.0:<httpPort>` 起 `com.sun.net.httpserver.HttpServer`，按 `/<map_id>/farview/<sha256>.hfp` 提供包，`url_root` 默认 `http://host.docker.internal:<httpPort>`（容器里客户端看到的地址），真机同机时由第五个参数给 `http://127.0.0.1:<httpPort>`。`mode`：`synthetic`（第 0 步的默认：包由 `FarViewPack.Writer` 按固定高度函数生成，覆盖瓦片 (0, 0)，有阶梯地形、每 64 格一根 14 格高的红色混凝土柱、一片 3 格深的水、一块按隐藏规则替换过的区域；宣告由夹具自己的 `AsyncPlayerConfigurationEvent` 监听发）、`baked`（轨道 S 之后：改挂烘焙器烘出的 4k 测试图，宣告走 `ShardWorld` 的正路）、`break-sha`（提供改过一个字节的包）、`half`（第一次请求只发一半字节就断开）。另在 `/expect.json` 给出三个核对点（山顶、水面、隐藏区域）的坐标与期望的顶块和高度（绝对 y，测试减去层级的 `getMinHeight()` 再与 DH 读回的下标比），以及 V3b 的三个机位；在 `/access.log` 给出请求记录（方法、路径、`Range` 头、状态码）。就绪后打一行 `farview fixture ready`。`server-app/build.gradle.kts` 加任务 `farviewFixtureArgs`，照 `lightFixtureArgs` 写 `server-app/build/farview-fixture.args`。
   - 验收：拿锁后 `./gradlew check` 绿；配置键门禁的键数比合入前多 1，翻译键门禁绿，远景向量冻结；`FarViewShardFixture synthetic` 能起、`curl` 取得到包且 SHA-256 等于宣告。
 - **轨道 S 烘焙器侧的高度场包**（分支 `m3g/s-baker`）：
   - 文件：`baker/build.gradle.kts`（加 `implementation(project(":protocol"))`）；`ChunkEncoder`（在同一遍列扫描里算本区块的远景采样，与 `SynxChunkRecord` 一起返回）；`Baker`（部件文件、装配、写包、清单 `farview[]`、`verify` 的高度场包部分、`farview_bytes`、`VERSION = 2`）；新文件 `FarViewAssembler`（隐藏替换、按瓦片装配、生物群系表）；`BakeSource`（加 `hiddenAreas()`）、`AnvilSource`（门禁时收齐）、`GeneratorSource`（恒为空）；`BakerMain`（`farview-export` 子命令与用法行）；测试 `FarViewSamplingTest`、`FarViewBakeTest`、`AnvilFarViewTest`、`FarViewExportTest`；`server-app` 测试源码集的 `ShardWorldFarViewTest`（宣告、不宣告的三种情形与 `url-root` 拒启，地图用 `MapFixture` 现烘，要本轨道产出的包）。
@@ -3112,7 +3157,7 @@ M3-D 改动的文件与归属（引擎根模块不改）：
   - 验收：拿锁后 `./gradlew :protocol:check :synx:check :baker:check :server-app:check`，再 `./gradlew check` 一次；`bake` 4k 测试图一次，记下包的压缩后字节与装配耗时写进交付说明。
   - 不碰：`client-fabric`；`ShardWorld`、`Main` 与 `ShardSettings` 的主代码（第 0 步已写完）。
 - **轨道 C 客户端的下载与本地烘焙**（分支 `m3g/c-client`）：
-  - 文件（都在 `client-fabric/` 下）：`build.gradle.kts`（任务 `fetchDistantHorizons` 按 Modrinth URL 与 SHA-1 `51cdbdd9d25b1f27c3825bfc405ca6c49b864889` 把 DH jar 取到 `build/dh/`，已存在且 SHA-1 相符即跳过，用 JDK `HttpClient` 与 JVM 的代理设置；`compileOnly(files(...))`；测试系统属性 `synaxis.farview-vectors.dir`；`verifyModJar` 加两条断言：没有 `com/seibel/` 的类、`META-INF/jars/` 里没有 DH）；`fabric.mod.json`（`suggests` 写 `"distanthorizons": "3.3.2"`，不写 `depends`）；`SynaxisClientMod`（登记 `synaxis:farview` 的 configuration 负载类型，调 `FarViewClient.init()`）；新包 `game/client/farview/`：`FarViewPayload`、`FarViewClient`（连接级状态、可用性、HUD 行）、`FarViewSettings`、`FarViewDownloader`、`FarViewCache`（布局、`view_key`、完成标记、上限清理）、`FarViewColumns`（采样到点区间的纯函数）；新包 `game/client/farview/dh/`：`DhFarView`（版本锁与接入面探测、登记覆盖与事件）、`DhSaveFolder`、`DhSession`（只读与配置覆盖）、`DhLibraryBaker`（写库线程）；`assets/synaxis/lang/en_us.json`、`zh_cn.json`（两个键）；测试 `FarViewPayloadTest`、`FarViewDownloaderTest`、`FarViewCacheTest`、`FarViewColumnsTest`、`FarViewAvailabilityTest`、`DhSurfaceTest`、`DhPackageBoundaryTest`，`FrozenVectorTest` 加远景向量；gametest 源码集 `gametest/farview/`：`FarViewClientGameTest`（没设 `SYNAXIS_FARVIEW_SERVER` 时立即返回）与帧时间 mixin；`gametest-env/run.sh`（透传 `SYNAXIS_FARVIEW_SERVER`、`SYNAXIS_FARVIEW_HTTP`、`SYNAXIS_FARVIEW_MODE`、`SYNAXIS_FARVIEW_MODS`；`SYNAXIS_FARVIEW_MODS` 不为空时照 `dh-iris/run.sh` 在容器里跑 `Fetch.java` 并加 `-Dfabric.addMods=/dh/mods`；`http.nonProxyHosts` 加 `host.docker.internal`；把 `farview-vectors/` 与 `vectors/` 一起拷进容器；结束时把 `synaxis/farview/` 的文件清单与完成标记拷到 `/out`）。
+  - 文件（都在 `client-fabric/` 下）：`build.gradle.kts`（任务 `fetchDistantHorizons` 按 Modrinth URL 与 SHA-1 `51cdbdd9d25b1f27c3825bfc405ca6c49b864889` 把 DH jar 取到 `build/dh/`，已存在且 SHA-1 相符即跳过，用 JDK `HttpClient` 与 JVM 的代理设置；`compileOnly(files(...))`；测试系统属性 `synaxis.farview-vectors.dir`；`verifyModJar` 加一条断言：没有 `com/seibel/` 的类；内嵌 DH 已被既有的「`META-INF/jars/` 里恰好一个 `:protocol`」挡住）；`fabric.mod.json`（`suggests` 写 `"distanthorizons": "3.3.2"`，不写 `depends`）；`SynaxisClientMod`（登记 `synaxis:farview` 的 configuration 负载类型，调 `FarViewClient.init()`）；新包 `game/client/farview/`：`FarViewPayload`、`FarViewClient`（连接级状态、可用性、HUD 行）、`FarViewSettings`、`FarViewDownloader`、`FarViewCache`（布局、`view_key`、完成标记、上限清理）、`FarViewColumns`（采样到点区间的纯函数）；新包 `game/client/farview/dh/`：`DhFarView`（版本锁与接入面探测、登记覆盖与事件）、`DhSaveFolder`、`DhSession`（只读与配置覆盖）、`DhLibraryBaker`（写库线程、写完核对、载入核对）、`DhTestHook`（静态测试钩子，默认空）；`assets/synaxis/lang/en_us.json`、`zh_cn.json`（两个键）；测试 `FarViewPayloadTest`、`FarViewDownloaderTest`、`FarViewCacheTest`、`FarViewColumnsTest`（`min_y` −64 的采样，断言下标与天光）、`FarViewAvailabilityTest`、`DhSurfaceTest`（含 `sqlScripts/0020` 的两列）、`DhPackageBoundaryTest`，`FrozenVectorTest` 加远景向量；gametest 源码集 `gametest/farview/`：`FarViewClientGameTest`（没设 `SYNAXIS_FARVIEW_SERVER` 时立即返回；反证模式经 `DhTestHook` 关掉 `applyToParent`、只读或写完核对）与帧时间 mixin；`gametest-env/run.sh`（透传 `SYNAXIS_FARVIEW_SERVER`、`SYNAXIS_FARVIEW_HTTP`、`SYNAXIS_FARVIEW_MODE`、`SYNAXIS_FARVIEW_MODS`；`SYNAXIS_FARVIEW_MODS` 不为空时照 `dh-iris/run.sh` 在容器里跑 `Fetch.java` 并加 `-Dfabric.addMods=/dh/mods`；`http.nonProxyHosts` 加 `host.docker.internal`；把 `farview-vectors/` 与 `vectors/` 一起拷进容器；结束时把 `synaxis/farview/` 的文件清单与完成标记拷到 `/out`）。
   - 实现：`API-M3-015` 除宣告服务端那半以外的全部，§11.3 状态机。
   - 接口边界：只经第 0 步的 `FarViewAnnouncement`、`FarViewPack.Reader` 与 HTTP GET；容器用例连第 0 步 `FarViewShardFixture` 的 `synthetic` 模式，不等轨道 S；RTS 相机归 `docs/DESIGN-M2.md` 阶段 6b，V6a 只复用 gametest 里已有的 spike 相机。
   - 自测：§19 `REQ-M3-025` 除两条真机外的全部；下面容器验收的 V1、V3a、V6a、V8a（V2a 要真包，合并后补）。
@@ -3122,14 +3167,15 @@ M3-D 改动的文件与归属（引擎根模块不改）：
 
 **容器验收**（无头容器里的 Mesa llvmpipe，只判功能正确性；帧率、显存与光影观感不据此判定）：
 
-1. 起夹具：`./gradlew :protocol:publishToMavenLocal :server-app:farviewFixtureArgs`；`java @server-app/build/farview-fixture.args -Xms1G -Xmx1G io.github.bearisbug.synaxis.app.shard.FarViewShardFixture 25750 25751 $L <mode> > $L/fixture.log 2>&1 &`，记下 pid，等 `farview fixture ready`。端口避开 2566x、2569x、2574x。
-2. 起容器：`SYNAXIS_FARVIEW_SERVER=host.docker.internal:25750 SYNAXIS_FARVIEW_HTTP=http://host.docker.internal:25751 SYNAXIS_FARVIEW_MODE=<模式> SYNAXIS_FARVIEW_MODS=dh OUT=$L/out client-fabric/gametest-env/run.sh`（退出码恒为 1 是已知的 libopenal 段错误），读 `$L/out/synaxis-gametest/farview-report.txt`，每条一行 `F<n> PASS|FAIL <证据>`。
-3. V1（`SYNAXIS_FARVIEW_MODE=v1`，判 W2 能否落地，①～⑦ 全 PASS 才算成立）：① DH 日志 `Save folder overridden` 的目标是 `synaxis/farview/dh/<view_key>/`，默认目录 `Distant_Horizons_server_data` 下没有这台服务器的库；② `getReadOnly()` 为真，`chunkRenderDistance`、`maxHorizontalResolution` 的 API 覆盖值是 256 与 `FOUR_BLOCKS`（`getCanBeOverrodeByApi()` 为假的项记 FAIL）；③ 烘焙完成、写了完成标记，记下 `baked in` 与 `db_bytes`；④ 烘焙完成后 60 s 内，在测试自己的平台线程上用 `getColumnDataAtBlockPos` 查 `/expect.json` 的三个点，顶块与高度等于期望，并用 `getAllTerrainDataAtDetailLevelAndPos` 在比 `base_level` 粗 2 级（一个区块一列）的细节级上查到非空，证明 DH 往上层降采样了（这个参数按数据细节级还是 section 细节级算，实现时按 `EDhApiDetailLevel` 核对后写进报告）；⑤ 玩家走 200 格再走回，DH 库 `FullData` 表的行数不变（测试在自己的线程上用 DH 自带的 SQLite 驱动只读查询）；⑥ `FAR_VIEW` 机位（出生点上方 40 格、朝东）烘焙前后各截一张，地平线一带变化超过 1% 的像素；`LOD_VIEW` 机位（离玩家 600 格处上空 100 格）不是一片天空色；⑦ 客户端日志里「收到宣告」早于「Save folder overridden」；断开重连后 `/access.log` 没有新请求、没有 `baked in`，200 tick 内 `FAR_VIEW` 截图出现 LOD。W2 不成立时把写库换成 W3（关着只读注入，注入完再设只读）重跑同一套，按 §6.1 切换条件 1 登记。
-4. V2a（`SYNAXIS_FARVIEW_MODE=v2`，`baked` 模式的 4k 测试图，只记录，三次取中位数）：包的压缩后字节、下载墙钟、从 `DhApiLevelLoadEvent` 到完成标记的墙钟、断开之后 `dh/<view_key>/` 三个 SQLite 文件的字节之和、`LOD_VIEW` 机位 LOD 区域的平均亮度与近处原版地面平均亮度之比（低于 0.5 记为发暗，回头查点规则的天光）。
-5. V3a（`SYNAXIS_FARVIEW_MODS=dh-iris`：DH + Sodium 0.9.2 + Iris 1.11.4 + Complementary r5.9.3，`baked` 模式的 4k 测试图，世界高 256）：`FAR_VIEW` 与 `LOD_VIEW` 各截光影开、关两张，照 DH spike ② 的口径算像素变化。浅蓝雾仍在则记为 llvmpipe 所致，交 V3b 判定；雾散了则登记成因是 spike 那张 64 格高的对局世界。
-6. V6a（`SYNAXIS_FARVIEW_MODE=v6`，复用 gametest 里的 spike 相机）：相机离开玩家 300 格、透视、eye 离地 64 与 100 格，`overdrawPreventionRadius` 取 DH 默认值与 0 两档，各截一张，算画面下半部天空色像素的占比。只记录；0 档补上空洞且没有明显穿插时，把「RTS 模式设 0」交给阶段 6b（`docs/DESIGN-M2.md`）。
-7. V8a（`SYNAXIS_FARVIEW_MODE=v8`）：远景 4,096 与 2,048 两档各一次，`ready` 之后 `System.gc()` 两次再读已用堆，与 `farview.radius=0` 时相减；从 `DhApiLevelLoadEvent` 到 `LOD_VIEW` 截图稳定（连续两张变化 < 0.1% 的像素）的墙钟。只记录。
-8. 回收：按 pid 停夹具，删 `$L`。
+1. 拿锁、查门槛：按本机资源规则第 1、2 条先拿 `/tmp/synaxis-heavy.lock`、再读 `memory_pressure` 空闲比例 ≥ 30%，都满足才进下一步。门槛在起夹具之前查：夹具 JVM 要 1 GiB 堆，与容器同时占内存。
+2. 起夹具：`./gradlew :protocol:publishToMavenLocal :server-app:farviewFixtureArgs`；`java @server-app/build/farview-fixture.args -Xms1G -Xmx1G io.github.bearisbug.synaxis.app.shard.FarViewShardFixture 25750 25751 $L <mode> > $L/fixture.log 2>&1 &`，记下 pid，等 `farview fixture ready`。端口避开 2566x、2569x、2574x。
+3. 起容器：`SYNAXIS_FARVIEW_SERVER=host.docker.internal:25750 SYNAXIS_FARVIEW_HTTP=http://host.docker.internal:25751 SYNAXIS_FARVIEW_MODE=<模式> SYNAXIS_FARVIEW_MODS=dh OUT=$L/out client-fabric/gametest-env/run.sh`（退出码恒为 1 是已知的 libopenal 段错误），读 `$L/out/synaxis-gametest/farview-report.txt`，每条一行 `F<n> PASS|FAIL <证据>`。
+4. V1（`SYNAXIS_FARVIEW_MODE=v1`，判 W2 能否落地，①～⑦ 全 PASS 才算成立；`synthetic` 模式的图 `min_y` 是 −64，合并后 `baked` 模式的 4k 测试图再跑一次）：① DH 日志 `Save folder overridden` 的目标是 `synaxis/farview/dh/<view_key>/`，与层级的 `getDhSaveFolder()` 相同，默认目录 `Distant_Horizons_server_data` 下没有这台服务器的库；② `getReadOnly()` 为真，`chunkRenderDistance`、`maxHorizontalResolution` 的 API 覆盖值是 256 与 `FOUR_BLOCKS`（`getCanBeOverrodeByApi()` 为假的项记 FAIL）；③ 烘焙完成：日志有 `baked in`，记下 `ms` 与 `db_bytes`，完成标记的 `sources` 等于包里两项不都为 0 的块数；④ 写库核对，在测试自己的平台线程上经 DH 的库连接（`getFullDataProvider().repo.queryDictionaryFirst`）数 `FullData` 表：`DetailLevel = 2` 的行数等于 `sources`，`ApplyToParent = 1` 的行数为 0，`DetailLevel = 4`（比 `base_level` 粗 2 级、16 格一列）的行数大于 0，证明父层传播跑了；再把 `/expect.json` 的三个点换算成数据源位置（`DhSectionPos.encode(8, x >> 8, z >> 8)`，块内列 `(x >> 2) & 63`），经 `FullDataSourceProviderV2#get` 取出、`getApiDataPointColumn` 读回，最上面一个非空气点的方块与顶面下标等于期望（期望的绝对 y 减去 `getMinHeight()`），读完 `close()`；⑤ 玩家走 200 格再走回，`DetailLevel = 0` 的行数在走动前后都为 0；⑥ `FAR_VIEW` 机位（出生点上方 40 格、朝东）烘焙前后各截一张，地平线一带变化超过 1% 的像素；`LOD_VIEW` 机位（离玩家 600 格处上空 100 格）不是一片天空色；⑦ 客户端日志里「收到宣告」早于「Save folder overridden」；断开重连后 `/access.log` 没有新请求、没有 `baked in`、有 `ready`，200 tick 内 `FAR_VIEW` 截图出现 LOD。反证各跑一次（`SYNAXIS_FARVIEW_MODE=v1-noparent`、`v1-writable`，经 `DhTestHook`）：不设 `applyToParent` 时 ④ 的 `DetailLevel = 4` 为 0；不设只读时 ⑤ 的 `DetailLevel = 0` 大于 0。W2 不成立时把写库换成 W3（关着只读注入，注入完再设只读）重跑同一套，按 §6.1 切换条件 1 登记。
+5. V2a（`SYNAXIS_FARVIEW_MODE=v2`，`baked` 模式的 4k 测试图，只记录，三次取中位数）：包的压缩后字节、下载墙钟、烘焙日志行的 `ms` 与 `db_bytes`（写完核对通过且父层传播做完那一刻，与 V2b 同一口径）、`LOD_VIEW` 机位 LOD 区域的平均亮度与近处原版地面平均亮度之比（低于 0.5 记为发暗，回头查点规则的天光）。
+6. V3a（`SYNAXIS_FARVIEW_MODS=dh-iris`：DH + Sodium 0.9.2 + Iris 1.11.4 + Complementary r5.9.3，`baked` 模式的 4k 测试图，世界高 256）：`FAR_VIEW` 与 `LOD_VIEW` 各截光影开、关两张，照 DH spike ② 的口径算像素变化。浅蓝雾仍在则记为 llvmpipe 所致，交 V3b 判定；雾散了则登记成因是 spike 那张 64 格高的对局世界。
+7. V6a（`SYNAXIS_FARVIEW_MODE=v6`，复用 gametest 里的 spike 相机）：相机离开玩家 300 格、透视、eye 离地 64 与 100 格，`overdrawPreventionRadius` 取 DH 默认值与 0 两档，各截一张，算画面下半部天空色像素的占比。只记录；0 档补上空洞且没有明显穿插时，把「RTS 模式设 0」交给阶段 6b（`docs/DESIGN-M2.md`）。
+8. V8a（`SYNAXIS_FARVIEW_MODE=v8`）：远景 4,096 与 2,048 两档各一次，`ready` 之后 `System.gc()` 两次再读已用堆，与 `farview.radius=0` 时相减；从 `DhApiLevelLoadEvent` 到烘焙日志行那一刻（写完核对通过、父层传播做完）的墙钟，以及到 `LOD_VIEW` 截图稳定（连续两张变化 < 0.1% 的像素）的墙钟。只记录。
+9. 回收：按 pid 停夹具，删 `$L`，放锁。
 
 **真机验收**（外部依赖，§17；由用户在自己方便的时候亲自启动，gametest 会占用那台机器的窗口与鼠标，Agent 不代跑；结论回写 §15 与 §28.2）：
 
@@ -3149,21 +3195,24 @@ M3-G 改动的文件与归属：
 | `server-app/.../app/shard/ShardSettings.java`、`ShardWorld.java` | 0 | M3 会话 |
 | `server-app/.../app/Main.java`（`serveMap` 的监听加一行）、`ConfigFile.java`（`KEYS` 加一个键） | 0 | 生产就绪会话维护；按它 §26 文件表「加键与读键同一提交」的规则，交接见 §28.2 |
 | `architecture-tests/.../TranslationKeyGateTest.java`（`NOT_TEXT` 加一行） | 0 | 生产就绪会话维护，交接见 §28.2 |
-| `server-app/src/test/.../app/shard/FarViewShardFixture.java`；`server-app/build.gradle.kts`（任务 `farviewFixtureArgs`） | 0 | M3 会话；`build.gradle.kts` 只加一个任务 |
+| `server-app/src/test/.../app/shard/FarViewShardFixture.java` | 0 | M3 会话 |
+| `server-app/build.gradle.kts`（任务 `farviewFixtureArgs`，照 M3-D 的 `lightFixtureArgs`） | 0 | 跨会话（`docs/DESIGN-PROD.md` §26 文件表有这一行，各组只追加依赖或任务）；只加一个任务，交接见 §28.2 |
 | `baker/**`（上面轨道 S 列出的）；`server-app/src/test/.../app/shard/ShardWorldFarViewTest.java` | S | M3 会话 |
-| `client-fabric/**`（上面轨道 C 列出的，含 `gametest-env/run.sh`） | C | M3 会话 |
+| `client-fabric` 主源码集的新包 `game/client/farview/`、`game/client/farview/dh/`，语言文件的两个键，上面列出的单元测试，gametest 源码集的 `gametest/farview/` 与帧时间 mixin 类 | C | M3 会话 |
+| `client-fabric/build.gradle.kts`（`fetchDistantHorizons`、`compileOnly`、测试系统属性、`verifyModJar` 由四条断言变五条）、主 `fabric.mod.json`（`suggests`）、`SynaxisClientMod`（登记负载、调 `FarViewClient.init()`） | C | 跨分册（`docs/DESIGN-M2.md` `REQ-M2-020` 的客户端模组骨架与阶段 6a 工程完备）；只追加，不改已有断言与入口，交接见 §28.2 |
+| gametest 源码集的 `fabric.mod.json` 入口表（`FarViewClientGameTest` 排在 `LightClientGameTest` 之后、R1～R8 之前）、`synaxis-gametest.mixins.json`（加帧时间 mixin 一行）；`client-fabric/gametest-env/run.sh`（四个环境变量、`dh`/`dh-iris` 取 jar、拷向量、拷出缓存清单） | C | 跨会话（`docs/DESIGN-PROD.md` §26 文件表与 `API-PROD-026`：入口表的先后决定谁先跑，排在 R1～R8 之前的用例没设自己的环境变量时必须直接返回）；不改 R1～R8 与 `judge.sh`，交接见 §28.2 |
 
 M3-A 必须在 M3-B 之前：烘焙器只接受过了对拍的光照引擎版本（§11.2），修复前烘焙的产物全部要重烘。M3-C 依赖 M3-B 的产物；M3-G 依赖 M3-B 的烘焙器（远景采样在编码段②、段④ 的同一遍里算）与 M3-C、M3-E 的挂地图装配（宣告挂在 `ShardWorld` 与 `Main#serveMap` 上）。M3-C 除 tick 两项外已完成（tick 两项待分机档）；M3-E 代码已合（压测档待分机档）。M3-D 与 M3-E 在 `ShardWorld.java` 与 `SynxChunk.java` 上相撞（M3-D 往 `EVT:chunk_stream_stats` 写九个光照属性并给 `SynxChunk` 加光照重算；M3-E 改了大区装配与 `flag_conflicts`，给 `SynxChunk` 加了 `asWorldFlag`、`sameBlock` 与私有的 `withoutRecordKeys`，`BlockEntity.of` 改走后者），M3-D 开工时从含 M3-E 的 `main` 分出。
 
 ## 27. 上线后度量与复盘
 
-N/A — M3 还没有上线：M3-A、M3-B 已完成（离线的光照、格式与烘焙器），M3-C 除 200 机器人两档的 tick 两项外已完成、tick 两项待分机档（区块流送与覆盖层，RUN-041、RUN-057、RUN-058），M3-E 代码已合、四档压测待分机档（分片、转服与世界状态标志，RUN-045、RUN-046），M3-D 已完成、待合入 `main`（运行时光照，RUN-052～RUN-054；P1① 帧时间一半待真显卡），M3-F 尚未开工，M3-G 的设计已定稿（v0.29）、尚未开工。内测 B 环稳定运行 7 天后按 §3 四条指标做一次实际度量，并回填 §26 各阶段的实际人日与偏差；对任何一次「分片起服拒绝地图」「覆盖层落盘失败」或「世界状态标志不可用」做无指责 postmortem。
+N/A — M3 还没有上线：M3-A、M3-B 已完成（离线的光照、格式与烘焙器），M3-C 除 200 机器人两档的 tick 两项外已完成、tick 两项待分机档（区块流送与覆盖层，RUN-041、RUN-057、RUN-058），M3-E 代码已合、四档压测待分机档（分片、转服与世界状态标志，RUN-045、RUN-046），M3-D 已完成并合入 `main`（运行时光照，`17e6198742`，RUN-052～RUN-054；P1① 帧时间一半待真显卡），M3-F 尚未开工，M3-G 的设计已定稿（v0.29）、尚未开工。内测 B 环稳定运行 7 天后按 §3 四条指标做一次实际度量，并回填 §26 各阶段的实际人日与偏差；对任何一次「分片起服拒绝地图」「覆盖层落盘失败」或「世界状态标志不可用」做无指责 postmortem。
 
 ## 28. 风险与开放问题
 
 ### 28.1 待用户拍板
 
-表中的 Open Question 都已按默认值写进设计，用户可改：前两项（F3、F3′）改动时只影响交付规范与烘焙器的标记解析；接着四项是 v0.11 为 M3-C 新列的，改动面各自写在行里，何时需拍板写的是最晚时点，过了按默认实现；这四项 M3-C 都已按默认值实现（RUN-041），用户改动时按行里写的代价算。接着三项是 v0.16 为 M3-E 新列的（转进来的玩家出生在哪、按大区位置是否随 M3-E 接上、关卡门的运行期开关），默认值都能直接照着实现，M3-E 按默认值实现了（RUN-045、RUN-046）；用户要改的，最晚在各行「何时需拍板」一栏的时点之前说。再接着四项是 M3-D 的：光照装回放在哪条线程、不能自算的客户端补不补发、容器里用几个真客户端（v0.22 列），大区边界附近的改方块（v0.23 列）；默认值可以直接照着实现，用户要改的最晚在各行「何时需拍板」一栏的时点之前说。再接着三项是 M3-G 的（v0.29 列）：远景画不画相邻大区、切换条件 2 的判据、高度场包的采样粒度；默认值同样可以直接照着实现，第一项最晚在第 0 步冻结远景向量之前说。十条「已决」由用户确认：DH 分发 2026-09-23 确认；世界高度与超过 256 种状态是 M3-B 实现中新出现的，2026-09-25 拍板；接着六条与 M3-E 有关，用户 2026-09-28 拍板，都选了设计给的做法：关卡门由宿主发起、挂地图的分片不加载插件、只有目录模式分片有 `ShardService`、tick 与 RSS 只在分机档判定、转服失败的机器人重连且不算掉线、选频道失败写事件 `EVT:transfer_refused`（这条的代码由 v0.20 落地）；最后一条是 M3-C 的 tick 判据也只在分机档判定，用户 2026-09-30 拍板（RUN-058 用默认堆重跑后仍有超 50 ms 的 tick）。前两条合起来决定了 6A 的插件面不支持地图分片：插件面只留 6A 的 `transfers()`，M3-E 不改 `PluginContext`。
+表中的 Open Question 都已按默认值写进设计，用户可改：前两项（F3、F3′）改动时只影响交付规范与烘焙器的标记解析；接着四项是 v0.11 为 M3-C 新列的，改动面各自写在行里，何时需拍板写的是最晚时点，过了按默认实现；这四项 M3-C 都已按默认值实现（RUN-041），用户改动时按行里写的代价算。接着三项是 v0.16 为 M3-E 新列的（转进来的玩家出生在哪、按大区位置是否随 M3-E 接上、关卡门的运行期开关），默认值都能直接照着实现，M3-E 按默认值实现了（RUN-045、RUN-046）；用户要改的，最晚在各行「何时需拍板」一栏的时点之前说。再接着四项是 M3-D 的：光照装回放在哪条线程、不能自算的客户端补不补发、容器里用几个真客户端（v0.22 列），大区边界附近的改方块（v0.23 列）；默认值可以直接照着实现，用户要改的最晚在各行「何时需拍板」一栏的时点之前说。再接着四项是 M3-G 的（v0.29 列）：远景画不画相邻大区、切换条件 2 的判据、高度场包的采样粒度、已发布版本的远景包出错怎么修；默认值同样可以直接照着实现，第一项最晚在第 0 步冻结远景向量之前说。十条「已决」由用户确认：DH 分发 2026-09-23 确认；世界高度与超过 256 种状态是 M3-B 实现中新出现的，2026-09-25 拍板；接着六条与 M3-E 有关，用户 2026-09-28 拍板，都选了设计给的做法：关卡门由宿主发起、挂地图的分片不加载插件、只有目录模式分片有 `ShardService`、tick 与 RSS 只在分机档判定、转服失败的机器人重连且不算掉线、选频道失败写事件 `EVT:transfer_refused`（这条的代码由 v0.20 落地）；最后一条是 M3-C 的 tick 判据也只在分机档判定，用户 2026-09-30 拍板（RUN-058 用默认堆重跑后仍有超 50 ms 的 tick）。前两条合起来决定了 6A 的插件面不支持地图分片：插件面只留 6A 的 `transfers()`，M3-E 不改 `PluginContext`。
 
 | 类型 | 描述 | 负责人 | 何时需拍板 |
 | --- | --- | --- | --- |
@@ -3183,6 +3232,7 @@ N/A — M3 还没有上线：M3-A、M3-B 已完成（离线的光照、格式与
 | Open Question | **远景画不画相邻大区**（`ADR-M3-020`、`API-M3-015` 宣告条）。默认只宣告与本大区相交的瓦片，全分辨率下载与烘焙，大区边界以外没有远景：大区按 256 区块对齐时每大区一个瓦片，`base_level` 2 未压缩 8 MiB，与 v0.28 写的「每大区一个包」下载量相同；代价是站在 4k 大区中央，四个方向到边界只有约 2,048 格，看不满 Q6 的 4,096 格，远景在大区边界处截断。替代做法有两种：① 相邻 8 个瓦片也按全分辨率宣告：格式不改，首次进大区的下载量与本地烘焙时长最多 9 倍；② 包里加一层 16 格一采样的粗层，相邻瓦片只下粗层（每个约 0.5 MiB，未压缩，推算）：`API-M3-014` 要加层、升 `format_version`、重冻向量，还要先在容器里验证 DH 在只有粗层的地方离玩家 1～3 km 内是否画得出来（DH 按距离的对数要更细的层，`LodQuadTree` javap；只写粗层时那一圈会不会空着没有核对，可能要借 DH 的 `ApplyToChildren` 往下填）。切换条件：V3b 截图或内测里大区边界处的截断被美术或玩家判为不可接受。代价：① 是下载与烘焙时长；② 约 3～5 人日（自估）加一轮容器验证 | Bearisbug | 第 0 步冻结远景向量之前（选 ② 时之后再改就要升 `format_version`） |
 | Open Question | **切换条件 2 的判据**（§6.1，远景备忘录 §6）。现行判据「本地烘焙墙钟 ≤ 同一库在 50 Mbit/s 下的下载时间」是在「库 0.05～0.14 GB、下载要 8～22 s」的前提下定的；按 v0.29 的格式（`base_level` 2、每列 1～3 点）库每瓦片约 2.9～8.7 MB（推算，§2），门槛只剩约 0.5～1.4 s，本地烘焙多半达不到，按判据就要改走 CDN 预烘库（`API-M3-015` 退路条）。默认维持现行判据，V2b 按它判，实现照常先做本地烘焙。替代判据：「首次进大区到远景完整可见 ≤ 30 s（50 Mbit/s，含下载与烘焙）」，按玩家实际等待的时长算。切换条件：用户认为玩家首次进大区等远景 30 s 以内可以接受。代价：换判据之后本地烘焙一直是唯一路径，玩家首次进大区看着远景逐块出现；维持现判据则多半要多做容器烘库、打包上传与客户端下载库这条路（约 3～5 人日，自估），并且每次升 DH 都要在容器里重烘全部库 | Bearisbug | V2b 出结果之前 |
 | Open Question | **高度场包的采样粒度 `base_level`**（`API-M3-014`）。默认 2（4×4 格一个采样），每瓦片未压缩 8 MiB，DH 最细分辨率设为 `FOUR_BLOCKS`。改成 1（2×2 格）时包未压缩 32 MiB，超过 v0.28 写给用户的 5.3～21 MiB（压缩后能否回到 21 MiB 以内看 V2a），DH 库与本地烘焙时长约 4 倍，换来原版视距外 192～768 格那一圈更细。切换条件：V3b 截图里原版视距外那一圈明显是 4 格一块的台阶，美术判为不可接受，且 V2a 测得 `base_level` 1 的包压缩后 ≤ 21 MiB。代价：烘焙器常量改一个数并升 `baker_version`，格式与客户端都不改；下载与烘焙时长约 4 倍 | Bearisbug | 第一张美术地图发布之前 |
+| Open Question | **已发布版本的远景包出错怎么修**（`API-M3-014` 绑定条、`RB-M3-007`）。包不进 `content_hash`，`build_id` 不随 `baker_version` 变；同一 `build_id` 已发布时烘焙器退出码 5，`retire` 要求没有分片在挂，换新 `build_id` 又会清空覆盖层（F1）。所以采样错了或隐藏区域露了（剧透），要么停服、要么清玩家的覆盖层。默认：出错的版本先关远景（该版本所有分片的 `synaxis.farview.url-root` 置空、滚动重启，玩家退回原版视距，覆盖层不动；剧透时另删 CDN 上受影响瓦片的对象），修正随下一个地图版本发布；只是烘焙器代码错、输入没变的，也可以在停服窗口里 `retire` 后用修好的烘焙器重烘同一输入，`build_id` 不变、覆盖层保留（`retire` 还没实现，§28.2）。切换条件：某个版本的远景错误必须在不停服、不清覆盖层的前提下修，例如隐藏区域漏标而这个版本还要跑很久。代价：加子命令 `baker farview-patch --build <目录> [--hidden x0 z0 x1 z1 …]`，从同一输入只重算高度场包（可追加隐藏矩形），写到发布目录旁的 `farview-patch/<build_id>/<序号>/`（自带一份列出瓦片与摘要的 `farview.json`）；分片起服时有补丁就读序号最大的一份、逐个核对后宣告它的摘要，客户端按新摘要得到新的 `view_key`，自动重下重烘；约 2～3 人日（自估），另加 §19 的补丁场景与一次容器复核；分片仍要滚动重启才宣告新包 | Bearisbug | 第一张带隐藏区域的美术地图发布之前 |
 | 已决 | **DH 随客户端整合分发**（用户 2026-09-23 确认）。DH 是 LGPL-3.0-only：独立 jar 放 `mods/`，承担 LGPL-3.0 §4a 显著声明、§4b 附 GPL 与 LGPL 全文、§4c 在显示版权的界面列出 DH（远景备忘录 §3.6）；允许玩家替换这个 jar；DH 的版本锁定（`API-M3-015` 版本锁）与客户端本地烘焙代码一起升级。落点：`API-M3-015` 许可段、§17 DH 行、§23 检查单 | Bearisbug | 已于 2026-09-23 决定 |
 | 已决 | **编辑源的世界高度与 Q7 的 256 格怎么对齐**（用户 2026-09-25 拍板：选 ①）。原版主世界是 y −64～319（384 格、24 个 section）；烘焙器按 256 格窗口读取，窗口起始 y 由 `--min-y` 给出、默认 −64（理由见 `API-M3-003` Anvil 源条），清单 `world` 写窗口，`.synx` 头部 `height` 与段①～④ 都按 256 格；窗口外有非空气方块、方块实体或静态实体即拒绝烘焙（退出码 2，信息带区块坐标与越界 y），美术照常用原版主世界。未选 ②（高 256 的自定义维度：美术要装数据包，WorldEdit、Litematica、WorldPainter 对自定义维度的支持未核实）与 ③（接受 384 格：段①、段④ 与每线程内存按 1.5 倍算）。落点：`REQ-M3-020`、`API-M3-001` 头部 `height` 行、`API-M3-003`、§19 两条场景、`docs/MAP-SOURCE.md` 第 1 节 | Bearisbug | 已于 2026-09-25 决定 |
 | 已决 | **超过 256 种方块状态的 section 怎么处理**（用户 2026-09-25 确认：维持拒绝）。间接调色板最多 256 项，再多只能用直接调色板，而 `REQ-M3-003` 要求只能是单值或间接。烘焙器拒绝，该区域失败、退出码 3，错误信息带区块与 section 坐标（`GeneratorBakeTest` 断言 `chunk 0, 0 section 0 holds 300 block states`，交付规范第 6 节写明）。未选「允许直接调色板」，它的代价：该 section 包体变大（高 384 自然地形下直接调色板让包体 +47%，基准重测 §1 第 4 条），并要改 `REQ-M3-003` 与 §15 的 P2 调色板验收 | Bearisbug | 已于 2026-09-25 决定 |
@@ -3214,7 +3264,7 @@ N/A — M3 还没有上线：M3-A、M3-B 已完成（离线的光照、格式与
 | 风险 | **DH 在 RTS 相机下的近圈空洞**：透视相机离开玩家时，相机周围约一个原版视距内没有 LOD。DH 的 `overdrawPreventionRadius` 是公开配置（`IDhApiGraphicsConfig`，javap），先由 V6a 在无头容器里比默认值与 0 两档；不够时才在 DH 的投影改写上打补丁（mixin 进 DH 或在渲染事件里改矩阵，工作量未估，DH 升版要重打）。MMO 的第一人称相机就在玩家身上，不受这一条影响；它只关系到阶段 6b 的 RTS 模式 | Bearisbug | V6a 之后定是否要补丁；补丁归阶段 6b |
 | 风险 | **光影包在 LOD 上的效果没有有效数据**：llvmpipe 下 LOD 被一层来源不明的浅蓝雾盖住（V3a 换高 256 的世界查成因）；DH 在 4,096 格下的堆与首次载入耗时先由 V8a 在容器里记，显存与帧时间没有数字；Iris 26.2 #3241 性能回归原因未定；光影包在 Apple Silicon 上能否运行只有源码结论 | Bearisbug | 用户提供真机后跑 V3b、V6b、V7、V8b、P1⑧ |
 | 已决 | **DH 钉住目录并设为只读之后会不会写库、本地写库与 DH 打开库的先后、DH 自带迁移**（v0.29 对 DH 3.3.2 jar `javap` 核对）：只读时 `SharedApi#applyChunkUpdate` 在入口处返回，服务端发来的近圈区块不进库；写库改走 DH 运行中的层级（`ADR-M3-021`），只有 DH 自己开这个库，没有两方先后与并发的问题；`view_key` 含 DH 版本，升 DH 就是新库，不依赖 DH 的库迁移（§25）。容器里由 V1 ①⑤⑦ 实跑确认 | Bearisbug | 已于 2026-10-01 处置（设计），V1 实跑确认 |
-| 风险 | **写库依赖 4 个 DH core 内部成员**（`API-M3-015` DH 接入面表后四行）：`FullDataSourceV2.createEmpty`、`DhSectionPos.encode`、`ILevelWrapper#getDhLevel`、`IDhLevel#updateDataSourcesAsync` 不在 DH API 的兼容承诺内，DH 升版可能改名、改签名或改语义（例如 `updateDataSourcesAsync` 不再合并而是覆盖、或不再关闭传入的数据源）。兜底：版本锁在 3.3.2，`DhSurfaceTest` 在构建时、运行期探测在加载时发现名字与签名的变化，远景关、不崩；语义变化只有 V1 整套重跑才发现。切换条件：DH 升版后 V1 不过而短期修不好 → 远景用上一版 DH 继续（整合包钉版本），或按 §6.1 退到 W3 | Bearisbug | 每次升 DH 时 |
+| 风险 | **写库依赖 8 个 DH core 内部成员与 DH 的库表结构**（`API-M3-015` DH 接入面表里「否」的行）：运行期用 `FullDataSourceV2.createEmpty` 与 `close()`、`FullDataSourceV2#applyToParent`、`DhSectionPos.encode`、`ILevelWrapper#getDhLevel`、`IDhLevel#updateDataSourcesAsync`、`IDhLevel#getFullDataProvider`、`FullDataSourceProviderV2#repo`、`AbstractDhRepo#queryDictionaryFirst`，写完核对的 SQL 依赖 `FullData` 表的 `DetailLevel` 与 `ApplyToParent` 两列；V1 另用 `FullDataSourceProviderV2#get`。它们不在 DH API 的兼容承诺内，DH 升版可能改名、改签名或改语义（例如 `updateDataSourcesAsync` 不再合并而是覆盖、父层传播改看别的标志、`DetailLevel` 改存 section 细节级）。兜底：版本锁在 3.3.2，`DhSurfaceTest` 在构建时、运行期探测在加载时发现名字、签名与两列的变化，远景关、不崩；语义变化只有 V1 整套重跑才发现（V1 ④ 的计数与取样、⑤ 的细节级 0 为空、两个反证都要过）。切换条件：DH 升版后 V1 不过而短期修不好 → 远景用上一版 DH 继续（整合包钉版本），或按 §6.1 退到 W3 | Bearisbug | 每次升 DH 时 |
 | 技术债 | **段④ 没有读者**：高度场包不再读段④（`API-M3-014` 来源条），运行期也没有代码读它，每个 4k 大区占约 84 MB（§2 磁盘行）。v0.29 不动 `.synx` 的格式 | Bearisbug | 下一次因别的原因升 `.synx` `format_version` 时决定删掉或改作他用 |
 | 风险 | 光照正确性依赖修过的光照规则，错一次会写进全部 `.synx`；对拍场景是手写的 7 个，没有逐状态枚举全部 `lightBlock ≥ 1` 与 `lightEmission > 0` 的状态，真实地图上的方块组合由 `REQ-M3-021` 补充 | Bearisbug | 持续；源存档对拍能否升为门禁待 T6 |
 | 风险 | 离线模式下转服票据只防伪造状态，不防冒名；`server-app` 默认在线模式、转入连接照常走加密与 `hasJoined`、票据 `player_uuid` 须等于本次验证出的 UUID（`API-PROD-028` 检查 ④，不符回 `uuid-mismatch`），都由 `docs/DESIGN-PROD.md` `REQ-PROD-002`、`REQ-PROD-031`、`REQ-PROD-045` 负责，届时 Mojang sessionserver 是转服的外部故障点 | Bearisbug | 对外发布前 |
@@ -3227,8 +3277,8 @@ N/A — M3 还没有上线：M3-A、M3-B 已完成（离线的光照、格式与
 | 技术债 | **烘焙器还缺三个子命令**：`rebake`（升协议批量重烘并记重烘耗时，`API-M3-002`）、`retire`（§11.2 `published → retired`）、带重新抽样的独立 `verify`（现在的 `verify` 只做摘要校验） | Bearisbug | `rebake` 在第一次升协议前；`retire` 在第一次下线地图版本前；独立抽样 `verify` 不在 M3-C 的四条轨道里，排在第一张美术地图挂上分片之前 |
 | 已决 | `docs/ENGINE.md` 的目录地图没有 `:synx`、`:baker`、`tools/anvil-fixture` 与 `docs/MAP-SOURCE.md`：四项已补进该文 §5 | Bearisbug | 已于 2026-09-25 处置 |
 | 已决 | **高度场包的采样布局**：v0.29 定为每采样 8 B（地面与液体各一个方块状态 u16，地面高度、液体底与顶各一个 u8，生物群系下标 u8），水面列带水底，花草与 1 层雪不算地面，按 64×64 分块压缩（`API-M3-014`）；向量在第 0 步冻结 | Bearisbug | 已于 2026-10-01 处置 |
-| 待办 | **交给 `docs/DESIGN-M2.md` 的改动（M3 v0.29）**：① §8 通道清单加 `synaxis:farview`：宿主保留命名空间，只在 configuration 阶段由服务端发给客户端，编解码是 `:protocol` 的 `FarViewAnnouncement`，有自己的 `format_version`，不走 `msg_id` 信封、不计入 `schema_version`（布局见本分册 `API-M3-015`）；② §24 向量条：`:protocol` 多一个 `farview-vectors/` 目录，自带 `manifest.txt`，不进 `vectors/` 的 digest；③ §23 客户端整合包：DH 3.3.2 作独立 jar 放 `mods/`，附 LGPL 显著声明与 GPL / LGPL 全文，版权界面列出 DH（本分册 §28.1 DH 分发一行）；模组 jar 不内嵌 DH，`fabric.mod.json` 只在 `suggests` 写 DH | Bearisbug | M3-G 第 0 步合入之前 |
-| 待办 | **交给生产就绪会话的改动（M3 v0.29）**，M3-G 第 0 步落代码，该分册可以先按本行改文：① `API-PROD-023` 键表加一行 `synaxis.farview.url-root`：默认空，空即分片不宣告远景；非空必须是 `http://` 或 `https://` 开头、不以 `/` 结尾，否则拒启（原文见本分册 §9）；读取处 `ShardSettings`；键表引导句、§23 首段与 §24 配置键门禁输出行里的键数各加 1。② §26 文件表：`Main.java`（`serveMap` 的 `AsyncPlayerConfigurationEvent` 监听里 `farView()` 不为 null 时发 `synaxis:farview`，排在 `FinishConfiguration` 之前）、`ConfigFile.java`（`KEYS` 加一个键）、`TranslationKeyGateTest.java`（`NOT_TEXT` 加 `synaxis:farview`）三行的修改记录加「M3 v0.29」。③ CDN 运维：对象存储与 CDN 的选型、域名与 HTTPS；`baker farview-export` 目录的同步做法；对象响应头 `Cache-Control: public, max-age=31536000, immutable` 与 `Range` 支持；`retire` 之后按引用清理（不再被任何已发布版本的清单引用的对象保留 30 天再删）；费用上限与告警；写进该分册的部署与 Runbook，并在它的 §17 外部依赖加 CDN 一行（本分册 §17 CDN 行只管客户端的超时与退路） | Bearisbug | M3-G 第 0 步合入之前（①②）；内测 B 开远景之前（③） |
+| 待办 | **交给 `docs/DESIGN-M2.md` 的改动（M3 v0.29）**：① §8 通道清单加 `synaxis:farview`：宿主保留命名空间，只在 configuration 阶段由服务端发给客户端，编解码是 `:protocol` 的 `FarViewAnnouncement`，有自己的 `format_version`，不走 `msg_id` 信封、不计入 `schema_version`（布局见本分册 `API-M3-015`）；② §24 向量条：`:protocol` 多一个 `farview-vectors/` 目录，自带 `manifest.txt`，不进 `vectors/` 的 digest；③ §23 客户端整合包：DH 3.3.2 作独立 jar 放 `mods/`，附 LGPL 显著声明与 GPL / LGPL 全文，版权界面列出 DH（本分册 §28.1 DH 分发一行）；模组 jar 不内嵌 DH，`fabric.mod.json` 只在 `suggests` 写 DH；④ `REQ-M2-020` 的文件归属：M3-G 轨道 C 在 `client-fabric/build.gradle.kts` 加任务 `fetchDistantHorizons`、`compileOnly` 与测试系统属性 `synaxis.farview-vectors.dir`，`verifyModJar` 由四条断言变五条（加「没有 `com/seibel/` 的类」；内嵌 DH 已被「恰好 JiJ 一个 `:protocol`」挡住），主 `fabric.mod.json` 加 `suggests`，`SynaxisClientMod` 多登记一个 configuration 负载并调 `FarViewClient.init()`；只追加，不改已有断言与入口（本分册 §26 M3-G 文件表） | Bearisbug | M3-G 第 0 步合入之前 |
+| 待办 | **交给生产就绪会话的改动（M3 v0.29）**，M3-G 第 0 步落代码，该分册可以先按本行改文：① `API-PROD-023` 键表加一行 `synaxis.farview.url-root`：默认空，空即分片不宣告远景；非空必须是 `http://` 或 `https://` 开头、不以 `/` 结尾，否则拒启（原文见本分册 §9）；读取处 `ShardSettings`；键表引导句、§23 首段与 §24 配置键门禁输出行里的键数各加 1。② §26 文件表：`Main.java`（`serveMap` 的 `AsyncPlayerConfigurationEvent` 监听里 `farView()` 不为 null 时发 `synaxis:farview`，排在 `FinishConfiguration` 之前）、`ConfigFile.java`（`KEYS` 加一个键）、`TranslationKeyGateTest.java`（`NOT_TEXT` 加 `synaxis:farview`）三行的修改记录加「M3 v0.29」。③ CDN 运维：对象存储与 CDN 的选型、域名与 HTTPS；`baker farview-export` 目录的同步做法；对象响应头 `Cache-Control: public, max-age=31536000, immutable` 与 `Range` 支持；`retire` 之后按引用清理（不再被任何已发布版本的清单引用的对象保留 30 天再删）；费用上限与告警；写进该分册的部署与 Runbook，并在它的 §17 外部依赖加 CDN 一行（本分册 §17 CDN 行只管客户端的超时与退路）。④ §26 文件表两行的修改记录加 M3-G（M3 会话）：`server-app/build.gradle.kts` 一行加「M3-G 第 0 步：新任务 `farviewFixtureArgs`，照 `lightFixtureArgs` 写 `build/farview-fixture.args`」；gametest 源码集那一行（`fabric.mod.json` 入口表、`synaxis-gametest.mixins.json` 与 `gametest-env/run.sh`）加「M3-G 轨道 C：`farview/FarViewClientGameTest` 排在 `LightClientGameTest` 之后、R1～R8 之前，没设 `SYNAXIS_FARVIEW_SERVER` 时立即返回；mixin 表加帧时间 mixin 一行；`run.sh` 透传 `SYNAXIS_FARVIEW_SERVER`、`SYNAXIS_FARVIEW_HTTP`、`SYNAXIS_FARVIEW_MODE`、`SYNAXIS_FARVIEW_MODS`，后者不为空时在容器里按 SHA-1 取 DH（`dh-iris` 时另取 Sodium、Iris 与光影包），拷进 `farview-vectors/`，结束时拷出 `synaxis/farview/` 的文件清单」；`API-PROD-026` 的 R1～R8 与 `judge.sh` 不变 | Bearisbug | M3-G 第 0 步合入之前（①②④ 的 `build.gradle.kts`）；轨道 C 合入之前（④ 的 gametest 一行）；内测 B 开远景之前（③） |
 | 风险 | **`view_bounds` 外的空气区块按零天光画**：`loadChunk` 返回 `null` 时引擎用 `DynamicChunk::new` 建的空气区块没有光照数组，`createLightData` 对全部 section 置 `emptySkyMask`，客户端把它和相邻区块朝向它的面画暗。只在运行期有代码把地图实例视距调到 16 以上时出现（挂地图时视距 > 16 拒启）。failed 占位已按满天光处理（`API-M3-005`），这里没有处理 | Bearisbug | 出现运行期调大视距的玩法时，给地图实例设一个建满天光空气区块的 `ChunkSupplier` |
 | 技术债 | 静态实体（展示框、盔甲架、`*_display`）的运行期改动不持久化：玩家打掉的展示框在区块重新载入后复原；需要持久时建模成世界状态标志 | Bearisbug | 玩法首次允许玩家改静态实体时 |
 | 已决 | **`ShardMain` 的分片设置没写全**：v0.8 写上了区块视距 12、区块上限 4、可见上限 100 与 PostgreSQL 存储时的 `accept-transfers=true`；M3-C 轨道 B 补齐余下几项：挂地图模式里读模拟距离（`synaxis.simulation-distance`，默认 4）与卸载宽限（`synaxis.chunk-unload-grace-ticks`，默认 100），挂地图时写 `synaxis.app.core-mode=on`，视距大于 16 拒启（`API-M3-006`，RUN-041） | Bearisbug | 已于 2026-09-27 处置 |

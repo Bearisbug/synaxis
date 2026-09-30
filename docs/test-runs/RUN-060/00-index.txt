@@ -1,0 +1,26 @@
+# RUN-060 evidence, 2026-10-01 00:07~01:41: TC-WORLD-064 and TC-WORLD-100 (which replaces TC-WORLD-089: the gate writes
+# EVT:transfer_refused for its six refusals, docs/DESIGN-PROD.md v0.9.37), and TC-WORLD-082 and TC-WORLD-083 (500 bots spread and in
+# one cell, 600 s each) rerun as written now that :loadtest sample writes ticks.acquire_ms (audit P3-3, merged in c46578d24f).
+# Code: branch m3/refused-and-500 at c46578d24f, the head of main (this round changes documents only). git fetch before the
+# registration: origin/main is c46578d24f and registers up to RUN-059; RUN-060 belongs to this session by agreement.
+#
+# 01-refused.txt           TC-WORLD-064 steps 1 to 5 and TC-WORLD-100 steps 1 to 6: the step 1 runs, the wiring grep, the six
+#                          counterproofs (the change, the Gradle summary, the failure message and the red line, git status after
+#                          the restore)
+# 02-gates.txt             the start gate of 082 and 083: 18 readings in one 90 min window, none met (another project's idle Gradle
+#                          daemon in every reading); the lock times
+# 03-build-bake-scripts.txt installDist, the 4k test map bake (content_hash as RUN-057), and every script of the round
+#
+# Results (docs/TEST.md RUN-060):
+#   TC-WORLD-064  pass: tests="7", 0 failed; red at :148, :256, :195 (FULL) as the case says
+#   TC-WORLD-100  pass: tests="7", 0 failed; Main.java:504; red at :218 (COOLDOWN) twice and :195 (COOLDOWN, the ledger test green)
+#   TC-WORLD-082  blocked: the gate (no other java or Gradle) not met in 90 min; no shard, sampler or bot started, no readings
+#   TC-WORLD-083  blocked: the same window
+#
+# Heavy-work lock /tmp/synaxis-heavy.lock: taken 2026-10-01 00:07:29, released 01:41:13 (after the cleanup below).
+#
+# Cleanup at the end of the round: databases run060_t082 and run060_t083 dropped (pg_database has no run060% left); <L> (the map,
+# roots, scripts, the password file, the two HMAC env files) deleted; no process of the round left (the orchestrator ended at 01:39:10,
+# no shard, sampler, bot or monitor was ever started); no Kotlin daemon log of this worktree was written (the kotlin-daemon.*.log list
+# under $TMPDIR was the same before and after; the one touched at 01:24 belongs to the other project's Kotlin daemon, pid 40230).
+# Violation: the system python3 was run once (python3 --version) while the documents were being edited; it read no data.

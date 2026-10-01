@@ -1,9 +1,13 @@
 package io.github.bearisbug.synaxis.network.player;
 
+import io.github.bearisbug.synaxis.MinecraftServer;
 import io.github.bearisbug.synaxis.event.player.AsyncPlayerPreLoginEvent;
 import io.github.bearisbug.synaxis.network.ConnectionState;
+import io.github.bearisbug.synaxis.network.NetworkBuffer;
 import io.github.bearisbug.synaxis.network.packet.PacketVanilla;
+import io.github.bearisbug.synaxis.network.packet.PacketWriting;
 import io.github.bearisbug.synaxis.network.packet.client.common.ClientCookieResponsePacket;
+import io.github.bearisbug.synaxis.network.packet.client.handshake.ClientHandshakePacket;
 import io.github.bearisbug.synaxis.network.packet.client.login.ClientLoginStartPacket;
 import io.github.bearisbug.synaxis.testing.Env;
 import io.github.bearisbug.synaxis.testing.EnvTest;
@@ -26,6 +30,7 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -227,6 +232,34 @@ public class PreAuthConnectionIntegrationTest {
             assertEquals(1, reported.get(), "the packets behind a kick must not be handled");
         } finally {
             env.process().exception().setExceptionHandler(null);
+        }
+    }
+
+    /**
+     * A listener that throws before the configuration state leaves the login half done, the
+     * handshake one past its state change and short of its gate. The connection is dropped, so the
+     * login start behind it in the same read is never handled ({@code docs/TEST.md} TC-PROD-578).
+     */
+    @Test
+    public void aListenerThatThrowsBeforeTheConfigurationStateDropsTheConnection(Env env) throws IOException {
+        env.process().packetListener().setListener(ConnectionState.HANDSHAKE, ClientHandshakePacket.class, (_, _) -> {
+            throw new IllegalStateException("thrown by the test");
+        });
+        try (SocketPair pair = SocketPair.open(env)) {
+            final PlayerSocketConnection connection = pair.connection();
+            final NetworkBuffer frames = NetworkBuffer.resizableBuffer();
+            PacketWriting.writeFramedPacket(frames, ConnectionState.HANDSHAKE, new ClientHandshakePacket(
+                    MinecraftServer.PROTOCOL_VERSION, "localhost", 25565, ClientHandshakePacket.Intent.LOGIN), 0);
+            PacketWriting.writeFramedPacket(frames, ConnectionState.LOGIN,
+                    new ClientLoginStartPacket("Notch", UUID.randomUUID()), 0);
+            while (!frames.writeChannel(pair.peer())) {
+                // A blocking channel writes everything
+            }
+
+            connection.read(PacketVanilla.CLIENT_PACKET_PARSER);
+
+            assertFalse(connection.isOnline(), "a listener that threw before the configuration state left the connection open");
+            assertNull(connection.getLoginUsername(), "the login start behind the failed handshake was handled");
         }
     }
 

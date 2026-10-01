@@ -30,4 +30,21 @@ public class SessionClientTest {
             assertInstanceOf(SessionClient.Result.Unavailable.class, SessionClient.profile(body), body);
         }
     }
+
+    /**
+     * A 429 stops the queries for its {@code Retry-After} in seconds, at most 60; 10 when it has
+     * none or one that is not a number of seconds ({@code docs/TEST.md} TC-PROD-583).
+     */
+    @Test
+    public void theRetryAfterOfATooManyRequestsAnswerIsSecondsUpToAMinute() {
+        assertEquals(10, SessionClient.retryAfterSeconds(null));
+        assertEquals(10, SessionClient.retryAfterSeconds(""));
+        assertEquals(10, SessionClient.retryAfterSeconds("soon"));
+        assertEquals(10, SessionClient.retryAfterSeconds("-1"));
+        assertEquals(10, SessionClient.retryAfterSeconds("Wed, 01 Oct 2026 07:28:00 GMT"));
+        assertEquals(0, SessionClient.retryAfterSeconds("0"));
+        assertEquals(3, SessionClient.retryAfterSeconds(" 3 "));
+        assertEquals(60, SessionClient.retryAfterSeconds("60"));
+        assertEquals(60, SessionClient.retryAfterSeconds("3600"));
+    }
 }

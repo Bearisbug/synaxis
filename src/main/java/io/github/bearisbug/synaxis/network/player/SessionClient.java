@@ -42,6 +42,10 @@ import java.util.function.LongConsumer;
  * (204, the name did not join with that server hash) and {@link Result.Unavailable} (no answer in
  * time, 429, 5xx, or a 200 that is not a profile). Only the last one is retried, once.
  * <p>
+ * A 429 is the session server asking this address to wait: for its {@code Retry-After} in seconds
+ * (10 when missing or not a number of seconds, at most 60) nothing is retried and no query is sent,
+ * every verification in that time is unavailable at once.
+ * <p>
  * Log volume: nothing per login. Each outcome is counted and {@link #tick(long)} writes the counts
  * of the last 10 seconds as at most one line, so a peer that keeps failing verification does not
  * decide how much is logged ({@code docs/DESIGN.md} §15).
@@ -53,6 +57,8 @@ public final class SessionClient {
     private static final long REPORT_INTERVAL = TimeUnit.SECONDS.toNanos(10);
     /** The random back-off before the one retry of an unavailable answer. */
     private static final long RETRY_DELAY_MIN_MILLIS = 500, RETRY_DELAY_MAX_MILLIS = 1_500;
+    /** How long a 429 stops the queries without a usable {@code Retry-After}, and at most with one. */
+    static final long DEFAULT_RETRY_AFTER_SECONDS = 10, MAX_RETRY_AFTER_SECONDS = 60;
 
     /** What the session server said about one login. */
     public sealed interface Result {
@@ -69,6 +75,8 @@ public final class SessionClient {
     private final SessionServer server;
     private final HttpClient http;
     private final Semaphore inFlight;
+    // Until when (System#nanoTime) the session server asked not to be queried, after a 429
+    private final AtomicLong quietUntil = new AtomicLong(System.nanoTime());
 
     private final AtomicLong verified = new AtomicLong(), unverified = new AtomicLong(), unavailable = new AtomicLong();
     // Since the process started, for the metrics endpoint (API-PROD-015); the three above are per report
@@ -89,8 +97,8 @@ public final class SessionClient {
     }
 
     /**
-     * Verifies one login, retrying an unavailable answer once after a random 0.5 to 1.5 s. Blocks,
-     * so it runs on the verification thread of the connection.
+     * Verifies one login, retrying an unavailable answer once after a random 0.5 to 1.5 s unless a
+     * 429 asked to wait. Blocks, so it runs on the verification thread of the connection.
      *
      * @param deadlineMillis when the login times out ({@link System#currentTimeMillis()}); a query
      *                       that cannot start before it, queue included, is unavailable
@@ -101,7 +109,7 @@ public final class SessionClient {
     public Result verify(String username, String serverHash, @Nullable SocketAddress clientAddress, long deadlineMillis,
                          BooleanSupplier online) throws InterruptedException {
         Result result = query(username, serverHash, clientAddress, deadlineMillis, online);
-        if (result instanceof Result.Unavailable && online.getAsBoolean()) {
+        if (result instanceof Result.Unavailable && !quiet() && online.getAsBoolean()) {
             final long delay = ThreadLocalRandom.current().nextLong(RETRY_DELAY_MIN_MILLIS, RETRY_DELAY_MAX_MILLIS + 1);
             if (System.currentTimeMillis() + delay < deadlineMillis) {
                 retries.incrementAndGet();
@@ -125,11 +133,14 @@ public final class SessionClient {
 
     private Result query(String username, String serverHash, @Nullable SocketAddress clientAddress, long deadlineMillis,
                          BooleanSupplier online) throws InterruptedException {
+        if (quiet()) return quietAnswer();
         final long queueBudget = deadlineMillis - System.currentTimeMillis();
         if (queueBudget <= 0 || !inFlight.tryAcquire(queueBudget, TimeUnit.MILLISECONDS))
             return new Result.Unavailable("no query slot before the login timeout");
         try {
             if (!online.getAsBoolean()) return new Result.Unavailable("the peer left");
+            // A 429 may have come back while this query waited for its slot
+            if (quiet()) return quietAnswer();
             final long remaining = deadlineMillis - System.currentTimeMillis();
             if (remaining <= 0) return new Result.Unavailable("no time left before the login timeout");
             final HttpRequest request = HttpRequest.newBuilder(uri(username, serverHash, clientAddress))
@@ -147,11 +158,45 @@ public final class SessionClient {
             return switch (response.statusCode()) {
                 case 200 -> profile(response.body());
                 case 204 -> new Result.Unverified();
+                case 429 -> {
+                    final long until = System.nanoTime() + TimeUnit.SECONDS.toNanos(
+                            retryAfterSeconds(response.headers().firstValue("Retry-After").orElse(null)));
+                    quietUntil.accumulateAndGet(until, (current, next) -> next - current > 0 ? next : current);
+                    yield new Result.Unavailable("status 429");
+                }
                 default -> new Result.Unavailable("status " + response.statusCode());
             };
         } finally {
             inFlight.release();
         }
+    }
+
+    private boolean quiet() {
+        return quietUntil.get() - System.nanoTime() > 0;
+    }
+
+    private static Result quietAnswer() {
+        return new Result.Unavailable("the session server asked to wait (429)");
+    }
+
+    /**
+     * How long a 429 stops the queries: its {@code Retry-After} in seconds, at most
+     * {@link #MAX_RETRY_AFTER_SECONDS}; {@link #DEFAULT_RETRY_AFTER_SECONDS} when the header is
+     * missing or not a number of seconds, an HTTP date included.
+     *
+     * @param value the header, null if missing
+     * @return the seconds to wait
+     */
+    static long retryAfterSeconds(@Nullable String value) {
+        if (value != null) {
+            try {
+                final long seconds = Long.parseLong(value.strip());
+                if (seconds >= 0) return Math.min(seconds, MAX_RETRY_AFTER_SECONDS);
+            } catch (NumberFormatException _) {
+                // Not a number of seconds, the default applies
+            }
+        }
+        return DEFAULT_RETRY_AFTER_SECONDS;
     }
 
     /**

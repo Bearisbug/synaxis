@@ -22,12 +22,15 @@ public final class HandshakeListener {
 
     @SuppressWarnings("fallthrough") // transfers deliberately continue with the regular login flow
     public static void listener(ClientHandshakePacket packet, PlayerConnection connection) {
-        final String address = packet.serverAddress();
-        if (address.length() > MAX_SERVER_ADDRESS_LENGTH) {
-            throw new IllegalArgumentException("Server address too long: " + address.length());
-        }
         if (connection instanceof PlayerSocketConnection socketConnection
                 && !passesTheGate(socketConnection, packet.intent())) return;
+        final String address = packet.serverAddress();
+        if (address.length() > MAX_SERVER_ADDRESS_LENGTH) {
+            // No vanilla client sends one. Checked once the gate has counted the connection and
+            // taken its token, and closed the way the gate closes, without a line.
+            connection.disconnectTurnedAway();
+            return;
+        }
 
         switch (packet.intent()) {
             case TRANSFER:

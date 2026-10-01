@@ -29,7 +29,8 @@ import java.util.function.LongSupplier;
  * <li>L1, the concurrent connections of one address (IPv4 /32, IPv6 /64), checked when a socket is
  * accepted, or at the handshake once the PROXY protocol header has told the real address.</li>
  * <li>L2, one token bucket per address for each handshake intent (login, status, transfer).</li>
- * <li>L3, the seats of the process: connections past their login start, until they close.</li>
+ * <li>L3, the seats of the process: authenticated connections, until they close. A login start
+ * that finds them all taken is refused before the key exchange.</li>
  * </ul>
  * L4, the joins per tick, is the play queue of {@link ConnectionManager}. Addresses of
  * {@code synaxis.connection-gate.trusted-networks} skip L1 and L2.
@@ -176,9 +177,24 @@ public final class ConnectionGate {
     }
 
     /**
-     * L3: gives the connection a seat, which it keeps until it closes. A login start that finds
+     * L3 at the login start: whether a seat is free, without taking one. A login start that finds
      * every seat of {@code synaxis.max-players} taken is refused before anything else is done for
-     * it.
+     * it; the seat itself waits for {@link #takeSeat(Ticket)}, so a peer that never authenticates
+     * holds none.
+     *
+     * @return false if the process is full, counted as a {@link Reason#FULL} rejection
+     */
+    public boolean seatFree() {
+        final int max = config.maxPlayers();
+        if (max <= 0 || seats.get() < max) return true;
+        reject(Reason.FULL);
+        return false;
+    }
+
+    /**
+     * L3: gives an authenticated connection a seat, which it keeps until it closes. The check and
+     * the increment are one compare and set, so logins authenticated at once never take more seats
+     * than there are.
      *
      * @return false if the process is full
      */

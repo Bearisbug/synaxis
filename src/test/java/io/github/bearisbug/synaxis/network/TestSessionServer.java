@@ -3,6 +3,7 @@ package io.github.bearisbug.synaxis.network;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
 import io.github.bearisbug.synaxis.SessionServer;
+import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
 import java.io.OutputStream;
@@ -30,8 +31,15 @@ import java.util.concurrent.atomic.AtomicInteger;
  */
 final class TestSessionServer implements AutoCloseable {
 
-    /** One scripted answer: an HTTP status after an optional delay, 200 carrying the profile. */
-    record Answer(int status, Duration delay) {
+    /**
+     * One scripted answer: an HTTP status after an optional delay, 200 carrying the profile, with a
+     * {@code Retry-After} header when {@code retryAfter} is not null.
+     */
+    record Answer(int status, Duration delay, @Nullable String retryAfter) {
+        Answer(int status, Duration delay) {
+            this(status, delay, null);
+        }
+
         static Answer ok() {
             return new Answer(200, Duration.ZERO);
         }
@@ -42,6 +50,10 @@ final class TestSessionServer implements AutoCloseable {
 
         static Answer okAfter(Duration delay) {
             return new Answer(200, delay);
+        }
+
+        static Answer tooManyRequests(@Nullable String retryAfter) {
+            return new Answer(429, Duration.ZERO, retryAfter);
         }
     }
 
@@ -121,6 +133,7 @@ final class TestSessionServer implements AutoCloseable {
             }
             if (!answer.delay().isZero()) Thread.sleep(answer.delay());
             if (answer.status() != 200) {
+                if (answer.retryAfter() != null) exchange.getResponseHeaders().set("Retry-After", answer.retryAfter());
                 exchange.sendResponseHeaders(answer.status(), -1);
                 return;
             }

@@ -22,8 +22,6 @@ import io.github.bearisbug.synaxis.network.player.PlayerSocketConnection;
 import io.github.bearisbug.synaxis.network.player.SessionClient;
 import io.github.bearisbug.synaxis.network.plugin.LoginPluginMessageProcessor;
 import io.github.bearisbug.synaxis.utils.StringUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.net.SocketAddress;
 import java.security.GeneralSecurityException;
@@ -32,7 +30,6 @@ import java.security.MessageDigest;
 import java.security.SecureRandom;
 
 public final class LoginListener {
-    private static final Logger LOGGER = LoggerFactory.getLogger(LoginListener.class);
     private static final SecureRandom CHALLENGE_RANDOM = new SecureRandom();
 
     private static final Component ERROR_DURING_LOGIN = Component.text("Error during login!", NamedTextColor.RED);
@@ -57,10 +54,12 @@ public final class LoginListener {
             connection.disconnectTurnedAway();
             return;
         }
-        // Connection gate L3, before any work is done for the login. Counted by the gate rather
+        // Connection gate L3, before any work is done for the login: a full process is not worth
+        // a key exchange or a session server query. The seat itself is taken once the peer is
+        // authenticated (ConnectionManager#transitionLoginToConfig). Counted by the gate rather
         // than logged, how often a full process is knocked at is up to the peers.
-        if (connection instanceof PlayerSocketConnection socketConnection
-                && !connection.process().connection().gate().takeSeat(socketConnection.gateTicket())) {
+        if (connection instanceof PlayerSocketConnection
+                && !connection.process().connection().gate().seatFree()) {
             connection.sendPacket(new LoginDisconnectPacket(DisconnectReasons.SHARD_FULL));
             connection.disconnectTurnedAway();
             return;
@@ -178,8 +177,9 @@ public final class LoginListener {
         } catch (Throwable t) {
             // One report per connection, not per packet: a peer fits thousands of plugin responses
             // into one read, and the kick is what ends that batch (PlayerSocketConnection#processPackets).
+            // The report goes to the exception handler only, which bounds its lines: the peer is not
+            // authenticated and decides how many connections ask for one.
             connection.kick(ERROR_DURING_LOGIN);
-            LOGGER.error("Error handling Login Plugin Response", t);
             connection.process().exception().handleException(t, connection.connectionId());
         }
     }

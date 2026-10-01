@@ -1,0 +1,526 @@
+# Existing TEST.md counter proofs whose red lines or results move with this change, rerun on 1f33976097 (2026-10-01, UTC+8):
+# TC-PROD-061 steps 2-3, TC-PROD-062 steps 2-4, TC-PROD-063 step 2, TC-PROD-066 steps 2-3, TC-PROD-067 step 2, TC-PROD-120 step 2,
+# TC-PROD-121 step 2 (rewritten: the oversized branch no longer throws), TC-GAME-070 step 2, TC-PROD-263 steps 3-4, TC-PROD-560
+# steps 2 (rewritten: the KICK verdict moved into PlayerSocketConnection#admitted) and 3, TC-PROD-300 step 4, TC-WORLD-085 step 2.
+# Each: the edit (diff below), the run with --continue, git checkout HEAD -- src/main server-app/src/main. Then the JUnit XML per run.
+
+================ batch b
+  # counter proofs batch b on 1f33976097, 2026-10-01
+
+  ## tc-prod-061-s2
+  diff --git a/src/main/java/io/github/bearisbug/synaxis/network/ConnectionGate.java b/src/main/java/io/github/bearisbug/synaxis/network/ConnectionGate.java
+  @@ -131,7 +131,7 @@ public final class ConnectionGate {
+               return null;
+           }
+           final Ticket ticket = new Ticket(true);
+  -        if (!config.proxyProtocol() && !ticket.countAddress(remoteAddress)) {
+  +        if (config.proxyProtocol() && !ticket.countAddress(remoteAddress)) {
+               ticket.release();
+               reject(Reason.TOO_MANY);
+               return null;
+  10:39:33 start: :test --tests *ConnectionGateSocketTest* --tests *ConnectionGateTest*
+    ConnectionGateTest > anAddressPastItsLimitIsTurnedAwayAtAccept() FAILED
+        org.opentest4j.AssertionFailedError at ConnectionGateTest.java:127
+    ConnectionGateTest > withTheProxyProtocolTheAddressIsCountedAtTheHandshake() FAILED
+        org.opentest4j.AssertionFailedError at ConnectionGateTest.java:153
+    ConnectionGateTest > trustedNetworksSkipTheAddressLimitAndTheBuckets() FAILED
+        org.opentest4j.AssertionFailedError at ConnectionGateTest.java:177
+    ConnectionGateSocketTest > withTheProxyProtocolTheAddressLimitIsCheckedAtTheHandshake() FAILED
+        java.io.IOException at ConnectionGateSocketTest.java:114
+    ConnectionGateSocketTest > withoutTheProxyProtocolTheAddressLimitIsCheckedAtAccept() FAILED
+        java.lang.AssertionError at ConnectionGateSocketTest.java:88
+    ConnectionGateSocketTest > aConnectionThatSaysNothingIsClosedAtTheHandshakeTimeout() FAILED
+        java.io.IOException at ConnectionGateSocketTest.java:147
+    24 tests completed, 6 failed
+    > Task :test FAILED
+    BUILD FAILED in 30s
+  10:40:04 exit 1
+
+  ## tc-prod-061-s3
+  diff --git a/src/main/java/io/github/bearisbug/synaxis/network/player/PlayerConnection.java b/src/main/java/io/github/bearisbug/synaxis/network/player/PlayerConnection.java
+  @@ -130,7 +130,7 @@ public abstract class PlayerConnection {
+       public boolean handshakeTimedOut(long nowMillis) {
+           // Same as the login timeout: the deadline itself counts as expired
+           return online
+  -                && clientState == ConnectionState.HANDSHAKE
+  +                && clientState == ConnectionState.LOGIN
+                   && nowMillis - connectedAtMillis >= process.config().handshakeTimeout();
+       }
+
+  10:40:04 start: :test --tests *ConnectionGateSocketTest*
+    ConnectionGateSocketTest > aConnectionThatSaysNothingIsClosedAtTheHandshakeTimeout() FAILED
+        java.lang.AssertionError at ConnectionGateSocketTest.java:150
+    12 tests completed, 1 failed
+    > Task :test FAILED
+    BUILD FAILED in 27s
+  10:40:32 exit 1
+
+  ## tc-prod-062-s2
+  diff --git a/src/main/java/io/github/bearisbug/synaxis/network/ConnectionGate.java b/src/main/java/io/github/bearisbug/synaxis/network/ConnectionGate.java
+  @@ -407,7 +407,7 @@ public final class ConnectionGate {
+               return switch (intent) {
+                   case LOGIN -> login;
+                   case STATUS -> status;
+  -                case TRANSFER -> transfer;
+  +                case TRANSFER -> login;
+               };
+           }
+
+  10:40:32 start: :test --tests *ConnectionGateSocketTest* --tests *ConnectionGateTest*
+    ConnectionGateTest > statusAndTransferCountOnTheirOwnBuckets() FAILED
+        org.opentest4j.AssertionFailedError at ConnectionGateTest.java:88
+    ConnectionGateSocketTest > statusAndTransferHandshakesCountOnTheirOwnBuckets() FAILED
+        java.lang.AssertionError at ConnectionGateSocketTest.java:263
+    24 tests completed, 2 failed
+    > Task :test FAILED
+    BUILD FAILED in 21s
+  10:40:54 exit 1
+
+  ## tc-prod-062-s3
+  diff --git a/src/main/java/io/github/bearisbug/synaxis/listener/preplay/HandshakeListener.java b/src/main/java/io/github/bearisbug/synaxis/listener/preplay/HandshakeListener.java
+  @@ -67,7 +67,7 @@ public final class HandshakeListener {
+           // The connection state already follows the intent: LOGIN for a login or a transfer
+           if (intent != ClientHandshakePacket.Intent.STATUS) {
+               connection.sendPacket(new LoginDisconnectPacket(verdict == ConnectionGate.Verdict.TOO_MANY
+  -                    ? DisconnectReasons.TOO_MANY_CONNECTIONS : DisconnectReasons.LOGIN_THROTTLED));
+  +                    ? DisconnectReasons.LOGIN_THROTTLED : DisconnectReasons.TOO_MANY_CONNECTIONS));
+           }
+           connection.disconnectTurnedAway();
+           return false;
+  10:40:54 start: :test --tests *ConnectionGateSocketTest*
+    ConnectionGateSocketTest > statusAndTransferHandshakesCountOnTheirOwnBuckets() FAILED
+        org.opentest4j.AssertionFailedError at ConnectionGateSocketTest.java:267
+    ConnectionGateSocketTest > withTheProxyProtocolTheAddressLimitIsCheckedAtTheHandshake() FAILED
+        org.opentest4j.AssertionFailedError at ConnectionGateSocketTest.java:115
+    ConnectionGateSocketTest > anOversizedServerAddressTakesItsTokenAndIsClosed() FAILED
+        org.opentest4j.AssertionFailedError at ConnectionGateSocketTest.java:216
+    ConnectionGateSocketTest > theFourthLoginOfAnAddressIsThrottledAndLetInTwoSecondsLater() FAILED
+        org.opentest4j.AssertionFailedError at ConnectionGateSocketTest.java:170
+    12 tests completed, 4 failed
+    > Task :test FAILED
+    BUILD FAILED in 19s
+  10:41:14 exit 1
+
+  ## tc-prod-062-s4-swapped
+  diff --git a/src/main/java/io/github/bearisbug/synaxis/network/socket/Server.java b/src/main/java/io/github/bearisbug/synaxis/network/socket/Server.java
+  @@ -131,8 +131,9 @@ public final class Server {
+                       // The write thread first: the read thread can turn the connection away on its
+                       // first packet, and the disconnect gives the write thread 1 s to flush the
+                       // reason by joining it, which returns at once for a thread not started yet
+  -                    writeThread.start();
+                       readThread.start();
+  +                    try { Thread.sleep(20); } catch (InterruptedException e) { throw new RuntimeException(e); }
+  +                    writeThread.start();
+                       loginTimeoutThread.start();
+                   } catch (IOException e) {
+                       if (!process.config().suppressConnectionAcceptErrors())
+  10:41:14 start: :test --tests *ConnectionGateSocketTest*
+    ConnectionGateSocketTest > loginStartsArrivingTogetherNeverTakeMoreSeatsThanThereAre() FAILED
+        org.opentest4j.AssertionFailedError at ConnectionGateSocketTest.java:341
+    ConnectionGateSocketTest > statusAndTransferHandshakesCountOnTheirOwnBuckets() FAILED
+        org.opentest4j.AssertionFailedError at ConnectionGateSocketTest.java:267
+    ConnectionGateSocketTest > withTheProxyProtocolTheAddressLimitIsCheckedAtTheHandshake() FAILED
+        org.opentest4j.AssertionFailedError at ConnectionGateSocketTest.java:115
+    ConnectionGateSocketTest > aFullProcessRefusesTheLoginStartBeforeTheLoginRuns() FAILED
+        org.opentest4j.AssertionFailedError at ConnectionGateSocketTest.java:288
+    ConnectionGateSocketTest > anOversizedServerAddressTakesItsTokenAndIsClosed() FAILED
+        org.opentest4j.AssertionFailedError at ConnectionGateSocketTest.java:216
+    ConnectionGateSocketTest > theFourthLoginOfAnAddressIsThrottledAndLetInTwoSecondsLater() FAILED
+        org.opentest4j.AssertionFailedError at ConnectionGateSocketTest.java:170
+    12 tests completed, 6 failed
+    > Task :test FAILED
+    BUILD FAILED in 19s
+  10:41:34 exit 1
+
+  ## tc-prod-062-s4-wait-only
+  diff --git a/src/main/java/io/github/bearisbug/synaxis/network/socket/Server.java b/src/main/java/io/github/bearisbug/synaxis/network/socket/Server.java
+  @@ -132,6 +132,7 @@ public final class Server {
+                       // first packet, and the disconnect gives the write thread 1 s to flush the
+                       // reason by joining it, which returns at once for a thread not started yet
+                       writeThread.start();
+  +                    try { Thread.sleep(20); } catch (InterruptedException e) { throw new RuntimeException(e); }
+                       readThread.start();
+                       loginTimeoutThread.start();
+                   } catch (IOException e) {
+  10:41:34 start: :test --tests *ConnectionGateSocketTest*
+    BUILD SUCCESSFUL in 19s
+  10:41:54 exit 0
+
+  ## tc-prod-063-s2
+  diff --git a/src/main/java/io/github/bearisbug/synaxis/network/ConnectionGate.java b/src/main/java/io/github/bearisbug/synaxis/network/ConnectionGate.java
+  @@ -490,7 +490,7 @@ public final class ConnectionGate {
+                   int taken;
+                   do {
+                       taken = seats.get();
+  -                    if (taken >= max) return false;
+  +                    if (taken > max) return false;
+                   } while (!seats.compareAndSet(taken, taken + 1));
+               } else {
+                   seats.incrementAndGet();
+  10:41:54 start: :test --tests *ConnectionGateSocketTest* --tests *ConnectionGateTest*
+    ConnectionGateTest > concurrentLoginStartsNeverTakeMoreSeatsThanThereAre() FAILED
+        org.opentest4j.AssertionFailedError at ConnectionGateTest.java:248
+    ConnectionGateTest > aSeatIsHeldUntilItsConnectionCloses() FAILED
+        org.opentest4j.AssertionFailedError at ConnectionGateTest.java:211
+    ConnectionGateSocketTest > loginStartsArrivingTogetherNeverTakeMoreSeatsThanThereAre() FAILED
+        org.opentest4j.AssertionFailedError at ConnectionGateSocketTest.java:341
+    24 tests completed, 3 failed
+    > Task :test FAILED
+    BUILD FAILED in 20s
+  10:42:15 exit 1
+
+  # after the last restore: git status --short
+   M docs/DESIGN-PROD.md
+   M docs/TEST.md
+  ?? docs/test-runs/RUN-062/
+
+================ batch c
+  # counter proofs batch c on 1f33976097, 2026-10-01
+
+  ## tc-prod-066-s2
+  diff --git a/src/main/java/io/github/bearisbug/synaxis/network/ConnectionGate.java b/src/main/java/io/github/bearisbug/synaxis/network/ConnectionGate.java
+  @@ -237,7 +237,7 @@ public final class ConnectionGate {
+           if (!reportWindowStarted) {
+               reportWindowStarted = true;
+               reportWindowStart = nanoTime;
+  -        } else if (nanoTime - reportWindowStart >= REPORT_INTERVAL) {
+  +        } else if (nanoTime - reportWindowStart >= REPORT_INTERVAL / 2) {
+               reportWindowStart = nanoTime;
+               report();
+           }
+  10:42:15 start: :server-app:test --tests *ConnectionGateLogTest*
+    ConnectionGateLogTest > rejectionsAreOneLinePerTenSeconds() FAILED
+        org.opentest4j.AssertionFailedError at ConnectionGateLogTest.java:65
+    5 tests completed, 1 failed
+    > Task :server-app:test FAILED
+    BUILD FAILED in 20s
+  10:42:35 exit 1
+
+  ## tc-prod-066-s3
+  diff --git a/src/main/java/io/github/bearisbug/synaxis/network/player/PlayerConnection.java b/src/main/java/io/github/bearisbug/synaxis/network/player/PlayerConnection.java
+  @@ -265,7 +265,7 @@ public abstract class PlayerConnection {
+       public void disconnect() {
+           final boolean wasOnline = this.online;
+           this.online = false;
+  -        if (wasOnline && !turnedAway)
+  +        if (wasOnline || turnedAway)
+               LOGGER.info("Connection closed: connection_id={} identifier={}", connectionId, getIdentifier());
+           final Player player = process.connection().getPlayer(this);
+           if (player != null) {
+  10:42:35 start: :server-app:test --tests *ConnectionGateLogTest*
+    ConnectionGateLogTest > aConnectionTurnedAwayAtTheHandshakeWritesNoLine() FAILED
+        org.opentest4j.AssertionFailedError at ConnectionGateLogTest.java:107
+    5 tests completed, 1 failed
+    > Task :server-app:test FAILED
+    BUILD FAILED in 17s
+  10:42:53 exit 1
+
+  ## tc-prod-067-s2
+  diff --git a/src/main/java/io/github/bearisbug/synaxis/ServerConfig.java b/src/main/java/io/github/bearisbug/synaxis/ServerConfig.java
+  @@ -219,7 +219,7 @@ public record ServerConfig(
+        * The engine defaults with every {@code synaxis.*} system property applied on top.
+        */
+       public static ServerConfig fromSystemProperties() {
+  -        if (System.getProperty("synaxis.socket-timeout") != null)
+  +        if (System.getProperty("synaxis.socket-timeout-ms") != null)
+               LOGGER.warn("synaxis.socket-timeout is deprecated and has no effect, the channel reads never honour it; "
+                       + "idle connections are bounded by synaxis.login-timeout and synaxis.keep-alive-kick. "
+                       + "It is removed in the next release");
+  diff --git a/src/main/java/io/github/bearisbug/synaxis/network/ConnectionManager.java b/src/main/java/io/github/bearisbug/synaxis/network/ConnectionManager.java
+  @@ -791,7 +791,7 @@ public final class ConnectionManager {
+                   player.refreshKeepAlive(tickStart);
+                   player.sendPacket(keepAlivePacket);
+               } else if (lastKeepAlive >= TimeUnit.MILLISECONDS.toNanos(process.config().keepAliveKick())) {
+  -                player.kick(DisconnectReasons.KEEP_ALIVE_TIMEOUT);
+  +                player.kick(DisconnectReasons.LOGIN_TIMEOUT);
+               }
+           }
+       }
+  10:42:53 start: :test --tests *ConnectionManagerIntegrationTest* :server-app:test --tests *ConnectionGateLogTest*
+    ConnectionGateLogTest > settingTheSocketTimeoutWarnsThatItIsDeprecated() FAILED
+        org.opentest4j.AssertionFailedError at ConnectionGateLogTest.java:206
+    5 tests completed, 1 failed
+    > Task :server-app:test FAILED
+    ConnectionManagerIntegrationTest > aPlayerThatStopsAnsweringKeepAlivesIsKicked(Env) FAILED
+        org.opentest4j.AssertionFailedError at ConnectionManagerIntegrationTest.java:85
+    4 tests completed, 1 failed
+    > Task :test FAILED
+    BUILD FAILED in 20s
+  10:43:14 exit 1
+
+  ## tc-prod-120-s2
+  diff --git a/src/main/java/io/github/bearisbug/synaxis/Auth.java b/src/main/java/io/github/bearisbug/synaxis/Auth.java
+  @@ -38,4 +38,5 @@ public sealed interface Auth {
+               this(SessionServer.mojang());
+           }
+       }
+  +    record Bungee() implements Auth {}
+   }
+  10:43:14 start: :compileJava
+    /Users/bug/Documents/Projects/Minecraft/synaxis-wt/sec-login/src/main/java/io/github/bearisbug/synaxis/network/ConnectionManager.java:98: 错误: 并非所有可能的输入值都包含在 switch 语句中
+    /Users/bug/Documents/Projects/Minecraft/synaxis-wt/sec-login/src/main/java/io/github/bearisbug/synaxis/ServerProcessImpl.java:291: 错误: 并非所有可能的输入值都包含在 switch 语句中
+    > Task :compileJava FAILED
+      /Users/bug/Documents/Projects/Minecraft/synaxis-wt/sec-login/src/main/java/io/github/bearisbug/synaxis/network/ConnectionManager.java:98: 错误: 并非所有可能的输入值都包含在 switch 语句中
+    BUILD FAILED in 11s
+  10:43:26 exit 1
+
+  ## tc-prod-121-s2
+  diff --git a/src/main/java/io/github/bearisbug/synaxis/listener/preplay/HandshakeListener.java b/src/main/java/io/github/bearisbug/synaxis/listener/preplay/HandshakeListener.java
+  @@ -9,6 +9,7 @@ import io.github.bearisbug.synaxis.network.packet.client.handshake.ClientHandsha
+   import io.github.bearisbug.synaxis.network.packet.server.login.LoginDisconnectPacket;
+   import io.github.bearisbug.synaxis.network.player.PlayerConnection;
+   import io.github.bearisbug.synaxis.network.player.PlayerSocketConnection;
+  +import org.slf4j.LoggerFactory;
+
+   public final class HandshakeListener {
+
+  @@ -28,6 +29,7 @@ public final class HandshakeListener {
+           if (address.length() > MAX_SERVER_ADDRESS_LENGTH) {
+               // No vanilla client sends one. Checked once the gate has counted the connection and
+               // taken its token, and closed the way the gate closes, without a line.
+  +            LoggerFactory.getLogger(HandshakeListener.class).warn("Server address too long: {}", address.length());
+               connection.disconnectTurnedAway();
+               return;
+           }
+  10:43:26 start: :test --tests io.github.bearisbug.synaxis.ArchitectureTest
+    ArchitectureTest > clientDrivenPathsDoNotWriteALinePerPacket() FAILED
+        java.lang.AssertionError at ArchitectureTest.java:243
+    7 tests completed, 1 failed
+    > Task :test FAILED
+    BUILD FAILED in 20s
+  10:43:47 exit 1
+
+  ## tc-game-070-s2
+  diff --git a/src/main/java/io/github/bearisbug/synaxis/listener/preplay/LoginListener.java b/src/main/java/io/github/bearisbug/synaxis/listener/preplay/LoginListener.java
+  @@ -87,7 +87,7 @@ public final class LoginListener {
+           // login start carries. That one is the peer's to choose, and the duplicate login guard
+           // keys on the uuid: taken as sent, one name could be online twice under two uuids, and
+           // a peer could sit on the uuid of a name it does not use.
+  -        enterConfig(connection, new GameProfile(GameProfile.offlineUuid(packet.username()), packet.username()));
+  +        enterConfig(connection, new GameProfile(packet.profileId(), packet.username()));
+       }
+
+       /**
+  10:43:47 start: :test --tests *PreAuthConnectionIntegrationTest* --tests *DuplicateUuidLoginIntegrationTest*
+    PreAuthConnectionIntegrationTest > theOfflineUuidComesFromTheUsernameNotFromThePeer(Env) FAILED
+        org.opentest4j.AssertionFailedError at PreAuthConnectionIntegrationTest.java:186
+    12 tests completed, 1 failed
+    > Task :test FAILED
+    BUILD FAILED in 9s
+  10:43:57 exit 1
+
+  ## tc-prod-263-s3
+  diff --git a/src/main/java/io/github/bearisbug/synaxis/network/player/PlayerSocketConnection.java b/src/main/java/io/github/bearisbug/synaxis/network/player/PlayerSocketConnection.java
+  @@ -249,7 +249,7 @@ public class PlayerSocketConnection extends PlayerConnection {
+           }
+           switch (result) {
+               case PacketReading.Result.Success<ClientPacket> success -> {
+  -                traffic.read(success.packets().size());
+  +                var _ = success;
+                   for (PacketReading.ParsedPacket<ClientPacket> parsedPacket : success.packets()) {
+                       // A listener that dropped the connection ends the batch. A peer fits thousands
+                       // of frames into one read buffer, and handling the rest of them after the kick
+  10:43:57 start: :test --tests *OnlineLoginSocketTest
+    OnlineLoginSocketTest > theTrafficAndTheCipherTimeOfAnEncryptedLoginAreCounted() FAILED
+        org.opentest4j.AssertionFailedError at OnlineLoginSocketTest.java:451
+    22 tests completed, 1 failed
+    > Task :test FAILED
+    BUILD FAILED in 25s
+  10:44:23 exit 1
+
+  ## tc-prod-263-s4
+  diff --git a/src/main/java/io/github/bearisbug/synaxis/network/player/SessionClient.java b/src/main/java/io/github/bearisbug/synaxis/network/player/SessionClient.java
+  @@ -112,7 +112,7 @@ public final class SessionClient {
+           if (result instanceof Result.Unavailable && !quiet() && online.getAsBoolean()) {
+               final long delay = ThreadLocalRandom.current().nextLong(RETRY_DELAY_MIN_MILLIS, RETRY_DELAY_MAX_MILLIS + 1);
+               if (System.currentTimeMillis() + delay < deadlineMillis) {
+  -                retries.incrementAndGet();
+  +                var _ = retries;
+                   Thread.sleep(delay);
+                   result = query(username, serverHash, clientAddress, deadlineMillis, online);
+               }
+  10:44:23 start: :test --tests *OnlineLoginSocketTest
+    OnlineLoginSocketTest > theFinalAnswerTheRetryAndEveryQueryTimeAreCounted() FAILED
+        org.opentest4j.AssertionFailedError at OnlineLoginSocketTest.java:477
+    22 tests completed, 1 failed
+    > Task :test FAILED
+    BUILD FAILED in 35s
+  10:44:58 exit 1
+
+  ## tc-prod-560-s2
+  diff --git a/src/main/java/io/github/bearisbug/synaxis/network/player/PlayerSocketConnection.java b/src/main/java/io/github/bearisbug/synaxis/network/player/PlayerSocketConnection.java
+  @@ -401,10 +401,7 @@ public class PlayerSocketConnection extends PlayerConnection {
+           return switch (inboundLimiter.admit(packet, System.nanoTime())) {
+               case ACCEPT -> true;
+               case DROP -> false;
+  -            case KICK -> {
+  -                kickOverInboundLimit();
+  -                yield false;
+  -            }
+  +            case KICK -> true;
+           };
+       }
+
+  10:44:58 start: :test --tests *InboundPacketLimitIntegrationTest
+    InboundPacketLimitIntegrationTest > oneOverTheLimitKicksWithProtocolError(Env) FAILED
+        org.opentest4j.AssertionFailedError at InboundPacketLimitIntegrationTest.java:54
+    InboundPacketLimitIntegrationTest > pingsInPlayCountTowardsTheLimit(Env) FAILED
+        org.opentest4j.AssertionFailedError at InboundPacketLimitIntegrationTest.java:80
+    7 tests completed, 2 failed
+    > Task :test FAILED
+    BUILD FAILED in 15s
+  10:45:14 exit 1
+
+  ## tc-prod-560-s3-582
+  diff --git a/src/main/java/io/github/bearisbug/synaxis/ServerConfig.java b/src/main/java/io/github/bearisbug/synaxis/ServerConfig.java
+  @@ -435,7 +435,7 @@ public record ServerConfig(
+           // Twice the highest 7 s P99 of the packets one bot sent in the load tiers of RUN-057, 374
+           // (ride, 200 bots; docs/test-runs/RUN-057/10-limit-readings.txt), rounded up to 750
+           private long packetLimitWindow = 7_000;
+  -        private int packetLimitMaxPackets = 750;
+  +        private int packetLimitMaxPackets = 582;
+           private PacketLimitAction packetLimitAction = PacketLimitAction.KICK;
+           private String packetLimitOverrides = "";
+           private long maxInflatedBytesPerSecond = 4L << 20;
+  10:45:14 start: :test --tests *InboundPacketLimitIntegrationTest
+    InboundPacketLimitIntegrationTest > theLimitItselfIsLetThrough(Env) FAILED
+        org.opentest4j.AssertionFailedError at InboundPacketLimitIntegrationTest.java:66
+    InboundPacketLimitIntegrationTest > pingsOverADropLimitAreNotAnswered() FAILED
+        org.opentest4j.AssertionFailedError at InboundPacketLimitIntegrationTest.java:99
+    InboundPacketLimitIntegrationTest > pingsInPlayCountTowardsTheLimit(Env) FAILED
+        org.opentest4j.AssertionFailedError at InboundPacketLimitIntegrationTest.java:82
+    7 tests completed, 3 failed
+    > Task :test FAILED
+    BUILD FAILED in 15s
+  10:45:30 exit 1
+
+  ## tc-prod-560-s3-751
+  diff --git a/src/main/java/io/github/bearisbug/synaxis/ServerConfig.java b/src/main/java/io/github/bearisbug/synaxis/ServerConfig.java
+  @@ -435,7 +435,7 @@ public record ServerConfig(
+           // Twice the highest 7 s P99 of the packets one bot sent in the load tiers of RUN-057, 374
+           // (ride, 200 bots; docs/test-runs/RUN-057/10-limit-readings.txt), rounded up to 750
+           private long packetLimitWindow = 7_000;
+  -        private int packetLimitMaxPackets = 750;
+  +        private int packetLimitMaxPackets = 751;
+           private PacketLimitAction packetLimitAction = PacketLimitAction.KICK;
+           private String packetLimitOverrides = "";
+           private long maxInflatedBytesPerSecond = 4L << 20;
+  10:45:30 start: :test --tests *InboundPacketLimitIntegrationTest
+    InboundPacketLimitIntegrationTest > pingsOverADropLimitAreNotAnswered() FAILED
+        org.opentest4j.AssertionFailedError at InboundPacketLimitIntegrationTest.java:99
+    InboundPacketLimitIntegrationTest > oneOverTheLimitKicksWithProtocolError(Env) FAILED
+        org.opentest4j.AssertionFailedError at InboundPacketLimitIntegrationTest.java:54
+    InboundPacketLimitIntegrationTest > pingsInPlayCountTowardsTheLimit(Env) FAILED
+        org.opentest4j.AssertionFailedError at InboundPacketLimitIntegrationTest.java:82
+    7 tests completed, 3 failed
+    > Task :test FAILED
+    BUILD FAILED in 17s
+  10:45:47 exit 1
+
+  ## tc-prod-300-s4 (TabList)
+  diff --git a/server-app/src/main/java/io/github/bearisbug/synaxis/app/TabListSlot.java b/server-app/src/main/java/io/github/bearisbug/synaxis/app/TabListSlot.java
+  @@ -40,7 +40,7 @@ final class TabListSlot {
+           connections.setTabListVisibility((viewer, subject) -> {
+               try {
+                   return visibility.test(viewer, subject);
+  -            } catch (RuntimeException e) {
+  +            } catch (UnsupportedOperationException e) {
+                   failures.warn(e, "Tab list visibility of plugin_id={} threw, {} is listed for {}",
+                           pluginId, subject.getUsername(), viewer.getUsername());
+                   return true;
+  10:45:47 start: :server-app:test --tests *TabListVisibilityIntegrationTest*
+    TabListVisibilityIntegrationTest > aVisibilityThatThrowsListsThePlayer(Env) FAILED
+        java.lang.IllegalStateException at TabListVisibilityIntegrationTest.java:81
+    2 tests completed, 1 failed
+    > Task :server-app:test FAILED
+    BUILD FAILED in 8s
+  10:45:56 exit 1
+
+  # after the last restore: git status --short
+   M docs/DESIGN-PROD.md
+   M docs/TEST.md
+  ?? docs/test-runs/RUN-062/
+
+================ TC-WORLD-085 step 2 ran in batch a (see 03-counterproofs-own.txt)
+
+## JUnit XML
+-- tc-prod-061-s2
+io.github.bearisbug.synaxis.network.ConnectionGateSocketTest: tests=12 failures=3 errors=0 skipped=0 time=7.938
+  RED withTheProxyProtocolTheAddressLimitIsCheckedAtTheHandshake() [0.065s] -> java.io.IOException: java.io.IOException: Broken pipe | at ConnectionGateSocketTest.java:442
+  RED withoutTheProxyProtocolTheAddressLimitIsCheckedAtAccept() [5.015s] -> java.lang.AssertionError: java.lang.AssertionError: the server neither answered nor closed the connection | at ConnectionGateSocketTest.java:481
+  RED aConnectionThatSaysNothingIsClosedAtTheHandshakeTimeout() [0.007s] -> java.io.IOException: java.io.IOException: Broken pipe | at ConnectionGateSocketTest.java:442
+io.github.bearisbug.synaxis.network.ConnectionGateTest: tests=12 failures=3 errors=0 skipped=0 time=0.095
+  RED anAddressPastItsLimitIsTurnedAwayAtAccept() [0.025s] -> org.opentest4j.AssertionFailedError: org.opentest4j.AssertionFailedError: the third connection of the address ==> expected: <null> but was: <io.github.bearisbug.synaxis.network.ConnectionGate$Ticket@7b4ed0e0> | at ConnectionGateTest.java:127
+  RED withTheProxyProtocolTheAddressIsCountedAtTheHandshake() [0.0s] -> org.opentest4j.AssertionFailedError: org.opentest4j.AssertionFailedError: every connection of the proxy is accepted ==> expected: not <null> | at ConnectionGateTest.java:153
+  RED trustedNetworksSkipTheAddressLimitAndTheBuckets() [0.001s] -> org.opentest4j.AssertionFailedError: org.opentest4j.AssertionFailedError: an address outside the trusted networks is still limited ==> expected: <null> but was: <io.github.bearisbug.synaxis.network.ConnectionGate$Ticket@128463aa> | at ConnectionGateTest.java:177
+-- tc-prod-061-s3
+io.github.bearisbug.synaxis.network.ConnectionGateSocketTest: tests=12 failures=1 errors=0 skipped=0 time=7.45
+  RED aConnectionThatSaysNothingIsClosedAtTheHandshakeTimeout() [5.015s] -> java.lang.AssertionError: java.lang.AssertionError: the server neither answered nor closed the connection | at ConnectionGateSocketTest.java:481
+-- tc-prod-062-s2
+io.github.bearisbug.synaxis.network.ConnectionGateSocketTest: tests=12 failures=1 errors=0 skipped=0 time=3.397
+  RED statusAndTransferHandshakesCountOnTheirOwnBuckets() [0.466s] -> java.lang.AssertionError: java.lang.AssertionError: turned away with synaxis:login-throttled | at ConnectionGateSocketTest.java:501
+io.github.bearisbug.synaxis.network.ConnectionGateTest: tests=12 failures=1 errors=0 skipped=0 time=0.076
+  RED statusAndTransferCountOnTheirOwnBuckets() [0.005s] -> org.opentest4j.AssertionFailedError: org.opentest4j.AssertionFailedError: expected: <PASS> but was: <THROTTLED> | at ConnectionGateTest.java:88
+-- tc-prod-062-s3
+io.github.bearisbug.synaxis.network.ConnectionGateSocketTest: tests=12 failures=4 errors=0 skipped=0 time=3.398
+  RED statusAndTransferHandshakesCountOnTheirOwnBuckets() [0.666s] -> org.opentest4j.AssertionFailedError: org.opentest4j.AssertionFailedError: the eleventh transfer ==> expected: <synaxis:login-throttled> but was: <synaxis:too-many-connections> | at ConnectionGateSocketTest.java:267
+  RED withTheProxyProtocolTheAddressLimitIsCheckedAtTheHandshake() [0.1s] -> org.opentest4j.AssertionFailedError: org.opentest4j.AssertionFailedError: expected: <synaxis:too-many-connections> but was: <synaxis:login-throttled> | at ConnectionGateSocketTest.java:115
+  RED anOversizedServerAddressTakesItsTokenAndIsClosed() [0.145s] -> org.opentest4j.AssertionFailedError: org.opentest4j.AssertionFailedError: the oversized handshake took one of the three tokens ==> expected: <synaxis:login-throttled> but was: <synaxis:too-many-connections> | at ConnectionGateSocketTest.java:216
+  RED theFourthLoginOfAnAddressIsThrottledAndLetInTwoSecondsLater() [0.116s] -> org.opentest4j.AssertionFailedError: org.opentest4j.AssertionFailedError: expected: <synaxis:login-throttled> but was: <synaxis:too-many-connections> | at ConnectionGateSocketTest.java:170
+-- tc-prod-062-s4-swapped
+io.github.bearisbug.synaxis.network.ConnectionGateSocketTest: tests=12 failures=6 errors=0 skipped=0 time=3.448
+  RED loginStartsArrivingTogetherNeverTakeMoreSeatsThanThereAre() [1.071s] -> org.opentest4j.AssertionFailedError: org.opentest4j.AssertionFailedError: expected: <5> but was: <20> | at ConnectionGateSocketTest.java:341
+  RED statusAndTransferHandshakesCountOnTheirOwnBuckets() [0.484s] -> org.opentest4j.AssertionFailedError: org.opentest4j.AssertionFailedError: expected a login disconnect ==> Unexpected null value, expected: <io.github.bearisbug.synaxis.network.packet.server.login.LoginDisconnectPacket> but was: <null> | at ConnectionGateSocketTest.java:494
+  RED withTheProxyProtocolTheAddressLimitIsCheckedAtTheHandshake() [0.051s] -> org.opentest4j.AssertionFailedError: org.opentest4j.AssertionFailedError: expected a login disconnect ==> Unexpected null value, expected: <io.github.bearisbug.synaxis.network.packet.server.login.LoginDisconnectPacket> but was: <null> | at ConnectionGateSocketTest.java:494
+  RED aFullProcessRefusesTheLoginStartBeforeTheLoginRuns() [0.055s] -> org.opentest4j.AssertionFailedError: org.opentest4j.AssertionFailedError: expected a login disconnect ==> Unexpected null value, expected: <io.github.bearisbug.synaxis.network.packet.server.login.LoginDisconnectPacket> but was: <null> | at ConnectionGateSocketTest.java:494
+  RED anOversizedServerAddressTakesItsTokenAndIsClosed() [0.081s] -> org.opentest4j.AssertionFailedError: org.opentest4j.AssertionFailedError: expected a login disconnect ==> Unexpected null value, expected: <io.github.bearisbug.synaxis.network.packet.server.login.LoginDisconnectPacket> but was: <null> | at ConnectionGateSocketTest.java:494
+  RED theFourthLoginOfAnAddressIsThrottledAndLetInTwoSecondsLater() [0.081s] -> org.opentest4j.AssertionFailedError: org.opentest4j.AssertionFailedError: expected a login disconnect ==> Unexpected null value, expected: <io.github.bearisbug.synaxis.network.packet.server.login.LoginDisconnectPacket> but was: <null> | at ConnectionGateSocketTest.java:494
+-- tc-prod-062-s4-wait-only
+io.github.bearisbug.synaxis.network.ConnectionGateSocketTest: tests=12 failures=0 errors=0 skipped=0 time=4.434
+-- tc-prod-063-s2
+io.github.bearisbug.synaxis.network.ConnectionGateSocketTest: tests=12 failures=1 errors=0 skipped=0 time=3.541
+  RED loginStartsArrivingTogetherNeverTakeMoreSeatsThanThereAre() [0.71s] -> org.opentest4j.AssertionFailedError: org.opentest4j.AssertionFailedError: expected: <5> but was: <6> | at ConnectionGateSocketTest.java:341
+io.github.bearisbug.synaxis.network.ConnectionGateTest: tests=12 failures=2 errors=0 skipped=0 time=0.069
+  RED concurrentLoginStartsNeverTakeMoreSeatsThanThereAre() [0.007s] -> org.opentest4j.AssertionFailedError: org.opentest4j.AssertionFailedError: expected: <5> but was: <6> | at ConnectionGateTest.java:248
+  RED aSeatIsHeldUntilItsConnectionCloses() [0.001s] -> org.opentest4j.AssertionFailedError: org.opentest4j.AssertionFailedError: the third login start finds the process full ==> expected: <false> but was: <true> | at ConnectionGateTest.java:211
+-- tc-prod-066-s2
+io.github.bearisbug.synaxis.app.ConnectionGateLogTest: tests=5 failures=1 errors=0 skipped=0 time=0.948
+  RED rejectionsAreOneLinePerTenSeconds() [0.004s] -> org.opentest4j.AssertionFailedError: org.opentest4j.AssertionFailedError: nothing before the 10 s are over ==> expected: <[]> but was: <[Connection gate rejected 112 connections in the last 10 s: too_many=0 throttled=7 full=4 closed_at_accept=100 handshake_timeout=1]> | at ConnectionGateLogTest.java:65
+-- tc-prod-066-s3
+io.github.bearisbug.synaxis.app.ConnectionGateLogTest: tests=5 failures=1 errors=0 skipped=0 time=0.899
+  RED aConnectionTurnedAwayAtTheHandshakeWritesNoLine() [0.077s] -> org.opentest4j.AssertionFailedError: org.opentest4j.AssertionFailedError: only the connection the gate let through: [Connection closed: connection_id=d8844224-4e07-4505-9c00-d9b9d8e6722b identifier=/127.0.0.1:55222, Connection closed: connection_id=706ecfb6-b72b-4efd-833e-bbc38fdfc514 identifier= | at ConnectionGateLogTest.java:107
+-- tc-prod-067-s2
+io.github.bearisbug.synaxis.app.ConnectionGateLogTest: tests=5 failures=1 errors=0 skipped=0 time=1.449
+  RED settingTheSocketTimeoutWarnsThatItIsDeprecated() [0.02s] -> org.opentest4j.AssertionFailedError: org.opentest4j.AssertionFailedError: [] ==> expected: <1> but was: <0> | at ConnectionGateLogTest.java:206
+io.github.bearisbug.synaxis.network.ConnectionManagerIntegrationTest: tests=4 failures=1 errors=0 skipped=0 time=1.513
+  RED aPlayerThatStopsAnsweringKeepAlivesIsKicked(Env) [1.387s] -> org.opentest4j.AssertionFailedError: org.opentest4j.AssertionFailedError: expected: <synaxis:keep-alive-timeout> but was: <synaxis:login-timeout> | at ConnectionManagerIntegrationTest.java:85
+-- tc-prod-121-s2
+io.github.bearisbug.synaxis.ArchitectureTest: tests=7 failures=1 errors=0 skipped=0 time=3.615
+  RED clientDrivenPathsDoNotWriteALinePerPacket() [0.775s] -> java.lang.AssertionError: java.lang.AssertionError: Architecture Violation [Priority: MEDIUM] - Rule 'no classes that reside in any package ['io.github.bearisbug.synaxis.network..', 'io.github.bearisbug.synaxis.listener..'] and not name 'io.github.bearisbug.synaxis.network.packet.Packe | at ArchitectureTest.java:243
+-- tc-game-070-s2
+io.github.bearisbug.synaxis.network.DuplicateUuidLoginIntegrationTest: tests=3 failures=0 errors=0 skipped=0 time=0.94
+io.github.bearisbug.synaxis.network.player.PreAuthConnectionIntegrationTest: tests=9 failures=1 errors=0 skipped=0 time=0.803
+  RED theOfflineUuidComesFromTheUsernameNotFromThePeer(Env) [0.017s] -> org.opentest4j.AssertionFailedError: org.opentest4j.AssertionFailedError: the profile uuid must be derived from the username, not taken from the login start ==> expected: <b50ad385-829d-3141-a216-7e7d7539ba7f> but was: <03393f08-0d79-49aa-b890-8737a71a1637> | at PreAuthConnectionIntegrationTest.java:186
+-- tc-prod-263-s3
+io.github.bearisbug.synaxis.network.OnlineLoginSocketTest: tests=22 failures=1 errors=0 skipped=0 time=19.282
+  RED theTrafficAndTheCipherTimeOfAnEncryptedLoginAreCounted() [0.077s] -> org.opentest4j.AssertionFailedError: org.opentest4j.AssertionFailedError: packets read off the socket ==> expected: <3> but was: <0> | at OnlineLoginSocketTest.java:451
+-- tc-prod-263-s4
+io.github.bearisbug.synaxis.network.OnlineLoginSocketTest: tests=22 failures=1 errors=0 skipped=0 time=19.442
+  RED theFinalAnswerTheRetryAndEveryQueryTimeAreCounted() [1.592s] -> org.opentest4j.AssertionFailedError: org.opentest4j.AssertionFailedError: the unavailable answer was retried once ==> expected: <1> but was: <0> | at OnlineLoginSocketTest.java:477
+-- tc-prod-560-s2
+io.github.bearisbug.synaxis.network.player.InboundPacketLimitIntegrationTest: tests=7 failures=2 errors=0 skipped=0 time=0.784
+  RED oneOverTheLimitKicksWithProtocolError(Env) [0.013s] -> org.opentest4j.AssertionFailedError: org.opentest4j.AssertionFailedError: 751 packets at once are over 750 in 7 s ==> expected: <false> but was: <true> | at InboundPacketLimitIntegrationTest.java:54
+  RED pingsInPlayCountTowardsTheLimit(Env) [0.014s] -> org.opentest4j.AssertionFailedError: org.opentest4j.AssertionFailedError: 1,000 pings at once are over 750 in 7 s ==> expected: <false> but was: <true> | at InboundPacketLimitIntegrationTest.java:80
+-- tc-prod-560-s3-582
+io.github.bearisbug.synaxis.network.player.InboundPacketLimitIntegrationTest: tests=7 failures=3 errors=0 skipped=0 time=0.792
+  RED theLimitItselfIsLetThrough(Env) [0.02s] -> org.opentest4j.AssertionFailedError: org.opentest4j.AssertionFailedError: 750 packets in 7 s is the limit, not over it ==> expected: <true> but was: <false> | at InboundPacketLimitIntegrationTest.java:66
+  RED pingsOverADropLimitAreNotAnswered() [0.023s] -> org.opentest4j.AssertionFailedError: org.opentest4j.AssertionFailedError: pongs ==> expected: <750> but was: <582> | at InboundPacketLimitIntegrationTest.java:99
+  RED pingsInPlayCountTowardsTheLimit(Env) [0.01s] -> org.opentest4j.AssertionFailedError: org.opentest4j.AssertionFailedError: pongs ==> expected: <750> but was: <582> | at InboundPacketLimitIntegrationTest.java:82
+-- tc-prod-560-s3-751
+io.github.bearisbug.synaxis.network.player.InboundPacketLimitIntegrationTest: tests=7 failures=3 errors=0 skipped=0 time=0.8
+  RED pingsOverADropLimitAreNotAnswered() [0.022s] -> org.opentest4j.AssertionFailedError: org.opentest4j.AssertionFailedError: pongs ==> expected: <750> but was: <751> | at InboundPacketLimitIntegrationTest.java:99
+  RED oneOverTheLimitKicksWithProtocolError(Env) [0.01s] -> org.opentest4j.AssertionFailedError: org.opentest4j.AssertionFailedError: 751 packets at once are over 750 in 7 s ==> expected: <false> but was: <true> | at InboundPacketLimitIntegrationTest.java:54
+  RED pingsInPlayCountTowardsTheLimit(Env) [0.01s] -> org.opentest4j.AssertionFailedError: org.opentest4j.AssertionFailedError: pongs ==> expected: <750> but was: <751> | at InboundPacketLimitIntegrationTest.java:82
+-- tc-prod-300-s4 (TabList)
+io.github.bearisbug.synaxis.app.TabListVisibilityIntegrationTest: tests=2 failures=1 errors=0 skipped=0 time=0.843
+  RED aVisibilityThatThrowsListsThePlayer(Env) [0.073s] -> java.lang.IllegalStateException: java.lang.IllegalStateException: probe visibility failure | at TabListVisibilityIntegrationTest.java:81

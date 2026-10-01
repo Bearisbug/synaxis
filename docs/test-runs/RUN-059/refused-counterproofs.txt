@@ -1,0 +1,10 @@
+TC-PROD-570 第 2 步（修前写法，main 0e919cce6a 的 ShardGates 配新测试）：7 tests completed, 1 failed，红在 ShardGatesTest.java:218，COOLDOWN ==> expected: <[transfer_refused {…, result=cooldown}]> but was: <[]>
+TC-PROD-570 第 3 步（只漏 NOT_ONLINE）：红在 :218，NOT_ONLINE ==> expected: <[transfer_refused {…, result=not_online}]> but was: <[]>
+TC-PROD-570 第 4 步（只漏 SAVE_FAILED）：红在 :218，SAVE_FAILED ==> expected: <[transfer_refused {…, result=save_failed}]> but was: <[]>
+TC-PROD-570 第 5 步（SENT 也写）：红在 :218，SENT ==> expected: <[]> but was: <[transfer_refused {…, result=sent}]>
+TC-PROD-571 第 2 步（refused 开头加 if (!player.isOnline()) return;）：红在 :218，NOT_ONLINE ==> expected: <[…result=not_online}]> but was: <[]>
+TC-PROD-572 第 2 步（refused 开头给玩家发 synaxis:transfer-failed）：红在 ShardGatesTest.java:195，COOLDOWN ==> expected: <[]> but was: <[synaxis:transfer-failed]>；ledger 用例仍绿
+为交接给光照会话，照 TC-WORLD 的写法在新代码上实跑：TC-WORLD-089 第 3 步（proof.never）红在 :218，COOLDOWN ==> expected: <[transfer_refused {…, result=cooldown}]> but was: <[]>
+为交接实跑 TC-WORLD-089 第 4 步（result.name()，删 Locale import）：红在 :218，COOLDOWN ==> expected: <[…result=cooldown}]> but was: <[…result=COOLDOWN}]>
+为交接实跑 TC-WORLD-064 第 3 步（不拆 CompletionException）：红在 :256（原为 :251），第三项是 java.util.concurrent.CompletionException: java.lang.IllegalStateException: the ticket does not encode
+每条反证跑完都从备份还原，最终文件与备份逐字节相同（cmp）；git status 干净

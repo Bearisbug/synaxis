@@ -4,7 +4,6 @@ import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.UnknownNullability;
 
 import java.util.Objects;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Consumer;
 
@@ -15,7 +14,6 @@ final class AcquirableImpl<T> implements Acquirable<T> {
      * in the field initializer of an entity, before the entity is bound to a server process.
      */
     private static final boolean ACQUIRABLE_STRICT = Boolean.getBoolean("synaxis.acquirable-strict");
-    static final AtomicLong WAIT_COUNTER_NANO = new AtomicLong();
 
     /**
      * Global lock used for synchronization.
@@ -143,23 +141,45 @@ final class AcquirableImpl<T> implements Acquirable<T> {
         return elementThread.lock().isHeldByCurrentThread();
     }
 
+    /**
+     * Takes the global lock, then the lock of {@code elementThread}. The clock is read only for a
+     * lock another thread holds: an acquisition that gets both at the first try waited for nothing
+     * and costs no clock read. The time blocked is added to the calling thread's own total when it is
+     * an {@link EngineThread} ({@code docs/DESIGN-PROD.md} {@code API-PROD-016}).
+     */
     static @Nullable ReentrantLock enter(TickThread elementThread) {
         if (isOwnedImpl(elementThread)) return null; // Nothing to lock, already owned by the current thread.
-        final long time = System.nanoTime();
+        final Thread current = Thread.currentThread();
+        long waited = 0;
         // Enter the target thread
-        if (Thread.currentThread() instanceof TickThread tickThread && tickThread.lock().isHeldByCurrentThread()) {
-            while (!GLOBAL_LOCK.tryLock()) {
-                tickThread.lock().unlock();
-                Thread.onSpinWait();
-                tickThread.lock().lock();
+        if (!GLOBAL_LOCK.tryLock()) {
+            final long since = System.nanoTime();
+            if (current instanceof TickThread tickThread && tickThread.lock().isHeldByCurrentThread()) {
+                do {
+                    tickThread.lock().unlock();
+                    Thread.onSpinWait();
+                    tickThread.lock().lock();
+                } while (!GLOBAL_LOCK.tryLock());
+            } else {
+                GLOBAL_LOCK.lock();
             }
-        } else {
-            GLOBAL_LOCK.lock();
+            waited = System.nanoTime() - since;
         }
         final ReentrantLock targetLock = elementThread.lock();
-        targetLock.lock();
-        WAIT_COUNTER_NANO.addAndGet(System.nanoTime() - time);
+        if (!targetLock.tryLock()) waited += lockTimed(targetLock);
+        if (waited != 0 && current instanceof EngineThread engineThread) engineThread.waited(waited);
         return targetLock;
+    }
+
+    /**
+     * Blocks on {@code lock} until this thread holds it.
+     *
+     * @return how long that took, in nanoseconds
+     */
+    static long lockTimed(ReentrantLock lock) {
+        final long since = System.nanoTime();
+        lock.lock();
+        return System.nanoTime() - since;
     }
 
     static void leave(@Nullable ReentrantLock lock) {

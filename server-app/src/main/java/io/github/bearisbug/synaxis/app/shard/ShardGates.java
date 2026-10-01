@@ -30,8 +30,9 @@ import java.util.function.BiConsumer;
  * last move of the player was outside it (outside every frame, or in another gate's). Moving inside
  * the frame sends nothing more, and neither does a walk in while a transfer of the player is under
  * way. A choice of channel that failed ({@code FULL}, {@code OFFLINE},
- * {@code DIRECTORY_UNAVAILABLE}) is told to the player, who walks out and in again to retry, and
- * written to the ledger as {@code EVT:transfer_refused} ({@code docs/DESIGN-PROD.md} §20). What
+ * {@code DIRECTORY_UNAVAILABLE}) is told to the player, who walks out and in again to retry. Every
+ * refusal, those three and {@code COOLDOWN}, {@code NOT_ONLINE}, {@code SAVE_FAILED}, is written to
+ * the ledger as {@code EVT:transfer_refused} ({@code docs/DESIGN-PROD.md} §20). What
  * should not happen (a result the start-up check of the directory rules out, a transfer that failed
  * exceptionally) is an ERROR, through a budget: how often a player walks into a frame is the
  * client's to pick.
@@ -101,22 +102,28 @@ public final class ShardGates {
             return;
         }
         switch (result) {
-            // SAVE_FAILED: the source side of the transfer has told the player already
-            case SENT, COOLDOWN, NOT_ONLINE, SAVE_FAILED -> {
+            case SENT -> {
             }
+            // SAVE_FAILED: the source side of the transfer has told the player already
+            case COOLDOWN, NOT_ONLINE, SAVE_FAILED -> refused(player, gate, result);
             case FULL, OFFLINE, DIRECTORY_UNAVAILABLE -> {
                 player.sendMessage(Component.translatable(TicketIssuer.TRANSFER_FAILED));
-                final Map<String, Object> attributes = new LinkedHashMap<>();
-                attributes.put("player_uuid", player.getUuid());
-                attributes.put("source_shard", shardId);
-                attributes.put("target_region", gate.targetRegion());
-                attributes.put("result", result.name().toLowerCase(Locale.ROOT));
-                events.accept("transfer_refused", attributes);
+                refused(player, gate, result);
             }
             // The start-up check of the shard directory rules both out
             case UNKNOWN_TARGET, SAME_TARGET -> errors.error(new IllegalStateException("the shard service answers " + result),
                     "A gate leads nowhere a transfer can go: player={} gate={} target_region={}", player.getUsername(),
                     gate.gateId(), gate.targetRegion());
         }
+    }
+
+    /** {@code EVT:transfer_refused}: the transfer through the gate sent no ticket; the player may be gone. */
+    private void refused(Player player, ShardDirectory.Gate gate, ShardTransferResult result) {
+        final Map<String, Object> attributes = new LinkedHashMap<>();
+        attributes.put("player_uuid", player.getUuid());
+        attributes.put("source_shard", shardId);
+        attributes.put("target_region", gate.targetRegion());
+        attributes.put("result", result.name().toLowerCase(Locale.ROOT));
+        events.accept("transfer_refused", attributes);
     }
 }

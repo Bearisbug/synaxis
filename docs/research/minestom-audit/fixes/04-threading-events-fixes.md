@@ -31,7 +31,7 @@
 | P2-8 `Entity.updateSnapshot` 无空值保护 | 已修（**跨文件小 hunk**，见下） | `08fab83eaf` | `EntitySnapshotTest#snapshotEntityWithoutInstance` |
 | P3-1 `AcquirableImpl.enter` 自旋无退避 | 已修 | `0a56cea764` | 无 |
 | P3-2 启动顺序（监听早于 tick 线程） | **跳过**（理由见下） | — | — |
-| P3-3 `TickMonitor.acquisitionTime` 语义可疑 | 核实后非 bug，只补文档 | `0a56cea764` | 无 |
+| P3-3 `TickMonitor.acquisitionTime` 语义可疑 | 核实后非 bug，只补文档；2026-09-30 改为每条引擎线程记自己的阻塞时间、整 tick 取串行段加最长的一条 tick 线程并导出（`docs/DESIGN-PROD.md` v0.9.36 `API-PROD-016`「获取等待」） | `0a56cea764` | 无；2026-09-30 起 `docs/TEST.md` `TC-PROD-565`～`TC-PROD-569` |
 | P3-4 `mpmcSpecialUnboundedArrayQueue` 名不副实 | 已修（重命名为 `mpmcArrayQueue`） | `0a56cea764` | 无 |
 | P3-5 `ObjectPool` 死代码 | **跳过**（只提示不删，见下） | — | — |
 
@@ -128,7 +128,7 @@ executor，属于 API 层面的改动，超出本轮范围。
 - **P2-1**（refreshThreads 纳秒预算）：计算在私有的 `ServerProcessImpl.TickerImpl.serverTick` 内，
   唯一可观测的外部效果是 `refreshThreads(nanoTimeout)` 的入参，从外部无法在不加钩子的情况下断言。
   单位错误由阅读确认（毫秒减在纳秒上），改动是 2 行。
-- **P3-1 / P3-3 / P3-4**：分别是自旋退避、javadoc 澄清、方法重命名，无行为变化可断言。
+- **P3-1 / P3-4**：分别是自旋退避、方法重命名，无行为变化可断言。P3-3 的测试见去向表该行。
 
 ## 已知的既有失败（非本轮引入）
 

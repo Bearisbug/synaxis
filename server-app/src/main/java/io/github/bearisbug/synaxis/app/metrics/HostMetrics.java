@@ -80,6 +80,7 @@ public final class HostMetrics implements AutoCloseable {
      */
     public static final List<String> NAMES = List.of(
             "synaxis_tick_duration_seconds",
+            "synaxis_tick_acquire_seconds",
             "synaxis_players_online",
             "synaxis_connections",
             "synaxis_gate_rejections_total",
@@ -166,17 +167,30 @@ public final class HostMetrics implements AutoCloseable {
     private void registerTicks(ServerProcess process) {
         for (TickThread thread : process.dispatcher().threads()) {
             final Timer timer = tickTimer(thread.getName());
-            thread.observeTicks(nanos -> timer.record(nanos, TimeUnit.NANOSECONDS));
+            final Timer acquire = acquireTimer(thread.getName());
+            thread.observeTicks((nanos, acquireNanos) -> {
+                timer.record(nanos, TimeUnit.NANOSECONDS);
+                acquire.record(acquireNanos, TimeUnit.NANOSECONDS);
+            });
         }
-        // The whole tick, run by the scheduler thread; its duration is the one the monitor event carries
+        // The whole tick, run by the scheduler thread; its duration and acquisition wait are the ones
+        // the monitor event carries
         final Timer scheduler = tickTimer(TickSchedulerThread.THREAD_NAME_TICK_SCHEDULER);
-        process.eventHandler().addListener(ServerTickMonitorEvent.class, event ->
-                scheduler.record((long) (event.getTickMonitor().getTickTime() * 1e6), TimeUnit.NANOSECONDS));
+        final Timer schedulerAcquire = acquireTimer(TickSchedulerThread.THREAD_NAME_TICK_SCHEDULER);
+        process.eventHandler().addListener(ServerTickMonitorEvent.class, event -> {
+            scheduler.record((long) (event.getTickMonitor().getTickTime() * 1e6), TimeUnit.NANOSECONDS);
+            schedulerAcquire.record((long) (event.getTickMonitor().getAcquisitionTime() * 1e6), TimeUnit.NANOSECONDS);
+        });
     }
 
     private Timer tickTimer(String thread) {
         return Timer.builder("synaxis.tick.duration").tag("thread", thread).publishPercentiles(PERCENTILES)
                 .description("Duration of one tick of a tick thread or of the tick scheduler").register(registry);
+    }
+
+    private Timer acquireTimer(String thread) {
+        return Timer.builder("synaxis.tick.acquire").tag("thread", thread).publishPercentiles(PERCENTILES)
+                .description("Time one tick of a tick thread, or the whole tick, waited to acquire").register(registry);
     }
 
     private void registerConnections(ConnectionManager connections) {

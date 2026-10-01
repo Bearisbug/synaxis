@@ -1,0 +1,43 @@
+# p33 targeted runs (TC-PROD-565..569), 2026-09-30, branch prod/p33
+
+## default mode (TC-PROD-569 step 4), about 14:26, load1 between 215 (14:25) and 174 (14:29)
+# :test --tests thread.* ServerProcess* WatchdogTest entity.*Concurrency* entity.AcquirableStrictIntegrationTest; :server-app:test app.metrics.*; :loadtest:test Sample*; :architecture-tests:test ConfigKeyGateTest
+BUILD SUCCESSFUL in 1m 13s
+io.github.bearisbug.synaxis.ServerProcessDispatcherTest tests=2 skipped=0 failures=0 errors=0 
+io.github.bearisbug.synaxis.ServerProcessShutdownIntegrationTest tests=2 skipped=0 failures=0 errors=0 
+io.github.bearisbug.synaxis.ServerProcessTest tests=5 skipped=0 failures=0 errors=0 
+io.github.bearisbug.synaxis.WatchdogTest tests=5 skipped=0 failures=0 errors=0 
+io.github.bearisbug.synaxis.entity.AcquirableStrictIntegrationTest tests=6 skipped=0 failures=0 errors=0 
+io.github.bearisbug.synaxis.entity.EntityDormancyConcurrencyTest tests=1 skipped=0 failures=0 errors=0 
+io.github.bearisbug.synaxis.entity.MetadataDefConcurrencyTest tests=1 skipped=0 failures=0 errors=0 
+io.github.bearisbug.synaxis.entity.MetadataHolderConcurrencyTest tests=2 skipped=0 failures=0 errors=0 
+io.github.bearisbug.synaxis.entity.VisibleEntityLimitConcurrencyTest tests=1 skipped=0 failures=0 errors=0 
+io.github.bearisbug.synaxis.entity.attribute.AttributeInstanceConcurrencyTest tests=2 skipped=0 failures=0 errors=0 
+io.github.bearisbug.synaxis.thread.AcquirableBasicIntegrationTest tests=4 skipped=0 failures=0 errors=0 
+io.github.bearisbug.synaxis.thread.AcquirableCollectionTest tests=2 skipped=0 failures=0 errors=0 
+io.github.bearisbug.synaxis.thread.AcquirableEntityIntegrationTest tests=1 skipped=0 failures=0 errors=0 
+io.github.bearisbug.synaxis.thread.AcquirableLocalsIntegrationTest tests=2 skipped=0 failures=0 errors=0 
+io.github.bearisbug.synaxis.thread.AcquirableTest tests=3 skipped=0 failures=0 errors=0 
+io.github.bearisbug.synaxis.thread.AcquireWaitTest tests=4 skipped=0 failures=0 errors=0 
+io.github.bearisbug.synaxis.thread.ThreadDispatcherTest tests=17 skipped=0 failures=0 errors=0 
+io.github.bearisbug.synaxis.thread.ThreadProviderGridTest tests=5 skipped=0 failures=0 errors=0 
+io.github.bearisbug.synaxis.app.metrics.MetricsEndpointLimitTest tests=2 skipped=0 failures=0 errors=0 
+io.github.bearisbug.synaxis.app.metrics.MetricsEndpointTest tests=4 skipped=0 failures=0 errors=0 
+io.github.bearisbug.synaxis.app.metrics.MetricsNamesTest tests=1 skipped=0 failures=0 errors=0 
+io.github.bearisbug.synaxis.app.metrics.TickAcquireMetricsTest tests=1 skipped=0 failures=0 errors=0 
+io.github.bearisbug.synaxis.loadtest.SampleAcquireTest tests=2 skipped=0 failures=0 errors=0 
+io.github.bearisbug.synaxis.loadtest.SampleTest tests=4 skipped=0 failures=0 errors=0 
+io.github.bearisbug.synaxis.architecture.ConfigKeyGateTest tests=1 skipped=0 failures=0 errors=0 
+config key gate: 115 keys read, 115 in ConfigFile.KEYS, 21 meter names left out
+
+## strict grid (TC-PROD-569 step 5): same set minus the gate, -Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true -Dsynaxis.thread-provider=grid
+first strict run (smaller set: thread.*, ServerProcessDispatcherTest, AcquirableStrictIntegrationTest, app.metrics.*, Sample*): BUILD SUCCESSFUL in 1m 24s, every class 0 failures (AcquireWaitTest 4, TickAcquireMetricsTest 1, MetricsNamesTest 1, SampleAcquireTest 2, SampleTest 4 among them)
+full strict set, 14:28, load1 about 170: 65 root tests completed, 1 failed -> classes=24 tests=79 failures=1
+  MetadataHolderConcurrencyTest > concurrentWritesAreNotLost() FAILED at MetadataHolderConcurrencyTest.java:34 (done.await(5 s) false)
+  rerun alone, strict, 14:30 load1 171: 2 tests completed, 1 failed (same line)
+  rerun alone, default, 14:32 load1 47: 2 tests, 0 failures
+  rerun alone, strict, 14:33 load1 36: 2 tests, 0 failures
+  (MetadataHolder with two virtual threads; no Acquirable, no tick thread; TEST.md §7)
+
+## :architecture-tests:test --rerun, whole module (ArchUnit layering and the gates)
+BUILD SUCCESSFUL in 1m 3s; tests=20 skipped=0 failures=0 errors=0

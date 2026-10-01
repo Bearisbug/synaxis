@@ -1,0 +1,123 @@
+# TC-WORLD-064 and TC-WORLD-100 (TC-WORLD-089 deprecated) on c46578d24f, the head of main: ShardGates writes EVT:transfer_refused for
+# the six refusals (docs/DESIGN-PROD.md v0.9.37). Every Gradle run: JDK 25 (Homebrew openjdk@25), ./gradlew --no-daemon --init-script
+# gradle/init/aliyun-mirror.init.gradle.kts --max-workers=4, JAVA_TOOL_OPTIONS with the proxy set for Gradle only. <GT> is
+# server-app/src/main/java/io/github/bearisbug/synaxis/app/shard/ShardGates.java; every counterproof edits <GT> with a literal perl
+# substitution, runs :server-app:test --tests 'io.github.bearisbug.synaxis.app.shard.ShardGatesTest', reads the result XML and restores
+# with git checkout -- <GT>; 'git status --short -- server-app' printed nothing after each restore. Held /tmp/synaxis-heavy.lock.
+
+## step 1 (TC-WORLD-064 step 1, TC-WORLD-100 step 1)
+# s1 start 2026-10-01 00:07:58 ./gradlew --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts --max-workers=4 :server-app:test --tests io.github.bearisbug.synaxis.app.shard.ShardGatesTest
+BUILD SUCCESSFUL in 11s
+42 actionable tasks: 18 executed, 24 from cache
+# s1 exit 0 after 12 s
+<testsuite name="io.github.bearisbug.synaxis.app.shard.ShardGatesTest" tests="7" skipped="0" failures="0" errors="0" timestamp="2026-09-30T16:08:08.285Z" time="1.874">
+testcases: everyRefusalIsWrittenToTheLedger, aWalkInWhileATransferIsUnderWayDoesNotTrigger, onlyAChoiceThatFailedIsToldToThePlayer,
+  aResultTheDirectoryRulesOutAndATransferThatThrewAreErrors, aGateTriggersOnceForEveryWalkIntoItsFrame, theFrameIsJudgedOnTheBlockOfTheNewPosition,
+  aWalkFromOneFrameStraightIntoAnotherTriggersTheOther; all passed
+
+## TC-WORLD-100 step 2
+grep -n 'new ShardGates(' server-app/src/main/java/io/github/bearisbug/synaxis/app/Main.java
+504:            new ShardGates(directoryMode.directory(), directoryMode.service(), ledger::record).attach(world.instance());
+
+# TC-WORLD-064 step 2 (a walk in while the transfer is under way triggers too); run twice, the first time with a reader that also
+# took stack frames out of the logged ERRORs; the same failure at :148 both times, the second run is below
+### the change (git diff)
+@@ -83 +83,2 @@ public final class ShardGates {
+-        if (gate == null || gate.equals(before) || !underWay.add(player)) return;
++        if (gate == null || gate.equals(before)) return;
++        underWay.add(player);
+gradle exit 1
+7 tests completed, 1 failed
+BUILD FAILED in 4s
+<testsuite name="io.github.bearisbug.synaxis.app.shard.ShardGatesTest" tests="7" skipped="0" failures="1" errors="0" time="1.653">
+failure: org.opentest4j.AssertionFailedError: the first transfer is still under way ==> expected: <[Walker r1]> but was: <[Walker r1, Walker r1]>
+red at: at io.github.bearisbug.synaxis.app.shard.ShardGatesTest.aWalkInWhileATransferIsUnderWayDoesNotTrigger(ShardGatesTest.java:148)
+### after git checkout: git status --short (server-app)
+(end)
+
+# TC-WORLD-064 step 3 (CompletionException not unwrapped; the import removed, RemoveUnusedImports)
+### the change (git diff)
+@@ -20 +19,0 @@ import java.util.Set;
+-import java.util.concurrent.CompletionException;
+@@ -100 +99 @@ public final class ShardGates {
+-            final Throwable cause = error instanceof CompletionException && error.getCause() != null ? error.getCause() : error;
++            final Throwable cause = error;
+gradle exit 1
+7 tests completed, 1 failed
+BUILD FAILED in 6s
+<testsuite name="io.github.bearisbug.synaxis.app.shard.ShardGatesTest" tests="7" skipped="0" failures="1" errors="0" time="1.679">
+failure: org.opentest4j.AssertionFailedError: expected: <[java.lang.IllegalStateException: the shard service answers UNKNOWN_TARGET, java.lang.IllegalStateException: the shard service answers SAME_TARGET, java.lang.IllegalStateException: the ticket does not encode]> but was: <[java.lang.IllegalStateException: the shard service answers UNKNOWN_TARGET, java.lang.IllegalStateException: the shard service answers SAME_TARGET, java.util.concurrent.CompletionException: java.lang.IllegalStateException: the ticket does not encode]>
+red at: at io.github.bearisbug.synaxis.app.shard.ShardGatesTest.aResultTheDirectoryRulesOutAndATransferThatThrewAreErrors(ShardGatesTest.java:256)
+### after git checkout: git status --short (server-app)
+(end)
+
+# TC-WORLD-064 step 4 (the gate sends a key of its own; the import of TicketIssuer removed)
+### the change (git diff)
+@@ -3 +2,0 @@ package io.github.bearisbug.synaxis.app.shard;
+-import io.github.bearisbug.synaxis.app.transfer.TicketIssuer;
+@@ -110 +109 @@ public final class ShardGates {
+-                player.sendMessage(Component.translatable(TicketIssuer.TRANSFER_FAILED));
++                player.sendMessage(Component.translatable("synaxis:transfer-failed-probe"));
+gradle exit 1
+7 tests completed, 1 failed
+BUILD FAILED in 6s
+<testsuite name="io.github.bearisbug.synaxis.app.shard.ShardGatesTest" tests="7" skipped="0" failures="1" errors="0" time="1.733">
+failure: org.opentest4j.AssertionFailedError: FULL ==> expected: <[synaxis:transfer-failed]> but was: <[synaxis:transfer-failed-probe]>
+red at: at io.github.bearisbug.synaxis.app.shard.ShardGatesTest.onlyAChoiceThatFailedIsToldToThePlayer(ShardGatesTest.java:195)
+### after git checkout: git status --short (server-app)
+(end)
+
+# TC-WORLD-100 step 3 (never written)
+### the change (git diff)
+@@ -127 +127 @@ public final class ShardGates {
+-        events.accept("transfer_refused", attributes);
++        if (Boolean.getBoolean("proof.never")) events.accept("transfer_refused", attributes);
+gradle exit 1
+7 tests completed, 1 failed
+BUILD FAILED in 6s
+<testsuite name="io.github.bearisbug.synaxis.app.shard.ShardGatesTest" tests="7" skipped="0" failures="1" errors="0" time="1.575">
+failure: org.opentest4j.AssertionFailedError: COOLDOWN ==> expected: <[transfer_refused {player_uuid=7f673e64-3221-4f06-9f1f-970450afc00e, source_shard=r0-c1, target_region=r1, result=cooldown}]> but was: <[]>
+red at: at io.github.bearisbug.synaxis.app.shard.ShardGatesTest.everyRefusalIsWrittenToTheLedger(ShardGatesTest.java:218)
+### after git checkout: git status --short (server-app)
+(end)
+
+# TC-WORLD-100 step 4 (result not lower-cased; the import of Locale removed)
+### the change (git diff)
+@@ -17 +16,0 @@ import java.util.List;
+-import java.util.Locale;
+@@ -126 +125 @@ public final class ShardGates {
+-        attributes.put("result", result.name().toLowerCase(Locale.ROOT));
++        attributes.put("result", result.name());
+gradle exit 1
+7 tests completed, 1 failed
+BUILD FAILED in 5s
+<testsuite name="io.github.bearisbug.synaxis.app.shard.ShardGatesTest" tests="7" skipped="0" failures="1" errors="0" time="1.464">
+failure: org.opentest4j.AssertionFailedError: COOLDOWN ==> expected: <[transfer_refused {player_uuid=93aef82b-e875-4e97-9fe6-9601805aae59, source_shard=r0-c1, target_region=r1, result=cooldown}]> but was: <[transfer_refused {player_uuid=93aef82b-e875-4e97-9fe6-9601805aae59, source_shard=r0-c1, target_region=r1, result=COOLDOWN}]>
+red at: at io.github.bearisbug.synaxis.app.shard.ShardGatesTest.everyRefusalIsWrittenToTheLedger(ShardGatesTest.java:218)
+### after git checkout: git status --short (server-app)
+(end)
+
+# TC-WORLD-100 step 5 (COOLDOWN told to the player as a failed choice; the ledger test stays green)
+### the change (git diff)
+@@ -108,2 +108,2 @@ public final class ShardGates {
+-            case COOLDOWN, NOT_ONLINE, SAVE_FAILED -> refused(player, gate, result);
+-            case FULL, OFFLINE, DIRECTORY_UNAVAILABLE -> {
++            case NOT_ONLINE, SAVE_FAILED -> refused(player, gate, result);
++            case FULL, OFFLINE, DIRECTORY_UNAVAILABLE, COOLDOWN -> {
+gradle exit 1
+7 tests completed, 1 failed
+BUILD FAILED in 5s
+<testsuite name="io.github.bearisbug.synaxis.app.shard.ShardGatesTest" tests="7" skipped="0" failures="1" errors="0" time="1.576">
+failure: org.opentest4j.AssertionFailedError: COOLDOWN ==> expected: <[]> but was: <[synaxis:transfer-failed]>
+red at: at io.github.bearisbug.synaxis.app.shard.ShardGatesTest.onlyAChoiceThatFailedIsToldToThePlayer(ShardGatesTest.java:195)
+### after git checkout: git status --short (server-app)
+(end)
+
+## last step of both cases: step 1 again after the restores, 00:10
+The first rerun (00:10:02) took the test result from the build cache (the XML kept the 16:08:08.285Z timestamp of the run above);
+run again with --rerun:
+# s1-rerun2 start 2026-10-01 00:10:11 ./gradlew --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts --max-workers=4 :server-app:test --tests io.github.bearisbug.synaxis.app.shard.ShardGatesTest --rerun
+BUILD SUCCESSFUL in 7s
+# s1-rerun2 exit 0 after 7 s
+<testsuite name="io.github.bearisbug.synaxis.app.shard.ShardGatesTest" tests="7" skipped="0" failures="0" errors="0" timestamp="2026-09-30T16:10:16.853Z" time="1.749">
+git status --short afterwards: only docs/DESIGN-M3.md and docs/TEST.md (the round's document edits)

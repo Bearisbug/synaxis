@@ -348,6 +348,8 @@ class PermissionsIntegrationTest {
         env.process().command().execute(console, "role grant Anyone gm");
         await(env, () -> !console.answers.isEmpty(), Duration.ofSeconds(5), "the answer");
         assertEquals(List.of("synaxis:role-unavailable"), console.answers);
+        // The command answers first and records its gm_command line after it returns
+        await(env, () -> !events.isEmpty(), Duration.ofSeconds(5), "the ledger line");
         assertEquals("unavailable", events.getFirst().get("result"));
     }
 

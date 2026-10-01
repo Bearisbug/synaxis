@@ -25,6 +25,7 @@ import java.net.SocketAddress;
 import java.nio.channels.SocketChannel;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.TimeUnit;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -111,20 +112,25 @@ public class ConnectionGateLogTest {
     }
 
     /**
-     * An oversized server address does not take a connection past the gate to the login listener:
-     * twenty such handshakes from one address, each with a login plugin response nobody asked for
-     * behind it, get at most the three of the login bucket that far ({@code docs/TEST.md}
+     * An oversized server address takes a connection no further than the gate: twenty such handshakes
+     * from one address, each with a login plugin response nobody asked for behind it, are all counted
+     * by the gate, which turns away the 17 past the login bucket of 3, and none gets to the login
+     * listener, which would report that response to the exception handler ({@code docs/TEST.md}
      * TC-PROD-579).
      */
     @Test
-    public void oversizedServerAddressesDoNotReachTheLoginListener() throws Exception {
+    public void oversizedServerAddressesAreCountedByTheGateAndGoNoFurther() throws Exception {
+        // Room for the twenty at once, and a token per 1,000 s: neither L1 nor the wall clock changes
+        // how many reach the login bucket
         final ServerProcess process = ServerProcess.of(ServerConfig.builder().insideTest(true)
-                .handshakeTimeout(60_000).build());
-        try (LogCapture log = LogCapture.of(LoginListener.class)) {
+                .handshakeTimeout(60_000).maxConnectionsPerIp(32).loginRatePerIp(0.001).build());
+        final List<Throwable> handled = new CopyOnWriteArrayList<>();
+        process.exception().setExceptionHandler(handled::add);
+        try {
             sendTwenty(process, "a".repeat(256));
-            final List<String> errors = log.messagesAt(Level.ERROR).stream()
-                    .filter(line -> line.equals("Error handling Login Plugin Response")).toList();
-            assertTrue(errors.size() <= 3, "lines of the login listener: " + errors.size());
+            assertEquals(17, process.connection().gate().rejected(ConnectionGate.Reason.THROTTLED),
+                    "oversized handshakes the login bucket turned away");
+            assertEquals(List.of(), handled, "reports of the exception handler");
         } finally {
             process.stop();
         }

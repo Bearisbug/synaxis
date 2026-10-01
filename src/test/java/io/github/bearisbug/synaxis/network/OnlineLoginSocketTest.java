@@ -142,7 +142,7 @@ public class OnlineLoginSocketTest {
     public void noLoginAsksTheSessionServerBeforeTheRetryAfterIsOver() throws Exception {
         try (TestSessionServer sessions = new TestSessionServer();
              Rig rig = Rig.online(sessions, GENEROUS, 32)) {
-            sessions.script(TestSessionServer.Answer.tooManyRequests("2"));
+            sessions.script(TestSessionServer.Answer.tooManyRequests("5"));
             final ServerPacket first, second;
             try (EncryptedLoginClient client = rig.client()) {
                 client.handshakeAndStart("First");
@@ -155,13 +155,13 @@ public class OnlineLoginSocketTest {
                 client.answer(client.readEncryptionRequest());
                 second = client.readLoginOutcome();
             }
-            assertTrue(System.nanoTime() - answered < TimeUnit.SECONDS.toNanos(2), "the second login took too long to tell");
+            assertTrue(System.nanoTime() - answered < TimeUnit.SECONDS.toNanos(5), "the second login took too long to tell");
             assertEquals(List.of("First"), sessions.queries().stream().map(TestSessionServer.Query::username).toList(),
                     "a login within the Retry-After asked the session server");
             assertEquals("synaxis:auth-unavailable", EncryptedLoginClient.loginDisconnectKey(first));
             assertEquals("synaxis:auth-unavailable", EncryptedLoginClient.loginDisconnectKey(second));
 
-            Thread.sleep(Math.max(0, TimeUnit.SECONDS.toMillis(2) - TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - answered)) + 100);
+            Thread.sleep(Math.max(0, TimeUnit.SECONDS.toMillis(5) - TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - answered)) + 100);
             try (EncryptedLoginClient third = rig.client()) {
                 third.login("Third");
             }

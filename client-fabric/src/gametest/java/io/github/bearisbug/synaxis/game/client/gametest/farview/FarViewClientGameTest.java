@@ -1349,7 +1349,10 @@ public final class FarViewClientGameTest implements FabricClientGameTest {
             line("F25", true, "day time " + dayTime + ", shots " + taken);
         }
 
-        /** V8b: 60 s along a fixed route at 4,096 and then without a far view, frame times to farview-bench.csv. */
+        /**
+         * V8b: 60 s along a fixed route at 4,096 and then without a far view, frame times to farview-bench.csv, at the
+         * vanilla render distance 12 of the bench and, with Iris, the shader pack's default profile.
+         */
         void bench() {
             final List<String> csv = new ArrayList<>();
             csv.add("radius,frame,ms");
@@ -1371,6 +1374,12 @@ public final class FarViewClientGameTest implements FabricClientGameTest {
                     }
                     drawn("v8b-" + radius + "-lod", lodView(), held.getKey(), 2400);
                 }
+                context.runOnClient(client -> client.options.renderDistance().set(12));
+                if (iris) {
+                    installShaderPack();
+                    setShaders(true);
+                }
+                context.waitTicks(300);
                 FrameTimes.start();
                 for (int tick = 0; tick < 1200; tick++) {
                     final double along = tick / 1200.0;

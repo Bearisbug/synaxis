@@ -71,4 +71,11 @@ finding：C-01、C-05、C-03 有代码与反证；C-V01 只改文档与 .env.exa
   bash ~/.claude/skills/design-doc/check.sh docs/DESIGN-PROD.md：lint 无警告
   bash ~/.claude/skills/test-doc/check.sh docs/TEST.md：只剩已知的 RUN-031 两行缺证据引用
 
+七、评审意见的处理（50-review-fixes.txt，11:38:38～11:41，代码没有改动，只改文档）
+  TC-PROD-533 第 2 步 sed -n 718,720p → 748,750p：HEAD 上 748～750 与基线 718～720 逐字相同（原写的 718～720 在 HEAD 上是
+  `}`、`try {`、`Migrations.validate(…)`）。TC-PROD-383 第 2 步引的构造调用改为 (handshakeDeadline, backlogs, crowded)，
+  P12 按新写法重跑：13 tests completed, 1 failed，红在 ManagementIntegrationTest.java:525（:546 still open after 5 s），
+  还原后 13 个 0 失败。TC-PROD-606 第 1 步的循环在本机假目录上试过，.env.example 被跳过。
+  两份 lint 同第六节。全量没有重跑：d32d1a8096 之后的提交只改文档、.env.example 与本目录，代码仍是 d32d1a8096 的。
+
 没有跑：根构建 :test 全量（引擎 src/main 本组没改）、client-fabric、TC-PROD-606（人工，要 Linux 部署主机）。

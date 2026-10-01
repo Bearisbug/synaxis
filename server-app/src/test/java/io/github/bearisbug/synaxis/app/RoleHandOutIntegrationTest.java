@@ -32,10 +32,10 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
  * What a player holding {@code gm.role} hands out is judged by what the database says it holds when
- * it asks, not by what this shard read last ({@code docs/DESIGN-PROD.md} {@code API-PROD-010}, §28.2):
- * a holder cannot lift an expiry, its own or another's, hand out a grant that outlives its own, renew
- * a grant of its own that ran out, or grant itself back a role taken from it before this shard reads
- * its roles again. Redis is off and the refresh an hour away, so nothing reads the roles again unasked.
+ * it asks, not by what this shard read last ({@code docs/DESIGN-PROD.md} {@code API-PROD-010}, §28.2),
+ * and runs out no later than the earliest of those grants: a grant in force keeps its expiry, one that
+ * ran out takes the holder's, and a role the holder lost, run out or taken back, is not handed back to
+ * it on what this shard read before. Redis is off and the refresh an hour away: no read comes unasked.
  */
 @EnvTest
 class RoleHandOutIntegrationTest {
@@ -182,5 +182,21 @@ class RoleHandOutIntegrationTest {
                 "role grant " + bob + " mod -> above_sender"), shard.results());
         assertEquals(Map.of("mod", "never"), grants(alice), "the role taken back stays taken back");
         assertEquals(Map.of(), grants(bob), "and without gm.role it hands out nothing");
+    }
+
+    @Test
+    void aGrantThatRanOutIsHandedOutAgainUntilTheHoldersOwnRunOut(Env env) {
+        final Shard shard = shard(env);
+        final UUID alice = UUID.randomUUID();
+        final UUID bob = UUID.randomUUID();
+        database.execute("INSERT INTO account_role (account_uuid, role_id, expires_at) VALUES ('" + alice + "', 'helper', NULL),"
+                + " ('" + alice + "', 'mod', now() + interval '1 day'), ('" + bob + "', 'mod', now() - interval '1 day')");
+        final String until = expiries(alice).get("mod");
+        final Player player = online(env, shard, alice, "Alice");
+
+        run(env, shard, player, "role grant " + bob + " mod");
+
+        assertEquals(List.of("role grant " + bob + " mod -> ok"), shard.results());
+        assertEquals(Map.of("mod", until), expiries(bob), "the grant that ran out runs again until Alice's own does");
     }
 }

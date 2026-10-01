@@ -139,7 +139,7 @@ public final class RoleStore {
     /**
      * Grants a role on a player's behalf, for no longer than the player's own grants run: a new grant
      * and one that has expired take the given expiry, a grant in force is left as it is. So a holder
-     * cannot lift an expiry, its own included, or renew a grant that ran out.
+     * cannot lift the expiry of a grant in force, its own included, nor renew one past its own grants.
      *
      * @param account   the account, which need not have logged in yet
      * @param role      the role id

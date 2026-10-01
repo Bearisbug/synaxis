@@ -20,8 +20,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 /**
  * Who else may write {@code synaxis.properties} ({@code docs/DESIGN-PROD.md} {@code API-PROD-023}):
  * the file decides the login mode, the gates and the whitelist, so a file group or others may write,
- * or one in a directory others may write without the sticky bit, refuses the start and sets no key.
- * Its owner is not looked at: a file root owns and the service user only reads is fine.
+ * or one in a directory group or others may write without the sticky bit, refuses the start and sets
+ * no key. Its owner is not looked at: a file root owns and the service user only reads is fine.
  */
 class ConfigFilePermissionsTest {
 
@@ -53,14 +53,16 @@ class ConfigFilePermissionsTest {
     }
 
     @Test
-    void aDirectoryOthersMayWriteIsRefusedUnlessItHasTheStickyBit() throws IOException {
+    void aDirectoryGroupOrOthersMayWriteIsRefusedUnlessItHasTheStickyBit() throws IOException {
         final Path shared = Files.createDirectory(directory.resolve("shared"));
         final Path file = file(shared, "rw-r--r--");
-        Files.setPosixFilePermissions(shared, PosixFilePermissions.fromString("rwxrwxrwx"));
+        for (String permissions : List.of("rwxrwxr-x", "rwxrwxrwx")) {
+            Files.setPosixFilePermissions(shared, PosixFilePermissions.fromString(permissions));
 
-        assertEquals(file + ": its directory " + shared + " is writable by others without the sticky bit "
-                + "(rwxrwxrwx); anyone may replace the file", apply(file).refusal());
-        assertEquals(Map.of(), properties);
+            assertEquals(file + ": its directory " + shared + " is writable by group or others without the sticky "
+                    + "bit (" + permissions + "); they may replace the file", apply(file).refusal());
+            assertEquals(Map.of(), properties, permissions);
+        }
 
         // What /tmp is: others may add files but not replace one they do not own
         Files.setAttribute(shared, "unix:mode", 01777);

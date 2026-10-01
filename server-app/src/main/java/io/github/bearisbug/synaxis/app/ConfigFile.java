@@ -176,8 +176,8 @@ public final class ConfigFile {
     /** See {@link #isSecret}. */
     private static final Pattern SECRET_NAME = Pattern.compile("(?i).*(password|secret|token|credential).*");
 
-    /** The others' write bit and the sticky bit of a {@code unix:mode}. */
-    private static final int OTHERS_WRITE = 0002;
+    /** The group's and the others' write bits and the sticky bit of a {@code unix:mode}. */
+    private static final int GROUP_OR_OTHERS_WRITE = 0022;
     private static final int STICKY = 01000;
 
     private ConfigFile() {
@@ -235,8 +235,8 @@ public final class ConfigFile {
     /**
      * Reads a file and sets each of its keys the properties do not have yet. A refused file sets
      * nothing: a missing file that was named, one that cannot be read or parsed, one that group or
-     * others may write or that others may replace, a key given twice, {@value #PATH_PROPERTY} in the
-     * file, or a key outside {@link #KEYS}.
+     * others may write or replace, a key given twice, {@value #PATH_PROPERTY} in the file, or a key
+     * outside {@link #KEYS}.
      *
      * @param named      the path the command line named, null when it named none
      * @param fallback   the file read when none was named, which need not exist
@@ -286,9 +286,11 @@ public final class ConfigFile {
     /**
      * Why someone besides the owner of the file may have written it, null when nobody may: the file
      * decides the login mode, the gates and the whitelist. Group or others may write the file, or
-     * others may write its directory without the sticky bit and so replace it, or create it while it
-     * does not exist. The owner is not looked at: a file root owns and the service user only reads is
-     * fine.
+     * write its directory without the sticky bit and so replace it. The owner is not looked at: a file
+     * root owns and the service user only reads is fine. So a file someone else created in a directory
+     * with the sticky bit while there was none is read, and only the directory the file is in is looked
+     * at, not the ones above it: {@code docs/DESIGN-PROD.md} §23 keeps the working directory the service
+     * user's alone.
      *
      * @param file the file, on a file system with the {@code unix} attribute view
      * @return why the file is refused, or null
@@ -302,10 +304,10 @@ public final class ConfigFile {
                     + "); only the service user may write it";
         final Path directory = file.getParent();
         final int mode = (Integer) Files.getAttribute(directory, "unix:mode");
-        if ((mode & OTHERS_WRITE) != 0 && (mode & STICKY) == 0)
-            return "its directory " + directory + " is writable by others without the sticky bit ("
+        if ((mode & GROUP_OR_OTHERS_WRITE) != 0 && (mode & STICKY) == 0)
+            return "its directory " + directory + " is writable by group or others without the sticky bit ("
                     + PosixFilePermissions.toString(Files.getPosixFilePermissions(directory))
-                    + "); anyone may replace the file";
+                    + "); they may replace the file";
         return null;
     }
 

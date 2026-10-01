@@ -40,8 +40,19 @@ public record SessionServer(URI hasJoinedUrl, boolean sendClientIp, Duration tim
         return new SessionServer(hasJoinedUrl, false, Duration.ofSeconds(5), 32);
     }
 
-    /** Whether this is Mojang's own session server rather than a stand-in. */
+    /**
+     * Whether this is Mojang's own session server rather than a stand-in: {@link #MOJANG_HAS_JOINED}
+     * once normalised, the whole of it, over https on the default port. Mojang's host over plain http
+     * or on another port is not, whoever is on the way answers it.
+     */
     public boolean isMojang() {
-        return MOJANG_HAS_JOINED.getHost().equalsIgnoreCase(hasJoinedUrl.getHost());
+        final URI url = hasJoinedUrl.normalize();
+        return MOJANG_HAS_JOINED.getScheme().equalsIgnoreCase(url.getScheme())
+                && MOJANG_HAS_JOINED.getHost().equalsIgnoreCase(url.getHost())
+                && (url.getPort() == -1 || url.getPort() == 443)
+                && url.getRawUserInfo() == null
+                && MOJANG_HAS_JOINED.getRawPath().equals(url.getRawPath())
+                && url.getRawQuery() == null
+                && url.getRawFragment() == null;
     }
 }

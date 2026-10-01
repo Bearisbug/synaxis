@@ -1,0 +1,90 @@
+# GAP-grid engine defect, after the fix: green in the default mode and in strict grid, counter-proofs, entity package regression.
+# Commit 5c0bad47bc (ItemEntity#removeConsumed; LivingEntity.java:242 and ItemEntity.java:106 call it), the tests and docs of the
+# integrate round on top (HEAD 0e908f2f56 at the time, no src/main difference from 5c0bad47bc in the engine).
+# Heavy lock held 2026-10-01 13:36:25 to 13:38:47 (UTC+8). Commands: ./gradlew :test --rerun --tests <class>... --max-workers=4
+# --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts; "strict" adds -Dsynaxis.dispatcher-threads=4
+# -Dsynaxis.acquirable-strict=true -Dsynaxis.thread-provider=grid. Each counter-proof edits one place with a literal replacement,
+# runs, and restores the file with git checkout HEAD -- <file>; "worktree clean (tracked)" is git status of tracked files.
+#   G1/G2  ItemEntityCrossCellConcurrencyTest, ItemEntityClaimIntegrationTest, EntityBoundingBoxIntegrationTest, default / strict
+#   G3     LivingEntity.java:242 itemEntity.removeConsumed(); -> itemEntity.remove();
+#   G4     ItemEntity.java:106   itemEntity.removeConsumed(); -> itemEntity.remove();
+#   G5     ItemEntity#removeConsumed body -> remove();                     (the fix off in both places: the code before it)
+#   G6     ItemEntity#removeConsumed body -> scheduleNextTick(Entity::remove);  (no removal at once on the owning thread)
+#   G7/G8  every class of io.github.bearisbug.synaxis.entity, default / strict
+
+LOCK TAKEN 2026-10-01 13:36:25
+HEAD 0e908f2f56
+### G1 (default) :test io.github.bearisbug.synaxis.entity.ItemEntityCrossCellConcurrencyTest io.github.bearisbug.synaxis.entity.ItemEntityClaimIntegrationTest io.github.bearisbug.synaxis.entity.EntityBoundingBoxIntegrationTest 13:36:26-13:36:53 rc=0
+  BUILD SUCCESSFUL in 26s
+  3 classes, tests=10 failures=0 errors=0 skipped=0
+### G2 (strict) :test io.github.bearisbug.synaxis.entity.ItemEntityCrossCellConcurrencyTest io.github.bearisbug.synaxis.entity.ItemEntityClaimIntegrationTest io.github.bearisbug.synaxis.entity.EntityBoundingBoxIntegrationTest 13:36:54-13:37:00 rc=0
+  BUILD SUCCESSFUL in 6s
+  3 classes, tests=10 failures=0 errors=0 skipped=0
+edited src/main/java/io/github/bearisbug/synaxis/entity/LivingEntity.java
+### G3 (default) :test io.github.bearisbug.synaxis.entity.ItemEntityCrossCellConcurrencyTest 13:37:01-13:37:18 rc=1
+  2 tests completed, 1 failed
+  BUILD FAILED in 17s
+  1 classes, tests=2 failures=1 errors=0 skipped=0 failed: ItemEntityCrossCellConcurrencyTest#anItemPickedUpAcrossACellBorderIsRemovedOnItsOwnThread()
+  ItemEntityCrossCellConcurrencyTest: tests=2 failures=1 errors=0 skipped=0 time=0.855
+    anItemPickedUpAcrossACellBorderIsRemovedOnItsOwnThread() 0.818s FAILED
+      msg: org.opentest4j.AssertionFailedError: Server threw exception
+        at io.github.bearisbug.synaxis.entity.ItemEntityCrossCellConcurrencyTest.tickUntil(ItemEntityCrossCellConcurrencyTest.java:87)
+        at io.github.bearisbug.synaxis.entity.ItemEntityCrossCellConcurrencyTest.anItemPickedUpAcrossACellBorderIsRemovedOnItsOwnThread(ItemEntityCrossCellConcurrencyTest.java:51)
+        Caused by: io.github.bearisbug.synaxis.thread.AcquirableOwnershipException: Thread ownership assertion failed for io.github.bearisbug.synaxis.entity.ItemEntity@37832765:
+    anItemMergedAcrossACellBorderIsRemovedOnItsOwnThread() 0.028s ok
+  restored src/main/java/io/github/bearisbug/synaxis/entity/LivingEntity.java
+edited src/main/java/io/github/bearisbug/synaxis/entity/ItemEntity.java
+### G4 (default) :test io.github.bearisbug.synaxis.entity.ItemEntityCrossCellConcurrencyTest 13:37:20-13:37:35 rc=1
+  2 tests completed, 1 failed
+  BUILD FAILED in 15s
+  1 classes, tests=2 failures=1 errors=0 skipped=0 failed: ItemEntityCrossCellConcurrencyTest#anItemMergedAcrossACellBorderIsRemovedOnItsOwnThread()
+  ItemEntityCrossCellConcurrencyTest: tests=2 failures=1 errors=0 skipped=0 time=0.904
+    anItemPickedUpAcrossACellBorderIsRemovedOnItsOwnThread() 0.876s ok
+    anItemMergedAcrossACellBorderIsRemovedOnItsOwnThread() 0.02s FAILED
+      msg: org.opentest4j.AssertionFailedError: Server threw exception
+        at io.github.bearisbug.synaxis.entity.ItemEntityCrossCellConcurrencyTest.tickUntil(ItemEntityCrossCellConcurrencyTest.java:87)
+        at io.github.bearisbug.synaxis.entity.ItemEntityCrossCellConcurrencyTest.anItemMergedAcrossACellBorderIsRemovedOnItsOwnThread(ItemEntityCrossCellConcurrencyTest.java:67)
+        Caused by: io.github.bearisbug.synaxis.thread.AcquirableOwnershipException: Thread ownership assertion failed for io.github.bearisbug.synaxis.entity.ItemEntity@60bf0ead:
+  restored src/main/java/io/github/bearisbug/synaxis/entity/ItemEntity.java
+edited src/main/java/io/github/bearisbug/synaxis/entity/ItemEntity.java
+### G5 (default) :test io.github.bearisbug.synaxis.entity.ItemEntityCrossCellConcurrencyTest 13:37:36-13:37:52 rc=1
+  2 tests completed, 2 failed
+  BUILD FAILED in 15s
+  1 classes, tests=2 failures=2 errors=0 skipped=0 failed: ItemEntityCrossCellConcurrencyTest#anItemPickedUpAcrossACellBorderIsRemovedOnItsOwnThread(), ItemEntityCrossCellConcurrencyTest#anItemMergedAcrossACellBorderIsRemovedOnItsOwnThread()
+  ItemEntityCrossCellConcurrencyTest: tests=2 failures=2 errors=0 skipped=0 time=0.942
+    anItemPickedUpAcrossACellBorderIsRemovedOnItsOwnThread() 0.912s FAILED
+      msg: org.opentest4j.AssertionFailedError: Server threw exception
+        at io.github.bearisbug.synaxis.entity.ItemEntityCrossCellConcurrencyTest.tickUntil(ItemEntityCrossCellConcurrencyTest.java:87)
+        at io.github.bearisbug.synaxis.entity.ItemEntityCrossCellConcurrencyTest.anItemPickedUpAcrossACellBorderIsRemovedOnItsOwnThread(ItemEntityCrossCellConcurrencyTest.java:51)
+        Caused by: io.github.bearisbug.synaxis.thread.AcquirableOwnershipException: Thread ownership assertion failed for io.github.bearisbug.synaxis.entity.ItemEntity@203853d0:
+    anItemMergedAcrossACellBorderIsRemovedOnItsOwnThread() 0.019s FAILED
+      msg: org.opentest4j.AssertionFailedError: Server threw exception
+        at io.github.bearisbug.synaxis.entity.ItemEntityCrossCellConcurrencyTest.tickUntil(ItemEntityCrossCellConcurrencyTest.java:87)
+        at io.github.bearisbug.synaxis.entity.ItemEntityCrossCellConcurrencyTest.anItemMergedAcrossACellBorderIsRemovedOnItsOwnThread(ItemEntityCrossCellConcurrencyTest.java:67)
+        Caused by: io.github.bearisbug.synaxis.thread.AcquirableOwnershipException: Thread ownership assertion failed for io.github.bearisbug.synaxis.entity.ItemEntity@2075812b:
+  restored src/main/java/io/github/bearisbug/synaxis/entity/ItemEntity.java
+edited src/main/java/io/github/bearisbug/synaxis/entity/ItemEntity.java
+### G6 (default) :test io.github.bearisbug.synaxis.entity.ItemEntityCrossCellConcurrencyTest io.github.bearisbug.synaxis.entity.ItemEntityClaimIntegrationTest 13:37:53-13:38:12 rc=1
+  7 tests completed, 2 failed
+  BUILD FAILED in 18s
+  2 classes, tests=7 failures=2 errors=0 skipped=0 failed: ItemEntityClaimIntegrationTest#itemsMergeOnce(Env), ItemEntityClaimIntegrationTest#itemIsPickedUpOnce(Env)
+  ItemEntityClaimIntegrationTest: tests=5 failures=2 errors=0 skipped=0 time=0.998
+    cancelledPickupLeavesTheItemAvailable(Env) 0.933s ok
+    itemsMergeOnce(Env) 0.022s FAILED
+      msg: org.opentest4j.AssertionFailedError: expected: <true> but was: <false>
+        at io.github.bearisbug.synaxis.entity.ItemEntityClaimIntegrationTest.itemsMergeOnce(ItemEntityClaimIntegrationTest.java:77)
+    cancelledMergeLeavesBothItemsClaimable(Env) 0.011s ok
+    claimedNeighbourIsNotMerged(Env) 0.009s ok
+    itemIsPickedUpOnce(Env) 0.008s FAILED
+      msg: org.opentest4j.AssertionFailedError: expected: <true> but was: <false>
+        at io.github.bearisbug.synaxis.entity.ItemEntityClaimIntegrationTest.itemIsPickedUpOnce(ItemEntityClaimIntegrationTest.java:44)
+  restored src/main/java/io/github/bearisbug/synaxis/entity/ItemEntity.java
+  worktree clean (tracked)
+### G7 (default) :test io.github.bearisbug.synaxis.entity.* 13:38:13-13:38:28 rc=0
+  BUILD SUCCESSFUL in 14s
+  74 classes, tests=284 failures=0 errors=0 skipped=2
+### G8 (strict) :test io.github.bearisbug.synaxis.entity.* 13:38:29-13:38:47 rc=0
+  BUILD SUCCESSFUL in 17s
+  74 classes, tests=284 failures=0 errors=0 skipped=2
+  worktree clean (tracked)
+LOCK RELEASING 2026-10-01 13:38:47

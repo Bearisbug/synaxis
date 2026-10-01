@@ -1,0 +1,33 @@
+# Document checks of the integrate round (no Gradle, no lock).
+
+## TC-PROD-606 step 1, the loop as v0.9.41 wrote it and as v0.9.43 writes it, on a fake directory under /tmp (fake tokens
+## aaaa and bbbb; .env.r02-* are two shards without the management interface). The old loop prints the empty-string digest
+## e3b0c442... for both of those, which reads as two shards sharing a token; the new loop skips them.
+  $ old loop (v0.9.41)
+  .env.r01-c1 11a77c3d96c06974b53d7f40a577e6813739eb5c811b2a86f59038ea90add772  -
+  .env.r01-c2 4551db5fd4d56e27be71a8a943070cfaa4342b8e960a326e2d6427b3aa0a5a48  -
+  .env.r02-c1 e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  -
+  .env.r02-c2 e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  -
+  $ new loop (v0.9.43)
+  .env.r01-c1 11a77c3d96c06974b53d7f40a577e6813739eb5c811b2a86f59038ea90add772  -
+  .env.r01-c2 4551db5fd4d56e27be71a8a943070cfaa4342b8e960a326e2d6427b3aa0a5a48  -
+  $ grep -c '^SYNAXIS_MANAGEMENT_TOKEN=' .env
+  0
+
+## TC-PROD-616 step 6 and the header of .env.example after the merge
+  $ grep -n 'install -m 600' .env.example
+  4:#   install -m 600 /dev/null .env    (likewise .env.<shard_id>)
+  5:# On a server the service user owns them: install -m 600 -o <service user> (docs/DESIGN-PROD.md §23).
+  $ git show 23982267e9:.env.example | grep -c 600
+  0
+  $ (umask 022; install -m 600 /dev/null <tmp>/t.env; stat -f "%Sp" <tmp>/t.env)
+  -rw-------
+
+## Lint, 2026-10-01 after the doc edits
+  $ bash ~/.claude/skills/design-doc/check.sh docs/DESIGN-PROD.md
+  ✅ lint 无警告
+  $ bash ~/.claude/skills/test-doc/check.sh docs/TEST.md
+  ⚠️ 执行记录明细行不合格:
+    失败项缺证据引用:| RUN-031 | TC-PROD-271 | 失败 | 5A 200 人 walk 30 min 基线只差「超 50 ms 的 tick 为 0」一项：实测 18 个；服务端与机器人同机，本机另有会话在跑，swap 约 29 GiB | 分机档（DESIGN-PROD §28.1 Q11）重跑 |
+    失败项缺证据引用:| RUN-031 | TC-PROD-360 | 失败 | 集成后 200 人 walk 30 min 同样只差这一项：6 个；同一档可见实体有 302 个采样超过上限 100（最大 102），登记为 DESIGN-PROD v0.8.2 §28.2 缺陷 | 分机档重跑；可见上限的竞态第 6 波开始前修 |
+  ✓ REQ 已双向联检(TEST→设计 悬空 + 设计→TEST 覆盖;设计文档 4 份)

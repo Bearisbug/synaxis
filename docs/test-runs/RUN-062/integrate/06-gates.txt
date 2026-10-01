@@ -1,0 +1,10 @@
+# Source gates on the integrate branch after the code commits (5e0977797e; doc edits uncommitted, no code difference).
+# ./gradlew errorproneCheck forbiddenImportsCheck testNamingCheck :architecture-tests:test --rerun --max-workers=4 --no-daemon
+#   --init-script gradle/init/aliyun-mirror.init.gradle.kts   (every project that has the three tasks)
+
+LOCK TAKEN 2026-10-01 14:09:32
+HEAD 5e0977797e (doc edits uncommitted, code committed)
+### gates 14:09:32-14:09:50 rc=0
+BUILD SUCCESSFUL in 17s
+  architecture-tests: 7 classes, tests=20 failures=0 errors=0
+LOCK RELEASING 2026-10-01 14:09:50

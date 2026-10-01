@@ -1,0 +1,50 @@
+RUN-061  2026-10-01  分支 prod/mgmt-timeout 合前验收
+=====================================================
+
+对象：main c46578d24f 加三个提交
+  5fe9c028f4 ManagementServer：每 100 ms 给队列非空而没有写兴趣的管理连接补登记写兴趣
+  5758b7425c 文档：DESIGN-PROD v0.9.38；TC-PROD-574、575；§7 结案 ManagementBacklogIntegrationTest 偶发红
+  2bed5675f2 文档：TC-PROD-395 第 2 步与 TC-PROD-505 第 2 步的红行 ManagementServer.java:231 → :267
+git fetch 后 origin/main 仍是 c46578d24f。RUN-060 已由光照会话在 m3/refused-and-500 上登记，本轮用 RUN-061。
+
+起因：CI run 36740800681（main c46578d24f）第 1 次尝试，4 线程严格 grid job 红 1 条：
+  ManagementBacklogIntegrationTest > aPeerThatReadsWhatItIsSentKeepsItsConnection
+  java.net.SocketTimeoutException: Read timed out  at ManagementBacklogIntegrationTest.java:211
+第 2 次尝试三个 job 全绿（gh run view 36740800681：attempt 2，conclusion success）。
+
+一、排查与修复（workflow，重活锁下）
+  根因：Java-WebSocket 1.6.0 WebSocketServer#doWrite 在 SocketChannelIOHelper#batch 写空队列后执行
+  key.interestOps(OP_READ)，撤之前不再看队列；发送线程经 onWriteDemand 登记的 OP_READ|OP_WRITE 落在这个窗口里
+  被覆盖，帧留在队列里没人写。GuardedSocket 的锁不在这条路径上，不是死锁；出站上限到限是关连接，不是限速。
+  复现：拉宽窗口（GuardedSocket 覆写 isFlushAndClose 先停 2 ms）后第 0 轮停住；看门狗读到 outQueue=100、
+  interestOps=1、readyOps=5，WebSocketSelector 停在 select（WebSocketServer.java:419），WebSocketWorker 空闲在
+  take，没有线程等锁。不拉宽时严格 grid 下 50 次 × 100 轮 0 次停住，每轮最长 8.8 ms。
+  （线程转储原件 /tmp/mgmt-diag/stall-iter1-round0.txt 在本轮清理临时目录时删除，读数以上面与 TEST.md §7 为准。）
+
+二、反证（评审 agent 在 2bed5675f2 上重跑，重活锁 02:24:09 拿到、02:25:00 释放，严格 grid）
+  TC-PROD-574 第 1 步：tests=1 0 失败，回复 72 ms 后到达
+  TC-PROD-574 第 2 步（不起补登记线程）：红在 ManagementWriteRecheckIntegrationTest.java:101，
+      TimeoutException: no such message within PT10S，10.891 s
+  TC-PROD-575 第 1 步（拉宽窗口 + 不补登记）：红在 ManagementBacklogIntegrationTest.java:211，
+      SocketTimeoutException: Read timed out，10.816 s，与 CI 同一行同一异常
+  TC-PROD-575 第 2 步（只拉宽窗口）：3 条全绿，读的那条 11.465 s
+  每组之后 git checkout HEAD -- ManagementServer.java，最后 git status 为空。
+  TC-PROD-395（修复 agent 在 5758b7425c 上，重活锁 02:18:43 拿到）：第 1 步 tests=2 0 失败；第 2 步反证
+      2 tests completed, 1 failed，红在 (ManagementServer.java:267)；还原后复绿。
+
+三、合前门禁（生产就绪会话，重活锁 02:31:30 拿到，02:41:36 由 trap 释放；带 PG 5440 / Valkey 6440 数据库变量）
+  01 ./gradlew :server-app:check :server-app:test --rerun（计数模式）
+     BUILD SUCCESSFUL in 4m 24s；server-app tests=522 skipped=0 failures=0 errors=0
+  02 ./gradlew :server-app:test --rerun -Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true
+     -Dsynaxis.thread-provider=grid
+     BUILD SUCCESSFUL in 4m 24s；tests=522 skipped=0 failures=0 errors=0
+     （三个属性由 build-src synaxis.java-library.gradle.kts 第 77～78 行转给测试 JVM；
+      本轮没有跑 testing 模块的 EnvDispatcherThreadsIntegrationTest 另证）
+  03 严格 grid 下 --tests 'io.github.bearisbug.synaxis.app.management.*' 连跑 5 次
+     每次 BUILD SUCCESSFUL、tests=43 0 失败 0 跳过；ManagementWriteRecheckIntegrationTest 末次输出
+     "The reply left queued arrived after 108 ms"
+  全部 Gradle 带 --max-workers=4 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts，JDK 25。
+  各步原始输出：01-check.txt、02-grid.txt、03-loop-1.txt～03-loop-5.txt。
+
+结论：TC-PROD-574、TC-PROD-575、TC-PROD-395 通过；server-app 522 个在计数与严格 grid 两种模式下 0 失败。
+没有跑：根构建 :test 全量、:architecture-tests、client-fabric（本组只改 server-app 的 ManagementServer 与一个测试类）。

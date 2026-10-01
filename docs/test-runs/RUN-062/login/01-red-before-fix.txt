@@ -1,0 +1,60 @@
+# Red run: the new tests on the code before the fix (main 23982267e9, src/main untouched, test sources of this group applied),
+# 2026-10-01 (UTC+8). Gradle --max-workers=4 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts, database variables set.
+# SessionClientTest#theRetryAfterOfATooManyRequestsAnswerIsSecondsUpToAMinute was left out of this run: it calls the new
+# SessionClient#retryAfterSeconds and does not compile before the fix.
+
+### start 2026-10-01 10:08:10 args: :test --tests *ConnectionGateSocketTest --tests *OnlineLoginSocketTest --tests *PreAuthConnectionIntegrationTest --tests *InboundPacketLimitIntegrationTest :server-app:test --tests *ConnectionGateLogTest --tests *FullChannelTransferSocketTest --continue
+
+  ConnectionGateLogTest > oversizedServerAddressesDoNotReachTheLoginListener() FAILED
+      org.opentest4j.AssertionFailedError at ConnectionGateLogTest.java:127
+  ConnectionGateLogTest > aLoginPluginResponseNobodyAskedForIsReportedByTheExceptionHandlerAlone() FAILED
+      org.opentest4j.AssertionFailedError at ConnectionGateLogTest.java:145
+  7 tests completed, 2 failed
+  > Task :server-app:test FAILED
+  PreAuthConnectionIntegrationTest > aListenerThatThrowsBeforeTheConfigurationStateDropsTheConnection(Env) FAILED
+      org.opentest4j.AssertionFailedError at PreAuthConnectionIntegrationTest.java:261
+  InboundPacketLimitIntegrationTest > pingsOverADropLimitAreNotAnswered() FAILED
+      org.opentest4j.AssertionFailedError at InboundPacketLimitIntegrationTest.java:99
+  OnlineLoginSocketTest > loginsThatStopAtTheEncryptionRequestHoldNoSeat() FAILED
+      java.lang.AssertionError at OnlineLoginSocketTest.java:374
+  InboundPacketLimitIntegrationTest > pingsInPlayCountTowardsTheLimit(Env) FAILED
+      org.opentest4j.AssertionFailedError at InboundPacketLimitIntegrationTest.java:80
+  OnlineLoginSocketTest > anEncryptedOfflineLoginTakesItsSeatOnceItsKeyIsIn() FAILED
+      org.opentest4j.AssertionFailedError at OnlineLoginSocketTest.java:417
+  ConnectionGateSocketTest > behindTheProxyAnOversizedServerAddressCountsAgainstItsAddress() FAILED
+      java.lang.AssertionError at ConnectionGateSocketTest.java:238
+  OnlineLoginSocketTest > noLoginAsksTheSessionServerBeforeTheRetryAfterIsOver() FAILED
+      org.opentest4j.AssertionFailedError at OnlineLoginSocketTest.java:159
+  ConnectionGateSocketTest > anOversizedServerAddressTakesItsTokenAndIsClosed() FAILED
+      org.opentest4j.AssertionFailedError at ConnectionGateSocketTest.java:213
+  ConnectionGateSocketTest > anOversizedServerAddressDoesNotSkipTheGate() FAILED
+      org.opentest4j.AssertionFailedError at ConnectionGateSocketTest.java:195
+  OnlineLoginSocketTest > anAuthenticatedTransferThatFindsTheSeatsTakenIsRefusedEncrypted() FAILED
+      java.lang.AssertionError at OnlineLoginSocketTest.java:397
+  OnlineLoginSocketTest > aTooManyRequestsAnswerIsNotRetried() FAILED
+      org.opentest4j.AssertionFailedError at OnlineLoginSocketTest.java:136
+  50 tests completed, 11 failed
+  > Task :test FAILED
+  BUILD FAILED in 42s
+### end 2026-10-01 10:08:53 exit=1
+
+## JUnit XML of that run (failure type, message, first line of the test class in the stack)
+io.github.bearisbug.synaxis.app.ConnectionGateLogTest: tests=5 failures=2 errors=0 skipped=0 time=1.237
+  RED oversizedServerAddressesDoNotReachTheLoginListener() [1.048s] -> org.opentest4j.AssertionFailedError: org.opentest4j.AssertionFailedError: lines of the login listener: 20 ==> expected: <true> but was: <false> | at ConnectionGateLogTest.java:127
+  RED aLoginPluginResponseNobodyAskedForIsReportedByTheExceptionHandlerAlone() [0.076s] -> org.opentest4j.AssertionFailedError: org.opentest4j.AssertionFailedError: the login listener wrote lines of its own ==> expected: <[]> but was: <[Error handling Login Plugin Response, Error handling Login Plugin Response, Error handling Login Plugin Response, Error handling Login Plugin Response, | at ConnectionGateLogTest.java:145
+io.github.bearisbug.synaxis.app.FullChannelTransferSocketTest: tests=2 failures=0 errors=0 skipped=0 time=2.05
+io.github.bearisbug.synaxis.network.ConnectionGateSocketTest: tests=12 failures=3 errors=0 skipped=0 time=9.115
+  RED behindTheProxyAnOversizedServerAddressCountsAgainstItsAddress() [5.037s] -> java.lang.AssertionError: java.lang.AssertionError: the server neither answered nor closed the connection | at ConnectionGateSocketTest.java:481
+  RED anOversizedServerAddressTakesItsTokenAndIsClosed() [0.048s] -> org.opentest4j.AssertionFailedError: org.opentest4j.AssertionFailedError: an oversized server address is closed without an answer ==> expected: <true> but was: <false> | at ConnectionGateSocketTest.java:213
+  RED anOversizedServerAddressDoesNotSkipTheGate() [0.162s] -> org.opentest4j.AssertionFailedError: org.opentest4j.AssertionFailedError: the login behind an oversized server address went on: SetCompressionPacket[threshold=256] ==> expected: <true> but was: <false> | at ConnectionGateSocketTest.java:195
+io.github.bearisbug.synaxis.network.OnlineLoginSocketTest: tests=22 failures=5 errors=0 skipped=0 time=18.435
+  RED loginsThatStopAtTheEncryptionRequestHoldNoSeat() [0.149s] -> java.lang.AssertionError: java.lang.AssertionError: expected an encryption request, got login disconnect TranslatableComponentImpl[children=[], style=StyleImpl{font=null, color=null, shadowColor=null, decorations=DecorationMap{obfuscated=not_set, bold=not_set, strikethrough=not_set, un | at OnlineLoginSocketTest.java:374
+  RED anEncryptedOfflineLoginTakesItsSeatOnceItsKeyIsIn() [0.039s] -> org.opentest4j.AssertionFailedError: org.opentest4j.AssertionFailedError: a login waiting for its key holds a seat ==> expected: <0> but was: <1> | at OnlineLoginSocketTest.java:417
+  RED noLoginAsksTheSessionServerBeforeTheRetryAfterIsOver() [0.688s] -> org.opentest4j.AssertionFailedError: org.opentest4j.AssertionFailedError: a login within the Retry-After asked the session server ==> expected: <[First]> but was: <[First, First, Second]> | at OnlineLoginSocketTest.java:159
+  RED anAuthenticatedTransferThatFindsTheSeatsTakenIsRefusedEncrypted() [0.087s] -> java.lang.AssertionError: java.lang.AssertionError: expected an encryption request, got login disconnect TranslatableComponentImpl[children=[], style=StyleImpl{font=null, color=null, shadowColor=null, decorations=DecorationMap{obfuscated=not_set, bold=not_set, strikethrough=not_set, un | at OnlineLoginSocketTest.java:397
+  RED aTooManyRequestsAnswerIsNotRetried() [0.921s] -> org.opentest4j.AssertionFailedError: org.opentest4j.AssertionFailedError: a 429 was asked again ==> expected: <1> but was: <2> | at OnlineLoginSocketTest.java:136
+io.github.bearisbug.synaxis.network.player.InboundPacketLimitIntegrationTest: tests=7 failures=2 errors=0 skipped=0 time=1.414
+  RED pingsOverADropLimitAreNotAnswered() [0.045s] -> org.opentest4j.AssertionFailedError: org.opentest4j.AssertionFailedError: pongs ==> expected: <750> but was: <1000> | at InboundPacketLimitIntegrationTest.java:99
+  RED pingsInPlayCountTowardsTheLimit(Env) [0.013s] -> org.opentest4j.AssertionFailedError: org.opentest4j.AssertionFailedError: 1,000 pings at once are over 750 in 7 s ==> expected: <false> but was: <true> | at InboundPacketLimitIntegrationTest.java:80
+io.github.bearisbug.synaxis.network.player.PreAuthConnectionIntegrationTest: tests=9 failures=1 errors=0 skipped=0 time=1.357
+  RED aListenerThatThrowsBeforeTheConfigurationStateDropsTheConnection(Env) [0.025s] -> org.opentest4j.AssertionFailedError: org.opentest4j.AssertionFailedError: a listener that threw before the configuration state left the connection open ==> expected: <false> but was: <true> | at PreAuthConnectionIntegrationTest.java:261

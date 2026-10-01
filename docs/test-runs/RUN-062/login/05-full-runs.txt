@@ -1,0 +1,52 @@
+# Full runs of the two modules this group changed (root :test and :server-app:test), on 1f33976097 with only docs modified in the
+# working tree, database variables set (SYNAXIS_TEST_PG_URL, SYNAXIS_TEST_PG_PASSWORD, SYNAXIS_TEST_REDIS_URL), 2026-10-01 (UTC+8).
+# Command: ./gradlew :test --rerun :server-app:test --rerun --continue [STRICT] --max-workers=4 --no-daemon
+#          --init-script gradle/init/aliyun-mirror.init.gradle.kts
+# STRICT = -Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true -Dsynaxis.thread-provider=grid
+# Counts summed from the JUnit XML inside the same lock hold. An earlier default run (10:34:22-10:39:03, exit 0) lost its XML to the
+# next counter-proof batch, which clears the results directories; the two runs below are the ones counted.
+
+## default
+### start 2026-10-01 10:46:06 head 1f33976097 status:  M docs/DESIGN-PROD.md  M docs/TEST.md ?? docs/test-runs/RUN-062/
+Reusing configuration cache.
+BUILD SUCCESSFUL in 4m 35s
+### end 2026-10-01 10:50:42 exit=0
+build/test-results/test: classes=426 tests=3158 failures=0 errors=0 skipped=15
+server-app/build/test-results/test: classes=99 tests=524 failures=0 errors=0 skipped=0
+
+## grid
+### start 2026-10-01 10:50:42 head 1f33976097 status:  M docs/DESIGN-PROD.md  M docs/TEST.md ?? docs/test-runs/RUN-062/
+Calculating task graph as configuration cache cannot be reused because system property 'synaxis.dispatcher-threads' has changed.
+BUILD SUCCESSFUL in 4m 36s
+### end 2026-10-01 10:55:19 exit=0
+build/test-results/test: classes=426 tests=3158 failures=0 errors=0 skipped=15
+server-app/build/test-results/test: classes=99 tests=524 failures=0 errors=0 skipped=0
+
+## the classes this group touched, per mode (tests failures errors skipped seconds)
+default io.github.bearisbug.synaxis.network.ConnectionGateSocketTest 12 0 0 0 6.024
+default io.github.bearisbug.synaxis.network.OnlineLoginSocketTest 22 0 0 0 18.032
+default io.github.bearisbug.synaxis.network.player.PreAuthConnectionIntegrationTest 9 0 0 0 0.106
+default io.github.bearisbug.synaxis.network.player.InboundPacketLimitIntegrationTest 7 0 0 0 0.247
+default io.github.bearisbug.synaxis.network.player.SessionClientTest 3 0 0 0 0.004
+default io.github.bearisbug.synaxis.ArchitectureTest 7 0 0 0 16.225
+default io.github.bearisbug.synaxis.network.ConnectionGateTest 12 0 0 0 0.311
+default io.github.bearisbug.synaxis.app.ConnectionGateLogTest 5 0 0 0 0.203
+default io.github.bearisbug.synaxis.app.FullChannelTransferSocketTest 2 0 0 0 0.916
+grid io.github.bearisbug.synaxis.network.ConnectionGateSocketTest 12 0 0 0 4.246
+grid io.github.bearisbug.synaxis.network.OnlineLoginSocketTest 22 0 0 0 19.074
+grid io.github.bearisbug.synaxis.network.player.PreAuthConnectionIntegrationTest 9 0 0 0 0.288
+grid io.github.bearisbug.synaxis.network.player.InboundPacketLimitIntegrationTest 7 0 0 0 0.67
+grid io.github.bearisbug.synaxis.network.player.SessionClientTest 3 0 0 0 0.004
+grid io.github.bearisbug.synaxis.ArchitectureTest 7 0 0 0 19.913
+grid io.github.bearisbug.synaxis.network.ConnectionGateTest 12 0 0 0 0.282
+grid io.github.bearisbug.synaxis.app.ConnectionGateLogTest 5 0 0 0 0.197
+grid io.github.bearisbug.synaxis.app.FullChannelTransferSocketTest 2 0 0 0 1.04
+
+## style checks and javadoc of the root module (same commit, 2026-10-01 11:01)
+./gradlew :forbiddenImportsCheck :testNamingCheck :server-app:forbiddenImportsCheck :server-app:testNamingCheck :javadoc --continue
+> Task :server-app:testNamingCheck
+> Task :server-app:forbiddenImportsCheck
+> Task :testNamingCheck
+> Task :forbiddenImportsCheck
+> Task :javadoc
+BUILD SUCCESSFUL in 16s

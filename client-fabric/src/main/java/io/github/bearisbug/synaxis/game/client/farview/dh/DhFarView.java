@@ -194,7 +194,11 @@ public final class DhFarView implements FarViewDh {
         DhApi.events.bind(DhApiLevelUnloadEvent.class, new DhApiLevelUnloadEvent() {
             @Override
             public void onLevelUnload(DhApiEventParam<DhApiLevelUnloadEvent.EventParam> event) {
-                if (event.value.levelWrapper == level) level = null;
+                // Only this connection's level ends its bake. DH also fires the event for the level of an earlier
+                // connection, 30 s after its last use (ClientLevelWrapper#tickCleanup), with that level's wrapper:
+                // every map shard's level has the same DH id, so a transfer or a reconnect gets it mid bake.
+                if (event.value.levelWrapper != level) return;
+                level = null;
                 FarViewClient.unloaded("Distant Horizons unloaded the level");
             }
         });

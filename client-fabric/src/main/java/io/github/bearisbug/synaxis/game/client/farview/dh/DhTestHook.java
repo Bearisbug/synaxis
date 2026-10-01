@@ -5,8 +5,10 @@ import com.seibel.distanthorizons.api.interfaces.config.IDhApiConfigValue;
 import com.seibel.distanthorizons.api.interfaces.config.client.IDhApiGraphicsConfig;
 import com.seibel.distanthorizons.api.interfaces.world.IDhApiLevelWrapper;
 import com.seibel.distanthorizons.api.objects.data.DhApiTerrainDataPoint;
+import com.seibel.distanthorizons.core.api.internal.SharedApi;
 import com.seibel.distanthorizons.core.dataObjects.fullData.sources.FullDataSourceV2;
 import com.seibel.distanthorizons.core.pos.DhSectionPos;
+import com.seibel.distanthorizons.core.world.AbstractDhWorld;
 import com.seibel.distanthorizons.core.wrapperInterfaces.world.ILevelWrapper;
 import io.github.bearisbug.synaxis.game.client.farview.FarViewColumns;
 import java.util.LinkedHashMap;
@@ -136,6 +138,30 @@ public final class DhTestHook {
     public static @Nullable String saveFolder() {
         final IDhApiLevelWrapper level = DhFarView.level();
         return level == null ? null : level.getDhSaveFolder().getPath();
+    }
+
+    /**
+     * The level wrapper DH loaded last on a Synaxis connection.
+     *
+     * @return the wrapper, null without a level
+     */
+    public static @Nullable Object levelWrapper() {
+        return DhFarView.level();
+    }
+
+    /**
+     * What DH's cleanup does to the level of a connection that ended, 30 s after that level's last use
+     * ({@code ClientLevelWrapper#tickCleanup}): {@code AbstractDhWorld#unloadLevel} with that level's wrapper.
+     * Every map shard's level has the same DH id, so DH finds the level of this connection under it,
+     * closes nothing, since the id still has this connection's wrapper, and fires
+     * {@code DhApiLevelUnloadEvent} with the earlier wrapper.
+     *
+     * @param wrapper a wrapper from {@link #levelWrapper} of a connection that ended
+     * @return what {@code unloadLevel} returned, null without a DH world
+     */
+    public static @Nullable Boolean unloadLevel(Object wrapper) {
+        final AbstractDhWorld world = SharedApi.getAbstractDhWorld();
+        return world == null ? null : world.unloadLevel((ILevelWrapper) wrapper);
     }
 
     /**

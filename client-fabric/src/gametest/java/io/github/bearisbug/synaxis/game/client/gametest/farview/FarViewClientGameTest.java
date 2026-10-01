@@ -156,6 +156,7 @@ public final class FarViewClientGameTest implements FabricClientGameTest {
                 case "marker" -> marker();
                 case "cancel" -> cancel();
                 case "late-cancel" -> lateCancel();
+                case "stale-unload" -> staleUnload();
                 case "tiers" -> tiers();
                 case "none" -> none();
                 case "absent" -> absent();
@@ -867,6 +868,45 @@ public final class FarViewClientGameTest implements FabricClientGameTest {
                     + "; " + (incomplete == null ? "no incomplete line" : incomplete.substring(incomplete.indexOf("view ")))
                     + "; marker " + marker;
             return (writeCheck && held && ended && incomplete != null && !marker ? "ok " : "") + what;
+        }
+
+        /**
+         * A reconnect, as a transfer is to the client: DH's cleanup of the level of the connection before, 30 s after
+         * that level's last use, fires DhApiLevelUnloadEvent with that level's wrapper while this connection bakes,
+         * since every map shard's level has the same DH id. The cleanup's own call is made here, with the bake held, so
+         * the timing is the test's; the bake must then finish.
+         */
+        void staleUnload() {
+            clearCache();
+            radius(FarViewSettings.OFF);
+            if (!connect()) {
+                line("F29", false, "not in the world for the first connection");
+                return;
+            }
+            context.waitTicks(100);
+            final Object earlier = DhTestHook.levelWrapper();
+            leave();
+            radius(FarViewSettings.DEFAULT_RADIUS);
+            final int logFrom = log().size();
+            final CountDownLatch hold = new CountDownLatch(1);
+            DhTestHook.holdStart = hold;
+            if (earlier == null || !connect()) {
+                line("F29", false, earlier == null ? "no level wrapper of the first connection" : "not in the world again");
+                return;
+            }
+            final FarViewConnection c = Objects.requireNonNull(connection());
+            until(() -> c.state() == FarViewConnection.State.BAKING || c.failure() != null, CONNECT_TICKS);
+            final Boolean unloaded = DhTestHook.unloadLevel(earlier);
+            final boolean dhUnloaded = until(() -> find(logSince(logFrom), "Unloading level") != null, 200);
+            hold.countDown();
+            final boolean ready = ready();
+            final String stopped = find(logSince(logFrom), "view " + c.viewKey() + " bake stopped");
+            line("F29", Boolean.TRUE.equals(unloaded) && dhUnloaded && ready && stopped == null, "unloadLevel with the first "
+                    + "connection's wrapper while the bake was held: " + unloaded + ", DH's Unloading level line " + dhUnloaded
+                    + "; bake released, ready " + ready + ", " + (stopped == null ? "no bake stopped line"
+                    : stopped.substring(stopped.indexOf("view "))));
+            leave();
+            clearCache();
         }
 
         /** The three settings of farview.radius. */

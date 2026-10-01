@@ -1,0 +1,4 @@
+F26 PASS framebuffer 1920x1080; 4096: 1199 frames, mean 181.01 ms, p99 259.41 ms, P1% 3.9 FPS; 0: 1199 frames, mean 121.94 ms, p99 251.35 ms, P1% 4.0 FPS
+# mode bench from 17:31:25
+# fixture mode synthetic, map farview, spawn 264.5 64.0 264.5
+# attempt 1 not in the world of host.docker.internal:25750: Connection Lost. Somebody is already playing under this name.

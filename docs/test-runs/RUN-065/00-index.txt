@@ -1,0 +1,39 @@
+RUN-065: the B-01 hardening of ShardGates#moved (docs/DESIGN-M3.md v0.31, API-M3-010 gate item, §16), on branch m3/sec-followup.
+Code under test: 072d45b790 (main c69548be70 + 0a875c757d CLAUDE.md + 072d45b790 ShardGates online check and ShardGatesOnlineTest).
+The cases and gates ran on that commit with docs/DESIGN-M3.md, docs/DESIGN-PROD.md and docs/TEST.md being edited, uncommitted; no test
+reads docs/. git fetch: origin/main is c69548be70, its last round RUN-062; RUN-063 is this session's (TC-WORLD-082/083 rerun), RUN-064
+M3-G's, so this round is RUN-065. JDK 25.0.4.1, Gradle --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts
+--max-workers=4 with the proxy JAVA_TOOL_OPTIONS (Gradle only).
+
+Heavy lock: /tmp/synaxis-heavy.lock taken 16:54:22, released 17:24:44 (owner=Synaxis光照/followup pid=39710, the holder script). The
+lock and its EXIT trap are at the top level of the holder (07-scripts.txt), which ran the four jobs one after another:
+  16:54:22-16:54:50  01  red and green of ShardGatesOnlineTest
+  16:54:50-16:58:42  02  the cases: TC-WORLD-101, 064, 100; TC-PROD-570 to 573, 593; step 1 of TC-WORLD-062, 063, 065, 075
+  16:58:43-17:04:32  03  the two-process fixture: TC-WORLD-076 to 080
+  17:04:32-17:23:24  04  root check (default) and root test in the two strict modes, database variables set
+
+00-index.txt              this file
+01-red-green.txt          before the fix (ShardGates takes the predicate and never reads it): ShardGatesOnlineTest red at :93,
+                          expected <0 transfers, 0 refusals> but was <100 transfers, 100 refusals>; HEAD: 1 test 0 failures
+02-cases.txt              every step and counterproof as the cases write them; TC-PROD-570 step 2 as written does not compile any more
+                          (addendum at the end), the same old file with only the fourth constructor parameter added is red at
+                          ShardGatesTest.java:218 as the case expects
+03-two-process.txt        TC-WORLD-076 to 080 as written; 076: 31 of 31 gate transfers, 31 issued / 31 completed paired, 0 transfer_refused
+                          and 0 WARN/ERROR on both shards; addendum for two reads of 077 the job's greps missed
+04-check.txt              check --continue --rerun-tasks -Dsynaxis.synx.require-frozen-zlib=true: BUILD SUCCESSFUL in 6m 14s,
+                          599 classes 4,146 tests 0 failures 15 skipped (root 428 / 3,162, server-app 110 / 553)
+05-strict-counter.txt     test --continue --rerun-tasks, 4 counter threads, acquirable strict: BUILD SUCCESSFUL in 6m 7s, the same
+                          599 / 4,146 / 0 / 15; no result file mentions AcquirableOwnershipException
+06-strict-grid.txt        the same plus -Dsynaxis.thread-provider=grid: BUILD SUCCESSFUL in 6m 13s, the same 599 / 4,146 / 0 / 15; no
+                          AcquirableOwnershipException; :testing's EnvDispatcherThreadsIntegrationTest says 4 threads and grid
+07-scripts.txt            the holder, the helpers, the four jobs, the two Python helpers of RUN-045 (L and the build id from the
+                          environment) and the lock log
+
+Count against RUN-062 (c820bc65f2 + the security fixes): server-app 109 / 552 -> 110 / 553 (ShardGatesOnlineTest), root unchanged.
+Not run: client-fabric (no file under client-fabric/ changed); the counterproofs of TC-WORLD-062, 063, 065, 075 (ShardServiceImpl,
+ShardArrivals and ShardHeartbeat are not changed). Not verified: a client that ignores its Transfer walking through a gate on a real
+process; the not-online path is judged by the unit test with a stand-in shard service and a given online predicate.
+Cleanup: the fixture's database run065_2p dropped, every shard and bot process stopped by pid (none left listening on 25611-25614,
+19611-19614), the temp dir /tmp/followup-065.KjAtEm (fixture, venv, HMAC key file, raw Gradle logs) deleted, the three Kotlin daemon
+logs these gate runs wrote to $TMPDIR (kotlin-daemon.2026-10-01.17-04-37-751, 17-10-57-269, 17-17-11-203, each naming this worktree)
+deleted; their daemons had already exited.

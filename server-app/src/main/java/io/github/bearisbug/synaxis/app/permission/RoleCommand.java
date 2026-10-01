@@ -28,9 +28,10 @@ import java.util.regex.Pattern;
  * <p>
  * Only the console and a player holding {@value #NODE} can run it; for anybody else the engine
  * refuses it as a failed precondition and leaves it out of the completions. A player grants or
- * takes back only a role whose every node its own nodes cover; the console any role. The database
- * is reached on a virtual thread, never on the thread that runs the command. Every run writes one
- * {@code gm_command} event.
+ * takes back only a role whose every node its own nodes cover, as the database has them when it
+ * asks, and what it grants runs out no later than its own grants; the console any role, for good.
+ * The database is reached on a virtual thread, never on the thread that runs the command. Every run
+ * writes one {@code gm_command} event.
  */
 public final class RoleCommand extends Command {
 
@@ -90,13 +91,15 @@ public final class RoleCommand extends Command {
                 return "ok";
             }
             final String roleId = role == null ? "" : role;
-            // The console hands out any role; a player none above its own nodes, itself included
-            if (sender instanceof Player player && !permissions.mayHandOut(player, roleId)) {
+            // The console hands out any role, for good; a player none above what the database says
+            // it holds now, itself included, and none for longer than its own grants run
+            final RoleStore.Grants own = sender instanceof Player player ? permissions.grantsOf(player) : null;
+            if (own != null && !permissions.mayHandOut(own, roleId)) {
                 reply(sender, "synaxis:role-above-sender", "You cannot hand out %s: it grants nodes you do not hold", roleId);
                 return "above_sender";
             }
-            final RoleStore.Change change = "grant".equals(action)
-                    ? permissions.grant(target, roleId) : permissions.revoke(target, roleId);
+            final RoleStore.Change change = "revoke".equals(action) ? permissions.revoke(target, roleId)
+                    : own == null ? permissions.grant(target, roleId) : permissions.handOut(target, roleId, own.expiresAt());
             return switch (change) {
                 case DONE -> {
                     if ("grant".equals(action)) reply(sender, "synaxis:role-granted", "Granted %s to %s", roleId, targetText);

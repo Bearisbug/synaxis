@@ -1,0 +1,62 @@
+# GAP-grid engine defect, red before the fix. Branch prod/integrate-062 after the four merges (fa5cad4055), plus the new test
+# class src/test/java/io/github/bearisbug/synaxis/entity/ItemEntityCrossCellConcurrencyTest.java and no change to src/main.
+# Under the heavy lock 2026-10-01 13:26:46 to 13:27:01 (UTC+8):
+#   ./gradlew :test --rerun --tests io.github.bearisbug.synaxis.entity.ItemEntityCrossCellConcurrencyTest --max-workers=4 --no-daemon
+#   --init-script gradle/init/aliyun-mirror.init.gradle.kts            (default; Gradle runs the test JVM with -ea)
+#   the same plus -Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true -Dsynaxis.thread-provider=grid   (strict grid)
+# The class builds its own 4-thread grid of 2 by 2 chunk cells in both modes: the entity at x = 31.7 is on cell (0, 0),
+# the item at x = 32.3 on cell (1, 0). Lines below are read from the JUnit XML of each run.
+
+## default
+  2 tests completed, 2 failed
+  BUILD FAILED in 9s
+  ItemEntityCrossCellConcurrencyTest: tests=2 failures=2 errors=0 skipped=0 time=1.272
+    anItemPickedUpAcrossACellBorderIsRemovedOnItsOwnThread() 1.24s FAILED
+      msg: org.opentest4j.AssertionFailedError: Server threw exception
+        at io.github.bearisbug.synaxis.entity.ItemEntityCrossCellConcurrencyTest.tickUntil(ItemEntityCrossCellConcurrencyTest.java:87)
+        at io.github.bearisbug.synaxis.entity.ItemEntityCrossCellConcurrencyTest.anItemPickedUpAcrossACellBorderIsRemovedOnItsOwnThread(ItemEntityCrossCellConcurrencyTest.java:51)
+        Caused by: io.github.bearisbug.synaxis.thread.AcquirableOwnershipException: Thread ownership assertion failed for io.github.bearisbug.synaxis.entity.ItemEntity@203853d0:
+        at io.github.bearisbug.synaxis.thread.AcquirableImpl.assertOwnership(AcquirableImpl.java:131)
+        at io.github.bearisbug.synaxis.entity.Entity.remove(Entity.java:1915)
+        at io.github.bearisbug.synaxis.entity.Entity.remove(Entity.java:1911)
+        at io.github.bearisbug.synaxis.entity.LivingEntity.lambda$update$2(LivingEntity.java:242)
+        at io.github.bearisbug.synaxis.entity.LivingEntity.lambda$update$1(LivingEntity.java:239)
+        at io.github.bearisbug.synaxis.entity.LivingEntity.update(LivingEntity.java:230)
+    anItemMergedAcrossACellBorderIsRemovedOnItsOwnThread() 0.021s FAILED
+      msg: org.opentest4j.AssertionFailedError: Server threw exception
+        at io.github.bearisbug.synaxis.entity.ItemEntityCrossCellConcurrencyTest.tickUntil(ItemEntityCrossCellConcurrencyTest.java:87)
+        at io.github.bearisbug.synaxis.entity.ItemEntityCrossCellConcurrencyTest.anItemMergedAcrossACellBorderIsRemovedOnItsOwnThread(ItemEntityCrossCellConcurrencyTest.java:67)
+        Caused by: io.github.bearisbug.synaxis.thread.AcquirableOwnershipException: Thread ownership assertion failed for io.github.bearisbug.synaxis.entity.ItemEntity@6e5269f3:
+        at io.github.bearisbug.synaxis.thread.AcquirableImpl.assertOwnership(AcquirableImpl.java:131)
+        at io.github.bearisbug.synaxis.entity.Entity.remove(Entity.java:1915)
+        at io.github.bearisbug.synaxis.entity.Entity.remove(Entity.java:1911)
+        at io.github.bearisbug.synaxis.entity.ItemEntity.lambda$update$1(ItemEntity.java:106)
+        at io.github.bearisbug.synaxis.entity.ItemEntity.lambda$update$0(ItemEntity.java:104)
+        at io.github.bearisbug.synaxis.entity.ItemEntity.update(ItemEntity.java:82)
+
+## strict
+  2 tests completed, 2 failed
+  BUILD FAILED in 6s
+  ItemEntityCrossCellConcurrencyTest: tests=2 failures=2 errors=0 skipped=0 time=0.978
+    anItemPickedUpAcrossACellBorderIsRemovedOnItsOwnThread() 0.949s FAILED
+      msg: org.opentest4j.AssertionFailedError: Server threw exception
+        at io.github.bearisbug.synaxis.entity.ItemEntityCrossCellConcurrencyTest.tickUntil(ItemEntityCrossCellConcurrencyTest.java:87)
+        at io.github.bearisbug.synaxis.entity.ItemEntityCrossCellConcurrencyTest.anItemPickedUpAcrossACellBorderIsRemovedOnItsOwnThread(ItemEntityCrossCellConcurrencyTest.java:51)
+        Caused by: io.github.bearisbug.synaxis.thread.AcquirableOwnershipException: Thread ownership assertion failed for io.github.bearisbug.synaxis.entity.ItemEntity@203853d0:
+        at io.github.bearisbug.synaxis.thread.AcquirableImpl.assertOwnership(AcquirableImpl.java:131)
+        at io.github.bearisbug.synaxis.entity.Entity.remove(Entity.java:1915)
+        at io.github.bearisbug.synaxis.entity.Entity.remove(Entity.java:1911)
+        at io.github.bearisbug.synaxis.entity.LivingEntity.lambda$update$2(LivingEntity.java:242)
+        at io.github.bearisbug.synaxis.entity.LivingEntity.lambda$update$1(LivingEntity.java:239)
+        at io.github.bearisbug.synaxis.entity.LivingEntity.update(LivingEntity.java:230)
+    anItemMergedAcrossACellBorderIsRemovedOnItsOwnThread() 0.021s FAILED
+      msg: org.opentest4j.AssertionFailedError: Server threw exception
+        at io.github.bearisbug.synaxis.entity.ItemEntityCrossCellConcurrencyTest.tickUntil(ItemEntityCrossCellConcurrencyTest.java:87)
+        at io.github.bearisbug.synaxis.entity.ItemEntityCrossCellConcurrencyTest.anItemMergedAcrossACellBorderIsRemovedOnItsOwnThread(ItemEntityCrossCellConcurrencyTest.java:67)
+        Caused by: io.github.bearisbug.synaxis.thread.AcquirableOwnershipException: Thread ownership assertion failed for io.github.bearisbug.synaxis.entity.ItemEntity@180eda0c:
+        at io.github.bearisbug.synaxis.thread.AcquirableImpl.assertOwnership(AcquirableImpl.java:131)
+        at io.github.bearisbug.synaxis.entity.Entity.remove(Entity.java:1915)
+        at io.github.bearisbug.synaxis.entity.Entity.remove(Entity.java:1911)
+        at io.github.bearisbug.synaxis.entity.ItemEntity.lambda$update$1(ItemEntity.java:106)
+        at io.github.bearisbug.synaxis.entity.ItemEntity.lambda$update$0(ItemEntity.java:104)
+        at io.github.bearisbug.synaxis.entity.ItemEntity.update(ItemEntity.java:82)

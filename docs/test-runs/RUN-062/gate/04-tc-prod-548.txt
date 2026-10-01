@@ -1,0 +1,461 @@
+# RUN-062 TC-PROD-548 by the letter: the M3-E two-process fixture up to the database (r1-c1 not started), one directory mode shard r0-c1
+# (strict grid, management interface, FIFO console), one walk bot; 2026-10-01 14:37:12-14:38:04 under /tmp/synaxis-heavy.lock (one lock
+# for the batch, trap at the top level of the script). HEAD 45f4133080 (code under test); docs/TEST.md and this directory were
+# uncommitted during the run, which is why the after-step git status lists them. <L> was a directory under /tmp, deleted afterwards;
+# database run062_p548 in synaxis-pg, dropped. Token and HMAC key in mode-600 files under <L>, never printed; the scan of the logs
+# below for both values found nothing, and the store line prints password=<set>.
+# The ledger is buffered, so the transfer_issued and gm_command rows of steps 4 and 5 are read after the SIGTERM of step 6.
+# The bot's UUID is the minecraft:players id 40696b26-173b-34d8-a58e-0d8fda788632.
+
+## run log
+[14:37:12] lock taken; HEAD 45f4133080; memory: System-wide memory free percentage: 52%; total = 15360.00M  used = 14361.56M  free = 998.44M  (encrypted)
+[14:37:12] ports in use before (25611 19611 19711 25614 19614 19714): 0
+[14:37:12] ## fixture: installDist server-app, loadtest, baker
+[14:37:17] installDist exit 0 (Configuration cache entry stored.)
+[14:37:19] bake exit 0: baker: published <L>/maps/mini/mini-6ab2c226761b-p776, 1692000 bytes; 1.99 real 3.44 user 0.17 sys; 511639552 maximum resident set size;
+[14:37:19] build: mini-6ab2c226761b-p776; size 128
+CREATE DATABASE
+[14:37:21] migrate exit 0; flyway versions: 1:true 2:true 3:true 4:true 5:true 6:true
+[14:37:21] ## step 1: start r0-c1 (25611, metrics 19611, management 19711), the bot, minecraft:players
+[14:37:23] listening: 0
+[14:37:23] Effective ServerConfig: dispatcherThreads=3 threadProvider=GRID acceptTransfers=true maxPlayers=2 
+[14:37:23] 14:37:23.249 [main] INFO  i.g.b.s.a.m.ManagementServer - Management interface listening on 127.0.0.1:19711
+[14:37:24] minecraft:players: {"jsonrpc":"2.0","id":1,"result":[{"id":"40696b26-173b-34d8-a58e-0d8fda788632","name":"bot00000"}]}
+[14:37:24] ## step 2: synaxis:transfer six calls
+[14:37:24]   {"player":{"name":"bot00000"},"shard":"r0-c1"} -> {"jsonrpc":"2.0","id":1,"result":"same_target"}
+[14:37:24]   {"player":{"name":"bot00000"},"region":"r1"} -> {"jsonrpc":"2.0","id":1,"result":"offline"}
+[14:37:24]   {"player":{"name":"bot00000"},"shard":"r1-c1"} -> {"jsonrpc":"2.0","id":1,"result":"unknown_target"}
+[14:37:24]   {"player":{"name":"bot00000"},"region":"r9"} -> {"jsonrpc":"2.0","id":1,"result":"unknown_target"}
+[14:37:24]   {"player":{"name":"bot00000"},"region":"r1","shard":"r1-c1"} -> {"jsonrpc":"2.0","id":1,"error":{"code":-32602,"message":"give either region or shard, not both and not neither","data":{"request_id":"0fd4c44b-3b22-4294-9d83-2fdcbad59911"}}}
+[14:37:24]   {"player":{"name":"Nobody"},"region":"r1"} -> {"jsonrpc":"2.0","id":1,"error":{"code":-32602,"message":"the player is not online here","data":{"request_id":"25b8cc24-a928-44f8-9502-c15a0ff50392"}}}
+[14:37:24] ## step 3: console
+    14:37:24.906 [server-app-console] INFO  i.g.b.synaxis.command.ConsoleSender - Nobody is not a player online on this shard
+    14:37:24.906 [Syn-Shard-Heartbeat-Read] INFO  i.g.b.synaxis.command.ConsoleSender - Transfer of bot00000 to r1: offline
+[14:37:28] ## step 4: a live r1-c1 heartbeat row, then shard r1-c1
+INSERT 0 1
+[14:37:29]   {"player":{"name":"bot00000"},"shard":"r1-c1"} -> {"jsonrpc":"2.0","id":1,"result":"sent"}
+[14:37:37]   minecraft:players afterwards: {"jsonrpc":"2.0","id":1,"result":[]}
+[14:37:37]   transfer_issued in the ledger now (the ledger is buffered; read again after the stop): 1
+[14:37:37] ## step 6: stop the bot, SIGTERM the shard
+[14:37:38]   shard alive after SIGTERM: no, waited 1s; last line: 14:37:37.681 [Thread-5] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+[14:37:38] ## steps 4 and 5 read after the stop: transfer_issued and gm_command rows of the shard ledger, WARN/ERROR lines of the shard log
+[14:37:38]   transfer_issued rows: 1
+    {"ts":"2026-10-01T06:37:29.129465Z","event":"transfer_issued","transfer_ref":"06644f6b","player_uuid":"40696b26-173b-34d8-a58e-0d8fda788632","source_shard":"r0-c1","target_shard":"r1-c1","issued_at":1790836649128}
+[14:37:38]   gm_command rows: 12
+    {"ts":"2026-10-01T06:37:23.747764Z","event":"gm_command","actor":"management","actor_uuid":"null","command":"minecraft:players","target":"null","result":"ok"}
+    {"ts":"2026-10-01T06:37:24.772440Z","event":"gm_command","actor":"management","actor_uuid":"null","command":"minecraft:players","target":"null","result":"ok"}
+    {"ts":"2026-10-01T06:37:24.794844Z","event":"gm_command","actor":"management","actor_uuid":"null","command":"synaxis:transfer {\"player\":{\"name\":\"bot00000\"},\"shard\":\"r0-c1\"}","target":"40696b26-173b-34d8-a58e-0d8fda788632","result":"same_target"}
+    {"ts":"2026-10-01T06:37:24.817333Z","event":"gm_command","actor":"management","actor_uuid":"null","command":"synaxis:transfer {\"player\":{\"name\":\"bot00000\"},\"region\":\"r1\"}","target":"40696b26-173b-34d8-a58e-0d8fda788632","result":"offline"}
+    {"ts":"2026-10-01T06:37:24.838682Z","event":"gm_command","actor":"management","actor_uuid":"null","command":"synaxis:transfer {\"player\":{\"name\":\"bot00000\"},\"shard\":\"r1-c1\"}","target":"40696b26-173b-34d8-a58e-0d8fda788632","result":"unknown_target"}
+    {"ts":"2026-10-01T06:37:24.857735Z","event":"gm_command","actor":"management","actor_uuid":"null","command":"synaxis:transfer {\"player\":{\"name\":\"bot00000\"},\"region\":\"r9\"}","target":"40696b26-173b-34d8-a58e-0d8fda788632","result":"unknown_target"}
+    {"ts":"2026-10-01T06:37:24.876654Z","event":"gm_command","actor":"management","actor_uuid":"null","command":"synaxis:transfer {\"player\":{\"name\":\"bot00000\"},\"region\":\"r1\",\"shard\":\"r1-c1\"}","target":"null","result":"invalid"}
+    {"ts":"2026-10-01T06:37:24.896584Z","event":"gm_command","actor":"management","actor_uuid":"null","command":"synaxis:transfer {\"player\":{\"name\":\"Nobody\"},\"region\":\"r1\"}","target":"null","result":"invalid"}
+    {"ts":"2026-10-01T06:37:24.906226Z","event":"gm_command","actor":"console","actor_uuid":"null","command":"transfer shard Nobody r1-c1","target":"null","result":"no_target"}
+    {"ts":"2026-10-01T06:37:24.906251Z","event":"gm_command","actor":"console","actor_uuid":"null","command":"transfer region bot00000 r1","target":"40696b26-173b-34d8-a58e-0d8fda788632","result":"offline"}
+    {"ts":"2026-10-01T06:37:29.129728Z","event":"gm_command","actor":"management","actor_uuid":"null","command":"synaxis:transfer {\"player\":{\"name\":\"bot00000\"},\"shard\":\"r1-c1\"}","target":"40696b26-173b-34d8-a58e-0d8fda788632","result":"sent"}
+    {"ts":"2026-10-01T06:37:37.189265Z","event":"gm_command","actor":"management","actor_uuid":"null","command":"minecraft:players","target":"null","result":"ok"}
+[14:37:38]   WARN/ERROR lines: 0; AcquirableOwnershipException: 0
+[14:37:38] ## step 7: proof, Main does not hand ShardService out
+[14:37:38]   anchor server-app/src/main/java/io/github/bearisbug/synaxis/app/Main.java:268:  final @Nullable ShardService shardService = directoryMode == null ? null : directoryMode.service();
+[14:37:38]   changed to:  final @Nullable ShardService shardService = directoryMode == null || !Boolean.getBoolean("proof.never") ? null : directoryMode.service();
+[14:37:44]   installDist exit 0 (Configuration cache entry stored.)
+[14:37:46]   listening: 0
+[14:37:47]   minecraft:players: {"jsonrpc":"2.0","id":1,"result":[{"id":"40696b26-173b-34d8-a58e-0d8fda788632","name":"bot00000"}]}
+[14:37:47]   {"player":{"name":"bot00000"},"region":"r1"} -> {"jsonrpc":"2.0","id":1,"error":{"code":-32000,"message":"This shard cannot send players to other shards: it is not in the directory mode","data":{"request_id":"839590c8-ccce-410a-b148-8fc23f754948"}}}
+    14:37:47.648 [server-app-console] INFO  i.g.b.synaxis.command.ConsoleSender - This shard cannot send players to other shards: it is not in the directory mode
+[14:37:53]   shard stopped: yes; last line: 14:37:52.160 [Thread-5] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+[14:37:53]   restored; git status --short: [ M docs/TEST.md ?? docs/test-runs/RUN-062/gate/ ]
+[14:37:55]   installDist after the restore exit 0 (Configuration cache entry reused.)
+[14:37:55] ## step 8: a process not in the directory mode
+[14:37:57]   listening: 0
+[14:37:57]   14:37:56.186 [main] INFO  i.github.bearisbug.synaxis.app.Main - Effective store: mode=memory, player data lives as long as the process
+[14:37:57]   {"player":{"name":"bot00000"},"shard":"r0-c2"} -> {"jsonrpc":"2.0","id":1,"error":{"code":-32000,"message":"This shard cannot send players to other shards: it is not in the directory mode","data":{"request_id":"fe8cce01-7f34-4b43-adeb-62771794d82c"}}}
+    14:37:57.617 [server-app-console] INFO  i.g.b.synaxis.command.ConsoleSender - This shard cannot send players to other shards: it is not in the directory mode
+[14:38:02]   stopped: yes; last line: 14:38:01.776 [Thread-4] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+    {"ts":"2026-10-01T06:37:57.607730Z","event":"gm_command","actor":"management","actor_uuid":"null","command":"synaxis:transfer {\"player\":{\"name\":\"bot00000\"},\"shard\":\"r0-c2\"}","target":"null","result":"unavailable"}
+    {"ts":"2026-10-01T06:37:57.617944Z","event":"gm_command","actor":"console","actor_uuid":"null","command":"transfer shard bot00000 r0-c2","target":"null","result":"unavailable"}
+[14:38:02]   WARN/ERROR lines: 0
+[14:38:02] ## after: stop everything, drop the database
+DROP DATABASE
+[14:38:04]   pgrep server-shard|server-app|loadtest: []
+[14:38:04]   git status --short: [ M docs/TEST.md ?? docs/test-runs/RUN-062/gate/ ]
+[14:38:04] done
+
+## shard log, steps 1-6 (<L>/work-r0-c1/shard.log)
+14:37:22.866 [main] INFO  i.github.bearisbug.synaxis.app.Main - Effective config file: none, /private<L>/work-r0-c1/synaxis.properties does not exist
+14:37:22.867 [main] INFO  i.github.bearisbug.synaxis.app.Main - Effective ServerConfig[shutdownOnSignal=true, maxTickCatchUp=5, chunkViewDistance=12, entityViewDistance=8, entitySynchronizationTicks=20, dispatcherThreads=3, threadProvider=GRID, threadGridExponent=4, sendLightAfterBlockPlacementDelay=100, loginTimeout=30000, loginPluginMessageTimeout=5000, knownPacksResponseTimeout=300000, acceptTransfers=true, playerPacketPerTick=50, playerPacketQueueSize=1000, keepAliveDelay=10000, keepAliveKick=15000, playerChunkUpdateLimiterHistorySize=0, maxConnections=1024, acceptBackoff=100, maxConnectionsPerIp=16, handshakeTimeout=5000, loginRatePerIp=0.5, loginBurstPerIp=3, statusRatePerIp=1.0, statusBurstPerIp=10, transferRatePerIp=2.0, transferBurstPerIp=10, connectionGateTrustedNetworks=127.0.0.0/8, maxPlayers=2, maxJoinsPerTick=0, motd=synaxis, serverIcon=, hideOnlinePlayers=false, chatRatePerSecond=1, chatBurst=3, packetLimitWindow=7000, packetLimitMaxPackets=750, packetLimitAction=KICK, packetLimitOverrides=, maxInflatedBytesPerSecond=4194304, tabCompleteRatePerSecond=20, maxOutboundBacklogBytes=4194304, tabLatencyInterval=30000, compressionThreshold=256, suppressConnectionAcceptErrors=true, suppressConnectionIoErrors=true, suppressMalformedPacketErrorLevel=0, suppressMisusedPacketErrorLevel=0, rejectMalformedPacket=true, rejectMisusedPacket=false, socketSendBufferSize=262143, socketReceiveBufferSize=32767, socketNoDelay=true, socketTimeout=15000, pooledBufferSize=16383, minChunksPerTick=0.01, maxChunksPerTick=4.0, chunksPerTickMultiplier=1.0, viewablePacket=true, enforceInteractionLimit=true, maxVisibleEntitiesPerPlayer=100, watchdogEarlyWarning=10000, watchdogEarlyWarningEvery=5000, watchdogTimeout=60000, watchdogHaltAfter=15000, registryUnsafeOps=false, insideTest=false, fasterSocketWrites=false, proxyProtocol=false, proxyProtocolRequired=false, proxyProtocolTrustedNetworks=]
+14:37:22.880 [main] INFO  i.github.bearisbug.synaxis.app.Main - Effective JvmFlags[serverTicksPerSecond=20, automaticComponentTranslation=false, groupedPacket=true, cachedPacket=true, maxPacketSize=2097151, maxPacketSizePreAuth=8192, warnUnreadBytesPacket=true, eventNodeAllowMultipleParents=false, templateCompiler=false, nbtMaxDepth=512, nbtMaxBytes=2097152, compressionLevel=6]
+14:37:22.880 [main] INFO  i.github.bearisbug.synaxis.app.Main - Effective auth: mode=offline
+14:37:22.906 [main] INFO  i.g.b.synaxis.app.shard.ShardWorld - Map release mini-6ab2c226761b-p776 verified in 21 ms: bounds=Bounds[minX=0, minZ=0, maxX=31, maxZ=15] world=World[minY=0, height=256]
+14:37:22.913 [main] INFO  com.zaxxer.hikari.HikariDataSource - synaxis-store - Starting...
+14:37:22.996 [main] INFO  com.zaxxer.hikari.pool.HikariPool - synaxis-store - Added connection org.postgresql.jdbc.PgConnection@2c88a3e8
+14:37:22.997 [main] INFO  com.zaxxer.hikari.HikariDataSource - synaxis-store - Start completed.
+14:37:23.023 [main] INFO  org.flywaydb.core.FlywayExecutor - Database: ******** (PostgreSQL 16.13)
+14:37:23.059 [main] INFO  o.f.core.internal.command.DbValidate - Successfully validated 6 migrations (execution time 00:00.013s)
+14:37:23.082 [main] INFO  org.flywaydb.core.FlywayExecutor - Database: ******** (PostgreSQL 16.13)
+14:37:23.189 [main] INFO  i.g.b.synaxis.app.store.ShardSession - Shard session state: shard_id=r0-c1 session_id=1 released -> active
+14:37:23.189 [main] INFO  i.g.b.synaxis.app.store.ShardSession - Shard session opened: shard_id=r0-c1 session_id=1
+14:37:23.194 [main] INFO  i.github.bearisbug.synaxis.app.Main - Effective whitelist: off
+14:37:23.194 [main] INFO  i.github.bearisbug.synaxis.app.Main - Effective store: mode=postgres auth_mode=offline StoreSettings[jdbcUrl=jdbc:postgresql://127.0.0.1:5440/run062_p548, user=postgres, password=<set>, redis=<set>]
+14:37:23.194 [main] INFO  i.github.bearisbug.synaxis.app.Main - Effective transfers: TransferKeys[signing=1, ids=[1]] accept=true
+14:37:23.201 [main] INFO  i.g.bearisbug.synaxis.app.PluginHost - Registered channel: plugin_id=synaxis channel=synaxis:handshake
+14:37:23.208 [main] INFO  i.github.bearisbug.synaxis.Watchdog - Tick watchdog on: stacks after 10000 ms and every 5000 ms after that, judged dead after 60000 ms, halted with exit code 70 15000 ms later
+14:37:23.241 [main] INFO  i.g.b.s.app.metrics.HostMetrics - Metrics endpoint listening on http://127.0.0.1:19611/metrics
+14:37:23.249 [main] INFO  i.g.b.s.a.m.ManagementServer - Effective management: enabled=true bind=127.0.0.1:19711 token=set
+14:37:23.249 [main] INFO  i.g.b.s.a.m.ManagementServer - Management interface listening on 127.0.0.1:19711
+14:37:23.254 [main] INFO  i.g.b.synaxis.synx.OverlayStore - Overlay store overlay/mini-6ab2c226761b-p776: records of 0 chunks in 0 segments
+14:37:23.275 [main] INFO  i.g.b.synaxis.app.shard.ShardWorld - Map mounted: build_id=mini-6ab2c226761b-p776 simulation_distance=4 chunk_unload_grace_ticks=100 spawn=Pos[x=120.5, y=63.0, z=120.5, yaw=0.0, pitch=0.0] overlay=overlay/mini-6ab2c226761b-p776
+14:37:23.277 [main] INFO  i.github.bearisbug.synaxis.app.Main - Map mode (synaxis.app.core-mode=on): the host serves the map instance, no plugin is loaded, spawn=Pos[x=120.5, y=63.0, z=120.5, yaw=0.0, pitch=0.0]
+14:37:23.277 [main] INFO  i.g.b.synaxis.ServerProcessImpl - Starting synaxis (dev) server.
+14:37:23.277 [main] INFO  i.g.b.synaxis.ServerProcessImpl - Running in offline mode. Beware that this is not secure and players can impersonate each other.
+14:37:23.278 [main] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server started successfully.
+14:37:23.278 [main] INFO  i.github.bearisbug.synaxis.app.Main - synaxis server-app listening on 0.0.0.0:25611
+14:37:24.560 [virtual-87] INFO  i.g.b.s.network.ConnectionManager - Login success: username=bot00000 connection_id=1b1f85ee-10f2-4e54-bdcd-33a0081397e3 remote_address=/127.0.0.1:65001
+14:37:24.906 [server-app-console] INFO  i.g.b.synaxis.command.ConsoleSender - Nobody is not a player online on this shard
+14:37:24.906 [Syn-Shard-Heartbeat-Read] INFO  i.g.b.synaxis.command.ConsoleSender - Transfer of bot00000 to r1: offline
+14:37:29.133 [Syn-Socket-Reader-0] INFO  i.g.b.s.n.player.PlayerConnection - Connection closed: connection_id=1b1f85ee-10f2-4e54-bdcd-33a0081397e3 identifier=bot00000
+14:37:37.532 [Thread-5] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+14:37:37.532 [Thread-5] INFO  i.g.b.synaxis.app.store.ShardSession - Shard session state: shard_id=r0-c1 session_id=1 active -> closing
+14:37:37.533 [Thread-5] INFO  i.g.b.synaxis.synx.SynxRelight - Relight drain: 0 ms, left=0
+14:37:37.579 [Syn-TickScheduler] INFO  i.g.b.synaxis.synx.OverlayStore - Overlay final flush: chunks=0 bytes=0 fsync_ms=0 left=0 by=tick
+14:37:37.585 [Thread-5] INFO  i.g.b.synaxis.app.store.ShardSession - Shard session state: shard_id=r0-c1 session_id=1 closing -> released
+14:37:37.649 [Syn-TickScheduler] INFO  com.zaxxer.hikari.HikariDataSource - synaxis-store - Shutdown initiated...
+14:37:37.652 [Syn-TickScheduler] INFO  com.zaxxer.hikari.HikariDataSource - synaxis-store - Shutdown completed.
+14:37:37.680 [Thread-5] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+14:37:37.681 [Thread-5] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+
+## shard log, step 7 (<L>/work-r0-c1-proof/shard.log)
+14:37:45.204 [main] INFO  i.github.bearisbug.synaxis.app.Main - Effective config file: none, /private<L>/work-r0-c1-proof/synaxis.properties does not exist
+14:37:45.205 [main] INFO  i.github.bearisbug.synaxis.app.Main - Effective ServerConfig[shutdownOnSignal=true, maxTickCatchUp=5, chunkViewDistance=12, entityViewDistance=8, entitySynchronizationTicks=20, dispatcherThreads=3, threadProvider=GRID, threadGridExponent=4, sendLightAfterBlockPlacementDelay=100, loginTimeout=30000, loginPluginMessageTimeout=5000, knownPacksResponseTimeout=300000, acceptTransfers=true, playerPacketPerTick=50, playerPacketQueueSize=1000, keepAliveDelay=10000, keepAliveKick=15000, playerChunkUpdateLimiterHistorySize=0, maxConnections=1024, acceptBackoff=100, maxConnectionsPerIp=16, handshakeTimeout=5000, loginRatePerIp=0.5, loginBurstPerIp=3, statusRatePerIp=1.0, statusBurstPerIp=10, transferRatePerIp=2.0, transferBurstPerIp=10, connectionGateTrustedNetworks=127.0.0.0/8, maxPlayers=2, maxJoinsPerTick=0, motd=synaxis, serverIcon=, hideOnlinePlayers=false, chatRatePerSecond=1, chatBurst=3, packetLimitWindow=7000, packetLimitMaxPackets=750, packetLimitAction=KICK, packetLimitOverrides=, maxInflatedBytesPerSecond=4194304, tabCompleteRatePerSecond=20, maxOutboundBacklogBytes=4194304, tabLatencyInterval=30000, compressionThreshold=256, suppressConnectionAcceptErrors=true, suppressConnectionIoErrors=true, suppressMalformedPacketErrorLevel=0, suppressMisusedPacketErrorLevel=0, rejectMalformedPacket=true, rejectMisusedPacket=false, socketSendBufferSize=262143, socketReceiveBufferSize=32767, socketNoDelay=true, socketTimeout=15000, pooledBufferSize=16383, minChunksPerTick=0.01, maxChunksPerTick=4.0, chunksPerTickMultiplier=1.0, viewablePacket=true, enforceInteractionLimit=true, maxVisibleEntitiesPerPlayer=100, watchdogEarlyWarning=10000, watchdogEarlyWarningEvery=5000, watchdogTimeout=60000, watchdogHaltAfter=15000, registryUnsafeOps=false, insideTest=false, fasterSocketWrites=false, proxyProtocol=false, proxyProtocolRequired=false, proxyProtocolTrustedNetworks=]
+14:37:45.218 [main] INFO  i.github.bearisbug.synaxis.app.Main - Effective JvmFlags[serverTicksPerSecond=20, automaticComponentTranslation=false, groupedPacket=true, cachedPacket=true, maxPacketSize=2097151, maxPacketSizePreAuth=8192, warnUnreadBytesPacket=true, eventNodeAllowMultipleParents=false, templateCompiler=false, nbtMaxDepth=512, nbtMaxBytes=2097152, compressionLevel=6]
+14:37:45.218 [main] INFO  i.github.bearisbug.synaxis.app.Main - Effective auth: mode=offline
+14:37:45.243 [main] INFO  i.g.b.synaxis.app.shard.ShardWorld - Map release mini-6ab2c226761b-p776 verified in 20 ms: bounds=Bounds[minX=0, minZ=0, maxX=31, maxZ=15] world=World[minY=0, height=256]
+14:37:45.249 [main] INFO  com.zaxxer.hikari.HikariDataSource - synaxis-store - Starting...
+14:37:45.331 [main] INFO  com.zaxxer.hikari.pool.HikariPool - synaxis-store - Added connection org.postgresql.jdbc.PgConnection@5ed4bc
+14:37:45.331 [main] INFO  com.zaxxer.hikari.HikariDataSource - synaxis-store - Start completed.
+14:37:45.357 [main] INFO  org.flywaydb.core.FlywayExecutor - Database: ******** (PostgreSQL 16.13)
+14:37:45.391 [main] INFO  o.f.core.internal.command.DbValidate - Successfully validated 6 migrations (execution time 00:00.012s)
+14:37:45.415 [main] INFO  org.flywaydb.core.FlywayExecutor - Database: ******** (PostgreSQL 16.13)
+14:37:45.520 [main] INFO  i.g.b.synaxis.app.store.ShardSession - Shard session state: shard_id=r0-c1 session_id=2 released -> active
+14:37:45.520 [main] INFO  i.g.b.synaxis.app.store.ShardSession - Shard session opened: shard_id=r0-c1 session_id=2
+14:37:45.525 [main] INFO  i.github.bearisbug.synaxis.app.Main - Effective whitelist: off
+14:37:45.525 [main] INFO  i.github.bearisbug.synaxis.app.Main - Effective store: mode=postgres auth_mode=offline StoreSettings[jdbcUrl=jdbc:postgresql://127.0.0.1:5440/run062_p548, user=postgres, password=<set>, redis=<set>]
+14:37:45.525 [main] INFO  i.github.bearisbug.synaxis.app.Main - Effective transfers: TransferKeys[signing=1, ids=[1]] accept=true
+14:37:45.530 [main] INFO  i.g.bearisbug.synaxis.app.PluginHost - Registered channel: plugin_id=synaxis channel=synaxis:handshake
+14:37:45.536 [main] INFO  i.github.bearisbug.synaxis.Watchdog - Tick watchdog on: stacks after 10000 ms and every 5000 ms after that, judged dead after 60000 ms, halted with exit code 70 15000 ms later
+14:37:45.572 [main] INFO  i.g.b.s.app.metrics.HostMetrics - Metrics endpoint listening on http://127.0.0.1:19611/metrics
+14:37:45.581 [main] INFO  i.g.b.s.a.m.ManagementServer - Effective management: enabled=true bind=127.0.0.1:19711 token=set
+14:37:45.581 [main] INFO  i.g.b.s.a.m.ManagementServer - Management interface listening on 127.0.0.1:19711
+14:37:45.585 [main] INFO  i.g.b.synaxis.synx.OverlayStore - Overlay store overlay/mini-6ab2c226761b-p776: records of 0 chunks in 0 segments
+14:37:45.605 [main] INFO  i.g.b.synaxis.app.shard.ShardWorld - Map mounted: build_id=mini-6ab2c226761b-p776 simulation_distance=4 chunk_unload_grace_ticks=100 spawn=Pos[x=120.5, y=63.0, z=120.5, yaw=0.0, pitch=0.0] overlay=overlay/mini-6ab2c226761b-p776
+14:37:45.607 [main] INFO  i.github.bearisbug.synaxis.app.Main - Map mode (synaxis.app.core-mode=on): the host serves the map instance, no plugin is loaded, spawn=Pos[x=120.5, y=63.0, z=120.5, yaw=0.0, pitch=0.0]
+14:37:45.608 [main] INFO  i.g.b.synaxis.ServerProcessImpl - Starting synaxis (dev) server.
+14:37:45.608 [main] INFO  i.g.b.synaxis.ServerProcessImpl - Running in offline mode. Beware that this is not secure and players can impersonate each other.
+14:37:45.608 [main] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server started successfully.
+14:37:45.609 [main] INFO  i.github.bearisbug.synaxis.app.Main - synaxis server-app listening on 0.0.0.0:25611
+14:37:46.843 [virtual-87] INFO  i.g.b.s.network.ConnectionManager - Login success: username=bot00000 connection_id=567098b7-5be6-4aa4-8c59-35127e6025b0 remote_address=/127.0.0.1:65072
+14:37:47.648 [server-app-console] INFO  i.g.b.synaxis.command.ConsoleSender - This shard cannot send players to other shards: it is not in the directory mode
+14:37:51.984 [Syn-Socket-Reader-0] INFO  i.g.b.s.n.player.PlayerConnection - Connection closed: connection_id=567098b7-5be6-4aa4-8c59-35127e6025b0 identifier=bot00000
+14:37:51.984 [Thread-5] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+14:37:51.985 [Thread-5] INFO  i.g.b.synaxis.app.store.ShardSession - Shard session state: shard_id=r0-c1 session_id=2 active -> closing
+14:37:52.016 [Syn-Store-Write] INFO  i.g.b.synaxis.synx.SynxRelight - Relight drain: 0 ms, left=0
+14:37:52.059 [Syn-TickScheduler] INFO  i.g.b.synaxis.synx.OverlayStore - Overlay final flush: chunks=0 bytes=0 fsync_ms=0 left=0 by=tick
+14:37:52.062 [Thread-5] INFO  i.g.b.synaxis.app.store.ShardSession - Shard session state: shard_id=r0-c1 session_id=2 closing -> released
+14:37:52.124 [Syn-TickScheduler] INFO  com.zaxxer.hikari.HikariDataSource - synaxis-store - Shutdown initiated...
+14:37:52.125 [Syn-TickScheduler] INFO  com.zaxxer.hikari.HikariDataSource - synaxis-store - Shutdown completed.
+14:37:52.159 [Thread-5] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+14:37:52.160 [Thread-5] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+
+## server-app log, step 8 (<L>/work-plain/server.log)
+14:37:56.170 [main] INFO  i.github.bearisbug.synaxis.app.Main - Effective config file: none, /private<L>/work-plain/synaxis.properties does not exist
+14:37:56.171 [main] INFO  i.github.bearisbug.synaxis.app.Main - Effective ServerConfig[shutdownOnSignal=true, maxTickCatchUp=5, chunkViewDistance=10, entityViewDistance=8, entitySynchronizationTicks=20, dispatcherThreads=1, threadProvider=COUNTER, threadGridExponent=4, sendLightAfterBlockPlacementDelay=100, loginTimeout=30000, loginPluginMessageTimeout=5000, knownPacksResponseTimeout=300000, acceptTransfers=false, playerPacketPerTick=50, playerPacketQueueSize=1000, keepAliveDelay=10000, keepAliveKick=15000, playerChunkUpdateLimiterHistorySize=0, maxConnections=1024, acceptBackoff=100, maxConnectionsPerIp=16, handshakeTimeout=5000, loginRatePerIp=0.5, loginBurstPerIp=3, statusRatePerIp=1.0, statusBurstPerIp=10, transferRatePerIp=2.0, transferBurstPerIp=10, connectionGateTrustedNetworks=, maxPlayers=0, maxJoinsPerTick=0, motd=synaxis, serverIcon=, hideOnlinePlayers=false, chatRatePerSecond=1, chatBurst=3, packetLimitWindow=7000, packetLimitMaxPackets=750, packetLimitAction=KICK, packetLimitOverrides=, maxInflatedBytesPerSecond=4194304, tabCompleteRatePerSecond=20, maxOutboundBacklogBytes=4194304, tabLatencyInterval=30000, compressionThreshold=256, suppressConnectionAcceptErrors=true, suppressConnectionIoErrors=true, suppressMalformedPacketErrorLevel=0, suppressMisusedPacketErrorLevel=0, rejectMalformedPacket=true, rejectMisusedPacket=false, socketSendBufferSize=262143, socketReceiveBufferSize=32767, socketNoDelay=true, socketTimeout=15000, pooledBufferSize=16383, minChunksPerTick=0.01, maxChunksPerTick=64.0, chunksPerTickMultiplier=1.0, viewablePacket=true, enforceInteractionLimit=true, maxVisibleEntitiesPerPlayer=0, watchdogEarlyWarning=10000, watchdogEarlyWarningEvery=5000, watchdogTimeout=60000, watchdogHaltAfter=15000, registryUnsafeOps=false, insideTest=false, fasterSocketWrites=false, proxyProtocol=false, proxyProtocolRequired=false, proxyProtocolTrustedNetworks=]
+14:37:56.184 [main] INFO  i.github.bearisbug.synaxis.app.Main - Effective JvmFlags[serverTicksPerSecond=20, automaticComponentTranslation=false, groupedPacket=true, cachedPacket=true, maxPacketSize=2097151, maxPacketSizePreAuth=8192, warnUnreadBytesPacket=true, eventNodeAllowMultipleParents=false, templateCompiler=false, nbtMaxDepth=512, nbtMaxBytes=2097152, compressionLevel=6]
+14:37:56.184 [main] INFO  i.github.bearisbug.synaxis.app.Main - Effective auth: mode=offline
+14:37:56.186 [main] INFO  i.github.bearisbug.synaxis.app.Main - Effective store: mode=memory, player data lives as long as the process
+14:37:56.192 [main] INFO  i.g.bearisbug.synaxis.app.PluginHost - Registered channel: plugin_id=synaxis channel=synaxis:handshake
+14:37:56.207 [main] INFO  i.github.bearisbug.synaxis.Watchdog - Tick watchdog on: stacks after 10000 ms and every 5000 ms after that, judged dead after 60000 ms, halted with exit code 70 15000 ms later
+14:37:56.248 [main] INFO  i.g.b.s.app.metrics.HostMetrics - Metrics endpoint listening on http://127.0.0.1:19614/metrics
+14:37:56.254 [main] INFO  i.g.b.s.a.m.ManagementServer - Effective management: enabled=true bind=127.0.0.1:19714 token=set
+14:37:56.254 [main] INFO  i.g.b.s.a.m.ManagementServer - Management interface listening on 127.0.0.1:19714
+14:37:56.257 [main] INFO  plugin.rts - Enabling: plugin_id=rts version=0.1.0 data_directory=plugins/rts
+14:37:56.585 [main] INFO  plugin.rts - Match running: match_id=cc9604c8-9b4f-4bd8-8ef8-3f2a3cd9b892 map_id=rts-512 dimension_name=synaxis:match_7e70acd4fd524593bc4275a9b73bb7f8 chunk_count=1024 load_ms=295
+14:37:56.603 [main] INFO  i.g.b.synaxis.app.PluginChannelsImpl - Registered channel: plugin_id=rts channel=rts:game
+14:37:56.604 [main] INFO  i.g.bearisbug.synaxis.app.PluginHost - Plugin enabled: plugin_id=rts version=0.1.0 enable_ms=347
+14:37:56.604 [main] INFO  i.github.bearisbug.synaxis.app.Main - Gameplay mode: the running match and the admission provider come from plugin_ids=[rts], and a client has 3 s to send C2S_HELLO on synaxis:handshake in the configuration phase (schema_version=1)
+14:37:56.604 [main] INFO  i.g.b.synaxis.ServerProcessImpl - Starting synaxis (dev) server.
+14:37:56.605 [main] INFO  i.g.b.synaxis.ServerProcessImpl - Running in offline mode. Beware that this is not secure and players can impersonate each other.
+14:37:56.605 [main] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server started successfully.
+14:37:56.605 [main] INFO  i.github.bearisbug.synaxis.app.Main - synaxis server-app listening on 0.0.0.0:25614
+14:37:57.617 [server-app-console] INFO  i.g.b.synaxis.command.ConsoleSender - This shard cannot send players to other shards: it is not in the directory mode
+14:38:01.635 [Thread-4] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+14:38:01.656 [Syn-TickScheduler] INFO  i.g.bearisbug.synaxis.app.PluginHost - Disabling plugin: plugin_id=rts
+14:38:01.670 [Syn-TickScheduler] INFO  i.g.bearisbug.synaxis.app.PluginHost - Took back the capabilities of plugin_id=rts: event node, tasks, channels, admission provider, commands, tab list visibility
+14:38:01.775 [Thread-4] INFO  i.g.b.synaxis.ServerProcessImpl - Shutting down all thread pools.
+14:38:01.776 [Thread-4] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+
+## the batch script
+    #!/bin/zsh
+    # TC-PROD-548 by the letter, one lock for the whole batch.
+    until mkdir /tmp/synaxis-heavy.lock 2>/dev/null; do sleep 60; done
+    W=/Users/bug/Documents/Projects/Minecraft/synaxis-wt/integrate-062
+    MAIN=server-app/src/main/java/io/github/bearisbug/synaxis/app/Main.java
+    L=<L>
+    DB=run062_p548
+    PIDS=<L>.pids
+    OUT=<L>.log
+    trap 'for p in $(cat $PIDS 2>/dev/null); do kill $p 2>/dev/null; done; sleep 3; for p in $(cat $PIDS 2>/dev/null); do kill -9 $p 2>/dev/null; done; git -C $W checkout -- $MAIN; rm -rf /tmp/synaxis-heavy.lock' EXIT
+    echo "owner=生产就绪会话/integrate-062 pid=39873 since=$(date '+%F %T') task=RUN-062 TC-PROD-548: one directory mode shard, one bot, management and console (real processes)" > /tmp/synaxis-heavy.lock/owner
+    
+    export JAVA_HOME=/opt/homebrew/opt/openjdk@25/libexec/openjdk.jdk/Contents/Home
+    PY=/tmp/secfix-int/.venv/bin/python
+    G=(--max-workers=4 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts)
+    log() { echo "[$(date '+%H:%M:%S')] $*" >> $OUT; }
+    : > $PIDS
+    mkdir -p $L/bot && chmod 700 $L
+    cd $W
+    log "lock taken; HEAD $(git rev-parse --short=10 HEAD); memory: $(memory_pressure | tail -1); $(sysctl -n vm.swapusage)"
+    log "ports in use before (25611 19611 19711 25614 19614 19714): $(lsof -nP -iTCP -sTCP:LISTEN 2>/dev/null | /usr/bin/grep -E ':(25611|19611|19711|25614|19614|19714) ' | wc -l | tr -d ' ')"
+    
+    # secrets: files only, never printed
+    PGPW="$(docker inspect synaxis-pg --format '{{range .Config.Env}}{{println .}}{{end}}' | sed -n 's/^POSTGRES_PASSWORD=//p')"
+    umask 077
+    openssl rand -hex 32 > $L/token
+    print -r -- "1:$(openssl rand -base64 32)" > $L/hmac
+    umask 022
+    export MGMT_TOKEN_FILE=$L/token
+    mgmt() { $PY /tmp/secfix-int/mgmt.py "$@" 2>&1; }
+    
+    log "## fixture: installDist server-app, loadtest, baker"
+    ./gradlew :server-app:installDist :loadtest:installDist :baker:installDist $G > $L/install.log 2>&1
+    log "installDist exit $? ($(tail -1 $L/install.log))"
+    BK=$W/baker/build/install/baker/bin/baker
+    LT=$W/loadtest/build/install/loadtest/bin/loadtest
+    /usr/bin/time -l $BK bake --map-id mini --source generator:synthetic:7 --out $L/maps --logs $L/bakelogs --bounds 0,0,31,15 --threads 2 > $L/bake.log 2>&1
+    log "bake exit $?: $(/usr/bin/grep -E 'published|real|maximum resident' $L/bake.log | tr -s ' ' | tr '\n' ';')"
+    BUILD=$(ls $L/maps/mini | /usr/bin/grep -- '-p776$' | head -1)
+    log "build: $BUILD; size $(stat -f %z $L/maps/mini/$BUILD 2>/dev/null)"
+    cat > $L/maps/mini/shards.json <<'EOF'
+    {
+      "format_version": 1,
+      "map_id": "mini",
+      "regions": [
+        {"region_id": "r0", "bounds": {"min_x": 0, "min_z": 0, "max_x": 15, "max_z": 15},
+         "gates": [{"gate_id": "r0-east", "min": [240, 0, 120], "max": [255, 255, 135],
+                    "target_region": "r1", "arrival": [232.5, 200.0, 128.5, 90.0]}]},
+        {"region_id": "r1", "bounds": {"min_x": 16, "min_z": 0, "max_x": 31, "max_z": 15},
+         "gates": [{"gate_id": "r1-west", "min": [256, 0, 120], "max": [271, 255, 135],
+                    "target_region": "r0", "arrival": [279.5, 200.0, 128.5, -90.0]}]}
+      ],
+      "channels": [
+        {"shard_id": "r0-c1", "region_id": "r0", "channel": 1, "host": "127.0.0.1", "port": 25611, "capacity": 2},
+        {"shard_id": "r0-c2", "region_id": "r0", "channel": 2, "host": "127.0.0.1", "port": 25613, "capacity": 200},
+        {"shard_id": "r1-c1", "region_id": "r1", "channel": 1, "host": "127.0.0.1", "port": 25612, "capacity": 200}
+      ]
+    }
+    EOF
+    docker exec synaxis-pg psql -U postgres -tAc "CREATE DATABASE $DB" >> $OUT 2>&1
+    dbenv=(SYNAXIS_STATE_DB_URL=jdbc:postgresql://127.0.0.1:5440/$DB SYNAXIS_STATE_DB_USER=postgres SYNAXIS_STATE_DB_PASSWORD=$PGPW SYNAXIS_REDIS_URL=redis://127.0.0.1:6440)
+    env $dbenv SERVER_APP_OPTS="-Dsynaxis.app.log=stdout" $W/server-app/build/install/server-app/bin/server-app --migrate-only --auth-mode=offline > $L/migrate.log 2>&1
+    log "migrate exit $?; flyway versions: $(docker exec synaxis-pg psql -U postgres -d $DB -tAc "SELECT string_agg(version || ':' || success, ' ' ORDER BY installed_rank) FROM flyway_schema_history")"
+    
+    # start-shard <workdir> -> starts r0-c1 (strict grid, management) reading the FIFO console
+    start_shard() {
+      local d=$1; mkdir -p $d; mkfifo $d/console
+      sleep 3600 > $d/console & echo $! >> $PIDS
+      ( cd $d && exec env $dbenv SYNAXIS_TRANSFER_HMAC_KEYS="$(cat $L/hmac)" SYNAXIS_MANAGEMENT_TOKEN="$(cat $L/token)" JAVA_OPTS="-Xms512m -Xmx512m" \
+        SERVER_APP_OPTS="-Dsynaxis.app.port=25611 -Dsynaxis.app.auth=offline -Dsynaxis.app.metrics.bind=127.0.0.1:19611 -Dsynaxis.connection-gate.trusted-networks=127.0.0.0/8 -Dsynaxis.app.log=stdout -Dsynaxis.dispatcher-threads=3 -Dsynaxis.map.root=$L/maps/mini -Dsynaxis.map.build=$BUILD -Dsynaxis.app.store=postgres -Dsynaxis.app.shard-id=r0-c1 -Dsynaxis.acquirable-strict=true -Dsynaxis.app.management.enabled=true -Dsynaxis.app.management.bind=127.0.0.1:19711" \
+        $W/server-app/build/install/server-app/bin/server-shard < console > shard.log 2>&1 ) &
+      SHARD=$!; echo $SHARD >> $PIDS
+    }
+    say() { # fifo pid text: writes only while the reader lives, so the open never blocks for good
+      if kill -0 $2 2>/dev/null; then print -r -- "$3" > $1; else log "  (process $2 gone, not written: $3)"; fi
+    }
+    wait_line() { # file pattern seconds
+      local i=0; while (( i < $3 )); do /usr/bin/grep -q -- "$2" $1 2>/dev/null && return 0; sleep 1; (( i++ )); done; return 1
+    }
+    start_bot() { # out
+      ( exec env JAVA_OPTS="-Xms256m -Xmx256m" $LT run --host 127.0.0.1 --port 25611 --bots 1 --profile walk --duration 180s --warmup 5s --out $1 > ${1:r}.log 2>&1 ) &
+      BOT=$!; echo $BOT >> $PIDS
+    }
+    wait_player() {
+      local i=0; while (( i < 60 )); do r=$(mgmt 19711 minecraft:players); [[ $r == *bot00000* ]] && { echo $r; return 0; }; sleep 1; (( i++ )); done; echo $r; return 1
+    }
+    
+    log "## step 1: start r0-c1 (25611, metrics 19611, management 19711), the bot, minecraft:players"
+    D=$L/work-r0-c1
+    start_shard $D
+    wait_line $D/shard.log 'listening on 0.0.0.0:25611' 120; log "listening: $?"
+    log "Effective ServerConfig: $(/usr/bin/grep -m1 'Effective ServerConfig' $D/shard.log | /usr/bin/grep -oE '(maxPlayers|acceptTransfers|threadProvider|dispatcherThreads)=[A-Za-z0-9]+' | tr '\n' ' ')"
+    log "$(/usr/bin/grep -m1 'Management interface listening' $D/shard.log)"
+    start_bot $L/bot/bots.json
+    log "minecraft:players: $(wait_player)"
+    
+    log "## step 2: synaxis:transfer six calls"
+    for p in '{"player":{"name":"bot00000"},"shard":"r0-c1"}' '{"player":{"name":"bot00000"},"region":"r1"}' '{"player":{"name":"bot00000"},"shard":"r1-c1"}' \
+             '{"player":{"name":"bot00000"},"region":"r9"}' '{"player":{"name":"bot00000"},"region":"r1","shard":"r1-c1"}' '{"player":{"name":"Nobody"},"region":"r1"}'; do
+      log "  $p -> $(mgmt 19711 synaxis:transfer $p)"
+    done
+    
+    log "## step 3: console"
+    say $D/console $SHARD 'transfer region bot00000 r1'
+    say $D/console $SHARD 'transfer shard Nobody r1-c1'
+    sleep 4
+    /usr/bin/grep -E 'ConsoleSender' $D/shard.log | sed 's/^/    /' >> $OUT
+    
+    log "## step 4: a live r1-c1 heartbeat row, then shard r1-c1"
+    docker exec synaxis-pg psql -U postgres -d $DB -tAc "INSERT INTO shard_heartbeat VALUES ('r1-c1','mini','r1',1,'127.0.0.1',25612,'$BUILD',0,200,true,now(),now() + interval '1 hour')" >> $OUT 2>&1
+    log "  {\"player\":{\"name\":\"bot00000\"},\"shard\":\"r1-c1\"} -> $(mgmt 19711 synaxis:transfer '{"player":{"name":"bot00000"},"shard":"r1-c1"}')"
+    sleep 8
+    log "  minecraft:players afterwards: $(mgmt 19711 minecraft:players)"
+    log "  transfer_issued in the ledger now (the ledger is buffered; read again after the stop): $(cat $D/logs/events-*.jsonl 2>/dev/null | /usr/bin/grep -c '"event":"transfer_issued"')"
+    
+    log "## step 6: stop the bot, SIGTERM the shard"
+    kill $BOT 2>/dev/null; wait $BOT 2>/dev/null
+    kill -TERM $SHARD; i=0; while kill -0 $SHARD 2>/dev/null && (( i < 60 )); do sleep 1; (( i++ )); done
+    log "  shard alive after SIGTERM: $(kill -0 $SHARD 2>/dev/null && echo yes || echo no), waited ${i}s; last line: $(tail -1 $D/shard.log)"
+    cp $D/shard.log $L/shard-step1-6.log
+    cp $D/logs/events-*.jsonl $L/ 2>/dev/null
+    
+    log "## steps 4 and 5 read after the stop: transfer_issued and gm_command rows of the shard ledger, WARN/ERROR lines of the shard log"
+    log "  transfer_issued rows: $(cat $D/logs/events-*.jsonl | /usr/bin/grep -c '"event":"transfer_issued"')"
+    cat $D/logs/events-*.jsonl | /usr/bin/grep '"event":"transfer_issued"' | sed 's/^/    /' >> $OUT
+    log "  gm_command rows: $(cat $D/logs/events-*.jsonl | /usr/bin/grep -c '"event":"gm_command"')"
+    cat $D/logs/events-*.jsonl | /usr/bin/grep '"event":"gm_command"' | sed 's/^/    /' >> $OUT
+    log "  WARN/ERROR lines: $(/usr/bin/grep -cE '\] (WARN|ERROR) ' $D/shard.log); AcquirableOwnershipException: $(/usr/bin/grep -c AcquirableOwnershipException $D/shard.log)"
+    /usr/bin/grep -E '\] (WARN|ERROR) ' $D/shard.log | sed 's/^/    /' >> $OUT
+    
+    log "## step 7: proof, Main does not hand ShardService out"
+    log "  anchor $MAIN:268: $(sed -n 268p $MAIN | tr -s ' ')"
+    sed -i '' '268s/directoryMode == null ? null : directoryMode.service()/directoryMode == null || !Boolean.getBoolean("proof.never") ? null : directoryMode.service()/' $MAIN
+    log "  changed to: $(sed -n 268p $MAIN | tr -s ' ')"
+    ./gradlew :server-app:installDist $G > $L/install-proof.log 2>&1
+    log "  installDist exit $? ($(tail -1 $L/install-proof.log))"
+    D=$L/work-r0-c1-proof
+    start_shard $D
+    wait_line $D/shard.log 'listening on 0.0.0.0:25611' 120; log "  listening: $?"
+    start_bot $L/bot/bots-proof.json
+    log "  minecraft:players: $(wait_player)"
+    log "  {\"player\":{\"name\":\"bot00000\"},\"region\":\"r1\"} -> $(mgmt 19711 synaxis:transfer '{"player":{"name":"bot00000"},"region":"r1"}')"
+    say $D/console $SHARD 'transfer region bot00000 r1'
+    sleep 4
+    /usr/bin/grep -E 'ConsoleSender' $D/shard.log | sed 's/^/    /' >> $OUT
+    kill $BOT 2>/dev/null; wait $BOT 2>/dev/null
+    kill -TERM $SHARD; i=0; while kill -0 $SHARD 2>/dev/null && (( i < 60 )); do sleep 1; (( i++ )); done
+    log "  shard stopped: $(kill -0 $SHARD 2>/dev/null && echo no || echo yes); last line: $(tail -1 $D/shard.log)"
+    cp $D/shard.log $L/shard-step7.log
+    git checkout -- $MAIN
+    log "  restored; git status --short: [$(git status --short | tr '\n' ' ')]"
+    ./gradlew :server-app:installDist $G > $L/install-restore.log 2>&1
+    log "  installDist after the restore exit $? ($(tail -1 $L/install-restore.log))"
+    
+    log "## step 8: a process not in the directory mode"
+    D=$L/work-plain; mkdir -p $D; mkfifo $D/console
+    sleep 3600 > $D/console & echo $! >> $PIDS
+    ( cd $D && exec env SYNAXIS_MANAGEMENT_TOKEN="$(cat $L/token)" JAVA_OPTS="-Xms512m -Xmx512m" \
+      SERVER_APP_OPTS="-Dsynaxis.app.port=25614 -Dsynaxis.app.auth=offline -Dsynaxis.app.metrics.bind=127.0.0.1:19614 -Dsynaxis.app.log=stdout -Dsynaxis.app.management.enabled=true -Dsynaxis.app.management.bind=127.0.0.1:19714" \
+      $W/server-app/build/install/server-app/bin/server-app < console > server.log 2>&1 ) &
+    PLAIN=$!; echo $PLAIN >> $PIDS
+    wait_line $D/server.log 'listening on 0.0.0.0:25614' 120; log "  listening: $?"
+    log "  $(/usr/bin/grep -m1 'Effective store' $D/server.log)"
+    log "  {\"player\":{\"name\":\"bot00000\"},\"shard\":\"r0-c2\"} -> $(mgmt 19714 synaxis:transfer '{"player":{"name":"bot00000"},"shard":"r0-c2"}')"
+    say $D/console $PLAIN 'transfer shard bot00000 r0-c2'
+    sleep 4
+    /usr/bin/grep -E 'ConsoleSender' $D/server.log | sed 's/^/    /' >> $OUT
+    kill -TERM $PLAIN; i=0; while kill -0 $PLAIN 2>/dev/null && (( i < 60 )); do sleep 1; (( i++ )); done
+    log "  stopped: $(kill -0 $PLAIN 2>/dev/null && echo no || echo yes); last line: $(tail -1 $D/server.log)"
+    cat $D/logs/events-*.jsonl | /usr/bin/grep '"event":"gm_command"' | sed 's/^/    /' >> $OUT
+    log "  WARN/ERROR lines: $(/usr/bin/grep -cE '\] (WARN|ERROR) ' $D/server.log)"
+    cp $D/server.log $L/server-step8.log
+    
+    log "## after: stop everything, drop the database"
+    for p in $(cat $PIDS); do kill $p 2>/dev/null; done; sleep 2
+    docker exec synaxis-pg psql -U postgres -tAc "DROP DATABASE $DB" >> $OUT 2>&1
+    log "  pgrep server-shard|server-app|loadtest: [$(pgrep -fl 'server-shard|server-app|loadtest' | cut -c1-120 | tr '\n' ';')]"
+    log "  git status --short: [$(git status --short | tr '\n' ' ')]"
+    log "done"
+
+## the management client (standard library only)
+    """Management interface client, standard library only: WebSocket upgrade with the bearer token,
+    one masked text frame, skips notifications without an id, prints the reply that has the id.
+    usage: mgmt.py <port> <method> [<params as JSON>]; the token is read from the file in MGMT_TOKEN_FILE."""
+    import base64
+    import json
+    import os
+    import socket
+    import struct
+    import sys
+    
+    port, method = int(sys.argv[1]), sys.argv[2]
+    params = sys.argv[3] if len(sys.argv) > 3 else None
+    with open(os.environ["MGMT_TOKEN_FILE"]) as f:
+        token = f.read().strip()
+    
+    s = socket.create_connection(("127.0.0.1", port), timeout=15)
+    key = base64.b64encode(os.urandom(16)).decode()
+    s.sendall((f"GET / HTTP/1.1\r\nHost: 127.0.0.1:{port}\r\nUpgrade: websocket\r\nConnection: Upgrade\r\n"
+               f"Sec-WebSocket-Key: {key}\r\nSec-WebSocket-Version: 13\r\nAuthorization: Bearer {token}\r\n\r\n").encode())
+    buf = b""
+    while b"\r\n\r\n" not in buf:
+        chunk = s.recv(4096)
+        if not chunk:
+            sys.exit(f"closed during the handshake: {buf[:200]!r}")
+        buf += chunk
+    head, buf = buf.split(b"\r\n\r\n", 1)
+    status = head.split(b"\r\n")[0].decode()
+    if " 101 " not in status:
+        sys.exit(f"handshake answered {status}")
+    
+    
+    def send(opcode, payload):
+        mask = os.urandom(4)
+        n = len(payload)
+        if n < 126:
+            header = bytes([0x80 | opcode, 0x80 | n])
+        elif n < 65536:
+            header = bytes([0x80 | opcode, 0x80 | 126]) + struct.pack(">H", n)
+        else:
+            header = bytes([0x80 | opcode, 0x80 | 127]) + struct.pack(">Q", n)
+        s.sendall(header + mask + bytes(b ^ mask[i % 4] for i, b in enumerate(payload)))
+    
+    
+    def take(n):
+        global buf
+        while len(buf) < n:
+            chunk = s.recv(65536)
+            if not chunk:
+                sys.exit("connection closed before the reply")
+            buf += chunk
+        out, buf = buf[:n], buf[n:]
+        return out
+    
+    
+    message = {"jsonrpc": "2.0", "id": 1, "method": method}
+    if params is not None:
+        message["params"] = json.loads(params)
+    send(0x1, json.dumps(message, separators=(",", ":")).encode())
+    
+    text = b""
+    while True:
+        b0, b1 = take(2)
+        opcode, fin, n = b0 & 0x0F, b0 & 0x80, b1 & 0x7F
+        if n == 126:
+            n = struct.unpack(">H", take(2))[0]
+        elif n == 127:
+            n = struct.unpack(">Q", take(8))[0]
+        payload = take(n)
+        if opcode == 0x8:
+            sys.exit(f"closed by the server: {payload!r}")
+        if opcode == 0x9:
+            send(0xA, payload)
+            continue
+        if opcode in (0x1, 0x0):
+            text += payload
+            if not fin:
+                continue
+            reply = json.loads(text)
+            text = b""
+            if "id" in reply:
+                print(json.dumps(reply, separators=(",", ":"), ensure_ascii=False))
+                break
+    send(0x8, struct.pack(">H", 1000))
+    s.close()

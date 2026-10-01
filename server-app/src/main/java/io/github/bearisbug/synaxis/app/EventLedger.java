@@ -15,6 +15,9 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.nio.file.StandardOpenOption;
+import java.nio.file.attribute.FileAttribute;
+import java.nio.file.attribute.PosixFilePermission;
+import java.nio.file.attribute.PosixFilePermissions;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
@@ -23,6 +26,7 @@ import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.TimeUnit;
@@ -65,6 +69,9 @@ import java.util.zip.GZIPOutputStream;
  * writer moves on to a new day, and once when it starts, every earlier file of this shard is
  * gzipped to {@code .jsonl.gz} and every file older than {@value #RETENTION_DAYS} days is deleted.
  * <p>
+ * The lines say who played when and from where, so whatever the umask the files are created 0600,
+ * compressed ones too, and the directory, when the ledger is the one creating it, 0700.
+ * <p>
  * The rate is not the host's to choose: {@code PluginAnalytics} hands {@link #record} to every
  * plugin and every plugin records from its own inbound path, so every failure reports through a
  * {@link LogBudget} rather than once per event ({@code docs/DESIGN.md} §15).
@@ -85,6 +92,11 @@ final class EventLedger {
     private static final long POLL_MS = 50;
 
     private static final DateTimeFormatter FILE_DATE = DateTimeFormatter.ofPattern("yyyyMMdd");
+
+    private static final FileAttribute<Set<PosixFilePermission>> OWNER_ONLY =
+            PosixFilePermissions.asFileAttribute(PosixFilePermissions.fromString("rw-------"));
+    private static final FileAttribute<Set<PosixFilePermission>> OWNER_ONLY_DIRECTORY =
+            PosixFilePermissions.asFileAttribute(PosixFilePermissions.fromString("rwx------"));
 
     private final Path directory;
     private final String shardId;
@@ -265,8 +277,9 @@ final class EventLedger {
         channelDay = day;
         final Path file = file(LocalDate.ofEpochDay(day));
         try {
-            Files.createDirectories(directory);
-            channel = FileChannel.open(file, StandardOpenOption.CREATE, StandardOpenOption.WRITE, StandardOpenOption.APPEND);
+            Files.createDirectories(directory, OWNER_ONLY_DIRECTORY);
+            channel = FileChannel.open(file, Set.of(StandardOpenOption.CREATE, StandardOpenOption.WRITE,
+                    StandardOpenOption.APPEND), OWNER_ONLY);
             bytesToday = channel.size();
         } catch (IOException e) {
             failures.warn(e, "Could not open the event ledger: file={}", file);
@@ -350,7 +363,9 @@ final class EventLedger {
     private static void compress(Path plain) throws IOException {
         final Path gzip = plain.resolveSibling(plain.getFileName() + ".gz");
         final Path partial = plain.resolveSibling(plain.getFileName() + ".gz.partial");
-        try (OutputStream out = new GZIPOutputStream(Files.newOutputStream(partial))) {
+        // One a killed process left behind would keep the mode it was created with
+        Files.deleteIfExists(partial);
+        try (OutputStream out = new GZIPOutputStream(Files.newOutputStream(Files.createFile(partial, OWNER_ONLY)))) {
             Files.copy(plain, out);
         }
         Files.move(partial, gzip, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);

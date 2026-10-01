@@ -85,8 +85,12 @@ final class EncryptedLoginClient implements AutoCloseable {
     }
 
     void handshake(int serverPort) throws IOException {
+        handshake(serverPort, ClientHandshakePacket.Intent.LOGIN);
+    }
+
+    void handshake(int serverPort, ClientHandshakePacket.Intent intent) throws IOException {
         send(ConnectionState.HANDSHAKE, new ClientHandshakePacket(MinecraftServer.PROTOCOL_VERSION, "localhost",
-                serverPort, ClientHandshakePacket.Intent.LOGIN));
+                serverPort, intent));
     }
 
     EncryptionRequestPacket readEncryptionRequest() throws IOException {

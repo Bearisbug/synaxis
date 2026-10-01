@@ -1,0 +1,96 @@
+# RUN-062 / integrate 07: follow-ups of the integrate review (2026-10-01, docs/DESIGN-PROD.md v0.9.43 same version).
+# Blocking (1): API-PROD-028, the issuance item, said Main.java `:504` for `new ShardGates(` (the number on sec/transfer-ghost,
+#   kept when de5aa08313 resolved the conflict); Main.java:504 is now a Javadoc line, :518 is `new ShardGates(`. Changed to :518.
+# Blocking (2): the §28.2 CVE-2026-90584 row and TC-PROD-617 step 2 cited ManagementServer.java as on sec/secrets-files, before
+#   sec/ops-ports added 10 lines above them: :191 -> :201 (settings.accepts(... "Authorization")), :307-319 -> :317-329
+#   (BoundedDraft#processFrame), :316 / :317 -> :326 / :327 (the byte and fragment limits), :298 -> :308
+#   (super(List.of(), MAX_MESSAGE_BYTES)). Sections A to C are the reruns on the rewritten numbers and two gaps the review listed.
+# Code under test is that of 45f4133080 (f6b03e686d changed docs only); the two docs were edited, uncommitted, during the runs and
+# no test reads docs. Commands: ./gradlew <tasks> --max-workers=4 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts;
+# strict adds -Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true -Dsynaxis.thread-provider=grid. No SYNAXIS_TEST_*
+# variable was set. One zsh script took /tmp/synaxis-heavy.lock and set its EXIT trap at the top level (the trap also restores the
+# code files the counter-proofs edit); it waited for the lighting session's lock from 15:25 to 15:31.
+
+lock taken: 2026-10-01 15:31:23; HEAD f6b03e686d; uncommitted:  M docs/DESIGN-PROD.md  M docs/TEST.md 
+
+## A. TC-PROD-617 (default mode)
+### A1-617-step1 15:31:23-15:31:30 rc=0
+  ./gradlew :server-app:test --rerun --tests io.github.bearisbug.synaxis.app.management.ManagementFragmentsIntegrationTest --tests io.github.bearisbug.synaxis.app.management.ManagementFragmentCountIntegrationTest (common args)
+  BUILD SUCCESSFUL in 7s
+  classes=2 tests=2 failures=0 errors=0 skipped=0
+
+edited server-app/src/main/java/io/github/bearisbug/synaxis/app/management/ManagementServer.java, lines carrying proof.never:
+  326:            if (Boolean.getBoolean("proof.never") && messageBytes > MAX_MESSAGE_BYTES) throw new LimitExceededException(MAX_MESSAGE_BYTES);
+  327:            if (Boolean.getBoolean("proof.never") && messageFragments > MAX_MESSAGE_FRAGMENTS) throw new LimitExceededException(MAX_MESSAGE_FRAGMENTS);
+### A2-617-step2 15:31:31-15:31:57 rc=1
+  ./gradlew :server-app:test --rerun --tests io.github.bearisbug.synaxis.app.management.ManagementFragmentsIntegrationTest --tests io.github.bearisbug.synaxis.app.management.ManagementFragmentCountIntegrationTest (common args)
+  2 tests completed, 2 failed
+  BUILD FAILED in 25s
+  classes=2 tests=2 failures=2 errors=0 skipped=0
+  RED ManagementFragmentCountIntegrationTest#emptyFragmentsPastTheCountCloseTheConnection(Env) [11.037s] java.lang.AssertionError: java.lang.AssertionError: the connection is still open after PT10S
+      at io.github.bearisbug.synaxis.app.management.ManagementFragmentCountIntegrationTest.emptyFragmentsPastTheCountCloseTheConnection(ManagementFragmentCountIntegrationTest.java:96)
+  RED ManagementFragmentsIntegrationTest#fragmentsPastTheLimitCloseTheConnectionWithoutWaitingForTheLastOne(Env) [10.052s] java.lang.AssertionError: java.lang.AssertionError: the connection is still open after PT10S
+      at io.github.bearisbug.synaxis.app.management.ManagementFragmentsIntegrationTest.fragmentsPastTheLimitCloseTheConnectionWithoutWaitingForTheLastOne(ManagementFragmentsIntegrationTest.java:96)
+restored server-app/src/main/java/io/github/bearisbug/synaxis/app/management/ManagementServer.java: 0 changed files
+### A3-617-step3 15:31:57-15:32:01 rc=0
+  ./gradlew :server-app:test --rerun --tests io.github.bearisbug.synaxis.app.management.ManagementFragmentsIntegrationTest --tests io.github.bearisbug.synaxis.app.management.ManagementFragmentCountIntegrationTest (common args)
+  BUILD SUCCESSFUL in 4s
+  classes=2 tests=2 failures=0 errors=0 skipped=0
+
+
+## B. TC-PROD-583 step 2 (default mode): the seven src/main files of sec/login-path at 23982267e9;
+## SessionClientTest#theRetryAfterOfATooManyRequestsAnswerIsSecondsUpToAMinute (lines 34-49) left out: it calls the new SessionClient#retryAfterSeconds
+   M docs/DESIGN-PROD.md
+   M docs/TEST.md
+  M  src/main/java/io/github/bearisbug/synaxis/listener/preplay/HandshakeListener.java
+  M  src/main/java/io/github/bearisbug/synaxis/listener/preplay/LoginListener.java
+  M  src/main/java/io/github/bearisbug/synaxis/network/ConnectionGate.java
+  M  src/main/java/io/github/bearisbug/synaxis/network/ConnectionManager.java
+  M  src/main/java/io/github/bearisbug/synaxis/network/player/InboundPacketLimits.java
+  M  src/main/java/io/github/bearisbug/synaxis/network/player/PlayerSocketConnection.java
+  M  src/main/java/io/github/bearisbug/synaxis/network/player/SessionClient.java
+   M src/test/java/io/github/bearisbug/synaxis/network/player/SessionClientTest.java
+### B1-583-step2 15:32:01-15:32:17 rc=1
+  ./gradlew :test --rerun --tests io.github.bearisbug.synaxis.network.OnlineLoginSocketTest.aTooManyRequestsAnswerIsNotRetried --tests io.github.bearisbug.synaxis.network.OnlineLoginSocketTest.noLoginAsksTheSessionServerBeforeTheRetryAfterIsOver (common args)
+  2 tests completed, 2 failed
+  BUILD FAILED in 16s
+  classes=1 tests=2 failures=2 errors=0 skipped=0
+  RED OnlineLoginSocketTest#noLoginAsksTheSessionServerBeforeTheRetryAfterIsOver() [1.546s] org.opentest4j.AssertionFailedError: org.opentest4j.AssertionFailedError: a login within the Retry-After asked the session server ==> expected: <[First]> but was: <[First, First, Second]>
+      at io.github.bearisbug.synaxis.network.OnlineLoginSocketTest.noLoginAsksTheSessionServerBeforeTheRetryAfterIsOver(OnlineLoginSocketTest.java:159)
+  RED OnlineLoginSocketTest#aTooManyRequestsAnswerIsNotRetried() [1.008s] org.opentest4j.AssertionFailedError: org.opentest4j.AssertionFailedError: a 429 was asked again ==> expected: <1> but was: <2>
+      at io.github.bearisbug.synaxis.network.OnlineLoginSocketTest.aTooManyRequestsAnswerIsNotRetried(OnlineLoginSocketTest.java:136)
+restored: git status --short -- src = []
+
+## C. TC-PROD-575 step 3, the second full run: strict grid, no SYNAXIS_TEST_* variable set
+### C1-575-step3-strict 15:32:18-15:35:29 rc=0
+  ./gradlew :server-app:test --rerun --continue -Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true -Dsynaxis.thread-provider=grid (common args)
+  BUILD SUCCESSFUL in 3m 11s
+  classes=109 tests=552 failures=0 errors=0 skipped=132
+  == ^io\.github\.bearisbug\.synaxis\.app\.management\.: 15 classes, 45 tests, 0 failed, 2 skipped
+
+  result files naming AcquirableOwnershipException: 0
+batch end: 2026-10-01 15:35:29; git status --short = [ M docs/DESIGN-PROD.md  M docs/TEST.md ]
+
+## D. Line references after the merges (no lock; read-only script in a uv venv outside the repo), on f6b03e686d before this round's edits
+# 1. Every `X.java:N` in docs/DESIGN-PROD.md, docs/TEST.md and docs/ENGINE.md, and every bare `:N` after it on the same line: git blame
+#    names the commit that wrote the line; a reference is flagged when line N of X.java at that commit differs from line N at HEAD
+#    (lines written after c820bc65f2), or when it matched at c820bc65f2 and differs at HEAD (older lines).
+#    Flagged doc lines (count of references): TEST.md:24(2) :25(2) :43(20) :6193(1) :8354(3) :8750(3); DESIGN-PROD.md:55(4) :62(1)
+#    :71(4) :82(4) :84(16) :87(2) :2959(8).
+#    - DESIGN-PROD.md:2959 (CVE row, 8) and TEST.md:8354 (TC-PROD-617 step 2: :316, :317): blocking (2), changed here.
+#    - TEST.md:8354 :96 and TEST.md:6193 :84: red lines of test classes that the script pinned on the last named source file; no change.
+#    - DESIGN-PROD.md:55-87 and TEST.md:24, 25, 43: change-log rows of earlier versions; TEST.md:8750: the RUN-049 note. Historical,
+#      kept as written.
+# 2. Lines written by the four merge commits: references whose code line differs between the merge's two parents. 5, all on
+#    DESIGN-PROD.md:908 (API-PROD-028 issuance): TicketIssuer.java:57-58, Main.java:747 and :493 match HEAD; `:504` does not:
+#    blocking (1), changed here.
+# 3. docs/DESIGN-M3.md (the lighting session's) by the same rule: :812 ConnectionGate.java:185 (already handed over) and :3347, the
+#    M3 v0.20 hand-over row, item 2: TicketIssuer.java:40-41 -> :47-48, the constructor is at :57-58 now. Handed over, not edited.
+
+## E. Lints after the edits
+bash ~/.claude/skills/design-doc/check.sh docs/DESIGN-PROD.md:
+  ✅ lint 无警告
+bash ~/.claude/skills/test-doc/check.sh docs/TEST.md: the two known warnings only (RUN-031 TC-PROD-271 and TC-PROD-360 lack an evidence reference)
+  ⚠️ 执行记录明细行不合格:
+    失败项缺证据引用:| RUN-031 | TC-PROD-271 | 失败 | 5A 200 人 walk 30 m
+    失败项缺证据引用:| RUN-031 | TC-PROD-360 | 失败 | 集成后 200 人 walk 30 

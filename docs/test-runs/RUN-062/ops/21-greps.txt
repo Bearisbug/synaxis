@@ -1,0 +1,17 @@
+# 2026-10-01 10:50:23 +0800 grep steps of the old cases whose line numbers this branch shifts (HEAD d32d1a8096)
+## TC-PROD-498 step 3: grep -n "buildShutdownTask" server-app/src/main/java/io/github/bearisbug/synaxis/app/Main.java
+322:        process.scheduler().buildShutdownTask(host::disableAll);
+324:        process.scheduler().buildShutdownTask(commands::awaitStopAnswers);
+326:        process.scheduler().buildShutdownTask(ledger::close);
+329:            process.scheduler().buildShutdownTask(directoryMode.flags()::close);
+330:            process.scheduler().buildShutdownTask(directoryMode.heartbeat()::close);
+333:        process.scheduler().buildShutdownTask(store::close);
+334:        process.scheduler().buildShutdownTask(metrics::close);
+335:        process.scheduler().buildShutdownTask(management::close);
+337:        process.scheduler().buildShutdownTask(watchdog::stop);
+## TC-PROD-573 step 3: grep -n 'new ShardGates(' server-app/src/main/java/io/github/bearisbug/synaxis/app/Main.java
+518:            new ShardGates(directoryMode.directory(), directoryMode.service(), ledger::record).attach(world.instance());
+## TC-PROD-521 step 3: grep -n 'store.cooldowns()' server-app/src/main/java/io/github/bearisbug/synaxis/app/Main.java
+264:                store.permissions(), store.moderation(), store.cooldowns());
+## TC-PROD-600 step 3: rg -n -i 'origin' <the six management clients>
+rg exit 1 (1 = no line)

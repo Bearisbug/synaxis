@@ -195,8 +195,9 @@ public class ArchitectureTest {
      * <li>{@link PacketReading}: at most one line per 10 seconds, carrying the count it swallowed.</li>
      * <li>{@link PlayerSocketConnection}: one line per connection for a protocol error, kicked on
      * the same branch ({@code rejectMalformedPacket}, on by default), and one report per packet a
-     * listener threw on, which only {@code rejectMisusedPacket} (off by default) bounds — a hole
-     * left open, tracked in {@code docs/DESIGN.md} §28. The same report per packet exists a second
+     * listener threw on. Before the configuration state that report drops the connection; from
+     * there on only {@code rejectMisusedPacket} (off by default) bounds it — a hole left open,
+     * tracked in {@code docs/DESIGN.md} §28. The same report per packet exists a second
      * time in {@code Player#interpretPacketQueue} for every PLAY packet, which this rule does not
      * even see because {@code entity..} is not one of the packages above.</li>
      * <li>{@link Server}: one report per connection, every read and write loop report is followed
@@ -210,9 +211,9 @@ public class ArchitectureTest {
      * the process, a client cannot add packet classes.</li>
      * <li>{@link SessionClient}: at most one line per 10 seconds, carrying the verification
      * outcomes it counted.</li>
-     * <li>{@link LoginListener}: one line per connection, it kicks on the same branch and
-     * {@code PlayerSocketConnection} stops the batch at a disconnect, so the frames queued behind
-     * the kick are never handled.</li>
+     * <li>{@link LoginListener}: one report per connection, to the exception handler; it kicks on
+     * the same branch and {@code PlayerSocketConnection} stops the batch at a disconnect, so the
+     * frames queued behind the kick are never handled.</li>
      * </ul>
      * The exemption is per class rather than per call site, which is the blind spot of this rule: a
      * second, unbounded line added inside one of these eight classes passes. The bound of each one

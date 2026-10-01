@@ -50,16 +50,19 @@ import java.util.concurrent.atomic.AtomicLong;
  * {@code API-PROD-022}): JSON-RPC 2.0 over WebSocket, on Java-WebSocket ({@code ADR-PROD-014}).
  * <p>
  * The token is checked while the upgrade request is read, so a peer without it never gets a
- * WebSocket and nothing it sends is ever parsed as JSON-RPC. A message longer than
+ * WebSocket and nothing it sends is ever parsed as JSON-RPC; nor does a request carrying
+ * {@code Origin}, which every browser sends. A message longer than
  * {@value #MAX_MESSAGE_BYTES} bytes closes the connection with 1009 before it runs, a fragmented one
  * at the fragment that takes it past the limit, and one in more than {@value #MAX_MESSAGE_FRAGMENTS}
  * fragments at the fragment past that count, however short; before the handshake, a request longer than
- * {@value #MAX_HANDSHAKE_BYTES} bytes or one not finished within 5 s closes the socket, two bounds
- * the library does not set on its own. Nor does it bound what it queues to send: a message that finds
- * {@value #MAX_QUEUED_FRAMES} frames or {@value #MAX_QUEUED_BYTES} bytes queued and not yet written
- * closes the connection with 1008 instead. Nor does its selector thread always write what is queued
- * while it finishes writing a connection's queue: every {@link #WRITE_RECHECK} a connection with frames
- * queued and no write pending is put back up for writing.
+ * {@value #MAX_HANDSHAKE_BYTES} bytes or one not finished within 5 s closes the socket, and a
+ * connection accepted while {@value #MAX_UNFINISHED_HANDSHAKES} others have not finished theirs is
+ * closed at once, bounds the library does not set on its own. Nor does it bound what it queues to
+ * send: a message that finds {@value #MAX_QUEUED_FRAMES} frames or {@value #MAX_QUEUED_BYTES} bytes
+ * queued and not yet written closes the connection with 1008 instead. Nor does its selector thread
+ * always write what is queued while it finishes writing a connection's queue: every
+ * {@link #WRITE_RECHECK} a connection with frames queued and no write pending is put back up for
+ * writing.
  */
 public final class ManagementServer implements AutoCloseable {
 
@@ -72,6 +75,8 @@ public final class ManagementServer implements AutoCloseable {
     /** The longest upgrade request: a handshake with its token is well under 1 KiB. */
     static final int MAX_HANDSHAKE_BYTES = 8_192;
     static final Duration HANDSHAKE_DEADLINE = Duration.ofSeconds(5);
+    /** The connections whose handshake is not over at which one more is closed as it is accepted. */
+    static final int MAX_UNFINISHED_HANDSHAKES = 64;
     /** The frames queued and not yet written at which a connection takes no more messages. */
     static final int MAX_QUEUED_FRAMES = 4_096;
     /** The bytes queued and not yet written at which a connection takes no more messages. */
@@ -171,6 +176,7 @@ public final class ManagementServer implements AutoCloseable {
         private final ManagementMethods methods;
         private final LogBudget failures = new LogBudget(LOGGER, "management connection errors");
         private final LogBudget backlogs = new LogBudget(LOGGER, "management connections closed for their backlog");
+        private final LogBudget crowded = new LogBudget(LOGGER, "management connections closed at once");
         final CompletableFuture<Void> bound = new CompletableFuture<>();
         private final Thread writeRecheck = Thread.ofVirtual().name("Syn-Management-Writes").unstarted(this::recheckWrites);
 
@@ -180,14 +186,18 @@ public final class ManagementServer implements AutoCloseable {
             this.methods = methods;
             setDaemon(true);
             setReuseAddr(true);
-            setWebSocketFactory(new GuardedFactory(handshakeDeadline, backlogs));
+            setWebSocketFactory(new GuardedFactory(handshakeDeadline, backlogs, crowded));
         }
 
         @Override
         public ServerHandshakeBuilder onWebsocketHandshakeReceivedAsServer(WebSocket conn, Draft draft,
                                                                            ClientHandshake request)
                 throws InvalidDataException {
-            // Refused here, the library answers 404 and closes: no WebSocket, no frame is read
+            // Refused here, the library answers 404 and closes: no WebSocket, no frame is read.
+            // A browser sends Origin on every WebSocket, an operator's tool does not; with the token
+            // added by a reverse proxy, any page the operator opens could otherwise connect.
+            if (request.hasFieldValue("Origin"))
+                throw new InvalidDataException(CloseFrame.POLICY_VALIDATION, "origin");
             if (!settings.accepts(request.getFieldValue("Authorization")))
                 throw new InvalidDataException(CloseFrame.POLICY_VALIDATION, "unauthorized");
             return super.onWebsocketHandshakeReceivedAsServer(conn, draft, request);
@@ -339,23 +349,38 @@ public final class ManagementServer implements AutoCloseable {
     private static final class GuardedFactory extends DefaultWebSocketServerFactory {
         private final Duration deadline;
         private final LogBudget backlogs;
+        private final LogBudget crowded;
+        /** The connections counted against {@link #MAX_UNFINISHED_HANDSHAKES}, some maybe finished since. */
+        private final Set<GuardedSocket> unfinished = ConcurrentHashMap.newKeySet();
 
-        GuardedFactory(Duration deadline, LogBudget backlogs) {
+        GuardedFactory(Duration deadline, LogBudget backlogs, LogBudget crowded) {
             this.deadline = deadline;
             this.backlogs = backlogs;
+            this.crowded = crowded;
         }
 
         @Override
         public WebSocketImpl createWebSocket(WebSocketAdapter adapter, Draft draft) {
-            return guarded(new GuardedSocket(adapter, List.of(draft), backlogs));
+            return guarded(new GuardedSocket(adapter, List.of(draft), backlogs, crowded));
         }
 
         @Override
         public WebSocketImpl createWebSocket(WebSocketAdapter adapter, List<Draft> drafts) {
-            return guarded(new GuardedSocket(adapter, drafts, backlogs));
+            return guarded(new GuardedSocket(adapter, drafts, backlogs, crowded));
         }
 
+        /**
+         * Called by the selector thread as it accepts a connection, the only thread that adds to
+         * {@link #unfinished}: a connection opened, refused or closed since it was counted is no
+         * longer {@code NOT_YET_CONNECTED} and stops counting here.
+         */
         private WebSocketImpl guarded(GuardedSocket socket) {
+            unfinished.removeIf(counted -> counted.getReadyState() != ReadyState.NOT_YET_CONNECTED);
+            if (unfinished.size() >= MAX_UNFINISHED_HANDSHAKES) {
+                socket.closeOnceAccepted = true;
+                return socket;
+            }
+            unfinished.add(socket);
             Thread.ofVirtual().name("Syn-Management-Handshake").start(() -> {
                 try {
                     Thread.sleep(deadline);
@@ -378,18 +403,25 @@ public final class ManagementServer implements AutoCloseable {
      */
     private static final class GuardedSocket extends WebSocketImpl {
         private final LogBudget backlogs;
+        private final LogBudget crowded;
         private final AtomicBoolean closedForBacklog = new AtomicBoolean();
         /** What the selector thread has written to the socket, the handshake answer included. */
         private final AtomicLong writtenBytes = new AtomicLong();
         // Only the one decoder thread of this connection touches it
         private int handshakeBytes;
+        /** Accepted past {@link #MAX_UNFINISHED_HANDSHAKES}; set and read by the selector thread. */
+        boolean closeOnceAccepted;
 
-        GuardedSocket(WebSocketAdapter adapter, List<Draft> drafts, LogBudget backlogs) {
+        GuardedSocket(WebSocketAdapter adapter, List<Draft> drafts, LogBudget backlogs, LogBudget crowded) {
             super(adapter, drafts);
             this.backlogs = backlogs;
+            this.crowded = crowded;
         }
 
-        /** Set once, when the connection is accepted; every write to the socket goes through it. */
+        /**
+         * Set once, when the connection is accepted; every write to the socket goes through it. A
+         * connection accepted past {@link #MAX_UNFINISHED_HANDSHAKES} is closed here, before it reads.
+         */
         @Override
         public void setChannel(ByteChannel channel) {
             super.setChannel(new ByteChannel() {
@@ -415,6 +447,11 @@ public final class ManagementServer implements AutoCloseable {
                     channel.close();
                 }
             });
+            if (closeOnceAccepted) {
+                crowded.warn("Management connection closed at once: remote={} arrived with {} handshakes unfinished",
+                        getRemoteSocketAddress(), MAX_UNFINISHED_HANDSHAKES);
+                closeConnection(CloseFrame.NEVER_CONNECTED, MAX_UNFINISHED_HANDSHAKES + " handshakes unfinished");
+            }
         }
 
         // Every message sent after the handshake goes through one of these four methods: the replies,

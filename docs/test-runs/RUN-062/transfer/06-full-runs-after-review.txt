@@ -1,0 +1,50 @@
+# Review round: :server-app:test full again on 703528c9e9 (the grant class has its third test), both with the database variables
+# (SYNAXIS_TEST_PG_URL, SYNAXIS_TEST_PG_PASSWORD, SYNAXIS_TEST_REDIS_URL), each under the heavy lock on its own, server-app identical to
+# HEAD (0 changed files at start). Command as in 03-full-runs.txt; STRICT adds -Dsynaxis.dispatcher-threads=4
+# -Dsynaxis.acquirable-strict=true -Dsynaxis.thread-provider=grid. The default run also logs "system property
+# 'synaxis.dispatcher-threads' has changed": the build before it was the strict probe of 05-gap-grid-probe.txt, so the property went
+# from set to unset. These two runs supersede 03-full-runs.txt for TC-PROD-596 step 2.
+
+## default on 703528c9e9, server-app changes vs HEAD: 0
+  start 2026-10-01 12:42:44
+  Calculating task graph as configuration cache cannot be reused because system property 'synaxis.dispatcher-threads' has changed.
+  BUILD SUCCESSFUL in 4m 50s
+  end 2026-10-01 12:47:35 rc=0
+  JUnit XML: 101 classes, tests=529 failures=0 errors=0 skipped=0
+  classes this group touched or that drive the issuer, the store or the role command:
+    CommandRolesIntegrationTest: tests=1 failures=0 errors=0 skipped=0 time=6.806s
+    FullChannelTransferSocketTest: tests=2 failures=0 errors=0 skipped=0 time=0.862s
+    PermissionsIntegrationTest: tests=8 failures=0 errors=0 skipped=0 time=5.232s
+    RoleEscalationIntegrationTest: tests=1 failures=0 errors=0 skipped=0 time=0.372s
+    RoleHandOutIntegrationTest: tests=3 failures=0 errors=0 skipped=0 time=0.866s
+    TransferAdmissionIntegrationTest: tests=1 failures=0 errors=0 skipped=0 time=0.073s
+    ShardGatesTest: tests=7 failures=0 errors=0 skipped=0 time=0.48s
+    ShardServiceImplTest: tests=6 failures=0 errors=0 skipped=0 time=2.259s
+    CrossShardHandoverIntegrationTest: tests=6 failures=0 errors=0 skipped=0 time=2.352s
+    PlayerStoreIntegrationTest: tests=23 failures=0 errors=0 skipped=0 time=9.046s
+    TicketIssuerTickThreadIntegrationTest: tests=3 failures=0 errors=0 skipped=0 time=11.244s
+    TransferNotFollowedIntegrationTest: tests=4 failures=0 errors=0 skipped=0 time=21.15s
+    TransferTicketsIntegrationTest: tests=7 failures=0 errors=0 skipped=0 time=6.882s
+
+## strict on 703528c9e9, server-app changes vs HEAD: 0
+  start 2026-10-01 12:47:35
+  Calculating task graph as configuration cache cannot be reused because system property 'synaxis.dispatcher-threads' has changed.
+  BUILD SUCCESSFUL in 4m 49s
+  end 2026-10-01 12:52:24 rc=0
+  JUnit XML: 101 classes, tests=529 failures=0 errors=0 skipped=0
+  classes this group touched or that drive the issuer, the store or the role command:
+    CommandRolesIntegrationTest: tests=1 failures=0 errors=0 skipped=0 time=6.76s
+    FullChannelTransferSocketTest: tests=2 failures=0 errors=0 skipped=0 time=0.98s
+    PermissionsIntegrationTest: tests=8 failures=0 errors=0 skipped=0 time=5.382s
+    RoleEscalationIntegrationTest: tests=1 failures=0 errors=0 skipped=0 time=0.382s
+    RoleHandOutIntegrationTest: tests=3 failures=0 errors=0 skipped=0 time=0.823s
+    TransferAdmissionIntegrationTest: tests=1 failures=0 errors=0 skipped=0 time=0.072s
+    ShardGatesTest: tests=7 failures=0 errors=0 skipped=0 time=0.498s
+    ShardServiceImplTest: tests=6 failures=0 errors=0 skipped=0 time=2.248s
+    CrossShardHandoverIntegrationTest: tests=6 failures=0 errors=0 skipped=0 time=2.304s
+    PlayerStoreIntegrationTest: tests=23 failures=0 errors=0 skipped=0 time=9.177s
+    TicketIssuerTickThreadIntegrationTest: tests=3 failures=0 errors=0 skipped=0 time=11.223s
+    TransferNotFollowedIntegrationTest: tests=4 failures=0 errors=0 skipped=0 time=21.054s
+    TransferTicketsIntegrationTest: tests=7 failures=0 errors=0 skipped=0 time=6.676s
+
+# 529 = 522 on the base + 4 in TransferNotFollowedIntegrationTest + 3 in RoleHandOutIntegrationTest. skipped=0: every database class ran.

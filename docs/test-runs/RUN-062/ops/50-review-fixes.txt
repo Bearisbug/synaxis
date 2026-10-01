@@ -1,0 +1,73 @@
+RUN-062 / ops  评审意见的处理（2026-10-01，HEAD 7fc2b59952 的代码，改动只在文档）
+================================================================================
+
+一、TC-PROD-533 第 2 步与 TC-PROD-383 第 2 步按现在的代码核对（不用锁，只读文件）
+== 2026-10-01 11:41:15 HEAD 7fc2b59952：TC-PROD-533 第 2 步 sed -n 748,750p
+                    new TicketVerifier(database.pool(), session::sessionId, shardId, keys, cooldowns, ledger::record,
+                            onClaimed),
+                    permissions, moderation, session, redis, cooldowns);
+== 基线 23982267e9 上的 sed -n 718,720p（同三行）
+                    new TicketVerifier(database.pool(), session::sessionId, shardId, keys, cooldowns, ledger::record,
+                            onClaimed),
+                    permissions, moderation, session, redis, cooldowns);
+== HEAD 上原写的 718,720p 已对不上：
+        }
+        try {
+            Migrations.validate(database.pool());
+== TC-PROD-383 第 2 步要改的那一行（ManagementServer.java:189）
+            setWebSocketFactory(new GuardedFactory(handshakeDeadline, backlogs, crowded));
+== 基线上的同一行
+            setWebSocketFactory(new GuardedFactory(handshakeDeadline, backlogs));
+
+二、TC-PROD-383 第 2 步按新写法重跑（重活锁下，脚本输出原样）
+  命令：./gradlew :server-app:test --rerun --tests 'io.github.bearisbug.synaxis.app.management.ManagementIntegrationTest'
+        --max-workers=4 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts（带数据库变量）
+  脚本用 /usr/bin/grep 从 XML 抽栈帧，system-out 里另一条测试有意打出的栈也被抽到
+  （anUnforeseenFailureIsAnsweredWithoutItsStackAndLoggedOnceWithTheRequestId 的 :432/:191/:431），那条是绿的。
+  Gradle 日志：AssertionError at ManagementIntegrationTest.java:546（这一行抛的是 "still open after 5 s"），
+  Caused by SocketTimeoutException at :544；红的测试是 beforeTheHandshakeTheRequestIsBoundedInSizeAndTime（经 :525）。
+
+== lock taken 2026-10-01 11:38:38, HEAD 7fc2b59952, openjdk version "25.0.4.1" 2026-08-18
+== P12 TC-PROD-383 step 2: proof edit
+-- server-app/src/main/java/io/github/bearisbug/synaxis/app/management/ManagementServer.java:189 now:
+            if (Boolean.getBoolean("proof.never")) setWebSocketFactory(new GuardedFactory(handshakeDeadline, backlogs, crowded));
+ docs/TEST.md                                                      | 8 ++++----
+ .../github/bearisbug/synaxis/app/management/ManagementServer.java | 2 +-
+ 2 files changed, 5 insertions(+), 5 deletions(-)
+gradle exit 1
+ManagementIntegrationTest > beforeTheHandshakeTheRequestIsBoundedInSizeAndTime(Env) FAILED
+13 tests completed, 1 failed
+> Task :server-app:test FAILED
+BUILD FAILED in 28s
+-- testsuite:
+tests="13" skipped="0" failures="1" errors="0" time="19.092" 
+-- failures:
+at io.github.bearisbug.synaxis.app.management.ManagementIntegrationTest.assertClosedWithoutAnswer(ManagementIntegrationTest.java:546)
+at io.github.bearisbug.synaxis.app.management.ManagementIntegrationTest.beforeTheHandshakeTheRequestIsBoundedInSizeAndTime(ManagementIntegrationTest.java:525)
+at io.github.bearisbug.synaxis.app.management.ManagementIntegrationTest.assertClosedWithoutAnswer(ManagementIntegrationTest.java:544)
+at io.github.bearisbug.synaxis.app.management.ManagementIntegrationTest.lambda$anUnforeseenFailureIsAnsweredWithoutItsStackAndLoggedOnceWithTheRequestId$3(ManagementIntegrationTest.java:432)
+at io.github.bearisbug.synaxis.app.management.ManagementIntegrationTest.capture(ManagementIntegrationTest.java:191)
+at io.github.bearisbug.synaxis.app.management.ManagementIntegrationTest.anUnforeseenFailureIsAnsweredWithoutItsStackAndLoggedOnceWithTheRequestId(ManagementIntegrationTest.java:431)
+Caused by: java.net.SocketTimeoutException: Read timed out
+-- restored, git status:
+ M docs/DESIGN-PROD.md
+ M docs/TEST.md
+== green after restore 2026-10-01 11:39:07
+gradle exit 0
+BUILD SUCCESSFUL in 10s
+-- testsuite:
+tests="13" skipped="0" failures="0" errors="0" time="6.418" 
+== done 2026-10-01 11:39:18, git status:
+ M docs/DESIGN-PROD.md
+ M docs/TEST.md
+
+  Gradle 日志里红的那一段：
+    ManagementIntegrationTest > beforeTheHandshakeTheRequestIsBoundedInSizeAndTime(Env) FAILED
+        java.lang.AssertionError at ManagementIntegrationTest.java:546
+            Caused by: java.net.SocketTimeoutException at ManagementIntegrationTest.java:544
+    
+    13 tests completed, 1 failed
+
+三、TC-PROD-606 第 1 步的循环在本机假目录上试过（bash 与 zsh 各一次；macOS 用 shasum -a 256 代 sha256sum）
+  目录里放 .env（没有管理令牌）、.env.r0-c1、.env.r0-c2（令牌各一个假值）与仓库的 .env.example：
+  输出两行（.env.r0-c1、.env.r0-c2，摘要不同），.env.example 被跳过；grep -c 输出 0。

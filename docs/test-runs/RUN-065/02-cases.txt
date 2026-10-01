@@ -1,0 +1,395 @@
+# RUN-065 / 02: the cases of the gates, step by step, on HEAD 072d45b790 (code commit 072d45b790).
+# Every counterproof edits one file, runs, reads the JUnit XML, then git checkout HEAD -- <file> and checks git status of server-app.
+# Database variables only where the case needs them (TC-PROD-593, TC-WORLD-075). Gradle: --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts --max-workers=4
+[16:54:50] ## TC-WORLD-101 step 1 / TC-WORLD-064, 100, TC-PROD-570, 571, 572 step 1: ShardGatesOnlineTest and ShardGatesTest
+  gradle [s1] rc=0
+    BUILD SUCCESSFUL in 7s
+  TEST-io.github.bearisbug.synaxis.app.shard.ShardGatesOnlineTest.xml: tests="1" skipped="0" failures="0" errors="0" timestamp="2026-10-01T08:54:56.269Z"
+    AcquirableOwnershipException mentions: 0
+  TEST-io.github.bearisbug.synaxis.app.shard.ShardGatesTest.xml: tests="7" skipped="0" failures="0" errors="0" timestamp="2026-10-01T08:54:57.390Z"
+    trace    1 (ShardGatesTest.java:189)
+    trace    1 (ShardGatesTest.java:208)
+    trace    2 (ShardGatesTest.java:244)
+    trace    1 (ShardGatesTest.java:251)
+    AcquirableOwnershipException mentions: 0
+[16:54:58] ## TC-WORLD-101 step 2 / TC-WORLD-100 step 2 / TC-PROD-573 step 3: the wiring in Main
+    518:            new ShardGates(directoryMode.directory(), directoryMode.service(), ledger::record, store::isOnline).attach(world.instance());
+    304:                        directoryMode == null ? null : directoryMode.flags()), directoryMode, store.store(), ledger);
+[16:54:58] ## TC-WORLD-101 step 3: counterproof, the online check never stops a walk in
+    diff -        if (gate == null || gate.equals(before) || !online.test(player) || !underWay.add(player)) return;
+    diff +        if (gate == null || gate.equals(before) || (!online.test(player) && Boolean.getBoolean("proof.never")) || !underWay.add(player)) return;
+  gradle [w101-3] rc=1
+    ShardGatesOnlineTest > aPlayerNotOnlineHereWalksThroughAGateWithoutATrace() FAILED
+        org.opentest4j.AssertionFailedError at ShardGatesOnlineTest.java:93
+    > Task :server-app:test FAILED
+    BUILD FAILED in 6s
+  TEST-io.github.bearisbug.synaxis.app.shard.ShardGatesOnlineTest.xml: tests="1" skipped="0" failures="1" errors="0" timestamp="2026-10-01T08:55:03.438Z"
+    FAIL "org.opentest4j.AssertionFailedError: 100 walks into r0-east by a player not online here ==> expected: <0 transfers, 0 refusals> but was: <100 transfers, 100 refusals>"
+    trace    1 (ShardGatesOnlineTest.java:93)
+    AcquirableOwnershipException mentions: 0
+  restored server-app/src/main/java/io/github/bearisbug/synaxis/app/shard/ShardGates.java; git status --short -- server-app: []
+[16:55:04] ## TC-WORLD-101 step 4: counterproof, the online check before the frame bookkeeping
+    diff +        if (!online.test(player)) return;
+  gradle [w101-4] rc=1
+    > Task :server-app:test FAILED
+    ShardGatesOnlineTest > aPlayerNotOnlineHereWalksThroughAGateWithoutATrace() FAILED
+        org.opentest4j.AssertionFailedError at ShardGatesOnlineTest.java:99
+    BUILD FAILED in 5s
+  TEST-io.github.bearisbug.synaxis.app.shard.ShardGatesOnlineTest.xml: tests="1" skipped="0" failures="1" errors="0" timestamp="2026-10-01T08:55:09.676Z"
+    FAIL "org.opentest4j.AssertionFailedError: still inside the frame it walked into ==> expected: <[]> but was: <[Ghost r1]>"
+    trace    1 (ShardGatesOnlineTest.java:99)
+    AcquirableOwnershipException mentions: 0
+  restored server-app/src/main/java/io/github/bearisbug/synaxis/app/shard/ShardGates.java; git status --short -- server-app: []
+[16:55:10] ## TC-WORLD-064 step 2: counterproof, a walk in while under way triggers
+    diff -        if (gate == null || gate.equals(before) || !online.test(player) || !underWay.add(player)) return;
+    diff +        if (gate == null || gate.equals(before) || !online.test(player)) return;
+    diff +        underWay.add(player);
+  gradle [w064-2] rc=1
+    ShardGatesTest > aWalkInWhileATransferIsUnderWayDoesNotTrigger() FAILED
+        org.opentest4j.AssertionFailedError at ShardGatesTest.java:148
+    7 tests completed, 1 failed
+    > Task :server-app:test FAILED
+    BUILD FAILED in 8s
+  TEST-io.github.bearisbug.synaxis.app.shard.ShardGatesTest.xml: tests="7" skipped="0" failures="1" errors="0" timestamp="2026-10-01T08:55:17.864Z"
+    FAIL "org.opentest4j.AssertionFailedError: the first transfer is still under way ==> expected: <[Walker r1]> but was: <[Walker r1, Walker r1]>"
+    trace    1 (ShardGatesTest.java:148)
+    trace    1 (ShardGatesTest.java:189)
+    trace    1 (ShardGatesTest.java:208)
+    trace    2 (ShardGatesTest.java:244)
+    trace    1 (ShardGatesTest.java:251)
+    AcquirableOwnershipException mentions: 0
+  restored server-app/src/main/java/io/github/bearisbug/synaxis/app/shard/ShardGates.java; git status --short -- server-app: []
+[16:55:19] ## TC-WORLD-064 step 3: counterproof, CompletionException not unwrapped
+    diff -import java.util.concurrent.CompletionException;
+    diff -            final Throwable cause = error instanceof CompletionException && error.getCause() != null ? error.getCause() : error;
+    diff +            final Throwable cause = error;
+  gradle [w064-3] rc=1
+    ShardGatesTest > aResultTheDirectoryRulesOutAndATransferThatThrewAreErrors() FAILED
+        org.opentest4j.AssertionFailedError at ShardGatesTest.java:256
+    7 tests completed, 1 failed
+    > Task :server-app:test FAILED
+    BUILD FAILED in 6s
+  TEST-io.github.bearisbug.synaxis.app.shard.ShardGatesTest.xml: tests="7" skipped="0" failures="1" errors="0" timestamp="2026-10-01T08:55:24.474Z"
+    FAIL "org.opentest4j.AssertionFailedError: expected: <[java.lang.IllegalStateException: the shard service answers UNKNOWN_TARGET, java.lang.IllegalStateException: the shard service answers SAME_TARGET, java.lang.IllegalStateException: the ticket does not encode]> but was: <[java.lang.IllegalStateException: the shard service answers UNKNOWN_TARGET, java.lang.IllegalStateException: the shard service answers SAME_TARGET, java.util.concurrent.CompletionException: java.lang.IllegalStateException: the ticket does not encode]>"
+    trace    1 (ShardGatesTest.java:189)
+    trace    1 (ShardGatesTest.java:208)
+    trace    2 (ShardGatesTest.java:244)
+    trace    1 (ShardGatesTest.java:251)
+    trace    1 (ShardGatesTest.java:256)
+    AcquirableOwnershipException mentions: 0
+  restored server-app/src/main/java/io/github/bearisbug/synaxis/app/shard/ShardGates.java; git status --short -- server-app: []
+[16:55:26] ## TC-WORLD-064 step 4: counterproof, the gates send a key of their own
+    diff -import io.github.bearisbug.synaxis.app.transfer.TicketIssuer;
+    diff -                player.sendMessage(Component.translatable(TicketIssuer.TRANSFER_FAILED));
+    diff +                player.sendMessage(Component.translatable("synaxis:transfer-failed-probe"));
+  gradle [w064-4] rc=1
+    ShardGatesTest > onlyAChoiceThatFailedIsToldToThePlayer() FAILED
+        org.opentest4j.AssertionFailedError at ShardGatesTest.java:195
+    7 tests completed, 1 failed
+    > Task :server-app:test FAILED
+    BUILD FAILED in 6s
+  TEST-io.github.bearisbug.synaxis.app.shard.ShardGatesTest.xml: tests="7" skipped="0" failures="1" errors="0" timestamp="2026-10-01T08:55:31.246Z"
+    FAIL "org.opentest4j.AssertionFailedError: FULL ==> expected: <[synaxis:transfer-failed]> but was: <[synaxis:transfer-failed-probe]>"
+    trace    1 (ShardGatesTest.java:189)
+    trace    1 (ShardGatesTest.java:195)
+    trace    1 (ShardGatesTest.java:208)
+    trace    2 (ShardGatesTest.java:244)
+    trace    1 (ShardGatesTest.java:251)
+    AcquirableOwnershipException mentions: 0
+  restored server-app/src/main/java/io/github/bearisbug/synaxis/app/shard/ShardGates.java; git status --short -- server-app: []
+[16:55:33] ## TC-WORLD-100 step 3: counterproof, nothing written
+    diff -        events.accept("transfer_refused", attributes);
+    diff +        if (Boolean.getBoolean("proof.never")) events.accept("transfer_refused", attributes);
+  gradle [w100-3] rc=1
+    ShardGatesTest > everyRefusalIsWrittenToTheLedger() FAILED
+        org.opentest4j.AssertionFailedError at ShardGatesTest.java:218
+    7 tests completed, 1 failed
+    > Task :server-app:test FAILED
+    BUILD FAILED in 7s
+  TEST-io.github.bearisbug.synaxis.app.shard.ShardGatesTest.xml: tests="7" skipped="0" failures="1" errors="0" timestamp="2026-10-01T08:55:38.990Z"
+    FAIL "org.opentest4j.AssertionFailedError: COOLDOWN ==> expected: <[transfer_refused {player_uuid=e2c891ec-85e8-43f6-adca-e423a58620a4, source_shard=r0-c1, target_region=r1, result=cooldown}]> but was: <[]>"
+    trace    1 (ShardGatesTest.java:189)
+    trace    1 (ShardGatesTest.java:218)
+    trace    2 (ShardGatesTest.java:244)
+    trace    1 (ShardGatesTest.java:251)
+    AcquirableOwnershipException mentions: 0
+  restored server-app/src/main/java/io/github/bearisbug/synaxis/app/shard/ShardGates.java; git status --short -- server-app: []
+[16:55:40] ## TC-WORLD-100 step 4: counterproof, result not lower case
+    diff -import java.util.Locale;
+    diff -        attributes.put("result", result.name().toLowerCase(Locale.ROOT));
+    diff +        attributes.put("result", result.name());
+  gradle [w100-4] rc=1
+    ShardGatesTest > everyRefusalIsWrittenToTheLedger() FAILED
+        org.opentest4j.AssertionFailedError at ShardGatesTest.java:218
+    7 tests completed, 1 failed
+    > Task :server-app:test FAILED
+    BUILD FAILED in 6s
+  TEST-io.github.bearisbug.synaxis.app.shard.ShardGatesTest.xml: tests="7" skipped="0" failures="1" errors="0" timestamp="2026-10-01T08:55:45.824Z"
+    FAIL "org.opentest4j.AssertionFailedError: COOLDOWN ==> expected: <[transfer_refused {player_uuid=628b97c9-c609-4c82-80e7-2351bfc8ed5d, source_shard=r0-c1, target_region=r1, result=cooldown}]> but was: <[transfer_refused {player_uuid=628b97c9-c609-4c82-80e7-2351bfc8ed5d, source_shard=r0-c1, target_region=r1, result=COOLDOWN}]>"
+    trace    1 (ShardGatesTest.java:189)
+    trace    1 (ShardGatesTest.java:218)
+    trace    2 (ShardGatesTest.java:244)
+    trace    1 (ShardGatesTest.java:251)
+    AcquirableOwnershipException mentions: 0
+  restored server-app/src/main/java/io/github/bearisbug/synaxis/app/shard/ShardGates.java; git status --short -- server-app: []
+[16:55:47] ## TC-WORLD-100 step 5: counterproof, COOLDOWN also told to the player
+    diff -            case COOLDOWN, NOT_ONLINE, SAVE_FAILED -> refused(player, gate, result);
+    diff -            case FULL, OFFLINE, DIRECTORY_UNAVAILABLE -> {
+    diff +            case NOT_ONLINE, SAVE_FAILED -> refused(player, gate, result);
+    diff +            case FULL, OFFLINE, DIRECTORY_UNAVAILABLE, COOLDOWN -> {
+  gradle [w100-5] rc=1
+    ShardGatesTest > onlyAChoiceThatFailedIsToldToThePlayer() FAILED
+        org.opentest4j.AssertionFailedError at ShardGatesTest.java:195
+    7 tests completed, 1 failed
+    > Task :server-app:test FAILED
+    BUILD FAILED in 6s
+  TEST-io.github.bearisbug.synaxis.app.shard.ShardGatesTest.xml: tests="7" skipped="0" failures="1" errors="0" timestamp="2026-10-01T08:55:52.635Z"
+    FAIL "org.opentest4j.AssertionFailedError: COOLDOWN ==> expected: <[]> but was: <[synaxis:transfer-failed]>"
+    trace    1 (ShardGatesTest.java:195)
+    trace    1 (ShardGatesTest.java:208)
+    trace    2 (ShardGatesTest.java:244)
+    trace    1 (ShardGatesTest.java:251)
+    AcquirableOwnershipException mentions: 0
+  restored server-app/src/main/java/io/github/bearisbug/synaxis/app/shard/ShardGates.java; git status --short -- server-app: []
+[16:55:54] ## TC-PROD-570 step 2 as written: git checkout 0e919cce6a -- <GT>, run, git checkout HEAD -- <GT>
+  gradle [p570-2] rc=1
+    > Task :server-app:compileJava FAILED
+    BUILD FAILED in 3s
+  TEST-io.github.bearisbug.synaxis.app.shard.ShardGatesTest.xml: tests="7" skipped="0" failures="1" errors="0" timestamp="2026-10-01T08:55:52.635Z"
+    FAIL "org.opentest4j.AssertionFailedError: COOLDOWN ==> expected: <[]> but was: <[synaxis:transfer-failed]>"
+    trace    1 (ShardGatesTest.java:195)
+    trace    1 (ShardGatesTest.java:208)
+    trace    2 (ShardGatesTest.java:244)
+    trace    1 (ShardGatesTest.java:251)
+    AcquirableOwnershipException mentions: 0
+  restored server-app/src/main/java/io/github/bearisbug/synaxis/app/shard/ShardGates.java; git status --short -- server-app: []
+[16:55:57] ## TC-PROD-570 step 2, the same old ShardGates with only the constructor parameter of HEAD added
+    diff - * way, or by a player that is not online here (security review B-01): one a transfer would turn
+    diff - * away (saving, in transit, still loading, or from the shutdown save on) reads no heartbeat and
+    diff - * writes nothing, so a client that ignores its {@code Transfer} cannot fill the ledger from here.
+    diff - * A choice of channel that failed ({@code FULL}, {@code OFFLINE},
+    diff - * {@code DIRECTORY_UNAVAILABLE}) is told to the player, who walks out and in again to retry. Every
+    diff - * refusal, those three and {@code COOLDOWN}, {@code NOT_ONLINE}, {@code SAVE_FAILED}, is written to
+    diff - * the ledger as {@code EVT:transfer_refused} ({@code docs/DESIGN-PROD.md} §20). What
+    diff + * way. A choice of channel that failed ({@code FULL}, {@code OFFLINE},
+    diff + * {@code DIRECTORY_UNAVAILABLE}) is told to the player, who walks out and in again to retry, and
+    diff + * written to the ledger as {@code EVT:transfer_refused} ({@code docs/DESIGN-PROD.md} §20). What
+    diff -    private final Predicate<Player> online;
+    diff -     * @param online    whether a player is online here, as a transfer would take it: the player store's
+    diff -     *                  {@code isOnline}
+    diff -        this.online = online;
+    diff -        if (gate == null || gate.equals(before) || !online.test(player) || !underWay.add(player)) return;
+    diff +        if (gate == null || gate.equals(before) || !underWay.add(player)) return;
+    diff -            case SENT -> {
+    diff -            }
+    diff -            case COOLDOWN, NOT_ONLINE, SAVE_FAILED -> refused(player, gate, result);
+    diff +            case SENT, COOLDOWN, NOT_ONLINE, SAVE_FAILED -> {
+    diff +            }
+    diff -                refused(player, gate, result);
+    diff +                final Map<String, Object> attributes = new LinkedHashMap<>();
+    diff +                attributes.put("player_uuid", player.getUuid());
+    diff +                attributes.put("source_shard", shardId);
+    diff +                attributes.put("target_region", gate.targetRegion());
+    diff +                attributes.put("result", result.name().toLowerCase(Locale.ROOT));
+    diff +                events.accept("transfer_refused", attributes);
+    diff -    /** {@code EVT:transfer_refused}: the transfer through the gate sent no ticket; the player may be gone. */
+    diff -    private void refused(Player player, ShardDirectory.Gate gate, ShardTransferResult result) {
+    diff -        final Map<String, Object> attributes = new LinkedHashMap<>();
+    diff -        attributes.put("player_uuid", player.getUuid());
+    diff -        attributes.put("source_shard", shardId);
+    diff -        attributes.put("target_region", gate.targetRegion());
+    diff -        attributes.put("result", result.name().toLowerCase(Locale.ROOT));
+    diff -        events.accept("transfer_refused", attributes);
+    diff -    }
+  gradle [p570-2b] rc=1
+    ShardGatesTest > everyRefusalIsWrittenToTheLedger() FAILED
+        org.opentest4j.AssertionFailedError at ShardGatesTest.java:218
+    7 tests completed, 1 failed
+    > Task :server-app:test FAILED
+    BUILD FAILED in 6s
+  TEST-io.github.bearisbug.synaxis.app.shard.ShardGatesTest.xml: tests="7" skipped="0" failures="1" errors="0" timestamp="2026-10-01T08:56:02.642Z"
+    FAIL "org.opentest4j.AssertionFailedError: COOLDOWN ==> expected: <[transfer_refused {player_uuid=9a7091a7-9245-43ff-b6e4-026af82ed555, source_shard=r0-c1, target_region=r1, result=cooldown}]> but was: <[]>"
+    trace    1 (ShardGatesTest.java:189)
+    trace    1 (ShardGatesTest.java:218)
+    trace    2 (ShardGatesTest.java:244)
+    trace    1 (ShardGatesTest.java:251)
+    AcquirableOwnershipException mentions: 0
+  restored server-app/src/main/java/io/github/bearisbug/synaxis/app/shard/ShardGates.java; git status --short -- server-app: []
+[16:56:04] ## TC-PROD-570 step 3: counterproof, NOT_ONLINE left out
+    diff -            case SENT -> {
+    diff +            case SENT, NOT_ONLINE -> {
+    diff -            case COOLDOWN, NOT_ONLINE, SAVE_FAILED -> refused(player, gate, result);
+    diff +            case COOLDOWN, SAVE_FAILED -> refused(player, gate, result);
+  gradle [p570-3] rc=1
+    ShardGatesTest > everyRefusalIsWrittenToTheLedger() FAILED
+        org.opentest4j.AssertionFailedError at ShardGatesTest.java:218
+    7 tests completed, 1 failed
+    > Task :server-app:test FAILED
+    BUILD FAILED in 6s
+  TEST-io.github.bearisbug.synaxis.app.shard.ShardGatesTest.xml: tests="7" skipped="0" failures="1" errors="0" timestamp="2026-10-01T08:56:09.297Z"
+    FAIL "org.opentest4j.AssertionFailedError: NOT_ONLINE ==> expected: <[transfer_refused {player_uuid=04687467-c8d1-4326-a289-d957c0afce81, source_shard=r0-c1, target_region=r1, result=not_online}]> but was: <[]>"
+    trace    1 (ShardGatesTest.java:189)
+    trace    1 (ShardGatesTest.java:218)
+    trace    2 (ShardGatesTest.java:244)
+    trace    1 (ShardGatesTest.java:251)
+    AcquirableOwnershipException mentions: 0
+  restored server-app/src/main/java/io/github/bearisbug/synaxis/app/shard/ShardGates.java; git status --short -- server-app: []
+[16:56:11] ## TC-PROD-570 step 4: counterproof, SAVE_FAILED left out
+    diff -            case SENT -> {
+    diff +            case SENT, SAVE_FAILED -> {
+    diff -            case COOLDOWN, NOT_ONLINE, SAVE_FAILED -> refused(player, gate, result);
+    diff +            case COOLDOWN, NOT_ONLINE -> refused(player, gate, result);
+  gradle [p570-4] rc=1
+    ShardGatesTest > everyRefusalIsWrittenToTheLedger() FAILED
+        org.opentest4j.AssertionFailedError at ShardGatesTest.java:218
+    7 tests completed, 1 failed
+    > Task :server-app:test FAILED
+    BUILD FAILED in 7s
+  TEST-io.github.bearisbug.synaxis.app.shard.ShardGatesTest.xml: tests="7" skipped="0" failures="1" errors="0" timestamp="2026-10-01T08:56:16.601Z"
+    FAIL "org.opentest4j.AssertionFailedError: SAVE_FAILED ==> expected: <[transfer_refused {player_uuid=c575da03-b0dc-421d-b144-b7852b9b98b3, source_shard=r0-c1, target_region=r1, result=save_failed}]> but was: <[]>"
+    trace    1 (ShardGatesTest.java:189)
+    trace    1 (ShardGatesTest.java:218)
+    trace    2 (ShardGatesTest.java:244)
+    trace    1 (ShardGatesTest.java:251)
+    AcquirableOwnershipException mentions: 0
+  restored server-app/src/main/java/io/github/bearisbug/synaxis/app/shard/ShardGates.java; git status --short -- server-app: []
+[16:56:18] ## TC-PROD-570 step 5: counterproof, SENT written too
+    diff -            case SENT -> {
+    diff -            }
+    diff +            case SENT -> refused(player, gate, result);
+  gradle [p570-5] rc=1
+    ShardGatesTest > everyRefusalIsWrittenToTheLedger() FAILED
+        org.opentest4j.AssertionFailedError at ShardGatesTest.java:218
+    7 tests completed, 1 failed
+    > Task :server-app:test FAILED
+    BUILD FAILED in 5s
+  TEST-io.github.bearisbug.synaxis.app.shard.ShardGatesTest.xml: tests="7" skipped="0" failures="1" errors="0" timestamp="2026-10-01T08:56:22.967Z"
+    FAIL "org.opentest4j.AssertionFailedError: SENT ==> expected: <[]> but was: <[transfer_refused {player_uuid=70dd0b34-c287-45a3-8807-e11ba88fd5c2, source_shard=r0-c1, target_region=r1, result=sent}]>"
+    trace    1 (ShardGatesTest.java:189)
+    trace    1 (ShardGatesTest.java:218)
+    trace    2 (ShardGatesTest.java:244)
+    trace    1 (ShardGatesTest.java:251)
+    AcquirableOwnershipException mentions: 0
+  restored server-app/src/main/java/io/github/bearisbug/synaxis/app/shard/ShardGates.java; git status --short -- server-app: []
+[16:56:24] ## TC-PROD-571 step 2: counterproof, a player that left is not written
+    diff +        if (!player.isOnline()) return;
+  gradle [p571-2] rc=1
+    ShardGatesTest > everyRefusalIsWrittenToTheLedger() FAILED
+        org.opentest4j.AssertionFailedError at ShardGatesTest.java:218
+    7 tests completed, 1 failed
+    > Task :server-app:test FAILED
+    BUILD FAILED in 6s
+  TEST-io.github.bearisbug.synaxis.app.shard.ShardGatesTest.xml: tests="7" skipped="0" failures="1" errors="0" timestamp="2026-10-01T08:56:29.162Z"
+    FAIL "org.opentest4j.AssertionFailedError: NOT_ONLINE ==> expected: <[transfer_refused {player_uuid=e1499ab9-7579-4dfc-ace9-74aadb736928, source_shard=r0-c1, target_region=r1, result=not_online}]> but was: <[]>"
+    trace    1 (ShardGatesTest.java:189)
+    trace    1 (ShardGatesTest.java:218)
+    trace    2 (ShardGatesTest.java:244)
+    trace    1 (ShardGatesTest.java:251)
+    AcquirableOwnershipException mentions: 0
+  restored server-app/src/main/java/io/github/bearisbug/synaxis/app/shard/ShardGates.java; git status --short -- server-app: []
+[16:56:30] ## TC-PROD-572 step 2: counterproof, the player told on every refusal
+    diff +        player.sendMessage(Component.translatable(TicketIssuer.TRANSFER_FAILED));
+  gradle [p572-2] rc=1
+    ShardGatesTest > onlyAChoiceThatFailedIsToldToThePlayer() FAILED
+        org.opentest4j.AssertionFailedError at ShardGatesTest.java:195
+    7 tests completed, 1 failed
+    > Task :server-app:test FAILED
+    BUILD FAILED in 7s
+  TEST-io.github.bearisbug.synaxis.app.shard.ShardGatesTest.xml: tests="7" skipped="0" failures="1" errors="0" timestamp="2026-10-01T08:56:36.183Z"
+    FAIL "org.opentest4j.AssertionFailedError: COOLDOWN ==> expected: <[]> but was: <[synaxis:transfer-failed]>"
+    trace    1 (ShardGatesTest.java:195)
+    trace    1 (ShardGatesTest.java:208)
+    trace    2 (ShardGatesTest.java:244)
+    trace    1 (ShardGatesTest.java:251)
+    AcquirableOwnershipException mentions: 0
+  restored server-app/src/main/java/io/github/bearisbug/synaxis/app/shard/ShardGates.java; git status --short -- server-app: []
+[16:56:38] ## TC-PROD-573 step 1: four classes, default mode
+  gradle [p573-1] rc=0
+    BUILD SUCCESSFUL in 16s
+  TEST-io.github.bearisbug.synaxis.app.shard.ShardGatesTest.xml: tests="7" skipped="0" failures="0" errors="0" timestamp="2026-10-01T08:56:44.596Z"
+    trace    1 (ShardGatesTest.java:189)
+    trace    1 (ShardGatesTest.java:208)
+    trace    2 (ShardGatesTest.java:244)
+    trace    1 (ShardGatesTest.java:251)
+    AcquirableOwnershipException mentions: 0
+  TEST-io.github.bearisbug.synaxis.app.shard.ShardServiceImplTest.xml: tests="6" skipped="0" failures="0" errors="0" timestamp="2026-10-01T08:56:52.412Z"
+    AcquirableOwnershipException mentions: 0
+  TEST-io.github.bearisbug.synaxis.app.shard.ShardArchitectureTest.xml: tests="3" skipped="0" failures="0" errors="0" timestamp="2026-10-01T08:56:51.746Z"
+    AcquirableOwnershipException mentions: 0
+  TEST-io.github.bearisbug.synaxis.app.ClientDrivenLogArchitectureTest.xml: tests="2" skipped="0" failures="0" errors="0" timestamp="2026-10-01T08:56:48.502Z"
+    AcquirableOwnershipException mentions: 0
+[16:56:55] ## TC-PROD-573 step 2: the four classes, strict grid
+  gradle [p573-2] rc=0
+    BUILD SUCCESSFUL in 13s
+  TEST-io.github.bearisbug.synaxis.app.shard.ShardGatesTest.xml: tests="7" skipped="0" failures="0" errors="0" timestamp="2026-10-01T08:57:04.314Z"
+    trace    1 (ShardGatesTest.java:189)
+    trace    1 (ShardGatesTest.java:208)
+    trace    2 (ShardGatesTest.java:244)
+    trace    1 (ShardGatesTest.java:251)
+    AcquirableOwnershipException mentions: 0
+  TEST-io.github.bearisbug.synaxis.app.shard.ShardServiceImplTest.xml: tests="6" skipped="0" failures="0" errors="0" timestamp="2026-10-01T08:57:06.095Z"
+    AcquirableOwnershipException mentions: 0
+  TEST-io.github.bearisbug.synaxis.app.shard.ShardArchitectureTest.xml: tests="3" skipped="0" failures="0" errors="0" timestamp="2026-10-01T08:57:03.799Z"
+    AcquirableOwnershipException mentions: 0
+  TEST-io.github.bearisbug.synaxis.app.ClientDrivenLogArchitectureTest.xml: tests="2" skipped="0" failures="0" errors="0" timestamp="2026-10-01T08:57:02.258Z"
+    AcquirableOwnershipException mentions: 0
+[16:57:08] ## TC-PROD-593 step 1: the ghost class, database variables set
+  gradle [p593-1] rc=0
+    BUILD SUCCESSFUL in 29s
+  TEST-io.github.bearisbug.synaxis.app.store.TransferNotFollowedIntegrationTest.xml: tests="4" skipped="0" failures="0" errors="0" timestamp="2026-10-01T08:57:14.585Z"
+    AcquirableOwnershipException mentions: 0
+    <testcase name="aTransferWhoseEventAPluginCancelledLetsThePlayerGoAllTheSame(Env)" classname="io.github.bearisbug.synaxis.app.store.TransferNotFollowedIntegrationTest" time="11.655"
+    <testcase name="aClientThatIgnoresItsTransferIsDisconnected(Env)" classname="io.github.bearisbug.synaxis.app.store.TransferNotFollowedIntegrationTest" time="10.584"
+    <testcase name="onlyAPlayerATransferWouldTakeIsOnlineToTheStore(Env)" classname="io.github.bearisbug.synaxis.app.store.TransferNotFollowedIntegrationTest" time="0.441"
+    <testcase name="thePresenceRefreshReportsAPlayerInTransitAsInTransit(Env)" classname="io.github.bearisbug.synaxis.app.store.TransferNotFollowedIntegrationTest" time="0.61"
+[16:57:38] ## TC-PROD-593 step 2: counterproof, in_transit counted as online
+    diff -        return !closing && record != null && record.state == LeaseState.ONLINE;
+    diff +        return !closing && record != null && record.state != LeaseState.LOADING;
+  gradle [p593-2] rc=1
+    TransferNotFollowedIntegrationTest > onlyAPlayerATransferWouldTakeIsOnlineToTheStore(Env) FAILED
+        org.opentest4j.AssertionFailedError at TransferNotFollowedIntegrationTest.java:234
+    4 tests completed, 1 failed
+    > Task :server-app:test FAILED
+    BUILD FAILED in 30s
+  TEST-io.github.bearisbug.synaxis.app.store.TransferNotFollowedIntegrationTest.xml: tests="4" skipped="0" failures="1" errors="0" timestamp="2026-10-01T08:57:46.357Z"
+    FAIL "org.opentest4j.AssertionFailedError: in transit ==> expected: <false> but was: <true>"
+    trace    1 (TransferNotFollowedIntegrationTest.java:234)
+    AcquirableOwnershipException mentions: 0
+  restored server-app/src/main/java/io/github/bearisbug/synaxis/app/store/PlayerStore.java; git status --short -- server-app: []
+[16:58:09] ## TC-WORLD-062, 063, 065, 075 step 1 (their classes; ShardServiceImpl, ShardArrivals and ShardHeartbeat are not changed by this round)
+  gradle [w06x] rc=0
+    BUILD SUCCESSFUL in 28s
+  TEST-io.github.bearisbug.synaxis.app.shard.ShardServiceImplTest.xml: tests="6" skipped="0" failures="0" errors="0" timestamp="2026-10-01T08:58:35.274Z"
+    AcquirableOwnershipException mentions: 0
+  TEST-io.github.bearisbug.synaxis.app.shard.ShardArrivalsTest.xml: tests="5" skipped="0" failures="0" errors="0" timestamp="2026-10-01T08:58:15.848Z"
+    AcquirableOwnershipException mentions: 0
+  TEST-io.github.bearisbug.synaxis.app.shard.ShardHeartbeatDbTest.xml: tests="6" skipped="0" failures="0" errors="0" timestamp="2026-10-01T08:58:17.099Z"
+    trace    3 (ShardHeartbeatDbTest.java:268)
+    trace    1 (ShardHeartbeatDbTest.java:284)
+    trace    1 (ShardHeartbeatDbTest.java:290)
+    trace    1 (ShardHeartbeatDbTest.java:304)
+    AcquirableOwnershipException mentions: 0
+  TEST-io.github.bearisbug.synaxis.app.shard.ShardServiceHeartbeatDbTest.xml: tests="1" skipped="0" failures="0" errors="0" timestamp="2026-10-01T08:58:35.043Z"
+    AcquirableOwnershipException mentions: 0
+[16:58:38] ## the last step of every case above: step 1 again
+  gradle [last] rc=0
+    BUILD SUCCESSFUL in 4s
+  TEST-io.github.bearisbug.synaxis.app.shard.ShardGatesOnlineTest.xml: tests="1" skipped="0" failures="0" errors="0" timestamp="2026-10-01T08:58:41.086Z"
+    AcquirableOwnershipException mentions: 0
+  TEST-io.github.bearisbug.synaxis.app.shard.ShardGatesTest.xml: tests="7" skipped="0" failures="0" errors="0" timestamp="2026-10-01T08:58:42.158Z"
+    trace    1 (ShardGatesTest.java:189)
+    trace    1 (ShardGatesTest.java:208)
+    trace    2 (ShardGatesTest.java:244)
+    trace    1 (ShardGatesTest.java:251)
+    AcquirableOwnershipException mentions: 0
+  git status --short: [ M docs/DESIGN-M3.md  M docs/DESIGN-PROD.md ?? docs/test-runs/RUN-065/ ]
+[16:58:42] ## done
+# addendum: TC-PROD-570 step 2 as written failed in :server-app:compileJava, so no test ran; the ShardGatesTest XML printed under it is
+# the one of the step before (timestamp 08:55:52). The javac error of that run, from its console (the JDK prints it in Chinese):
+    server-app/src/main/java/io/github/bearisbug/synaxis/app/Main.java:518: 错误: 无法将类 ShardGates中的构造器 ShardGates应用到给定类型;
+                new ShardGates(directoryMode.directory(), directoryMode.service(), ledger::record, store::isOnline).attach(world.instance());
+                ^
+      需要: ShardDirectory,ShardService,BiConsumer<String,Map<String,?>>
+      找到:    ShardDirectory,ShardService,ledger::record,store::isOnline
+      原因: 实际参数列表和形式参数列表长度不同
+    (the main source set failed first, so the test sources, whose helper also passes four arguments, were not compiled)

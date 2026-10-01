@@ -1,0 +1,32 @@
+# Green run: the same classes on the fixed code (working tree that became 1f33976097), plus SessionClientTest, ArchitectureTest
+# and ConnectionGateTest, 2026-10-01 (UTC+8), database variables set, default mode.
+
+### start 2026-10-01 10:19:18 args: :test --tests *ConnectionGateSocketTest --tests *OnlineLoginSocketTest --tests *PreAuthConnectionIntegrationTest --tests *InboundPacketLimitIntegrationTest --tests *SessionClientTest --tests io.github.bearisbug.synaxis.ArchitectureTest --tests *ConnectionGateTest :server-app:test --tests *ConnectionGateLogTest --tests *FullChannelTransferSocketTest --continue
+  BUILD SUCCESSFUL in 1m 5s
+### end 2026-10-01 10:20:24 exit=0
+
+## JUnit XML (every class 0 failures; the new and the changed tests by name)
+io.github.bearisbug.synaxis.ArchitectureTest: tests=7 failures=0 errors=0 skipped=0 time=6.423
+io.github.bearisbug.synaxis.app.ConnectionGateLogTest: tests=5 failures=0 errors=0 skipped=0 time=1.655
+io.github.bearisbug.synaxis.app.FullChannelTransferSocketTest: tests=2 failures=0 errors=0 skipped=0 time=1.912
+io.github.bearisbug.synaxis.network.ConnectionGateSocketTest: tests=12 failures=0 errors=0 skipped=0 time=4.482
+io.github.bearisbug.synaxis.network.ConnectionGateTest: tests=12 failures=0 errors=0 skipped=0 time=0.108
+io.github.bearisbug.synaxis.network.OnlineLoginSocketTest: tests=22 failures=0 errors=0 skipped=0 time=18.349
+io.github.bearisbug.synaxis.network.player.InboundPacketLimitIntegrationTest: tests=7 failures=0 errors=0 skipped=0 time=1.834
+io.github.bearisbug.synaxis.network.player.PreAuthConnectionIntegrationTest: tests=9 failures=0 errors=0 skipped=0 time=1.687
+io.github.bearisbug.synaxis.network.player.SessionClientTest: tests=3 failures=0 errors=0 skipped=0 time=0.078
+  pass ConnectionGateLogTest oversizedServerAddressesDoNotReachTheLoginListener() 1.463 s
+  pass ConnectionGateLogTest aLoginPluginResponseNobodyAskedForIsReportedByTheExceptionHandlerAlone() 0.086 s
+  pass FullChannelTransferSocketTest aFullChannelRefusesATransferBeforeTheEncryptionRequest() 1.318 s
+  pass ConnectionGateSocketTest behindTheProxyAnOversizedServerAddressCountsAgainstItsAddress() 0.091 s
+  pass ConnectionGateSocketTest anOversizedServerAddressTakesItsTokenAndIsClosed() 0.154 s
+  pass ConnectionGateSocketTest anOversizedServerAddressDoesNotSkipTheGate() 0.121 s
+  pass OnlineLoginSocketTest loginsThatStopAtTheEncryptionRequestHoldNoSeat() 0.301 s
+  pass OnlineLoginSocketTest anEncryptedOfflineLoginTakesItsSeatOnceItsKeyIsIn() 0.128 s
+  pass OnlineLoginSocketTest noLoginAsksTheSessionServerBeforeTheRetryAfterIsOver() 2.26 s
+  pass OnlineLoginSocketTest anAuthenticatedTransferThatFindsTheSeatsTakenIsRefusedEncrypted() 0.157 s
+  pass OnlineLoginSocketTest aTooManyRequestsAnswerIsNotRetried() 0.07 s
+  pass InboundPacketLimitIntegrationTest pingsOverADropLimitAreNotAnswered() 0.066 s
+  pass InboundPacketLimitIntegrationTest pingsInPlayCountTowardsTheLimit(Env) 0.038 s
+  pass PreAuthConnectionIntegrationTest aListenerThatThrowsBeforeTheConfigurationStateDropsTheConnection(Env) 0.014 s
+  pass SessionClientTest theRetryAfterOfATooManyRequestsAnswerIsSecondsUpToAMinute() 0.022 s

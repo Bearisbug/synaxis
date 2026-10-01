@@ -96,7 +96,7 @@ class ShardGatesTest {
     }
 
     private ShardGates gates(ShardDirectory directory) {
-        return new ShardGates(directory, service, (event, attributes) -> ledger.add(event + " " + attributes));
+        return new ShardGates(directory, service, (event, attributes) -> ledger.add(event + " " + attributes), _ -> true);
     }
 
     private void attach(ShardDirectory directory) {

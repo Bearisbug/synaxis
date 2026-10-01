@@ -17,6 +17,7 @@ import io.github.bearisbug.synaxis.network.packet.server.configuration.FinishCon
 import io.github.bearisbug.synaxis.network.packet.server.configuration.ResetChatPacket;
 import io.github.bearisbug.synaxis.network.packet.server.configuration.SelectKnownPacksPacket;
 import io.github.bearisbug.synaxis.network.packet.server.configuration.UpdateEnabledFeaturesPacket;
+import io.github.bearisbug.synaxis.network.packet.server.login.LoginDisconnectPacket;
 import io.github.bearisbug.synaxis.network.packet.server.login.LoginSuccessPacket;
 import io.github.bearisbug.synaxis.network.packet.server.play.PlayerInfoUpdatePacket;
 import io.github.bearisbug.synaxis.network.packet.server.play.StartConfigurationPacket;
@@ -399,6 +400,15 @@ public final class ConnectionManager {
 
     public GameProfile transitionLoginToConfig(PlayerConnection connection, GameProfile gameProfile) {
         assert process.config().insideTest() || Thread.currentThread().isVirtual();
+        // Connection gate L3: the seat is taken once the peer is authenticated, so a login that
+        // never gets this far holds none (docs/DESIGN-PROD.md ADR-PROD-015). Checked before
+        // compression is switched on, so a refused client reads nothing but the disconnect.
+        if (connection instanceof PlayerSocketConnection socketConnection
+                && !gate.takeSeat(socketConnection.gateTicket())) {
+            connection.sendPacket(new LoginDisconnectPacket(DisconnectReasons.SHARD_FULL));
+            connection.disconnectTurnedAway();
+            return gameProfile;
+        }
         // Compression
         if (connection instanceof PlayerSocketConnection socketConnection) {
             final int threshold = process.compressionThreshold();

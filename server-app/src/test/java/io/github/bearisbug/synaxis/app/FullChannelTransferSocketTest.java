@@ -16,6 +16,7 @@ import io.github.bearisbug.synaxis.app.transfer.TicketVerifier;
 import io.github.bearisbug.synaxis.app.transfer.TransferCooldowns;
 import io.github.bearisbug.synaxis.app.transfer.TransferKeys;
 import io.github.bearisbug.synaxis.app.transfer.TransferTicket;
+import io.github.bearisbug.synaxis.crypto.KeyUtils;
 import io.github.bearisbug.synaxis.network.ConnectionGate;
 import io.github.bearisbug.synaxis.network.ConnectionState;
 import io.github.bearisbug.synaxis.network.NetworkBuffer;
@@ -25,6 +26,7 @@ import io.github.bearisbug.synaxis.network.packet.client.ClientPacket;
 import io.github.bearisbug.synaxis.network.packet.client.common.ClientCookieResponsePacket;
 import io.github.bearisbug.synaxis.network.packet.client.handshake.ClientHandshakePacket;
 import io.github.bearisbug.synaxis.network.packet.client.handshake.ClientHandshakePacket.Intent;
+import io.github.bearisbug.synaxis.network.packet.client.login.ClientEncryptionResponsePacket;
 import io.github.bearisbug.synaxis.network.packet.client.login.ClientLoginAcknowledgedPacket;
 import io.github.bearisbug.synaxis.network.packet.client.login.ClientLoginStartPacket;
 import io.github.bearisbug.synaxis.network.packet.server.ServerPacket;
@@ -47,6 +49,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
 import org.junit.jupiter.api.io.TempDir;
 
+import javax.crypto.Cipher;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -56,6 +59,8 @@ import java.net.SocketTimeoutException;
 import java.nio.channels.SocketChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.security.GeneralSecurityException;
+import java.security.PublicKey;
 import java.security.SecureRandom;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -112,14 +117,18 @@ class FullChannelTransferSocketTest {
         if (database != null) database.close();
     }
 
-    /** The encrypted offline login: a full channel answers the transfer before the encryption request. */
+    /**
+     * The encrypted offline login: the seats go to logins past their key, and a full channel answers
+     * the transfer before the encryption request.
+     */
     @Test
     void aFullChannelRefusesATransferBeforeTheEncryptionRequest() throws Exception {
         try (Rig rig = new Rig(new Auth.Offline(true))) {
             final Peer first = rig.connect(Intent.LOGIN, "holder0");
-            assertInstanceOf(EncryptionRequestPacket.class, first.read(ConnectionState.LOGIN), "the first seat");
-            assertInstanceOf(EncryptionRequestPacket.class, rig.connect(Intent.LOGIN, "holder1").read(ConnectionState.LOGIN),
-                    "the second seat");
+            first.answerKey(assertInstanceOf(EncryptionRequestPacket.class, first.read(ConnectionState.LOGIN)));
+            final Peer second = rig.connect(Intent.LOGIN, "holder1");
+            second.answerKey(assertInstanceOf(EncryptionRequestPacket.class, second.read(ConnectionState.LOGIN)));
+            awaitUntil(() -> rig.gate().seats() == 2, "the two logins past their key take the two seats");
 
             final Peer refused = rig.connect(Intent.TRANSFER, NAME);
             assertEquals("synaxis:shard-full", disconnectKey(refused.read(ConnectionState.LOGIN)));
@@ -326,6 +335,19 @@ class FullChannelTransferSocketTest {
             if (!(result instanceof PacketReading.Result.Success<ServerPacket> success))
                 throw new AssertionError("not a packet: " + bytes.length + " bytes");
             return success.packets().getFirst().packet();
+        }
+
+        /**
+         * Answers an encryption request the way a client does. Everything the server sends after
+         * it is encrypted, and not read here.
+         */
+        void answerKey(EncryptionRequestPacket request) throws IOException, GeneralSecurityException {
+            final PublicKey key = KeyUtils.publicRSAKeyFrom(request.publicKey());
+            final Cipher rsa = Cipher.getInstance("RSA/ECB/PKCS1Padding");
+            rsa.init(Cipher.ENCRYPT_MODE, key);
+            final byte[] secret = rsa.doFinal(new byte[16]);
+            rsa.init(Cipher.ENCRYPT_MODE, key);
+            send(ConnectionState.LOGIN, new ClientEncryptionResponsePacket(secret, rsa.doFinal(request.verifyToken())));
         }
 
         /** Reads past the packets that come before the first one of the type. */

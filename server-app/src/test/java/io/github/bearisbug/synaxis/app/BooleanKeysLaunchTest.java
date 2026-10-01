@@ -4,7 +4,6 @@ import io.github.bearisbug.synaxis.app.ConfigFileLaunchTest.Launched;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
-import java.nio.file.Files;
 import java.nio.file.Path;
 
 import static io.github.bearisbug.synaxis.app.ConfigFileLaunchTest.freePort;
@@ -46,7 +45,7 @@ public class BooleanKeysLaunchTest {
 
     @Test
     public void aTrailingBlankInTheFileRefusesAShard(@TempDir Path directory) throws Exception {
-        Files.writeString(directory.resolve(ConfigFile.DEFAULT_FILE), "synaxis.enforce-entity-interaction-range=true \n");
+        ConfigFileTest.write(directory.resolve(ConfigFile.DEFAULT_FILE), "synaxis.enforce-entity-interaction-range=true \n");
         try (Launched shard = Launched.start(directory, ShardMain.class, launch())) {
             assertRefused(shard, "Property 'synaxis.enforce-entity-interaction-range' is not true or false: \"true \"");
         }

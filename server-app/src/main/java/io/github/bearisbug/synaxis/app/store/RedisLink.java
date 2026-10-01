@@ -73,12 +73,25 @@ public final class RedisLink implements AutoCloseable {
     /**
      * Connects to Redis lazily: an unreachable Redis at start is a warning, not a refusal.
      *
-     * @param url     {@code redis://[user:password@]host:port[/database]}
+     * @param url     {@code redis://[user:password@]host:port[/database]}, every character of the
+     *                password but letters, digits and {@code -._~} percent-encoded
      * @param shardId the id of this shard, the name of its kick channel
      * @return the link
+     * @throws IllegalArgumentException if the URL is not one, naming the variable but not the URL
      */
     public static RedisLink connect(String url, String shardId) {
-        final URI uri = URI.create(url);
+        final URI uri;
+        final @Nullable Integer database;
+        try {
+            uri = URI.create(url);
+            final String path = uri.getPath();
+            database = path == null || path.length() <= 1 ? null : Integer.parseInt(path.substring(1));
+        } catch (IllegalArgumentException _) {
+            throw notARedisUrl();
+        }
+        // A '/' or '#' in the password leaves an authority without a host, the rest of the password
+        // in the path or the fragment
+        if (uri.getHost() == null) throw notARedisUrl();
         final DefaultJedisClientConfig.Builder config = DefaultJedisClientConfig.builder()
                 .connectionTimeoutMillis(TIMEOUT_MS)
                 .socketTimeoutMillis(TIMEOUT_MS)
@@ -92,13 +105,22 @@ public final class RedisLink implements AutoCloseable {
                 config.password(userInfo.substring(colon + 1));
             }
         }
-        final String path = uri.getPath();
-        if (path != null && path.length() > 1) config.database(Integer.parseInt(path.substring(1)));
+        if (database != null) config.database(database);
         final RedisClient client = RedisClient.builder()
                 .hostAndPort(new HostAndPort(uri.getHost(), uri.getPort() < 0 ? 6379 : uri.getPort()))
                 .clientConfig(config.build())
                 .build();
         return new RedisLink(client, shardId);
+    }
+
+    /**
+     * The refusal of a URL that is not one. It names the variable only and has no cause: what
+     * {@link URI} and {@link Integer#parseInt} say about the URL quotes it, password and all, and the
+     * refusal to start is logged with its whole cause chain.
+     */
+    private static IllegalArgumentException notARedisUrl() {
+        return new IllegalArgumentException(StoreSettings.REDIS_URL + " is not redis://[user:password@]host:port"
+                + "[/database]; percent-encode every character of the password but letters, digits and -._~");
     }
 
     /**

@@ -1,0 +1,167 @@
+# Review round (2026-10-01): the grant class gets a third test, aGrantThatRanOutIsHandedOutAgainUntilTheHoldersOwnRunOut (TC-PROD-597),
+# for the branch of RoleStore#handOut that replaces the expiry of a grant that has run out. Code under test: 703528c9e9 (the test and a
+# Javadoc correction in RoleStore#handOut on top of e9e3ea6945 + 5acee52a88). Default mode, database variables set, one batch under the
+# heavy lock 2026-10-01 12:37:05 to 12:38:13 (UTC+8). Each counter proof: one perl substitution of the quoted text (the count of
+# replacements is printed), :server-app:test --rerun --tests io.github.bearisbug.synaxis.app.RoleHandOutIntegrationTest, then
+# git checkout HEAD -- <file>. The diffstat lines of docs/ (edited by hand meanwhile) are left out.
+#   CP-a  TC-PROD-597 step 3   CP-b  TC-PROD-594 step 3   CP-c  TC-PROD-594 step 4   CP-d  TC-PROD-595 step 3   CP-e  TC-PROD-595 step 4
+#   red on base: TC-PROD-594 step 2 (and 595, 597 step 2), done the way TC-PROD-590 step 2 describes, running the grant class only.
+# The existing lines of the class did not move (the class comment kept its five lines), so :142, :144, :149, :156 and :180 are the
+# lines of 01-red-on-base.txt and 02-green-and-counterproofs.txt.
+
+# git HEAD 703528c9e9
+## green, default mode
+  start 2026-10-01 12:37:05
+  BUILD SUCCESSFUL in 8s
+  end 2026-10-01 12:37:14 rc=0
+  RoleHandOutIntegrationTest: tests=3 failures=0 errors=0 skipped=0 time=2.384s
+    aGrantThatRanOutIsHandedOutAgainUntilTheHoldersOwnRunOut(Env) 1.569s ok
+    aRoleTakenBackIsNotHandedOutFromWhatTheShardReadBefore(Env) 0.315s ok
+    aHolderHandsOutNothingThatOutlivesItsOwnGrants(Env) 0.492s ok
+
+# CP-a: <RS> WHERE account_role.expires_at <= now() -> WHERE false
+  replaced 1 in server-app/src/main/java/io/github/bearisbug/synaxis/app/permission/RoleStore.java
+   .../bearisbug/synaxis/app/permission/RoleStore.java |  2 +-
+## CP-a
+  start 2026-10-01 12:37:14
+  RoleHandOutIntegrationTest > aGrantThatRanOutIsHandedOutAgainUntilTheHoldersOwnRunOut(Env) FAILED
+      org.opentest4j.AssertionFailedError at RoleHandOutIntegrationTest.java:200
+  3 tests completed, 1 failed
+  > Task :server-app:test FAILED
+  BUILD FAILED in 7s
+  end 2026-10-01 12:37:22 rc=1
+  RoleHandOutIntegrationTest: tests=3 failures=1 errors=0 skipped=0 time=2.357s
+    aGrantThatRanOutIsHandedOutAgainUntilTheHoldersOwnRunOut(Env) 1.517s FAIL
+      org.opentest4j.AssertionFailedError: the grant that ran out runs again until Alice's own does ==> expected: <{mod=2026-10-02 12:37:20.719337+08}> but was: <{mod=2026-09-30 12:37:20.719337+08}>
+      at RoleHandOutIntegrationTest.java:200
+    aRoleTakenBackIsNotHandedOutFromWhatTheShardReadBefore(Env) 0.391s ok
+    aHolderHandsOutNothingThatOutlivesItsOwnGrants(Env) 0.441s ok
+
+# CP-b: <RS> -> WHERE true
+  replaced 1 in server-app/src/main/java/io/github/bearisbug/synaxis/app/permission/RoleStore.java
+   .../bearisbug/synaxis/app/permission/RoleStore.java |  2 +-
+## CP-b
+  start 2026-10-01 12:37:22
+  RoleHandOutIntegrationTest > aHolderHandsOutNothingThatOutlivesItsOwnGrants(Env) FAILED
+      org.opentest4j.AssertionFailedError at RoleHandOutIntegrationTest.java:144
+  3 tests completed, 1 failed
+  > Task :server-app:test FAILED
+  BUILD FAILED in 7s
+  end 2026-10-01 12:37:30 rc=1
+  RoleHandOutIntegrationTest: tests=3 failures=1 errors=0 skipped=0 time=2.675s
+    aGrantThatRanOutIsHandedOutAgainUntilTheHoldersOwnRunOut(Env) 1.722s ok
+    aRoleTakenBackIsNotHandedOutFromWhatTheShardReadBefore(Env) 0.49s ok
+    aHolderHandsOutNothingThatOutlivesItsOwnGrants(Env) 0.454s FAIL
+      org.opentest4j.AssertionFailedError: nor does a holder whose grants never run out lift it ==> expected: <{helper=never, mod=2026-10-02 12:37:29.709296+08}> but was: <{helper=never, mod=never}>
+      at RoleHandOutIntegrationTest.java:144
+
+# CP-c: <RC> handOut(..., own.expiresAt()) -> handOut(..., null)
+  replaced 1 in server-app/src/main/java/io/github/bearisbug/synaxis/app/permission/RoleCommand.java
+   .../synaxis/app/permission/RoleCommand.java         |  2 +-
+## CP-c
+  start 2026-10-01 12:37:30
+  RoleHandOutIntegrationTest > aGrantThatRanOutIsHandedOutAgainUntilTheHoldersOwnRunOut(Env) FAILED
+      org.opentest4j.AssertionFailedError at RoleHandOutIntegrationTest.java:200
+  RoleHandOutIntegrationTest > aHolderHandsOutNothingThatOutlivesItsOwnGrants(Env) FAILED
+      org.opentest4j.AssertionFailedError at RoleHandOutIntegrationTest.java:149
+  3 tests completed, 2 failed
+  > Task :server-app:test FAILED
+  BUILD FAILED in 8s
+  end 2026-10-01 12:37:38 rc=1
+  RoleHandOutIntegrationTest: tests=3 failures=2 errors=0 skipped=0 time=2.479s
+    aGrantThatRanOutIsHandedOutAgainUntilTheHoldersOwnRunOut(Env) 1.774s FAIL
+      org.opentest4j.AssertionFailedError: the grant that ran out runs again until Alice's own does ==> expected: <{mod=2026-10-02 12:37:37.26564+08}> but was: <{mod=never}>
+      at RoleHandOutIntegrationTest.java:200
+    aRoleTakenBackIsNotHandedOutFromWhatTheShardReadBefore(Env) 0.314s ok
+    aHolderHandsOutNothingThatOutlivesItsOwnGrants(Env) 0.378s FAIL
+      org.opentest4j.AssertionFailedError: what it hands out runs out when its own grants start to ==> expected: <{mod=2026-10-02 12:37:38.074306+08, helper=2026-10-02 12:37:38.074306+08}> but was: <{helper=never, mod=never}>
+      at RoleHandOutIntegrationTest.java:149
+
+# CP-d: <HP> grantsOf reads the shard's memory
+  replaced 1 in server-app/src/main/java/io/github/bearisbug/synaxis/app/permission/HostPermissions.java
+   .../synaxis/app/permission/HostPermissions.java     |  2 +-
+## CP-d
+  start 2026-10-01 12:37:38
+  RoleHandOutIntegrationTest > aRoleTakenBackIsNotHandedOutFromWhatTheShardReadBefore(Env) FAILED
+      org.opentest4j.AssertionFailedError at RoleHandOutIntegrationTest.java:180
+  RoleHandOutIntegrationTest > aHolderHandsOutNothingThatOutlivesItsOwnGrants(Env) FAILED
+      org.opentest4j.AssertionFailedError at RoleHandOutIntegrationTest.java:156
+  3 tests completed, 2 failed
+  > Task :server-app:test FAILED
+  BUILD FAILED in 8s
+  end 2026-10-01 12:37:47 rc=1
+  RoleHandOutIntegrationTest: tests=3 failures=2 errors=0 skipped=0 time=2.358s
+    aGrantThatRanOutIsHandedOutAgainUntilTheHoldersOwnRunOut(Env) 1.646s ok
+    aRoleTakenBackIsNotHandedOutFromWhatTheShardReadBefore(Env) 0.315s FAIL
+      org.opentest4j.AssertionFailedError: expected: <[role grant fe5fc3e3-e98a-4967-a143-f74a71974ad8 helper -> above_sender, role grant d83973d8-fc42-4582-81c5-e5601926c998 mod -> above_sender]> but was: <[role grant fe5fc3e3-e98a-4967-a143-f74a71974ad8 helper -> ok, role grant d83973d8-fc42-4582-81c5-e5601926c998 mod -> ok]>
+      at RoleHandOutIntegrationTest.java:180
+    aHolderHandsOutNothingThatOutlivesItsOwnGrants(Env) 0.387s FAIL
+      org.opentest4j.AssertionFailedError: an expired grant stays expired ==> expected: <{mod=past, helper=never}> but was: <{helper=never, mod=later}>
+      at RoleHandOutIntegrationTest.java:156
+
+# CP-e: <HP> gm.role not required
+  replaced 1 in server-app/src/main/java/io/github/bearisbug/synaxis/app/permission/HostPermissions.java
+   .../synaxis/app/permission/HostPermissions.java     |  2 +-
+## CP-e
+  start 2026-10-01 12:37:47
+  RoleHandOutIntegrationTest > aRoleTakenBackIsNotHandedOutFromWhatTheShardReadBefore(Env) FAILED
+      org.opentest4j.AssertionFailedError at RoleHandOutIntegrationTest.java:180
+  3 tests completed, 1 failed
+  > Task :server-app:test FAILED
+  BUILD FAILED in 7s
+  end 2026-10-01 12:37:54 rc=1
+  RoleHandOutIntegrationTest: tests=3 failures=1 errors=0 skipped=0 time=2.252s
+    aGrantThatRanOutIsHandedOutAgainUntilTheHoldersOwnRunOut(Env) 1.567s ok
+    aRoleTakenBackIsNotHandedOutFromWhatTheShardReadBefore(Env) 0.28s FAIL
+      org.opentest4j.AssertionFailedError: expected: <[role grant e2f78dd4-fb9c-4090-bdfb-4d017507a607 helper -> above_sender, role grant 38c74f23-3c5b-4efa-a9fa-da779ca72a43 mod -> above_sender]> but was: <[role grant e2f78dd4-fb9c-4090-bdfb-4d017507a607 helper -> above_sender, role grant 38c74f23-3c5b-4efa-a9fa-da779ca72a43 mod -> ok]>
+      at RoleHandOutIntegrationTest.java:180
+    aHolderHandsOutNothingThatOutlivesItsOwnGrants(Env) 0.395s ok
+
+# Red on base: five main files from 23982267e9; ghost class without its last test, assertFalse import blanked, @link -> @code
+  replaced 1 in server-app/src/test/java/io/github/bearisbug/synaxis/app/store/TransferNotFollowedIntegrationTest.java
+  replaced 1 in server-app/src/test/java/io/github/bearisbug/synaxis/app/store/TransferNotFollowedIntegrationTest.java
+  ghost class lines:      224; tail:
+            }
+        }
+    }
+   M docs/DESIGN-PROD.md
+   M docs/TEST.md
+  M  server-app/src/main/java/io/github/bearisbug/synaxis/app/permission/HostPermissions.java
+  M  server-app/src/main/java/io/github/bearisbug/synaxis/app/permission/RoleCommand.java
+  M  server-app/src/main/java/io/github/bearisbug/synaxis/app/permission/RoleStore.java
+  M  server-app/src/main/java/io/github/bearisbug/synaxis/app/store/PlayerStore.java
+  M  server-app/src/main/java/io/github/bearisbug/synaxis/app/transfer/TicketIssuer.java
+   M server-app/src/test/java/io/github/bearisbug/synaxis/app/store/TransferNotFollowedIntegrationTest.java
+## red on base, grant class
+  start 2026-10-01 12:37:55
+  RoleHandOutIntegrationTest > aGrantThatRanOutIsHandedOutAgainUntilTheHoldersOwnRunOut(Env) FAILED
+      org.opentest4j.AssertionFailedError at RoleHandOutIntegrationTest.java:200
+  RoleHandOutIntegrationTest > aRoleTakenBackIsNotHandedOutFromWhatTheShardReadBefore(Env) FAILED
+      org.opentest4j.AssertionFailedError at RoleHandOutIntegrationTest.java:180
+  RoleHandOutIntegrationTest > aHolderHandsOutNothingThatOutlivesItsOwnGrants(Env) FAILED
+      org.opentest4j.AssertionFailedError at RoleHandOutIntegrationTest.java:142
+  3 tests completed, 3 failed
+  > Task :server-app:test FAILED
+  BUILD FAILED in 11s
+  end 2026-10-01 12:38:06 rc=1
+  RoleHandOutIntegrationTest: tests=3 failures=3 errors=0 skipped=0 time=2.699s
+    aGrantThatRanOutIsHandedOutAgainUntilTheHoldersOwnRunOut(Env) 1.967s FAIL
+      org.opentest4j.AssertionFailedError: the grant that ran out runs again until Alice's own does ==> expected: <{mod=2026-10-02 12:38:05.295806+08}> but was: <{mod=never}>
+      at RoleHandOutIntegrationTest.java:200
+    aRoleTakenBackIsNotHandedOutFromWhatTheShardReadBefore(Env) 0.366s FAIL
+      org.opentest4j.AssertionFailedError: expected: <[role grant 1a68fe66-d225-47fe-9838-14a504e5faf1 helper -> above_sender, role grant 36065234-6cd4-45f5-96e0-8eb9c266f1c6 mod -> above_sender]> but was: <[role grant 1a68fe66-d225-47fe-9838-14a504e5faf1 helper -> ok, role grant 36065234-6cd4-45f5-96e0-8eb9c266f1c6 mod -> ok]>
+      at RoleHandOutIntegrationTest.java:180
+    aHolderHandsOutNothingThatOutlivesItsOwnGrants(Env) 0.347s FAIL
+      org.opentest4j.AssertionFailedError: its own grant keeps its expiry ==> expected: <{mod=2026-10-02 12:38:06.196315+08, helper=never}> but was: <{helper=never, mod=never}>
+      at RoleHandOutIntegrationTest.java:142
+
+# restored: 2 changed files
+## green again after restore
+  start 2026-10-01 12:38:06
+  BUILD SUCCESSFUL in 6s
+  end 2026-10-01 12:38:13 rc=0
+  RoleHandOutIntegrationTest: tests=3 failures=0 errors=0 skipped=0 time=2.785s
+    aGrantThatRanOutIsHandedOutAgainUntilTheHoldersOwnRunOut(Env) 1.853s ok
+    aRoleTakenBackIsNotHandedOutFromWhatTheShardReadBefore(Env) 0.514s ok
+    aHolderHandsOutNothingThatOutlivesItsOwnGrants(Env) 0.406s ok
+

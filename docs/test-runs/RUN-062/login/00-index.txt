@@ -1,0 +1,29 @@
+# Group login of the production-readiness session (branch sec/login-path), security review findings A-01 to A-04, for the integrate
+# round to register as RUN-062. Code under test: 1f33976097 (main 23982267e9 + the fix and its tests); the docs commit on top changes
+# docs only. 2026-10-01 09:55 to 11:00 (UTC+8). Machine: Apple M4 Pro, 12 cores, 24 GB, macOS, Homebrew JDK 25. Every Gradle run took the
+# shared heavy lock (/tmp/synaxis-heavy.lock) and released it when its batch ended; other groups ran between the batches.
+# Gradle: --max-workers=4 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts; database variables set for every run
+# (shared containers synaxis-pg / synaxis-valkey). Raw Gradle logs and JUnit XML stayed in /tmp/secfix-login, deleted after the round;
+# the lines in these files are copied out of them.
+00-index.txt                    this file
+01-red-before-fix.txt           the new tests on the code before the fix (src/main of 23982267e9): 13 red, everything else green
+02-green-after-fix.txt          the same classes on the fix: 0 failures
+03-counterproofs-own.txt        one fix taken back at a time (cp1-cp8) and TC-WORLD-085 step 2
+04-counterproofs-existing.txt   the existing TEST.md counter proofs whose red lines or results move with this change, rerun
+05-full-runs.txt                root :test and :server-app:test, default and strict grid: 3,158 and 524 tests, 0 failures each
+06-docs-lint.txt                design-doc and test-doc lint (only the two known RUN-031 warnings)
+
+# Results (10 new cases, 10 pass; 12 existing cases rerun and corrected where their lines or results moved)
+TC-PROD-576  pass   red before the fix at ConnectionGateSocketTest :195 and :213; HandshakeListener alone back: :197 and :216
+TC-PROD-577  pass   red before the fix at :238 after 5.04 s (connection left open); HandshakeListener alone back: :239 (L1 not counted)
+TC-PROD-578  pass   red at PreAuthConnectionIntegrationTest :261, before the fix and with only the catch condition back
+TC-PROD-579  pass   red before the fix at ConnectionGateLogTest :127 (20 lines) and :145; LoginListener alone back: :145 only
+TC-PROD-580  pass   red at OnlineLoginSocketTest :374 (seat at LoginStart); no seat after authentication: :375
+TC-PROD-581  pass   red at :397 (seat at LoginStart); no seat after authentication: :399 (the late transfer gets LoginSuccess)
+TC-PROD-582  pass   red at :417 (seat at LoginStart); no seat after authentication: :420
+TC-PROD-583  pass   red at :136 (2 queries) and :159 ([First, First, Second]), before the fix and with the 429 window disabled;
+                    SessionClientTest :48 (3600) without the 60 s cap
+TC-PROD-584  pass   red at InboundPacketLimitIntegrationTest :80 and :99 (1000 pongs), before the fix and with PlayerSocketConnection back
+TC-PROD-585  pass   default and strict grid full runs, 0 failures; the existing counter proofs as listed in 04
+Existing cases rerun: TC-PROD-061 s2-3 (unchanged), TC-PROD-062 s2-4, TC-PROD-063 s2, TC-PROD-066 s2-3, TC-PROD-067 s2, TC-PROD-120 s2,
+TC-PROD-121 s2 (edit rewritten), TC-GAME-070 s2, TC-PROD-263 s3-4, TC-PROD-560 s2 (edit rewritten) and s3, TC-PROD-300 s4, TC-WORLD-085 s2.

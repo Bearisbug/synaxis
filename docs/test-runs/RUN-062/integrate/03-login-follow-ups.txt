@@ -1,0 +1,175 @@
+# Login group review follow-ups (DESIGN-PROD v0.9.43): ConnectionGateLogTest#oversizedServerAddressesAreCountedByTheGateAndGoNoFurther
+# replaces oversizedServerAddressesDoNotReachTheLoginListener (it now asserts the gate's THROTTLED count and the exception handler's
+# reports), and OnlineLoginSocketTest#noLoginAsksTheSessionServerBeforeTheRetryAfterIsOver uses Retry-After 5 instead of 2.
+# Commands as in 02 (:server-app:test for ConnectionGateLogTest). "<HL> as before" is git show 23982267e9:<HL> > <HL>; "the login
+# group before" is git checkout 23982267e9 -- the seven src/main files sec/login-path changed. Restores: git checkout HEAD -- <file>.
+
+## 1. First version of the rewritten test, heavy lock 2026-10-01 13:39:01 to 13:42:59 (HEAD 0e908f2f56)
+# It asserted THROTTLED == 17 without raising synaxis.max-connections-per-ip. The fixed code went red at :130 with 16 (L1) and 13
+# (L6, an edit that only touches logging). Reading of the code, not measured (the TOO_MANY count was not read): the twenty
+# connections are opened back to back, and with the engine's L1 of 16 per address a later one is refused at accept whenever 16
+# earlier ones are still open, so fewer than 20 reach the login bucket. The test was changed to .maxConnectionsPerIp(32) (room for
+# the twenty at once); section 2 is the run of that version: 17 in all four green runs and in every counter-proof that keeps <HL>.
+# The OnlineLoginSocketTest runs of this batch (L8 to L10) are unaffected and are the record for TC-PROD-583.
+### L1 (default) :server-app:test io.github.bearisbug.synaxis.app.ConnectionGateLogTest 13:39:03-13:39:19 rc=1
+  1 classes, tests=5 failures=1 errors=0 skipped=0 failed: ConnectionGateLogTest#oversizedServerAddressesAreCountedByTheGateAndGoNoFurther()
+  ConnectionGateLogTest: tests=5 failures=1 errors=0 skipped=0 time=1.084
+      msg: org.opentest4j.AssertionFailedError: oversized handshakes the login bucket turned away ==> expected: <17> but was: <16>
+### L6 (default) :server-app:test io.github.bearisbug.synaxis.app.ConnectionGateLogTest 13:40:43-13:41:01 rc=1
+  1 classes, tests=5 failures=2 errors=0 skipped=0 failed: ConnectionGateLogTest#oversizedServerAddressesAreCountedByTheGateAndGoNoFurther(), ConnectionGateLogTest#aConnectionTurnedAwayAtTheHandshakeWritesNoLine()
+  ConnectionGateLogTest: tests=5 failures=2 errors=0 skipped=0 time=1.075
+      msg: org.opentest4j.AssertionFailedError: oversized handshakes the login bucket turned away ==> expected: <17> but was: <13>
+
+### L8 (default) :test io.github.bearisbug.synaxis.network.OnlineLoginSocketTest 13:41:25-13:41:52 rc=0
+  BUILD SUCCESSFUL in 27s
+  1 classes, tests=22 failures=0 errors=0 skipped=0
+### L9 (strict) :test io.github.bearisbug.synaxis.network.OnlineLoginSocketTest 13:41:53-13:42:20 rc=0
+  BUILD SUCCESSFUL in 26s
+  1 classes, tests=22 failures=0 errors=0 skipped=0
+edited src/main/java/io/github/bearisbug/synaxis/network/player/SessionClient.java
+### L10 (default) :test io.github.bearisbug.synaxis.network.OnlineLoginSocketTest 13:42:21-13:42:58 rc=1
+  22 tests completed, 2 failed
+  BUILD FAILED in 37s
+  1 classes, tests=22 failures=2 errors=0 skipped=0 failed: OnlineLoginSocketTest#noLoginAsksTheSessionServerBeforeTheRetryAfterIsOver(), OnlineLoginSocketTest#aTooManyRequestsAnswerIsNotRetried()
+  OnlineLoginSocketTest: tests=22 failures=2 errors=0 skipped=0 time=18.251
+    aWrongChallengeIsAProtocolError() 1.149s ok
+    loginsThatStopAtTheEncryptionRequestHoldNoSeat() 0.206s ok
+    aSecretThatIsNotAnAes128KeyIsAProtocolError() 0.083s ok
+    anOnlineLoginTakesTheIdentityTheSessionServerVouchesFor() 0.074s ok
+    noMoreThanMaxInFlightQueriesRunAtOnce() 0.616s ok
+    anEncryptedOfflineLoginTakesItsSeatOnceItsKeyIsIn() 0.131s ok
+    aPeerThatLeavesWhileQueuedForASlotAsksNothing() 1.24s ok
+    theFinalAnswerTheRetryAndEveryQueryTimeAreCounted() 0.807s ok
+    twoUnavailableAnswersRefuseWithAuthUnavailable() 1.517s ok
+    anUnavailableSessionServerIsAskedOnceMore() 0.979s ok
+    aKeyWithoutARequestIsAProtocolError() 0.05s ok
+    noLoginAsksTheSessionServerBeforeTheRetryAfterIsOver() 1.212s FAILED
+      msg: org.opentest4j.AssertionFailedError: a login within the Retry-After asked the session server ==> expected: <[First]> but was: <[First, First, Second]>
+        at io.github.bearisbug.synaxis.network.OnlineLoginSocketTest.noLoginAsksTheSessionServerBeforeTheRetryAfterIsOver(OnlineLoginSocketTest.java:159)
+    aPeerThatLeavesDuringAnUnavailableQueryIsNotRetried() 2.578s ok
+    theTrafficAndTheCipherTimeOfAnEncryptedLoginAreCounted() 0.071s ok
+    anAuthenticatedTransferThatFindsTheSeatsTakenIsRefusedEncrypted() 0.151s ok
+    aSecondKeyIsAProtocolError() 0.372s ok
+    aKeyToAnOfflineServerIsAProtocolError() 0.037s ok
+    encryptedOfflineModeEncryptsWithoutAskingForASession() 0.067s ok
+    aPeerThatLeavesDuringVerificationIsForgotten() 3.087s ok
+    aNameThatDidNotJoinIsRefusedWithAnEncryptedAuthFailed() 0.104s ok
+    aSessionServerThatDoesNotAnswerInTimeIsUnavailable() 2.777s ok
+    aTooManyRequestsAnswerIsNotRetried() 0.93s FAILED
+      msg: org.opentest4j.AssertionFailedError: a 429 was asked again ==> expected: <1> but was: <2>
+        at io.github.bearisbug.synaxis.network.OnlineLoginSocketTest.aTooManyRequestsAnswerIsNotRetried(OnlineLoginSocketTest.java:136)
+  restored src/main/java/io/github/bearisbug/synaxis/network/player/SessionClient.java
+  worktree clean (tracked)
+LOCK RELEASING 2026-10-01 13:42:59
+
+## 2. The test as committed (cc27560ea9), heavy lock 2026-10-01 13:44:56 to 13:46:23 (HEAD 5e0977797e)
+#   M1-M3 default three times, M4 strict; M5 <HL> as before; M6 the login group before; M7 <LL> as before;
+#   M8 TC-PROD-066 step 2 (REPORT_INTERVAL / 2); M9 TC-PROD-066 step 3 (wasOnline || turnedAway); M10 TC-PROD-067 step 2
+LOCK TAKEN 2026-10-01 13:44:56
+HEAD 5e0977797e
+### M1 (default) :server-app:test io.github.bearisbug.synaxis.app.ConnectionGateLogTest 13:44:58-13:45:05 rc=0
+  BUILD SUCCESSFUL in 7s
+  1 classes, tests=5 failures=0 errors=0 skipped=0
+### M2 (default) :server-app:test io.github.bearisbug.synaxis.app.ConnectionGateLogTest 13:45:06-13:45:11 rc=0
+  BUILD SUCCESSFUL in 4s
+  1 classes, tests=5 failures=0 errors=0 skipped=0
+### M3 (default) :server-app:test io.github.bearisbug.synaxis.app.ConnectionGateLogTest 13:45:12-13:45:17 rc=0
+  BUILD SUCCESSFUL in 4s
+  1 classes, tests=5 failures=0 errors=0 skipped=0
+### M4 (strict) :server-app:test io.github.bearisbug.synaxis.app.ConnectionGateLogTest 13:45:18-13:45:25 rc=0
+  BUILD SUCCESSFUL in 7s
+  1 classes, tests=5 failures=0 errors=0 skipped=0
+### M5 (default) :server-app:test io.github.bearisbug.synaxis.app.ConnectionGateLogTest 13:45:26-13:45:35 rc=1
+  5 tests completed, 1 failed
+  BUILD FAILED in 8s
+  1 classes, tests=5 failures=1 errors=0 skipped=0 failed: ConnectionGateLogTest#oversizedServerAddressesAreCountedByTheGateAndGoNoFurther()
+  ConnectionGateLogTest: tests=5 failures=1 errors=0 skipped=0 time=1.235
+    settingTheSocketTimeoutWarnsThatItIsDeprecated() 0.022s ok
+    oversizedServerAddressesAreCountedByTheGateAndGoNoFurther() 1.029s FAILED
+      msg: org.opentest4j.AssertionFailedError: oversized handshakes the login bucket turned away ==> expected: <17> but was: <0>
+        at io.github.bearisbug.synaxis.app.ConnectionGateLogTest.oversizedServerAddressesAreCountedByTheGateAndGoNoFurther(ConnectionGateLogTest.java:131)
+    aConnectionTurnedAwayAtTheHandshakeWritesNoLine() 0.088s ok
+    aLoginPluginResponseNobodyAskedForIsReportedByTheExceptionHandlerAlone() 0.085s ok
+    rejectionsAreOneLinePerTenSeconds() 0.001s ok
+  restored src/main/java/io/github/bearisbug/synaxis/listener/preplay/HandshakeListener.java
+### M6 (default) :server-app:test io.github.bearisbug.synaxis.app.ConnectionGateLogTest 13:45:36-13:45:48 rc=1
+  5 tests completed, 2 failed
+  BUILD FAILED in 11s
+  1 classes, tests=5 failures=2 errors=0 skipped=0 failed: ConnectionGateLogTest#oversizedServerAddressesAreCountedByTheGateAndGoNoFurther(), ConnectionGateLogTest#aLoginPluginResponseNobodyAskedForIsReportedByTheExceptionHandlerAlone()
+  ConnectionGateLogTest: tests=5 failures=2 errors=0 skipped=0 time=1.088
+    settingTheSocketTimeoutWarnsThatItIsDeprecated() 0.022s ok
+    oversizedServerAddressesAreCountedByTheGateAndGoNoFurther() 0.902s FAILED
+      msg: org.opentest4j.AssertionFailedError: oversized handshakes the login bucket turned away ==> expected: <17> but was: <0>
+        at io.github.bearisbug.synaxis.app.ConnectionGateLogTest.oversizedServerAddressesAreCountedByTheGateAndGoNoFurther(ConnectionGateLogTest.java:131)
+    aConnectionTurnedAwayAtTheHandshakeWritesNoLine() 0.085s ok
+    aLoginPluginResponseNobodyAskedForIsReportedByTheExceptionHandlerAlone() 0.069s FAILED
+      msg: org.opentest4j.AssertionFailedError: the login listener wrote lines of its own ==> expected: <[]> but was: <[Error handling Login Plugin Response, Error handling Login Plugin Response, Error handling Login Plugin Response, Error handling Login Plugin Response, Error handling Login Plugin Response, Error handling Login Plugin Response, Error handling Login Plugin Response, Error handling Login Plug
+        at io.github.bearisbug.synaxis.app.ConnectionGateLogTest.aLoginPluginResponseNobodyAskedForIsReportedByTheExceptionHandlerAlone(ConnectionGateLogTest.java:151)
+    rejectionsAreOneLinePerTenSeconds() 0.001s ok
+  restored src/main/java/io/github/bearisbug/synaxis/listener/preplay/HandshakeListener.java src/main/java/io/github/bearisbug/synaxis/listener/preplay/LoginListener.java src/main/java/io/github/bearisbug/synaxis/network/ConnectionGate.java src/main/java/io/github/bearisbug/synaxis/network/ConnectionManager.java src/main/java/io/github/bearisbug/synaxis/network/player/InboundPacketLimits.java src/main/java/io/github/bearisbug/synaxis/network/player/PlayerSocketConnection.java src/main/java/io/github/bearisbug/synaxis/network/player/SessionClient.java
+### M7 (default) :server-app:test io.github.bearisbug.synaxis.app.ConnectionGateLogTest 13:45:49-13:46:01 rc=1
+  5 tests completed, 1 failed
+  BUILD FAILED in 11s
+  1 classes, tests=5 failures=1 errors=0 skipped=0 failed: ConnectionGateLogTest#aLoginPluginResponseNobodyAskedForIsReportedByTheExceptionHandlerAlone()
+  ConnectionGateLogTest: tests=5 failures=1 errors=0 skipped=0 time=1.228
+    settingTheSocketTimeoutWarnsThatItIsDeprecated() 0.022s ok
+    oversizedServerAddressesAreCountedByTheGateAndGoNoFurther() 1.044s ok
+    aConnectionTurnedAwayAtTheHandshakeWritesNoLine() 0.077s ok
+    aLoginPluginResponseNobodyAskedForIsReportedByTheExceptionHandlerAlone() 0.074s FAILED
+      msg: org.opentest4j.AssertionFailedError: the login listener wrote lines of its own ==> expected: <[]> but was: <[Error handling Login Plugin Response, Error handling Login Plugin Response, Error handling Login Plugin Response, Error handling Login Plugin Response, Error handling Login Plugin Response, Error handling Login Plugin Response, Error handling Login Plugin Response, Error handling Login Plug
+        at io.github.bearisbug.synaxis.app.ConnectionGateLogTest.aLoginPluginResponseNobodyAskedForIsReportedByTheExceptionHandlerAlone(ConnectionGateLogTest.java:151)
+    rejectionsAreOneLinePerTenSeconds() 0.001s ok
+  restored src/main/java/io/github/bearisbug/synaxis/listener/preplay/LoginListener.java
+edited src/main/java/io/github/bearisbug/synaxis/network/ConnectionGate.java
+### M8 (default) :server-app:test io.github.bearisbug.synaxis.app.ConnectionGateLogTest 13:46:02-13:46:08 rc=1
+  5 tests completed, 1 failed
+  BUILD FAILED in 5s
+  1 classes, tests=5 failures=1 errors=0 skipped=0 failed: ConnectionGateLogTest#rejectionsAreOneLinePerTenSeconds()
+  ConnectionGateLogTest: tests=5 failures=1 errors=0 skipped=0 time=1.171
+    settingTheSocketTimeoutWarnsThatItIsDeprecated() 0.026s ok
+    oversizedServerAddressesAreCountedByTheGateAndGoNoFurther() 0.969s ok
+    aConnectionTurnedAwayAtTheHandshakeWritesNoLine() 0.087s ok
+    aLoginPluginResponseNobodyAskedForIsReportedByTheExceptionHandlerAlone() 0.07s ok
+    rejectionsAreOneLinePerTenSeconds() 0.007s FAILED
+      msg: org.opentest4j.AssertionFailedError: nothing before the 10 s are over ==> expected: <[]> but was: <[Connection gate rejected 112 connections in the last 10 s: too_many=0 throttled=7 full=4 closed_at_accept=100 handshake_timeout=1]>
+        at io.github.bearisbug.synaxis.app.ConnectionGateLogTest.rejectionsAreOneLinePerTenSeconds(ConnectionGateLogTest.java:66)
+  restored src/main/java/io/github/bearisbug/synaxis/network/ConnectionGate.java
+edited src/main/java/io/github/bearisbug/synaxis/network/player/PlayerConnection.java
+### M9 (default) :server-app:test io.github.bearisbug.synaxis.app.ConnectionGateLogTest 13:46:09-13:46:15 rc=1
+  5 tests completed, 1 failed
+  BUILD FAILED in 5s
+  1 classes, tests=5 failures=1 errors=0 skipped=0 failed: ConnectionGateLogTest#aConnectionTurnedAwayAtTheHandshakeWritesNoLine()
+  ConnectionGateLogTest: tests=5 failures=1 errors=0 skipped=0 time=1.109
+    settingTheSocketTimeoutWarnsThatItIsDeprecated() 0.022s ok
+    oversizedServerAddressesAreCountedByTheGateAndGoNoFurther() 0.901s ok
+    aConnectionTurnedAwayAtTheHandshakeWritesNoLine() 0.09s FAILED
+      msg: org.opentest4j.AssertionFailedError: only the connection the gate let through: [Connection closed: connection_id=46afbec6-81c8-4ef1-a102-f6befd9ba66b identifier=/127.0.0.1:59725, Connection closed: connection_id=484fa7e2-5170-41ac-8353-f7a3ee363b26 identifier=/127.0.0.1:59726, Connection closed: connection_id=fd3bebeb-9f4a-4975-9384-4846263c8627 identifier=/127.0.0.1:59727, Connection closed: conn
+        at io.github.bearisbug.synaxis.app.ConnectionGateLogTest.aConnectionTurnedAwayAtTheHandshakeWritesNoLine(ConnectionGateLogTest.java:108)
+    aLoginPluginResponseNobodyAskedForIsReportedByTheExceptionHandlerAlone() 0.085s ok
+    rejectionsAreOneLinePerTenSeconds() 0.001s ok
+  restored src/main/java/io/github/bearisbug/synaxis/network/player/PlayerConnection.java
+edited src/main/java/io/github/bearisbug/synaxis/network/ConnectionManager.java
+edited src/main/java/io/github/bearisbug/synaxis/ServerConfig.java
+### M10 (default) ConnectionManagerIntegrationTest + ConnectionGateLogTest --continue 13:46:16-13:46:22 rc=1
+  5 tests completed, 1 failed
+  4 tests completed, 1 failed
+  BUILD FAILED in 6s
+  ConnectionManagerIntegrationTest: tests=4 failures=1 errors=0 skipped=0 time=1.058
+    aPlayerThatStopsAnsweringKeepAlivesIsKicked(Env) 0.965s FAILED
+      msg: org.opentest4j.AssertionFailedError: expected: <synaxis:keep-alive-timeout> but was: <synaxis:login-timeout>
+        at io.github.bearisbug.synaxis.network.ConnectionManagerIntegrationTest.lambda$aPlayerThatStopsAnsweringKeepAlivesIsKicked$0(ConnectionManagerIntegrationTest.java:85)
+        at io.github.bearisbug.synaxis.network.ConnectionManagerIntegrationTest.aPlayerThatStopsAnsweringKeepAlivesIsKicked(ConnectionManagerIntegrationTest.java:85)
+    testPartialFind(Env) 0.045s ok
+    profileIsPublishedBeforeLoginSuccess(Env) 0.014s ok
+    aDroppedConnectionIsNoLongerConnected(Env) 0.023s ok
+  ConnectionGateLogTest: tests=5 failures=1 errors=0 skipped=0 time=1.289
+    settingTheSocketTimeoutWarnsThatItIsDeprecated() 0.028s FAILED
+      msg: org.opentest4j.AssertionFailedError: [] ==> expected: <1> but was: <0>
+        at io.github.bearisbug.synaxis.app.ConnectionGateLogTest.settingTheSocketTimeoutWarnsThatItIsDeprecated(ConnectionGateLogTest.java:212)
+    oversizedServerAddressesAreCountedByTheGateAndGoNoFurther() 1.082s ok
+    aConnectionTurnedAwayAtTheHandshakeWritesNoLine() 0.083s ok
+    aLoginPluginResponseNobodyAskedForIsReportedByTheExceptionHandlerAlone() 0.078s ok
+    rejectionsAreOneLinePerTenSeconds() 0.001s ok
+  restored src/main/java/io/github/bearisbug/synaxis/network/ConnectionManager.java src/main/java/io/github/bearisbug/synaxis/ServerConfig.java
+  worktree clean (tracked)
+LOCK RELEASING 2026-10-01 13:46:23

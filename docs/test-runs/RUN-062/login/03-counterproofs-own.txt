@@ -1,0 +1,374 @@
+# Counter proofs of this group's own fixes, on 1f33976097 (2026-10-01, UTC+8). Each: one temporary edit (a Python exact replace,
+# or 'git show 23982267e9:<file> > <file>' for 'back to before'), the run, then git checkout HEAD -- src/main. --continue on every run.
+# First pass (cp1-cp8, 10:23-10:27): console lines kept; the copy of the JUnit XML failed for the runs that touched one module only
+# (an unmatched zsh glob), so cp2, cp3, cp5-cp8 ran again in the second pass (10:32-10:34) with the XML kept, same results.
+
+================ first pass (console lines)
+# counter proofs on 1f33976097, 2026-10-01
+
+## cp1-handshake-before-gate
+10:23:39 start: :test --tests *ConnectionGateSocketTest :server-app:test --tests *ConnectionGateLogTest
+  ConnectionGateSocketTest > behindTheProxyAnOversizedServerAddressCountsAgainstItsAddress() FAILED
+      org.opentest4j.AssertionFailedError at ConnectionGateSocketTest.java:239
+  ConnectionGateSocketTest > anOversizedServerAddressTakesItsTokenAndIsClosed() FAILED
+      org.opentest4j.AssertionFailedError at ConnectionGateSocketTest.java:216
+  ConnectionGateSocketTest > anOversizedServerAddressDoesNotSkipTheGate() FAILED
+      org.opentest4j.AssertionFailedError at ConnectionGateSocketTest.java:197
+  12 tests completed, 3 failed
+  > Task :test FAILED
+  BUILD FAILED in 18s
+10:23:57 exit 1
+
+## cp2-no-disconnect-before-configuration
+10:23:58 start: :test --tests *PreAuthConnectionIntegrationTest
+  PreAuthConnectionIntegrationTest > aListenerThatThrowsBeforeTheConfigurationStateDropsTheConnection(Env) FAILED
+      org.opentest4j.AssertionFailedError at PreAuthConnectionIntegrationTest.java:261
+  9 tests completed, 1 failed
+  > Task :test FAILED
+  BUILD FAILED in 9s
+10:24:07 exit 1
+
+## cp3-login-listener-own-error-line
+10:24:07 start: :server-app:test --tests *ConnectionGateLogTest
+  ConnectionGateLogTest > aLoginPluginResponseNobodyAskedForIsReportedByTheExceptionHandlerAlone() FAILED
+      org.opentest4j.AssertionFailedError at ConnectionGateLogTest.java:145
+  5 tests completed, 1 failed
+  > Task :server-app:test FAILED
+  BUILD FAILED in 10s
+10:24:18 exit 1
+
+## cp4-seat-at-login-start
+10:24:18 start: :test --tests *OnlineLoginSocketTest :server-app:test --tests *FullChannelTransferSocketTest
+  OnlineLoginSocketTest > loginsThatStopAtTheEncryptionRequestHoldNoSeat() FAILED
+      java.lang.AssertionError at OnlineLoginSocketTest.java:374
+  OnlineLoginSocketTest > anEncryptedOfflineLoginTakesItsSeatOnceItsKeyIsIn() FAILED
+      org.opentest4j.AssertionFailedError at OnlineLoginSocketTest.java:417
+  OnlineLoginSocketTest > anAuthenticatedTransferThatFindsTheSeatsTakenIsRefusedEncrypted() FAILED
+      java.lang.AssertionError at OnlineLoginSocketTest.java:397
+  22 tests completed, 3 failed
+  > Task :test FAILED
+  BUILD FAILED in 53s
+10:25:12 exit 1
+
+## cp5-no-seat-after-authentication
+10:25:12 start: :test --tests *OnlineLoginSocketTest
+  OnlineLoginSocketTest > loginsThatStopAtTheEncryptionRequestHoldNoSeat() FAILED
+      org.opentest4j.AssertionFailedError at OnlineLoginSocketTest.java:375
+  OnlineLoginSocketTest > anEncryptedOfflineLoginTakesItsSeatOnceItsKeyIsIn() FAILED
+      org.opentest4j.AssertionFailedError at OnlineLoginSocketTest.java:420
+  OnlineLoginSocketTest > anAuthenticatedTransferThatFindsTheSeatsTakenIsRefusedEncrypted() FAILED
+      java.lang.AssertionError at OnlineLoginSocketTest.java:399
+  22 tests completed, 3 failed
+  > Task :test FAILED
+  BUILD FAILED in 38s
+10:25:50 exit 1
+
+## cp6-429-does-not-stop-queries
+10:25:50 start: :test --tests *OnlineLoginSocketTest
+  OnlineLoginSocketTest > noLoginAsksTheSessionServerBeforeTheRetryAfterIsOver() FAILED
+      org.opentest4j.AssertionFailedError at OnlineLoginSocketTest.java:159
+  OnlineLoginSocketTest > aTooManyRequestsAnswerIsNotRetried() FAILED
+      org.opentest4j.AssertionFailedError at OnlineLoginSocketTest.java:136
+  22 tests completed, 2 failed
+  > Task :test FAILED
+  BUILD FAILED in 39s
+10:26:30 exit 1
+
+## cp7-retry-after-uncapped
+10:26:30 start: :test --tests *SessionClientTest
+  SessionClientTest > theRetryAfterOfATooManyRequestsAnswerIsSecondsUpToAMinute() FAILED
+      org.opentest4j.AssertionFailedError at SessionClientTest.java:48
+  3 tests completed, 1 failed
+  > Task :test FAILED
+  BUILD FAILED in 20s
+10:26:51 exit 1
+
+## cp8-immediate-packets-not-counted
+10:26:51 start: :test --tests *InboundPacketLimitIntegrationTest
+  InboundPacketLimitIntegrationTest > pingsOverADropLimitAreNotAnswered() FAILED
+      org.opentest4j.AssertionFailedError at InboundPacketLimitIntegrationTest.java:99
+  InboundPacketLimitIntegrationTest > pingsInPlayCountTowardsTheLimit(Env) FAILED
+      org.opentest4j.AssertionFailedError at InboundPacketLimitIntegrationTest.java:80
+  7 tests completed, 2 failed
+  > Task :test FAILED
+  BUILD FAILED in 29s
+10:27:21 exit 1
+
+# after the last restore: git status --short
+ M docs/DESIGN-PROD.md
+?? docs/test-runs/RUN-062/
+
+================ second pass, batch a (diff of the edit, console lines, then the JUnit XML per run)
+  # counter proofs batch a on 1f33976097, 2026-10-01
+
+  ## cp2-no-disconnect-before-configuration
+  diff --git a/src/main/java/io/github/bearisbug/synaxis/network/player/PlayerSocketConnection.java b/src/main/java/io/github/bearisbug/synaxis/network/player/PlayerSocketConnection.java
+  @@ -278,8 +278,7 @@ public class PlayerSocketConnection extends PlayerConnection {
+                               process().exception().handleException(e, connectionId());
+                           // Packets already in the queue are unaffected. Before the configuration state
+                           // a listener that throws has left the login half done, so the connection goes.
+  -                        if (startingState.ordinal() < ConnectionState.CONFIGURATION.ordinal()
+  -                                || process().config().rejectMisusedPacket()) disconnect();
+  +                        if (process().config().rejectMisusedPacket()) disconnect();
+                       }
+                   }
+                   // Compact in case of incomplete read
+  10:32:32 start: :test --tests *PreAuthConnectionIntegrationTest
+    PreAuthConnectionIntegrationTest > aListenerThatThrowsBeforeTheConfigurationStateDropsTheConnection(Env) FAILED
+        org.opentest4j.AssertionFailedError at PreAuthConnectionIntegrationTest.java:261
+    9 tests completed, 1 failed
+    > Task :test FAILED
+    BUILD FAILED in 5s
+  10:32:37 exit 1
+
+  ## cp3-login-listener-own-error-line
+  diff --git a/src/main/java/io/github/bearisbug/synaxis/listener/preplay/LoginListener.java b/src/main/java/io/github/bearisbug/synaxis/listener/preplay/LoginListener.java
+  @@ -22,6 +22,8 @@ import io.github.bearisbug.synaxis.network.player.PlayerSocketConnection;
+   import io.github.bearisbug.synaxis.network.player.SessionClient;
+   import io.github.bearisbug.synaxis.network.plugin.LoginPluginMessageProcessor;
+   import io.github.bearisbug.synaxis.utils.StringUtils;
+  +import org.slf4j.Logger;
+  +import org.slf4j.LoggerFactory;
+
+   import java.net.SocketAddress;
+   import java.security.GeneralSecurityException;
+  @@ -30,6 +32,7 @@ import java.security.MessageDigest;
+   import java.security.SecureRandom;
+
+   public final class LoginListener {
+  +    private static final Logger LOGGER = LoggerFactory.getLogger(LoginListener.class);
+       private static final SecureRandom CHALLENGE_RANDOM = new SecureRandom();
+
+       private static final Component ERROR_DURING_LOGIN = Component.text("Error during login!", NamedTextColor.RED);
+  @@ -54,12 +57,10 @@ public final class LoginListener {
+               connection.disconnectTurnedAway();
+               return;
+           }
+  -        // Connection gate L3, before any work is done for the login: a full process is not worth
+  -        // a key exchange or a session server query. The seat itself is taken once the peer is
+  -        // authenticated (ConnectionManager#transitionLoginToConfig). Counted by the gate rather
+  +        // Connection gate L3, before any work is done for the login. Counted by the gate rather
+           // than logged, how often a full process is knocked at is up to the peers.
+  -        if (connection instanceof PlayerSocketConnection
+  -                && !connection.process().connection().gate().seatFree()) {
+  +        if (connection instanceof PlayerSocketConnection socketConnection
+  +                && !connection.process().connection().gate().takeSeat(socketConnection.gateTicket())) {
+               connection.sendPacket(new LoginDisconnectPacket(DisconnectReasons.SHARD_FULL));
+               connection.disconnectTurnedAway();
+               return;
+  @@ -177,9 +178,8 @@ public final class LoginListener {
+           } catch (Throwable t) {
+               // One report per connection, not per packet: a peer fits thousands of plugin responses
+               // into one read, and the kick is what ends that batch (PlayerSocketConnection#processPackets).
+  -            // The report goes to the exception handler only, which bounds its lines: the peer is not
+  -            // authenticated and decides how many connections ask for one.
+               connection.kick(ERROR_DURING_LOGIN);
+  +            LOGGER.error("Error handling Login Plugin Response", t);
+               connection.process().exception().handleException(t, connection.connectionId());
+           }
+       }
+  10:32:37 start: :server-app:test --tests *ConnectionGateLogTest
+    ConnectionGateLogTest > aLoginPluginResponseNobodyAskedForIsReportedByTheExceptionHandlerAlone() FAILED
+        org.opentest4j.AssertionFailedError at ConnectionGateLogTest.java:145
+    5 tests completed, 1 failed
+    > Task :server-app:test FAILED
+    BUILD FAILED in 6s
+  10:32:44 exit 1
+
+  ## cp5-no-seat-after-authentication
+  diff --git a/src/main/java/io/github/bearisbug/synaxis/network/ConnectionManager.java b/src/main/java/io/github/bearisbug/synaxis/network/ConnectionManager.java
+  @@ -404,7 +404,7 @@ public final class ConnectionManager {
+           // never gets this far holds none (docs/DESIGN-PROD.md ADR-PROD-015). Checked before
+           // compression is switched on, so a refused client reads nothing but the disconnect.
+           if (connection instanceof PlayerSocketConnection socketConnection
+  -                && !gate.takeSeat(socketConnection.gateTicket())) {
+  +                && socketConnection.gateTicket() == null) {
+               connection.sendPacket(new LoginDisconnectPacket(DisconnectReasons.SHARD_FULL));
+               connection.disconnectTurnedAway();
+               return gameProfile;
+  10:32:44 start: :test --tests *OnlineLoginSocketTest
+    OnlineLoginSocketTest > loginsThatStopAtTheEncryptionRequestHoldNoSeat() FAILED
+        org.opentest4j.AssertionFailedError at OnlineLoginSocketTest.java:375
+    OnlineLoginSocketTest > anEncryptedOfflineLoginTakesItsSeatOnceItsKeyIsIn() FAILED
+        org.opentest4j.AssertionFailedError at OnlineLoginSocketTest.java:420
+    OnlineLoginSocketTest > anAuthenticatedTransferThatFindsTheSeatsTakenIsRefusedEncrypted() FAILED
+        java.lang.AssertionError at OnlineLoginSocketTest.java:399
+    22 tests completed, 3 failed
+    > Task :test FAILED
+    BUILD FAILED in 24s
+  10:33:08 exit 1
+
+  ## cp6-429-does-not-stop-queries
+  diff --git a/src/main/java/io/github/bearisbug/synaxis/network/player/SessionClient.java b/src/main/java/io/github/bearisbug/synaxis/network/player/SessionClient.java
+  @@ -161,7 +161,7 @@ public final class SessionClient {
+                   case 429 -> {
+                       final long until = System.nanoTime() + TimeUnit.SECONDS.toNanos(
+                               retryAfterSeconds(response.headers().firstValue("Retry-After").orElse(null)));
+  -                    quietUntil.accumulateAndGet(until, (current, next) -> next - current > 0 ? next : current);
+  +                    quietUntil.accumulateAndGet(until, (current, _) -> current);
+                       yield new Result.Unavailable("status 429");
+                   }
+                   default -> new Result.Unavailable("status " + response.statusCode());
+  10:33:08 start: :test --tests *OnlineLoginSocketTest
+    OnlineLoginSocketTest > noLoginAsksTheSessionServerBeforeTheRetryAfterIsOver() FAILED
+        org.opentest4j.AssertionFailedError at OnlineLoginSocketTest.java:159
+    OnlineLoginSocketTest > aTooManyRequestsAnswerIsNotRetried() FAILED
+        org.opentest4j.AssertionFailedError at OnlineLoginSocketTest.java:136
+    22 tests completed, 2 failed
+    > Task :test FAILED
+    BUILD FAILED in 24s
+  10:33:33 exit 1
+
+  ## cp7-retry-after-uncapped
+  diff --git a/src/main/java/io/github/bearisbug/synaxis/network/player/SessionClient.java b/src/main/java/io/github/bearisbug/synaxis/network/player/SessionClient.java
+  @@ -191,7 +191,7 @@ public final class SessionClient {
+           if (value != null) {
+               try {
+                   final long seconds = Long.parseLong(value.strip());
+  -                if (seconds >= 0) return Math.min(seconds, MAX_RETRY_AFTER_SECONDS);
+  +                if (seconds >= 0) return seconds;
+               } catch (NumberFormatException _) {
+                   // Not a number of seconds, the default applies
+               }
+  10:33:33 start: :test --tests *SessionClientTest
+    > Task :test FAILED
+    SessionClientTest > theRetryAfterOfATooManyRequestsAnswerIsSecondsUpToAMinute() FAILED
+        org.opentest4j.AssertionFailedError at SessionClientTest.java:48
+    3 tests completed, 1 failed
+    BUILD FAILED in 4s
+  10:33:38 exit 1
+
+  ## cp8-immediate-packets-not-counted
+  diff --git a/src/main/java/io/github/bearisbug/synaxis/network/player/PlayerSocketConnection.java b/src/main/java/io/github/bearisbug/synaxis/network/player/PlayerSocketConnection.java
+  @@ -261,25 +261,26 @@ public class PlayerSocketConnection extends PlayerConnection {
+                       try {
+                           final boolean processImmediately = IMMEDIATE_PROCESS_PACKETS.contains(packet.getClass());
+                           if (processImmediately) {
+  -                            // Interpret the packet using the connection state we received it. In the
+  -                            // play state a ping, a keep alive or a cookie counts towards the inbound
+  -                            // limits like any other packet, it only skips the queue.
+  -                            if (getClientState() != ConnectionState.PLAY || admitted(packet))
+  -                                process().packetListener().processClientPacket(packet, this);
+  +                            // Interpret the packet using the connection state we received it.
+  +                            process().packetListener().processClientPacket(packet, this);
+                           } else {
+                               // To be processed during the next player tick, if the limits let it through
+                               final Player player = getPlayer();
+                               assert player != null;
+  -                            if (admitted(packet)) player.addPacketToQueue(packet);
+  +                            switch (inboundLimiter.admit(packet, System.nanoTime())) {
+  +                                case ACCEPT -> player.addPacketToQueue(packet);
+  +                                case DROP -> {
+  +                                    // Thrown away before any listener sees it
+  +                                }
+  +                                case KICK -> kickOverInboundLimit();
+  +                            }
+                           }
+                       } catch (Throwable e) {
+                           rethrowFatal(e);
+                           if (startingState.ordinal() > process().config().suppressMisusedPacketErrorLevel())
+                               process().exception().handleException(e, connectionId());
+  -                        // Packets already in the queue are unaffected. Before the configuration state
+  -                        // a listener that throws has left the login half done, so the connection goes.
+  -                        if (startingState.ordinal() < ConnectionState.CONFIGURATION.ordinal()
+  -                                || process().config().rejectMisusedPacket()) disconnect();
+  +                        // Packets already in the queue are unaffected.
+  +                        if (process().config().rejectMisusedPacket()) disconnect();
+                       }
+                   }
+                   // Compact in case of incomplete read
+  @@ -391,23 +392,6 @@ public class PlayerSocketConnection extends PlayerConnection {
+           return packetInfo.serializer().read(buffer);
+       }
+
+  -    /**
+  -     * Counts a packet against the inbound limits ({@code docs/DESIGN-PROD.md} {@code API-PROD-012}).
+  -     *
+  -     * @return true to handle it; false if it is dropped before any listener sees it, or if the
+  -     * connection was kicked for it
+  -     */
+  -    private boolean admitted(ClientPacket packet) {
+  -        return switch (inboundLimiter.admit(packet, System.nanoTime())) {
+  -            case ACCEPT -> true;
+  -            case DROP -> false;
+  -            case KICK -> {
+  -                kickOverInboundLimit();
+  -                yield false;
+  -            }
+  -        };
+  -    }
+  -
+       /** One line per connection, next to the disconnect it explains ({@code docs/ENGINE.md} §8). */
+       private void kickOverInboundLimit() {
+           LOGGER.info("Inbound packet limit exceeded: connection_id={} identifier={} limit={}",
+  10:33:38 start: :test --tests *InboundPacketLimitIntegrationTest
+    InboundPacketLimitIntegrationTest > pingsOverADropLimitAreNotAnswered() FAILED
+        org.opentest4j.AssertionFailedError at InboundPacketLimitIntegrationTest.java:99
+    InboundPacketLimitIntegrationTest > pingsInPlayCountTowardsTheLimit(Env) FAILED
+        org.opentest4j.AssertionFailedError at InboundPacketLimitIntegrationTest.java:80
+    7 tests completed, 2 failed
+    > Task :test FAILED
+    BUILD FAILED in 4s
+  10:33:43 exit 1
+
+  ## tc-world-085-s2
+  diff --git a/src/main/java/io/github/bearisbug/synaxis/listener/preplay/LoginListener.java b/src/main/java/io/github/bearisbug/synaxis/listener/preplay/LoginListener.java
+  @@ -58,7 +58,7 @@ public final class LoginListener {
+           // a key exchange or a session server query. The seat itself is taken once the peer is
+           // authenticated (ConnectionManager#transitionLoginToConfig). Counted by the gate rather
+           // than logged, how often a full process is knocked at is up to the peers.
+  -        if (connection instanceof PlayerSocketConnection
+  +        if (!connection.wasTransferred() && connection instanceof PlayerSocketConnection
+                   && !connection.process().connection().gate().seatFree()) {
+               connection.sendPacket(new LoginDisconnectPacket(DisconnectReasons.SHARD_FULL));
+               connection.disconnectTurnedAway();
+  10:33:43 start: :server-app:test --tests *FullChannelTransferSocketTest
+    FullChannelTransferSocketTest > aFullChannelRefusesATransferBeforeTheEncryptionRequest() FAILED
+        org.opentest4j.AssertionFailedError at FullChannelTransferSocketTest.java:210
+    2 tests completed, 1 failed
+    > Task :server-app:test FAILED
+    BUILD FAILED in 10s
+  10:33:53 exit 1
+
+  # after the last restore: git status --short
+   M docs/DESIGN-PROD.md
+  ?? docs/test-runs/RUN-062/
+
+## JUnit XML, first pass (cp1, cp4) and second pass (the rest)
+-- cp1-handshake-before-gate
+io.github.bearisbug.synaxis.app.ConnectionGateLogTest: tests=5 failures=0 errors=0 skipped=0 time=1.356
+io.github.bearisbug.synaxis.network.ConnectionGateSocketTest: tests=12 failures=3 errors=0 skipped=0 time=4.095
+  RED behindTheProxyAnOversizedServerAddressCountsAgainstItsAddress() [0.092s] -> org.opentest4j.AssertionFailedError: org.opentest4j.AssertionFailedError: expected: <1> but was: <0> | at ConnectionGateSocketTest.java:239
+  RED anOversizedServerAddressTakesItsTokenAndIsClosed() [0.147s] -> org.opentest4j.AssertionFailedError: org.opentest4j.AssertionFailedError: expected a login disconnect ==> Unexpected type, expected: <io.github.bearisbug.synaxis.network.packet.server.login.LoginDisconnectPacket> but was: <io.github.bearisbug.synaxis.network.packet.server.login.SetCompressionPack | at ConnectionGateSocketTest.java:494
+  RED anOversizedServerAddressDoesNotSkipTheGate() [0.144s] -> org.opentest4j.AssertionFailedError: org.opentest4j.AssertionFailedError: the gate saw the handshake ==> expected: <1> but was: <0> | at ConnectionGateSocketTest.java:197
+-- cp4-seat-at-login-start
+io.github.bearisbug.synaxis.app.FullChannelTransferSocketTest: tests=2 failures=0 errors=0 skipped=0 time=2.649
+io.github.bearisbug.synaxis.network.OnlineLoginSocketTest: tests=22 failures=3 errors=0 skipped=0 time=19.274
+  RED loginsThatStopAtTheEncryptionRequestHoldNoSeat() [0.137s] -> java.lang.AssertionError: java.lang.AssertionError: expected an encryption request, got login disconnect TranslatableComponentImpl[children=[], style=StyleImpl{font=null, color=null, shadowColor=null, decorations=DecorationMap{obfuscated=not_set, bold=not_set, strikethrough=not_set, un | at OnlineLoginSocketTest.java:374
+  RED anEncryptedOfflineLoginTakesItsSeatOnceItsKeyIsIn() [0.053s] -> org.opentest4j.AssertionFailedError: org.opentest4j.AssertionFailedError: a login waiting for its key holds a seat ==> expected: <0> but was: <1> | at OnlineLoginSocketTest.java:417
+  RED anAuthenticatedTransferThatFindsTheSeatsTakenIsRefusedEncrypted() [0.093s] -> java.lang.AssertionError: java.lang.AssertionError: expected an encryption request, got login disconnect TranslatableComponentImpl[children=[], style=StyleImpl{font=null, color=null, shadowColor=null, decorations=DecorationMap{obfuscated=not_set, bold=not_set, strikethrough=not_set, un | at OnlineLoginSocketTest.java:397
+-- cp2-no-disconnect-before-configuration
+io.github.bearisbug.synaxis.network.player.PreAuthConnectionIntegrationTest: tests=9 failures=1 errors=0 skipped=0 time=0.873
+  RED aListenerThatThrowsBeforeTheConfigurationStateDropsTheConnection(Env) [0.022s] -> org.opentest4j.AssertionFailedError: org.opentest4j.AssertionFailedError: a listener that threw before the configuration state left the connection open ==> expected: <false> but was: <true> | at PreAuthConnectionIntegrationTest.java:261
+-- cp3-login-listener-own-error-line
+io.github.bearisbug.synaxis.app.ConnectionGateLogTest: tests=5 failures=1 errors=0 skipped=0 time=0.931
+  RED aLoginPluginResponseNobodyAskedForIsReportedByTheExceptionHandlerAlone() [0.079s] -> org.opentest4j.AssertionFailedError: org.opentest4j.AssertionFailedError: the login listener wrote lines of its own ==> expected: <[]> but was: <[Error handling Login Plugin Response, Error handling Login Plugin Response, Error handling Login Plugin Response, Error handling Login Plugin Response, | at ConnectionGateLogTest.java
+-- cp5-no-seat-after-authentication
+io.github.bearisbug.synaxis.network.OnlineLoginSocketTest: tests=22 failures=3 errors=0 skipped=0 time=19.022
+  RED loginsThatStopAtTheEncryptionRequestHoldNoSeat() [0.212s] -> org.opentest4j.AssertionFailedError: org.opentest4j.AssertionFailedError: only the authenticated login holds a seat ==> expected: <1> but was: <0> | at OnlineLoginSocketTest.java:375
+  RED anEncryptedOfflineLoginTakesItsSeatOnceItsKeyIsIn() [0.116s] -> org.opentest4j.AssertionFailedError: org.opentest4j.AssertionFailedError: expected: <1> but was: <0> | at OnlineLoginSocketTest.java:420
+  RED anAuthenticatedTransferThatFindsTheSeatsTakenIsRefusedEncrypted() [0.127s] -> java.lang.AssertionError: java.lang.AssertionError: expected a login disconnect, got LoginSuccessPacket | at OnlineLoginSocketTest.java:399
+-- cp6-429-does-not-stop-queries
+io.github.bearisbug.synaxis.network.OnlineLoginSocketTest: tests=22 failures=2 errors=0 skipped=0 time=19.011
+  RED noLoginAsksTheSessionServerBeforeTheRetryAfterIsOver() [1.45s] -> org.opentest4j.AssertionFailedError: org.opentest4j.AssertionFailedError: a login within the Retry-After asked the session server ==> expected: <[First]> but was: <[First, First, Second]> | at OnlineLoginSocketTest.java:159
+  RED aTooManyRequestsAnswerIsNotRetried() [1.011s] -> org.opentest4j.AssertionFailedError: org.opentest4j.AssertionFailedError: a 429 was asked again ==> expected: <1> but was: <2> | at OnlineLoginSocketTest.java:136
+-- cp7-retry-after-uncapped
+io.github.bearisbug.synaxis.network.player.SessionClientTest: tests=3 failures=1 errors=0 skipped=0 time=0.045
+  RED theRetryAfterOfATooManyRequestsAnswerIsSecondsUpToAMinute() [0.013s] -> org.opentest4j.AssertionFailedError: org.opentest4j.AssertionFailedError: expected: <60> but was: <3600> | at SessionClientTest.java:48
+-- cp8-immediate-packets-not-counted
+io.github.bearisbug.synaxis.network.player.InboundPacketLimitIntegrationTest: tests=7 failures=2 errors=0 skipped=0 time=0.738
+  RED pingsOverADropLimitAreNotAnswered() [0.022s] -> org.opentest4j.AssertionFailedError: org.opentest4j.AssertionFailedError: pongs ==> expected: <750> but was: <1000> | at InboundPacketLimitIntegrationTest.java:99
+  RED pingsInPlayCountTowardsTheLimit(Env) [0.009s] -> org.opentest4j.AssertionFailedError: org.opentest4j.AssertionFailedError: 1,000 pings at once are over 750 in 7 s ==> expected: <false> but was: <true> | at InboundPacketLimitIntegrationTest.java:80
+-- tc-world-085-s2
+io.github.bearisbug.synaxis.app.FullChannelTransferSocketTest: tests=2 failures=1 errors=0 skipped=0 time=1.785
+  RED aFullChannelRefusesATransferBeforeTheEncryptionRequest() [1.286s] -> org.opentest4j.AssertionFailedError: org.opentest4j.AssertionFailedError: expected a login disconnect ==> Unexpected type, expected: <io.github.bearisbug.synaxis.network.packet.server.login.LoginDisconnectPacket> but was: <io.github.bearisbug.synaxis.network.packet.server.login.EncryptionRequestP | at FullChannelTransferSocketTest.java:210

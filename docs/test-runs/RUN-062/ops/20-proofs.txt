@@ -1,0 +1,158 @@
+## P1 2026-10-01 10:20:49
+ManagementServer.java:199: if (Boolean.getBoolean("proof.never") && request.hasFieldValue("Origin"))
+gradle exit 1; 2 tests completed, 1 failed BUILD FAILED in 13s 
+ManagementPortGuardsIntegrationTest > anUpgradeRequestWithAnOriginIsRefusedEvenWithTheToken(Env) FAILED
+    org.opentest4j.AssertionFailedError at ManagementPortGuardsIntegrationTest.java:106
+> Task :server-app:test FAILED
+<testsuite name="io.github.bearisbug.synaxis.app.management.ManagementPortGuardsIntegrationTest" tests="2" skipped="0" failures="1" errors="0" time="5.225">
+  FAIL anUpgradeRequestWithAnOriginIsRefusedEvenWithTheToken(Env) 4.85 s
+    message head: org.opentest4j.AssertionFailedError: Origin: https://evil.example ==> array lengths differ, expected: <200> but was: <212>
+    message tail: org.opentest4j.AssertionFailedError: Origin: https://evil.example ==> array lengths differ, expected: <200> but was: <212>
+     at io.github.bearisbug.synaxis.app.management.ManagementPortGuardsIntegrationTest.anUpgradeRequestWithAnOriginIsRefusedEvenWithTheToken(ManagementPortGuardsIntegrationTest.java:106)
+restored: 0 paths changed
+## P2 2026-10-01 10:21:03
+ManagementServer.java:379: if (Boolean.getBoolean("proof.never") && unfinished.size() >= MAX_UNFINISHED_HANDSHAKES) {
+gradle exit 1; 2 tests completed, 1 failed BUILD FAILED in 13s 
+> Task :server-app:test FAILED
+ManagementPortGuardsIntegrationTest > pastTheCapOfUnfinishedHandshakesANewConnectionIsClosedAtOnce(Env) FAILED
+    java.lang.AssertionError at ManagementPortGuardsIntegrationTest.java:188
+<testsuite name="io.github.bearisbug.synaxis.app.management.ManagementPortGuardsIntegrationTest" tests="2" skipped="0" failures="1" errors="0" time="8.884">
+  FAIL pastTheCapOfUnfinishedHandshakesANewConnectionIsClosedAtOnce(Env) 2.026 s
+    message head: java.lang.AssertionError: still open after 2 s
+    message tail: java.lang.AssertionError: still open after 2 s
+     at io.github.bearisbug.synaxis.app.management.ManagementPortGuardsIntegrationTest.assertClosedWithoutAnswer(ManagementPortGuardsIntegrationTest.java:188)
+     at io.github.bearisbug.synaxis.app.management.ManagementPortGuardsIntegrationTest.lambda$pastTheCapOfUnfinishedHandshakesANewConnectionIsClosedAtOnce$0(ManagementPortGuardsIntegrationTest.java:124)
+     at io.github.bearisbug.synaxis.app.management.ManagementPortGuardsIntegrationTest.capture(ManagementPortGuardsIntegrationTest.java:154)
+restored: 0 paths changed
+## P3 2026-10-01 10:21:17
+HostMetrics.java:329: if (Boolean.getBoolean("proof.never") && System.getProperty(MAX_CONNECTIONS_PROPERTY) == null)
+gradle exit 1; 2 tests completed, 1 failed BUILD FAILED in 10s 
+MetricsEndpointGuardsTest > aConnectionPastTheCapIsClosedAtOnce() FAILED
+    java.lang.AssertionError at MetricsEndpointGuardsTest.java:56
+> Task :server-app:test FAILED
+<testsuite name="io.github.bearisbug.synaxis.app.metrics.MetricsEndpointGuardsTest" tests="2" skipped="0" failures="1" errors="0" time="2.888">
+  FAIL aConnectionPastTheCapIsClosedAtOnce() 2.851 s
+    message head: java.lang.AssertionError: still open after 2 s
+    message tail: java.lang.AssertionError: still open after 2 s
+     at io.github.bearisbug.synaxis.app.metrics.MetricsEndpointGuardsTest.aConnectionPastTheCapIsClosedAtOnce(MetricsEndpointGuardsTest.java:56)
+     at io.github.bearisbug.synaxis.app.metrics.MetricsEndpointGuardsTest.aConnectionPastTheCapIsClosedAtOnce(MetricsEndpointGuardsTest.java:54)
+restored: 0 paths changed
+## P4 2026-10-01 10:21:28
+HostMetrics.java:347: final Thread starter = Thread.ofPlatform().name("Syn-Metrics-Start").daemon(Boolean.getBoolean("proof.never")).start(server::start);
+gradle exit 1; 2 tests completed, 1 failed BUILD FAILED in 7s 
+MetricsEndpointGuardsTest > theDispatcherThreadIsADaemon() FAILED
+    org.opentest4j.AssertionFailedError at MetricsEndpointGuardsTest.java:78
+> Task :server-app:test FAILED
+<testsuite name="io.github.bearisbug.synaxis.app.metrics.MetricsEndpointGuardsTest" tests="2" skipped="0" failures="1" errors="0" time="1.347">
+  FAIL theDispatcherThreadIsADaemon() 0.03 s
+    message head: org.opentest4j.AssertionFailedError: the dispatcher keeps no JVM alive ==> expected: <true> but was: <false>
+    message tail: org.opentest4j.AssertionFailedError: the dispatcher keeps no JVM alive ==> expected: <true> but was: <false>
+     at io.github.bearisbug.synaxis.app.metrics.MetricsEndpointGuardsTest.theDispatcherThreadIsADaemon(MetricsEndpointGuardsTest.java:78)
+restored: 0 paths changed
+## P5 2026-10-01 10:21:36
+Main.java:343: if (!Boolean.getBoolean("proof.never") || !(e.getCause() instanceof IOException cause)) throw e;
+gradle exit 1; 2 tests completed, 1 failed BUILD FAILED in 10s 
+OpsPortsLaunchTest > aGamePortTakenRefusesTheStart(Path) FAILED
+    org.opentest4j.AssertionFailedError at OpsPortsLaunchTest.java:50
+> Task :server-app:test FAILED
+<testsuite name="io.github.bearisbug.synaxis.app.OpsPortsLaunchTest" tests="2" skipped="0" failures="1" errors="0" time="2.178">
+  FAIL aGamePortTakenRefusesTheStart(Path) 1.214 s
+    message head: org.opentest4j.AssertionFailedError: 10:21:46.300 [main] INFO  i.github.bearisbug.synaxis.app.Main - Effective config file: none, /private/var/folders/cg/30kkblns6599cnrbhx__l4jw0000gn/T/junit-6790834
+    message tail: o.github.bearisbug.synaxis.network.socket.Server.init(Server.java:73) | 	at io.github.bearisbug.synaxis.ServerProcessImpl.start(ServerProcessImpl.java:300) | 	... 5 common frames omitted ==> expected: <true> but was: <false>
+     at io.github.bearisbug.synaxis.app.OpsPortsLaunchTest.aGamePortTakenRefusesTheStart(OpsPortsLaunchTest.java:50)
+restored: 0 paths changed
+## P6 2026-10-01 10:21:47
+Main.java:610: if (Boolean.getBoolean("proof.never") && bind.getAddress() != null && bind.getAddress().isAnyLocalAddress())
+gradle exit 1; 2 tests completed, 1 failed BUILD FAILED in 7s 
+OpsPortsLaunchTest > aWildcardBindOfEitherOperationsPortIsWarnedAboutAtTheStart(Path) FAILED
+    org.opentest4j.AssertionFailedError at OpsPortsLaunchTest.java:89
+> Task :server-app:test FAILED
+<testsuite name="io.github.bearisbug.synaxis.app.OpsPortsLaunchTest" tests="2" skipped="0" failures="1" errors="0" time="2.483">
+  FAIL aWildcardBindOfEitherOperationsPortIsWarnedAboutAtTheStart(Path) 1.183 s
+    message head: org.opentest4j.AssertionFailedError: 10:21:53.489 [main] INFO  i.github.bearisbug.synaxis.app.Main - Effective config file: none, /private/var/folders/cg/30kkblns6599cnrbhx__l4jw0000gn/T/junit-1581897
+    message tail: [main] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server started successfully. | 10:21:53.647 [main] INFO  i.github.bearisbug.synaxis.app.Main - synaxis server-app listening on 0.0.0.0:0 ==> expected: <2> but was: <0>
+     at io.github.bearisbug.synaxis.app.OpsPortsLaunchTest.aWildcardBindOfEitherOperationsPortIsWarnedAboutAtTheStart(OpsPortsLaunchTest.java:89)
+restored: 0 paths changed
+## P7 2026-10-01 10:21:55
+HostMetrics.java:347: final Thread starter = Thread.ofPlatform().name("Syn-Metrics-Start").daemon(Boolean.getBoolean("proof.never")).start(server::start);
+Main.java:343: if (!Boolean.getBoolean("proof.never") || !(e.getCause() instanceof IOException cause)) throw e;
+gradle exit 1; 4 tests completed, 2 failed BUILD FAILED in 40s 
+OpsPortsLaunchTest > aGamePortTakenRefusesTheStart(Path) FAILED
+    org.opentest4j.AssertionFailedError at OpsPortsLaunchTest.java:48
+MetricsEndpointGuardsTest > theDispatcherThreadIsADaemon() FAILED
+    org.opentest4j.AssertionFailedError at MetricsEndpointGuardsTest.java:78
+> Task :server-app:test FAILED
+<testsuite name="io.github.bearisbug.synaxis.app.OpsPortsLaunchTest" tests="2" skipped="0" failures="1" errors="0" time="31.204">
+  FAIL aGamePortTakenRefusesTheStart(Path) 30.032 s
+    message head: org.opentest4j.AssertionFailedError: the JVM exits: 10:22:05.585 [main] INFO  i.github.bearisbug.synaxis.app.Main - Effective config file: none, /private/var/folders/cg/30kkblns6599cnrbhx__l4jw0000gn/
+    message tail: o.github.bearisbug.synaxis.network.socket.Server.init(Server.java:73) | 	at io.github.bearisbug.synaxis.ServerProcessImpl.start(ServerProcessImpl.java:300) | 	... 5 common frames omitted ==> expected: <true> but was: <false>
+     at io.github.bearisbug.synaxis.app.ConfigFileLaunchTest$Launched.awaitExit(ConfigFileLaunchTest.java:316)
+     at io.github.bearisbug.synaxis.app.OpsPortsLaunchTest.aGamePortTakenRefusesTheStart(OpsPortsLaunchTest.java:48)
+<testsuite name="io.github.bearisbug.synaxis.app.metrics.MetricsEndpointGuardsTest" tests="2" skipped="0" failures="1" errors="0" time="0.99">
+  FAIL theDispatcherThreadIsADaemon() 0.017 s
+    message head: org.opentest4j.AssertionFailedError: the dispatcher keeps no JVM alive ==> expected: <true> but was: <false>
+    message tail: org.opentest4j.AssertionFailedError: the dispatcher keeps no JVM alive ==> expected: <true> but was: <false>
+     at io.github.bearisbug.synaxis.app.metrics.MetricsEndpointGuardsTest.theDispatcherThreadIsADaemon(MetricsEndpointGuardsTest.java:78)
+restored: 0 paths changed
+## P8 2026-10-01 10:22:36
+ManagementServer.java:277: LOGGER.warn("Management interface error: remote={}", conn == null ? null : conn.getRemoteSocketAddress(), ex);
+            if (Boolean.getBoolean("proof.never")) failures.warn(ex, "Management interface error: remote={}",
+gradle exit 1; 2 tests completed, 1 failed BUILD FAILED in 8s 
+ClientDrivenLogArchitectureTest > hostPathsDoNotWriteALinePerPacket() FAILED
+    java.lang.AssertionError at ClientDrivenLogArchitectureTest.java:136
+> Task :server-app:test FAILED
+<testsuite name="io.github.bearisbug.synaxis.app.ClientDrivenLogArchitectureTest" tests="2" skipped="0" failures="1" errors="0" time="1.374">
+  FAIL hostPathsDoNotWriteALinePerPacket() 1.318 s
+    message head: java.lang.AssertionError: Architecture Violation [Priority: MEDIUM] - Rule 'no classes that reside in a package 'io.github.bearisbug.synaxis.app..' and not name 'io.github.bearisbug.synaxis.app.Main' 
+    message tail: p.management.ManagementServer$Endpoint.onError(org.java_websocket.WebSocket, java.lang.Exception)> calls method <org.slf4j.Logger.warn(java.lang.String, java.lang.Object, java.lang.Object)> in (ManagementServer.java:277)
+     at io.github.bearisbug.synaxis.app.ClientDrivenLogArchitectureTest.hostPathsDoNotWriteALinePerPacket(ClientDrivenLogArchitectureTest.java:136)
+restored: 0 paths changed
+## P9 2026-10-01 10:22:45
+Main.java:750: permissions, moderation, session, redis, TransferCooldowns.fromSystemProperties());
+gradle exit 1; 3 tests completed, 2 failed BUILD FAILED in 9s 
+TransferCooldownTableIntegrationTest > aPluginTransferCoolsTheTicketSideDown(Env) FAILED
+    org.opentest4j.AssertionFailedError at TransferCooldownTableIntegrationTest.java:91
+TransferCooldownTableIntegrationTest > aTicketTheVerifierTakesCoolsThePluginAndTheIssuerDown(Env) FAILED
+    org.opentest4j.AssertionFailedError at TransferCooldownTableIntegrationTest.java:113
+> Task :server-app:test FAILED
+<testsuite name="io.github.bearisbug.synaxis.app.TransferCooldownTableIntegrationTest" tests="3" skipped="0" failures="2" errors="0" time="2.019">
+  FAIL aPluginTransferCoolsTheTicketSideDown(Env) 1.674 s
+    message head: org.opentest4j.AssertionFailedError: expected: <COOLDOWN> but was: <NOT_ONLINE>
+    message tail: org.opentest4j.AssertionFailedError: expected: <COOLDOWN> but was: <NOT_ONLINE>
+     at io.github.bearisbug.synaxis.app.TransferCooldownTableIntegrationTest.aPluginTransferCoolsTheTicketSideDown(TransferCooldownTableIntegrationTest.java:91)
+  FAIL aTicketTheVerifierTakesCoolsThePluginAndTheIssuerDown(Env) 0.319 s
+    message head: org.opentest4j.AssertionFailedError: the verifier recorded the arrival in the table the plugins read ==> expected: <false> but was: <true>
+    message tail: org.opentest4j.AssertionFailedError: the verifier recorded the arrival in the table the plugins read ==> expected: <false> but was: <true>
+     at io.github.bearisbug.synaxis.app.TransferCooldownTableIntegrationTest.aTicketTheVerifierTakesCoolsThePluginAndTheIssuerDown(TransferCooldownTableIntegrationTest.java:113)
+restored: 0 paths changed
+## P10 2026-10-01 10:22:54
+Main.java:704: new TransferCooldowns(5_000, System::currentTimeMillis));
+gradle exit 1; 3 tests completed, 1 failed BUILD FAILED in 7s 
+TransferCooldownTableIntegrationTest > aProcessWithoutTransferKeysHasATableAndReadsItsKey(Env) FAILED
+    org.opentest4j.AssertionFailedError at TransferCooldownTableIntegrationTest.java:132
+> Task :server-app:test FAILED
+<testsuite name="io.github.bearisbug.synaxis.app.TransferCooldownTableIntegrationTest" tests="3" skipped="0" failures="1" errors="0" time="2.221">
+  FAIL aProcessWithoutTransferKeysHasATableAndReadsItsKey(Env) 0.027 s
+    message head: org.opentest4j.AssertionFailedError: Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown.
+    message tail: org.opentest4j.AssertionFailedError: Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown.
+     at io.github.bearisbug.synaxis.app.TransferCooldownTableIntegrationTest.aProcessWithoutTransferKeysHasATableAndReadsItsKey(TransferCooldownTableIntegrationTest.java:132)
+restored: 0 paths changed
+## P11 2026-10-01 10:23:02
+Main.java:748: new TicketVerifier(database.pool(), session::sessionId, shardId, keys, TransferCooldowns.fromSystemProperties(), ledger::record,
+gradle exit 1; 3 tests completed, 1 failed BUILD FAILED in 6s 
+> Task :server-app:test FAILED
+TransferCooldownTableIntegrationTest > aTicketTheVerifierTakesCoolsThePluginAndTheIssuerDown(Env) FAILED
+    org.opentest4j.AssertionFailedError at TransferCooldownTableIntegrationTest.java:113
+<testsuite name="io.github.bearisbug.synaxis.app.TransferCooldownTableIntegrationTest" tests="3" skipped="0" failures="1" errors="0" time="2.043">
+  FAIL aTicketTheVerifierTakesCoolsThePluginAndTheIssuerDown(Env) 0.316 s
+    message head: org.opentest4j.AssertionFailedError: the verifier recorded the arrival in the table the plugins read ==> expected: <false> but was: <true>
+    message tail: org.opentest4j.AssertionFailedError: the verifier recorded the arrival in the table the plugins read ==> expected: <false> but was: <true>
+     at io.github.bearisbug.synaxis.app.TransferCooldownTableIntegrationTest.aTicketTheVerifierTakesCoolsThePluginAndTheIssuerDown(TransferCooldownTableIntegrationTest.java:113)
+restored: 0 paths changed
+## green re-run after restore 2026-10-01 10:23:09
+gradle exit 0; BUILD SUCCESSFUL in 18s 
+<testsuite name="io.github.bearisbug.synaxis.app.management.ManagementPortGuardsIntegrationTest" tests="2" skipped="0" failures="0" errors="0" time="6.481">
+<testsuite name="io.github.bearisbug.synaxis.app.metrics.MetricsEndpointGuardsTest" tests="2" skipped="0" failures="0" errors="0" time="0.236">
+<testsuite name="io.github.bearisbug.synaxis.app.OpsPortsLaunchTest" tests="2" skipped="0" failures="0" errors="0" time="2.283">
+<testsuite name="io.github.bearisbug.synaxis.app.ClientDrivenLogArchitectureTest" tests="2" skipped="0" failures="0" errors="0" time="1.186">
+<testsuite name="io.github.bearisbug.synaxis.app.TransferCooldownTableIntegrationTest" tests="3" skipped="0" failures="0" errors="0" time="1.85">

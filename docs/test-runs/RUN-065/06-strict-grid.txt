@@ -1,0 +1,24 @@
+# RUN-065 / root test, strict grid on HEAD 072d45b790 (code commit 072d45b790; docs may be uncommitted, no test reads docs/).
+# command: ./gradlew test --continue --rerun-tasks -Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true -Dsynaxis.thread-provider=grid --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts --max-workers=4, with SYNAXIS_TEST_PG_URL, _USER, _PASSWORD (set, not printed) and SYNAXIS_TEST_REDIS_URL
+[17:17:06] start
+  gradle [grid] rc=0
+    BUILD SUCCESSFUL in 6m 13s
+  BUILD SUCCESSFUL in 6m 13s 66 actionable tasks: 66 executed 
+[17:23:20] end, 374 s
+    build/test-results/test: 428 classes 3162 tests 15 skipped 0 failures 0 errors
+    architecture-tests: 7 classes 20 tests 0 skipped 0 failures 0 errors
+    baker: 4 classes 53 tests 0 skipped 0 failures 0 errors
+    game-rts: 13 classes 87 tests 0 skipped 0 failures 0 errors
+    loadtest: 5 classes 25 tests 0 skipped 0 failures 0 errors
+    plugin-api: 3 classes 15 tests 0 skipped 0 failures 0 errors
+    protocol: 4 classes 78 tests 0 skipped 0 failures 0 errors
+    server-app: 110 classes 553 tests 0 skipped 0 failures 0 errors
+    synx: 17 classes 142 tests 0 skipped 0 failures 0 errors
+    testing: 8 classes 11 tests 0 skipped 0 failures 0 errors
+    total: 599 classes 4146 tests 15 skipped 0 failures 0 errors
+    classes with failures or errors: []
+    classes with skipped tests: [io.github.bearisbug.synaxis.entity.PlayerSkinTest 2, io.github.bearisbug.synaxis.tag.TagNbtTest 1, io.github.bearisbug.synaxis.utils.TestMojangUtils 9, io.github.bearisbug.synaxis.utils.TranslationIntegrationTest 3, ]
+    result files mentioning AcquirableOwnershipException: 0
+    server-app ShardGates classes: io.github.bearisbug.synaxis.app.shard.ShardGatesOnlineTest: tests="1" skipped="0" failures="0"; io.github.bearisbug.synaxis.app.shard.ShardGatesTest: tests="7" skipped="0" failures="0"; 
+# addendum: the job looked for EnvDispatcherThreadsIntegrationTest under the wrong package (testing., not testing.test.), so the line
+# above is missing. Read by hand after the run: timestamp="2026-10-01T09:18:40.249Z" env dispatcher threads: 4;env thread provider: grid;

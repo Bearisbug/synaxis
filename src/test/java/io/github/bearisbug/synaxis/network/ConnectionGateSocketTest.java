@@ -175,6 +175,71 @@ public class ConnectionGateSocketTest {
         }
     }
 
+    /**
+     * A server address longer than a vanilla client sends is no way around the gate: once the
+     * login bucket of the address is empty, the login start sent behind such a handshake is not
+     * handled either ({@code docs/TEST.md} TC-PROD-576).
+     */
+    @Test
+    public void anOversizedServerAddressDoesNotSkipTheGate() throws Exception {
+        final AtomicInteger logins = new AtomicInteger();
+        try (Rig rig = Rig.start(base())) {
+            rig.process().eventHandler().addListener(AsyncPlayerPreLoginEvent.class, _ -> logins.incrementAndGet());
+            for (int i = 0; i < 3; i++) assertTrue(rig.login("player" + i).loggedIn(), "login " + (i + 1));
+            awaitUntil(() -> logins.get() == 3, "the three logins reach the login event");
+
+            final Peer oversized = rig.connect();
+            oversized.handshake(Intent.LOGIN, "a".repeat(256));
+            oversized.send(ConnectionState.LOGIN, new ClientLoginStartPacket("oversized", UUID.randomUUID()));
+            final ServerPacket answer = oversized.read(ConnectionState.LOGIN);
+            assertTrue(answer == null || answer instanceof LoginDisconnectPacket,
+                    "the login behind an oversized server address went on: " + answer);
+            assertEquals(1, rig.gate().rejected(ConnectionGate.Reason.THROTTLED), "the gate saw the handshake");
+            assertEquals(3, logins.get(), "the login event ran for the oversized server address");
+            assertEquals(3, rig.gate().seats());
+        }
+    }
+
+    /**
+     * An oversized server address that passes the gate takes its login token like any other
+     * handshake, and only then is closed, without a byte ({@code docs/TEST.md} TC-PROD-576).
+     */
+    @Test
+    public void anOversizedServerAddressTakesItsTokenAndIsClosed() throws Exception {
+        try (Rig rig = Rig.start(base())) {
+            final Peer oversized = rig.connect();
+            oversized.handshake(Intent.LOGIN, "a".repeat(256));
+            oversized.send(ConnectionState.LOGIN, new ClientLoginStartPacket("oversized", UUID.randomUUID()));
+            assertTrue(oversized.closedWithoutAByte(), "an oversized server address is closed without an answer");
+
+            for (int i = 0; i < 2; i++) assertTrue(rig.login("player" + i).loggedIn(), "login " + (i + 1));
+            assertEquals("synaxis:login-throttled", rig.login("player2").disconnectReason(),
+                    "the oversized handshake took one of the three tokens");
+        }
+    }
+
+    /**
+     * With the PROXY protocol the address limit is counted at the handshake, an oversized server
+     * address included: a second connection of an address limited to one is closed at once rather
+     * than left open until the login timeout ({@code docs/TEST.md} TC-PROD-577).
+     */
+    @Test
+    public void behindTheProxyAnOversizedServerAddressCountsAgainstItsAddress() throws Exception {
+        try (Rig rig = Rig.start(proxied().maxConnectionsPerIp(1).handshakeTimeout(500))) {
+            final Peer holder = rig.connect();
+            holder.proxyHeader("203.0.113.7");
+            holder.handshake(Intent.LOGIN);
+            holder.send(ConnectionState.LOGIN, new ClientLoginStartPacket("holder", UUID.randomUUID()));
+            assertTrue(holder.loggedIn(), "the one connection of 203.0.113.7");
+
+            final Peer oversized = rig.connect();
+            oversized.proxyHeader("203.0.113.7");
+            oversized.handshake(Intent.STATUS, "a".repeat(256));
+            assertTrue(oversized.closedWithoutAByte(), "the second connection of 203.0.113.7");
+            assertEquals(1, rig.gate().rejected(ConnectionGate.Reason.TOO_MANY));
+        }
+    }
+
     /** L2: status and transfer have buckets of their own. */
     @Test
     public void statusAndTransferHandshakesCountOnTheirOwnBuckets() throws Exception {
@@ -364,8 +429,12 @@ public class ConnectionGateSocketTest {
         }
 
         void handshake(Intent intent) throws IOException {
+            handshake(intent, "localhost");
+        }
+
+        void handshake(Intent intent, String serverAddress) throws IOException {
             send(ConnectionState.HANDSHAKE, new ClientHandshakePacket(MinecraftServer.PROTOCOL_VERSION,
-                    "localhost", process.server().getPort(), intent));
+                    serverAddress, process.server().getPort(), intent));
         }
 
         void send(ConnectionState state, ClientPacket packet) throws IOException {

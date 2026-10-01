@@ -1,0 +1,28 @@
+RUN-062 / integrate: the integrate round of the security fixes (branch prod/integrate-062, docs/DESIGN-PROD.md v0.9.43).
+Base: origin/main c820bc65f2; merged in order sec/login-path (eabc6dcb10), sec/transfer-ghost (5abd985035), sec/ops-ports
+(de5aa08313), sec/secrets-files (fa5cad4055); then 5c0bad47bc (GAP-grid fix and test), cc27560ea9 (login group test
+follow-ups), 5e0977797e (secrets group follow-ups). The group evidence stays in ../login, ../transfer, ../ops, ../secrets.
+Test counts and the RUN-062 row of docs/TEST.md §6 are not this round's: the full runs that follow write them.
+Every Gradle batch took /tmp/synaxis-heavy.lock at the top level of its script and released it on exit:
+  13:22:31-13:23:03 compile after the four merges (compileJava compileTestJava, BUILD SUCCESSFUL)
+  13:26:46-13:27:01 01, GAP-grid red before the fix
+  13:36:25-13:38:47 02, GAP-grid green, counter-proofs, entity package
+  13:39:01-13:42:59 03 section 1 (first version of the gate test, and OnlineLoginSocketTest)
+  13:44:56-13:46:23 03 section 2
+  13:46:44-13:49:25 04, first batch
+  14:07:31-14:07:54 04, second batch
+  14:09:32-14:09:50 06, source gates and architecture-tests
+
+00-index.txt                       this file
+01-gap-grid-red-before-fix.txt     ItemEntityCrossCellConcurrencyTest on the code before the fix: 2 of 2 red, default and strict
+02-gap-grid-green-and-proofs.txt   after the fix: green both modes; four counter-proofs; io.github.bearisbug.synaxis.entity.* both modes
+03-login-follow-ups.txt            ConnectionGateLogTest rewritten test (TC-PROD-579) and TC-PROD-066/067 reruns; Retry-After 5 (TC-PROD-583)
+04-secrets-follow-ups.txt          RedisLinkTest, HostFilePermissionsTest, ProfilerPrivacyTest: green, counter-proofs, TC-PROD-611/614/615/616
+                                   reruns; the JDK 25 URI messages
+05-doc-checks.txt                  TC-PROD-606 step 1 loop on a fake directory, TC-PROD-616 step 6, both lints
+06-gates.txt                       Error Prone, forbidden imports, test naming, architecture-tests (20 of 20)
+
+Added after the integrate review (one heavy lock, 15:31:23-15:35:29, code of 45f4133080):
+07-review-follow-ups.txt           line numbers the merges left behind (API-PROD-028 Main.java :518; the CVE row and TC-PROD-617 on
+                                   ManagementServer.java); TC-PROD-617 steps 1-3 on the new numbers, TC-PROD-583 step 2 with
+                                   Retry-After 5, TC-PROD-575 step 3 strict grid without the database; the line reference check; lints

@@ -72,6 +72,13 @@ public final class HostMetrics implements AutoCloseable {
      * a scrape Prometheus has not got by then it gave up on already (its default timeout is 10 s).
      */
     static final Duration EXCHANGE_LIMIT = Duration.ofSeconds(10);
+    /**
+     * The connections the endpoint holds open at most, idle ones included; the JDK closes one more as
+     * it accepts it. The JDK reads the cap from {@value #MAX_CONNECTIONS_PROPERTY} once, as the first
+     * {@code HttpServer} of the JVM is made, and this endpoint is the only one a host process makes.
+     */
+    static final int MAX_CONNECTIONS = 64;
+    static final String MAX_CONNECTIONS_PROPERTY = "jdk.httpserver.maxConnections";
 
     /**
      * The metric families of {@code API-PROD-015}, as they appear in the Prometheus text: a counter
@@ -318,14 +325,33 @@ public final class HostMetrics implements AutoCloseable {
      */
     public synchronized InetSocketAddress serve(InetSocketAddress address) throws IOException {
         if (http != null) throw new IllegalStateException("The metrics endpoint is already served");
+        // A value given on the command line is the operator's
+        if (System.getProperty(MAX_CONNECTIONS_PROPERTY) == null)
+            System.setProperty(MAX_CONNECTIONS_PROPERTY, Integer.toString(MAX_CONNECTIONS));
         final HttpServer server = HttpServer.create(address, 0);
         server.createContext(PATH, this::handle);
         server.setExecutor(HostMetrics::answer);
-        server.start();
+        startOnADaemon(server);
         this.http = server;
         final InetSocketAddress bound = server.getAddress();
         LOGGER.info("Metrics endpoint listening on http://{}{}", BindAddress.format(bound), PATH);
         return bound;
+    }
+
+    /**
+     * Starts the server from a daemon thread. The JDK's dispatcher thread, {@code HTTP-Dispatcher},
+     * is a daemon only when the thread starting the server is one; started from main it kept alive a
+     * process whose start failed after this, with no tick thread running and the port answering.
+     */
+    private static void startOnADaemon(HttpServer server) throws IOException {
+        final Thread starter = Thread.ofPlatform().name("Syn-Metrics-Start").daemon().start(server::start);
+        try {
+            starter.join();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            server.stop(0);
+            throw new IOException("interrupted while starting the metrics endpoint", e);
+        }
     }
 
     /**

@@ -1,0 +1,25 @@
+# 2026-10-01 11:10:00 +0800 ./gradlew :server-app:test --rerun -Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true -Dsynaxis.thread-provider=grid --max-workers=4 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts
+# HEAD d32d1a8096, 4 paths changed; SYNAXIS_TEST_PG_URL, SYNAXIS_TEST_PG_PASSWORD (set, not printed), SYNAXIS_TEST_REDIS_URL
+> Task :build-src:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :build-src:extractPrecompiledScriptPluginPlugins UP-TO-DATE
+> Task :build-src:compilePluginsBlocks UP-TO-DATE
+> Task :build-src:generatePrecompiledScriptPluginAccessors UP-TO-DATE
+> Task :build-src:compileKotlin UP-TO-DATE
+> Task :build-src:compileJava UP-TO-DATE
+> Task :protocol:compileJava UP-TO-DATE
+> Task :testing:processResources NO-SOURCE
+> Task :compileJava UP-TO-DATE
+> Task :synx:compileJava UP-TO-DATE
+> Task :plugin-api:compileJava UP-TO-DATE
+> Task :baker:compileJava UP-TO-DATE
+> Task :testing:compileJava UP-TO-DATE
+> Task :testing:classes UP-TO-DATE
+> Task :testing:jar UP-TO-DATE
+> Task :game-rts:compileJava UP-TO-DATE
+> Task :server-app:compileJava UP-TO-DATE
+> Task :server-app:compileTestJava UP-TO-DATE
+> Task :server-app:testClasses UP-TO-DATE
+> Task :server-app:test
+BUILD SUCCESSFUL in 4m 42s
+# exit 0 at 2026-10-01 11:14:43 +0800
+server-app: 102 classes, tests=528 skipped=0 failures=0 errors=0 []

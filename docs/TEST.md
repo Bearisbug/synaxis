@@ -14,6 +14,15 @@
 
 | 日期 | 改动 | 作者 |
 | --- | --- | --- |
+| 2026-10-01 | 合入 `main` `4a40af2835`（`docs/DESIGN-M3.md` v0.31，RUN-065）后按该分册 §28.2「M3 v0.31」一行同步，跟进 `docs/DESIGN-PROD.md` v0.9.44。**`TC-PROD-570` 第 2 步改写**：原写法 `git checkout 0e919cce6a -- <GT>` 取出的旧 `ShardGates` 只有三个参数的构造器，M3 v0.31 起 `Main` 与测试都传四个，照写编不过（RUN-065 判失败）；改为原地把 `case COOLDOWN, NOT_ONLINE, SAVE_FAILED -> refused(player, gate, result);` 换成空块，红行与消息不变，在 RUN-066 按字面重跑 1～6 步。**条数**：`:server-app:test` 552 → 553（M3 v0.31 的 `ShardGatesOnlineTest` 1 个），改 `TC-PROD-486` 第 3 步、`505` 第 3 步、`510` 第 2 步、`529` 第 4 步、`549` 第 2 步、`575` 第 3 步、`585` 第 1、2 步、`596` 第 2 步、`607` 第 2 步、`618` 第 1、2 步，类数随之 109 → 110；根构建 `:test` 3,162 不变 | Bearisbug |
+| 2026-10-01 | 分支 `m3/sec-followup`，跟进 `docs/DESIGN-M3.md` v0.31（安全审查 B-01 交给光照会话的 `ShardGates#moved` 加固；同版的 `ADR-PROD-015` 同步只改设计文档），登记 RUN-065（证据 `docs/test-runs/RUN-065/`）。**新增 `TC-WORLD-101`**（「M3 · 分片（M3-E）」一节，排在 `TC-WORLD-100` 之后）：新类 `ShardGatesOnlineTest`（1 条，不连数据库），不在线的玩家出框再进框 100 次，`ShardService#transfer` 0 次、`EVT:transfer_refused` 0 行，回到在线后照常触发；两个反证（判定不起作用、先判在线再记门框）。编号接 `main` 上最大的 `TC-WORLD-100`；另一个 M3-G 分支也会新增 `TC-WORLD`，谁后合谁顺延。**改 `TC-WORLD-064`** 第 2 步：`moved` 那一行多了 `\|\| !online.test(player)`，原文与改法按新行写，红行仍是 `ShardGatesTest.java:148`（RUN-065 实跑）。§2 `REQ-M3-017` 一行加 `TC-WORLD-101`；§5 M3-E 一行加「`ShardGates#moved` 的在线判定 → `TC-WORLD-101` 加 `TC-WORLD-064`，同时跑 `TC-PROD-593` 与 `TC-PROD-570`～`TC-PROD-573`」。**不改**：`TC-PROD-570`～`TC-PROD-573`、`TC-PROD-593` 的文字（按约定只执行；`TC-PROD-570` 第 2 步照写编译不过，见 RUN-065 明细与 `docs/DESIGN-M3.md` §28.2 交接行）；`:server-app:test` 全量多 1 个（552 → 553），`TC-PROD-486` 第 3 步、`505` 第 3 步、`510` 第 2 步、`529` 第 4 步、`549` 第 2 步、`575` 第 3 步、`585` 第 1、2 步、`596` 第 2 步、`607` 第 2 步、`618` 第 1、2 步的条数由合入后统一改 | Bearisbug |
+| 2026-10-01 | 集成分支 `prod/integrate-062` 的评审跟进，对应 `docs/DESIGN-PROD.md` v0.9.43 同版的行号改写。**行号**：`TC-PROD-617` 第 2 步反证改的两行由 `ManagementServer.java` 的 `:316`、`:317` 改为 `:326`、`:327`（ops 组在它们之前加了 10 行，secrets 组写的是加行之前的行号），按新行号在集成代码上重跑第 1～3 步，结果与用例相同。**补跑**（结果与用例相同，用例文字不改）：`TC-PROD-583` 第 2 步在 `Retry-After` 5 下重跑；`TC-PROD-575` 第 3 步补上不带数据库变量的严格 grid 全量。证据 `docs/test-runs/RUN-062/integrate/07-review-follow-ups.txt`，RUN-062 的范围与结果不变 | Bearisbug |
+| 2026-10-01 | 集成分支 `prod/integrate-062` 跑完合前全量门禁，登记 RUN-062（证据 `docs/test-runs/RUN-062/`）。**条数**（按 RUN-062 两道全量的 JUnit XML）：`TC-PROD-486` 第 3 步、`505` 第 3 步、`510` 第 2 步、`529` 第 4 步、`549` 第 2 步的 `:server-app:test` 522 → 552，`505` 第 3 步根构建 `:test` 3,146 → 3,162，括注逐类写明各组加了什么；同轮改变了条数的其余用例：`TC-PROD-513` 第 4 步 `network.*` 866 → 878，`TC-PROD-549` 第 3 步 19 个类 63 个 → 22 个类 69 个（含此前漏记的 v0.9.38 `ManagementWriteRecheckIntegrationTest` 1 个），`TC-PROD-567` 第 1 步 `app.metrics.*` 8 → 10，`TC-PROD-569` 第 4 步 25 个类 80 个 → 27 个类 84 个，`TC-PROD-575` 第 3 步管理包 14 个类 43 个 → 15 个类 45 个、不带数据库的全量 522（125 个跳过）→ 552（132 个跳过），四组的回归用例 `TC-PROD-585`、`596`、`607`、`618` 的全量条数改为合入后的 3,162 与 552 | Bearisbug |
+| 2026-10-01 | 集成分支 `prod/integrate-062`（基于 `main` `c820bc65f2`，依次合入 `sec/login-path`、`sec/transfer-ghost`、`sec/ops-ports`、`sec/secrets-files`），跟进 `docs/DESIGN-PROD.md` v0.9.43。不改测试条数、不登执行轮次，由跑全量的下一步统一改与登记；本轮证据在 `docs/test-runs/RUN-062/integrate/`。**合并**：四组的 §4 新节、§5 映射行与变更记录行都留；`.env.example` 开头按「管理令牌在每分片的 `.env.<shard_id>`」统一为先 `install -m 600 /dev/null .env` 建空文件再填，`TC-PROD-616` 原第 5 步（现第 6 步）的 `grep` 预期随之改为第 4、5 行。**新增 §4「生产就绪 · 安全修复：跨格拾取」四条 `TC-PROD-620`～`TC-PROD-623`**（`REQ-PROD-019`、`REQ-PROD-020`）：transfer 组只读核查查出的引擎缺陷，新类 `ItemEntityCrossCellConcurrencyTest` 在改动前的代码上默认与严格 grid 都红 2 条，修后两种模式都绿；拾取与合并各一条反证，`removeConsumed` 两个分支各一条反证（一律当场移除时跨格两条红，一律排到下一个 tick 时 `ItemEntityClaimIntegrationTest` 红 2 条）；`entity` 包两种模式回归；§5 加一行映射。**评审跟进**：`TC-PROD-579` 前一条换成新测试 `oversizedServerAddressesAreCountedByTheGateAndGoNoFurther`（断言闸门的 `THROTTLED` 恰为 17 与异常处理器 0 次报告；单独把 `HandshakeListener` 换回改前时它红在 `:131`），步骤由 4 步改为 5 步；`TC-PROD-066` 第 2、3 步与 `TC-PROD-067` 第 2 步的 `ConnectionGateLogTest` 行号随之下移（`:66`、`:108`、`:212`，三步都重跑过）；`TC-PROD-583` 的 `Retry-After` 由 2 改为 5；`TC-PROD-092` 第 1 步 `OnlineLoginSocketTest` 的条数按实际改为 22；`TC-PROD-606` 第 1 步的循环跳过没有管理令牌的文件；`TC-PROD-602` 第 3 步与 `TC-PROD-607` 第 2 步的预期只留可判定的属性，实测值见 ops 组证据；ops 节开头「§23 一行」改为两行；§5 ops 一行补上「动了 `GuardedSocket#setChannel` 再加跑 `TC-PROD-575` 第 1、2 步」；`TC-PROD-611` 按新拒启信息与改写的第二条重写第 1 步、行号改为 `:42`、`:40`，加两步反证（口令不解码红在 `:57`，拒启信息改回红在 `:42`）；`TC-PROD-614`、`TC-PROD-615` 行号随 `ProfilerPrivacyTest` 的字节断言下移，第 3 步改为红在新的字节断言 `:112`；`TC-PROD-616` 的类变成 4 条，加一步反证（不删残留的 `.gz.partial`）；`TC-PROD-619` 第 2 步删去分支中间提交那一句。**引用**：「生产就绪 · `EVT:transfer_refused` 扩到关卡门的六种拒绝结果」一节开头改指 `TC-WORLD-100`；`TC-WORLD-100` 第 2 步的 `Main.java:504` 按合并后的代码改为 `:518`（ops 组在它之前加了行）。**§7 新增未结案一条**：`ConfigFileLaunchTest` 的 `freePort()` 先挑端口再交给子 JVM 去绑，中间端口可能被占 | Bearisbug |
+| 2026-10-01 | 分支 `sec/secrets-files`（`main` `23982267e9` 加七个代码提交），跟进 `docs/DESIGN-PROD.md` v0.9.42（安全审查 secrets 组：机密进日志与落盘权限），不登执行轮次，由集成轮登记；证据在 `docs/test-runs/RUN-062/secrets/`。**新增 §4「生产就绪 · 安全修复：secrets（机密进日志与落盘权限）」十条 `TC-PROD-610`～`TC-PROD-619`**，每条的反证都实跑过：起服自检行的 JDBC URL 只印主机、端口与库名（610）；Redis URL 解析失败的拒启信息不带口令、不挂 cause，主机为空也拒（611）；http、别的端口或路径指向 Mojang 主机不算 Mojang（612）；组或他人可写、或目录组或他人可写而无 sticky 位的配置文件拒启，非 POSIX 文件系统照读并在自检行写明（613）；`profile` 文件不带聊天、命令、status 来源、进程表与套接字事件，别的录制打开了也不带，文件 0600、目录 0700（614）；键名像机密的系统属性与带它的 JVM 参数不进文件，子 JVM 实测（615）；台账、压缩出的 `.jsonl.gz` 与崩溃报告 0600、目录 0700，`.env.example` 教 `install -m 600`（616）；CVE-2026-90584 的本用法回归，`BoundedDraft` 两道上限失效时两个类都红（617）；两个模块默认与严格 grid 全量（618）；建配置文件的测试在 umask 002 下照绿（619）。**改既有测试类**：`ConfigFileTest` 加静态方法 `write`（写完把权限设成 0644），它与 `BooleanKeysTest`、`ConfigFileLaunchTest`、`BooleanKeysLaunchTest` 建配置文件都经这个方法，不随进程 umask。**改既有用例**：`TC-PROD-002` 第 3 步的反证改用 `ConfigFile.isSecret`（键名规则从 `CrashReports` 挪到 `ConfigFile`）；`TC-PROD-392` 第 7 步改为给关 `LEFT_OUT` 的那一行加 `proof.never`；`TC-PROD-471` 第 2 步的方法名 `writeWithoutEnvironment` → `writeHandedOver`，红行的环境变量个数随环境而变（本轮 81）；三处都按新写法重跑过，红行与原先相同。`TC-PROD-467`、`TC-PROD-468`、`TC-PROD-469` 第 2 步的红行 `BooleanKeysTest.java:71` → `:69`、`:104` → `:102`，`BooleanKeysLaunchTest.java:34` → `:33`（两个类去掉了用不到的 import），按原步骤重跑过，消息不变。§5 生产就绪域加一行映射。`TC-PROD-486`、`505`、`510`、`529`、`549` 的条数未改，留给集成轮 | Bearisbug |
+| 2026-10-01 | 分支 `sec/ops-ports`，跟进 `docs/DESIGN-PROD.md` v0.9.41（安全审查 ops 组：运维端口加固与起服退出），不登执行轮次。**新增 §4「生产就绪 · 安全修复：ops（运维端口加固与起服退出）」八条**，反证都实跑过，改动前的代码上也各跑红过一次：`TC-PROD-600`（C-01，带 `Origin` 的升级请求带着令牌也被拒；反证红在 `ManagementPortGuardsIntegrationTest.java:106`）、`TC-PROD-601`（C-05，握手未完成的管理连接至多 64 条；红在 `:188`）、`TC-PROD-602`（C-05，指标端点至多 64 条连接，`jdk.httpserver.maxConnections` 在 JDK 25 上生效；红在 `MetricsEndpointGuardsTest.java:56`）、`TC-PROD-603`（C-05，运维端口绑通配地址时的 WARN；红在 `OpsPortsLaunchTest.java:89`）、`TC-PROD-604`（C-03，游戏端口绑不上即拒启、退出码 1；只去掉接住时红在 `:50`，连同分发线程一起改回时红在 `:48`，子 JVM 30 s 不退出）、`TC-PROD-605`（C-03，`HTTP-Dispatcher` 是 daemon；红在 `MetricsEndpointGuardsTest.java:78`）、`TC-PROD-606`（C-V01，部署前提的人工核对）、`TC-PROD-607`（回归）。**红行与行号**（`Main.java` 步骤 (4) 多 5 行、步骤 (6) 多 9 行，`ManagementServer.java` 在 `Endpoint#onError` 之前多 10 行）：`TC-PROD-395` 第 2 步与 `TC-PROD-505` 第 2 步转述的红行 `ManagementServer.java:267` → `:277`；`TC-PROD-521` 第 4 步 `Main.java:720` → `:750`、`TC-PROD-528` 第 2 步 `:674` → `:704`、`TC-PROD-533` 第 3 步 `:718` → `:748`，这四步都在本分支重跑过，红的位置与消息不变；`TC-PROD-533` 第 2 步 `sed -n 718,720p` → `748,750p`（同三行）；`TC-PROD-383` 第 2 步引的构造调用按现在的代码写成 `new GuardedFactory(handshakeDeadline, backlogs, crowded)`（原写单参，基线上已是两参），重跑仍是 `13 tests completed, 1 failed`、红在 `:525`；`TC-PROD-498` 第 3 步 `grep` 的行号 `:317`～`:330` 各加 5，`TC-PROD-573` 第 3 步 504 → 518，6A 其余部分一节开头 `:283` → `:284`。`TC-WORLD-089` 第 2 步的 `Main.java:501` 在基线上已是 `:504`、本分支是 `:518`，属 M3 会话，没有改。§5 加一行 | Bearisbug |
+| 2026-10-01 | 分支 `sec/transfer-ghost`，跟进 `docs/DESIGN-PROD.md` v0.9.40（安全审查 B-01 签票后不走的客户端、C-02 `gm.role` 的授予判定只看本分片内存），不登执行轮次，证据在 `docs/test-runs/RUN-062/transfer/`。**新增 §4「生产就绪 · 安全修复：transfer（转服幽灵与 `gm.role` 时效）」八条 `TC-PROD-590`～`TC-PROD-597`**：两个新类 `TransferNotFollowedIntegrationTest`（4 条）与 `RoleHandOutIntegrationTest`（3 条），都要数据库前置；修复前的红在基线 `23982267e9` 上实跑过（幽灵类 3 条、授予类 3 条全红），九次反证有齿都按写的那一行变红。`TC-PROD-597` 覆盖 `RoleStore#handOut` 把已到期的行换成新到期的那条分支（反证：`WHERE false`）。**改写**：`TC-PROD-215` 第 4 步的反证行随 `RoleCommand#execute` 改写，按新行重跑结果不变（`19 tests completed, 1 failed`，红在 `RoleEscalationIntegrationTest.java:114`）。**条数**：`:server-app:test` 全量 +7（本组的两个新类）；`TC-PROD-486` 第 3 步、`505` 第 3 步、`510` 第 2 步、`529` 第 4 步、`549` 第 2 步的条数不改，由集成轮统一改。§5 加一行 | Bearisbug |
+| 2026-10-01 | 分支 `sec/login-path`（代码提交 `1f33976097`，基线 `main` `23982267e9`），跟进 `docs/DESIGN-PROD.md` v0.9.39（安全审查登录路径组 A-01～A-04，用户 2026-10-01 拍板）。不登执行轮次，由集成轮登记；本组证据在 `docs/test-runs/RUN-062/login/`。**新增 §4「生产就绪 · 安全修复：login（登录路径的闸门与认证前席位）」十条 `TC-PROD-576`～`TC-PROD-585`**：超长服务器地址照常过闸（576，PROXY 变体 577）、登录前监听器抛异常即断开（578）、未认证的对端驱动不出登录监听器的 ERROR 行（579，`server-app`）、认证前的连接不占席位（580）、认证之后才满员的转入收到加密的 `shard-full`（581）、加密离线收到密钥之后才占席位（582）、429 按 `Retry-After` 停发（583）、play 态的 ping 计入入站闸（584）、两轮全量与本节以外的反证重跑（585）。每条的反证都实跑过：整组改前一轮（13 条全红，其余全绿），逐处还原 8 次。**改既有用例**（按本组提交实跑，行号与结果写进各步，并注明此前的值）：`TC-PROD-062` 第 2～4 步（`ConnectionGateSocketTest` 的行号后移；第 3 步红 3 → 4、第 4 步红 5 → 6、全绿 9 → 12，多的是本组的 `anOversizedServerAddressTakesItsTokenAndIsClosed`）；`TC-PROD-063` 第 1 步写明并发的 15 条在认证之后占席位处被拒，第 2 步红 4 → 3（`aFullProcess…` 在 `LoginStart` 只读计数的满员判断处被拒，不经改的那一行）；`TC-PROD-066` 第 2、3 步与 `TC-PROD-067` 第 2 步的 `ConnectionGateLogTest` 行号；`TC-PROD-120` 第 2 步的编译错误行号（`ConnectionManager.java:98`、`ServerProcessImpl.java:291`，写那条时的 `:80`、`:254` 早已不对）；`TC-PROD-121` 第 2 步的改法（超长地址不再 `throw`，WARN 加在 `disconnectTurnedAway` 前）；`TC-GAME-070` 第 2 步的行号；`TC-PROD-263` 的条数 17 → 22 与两条红行；`TC-PROD-560` 的条数 5 → 7、第 2 步改法（KICK 的判定挪进 `PlayerSocketConnection#admitted`）与第 2、3 步的红；`TC-PROD-300` 第 4 步栈里的 `ConnectionManager.java` 行号；`TC-WORLD-085` 第 1 步（两个占席位的加密登录要先回密钥）与第 2 步（红 2 → 1：不加密的离线转入照样在认证之后的占席位处被拒）；1A 一节的开头注明 L3 拆成两处。`TC-PROD-061` 第 2、3 步重跑后红与行号不变，没改。§5 加一行。`TC-PROD-486`、`505`、`510`、`529`、`549` 的测试条数没改，由集成轮统一改（本组两轮全量：根项目 3,158 个、`server-app` 524 个） | Bearisbug |
 | 2026-10-01 | 分支 `m3/refused-and-500`，跟进 `docs/DESIGN-M3.md` v0.29（§15 同机档起跑门槛的进程一项），不登执行轮次。**压测起跑门槛的进程一项改为看 CPU**：`TC-WORLD-099`、`TC-WORLD-081` 的前置（`TC-WORLD-082`～`TC-WORLD-084` 照 `TC-WORLD-081`）与 §3 M3-C 一条由「本机没有别的 java 或 Gradle 进程」改为「没有别的 java/Gradle 进程在消耗 CPU：`pgrep -fl java` 列出的非本轮 java 进程每个在 30 s 内平均 CPU ≤ 5%（`ps -o %cpu` 间隔 15 s 采 3 次取均值），并且 `/tmp/synaxis-heavy.lock` 由本轮持有」，空闲的守护进程不算违反，每次读数另记这些进程的 pid 与 3 次 `%cpu`。理由：RUN-060 的门槛窗口 18 次读数有 17 次只差进程一项（空闲比例达到 35%），差在 `Kando/App/android` 构建留下的空闲守护进程：Gradle 8.13 守护进程 18 次都在，它的 Kotlin 编译守护进程前 15 次在，查看时都是 0% CPU；空闲进程占的内存已计入空闲比例一项。`TC-WORLD-081` 的前置加拿锁、后置加放锁，写法同 `TC-WORLD-099`。**锁的 `owner` 文件**统一为单行 `owner=<会话名> pid=<长期存活的 claude 进程 pid> since=<时间> task=<一句话>`（两会话的约定），`TC-WORLD-099` 拿锁的命令随改。判据不变，用例保留 ID；RUN-060 的登记不改 | Bearisbug |
 | 2026-10-01 | 分支 `prod/mgmt-timeout`，跟进 `docs/DESIGN-PROD.md` v0.9.38（管理连接出站队列里没人写的帧），不登执行轮次。**§7 结案** `ManagementBacklogIntegrationTest > aPeerThatReadsWhatItIsSentKeepsItsConnection` 的 CI 偶发红（run `36740800681` 第 1 次尝试，4 线程严格 `grid`，红在 `:211`）：根因在产品，Java-WebSocket 1.6.0 的选择器写空队列后撤写兴趣、撤之前不再看队列，其间入队的 pong 没人写。**新增 §4「生产就绪 · 管理连接出站队列里没人写的帧」两条**，反证都实跑过：`TC-PROD-574`（`REQ-PROD-032`，§19 场景；新类 `ManagementWriteRecheckIntegrationTest` 把一条回复直接放进队列、不登记写兴趣；反证：不起补登记线程，红在 `:101`）、`TC-PROD-575`（拉宽选择器的窗口：不补登记时 `ManagementBacklogIntegrationTest` 红在 `:211`，与 CI 同一行同一异常；补登记时每轮约 107 ms 收齐、通过；回归）。`ManagementBacklogIntegrationTest` 不改，`TC-PROD-493` 的步骤不变。**红行**：`TC-PROD-395` 第 2 步红行 `ManagementServer.java:231` → `:267`（本组在 `Endpoint#onError` 之前加了 36 行），已在本分支重跑；`TC-PROD-505` 第 2 步转述的同一红行随改。**条数**：`TC-PROD-486` 第 3 步、`505` 第 3 步、`510` 第 2 步、`529` 第 4 步、`549` 第 2 步的 `:server-app:test` 521 → 522（本组的新类）；这五步本组没有带数据库变量重跑，只在未设数据库变量时跑了默认与严格 `grid` 的全量，各 522 个 0 失败、125 个跳过。§5 加一行 | Bearisbug |
 | 2026-10-01 | 分支 `m3/refused-and-500`（`main` `c46578d24f`），跟进 `docs/DESIGN-PROD.md` v0.9.37 与 `docs/DESIGN-M3.md` v0.29（关卡门的六种拒绝结果都写 `EVT:transfer_refused`，用户 2026-09-30 拍板），登记 RUN-060。**废弃 `TC-WORLD-089`，由 `TC-WORLD-100` 取代**（标题与第 1 步的判据实质变更：`COOLDOWN`、`NOT_ONLINE`、`SAVE_FAILED` 由 0 行改为各恰 1 行）：第 1 步看 `everyRefusalIsWrittenToTheLedger`，六种各恰 1 行，`NOT_ONLINE` 那名玩家先断开，`SENT`、`UNKNOWN_TARGET`、`SAME_TARGET` 0 行，`tests="7"` 不变；第 2 步 `Main.java:501` → `:504`；第 3、4 步反证的改法照旧，红行 `:213` → `:218`，第一个红的结果由 `FULL` 变成 `COOLDOWN`（测试按 `ShardTransferResult` 的声明顺序试，`COOLDOWN` 排在前面）；第 5 步原反证改的 `case SENT, COOLDOWN, NOT_ONLINE, SAVE_FAILED -> {` 在 `c46578d24f` 上已不存在，换成「`COOLDOWN` 也告诉玩家」（`onlyAChoiceThatFailedIsToldToThePlayer` 红在 `:195`，台账那条仍绿）。**保留 ID `TC-WORLD-064`**（判据未变）：第 1 步括注的测试名改为 `everyRefusalIsWrittenToTheLedger`、归 `TC-WORLD-100`；第 3 步红行 `:251` → `:256`；第 2 步 `:148`、第 4 步 `:195` 核实不变。两条用例的每一步都在 `c46578d24f` 上实跑过（RUN-060）。§2 `REQ-M3-017` 行与 Gherkin 覆盖口径、§5 M3-E 与生产就绪两行改指 `TC-WORLD-100`，撤掉 §5 生产就绪一行的「已知过时」标记。「生产就绪 · `EVT:transfer_refused` 扩到关卡门的六种拒绝结果」一节开头仍写「选不到频道那三种的写法与 `Main#serveMap` 的接线仍归 `TC-WORLD-089`」，归生产就绪会话改 | Bearisbug |
@@ -248,7 +257,7 @@ REQ-M3 ↔ TC 对照（可读索引）。「未实现」行没有用例，是已
 | REQ-M3-014 压测量出真实区块下行 | TC-WORLD-053（20 机器人补充读数）、TC-WORLD-099（200 机器人判据，tick 两项待分机档；TC-WORLD-054 已废弃） |
 | REQ-M3-015 空间分格 `ThreadProvider` | TC-WORLD-081～TC-WORLD-083（压测三档，RUN-057 在同机档跑过，tick 与 RSS 待分机档）；分格与线程数由 TC-PROD-330～TC-PROD-333 判 |
 | REQ-M3-016 大区分服 + 频道 | TC-WORLD-057～TC-WORLD-061、TC-WORLD-075、TC-WORLD-077、TC-WORLD-078、TC-WORLD-080、TC-WORLD-081（同上）、TC-WORLD-088 |
-| REQ-M3-017 跨大区转服的世界侧 | TC-WORLD-062～TC-WORLD-065、TC-WORLD-071～TC-WORLD-076、TC-WORLD-084（RUN-057 同机档通过）、TC-WORLD-085～TC-WORLD-087、TC-WORLD-090、TC-WORLD-100（TC-WORLD-089 已废弃）；分片宿主在 PostgreSQL 存储时写 `accept-transfers=true` 一条由 TC-WORLD-010、TC-WORLD-011 判 |
+| REQ-M3-017 跨大区转服的世界侧 | TC-WORLD-062～TC-WORLD-065、TC-WORLD-071～TC-WORLD-076、TC-WORLD-084（RUN-057 同机档通过）、TC-WORLD-085～TC-WORLD-087、TC-WORLD-090、TC-WORLD-100、TC-WORLD-101（TC-WORLD-089 已废弃）；分片宿主在 PostgreSQL 存储时写 `accept-transfers=true` 一条由 TC-WORLD-010、TC-WORLD-011 判 |
 | REQ-M3-019 光影兼容 | 未实现（DH + Iris spike 的证据见 §6 RUN-026 证据段，spike 不是验收） |
 | REQ-M3-020 离线 Anvil 读取器 | TC-WORLD-018、TC-WORLD-019、TC-WORLD-020、TC-WORLD-027、TC-WORLD-029、TC-WORLD-038（静态实体在分片载入时生成；TC-WORLD-024 已废弃） |
 | REQ-M3-021 烘焙器第二道对拍 | TC-WORLD-029 |
@@ -1967,7 +1976,7 @@ REQ-M3 ↔ TC 对照（可读索引）。「未实现」行没有用例，是已
 | # | 操作 | 预期 |
 | --- | --- | --- |
 | 1 | `./gradlew :test --tests '*PreAuthConnectionIntegrationTest*' --tests '*DuplicateUuidLoginIntegrationTest*' --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts` | `BUILD SUCCESSFUL`；`theOfflineUuidComesFromTheUsernameNotFromThePeer` 绿：`LoginStart{username=Notch, profileId=随机}` 进到 `AsyncPlayerPreLoginEvent` 时 profile 的 uuid 等于 `GameProfile.offlineUuid("Notch")`（`OfflinePlayer:Notch` 的 name-UUID），不等于对端给的那个；`DuplicateUuidLoginIntegrationTest` 三条仍绿（「同名即同 UUID」这道闸的另一半） |
-| 2 | 反证有齿：把 `LoginListener#loginStartListener` 里的 `GameProfile.offlineUuid(packet.username())` 改回 `packet.profileId()`，重跑第 1 步，再 `git checkout -- src/main/java/io/github/bearisbug/synaxis/listener/preplay/LoginListener.java` | 红 1 条，断在「the profile uuid must be derived from the username, not taken from the login start」（修复前的原始红，`PreAuthConnectionIntegrationTest.java:181`）；还原后复绿 |
+| 2 | 反证有齿：把 `LoginListener#loginStartListener` 里的 `GameProfile.offlineUuid(packet.username())` 改回 `packet.profileId()`，重跑第 1 步，再 `git checkout -- src/main/java/io/github/bearisbug/synaxis/listener/preplay/LoginListener.java` | 红 1 条，断在「the profile uuid must be derived from the username, not taken from the login start」（修复前的原始红，`PreAuthConnectionIntegrationTest.java:186`；v0.9.39 加了 5 行 import，此前是 `:181`）；还原后复绿 |
 | 3 | `python3 tools/protocol-probe/probe.py --port 25567 --username probe login --hold 2` | `LoginSuccess username=probe uuid=a0d7d0d3-bb61-3352-b332-52bfa31d6c0e`——即 `OfflinePlayer:probe` 的 name-UUID（探针自己也是这么算的，所以合法客户端看不出变化；对端换一个 UUID 的形态只有第 1 步那条 JUnit 能造，探针不提供改 UUID 的开关——它不是攻击工具） |
 
 后置：确认工作区干净（第 2 步的临时改动已还原）。
@@ -2860,7 +2869,7 @@ JUnit 与反证的纪律同 M3-C 一节。红行号按集成分支 `m3e/integrat
 | # | 操作 | 预期 |
 | --- | --- | --- |
 | 1 | `<G> :server-app:test --tests '<SH>.ShardGatesTest'` | `BUILD SUCCESSFUL`，`tests="7"` 0 失败（第 7 条 `everyRefusalIsWrittenToTheLedger` 归 `TC-WORLD-100`）：x 2030 → 2040 触发 1 次；框内走到 2045 不触发；走出到 2030 再回 2046 触发第 2 次。在途时出框再进框不触发；完成后仍在框内移动不触发；出框再进框才触发。x = 2031.99 不触发，2032.0 触发。从 r0-east 的框直接走进相邻的 r0-south 框触发 `r2`。`FULL`、`OFFLINE`、`DIRECTORY_UNAVAILABLE` 时玩家恰好收到 1 条 `synaxis:transfer-failed`（期望取 `TicketIssuer.TRANSFER_FAILED`，与签发端写回失败时发的是同一个常量），其余 6 个值 0 条。`UNKNOWN_TARGET`、`SAME_TARGET` 与异常完成各记 1 行 ERROR，附带的异常依次是 `java.lang.IllegalStateException: the shard service answers UNKNOWN_TARGET`、`…SAME_TARGET`、`java.lang.IllegalStateException: the ticket does not encode`（异常按生产上的形态给，`CompletionException` 里包 `IllegalStateException`，日志记里面那层）；异常完成之后出框再进框能再触发 |
-| 2 | 反证（在途也触发）：`<GT>` 的 `moved` 里 `if (gate == null \|\| gate.equals(before) \|\| !underWay.add(player)) return;` 改成 `if (gate == null \|\| gate.equals(before)) return;` 并在它下面加一行 `underWay.add(player);`，重跑第 1 步，再 `git checkout -- <GT>` | 红在 `ShardGatesTest.java:148`（`c46578d24f` 与 `cf1a359794`；`9c6d457ee9` 上是 `:147`，`f1c39684f8` 上是 `:139`）：`expected: <[Walker r1]> but was: <[Walker r1, Walker r1]>` |
+| 2 | 反证（在途也触发）：`<GT>` 的 `moved` 里 `if (gate == null \|\| gate.equals(before) \|\| !online.test(player) \|\| !underWay.add(player)) return;` 改成 `if (gate == null \|\| gate.equals(before) \|\| !online.test(player)) return;` 并在它下面加一行 `underWay.add(player);`（`072d45b790` 之前的代码这一行没有 `\|\| !online.test(player)`，原文与改法都去掉这一段），重跑第 1 步，再 `git checkout -- <GT>` | 红在 `ShardGatesTest.java:148`（`072d45b790`、`c46578d24f` 与 `cf1a359794`；`9c6d457ee9` 上是 `:147`，`f1c39684f8` 上是 `:139`）：`expected: <[Walker r1]> but was: <[Walker r1, Walker r1]>` |
 | 3 | 反证（不拆 `CompletionException`）：`<GT>` 的 `final Throwable cause = error instanceof CompletionException && error.getCause() != null ? error.getCause() : error;` 改成 `final Throwable cause = error;`，同时删掉 `import java.util.concurrent.CompletionException;`（不删的话 Error Prone 的 `RemoveUnusedImports` 让编译先失败），重跑第 1 步，再还原 | 红在 `:256`（`c46578d24f`；`cf1a359794` 上是 `:251`，`9c6d457ee9` 上是 `:250`，`f1c39684f8` 上是 `:213`），实际值的第三项是 `java.util.concurrent.CompletionException: java.lang.IllegalStateException: the ticket does not encode` |
 | 4 | 反证（关卡门发自己的键）：`<GT>` 的 `player.sendMessage(Component.translatable(TicketIssuer.TRANSFER_FAILED));` 改成 `player.sendMessage(Component.translatable("synaxis:transfer-failed-probe"));`，同时删掉 `import io.github.bearisbug.synaxis.app.transfer.TicketIssuer;`（不删的话 `RemoveUnusedImports` 让编译先失败），重跑第 1 步，再 `git checkout -- <GT>` | `7 tests completed, 1 failed`：红在 `:195`（`c46578d24f` 与 `cf1a359794`），`FULL ==> expected: <[synaxis:transfer-failed]> but was: <[synaxis:transfer-failed-probe]>` |
 | 5 | 重跑第 1 步 | 与第 1 步相同 |
@@ -3118,8 +3127,8 @@ JUnit 与反证的纪律同 M3-C 一节。红行号按集成分支 `m3e/integrat
 
 | # | 操作 | 预期 |
 | --- | --- | --- |
-| 1 | 带数据库变量 `<G> :server-app:test --tests '<AP>.FullChannelTransferSocketTest'` | `tests="2" skipped="0"` 0 失败。`aFullChannelRefusesATransferBeforeTheEncryptionRequest`（`Auth.Offline(true)`，加密的离线登录）：两个登录连接各收到加密请求（席位 2/2），第三个 intent=transfer 的连接收到 `LoginDisconnect synaxis:shard-full` 后 EOF，`rejected(FULL)` = 1；空出一个席位后同样的连接先收到的是加密请求。`aFullChannelRefusesATransferBeforeItsCookieIsRead`（`Auth.Offline(false)`）：满员时持有效票据的转入被拒、EOF，票据 nonce 不在 `transfer_nonce`，台账没有带它 `transfer_ref` 的行；空出席位后这个连接走到 `CookieRequest synaxis:transfer`，回第二张票据，它的 nonce 进库；台账 `session_entered_configuration` 只有 1 行 |
-| 2 | 反证（转入跳过席位判断）：`<LL>` 的 L3 条件前加 `!connection.wasTransferred() && `，重跑第 1 步，再 `git checkout -- <LL>` | `2 tests completed, 2 failed`：第一条红在 `FullChannelTransferSocketTest.java:125`（经 `:201`），收到的是 `EncryptionRequestPacket`；第二条红在 `:153`（经 `:201`），收到的是 `LoginSuccessPacket` |
+| 1 | 带数据库变量 `<G> :server-app:test --tests '<AP>.FullChannelTransferSocketTest'` | `tests="2" skipped="0"` 0 失败。`aFullChannelRefusesATransferBeforeTheEncryptionRequest`（`Auth.Offline(true)`，加密的离线登录）：两个登录连接各收到加密请求、回了密钥（`docs/DESIGN-PROD.md` v0.9.39 起席位在认证之后占，回了密钥才算，`seats()` 到 2 为止，席位 2/2），第三个 intent=transfer 的连接收到 `LoginDisconnect synaxis:shard-full` 后 EOF，`rejected(FULL)` = 1；空出一个席位后同样的连接先收到的是加密请求。`aFullChannelRefusesATransferBeforeItsCookieIsRead`（`Auth.Offline(false)`）：满员时持有效票据的转入被拒、EOF，票据 nonce 不在 `transfer_nonce`，台账没有带它 `transfer_ref` 的行；空出席位后这个连接走到 `CookieRequest synaxis:transfer`，回第二张票据，它的 nonce 进库；台账 `session_entered_configuration` 只有 1 行 |
+| 2 | 反证（转入跳过席位判断）：`<LL>` 的 L3 条件前加 `!connection.wasTransferred() && `，重跑第 1 步，再 `git checkout -- <LL>` | `2 tests completed, 1 failed`：第一条红在 `FullChannelTransferSocketTest.java:134`（经 `:210`），收到的是 `EncryptionRequestPacket`。第二条（不加密的离线）不红：它的 `LoginStart` 之后立刻进 `transitionLoginToConfig`，认证之后的占席位（`docs/DESIGN-PROD.md` `ADR-PROD-015`）照样以 `synaxis:shard-full` 拒掉它，仍在读 Cookie 之前（按 `sec/login-path` 的 `1f33976097` 实跑；v0.9.39 之前两条都红，`:125` 与 `:153`） |
 | 3 | 重跑第 1 步 | 与第 1 步相同 |
 
 后置：`git status --porcelain -- src server-app` 无输出。
@@ -3185,11 +3194,25 @@ JUnit 与反证的纪律同 M3-C 一节。红行号按集成分支 `m3e/integrat
 | # | 操作 | 预期 |
 | --- | --- | --- |
 | 1 | `<G> :server-app:test --tests '<SH>.ShardGatesTest'`，看 `everyRefusalIsWrittenToTheLedger` 与 `aResultTheDirectoryRulesOutAndATransferThatThrewAreErrors` | `BUILD SUCCESSFUL`，`tests="7"` 0 失败。九个结果各由一名玩家走进 r0-east 触发、再由替身完成，`NOT_ONLINE` 那名玩家先断开连接再完成：`FULL`、`OFFLINE`、`DIRECTORY_UNAVAILABLE`、`COOLDOWN`、`NOT_ONLINE`、`SAVE_FAILED` 各恰 1 行 `transfer_refused {player_uuid=<这名玩家的 UUID>, source_shard=r0-c1, target_region=r1, result=<小写名>}`，`result` 依次为 `full`、`offline`、`directory_unavailable`、`cooldown`、`not_online`、`save_failed`；`SENT`、`UNKNOWN_TARGET`、`SAME_TARGET` 0 行；报 ERROR 的那条用例（两个被目录排除的结果与一次异常完成）台账同样 0 行 |
-| 2 | `grep -n 'new ShardGates(' <MN>` | 恰 1 行（`Main.java:504`，在 `serveMap` 里），第三个参数是 `ledger::record` |
+| 2 | `grep -n 'new ShardGates(' <MN>` | 恰 1 行（`Main.java:518`，在 `serveMap` 里），第三个参数是 `ledger::record` |
 | 3 | 反证（不写）：`<GT>` 的 `events.accept("transfer_refused", attributes);` 改成 `if (Boolean.getBoolean("proof.never")) events.accept("transfer_refused", attributes);`，重跑第 1 步，再 `git checkout -- <GT>` | `7 tests completed, 1 failed`：红在 `ShardGatesTest.java:218`，`COOLDOWN ==> expected: <[transfer_refused {player_uuid=…, source_shard=r0-c1, target_region=r1, result=cooldown}]> but was: <[]>` |
 | 4 | 反证（`result` 不取小写）：`<GT>` 的 `result.name().toLowerCase(Locale.ROOT)` 改成 `result.name()`，同时删掉 `import java.util.Locale;`（不删的话 Error Prone 的 `RemoveUnusedImports` 让编译先失败），重跑第 1 步，再还原 | `7 tests completed, 1 failed`：红在 `:218`，`COOLDOWN ==> expected: <[transfer_refused {…, result=cooldown}]> but was: <[transfer_refused {…, result=COOLDOWN}]>` |
 | 5 | 反证（`COOLDOWN` 也告诉玩家）：`<GT>` 的 `case COOLDOWN, NOT_ONLINE, SAVE_FAILED -> refused(player, gate, result);` 改成 `case NOT_ONLINE, SAVE_FAILED -> refused(player, gate, result);`，`case FULL, OFFLINE, DIRECTORY_UNAVAILABLE -> {` 改成 `case FULL, OFFLINE, DIRECTORY_UNAVAILABLE, COOLDOWN -> {`，重跑第 1 步，再还原 | `7 tests completed, 1 failed`：`TC-WORLD-064` 的 `onlyAChoiceThatFailedIsToldToThePlayer` 红在 `:195`，`COOLDOWN ==> expected: <[]> but was: <[synaxis:transfer-failed]>`；`everyRefusalIsWrittenToTheLedger` 仍绿（`COOLDOWN` 在另一个分支里仍恰写 1 行），说明台账这一条只看写没写，给不给玩家发消息由 `TC-WORLD-064` 判 |
 | 6 | 重跑第 1 步 | 与第 1 步相同 |
+
+后置：同 `TC-WORLD-057`。
+
+#### `TC-WORLD-101` 不在本分片 `online` 的玩家走进门框：不调 `ShardService`、不写 `EVT:transfer_refused` — 对应 `REQ-M3-017` · 级别: 回归 · 执行者: AI
+
+前置：同 `TC-WORLD-064`，不连数据库。`ShardGatesOnlineTest` 用示例目录的 r0；替身 `ShardService` 记下每次调用、当场以 `NOT_ONLINE` 完成（签发端对不在 `online` 的玩家就这样回），在线判定由测试给（一个「不在线的玩家」集合）。设计见 `docs/DESIGN-M3.md` v0.31 `API-M3-010` 关卡门条与 §16「不在本分片 `online` 的玩家走进门框」一行（安全审查 B-01 的加固）；判定接口 `PlayerStore#isOnline` 本身由 `TC-PROD-593` 判。红行号按 `072d45b790`。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | `<G> :server-app:test --tests '<SH>.ShardGatesOnlineTest'` | `BUILD SUCCESSFUL`，`tests="1"` 0 失败：玩家 Ghost 不在线时 x 2030 → 2040 出框再进框 100 次，替身被调 0 次、台账 `transfer_refused` 0 行（两个数写在同一个断言里，期望串 `0 transfers, 0 refusals`）；之后 Ghost 回到在线、人还在框里，走到 2045 不触发；走出到 2030 再走进 2040 触发 1 次，替身记下 `Ghost r1` |
+| 2 | `grep -n 'new ShardGates(' <MN>`；`grep -n 'directoryMode, store.store(), ledger' <MN>` | 前者恰 1 行（`Main.java:518`，在 `serveMap` 里），第三个参数是 `ledger::record`，第四个是 `store::isOnline`；后者恰 1 行（`:304`，调 `serveMap` 处把玩家存储传进去） |
+| 3 | 反证（判定不起作用，即修复前的 `moved`）：`<GT>` 的 `if (gate == null \|\| gate.equals(before) \|\| !online.test(player) \|\| !underWay.add(player)) return;` 改成 `if (gate == null \|\| gate.equals(before) \|\| (!online.test(player) && Boolean.getBoolean("proof.never")) \|\| !underWay.add(player)) return;`，重跑第 1 步，再 `git checkout -- <GT>` | 红在 `ShardGatesOnlineTest.java:93`：`100 walks into r0-east by a player not online here ==> expected: <0 transfers, 0 refusals> but was: <100 transfers, 100 refusals>` |
+| 4 | 反证（先判在线、再记门框）：`<GT>` 的 `moved` 里 `final Player player = event.getPlayer();` 下面加一行 `if (!online.test(player)) return;`，重跑第 1 步，再还原 | 红在 `:99`：`still inside the frame it walked into ==> expected: <[]> but was: <[Ghost r1]>`（不在线期间门框状态没记，回到在线后框内的一步被当成走进） |
+| 5 | 重跑第 1 步 | 与第 1 步相同 |
 
 后置：同 `TC-WORLD-057`。
 
@@ -3357,7 +3380,7 @@ JUnit 与反证的纪律同 M3-C 一节。红行号按分支 `m3d/runtime-light`
 | --- | --- | --- |
 | 1 | `./gradlew :server-app:test --tests '*CrashReportsTest*' --tests '*HostExceptionIntegrationTest*' --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts` | `BUILD SUCCESSFUL`；`CrashReportsTest` 五条：文件名 `20260923-040506-r01-c1.txt`（固定时钟）、报告含 `Reason:`、起因栈、`-- Git head --`、`-- Plugins --` 下的 `rts 0.1.0`、生效配置与线程转储，写报告的线程自己的栈超过 8 帧（`ThreadInfo#toString` 会截在 8 帧）；同一秒第二份叫 `…-r01-c1-2.txt`；插件列表取不到时写 `(could not be collected: …)`、其余段照写；目录不可写时两次写只换来 1 行 ERROR 且不抛；`secretsAreOnlyEverSaidToBeSet`：`synaxis.app.db-password`、`env SYNAXIS_MANAGEMENT_TOKEN`、`-Dsynaxis.app.api-token` 三处只写 `<set>`，`hunter2` / `abc123` / `xyz789` 一个都不出现。`HostExceptionIntegrationTest#aFatalErrorWritesOneCrashReportAndDoesNotStopTheProcess`：连着两次 `OutOfMemoryError` 只有 1 行 ERROR（带 `crash_report=<路径>`）、`crash-reports/` 下恰 1 个 `yyyyMMdd-HHmmss-r01-c1.txt`，内含 `java.lang.OutOfMemoryError: test heap`、`ServerConfig[` 与 `-- Thread dump --`；停机任务没有被执行；`InternalError` 算致命、`StackOverflowError` 不算 |
 | 2 | `./gradlew :server-app:jar --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts`，再 `unzip -p server-app/build/libs/server-app-dev.jar synaxis-build.properties` 与 `git rev-parse HEAD` | 前者一行 `git.head=<40 位提交号>`，与后者相同（崩溃报告的 `-- Git head --` 段读的就是它） |
-| 3 | 反证有齿（两处一起改、一起还原）：`CrashReports#masked` 的条件改成 `SECRET_KEY.matcher(name).matches() && name.isEmpty()`（**不要直接 `return value;`**：`SECRET_KEY` 变成无用字段，`UnusedVariable` 先红）；`HostExceptionHandler#handleException` 的 `if (isFatal(e)) {` 下一行插 `crashReported.set(false);`。重跑第 1 步，再 `git checkout --` 这两个文件 | 红 2 条：`CrashReportsTest.secretsAreOnlyEverSaidToBeSet`，实际输出里是 `synaxis.app.db-password=hunter2`；`HostExceptionIntegrationTest.aFatalError…` 断在「the first fatal error is the one the report is about ==> expected: <1> but was: <2>」（`HostExceptionIntegrationTest.java:113`）；还原后复绿 |
+| 3 | 反证有齿（两处一起改、一起还原）：`CrashReports#masked` 的条件改成 `ConfigFile.isSecret(name) && name.isEmpty()`（键名规则 v0.9.42 起只在 `ConfigFile#isSecret` 一处，`profile` 也用它）；`HostExceptionHandler#handleException` 的 `if (isFatal(e)) {` 下一行插 `crashReported.set(false);`。重跑第 1 步，再 `git checkout --` 这两个文件 | 红 2 条：`CrashReportsTest.secretsAreOnlyEverSaidToBeSet`，实际输出里是 `synaxis.app.db-password=hunter2`；`HostExceptionIntegrationTest.aFatalError…` 断在「the first fatal error is the one the report is about ==> expected: <1> but was: <2>」（`HostExceptionIntegrationTest.java:113`）；还原后复绿（2026-10-01 在分支 `sec/secrets-files` 按这一写法重跑，红行相同） |
 
 后置：`git status` 干净。
 
@@ -3616,7 +3639,7 @@ jcmd "$pid" VM.flags | tr ' ' '\n' | grep -cxE -- '-XX:\+UseG1GC|-XX:InitialHeap
 
 ### 生产就绪 · 第 1 波 1A：连接闸门与 keep-alive 收尾
 
-`docs/DESIGN-PROD.md` 的 `REQ-PROD-001`（G02）与 `REQ-PROD-043`（G40），接口与键表见 `API-PROD-003`，状态机见 §11.1 的 `[*] → handshake`、`handshake → login_start / rejected / closed`、`login_start → rejected` 几行，断线键见 §14。实现是 `network/ConnectionGate`：L0 / L1 在 `Server` 的 accept 循环里判，L1（开 PROXY 时）与 L2 在 `HandshakeListener`，L3 在 `LoginListener#loginStartListener` 最前面，L4 是 `ConnectionManager#updateWaitingPlayers` 的出队上限，握手前超时复用登录看门狗那条虚拟线程。引擎默认值：`max-connections` 1,024、`accept-backoff-ms` 100、`max-connections-per-ip` 16、`handshake-timeout-ms` 5,000、登录桶 0.5/s 容量 3、status 桶 1/s 容量 10、transfer 桶 2/s 容量 10、`max-players` 与 `max-joins-per-tick` 为 0（不限）。被闸门拒掉的连接只计数，由 `ConnectionGate#tick` 每 10 s 汇总成一行 WARN，这些连接关闭时也不写 `Connection closed`。
+`docs/DESIGN-PROD.md` 的 `REQ-PROD-001`（G02）与 `REQ-PROD-043`（G40），接口与键表见 `API-PROD-003`，状态机见 §11.1 的 `[*] → handshake`、`handshake → login_start / rejected / closed`、`login_start → rejected` 几行，断线键见 §14。实现是 `network/ConnectionGate`：L0 / L1 在 `Server` 的 accept 循环里判，L1（开 PROXY 时）与 L2 在 `HandshakeListener`，L3 在 `LoginListener#loginStartListener` 最前面（v0.9.39 起这里只判满，席位在认证之后由 `ConnectionManager#transitionLoginToConfig` 开头占，见 `TC-PROD-580`～`TC-PROD-582`），L4 是 `ConnectionManager#updateWaitingPlayers` 的出队上限，握手前超时复用登录看门狗那条虚拟线程。引擎默认值：`max-connections` 1,024、`accept-backoff-ms` 100、`max-connections-per-ip` 16、`handshake-timeout-ms` 5,000、登录桶 0.5/s 容量 3、status 桶 1/s 容量 10、transfer 桶 2/s 容量 10、`max-players` 与 `max-joins-per-tick` 为 0（不限）。被闸门拒掉的连接只计数，由 `ConnectionGate#tick` 每 10 s 汇总成一行 WARN，这些连接关闭时也不写 `Connection closed`。
 
 `TC-PROD-060`～`TC-PROD-068` 是 JUnit 或 Gradle 命令；`TC-PROD-069` 起真进程，端口 25621，工作目录与 FIFO 的做法同 0A 一节，压测 harness 按 `~/.claude/CLAUDE.md` 在 `.venv` 里跑（`uv venv --python 3.10`，只用标准库）。本波是离线模式（G01 未合入），所以 §19 里「RSA 解密计数与 `hasJoined` 请求计数为 0」「收到 EncryptionRequest」两处本波改验「登录事件 `AsyncPlayerPreLoginEvent` 没有触发」与「收到 `SetCompression`」；`synaxis_gate_rejections_total` 指标归 `REQ-PROD-018`，本波验 `ConnectionGate#rejected(Reason)` 的计数与汇总行里的同名字段。
 
@@ -3650,9 +3673,9 @@ jcmd "$pid" VM.flags | tr ' ' '\n' | grep -cxE -- '-XX:\+UseG1GC|-XX:InitialHeap
 | # | 操作 | 预期 |
 | --- | --- | --- |
 | 1 | `./gradlew :test --tests '*ConnectionGateSocketTest*' --tests '*ConnectionGateTest*' --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts` | `BUILD SUCCESSFUL`。这个类的每个进程都把闸门换成测试自己的时钟（`ConnectionGate#clock`），它只在测试拨动时走，机器再慢，两步之间也补不回令牌。`theFourthLoginOfAnAddressIsThrottledAndLetInTwoSecondsLater`：默认登录桶，同一地址 3 次登录都收到 `SetCompression`，第 4 次收到 `LoginDisconnect synaxis:login-throttled`，时钟拨快 2 s 后第 5 次收到 `SetCompression`，`THROTTLED` 计 1。`statusAndTransferHandshakesCountOnTheirOwnBuckets`（`accept-transfers=true`，默认回填速率）：前 10 次 status 握手各拿到 status 响应，第 11 次读到 EOF、没有响应；10 次 transfer 意图登录都收到 `SetCompression`，第 11 次收到 `synaxis:login-throttled`；随后同一地址的 login 意图仍收到 `SetCompression`（登录桶没被动过），`THROTTLED` 计 2 |
-| 2 | 反证「三只桶互不相干」有齿：`ConnectionGate.java` 的 `case TRANSFER -> transfer;` 改成 `case TRANSFER -> login;`，重跑第 1 步，再 `git checkout --` 该文件 | 红 2 条：`statusAndTransferHandshakes…` 第 4 次 transfer 就被拒（「turned away with synaxis:login-throttled」，`ConnectionGateSocketTest.java:198`）；`ConnectionGateTest.statusAndTransferCountOnTheirOwnBuckets` 断在「expected: <PASS> but was: <THROTTLED>」（`ConnectionGateTest.java:88`）；还原后复绿 |
-| 3 | 反证断线键映射有齿：`src/main/java/io/github/bearisbug/synaxis/listener/preplay/HandshakeListener.java` 的 `? DisconnectReasons.TOO_MANY_CONNECTIONS : DisconnectReasons.LOGIN_THROTTLED` 两个键对调，只跑 `:test --tests '*ConnectionGateSocketTest*'`，再 `git checkout --` 该文件 | 红 3 条：`withTheProxyProtocol…`「expected: <synaxis:too-many-connections> but was: <synaxis:login-throttled>」（`:115`）、`theFourthLogin…`（`:170`）与 `statusAndTransfer…`（「the eleventh transfer」，`:202`）两处反过来；还原后复绿 |
-| 4 | 反证「写线程先于读线程起」有齿：`src/main/java/io/github/bearisbug/synaxis/network/socket/Server.java` 里 `writeThread.start();` 与 `readThread.start();` 两行对调，并在两行之间加 `try { Thread.sleep(20); } catch (InterruptedException e) { throw new RuntimeException(e); }`（拉长「读线程已在处理握手、写线程还没起」的窗口），只跑 `:test --tests '*ConnectionGateSocketTest*'`，再 `git checkout --` 该文件 | 红 5 条：在握手或 LoginStart 上被拒、本该收到断线包的四条都读到 EOF——`withTheProxyProtocol…`（`:115`）、`theFourthLogin…`（`:170`）、`statusAndTransfer…`（`:202`）断在「expected a login disconnect ==> Unexpected null value」，`aFullProcess…` 同样断在 `:223`；`loginStartsArriving…`「expected: <5> but was: <20>」（`:276`，15 条 `shard-full` 读成了 EOF）。不对调、只在两行之间加同样的 20 ms 等待，9 条全绿；还原后复绿 |
+| 2 | 反证「三只桶互不相干」有齿：`ConnectionGate.java` 的 `case TRANSFER -> transfer;` 改成 `case TRANSFER -> login;`，重跑第 1 步，再 `git checkout --` 该文件 | 红 2 条：`statusAndTransferHandshakes…` 第 4 次 transfer 就被拒（「turned away with synaxis:login-throttled」，`ConnectionGateSocketTest.java:263`；v0.9.39 之前是 `:198`）；`ConnectionGateTest.statusAndTransferCountOnTheirOwnBuckets` 断在「expected: <PASS> but was: <THROTTLED>」（`ConnectionGateTest.java:88`）；还原后复绿 |
+| 3 | 反证断线键映射有齿：`src/main/java/io/github/bearisbug/synaxis/listener/preplay/HandshakeListener.java` 的 `? DisconnectReasons.TOO_MANY_CONNECTIONS : DisconnectReasons.LOGIN_THROTTLED` 两个键对调，只跑 `:test --tests '*ConnectionGateSocketTest*'`，再 `git checkout --` 该文件 | 红 4 条：`withTheProxyProtocol…`「expected: <synaxis:too-many-connections> but was: <synaxis:login-throttled>」（`:115`）、`theFourthLogin…`（`:170`）与 `statusAndTransfer…`（「the eleventh transfer」，`:267`）两处反过来，`anOversizedServerAddressTakesItsTokenAndIsClosed`「the oversized handshake took one of the three tokens ==> expected: <synaxis:login-throttled> but was: <synaxis:too-many-connections>」（`:216`，v0.9.39 加的那条）；还原后复绿（行号按 `sec/login-path` 的 `1f33976097` 实跑，此前 `statusAndTransfer…` 是 `:202`、红 3 条） |
+| 4 | 反证「写线程先于读线程起」有齿：`src/main/java/io/github/bearisbug/synaxis/network/socket/Server.java` 里 `writeThread.start();` 与 `readThread.start();` 两行对调，并在两行之间加 `try { Thread.sleep(20); } catch (InterruptedException e) { throw new RuntimeException(e); }`（拉长「读线程已在处理握手、写线程还没起」的窗口），只跑 `:test --tests '*ConnectionGateSocketTest*'`，再 `git checkout --` 该文件 | 红 6 条：在握手或 LoginStart 上被拒、本该收到断线包的五条都读到 EOF——`withTheProxyProtocol…`（`:115`）、`theFourthLogin…`（`:170`）、`statusAndTransfer…`（`:267`）、`anOversizedServerAddressTakesItsTokenAndIsClosed`（`:216`）断在「expected a login disconnect ==> Unexpected null value」，`aFullProcess…` 同样断在 `:288`；`loginStartsArriving…`「expected: <5> but was: <20>」（`:341`，15 条 `shard-full` 读成了 EOF）。不对调、只在两行之间加同样的 20 ms 等待，12 条全绿；还原后复绿（按 `sec/login-path` 的 `1f33976097` 实跑；此前是红 5 条、`:202`、`:223`、`:276`，全绿 9 条） |
 
 后置：`git status` 干净。
 
@@ -3662,8 +3685,8 @@ jcmd "$pid" VM.flags | tr ' ' '\n' | grep -cxE -- '-XX:\+UseG1GC|-XX:InitialHeap
 
 | # | 操作 | 预期 |
 | --- | --- | --- |
-| 1 | `./gradlew :test --tests '*ConnectionGateSocketTest*' --tests '*ConnectionGateTest*' --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts` | `BUILD SUCCESSFUL`。`aFullProcessRefusesTheLoginStartBeforeTheLoginRuns`（`max-players=2`）：前两人收到 `SetCompression`，第 3 人收到 `LoginDisconnect synaxis:shard-full` 后断开；`AsyncPlayerPreLoginEvent` 只触发 2 次；`seats()` 为 2、`FULL` 计 1；`StatusResponse.json` 含 `"max":2`；关掉第 1 人后 `seats()` 回到 1，第 4 人收到 `SetCompression`。`loginStartsArrivingTogetherNeverTakeMoreSeatsThanThereAre`（`max-players=5`，`127.0.0.0/8` 设为可信网段）：20 条连接握手后由 20 条线程同时发 LoginStart，恰好 5 条收到 `SetCompression`、15 条收到 `synaxis:shard-full`，`seats()` 为 5。`theStatusResponseReportsTheSocketLimitWhenSeatsAreUnlimited`：`max-players=0`、`max-connections=1500` 时 status 为 `"players":{"online":0,"max":1500}`，不再是 `online + 1`。`ConnectionGateTest` 的两条席位用例同 `TC-PROD-060` |
-| 2 | 反证有齿：`ConnectionGate.java` 的 `if (taken >= max) return false;` 改成 `if (taken > max) return false;`，重跑第 1 步，再 `git checkout --` 该文件 | 红 4 条：`ConnectionGateSocketTest` 的 `aFullProcess…` 第 3 人拿到的是 `SetCompressionPacket` 而不是 `LoginDisconnectPacket`（`ConnectionGateSocketTest.java:223`）、`loginStartsArriving…`「expected: <5> but was: <6>」（`:276`）；`ConnectionGateTest` 的 `aSeatIsHeldUntilItsConnectionCloses`（「the third login start finds the process full」，`ConnectionGateTest.java:211`）与 `concurrentLoginStarts…`「expected: <5> but was: <6>」（`:248`）；还原后复绿 |
+| 1 | `./gradlew :test --tests '*ConnectionGateSocketTest*' --tests '*ConnectionGateTest*' --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts` | `BUILD SUCCESSFUL`。`aFullProcessRefusesTheLoginStartBeforeTheLoginRuns`（`max-players=2`）：前两人收到 `SetCompression`，第 3 人收到 `LoginDisconnect synaxis:shard-full` 后断开；`AsyncPlayerPreLoginEvent` 只触发 2 次；`seats()` 为 2、`FULL` 计 1；`StatusResponse.json` 含 `"max":2`；关掉第 1 人后 `seats()` 回到 1，第 4 人收到 `SetCompression`。`loginStartsArrivingTogetherNeverTakeMoreSeatsThanThereAre`（`max-players=5`，`127.0.0.0/8` 设为可信网段）：20 条连接握手后由 20 条线程同时发 LoginStart，恰好 5 条收到 `SetCompression`、15 条收到 `synaxis:shard-full`，`seats()` 为 5（v0.9.39 起席位在认证之后占，不加密的离线模式即 `LoginStart` 之后的 `transitionLoginToConfig` 开头：同时到达的 `LoginStart` 多数在只读计数的满员判断里都判得未满，多出来的 15 条在占席位的 CAS 处被拒，键相同）。`theStatusResponseReportsTheSocketLimitWhenSeatsAreUnlimited`：`max-players=0`、`max-connections=1500` 时 status 为 `"players":{"online":0,"max":1500}`，不再是 `online + 1`。`ConnectionGateTest` 的两条席位用例同 `TC-PROD-060` |
+| 2 | 反证有齿：`ConnectionGate.java` 的 `if (taken >= max) return false;` 改成 `if (taken > max) return false;`，重跑第 1 步，再 `git checkout --` 该文件 | 红 3 条：`ConnectionGateSocketTest` 的 `loginStartsArriving…`「expected: <5> but was: <6>」（`ConnectionGateSocketTest.java:341`）；`ConnectionGateTest` 的 `aSeatIsHeldUntilItsConnectionCloses`（「the third login start finds the process full」，`ConnectionGateTest.java:211`）与 `concurrentLoginStarts…`「expected: <5> but was: <6>」（`:248`）。`aFullProcess…` 不红：第 3 人在 `LoginStart` 的满员判断（`ConnectionGate#seatFree`，只读计数，不经这一行）就被拒了，这一步改的是占席位的 CAS。还原后复绿（按 `sec/login-path` 的 `1f33976097` 实跑；v0.9.39 之前席位在 `LoginStart` 占，红 4 条，`aFullProcess…` 红在 `:223`、`loginStartsArriving…` 在 `:276`） |
 
 后置：`git status` 干净。
 
@@ -3696,8 +3719,8 @@ jcmd "$pid" VM.flags | tr ' ' '\n' | grep -cxE -- '-XX:\+UseG1GC|-XX:InitialHeap
 | # | 操作 | 预期 |
 | --- | --- | --- |
 | 1 | `./gradlew :server-app:test --tests '*ConnectionGateLogTest*' --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts` | `BUILD SUCCESSFUL`。`rejectionsAreOneLinePerTenSeconds`（经宿主 logback 读 `ConnectionGate` 的日志）：100 次 L0、7 次 L2、4 次 L3、1 次握手超时，窗口起点后 9.999…s 没有任何行，第 10 s 恰好一行 `Connection gate rejected 112 connections in the last 10 s: too_many=0 throttled=7 full=4 closed_at_accept=100 handshake_timeout=1`，第 20 s 没有新拒绝就不写。`aConnectionTurnedAwayAtTheHandshakeWritesNoLine`：`status-burst-per-ip=1`，同一地址 6 条 status 握手，5 条被拒；全部关闭后 `PlayerConnection` 的 `Connection closed` 只有 1 行（放进来的那条） |
-| 2 | 反证「10 s」有齿：`src/main/java/io/github/bearisbug/synaxis/network/ConnectionGate.java` 的 `} else if (nanoTime - reportWindowStart >= REPORT_INTERVAL) {` 改成 `>= REPORT_INTERVAL / 2) {`，重跑第 1 步，再 `git checkout --` 该文件 | 红 1 条：「nothing before the 10 s are over ==> expected: <[]> but was: <[Connection gate rejected 112 connections …]>」（`ConnectionGateLogTest.java:60`）；还原后复绿 |
-| 3 | 反证「被拒不写行」有齿：`src/main/java/io/github/bearisbug/synaxis/network/player/PlayerConnection.java` 的 `if (wasOnline && !turnedAway)` 改成 `if (wasOnline \|\| turnedAway)`，重跑第 1 步，再 `git checkout --` 该文件 | 红 1 条：「only the connection the gate let through」，列出 11 行 `Connection closed`（`:102`；放进来的 1 条一行，被拒的 5 条各两行：改后连同之后每次 `disconnect` 都写）；还原后复绿 |
+| 2 | 反证「10 s」有齿：`src/main/java/io/github/bearisbug/synaxis/network/ConnectionGate.java` 的 `} else if (nanoTime - reportWindowStart >= REPORT_INTERVAL) {` 改成 `>= REPORT_INTERVAL / 2) {`，重跑第 1 步，再 `git checkout --` 该文件 | 红 1 条：「nothing before the 10 s are over ==> expected: <[]> but was: <[Connection gate rejected 112 connections …]>」（`ConnectionGateLogTest.java:66`；v0.9.39 之前是 `:60`，v0.9.43 之前是 `:65`）；还原后复绿 |
+| 3 | 反证「被拒不写行」有齿：`src/main/java/io/github/bearisbug/synaxis/network/player/PlayerConnection.java` 的 `if (wasOnline && !turnedAway)` 改成 `if (wasOnline \|\| turnedAway)`，重跑第 1 步，再 `git checkout --` 该文件 | 红 1 条：「only the connection the gate let through」，列出 11 行 `Connection closed`（`:108`，v0.9.39 之前是 `:102`，v0.9.43 之前是 `:107`；放进来的 1 条一行，被拒的 5 条各两行：改后连同之后每次 `disconnect` 都写）；还原后复绿 |
 
 后置：`git status` 干净。
 
@@ -3708,7 +3731,7 @@ jcmd "$pid" VM.flags | tr ' ' '\n' | grep -cxE -- '-XX:\+UseG1GC|-XX:InitialHeap
 | # | 操作 | 预期 |
 | --- | --- | --- |
 | 1 | `./gradlew :test --tests '*ConnectionManagerIntegrationTest*' :server-app:test --tests '*ConnectionGateLogTest*' --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts` | `BUILD SUCCESSFUL`。`ConnectionManagerIntegrationTest#aPlayerThatStopsAnsweringKeepAlivesIsKicked`：到 `keepAliveKick` 恰好一个 Disconnect 包，原因是 `translate` 键 `synaxis:keep-alive-timeout`，不再是纯文本 `Timeout`。`ConnectionGateLogTest#settingTheSocketTimeoutWarnsThatItIsDeprecated`：没设这个属性时 `ServerConfig.fromSystemProperties()` 不写 WARN；`-Dsynaxis.socket-timeout=30000` 时恰好一行，以 `synaxis.socket-timeout is deprecated and has no effect` 开头。`Server#configureSocket` 不再调 `setSoTimeout`（它对 `SocketChannel#read` 本来就无效） |
-| 2 | 反证有齿（两处一起改、一起还原）：`src/main/java/io/github/bearisbug/synaxis/network/ConnectionManager.java` 的 `player.kick(DisconnectReasons.KEEP_ALIVE_TIMEOUT);` 改成 `player.kick(DisconnectReasons.LOGIN_TIMEOUT);`；`src/main/java/io/github/bearisbug/synaxis/ServerConfig.java` 的 `System.getProperty("synaxis.socket-timeout") != null` 改成 `System.getProperty("synaxis.socket-timeout-ms") != null`。加 `--continue` 重跑第 1 步，再 `git checkout --` 这两个文件 | 红 2 条：`aPlayerThatStopsAnsweringKeepAlivesIsKicked`「expected: <synaxis:keep-alive-timeout> but was: <synaxis:login-timeout>」（`ConnectionManagerIntegrationTest.java:85`）；`settingTheSocketTimeout…`「[] ==> expected: <1> but was: <0>」（`ConnectionGateLogTest.java:122`）；还原后复绿 |
+| 2 | 反证有齿（两处一起改、一起还原）：`src/main/java/io/github/bearisbug/synaxis/network/ConnectionManager.java` 的 `player.kick(DisconnectReasons.KEEP_ALIVE_TIMEOUT);` 改成 `player.kick(DisconnectReasons.LOGIN_TIMEOUT);`；`src/main/java/io/github/bearisbug/synaxis/ServerConfig.java` 的 `System.getProperty("synaxis.socket-timeout") != null` 改成 `System.getProperty("synaxis.socket-timeout-ms") != null`。加 `--continue` 重跑第 1 步，再 `git checkout --` 这两个文件 | 红 2 条：`aPlayerThatStopsAnsweringKeepAlivesIsKicked`「expected: <synaxis:keep-alive-timeout> but was: <synaxis:login-timeout>」（`ConnectionManagerIntegrationTest.java:85`）；`settingTheSocketTimeout…`「[] ==> expected: <1> but was: <0>」（`ConnectionGateLogTest.java:212`；v0.9.39 在它前面加了两条，此前是 `:122`，v0.9.43 改写前一条之前是 `:206`）；还原后复绿 |
 
 后置：`git status` 干净。
 
@@ -3820,7 +3843,7 @@ jcmd "$pid" VM.flags | tr ' ' '\n' | grep -cxE -- '-XX:\+UseG1GC|-XX:InitialHeap
 
 | # | 操作 | 预期 |
 | --- | --- | --- |
-| 1 | 跑 `io.github.bearisbug.synaxis.network.OnlineLoginSocketTest` | 15 个 0 失败，其中 `anOnlineLoginTakesTheIdentityTheSessionServerVouchesFor`：假服务给 `Steve` 的 profile 是随机 UUID `U` 与 `textures=skin-of-steve`（签名 `sig-skin-of-steve`）。加密请求的 `serverId` 为空串、`shouldAuthenticate=true`；`LoginSuccess` 里的 UUID 等于 `U`、不等于 `offlineUuid("Steve")`，名字 `Steve`，属性恰好是那一条带签名的 `textures`；假服务恰好收到 1 次查询，`username=Steve`、`serverId` 等于客户端自己算出的 `serverHash`；客户端从 socket 收到的原始字节里没有 `Steve` 这 5 个字节（`LoginSuccess` 是密文） |
+| 1 | 跑 `io.github.bearisbug.synaxis.network.OnlineLoginSocketTest` | 22 个 0 失败，其中 `anOnlineLoginTakesTheIdentityTheSessionServerVouchesFor`：假服务给 `Steve` 的 profile 是随机 UUID `U` 与 `textures=skin-of-steve`（签名 `sig-skin-of-steve`）。加密请求的 `serverId` 为空串、`shouldAuthenticate=true`；`LoginSuccess` 里的 UUID 等于 `U`、不等于 `offlineUuid("Steve")`，名字 `Steve`，属性恰好是那一条带签名的 `textures`；假服务恰好收到 1 次查询，`username=Steve`、`serverId` 等于客户端自己算出的 `serverHash`；客户端从 socket 收到的原始字节里没有 `Steve` 这 5 个字节（`LoginSuccess` 是密文） |
 | 2 | 反证有齿：`PlayerSocketConnection#writeSendable` 里 `buffer.cipher(encryption.encrypt(), start, length)` 的长度改成 `0`（出站不再加密），只跑 `OnlineLoginSocketTest.anOnlineLoginTakesTheIdentityTheSessionServerVouchesFor`，再还原 | 红在该方法：客户端把明文的 `SetCompression` 当密文解，解不出包，报错随每次随机的共享密钥变化（实测两次分别是 `java.lang.AssertionError: not a packet` 与 `java.lang.IndexOutOfBoundsException: VarInt too long`，也可能是 `var-int too long`）。还原后复绿 |
 
 后置：确认 `PlayerSocketConnection.java` 没有残留改动。
@@ -4015,7 +4038,7 @@ jcmd "$pid" VM.flags | tr ' ' '\n' | grep -cxE -- '-XX:\+UseG1GC|-XX:InitialHeap
 | # | 操作 | 预期 |
 | --- | --- | --- |
 | 1 | 跑 `io.github.bearisbug.synaxis.AuthModesTest`；再在仓库根执行 `grep -rn -e 'Auth\.Velocity' -e 'Auth\.Bungee' -e 'BungeeGuard' -e 'velocity:player_info' src server-app` | 1 个 0 失败：`Auth.class.getPermittedSubclasses()` 恰好是 `{Auth.Online, Auth.Offline}`。`grep` 无输出 |
-| 2 | 反证有齿（只加 record）：在 `Auth.java` 末尾加回 `record Bungee() implements Auth {}`，跑 `./gradlew :compileJava --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts` | 编译失败 2 处，`ConnectionManager.java:80` 与 `ServerProcessImpl.java:254` 都是「并非所有可能的输入值都包含在 switch 语句中」：按 `Auth` 分派的两个 `switch` 没有 `default`，新加一种模式不补分支就编不过 |
+| 2 | 反证有齿（只加 record）：在 `Auth.java` 末尾加回 `record Bungee() implements Auth {}`，跑 `./gradlew :compileJava --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts` | 编译失败 2 处，`ConnectionManager.java:98` 与 `ServerProcessImpl.java:291` 都是「并非所有可能的输入值都包含在 switch 语句中」（行号按 `sec/login-path` 的 `1f33976097` 实跑；写这条时是 `:80` 与 `:254`）：按 `Auth` 分派的两个 `switch` 没有 `default`，新加一种模式不补分支就编不过 |
 | 3 | 反证有齿（连分支一起加回）：保留第 2 步的 record，再给 `ConnectionManager` 构造器的 `switch` 加 `case Auth.Bungee _ -> { this.loginKeyPair = null; this.sessionClient = null; }`、给 `ServerProcessImpl#start` 的 `switch` 加 `case Auth.Bungee _ -> LOGGER.info("Bungee");`，重跑第 1 步的测试，再 `git checkout -- src/main` | `1 tests completed, 1 failed`，红在 `theOnlyModesAreOnlineAndOffline`：`expected: <[class …Auth$Offline, class …Auth$Online]> but was: <[class …Auth$Bungee, class …Auth$Offline, class …Auth$Online]>`（`AuthModesTest.java:21`）。还原后复绿 |
 
 后置：确认 `Auth.java`、`ConnectionManager.java`、`ServerProcessImpl.java` 没有残留改动。
@@ -4027,7 +4050,7 @@ jcmd "$pid" VM.flags | tr ' ' '\n' | grep -cxE -- '-XX:\+UseG1GC|-XX:InitialHeap
 | # | 操作 | 预期 |
 | --- | --- | --- |
 | 1 | 跑 `io.github.bearisbug.synaxis.ArchitectureTest` | 7 个 0 失败；`boundedReporters()` 里没有 `HandshakeListener` |
-| 2 | 反证有齿：`HandshakeListener#listener` 里「Server address too long」的 `throw` 前加一行 `LoggerFactory.getLogger(HandshakeListener.class).warn("Server address too long: {}", address.length());`（并补 `org.slf4j.LoggerFactory` 的 import，写全限定名会先被 Error Prone 的 `UnnecessarilyFullyQualified` 拦下），重跑第 1 步，再 `git checkout --` 该文件 | `7 tests completed, 1 failed`，红在 `clientDrivenPathsDoNotWriteALinePerPacket`：`Architecture Violation … Rule 'no classes that reside in any package ['io.github.bearisbug.synaxis.network..', 'io.github.bearisbug.synaxis.listener..'] and not name …'`，违例指向 `HandshakeListener.listener`。还原后复绿 |
+| 2 | 反证有齿：`HandshakeListener#listener` 里超长服务器地址那一段的 `connection.disconnectTurnedAway();` 前加一行 `LoggerFactory.getLogger(HandshakeListener.class).warn("Server address too long: {}", address.length());`（并补 `org.slf4j.LoggerFactory` 的 import，写全限定名会先被 Error Prone 的 `UnnecessarilyFullyQualified` 拦下；v0.9.39 之前这一段是 `throw`，加在 `throw` 前），重跑第 1 步，再 `git checkout --` 该文件 | `7 tests completed, 1 failed`，红在 `clientDrivenPathsDoNotWriteALinePerPacket`：`Architecture Violation … Rule 'no classes that reside in any package ['io.github.bearisbug.synaxis.network..', 'io.github.bearisbug.synaxis.listener..'] and not name …'`，违例指向 `HandshakeListener.listener`（`HandshakeListener.java:32`）。还原后复绿 |
 
 后置：确认 `HandshakeListener.java` 没有残留改动。
 
@@ -4876,7 +4899,7 @@ jcmd "$pid" VM.flags | tr ' ' '\n' | grep -cxE -- '-XX:\+UseG1GC|-XX:InitialHeap
 | 1 | 跑 `io.github.bearisbug.synaxis.app.permission.PermissionNodesTest` | 10 个 0 失败；`heldNodesIncludeARoleNodeOnlyWhenTheyCoverAllOfIt`：持有 `gm.*`、`synaxis.command.kick` 时覆盖 `gm.ban`、`gm.*`、`gm.role.*`、`synaxis.command.kick`，不覆盖 `synaxis.command.stop`、`synaxis.command.*`、`gm`、`*`；只持有 `gm.role` 不覆盖 `gm.*`；只有 `*` 覆盖 `*` |
 | 2 | 跑 `io.github.bearisbug.synaxis.app.RoleEscalationIntegrationTest` | 1 个 0 失败：角色 `granter`、`helper` = `gm.role`，`gm` = `gm.*`，`mod` = `gm.ban`，`ops` = `gm.*` + `synaxis.command.stop`，`root` = `*`。十次执行的 `EVT:gm_command` 依次是：持 `granter` 的玩家给自己授 `gm`、给目标授 `root`、收回 GM 的 `gm` 都是 `above_sender`，给目标授 `helper` 是 `ok`；持 `gm` 的玩家授 `mod` 是 `ok`，授 `ops` 与给自己授 `root` 是 `above_sender`，授不存在的角色仍是 `unknown_role`；持 `root` 的玩家授 `root` 是 `ok`；控制台收回 `root` 是 `ok`。被拒的玩家收到的回执键是 `synaxis:role-above-sender`；库里 `granter` 仍只有 `granter`、GM 仍只有 `gm`，目标最后是 `helper`、`mod` |
 | 3 | 修复前的红（在 `b2b7af2a3c` 上只加第 2 步的测试类跑） | `1 tests completed, 1 failed`，红在 `RoleEscalationIntegrationTest.java:114`，实际序列的前三条都是 `ok`（给自己授 `gm`、授 `root`、收回 GM 的 `gm`），GM 失去 `gm.role` 之后的四条都是 `precondition`（命令条件拒绝，没有事件） |
-| 4 | 反证有齿（不查发送者）：`RoleCommand#execute` 的 `if (sender instanceof Player player && !permissions.mayHandOut(player, roleId)) {` 改为 `if (sender instanceof Player player && !permissions.mayHandOut(player, roleId) && Boolean.getBoolean("proof.never")) {`，重跑第 1、2 步与 `PermissionsIntegrationTest`，再还原 | `19 tests completed, 1 failed`，红在 `RoleEscalationIntegrationTest.java:114`，实际序列与第 3 步相同。还原后复绿 |
+| 4 | 反证有齿（不查发送者）：`RoleCommand#execute` 的 `if (own != null && !permissions.mayHandOut(own, roleId)) {` 改为 `if (own != null && !permissions.mayHandOut(own, roleId) && Boolean.getBoolean("proof.never")) {`，重跑第 1、2 步与 `PermissionsIntegrationTest`，再还原（`docs/DESIGN-PROD.md` v0.9.40 改为当场读库后按这一行改写，`TC-PROD-596` 第 1 步重跑过） | `19 tests completed, 1 failed`，红在 `RoleEscalationIntegrationTest.java:114`，实际序列与第 3 步相同。还原后复绿 |
 | 5 | 反证有齿（`*` 不当普通节点放行）：`PermissionNodes#includes` 首行改为 `if (held.contains("*") \|\| held.contains(granted) \|\| granted.equals("*")) return true;`，重跑第 1、2 步，再还原 | `11 tests completed, 2 failed`：`PermissionNodesTest.java:44` `only * covers * ==> expected: <false> but was: <true>`；`RoleEscalationIntegrationTest.java:114`，实际序列第 2 条（`granter` 给目标授 `root`）与第 7 条（GM 给自己授 `root`）变成 `ok`。还原后复绿 |
 
 后置：确认 `RoleCommand.java`、`PermissionNodes.java` 没有残留改动。
@@ -5338,10 +5361,10 @@ jcmd "$pid" VM.flags | tr ' ' '\n' | grep -cxE -- '-XX:\+UseG1GC|-XX:InitialHeap
 
 | # | 操作 | 预期 |
 | --- | --- | --- |
-| 1 | 跑 `io.github.bearisbug.synaxis.network.OnlineLoginSocketTest`（根项目 `:test`） | 17 个 0 失败。`theTrafficAndTheCipherTimeOfAnEncryptedLoginAreCounted`：`offline-encrypted` 的一次登录前四项全是 0；拿到 `LoginSuccess` 时入站 3 个包（握手、登录开始、密钥）、解密耗时仍为 0（密钥之后客户端还没发过密文）；客户端再发一个 `LoginAcknowledged`，入站变 4、解密耗时 > 0；出站 ≥ 2 个包，入站字节 > 256（两块 128 字节的 RSA），出站字节 > 162（请求里的公钥），加密耗时 > 0。`theFinalAnswerTheRetryAndEveryQueryTimeAreCounted`：假会话服务先回 503 再回 200，`outcomes()` = `[1, 0, 0]`（一次登录只按最终结果计一次），`retries()` = 1，两次查询都报了耗时且 > 0 |
+| 1 | 跑 `io.github.bearisbug.synaxis.network.OnlineLoginSocketTest`（根项目 `:test`） | 22 个 0 失败（v0.9.39 加了 5 个，此前 17 个）。`theTrafficAndTheCipherTimeOfAnEncryptedLoginAreCounted`：`offline-encrypted` 的一次登录前四项全是 0；拿到 `LoginSuccess` 时入站 3 个包（握手、登录开始、密钥）、解密耗时仍为 0（密钥之后客户端还没发过密文）；客户端再发一个 `LoginAcknowledged`，入站变 4、解密耗时 > 0；出站 ≥ 2 个包，入站字节 > 256（两块 128 字节的 RSA），出站字节 > 162（请求里的公钥），加密耗时 > 0。`theFinalAnswerTheRetryAndEveryQueryTimeAreCounted`：假会话服务先回 503 再回 200，`outcomes()` = `[1, 0, 0]`（一次登录只按最终结果计一次），`retries()` = 1，两次查询都报了耗时且 > 0 |
 | 2 | 跑 `io.github.bearisbug.synaxis.WatchdogTest` | 5 个 0 失败，其中 `aStuckTickIsReportedAtTenSecondsThenEveryFiveAndJudgedDeadAtSixty` 在 10、15、…、55 s 打出 10 条警告时 `warnings()` = 10 |
-| 3 | 反证有齿（入站不计包数）：`PlayerSocketConnection#processBatch` 里的 `traffic.read(success.packets().size());` 改为 `var _ = success;`，跑第 1 步，再还原 | `17 tests completed, 1 failed`，红在 `OnlineLoginSocketTest.java:330`：`packets read off the socket ==> expected: <3> but was: <0>`。还原后复绿 |
-| 4 | 反证有齿（重试不计数）：`SessionClient#verify` 里的 `retries.incrementAndGet();` 改为 `var _ = retries;`，跑第 1 步，再还原 | `17 tests completed, 1 failed`，红在 `:356`：`the unavailable answer was retried once ==> expected: <1> but was: <0>`。还原后复绿 |
+| 3 | 反证有齿（入站不计包数）：`PlayerSocketConnection#processBatch` 里的 `traffic.read(success.packets().size());` 改为 `var _ = success;`，跑第 1 步，再还原 | `22 tests completed, 1 failed`，红在 `OnlineLoginSocketTest.java:451`：`packets read off the socket ==> expected: <3> but was: <0>`（v0.9.39 之前是 17 个、`:330`）。还原后复绿 |
+| 4 | 反证有齿（重试不计数）：`SessionClient#verify` 里的 `retries.incrementAndGet();` 改为 `var _ = retries;`，跑第 1 步，再还原 | `22 tests completed, 1 failed`，红在 `:477`：`the unavailable answer was retried once ==> expected: <1> but was: <0>`（v0.9.39 之前是 17 个、`:356`）。还原后复绿 |
 | 5 | 反证有齿（警告不计数）：`Watchdog#patrol` 里的 `warningCount.incrementAndGet();` 改为 `var _ = warningCount;`，跑第 2 步，再还原 | `5 tests completed, 1 failed`，红在 `WatchdogTest.java:88`：`synaxis_watchdog_warnings_total counts every warning ==> expected: <10> but was: <0>`。还原后复绿 |
 
 后置：确认 `PlayerSocketConnection.java`、`SessionClient.java`、`Watchdog.java` 没有残留改动。
@@ -5484,9 +5507,9 @@ jcmd "$pid" VM.flags | tr ' ' '\n' | grep -cxE -- '-XX:\+UseG1GC|-XX:InitialHeap
 
 | # | 操作 | 预期 |
 | --- | --- | --- |
-| 1 | 跑 `io.github.bearisbug.synaxis.network.player.InboundPacketLimitIntegrationTest`（根项目 `:test`），看 `oneOverTheLimitKicksWithProtocolError` 与 `theLimitItselfIsLetThrough`；再加 `-Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true -Dsynaxis.thread-provider=grid` 跑一次 | 两次都 5 个 0 失败。测试在回环上开一对真 socket，服务端一侧是 PLAY 状态、带 `Player` 的 `PlayerSocketConnection`，由测试线程调 `read` 读；对端一次写入 751 个 `ClientTickEnd` 帧：连接离线，冲刷出去的恰好 1 个 `DisconnectPacket`、键 `synaxis:protocol-error`。写入 750 个：连接在线，750 个全部进了玩家入站队列 |
-| 2 | 反证有齿（超限不踢）：`PlayerSocketConnection#processBatch` 里的 `case KICK -> kickOverInboundLimit();` 改为 `case KICK -> player.addPacketToQueue(packet);`，重跑，再还原 | `5 tests completed, 1 failed`，红在 `InboundPacketLimitIntegrationTest.java:51`：`751 packets at once are over 750 in 7 s ==> expected: <false> but was: <true>`。还原后复绿 |
-| 3 | 反证有齿（默认值就是 750）：`ServerConfig.Builder` 里的 `packetLimitMaxPackets = 750` 先改回 582 重跑，再改成 751 重跑，再还原 | 582：`5 tests completed, 1 failed`，红在 `:63`：`750 packets in 7 s is the limit, not over it ==> expected: <true> but was: <false>`。751：`5 tests completed, 1 failed`，红在 `:51`：`751 packets at once are over 750 in 7 s ==> expected: <false> but was: <true>`。还原后复绿 |
+| 1 | 跑 `io.github.bearisbug.synaxis.network.player.InboundPacketLimitIntegrationTest`（根项目 `:test`），看 `oneOverTheLimitKicksWithProtocolError` 与 `theLimitItselfIsLetThrough`；再加 `-Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true -Dsynaxis.thread-provider=grid` 跑一次 | 两次都 7 个 0 失败（v0.9.39 加了 `TC-PROD-584` 的两条，此前 5 个）。测试在回环上开一对真 socket，服务端一侧是 PLAY 状态、带 `Player` 的 `PlayerSocketConnection`，由测试线程调 `read` 读；对端一次写入 751 个 `ClientTickEnd` 帧：连接离线，冲刷出去的恰好 1 个 `DisconnectPacket`、键 `synaxis:protocol-error`。写入 750 个：连接在线，750 个全部进了玩家入站队列 |
+| 2 | 反证有齿（超限不踢）：`PlayerSocketConnection#admitted` 里 KICK 那一支（`case KICK -> {` 到对应的 `}`，含 `kickOverInboundLimit();` 与 `yield false;`）改为 `case KICK -> true;`，重跑，再还原（v0.9.39 之前判定写在 `processBatch` 里，改法是 `case KICK -> kickOverInboundLimit();` 改为 `case KICK -> player.addPacketToQueue(packet);`） | `7 tests completed, 2 failed`：红在 `InboundPacketLimitIntegrationTest.java:54`：`751 packets at once are over 750 in 7 s ==> expected: <false> but was: <true>`；另一条是 `TC-PROD-584` 的 `pingsInPlayCountTowardsTheLimit`（`:80`）。还原后复绿（v0.9.39 之前是 5 个 1 失败、`:51`） |
+| 3 | 反证有齿（默认值就是 750）：`ServerConfig.Builder` 里的 `packetLimitMaxPackets = 750` 先改回 582 重跑，再改成 751 重跑，再还原 | 582：`7 tests completed, 3 failed`，红在 `:66`：`750 packets in 7 s is the limit, not over it ==> expected: <true> but was: <false>`，`TC-PROD-584` 的两条红在 `:82` 与 `:99`：`pongs ==> expected: <750> but was: <582>`。751：`7 tests completed, 3 failed`，红在 `:54`：`751 packets at once are over 750 in 7 s ==> expected: <false> but was: <true>`，`TC-PROD-584` 的两条红在 `:82` 与 `:99`：`pongs ==> expected: <750> but was: <751>`。还原后复绿（v0.9.39 之前各是 5 个 1 失败，`:63` 与 `:51`） |
 
 后置：确认 `PlayerSocketConnection.java`、`ServerConfig.java` 没有残留改动。
 
@@ -5621,7 +5644,7 @@ jcmd "$pid" VM.flags | tr ' ' '\n' | grep -cxE -- '-XX:\+UseG1GC|-XX:InitialHeap
 | 1 | 跑 `io.github.bearisbug.synaxis.app.TabListVisibilityIntegrationTest`（`:server-app:test`） | 2 个 0 失败。插件 `hider` 设「名字是 hidden 的不列出」，插件 `latecomer` 再设时 `setVisibility` 抛 `IllegalStateException`；`isListedFor(viewer, hidden)` 为 false、`isListedFor(viewer, viewer)` 为 true；`disableAll` 之后为 true。插件 `broken` 的判定必抛：`isListedFor` 返回 true，异常不外溢 |
 | 2 | 反证有齿（禁用不收回）：删去 `PluginHost#tearDown` 里的 `tabList.unregister(loaded.id());`，重跑，再还原 | `2 tests completed, 1 failed`，红在 `TabListVisibilityIntegrationTest.java:74`：`disabling the owner lists everyone again ==> expected: <true> but was: <false>`。还原后复绿 |
 | 3 | 反证有齿（不拦第二个插件）：`TabListSlot#set` 的 `if (current != null && !current.equals(pluginId))` 改为 `if (current != null && current.equals("no such plugin"))`，重跑，再还原 | `2 tests completed, 1 failed`，红在 `:71`：`a second plugin cannot take the slot ==> Unexpected null value`。还原后复绿 |
-| 4 | 反证有齿（异常外溢）：`TabListSlot#set` 里 `catch (RuntimeException e)` 改为 `catch (UnsupportedOperationException e)`，重跑，再还原 | `2 tests completed, 1 failed`：`aVisibilityThatThrowsListsThePlayer` 抛 `IllegalStateException: probe visibility failure`，栈经 `TabListSlot.java:42`、`ConnectionManager.java:639` 到测试 `:81`。还原后复绿 |
+| 4 | 反证有齿（异常外溢）：`TabListSlot#set` 里 `catch (RuntimeException e)` 改为 `catch (UnsupportedOperationException e)`，重跑，再还原 | `2 tests completed, 1 failed`：`aVisibilityThatThrowsListsThePlayer` 抛 `IllegalStateException: probe visibility failure`，栈经 `TabListSlot.java:42`、`ConnectionManager.java:708` 到测试 `:81`（行号按 `sec/login-path` 的 `1f33976097` 实跑；写这条时是 `ConnectionManager.java:639`）。还原后复绿 |
 
 后置：确认 `PluginHost.java`、`TabListSlot.java` 没有残留改动。
 
@@ -6506,7 +6529,7 @@ jcmd "$pid" VM.flags | tr ' ' '\n' | grep -cxE -- '-XX:\+UseG1GC|-XX:InitialHeap
 | # | 操作 | 预期 |
 | --- | --- | --- |
 | 1 | 跑 `ManagementIntegrationTest`，看 `beforeTheHandshakeTheRequestIsBoundedInSizeAndTime` | 通过：测试把握手时限设为 300 ms（生产为 5 s）。一条连接发出超过 8,192 B 还没结束的请求头，被服务端关掉、一个字节都没回；一条连上后什么都不发的连接，不早于 150 ms 被关、没有回应；带正确令牌按时握手的连接过了 600 ms 仍能调 `minecraft:players` |
-| 2 | 反证有齿（不装握手前的约束）：`ManagementServer.Endpoint` 构造器的 `setWebSocketFactory(new GuardedFactory(handshakeDeadline));` 改为 `if (Boolean.getBoolean("proof.never")) setWebSocketFactory(new GuardedFactory(handshakeDeadline));`，重跑，再还原 | `13 tests completed, 1 failed`，红在 `:525`（`:546`）：`still open after 5 s`（Java-WebSocket 自己对握手既不限大小也不限时，那条请求头一直被收着）。还原后复绿 |
+| 2 | 反证有齿（不装握手前的约束）：`ManagementServer.Endpoint` 构造器的 `setWebSocketFactory(new GuardedFactory(handshakeDeadline, backlogs, crowded));` 改为 `if (Boolean.getBoolean("proof.never")) setWebSocketFactory(new GuardedFactory(handshakeDeadline, backlogs, crowded));`，重跑，再还原 | `13 tests completed, 1 failed`，红在 `:525`（`:546`）：`still open after 5 s`（Java-WebSocket 自己对握手既不限大小也不限时，那条请求头一直被收着）。还原后复绿 |
 
 后置：确认 `ManagementServer.java` 没有残留改动。
 
@@ -6612,7 +6635,7 @@ jcmd "$pid" VM.flags | tr ' ' '\n' | grep -cxE -- '-XX:\+UseG1GC|-XX:InitialHeap
 | 4 | 同一次运行，看 `aRecordingThatCannotStartIsAnsweredAsFailed` | 通过：工作目录里 `profiles` 被一个普通文件占着；`profile 1` 得 `SUCCESS`，回执恰一条，以 `synaxis:command-profile-failed ` 开头（`Files.createDirectories` 的错误信息作参数）；台账一条 `profile 1 unavailable` |
 | 5 | 反证有齿（开不起来也记 `ok`）：`HostCommands#profile` 捕获 `IOException` 那一支的 `record(sender, input, null, "unavailable");` 改为 `record(sender, input, null, "ok");`，重跑本类，再还原 | `2 tests completed, 1 failed`，红在 `:129`：`expected: <[profile 1 unavailable]> but was: <[profile 1 ok]>`。还原后复绿 |
 | 6 | 跑 `io.github.bearisbug.synaxis.app.command.ProfilerTest`，看 `aRecordingLeavesTheEnvironmentOfTheProcessOut` | 通过（§19「profile 命令产出 JFR 文件」后半；同类另一条见 `TC-PROD-471`）：`Profiler#start(1)` 的录制在跑时，它的设置里 `jdk.InitialEnvironmentVariable#enabled` 为 `false`；写出的文件里 `jdk.InitialEnvironmentVariable` 事件 0 个，`jdk.InitialSystemProperty` 事件多于 0 个（JDK `profile` 设置的其余事件照录） |
-| 7 | 反证有齿（录制照搬 JDK 设置）：`Profiler#start` 的 `settings.put(ENVIRONMENT, "false");` 改为 `if (Boolean.getBoolean("proof.never")) settings.put(ENVIRONMENT, "false");`，跑 `ProfilerTest`，再还原 | `2 tests completed, 1 failed`，红在 `ProfilerTest.java:46`：`the recording does not turn the environment on ==> expected: <false> but was: <true>`。写出的文件在这个改动下仍读不出该事件（写文件时按事件名又滤了一次，`TC-PROD-471`），所以这一步判的是录制的设置、不是文件。还原后复绿 |
+| 7 | 反证有齿（录制照搬 JDK 设置）：`Profiler#start` 的 `for (String event : LEFT_OUT) settings.put(event + "#enabled", "false");` 前面加 `if (Boolean.getBoolean("proof.never")) `，跑 `ProfilerTest`，再还原 | `2 tests completed, 1 failed`，红在 `ProfilerTest.java:46`：`the recording does not turn the environment on ==> expected: <false> but was: <true>`。写出的文件在这个改动下仍读不出该事件（写文件时按事件名又滤了一次，`TC-PROD-471`），所以这一步判的是录制的设置、不是文件。还原后复绿（v0.9.42 起这一行关的是 `LEFT_OUT` 里的七个事件，另外六个见 `TC-PROD-614`；2026-10-01 按这一写法重跑，红行相同） |
 
 后置：确认 `HostCommands.java`、`Profiler.java` 没有残留改动。
 
@@ -6645,7 +6668,7 @@ jcmd "$pid" VM.flags | tr ' ' '\n' | grep -cxE -- '-XX:\+UseG1GC|-XX:InitialHeap
 | # | 操作 | 预期 |
 | --- | --- | --- |
 | 1 | 跑 `io.github.bearisbug.synaxis.app.ClientDrivenLogArchitectureTest` | 2 个 0 失败：`management/` 的三个类不在豁免名单里，也没有直接的 WARN / ERROR 行 |
-| 2 | 反证有齿（连接错误直接写 WARN）：`ManagementServer.Endpoint#onError` 里的 `failures.warn(ex, …)` 前加一行 `LOGGER.warn("Management interface error: remote={}", conn == null ? null : conn.getRemoteSocketAddress(), ex);`，并把原行改成只在 `proof.never` 时执行，重跑，再还原 | `2 tests completed, 1 failed`：`Method <…management.ManagementServer$Endpoint.onError(org.java_websocket.WebSocket, java.lang.Exception)> calls method <org.slf4j.Logger.warn(java.lang.String, java.lang.Object, java.lang.Object)> in (ManagementServer.java:267)`。还原后复绿 |
+| 2 | 反证有齿（连接错误直接写 WARN）：`ManagementServer.Endpoint#onError` 里的 `failures.warn(ex, …)` 前加一行 `LOGGER.warn("Management interface error: remote={}", conn == null ? null : conn.getRemoteSocketAddress(), ex);`，并把原行改成只在 `proof.never` 时执行，重跑，再还原 | `2 tests completed, 1 failed`：`Method <…management.ManagementServer$Endpoint.onError(org.java_websocket.WebSocket, java.lang.Exception)> calls method <org.slf4j.Logger.warn(java.lang.String, java.lang.Object, java.lang.Object)> in (ManagementServer.java:277)`。还原后复绿 |
 
 后置：确认 `ManagementServer.java` 没有残留改动。
 
@@ -6861,7 +6884,7 @@ for (var request : System.getenv("MGMT_CALLS").split("\n")) {
 | # | 操作 | 预期 |
 | --- | --- | --- |
 | 1 | 跑单测 `:server-app:test` 的 `io.github.bearisbug.synaxis.app.BooleanKeysTest` | `tests="3"` 全绿。`aTrailingBlankAfterTrueInTheFileRefusesTheProcess`：15 个键逐个写一行 `<键>=true `，`ConfigFile.apply` 不拒这个文件，系统属性里的值是带空格的 `true `，`ServerConfig.fromSystemProperties()` 抛 `IllegalArgumentException`，信息恰为 `Property '<键>' is not true or false: "true "`。`exactlyTrueAndFalseAreRead`：不设键时 `enforceInteractionLimit`、`rejectMalformedPacket` 为 true，`hideOnlinePlayers` 为 false；文件写 `synaxis.enforce-entity-interaction-range=false`、`synaxis.reject-malformed-packet=false`、`synaxis.hide-online-players=true` 后三者依次为 false、false、true |
-| 2 | 反证（改回 `Boolean.parseBoolean`，即改动前的读法）：`src/main/java/io/github/bearisbug/synaxis/ServerConfig.java` 的 `booleanProperty` 方法体从 `if (value == null) return defaultValue;` 到 `};` 换回一行 `return value != null ? Boolean.parseBoolean(value) : defaultValue;`，一次跑 `BooleanKeysTest` 与 `BooleanKeysLaunchTest`（命令接 `--tests '*BooleanKeysTest' --tests '*BooleanKeysLaunchTest'`），再还原 | `5 tests completed, 4 failed`，用时约 1 分 18 秒。本条的一处：`aTrailingBlankAfterTrueInTheFileRefusesTheProcess` 红在 `BooleanKeysTest.java:71`，`synaxis.shutdown-on-signal ==> Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown.`（第一个键的 `true ` 就被读成 false）；`exactlyTrueAndFalseAreRead` 照常绿。另三处见 `TC-PROD-468`、`TC-PROD-469` 第 2 步 |
+| 2 | 反证（改回 `Boolean.parseBoolean`，即改动前的读法）：`src/main/java/io/github/bearisbug/synaxis/ServerConfig.java` 的 `booleanProperty` 方法体从 `if (value == null) return defaultValue;` 到 `};` 换回一行 `return value != null ? Boolean.parseBoolean(value) : defaultValue;`，一次跑 `BooleanKeysTest` 与 `BooleanKeysLaunchTest`（命令接 `--tests '*BooleanKeysTest' --tests '*BooleanKeysLaunchTest'`），再还原 | `5 tests completed, 4 failed`，用时约 1 分 18 秒。本条的一处：`aTrailingBlankAfterTrueInTheFileRefusesTheProcess` 红在 `BooleanKeysTest.java:69`，`synaxis.shutdown-on-signal ==> Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown.`（第一个键的 `true ` 就被读成 false）；`exactlyTrueAndFalseAreRead` 照常绿。另三处见 `TC-PROD-468`、`TC-PROD-469` 第 2 步 |
 | 3 | 还原后重跑第 1 步 | 与第 1 步相同 |
 
 后置：`git status --short` 无输出。
@@ -6873,7 +6896,7 @@ for (var request : System.getenv("MGMT_CALLS").split("\n")) {
 | # | 操作 | 预期 |
 | --- | --- | --- |
 | 1 | 跑 `TC-PROD-467` 第 1 步，看 `otherSpellingsOnTheCommandLineRefuseTheProcess` | 通过：`synaxis.reject-malformed-packet` 依次设为 `yes`、`1`、`on`、`TRUE`、`True`、`False`、` true`、`true` 后跟制表符、空串，每次 `fromSystemProperties()` 都抛 `Property 'synaxis.reject-malformed-packet' is not true or false: "<原值>"`。按改动前的读法，这 9 个里 `TRUE`、`True` 读作 true，其余读作 false（`docs/DESIGN-PROD.md` `API-PROD-023` 写明这是有意的变化） |
-| 2 | 反证：`TC-PROD-467` 第 2 步的同一次运行 | `otherSpellingsOnTheCommandLineRefuseTheProcess` 红在 `BooleanKeysTest.java:104`，`"yes" ==> Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown.` |
+| 2 | 反证：`TC-PROD-467` 第 2 步的同一次运行 | `otherSpellingsOnTheCommandLineRefuseTheProcess` 红在 `BooleanKeysTest.java:102`，`"yes" ==> Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown.` |
 | 3 | 还原后重跑第 1 步 | 与第 1 步相同 |
 
 后置：`git status --short` 无输出。
@@ -6885,7 +6908,7 @@ for (var request : System.getenv("MGMT_CALLS").split("\n")) {
 | # | 操作 | 预期 |
 | --- | --- | --- |
 | 1 | 跑单测 `:server-app:test` 的 `io.github.bearisbug.synaxis.app.BooleanKeysLaunchTest` | `tests="2"` 全绿（本机各约 0.3 s 与 0.2 s）。`anotherWordOnTheCommandLineRefusesMain`：`Main` 带 `-Dsynaxis.reject-malformed-packet=yes`，退出码 1，日志有 `Refusing to start: Property 'synaxis.reject-malformed-packet' is not true or false: "yes"`，没有 `listening on`。`aTrailingBlankInTheFileRefusesAShard`：`ShardMain` 读工作目录的 `synaxis.properties`（一行 `synaxis.enforce-entity-interaction-range=true `），退出码 1，日志有 `Refusing to start: Property 'synaxis.enforce-entity-interaction-range' is not true or false: "true "`，没有 `listening on` |
-| 2 | 反证：`TC-PROD-467` 第 2 步的同一次运行 | 两条都红，各等满 30 s：红在 `BooleanKeysLaunchTest.java:34`（经 `ConfigFileLaunchTest.java:316` 的 `the JVM exits: …`）。所附日志里 `Main` 那个 JVM 是 `rejectMalformedPacket=false` 与 `listening on 0.0.0.0:<空闲端口>`；`ShardMain` 那个是 `Effective config file: path=<临时目录>/synaxis.properties keys=1 overridden_by_command_line=[]`、`enforceInteractionLimit=false` 与 `listening on 0.0.0.0:<空闲端口>`：改动前的读法把两个默认开着的护栏静默关掉，进程照常起来 |
+| 2 | 反证：`TC-PROD-467` 第 2 步的同一次运行 | 两条都红，各等满 30 s：红在 `BooleanKeysLaunchTest.java:33`（经 `ConfigFileLaunchTest.java:316` 的 `the JVM exits: …`）。所附日志里 `Main` 那个 JVM 是 `rejectMalformedPacket=false` 与 `listening on 0.0.0.0:<空闲端口>`；`ShardMain` 那个是 `Effective config file: path=<临时目录>/synaxis.properties keys=1 overridden_by_command_line=[]`、`enforceInteractionLimit=false` 与 `listening on 0.0.0.0:<空闲端口>`：改动前的读法把两个默认开着的护栏静默关掉，进程照常起来 |
 | 3 | 还原后重跑第 1 步 | 与第 1 步相同 |
 
 后置：`git status --short` 无输出；`pgrep -fl 'synaxis.app.Main\|synaxis.app.ShardMain'` 没有本轮起的进程。
@@ -6916,7 +6939,7 @@ for (var request : System.getenv("MGMT_CALLS").split("\n")) {
 | # | 操作 | 预期 |
 | --- | --- | --- |
 | 1 | 跑 `ProfilerTest`（加 `--rerun`），看 `anotherRecordingWithTheJdkSettingsDoesNotBringTheEnvironmentIn` | `tests="2"` 0 失败。先开一个 `Configuration.getConfiguration("default")` 的录制（同 `jcmd JFR.start settings=default`），再 `Profiler#start(1)`；另一个录制自己的 dump 里 `jdk.InitialEnvironmentVariable` 事件多于 0 个（两者共用 chunk，事件确实在），`profile` 写出的文件里 0 个、`jdk.InitialSystemProperty` 多于 0 个；文件按 ISO-8859-1 读成字符串后，名字以 `SYNAXIS_` 开头、不以 `SYNAXIS_TEST_` 开头的每个非空环境变量，其 UTF-8 值都不在里面（这里就是 `SYNAXIS_MANAGEMENT_TOKEN`；断言信息只带变量名） |
-| 2 | 反证有齿（写文件不过滤，即改动前）：`Profiler#start` 里的 `writeWithoutEnvironment(recording, path);` 改为 `if (Boolean.getBoolean("proof.never")) writeWithoutEnvironment(recording, path); else recording.dump(path);`，重跑第 1 步，再还原 | `2 tests completed, 1 failed`：红在 `ProfilerTest.java:70`，`the environment the other recording turned on is not in the profile file ==> expected: <0> but was: <85>`（本机 85 个，即测试 JVM 的全部环境变量）；只开 `profile` 一个录制的那条绿（录制本身不开这个事件） |
+| 2 | 反证有齿（写文件不过滤，即改动前）：`Profiler#start` 里的 `writeHandedOver(recording, path);`（v0.9.42 前叫 `writeWithoutEnvironment`）改为 `if (Boolean.getBoolean("proof.never")) writeHandedOver(recording, path); else recording.dump(path);`，重跑第 1 步，再还原 | `2 tests completed, 1 failed`：红在 `ProfilerTest.java:70`，`the environment the other recording turned on is not in the profile file ==> expected: <0> but was: <81>`（测试 JVM 的全部环境变量，个数随运行环境而变：2026-09-26 是 85 个，2026-10-01 在分支 `sec/secrets-files` 重跑是 81 个）；只开 `profile` 一个录制的那条绿（录制本身不开这个事件） |
 | 3 | 反证有齿（逐字节检查拦得住）：在第 2 步的改动之外，把测试 `:70` 起的 `assertEquals(0, count(events, ENVIRONMENT), …)` 改为只在 `proof.never` 时执行（前面加 `if (Boolean.getBoolean("proof.never"))`），重跑第 1 步，再还原两个文件 | `2 tests completed, 1 failed`：红在 `ProfilerTest.java:80`，`the value of SYNAXIS_MANAGEMENT_TOKEN is not in the profile file ==> expected: <false> but was: <true>`（标记值以明文在文件里） |
 | 4 | 还原后重跑第 1 步 | 与第 1 步相同 |
 
@@ -7030,7 +7053,7 @@ for (var request : System.getenv("MGMT_CALLS").split("\n")) {
 | --- | --- | --- |
 | 1 | 同一次运行跑 `io.github.bearisbug.synaxis.app.store` 下的 `ShutdownSaveBeforeSpawnIntegrationTest`、`ShutdownSaveIntegrationTest`、`ShutdownSaveRaceIntegrationTest`、`PlayerStoreIntegrationTest`、`CrossShardHandoverIntegrationTest`、`TransferTicketsIntegrationTest`，与 `io.github.bearisbug.synaxis.app.ConfigFileLaunchTest` | `tests="3"`、`"4"`、`"2"`、`"23"`、`"6"`、`"7"`、`"2"`，都 0 失败 0 跳过（`TC-PROD-460`、`TC-PROD-470`、`TC-PROD-155`、`TC-PROD-214` 第 2 步、`TC-PROD-442` 不受影响）。保存阶段开始后的下一个 tick 会断开仍连着、没进世界的玩家，这几类里这样的玩家都在那之前已自己断开，断言不变 |
 | 2 | `TC-PROD-147` 第 2 步（本组把它要改的那一行 `if (!saveEnded) releaseQuietly(record.characterId);` 改成了 `releaseQuietly(record.characterId);`，保存阶段结束的判断挪进 `releaseQuietly`；该步已按新写法改） | 红在 `PlayerStoreIntegrationTest.java:270`，`not within 10 s: the lease goes back after the retries`，与原预期相同；还原后复绿 |
-| 3 | 跑 `:server-app:test` 全量（数据库前置满足） | 522 个 0 失败 0 跳过（v0.9.38 加 `ManagementWriteRecheckIntegrationTest` 1 个；在此之前 521 个，其中 v0.9.36 P3-3 加 `TickAcquireMetricsTest` 1 个，再之前 520 个：含本组新增 11 个，另有同批合入的 G2 10 个、G3 3 个、RUN-039 修复轮的 9 个与修复第 2 轮的 4 个，合计 370 个；M3-C 合入后再加它的 41 个，6A 插件面再加 14 个，M3-E 再加 73 个，M3-E 之后的一轮（`docs/DESIGN-M3.md` v0.20）再加 4 个，6A 其余部分再加 12 个，§7 R2 偶发红的结案再加 `HandshakeIntegrationTest` 2 个，M3-D 再加 `ShardWorldRelightTest` 3 个与 `WorldFlagsReplayTest` 1 个） |
+| 3 | 跑 `:server-app:test` 全量（数据库前置满足） | 553 个 0 失败 0 跳过（M3 v0.31 加 `ShardGatesOnlineTest` 1 个；在此之前 552 个，v0.9.39～v0.9.43 加 30 个：login 组 `ConnectionGateLogTest` 2 个，transfer 组 `TransferNotFollowedIntegrationTest` 4 个、`RoleHandOutIntegrationTest` 3 个，ops 组 `ManagementPortGuardsIntegrationTest`、`MetricsEndpointGuardsTest`、`OpsPortsLaunchTest` 各 2 个，secrets 组 `ConfigFilePermissionsTest` 4 个、`HostFilePermissionsTest` 3 个、`ProfilerPrivacyTest` 3 个、`RedisLinkTest` 2 个、`StoreSettingsTest` 2 个，集成轮的 `HostFilePermissionsTest` 再加 1 个；在此之前 522 个：v0.9.38 加 `ManagementWriteRecheckIntegrationTest` 1 个；在此之前 521 个，其中 v0.9.36 P3-3 加 `TickAcquireMetricsTest` 1 个，再之前 520 个：含本组新增 11 个，另有同批合入的 G2 10 个、G3 3 个、RUN-039 修复轮的 9 个与修复第 2 轮的 4 个，合计 370 个；M3-C 合入后再加它的 41 个，6A 插件面再加 14 个，M3-E 再加 73 个，M3-E 之后的一轮（`docs/DESIGN-M3.md` v0.20）再加 4 个，6A 其余部分再加 12 个，§7 R2 偶发红的结案再加 `HandshakeIntegrationTest` 2 个，M3-D 再加 `ShardWorldRelightTest` 3 个与 `WorldFlagsReplayTest` 1 个） |
 
 后置：确认 `PlayerStore.java` 没有残留改动。
 
@@ -7088,7 +7111,7 @@ for (var request : System.getenv("MGMT_CALLS").split("\n")) {
 | --- | --- | --- |
 | 1 | 跑竞态类，看 `theLedgerAndTheConnectionCloseOnlyOnceTheStopThatStartedTheShutdownIsAnswered` | 通过：测试按 `Main` 的顺序挂四个停机任务：第一个代表 `host::disableAll`（只标记停机任务已开始），然后 `HostCommands#awaitStopAnswers`，然后一个代表 `ledger::close` 的标记 `closed`，最后是管理接口的 `close`。测试的台账写 `minecraft:server/stop` 那一行时停住。停机任务开始后再等 100 ms，标记列表仍为空（`awaitStopAnswers` 至多等 1 s，所以放行必须在这 1 s 之内；测试线程在停机任务开始到放行之间停顿超过约 900 ms，比如全量并行或 GC，本条会以第 2 步那条消息偶发红，没做反证却见到这条红时先查这里）；放行台账之后客户端收到 `result=true`，随后连接以 1001 关闭，阶段变为 `STOPPED`，标记列表恰为 `ledger:minecraft:server/stop ok`、`closed` |
 | 2 | 反证有齿（停机任务不等回复）：`HostCommands#awaitStopAnswers` 的 `if (answering.tryAcquire(ANSWER_WAIT.toNanos(), TimeUnit.NANOSECONDS)) answering.release();` 改为 `if (Boolean.getBoolean("proof.never") && answering.tryAcquire(…)) answering.release();`，跑竞态类，再还原 | `3 tests completed, 1 failed`：红在 `StopRaceIntegrationTest.java:258`，`nothing closes while the stop is still being answered ==> expected: <[]> but was: <[closed]>` |
-| 3 | 装配核对：`grep -n "buildShutdownTask" server-app/src/main/java/io/github/bearisbug/synaxis/app/Main.java` | 9 行，依次 `host::disableAll`（`:317`）、`commands::awaitStopAnswers`（`:319`）、`ledger::close`（`:321`）、`directoryMode.flags()::close`（`:324`）、`directoryMode.heartbeat()::close`（`:325`，这两行是 M3-E 目录模式加的，只在目录模式装配）、`store::close`、`metrics::close`、`management::close`（`:330`）、`watchdog::stop`：等回复的一步在台账与管理接口关闭之前 |
+| 3 | 装配核对：`grep -n "buildShutdownTask" server-app/src/main/java/io/github/bearisbug/synaxis/app/Main.java` | 9 行，依次 `host::disableAll`（`:322`）、`commands::awaitStopAnswers`（`:324`）、`ledger::close`（`:326`）、`directoryMode.flags()::close`（`:329`）、`directoryMode.heartbeat()::close`（`:330`，这两行是 M3-E 目录模式加的，只在目录模式装配）、`store::close`、`metrics::close`、`management::close`（`:335`）、`watchdog::stop`：等回复的一步在台账与管理接口关闭之前 |
 | 4 | 还原后重跑第 1 步 | 与第 1 步相同 |
 
 后置：确认 `HostCommands.java` 没有残留改动。
@@ -7280,8 +7303,8 @@ for (var request : System.getenv("MGMT_CALLS").split("\n")) {
 | # | 操作 | 预期 |
 | --- | --- | --- |
 | 1 | 同一次运行跑 `:server-app:test` 的 `io.github.bearisbug.synaxis.app.management.StopRaceIntegrationTest`、`io.github.bearisbug.synaxis.app.store.ShutdownSaveOutsideTheWorldIntegrationTest`、`io.github.bearisbug.synaxis.app.management.ManagementIntegrationTest`、`io.github.bearisbug.synaxis.app.ModerationIntegrationTest`、`io.github.bearisbug.synaxis.app.ShutdownSequenceTest` 与 `io.github.bearisbug.synaxis.app.BindKeysLaunchTest` | `tests="3"`、`"3"`、`"13"`、`"12"`、`"8"`、`"2"`，都 0 失败 0 跳过（`TC-PROD-495`、`TC-PROD-496`、`TC-PROD-498`、`TC-PROD-483`、`TC-PROD-484`、`TC-PROD-381`～`TC-PROD-388`、`TC-PROD-221`～`TC-PROD-227`、`TC-PROD-370`～`TC-PROD-375` 与 `TC-PROD-489` 跑的类不受影响） |
-| 2 | 按新写法重跑本组改过的旧用例反证：`TC-PROD-380` 第 2 步、`TC-PROD-390` 第 2 步、`TC-PROD-395` 第 2 步、`TC-PROD-485` 第 2 步、`TC-PROD-489` 第 2 步，与 `TC-PROD-169` 第 2 步的合并反证 | 各条写的红行与消息，即 `6 tests completed, 1 failed`（`ManagementSettingsTest.java:29`）、`2 tests completed, 1 failed`（`ManagementBansIntegrationTest.java:133`）、`2 tests completed, 1 failed`（`(ManagementServer.java:267)`）、`4 tests completed, 4 failed`（`ShutdownBeforeTheWorldLaunchTest.java:136`）、`2 tests completed, 2 failed`（`BindKeysLaunchTest.java:29`）、`32 tests completed, 6 failed`；每次还原后复绿 |
-| 3 | 跑 `:server-app:test` 全量（数据库前置满足）与根构建 `:test` 全量 | `:server-app:test` 522 个 0 失败 0 跳过（v0.9.38 加 `ManagementWriteRecheckIntegrationTest` 1 个；在此之前 521 个，其中 v0.9.36 P3-3 加 `TickAcquireMetricsTest` 1 个，再之前 520 个：`TC-PROD-486` 第 3 步原写的 357 个加本组 9 个，再加修复第 2 轮的 4 个，合计 370 个；M3-C 合入后再加它的 41 个，6A 插件面再加 14 个，M3-E 再加 73 个，M3-E 之后的一轮（`docs/DESIGN-M3.md` v0.20）再加 4 个，6A 其余部分再加 12 个，§7 R2 偶发红的结案再加 `HandshakeIntegrationTest` 2 个，M3-D 再加 `ShardWorldRelightTest` 3 个与 `WorldFlagsReplayTest` 1 个）；`:test` 3,146 个 0 失败、15 跳过（v0.9.36 P3-3 加 `AcquireWaitTest` 4 个；在此之前 3,142 个：比 RUN-039 多本组的 3 个，合计 3,106 个；M3-C 合入后再加它的 34 个，RUN-042 的修复再加 `BinaryTagTypeImplTest` 1 个，§7 `AcquirableTest` 偶发红的结案再加 `AcquirableTest` 1 个。15 个跳过合入前就有） |
+| 2 | 按新写法重跑本组改过的旧用例反证：`TC-PROD-380` 第 2 步、`TC-PROD-390` 第 2 步、`TC-PROD-395` 第 2 步、`TC-PROD-485` 第 2 步、`TC-PROD-489` 第 2 步，与 `TC-PROD-169` 第 2 步的合并反证 | 各条写的红行与消息，即 `6 tests completed, 1 failed`（`ManagementSettingsTest.java:29`）、`2 tests completed, 1 failed`（`ManagementBansIntegrationTest.java:133`）、`2 tests completed, 1 failed`（`(ManagementServer.java:277)`）、`4 tests completed, 4 failed`（`ShutdownBeforeTheWorldLaunchTest.java:136`）、`2 tests completed, 2 failed`（`BindKeysLaunchTest.java:29`）、`32 tests completed, 6 failed`；每次还原后复绿 |
+| 3 | 跑 `:server-app:test` 全量（数据库前置满足）与根构建 `:test` 全量 | `:server-app:test` 553 个 0 失败 0 跳过（M3 v0.31 加 `ShardGatesOnlineTest` 1 个；在此之前 552 个，v0.9.39～v0.9.43 加 30 个：login 组 `ConnectionGateLogTest` 2 个，transfer 组 `TransferNotFollowedIntegrationTest` 4 个、`RoleHandOutIntegrationTest` 3 个，ops 组 `ManagementPortGuardsIntegrationTest`、`MetricsEndpointGuardsTest`、`OpsPortsLaunchTest` 各 2 个，secrets 组 `ConfigFilePermissionsTest` 4 个、`HostFilePermissionsTest` 3 个、`ProfilerPrivacyTest` 3 个、`RedisLinkTest` 2 个、`StoreSettingsTest` 2 个，集成轮的 `HostFilePermissionsTest` 再加 1 个；在此之前 522 个：v0.9.38 加 `ManagementWriteRecheckIntegrationTest` 1 个；在此之前 521 个，其中 v0.9.36 P3-3 加 `TickAcquireMetricsTest` 1 个，再之前 520 个：`TC-PROD-486` 第 3 步原写的 357 个加本组 9 个，再加修复第 2 轮的 4 个，合计 370 个；M3-C 合入后再加它的 41 个，6A 插件面再加 14 个，M3-E 再加 73 个，M3-E 之后的一轮（`docs/DESIGN-M3.md` v0.20）再加 4 个，6A 其余部分再加 12 个，§7 R2 偶发红的结案再加 `HandshakeIntegrationTest` 2 个，M3-D 再加 `ShardWorldRelightTest` 3 个与 `WorldFlagsReplayTest` 1 个）；`:test` 3,162 个 0 失败、15 跳过（v0.9.39～v0.9.43 加 16 个：login 组 `ConnectionGateSocketTest` 3 个、`OnlineLoginSocketTest` 5 个、`InboundPacketLimitIntegrationTest` 2 个、`PreAuthConnectionIntegrationTest` 1 个、`SessionClientTest` 1 个，secrets 组 `SessionServerTest` 2 个，集成轮的 `ItemEntityCrossCellConcurrencyTest` 2 个；在此之前 3,146 个：v0.9.36 P3-3 加 `AcquireWaitTest` 4 个；在此之前 3,142 个：比 RUN-039 多本组的 3 个，合计 3,106 个；M3-C 合入后再加它的 34 个，RUN-042 的修复再加 `BinaryTagTypeImplTest` 1 个，§7 `AcquirableTest` 偶发红的结案再加 `AcquirableTest` 1 个。15 个跳过合入前就有） |
 
 后置：确认反证改过的文件都已还原（`git status --short` 只剩本组的改动）。
 
@@ -7347,7 +7370,7 @@ for (var request : System.getenv("MGMT_CALLS").split("\n")) {
 | # | 操作 | 预期 |
 | --- | --- | --- |
 | 1 | 按新写法重跑本组改过的旧用例：`TC-PROD-495` 第 2、3 步，`TC-PROD-496` 第 3 步，`TC-PROD-498` 第 2、3 步，`TC-PROD-501` 第 2、3 步 | 各条写的结果：`2 tests completed, 2 failed`（`StopRaceIntegrationTest.java:195`、`:213`，删改后的行号不变）；`3 tests completed, 1 failed`（`:200`）；`16 tests completed, 1 failed`（`:218`，`ManagementIntegrationTest` 13 条都绿）；`3 tests completed, 1 failed`（`:258`）；`grep` 得 `:262`、`:264`、`:266`、`:270`；`2 tests completed, 2 failed`（`MetricsEndpointLimitTest.java:85`，经 `:53`、`:74`）；`2 tests completed, 2 failed`（`:102` 经 `:55`，`:125` 经 `:78`）。每次还原后复绿 |
-| 2 | 跑 `:server-app:test` 全量（数据库前置满足） | 522 个 0 失败 0 跳过（v0.9.38 加 `ManagementWriteRecheckIntegrationTest` 1 个；在此之前 521 个，其中 v0.9.36 P3-3 加 `TickAcquireMetricsTest` 1 个，再之前 520 个：与 `TC-PROD-505` 第 3 步相同：`TC-PROD-486` 第 3 步原写的 357 个加 RUN-039 修复轮 9 个与本组 4 个，合计 370 个；M3-C 合入后再加它的 41 个，6A 插件面再加 14 个，M3-E 再加 73 个，M3-E 之后的一轮（`docs/DESIGN-M3.md` v0.20）再加 4 个，6A 其余部分再加 12 个，§7 R2 偶发红的结案再加 `HandshakeIntegrationTest` 2 个，M3-D 再加 `ShardWorldRelightTest` 3 个与 `WorldFlagsReplayTest` 1 个） |
+| 2 | 跑 `:server-app:test` 全量（数据库前置满足） | 553 个 0 失败 0 跳过（M3 v0.31 加 `ShardGatesOnlineTest` 1 个；在此之前 552 个，v0.9.39～v0.9.43 加 30 个：login 组 `ConnectionGateLogTest` 2 个，transfer 组 `TransferNotFollowedIntegrationTest` 4 个、`RoleHandOutIntegrationTest` 3 个，ops 组 `ManagementPortGuardsIntegrationTest`、`MetricsEndpointGuardsTest`、`OpsPortsLaunchTest` 各 2 个，secrets 组 `ConfigFilePermissionsTest` 4 个、`HostFilePermissionsTest` 3 个、`ProfilerPrivacyTest` 3 个、`RedisLinkTest` 2 个、`StoreSettingsTest` 2 个，集成轮的 `HostFilePermissionsTest` 再加 1 个；在此之前 522 个：v0.9.38 加 `ManagementWriteRecheckIntegrationTest` 1 个；在此之前 521 个，其中 v0.9.36 P3-3 加 `TickAcquireMetricsTest` 1 个，再之前 520 个：与 `TC-PROD-505` 第 3 步相同：`TC-PROD-486` 第 3 步原写的 357 个加 RUN-039 修复轮 9 个与本组 4 个，合计 370 个；M3-C 合入后再加它的 41 个，6A 插件面再加 14 个，M3-E 再加 73 个，M3-E 之后的一轮（`docs/DESIGN-M3.md` v0.20）再加 4 个，6A 其余部分再加 12 个，§7 R2 偶发红的结案再加 `HandshakeIntegrationTest` 2 个，M3-D 再加 `ShardWorldRelightTest` 3 个与 `WorldFlagsReplayTest` 1 个） |
 
 后置：确认反证改过的文件都已还原（`git status --short` 无输出）。
 
@@ -7394,7 +7417,7 @@ for (var request : System.getenv("MGMT_CALLS").split("\n")) {
 | 1 | 严格 grid 单跑本类：`./gradlew :test --tests io.github.bearisbug.synaxis.network.SocketWriteStateTransitionIntegrationTest` | `tests="1"` 0 失败 |
 | 2 | 串行、按类名排序跑本类与三个留大缓冲的类：`src/test/resources/junit-platform.properties` 临时把 `junit.jupiter.execution.parallel.enabled` 改为 `false`，再加一行 `junit.jupiter.testclass.order.default=org.junit.jupiter.api.ClassOrderer$ClassName`；严格 grid 跑第 1 步的命令，再加三个 `--tests`（同包全名） | 6 条 0 失败；`TEST-*.xml` 里本类的 `timestamp` 晚于另三类。修前的代码（`main` `362f8f50a4`）上同一步 3 次红 3 次，信息同第 3 步，行号是 `:65` |
 | 3 | 反证有齿（不清池）：删掉 `SocketWriteStateTransitionIntegrationTest.java` 的 `PacketVanilla.PACKET_POOL.clear();` 一行，重跑第 2 步，再 `git checkout --` 该文件 | `6 tests completed, 1 failed`：`SocketWriteStateTransitionIntegrationTest.java:67` `the state must not move while the packet is still queued ==> expected: <CONFIGURATION> but was: <PLAY>`（2 次红 2 次）。还原后复绿 |
-| 4 | `git checkout -- src/test/resources/junit-platform.properties`，严格 grid 按仓库配置并行跑整个包：`./gradlew :test --tests 'io.github.bearisbug.synaxis.network.*'`，再做重叠检查 | 66 个类 866 条 0 失败；重叠检查打印 `[]` |
+| 4 | `git checkout -- src/test/resources/junit-platform.properties`，严格 grid 按仓库配置并行跑整个包：`./gradlew :test --tests 'io.github.bearisbug.synaxis.network.*'`，再做重叠检查 | 66 个类 878 条 0 失败（v0.9.39 login 组在包内加 12 条）；重叠检查打印 `[]` |
 | 5 | 反证有齿（不独占）：删掉 `SocketWriteStateTransitionIntegrationTest.java` 的 `@Isolated` 一行与它的 import，重跑第 4 步，再 `git checkout --` 该文件 | 重叠检查列出 14～16 个类，含 `OnlineDuplicateLoginSocketTest` 与 `PacketOutEventRetryIntegrationTest`（本机 2 次：16 个、14 个）。测试结果不作判据：别的类要恰好在清池之后、它 flush 之前放回大缓冲才红，本机这样改后并行跑 5 次都绿；修前同一命令 20 次红 2 次（§7）。还原后第 4 步复为 `[]` |
 
 后置：`git status --short` 无输出。
@@ -7425,7 +7448,7 @@ for (var request : System.getenv("MGMT_CALLS").split("\n")) {
 | 1 | 跑 `PluginTransfersIntegrationTest`，看 `aTicketThatBroughtThePlayerInCoolsThePluginDown` | 0 失败。照 `TicketVerifier#claim` 的做法在冷却表记下票据的 `issued_at` = t；t + 3 s 时 `transfer` 判定为 false，t + 6 s 判定为 true，全程恰一个 `TransferPacket` |
 | 2 | 跑 `TransferCooldownTableIntegrationTest`，看 `aPluginTransferCoolsTheTicketSideDown` | `tests="3"` 0 失败 0 跳过（本类约 0.5～1.8 s）。`--migrate-only --auth-mode=offline` 之后，`Main.openStore("postgres", …)` 带 `SYNAXIS_TRANSFER_HMAC_KEYS` 开出的 `StoreRuntime` 交给八参 `PluginHost`；探针插件经 `transfers()` 对世界里的 PLAY 玩家 `transfer` 判定为 true；随即 `runtime.issuer().transfer(玩家, "r1-c2", "127.0.0.1", 25566)` 在 5 s 内以 `COOLDOWN` 完成；全程恰一个 `TransferPacket[host=lobby.example, port=25565]` |
 | 3 | `grep -n 'store.cooldowns()' server-app/src/main/java/io/github/bearisbug/synaxis/app/Main.java` | 恰一行 `264`：进程装配里 `new PluginHost(…)` 的最后一个实参，与第 2 步走的是同一个构造器 |
-| 4 | 反证有齿（签发端与插件面各一张表）：把 `Main.java:720` `new StoreRuntime(…)` 实参末尾的 `cooldowns` 换成 `TransferCooldowns.fromSystemProperties()`，跑 `TransferCooldownTableIntegrationTest` | `3 tests completed, 2 failed`：本条红在 `TransferCooldownTableIntegrationTest.java:91` `expected: <COOLDOWN> but was: <NOT_ONLINE>`（签发端查自己那张表不在冷却，往下查到这名玩家不在存储里）；`TC-PROD-533` 那条红在 `:113` `the verifier recorded the arrival in the table the plugins read ==> expected: <false> but was: <true>`（验票端与签发端仍共用一张，插件面那张没记） |
+| 4 | 反证有齿（签发端与插件面各一张表）：把 `Main.java:750` `new StoreRuntime(…)` 实参末尾的 `cooldowns` 换成 `TransferCooldowns.fromSystemProperties()`，跑 `TransferCooldownTableIntegrationTest` | `3 tests completed, 2 failed`：本条红在 `TransferCooldownTableIntegrationTest.java:91` `expected: <COOLDOWN> but was: <NOT_ONLINE>`（签发端查自己那张表不在冷却，往下查到这名玩家不在存储里）；`TC-PROD-533` 那条红在 `:113` `the verifier recorded the arrival in the table the plugins read ==> expected: <false> but was: <true>`（验票端与签发端仍共用一张，插件面那张没记） |
 | 5 | 反证有齿（宿主不用传进来的表）：把 `PluginHost.java:102` 的 `this.cooldowns = cooldowns;` 换成 `this.cooldowns = TransferCooldowns.fromSystemProperties();`，跑 `TransferCooldownTableIntegrationTest` | 与第 4 步相同：`3 tests completed, 2 failed`，`:91` 与 `:113` |
 
 后置：`git status --short` 无输出；测试建的库由 `TestDatabase` 删掉。
@@ -7504,7 +7527,7 @@ for (var request : System.getenv("MGMT_CALLS").split("\n")) {
 | # | 操作 | 预期 |
 | --- | --- | --- |
 | 1 | 跑 `TransferCooldownTableIntegrationTest`，看 `aProcessWithoutTransferKeysHasATableAndReadsItsKey` | 0 失败。内存存储开出的 `StoreRuntime`：`issuer()` 为 null，`cooldowns()` 不为 null；系统属性 `synaxis.app.transfer-cooldown-ms=soon` 时 `Main.openStore("memory", …)` 抛 `IllegalArgumentException`，消息含 `synaxis.app.transfer-cooldown-ms=soon`；测试结束把属性恢复原值 |
-| 2 | 反证有齿（内存存储不读这个键）：`Main.java:674` 的 `TransferCooldowns.fromSystemProperties()` 换成 `new TransferCooldowns(5_000, System::currentTimeMillis)`，跑本类 | `3 tests completed, 1 failed`：`TransferCooldownTableIntegrationTest.java:132` `Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown.` |
+| 2 | 反证有齿（内存存储不读这个键）：`Main.java:704` 的 `TransferCooldowns.fromSystemProperties()` 换成 `new TransferCooldowns(5_000, System::currentTimeMillis)`，跑本类 | `3 tests completed, 1 failed`：`TransferCooldownTableIntegrationTest.java:132` `Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown.` |
 
 后置：`git status --short` 无输出。
 
@@ -7517,7 +7540,7 @@ for (var request : System.getenv("MGMT_CALLS").split("\n")) {
 | 1 | 做 `TC-GAME-072` 第 1 步 | 恰好 15 个文件，含 `Transfers` |
 | 2 | `./gradlew :plugin-api:checkBinaryCompatibility --rerun :protocol:checkBinaryCompatibility --rerun -PbaselineJarDir=<abi> --console=plain --max-workers=4 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts` | 两个任务都执行（没有 `SKIPPED`、没有 `FROM-CACHE`）、`BUILD SUCCESSFUL`，尾部 `2 executed`：新接口与 `PluginContext` 的新默认方法都是新增，0 条违例，`API_VERSION` 仍为 2 |
 | 3 | 反证有齿（`transfers()` 必须是默认方法）：`PluginContext.java` 的 `default Transfers transfers() { throw …; }` 改为 `Transfers transfers();`，跑 `./gradlew :game-rts:compileTestJava --max-workers=4 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts`，再 `git checkout --` 该文件 | `BUILD FAILED`：`RtsPluginIntegrationTest.java:60` 的测试替身 `ProbeContext` 编不过，javac 报 `ProbeContext不是抽象的, 并且未覆盖PluginContext中的抽象方法transfers()`（英文环境是 `is not abstract and does not override abstract method transfers()`）。改成抽象方法 ABI 门不报（`PluginContext` 已标注），坏的是插件自写的替身 |
-| 4 | `./gradlew :server-app:check :plugin-api:check :game-rts:check :architecture-tests:check --max-workers=4 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts` | `BUILD SUCCESSFUL`；`:server-app:test` 522 个 0 失败 0 跳过（v0.9.38 加 `ManagementWriteRecheckIntegrationTest` 1 个；在此之前 521 个，其中 v0.9.36 P3-3 加 `TickAcquireMetricsTest` 1 个，再之前 520 个：M3-C 合入后的 411 个加本节 14 个、M3-E 的 73 个、M3-E 之后一轮（`docs/DESIGN-M3.md` v0.20）的 4 个与 6A 其余部分的 12 个，与 `TC-PROD-505` 第 3 步相同，§7 R2 偶发红的结案再加 `HandshakeIntegrationTest` 2 个，M3-D 再加 `ShardWorldRelightTest` 3 个与 `WorldFlagsReplayTest` 1 个），`:plugin-api` 15 个、`:game-rts` 87 个、`:architecture-tests` 20 个，都 0 失败 |
+| 4 | `./gradlew :server-app:check :plugin-api:check :game-rts:check :architecture-tests:check --max-workers=4 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts` | `BUILD SUCCESSFUL`；`:server-app:test` 553 个 0 失败 0 跳过（M3 v0.31 加 `ShardGatesOnlineTest` 1 个；在此之前 552 个，v0.9.39～v0.9.43 加 30 个：login 组 `ConnectionGateLogTest` 2 个，transfer 组 `TransferNotFollowedIntegrationTest` 4 个、`RoleHandOutIntegrationTest` 3 个，ops 组 `ManagementPortGuardsIntegrationTest`、`MetricsEndpointGuardsTest`、`OpsPortsLaunchTest` 各 2 个，secrets 组 `ConfigFilePermissionsTest` 4 个、`HostFilePermissionsTest` 3 个、`ProfilerPrivacyTest` 3 个、`RedisLinkTest` 2 个、`StoreSettingsTest` 2 个，集成轮的 `HostFilePermissionsTest` 再加 1 个；在此之前 522 个：v0.9.38 加 `ManagementWriteRecheckIntegrationTest` 1 个；在此之前 521 个，其中 v0.9.36 P3-3 加 `TickAcquireMetricsTest` 1 个，再之前 520 个：M3-C 合入后的 411 个加本节 14 个、M3-E 的 73 个、M3-E 之后一轮（`docs/DESIGN-M3.md` v0.20）的 4 个与 6A 其余部分的 12 个，与 `TC-PROD-505` 第 3 步相同，§7 R2 偶发红的结案再加 `HandshakeIntegrationTest` 2 个，M3-D 再加 `ShardWorldRelightTest` 3 个与 `WorldFlagsReplayTest` 1 个），`:plugin-api` 15 个、`:game-rts` 87 个、`:architecture-tests` 20 个，都 0 失败 |
 | 5 | 严格 grid 跑 `:server-app:test`，`--tests` 给本节两个类与 `PluginHostIntegrationTest`、`MainStoreIntegrationTest`、`TransferAdmissionIntegrationTest`（后三个在 `io.github.bearisbug.synaxis.app` 包） | 11 + 3 + 18 + 6 + 1 = 39 个 0 失败 0 跳过 |
 
 后置：`git status --short` 无输出；删掉 `<abi>`。
@@ -7564,14 +7587,14 @@ for (var request : System.getenv("MGMT_CALLS").split("\n")) {
 | # | 操作 | 预期 |
 | --- | --- | --- |
 | 1 | 跑 `TransferCooldownTableIntegrationTest`，看 `aTicketTheVerifierTakesCoolsThePluginAndTheIssuerDown` | `tests="3"` 0 失败 0 跳过。`Main.openStore("postgres", …)` 带 `SYNAXIS_TRANSFER_HMAC_KEYS` 开出 `StoreRuntime`，玩家连进世界后建八参 `PluginHost`；库里给这名玩家的账号建一个 version 0、没有写权的角色；以 `issued_at` 为当前时刻、`target_shard=r1-c1`、`state_version=0` 的票据调 `runtime.verifier().claim(玩家, 票据)` 返回 true；随即探针插件的 `transfer` 判定为 false，`runtime.issuer().transfer(…)` 以 `COOLDOWN` 完成；连接没有 `TransferPacket` |
-| 2 | `sed -n 718,720p server-app/src/main/java/io/github/bearisbug/synaxis/app/Main.java` | 三行，去掉行首空白依次是 `new TicketVerifier(database.pool(), session::sessionId, shardId, keys, cooldowns, ledger::record,`、`onClaimed),`、`permissions, moderation, session, redis, cooldowns);`：交给验票端的 `cooldowns` 与同一个 `new StoreRuntime(…)` 的最后一个实参是同一个局部变量，即 `StoreRuntime#cooldowns` 那个对象；`ledger::record` 之后的 `onClaimed` 是 M3-E 加的到达回调（`docs/DESIGN-PROD.md` `API-PROD-028` 验票末段），与冷却无关 |
-| 3 | 反证有齿（验票端另拿一张表）：`Main.java:718` 的 `keys, cooldowns, ledger::record` 改为 `keys, TransferCooldowns.fromSystemProperties(), ledger::record`，跑 `TransferCooldownTableIntegrationTest` | `3 tests completed, 1 failed`：`TransferCooldownTableIntegrationTest.java:113` `the verifier recorded the arrival in the table the plugins read ==> expected: <false> but was: <true>`；签发端与插件面仍共用一张，`TC-PROD-521` 第 2 步那条照常绿 |
+| 2 | `sed -n 748,750p server-app/src/main/java/io/github/bearisbug/synaxis/app/Main.java` | 三行，去掉行首空白依次是 `new TicketVerifier(database.pool(), session::sessionId, shardId, keys, cooldowns, ledger::record,`、`onClaimed),`、`permissions, moderation, session, redis, cooldowns);`：交给验票端的 `cooldowns` 与同一个 `new StoreRuntime(…)` 的最后一个实参是同一个局部变量，即 `StoreRuntime#cooldowns` 那个对象；`ledger::record` 之后的 `onClaimed` 是 M3-E 加的到达回调（`docs/DESIGN-PROD.md` `API-PROD-028` 验票末段），与冷却无关 |
+| 3 | 反证有齿（验票端另拿一张表）：`Main.java:748` 的 `keys, cooldowns, ledger::record` 改为 `keys, TransferCooldowns.fromSystemProperties(), ledger::record`，跑 `TransferCooldownTableIntegrationTest` | `3 tests completed, 1 failed`：`TransferCooldownTableIntegrationTest.java:113` `the verifier recorded the arrival in the table the plugins read ==> expected: <false> but was: <true>`；签发端与插件面仍共用一张，`TC-PROD-521` 第 2 步那条照常绿 |
 
 后置：`git status --short` 无输出；测试建的库由 `TestDatabase` 删掉。
 
 ### 生产就绪 · 第 6 波 6A 其余部分：`transfer` 命令与管理接口 `synaxis:transfer`
 
-对应 `REQ-PROD-031`、`REQ-PROD-032`（`API-PROD-011` 的 `transfer` 命令、`API-PROD-022` 的 `synaxis:transfer`、`API-PROD-010` 的节点 `gm.transfer`），`docs/DESIGN-PROD.md` v0.9.29，§19 的五条场景：`transfer` 命令两条、`synaxis:transfer` 三条。改动：`server-app` 新类 `app.command.TransferCommand`；`ManagementMethods` 的构造器多收一个 `@Nullable ShardService`（第 6 个参数，排在 `session` 之后），方法表加 `synaxis:transfer`；`Main` 步骤 (4) 把 `DirectoryMode#service`（不在目录模式为 null）交给两者（`Main.java:268`～`:269` 与 `:283`，另有 `:11` 一行导入）；模组两份 lang 加四个回执键。已有的 11 个管理接口测试类的构造调用各多传一个 null（行数不变）；`ManagementIntegrationTest` 的未知方法由 `synaxis:transfer` 改为 `synaxis:teleport`（`TC-PROD-385`）。6A 的 P10（两个目录模式分片、真客户端来回 100 次）不在本节。
+对应 `REQ-PROD-031`、`REQ-PROD-032`（`API-PROD-011` 的 `transfer` 命令、`API-PROD-022` 的 `synaxis:transfer`、`API-PROD-010` 的节点 `gm.transfer`），`docs/DESIGN-PROD.md` v0.9.29，§19 的五条场景：`transfer` 命令两条、`synaxis:transfer` 三条。改动：`server-app` 新类 `app.command.TransferCommand`；`ManagementMethods` 的构造器多收一个 `@Nullable ShardService`（第 6 个参数，排在 `session` 之后），方法表加 `synaxis:transfer`；`Main` 步骤 (4) 把 `DirectoryMode#service`（不在目录模式为 null）交给两者（`Main.java:268`～`:269` 与 `:284`，另有 `:11` 一行导入）；模组两份 lang 加四个回执键。已有的 11 个管理接口测试类的构造调用各多传一个 null（行数不变）；`ManagementIntegrationTest` 的未知方法由 `synaxis:transfer` 改为 `synaxis:teleport`（`TC-PROD-385`）。6A 的 P10（两个目录模式分片、真客户端来回 100 次）不在本节。
 
 测试：`server-app` 两个新类，都不连数据库，`ShardService` 是记下每次调用、由测试决定 future 何时以什么完成的替身。`io.github.bearisbug.synaxis.app.command.TransferCommandIntegrationTest` 6 条（本类约 1.3 s）：命令注册在 `Env` 的进程上，玩家连进平地实例，控制台是把每条回复记成「翻译键 参数1\|参数2\|…」的 `ConsoleSender` 子类，节点由测试给的 `Permissions` 定。`io.github.bearisbug.synaxis.app.management.ManagementTransferIntegrationTest` 6 条（本类约 0.5 s）：经 `ManagementMethods#handle` 直接调，不起 WebSocket（传输层由 6B 一节的用例覆盖）。「跑某类」「严格 grid」同 6A 插件面一节。反证一律是改一处、跑、看红、还原、复绿，下表只写改哪一处和红在哪；两个新类、`TransferCommand.java`、`ManagementMethods.java` 与 `Main.java` 的行号是分支 `prod/6a-rest` 提交时的。`TC-PROD-548` 是真进程，夹具取 M3-E 一节的「两进程夹具」，只起其中一个分片（本机内存紧，同时至多一个服务端进程）。
 
@@ -7694,8 +7717,8 @@ for (var request : System.getenv("MGMT_CALLS").split("\n")) {
 | # | 操作 | 预期 |
 | --- | --- | --- |
 | 1 | 按新写法重跑本组改过的步骤：随 M3-E 过时的反证 `TC-PROD-141` 第 2 步、`157` 第 2～5 步（第 4、5 步是新加的）、`174` 第 4、5 步、`200` 第 2 步、`220` 第 2 步、`265` 第 2、4 步、`266` 第 2 步、`267` 第 2 步、`316` 第 2 步、`376` 第 2 步（即 `377` 第 2 步）、`377` 第 3 步、`378` 第 2 步、`379` 第 2、3 步（第 3 步是新加的），这些类的基线各跑一次；`TC-PROD-385` 第 1 步；6A 插件面一节 `TC-PROD-521` 第 3、4 步、`TC-PROD-528` 第 2 步、`TC-PROD-533` 第 2、3 步。没动的步骤（如 `TC-PROD-174` 第 2 步只跑 `PlayerStoreIntegrationTest`、M3-E 没改它）由第 2 步的全量覆盖基线 | 各条写的结果；`TC-PROD-378` 与原文相同（`CrossShardHandoverIntegrationTest` 不随 M3-E 变）。`MigrationsDbTest`、`TransferTicketsIntegrationTest`、`CrossShardHandoverIntegrationTest`、`TransferAdmissionIntegrationTest` 的基线依次是 `tests="5"`、`"7"`、`"6"`、`"1"`，`:loadtest:test` 全量 23 个（`BotSocketTest` 8、`MergeTest` 4、`ProfileTest` 7、`SampleTest` 4），都 0 失败 0 跳过 |
-| 2 | `./gradlew :server-app:check :architecture-tests:check --max-workers=4 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts`（数据库前置满足） | `BUILD SUCCESSFUL`；`:server-app:test` 522 个 0 失败 0 跳过（v0.9.38 加 `ManagementWriteRecheckIntegrationTest` 1 个；在此之前 521 个，其中 v0.9.36 P3-3 加 `TickAcquireMetricsTest` 1 个，再之前 520 个：M3-E 之后的 498 个加 `docs/DESIGN-M3.md` v0.20 的 4 个与本组 12 个，§7 R2 偶发红的结案再加 `HandshakeIntegrationTest` 2 个，M3-D 再加 `ShardWorldRelightTest` 3 个与 `WorldFlagsReplayTest` 1 个），`:architecture-tests` 20 个 0 失败 |
-| 3 | 严格 grid 跑 `:server-app:test`，`--tests` 给 `io.github.bearisbug.synaxis.app.management.*`、`io.github.bearisbug.synaxis.app.command.*`、`TransferTicketsIntegrationTest`、`TransferAdmissionIntegrationTest` | 19 个类 63 个 0 失败 0 跳过（含本组两个新类各 6 个） |
+| 2 | `./gradlew :server-app:check :architecture-tests:check --max-workers=4 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts`（数据库前置满足） | `BUILD SUCCESSFUL`；`:server-app:test` 553 个 0 失败 0 跳过（M3 v0.31 加 `ShardGatesOnlineTest` 1 个；在此之前 552 个，v0.9.39～v0.9.43 加 30 个：login 组 `ConnectionGateLogTest` 2 个，transfer 组 `TransferNotFollowedIntegrationTest` 4 个、`RoleHandOutIntegrationTest` 3 个，ops 组 `ManagementPortGuardsIntegrationTest`、`MetricsEndpointGuardsTest`、`OpsPortsLaunchTest` 各 2 个，secrets 组 `ConfigFilePermissionsTest` 4 个、`HostFilePermissionsTest` 3 个、`ProfilerPrivacyTest` 3 个、`RedisLinkTest` 2 个、`StoreSettingsTest` 2 个，集成轮的 `HostFilePermissionsTest` 再加 1 个；在此之前 522 个：v0.9.38 加 `ManagementWriteRecheckIntegrationTest` 1 个；在此之前 521 个，其中 v0.9.36 P3-3 加 `TickAcquireMetricsTest` 1 个，再之前 520 个：M3-E 之后的 498 个加 `docs/DESIGN-M3.md` v0.20 的 4 个与本组 12 个，§7 R2 偶发红的结案再加 `HandshakeIntegrationTest` 2 个，M3-D 再加 `ShardWorldRelightTest` 3 个与 `WorldFlagsReplayTest` 1 个），`:architecture-tests` 20 个 0 失败 |
+| 3 | 严格 grid 跑 `:server-app:test`，`--tests` 给 `io.github.bearisbug.synaxis.app.management.*`、`io.github.bearisbug.synaxis.app.command.*`、`TransferTicketsIntegrationTest`、`TransferAdmissionIntegrationTest` | 22 个类 69 个 0 失败 0 跳过（含本组两个新类各 6 个；v0.9.38 加 `ManagementWriteRecheckIntegrationTest` 1 个，v0.9.41 加 `ManagementPortGuardsIntegrationTest` 2 个，v0.9.42 加 `ProfilerPrivacyTest` 3 个） |
 | 4 | `./gradlew :loadtest:compileJava --max-workers=4 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts` | `BUILD SUCCESSFUL`（`LoadTest` 的用法注释按 `docs/DESIGN-PROD.md` `API-PROD-025` 补了 `town`、`gate`、`--gates`、`--dwell`、`--min-transfers`，只改注释） |
 
 后置：`git status --short` 无输出；测试建的库由 `TestDatabase` 删掉。
@@ -7761,7 +7784,7 @@ for (var request : System.getenv("MGMT_CALLS").split("\n")) {
 
 | # | 操作 | 预期 |
 | --- | --- | --- |
-| 1 | 跑 `server-app` 的 `io.github.bearisbug.synaxis.app.metrics.*`；再以严格 grid 跑一次 | 两次都 8 个 0 失败（`MetricsEndpointLimitTest` 2、`MetricsEndpointTest` 4、`MetricsNamesTest` 1、`TickAcquireMetricsTest` 1）。`TickAcquireMetricsTest`：`grid`、4 条 tick 线程，两个实体在格 (0, 0)、(1, 0)（`Syn-Tick-0`、`Syn-Tick-3`），端点在 `127.0.0.1:0`；走一个 tick 后，占锁线程拿住 `Syn-Tick-0` 的实体跨过下一个 tick 的开始，等 `Syn-Tick-0` 排上自己的锁后再睡 50 ms。`GET /metrics`：`synaxis_tick_acquire_seconds_count` 在 `Syn-Tick-0`、`Syn-Tick-3`、`Syn-TickScheduler` 上是 2，`Syn-Tick-1`、`Syn-Tick-2` 是 0（没有分区不 tick）；`_sum{thread="Syn-Tick-0"}` ≥ 睡眠的秒数，`_sum{thread="Syn-Tick-3"}` 0.0，`_sum{thread="Syn-TickScheduler"}` 与 `Syn-Tick-0` 的相差 ≤ 1 µs，调度线程的 `_max` ≥ 睡眠；`Syn-Tick-0` 有 `quantile="0.99"` 一行。`MetricsNamesTest`：注册表的 `synaxis_*` 族等于 `HostMetrics.NAMES` 的 22 个 |
+| 1 | 跑 `server-app` 的 `io.github.bearisbug.synaxis.app.metrics.*`；再以严格 grid 跑一次 | 两次都 10 个 0 失败（`MetricsEndpointGuardsTest` 2、`MetricsEndpointLimitTest` 2、`MetricsEndpointTest` 4、`MetricsNamesTest` 1、`TickAcquireMetricsTest` 1；`MetricsEndpointGuardsTest` 是 v0.9.41 加的）。`TickAcquireMetricsTest`：`grid`、4 条 tick 线程，两个实体在格 (0, 0)、(1, 0)（`Syn-Tick-0`、`Syn-Tick-3`），端点在 `127.0.0.1:0`；走一个 tick 后，占锁线程拿住 `Syn-Tick-0` 的实体跨过下一个 tick 的开始，等 `Syn-Tick-0` 排上自己的锁后再睡 50 ms。`GET /metrics`：`synaxis_tick_acquire_seconds_count` 在 `Syn-Tick-0`、`Syn-Tick-3`、`Syn-TickScheduler` 上是 2，`Syn-Tick-1`、`Syn-Tick-2` 是 0（没有分区不 tick）；`_sum{thread="Syn-Tick-0"}` ≥ 睡眠的秒数，`_sum{thread="Syn-Tick-3"}` 0.0，`_sum{thread="Syn-TickScheduler"}` 与 `Syn-Tick-0` 的相差 ≤ 1 µs，调度线程的 `_max` ≥ 睡眠；`Syn-Tick-0` 有 `quantile="0.99"` 一行。`MetricsNamesTest`：注册表的 `synaxis_*` 族等于 `HostMetrics.NAMES` 的 22 个 |
 | 2 | 反证有齿（tick 线程不记获取等待）：`HostMetrics#registerTicks` 观察者里的 `acquire.record(acquireNanos, TimeUnit.NANOSECONDS);` 改为 `var _ = acquire;`（形参 `acquireNanos` 随之写 `_`），只跑 `TickAcquireMetricsTest`，再还原 | 红在 `TickAcquireMetricsTest.java:94`：`expected: <2.0> but was: <0.0>`（等了 5 s 计数仍是 0）。还原后复绿 |
 | 3 | 反证有齿（名单里没有这个名字）：`HostMetrics.NAMES` 删去 `"synaxis_tick_acquire_seconds",` 一行，跑 `MetricsNamesTest` 与 `:architecture-tests` 的 `ConfigKeyGateTest`，再还原 | 两个都红：`MetricsNamesTest.java:33` `the synaxis_* families of the registry ==> expected: <[…21 个…]> but was: <[…]>`，实际集合多出 `synaxis_tick_acquire_seconds`；`ConfigKeyGateTest.java:74` 下一行 `synaxis.tick.acquire is read (io.github.bearisbug.synaxis.app.metrics.HostMetrics) but not in ConfigFile.KEYS, so the config file refuses it`（不在名单里的指标名被门禁当成配置键）。还原后复绿 |
 | 4 | 真进程：照 `TC-PROD-264` 第 1～3、5 步起 `server-app`（核心模式、`-Dsynaxis.app.metrics.bind=127.0.0.1:0`）、抓一次、按 pid 停 | 就绪前有 `Metrics endpoint listening on http://127.0.0.1:<M>/metrics`；`200 text/plain; version=0.0.4; charset=utf-8`；`synaxis_` 开头的 `# TYPE` 行 26 条（22 个名字，四个 summary 各多一条 `_max`），`jvm_` 18 条，`process_` 6 条；有 `# TYPE synaxis_tick_acquire_seconds summary` 与 `# TYPE synaxis_tick_acquire_seconds_max gauge`，`synaxis_tick_acquire_seconds_count{thread="Syn-Tick-0"} 0`，`{thread="Syn-TickScheduler"}` 与 `synaxis_tick_duration_seconds_count` 同为已走的 tick 数（实跑 343），`_sum` 0.0（没人进服，没有获取）；`/other` 404、`POST` 405；按 pid 停后 25651 无监听 |
@@ -7788,14 +7811,14 @@ for (var request : System.getenv("MGMT_CALLS").split("\n")) {
 | 1 | `<G> :jmh-benchmarks:jmhJar`，把 `jmh-benchmarks/build/libs/jmh-benchmarks-dev-jmh.jar` 拷成 `<new>`；`git checkout <B> -- src/main/java` 后再 `<G> :jmh-benchmarks:jmhJar` 拷成 `<base>`，`git checkout HEAD -- src/main/java` 还原；`javap -p -cp <jar> io.github.bearisbug.synaxis.thread.AcquirableImpl` | `<B>` 为 `0e919cce6a` 时 `<base>` 里有 `static final java.util.concurrent.atomic.AtomicLong WAIT_COUNTER_NANO`、没有 `lockTimed`；`<new>` 里有 `static long lockTimed(java.util.concurrent.locks.ReentrantLock)`、没有 `WAIT_COUNTER_NANO`；还原后 `git status --short` 为空。`AcquireWaitBenchmark` 只用两版都有的接口，两个 jar 跑的是同一份基准。不能用 `git stash` 取 `<base>`：改动已提交时 stash 什么也不存，两个 jar 由同一份源码构建，随后的 `git stash pop` 会弹出本仓所有 worktree 共用的 stash 列表最上面那一条 |
 | 2 | `$JAVA_HOME/bin/java -jar <jar> AcquireWaitBenchmark -f 3 -wi 5 -i 10 -prof gc -rf json -rff <文件>`，先 `<base>` 后 `<new>`，再先 `<new>` 后 `<base>` 各一轮；从 JSON 取每档 30 个迭代值的中位数与最小值 | 两轮 `load1` 40～52。`plainThreadSync`（JMH 线程 `sync` 一个没在 tick 的 tick 线程的元素）：改前中位 129.9 / 233.4 ns、最小 49.8 / 47.0 ns，改后中位 21.0 / 42.3 ns、最小 12.7 / 15.0 ns。`tickThreadSync`（另一条 tick 线程持着自己的锁连做 100 万次）：改前中位 90.6 / 69.8 ns、最小 53.1 / 40.1 ns，改后中位 19.7 / 18.4 ns、最小 13.3 / 15.1 ns。`gc.alloc.rate.norm` 两版四档都 ≤ 0.002 B/op：`sync` 本身 0 字节，余数是 JMH 与每次调用起线程的摊销。机器忙时两版的中位数都被拉高，按最小值比，改后每次获取少 25～40 ns（四档依次少 37.1、32.0、39.8、25.0 ns） |
 | 3 | 用 `server-app/build/install/server-app/lib/*` 作类路径跑一段单文件 Java：一个带 p50 / p95 / p99 的 `Timer`（与 `HostMetrics#acquireTimer` 同配置），15 轮各 `record` 200 万次，取后 10 轮的最小值 | 149.6 ns/次（`load1` 180～215）。宿主每条 tick 线程与调度线程每 tick 各多一次，10 条 tick 线程的分片每 tick 约 1.6 µs，是 50 ms 的 0.003% |
-| 4 | 默认模式跑：根项目 `io.github.bearisbug.synaxis.thread.*`、`ServerProcess*`、`WatchdogTest`、`entity.*Concurrency*`、`entity.AcquirableStrictIntegrationTest`；`server-app` 的 `app.metrics.*`；`:loadtest` 的 `Sample*`；`:architecture-tests` 的 `ConfigKeyGateTest` | 25 个类 80 个 0 失败 0 跳过（根项目 18 个类 65 个，`server-app` 8 个，`:loadtest` 6 个，门禁 1 个）；门禁输出 `config key gate: 115 keys read, 115 in ConfigFile.KEYS, 21 meter names left out`。另跑 `:architecture-tests:test` 全量（ArchUnit 分层与各门禁），20 个 0 失败 |
+| 4 | 默认模式跑：根项目 `io.github.bearisbug.synaxis.thread.*`、`ServerProcess*`、`WatchdogTest`、`entity.*Concurrency*`、`entity.AcquirableStrictIntegrationTest`；`server-app` 的 `app.metrics.*`；`:loadtest` 的 `Sample*`；`:architecture-tests` 的 `ConfigKeyGateTest` | 27 个类 84 个 0 失败 0 跳过（根项目 19 个类 67 个，`server-app` 10 个，`:loadtest` 6 个，门禁 1 个；v0.9.41 加 `MetricsEndpointGuardsTest` 2 个，v0.9.43 加 `ItemEntityCrossCellConcurrencyTest` 2 个）；门禁输出 `config key gate: 115 keys read, 115 in ConfigFile.KEYS, 21 meter names left out`。另跑 `:architecture-tests:test` 全量（ArchUnit 分层与各门禁），20 个 0 失败 |
 | 5 | 同第 4 步前三组以严格 grid 跑 | 79 个里 78 个通过；那一次（`load1` 170 以上）`MetadataHolderConcurrencyTest#concurrentWritesAreNotLost` 红在 `:34`（两个虚拟线程 5 s 内没写完，`done.await` 为 false），同一时段以严格 grid 单独重跑仍红；`load1` 降到 36 时严格 grid 单独重跑通过，默认模式在 `load1` 47 时单独也通过（第 4 步那一轮在 `load1` 170～215 时也通过）。这条测的是 `MetadataHolder`（`synchronized` 加两个虚拟线程），不经 `Acquirable`、不经 tick 线程，与本节改动无关，登记为负载下的偶发红（§7） |
 
 后置：删掉两个 jar 与 JMH 输出；`git diff` 与改前相同。
 
 ### 生产就绪 · `EVT:transfer_refused` 扩到关卡门的六种拒绝结果
 
-对应 `REQ-PROD-031`（`docs/DESIGN-PROD.md` v0.9.37，§20 `EVT:transfer_refused` 一行，用户 2026-09-30 拍板）。改动：`server-app` 的 `app.shard.ShardGates` 把写事件的那几行抽成私有方法 `refused`，`FULL`、`OFFLINE`、`DIRECTORY_UNAVAILABLE` 之外，`COOLDOWN`、`NOT_ONLINE`、`SAVE_FAILED` 也调它；给玩家的系统消息不变。`ShardGates` 属 M3 会话，本节只管写事件的那一处：走进门框只触发一次、在途不触发、消息与 ERROR 仍归 `TC-WORLD-064`，选不到频道那三种的写法与 `Main#serveMap` 的接线仍归 `TC-WORLD-089`。
+对应 `REQ-PROD-031`（`docs/DESIGN-PROD.md` v0.9.37，§20 `EVT:transfer_refused` 一行，用户 2026-09-30 拍板）。改动：`server-app` 的 `app.shard.ShardGates` 把写事件的那几行抽成私有方法 `refused`，`FULL`、`OFFLINE`、`DIRECTORY_UNAVAILABLE` 之外，`COOLDOWN`、`NOT_ONLINE`、`SAVE_FAILED` 也调它；给玩家的系统消息不变。`ShardGates` 属 M3 会话，本节只管写事件的那一处：走进门框只触发一次、在途不触发、消息与 ERROR 仍归 `TC-WORLD-064`，选不到频道那三种的写法与 `Main#serveMap` 的接线仍归 `TC-WORLD-100`（它取代了 `TC-WORLD-089`）。
 
 测试：`io.github.bearisbug.synaxis.app.shard.ShardGatesTest`，7 条，不连数据库、不起进程；替身 `ShardService` 记下每次调用、由测试决定 future 以什么完成，台账回调把每条记成 `<事件名> <属性>`。本组把其中的 `onlyAChoiceThatFailedIsWrittenToTheLedger` 改名为 `everyRefusalIsWrittenToTheLedger`：九个结果各由一名玩家走进 r0-east 触发，`NOT_ONLINE` 那名玩家先断开连接再完成（签发端对写回之后离开的玩家就回它），期望的六行属性写死在测试里；类注释改一句，行数不变。条数不变，`:server-app:test` 全量因此仍是 520 个（本组没跑全量）。「跑某类」「严格 grid」同 6A 插件面一节，本节不需要数据库前置。`<GT>` 是 `server-app/src/main/java/io/github/bearisbug/synaxis/app/shard/ShardGates.java`。反证一律是改 `<GT>` 一处、跑 `ShardGatesTest`、看红、`git checkout -- <GT>`、复绿，下表只写改哪一处和红在哪；行号是分支 `prod/refused` 提交时的。
 
@@ -7806,7 +7829,7 @@ for (var request : System.getenv("MGMT_CALLS").split("\n")) {
 | # | 操作 | 预期 |
 | --- | --- | --- |
 | 1 | 跑 `ShardGatesTest`，看 `everyRefusalIsWrittenToTheLedger` | `tests="7"` 0 失败 0 跳过。`FULL`、`OFFLINE`、`DIRECTORY_UNAVAILABLE`、`COOLDOWN`、`NOT_ONLINE`、`SAVE_FAILED` 各恰 1 行 `transfer_refused {player_uuid=<这名玩家的 UUID>, source_shard=r0-c1, target_region=r1, result=<小写名>}`，`result` 依次为 `full`、`offline`、`directory_unavailable`、`cooldown`、`not_online`、`save_failed`；`SENT`、`UNKNOWN_TARGET`、`SAME_TARGET` 0 行 |
-| 2 | 反证（本组之前的写法，三种新结果不写）：`git checkout 0e919cce6a -- <GT>`，跑，再 `git checkout HEAD -- <GT>` | `7 tests completed, 1 failed`：红在 `ShardGatesTest.java:218`，`COOLDOWN ==> expected: <[transfer_refused {player_uuid=…, source_shard=r0-c1, target_region=r1, result=cooldown}]> but was: <[]>` |
+| 2 | 反证（本组之前的写法，三种新结果不写）：`<GT>` 的 `case COOLDOWN, NOT_ONLINE, SAVE_FAILED -> refused(player, gate, result);` 改成 `case COOLDOWN, NOT_ONLINE, SAVE_FAILED -> { }`，跑，再 `git checkout HEAD -- <GT>` | `7 tests completed, 1 failed`：红在 `ShardGatesTest.java:218`，`COOLDOWN ==> expected: <[transfer_refused {player_uuid=…, source_shard=r0-c1, target_region=r1, result=cooldown}]> but was: <[]>` |
 | 3 | 反证（只漏 `NOT_ONLINE`）：`<GT>` 的 `case SENT -> {` 改成 `case SENT, NOT_ONLINE -> {`，`case COOLDOWN, NOT_ONLINE, SAVE_FAILED -> refused(player, gate, result);` 改成 `case COOLDOWN, SAVE_FAILED -> refused(player, gate, result);` | `7 tests completed, 1 failed`：红在 `:218`，`NOT_ONLINE ==> expected: <[transfer_refused {…, result=not_online}]> but was: <[]>` |
 | 4 | 反证（只漏 `SAVE_FAILED`）：`<GT>` 的 `case SENT -> {` 改成 `case SENT, SAVE_FAILED -> {`，`case COOLDOWN, NOT_ONLINE, SAVE_FAILED -> refused(player, gate, result);` 改成 `case COOLDOWN, NOT_ONLINE -> refused(player, gate, result);` | `7 tests completed, 1 failed`：红在 `:218`，`SAVE_FAILED ==> expected: <[transfer_refused {…, result=save_failed}]> but was: <[]>` |
 | 5 | 反证（`SENT` 也写）：`<GT>` 的 `case SENT -> {` 与下一行的 `}` 两行换成一行 `case SENT -> refused(player, gate, result);` | `7 tests completed, 1 failed`：红在 `:218`，`SENT ==> expected: <[]> but was: <[transfer_refused {…, result=sent}]>` |
@@ -7846,7 +7869,7 @@ for (var request : System.getenv("MGMT_CALLS").split("\n")) {
 | --- | --- | --- |
 | 1 | 跑 `:server-app:test`，`--tests` 给 `io.github.bearisbug.synaxis.app.shard.ShardGatesTest`、`io.github.bearisbug.synaxis.app.shard.ShardServiceImplTest`、`io.github.bearisbug.synaxis.app.shard.ShardArchitectureTest`、`io.github.bearisbug.synaxis.app.ClientDrivenLogArchitectureTest` | `BUILD SUCCESSFUL`；4 个类 18 个 0 失败 0 跳过：`ShardGatesTest` 7、`ShardServiceImplTest` 6、`ShardArchitectureTest` 3、`ClientDrivenLogArchitectureTest` 2 |
 | 2 | 严格 grid 跑第 1 步的四个类 | `BUILD SUCCESSFUL`；4 个类 18 个 0 失败 0 跳过：`ShardGatesTest` 7、`ShardServiceImplTest` 6、`ShardArchitectureTest` 3、`ClientDrivenLogArchitectureTest` 2 |
-| 3 | `grep -n 'new ShardGates(' server-app/src/main/java/io/github/bearisbug/synaxis/app/Main.java` | 恰 1 行，行号 504，第三个参数是 `ledger::record`（接线没随本组变） |
+| 3 | `grep -n 'new ShardGates(' server-app/src/main/java/io/github/bearisbug/synaxis/app/Main.java` | 恰 1 行，行号 518，第三个参数是 `ledger::record`（接线没随本组变） |
 
 后置：`git status --short` 无输出。
 
@@ -7878,7 +7901,552 @@ for (var request : System.getenv("MGMT_CALLS").split("\n")) {
 | --- | --- | --- |
 | 1 | 拉宽窗口，并按 `TC-PROD-574` 第 2 步不起补登记线程，严格 grid 跑 `ManagementBacklogIntegrationTest`，再还原 | `3 tests completed, 1 failed`：`aPeerThatReadsWhatItIsSentKeepsItsConnection` 用时约 10.8 s，红在 `ManagementBacklogIntegrationTest.java:211`，`java.net.SocketTimeoutException: Read timed out`，与 CI run `36740800681` 第 1 次尝试同一行同一异常；这条测试没有关闭连接的 WARN（输出里的两行 WARN 属另两条），另两条绿。在改动前的 `<MS>`（`git checkout c46578d24f -- <MS>`）上只拉宽窗口，结果相同（10.811 s，红在 `:211`） |
 | 2 | 只拉宽窗口（补登记照常），严格 grid 跑同一个类，再还原 | `tests="3"` 0 失败；`aPeerThatReadsWhatItIsSentKeepsItsConnection` 用时 11.4～11.6 s（本机两次 11.369 s、11.585 s）：100 轮每轮的 pong 都被留下，由补登记写出（诊断时临时加的逐轮计时读到 1,000 轮每轮至多 110.9 ms），没有一轮接近 10 s |
-| 3 | 还原后严格 grid 跑 `:server-app:test`，`--tests` 给 `io.github.bearisbug.synaxis.app.management.*`；再默认模式与严格 grid 各跑一次 `:server-app:test` 全量 | 包内 14 个类 43 个 0 失败（未设数据库变量时 `ManagementBansIntegrationTest` 的 2 个跳过），`aPeerThatReadsWhatItIsSentKeepsItsConnection` 0.841 s；全量两次各 522 个 0 失败（未设数据库变量，125 个跳过） |
+| 3 | 还原后严格 grid 跑 `:server-app:test`，`--tests` 给 `io.github.bearisbug.synaxis.app.management.*`；再默认模式与严格 grid 各跑一次 `:server-app:test` 全量 | 包内 15 个类 45 个 0 失败（v0.9.41 加 `ManagementPortGuardsIntegrationTest` 2 个；未设数据库变量时 `ManagementBansIntegrationTest` 的 2 个跳过），`aPeerThatReadsWhatItIsSentKeepsItsConnection` 0.841 s；全量两次各 553 个 0 失败（未设数据库变量，132 个跳过；M3 v0.31 加 `ShardGatesOnlineTest` 1 个；在此之前 552 个，v0.9.39～v0.9.43 加的 30 个里 `TransferNotFollowedIntegrationTest` 4 个与 `RoleHandOutIntegrationTest` 3 个要数据库） |
+
+后置：`git status --short` 无输出。
+
+### 生产就绪 · 安全修复：login（登录路径的闸门与认证前席位）
+
+对应 `REQ-PROD-001`、`REQ-PROD-002`、`REQ-PROD-013`（`docs/DESIGN-PROD.md` v0.9.39：`API-PROD-002` 的顺序与 429 一条，`API-PROD-003` 的 L3 两处、「握手里的服务器地址」与「登录前的监听器异常」两条，`API-PROD-012` 的位置与超限动作两条，§11.1 `verified → seated / rejected`，`ADR-PROD-015`，§19 改写与新增的场景）。起因是 2026-10-01 安全审查登录路径的四条：A-01 握手里超过 255 个字符的服务器地址在过闸之前抛异常，读线程吞掉异常、连接留着，同一批里的 `LoginStart` 照常处理，L1（开 PROXY 时）、L2 与 5 s 握手前超时都被跳过；A-02 L3 在 `LoginStart` 就占席位，认证前静默的连接每条占一个席位挂满 30 s；A-03 `hasJoined` 回 429 时 0.5～1.5 s 后照样重试；A-04 play 态的 ping、keep-alive、cookie 回应不经入站闸。改动：`HandshakeListener` 先过闸再判地址长度，超长的经 `disconnectTurnedAway` 关闭；`PlayerSocketConnection#processBatch` 在批的起始状态早于 configuration 时，监听器抛异常即断开，play 态的即时包经 `admitted`（`inboundLimiter.admit`）计数；`LoginListener` 去掉陌生登录插件回应的 ERROR 行，`LoginStart` 时只调 `ConnectionGate#seatFree()`；`ConnectionManager#transitionLoginToConfig` 开头占席位；`SessionClient` 按 `Retry-After` 停发。
+
+测试（分支 `sec/login-path`，提交 `1f33976097`）：根项目 `ConnectionGateSocketTest` 加 3 条（12 条）、`PreAuthConnectionIntegrationTest` 加 1 条（9 条）、`OnlineLoginSocketTest` 加 5 条（22 条）、`SessionClientTest` 加 1 条（3 条）、`InboundPacketLimitIntegrationTest` 加 2 条（7 条），`ArchitectureTest` 只改注释；`server-app` 的 `ConnectionGateLogTest` 加 2 条（5 条），`FullChannelTransferSocketTest` 的第一条让两个占席位的加密登录先回密钥（`TC-WORLD-085`）。测试辅助：`EncryptedLoginClient#handshake(int, Intent)`，`TestSessionServer.Answer` 可带 `Retry-After`。「跑 `<类>`」即 `./gradlew :test --rerun --tests '<类>' --max-workers=4 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts`（`server-app` 的类换成 `:server-app:test`），「严格 grid」是再加 `-Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true -Dsynaxis.thread-provider=grid`，结果看 `build/test-results/test/TEST-<类>.xml`（`server-app` 的在 `server-app/build/test-results/test/`）。只有 `FullChannelTransferSocketTest` 要数据库前置（§3），其余不要。
+
+反证一律是临时改、跑、看红、`git checkout HEAD -- <文件>`、重跑复绿，行号是提交 `1f33976097` 时的。路径简写：`<HL>` = `src/main/java/io/github/bearisbug/synaxis/listener/preplay/HandshakeListener.java`，`<LL>` = 同目录的 `LoginListener.java`，`<CM>` = `src/main/java/io/github/bearisbug/synaxis/network/ConnectionManager.java`，`<PSC>` = `src/main/java/io/github/bearisbug/synaxis/network/player/PlayerSocketConnection.java`，`<SC>` = 同目录的 `SessionClient.java`。「换回改前」指 `git show 23982267e9:<文件> > <文件>`（`23982267e9` 是本组的基线 `main`）。「整组改前」指 `git checkout 23982267e9 -- src/main`，并删掉 `SessionClientTest` 的 `theRetryAfterOfATooManyRequestsAnswerIsSecondsUpToAMinute`（它调用改后才有的 `SessionClient#retryAfterSeconds`，改前编不过），跑 `ConnectionGateSocketTest`、`OnlineLoginSocketTest`、`PreAuthConnectionIntegrationTest`、`InboundPacketLimitIntegrationTest` 与 `server-app` 的 `ConnectionGateLogTest`、`FullChannelTransferSocketTest`，还原用 `git checkout HEAD -- src/main src/test`；这一轮除下面各条写的红以外全绿（`FullChannelTransferSocketTest` 2 条也绿：它在改前改后都成立）。
+
+#### `TC-PROD-576` 握手里超长的服务器地址照常过闸：桶空时紧跟的 `LoginStart` 不被处理，桶里有令牌时扣一个后关闭、不发包（§19「超长服务器地址照常过闸」） — 对应 `REQ-PROD-001` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `ConnectionGateSocketTest`，看 `anOversizedServerAddressDoesNotSkipTheGate` 与 `anOversizedServerAddressTakesItsTokenAndIsClosed` | `tests="12"` 0 失败。前者：引擎默认登录桶（容量 3），同一地址 3 次登录都收到 `SetCompression`、登录事件 3 次；第 4 条连接一次写入 256 个字符地址的 login 握手与 `LoginStart`，读到 `LoginDisconnect`（`synaxis:login-throttled`）或连接关闭，`THROTTLED` 计 1，登录事件仍是 3 次，`seats()` 为 3。后者：新进程，第一条连接发同样的握手与 `LoginStart`，读到 EOF、一个字节都没有；随后两次正常登录通过，第三次收到 `synaxis:login-throttled`（超长的那次握手扣掉了 3 个令牌之一） |
+| 2 | 反证（整组改前） | 前者红在 `ConnectionGateSocketTest.java:195`：`the login behind an oversized server address went on: SetCompressionPacket[threshold=256]`；后者红在 `:213`：`an oversized server address is closed without an answer ==> expected: <true> but was: <false>` |
+| 3 | 反证（只把 `<HL>` 换回改前：地址照旧在过闸之前抛异常，「登录前的监听器异常即断开」仍在），跑第 1 步的类 | `12 tests completed, 3 failed`：前者红在 `:197`：`the gate saw the handshake ==> expected: <1> but was: <0>`（连接被断开了，但闸门没见到这次握手）；后者红在 `:216`：`expected a login disconnect ==> Unexpected type, expected: <…LoginDisconnectPacket> but was: <…SetCompressionPacket>`（令牌没被扣，第三次正常登录也进来了）；第三条见 `TC-PROD-577` 第 3 步 |
+| 4 | 还原后重跑第 1 步；`TC-PROD-585` 的两轮全量覆盖严格 grid | 与第 1 步相同 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PROD-577` 开 PROXY 时超长地址的握手计入该地址的 L1，超限即关、不挂到登录超时 — 对应 `REQ-PROD-001` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `ConnectionGateSocketTest`，看 `behindTheProxyAnOversizedServerAddressCountsAgainstItsAddress` | 0 失败，约 0.1 s。开 PROXY（可信网段 `127.0.0.0/8`、`proxyProtocolRequired=true`）、`max-connections-per-ip=1`、`handshake-timeout-ms=500`：PROXY 头写 `203.0.113.7` 的第一条连接登录成功；同一地址的第二条只发 256 个字符地址的 status 握手，读到 EOF、一个字节都没有，`TOO_MANY` 计 1 |
+| 2 | 反证（整组改前） | 红在 `ConnectionGateSocketTest.java:238`，用时 5.04 s：`the server neither answered nor closed the connection`（`Peer` 的 5 s 读超时到了，连接还开着：状态已被改成 status、握手前超时不再管它，只剩 30 s 登录超时） |
+| 3 | 反证（只把 `<HL>` 换回改前，同 `TC-PROD-576` 第 3 步那一次运行） | 红在 `:239`：`expected: <1> but was: <0>`（第二条被「登录前的监听器异常即断开」关掉了，但没计进 L1） |
+| 4 | 还原后重跑第 1 步 | 与第 1 步相同 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PROD-578` 批的起始状态早于 configuration 时，监听器抛异常即断开，同一批后面的 `LoginStart` 不被处理（§19「登录前的监听器抛异常即断开」） — 对应 `REQ-PROD-001` · 级别: 边缘 · 执行者: AI
+
+前置：本节开头。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `PreAuthConnectionIntegrationTest`，看 `aListenerThatThrowsBeforeTheConfigurationStateDropsTheConnection` | `tests="9"` 0 失败。测试把 handshake 状态的 `ClientHandshakePacket` 监听器换成抛 `IllegalStateException` 的，对端一次写入 login 握手与 `LoginStart{Notch}`，测试线程调一次 `read`：连接离线，`getLoginUsername()` 为 null（`LoginStart` 没被处理）；进程配置是 `rejectMisusedPacket=false`（默认） |
+| 2 | 反证（整组改前） | 红在 `PreAuthConnectionIntegrationTest.java:261`：`a listener that threw before the configuration state left the connection open ==> expected: <false> but was: <true>` |
+| 3 | 反证（只改 `<PSC>` 的一处）：`processBatch` 的 catch 里 `if (startingState.ordinal() < ConnectionState.CONFIGURATION.ordinal()` 与下一行 `\|\| process().config().rejectMisusedPacket()) disconnect();` 两行改成一行 `if (process().config().rejectMisusedPacket()) disconnect();`，跑第 1 步的类 | `9 tests completed, 1 failed`，红在 `:261`，消息同第 2 步 |
+| 4 | 还原后重跑第 1 步 | 与第 1 步相同 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PROD-579` 未认证的对端驱动不出登录监听器自己的 ERROR 行：超长地址每一次都经闸门计数、到不了它，陌生的登录插件回应只交异常处理器 — 对应 `REQ-PROD-001` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。这两条在 `server-app`：后一条要宿主测试类路径上的 logback（`LogCapture`），前一条与它共用发连接的辅助方法。行号按提交 `cc27560ea9`（v0.9.43 按评审改写前一条，证据 `docs/test-runs/RUN-062/integrate/03-login-follow-ups.txt`）。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `io.github.bearisbug.synaxis.app.ConnectionGateLogTest`（`server-app`），默认与严格 grid 各一次 | 两次都是 `tests="5"` 0 失败。`oversizedServerAddressesAreCountedByTheGateAndGoNoFurther`：引擎默认闸门，只把 L1 放宽到 32（20 条同时连得上，不在 accept 时被 L1 拒掉）、login 桶每 1,000 s 补一个令牌（墙钟补不进令牌），回环地址不在可信网段，进程的异常处理器换成把每次报告记进列表；20 条连接各一次写入 256 个字符地址的 login 握手与 `ClientLoginPluginResponsePacket(0, null)`，等到 20 条都被关：闸门的 `THROTTLED` 恰为 17（login 桶容量 3，前 3 条过闸后因地址超长被关），异常处理器收到 0 次报告（没有一条连接走到登录监听器去处理那条插件回应）。`aLoginPluginResponseNobodyAskedForIsReportedByTheExceptionHandlerAlone`：`127.0.0.0/8` 设为可信网段、地址正常，同样 20 条：`LoginListener` 的 ERROR 行为空；引擎默认异常处理器 `ExceptionManager` 的 ERROR 行不超过 1 行（它 10 s 至多一行，带这段时间的次数） |
+| 2 | 反证（整组改前） | `5 tests completed, 2 failed`：前者红在 `ConnectionGateLogTest.java:131`：`oversized handshakes the login bucket turned away ==> expected: <17> but was: <0>`（地址在过闸之前抛异常，闸门一次都没见到这些握手）；后者红在 `:151`：`the login listener wrote lines of its own ==> expected: <[]> but was: <[Error handling Login Plugin Response, …]>`（20 行） |
+| 3 | 反证（只把 `<HL>` 换回改前），跑第 1 步的类 | `5 tests completed, 1 failed`：只有前者红在 `:131`，消息同第 2 步；后者绿。超长地址照旧到不了登录监听器（「登录前的监听器异常即断开」把连接关了），但它绕过了闸门，这一条判的正是这一点 |
+| 4 | 反证（只把 `<LL>` 换回改前），跑第 1 步的类 | `5 tests completed, 1 failed`：只有后者红在 `:151`，消息同第 2 步；前者照旧绿 |
+| 5 | 还原后重跑第 1 步 | 与第 1 步相同 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PROD-580` 认证前的连接不占席位：两条停在加密请求的连接占不住 2 个席位，第三条完成在线登录（§19「认证前的连接不占席位」） — 对应 `REQ-PROD-001` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `OnlineLoginSocketTest`，看 `loginsThatStopAtTheEncryptionRequestHoldNoSeat` | `tests="22"` 0 失败。在线模式、假 sessionserver、`max-players=2`、`127.0.0.0/8` 设为可信网段：两条连接发握手与 `LoginStart`，读到 `EncryptionRequest` 后不再发字节；第三条走完在线登录，读到 `LoginSuccess`；`seats()` 为 1 |
+| 2 | 反证（整组改前；或只把 `<LL>` 与 `<CM>` 换回改前，席位回到 `LoginStart` 时占，两种结果相同） | 红在 `OnlineLoginSocketTest.java:374`：`expected an encryption request, got login disconnect …key=synaxis:shard-full…`（第三条在 `LoginStart` 就被拒） |
+| 3 | 反证（认证之后不占席位）：`<CM>` 的 `!gate.takeSeat(socketConnection.gateTicket())` 改成 `socketConnection.gateTicket() == null`，跑第 1 步的类 | `22 tests completed, 3 failed`：本条红在 `:375`：`only the authenticated login holds a seat ==> expected: <1> but was: <0>`；另两条见 `TC-PROD-581`、`TC-PROD-582` 第 3 步 |
+| 4 | 还原后重跑第 1 步 | 与第 1 步相同 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PROD-581` 认证之后才满员的转入收到加密的 `synaxis:shard-full`，不派发登录事件（§19「认证之后才满员的登录收到加密的 shard-full」） — 对应 `REQ-PROD-001` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `OnlineLoginSocketTest`，看 `anAuthenticatedTransferThatFindsTheSeatsTakenIsRefusedEncrypted` | 0 失败。在线模式、`max-players=1`、`accept-transfers=true`：transfer 意图的连接 A 发 `LoginStart`、读到 `EncryptionRequest`（此时席位 0/1）；连接 B 走完登录，读到 `LoginSuccess`；A 再回密钥：解密后读到 `LoginDisconnect synaxis:shard-full`，原始字节里没有这串明文，之后连接关闭、没有别的包；假 sessionserver 收到 2 次查询（A 也验证过了）；`AsyncPlayerPreLoginEvent` 只派发 1 次；`seats()` 为 1，`FULL` 计 1 |
+| 2 | 反证（整组改前；或只把 `<LL>` 与 `<CM>` 换回改前） | 红在 `:397`：`expected an encryption request, got login disconnect …key=synaxis:shard-full…`（A 在 `LoginStart` 占了席位，B 进不来） |
+| 3 | 反证（同 `TC-PROD-580` 第 3 步那一次运行） | 红在 `:399`：`expected a login disconnect, got LoginSuccessPacket`（认证之后没有判席位，A 也进来了） |
+| 4 | 还原后重跑第 1 步 | 与第 1 步相同 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PROD-582` 加密离线模式在收到密钥之后才占席位 — 对应 `REQ-PROD-001` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。不加密的离线模式在 `LoginStart` 之后立刻进 `transitionLoginToConfig`，由 `TC-PROD-063` 覆盖；满员频道拒绝转入的宿主侧用例见 `TC-WORLD-085`（改后两个占席位的加密登录要先回密钥）。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `OnlineLoginSocketTest`，看 `anEncryptedOfflineLoginTakesItsSeatOnceItsKeyIsIn` | 0 失败。`Auth.Offline(true)`、`max-players=1`：连接 A 读到 `EncryptionRequest` 后 `seats()` 为 0；连接 B 走完加密离线登录读到 `LoginSuccess`，`seats()` 为 1；A 再回密钥，解密后读到 `synaxis:shard-full` |
+| 2 | 反证（整组改前；或只把 `<LL>` 与 `<CM>` 换回改前） | 红在 `:417`：`a login waiting for its key holds a seat ==> expected: <0> but was: <1>` |
+| 3 | 反证（同 `TC-PROD-580` 第 3 步那一次运行） | 红在 `:420`：`expected: <1> but was: <0>` |
+| 4 | 还原后重跑第 1 步 | 与第 1 步相同 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PROD-583` `hasJoined` 回 429：不重试，按 `Retry-After` 停发，窗口内的登录不发请求（§19「429 按 Retry-After 停发」） — 对应 `REQ-PROD-002` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `OnlineLoginSocketTest`，看 `aTooManyRequestsAnswerIsNotRetried` 与 `noLoginAsksTheSessionServerBeforeTheRetryAfterIsOver`；再跑 `io.github.bearisbug.synaxis.network.player.SessionClientTest` | 前者：假服务回不带 `Retry-After` 的 429，客户端解密后读到 `synaxis:auth-unavailable`，假服务只收到 1 次查询。后者（5 s 出头，第三个客户端要等满窗口）：假服务回 `Retry-After: 5` 的 429；第一个客户端 `auth-unavailable`；紧接着第二个客户端也是 `auth-unavailable`，两次合计不到 5 s，假服务收到的查询仍只有 `First` 一次；等到 429 之后 5.1 s，第三个客户端完成登录，查询变成 2 次。窗口取 5 s 是给墙钟留余量：第二个登录要在窗口里走完，机器负载高时 2 s 不一定够（v0.9.43 由 2 s 改来）。`SessionClientTest` `tests="3"` 0 失败，`theRetryAfterOfATooManyRequestsAnswerIsSecondsUpToAMinute`：缺省、空串、`soon`、`-1`、HTTP 日期都是 10，`0` 是 0，` 3 ` 是 3，`60` 与 `3600` 都是 60 |
+| 2 | 反证（整组改前） | 前者红在 `OnlineLoginSocketTest.java:136`：`a 429 was asked again ==> expected: <1> but was: <2>`；后者红在 `:159`：`a login within the Retry-After asked the session server ==> expected: <[First]> but was: <[First, First, Second]>` |
+| 3 | 反证（429 不停发）：`<SC>` 的 `quietUntil.accumulateAndGet(until, (current, next) -> next - current > 0 ? next : current);` 改成 `quietUntil.accumulateAndGet(until, (current, _) -> current);`，跑 `OnlineLoginSocketTest` | `22 tests completed, 2 failed`，两条红的行与消息同第 2 步 |
+| 4 | 反证（不设上限）：`<SC>` 的 `if (seconds >= 0) return Math.min(seconds, MAX_RETRY_AFTER_SECONDS);` 改成 `if (seconds >= 0) return seconds;`，跑 `SessionClientTest` | `3 tests completed, 1 failed`，红在 `SessionClientTest.java:48`：`expected: <60> but was: <3600>` |
+| 5 | 还原后重跑第 1 步 | 与第 1 步相同；`OnlineLoginSocketTest` 原有的 `twoUnavailableAnswersRefuseWithAuthUnavailable`（503、429，恰好 2 次查询）照旧绿：429 落在重试那一次，后面没有再重试的 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PROD-584` play 态的 ping 计入入站闸：KICK 时 750 个 pong 后断线，DROP 时多出的 ping 不交给监听器（§19「play 态的 ping 计入入站闸」） — 对应 `REQ-PROD-013` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `io.github.bearisbug.synaxis.network.player.InboundPacketLimitIntegrationTest`，看 `pingsInPlayCountTowardsTheLimit` 与 `pingsOverADropLimitAreNotAnswered` | `tests="7"` 0 失败。两条都是回环上一对真 socket，服务端一侧是 PLAY 状态、带 `Player` 的连接，对端一次写入 1,000 个 `ClientPingRequestPacket`。前者（引擎默认，KICK）：连接离线，冲刷出去的恰好 1 个 `DisconnectPacket`、键 `synaxis:protocol-error`，`PingResponsePacket` 750 个。后者（`packetLimitAction(DROP)` 的单独进程）：连接在线，`PingResponsePacket` 750 个 |
+| 2 | 反证（整组改前；或只把 `<PSC>` 换回改前，两种结果相同），跑第 1 步的类 | `7 tests completed, 2 failed`：前者红在 `InboundPacketLimitIntegrationTest.java:80`：`1,000 pings at once are over 750 in 7 s ==> expected: <false> but was: <true>`；后者红在 `:99`：`pongs ==> expected: <750> but was: <1000>` |
+| 3 | 还原后重跑第 1 步 | 与第 1 步相同 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PROD-585` 回归：根项目与 `server-app` 的测试全量，默认与严格 grid 各一次（带数据库变量）；本节以外改过的反证逐条重跑 — 对应 `REQ-PROD-001`、`REQ-PROD-002`、`REQ-PROD-013` · 级别: 回归 · 执行者: AI
+
+前置：本节开头；数据库前置（§3），变量全设。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | `./gradlew :test --rerun :server-app:test --rerun --continue --max-workers=4 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts` | `BUILD SUCCESSFUL`。根项目 428 个类 3,162 个 0 失败、15 个跳过；`server-app` 110 个类 553 个 0 失败、0 个跳过（M3 v0.31 加 `ShardGatesOnlineTest` 1 个；在此之前 552 个，本组之前是 3,146 与 522，本节加 12 条与 2 条，同轮合入的另三组与集成轮再加 4 条与 28 条，见 `TC-PROD-505` 第 3 步） |
+| 2 | 第 1 步再加严格 grid 跑一次 | `BUILD SUCCESSFUL`，条数与第 1 步相同：根项目 3,162 个 0 失败、15 个跳过，`server-app` 553 个 0 失败、0 个跳过 |
+| 3 | 本节以外、行号或结果随本组改动变了的反证：`TC-PROD-061` 第 2、3 步，`TC-PROD-062` 第 2～4 步，`TC-PROD-063` 第 2 步，`TC-PROD-066` 第 2、3 步，`TC-PROD-067` 第 2 步，`TC-PROD-120` 第 2 步，`TC-PROD-121` 第 2 步（改法随代码改写），`TC-GAME-070` 第 2 步，`TC-PROD-263` 第 3、4 步，`TC-PROD-560` 第 2 步（改法随代码改写）与第 3 步，`TC-PROD-300` 第 4 步，`TC-WORLD-085` 第 2 步，按各自写法在本组提交上重跑 | 结果与各用例里按 `1f33976097` 写的一致；`TC-PROD-061` 两步的红与行号不变 |
+
+后置：`git status --short` 无输出。
+
+### 生产就绪 · 安全修复：transfer（转服幽灵与 `gm.role` 时效）
+
+对应 `REQ-PROD-045`、`REQ-PROD-004` 跨分片部分、`REQ-PROD-007` 与 `REQ-PROD-011`（`docs/DESIGN-PROD.md` v0.9.40：`API-PROD-028` 签发 ④、`API-PROD-010` GM 命令一条、§11.3 `saving → in_transit`、§14 `synaxis:transfer-rejected`、§16 两行、§17 `transfer.leave-within` 与 `presence.refresh`、§19 四个场景、§28.2 两行已决、改写的两行与一行风险），修安全审查的 B-01 与 C-02。改动：`TicketIssuer#send` 发出 `Transfer` 之后在玩家的调度器上排一个 10 s 的延时任务，到期连接还开着就以 `synaxis:transfer-rejected` 断开；`PlayerStore#refreshPresence` 对 `IN_TRANSIT` 的记录写 `in_transit`；新增 `PlayerStore#isOnline(Player)`（供光照会话加固 `ShardGates#moved`）；`RoleCommand` 对玩家发送者经 `HostPermissions#grantsOf` 当场读库，`mayHandOut` 改为判定读到的授予（要覆盖 `gm.role` 与角色的每个节点），授予走新语句 `RoleStore#handOut`（继承发送者最早的到期、不改尚未到期的已有授予，已到期的换成新的到期），`RoleStore.Grants` 加分量 `expiresAt`。
+
+测试：两个新类，都要数据库前置（同 3A 一节的四个 `SYNAXIS_TEST_*` 变量；`thePresenceRefreshReportsAPlayerInTransitAsInTransit` 另连 `SYNAXIS_TEST_REDIS_URL`，分片 ID 带随机后缀，用完删掉自己的 `presence:<uuid>` 键）。`io.github.bearisbug.synaxis.app.store.TransferNotFollowedIntegrationTest`（4 条，下称「幽灵类」）：源分片与目标分片在同一进程，玩家用 `StoreFixture.RecordingConnection`，它收到 `TransferPacket` 不会断开，测试每轮调 `Player#refreshAnswerKeepAlive(true)` 替它回 keep-alive，这就是改过的客户端在服务端看来的样子；不回 keep-alive 的话引擎约 15 s 以 `synaxis:keep-alive-timeout` 踢人，测不到这里的断开。前两条各要真等 10 s，整类约 22 s。`io.github.bearisbug.synaxis.app.RoleHandOutIntegrationTest`（3 条，下称「授予类」）：角色 `helper` = `gm.role`、`mod` = `gm.ban`，Redis 关、30 s 刷新改成 1 小时，所以测试里没有东西会替本分片重读角色。「跑 `<类>`」即带上述变量执行 `./gradlew :server-app:test --rerun --tests '<类>' --max-workers=4 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts`，「严格 grid」是再加 `-Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true -Dsynaxis.thread-provider=grid`，结果看 `server-app/build/test-results/test/TEST-<类>.xml`。
+
+缩写：`<TI>` = `server-app/src/main/java/io/github/bearisbug/synaxis/app/transfer/TicketIssuer.java`，`<PS>` = `…/app/store/PlayerStore.java`，`<RS>` = `…/app/permission/RoleStore.java`，`<HP>` = `…/app/permission/HostPermissions.java`，`<RC>` = `…/app/permission/RoleCommand.java`。反证一律是临时改一处、跑、看红、`git checkout HEAD -- <文件>`、重跑复绿；行号是分支 `sec/transfer-ghost` 提交时的（代码提交 `e9e3ea6945`、`5acee52a88`、`703528c9e9`）。「修复前的红」是在基线 `23982267e9` 上只加这两个测试类跑：幽灵类的最后一条 `onlyAPlayerATransferWouldTakeIsOnlineToTheStore` 用到基线还没有的 `PlayerStore#isOnline`，那次跑时删掉这条（它在类的末尾，删掉不移动别的行），`import static …assertFalse;` 换成空行、类注释里的 `{@link PlayerStore#isOnline}` 换成 `{@code …}`（Error Prone 的未用导入与坏链接都是错误），行号与提交时相同。
+
+#### `TC-PROD-590` 收到 `Transfer` 不走的客户端 10 s 后被源分片以 `synaxis:transfer-rejected` 断开，票据照样能用 — 对应 `REQ-PROD-045`、`REQ-PROD-004` · 级别: 边缘 · 执行者: AI
+
+前置：本节开头。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑幽灵类，看 `aClientThatIgnoresItsTransferIsDisconnected` | `tests="4"` 0 失败 0 跳过；本条约 10.4 s。源分片签发得 `SENT`，发过 `CookieStorePacket` 与 `TransferPacket`；发出后 9 s 内玩家仍在线、`isFrozen` 为 true（`in_transit`）；15 s 之内断开，踢人键恰是 `[synaxis:transfer-rejected]`，源分片 `loadedCount()` 回到 0，库里 `lease_session_id` 为空；拿 Cookie 里的票据以 transfer 意图连目标分片，`TicketVerifier#read` 与 `claim` 通过，写权归目标分片的会话 |
+| 2 | 修复前的红：基线 `23982267e9` 上按本节开头只加两个测试类，跑幽灵类 | `3 tests completed, 3 failed`；本条用时 15.4 s，红在 `TransferNotFollowedIntegrationTest.java:128`（`tickUntil`，调用处 `:161`），`java.lang.AssertionError: not by the deadline: the source lets go of a client that stays`：玩家一直在线、一直冻结 |
+| 3 | 反证有齿（不断开）：`<TI>` 的 `if (player.isOnline()) player.kick(` 改为 `if (player.isOnline() && Boolean.getBoolean("proof.never")) player.kick(`，跑幽灵类，再还原 | `4 tests completed, 2 failed`：本条与 `TC-PROD-591` 那条都红在 `:128`（调用处 `:161`、`:196`），消息同第 2 步；另两条绿 |
+| 4 | 还原后重跑第 1 步；严格 grid 由 `TC-PROD-596` 第 2 步的全量覆盖 | 与第 1 步相同 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PROD-591` 插件取消 `OutgoingTransferEvent` 的转服同样在 10 s 后断开，玩家不会停在 `in_transit` — 对应 `REQ-PROD-045` · 级别: 边缘 · 执行者: AI
+
+前置：本节开头。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑幽灵类，看 `aTransferWhoseEventAPluginCancelledLetsThePlayerGoAllTheSame` | 本条约 10.3 s。全局监听器取消 `OutgoingTransferEvent`；签发端照样回 `SENT`，玩家没收到 `TransferPacket`；9 s 时仍在线、冻结；15 s 之内以 `[synaxis:transfer-rejected]` 断开，`loadedCount()` 回到 0，`lease_session_id` 为空 |
+| 2 | 修复前的红：同 `TC-PROD-590` 第 2 步那一次运行 | 本条用时 15.4 s，红在 `:128`（调用处 `:196`），`not by the deadline: the source lets go of a player nobody told to leave` |
+| 3 | 反证有齿：同 `TC-PROD-590` 第 3 步那一次运行 | 本条红在 `:128`（调用处 `:196`），消息同第 2 步 |
+
+后置：同 `TC-PROD-590`。
+
+#### `TC-PROD-592` `presence.refresh` 对签发之后还连着的玩家写 `in_transit`，不写 `online` — 对应 `REQ-PROD-007`、`REQ-PROD-045` · 级别: 边缘 · 执行者: AI
+
+前置：本节开头，另要 `SYNAXIS_TEST_REDIS_URL` 指向的 Valkey 可达。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑幽灵类，看 `thePresenceRefreshReportsAPlayerInTransitAsInTransit` | 本条约 0.5 s。源分片连 Redis；准入后 `presence:<uuid>` 含 `"state":"online"`，签发得 `SENT` 后含 `"state":"in_transit"`；测试经反射调一次 `PlayerStore#refreshPresence`（它本来每 10 s 跑一次，直接调是为了让它一定落在 10 s 宽限之内），之后仍含 `"state":"in_transit"` |
+| 2 | 修复前的红：同 `TC-PROD-590` 第 2 步那一次运行 | 红在 `TransferNotFollowedIntegrationTest.java:220`，`the refresh keeps it in transit: {"shard_id":"r2-c1-<随机后缀>","session_id":1,"state":"online"} ==> expected: <true> but was: <false>` |
+| 3 | 反证有齿：`<PS>` 的 `case IN_TRANSIT -> "in_transit";` 改为 `case IN_TRANSIT -> "online";`，跑幽灵类，再还原 | `4 tests completed, 1 failed`，红在 `:220`，消息同第 2 步 |
+
+后置：同 `TC-PROD-590`。
+
+#### `TC-PROD-593` `PlayerStore#isOnline` 只对 §11.3 `online` 的玩家为真（关卡门加固的接口） — 对应 `REQ-PROD-045` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑幽灵类，看 `onlyAPlayerATransferWouldTakeIsOnlineToTheStore` | 本条约 0.3 s。没在本分片载入的连接为 false；载入并准入的玩家为 true；签发得 `SENT` 之后为 false |
+| 2 | 反证有齿（把 `in_transit` 也当在线）：`<PS>` 的 `return !closing && record != null && record.state == LeaseState.ONLINE;` 改为 `… && record.state != LeaseState.LOADING;`，跑幽灵类，再还原 | `4 tests completed, 1 failed`，红在 `TransferNotFollowedIntegrationTest.java:234`，`in transit ==> expected: <false> but was: <true>` |
+
+后置：同 `TC-PROD-590`。基线上没有这个方法，本条没有修复前的红。
+
+#### `TC-PROD-594` 持 `gm.role` 的玩家授出的授予不比自己的授予活得久，已有授予的到期不被清掉 — 对应 `REQ-PROD-011` · 级别: 边缘 · 执行者: AI
+
+前置：本节开头。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑授予类，看 `aHolderHandsOutNothingThatOutlivesItsOwnGrants` | `tests="3"` 0 失败 0 跳过；本条约 0.4 s。Alice 持有 `helper`（不到期）与 `mod`（`now() + 1 day`），Carol 持有两者且都不到期。Alice 给自己授 `mod`、Carol 给 Alice 授 `mod` 之后，Alice 的 `mod` 仍是原来的到期时间（按 `expires_at::text` 逐字比较）；Alice 给 Bob 授 `mod` 与 `helper`，Bob 的两条都等于 Alice 那条 `mod` 的到期时间；把库里 Alice 的 `mod` 改成 `now() - 1 s`（本分片不重读）之后 Alice 再给自己授 `mod`，那一行仍是已到期。五次的 `EVT:gm_command` 依次是 `ok`、`ok`、`ok`、`ok`、`above_sender` |
+| 2 | 修复前的红：按 `TC-PROD-590` 第 2 步的做法在基线上跑授予类 | `3 tests completed, 3 failed`；本条红在 `RoleHandOutIntegrationTest.java:142`，`its own grant keeps its expiry ==> expected: <{mod=<明天此刻>+08, helper=never}> but was: <{helper=never, mod=never}>`：自授一次就成了永久 |
+| 3 | 反证有齿（已有授予照样改写到期）：`<RS>` 的 `+ "WHERE account_role.expires_at <= now()"` 改为 `+ "WHERE true"`，跑授予类，再还原 | `3 tests completed, 1 failed`，红在 `:144`，`nor does a holder whose grants never run out lift it ==> expected: <{helper=never, mod=<明天此刻>+08}> but was: <{helper=never, mod=never}>`：Carol 的授予抹掉了 Alice 的到期 |
+| 4 | 反证有齿（不继承到期）：`<RC>` 的 `permissions.handOut(target, roleId, own.expiresAt())` 改为 `permissions.handOut(target, roleId, null)`，跑授予类，再还原 | `3 tests completed, 2 failed`：本条红在 `:149`，`what it hands out runs out when its own grants start to ==> expected: <{helper=<t>, mod=<t>}> but was: <{helper=never, mod=never}>`（`<t>` 是 Alice 那条 `mod` 的到期）：限时持有者给小号的授予是永久的；`TC-PROD-597` 那条红在 `:200`，`… but was: <{mod=never}>` |
+| 5 | 还原后重跑第 1 步；严格 grid 由 `TC-PROD-596` 第 2 步的全量覆盖 | 与第 1 步相同 |
+
+后置：同 `TC-PROD-590`。
+
+#### `TC-PROD-595` 撤销到达本分片之前，被撤权的玩家授不回角色，也授不出别的角色 — 对应 `REQ-PROD-011` · 级别: 边缘 · 执行者: AI
+
+前置：本节开头。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑授予类，看 `aRoleTakenBackIsNotHandedOutFromWhatTheShardReadBefore` | 本条约 0.3 s。Alice 持有 `helper` 与 `mod`，已读进本分片；库里删掉 Alice 的 `helper`（模拟别的分片在 Redis 不可达时撤销），本分片不重读。Alice 执行 `role grant <自己> helper` 与 `role grant <Bob> mod`：命令条件按内存放行（`CommandResult` 为 `SUCCESS`），两次的 `EVT:gm_command` 都是 `above_sender`；库里 Alice 只剩 `mod`，Bob 没有任何授予 |
+| 2 | 修复前的红：同 `TC-PROD-594` 第 2 步那一次运行 | 本条红在 `RoleHandOutIntegrationTest.java:180`，实际序列是 `[… helper -> ok, … mod -> ok]`：撤掉的角色被授回，没有 `gm.role` 的人还授出了角色 |
+| 3 | 反证有齿（判定用内存）：`<HP>` 的 `return requireRoles().load(List.of(player.getUuid())).getOrDefault(player.getUuid(), RoleStore.Grants.NONE);` 改为 `return loaded.getOrDefault(player, new Entry(RoleStore.Grants.NONE, 0)).grants();`，跑授予类，再还原 | `3 tests completed, 2 failed`：本条红在 `:180`，序列同第 2 步；`TC-PROD-594` 那条红在 `:156`，`an expired grant stays expired ==> expected: <{helper=never, mod=past}> but was: <{helper=never, mod=later}>`（内存里还有 `gm.ban`，过期行被按内存里的到期复活） |
+| 4 | 反证有齿（不要求 `gm.role`）：`<HP>` 的 `if (!PermissionNodes.covers(own.nodes(), RoleCommand.NODE)) return false;` 改为 `if (!PermissionNodes.covers(own.nodes(), RoleCommand.NODE) && Boolean.getBoolean("proof.never")) return false;`，跑授予类，再还原 | `3 tests completed, 1 failed`，红在 `:180`，实际序列 `[… helper -> above_sender, … mod -> ok]`：只剩 `gm.ban` 的 Alice 授出了 `mod` |
+
+后置：同 `TC-PROD-590`。
+
+#### `TC-PROD-596` 本组的回归：权限类按改写后的反证行重跑，`:server-app:test` 全量两种模式 — 对应 `REQ-PROD-045`、`REQ-PROD-011` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 按 `TC-PROD-215` 第 4 步（本组改写后的那一行）改 `<RC>`，跑 `PermissionNodesTest`、`RoleEscalationIntegrationTest`、`PermissionsIntegrationTest`，再还原 | `19 tests completed, 1 failed`，红在 `RoleEscalationIntegrationTest.java:114`，实际序列与 `TC-PROD-215` 第 3 步相同（前三条 `ok`，GM 失去 `gm.role` 之后四条 `precondition`） |
+| 2 | 带数据库变量，默认模式与严格 grid 各跑一次 `:server-app:test` 全量 | 两次都是 110 个类 553 个 0 失败 0 跳过（M3 v0.31 加 `ShardGatesOnlineTest` 1 个；在此之前 552 个，基线 522 个，加本组两个新类 7 个，同轮合入的另三组与集成轮再加 23 个，见 `TC-PROD-505` 第 3 步；设了数据库变量，没有跳过的类）；本机默认 4 min 50 s、严格 grid 4 min 49 s。幽灵类两次都约 21.1 s |
+
+后置：同 `TC-PROD-590`。
+
+#### `TC-PROD-597` 已到期的授予由持 `gm.role` 的玩家再授一次，到期换成授予者最早的到期 — 对应 `REQ-PROD-011` · 级别: 边缘 · 执行者: AI
+
+前置：本节开头。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑授予类，看 `aGrantThatRanOutIsHandedOutAgainUntilTheHoldersOwnRunOut` | 本条约 1.6 s（JUnit 在类里先跑它，含进程预热）。Alice 持有 `helper`（不到期）与 `mod`（`now() + 1 day`），Bob 的 `mod` 是 `now() - 1 day`。Alice 执行 `role grant <Bob> mod`，`EVT:gm_command` 为 `ok`；Bob 的 `mod` 等于 Alice 那条 `mod` 的到期（按 `expires_at::text` 逐字比较） |
+| 2 | 修复前的红：同 `TC-PROD-594` 第 2 步那一次运行 | 红在 `RoleHandOutIntegrationTest.java:200`，`the grant that ran out runs again until Alice's own does ==> expected: <{mod=<t>}> but was: <{mod=never}>`（`<t>` 是 Alice 那条 `mod` 的到期）：基线的授予语句把到期清掉，成了永久 |
+| 3 | 反证有齿（已到期的行不续）：`<RS>` 的 `+ "WHERE account_role.expires_at <= now()"` 改为 `+ "WHERE false"`，跑授予类，再还原 | `3 tests completed, 1 failed`，红在 `:200`，`… but was: <{mod=<昨天此刻>+08}>`：已到期的行原样留着，玩家 GM 再也授不回这个角色；`ON CONFLICT DO NOTHING` 是同一种回归 |
+| 4 | 还原后重跑第 1 步；严格 grid 由 `TC-PROD-596` 第 2 步的全量覆盖 | 与第 1 步相同 |
+
+后置：同 `TC-PROD-590`。
+
+### 生产就绪 · 安全修复：ops（运维端口加固与起服退出）
+
+对应 `REQ-PROD-032`、`REQ-PROD-018`、`REQ-PROD-036`（`docs/DESIGN-PROD.md` v0.9.41：`API-PROD-015` 的通配地址一句与「连接数与线程」一条，`API-PROD-022` 传输、鉴权、大小三条，§10 两处，§11.4 表下方一句，§15 两行，§16、§17 各一行，§19 四条场景，§23 两行（加部署前提一行、改密钥一行），§28.2 两行）。起因是 2026-10-01 安全审查 ops 组的四条：C-01 管理接口握手不看 `Origin`，令牌由反向代理代加时任何网页都能借管理员的浏览器连上来；C-05 两个运维端口绑到通配地址没有提示，指标端点连接数不限，管理接口握手未完成的连接也不限；C-03 游戏端口绑不上时进程不退出（§28.2 原有一行风险）；C-V01 回环挡不住同机其他系统用户抢端口收令牌，只改文档与 `.env.example`。改动：`server-app` 的 `ManagementServer` 先拒带 `Origin` 的升级请求，再看令牌；`GuardedFactory` 由选择器线程数握手未完成的连接，满 64 条时新连接拿到通道即关、经 `LogBudget` 记一行 WARN。`HostMetrics#serve` 在建 `HttpServer` 之前把没给过的 `jdk.httpserver.maxConnections` 设为 64，并改由 daemon 线程 `Syn-Metrics-Start` 起端点，JDK 的 `HTTP-Dispatcher` 随之是 daemon。`Main` 在步骤 (4) 对绑通配地址的运维端口各写一行 WARN，在步骤 (6) 接住原因为 `IOException` 的起服异常，先跑已注册的停机任务，再以 `Refusing to start: synaxis.app.port=<端口> cannot be bound: …` 拒启、退出码 1。
+
+测试：三个新类，`io.github.bearisbug.synaxis.app.management.ManagementPortGuardsIntegrationTest`（2 条）、`io.github.bearisbug.synaxis.app.metrics.MetricsEndpointGuardsTest`（2 条）、`io.github.bearisbug.synaxis.app.OpsPortsLaunchTest`（2 条，各起一个子 JVM）；别的测试类不改。三个类的上限都写成测试里的常量 64，不引用产品代码的常量，所以在改动前的代码（`23982267e9`）上也能编译、跑红。「跑 `<类>`」即 `./gradlew :server-app:test --rerun --tests '<类>' --max-workers=4 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts`，「严格 grid」是再加 `-Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true -Dsynaxis.thread-provider=grid`，结果看 `server-app/build/test-results/test/TEST-<类>.xml`。`<MS>`、`<HM>`、`<MN>` 分别是 `server-app/src/main/java/io/github/bearisbug/synaxis/app/` 下的 `management/ManagementServer.java`、`metrics/HostMetrics.java`、`Main.java`。反证一律是临时改一行、跑、看红、`git checkout HEAD -- <文件>`、重跑复绿；行号是分支 `sec/ops-ports` 的 `d32d1a8096`。除 TC-PROD-607 第 2、3 步外不需要数据库前置。
+
+「真进程」：先 `./gradlew :server-app:lightFixtureArgs --max-workers=4 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts` 写出测试运行时类路径的参数文件 `server-app/build/light-fixture.args`，再在一个空的临时目录里跑 `$JAVA_HOME/bin/java -Xmx1g @<worktree>/server-app/build/light-fixture.args -Dlogback.configurationFile=logback.xml -Dsynaxis.app.log=stdout -Dsynaxis.app.auth=offline -Dsynaxis.app.core-mode=on <各步的键> io.github.bearisbug.synaxis.app.Main`，与测试起子 JVM 的写法相同，读产品的 `logback.xml`。
+
+#### `TC-PROD-600` 带 `Origin` 的升级请求带着正确令牌也被拒，回应与不带令牌时逐字节相同（§19 场景） — 对应 `REQ-PROD-032` · 级别: 边缘 · 执行者: AI
+
+前置：本节开头。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `ManagementPortGuardsIntegrationTest`，看 `anUpgradeRequestWithAnOriginIsRefusedEvenWithTheToken` | `tests="2"` 0 失败（本类本机 6.5～7.4 s，多半是三次被拒的请求各等 2 s 读到关闭）。管理接口绑 `127.0.0.1:0`、令牌已配；不带令牌的升级请求得 `HTTP/1.1 404 WebSocket Upgrade Failure`，共 200 B；带正确的 `Authorization: Bearer <令牌>` 又带 `Origin: https://evil.example` 或 `origin: null` 的两次，回应与它逐字节相同；同一请求去掉 `Origin`、后面跟一个关闭帧，得 `HTTP/1.1 101` |
+| 2 | 反证有齿（不看 `Origin`，即改动前）：`<MS>:199` 的 `if (request.hasFieldValue("Origin"))` 改为 `if (Boolean.getBoolean("proof.never") && request.hasFieldValue("Origin"))`，重跑第 1 步，再还原 | `2 tests completed, 1 failed`：红在 `ManagementPortGuardsIntegrationTest.java:106`，`Origin: https://evil.example ==> array lengths differ, expected: <200> but was: <212>`（212 B 是 101 回应），握手上限那一条照常绿。改动前的代码上这一条同样红在 `:106`、同一条消息 |
+| 3 | 管理客户端不发 `Origin`：`rg -n -i 'origin' server-app/src/test/java/io/github/bearisbug/synaxis/app/management/ManagementClient.java client-fabric/gametest-env/p10.py tools/loadtest/management_backlog.py server-app/src/test/java/io/github/bearisbug/synaxis/app/ManagementStopWhileStartingLaunchTest.java server-app/src/test/java/io/github/bearisbug/synaxis/app/management/ManagementBacklogIntegrationTest.java server-app/src/test/java/io/github/bearisbug/synaxis/app/management/ManagementBacklogRaceIntegrationTest.java` | 0 行，退出码 1。`ManagementClient` 用 JDK `HttpClient` 的 WebSocket，它只发 `Upgrade`、`Connection`、`Sec-WebSocket-Key`、`Sec-WebSocket-Version` 与调用方给的头；其余几个是裸 socket，升级请求逐字写在代码里 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PROD-601` 管理接口握手未完成的连接至多 64 条，第 65 条 accept 后即关，先来的不受影响（§19 场景） — 对应 `REQ-PROD-032` · 级别: 边缘 · 执行者: AI
+
+前置：本节开头。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `ManagementPortGuardsIntegrationTest`，看 `pastTheCapOfUnfinishedHandshakesANewConnectionIsClosedAtOnce` | 0 失败，这一条本机 0.45 s。握手时限给 30 s，这条测试里只有上限会关连接：先开 64 条一个字节都不发的连接，第 65 条在 1 s 内读到关闭、0 字节；日志恰一行 WARN，以 `Management connection closed at once: ` 开头（全文 `… remote=/127.0.0.1:<端口> arrived with 64 handshakes unfinished`）；第 1 条在 200 ms 内读超时，仍开着；64 条都关掉之后，持令牌的 JDK 客户端 10 s 内连上，`minecraft:players` 回 `[]` |
+| 2 | 反证有齿（不设上限）：`<MS>:379` 的 `if (unfinished.size() >= MAX_UNFINISHED_HANDSHAKES) {` 改为 `if (Boolean.getBoolean("proof.never") && unfinished.size() >= MAX_UNFINISHED_HANDSHAKES) {`，重跑第 1 步，再还原 | `2 tests completed, 1 failed`：红在 `ManagementPortGuardsIntegrationTest.java:188`（`assertClosedWithoutAnswer`，经 `:124`），`java.lang.AssertionError: still open after 2 s`，原因是 `:186` 的 `SocketTimeoutException`；第 65 条要等 30 s 的握手时限。改动前的代码上同一处、同一条消息 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PROD-602` 指标端点同时打开的连接至多 64 条，第 65 条 accept 后即关：`jdk.httpserver.maxConnections` 在 JDK 25 上对这个 `HttpServer` 生效（§19 场景） — 对应 `REQ-PROD-018` · 级别: 边缘 · 执行者: AI
+
+前置：本节开头。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `MetricsEndpointGuardsTest`，看 `aConnectionPastTheCapIsClosedAtOnce` | `tests="2"` 0 失败（本类本机约 0.2 s）。端点绑回环、端口 0；64 条一个字节都不发的连接之后，第 65 条在 1 s 内读到关闭（`read` 回 −1，或连接被重置），不等 JDK 30 s 的空闲计时；64 条关掉之后，10 s 内 `GET /metrics` 回 200、正文有 `synaxis_tick_duration_seconds` |
+| 2 | 反证有齿（不写上限，即 JDK 默认的不限）：`<HM>:329` 的 `if (System.getProperty(MAX_CONNECTIONS_PROPERTY) == null)` 改为 `if (Boolean.getBoolean("proof.never") && System.getProperty(MAX_CONNECTIONS_PROPERTY) == null)`，只跑这一个类，再还原 | `2 tests completed, 1 failed`：红在 `MetricsEndpointGuardsTest.java:56`，`java.lang.AssertionError: still open after 2 s`，原因是 `:54` 的 `SocketTimeoutException`；改动前的代码上同一处、同一条消息。只跑这一个类，测试 JVM 里没有别的 `HttpServer` 先于它建出来，第 1 步的绿就是这个属性本身的效果 |
+| 3 | 真进程：键给 `-Dsynaxis.app.port=0 -Dsynaxis.app.metrics.bind=0.0.0.0:0 -Dsynaxis.app.management.enabled=true -Dsynaxis.app.management.bind=[::]:0`，环境变量 `SYNAXIS_MANAGEMENT_TOKEN` 给一个 `openssl rand -hex 32` 的值；就绪之后从就绪行读出指标端口，对它开 64 条空连接，再开第 65 条读一个字节；然后关掉 64 条，`GET /metrics` | 第 65 条在 1 s 内读到关闭（`recv` 回空），不等 JDK 30 s 的空闲计时；64 条关掉之后 `GET /metrics` 回 200、正文有 `synaxis_tick_duration_seconds`（正文长度随指标值变；本组一次实测的用时与长度见 `docs/test-runs/RUN-062/ops/00-ops.txt`）。上限在构建产物的真进程里同样生效：`Main` 起指标端点之前，进程里没有别的 `HttpServer` |
+
+后置：`git status --short` 无输出；真进程已结束。
+
+#### `TC-PROD-603` 两个运维端口绑到通配地址时，起服自检各一行 WARN；绑回环的一行都没有（§19 场景） — 对应 `REQ-PROD-032`、`REQ-PROD-018` · 级别: 边缘 · 执行者: AI
+
+前置：本节开头。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `OpsPortsLaunchTest`（两个子 JVM，本类本机约 2.3 s） | `tests="2"` 0 失败。`aWildcardBindOfEitherOperationsPortIsWarnedAboutAtTheStart`：指标 `0.0.0.0:0`、管理接口 `[::]:0`（令牌由环境变量给）、游戏端口 0，到就绪行时日志恰两行含 `is the wildcard address`，都是 WARN，先 `synaxis.app.metrics.bind=0.0.0.0:0 is the wildcard address: every interface of this host serves the metrics, which ask for no authentication`，后 `synaxis.app.management.bind=[0:0:0:0:0:0:0:0]:0 is the wildcard address: every interface of this host serves the management interface, whose token crosses the network in clear text (no TLS)`。`aGamePortTakenRefusesTheStart` 的指标绑 `127.0.0.1:0`，日志里没有这句 |
+| 2 | 反证有齿（不判通配）：`<MN>:610` 的 `if (bind.getAddress() != null && bind.getAddress().isAnyLocalAddress())` 改为 `if (Boolean.getBoolean("proof.never") && bind.getAddress() != null && bind.getAddress().isAnyLocalAddress())`，重跑第 1 步，再还原 | `2 tests completed, 1 failed`：红在 `OpsPortsLaunchTest.java:89`，消息是子 JVM 的整段日志，末尾 `synaxis server-app listening on 0.0.0.0:0 ==> expected: <2> but was: <0>`；改动前的代码上同一处、同一条消息 |
+| 3 | 真进程：与 `TC-PROD-602` 第 3 步是同一次起服，看日志里的 WARN 行 | 两行 WARN 都由 `Main` 写，各紧跟在对应的就绪行之后：指标端点就绪行印出 `http://[0:0:0:0:0:0:0:0]:<端口>/metrics`（JDK 把 `0.0.0.0` 绑成双栈的 `::`），接着是 `synaxis.app.metrics.bind=0.0.0.0:0 is the wildcard address: …`；管理接口就绪行之后是 `synaxis.app.management.bind=[0:0:0:0:0:0:0:0]:0 is the wildcard address: …` |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PROD-604` 游戏端口绑不上：先跑已注册的停机任务，再以 `Refusing to start` 拒启，退出码 1（§19 场景，§28.2 已决一行） — 对应 `REQ-PROD-036`、`REQ-PROD-018` · 级别: 边缘 · 执行者: AI
+
+前置：本节开头。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `OpsPortsLaunchTest`，看 `aGamePortTakenRefusesTheStart` | 0 失败，这一条本机约 1.1 s。测试先以 `ServerSocketChannel.open(StandardProtocolFamily.INET)` 绑住 `0.0.0.0:<端口>`（引擎绑游戏端口的同一做法），再以核心模式、这个端口、指标 `127.0.0.1:0` 起 `Main`：子 JVM 以 1 退出；日志有 `Refusing to start: synaxis.app.port=<端口> cannot be bound: `，有 `Metrics endpoint listening on`，没有 `synaxis server-app listening on` |
+| 2 | 反证有齿（不接绑定失败）：`<MN>:343` 的 `if (!(e.getCause() instanceof IOException cause)) throw e;` 改为 `if (!Boolean.getBoolean("proof.never") \|\| !(e.getCause() instanceof IOException cause)) throw e;`，重跑第 1 步，再还原 | `2 tests completed, 1 failed`：红在 `OpsPortsLaunchTest.java:50`，日志里没有 `Refusing to start` 那一行，消息末尾 `expected: <true> but was: <false>`。子 JVM 仍以 1 退出、`:48` 过了：主线程带着异常结束，`HTTP-Dispatcher` 已是 daemon（`TC-PROD-605`），没有别的非 daemon 线程拦着 |
+| 3 | 反证有齿（改动前的完整症状）：第 2 步的改动与 `TC-PROD-605` 第 2 步的改动一起做，跑 `OpsPortsLaunchTest` 与 `MetricsEndpointGuardsTest`，再一起还原 | `4 tests completed, 2 failed`，约 40 s：本条红在 `OpsPortsLaunchTest.java:48`（经 `ConfigFileLaunchTest.java:316` 的 `the JVM exits: …`），用时 30.032 s，子 JVM 30 s 后仍活着，日志只有 `HostExceptionHandler` 的两行 ERROR（`BindException: Address already in use` 与包着它的 `RuntimeException`），没有 `Refusing to start`；另一条红在 `MetricsEndpointGuardsTest.java:78`。改动前的代码上本条同样红在 `:48`，用时 30.036 s |
+| 4 | 真进程：先用一个 socket 绑住 `0.0.0.0:<端口>` 并监听，再以 `-Dsynaxis.app.port=<端口> -Dsynaxis.app.metrics.bind=127.0.0.1:0` 起 `Main`，看退出码与日志里的 WARN、ERROR 行 | 退出码 1，连 JVM 启动约 0.9 s。日志依次：`Metrics endpoint listening on http://127.0.0.1:<端口>/metrics`；`HostExceptionHandler` 的一行 ERROR `Unhandled exception: tick=0 connection_id=- (1 BindException since the last report)`，是引擎 `ServerProcessImpl#start` 自己报的，照旧；`Main` 的 ERROR `Refusing to start: synaxis.app.port=<端口> cannot be bound: Address already in use`，带 `IllegalArgumentException`，原因 `BindException`。改动前跟在后面的第二行 `HostExceptionHandler` ERROR（未捕获的 `RuntimeException`）没有了 |
+
+后置：`git status --short` 无输出；占端口的 socket 已关。
+
+#### `TC-PROD-605` 指标端点的分发线程 `HTTP-Dispatcher` 是 daemon，起服失败时拦不住 JVM 退出 — 对应 `REQ-PROD-018` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `MetricsEndpointGuardsTest`，看 `theDispatcherThreadIsADaemon` | 0 失败：起端点前后各取一次全部线程，多出来的恰一条 `HTTP-Dispatcher`，`isDaemon()` 为 true；起它的测试线程不是 daemon |
+| 2 | 反证有齿（起端点的线程不是 daemon，即改动前由主线程起的样子）：`<HM>:347` 的 `.daemon().start(server::start)` 改为 `.daemon(Boolean.getBoolean("proof.never")).start(server::start)`，重跑第 1 步，再还原 | `2 tests completed, 1 failed`：红在 `MetricsEndpointGuardsTest.java:78`，`the dispatcher keeps no JVM alive ==> expected: <true> but was: <false>`；改动前的代码上同一处、同一条消息 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PROD-606` 开管理接口的部署满足 §23 的前提：令牌每分片一个，主机上没有不受信任的系统用户或每个分片有独立的网络命名空间 — 对应 `REQ-PROD-032` · 级别: 边缘 · 执行者: 人工
+
+前置：目标部署主机（Linux），开了 `synaxis.app.management.enabled` 的分片已按 `.env.example` 部署：共享的 `.env` 加每分片一份的 `.env.<shard_id>`，服务单元两个都读。下面的 `<目录>` 是放这些文件的目录，`<PID>` 是分片进程号，`<端口>` 是它的管理端口。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 只比摘要、不打印令牌：`for f in <目录>/.env.*; do case "$f" in *.example) continue;; esac; grep -q '^SYNAXIS_MANAGEMENT_TOKEN=' "$f" \|\| continue; printf '%s ' "$f"; sed -n 's/^SYNAXIS_MANAGEMENT_TOKEN=//p' "$f" \| sha256sum; done`，再 `grep -c '^SYNAXIS_MANAGEMENT_TOKEN=' <目录>/.env` | 每个开管理接口的分片一行，摘要两两不同；`.env.example` 与没有这个键的文件（没开管理接口的分片）跳过：不跳过时它们的摘要都是空串的 `e3b0c442…`，两个这样的分片会被误判成令牌相同；共享的 `.env` 里没有这个键（`grep -c` 输出 0） |
+| 2 | 每个分片进程：`sudo readlink /proc/<PID>/ns/net` 与 `sudo readlink /proc/1/ns/net` 比（读 1 号进程与别的用户进程的命名空间链接要 root）；相同的（与主机共用网络命名空间）再看 `getent passwd` 里能登录的用户 | 二选一成立：网络命名空间与主机不同；或者相同，而能登录的用户只有运维与服务账号。§23 这一行填「过」并附两条命令的输出 |
+| 3 | 反证（只在不对外的测试主机上做，不在生产主机上做）：找一个与主机共用网络命名空间的分片，停掉它，以 `nobody` 跑 `python3 -c "import socket;s=socket.socket();s.bind(('127.0.0.1',<端口>));s.listen();c,_=s.accept();print(b'Authorization: Bearer' in c.recv(4096))"`，再以运维身份用管理客户端连 `127.0.0.1:<端口>` | 打印 `True`：同机的非特权用户收下了令牌，这就是 §23 前提要排除的情形。分片在独立网络命名空间里时，管理客户端在分片的命名空间里连，`nobody` 绑的是主机的回环，收不到 |
+
+后置：第 3 步用过的令牌作废，换一个新值并重启那个分片。
+
+#### `TC-PROD-607` 回归：日志门禁、本组改了行号的旧用例与 `:server-app:test` 全量 — 对应 `REQ-PROD-032`、`REQ-PROD-018` · 级别: 回归 · 执行者: AI
+
+前置：本节开头；第 2 步与第 3 步的三步反证要数据库前置。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `io.github.bearisbug.synaxis.app.ClientDrivenLogArchitectureTest` | 2 个 0 失败：通配地址的 WARN 写在 `Main`（豁免名单里，每进程一行），握手上限的 WARN 经 `LogBudget`，`management/` 与 `metrics/` 没有直接的 WARN / ERROR 行 |
+| 2 | 默认模式与严格 grid 各跑一次 `:server-app:test` 全量 | 两次都 `BUILD SUCCESSFUL`（本组的用时见 `docs/test-runs/RUN-062/ops/40-full-default.txt`、`41-full-grid.txt`）；`:server-app:test` 110 个类 553 个，0 失败 0 跳过（带数据库变量；M3 v0.31 加 `ShardGatesOnlineTest` 1 个；在此之前 552 个，其中本节 3 个新类 6 个，同轮合入的另三组与集成轮的见 `TC-PROD-505` 第 3 步）。默认那一次是 `:server-app:check :server-app:test --rerun :architecture-tests:test --rerun`，另过了 Error Prone 与测试命名门禁，`:architecture-tests` 7 个类 20 个 0 失败 |
+| 3 | 本组改了行号或所引代码的旧用例按新写法重跑：`TC-PROD-383` 第 2 步、`TC-PROD-395` 第 2 步、`TC-PROD-521` 第 4 步、`TC-PROD-528` 第 2 步、`TC-PROD-533` 第 3 步（后三步要数据库前置）；`TC-PROD-498` 第 3 步、`TC-PROD-573` 第 3 步与 `TC-PROD-521` 第 3 步的 `grep -n`；`TC-PROD-533` 第 2 步的 `sed -n 748,750p` | 反证五步与各自写的相同：`13 tests completed, 1 failed`（`:525`）；`(ManagementServer.java:277)`；`3 tests completed, 2 failed`（`:91`、`:113`）；`3 tests completed, 1 failed`（`:132`）；`3 tests completed, 1 failed`（`:113`）；每次还原后复绿。`grep` 三步分别得 `:322`、`:324`、`:326`、`:329`、`:330`、`:335` 等 9 行，`518`，`264`；`sed` 得 `TC-PROD-533` 第 2 步写的那三行 |
+
+后置：`git status --short` 无输出。
+
+### 生产就绪 · 安全修复：secrets（机密进日志与落盘权限）
+
+对应 `docs/DESIGN-PROD.md` v0.9.42，起因是 2026-10-01 安全审查 secrets 组的七条（D-01、D-02、D-03、C-04、D-V02、D-V01、D-05）：`REQ-PROD-005`、`REQ-PROD-007`（`API-PROD-004` 密钥一条、`API-PROD-006` 连接一条）、`REQ-PROD-036`（`API-PROD-001`）、`REQ-PROD-033`（`API-PROD-023` 拒启一条）、`REQ-PROD-034`（`API-PROD-011` 的 `profile`）、`REQ-PROD-015`、`REQ-PROD-017`（`API-PROD-013`、`API-PROD-014`）与 `REQ-PROD-032`（§28.2 CVE-2026-90584 一行）；§19 新增五个场景。改动在分支 `sec/secrets-files`，基线 `main` `23982267e9`，下文只写文件名，全路径如下：引擎 `src/main/java/io/github/bearisbug/synaxis/SessionServer.java`；`server-app/src/main/java/io/github/bearisbug/synaxis/app/` 下的 `store/StoreSettings.java`、`store/RedisLink.java`、`ConfigFile.java`、`CrashReports.java`、`EventLedger.java`、`command/Profiler.java`、`management/ManagementServer.java`（只有 `TC-PROD-617` 临时改它）；仓库根的 `.env.example`。
+
+测试：根模块新类 `io.github.bearisbug.synaxis.SessionServerTest`（2 条）；`:server-app` 新类 `io.github.bearisbug.synaxis.app.store.StoreSettingsTest`（2）、`…app.store.RedisLinkTest`（2）、`…app.ConfigFilePermissionsTest`（4）、`…app.HostFilePermissionsTest`（4，第 4 条是 v0.9.43 按评审加的）、`…app.command.ProfilerPrivacyTest`（3，第 3 条起一个子 JVM 跑 `ProfilerFixture`）。v0.9.43 按评审改了 `RedisLinkTest` 的第二条（核对交给 Redis 的口令）与 `ProfilerPrivacyTest` 的第二条（加字节断言），`TC-PROD-611`、`TC-PROD-614`～`TC-PROD-616` 的行号按提交 `5e0977797e`。既有测试类改了四个，都在 `:server-app` 的 `io.github.bearisbug.synaxis.app` 下：`ConfigFileTest` 加静态方法 `write`，它与 `BooleanKeysTest`、`ConfigFileLaunchTest`、`BooleanKeysLaunchTest` 建配置文件都经这个方法（`TC-PROD-619`），条数不变。「跑 `<类>`」即 `./gradlew <模块>:test --tests '<类全名>' --max-workers=4 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts`，`SessionServerTest` 的模块是根模块 `:test`，其余是 `:server-app:test`；结果看 `build/test-results/test/` 或 `server-app/build/test-results/test/` 下的 `TEST-<类全名>.xml`。除 `TC-PROD-612` 第 3 步与 `TC-PROD-618` 外不需要数据库前置。反证一律是临时改一处、跑、看红、`git checkout HEAD -- <文件>` 还原、重跑复绿；「改回改动前」指 `git checkout 23982267e9 -- <文件>`，`ConfigFile.java`、`CrashReports.java`、`Profiler.java` 三个共用 `ConfigFile#isSecret`，要改回就三个一起改回。行号是分支 `sec/secrets-files` 提交时的。
+
+权限类断言的红行在进程 umask 为 022 时出现（本机即是，`umask` 读出 `022`）：umask 为 077 时改动前的代码同样建出 0600、0700，反证不红，跑反证前先确认。
+
+#### `TC-PROD-610` 起服自检行里的 JDBC URL 只印主机、端口与库名，参数与 userinfo 去掉（§19 场景） — 对应 `REQ-PROD-005` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `io.github.bearisbug.synaxis.app.store.StoreSettingsTest` | `tests="2"` 0 失败：`SYNAXIS_STATE_DB_URL=jdbc:postgresql://db:5432/synaxis?sslmode=verify-full&sslpassword=K3yS3cret&password=P4ss` 时 `toString()` 恰为 `StoreSettings[jdbcUrl=jdbc:postgresql://db:5432/synaxis, user=shard, password=<set>, redis=<set>]`；`jdbc:postgresql://admin:Us3r/Pw@db1:5432,db2:5433/synaxis#K3yS3cret`（userinfo 的口令里有 `/`，结尾带 fragment）印成 `jdbc:postgresql://db1:5432,db2:5433/synaxis` |
+| 2 | 反证（改动前）：`StoreSettings.java` 改回改动前，重跑第 1 步，再还原 | `2 tests completed, 2 failed`：红在 `StoreSettingsTest.java:26`，`… but was: <StoreSettings[jdbcUrl=jdbc:postgresql://db:5432/synaxis?sslmode=verify-full&sslpassword=K3yS3cret&password=P4ss, user=shard, password=<set>, redis=<set>]>`；红在 `:33`，实际带出 `admin:Us3r/Pw@` 与 `#K3yS3cret` |
+| 3 | 还原后重跑第 1 步 | 与第 1 步相同 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PROD-611` `SYNAXIS_REDIS_URL` 解析失败时拒启信息只有变量名与写法，不带口令、不挂 cause；百分号编码的口令解码后交给 Redis（§19 场景） — 对应 `REQ-PROD-007` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。行号按提交 `5e0977797e`（v0.9.43 改了拒启信息、改写第二条，类开头多了 9 行导入；证据 `docs/test-runs/RUN-062/integrate/04-secrets-follow-ups.txt`）。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `io.github.bearisbug.synaxis.app.store.RedisLinkTest` | `tests="2"` 0 失败。`redis://:Ab3+/x9cd=@valkey:6379`（口令里有 `openssl rand -base64` 会生成的 `/`）、`redis://:p%zz@valkey:6379`（`%` 后不是十六进制）、`redis://:Ab3#x9cd@valkey:6379`（`#`）三个 URL 调 `RedisLink.connect` 都抛 `IllegalArgumentException`，消息恰为 `SYNAXIS_REDIS_URL is not redis://[user:password@]host:port[/database]; percent-encode every character of the password but letters, digits and -._~`，`getCause()` 为 null。`aPercentEncodedPasswordIsTaken`：测试在回环上起一个只收不答的假 Redis，`redis://:Ab3%2Bx9cd%3D@127.0.0.1:<它的端口>/2` 照常建出连接，经它发一次 `publishWorldFlag`（假服务不回答，返回 false）；假服务收到的第一条命令里口令是解码后的 `Ab3+x9cd=`（Jedis 8.0.1 先发 `HELLO 3 AUTH default <口令>`）；这一条约 2.6 s |
+| 2 | 反证（改动前）：`RedisLink.java` 改回改动前，重跑第 1 步，再还原 | `2 tests completed, 1 failed`：红在 `RedisLinkTest.java:42`，`redis://:Ab3+/x9cd=@valkey:6379 ==> expected: <SYNAXIS_REDIS_URL is not …> but was: <For input string: "x9cd=@valkey:6379">`，口令 `/` 之后的一段进了异常消息，`Main` 的 `Refusing to start` 一行会连栈记下它。测试在第一个 URL 红后不再往下跑；`%zz` 那个在改动前报 `Malformed escape pair at index 10: redis://:p%zz@valkey:6379`，整条口令在内（JDK 25.0.4.1 上单独验证过） |
+| 3 | 反证（不判主机为空）：`RedisLink.java` 的 `if (uri.getHost() == null) throw notARedisUrl();` 改为 `if (uri.getHost() == null && Boolean.getBoolean("proof.never")) throw notARedisUrl();`，重跑第 1 步，再还原 | `2 tests completed, 1 failed`：红在 `:40`，`redis://:Ab3#x9cd@valkey:6379 ==> Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown.`：`#` 让 `URI` 退成没有主机的注册型 authority，不抛异常，不判就带着 null 主机往下连 |
+| 4 | 反证（口令不解码）：`RedisLink.java` 的 `final String userInfo = uri.getUserInfo();` 改为 `final String userInfo = uri.getRawUserInfo();`，重跑第 1 步，再还原 | `2 tests completed, 1 failed`：红在 `:57`，`what the client sent first: *5\r\n$5\r\nHELLO\r\n$1\r\n3\r\n$4\r\nAUTH\r\n$7\r\ndefault\r\n$13\r\nAb3%2Bx9cd%3D\r\n ==> expected: <true> but was: <false>`：交给 Jedis 的是还没解码的串 |
+| 5 | 反证（拒启信息只说编码保留字符，即 v0.9.43 之前）：`RedisLink.java` 拒启信息的后半句改回 `percent-encode the reserved characters of the password`，重跑第 1 步，再还原 | `2 tests completed, 1 failed`：红在 `:42`，`redis://:Ab3+/x9cd=@valkey:6379 ==> expected: <…but letters, digits and -._~> but was: <…the reserved characters of the password>` |
+| 6 | 还原后重跑第 1 步 | 与第 1 步相同 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PROD-612` http、别的端口或别的路径指向 Mojang 主机都不算 Mojang 的会话服务器（§19 场景） — 对应 `REQ-PROD-036` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `io.github.bearisbug.synaxis.SessionServerTest`（根模块 `:test`） | `tests="2"` 0 失败：`https://sessionserver.mojang.com/session/minecraft/hasJoined`、全大写 scheme 与混大小写主机、显式 `:443`、路径里带 `/./` 四种写法 `isMojang()` 都为 true；`http://` 默认端口、`http://…:443`、`https://…:8443`、带 query、带 userinfo、路径不同（`/hasJoined`）、主机是 `127.0.0.1` 七种都为 false |
+| 2 | 反证（改动前，只比主机名）：`SessionServer.java` 改回改动前，重跑第 1 步，再还原 | `2 tests completed, 1 failed`：红在 `SessionServerTest.java:36`，`http://sessionserver.mojang.com/session/minecraft/hasJoined ==> expected: <false> but was: <true>`；四种写法那条照样绿 |
+| 3 | 带 `TC-PROD-618` 的数据库前置跑 `io.github.bearisbug.synaxis.app.MainStoreIntegrationTest`，看 `anOnlineProcessVerifyingAgainstAnythingButMojangCountsAsOffline` | 0 失败：`isMojang()` 为 false 的 `Auth.Online` 在 `auth_mode=online` 的库上被拒（`this process runs offline`）。这一类没改，http 地址判为非 Mojang 之后走的就是这条路径（`AuthMode.effective` → `Migrations.requireAuthMode`），正式库因此拒启 |
+| 4 | 还原后重跑第 1 步 | 与第 1 步相同 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PROD-613` 组或他人可写、或所在目录组或他人可写而没有 sticky 位的 `synaxis.properties` 拒启，一个键都不设（§19 场景） — 对应 `REQ-PROD-033` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `io.github.bearisbug.synaxis.app.ConfigFilePermissionsTest` | `tests="4"` 0 失败。文件只写 `synaxis.app.auth=offline`：权限 `rw-rw-r--` 与 `rw-r--rw-` 时 `refusal()` 恰为 `<文件绝对路径>: writable by group or others (<权限位>); only the service user may write it`，属性一个都没设；文件 `rw-r--r--`、目录依次为 `rwxrwxr-x` 与 `rwxrwxrwx` 时为 `<文件绝对路径>: its directory <目录> is writable by group or others without the sticky bit (<目录权限位>); they may replace the file`，同样一个都没设，目录经 `unix:mode` 改成 1777（加上 sticky 位）后照常读入；文件 `rw-r--r--` 与 `r--------` 照常读入，`describe()` 与改动前一字不差；放在 zip 文件系统里的文件照常读入，`describe()` 以 ` permissions=unchecked (the file system has no POSIX permissions)` 结尾 |
+| 2 | 反证（不查权限）：`ConfigFile.java` 的 `final @Nullable String writable = permissionsChecked ? writableByOthers(file) : null;` 改为 `final @Nullable String writable = permissionsChecked && Boolean.getBoolean("proof.never") ? writableByOthers(file) : null;`，重跑第 1 步，再还原 | `4 tests completed, 2 failed`：`aFileGroupOrOthersMayWriteIsRefusedAndSetsNothing` 红在 `ConfigFilePermissionsTest.java:49`，`expected: <…/synaxis.properties: writable by group or others (rw-rw-r--); only the service user may write it> but was: <null>`；`aDirectoryGroupOrOthersMayWriteIsRefusedUnlessItHasTheStickyBit` 红在 `:62`，`expected: <…: its directory …/shared is writable by group or others without the sticky bit (rwxrwxr-x); they may replace the file> but was: <null>` |
+| 3 | 反证（不看 sticky 位）：同一文件的 `(mode & STICKY) == 0` 改为 `(mode & STICKY) >= 0`，重跑第 1 步，再还原 | `4 tests completed, 1 failed`：`aDirectoryGroupOrOthersMayWriteIsRefusedUnlessItHasTheStickyBit` 红在 `:69`，`expected: <null> but was: <…: its directory …/shared is writable by group or others without the sticky bit (rwxrwxrwx); they may replace the file>`：1777 的目录也被拒，`/tmp` 下的文件就起不了服（`PosixFilePermissions` 不表示 sticky 位，括号里仍是 `rwxrwxrwx`） |
+| 4 | 反证（目录只看他人写位）：同一文件的 `private static final int GROUP_OR_OTHERS_WRITE = 0022;` 改为 `0002`，重跑第 1 步，再还原 | `4 tests completed, 1 failed`：`aDirectoryGroupOrOthersMayWriteIsRefusedUnlessItHasTheStickyBit` 红在 `:62`，`expected: <…(rwxrwxr-x); they may replace the file> but was: <null>`：组可写的目录照读，组里的人能删掉文件再放一份自己的 |
+| 5 | 反证（改动前）：`ConfigFile.java`、`CrashReports.java`、`Profiler.java` 三个一起改回改动前，重跑第 1 步，再还原 | `4 tests completed, 3 failed`：第 2 步那两条（`:49`、`:62`），加上 `withoutPosixPermissionsTheFileIsReadAndTheSelfCheckSaysSo` 红在 `:97`，`path=/synaxis.properties keys=1 overridden_by_command_line=[] ==> expected: <true> but was: <false>`；只有属主可写的那条绿 |
+| 6 | 还原后重跑第 1 步 | 与第 1 步相同 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PROD-614` `profile` 文件不带聊天与命令原文、status 来源地址、进程表与套接字事件，别的录制打开了也不带；文件 0600、建出的 `profiles/` 0700（§19 场景） — 对应 `REQ-PROD-034` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。下文「六个事件」是 `synaxis.PlayerChat`、`synaxis.PlayerCommand`、`synaxis.ServerPing`、`jdk.SystemProcess`、`jdk.SocketRead`、`jdk.SocketWrite`。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `io.github.bearisbug.synaxis.app.command.ProfilerPrivacyTest`，看前两条 | `tests="3"` 0 失败。`aRecordingLeavesPlayersTheProcessesAndTheSocketsOutAndOnlyItsOwnerReadsIt`：`Profiler#start(1)` 录制期间提交一条聊天 `canary-chat`、一条命令 `msg bob canary-command`、一次来源 `/203.0.113.7:50000` 的 ping；写出的文件里六个事件各 0 个，按 ISO-8859-1 读成字符串后不含 `canary` 与 `203.0.113.7`，`jdk.InitialSystemProperty` 多于 0 个；文件权限 `rw-------`，录制建的 `profiles/` 是 `rwx------`；录制在跑时它的设置里六个事件的 `#enabled` 都是 `false`。`anotherRecordingDoesNotBringThemIn`：先开一个以 JDK `profile` 设置为底、六个事件都显式打开的录制（JMC 可以这样开），再 `Profiler#start(1)` 并提交同样三条；另提交一条 42 个字符的聊天 `canary-pooled-0123456789-0123456789-abcdef`（17～127 个字符的串 JFR 放进 chunk 的字符串常量池，同时在跑的录制共用 chunk）；另一个录制自己的 dump 里聊天与进程表都多于 0 个、按 ISO-8859-1 读出含这一串，`profile` 写出的文件不含这一串、六个事件各 0 个。行号按提交 `5e0977797e`（v0.9.43 加了这条字节断言，证据 `docs/test-runs/RUN-062/integrate/04-secrets-follow-ups.txt`） |
+| 2 | 反证（录制只关环境变量，即改动前的设置）：`Profiler.java` 的 `for (String event : LEFT_OUT) settings.put(event + "#enabled", "false");` 改为 `settings.put("jdk.InitialEnvironmentVariable#enabled", "false");`，重跑第 1 步，再还原 | `3 tests completed, 1 failed`：第一条红在 `ProfilerPrivacyTest.java:87`，`synaxis.PlayerChat ==> expected: <false> but was: <null>`；文件内容那几条（`:80`～`:84`）照样绿，因为写文件时又按事件名滤了一次 |
+| 3 | 反证（写文件只滤环境变量，即改动前的过滤）：同一文件 `handedOver` 里的 `if (LEFT_OUT.contains(name)) return false;` 改为 `if (name.equals("jdk.InitialEnvironmentVariable")) return false;`，重跑第 1 步，再还原 | `3 tests completed, 1 failed`：第二条红在 `:112`，`the long chat line is nowhere in the file handed over ==> expected: <false> but was: <true>`（字节断言排在数事件之前）：另一个录制打开的事件进了共用的 chunk，`profile` 设置里的关闭挡不住；第一条绿（没有别的录制打开它们，录制里就没有） |
+| 4 | 反证（不先建 0600 的文件）：同一文件的 `Files.createFile(path, OWNER_ONLY);` 前面加 `if (Boolean.getBoolean("proof.never")) `，重跑第 1 步，再还原 | `3 tests completed, 1 failed`：第一条红在 `:85`，`expected: <rw-------> but was: <rw-r--r-->`：`RecordingFile#write` 自己建文件，权限随 umask |
+| 5 | 反证（改动前）：`ConfigFile.java`、`CrashReports.java`、`Profiler.java` 三个一起改回改动前，重跑第 1 步，再还原 | `3 tests completed, 3 failed`：前两条分别红在 `:80`（`synaxis.PlayerChat ==> expected: <0> but was: <1>`）与 `:112`（消息同第 3 步）；第三条见 `TC-PROD-615` |
+| 6 | 还原后重跑第 1 步 | 与第 1 步相同 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PROD-615` 键名像机密的系统属性与带它的 JVM 参数不进 `profile` 文件，其余系统属性照录（§19 场景） — 对应 `REQ-PROD-034` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `io.github.bearisbug.synaxis.app.command.ProfilerPrivacyTest`，看 `aSystemPropertyNamedLikeASecretAndTheArgumentsCarryingItStayOut` | 通过：测试以 `-Dsynaxis.test.profile-password=canary-4f1d` 起一个子 JVM（`ProfilerFixture`，类路径同测试 JVM），录 1 s，最后一行打印文件路径，60 s 内以 0 退出；文件里 `jdk.InitialSystemProperty` 多于 0 个，其中没有 `key` 为 `synaxis.test.profile-password` 的，`jdk.JVMInformation` 0 个（它的 `jvmArguments` 带着这个参数），按 ISO-8859-1 读成字符串后不含 `canary-4f1d`；本条约 3 s |
+| 2 | 反证（系统属性不按键名去掉）：`Profiler.java` 的 `case "jdk.InitialSystemProperty" -> !ConfigFile.isSecret(event.getString("key"));` 改为 `case "jdk.InitialSystemProperty" -> !Boolean.getBoolean("proof.never") \|\| !ConfigFile.isSecret(event.getString("key"));`，重跑第 1 步，再还原 | `3 tests completed, 1 failed`：红在 `ProfilerPrivacyTest.java:139`（v0.9.43 之前是 `:129`），`the secret property is not ==> expected: <false> but was: <true>` |
+| 3 | 反证（JVM 参数整条照录）：同一文件的 `case "jdk.JVMInformation" -> !setsASecret(event.getString("jvmArguments"));` 改为 `case "jdk.JVMInformation" -> !Boolean.getBoolean("proof.never") \|\| !setsASecret(event.getString("jvmArguments"));`，重跑第 1 步，再还原 | `3 tests completed, 1 failed`：红在 `:141`，`the JVM arguments carry it, so they are not either ==> expected: <0> but was: <1>` |
+| 4 | 反证（改动前）：同 `TC-PROD-614` 第 5 步 | 本条红在 `:139`，消息同第 2 步 |
+| 5 | 还原后重跑第 1 步 | 与第 1 步相同 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PROD-616` 台账、压缩出的 `.jsonl.gz` 与崩溃报告建成 0600，宿主建的 `logs/`、`crash-reports/` 为 0700，压缩到一半被杀留下的 `.gz.partial` 不让压出的文件保住它的权限；`.env.example` 教的建法得到 0600（§19 场景） — 对应 `REQ-PROD-015`、`REQ-PROD-017` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。第 4 条与第 5 步是 v0.9.43 按评审加的，证据 `docs/test-runs/RUN-062/integrate/04-secrets-follow-ups.txt`。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `io.github.bearisbug.synaxis.app.HostFilePermissionsTest` | `tests="4"` 0 失败：台账在还不存在的 `logs/` 下写一行、关闭后，`logs/` 是 `rwx------`，里面恰一个文件 `events-r01-c1-<当天>.jsonl`，`rw-------`；按 umask 写下的 `events-r01-c1-20260922.jsonl`（`rw-r--r--`）经 `housekeep(2026-09-23)` 压出的 `.jsonl.gz` 是 `rw-------`；崩溃报告写进还不存在的 `crash-reports/`，目录 `rwx------`、文件 `rw-------`；第 4 条（v0.9.43，排在类末尾）预置同样按 umask 写下的那一天与一个 `rw-r--r--` 的 `events-r01-c1-20260922.jsonl.gz.partial`，`housekeep(2026-09-23)` 之后 `.jsonl.gz` 是 `rw-------` |
+| 2 | 反证（日文件与崩溃报告随 umask）：`EventLedger.java` 的 `StandardOpenOption.APPEND), OWNER_ONLY);` 改为 `StandardOpenOption.APPEND));`；`CrashReports.java` 的 `Files.writeString(Files.createFile(file, OWNER_ONLY), report, StandardCharsets.UTF_8);` 改为 `Files.writeString(Boolean.getBoolean("proof.never") ? Files.createFile(file, OWNER_ONLY) : Files.createFile(file), report, StandardCharsets.UTF_8);`。重跑第 1 步，再还原这两个文件 | `4 tests completed, 2 failed`：`theLedgerAndTheDirectoryItCreatesAreOwnerOnly` 红在 `HostFilePermissionsTest.java:46`，`…/logs/events-r01-c1-<当天>.jsonl ==> expected: <rw-------> but was: <rw-r--r-->`（目录那条 `:42` 绿）；`aCrashReportAndTheDirectoryItCreatesAreOwnerOnly` 红在 `:69`，`expected: <rw-------> but was: <rw-r--r-->` |
+| 3 | 反证（压缩文件随 umask）：`EventLedger.java` 的 `Files.newOutputStream(Files.createFile(partial, OWNER_ONLY))` 改为 `Files.newOutputStream(Files.createFile(partial))`，重跑第 1 步，再还原 | `4 tests completed, 2 failed`：`aCompressedDayIsOwnerOnly` 红在 `:57`，`expected: <rw-------> but was: <rw-r--r-->`；第 4 条红在 `:81`，同一条消息 |
+| 4 | 反证（改动前）：`EventLedger.java` 与 `CrashReports.java` 改回改动前（同时改回 `ConfigFile.java` 与 `Profiler.java` 亦可），重跑第 1 步，再还原 | `4 tests completed, 4 failed`：`theLedger…` 红在 `:42`、`aCrashReport…` 红在 `:68`，都是 `expected: <rwx------> but was: <rwxr-xr-x>`；`aCompressedDay…` 红在 `:57`、第 4 条红在 `:81`，同第 3 步 |
+| 5 | 反证（不删残留的 `.gz.partial`）：删掉 `EventLedger.java` 的 `Files.deleteIfExists(partial);` 一行，重跑第 1 步，再还原 | `4 tests completed, 1 failed`：第 4 条红在 `:81`（经 `HostFilePermissionsTest.java:31` 的 `permissions`），`java.nio.file.NoSuchFileException: …/events-r01-c1-20260922.jsonl.gz`：`Files.createFile(partial, OWNER_ONLY)` 撞上残留文件抛 `FileAlreadyExistsException`，`housekeep` 只记 WARN，这一天每次都压不成 |
+| 6 | `grep -n 'install -m 600' .env.example`；再 `git show 23982267e9:.env.example \| grep -c 600` | 前者 2 行：第 4 行 `#   install -m 600 /dev/null .env    (likewise .env.<shard_id>)`，第 5 行写明服务器上用 `install -m 600 -o <service user>`；后者输出 `0`：改动前第 1 行只写 `Copy to .env (git ignores it) and fill in`，照做的 `cp` 按源文件 0644 与 umask 022 建出 0644 的 `.env` |
+| 7 | 还原后重跑第 1 步 | 与第 1 步相同 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PROD-617` CVE-2026-90584 在本用法下的回归：`BoundedDraft` 逐片比累计长度与片数（§28.2 一行） — 对应 `REQ-PROD-032` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。两个类都是 `@EnvTest`，每类起一个带管理接口的进程，各约 10 s。§28.2 判定这个 CVE 不影响本用法的三条依据里，① 令牌校验在前由 `TC-PROD-381` 覆盖，③ `maxFrameSize` 65,536 由 `TC-PROD-382` 的单帧那半覆盖，本条回归的是 ②。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `io.github.bearisbug.synaxis.app.management.ManagementFragmentsIntegrationTest` 与 `io.github.bearisbug.synaxis.app.management.ManagementFragmentCountIntegrationTest` | 两类各 `tests="1"` 0 失败：前者是 `TC-PROD-382` 第 3 步（恰 65,536 B 分三片照常执行；一直不发结束片的消息在累计超出的那一片以 1009 断开），后者是 `TC-PROD-472` 第 1 步（恰 1,024 片照常执行；第 1,025 个空续片以 1009 断开） |
+| 2 | 反证（两道上限失效，只剩库自己在结束片上的判定，即 CVE 描述的情形）：`ManagementServer.java` 的 `:326` `if (messageBytes > MAX_MESSAGE_BYTES)` 与 `:327` `if (messageFragments > MAX_MESSAGE_FRAGMENTS)` 两个条件前都加 `Boolean.getBoolean("proof.never") && `，重跑第 1 步，再还原 | `2 tests completed, 2 failed`：两类都红在各自的 `:96`，`java.lang.AssertionError: the connection is still open after PT10S`：中间片一直攒在库的缓冲里，连接不断 |
+| 3 | 还原后重跑第 1 步 | 与第 1 步相同。升 Java-WebSocket 时重跑本条，`BoundedDraft` 的两道上限不随升级删除（上游 PR #1509 只修 #1507） |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PROD-618` 回归：根模块与 `server-app` 在默认与严格 grid 下全量 — 对应 `REQ-PROD-005`、`REQ-PROD-007`、`REQ-PROD-015`、`REQ-PROD-017`、`REQ-PROD-033`、`REQ-PROD-034`、`REQ-PROD-036` · 级别: 回归 · 执行者: AI
+
+前置：本节开头；工作副本干净；数据库前置：`export SYNAXIS_TEST_PG_URL=jdbc:postgresql://127.0.0.1:5440/postgres SYNAXIS_TEST_REDIS_URL=redis://127.0.0.1:6440`，`SYNAXIS_TEST_PG_PASSWORD` 取共用容器 `synaxis-pg` 的 `POSTGRES_PASSWORD`（不回显）。「严格 grid」是命令再加 `-Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true -Dsynaxis.thread-provider=grid`。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 默认模式 `./gradlew :test --rerun :server-app:test --rerun :architecture-tests:test --rerun :testNamingCheck :forbiddenImportsCheck :server-app:testNamingCheck :server-app:forbiddenImportsCheck --continue --max-workers=4 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts` | `BUILD SUCCESSFUL`。根模块 428 个类 3,162 个 0 失败、15 个跳过（`TestMojangUtils` 9、`PlayerSkinTest` 2、`TranslationIntegrationTest` 3、`TagNbtTest` 1）；`server-app` 110 个类 553 个 0 失败 0 跳过（数据库用例都跑了；M3 v0.31 加 `ShardGatesOnlineTest` 1 个；在此之前 552 个，本组分支上是 427 个类 3,148 个与 104 个类 536 个，同轮合入的另三组与集成轮的见 `TC-PROD-505` 第 3 步）；`architecture-tests` 20 个 0 失败 |
+| 2 | 严格 grid `./gradlew :test --rerun :server-app:test --rerun --continue …`（其余参数同第 1 步） | `BUILD SUCCESSFUL`。根模块 3,162 个 0 失败、15 个跳过（同第 1 步）；`server-app` 553 个 0 失败 0 跳过。测试任务都带 `--rerun`：只改了 `server-app` 时根模块的输入与上一次全量相同，不带它 `:test` 会从构建缓存取上一次的结果（`FROM-CACHE`），一个测试都没跑 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PROD-619` 建配置文件的测试不随 umask：umask 002 下照绿 — 对应 `REQ-PROD-033` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。`ConfigFile` 拒绝组可写的文件，测试里用 `Files.writeString` 新建的文件在 umask 002（Ubuntu 开着 `USERGROUPS_ENAB` 时的默认值）下是 `rw-rw-r--`，会被拒；四个既有类建配置文件因此都经 `ConfigFileTest.write`，写完把权限设成 0644。umask 不是测试任务的输入：换 umask 重跑同一组类时命令要带 `--rerun`，否则任务按 UP-TO-DATE 或 FROM-CACHE 跳过、什么都没跑。下文「七个类」是 `io.github.bearisbug.synaxis.app` 下的 `ConfigFileTest`、`BooleanKeysTest`、`ConfigFileLaunchTest`、`BooleanKeysLaunchTest`、`ConfigFilePermissionsTest`、`HostFilePermissionsTest` 与 `command.ProfilerPrivacyTest`，「前四个类」是其中前四个。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | `umask 002` 之后跑七个类（`:server-app:test` 每个类一个 `--tests`，再带 `--rerun`） | 七个类 28 个 0 失败（11、3、2、2、4、3、3） |
+| 2 | 反证（写完不设权限）：`ConfigFileTest.java` 的 `Files.setAttribute(file, "unix:mode", 0644);` 前面加 `if (Boolean.getBoolean("proof.never")) `，`umask 002` 之后跑前四个类，再还原 | `18 tests completed, 10 failed`：`ConfigFileTest` 5 个、`BooleanKeysTest` 2 个、`ConfigFileLaunchTest` 2 个、`BooleanKeysLaunchTest` 1 个，都是文件被拒：如 `theCommandLineWinsOverTheFile` 红在 `ConfigFileTest.java:50`，`expected: <null> but was: <…/synaxis.properties: writable by group or others (rw-rw-r--); only the service user may write it>`；两个 `*LaunchTest` 的子 JVM 日志里是同一句 `Refusing to start` |
+| 3 | 还原后重跑第 1 步 | 与第 1 步相同 |
+
+后置：`git status --short` 无输出；回到原来的 umask。
+
+### 生产就绪 · 安全修复：跨格拾取
+
+对应 `REQ-PROD-019`、`REQ-PROD-020`（`docs/DESIGN-PROD.md` v0.9.43：`API-PROD-016` 线程契约「跨格影响投递到目标实体的调度器」，§16「跨格交互」一行，§28.2「`grid` 下跨格拾取与合并在别的 tick 线程上移除掉落物」已决行）。起因是安全修复 transfer 组的只读核查（GAP-grid，探针见 `docs/test-runs/RUN-062/transfer/05-gap-grid-probe.txt`）：拾取者在 `LivingEntity#update` 里、合并的一方在 `ItemEntity#update` 里，事件放行后直接调别的 tick 线程的掉落物的 `remove()`，开断言或严格模式时 `Entity#remove` 的 `assertOwnership` 抛 `AcquirableOwnershipException`，掉落物留在世界里、claim 不释放，再也拾不起来；不开断言时是一次跨线程的移除。改动：两处都改调包内方法 `ItemEntity#removeConsumed`，当前线程拥有掉落物时当场移除，否则经掉落物自己的调度器（`scheduleNextTick`）在它所属的线程上移除。
+
+测试：根项目新类 `io.github.bearisbug.synaxis.entity.ItemEntityCrossCellConcurrencyTest`（2 条，不是 `@EnvTest`：每条自己建 4 线程 `grid`、2×2 区块一格的进程，x = 32 是格 (0, 0) 与格 (1, 0) 的边界，x = 31.7 的拾取者或掉落物归 `Syn-Tick-0`，x = 32.3 的掉落物归 `Syn-Tick-3`；默认模式与严格 grid 下都是这个布局，测试 JVM 开着断言）；既有的 `ItemEntityClaimIntegrationTest`（5 条，同一格、在测试线程上调 `update`）不改。「跑 `<类>`」即 `./gradlew :test --rerun --tests '<类全名>' --max-workers=4 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts`，「严格 grid」是再加 `-Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true -Dsynaxis.thread-provider=grid`，结果看 `build/test-results/test/TEST-<类全名>.xml`。`<LE>` 是 `src/main/java/io/github/bearisbug/synaxis/entity/LivingEntity.java`，`<IE>` 是同目录的 `ItemEntity.java`。反证一律是临时改一处、跑、看红、`git checkout HEAD -- <文件>`、重跑复绿；行号按提交 `5c0bad47bc`。本节不需要数据库前置。证据 `docs/test-runs/RUN-062/integrate/01-gap-grid-red-before-fix.txt`（改动前在新测试上的红，默认与严格 grid 各一次）与 `02-gap-grid-green-and-proofs.txt`。
+
+#### `TC-PROD-620` 跨格拾取：拾取事件派发一次，掉落物在它自己的 tick 线程上移除，默认与严格 grid 都不抛 — 对应 `REQ-PROD-019`、`REQ-PROD-020` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `ItemEntityCrossCellConcurrencyTest`，看 `anItemPickedUpAcrossACellBorderIsRemovedOnItsOwnThread` | `tests="2"` 0 失败。能拾取的僵尸在 x = 31.7，钻石掉落物在 x = 32.3，至多跑 20 个 tick、掉落物一移除就停：`PickupItemEvent` 恰 1 次，派发时掉落物的 `acquirable().isOwned()` 为 false（拾取确实跨了线程，测试没有退化成同一格）；掉落物已移除；每次 `EntityDespawnEvent` 派发时，被移除的掉落物都归当前线程（`isOwned()` 为 true）；`env.tick()` 没有报出 tick 线程上的异常 |
+| 2 | 严格 grid 跑同一个类 | 与第 1 步相同 |
+| 3 | 反证有齿（拾取直接移除，即改动前的拾取）：`<LE>:242` 的 `itemEntity.removeConsumed();` 改为 `itemEntity.remove();`，跑第 1 步的类，再还原 | `2 tests completed, 1 failed`：红在 `ItemEntityCrossCellConcurrencyTest.java:87`（经 `:51`），`Server threw exception`，原因 `AcquirableOwnershipException: Thread ownership assertion failed for …ItemEntity@…`，抛在 `AcquirableImpl.java:131` ← `Entity.java:1915` ← `LivingEntity.java:242`；合并那条仍绿 |
+| 4 | 还原后重跑第 1 步 | 与第 1 步相同 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PROD-621` 跨格合并：合并事件派发一次，被并掉的掉落物在它自己的 tick 线程上移除，留下的一方是 2 个 — 对应 `REQ-PROD-019`、`REQ-PROD-020` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 同 `TC-PROD-620` 第 1、2 步的两次运行，看 `anItemMergedAcrossACellBorderIsRemovedOnItsOwnThread` | 两次都通过。两个各 1 颗钻石的掉落物在 x = 31.7 与 x = 32.3（距离 0.6，在合并范围 1 之内），两边各在自己的 tick 线程上扫邻居，按实体 ID 的固定顺序 claim，只有一方合并成：`EntityItemMergeEvent` 恰 1 次，派发时被并掉的一方 `isOwned()` 为 false；恰一方已移除，留下的一方数量为 2；移除都在被移除者自己的线程上 |
+| 2 | 反证有齿（合并直接移除，即改动前的合并）：`<IE>:106` 的 `itemEntity.removeConsumed();` 改为 `itemEntity.remove();`，跑 `ItemEntityCrossCellConcurrencyTest`，再还原 | `2 tests completed, 1 failed`：红在 `ItemEntityCrossCellConcurrencyTest.java:87`（经 `:67`），`Server threw exception`，原因 `AcquirableOwnershipException`，抛在 `Entity.java:1915` ← `ItemEntity.java:106`；拾取那条仍绿 |
+| 3 | 还原后重跑第 1 步 | 与第 1 步相同 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PROD-622` 同一格里的拾取与合并仍当场移除；`removeConsumed` 两个分支各有齿 — 对应 `REQ-PROD-019` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 默认模式与严格 grid 各跑一次 `ItemEntityCrossCellConcurrencyTest`、`ItemEntityClaimIntegrationTest`、`EntityBoundingBoxIntegrationTest`（三个 `--tests` 一起给） | 两次都是 3 个类 10 个 0 失败。`ItemEntityClaimIntegrationTest` 在测试线程上调 `update`，掉落物还没分到 tick 线程、由测试线程所建，`isOwned()` 为 true，`itemIsPickedUpOnce` 与 `itemsMergeOnce` 在 `update` 返回时就看到掉落物已移除，与改动前相同 |
+| 2 | 反证（不论归谁一律当场移除，即两处都回到改动前）：`<IE>` 里 `removeConsumed` 的方法体两行 `if (acquirable().isOwned()) remove();` 与 `else scheduleNextTick(Entity::remove);` 换成一行 `remove();`，跑 `ItemEntityCrossCellConcurrencyTest`，再还原 | `2 tests completed, 2 failed`：两条都红在 `:87`（分别经 `:51` 与 `:67`），`Server threw exception`，原因 `AcquirableOwnershipException`。改动前的代码（提交 `fa5cad4055`）上跑这个新类，默认与严格 grid 都是这两条、这一处红 |
+| 3 | 反证（不论归谁一律排到下一个 tick）：同一方法体换成一行 `scheduleNextTick(Entity::remove);`，跑 `ItemEntityCrossCellConcurrencyTest` 与 `ItemEntityClaimIntegrationTest`，再还原 | `7 tests completed, 2 failed`：跨格两条绿；`ItemEntityClaimIntegrationTest` 的 `itemIsPickedUpOnce` 红在 `ItemEntityClaimIntegrationTest.java:44`、`itemsMergeOnce` 红在 `:77`，都是 `expected: <true> but was: <false>`（掉落物要等它的下一个 tick 才移除）。所以同一格的拾取与合并必须当场移除，`isOwned()` 那个分支不能省 |
+| 4 | 还原后重跑第 1 步 | 与第 1 步相同 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PROD-623` 回归：`entity` 包在默认与严格 grid 下 — 对应 `REQ-PROD-019`、`REQ-PROD-020` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `io.github.bearisbug.synaxis.entity.*`（`--tests` 给这个通配），默认模式与严格 grid 各一次 | 两次都 `BUILD SUCCESSFUL`，74 个类 284 个，0 失败、2 个跳过（跳过的两个是 `PlayerSkinTest` 里标着 `@Disabled` 的两条）。根项目与 `server-app` 的全量由集成轮的全量回归覆盖 |
 
 后置：`git status --short` 无输出。
 
@@ -7892,7 +8460,7 @@ for (var request : System.getenv("MGMT_CALLS").split("\n")) {
   - 生产就绪域：tick 看门狗（`REQ-PROD-014` 前半）→ TC-PROD-020～TC-PROD-023。
   - 生产就绪域：连接闸门与 keep-alive 收尾（`REQ-PROD-001`、`REQ-PROD-043`）→ TC-PROD-060～TC-PROD-068；动了 accept 循环、握手或登录监听器、`ConnectionGate`、`ServerConfig` 的闸门键或 `StatusResponse` 就跑这九条，改默认值或闸门判定顺序时再加 TC-PROD-069（真进程，约 4 分钟）。跨域牵连：动了 `PlayerConnection#disconnect`、登录看门狗（`Server#loginTimeoutWatch`）或 keep-alive 踢人 → 加 TC-PROD-061、TC-PROD-066、TC-PROD-067 与 TC-GAME-071。
   - 大世界域：光照 → TC-WORLD-001～TC-WORLD-004、TC-WORLD-026（TC-WORLD-005 已废弃），基准 → TC-WORLD-006（TC-WORLD-007 只在空闲机器上跑，属全量轮；TC-WORLD-008 等第一张美术地图），区块包编码（引擎 `ChunkData`、`ChunkDataPacket`、`LightData`、调色板的网络编码与 `optimize`）→ TC-WORLD-009 与 TC-WORLD-006（动了方块实体 NBT 的写法，即 `BinaryTagTypeImpl` 或 `NetworkBuffer.SORTED_NBT`，再加 TC-WORLD-033），分片宿主设置（`ShardMain#viewDefaults`、`ShardMain#transferDefaults`、`Main` 的存储选择与 `accept-transfers` 拒启检查）→ TC-WORLD-010、TC-WORLD-011（后者真进程，约 1 分钟）；动了 `ShardMain` 时同时跑生产就绪域的 TC-PROD-333、TC-PROD-334。光照引擎（`instance.light` 的 `LightEngine`、`LightResult`、`WorldView`、`LightBlocks`，`LightingChunk.relight`，`verified-light-versions.txt`）→ TC-WORLD-012、TC-WORLD-013、TC-WORLD-028 加光照五条 TC-WORLD-001～TC-WORLD-004 与 TC-WORLD-026，再加 TC-GAME-029 第 1、2、10、11 步（M2 整图光照与 `load_ms`）与 TC-WORLD-021（烘焙器的版本门禁）。`.synx` 格式（`:synx` 模块、向量与 `manifest.txt`）→ TC-WORLD-014～TC-WORLD-018，再加 TC-WORLD-021～TC-WORLD-023（烘焙器调它写与校验）；动了 §6 内部面名单里的引擎成员 → TC-WORLD-018 加 `:synx`、`:baker` 全部测试。Anvil 读取器（`baker.anvil` 包、`tools/anvil-fixture`）→ TC-WORLD-019、TC-WORLD-029，动了 `gen.sh` 或 `TrimRegion.java` 再加 TC-WORLD-020（约 1 分钟，要 26.2 服务端 jar）。烘焙器（`baker` 包其余部分、`:game-rts` 的 `RtsBakeGenerators`）→ TC-WORLD-021～TC-WORLD-023、TC-WORLD-027、TC-WORLD-029～TC-WORLD-031、TC-WORLD-033（TC-WORLD-023 约 2 分钟，TC-WORLD-024、TC-WORLD-025 已废弃）；动了 `AnvilSource` 的高度窗口或 `BakerMain` 的 `--min-y` → TC-WORLD-027；动了 `architecture-tests` 的 `LightEngineArchitectureTest` 或 `:baker` 开始引用新的 `instance.light` 类型 → TC-WORLD-028；动了 `docs/MAP-SOURCE.md` 第 6 节的命令或退出码表 → TC-WORLD-030。区块流送与覆盖层（M3-C）：`:synx` 的 `SynxChunk`、`SynxChunkLoader`、`SectionCache`、`SynxPacketDecoder`、`SynxStaticEntities` 与测试图 `SynxTestMap` → TC-WORLD-034～TC-WORLD-039；`OverlayStore`、`OverlaySegment`、`OverlayTuning` → TC-WORLD-039、TC-WORLD-042、TC-WORLD-043、TC-WORLD-049、TC-WORLD-051；`SynxHandlers`、`:game-rts` 的 `marker` 包与 `BakerMain` 的处理器登记 → TC-WORLD-030～TC-WORLD-033、TC-WORLD-055；`SynxOptions`、`OverlayOptions`、`ShardSettings` 与 `ConfigFile.KEYS` → TC-WORLD-041（另跑生产就绪域的配置键门禁用例）；翻译键门禁名单 → TC-WORLD-032；引擎 `BufferedPacket`、`PacketViewableUtils`、`PlayerSocketConnection` 的积压 → TC-WORLD-040 与 TC-PROD-294、TC-PROD-295；引擎 `Instance` 的模拟距离与票据、`ChunkTickets`、`InstanceContainer` 的卸载判定、`Player` 的区块环票据、`Entity`、`EntityProjectile` 与 `DynamicChunk` 的 tick 体 → TC-WORLD-044、TC-WORLD-045、TC-WORLD-050，动了 `Player`、`Entity` 再加第 6 波 6E 的 TC-PROD-410～TC-PROD-422；`ThreadDispatcherImpl`、`TickThread` → TC-WORLD-046 与 TC-PROD-030；`Chunk#tryLockWriteLock`、`Chunk#readyToUnload` → TC-WORLD-039、TC-WORLD-045；`server-app` 的 `ShardMain` 挂地图默认值、`Main` 步骤 (1)(3)(5)(7) 的接线与 `app.shard` 包 → TC-WORLD-010、TC-WORLD-047～TC-WORLD-049、TC-WORLD-051、TC-WORLD-055，再加真进程 TC-WORLD-011、TC-WORLD-052（两条约 3 分钟）；阶段 gate，或动了句柄区块的发送路径 → TC-WORLD-053（约 10 分钟）与 TC-WORLD-099（前置见该用例，TC-WORLD-054 已废弃）；`:testing` 的 `TestConnectionImpl`（出站包追踪）→ TC-WORLD-056。
-  - 大世界域 · 分片（M3-E）：分片目录与 `Main` 的目录模式（`ShardDirectory`、`Main#shardDirectory` 与 `applyDirectory`）→ TC-WORLD-057、TC-WORLD-059、TC-WORLD-078；大区装配（`ShardWorld` 的 `bounds`、`checkDirectory`、`checkSpawnColumn`、`startedAttributes`）→ TC-WORLD-058、TC-WORLD-060 加 M3-C 的 TC-WORLD-047、TC-WORLD-049、TC-WORLD-055；心跳（`ShardHeartbeat`、V5）→ TC-WORLD-061、TC-WORLD-075、TC-WORLD-088；选频道与关卡门、到达（`ShardServiceImpl`、`ShardGates`、`ShardArrivals`）→ TC-WORLD-062～TC-WORLD-065、TC-WORLD-075；动了 `TicketIssuer`、`TicketVerifier` 的 M3-E 接线 → TC-WORLD-087（同时按生产就绪域的规则跑 TC-PROD-157、TC-PROD-379）；动了 `TicketIssuer` 签发 ④ 的线程、顺序或放弃规则 → TC-WORLD-090 加 TC-WORLD-087；`ShardGates` 的结果处理与 `EVT:transfer_refused` → TC-WORLD-064、TC-WORLD-100；动了 `LoginListener` 的 L3 或 `ConnectionGate` 的席位 → TC-WORLD-085；世界状态标志（`WorldFlagsImpl`、`WorldFlagStore`、`RedisLink` 的标志频道、V6）→ TC-WORLD-066～TC-WORLD-070、TC-WORLD-088；动了 `SynxChunk.asWorldFlag` 或 `sameBlock` → TC-WORLD-066、TC-WORLD-067 加 M3-C 的「A 组」各条（TC-WORLD-034～TC-WORLD-039）；`:loadtest` 的转服部分（`Bot` 的 Cookie、`Transfer` 与重连，`gate` 画像，`transfers` 的统计与判定）→ TC-WORLD-071～TC-WORLD-074、TC-WORLD-086，同时按生产就绪域的规则跑 5A 的 TC-PROD-265～TC-PROD-267。以真进程为前置的 TC-WORLD-076～TC-WORLD-080 在 M3-E 的阶段 gate 与动了 `Main` 目录模式装配的改动时跑；压测四档 TC-WORLD-081～TC-WORLD-084 只在阶段 gate 与改了 `capacity`、分片宿主线程或转服路径时跑，门槛不满足即登记「阻塞」。
+  - 大世界域 · 分片（M3-E）：分片目录与 `Main` 的目录模式（`ShardDirectory`、`Main#shardDirectory` 与 `applyDirectory`）→ TC-WORLD-057、TC-WORLD-059、TC-WORLD-078；大区装配（`ShardWorld` 的 `bounds`、`checkDirectory`、`checkSpawnColumn`、`startedAttributes`）→ TC-WORLD-058、TC-WORLD-060 加 M3-C 的 TC-WORLD-047、TC-WORLD-049、TC-WORLD-055；心跳（`ShardHeartbeat`、V5）→ TC-WORLD-061、TC-WORLD-075、TC-WORLD-088；选频道与关卡门、到达（`ShardServiceImpl`、`ShardGates`、`ShardArrivals`）→ TC-WORLD-062～TC-WORLD-065、TC-WORLD-075；动了 `TicketIssuer`、`TicketVerifier` 的 M3-E 接线 → TC-WORLD-087（同时按生产就绪域的规则跑 TC-PROD-157、TC-PROD-379）；动了 `TicketIssuer` 签发 ④ 的线程、顺序或放弃规则 → TC-WORLD-090 加 TC-WORLD-087；`ShardGates` 的结果处理与 `EVT:transfer_refused` → TC-WORLD-064、TC-WORLD-100；`ShardGates#moved` 的在线判定与 `Main#serveMap` 传给它的 `PlayerStore#isOnline` → TC-WORLD-101 加 TC-WORLD-064（同时按生产就绪域的规则跑 TC-PROD-593 与 TC-PROD-570～TC-PROD-573）；动了 `LoginListener` 的 L3 或 `ConnectionGate` 的席位 → TC-WORLD-085；世界状态标志（`WorldFlagsImpl`、`WorldFlagStore`、`RedisLink` 的标志频道、V6）→ TC-WORLD-066～TC-WORLD-070、TC-WORLD-088；动了 `SynxChunk.asWorldFlag` 或 `sameBlock` → TC-WORLD-066、TC-WORLD-067 加 M3-C 的「A 组」各条（TC-WORLD-034～TC-WORLD-039）；`:loadtest` 的转服部分（`Bot` 的 Cookie、`Transfer` 与重连，`gate` 画像，`transfers` 的统计与判定）→ TC-WORLD-071～TC-WORLD-074、TC-WORLD-086，同时按生产就绪域的规则跑 5A 的 TC-PROD-265～TC-PROD-267。以真进程为前置的 TC-WORLD-076～TC-WORLD-080 在 M3-E 的阶段 gate 与动了 `Main` 目录模式装配的改动时跑；压测四档 TC-WORLD-081～TC-WORLD-084 只在阶段 gate 与改了 `capacity`、分片宿主线程或转服路径时跑，门槛不满足即登记「阻塞」。
   - 大世界域 · 运行时光照（M3-D）：动了 `SynxRelight`、`RelightStats`、`SynxChunk` 的光照部分（投递、`delivered`、`light_stale`、`installLight`、`relightPending` 与 `readyToUnload`）、`SynxChunkLoader#startRelight`、`SynxPacketDecoder` 的光照解码或 `OverlayStore` 淘汰时的跳过 → TC-WORLD-092、TC-WORLD-093；动了 `ShardWorld` 的光照装配、`TICK_END` 任务、`relight` 停机步骤或 `EVT:chunk_stream_stats` → TC-WORLD-094；动了 `SynxOptions` 的两个光照键或 `ConfigFile.KEYS` → TC-WORLD-098；动了 `OverlayStore`、`OverlaySegment` 或 `SynxChunk` 的覆盖层部分 → 另加 TC-WORLD-091；动了 `LightShardFixture`、`LightMapFixture`、`LightTruth`、`client-fabric` 的 `gametest/.../light/` 与 `LightUpdateCounterMixin` 或 `run.sh` 的三个光照变量 → TC-WORLD-095，涉及退路再加 TC-WORLD-096、涉及真进程或 `real` 模式再加 TC-WORLD-097（三条都要 §3 的容器门槛）。
   - 跨域牵连（必须一起跑）：动了 `network/packet` 下的包注册表（增删包、调顺序、升协议版本）→ 加 TC-036；动了启动入口或就绪日志 → 加 TC-GAME-048、TC-GAME-029、TC-GAME-057、TC-GAME-058 与全部以进程为前置的引擎域用例（启动序列一变，「对局在 bind 之前就绪、tick 在 bind 之后才起」这条口径就要重验）；动了握手、准入回调或探针 → 加 TC-GAME-049、TC-GAME-050、TC-GAME-060、TC-GAME-061、TC-GAME-073、TC-GAME-074 与 TC-004、TC-014、TC-018、TC-019、TC-020、TC-026、TC-027 七条存量 TC；动了客户端模组侧的握手或拾取 → 加 TC-GAME-066；动了 `:protocol` 消息布局 → 加 TC-GAME-017 与客户端侧同一份向量；动了引擎 `Entity` 的位置推进入口 → 加 TC-GAME-051、TC-GAME-067 与 TC-GAME-040；动了对局的 chunk supplier、`Match#load` 的载入流程或引擎 `LightingChunk` / `instance.light` → 加 TC-GAME-029（第 10、11 步是光照的先红后绿）；动了 `ExceptionManager` / `ExceptionHandler`、宿主的 `EventLedger`、`logback*.xml` 或 `server-app` 的启动参数 → 加 TC-PROD-001～TC-PROD-008 与 TC-035。动了 `ServerProcessImpl` 的 `TickerImpl`、`Watchdog`、`ServerConfig` 的 `synaxis.watchdog.*` 键或宿主的 `CrashReports` → 加 TC-PROD-020～TC-PROD-023 与 TC-PROD-002。
 
@@ -7936,6 +8504,11 @@ for (var request : System.getenv("MGMT_CALLS").split("\n")) {
   - 生产就绪域（`docs/DESIGN-PROD.md`）：第 6 波 6A 的 P10（`REQ-PROD-031`，v0.9.30）→ TC-PROD-550；动了 `p10.py` 的 `judge` 就跑 TC-PROD-550 第 10 步（不起进程）；动了 `p10.py` 的 `shards` 或 `drive`、`TransferRoundTripClientGameTest`、`RegressionClientGameTest` 开头那一行判断、gametest 的 `fabric.mod.json`、`run.sh` 或 job `p10`，跑 TC-PROD-550 全部，本机不过内存门槛时手动触发 `client-gametest.yml`，以 job `p10` 判定一步的 `P10: all checks passed` 为准；动了 `ShardServiceImpl`、`TicketIssuer`、`TicketVerifier`、`ManagementMethods` 的 `synaxis:transfer` 或目录模式的装配，合入 `main` 后看下一次 job `p10`。
   - 生产就绪域（`docs/DESIGN-PROD.md`）：`EVT:transfer_refused` 扩到关卡门的六种拒绝结果（`REQ-PROD-031`，v0.9.37）→ TC-PROD-570～TC-PROD-573；动了 `ShardGates` 的 `finished` 或 `refused`、`ShardTransferResult` 的取值，或 `ShardGatesTest` 的 `everyRefusalIsWrittenToTheLedger`，就跑 TC-PROD-570～TC-PROD-573（不连数据库；本机这个类 7.7～31.7 s，多半花在第一条用例建 `Env`），同时按 M3-E 一行跑 TC-WORLD-064、TC-WORLD-100。
   - 生产就绪域（`docs/DESIGN-PROD.md`）：管理连接出站队列里没人写的帧（`REQ-PROD-032`，v0.9.38）→ TC-PROD-574、TC-PROD-575；动了 `ManagementServer.Endpoint` 的 `recheckWrites`、`onStart`、`shutDown` 或 `WRITE_RECHECK`，就跑 TC-PROD-574 与 TC-PROD-575 第 3 步；动了 `GuardedSocket` 的发送入口或 `setChannel` 再加 TC-PROD-575 第 1、2 步。升 Java-WebSocket 时重跑 TC-PROD-575 第 1、2 步，并读新版的 `WebSocketServer#doWrite`：撤写兴趣之后若会再看一次队列，第 1 步转绿，补登记才可以去掉（同步 `docs/DESIGN-PROD.md` `API-PROD-022`）。
+  - 生产就绪域（`docs/DESIGN-PROD.md`）：安全修复 login 组，登录路径的闸门与认证前席位（`REQ-PROD-001`、`REQ-PROD-002`、`REQ-PROD-013`，v0.9.39）→ TC-PROD-576～TC-PROD-585；动了 `HandshakeListener#listener` 的过闸或地址长度一段，就跑 TC-PROD-576、TC-PROD-577 与 TC-PROD-061、TC-PROD-062；动了 `PlayerSocketConnection#processBatch` 的监听器异常分支，就跑 TC-PROD-578 与 TC-GAME-070；动了 `processBatch` 的即时包分支或 `admitted`，就跑 TC-PROD-584 与 TC-PROD-560；动了 `LoginListener` 的登录插件回应或 L3 判满、`ConnectionGate#seatFree` / `takeSeat`、`ConnectionManager#transitionLoginToConfig` 开头，就跑 TC-PROD-579～TC-PROD-582、TC-PROD-063 与 TC-WORLD-085（要数据库前置）；动了 `SessionClient` 的 429 分支、`quiet` 或 `retryAfterSeconds`，就跑 TC-PROD-583 与 TC-PROD-094。
+  - 生产就绪域（`docs/DESIGN-PROD.md`）：安全修复 transfer 组，转服幽灵与 `gm.role` 时效（`REQ-PROD-045`、`REQ-PROD-004`、`REQ-PROD-007`、`REQ-PROD-011`，v0.9.40）→ TC-PROD-590～TC-PROD-597；动了 `TicketIssuer#send`、`PlayerStore` 的 `refreshPresence`、`isOnline` 或 `loggedOut` 的 `IN_TRANSIT` 分支，就跑 TC-PROD-590～TC-PROD-593（幽灵类约 22 s，要数据库前置与 Valkey）与 3A 一节的票据类；动了 `RoleCommand#execute`、`HostPermissions` 的 `grantsOf`、`mayHandOut` 或 `handOut`、`RoleStore` 的 `load`、`handOut` 或 `Grants`，就跑 TC-PROD-594、TC-PROD-595、TC-PROD-597、TC-PROD-596 第 1 步与 TC-PROD-215。光照会话给 `ShardGates#moved` 加上 `PlayerStore#isOnline` 判定之后，加跑 TC-PROD-593 与 TC-PROD-570～TC-PROD-573。
+  - 生产就绪域（`docs/DESIGN-PROD.md`）：安全修复 ops 组，运维端口加固与起服退出（`REQ-PROD-032`、`REQ-PROD-018`、`REQ-PROD-036`，v0.9.41）→ TC-PROD-600～TC-PROD-607；动了 `ManagementServer.Endpoint#onWebsocketHandshakeReceivedAsServer` 就跑 TC-PROD-600 与 6B 一节的 TC-PROD-381；动了 `GuardedFactory`、`GuardedSocket#setChannel` 或 `MAX_UNFINISHED_HANDSHAKES` 就跑 TC-PROD-601 与 TC-PROD-383、TC-PROD-575 第 3 步，其中动了 `GuardedSocket#setChannel` 的再加跑 TC-PROD-575 第 1、2 步（v0.9.38 一行的规则）；动了 `HostMetrics#serve` 或 `startOnADaemon` 就跑 TC-PROD-602、TC-PROD-605 与 TC-PROD-501；动了 `Main` 步骤 (4) 的两处 WARN 或 `warnOfTheWildcard` 就跑 TC-PROD-603；动了 `Main` 步骤 (6) 的接住与拒启或 `Main#main` 的拒启路径，就跑 TC-PROD-604 与 TC-PROD-489、TC-PROD-397（真进程）；改了部署单元、`.env.example` 的管理令牌一段或开管理接口的主机，跑 TC-PROD-606（人工）。升 JDK 时重跑 TC-PROD-602、TC-PROD-605：`jdk.httpserver.maxConnections` 与 `HTTP-Dispatcher` 随起它的线程定 daemon，都是 JDK 实现里的行为，不在公开 API 里。
+  - 生产就绪域（`docs/DESIGN-PROD.md`）：安全修复 secrets 组，机密进日志与落盘权限（`REQ-PROD-005`、`007`、`015`、`017`、`033`、`034`、`036`，v0.9.42）→ TC-PROD-610～TC-PROD-619。动了 `StoreSettings#toString` → TC-PROD-610；动了 `RedisLink#connect` 的解析 → TC-PROD-611；动了 `SessionServer#isMojang` → TC-PROD-612；动了 `ConfigFile#apply` 或它的权限检查 → TC-PROD-613；动了 `Profiler` 的 `LEFT_OUT`、`handedOver` 或建文件 → TC-PROD-614、TC-PROD-615，再加 TC-PROD-392 第 6、7 步与 TC-PROD-471；动了 `ConfigFile#isSecret` → TC-PROD-615 与 TC-PROD-002；动了 `EventLedger` 建目录、建文件或压缩，或 `CrashReports#write` → TC-PROD-616；改 `.env.example` 开头 → TC-PROD-616 第 6 步；升 Java-WebSocket 或动了 `ManagementServer.BoundedDraft#processFrame` → TC-PROD-617（另见 TC-PROD-382、TC-PROD-472）；动了 `ConfigFileTest.write`，或新增建 `synaxis.properties` 的测试 → TC-PROD-619。这些都改完后跑 TC-PROD-618。
+  - 生产就绪域（`docs/DESIGN-PROD.md`）：安全修复 · 跨格拾取（`REQ-PROD-019`、`REQ-PROD-020`，v0.9.43）→ TC-PROD-620～TC-PROD-623；动了 `LivingEntity#update` 的拾取、`ItemEntity#update` 的合并、`ItemEntity#removeConsumed` 或 `claim` / `releaseClaim` 就跑 TC-PROD-620～TC-PROD-622；动了 `ThreadProvider#grid` 的分格或 `AcquirableImpl#isOwned` / `assertOwnership` 再加 TC-PROD-623。
   - 影响面不确定时升级为全量轮。
 - **复测轮**（上轮失败用例 + 全部冒烟级）：修复失败项之后。
 - **人工收口轮**（仅上轮「待人工」用例）：AI 轮之后由人工补测 TC-016、TC-030、TC-GAME-020、TC-GAME-038、TC-GAME-046、TC-GAME-047，不要求冒烟级。
@@ -8008,6 +8581,9 @@ for (var request : System.getenv("MGMT_CALLS").split("\n")) {
 | RUN-059 | 2026-09-30 | 集成分支 `prod/integrate-059`（`main` `15ac990547` 加三组：入站包速率闸 750 包 / 7 s；审计 P3-3 每 tick 获取等待导出；`EVT:transfer_refused` 六种结果；另修 `PermissionsIntegrationTest` 偶发红） | AI（Claude Code，Gradle / PostgreSQL / Valkey / 真进程） | 局部（REQ-PROD-013→TC-PROD-560、561，TC-GAME-060、075；REQ-PROD-018、019、029→TC-PROD-565～569；REQ-PROD-031→TC-PROD-570～573）+ 全量回归（`check`、4 线程 `grid` 严格模式） | 通过 13/13 |
 | RUN-060 | 2026-10-01 | `main` `c46578d24f`（分支 `m3/refused-and-500`，本轮只改文档；用例与反证在这个提交加未提交的 `docs/DESIGN-M3.md`、`docs/TEST.md` 上跑，没有测试读文档）；`git fetch` 后 `origin/main` 仍是 `c46578d24f`，登记到 RUN-059，RUN-060 按约定归本会话 | AI（Claude Code，Gradle / PostgreSQL / `baker` 命令行；压测为同机档） | 局部：`REQ-M3-017`→TC-WORLD-064、TC-WORLD-100（取代 TC-WORLD-089，关卡门六种拒绝结果都写 `EVT:transfer_refused`）；`REQ-M3-015`→TC-WORLD-082、TC-WORLD-083（审计 P3-3 合入后按原文重跑，补 `ticks.acquire_ms`） | 通过 2/4 · 阻塞 2 |
 | RUN-061 | 2026-10-01 | 分支 `prod/mgmt-timeout` 的 `2bed5675f2`（`main` `c46578d24f` 加三个提交：`5fe9c028f4` 管理连接每 100 ms 补登记写兴趣，`5758b7425c`、`2bed5675f2` 文档）；`git fetch` 后 `origin/main` 仍是 `c46578d24f`，RUN-060 已由光照会话在 `m3/refused-and-500` 上登记 | AI（Claude Code，Gradle / PostgreSQL / Valkey / GitHub Actions） | 局部（REQ-PROD-032→TC-PROD-574、575；红行随改→TC-PROD-395）+ 回归（`:server-app:check` 计数模式、4 线程 `grid` 严格 `:server-app:test` 全量，都带数据库变量；严格 `grid` 下管理包连跑 5 次） | 通过 3/3 |
+| RUN-062 | 2026-10-01 | 集成分支 `prod/integrate-062` 的 `45f4133080`（`main` `c820bc65f2` 依次 `--no-ff` 合入 `sec/login-path`、`sec/transfer-ghost`、`sec/ops-ports`、`sec/secrets-files` 四组，加 `5c0bad47bc` 跨格拾取的修复与测试、`cc27560ea9` 与 `5e0977797e` 两组评审跟进的测试与拒启信息、`45f4133080` 文档；`docs/DESIGN-PROD.md` v0.9.39～v0.9.43；`git fetch` 后 `origin/main` 仍是 `c820bc65f2`；四组的用例与反证在各组分支上跑，合前门禁与 `TC-PROD-548` 在 `45f4133080` 加未提交的 `docs/TEST.md` 上跑，没有测试读文档；本轮之后的提交只改文档与证据，评审跟进的补跑（`integrate/07`）在 `f6b03e686d` 加未提交的两份文档上跑，代码与 `45f4133080` 相同） | AI（Claude Code，Gradle / PostgreSQL / Valkey / `baker` 命令行 / `bin/server-shard` / `:loadtest`） | 局部（REQ-PROD-001、REQ-PROD-002、REQ-PROD-013→TC-PROD-576～TC-PROD-585；REQ-PROD-045、REQ-PROD-004、REQ-PROD-007、REQ-PROD-011→TC-PROD-590～TC-PROD-597；REQ-PROD-032、REQ-PROD-018、REQ-PROD-036→TC-PROD-600～TC-PROD-607；REQ-PROD-005、REQ-PROD-007、REQ-PROD-015、REQ-PROD-017、REQ-PROD-032～REQ-PROD-034、REQ-PROD-036→TC-PROD-610～TC-PROD-619；REQ-PROD-019、REQ-PROD-020→TC-PROD-620～TC-PROD-623；行号或结果随本轮改动、按新写法重跑的既有用例→login 组 TC-PROD-061～TC-PROD-063、TC-PROD-066、TC-PROD-067、TC-PROD-120、TC-PROD-121、TC-PROD-263、TC-PROD-300、TC-PROD-560、TC-GAME-070、TC-WORLD-085，transfer 组 TC-PROD-206、TC-PROD-215，ops 组 TC-PROD-383、TC-PROD-395、TC-PROD-498、TC-PROD-521、TC-PROD-528、TC-PROD-533、TC-PROD-573、TC-PROD-575，secrets 组 TC-PROD-002、TC-PROD-392、TC-PROD-467～TC-PROD-469、TC-PROD-471，集成轮 TC-PROD-092、TC-WORLD-100 第 1、2 步；§5 改了 `TicketIssuer`→TC-PROD-548；条数→TC-PROD-486 第 3 步、TC-PROD-505 第 3 步、TC-PROD-510 第 2 步、TC-PROD-513 第 4 步、TC-PROD-529 第 4 步、TC-PROD-549 第 2、3 步、TC-PROD-567 第 1 步、TC-PROD-569 第 4 步）+ 全量回归（根项目 `check --rerun-tasks`、4 线程 `grid` 严格 `test --rerun`，都带数据库变量；`:server-app:test` 不带数据库变量默认与严格 `grid` 各一次） | 通过 78/79 · 待人工 1 |
+| RUN-065 | 2026-10-01 | 分支 `m3/sec-followup` 的 `072d45b790`（`main` `c69548be70` 加两个提交：`0a875c757d` `CLAUDE.md` 密钥纪律，`072d45b790` 关卡门的在线判定与新测试；用例、反证与门禁在这个提交加未提交的 `docs/DESIGN-M3.md`、`docs/DESIGN-PROD.md`、`docs/TEST.md` 上跑，没有测试读文档；修前的红在同一工作树上把 `ShardGates` 换成「收第四个构造参数、不读它」的写法；`git fetch` 后 `origin/main` 仍是 `c69548be70`，登记到 RUN-062，RUN-063 按约定归本会话重跑 `TC-WORLD-082`、`TC-WORLD-083`，RUN-064 归 M3-G；本轮之后的提交只改文档与证据） | AI（Claude Code，Gradle / PostgreSQL / Valkey / `baker` 命令行 / `bin/server-shard` / `:loadtest`） | 局部（REQ-M3-017→新增 TC-WORLD-101，受影响的 TC-WORLD-064、TC-WORLD-100 连同反证重跑，TC-WORLD-062、TC-WORLD-063、TC-WORLD-065、TC-WORLD-075 第 1 步；动了 `Main` 目录模式装配→两进程 TC-WORLD-076～TC-WORLD-080；§5 生产就绪域加跑 TC-PROD-593、TC-PROD-570～TC-PROD-573，照写执行）+ 全量回归（根项目 `check --rerun-tasks` 带冻结 zlib、4 线程 counter 与 `grid` 严格模式，都带数据库变量） | 通过 16/17 · 失败 1 |
+| RUN-066 | 2026-10-01 | 分支 `prod/sec-docs-fu`，代码是 `main` `4a40af2835`（RUN-065 合入后的头），工作树上只有未提交的 `docs/DESIGN-PROD.md`、`docs/TEST.md` 与审查报告，没有测试读文档；`git fetch` 后 `origin/main` 仍是 `4a40af2835`，登记到 RUN-065，RUN-063、RUN-064 按约定归另一会话 | AI（Claude Code，Gradle） | 局部：TC-PROD-570 第 1～6 步按改写后的字面重跑（关掉 RUN-065 里这条的失败） | 通过 1/1 |
 
 明细（仅登非「通过」项）：
 
@@ -8159,7 +8735,15 @@ TC-002 证据：`docs/test-runs/RUN-002/tc-002.txt`（5 步实际输出）（2,6
 | RUN-058 | TC-WORLD-054 | 失败 | 分片改用 `bin/server-shard` 的默认参数（G1、4 GiB 堆、`+AlwaysPreTouch`）后，两步仍只差「超 50 ms 的 tick 0 个」，`merge` 退出码都是 2、只红 `ticks_over_50ms`。walk 5 个（最长 71.2 ms），4 个与一次 G1 年轻代暂停重叠（48.3～68.5 ms），1 个（56.5 ms）前后 4.8 s 内没有暂停。ride 116 个：前 8 分钟 6 个，都与 G1 暂停重叠（50.5～132.8 ms）；13:00:30 起别的会话（Android 模拟器、node、xcodebuild）把 `load1` 推到 47，之后 110 个（最长 370.5 ms），101 个没有暂停。其余判据都达标：200/200 登录、0 掉线；`ChunkDataPacket::<init>` 与 `createChunkPacket` 都是 0 次，`getFullDataPacket` 1,229,718 与 2,654,065 次，不少于机器人收到的 1,229,718 与 2,653,695 个，执行与分配样本栈里 `createChunkPacket` 0 条，`overlay_sent` 0、`handle_sent` > 0、`failed` 0，停机 `Overlay final flush: chunks=0 … by=tick`；区块下行 13.680 与 31.354 KB/s（−1.6%、−2.9%），每区块 1,480.8 与 1,465.7 B（−1.4%、−2.4%）；tick P99 5.738 与 47.863 ms；每人最少 5,775 与 12,832 块。ride 第二次起跑的门槛 90 min 内一次也没满足。证据 `docs/test-runs/RUN-058/04-054-walk.txt`、`05-054-ride.txt`、`06-gc-vs-slow-ticks.txt` | 用户 2026-09-30 定 tick 两项只在分机档判（`docs/DESIGN-M3.md` §28.1）；本用例待按此改写并换 ID（§7），分机档到位后跑 |
 | RUN-060 | TC-WORLD-082 | 阻塞 | 前置不满足：门槛窗口 00:14:05～01:39:10 共 18 次读数，`memory_pressure` 空闲比例 32%～47%（17 次 ≥ 35%），数据盘可用 66,331～75,849 MB，两个共用容器都在，但每次都有别的项目的 Gradle 8.13 守护进程（pid 39749，JDK 17，`Kando/App/android`，23:22:20 起空闲、0% CPU），前 15 次还有同一构建的 Kotlin 编译守护进程（pid 40230），不满足「没有别的 java 或 Gradle」。没有起分片、采样与机器人，没有读数。证据 `docs/test-runs/RUN-060/02-gates.txt` | 那个守护进程按 3 h 空闲超时算约 02:22 退出，之后重跑两档；RUN-057 的失败未关闭 |
 | RUN-060 | TC-WORLD-083 | 阻塞 | 同 TC-WORLD-082，两档共用一个窗口，082 没起跑，083 同样没起跑 | 同上 |
+| RUN-062 | TC-PROD-606 | 待人工 | 执行者是人工，要在开了管理接口的 Linux 部署主机上做：第 1 步比各分片 `.env.<shard_id>` 里令牌的摘要，第 2 步比网络命名空间或查能登录的用户，第 3 步在不对外的测试主机上以 `nobody` 抢先绑管理端口。本轮只在开发机的假目录上试过第 1 步的循环（跳过 `.env.example` 与没有这个键的文件），证据 `docs/test-runs/RUN-062/integrate/05-doc-checks.txt` | 第一次在 Linux 主机上部署开了 `synaxis.app.management.enabled` 的分片时人工做，结果填进 `docs/DESIGN-PROD.md` §23 那一行（§28.2 待办一行） |
+| RUN-065 | TC-PROD-570 | 失败 | 第 1、3～6 步与用例相同：`tests="7"` 0 失败；三处反证都是 `7 tests completed, 1 failed`，红在 `ShardGatesTest.java:218`，依次为 `NOT_ONLINE`、`SAVE_FAILED`、`SENT`，信息同用例。第 2 步照写 `git checkout 0e919cce6a -- <GT>` 之后 `:server-app:compileJava` 失败，没有跑到测试：`Main.java:518` 传四个参数，旧 `ShardGates` 只有三个参数的构造器（本轮 `072d45b790` 给构造器加了在线判定）。改用「`0e919cce6a` 的文件只加上第四个构造参数」重跑，`7 tests completed, 1 failed`，红在 `:218`，`COOLDOWN ==> expected: <[transfer_refused {…, result=cooldown}]> but was: <[]>`，与用例对第 2 步的期望相同。证据 `docs/test-runs/RUN-065/02-cases.txt` | 用例文字过时，按约定本轮不改，由生产就绪会话改写（`docs/DESIGN-M3.md` §28.2「交给生产就绪会话的改动（M3 v0.31）」④） |
 
+
+RUN-066 证据：`docs/test-runs/RUN-066/`（`01-tc-prod-570.txt` 是 1～6 步的构建结果与 XML 计数，`02-messages.txt` 是同样六步再跑一遍并取出失败消息）。要点：第 2 步改为原地把 `<GT>` 的 `case COOLDOWN, NOT_ONLINE, SAVE_FAILED -> refused(player, gate, result);` 换成空块之后，`7 tests completed, 1 failed`，红在 `ShardGatesTest.java:218`，消息以 `COOLDOWN ==> expected: <[transfer_refused {…` 开头，与用例相同；第 3～5 步依次红在同一行的 `NOT_ONLINE`、`SAVE_FAILED`、`SENT`；第 1、6 步 `tests="7"` 0 失败。重活锁两批：19:51:59～19:52:34、19:52:58～19:53:24，取锁与 `EXIT` trap 在脚本顶层，trap 退出时还原 `<GT>`，跑完 `git status` 里 `src` 下无改动。
+
+RUN-065 证据：`docs/test-runs/RUN-065/`（`00-index.txt` 列出每个文件）。轮次号：`git fetch` 后 `origin/main` 是 `c69548be70`，登记到 RUN-062；RUN-063 按约定归本会话重跑 `TC-WORLD-082`、`TC-WORLD-083`，RUN-064 归 M3-G，本轮取 RUN-065。**重活互斥锁**：`/tmp/synaxis-heavy.lock` 16:54:22 拿到、17:24:44 放下（`owner` 写「Synaxis光照/followup」与持锁脚本的 pid 39710）；锁与 `EXIT` trap 都在持锁脚本的顶层，四个作业在锁内依次跑，脚本与锁的日志在 `07-scripts.txt`。**修前与修后**（`01-red-green.txt`）：修前 `ShardGatesOnlineTest` 红在 `:93`，`expected: <0 transfers, 0 refusals> but was: <100 transfers, 100 refusals>`，即不在线的玩家 100 次走进门框调了 100 次 `ShardService#transfer`、写了 100 行 `transfer_refused`；修后 `tests="1"` 0 失败。**用例**（`02-cases.txt`）：`TC-WORLD-101` 两个反证红在 `:93`、`:99`，信息同用例；`TC-WORLD-064` 第 2～4 步红在 `ShardGatesTest.java:148`、`:256`、`:195`，`TC-WORLD-100` 第 3～5 步红在 `:218`、`:218`、`:195`，都与用例相同（064 第 2 步按改写后的行实跑）；`TC-PROD-571`、`TC-PROD-572` 第 2 步红在 `:218`、`:195`，信息同用例，`TC-PROD-570` 见上表；`TC-PROD-573` 默认与严格 grid 各 4 个类 18 个 0 失败，`Main.java:518` 第三个参数仍是 `ledger::record`；`TC-PROD-593` 4 个 0 失败 0 跳过，反证红在 `TransferNotFollowedIntegrationTest.java:234`，`in transit ==> expected: <false> but was: <true>`；`TC-WORLD-062`、`063`、`065`、`075` 的类（`ShardServiceImplTest` 6、`ShardArrivalsTest` 5、`ShardHeartbeatDbTest` 6、`ShardServiceHeartbeatDbTest` 1）0 失败 0 跳过，被测代码本轮没动，反证没有重跑。每次还原后 `git status --short -- server-app` 为空。**两进程**（`03-two-process.txt`，库 `run065_2p`，用完删掉）：`TC-WORLD-076`～`TC-WORLD-080` 照字面跑，结果都与用例相同。076 的关卡门机器人 31 趟转服全部完成，台账 `transfer_issued` 与 `transfer_completed` 各 31 条一一配对，`first_batch_ms` 237～438，两个分片 `transfer_refused` 0 行、WARN / ERROR 0 行：真进程里在线的玩家照常被关卡门送走，`Main#serveMap` 传的 `PlayerStore#isOnline` 没有挡住正常转服。077 第三个机器人 `login refused: synaxis:shard-full`，`full` 由 0 到 1；078 十三种拒启的信息逐条相同；079 两个 r0 频道各一行坏消息 WARN；080 内存存储的分片不写心跳。**门禁**（`04`～`06`）：带数据库变量的根项目 `check --continue --rerun-tasks -Dsynaxis.synx.require-frozen-zlib=true`（6 min 14 s）、`test --continue --rerun-tasks` 加 4 线程 counter 严格模式（6 min 7 s）、再加 `grid`（6 min 13 s）三道都 `BUILD SUCCESSFUL`，各 599 个类 4,146 个测试 0 失败、15 跳过（都在根模块：`TestMojangUtils` 9、`PlayerSkinTest` 2、`TranslationIntegrationTest` 3、`TagNbtTest` 1）；根模块 428 个类 3,162 个与 RUN-062 相同，`server-app` 110 个类 553 个，比 RUN-062 多的 1 个就是 `ShardGatesOnlineTest`；结果文件里没有 `AcquirableOwnershipException`；`grid` 那次 `EnvDispatcherThreadsIntegrationTest` 读到 4 条线程与 `grid`，counter 那次的这份结果被 `grid` 那次覆盖、没有留存。**没验到的**：不在线的玩家走进门框只在单元测试里测（替身 `ShardService`、测试给的在线判定），真进程里没有造签票后不走的客户端去走门框；`client-fabric` 没有文件改动，没跑。**清理**：两进程夹具的库已删，分片与机器人进程按 pid 停掉（25611～25614、19611～19614 没有监听），临时目录（夹具、`.venv`、HMAC 密钥文件、Gradle 原始输出）已删；三道门禁在 `$TMPDIR` 写的三份 Kotlin daemon 日志（`kotlin-daemon.2026-10-01.17-04-37-751`、`17-10-57-269`、`17-17-11-203`，内容都指向本 worktree）已删，它们的 daemon 进程已自行退出。`synaxis-pg` 里另有一个 `w3a_bd96776464534f04` 库，建于 2026-09-28，不是本轮的，没有动。
+
+RUN-062 证据：`docs/test-runs/RUN-062/`。`login/`、`transfer/`、`ops/`、`secrets/` 是四组在各自分支上的修前红、反证与全量（各目录的 `00-*` 列出文件与逐条结果），`integrate/` 是合并、跨格拾取的修复与两组评审跟进（`00-index.txt`），`gate/` 是合前门禁与 `TC-PROD-548`（`00-index.txt`）。轮次号：`git fetch` 后 `origin/main` 是 `c820bc65f2`，登记到 RUN-061；与光照会话约定 RUN-062 归本轮，RUN-063 归它重跑 `TC-WORLD-082`、`TC-WORLD-083`。**合前门禁**（`gate/`，每步一个脚本、一次重活锁，锁与 `EXIT` trap 都在脚本顶层）：根项目 `check --continue --rerun-tasks`（14:18:29～14:24:28）与 4 线程 `grid` 严格 `test --continue --rerun`（14:25:35～14:30:57）都 `BUILD SUCCESSFUL`，各 598 个类 4,145 个测试 0 失败、15 跳过（都在根模块：`TestMojangUtils` 9、`PlayerSkinTest` 2、`TranslationIntegrationTest` 3、`TagNbtTest` 1）；根模块 428 个类 3,162 个、`server-app` 109 个类 552 个，比 `c820bc65f2` 多 16 个与 30 个（逐类见 `TC-PROD-505` 第 3 步）；严格那次 `:testing` 的 `EnvDispatcherThreadsIntegrationTest` 结果里有 `env dispatcher threads: 4` 与 `env thread provider: grid`，所有结果 XML 里没有 `AcquirableOwnershipException`。两道都没有红，没有重跑。不带数据库变量的 `:server-app:test` 一次（14:32:18～14:35:28）552 个 0 失败、132 个跳过，给 `TC-PROD-575` 第 3 步的条数。**集成评审跟进**（`integrate/07`，一次重活锁 15:31:23～15:35:29，代码同 `45f4133080`）：`TC-PROD-617` 按改写后的行号 `:326`、`:327` 重跑三步，反证 `2 tests completed, 2 failed`，两类都红在各自的 `:96`，`the connection is still open after PT10S`；`TC-PROD-583` 第 2 步（登录组改过的七个 `src/main` 文件换回 `23982267e9`，`SessionClientTest` 里调新方法的那一条拿掉）在 `Retry-After` 5 下两条红在 `:136`、`:159`，消息与用例相同；不带数据库变量的严格 `grid` `:server-app:test`（15:32:18～15:35:29）552 个 0 失败、132 个跳过，管理包 15 个类 45 个、2 个跳过，是 `TC-PROD-575` 第 3 步的第二次全量。`TC-PROD-548` 照字面跑（14:37:12～14:38:04，一次锁）：八步的结果都与用例相同，`transfer_issued` 恰 1 行，`gm_command` 管理接口的 `synaxis:transfer` 七行与控制台两行同第 5 步，分片日志 WARN / ERROR 0 行；台账有缓冲，第 4、5 步的台账行在第 6 步 SIGTERM 之后读；第 7 步改 `Main.java:268` 后 `installDist`、还原后再 `installDist`。`client-fabric` 下没有文件改动，没跑。**各组**：login 组 `TC-PROD-576`～`585` 在 `1f33976097` 上（修前红 13 条，逐处还原 8 次，12 条既有用例重跑），两种模式的全量根项目 3,158 个、`server-app` 524 个 0 失败；transfer 组 `590`～`597` 在 `703528c9e9` 上，`:server-app:test` 两种模式各 529 个 0 失败；ops 组 `600`～`605`、`607` 在 `d32d1a8096` 上，两种模式各 528 个 0 失败；secrets 组 `610`～`619` 在 `8c3ee11b58` 上，根项目 3,148 个、`server-app` 536 个，严格 grid 第一次红 1 条 `ConfigFileLaunchTest.aShardTakesTheFileOverItsDefaultsAndTheCommandLineOverTheFile`（`:85`，`freePort()` 挑出的端口在子 JVM 绑之前被占，§7 未结案一条），第二次全绿，两次都照记在 `secrets/10-review-full-grid.txt`。四组的评审各在锁下复跑了一批反证，红行与用例一致。secrets 组第二轮约 11:36～11:47 有一段 Gradle 没真正占住重活锁（取锁的 `EXIT` trap 设在 zsh 函数里，函数返回时就放了锁），涉及 `secrets/07`、`08` 与 `09` 的前约 2 分钟；其各条反证后由评审 12:15:33～12:17:15 在锁下复跑、结论一致。**集成轮**（`integrate/`）：跨格拾取修前默认与严格 grid 都 2 条全红（`AcquirableOwnershipException`），修后两种模式都绿，四个反证红在预期处（`TC-PROD-620`～`623`）；login、secrets 两组评审跟进的重跑与反证见 `integrate/03`、`04`。**没验到的**：`TC-PROD-606`（见明细）；job `p10` 没跑，原版客户端收到 `Transfer` 当场断开、10 s 的断开任务对它不起作用这一点只按代码判断，合入 `main` 后看下一次 `p10`。**违规登记**：本轮起步时用系统 `python3` 读过两次 `/tmp/secfix` 下的 JSON 输入（只读，没碰仓库），之后改用仓库外的 `uv venv`；集成评审起步时同样用系统 `python3` 跑过只读的文档比对脚本，之后也改用 `uv venv`。
 
 RUN-061 证据：`docs/test-runs/RUN-061/`（`00-acceptance.txt` 是总记录，`01-check.txt`、`02-grid.txt`、`03-loop-*.txt` 是门禁原始输出）。要点：CI run `36740800681` 第 1 次尝试 `grid` job 红在 `ManagementBacklogIntegrationTest.java:211`，根因是 Java-WebSocket 1.6.0 选择器撤写兴趣前不再看队列（§7 结案）；`TC-PROD-574` 第 2 步与 `TC-PROD-575` 第 1 步的反证在严格 `grid` 下各红在 `:101` 与 `:211`（后者与 CI 同一行同一异常），还原后复绿；带数据库变量的 `server-app` 522 个在计数与严格 `grid` 两种模式下 0 失败 0 跳过，管理包 43 个连跑 5 次 0 失败。拉宽窗口时的线程转储原件在清理临时目录时删了，读数以 §7 与 `00-acceptance.txt` 为准。根构建 `:test` 全量与 `:architecture-tests` 本轮没跑。
 
@@ -8293,6 +8877,7 @@ RUN-003 证据：`docs/test-runs/RUN-003/tc-001.txt`、`docs/test-runs/RUN-003/t
 
 ## 7. 遗留问题
 
+- **`ConfigFileLaunchTest > aShardTakesTheFileOverItsDefaultsAndTheCommandLineOverTheFile` 偶发红：子 JVM 的游戏端口被别人先占（未结案，2026-10-01 安全修复 secrets 组的严格 grid 全量查出）**：`sec/secrets-files` `8c3ee11b58` 的第一次严格 grid 全量里红 1 条（`server-app` 536 条中），120.044 s，红在 `ConfigFileLaunchTest.java:85` 的 `awaitLine`：子 JVM 已读入配置文件，绑游戏端口时 `BindException: Address already in use`，当时不退出，测试等满 120 s；第二次全量照绿（证据 `docs/test-runs/RUN-062/secrets/00-summary.txt` 第七节、`10-review-full-grid.txt`）。根因在测试：`ConfigFileLaunchTest#freePort` 先在回环地址上开一个端口 0 的 `ServerSocket` 拿到端口号、关掉，再交给子 JVM 去绑 `0.0.0.0`，中间这段时间端口可能被本机别的进程占走（当时另一个会话的测试在跑）。同一个 `freePort` 还被 `BindKeysLaunchTest`、`BooleanKeysLaunchTest`、`ShardLaunchTest`、`ShutdownBeforeTheWorldLaunchTest`、`ShutdownSignalLaunchTest`、`OpsPortsLaunchTest` 用着，都有同一个窗口。现在的表现（v0.9.41 的 C-03 合入之后，按代码推断，没有复现）：子 JVM 绑不上即以 `Refusing to start: synaxis.app.port=<端口> cannot be bound: Address already in use` 拒启、以 1 退出，`awaitLine` 见进程已结束当场抛 `no line with "synaxis server-app listening on"`，日志里带这一行，几秒内红，不再等满 120 s；读到这条消息就是撞上了这个竞态，不是被测功能的问题。跟进（默认做法）：这些测试改给子 JVM `synaxis.app.port=0`，由子 JVM 在就绪行回报实际绑上的端口，测试从就绪行读端口再连；`Main.java:359` 的就绪行现在印的是配置值，要先改成印 `server.getPort()`。改之前，同一条红再出现两次（任何会话、任何模式）就排进下一轮
 - ~~`ManagementBacklogIntegrationTest > aPeerThatReadsWhatItIsSentKeepsItsConnection` 偶发红~~ **已结案（2026-10-01）**：CI run `36740800681`（`main` `c46578d24f`）第 1 次尝试，4 线程严格 `grid` 那个 job 红 1 条（`server-app` 521 条中）：`java.net.SocketTimeoutException at ManagementBacklogIntegrationTest.java:211`，即一轮写 100 个 ping 之后读 100 个 pong（12,700 B），10 s 的 soTimeout 读满也没读齐；用时 10.614 s，结果 XML 里这段时间没有关闭连接的 WARN（两行 WARN 都属同类另两条），读到的也不是 EOF，所以服务端既没关连接、也没把这一轮写完。同一 job 的第 2 次尝试通过。**根因在产品，在 Java-WebSocket 1.6.0 的写唤醒，不在出站上限的锁里**：选择器线程在 `WebSocketServer#doWrite` 里，`SocketChannelIOHelper#batch` 把队列写空之后执行 `key.interestOps(OP_READ)` 撤掉写兴趣，撤之前不再看队列；解码线程每回一个 pong 就入队，并经 `onWriteDemand` 登记 `OP_READ | OP_WRITE`、唤醒选择器。入队与登记落在选择器最后一次看到空队列与撤兴趣之间时，登记被覆盖，这些 pong 留在队列里没人写，直到这条连接再有东西入队；测试等这一轮收齐才写下一轮，于是停住，最迟要等库 60 s 一次的探活 ping。`GuardedSocket` 的对象锁不在这条路径上：选择器写 socket、撤兴趣都不拿它，解码线程拿它只为判定与入队，不是死锁；也不是服务端限速，出站上限到限是关连接、不是延后写。**复现**：①不改产品代码，4 线程严格 `grid` 下把这条测试的正文用临时测试类循环 50 次（5,000 轮；另开看门狗线程，一轮超过 5 s 就对测试 JVM 做 `jcmd <pid> Thread.print -l` 并经反射读连接状态）：0 次停住，每轮最长 8.8 ms，每 100 轮 250～260 ms。②拉宽窗口（`TC-PROD-575` 节首：`GuardedSocket` 覆写只在这个窗口里被调的 `isFlushAndClose`，先停 2 ms）：第 0 轮就停住，本类红在 `:211` `SocketTimeoutException`，与 CI 同一行同一异常；看门狗读到连接 `outQueue=100`、`interestOps=1`（只等读），上次选中时的 `readyOps=5`（可读、可写），线程转储里 `WebSocketSelector` 停在 `KQueue.poll`（`WebSocketServer.java:419` 的 `select`），`WebSocketWorker` 空闲在 `LinkedBlockingQueue.take`，没有线程在等锁。窗口只有几条指令宽，选择器线程恰好在里面被抢占才会撞上；CI 那次的日志里 `:synx:test`（16:07:48 起）与 `:testing:test`（16:08:35 起）在 `:server-app:test`（16:06:28 起）结束之前就开始了，本类在 16:09:42～16:09:52 跑，runner 当时的负载没有别的读数。**修法**：`ManagementServer.Endpoint` 另起虚拟线程 `Syn-Management-Writes`，每 100 ms（`WRITE_RECHECK`）给队列非空而没有写兴趣的连接经 `onWriteDemand` 补登记（`docs/DESIGN-PROD.md` v0.9.38，`TC-PROD-574`、`TC-PROD-575`）。测试的 10 s 界不改：它测的是边收边读的连接不被关、每轮都收齐，产品现在让这样留下的帧至多晚约 100 ms 写出，真停住时仍红在 `:211`（`TC-PROD-575` 第 1 步）。**修后读数**：拉宽窗口时 1,000 轮每轮都被留下、每轮至多 110.9 ms 写出，本类 3 条通过（读的那条 11.4～11.6 s）；不拉宽时 50 次 × 100 轮每轮最长 2.5 ms；新类 `ManagementWriteRecheckIntegrationTest` 放进队列的回复 2～107 ms 后收到，不起补登记线程时红在 `:101`；默认与 4 线程严格 `grid` 的 `:server-app:test` 全量各 522 个 0 失败（未设数据库变量，125 个跳过）。本组没有登记执行轮次，由集成轮登记。
 - ~~`PermissionsIntegrationTest > withoutADatabaseNobodyHoldsANodeAndTheCommandSaysSo` 偶发红~~ **已结案（2026-09-30）**：`prod/integrate-059` 的全量 `check`（带数据库变量）红 1 条（`server-app` 521 条中）：`java.util.NoSuchElementException at PermissionsIntegrationTest.java:351`，即 `events.getFirst()` 读到空表。**根因在测试**，与 2026-09-28 结案的 `ModerationIntegrationTest` 同一个：`RoleCommand` 先回 `synaxis:role-unavailable`，命令返回之后才把 `gm_command` 交给台账回调，测试只等到回复就读回调记下的属性。`ManagementMethods` 是先记台账再回复，没有这个问题（逐个查过 `server-app` 测试里读台账结果的断言，只有这一处）。**修法**：断言前等回调记下（`await(… !events.isEmpty() …)`，5 s 为失败时限）。**复现与反证**：在测试自己的台账回调里先 `Thread.sleep(200)` 再记下：去掉那一步等待时 `8 tests completed, 1 failed`，红在 `:351` `NoSuchElementException`，与门禁同一句；留着时同样的延迟下全绿；4 线程严格 `grid` 下 8 个全绿。
 - **`TC-WORLD-054` 在同机档有超 50 ms 的 tick（未结案：用例改写已处理、由 `TC-WORLD-099` 取代，分机档待跑；2026-09-30 RUN-057 查出，RUN-058 用默认堆重跑仍有）**：RUN-057（分片 1 GiB 堆）walk 4 个、ride 7 个（最长 90.4、91.2 ms），判据是 0 个；11 个里 9 个与一次 G1 暂停重叠（54.0～86.7 ms；本机 `load1` 3.9～18.1），另 2 个（62.7、70.2 ms）前后没有 GC 暂停。RUN-058 改用 `bin/server-shard` 的默认参数（4 GiB 堆）并开 GC 日志：walk 5 个（最长 71.2 ms），4 个与 G1 暂停重叠，1 个（56.5 ms）没有；ride 前 8 分钟 6 个、全部与 G1 暂停重叠，之后别的会话把 `load1` 推到 47，又有 110 个，101 个没有暂停。堆加到 4 GiB 不缩短暂停（walk 47 次暂停最长 68.5 ms，G1 按 `MaxGCPauseMillis=50` 把每次回收前的堆压在 207～604 MB）。两轮的其余判据都达标（零编码、区块下行 −1.6% 与 −2.9%、200/200 登录 0 掉线、每人区块数）。**用户 2026-09-30 拍板**：M3-C 的 tick 两项与 M3-E 同一规定，只在分机档判定，同机档只登记（`docs/DESIGN-M3.md` §15、§19「压测量出真实区块下行」、§28.1）。跟进：①改写本用例（已处理，2026-09-30）：本 ID 废弃，由 `TC-WORLD-099` 取代，前置分出分机档与同机档，tick P99 < 50 ms、超 50 ms 的 tick 0 个只在分机档判定，同机档登记为补充读数（照 `TC-WORLD-081` 的写法）；§2 的 `REQ-M3-008`、`REQ-M3-014` 两行与 §5 的 M3-C 一段已换成新 ID。②分机档到位后跑 `TC-WORLD-099`；分机档上若同样有与 G1 暂停重叠的慢 tick，GC 参数（`MaxGCPauseMillis`、收集器）或判据怎么改回到用户。关联：`docs/DESIGN-M3.md` §28.2「M3-C 的 200 机器人两档在同机档有超 50 ms 的 tick」，RUN-057 `04-054-walk.txt`、`05-054-ride.txt`，RUN-058 `06-gc-vs-slow-ticks.txt`。

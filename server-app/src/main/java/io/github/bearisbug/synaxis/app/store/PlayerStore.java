@@ -707,6 +707,20 @@ public final class PlayerStore implements ShutdownParticipant {
     }
 
     /**
+     * Whether a player is §11.3 {@code online} here, the state a transfer starts from: false while it
+     * loads, saves, is in transit or fenced, once it left, and from the shutdown save on. A caller
+     * that does work before it asks for a transfer (the gates read the directory) skips it for a
+     * player {@link #transferOut} would turn away.
+     *
+     * @param player the player
+     * @return true if {@link #transferOut} would take the player now
+     */
+    public boolean isOnline(Player player) {
+        final Record record = records.get(player);
+        return !closing && record != null && record.state == LeaseState.ONLINE;
+    }
+
+    /**
      * {@code online → saving → in_transit} for a transfer ({@code docs/DESIGN-PROD.md} §11.3,
      * {@code API-PROD-028} issuing ③ and ④): freezes the player, snapshots it on its tick thread
      * and writes it, giving the lease back in the same transaction. One attempt: a failed write
@@ -1051,8 +1065,13 @@ public final class PlayerStore implements ShutdownParticipant {
 
     private void refreshPresence() {
         final Map<UUID, String> online = new HashMap<>();
-        for (Record record : records.values())
-            online.put(record.account, record.state == LeaseState.LOADING ? "loading" : "online");
+        for (Record record : records.values()) {
+            online.put(record.account, switch (record.state) {
+                case LOADING -> "loading";
+                case IN_TRANSIT -> "in_transit";
+                default -> "online";
+            });
+        }
         redis.presence(online, sessionId());
     }
 

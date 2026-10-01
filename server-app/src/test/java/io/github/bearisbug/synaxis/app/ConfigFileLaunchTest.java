@@ -67,7 +67,7 @@ public class ConfigFileLaunchTest {
     @Test
     public void aShardTakesTheFileOverItsDefaultsAndTheCommandLineOverTheFile(@TempDir Path directory) throws Exception {
         final int port = freePort();
-        Files.writeString(directory.resolve(ConfigFile.DEFAULT_FILE), String.join("\n",
+        ConfigFileTest.write(directory.resolve(ConfigFile.DEFAULT_FILE), String.join("\n",
                 "# docs/TEST.md TC-PROD-442",
                 "synaxis.app.log=stdout",
                 "synaxis.app.auth=offline",
@@ -122,8 +122,8 @@ public class ConfigFileLaunchTest {
     @Test
     public void anUnknownKeyRefusesBothLaunchersBeforeAnythingIsBound(@TempDir Path directory) throws Exception {
         final Path named = directory.resolve("shard.properties");
-        Files.writeString(named, "synaxis.motd=Synaxis\nsynaxis.max-player=1\n");
-        Files.writeString(directory.resolve(ConfigFile.DEFAULT_FILE), "synaxis.max-player=1\n");
+        ConfigFileTest.write(named, "synaxis.motd=Synaxis\nsynaxis.max-player=1\n");
+        ConfigFileTest.write(directory.resolve(ConfigFile.DEFAULT_FILE), "synaxis.max-player=1\n");
         // On the command line, so that a launcher that let the file through would come up on a free port
         final String[] launch = {"-Dsynaxis.app.log=stdout", "-Dsynaxis.app.auth=offline", "-Dsynaxis.app.core-mode=on",
                 "-Dsynaxis.app.port=" + freePort(), "-Dsynaxis.app.metrics.bind=127.0.0.1:0"};

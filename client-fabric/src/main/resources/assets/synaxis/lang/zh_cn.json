@@ -61,5 +61,7 @@
 	"synaxis:command-transfer-error": "转服 %s 失败，原因见服务端日志。",
 	"synaxis.order.no-path": "到不了那里。",
 	"synaxis.order.not-owner": "不是你的单位。",
-	"synaxis.order.busy": "服务器忙，请重试。"
+	"synaxis.order.busy": "服务器忙，请重试。",
+	"synaxis.farview.downloading": "正在下载远景：%s%%",
+	"synaxis.farview.preparing": "正在准备远景：%s%%"
 }

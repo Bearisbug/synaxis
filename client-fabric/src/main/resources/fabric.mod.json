@@ -27,5 +27,8 @@
 		"minecraft": "${minecraftVersion}",
 		"java": ">=25",
 		"fabric-networking-api-v1": "*"
+	},
+	"suggests": {
+		"distanthorizons": "3.3.2"
 	}
 }

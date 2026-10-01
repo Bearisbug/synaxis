@@ -279,9 +279,14 @@ public final class Main {
         final HostMetrics metrics = HostMetrics.register(process, new HostMetrics.Sources(ledger::droppedTotal,
                 store.store(), store.session(), store.database(), store.redis()));
         serveMetrics(metrics, metricsBind);
+        warnOfTheWildcard(HostMetrics.BIND_PROPERTY, metricsBind, "the metrics, which ask for no authentication");
         final ManagementMethods managementMethods = new ManagementMethods(process, commands, store.store(),
                 store.moderation(), store.session(), shardService, shardId, ledger::record);
         final ManagementServer management = ManagementServer.serve(managementSettings, process, managementMethods);
+        if (managementSettings.enabled()) {
+            warnOfTheWildcard(ManagementSettings.BIND_PROPERTY, managementSettings.bind(),
+                    "the management interface, whose token crosses the network in clear text (no TLS)");
+        }
         if (coreMode != CoreMode.Setting.ON) host.enable(PluginHost.discover(), selectedPlugins);
 
         // (5) Which mode this process serves in. Gameplay needs both halves — an admission provider
@@ -332,7 +337,16 @@ public final class Main {
         process.scheduler().buildShutdownTask(watchdog::stop);
 
         // (6) bind, freeze the registries, accept, start the dispatcher and the tick thread.
-        server.start(BIND_ADDRESS, port);
+        try {
+            server.start(BIND_ADDRESS, port);
+        } catch (RuntimeException e) {
+            if (!(e.getCause() instanceof IOException cause)) throw e;
+            // Nothing ticks yet: the shutdown tasks above close what this start opened, the ledger
+            // among them, and main refuses the start as it does for a metrics or management port
+            process.scheduler().shutdown();
+            throw new IllegalArgumentException(PORT_PROPERTY + "=" + port + " cannot be bound: " + cause.getMessage(),
+                    cause);
+        }
         // Not earlier: a stop begun before this would run ahead of the shutdown tasks above (§11.4)
         managementMethods.serverStarted();
 
@@ -580,6 +594,22 @@ public final class Main {
             throw new IllegalArgumentException(HostMetrics.BIND_PROPERTY + "=" + BindAddress.format(bind)
                     + " cannot be bound: " + e.getMessage(), e);
         }
+    }
+
+    /**
+     * One WARN of the boot self-check for an operations port bound to the wildcard address
+     * ({@code docs/DESIGN-PROD.md} {@code API-PROD-015}, {@code API-PROD-022}): it then listens on
+     * every interface of the host. A specific internal address is the deployment both are meant for
+     * and gets no line.
+     *
+     * @param key    the bind key
+     * @param bind   what it is set to
+     * @param served what every interface then serves
+     */
+    private static void warnOfTheWildcard(String key, InetSocketAddress bind, String served) {
+        if (bind.getAddress() != null && bind.getAddress().isAnyLocalAddress())
+            LOGGER.warn("{}={} is the wildcard address: every interface of this host serves {}", key,
+                    BindAddress.format(bind), served);
     }
 
     /**

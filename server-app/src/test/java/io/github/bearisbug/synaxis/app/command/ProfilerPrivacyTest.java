@@ -39,6 +39,11 @@ class ProfilerPrivacyTest {
     private static final List<String> LEFT_OUT = List.of(EventsJFR.PLAYER_CHAT, EventsJFR.PLAYER_COMMAND,
             EventsJFR.SERVER_PING, "jdk.SystemProcess", "jdk.SocketRead", "jdk.SocketWrite");
 
+    /**
+     * 42 characters, within the 17 to 127 JFR keeps in the string pool of a chunk, which the recordings
+     * sharing the chunk share: the filter must leave it out of the file too, not only the event.
+     */
+    private static final String POOLED_CANARY = "canary-pooled-0123456789-0123456789-abcdef";
     private static final String SECRET_PROPERTY = "synaxis.test.profile-password";
     private static final String SECRET_VALUE = "canary-4f1d";
 
@@ -93,6 +98,7 @@ class ProfilerPrivacyTest {
             final Profiler.Started started = assertInstanceOf(Profiler.Started.class,
                     new Profiler(directory, "test", Clock.systemUTC()).start(Profiler.MIN_SECONDS));
             commitPlayerEvents();
+            EventsJFR.newPlayerChat(UUID.randomUUID(), POOLED_CANARY).commit();
             final Path file = started.written().get(10, TimeUnit.SECONDS);
             other.stop();
             final Path otherFile = directory.resolve("other.jfr");
@@ -101,6 +107,10 @@ class ProfilerPrivacyTest {
             final List<RecordedEvent> otherEvents = RecordingFile.readAllEvents(otherFile);
             assertTrue(count(otherEvents, EventsJFR.PLAYER_CHAT) > 0, "the other recording has the chat");
             assertTrue(count(otherEvents, "jdk.SystemProcess") > 0, "and the process list");
+            assertTrue(new String(Files.readAllBytes(otherFile), StandardCharsets.ISO_8859_1).contains(POOLED_CANARY),
+                    "the other recording's file has the long chat line");
+            assertFalse(new String(Files.readAllBytes(file), StandardCharsets.ISO_8859_1).contains(POOLED_CANARY),
+                    "the long chat line is nowhere in the file handed over");
             final List<RecordedEvent> events = RecordingFile.readAllEvents(file);
             for (String event : LEFT_OUT) assertEquals(0, count(events, event), event);
         }

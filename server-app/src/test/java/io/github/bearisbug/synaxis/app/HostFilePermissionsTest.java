@@ -68,4 +68,16 @@ class HostFilePermissionsTest {
         assertEquals("rwx------", permissions(reports));
         assertEquals("rw-------", permissions(file));
     }
+
+    @Test
+    void aPartialFileAKilledProcessLeftIsReplacedByAnOwnerOnlyOne() throws IOException {
+        Files.writeString(directory.resolve("events-r01-c1-20260922.jsonl"), "{\"event\":\"player_joined\"}\n");
+        // Left by a process killed while compressing, with the mode of a version that left it to the umask
+        final Path partial = Files.writeString(directory.resolve("events-r01-c1-20260922.jsonl.gz.partial"), "half");
+        Files.setPosixFilePermissions(partial, PosixFilePermissions.fromString("rw-r--r--"));
+
+        new EventLedger(directory, "r01-c1", EventLedger.DEFAULT_MAX_BYTES_PER_DAY).housekeep(LocalDate.of(2026, 9, 23));
+
+        assertEquals("rw-------", permissions(directory.resolve("events-r01-c1-20260922.jsonl.gz")));
+    }
 }

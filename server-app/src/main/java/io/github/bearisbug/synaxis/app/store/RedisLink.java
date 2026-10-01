@@ -73,8 +73,8 @@ public final class RedisLink implements AutoCloseable {
     /**
      * Connects to Redis lazily: an unreachable Redis at start is a warning, not a refusal.
      *
-     * @param url     {@code redis://[user:password@]host:port[/database]}, the reserved characters of
-     *                the password percent-encoded
+     * @param url     {@code redis://[user:password@]host:port[/database]}, every character of the
+     *                password but letters, digits and {@code -._~} percent-encoded
      * @param shardId the id of this shard, the name of its kick channel
      * @return the link
      * @throws IllegalArgumentException if the URL is not one, naming the variable but not the URL
@@ -120,7 +120,7 @@ public final class RedisLink implements AutoCloseable {
      */
     private static IllegalArgumentException notARedisUrl() {
         return new IllegalArgumentException(StoreSettings.REDIS_URL + " is not redis://[user:password@]host:port"
-                + "[/database]; percent-encode the reserved characters of the password");
+                + "[/database]; percent-encode every character of the password but letters, digits and -._~");
     }
 
     /**

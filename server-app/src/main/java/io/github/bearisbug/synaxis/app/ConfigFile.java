@@ -20,6 +20,7 @@ import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.function.BiConsumer;
 import java.util.function.UnaryOperator;
+import java.util.regex.Pattern;
 
 /**
  * The configuration file {@value #DEFAULT_FILE} ({@code docs/DESIGN-PROD.md} {@code API-PROD-023}).
@@ -172,11 +173,29 @@ public final class ConfigFile {
             "synaxis.app.map",
             "synaxis.app.units")));
 
+    /** See {@link #isSecret}. */
+    private static final Pattern SECRET_NAME = Pattern.compile("(?i).*(password|secret|token|credential).*");
+
     /** The others' write bit and the sticky bit of a {@code unix:mode}. */
     private static final int OTHERS_WRITE = 0002;
     private static final int STICKY = 01000;
 
     private ConfigFile() {
+    }
+
+    /**
+     * Returns whether the value of a property is a secret by its name: the name holds
+     * {@code password}, {@code secret}, {@code token} or {@code credential}, in any case. The
+     * repository keeps its secrets in environment variables ({@code SYNAXIS_*}); this covers one
+     * passed as a system property all the same, which a crash report prints as {@code <set>} and a
+     * profile recording leaves out ({@code docs/DESIGN-PROD.md} {@code API-PROD-013},
+     * {@code API-PROD-011}).
+     *
+     * @param name the name of the property
+     * @return whether its value is a secret
+     */
+    public static boolean isSecret(String name) {
+        return SECRET_NAME.matcher(name).matches();
     }
 
     /**

@@ -29,7 +29,6 @@ import java.util.Properties;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.function.Supplier;
-import java.util.regex.Pattern;
 
 /**
  * The crash report writer of {@code docs/DESIGN-PROD.md} {@code API-PROD-013}: one text file per
@@ -49,13 +48,6 @@ final class CrashReports {
 
     /** What a secret value is written as, so that the report says it was set without leaking it. */
     static final String SECRET_MARK = "<set>";
-
-    /**
-     * Configuration keys whose value is a secret. The repository keeps secrets in environment
-     * variables ({@code SYNAXIS_*}, all of which are masked); this covers a secret passed as a
-     * system property all the same.
-     */
-    private static final Pattern SECRET_KEY = Pattern.compile("(?i).*(password|secret|token|credential).*");
 
     private static final DateTimeFormatter FILE_TIME = DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss");
 
@@ -180,7 +172,7 @@ final class CrashReports {
     }
 
     private static String masked(String name, String value) {
-        return SECRET_KEY.matcher(name).matches() ? SECRET_MARK : value;
+        return ConfigFile.isSecret(name) ? SECRET_MARK : value;
     }
 
     private static String maskedArgument(String argument) {

@@ -1,0 +1,164 @@
+# Green run and counter proofs on the fix (branch sec/transfer-ghost, e9e3ea6945 + 5acee52a88), default mode, database variables set,
+# one batch under the heavy lock 2026-10-01 11:01:34 to 11:04:38 (UTC+8). Each counter proof: one perl substitution of the line quoted,
+# :server-app:test --rerun --tests <class>, then git checkout HEAD -- <file>; git status --short after the batch showed only docs/DESIGN-PROD.md
+# (edited by hand meanwhile). PermissionsIntegrationTest prints stack traces of its own injected failures; those are log lines, not failures.
+
+## green: both new classes on e9e3ea6945 + 5acee52a88
+  start 2026-10-01 11:01:34
+  BUILD SUCCESSFUL in 32s
+  end 2026-10-01 11:02:07 rc=0
+  RoleHandOutIntegrationTest: tests=2 failures=0 errors=0 skipped=0 time=2.185s
+    aRoleTakenBackIsNotHandedOutFromWhatTheShardReadBefore(Env) 1.757s PASS
+    aHolderHandsOutNothingThatOutlivesItsOwnGrants(Env) 0.419s PASS
+  TransferNotFollowedIntegrationTest: tests=4 failures=0 errors=0 skipped=0 time=21.52s
+    aTransferWhoseEventAPluginCancelledLetsThePlayerGoAllTheSame(Env) 10.348s PASS
+    aClientThatIgnoresItsTransferIsDisconnected(Env) 10.412s PASS
+    onlyAPlayerATransferWouldTakeIsOnlineToTheStore(Env) 0.3s PASS
+    thePresenceRefreshReportsAPlayerInTransitAsInTransit(Env) 0.459s PASS
+
+## TC-PROD-590 step 3 / 591 step 3: TicketIssuer 'if (player.isOnline()) player.kick(' -> 'if (player.isOnline() && Boolean.getBoolean("proof.never")) player.kick('
+  start 2026-10-01 11:02:07
+  TransferNotFollowedIntegrationTest > aTransferWhoseEventAPluginCancelledLetsThePlayerGoAllTheSame(Env) FAILED
+      java.lang.AssertionError at TransferNotFollowedIntegrationTest.java:128
+  TransferNotFollowedIntegrationTest > aClientThatIgnoresItsTransferIsDisconnected(Env) FAILED
+      java.lang.AssertionError at TransferNotFollowedIntegrationTest.java:128
+  4 tests completed, 2 failed
+  > Task :server-app:test FAILED
+  BUILD FAILED in 38s
+  end 2026-10-01 11:02:45 rc=1
+  TransferNotFollowedIntegrationTest: tests=4 failures=2 errors=0 skipped=0 time=32.907s
+    aTransferWhoseEventAPluginCancelledLetsThePlayerGoAllTheSame(Env) 16.829s FAIL
+      java.lang.AssertionError: not by the deadline: the source lets go of a player nobody told to leave
+      at TransferNotFollowedIntegrationTest.java:128
+      at TransferNotFollowedIntegrationTest.java:196
+    aClientThatIgnoresItsTransferIsDisconnected(Env) 15.403s FAIL
+      java.lang.AssertionError: not by the deadline: the source lets go of a client that stays
+      at TransferNotFollowedIntegrationTest.java:128
+      at TransferNotFollowedIntegrationTest.java:161
+    onlyAPlayerATransferWouldTakeIsOnlineToTheStore(Env) 0.27s PASS
+    thePresenceRefreshReportsAPlayerInTransitAsInTransit(Env) 0.397s PASS
+
+## TC-PROD-592 step 3: PlayerStore 'case IN_TRANSIT -> "in_transit";' -> 'case IN_TRANSIT -> "online";'
+  start 2026-10-01 11:02:45
+  TransferNotFollowedIntegrationTest > thePresenceRefreshReportsAPlayerInTransitAsInTransit(Env) FAILED
+      org.opentest4j.AssertionFailedError at TransferNotFollowedIntegrationTest.java:220
+  4 tests completed, 1 failed
+  > Task :server-app:test FAILED
+  BUILD FAILED in 29s
+  end 2026-10-01 11:03:15 rc=1
+  TransferNotFollowedIntegrationTest: tests=4 failures=1 errors=0 skipped=0 time=23.368s
+    aTransferWhoseEventAPluginCancelledLetsThePlayerGoAllTheSame(Env) 11.992s PASS
+    aClientThatIgnoresItsTransferIsDisconnected(Env) 10.468s PASS
+    onlyAPlayerATransferWouldTakeIsOnlineToTheStore(Env) 0.385s PASS
+    thePresenceRefreshReportsAPlayerInTransitAsInTransit(Env) 0.512s FAIL
+      org.opentest4j.AssertionFailedError: the refresh keeps it in transit: {"shard_id":"r2-c1-8428991d","session_id":1,"state":"online"} ==> expected: <true> but was: <false>
+      at TransferNotFollowedIntegrationTest.java:220
+
+## TC-PROD-593 step 2: PlayerStore '... && record.state == LeaseState.ONLINE;' -> '... && record.state != LeaseState.LOADING;'
+  start 2026-10-01 11:03:16
+  TransferNotFollowedIntegrationTest > onlyAPlayerATransferWouldTakeIsOnlineToTheStore(Env) FAILED
+      org.opentest4j.AssertionFailedError at TransferNotFollowedIntegrationTest.java:234
+  4 tests completed, 1 failed
+  > Task :server-app:test FAILED
+  BUILD FAILED in 31s
+  end 2026-10-01 11:03:47 rc=1
+  TransferNotFollowedIntegrationTest: tests=4 failures=1 errors=0 skipped=0 time=23.538s
+    aTransferWhoseEventAPluginCancelledLetsThePlayerGoAllTheSame(Env) 12.236s PASS
+    aClientThatIgnoresItsTransferIsDisconnected(Env) 10.557s PASS
+    onlyAPlayerATransferWouldTakeIsOnlineToTheStore(Env) 0.337s FAIL
+      org.opentest4j.AssertionFailedError: in transit ==> expected: <false> but was: <true>
+      at TransferNotFollowedIntegrationTest.java:234
+    thePresenceRefreshReportsAPlayerInTransitAsInTransit(Env) 0.397s PASS
+
+## TC-PROD-594 step 3: RoleStore '+ "WHERE account_role.expires_at <= now()"' -> '+ "WHERE true"'
+  start 2026-10-01 11:03:47
+  RoleHandOutIntegrationTest > aHolderHandsOutNothingThatOutlivesItsOwnGrants(Env) FAILED
+      org.opentest4j.AssertionFailedError at RoleHandOutIntegrationTest.java:144
+  2 tests completed, 1 failed
+  > Task :server-app:test FAILED
+  BUILD FAILED in 11s
+  end 2026-10-01 11:03:58 rc=1
+  RoleHandOutIntegrationTest: tests=2 failures=1 errors=0 skipped=0 time=2.04s
+    aRoleTakenBackIsNotHandedOutFromWhatTheShardReadBefore(Env) 1.655s PASS
+    aHolderHandsOutNothingThatOutlivesItsOwnGrants(Env) 0.375s FAIL
+      org.opentest4j.AssertionFailedError: nor does a holder whose grants never run out lift it ==> expected: <{helper=never, mod=2026-10-02 11:03:57.679342+08}> but was: <{helper=never, mod=never}>
+      at RoleHandOutIntegrationTest.java:144
+
+## TC-PROD-594 step 4: RoleCommand 'permissions.handOut(target, roleId, own.expiresAt())' -> 'permissions.handOut(target, roleId, null)'
+  start 2026-10-01 11:03:58
+  RoleHandOutIntegrationTest > aHolderHandsOutNothingThatOutlivesItsOwnGrants(Env) FAILED
+      org.opentest4j.AssertionFailedError at RoleHandOutIntegrationTest.java:149
+  2 tests completed, 1 failed
+  > Task :server-app:test FAILED
+  BUILD FAILED in 7s
+  end 2026-10-01 11:04:06 rc=1
+  RoleHandOutIntegrationTest: tests=2 failures=1 errors=0 skipped=0 time=2.003s
+    aRoleTakenBackIsNotHandedOutFromWhatTheShardReadBefore(Env) 1.593s PASS
+    aHolderHandsOutNothingThatOutlivesItsOwnGrants(Env) 0.401s FAIL
+      org.opentest4j.AssertionFailedError: what it hands out runs out when its own grants start to ==> expected: <{helper=2026-10-02 11:04:05.469136+08, mod=2026-10-02 11:04:05.469136+08}> but was: <{helper=never, mod=never}>
+      at RoleHandOutIntegrationTest.java:149
+
+## TC-PROD-595 step 3: HostPermissions#grantsOf body -> 'return loaded.getOrDefault(player, new Entry(RoleStore.Grants.NONE, 0)).grants();'
+  start 2026-10-01 11:04:06
+  RoleHandOutIntegrationTest > aRoleTakenBackIsNotHandedOutFromWhatTheShardReadBefore(Env) FAILED
+      org.opentest4j.AssertionFailedError at RoleHandOutIntegrationTest.java:180
+  RoleHandOutIntegrationTest > aHolderHandsOutNothingThatOutlivesItsOwnGrants(Env) FAILED
+      org.opentest4j.AssertionFailedError at RoleHandOutIntegrationTest.java:156
+  2 tests completed, 2 failed
+  > Task :server-app:test FAILED
+  BUILD FAILED in 7s
+  end 2026-10-01 11:04:14 rc=1
+  RoleHandOutIntegrationTest: tests=2 failures=2 errors=0 skipped=0 time=2.626s
+    aRoleTakenBackIsNotHandedOutFromWhatTheShardReadBefore(Env) 2.133s FAIL
+      org.opentest4j.AssertionFailedError: expected: <[role grant b8249a92-3995-4222-a729-d8b642625624 helper -> above_sender, role grant b3fbc9ba-5354-4866-a00a-720d0990f658 mod -> above_sender]> but was: <[role grant b8249a92-3995-4222-a729-d8b642625624 helper -> ok, role grant b3fbc9ba-5354-4866-a00a-720d0990f658 mod -> ok]>
+      at RoleHandOutIntegrationTest.java:180
+    aHolderHandsOutNothingThatOutlivesItsOwnGrants(Env) 0.483s FAIL
+      org.opentest4j.AssertionFailedError: an expired grant stays expired ==> expected: <{helper=never, mod=past}> but was: <{helper=never, mod=later}>
+      at RoleHandOutIntegrationTest.java:156
+
+## TC-PROD-595 step 4: HostPermissions 'if (!PermissionNodes.covers(own.nodes(), RoleCommand.NODE)) return false;' -> '... && Boolean.getBoolean("proof.never")) return false;'
+  start 2026-10-01 11:04:14
+  RoleHandOutIntegrationTest > aRoleTakenBackIsNotHandedOutFromWhatTheShardReadBefore(Env) FAILED
+      org.opentest4j.AssertionFailedError at RoleHandOutIntegrationTest.java:180
+  2 tests completed, 1 failed
+  > Task :server-app:test FAILED
+  BUILD FAILED in 7s
+  end 2026-10-01 11:04:21 rc=1
+  RoleHandOutIntegrationTest: tests=2 failures=1 errors=0 skipped=0 time=2.116s
+    aRoleTakenBackIsNotHandedOutFromWhatTheShardReadBefore(Env) 1.638s FAIL
+      org.opentest4j.AssertionFailedError: expected: <[role grant 698166fe-487d-4e4f-af7c-7882f358e6a8 helper -> above_sender, role grant e5dacc87-aca7-4ad4-a589-8a0998fce107 mod -> above_sender]> but was: <[role grant 698166fe-487d-4e4f-af7c-7882f358e6a8 helper -> above_sender, role grant e5dacc87-aca7-4ad4-a589-8a0998fce107 mod -> o …
+      at RoleHandOutIntegrationTest.java:180
+    aHolderHandsOutNothingThatOutlivesItsOwnGrants(Env) 0.471s PASS
+
+## TC-PROD-596 step 1 (TC-PROD-215 step 4 rewritten): RoleCommand 'if (own != null && !permissions.mayHandOut(own, roleId)) {' -> '... && Boolean.getBoolean("proof.never")) {'
+  start 2026-10-01 11:04:21
+  RoleEscalationIntegrationTest > aPlayerOnlyHandsOutRolesItsOwnNodesCover(Env) FAILED
+      org.opentest4j.AssertionFailedError at RoleEscalationIntegrationTest.java:114
+  19 tests completed, 1 failed
+  > Task :server-app:test FAILED
+  BUILD FAILED in 16s
+  end 2026-10-01 11:04:38 rc=1
+  PermissionsIntegrationTest: tests=8 failures=0 errors=0 skipped=0 time=7.557s
+    aNodeOutsideTheGrammarIsRefusedByTheDatabase() 0.796s PASS
+    aChangeReachesAnotherShardThroughRedisWithinFiveSeconds(Env) 2.023s PASS
+    aRevocationWhileALoginReadsTheRolesIsNotLost(Env) 0.287s PASS
+    aLoginWhoseRolesCannotBeReadHoldsNoneUntilTheNextRead(Env) 1.243s PASS
+    theConsoleGrantsRevokesAndListsAndEveryRunIsOneEvent(Env) 0.319s PASS
+    withoutRedisTheRefreshCatchesUpWithinItsPeriod(Env) 2.26s PASS
+    withoutADatabaseNobodyHoldsANodeAndTheCommandSaysSo(Env) 0.253s PASS
+    theNodeDecidesTheCommandAndThePermissionLevelDoesNot(Env) 0.366s PASS
+  RoleEscalationIntegrationTest: tests=1 failures=1 errors=0 skipped=0 time=0.318s
+    aPlayerOnlyHandsOutRolesItsOwnNodesCover(Env) 0.318s FAIL
+      org.opentest4j.AssertionFailedError: expected: <[role grant 5ffe6af4-0fb0-4b27-9f3d-583bb2a4db4d gm -> above_sender, role grant 695e407a-0d43-4982-9134-c2f689488873 root -> above_sender, role revoke 92657605-2d9c-4adf-bb3b-0b76a04a0e9d gm -> above_sender, role grant 695e407a-0d43-4982-9134-c2f689488873 helper -> ok, role grant 6 …
+      at RoleEscalationIntegrationTest.java:114
+  PermissionNodesTest: tests=10 failures=0 errors=0 skipped=0 time=0.023s
+    aWildcardCoversWholeSegmentsBelowItsPrefix() 0.001s PASS
+    heldNodesIncludeARoleNodeOnlyWhenTheyCoverAllOfIt() 0.0s PASS
+    [1] &quot;gm.*&quot; 0.002s PASS
+    [2] &quot;*&quot; 0.0s PASS
+    [3] &quot;GM.ban&quot; 0.001s PASS
+    [4] &quot;gm..ban&quot; 0.0s PASS
+    [5] &quot;.gm&quot; 0.0s PASS
+    [6] &quot;gm.&quot; 0.0s PASS
+    [7] &quot;gm ban&quot; 0.0s PASS
+    [8] &quot;&quot; 0.0s PASS

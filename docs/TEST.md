@@ -14,6 +14,7 @@
 
 | 日期 | 改动 | 作者 |
 | --- | --- | --- |
+| 2026-10-01 | 分支 `sec/transfer-ghost`，跟进 `docs/DESIGN-PROD.md` v0.9.40（安全审查 B-01 签票后不走的客户端、C-02 `gm.role` 的授予判定只看本分片内存），不登执行轮次，证据在 `docs/test-runs/RUN-062/transfer/`。**新增 §4「生产就绪 · 安全修复：transfer（转服幽灵与 `gm.role` 时效）」七条 `TC-PROD-590`～`TC-PROD-596`**：两个新类 `TransferNotFollowedIntegrationTest`（4 条）与 `RoleHandOutIntegrationTest`（2 条），都要数据库前置；修复前的红在基线 `23982267e9` 上实跑过（5 条全红），八次反证有齿都按写的那一行变红。**改写**：`TC-PROD-215` 第 4 步的反证行随 `RoleCommand#execute` 改写，按新行重跑结果不变（`19 tests completed, 1 failed`，红在 `RoleEscalationIntegrationTest.java:114`）。**条数**：`:server-app:test` 全量 +6（本组的两个新类）；`TC-PROD-486` 第 3 步、`505` 第 3 步、`510` 第 2 步、`529` 第 4 步、`549` 第 2 步的条数不改，由集成轮统一改。§5 加一行 | Bearisbug |
 | 2026-10-01 | 分支 `prod/mgmt-timeout`，跟进 `docs/DESIGN-PROD.md` v0.9.38（管理连接出站队列里没人写的帧），不登执行轮次。**§7 结案** `ManagementBacklogIntegrationTest > aPeerThatReadsWhatItIsSentKeepsItsConnection` 的 CI 偶发红（run `36740800681` 第 1 次尝试，4 线程严格 `grid`，红在 `:211`）：根因在产品，Java-WebSocket 1.6.0 的选择器写空队列后撤写兴趣、撤之前不再看队列，其间入队的 pong 没人写。**新增 §4「生产就绪 · 管理连接出站队列里没人写的帧」两条**，反证都实跑过：`TC-PROD-574`（`REQ-PROD-032`，§19 场景；新类 `ManagementWriteRecheckIntegrationTest` 把一条回复直接放进队列、不登记写兴趣；反证：不起补登记线程，红在 `:101`）、`TC-PROD-575`（拉宽选择器的窗口：不补登记时 `ManagementBacklogIntegrationTest` 红在 `:211`，与 CI 同一行同一异常；补登记时每轮约 107 ms 收齐、通过；回归）。`ManagementBacklogIntegrationTest` 不改，`TC-PROD-493` 的步骤不变。**红行**：`TC-PROD-395` 第 2 步红行 `ManagementServer.java:231` → `:267`（本组在 `Endpoint#onError` 之前加了 36 行），已在本分支重跑；`TC-PROD-505` 第 2 步转述的同一红行随改。**条数**：`TC-PROD-486` 第 3 步、`505` 第 3 步、`510` 第 2 步、`529` 第 4 步、`549` 第 2 步的 `:server-app:test` 521 → 522（本组的新类）；这五步本组没有带数据库变量重跑，只在未设数据库变量时跑了默认与严格 `grid` 的全量，各 522 个 0 失败、125 个跳过。§5 加一行 | Bearisbug |
 | 2026-09-30 | 第 6 波收尾三组集成（`prod/integrate-059`）：`TC-PROD-486` 第 3 步、`505` 第 3 步、`510` 第 2 步、`529` 第 4 步、`549` 第 2 步的 `:server-app:test` 520 → 521（P3-3 的 `TickAcquireMetricsTest`），`505` 第 3 步根构建 `:test` 3,142 → 3,146（P3-3 的 `AcquireWaitTest`）；§7 结案 `PermissionsIntegrationTest > withoutADatabaseNobodyHoldsANodeAndTheCommandSaysSo` 的偶发红（与 `ModerationIntegrationTest` 同一原因）；登记 RUN-059 | Bearisbug |
 | 2026-09-30 | 分支 `prod/limit`（`main` `0e919cce6a` 加 `3a53803b3c`），跟进 `docs/DESIGN-PROD.md` v0.9.35、`docs/DESIGN.md` v0.42 与 `docs/DESIGN-M2.md` v0.52：用户 2026-09-30 拍板把 `synaxis.packet-limit.max-packets` 的默认值由 582 提到 750（RUN-057 六档压测机器人每人 7 s 上行包数 P99 最高 374 × 2，取整）。不登执行轮次，由集成轮登记，本组证据在 `docs/test-runs/RUN-059/limit/`。**废旧 ID 换新 ID**：`TC-PROD-290` → **`TC-PROD-560`**（751 个被踢、750 个不踢；第 2 步反证照旧，加第 3 步默认值改回 582 与改成 751 各红一条）；`TC-PROD-293` → **`TC-PROD-561`**（第 1 步的引擎默认 582 → 750，第 2、3 步照旧，加第 4 步默认值改回 582 的反证）；`TC-GAME-064` → **`TC-GAME-075`**（默认配置下游戏侧洪水闸到不了：连续 3 s > 300 包/秒至少 903 包，先越过 750；改为默认进程上判 95 包/秒 60 s 不断线、120 包/秒被速率闸以 `synaxis:protocol-error` 断开，速率闸抬到 100,000 的进程上判原来的洪水闸三步）。三条新用例与 `TC-GAME-060` 都在 `3a53803b3c` 上实跑通过，JUnit 两条在默认与 4 线程 `grid` 严格模式下各跑一次，六个反证都按写的那一行变红。**保留 ID**：`TC-GAME-060` 第 5 步只补每连接 7 s 约 702 个、在 750 之下，以及约 48 个包（0.48 s 停顿）的余量与变红时怎么分辨，判据未变。§2 `REQ-M2-009` 行、§3 探针表 `game-flood` 行（默认配置下先收到 `synaxis:protocol-error`；要看到 `synaxis:game-flood`，速率闸要抬到远高于洪水闸触发时窗口里的包数，持续 R 包/秒时是 R + 602 到 2R + 601 个，抬到 1,000 不够：实跑闸 1,000 时 800 与 400 包/秒都以 `packets 1001 > 1000 in 7000 ms` 断开，证据 `docs/test-runs/RUN-059/limit/03-flood-threshold.txt`）、§4 5B 节首入站一条、§5 游戏域与生产就绪域两行随之改；§5 生产就绪域加一条牵连：改了 `synaxis.packet-limit.*` 的默认值加跑 `TC-GAME-060` 第 5 步与 `TC-GAME-075`。§7「`TC-GAME-060` 第 5 步与 `TC-GAME-064` 被引擎的入站包速率闸先踢」结案。`TC-PROD-271`、`TC-PROD-301`、`TC-PROD-360` 里与 582 比的数是那几轮的读数，不改 | Bearisbug |
@@ -4857,7 +4858,7 @@ jcmd "$pid" VM.flags | tr ' ' '\n' | grep -cxE -- '-XX:\+UseG1GC|-XX:InitialHeap
 | 1 | 跑 `io.github.bearisbug.synaxis.app.permission.PermissionNodesTest` | 10 个 0 失败；`heldNodesIncludeARoleNodeOnlyWhenTheyCoverAllOfIt`：持有 `gm.*`、`synaxis.command.kick` 时覆盖 `gm.ban`、`gm.*`、`gm.role.*`、`synaxis.command.kick`，不覆盖 `synaxis.command.stop`、`synaxis.command.*`、`gm`、`*`；只持有 `gm.role` 不覆盖 `gm.*`；只有 `*` 覆盖 `*` |
 | 2 | 跑 `io.github.bearisbug.synaxis.app.RoleEscalationIntegrationTest` | 1 个 0 失败：角色 `granter`、`helper` = `gm.role`，`gm` = `gm.*`，`mod` = `gm.ban`，`ops` = `gm.*` + `synaxis.command.stop`，`root` = `*`。十次执行的 `EVT:gm_command` 依次是：持 `granter` 的玩家给自己授 `gm`、给目标授 `root`、收回 GM 的 `gm` 都是 `above_sender`，给目标授 `helper` 是 `ok`；持 `gm` 的玩家授 `mod` 是 `ok`，授 `ops` 与给自己授 `root` 是 `above_sender`，授不存在的角色仍是 `unknown_role`；持 `root` 的玩家授 `root` 是 `ok`；控制台收回 `root` 是 `ok`。被拒的玩家收到的回执键是 `synaxis:role-above-sender`；库里 `granter` 仍只有 `granter`、GM 仍只有 `gm`，目标最后是 `helper`、`mod` |
 | 3 | 修复前的红（在 `b2b7af2a3c` 上只加第 2 步的测试类跑） | `1 tests completed, 1 failed`，红在 `RoleEscalationIntegrationTest.java:114`，实际序列的前三条都是 `ok`（给自己授 `gm`、授 `root`、收回 GM 的 `gm`），GM 失去 `gm.role` 之后的四条都是 `precondition`（命令条件拒绝，没有事件） |
-| 4 | 反证有齿（不查发送者）：`RoleCommand#execute` 的 `if (sender instanceof Player player && !permissions.mayHandOut(player, roleId)) {` 改为 `if (sender instanceof Player player && !permissions.mayHandOut(player, roleId) && Boolean.getBoolean("proof.never")) {`，重跑第 1、2 步与 `PermissionsIntegrationTest`，再还原 | `19 tests completed, 1 failed`，红在 `RoleEscalationIntegrationTest.java:114`，实际序列与第 3 步相同。还原后复绿 |
+| 4 | 反证有齿（不查发送者）：`RoleCommand#execute` 的 `if (own != null && !permissions.mayHandOut(own, roleId)) {` 改为 `if (own != null && !permissions.mayHandOut(own, roleId) && Boolean.getBoolean("proof.never")) {`，重跑第 1、2 步与 `PermissionsIntegrationTest`，再还原（`docs/DESIGN-PROD.md` v0.9.40 改为当场读库后按这一行改写，`TC-PROD-596` 第 1 步重跑过） | `19 tests completed, 1 failed`，红在 `RoleEscalationIntegrationTest.java:114`，实际序列与第 3 步相同。还原后复绿 |
 | 5 | 反证有齿（`*` 不当普通节点放行）：`PermissionNodes#includes` 首行改为 `if (held.contains("*") \|\| held.contains(granted) \|\| granted.equals("*")) return true;`，重跑第 1、2 步，再还原 | `11 tests completed, 2 failed`：`PermissionNodesTest.java:44` `only * covers * ==> expected: <false> but was: <true>`；`RoleEscalationIntegrationTest.java:114`，实际序列第 2 条（`granter` 给目标授 `root`）与第 7 条（GM 给自己授 `root`）变成 `ok`。还原后复绿 |
 
 后置：确认 `RoleCommand.java`、`PermissionNodes.java` 没有残留改动。
@@ -7863,6 +7864,100 @@ for (var request : System.getenv("MGMT_CALLS").split("\n")) {
 
 后置：`git status --short` 无输出。
 
+### 生产就绪 · 安全修复：transfer（转服幽灵与 `gm.role` 时效）
+
+对应 `REQ-PROD-045`、`REQ-PROD-004` 跨分片部分、`REQ-PROD-007` 与 `REQ-PROD-011`（`docs/DESIGN-PROD.md` v0.9.40：`API-PROD-028` 签发 ④、`API-PROD-010` GM 命令一条、§11.3 `saving → in_transit`、§14 `synaxis:transfer-rejected`、§16 两行、§17 `transfer.leave-within` 与 `presence.refresh`、§19 三个场景、§28.2 两行已决与改写的两行），修安全审查的 B-01 与 C-02。改动：`TicketIssuer#send` 发出 `Transfer` 之后在玩家的调度器上排一个 10 s 的延时任务，到期连接还开着就以 `synaxis:transfer-rejected` 断开；`PlayerStore#refreshPresence` 对 `IN_TRANSIT` 的记录写 `in_transit`；新增 `PlayerStore#isOnline(Player)`（供光照会话加固 `ShardGates#moved`）；`RoleCommand` 对玩家发送者经 `HostPermissions#grantsOf` 当场读库，`mayHandOut` 改为判定读到的授予（要覆盖 `gm.role` 与角色的每个节点），授予走新语句 `RoleStore#handOut`（继承发送者最早的到期、不改尚未到期的已有授予），`RoleStore.Grants` 加分量 `expiresAt`。
+
+测试：两个新类，都要数据库前置（同 3A 一节的四个 `SYNAXIS_TEST_*` 变量；`thePresenceRefreshReportsAPlayerInTransitAsInTransit` 另连 `SYNAXIS_TEST_REDIS_URL`，分片 ID 带随机后缀，用完删掉自己的 `presence:<uuid>` 键）。`io.github.bearisbug.synaxis.app.store.TransferNotFollowedIntegrationTest`（4 条，下称「幽灵类」）：源分片与目标分片在同一进程，玩家用 `StoreFixture.RecordingConnection`，它收到 `TransferPacket` 不会断开，测试每轮调 `Player#refreshAnswerKeepAlive(true)` 替它回 keep-alive，这就是改过的客户端在服务端看来的样子；不回 keep-alive 的话引擎约 15 s 以 `synaxis:keep-alive-timeout` 踢人，测不到这里的断开。前两条各要真等 10 s，整类约 22 s。`io.github.bearisbug.synaxis.app.RoleHandOutIntegrationTest`（2 条，下称「授予类」）：角色 `helper` = `gm.role`、`mod` = `gm.ban`，Redis 关、30 s 刷新改成 1 小时，所以测试里没有东西会替本分片重读角色。「跑 `<类>`」即带上述变量执行 `./gradlew :server-app:test --rerun --tests '<类>' --max-workers=4 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts`，「严格 grid」是再加 `-Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true -Dsynaxis.thread-provider=grid`，结果看 `server-app/build/test-results/test/TEST-<类>.xml`。
+
+缩写：`<TI>` = `server-app/src/main/java/io/github/bearisbug/synaxis/app/transfer/TicketIssuer.java`，`<PS>` = `…/app/store/PlayerStore.java`，`<RS>` = `…/app/permission/RoleStore.java`，`<HP>` = `…/app/permission/HostPermissions.java`，`<RC>` = `…/app/permission/RoleCommand.java`。反证一律是临时改一处、跑、看红、`git checkout HEAD -- <文件>`、重跑复绿；行号是分支 `sec/transfer-ghost` 提交时的（代码提交 `e9e3ea6945`、`5acee52a88`）。「修复前的红」是在基线 `23982267e9` 上只加这两个测试类跑：幽灵类的最后一条 `onlyAPlayerATransferWouldTakeIsOnlineToTheStore` 用到基线还没有的 `PlayerStore#isOnline`，那次跑时删掉这条（它在类的末尾，删掉不移动别的行），`import static …assertFalse;` 换成空行、类注释里的 `{@link PlayerStore#isOnline}` 换成 `{@code …}`（Error Prone 的未用导入与坏链接都是错误），行号与提交时相同。
+
+#### `TC-PROD-590` 收到 `Transfer` 不走的客户端 10 s 后被源分片以 `synaxis:transfer-rejected` 断开，票据照样能用 — 对应 `REQ-PROD-045`、`REQ-PROD-004` · 级别: 边缘 · 执行者: AI
+
+前置：本节开头。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑幽灵类，看 `aClientThatIgnoresItsTransferIsDisconnected` | `tests="4"` 0 失败 0 跳过；本条约 10.4 s。源分片签发得 `SENT`，发过 `CookieStorePacket` 与 `TransferPacket`；发出后 9 s 内玩家仍在线、`isFrozen` 为 true（`in_transit`）；15 s 之内断开，踢人键恰是 `[synaxis:transfer-rejected]`，源分片 `loadedCount()` 回到 0，库里 `lease_session_id` 为空；拿 Cookie 里的票据以 transfer 意图连目标分片，`TicketVerifier#read` 与 `claim` 通过，写权归目标分片的会话 |
+| 2 | 修复前的红：基线 `23982267e9` 上按本节开头只加两个测试类，跑幽灵类 | `3 tests completed, 3 failed`；本条用时 15.4 s，红在 `TransferNotFollowedIntegrationTest.java:128`（`tickUntil`，调用处 `:161`），`java.lang.AssertionError: not by the deadline: the source lets go of a client that stays`：玩家一直在线、一直冻结 |
+| 3 | 反证有齿（不断开）：`<TI>` 的 `if (player.isOnline()) player.kick(` 改为 `if (player.isOnline() && Boolean.getBoolean("proof.never")) player.kick(`，跑幽灵类，再还原 | `4 tests completed, 2 failed`：本条与 `TC-PROD-591` 那条都红在 `:128`（调用处 `:161`、`:196`），消息同第 2 步；另两条绿 |
+| 4 | 还原后重跑第 1 步；严格 grid 由 `TC-PROD-596` 第 2 步的全量覆盖 | 与第 1 步相同 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PROD-591` 插件取消 `OutgoingTransferEvent` 的转服同样在 10 s 后断开，玩家不会停在 `in_transit` — 对应 `REQ-PROD-045` · 级别: 边缘 · 执行者: AI
+
+前置：本节开头。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑幽灵类，看 `aTransferWhoseEventAPluginCancelledLetsThePlayerGoAllTheSame` | 本条约 10.3 s。全局监听器取消 `OutgoingTransferEvent`；签发端照样回 `SENT`，玩家没收到 `TransferPacket`；9 s 时仍在线、冻结；15 s 之内以 `[synaxis:transfer-rejected]` 断开，`loadedCount()` 回到 0，`lease_session_id` 为空 |
+| 2 | 修复前的红：同 `TC-PROD-590` 第 2 步那一次运行 | 本条用时 15.4 s，红在 `:128`（调用处 `:196`），`not by the deadline: the source lets go of a player nobody told to leave` |
+| 3 | 反证有齿：同 `TC-PROD-590` 第 3 步那一次运行 | 本条红在 `:128`（调用处 `:196`），消息同第 2 步 |
+
+后置：同 `TC-PROD-590`。
+
+#### `TC-PROD-592` `presence.refresh` 对签发之后还连着的玩家写 `in_transit`，不写 `online` — 对应 `REQ-PROD-007`、`REQ-PROD-045` · 级别: 边缘 · 执行者: AI
+
+前置：本节开头，另要 `SYNAXIS_TEST_REDIS_URL` 指向的 Valkey 可达。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑幽灵类，看 `thePresenceRefreshReportsAPlayerInTransitAsInTransit` | 本条约 0.5 s。源分片连 Redis；准入后 `presence:<uuid>` 含 `"state":"online"`，签发得 `SENT` 后含 `"state":"in_transit"`；测试经反射调一次 `PlayerStore#refreshPresence`（它本来每 10 s 跑一次，直接调是为了让它一定落在 10 s 宽限之内），之后仍含 `"state":"in_transit"` |
+| 2 | 修复前的红：同 `TC-PROD-590` 第 2 步那一次运行 | 红在 `TransferNotFollowedIntegrationTest.java:220`，`the refresh keeps it in transit: {"shard_id":"r2-c1-<随机后缀>","session_id":1,"state":"online"} ==> expected: <true> but was: <false>` |
+| 3 | 反证有齿：`<PS>` 的 `case IN_TRANSIT -> "in_transit";` 改为 `case IN_TRANSIT -> "online";`，跑幽灵类，再还原 | `4 tests completed, 1 failed`，红在 `:220`，消息同第 2 步 |
+
+后置：同 `TC-PROD-590`。
+
+#### `TC-PROD-593` `PlayerStore#isOnline` 只对 §11.3 `online` 的玩家为真（关卡门加固的接口） — 对应 `REQ-PROD-045` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑幽灵类，看 `onlyAPlayerATransferWouldTakeIsOnlineToTheStore` | 本条约 0.3 s。没在本分片载入的连接为 false；载入并准入的玩家为 true；签发得 `SENT` 之后为 false |
+| 2 | 反证有齿（把 `in_transit` 也当在线）：`<PS>` 的 `return !closing && record != null && record.state == LeaseState.ONLINE;` 改为 `… && record.state != LeaseState.LOADING;`，跑幽灵类，再还原 | `4 tests completed, 1 failed`，红在 `TransferNotFollowedIntegrationTest.java:234`，`in transit ==> expected: <false> but was: <true>` |
+
+后置：同 `TC-PROD-590`。基线上没有这个方法，本条没有修复前的红。
+
+#### `TC-PROD-594` 持 `gm.role` 的玩家授出的授予不比自己的授予活得久，已有授予的到期不被清掉 — 对应 `REQ-PROD-011` · 级别: 边缘 · 执行者: AI
+
+前置：本节开头。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑授予类，看 `aHolderHandsOutNothingThatOutlivesItsOwnGrants` | `tests="2"` 0 失败 0 跳过；本条约 0.4 s。Alice 持有 `helper`（不到期）与 `mod`（`now() + 1 day`），Carol 持有两者且都不到期。Alice 给自己授 `mod`、Carol 给 Alice 授 `mod` 之后，Alice 的 `mod` 仍是原来的到期时间（按 `expires_at::text` 逐字比较）；Alice 给 Bob 授 `mod` 与 `helper`，Bob 的两条都等于 Alice 那条 `mod` 的到期时间；把库里 Alice 的 `mod` 改成 `now() - 1 s`（本分片不重读）之后 Alice 再给自己授 `mod`，那一行仍是已到期。五次的 `EVT:gm_command` 依次是 `ok`、`ok`、`ok`、`ok`、`above_sender` |
+| 2 | 修复前的红：同 `TC-PROD-590` 第 2 步那一次运行 | `2 tests completed, 2 failed`；本条红在 `RoleHandOutIntegrationTest.java:142`，`its own grant keeps its expiry ==> expected: <{mod=<明天此刻>+08, helper=never}> but was: <{helper=never, mod=never}>`：自授一次就成了永久 |
+| 3 | 反证有齿（已有授予照样改写到期）：`<RS>` 的 `+ "WHERE account_role.expires_at <= now()"` 改为 `+ "WHERE true"`，跑授予类，再还原 | `2 tests completed, 1 failed`，红在 `:144`，`nor does a holder whose grants never run out lift it ==> expected: <{helper=never, mod=<明天此刻>+08}> but was: <{helper=never, mod=never}>`：Carol 的授予抹掉了 Alice 的到期 |
+| 4 | 反证有齿（不继承到期）：`<RC>` 的 `permissions.handOut(target, roleId, own.expiresAt())` 改为 `permissions.handOut(target, roleId, null)`，跑授予类，再还原 | `2 tests completed, 1 failed`，红在 `:149`，`what it hands out runs out when its own grants start to ==> expected: <{helper=<t>, mod=<t>}> but was: <{helper=never, mod=never}>`（`<t>` 是 Alice 那条 `mod` 的到期）：限时持有者给小号的授予是永久的 |
+| 5 | 还原后重跑第 1 步；严格 grid 由 `TC-PROD-596` 第 2 步的全量覆盖 | 与第 1 步相同 |
+
+后置：同 `TC-PROD-590`。
+
+#### `TC-PROD-595` 撤销到达本分片之前，被撤权的玩家授不回角色，也授不出别的角色 — 对应 `REQ-PROD-011` · 级别: 边缘 · 执行者: AI
+
+前置：本节开头。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑授予类，看 `aRoleTakenBackIsNotHandedOutFromWhatTheShardReadBefore` | 本条约 1.8 s。Alice 持有 `helper` 与 `mod`，已读进本分片；库里删掉 Alice 的 `helper`（模拟别的分片在 Redis 不可达时撤销），本分片不重读。Alice 执行 `role grant <自己> helper` 与 `role grant <Bob> mod`：命令条件按内存放行（`CommandResult` 为 `SUCCESS`），两次的 `EVT:gm_command` 都是 `above_sender`；库里 Alice 只剩 `mod`，Bob 没有任何授予 |
+| 2 | 修复前的红：同 `TC-PROD-590` 第 2 步那一次运行 | 本条红在 `RoleHandOutIntegrationTest.java:180`，实际序列是 `[… helper -> ok, … mod -> ok]`：撤掉的角色被授回，没有 `gm.role` 的人还授出了角色 |
+| 3 | 反证有齿（判定用内存）：`<HP>` 的 `return requireRoles().load(List.of(player.getUuid())).getOrDefault(player.getUuid(), RoleStore.Grants.NONE);` 改为 `return loaded.getOrDefault(player, new Entry(RoleStore.Grants.NONE, 0)).grants();`，跑授予类，再还原 | `2 tests completed, 2 failed`：本条红在 `:180`，序列同第 2 步；`TC-PROD-594` 那条红在 `:156`，`an expired grant stays expired ==> expected: <{helper=never, mod=past}> but was: <{helper=never, mod=later}>`（内存里还有 `gm.ban`，过期行被按内存里的到期复活） |
+| 4 | 反证有齿（不要求 `gm.role`）：`<HP>` 的 `if (!PermissionNodes.covers(own.nodes(), RoleCommand.NODE)) return false;` 改为 `if (!PermissionNodes.covers(own.nodes(), RoleCommand.NODE) && Boolean.getBoolean("proof.never")) return false;`，跑授予类，再还原 | `2 tests completed, 1 failed`，红在 `:180`，实际序列 `[… helper -> above_sender, … mod -> ok]`：只剩 `gm.ban` 的 Alice 授出了 `mod` |
+
+后置：同 `TC-PROD-590`。
+
+#### `TC-PROD-596` 本组的回归：权限类按改写后的反证行重跑，`:server-app:test` 全量两种模式 — 对应 `REQ-PROD-045`、`REQ-PROD-011` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 按 `TC-PROD-215` 第 4 步（本组改写后的那一行）改 `<RC>`，跑 `PermissionNodesTest`、`RoleEscalationIntegrationTest`、`PermissionsIntegrationTest`，再还原 | `19 tests completed, 1 failed`，红在 `RoleEscalationIntegrationTest.java:114`，实际序列与 `TC-PROD-215` 第 3 步相同（前三条 `ok`，GM 失去 `gm.role` 之后四条 `precondition`） |
+| 2 | 带数据库变量，默认模式与严格 grid 各跑一次 `:server-app:test` 全量 | 两次都是 101 个类 528 个 0 失败 0 跳过（基线 522 个，加本组两个新类 6 个；设了数据库变量，没有跳过的类）；本机默认 5 min 22 s、严格 grid 5 min 5 s。幽灵类两次都约 21.7 s |
+
+后置：同 `TC-PROD-590`。
+
 ## 5. 回归策略
 
 - **全量轮**（全部用例）：首次成稿、每个阶段 gate（引擎域阶段 0、2、3；游戏域 `docs/DESIGN-M2.md` §26 的阶段 1～6b；大世界域 `docs/DESIGN-M3.md` §26 的 M3-A～M3-G）、跨功能域改动、地基变更（JDK、Gradle、镜像、协议版本、模块拆分、启动入口）。
@@ -7917,6 +8012,7 @@ for (var request : System.getenv("MGMT_CALLS").split("\n")) {
   - 生产就绪域（`docs/DESIGN-PROD.md`）：第 6 波 6A 的 P10（`REQ-PROD-031`，v0.9.30）→ TC-PROD-550；动了 `p10.py` 的 `judge` 就跑 TC-PROD-550 第 10 步（不起进程）；动了 `p10.py` 的 `shards` 或 `drive`、`TransferRoundTripClientGameTest`、`RegressionClientGameTest` 开头那一行判断、gametest 的 `fabric.mod.json`、`run.sh` 或 job `p10`，跑 TC-PROD-550 全部，本机不过内存门槛时手动触发 `client-gametest.yml`，以 job `p10` 判定一步的 `P10: all checks passed` 为准；动了 `ShardServiceImpl`、`TicketIssuer`、`TicketVerifier`、`ManagementMethods` 的 `synaxis:transfer` 或目录模式的装配，合入 `main` 后看下一次 job `p10`。
   - 生产就绪域（`docs/DESIGN-PROD.md`）：`EVT:transfer_refused` 扩到关卡门的六种拒绝结果（`REQ-PROD-031`，v0.9.37）→ TC-PROD-570～TC-PROD-573；动了 `ShardGates` 的 `finished` 或 `refused`、`ShardTransferResult` 的取值，或 `ShardGatesTest` 的 `everyRefusalIsWrittenToTheLedger`，就跑 TC-PROD-570～TC-PROD-573（不连数据库；本机这个类 7.7～31.7 s，多半花在第一条用例建 `Env`），同时按 M3-E 一行跑 TC-WORLD-064、TC-WORLD-089。**已知过时（v0.9.37 合入时起，由光照会话改文字后撤掉本标记）**：TC-WORLD-089 的标题、第 1、3、4、5 步与 TC-WORLD-064 的第 1、3 步仍按「只有三种结果写」写，照原文执行会误判；在它们改完之前，以 TC-PROD-570～TC-PROD-573 为准。
   - 生产就绪域（`docs/DESIGN-PROD.md`）：管理连接出站队列里没人写的帧（`REQ-PROD-032`，v0.9.38）→ TC-PROD-574、TC-PROD-575；动了 `ManagementServer.Endpoint` 的 `recheckWrites`、`onStart`、`shutDown` 或 `WRITE_RECHECK`，就跑 TC-PROD-574 与 TC-PROD-575 第 3 步；动了 `GuardedSocket` 的发送入口或 `setChannel` 再加 TC-PROD-575 第 1、2 步。升 Java-WebSocket 时重跑 TC-PROD-575 第 1、2 步，并读新版的 `WebSocketServer#doWrite`：撤写兴趣之后若会再看一次队列，第 1 步转绿，补登记才可以去掉（同步 `docs/DESIGN-PROD.md` `API-PROD-022`）。
+  - 生产就绪域（`docs/DESIGN-PROD.md`）：安全修复 transfer 组，转服幽灵与 `gm.role` 时效（`REQ-PROD-045`、`REQ-PROD-004`、`REQ-PROD-007`、`REQ-PROD-011`，v0.9.40）→ TC-PROD-590～TC-PROD-596；动了 `TicketIssuer#send`、`PlayerStore` 的 `refreshPresence`、`isOnline` 或 `loggedOut` 的 `IN_TRANSIT` 分支，就跑 TC-PROD-590～TC-PROD-593（幽灵类约 22 s，要数据库前置与 Valkey）与 3A 一节的票据类；动了 `RoleCommand#execute`、`HostPermissions` 的 `grantsOf`、`mayHandOut` 或 `handOut`、`RoleStore` 的 `load`、`handOut` 或 `Grants`，就跑 TC-PROD-594、TC-PROD-595、TC-PROD-596 第 1 步与 TC-PROD-215。光照会话给 `ShardGates#moved` 加上 `PlayerStore#isOnline` 判定之后，加跑 TC-PROD-593 与 TC-PROD-570～TC-PROD-573。
   - 影响面不确定时升级为全量轮。
 - **复测轮**（上轮失败用例 + 全部冒烟级）：修复失败项之后。
 - **人工收口轮**（仅上轮「待人工」用例）：AI 轮之后由人工补测 TC-016、TC-030、TC-GAME-020、TC-GAME-038、TC-GAME-046、TC-GAME-047，不要求冒烟级。

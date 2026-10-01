@@ -3,6 +3,7 @@ package io.github.bearisbug.synaxis.app;
 import io.github.bearisbug.synaxis.MinecraftServer;
 import io.github.bearisbug.synaxis.app.ConfigFileLaunchTest.Frame;
 import io.github.bearisbug.synaxis.app.ConfigFileLaunchTest.Launched;
+import io.github.bearisbug.synaxis.app.shard.MapFixture;
 import io.github.bearisbug.synaxis.app.shard.ShardSettings;
 import io.github.bearisbug.synaxis.app.shard.ShardWorldFarViewTest;
 import io.github.bearisbug.synaxis.game.protocol.FarViewAnnouncement;
@@ -44,6 +45,7 @@ import static io.github.bearisbug.synaxis.app.ConfigFileLaunchTest.readUntil;
 import static io.github.bearisbug.synaxis.app.ConfigFileLaunchTest.readVarInt;
 import static io.github.bearisbug.synaxis.app.ConfigFileLaunchTest.send;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -140,6 +142,45 @@ public class FarViewLaunchTest {
                 assertEquals(pack.bytes(), tile.bytes());
                 assertTrue(tile.url().startsWith(URL_ROOT + "/" + manifest.mapId() + "/farview/"), tile.url());
             }
+        }
+    }
+
+    /**
+     * §19 「分片在 configuration 阶段宣告本大区的瓦片」 on a map of one tile, {@link MapFixture}'s: one
+     * {@code synaxis:farview} before {@code FinishConfiguration}, tile 0, 0 whole and nothing else.
+     */
+    @Test
+    public void aShardOnAMapOfOneTileSendsThatTileBeforeFinishConfiguration(@TempDir Path directory) throws Exception {
+        final ShardSettings release = MapFixture.bake(directory.resolve("maps"));
+        final SynxManifest manifest = SynxManifest.fromJson(Files.readString(release.buildDir().resolve(SynxManifest.FILE_NAME)));
+        final int port = freePort();
+        try (Launched shard = Launched.start(directory, ShardMain.class, launch(port, release,
+                "-D" + ShardSettings.FARVIEW_URL_ROOT + "=" + URL_ROOT))) {
+            final String log = shard.awaitLine("synaxis server-app listening on");
+            assertTrue(log.contains("Far view: 1 tile(s), 0 coarse, from " + URL_ROOT), log);
+
+            final List<Frame> frames = loginAndConfigure(port);
+            assertEquals(id(ConnectionState.CONFIGURATION, FinishConfigurationPacket.class), frames.getLast().packetId());
+            final List<byte[]> messages = farViewMessages(frames.subList(0, frames.size() - 1));
+            assertEquals(1, messages.size());
+            final FarViewAnnouncement announcement = FarViewAnnouncement.read(MsgBuf.reading(messages.getFirst()));
+            assertEquals(manifest.buildId(), announcement.buildId());
+            assertEquals(List.of("0,0:0"), announcement.tiles().stream()
+                    .map(tile -> tile.tileX() + "," + tile.tileZ() + ":" + tile.layer()).toList());
+            assertEquals(manifest.farview().getFirst().bytes(), announcement.tiles().getFirst().bytes());
+        }
+    }
+
+    /** §19 「分片不宣告远景的情形」: a url root that is not an http(s) URL without a trailing slash refuses the start. */
+    @Test
+    public void aUrlRootThatIsNotAnHttpUrlRefusesTheStart(@TempDir Path directory) throws Exception {
+        final ShardSettings release = MapFixture.bake(directory.resolve("maps"));
+        try (Launched shard = Launched.start(directory, ShardMain.class, launch(freePort(), release,
+                "-D" + ShardSettings.FARVIEW_URL_ROOT + "=cdn.test/synaxis"))) {
+            assertEquals(1, shard.awaitExit(), shard.log());
+            assertTrue(shard.log().contains("Refusing to start: " + ShardSettings.FARVIEW_URL_ROOT
+                    + " must be an http(s) URL without a trailing slash: cdn.test/synaxis"), shard.log());
+            assertFalse(shard.log().contains("listening on"), shard.log());
         }
     }
 

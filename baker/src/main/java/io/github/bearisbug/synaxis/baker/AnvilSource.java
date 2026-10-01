@@ -6,6 +6,7 @@ import io.github.bearisbug.synaxis.baker.anvil.AnvilChunk;
 import io.github.bearisbug.synaxis.baker.anvil.AnvilSection;
 import io.github.bearisbug.synaxis.baker.anvil.AnvilSourceException;
 import io.github.bearisbug.synaxis.baker.anvil.AnvilWorld;
+import io.github.bearisbug.synaxis.baker.anvil.HiddenArea;
 import io.github.bearisbug.synaxis.instance.block.Block;
 import io.github.bearisbug.synaxis.instance.palette.Palette;
 import io.github.bearisbug.synaxis.registry.Registries;
@@ -19,6 +20,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.ExecutionException;
@@ -45,6 +47,7 @@ public final class AnvilSource implements BakeSource {
     private final int minY;
     private final int height;
     private volatile @Nullable Double lightCoverage;
+    private volatile List<HiddenArea> hiddenAreas = List.of();
 
     private AnvilSource(AnvilWorld world, SynxManifest.Bounds bounds, int minY) {
         this.world = world;
@@ -118,37 +121,58 @@ public final class AnvilSource implements BakeSource {
         return lightCoverage;
     }
 
+    /** What the gate keeps of a chunk it read. */
+    private record Gated(boolean lightOn, List<HiddenArea> hiddenAreas) {
+    }
+
     /**
-     * Reads every chunk inside the bounds once. The first failure in (x, z) order is thrown, so the same save
-     * always names the same chunk.
+     * Reads every chunk inside the bounds once, collecting the hidden areas of its markers. The first failure in
+     * (x, z) order is thrown, so the same save always names the same chunk.
      */
     @Override
     public void checkGate(int threads) throws IOException {
         final ExecutorService executor = Executors.newFixedThreadPool(threads);
         try {
-            final List<Future<Boolean>> reads = new ArrayList<>();
+            final List<Future<Gated>> reads = new ArrayList<>();
             for (int x = bounds.minX(); x <= bounds.maxX(); x++) {
                 for (int z = bounds.minZ(); z <= bounds.maxZ(); z++) {
                     final int chunkX = x, chunkZ = z;
-                    reads.add(executor.submit(() -> chunk(chunkX, chunkZ).lightOn()));
+                    reads.add(executor.submit(() -> {
+                        final AnvilChunk chunk = chunk(chunkX, chunkZ);
+                        return new Gated(chunk.lightOn(), chunk.hiddenAreas());
+                    }));
                 }
             }
             int lit = 0;
-            for (Future<Boolean> read : reads) {
+            final List<HiddenArea> hidden = new ArrayList<>();
+            for (Future<Gated> read : reads) {
                 try {
-                    if (read.get()) lit++;
+                    final Gated gated = read.get();
+                    if (gated.lightOn()) lit++;
+                    for (HiddenArea area : gated.hiddenAreas()) {
+                        hidden.add(new HiddenArea(Math.min(area.x1(), area.x2()), Math.min(area.z1(), area.z2()),
+                                Math.max(area.x1(), area.x2()), Math.max(area.z1(), area.z2())));
+                    }
                 } catch (ExecutionException e) {
                     if (e.getCause() instanceof IOException io) throw io;
                     throw new IOException(e.getCause());
                 }
             }
             lightCoverage = (double) lit / reads.size();
+            hidden.sort(Comparator.comparingInt(HiddenArea::x1).thenComparingInt(HiddenArea::z1)
+                    .thenComparingInt(HiddenArea::x2).thenComparingInt(HiddenArea::z2));
+            hiddenAreas = List.copyOf(hidden);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             throw new IOException("interrupted", e);
         } finally {
             executor.shutdownNow();
         }
+    }
+
+    @Override
+    public List<HiddenArea> hiddenAreas() {
+        return hiddenAreas;
     }
 
     @Override

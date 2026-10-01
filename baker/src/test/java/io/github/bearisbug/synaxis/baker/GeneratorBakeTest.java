@@ -78,7 +78,8 @@ public class GeneratorBakeTest {
         assertEquals(4, manifest.bake().threads());
         assertTrue(manifest.bake().wallMs() > 0 && manifest.bake().cpuMs() > 0, manifest.toJson());
         assertEquals(new SynxManifest.Verify(16, 0, null), manifest.verify(), "4 samples in each of the 4 regions");
-        assertTrue(manifest.farview().isEmpty(), "the far view pack is M3-G");
+        assertEquals(List.of("0,0"), manifest.farview().stream().map(pack -> pack.tileX() + "," + pack.tileZ()).toList(),
+                "the far view pack of the one tile the bounds meet (FarViewBakeTest)");
 
         // What a shard checks at start-up passes on the whole build
         SynxBuildVerifier.verify(build, SynxExpectations.of(REGISTRIES, Baker.COMPRESSION_THRESHOLD, 0, 256,

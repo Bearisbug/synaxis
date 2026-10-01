@@ -4,6 +4,7 @@ import io.github.bearisbug.synaxis.instance.block.BlockManager;
 import io.github.bearisbug.synaxis.instance.light.LightEngine;
 import io.github.bearisbug.synaxis.registry.Registries;
 import io.github.bearisbug.synaxis.synx.SynxBuildVerifier;
+import io.github.bearisbug.synaxis.synx.SynxDigests;
 import io.github.bearisbug.synaxis.synx.SynxException;
 import io.github.bearisbug.synaxis.synx.SynxExpectations;
 import io.github.bearisbug.synaxis.synx.SynxHandlers;
@@ -14,7 +15,11 @@ import org.jetbrains.annotations.Nullable;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.ServiceLoader;
 
@@ -24,6 +29,7 @@ import java.util.ServiceLoader;
  * bake --map-id &lt;id&gt; --source anvil:&lt;dir&gt;|generator:&lt;preset&gt;:&lt;seed&gt; --out &lt;maps_root&gt;
  *      [--threads N] [--bounds minX,minZ,maxX,maxZ] [--dimension minecraft:overworld] [--min-y -64] [--logs logs] [--samples 4]
  * verify --build &lt;maps_root&gt;/&lt;map_id&gt;/&lt;build_id&gt;
+ * farview-export --build &lt;maps_root&gt;/&lt;map_id&gt;/&lt;build_id&gt; --out &lt;dir&gt;
  * </pre>
  * The exit code is the bake's (API-M3-003); a command line that does not parse, or two handlers with one key,
  * exit with 1. Handler namespaces are those {@link SynxHandlers#registerAll} registers, the same list a shard
@@ -50,6 +56,7 @@ public final class BakerMain {
             return switch (args[0]) {
                 case "bake" -> bake(options);
                 case "verify" -> verify(options);
+                case "farview-export" -> farViewExport(options);
                 default -> usage("unknown command " + args[0]);
             };
         } catch (IllegalArgumentException e) {
@@ -117,14 +124,81 @@ public final class BakerMain {
         throw new IllegalArgumentException("--source is anvil:<dir> or generator:<preset>:<seed>, got " + spec);
     }
 
-    /** The digest half of {@code verify}: what a shard checks at start-up, over the whole build. */
+    /** The digest half of {@code verify}: what a shard checks at start-up and the far view packs, over the whole build. */
     private static int verify(Map<String, String> options) {
         final Path build = Path.of(required(options, "build"));
         try {
             final SynxManifest manifest = SynxManifest.fromJson(Files.readString(build.resolve(SynxManifest.FILE_NAME)));
             SynxBuildVerifier.verify(build, SynxExpectations.of(Registries.vanilla(), Baker.COMPRESSION_THRESHOLD,
                     manifest.world().minY(), manifest.world().height(), LightEngine.VERSION), manifest.bounds());
+            final String farView = Baker.checkFarView(build, manifest);
+            if (farView != null) {
+                System.err.println("baker: " + farView);
+                return Baker.EXIT_VERIFY;
+            }
             System.out.println("baker: " + build + " verified");
+            return Baker.EXIT_PUBLISHED;
+        } catch (IOException | SynxException e) {
+            System.err.println("baker: " + e.getMessage());
+            return Baker.EXIT_VERIFY;
+        }
+    }
+
+    /** One object {@code farview-export} writes: a whole pack or its coarse prefix, named by its digest. */
+    private record Export(String file, boolean coarse, String relative, byte[] bytes) {
+    }
+
+    /**
+     * {@code farview-export} of API-M3-003: every pack of {@code farview[]} as two objects named by their digest,
+     * the whole pack and its coarse prefix, under {@code <out>/<map_id>/farview/}. Every pack is checked against
+     * the manifest before anything is written; an object that is already there is kept when its bytes are the
+     * same and refuses the export when they are not.
+     */
+    private static int farViewExport(Map<String, String> options) {
+        final Path build = Path.of(required(options, "build"));
+        final Path out = Path.of(required(options, "out"));
+        try {
+            final SynxManifest manifest = SynxManifest.fromJson(Files.readString(build.resolve(SynxManifest.FILE_NAME)));
+            final String directory = manifest.mapId() + "/farview/";
+            final List<Export> exports = new ArrayList<>();
+            for (SynxManifest.FarView entry : manifest.farview()) {
+                final String file = FarViewAssembler.fileName(entry.tileX(), entry.tileZ());
+                final byte[] pack = Files.readAllBytes(build.resolve("farview").resolve(file));
+                if (pack.length != entry.bytes() || !Arrays.equals(SynxDigests.sha256(pack), entry.sha256())) {
+                    System.err.println("baker: farview/" + file + " does not have the size and SHA-256 of the manifest");
+                    return Baker.EXIT_VERIFY;
+                }
+                final byte[] prefix = Arrays.copyOf(pack, (int) Math.min(entry.coarseBytes(), pack.length));
+                if (prefix.length != entry.coarseBytes() || !Arrays.equals(SynxDigests.sha256(prefix), entry.coarseSha256())) {
+                    System.err.println("baker: the coarse prefix of farview/" + file
+                            + " does not have the coarse_bytes and coarse_sha256 of the manifest");
+                    return Baker.EXIT_VERIFY;
+                }
+                exports.add(new Export(file, false, directory + SynxDigests.hex(entry.sha256()) + ".hfp", pack));
+                exports.add(new Export(file, true, directory + SynxDigests.hex(entry.coarseSha256()) + ".hfp", prefix));
+            }
+            Files.createDirectories(out.resolve(directory));
+            for (Export export : exports) {
+                final Path target = out.resolve(export.relative());
+                final String line = export.file() + (export.coarse() ? " coarse" : "") + " -> " + export.relative()
+                        + " (" + export.bytes().length + " B)";
+                if (Files.exists(target)) {
+                    if (!Arrays.equals(Files.readAllBytes(target), export.bytes())) {
+                        System.err.println("baker: " + export.relative() + " is already there with other bytes");
+                        return Baker.EXIT_VERIFY;
+                    }
+                    System.out.println("kept " + line);
+                    continue;
+                }
+                final Path staging = Files.createTempFile(target.getParent(), ".export-", ".part");
+                try {
+                    Files.write(staging, export.bytes());
+                    Files.move(staging, target, StandardCopyOption.ATOMIC_MOVE);
+                } finally {
+                    Files.deleteIfExists(staging);
+                }
+                System.out.println("exported " + line);
+            }
             return Baker.EXIT_PUBLISHED;
         } catch (IOException | SynxException e) {
             System.err.println("baker: " + e.getMessage());
@@ -150,6 +224,7 @@ public final class BakerMain {
         System.err.println("usage: bake --map-id <id> --source anvil:<dir>|generator:<preset>:<seed> --out <maps_root>"
                 + " [--threads N] [--bounds minX,minZ,maxX,maxZ] [--dimension <key>] [--min-y <y>] [--logs <dir>] [--samples N]");
         System.err.println("       verify --build <maps_root>/<map_id>/<build_id>");
+        System.err.println("       farview-export --build <maps_root>/<map_id>/<build_id> --out <dir>");
         return EXIT_USAGE;
     }
 }

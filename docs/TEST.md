@@ -7945,11 +7945,11 @@ for (var request : System.getenv("MGMT_CALLS").split("\n")) {
 
 #### `TC-PROD-606` 开管理接口的部署满足 §23 的前提：令牌每分片一个，主机上没有不受信任的系统用户或每个分片有独立的网络命名空间 — 对应 `REQ-PROD-032` · 级别: 边缘 · 执行者: 人工
 
-前置：目标部署主机（Linux），开了 `synaxis.app.management.enabled` 的分片已按 `.env.example` 部署：共享的 `.env` 加每分片一份的 `.env.<shard_id>`，服务单元先读前者再读后者。下面的 `<目录>` 是放这些文件的目录，`<PID>` 是分片进程号，`<端口>` 是它的管理端口。
+前置：目标部署主机（Linux），开了 `synaxis.app.management.enabled` 的分片已按 `.env.example` 部署：共享的 `.env` 加每分片一份的 `.env.<shard_id>`，服务单元两个都读。下面的 `<目录>` 是放这些文件的目录，`<PID>` 是分片进程号，`<端口>` 是它的管理端口。
 
 | # | 操作 | 预期 |
 | --- | --- | --- |
-| 1 | 只比摘要、不打印令牌：`for f in <目录>/.env.*; do printf '%s ' "$f"; sed -n 's/^SYNAXIS_MANAGEMENT_TOKEN=//p' "$f" \| sha256sum; done`，再 `sed -n 's/^SYNAXIS_MANAGEMENT_TOKEN=//p' <目录>/.env \| wc -c` | 每个开管理接口的分片一行，摘要两两不同；共享的 `.env` 里这个键为空（`wc -c` 为 0 或 1） |
+| 1 | 只比摘要、不打印令牌：`for f in <目录>/.env.*; do printf '%s ' "$f"; sed -n 's/^SYNAXIS_MANAGEMENT_TOKEN=//p' "$f" \| sha256sum; done`，再 `grep -c '^SYNAXIS_MANAGEMENT_TOKEN=' <目录>/.env` | 每个开管理接口的分片一行，摘要两两不同；共享的 `.env` 里没有这个键（`grep -c` 输出 0） |
 | 2 | 每个分片进程：`readlink /proc/<PID>/ns/net` 与 `readlink /proc/1/ns/net` 比；相同的（与主机共用网络命名空间）再看 `getent passwd` 里能登录的用户 | 二选一成立：网络命名空间与主机不同；或者相同，而能登录的用户只有运维与服务账号。§23 这一行填「过」并附两条命令的输出 |
 | 3 | 反证（只在不对外的测试主机上做，不在生产主机上做）：找一个与主机共用网络命名空间的分片，停掉它，以 `nobody` 跑 `python3 -c "import socket;s=socket.socket();s.bind(('127.0.0.1',<端口>));s.listen();c,_=s.accept();print(b'Authorization: Bearer' in c.recv(4096))"`，再以运维身份用管理客户端连 `127.0.0.1:<端口>` | 打印 `True`：同机的非特权用户收下了令牌，这就是 §23 前提要排除的情形。分片在独立网络命名空间里时，管理客户端在分片的命名空间里连，`nobody` 绑的是主机的回环，收不到 |
 

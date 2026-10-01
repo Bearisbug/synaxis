@@ -1,0 +1,86 @@
+# 2026-10-01 10:55:40 +0800 HEAD d32d1a8096
+BUILD SUCCESSFUL in 4s
+## M1 game port taken: a socket holds 0.0.0.0:<port>, Main is started on it
+exit code 1 after 0.9 s (the JVM start included)
+   10:55:46.541 [main] INFO  i.g.b.s.app.metrics.HostMetrics - Metrics endpoint listening on http://127.0.0.1:49362/metrics
+   10:55:46.563 [main] ERROR i.g.b.s.app.HostExceptionHandler - Unhandled exception: tick=0 connection_id=- (1 BindException since the last report)
+   java.net.BindException: Address already in use
+   10:55:46.571 [main] ERROR i.github.bearisbug.synaxis.app.Main - Refusing to start: synaxis.app.port=49356 cannot be bound: Address already in use
+   java.lang.IllegalArgumentException: synaxis.app.port=49356 cannot be bound: Address already in use
+   Caused by: java.net.BindException: Address already in use
+## M2 wildcard binds and the metrics connection cap in a real process
+   10:55:47.386 [main] INFO  i.g.b.s.app.metrics.HostMetrics - Metrics endpoint listening on http://[0:0:0:0:0:0:0:0]:49363/metrics
+   10:55:47.386 [main] WARN  i.github.bearisbug.synaxis.app.Main - synaxis.app.metrics.bind=0.0.0.0:0 is the wildcard address: every interface of this host serves the metrics, which ask for no authentication
+   10:55:47.393 [main] INFO  i.g.b.s.a.m.ManagementServer - Management interface listening on [0:0:0:0:0:0:0:0]:49364
+   10:55:47.393 [main] WARN  i.github.bearisbug.synaxis.app.Main - synaxis.app.management.bind=[0:0:0:0:0:0:0:0]:0 is the wildcard address: every interface of this host serves the management interface, whose token crosses the network in clear text (no TLS)
+   10:55:47.406 [main] INFO  i.github.bearisbug.synaxis.app.Main - synaxis server-app listening on 0.0.0.0:0
+  65th connection: recv returned b'' after 1 ms (closed by the server)
+  after closing the 64: GET /metrics answered, 14514 bytes, synaxis_tick_duration_seconds present: True
+# done 2026-10-01 10:55:48 +0800
+
+# The script that produced the lines above (python3, run under the heavy lock after
+# ./gradlew :server-app:lightFixtureArgs wrote server-app/build/light-fixture.args):
+    import os, re, secrets, socket, subprocess, sys, time, urllib.request
+    wt = "/Users/bug/Documents/Projects/Minecraft/synaxis-wt/sec-ops"
+    java = "/opt/homebrew/opt/openjdk@25/libexec/openjdk.jdk/Contents/Home/bin/java"
+    args = "@" + wt + "/server-app/build/light-fixture.args"
+    work = "/tmp/secfix-ops/work"
+    os.makedirs(work, exist_ok=True)
+    base = [java, "-Xmx1g", args, "-Dlogback.configurationFile=logback.xml", "-Dsynaxis.app.log=stdout",
+            "-Dsynaxis.app.auth=offline", "-Dsynaxis.app.core-mode=on"]
+    
+    def free_port():
+        s = socket.socket(); s.bind(("127.0.0.1", 0)); p = s.getsockname()[1]; s.close(); return p
+    
+    print("## M1 game port taken: a socket holds 0.0.0.0:<port>, Main is started on it")
+    port = free_port()
+    holder = socket.socket(); holder.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    holder.bind(("0.0.0.0", port)); holder.listen()
+    start = time.monotonic()
+    p = subprocess.run(base + [f"-Dsynaxis.app.port={port}", "-Dsynaxis.app.metrics.bind=127.0.0.1:0",
+                               "io.github.bearisbug.synaxis.app.Main"], cwd=work, capture_output=True, text=True, timeout=120)
+    took = time.monotonic() - start
+    holder.close()
+    print(f"exit code {p.returncode} after {took:.1f} s (the JVM start included)")
+    for line in p.stdout.splitlines():
+        if re.search(r"(WARN|ERROR)\s|listening on|Refusing|Caused by|^java\.", line):
+            print("  ", line[:260])
+    
+    print("## M2 wildcard binds and the metrics connection cap in a real process")
+    env = dict(os.environ, SYNAXIS_MANAGEMENT_TOKEN=secrets.token_hex(32))
+    proc = subprocess.Popen(base + ["-Dsynaxis.app.port=0", "-Dsynaxis.app.metrics.bind=0.0.0.0:0",
+                                    "-Dsynaxis.app.management.enabled=true", "-Dsynaxis.app.management.bind=[::]:0",
+                                    "io.github.bearisbug.synaxis.app.Main"], cwd=work, env=env,
+                            stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+    lines = []
+    deadline = time.monotonic() + 120
+    while time.monotonic() < deadline:
+        line = proc.stdout.readline()
+        if not line: break
+        lines.append(line.rstrip("\n"))
+        if "synaxis server-app listening on" in line: break
+    for line in lines:
+        if re.search(r"WARN\s|listening on", line):
+            print("  ", line[:300])
+    metrics = int(re.search(r"Metrics endpoint listening on http://[^ ]*:(\d+)/metrics", "\n".join(lines)).group(1))
+    idle = []
+    for _ in range(64):
+        s = socket.create_connection(("127.0.0.1", metrics), timeout=5); idle.append(s)
+    time.sleep(0.2)
+    past = socket.create_connection(("127.0.0.1", metrics), timeout=5)
+    past.settimeout(2)
+    t0 = time.monotonic()
+    try:
+        data = past.recv(1)
+        print(f"  65th connection: recv returned {data!r} after {(time.monotonic()-t0)*1000:.0f} ms (closed by the server)")
+    except socket.timeout:
+        print("  65th connection: still open after 2 s")
+    except ConnectionResetError:
+        print(f"  65th connection: reset after {(time.monotonic()-t0)*1000:.0f} ms")
+    past.close()
+    for s in idle: s.close()
+    time.sleep(0.5)
+    opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+    body = opener.open(f"http://127.0.0.1:{metrics}/metrics", timeout=5).read().decode()
+    print(f"  after closing the 64: GET /metrics answered, {len(body)} bytes, synaxis_tick_duration_seconds present: {'synaxis_tick_duration_seconds' in body}")
+    proc.kill(); proc.wait(30)

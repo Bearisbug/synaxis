@@ -1,0 +1,589 @@
+# RUN-065 / 07: the scripts as run (the temp dir /tmp/followup-065.KjAtEm is deleted after the round). The password of synaxis-pg is read from
+# docker inspect into a variable and never printed; the HMAC key is generated into a 0600 file under <L> and deleted with it.
+
+=== holder.zsh
+#!/bin/zsh
+# RUN-065: takes /tmp/synaxis-heavy.lock once and runs the jobs of queue/ in name order while holding it; more jobs may be
+# dropped into queue/ meanwhile. Releases on the file release, after 10 min with nothing queued, or on any exit (top-level trap).
+T=/tmp/followup-065.KjAtEm
+LOCK=/tmp/synaxis-heavy.lock
+TL=$T/lock.log
+echo "$(date '+%F %T') holder pid=$$ waiting for $LOCK" >> $TL
+until mkdir $LOCK 2>/dev/null; do
+  echo "$(date '+%F %T') busy: $(cat $LOCK/owner 2>/dev/null)" >> $TL
+  sleep 60
+done
+trap 'echo "$(date "+%F %T") released by pid $$" >> /tmp/followup-065.KjAtEm/lock.log; rm -rf /tmp/synaxis-heavy.lock' EXIT
+trap 'exit 143' TERM INT HUP
+echo "owner=Synaxis光照/followup pid=$$ since=$(date '+%F %T') task=RUN-065: ShardGates online check red/green, gate cases, two-process fixture, check and two strict modes" > $LOCK/owner
+echo "$(date '+%F %T') taken: $(cat $LOCK/owner)" >> $TL
+idle=0
+while [[ ! -e $T/release ]]; do
+  files=($T/queue/*.zsh(N)); next=${files[1]}
+  if [[ -z $next ]]; then
+    (( idle >= 600 )) && { echo "$(date '+%F %T') idle 10 min, leaving" >> $TL; break; }
+    sleep 10; (( idle += 10 )); continue
+  fi
+  idle=0
+  echo "$(date '+%F %T') start ${next:t}" >> $TL
+  zsh $next > $T/out/${next:t:r}.stdout 2>&1
+  echo "$(date '+%F %T') end ${next:t} rc=$?" >> $TL
+  mv $next $T/done/
+done
+echo "$(date '+%F %T') holder done" >> $TL
+
+=== common.zsh
+# Sourced by every job of RUN-065; the holder (holder.zsh) owns the lock and its trap.
+W=/Users/bug/Documents/Projects/Minecraft/synaxis-wt/followup
+T=/tmp/followup-065.KjAtEm
+E=$W/docs/test-runs/RUN-065
+export JAVA_HOME=/opt/homebrew/opt/openjdk@25/libexec/openjdk.jdk/Contents/Home
+PROXY='-Dhttps.proxyHost=127.0.0.1 -Dhttps.proxyPort=7897 -Dhttp.proxyHost=127.0.0.1 -Dhttp.proxyPort=7897 -Dhttp.nonProxyHosts=maven.aliyun.com|*.aliyun.com'
+G=(--no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts --max-workers=4)
+PGPW="$(docker inspect synaxis-pg --format '{{range .Config.Env}}{{println .}}{{end}}' | sed -n 's/^POSTGRES_PASSWORD=//p')"
+DBV=(SYNAXIS_TEST_PG_URL=jdbc:postgresql://127.0.0.1:5440/postgres SYNAXIS_TEST_PG_USER=postgres SYNAXIS_TEST_PG_PASSWORD=$PGPW SYNAXIS_TEST_REDIS_URL=redis://127.0.0.1:6440)
+SH=io.github.bearisbug.synaxis.app.shard
+GT=server-app/src/main/java/io/github/bearisbug/synaxis/app/shard/ShardGates.java
+PS=server-app/src/main/java/io/github/bearisbug/synaxis/app/store/PlayerStore.java
+MN=server-app/src/main/java/io/github/bearisbug/synaxis/app/Main.java
+RES=server-app/build/test-results/test
+cd $W
+
+log() { echo "[$(date '+%H:%M:%S')] $*"; }
+
+# Gradle without / with the database variables; the console goes to $T/out/<tag>.log, the gist to stdout
+gw() { local tag=$1; shift; env JAVA_TOOL_OPTIONS="$PROXY" ./gradlew "$@" $G > $T/out/$tag.log 2>&1; local rc=$?; gist $tag $rc; return $rc; }
+gwdb() { local tag=$1; shift; env $DBV JAVA_TOOL_OPTIONS="$PROXY" ./gradlew "$@" $G > $T/out/$tag.log 2>&1; local rc=$?; gist $tag $rc; return $rc; }
+gist() {
+  echo "  gradle [$1] rc=$2"
+  /usr/bin/grep -E 'tests completed|FAILED$|BUILD (SUCCESSFUL|FAILED)|^  *(org\.|java\.)[A-Za-z.]*(Error|Exception)|at [A-Za-z]+\.java:[0-9]+|error: |^e: ' $T/out/$1.log | /usr/bin/grep -v 'Picked up JAVA_TOOL_OPTIONS' | head -40 | sed 's/^/    /'
+}
+
+# JUnit XML of one class: counts, cases, failure messages, the test file lines in the traces
+xmlsum() {
+  local f=$RES/TEST-$1.xml
+  [[ -f $f ]] || { echo "  (no result file for $1)"; return; }
+  echo "  TEST-$1.xml: $(/usr/bin/grep -o -m1 'tests="[0-9]*" skipped="[0-9]*" failures="[0-9]*" errors="[0-9]*"' $f) $(/usr/bin/grep -o -m1 'timestamp="[^"]*"' $f)"
+  /usr/bin/grep -o '<failure message="[^"]*"' $f | sed -e 's/<failure message=/    FAIL /' -e 's/&lt;/</g' -e 's/&gt;/>/g' -e 's/&quot;/"/g' -e "s/&#39;/'/g" -e 's/&amp;/\&/g' | cut -c1-700
+  /usr/bin/grep -oE '\([A-Za-z]+Test\.java:[0-9]+\)' $f | sort | uniq -c | sed 's/^/    trace /'
+  /usr/bin/grep -c AcquirableOwnershipException $f | sed 's/^/    AcquirableOwnershipException mentions: /'
+}
+
+# literal replacement in a file, fails loudly when the text is not there
+subst() {
+  OLD="$2" NEW="$3" perl -0pi -e 'my $o = $ENV{OLD}; my $n = $ENV{NEW}; my $c = s/\Q$o\E/$n/; die "no match in $ARGV for: $o\n" unless $c;' "$1"
+}
+restore() { git checkout HEAD -- "$@"; echo "  restored $*; git status --short -- server-app: [$(git status --short -- server-app | tr '\n' ' ')]"; }
+showdiff() { git diff -U0 -- "$@" | /usr/bin/grep -E '^[-+][^-+]' | sed 's/^/    diff /'; }
+
+=== done/01-red-green.zsh
+source /tmp/followup-065.KjAtEm/common.zsh
+OUT=$E/01-red-green.txt
+{
+echo "# RUN-065 / 01: the new test ShardGatesOnlineTest before and after the fix (B-01 hardening of ShardGates#moved)."
+echo "# HEAD $(git rev-parse --short=10 HEAD) on branch $(git branch --show-current); base main c69548be70."
+echo "# Before the fix = HEAD with ShardGates.java taking the predicate in its constructor and never reading it (no field, no check"
+echo "# in moved), which is main's moved() behind the new constructor: the test does not compile against main's three-argument one."
+echo "# Database variables not set (the class needs none). Gradle: $G"
+log "## before the fix: ShardGates keeps main's moved()"
+subst $GT $'    private final Predicate<Player> online;\n' ''
+subst $GT $'        this.online = online;\n' ''
+subst $GT '|| !online.test(player) ' ''
+showdiff $GT
+gw red-before :server-app:test --rerun --tests "$SH.ShardGatesOnlineTest"
+xmlsum $SH.ShardGatesOnlineTest
+restore $GT
+log "## after the fix: HEAD"
+gw green-after :server-app:test --rerun --tests "$SH.ShardGatesOnlineTest"
+xmlsum $SH.ShardGatesOnlineTest
+log "## done"
+} >> $OUT 2>&1
+
+=== done/02-cases.zsh
+source /tmp/followup-065.KjAtEm/common.zsh
+OUT=$E/02-cases.txt
+GTT="$SH.ShardGatesTest"
+GOT="$SH.ShardGatesOnlineTest"
+{
+echo "# RUN-065 / 02: the cases of the gates, step by step, on HEAD $(git rev-parse --short=10 HEAD) (code commit 072d45b790)."
+echo "# Every counterproof edits one file, runs, reads the JUnit XML, then git checkout HEAD -- <file> and checks git status of server-app."
+echo "# Database variables only where the case needs them (TC-PROD-593, TC-WORLD-075). Gradle: $G"
+
+log "## TC-WORLD-101 step 1 / TC-WORLD-064, 100, TC-PROD-570, 571, 572 step 1: ShardGatesOnlineTest and ShardGatesTest"
+gw s1 :server-app:test --rerun --tests "$GOT" --tests "$GTT"
+xmlsum $GOT; xmlsum $GTT
+
+log "## TC-WORLD-101 step 2 / TC-WORLD-100 step 2 / TC-PROD-573 step 3: the wiring in Main"
+/usr/bin/grep -n 'new ShardGates(' $MN | sed 's/^/    /'
+/usr/bin/grep -n 'directoryMode, store.store(), ledger' $MN | sed 's/^/    /'
+
+log "## TC-WORLD-101 step 3: counterproof, the online check never stops a walk in"
+subst $GT '|| !online.test(player) ||' '|| (!online.test(player) && Boolean.getBoolean("proof.never")) ||'
+showdiff $GT
+gw w101-3 :server-app:test --rerun --tests "$GOT"
+xmlsum $GOT
+restore $GT
+
+log "## TC-WORLD-101 step 4: counterproof, the online check before the frame bookkeeping"
+subst $GT $'        final Player player = event.getPlayer();\n' $'        final Player player = event.getPlayer();\n        if (!online.test(player)) return;\n'
+showdiff $GT
+gw w101-4 :server-app:test --rerun --tests "$GOT"
+xmlsum $GOT
+restore $GT
+
+log "## TC-WORLD-064 step 2: counterproof, a walk in while under way triggers"
+subst $GT 'if (gate == null || gate.equals(before) || !online.test(player) || !underWay.add(player)) return;' $'if (gate == null || gate.equals(before) || !online.test(player)) return;\n        underWay.add(player);'
+showdiff $GT
+gw w064-2 :server-app:test --rerun --tests "$GTT"
+xmlsum $GTT
+restore $GT
+
+log "## TC-WORLD-064 step 3: counterproof, CompletionException not unwrapped"
+subst $GT 'final Throwable cause = error instanceof CompletionException && error.getCause() != null ? error.getCause() : error;' 'final Throwable cause = error;'
+subst $GT $'import java.util.concurrent.CompletionException;\n' ''
+showdiff $GT
+gw w064-3 :server-app:test --rerun --tests "$GTT"
+xmlsum $GTT
+restore $GT
+
+log "## TC-WORLD-064 step 4: counterproof, the gates send a key of their own"
+subst $GT 'player.sendMessage(Component.translatable(TicketIssuer.TRANSFER_FAILED));' 'player.sendMessage(Component.translatable("synaxis:transfer-failed-probe"));'
+subst $GT $'import io.github.bearisbug.synaxis.app.transfer.TicketIssuer;\n' ''
+showdiff $GT
+gw w064-4 :server-app:test --rerun --tests "$GTT"
+xmlsum $GTT
+restore $GT
+
+log "## TC-WORLD-100 step 3: counterproof, nothing written"
+subst $GT 'events.accept("transfer_refused", attributes);' 'if (Boolean.getBoolean("proof.never")) events.accept("transfer_refused", attributes);'
+showdiff $GT
+gw w100-3 :server-app:test --rerun --tests "$GTT"
+xmlsum $GTT
+restore $GT
+
+log "## TC-WORLD-100 step 4: counterproof, result not lower case"
+subst $GT 'result.name().toLowerCase(Locale.ROOT)' 'result.name()'
+subst $GT $'import java.util.Locale;\n' ''
+showdiff $GT
+gw w100-4 :server-app:test --rerun --tests "$GTT"
+xmlsum $GTT
+restore $GT
+
+log "## TC-WORLD-100 step 5: counterproof, COOLDOWN also told to the player"
+subst $GT 'case COOLDOWN, NOT_ONLINE, SAVE_FAILED -> refused(player, gate, result);' 'case NOT_ONLINE, SAVE_FAILED -> refused(player, gate, result);'
+subst $GT 'case FULL, OFFLINE, DIRECTORY_UNAVAILABLE -> {' 'case FULL, OFFLINE, DIRECTORY_UNAVAILABLE, COOLDOWN -> {'
+showdiff $GT
+gw w100-5 :server-app:test --rerun --tests "$GTT"
+xmlsum $GTT
+restore $GT
+
+log "## TC-PROD-570 step 2 as written: git checkout 0e919cce6a -- <GT>, run, git checkout HEAD -- <GT>"
+git checkout 0e919cce6a -- $GT
+gw p570-2 :server-app:test --rerun --tests "$GTT"
+xmlsum $GTT
+restore $GT
+
+log "## TC-PROD-570 step 2, the same old ShardGates with only the constructor parameter of HEAD added"
+git show 0e919cce6a:$GT > $GT
+subst $GT $'import java.util.function.BiConsumer;\n' $'import java.util.function.BiConsumer;\nimport java.util.function.Predicate;\n'
+subst $GT 'BiConsumer<String, Map<String, ?>> events) {' $'BiConsumer<String, Map<String, ?>> events,\n                      Predicate<Player> online) {'
+showdiff $GT
+gw p570-2b :server-app:test --rerun --tests "$GTT"
+xmlsum $GTT
+restore $GT
+
+log "## TC-PROD-570 step 3: counterproof, NOT_ONLINE left out"
+subst $GT 'case SENT -> {' 'case SENT, NOT_ONLINE -> {'
+subst $GT 'case COOLDOWN, NOT_ONLINE, SAVE_FAILED -> refused(player, gate, result);' 'case COOLDOWN, SAVE_FAILED -> refused(player, gate, result);'
+showdiff $GT
+gw p570-3 :server-app:test --rerun --tests "$GTT"
+xmlsum $GTT
+restore $GT
+
+log "## TC-PROD-570 step 4: counterproof, SAVE_FAILED left out"
+subst $GT 'case SENT -> {' 'case SENT, SAVE_FAILED -> {'
+subst $GT 'case COOLDOWN, NOT_ONLINE, SAVE_FAILED -> refused(player, gate, result);' 'case COOLDOWN, NOT_ONLINE -> refused(player, gate, result);'
+showdiff $GT
+gw p570-4 :server-app:test --rerun --tests "$GTT"
+xmlsum $GTT
+restore $GT
+
+log "## TC-PROD-570 step 5: counterproof, SENT written too"
+subst $GT $'case SENT -> {\n            }' 'case SENT -> refused(player, gate, result);'
+showdiff $GT
+gw p570-5 :server-app:test --rerun --tests "$GTT"
+xmlsum $GTT
+restore $GT
+
+log "## TC-PROD-571 step 2: counterproof, a player that left is not written"
+subst $GT $'        final Map<String, Object> attributes = new LinkedHashMap<>();\n' $'        if (!player.isOnline()) return;\n        final Map<String, Object> attributes = new LinkedHashMap<>();\n'
+showdiff $GT
+gw p571-2 :server-app:test --rerun --tests "$GTT"
+xmlsum $GTT
+restore $GT
+
+log "## TC-PROD-572 step 2: counterproof, the player told on every refusal"
+subst $GT $'        final Map<String, Object> attributes = new LinkedHashMap<>();\n' $'        player.sendMessage(Component.translatable(TicketIssuer.TRANSFER_FAILED));\n        final Map<String, Object> attributes = new LinkedHashMap<>();\n'
+showdiff $GT
+gw p572-2 :server-app:test --rerun --tests "$GTT"
+xmlsum $GTT
+restore $GT
+
+log "## TC-PROD-573 step 1: four classes, default mode"
+FOUR=(--tests "$GTT" --tests "$SH.ShardServiceImplTest" --tests "$SH.ShardArchitectureTest" --tests io.github.bearisbug.synaxis.app.ClientDrivenLogArchitectureTest)
+gw p573-1 :server-app:test --rerun $FOUR
+for c in $GTT $SH.ShardServiceImplTest $SH.ShardArchitectureTest io.github.bearisbug.synaxis.app.ClientDrivenLogArchitectureTest; do xmlsum $c; done
+
+log "## TC-PROD-573 step 2: the four classes, strict grid"
+gw p573-2 :server-app:test --rerun $FOUR -Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true -Dsynaxis.thread-provider=grid
+for c in $GTT $SH.ShardServiceImplTest $SH.ShardArchitectureTest io.github.bearisbug.synaxis.app.ClientDrivenLogArchitectureTest; do xmlsum $c; done
+
+log "## TC-PROD-593 step 1: the ghost class, database variables set"
+GHOST=io.github.bearisbug.synaxis.app.store.TransferNotFollowedIntegrationTest
+gwdb p593-1 :server-app:test --rerun --tests $GHOST
+xmlsum $GHOST
+/usr/bin/grep -o '<testcase name="[^"]*" classname="[^"]*" time="[^"]*"' $RES/TEST-$GHOST.xml | sed 's/^/    /'
+
+log "## TC-PROD-593 step 2: counterproof, in_transit counted as online"
+subst $PS 'return !closing && record != null && record.state == LeaseState.ONLINE;' 'return !closing && record != null && record.state != LeaseState.LOADING;'
+showdiff $PS
+gwdb p593-2 :server-app:test --rerun --tests $GHOST
+xmlsum $GHOST
+restore $PS
+
+log "## TC-WORLD-062, 063, 065, 075 step 1 (their classes; ShardServiceImpl, ShardArrivals and ShardHeartbeat are not changed by this round)"
+gwdb w06x :server-app:test --rerun --tests "$SH.ShardServiceImplTest" --tests "$SH.ShardArrivalsTest" --tests "$SH.ShardHeartbeatDbTest" --tests "$SH.ShardServiceHeartbeatDbTest"
+for c in $SH.ShardServiceImplTest $SH.ShardArrivalsTest $SH.ShardHeartbeatDbTest $SH.ShardServiceHeartbeatDbTest; do xmlsum $c; done
+
+log "## the last step of every case above: step 1 again"
+gw last :server-app:test --rerun --tests "$GOT" --tests "$GTT"
+xmlsum $GOT; xmlsum $GTT
+echo "  git status --short: [$(git status --short | tr '\n' ' ')]"
+log "## done"
+} >> $OUT 2>&1
+
+=== done/03-two-process.zsh
+source /tmp/followup-065.KjAtEm/common.zsh
+OUT=$E/03-two-process.txt
+L=$T/2p
+export L
+DB=run065_2p
+PIDS=$L/pids
+: > $PIDS
+LT=$W/loadtest/build/install/loadtest/bin/loadtest
+BK=$W/baker/build/install/baker/bin/baker
+SS=$W/server-app/build/install/server-app/bin/server-shard
+PY=$L/.venv/bin/python
+NP=(--noproxy '*')
+metric() { curl $NP -s http://127.0.0.1:$1/metrics | /usr/bin/grep -E "^$2" | head -3 | tr '\n' ' '; }
+psql_() { docker exec synaxis-pg psql -U postgres -d $DB -tAc "$1"; }
+valkey() { docker exec synaxis-valkey valkey-cli "$@"; }
+wait_line() { local i=0; while (( i < $3 )); do /usr/bin/grep -q -- "$2" $1 2>/dev/null && return 0; sleep 1; (( i++ )); done; return 1; }
+# start_shard <shard_id> <port> <metrics port> <log name> [extra -D...]: background, pid into $PIDS and $SHARD_PID
+start_shard() {
+  local id=$1 port=$2 mport=$3 name=$4; shift 4
+  local d=$L/work-$id; mkdir -p $d
+  ( cd $d && exec env -u JAVA_TOOL_OPTIONS $SHENV JAVA_OPTS="-Xms512m -Xmx512m" \
+    SERVER_APP_OPTS="-Dsynaxis.app.port=$port -Dsynaxis.app.auth=offline -Dsynaxis.app.metrics.bind=127.0.0.1:$mport -Dsynaxis.connection-gate.trusted-networks=127.0.0.0/8 -Dsynaxis.app.log=stdout -Dsynaxis.dispatcher-threads=3 -Dsynaxis.map.root=$MAPROOT -Dsynaxis.map.build=$BUILD -Dsynaxis.app.store=postgres -Dsynaxis.app.shard-id=$id $*" \
+    $SS > $d/$name 2>&1 ) &
+  SHARD_PID=$!; echo $SHARD_PID >> $PIDS
+}
+stop_pid() { kill -TERM $1 2>/dev/null; local i=0; while kill -0 $1 2>/dev/null && (( i < 30 )); do sleep 1; (( i++ )); done; echo "pid $1 stopped after ${i}s, alive: $(kill -0 $1 2>/dev/null && echo yes || echo no)"; }
+warns() { /usr/bin/grep -E '\] (WARN|ERROR) ' $1 | cut -c1-260; }
+{
+echo "# RUN-065 / 03: the two-process fixture of docs/TEST.md M3-E (TC-WORLD-076 to TC-WORLD-080), HEAD $(git rev-parse --short=10 HEAD)."
+echo "# <L> = $L (deleted afterwards); database $DB in synaxis-pg (dropped afterwards); synaxis-valkey for Redis. Server, baker and bot"
+echo "# processes run without JAVA_TOOL_OPTIONS; Gradle with the proxy. Python: a uv venv under <L> (3.12, standard library only)."
+log "ports listening before (25611-25614, 19611-19614): $(lsof -nP -iTCP -sTCP:LISTEN 2>/dev/null | /usr/bin/grep -cE ':(2561[1-4]|1961[1-4]) ')"
+mkdir -p $L/bot $L/badroots; chmod 700 $L
+uv venv -q --python 3.12 $L/.venv && log "venv: $($PY --version 2>&1)"
+
+log "## fixture: installDist, bake, shards.json, database, migration"
+gw install :server-app:installDist :loadtest:installDist :baker:installDist
+( cd $L && env -u JAVA_TOOL_OPTIONS /usr/bin/time -l $BK bake --map-id mini --source generator:synthetic:7 --out $L/maps --logs $L/bakelogs --bounds 0,0,31,15 --threads 2 > $L/bake.log 2>&1 )
+log "bake: $(/usr/bin/grep -E 'published|real|maximum resident' $L/bake.log | tr -s ' ' | sed "s|$L|<L>|g" | tr '\n' ';')"
+BUILD=$(ls $L/maps/mini | /usr/bin/grep -- '-p776$' | head -1); export BUILD
+MAPROOT=$L/maps/mini
+log "build $BUILD, $(stat -f %z $MAPROOT/$BUILD/*.synx 2>/dev/null | paste -sd+ - | bc) bytes of region files"
+cat > $MAPROOT/shards.json <<'EOF'
+{
+  "format_version": 1,
+  "map_id": "mini",
+  "regions": [
+    {"region_id": "r0", "bounds": {"min_x": 0, "min_z": 0, "max_x": 15, "max_z": 15},
+     "gates": [{"gate_id": "r0-east", "min": [240, 0, 120], "max": [255, 255, 135],
+                "target_region": "r1", "arrival": [232.5, 200.0, 128.5, 90.0]}]},
+    {"region_id": "r1", "bounds": {"min_x": 16, "min_z": 0, "max_x": 31, "max_z": 15},
+     "gates": [{"gate_id": "r1-west", "min": [256, 0, 120], "max": [271, 255, 135],
+                "target_region": "r0", "arrival": [279.5, 200.0, 128.5, -90.0]}]}
+  ],
+  "channels": [
+    {"shard_id": "r0-c1", "region_id": "r0", "channel": 1, "host": "127.0.0.1", "port": 25611, "capacity": 2},
+    {"shard_id": "r0-c2", "region_id": "r0", "channel": 2, "host": "127.0.0.1", "port": 25613, "capacity": 200},
+    {"shard_id": "r1-c1", "region_id": "r1", "channel": 1, "host": "127.0.0.1", "port": 25612, "capacity": 200}
+  ]
+}
+EOF
+docker exec synaxis-pg psql -U postgres -tAc "CREATE DATABASE $DB"
+umask 077; print -r -- "1:$(openssl rand -base64 32)" > $L/hmac; umask 022
+SHENV=(SYNAXIS_STATE_DB_URL=jdbc:postgresql://127.0.0.1:5440/$DB SYNAXIS_STATE_DB_USER=postgres SYNAXIS_STATE_DB_PASSWORD=$PGPW SYNAXIS_REDIS_URL=redis://127.0.0.1:6440 SYNAXIS_TRANSFER_HMAC_KEYS=$(cat $L/hmac))
+( cd $L && env -u JAVA_TOOL_OPTIONS $SHENV SERVER_APP_OPTS="-Dsynaxis.app.log=stdout" $W/server-app/build/install/server-app/bin/server-app --migrate-only --auth-mode=offline > $L/migrate.log 2>&1 )
+log "migrate exit $?; flyway: $(psql_ "SELECT string_agg(version || ':' || success, ' ' ORDER BY installed_rank) FROM flyway_schema_history")"
+
+log "## TC-WORLD-076 step 1: r0-c1 (25611, metrics 19611) and r1-c1 (25612, metrics 19612)"
+start_shard r0-c1 25611 19611 shard.log; P_R0C1=$SHARD_PID
+start_shard r1-c1 25612 19612 shard.log; P_R1C1=$SHARD_PID
+wait_line $L/work-r0-c1/shard.log 'listening on 0.0.0.0:25611' 120; log "r0-c1 listening: $? (pid $P_R0C1)"
+wait_line $L/work-r1-c1/shard.log 'listening on 0.0.0.0:25612' 120; log "r1-c1 listening: $? (pid $P_R1C1)"
+for s in r0-c1 r1-c1; do
+  echo "  == $s"
+  /usr/bin/grep -E 'Map release .* verified|Map mounted|listening on 0.0.0.0' $L/work-$s/shard.log | sed "s|$L|<L>|g" | cut -c1-300 | sed 's/^/    /'
+  echo "    Effective ServerConfig: $(/usr/bin/grep -m1 'Effective ServerConfig' $L/work-$s/shard.log | /usr/bin/grep -oE '(maxPlayers|acceptTransfers)=[A-Za-z0-9]+' | tr '\n' ' ')"
+done
+sleep 6
+for s in r0-c1 r1-c1; do echo "    $s shard_started: $(cat $L/work-$s/logs/events-*.jsonl | /usr/bin/grep '"event":"shard_started"' | /usr/bin/grep -oE '"(regions|bytes_mapped|region_id|capacity)":[^,}]*' | tr '\n' ' ')"; done
+echo "    shard_heartbeat: $(psql_ "SELECT string_agg(shard_id || ' online ' || online || ' capacity ' || capacity || ' accepting ' || accepting || ' age ' || round(extract(epoch FROM now() - updated_at)::numeric, 1), '; ' ORDER BY shard_id) FROM shard_heartbeat")"
+
+log "## TC-WORLD-076 step 2: one gate bot, 240 s"
+( cd $L/bot && env -u JAVA_TOOL_OPTIONS $LT run --host 127.0.0.1 --port 25611 --bots 1 --profile gate --gates "240,0,120,255,255,135;256,0,120,271,255,135" --dwell 6s --duration 240s --warmup 5s --out bots-gate.json > $L/bot/gate.log 2>&1 )
+log "bot exit $?"
+/usr/bin/grep -E '^run:' $L/bot/gate.log | sed 's/^/    /'
+sleep 3
+$PY $T/2p/analyze_transfers.py 2>&1 | sed "s|$L|<L>|g" | sed 's/^/    /'
+for s in r0-c1 r1-c1; do
+  echo "    $s WARN/ERROR lines: $(warns $L/work-$s/shard.log | wc -l | tr -d ' '); transfer_refused rows: $(cat $L/work-$s/logs/events-*.jsonl | /usr/bin/grep -c '"event":"transfer_refused"')"
+  warns $L/work-$s/shard.log | sed 's/^/      /'
+done
+
+log "## TC-WORLD-077 step 1: capacity 2 on r0-c1"
+echo "    before: $(metric 19611 'synaxis_gate_rejections_total.reason=.full')"
+( cd $L/bot && env -u JAVA_TOOL_OPTIONS $LT run --host 127.0.0.1 --port 25611 --bots 2 --profile walk --duration 45s --out bots-two.json > $L/bot/two.log 2>&1 ) &
+P_TWO=$!; echo $P_TWO >> $PIDS
+LEDGER_LINES=$(cat $L/work-r0-c1/logs/events-*.jsonl | wc -l | tr -d ' ')
+sleep 15
+echo "    15 s later: $(metric 19611 'synaxis_players_online')"
+( cd $L/bot && env -u JAVA_TOOL_OPTIONS $LT run --host 127.0.0.1 --port 25611 --bots 1 --bot-offset 2 --duration 10s --out bots-third.json > $L/bot/third.log 2>&1 )
+/usr/bin/grep -E '^run:' $L/bot/third.log | sed 's/^/    third: /'
+echo "    bots-third.json bots: $(/usr/bin/grep -oE '"bots" *: *\{[^}]*\}' $L/bot/bots-third.json | tr -d '\n ' | head -c 400)"
+echo "    after: $(metric 19611 'synaxis_gate_rejections_total.reason=.full') $(metric 19611 'synaxis_players_online')"
+sleep 6
+echo "    heartbeat r0-c1: $(psql_ "SELECT 'online ' || online || ' capacity ' || capacity || ' accepting ' || accepting FROM shard_heartbeat WHERE shard_id = 'r0-c1'")"
+sleep 6
+/usr/bin/grep -E 'Connection gate rejected' $L/work-r0-c1/shard.log | tail -2 | cut -c1-260 | sed 's/^/    /'
+wait $P_TWO
+/usr/bin/grep -E '^run:' $L/bot/two.log | sed 's/^/    two: /'
+sleep 2
+echo "    ledger of r0-c1 since the walk bots started, by event: $(tail -n +$((LEDGER_LINES + 1)) $L/work-r0-c1/logs/events-*.jsonl | /usr/bin/grep -oE '"event":"[a-z_]+"' | sort | uniq -c | tr -s ' ' | tr '\n' ';')"
+echo "    session_entered_configuration players: $(tail -n +$((LEDGER_LINES + 1)) $L/work-r0-c1/logs/events-*.jsonl | /usr/bin/grep '"event":"session_entered_configuration"' | /usr/bin/grep -oE '"username":"[^"]*"' | tr '\n' ' ')"
+
+log "## TC-WORLD-077 step 2: r0-c1 again with -Dsynaxis.max-players=3 (work dir work-refuse, port 25614)"
+D=$L/work-refuse; mkdir -p $D
+( cd $D && env -u JAVA_TOOL_OPTIONS $SHENV JAVA_OPTS="-Xms256m -Xmx256m" SERVER_APP_OPTS="-Dsynaxis.app.port=25614 -Dsynaxis.app.auth=offline -Dsynaxis.app.metrics.bind=127.0.0.1:19614 -Dsynaxis.connection-gate.trusted-networks=127.0.0.0/8 -Dsynaxis.app.log=stdout -Dsynaxis.dispatcher-threads=3 -Dsynaxis.map.root=$MAPROOT -Dsynaxis.map.build=$BUILD -Dsynaxis.app.store=postgres -Dsynaxis.app.shard-id=r0-c1 -Dsynaxis.max-players=3" $SS > shard.log 2>&1 )
+echo "    exit=$?; $(/usr/bin/grep -o 'Refusing to start: .*' $D/shard.log | head -1)"
+echo "    work dir: $(ls -A $D | tr '\n' ' '); 25614 listening: $(lsof -nP -iTCP:25614 -sTCP:LISTEN 2>/dev/null | wc -l | tr -d ' ')"
+
+log "## TC-WORLD-078: 13 refusals of r0-c2 (port 25613)"
+$PY $T/2p/make_bad.py 2>&1 | sed "s|$L|<L>|g" | sed 's/^/    /'
+mkdir -p $L/badroots/no-file
+refuse() { # name root store shard_id extra
+  local d=$L/refuse/$1; mkdir -p $d
+  ( cd $d && env -u JAVA_TOOL_OPTIONS $SHENV JAVA_OPTS="-Xms256m -Xmx256m" SERVER_APP_OPTS="-Dsynaxis.app.port=25613 -Dsynaxis.app.auth=offline -Dsynaxis.app.metrics.bind=127.0.0.1:19613 -Dsynaxis.app.log=stdout -Dsynaxis.dispatcher-threads=3 -Dsynaxis.map.root=$2 -Dsynaxis.map.build=$BUILD -Dsynaxis.app.store=$3 -Dsynaxis.app.shard-id=$4 $5" $SS > shard.log 2>&1 )
+  local rc=$?
+  echo "    ### $1: exit=$rc listening=$(/usr/bin/grep -c 'listening on 0.0.0.0' $d/shard.log) overlay_dir=$([ -d $d/overlay ] && echo yes || echo no) logs_dir=$([ -d $d/logs ] && echo yes || echo no)"
+  /usr/bin/grep -o 'Refusing to start: .*' $d/shard.log | head -1 | sed "s|$L|<L>|g" | cut -c1-330 | sed 's/^/    /'
+}
+for v in overlapping-bounds gate-to-itself arrival-in-gate two-gates-one-pair shard-id-r0-1 capacity-501 unknown-field-capcity other-map-id spawn-in-gate; do
+  refuse $v $L/badroots/$v postgres r0-c2 ""
+done
+refuse no-file $L/badroots/no-file postgres r0-c2 ""
+refuse memory-with-file $L/badroots/good memory r0-c2 ""
+refuse not-a-channel $L/badroots/good postgres r0-c9 ""
+refuse accept-transfers-false $L/badroots/good postgres r0-c2 "-Dsynaxis.accept-transfers=false"
+echo "    heartbeat rows: $(psql_ "SELECT string_agg(shard_id, ' ' ORDER BY shard_id) FROM shard_heartbeat"); 25613 listening: $(lsof -nP -iTCP:25613 -sTCP:LISTEN 2>/dev/null | wc -l | tr -d ' ')"
+
+log "## TC-WORLD-079 step 1: a flag row, r0-c1 restarted in its work dir, r0-c2 started (25613, metrics 19613)"
+psql_ "INSERT INTO world_flag (map_id, region_id, flag_key, value, version) VALUES ('mini', 'r0', 'quest:bridge', '{\"open\": true}', 1)"
+echo "    $(stop_pid $P_R0C1)"
+start_shard r0-c1 25611 19611 shard-2.log; P_R0C1=$SHARD_PID
+start_shard r0-c2 25613 19613 shard.log; P_R0C2=$SHARD_PID
+wait_line $L/work-r0-c1/shard-2.log 'listening on 0.0.0.0:25611' 120; log "r0-c1 listening again: $? (pid $P_R0C1)"
+wait_line $L/work-r0-c2/shard.log 'listening on 0.0.0.0:25613' 120; log "r0-c2 listening: $? (pid $P_R0C2)"
+sleep 3
+for f in work-r0-c1/shard-2.log work-r0-c2/shard.log; do
+  echo "    == $f"; /usr/bin/grep -E 'World flags without an applier|listening on 0.0.0.0' $L/$f | cut -c1-260 | sed 's/^/      /'
+done
+for s in r0-c1 r0-c2; do echo "    $s last shard_started: $(cat $L/work-$s/logs/events-*.jsonl | /usr/bin/grep '"event":"shard_started"' | tail -1 | /usr/bin/grep -oE '"(flags_replayed|flags_ms|region_id|capacity)":[^,}]*' | tr '\n' ' ')"; done
+echo "    PUBSUB NUMSUB: $(valkey PUBSUB NUMSUB synaxis:worldflag:mini:r0 synaxis:worldflag:mini:r1 | tr '\n' ' ')"
+C1=$(wc -l < $L/work-r0-c1/shard-2.log); C2=$(wc -l < $L/work-r0-c2/shard.log); C3=$(wc -l < $L/work-r1-c1/shard.log)
+
+log "## TC-WORLD-079 step 2: version 2 and its message"
+psql_ "UPDATE world_flag SET value = '{\"open\": false}', version = 2 WHERE map_id = 'mini' AND region_id = 'r0' AND flag_key = 'quest:bridge'"
+echo "    receivers: $(valkey PUBLISH synaxis:worldflag:mini:r0 '{"flag_key":"quest:bridge","version":2}')"
+sleep 3
+echo "    new log lines: r0-c1 $(( $(wc -l < $L/work-r0-c1/shard-2.log) - C1 )), r0-c2 $(( $(wc -l < $L/work-r0-c2/shard.log) - C2 ))"
+tail -n +$((C1 + 1)) $L/work-r0-c1/shard-2.log | cut -c1-200 | sed 's/^/      r0-c1: /'
+tail -n +$((C2 + 1)) $L/work-r0-c2/shard.log | cut -c1-200 | sed 's/^/      r0-c2: /'
+C1=$(wc -l < $L/work-r0-c1/shard-2.log); C2=$(wc -l < $L/work-r0-c2/shard.log)
+
+log "## TC-WORLD-079 step 3: a malformed message"
+echo "    receivers: $(valkey PUBLISH synaxis:worldflag:mini:r0 'not json')"
+sleep 3
+tail -n +$((C1 + 1)) $L/work-r0-c1/shard-2.log | /usr/bin/grep -E 'WARN|JsonSyntax' | cut -c1-220 | sed 's/^/      r0-c1: /'
+tail -n +$((C2 + 1)) $L/work-r0-c2/shard.log | /usr/bin/grep -E 'WARN|JsonSyntax' | cut -c1-220 | sed 's/^/      r0-c2: /'
+echo "    r1-c1 new log lines since step 1: $(( $(wc -l < $L/work-r1-c1/shard.log) - C3 ))"
+echo "    heartbeat: $(psql_ "SELECT string_agg(shard_id || ' accepting ' || accepting || ' age ' || round(extract(epoch FROM now() - updated_at)::numeric, 1), '; ' ORDER BY shard_id) FROM shard_heartbeat")"
+
+log "## TC-WORLD-079 step 4: SIGTERM r0-c1, its heartbeat row right after"
+T0=$(date +%s)
+echo "    $(stop_pid $P_R0C1); took $(( $(date +%s) - T0 )) s"
+echo "    heartbeat r0-c1: $(psql_ "SELECT 'accepting ' || accepting || ' age ' || round(extract(epoch FROM now() - updated_at)::numeric, 1) FROM shard_heartbeat WHERE shard_id = 'r0-c1'")"
+/usr/bin/grep -E 'Overlay final flush|stopped successfully' $L/work-r0-c1/shard-2.log | cut -c1-220 | sed 's/^/    /'
+
+log "## TC-WORLD-080: a memory store map shard on <L>/badroots/no-file (port 25614)"
+ln -sfn $MAPROOT/$BUILD $L/badroots/no-file/$BUILD
+D=$L/work-memory; mkdir -p $D
+( cd $D && exec env -u JAVA_TOOL_OPTIONS JAVA_OPTS="-Xms512m -Xmx512m" SERVER_APP_OPTS="-Dsynaxis.app.port=25614 -Dsynaxis.app.auth=offline -Dsynaxis.app.metrics.bind=127.0.0.1:19614 -Dsynaxis.connection-gate.trusted-networks=127.0.0.0/8 -Dsynaxis.app.log=stdout -Dsynaxis.dispatcher-threads=3 -Dsynaxis.map.root=$L/badroots/no-file -Dsynaxis.map.build=$BUILD -Dsynaxis.app.store=memory" $SS > $D/shard.log 2>&1 ) &
+P_MEM=$!; echo $P_MEM >> $PIDS
+wait_line $D/shard.log 'listening on 0.0.0.0:25614' 120; log "memory shard listening: $? (pid $P_MEM)"
+( cd $L/bot && env -u JAVA_TOOL_OPTIONS $LT run --host 127.0.0.1 --port 25614 --bots 1 --profile walk --duration 15s --out bots-memory.json > $L/bot/memory.log 2>&1 )
+/usr/bin/grep -E '^run:' $L/bot/memory.log | sed 's/^/    /'
+/usr/bin/grep -E 'Effective store|Map mounted|listening on 0.0.0.0' $D/shard.log | sed "s|$L|<L>|g" | cut -c1-260 | sed 's/^/    /'
+sleep 2
+echo "    shard_started: $(cat $D/logs/events-*.jsonl | /usr/bin/grep '"event":"shard_started"' | /usr/bin/grep -oE '"(flags_replayed|region_id|capacity)":[^,}]*' | tr '\n' ' ')"
+echo "    WARN/ERROR lines: $(warns $D/shard.log | wc -l | tr -d ' ')"; warns $D/shard.log | sed "s|$L|<L>|g" | sed 's/^/      /'
+echo "    $(stop_pid $P_MEM)"
+echo "    heartbeat rows after (r0-c1 is the stopped directory shard): $(psql_ "SELECT string_agg(shard_id || ' started ' || to_char(started_at, 'HH24:MI:SS'), '; ' ORDER BY shard_id) FROM shard_heartbeat")"
+
+log "## after: stop the rest, drop the database"
+for p in $P_R1C1 $P_R0C2; do echo "    $(stop_pid $p)"; done
+for p in $(cat $PIDS); do kill -0 $p 2>/dev/null && echo "    still alive: $p"; done
+docker exec synaxis-pg psql -U postgres -tAc "DROP DATABASE $DB WITH (FORCE)"
+echo "    database $DB: $(docker exec synaxis-pg psql -U postgres -tAc "SELECT count(*) FROM pg_database WHERE datname = '$DB'") left"
+echo "    ports listening after: $(lsof -nP -iTCP -sTCP:LISTEN 2>/dev/null | /usr/bin/grep -cE ':(2561[1-4]|1961[1-4]) ')"
+log "## done"
+} >> $OUT 2>&1
+
+=== done/04-gates.zsh
+source /tmp/followup-065.KjAtEm/common.zsh
+# junit_sum <marker>: per module and in total, the JUnit XML files written after the marker
+junit_sum() {
+  local all=() d x
+  for d in build/test-results/test */build/test-results/test; do
+    [[ -d $d ]] || continue
+    local files=()
+    for x in $d/TEST-*.xml(N); do [[ $x -nt $1 ]] && files+=$x; done
+    (( ${#files} )) || continue
+    all+=($files)
+    echo "    ${d%%/build*}: $(for x in $files; do /usr/bin/grep -o -m1 'tests="[0-9]*" skipped="[0-9]*" failures="[0-9]*" errors="[0-9]*"' $x; done | sed -E 's/tests="([0-9]+)" skipped="([0-9]+)" failures="([0-9]+)" errors="([0-9]+)"/\1 \2 \3 \4/' | awk '{c++; t+=$1; s+=$2; f+=$3; e+=$4} END {printf "%d classes %d tests %d skipped %d failures %d errors", c, t, s, f, e}')"
+  done
+  echo "    total: $(for x in $all; do /usr/bin/grep -o -m1 'tests="[0-9]*" skipped="[0-9]*" failures="[0-9]*" errors="[0-9]*"' $x; done | sed -E 's/tests="([0-9]+)" skipped="([0-9]+)" failures="([0-9]+)" errors="([0-9]+)"/\1 \2 \3 \4/' | awk '{c++; t+=$1; s+=$2; f+=$3; e+=$4} END {printf "%d classes %d tests %d skipped %d failures %d errors", c, t, s, f, e}')"
+  echo "    classes with failures or errors: [$(for x in $all; do /usr/bin/grep -q '<failure\|<error' $x && basename $x .xml; done | tr '\n' ' ')]"
+  echo "    classes with skipped tests: [$(for x in $all; do n=$(/usr/bin/grep -o -m1 'skipped="[0-9]*"' $x | tr -dc '0-9'); (( n > 0 )) && echo -n "${${x:t:r}#TEST-} $n, "; done)]"
+  echo "    result files mentioning AcquirableOwnershipException: $(for x in $all; do /usr/bin/grep -l AcquirableOwnershipException $x; done | wc -l | tr -d ' ')"
+  echo "    server-app ShardGates classes: $(for x in $all; do [[ $x == *ShardGates* ]] && echo -n "${${x:t:r}#TEST-}: $(/usr/bin/grep -o -m1 'tests="[0-9]*" skipped="[0-9]*" failures="[0-9]*"' $x); "; done)"
+  local env=testing/build/test-results/test/TEST-io.github.bearisbug.synaxis.testing.EnvDispatcherThreadsIntegrationTest.xml
+  [[ -f $env && $env -nt $1 ]] && echo "    EnvDispatcherThreadsIntegrationTest says: $(/usr/bin/grep -oE 'env (dispatcher threads|thread provider): [A-Za-z0-9]+' $env | sort -u | tr '\n' ';')"
+}
+run_gate() { # tag file title args...
+  local tag=$1 file=$2 title=$3; shift 3
+  local marker=$T/marker-$tag; touch $marker; sleep 1
+  {
+    echo "# RUN-065 / $title on HEAD $(git rev-parse --short=10 HEAD) (code commit 072d45b790; docs may be uncommitted, no test reads docs/)."
+    echo "# command: ./gradlew $* $G, with SYNAXIS_TEST_PG_URL, _USER, _PASSWORD (set, not printed) and SYNAXIS_TEST_REDIS_URL"
+    log "start"
+    local s=$(date +%s)
+    gwdb $tag "$@"
+    echo "  $(/usr/bin/grep -E 'BUILD (SUCCESSFUL|FAILED) in|actionable tasks' $T/out/$tag.log | tr '\n' ' ')"
+    log "end, $(( $(date +%s) - s )) s"
+    junit_sum $marker
+  } >> $E/$file 2>&1
+}
+run_gate check 04-check.txt "root check, default mode" check --continue --rerun-tasks -Dsynaxis.synx.require-frozen-zlib=true
+run_gate counter 05-strict-counter.txt "root test, strict mode with 4 counter threads" test --continue --rerun-tasks -Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true
+run_gate grid 06-strict-grid.txt "root test, strict grid" test --continue --rerun-tasks -Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true -Dsynaxis.thread-provider=grid
+
+=== 2p/analyze_transfers.py
+import base64, glob, json, struct, sys
+import os; L = os.environ['L']
+bots = json.load(open(f'{L}/bot/bots-gate.json'))
+arrival = {'127.0.0.1:25612': [279.5, 200.0, 128.5], '127.0.0.1:25611': [232.5, 200.0, 128.5]}
+conns = bots['connections']
+print('transfers:', {k: bots['transfers'][k] for k in ('count', 'completed', 'failed_by_reason')})
+print('connections:', len(conns), 'intents:', [c['intent'] for c in conns[:3]], '...')
+bad = [c for c in conns[1:] if c['intent'] != 'transfer' or c.get('first_position') != arrival[c['address']]]
+print('connections 2..n at the arrival point of their shard:', len(conns) - 1 - len(bad), 'of', len(conns) - 1, 'bad:', bad[:2])
+alt = all(conns[i]['address'] != conns[i + 1]['address'] for i in range(len(conns) - 1))
+print('addresses alternate 25611/25612:', alt)
+events = {}
+for shard in ('r0-c1', 'r1-c1'):
+    for f in glob.glob(f'{L}/work-{shard}/logs/events-*.jsonl'):
+        for line in open(f):
+            e = json.loads(line)
+            if e['event'] in ('transfer_issued', 'transfer_completed'):
+                events.setdefault(e['event'], []).append(dict(e, ledger=shard))
+issued, completed = events.get('transfer_issued', []), events.get('transfer_completed', [])
+print('ledger: transfer_issued', len(issued), 'transfer_completed', len(completed))
+by_ref = {e['transfer_ref']: e for e in completed}
+pairs = [(i, by_ref.get(i['transfer_ref'])) for i in issued]
+unpaired = [i for i, c in pairs if c is None]
+mismatch = [(i, c) for i, c in pairs if c and (i['source_shard'], i['target_shard']) != (c['source_shard'], c['target_shard'])]
+ledger_ok = all(i['ledger'] == i['source_shard'] for i in issued) and all(c['ledger'] == c['target_shard'] for c in completed)
+fb = sorted(c['first_batch_ms'] for c in completed)
+print('paired:', len(pairs) - len(unpaired), 'unpaired:', len(unpaired), 'source/target mismatch:', len(mismatch),
+      'issued in the source ledger, completed in the target ledger:', ledger_ok)
+print('first_batch_ms min/median/max:', fb[0], fb[len(fb) // 2], fb[-1], 'all < 5000:', fb[-1] < 5000)
+order = sorted(issued, key=lambda e: e['issued_at'])
+dirs = [(e['source_shard'], e['target_shard']) for e in order]
+print('directions alternate:', all(dirs[k] != dirs[k + 1] for k in range(len(dirs) - 1)), dirs[:3])
+# cookie of connection k = the ticket stored before transfer k -> k+1
+matched = 0
+for k, c in enumerate(conns[:-1]):
+    raw = base64.b64decode(c['stored_cookies']['synaxis:transfer'])
+    issued_at, = struct.unpack('>q', raw[-48:-40])
+    ref = raw[-64:-60].hex()
+    ev = [e for e in issued if e['transfer_ref'] == ref]
+    if len(ev) == 1 and ev[0]['issued_at'] == issued_at: matched += 1
+    else: print('cookie mismatch at connection', k + 1, ref, issued_at, ev)
+print('cookie issued_at == ledger issued_at (by transfer_ref):', matched, 'of', len(conns) - 1)
+print('last connection stores no cookie:', conns[-1].get('stored_cookies') in (None, {}))
+
+
+=== 2p/make_bad.py
+import copy, json, os
+L = os.environ['L']
+build = os.environ['BUILD']
+good = json.load(open(f'{L}/maps/mini/shards.json'))
+def variant(name, change):
+    d = copy.deepcopy(good)
+    change(d)
+    root = f'{L}/badroots/{name}'
+    os.makedirs(root, exist_ok=True)
+    if not os.path.exists(f'{root}/{build}'): os.symlink(f'{L}/maps/mini/{build}', f'{root}/{build}')
+    if d is not None: json.dump(d, open(f'{root}/shards.json', 'w'), indent=1)
+r0, r1 = lambda d: d['regions'][0], lambda d: d['regions'][1]
+variant('overlapping-bounds', lambda d: r1(d)['bounds'].update(min_x=15))
+variant('gate-to-itself', lambda d: r0(d)['gates'][0].update(target_region='r0'))
+variant('arrival-in-gate', lambda d: r0(d)['gates'][0].update(arrival=[245.5, 200.0, 128.5, 90.0]))
+variant('two-gates-one-pair', lambda d: r0(d)['gates'].append(dict(r0(d)['gates'][0], gate_id='r0-east2', min=[240, 0, 0], max=[255, 255, 15])))
+variant('shard-id-r0-1', lambda d: d['channels'][1].update(shard_id='r0-1'))
+variant('capacity-501', lambda d: d['channels'][1].update(capacity=501))
+variant('unknown-field-capcity', lambda d: d['channels'][1].update(capcity=5))
+variant('other-map-id', lambda d: d.update(map_id='synth'))
+variant('spawn-in-gate', lambda d: r0(d)['gates'][0].update(min=[112, 0, 112], max=[127, 255, 127]))
+variant('good', lambda d: None)
+print(sorted(os.listdir(f'{L}/badroots')))
+
+
+=== lock.log
+2026-10-01 16:54:22 holder pid=39710 waiting for /tmp/synaxis-heavy.lock
+2026-10-01 16:54:22 taken: owner=Synaxis光照/followup pid=39710 since=2026-10-01 16:54:22 task=RUN-065: ShardGates online check red/green, gate cases, two-process fixture, check and two strict modes
+2026-10-01 16:54:22 start 01-red-green.zsh
+2026-10-01 16:54:50 end 01-red-green.zsh rc=0
+2026-10-01 16:54:50 start 02-cases.zsh
+2026-10-01 16:58:42 end 02-cases.zsh rc=0
+2026-10-01 16:58:43 start 03-two-process.zsh
+2026-10-01 17:04:32 end 03-two-process.zsh rc=0
+2026-10-01 17:04:32 start 04-gates.zsh
+2026-10-01 17:23:24 end 04-gates.zsh rc=0
+2026-10-01 17:24:44 holder done
+2026-10-01 17:24:44 released by pid 39710

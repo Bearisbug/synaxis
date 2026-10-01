@@ -1,0 +1,183 @@
+# RUN-065 / 03: the two-process fixture of docs/TEST.md M3-E (TC-WORLD-076 to TC-WORLD-080), HEAD 072d45b790.
+# <L> = /tmp/followup-065.KjAtEm/2p (deleted afterwards); database run065_2p in synaxis-pg (dropped afterwards); synaxis-valkey for Redis. Server, baker and bot
+# processes run without JAVA_TOOL_OPTIONS; Gradle with the proxy. Python: a uv venv under <L> (3.12, standard library only).
+[16:58:43] ports listening before (25611-25614, 19611-19614): 0
+[16:58:43] venv: Python 3.12.11
+[16:58:43] ## fixture: installDist, bake, shards.json, database, migration
+  gradle [install] rc=0
+    BUILD SUCCESSFUL in 4s
+[16:58:51] bake: baker: published <L>/maps/mini/mini-6ab2c226761b-p776, 1692000 bytes; 3.23 real 3.43 user 0.17 sys; 521191424 maximum resident set size;
+/tmp/followup-065.KjAtEm/queue/03-two-process.zsh:42: no matches found: /tmp/followup-065.KjAtEm/2p/maps/mini/mini-6ab2c226761b-p776/*.synx
+[16:58:51] build mini-6ab2c226761b-p776,  bytes of region files
+CREATE DATABASE
+[16:58:52] migrate exit 0; flyway: 1:true 2:true 3:true 4:true 5:true 6:true
+[16:58:52] ## TC-WORLD-076 step 1: r0-c1 (25611, metrics 19611) and r1-c1 (25612, metrics 19612)
+[16:58:56] r0-c1 listening: 0 (pid 44060)
+[16:58:56] r1-c1 listening: 0 (pid 44062)
+  == r0-c1
+    16:58:54.566 [main] INFO  i.g.b.synaxis.app.shard.ShardWorld - Map release mini-6ab2c226761b-p776 verified in 49 ms: bounds=Bounds[minX=0, minZ=0, maxX=31, maxZ=15] world=World[minY=0, height=256]
+    16:58:55.023 [main] INFO  i.g.b.synaxis.app.shard.ShardWorld - Map mounted: build_id=mini-6ab2c226761b-p776 simulation_distance=4 chunk_unload_grace_ticks=100 spawn=Pos[x=120.5, y=63.0, z=120.5, yaw=0.0, pitch=0.0] overlay=overlay/mini-6ab2c226761b-p776
+    16:58:55.029 [main] INFO  i.github.bearisbug.synaxis.app.Main - synaxis server-app listening on 0.0.0.0:25611
+    Effective ServerConfig: acceptTransfers=true maxPlayers=2 
+  == r1-c1
+    16:58:54.578 [main] INFO  i.g.b.synaxis.app.shard.ShardWorld - Map release mini-6ab2c226761b-p776 verified in 39 ms: bounds=Bounds[minX=0, minZ=0, maxX=31, maxZ=15] world=World[minY=0, height=256]
+    16:58:55.036 [main] INFO  i.g.b.synaxis.app.shard.ShardWorld - Map mounted: build_id=mini-6ab2c226761b-p776 simulation_distance=4 chunk_unload_grace_ticks=100 spawn=Pos[x=376.5, y=77.0, z=120.5, yaw=0.0, pitch=0.0] overlay=overlay/mini-6ab2c226761b-p776
+    16:58:55.040 [main] INFO  i.github.bearisbug.synaxis.app.Main - synaxis server-app listening on 0.0.0.0:25612
+    Effective ServerConfig: acceptTransfers=true maxPlayers=200 
+    r0-c1 shard_started: "regions":1 "bytes_mapped":1692000 "region_id":"r0" "capacity":2 
+    r1-c1 shard_started: "regions":1 "bytes_mapped":1692000 "region_id":"r1" "capacity":200 
+    shard_heartbeat: r0-c1 online 0 capacity 2 accepting true age 2.1; r1-c1 online 0 capacity 200 accepting true age 2.1
+[16:59:02] ## TC-WORLD-076 step 2: one gate bot, 240 s
+[17:03:02] bot exit 0
+    run: 1 bots from 0, gate, encryption off, against 127.0.0.1:25611 for 240 s
+    run: {"t":10.0,"bots_in_play":1,"c2s_packets_per_s":58.576,"s2c_bytes_per_s":55191.076,"harness_cpu_percent":4.617,"load1":13.431640625}
+    run: {"t":20.0,"bots_in_play":1,"c2s_packets_per_s":46.898,"s2c_bytes_per_s":32362.887,"harness_cpu_percent":0.746,"load1":12.12841796875}
+    run: {"t":30.0,"bots_in_play":1,"c2s_packets_per_s":58.997,"s2c_bytes_per_s":84879.372,"harness_cpu_percent":1.179,"load1":38.15869140625}
+    run: {"t":40.0,"bots_in_play":1,"c2s_packets_per_s":59.61,"s2c_bytes_per_s":80016.369,"harness_cpu_percent":0.788,"load1":66.88330078125}
+    run: {"t":50.0,"bots_in_play":1,"c2s_packets_per_s":59.696,"s2c_bytes_per_s":92828.451,"harness_cpu_percent":0.961,"load1":66.0009765625}
+    run: {"t":60.0,"bots_in_play":1,"c2s_packets_per_s":60.11,"s2c_bytes_per_s":81338.679,"harness_cpu_percent":0.809,"load1":61.71142578125}
+    run: {"t":70.0,"bots_in_play":1,"c2s_packets_per_s":59.409,"s2c_bytes_per_s":87262.156,"harness_cpu_percent":0.619,"load1":55.1123046875}
+    run: {"t":80.0,"bots_in_play":1,"c2s_packets_per_s":60.004,"s2c_bytes_per_s":87166.868,"harness_cpu_percent":0.559,"load1":47.830078125}
+    run: {"t":90.0,"bots_in_play":0,"c2s_packets_per_s":59.272,"s2c_bytes_per_s":76981.309,"harness_cpu_percent":0.843,"load1":54.06982421875}
+    run: {"t":100.0,"bots_in_play":1,"c2s_packets_per_s":59.7,"s2c_bytes_per_s":93889.277,"harness_cpu_percent":1.365,"load1":81.04931640625}
+    run: {"t":110.0,"bots_in_play":1,"c2s_packets_per_s":60.004,"s2c_bytes_per_s":82091.333,"harness_cpu_percent":0.512,"load1":78.283203125}
+    run: {"t":120.0,"bots_in_play":1,"c2s_packets_per_s":59.996,"s2c_bytes_per_s":87955.807,"harness_cpu_percent":0.642,"load1":71.154296875}
+    run: {"t":130.0,"bots_in_play":1,"c2s_packets_per_s":59.703,"s2c_bytes_per_s":85111.431,"harness_cpu_percent":1.294,"load1":61.6875}
+    run: {"t":140.0,"bots_in_play":1,"c2s_packets_per_s":59.999,"s2c_bytes_per_s":82552.673,"harness_cpu_percent":2.137,"load1":52.75732421875}
+    run: {"t":150.0,"bots_in_play":1,"c2s_packets_per_s":59.996,"s2c_bytes_per_s":91102.377,"harness_cpu_percent":0.923,"load1":45.34716796875}
+    run: {"t":160.0,"bots_in_play":1,"c2s_packets_per_s":59.808,"s2c_bytes_per_s":80692.322,"harness_cpu_percent":0.832,"load1":54.01806640625}
+    run: {"t":170.0,"bots_in_play":1,"c2s_packets_per_s":59.894,"s2c_bytes_per_s":89429.866,"harness_cpu_percent":1.043,"load1":50.01123046875}
+    run: {"t":180.0,"bots_in_play":1,"c2s_packets_per_s":60.225,"s2c_bytes_per_s":85731.091,"harness_cpu_percent":0.807,"load1":46.68115234375}
+    run: {"t":190.0,"bots_in_play":1,"c2s_packets_per_s":60.082,"s2c_bytes_per_s":82380.225,"harness_cpu_percent":0.991,"load1":40.49365234375}
+    run: {"t":200.0,"bots_in_play":1,"c2s_packets_per_s":59.795,"s2c_bytes_per_s":89861.176,"harness_cpu_percent":1.325,"load1":34.802734375}
+    run: {"t":210.0,"bots_in_play":1,"c2s_packets_per_s":59.904,"s2c_bytes_per_s":81076.492,"harness_cpu_percent":1.296,"load1":31.5078125}
+    run: {"t":220.0,"bots_in_play":1,"c2s_packets_per_s":59.893,"s2c_bytes_per_s":90114.277,"harness_cpu_percent":1.163,"load1":28.5751953125}
+    run: {"t":230.0,"bots_in_play":1,"c2s_packets_per_s":59.629,"s2c_bytes_per_s":83180.006,"harness_cpu_percent":1.249,"load1":28.33251953125}
+    run: 31 transfer tries, 31 completed, P95 558.1 ms, failed {}
+    run: 1/1 logged in, 0 lost, 18086 chunk packets; wrote bots-gate.json
+    transfers: {'count': 31, 'completed': 31, 'failed_by_reason': {}}
+    connections: 32 intents: ['login', 'transfer', 'transfer'] ...
+    connections 2..n at the arrival point of their shard: 31 of 31 bad: []
+    addresses alternate 25611/25612: True
+    ledger: transfer_issued 31 transfer_completed 31
+    paired: 31 unpaired: 0 source/target mismatch: 0 issued in the source ledger, completed in the target ledger: True
+    first_batch_ms min/median/max: 237 288 438 all < 5000: True
+    directions alternate: True [('r0-c1', 'r1-c1'), ('r1-c1', 'r0-c1'), ('r0-c1', 'r1-c1')]
+    cookie issued_at == ledger issued_at (by transfer_ref): 31 of 31
+    last connection stores no cookie: True
+    r0-c1 WARN/ERROR lines: 0; transfer_refused rows: 0
+    r1-c1 WARN/ERROR lines: 0; transfer_refused rows: 0
+[17:03:05] ## TC-WORLD-077 step 1: capacity 2 on r0-c1
+    before: synaxis_gate_rejections_total{reason="full"} 0.0 
+    15 s later: synaxis_players_online 2.0 
+    third: run: 1 bots from 2, walk, encryption off, against 127.0.0.1:25611 for 10 s
+    third: run: 0/1 logged in, 0 lost, 0 chunk packets; wrote bots-third.json
+    bots-third.json bots: 
+    after: synaxis_gate_rejections_total{reason="full"} 1.0  synaxis_players_online 2.0 
+    heartbeat r0-c1: online 2 capacity 2 accepting true
+    17:03:25.732 [Syn-TickScheduler] WARN  i.g.b.synaxis.network.ConnectionGate - Connection gate rejected 1 connections in the last 10 s: too_many=0 throttled=0 full=1 closed_at_accept=0 handshake_timeout=0
+    two: run: 2 bots from 0, walk, encryption off, against 127.0.0.1:25611 for 45 s
+    two: run: {"t":10.0,"bots_in_play":2,"c2s_packets_per_s":117.145,"s2c_bytes_per_s":106635.389,"harness_cpu_percent":7.561,"load1":20.10595703125}
+    two: run: {"t":20.0,"bots_in_play":2,"c2s_packets_per_s":85.816,"s2c_bytes_per_s":8757.239,"harness_cpu_percent":2.117,"load1":17.3955078125}
+    two: run: {"t":30.0,"bots_in_play":2,"c2s_packets_per_s":83.702,"s2c_bytes_per_s":7889.08,"harness_cpu_percent":1.613,"load1":15.4091796875}
+    two: run: {"t":40.0,"bots_in_play":2,"c2s_packets_per_s":85.677,"s2c_bytes_per_s":6060.759,"harness_cpu_percent":1.837,"load1":14.349609375}
+    two: run: 2/2 logged in, 0 lost, 2104 chunk packets; wrote bots-two.json
+    ledger of r0-c1 since the walk bots started, by event:  2 "event":"session_entered_configuration";
+    session_entered_configuration players: 
+[17:03:52] ## TC-WORLD-077 step 2: r0-c1 again with -Dsynaxis.max-players=3 (work dir work-refuse, port 25614)
+    exit=1; Refusing to start: synaxis.max-players=3 disagrees with the capacity 2 of r0-c1 in the shard directory
+    work dir: shard.log ; 25614 listening: 0
+[17:03:52] ## TC-WORLD-078: 13 refusals of r0-c2 (port 25613)
+    ['arrival-in-gate', 'capacity-501', 'gate-to-itself', 'good', 'other-map-id', 'overlapping-bounds', 'shard-id-r0-1', 'spawn-in-gate', 'two-gates-one-pair', 'unknown-field-capcity']
+    ### overlapping-bounds: exit=1 listening=0 overlay_dir=no logs_dir=no
+    Refusing to start: the shard directory <L>/badroots/overlapping-bounds/shards.json is not valid: regions[1] r1: bounds 15,0,31,15 overlap the bounds 0,0,15,15 of regions[0] r0
+    ### gate-to-itself: exit=1 listening=0 overlay_dir=no logs_dir=no
+    Refusing to start: the shard directory <L>/badroots/gate-to-itself/shards.json is not valid: regions[0] r0: gates[0] r0-east: target_region r0 is its own region
+    ### arrival-in-gate: exit=1 listening=0 overlay_dir=no logs_dir=no
+    Refusing to start: the shard directory <L>/badroots/arrival-in-gate/shards.json is not valid: regions[0] r0: gates[0] r0-east: arrival 245.5, 200.0, 128.5 is inside the gate r0-east
+    ### two-gates-one-pair: exit=1 listening=0 overlay_dir=no logs_dir=no
+    Refusing to start: the shard directory <L>/badroots/two-gates-one-pair/shards.json is not valid: regions[0] r0: gates[1] r0-east2: a second gate to r1 after gates[0] r0-east: the arrival of a player from r1 would be ambiguous
+    ### shard-id-r0-1: exit=1 listening=0 overlay_dir=no logs_dir=no
+    Refusing to start: the shard directory <L>/badroots/shard-id-r0-1/shards.json is not valid: channels[1] r0-1: shard_id is not r0-c2, <region_id>-c<channel>
+    ### capacity-501: exit=1 listening=0 overlay_dir=no logs_dir=no
+    Refusing to start: the shard directory <L>/badroots/capacity-501/shards.json is not valid: channels[1] r0-c2: capacity 501 is not from 1 to 500
+    ### unknown-field-capcity: exit=1 listening=0 overlay_dir=no logs_dir=no
+    Refusing to start: the shard directory <L>/badroots/unknown-field-capcity/shards.json is not valid: channels[1]: unknown field capcity
+    ### other-map-id: exit=1 listening=0 overlay_dir=no logs_dir=no
+    Refusing to start: the shard directory <L>/badroots/other-map-id/shards.json is not valid: map_id synth is not mini, the map_id of the map release mini-6ab2c226761b-p776
+    ### spawn-in-gate: exit=1 listening=0 overlay_dir=no logs_dir=no
+    Refusing to start: the spawn column 120, 120 of r0 is inside the gate r0-east: a player would be sent away on joining
+    ### no-file: exit=1 listening=0 overlay_dir=no logs_dir=no
+    Refusing to start: a map shard storing in PostgreSQL needs its shard directory <L>/badroots/no-file/shards.json: no such file
+    ### memory-with-file: exit=1 listening=0 overlay_dir=no logs_dir=no
+    Refusing to start: the shard directory <L>/badroots/good/shards.json is only read by a shard storing in PostgreSQL (synaxis.app.store=postgres)
+    ### not-a-channel: exit=1 listening=0 overlay_dir=no logs_dir=no
+    Refusing to start: synaxis.app.shard-id=r0-c9 is not a channel of the shard directory <L>/badroots/good/shards.json
+    ### accept-transfers-false: exit=1 listening=0 overlay_dir=no logs_dir=no
+    Refusing to start: a shard in the shard directory takes transfers, synaxis.accept-transfers must not be false
+    heartbeat rows: r0-c1 r1-c1; 25613 listening: 0
+[17:03:57] ## TC-WORLD-079 step 1: a flag row, r0-c1 restarted in its work dir, r0-c2 started (25613, metrics 19613)
+INSERT 0 1
+    pid 44060 stopped after 1s, alive: no
+[17:04:00] r0-c1 listening again: 0 (pid 49160)
+[17:04:00] r0-c2 listening: 0 (pid 49162)
+    == work-r0-c1/shard-2.log
+      17:04:00.341 [main] WARN  i.g.b.s.app.shard.WorldFlagsImpl - World flags without an applier keep the blocks of the map and the overlay: [quest:bridge] (1 world flag replay warnings since the last report)
+      17:04:00.346 [main] INFO  i.github.bearisbug.synaxis.app.Main - synaxis server-app listening on 0.0.0.0:25611
+    == work-r0-c2/shard.log
+      17:04:00.343 [main] WARN  i.g.b.s.app.shard.WorldFlagsImpl - World flags without an applier keep the blocks of the map and the overlay: [quest:bridge] (1 world flag replay warnings since the last report)
+      17:04:00.349 [main] INFO  i.github.bearisbug.synaxis.app.Main - synaxis server-app listening on 0.0.0.0:25613
+    r0-c1 last shard_started: "flags_replayed":0 "flags_ms":2 "region_id":"r0" "capacity":2 
+    r0-c2 last shard_started: "flags_replayed":0 "flags_ms":2 "region_id":"r0" "capacity":200 
+    PUBSUB NUMSUB: synaxis:worldflag:mini:r0 2 synaxis:worldflag:mini:r1 1 
+[17:04:03] ## TC-WORLD-079 step 2: version 2 and its message
+UPDATE 1
+    receivers: 2
+    new log lines: r0-c1 0, r0-c2 0
+[17:04:06] ## TC-WORLD-079 step 3: a malformed message
+    receivers: 2
+      r0-c1: 17:04:06.941 [Syn-Redis-WorldFlag] WARN  i.g.b.s.app.shard.WorldFlagsImpl - Ignoring a malformed world flag message on synaxis:worldflag:mini:r0 (1 world flag sync failures since the last report)
+      r0-c1: com.google.gson.JsonSyntaxException: com.google.gson.stream.MalformedJsonException: Use JsonReader.setStrictness(Strictness.LENIENT) to accept malformed JSON at line 1 column 6 path $
+      r0-c2: 17:04:06.941 [Syn-Redis-WorldFlag] WARN  i.g.b.s.app.shard.WorldFlagsImpl - Ignoring a malformed world flag message on synaxis:worldflag:mini:r0 (1 world flag sync failures since the last report)
+      r0-c2: com.google.gson.JsonSyntaxException: com.google.gson.stream.MalformedJsonException: Use JsonReader.setStrictness(Strictness.LENIENT) to accept malformed JSON at line 1 column 6 path $
+    r1-c1 new log lines since step 1: 0
+    heartbeat: r0-c1 accepting true age 4.7; r0-c2 accepting true age 4.7; r1-c1 accepting true age 5.0
+[17:04:10] ## TC-WORLD-079 step 4: SIGTERM r0-c1, its heartbeat row right after
+    pid 49160 stopped after 1s, alive: no; took 1 s
+    heartbeat r0-c1: accepting true age 5.8
+    17:04:10.096 [Syn-TickScheduler] INFO  i.g.b.synaxis.synx.OverlayStore - Overlay final flush: chunks=0 bytes=0 fsync_ms=0 left=0 by=tick
+    17:04:10.196 [Thread-3] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server stopped successfully.
+[17:04:11] ## TC-WORLD-080: a memory store map shard on <L>/badroots/no-file (port 25614)
+[17:04:12] memory shard listening: 0 (pid 49342)
+    run: 1 bots from 0, walk, encryption off, against 127.0.0.1:25614 for 15 s
+    run: {"t":10.0,"bots_in_play":1,"c2s_packets_per_s":58.57,"s2c_bytes_per_s":67105.322,"harness_cpu_percent":4.736,"load1":11.6103515625}
+    run: 1/1 logged in, 0 lost, 799 chunk packets; wrote bots-memory.json
+    17:04:12.075 [main] INFO  i.github.bearisbug.synaxis.app.Main - Effective store: mode=memory, player data lives as long as the process
+    17:04:12.159 [main] INFO  i.g.b.synaxis.app.shard.ShardWorld - Map mounted: build_id=mini-6ab2c226761b-p776 simulation_distance=4 chunk_unload_grace_ticks=100 spawn=Pos[x=248.5, y=77.0, z=120.5, yaw=0.0, pitch=0.0] overlay=overlay/mini-6ab2c226761b-p776
+    17:04:12.162 [main] INFO  i.github.bearisbug.synaxis.app.Main - synaxis server-app listening on 0.0.0.0:25614
+    shard_started: "flags_replayed":0 "region_id":"null" "capacity":"null" 
+    WARN/ERROR lines: 1
+      17:04:12.158 [main] WARN  i.g.b.synaxis.app.shard.ShardWorld - The bounds Bounds[minX=0, minZ=0, maxX=31, maxZ=15] of mini-6ab2c226761b-p776 are not square: the world border covers the long side, a player can walk into the read only chunks past the short one
+    pid 49342 stopped after 1s, alive: no
+    heartbeat rows after (r0-c1 is the stopped directory shard): r0-c1 started 09:03:58; r0-c2 started 09:03:58; r1-c1 started 08:58:53
+[17:04:30] ## after: stop the rest, drop the database
+    pid 44062 stopped after 1s, alive: no
+    pid 49162 stopped after 1s, alive: no
+DROP DATABASE
+    database run065_2p: 0 left
+    ports listening after: 0
+[17:04:32] ## done
+# addendum, read at 17:05:44 from the files the job left in <L> (the job's two greps above missed them: the bots file is
+# pretty-printed JSON, and session_entered_configuration carries connection_id, not a user name)
+    TC-WORLD-077 step 1, bots-third.json "bots":  "bots": { "requested": 1, "logged_in": 0, "lost": 0, "login_failures": { "login refused: synaxis:shard-full": 1 } },
+    TC-WORLD-077 step 1, r0-c1 ledger rows from 09:03:00Z (the two walk bots started 17:03:05 local) to the end, by event:
+         1 "event":"chunk_stream_stats"
+         2 "event":"session_entered_configuration"
+         1 "event":"shard_started"
+         2 "event":"shutdown_saved"
+      {"ts":"2026-10-01T09:03:05.853470Z","event":"session_entered_configuration","connection_id":"32579808-5e59-4bd8-9d59-c3aeea53de6e","protocol_version":776}
+      {"ts":"2026-10-01T09:03:05.880015Z","event":"session_entered_configuration","connection_id":"c064dbbf-ed61-448d-a2b4-74f698d75436","protocol_version":776}
+      {"ts":"2026-10-01T09:03:55.232453Z","event":"chunk_stream_stats","handle_sent":832,"overlay_sent":0,"bytes_sent":1166935,"failed":0,"loaded":464,"overlay_resident":0,"overlay_evicted":0,"evict_failed"
+      {"ts":"2026-10-01T09:03:57.583765Z","event":"shutdown_saved","shard_id":"r0-c1","online":0,"saved":0,"failed":0,"elapsed_ms":49,"timed_out":"false"}
+    TC-WORLD-078 setup: the two Python helpers are RUN-045 05-scripts.txt's, with L and the build id read from the environment
+    fixture: the region file size line above failed on a glob (no *.synx directly under the release); the bake line gives 1692000 bytes

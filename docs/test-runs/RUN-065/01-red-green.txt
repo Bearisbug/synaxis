@@ -1,0 +1,26 @@
+# RUN-065 / 01: the new test ShardGatesOnlineTest before and after the fix (B-01 hardening of ShardGates#moved).
+# HEAD 072d45b790 on branch m3/sec-followup; base main c69548be70.
+# Before the fix = HEAD with ShardGates.java taking the predicate in its constructor and never reading it (no field, no check
+# in moved), which is main's moved() behind the new constructor: the test does not compile against main's three-argument one.
+# Database variables not set (the class needs none). Gradle: --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts --max-workers=4
+[16:54:22] ## before the fix: ShardGates keeps main's moved()
+    diff -    private final Predicate<Player> online;
+    diff -        this.online = online;
+    diff -        if (gate == null || gate.equals(before) || !online.test(player) || !underWay.add(player)) return;
+    diff +        if (gate == null || gate.equals(before) || !underWay.add(player)) return;
+  gradle [red-before] rc=1
+    > Task :server-app:test FAILED
+    ShardGatesOnlineTest > aPlayerNotOnlineHereWalksThroughAGateWithoutATrace() FAILED
+        org.opentest4j.AssertionFailedError at ShardGatesOnlineTest.java:93
+    BUILD FAILED in 17s
+  TEST-io.github.bearisbug.synaxis.app.shard.ShardGatesOnlineTest.xml: tests="1" skipped="0" failures="1" errors="0" timestamp="2026-10-01T08:54:40.223Z"
+    FAIL "org.opentest4j.AssertionFailedError: 100 walks into r0-east by a player not online here ==> expected: <0 transfers, 0 refusals> but was: <100 transfers, 100 refusals>"
+    trace    1 (ShardGatesOnlineTest.java:93)
+    AcquirableOwnershipException mentions: 0
+  restored server-app/src/main/java/io/github/bearisbug/synaxis/app/shard/ShardGates.java; git status --short -- server-app: []
+[16:54:41] ## after the fix: HEAD
+  gradle [green-after] rc=0
+    BUILD SUCCESSFUL in 8s
+  TEST-io.github.bearisbug.synaxis.app.shard.ShardGatesOnlineTest.xml: tests="1" skipped="0" failures="0" errors="0" timestamp="2026-10-01T08:54:48.951Z"
+    AcquirableOwnershipException mentions: 0
+[16:54:50] ## done

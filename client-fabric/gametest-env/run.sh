@@ -18,7 +18,8 @@
 # run the far view cases (gametest farview/FarViewClientGameTest.java, docs/DESIGN-M3.md §26 M3-G) against the far view fixture;
 # SYNAXIS_FARVIEW_MODS=dh or dh-iris fetches Distant Horizons (and Sodium, Iris and the shader pack) inside the container with
 # docs/research/client-spikes-2026-09/dh-iris/Fetch.java and hands them to Fabric Loader. The run's synaxis/farview/ file list and
-# completion markers go to $OUT/farview/.
+# completion markers go to $OUT/farview/. SYNAXIS_GAMETEST_ARGS (e.g. "--width 1920 --height 1080") goes to the game as its
+# program arguments, Gradle's --args: the gametest renders at that size, 854x480 without it.
 set -euo pipefail
 REPO=$(cd "$(dirname "$0")/../.." && pwd)
 OUT=${OUT:-/tmp/synaxis-gametest}
@@ -41,7 +42,7 @@ docker run --rm --name "${CONTAINER:-synaxis-mc-client}" \
   -e SYNAXIS_S3_DISTANCES -e SYNAXIS_S3_SCALINGS -e SYNAXIS_S3_HORIZONTALS \
   -e SYNAXIS_P10_SERVER -e SYNAXIS_P10_DONE \
   -e SYNAXIS_LIGHT_SERVER -e SYNAXIS_LIGHT_MODE -e SYNAXIS_LIGHT_MARKER=/out/light-ready \
-  -e SYNAXIS_FARVIEW_SERVER -e SYNAXIS_FARVIEW_HTTP -e SYNAXIS_FARVIEW_MODE -e SYNAXIS_FARVIEW_MODS \
+  -e SYNAXIS_FARVIEW_SERVER -e SYNAXIS_FARVIEW_HTTP -e SYNAXIS_FARVIEW_MODE -e SYNAXIS_FARVIEW_MODS -e SYNAXIS_GAMETEST_ARGS \
   -e SYNAXIS_DH_SHADERPACKS=/dh/shaderpacks \
   -e JAVA_TOOL_OPTIONS="-Dhttps.proxyHost=${PROXY%:*} -Dhttps.proxyPort=${PROXY#*:} -Dhttp.proxyHost=${PROXY%:*} -Dhttp.proxyPort=${PROXY#*:} -Dhttp.nonProxyHosts=maven.aliyun.com|*.aliyun.com|host.docker.internal -Dfabric.noGui=true${SYNAXIS_FARVIEW_MODS:+ -Dfabric.addMods=/dh/mods}" \
   synaxis-mc-client:dev bash -c '
@@ -52,7 +53,7 @@ docker run --rm --name "${CONTAINER:-synaxis-mc-client}" \
     cd /work/client-fabric
     if [ -n "$SYNAXIS_FARVIEW_MODS" ]; then java /src/docs/research/client-spikes-2026-09/dh-iris/Fetch.java "$SYNAXIS_FARVIEW_MODS" /dh; fi
     set +e
-    xvfb-run -a -s "-screen 0 1280x720x24" ./gradlew runClientGameTest --no-daemon --console=plain --stacktrace \
+    xvfb-run -a -s "-screen 0 1280x720x24" ./gradlew runClientGameTest ${SYNAXIS_GAMETEST_ARGS:+"--args=$SYNAXIS_GAMETEST_ARGS"} --no-daemon --console=plain --stacktrace \
       --init-script gametest-env/mirror.init.gradle.kts -Dorg.gradle.internal.repository.max.tentatives=6
     code=$?
     run=$(find build/run -maxdepth 1 -mindepth 1 -type d | head -1)

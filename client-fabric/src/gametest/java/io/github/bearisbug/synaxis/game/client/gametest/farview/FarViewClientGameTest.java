@@ -377,6 +377,14 @@ public final class FarViewClientGameTest implements FabricClientGameTest {
             return context.computeOnClient(_ -> DhTestHook.graphics());
         }
 
+        /**
+         * The size the client renders at, which Fabric's client gametest pins to {@code --width} and {@code --height}
+         * of the launch (854×480 without them), whatever the real window is.
+         */
+        String framebuffer() {
+            return context.computeOnClient(client -> client.getWindow().getWidth() + "x" + client.getWindow().getHeight());
+        }
+
         // ---- The camera
 
         SpikeCamera.Settings at(double x, double y, double z, float yaw, float pitch) {
@@ -1027,10 +1035,10 @@ public final class FarViewClientGameTest implements FabricClientGameTest {
                     : Shots.percent(Shots.changed(Shots.read(emptyShot), lodImage, Shots.Box.whole(lodImage))) + " drawn";
             final double lodLuma = Shots.luma(Shots.mean(lodImage, Shots.Box.rows(lodImage, 360, 720)));
             final double nearLuma = Shots.luma(Shots.mean(nearImage, Shots.Box.centre(nearImage, 300)));
-            line(id, ready && t != null, String.format(Locale.ROOT, "%s: visible_ms %d (the test held the bake %d ms), "
+            line(id, ready && t != null, String.format(Locale.ROOT, "%s: framebuffer %s, visible_ms %d (the test held the bake %d ms), "
                             + "ms %d, write_ms %d, db_bytes %d, sources %d, from the level load %d ms, download %d ms; whole pack %d B, "
                             + "coarse packs %d B; LOD_VIEW %s, lower half luma %.1f, near ground luma %.1f, ratio %.2f",
-                    mode, t == null ? -1 : t.visibleMs(), held == null ? 0 : held.getValue(), t == null ? -1 : t.ms(),
+                    mode, framebuffer(), t == null ? -1 : t.visibleMs(), held == null ? 0 : held.getValue(), t == null ? -1 : t.ms(),
                     t == null ? -1 : t.writeMs(),
                     t == null ? -1 : t.dbBytes(), t == null ? -1 : t.sources(), t == null ? -1 : t.fromLevelMs(), c.downloadMillis(),
                     whole, coarse, drawnShare, lodLuma, nearLuma, nearLuma == 0 ? 0 : lodLuma / nearLuma));
@@ -1403,7 +1411,7 @@ public final class FarViewClientGameTest implements FabricClientGameTest {
                 throw new IllegalStateException(e);
             }
             radius(FarViewSettings.DEFAULT_RADIUS);
-            line("F26", true, String.join("; ", seen));
+            line("F26", true, "framebuffer " + framebuffer() + "; " + String.join("; ", seen));
         }
     }
 }

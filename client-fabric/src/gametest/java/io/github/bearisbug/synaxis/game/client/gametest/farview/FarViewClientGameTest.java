@@ -995,14 +995,23 @@ public final class FarViewClientGameTest implements FabricClientGameTest {
 
         // ---- V2a, V3a, V6a, V8a: readings, recorded
 
+        /**
+         * V2a ({@code v2}) and V2b ({@code bake-timing}): the bake line's readings from an empty cache, the objects'
+         * sizes, and the LOD's brightness against the near vanilla ground. Only {@code v2} holds the bake for a shot of
+         * the empty LOD_VIEW, which it then tells the drawn one apart from; {@code bake-timing}, the 30 s judgement of
+         * the real machines, never waits on the test.
+         */
         void timing(String mode) {
             clearCache();
             radius(FarViewSettings.DEFAULT_RADIUS);
-            final Map.Entry<Path, Long> held = heldBake(mode);
-            if (held == null) {
-                line("F23", false, "not in the world");
+            final boolean hold = mode.equals("v2");
+            final String id = hold ? "F23" : "F28";
+            final Map.Entry<Path, Long> held = hold ? heldBake(mode) : null;
+            if (hold ? held == null : !connect()) {
+                line(id, false, "not in the world");
                 return;
             }
+            final Path emptyShot = held == null ? null : held.getKey();
             final boolean ready = ready();
             final FarViewConnection c = Objects.requireNonNull(connection());
             final FarViewConnection.Timings t = c.timings();
@@ -1011,18 +1020,20 @@ public final class FarViewClientGameTest implements FabricClientGameTest {
                 if (tile.layer() == FarViewAnnouncement.LAYER_FULL) whole += tile.bytes();
                 else coarse += tile.bytes();
             }
-            final Path lod = drawn(mode + "-lod", lodView(), held.getKey(), 2400);
+            final Path lod = drawn(mode + "-lod", lodView(), emptyShot, 2400);
             final Path near = shot(mode + "-near", at(spawn.x, spawn.y + 25, spawn.z, -90f, 60f), 40);
             final BufferedImage lodImage = Shots.read(lod), nearImage = Shots.read(near);
-            final double drawnShare = Shots.changed(Shots.read(held.getKey()), lodImage, Shots.Box.whole(lodImage));
+            final String drawnShare = emptyShot == null ? "not judged"
+                    : Shots.percent(Shots.changed(Shots.read(emptyShot), lodImage, Shots.Box.whole(lodImage))) + " drawn";
             final double lodLuma = Shots.luma(Shots.mean(lodImage, Shots.Box.rows(lodImage, 360, 720)));
             final double nearLuma = Shots.luma(Shots.mean(nearImage, Shots.Box.centre(nearImage, 300)));
-            line("F23", ready && t != null, String.format(Locale.ROOT, "%s: visible_ms %d (the bake held %d ms for the empty "
-                            + "shot), ms %d, write_ms %d, db_bytes %d, sources %d, from the level load %d ms, download %d ms; whole "
-                            + "pack %d B, coarse packs %d B; LOD_VIEW %s drawn, lower half luma %.1f, near ground luma %.1f, ratio %.2f",
-                    mode, t == null ? -1 : t.visibleMs(), held.getValue(), t == null ? -1 : t.ms(), t == null ? -1 : t.writeMs(),
+            line(id, ready && t != null, String.format(Locale.ROOT, "%s: visible_ms %d (the test held the bake %d ms), "
+                            + "ms %d, write_ms %d, db_bytes %d, sources %d, from the level load %d ms, download %d ms; whole pack %d B, "
+                            + "coarse packs %d B; LOD_VIEW %s, lower half luma %.1f, near ground luma %.1f, ratio %.2f",
+                    mode, t == null ? -1 : t.visibleMs(), held == null ? 0 : held.getValue(), t == null ? -1 : t.ms(),
+                    t == null ? -1 : t.writeMs(),
                     t == null ? -1 : t.dbBytes(), t == null ? -1 : t.sources(), t == null ? -1 : t.fromLevelMs(), c.downloadMillis(),
-                    whole, coarse, Shots.percent(drawnShare), lodLuma, nearLuma, nearLuma == 0 ? 0 : lodLuma / nearLuma));
+                    whole, coarse, drawnShare, lodLuma, nearLuma, nearLuma == 0 ? 0 : lodLuma / nearLuma));
         }
 
         /** V3a: the far and LOD views with the shader pack off and on (DH + Sodium + Iris + Complementary). */

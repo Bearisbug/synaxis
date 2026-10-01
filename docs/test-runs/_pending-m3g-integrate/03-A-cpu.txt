@@ -1,0 +1,10 @@
+Container CPU (docker stats, 12 CPUs in the Docker VM, so 1200% is all of it) inside each bake of container A,
+from the client log's 'announcement received' to its 'baked in' line (UTC); about one sample every 12 s. The whole container, not DH's threads alone.
+18:51:44 baked in 107242 ms: 2304 sources: 10 samples, container CPU mean 564%, max 878%
+18:56:12 baked in 7280 ms: 2304 sources: 1 samples, container CPU mean 541%, max 541%
+18:57:58 baked in 73675 ms: 2304 sources: 6 samples, container CPU mean 528%, max 636%
+18:59:13 baked in 13480 ms: 384 sources: 2 samples, container CPU mean 573%, max 664%
+19:02:00 baked in 75883 ms: 2304 sources: 7 samples, container CPU mean 487%, max 594%
+19:08:36 baked in 78277 ms: 2304 sources: 7 samples, container CPU mean 478%, max 615%
+19:23:31 baked in 95172 ms: 2304 sources: 9 samples, container CPU mean 544%, max 658%
+19:31:16 baked in 41310 ms: 2304 sources: 4 samples, container CPU mean 576%, max 760%

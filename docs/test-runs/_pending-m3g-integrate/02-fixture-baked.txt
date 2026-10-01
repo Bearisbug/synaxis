@@ -1,0 +1,118 @@
+FarViewShardFixture in baked mode, as §26 M3-G 容器验收 step 2 writes it (heap 1 GiB):
+  ./gradlew :protocol:publishToMavenLocal :server-app:farviewFixtureArgs <gradle flags>
+  java @server-app/build/farview-fixture.args -Xms1G -Xmx1G -Dsynaxis.app.auth=offline \
+    -Dsynaxis.connection-gate.trusted-networks=127.0.0.0/8 io.github.bearisbug.synaxis.app.shard.FarViewShardFixture \
+    25750 25751 <workDir> baked          (JAVA_TOOL_OPTIONS unset; stopped by pid after each batch)
+The first start baked the 3x3 tile test map (generator:synthetic seed 0, --bounds -256,-256,511,511) into <workDir>,
+the second start reused it. Fixture process RSS sampled every 5 s while it baked.
+
+2026-10-02 02:48:33 fixture pid 6283 ready after 327 s, max RSS while starting 2750 MiB
+farview fixture: baked $TMPDIR/m3g-int.EGsUEu/fixture-work/maps/farview3x3/farview3x3-82ef22b94f77-p776 with 3 thread(s) in 322 s
+farview fixture: tile -1 -1 layer 1 bytes 68040 sha256 0cb332ff8306cfb64c7e3584dd183f05eeadbd6adeb583c221cd0eeb00d6bcb9 url http://host.docker.internal:25751/farview3x3/farview/0cb332ff8306cfb64c7e3584dd183f05eeadbd6adeb583c221cd0eeb00d6bcb9.hfp
+farview fixture: tile -1 0 layer 1 bytes 65807 sha256 bb6813d5d746cfc98561a443f3c8f394937c686ad0020d6b8aae929d1052c3c7 url http://host.docker.internal:25751/farview3x3/farview/bb6813d5d746cfc98561a443f3c8f394937c686ad0020d6b8aae929d1052c3c7.hfp
+farview fixture: tile -1 1 layer 1 bytes 67151 sha256 17946f83edc2c650628f1253e40d6e20bc20447a4fe25dd90490eb0161526b3f url http://host.docker.internal:25751/farview3x3/farview/17946f83edc2c650628f1253e40d6e20bc20447a4fe25dd90490eb0161526b3f.hfp
+farview fixture: tile 0 -1 layer 1 bytes 68654 sha256 15e87ee6654f4cb11edf284639bd12a32e6f4375311f9d797e30233c5917cfc5 url http://host.docker.internal:25751/farview3x3/farview/15e87ee6654f4cb11edf284639bd12a32e6f4375311f9d797e30233c5917cfc5.hfp
+farview fixture: tile 0 0 layer 0 bytes 586706 sha256 d01c3af8952adb08486854e9066780c509d1a4a6e2527be6e2218789ec00e495 url http://host.docker.internal:25751/farview3x3/farview/d01c3af8952adb08486854e9066780c509d1a4a6e2527be6e2218789ec00e495.hfp
+farview fixture: tile 0 1 layer 1 bytes 66877 sha256 6e5c8ed3161e24224b95682d0994d597508118efa80d72f46721ff44cbd9e22a url http://host.docker.internal:25751/farview3x3/farview/6e5c8ed3161e24224b95682d0994d597508118efa80d72f46721ff44cbd9e22a.hfp
+farview fixture: tile 1 -1 layer 1 bytes 67042 sha256 de3fde0292241ca2b08d97c3aaf5bd482e8ce6eed6007fad6453a716b3684042 url http://host.docker.internal:25751/farview3x3/farview/de3fde0292241ca2b08d97c3aaf5bd482e8ce6eed6007fad6453a716b3684042.hfp
+farview fixture: tile 1 0 layer 1 bytes 66918 sha256 9495943ff16d301d579ae5b1a39ad97a4bb0efc67f14e48420fb02e0456e3017 url http://host.docker.internal:25751/farview3x3/farview/9495943ff16d301d579ae5b1a39ad97a4bb0efc67f14e48420fb02e0456e3017.hfp
+farview fixture: tile 1 1 layer 1 bytes 68823 sha256 7fd6aba60c9cd730949cf81862f19625f03379520499a206a15b66315a632d28 url http://host.docker.internal:25751/farview3x3/farview/7fd6aba60c9cd730949cf81862f19625f03379520499a206a15b66315a632d28.hfp
+farview fixture: mode=baked build_id=farview3x3-82ef22b94f77-p776 objects=9 announced=9 tile(s) [0cb332ff8306, 15e87ee6654f, 17946f83edc2, 6e5c8ed3161e, 7fd6aba60c9c, 9495943ff16d, bb6813d5d746, d01c3af8952a, de3fde029224] http=0.0.0.0:25751
+farview fixture ready
+
+Baker events (<workDir>/maps/logs):
+{"event":"map_build_started","ts":"2026-10-01T18:43:08.579472Z","shard_id":"baker","map_id":"farview3x3","source":"generator","threads":3,"baker_version":2,"light_engine_version":1}
+{"event":"map_build_finished","ts":"2026-10-01T18:48:30.625127Z","shard_id":"baker","build_id":"farview3x3-82ef22b94f77-p776","outcome":"published","wall_ms":322050,"cpu_ms":911545,"bytes":1946768700,"farview_bytes":5329202,"failed_regions":0,"verify_diffs":0}
+
+Release directory: 1907620 KiB on disk; manifest baker_version 2; farview/:
+  591120 t.-1.-1.hfp
+  585131 t.-1.0.hfp
+  587808 t.-1.1.hfp
+  593405 t.0.-1.hfp
+  586706 t.0.0.hfp
+  603204 t.0.1.hfp
+  598550 t.1.-1.hfp
+  585223 t.1.0.hfp
+  598055 t.1.1.hfp
+
+Download of a first entry into the centre region: whole pack of (0, 0) 586706 B + 8 coarse prefixes 539312 B = 1126018 B
+(the announcement above); at 50 Mbit/s that is 0.18 s, the client logged 226 to 238 ms (03-A-farview-log.txt).
+
+/expect.json:
+{
+  "mode": "baked",
+  "map_id": "farview3x3",
+  "points": [
+    {
+      "name": "peak",
+      "x": 440,
+      "z": 104,
+      "tile_x": 0,
+      "tile_z": 0,
+      "layer": "fine",
+      "block": "minecraft:oak_leaves",
+      "state": 279,
+      "y": 117
+    },
+    {
+      "name": "water",
+      "x": 0,
+      "z": 0,
+      "tile_x": 0,
+      "tile_z": 0,
+      "layer": "fine",
+      "block": "minecraft:water",
+      "state": 86,
+      "y": 62
+    },
+    {
+      "name": "mountain",
+      "x": -816,
+      "z": 3344,
+      "tile_x": -1,
+      "tile_z": 0,
+      "layer": "coarse",
+      "block": "minecraft:oak_leaves",
+      "state": 279,
+      "y": 112
+    }
+  ],
+  "views": {
+    "EDGE_VIEW": {
+      "x": 264.5,
+      "y": 179.0,
+      "z": 2040.5,
+      "yaw": 90.0,
+      "pitch": 15.0
+    },
+    "edge-outward": {
+      "x": 100.5,
+      "y": 123.0,
+      "z": 2040.5,
+      "yaw": 90.0,
+      "pitch": 10.0
+    },
+    "lake": {
+      "x": -109.5,
+      "y": 103.0,
+      "z": 2048.5,
+      "yaw": -90.0,
+      "pitch": 20.0
+    },
+    "plain": {
+      "x": 608.5,
+      "y": 125.0,
+      "z": 2144.5,
+      "yaw": -90.0,
+      "pitch": 10.0
+    },
+    "ridge": {
+      "x": 40.5,
+      "y": 138.0,
+      "z": 104.5,
+      "yaw": -90.0,
+      "pitch": 5.0
+    }
+  },
+  "spawn": "2040.5 74.0 2040.5"
+}

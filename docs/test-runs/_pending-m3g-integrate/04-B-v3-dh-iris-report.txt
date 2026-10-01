@@ -1,0 +1,3 @@
+F20 PASS pack ComplementaryReimagined_r5.9.3.zip, in use true; far changed 99.41%, mean off #455857 on #a0b4b9, lower half mean off #57694a on #9aafa4; lod changed 100.00%, mean off #48584d on #a2b2c5, lower half mean off #5c6f54 on #97aac0
+# mode v3 from 19:42:12
+# fixture mode baked, map farview3x3, spawn 2040.5 74.0 2040.5

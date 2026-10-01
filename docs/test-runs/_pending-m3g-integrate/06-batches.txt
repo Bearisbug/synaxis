@@ -1,0 +1,116 @@
+The two container batches as the batch script logged them (lock, memory gate, fixture, each container), and the
+host's load average and memory_pressure free share every 30 s during batch 2 (sampled outside the batch script).
+
+=== batch 1
+2026-10-02 02:43:02 lock taken: owner=Synaxis光照/m3g-merge-container-1 pid=39601 since=2026-10-02T02:43:02+0800 task=M3-G merge container acceptance (baked fixture, containers: A:dh:v1,v1-noparent,v1-writable,v1-coarse-only,v2,v6,v8)
+2026-10-02 02:43:02 gate: memory free 52% load1 6.01; total = 16384.00M  used = 14978.88M  free = 1405.12M  (encrypted)
+2026-10-02 02:43:07 gradle publish + args in 5 s
+2026-10-02 02:48:33 fixture pid 6283 ready after 327 s, max RSS while starting 2750 MiB
+farview fixture: baked $TMPDIR/m3g-int.EGsUEu/fixture-work/maps/farview3x3/farview3x3-82ef22b94f77-p776 with 3 thread(s) in 322 s
+farview fixture: mode=baked build_id=farview3x3-82ef22b94f77-p776 objects=9 announced=9 tile(s) [0cb332ff8306, 15e87ee6654f, 17946f83edc2, 6e5c8ed3161e, 7fd6aba60c9c, 9495943ff16d, bb6813d5d746, d01c3af8952a, de3fde029224] http=0.0.0.0:25751
+farview fixture ready
+2026-10-02 02:48:34 container A: mods=dh modes=v1,v1-noparent,v1-writable,v1-coarse-only,v2,v6,v8; memory free 50% load1 5.52
+2026-10-02 03:39:32 container A exit 1 after 3058 s; fixture alive: yes
+2026-10-02 03:39:33 done; stopping fixture 6283 and releasing the lock
+
+=== batch 2
+2026-10-02 03:41:28 lock taken: owner=Synaxis光照/m3g-merge-container-2 pid=39601 since=2026-10-02T03:41:28+0800 task=M3-G merge container acceptance (baked fixture, containers: B:dh-iris:v3 C:dh:bake-timing D:dh:bake-timing E:dh:bake-timing)
+2026-10-02 03:41:28 gate: memory free 42% load1 25.55; total = 18432.00M  used = 17130.19M  free = 1301.81M  (encrypted)
+2026-10-02 03:41:32 gradle publish + args in 4 s
+2026-10-02 03:41:37 fixture pid 72755 ready after 5 s, max RSS while starting 5 MiB
+farview fixture: reusing $TMPDIR/m3g-int.EGsUEu/fixture-work/maps/farview3x3/farview3x3-82ef22b94f77-p776
+farview fixture: mode=baked build_id=farview3x3-82ef22b94f77-p776 objects=9 announced=9 tile(s) [0cb332ff8306, 15e87ee6654f, 17946f83edc2, 6e5c8ed3161e, 7fd6aba60c9c, 9495943ff16d, bb6813d5d746, d01c3af8952a, de3fde029224] http=0.0.0.0:25751
+farview fixture ready
+2026-10-02 03:41:37 container B: mods=dh-iris modes=v3; memory free 40% load1 23.32
+2026-10-02 04:03:36 container B exit 1 after 1319 s; fixture alive: yes
+2026-10-02 04:03:36 container C: mods=dh modes=bake-timing; memory free 54% load1 11.10
+2026-10-02 04:09:27 container C exit 1 after 351 s; fixture alive: yes
+2026-10-02 04:09:27 container D: mods=dh modes=bake-timing; memory free 47% load1 10.70
+2026-10-02 04:15:43 container D exit 1 after 376 s; fixture alive: yes
+2026-10-02 04:15:43 container E: mods=dh modes=bake-timing; memory free 44% load1 13.61
+2026-10-02 04:21:42 container E exit 1 after 359 s; fixture alive: yes
+2026-10-02 04:21:42 done; stopping fixture 72755 and releasing the lock
+
+=== load during batch 2 (time, vm.loadavg 1/5/15 min, memory free)
+03:42:45 { 33.82 56.94 59.62 } mp 33%
+03:43:15 { 27.14 53.20 58.17 } mp 40%
+03:43:45 { 20.30 49.07 56.50 } mp 39%
+03:44:15 { 17.34 45.63 55.00 } mp 52%
+03:44:45 { 18.30 43.17 53.78 } mp 49%
+03:45:15 { 19.86 41.23 52.71 } mp 53%
+03:45:45 { 23.38 39.98 51.86 } mp 50%
+03:46:15 { 18.34 37.20 50.44 } mp 52%
+03:46:45 { 16.29 34.89 49.14 } mp 51%
+03:47:15 { 16.74 33.23 48.04 } mp 44%
+03:47:45 { 15.59 31.45 46.89 } mp 48%
+03:48:15 { 13.40 29.40 45.61 } mp 45%
+03:48:45 { 13.24 27.84 44.48 } mp 49%
+03:49:15 { 12.68 26.31 43.35 } mp 42%
+03:49:45 { 12.66 25.02 42.29 } mp 37%
+03:50:16 { 10.09 23.21 41.04 } mp 48%
+03:50:46 { 13.47 22.68 40.22 } mp 41%
+03:51:16 { 14.02 21.94 39.34 } mp 46%
+03:51:46 { 13.38 21.00 38.40 } mp 47%
+03:52:16 { 12.79 20.11 37.47 } mp 51%
+03:52:46 { 11.73 19.19 36.54 } mp 52%
+03:53:16 { 11.03 18.33 35.62 } mp 50%
+03:53:46 { 10.99 17.60 34.76 } mp 54%
+03:54:16 { 13.69 17.66 34.18 } mp 47%
+03:54:46 { 13.63 17.26 33.47 } mp 47%
+03:55:16 { 13.84 16.95 32.79 } mp 49%
+03:55:46 { 13.13 16.48 32.07 } mp 45%
+03:56:16 { 17.14 17.15 31.78 } mp 49%
+03:56:46 { 15.34 16.79 31.14 } mp 50%
+03:57:16 { 16.11 16.84 30.66 } mp 51%
+03:57:46 { 15.00 16.48 30.05 } mp 50%
+03:58:16 { 13.43 15.96 29.39 } mp 45%
+03:58:46 { 14.57 15.96 28.92 } mp 50%
+03:59:16 { 12.13 15.24 28.21 } mp 52%
+03:59:46 { 11.11 14.71 27.57 } mp 52%
+04:00:16 { 10.94 14.32 26.98 } mp 55%
+04:00:46 { 10.87 13.98 26.42 } mp 56%
+04:01:16 { 10.59 13.58 25.84 } mp 54%
+04:01:46 { 11.57 13.56 25.41 } mp 51%
+04:02:16 { 11.13 13.26 24.88 } mp 50%
+04:02:46 { 9.73 12.76 24.30 } mp 51%
+04:03:16 { 10.40 12.61 23.85 } mp 53%
+04:03:46 { 10.56 12.46 23.40 } mp 54%
+04:04:16 { 9.59 12.04 22.87 } mp 54%
+04:04:46 { 10.84 12.08 22.51 } mp 51%
+04:05:16 { 10.52 11.90 22.08 } mp 51%
+04:05:46 { 10.84 11.83 21.70 } mp 50%
+04:06:16 { 11.78 11.93 21.39 } mp 48%
+04:06:46 { 11.20 11.74 20.99 } mp 50%
+04:07:17 { 10.68 11.56 20.61 } mp 50%
+04:07:47 { 10.67 11.47 20.26 } mp 49%
+04:08:17 { 10.48 11.37 19.92 } mp 49%
+04:08:47 { 9.35 11.01 19.49 } mp 44%
+04:09:17 { 9.91 10.98 19.19 } mp 46%
+04:09:47 { 8.77 10.65 18.78 } mp 49%
+04:10:17 { 8.92 10.51 18.45 } mp 45%
+04:10:47 { 9.04 10.38 18.13 } mp 47%
+04:11:17 { 8.85 10.19 17.79 } mp 48%
+04:11:47 { 8.56 9.97 17.44 } mp 46%
+04:12:17 { 8.55 9.81 17.12 } mp 47%
+04:12:47 { 9.50 9.90 16.90 } mp 46%
+04:13:17 { 11.22 10.22 16.77 } mp 46%
+04:13:47 { 12.82 10.75 16.74 } mp 47%
+04:14:17 { 13.77 11.20 16.69 } mp 45%
+04:14:47 { 12.65 11.17 16.49 } mp 46%
+04:15:17 { 13.00 11.37 16.38 } mp 46%
+04:15:47 { 12.68 11.50 16.25 } mp 44%
+04:16:17 { 11.62 11.38 16.04 } mp 44%
+04:16:47 { 12.04 11.49 15.92 } mp 46%
+04:17:17 { 10.70 11.19 15.65 } mp 47%
+04:17:47 { 11.61 11.36 15.56 } mp 46%
+04:18:17 { 12.14 11.51 15.47 } mp 45%
+04:18:47 { 12.32 11.63 15.37 } mp 46%
+04:19:17 { 10.54 11.26 15.11 } mp 45%
+04:19:47 { 10.38 11.18 14.95 } mp 47%
+04:20:17 { 8.41 10.61 14.61 } mp 46%
+04:20:47 { 10.29 10.80 14.53 } mp 43%
+04:21:17 { 9.38 10.54 14.31 } mp 44%
+04:21:47 { 9.59 10.50 14.17 } mp 41%
+04:22:17 { 25.55 14.29 15.41 } mp 35%
+04:22:47 { 17.62 13.46 15.07 } mp 41%
+04:23:17 { 13.18 12.76 14.76 } mp 44%

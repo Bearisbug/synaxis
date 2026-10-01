@@ -1,0 +1,34 @@
+V2a: three fresh containers, each SYNAXIS_FARVIEW_MODE=bake-timing SYNAXIS_FARVIEW_MODS=dh, 854x480, against the baked
+fixture (3x3 tile test map, centre region; HTTP 50 Mbit/s). bake-timing never holds the bake; v2 (container A,
+03-A-...-report.txt F23) held it 6,210 ms for the empty LOD_VIEW shot and is not one of the three.
+
+== container C (load1 at start: 11.10)
+F28 PASS bake-timing: framebuffer 854x480, visible_ms 64654 (the test held the bake 0 ms), ms 63165, write_ms 33002, db_bytes 22093512, sources 2304, from the level load 63167 ms, download 240 ms; whole pack 586706 B, coarse packs 539312 B; LOD_VIEW not judged, lower half luma 102.1, near ground luma 91.6, ratio 1.12
+[20:03:56] [Netty Epoll IO #0/INFO] (synaxis) [synaxis/farview] announcement received: build farview3x3-82ef22b94f77-p776, 9 tile(s), 8 coarse, view 9ea70f2546ccab5c
+[20:03:57] [synaxis-farview-download/INFO] (synaxis) [synaxis/farview] view 9ea70f2546ccab5c downloaded 9 object(s), 1126018 B in 240 ms
+[20:05:01] [synaxis-farview-bake/INFO] (synaxis) [synaxis/farview] view 9ea70f2546ccab5c baked in 63165 ms: 2304 sources, 22093512 B; written 33002 ms, visible 64654 ms after the announcement
+container CPU: 20:05:01 baked in 63165 ms: 2304 sources: 6 samples, container CPU mean 518%, max 563%
+== container D (load1 at start: 10.70)
+F28 PASS bake-timing: framebuffer 854x480, visible_ms 73757 (the test held the bake 0 ms), ms 72355, write_ms 33358, db_bytes 23745560, sources 2304, from the level load 72364 ms, download 226 ms; whole pack 586706 B, coarse packs 539312 B; LOD_VIEW not judged, lower half luma 102.9, near ground luma 92.1, ratio 1.12
+[20:09:48] [Netty Epoll IO #0/INFO] (synaxis) [synaxis/farview] announcement received: build farview3x3-82ef22b94f77-p776, 9 tile(s), 8 coarse, view 9ea70f2546ccab5c
+[20:09:49] [synaxis-farview-download/INFO] (synaxis) [synaxis/farview] view 9ea70f2546ccab5c downloaded 9 object(s), 1126018 B in 226 ms
+[20:11:02] [synaxis-farview-bake/INFO] (synaxis) [synaxis/farview] view 9ea70f2546ccab5c baked in 72355 ms: 2304 sources, 23745560 B; written 33358 ms, visible 73757 ms after the announcement
+container CPU: 20:11:02 baked in 72355 ms: 2304 sources: 7 samples, container CPU mean 540%, max 667%
+== container E (load1 at start: 13.61)
+F28 PASS bake-timing: framebuffer 854x480, visible_ms 70065 (the test held the bake 0 ms), ms 68619, write_ms 36426, db_bytes 22069560, sources 2304, from the level load 68622 ms, download 253 ms; whole pack 586706 B, coarse packs 539312 B; LOD_VIEW not judged, lower half luma 102.1, near ground luma 91.6, ratio 1.12
+[20:16:05] [Netty Epoll IO #0/INFO] (synaxis) [synaxis/farview] announcement received: build farview3x3-82ef22b94f77-p776, 9 tile(s), 8 coarse, view 9ea70f2546ccab5c
+[20:16:05] [synaxis-farview-download/INFO] (synaxis) [synaxis/farview] view 9ea70f2546ccab5c downloaded 9 object(s), 1126018 B in 253 ms
+[20:17:15] [synaxis-farview-bake/INFO] (synaxis) [synaxis/farview] view 9ea70f2546ccab5c baked in 68619 ms: 2304 sources, 22069560 B; written 36426 ms, visible 70065 ms after the announcement
+container CPU: 20:17:15 baked in 68619 ms: 2304 sources: 6 samples, container CPU mean 533%, max 564%
+
+Four segments (ms) per run, from the F28 line: download = the downloader's wall clock; DH builds the level =
+visible_ms - from_level_ms (announcement to DhApiLevelLoadEvent, in parallel with the download); waiting for the
+packs after the level = from_level_ms - ms; writing = write_ms; waiting for the parents = ms - write_ms.
+run   visible_ms  download  level  packs-after-level  write   parents
+C     64654       240       1487   2                  33002   30163
+D     73757       226       1393   9                  33358   38997
+E     70065       253       1443   3                  36426   32193
+median 70065      240       1443   3                  33358   32193
+db_bytes 22093512 / 23745560 / 22069560, median 22093512 B; packs 586706 B whole + 539312 B coarse = 1126018 B.
+LOD_VIEW lower half luma 102.1 / 102.9 / 102.1 against near vanilla ground 91.6 / 92.1 / 91.6, ratio 1.12 each
+(below 0.5 would count as dark).

@@ -1,0 +1,8 @@
+[19:42:05] [Render thread/INFO] (synaxis) [synaxis/farview] Distant Horizons 3.3.2 (API 7) found, far view events bound
+[19:42:08] [Render thread/INFO] (synaxis-gametest) [synaxis/farview] Distant Horizons' auto updater turned off for the gametests
+[19:42:14] [Netty Epoll IO #0/INFO] (synaxis) [synaxis/farview] announcement received: build farview3x3-82ef22b94f77-p776, 9 tile(s), 8 coarse, view 9ea70f2546ccab5c
+[19:42:14] [synaxis-farview-download/INFO] (synaxis) [synaxis/farview] view 9ea70f2546ccab5c downloading 9 object(s), 1126018 B
+[19:42:15] [synaxis-farview-download/INFO] (synaxis) [synaxis/farview] view 9ea70f2546ccab5c downloaded 9 object(s), 1126018 B in 286 ms
+[19:42:16] [Render thread/INFO] (ClientOnlySaveStructure) Save folder overridden from [/work/client-fabric/build/run/clientGameTest/Distant_Horizons_server_data/farview/0000000000000@synaxis@@map] -> [/work/client-fabric/build/run/clientGameTest/synaxis/farview/dh/9ea70f2546ccab5c].
+[19:42:17] [Render thread/INFO] (DhClientLevel) Started DHLevel for Wrapped{ClientLevel@0000000000000@synaxis:map} with saves at [ClientOnlySaveStructure@(/work/client-fabric/build/run/clientGameTest/synaxis/farview/dh/9ea70f2546ccab5c)]
+[19:43:50] [synaxis-farview-bake/INFO] (synaxis) [synaxis/farview] view 9ea70f2546ccab5c baked in 89509 ms: 2304 sources, 21903368 B; written 33062 ms, visible 95890 ms after the announcement

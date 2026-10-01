@@ -1,0 +1,58 @@
+[18:49:39] [Render thread/INFO] (synaxis) [synaxis/farview] Distant Horizons 3.3.2 (API 7) found, far view events bound
+[18:49:40] [Render thread/INFO] (synaxis-gametest) [synaxis/farview] Distant Horizons' auto updater turned off for the gametests
+[18:49:47] [Netty Epoll IO #0/INFO] (synaxis) [synaxis/farview] announcement received: build farview3x3-82ef22b94f77-p776, 9 tile(s), 8 coarse, view 9ea70f2546ccab5c
+[18:49:47] [synaxis-farview-download/INFO] (synaxis) [synaxis/farview] view 9ea70f2546ccab5c downloading 9 object(s), 1126018 B
+[18:49:47] [synaxis-farview-download/INFO] (synaxis) [synaxis/farview] view 9ea70f2546ccab5c downloaded 9 object(s), 1126018 B in 226 ms
+[18:49:48] [Render thread/INFO] (ClientOnlySaveStructure) Save folder overridden from [/work/client-fabric/build/run/clientGameTest/Distant_Horizons_server_data/farview/0000000000000@synaxis@@map] -> [/work/client-fabric/build/run/clientGameTest/synaxis/farview/dh/9ea70f2546ccab5c].
+[18:49:48] [Render thread/INFO] (DhClientLevel) Started DHLevel for Wrapped{ClientLevel@0000000000000@synaxis:map} with saves at [ClientOnlySaveStructure@(/work/client-fabric/build/run/clientGameTest/synaxis/farview/dh/9ea70f2546ccab5c)]
+[18:51:44] [synaxis-farview-bake/INFO] (synaxis) [synaxis/farview] view 9ea70f2546ccab5c baked in 107242 ms: 2304 sources, 25825896 B; written 7644 ms, visible 117880 ms after the announcement
+[18:55:33] [Netty Epoll IO #3/INFO] (synaxis) [synaxis/farview] announcement received: build farview3x3-82ef22b94f77-p776, 9 tile(s), 8 coarse, view 9ea70f2546ccab5c
+[18:55:35] [Render thread/INFO] (ClientOnlySaveStructure) Save folder overridden from [/work/client-fabric/build/run/clientGameTest/Distant_Horizons_server_data/farview/0000000000000@synaxis@@map] -> [/work/client-fabric/build/run/clientGameTest/synaxis/farview/dh/9ea70f2546ccab5c].
+[18:55:35] [Render thread/INFO] (DhClientLevel) Started DHLevel for Wrapped{ClientLevel@0000000000000@synaxis:map} with saves at [ClientOnlySaveStructure@(/work/client-fabric/build/run/clientGameTest/synaxis/farview/dh/9ea70f2546ccab5c)]
+[18:55:35] [synaxis-farview-bake/INFO] (synaxis) [synaxis/farview] view 9ea70f2546ccab5c ready (9 tiles)
+[18:56:03] [Netty Epoll IO #6/INFO] (synaxis) [synaxis/farview] announcement received: build farview3x3-82ef22b94f77-p776, 9 tile(s), 8 coarse, view 9ea70f2546ccab5c
+[18:56:03] [synaxis-farview-download/INFO] (synaxis) [synaxis/farview] view 9ea70f2546ccab5c downloading 9 object(s), 1126018 B
+[18:56:04] [synaxis-farview-download/INFO] (synaxis) [synaxis/farview] view 9ea70f2546ccab5c downloaded 9 object(s), 1126018 B in 226 ms
+[18:56:05] [Render thread/INFO] (ClientOnlySaveStructure) Save folder overridden from [/work/client-fabric/build/run/clientGameTest/Distant_Horizons_server_data/farview/0000000000000@synaxis@@map] -> [/work/client-fabric/build/run/clientGameTest/synaxis/farview/dh/9ea70f2546ccab5c].
+[18:56:05] [Render thread/INFO] (DhClientLevel) Started DHLevel for Wrapped{ClientLevel@0000000000000@synaxis:map} with saves at [ClientOnlySaveStructure@(/work/client-fabric/build/run/clientGameTest/synaxis/farview/dh/9ea70f2546ccab5c)]
+[18:56:12] [synaxis-farview-bake/INFO] (synaxis) [synaxis/farview] view 9ea70f2546ccab5c baked in 7280 ms: 2304 sources, 17878104 B; written 7280 ms, visible 8563 ms after the announcement
+[18:56:43] [Netty Epoll IO #9/INFO] (synaxis) [synaxis/farview] announcement received: build farview3x3-82ef22b94f77-p776, 9 tile(s), 8 coarse, view 9ea70f2546ccab5c
+[18:56:43] [synaxis-farview-download/INFO] (synaxis) [synaxis/farview] view 9ea70f2546ccab5c downloading 9 object(s), 1126018 B
+[18:56:43] [synaxis-farview-download/INFO] (synaxis) [synaxis/farview] view 9ea70f2546ccab5c downloaded 9 object(s), 1126018 B in 219 ms
+[18:56:43] [Render thread/WARN] (synaxis) [synaxis/farview] the test hook leaves Distant Horizons writable
+[18:56:44] [Render thread/INFO] (ClientOnlySaveStructure) Save folder overridden from [/work/client-fabric/build/run/clientGameTest/Distant_Horizons_server_data/farview/0000000000000@synaxis@@map] -> [/work/client-fabric/build/run/clientGameTest/synaxis/farview/dh/9ea70f2546ccab5c].
+[18:56:44] [Render thread/INFO] (DhClientLevel) Started DHLevel for Wrapped{ClientLevel@0000000000000@synaxis:map} with saves at [ClientOnlySaveStructure@(/work/client-fabric/build/run/clientGameTest/synaxis/farview/dh/9ea70f2546ccab5c)]
+[18:57:58] [synaxis-farview-bake/INFO] (synaxis) [synaxis/farview] view 9ea70f2546ccab5c baked in 73675 ms: 2304 sources, 24206464 B; written 46019 ms, visible 74951 ms after the announcement
+[18:58:54] [Netty Epoll IO #12/INFO] (synaxis) [synaxis/farview] announcement received: build farview3x3-82ef22b94f77-p776, 9 tile(s), 8 coarse, view 9ea70f2546ccab5c
+[18:58:54] [synaxis-farview-download/INFO] (synaxis) [synaxis/farview] view 9ea70f2546ccab5c downloading 9 object(s), 1126018 B
+[18:58:54] [synaxis-farview-download/INFO] (synaxis) [synaxis/farview] view 9ea70f2546ccab5c downloaded 9 object(s), 1126018 B in 220 ms
+[18:58:55] [Render thread/INFO] (ClientOnlySaveStructure) Save folder overridden from [/work/client-fabric/build/run/clientGameTest/Distant_Horizons_server_data/farview/0000000000000@synaxis@@map] -> [/work/client-fabric/build/run/clientGameTest/synaxis/farview/dh/9ea70f2546ccab5c].
+[18:58:55] [Render thread/INFO] (DhClientLevel) Started DHLevel for Wrapped{ClientLevel@0000000000000@synaxis:map} with saves at [ClientOnlySaveStructure@(/work/client-fabric/build/run/clientGameTest/synaxis/farview/dh/9ea70f2546ccab5c)]
+[18:59:13] [synaxis-farview-bake/INFO] (synaxis) [synaxis/farview] view 9ea70f2546ccab5c baked in 13480 ms: 384 sources, 8743968 B; written 5183 ms, visible 19054 ms after the announcement
+[19:00:36] [Netty Epoll IO #14/INFO] (synaxis) [synaxis/farview] announcement received: build farview3x3-82ef22b94f77-p776, 9 tile(s), 8 coarse, view 9ea70f2546ccab5c
+[19:00:36] [synaxis-farview-download/INFO] (synaxis) [synaxis/farview] view 9ea70f2546ccab5c downloading 9 object(s), 1126018 B
+[19:00:36] [synaxis-farview-download/INFO] (synaxis) [synaxis/farview] view 9ea70f2546ccab5c downloaded 9 object(s), 1126018 B in 238 ms
+[19:00:37] [Render thread/INFO] (ClientOnlySaveStructure) Save folder overridden from [/work/client-fabric/build/run/clientGameTest/Distant_Horizons_server_data/farview/0000000000000@synaxis@@map] -> [/work/client-fabric/build/run/clientGameTest/synaxis/farview/dh/9ea70f2546ccab5c].
+[19:00:38] [Render thread/INFO] (DhClientLevel) Started DHLevel for Wrapped{ClientLevel@0000000000000@synaxis:map} with saves at [ClientOnlySaveStructure@(/work/client-fabric/build/run/clientGameTest/synaxis/farview/dh/9ea70f2546ccab5c)]
+[19:02:00] [synaxis-farview-bake/INFO] (synaxis) [synaxis/farview] view 9ea70f2546ccab5c baked in 75883 ms: 2304 sources, 20883504 B; written 35627 ms, visible 84138 ms after the announcement
+[19:07:09] [Netty Epoll IO #16/INFO] (synaxis) [synaxis/farview] announcement received: build farview3x3-82ef22b94f77-p776, 9 tile(s), 8 coarse, view 9ea70f2546ccab5c
+[19:07:09] [synaxis-farview-download/INFO] (synaxis) [synaxis/farview] view 9ea70f2546ccab5c downloading 9 object(s), 1126018 B
+[19:07:09] [synaxis-farview-download/INFO] (synaxis) [synaxis/farview] view 9ea70f2546ccab5c downloaded 9 object(s), 1126018 B in 220 ms
+[19:07:10] [Render thread/INFO] (ClientOnlySaveStructure) Save folder overridden from [/work/client-fabric/build/run/clientGameTest/Distant_Horizons_server_data/farview/0000000000000@synaxis@@map] -> [/work/client-fabric/build/run/clientGameTest/synaxis/farview/dh/9ea70f2546ccab5c].
+[19:07:10] [Render thread/INFO] (DhClientLevel) Started DHLevel for Wrapped{ClientLevel@0000000000000@synaxis:map} with saves at [ClientOnlySaveStructure@(/work/client-fabric/build/run/clientGameTest/synaxis/farview/dh/9ea70f2546ccab5c)]
+[19:08:36] [synaxis-farview-bake/INFO] (synaxis) [synaxis/farview] view 9ea70f2546ccab5c baked in 78277 ms: 2304 sources, 21368320 B; written 37289 ms, visible 86510 ms after the announcement
+[19:21:00] [Netty Epoll IO #18/INFO] (synaxis) [synaxis/farview] announcement received: build farview3x3-82ef22b94f77-p776, 9 tile(s), 8 coarse, view -; far view off (farview.radius is 0)
+[19:21:01] [Render thread/INFO] (ClientOnlySaveStructure) Save folder overridden from [/work/client-fabric/build/run/clientGameTest/Distant_Horizons_server_data/farview/0000000000000@synaxis@@map] -> [/work/client-fabric/build/run/clientGameTest/synaxis/farview/dh/off].
+[19:21:01] [Render thread/INFO] (DhClientLevel) Started DHLevel for Wrapped{ClientLevel@0000000000000@synaxis:map} with saves at [ClientOnlySaveStructure@(/work/client-fabric/build/run/clientGameTest/synaxis/farview/dh/off)]
+[19:21:48] [Netty Epoll IO #20/INFO] (synaxis) [synaxis/farview] announcement received: build farview3x3-82ef22b94f77-p776, 9 tile(s), 8 coarse, view 9ea70f2546ccab5c
+[19:21:48] [synaxis-farview-download/INFO] (synaxis) [synaxis/farview] view 9ea70f2546ccab5c downloading 9 object(s), 1126018 B
+[19:21:48] [synaxis-farview-download/INFO] (synaxis) [synaxis/farview] view 9ea70f2546ccab5c downloaded 9 object(s), 1126018 B in 252 ms
+[19:21:49] [Render thread/INFO] (ClientOnlySaveStructure) Save folder overridden from [/work/client-fabric/build/run/clientGameTest/Distant_Horizons_server_data/farview/0000000000000@synaxis@@map] -> [/work/client-fabric/build/run/clientGameTest/synaxis/farview/dh/9ea70f2546ccab5c].
+[19:21:49] [Render thread/INFO] (DhClientLevel) Started DHLevel for Wrapped{ClientLevel@0000000000000@synaxis:map} with saves at [ClientOnlySaveStructure@(/work/client-fabric/build/run/clientGameTest/synaxis/farview/dh/9ea70f2546ccab5c)]
+[19:23:31] [synaxis-farview-bake/INFO] (synaxis) [synaxis/farview] view 9ea70f2546ccab5c baked in 95172 ms: 2304 sources, 23049568 B; written 48258 ms, visible 103541 ms after the announcement
+[19:30:26] [Netty Epoll IO #22/INFO] (synaxis) [synaxis/farview] announcement received: build farview3x3-82ef22b94f77-p776, 9 tile(s), 8 coarse, view 9ea70f2546ccab5c
+[19:30:26] [synaxis-farview-download/INFO] (synaxis) [synaxis/farview] view 9ea70f2546ccab5c downloading 9 object(s), 1126018 B
+[19:30:26] [synaxis-farview-download/INFO] (synaxis) [synaxis/farview] view 9ea70f2546ccab5c downloaded 9 object(s), 1126018 B in 241 ms
+[19:30:28] [Render thread/INFO] (ClientOnlySaveStructure) Save folder overridden from [/work/client-fabric/build/run/clientGameTest/Distant_Horizons_server_data/farview/0000000000000@synaxis@@map] -> [/work/client-fabric/build/run/clientGameTest/synaxis/farview/dh/9ea70f2546ccab5c].
+[19:30:28] [Render thread/INFO] (DhClientLevel) Started DHLevel for Wrapped{ClientLevel@0000000000000@synaxis:map} with saves at [ClientOnlySaveStructure@(/work/client-fabric/build/run/clientGameTest/synaxis/farview/dh/9ea70f2546ccab5c)]
+[19:31:16] [synaxis-farview-bake/INFO] (synaxis) [synaxis/farview] view 9ea70f2546ccab5c baked in 41310 ms: 2304 sources, 26229752 B; written 26429 ms, visible 49678 ms after the announcement

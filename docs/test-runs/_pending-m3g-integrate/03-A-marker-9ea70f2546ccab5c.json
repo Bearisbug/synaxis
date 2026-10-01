@@ -1,0 +1,66 @@
+{
+  "format": 1,
+  "view_key": "9ea70f2546ccab5c",
+  "dh_version": "3.3.2",
+  "bake_code_version": 1,
+  "tiles": [
+    {
+      "tile_x": -1,
+      "tile_z": -1,
+      "layer": 1,
+      "sha256": "0cb332ff8306cfb64c7e3584dd183f05eeadbd6adeb583c221cd0eeb00d6bcb9"
+    },
+    {
+      "tile_x": -1,
+      "tile_z": 0,
+      "layer": 1,
+      "sha256": "bb6813d5d746cfc98561a443f3c8f394937c686ad0020d6b8aae929d1052c3c7"
+    },
+    {
+      "tile_x": -1,
+      "tile_z": 1,
+      "layer": 1,
+      "sha256": "17946f83edc2c650628f1253e40d6e20bc20447a4fe25dd90490eb0161526b3f"
+    },
+    {
+      "tile_x": 0,
+      "tile_z": -1,
+      "layer": 1,
+      "sha256": "15e87ee6654f4cb11edf284639bd12a32e6f4375311f9d797e30233c5917cfc5"
+    },
+    {
+      "tile_x": 0,
+      "tile_z": 0,
+      "layer": 0,
+      "sha256": "d01c3af8952adb08486854e9066780c509d1a4a6e2527be6e2218789ec00e495"
+    },
+    {
+      "tile_x": 0,
+      "tile_z": 1,
+      "layer": 1,
+      "sha256": "6e5c8ed3161e24224b95682d0994d597508118efa80d72f46721ff44cbd9e22a"
+    },
+    {
+      "tile_x": 1,
+      "tile_z": -1,
+      "layer": 1,
+      "sha256": "de3fde0292241ca2b08d97c3aaf5bd482e8ce6eed6007fad6453a716b3684042"
+    },
+    {
+      "tile_x": 1,
+      "tile_z": 0,
+      "layer": 1,
+      "sha256": "9495943ff16d301d579ae5b1a39ad97a4bb0efc67f14e48420fb02e0456e3017"
+    },
+    {
+      "tile_x": 1,
+      "tile_z": 1,
+      "layer": 1,
+      "sha256": "7fd6aba60c9cd730949cf81862f19625f03379520499a206a15b66315a632d28"
+    }
+  ],
+  "sources": 2304,
+  "bake_ms": 41310,
+  "baked_at": 1790883076407,
+  "last_used": 1790883076407
+}

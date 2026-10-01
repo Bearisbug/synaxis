@@ -49,7 +49,19 @@ public record StoreSettings(String jdbcUrl, String user, String password, @Nulla
     @Override
     public String toString() {
         // The password never goes into a log line or a crash report
-        return "StoreSettings[jdbcUrl=" + jdbcUrl + ", user=" + user + ", password=<set>, redis="
+        return "StoreSettings[jdbcUrl=" + hostsAndDatabase(jdbcUrl) + ", user=" + user + ", password=<set>, redis="
                 + (redisUrl == null ? "off" : "<set>") + "]";
+    }
+
+    /**
+     * The JDBC URL down to its hosts, ports and database: a parameter ({@code sslpassword=},
+     * {@code password=}) or a user info carries a secret as much as {@value #DB_PASSWORD} does.
+     */
+    private static String hostsAndDatabase(String jdbcUrl) {
+        final String location = jdbcUrl.split("[?#]", 2)[0];
+        final int hosts = location.indexOf("//") + 2;
+        // The last '@', not the first one before a '/': a password may hold a '/' as well
+        final int userInfo = location.lastIndexOf('@');
+        return userInfo < hosts ? location : location.substring(0, hosts) + location.substring(userInfo + 1);
     }
 }

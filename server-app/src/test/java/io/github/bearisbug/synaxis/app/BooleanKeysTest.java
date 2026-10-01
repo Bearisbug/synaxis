@@ -5,8 +5,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 
@@ -50,7 +48,7 @@ class BooleanKeysTest {
     /** Writes the file and applies it as a launcher does; the keys it set are cleared by the caller. */
     private ConfigFile.Outcome apply(String... lines) throws IOException {
         final Path file = directory.resolve(ConfigFile.DEFAULT_FILE);
-        Files.writeString(file, String.join("\n", lines) + "\n", StandardCharsets.UTF_8);
+        ConfigFileTest.write(file, String.join("\n", lines) + "\n");
         final ConfigFile.Outcome outcome = ConfigFile.apply(null, file, System::getProperty, System::setProperty);
         assertNull(outcome.refusal(), "the file itself is fine: its keys are known");
         assertEquals(List.of(), outcome.overridden(), "nothing on the command line of this JVM");

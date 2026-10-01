@@ -32,7 +32,7 @@ class ConfigFileTest {
 
     private Path file(String... lines) throws IOException {
         final Path file = directory.resolve(ConfigFile.DEFAULT_FILE);
-        Files.writeString(file, String.join("\n", lines) + "\n", StandardCharsets.UTF_8);
+        write(file, String.join("\n", lines) + "\n");
         return file;
     }
 
@@ -122,7 +122,7 @@ class ConfigFileTest {
     void aNamedFileIsReadInsteadOfTheOneInTheWorkingDirectory() throws IOException {
         file("synaxis.motd=working directory");
         final Path named = directory.resolve("shard.properties");
-        Files.writeString(named, "synaxis.motd=named\n");
+        write(named, "synaxis.motd=named\n");
 
         final ConfigFile.Outcome outcome = ConfigFile.apply(named.toString(), directory.resolve(ConfigFile.DEFAULT_FILE),
                 properties::get, properties::put);
@@ -168,5 +168,15 @@ class ConfigFileTest {
         assertEquals("synaxis.app.auth", ConfigFile.nearest("synaxis.app.auht"));
         // Two edits from synaxis.app.log and from synaxis.app.port, and no key is nearer
         assertEquals("synaxis.app.log", ConfigFile.nearest("synaxis.app.or"));
+    }
+
+    /**
+     * Writes a file as UTF-8 that only its owner may write, whatever the umask of the build: under
+     * 002 a new file is group writable, and {@link ConfigFile} refuses one group or others may write.
+     */
+    static Path write(Path file, String content) throws IOException {
+        Files.writeString(file, content, StandardCharsets.UTF_8);
+        Files.setAttribute(file, "unix:mode", 0644);
+        return file;
     }
 }

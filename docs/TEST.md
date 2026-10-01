@@ -14,6 +14,7 @@
 
 | 日期 | 改动 | 作者 |
 | --- | --- | --- |
+| 2026-10-01 | 分支 `sec/secrets-files`（`main` `23982267e9` 加五个代码提交），跟进 `docs/DESIGN-PROD.md` v0.9.42（安全审查 secrets 组：机密进日志与落盘权限），不登执行轮次，由集成轮登记；证据在 `docs/test-runs/RUN-062/secrets/`。**新增 §4「生产就绪 · 安全修复：secrets（机密进日志与落盘权限）」九条 `TC-PROD-610`～`TC-PROD-618`**，每条的反证都实跑过：起服自检行的 JDBC URL 只印主机、端口与库名（610）；Redis URL 解析失败的拒启信息不带口令、不挂 cause，主机为空也拒（611）；http、别的端口或路径指向 Mojang 主机不算 Mojang（612）；组或他人可写、或目录他人可写而无 sticky 位的配置文件拒启，非 POSIX 文件系统照读并在自检行写明（613）；`profile` 文件不带聊天、命令、status 来源、进程表与套接字事件，别的录制打开了也不带，文件 0600、目录 0700（614）；键名像机密的系统属性与带它的 JVM 参数不进文件，子 JVM 实测（615）；台账、压缩出的 `.jsonl.gz` 与崩溃报告 0600、目录 0700，`.env.example` 教 `install -m 600`（616）；CVE-2026-90584 的本用法回归，`BoundedDraft` 两道上限失效时两个类都红（617）；两个模块默认与严格 grid 全量（618）。**改既有用例**：`TC-PROD-002` 第 3 步的反证改用 `ConfigFile.isSecret`（键名规则从 `CrashReports` 挪到 `ConfigFile`）；`TC-PROD-392` 第 7 步改为给关 `LEFT_OUT` 的那一行加 `proof.never`；`TC-PROD-471` 第 2 步的方法名 `writeWithoutEnvironment` → `writeHandedOver`，红行的环境变量个数随环境而变（本轮 81）；三处都按新写法重跑过，红行与原先相同。§5 生产就绪域加一行映射。`TC-PROD-486`、`505`、`510`、`529`、`549` 的条数未改，留给集成轮 | Bearisbug |
 | 2026-10-01 | 分支 `prod/mgmt-timeout`，跟进 `docs/DESIGN-PROD.md` v0.9.38（管理连接出站队列里没人写的帧），不登执行轮次。**§7 结案** `ManagementBacklogIntegrationTest > aPeerThatReadsWhatItIsSentKeepsItsConnection` 的 CI 偶发红（run `36740800681` 第 1 次尝试，4 线程严格 `grid`，红在 `:211`）：根因在产品，Java-WebSocket 1.6.0 的选择器写空队列后撤写兴趣、撤之前不再看队列，其间入队的 pong 没人写。**新增 §4「生产就绪 · 管理连接出站队列里没人写的帧」两条**，反证都实跑过：`TC-PROD-574`（`REQ-PROD-032`，§19 场景；新类 `ManagementWriteRecheckIntegrationTest` 把一条回复直接放进队列、不登记写兴趣；反证：不起补登记线程，红在 `:101`）、`TC-PROD-575`（拉宽选择器的窗口：不补登记时 `ManagementBacklogIntegrationTest` 红在 `:211`，与 CI 同一行同一异常；补登记时每轮约 107 ms 收齐、通过；回归）。`ManagementBacklogIntegrationTest` 不改，`TC-PROD-493` 的步骤不变。**红行**：`TC-PROD-395` 第 2 步红行 `ManagementServer.java:231` → `:267`（本组在 `Endpoint#onError` 之前加了 36 行），已在本分支重跑；`TC-PROD-505` 第 2 步转述的同一红行随改。**条数**：`TC-PROD-486` 第 3 步、`505` 第 3 步、`510` 第 2 步、`529` 第 4 步、`549` 第 2 步的 `:server-app:test` 521 → 522（本组的新类）；这五步本组没有带数据库变量重跑，只在未设数据库变量时跑了默认与严格 `grid` 的全量，各 522 个 0 失败、125 个跳过。§5 加一行 | Bearisbug |
 | 2026-09-30 | 第 6 波收尾三组集成（`prod/integrate-059`）：`TC-PROD-486` 第 3 步、`505` 第 3 步、`510` 第 2 步、`529` 第 4 步、`549` 第 2 步的 `:server-app:test` 520 → 521（P3-3 的 `TickAcquireMetricsTest`），`505` 第 3 步根构建 `:test` 3,142 → 3,146（P3-3 的 `AcquireWaitTest`）；§7 结案 `PermissionsIntegrationTest > withoutADatabaseNobodyHoldsANodeAndTheCommandSaysSo` 的偶发红（与 `ModerationIntegrationTest` 同一原因）；登记 RUN-059 | Bearisbug |
 | 2026-09-30 | 分支 `prod/limit`（`main` `0e919cce6a` 加 `3a53803b3c`），跟进 `docs/DESIGN-PROD.md` v0.9.35、`docs/DESIGN.md` v0.42 与 `docs/DESIGN-M2.md` v0.52：用户 2026-09-30 拍板把 `synaxis.packet-limit.max-packets` 的默认值由 582 提到 750（RUN-057 六档压测机器人每人 7 s 上行包数 P99 最高 374 × 2，取整）。不登执行轮次，由集成轮登记，本组证据在 `docs/test-runs/RUN-059/limit/`。**废旧 ID 换新 ID**：`TC-PROD-290` → **`TC-PROD-560`**（751 个被踢、750 个不踢；第 2 步反证照旧，加第 3 步默认值改回 582 与改成 751 各红一条）；`TC-PROD-293` → **`TC-PROD-561`**（第 1 步的引擎默认 582 → 750，第 2、3 步照旧，加第 4 步默认值改回 582 的反证）；`TC-GAME-064` → **`TC-GAME-075`**（默认配置下游戏侧洪水闸到不了：连续 3 s > 300 包/秒至少 903 包，先越过 750；改为默认进程上判 95 包/秒 60 s 不断线、120 包/秒被速率闸以 `synaxis:protocol-error` 断开，速率闸抬到 100,000 的进程上判原来的洪水闸三步）。三条新用例与 `TC-GAME-060` 都在 `3a53803b3c` 上实跑通过，JUnit 两条在默认与 4 线程 `grid` 严格模式下各跑一次，六个反证都按写的那一行变红。**保留 ID**：`TC-GAME-060` 第 5 步只补每连接 7 s 约 702 个、在 750 之下，以及约 48 个包（0.48 s 停顿）的余量与变红时怎么分辨，判据未变。§2 `REQ-M2-009` 行、§3 探针表 `game-flood` 行（默认配置下先收到 `synaxis:protocol-error`；要看到 `synaxis:game-flood`，速率闸要抬到远高于洪水闸触发时窗口里的包数，持续 R 包/秒时是 R + 602 到 2R + 601 个，抬到 1,000 不够：实跑闸 1,000 时 800 与 400 包/秒都以 `packets 1001 > 1000 in 7000 ms` 断开，证据 `docs/test-runs/RUN-059/limit/03-flood-threshold.txt`）、§4 5B 节首入站一条、§5 游戏域与生产就绪域两行随之改；§5 生产就绪域加一条牵连：改了 `synaxis.packet-limit.*` 的默认值加跑 `TC-GAME-060` 第 5 步与 `TC-GAME-075`。§7「`TC-GAME-060` 第 5 步与 `TC-GAME-064` 被引擎的入站包速率闸先踢」结案。`TC-PROD-271`、`TC-PROD-301`、`TC-PROD-360` 里与 582 比的数是那几轮的读数，不改 | Bearisbug |
@@ -3338,7 +3339,7 @@ JUnit 与反证的纪律同 M3-C 一节。红行号按分支 `m3d/runtime-light`
 | --- | --- | --- |
 | 1 | `./gradlew :server-app:test --tests '*CrashReportsTest*' --tests '*HostExceptionIntegrationTest*' --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts` | `BUILD SUCCESSFUL`；`CrashReportsTest` 五条：文件名 `20260923-040506-r01-c1.txt`（固定时钟）、报告含 `Reason:`、起因栈、`-- Git head --`、`-- Plugins --` 下的 `rts 0.1.0`、生效配置与线程转储，写报告的线程自己的栈超过 8 帧（`ThreadInfo#toString` 会截在 8 帧）；同一秒第二份叫 `…-r01-c1-2.txt`；插件列表取不到时写 `(could not be collected: …)`、其余段照写；目录不可写时两次写只换来 1 行 ERROR 且不抛；`secretsAreOnlyEverSaidToBeSet`：`synaxis.app.db-password`、`env SYNAXIS_MANAGEMENT_TOKEN`、`-Dsynaxis.app.api-token` 三处只写 `<set>`，`hunter2` / `abc123` / `xyz789` 一个都不出现。`HostExceptionIntegrationTest#aFatalErrorWritesOneCrashReportAndDoesNotStopTheProcess`：连着两次 `OutOfMemoryError` 只有 1 行 ERROR（带 `crash_report=<路径>`）、`crash-reports/` 下恰 1 个 `yyyyMMdd-HHmmss-r01-c1.txt`，内含 `java.lang.OutOfMemoryError: test heap`、`ServerConfig[` 与 `-- Thread dump --`；停机任务没有被执行；`InternalError` 算致命、`StackOverflowError` 不算 |
 | 2 | `./gradlew :server-app:jar --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts`，再 `unzip -p server-app/build/libs/server-app-dev.jar synaxis-build.properties` 与 `git rev-parse HEAD` | 前者一行 `git.head=<40 位提交号>`，与后者相同（崩溃报告的 `-- Git head --` 段读的就是它） |
-| 3 | 反证有齿（两处一起改、一起还原）：`CrashReports#masked` 的条件改成 `SECRET_KEY.matcher(name).matches() && name.isEmpty()`（**不要直接 `return value;`**：`SECRET_KEY` 变成无用字段，`UnusedVariable` 先红）；`HostExceptionHandler#handleException` 的 `if (isFatal(e)) {` 下一行插 `crashReported.set(false);`。重跑第 1 步，再 `git checkout --` 这两个文件 | 红 2 条：`CrashReportsTest.secretsAreOnlyEverSaidToBeSet`，实际输出里是 `synaxis.app.db-password=hunter2`；`HostExceptionIntegrationTest.aFatalError…` 断在「the first fatal error is the one the report is about ==> expected: <1> but was: <2>」（`HostExceptionIntegrationTest.java:113`）；还原后复绿 |
+| 3 | 反证有齿（两处一起改、一起还原）：`CrashReports#masked` 的条件改成 `ConfigFile.isSecret(name) && name.isEmpty()`（键名规则 v0.9.42 起只在 `ConfigFile#isSecret` 一处，`profile` 也用它）；`HostExceptionHandler#handleException` 的 `if (isFatal(e)) {` 下一行插 `crashReported.set(false);`。重跑第 1 步，再 `git checkout --` 这两个文件 | 红 2 条：`CrashReportsTest.secretsAreOnlyEverSaidToBeSet`，实际输出里是 `synaxis.app.db-password=hunter2`；`HostExceptionIntegrationTest.aFatalError…` 断在「the first fatal error is the one the report is about ==> expected: <1> but was: <2>」（`HostExceptionIntegrationTest.java:113`）；还原后复绿（2026-10-01 在分支 `sec/secrets-files` 按这一写法重跑，红行相同） |
 
 后置：`git status` 干净。
 
@@ -6593,7 +6594,7 @@ jcmd "$pid" VM.flags | tr ' ' '\n' | grep -cxE -- '-XX:\+UseG1GC|-XX:InitialHeap
 | 4 | 同一次运行，看 `aRecordingThatCannotStartIsAnsweredAsFailed` | 通过：工作目录里 `profiles` 被一个普通文件占着；`profile 1` 得 `SUCCESS`，回执恰一条，以 `synaxis:command-profile-failed ` 开头（`Files.createDirectories` 的错误信息作参数）；台账一条 `profile 1 unavailable` |
 | 5 | 反证有齿（开不起来也记 `ok`）：`HostCommands#profile` 捕获 `IOException` 那一支的 `record(sender, input, null, "unavailable");` 改为 `record(sender, input, null, "ok");`，重跑本类，再还原 | `2 tests completed, 1 failed`，红在 `:129`：`expected: <[profile 1 unavailable]> but was: <[profile 1 ok]>`。还原后复绿 |
 | 6 | 跑 `io.github.bearisbug.synaxis.app.command.ProfilerTest`，看 `aRecordingLeavesTheEnvironmentOfTheProcessOut` | 通过（§19「profile 命令产出 JFR 文件」后半；同类另一条见 `TC-PROD-471`）：`Profiler#start(1)` 的录制在跑时，它的设置里 `jdk.InitialEnvironmentVariable#enabled` 为 `false`；写出的文件里 `jdk.InitialEnvironmentVariable` 事件 0 个，`jdk.InitialSystemProperty` 事件多于 0 个（JDK `profile` 设置的其余事件照录） |
-| 7 | 反证有齿（录制照搬 JDK 设置）：`Profiler#start` 的 `settings.put(ENVIRONMENT, "false");` 改为 `if (Boolean.getBoolean("proof.never")) settings.put(ENVIRONMENT, "false");`，跑 `ProfilerTest`，再还原 | `2 tests completed, 1 failed`，红在 `ProfilerTest.java:46`：`the recording does not turn the environment on ==> expected: <false> but was: <true>`。写出的文件在这个改动下仍读不出该事件（写文件时按事件名又滤了一次，`TC-PROD-471`），所以这一步判的是录制的设置、不是文件。还原后复绿 |
+| 7 | 反证有齿（录制照搬 JDK 设置）：`Profiler#start` 的 `for (String event : LEFT_OUT) settings.put(event + "#enabled", "false");` 前面加 `if (Boolean.getBoolean("proof.never")) `，跑 `ProfilerTest`，再还原 | `2 tests completed, 1 failed`，红在 `ProfilerTest.java:46`：`the recording does not turn the environment on ==> expected: <false> but was: <true>`。写出的文件在这个改动下仍读不出该事件（写文件时按事件名又滤了一次，`TC-PROD-471`），所以这一步判的是录制的设置、不是文件。还原后复绿（v0.9.42 起这一行关的是 `LEFT_OUT` 里的七个事件，另外六个见 `TC-PROD-614`；2026-10-01 按这一写法重跑，红行相同） |
 
 后置：确认 `HostCommands.java`、`Profiler.java` 没有残留改动。
 
@@ -6897,7 +6898,7 @@ for (var request : System.getenv("MGMT_CALLS").split("\n")) {
 | # | 操作 | 预期 |
 | --- | --- | --- |
 | 1 | 跑 `ProfilerTest`（加 `--rerun`），看 `anotherRecordingWithTheJdkSettingsDoesNotBringTheEnvironmentIn` | `tests="2"` 0 失败。先开一个 `Configuration.getConfiguration("default")` 的录制（同 `jcmd JFR.start settings=default`），再 `Profiler#start(1)`；另一个录制自己的 dump 里 `jdk.InitialEnvironmentVariable` 事件多于 0 个（两者共用 chunk，事件确实在），`profile` 写出的文件里 0 个、`jdk.InitialSystemProperty` 多于 0 个；文件按 ISO-8859-1 读成字符串后，名字以 `SYNAXIS_` 开头、不以 `SYNAXIS_TEST_` 开头的每个非空环境变量，其 UTF-8 值都不在里面（这里就是 `SYNAXIS_MANAGEMENT_TOKEN`；断言信息只带变量名） |
-| 2 | 反证有齿（写文件不过滤，即改动前）：`Profiler#start` 里的 `writeWithoutEnvironment(recording, path);` 改为 `if (Boolean.getBoolean("proof.never")) writeWithoutEnvironment(recording, path); else recording.dump(path);`，重跑第 1 步，再还原 | `2 tests completed, 1 failed`：红在 `ProfilerTest.java:70`，`the environment the other recording turned on is not in the profile file ==> expected: <0> but was: <85>`（本机 85 个，即测试 JVM 的全部环境变量）；只开 `profile` 一个录制的那条绿（录制本身不开这个事件） |
+| 2 | 反证有齿（写文件不过滤，即改动前）：`Profiler#start` 里的 `writeHandedOver(recording, path);`（v0.9.42 前叫 `writeWithoutEnvironment`）改为 `if (Boolean.getBoolean("proof.never")) writeHandedOver(recording, path); else recording.dump(path);`，重跑第 1 步，再还原 | `2 tests completed, 1 failed`：红在 `ProfilerTest.java:70`，`the environment the other recording turned on is not in the profile file ==> expected: <0> but was: <81>`（测试 JVM 的全部环境变量，个数随运行环境而变：2026-09-26 是 85 个，2026-10-01 在分支 `sec/secrets-files` 重跑是 81 个）；只开 `profile` 一个录制的那条绿（录制本身不开这个事件） |
 | 3 | 反证有齿（逐字节检查拦得住）：在第 2 步的改动之外，把测试 `:70` 起的 `assertEquals(0, count(events, ENVIRONMENT), …)` 改为只在 `proof.never` 时执行（前面加 `if (Boolean.getBoolean("proof.never"))`），重跑第 1 步，再还原两个文件 | `2 tests completed, 1 failed`：红在 `ProfilerTest.java:80`，`the value of SYNAXIS_MANAGEMENT_TOKEN is not in the profile file ==> expected: <false> but was: <true>`（标记值以明文在文件里） |
 | 4 | 还原后重跑第 1 步 | 与第 1 步相同 |
 
@@ -7863,6 +7864,133 @@ for (var request : System.getenv("MGMT_CALLS").split("\n")) {
 
 后置：`git status --short` 无输出。
 
+### 生产就绪 · 安全修复：secrets（机密进日志与落盘权限）
+
+对应 `docs/DESIGN-PROD.md` v0.9.42，起因是 2026-10-01 安全审查 secrets 组的七条（D-01、D-02、D-03、C-04、D-V02、D-V01、D-05）：`REQ-PROD-005`、`REQ-PROD-007`（`API-PROD-004` 密钥一条、`API-PROD-006` 连接一条）、`REQ-PROD-036`（`API-PROD-001`）、`REQ-PROD-033`（`API-PROD-023` 拒启一条）、`REQ-PROD-034`（`API-PROD-011` 的 `profile`）、`REQ-PROD-015`、`REQ-PROD-017`（`API-PROD-013`、`API-PROD-014`）与 `REQ-PROD-032`（§28.2 CVE-2026-90584 一行）；§19 新增五个场景。改动在分支 `sec/secrets-files`，基线 `main` `23982267e9`，下文只写文件名，全路径如下：引擎 `src/main/java/io/github/bearisbug/synaxis/SessionServer.java`；`server-app/src/main/java/io/github/bearisbug/synaxis/app/` 下的 `store/StoreSettings.java`、`store/RedisLink.java`、`ConfigFile.java`、`CrashReports.java`、`EventLedger.java`、`command/Profiler.java`、`management/ManagementServer.java`（只有 `TC-PROD-617` 临时改它）；仓库根的 `.env.example`。
+
+测试：根模块新类 `io.github.bearisbug.synaxis.SessionServerTest`（2 条）；`:server-app` 新类 `io.github.bearisbug.synaxis.app.store.StoreSettingsTest`（2）、`…app.store.RedisLinkTest`（2）、`…app.ConfigFilePermissionsTest`（4）、`…app.HostFilePermissionsTest`（3）、`…app.command.ProfilerPrivacyTest`（3，第 3 条起一个子 JVM 跑 `ProfilerFixture`）。既有测试类没改。「跑 `<类>`」即 `./gradlew <模块>:test --tests '<类全名>' --max-workers=4 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts`，`SessionServerTest` 的模块是根模块 `:test`，其余是 `:server-app:test`；结果看 `build/test-results/test/` 或 `server-app/build/test-results/test/` 下的 `TEST-<类全名>.xml`。除 `TC-PROD-612` 第 3 步与 `TC-PROD-618` 外不需要数据库前置。反证一律是临时改一处、跑、看红、`git checkout HEAD -- <文件>` 还原、重跑复绿；「改回改动前」指 `git checkout 23982267e9 -- <文件>`，`ConfigFile.java`、`CrashReports.java`、`Profiler.java` 三个共用 `ConfigFile#isSecret`，要改回就三个一起改回。行号是分支 `sec/secrets-files` 提交时的。
+
+权限类断言的红行在进程 umask 为 022 时出现（本机即是，`umask` 读出 `022`）：umask 为 077 时改动前的代码同样建出 0600、0700，反证不红，跑反证前先确认。
+
+#### `TC-PROD-610` 起服自检行里的 JDBC URL 只印主机、端口与库名，参数与 userinfo 去掉（§19 场景） — 对应 `REQ-PROD-005` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `io.github.bearisbug.synaxis.app.store.StoreSettingsTest` | `tests="2"` 0 失败：`SYNAXIS_STATE_DB_URL=jdbc:postgresql://db:5432/synaxis?sslmode=verify-full&sslpassword=K3yS3cret&password=P4ss` 时 `toString()` 恰为 `StoreSettings[jdbcUrl=jdbc:postgresql://db:5432/synaxis, user=shard, password=<set>, redis=<set>]`；`jdbc:postgresql://admin:Us3r/Pw@db1:5432,db2:5433/synaxis#K3yS3cret`（userinfo 的口令里有 `/`，结尾带 fragment）印成 `jdbc:postgresql://db1:5432,db2:5433/synaxis` |
+| 2 | 反证（改动前）：`StoreSettings.java` 改回改动前，重跑第 1 步，再还原 | `2 tests completed, 2 failed`：红在 `StoreSettingsTest.java:26`，`… but was: <StoreSettings[jdbcUrl=jdbc:postgresql://db:5432/synaxis?sslmode=verify-full&sslpassword=K3yS3cret&password=P4ss, user=shard, password=<set>, redis=<set>]>`；红在 `:33`，实际带出 `admin:Us3r/Pw@` 与 `#K3yS3cret` |
+| 3 | 还原后重跑第 1 步 | 与第 1 步相同 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PROD-611` `SYNAXIS_REDIS_URL` 解析失败时拒启信息只有变量名与写法，不带口令、不挂 cause；百分号编码的口令照收（§19 场景） — 对应 `REQ-PROD-007` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `io.github.bearisbug.synaxis.app.store.RedisLinkTest` | `tests="2"` 0 失败。`redis://:Ab3+/x9cd=@valkey:6379`（口令里有 `openssl rand -base64` 会生成的 `/`）、`redis://:p%zz@valkey:6379`（`%` 后不是十六进制）、`redis://:Ab3#x9cd@valkey:6379`（`#`）三个 URL 调 `RedisLink.connect` 都抛 `IllegalArgumentException`，消息恰为 `SYNAXIS_REDIS_URL is not redis://[user:password@]host:port[/database]; percent-encode the reserved characters of the password`，`getCause()` 为 null；`redis://:Ab3%2Bx9cd%3D@127.0.0.1:1/2` 照常建出连接（惰性连接，不需要 Redis 在）并关掉 |
+| 2 | 反证（改动前）：`RedisLink.java` 改回改动前，重跑第 1 步，再还原 | `2 tests completed, 1 failed`：红在 `RedisLinkTest.java:30`，`redis://:Ab3+/x9cd=@valkey:6379 ==> expected: <SYNAXIS_REDIS_URL is not …> but was: <For input string: "x9cd=@valkey:6379">`，口令 `/` 之后的一段进了异常消息，`Main` 的 `Refusing to start` 一行会连栈记下它。测试在第一个 URL 红后不再往下跑；`%zz` 那个在改动前报 `Malformed escape pair at index 10: redis://:p%zz@valkey:6379`，整条口令在内（JDK 25.0.4.1 上单独验证过） |
+| 3 | 反证（不判主机为空）：`RedisLink.java` 的 `if (uri.getHost() == null) throw notARedisUrl();` 改为 `if (uri.getHost() == null && Boolean.getBoolean("proof.never")) throw notARedisUrl();`，重跑第 1 步，再还原 | `2 tests completed, 1 failed`：红在 `:28`，`redis://:Ab3#x9cd@valkey:6379 ==> Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown.`：`#` 让 `URI` 退成没有主机的注册型 authority，不抛异常，不判就带着 null 主机往下连 |
+| 4 | 还原后重跑第 1 步 | 与第 1 步相同 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PROD-612` http、别的端口或别的路径指向 Mojang 主机都不算 Mojang 的会话服务器（§19 场景） — 对应 `REQ-PROD-036` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `io.github.bearisbug.synaxis.SessionServerTest`（根模块 `:test`） | `tests="2"` 0 失败：`https://sessionserver.mojang.com/session/minecraft/hasJoined`、全大写 scheme 与混大小写主机、显式 `:443`、路径里带 `/./` 四种写法 `isMojang()` 都为 true；`http://` 默认端口、`http://…:443`、`https://…:8443`、带 query、带 userinfo、路径不同（`/hasJoined`）、主机是 `127.0.0.1` 七种都为 false |
+| 2 | 反证（改动前，只比主机名）：`SessionServer.java` 改回改动前，重跑第 1 步，再还原 | `2 tests completed, 1 failed`：红在 `SessionServerTest.java:36`，`http://sessionserver.mojang.com/session/minecraft/hasJoined ==> expected: <false> but was: <true>`；四种写法那条照样绿 |
+| 3 | 带 `TC-PROD-618` 的数据库前置跑 `io.github.bearisbug.synaxis.app.MainStoreIntegrationTest`，看 `anOnlineProcessVerifyingAgainstAnythingButMojangCountsAsOffline` | 0 失败：`isMojang()` 为 false 的 `Auth.Online` 在 `auth_mode=online` 的库上被拒（`this process runs offline`）。这一类没改，http 地址判为非 Mojang 之后走的就是这条路径（`AuthMode.effective` → `Migrations.requireAuthMode`），正式库因此拒启 |
+| 4 | 还原后重跑第 1 步 | 与第 1 步相同 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PROD-613` 组或他人可写、或所在目录他人可写而没有 sticky 位的 `synaxis.properties` 拒启，一个键都不设（§19 场景） — 对应 `REQ-PROD-033` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `io.github.bearisbug.synaxis.app.ConfigFilePermissionsTest` | `tests="4"` 0 失败。文件只写 `synaxis.app.auth=offline`：权限 `rw-rw-r--` 与 `rw-r--rw-` 时 `refusal()` 恰为 `<文件绝对路径>: writable by group or others (<权限位>); only the service user may write it`，属性一个都没设；文件 `rw-r--r--`、目录 `rwxrwxrwx` 时为 `<文件绝对路径>: its directory <目录> is writable by others without the sticky bit (rwxrwxrwx); anyone may replace the file`，同样一个都没设，目录经 `unix:mode` 加上 sticky 位（1777）后照常读入；文件 `rw-r--r--` 与 `r--------` 照常读入，`describe()` 与改动前一字不差；放在 zip 文件系统里的文件照常读入，`describe()` 以 ` permissions=unchecked (the file system has no POSIX permissions)` 结尾 |
+| 2 | 反证（不查权限）：`ConfigFile.java` 的 `final @Nullable String writable = permissionsChecked ? writableByOthers(file) : null;` 改为 `final @Nullable String writable = permissionsChecked && Boolean.getBoolean("proof.never") ? writableByOthers(file) : null;`，重跑第 1 步，再还原 | `4 tests completed, 2 failed`：`aFileGroupOrOthersMayWriteIsRefusedAndSetsNothing` 红在 `ConfigFilePermissionsTest.java:49`，`expected: <…/synaxis.properties: writable by group or others (rw-rw-r--); only the service user may write it> but was: <null>`；`aDirectoryOthersMayWriteIsRefusedUnlessItHasTheStickyBit` 红在 `:61`，同样 `but was: <null>` |
+| 3 | 反证（不看 sticky 位）：同一文件的 `(mode & STICKY) == 0` 改为 `(mode & STICKY) >= 0`，重跑第 1 步，再还原 | `4 tests completed, 1 failed`：`aDirectoryOthersMayWriteIsRefusedUnlessItHasTheStickyBit` 红在 `:67`，`expected: <null> but was: <…: its directory …/shared is writable by others without the sticky bit (rwxrwxrwx); anyone may replace the file>`：1777 的目录也被拒，`/tmp` 下的文件就起不了服 |
+| 4 | 反证（改动前）：`ConfigFile.java`、`CrashReports.java`、`Profiler.java` 三个一起改回改动前，重跑第 1 步，再还原 | `4 tests completed, 3 failed`：第 2 步那两条，加上 `withoutPosixPermissionsTheFileIsReadAndTheSelfCheckSaysSo` 红在 `:95`，`path=/synaxis.properties keys=1 overridden_by_command_line=[] ==> expected: <true> but was: <false>`；只有属主可写的那条绿 |
+| 5 | 还原后重跑第 1 步 | 与第 1 步相同 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PROD-614` `profile` 文件不带聊天与命令原文、status 来源地址、进程表与套接字事件，别的录制打开了也不带；文件 0600、建出的 `profiles/` 0700（§19 场景） — 对应 `REQ-PROD-034` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。下文「六个事件」是 `synaxis.PlayerChat`、`synaxis.PlayerCommand`、`synaxis.ServerPing`、`jdk.SystemProcess`、`jdk.SocketRead`、`jdk.SocketWrite`。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `io.github.bearisbug.synaxis.app.command.ProfilerPrivacyTest`，看前两条 | `tests="3"` 0 失败。`aRecordingLeavesPlayersTheProcessesAndTheSocketsOutAndOnlyItsOwnerReadsIt`：`Profiler#start(1)` 录制期间提交一条聊天 `canary-chat`、一条命令 `msg bob canary-command`、一次来源 `/203.0.113.7:50000` 的 ping；写出的文件里六个事件各 0 个，按 ISO-8859-1 读成字符串后不含 `canary` 与 `203.0.113.7`，`jdk.InitialSystemProperty` 多于 0 个；文件权限 `rw-------`，录制建的 `profiles/` 是 `rwx------`；录制在跑时它的设置里六个事件的 `#enabled` 都是 `false`。`anotherRecordingDoesNotBringThemIn`：先开一个以 JDK `profile` 设置为底、六个事件都显式打开的录制（JMC 可以这样开），再 `Profiler#start(1)` 并提交同样三条；另一个录制自己的 dump 里聊天与进程表都多于 0 个，`profile` 写出的文件里六个事件各 0 个 |
+| 2 | 反证（录制只关环境变量，即改动前的设置）：`Profiler.java` 的 `for (String event : LEFT_OUT) settings.put(event + "#enabled", "false");` 改为 `settings.put("jdk.InitialEnvironmentVariable#enabled", "false");`，重跑第 1 步，再还原 | `3 tests completed, 1 failed`：第一条红在 `ProfilerPrivacyTest.java:82`，`synaxis.PlayerChat ==> expected: <false> but was: <null>`；文件内容那几条（`:75`～`:79`）照样绿，因为写文件时又按事件名滤了一次 |
+| 3 | 反证（写文件只滤环境变量，即改动前的过滤）：同一文件 `handedOver` 里的 `if (LEFT_OUT.contains(name)) return false;` 改为 `if (name.equals("jdk.InitialEnvironmentVariable")) return false;`，重跑第 1 步，再还原 | `3 tests completed, 1 failed`：第二条红在 `:105`，`synaxis.PlayerChat ==> expected: <0> but was: <1>`：另一个录制打开的事件进了共用的 chunk，`profile` 设置里的关闭挡不住；第一条绿（没有别的录制打开它们，录制里就没有） |
+| 4 | 反证（不先建 0600 的文件）：同一文件的 `Files.createFile(path, OWNER_ONLY);` 前面加 `if (Boolean.getBoolean("proof.never")) `，重跑第 1 步，再还原 | `3 tests completed, 1 failed`：第一条红在 `:80`，`expected: <rw-------> but was: <rw-r--r-->`：`RecordingFile#write` 自己建文件，权限随 umask |
+| 5 | 反证（改动前）：`ConfigFile.java`、`CrashReports.java`、`Profiler.java` 三个一起改回改动前，重跑第 1 步，再还原 | `3 tests completed, 3 failed`：前两条分别红在 `:75` 与 `:105`，都是 `synaxis.PlayerChat ==> expected: <0> but was: <1>`；第三条见 `TC-PROD-615` |
+| 6 | 还原后重跑第 1 步 | 与第 1 步相同 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PROD-615` 键名像机密的系统属性与带它的 JVM 参数不进 `profile` 文件，其余系统属性照录（§19 场景） — 对应 `REQ-PROD-034` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `io.github.bearisbug.synaxis.app.command.ProfilerPrivacyTest`，看 `aSystemPropertyNamedLikeASecretAndTheArgumentsCarryingItStayOut` | 通过：测试以 `-Dsynaxis.test.profile-password=canary-4f1d` 起一个子 JVM（`ProfilerFixture`，类路径同测试 JVM），录 1 s，最后一行打印文件路径，60 s 内以 0 退出；文件里 `jdk.InitialSystemProperty` 多于 0 个，其中没有 `key` 为 `synaxis.test.profile-password` 的，`jdk.JVMInformation` 0 个（它的 `jvmArguments` 带着这个参数），按 ISO-8859-1 读成字符串后不含 `canary-4f1d`；本条约 3 s |
+| 2 | 反证（系统属性不按键名去掉）：`Profiler.java` 的 `case "jdk.InitialSystemProperty" -> !ConfigFile.isSecret(event.getString("key"));` 改为 `case "jdk.InitialSystemProperty" -> !Boolean.getBoolean("proof.never") \|\| !ConfigFile.isSecret(event.getString("key"));`，重跑第 1 步，再还原 | `3 tests completed, 1 failed`：红在 `ProfilerPrivacyTest.java:129`，`the secret property is not ==> expected: <false> but was: <true>` |
+| 3 | 反证（JVM 参数整条照录）：同一文件的 `case "jdk.JVMInformation" -> !setsASecret(event.getString("jvmArguments"));` 改为 `case "jdk.JVMInformation" -> !Boolean.getBoolean("proof.never") \|\| !setsASecret(event.getString("jvmArguments"));`，重跑第 1 步，再还原 | `3 tests completed, 1 failed`：红在 `:131`，`the JVM arguments carry it, so they are not either ==> expected: <0> but was: <1>` |
+| 4 | 反证（改动前）：同 `TC-PROD-614` 第 5 步 | 本条红在 `:129`，消息同第 2 步 |
+| 5 | 还原后重跑第 1 步 | 与第 1 步相同 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PROD-616` 台账、压缩出的 `.jsonl.gz` 与崩溃报告建成 0600，宿主建的 `logs/`、`crash-reports/` 为 0700；`.env.example` 教的复制方法得到 0600（§19 场景） — 对应 `REQ-PROD-015`、`REQ-PROD-017` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `io.github.bearisbug.synaxis.app.HostFilePermissionsTest` | `tests="3"` 0 失败：台账在还不存在的 `logs/` 下写一行、关闭后，`logs/` 是 `rwx------`，里面恰一个文件 `events-r01-c1-<当天>.jsonl`，`rw-------`；按 umask 写下的 `events-r01-c1-20260922.jsonl`（`rw-r--r--`）经 `housekeep(2026-09-23)` 压出的 `.jsonl.gz` 是 `rw-------`；崩溃报告写进还不存在的 `crash-reports/`，目录 `rwx------`、文件 `rw-------` |
+| 2 | 反证（日文件与崩溃报告随 umask）：`EventLedger.java` 的 `StandardOpenOption.APPEND), OWNER_ONLY);` 改为 `StandardOpenOption.APPEND));`；`CrashReports.java` 的 `Files.writeString(Files.createFile(file, OWNER_ONLY), report, StandardCharsets.UTF_8);` 改为 `Files.writeString(Boolean.getBoolean("proof.never") ? Files.createFile(file, OWNER_ONLY) : Files.createFile(file), report, StandardCharsets.UTF_8);`。重跑第 1 步，再还原这两个文件 | `3 tests completed, 2 failed`：`theLedgerAndTheDirectoryItCreatesAreOwnerOnly` 红在 `HostFilePermissionsTest.java:46`，`…/logs/events-r01-c1-<当天>.jsonl ==> expected: <rw-------> but was: <rw-r--r-->`（目录那条 `:42` 绿）；`aCrashReportAndTheDirectoryItCreatesAreOwnerOnly` 红在 `:69`，`expected: <rw-------> but was: <rw-r--r-->` |
+| 3 | 反证（压缩文件随 umask）：`EventLedger.java` 的 `Files.newOutputStream(Files.createFile(partial, OWNER_ONLY))` 改为 `Files.newOutputStream(Files.createFile(partial))`，重跑第 1 步，再还原 | `3 tests completed, 1 failed`：`aCompressedDayIsOwnerOnly` 红在 `:57`，`expected: <rw-------> but was: <rw-r--r-->` |
+| 4 | 反证（改动前）：`EventLedger.java` 与 `CrashReports.java` 改回改动前（同时改回 `ConfigFile.java` 与 `Profiler.java` 亦可），重跑第 1 步，再还原 | `3 tests completed, 3 failed`：`theLedger…` 红在 `:42`、`aCrashReport…` 红在 `:68`，都是 `expected: <rwx------> but was: <rwxr-xr-x>`；`aCompressedDay…` 红在 `:57`，同第 3 步 |
+| 5 | `grep -n 'install -m 600' .env.example`；再 `git show 23982267e9:.env.example \| grep -c 600` | 前者 2 行：第 3 行 `#   install -m 600 .env.example .env    (or cp .env.example .env && chmod 600 .env)`，第 4 行写明服务器上用 `install -m 600 -o <service user>`；后者输出 `0`：改动前第 1 行只写 `Copy to .env (git ignores it) and fill in`，照做的 `cp` 按源文件 0644 与 umask 022 建出 0644 的 `.env` |
+| 6 | 还原后重跑第 1 步 | 与第 1 步相同 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PROD-617` CVE-2026-90584 在本用法下的回归：`BoundedDraft` 逐片比累计长度与片数（§28.2 一行） — 对应 `REQ-PROD-032` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。两个类都是 `@EnvTest`，每类起一个带管理接口的进程，各约 10 s。§28.2 判定这个 CVE 不影响本用法的三条依据里，① 令牌校验在前由 `TC-PROD-381` 覆盖，③ `maxFrameSize` 65,536 由 `TC-PROD-382` 的单帧那半覆盖，本条回归的是 ②。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `io.github.bearisbug.synaxis.app.management.ManagementFragmentsIntegrationTest` 与 `io.github.bearisbug.synaxis.app.management.ManagementFragmentCountIntegrationTest` | 两类各 `tests="1"` 0 失败：前者是 `TC-PROD-382` 第 3 步（恰 65,536 B 分三片照常执行；一直不发结束片的消息在累计超出的那一片以 1009 断开），后者是 `TC-PROD-472` 第 1 步（恰 1,024 片照常执行；第 1,025 个空续片以 1009 断开） |
+| 2 | 反证（两道上限失效，只剩库自己在结束片上的判定，即 CVE 描述的情形）：`ManagementServer.java` 的 `:316` `if (messageBytes > MAX_MESSAGE_BYTES)` 与 `:317` `if (messageFragments > MAX_MESSAGE_FRAGMENTS)` 两个条件前都加 `Boolean.getBoolean("proof.never") && `，重跑第 1 步，再还原 | `2 tests completed, 2 failed`：两类都红在各自的 `:96`，`java.lang.AssertionError: the connection is still open after PT10S`：中间片一直攒在库的缓冲里，连接不断 |
+| 3 | 还原后重跑第 1 步 | 与第 1 步相同。升 Java-WebSocket 时重跑本条，`BoundedDraft` 的两道上限不随升级删除（上游 PR #1509 只修 #1507） |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PROD-618` 回归：根模块与 `server-app` 在默认与严格 grid 下全量 — 对应 `REQ-PROD-005`、`REQ-PROD-007`、`REQ-PROD-015`、`REQ-PROD-017`、`REQ-PROD-033`、`REQ-PROD-034`、`REQ-PROD-036` · 级别: 回归 · 执行者: AI
+
+前置：本节开头；工作副本干净；数据库前置：`export SYNAXIS_TEST_PG_URL=jdbc:postgresql://127.0.0.1:5440/postgres SYNAXIS_TEST_REDIS_URL=redis://127.0.0.1:6440`，`SYNAXIS_TEST_PG_PASSWORD` 取共用容器 `synaxis-pg` 的 `POSTGRES_PASSWORD`（不回显）。「严格 grid」是命令再加 `-Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true -Dsynaxis.thread-provider=grid`。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 默认模式 `./gradlew :test :server-app:test :architecture-tests:test :testNamingCheck :forbiddenImportsCheck :server-app:testNamingCheck :server-app:forbiddenImportsCheck --continue --max-workers=4 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts` | `BUILD SUCCESSFUL`。根模块 427 个类 3,148 个 0 失败、15 个跳过（`TestMojangUtils` 9、`PlayerSkinTest` 2、`TranslationIntegrationTest` 3、`TagNbtTest` 1）；`server-app` 104 个类 536 个 0 失败 0 跳过（数据库用例都跑了）；`architecture-tests` 20 个 0 失败 |
+| 2 | 严格 grid `./gradlew :test :server-app:test --continue …`（其余参数同第 1 步） | `BUILD SUCCESSFUL`。根模块 3,148 个 0 失败、15 个跳过（同第 1 步）；`server-app` 536 个 0 失败 0 跳过。两个测试任务在第 1 步之后重跑了（三个系统属性是它们的输入），不是取的缓存 |
+
+后置：`git status --short` 无输出。
+
 ## 5. 回归策略
 
 - **全量轮**（全部用例）：首次成稿、每个阶段 gate（引擎域阶段 0、2、3；游戏域 `docs/DESIGN-M2.md` §26 的阶段 1～6b；大世界域 `docs/DESIGN-M3.md` §26 的 M3-A～M3-G）、跨功能域改动、地基变更（JDK、Gradle、镜像、协议版本、模块拆分、启动入口）。
@@ -7917,6 +8045,7 @@ for (var request : System.getenv("MGMT_CALLS").split("\n")) {
   - 生产就绪域（`docs/DESIGN-PROD.md`）：第 6 波 6A 的 P10（`REQ-PROD-031`，v0.9.30）→ TC-PROD-550；动了 `p10.py` 的 `judge` 就跑 TC-PROD-550 第 10 步（不起进程）；动了 `p10.py` 的 `shards` 或 `drive`、`TransferRoundTripClientGameTest`、`RegressionClientGameTest` 开头那一行判断、gametest 的 `fabric.mod.json`、`run.sh` 或 job `p10`，跑 TC-PROD-550 全部，本机不过内存门槛时手动触发 `client-gametest.yml`，以 job `p10` 判定一步的 `P10: all checks passed` 为准；动了 `ShardServiceImpl`、`TicketIssuer`、`TicketVerifier`、`ManagementMethods` 的 `synaxis:transfer` 或目录模式的装配，合入 `main` 后看下一次 job `p10`。
   - 生产就绪域（`docs/DESIGN-PROD.md`）：`EVT:transfer_refused` 扩到关卡门的六种拒绝结果（`REQ-PROD-031`，v0.9.37）→ TC-PROD-570～TC-PROD-573；动了 `ShardGates` 的 `finished` 或 `refused`、`ShardTransferResult` 的取值，或 `ShardGatesTest` 的 `everyRefusalIsWrittenToTheLedger`，就跑 TC-PROD-570～TC-PROD-573（不连数据库；本机这个类 7.7～31.7 s，多半花在第一条用例建 `Env`），同时按 M3-E 一行跑 TC-WORLD-064、TC-WORLD-089。**已知过时（v0.9.37 合入时起，由光照会话改文字后撤掉本标记）**：TC-WORLD-089 的标题、第 1、3、4、5 步与 TC-WORLD-064 的第 1、3 步仍按「只有三种结果写」写，照原文执行会误判；在它们改完之前，以 TC-PROD-570～TC-PROD-573 为准。
   - 生产就绪域（`docs/DESIGN-PROD.md`）：管理连接出站队列里没人写的帧（`REQ-PROD-032`，v0.9.38）→ TC-PROD-574、TC-PROD-575；动了 `ManagementServer.Endpoint` 的 `recheckWrites`、`onStart`、`shutDown` 或 `WRITE_RECHECK`，就跑 TC-PROD-574 与 TC-PROD-575 第 3 步；动了 `GuardedSocket` 的发送入口或 `setChannel` 再加 TC-PROD-575 第 1、2 步。升 Java-WebSocket 时重跑 TC-PROD-575 第 1、2 步，并读新版的 `WebSocketServer#doWrite`：撤写兴趣之后若会再看一次队列，第 1 步转绿，补登记才可以去掉（同步 `docs/DESIGN-PROD.md` `API-PROD-022`）。
+  - 生产就绪域（`docs/DESIGN-PROD.md`）：安全修复 secrets 组，机密进日志与落盘权限（`REQ-PROD-005`、`007`、`015`、`017`、`033`、`034`、`036`，v0.9.42）→ TC-PROD-610～TC-PROD-618。动了 `StoreSettings#toString` → TC-PROD-610；动了 `RedisLink#connect` 的解析 → TC-PROD-611；动了 `SessionServer#isMojang` → TC-PROD-612；动了 `ConfigFile#apply` 或它的权限检查 → TC-PROD-613；动了 `Profiler` 的 `LEFT_OUT`、`handedOver` 或建文件 → TC-PROD-614、TC-PROD-615，再加 TC-PROD-392 第 6、7 步与 TC-PROD-471；动了 `ConfigFile#isSecret` → TC-PROD-615 与 TC-PROD-002；动了 `EventLedger` 建目录、建文件或压缩，或 `CrashReports#write` → TC-PROD-616；改 `.env.example` 开头 → TC-PROD-616 第 5 步；升 Java-WebSocket 或动了 `ManagementServer.BoundedDraft#processFrame` → TC-PROD-617（另见 TC-PROD-382、TC-PROD-472）。这些都改完后跑 TC-PROD-618。
   - 影响面不确定时升级为全量轮。
 - **复测轮**（上轮失败用例 + 全部冒烟级）：修复失败项之后。
 - **人工收口轮**（仅上轮「待人工」用例）：AI 轮之后由人工补测 TC-016、TC-030、TC-GAME-020、TC-GAME-038、TC-GAME-046、TC-GAME-047，不要求冒烟级。

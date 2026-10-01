@@ -1,0 +1,71 @@
+F1 PASS override target /work/client-fabric/build/run/clientGameTest/synaxis/farview/dh/85dc9b484136bb0f, level getDhSaveFolder /work/client-fabric/build/run/clientGameTest/synaxis/farview/dh/85dc9b484136bb0f, libraries under Distant_Horizons_server_data []
+F2 PASS getReadOnly true, chunkRenderDistance api=256 value=256 overridable=true, maxHorizontalResolution api=FOUR_BLOCKS value=FOUR_BLOCKS overridable=true
+F3 PASS ms 49690 write_ms 7453 visible_ms 60315 db_bytes 14692656; marker sources 2304, fine blocks + coarse blocks × 16 = 2304
+F4 PASS DetailLevel=2 2304 of 2304, ApplyToParent=1 0, ApplyToChildren=1 0, DetailLevel=4 144; peak@1500,900 expected minecraft:stone index 214 got {state=1, block=minecraft:stone, bottom=0, top=215, sky=15, light=0, points=2} ok; water@800,400 expected minecraft:water index 124 got {state=86, block=minecraft:water, bottom=122, top=125, sky=15, light=0, points=3} ok; hidden@1232,1232 expected minecraft:stone index 136 got {state=1, block=minecraft:stone, bottom=0, top=137, sky=15, light=0, points=2} ok; mountain@-600,300 expected minecraft:stone index 249 got {state=1, block=minecraft:stone, bottom=0, top=250, sky=15, light=0, points=2} ok
+F5 PASS DetailLevel=0 before the walk 0, after 200 blocks and back 0
+F6 PASS FAR_VIEW horizon rows 200..459 changed 53.35%; LOD_VIEW changed 75.40% (mean #445037); EDGE_VIEW centre 608,328..671,391 changed 98.88% (mean before #161f2f, after #4c4826)
+F7 PASS announcement at log line 13, save folder at 38; reconnect: access.log 9 -> 9 lines, ready line true, baked in false, FAR_VIEW shows LOD after 0 ticks (1227 ms)
+F8 PASS counter-proof v1-noparent: ready true, DetailLevel=2 2304, DetailLevel=3 0, DetailLevel=4 0 (0 expected without applyToParent)
+F9 PASS counter-proof v1-writable: getReadOnly false, DetailLevel=0 before the walk 36, after 54 (above 0 expected); the bake ended READY
+F10 PASS counter-proof v1-coarse-only: ready true, DetailLevel=2 256, DetailLevel=4 144; EDGE_VIEW centre 608,328..671,391 changed 4.10% (one sky colour expected), mean #181e2d
+F11 PASS marker sources set to 2305; view 85dc9b484136bb0f library does not match its marker: 2304 of 2305; rebaked true, marker sources 2304, DetailLevel=2 2304; access.log 45 -> 45 lines
+F12 PASS disconnected after 59 sources handed over; the bake thread stopped true in 95 ms after the cancel flag (5093 ms after the disconnect by the test's clock, thread alive false); marker after the cancel false; reconnected and ready true, marker sources 2304, DetailLevel=2 2304
+F13 PASS ok held before the last source true, released after the disconnect, bake ended true; view 85dc9b484136bb0f incomplete: no answer, so none of 2304 sources in the library; marker false; reconnected and rebaked true, marker sources 2304, DetailLevel=2 2304
+F14 PASS counter-proof without the write check: held before the last source true, released after the disconnect, bake ended true; no incomplete line; marker true
+F15 PASS 4096: chunkRenderDistance api=256 value=256 overridable=true, maxHorizontalResolution api=FOUR_BLOCKS value=FOUR_BLOCKS overridable=true; 2048: chunkRenderDistance api=128 value=128 overridable=true, maxHorizontalResolution api=FOUR_BLOCKS value=FOUR_BLOCKS overridable=true; 0: far view available false, access.log 81 -> 81 lines, library /work/client-fabric/build/run/clientGameTest/synaxis/farview/dh/off with 0 rows, renderingEnabled api=null value=true overridable=true, chunkRenderDistance api=null value=256 overridable=true
+F23 PASS v2: framebuffer 854x480, visible_ms 96996 (the test held the bake 6208 ms), ms 88757, write_ms 44052, db_bytes 9612024, sources 2304, from the level load 95638 ms, download 28 ms; whole pack 66730 B, coarse packs 49330 B; LOD_VIEW 79.06% drawn, lower half luma 89.8, near ground luma 98.0, ratio 0.92
+F28 PASS bake-timing: framebuffer 854x480, visible_ms 96665 (the test held the bake 0 ms), ms 95299, write_ms 47762, db_bytes 10110328, sources 2304, from the level load 95300 ms, download 31 ms; whole pack 66730 B, coarse packs 49330 B; LOD_VIEW not judged, lower half luma 89.8, near ground luma 98.0, ratio 0.92
+F21 PASS eye 300 blocks east of the player over ground y 88, pitch 45, empty colour #161f2f; v6-h64-overdraw-default: lower half empty 48.71%, whole frame 24.51%; v6-h64-overdraw-0: lower half empty 0.01%, whole frame 0.13%; v6-h100-overdraw-default: lower half empty 0.10%, whole frame 0.25%; v6-h100-overdraw-0: lower half empty 0.10%, whole frame 0.25%
+F22 PASS 4096: ready false, level load to bake line -1 ms, to LOD_VIEW drawn and stable -1 ms (the bake held 6218 ms for the empty shot); 2048: ready true, level load to bake line 52476 ms, to LOD_VIEW drawn and stable -1 ms (the bake held 6207 ms for the empty shot); heap after two GCs at 0: 371 MiB, 0 MiB over 0; heap after two GCs at 4096: 367 MiB, -4 MiB over 0; heap after two GCs at 2048: 355 MiB, -15 MiB over 0
+F27 PASS DH 3.3.2 keeps an override of renderingEnabled in the player's config: drawn 78.99%, DistantHorizons.toml [rendererMode = "DEFAULT", enableRendering = false]; override false, then cleared: drawn 0.00%, api=null value=false overridable=true, DistantHorizons.toml [rendererMode = "DISABLED", enableRendering = false]; after a reconnect: drawn 0.00%; override true, then cleared: drawn 79.06%, DistantHorizons.toml [rendererMode = "DEFAULT", enableRendering = false]
+# mode v1 from 12:53:24
+# fixture mode synthetic, map farview, spawn 264.5 64.0 264.5
+# V1 waiting for the bake to start: true, state BAKING
+# V1 HUD line during the bake: Preparing the far view: 32%
+# V1 state READY, view 85dc9b484136bb0f, download 79 ms, timings Timings[ms=49690, writeMs=7453, visibleMs=60315, dbBytes=14692656, sources=2304, fromLevelMs=58836]
+# walked to (464.5, 180.0, 264.5) from (264.5, 64.0, 264.5)
+# attempt 1 not in the world of host.docker.internal:25750: Connection Lost. Somebody is already playing under this name.
+# attempt 2 not in the world of host.docker.internal:25750: Connection Lost. Somebody is already playing under this name.
+# mode v1-noparent from 12:55:31
+# attempt 1 not in the world of host.docker.internal:25750: Connection Lost. Somebody is already playing under this name.
+# attempt 2 not in the world of host.docker.internal:25750: Connection Lost. Somebody is already playing under this name.
+# mode v1-writable from 12:56:07
+# attempt 1 not in the world of host.docker.internal:25750: Connection Lost. Somebody is already playing under this name.
+# attempt 2 not in the world of host.docker.internal:25750: Connection Lost. Somebody is already playing under this name.
+# walked to (464.5, 106.48728415745732, 264.5) from (264.5, 64.0, 264.5)
+# mode v1-coarse-only from 12:57:28
+# attempt 1 not in the world of host.docker.internal:25750: Connection Lost. Somebody is already playing under this name.
+# attempt 2 not in the world of host.docker.internal:25750: Connection Lost. Somebody is already playing under this name.
+# mode marker from 12:58:19
+# attempt 1 not in the world of host.docker.internal:25750: Connection Lost. Somebody is already playing under this name.
+# attempt 2 not in the world of host.docker.internal:25750: Connection Lost. Somebody is already playing under this name.
+# attempt 1 not in the world of host.docker.internal:25750: Connection Lost. Somebody is already playing under this name.
+# attempt 2 not in the world of host.docker.internal:25750: Connection Lost. Somebody is already playing under this name.
+# mode cancel from 12:59:57
+# attempt 1 not in the world of host.docker.internal:25750: Connection Lost. Somebody is already playing under this name.
+# attempt 2 not in the world of host.docker.internal:25750: Connection Lost. Somebody is already playing under this name.
+# attempt 1 not in the world of host.docker.internal:25750: Connection Lost. Somebody is already playing under this name.
+# attempt 2 not in the world of host.docker.internal:25750: Connection Lost. Somebody is already playing under this name.
+# mode late-cancel from 13:01:36
+# attempt 1 not in the world of host.docker.internal:25750: Connection Lost. Somebody is already playing under this name.
+# attempt 2 not in the world of host.docker.internal:25750: Connection Lost. Somebody is already playing under this name.
+# attempt 1 not in the world of host.docker.internal:25750: Connection Lost. Somebody is already playing under this name.
+# attempt 2 not in the world of host.docker.internal:25750: Connection Lost. Somebody is already playing under this name.
+# attempt 1 not in the world of host.docker.internal:25750: Connection Lost. Somebody is already playing under this name.
+# mode tiers from 13:04:46
+# attempt 1 not in the world of host.docker.internal:25750: Connection Lost. Somebody is already playing under this name.
+# attempt 1 not in the world of host.docker.internal:25750: Connection Lost. Somebody is already playing under this name.
+# attempt 1 not in the world of host.docker.internal:25750: Connection Lost. Somebody is already playing under this name.
+# mode v2 from 13:06:50
+# attempt 1 not in the world of host.docker.internal:25750: Connection Lost. Somebody is already playing under this name.
+# mode bake-timing from 13:13:22
+# attempt 1 not in the world of host.docker.internal:25750: Connection Lost. Somebody is already playing under this name.
+# mode v6 from 13:19:52
+# attempt 1 not in the world of host.docker.internal:25750: Connection Lost. Somebody is already playing under this name.
+# mode v8 from 13:33:16
+# attempt 1 not in the world of host.docker.internal:25750: Connection Lost. Somebody is already playing under this name.
+# attempt 1 not in the world of host.docker.internal:25750: Connection Lost. Somebody is already playing under this name.
+# attempt 1 not in the world of host.docker.internal:25750: Connection Lost. Somebody is already playing under this name.
+# mode toggle from 13:45:12
+# attempt 1 not in the world of host.docker.internal:25750: Connection Lost. Somebody is already playing under this name.
+# attempt 1 not in the world of host.docker.internal:25750: Connection Lost. Somebody is already playing under this name.

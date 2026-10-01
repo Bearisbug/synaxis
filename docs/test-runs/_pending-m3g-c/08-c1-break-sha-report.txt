@@ -1,0 +1,3 @@
+F18 PASS 3 requests for f4bad83dd248 [GET /farview/farview/f4bad83dd2489831c84be9846ebdd2e2420c82425d5f47c26e0e066a7ef78191.hfp - 200, GET /farview/farview/f4bad83dd2489831c84be9846ebdd2e2420c82425d5f47c26e0e066a7ef78191.hfp - 200, GET /farview/farview/f4bad83dd2489831c84be9846ebdd2e2420c82425d5f47c26e0e066a7ef78191.hfp - 200]; Far view pack f4bad83dd248 failed after 3 attempts: its SHA-256 is 256197c7e3c6, not the announced f4bad83dd248; pack, .part and marker left false; in the world without a screen true
+# mode break-sha from 17:29:10
+# fixture mode break-sha, map farview, spawn 264.5 64.0 264.5

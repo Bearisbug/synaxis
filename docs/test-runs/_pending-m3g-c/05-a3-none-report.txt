@@ -1,0 +1,4 @@
+F16 PASS announcement none, getReadOnly true, library /work/client-fabric/build/run/clientGameTest/synaxis/farview/dh/off with 0 rows after a 200 block walk, renderingEnabled api=null value=true overridable=true, chunkRenderDistance api=null value=256 overridable=true; after the disconnect api=null value=true overridable=true
+# mode none from 15:32:25
+# fixture mode synthetic, map farview, spawn 264.5 64.0 264.5
+# walked to (464.5, 180.0, 264.5) from (264.5, 64.0, 264.5)

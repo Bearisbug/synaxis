@@ -5,6 +5,7 @@
 	"client": [
 		"CameraMixin",
 		"ConnectionAccessor",
+		"FrameTimeMixin",
 		"GameRendererMixin",
 		"LevelExtractorMixin",
 		"LightUpdateCounterMixin",

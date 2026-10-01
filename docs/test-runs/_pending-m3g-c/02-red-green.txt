@@ -1,0 +1,34 @@
+Red first, then green, and the counter-proofs of this round (m3g/c-client, review of track C).
+
+1. Red phase, 2026-10-01 20:47, the methods FarViewConnection#baking and #loadChecked written with the old
+   behaviour (state set to BAKING unconditionally; marker removed on any count other than the marker's), and
+   the request timeout of FarViewDownloader#fetch still in place:
+   ./gradlew test --tests '*FarViewConnectionTest' --tests '*FarViewDownloaderTest'
+   20 tests completed, 4 failed:
+   - FarViewConnectionTest > aBakeThreadThatRunsAfterTheCancelStaysOutOfBaking: expected <false> but was <true>
+   - FarViewConnectionTest > noAnswerAfterACancelLeavesTheMarkerOfAGoodLibrary:
+     nothing is baked on a connection that ended ==> expected <false> but was <true>
+   - FarViewConnectionTest > aCancelBeforeTheLevelLoadsStartsNothing: expected <false> but was <true>
+   - FarViewDownloaderTest > aServerThatSendsNoResponseFailsOnTheIdleClockAndItsLateAnswersAreDropped:
+     waiting for the response is waiting for a byte: java.net.http.HttpTimeoutException: request timed out
+     ==> expected <true> but was <false>
+
+2. Counter-proof, 20:48: the request timeout removed alone (no exchange cancel, no closed writer):
+   20 tests completed, 1 failed:
+   - FarViewDownloaderTest > aServerThatSendsNoResponseFailsOnTheIdleClockAndItsLateAnswersAreDropped:
+     an attempt given up on writes nothing later ==> expected <false> but was <true>
+     (a late answer reopened the .part after the download had given up and removed it)
+
+3. Green, 20:51 and 22:17 (final code): 184 tests, 0 failures, 0 skipped (01-unit.txt).
+
+4. Headless client, before the level unload fix (3a131613ae, 11-a0-before-unload-fix-report.txt):
+   F22 (V8a) "4096: ready false". The container log of that run:
+   [13:34:26] DhClientLevel: Started DHLevel ... saves at .../synaxis/farview/dh/85dc9b484136bb0f
+   [13:34:30] [DH-ClientLevelTickCleanup] AbstractDhWorld: Unloading level [DhClientLevel{0000000000000@synaxis:map}].
+   [13:34:30] [DH-ClientLevelTickCleanup] [synaxis/farview] view 85dc9b484136bb0f bake stopped: Distant Horizons unloaded the level
+   The 0 tier connection had left at 13:33:59; DH closed no level at 13:34:30 (no "Closed [DhClientLevel]" line).
+
+5. Counter-proof of F29 (12-p3-stale-unload-counterproof-report.txt), the listener of DhFarView put back to the
+   old one (any DhApiLevelUnloadEvent cancels the connection), everything else as in 1d8e8ba97b:
+   F29 FAIL ... bake released, ready false, view 85dc9b484136bb0f bake stopped: Distant Horizons unloaded the level
+   With the fix (03-a1-v1-report.txt): F29 PASS ... bake released, ready true, no bake stopped line.

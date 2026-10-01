@@ -1,5 +1,7 @@
 package io.github.bearisbug.synaxis.game.client;
 
+import io.github.bearisbug.synaxis.game.client.farview.FarViewClient;
+import io.github.bearisbug.synaxis.game.client.farview.FarViewPayload;
 import io.github.bearisbug.synaxis.game.protocol.S2CHello;
 import io.netty.buffer.Unpooled;
 import java.util.concurrent.CompletableFuture;
@@ -38,6 +40,8 @@ public final class SynaxisClientMod implements ClientModInitializer {
         // the serverbound one out is a payload that cannot be sent at all, whatever the server does.
         PayloadTypeRegistry.serverboundConfiguration().register(HandshakePayload.TYPE, HandshakePayload.CODEC);
         PayloadTypeRegistry.clientboundConfiguration().register(HandshakePayload.TYPE, HandshakePayload.CODEC);
+        // The far view announcement of a map shard (docs/DESIGN-M3.md API-M3-015), clientbound only
+        PayloadTypeRegistry.clientboundConfiguration().register(FarViewPayload.TYPE, FarViewPayload.CODEC);
 
         ClientPlayNetworking.registerGlobalReceiver(GamePayload.TYPE, (payload, _) -> {
             // Null means the decoder already dropped and warned about an unknown id.
@@ -76,5 +80,7 @@ public final class SynaxisClientMod implements ClientModInitializer {
         // the table while the main thread is still handling that connection's last packets.
         ClientLoginConnectionEvents.INIT.register((_, _) -> HANDSHAKE.reset());
         ClientPlayConnectionEvents.INIT.register((_, _) -> RTS.reset());
+
+        FarViewClient.init(() -> HANDSHAKE.state() == ClientHandshake.State.VERIFIED);
     }
 }

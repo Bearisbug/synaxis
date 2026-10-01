@@ -1,0 +1,11 @@
+F28 PASS bake-timing: framebuffer 1920x1080, visible_ms 155431 (the test held the bake 0 ms), ms 153456, write_ms 70180, db_bytes 9604096, sources 2304, from the level load 153460 ms, download 169 ms; whole pack 66730 B, coarse packs 49330 B; LOD_VIEW not judged, lower half luma 89.9, near ground luma 98.0, ratio 0.92
+F24 PASS shots [0151_farview-v3b-plain-vanilla-29.png, 0181_farview-v3b-lake-vanilla-29.png, 0211_farview-v3b-ridge-vanilla-29.png, 0241_farview-v3b-edge-outward-vanilla-29.png, 0271_farview-v3b-plain-shader-29.png, 0301_farview-v3b-lake-shader-29.png, 0331_farview-v3b-ridge-shader-29.png, 0361_farview-v3b-edge-outward-shader-29.png]
+F25 PASS day time 101105, shots [0442_farview-v6b-h64-19.png, 0462_farview-v6b-h100-19.png, 0463_farview-v6b-ortho.png]
+# mode bake-timing from 15:46:12
+# fixture mode synthetic, map farview, spawn 264.5 64.0 264.5
+# mode shots from 15:57:41
+# attempt 1 not in the world of host.docker.internal:25750: Connection Lost. Somebody is already playing under this name.
+# mode rts-shots from 16:53:16
+# attempt 1 not in the world of host.docker.internal:25750: Connection Lost. Somebody is already playing under this name.
+# mode bench from 17:27:14
+# attempt 1 not in the world of host.docker.internal:25750: Connection Lost. Somebody is already playing under this name.

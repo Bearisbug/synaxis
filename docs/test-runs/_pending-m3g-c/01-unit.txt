@@ -1,0 +1,21 @@
+client-fabric: ./gradlew check compileGametestJava --rerun-tasks --no-daemon --init-script gametest-env/mirror.init.gradle.kts --max-workers=4
+(after ./gradlew :protocol:publishToMavenLocal from the repository root), on 1d8e8ba97b, 2026-10-01 22:17
+BUILD SUCCESSFUL; verifyModJar: mod jar: minecraft=26.2, 75 entries, ships META-INF/jars/protocol-dev.jar
+
+tests skipped failures errors class
+11 0 0 0 io.github.bearisbug.synaxis.game.client.ClientHandshakeTest
+40 0 0 0 io.github.bearisbug.synaxis.game.client.FrozenVectorTest
+5 0 0 0 io.github.bearisbug.synaxis.game.client.GamePayloadTest
+3 0 0 0 io.github.bearisbug.synaxis.game.client.OrderFeedbackTest
+23 0 0 0 io.github.bearisbug.synaxis.game.client.RtsClientTest
+13 0 0 0 io.github.bearisbug.synaxis.game.client.UnitBindingsTest
+15 0 0 0 io.github.bearisbug.synaxis.game.client.UnitPickerTest
+8 0 0 0 io.github.bearisbug.synaxis.game.client.farview.FarViewAvailabilityTest
+14 0 0 0 io.github.bearisbug.synaxis.game.client.farview.FarViewCacheTest
+13 0 0 0 io.github.bearisbug.synaxis.game.client.farview.FarViewColumnsTest
+5 0 0 0 io.github.bearisbug.synaxis.game.client.farview.FarViewConnectionTest
+15 0 0 0 io.github.bearisbug.synaxis.game.client.farview.FarViewDownloaderTest
+12 0 0 0 io.github.bearisbug.synaxis.game.client.farview.FarViewPayloadTest
+2 0 0 0 io.github.bearisbug.synaxis.game.client.farview.dh.DhPackageBoundaryTest
+5 0 0 0 io.github.bearisbug.synaxis.game.client.farview.dh.DhSurfaceTest
+184 0 0 0 total, 15 classes

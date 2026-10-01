@@ -61,5 +61,7 @@
 	"synaxis:command-transfer-error": "The transfer of %s failed; the server log has the cause.",
 	"synaxis.order.no-path": "Cannot get there.",
 	"synaxis.order.not-owner": "Not your unit.",
-	"synaxis.order.busy": "The server is busy; try again."
+	"synaxis.order.busy": "The server is busy; try again.",
+	"synaxis.farview.downloading": "Downloading the far view: %s%%",
+	"synaxis.farview.preparing": "Preparing the far view: %s%%"
 }

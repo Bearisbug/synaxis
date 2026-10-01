@@ -14,6 +14,12 @@
 # SYNAXIS_LIGHT_MODE (default, resend or real) run the runtime light cases (gametest light/LightClientGameTest.java);
 # in mode real the client writes the empty file /out/light-ready, which the host waits for in $OUT while the
 # container runs: the end of this script clears /out before it copies the run's files.
+# SYNAXIS_FARVIEW_SERVER=<host:port>, SYNAXIS_FARVIEW_HTTP=http://<host>:<port> and SYNAXIS_FARVIEW_MODE (comma separated, default v1)
+# run the far view cases (gametest farview/FarViewClientGameTest.java, docs/DESIGN-M3.md §26 M3-G) against the far view fixture;
+# SYNAXIS_FARVIEW_MODS=dh or dh-iris fetches Distant Horizons (and Sodium, Iris and the shader pack) inside the container with
+# docs/research/client-spikes-2026-09/dh-iris/Fetch.java and hands them to Fabric Loader. The run's synaxis/farview/ file list and
+# completion markers go to $OUT/farview/. SYNAXIS_GAMETEST_ARGS (e.g. "--width 1920 --height 1080") goes to the game as its
+# program arguments, Gradle's --args: the gametest renders at that size, 854x480 without it.
 set -euo pipefail
 REPO=$(cd "$(dirname "$0")/../.." && pwd)
 OUT=${OUT:-/tmp/synaxis-gametest}
@@ -36,17 +42,25 @@ docker run --rm --name "${CONTAINER:-synaxis-mc-client}" \
   -e SYNAXIS_S3_DISTANCES -e SYNAXIS_S3_SCALINGS -e SYNAXIS_S3_HORIZONTALS \
   -e SYNAXIS_P10_SERVER -e SYNAXIS_P10_DONE \
   -e SYNAXIS_LIGHT_SERVER -e SYNAXIS_LIGHT_MODE -e SYNAXIS_LIGHT_MARKER=/out/light-ready \
-  -e JAVA_TOOL_OPTIONS="-Dhttps.proxyHost=${PROXY%:*} -Dhttps.proxyPort=${PROXY#*:} -Dhttp.proxyHost=${PROXY%:*} -Dhttp.proxyPort=${PROXY#*:} -Dhttp.nonProxyHosts=maven.aliyun.com|*.aliyun.com -Dfabric.noGui=true" \
+  -e SYNAXIS_FARVIEW_SERVER -e SYNAXIS_FARVIEW_HTTP -e SYNAXIS_FARVIEW_MODE -e SYNAXIS_FARVIEW_MODS -e SYNAXIS_GAMETEST_ARGS \
+  -e SYNAXIS_DH_SHADERPACKS=/dh/shaderpacks \
+  -e JAVA_TOOL_OPTIONS="-Dhttps.proxyHost=${PROXY%:*} -Dhttps.proxyPort=${PROXY#*:} -Dhttp.proxyHost=${PROXY%:*} -Dhttp.proxyPort=${PROXY#*:} -Dhttp.nonProxyHosts=maven.aliyun.com|*.aliyun.com|host.docker.internal -Dfabric.noGui=true${SYNAXIS_FARVIEW_MODS:+ -Dfabric.addMods=/dh/mods}" \
   synaxis-mc-client:dev bash -c '
     set -e
     mkdir -p /work/protocol/src/test/resources
-    cp -r /src/protocol/src/test/resources/vectors /work/protocol/src/test/resources/
+    cp -r /src/protocol/src/test/resources/vectors /src/protocol/src/test/resources/farview-vectors /work/protocol/src/test/resources/
     tar -C /src -cf - --exclude=client-fabric/build --exclude=client-fabric/.gradle client-fabric | tar -C /work -xf -
     cd /work/client-fabric
+    if [ -n "$SYNAXIS_FARVIEW_MODS" ]; then java /src/docs/research/client-spikes-2026-09/dh-iris/Fetch.java "$SYNAXIS_FARVIEW_MODS" /dh; fi
     set +e
-    xvfb-run -a -s "-screen 0 1280x720x24" ./gradlew runClientGameTest --no-daemon --console=plain --stacktrace \
+    xvfb-run -a -s "-screen 0 1280x720x24" ./gradlew runClientGameTest ${SYNAXIS_GAMETEST_ARGS:+"--args=$SYNAXIS_GAMETEST_ARGS"} --no-daemon --console=plain --stacktrace \
       --init-script gametest-env/mirror.init.gradle.kts -Dorg.gradle.internal.repository.max.tentatives=6
     code=$?
     run=$(find build/run -maxdepth 1 -mindepth 1 -type d | head -1)
     rm -rf /out/*; cp -r "$run"/screenshots "$run"/synaxis-gametest "$run"/logs "$run"/hs_err_pid*.log /out/ 2>/dev/null
+    if [ -d "$run"/synaxis/farview ]; then
+      mkdir -p /out/farview
+      find "$run"/synaxis/farview -type f -printf "%s %P\n" | sort -k2 > /out/farview/files.txt
+      for m in "$run"/synaxis/farview/dh/*/synaxis-library.json; do [ -f "$m" ] && cp "$m" "/out/farview/$(basename "$(dirname "$m")").json"; done
+    fi
     exit $code'

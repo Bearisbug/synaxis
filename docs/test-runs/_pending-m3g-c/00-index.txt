@@ -1,0 +1,45 @@
+_pending-m3g-c  2026-10-01～02  M3-G 轨道 C 复核意见处理后的验收（REQ-M3-025），轮次号待协调者登记时定
+==========================================================================================
+
+对象：分支 m3g/c-client，基于 m3g/base 094b52530e
+  705af4ef08 16e49c15f8 4bbf7b6cc2 d87b682f21  轨道 C 初版
+  3772ba3848 取消后保留好库的完成标记，状态不再停在 baking
+  32830eda99 包请求只按空闲时钟计时，放弃的请求结束其 HTTP 交换
+  3a131613ae F23、F26、F28 记录渲染帧缓冲尺寸；run.sh 透传 SYNAXIS_GAMETEST_ARGS
+  1d8e8ba97b 只有本连接层级的卸载事件才停烘焙；gametest F29
+容器与单元测试都在 1d8e8ba97b 的工作树上跑（11、12 两份除外，见下）。
+
+命令（重活锁 /tmp/synaxis-heavy.lock 下，容器前 memory_pressure 空闲 ≥ 30%）
+  ./gradlew :protocol:publishToMavenLocal :server-app:farviewFixtureArgs :server-app:installDist \
+    --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts --max-workers=4
+  夹具：java @server-app/build/farview-fixture.args -Xms1G -Xmx1G -Dsynaxis.app.auth=offline \
+    -Dsynaxis.connection-gate.trusted-networks=127.0.0.0/8 \
+    io.github.bearisbug.synaxis.app.shard.FarViewShardFixture 25750 25751 <work> <synthetic|break-sha|half>
+  容器：SYNAXIS_FARVIEW_SERVER=host.docker.internal:25750 SYNAXIS_FARVIEW_HTTP=http://host.docker.internal:25751 \
+    SYNAXIS_FARVIEW_MODE=<模式> SYNAXIS_FARVIEW_MODS=<dh|dh-iris|空> [SYNAXIS_GAMETEST_ARGS="--width 1920 --height 1080"] \
+    OUT=<out> client-fabric/gametest-env/run.sh      （退出码 1 是已知 libopenal 段错误，看报告）
+  none 模式另起 server-app/build/install/server-app/bin/server-shard：cwd 为空目录，SERVER_APP_OPTS 给
+    -Xms1G -Xmx1G -XX:-AlwaysPreTouch -Dsynaxis.app.port=25752 -Dsynaxis.app.metrics.bind=127.0.0.1:25753
+    -Dsynaxis.app.auth=offline -Dsynaxis.connection-gate.trusted-networks=127.0.0.0/8
+    -Dsynaxis.map.root=<work>/maps/farview -Dsynaxis.map.build=farview-d52f19d7c25e-p776，不配 url-root。
+
+文件
+  01-unit.txt                  client-fabric check --rerun-tasks：15 个类 184 条，0 失败 0 跳过；verifyModJar 75 个条目
+  02-red-green.txt             先红（4 条）、反证（1 条）、容器里的修复前读数与 F29 反证
+  03-a1-v1-*                   夹具 synthetic、MODS=dh，模式 v1,v1-noparent,v1-writable,v1-coarse-only,marker,cancel,
+                               late-cancel,stale-unload,tiers,v2,bake-timing,v6,v8,toggle：F1～F15、F21～F23、F27～F29 全 PASS；
+                               另附远景日志行（只取 [synaxis/farview]）、运行结束时 synaxis/farview/ 的文件表与完成标记
+  04-a2-absent-report.txt      不装 DH，模式 absent：F17 PASS
+  05-a3-none-report.txt        server-shard 挂夹具的图、不配 url-root，模式 none：F16 PASS
+  06-b1-v3-report.txt          MODS=dh-iris，模式 v3：F20 PASS（读数）
+  07-b2-real-1920x1080-*       MODS=dh-iris，SYNAXIS_GAMETEST_ARGS="--width 1920 --height 1080"，模式
+                               bake-timing,shots,rts-shots,bench：F28（framebuffer 1920x1080）、F24、F25 PASS；
+                               bench 在 llvmpipe 加光影包、1080p 下一小时没跑完，按 pid 停掉，改由 10 号在不装 Iris 时跑
+  08-c1-break-sha-report.txt   夹具 break-sha，模式 break-sha：F18 PASS
+  09-c2-half-report.txt        夹具 half，模式 half：F19 PASS
+  10-c3-bench-1920x1080-*      MODS=dh、1920x1080，模式 bench：F26 PASS（framebuffer 1920x1080；帧时间在 llvmpipe 下无意义）
+  11-a0-before-unload-fix-*    3a131613ae 上 03 号同一组模式（没有 stale-unload）：F22 的 4,096 档 ready false，
+                               由 DH 清理上一条连接的层级触发，见 02 号第 4 条；其余 PASS
+  12-p3-stale-unload-*         F29 反证：DhFarView 的卸载监听临时改回修复前（不比较包装对象），其余同 1d8e8ba97b：F29 FAIL
+
+只记录、不判定的读数口径与 DESIGN-M3 §26 M3-G「容器验收」相同。截图、DH 库与容器日志全文未保留。

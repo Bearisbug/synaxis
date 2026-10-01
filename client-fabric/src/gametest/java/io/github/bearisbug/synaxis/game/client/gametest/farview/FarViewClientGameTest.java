@@ -169,7 +169,8 @@ public final class FarViewClientGameTest implements FabricClientGameTest {
                 case "toggle" -> toggle();
                 case "shots" -> realShots();
                 case "rts-shots" -> realRtsShots();
-                case "bench" -> bench();
+                case "bench" -> bench(FarViewSettings.DEFAULT_RADIUS);
+                case "bench-2048" -> bench(FarViewSettings.LOW_RADIUS);
                 default -> note("unknown mode " + mode);
             }
         }
@@ -1111,10 +1112,15 @@ public final class FarViewClientGameTest implements FabricClientGameTest {
             final Object inUse = irisCall("isShaderPackInUse");
             for (Map.Entry<String, Path> entry : Map.of("far", farOn, "lod", lodOn).entrySet()) {
                 final BufferedImage a = Shots.read(off.get(entry.getKey())), b = Shots.read(entry.getValue());
+                final Shots.Box lowerA = Shots.Box.rows(a, 360, 720), lowerB = Shots.Box.rows(b, 360, 720);
+                // The fog of the DH spike: how much of the terrain takes the frame's own sky colour, and its contrast
                 seen.add(entry.getKey() + " changed " + Shots.percent(Shots.changed(a, b, Shots.Box.whole(a))) + ", mean off "
                         + Shots.hex(Shots.mean(a, Shots.Box.whole(a))) + " on " + Shots.hex(Shots.mean(b, Shots.Box.whole(b)))
-                        + ", lower half mean off " + Shots.hex(Shots.mean(a, Shots.Box.rows(a, 360, 720))) + " on "
-                        + Shots.hex(Shots.mean(b, Shots.Box.rows(b, 360, 720))));
+                        + ", lower half mean off " + Shots.hex(Shots.mean(a, lowerA)) + " on " + Shots.hex(Shots.mean(b, lowerB))
+                        + ", lower half near the frame's sky colour off " + Shots.percent(Shots.near(a, lowerA, Shots.sky(a)))
+                        + " (sky " + Shots.hex(Shots.sky(a)) + ") on " + Shots.percent(Shots.near(b, lowerB, Shots.sky(b)))
+                        + " (sky " + Shots.hex(Shots.sky(b)) + ")" + String.format(Locale.ROOT,
+                        ", lower half luma spread off %.1f on %.1f", Shots.lumaSpread(a, lowerA), Shots.lumaSpread(b, lowerB)));
             }
             setShaders(false);
             line("F20", Boolean.TRUE.equals(inUse), "pack " + pack + ", in use " + inUse + "; " + String.join("; ", seen));
@@ -1163,7 +1169,8 @@ public final class FarViewClientGameTest implements FabricClientGameTest {
         /**
          * V6a: the perspective RTS camera 300 blocks from the player, the hole around it at two overdraw settings. A
          * hole shows the colour of the empty frame, so the share of the lower half within {@link Shots#THRESHOLD} of
-         * that colour is the hole; DH is never switched off for a reference (see DhSession).
+         * that colour is the hole; DH is never switched off for a reference (see DhSession). Then the overlap at 0 with the
+         * vanilla chunks in view, which the hole shots cannot show: there the frame holds no vanilla geometry.
          */
         void rtsHoles() {
             clearCache();
@@ -1191,6 +1198,26 @@ public final class FarViewClientGameTest implements FabricClientGameTest {
                             nothing)) + ", whole frame " + Shots.percent(Shots.near(b, Shots.Box.whole(b), nothing)));
                 }
                 context.runOnClient(_ -> DhTestHook.overdrawPreventionRadius(null));
+            }
+            // Where the vanilla chunks are, V6b's spot: 60 blocks north of the player, facing it. At 0 DH draws its LOD
+            // inside the vanilla view as well, and what of it shows through the vanilla terrain is the overlap that
+            // has to be absent before "0 for the RTS mode" goes to stage 6b. Two shots at the default give the
+            // frame's own change (water, sky), the shot at 0 what the setting adds.
+            final int vanillaGround = groundAt((int) spawn.x, (int) spawn.z);
+            for (int height : new int[]{64, 100}) {
+                final SpikeCamera.Settings camera = at(spawn.x, vanillaGround + height, spawn.z - 60, 0f, 55f);
+                final String label = "v6-vanilla-h" + height + "-overdraw-";
+                context.waitTicks(200);
+                final BufferedImage first = Shots.read(stable(label + "default", camera, 800));
+                final BufferedImage again = Shots.read(stable(label + "default-again", camera, 800));
+                context.runOnClient(_ -> DhTestHook.overdrawPreventionRadius(0f));
+                context.waitTicks(200);
+                final BufferedImage zero = Shots.read(stable(label + "0", camera, 800));
+                context.runOnClient(_ -> DhTestHook.overdrawPreventionRadius(null));
+                seen.add("v6-vanilla-h" + height + " (eye 60 blocks north of the player over ground y " + vanillaGround
+                        + ", facing it, pitch 55): default against default again changed "
+                        + Shots.percent(Shots.changed(first, again, Shots.Box.whole(first))) + ", default against 0 changed "
+                        + Shots.percent(Shots.changed(first, zero, Shots.Box.whole(first))));
             }
             line("F21", true, "eye 300 blocks east of the player over ground y " + ground + ", pitch 45, empty colour "
                     + Shots.hex(nothing) + "; " + String.join("; ", seen));
@@ -1398,14 +1425,16 @@ public final class FarViewClientGameTest implements FabricClientGameTest {
         }
 
         /**
-         * V8b: 60 s along a fixed route at 4,096 and then without a far view, frame times to farview-bench.csv, at the
-         * vanilla render distance 12 of the bench and, with Iris, the shader pack's default profile.
+         * V8b: 60 s along a fixed route at 4,096 ({@code bench}) or 2,048 ({@code bench-2048}, the retest when the far view
+         * adds over 2 ms a frame) and then without a far view, frame times to {@code farview-bench.csv} (2,048:
+         * {@code farview-bench-2048.csv}), at the vanilla render distance 12 of the bench and, with Iris, the shader pack's
+         * default profile.
          */
-        void bench() {
+        void bench(int far) {
             final List<String> csv = new ArrayList<>();
             csv.add("radius,frame,ms");
             final List<String> seen = new ArrayList<>();
-            for (int radius : new int[]{FarViewSettings.DEFAULT_RADIUS, FarViewSettings.OFF}) {
+            for (int radius : new int[]{far, FarViewSettings.OFF}) {
                 radius(radius);
                 if (radius == FarViewSettings.OFF) {
                     if (!connect()) {
@@ -1445,8 +1474,9 @@ public final class FarViewClientGameTest implements FabricClientGameTest {
                         mean, p99, p99 == 0 ? 0 : 1000 / p99));
                 leave();
             }
+            final String file = far == FarViewSettings.DEFAULT_RADIUS ? "farview-bench.csv" : "farview-bench-" + far + ".csv";
             try {
-                Files.write(gameDir.resolve("synaxis-gametest").resolve("farview-bench.csv"), csv, StandardCharsets.UTF_8);
+                Files.write(gameDir.resolve("synaxis-gametest").resolve(file), csv, StandardCharsets.UTF_8);
             } catch (IOException e) {
                 throw new IllegalStateException(e);
             }

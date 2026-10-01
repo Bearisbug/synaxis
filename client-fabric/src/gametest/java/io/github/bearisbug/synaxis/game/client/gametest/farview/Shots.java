@@ -99,6 +99,25 @@ final class Shots {
         return 0.299 * (rgb >> 16 & 255) + 0.587 * (rgb >> 8 & 255) + 0.114 * (rgb & 255);
     }
 
+    /** The mean colour of the top 24 rows: sky in every far view shot, all of which look above the horizon. */
+    static int sky(BufferedImage image) {
+        return mean(image, Box.rows(image, 0, 24));
+    }
+
+    /** The standard deviation of the box's luma: the contrast a fog over the terrain takes away. */
+    static double lumaSpread(BufferedImage image, Box box) {
+        double sum = 0, squares = 0;
+        for (int y = box.y0(); y < box.y1(); y++) {
+            for (int x = box.x0(); x < box.x1(); x++) {
+                final double l = luma(image.getRGB(x, y));
+                sum += l;
+                squares += l * l;
+            }
+        }
+        final double mean = sum / box.pixels();
+        return Math.sqrt(Math.max(0, squares / box.pixels() - mean * mean));
+    }
+
     static String percent(double share) {
         return String.format(Locale.ROOT, "%.2f%%", share * 100);
     }

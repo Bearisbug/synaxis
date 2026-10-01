@@ -301,7 +301,7 @@ public final class Main {
             case CORE -> {
                 if (shardWorld == null) CoreMode.start(process, host, dimensionType, coreMode);
                 else serveMap(process, host, shardWorld.start(shutdown, ledger::record,
-                        directoryMode == null ? null : directoryMode.flags()), directoryMode, ledger);
+                        directoryMode == null ? null : directoryMode.flags()), directoryMode, store.store(), ledger);
             }
             case GAMEPLAY -> {
                 // Only a process that serves a game demands the mod that renders it; the core mode
@@ -497,25 +497,25 @@ public final class Main {
     }
 
     /**
-     * What {@link CoreMode#start} takes from the host for the core world, for the map instance
-     * instead: every connection goes into it, spawning on the spawn point of the map. A shard in the
-     * directory mode also gets its gates, the arrivals of transferred players and the protection and
-     * synchronisation of its world state flags there.
+     * What {@link CoreMode#start} takes from the host for the core world, for the map instance instead: every
+     * connection goes into it, spawning on the spawn point of the map. A shard in the directory mode also gets its
+     * gates, the arrivals of transferred players and the protection and synchronisation of its world state flags there.
      *
      * @param process       the engine process
      * @param host          the plugin host, whose admission slot the map takes
      * @param world         the started map world
      * @param directoryMode what the directory mode runs, null outside it
+     * @param store         the player store, which tells the gates who is online here
      * @param ledger        the event ledger, where the gates write their refusals
      */
     private static void serveMap(ServerProcess process, PluginHost host, ShardWorld.Started world,
-                                 @Nullable DirectoryMode directoryMode, EventLedger ledger) {
+                                 @Nullable DirectoryMode directoryMode, PlayerStore store, EventLedger ledger) {
         process.eventHandler().addListener(AsyncPlayerConfigurationEvent.class,
                 event -> event.getPlayer().setRespawnPoint(world.spawn()));
         // §9: team 0 is the neutral team, as in the core world
         host.registerHostAdmission(_ -> new Admission.Accept(world.instance(), 0));
         if (directoryMode != null) {
-            new ShardGates(directoryMode.directory(), directoryMode.service(), ledger::record).attach(world.instance());
+            new ShardGates(directoryMode.directory(), directoryMode.service(), ledger::record, store::isOnline).attach(world.instance());
             directoryMode.arrivals().attach(world.instance());
             directoryMode.flags().start(world.instance());
         }

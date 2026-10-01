@@ -20,6 +20,7 @@ import java.util.Set;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiConsumer;
+import java.util.function.Predicate;
 
 /**
  * The gates of this shard's region ({@code docs/DESIGN-M3.md} {@code API-M3-010}, built into the host
@@ -29,7 +30,10 @@ import java.util.function.BiConsumer;
  * A walk in is a move whose new position, floored to its block, is in the frame of a gate, when the
  * last move of the player was outside it (outside every frame, or in another gate's). Moving inside
  * the frame sends nothing more, and neither does a walk in while a transfer of the player is under
- * way. A choice of channel that failed ({@code FULL}, {@code OFFLINE},
+ * way, or by a player that is not online here (security review B-01): one a transfer would turn
+ * away (saving, in transit, still loading, or from the shutdown save on) reads no heartbeat and
+ * writes nothing, so a client that ignores its {@code Transfer} cannot fill the ledger from here.
+ * A choice of channel that failed ({@code FULL}, {@code OFFLINE},
  * {@code DIRECTORY_UNAVAILABLE}) is told to the player, who walks out and in again to retry. Every
  * refusal, those three and {@code COOLDOWN}, {@code NOT_ONLINE}, {@code SAVE_FAILED}, is written to
  * the ledger as {@code EVT:transfer_refused} ({@code docs/DESIGN-PROD.md} §20). What
@@ -47,6 +51,7 @@ public final class ShardGates {
     private final ShardService service;
     private final String shardId;
     private final BiConsumer<String, Map<String, ?>> events;
+    private final Predicate<Player> online;
     /** The gate each player was in at its last move; a player outside every frame has none. */
     private final Map<Player, ShardDirectory.Gate> inside = new ConcurrentHashMap<>();
     /** The players whose transfer through a gate has not completed yet. */
@@ -56,12 +61,16 @@ public final class ShardGates {
      * @param directory the shard directory, whose region of this shard has the gates
      * @param service   what sends a player to the target region
      * @param events    where the events go, the event ledger of the host
+     * @param online    whether a player is online here, as a transfer would take it: the player store's
+     *                  {@code isOnline}
      */
-    public ShardGates(ShardDirectory directory, ShardService service, BiConsumer<String, Map<String, ?>> events) {
+    public ShardGates(ShardDirectory directory, ShardService service, BiConsumer<String, Map<String, ?>> events,
+                      Predicate<Player> online) {
         this.gates = directory.ownRegion().gates();
         this.service = service;
         this.shardId = directory.shardId();
         this.events = events;
+        this.online = online;
     }
 
     /**
@@ -80,7 +89,7 @@ public final class ShardGates {
         final Pos to = event.getNewPosition();
         final ShardDirectory.Gate gate = gateAt(to.blockX(), to.blockY(), to.blockZ());
         final ShardDirectory.Gate before = gate == null ? inside.remove(player) : inside.put(player, gate);
-        if (gate == null || gate.equals(before) || !underWay.add(player)) return;
+        if (gate == null || gate.equals(before) || !online.test(player) || !underWay.add(player)) return;
         var _ = service.transfer(player, gate.targetRegion())
                 .whenComplete((result, error) -> finished(player, gate, result, error));
     }

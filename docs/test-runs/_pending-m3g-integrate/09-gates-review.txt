@@ -1,0 +1,90 @@
+Gates on c8a403032d after the review fixes, under /tmp/synaxis-heavy.lock (owner pid 39601). The working tree held
+only the uncommitted evidence files of docs/test-runs. Database variables and Gradle flags as in 01-gates.txt; this
+time every one of the three runs carried test --rerun, so all ten test tasks ran each time:
+  check:   ./gradlew check test --rerun -Dsynaxis.synx.require-frozen-zlib=true
+  strict1: ./gradlew test --rerun -Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true
+  strict2: ./gradlew test --rerun -Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true -Dsynaxis.thread-provider=grid
+  client-fabric: ./gradlew :protocol:publishToMavenLocal, then in client-fabric/
+           ./gradlew check compileGametestJava --rerun-tasks --no-daemon --init-script gametest-env/mirror.init.gradle.kts --max-workers=4
+
+2026-10-02 06:21:27 lock taken: owner=Synaxis光照/m3g-review-fix-gates pid=39601 since=2026-10-02T06:21:27+0800 task=M3-G review fixes: check, two strict modes and client-fabric check on c8a403032d
+2026-10-02 06:21:27 HEAD c8a403032d, git status: 3 changed paths (docs/test-runs only)
+2026-10-02 06:26:59 check exit 0 in 332 s
+  BUILD SUCCESSFUL in 5m 31s
+  77 actionable tasks: 11 executed, 66 up-to-date
+== counts after check
+  TOTAL                  tests  4190 skipped  15 failures 0 errors 0
+  architecture-tests     tests    20 skipped   0 failures 0 errors 0
+  baker                  tests    76 skipped   0 failures 0 errors 0
+  game-rts               tests    87 skipped   0 failures 0 errors 0
+  loadtest               tests    25 skipped   0 failures 0 errors 0
+  plugin-api             tests    15 skipped   0 failures 0 errors 0
+  protocol               tests   122 skipped   0 failures 0 errors 0
+  root                   tests  3146 skipped  15 failures 0 errors 0
+  server-app             tests   546 skipped   0 failures 0 errors 0
+  synx                   tests   142 skipped   0 failures 0 errors 0
+  testing                tests    11 skipped   0 failures 0 errors 0
+  db suite PlayerStoreIntegrationTest skipped="0"
+  db suite ShardSessionDbTest skipped="0"
+  db suite MigrationsDbTest skipped="0"
+  db suite CrossShardHandoverIntegrationTest skipped="0"
+  db suite ShutdownSaveIntegrationTest skipped="0"
+  db suite TransferTicketsIntegrationTest skipped="0"
+  db suite StoreHousekeepingDbTest skipped="0"
+  config key gate: 116 keys read, 116 in ConfigFile.KEYS, 21 meter names left out
+  gate: 60 keys checked against [en_us.json, zh_cn.json], 15 identifiers left out
+2026-10-02 06:32:30 strict1 exit 0 in 329 s
+  BUILD SUCCESSFUL in 5m 28s
+  66 actionable tasks: 10 executed, 56 up-to-date
+== counts after strict1
+  TOTAL                  tests  4190 skipped  15 failures 0 errors 0
+  architecture-tests     tests    20 skipped   0 failures 0 errors 0
+  baker                  tests    76 skipped   0 failures 0 errors 0
+  game-rts               tests    87 skipped   0 failures 0 errors 0
+  loadtest               tests    25 skipped   0 failures 0 errors 0
+  plugin-api             tests    15 skipped   0 failures 0 errors 0
+  protocol               tests   122 skipped   0 failures 0 errors 0
+  root                   tests  3146 skipped  15 failures 0 errors 0
+  server-app             tests   546 skipped   0 failures 0 errors 0
+  synx                   tests   142 skipped   0 failures 0 errors 0
+  testing                tests    11 skipped   0 failures 0 errors 0
+  db suite PlayerStoreIntegrationTest skipped="0"
+  db suite ShardSessionDbTest skipped="0"
+  db suite MigrationsDbTest skipped="0"
+  db suite CrossShardHandoverIntegrationTest skipped="0"
+  db suite ShutdownSaveIntegrationTest skipped="0"
+  db suite TransferTicketsIntegrationTest skipped="0"
+  db suite StoreHousekeepingDbTest skipped="0"
+  config key gate: 116 keys read, 116 in ConfigFile.KEYS, 21 meter names left out
+  gate: 60 keys checked against [en_us.json, zh_cn.json], 15 identifiers left out
+2026-10-02 06:38:11 strict2 exit 0 in 338 s
+  BUILD SUCCESSFUL in 5m 37s
+  66 actionable tasks: 10 executed, 56 up-to-date
+== counts after strict2
+  TOTAL                  tests  4190 skipped  15 failures 0 errors 0
+  architecture-tests     tests    20 skipped   0 failures 0 errors 0
+  baker                  tests    76 skipped   0 failures 0 errors 0
+  game-rts               tests    87 skipped   0 failures 0 errors 0
+  loadtest               tests    25 skipped   0 failures 0 errors 0
+  plugin-api             tests    15 skipped   0 failures 0 errors 0
+  protocol               tests   122 skipped   0 failures 0 errors 0
+  root                   tests  3146 skipped  15 failures 0 errors 0
+  server-app             tests   546 skipped   0 failures 0 errors 0
+  synx                   tests   142 skipped   0 failures 0 errors 0
+  testing                tests    11 skipped   0 failures 0 errors 0
+  db suite PlayerStoreIntegrationTest skipped="0"
+  db suite ShardSessionDbTest skipped="0"
+  db suite MigrationsDbTest skipped="0"
+  db suite CrossShardHandoverIntegrationTest skipped="0"
+  db suite ShutdownSaveIntegrationTest skipped="0"
+  db suite TransferTicketsIntegrationTest skipped="0"
+  db suite StoreHousekeepingDbTest skipped="0"
+  config key gate: 116 keys read, 116 in ConfigFile.KEYS, 21 meter names left out
+  gate: 60 keys checked against [en_us.json, zh_cn.json], 15 identifiers left out
+2026-10-02 06:38:28 client-fabric check compileGametestJava --rerun-tasks exit 0 in 15 s
+  mod jar: minecraft=26.2, 75 entries, ships META-INF/jars/protocol-dev.jar
+  BUILD SUCCESSFUL in 11s
+  10 actionable tasks: 10 executed
+  client-fabric: 15 classes, tests 184 skipped 0 failures 0 errors 0
+2026-10-02 06:38:28 done
+2026-10-02 06:38:28 lock released

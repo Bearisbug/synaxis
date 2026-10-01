@@ -1,0 +1,55 @@
+The review round, 2026-10-02, on c8a403032d: be4f62eabb plus the gametest changes of the review (v6 adds V6b's spot
+inside the vanilla view; F20 adds the fog readings; mode bench-2048). Same fixture command as 02-fixture-baked.txt
+(baked, heap 1 GiB, a fresh workDir), same container command as 00-index.txt.
+
+Lock and batch (owner pid 39601, the agent's process):
+  05:21:15 to 05:21:21  Synaxis光照/m3g-review-fix-compile: :protocol:publishToMavenLocal, client-fabric check compileGametestJava
+  05:22:00 to 05:22:07  Synaxis光照/m3g-review-fix-container, first try: the fixture was started with the java on PATH
+                        (17, UnsupportedClassVersionError) and exited at once; lock released, nothing else ran
+  2026-10-02 05:22:23 lock taken: owner=Synaxis光照/m3g-review-fix-container pid=39601 since=2026-10-02T05:22:23+0800 task=M3-G review fixes: baked fixture, containers A' dh v6,bench-2048 and B' dh-iris v3
+  2026-10-02 05:22:25 gate: memory free 52% load { 4.10 5.64 8.65 }
+  2026-10-02 05:27:51 fixture pid 36308 ready after 326 s, max RSS while starting 2271 MiB
+  farview fixture: baked $TMPDIR/m3g-fix.kTRW0M/fixture-work/maps/farview3x3/farview3x3-82ef22b94f77-p776 with 3 thread(s) in 321 s
+  2026-10-02 05:27:51 container A: mods=dh modes=v6,bench-2048; memory free 42% load { 6.30 6.24 7.97 }
+  2026-10-02 05:57:16 container A exit 1 after 1765 s; fixture alive: yes
+  2026-10-02 05:57:16 container B: mods=dh-iris modes=v3; memory free 48% load { 8.29 9.93 12.93 }
+  2026-10-02 06:17:52 container B exit 1 after 1236 s; fixture alive: yes
+  2026-10-02 06:17:52 done
+  2026-10-02 06:17:52 stopping fixture 36308
+  2026-10-02 06:17:57 lock released
+
+Fixture: baked again from nothing in a fresh workDir. The baker's events: wall_ms 320704, cpu_ms 910745, 3 threads,
+bytes 1946768700, farview_bytes 5329202, verify_diffs 0, build_id farview3x3-82ef22b94f77-p776; the 9 packs' bytes and
+SHA-256 equal 02-fixture-baked.txt (a third identical bake after the first round and the review's own).
+
+== container A' (MODS=dh, modes v6,bench-2048)
+F21 PASS eye 300 blocks east of the player over ground y 62, pitch 45, empty colour #161f2f; v6-h64-overdraw-default: lower half empty 41.13%, whole frame 20.73%; v6-h64-overdraw-0: lower half empty 0.00%, whole frame 0.17%; v6-h100-overdraw-default: lower half empty 0.10%, whole frame 0.26%; v6-h100-overdraw-0: lower half empty 0.09%, whole frame 0.27%; v6-vanilla-h64 (eye 60 blocks north of the player over ground y 73, facing it, pitch 55): default against default again changed 0.00%, default against 0 changed 13.00%; v6-vanilla-h100 (eye 60 blocks north of the player over ground y 73, facing it, pitch 55): default against default again changed 0.00%, default against 0 changed 3.17%
+F26 PASS framebuffer 854x480; 2048: 1199 frames, mean 100.26 ms, p99 102.79 ms, P1% 9.7 FPS; 0: 1199 frames, mean 100.17 ms, p99 101.87 ms, P1% 9.8 FPS
+[21:28:15] [synaxis-farview-download/INFO] (synaxis) [synaxis/farview] view 9ea70f2546ccab5c downloaded 9 object(s), 1126018 B in 235 ms
+[21:29:20] [synaxis-farview-bake/INFO] (synaxis) [synaxis/farview] view 9ea70f2546ccab5c baked in 59660 ms: 2304 sources, 21981960 B; written 26213 ms, visible 64851 ms after the announcement
+[21:46:04] [synaxis-farview-download/INFO] (synaxis) [synaxis/farview] view 9ea70f2546ccab5c downloaded 9 object(s), 1126018 B in 227 ms
+[21:46:48] [synaxis-farview-bake/INFO] (synaxis) [synaxis/farview] view 9ea70f2546ccab5c baked in 35853 ms: 2304 sources, 27495168 B; written 24279 ms, visible 44102 ms after the announcement
+[21:54:14] [Netty Epoll IO #4/INFO] (synaxis) [synaxis/farview] announcement received: build farview3x3-82ef22b94f77-p776, 9 tile(s), 8 coarse, view -; far view off (farview.radius is 0)
+The bake lines are v6 (21:29), bench-2048 at 2,048 (21:46) and bench-2048 without a far view (21:54).
+V6a hole, again: at eye 64 the lower half is 41.13% empty at the default and 0.00% at 0 (first round 41.05% and 0.00%).
+V6a overlap, new: at V6b's spot inside the vanilla view two shots at the default differ in 0.00% of the pixels, the
+shot at 0 differs from them in 13.00% (eye 64) and 3.17% (eye 100). Looked at (the shots are not kept): at the default
+the vanilla terrain and its small trees fill the frame near the camera, LOD only farther out; at 0 the LOD's 4-block
+terraces and tree crowns lie over the vanilla terrain across the frame, no vanilla tree is left in view at eye 64,
+and at eye 100 the same over the part of the frame the vanilla chunks held at the default. So 0 fills the hole of a
+camera away from the player, and puts the LOD over the vanilla chunks once the camera is among them.
+bench-2048 only proves the mode: F26 at 2,048 and 0, 1,199 frames each, frame times about 100 ms both under llvmpipe
+(no meaning), written to farview-bench-2048.csv.
+
+== container B' (MODS=dh-iris, mode v3)
+F20 PASS pack ComplementaryReimagined_r5.9.3.zip, in use true; far changed 99.38%, mean off #455958 on #9eb2b4, lower half mean off #546744 on #98ae9c, lower half near the frame's sky colour off 1.73% (sky #5374b1) on 6.33% (sky #8499b1), lower half luma spread off 42.4 on 30.3; lod changed 100.00%, mean off #47584c on #a2b2c5, lower half mean off #5e7052 on #97aac0, lower half near the frame's sky colour off 0.00% (sky #293958) on 82.88% (sky #aab5c4), lower half luma spread off 46.7 on 7.4
+[21:57:38] [synaxis-farview-download/INFO] (synaxis) [synaxis/farview] view 9ea70f2546ccab5c downloaded 9 object(s), 1126018 B in 230 ms
+[21:58:38] [synaxis-farview-bake/INFO] (synaxis) [synaxis/farview] view 9ea70f2546ccab5c baked in 55311 ms: 2304 sources, 26072808 B; written 23124 ms, visible 60866 ms after the announcement
+V3a fog, new readings: with Complementary the LOD_VIEW's lower half has 82.88% of its pixels within 24 of the frame's
+own sky colour (#aab5c4), against 0.00% with the pack off, and its luma spread falls from 46.7 to 7.4; FAR_VIEW, with
+vanilla chunks in its lower half, 1.73% to 6.33% and 42.4 to 30.3. Looked at: the LOD_VIEW with the pack on is a pale
+blue-grey haze from the horizon down, the lakes of the shot without the pack are gone and the LOD trees show only as
+faint outlines. The world is 256 high (baked map, min_y 0), so the 64-high spike world is ruled out as the cause.
+
+Library sizes of this round (db_bytes of the bake line): 21981960 (v6), 27495168 (2,048), 26072808 (v3) B.
+Downloads 235, 227, 230 ms.

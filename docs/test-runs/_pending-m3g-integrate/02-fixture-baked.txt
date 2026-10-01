@@ -36,7 +36,9 @@ Release directory: 1907620 KiB on disk; manifest baker_version 2; farview/:
   598055 t.1.1.hfp
 
 Download of a first entry into the centre region: whole pack of (0, 0) 586706 B + 8 coarse prefixes 539312 B = 1126018 B
-(the announcement above); at 50 Mbit/s that is 0.18 s, the client logged 226 to 238 ms (03-A-farview-log.txt).
+(the announcement above); at 50 Mbit/s that is 0.18 s. The twelve downloads of the round took 219 to 286 ms:
+container A 219 to 252 ms (eight, 03-A-farview-log.txt), B 286 ms (04-B-farview-log.txt), C to E 226 to 253 ms
+(05-V2a-bake-timing.txt).
 
 /expect.json:
 {

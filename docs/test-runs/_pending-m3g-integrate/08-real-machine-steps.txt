@@ -1,0 +1,68 @@
+真机验收 V2b、V3b、V6b、V8b 的步骤（DESIGN-M3 §26 M3-G「真机验收」，用户亲自启动；gametest 会占用那台机器的窗口与鼠标）
+===================================================================================================================
+
+提交：m3g/integrate 上含本文件的提交（代码与 c8a403032d 相同，之后的提交只加证据文本）。本轮不 push，
+真机检出前要由用户或协调者先把 m3g/integrate 推到远端。
+
+机器
+  V2b：一台 RTX 3060 级 Windows 10/11（1080p 显示器、内存 16 GiB 以上）和一台 Apple Silicon Mac（M1 以上、macOS 14 以上），
+       两台各跑三次。V3b、V6b、V8b 只用那台 Windows。
+  两台都装 JDK 25 与 Git。检出路径不能含空格：server-app/build/farview-fixture.args 里的类路径没有加引号。
+
+1. 取第三方 jar（按 SHA-1 校验，不入库；<DIR> 是仓库外的一个空目录，绝对路径）
+     V2b：            java docs/research/client-spikes-2026-09/dh-iris/Fetch.java dh <DIR>
+     V3b、V6b、V8b：  java docs/research/client-spikes-2026-09/dh-iris/Fetch.java dh-iris <DIR>
+   结果是 <DIR>/mods（DH 3.3.2-26.2；dh-iris 另有 Sodium 0.9.2、Iris 1.11.4）与 <DIR>/shaderpacks
+   （dh-iris 时有 ComplementaryReimagined_r5.9.3.zip）。Loom 每次运行前清空 gametest 的运行目录，
+   所以 jar 不能预先放进去，只能经 -Dfabric.addMods 交给 Fabric Loader（第 4 步）。
+
+2. 构建（仓库根目录；国内网络再加 --init-script gradle/init/aliyun-mirror.init.gradle.kts）
+     ./gradlew :protocol:publishToMavenLocal :server-app:farviewFixtureArgs --no-daemon
+   Windows 用 .\gradlew.bat，参数相同。
+
+3. 起夹具（仓库根目录，单独一个终端；<WORK> 是仓库外的空目录）
+     java @server-app/build/farview-fixture.args -Xms1G -Xmx1G -XX:ActiveProcessorCount=2 \
+       -Dsynaxis.app.auth=offline -Dsynaxis.connection-gate.trusted-networks=127.0.0.0/8 \
+       io.github.bearisbug.synaxis.app.shard.FarViewShardFixture 25750 25751 <WORK> baked http://127.0.0.1:25751
+   等到输出 farview fixture ready。第一次起要先烘 3×3 瓦片测试图：本机 3 线程 321～339 s（三次）、进程 RSS 峰值
+   2,271～2,918 MiB、<WORK> 约 1.9 GB；两核按 cpu_ms 910,745～911,545 外推约 8 min。之后再起直接复用，约 5 s 就绪。
+   build_id 应为 farview3x3-82ef22b94f77-p776，9 个包的字节与 SHA-256 见 02-fixture-baked.txt（烘焙可复现）。
+   读数一律注明「同机」：夹具与客户端在同一台机器上，夹具只给两核。
+
+4. 起客户端（client-fabric/ 目录，另一个终端）。环境变量：
+     SYNAXIS_FARVIEW_SERVER=127.0.0.1:25750
+     SYNAXIS_FARVIEW_HTTP=http://127.0.0.1:25751
+     SYNAXIS_FARVIEW_MODE=<下面各项的模式>
+     JAVA_TOOL_OPTIONS=-Dfabric.addMods=<DIR>/mods
+     SYNAXIS_DH_SHADERPACKS=<DIR>/shaderpacks          （只在 dh-iris 时设；不设时找 /dh/shaderpacks，真机上没有）
+   命令：
+     macOS：   ./gradlew runClientGameTest --args="--width 1920 --height 1080" --no-daemon
+     Windows： PowerShell 里先 $env:SYNAXIS_FARVIEW_SERVER="127.0.0.1:25750" 等逐个设好，再
+               .\gradlew.bat runClientGameTest --args="--width 1920 --height 1080" --no-daemon
+   --width / --height 定 gametest 的渲染尺寸，报告里 framebuffer 应为 1920x1080（不给时是 854x480）。
+   每次运行的产物在 client-fabric/build/run/clientGameTest/ 下：synaxis-gametest/farview-report.txt
+   （每条一行 F<n> PASS|FAIL <证据>，# 开头的是记录）、synaxis-gametest/*.csv、logs/latest.log、screenshots/。
+   下一次运行会清空这个目录，每次跑完先拷走。
+
+5. 各项
+   V2b  Fetch 用 dh。SYNAXIS_FARVIEW_MODE=bake-timing，每台跑三次，每次一条新的 runClientGameTest（模式自己先清
+        远景缓存）。交回三份 farview-report.txt（F28 行：visible_ms、ms、write_ms、db_bytes、download）与三份
+        logs/latest.log。判据（DESIGN-M3 §15 远景准备行）：两台的 visible_ms 中位数都 ≤ 30,000 ms；任一台超过即按
+        §6.1 切换条件 2 回到用户。容器里同一测法的中位数是 70,065 ms（05-V2a-bake-timing.txt）：写入本身只要
+        4.6～7.6 s，其余是父层传播及其与写入的争用（ms 减去约 7 s）；真机超时时先看这一段。
+   V3b  Fetch 用 dh-iris，设 SYNAXIS_DH_SHADERPACKS。SYNAXIS_FARVIEW_MODE=shots：四个机位（plain、lake、ridge、
+        edge-outward，坐标在夹具的 http://127.0.0.1:25751/expect.json）各截光影关、Complementary 默认档两张，F24 行
+        列出 8 张文件名。录屏：日志出现 baked in 起开 OBS，一直录到客户端退出；8 张截图之后相机绕玩家一圈平飞
+        10 s（离玩家 192 格，原版视距边缘），交回时注明这 10 s 在录屏里的起止。交回 8 张截图与录屏给美术评审。
+   V6b  Fetch 用 dh-iris。SYNAXIS_FARVIEW_MODE=rts-shots：透视相机 eye 离地 64 与 100 格各一张，加正交一张，F25 行
+        列出文件名与 day time。缺口：设计要求正午与太阳高度角 40° 各一张，现有代码做不到，夹具不设时间，26.2 客户端
+        的时间取服务端时钟；本轮照现有代码只能拍到夹具当时的时刻（F25 的 day time），见交付说明的未达标项。
+   V8b  Fetch 用 dh-iris，设 SYNAXIS_DH_SHADERPACKS。客户端启动前另开一个终端：
+          nvidia-smi --query-gpu=memory.used --format=csv -l 1 > vram.csv
+        客户端退出后 Ctrl+C 停掉。SYNAXIS_FARVIEW_MODE=bench：远景 4,096 与关各沿固定路线飞 60 s（原版渲染距离 12、
+        Complementary 默认档），帧时间写 synaxis-gametest/farview-bench.csv，F26 行给出两档的平均帧时间、p99 与 P1% FPS
+        （P1% FPS = 1,000 / p99 帧时间）。交回 farview-bench.csv、vram.csv 与报告。开远景比关多出的平均帧时间
+        > 2 ms 时改 SYNAXIS_FARVIEW_MODE=bench-2048 再跑一次（写 farview-bench-2048.csv，vram.csv 另录一份）；
+        仍超则按 §6.1 切换条件 3 回到用户。
+
+6. 回收：停夹具（Ctrl+C），删掉 <WORK> 与 <DIR>。

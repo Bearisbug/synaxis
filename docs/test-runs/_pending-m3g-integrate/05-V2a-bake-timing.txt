@@ -32,3 +32,12 @@ median 70065      240       1443   3                  33358   32193
 db_bytes 22093512 / 23745560 / 22069560, median 22093512 B; packs 586706 B whole + 539312 B coarse = 1126018 B.
 LOD_VIEW lower half luma 102.1 / 102.9 / 102.1 against near vanilla ground 91.6 / 92.1 / 91.6, ratio 1.12 each
 (below 0.5 would count as dark).
+
+write_ms is not DH's write rate. It runs while DH propagates the sources already handed over to their parents, and
+the two contend. Without applyToParent (v1-noparent, container A 18:56:12 in 03-A-farview-log.txt) the same 2,304
+sources were handed over and written in 7,280 ms; v1's first bake, which started after the test's before shots,
+wrote in 7,644 ms and then waited 99,598 ms for the parents. With the propagation on and the bake right after the
+level load, write_ms is 26,429 to 48,258 ms (v1-writable, v2, v6, v8 in A, v3 in B, C to E here). So the writing
+takes 4.6 to 7.6 s (the review's own noparent run, 2026-10-02 04:57 to 05:10, wrote in 4,642 ms) and the parent
+propagation with its contention takes the rest of ms (ms minus noparent's 7,280 ms; v1 minus its own 7,644 ms):
+C 55,885, D 65,075, E 61,339, v1 99,598 ms at 4,096; v8's 2,048 run 34,030 ms.

@@ -4,8 +4,9 @@ _pending-m3g-integrate  2026-10-02  M3-G 合并与退出验收（REQ-M3-024、RE
 对象：分支 m3g/integrate，基于 m3g/base 094b52530e
   a5fa501868 合入 m3g/s-baker 2ed53735ec（轨道 S）
   be4f62eabb 合入 m3g/c-client 409fb0018c（轨道 C）
+  c8a403032d 复核后的 gametest 改动：v6 加原版视距内的机位，F20 加雾的两个读数，加模式 bench-2048
 两次合并都没有冲突：两条轨道改的文件不相交。合并后 client-fabric 以外的树与 2ed53735ec 相同。
-门禁与容器都在 be4f62eabb 的工作树上跑，01 号的第一段除外（a5fa501868）。
+01～06 号都在 be4f62eabb 的工作树上跑，01 号的第一段除外（a5fa501868）；07、09 号在 c8a403032d 上。
 
 命令（重活锁 /tmp/synaxis-heavy.lock 下；起夹具前 memory_pressure 空闲 ≥ 30%）
   门禁：见 01 号开头。C 合入后两种严格模式用 test --rerun，全部 10 个测试任务真跑。
@@ -21,13 +22,25 @@ _pending-m3g-integrate  2026-10-02  M3-G 合并与退出验收（REQ-M3-024、RE
                                配置键门禁 116 个键，翻译键门禁 60 个键；七个数据库类 skipped=0；
                                client-fabric 15 个类 184 条，0 失败 0 跳过，verifyModJar 75 个条目
   02-fixture-baked.txt         夹具第一次起时烘 3x3 瓦片测试图：3 线程 322 s，进程 RSS 峰值 2,750 MiB（堆 1 GiB），
-                               区域文件 1,946,768,700 B，9 个包共 5,329,202 B，verify_diffs 0；宣告 1 个整包、8 个粗层；/expect.json
+                               区域文件 1,946,768,700 B，9 个包共 5,329,202 B，verify_diffs 0；宣告 1 个整包、8 个粗层；/expect.json；
+                               首次进大区下载 1,126,018 B，03～05 号的 12 次下载 219～286 ms
   03-A-*                       容器 A，MODS=dh，模式 v1,v1-noparent,v1-writable,v1-coarse-only,v2,v6,v8：
-                               F1～F10、F21～F23 全 PASS；另附远景日志行、运行结束时的文件表与完成标记、
+                               F1～F10、F23 PASS；F21、F22 只登记（代码里恒写 PASS，不作判据，F22 两项没取到）；
+                               另附远景日志行、运行结束时的文件表与完成标记、
                                夹具 access.log、每次烘焙期间的容器 CPU
   04-B-*                       容器 B，MODS=dh-iris，模式 v3：F20 PASS（读数）
-  05-V2a-bake-timing.txt       容器 C、D、E，各自新起，MODS=dh，模式 bake-timing：三次 F28 PASS，四段拆分与中位数
+  05-V2a-bake-timing.txt       容器 C、D、E，各自新起，MODS=dh，模式 bake-timing：三次 F28 PASS，四段拆分与中位数；
+                               文末说明 write_ms 含与父层传播的争用：不设 applyToParent 时写同样 2,304 个只要 7,280 ms
   06-batches.txt               两批的锁、门槛、夹具与每个容器的起止；第二批期间每 30 s 的负载与空闲比例
+  07-review-v6-v3-bench2048.txt  复核后一批（c8a403032d）：夹具从空目录再烘一次，build_id 与 9 个包逐字节相同；
+                               容器 A' MODS=dh 模式 v6,bench-2048：0 档补上空洞，但相机进原版视距后 LOD 盖住原版地形
+                               （默认档两张 0.00%，0 档 13.00% 与 3.17%），交接条件不成立；bench-2048 能跑；
+                               容器 B' MODS=dh-iris 模式 v3：LOD_VIEW 下半部 82.88% 像素贴近天空色（关光影 0.00%），
+                               亮度标准差 46.7 → 7.4
+  08-real-machine-steps.txt    真机验收 V2b、V3b、V6b、V8b 的自足步骤：机器、取 jar、夹具与客户端命令、环境变量、
+                               各模式、交回什么、判据与已知缺口
+  09-gates-review.txt          c8a403032d 上的门禁：check 与两种严格模式都用 test --rerun；client-fabric --rerun-tasks
 
 只记录、不判定的读数口径与 DESIGN-M3 §26 M3-G「容器验收」相同。baked 模式的图 min_y 为 0、高 256，
-/expect.json 只有三个核对点（生成器源没有隐藏区域）。截图、DH 库、烘出的地图与容器日志全文未保留。
+/expect.json 只有三个核对点（生成器源没有隐藏区域），所以 V1 ④ 的隐藏区域核对与「点的 y 写成绝对坐标」
+这种错只由 synthetic 模式那一轮覆盖（_pending-m3g-c 的 03 号，min_y −64）。截图、DH 库、烘出的地图与容器日志全文未保留。

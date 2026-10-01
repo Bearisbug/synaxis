@@ -10,3 +10,15 @@ plugins {
 configurations.named("api") {
     dependencies.removeIf { it.group == "org.jetbrains" && it.name == "annotations" }
 }
+
+// Regenerates the frozen far view vectors of docs/DESIGN-M3.md §24. Only run it together with a
+// format_version bump of FarViewPack or FarViewAnnouncement, or a deliberate change of the inputs in
+// FarViewVectors, and commit the result; src/test/resources/farview-vectors/README.md says what each
+// file is.
+tasks.register<JavaExec>("generateFarViewVectors") {
+    group = "verification"
+    description = "Rewrites src/test/resources/farview-vectors from the inputs in FarViewVectors"
+    classpath = sourceSets["test"].runtimeClasspath
+    mainClass = "io.github.bearisbug.synaxis.game.protocol.FarViewVectorGenerator"
+    args(layout.projectDirectory.dir("src/test/resources/farview-vectors").asFile.absolutePath)
+}

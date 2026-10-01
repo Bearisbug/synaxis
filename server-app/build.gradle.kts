@@ -125,3 +125,15 @@ tasks.register("lightFixtureArgs") {
         args.get().asFile.writeText("-cp " + classpath.asPath + "\n")
     }
 }
+
+// The far view fixture of M3-G (docs/DESIGN-M3.md §26 M3-G step 0) the same way:
+// `java @server-app/build/farview-fixture.args … FarViewShardFixture <port> <httpPort> <workDir> <mode>`.
+tasks.register("farviewFixtureArgs") {
+    val classpath = sourceSets.test.get().runtimeClasspath
+    val args = layout.buildDirectory.file("farview-fixture.args")
+    inputs.files(classpath)
+    outputs.file(args)
+    doLast {
+        args.get().asFile.writeText("-cp " + classpath.asPath + "\n")
+    }
+}

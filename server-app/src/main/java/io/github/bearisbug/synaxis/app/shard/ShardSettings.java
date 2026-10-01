@@ -4,34 +4,45 @@ import org.jetbrains.annotations.Nullable;
 
 import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
+import java.util.Objects;
 import java.util.function.UnaryOperator;
 
 /**
- * The four host keys of a map shard ({@code docs/DESIGN-M3.md} {@code API-M3-006}, §9): which map
- * release it mounts, and the simulation distance and unload grace period of the map instance. Read in
- * step (1) of {@code Main}, before anything touches the disk. The last two are only read when a map
- * is mounted; their range against the view distance is checked by {@link ShardWorld#prepare}.
+ * The five host keys of a map shard ({@code docs/DESIGN-M3.md} {@code API-M3-006}, §9): which map
+ * release it mounts, the simulation distance and unload grace period of the map instance, and where
+ * the far view packs are served from ({@code API-M3-015}). Read in step (1) of {@code Main}, before
+ * anything touches the disk. The last three are only read when a map is mounted; the range of the
+ * simulation distance against the view distance is checked by {@link ShardWorld#prepare}.
  *
  * @param mapRoot               {@code <maps_root>/<map_id>}, null when no map is mounted
  * @param mapBuild              the {@code build_id} under it, null when no map is mounted
  * @param simulationDistance    the simulation distance of the map instance, in chunks
  * @param chunkUnloadGraceTicks the unload grace period of the map instance, -1 or at least 1
+ * @param farviewUrlRoot        {@code url_root} of the far view packs, empty when the shard announces no far view
  */
 public record ShardSettings(@Nullable Path mapRoot, @Nullable String mapBuild, int simulationDistance,
-                            int chunkUnloadGraceTicks) {
+                            int chunkUnloadGraceTicks, String farviewUrlRoot) {
     public static final String MAP_ROOT = "synaxis.map.root";
     public static final String MAP_BUILD = "synaxis.map.build";
     public static final String SIMULATION_DISTANCE = "synaxis.simulation-distance";
     public static final String CHUNK_UNLOAD_GRACE_TICKS = "synaxis.chunk-unload-grace-ticks";
+    public static final String FARVIEW_URL_ROOT = "synaxis.farview.url-root";
     static final int DEFAULT_SIMULATION_DISTANCE = 4;
     static final int DEFAULT_CHUNK_UNLOAD_GRACE_TICKS = 100;
+
+    /** A shard that announces no far view. */
+    public ShardSettings(@Nullable Path mapRoot, @Nullable String mapBuild, int simulationDistance,
+                         int chunkUnloadGraceTicks) {
+        this(mapRoot, mapBuild, simulationDistance, chunkUnloadGraceTicks, "");
+    }
 
     /**
      * Reads the keys from the system properties.
      *
      * @throws IllegalArgumentException naming the key: one of the two map keys without the other, a
      *                                  value that is not an integer, a grace period that is neither -1
-     *                                  nor at least 1
+     *                                  nor at least 1, a far view url root that is not an http(s) URL
+     *                                  without a trailing slash
      */
     public static ShardSettings fromSystemProperties() {
         return from(System::getProperty);
@@ -41,7 +52,7 @@ public record ShardSettings(@Nullable Path mapRoot, @Nullable String mapBuild, i
         final String root = properties.apply(MAP_ROOT);
         final String build = properties.apply(MAP_BUILD);
         if (root == null && build == null)
-            return new ShardSettings(null, null, DEFAULT_SIMULATION_DISTANCE, DEFAULT_CHUNK_UNLOAD_GRACE_TICKS);
+            return new ShardSettings(null, null, DEFAULT_SIMULATION_DISTANCE, DEFAULT_CHUNK_UNLOAD_GRACE_TICKS, "");
         if (root == null || build == null) {
             throw new IllegalArgumentException(MAP_ROOT + " and " + MAP_BUILD + " mount a map together, only "
                     + (root == null ? MAP_BUILD : MAP_ROOT) + " is given");
@@ -64,7 +75,12 @@ public record ShardSettings(@Nullable Path mapRoot, @Nullable String mapBuild, i
             throw new IllegalArgumentException("Property '" + CHUNK_UNLOAD_GRACE_TICKS + "' is neither -1 nor at least 1: "
                     + grace);
         }
-        return new ShardSettings(mapRoot, build, simulationDistance, grace);
+        final String urlRoot = Objects.requireNonNullElse(properties.apply(FARVIEW_URL_ROOT), "");
+        final boolean http = urlRoot.startsWith("http://") || urlRoot.startsWith("https://");
+        if (!urlRoot.isEmpty() && (!http || urlRoot.endsWith("/"))) {
+            throw new IllegalArgumentException(FARVIEW_URL_ROOT + " must be an http(s) URL without a trailing slash: " + urlRoot);
+        }
+        return new ShardSettings(mapRoot, build, simulationDistance, grace, urlRoot);
     }
 
     /** Whether the shard mounts a map, the two map keys given. */

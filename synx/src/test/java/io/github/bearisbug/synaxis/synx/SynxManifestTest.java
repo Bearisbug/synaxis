@@ -3,6 +3,7 @@ package io.github.bearisbug.synaxis.synx;
 import org.junit.jupiter.api.Test;
 
 import java.nio.file.Files;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -26,10 +27,18 @@ public class SynxManifestTest {
         assertEquals(SynxVectors.bounds(), manifest.bounds());
         assertEquals("generator", manifest.source().kind());
         assertNull(manifest.source().dataVersion(), "data_version is only written for Anvil sources");
+        assertEquals(1, manifest.farview().size());
+        final SynxManifest.FarView pack = manifest.farview().getFirst();
+        assertEquals(List.of(-1, 0, 2, 4), List.of(pack.tileX(), pack.tileZ(), pack.baseLevel(), pack.coarseLevel()));
+        assertEquals(List.of(8_912_896L, 524_544L), List.of(pack.bytes(), pack.coarseBytes()));
+        assertEquals(SynxDigests.hex(SynxDigests.sha256(new byte[]{1})), SynxDigests.hex(pack.sha256()));
+        assertEquals(SynxDigests.hex(SynxDigests.sha256(new byte[]{2})), SynxDigests.hex(pack.coarseSha256()));
+        assertTrue(!json.contains("\"region_id\"") && !json.contains("\"levels\""), "the fields of the tile layout only");
         for (String field : new String[]{"\"map_id\"", "\"build_id\"", "\"content_hash\"", "\"mc_version\"",
                 "\"protocol_version\"", "\"registry_digest\"", "\"light_engine_version\"", "\"baker_version\"",
                 "\"min_y\"", "\"height\"", "\"bounds\"", "\"payload_sha256\"", "\"chunks\"", "\"farview\"",
-                "\"region_id\"", "\"levels\"", "\"source\"", "\"kind\"", "\"bake\"", "\"started_at\"", "\"wall_ms\"",
+                "\"tile_x\"", "\"tile_z\"", "\"base_level\"", "\"coarse_level\"", "\"coarse_bytes\"", "\"coarse_sha256\"",
+                "\"source\"", "\"kind\"", "\"bake\"", "\"started_at\"", "\"wall_ms\"",
                 "\"cpu_ms\"", "\"threads\"", "\"jdk\"", "\"verify\"", "\"samples\"", "\"diffs\""}) {
             assertTrue(json.contains(field), field);
         }

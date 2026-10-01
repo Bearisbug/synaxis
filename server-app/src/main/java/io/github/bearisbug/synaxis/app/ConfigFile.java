@@ -156,6 +156,7 @@ public final class ConfigFile {
             "synaxis.map.build",
             "synaxis.simulation-distance",
             "synaxis.chunk-unload-grace-ticks",
+            "synaxis.farview.url-root",
             // The map shard, :synx SynxOptions and OverlayOptions
             "synaxis.world-writable",
             "synaxis.synx.section-cache-bytes",

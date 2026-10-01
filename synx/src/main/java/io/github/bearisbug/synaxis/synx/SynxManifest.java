@@ -71,15 +71,25 @@ public record SynxManifest(String mapId, String buildId, byte[] contentHash, Str
         }
     }
 
-    /** One {@code farview/<region_id>.hfp}, API-M3-014. */
-    public record FarView(String regionId, long bytes, byte[] sha256, int levels) {
+    /**
+     * One {@code farview/t.<tile_x>.<tile_z>.hfp}, API-M3-014: the size and SHA-256 of the whole pack and of
+     * its coarse prefix, the first {@code coarse_bytes} bytes, which is distributed as an object of its own.
+     */
+    public record FarView(int tileX, int tileZ, int baseLevel, int coarseLevel, long bytes, byte[] sha256,
+                          long coarseBytes, byte[] coarseSha256) {
         public FarView {
             sha256 = sha256.clone();
+            coarseSha256 = coarseSha256.clone();
         }
 
         @Override
         public byte[] sha256() {
             return sha256.clone();
+        }
+
+        @Override
+        public byte[] coarseSha256() {
+            return coarseSha256.clone();
         }
     }
 
@@ -143,10 +153,14 @@ public record SynxManifest(String mapId, String buildId, byte[] contentHash, Str
         final JsonArray farviewJson = new JsonArray();
         for (FarView pack : farview) {
             final JsonObject entry = new JsonObject();
-            entry.addProperty("region_id", pack.regionId());
+            entry.addProperty("tile_x", pack.tileX());
+            entry.addProperty("tile_z", pack.tileZ());
+            entry.addProperty("base_level", pack.baseLevel());
+            entry.addProperty("coarse_level", pack.coarseLevel());
             entry.addProperty("bytes", pack.bytes());
             entry.addProperty("sha256", SynxDigests.hex(pack.sha256));
-            entry.addProperty("levels", pack.levels());
+            entry.addProperty("coarse_bytes", pack.coarseBytes());
+            entry.addProperty("coarse_sha256", SynxDigests.hex(pack.coarseSha256));
             farviewJson.add(entry);
         }
         json.add("farview", farviewJson);
@@ -192,8 +206,9 @@ public record SynxManifest(String mapId, String buildId, byte[] contentHash, Str
                             integer(boundsJson, "max_x"), integer(boundsJson, "max_z")),
                     list(json, "regions", entry -> new Region(integer(entry, "rx"), integer(entry, "rz"),
                             longInteger(entry, "bytes"), digest(entry, "payload_sha256"), integer(entry, "chunks"))),
-                    list(json, "farview", entry -> new FarView(string(entry, "region_id"),
-                            longInteger(entry, "bytes"), digest(entry, "sha256"), integer(entry, "levels"))),
+                    list(json, "farview", entry -> new FarView(integer(entry, "tile_x"), integer(entry, "tile_z"),
+                            integer(entry, "base_level"), integer(entry, "coarse_level"), longInteger(entry, "bytes"),
+                            digest(entry, "sha256"), longInteger(entry, "coarse_bytes"), digest(entry, "coarse_sha256"))),
                     new Source(string(sourceJson, "kind"),
                             sourceJson.has("data_version") ? integer(sourceJson, "data_version") : null,
                             sourceJson.has("light_coverage") ? number(sourceJson, "light_coverage").doubleValue() : null),

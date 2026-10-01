@@ -812,6 +812,7 @@ erDiagram
     | `synaxis.map.build` | `ShardSettings` | 空 | `<map_id>-<12 位 hex>-p<协议号>`（同上） |
     | `synaxis.simulation-distance` | `ShardSettings` | 4（只在挂地图时读） | 1～区块视距（`docs/DESIGN-M3.md` `API-M3-006`） |
     | `synaxis.chunk-unload-grace-ticks` | `ShardSettings` | 100（只在挂地图时读） | `-1` 或 ≥ 1（`docs/DESIGN-M3.md` `API-M3-006`） |
+    | `synaxis.farview.url-root` | `ShardSettings` | 空（只在挂地图时读；空即不宣告远景） | `http://` 或 `https://` 开头、不以 `/` 结尾，否则拒启（`Refusing to start: synaxis.farview.url-root must be an http(s) URL without a trailing slash: <值>`）；远景包的地址根，挂地图的分片按它在 configuration 阶段宣告远景瓦片（`docs/DESIGN-M3.md` §9、`API-M3-015`，M3-G） |
     | `synaxis.world-writable` | `:synx` `SynxOptions` | `true` | `true` / `false`，只认小写（`docs/DESIGN-M3.md` `API-M3-005`） |
     | `synaxis.synx.section-cache-bytes` | `:synx` `SynxOptions` | 268,435,456 | ≥ 1（`docs/DESIGN-M3.md` `API-M3-005`） |
     | `synaxis.overlay.cap` | `:synx` `OverlayOptions` | 16,384 | ≥ 1；正式档 24,576；软上限（`docs/DESIGN-M3.md` `API-M3-007`） |

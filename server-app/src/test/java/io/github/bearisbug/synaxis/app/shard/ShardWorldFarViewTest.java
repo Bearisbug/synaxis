@@ -37,6 +37,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.function.UnaryOperator;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -100,7 +101,7 @@ public class ShardWorldFarViewTest {
     private static final SynxManifest.Bounds R0 = new SynxManifest.Bounds(250, 0, 255, 7);
 
     /** Bakes the four tile map and writes a pack for each of its tiles into the release and its manifest. */
-    private static ShardSettings fourTileRelease(Path mapsRoot, String urlRoot) throws IOException, SynxException {
+    public static ShardSettings fourTileRelease(Path mapsRoot, String urlRoot) throws IOException, SynxException {
         final GeneratorSource source = new GeneratorSource(new GeneratorPreset(
                 unit -> unit.modifier().fillHeight(0, 40, Block.STONE), 0, 64, FOUR_TILES), Registries.vanilla());
         final Baker.Result result = Baker.bake(new Baker.Request("four", source, mapsRoot, 1, mapsRoot.resolve("logs"),
@@ -272,6 +273,92 @@ public class ShardWorldFarViewTest {
         final ShardSettings missing = fourTileRelease(maps.resolve("missing"), URL_ROOT);
         Files.delete(missing.buildDir().resolve("farview").resolve("t.0.-1.hfp"));
         assertRefusedWithWarning(start(missing, directory()), "farview/t.0.-1.hfp");
+    }
+
+    /** The manifest of a release with {@code farview[]} replaced. */
+    private static SynxManifest withFarView(SynxManifest manifest, List<SynxManifest.FarView> farview) {
+        return new SynxManifest(manifest.mapId(), manifest.buildId(), manifest.contentHash(), manifest.mcVersion(),
+                manifest.protocolVersion(), manifest.registryDigest(), manifest.lightEngineVersion(), manifest.bakerVersion(),
+                manifest.world(), manifest.bounds(), manifest.regions(), farview, manifest.source(), manifest.bake(),
+                manifest.verify());
+    }
+
+    /** Rewrites the manifest entry of tile 1,0 of a release. */
+    private static void rewriteTileOneZero(ShardSettings release, UnaryOperator<SynxManifest.FarView> change)
+            throws IOException, SynxException {
+        final Path manifestFile = release.buildDir().resolve(SynxManifest.FILE_NAME);
+        final SynxManifest manifest = SynxManifest.fromJson(Files.readString(manifestFile));
+        Files.writeString(manifestFile, withFarView(manifest, manifest.farview().stream()
+                .map(entry -> entry.tileX() == 1 && entry.tileZ() == 0 ? change.apply(entry) : entry).toList()).toJson());
+    }
+
+    /** The coarse digest of the manifest is checked on its own: the file and its whole digest still match. */
+    @Test
+    public void aCoarseDigestThatAloneDoesNotMatchStopsTheWholeAnnouncement(@TempDir Path maps)
+            throws IOException, SynxException {
+        final ShardSettings release = fourTileRelease(maps, URL_ROOT);
+        rewriteTileOneZero(release, entry -> new SynxManifest.FarView(1, 0, 2, 4, entry.bytes(), entry.sha256(),
+                entry.coarseBytes(), new byte[32]));
+        assertRefusedWithWarning(start(release, directory()), "farview/t.1.0.hfp");
+    }
+
+    /** One announcement has one base_level and one coarse_level, so tiles that disagree announce nothing. */
+    @Test
+    public void tilesOfOtherLevelsStopTheWholeAnnouncement(@TempDir Path maps) throws IOException, SynxException {
+        final ShardSettings release = fourTileRelease(maps, URL_ROOT);
+        rewriteTileOneZero(release, entry -> new SynxManifest.FarView(1, 0, 1, 4, entry.bytes(), entry.sha256(),
+                entry.coarseBytes(), entry.coarseSha256()));
+        final Started started = start(release, directory());
+        assertRefusedWithWarning(started, "farview/t.1.0.hfp");
+        assertTrue(farViewLines(started, Level.WARN).getFirst().contains("levels 1/4"), started.log().toString());
+    }
+
+    /**
+     * What makes no announcement turns the far view off and lets the shard start: a url root so long that
+     * the url of a tile is over 1,024 bytes.
+     */
+    @Test
+    public void aUrlOverTheCapTurnsTheFarViewOffAndTheShardStarts(@TempDir Path maps) throws IOException, SynxException {
+        final String longRoot = "http://cdn.test/" + "a".repeat(1000);
+        final Started started = start(fourTileRelease(maps, longRoot), directory());
+        assertRefusedWithWarning(started, "url");
+    }
+
+    /** Over 64 tiles to announce, the bounds of a region 7 × 7 tiles wide: 49 whole and 32 coarse. */
+    @Test
+    public void moreThan64TilesTurnTheFarViewOff(@TempDir Path maps) throws IOException, SynxException {
+        final ShardSettings release = fourTileRelease(maps.resolve("four"), URL_ROOT);
+        final SynxManifest four = SynxManifest.fromJson(Files.readString(release.buildDir().resolve(SynxManifest.FILE_NAME)));
+        final Path build = Files.createDirectories(maps.resolve("wide").resolve("farview")).getParent();
+        final List<SynxManifest.FarView> farview = new ArrayList<>();
+        for (int tileX = -1; tileX <= 7; tileX++) {
+            for (int tileZ = -1; tileZ <= 7; tileZ++) {
+                final FarViewPack.Writer writer = new FarViewPack.Writer(2, tileX, tileZ, 0, 64, Block.statesCount(), 776,
+                        List.of("minecraft:plains")).block(FarViewPack.Layer.COARSE, 0, 0, stone(30));
+                final byte[] pack = writer.write(), prefix = writer.coarsePrefix();
+                Files.write(build.resolve("farview").resolve("t." + tileX + "." + tileZ + ".hfp"), pack);
+                farview.add(new SynxManifest.FarView(tileX, tileZ, 2, 4, pack.length, SynxDigests.sha256(pack), prefix.length,
+                        SynxDigests.sha256(prefix)));
+            }
+        }
+        final SynxManifest.Bounds sevenBySeven = new SynxManifest.Bounds(0, 0, 7 * 256 - 1, 7 * 256 - 1);
+        assertEquals(81, ShardWorld.announcedTiles(farview, sevenBySeven).size());
+
+        final Logger logger = (Logger) LoggerFactory.getLogger(ShardWorld.class);
+        final ListAppender<ILoggingEvent> appender = new ListAppender<>();
+        appender.start();
+        logger.addAppender(appender);
+        try {
+            assertNull(ShardWorld.farViewAnnouncement(build, withFarView(four, farview), sevenBySeven, URL_ROOT));
+        } finally {
+            logger.detachAppender(appender);
+            appender.stop();
+        }
+        final List<String> warnings = appender.list.stream().filter(event -> event.getLevel() == Level.WARN)
+                .map(ILoggingEvent::getFormattedMessage).toList();
+        assertEquals(1, warnings.size(), warnings.toString());
+        assertTrue(warnings.getFirst().startsWith("Far view off: ") && warnings.getFirst().contains("count 81"),
+                warnings.toString());
     }
 
     private static void flip(Path file, int at) throws IOException {

@@ -15,6 +15,7 @@ import org.jetbrains.annotations.Nullable;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
+import org.junit.jupiter.api.io.TempDir;
 
 import java.io.IOException;
 import java.net.URI;
@@ -22,12 +23,17 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Random;
 import java.util.TreeMap;
+import java.util.TreeSet;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -38,8 +44,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * What {@link FarViewShardFixture} serves, without a game port: the synthetic packs and their
- * announcement, the points of {@code /expect.json}, and the HTTP side ({@code Range}, the shared
- * rate, {@code half} and {@code break-sha}). The container cases of track C stand on these.
+ * announcement, the points and camera spots of {@code /expect.json} in {@code synthetic} and
+ * {@code baked}, and the HTTP side ({@code Range}, the shared rate, {@code half} and {@code break-sha}).
+ * The container cases of track C stand on these.
  */
 @Timeout(120)
 public class FarViewShardFixtureTest {
@@ -150,6 +157,205 @@ public class FarViewShardFixtureTest {
         assertEquals(90, edge.get("yaw").getAsDouble());
         assertEquals(15, edge.get("pitch").getAsDouble());
         assertEquals(5, expect.getAsJsonObject("views").size());
+    }
+
+    /**
+     * A stand-in for the release {@code baked} mounts, which only the baker of track S writes: tile (0, 0)
+     * whole and tile (-1, 0) by its coarse prefix, {@code min_y} 0 and 256 high as the baker's synthetic map.
+     * Terraces stepping 1 block every 16 across, a flat plain at y 80 over 2048..2559 on both axes, a lake
+     * of water up to y 62 over x 1000..1199, z 600..799 (deepest over 1080..1119 × 680..719), a hill up to
+     * y 200 at (3000, 1500), and in tile (-1, 0) a mountain up to y 190 at (-300, 2040).
+     */
+    static final class BakedLike {
+        static final int[] PLAIN = {2048, 2559}, LAKE = {1000, 1199, 600, 799}, DEEP = {1080, 1119, 680, 719};
+        static final int[] PEAK = {3000, 1500}, MOUNTAIN = {-300, 2040};
+        static final Pos SPAWN = new Pos(2040.5, 78, 2040.5);
+
+        private BakedLike() {
+        }
+
+        static Sample column(int x, int z) {
+            if (x >= LAKE[0] && x <= LAKE[1] && z >= LAKE[2] && z <= LAKE[3]) {
+                final int ground = x >= DEEP[0] && x <= DEEP[1] && z >= DEEP[2] && z <= DEEP[3] ? 50 : 55;
+                return new Sample(Block.SAND.stateId(), Block.WATER.stateId(), ground, ground + 1, 62, 0);
+            }
+            int ground = x >= PLAIN[0] && x <= PLAIN[1] && z >= PLAIN[0] && z <= PLAIN[1] ? 80 : 70 + ((x >> 4) & 7);
+            ground = Math.max(ground, 200 - Math.max(Math.abs(x - PEAK[0]), Math.abs(z - PEAK[1])) / 2);
+            ground = Math.max(ground, 190 - (int) (Math.hypot(x - MOUNTAIN[0], z - MOUNTAIN[1]) / 4));
+            return new Sample(ground > 120 ? Block.STONE.stateId() : Block.GRASS_BLOCK.stateId(), 0, ground, 0, 0, 0);
+        }
+
+        /** The packs written as {@code Baker} will, read back through {@link FarViewShardFixture.Content#baked}. */
+        static FarViewShardFixture.Content content(Path build) throws IOException {
+            final List<FarViewAnnouncement.Tile> tiles = new ArrayList<>();
+            Files.createDirectories(build.resolve("farview"));
+            for (int tileX = -1; tileX <= 0; tileX++) {
+                final boolean whole = tileX == 0;
+                final FarViewPack.Writer writer = new FarViewPack.Writer(2, tileX, 0, 0, 256, Block.statesCount(), 776,
+                        List.of("minecraft:plains"));
+                final int x0 = tileX * FarViewPack.TILE_BLOCKS;
+                for (int bz = 0; bz < 4; bz++) {
+                    for (int bx = 0; bx < 4; bx++) {
+                        final List<Sample> coarse = new ArrayList<>(FarViewPack.BLOCK_SAMPLES);
+                        for (int cz = bz * 64; cz < bz * 64 + 64; cz++) {
+                            for (int cx = bx * 64; cx < bx * 64 + 64; cx++) {
+                                final List<Sample> fine = new ArrayList<>(16);
+                                for (int z = 0; z < 16; z += 4) {
+                                    for (int x = 0; x < 16; x += 4) fine.add(column(x0 + cx * 16 + x, cz * 16 + z));
+                                }
+                                coarse.add(FarViewPack.coarsen(2, fine));
+                            }
+                        }
+                        writer.block(Layer.COARSE, bx, bz, coarse);
+                    }
+                }
+                if (whole) {
+                    for (int bz = 0; bz < 16; bz++) {
+                        for (int bx = 0; bx < 16; bx++) {
+                            final List<Sample> fine = new ArrayList<>(FarViewPack.BLOCK_SAMPLES);
+                            for (int sz = bz * 64; sz < bz * 64 + 64; sz++) {
+                                for (int sx = bx * 64; sx < bx * 64 + 64; sx++) fine.add(column(x0 + sx * 4, sz * 4));
+                            }
+                            writer.block(Layer.FINE, bx, bz, fine);
+                        }
+                    }
+                }
+                final byte[] pack = writer.write();
+                Files.write(build.resolve("farview").resolve("t." + tileX + ".0.hfp"), pack);
+                final byte[] object = whole ? pack : writer.coarsePrefix();
+                tiles.add(new FarViewAnnouncement.Tile(tileX, 0, whole ? FarViewAnnouncement.LAYER_FULL
+                        : FarViewAnnouncement.LAYER_COARSE, object.length, SynxDigests.sha256(object), "http://127.0.0.1:1/x"));
+            }
+            final MsgBuf buf = MsgBuf.writing();
+            new FarViewAnnouncement("farview3x3-0123456789ab-p776", 2, 4, 0, 256, tiles).write(buf);
+            return FarViewShardFixture.Content.baked(build, FarViewShardFixture.BAKED_MAP_ID, buf.toByteArray());
+        }
+    }
+
+    /**
+     * Every sample of the packs as the client draws them, the fine layer of a whole pack and the coarse
+     * layer of the others: one grid by {@code "<tile_x> <tile_z>"}, {@code [sz * side + sx]}.
+     */
+    private record Drawn(Map<String, Sample[]> grids, Map<String, Integer> levels, int minY) {
+        static Drawn of(Map<String, byte[]> packs) throws FarViewPack.Invalid {
+            final Map<String, Sample[]> grids = new HashMap<>();
+            final Map<String, Integer> levels = new HashMap<>();
+            int minY = 0;
+            for (Map.Entry<String, byte[]> pack : packs.entrySet()) {
+                final FarViewPack.Reader reader = reader(pack.getValue());
+                minY = reader.header().minY();
+                final Layer layer = reader.coarseOnly() ? Layer.COARSE : Layer.FINE;
+                final int level = layer == Layer.COARSE ? FarViewPack.COARSE_LEVEL : reader.header().baseLevel();
+                final int side = FarViewPack.TILE_BLOCKS >> level;
+                final Sample[] grid = new Sample[side * side];
+                Arrays.fill(grid, Sample.EMPTY);
+                for (FarViewPack.Block block : reader.blocks(layer)) {
+                    final List<Sample> content = reader.samples(block);
+                    for (int i = 0; i < content.size(); i++) {
+                        grid[(block.bz() * 64 + i / 64) * side + block.bx() * 64 + i % 64] = content.get(i);
+                    }
+                }
+                grids.put(pack.getKey(), grid);
+                levels.put(pack.getKey(), level);
+            }
+            return new Drawn(grids, levels, minY);
+        }
+
+        /** The sample under column x, z, null where no pack is. */
+        @Nullable Sample at(int x, int z) {
+            final int tileX = Math.floorDiv(x, FarViewPack.TILE_BLOCKS), tileZ = Math.floorDiv(z, FarViewPack.TILE_BLOCKS);
+            final Sample[] grid = grids.get(tileX + " " + tileZ);
+            if (grid == null) return null;
+            final int level = levels.get(tileX + " " + tileZ), side = FarViewPack.TILE_BLOCKS >> level;
+            return grid[((z - tileZ * FarViewPack.TILE_BLOCKS) >> level) * side + ((x - tileX * FarViewPack.TILE_BLOCKS) >> level)];
+        }
+
+        /** The absolute y of the top face of column x, z: one above its top block. */
+        int surface(int x, int z) {
+            final Sample sample = at(x, z);
+            return sample == null ? Integer.MIN_VALUE : minY + sample.top() + 1;
+        }
+
+        /** Where the line of sight of a camera spot first meets the drawn ground, {@code x, z}, null when it does not. */
+        int @Nullable [] landing(JsonObject view) {
+            final double yaw = Math.toRadians(view.get("yaw").getAsDouble()), pitch = Math.toRadians(view.get("pitch").getAsDouble());
+            final double dx = -Math.sin(yaw) * Math.cos(pitch), dy = -Math.sin(pitch), dz = Math.cos(yaw) * Math.cos(pitch);
+            for (double t = 0; t < 2 * FarViewPack.TILE_BLOCKS; t += 0.25) {
+                final double y = view.get("y").getAsDouble() + dy * t;
+                if (y < minY) return null;
+                final int x = (int) Math.floor(view.get("x").getAsDouble() + dx * t);
+                final int z = (int) Math.floor(view.get("z").getAsDouble() + dz * t);
+                if (y <= surface(x, z)) return new int[]{x, z};
+            }
+            return null;
+        }
+    }
+
+    private static JsonObject expectBaked(FarViewShardFixture.Content baked) {
+        return JsonParser.parseString(FarViewShardFixture.expectJson("baked", baked, BakedLike.SPAWN)).getAsJsonObject();
+    }
+
+    /** {@code baked}: the points come out of the packs with the absolute y of their {@code min_y}, not of synthetic's -64. */
+    @Test
+    public void theBakedPointsHaveTheAbsoluteYOfTheirPack(@TempDir Path dir) throws IOException {
+        final JsonObject expect = expectBaked(BakedLike.content(dir));
+        final Map<String, JsonObject> points = new TreeMap<>();
+        for (JsonElement point : expect.getAsJsonArray("points")) points.put(point.getAsJsonObject().get("name").getAsString(),
+                point.getAsJsonObject());
+        assertEquals(List.of("mountain", "peak", "water"), List.copyOf(points.keySet()));
+        assertEquals(BakedLike.PEAK[0], points.get("peak").get("x").getAsInt());
+        assertEquals(BakedLike.PEAK[1], points.get("peak").get("z").getAsInt());
+        assertEquals(200, points.get("peak").get("y").getAsInt());
+        assertEquals("minecraft:water", points.get("water").get("block").getAsString());
+        assertEquals(62, points.get("water").get("y").getAsInt());
+        assertEquals(-1, points.get("mountain").get("tile_x").getAsInt());
+        assertEquals("coarse", points.get("mountain").get("layer").getAsString());
+        assertEquals(190, points.get("mountain").get("y").getAsInt());
+    }
+
+    /**
+     * {@code baked}: the four spots of V3b are found in the packs, not taken from synthetic's function, and
+     * EDGE_VIEW looks into tile (-1, 0) from the shard's own tile even though the spawn is 2,040 blocks
+     * from its west edge ({@code docs/DESIGN-M3.md} 容器验收 V1 ⑥).
+     */
+    @Test
+    public void theBakedCameraSpotsLookAtWhatTheirNamesSay(@TempDir Path dir) throws IOException, FarViewPack.Invalid {
+        final FarViewShardFixture.Content baked = BakedLike.content(dir);
+        final Drawn drawn = Drawn.of(baked.packs());
+        final JsonObject views = expectBaked(baked).getAsJsonObject("views");
+        assertEquals(List.of("EDGE_VIEW", "edge-outward", "lake", "plain", "ridge"), List.copyOf(new TreeSet<>(views.keySet())));
+        for (String name : views.keySet()) {
+            final JsonObject view = views.getAsJsonObject(name);
+            final int x = (int) Math.floor(view.get("x").getAsDouble()), z = (int) Math.floor(view.get("z").getAsDouble());
+            assertTrue(view.get("y").getAsDouble() > drawn.surface(x, z), name + " is above the ground: " + view);
+        }
+
+        final JsonObject plain = views.getAsJsonObject("plain");
+        for (String axis : new String[]{"x", "z"}) {
+            final double at = plain.get(axis).getAsDouble();
+            assertTrue(at >= BakedLike.PLAIN[0] + 32 && at <= BakedLike.PLAIN[1] - 32, "plain is over the plain: " + plain);
+        }
+
+        final int[] lake = drawn.landing(views.getAsJsonObject("lake"));
+        assertNotNull(lake, "lake looks at the ground");
+        assertTrue(Objects.requireNonNull(drawn.at(lake[0], lake[1])).hasFluid(), "lake looks at water: " + Arrays.toString(lake));
+
+        final JsonObject ridge = views.getAsJsonObject("ridge");
+        assertEquals(BakedLike.PEAK[1], Math.floor(ridge.get("z").getAsDouble()), "ridge faces the hill: " + ridge);
+        assertTrue(ridge.get("x").getAsDouble() < BakedLike.PEAK[0] && ridge.get("yaw").getAsDouble() == -90,
+                "ridge looks east at the hill: " + ridge);
+
+        final JsonObject outward = views.getAsJsonObject("edge-outward");
+        assertEquals(100.5, outward.get("x").getAsDouble(), "100 blocks inside the west edge of tile (0, 0)");
+        assertEquals(90, outward.get("yaw").getAsDouble());
+
+        final JsonObject edge = views.getAsJsonObject("EDGE_VIEW");
+        assertEquals(90, edge.get("yaw").getAsDouble());
+        assertEquals(15, edge.get("pitch").getAsDouble());
+        final int[] beyond = drawn.landing(edge);
+        assertNotNull(beyond, "EDGE_VIEW looks at the ground");
+        assertEquals(-1, Math.floorDiv(beyond[0], FarViewPack.TILE_BLOCKS), "EDGE_VIEW looks into tile (-1, 0): "
+                + Arrays.toString(beyond));
     }
 
     @Test

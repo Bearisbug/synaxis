@@ -49,6 +49,8 @@ import java.nio.file.Path;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -182,7 +184,7 @@ final class FarViewShardFixture {
             throw new IllegalStateException(e);
         }
 
-        final Content content = baked ? Content.baked(settings.buildDir(), manifest, started.farView())
+        final Content content = baked ? Content.baked(settings.buildDir(), manifest.mapId(), started.farView())
                 : Content.synthetic(manifest.buildId(), urlRoot, mode.equals("break-sha"));
         final byte[] announcement = content.announcement();
         process.eventHandler().addListener(AsyncPlayerConfigurationEvent.class, event -> {
@@ -339,10 +341,9 @@ final class FarViewShardFixture {
      * @param announcement the encoded announcement, null when there is none
      * @param packs        the packs as announced, by {@code "<tile_x> <tile_z>"}: the whole pack of a
      *                     tile announced whole, the coarse prefix of the others
-     * @param views        the camera spots of V1 ⑥ and V3b, each {@code x, y, z, yaw, pitch}
      */
     record Content(String mapId, Map<String, byte[]> served, byte @Nullable [] announcement,
-                   Map<String, byte[]> packs, Map<String, double[]> views) {
+                   Map<String, byte[]> packs) {
 
         static Content synthetic(String buildId, String urlRoot, boolean breakSha) {
             final Map<String, byte[]> served = new TreeMap<>();
@@ -365,11 +366,11 @@ final class FarViewShardFixture {
             }
             final MsgBuf buf = MsgBuf.writing();
             new FarViewAnnouncement(buildId, Synthetic.BASE_LEVEL, FarViewPack.COARSE_LEVEL, MIN_Y, HEIGHT, tiles).write(buf);
-            return new Content(MAP_ID, served, buf.toByteArray(), packs, Synthetic.views());
+            return new Content(MAP_ID, served, buf.toByteArray(), packs);
         }
 
         /** The objects of the packs in the release that the shard announced, as the CDN would hold them. */
-        static Content baked(Path buildDir, SynxManifest manifest, byte @Nullable [] announcement) {
+        static Content baked(Path buildDir, String mapId, byte @Nullable [] announcement) {
             final Map<String, byte[]> served = new TreeMap<>();
             final Map<String, byte[]> packs = new TreeMap<>();
             if (announcement != null) {
@@ -386,7 +387,7 @@ final class FarViewShardFixture {
                     packs.put(tile.tileX() + " " + tile.tileZ(), object);
                 }
             }
-            return new Content(manifest.mapId(), served, announcement, packs, Synthetic.views());
+            return new Content(mapId, served, announcement, packs);
         }
 
         String describe() {
@@ -551,9 +552,138 @@ final class FarViewShardFixture {
     }
 
     /**
+     * The camera spots of {@code baked}, found in its packs: the baker's terrain is not {@link Synthetic}'s
+     * function, and its spawn, the center of tile (0, 0), is 2,040 blocks from the west edge. The same
+     * five as synthetic, each {@code x, y, z, yaw, pitch}, standing above what the packs draw there:
+     * <ul>
+     * <li>{@code EDGE_VIEW}: {@value #EDGE_INSET} blocks inside the west edge of tile (0, 0) (where synthetic's
+     * spawn is) on the spawn's z, 100 above the highest column from {@value #EDGE_PAST} blocks past the edge
+     * back to it, facing west 15° down. The line of sight comes down 100 blocks in 373, so nothing on the way
+     * stops it before it is {@value #EDGE_PAST} blocks into tile (-1, 0); lower ground there only takes it
+     * further in.</li>
+     * <li>{@code plain}: 60 above the center of the flattest dry 64 × 64 block square of tile (0, 0)
+     * (least spread of ground heights, first by z and then x), facing east 10° down.</li>
+     * <li>{@code lake}: 110 blocks west of the deepest water of tile (0, 0) and 40 above its surface, facing
+     * east 20° down, which brings the line of sight down to the surface there.</li>
+     * <li>{@code ridge}: 400 blocks west of the highest fine sample of tile (0, 0), 20 above it (or above the
+     * ground under the camera, if higher), facing east 5° down.</li>
+     * <li>{@code edge-outward}: 100 blocks inside the west edge of tile (0, 0) on the spawn's z, 60 above the
+     * ground, facing west 10° down.</li>
+     * </ul>
+     */
+    static final class Baked {
+        static final double EDGE_INSET = 264.5;
+        static final int EDGE_PAST = 110;
+        private static final int SQUARE = 64;
+
+        private Baked() {
+        }
+
+        static Map<String, double[]> views(Map<String, byte[]> packs, Pos spawn) {
+            final Map<String, double[]> views = new TreeMap<>();
+            final byte[] whole = packs.get("0 0");
+            if (whole == null) return views;
+            final Drawn drawn = new Drawn(packs);
+            final int z = (int) Math.floor(spawn.z());
+            int highest = Integer.MIN_VALUE;
+            for (int x = -EDGE_PAST; x <= EDGE_INSET; x++) highest = Math.max(highest, drawn.top(x, z));
+            views.put("EDGE_VIEW", new double[]{EDGE_INSET, highest + 1 + 100, spawn.z(), 90, 15});
+            views.put("edge-outward", new double[]{100.5, drawn.top(100, z) + 1 + 60, spawn.z(), 90, 10});
+            plain(drawn, Drawn.reader(whole).header().baseLevel())
+                    .ifPresent(at -> views.put("plain", new double[]{at[0] + 0.5, drawn.top(at[0], at[1]) + 1 + 60, at[1] + 0.5, -90, 10}));
+            pick(whole, Layer.FINE, s -> s.hasFluid() ? s.fluidTop() - s.fluidBottom() : -1).ifPresent(at ->
+                    views.put("lake", new double[]{at[0] - 110 + 0.5, drawn.top(at[0], at[1]) + 1 + 40, at[1] + 0.5, -90, 20}));
+            pick(whole, Layer.FINE, Sample::top).ifPresent(at -> views.put("ridge", new double[]{at[0] - 400 + 0.5,
+                    Math.max(drawn.top(at[0], at[1]), drawn.top(at[0] - 400, at[1])) + 1 + 20, at[1] + 0.5, -90, 5}));
+            return views;
+        }
+
+        /** The center column of the flattest dry square of tile (0, 0), none when every square has water or a hole. */
+        private static Optional<int[]> plain(Drawn drawn, int baseLevel) {
+            final int step = 1 << baseLevel;
+            int best = Integer.MAX_VALUE;
+            int[] at = null;
+            for (int z0 = 0; z0 < FarViewPack.TILE_BLOCKS; z0 += SQUARE) {
+                for (int x0 = 0; x0 < FarViewPack.TILE_BLOCKS; x0 += SQUARE) {
+                    int low = Integer.MAX_VALUE, high = Integer.MIN_VALUE;
+                    boolean dry = true;
+                    square:
+                    for (int z = z0; z < z0 + SQUARE; z += step) {
+                        for (int x = x0; x < x0 + SQUARE; x += step) {
+                            final Sample sample = drawn.at(x, z);
+                            if (sample.hasFluid() || !sample.hasGround()) {
+                                dry = false;
+                                break square;
+                            }
+                            low = Math.min(low, sample.groundY());
+                            high = Math.max(high, sample.groundY());
+                        }
+                    }
+                    if (dry && high - low < best) {
+                        best = high - low;
+                        at = new int[]{x0 + SQUARE / 2, z0 + SQUARE / 2};
+                    }
+                }
+            }
+            return Optional.ofNullable(at);
+        }
+    }
+
+    /**
+     * The packs as the client draws them, the fine layer of a whole pack and the coarse layer of a coarse
+     * prefix, each block inflated once as it is first asked for.
+     */
+    static final class Drawn {
+        private final Map<String, FarViewPack.Reader> readers = new TreeMap<>();
+        private final Map<String, List<Sample>> blocks = new HashMap<>();
+
+        Drawn(Map<String, byte[]> packs) {
+            packs.forEach((tile, pack) -> readers.put(tile, reader(pack)));
+        }
+
+        static FarViewPack.Reader reader(byte[] pack) {
+            try {
+                return FarViewPack.Reader.read(pack);
+            } catch (FarViewPack.Invalid e) {
+                throw new IllegalStateException(e);
+            }
+        }
+
+        /** The sample covering column x, z, an empty one where no pack is. */
+        Sample at(int x, int z) {
+            final int tileX = Math.floorDiv(x, FarViewPack.TILE_BLOCKS), tileZ = Math.floorDiv(z, FarViewPack.TILE_BLOCKS);
+            final FarViewPack.Reader reader = readers.get(tileX + " " + tileZ);
+            if (reader == null) return Sample.EMPTY;
+            final Layer layer = reader.coarseOnly() ? Layer.COARSE : Layer.FINE;
+            final int level = layer == Layer.COARSE ? FarViewPack.COARSE_LEVEL : reader.header().baseLevel();
+            final int sx = (x - tileX * FarViewPack.TILE_BLOCKS) >> level, sz = (z - tileZ * FarViewPack.TILE_BLOCKS) >> level;
+            final int bx = sx / FarViewPack.BLOCK_SIDE, bz = sz / FarViewPack.BLOCK_SIDE;
+            final List<Sample> block = blocks.computeIfAbsent(tileX + " " + tileZ + " " + bx + " " + bz, _ -> {
+                try {
+                    for (FarViewPack.Block present : reader.blocks(layer)) {
+                        if (present.bx() == bx && present.bz() == bz) return reader.samples(present);
+                    }
+                } catch (FarViewPack.Invalid e) {
+                    throw new IllegalStateException(e);
+                }
+                return Collections.nCopies(FarViewPack.BLOCK_SAMPLES, Sample.EMPTY);
+            });
+            return block.get(sz % FarViewPack.BLOCK_SIDE * FarViewPack.BLOCK_SIDE + sx % FarViewPack.BLOCK_SIDE);
+        }
+
+        /** The absolute y of the top block of column x, z; one below the world where it is empty. */
+        int top(int x, int z) {
+            final FarViewPack.Reader reader = readers.get(Math.floorDiv(x, FarViewPack.TILE_BLOCKS) + " "
+                    + Math.floorDiv(z, FarViewPack.TILE_BLOCKS));
+            return reader == null ? Integer.MIN_VALUE : reader.header().minY() + at(x, z).top();
+        }
+    }
+
+    /**
      * {@code /expect.json}: the four points of V1 ④ with the block and the absolute y of the top of
      * their column as the packs hold it (the whole pack's fine sample in tile (0, 0), the coarse sample
-     * of the tile around), and the camera spots. In {@code baked} the points are the highest fine sample
+     * of the tile around), and the camera spots ({@link Synthetic#views} and EDGE_VIEW 100 above the spawn,
+     * {@link Baked#views} in {@code baked}). In {@code baked} the points are the highest fine sample
      * of tile (0, 0), its first sample with fluid and the highest coarse sample of tile (-1, 0); a
      * generator source hides nothing, so there is no hidden point.
      */
@@ -580,8 +710,12 @@ final class FarViewShardFixture {
         }
         json.add("points", points);
         final JsonObject views = new JsonObject();
-        views.add("EDGE_VIEW", view(new double[]{spawn.x(), spawn.y() + 100, spawn.z(), 90, 15}));
-        content.views().forEach((name, view) -> views.add(name, view(view)));
+        if (mode.equals("baked")) {
+            Baked.views(content.packs(), spawn).forEach((name, view) -> views.add(name, view(view)));
+        } else {
+            views.add("EDGE_VIEW", view(new double[]{spawn.x(), spawn.y() + 100, spawn.z(), 90, 15}));
+            Synthetic.views().forEach((name, view) -> views.add(name, view(view)));
+        }
         json.add("views", views);
         json.addProperty("spawn", spawn.x() + " " + spawn.y() + " " + spawn.z());
         return new GsonBuilder().setPrettyPrinting().disableHtmlEscaping().create().toJson(json) + "\n";
@@ -656,7 +790,7 @@ final class FarViewShardFixture {
         json.addProperty("layer", layer == Layer.COARSE ? "coarse" : "fine");
         json.addProperty("block", block == null ? "unknown" : block.key().asString());
         json.addProperty("state", state);
-        json.addProperty("y", (fluid ? sample.fluidTop() : sample.groundY()) + MIN_Y);
+        json.addProperty("y", (fluid ? sample.fluidTop() : sample.groundY()) + Drawn.reader(pack).header().minY());
         return json;
     }
 

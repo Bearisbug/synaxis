@@ -17,6 +17,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.TreeMap;
 import java.util.TreeSet;
+import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
@@ -30,11 +31,16 @@ import static org.junit.jupiter.api.Assumptions.assumeTrue;
  * The frozen far view vectors of {@code docs/DESIGN-M3.md} §24 against {@link FarViewPack} and
  * {@link FarViewAnnouncement}; the client mod runs the same directory. {@code manifest.txt} freezes
  * both {@code format_version}s and the SHA-256 of every file, so changing a layout without raising
- * its version and refreezing is a red build. The written pack bytes are only compared where
- * {@link java.util.zip.Deflater} gives the zlib fingerprint frozen beside them; everywhere else the
- * samples are.
+ * its version and refreezing is a red build. The samples the writer makes are compared on every JDK,
+ * its pack bytes only where {@link java.util.zip.Deflater} gives the zlib fingerprint frozen beside
+ * them, unless {@link #REQUIRE_FROZEN_ZLIB} is set.
  */
 class FarViewVectorTest {
+    /**
+     * Set on CI, the switch of the {@code .synx} vectors (see {@code protocol/build.gradle.kts}): the byte
+     * for byte comparison fails instead of being skipped when this JDK's zlib is not the frozen one.
+     */
+    static final String REQUIRE_FROZEN_ZLIB = "synaxis.synx.require-frozen-zlib";
 
     private static Path dir() {
         return FarViewVectors.dir();
@@ -176,29 +182,65 @@ class FarViewVectorTest {
         assertEquals(wholeSamples, samples(coarse));
     }
 
+    /** What the writer makes of the inputs reads back as the frozen file does: header but {@code fine_offset}, biomes, blocks, samples. */
+    private static void assertSameContent(byte[] frozen, byte[] written, String file) throws FarViewPack.Invalid {
+        final FarViewPack.Reader expected = FarViewPack.Reader.read(frozen), actual = FarViewPack.Reader.read(written);
+        final FarViewPack.Header h = expected.header();
+        assertEquals(new FarViewPack.Header(h.baseLevel(), h.coarseLevel(), h.tileX(), h.tileZ(), h.minY(), h.height(),
+                h.blockStates(), h.protocolVersion(), actual.header().fineOffset()), actual.header(), file);
+        assertEquals(expected.biomes(), actual.biomes(), file);
+        assertEquals(expected.coarseOnly(), actual.coarseOnly(), file);
+        for (Layer layer : Layer.values()) {
+            final List<FarViewPack.Block> want = expected.blocks(layer), got = actual.blocks(layer);
+            assertEquals(want.stream().map(b -> b.bx() + "," + b.bz()).toList(), got.stream().map(b -> b.bx() + "," + b.bz()).toList(),
+                    file + " " + layer);
+            for (int i = 0; i < want.size(); i++) {
+                assertEquals(expected.samples(want.get(i)), actual.samples(got.get(i)), file + " " + layer + " " + want.get(i));
+            }
+        }
+    }
+
+    /** On every JDK: the zlib streams may differ between builds, what they inflate to may not. */
+    @Test
+    void theWriterReproducesTheSamplesOfThePackAndItsCoarsePrefix() throws IOException, FarViewPack.Invalid {
+        final FarViewPack.Writer writer = FarViewVectors.packSmall();
+        assertSameContent(read(FarViewVectors.PACK), writer.write(), FarViewVectors.PACK);
+        assertSameContent(read(FarViewVectors.COARSE_PACK), writer.coarsePrefix(), FarViewVectors.COARSE_PACK);
+    }
+
     @Test
     void theWriterReproducesThePackBytesOnTheFrozenZlib() throws IOException {
         final String frozen = Files.readAllLines(dir().resolve("manifest.txt")).get(2);
-        assumeTrue(frozen.equals("zlib " + FarViewVectors.zlibFingerprint()),
-                "this JDK's zlib differs from the one the far view vectors were frozen with; the samples are compared instead");
+        final boolean sameZlib = frozen.equals("zlib " + FarViewVectors.zlibFingerprint());
+        final String differs = "this JDK's zlib differs from the one the far view vectors were frozen with";
+        if (Boolean.getBoolean(REQUIRE_FROZEN_ZLIB)) {
+            assertTrue(sameZlib, differs + "; " + REQUIRE_FROZEN_ZLIB + " is set, so either run on the JDK build the"
+                    + " vectors were frozen with or refreeze them with :protocol:generateFarViewVectors");
+        } else {
+            assumeTrue(sameZlib, differs + "; theWriterReproducesTheSamplesOfThePackAndItsCoarsePrefix still holds");
+        }
         final FarViewPack.Writer writer = FarViewVectors.packSmall();
         assertArrayEquals(read(FarViewVectors.PACK), writer.write());
         assertArrayEquals(read(FarViewVectors.COARSE_PACK), writer.coarsePrefix());
     }
 
-    /** Each edge pack, and the words its refusal must name so that it fails for the reason it was made for. */
+    /**
+     * Each edge pack, and a pattern its refusal must match so that it fails for the reason it was made
+     * for, not for one that names the same field.
+     */
     static List<String[]> edgePacks() {
         return List.of(
                 new String[]{"pack-format-version-2.hfp", "format_version 2"},
                 new String[]{"pack-flags.hfp", "flags"},
                 new String[]{"pack-base-level-3.hfp", "base_level 3"},
                 new String[]{"pack-coarse-level-3.hfp", "coarse_level 3"},
-                new String[]{"pack-fine-offset-past-end.hfp", "fine_offset"},
+                new String[]{"pack-fine-offset-past-end.hfp", "^fine_offset \\d+ is past the end of the \\d+ byte pack$"},
                 new String[]{"pack-coarse-block-past-fine-offset.hfp", "coarse block 3,0"},
-                new String[]{"pack-index-past-end.hfp", "past the end"},
+                new String[]{"pack-index-past-end.hfp", "^fine block 15,0 at \\d+\\+\\d+ is past the end of the \\d+ byte pack$"},
                 new String[]{"pack-overlapping-blocks.hfp", "overlaps"},
                 new String[]{"pack-block-not-32768.hfp", "32768"},
-                new String[]{"pack-invariant.hfp", "invariant"});
+                new String[]{"pack-invariant.hfp", "^fine block 15,0 sample \\d+,\\d+ breaks an invariant: ground and fluid: "
+                        + "fluid_bottom \\d+ is not ground_y \\d+ \\+ 1"});
     }
 
     @ParameterizedTest(name = "{0}")
@@ -207,14 +249,14 @@ class FarViewVectorTest {
         final byte[] bytes = read("edge/" + file);
         final FarViewPack.Invalid thrown = assertThrows(FarViewPack.Invalid.class,
                 () -> FarViewPack.Reader.read(bytes).verify(), file);
-        assertTrue(thrown.getMessage().contains(reason), file + ": " + thrown.getMessage());
+        assertTrue(Pattern.compile(reason).matcher(thrown.getMessage()).find(), file + ": " + thrown.getMessage());
     }
 
     static List<String[]> edgeAnnouncements() {
         return List.of(
                 new String[]{"announce-count-65.bin", "count 65"},
                 new String[]{"announce-url-too-long.bin", "string length 1025"},
-                new String[]{"announce-duplicate-tile.bin", "0,0"},
+                new String[]{"announce-duplicate-tile.bin", "^tile 0,0 is announced twice$"},
                 new String[]{"announce-layer-2.bin", "layer 2"},
                 new String[]{"announce-no-full-tile.bin", "layer 0"});
     }
@@ -225,7 +267,7 @@ class FarViewVectorTest {
         final byte[] bytes = read("edge/" + file);
         final MalformedMessageException thrown = assertThrows(MalformedMessageException.class,
                 () -> FarViewAnnouncement.read(MsgBuf.reading(bytes)), file);
-        assertTrue(thrown.getMessage().contains(reason), file + ": " + thrown.getMessage());
+        assertTrue(Pattern.compile(reason).matcher(thrown.getMessage()).find(), file + ": " + thrown.getMessage());
     }
 
     @Test

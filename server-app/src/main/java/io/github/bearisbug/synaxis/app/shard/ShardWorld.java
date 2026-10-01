@@ -157,8 +157,9 @@ public final class ShardWorld {
      * each pack held to the manifest first, its size and SHA-256, and for a tile announced by its coarse
      * prefix also {@code coarse_bytes} against the {@code fine_offset} of its header and
      * {@code coarse_sha256} against its first {@code coarse_bytes} bytes. Nothing is announced without a
-     * url root, without a tile meeting the bounds, or when one pack does not match; one line of the log
-     * says which, a WARN for a pack. None of it refuses the start: the far view is optional.
+     * url root, without a tile meeting the bounds, when one pack does not match, or when the tiles make
+     * no announcement (over 64 of them, a url over 1,024 bytes); one line of the log says which, a WARN
+     * for the last two. None of it refuses the start: the far view is optional.
      *
      * @return the announcement, null when there is none
      */
@@ -174,7 +175,6 @@ public final class ShardWorld {
             return null;
         }
         final SynxManifest.FarView first = tiles.getFirst().pack();
-        final List<FarViewAnnouncement.Tile> announced = new ArrayList<>(tiles.size());
         for (AnnouncedTile tile : tiles) {
             final SynxManifest.FarView pack = tile.pack();
             final String file = "farview/t." + pack.tileX() + "." + pack.tileZ() + ".hfp";
@@ -186,14 +186,18 @@ public final class ShardWorld {
                 LOGGER.warn("Far view off: {} of {} {}", file, manifest.buildId(), mismatch);
                 return null;
             }
-            final boolean whole = tile.layer() == FarViewAnnouncement.LAYER_FULL;
-            final byte[] digest = whole ? pack.sha256() : pack.coarseSha256();
-            announced.add(new FarViewAnnouncement.Tile(pack.tileX(), pack.tileZ(), tile.layer(),
-                    whole ? pack.bytes() : pack.coarseBytes(), digest,
-                    urlRoot + "/" + manifest.mapId() + "/farview/" + SynxDigests.hex(digest) + ".hfp"));
         }
         final FarViewAnnouncement announcement;
         try {
+            final List<FarViewAnnouncement.Tile> announced = new ArrayList<>(tiles.size());
+            for (AnnouncedTile tile : tiles) {
+                final SynxManifest.FarView pack = tile.pack();
+                final boolean whole = tile.layer() == FarViewAnnouncement.LAYER_FULL;
+                final byte[] digest = whole ? pack.sha256() : pack.coarseSha256();
+                announced.add(new FarViewAnnouncement.Tile(pack.tileX(), pack.tileZ(), tile.layer(),
+                        whole ? pack.bytes() : pack.coarseBytes(), digest,
+                        urlRoot + "/" + manifest.mapId() + "/farview/" + SynxDigests.hex(digest) + ".hfp"));
+            }
             announcement = new FarViewAnnouncement(manifest.buildId(), first.baseLevel(), first.coarseLevel(),
                     manifest.world().minY(), manifest.world().height(), announced);
         } catch (MalformedMessageException e) {

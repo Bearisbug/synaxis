@@ -19,8 +19,10 @@ changed, or a deliberate change of the inputs, and commit the result in the same
 
 `manifest.txt` holds `pack_format_version`, `announcement_format_version`, a `zlib` fingerprint
 (SHA-256 of what `Deflater` at level 9 makes of a fixed 64 KiB input, `FarViewVectors#zlibFingerprint`)
-and the SHA-256 of each file. The writer's pack bytes are only compared on a JDK whose fingerprint
-matches; everywhere else the samples read back are compared instead.
+and the SHA-256 of each file. What the writer makes is read back and compared with the frozen packs
+sample by sample on every JDK; its bytes are compared too on a JDK whose fingerprint matches. With
+`-Dsynaxis.synx.require-frozen-zlib=true` (CI, the switch of the `.synx` vectors) another fingerprint
+fails the byte comparison instead of skipping it.
 
 ## Regular vectors
 

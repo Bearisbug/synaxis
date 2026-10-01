@@ -2,9 +2,12 @@ package io.github.bearisbug.synaxis.app.transfer;
 
 import io.github.bearisbug.synaxis.app.store.PlayerStore;
 import io.github.bearisbug.synaxis.entity.Player;
+import io.github.bearisbug.synaxis.plugin.DisconnectKeys;
+import io.github.bearisbug.synaxis.timer.TaskSchedule;
 import net.kyori.adventure.text.Component;
 
 import java.security.SecureRandom;
+import java.time.Duration;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -23,11 +26,18 @@ import java.util.function.BiConsumer;
  * tick thread that owns it: {@code OutgoingTransferEvent} is a player event, and its listeners may
  * touch the player ({@code API-PROD-016}). A player that left before that tick gets no ticket; one
  * still connected gets it at its tick, however late.
+ * <p>
+ * A client told where to go leaves at once. One still connected {@link #LEAVE_WITHIN} later is
+ * disconnected with {@code synaxis:transfer-rejected}: it would otherwise stay in {@code in_transit},
+ * frozen and holding a seat, for as long as it keeps the connection, and so would a player whose
+ * {@code OutgoingTransferEvent} a listener cancelled.
  */
 public final class TicketIssuer implements TransferTickets {
 
     /** What a player who stays after a failed transfer sees: its character was not written, or a gate found no channel. */
     public static final String TRANSFER_FAILED = "synaxis:transfer-failed";
+    /** How long a client sent its ticket has to leave, well inside the ticket's lifetime. */
+    private static final Duration LEAVE_WITHIN = Duration.ofSeconds(10);
 
     private final PlayerStore store;
     private final TransferKeys keys;
@@ -106,6 +116,9 @@ public final class TicketIssuer implements TransferTickets {
         // The cookie first: the client stores it before it acts on the transfer
         player.getPlayerConnection().storeCookie(TransferTicket.COOKIE, ticket.encode(keys));
         player.getPlayerConnection().transfer(host, port);
+        player.scheduler().buildTask(() -> {
+            if (player.isOnline()) player.kick(Component.translatable(DisconnectKeys.TRANSFER_REJECTED));
+        }).delay(TaskSchedule.duration(LEAVE_WITHIN)).schedule();
         final Map<String, Object> issued = new LinkedHashMap<>();
         issued.put("transfer_ref", ticket.reference());
         issued.put("player_uuid", ticket.playerUuid());

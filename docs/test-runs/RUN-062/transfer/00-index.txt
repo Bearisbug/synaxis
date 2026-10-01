@@ -1,0 +1,31 @@
+# Group transfer of the production-readiness session (branch sec/transfer-ghost), for the integrate round to register as part of RUN-062.
+# Security review findings B-01 (a client that ignores its Transfer stays in in_transit on the source) and C-02 (gm.role grants judged by
+# the shard's cache, the grant upsert clearing expires_at). Base main 23982267e9; code under test e9e3ea6945 (B-01) + 5acee52a88 (C-02)
+# + 703528c9e9 (review round: third grant test, RoleStore#handOut Javadoc); docs/DESIGN-PROD.md v0.9.40, docs/TEST.md TC-PROD-590 to
+# TC-PROD-597 and TC-PROD-215 step 4. 2026-10-01 10:12 to 11:28 and 12:37 to 12:52 (UTC+8).
+# Machine: Apple M4 Pro, 12 cores, 24 GB, macOS, Homebrew JDK 25.0.4.1; other groups building between these runs (load average about 9).
+# Every Gradle run held /tmp/synaxis-heavy.lock: --max-workers=4 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts, with
+# SYNAXIS_TEST_PG_URL=jdbc:postgresql://127.0.0.1:5440/postgres, SYNAXIS_TEST_REDIS_URL=redis://127.0.0.1:6440 and the password of synaxis-pg
+# (the probe of 05 needs no database). Raw artefacts (Gradle logs, JUnit XML) stayed in a temporary directory, deleted after the round;
+# the lines here are copied out of them.
+00-index.txt                    this file
+01-red-on-base.txt              the two new classes on the base, grant class at two tests: 5 of 5 red (TC-PROD-590, 591, 592 step 2)
+02-green-and-counterproofs.txt  green run of both classes, eight counter proofs (TC-PROD-590 to 595, TC-PROD-596 step 1), grant class at two tests
+03-full-runs.txt                :server-app:test full on e9e3ea6945 + 5acee52a88, 528 tests; superseded by 06 for TC-PROD-596 step 2
+04-review-grant-class.txt       grant class at three tests: green, five counter proofs, 3 of 3 red on the base (TC-PROD-594, 595, 597)
+05-gap-grid-probe.txt           GAP-grid: probe of a pickup across a grid cell border (not committed), DESIGN-PROD §28.2 risk row
+06-full-runs-after-review.txt   :server-app:test full on 703528c9e9, default and strict grid, 529 tests (TC-PROD-596 step 2)
+
+# Results (8 cases, 8 pass)
+TC-PROD-590  pass   kicked with synaxis:transfer-rejected 10.4 s after the ticket, ticket then accepted by the target; base red at :128 (via :161)
+TC-PROD-591  pass   cancelled OutgoingTransferEvent, same kick; base red at :128 (via :196)
+TC-PROD-592  pass   presence refresh keeps in_transit; base red at :220 ("state":"online")
+TC-PROD-593  pass   PlayerStore#isOnline false once in transit; counter proof red at :234 (no base red: the method is new)
+TC-PROD-594  pass   expiry kept and inherited, expired row not revived; base red at :142, counter proofs red at :144 and :149 (+ :200)
+TC-PROD-595  pass   role taken back not granted back, no gm.role no hand-out; base red at :180, counter proofs red at :180 (and :156)
+TC-PROD-596  pass   TC-PROD-215 step 4 rewritten: 19 tests, 1 failed at RoleEscalationIntegrationTest.java:114 as before;
+                    full :server-app:test 529 tests 0 failures 0 skipped, default 4 m 50 s, strict grid 4 m 49 s (06)
+TC-PROD-597  pass   a lapsed grant handed out again takes the holder's earliest expiry; base red at :200 (mod=never),
+                    counter proof WHERE false red at :200 (the lapsed expiry stays)
+# Not run here: root :test and the other modules (no engine source changed; the probe of 05 ran one uncommitted class of the root
+# module), TC-PROD-548 and the P10 job (real processes and clients; the kick after 10 s does not touch a client that follows its Transfer).

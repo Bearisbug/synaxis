@@ -1,0 +1,47 @@
+# Red on the base: main 23982267e9 with only the two new test classes added (TransferNotFollowedIntegrationTest without its last test,
+# onlyAPlayerATransferWouldTakeIsOnlineToTheStore, which calls PlayerStore#isOnline that the base does not have; that test is at the end
+# of the class, so removing it moves no other line; the assertFalse import replaced by an empty line and {@link PlayerStore#isOnline}
+# by {@code ...} in the class comment, both errors under Error Prone). Main sources: git checkout -- server-app/src/main after
+# git diff > patch; restored with git apply afterwards. Database variables set (SYNAXIS_TEST_PG_URL, _PASSWORD, _REDIS_URL).
+
+## :server-app:test --rerun --tests ...store.TransferNotFollowedIntegrationTest --tests ...app.RoleHandOutIntegrationTest
+  start 2026-10-01 10:12:19
+  RoleHandOutIntegrationTest > aRoleTakenBackIsNotHandedOutFromWhatTheShardReadBefore(Env) FAILED
+      org.opentest4j.AssertionFailedError at RoleHandOutIntegrationTest.java:180
+  RoleHandOutIntegrationTest > aHolderHandsOutNothingThatOutlivesItsOwnGrants(Env) FAILED
+      org.opentest4j.AssertionFailedError at RoleHandOutIntegrationTest.java:142
+  TransferNotFollowedIntegrationTest > aTransferWhoseEventAPluginCancelledLetsThePlayerGoAllTheSame(Env) FAILED
+      java.lang.AssertionError at TransferNotFollowedIntegrationTest.java:128
+  TransferNotFollowedIntegrationTest > aClientThatIgnoresItsTransferIsDisconnected(Env) FAILED
+      java.lang.AssertionError at TransferNotFollowedIntegrationTest.java:128
+  TransferNotFollowedIntegrationTest > thePresenceRefreshReportsAPlayerInTransitAsInTransit(Env) FAILED
+      org.opentest4j.AssertionFailedError at TransferNotFollowedIntegrationTest.java:220
+  5 tests completed, 5 failed
+  > Task :server-app:test FAILED
+  BUILD FAILED in 45s
+  end 2026-10-01 10:13:05 rc=1
+
+## JUnit XML
+  RoleHandOutIntegrationTest: tests=2 failures=2 errors=0 skipped=0 time=2.464s
+    aRoleTakenBackIsNotHandedOutFromWhatTheShardReadBefore(Env) 2.089s FAIL
+      org.opentest4j.AssertionFailedError: expected: <[role grant 284158b5-3bb8-4f0f-97d3-0c092fbab80a helper -> above_sender, role grant f7ff0ea6-f3cc-4718-afb3-5657340ac83b mod -> above_sender]> but was: <[role grant 284158b5-3bb8-4f0f-97d3-0c092fbab80a helper -> ok, role grant f7ff0ea6-f3cc-4718-afb3-5657340ac83b mod -> ok]>
+      at RoleHandOutIntegrationTest.java:180
+    aHolderHandsOutNothingThatOutlivesItsOwnGrants(Env) 0.366s FAIL
+      org.opentest4j.AssertionFailedError: its own grant keeps its expiry ==> expected: <{mod=2026-10-02 10:12:33.253205+08, helper=never}> but was: <{helper=never, mod=never}>
+      at RoleHandOutIntegrationTest.java:142
+  TransferNotFollowedIntegrationTest: tests=3 failures=3 errors=0 skipped=0 time=31.275s
+    aTransferWhoseEventAPluginCancelledLetsThePlayerGoAllTheSame(Env) 15.354s FAIL
+      java.lang.AssertionError: not by the deadline: the source lets go of a player nobody told to leave
+      at TransferNotFollowedIntegrationTest.java:128
+      at TransferNotFollowedIntegrationTest.java:196
+    aClientThatIgnoresItsTransferIsDisconnected(Env) 15.381s FAIL
+      java.lang.AssertionError: not by the deadline: the source lets go of a client that stays
+      at TransferNotFollowedIntegrationTest.java:128
+      at TransferNotFollowedIntegrationTest.java:161
+    thePresenceRefreshReportsAPlayerInTransitAsInTransit(Env) 0.537s FAIL
+      org.opentest4j.AssertionFailedError: the refresh keeps it in transit: {"shard_id":"r2-c1-cbc5b0a2","session_id":1,"state":"online"} ==> expected: <true> but was: <false>
+      at TransferNotFollowedIntegrationTest.java:220
+
+# Reading: B-01 (TC-PROD-590, 591) the player is never let go and stays frozen; (TC-PROD-592) the refresh rewrites in_transit as online;
+# C-02 (TC-PROD-594) a self grant clears the expiry; (TC-PROD-595) the role taken back is granted back from the cache, and a holder
+# without gm.role in the database hands out mod.

@@ -98,21 +98,11 @@ final class DhLibraryBaker implements Runnable {
             final FarViewAnnouncement announcement = connection.announcement();
             final FarViewCache cache = connection.cache();
             if (loadCheck) {
-                final FarViewCache.Marker marker = connection.marker();
-                final Long rows = count(repo, "DetailLevel = " + announcement.baseLevel());
-                if (marker != null && rows != null && rows == marker.sources()) {
-                    cache.touch(key, System.currentTimeMillis());
-                    connection.state(FarViewConnection.State.READY);
-                    LOGGER.info("{}view {} ready ({} tiles)", FarViewClient.PREFIX, key, announcement.tiles().size());
-                    return;
-                }
-                cache.deleteMarker(key);
-                LOGGER.warn("{}view {} library does not match its marker: {} of {}", FarViewClient.PREFIX, key,
-                        rows == null ? "no answer" : rows, marker == null ? "?" : marker.sources());
+                if (!connection.loadChecked(count(repo, "DetailLevel = " + announcement.baseLevel()))) return;
                 final List<FarViewAnnouncement.Tile> missing = cache.missing(announcement.tiles());
                 if (!missing.isEmpty() && !connection.download(missing)) return;
             }
-            connection.state(FarViewConnection.State.BAKING);
+            if (!connection.baking()) return;
             bake(dhLevel, repo, started);
         } catch (Exception | LinkageError e) {
             if (stopped()) return;

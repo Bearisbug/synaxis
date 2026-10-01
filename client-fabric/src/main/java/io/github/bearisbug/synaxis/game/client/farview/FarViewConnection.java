@@ -1,6 +1,7 @@
 package io.github.bearisbug.synaxis.game.client.farview;
 
 import io.github.bearisbug.synaxis.game.protocol.FarViewAnnouncement;
+import java.io.IOException;
 import java.util.HexFormat;
 import java.util.List;
 import java.util.Optional;
@@ -183,11 +184,47 @@ public final class FarViewConnection {
         if (marker != null) {
             started = true;
             baker.start(this, level, true);
-        } else if (packsReady) {
+        } else if (packsReady && baking()) {
             started = true;
-            state.set(State.BAKING);
             baker.start(this, level, false);
         }
+    }
+
+    /**
+     * Moves to {@code baking} unless the connection or the level has ended. It holds the lock
+     * {@link #cancel} takes, so a cancel either finds {@code baking} and ends it or comes first and
+     * keeps the bake from starting; the state never stays {@code baking} after a cancel.
+     *
+     * @return whether it did
+     */
+    public synchronized boolean baking() {
+        if (cancelled.get()) return false;
+        state.set(State.BAKING);
+        return true;
+    }
+
+    /**
+     * The load check of a ready library ({@code API-M3-015} 写库条第 8 步), given what DH's library
+     * holds: a library holding the marker's sources stays ready, any other is baked again.
+     *
+     * @param rows the library's rows at the base level, null when DH's connection gave no answer
+     * @return whether the library is to be baked again
+     * @throws IOException if the marker cannot be rewritten or removed
+     */
+    public boolean loadChecked(@Nullable Long rows) throws IOException {
+        final FarViewCache.Marker matched = marker;
+        if (matched != null && rows != null && rows == matched.sources()) {
+            cache.touch(viewKey, System.currentTimeMillis());
+            state.set(State.READY);
+            LOGGER.info("{}view {} ready ({} tiles)", FarViewClient.PREFIX, viewKey, announcement().tiles().size());
+            return false;
+        }
+        // DH closes the library as the connection or the level ends: no answer then says nothing about the library
+        if (rows == null && cancelled.get()) return false;
+        cache.deleteMarker(viewKey);
+        LOGGER.warn("{}view {} library does not match its marker: {} of {}", FarViewClient.PREFIX, viewKey,
+                rows == null ? "no answer" : rows, matched == null ? "?" : matched.sources());
+        return true;
     }
 
     /**
@@ -195,7 +232,7 @@ public final class FarViewConnection {
      *
      * @param why for the log
      */
-    public void cancel(String why) {
+    public synchronized void cancel(String why) {
         if (!cancelled.compareAndSet(false, true)) return;
         cancelledNanos = System.nanoTime();
         final State was = state.get();

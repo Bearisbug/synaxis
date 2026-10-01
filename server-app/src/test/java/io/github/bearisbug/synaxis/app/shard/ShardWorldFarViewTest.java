@@ -47,9 +47,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * The far view announcement a map shard computes when it starts ({@code docs/DESIGN-M3.md}
- * {@code API-M3-015} 远景宣告, §19 the scenarios of {@code REQ-M3-024} on the shard). The packs here
- * are written straight through {@link FarViewPack.Writer} into a baked release and its manifest; the
- * baker writes the real ones from track S on.
+ * {@code API-M3-015} 远景宣告, §19 the scenarios of {@code REQ-M3-024} on the shard). The packs are the
+ * baker's, but for the 81 tiles of {@link #moreThan64TilesTurnTheFarViewOff}, written straight through
+ * {@link FarViewPack.Writer}.
  */
 @Timeout(120)
 public class ShardWorldFarViewTest {
@@ -100,36 +100,15 @@ public class ShardWorldFarViewTest {
     private static final SynxManifest.Bounds FOUR_TILES = new SynxManifest.Bounds(250, -8, 262, 7);
     private static final SynxManifest.Bounds R0 = new SynxManifest.Bounds(250, 0, 255, 7);
 
-    /** Bakes the four tile map and writes a pack for each of its tiles into the release and its manifest. */
-    public static ShardSettings fourTileRelease(Path mapsRoot, String urlRoot) throws IOException, SynxException {
+    /** Bakes the four tile map, a pack for each of its tiles in the release and its manifest. */
+    public static ShardSettings fourTileRelease(Path mapsRoot, String urlRoot) {
         final GeneratorSource source = new GeneratorSource(new GeneratorPreset(
                 unit -> unit.modifier().fillHeight(0, 40, Block.STONE), 0, 64, FOUR_TILES), Registries.vanilla());
         final Baker.Result result = Baker.bake(new Baker.Request("four", source, mapsRoot, 1, mapsRoot.resolve("logs"),
                 Registries.vanilla(), _ -> null, LightVersions.verified(), 1));
-        assertNotNull(result.directory(), result.toString());
-        final Path build = result.directory();
-        final SynxManifest manifest = SynxManifest.fromJson(Files.readString(build.resolve(SynxManifest.FILE_NAME)));
-        final List<SynxManifest.FarView> farview = new ArrayList<>();
-        Files.createDirectories(build.resolve("farview"));
-        for (int tileX = 0; tileX <= 1; tileX++) {
-            for (int tileZ = -1; tileZ <= 0; tileZ++) {
-                final FarViewPack.Writer writer = new FarViewPack.Writer(2, tileX, tileZ, 0, 64, Block.statesCount(), 776,
-                        List.of("minecraft:plains"))
-                        .block(FarViewPack.Layer.COARSE, tileX == 0 ? 3 : 0, tileZ == 0 ? 0 : 3, stone(30 + tileX * 2 + tileZ))
-                        .block(FarViewPack.Layer.FINE, tileX == 0 ? 15 : 0, tileZ == 0 ? 0 : 15, stone(39));
-                final byte[] pack = writer.write();
-                final byte[] prefix = writer.coarsePrefix();
-                Files.write(build.resolve("farview").resolve("t." + tileX + "." + tileZ + ".hfp"), pack);
-                farview.add(new SynxManifest.FarView(tileX, tileZ, 2, 4, pack.length, SynxDigests.sha256(pack),
-                        prefix.length, SynxDigests.sha256(prefix)));
-            }
-        }
-        final SynxManifest withPacks = new SynxManifest(manifest.mapId(), manifest.buildId(), manifest.contentHash(),
-                manifest.mcVersion(), manifest.protocolVersion(), manifest.registryDigest(), manifest.lightEngineVersion(),
-                manifest.bakerVersion(), manifest.world(), manifest.bounds(), manifest.regions(), farview,
-                manifest.source(), manifest.bake(), manifest.verify());
-        Files.writeString(build.resolve(SynxManifest.FILE_NAME), withPacks.toJson());
-        return new ShardSettings(mapsRoot.resolve("four"), build.getFileName().toString(), 4, 100, urlRoot);
+        assertEquals(Baker.EXIT_PUBLISHED, result.exitCode(), result.toString());
+        assertNotNull(result.directory());
+        return new ShardSettings(mapsRoot.resolve("four"), result.directory().getFileName().toString(), 4, 100, urlRoot);
     }
 
     private static List<FarViewPack.Sample> stone(int y) {
@@ -222,7 +201,39 @@ public class ShardWorldFarViewTest {
         assertEquals(4, started.attributes().get("farview_tiles"));
     }
 
-    /** §19 「分片不宣告远景的情形」: no url root, no tile in the bounds, a pack that does not match. */
+    /**
+     * §19 「分片在 configuration 阶段宣告本大区的瓦片」, what the shard announces (the wire is
+     * {@code FarViewLaunchTest}'s): the map of {@link MapFixture} lies in tile 0, 0 alone, so the announcement
+     * is that tile whole, with no coarse tile, its size and digest those of the manifest.
+     */
+    @Test
+    public void aShardOnAMapOfOneTileAnnouncesThatTileWhole(@TempDir Path maps) throws IOException, SynxException {
+        final ShardSettings fixture = MapFixture.bake(maps);
+        final ShardSettings settings = new ShardSettings(fixture.mapRoot(), fixture.mapBuild(), 4, 100, URL_ROOT);
+        final SynxManifest manifest = SynxManifest.fromJson(Files.readString(settings.buildDir().resolve(SynxManifest.FILE_NAME)));
+        final Started started = start(settings, null);
+
+        assertNotNull(started.farView(), started.log().toString());
+        final MsgBuf buf = MsgBuf.reading(started.farView());
+        final FarViewAnnouncement announcement = FarViewAnnouncement.read(buf);
+        assertEquals(0, buf.remaining());
+        assertEquals(manifest.buildId(), announcement.buildId());
+        assertEquals(4, announcement.coarseLevel());
+        assertEquals(1, announcement.tiles().size());
+        final FarViewAnnouncement.Tile tile = announcement.tiles().getFirst();
+        final SynxManifest.FarView pack = manifest.farview().getFirst();
+        assertEquals(List.of(0, 0, FarViewAnnouncement.LAYER_FULL), List.of(tile.tileX(), tile.tileZ(), tile.layer()));
+        assertEquals(pack.bytes(), tile.bytes());
+        assertArrayEquals(pack.sha256(), tile.sha256());
+        assertEquals(URL_ROOT + "/" + MapFixture.MAP_ID + "/farview/" + SynxDigests.hex(pack.sha256()) + ".hfp", tile.url());
+        assertEquals(List.of("Far view: 1 tile(s), 0 coarse, from " + URL_ROOT), farViewLines(started, Level.INFO));
+        assertEquals(1, started.attributes().get("farview_tiles"));
+    }
+
+    /**
+     * §19 「分片不宣告远景的情形」: no url root; a release baked before M3-G, whose {@code farview[]} is empty
+     * (a pack that does not match is {@link #aPackThatDoesNotMatchItsManifestStopsTheWholeAnnouncement}).
+     */
     @Test
     public void aShardWithoutAUrlRootOrAPackToAnnounceAnnouncesNothing(@TempDir Path maps)
             throws IOException, SynxException {
@@ -232,6 +243,8 @@ public class ShardWorldFarViewTest {
         assertEquals(0, noRoot.attributes().get("farview_tiles"));
 
         final ShardSettings fixture = MapFixture.bake(maps.resolve("b"));
+        final Path manifestFile = fixture.buildDir().resolve(SynxManifest.FILE_NAME);
+        Files.writeString(manifestFile, withFarView(SynxManifest.fromJson(Files.readString(manifestFile)), List.of()).toJson());
         final Started noTile = start(new ShardSettings(fixture.mapRoot(), fixture.mapBuild(), 4, 100, URL_ROOT), null);
         assertNull(noTile.farView());
         assertEquals(1, farViewLines(noTile, Level.INFO).size(), noTile.log().toString());

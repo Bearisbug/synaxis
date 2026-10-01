@@ -1,9 +1,11 @@
 package io.github.bearisbug.synaxis.baker;
 
+import io.github.bearisbug.synaxis.baker.anvil.HiddenArea;
 import io.github.bearisbug.synaxis.synx.SynxManifest;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
+import java.util.List;
 
 /**
  * The input of a bake (API-M3-003): an edit source save or a generator. {@link #read} may be called from
@@ -35,6 +37,15 @@ public interface BakeSource extends AutoCloseable {
      * @throws io.github.bearisbug.synaxis.baker.anvil.AnvilSourceException naming the first chunk that is not
      */
     void checkGate(int threads) throws IOException;
+
+    /**
+     * The areas the source's {@code synaxis:hidden} data markers keep out of the far view packs (API-M3-003),
+     * collected by {@link #checkGate}: corners as min and max, ordered by x1, z1, x2 and z2. A source without data
+     * markers, a generator, hides nothing.
+     */
+    default List<HiddenArea> hiddenAreas() {
+        return List.of();
+    }
 
     /** One chunk inside {@link #bounds()}. */
     SourceChunk read(int chunkX, int chunkZ) throws IOException;

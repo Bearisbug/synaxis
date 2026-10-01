@@ -1,0 +1,140 @@
+# GAP-grid (read-only check asked of this group): can a player duplicate items with a pickup or a drop across a grid cell border
+# between the transfer freeze and the save? Answer from the code: no (docs/DESIGN-PROD.md §28.2, the risk row on cross-cell pickups).
+# The check turned up one thread-ownership defect, measured here with a probe test that is not committed: the picker's tick thread
+# removes an item entity that another tick thread owns (LivingEntity.java:242). The probe was copied to
+# src/test/java/io/github/bearisbug/synaxis/entity/CrossCellPickupProbeTest.java, run with
+# ./gradlew :test --rerun --tests io.github.bearisbug.synaxis.entity.CrossCellPickupProbeTest --max-workers=4 --no-daemon
+# --init-script gradle/init/aliyun-mirror.init.gradle.kts (STRICT adds the three strict grid properties), then deleted; each batch held
+# the heavy lock. HEAD 703528c9e9 (no engine source differs from main 23982267e9). The probe builds its own 4-thread grid of 2 by 2
+# chunk cells, so both modes tick the picker on Syn-Tick-0 and the item on Syn-Tick-3; the test JVM runs with assertions on, so
+# assertOwnership checks in the default mode as well. Production runs without -ea and without synaxis.acquirable-strict: there the
+# removal goes ahead on the wrong thread, which this probe does not measure.
+
+## Probe source (second version: the first lacked the two lines that print the exception's frames)
+  package io.github.bearisbug.synaxis.entity;
+  
+  import io.github.bearisbug.synaxis.ServerConfig;
+  import io.github.bearisbug.synaxis.coordinate.Pos;
+  import io.github.bearisbug.synaxis.event.item.PickupItemEvent;
+  import io.github.bearisbug.synaxis.instance.Instance;
+  import io.github.bearisbug.synaxis.item.ItemStack;
+  import io.github.bearisbug.synaxis.item.Material;
+  import io.github.bearisbug.synaxis.testing.Env;
+  import org.junit.jupiter.api.AfterEach;
+  import org.junit.jupiter.api.Test;
+  
+  import java.util.List;
+  import java.util.concurrent.CopyOnWriteArrayList;
+  
+  import static org.junit.jupiter.api.Assertions.assertEquals;
+  import static org.junit.jupiter.api.Assertions.assertNull;
+  import static org.junit.jupiter.api.Assertions.assertTrue;
+  
+  /** Probe, not committed: a picker on one tick thread picks up an item that the next cell's tick thread owns. */
+  public class CrossCellPickupProbeTest {
+  
+      private Env env;
+  
+      @AfterEach
+      void tearDown() {
+          env.process().stop();
+      }
+  
+      @Test
+      public void anItemAcrossACellBorderIsPickedUpOnce() {
+          env = Env.create(settings -> settings.dispatcherThreads(4)
+                  .threadProvider(ServerConfig.ThreadProviderKind.GRID)
+                  .threadGridExponent(1));
+          final Instance instance = env.createFlatInstance();
+          // Cells of 2 by 2 chunks: x = 32 is the border of cell (0, 0), id 0, and cell (1, 0), id 3
+          final LivingEntity picker = new LivingEntity(EntityType.ZOMBIE);
+          picker.setCanPickupItem(true);
+          picker.setInstance(instance, new Pos(31.7, 40, 8.5)).join();
+          final ItemEntity item = new ItemEntity(ItemStack.of(Material.DIAMOND, 1));
+          item.setInstance(instance, new Pos(32.3, 40, 8.5)).join();
+          final List<String> pickups = new CopyOnWriteArrayList<>();
+          env.process().eventHandler().addListener(PickupItemEvent.class, event -> pickups.add(Thread.currentThread().getName()
+                  + " picker-owned=" + event.getLivingEntity().acquirable().isOwned()
+                  + " item-owned=" + event.getItemEntity().acquirable().isOwned()));
+  
+          Throwable failure = null;
+          int ticks = 0;
+          while (ticks < 20 && failure == null) {
+              ticks++;
+              try {
+                  env.tick();
+              } catch (AssertionError e) {
+                  failure = e.getCause() == null ? e : e.getCause();
+              }
+          }
+          int laterFailures = 0;
+          for (int i = 0; i < 20; i++) {
+              try {
+                  env.tick();
+              } catch (AssertionError _) {
+                  laterFailures++;
+              }
+          }
+          System.out.println("PROBE ticks-until-failure=" + ticks + " failure=" + failure);
+          if (failure != null) for (StackTraceElement frame : failure.getStackTrace()) System.out.println("PROBE   at " + frame);
+          System.out.println("PROBE pickups=" + pickups + " later-failures=" + laterFailures);
+          System.out.println("PROBE item removed=" + item.isRemoved() + " pickable=" + item.isPickable()
+                  + " claimable-again=" + item.claim());
+          assertNull(failure, "the pickup across the border threw on a tick thread");
+          assertEquals(1, pickups.size());
+          assertTrue(item.isRemoved());
+      }
+  }
+
+## First batch, default then STRICT, 2026-10-01 12:41:35 to 12:42:00 (UTC+8)
+  ## default
+  start 2026-10-01 12:41:35
+  > Task :test FAILED
+  CrossCellPickupProbeTest > anItemAcrossACellBorderIsPickedUpOnce() FAILED
+  BUILD FAILED in 17s
+  end 2026-10-01 12:41:53 rc=1
+  PROBE ticks-until-failure=1 failure=io.github.bearisbug.synaxis.thread.AcquirableOwnershipException: Thread ownership assertion failed for io.github.bearisbug.synaxis.entity.ItemEntity@2fb81692:
+  PROBE pickups=[Syn-Tick-0 picker-owned=true item-owned=false] later-failures=0
+  PROBE item removed=false pickable=true claimable-again=false
+  ## strict
+  start 2026-10-01 12:41:53
+  CrossCellPickupProbeTest > anItemAcrossACellBorderIsPickedUpOnce() FAILED
+  > Task :test FAILED
+  BUILD FAILED in 6s
+  end 2026-10-01 12:42:00 rc=1
+  PROBE ticks-until-failure=1 failure=io.github.bearisbug.synaxis.thread.AcquirableOwnershipException: Thread ownership assertion failed for io.github.bearisbug.synaxis.entity.ItemEntity@4a2f7218:
+  PROBE pickups=[Syn-Tick-0 picker-owned=true item-owned=false] later-failures=0
+  PROBE item removed=false pickable=true claimable-again=false
+
+## Second batch, STRICT with the frames, 2026-10-01 12:42:35 to 12:42:41 (UTC+8)
+  ## strict
+  start 2026-10-01 12:42:35
+  > Task :test FAILED
+  CrossCellPickupProbeTest > anItemAcrossACellBorderIsPickedUpOnce() FAILED
+  BUILD FAILED in 5s
+  end 2026-10-01 12:42:41 rc=1
+  PROBE ticks-until-failure=1 failure=io.github.bearisbug.synaxis.thread.AcquirableOwnershipException: Thread ownership assertion failed for io.github.bearisbug.synaxis.entity.ItemEntity@6d34698e:
+  PROBE   at io.github.bearisbug.synaxis.thread.AcquirableImpl.assertOwnership(AcquirableImpl.java:131)
+  PROBE   at io.github.bearisbug.synaxis.entity.Entity.remove(Entity.java:1915)
+  PROBE   at io.github.bearisbug.synaxis.entity.Entity.remove(Entity.java:1911)
+  PROBE   at io.github.bearisbug.synaxis.entity.LivingEntity.lambda$update$2(LivingEntity.java:242)
+  PROBE   at io.github.bearisbug.synaxis.event.EventNode.callCancellable(EventNode.java:216)
+  PROBE   at io.github.bearisbug.synaxis.entity.Entity.callCancellableEvent(Entity.java:2119)
+  PROBE   at io.github.bearisbug.synaxis.entity.LivingEntity.lambda$update$1(LivingEntity.java:239)
+  PROBE   at io.github.bearisbug.synaxis.instance.EntityTrackerImpl.lambda$nearbyEntities$2(EntityTrackerImpl.java:236)
+  PROBE   at java.base/java.util.concurrent.CopyOnWriteArrayList.forEach(CopyOnWriteArrayList.java:905)
+  PROBE   at io.github.bearisbug.synaxis.instance.EntityTrackerImpl.lambda$nearbyEntities$1(EntityTrackerImpl.java:232)
+  PROBE   at io.github.bearisbug.synaxis.coordinate.ChunkRange.chunksInRange(ChunkRange.java:66)
+  PROBE   at io.github.bearisbug.synaxis.coordinate.ChunkRange.chunksInRange(ChunkRange.java:75)
+  PROBE   at io.github.bearisbug.synaxis.instance.EntityTrackerImpl.nearbyEntities(EntityTrackerImpl.java:229)
+  PROBE   at io.github.bearisbug.synaxis.entity.LivingEntity.update(LivingEntity.java:230)
+  PROBE   at io.github.bearisbug.synaxis.entity.Entity.tick(Entity.java:843)
+  PROBE   at io.github.bearisbug.synaxis.thread.TickThread.tick(TickThread.java:96)
+  PROBE   at io.github.bearisbug.synaxis.thread.TickThread.run(TickThread.java:65)
+  PROBE pickups=[Syn-Tick-0 picker-owned=true item-owned=false] later-failures=0
+  PROBE item removed=false pickable=true claimable-again=false
+
+# Reading: on the first tick the picker on Syn-Tick-0 claims the item, the PickupItemEvent fires once (item-owned=false), and
+# Entity#remove throws AcquirableOwnershipException at its assertOwnership (Entity.java:1915). The item stays in the world, still
+# claimed (claimable-again=false), so nothing picks it up again in the next 20 ticks and no second event fires: no duplication,
+# an item left behind. The fix is not this group's; the §28.2 row hands it to the integrate round.

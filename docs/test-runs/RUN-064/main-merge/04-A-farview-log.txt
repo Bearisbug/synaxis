@@ -1,0 +1,58 @@
+[23:23:42] [Render thread/INFO] (synaxis) [synaxis/farview] Distant Horizons 3.3.2 (API 7) found, far view events bound
+[23:23:43] [Render thread/INFO] (synaxis-gametest) [synaxis/farview] Distant Horizons' auto updater turned off for the gametests
+[23:23:48] [Netty Epoll IO #0/INFO] (synaxis) [synaxis/farview] announcement received: build farview3x3-82ef22b94f77-p776, 9 tile(s), 8 coarse, view 9ea70f2546ccab5c
+[23:23:48] [synaxis-farview-download/INFO] (synaxis) [synaxis/farview] view 9ea70f2546ccab5c downloading 9 object(s), 1126018 B
+[23:23:48] [synaxis-farview-download/INFO] (synaxis) [synaxis/farview] view 9ea70f2546ccab5c downloaded 9 object(s), 1126018 B in 233 ms
+[23:25:36] [synaxis-farview-bake/INFO] (synaxis) [synaxis/farview] view 9ea70f2546ccab5c baked in 98111 ms: 2304 sources, 29306216 B; written 7543 ms, visible 108591 ms after the announcement
+[23:29:22] [Netty Epoll IO #3/INFO] (synaxis) [synaxis/farview] announcement received: build farview3x3-82ef22b94f77-p776, 9 tile(s), 8 coarse, view 9ea70f2546ccab5c
+[23:29:23] [synaxis-farview-bake/INFO] (synaxis) [synaxis/farview] view 9ea70f2546ccab5c ready (9 tiles)
+[23:29:52] [Netty Epoll IO #6/INFO] (synaxis) [synaxis/farview] announcement received: build farview3x3-82ef22b94f77-p776, 9 tile(s), 8 coarse, view 9ea70f2546ccab5c
+[23:29:52] [synaxis-farview-download/INFO] (synaxis) [synaxis/farview] view 9ea70f2546ccab5c downloading 9 object(s), 1126018 B
+[23:29:52] [synaxis-farview-download/INFO] (synaxis) [synaxis/farview] view 9ea70f2546ccab5c downloaded 9 object(s), 1126018 B in 225 ms
+[23:29:58] [synaxis-farview-bake/INFO] (synaxis) [synaxis/farview] view 9ea70f2546ccab5c baked in 4986 ms: 2304 sources, 15931024 B; written 4986 ms, visible 6189 ms after the announcement
+[23:30:28] [Netty Epoll IO #9/INFO] (synaxis) [synaxis/farview] announcement received: build farview3x3-82ef22b94f77-p776, 9 tile(s), 8 coarse, view 9ea70f2546ccab5c
+[23:30:28] [synaxis-farview-download/INFO] (synaxis) [synaxis/farview] view 9ea70f2546ccab5c downloading 9 object(s), 1126018 B
+[23:30:29] [synaxis-farview-download/INFO] (synaxis) [synaxis/farview] view 9ea70f2546ccab5c downloaded 9 object(s), 1126018 B in 244 ms
+[23:30:29] [Render thread/WARN] (synaxis) [synaxis/farview] the test hook leaves Distant Horizons writable
+[23:31:45] [synaxis-farview-bake/INFO] (synaxis) [synaxis/farview] view 9ea70f2546ccab5c baked in 75153 ms: 2304 sources, 24795336 B; written 43211 ms, visible 76454 ms after the announcement
+[23:32:44] [Netty Epoll IO #12/INFO] (synaxis) [synaxis/farview] announcement received: build farview3x3-82ef22b94f77-p776, 9 tile(s), 8 coarse, view 9ea70f2546ccab5c
+[23:32:44] [synaxis-farview-download/INFO] (synaxis) [synaxis/farview] view 9ea70f2546ccab5c downloading 9 object(s), 1126018 B
+[23:32:44] [synaxis-farview-download/INFO] (synaxis) [synaxis/farview] view 9ea70f2546ccab5c downloaded 9 object(s), 1126018 B in 231 ms
+[23:33:00] [synaxis-farview-bake/INFO] (synaxis) [synaxis/farview] view 9ea70f2546ccab5c baked in 10544 ms: 384 sources, 10025408 B; written 3759 ms, visible 16146 ms after the announcement
+[23:34:18] [Netty Epoll IO #14/INFO] (synaxis) [synaxis/farview] announcement received: build farview3x3-82ef22b94f77-p776, 9 tile(s), 8 coarse, view 9ea70f2546ccab5c
+[23:34:18] [synaxis-farview-download/INFO] (synaxis) [synaxis/farview] view 9ea70f2546ccab5c downloading 9 object(s), 1126018 B
+[23:34:18] [synaxis-farview-download/INFO] (synaxis) [synaxis/farview] view 9ea70f2546ccab5c downloaded 9 object(s), 1126018 B in 219 ms
+[23:35:39] [synaxis-farview-bake/INFO] (synaxis) [synaxis/farview] view 9ea70f2546ccab5c baked in 79428 ms: 2304 sources, 22020096 B; written 36672 ms, visible 80785 ms after the announcement
+[23:36:07] [Netty Epoll IO #16/INFO] (synaxis) [synaxis/farview] announcement received: build farview3x3-82ef22b94f77-p776, 9 tile(s), 8 coarse, view 9ea70f2546ccab5c
+[23:36:09] [synaxis-farview-bake/WARN] (synaxis) [synaxis/farview] view 9ea70f2546ccab5c library does not match its marker: 2304 of 2305
+[23:36:22] [synaxis-farview-bake/INFO] (synaxis) [synaxis/farview] view 9ea70f2546ccab5c baked in 12789 ms: 2304 sources, 20094712 B; written 10774 ms, visible 14232 ms after the announcement
+[23:36:51] [Netty Epoll IO #18/INFO] (synaxis) [synaxis/farview] announcement received: build farview3x3-82ef22b94f77-p776, 9 tile(s), 8 coarse, view 9ea70f2546ccab5c
+[23:36:51] [synaxis-farview-download/INFO] (synaxis) [synaxis/farview] view 9ea70f2546ccab5c downloading 9 object(s), 1126018 B
+[23:36:51] [synaxis-farview-download/INFO] (synaxis) [synaxis/farview] view 9ea70f2546ccab5c downloaded 9 object(s), 1126018 B in 227 ms
+[23:36:53] [Render thread/INFO] (synaxis) [synaxis/farview] view 9ea70f2546ccab5c bake stopped: Distant Horizons unloaded the level
+[23:37:25] [Netty Epoll IO #20/INFO] (synaxis) [synaxis/farview] announcement received: build farview3x3-82ef22b94f77-p776, 9 tile(s), 8 coarse, view 9ea70f2546ccab5c
+[23:38:41] [synaxis-farview-bake/INFO] (synaxis) [synaxis/farview] view 9ea70f2546ccab5c baked in 74695 ms: 2304 sources, 22191912 B; written 34459 ms, visible 76045 ms after the announcement
+[23:39:11] [Netty Epoll IO #22/INFO] (synaxis) [synaxis/farview] announcement received: build farview3x3-82ef22b94f77-p776, 9 tile(s), 8 coarse, view 9ea70f2546ccab5c
+[23:39:11] [synaxis-farview-download/INFO] (synaxis) [synaxis/farview] view 9ea70f2546ccab5c downloading 9 object(s), 1126018 B
+[23:39:11] [synaxis-farview-download/INFO] (synaxis) [synaxis/farview] view 9ea70f2546ccab5c downloaded 9 object(s), 1126018 B in 217 ms
+[23:39:51] [Render thread/INFO] (synaxis) [synaxis/farview] view 9ea70f2546ccab5c bake stopped: Distant Horizons unloaded the level
+[23:40:01] [synaxis-farview-bake/WARN] (synaxis) [synaxis/farview] view 9ea70f2546ccab5c incomplete: no answer, so none of 2304 sources in the library
+[23:40:23] [Netty Epoll IO #0/INFO] (synaxis) [synaxis/farview] announcement received: build farview3x3-82ef22b94f77-p776, 9 tile(s), 8 coarse, view 9ea70f2546ccab5c
+[23:41:15] [synaxis-farview-bake/INFO] (synaxis) [synaxis/farview] view 9ea70f2546ccab5c baked in 50523 ms: 2304 sources, 20680832 B; written 22355 ms, visible 51962 ms after the announcement
+[23:41:46] [Netty Epoll IO #2/INFO] (synaxis) [synaxis/farview] announcement received: build farview3x3-82ef22b94f77-p776, 9 tile(s), 8 coarse, view 9ea70f2546ccab5c
+[23:41:46] [synaxis-farview-download/INFO] (synaxis) [synaxis/farview] view 9ea70f2546ccab5c downloading 9 object(s), 1126018 B
+[23:41:46] [synaxis-farview-download/INFO] (synaxis) [synaxis/farview] view 9ea70f2546ccab5c downloaded 9 object(s), 1126018 B in 222 ms
+[23:42:29] [Render thread/INFO] (synaxis) [synaxis/farview] view 9ea70f2546ccab5c bake stopped: Distant Horizons unloaded the level
+[23:42:40] [synaxis-farview-bake/INFO] (synaxis) [synaxis/farview] view 9ea70f2546ccab5c baked in 52845 ms: 2304 sources, 11415552 B; written 52845 ms, visible 54207 ms after the announcement
+[23:43:07] [Netty Epoll IO #4/INFO] (synaxis) [synaxis/farview] announcement received: build farview3x3-82ef22b94f77-p776, 9 tile(s), 8 coarse, view -; far view off (farview.radius is 0)
+[23:43:49] [Netty Epoll IO #6/INFO] (synaxis) [synaxis/farview] announcement received: build farview3x3-82ef22b94f77-p776, 9 tile(s), 8 coarse, view 9ea70f2546ccab5c
+[23:43:49] [synaxis-farview-download/INFO] (synaxis) [synaxis/farview] view 9ea70f2546ccab5c downloading 9 object(s), 1126018 B
+[23:43:49] [synaxis-farview-download/INFO] (synaxis) [synaxis/farview] view 9ea70f2546ccab5c downloaded 9 object(s), 1126018 B in 224 ms
+[23:45:13] [synaxis-farview-bake/INFO] (synaxis) [synaxis/farview] view 9ea70f2546ccab5c baked in 81887 ms: 2304 sources, 22138832 B; written 42149 ms, visible 83919 ms after the announcement
+[23:45:47] [Netty Epoll IO #8/INFO] (synaxis) [synaxis/farview] announcement received: build farview3x3-82ef22b94f77-p776, 9 tile(s), 8 coarse, view 9ea70f2546ccab5c
+[23:45:47] [synaxis-farview-download/INFO] (synaxis) [synaxis/farview] view 9ea70f2546ccab5c downloading 9 object(s), 1126018 B
+[23:45:47] [synaxis-farview-download/INFO] (synaxis) [synaxis/farview] view 9ea70f2546ccab5c downloaded 9 object(s), 1126018 B in 225 ms
+[23:45:52] [Render thread/INFO] (synaxis) [synaxis/farview] view 9ea70f2546ccab5c bake stopped: Distant Horizons unloaded the level
+[23:46:22] [Netty Epoll IO #10/INFO] (synaxis) [synaxis/farview] announcement received: build farview3x3-82ef22b94f77-p776, 9 tile(s), 8 coarse, view 9ea70f2546ccab5c
+[23:46:27] [Render thread/INFO] (synaxis) [synaxis/farview] view 9ea70f2546ccab5c bake stopped: Distant Horizons unloaded the level
+[23:46:58] [Netty Epoll IO #12/INFO] (synaxis) [synaxis/farview] announcement received: build farview3x3-82ef22b94f77-p776, 9 tile(s), 8 coarse, view -; far view off (farview.radius is 0)

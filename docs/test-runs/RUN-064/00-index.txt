@@ -1,0 +1,31 @@
+RUN-064  2026-10-01～02  M3-G 远景（REQ-M3-024、REQ-M3-025）：新用例 TC-WORLD-102～124，合并验收，合入 main 之后的回归
+=====================================================================================================================
+
+轮次号：git fetch 后 origin/main 是 4bb76eec7f，登记到 RUN-066；RUN-063 按约定归光照会话重跑 TC-WORLD-082、083，
+RUN-064 按约定归 M3-G（RUN-065 的明细写过这一点）。
+
+被测代码：集成分支 m3g/integrate 合入 origin/main 4bb76eec7f 之后的 24d3b318a9（只有 Main#serveMap 冲突，保留 main 的签名、
+放进远景宣告的监听体）。之后的提交只改 docs/ 与本目录。三个子目录：
+
+  track-c/      轨道 C 的复核后验收，分支 m3g/c-client 的 1d8e8ba97b（11、12 两份在 3a131613ae 与它的反证上），
+                原名 _pending-m3g-c，00-index.txt 列出每个文件。客户端单元测试 184 条；容器 synthetic 夹具 F1～F29。
+  integrate/    合并验收，m3g/integrate 的 be4f62eabb 与复核后的 c8a403032d，原名 _pending-m3g-integrate，
+                00-index.txt 列出每个文件。两次合并后的门禁、baked 夹具上的容器验收（V1、V2a 三次、V3a、V6a、V8a）、
+                复核后的 V6a 新机位、V3a 雾的读数、bench-2048、真机步骤（08-real-machine-steps.txt；文中的提交号写的是
+                c8a403032d，真机检出以合入 main 之后的提交为准，代码 24d3b318a9）。
+  main-merge/   合入 main 之后在 24d3b318a9 上跑的：
+                01-gates.txt            三道门禁与 client-fabric check（含第一次起跑时锁没拿住的那 20 s）
+                02-counter-proofs.txt   TC-WORLD-102～116 的 JUnit 反证，按 TEST.md 的字面
+                03-existing-cases.txt   M3-G 改了预期的既有用例：TC-WORLD-023、030、032、033、041、098
+                04-*                    容器回归：baked 夹具上的 A（v1 三反证、marker、cancel、late-cancel、stale-unload、tiers）
+                                        与 bin/server-shard 上的 B（none）
+                05-batch3.txt           TC-WORLD-116 第 3 步（verifyModJar 的反证）
+                06-base-and-s.txt       第 0 步与轨道 S 两个子轮的读数，转录自交付说明（它们的原始日志已随临时目录删除）
+                07-scripts.txt          本目录各作业的脚本
+
+被测代码一致性：git diff 2ed53735ec 24d3b318a9 -- baker protocol synx 为空；git diff 1d8e8ba97b 24d3b318a9 --
+client-fabric/src/main client-fabric/src/test client-fabric/build.gradle.kts 为空（gametest 只在 c8a403032d 改过）；
+server-app 的远景代码（ShardWorld、ShardSettings、FarViewShardFixture）自 094b52530e 起没变，Main#serveMap 合入时多了
+main 的 PlayerStore 参数，它的远景监听由 02 的 S-a 与 04 的 B（server-shard 真进程）重新验过。
+
+截图、DH 库、烘出的地图与容器日志全文都没有保留（太大），报告行、远景日志行与 access.log 留在这里。

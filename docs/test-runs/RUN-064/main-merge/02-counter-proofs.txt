@@ -1,0 +1,340 @@
+RUN-064 / main-merge / 02: the JUnit counter-proofs of TC-WORLD-102 to TC-WORLD-116 on 24d3b318a9, as the job scripts logged them.
+Each block changes the lines shown as "diff -" / "diff +", runs the classes (Gradle as in 01, with --continue), prints each
+class's counts, every failure with its message and the test file lines of its trace, then restores the files with
+git checkout HEAD -- <paths> and prints git status outside docs/. Lock: one batch 07:06:54 to 07:11:40 (proofs), one 07:13:16 to
+07:16:38 (batch 2, whose first block C-b is here; the first C-b of the proofs batch ran "check --tests", which Gradle refuses
+for check, so it is repeated in batch 2 with "test --tests ... verifyModJar"). In batch 2's C-b the stand-in DH class file is not
+a class, so :remapJar failed before verifyModJar could run; TC-WORLD-116 step 3 puts a text file under com/seibel/ instead
+(batch 3, 05-batch3.txt).
+
+2026-10-02 06:57:56 busy: owner=Synaxis光照/m3g-run064-gates pid=39601 since=2026-10-02T06:47:12+0800 task=RUN-064: check and two strict modes (test --rerun) and client-fabric check on the merge of origin/main
+2026-10-02 06:58:56 busy: owner=Synaxis光照/m3g-run064-gates pid=39601 since=2026-10-02T06:47:12+0800 task=RUN-064: check and two strict modes (test --rerun) and client-fabric check on the merge of origin/main
+2026-10-02 06:59:56 busy: owner=Synaxis光照/m3g-run064-gates pid=39601 since=2026-10-02T06:47:12+0800 task=RUN-064: check and two strict modes (test --rerun) and client-fabric check on the merge of origin/main
+2026-10-02 07:00:56 busy: owner=Synaxis光照/m3g-run064-gates pid=39601 since=2026-10-02T06:47:12+0800 task=RUN-064: check and two strict modes (test --rerun) and client-fabric check on the merge of origin/main
+2026-10-02 07:01:56 busy: owner=Synaxis光照/m3g-run064-gates pid=39601 since=2026-10-02T06:47:12+0800 task=RUN-064: check and two strict modes (test --rerun) and client-fabric check on the merge of origin/main
+2026-10-02 07:02:56 busy: owner=Synaxis光照/m3g-run064-gates pid=39601 since=2026-10-02T06:47:12+0800 task=RUN-064: check and two strict modes (test --rerun) and client-fabric check on the merge of origin/main
+2026-10-02 07:03:56 busy: owner=Synaxis光照/m3g-run064-gates pid=39601 since=2026-10-02T06:47:12+0800 task=RUN-064: check and two strict modes (test --rerun) and client-fabric check on the merge of origin/main
+2026-10-02 07:04:56 busy: owner=Synaxis光照/m3g-run064-gates pid=39601 since=2026-10-02T06:47:12+0800 task=RUN-064: check and two strict modes (test --rerun) and client-fabric check on the merge of origin/main
+2026-10-02 07:05:56 busy: owner=Synaxis光照/m3g-run064-gates pid=39601 since=2026-10-02T06:47:12+0800 task=RUN-064: check and two strict modes (test --rerun) and client-fabric check on the merge of origin/main
+2026-10-02 07:06:56 lock taken: owner=Synaxis光照/m3g-run064-proofs pid=39601 since=2026-10-02T07:06:56+0800 task=RUN-064: counter-proofs of the M3-G cases on the merge of origin/main (baker, server-app, protocol, client-fabric)
+2026-10-02 07:06:56 HEAD 24d3b318a9; changed outside docs: []
+
+2026-10-02 07:06:56 === B-a (TC-WORLD-104): rule 5 takes the last of equal columns
+  changed baker/src/main/java/io/github/bearisbug/synaxis/baker/ChunkEncoder.java
+    diff -                        if (highest == null || candidate.top() > highest.top()) highest = candidate;
+    diff +                        if (highest == null || candidate.top() >= highest.top()) highest = candidate;
+2026-10-02 07:07:03 gradle [B-a] exit 1 in 7 s
+  > Task :baker:test FAILED
+  FarViewSamplingTest > ofEqualColumnsTheFirstByZThenXIsTheSample() FAILED
+  8 tests completed, 1 failed
+  BUILD FAILED in 6s
+  36 actionable tasks: 2 executed, 34 up-to-date
+  TEST-io.github.bearisbug.synaxis.baker.FarViewSamplingTest.xml: tests="8" skipped="0" failures="1" errors="0" timestamp="2026-10-01T23:07:02.729Z"
+    FAIL ofEqualColumnsTheFirstByZThenXIsTheSample(): org.opentest4j.AssertionFailedError: expected: <Sample[groundState=2338, fluidState=0, groundY=30, fluidBottom=0, fluidTop=0, biome=1]> but was: <Sample[groundState=2339, fluidState=0, groundY=30, fluidBottom=0, fluidTop=0, biome=1]>
+      at FarViewSamplingTest.java:156
+  restored; git status --short (outside docs): []
+
+2026-10-02 07:07:03 === B-b (TC-WORLD-104): rule 4 takes the biome of the cell above the top
+  changed baker/src/main/java/io/github/bearisbug/synaxis/baker/ChunkEncoder.java
+    diff -        final int biomeY = top >= 0 ? top : height - 1;
+    diff +        final int biomeY = top >= 0 ? Math.min(top + 1, height - 1) : height - 1;
+2026-10-02 07:07:08 gradle [B-b] exit 1 in 5 s
+  > Task :baker:test FAILED
+  FarViewSamplingTest > aFlowerAndALayerOfSnowStandOnTheirGround() FAILED
+  8 tests completed, 1 failed
+  BUILD FAILED in 4s
+  18 actionable tasks: 2 executed, 16 up-to-date
+  TEST-io.github.bearisbug.synaxis.baker.FarViewSamplingTest.xml: tests="8" skipped="0" failures="1" errors="0" timestamp="2026-10-01T23:07:07.638Z"
+    FAIL aFlowerAndALayerOfSnowStandOnTheirGround(): org.opentest4j.AssertionFailedError: the biome of the top's cell, not of the poppy's above it ==> expected: <minecraft:forest> but was: <minecraft:plains>
+      at FarViewSamplingTest.java:129
+  restored; git status --short (outside docs): []
+
+2026-10-02 07:07:08 === B-c (TC-WORLD-105, TC-WORLD-106): corners not normalised; the sampled check keeps the blocks of every tile
+  changed baker/src/main/java/io/github/bearisbug/synaxis/baker/AnvilSource.java
+  changed baker/src/main/java/io/github/bearisbug/synaxis/baker/Baker.java
+    diff -                        hidden.add(new HiddenArea(Math.min(area.x1(), area.x2()), Math.min(area.z1(), area.z2()),
+    diff -                                Math.max(area.x1(), area.x2()), Math.max(area.z1(), area.z2())));
+    diff +                        hidden.add(area);
+    diff -                    blocks.clear();
+    diff +                    if (Boolean.getBoolean("proof.never")) blocks.clear();
+2026-10-02 07:08:44 gradle [B-c] exit 1 in 96 s
+  FarViewBakeTest > theSampledCheckHoldsOneTileAtATime() FAILED
+  AnvilFarViewTest > aHiddenAreaInsideTheChunkTakesItsRingFromTheChunk() FAILED
+  11 tests completed, 2 failed
+  > Task :baker:test FAILED
+  BUILD FAILED in 1m 35s
+  36 actionable tasks: 2 executed, 34 up-to-date
+  TEST-io.github.bearisbug.synaxis.baker.anvil.AnvilFarViewTest.xml: tests="2" skipped="0" failures="1" errors="0" timestamp="2026-10-01T23:08:44.399Z"
+    FAIL aHiddenAreaInsideTheChunkTakesItsRingFromTheChunk(): org.opentest4j.AssertionFailedError: the corners as min and max ==> expected: <[HiddenArea[x1=4, z1=4, x2=7, z2=7]]> but was: <[HiddenArea[x1=7, z1=7, x2=4, z2=4]]>
+      at AnvilFarViewTest.java:144
+  TEST-io.github.bearisbug.synaxis.baker.FarViewBakeTest.xml: tests="9" skipped="0" failures="1" errors="0" timestamp="2026-10-01T23:07:14.526Z"
+    FAIL theSampledCheckHoldsOneTileAtATime(): org.opentest4j.AssertionFailedError: tiles and blocks held after chunk 256,0 ==> expected: <[1, 2]> but was: <[1, 4]>
+      at FarViewBakeTest.java:340
+  restored; git status --short (outside docs): []
+
+2026-10-02 07:08:44 === B-d (TC-WORLD-105): the assembler gets no hidden areas
+  changed baker/src/main/java/io/github/bearisbug/synaxis/baker/Baker.java
+    diff -                    source.hiddenAreas(), request.registries().biome()).assemble(work, buildDir.resolve("farview"), tamper);
+    diff +                    List.of(), request.registries().biome()).assemble(work, buildDir.resolve("farview"), tamper);
+2026-10-02 07:08:51 gradle [B-d] exit 1 in 7 s
+  > Task :baker:test FAILED
+  AnvilFarViewTest > theFixturesHiddenMarkerReplacesItsChunkOnBothLayers() FAILED
+  AnvilFarViewTest > aHiddenAreaInsideTheChunkTakesItsRingFromTheChunk() FAILED
+  2 tests completed, 2 failed
+  BUILD FAILED in 6s
+  36 actionable tasks: 2 executed, 34 up-to-date
+  TEST-io.github.bearisbug.synaxis.baker.anvil.AnvilFarViewTest.xml: tests="2" skipped="0" failures="2" errors="0" timestamp="2026-10-01T23:08:50.861Z"
+    FAIL theFixturesHiddenMarkerReplacesItsChunkOnBothLayers(): org.opentest4j.AssertionFailedError: 1 of 1 sampled chunks differ ==> expected: <0> but was: <4>
+      at AnvilFarViewTest.java:76 AnvilFarViewTest.java:105
+    FAIL aHiddenAreaInsideTheChunkTakesItsRingFromTheChunk(): org.opentest4j.AssertionFailedError: 1 of 1 sampled chunks differ ==> expected: <0> but was: <4>
+      at AnvilFarViewTest.java:76 AnvilFarViewTest.java:142
+  restored; git status --short (outside docs): []
+
+2026-10-02 07:08:51 === B-e (TC-WORLD-103, 105, 106, 107): fine blocks outside the bounds written; ring without the exclusion; SHA, version and sample comparisons off; coarse object = whole pack
+  changed baker/src/main/java/io/github/bearisbug/synaxis/baker/FarViewAssembler.java
+  changed baker/src/main/java/io/github/bearisbug/synaxis/baker/FarViewAssembler.java
+  changed baker/src/main/java/io/github/bearisbug/synaxis/baker/Baker.java
+  changed baker/src/main/java/io/github/bearisbug/synaxis/baker/Baker.java
+  changed baker/src/main/java/io/github/bearisbug/synaxis/baker/Baker.java
+  changed baker/src/main/java/io/github/bearisbug/synaxis/baker/BakerMain.java
+    diff -        if (manifest.bakerVersion() < FAR_VIEW_SINCE) return null;
+    diff +        if (manifest.bakerVersion() < FAR_VIEW_SINCE && Boolean.getBoolean("proof.never")) return null;
+    diff -            if (!Arrays.equals(SynxDigests.sha256(pack), entry.sha256())) {
+    diff +            if (!Arrays.equals(SynxDigests.sha256(pack), entry.sha256()) && Boolean.getBoolean("proof.never")) {
+    diff +            if (!Boolean.getBoolean("proof.never")) return true;
+    diff -                exports.add(new Export(file, true, directory + SynxDigests.hex(entry.coarseSha256()) + ".hfp", prefix));
+    diff +                exports.add(new Export(file, true, directory + SynxDigests.hex(entry.coarseSha256()) + ".hfp", pack));
+    diff -            if (cell.covers(x, z)) return Integer.MAX_VALUE;
+    diff +            if (cell.covers(x, z) && Boolean.getBoolean("proof.never")) return Integer.MAX_VALUE;
+    diff -                if (!meets(originX + bx * chunksPerBlock, originZ + bz * chunksPerBlock, chunksPerBlock)) continue;
+    diff +                if (!meets(originX + bx * chunksPerBlock, originZ + bz * chunksPerBlock, chunksPerBlock) && Boolean.getBoolean("proof.never")) continue;
+2026-10-02 07:10:38 gradle [B-e] exit 1 in 107 s
+  FarViewBakeTest > verifyNamesAPackOrACoarsePrefixThatDoesNotMatchTheManifest() FAILED
+  FarViewBakeTest > theHiddenRuleTakesTheLowestTopOfTheRingLeftByEveryArea() FAILED
+  FarViewBakeTest > verifyPassesABuildOfAnEarlierBakerWithoutPacks() FAILED
+  FarViewBakeTest > aMapAcrossTilesHasAPackForEachTileItMeets() FAILED
+  FarViewBakeTest > thePrePublishVerificationCatchesAChangedFineOrCoarseSample() FAILED
+  FarViewExportTest > theFirstExportWritesTwoObjectsAPackAndTheSecondKeepsThem() FAILED
+  25 tests completed, 6 failed
+  > Task :baker:test FAILED
+  BUILD FAILED in 1m 46s
+  36 actionable tasks: 2 executed, 34 up-to-date
+  TEST-io.github.bearisbug.synaxis.baker.FarViewBakeTest.xml: tests="9" skipped="0" failures="5" errors="0" timestamp="2026-10-01T23:08:57.826Z"
+    FAIL verifyNamesAPackOrACoarsePrefixThatDoesNotMatchTheManifest(): org.opentest4j.AssertionFailedError: baker: farview/t.0.0.hfp: fine block 1,7 is not a zlib stream: invalid distance too far back&#10; ==> expected: <true> but was: <false>
+      at FarViewBakeTest.java:248
+    FAIL theHiddenRuleTakesTheLowestTopOfTheRingLeftByEveryArea(): org.opentest4j.AssertionFailedError: B's 1 is not in A's ring, A's 3,2 and 3,3 not in B's ==> expected: <[Replacement[minX=2, minZ=2, maxX=3, maxZ=3, height=31], Replacement[minX=4, minZ=2, maxX=4, maxZ=2, height=33]]> but was: <[Replacement[minX=2, minZ=2, maxX=3, maxZ=3, height=1], Replacement[minX=4, minZ=2, maxX=4, maxZ=2, height=33]]>
+      at FarViewBakeTest.java:517
+    FAIL verifyPassesABuildOfAnEarlierBakerWithoutPacks(): org.opentest4j.AssertionFailedError: expected: <Run[exitCode=0, err=]> but was: <Run[exitCode=4, err=baker: farview[] lists the tiles [], the bounds meet [0,0]&#10;]>
+      at FarViewBakeTest.java:300
+    FAIL aMapAcrossTilesHasAPackForEachTileItMeets(): org.opentest4j.AssertionFailedError: FINE block 0,0 ==> expected: <false> but was: <true>
+      at FarViewBakeTest.java:157
+    FAIL thePrePublishVerificationCatchesAChangedFineOrCoarseSample(): org.opentest4j.AssertionFailedError: published /var/folders/cg/30kkblns6599cnrbhx__l4jw0000gn/T/junit-9712258003553488738/COARSE/maps/changed/changed-512ffa898623-p776, 18590 bytes; 1 far view pack(s), 15647 bytes, assembled in 37 ms ==> expected: <4> but was: <0>
+      at FarViewBakeTest.java:360
+  TEST-io.github.bearisbug.synaxis.baker.FarViewExportTest.xml: tests="4" skipped="0" failures="1" errors="0" timestamp="2026-10-01T23:10:31.440Z"
+    FAIL theFirstExportWritesTwoObjectsAPackAndTheSecondKeepsThem(): org.opentest4j.AssertionFailedError: export/farview/1a13321a7b20e9af614f8512aae51c32605cf12405d2622173635aa678806eaf.hfp ==> array lengths differ, expected: <281> but was: <15699>
+      at FarViewExportTest.java:80
+  TEST-io.github.bearisbug.synaxis.baker.GeneratorBakeTest.xml: tests="12" skipped="0" failures="0" errors="0" timestamp="2026-10-01T23:10:32.678Z"
+  restored; git status --short (outside docs): []
+
+2026-10-02 07:10:38 === S-a (TC-WORLD-108, TC-WORLD-109): coarse digest and levels not compared; the announcement on a later configuration only; the fixture's rate 100 times
+  changed server-app/src/main/java/io/github/bearisbug/synaxis/app/shard/ShardWorld.java
+  changed server-app/src/main/java/io/github/bearisbug/synaxis/app/shard/ShardWorld.java
+  changed server-app/src/main/java/io/github/bearisbug/synaxis/app/Main.java
+  changed server-app/src/test/java/io/github/bearisbug/synaxis/app/shard/FarViewShardFixture.java
+    diff -            if (farView != null && event.isFirstConfig()) {
+    diff +            if (farView != null && !event.isFirstConfig()) {
+    diff -            final String mismatch = pack.baseLevel() != first.baseLevel() || pack.coarseLevel() != first.coarseLevel()
+    diff +            final String mismatch = Boolean.getBoolean("proof.never") && (pack.baseLevel() != first.baseLevel() || pack.coarseLevel() != first.coarseLevel())
+    diff -        if (!Arrays.equals(SynxDigests.sha256(Arrays.copyOf(bytes, (int) fineOffset)), pack.coarseSha256())) {
+    diff +        if (!Arrays.equals(SynxDigests.sha256(Arrays.copyOf(bytes, (int) fineOffset)), pack.coarseSha256()) && Boolean.getBoolean("proof.never")) {
+    diff -    static final long BYTES_PER_SECOND = 6_250_000;
+    diff +    static final long BYTES_PER_SECOND = 625_000_000;
+2026-10-02 07:11:18 gradle [S-a] exit 1 in 40 s
+  FarViewLaunchTest > aMapShardAnnouncesItsTilesBeforeFinishConfiguration(Path) FAILED
+  FarViewLaunchTest > aShardOnAMapOfOneTileSendsThatTileBeforeFinishConfiguration(Path) FAILED
+  FarViewShardFixtureTest > thePackServerAnswersRangesAtFiftyMegabitsAndLogsEachPackRequest() FAILED
+  ShardWorldFarViewTest > tilesOfOtherLevelsStopTheWholeAnnouncement(Path) FAILED
+  ShardWorldFarViewTest > aCoarseDigestThatAloneDoesNotMatchStopsTheWholeAnnouncement(Path) FAILED
+  22 tests completed, 5 failed
+  > Task :server-app:test FAILED
+  BUILD FAILED in 39s
+  42 actionable tasks: 3 executed, 1 from cache, 38 up-to-date
+  TEST-io.github.bearisbug.synaxis.app.shard.ShardWorldFarViewTest.xml: tests="9" skipped="0" failures="2" errors="0" timestamp="2026-10-01T23:10:53.332Z"
+    FAIL tilesOfOtherLevelsStopTheWholeAnnouncement(Path): org.opentest4j.AssertionFailedError: expected: <null> but was: <[1, 22, 102, 111, 117, 114, 45, 101, 54, 55, 55, 101, 53, 97, 52, 100, 99, 98, 54, 45, 112, 55, 55, 54, 2, 4, 0, 64, 4, 0, -1, -1, -1, -1, 15, 1, -103, 2, 26, 19, 50, 26, 123, 32, -23, -81, 97, 79, -123, 18, -86, -27, 28, 50, 96, 92, -15, 36, 5, -46, 98, 33, 115, 99, 90, -90, 120, -128, 110, -81, 105, 104, 116, 116, 112, 58, 47, 47, 99, 100, 110, 46, 116, 101, 115, 116, 47, 115, 121, 110, 97, 120, 105, 115, 47, 102, 111, 117, 114, 47, 102, 97, 114, 118, 105, 101, 119, 47, 49, 97, 49, 51, 51, 50, 49, 97, 55, 98, 50, 48, 101, 57, 97
+      at ShardWorldFarViewTest.java:384 ShardWorldFarViewTest.java:325
+    FAIL aCoarseDigestThatAloneDoesNotMatchStopsTheWholeAnnouncement(Path): org.opentest4j.AssertionFailedError: expected: <null> but was: <[1, 22, 102, 111, 117, 114, 45, 101, 54, 55, 55, 101, 53, 97, 52, 100, 99, 98, 54, 45, 112, 55, 55, 54, 2, 4, 0, 64, 4, 0, -1, -1, -1, -1, 15, 1, -103, 2, 26, 19, 50, 26, 123, 32, -23, -81, 97, 79, -123, 18, -86, -27, 28, 50, 96, 92, -15, 36, 5, -46, 98, 33, 115, 99, 90, -90, 120, -128, 110, -81, 105, 104, 116, 116, 112, 58, 47, 47, 99, 100, 110, 46, 116, 101, 115, 116, 47, 115, 121, 110, 97, 120, 105, 115, 47, 102, 111, 117, 114, 47, 102, 97, 114, 118, 105, 101, 119, 47, 49, 97, 49, 51, 51, 50, 49, 97, 55, 98, 50, 48, 101, 57, 97
+      at ShardWorldFarViewTest.java:384 ShardWorldFarViewTest.java:315
+  TEST-io.github.bearisbug.synaxis.app.FarViewLaunchTest.xml: tests="4" skipped="0" failures="2" errors="0" timestamp="2026-10-01T23:10:47.773Z"
+    FAIL aMapShardAnnouncesItsTilesBeforeFinishConfiguration(Path): org.opentest4j.AssertionFailedError: one announcement per connection ==> expected: <1> but was: <0>
+      at FarViewLaunchTest.java:126
+    FAIL aShardOnAMapOfOneTileSendsThatTileBeforeFinishConfiguration(Path): org.opentest4j.AssertionFailedError: expected: <1> but was: <0>
+      at FarViewLaunchTest.java:165
+  TEST-io.github.bearisbug.synaxis.app.shard.FarViewShardFixtureTest.xml: tests="9" skipped="0" failures="1" errors="0" timestamp="2026-10-01T23:10:52.149Z"
+    FAIL thePackServerAnswersRangesAtFiftyMegabitsAndLogsEachPackRequest(): org.opentest4j.AssertionFailedError: the rate holds: 0.005872542 s ==> expected: <true> but was: <false>
+      at FarViewShardFixtureTest.java:401
+  restored; git status --short (outside docs): []
+
+2026-10-02 07:11:18 === P-a (TC-WORLD-102): another zlib fingerprint in the manifest, with and without the strict switch
+  changed protocol/src/test/resources/farview-vectors/manifest.txt
+    diff -zlib 3a5c7b02f09d84b148505efa093fb735baaa69c97147448f1ea649b2a54ac771
+    diff +zlib 4a5c7b02f09d84b148505efa093fb735baaa69c97147448f1ea649b2a54ac771
+2026-10-02 07:11:22 gradle [P-a1] exit 1 in 4 s
+  > Task :protocol:test FAILED
+  FarViewVectorTest > theWriterReproducesThePackBytesOnTheFrozenZlib() FAILED
+  25 tests completed, 1 failed
+  BUILD FAILED in 4s
+  22 actionable tasks: 2 executed, 20 up-to-date
+  TEST-io.github.bearisbug.synaxis.game.protocol.FarViewVectorTest.xml: tests="25" skipped="0" failures="1" errors="0" timestamp="2026-10-01T23:11:22.380Z"
+    FAIL theWriterReproducesThePackBytesOnTheFrozenZlib(): org.opentest4j.AssertionFailedError: this JDK's zlib differs from the one the far view vectors were frozen with; synaxis.synx.require-frozen-zlib is set, so either run on the JDK build the vectors were frozen with or refreeze them with :protocol:generateFarViewVectors ==> expected: <true> but was: <false>
+      at FarViewVectorTest.java:217
+2026-10-02 07:11:27 gradle [P-a2] exit 0 in 5 s
+  BUILD SUCCESSFUL in 4s
+  22 actionable tasks: 1 executed, 21 up-to-date
+  TEST-io.github.bearisbug.synaxis.game.protocol.FarViewVectorTest.xml: tests="25" skipped="1" failures="0" errors="0" timestamp="2026-10-01T23:11:26.846Z"
+    SKIPPED theWriterReproducesThePackBytesOnTheFrozenZlib()
+  restored; git status --short (outside docs): []
+
+2026-10-02 07:11:27 === C-a (TC-WORLD-110, 111, 112, 113, 114, 115): ground sky 0, expansion 2^b; payload keeps trailing bytes; view key without layer; any DH version; downloader keeps the exchange and the writer open; cancel ignored by baking() and loadChecked()
+  changed client-fabric/src/main/java/io/github/bearisbug/synaxis/game/client/farview/FarViewColumns.java
+  changed client-fabric/src/main/java/io/github/bearisbug/synaxis/game/client/farview/FarViewColumns.java
+  changed client-fabric/src/main/java/io/github/bearisbug/synaxis/game/client/farview/FarViewPayload.java
+  changed client-fabric/src/main/java/io/github/bearisbug/synaxis/game/client/farview/FarViewCache.java
+  changed client-fabric/src/main/java/io/github/bearisbug/synaxis/game/client/farview/FarViewClient.java
+  changed client-fabric/src/main/java/io/github/bearisbug/synaxis/game/client/farview/FarViewDownloader.java
+  changed client-fabric/src/main/java/io/github/bearisbug/synaxis/game/client/farview/FarViewDownloader.java
+  changed client-fabric/src/main/java/io/github/bearisbug/synaxis/game/client/farview/FarViewConnection.java
+  changed client-fabric/src/main/java/io/github/bearisbug/synaxis/game/client/farview/FarViewConnection.java
+    diff -            text.append(tile.tileX()).append(' ').append(tile.tileZ()).append(' ').append(tile.layer()).append(' ')
+    diff +            text.append(tile.tileX()).append(' ').append(tile.tileZ()).append(' ')
+    diff -            if (!DH_VERSION.equals(version)) {
+    diff +            if (!DH_VERSION.equals(version) && Boolean.getBoolean("proof.never")) {
+    diff -            points.add(new Point(0, sample.groundY() + 1, FULL_SKY, blockLight(sample.groundState(), emission),
+    diff +            points.add(new Point(0, sample.groundY() + 1, 0, blockLight(sample.groundState(), emission),
+    diff -        return 1 << (FarViewPack.COARSE_LEVEL - baseLevel);
+    diff +        return 1 << baseLevel;
+    diff -        if (cancelled.get()) return false;
+    diff +        if (cancelled.get() && Boolean.getBoolean("proof.never")) return false;
+    diff -        if (rows == null && cancelled.get()) return false;
+    diff +        if (rows == null && cancelled.get() && Boolean.getBoolean("proof.never")) return false;
+    diff -            response.cancel(true);
+    diff +            if (Boolean.getBoolean("proof.never")) response.cancel(true);
+    diff -                    if (closed) return refuse("the attempt was given up on", false);
+    diff +                    if (closed && Boolean.getBoolean("proof.never")) return refuse("the attempt was given up on", false);
+    diff -            if (in.remaining() != 0) return refused(in.remaining() + " bytes after the announcement");
+    diff +            if (in.remaining() != 0 && Boolean.getBoolean("proof.never")) return refused(in.remaining() + " bytes after the announcement");
+2026-10-02 07:11:37 gradle [C-a] exit 1 in 10 s
+  FarViewAvailabilityTest > anotherVersionIsAskedItsVersionAndNothingElse() FAILED
+  FarViewCacheTest > theSameTileAsAnotherLayerIsAnotherLibrary() FAILED
+  FarViewCacheTest > theViewKeyIsTheFirstSixteenHexDigitsOfTheDesignedText() FAILED
+  FarViewColumnsTest > groundAloneIsAGroundPointUnderAnAirPoint() FAILED
+  FarViewColumnsTest > aCoarseBlockExpandsIntoSixtyFourSourcesAtBaseLevelOne() FAILED
+  FarViewColumnsTest > aColumnUpToTheTopOfTheWorldHasNoAirAboveIt() FAILED
+  FarViewColumnsTest > aBlockThatGivesOffLightLightsTheBlockAboveIt() FAILED
+  FarViewConnectionTest > aBakeThreadThatRunsAfterTheCancelStaysOutOfBaking() FAILED
+  FarViewConnectionTest > noAnswerAfterACancelLeavesTheMarkerOfAGoodLibrary() FAILED
+  FarViewConnectionTest > aCancelBeforeTheLevelLoadsStartsNothing() FAILED
+  FarViewDownloaderTest > aServerThatSendsNoResponseFailsOnTheIdleClockAndItsLateAnswersAreDropped() FAILED
+  FarViewPayloadTest > bytesAfterTheAnnouncementMakeItNone() FAILED
+  67 tests completed, 12 failed
+  > Task :test FAILED
+  BUILD FAILED in 9s
+  5 actionable tasks: 2 executed, 3 up-to-date
+  TEST-io.github.bearisbug.synaxis.game.client.farview.FarViewColumnsTest.xml: tests="13" skipped="0" failures="4" errors="0" timestamp="2026-10-01T23:11:31.357Z"
+    FAIL groundAloneIsAGroundPointUnderAnAirPoint(): org.opentest4j.AssertionFailedError: expected: <[Point[bottom=101, top=256, skyLight=15, blockLight=0, state=0, air=true, biome=0], Point[bottom=0, top=101, skyLight=15, blockLight=0, state=1, air=false, biome=0]]> but was: <[Point[bottom=101, top=256, skyLight=15, blockLight=0, state=0, air=true, biome=0], Point[bottom=0, top=101, skyLight=0, blockLight=0, state=1, air=false, biome=0]]>
+      at FarViewColumnsTest.java:41
+    FAIL aCoarseBlockExpandsIntoSixtyFourSourcesAtBaseLevelOne(): org.opentest4j.AssertionFailedError: expected: <8> but was: <2>
+      at FarViewColumnsTest.java:140
+    FAIL aColumnUpToTheTopOfTheWorldHasNoAirAboveIt(): org.opentest4j.AssertionFailedError: expected: <[Point[bottom=0, top=256, skyLight=15, blockLight=0, state=1, air=false, biome=0]]> but was: <[Point[bottom=0, top=256, skyLight=0, blockLight=0, state=1, air=false, biome=0]]>
+      at FarViewColumnsTest.java:70
+    FAIL aBlockThatGivesOffLightLightsTheBlockAboveIt(): org.opentest4j.AssertionFailedError: expected: <[Point[bottom=41, top=256, skyLight=15, blockLight=0, state=0, air=true, biome=0], Point[bottom=0, top=41, skyLight=15, blockLight=14, state=6000, air=false, biome=0]]> but was: <[Point[bottom=41, top=256, skyLight=15, blockLight=0, state=0, air=true, biome=0], Point[bottom=0, top=41, skyLight=0, blockLight=14, state=6000, air=false, biome=0]]>
+      at FarViewColumnsTest.java:75
+  TEST-io.github.bearisbug.synaxis.game.client.farview.FarViewPayloadTest.xml: tests="12" skipped="0" failures="1" errors="0" timestamp="2026-10-01T23:11:36.532Z"
+    FAIL bytesAfterTheAnnouncementMakeItNone(): org.opentest4j.AssertionFailedError: expected: <null> but was: <FarViewAnnouncement[buildId=vectors-0123456789ab-p776, baseLevel=2, coarseLevel=4, minY=0, height=256, tiles=[Tile[tileX=0, tileZ=0, layer=0, bytes=8912896, sha256=01ea691ad80f36f6252b65924ec9a99b5a546cffc08d9b90fe9af95a87f3f33a, url=https://cdn.test/synaxis/vectors/farview/01ea691ad80f36f6252b65924ec9a99b5a546cffc08d9b90fe9af95a87f3f33a.hfp]]]>
+      at FarViewPayloadTest.java:81
+  TEST-io.github.bearisbug.synaxis.game.client.farview.FarViewCacheTest.xml: tests="14" skipped="0" failures="2" errors="0" timestamp="2026-10-01T23:11:31.312Z"
+    FAIL theSameTileAsAnotherLayerIsAnotherLibrary(): org.opentest4j.AssertionFailedError: expected: not equal but was: <d2057f600d6c7772>
+      at FarViewCacheTest.java:89
+    FAIL theViewKeyIsTheFirstSixteenHexDigitsOfTheDesignedText(): org.opentest4j.AssertionFailedError: expected: <8aebc27cea492d9b> but was: <17143e3718d2001c>
+      at FarViewCacheTest.java:71
+  TEST-io.github.bearisbug.synaxis.game.client.farview.FarViewAvailabilityTest.xml: tests="8" skipped="0" failures="1" errors="0" timestamp="2026-10-01T23:11:31.165Z"
+    FAIL anotherVersionIsAskedItsVersionAndNothingElse(): org.opentest4j.AssertionFailedError: expected: <UNSUPPORTED> but was: <SUPPORTED>
+      at FarViewAvailabilityTest.java:76
+  TEST-io.github.bearisbug.synaxis.game.client.farview.FarViewDownloaderTest.xml: tests="15" skipped="0" failures="1" errors="0" timestamp="2026-10-01T23:11:31.442Z"
+    FAIL aServerThatSendsNoResponseFailsOnTheIdleClockAndItsLateAnswersAreDropped(): org.opentest4j.AssertionFailedError: an attempt given up on writes nothing later ==> expected: <false> but was: <true>
+      at FarViewDownloaderTest.java:387
+  TEST-io.github.bearisbug.synaxis.game.client.farview.FarViewConnectionTest.xml: tests="5" skipped="0" failures="3" errors="0" timestamp="2026-10-01T23:11:31.378Z"
+    FAIL aBakeThreadThatRunsAfterTheCancelStaysOutOfBaking(): org.opentest4j.AssertionFailedError: expected: <false> but was: <true>
+      at FarViewConnectionTest.java:110
+    FAIL noAnswerAfterACancelLeavesTheMarkerOfAGoodLibrary(): org.opentest4j.AssertionFailedError: nothing is baked on a connection that ended ==> expected: <false> but was: <true>
+      at FarViewConnectionTest.java:95
+    FAIL aCancelBeforeTheLevelLoadsStartsNothing(): org.opentest4j.AssertionFailedError: expected: <false> but was: <true>
+      at FarViewConnectionTest.java:121
+  restored; git status --short (outside docs): []
+
+2026-10-02 07:11:37 === C-b (TC-WORLD-110, TC-WORLD-116): expansion 2^c; the surface row of queryDictionaryFirst returns a List; FarViewClient names DhApi; a DH class in the mod jar
+  changed client-fabric/src/main/java/io/github/bearisbug/synaxis/game/client/farview/FarViewColumns.java
+  changed client-fabric/src/main/java/io/github/bearisbug/synaxis/game/client/farview/dh/DhFarView.java
+  changed client-fabric/src/main/java/io/github/bearisbug/synaxis/game/client/farview/FarViewClient.java
+  created client-fabric/src/main/resources/com/seibel/distanthorizons/api/DhApi.class
+    diff +    /** @return the name of DH's API class */
+    diff +    public static String dhApiName() {
+    diff +        return com.seibel.distanthorizons.api.DhApi.class.getName();
+    diff +    }
+    diff -        return 1 << (FarViewPack.COARSE_LEVEL - baseLevel);
+    diff +        return 1 << FarViewPack.COARSE_LEVEL;
+    diff -            new Member(REPO, Kind.METHOD, "queryDictionaryFirst", List.of("java.lang.String"), "java.util.Map"),
+    diff +            new Member(REPO, Kind.METHOD, "queryDictionaryFirst", List.of("java.lang.String"), "java.util.List"),
+2026-10-02 07:11:40 gradle [C-b] exit 1 in 3 s
+  BUILD FAILED in 2s
+  TEST-io.github.bearisbug.synaxis.game.client.farview.FarViewColumnsTest.xml: tests="13" skipped="0" failures="4" errors="0" timestamp="2026-10-01T23:11:31.357Z"
+    FAIL groundAloneIsAGroundPointUnderAnAirPoint(): org.opentest4j.AssertionFailedError: expected: <[Point[bottom=101, top=256, skyLight=15, blockLight=0, state=0, air=true, biome=0], Point[bottom=0, top=101, skyLight=15, blockLight=0, state=1, air=false, biome=0]]> but was: <[Point[bottom=101, top=256, skyLight=15, blockLight=0, state=0, air=true, biome=0], Point[bottom=0, top=101, skyLight=0, blockLight=0, state=1, air=false, biome=0]]>
+      at FarViewColumnsTest.java:41
+    FAIL aCoarseBlockExpandsIntoSixtyFourSourcesAtBaseLevelOne(): org.opentest4j.AssertionFailedError: expected: <8> but was: <2>
+      at FarViewColumnsTest.java:140
+    FAIL aColumnUpToTheTopOfTheWorldHasNoAirAboveIt(): org.opentest4j.AssertionFailedError: expected: <[Point[bottom=0, top=256, skyLight=15, blockLight=0, state=1, air=false, biome=0]]> but was: <[Point[bottom=0, top=256, skyLight=0, blockLight=0, state=1, air=false, biome=0]]>
+      at FarViewColumnsTest.java:70
+    FAIL aBlockThatGivesOffLightLightsTheBlockAboveIt(): org.opentest4j.AssertionFailedError: expected: <[Point[bottom=41, top=256, skyLight=15, blockLight=0, state=0, air=true, biome=0], Point[bottom=0, top=41, skyLight=15, blockLight=14, state=6000, air=false, biome=0]]> but was: <[Point[bottom=41, top=256, skyLight=15, blockLight=0, state=0, air=true, biome=0], Point[bottom=0, top=41, skyLight=0, blockLight=14, state=6000, air=false, biome=0]]>
+      at FarViewColumnsTest.java:75
+  (no result file client-fabric/build/test-results/test/TEST-io.github.bearisbug.synaxis.game.client.farview.dh.DhSurfaceTest.xml)
+  (no result file client-fabric/build/test-results/test/TEST-io.github.bearisbug.synaxis.game.client.farview.dh.DhPackageBoundaryTest.xml)
+  restored; git status --short (outside docs): []
+2026-10-02 07:11:40 proofs done; changed outside docs: []
+2026-10-02 07:11:40 lock released
+
+=== batch 2, block C-b
+2026-10-02 07:13:17 === C-b (TC-WORLD-110, TC-WORLD-116): expansion 2^c; the surface row of queryDictionaryFirst returns a List; FarViewClient names DhApi; a DH class in the mod jar
+  changed client-fabric/src/main/java/io/github/bearisbug/synaxis/game/client/farview/FarViewColumns.java
+  changed client-fabric/src/main/java/io/github/bearisbug/synaxis/game/client/farview/dh/DhFarView.java
+  changed client-fabric/src/main/java/io/github/bearisbug/synaxis/game/client/farview/FarViewClient.java
+  created client-fabric/src/main/resources/com/seibel/distanthorizons/api/DhApi.class
+    diff +    /** @return the name of DH's API class */
+    diff +    public static String dhApiName() {
+    diff +        return com.seibel.distanthorizons.api.DhApi.class.getName();
+    diff +    }
+    diff -        return 1 << (FarViewPack.COARSE_LEVEL - baseLevel);
+    diff +        return 1 << FarViewPack.COARSE_LEVEL;
+    diff -            new Member(REPO, Kind.METHOD, "queryDictionaryFirst", List.of("java.lang.String"), "java.util.Map"),
+    diff +            new Member(REPO, Kind.METHOD, "queryDictionaryFirst", List.of("java.lang.String"), "java.util.List"),
+2026-10-02 07:13:23 gradle [C-b] exit 1 in 6 s
+  > Task :test FAILED
+  FarViewColumnsTest > aCoarseBlockExpandsIntoSixtyFourSourcesAtBaseLevelOne() FAILED
+  FarViewColumnsTest > aCoarseBlockExpandsIntoSixteenSourcesAtBaseLevelTwo() FAILED
+  DhPackageBoundaryTest > onlyTheDhPackageNamesDistantHorizonsOrItself() FAILED
+  DhSurfaceTest > everyMemberOfTheSurfaceIsInTheJarWithItsSignature() FAILED
+  20 tests completed, 4 failed
+  > Task :remapJar FAILED
+  BUILD FAILED in 6s
+  8 actionable tasks: 6 executed, 2 up-to-date
+  TEST-io.github.bearisbug.synaxis.game.client.farview.FarViewColumnsTest.xml: tests="13" skipped="0" failures="2" errors="0" timestamp="2026-10-01T23:13:22.154Z"
+    FAIL aCoarseBlockExpandsIntoSixtyFourSourcesAtBaseLevelOne(): java.lang.IndexOutOfBoundsException: Index 4096 out of bounds for length 4096
+      at FarViewColumnsTest.java:139
+    FAIL aCoarseBlockExpandsIntoSixteenSourcesAtBaseLevelTwo(): java.lang.IndexOutOfBoundsException: Index 4096 out of bounds for length 4096
+      at FarViewColumnsTest.java:117
+  TEST-io.github.bearisbug.synaxis.game.client.farview.dh.DhSurfaceTest.xml: tests="5" skipped="0" failures="1" errors="0" timestamp="2026-10-01T23:13:22.213Z"
+    FAIL everyMemberOfTheSurfaceIsInTheJarWithItsSignature(): org.opentest4j.AssertionFailedError: expected: <[]> but was: <[com.seibel.distanthorizons.core.sql.repo.FullDataSourceV2Repo#queryDictionaryFirst(java.lang.String): java.util.List is java.util.Map]>
+      at DhSurfaceTest.java:29
+  TEST-io.github.bearisbug.synaxis.game.client.farview.dh.DhPackageBoundaryTest.xml: tests="2" skipped="0" failures="1" errors="0" timestamp="2026-10-01T23:13:22.191Z"
+    FAIL onlyTheDhPackageNamesDistantHorizonsOrItself(): org.opentest4j.AssertionFailedError: expected: <[]> but was: <[io/github/bearisbug/synaxis/game/client/farview/FarViewClient.class names [com/seibel/distanthorizons/api/DhApi]]>
+      at DhPackageBoundaryTest.java:58
+  restored; git status --short (outside docs): []
+

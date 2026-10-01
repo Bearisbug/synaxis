@@ -1,0 +1,19 @@
+farview fixture: baked /var/folders/cg/30kkblns6599cnrbhx__l4jw0000gn/T/m3g-run064-c.7wz8Nl/work/maps/farview3x3/farview3x3-82ef22b94f77-p776 with 3 thread(s) in 324 s
+07:23:22.468 [main] INFO  i.g.b.synaxis.app.shard.ShardWorld - Map release farview3x3-82ef22b94f77-p776 verified in 159 ms: bounds=Bounds[minX=-256, minZ=-256, maxX=511, maxZ=511] world=World[minY=0, height=256]
+07:23:22.474 [main] INFO  i.g.b.synaxis.synx.OverlayStore - Overlay store /var/folders/cg/30kkblns6599cnrbhx__l4jw0000gn/T/m3g-run064-c.7wz8Nl/work/overlay/farview3x3-82ef22b94f77-p776: records of 0 chunks in 0 segments
+07:23:22.497 [main] INFO  i.g.b.synaxis.app.shard.ShardWorld - Map mounted: build_id=farview3x3-82ef22b94f77-p776 simulation_distance=4 chunk_unload_grace_ticks=100 spawn=Pos[x=2040.5, y=74.0, z=2040.5, yaw=0.0, pitch=0.0] overlay=/var/folders/cg/30kkblns6599cnrbhx__l4jw0000gn/T/m3g-run064-c.7wz8Nl/work/overlay/farview3x3-82ef22b94f77-p776
+07:23:22.505 [main] INFO  i.g.b.synaxis.app.shard.ShardWorld - Far view: 1 tile(s), 8 coarse, from http://host.docker.internal:25751
+07:23:22.634 [main] INFO  i.g.b.synaxis.ServerProcessImpl - Starting synaxis (dev) server.
+07:23:22.635 [main] INFO  i.g.b.synaxis.ServerProcessImpl - Running in offline mode. Beware that this is not secure and players can impersonate each other.
+07:23:22.636 [main] INFO  i.g.b.synaxis.ServerProcessImpl - synaxis server started successfully.
+farview fixture: tile -1 -1 layer 1 bytes 68040 sha256 0cb332ff8306cfb64c7e3584dd183f05eeadbd6adeb583c221cd0eeb00d6bcb9 url http://host.docker.internal:25751/farview3x3/farview/0cb332ff8306cfb64c7e3584dd183f05eeadbd6adeb583c221cd0eeb00d6bcb9.hfp
+farview fixture: tile -1 0 layer 1 bytes 65807 sha256 bb6813d5d746cfc98561a443f3c8f394937c686ad0020d6b8aae929d1052c3c7 url http://host.docker.internal:25751/farview3x3/farview/bb6813d5d746cfc98561a443f3c8f394937c686ad0020d6b8aae929d1052c3c7.hfp
+farview fixture: tile -1 1 layer 1 bytes 67151 sha256 17946f83edc2c650628f1253e40d6e20bc20447a4fe25dd90490eb0161526b3f url http://host.docker.internal:25751/farview3x3/farview/17946f83edc2c650628f1253e40d6e20bc20447a4fe25dd90490eb0161526b3f.hfp
+farview fixture: tile 0 -1 layer 1 bytes 68654 sha256 15e87ee6654f4cb11edf284639bd12a32e6f4375311f9d797e30233c5917cfc5 url http://host.docker.internal:25751/farview3x3/farview/15e87ee6654f4cb11edf284639bd12a32e6f4375311f9d797e30233c5917cfc5.hfp
+farview fixture: tile 0 0 layer 0 bytes 586706 sha256 d01c3af8952adb08486854e9066780c509d1a4a6e2527be6e2218789ec00e495 url http://host.docker.internal:25751/farview3x3/farview/d01c3af8952adb08486854e9066780c509d1a4a6e2527be6e2218789ec00e495.hfp
+farview fixture: tile 0 1 layer 1 bytes 66877 sha256 6e5c8ed3161e24224b95682d0994d597508118efa80d72f46721ff44cbd9e22a url http://host.docker.internal:25751/farview3x3/farview/6e5c8ed3161e24224b95682d0994d597508118efa80d72f46721ff44cbd9e22a.hfp
+farview fixture: tile 1 -1 layer 1 bytes 67042 sha256 de3fde0292241ca2b08d97c3aaf5bd482e8ce6eed6007fad6453a716b3684042 url http://host.docker.internal:25751/farview3x3/farview/de3fde0292241ca2b08d97c3aaf5bd482e8ce6eed6007fad6453a716b3684042.hfp
+farview fixture: tile 1 0 layer 1 bytes 66918 sha256 9495943ff16d301d579ae5b1a39ad97a4bb0efc67f14e48420fb02e0456e3017 url http://host.docker.internal:25751/farview3x3/farview/9495943ff16d301d579ae5b1a39ad97a4bb0efc67f14e48420fb02e0456e3017.hfp
+farview fixture: tile 1 1 layer 1 bytes 68823 sha256 7fd6aba60c9cd730949cf81862f19625f03379520499a206a15b66315a632d28 url http://host.docker.internal:25751/farview3x3/farview/7fd6aba60c9cd730949cf81862f19625f03379520499a206a15b66315a632d28.hfp
+farview fixture: mode=baked build_id=farview3x3-82ef22b94f77-p776 objects=9 announced=9 tile(s) [0cb332ff8306, 15e87ee6654f, 17946f83edc2, 6e5c8ed3161e, 7fd6aba60c9c, 9495943ff16d, bb6813d5d746, d01c3af8952a, de3fde029224] http=0.0.0.0:25751
+farview fixture ready

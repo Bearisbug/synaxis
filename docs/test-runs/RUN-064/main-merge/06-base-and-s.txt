@@ -1,0 +1,53 @@
+RUN-064 / main-merge / 06: the step 0 and track S sub-rounds, transcribed from their delivery notes (2026-10-01 to 02). Their
+own scripts, logs and baked maps were deleted with their temporary directories; only the readings below are left. Neither
+committed evidence files. The code they ran is the merged tree's code for what they tested: git diff 2ed53735ec 24d3b318a9 is
+empty for baker/, protocol/ and synx/; the far view code of server-app (ShardWorld, ShardSettings, FarViewShardFixture) is
+unchanged since 094b52530e (Main#serveMap gained main's PlayerStore parameter in the merge, see 02 for its counter-proof).
+
+== Step 0, branch m3g/base: 0c16b1c3ff (based on main c820bc65f2), after the review 094b52530e
+Red first on the skeleton: :protocol 42 of 121 failed; ShardSettingsTest and ShardWorldFarViewTest 6 of 12; SynxManifestTest 2;
+the config key gate "116 keys read, 115 in ConfigFile.KEYS" and the translation key gate (61 keys, synaxis:farview taken as a
+key without text), each 1. Green after: check with the database variables 10 modules 4,155 tests 0 failed (15 skipped in the
+root module); both strict modes the same counts, 0 failed. Gates: config key 115 -> 116 keys; translation key 60 keys, 15
+identifiers left out. Fixture synthetic on ports 25750/25751: "farview fixture ready"; the 9 objects by curl all 200 with the
+announced size and SHA-256; the whole pack 66,730 B in 0.0148 s (lower bound at 50 Mbit/s 0.0107 s); Range bytes=1000- 206,
+65,730 B; /access.log 10 lines.
+After the review (094b52530e): check 4m56s, 10 modules 4,164 tests, 0 failed, 15 skipped in the root module (:protocol 122,
+server-app 543); strict 1 4m51s and strict 2 4m48s, same counts, 0 failed. Red before each fix: baked y from the pack's min_y
+(expected 200, was 136); baked camera spots from the packs (plain was at 2600.5, 130, 2600.5); far view off instead of a failed
+start for a url over 1,024 bytes (MalformedMessageException "tile 0,-1: url is 1098 bytes, over the cap of 1024" before).
+Counter-proofs: Main with !event.isFirstConfig() -> FarViewLaunchTest expected 1 announcement, got 0; zlib fingerprint changed
+to 4a5c... -> with the strict switch FarViewVectorTest.java:217 red, without it 25 tests, 1 skipped, 0 failed; ShardWorld
+without the coarse digest comparison, and without the base level comparison -> the new ShardWorldFarViewTest cases each red
+(re-run on 24d3b318a9 in 02, block S-a). The "over 64 tiles" case has no counter-proof.
+
+== Track S, branch m3g/s-baker: 915f377322, after the review 2ed53735ec
+Red first: the baker's main code put back to 094b52530e (only the :protocol dependency kept): GeneratorBakeTest :81 expected
+[0,0] was []; FarViewSamplingTest initializationError (:101 NoSuchFileException .../farview/t.0.0.hfp); FarViewExportTest 3
+(exit 1 where 0 was expected, then NoSuchFileException); ShardWorldFarViewTest 6; FarViewLaunchTest 2.
+Counter-proofs of the first round: matches() always true -> FarViewBakeTest red (now :360); ringTop without excluding other
+areas -> red (now :517); ChunkEncoder > to >= -> FarViewSamplingTest :155 (:156 on 24d3b318a9); AnvilSource corners not
+normalised -> AnvilFarViewTest :144; the assembler given List.of() hidden areas -> AnvilFarViewTest :76 both tests, exit 4.
+Review round (2ed53735ec): before the fix, the sampled check holding every tile -> FarViewBakeTest :340 expected [1, 2] was [2, 4];
+verify of a baker_version 1 build -> :300, exit 4 "farview[] lists the tiles [], the bounds meet [0,0]"; the M2 mutation of the
+review (biome of the cell above the top) -> FarViewSamplingTest :129 forest/plains; the review's M1 (SHA comparison off) -> :248
+"fine block 1,7 is not a zlib stream". All of these were re-run literally on 24d3b318a9 (02).
+Gates of the review round: :protocol:check :synx:check :baker:check :server-app:check 344 s (baker 76, server-app 546, synx 142,
+protocol 122, 0 failed 0 skipped); check 16 s, 4,190 tests, 15 skipped in the root module, 0 failed; strict 1 359 s and strict 2
+315 s, same counts, 0 failed. Gates: 116 keys; 60 keys, 15 identifiers.
+Command line (6 threads, load about 20):
+  4k synthetic (seed 7): exit 0, 26.3 s wall, max RSS 2.68 GB, build_id synth-09b42ebb5dc6-p776, regions 213,319,659 B,
+    whole pack 596,465 B, coarse prefix 65,521 B, assembly 876 ms, 256 sampled chunks 0 differences;
+    verify --build exit 0; farview-export twice: two lines "exported", then two lines "kept".
+  farview/ removed and farview[] emptied, baker_version still 2: exit 4 "baker: farview[] lists the tiles [], the bounds meet
+    [0,0]"; manifest and the 64 region headers (offset 162) at baker_version 1: exit 0, verified.
+  3x3 tiles (generator:synthetic:0, --bounds -256,-256,511,511): exit 0, 216.6 s wall, max RSS 2.96 GB, 9 packs 5,329,202 B
+    (585,131 to 603,204 B each), coarse prefixes 65,807 to 68,823 B, assembly 7,779 ms, 2,304 sampled chunks over 9 tiles,
+    0 differences; verify --build exit 0 in 2.46 s; first entry into the centre region 1,126,018 B.
+  TC-PROD-550's bake line: ".../p10-41d364b9d82e-p776, 883274 bytes; 1 far view pack(s), 5308 bytes, assembled in 17 ms".
+Memory: the pre-publish far view check holds one pack and at most the blocks of one tile (272 at base_level 2, about 47 MiB)
+by the white box test (:340) and arithmetic; not measured under a limited heap.
+
+Process notes: calls of the system python3, against the rule that Python runs only in a .venv: step 0 twice (its first round an
+empty "python3 - <<EOF", its review round "/usr/bin/python3 -c 1", neither with output), track S's first round once and track C's
+first round once ("python3 --version", output "Python 3.14.7"); none changed a file, and the later rounds made none.

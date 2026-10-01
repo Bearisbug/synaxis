@@ -1,0 +1,2 @@
+[23:47:54] [Render thread/INFO] (synaxis) [synaxis/farview] Distant Horizons 3.3.2 (API 7) found, far view events bound
+[23:47:55] [Render thread/INFO] (synaxis-gametest) [synaxis/farview] Distant Horizons' auto updater turned off for the gametests

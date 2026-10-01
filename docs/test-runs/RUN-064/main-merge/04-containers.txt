@@ -1,0 +1,104 @@
+RUN-064 / main-merge / 04: the container regression on 24d3b318a9, 2026-10-02 07:17:53 to 07:48:34 under one lock, as the job
+script logged it. Memory gate before the fixture (System-wide memory free percentage >= 30%). Fixture FarViewShardFixture
+baked (heap 1 GiB, a fresh workDir, so it baked the 3x3 tile test map again), ports 25750/25751. Container A: MODS=dh, modes
+v1,v1-noparent,v1-writable,v1-coarse-only,marker,cancel,late-cancel,stale-unload,tiers against the fixture. Then
+server-app/build/install/server-app/bin/server-shard in an empty directory on the fixture's baked map without a url root
+(ports 25752/25753) and container B: MODS=dh, mode none against it. Each container's report, far view log lines and the
+fixture's access.log are in 04-A-*, 04-B-*; the fixture and server-shard logs in 04-fixture-log.txt, 04-server-shard-log.txt. The run
+copies the cache markers only when there is one in the run directory at the end; both runs ended on the empty dh/off library
+(the last modes are tiers and none), so files.txt lists only that. The "no matches found" lines are the copy of absent markers.
+"containers left: 3" counts synaxis-pg, synaxis-valkey and quilt-pg, the long-running database containers, not this round's.
+
+2026-10-02 07:17:53 lock taken: owner=Synaxis光照/m3g-run064-containers pid=39601 since=2026-10-02T07:17:53+0800 task=RUN-064: baked fixture, container A dh v1..tiers, server-shard + container B none, on the merge of origin/main
+2026-10-02 07:17:53 HEAD 24d3b318a9; changed outside docs: []; L=/var/folders/cg/30kkblns6599cnrbhx__l4jw0000gn/T/m3g-run064-c.7wz8Nl
+2026-10-02 07:17:53 gate: memory free 54% load1 5.95; total = 15360.00M  used = 14068.94M  free = 1291.06M  (encrypted)
+2026-10-02 07:17:57 gradle publish + fixture args + installDist exit 0 in 4 s
+  BUILD SUCCESSFUL in 4s
+  52 actionable tasks: 7 executed, 45 up-to-date
+  java: openjdk version "25.0.4.1" 2026-08-18
+2026-10-02 07:23:24 fixture pid 10494 ready after 327 s, max RSS while starting 2590 MiB
+  farview fixture: baked /var/folders/cg/30kkblns6599cnrbhx__l4jw0000gn/T/m3g-run064-c.7wz8Nl/work/maps/farview3x3/farview3x3-82ef22b94f77-p776 with 3 thread(s) in 324 s
+  farview fixture: tile -1 -1 layer 1 bytes 68040 sha256 0cb332ff8306cfb64c7e3584dd183f05eeadbd6adeb583c221cd0eeb00d6bcb9 url http://host.docker.internal:25751/farview3x3/farview/0cb332ff8306cfb64c7e3584dd183f05eeadbd6adeb583c221cd0eeb00d6bcb9.hfp
+  farview fixture: tile -1 0 layer 1 bytes 65807 sha256 bb6813d5d746cfc98561a443f3c8f394937c686ad0020d6b8aae929d1052c3c7 url http://host.docker.internal:25751/farview3x3/farview/bb6813d5d746cfc98561a443f3c8f394937c686ad0020d6b8aae929d1052c3c7.hfp
+  farview fixture: tile -1 1 layer 1 bytes 67151 sha256 17946f83edc2c650628f1253e40d6e20bc20447a4fe25dd90490eb0161526b3f url http://host.docker.internal:25751/farview3x3/farview/17946f83edc2c650628f1253e40d6e20bc20447a4fe25dd90490eb0161526b3f.hfp
+  farview fixture: tile 0 -1 layer 1 bytes 68654 sha256 15e87ee6654f4cb11edf284639bd12a32e6f4375311f9d797e30233c5917cfc5 url http://host.docker.internal:25751/farview3x3/farview/15e87ee6654f4cb11edf284639bd12a32e6f4375311f9d797e30233c5917cfc5.hfp
+  farview fixture: tile 0 0 layer 0 bytes 586706 sha256 d01c3af8952adb08486854e9066780c509d1a4a6e2527be6e2218789ec00e495 url http://host.docker.internal:25751/farview3x3/farview/d01c3af8952adb08486854e9066780c509d1a4a6e2527be6e2218789ec00e495.hfp
+  farview fixture: tile 0 1 layer 1 bytes 66877 sha256 6e5c8ed3161e24224b95682d0994d597508118efa80d72f46721ff44cbd9e22a url http://host.docker.internal:25751/farview3x3/farview/6e5c8ed3161e24224b95682d0994d597508118efa80d72f46721ff44cbd9e22a.hfp
+  farview fixture: tile 1 -1 layer 1 bytes 67042 sha256 de3fde0292241ca2b08d97c3aaf5bd482e8ce6eed6007fad6453a716b3684042 url http://host.docker.internal:25751/farview3x3/farview/de3fde0292241ca2b08d97c3aaf5bd482e8ce6eed6007fad6453a716b3684042.hfp
+  farview fixture: tile 1 0 layer 1 bytes 66918 sha256 9495943ff16d301d579ae5b1a39ad97a4bb0efc67f14e48420fb02e0456e3017 url http://host.docker.internal:25751/farview3x3/farview/9495943ff16d301d579ae5b1a39ad97a4bb0efc67f14e48420fb02e0456e3017.hfp
+  farview fixture: tile 1 1 layer 1 bytes 68823 sha256 7fd6aba60c9cd730949cf81862f19625f03379520499a206a15b66315a632d28 url http://host.docker.internal:25751/farview3x3/farview/7fd6aba60c9cd730949cf81862f19625f03379520499a206a15b66315a632d28.hfp
+  farview fixture: mode=baked build_id=farview3x3-82ef22b94f77-p776 objects=9 announced=9 tile(s) [0cb332ff8306, 15e87ee6654f, 17946f83edc2, 6e5c8ed3161e, 7fd6aba60c9c, 9495943ff16d, bb6813d5d746, d01c3af8952a, de3fde029224] http=0.0.0.0:25751
+  farview fixture ready
+  {"event":"map_build_started","ts":"2026-10-01T23:17:58.477329Z","shard_id":"baker","map_id":"farview3x3","source":"generator","threads":3,"baker_version":2,"light_engine_version":1}
+  {"event":"map_build_finished","ts":"2026-10-01T23:23:22.196293Z","shard_id":"baker","build_id":"farview3x3-82ef22b94f77-p776","outcome":"published","wall_ms":323709,"cpu_ms":921776,"bytes":1946768700,"farview_bytes":5329202,"failed_regions":0,"verify_diffs":0}
+  maps on disk (KiB): 1907644	/var/folders/cg/30kkblns6599cnrbhx__l4jw0000gn/T/m3g-run064-c.7wz8Nl/work/maps
+2026-10-02 07:23:24 container A: server host.docker.internal:25750 mods=dh modes=v1,v1-noparent,v1-writable,v1-coarse-only,marker,cancel,late-cancel,stale-unload,tiers; memory free 48% load1 7.18
+2026-10-02 07:47:32 container A exit 1 after 1448 s; fixture alive: yes
+container:11: no matches found: /var/folders/cg/30kkblns6599cnrbhx__l4jw0000gn/T/m3g-run064-c.7wz8Nl/out-A/farview/*.json
+  F1 PASS override target /work/client-fabric/build/run/clientGameTest/synaxis/farview/dh/9ea70f2546ccab5c, level getDhSaveFolder /work/client-fabric/build/run/clientGameTest/synaxis/farview/dh/9ea70f2546ccab5c, libraries under Distant_Horizons_server_data []
+  F2 PASS getReadOnly true, chunkRenderDistance api=256 value=256 overridable=true, maxHorizontalResolution api=FOUR_BLOCKS value=FOUR_BLOCKS overridable=true
+  F3 PASS ms 98111 write_ms 7543 visible_ms 108591 db_bytes 29306216; marker sources 2304, fine blocks + coarse blocks × 16 = 2304
+  F4 PASS DetailLevel=2 2304 of 2304, ApplyToParent=1 0, ApplyToChildren=1 0, DetailLevel=4 144; peak@440,104 expected minecraft:oak_leaves index 117 got {state=279, block=minecraft:oak_leaves, bottom=0, top=118, sky=15, light=0, points=2} ok; water@0,0 expected minecraft:water index 62 got {state=86, block=minecraft:water, bottom=61, top=63, sky=15, light=0, points=3} ok; mountain@-816,3344 expected minecraft:oak_leaves index 112 got {state=279, block=minecraft:oak_leaves, bottom=0, top=113, sky=15, light=0, points=2} ok
+  F5 PASS DetailLevel=0 before the walk 0, after 200 blocks and back 0
+  F6 PASS FAR_VIEW horizon rows 200..459 changed 53.17%; LOD_VIEW changed 78.31% (mean #48594d); EDGE_VIEW centre 608,328..671,391 changed 100.00% (mean before #161f2f, after #2b4880)
+  F7 PASS announcement at log line 13, save folder at 38; reconnect: access.log 9 -> 9 lines, ready line true, baked in false, FAR_VIEW shows LOD after 0 ticks (1465 ms)
+  F8 PASS counter-proof v1-noparent: ready true, DetailLevel=2 2304, DetailLevel=3 0, DetailLevel=4 0 (0 expected without applyToParent)
+  F9 PASS counter-proof v1-writable: getReadOnly false, DetailLevel=0 before the walk 36, after 54 (above 0 expected); the bake ended READY
+  F10 PASS counter-proof v1-coarse-only: ready true, DetailLevel=2 256, DetailLevel=4 144; EDGE_VIEW centre 608,328..671,391 changed 0.00% (one sky colour expected), mean #161f2f
+  F11 PASS marker sources set to 2305; view 9ea70f2546ccab5c library does not match its marker: 2304 of 2305; rebaked true, marker sources 2304, DetailLevel=2 2304; access.log 45 -> 45 lines
+  F12 PASS disconnected after 82 sources handed over; the bake thread stopped true in 200 ms after the cancel flag (6490 ms after the disconnect by the test's clock, thread alive false); marker after the cancel false; reconnected and ready true, marker sources 2304, DetailLevel=2 2304
+  F13 PASS ok held before the last source true, released after the disconnect, bake ended true; view 9ea70f2546ccab5c incomplete: no answer, so none of 2304 sources in the library; marker false; reconnected and rebaked true, marker sources 2304, DetailLevel=2 2304
+  F14 PASS counter-proof without the write check: held before the last source true, released after the disconnect, bake ended true; no incomplete line; marker true
+  F29 PASS unloadLevel with the first connection's wrapper while the bake was held: true, DH's Unloading level line true; bake released, ready true, no bake stopped line
+  F15 PASS 4096: chunkRenderDistance api=256 value=256 overridable=true, maxHorizontalResolution api=FOUR_BLOCKS value=FOUR_BLOCKS overridable=true; 2048: chunkRenderDistance api=128 value=128 overridable=true, maxHorizontalResolution api=FOUR_BLOCKS value=FOUR_BLOCKS overridable=true; 0: far view available false, access.log 90 -> 90 lines, library /work/client-fabric/build/run/clientGameTest/synaxis/farview/dh/off with 0 rows, renderingEnabled api=null value=true overridable=true, chunkRenderDistance api=null value=256 overridable=true
+  # mode v1 from 23:23:47
+  # fixture mode baked, map farview3x3, spawn 2040.5 74.0 2040.5
+  # V1 waiting for the bake to start: true, state BAKING
+  # V1 HUD line during the bake: Preparing the far view: 12%
+  # V1 state READY, view 9ea70f2546ccab5c, download 233 ms, timings Timings[ms=98111, writeMs=7543, visibleMs=108591, dbBytes=29306216, sources=2304, fromLevelMs=107175]
+  # walked to (2240.5, 106.48728415745732, 2040.5) from (2040.5, 74.0, 2040.5)
+  # attempt 1 not in the world of host.docker.internal:25750: Connection Lost. Somebody is already playing under this name.
+  # attempt 2 not in the world of host.docker.internal:25750: Connection Lost. Somebody is already playing under this name.
+  # mode v1-noparent from 23:29:31
+  # attempt 1 not in the world of host.docker.internal:25750: Connection Lost. Somebody is already playing under this name.
+  # attempt 2 not in the world of host.docker.internal:25750: Connection Lost. Somebody is already playing under this name.
+  # mode v1-writable from 23:30:07
+  # attempt 1 not in the world of host.docker.internal:25750: Connection Lost. Somebody is already playing under this name.
+  # attempt 2 not in the world of host.docker.internal:25750: Connection Lost. Somebody is already playing under this name.
+  # walked to (2240.5, 180.0, 2040.5) from (2040.5, 74.0, 2040.5)
+  # mode v1-coarse-only from 23:32:23
+  # attempt 1 not in the world of host.docker.internal:25750: Connection Lost. Somebody is already playing under this name.
+  # attempt 2 not in the world of host.docker.internal:25750: Connection Lost. Somebody is already playing under this name.
+  # mode marker from 23:33:56
+  # attempt 1 not in the world of host.docker.internal:25750: Connection Lost. Somebody is already playing under this name.
+  # attempt 1 not in the world of host.docker.internal:25750: Connection Lost. Somebody is already playing under this name.
+  # mode cancel from 23:36:29
+  # attempt 1 not in the world of host.docker.internal:25750: Connection Lost. Somebody is already playing under this name.
+  # attempt 1 not in the world of host.docker.internal:25750: Connection Lost. Somebody is already playing under this name.
+  # mode late-cancel from 23:38:50
+  # attempt 1 not in the world of host.docker.internal:25750: Connection Lost. Somebody is already playing under this name.
+  # attempt 1 not in the world of host.docker.internal:25750: Connection Lost. Somebody is already playing under this name.
+  # attempt 1 not in the world of host.docker.internal:25750: Connection Lost. Somebody is already playing under this name.
+  # mode stale-unload from 23:42:45
+  # attempt 1 not in the world of host.docker.internal:25750: Connection Lost. Somebody is already playing under this name.
+  # attempt 1 not in the world of host.docker.internal:25750: Connection Lost. Somebody is already playing under this name.
+  # mode tiers from 23:45:26
+  # attempt 1 not in the world of host.docker.internal:25750: Connection Lost. Somebody is already playing under this name.
+  # attempt 1 not in the world of host.docker.internal:25750: Connection Lost. Somebody is already playing under this name.
+  # attempt 1 not in the world of host.docker.internal:25750: Connection Lost. Somebody is already playing under this name.
+2026-10-02 07:47:38 server-shard (script pid 57734, java pid 57734) after 6 s
+  07:47:37.292 [main] INFO  i.g.b.s.app.metrics.HostMetrics - Metrics endpoint listening on http://127.0.0.1:25753/metrics
+  07:47:37.332 [main] INFO  i.g.b.synaxis.app.shard.ShardWorld - Far view off: synaxis.farview.url-root is empty
+  07:47:37.333 [main] INFO  i.github.bearisbug.synaxis.app.Main - Map mode (synaxis.app.core-mode=on): the host serves the map instance, no plugin is loaded, spawn=Pos[x=2040.5, y=74.0, z=2040.5, yaw=0.0, pitch=0.0]
+  07:47:37.334 [main] INFO  i.github.bearisbug.synaxis.app.Main - synaxis server-app listening on 0.0.0.0:25752
+2026-10-02 07:47:38 container B: server host.docker.internal:25752 mods=dh modes=none; memory free 40% load1 6.50
+2026-10-02 07:48:26 container B exit 1 after 48 s; fixture alive: yes
+container:11: no matches found: /var/folders/cg/30kkblns6599cnrbhx__l4jw0000gn/T/m3g-run064-c.7wz8Nl/out-B/farview/*.json
+  F16 PASS announcement none, getReadOnly true, library /work/client-fabric/build/run/clientGameTest/synaxis/farview/dh/off with 0 rows after a 200 block walk, renderingEnabled api=null value=true overridable=true, chunkRenderDistance api=null value=256 overridable=true; after the disconnect api=null value=true overridable=true
+  # mode none from 23:47:59
+  # fixture mode baked, map farview3x3, spawn 2040.5 74.0 2040.5
+  # walked to (2240.5, 106.48728415745732, 2040.5) from (2040.5, 74.0, 2040.5)
+2026-10-02 07:48:31 server-shard stopped: 0 left
+2026-10-02 07:48:34 fixture 10494 stopped
+2026-10-02 07:48:34 done; /var/folders/cg/30kkblns6599cnrbhx__l4jw0000gn/T/m3g-run064-c.7wz8Nl removed; containers left: 3
+2026-10-02 07:48:34 lock released

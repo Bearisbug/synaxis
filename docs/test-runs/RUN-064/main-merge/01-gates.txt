@@ -1,0 +1,114 @@
+RUN-064 / main-merge / 01: gates on the merge of origin/main into m3g/integrate (24d3b318a9), 2026-10-02.
+Database variables per docs/TEST.md §3 (SYNAXIS_TEST_PG_URL=jdbc:postgresql://127.0.0.1:5440/postgres, SYNAXIS_TEST_PG_USER,
+SYNAXIS_TEST_PG_PASSWORD read from docker inspect and never printed, SYNAXIS_TEST_REDIS_URL=redis://127.0.0.1:6440). Every gradle
+command carries --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts --max-workers=4 and JAVA_TOOL_OPTIONS with the
+proxy (nonProxyHosts aliyun). Every test task ran (test --rerun):
+  check:   ./gradlew check test --rerun --continue -Dsynaxis.synx.require-frozen-zlib=true
+  strict1: ./gradlew test --rerun --continue -Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true
+  strict2: ./gradlew test --rerun --continue -Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true -Dsynaxis.thread-provider=grid
+  client-fabric: ./gradlew :protocol:publishToMavenLocal, then in client-fabric/
+           ./gradlew check compileGametestJava --rerun-tasks --no-daemon --init-script gametest-env/mirror.init.gradle.kts --max-workers=4
+Counts are summed from the JUnit XML of each module after each run.
+
+First attempt, 06:46:25 (aborted): the lock helper set its EXIT trap inside a zsh function, so the lock was released as soon as the
+function returned, at 06:46:25, and the script went on to start Gradle without holding it. The wrapper and the Gradle JVM were
+stopped by pid about 20 s later (06:46:45), before any test task ran; no other session held or took the lock in between (the lock
+directory was absent when checked). The trap was moved to the top level of the job scripts, a lock self test confirmed the lock is
+held after the helper returns, and the gates below ran under the lock from the start. The aborted output:
+2026-10-02 06:46:25 lock taken: owner=Synaxis光照/m3g-run064-gates pid=39601 since=2026-10-02T06:46:25+0800 task=RUN-064: check and two strict modes (test --rerun) and client-fabric check on the merge of origin/main
+2026-10-02 06:46:25 lock released
+2026-10-02 06:46:25 HEAD 24d3b318a9, git status: 0 changed paths
+
+Gates, as the job script logged them:
+2026-10-02 06:47:12 lock taken: owner=Synaxis光照/m3g-run064-gates pid=39601 since=2026-10-02T06:47:12+0800 task=RUN-064: check and two strict modes (test --rerun) and client-fabric check on the merge of origin/main
+2026-10-02 06:47:12 HEAD 24d3b318a9, git status: 0 changed paths
+2026-10-02 06:53:49 check exit 0 in 397 s
+  BUILD SUCCESSFUL in 6m 37s
+  77 actionable tasks: 18 executed, 59 up-to-date
+== counts after check
+  architecture-tests   classes    7 tests    20 skipped   0 failures 0 errors 0
+  baker                classes    8 tests    76 skipped   0 failures 0 errors 0
+  game-rts             classes   13 tests    87 skipped   0 failures 0 errors 0
+  loadtest             classes    5 tests    25 skipped   0 failures 0 errors 0
+  plugin-api           classes    3 tests    15 skipped   0 failures 0 errors 0
+  protocol             classes    7 tests   122 skipped   0 failures 0 errors 0
+  root                 classes  428 tests  3162 skipped  15 failures 0 errors 0
+  server-app           classes  113 tests   577 skipped   0 failures 0 errors 0
+  synx                 classes   17 tests   142 skipped   0 failures 0 errors 0
+  testing              classes    8 tests    11 skipped   0 failures 0 errors 0
+  TOTAL                tests  4237 skipped  15 failures 0 errors 0
+  db suite PlayerStoreIntegrationTest skipped="0"
+  db suite ShardSessionDbTest skipped="0"
+  db suite MigrationsDbTest skipped="0"
+  db suite CrossShardHandoverIntegrationTest skipped="0"
+  db suite ShutdownSaveIntegrationTest skipped="0"
+  db suite TransferTicketsIntegrationTest skipped="0"
+  db suite StoreHousekeepingDbTest skipped="0"
+  config key gate: 116 keys read, 116 in ConfigFile.KEYS, 21 meter names left out
+  translation key gate: 60 keys checked against [en_us.json, zh_cn.json], 15 identifiers left out
+  AcquirableOwnershipException in results: 0 files
+2026-10-02 07:00:04 strict1 exit 0 in 368 s
+  BUILD SUCCESSFUL in 6m 8s
+  66 actionable tasks: 10 executed, 56 up-to-date
+== counts after strict1
+  architecture-tests   classes    7 tests    20 skipped   0 failures 0 errors 0
+  baker                classes    8 tests    76 skipped   0 failures 0 errors 0
+  game-rts             classes   13 tests    87 skipped   0 failures 0 errors 0
+  loadtest             classes    5 tests    25 skipped   0 failures 0 errors 0
+  plugin-api           classes    3 tests    15 skipped   0 failures 0 errors 0
+  protocol             classes    7 tests   122 skipped   0 failures 0 errors 0
+  root                 classes  428 tests  3162 skipped  15 failures 0 errors 0
+  server-app           classes  113 tests   577 skipped   0 failures 0 errors 0
+  synx                 classes   17 tests   142 skipped   0 failures 0 errors 0
+  testing              classes    8 tests    11 skipped   0 failures 0 errors 0
+  TOTAL                tests  4237 skipped  15 failures 0 errors 0
+  db suite PlayerStoreIntegrationTest skipped="0"
+  db suite ShardSessionDbTest skipped="0"
+  db suite MigrationsDbTest skipped="0"
+  db suite CrossShardHandoverIntegrationTest skipped="0"
+  db suite ShutdownSaveIntegrationTest skipped="0"
+  db suite TransferTicketsIntegrationTest skipped="0"
+  db suite StoreHousekeepingDbTest skipped="0"
+  config key gate: 116 keys read, 116 in ConfigFile.KEYS, 21 meter names left out
+  translation key gate: 60 keys checked against [en_us.json, zh_cn.json], 15 identifiers left out
+  AcquirableOwnershipException in results: 0 files
+  strict1 env dispatcher threads: 4
+  strict1 env thread provider: counter
+2026-10-02 07:06:19 strict2 exit 0 in 369 s
+  BUILD SUCCESSFUL in 6m 9s
+  66 actionable tasks: 10 executed, 56 up-to-date
+== counts after strict2
+  architecture-tests   classes    7 tests    20 skipped   0 failures 0 errors 0
+  baker                classes    8 tests    76 skipped   0 failures 0 errors 0
+  game-rts             classes   13 tests    87 skipped   0 failures 0 errors 0
+  loadtest             classes    5 tests    25 skipped   0 failures 0 errors 0
+  plugin-api           classes    3 tests    15 skipped   0 failures 0 errors 0
+  protocol             classes    7 tests   122 skipped   0 failures 0 errors 0
+  root                 classes  428 tests  3162 skipped  15 failures 0 errors 0
+  server-app           classes  113 tests   577 skipped   0 failures 0 errors 0
+  synx                 classes   17 tests   142 skipped   0 failures 0 errors 0
+  testing              classes    8 tests    11 skipped   0 failures 0 errors 0
+  TOTAL                tests  4237 skipped  15 failures 0 errors 0
+  db suite PlayerStoreIntegrationTest skipped="0"
+  db suite ShardSessionDbTest skipped="0"
+  db suite MigrationsDbTest skipped="0"
+  db suite CrossShardHandoverIntegrationTest skipped="0"
+  db suite ShutdownSaveIntegrationTest skipped="0"
+  db suite TransferTicketsIntegrationTest skipped="0"
+  db suite StoreHousekeepingDbTest skipped="0"
+  config key gate: 116 keys read, 116 in ConfigFile.KEYS, 21 meter names left out
+  translation key gate: 60 keys checked against [en_us.json, zh_cn.json], 15 identifiers left out
+  AcquirableOwnershipException in results: 0 files
+  strict2 env dispatcher threads: 4
+  strict2 env thread provider: grid
+2026-10-02 07:06:27 publishToMavenLocal exit 0 in 2 s
+  BUILD SUCCESSFUL in 1s
+  8 actionable tasks: 3 executed, 5 up-to-date
+2026-10-02 07:06:39 client-fabric check exit 0 in 12 s
+  BUILD SUCCESSFUL in 11s
+  10 actionable tasks: 10 executed
+  client-fabric classes 15 tests 184 skipped 0 failures+errors 0
+  > Task :verifyModJar
+  mod jar: minecraft=26.2, 75 entries, ships META-INF/jars/protocol-dev.jar
+2026-10-02 07:06:39 done; git status: 1 changed paths
+2026-10-02 07:06:39 lock released

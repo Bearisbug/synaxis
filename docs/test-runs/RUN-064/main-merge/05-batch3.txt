@@ -1,0 +1,23 @@
+RUN-064 / main-merge / 05: batch 3 on 24d3b318a9 (TC-WORLD-116 step 3, the verifyModJar counter-proof with a text file under
+com/seibel/ in the main resources, then verifyModJar on the clean tree), as the job script logged it.
+
+2026-10-02 07:49:51 lock taken: owner=Synaxis光照/m3g-run064-batch3 pid=39601 since=2026-10-02T07:49:51+0800 task=RUN-064: verifyModJar counter-proof (TC-WORLD-116 step 3) on the merge of origin/main
+2026-10-02 07:49:51 HEAD 24d3b318a9; changed outside docs: []
+2026-10-02 07:49:51 === TC-WORLD-116 step 3: a text file under com/seibel/ in the main resources
+  created client-fabric/src/main/resources/com/seibel/distanthorizons/README.txt
+2026-10-02 07:49:57 gradle [C-c] exit 1 in 6 s
+  > Task :verifyModJar FAILED
+  BUILD FAILED in 5s
+  7 actionable tasks: 5 executed, 2 up-to-date
+  > Task :verifyModJar FAILED
+  * What went wrong:
+  Execution failed for task ':verifyModJar' (registered in build file 'build.gradle.kts').
+  > 模组 jar 里混进了 Distant Horizons 的类（LGPL-3.0，DH 以独立 jar 放进 mods/，docs/DESIGN-M3.md API-M3-015 许可条）：[com/seibel/, com/seibel/distanthorizons/, com/seibel/distanthorizons/README.txt]
+  removed client-fabric/src/main/resources/com
+2026-10-02 07:49:57 === verifyModJar again
+2026-10-02 07:50:01 gradle [C-d] exit 0 in 4 s
+  BUILD SUCCESSFUL in 3s
+  7 actionable tasks: 4 executed, 3 up-to-date
+  mod jar: minecraft=26.2, 75 entries, ships META-INF/jars/protocol-dev.jar
+2026-10-02 07:50:01 batch 3 done; changed outside docs: []
+2026-10-02 07:50:01 lock released

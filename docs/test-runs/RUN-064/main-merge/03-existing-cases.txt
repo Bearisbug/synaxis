@@ -1,0 +1,158 @@
+RUN-064 / main-merge / 03: existing cases whose expectations M3-G changes, run on 24d3b318a9 (batch 2, 07:13:16 to 07:16:38):
+TC-WORLD-032 steps 1 to 4, TC-WORLD-041 steps 1, 2, 4 and 5, TC-WORLD-098 step 2, TC-WORLD-023 steps 1 to 5 (4k synthetic map,
+baker/build/install/baker/bin/baker, default threads = 12 cores, then --threads 1), TC-WORLD-030 steps 1 to 3 and TC-WORLD-033
+steps 1 and 2 (Anvil fixture through :baker:run). In TC-WORLD-023 step 5 the script printed only the first two stderr lines,
+which are SLF4J's notice; the exit code 5, the directory listing and the last event (outcome failed) are the evidence.
+
+2026-10-02 07:13:23 === TC-WORLD-032 step 1
+2026-10-02 07:13:30 gradle [w032-1] exit 0 in 7 s
+  BUILD SUCCESSFUL in 6s
+  40 actionable tasks: 1 executed, 1 from cache, 38 up-to-date
+  TEST-io.github.bearisbug.synaxis.architecture.TranslationKeyGateTest.xml: tests="2" skipped="0" failures="0" errors="0" timestamp="2026-10-01T23:13:28.564Z"
+    out: translation key gate: 60 keys checked against [en_us.json, zh_cn.json], 15 identifiers left out
+  63:            Map.entry("synaxis:map", "dimension type of the map instance of a shard (API-M3-006)"),
+  64:            Map.entry("synaxis:farview", "configuration channel of the far view announcement of a shard (API-M3-015)"),
+  66:            Map.entry("synaxis:door", "block handler key of a map source's data marker, in :game-rts (API-M3-003)"),
+  67:            Map.entry("synaxis:loot", "block handler key of a map source's data marker, in :game-rts (API-M3-003)"),
+
+2026-10-02 07:13:30 === TC-WORLD-032 step 2: without the synaxis:loot entry
+  dropped the line with Map.entry("synaxis:loot", from architecture-tests/src/test/java/io/github/bearisbug/synaxis/architecture/TranslationKeyGateTest.java
+2026-10-02 07:13:35 gradle [w032-2] exit 1 in 5 s
+  TranslationKeyGateTest > everyKeyTheServerCanSendHasTextInBothLanguageFiles() FAILED
+  2 tests completed, 1 failed
+  > Task :architecture-tests:test FAILED
+  BUILD FAILED in 5s
+  22 actionable tasks: 2 executed, 20 up-to-date
+  TEST-io.github.bearisbug.synaxis.architecture.TranslationKeyGateTest.xml: tests="2" skipped="0" failures="1" errors="0" timestamp="2026-10-01T23:13:34.187Z"
+    FAIL everyKeyTheServerCanSendHasTextInBothLanguageFiles(): org.opentest4j.AssertionFailedError: Problems of the translation key gate (2):&#10;en_us.json has no text for synaxis:loot (from io.github.bearisbug.synaxis.game.rts.marker.LootMarker)&#10;zh_cn.json has no text for synaxis:loot (from io.github.bearisbug.synaxis.game.rts.marker.LootMarker)&#10; ==> expected: <true> but was: <false>
+      at TranslationKeyGateTest.java:90
+    out: translation key gate: 61 keys checked against [en_us.json, zh_cn.json], 14 identifiers left out
+  restored; git status --short (outside docs): []
+
+2026-10-02 07:13:36 === TC-WORLD-032 step 3: without the synaxis:map entry
+  dropped the line with Map.entry("synaxis:map", from architecture-tests/src/test/java/io/github/bearisbug/synaxis/architecture/TranslationKeyGateTest.java
+2026-10-02 07:13:41 gradle [w032-3] exit 1 in 5 s
+  TranslationKeyGateTest > everyKeyTheServerCanSendHasTextInBothLanguageFiles() FAILED
+  2 tests completed, 1 failed
+  > Task :architecture-tests:test FAILED
+  BUILD FAILED in 5s
+  22 actionable tasks: 2 executed, 20 up-to-date
+  TEST-io.github.bearisbug.synaxis.architecture.TranslationKeyGateTest.xml: tests="2" skipped="0" failures="1" errors="0" timestamp="2026-10-01T23:13:39.572Z"
+    FAIL everyKeyTheServerCanSendHasTextInBothLanguageFiles(): org.opentest4j.AssertionFailedError: Problems of the translation key gate (2):&#10;en_us.json has no text for synaxis:map (from io.github.bearisbug.synaxis.app.shard.ShardWorld)&#10;zh_cn.json has no text for synaxis:map (from io.github.bearisbug.synaxis.app.shard.ShardWorld)&#10; ==> expected: <true> but was: <false>
+      at TranslationKeyGateTest.java:90
+    out: translation key gate: 61 keys checked against [en_us.json, zh_cn.json], 14 identifiers left out
+  restored; git status --short (outside docs): []
+
+2026-10-02 07:13:41 === TC-WORLD-032 step 4 (step 1 again)
+2026-10-02 07:13:43 gradle [w032-4] exit 0 in 2 s
+  BUILD SUCCESSFUL in 1s
+  22 actionable tasks: 2 from cache, 20 up-to-date
+  TEST-io.github.bearisbug.synaxis.architecture.TranslationKeyGateTest.xml: tests="2" skipped="0" failures="0" errors="0" timestamp="2026-10-01T23:13:28.564Z"
+    out: translation key gate: 60 keys checked against [en_us.json, zh_cn.json], 15 identifiers left out
+
+2026-10-02 07:13:43 === TC-WORLD-041 step 1
+2026-10-02 07:13:50 gradle [w041-1] exit 0 in 7 s
+  BUILD SUCCESSFUL in 7s
+  48 actionable tasks: 3 executed, 1 from cache, 44 up-to-date
+  TEST-io.github.bearisbug.synaxis.synx.SynxOptionsTest.xml: tests="6" skipped="0" failures="0" errors="0" timestamp="2026-10-01T23:13:48.838Z"
+  TEST-io.github.bearisbug.synaxis.synx.OverlayOptionsTest.xml: tests="3" skipped="0" failures="0" errors="0" timestamp="2026-10-01T23:13:48.778Z"
+  TEST-io.github.bearisbug.synaxis.app.shard.ShardSettingsTest.xml: tests="8" skipped="0" failures="0" errors="0" timestamp="2026-10-01T23:13:49.125Z"
+  TEST-io.github.bearisbug.synaxis.architecture.ConfigKeyGateTest.xml: tests="1" skipped="0" failures="0" errors="0" timestamp="2026-10-01T23:13:48.969Z"
+    out: config key gate: 116 keys read, 116 in ConfigFile.KEYS, 21 meter names left out
+
+2026-10-02 07:13:50 === TC-WORLD-041 step 2: two overlay keys out of ConfigFile.KEYS
+  dropped the line with "synaxis.overlay.cap", from server-app/src/main/java/io/github/bearisbug/synaxis/app/ConfigFile.java
+  dropped the line with "synaxis.overlay.flush-interval-s", from server-app/src/main/java/io/github/bearisbug/synaxis/app/ConfigFile.java
+    diff -            "synaxis.overlay.cap",
+    diff -            "synaxis.overlay.flush-interval-s",
+2026-10-02 07:13:59 gradle [w041-2] exit 1 in 8 s
+  ConfigKeyGateTest > theTableOfTheConfigFileIsEveryKeyTheCodeReads() FAILED
+  > Task :architecture-tests:test FAILED
+  BUILD FAILED in 8s
+  40 actionable tasks: 3 executed, 37 up-to-date
+  TEST-io.github.bearisbug.synaxis.architecture.ConfigKeyGateTest.xml: tests="1" skipped="0" failures="1" errors="0" timestamp="2026-10-01T23:13:57.807Z"
+    FAIL theTableOfTheConfigFileIsEveryKeyTheCodeReads(): org.opentest4j.AssertionFailedError: Problems of the config key gate (2):&#10;synaxis.overlay.cap is read (io.github.bearisbug.synaxis.synx.OverlayOptions) but not in ConfigFile.KEYS, so the config file refuses it&#10;synaxis.overlay.flush-interval-s is read (io.github.bearisbug.synaxis.synx.OverlayOptions) but not in ConfigFile.KEYS, so the config file refuses it&#10; ==> expected: <true> but was: <false>
+      at ConfigKeyGateTest.java:74
+    out: config key gate: 116 keys read, 114 in ConfigFile.KEYS, 21 meter names left out
+  restored; git status --short (outside docs): []
+
+2026-10-02 07:13:59 === TC-WORLD-041 step 4: a grace of 0 let through
+  changed server-app/src/main/java/io/github/bearisbug/synaxis/app/shard/ShardSettings.java
+2026-10-02 07:14:06 gradle [w041-4] exit 1 in 7 s
+  > Task :server-app:test FAILED
+  ShardSettingsTest > aValueThatIsNotAnIntegerOrAGraceBelowOneIsRefused() FAILED
+  8 tests completed, 1 failed
+  BUILD FAILED in 6s
+  42 actionable tasks: 2 executed, 40 up-to-date
+  TEST-io.github.bearisbug.synaxis.app.shard.ShardSettingsTest.xml: tests="8" skipped="0" failures="1" errors="0" timestamp="2026-10-01T23:14:06.392Z"
+    FAIL aValueThatIsNotAnIntegerOrAGraceBelowOneIsRefused(): org.opentest4j.AssertionFailedError: Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown.
+      at ShardSettingsTest.java:72
+  restored; git status --short (outside docs): []
+
+2026-10-02 07:14:06 === TC-WORLD-041 step 5 and TC-WORLD-098 step 2: step 1 again, and all of :architecture-tests
+2026-10-02 07:14:10 gradle [w041-5] exit 0 in 4 s
+  BUILD SUCCESSFUL in 4s
+  48 actionable tasks: 1 executed, 3 from cache, 44 up-to-date
+  TEST-io.github.bearisbug.synaxis.app.shard.ShardSettingsTest.xml: tests="8" skipped="0" failures="0" errors="0" timestamp="2026-10-01T23:13:49.125Z"
+  architecture-tests classes 7 tests 20 failures 0
+    out: config key gate: 116 keys read, 116 in ConfigFile.KEYS, 21 meter names left out
+
+2026-10-02 07:14:11 === TC-WORLD-023 (4k synthetic map from the command line)
+2026-10-02 07:14:15 gradle [w023-0] exit 0 in 4 s
+  BUILD SUCCESSFUL in 4s
+  36 actionable tasks: 2 executed, 34 up-to-date
+2026-10-02 07:14:15 load { 6.70 6.93 9.48 }, cores 12, O=/var/folders/cg/30kkblns6599cnrbhx__l4jw0000gn/T/m3g-run064-w023.Zy287x
+  step 1 exit 0
+  stdout: baker: published /var/folders/cg/30kkblns6599cnrbhx__l4jw0000gn/T/m3g-run064-w023.Zy287x/maps12/synth/synth-09b42ebb5dc6-p776, 213319659 bytes; 1 far view pack(s), 596465 bytes, assembled in 825 ms
+  time:        19.03 real       128.09 user         6.35 sys
+  time:           4427743232  maximum resident set size
+  regions:       64
+  farview: t.0.0.hfp
+  event: {"event":"map_build_started","ts":"2026-10-01T23:14:16.587616Z","shard_id":"baker","map_id":"synth","source":"generator","threads":12,"baker_version":2,"light_engine_version":1}
+  event: {"event":"map_build_finished","ts":"2026-10-01T23:14:34.509301Z","shard_id":"baker","build_id":"synth-09b42ebb5dc6-p776","outcome":"published","wall_ms":17912,"cpu_ms":132421,"bytes":213319659,"farview_bytes":596465,"failed_regions":0,"verify_diffs":0}
+  step 2 exit 0
+  stdout: baker: published /var/folders/cg/30kkblns6599cnrbhx__l4jw0000gn/T/m3g-run064-w023.Zy287x/maps1/synth/synth-09b42ebb5dc6-p776, 213319659 bytes; 1 far view pack(s), 596465 bytes, assembled in 834 ms
+  time:        92.53 real        93.11 user         6.38 sys
+  time:           1084112896  maximum resident set size
+  same pack t.0.0.hfp
+  event: {"event":"map_build_finished","ts":"2026-10-01T23:16:07.079074Z","shard_id":"baker","build_id":"synth-09b42ebb5dc6-p776","outcome":"published","wall_ms":91981,"cpu_ms":97629,"bytes":213319659,"farview_bytes":596465,"failed_regions":0,"verify_diffs":0}
+  step 3 exit 0: SLF4J(W): No SLF4J providers were found.
+SLF4J(W): Defaulting to no-operation (NOP) logger implementation
+SLF4J(W): See https://www.slf4j.org/codes.html#noProviders for further details.
+baker: /var/folders/cg/30kkblns6599cnrbhx__l4jw0000gn/T/m3g-run064-w023.Zy287x/maps12/synth/synth-09b42ebb5dc6-p776 verified
+  step 4 changed exit 4: SLF4J(W): No SLF4J providers were found.
+SLF4J(W): Defaulting to no-operation (NOP) logger implementation
+SLF4J(W): See https://www.slf4j.org/codes.html#noProviders for further details.
+baker: synx-payload-hash: r.3.4.synx: payload_sha256 8cfa3446bc855b27faa4810c61fe2cd47a33723c08ed28a7aa7cbc244bb96b54, the bytes hash to ec9b0d0f4e60ccdf149087bc94e933f5740201e008833cdcae32beefc9443354
+  step 4 restored exit 0: SLF4J(W): No SLF4J providers were found.
+SLF4J(W): Defaulting to no-operation (NOP) logger implementation
+SLF4J(W): See https://www.slf4j.org/codes.html#noProviders for further details.
+baker: /var/folders/cg/30kkblns6599cnrbhx__l4jw0000gn/T/m3g-run064-w023.Zy287x/maps12/synth/synth-09b42ebb5dc6-p776 verified
+  step 5 exit 5: SLF4J(W): No SLF4J providers were found.
+SLF4J(W): Defaulting to no-operation (NOP) logger implementation
+  ls: . .. synth-09b42ebb5dc6-p776 
+  last event: {"event":"map_build_finished","ts":"2026-10-01T23:16:26.127873Z","shard_id":"baker","build_id":"synth-09b42ebb5dc6-p776","outcome":"failed","wall_ms":16093,"cpu_ms":127585,"bytes":213319659,"farview_bytes":596465,"failed_regions":0,"verify_diffs":0}
+
+2026-10-02 07:16:26 === TC-WORLD-030 steps 1-3 and TC-WORLD-033 steps 1-2 (Anvil fixture)
+  ## 1. 存档要求
+  ## 2. 处理顺序
+  ## 3. 交付范围
+  ## 4. 制作工具
+  ## 5. 服务端数据标记
+  ## 6. 自检
+  ## 7. 实体
+  030 step 2 exit 0
+  baker: published /var/folders/cg/30kkblns6599cnrbhx__l4jw0000gn/T/m3g-run064-w030.s6sSSh/fixture/fixture-4a17058953f6-p776, 20046 bytes; 1 far view pack(s), 2378 bytes, assembled in 11 ms
+  BUILD SUCCESSFUL in 5s
+  dir: fixture-4a17058953f6-p776
+  event: {"event":"map_build_finished","ts":"2026-10-01T23:16:31.198458Z","shard_id":"baker","build_id":"fixture-4a17058953f6-p776","outcome":"published","wall_ms":139,"cpu_ms":333,"bytes":20046,"farview_bytes":2378,"source_light_diff":0,"failed_regions":0,"verify_diffs":0}
+  030 step 3 exit 0
+  baker: /var/folders/cg/30kkblns6599cnrbhx__l4jw0000gn/T/m3g-run064-w030.s6sSSh/fixture/fixture-4a17058953f6-p776 verified
+  BUILD SUCCESSFUL in 4s
+  033 step 2 exit 1
+  baker: /var/folders/cg/30kkblns6599cnrbhx__l4jw0000gn/T/m3g-run064-w030.s6sSSh/fixture/fixture-4a17058953f6-p776 already exists
+  > Process 'command '/opt/homebrew/Cellar/openjdk@25/25.0.4.1/libexec/openjdk.jdk/Contents/Home/bin/java'' finished with non-zero exit value 5
+  BUILD FAILED in 2s
+  dir: fixture-4a17058953f6-p776
+2026-10-02 07:16:38 batch 2 done; changed outside docs: []
+2026-10-02 07:16:38 lock released

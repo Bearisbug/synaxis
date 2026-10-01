@@ -8,12 +8,13 @@
 | Owner | Bearisbug |
 | 关联设计文档 | `docs/DESIGN.md`（引擎域 M1 / M1.5）、`docs/DESIGN-M2.md`（游戏域 M2 分册）、`docs/DESIGN-M3.md`（大世界域 M3 分册）与 `docs/DESIGN-PROD.md`（生产就绪分册）；各文档的 REQ 各自编号，M2 侧写作 `REQ-M2-*`、M3 侧写作 `REQ-M3-*`，生产就绪侧写作 `REQ-PROD-*`，对应用例写作 `TC-PROD-*` |
 | 被测系统 | 仓库 `Bearisbug/synaxis`，分支 `main` |
-| 最后更新 | 2026-10-01 |
+| 最后更新 | 2026-10-02 |
 
 变更记录（登用例增改，不登执行轮次）：
 
 | 日期 | 改动 | 作者 |
 | --- | --- | --- |
+| 2026-10-02 | 分支 `m3g/integrate`（M3-G 合并验收，合入 `main` `4bb76eec7f` 之后是 `24d3b318a9`），跟进 `docs/DESIGN-M3.md` v0.32，登记 RUN-064（证据 `docs/test-runs/RUN-064/`）。**新增「M3 · 远景（M3-G）」一节 `TC-WORLD-102`～`TC-WORLD-124`**（排在 M3-D 一节之后，编号接 `main` 上最大的 `TC-WORLD-101`）：服务端与烘焙器 102～109（编解码与远景向量、烘焙产出、采样与粗层、隐藏区域、校验、导出、分片宣告、命令行与夹具），客户端 JUnit 110～116，无头容器 117～122（121 只登记读数），真机 123、124（执行者人工）；JUnit 用例的反证都按本节字面在 `24d3b318a9` 上实跑过，容器用例 117、118 带反证，119、120 没有（§7）。§2 `REQ-M3-024`、`REQ-M3-025` 两行由「未实现」改为这些用例，`REQ-M3-002`、`REQ-M3-003`、`REQ-M3-022` 三行加对应用例；§3 加「远景（M3-G）」一条（重活锁的 `EXIT` trap 要写在脚本顶层、容器门槛、夹具与容器的命令、端口）；§5 加 M3-G 一行；§7 加四条。**改既有用例**（M3-G 让预期变了，RUN-064 按新的字面实跑）：`TC-WORLD-023` 第 1、2 步（发布行多了 `; 1 far view pack(s), 596465 bytes, assembled in <n> ms`，事件 `farview_bytes` 0 → 596465，`farview/t.0.0.hfp` 1 线程与多线程逐字节相同）；`TC-WORLD-030` 第 2 步与 `TC-WORLD-033` 第 1 步（发布行同样多一段，夹具版本多了 `farview/t.0.0.hfp`）；`TC-WORLD-032` 第 1～3 步（`60 keys …, 15 identifiers left out`，`NOT_TEXT` 多 `synaxis:farview`，反证红行 `:89` → `:90`、输出 `61 keys …, 14 identifiers`）；`TC-WORLD-041` 第 1、2、4 步（`ShardSettingsTest` 6 → 8 条，门禁 `116 keys read, 116 in ConfigFile.KEYS, 21 meter names left out`，21 是生产就绪第 6 波之后的值，反证 `116 keys read, 114 in ConfigFile.KEYS`）；`TC-WORLD-098` 第 2 步（同一门禁输出）；`TC-WORLD-100` 与 `TC-WORLD-101` 第 2 步（`Main.java:518` → `:526`、`:304` → `:305`：合入后 `Main` 多了远景宣告的导入与监听体）。**不改**：`TC-PROD-*`。合入后它们要跟着改的条数与行号列在 `docs/DESIGN-M3.md` §28.2「交给生产就绪会话的改动（M3 v0.32）」：`TC-PROD-550` 第 3 步的发布行、`:server-app:test` 553 → 577、两道门禁 116 与 15、`Main.java` 行号 | Bearisbug |
 | 2026-10-01 | 合入 `main` `4a40af2835`（`docs/DESIGN-M3.md` v0.31，RUN-065）后按该分册 §28.2「M3 v0.31」一行同步，跟进 `docs/DESIGN-PROD.md` v0.9.44。**`TC-PROD-570` 第 2 步改写**：原写法 `git checkout 0e919cce6a -- <GT>` 取出的旧 `ShardGates` 只有三个参数的构造器，M3 v0.31 起 `Main` 与测试都传四个，照写编不过（RUN-065 判失败）；改为原地把 `case COOLDOWN, NOT_ONLINE, SAVE_FAILED -> refused(player, gate, result);` 换成空块，红行与消息不变，在 RUN-066 按字面重跑 1～6 步。**条数**：`:server-app:test` 552 → 553（M3 v0.31 的 `ShardGatesOnlineTest` 1 个），改 `TC-PROD-486` 第 3 步、`505` 第 3 步、`510` 第 2 步、`529` 第 4 步、`549` 第 2 步、`575` 第 3 步、`585` 第 1、2 步、`596` 第 2 步、`607` 第 2 步、`618` 第 1、2 步，类数随之 109 → 110；根构建 `:test` 3,162 不变 | Bearisbug |
 | 2026-10-01 | 分支 `m3/sec-followup`，跟进 `docs/DESIGN-M3.md` v0.31（安全审查 B-01 交给光照会话的 `ShardGates#moved` 加固；同版的 `ADR-PROD-015` 同步只改设计文档），登记 RUN-065（证据 `docs/test-runs/RUN-065/`）。**新增 `TC-WORLD-101`**（「M3 · 分片（M3-E）」一节，排在 `TC-WORLD-100` 之后）：新类 `ShardGatesOnlineTest`（1 条，不连数据库），不在线的玩家出框再进框 100 次，`ShardService#transfer` 0 次、`EVT:transfer_refused` 0 行，回到在线后照常触发；两个反证（判定不起作用、先判在线再记门框）。编号接 `main` 上最大的 `TC-WORLD-100`；另一个 M3-G 分支也会新增 `TC-WORLD`，谁后合谁顺延。**改 `TC-WORLD-064`** 第 2 步：`moved` 那一行多了 `\|\| !online.test(player)`，原文与改法按新行写，红行仍是 `ShardGatesTest.java:148`（RUN-065 实跑）。§2 `REQ-M3-017` 一行加 `TC-WORLD-101`；§5 M3-E 一行加「`ShardGates#moved` 的在线判定 → `TC-WORLD-101` 加 `TC-WORLD-064`，同时跑 `TC-PROD-593` 与 `TC-PROD-570`～`TC-PROD-573`」。**不改**：`TC-PROD-570`～`TC-PROD-573`、`TC-PROD-593` 的文字（按约定只执行；`TC-PROD-570` 第 2 步照写编译不过，见 RUN-065 明细与 `docs/DESIGN-M3.md` §28.2 交接行）；`:server-app:test` 全量多 1 个（552 → 553），`TC-PROD-486` 第 3 步、`505` 第 3 步、`510` 第 2 步、`529` 第 4 步、`549` 第 2 步、`575` 第 3 步、`585` 第 1、2 步、`596` 第 2 步、`607` 第 2 步、`618` 第 1、2 步的条数由合入后统一改 | Bearisbug |
 | 2026-10-01 | 集成分支 `prod/integrate-062` 的评审跟进，对应 `docs/DESIGN-PROD.md` v0.9.43 同版的行号改写。**行号**：`TC-PROD-617` 第 2 步反证改的两行由 `ManagementServer.java` 的 `:316`、`:317` 改为 `:326`、`:327`（ops 组在它们之前加了 10 行，secrets 组写的是加行之前的行号），按新行号在集成代码上重跑第 1～3 步，结果与用例相同。**补跑**（结果与用例相同，用例文字不改）：`TC-PROD-583` 第 2 步在 `Retry-After` 5 下重跑；`TC-PROD-575` 第 3 步补上不带数据库变量的严格 grid 全量。证据 `docs/test-runs/RUN-062/integrate/07-review-follow-ups.txt`，RUN-062 的范围与结果不变 | Bearisbug |
@@ -242,8 +243,8 @@ REQ-M3 ↔ TC 对照（可读索引）。「未实现」行没有用例，是已
 | REQ | TC |
 | --- | --- |
 | REQ-M3-001 `.synx` 区域文件格式 | TC-WORLD-014、TC-WORLD-015、TC-WORLD-016、TC-WORLD-018 |
-| REQ-M3-002 地图发布目录与清单 | TC-WORLD-017、TC-WORLD-023、TC-WORLD-047、TC-WORLD-048、TC-WORLD-052（`rebake` 未实现） |
-| REQ-M3-003 离线烘焙器 | TC-WORLD-009、TC-WORLD-013、TC-WORLD-016、TC-WORLD-018、TC-WORLD-021、TC-WORLD-022、TC-WORLD-023、TC-WORLD-033（多键方块实体的 Anvil 源重烘；高度场包随 M3-G） |
+| REQ-M3-002 地图发布目录与清单 | TC-WORLD-017、TC-WORLD-023、TC-WORLD-047、TC-WORLD-048、TC-WORLD-052、TC-WORLD-103、TC-WORLD-106（清单 `farview[]`；`baker_version` < 2 的版本照常过 `verify`）（`rebake` 未实现） |
+| REQ-M3-003 离线烘焙器 | TC-WORLD-009、TC-WORLD-013、TC-WORLD-016、TC-WORLD-018、TC-WORLD-021、TC-WORLD-022、TC-WORLD-023、TC-WORLD-033（多键方块实体的 Anvil 源重烘）、TC-WORLD-103、TC-WORLD-106、TC-WORLD-109（高度场包随 M3-G 落地，`baker_version` 2） |
 | REQ-M3-004 光照引擎抽取 | TC-WORLD-012、TC-WORLD-013、TC-WORLD-028；「M2 对局在修复后的光照下仍然有光」由 TC-GAME-029 第 1、2、10、11 步判 |
 | REQ-M3-005 天光整列按 `lightBlock` 与面遮挡停止 | TC-WORLD-003 |
 | REQ-M3-006 BFS 按 `lightBlock` 衰减 | TC-WORLD-003 |
@@ -261,10 +262,10 @@ REQ-M3 ↔ TC 对照（可读索引）。「未实现」行没有用例，是已
 | REQ-M3-019 光影兼容 | 未实现（DH + Iris spike 的证据见 §6 RUN-026 证据段，spike 不是验收） |
 | REQ-M3-020 离线 Anvil 读取器 | TC-WORLD-018、TC-WORLD-019、TC-WORLD-020、TC-WORLD-027、TC-WORLD-029、TC-WORLD-038（静态实体在分片载入时生成；TC-WORLD-024 已废弃） |
 | REQ-M3-021 烘焙器第二道对拍 | TC-WORLD-029 |
-| REQ-M3-022 编辑源交付规范 | TC-WORLD-019（标记解析）、TC-WORLD-029、TC-WORLD-030（`docs/MAP-SOURCE.md` 第 6 节的自检命令）、TC-WORLD-031、TC-WORLD-032、TC-WORLD-055（TC-WORLD-025 已废弃） |
+| REQ-M3-022 编辑源交付规范 | TC-WORLD-019（标记解析）、TC-WORLD-029、TC-WORLD-030（`docs/MAP-SOURCE.md` 第 6 节的自检命令）、TC-WORLD-031、TC-WORLD-032、TC-WORLD-055、TC-WORLD-105（隐藏区域在远景里的替换）（TC-WORLD-025 已废弃） |
 | REQ-M3-023 世界状态标志 | TC-WORLD-066～TC-WORLD-070、TC-WORLD-079（真进程只到装配）、TC-WORLD-088、TC-WORLD-094（只读世界里标志改方块后的光照） |
-| REQ-M3-024 远景高度场包 | 未实现 |
-| REQ-M3-025 客户端远景 | 未实现 |
+| REQ-M3-024 远景高度场包 | TC-WORLD-102～TC-WORLD-109（编解码与向量、烘焙产出、采样与粗层、隐藏区域、校验、导出、分片宣告、命令行与夹具）；端到端的读回由 TC-WORLD-117 覆盖 |
+| REQ-M3-025 客户端远景 | TC-WORLD-110～TC-WORLD-116（JUnit）、TC-WORLD-117～TC-WORLD-122（无头容器，TC-WORLD-121 只登记读数）、TC-WORLD-123、TC-WORLD-124（真机，执行者人工，待用户的机器）；TC-WORLD-102 的宣告与向量两端共用 |
 | REQ-M3-026 光影检测与引导 | 未实现 |
 | REQ-M3-027 光照面遮挡按原版 | TC-WORLD-002、TC-WORLD-004 |
 | REQ-M3-028 `fullyLit` 重算 | TC-WORLD-026（TC-WORLD-005 已废弃） |
@@ -371,6 +372,7 @@ REQ-M3 ↔ TC 对照（可读索引）。「未实现」行没有用例，是已
 - 区块流送与覆盖层（M3-C，2026-09-27 随 RUN-041 实跑核对过）：JUnit 的写法同上，不需要数据库。真进程用 `./gradlew :server-app:installDist :loadtest:installDist :baker:installDist` 的产物。4k 测试图用 `baker/build/install/baker/bin/baker bake --map-id synth --source generator:synthetic:7 --out <L>/maps --logs <L>/bakelogs --threads 4` 烘进 `<L>/maps/synth/synth-09b42ebb5dc6-p776`（`<L>` 是 `mktemp -d` 的目录，可用空间 ≥ 1 GB；本机约 27 s、峰值 RSS 约 2 GB；`content_hash` 与 `TC-WORLD-023` 相同）。挂图起服是 `bin/server-shard` 加 `-Dsynaxis.map.root=<L>/maps/synth -Dsynaxis.map.build=synth-09b42ebb5dc6-p776`，工作目录里会建 `overlay/<build_id>/`。压测的服务端与机器人在同一台机器上、走回环；200 机器人档的前置是 `memory_pressure` 的空闲比例 ≥ 35%（分片预触 4 GiB 堆）、没有别的 java/Gradle 进程在消耗 CPU（非本轮 java 进程每个在 30 s 内平均 CPU ≤ 5%）且 `/tmp/synaxis-heavy.lock` 由本轮持有、数据盘可用 ≥ 5,120 MB，swap 只记录（`TC-WORLD-099`），20 机器人档不设这道门槛。用完删 `<L>` 与各工作目录。
 - 分片（M3-E，2026-09-28 随 RUN-045、RUN-046 实跑核对过）：JUnit 的写法同上；带 `Db`、`Replay`、`Sync` 的类与 `FullChannelTransferSocketTest`、`TransferTicketsIntegrationTest`、`TransferAdmissionIntegrationTest`、`MigrationsDbTest` 要数据库前置（同 3A 一节的四个 `SYNAXIS_TEST_*` 变量）。「不带数据库」只是不设这四个变量、不停容器：`synaxis-pg` 要密码，空密码连不上，数据库测试跳过。两进程用例（`TC-WORLD-076`～`TC-WORLD-080`）的夹具写在「M3 · 分片（M3-E）」一节开头：32×16 区块的小图（烘焙约 2 s、峰值 RSS 约 0.5 GB）、按比例缩小的 `shards.json`、一个新库迁到 V1～V6、每个分片 512 MB 堆；三个分片加一个机器人进程共约 2.5 GB，本机 swap 空余约 1.2 GB 时也跑得起来。压测四档（`TC-WORLD-081`～`TC-WORLD-084`）的门槛见 `docs/DESIGN-M3.md` §15，门槛不满足时只读数、不起跑。判读 JSON 与台账用仓库外的 `uv venv` 虚拟环境，只用标准库。用完删 `<L>`、各工作目录与新建的库。
 - 运行时光照（M3-D，2026-09-29 写入；JUnit 部分随 RUN-052 实跑过，容器与真进程部分 2026-09-30 随 RUN-054 实跑核对过）：JUnit 的写法同上，`WorldFlagsReplayTest` 要数据库前置，其余不要。**磁盘门槛**：起 Gradle 之前 `df -m /System/Volumes/Data` 的可用 ≥ 1,500 MB，不满足不起；跑的过程中另起一个看门狗，每 10 s 读一次，低于 1,000 MB 就按 pid 停掉本轮的 Gradle，并在执行记录里登记（RUN-052 的门禁跑到一半磁盘写满，`No space left on device` 会让本机所有会话写不了文件）。依据是实测：RUN-054 的三道全量门禁起跑时可用 82,981～84,023 MB，过程中比起跑时少 468～2,007 MB，这个差值里有别的会话的写入与 swap 扩容（`/System/Volumes/VM` 的 swap 文件与数据盘同在一个 APFS 容器、共用可用空间，那一轮 swap 从 22,528 MB 扩到 23,552 MB），不全是 Gradle 自己的。所以起跑门槛只挡明显不够的情况，防写满靠看门狗：读到低于 1,000 MB 就停，给同时在写盘的别的会话留约 1 GB。**容器门槛**：`memory_pressure` 输出的 `System-wide memory free percentage` ≥ 25%，且没有别的 worktree 的 Gradle 或 java（`ps` 找进程，`lsof -a -p <pid> -d cwd` 看工作目录，不在本 worktree 下的是别人的，只看不碰；本轮自己起的夹具与分片按 pid 排除，分片的工作目录在 `<L>/shard`，按目录判会把它算成别人的）。`sysctl vm.swapusage` 的 `free` 只记录、不作门槛：macOS 的 swap 按需扩容，`free` 小不说明内存紧（RUN-052、RUN-053 的读数 swap 空余 450～1,740 MB，按原先的 2,048 MB 门槛一次都没起跑）。不满足每 5 分钟复查、最多 90 分钟，仍不满足登记阻塞。镜像 `synaxis-mc-client:dev` 与卷 `synaxis-mc-gradle` 复用，不建新的 tag 与卷，同一时刻只有一个容器挂这个卷；镜像不在本机时（`docker image ls synaxis-mc-client:dev` 没有这一行）按同一个 tag 重建：`docker build --build-arg APT_MIRROR=http://mirrors.ustc.edu.cn/ubuntu-ports -t synaxis-mc-client:dev client-fabric/gametest-env`（RUN-054 用时 55 s，镜像 894 MB），卷不重建；`client-fabric/gametest-env/run.sh` 起的容器带 `--rm`，退出码恒为 1（libopenal 段错误，已知），判定看 `$OUT/synaxis-gametest/light-report.txt`。不在 macOS 桌面起客户端；客户端的放置与挖掘由用例经 `MultiPlayerGameMode` 程序化调用，不合成鼠标键盘。宿主上构建 `client-fabric`（`compileGametestJava check`）用 `--init-script gametest-env/mirror.init.gradle.kts`，不用根项目的镜像脚本（它会丢掉 Loom 的 Fabric 仓库），先 `<G> :protocol:publishToMavenLocal`。光照夹具 `LightShardFixture` 用端口 25740，真进程分片用 25741（避开 2566x、2569x），都按 pid 停。用完删 `<L>`（地图、覆盖存储、JFR、容器输出）。
+- 远景（M3-G，2026-10-02 随 RUN-064 实跑核对过）：JUnit 分在 `:protocol`、`:synx`、`:baker`、`server-app` 与 `client-fabric` 五处，都不连数据库；`client-fabric` 的测试先在仓库根 `./gradlew :protocol:publishToMavenLocal`，再在 `client-fabric/` 里用它自己的 `gametest-env/mirror.init.gradle.kts` 跑，第一次构建由任务 `fetchDistantHorizons` 按 SHA-1 把 DH 3.3.2 jar 取进 `client-fabric/build/dh/`（已 gitignore，不入库）。**重活锁**：任何 Gradle 任务、夹具 JVM 与容器开始前 `mkdir /tmp/synaxis-heavy.lock`，成功才开工，往 `owner` 写「会话名 pid 开始时刻 任务」，用脚本顶层的 `trap 'rm -rf /tmp/synaxis-heavy.lock' EXIT` 放锁（zsh 里写在函数里的 `EXIT` trap 在函数返回时就触发，锁会立刻没了）；拿不到每 60 s 重试，`owner` 里的 pid 已不在时才能删这把陈旧的锁。**容器门槛**：拿锁之后、起夹具之前 `memory_pressure` 的 `System-wide memory free percentage` ≥ 30%，不满足先放锁再等。**夹具**：`./gradlew :protocol:publishToMavenLocal :server-app:farviewFixtureArgs` 之后 `java @server-app/build/farview-fixture.args -Xms1G -Xmx1G -Dsynaxis.app.auth=offline -Dsynaxis.connection-gate.trusted-networks=127.0.0.0/8 io.github.bearisbug.synaxis.app.shard.FarViewShardFixture 25750 25751 <L>/work <synthetic|baked|break-sha|half> [urlRoot]`（`java` 必须是 JDK 25，PATH 上的旧 JDK 起不来；不设 `JAVA_TOOL_OPTIONS`），按 pid 停；`baked` 第一次起先烘 3×3 瓦片测试图（本机 3 线程 321～339 s、RSS 峰值 2.3～2.9 GB、约 1.9 GB 磁盘），之后在 `<L>/work` 里复用。**容器**：`SYNAXIS_FARVIEW_SERVER=host.docker.internal:25750 SYNAXIS_FARVIEW_HTTP=http://host.docker.internal:25751 SYNAXIS_FARVIEW_MODE=<模式，逗号分隔> SYNAXIS_FARVIEW_MODS=<dh|dh-iris|空> [SYNAXIS_GAMETEST_ARGS="--width 1920 --height 1080"] OUT=<L>/out client-fabric/gametest-env/run.sh`；镜像 `synaxis-mc-client:dev` 与卷 `synaxis-mc-gradle` 复用、不建新的 tag 与卷，容器带 `--rm`，同一时刻只一个容器挂这个卷；退出码恒为 1（libopenal 段错误），看 `<L>/out/synaxis-gametest/farview-report.txt`；从 Docker 连接时服务端要到保活超时（约 23 s）才放掉上一个玩家，gametest 每个模式最多重连 6 次、每次隔 10 s，报告里的 `# attempt …` 行不影响判定。端口：夹具 25750（游戏）与 25751（HTTP），`server-shard` 用 25752 与 25753（指标），都避开 2566x、2569x、2574x。真客户端只在容器里跑，本机桌面不起客户端；真机用例由用户在自己的机器上启动。用完删 `<L>`（含烘出的地图、截图与 DH 库）。
 - 种子数据与重置：没有持久数据。反证步骤改的源码与资源一律用 `git checkout -- <路径>` 还原，后置统一判 `git status --porcelain -- src` 为空（`.synx` 与烘焙器的用例判 `-- synx`、`-- baker`）。
 
 ## 4. 用例库
@@ -2334,8 +2336,8 @@ REQ-M3 ↔ TC 对照（可读索引）。「未实现」行没有用例，是已
 
 | # | 操作 | 预期 |
 | --- | --- | --- |
-| 1 | `/usr/bin/time -l <B> bake --map-id synth --source generator:synthetic:7 --out <O>/maps12 --logs <O>/logs12`（线程数取默认 = 核数） | 退出码 0；stdout `baker: published <O>/maps12/synth/synth-09b42ebb5dc6-p776, 213319659 bytes`，随后打印清单；`regions/` 下 64 个文件；`<O>/logs12` 的事件两行：`map_build_started`（`threads` = 核数）与 `map_build_finished`（`outcome=published`、`farview_bytes` 0、`verify_diffs` 0）。登记 `wall_ms`、`cpu_ms` 与 `maximum resident set size` |
-| 2 | 同一命令加 `--threads 1`，输出改到 `<O>/maps1`、`<O>/logs1`；然后 `for f in <O>/maps12/synth/*/regions/*.synx; do cmp -s $f <O>/maps1/synth/*/regions/$(basename $f) \|\| echo DIFF $f; done` | 退出码 0；`build_id` 与 `content_hash`（`09b42ebb5dc678b265f1c7b3f7e4d5ae7b475b6b7aca9180e14b0981e191e273`）与第 1 步相同；`cmp` 没有输出，64 个区域文件逐字节相同。登记同样三项 |
+| 1 | `/usr/bin/time -l <B> bake --map-id synth --source generator:synthetic:7 --out <O>/maps12 --logs <O>/logs12`（线程数取默认 = 核数） | 退出码 0；stdout `baker: published <O>/maps12/synth/synth-09b42ebb5dc6-p776, 213319659 bytes; 1 far view pack(s), 596465 bytes, assembled in <n> ms`（M3-G 起多了远景包一段），随后打印清单；`regions/` 下 64 个文件，`farview/` 下只有 `t.0.0.hfp`；`<O>/logs12` 的事件两行：`map_build_started`（`threads` = 核数，`baker_version` 2）与 `map_build_finished`（`outcome=published`、`farview_bytes` 596465、`verify_diffs` 0）。登记 `wall_ms`、`cpu_ms` 与 `maximum resident set size` |
+| 2 | 同一命令加 `--threads 1`，输出改到 `<O>/maps1`、`<O>/logs1`；然后 `for f in <O>/maps12/synth/*/regions/*.synx; do cmp -s $f <O>/maps1/synth/*/regions/$(basename $f) \|\| echo DIFF $f; done` | 退出码 0；`build_id` 与 `content_hash`（`09b42ebb5dc678b265f1c7b3f7e4d5ae7b475b6b7aca9180e14b0981e191e273`）与第 1 步相同；`cmp` 没有输出，64 个区域文件逐字节相同；`farview/t.0.0.hfp` 两边逐字节相同。登记同样三项 |
 | 3 | `<B> verify --build <O>/maps12/synth/synth-09b42ebb5dc6-p776` | 退出码 0，`baker: … verified` |
 | 4 | 用 TC-WORLD-014 第 2 步的 perl 写法把 `regions/r.3.4.synx` 偏移 100000 的字节异或 0xFF，重跑第 3 步；再异或一次还原，重跑第 3 步 | 改后退出码 4，`baker: synx-payload-hash: r.3.4.synx: payload_sha256 …, the bytes hash to …`；还原后退出码 0 |
 | 5 | 第 1 步原样再跑一次；`ls -a <O>/maps12/synth` | 退出码 5，`baker: … synth-09b42ebb5dc6-p776 already exists`；目录下只有这一个版本目录，没有 `.baking-*` 残留；`<O>/logs12` 最后一行是 `map_build_finished`、`outcome=failed` |
@@ -2406,7 +2408,7 @@ JUnit 与反证的纪律同 3A 一节：反证一律「临时改一处实现、�
 | # | 操作 | 预期 |
 | --- | --- | --- |
 | 1 | `grep '^## ' docs/MAP-SOURCE.md` | 7 行，依次是存档要求、处理顺序、交付范围、制作工具、服务端数据标记、自检、实体 |
-| 2 | 仓库根执行 `./gradlew :baker:run --args="bake --map-id fixture --source anvil:<W> --bounds 0,0,0,0 --out <O> --logs <O>-logs --threads 8" --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts` | `BUILD SUCCESSFUL`；stdout 一行 `baker: published <O>/fixture/fixture-<12 位 hex>-p776, <字节数> bytes`；`<O>/fixture/` 下恰一个该目录，含 `manifest.json` 与 `regions/r.0.0.synx`；`<O>-logs/events-<日期>.jsonl` 有一行 `"event":"map_build_finished"`，带 `"outcome":"published"`、`"source_light_diff":0`、`"verify_diffs":0`（同一输入每次新起进程都是同一个 `build_id`，见 `TC-WORLD-033`） |
+| 2 | 仓库根执行 `./gradlew :baker:run --args="bake --map-id fixture --source anvil:<W> --bounds 0,0,0,0 --out <O> --logs <O>-logs --threads 8" --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts` | `BUILD SUCCESSFUL`；stdout 一行 `baker: published <O>/fixture/fixture-<12 位 hex>-p776, <字节数> bytes; 1 far view pack(s), <字节数> bytes, assembled in <n> ms`；`<O>/fixture/` 下恰一个该目录，含 `manifest.json`、`regions/r.0.0.synx` 与 `farview/t.0.0.hfp`；`<O>-logs/events-<日期>.jsonl` 有一行 `"event":"map_build_finished"`，带 `"outcome":"published"`、`"source_light_diff":0`、`"verify_diffs":0`（同一输入每次新起进程都是同一个 `build_id`，见 `TC-WORLD-033`） |
 | 3 | `./gradlew :baker:run --args="verify --build <第 2 步的目录>" --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts` | `BUILD SUCCESSFUL`，stdout `baker: <该目录> verified` |
 | 4 | 反证（服务文件少一个处理器）：删掉 `<SV>` 里 `LootMarker` 那一行；按第 2 步的命令重跑，`--out`、`--logs` 换成 `<O2>`、`<O2>-logs`；再 `git checkout -- <SV>` | `BUILD FAILED`，`finished with non-zero exit value 2`；stderr `baker: chunk 0, 0: data marker at 4, -59, 1 names handler namespace 'synaxis:loot', which is not registered`；`<O2>` 与 `<O2>-logs` 都没有建出来 |
 
@@ -2432,9 +2434,9 @@ JUnit 与反证的纪律同 3A 一节：反证一律「临时改一处实现、�
 
 | # | 操作 | 预期 |
 | --- | --- | --- |
-| 1 | 跑门禁 | `tests="2"` 全绿；`<system-out>` 为 `translation key gate: 56 keys checked against [en_us.json, zh_cn.json], 14 identifiers left out`；`<TK>` 的 `NOT_TEXT` 有 `synaxis:map`（`ShardWorld` 的维度类型）、`synaxis:door`、`synaxis:loot`（`:game-rts` 的处理器键）三行并写明用途 |
-| 2 | 反证：删掉 `<TK>` 里 `Map.entry("synaxis:loot", …)` 那一行，跑门禁，再 `git checkout -- <TK>` | `2 tests completed, 1 failed`，红在 `:89`（删掉一行后的断言行），`Problems of the translation key gate (2)` 下两行：`en_us.json has no text for synaxis:loot (from io.github.bearisbug.synaxis.game.rts.marker.LootMarker)` 与同来源的 `zh_cn.json` 一行；`<system-out>` 为 `57 keys …, 13 identifiers left out` |
-| 3 | 反证：删掉 `<TK>` 里 `Map.entry("synaxis:map", …)` 那一行，跑门禁，再 `git checkout -- <TK>` | `2 tests completed, 1 failed`，红在 `:89`，两行分别是 `en_us.json has no text for synaxis:map (from io.github.bearisbug.synaxis.app.shard.ShardWorld)` 与 `zh_cn.json` 的同一行；`57 keys …, 13 identifiers left out` |
+| 1 | 跑门禁 | `tests="2"` 全绿；`<system-out>` 为 `translation key gate: 60 keys checked against [en_us.json, zh_cn.json], 15 identifiers left out`（RUN-064，合入 `main` 之后；生产就绪 6A 加了 4 个键，M3-G 加了 `synaxis:farview` 一个标识）；`<TK>` 的 `NOT_TEXT` 有 `synaxis:map`（`ShardWorld` 的维度类型）、`synaxis:farview`（远景宣告的通道）、`synaxis:door`、`synaxis:loot`（`:game-rts` 的处理器键）四行并写明用途 |
+| 2 | 反证：删掉 `<TK>` 里 `Map.entry("synaxis:loot", …)` 那一行，跑门禁，再 `git checkout -- <TK>` | `2 tests completed, 1 failed`，红在 `:90`（删掉一行后的断言行），`Problems of the translation key gate (2)` 下两行：`en_us.json has no text for synaxis:loot (from io.github.bearisbug.synaxis.game.rts.marker.LootMarker)` 与同来源的 `zh_cn.json` 一行；`<system-out>` 为 `61 keys …, 14 identifiers left out` |
+| 3 | 反证：删掉 `<TK>` 里 `Map.entry("synaxis:map", …)` 那一行，跑门禁，再 `git checkout -- <TK>` | `2 tests completed, 1 failed`，红在 `:90`，两行分别是 `en_us.json has no text for synaxis:map (from io.github.bearisbug.synaxis.app.shard.ShardWorld)` 与 `zh_cn.json` 的同一行；`61 keys …, 14 identifiers left out` |
 | 4 | 重跑第 1 步 | 与第 1 步相同 |
 
 后置：`git status --porcelain -- architecture-tests` 无输出。
@@ -2445,7 +2447,7 @@ JUnit 与反证的纪律同 3A 一节：反证一律「临时改一处实现、�
 
 | # | 操作 | 预期 |
 | --- | --- | --- |
-| 1 | 仓库根执行 `./gradlew :baker:run --args="bake --map-id fixture --source anvil:<W> --bounds 0,0,0,0 --out <O> --logs <O>-logs --threads 8" --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts` | `BUILD SUCCESSFUL`；stdout `baker: published <O>/fixture/fixture-<h>-p776, <字节数> bytes` |
+| 1 | 仓库根执行 `./gradlew :baker:run --args="bake --map-id fixture --source anvil:<W> --bounds 0,0,0,0 --out <O> --logs <O>-logs --threads 8" --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts` | `BUILD SUCCESSFUL`；stdout `baker: published <O>/fixture/fixture-<h>-p776, <字节数> bytes; 1 far view pack(s), <字节数> bytes, assembled in <n> ms` |
 | 2 | 原样再执行第 1 步的命令（新的 Gradle 与烘焙器进程） | `BUILD FAILED`，`finished with non-zero exit value 5`；stderr `baker: <O>/fixture/fixture-<h>-p776 already exists`；`<O>/fixture/` 下只有这一个目录 |
 | 3 | 第 1 步命令的 `--threads 8` 换成 `--threads 1` 再执行 | 同第 2 步 |
 | 4 | 反证（段① 不排序）：`<C>` 里 `buffer.write(SORTED_NBT, nbt);` 改成 `buffer.write(Boolean.getBoolean("proof.never") ? SORTED_NBT : NBT, nbt);`，第 1 步的命令原样再执行一次，再 `git checkout -- <C>` | `BUILD SUCCESSFUL`，stdout `baker: published <O>/fixture/fixture-<h2>-p776, …`，`<h2>` 与第 1 步的 `<h>` 不同，`<O>/fixture/` 下两个目录。未排序时键序随 JVM 启动种子变化，RUN-041 与 RUN-042 共 7 次未排序的烘焙得到 7 个各不相同、也都不同于排序后的 `build_id`；若碰巧退出码 5，再执行一次 |
@@ -2550,10 +2552,10 @@ JUnit 与反证的纪律同 3A 一节：反证一律「临时改一处实现、�
 
 | # | 操作 | 预期 |
 | --- | --- | --- |
-| 1 | `<G> :synx:test --tests '<S>.SynxOptionsTest' --tests '<S>.OverlayOptionsTest' :server-app:test --tests '<AP>.shard.ShardSettingsTest' :architecture-tests:test --tests 'io.github.bearisbug.synaxis.architecture.ConfigKeyGateTest'` | `BUILD SUCCESSFUL`：`SynxOptionsTest` `tests="6"`（本步看 `synaxis.world-writable` 与缓存两个键，M3-D 两个键的读法归 `TC-WORLD-098`：默认可写、256 MiB；读到 `false` 与 `1`；`TRUE`、`true `（带空格）、`yes`、空串都拒，信息 `Property 'synaxis.world-writable' is not true or false: "<值>"`；缓存 `0`、`-1`、`256MiB` 都拒，信息以 `Property 'synaxis.synx.section-cache-bytes'` 开头）；`OverlayOptionsTest` `tests="3"`（默认 `(16_384, 10)`，读键得 `(24_576, 60)`；`flush-interval-s` 为 `0` 与 `61` 报 `Property 'synaxis.overlay.flush-interval-s' is not from 1 to 60: <值>`，`cap=0` 报 `… is not from 1 up: 0`，`cap=16k` 报 `… is not an integer: 16k`）；`ShardSettingsTest` `tests="6"`（不给地图键时不挂图、另两个键不读；挂图时默认模拟距离 4、宽限 100；只给一个地图键报 `synaxis.map.root and synaxis.map.build mount a map together, only … is given`；`build_id` 是路径时拒；`four` 报 `… is not an integer: four`，宽限 `0` 与 `-2` 报 `Property 'synaxis.chunk-unload-grace-ticks' is neither -1 nor at least 1: <值>`）；`ConfigKeyGateTest` `tests="1"`，`<system-out>` 为 `config key gate: 115 keys read, 115 in ConfigFile.KEYS, 20 meter names left out` |
-| 2 | 反证（门禁）：删掉 `<CF>` 里 `"synaxis.overlay.cap",` 与 `"synaxis.overlay.flush-interval-s",` 两行，跑第 1 步里的 `ConfigKeyGateTest`，再 `git checkout -- <CF>` | `1 test completed, 1 failed`，红在 `ConfigKeyGateTest.java:74`：`Problems of the config key gate (2)`，两行 `synaxis.overlay.cap is read (io.github.bearisbug.synaxis.synx.OverlayOptions) but not in ConfigFile.KEYS, so the config file refuses it` 与 `synaxis.overlay.flush-interval-s …` 的同一句；`<system-out>` 为 `115 keys read, 113 in ConfigFile.KEYS` |
+| 1 | `<G> :synx:test --tests '<S>.SynxOptionsTest' --tests '<S>.OverlayOptionsTest' :server-app:test --tests '<AP>.shard.ShardSettingsTest' :architecture-tests:test --tests 'io.github.bearisbug.synaxis.architecture.ConfigKeyGateTest'` | `BUILD SUCCESSFUL`：`SynxOptionsTest` `tests="6"`（本步看 `synaxis.world-writable` 与缓存两个键，M3-D 两个键的读法归 `TC-WORLD-098`：默认可写、256 MiB；读到 `false` 与 `1`；`TRUE`、`true `（带空格）、`yes`、空串都拒，信息 `Property 'synaxis.world-writable' is not true or false: "<值>"`；缓存 `0`、`-1`、`256MiB` 都拒，信息以 `Property 'synaxis.synx.section-cache-bytes'` 开头）；`OverlayOptionsTest` `tests="3"`（默认 `(16_384, 10)`，读键得 `(24_576, 60)`；`flush-interval-s` 为 `0` 与 `61` 报 `Property 'synaxis.overlay.flush-interval-s' is not from 1 to 60: <值>`，`cap=0` 报 `… is not from 1 up: 0`，`cap=16k` 报 `… is not an integer: 16k`）；`ShardSettingsTest` `tests="8"`（M3-G 加了 url-root 两条，归 `TC-WORLD-108`；不给地图键时不挂图、另两个键不读；挂图时默认模拟距离 4、宽限 100；只给一个地图键报 `synaxis.map.root and synaxis.map.build mount a map together, only … is given`；`build_id` 是路径时拒；`four` 报 `… is not an integer: four`，宽限 `0` 与 `-2` 报 `Property 'synaxis.chunk-unload-grace-ticks' is neither -1 nor at least 1: <值>`）；`ConfigKeyGateTest` `tests="1"`，`<system-out>` 为 `config key gate: 116 keys read, 116 in ConfigFile.KEYS, 21 meter names left out`（RUN-064，合入 `main` 之后；M3-G 加了 `synaxis.farview.url-root`） |
+| 2 | 反证（门禁）：删掉 `<CF>` 里 `"synaxis.overlay.cap",` 与 `"synaxis.overlay.flush-interval-s",` 两行，跑第 1 步里的 `ConfigKeyGateTest`，再 `git checkout -- <CF>` | `1 test completed, 1 failed`，红在 `ConfigKeyGateTest.java:74`：`Problems of the config key gate (2)`，两行 `synaxis.overlay.cap is read (io.github.bearisbug.synaxis.synx.OverlayOptions) but not in ConfigFile.KEYS, so the config file refuses it` 与 `synaxis.overlay.flush-interval-s …` 的同一句；`<system-out>` 为 `116 keys read, 114 in ConfigFile.KEYS` |
 | 3 | 反证（读法放宽）：`<SO>` 的 `case "true" -> true;` 改成 `case "true", "TRUE" -> true;`，`<OO>` 的 `if (parsed < min \|\| parsed > max) {` 改成 `if (parsed < min) {`，跑 `<G> :synx:test --tests '<S>.SynxOptionsTest' --tests '<S>.OverlayOptionsTest'`，再 `git checkout -- <SO> <OO>` | `9 tests completed, 2 failed`：`SynxOptionsTest.java:34`（红行按 RUN-057 在 `5c7874ed5c` 上实跑：M3-D 在这个类里加了 2 条） `Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown.`；`OverlayOptionsTest.java:31` `expected: <Property 'synaxis.overlay.flush-interval-s' is not from 1 to 60: 61> but was: <flush_interval_s must be from 1 to 60: 61>`（记录的构造器还有一道校验，但文案不含键名） |
-| 4 | 反证（宽限 0 放行）：`<SS>` 的 `if (grace != -1 && grace < 1) {` 改成 `if (grace < -1) {`，跑 `<G> :server-app:test --tests '<AP>.shard.ShardSettingsTest'`，再 `git checkout -- <SS>` | `6 tests completed, 1 failed`：`ShardSettingsTest.java:72` `Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown.` |
+| 4 | 反证（宽限 0 放行）：`<SS>` 的 `if (grace != -1 && grace < 1) {` 改成 `if (grace < -1) {`，跑 `<G> :server-app:test --tests '<AP>.shard.ShardSettingsTest'`，再 `git checkout -- <SS>` | `8 tests completed, 1 failed`：`ShardSettingsTest.java:72` `Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown.` |
 | 5 | 重跑第 1 步 | 与第 1 步相同 |
 
 后置：`git status --porcelain` 无输出。
@@ -3194,7 +3196,7 @@ JUnit 与反证的纪律同 M3-C 一节。红行号按集成分支 `m3e/integrat
 | # | 操作 | 预期 |
 | --- | --- | --- |
 | 1 | `<G> :server-app:test --tests '<SH>.ShardGatesTest'`，看 `everyRefusalIsWrittenToTheLedger` 与 `aResultTheDirectoryRulesOutAndATransferThatThrewAreErrors` | `BUILD SUCCESSFUL`，`tests="7"` 0 失败。九个结果各由一名玩家走进 r0-east 触发、再由替身完成，`NOT_ONLINE` 那名玩家先断开连接再完成：`FULL`、`OFFLINE`、`DIRECTORY_UNAVAILABLE`、`COOLDOWN`、`NOT_ONLINE`、`SAVE_FAILED` 各恰 1 行 `transfer_refused {player_uuid=<这名玩家的 UUID>, source_shard=r0-c1, target_region=r1, result=<小写名>}`，`result` 依次为 `full`、`offline`、`directory_unavailable`、`cooldown`、`not_online`、`save_failed`；`SENT`、`UNKNOWN_TARGET`、`SAME_TARGET` 0 行；报 ERROR 的那条用例（两个被目录排除的结果与一次异常完成）台账同样 0 行 |
-| 2 | `grep -n 'new ShardGates(' <MN>` | 恰 1 行（`Main.java:518`，在 `serveMap` 里），第三个参数是 `ledger::record` |
+| 2 | `grep -n 'new ShardGates(' <MN>` | 恰 1 行（`Main.java:526`，在 `serveMap` 里；M3-G 合入后由 `:518` 移到这里），第三个参数是 `ledger::record` |
 | 3 | 反证（不写）：`<GT>` 的 `events.accept("transfer_refused", attributes);` 改成 `if (Boolean.getBoolean("proof.never")) events.accept("transfer_refused", attributes);`，重跑第 1 步，再 `git checkout -- <GT>` | `7 tests completed, 1 failed`：红在 `ShardGatesTest.java:218`，`COOLDOWN ==> expected: <[transfer_refused {player_uuid=…, source_shard=r0-c1, target_region=r1, result=cooldown}]> but was: <[]>` |
 | 4 | 反证（`result` 不取小写）：`<GT>` 的 `result.name().toLowerCase(Locale.ROOT)` 改成 `result.name()`，同时删掉 `import java.util.Locale;`（不删的话 Error Prone 的 `RemoveUnusedImports` 让编译先失败），重跑第 1 步，再还原 | `7 tests completed, 1 failed`：红在 `:218`，`COOLDOWN ==> expected: <[transfer_refused {…, result=cooldown}]> but was: <[transfer_refused {…, result=COOLDOWN}]>` |
 | 5 | 反证（`COOLDOWN` 也告诉玩家）：`<GT>` 的 `case COOLDOWN, NOT_ONLINE, SAVE_FAILED -> refused(player, gate, result);` 改成 `case NOT_ONLINE, SAVE_FAILED -> refused(player, gate, result);`，`case FULL, OFFLINE, DIRECTORY_UNAVAILABLE -> {` 改成 `case FULL, OFFLINE, DIRECTORY_UNAVAILABLE, COOLDOWN -> {`，重跑第 1 步，再还原 | `7 tests completed, 1 failed`：`TC-WORLD-064` 的 `onlyAChoiceThatFailedIsToldToThePlayer` 红在 `:195`，`COOLDOWN ==> expected: <[]> but was: <[synaxis:transfer-failed]>`；`everyRefusalIsWrittenToTheLedger` 仍绿（`COOLDOWN` 在另一个分支里仍恰写 1 行），说明台账这一条只看写没写，给不给玩家发消息由 `TC-WORLD-064` 判 |
@@ -3209,7 +3211,7 @@ JUnit 与反证的纪律同 M3-C 一节。红行号按集成分支 `m3e/integrat
 | # | 操作 | 预期 |
 | --- | --- | --- |
 | 1 | `<G> :server-app:test --tests '<SH>.ShardGatesOnlineTest'` | `BUILD SUCCESSFUL`，`tests="1"` 0 失败：玩家 Ghost 不在线时 x 2030 → 2040 出框再进框 100 次，替身被调 0 次、台账 `transfer_refused` 0 行（两个数写在同一个断言里，期望串 `0 transfers, 0 refusals`）；之后 Ghost 回到在线、人还在框里，走到 2045 不触发；走出到 2030 再走进 2040 触发 1 次，替身记下 `Ghost r1` |
-| 2 | `grep -n 'new ShardGates(' <MN>`；`grep -n 'directoryMode, store.store(), ledger' <MN>` | 前者恰 1 行（`Main.java:518`，在 `serveMap` 里），第三个参数是 `ledger::record`，第四个是 `store::isOnline`；后者恰 1 行（`:304`，调 `serveMap` 处把玩家存储传进去） |
+| 2 | `grep -n 'new ShardGates(' <MN>`；`grep -n 'directoryMode, store.store(), ledger' <MN>` | 前者恰 1 行（`Main.java:526`，在 `serveMap` 里；M3-G 合入后由 `:518` 移到这里），第三个参数是 `ledger::record`，第四个是 `store::isOnline`；后者恰 1 行（`:305`，调 `serveMap` 处把玩家存储传进去） |
 | 3 | 反证（判定不起作用，即修复前的 `moved`）：`<GT>` 的 `if (gate == null \|\| gate.equals(before) \|\| !online.test(player) \|\| !underWay.add(player)) return;` 改成 `if (gate == null \|\| gate.equals(before) \|\| (!online.test(player) && Boolean.getBoolean("proof.never")) \|\| !underWay.add(player)) return;`，重跑第 1 步，再 `git checkout -- <GT>` | 红在 `ShardGatesOnlineTest.java:93`：`100 walks into r0-east by a player not online here ==> expected: <0 transfers, 0 refusals> but was: <100 transfers, 100 refusals>` |
 | 4 | 反证（先判在线、再记门框）：`<GT>` 的 `moved` 里 `final Player player = event.getPlayer();` 下面加一行 `if (!online.test(player)) return;`，重跑第 1 步，再还原 | 红在 `:99`：`still inside the frame it walked into ==> expected: <[]> but was: <[Ghost r1]>`（不在线期间门框状态没记，回到在线后框内的一步被当成走进） |
 | 5 | 重跑第 1 步 | 与第 1 步相同 |
@@ -3350,10 +3352,290 @@ JUnit 与反证的纪律同 M3-C 一节。红行号按分支 `m3d/runtime-light`
 | # | 操作 | 预期 |
 | --- | --- | --- |
 | 1 | `<G> :synx:test --tests '<S>.SynxOptionsTest'` | `tests="6"` 0 失败：没给键时是 `SynxOptions(true, 268435456, max(1, 核数 / 4), false)`；四个键都给时读成 `(false, 1, 7, true)`；`synaxis.relight.resend-light=True` 被拒，信息 `Property 'synaxis.relight.resend-light' is not true or false: "True"`；`synaxis.relight-threads` 为 `0` 与 `two` 被拒，信息分别是 `Property 'synaxis.relight-threads' is below 1: 0` 与 `Property 'synaxis.relight-threads' is not an integer: two` |
-| 2 | `<G> :architecture-tests:test` | `tests="20"` 0 失败；输出有 `config key gate: 115 keys read, 115 in ConfigFile.KEYS, 20 meter names left out` |
+| 2 | `<G> :architecture-tests:test` | `tests="20"` 0 失败；输出有 `config key gate: 116 keys read, 116 in ConfigFile.KEYS, 21 meter names left out`（RUN-064，合入 `main` 之后） |
 | 3 | 反证（重算从引擎内部的维度缓存取世界高度）：`<RL>` 的 `this.minY = loader.world().minY();` 改成 `this.minY = instance.getCachedDimensionType().minY();`，`this.sectionCount = loader.world().height() / 16;` 改成 `this.sectionCount = instance.getCachedDimensionType().height() / 16;`，重跑第 2 步，再 `git checkout -- <RL>` | `20 tests completed, 1 failed`：`SynxInternalSurfaceArchitectureTest` 报 2 处违规，都是 `SynxRelight.<init>` 调 `InstanceContainer.getCachedDimensionType()`（`@ApiStatus.Internal`，不在设计文档 §6 名单里），在 `SynxRelight.java:207` 与 `:209`（RUN-052 在 `f986a36663` 上第一次跑到时是 `:196`、`:198`） |
 
 后置：`git status --porcelain -- synx` 无输出。
+
+### M3 · 远景（M3-G）
+
+对应 `docs/DESIGN-M3.md` v0.32 的 `REQ-M3-024`、`REQ-M3-025`（`API-M3-014` 高度场包、`API-M3-015` 客户端远景、`API-M3-003` 的 M3-G 部分，§11.3 `ENT-FarViewLibrary`，§12.3、§12.4，§15 远景三行，§19 的 M3-G 场景，§26 M3-G 的容器验收与真机验收）。`<G>` 同「M3 · 光照」，本节每条 Gradle 命令另加 `--max-workers=4`；`<GC>` 代表先在仓库根跑 `<G> :protocol:publishToMavenLocal`，再在 `client-fabric/` 里跑 `./gradlew --no-daemon --init-script gametest-env/mirror.init.gradle.kts --max-workers=4`。包名代号：`<PR>` 是 `io.github.bearisbug.synaxis.game.protocol`，`<BK>` 是 `io.github.bearisbug.synaxis.baker`，`<AP>` 是 `io.github.bearisbug.synaxis.app`，`<CV>` 是 `io.github.bearisbug.synaxis.game.client.farview`。源文件代号：`<PM>` 是 `protocol/src/test/resources/farview-vectors/manifest.txt`；`<CE>`、`<FA>`、`<BA>`、`<BM>`、`<AS>` 是 `baker/src/main/java/io/github/bearisbug/synaxis/baker/` 下的 `ChunkEncoder.java`、`FarViewAssembler.java`、`Baker.java`、`BakerMain.java`、`AnvilSource.java`；`<SW>` 是 `server-app/src/main/java/io/github/bearisbug/synaxis/app/shard/ShardWorld.java`，`<MN>` 是同一模块的 `app/Main.java`，`<FX>` 是 `server-app/src/test/java/io/github/bearisbug/synaxis/app/shard/FarViewShardFixture.java`；`<FV>` 是目录 `client-fabric/src/main/java/io/github/bearisbug/synaxis/game/client/farview`。`<ST>` 同「M3 · 运行时光照（M3-D）」。
+
+JUnit 与反证的纪律同 M3-C 一节（反证改完重跑、看红、`git checkout --` 还原，后置 `git status --porcelain` 为空）。红行号与条数按合入 `main` 之后的 `24d3b318a9`（RUN-064 在这个提交上按本节字面实跑了每一条 JUnit 反证）。数据库前置只有全量门禁要，本节的类都不连数据库。容器用例的环境见 §3「远景（M3-G）」一条：拿 `/tmp/synaxis-heavy.lock`、起夹具之前 `memory_pressure` 空闲 ≥ 30%、镜像 `synaxis-mc-client:dev` 与卷 `synaxis-mc-gradle` 复用、`run.sh` 退出码恒为 1（libopenal 段错误）看报告；第三方 jar 由 `run.sh` 在容器里按 `docs/research/client-spikes-2026-09/dh-iris/Fetch.java` 的 SHA-1 取。容器报告 `<OUT>/synaxis-gametest/farview-report.txt` 每条一行 `F<n> PASS|FAIL <证据>`，`#` 开头的行是记录。
+
+#### `TC-WORLD-102` 高度场包与远景宣告的编解码、远景向量冻结 — 对应 `REQ-M3-024`、`REQ-M3-025` · 级别: 回归 · 执行者: AI
+
+前置：工作副本干净。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | `<G> :protocol:test --tests '<PR>.FarViewPackTest' --tests '<PR>.FarViewAnnouncementTest' --tests '<PR>.FarViewVectorTest' -Dsynaxis.synx.require-frozen-zlib=true` | `BUILD SUCCESSFUL`：`FarViewPackTest` `tests="13"`（写者写的包读回相同；块按索引顺序排、与调用顺序无关；粗层前缀本身是只有粗层的包；`b` = 1 有 1,024 个细层块；粗采样取细采样里顶最高、并列按 z 再 x 取第一个，空列取第一个；写者拒绝布局放不下的值，读者拒绝不是包的字节）；`FarViewAnnouncementTest` `tests="6"`（往返一致；摘要按内容比；瓦片按 x 再 z 严格升序；各字段在上限内；解码器拒绝客户端当作「没有宣告」的那些；计数先查再分配）；`FarViewVectorTest` `tests="25"` 0 跳过：`<PM>` 前三行是 `pack_format_version 1`、`announcement_format_version 1`、`zlib 3a5c7b02f09d84b148505efa093fb735baaa69c97147448f1ea649b2a54ac771`，其后 21 个文件的摘要相符；三个宣告向量逐字节往返；九瓦片宣告是 1 个整包、8 个粗层；`pack-small.hfp` 的采样等于 `pack-small.samples.txt`，`pack-small.coarse.hfp` 是它的前 325 字节；写者重现两个包的采样与字节；10 个边界包与 5 个边界宣告各自按自己的原因被拒（原因按正则匹配，例如 `^fine_offset \d+ is past the end of the \d+ byte pack$`、`^tile 0,0 is announced twice$`） |
+| 2 | `<G> :synx:test --tests 'io.github.bearisbug.synaxis.synx.SynxManifestTest'` | `tests="4"` 0 失败：清单向量 `manifest.json` 读回再写出逐字节不变，`farview[]` 那一项有 `tile_x`、`tile_z`、`base_level`、`coarse_level`、`bytes`、`sha256`、`coarse_bytes`、`coarse_sha256` 八个字段 |
+| 3 | 反证（冻结的 zlib 指纹不是这个 JDK 的）：`<PM>` 第三行的 `zlib 3a5c7b02` 改成 `zlib 4a5c7b02`，重跑第 1 步里的 `FarViewVectorTest`（带开关）；再不带 `-Dsynaxis.synx.require-frozen-zlib=true` 跑一次；`git checkout -- <PM>` | 带开关：`25 tests completed, 1 failed`，红在 `FarViewVectorTest.java:217`，`this JDK's zlib differs from the one the far view vectors were frozen with; synaxis.synx.require-frozen-zlib is set, so either run on the JDK build the vectors were frozen with or refreeze them with :protocol:generateFarViewVectors ==> expected: <true> but was: <false>`；不带开关：`tests="25" skipped="1"` 0 失败，跳过的是 `theWriterReproducesThePackBytesOnTheFrozenZlib`，采样那一条照常通过 |
+| 4 | 第 1 步在两种严格模式下各跑一次（全量门禁里已含） | 两次都 0 失败 |
+
+后置：`git status --porcelain -- protocol synx` 无输出。
+
+#### `TC-WORLD-103` 高度场包随地图版本产出、跨瓦片、1 线程与 4 线程逐字节相同 — 对应 `REQ-M3-024`、`REQ-M3-003`、`REQ-M3-002` · 级别: 回归 · 执行者: AI
+
+前置：工作副本干净。`FarViewBakeTest` 的 `@BeforeAll` 用 4 线程烘一次 4k 合成图（种子 7），本机约 90～100 s。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | `<G> :baker:test --tests '<BK>.FarViewBakeTest' --tests '<BK>.GeneratorBakeTest'` | `BUILD SUCCESSFUL`：`FarViewBakeTest` `tests="9"`、`GeneratorBakeTest` `tests="12"` 0 失败。本用例看其中四条：`theTestMapHasOnePackListedInItsManifest`（`farview/` 下只有 `t.0.0.hfp`；`farview[]` 一项 (0, 0, 2, 4)，`bytes`、`sha256` 等于文件，`coarse_bytes` 等于包头 `fine_offset`、`coarse_sha256` 等于前缀摘要；头部 `SHFP`、1、0 与 `Header(2, 4, 0, 0, 0, 256, Block.statesCount(), 776, …)`；粗层 16 块、细层 256 块，`Reader.verify` 通过；`baker_version` 2；事件 `farview_bytes` 等于文件字节；发布行含 `1 far view pack(s), <bytes> bytes, assembled in `）；`aMapAcrossTilesHasAPackForEachTileItMeets`（`--bounds 250,-8,262,7`：`t.0.-1`、`t.0.0`、`t.1.-1`、`t.1.0` 四个包按 (`tile_x`, `tile_z`) 升序，整块在 `bounds` 外的块不在索引里，块内 `bounds` 外的采样等于 `Sample.EMPTY`）；`oneThreadAndFourBakeTheSamePacks`（`build_id` 与 `farview[]` 相同，四个包逐字节相同）；`GeneratorBakeTest` 的 `bakesAMapAndPublishesItWithItsManifest`（`farview[]` 是 `[0,0]`） |
+| 2 | 反证（整块在 `bounds` 外的细层块也写）：`<FA>` 的 `if (!meets(originX + bx * chunksPerBlock, originZ + bz * chunksPerBlock, chunksPerBlock)) continue;` 改成 `if (!meets(originX + bx * chunksPerBlock, originZ + bz * chunksPerBlock, chunksPerBlock) && Boolean.getBoolean("proof.never")) continue;`，重跑第 1 步，再 `git checkout -- <FA>` | `FarViewBakeTest` 只红 `aMapAcrossTilesHasAPackForEachTileItMeets` 一条，在 `FarViewBakeTest.java:157`：`FINE block 0,0 ==> expected: <false> but was: <true>`；`GeneratorBakeTest` 仍是 12 个 0 失败（RUN-064 与 `TC-WORLD-106`、`TC-WORLD-107` 的反证同一次跑，那几处改动各红在自己的行上） |
+| 3 | 第 1 步在两种严格模式下各跑一次（全量门禁里已含） | 两次都 0 失败 |
+
+后置：`git status --porcelain -- baker` 无输出。
+
+#### `TC-WORLD-104` 远景采样规则与粗层 — 对应 `REQ-M3-024` · 级别: 回归 · 执行者: AI
+
+前置：同 `TC-WORLD-103`。`FarViewSamplingTest` 现烘 2×2 区块的生成器小图，读回包里的采样。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | `<G> :baker:test --tests '<BK>.FarViewSamplingTest'` | `tests="8"` 0 失败：只有地图里的块在包里；花下面的草方块（y 19）算地面，`ground_y` 是 19，生物群系取草方块所在格（y 16～19 设成森林），不取上面花那一格（平原），1 层雪下面同样取草方块；水下是沙子，`fluid_bottom = ground_y + 1`，海草并进液体段；悬空的水没有地面，`fluid_bottom` 是水的最低一格；空列三个高度与两个状态都为 0；等高的两根柱子取按 z 再按 x 排第一的那根（金块，状态 2338）；粗采样是区块里顶最高的细采样，并列取前面那个；粗层前缀能单独读，截掉 1 字节或 `fine_offset` 越界时抛 `Invalid` |
+| 2 | 反证（等高时取后一个）：`<CE>` 的 `if (highest == null \|\| candidate.top() > highest.top()) highest = candidate;` 改成 `if (highest == null \|\| candidate.top() >= highest.top()) highest = candidate;`，重跑第 1 步，再 `git checkout -- <CE>` | `8 tests completed, 1 failed`，红在 `FarViewSamplingTest.java:156`：`ofEqualColumnsTheFirstByZThenXIsTheSample`，`expected: <Sample[groundState=2338, …]> but was: <Sample[groundState=2339, …]>`（铁块） |
+| 3 | 反证（生物群系取顶上一格）：`<CE>` 的 `final int biomeY = top >= 0 ? top : height - 1;` 改成 `final int biomeY = top >= 0 ? Math.min(top + 1, height - 1) : height - 1;`，重跑第 1 步，再 `git checkout -- <CE>` | `8 tests completed, 1 failed`，红在 `FarViewSamplingTest.java:129`：`the biome of the top's cell, not of the poppy's above it ==> expected: <minecraft:forest> but was: <minecraft:plains>` |
+| 4 | 第 1 步在两种严格模式下各跑一次（全量门禁里已含） | 两次都 0 失败 |
+
+后置：`git status --porcelain -- baker` 无输出。
+
+#### `TC-WORLD-105` 隐藏区域在两层都被替换 — 对应 `REQ-M3-024`、`REQ-M3-022` · 级别: 回归 · 执行者: AI
+
+前置：同 `TC-WORLD-103`。`AnvilFarViewTest` 烘冻结的 Anvil 夹具（含 `synaxis:hidden 0 0 15 15`）。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | `<G> :baker:test --tests '<BK>.anvil.AnvilFarViewTest' --tests '<BK>.FarViewBakeTest'` | 两个类都 0 失败：`AnvilFarViewTest` `tests="2"`：区块 (0, 0) 的 16 个细采样与它的粗采样都换成石头、平原，高度 0（外沿都在 `bounds` 外），区域文件里只有标记那一格变成空气；标记写成 `7 7 4 4` 时角点规范成 4、4、7、7，只替换细采样 (1, 1)，高度取它外沿 8 个细采样的顶的最小值。`FarViewBakeTest` 的 `aHiddenAreaIsReplacedOnBothLayersByTheLowestTopOfItsRing`（4×4 区块的生成图，隐藏 20,20～35,27：细层 5..8 × 5..6、粗层区块 1..2 × 1 换成平原上的石头，高度各取自己那一层的外沿最低顶，其余粗采样等于 `coarsen`，金塔在两层都不出现，抽样 16 个区块差异 0）与 `theHiddenRuleTakesTheLowestTopOfTheRingLeftByEveryArea`（外沿排除别的区域的采样；两个区域重叠取较低；外沿全在别的区域里时高度 0） |
+| 2 | 反证（外沿不排除别的区域；角点不规范）：`<FA>` 的 `if (cell.covers(x, z)) return Integer.MAX_VALUE;` 改成 `if (cell.covers(x, z) && Boolean.getBoolean("proof.never")) return Integer.MAX_VALUE;`，重跑第 1 步里的 `FarViewBakeTest`；`<FA>` 还原后，`<AS>` 里 `hidden.add(new HiddenArea(Math.min(area.x1(), area.x2()), Math.min(area.z1(), area.z2()),` 与下一行 `Math.max(area.x1(), area.x2()), Math.max(area.z1(), area.z2())));` 两行换成 `hidden.add(area);`，重跑 `AnvilFarViewTest`；都 `git checkout --` 还原 | 前者红在 `FarViewBakeTest.java:517`：`B's 1 is not in A's ring, A's 3,2 and 3,3 not in B's ==> expected: <[Replacement[…, height=31], Replacement[…, height=33]]> but was: <[Replacement[…, height=1], …]>`；后者 `2 tests completed, 1 failed`，红在 `AnvilFarViewTest.java:144`：`the corners as min and max ==> expected: <[HiddenArea[x1=4, z1=4, x2=7, z2=7]]> but was: <[HiddenArea[x1=7, z1=7, x2=4, z2=4]]>`（RUN-064 里 `<FA>` 那处与 `TC-WORLD-106` 第 2 步同跑，`<AS>` 那处与 `TC-WORLD-106` 第 3 步同跑，各红在自己的行上） |
+| 3 | 反证（隐藏区域不交给装配）：`<BA>` 的 `source.hiddenAreas(), request.registries().biome()).assemble(work, buildDir.resolve("farview"), tamper);` 改成 `List.of(), request.registries().biome()).assemble(work, buildDir.resolve("farview"), tamper);`，重跑 `AnvilFarViewTest`，再 `git checkout -- <BA>` | `2 tests completed, 2 failed`，都红在 `AnvilFarViewTest.java:76`：`1 of 1 sampled chunks differ ==> expected: <0> but was: <4>`：发布前的抽样核对按隐藏规则算替换值，与没替换的包对不上，烘焙退出码 4 |
+| 4 | 第 1 步在两种严格模式下各跑一次（全量门禁里已含） | 两次都 0 失败 |
+
+后置：`git status --porcelain -- baker` 无输出。
+
+#### `TC-WORLD-106` 校验拦下与清单不符的高度场包，放过 M3-G 以前的版本 — 对应 `REQ-M3-024`、`REQ-M3-003`、`REQ-M3-002` · 级别: 回归 · 执行者: AI
+
+前置：同 `TC-WORLD-103`。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | `<G> :baker:test --tests '<BK>.FarViewBakeTest'` | `tests="9"` 0 失败。本用例看四条：`verifyNamesAPackOrACoarsePrefixThatDoesNotMatchTheManifest`（4k 版本的副本 `verify --build` 先退 0；包里改一个字节退 4，stderr 含 `farview/t.0.0.hfp: the SHA-256 of the file does not match the manifest`；只改清单 `coarse_sha256` 的一位退 4，含 `farview/t.0.0.hfp: the coarse prefix does not match the manifest's coarse_sha256`）；`verifyPassesABuildOfAnEarlierBakerWithoutPacks`（2×2 区块的新版本删掉 `farview/`、清单 `farview[]` 置空：`baker_version` 2 时退 4、`farview[] lists the tiles [], the bounds meet [0,0]`；清单与区域头部偏移 162 都改成 1 后退 0、stderr 为空）；`theSampledCheckHoldsOneTileAtATime`（四瓦片版本上先核对区块 255,−1 再核对 256,0，两次都一致，之后只持有 1 个瓦片、2 个块）；`thePrePublishVerificationCatchesAChangedFineOrCoarseSample`（写包前改掉被抽中区块的一个细采样或粗采样、清单摘要随之一致：两种都是 `Verify(1, 1, null)`、退出码 4、保留 `.baking-*`，`checkFarView` 返回 null） |
+| 2 | 反证（三处同时改：不比 SHA-256；`baker_version` 1 也核对；抽样比较恒为相同）：`<BA>` 的 `if (!Arrays.equals(SynxDigests.sha256(pack), entry.sha256())) {` 改成 `if (!Arrays.equals(SynxDigests.sha256(pack), entry.sha256()) && Boolean.getBoolean("proof.never")) {`；`if (manifest.bakerVersion() < FAR_VIEW_SINCE) return null;` 改成 `if (manifest.bakerVersion() < FAR_VIEW_SINCE && Boolean.getBoolean("proof.never")) return null;`；`private boolean same(Named actual, FarViewPack.Sample expected) {` 下面插一行 `if (!Boolean.getBoolean("proof.never")) return true;`。重跑第 1 步，再 `git checkout -- <BA>` | 三处各红在自己的断言上：`FarViewBakeTest.java:248` `baker: farview/t.0.0.hfp: fine block 1,7 is not a zlib stream: invalid distance too far back ==> expected: <true> but was: <false>`；`:300` `expected: <Run[exitCode=0, err=]> but was: <Run[exitCode=4, err=baker: farview[] lists the tiles [], the bounds meet [0,0]…]>`；`:360` `published …/COARSE/maps/changed/changed-512ffa898623-p776, 18590 bytes; 1 far view pack(s), 15647 bytes, assembled in <n> ms ==> expected: <4> but was: <0>`（RUN-064 这一次与 `TC-WORLD-103`、`TC-WORLD-105` 第 2 步的 `ringTop`、`TC-WORLD-107` 第 2 步同跑，`FarViewBakeTest` 共红 5 条、`FarViewExportTest` 1 条，各在自己的行上） |
+| 3 | 反证（核对持有每个瓦片的块）：`<BA>` 的 `                    blocks.clear();` 改成 `                    if (Boolean.getBoolean("proof.never")) blocks.clear();`，重跑第 1 步，再 `git checkout -- <BA>` | `9 tests completed, 1 failed`，红在 `FarViewBakeTest.java:340`：`tiles and blocks held after chunk 256,0 ==> expected: <[1, 2]> but was: <[1, 4]>` |
+| 4 | 第 1 步在两种严格模式下各跑一次（全量门禁里已含） | 两次都 0 失败 |
+
+后置：`git status --porcelain -- baker` 无输出。
+
+#### `TC-WORLD-107` `farview-export` 按内容摘要导出 — 对应 `REQ-M3-024`、`REQ-M3-003` · 级别: 回归 · 执行者: AI
+
+前置：同 `TC-WORLD-103`。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | `<G> :baker:test --tests '<BK>.FarViewExportTest'` | `tests="4"` 0 失败：四瓦片版本第一次导出每个包两行 `exported <文件>[ coarse] -> export/farview/<摘要>.hfp (<n> B)`，整包对象等于发布目录的文件、粗层对象等于前 `coarse_bytes` 字节，目录里只有这 8 个对象；第二次每个对象一行 `kept …`，退 0；导出目录里的对象被改过时退 4，`<相对路径> is already there with other bytes`；发布目录里的包与清单不符时退 4、什么都不写；缺 `--out` 退 1 |
+| 2 | 反证（粗层对象写成整包）：`<BM>` 的 `directory + SynxDigests.hex(entry.coarseSha256()) + ".hfp", prefix));` 改成 `directory + SynxDigests.hex(entry.coarseSha256()) + ".hfp", pack));`，重跑第 1 步，再 `git checkout -- <BM>` | `4 tests completed, 1 failed`，红在 `FarViewExportTest.java:80`：`export/farview/<coarse_sha256>.hfp ==> array lengths differ, expected: <281> but was: <15699>` |
+
+后置：`git status --porcelain -- baker` 无输出。
+
+#### `TC-WORLD-108` 分片在 configuration 阶段宣告远景，不宣告的情形与 url-root 拒启 — 对应 `REQ-M3-024` · 级别: 回归 · 执行者: AI
+
+前置：同 `TC-WORLD-103`。`ShardWorldFarViewTest` 用 `MapFixture` 现烘单瓦片小图，另用 `FarViewPack.Writer` 手写四个包、改写清单得到四瓦片版本（`bounds 250,-8,262,7`）；`FarViewLaunchTest` 在独立 JVM 里起 `ShardMain`，用裸协议客户端登录。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | `<G> :server-app:test --tests '<AP>.shard.ShardWorldFarViewTest' --tests '<AP>.FarViewLaunchTest' --tests '<AP>.shard.ShardSettingsTest'` | `BUILD SUCCESSFUL`：`ShardWorldFarViewTest` `tests="9"`（选瓦片：本大区 0,0,255,255 与 250,0,255,7 时 (0, 0) 整包、−1..1 的其余 8 个粗层，`tile_x` 或 `tile_z` 为 2 的不宣告，128,128,383,383 时 4 个整包、12 个粗层；四瓦片版本挂大区 r0 宣告 1 个整包、3 个粗层，起服日志 `Far view: 1 tile(s), 3 coarse, from http://cdn.test/synaxis`、`farview_tiles` 4；单瓦片图宣告 (0, 0) 整包；不宣告的情形：url-root 为空与 `farview[]` 为空记 INFO，包被改过、只有 `coarse_sha256` 不符、各瓦片 level 不一致、url 超过 1,024 字节、超过 64 个瓦片（81 个，`count 81`）都只记一行 WARN `Far view off: …`、`farview_tiles` 0、照常起服）；`FarViewLaunchTest` `tests="4"`（每条连接恰好一条 `synaxis:farview`，排在 `FinishConfiguration` 之前，解码出整包；单瓦片图同样一条；url-root 写成 `cdn.test/synaxis` 退出码 1，`Refusing to start: synaxis.farview.url-root must be an http(s) URL without a trailing slash: cdn.test/synaxis`；没有 url-root 时一条都没有）；`ShardSettingsTest` `tests="8"`（url-root 不给时为空；不是 http(s) 或以 `/` 结尾时拒） |
+| 2 | 反证（三处同时改：不比粗层摘要；不比各瓦片的 level；只在后来的 configuration 发宣告）：`<SW>` 的 `if (!Arrays.equals(SynxDigests.sha256(Arrays.copyOf(bytes, (int) fineOffset)), pack.coarseSha256())) {` 改成 `if (!Arrays.equals(SynxDigests.sha256(Arrays.copyOf(bytes, (int) fineOffset)), pack.coarseSha256()) && Boolean.getBoolean("proof.never")) {`；`final String mismatch = pack.baseLevel() != first.baseLevel() \|\| pack.coarseLevel() != first.coarseLevel()` 改成 `final String mismatch = Boolean.getBoolean("proof.never") && (pack.baseLevel() != first.baseLevel() \|\| pack.coarseLevel() != first.coarseLevel())`；`<MN>` 的 `if (farView != null && event.isFirstConfig()) {` 改成 `if (farView != null && !event.isFirstConfig()) {`。重跑第 1 步，再 `git checkout -- <SW> <MN>` | 各红在自己的断言上：`ShardWorldFarViewTest` 2 条（`aCoarseDigestThatAloneDoesNotMatchStopsTheWholeAnnouncement` 与 `tilesOfOtherLevelsStopTheWholeAnnouncement`，都在共用断言 `ShardWorldFarViewTest.java:384`，从 `:315`、`:325` 进来，`expected: <null> but was: <[1, 22, …]>`，即照样宣告了）；`FarViewLaunchTest` 2 条（`:126` `one announcement per connection ==> expected: <1> but was: <0>`，`:165` `expected: <1> but was: <0>`） |
+| 3 | 第 1 步在两种严格模式下各跑一次（全量门禁里已含） | 两次都 0 失败 |
+
+后置：`git status --porcelain -- server-app` 无输出。「连接重新进入 configuration 时不再发」没有自动测试，见 §7。
+
+#### `TC-WORLD-109` 命令行烘焙远景取数与远景夹具 — 对应 `REQ-M3-024`、`REQ-M3-003` · 级别: 回归 · 执行者: AI
+
+前置：`<G> :baker:installDist`；空的临时目录 `<O>`（`mktemp -d`，可用空间 ≥ 3 GB）。读数只登记、不判定。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | `<G> :server-app:test --tests '<AP>.shard.FarViewShardFixtureTest'` | `tests="9"` 0 失败：synthetic 是 1 个整包、8 个粗层前缀；粗采样是区块里最高的细采样；隐藏区域在两层都看不到；`/expect.json` 的点等于包里的采样；baked 的点 y 是采样下标加包头 `min_y`；baked 的机位看得到名字说的东西；`break-sha` 只改整包正中一个字节；包服务按 50 Mbit/s 回 `Range`，带 `Cache-Control: public, max-age=31536000, immutable`，`/access.log` 只记包请求；`half` 截断第一次包请求、`Range` 续完 |
+| 2 | 反证（限速放开 100 倍）：`<FX>` 的 `static final long BYTES_PER_SECOND = 6_250_000;` 改成 `static final long BYTES_PER_SECOND = 625_000_000;`，重跑第 1 步，再 `git checkout -- <FX>` | `9 tests completed, 1 failed`，红在 `FarViewShardFixtureTest.java:401`：`the rate holds: <s> s ==> expected: <true> but was: <false>`（1.25 MB 用了约 0.006 s，少于 0.2 s 的下限） |
+| 3 | `<O>` 里：`baker/build/install/baker/bin/baker bake --map-id synth --source generator:synthetic:7 --out <O>/maps --logs <O>/logs --threads 6`；`verify --build <版本目录>`；`farview-export --build <版本目录> --out <O>/cdn` 跑两次 | 都退 0；发布行 `…, 213319659 bytes; 1 far view pack(s), 596465 bytes, assembled in <n> ms`；导出第一次两行 `exported`、第二次两行 `kept`。登记墙钟、峰值 RSS、粗层前缀字节（65,521 B） |
+| 4 | `<O>` 里：`bake --map-id farview3x3 --source generator:synthetic:0 --bounds -256,-256,511,511 --threads 6 --out <O>/maps3 --logs <O>/logs3`，再 `verify --build` | 都退 0；9 个包，`verify_diffs` 0。登记墙钟、峰值 RSS、9 个包与粗层前缀的字节、装配毫秒、首次进中心大区的下载量（整包 (0, 0) 加 8 个粗层前缀） |
+| 5 | 4k 版本删掉 `farview/`，用 `perl` 把清单的 `"farview": [...]` 改成 `[]`，跑 `verify --build`；再把 `"baker_version": 2` 改成 1，对每个区域文件 `printf '\001\000' \| dd of=<区域文件> bs=1 seek=162 conv=notrunc`，再跑一次 | 前者退 4，`baker: farview[] lists the tiles [], the bounds meet [0,0]`；后者退 0、`verified` |
+
+后置：`rm -rf <O>`；`git status --porcelain -- server-app` 无输出。
+#### `TC-WORLD-110` 采样换算成 DH 数据点，粗层块展开成 b 级数据源 — 对应 `REQ-M3-025` · 级别: 回归 · 执行者: AI
+
+前置：工作副本干净；`client-fabric/build/dh/` 里有 `fetchDistantHorizons` 按 SHA-1 取到的 DH 3.3.2 jar（第一次构建自动取）。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | `<GC> test --tests '<CV>.FarViewColumnsTest'` | `tests="13"` 0 失败：包的 `min_y` −64、高 256。只有地面（`ground_y` 100）是空气点 [101, 256) 天光 15 与地面点 [0, 101) 天光 15；地面 60 上是 61～63 的水：空气 [64, 256)、液体 [61, 64) 天光 15、地面 [0, 61) 天光 12；只有液体 10～20：空气 [21, 256)、液体 [10, 21)、底下空气 [0, 10) 天光 4；空列一个空气点 [0, 256)；顶到世界顶的列没有上面的空气点；发光方块给上一格块光（萤石 14）；每列从世界顶连到下标 0、没有空隙、没有负下标；细层块是 8 级的一个数据源；瓦片 (−1, 0) 的粗层块 (1, 2) 在 b = 2 时展开成 16 个数据源 `(8, −12 + ex, 8 + ez)`，每 4×4 列是同一个粗采样，b = 1 时 64 个 |
+| 2 | 反证（地面天光写 0；b = 1 时展开倍数写成 2^b）：`<FV>/FarViewColumns.java` 里只有地面那一支的 `points.add(new Point(0, sample.groundY() + 1, FULL_SKY, blockLight(sample.groundState(), emission),` 把 `FULL_SKY` 改成 `0`；`return 1 << (FarViewPack.COARSE_LEVEL - baseLevel);` 改成 `return 1 << baseLevel;`。重跑第 1 步，再 `git checkout -- <FV>` | `13 tests completed, 4 failed`：`FarViewColumnsTest.java:41`、`:70`、`:75`（地面点的 `skyLight=0`），`:140` `expected: <8> but was: <2>`；b = 2 那一条不红（2^b 与 2^(c − b) 都是 4） |
+| 3 | 反证（展开倍数写成 2^c）：`return 1 << (FarViewPack.COARSE_LEVEL - baseLevel);` 改成 `return 1 << FarViewPack.COARSE_LEVEL;`，重跑第 1 步，再 `git checkout -- <FV>` | `2 failed`：`:117` 与 `:139` 都是 `java.lang.IndexOutOfBoundsException: Index 4096 out of bounds for length 4096` |
+
+后置：`git status --porcelain -- client-fabric` 无输出。点写成绝对 y 的错要 `min_y` 为负的图才测得出，由 `TC-WORLD-117` 的 synthetic 那一遍覆盖。
+
+#### `TC-WORLD-111` 远景宣告的客户端负载与远景向量 — 对应 `REQ-M3-025` · 级别: 回归 · 执行者: AI
+
+前置：同 `TC-WORLD-110`。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | `<GC> test --tests '<CV>.FarViewPayloadTest' --tests 'io.github.bearisbug.synaxis.game.client.FrozenVectorTest'` | `FarViewPayloadTest` `tests="12"` 0 失败（通道是 `synaxis:farview`；宣告向量解码再编码逐字节相同；5 个边界宣告、未知 `format_version`、截断或空的负载、宣告后面有多余字节都按「没有宣告」处理并记一行 WARN）；`FrozenVectorTest` `tests="40"` 0 失败，其中远景 20 条：远景向量与本构建的 `:protocol` jar 一致，宣告经 configuration 负载逐字节往返，客户端路径拒绝每个边界向量，`pack-small` 两层都展开成完整的列 |
+| 2 | 反证（多余字节照收）：`<FV>/FarViewPayload.java` 的 `if (in.remaining() != 0) return refused(` 改成 `if (in.remaining() != 0 && Boolean.getBoolean("proof.never")) return refused(`，重跑第 1 步，再 `git checkout -- <FV>` | `FarViewPayloadTest` 红 1 条，在 `FarViewPayloadTest.java:81`：`expected: <null> but was: <FarViewAnnouncement[buildId=vectors-0123456789ab-p776, …]>` |
+
+后置：同 `TC-WORLD-110`。
+
+#### `TC-WORLD-112` 下载器：续传、重试、核对层与瓦片、只按空闲时钟计时 — 对应 `REQ-M3-025` · 级别: 回归 · 执行者: AI
+
+前置：同 `TC-WORLD-110`。测试在进程里起 `HttpServer`，空闲时钟与重试间隔调短。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | `<GC> test --tests '<CV>.FarViewDownloaderTest'` | `tests="15"` 0 失败：设计的超时、等待与并发常量（10 s、30 s、1 s 与 4 s、2 个）；整包与粗层前缀按各自的摘要落进缓存；断开后带 `Range: bytes=<已收>-` 续传，服务回 206；不支持 `Range`（总回 200）时从头下；上一条连接留下的 `.part` 接着下；摘要不符请求 3 次、什么都不留；收到的字节超过宣告即算一次失败；宣告整包却给了只有粗层的包、宣告粗层却给了整包、摘要对但不是包、包头瓦片不是宣告的瓦片，都不收；缺一个对象即失败并停掉其余下载；同时至多 2 个；服务端不回响应头时每次尝试以 `no byte for` 开头的原因失败，放弃之后晚到的响应不再建出 `.part`；取消即停、留下 `.part` |
+| 2 | 反证（放弃的尝试不取消交换、写入端关了还能开）：`<FV>/FarViewDownloader.java` 的 `            response.cancel(true);` 改成 `            if (Boolean.getBoolean("proof.never")) response.cancel(true);`，`if (closed) return refuse("the attempt was given up on", false);` 改成 `if (closed && Boolean.getBoolean("proof.never")) return refuse("the attempt was given up on", false);`，重跑第 1 步，再 `git checkout -- <FV>` | `15 tests completed, 1 failed`，红在 `FarViewDownloaderTest.java:387`：`an attempt given up on writes nothing later ==> expected: <false> but was: <true>`（晚到的响应把已删的 `.part` 又建了出来） |
+
+后置：同 `TC-WORLD-110`。
+
+#### `TC-WORLD-113` 缓存：`view_key`、完成标记与上限清理 — 对应 `REQ-M3-025` · 级别: 回归 · 执行者: AI
+
+前置：同 `TC-WORLD-110`。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | `<GC> test --tests '<CV>.FarViewCacheTest'` | `tests="14"` 0 失败：`view_key` 是设计文本 SHA-256 的前 16 个 hex；只差一个粗层摘要、只差一个整包摘要、同一瓦片 `layer` 不同的三对宣告各是两个库，瓦片、`layer` 与摘要都相同而 `build_id` 不同的一对共用一个库；换 DH 版本或 `BAKE_CODE_VERSION` 是另一个库；完成标记先写 `.tmp` 再改名、读回相同；瓦片、版本或键不同的标记不匹配；读不了的标记当作没有；`touch` 只改 `last_used`，删标记不删库；缺的对象是不在 `packs/` 里的那些；新键从 `absent` 起、旧库留着；超过上限按 `last_used` 从旧到新删库与只被它引用的对象；本连接在用的库即使自己就超上限也不删 |
+| 2 | 反证（`view_key` 不含 `layer`）：`<FV>/FarViewCache.java` 的 `text.append(tile.tileX()).append(' ').append(tile.tileZ()).append(' ').append(tile.layer()).append(' ')` 改成 `text.append(tile.tileX()).append(' ').append(tile.tileZ()).append(' ')`，重跑第 1 步，再 `git checkout -- <FV>` | `14 tests completed, 2 failed`：`FarViewCacheTest.java:89` `expected: not equal but was: <d2057f600d6c7772>`；`:71` `expected: <8aebc27cea492d9b> but was: <17143e3718d2001c>` |
+
+后置：同 `TC-WORLD-110`。
+
+#### `TC-WORLD-114` 可用性与档位文件 — 对应 `REQ-M3-025` · 级别: 回归 · 执行者: AI
+
+前置：同 `TC-WORLD-110`。DH 一侧用替身。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | `<GC> test --tests '<CV>.FarViewAvailabilityTest'` | `tests="8"` 0 失败：没装 DH 时什么都不问，`ABSENT`；DH 3.3.1 只被问版本、API 大版本 8 只被问两个版本号、接入面缺一个成员时都是 `UNSUPPORTED` 且不登记；3.3.2 与完整接入面登记一次；DH 加载不了算 `UNSUPPORTED`；一条连接有远景只在 DH 受支持、档位不为 0、有能解码的宣告三者都满足时；档位文件不存在时写出默认文件，之后每次读，非法值按 4096 |
+| 2 | 反证（不看版本号）：`<FV>/FarViewClient.java` 的 `if (!DH_VERSION.equals(version)) {` 改成 `if (!DH_VERSION.equals(version) && Boolean.getBoolean("proof.never")) {`，重跑第 1 步，再 `git checkout -- <FV>` | `8 tests completed, 1 failed`，红在 `FarViewAvailabilityTest.java:76`：`expected: <UNSUPPORTED> but was: <SUPPORTED>` |
+
+后置：同 `TC-WORLD-110`。
+
+#### `TC-WORLD-115` 取消与进入 `baking` 同锁，载入核对时断开不删好库的标记 — 对应 `REQ-M3-025` · 级别: 回归 · 执行者: AI
+
+前置：同 `TC-WORLD-110`。`FarViewConnectionTest` 用替身烘焙与临时缓存目录。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | `<GC> test --tests '<CV>.FarViewConnectionTest'` | `tests="5"` 0 失败：行数等于标记的库留在 `ready` 并更新 `last_used`；连接还在时查询返回 null 即删标记、要重烘；取消之后查询返回 null 时标记保留、不重烘；取消之后烘焙线程才调 `baking()` 时返回假、状态是 `absent`；层级载入之前就取消时什么都不起 |
+| 2 | 反证（`baking()` 与 `loadChecked` 都不看取消标志）：`<FV>/FarViewConnection.java` 的 `        if (cancelled.get()) return false;` 改成 `        if (cancelled.get() && Boolean.getBoolean("proof.never")) return false;`，`if (rows == null && cancelled.get()) return false;` 改成 `if (rows == null && cancelled.get() && Boolean.getBoolean("proof.never")) return false;`，重跑第 1 步，再 `git checkout -- <FV>` | `5 tests completed, 3 failed`：`FarViewConnectionTest.java:110` `expected: <false> but was: <true>`；`:95` `nothing is baked on a connection that ended ==> expected: <false> but was: <true>`；`:121` `expected: <false> but was: <true>` |
+
+后置：同 `TC-WORLD-110`。
+
+#### `TC-WORLD-116` DH 接入面、包边界与模组 jar — 对应 `REQ-M3-025` · 级别: 回归 · 执行者: AI
+
+前置：同 `TC-WORLD-110`。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | `<GC> test --tests '<CV>.dh.DhSurfaceTest' --tests '<CV>.dh.DhPackageBoundaryTest' verifyModJar` | `BUILD SUCCESSFUL`：`DhSurfaceTest` `tests="5"`（接入面表的每个成员在 DH jar 里且签名相符；名单正好是设计的 12 行；探测看得出不在的成员；jar 里 `sqlScripts/0020` 的 `FullData` 表有 `DetailLevel TINYINT NOT NULL` 与 `ApplyToParent BIT NULL`；jar 是钉住的 3.3.2）；`DhPackageBoundaryTest` `tests="2"`（只有 `…farview.dh` 包引用 `com.seibel.distanthorizons`）；`verifyModJar` 输出 `mod jar: minecraft=26.2, 75 entries, ships META-INF/jars/protocol-dev.jar` |
+| 2 | 反证（接入面表的一个返回类型写错；`FarViewClient` 引用 DH 的类）：`<FV>/dh/DhFarView.java` 里 `queryDictionaryFirst` 那一行的 `"java.util.Map"),` 改成 `"java.util.List"),`；`<FV>/FarViewClient.java` 的私有构造器后面加一个公开静态方法 `dhApiName()`，返回 `com.seibel.distanthorizons.api.DhApi.class.getName()`。重跑第 1 步的两个测试类，再 `git checkout -- <FV>` | `DhSurfaceTest.java:29` `expected: <[]> but was: <[com.seibel.distanthorizons.core.sql.repo.FullDataSourceV2Repo#queryDictionaryFirst(java.lang.String): java.util.List is java.util.Map]>`；`DhPackageBoundaryTest.java:58` `expected: <[]> but was: <[io/github/bearisbug/synaxis/game/client/farview/FarViewClient.class names [com/seibel/distanthorizons/api/DhApi]]>` |
+| 3 | 反证（DH 的东西混进模组 jar）：建文件 `client-fabric/src/main/resources/com/seibel/distanthorizons/README.txt`（任意一行文字），跑 `<GC> verifyModJar`，再 `rm -r client-fabric/src/main/resources/com` | `verifyModJar` 失败：`模组 jar 里混进了 Distant Horizons 的类（LGPL-3.0，DH 以独立 jar 放进 mods/，docs/DESIGN-M3.md API-M3-015 许可条）：[com/seibel/…]`。放的若是一个无效的 `.class`，`remapJar` 会先失败（`error analyzing /com/seibel/…`），测不到这道断言 |
+
+后置：同 `TC-WORLD-110`。
+#### `TC-WORLD-117` 无头容器 V1：首次进大区下载并本地烘焙、钉目录、只读、父层传播、粗层展开、重连命中，三个反证 — 对应 `REQ-M3-025`、`REQ-M3-024` · 级别: 回归 · 执行者: AI
+
+前置：§3「远景（M3-G）」一条的锁与门槛都满足；`<L>` 是 `mktemp -d` 的目录；端口 25750、25751 空闲；客户端缓存每次都是新的（`run.sh` 每次从源码起一个新的运行目录）。本用例跑两遍：synthetic 模式（`min_y` −64、隐藏区域，覆盖「点的 y 写成绝对坐标」与隐藏区域的读回）与 baked 模式（3×3 瓦片测试图的中心大区，烘焙器真包，`min_y` 0，`/expect.json` 只有三个点）。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | `<G> :protocol:publishToMavenLocal :server-app:farviewFixtureArgs` | `BUILD SUCCESSFUL`；`server-app/build/farview-fixture.args` 只有一行 |
+| 2 | `java @server-app/build/farview-fixture.args -Xms1G -Xmx1G -Dsynaxis.app.auth=offline -Dsynaxis.connection-gate.trusted-networks=127.0.0.0/8 io.github.bearisbug.synaxis.app.shard.FarViewShardFixture 25750 25751 <L>/work synthetic > <L>/fixture.log 2>&1 &`（`JAVA_TOOL_OPTIONS` 不设），记下 pid，等 `farview fixture ready` | 出现 `farview fixture ready`，前面每个瓦片一行 `farview fixture: tile x z layer l bytes n sha256 h url u`：1 个 `layer 0`、8 个 `layer 1` |
+| 3 | `SYNAXIS_FARVIEW_SERVER=host.docker.internal:25750 SYNAXIS_FARVIEW_HTTP=http://host.docker.internal:25751 SYNAXIS_FARVIEW_MODE=v1,v1-noparent,v1-writable,v1-coarse-only SYNAXIS_FARVIEW_MODS=dh OUT=<L>/out client-fabric/gametest-env/run.sh` | 报告里 F1～F10 都是 PASS：F1 DH 的库钉在 `synaxis/farview/dh/<view_key>`，与层级的 `getDhSaveFolder` 相同，`Distant_Horizons_server_data` 下没有库；F2 `getReadOnly true`，`chunkRenderDistance api=256`、`maxHorizontalResolution api=FOUR_BLOCKS`，都 `overridable=true`；F3 有 `ms`、`write_ms`、`visible_ms`、`db_bytes`，完成标记的 `sources` 2304 等于细层块数加粗层块数 × 16；F4 `DetailLevel=2` 2304、`ApplyToParent=1` 0、`ApplyToChildren=1` 0、`DetailLevel=4` 大于 0，`/expect.json` 的每个点读回 `ok`；F5 走 200 格前后 `DetailLevel=0` 都是 0；F6 `FAR_VIEW` 地平线一带变化超过 1%、`LOD_VIEW` 不是一片天空色、`EDGE_VIEW` 中心 64×64 块变化超过 50%；F7 收到宣告的日志行早于 Save folder 那一行，重连后 `access.log` 行数不变、有 `ready`、没有 `baked in`；三个反证：F8 `v1-noparent` 的 `DetailLevel=3` 与 `DetailLevel=4` 都是 0；F9 `v1-writable` 的 `getReadOnly false`，走动后 `DetailLevel=0` 大于 0；F10 `v1-coarse-only` 的 `EDGE_VIEW` 中心变化低于 10%（一片天空色） |
+| 4 | 按 pid 停夹具；第 2 步的模式换成 `baked`（工作目录第一次时先烘 3×3 瓦片测试图，3 线程约 5.5 min、约 1.9 GB），重跑第 3 步 | 同第 3 步；F4 读回三个点（`peak`、`water`、`mountain`，最后一个在瓦片 (−1, 0) 的粗采样里），没有隐藏点；夹具日志的 `build_id` 是 `farview3x3-82ef22b94f77-p776`，9 个包的字节与摘要每次相同 |
+
+后置：按 pid 停夹具；`rm -rf <L>`；放锁；`docker ps` 没有残留容器。
+
+#### `TC-WORLD-118` 无头容器：库与标记不符时重烘、断开时取消、取消晚到时写完核对拦下、旧层级迟到的卸载事件 — 对应 `REQ-M3-025` · 级别: 回归 · 执行者: AI
+
+前置：同 `TC-WORLD-117` 第 1、2 步（synthetic 或 baked 都行）。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 同 `TC-WORLD-117` 第 3 步，模式换成 `marker,cancel,late-cancel,stale-unload` | F11、F12、F13、F14、F29 都是 PASS：F11 完成标记的 `sources` 改成加 1 之后重连，有 `view <view_key> library does not match its marker: 2304 of 2305`，从本地缓存重烘（`access.log` 行数不变），标记的 `sources` 与 `DetailLevel=2` 都是 2304；F12 烘焙中断开，置取消标志后 5 s 内线程停下、没有完成标记，重连后烘完；F13 测试钩子让烘焙线程在交出最后一块之前停住并忽略取消标志，断开、DH 关掉世界后放开：有 `incomplete` 一行、没有完成标记，重连后重烘、`sources` 与行数相等；F14 是 F13 的反证（去掉写完核对）：留下了完成标记；F29 新连接烘焙中，测试用上一条连接的层级包装对象让 DH 卸载它，烘焙照常 `ready true`、没有 `bake stopped` |
+| 2 | 反证（卸载监听不比包装对象）：`<FV>/dh/DhFarView.java` 里 `DhApiLevelUnloadEvent` 监听的 `if (event.value.levelWrapper != level) return;` 删掉，`<G> :protocol:publishToMavenLocal` 后重跑第 1 步，只跑 `stale-unload`；再 `git checkout -- <FV>` | F29 FAIL：`… bake released, ready false, view <view_key> bake stopped: Distant Horizons unloaded the level` |
+
+后置：同 `TC-WORLD-117`。
+
+#### `TC-WORLD-119` 无头容器：远景档位、服务端不宣告、DH 缺席 — 对应 `REQ-M3-025` · 级别: 回归 · 执行者: AI
+
+前置：同 `TC-WORLD-117` 第 1、2 步；另跑 `<G> :server-app:installDist`。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 同 `TC-WORLD-117` 第 3 步，模式换成 `tiers` | F15 PASS：4096 档 `chunkRenderDistance api=256`、2048 档 `api=128`，`maxHorizontalResolution api=FOUR_BLOCKS`；0 档远景不可用、`access.log` 行数不变、库是 `…/synaxis/farview/dh/off`、0 行，`renderingEnabled api=null value=true`，`chunkRenderDistance api=null` |
+| 2 | 在一个空目录里起 `server-app/build/install/server-app/bin/server-shard`，`SERVER_APP_OPTS="-Xms1G -Xmx1G -XX:-AlwaysPreTouch -Dsynaxis.app.port=25752 -Dsynaxis.app.metrics.bind=127.0.0.1:25753 -Dsynaxis.app.auth=offline -Dsynaxis.connection-gate.trusted-networks=127.0.0.0/8 -Dsynaxis.map.root=<L>/work/maps/<map_id> -Dsynaxis.map.build=<夹具日志里的 build_id>"`，不配 url-root；等 `listening on`；跑第 1 步，`SYNAXIS_FARVIEW_SERVER=host.docker.internal:25752`，模式 `none`；按 pid 停 `server-shard` | 起服日志有 `Far view off: synaxis.farview.url-root is empty`；F16 PASS：`announcement none, getReadOnly true, library …/synaxis/farview/dh/off with 0 rows after a 200 block walk, renderingEnabled api=null value=true …, chunkRenderDistance api=null …`，断开后同样没有覆盖值 |
+| 3 | 第 1 步不设 `SYNAXIS_FARVIEW_MODS`（不装 DH），模式 `absent` | F17 PASS：`Distant Horizons loaded false, in the world true, gate ABSENT`，`access.log` 行数不变，没有远景相关的异常 |
+
+后置：同 `TC-WORLD-117`；`server-shard` 的 25752、25753 没有监听。本用例没有反证，见 §7。
+
+#### `TC-WORLD-120` 无头容器：包校验失败重试两次后放弃、下载中断后续传 — 对应 `REQ-M3-025` · 级别: 回归 · 执行者: AI
+
+前置：同 `TC-WORLD-117` 第 1 步。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 夹具以 `break-sha` 模式起（`TC-WORLD-117` 第 2 步的模式换掉），跑 `TC-WORLD-117` 第 3 步，模式 `break-sha` | F18 PASS：同一个整包被请求 3 次（`access.log` 三行 `- 200`），日志 `Far view pack <前 12 位> failed after 3 attempts: its SHA-256 is …, not the announced …`，包、`.part` 与完成标记都没留下，玩家在世界里、没有弹窗 |
+| 2 | 按 pid 停夹具，以 `half` 模式重起，模式 `half` | F19 PASS：第一次请求的 `access.log` 行尾是 `cut`，下一次请求带 `Range: bytes=<已收字节>-`、回 206，最后 `ready true` |
+
+后置：同 `TC-WORLD-117`。本用例没有反证，见 §7。
+
+#### `TC-WORLD-121` 无头容器的读数：V2a、V3a、V6a、V8a 与 DH 的 `renderingEnabled` 行为 — 对应 `REQ-M3-025` · 级别: 回归 · 执行者: AI
+
+前置：同 `TC-WORLD-117` 第 1 步，夹具 `baked` 模式。本用例只登记读数、不判 30 s 与帧时间（设计文档 §26「容器验收」第 5～8 条）；每一步的预期是对应的 F 行出现、字段齐全，数值记进执行记录。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 新起容器各跑一次 `SYNAXIS_FARVIEW_MODE=bake-timing SYNAXIS_FARVIEW_MODS=dh`，共三次 | 三次都有 F28 PASS，带 `framebuffer 854x480`、`visible_ms`（`the test held the bake 0 ms`）、`ms`、`write_ms`、`db_bytes`、`sources 2304`、`from the level load`、`download` 与整包、粗层包的字节；登记三次与中位数，按设计文档 §15 远景准备行拆四段 |
+| 2 | 模式 `v2,v6,v8`，`MODS=dh` | F23（`v2`：`LOD_VIEW` 绘出占比、下半部与近处原版地面的亮度比）、F21（`v6`：eye 64 与 100、两档 `overdrawPreventionRadius` 的下半部空洞占比，以及原版视距内机位默认档两张之间与 0 档相对默认档的变化）、F22（`v8`：4,096 与 2,048 两档从层级载入到烘焙日志行的毫秒）都有；F21、F22 只登记 |
+| 3 | 模式 `v3`，`MODS=dh-iris` | F20：`ComplementaryReimagined_r5.9.3.zip` 在用，`FAR_VIEW` 与 `LOD_VIEW` 光影开关的像素变化、下半部贴近该帧天空色的占比与亮度标准差 |
+| 4 | 模式 `toggle`，`MODS=dh`（synthetic 或 baked 都行） | F27：把 `renderingEnabled` 覆盖成 false 再 `clearValue()` 后，玩家的 `DistantHorizons.toml` 是 `rendererMode = "DISABLED"`，绘出 0.00%，重连后仍是 0.00%；再覆盖成 true 并清掉才恢复（这是设计里不用 `renderingEnabled` 的依据） |
+
+后置：同 `TC-WORLD-117`。
+
+#### `TC-WORLD-122` 无头容器：真机模式在 1920×1080 下能跑完 — 对应 `REQ-M3-025` · 级别: 回归 · 执行者: AI
+
+前置：同 `TC-WORLD-117` 第 1、2 步。只证明真机要用的模式在容器里跑得通、帧缓冲是真机的尺寸；llvmpipe 下的帧时间没有意义。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 同 `TC-WORLD-117` 第 3 步，加 `SYNAXIS_GAMETEST_ARGS="--width 1920 --height 1080"`，`MODS=dh-iris`，模式 `bake-timing,shots,rts-shots` | F28 带 `framebuffer 1920x1080`；F24 列出 8 张截图（四个机位各光影关、开）；F25 列出 eye 64、100 与正交三张和 `day time` |
+| 2 | 同第 1 步带 `SYNAXIS_GAMETEST_ARGS`，`MODS=dh`，模式 `bench`（装 Iris 时 llvmpipe 下 1080p 一小时跑不完，所以这里不装） | F26 带 `framebuffer 1920x1080`，4,096 与 0 两档各 1,199 帧的平均帧时间、p99 与 P1% FPS |
+| 3 | 不带 `SYNAXIS_GAMETEST_ARGS`，`MODS=dh`，模式 `bench-2048` | F26 写 2,048 与 0 两档各 1,199 帧，`framebuffer 854x480`，帧时间写进 `farview-bench-2048.csv` |
+
+后置：同 `TC-WORLD-117`。
+
+#### `TC-WORLD-123` 真机 V2b：进大区到远景完整可见 ≤ 30 s — 对应 `REQ-M3-025` · 级别: 回归 · 执行者: 人工
+
+前置：用户的两台机器：RTX 3060 级 Windows 10/11（1080p 显示器，内存 16 GiB 以上）与 Apple Silicon Mac（M1 以上，macOS 14 以上），都装 JDK 25 与 Git，检出路径不含空格；检出 `m3g/integrate` 合入 `main` 之后的提交（代码 `24d3b318a9`；分支要先推到远端或合入 `main`）。逐条命令见 `docs/test-runs/RUN-064/integrate/08-real-machine-steps.txt`。gametest 会占用那台机器的窗口与鼠标，由用户亲自启动。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 仓库外的空目录 `<DIR>`：`java docs/research/client-spikes-2026-09/dh-iris/Fetch.java dh <DIR>`；仓库根 `./gradlew :protocol:publishToMavenLocal :server-app:farviewFixtureArgs --no-daemon`（Windows 用 `.\gradlew.bat`） | `<DIR>/mods` 下有 DH 3.3.2-26.2；`BUILD SUCCESSFUL` |
+| 2 | 单独一个终端起夹具：`java @server-app/build/farview-fixture.args -Xms1G -Xmx1G -XX:ActiveProcessorCount=2 -Dsynaxis.app.auth=offline -Dsynaxis.connection-gate.trusted-networks=127.0.0.0/8 io.github.bearisbug.synaxis.app.shard.FarViewShardFixture 25750 25751 <WORK> baked http://127.0.0.1:25751` | 第一次要烘图（两核约 8 min，`<WORK>` 约 1.9 GB），之后约 5 s；出现 `farview fixture ready`，`build_id` 是 `farview3x3-82ef22b94f77-p776` |
+| 3 | 在 `client-fabric/` 里设 `SYNAXIS_FARVIEW_SERVER=127.0.0.1:25750`、`SYNAXIS_FARVIEW_HTTP=http://127.0.0.1:25751`、`SYNAXIS_FARVIEW_MODE=bake-timing`、`JAVA_TOOL_OPTIONS=-Dfabric.addMods=<DIR>/mods`，跑 `./gradlew runClientGameTest --args="--width 1920 --height 1080" --no-daemon`；跑完拷走 `build/run/clientGameTest/synaxis-gametest/farview-report.txt` 与 `logs/latest.log`；每台跑三次 | 每次 F28 带 `framebuffer 1920x1080`（不是就作废重跑）、`visible_ms`、`ms`、`write_ms`、`db_bytes`、`download`；两台的 `visible_ms` 中位数都 ≤ 30,000 ms 为通过，任一台超过即按设计文档 §6.1 切换条件 2 回到用户，附两台三次的读数与四段拆分 |
+
+后置：停夹具，删 `<WORK>` 与 `<DIR>`。
+
+#### `TC-WORLD-124` 真机 V3b、V6b、V8b：光影观感、RTS 相机、帧时间 — 对应 `REQ-M3-025` · 级别: 回归 · 执行者: 人工
+
+前置：`TC-WORLD-123` 的 Windows 机器与第 2 步的夹具；第 1 步改用 `Fetch.java dh-iris <DIR>`（另取 Sodium 0.9.2、Iris 1.11.4 与 Complementary r5.9.3），客户端另设 `SYNAXIS_DH_SHADERPACKS=<DIR>/shaderpacks`。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | V3b：模式 `shots`；日志出现 `baked in` 起用 OBS 录屏，录到客户端退出 | F24 列出四个机位（`plain`、`lake`、`ridge`、`edge-outward`）各光影关、开 8 张截图；交回截图与录屏（注明相机绕玩家平飞的那 10 s 的起止），由美术评审光照、雾、水面、接缝 dither 与大区边界外粗层的台阶 |
+| 2 | V6b：模式 `rts-shots` | F25 列出 eye 64、100 两张透视与一张正交和当时的 `day time`；判透视下雾、水面、阴影正常。正午与太阳高度角 40° 两张现在拍不了（夹具不能设时间，§7） |
+| 3 | V8b：客户端启动前另开终端 `nvidia-smi --query-gpu=memory.used --format=csv -l 1 > vram.csv`；模式 `bench`；客户端退出后停掉 `nvidia-smi` | F26 带 `framebuffer 1920x1080` 与 4,096、0 两档的平均帧时间、p99 与 P1% FPS（= 1,000 / p99）；交回 `farview-bench.csv`、`vram.csv` 与报告；P1% ≥ 60 FPS 且开远景比关多出的平均帧时间 ≤ 2 ms 为通过；多出 > 2 ms 时改模式 `bench-2048` 再跑一次（写 `farview-bench-2048.csv`，`vram.csv` 另录一份），仍超则按切换条件 3 回到用户 |
+
+后置：同 `TC-WORLD-123`。
 
 ### 生产就绪 · 第 0 波 0A：宿主日志线
 
@@ -8461,6 +8743,7 @@ for (var request : System.getenv("MGMT_CALLS").split("\n")) {
   - 生产就绪域：连接闸门与 keep-alive 收尾（`REQ-PROD-001`、`REQ-PROD-043`）→ TC-PROD-060～TC-PROD-068；动了 accept 循环、握手或登录监听器、`ConnectionGate`、`ServerConfig` 的闸门键或 `StatusResponse` 就跑这九条，改默认值或闸门判定顺序时再加 TC-PROD-069（真进程，约 4 分钟）。跨域牵连：动了 `PlayerConnection#disconnect`、登录看门狗（`Server#loginTimeoutWatch`）或 keep-alive 踢人 → 加 TC-PROD-061、TC-PROD-066、TC-PROD-067 与 TC-GAME-071。
   - 大世界域：光照 → TC-WORLD-001～TC-WORLD-004、TC-WORLD-026（TC-WORLD-005 已废弃），基准 → TC-WORLD-006（TC-WORLD-007 只在空闲机器上跑，属全量轮；TC-WORLD-008 等第一张美术地图），区块包编码（引擎 `ChunkData`、`ChunkDataPacket`、`LightData`、调色板的网络编码与 `optimize`）→ TC-WORLD-009 与 TC-WORLD-006（动了方块实体 NBT 的写法，即 `BinaryTagTypeImpl` 或 `NetworkBuffer.SORTED_NBT`，再加 TC-WORLD-033），分片宿主设置（`ShardMain#viewDefaults`、`ShardMain#transferDefaults`、`Main` 的存储选择与 `accept-transfers` 拒启检查）→ TC-WORLD-010、TC-WORLD-011（后者真进程，约 1 分钟）；动了 `ShardMain` 时同时跑生产就绪域的 TC-PROD-333、TC-PROD-334。光照引擎（`instance.light` 的 `LightEngine`、`LightResult`、`WorldView`、`LightBlocks`，`LightingChunk.relight`，`verified-light-versions.txt`）→ TC-WORLD-012、TC-WORLD-013、TC-WORLD-028 加光照五条 TC-WORLD-001～TC-WORLD-004 与 TC-WORLD-026，再加 TC-GAME-029 第 1、2、10、11 步（M2 整图光照与 `load_ms`）与 TC-WORLD-021（烘焙器的版本门禁）。`.synx` 格式（`:synx` 模块、向量与 `manifest.txt`）→ TC-WORLD-014～TC-WORLD-018，再加 TC-WORLD-021～TC-WORLD-023（烘焙器调它写与校验）；动了 §6 内部面名单里的引擎成员 → TC-WORLD-018 加 `:synx`、`:baker` 全部测试。Anvil 读取器（`baker.anvil` 包、`tools/anvil-fixture`）→ TC-WORLD-019、TC-WORLD-029，动了 `gen.sh` 或 `TrimRegion.java` 再加 TC-WORLD-020（约 1 分钟，要 26.2 服务端 jar）。烘焙器（`baker` 包其余部分、`:game-rts` 的 `RtsBakeGenerators`）→ TC-WORLD-021～TC-WORLD-023、TC-WORLD-027、TC-WORLD-029～TC-WORLD-031、TC-WORLD-033（TC-WORLD-023 约 2 分钟，TC-WORLD-024、TC-WORLD-025 已废弃）；动了 `AnvilSource` 的高度窗口或 `BakerMain` 的 `--min-y` → TC-WORLD-027；动了 `architecture-tests` 的 `LightEngineArchitectureTest` 或 `:baker` 开始引用新的 `instance.light` 类型 → TC-WORLD-028；动了 `docs/MAP-SOURCE.md` 第 6 节的命令或退出码表 → TC-WORLD-030。区块流送与覆盖层（M3-C）：`:synx` 的 `SynxChunk`、`SynxChunkLoader`、`SectionCache`、`SynxPacketDecoder`、`SynxStaticEntities` 与测试图 `SynxTestMap` → TC-WORLD-034～TC-WORLD-039；`OverlayStore`、`OverlaySegment`、`OverlayTuning` → TC-WORLD-039、TC-WORLD-042、TC-WORLD-043、TC-WORLD-049、TC-WORLD-051；`SynxHandlers`、`:game-rts` 的 `marker` 包与 `BakerMain` 的处理器登记 → TC-WORLD-030～TC-WORLD-033、TC-WORLD-055；`SynxOptions`、`OverlayOptions`、`ShardSettings` 与 `ConfigFile.KEYS` → TC-WORLD-041（另跑生产就绪域的配置键门禁用例）；翻译键门禁名单 → TC-WORLD-032；引擎 `BufferedPacket`、`PacketViewableUtils`、`PlayerSocketConnection` 的积压 → TC-WORLD-040 与 TC-PROD-294、TC-PROD-295；引擎 `Instance` 的模拟距离与票据、`ChunkTickets`、`InstanceContainer` 的卸载判定、`Player` 的区块环票据、`Entity`、`EntityProjectile` 与 `DynamicChunk` 的 tick 体 → TC-WORLD-044、TC-WORLD-045、TC-WORLD-050，动了 `Player`、`Entity` 再加第 6 波 6E 的 TC-PROD-410～TC-PROD-422；`ThreadDispatcherImpl`、`TickThread` → TC-WORLD-046 与 TC-PROD-030；`Chunk#tryLockWriteLock`、`Chunk#readyToUnload` → TC-WORLD-039、TC-WORLD-045；`server-app` 的 `ShardMain` 挂地图默认值、`Main` 步骤 (1)(3)(5)(7) 的接线与 `app.shard` 包 → TC-WORLD-010、TC-WORLD-047～TC-WORLD-049、TC-WORLD-051、TC-WORLD-055，再加真进程 TC-WORLD-011、TC-WORLD-052（两条约 3 分钟）；阶段 gate，或动了句柄区块的发送路径 → TC-WORLD-053（约 10 分钟）与 TC-WORLD-099（前置见该用例，TC-WORLD-054 已废弃）；`:testing` 的 `TestConnectionImpl`（出站包追踪）→ TC-WORLD-056。
   - 大世界域 · 分片（M3-E）：分片目录与 `Main` 的目录模式（`ShardDirectory`、`Main#shardDirectory` 与 `applyDirectory`）→ TC-WORLD-057、TC-WORLD-059、TC-WORLD-078；大区装配（`ShardWorld` 的 `bounds`、`checkDirectory`、`checkSpawnColumn`、`startedAttributes`）→ TC-WORLD-058、TC-WORLD-060 加 M3-C 的 TC-WORLD-047、TC-WORLD-049、TC-WORLD-055；心跳（`ShardHeartbeat`、V5）→ TC-WORLD-061、TC-WORLD-075、TC-WORLD-088；选频道与关卡门、到达（`ShardServiceImpl`、`ShardGates`、`ShardArrivals`）→ TC-WORLD-062～TC-WORLD-065、TC-WORLD-075；动了 `TicketIssuer`、`TicketVerifier` 的 M3-E 接线 → TC-WORLD-087（同时按生产就绪域的规则跑 TC-PROD-157、TC-PROD-379）；动了 `TicketIssuer` 签发 ④ 的线程、顺序或放弃规则 → TC-WORLD-090 加 TC-WORLD-087；`ShardGates` 的结果处理与 `EVT:transfer_refused` → TC-WORLD-064、TC-WORLD-100；`ShardGates#moved` 的在线判定与 `Main#serveMap` 传给它的 `PlayerStore#isOnline` → TC-WORLD-101 加 TC-WORLD-064（同时按生产就绪域的规则跑 TC-PROD-593 与 TC-PROD-570～TC-PROD-573）；动了 `LoginListener` 的 L3 或 `ConnectionGate` 的席位 → TC-WORLD-085；世界状态标志（`WorldFlagsImpl`、`WorldFlagStore`、`RedisLink` 的标志频道、V6）→ TC-WORLD-066～TC-WORLD-070、TC-WORLD-088；动了 `SynxChunk.asWorldFlag` 或 `sameBlock` → TC-WORLD-066、TC-WORLD-067 加 M3-C 的「A 组」各条（TC-WORLD-034～TC-WORLD-039）；`:loadtest` 的转服部分（`Bot` 的 Cookie、`Transfer` 与重连，`gate` 画像，`transfers` 的统计与判定）→ TC-WORLD-071～TC-WORLD-074、TC-WORLD-086，同时按生产就绪域的规则跑 5A 的 TC-PROD-265～TC-PROD-267。以真进程为前置的 TC-WORLD-076～TC-WORLD-080 在 M3-E 的阶段 gate 与动了 `Main` 目录模式装配的改动时跑；压测四档 TC-WORLD-081～TC-WORLD-084 只在阶段 gate 与改了 `capacity`、分片宿主线程或转服路径时跑，门槛不满足即登记「阻塞」。
+  - 大世界域 · 远景（M3-G）：动了 `:protocol` 的 `FarViewPack`、`FarViewAnnouncement` 或 `farview-vectors/` → TC-WORLD-102 与 TC-WORLD-111（两端共用向量）；动了 `:baker` 的 `ChunkEncoder` 采样、`FarViewAssembler`、`Baker` 的清单与校验或 `BakerMain` 的 `farview-export` → TC-WORLD-103～TC-WORLD-107，并按字面重跑 TC-WORLD-023、TC-WORLD-030、TC-WORLD-033 的发布行；动了 `ShardWorld` 的宣告、`ShardSettings` 的 url-root 或 `Main#serveMap` 的远景监听 → TC-WORLD-108；动了 `FarViewShardFixture` → TC-WORLD-109 第 1、2 步，再跑一遍 TC-WORLD-117；动了 `client-fabric` 的 `game/client/farview/` 或 `farview/dh/` → TC-WORLD-110～TC-WORLD-116，并在容器里跑 TC-WORLD-117、TC-WORLD-118（写库、取消与卸载的路径）；动了 DH 的版本锁、接入面表或 `BAKE_CODE_VERSION` → TC-WORLD-116 与容器里的 TC-WORLD-117～TC-WORLD-121 整套（设计文档 `API-M3-015` 许可条）；合入 `main` 或改 `Main` 之后的回归轮至少跑 TC-WORLD-108 与 TC-WORLD-117、TC-WORLD-119 第 2 步（`server-shard` 真进程）。TC-WORLD-121 只登记读数，TC-WORLD-123、TC-WORLD-124 是真机，执行者人工，没有用户的机器时登记「待人工」。
   - 大世界域 · 运行时光照（M3-D）：动了 `SynxRelight`、`RelightStats`、`SynxChunk` 的光照部分（投递、`delivered`、`light_stale`、`installLight`、`relightPending` 与 `readyToUnload`）、`SynxChunkLoader#startRelight`、`SynxPacketDecoder` 的光照解码或 `OverlayStore` 淘汰时的跳过 → TC-WORLD-092、TC-WORLD-093；动了 `ShardWorld` 的光照装配、`TICK_END` 任务、`relight` 停机步骤或 `EVT:chunk_stream_stats` → TC-WORLD-094；动了 `SynxOptions` 的两个光照键或 `ConfigFile.KEYS` → TC-WORLD-098；动了 `OverlayStore`、`OverlaySegment` 或 `SynxChunk` 的覆盖层部分 → 另加 TC-WORLD-091；动了 `LightShardFixture`、`LightMapFixture`、`LightTruth`、`client-fabric` 的 `gametest/.../light/` 与 `LightUpdateCounterMixin` 或 `run.sh` 的三个光照变量 → TC-WORLD-095，涉及退路再加 TC-WORLD-096、涉及真进程或 `real` 模式再加 TC-WORLD-097（三条都要 §3 的容器门槛）。
   - 跨域牵连（必须一起跑）：动了 `network/packet` 下的包注册表（增删包、调顺序、升协议版本）→ 加 TC-036；动了启动入口或就绪日志 → 加 TC-GAME-048、TC-GAME-029、TC-GAME-057、TC-GAME-058 与全部以进程为前置的引擎域用例（启动序列一变，「对局在 bind 之前就绪、tick 在 bind 之后才起」这条口径就要重验）；动了握手、准入回调或探针 → 加 TC-GAME-049、TC-GAME-050、TC-GAME-060、TC-GAME-061、TC-GAME-073、TC-GAME-074 与 TC-004、TC-014、TC-018、TC-019、TC-020、TC-026、TC-027 七条存量 TC；动了客户端模组侧的握手或拾取 → 加 TC-GAME-066；动了 `:protocol` 消息布局 → 加 TC-GAME-017 与客户端侧同一份向量；动了引擎 `Entity` 的位置推进入口 → 加 TC-GAME-051、TC-GAME-067 与 TC-GAME-040；动了对局的 chunk supplier、`Match#load` 的载入流程或引擎 `LightingChunk` / `instance.light` → 加 TC-GAME-029（第 10、11 步是光照的先红后绿）；动了 `ExceptionManager` / `ExceptionHandler`、宿主的 `EventLedger`、`logback*.xml` 或 `server-app` 的启动参数 → 加 TC-PROD-001～TC-PROD-008 与 TC-035。动了 `ServerProcessImpl` 的 `TickerImpl`、`Watchdog`、`ServerConfig` 的 `synaxis.watchdog.*` 键或宿主的 `CrashReports` → 加 TC-PROD-020～TC-PROD-023 与 TC-PROD-002。
 
@@ -8582,6 +8865,7 @@ for (var request : System.getenv("MGMT_CALLS").split("\n")) {
 | RUN-060 | 2026-10-01 | `main` `c46578d24f`（分支 `m3/refused-and-500`，本轮只改文档；用例与反证在这个提交加未提交的 `docs/DESIGN-M3.md`、`docs/TEST.md` 上跑，没有测试读文档）；`git fetch` 后 `origin/main` 仍是 `c46578d24f`，登记到 RUN-059，RUN-060 按约定归本会话 | AI（Claude Code，Gradle / PostgreSQL / `baker` 命令行；压测为同机档） | 局部：`REQ-M3-017`→TC-WORLD-064、TC-WORLD-100（取代 TC-WORLD-089，关卡门六种拒绝结果都写 `EVT:transfer_refused`）；`REQ-M3-015`→TC-WORLD-082、TC-WORLD-083（审计 P3-3 合入后按原文重跑，补 `ticks.acquire_ms`） | 通过 2/4 · 阻塞 2 |
 | RUN-061 | 2026-10-01 | 分支 `prod/mgmt-timeout` 的 `2bed5675f2`（`main` `c46578d24f` 加三个提交：`5fe9c028f4` 管理连接每 100 ms 补登记写兴趣，`5758b7425c`、`2bed5675f2` 文档）；`git fetch` 后 `origin/main` 仍是 `c46578d24f`，RUN-060 已由光照会话在 `m3/refused-and-500` 上登记 | AI（Claude Code，Gradle / PostgreSQL / Valkey / GitHub Actions） | 局部（REQ-PROD-032→TC-PROD-574、575；红行随改→TC-PROD-395）+ 回归（`:server-app:check` 计数模式、4 线程 `grid` 严格 `:server-app:test` 全量，都带数据库变量；严格 `grid` 下管理包连跑 5 次） | 通过 3/3 |
 | RUN-062 | 2026-10-01 | 集成分支 `prod/integrate-062` 的 `45f4133080`（`main` `c820bc65f2` 依次 `--no-ff` 合入 `sec/login-path`、`sec/transfer-ghost`、`sec/ops-ports`、`sec/secrets-files` 四组，加 `5c0bad47bc` 跨格拾取的修复与测试、`cc27560ea9` 与 `5e0977797e` 两组评审跟进的测试与拒启信息、`45f4133080` 文档；`docs/DESIGN-PROD.md` v0.9.39～v0.9.43；`git fetch` 后 `origin/main` 仍是 `c820bc65f2`；四组的用例与反证在各组分支上跑，合前门禁与 `TC-PROD-548` 在 `45f4133080` 加未提交的 `docs/TEST.md` 上跑，没有测试读文档；本轮之后的提交只改文档与证据，评审跟进的补跑（`integrate/07`）在 `f6b03e686d` 加未提交的两份文档上跑，代码与 `45f4133080` 相同） | AI（Claude Code，Gradle / PostgreSQL / Valkey / `baker` 命令行 / `bin/server-shard` / `:loadtest`） | 局部（REQ-PROD-001、REQ-PROD-002、REQ-PROD-013→TC-PROD-576～TC-PROD-585；REQ-PROD-045、REQ-PROD-004、REQ-PROD-007、REQ-PROD-011→TC-PROD-590～TC-PROD-597；REQ-PROD-032、REQ-PROD-018、REQ-PROD-036→TC-PROD-600～TC-PROD-607；REQ-PROD-005、REQ-PROD-007、REQ-PROD-015、REQ-PROD-017、REQ-PROD-032～REQ-PROD-034、REQ-PROD-036→TC-PROD-610～TC-PROD-619；REQ-PROD-019、REQ-PROD-020→TC-PROD-620～TC-PROD-623；行号或结果随本轮改动、按新写法重跑的既有用例→login 组 TC-PROD-061～TC-PROD-063、TC-PROD-066、TC-PROD-067、TC-PROD-120、TC-PROD-121、TC-PROD-263、TC-PROD-300、TC-PROD-560、TC-GAME-070、TC-WORLD-085，transfer 组 TC-PROD-206、TC-PROD-215，ops 组 TC-PROD-383、TC-PROD-395、TC-PROD-498、TC-PROD-521、TC-PROD-528、TC-PROD-533、TC-PROD-573、TC-PROD-575，secrets 组 TC-PROD-002、TC-PROD-392、TC-PROD-467～TC-PROD-469、TC-PROD-471，集成轮 TC-PROD-092、TC-WORLD-100 第 1、2 步；§5 改了 `TicketIssuer`→TC-PROD-548；条数→TC-PROD-486 第 3 步、TC-PROD-505 第 3 步、TC-PROD-510 第 2 步、TC-PROD-513 第 4 步、TC-PROD-529 第 4 步、TC-PROD-549 第 2、3 步、TC-PROD-567 第 1 步、TC-PROD-569 第 4 步）+ 全量回归（根项目 `check --rerun-tasks`、4 线程 `grid` 严格 `test --rerun`，都带数据库变量；`:server-app:test` 不带数据库变量默认与严格 `grid` 各一次） | 通过 78/79 · 待人工 1 |
+| RUN-064 | 2026-10-02 | 集成分支 `m3g/integrate` 合入 `main` `4bb76eec7f` 之后的 `24d3b318a9`（第 0 步 `094b52530e`、轨道 S `2ed53735ec`、轨道 C `1d8e8ba97b` 与复核后的 gametest `c8a403032d` 都在里面；用例、反证与门禁在这个提交加未提交的 `docs/` 上跑，没有测试读文档）；另有三个合入前的子轮：轨道 C 在 `1d8e8ba97b`，合并验收在 `be4f62eabb` 与 `c8a403032d`，第 0 步与轨道 S 的读数转录自交付说明，被测代码与 `24d3b318a9` 相同（证据 `00-index.txt`）；`git fetch` 后 `origin/main` 是 `4bb76eec7f`，登记到 RUN-066，RUN-063 归光照会话重跑 `TC-WORLD-082`、`TC-WORLD-083` | AI（Claude Code，Gradle / PostgreSQL / Valkey / `baker` 命令行 / `FarViewShardFixture` / `bin/server-shard` / Docker 无头客户端 `synaxis-mc-client:dev`） | 局部（REQ-M3-024→新增 TC-WORLD-102～TC-WORLD-109，REQ-M3-025→新增 TC-WORLD-110～TC-WORLD-124；M3-G 改了预期的 TC-WORLD-023、TC-WORLD-030、TC-WORLD-032、TC-WORLD-033、TC-WORLD-041、TC-WORLD-098、TC-WORLD-100、TC-WORLD-101 按改后的字面重跑改动的步骤）+ 全量回归（根项目 `check test --rerun` 带冻结 zlib、4 线程 counter 与 `grid` 严格模式，都带数据库变量；`client-fabric` 的 `check`） | 通过 29/31 · 待人工 2 |
 | RUN-065 | 2026-10-01 | 分支 `m3/sec-followup` 的 `072d45b790`（`main` `c69548be70` 加两个提交：`0a875c757d` `CLAUDE.md` 密钥纪律，`072d45b790` 关卡门的在线判定与新测试；用例、反证与门禁在这个提交加未提交的 `docs/DESIGN-M3.md`、`docs/DESIGN-PROD.md`、`docs/TEST.md` 上跑，没有测试读文档；修前的红在同一工作树上把 `ShardGates` 换成「收第四个构造参数、不读它」的写法；`git fetch` 后 `origin/main` 仍是 `c69548be70`，登记到 RUN-062，RUN-063 按约定归本会话重跑 `TC-WORLD-082`、`TC-WORLD-083`，RUN-064 归 M3-G；本轮之后的提交只改文档与证据） | AI（Claude Code，Gradle / PostgreSQL / Valkey / `baker` 命令行 / `bin/server-shard` / `:loadtest`） | 局部（REQ-M3-017→新增 TC-WORLD-101，受影响的 TC-WORLD-064、TC-WORLD-100 连同反证重跑，TC-WORLD-062、TC-WORLD-063、TC-WORLD-065、TC-WORLD-075 第 1 步；动了 `Main` 目录模式装配→两进程 TC-WORLD-076～TC-WORLD-080；§5 生产就绪域加跑 TC-PROD-593、TC-PROD-570～TC-PROD-573，照写执行）+ 全量回归（根项目 `check --rerun-tasks` 带冻结 zlib、4 线程 counter 与 `grid` 严格模式，都带数据库变量） | 通过 16/17 · 失败 1 |
 | RUN-066 | 2026-10-01 | 分支 `prod/sec-docs-fu`，代码是 `main` `4a40af2835`（RUN-065 合入后的头），工作树上只有未提交的 `docs/DESIGN-PROD.md`、`docs/TEST.md` 与审查报告，没有测试读文档；`git fetch` 后 `origin/main` 仍是 `4a40af2835`，登记到 RUN-065，RUN-063、RUN-064 按约定归另一会话 | AI（Claude Code，Gradle） | 局部：TC-PROD-570 第 1～6 步按改写后的字面重跑（关掉 RUN-065 里这条的失败） | 通过 1/1 |
 
@@ -8736,8 +9020,12 @@ TC-002 证据：`docs/test-runs/RUN-002/tc-002.txt`（5 步实际输出）（2,6
 | RUN-060 | TC-WORLD-082 | 阻塞 | 前置不满足：门槛窗口 00:14:05～01:39:10 共 18 次读数，`memory_pressure` 空闲比例 32%～47%（17 次 ≥ 35%），数据盘可用 66,331～75,849 MB，两个共用容器都在，但每次都有别的项目的 Gradle 8.13 守护进程（pid 39749，JDK 17，`Kando/App/android`，23:22:20 起空闲、0% CPU），前 15 次还有同一构建的 Kotlin 编译守护进程（pid 40230），不满足「没有别的 java 或 Gradle」。没有起分片、采样与机器人，没有读数。证据 `docs/test-runs/RUN-060/02-gates.txt` | 那个守护进程按 3 h 空闲超时算约 02:22 退出，之后重跑两档；RUN-057 的失败未关闭 |
 | RUN-060 | TC-WORLD-083 | 阻塞 | 同 TC-WORLD-082，两档共用一个窗口，082 没起跑，083 同样没起跑 | 同上 |
 | RUN-062 | TC-PROD-606 | 待人工 | 执行者是人工，要在开了管理接口的 Linux 部署主机上做：第 1 步比各分片 `.env.<shard_id>` 里令牌的摘要，第 2 步比网络命名空间或查能登录的用户，第 3 步在不对外的测试主机上以 `nobody` 抢先绑管理端口。本轮只在开发机的假目录上试过第 1 步的循环（跳过 `.env.example` 与没有这个键的文件），证据 `docs/test-runs/RUN-062/integrate/05-doc-checks.txt` | 第一次在 Linux 主机上部署开了 `synaxis.app.management.enabled` 的分片时人工做，结果填进 `docs/DESIGN-PROD.md` §23 那一行（§28.2 待办一行） |
+| RUN-064 | TC-WORLD-123 | 待人工 | 执行者是人工：要用户的 RTX 3060 级 Windows 与 Apple Silicon Mac，gametest 会占用那台机器的窗口与鼠标；逐条命令见 `docs/test-runs/RUN-064/integrate/08-real-machine-steps.txt`（真机检出合入 `main` 之后的提交）。容器里同一测法的 `visible_ms` 中位数 70,065 ms（`integrate/05-V2a-bake-timing.txt`），只作参考 | 用户有机器时按用例跑三次、两台；结论回写 `docs/DESIGN-M3.md` §15 远景准备行与 §28.2，超 30 s 按 §6.1 切换条件 2 回到用户 |
+| RUN-064 | TC-WORLD-124 | 待人工 | 同上，只要那台 Windows；V6b 的正午与太阳高度角 40° 两张现在拍不了（夹具不能设时间，§7）；1920×1080 下三个模式在容器里能跑完（`TC-WORLD-122`） | 同上；V6b 之前先给夹具加设时间的参数（`docs/DESIGN-M3.md` §28.2） |
 | RUN-065 | TC-PROD-570 | 失败 | 第 1、3～6 步与用例相同：`tests="7"` 0 失败；三处反证都是 `7 tests completed, 1 failed`，红在 `ShardGatesTest.java:218`，依次为 `NOT_ONLINE`、`SAVE_FAILED`、`SENT`，信息同用例。第 2 步照写 `git checkout 0e919cce6a -- <GT>` 之后 `:server-app:compileJava` 失败，没有跑到测试：`Main.java:518` 传四个参数，旧 `ShardGates` 只有三个参数的构造器（本轮 `072d45b790` 给构造器加了在线判定）。改用「`0e919cce6a` 的文件只加上第四个构造参数」重跑，`7 tests completed, 1 failed`，红在 `:218`，`COOLDOWN ==> expected: <[transfer_refused {…, result=cooldown}]> but was: <[]>`，与用例对第 2 步的期望相同。证据 `docs/test-runs/RUN-065/02-cases.txt` | 用例文字过时，按约定本轮不改，由生产就绪会话改写（`docs/DESIGN-M3.md` §28.2「交给生产就绪会话的改动（M3 v0.31）」④） |
 
+
+RUN-064 证据：`docs/test-runs/RUN-064/`（`00-index.txt` 说明三个子目录：`track-c/` 是轨道 C 的复核后验收，`integrate/` 是合并验收，`main-merge/` 是合入 `main` 之后的这一轮，`main-merge/06` 转录第 0 步与轨道 S 的读数）。轮次号：`git fetch` 后 `origin/main` 是 `4bb76eec7f`，登记到 RUN-066；RUN-063 归光照会话重跑 `TC-WORLD-082`、`TC-WORLD-083`，RUN-064 按约定归 M3-G。**合并**：只有 `Main#serveMap` 冲突，保留 `main` 的签名再放进远景宣告的监听体（`24d3b318a9`）；`git diff 2ed53735ec 24d3b318a9 -- baker protocol synx` 与 `git diff 1d8e8ba97b 24d3b318a9 -- client-fabric/src/main client-fabric/src/test` 都为空，所以子轮的结论对合并树成立，`Main` 的远景监听在合并树上重新验过（反证 S-a 与 `server-shard` 真进程）。**重活锁**：合入后五批，06:47:12～07:06:39（门禁）、07:06:54～07:11:40（反证）、07:13:16～07:16:38（第 2 批）、07:17:53～07:48:34（容器）、07:49:51～07:50:01（第 3 批），`owner` 写 `Synaxis光照/m3g-run064-<阶段>` 与 pid 39601（本 agent 的进程），取锁与 `EXIT` trap 在作业脚本顶层，脚本在 `main-merge/07`；没有等别人的锁，没有删过陈旧锁。**违规登记**：第一次起门禁时取锁的 `EXIT` trap 写在 zsh 函数里，06:46:25 拿到锁、函数一返回就放了，Gradle 在没有锁的情况下跑了约 20 s（到配置阶段，没有测试任务开始），按 pid 停掉、改正后 06:47:12 重新起跑（`main-merge/01` 开头）；子轮里共 4 次调用系统 `python3`（第 0 步两次、轨道 S 与轨道 C 首轮各一次，都没改文件，`main-merge/06` 末段）。**门禁**（`main-merge/01`）：根项目 `check test --rerun --continue`（带冻结 zlib）397 s、4 线程 counter 严格模式 368 s、再加 `grid` 369 s，三道都 `BUILD SUCCESSFUL`，各 4,237 个 0 失败、15 跳过（都在根模块）；根模块 428 个类 3,162 个，与 RUN-066 相同，`server-app` 113 个类 577 个，比 RUN-065 多 24 个（`ShardWorldFarViewTest` 9、`FarViewShardFixtureTest` 9、`FarViewLaunchTest` 4、`ShardSettingsTest` 多 2），`:baker` 76、`:protocol` 122、`:synx` 142；七个数据库类 `skipped="0"`；配置键门禁 `116 keys read, 116 in ConfigFile.KEYS, 21 meter names left out`，翻译键门禁 `60 keys checked against [en_us.json, zh_cn.json], 15 identifiers left out`；严格模式的 `EnvDispatcherThreadsIntegrationTest` 读到 4 条线程与 `counter`、`grid`；结果里没有 `AcquirableOwnershipException`。`client-fabric` 的 `check compileGametestJava --rerun-tasks` 12 s，15 个类 184 个 0 失败 0 跳过，`verifyModJar` 75 个条目。**JUnit 用例与反证**（`main-merge/02`、`05`）：TC-WORLD-102～116 第 1 步的类都在门禁里 0 失败；反证按用例字面在 `24d3b318a9` 上跑，红行与信息即用例里写的。同一次 Gradle 里改了几处的：B-c（105 的 `<AS>` 与 106 第 3 步）、B-e（103 第 2 步、105 的 `<FA>`、106 第 2 步、107 第 2 步：`FarViewBakeTest` 红 5 条、`FarViewExportTest` 1 条、`GeneratorBakeTest` 12 个 0 失败）、S-a（108 第 2 步与 109 第 2 步：`ShardWorldFarViewTest` 2、`FarViewLaunchTest` 2、`FarViewShardFixtureTest` 1）、C-a（110 第 2 步与 111～115 第 2 步：67 个里红 12 个，各在自己的类里），每处都只红在自己的断言上。第一次的 C-b 写成 `check --tests`，Gradle 不接受，第 2 批改成 `test --tests … verifyModJar` 重跑；那次塞进去的是无效的 `.class`，`remapJar` 先失败（`error analyzing /com/seibel/distanthorizons/api/DhApi.class`），所以 116 第 3 步改用文本文件，第 3 批跑：`verifyModJar` 报 `[com/seibel/, com/seibel/distanthorizons/, com/seibel/distanthorizons/README.txt]`，删掉后 75 个条目。每次还原后 `git status` 在 `docs/` 之外为空。TC-WORLD-109 第 3～5 步（命令行）在轨道 S 子轮跑过（4k 图 6 线程 26.3 s、RSS 2.68 GB，整包 596,465 B、粗层前缀 65,521 B，装配 876 ms；3×3 瓦片 216.6 s、RSS 2.96 GB，9 个包 5,329,202 B、粗层前缀 65,807～68,823 B，首次进中心大区 1,126,018 B；`baker_version` 2 退 4、改成 1 后退 0），4k 图的发布行另由合入后的 TC-WORLD-023 第 1 步确认。**容器**：合入后（`main-merge/04`），baked 夹具从空目录再烘一次（3 线程 324 s、RSS 峰值 2,590 MiB、区域文件 1,946,768,700 B，`build_id` `farview3x3-82ef22b94f77-p776` 与 9 个包和前三次相同），容器 A F1～F15、F29 全 PASS：V1 的 `ms` 98,111、`write_ms` 7,543、`visible_ms` 108,591、`db_bytes` 29,306,216，三个点读回 `ok`，`EDGE_VIEW` 中心变化 100.00%，反证 F8 的 `DetailLevel` 3、4 都是 0、F9 走动后 36 → 54、F10 中心 0.00%；F11 `2304 of 2305` 后从缓存重烘；F12 置取消标志后 200 ms 停下；F13 `incomplete: no answer`；F14 留下标记；F29 `ready true`、没有 `bake stopped`；F15 三档与 `dh/off` 0 行。`bin/server-shard` 不配 url-root 6 s 起服，日志 `Far view off: synaxis.farview.url-root is empty`，容器 B F16 PASS（库 `dh/off`、走 200 格后 0 行、没有覆盖值）。轨道 C 子轮（`track-c/`，synthetic，`min_y` −64）：F1～F29 都 PASS（F17 不装 DH、F18 `break-sha`、F19 `half`、F20 `dh-iris`、F24～F26 与 F28 在 1920×1080），F29 的反证 FAIL 在预期处（`12-p3`）。合并验收子轮（`integrate/`，baked）：F1～F10、F23 PASS；V2a 三个新起容器的 F28 `visible_ms` 64,654、73,757、70,065 ms，中位数 70,065 ms，只登记；F20 雾的读数、F21 原版视距内的 13.00% 与 3.17%、F22 首次载入 101,990 / 48,300 ms 只登记；`bench-2048` 能跑。**既有用例**（`main-merge/03`）：TC-WORLD-023 五步与改后的预期一致（默认 12 线程 19.0 s、RSS 4.43 GB；1 线程 92.5 s、RSS 1.08 GB；64 个区域文件与 `t.0.0.hfp` 逐字节相同；改一个字节退 4、还原退 0；再烘退 5，最后一个事件 `outcome=failed`；第 5 步的 stderr 只截到 SLF4J 的两行提示，`already exists` 那一行没截到）；TC-WORLD-030 第 1～3 步（7 节；发布行 `…, 20046 bytes; 1 far view pack(s), 2378 bytes, assembled in 11 ms`，`source_light_diff` 0、`verify_diffs` 0；`verified`）；TC-WORLD-033 第 1、2 步（同一 `build_id` 再烘退 5）；TC-WORLD-032 第 1～4 步；TC-WORLD-041 第 1、2、4、5 步；TC-WORLD-098 第 2 步（20 个 0 失败）；TC-WORLD-100、TC-WORLD-101 第 2 步的两条 `grep`（`:526`、`:305`）。这些用例的其余步骤被测代码没变，本轮没重跑。**没验到的**：TC-WORLD-119、TC-WORLD-120 没有反证（§7）；真机四项（明细）；带 url-root 的 `server-shard` 由真客户端连上的这条路径没跑，`Main` 的宣告只由 `FarViewLaunchTest`（独立 JVM 的 `ShardMain` 加裸协议客户端）与它的反证覆盖；不带数据库变量的 `:server-app:test` 跳过数没测。**清理**：夹具与 `server-shard` 按 pid 停掉，25750～25753 没有监听；容器都带 `--rm`，没有残留；镜像 `synaxis-mc-client:dev` 与卷 `synaxis-mc-gradle` 复用，没建新的；`$TMPDIR` 下 `m3g-run064-c.*`（烘出的地图约 1.9 GB、DH 库与截图）、`m3g-run064-w023.*`、`m3g-run064-w030.*` 与作业目录 `m3g-run064.*` 已删；本轮没有生成 Kotlin daemon 日志（`$TMPDIR`、`/tmp`、`~/Library/Application Support/kotlin/daemon` 都查过）；`~/.m2` 的 `protocol-dev.jar` 由本 worktree 发布两次，内容是合并树的 `:protocol`（比 `main` 多 `FarViewPack`、`FarViewAnnouncement`）。
 
 RUN-066 证据：`docs/test-runs/RUN-066/`（`01-tc-prod-570.txt` 是 1～6 步的构建结果与 XML 计数，`02-messages.txt` 是同样六步再跑一遍并取出失败消息）。要点：第 2 步改为原地把 `<GT>` 的 `case COOLDOWN, NOT_ONLINE, SAVE_FAILED -> refused(player, gate, result);` 换成空块之后，`7 tests completed, 1 failed`，红在 `ShardGatesTest.java:218`，消息以 `COOLDOWN ==> expected: <[transfer_refused {…` 开头，与用例相同；第 3～5 步依次红在同一行的 `NOT_ONLINE`、`SAVE_FAILED`、`SENT`；第 1、6 步 `tests="7"` 0 失败。重活锁两批：19:51:59～19:52:34、19:52:58～19:53:24，取锁与 `EXIT` trap 在脚本顶层，trap 退出时还原 `<GT>`，跑完 `git status` 里 `src` 下无改动。
 
@@ -8877,6 +9165,10 @@ RUN-003 证据：`docs/test-runs/RUN-003/tc-001.txt`、`docs/test-runs/RUN-003/t
 
 ## 7. 遗留问题
 
+- **`TC-WORLD-119`、`TC-WORLD-120` 没有反证（未结案，2026-10-02 RUN-064 登记）**：档位、不宣告、DH 缺席、坏包与续传这五个容器场景只跑正例。每条反证都要改客户端代码、再起一次容器（一次约 5～10 min），M3-G 合并验收没有排。可行的改法：档位不按 `farview.radius` 设 `chunkRenderDistance`（F15 红）；`DhSaveFolder` 对没有远景的 Synaxis 连接返回 null（F16 的库不是 `dh/off`）；下载器不核对 SHA-256（F18 只请求 1 次、包留在缓存）；下载器不带 `Range`（F19 第二次是 200）。DH 缺席（F17）的反证要让模组在没有 DH 时去加载 DH 的类，等于造一个崩溃，不做。
+- **真机 V2b、V3b、V6b、V8b 待人工（`TC-WORLD-123`、`TC-WORLD-124`，2026-10-02 RUN-064 登记）**：要用户的 RTX 3060 级 Windows 与 Apple Silicon Mac；30 s 判据只由 V2b 定。容器里同一测法的 `visible_ms` 中位数是 70,065 ms（llvmpipe），瓶颈在父层传播，真机超时的话先看这一段（`docs/DESIGN-M3.md` §28.2 写库预算行）。V6b 的正午与太阳高度角 40° 两张现在拍不了：夹具不能设时间（同上 §28.2）。
+- **「连接重新进入 configuration 时不重发远景宣告」没有自动测试（未结案）**：`TC-WORLD-108` 的 `FarViewLaunchTest` 只覆盖第一次 configuration；挂地图的分片里没有让玩家重新进入 configuration 的代码路径，要测只能改 `Main`（归生产就绪会话）。
+- **烘焙器的隐藏替换没有经客户端端到端核对（未结案）**：`TC-WORLD-117` 的 baked 那一遍用生成器源，没有隐藏区域；synthetic 那一遍的隐藏区域是夹具自己写进包的。烘焙器一侧由 `TC-WORLD-105` 覆盖；要补就给 baked 夹具的源包加一块隐藏区域、在 `/expect.json` 加一个隐藏点（`docs/DESIGN-M3.md` §28.2）。
 - **`ConfigFileLaunchTest > aShardTakesTheFileOverItsDefaultsAndTheCommandLineOverTheFile` 偶发红：子 JVM 的游戏端口被别人先占（未结案，2026-10-01 安全修复 secrets 组的严格 grid 全量查出）**：`sec/secrets-files` `8c3ee11b58` 的第一次严格 grid 全量里红 1 条（`server-app` 536 条中），120.044 s，红在 `ConfigFileLaunchTest.java:85` 的 `awaitLine`：子 JVM 已读入配置文件，绑游戏端口时 `BindException: Address already in use`，当时不退出，测试等满 120 s；第二次全量照绿（证据 `docs/test-runs/RUN-062/secrets/00-summary.txt` 第七节、`10-review-full-grid.txt`）。根因在测试：`ConfigFileLaunchTest#freePort` 先在回环地址上开一个端口 0 的 `ServerSocket` 拿到端口号、关掉，再交给子 JVM 去绑 `0.0.0.0`，中间这段时间端口可能被本机别的进程占走（当时另一个会话的测试在跑）。同一个 `freePort` 还被 `BindKeysLaunchTest`、`BooleanKeysLaunchTest`、`ShardLaunchTest`、`ShutdownBeforeTheWorldLaunchTest`、`ShutdownSignalLaunchTest`、`OpsPortsLaunchTest` 用着，都有同一个窗口。现在的表现（v0.9.41 的 C-03 合入之后，按代码推断，没有复现）：子 JVM 绑不上即以 `Refusing to start: synaxis.app.port=<端口> cannot be bound: Address already in use` 拒启、以 1 退出，`awaitLine` 见进程已结束当场抛 `no line with "synaxis server-app listening on"`，日志里带这一行，几秒内红，不再等满 120 s；读到这条消息就是撞上了这个竞态，不是被测功能的问题。跟进（默认做法）：这些测试改给子 JVM `synaxis.app.port=0`，由子 JVM 在就绪行回报实际绑上的端口，测试从就绪行读端口再连；`Main.java:359` 的就绪行现在印的是配置值，要先改成印 `server.getPort()`。改之前，同一条红再出现两次（任何会话、任何模式）就排进下一轮
 - ~~`ManagementBacklogIntegrationTest > aPeerThatReadsWhatItIsSentKeepsItsConnection` 偶发红~~ **已结案（2026-10-01）**：CI run `36740800681`（`main` `c46578d24f`）第 1 次尝试，4 线程严格 `grid` 那个 job 红 1 条（`server-app` 521 条中）：`java.net.SocketTimeoutException at ManagementBacklogIntegrationTest.java:211`，即一轮写 100 个 ping 之后读 100 个 pong（12,700 B），10 s 的 soTimeout 读满也没读齐；用时 10.614 s，结果 XML 里这段时间没有关闭连接的 WARN（两行 WARN 都属同类另两条），读到的也不是 EOF，所以服务端既没关连接、也没把这一轮写完。同一 job 的第 2 次尝试通过。**根因在产品，在 Java-WebSocket 1.6.0 的写唤醒，不在出站上限的锁里**：选择器线程在 `WebSocketServer#doWrite` 里，`SocketChannelIOHelper#batch` 把队列写空之后执行 `key.interestOps(OP_READ)` 撤掉写兴趣，撤之前不再看队列；解码线程每回一个 pong 就入队，并经 `onWriteDemand` 登记 `OP_READ | OP_WRITE`、唤醒选择器。入队与登记落在选择器最后一次看到空队列与撤兴趣之间时，登记被覆盖，这些 pong 留在队列里没人写，直到这条连接再有东西入队；测试等这一轮收齐才写下一轮，于是停住，最迟要等库 60 s 一次的探活 ping。`GuardedSocket` 的对象锁不在这条路径上：选择器写 socket、撤兴趣都不拿它，解码线程拿它只为判定与入队，不是死锁；也不是服务端限速，出站上限到限是关连接、不是延后写。**复现**：①不改产品代码，4 线程严格 `grid` 下把这条测试的正文用临时测试类循环 50 次（5,000 轮；另开看门狗线程，一轮超过 5 s 就对测试 JVM 做 `jcmd <pid> Thread.print -l` 并经反射读连接状态）：0 次停住，每轮最长 8.8 ms，每 100 轮 250～260 ms。②拉宽窗口（`TC-PROD-575` 节首：`GuardedSocket` 覆写只在这个窗口里被调的 `isFlushAndClose`，先停 2 ms）：第 0 轮就停住，本类红在 `:211` `SocketTimeoutException`，与 CI 同一行同一异常；看门狗读到连接 `outQueue=100`、`interestOps=1`（只等读），上次选中时的 `readyOps=5`（可读、可写），线程转储里 `WebSocketSelector` 停在 `KQueue.poll`（`WebSocketServer.java:419` 的 `select`），`WebSocketWorker` 空闲在 `LinkedBlockingQueue.take`，没有线程在等锁。窗口只有几条指令宽，选择器线程恰好在里面被抢占才会撞上；CI 那次的日志里 `:synx:test`（16:07:48 起）与 `:testing:test`（16:08:35 起）在 `:server-app:test`（16:06:28 起）结束之前就开始了，本类在 16:09:42～16:09:52 跑，runner 当时的负载没有别的读数。**修法**：`ManagementServer.Endpoint` 另起虚拟线程 `Syn-Management-Writes`，每 100 ms（`WRITE_RECHECK`）给队列非空而没有写兴趣的连接经 `onWriteDemand` 补登记（`docs/DESIGN-PROD.md` v0.9.38，`TC-PROD-574`、`TC-PROD-575`）。测试的 10 s 界不改：它测的是边收边读的连接不被关、每轮都收齐，产品现在让这样留下的帧至多晚约 100 ms 写出，真停住时仍红在 `:211`（`TC-PROD-575` 第 1 步）。**修后读数**：拉宽窗口时 1,000 轮每轮都被留下、每轮至多 110.9 ms 写出，本类 3 条通过（读的那条 11.4～11.6 s）；不拉宽时 50 次 × 100 轮每轮最长 2.5 ms；新类 `ManagementWriteRecheckIntegrationTest` 放进队列的回复 2～107 ms 后收到，不起补登记线程时红在 `:101`；默认与 4 线程严格 `grid` 的 `:server-app:test` 全量各 522 个 0 失败（未设数据库变量，125 个跳过）。本组没有登记执行轮次，由集成轮登记。
 - ~~`PermissionsIntegrationTest > withoutADatabaseNobodyHoldsANodeAndTheCommandSaysSo` 偶发红~~ **已结案（2026-09-30）**：`prod/integrate-059` 的全量 `check`（带数据库变量）红 1 条（`server-app` 521 条中）：`java.util.NoSuchElementException at PermissionsIntegrationTest.java:351`，即 `events.getFirst()` 读到空表。**根因在测试**，与 2026-09-28 结案的 `ModerationIntegrationTest` 同一个：`RoleCommand` 先回 `synaxis:role-unavailable`，命令返回之后才把 `gm_command` 交给台账回调，测试只等到回复就读回调记下的属性。`ManagementMethods` 是先记台账再回复，没有这个问题（逐个查过 `server-app` 测试里读台账结果的断言，只有这一处）。**修法**：断言前等回调记下（`await(… !events.isEmpty() …)`，5 s 为失败时限）。**复现与反证**：在测试自己的台账回调里先 `Thread.sleep(200)` 再记下：去掉那一步等待时 `8 tests completed, 1 failed`，红在 `:351` `NoSuchElementException`，与门禁同一句；留着时同样的延迟下全绿；4 线程严格 `grid` 下 8 个全绿。

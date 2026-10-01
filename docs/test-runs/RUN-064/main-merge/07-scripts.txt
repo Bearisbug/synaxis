@@ -1,0 +1,444 @@
+RUN-064 / main-merge / 07: the job scripts as run (the temp dir /var/folders/cg/30kkblns6599cnrbhx__l4jw0000gn/T/m3g-run064.wGxzYH is deleted after the round). The PostgreSQL password is
+read from docker inspect into a variable and never printed. lock.zsh is the second version: the first set its EXIT trap inside a
+function and released the lock as the function returned (01-gates.txt).
+
+=== common.zsh
+# RUN-064 helpers, sourced by every job
+W=/Users/bug/Documents/Projects/Minecraft/synaxis-wt/m3g-integrate
+export JAVA_HOME=/opt/homebrew/opt/openjdk@25/libexec/openjdk.jdk/Contents/Home
+export PATH=$JAVA_HOME/bin:$PATH
+PROXY='-Dhttps.proxyHost=127.0.0.1 -Dhttps.proxyPort=7897 -Dhttp.proxyHost=127.0.0.1 -Dhttp.proxyPort=7897 -Dhttp.nonProxyHosts=maven.aliyun.com|*.aliyun.com'
+G=(--no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts --max-workers=4)
+PGPW="$(docker inspect synaxis-pg --format '{{range .Config.Env}}{{println .}}{{end}}' | sed -n 's/^POSTGRES_PASSWORD=//p')"
+DBV=(SYNAXIS_TEST_PG_URL=jdbc:postgresql://127.0.0.1:5440/postgres SYNAXIS_TEST_PG_USER=postgres SYNAXIS_TEST_PG_PASSWORD=$PGPW SYNAXIS_TEST_REDIS_URL=redis://127.0.0.1:6440)
+cd $W
+log() { echo "$(date '+%F %T') $*"; }
+gist() { /usr/bin/grep -E 'tests completed|FAILED$|BUILD (SUCCESSFUL|FAILED)|actionable tasks|^e: |error: ' $1 | /usr/bin/grep -v 'Picked up JAVA_TOOL_OPTIONS' | head -30 | sed 's/^/  /'; }
+# per-module counts from the JUnit XML of every test task
+counts() {
+  local root=${1:-.}
+  local mods=(architecture-tests baker game-rts loadtest plugin-api protocol root server-app synx testing)
+  local T=0 S=0 F=0 E=0
+  for m in $mods; do
+    local d=$root/$m/build/test-results/test; [[ $m == root ]] && d=$root/build/test-results/test
+    local t=0 s=0 f=0 e=0
+    for x in $d/TEST-*.xml(N); do
+      local h=$(/usr/bin/grep -o -m1 '<testsuite [^>]*>' $x)
+      t=$((t + $(echo $h | sed -E 's/.* tests="([0-9]+)".*/\1/'))); s=$((s + $(echo $h | sed -E 's/.* skipped="([0-9]+)".*/\1/')))
+      f=$((f + $(echo $h | sed -E 's/.* failures="([0-9]+)".*/\1/'))); e=$((e + $(echo $h | sed -E 's/.* errors="([0-9]+)".*/\1/')))
+    done
+    printf '  %-20s classes %4d tests %5d skipped %3d failures %d errors %d\n' $m ${#${(f)"$(ls $d/TEST-*.xml 2>/dev/null)"}} $t $s $f $e
+    T=$((T+t)); S=$((S+s)); F=$((F+f)); E=$((E+e))
+  done
+  printf '  %-20s tests %5d skipped %3d failures %d errors %d\n' TOTAL $T $S $F $E
+  for c in PlayerStoreIntegrationTest ShardSessionDbTest MigrationsDbTest CrossShardHandoverIntegrationTest ShutdownSaveIntegrationTest TransferTicketsIntegrationTest StoreHousekeepingDbTest; do
+    local x=$(ls $root/server-app/build/test-results/test/TEST-*.$c.xml 2>/dev/null | head -1)
+    [[ -n $x ]] && echo "  db suite $c $(/usr/bin/grep -o -m1 'skipped="[0-9]*"' $x)"
+  done
+  /usr/bin/grep -h -o -E '[0-9]+ keys read, [0-9]+ in ConfigFile.KEYS, [0-9]+ meter names left out' $root/architecture-tests/build/test-results/test/*.xml 2>/dev/null | head -1 | sed 's/^/  config key gate: /'
+  /usr/bin/grep -h -o -E '[0-9]+ keys checked against \[[^]]*\], [0-9]+ identifiers left out' $root/architecture-tests/build/test-results/test/*.xml 2>/dev/null | head -1 | sed 's/^/  translation key gate: /'
+  echo "  AcquirableOwnershipException in results: $(/usr/bin/grep -l AcquirableOwnershipException $root/**/build/test-results/test/*.xml(N) 2>/dev/null | wc -l | tr -d ' ') files"
+}
+
+=== lock.zsh
+# Sourced at the top level of a job script (not from a function: a zsh EXIT trap set inside a function fires when
+# the function returns). Takes /tmp/synaxis-heavy.lock, retrying every 60 s; a lock whose owner pid is gone is stale.
+LOCK=/tmp/synaxis-heavy.lock
+until mkdir $LOCK 2>/dev/null; do
+  o=$(cat $LOCK/owner 2>/dev/null); p=$(echo $o | sed -nE 's/.*pid=([0-9]+).*/\1/p')
+  if [[ -n $p ]] && ! kill -0 $p 2>/dev/null; then log "stale lock (pid $p gone): $o; removing"; rm -rf $LOCK; continue; fi
+  log "busy: $o"; sleep 60
+done
+trap 'rm -rf /tmp/synaxis-heavy.lock; echo "$(date "+%F %T") lock released"' EXIT
+trap 'exit 143' TERM INT HUP
+echo "owner=Synaxis光照/$STAGE pid=39601 since=$(date '+%FT%T%z') task=$TASK" > $LOCK/owner
+log "lock taken: $(cat $LOCK/owner)"
+
+=== proofs-lib.zsh
+# literal replacement, exactly one occurrence, fails loudly otherwise
+subst() {
+  local n=$(OLD="$2" perl -0ne 'my $o=$ENV{OLD}; my $c=()=/\Q$o\E/g; print $c' "$1")
+  [[ $n == 1 ]] || { echo "  SUBST FAILED ($n matches) in $1: $2"; return 1; }
+  OLD="$2" NEW="$3" perl -0pi -e 'my $o=$ENV{OLD}; my $n=$ENV{NEW}; s/\Q$o\E/$n/;' "$1"
+  echo "  changed $1"
+}
+showdiff() { git diff -U0 -- "$@" | /usr/bin/grep -E '^[-+][^-+]' | sed 's/^/    diff /'; }
+restore() { git checkout HEAD -- "$@"; echo "  restored; git status --short (outside docs): [$(git status --short | /usr/bin/grep -v ' docs/' | tr '\n' ' ')]"; }
+# JUnit XML of one class: counts, failures with their messages, the test file lines in the traces
+xmlsum() {
+  local f=$1
+  [[ -f $f ]] || { echo "  (no result file $f)"; return; }
+  echo "  ${f:t}: $(/usr/bin/grep -o -m1 'tests="[0-9]*" skipped="[0-9]*" failures="[0-9]*" errors="[0-9]*"' $f) $(/usr/bin/grep -o -m1 'timestamp="[^"]*"' $f)"
+  perl -0ne 'while (/<testcase name="([^"]*)"[^>]*>\s*<(failure|error) message="([^"]*)"[^>]*>(.*?)<\/\2>/sg) { my ($n,$m,$b)=($1,$3,$4); my @l = ($b =~ /\(([A-Za-z]+Test\.java:\d+)\)/g); my %s; @l = grep { !$s{$_}++ } @l; $m =~ s/&lt;/</g; $m =~ s/&gt;/>/g; $m =~ s/&quot;/"/g; $m =~ s/&#39;/\x27/g; $m =~ s/&amp;/&/g; $m = substr($m,0,600); print "    FAIL $n: $m\n      at @l\n"; }' $f
+  perl -0ne 'while (/<testcase name="([^"]*)"[^>]*>\s*<skipped/sg) { print "    SKIPPED $1\n"; }' $f
+}
+
+=== gates.zsh
+#!/bin/zsh
+T=/var/folders/cg/30kkblns6599cnrbhx__l4jw0000gn/T/m3g-run064.wGxzYH
+source $T/common.zsh
+STAGE=m3g-run064-gates TASK="RUN-064: check and two strict modes (test --rerun) and client-fabric check on the merge of origin/main"
+source $T/lock.zsh
+log "HEAD $(git rev-parse --short=10 HEAD), git status: $(git status --short | wc -l | tr -d ' ') changed paths"
+run() { local tag=$1; shift; local t0=$(date +%s); env $DBV JAVA_TOOL_OPTIONS="$PROXY" ./gradlew "$@" $G > $T/out/$tag.log 2>&1; local rc=$?; log "$tag exit $rc in $(( $(date +%s) - t0 )) s"; gist $T/out/$tag.log; echo "== counts after $tag"; counts; return $rc; }
+run check check test --rerun --continue -Dsynaxis.synx.require-frozen-zlib=true
+run strict1 test --rerun --continue -Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true
+/usr/bin/grep -h -o -E 'env (dispatcher threads|thread provider): [a-z0-9]+' testing/build/test-results/test/*.xml | sort -u | sed 's/^/  strict1 /'
+run strict2 test --rerun --continue -Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true -Dsynaxis.thread-provider=grid
+/usr/bin/grep -h -o -E 'env (dispatcher threads|thread provider): [a-z0-9]+' testing/build/test-results/test/*.xml | sort -u | sed 's/^/  strict2 /'
+t0=$(date +%s); env JAVA_TOOL_OPTIONS="$PROXY" ./gradlew :protocol:publishToMavenLocal $G > $T/out/publish.log 2>&1; log "publishToMavenLocal exit $? in $(( $(date +%s) - t0 )) s"; gist $T/out/publish.log
+cd client-fabric
+t0=$(date +%s); env JAVA_TOOL_OPTIONS="$PROXY" ./gradlew check compileGametestJava --rerun-tasks --no-daemon --init-script gametest-env/mirror.init.gradle.kts --max-workers=4 > $T/out/client.log 2>&1; log "client-fabric check exit $? in $(( $(date +%s) - t0 )) s"; gist $T/out/client.log
+n=0; t=0; s=0; f=0; for x in build/test-results/test/TEST-*.xml(N); do h=$(/usr/bin/grep -o -m1 '<testsuite [^>]*>' $x); n=$((n+1)); t=$((t + $(echo $h | sed -E 's/.* tests="([0-9]+)".*/\1/'))); s=$((s + $(echo $h | sed -E 's/.* skipped="([0-9]+)".*/\1/'))); f=$((f + $(echo $h | sed -E 's/.* failures="([0-9]+)".*/\1/') + $(echo $h | sed -E 's/.* errors="([0-9]+)".*/\1/'))); done
+echo "  client-fabric classes $n tests $t skipped $s failures+errors $f"
+/usr/bin/grep -h -E 'verifyModJar|entries' $T/out/client.log | head -5 | sed 's/^/  /'
+cd ..
+log "done; git status: $(git status --short | wc -l | tr -d ' ') changed paths"
+
+=== proofs.zsh
+#!/bin/zsh
+# RUN-064 counter-proofs on the merge commit: each run changes one or more lines, runs the classes, prints what went red, restores
+T=/var/folders/cg/30kkblns6599cnrbhx__l4jw0000gn/T/m3g-run064.wGxzYH
+source $T/common.zsh
+source $T/proofs-lib.zsh
+STAGE=m3g-run064-proofs TASK="RUN-064: counter-proofs of the M3-G cases on the merge of origin/main (baker, server-app, protocol, client-fabric)"
+source $T/lock.zsh
+log "HEAD $(git rev-parse --short=10 HEAD); changed outside docs: [$(git status --short | /usr/bin/grep -v ' docs/' | tr '\n' ' ')]"
+B=baker/src/main/java/io/github/bearisbug/synaxis/baker
+BR=baker/build/test-results/test
+BP=io.github.bearisbug.synaxis.baker
+SA=server-app/src/main/java/io/github/bearisbug/synaxis/app
+SR=server-app/build/test-results/test
+CF=client-fabric/src/main/java/io/github/bearisbug/synaxis/game/client/farview
+CR=client-fabric/build/test-results/test
+CP=io.github.bearisbug.synaxis.game.client
+gw() { local tag=$1; shift; local t0=$(date +%s); env $DBV JAVA_TOOL_OPTIONS="$PROXY" ./gradlew "$@" --continue $G > $T/out/$tag.log 2>&1; local rc=$?; log "gradle [$tag] exit $rc in $(( $(date +%s) - t0 )) s"; gist $T/out/$tag.log; }
+gc() { local tag=$1; shift; local t0=$(date +%s); (cd client-fabric && env JAVA_TOOL_OPTIONS="$PROXY" ./gradlew "$@" --continue --no-daemon --init-script gametest-env/mirror.init.gradle.kts --max-workers=4 > $T/out/$tag.log 2>&1); local rc=$?; log "gradle [$tag] exit $rc in $(( $(date +%s) - t0 )) s"; gist $T/out/$tag.log; }
+
+echo; log "=== B-a (TC-WORLD-104): rule 5 takes the last of equal columns"
+subst $B/ChunkEncoder.java 'if (highest == null || candidate.top() > highest.top()) highest = candidate;' 'if (highest == null || candidate.top() >= highest.top()) highest = candidate;'
+showdiff $B
+gw B-a :baker:test --tests "$BP.FarViewSamplingTest"
+xmlsum $BR/TEST-$BP.FarViewSamplingTest.xml
+restore $B
+
+echo; log "=== B-b (TC-WORLD-104): rule 4 takes the biome of the cell above the top"
+subst $B/ChunkEncoder.java 'final int biomeY = top >= 0 ? top : height - 1;' 'final int biomeY = top >= 0 ? Math.min(top + 1, height - 1) : height - 1;'
+showdiff $B
+gw B-b :baker:test --tests "$BP.FarViewSamplingTest"
+xmlsum $BR/TEST-$BP.FarViewSamplingTest.xml
+restore $B
+
+echo; log "=== B-c (TC-WORLD-105, TC-WORLD-106): corners not normalised; the sampled check keeps the blocks of every tile"
+subst $B/AnvilSource.java 'hidden.add(new HiddenArea(Math.min(area.x1(), area.x2()), Math.min(area.z1(), area.z2()),
+                                Math.max(area.x1(), area.x2()), Math.max(area.z1(), area.z2())));' 'hidden.add(area);'
+subst $B/Baker.java '                    blocks.clear();' '                    if (Boolean.getBoolean("proof.never")) blocks.clear();'
+showdiff $B
+gw B-c :baker:test --tests "$BP.anvil.AnvilFarViewTest" --tests "$BP.FarViewBakeTest"
+xmlsum $BR/TEST-$BP.anvil.AnvilFarViewTest.xml
+xmlsum $BR/TEST-$BP.FarViewBakeTest.xml
+restore $B
+
+echo; log "=== B-d (TC-WORLD-105): the assembler gets no hidden areas"
+subst $B/Baker.java '                    source.hiddenAreas(), request.registries().biome()).assemble(work, buildDir.resolve("farview"), tamper);' '                    List.of(), request.registries().biome()).assemble(work, buildDir.resolve("farview"), tamper);'
+showdiff $B
+gw B-d :baker:test --tests "$BP.anvil.AnvilFarViewTest"
+xmlsum $BR/TEST-$BP.anvil.AnvilFarViewTest.xml
+restore $B
+
+echo; log "=== B-e (TC-WORLD-103, 105, 106, 107): fine blocks outside the bounds written; ring without the exclusion; SHA, version and sample comparisons off; coarse object = whole pack"
+subst $B/FarViewAssembler.java 'if (!meets(originX + bx * chunksPerBlock, originZ + bz * chunksPerBlock, chunksPerBlock)) continue;' 'if (!meets(originX + bx * chunksPerBlock, originZ + bz * chunksPerBlock, chunksPerBlock) && Boolean.getBoolean("proof.never")) continue;'
+subst $B/FarViewAssembler.java 'if (cell.covers(x, z)) return Integer.MAX_VALUE;' 'if (cell.covers(x, z) && Boolean.getBoolean("proof.never")) return Integer.MAX_VALUE;'
+subst $B/Baker.java 'if (manifest.bakerVersion() < FAR_VIEW_SINCE) return null;' 'if (manifest.bakerVersion() < FAR_VIEW_SINCE && Boolean.getBoolean("proof.never")) return null;'
+subst $B/Baker.java 'if (!Arrays.equals(SynxDigests.sha256(pack), entry.sha256())) {' 'if (!Arrays.equals(SynxDigests.sha256(pack), entry.sha256()) && Boolean.getBoolean("proof.never")) {'
+subst $B/Baker.java '        private boolean same(Named actual, FarViewPack.Sample expected) {' '        private boolean same(Named actual, FarViewPack.Sample expected) {
+            if (!Boolean.getBoolean("proof.never")) return true;'
+subst $B/BakerMain.java 'directory + SynxDigests.hex(entry.coarseSha256()) + ".hfp", prefix));' 'directory + SynxDigests.hex(entry.coarseSha256()) + ".hfp", pack));'
+showdiff $B
+gw B-e :baker:test --tests "$BP.FarViewBakeTest" --tests "$BP.FarViewExportTest" --tests "$BP.GeneratorBakeTest"
+xmlsum $BR/TEST-$BP.FarViewBakeTest.xml
+xmlsum $BR/TEST-$BP.FarViewExportTest.xml
+xmlsum $BR/TEST-$BP.GeneratorBakeTest.xml
+restore $B
+
+echo; log "=== S-a (TC-WORLD-108, TC-WORLD-109): coarse digest and levels not compared; the announcement on a later configuration only; the fixture's rate 100 times"
+subst $SA/shard/ShardWorld.java 'if (!Arrays.equals(SynxDigests.sha256(Arrays.copyOf(bytes, (int) fineOffset)), pack.coarseSha256())) {' 'if (!Arrays.equals(SynxDigests.sha256(Arrays.copyOf(bytes, (int) fineOffset)), pack.coarseSha256()) && Boolean.getBoolean("proof.never")) {'
+subst $SA/shard/ShardWorld.java 'final String mismatch = pack.baseLevel() != first.baseLevel() || pack.coarseLevel() != first.coarseLevel()' 'final String mismatch = Boolean.getBoolean("proof.never") && (pack.baseLevel() != first.baseLevel() || pack.coarseLevel() != first.coarseLevel())'
+subst $SA/Main.java 'if (farView != null && event.isFirstConfig()) {' 'if (farView != null && !event.isFirstConfig()) {'
+FX=server-app/src/test/java/io/github/bearisbug/synaxis/app/shard/FarViewShardFixture.java
+subst $FX 'static final long BYTES_PER_SECOND = 6_250_000;' 'static final long BYTES_PER_SECOND = 625_000_000;'
+showdiff $SA $FX
+gw S-a :server-app:test --tests '*.ShardWorldFarViewTest' --tests '*.FarViewLaunchTest' --tests '*.FarViewShardFixtureTest'
+xmlsum $SR/TEST-io.github.bearisbug.synaxis.app.shard.ShardWorldFarViewTest.xml
+xmlsum $SR/TEST-io.github.bearisbug.synaxis.app.FarViewLaunchTest.xml
+xmlsum $SR/TEST-io.github.bearisbug.synaxis.app.shard.FarViewShardFixtureTest.xml
+restore $SA $FX
+
+echo; log "=== P-a (TC-WORLD-102): another zlib fingerprint in the manifest, with and without the strict switch"
+MF=protocol/src/test/resources/farview-vectors/manifest.txt
+subst $MF 'zlib 3a5c7b02f09d84b148505efa093fb735baaa69c97147448f1ea649b2a54ac771' 'zlib 4a5c7b02f09d84b148505efa093fb735baaa69c97147448f1ea649b2a54ac771'
+showdiff $MF
+gw P-a1 :protocol:test --tests '*.FarViewVectorTest' -Dsynaxis.synx.require-frozen-zlib=true
+xmlsum protocol/build/test-results/test/TEST-io.github.bearisbug.synaxis.game.protocol.FarViewVectorTest.xml
+gw P-a2 :protocol:test --tests '*.FarViewVectorTest'
+xmlsum protocol/build/test-results/test/TEST-io.github.bearisbug.synaxis.game.protocol.FarViewVectorTest.xml
+restore $MF
+
+echo; log "=== C-a (TC-WORLD-110, 111, 112, 113, 114, 115): ground sky 0, expansion 2^b; payload keeps trailing bytes; view key without layer; any DH version; downloader keeps the exchange and the writer open; cancel ignored by baking() and loadChecked()"
+subst $CF/FarViewColumns.java 'points.add(new Point(0, sample.groundY() + 1, FULL_SKY, blockLight(sample.groundState(), emission),' 'points.add(new Point(0, sample.groundY() + 1, 0, blockLight(sample.groundState(), emission),'
+subst $CF/FarViewColumns.java 'return 1 << (FarViewPack.COARSE_LEVEL - baseLevel);' 'return 1 << baseLevel;'
+subst $CF/FarViewPayload.java 'if (in.remaining() != 0) return refused(' 'if (in.remaining() != 0 && Boolean.getBoolean("proof.never")) return refused('
+subst $CF/FarViewCache.java "text.append(tile.tileX()).append(' ').append(tile.tileZ()).append(' ').append(tile.layer()).append(' ')" "text.append(tile.tileX()).append(' ').append(tile.tileZ()).append(' ')"
+subst $CF/FarViewClient.java 'if (!DH_VERSION.equals(version)) {' 'if (!DH_VERSION.equals(version) && Boolean.getBoolean("proof.never")) {'
+subst $CF/FarViewDownloader.java '            response.cancel(true);' '            if (Boolean.getBoolean("proof.never")) response.cancel(true);'
+subst $CF/FarViewDownloader.java 'if (closed) return refuse("the attempt was given up on", false);' 'if (closed && Boolean.getBoolean("proof.never")) return refuse("the attempt was given up on", false);'
+subst $CF/FarViewConnection.java '        if (cancelled.get()) return false;' '        if (cancelled.get() && Boolean.getBoolean("proof.never")) return false;'
+subst $CF/FarViewConnection.java 'if (rows == null && cancelled.get()) return false;' 'if (rows == null && cancelled.get() && Boolean.getBoolean("proof.never")) return false;'
+showdiff $CF
+gc C-a test --tests '*.FarViewColumnsTest' --tests '*.FarViewPayloadTest' --tests '*.FarViewCacheTest' --tests '*.FarViewAvailabilityTest' --tests '*.FarViewDownloaderTest' --tests '*.FarViewConnectionTest'
+for c in FarViewColumnsTest FarViewPayloadTest FarViewCacheTest FarViewAvailabilityTest FarViewDownloaderTest FarViewConnectionTest; do xmlsum $CR/TEST-$CP.farview.$c.xml; done
+restore $CF
+
+echo; log "=== C-b (TC-WORLD-110, TC-WORLD-116): expansion 2^c; the surface row of queryDictionaryFirst returns a List; FarViewClient names DhApi; a DH class in the mod jar"
+subst $CF/FarViewColumns.java 'return 1 << (FarViewPack.COARSE_LEVEL - baseLevel);' 'return 1 << FarViewPack.COARSE_LEVEL;'
+subst $CF/dh/DhFarView.java 'new Member(REPO, Kind.METHOD, "queryDictionaryFirst", List.of("java.lang.String"), "java.util.Map"),' 'new Member(REPO, Kind.METHOD, "queryDictionaryFirst", List.of("java.lang.String"), "java.util.List"),'
+subst $CF/FarViewClient.java '    private FarViewClient() {
+    }' '    private FarViewClient() {
+    }
+
+    /** @return the name of DH'"'"'s API class */
+    public static String dhApiName() {
+        return com.seibel.distanthorizons.api.DhApi.class.getName();
+    }'
+DHC=client-fabric/src/main/resources/com/seibel/distanthorizons/api/DhApi.class
+mkdir -p ${DHC:h} && printf '\xca\xfe\xba\xbe' > $DHC && echo "  created $DHC"
+showdiff $CF
+gc C-b check --tests '*.FarViewColumnsTest' --tests '*.DhSurfaceTest' --tests '*.DhPackageBoundaryTest'
+for c in farview.FarViewColumnsTest farview.dh.DhSurfaceTest farview.dh.DhPackageBoundaryTest; do xmlsum $CR/TEST-$CP.$c.xml; done
+/usr/bin/grep -E 'verifyModJar|Distant Horizons 的类|mod jar:' $T/out/C-b.log | head -5 | sed 's/^/  /'
+rm -rf client-fabric/src/main/resources/com
+restore $CF
+log "proofs done; changed outside docs: [$(git status --short | /usr/bin/grep -v ' docs/' | tr '\n' ' ')]"
+
+=== batch2.zsh
+#!/bin/zsh
+# RUN-064 batch 2 on the merge commit: C-b again (with test + verifyModJar), and the existing cases M3-G changes:
+# TC-WORLD-032, TC-WORLD-041 (steps 1, 2, 4), TC-WORLD-098 step 2, TC-WORLD-023, TC-WORLD-030 steps 1-3, TC-WORLD-033 steps 1-2
+T=/var/folders/cg/30kkblns6599cnrbhx__l4jw0000gn/T/m3g-run064.wGxzYH
+source $T/common.zsh
+source $T/proofs-lib.zsh
+STAGE=m3g-run064-batch2 TASK="RUN-064: client counter-proof C-b, TC-WORLD-032/041/098 gates, TC-WORLD-023/030/033 publish lines on the merge of origin/main"
+source $T/lock.zsh
+log "HEAD $(git rev-parse --short=10 HEAD); changed outside docs: [$(git status --short | /usr/bin/grep -v ' docs/' | tr '\n' ' ')]"
+CF=client-fabric/src/main/java/io/github/bearisbug/synaxis/game/client/farview
+CR=client-fabric/build/test-results/test
+CP=io.github.bearisbug.synaxis.game.client
+AR=architecture-tests/build/test-results/test
+gw() { local tag=$1; shift; local t0=$(date +%s); env $DBV JAVA_TOOL_OPTIONS="$PROXY" ./gradlew "$@" --continue $G > $T/out/$tag.log 2>&1; local rc=$?; log "gradle [$tag] exit $rc in $(( $(date +%s) - t0 )) s"; gist $T/out/$tag.log; }
+gc() { local tag=$1; shift; local t0=$(date +%s); (cd client-fabric && env JAVA_TOOL_OPTIONS="$PROXY" ./gradlew "$@" --continue --no-daemon --init-script gametest-env/mirror.init.gradle.kts --max-workers=4 > $T/out/$tag.log 2>&1); local rc=$?; log "gradle [$tag] exit $rc in $(( $(date +%s) - t0 )) s"; gist $T/out/$tag.log; }
+sysout() { perl -0ne 'while (/<system-out><!\[CDATA\[(.*?)\]\]>/sg) { for (split /\n/, $1) { print "    out: $_\n" if /keys|identifiers|Problems|gate|is read|has no text/ } }' $1; }
+dropline() { local n=$(PAT="$2" perl -ne 'BEGIN{$c=0} $c++ if index($_, $ENV{PAT}) >= 0; END{print $c}' $1); [[ $n == 1 ]] || { echo "  DROP FAILED ($n lines) in $1: $2"; return 1; }; PAT="$2" perl -ni -e 'print unless index($_, $ENV{PAT}) >= 0' $1; echo "  dropped the line with $2 from $1"; }
+
+echo; log "=== C-b (TC-WORLD-110, TC-WORLD-116): expansion 2^c; the surface row of queryDictionaryFirst returns a List; FarViewClient names DhApi; a DH class in the mod jar"
+subst $CF/FarViewColumns.java 'return 1 << (FarViewPack.COARSE_LEVEL - baseLevel);' 'return 1 << FarViewPack.COARSE_LEVEL;'
+subst $CF/dh/DhFarView.java 'new Member(REPO, Kind.METHOD, "queryDictionaryFirst", List.of("java.lang.String"), "java.util.Map"),' 'new Member(REPO, Kind.METHOD, "queryDictionaryFirst", List.of("java.lang.String"), "java.util.List"),'
+subst $CF/FarViewClient.java '    private FarViewClient() {
+    }' '    private FarViewClient() {
+    }
+
+    /** @return the name of DH'"'"'s API class */
+    public static String dhApiName() {
+        return com.seibel.distanthorizons.api.DhApi.class.getName();
+    }'
+DHC=client-fabric/src/main/resources/com/seibel/distanthorizons/api/DhApi.class
+mkdir -p ${DHC:h} && printf '\xca\xfe\xba\xbe' > $DHC && echo "  created $DHC"
+showdiff $CF
+gc C-b test --tests '*.FarViewColumnsTest' --tests '*.DhSurfaceTest' --tests '*.DhPackageBoundaryTest' verifyModJar
+for c in farview.FarViewColumnsTest farview.dh.DhSurfaceTest farview.dh.DhPackageBoundaryTest; do xmlsum $CR/TEST-$CP.$c.xml; done
+/usr/bin/grep -E 'Distant Horizons 的类|mod jar:|verifyModJar' $T/out/C-b.log | head -5 | sed 's/^/  /'
+rm -rf client-fabric/src/main/resources/com
+restore $CF
+
+TK=architecture-tests/src/test/java/io/github/bearisbug/synaxis/architecture/TranslationKeyGateTest.java
+TKT=io.github.bearisbug.synaxis.architecture.TranslationKeyGateTest
+echo; log "=== TC-WORLD-032 step 1"
+gw w032-1 :architecture-tests:test --tests $TKT
+xmlsum $AR/TEST-$TKT.xml; sysout $AR/TEST-$TKT.xml
+/usr/bin/grep -n -E 'Map.entry\("synaxis:(map|door|loot|farview)"' $TK | sed 's/^/  /'
+echo; log "=== TC-WORLD-032 step 2: without the synaxis:loot entry"
+dropline $TK 'Map.entry("synaxis:loot",'
+gw w032-2 :architecture-tests:test --tests $TKT
+xmlsum $AR/TEST-$TKT.xml; sysout $AR/TEST-$TKT.xml
+restore $TK
+echo; log "=== TC-WORLD-032 step 3: without the synaxis:map entry"
+dropline $TK 'Map.entry("synaxis:map",'
+gw w032-3 :architecture-tests:test --tests $TKT
+xmlsum $AR/TEST-$TKT.xml; sysout $AR/TEST-$TKT.xml
+restore $TK
+echo; log "=== TC-WORLD-032 step 4 (step 1 again)"
+gw w032-4 :architecture-tests:test --tests $TKT
+xmlsum $AR/TEST-$TKT.xml; sysout $AR/TEST-$TKT.xml
+
+S=io.github.bearisbug.synaxis.synx; AP=io.github.bearisbug.synaxis.app; CK=io.github.bearisbug.synaxis.architecture.ConfigKeyGateTest
+CFG=server-app/src/main/java/io/github/bearisbug/synaxis/app/ConfigFile.java
+SS=server-app/src/main/java/io/github/bearisbug/synaxis/app/shard/ShardSettings.java
+echo; log "=== TC-WORLD-041 step 1"
+gw w041-1 :synx:test --tests "$S.SynxOptionsTest" --tests "$S.OverlayOptionsTest" :server-app:test --tests "$AP.shard.ShardSettingsTest" :architecture-tests:test --tests $CK
+xmlsum synx/build/test-results/test/TEST-$S.SynxOptionsTest.xml; xmlsum synx/build/test-results/test/TEST-$S.OverlayOptionsTest.xml
+xmlsum server-app/build/test-results/test/TEST-$AP.shard.ShardSettingsTest.xml
+xmlsum $AR/TEST-$CK.xml; sysout $AR/TEST-$CK.xml
+echo; log "=== TC-WORLD-041 step 2: two overlay keys out of ConfigFile.KEYS"
+dropline $CFG '"synaxis.overlay.cap",'
+dropline $CFG '"synaxis.overlay.flush-interval-s",'
+showdiff $CFG
+gw w041-2 :architecture-tests:test --tests $CK
+xmlsum $AR/TEST-$CK.xml; sysout $AR/TEST-$CK.xml
+restore $CFG
+echo; log "=== TC-WORLD-041 step 4: a grace of 0 let through"
+subst $SS 'if (grace != -1 && grace < 1) {' 'if (grace < -1) {'
+gw w041-4 :server-app:test --tests "$AP.shard.ShardSettingsTest"
+xmlsum server-app/build/test-results/test/TEST-$AP.shard.ShardSettingsTest.xml
+restore $SS
+echo; log "=== TC-WORLD-041 step 5 and TC-WORLD-098 step 2: step 1 again, and all of :architecture-tests"
+gw w041-5 :synx:test --tests "$S.SynxOptionsTest" --tests "$S.OverlayOptionsTest" :server-app:test --tests "$AP.shard.ShardSettingsTest" :architecture-tests:test
+xmlsum server-app/build/test-results/test/TEST-$AP.shard.ShardSettingsTest.xml
+n=0; t=0; f=0; for x in $AR/TEST-*.xml(N); do h=$(/usr/bin/grep -o -m1 '<testsuite [^>]*>' $x); n=$((n+1)); t=$((t + $(echo $h | sed -E 's/.* tests="([0-9]+)".*/\1/'))); f=$((f + $(echo $h | sed -E 's/.* failures="([0-9]+)".*/\1/'))); done
+echo "  architecture-tests classes $n tests $t failures $f"; sysout $AR/TEST-$CK.xml
+
+echo; log "=== TC-WORLD-023 (4k synthetic map from the command line)"
+gw w023-0 :baker:installDist
+BK=$W/baker/build/install/baker/bin/baker
+O=$(mktemp -d ${TMPDIR%/}/m3g-run064-w023.XXXXXX)
+log "load $(sysctl -n vm.loadavg), cores $(sysctl -n hw.ncpu), O=$O"
+/usr/bin/time -l $BK bake --map-id synth --source generator:synthetic:7 --out $O/maps12 --logs $O/logs12 > $O/s1.out 2> $O/s1.err; echo "  step 1 exit $?"
+/usr/bin/grep -E '^baker:' $O/s1.out | sed 's/^/  stdout: /'; /usr/bin/grep -E 'maximum resident|real' $O/s1.err | sed 's/^/  time: /'
+ls $O/maps12/synth/*/regions | wc -l | sed 's/^/  regions: /'; ls $O/maps12/synth/*/farview | sed 's/^/  farview: /'
+cat $O/logs12/* | sed 's/^/  event: /'
+/usr/bin/time -l $BK bake --map-id synth --source generator:synthetic:7 --out $O/maps1 --logs $O/logs1 --threads 1 > $O/s2.out 2> $O/s2.err; echo "  step 2 exit $?"
+/usr/bin/grep -E '^baker:' $O/s2.out | sed 's/^/  stdout: /'; /usr/bin/grep -E 'maximum resident|real' $O/s2.err | sed 's/^/  time: /'
+for f in $O/maps12/synth/*/regions/*.synx; do cmp -s $f $O/maps1/synth/*/regions/$(basename $f) || echo "  DIFF $f"; done
+for f in $O/maps12/synth/*/farview/*.hfp; do cmp -s $f $O/maps1/synth/*/farview/$(basename $f) && echo "  same pack $(basename $f)" || echo "  DIFF $f"; done
+cat $O/logs1/* | /usr/bin/grep map_build_finished | sed 's/^/  event: /'
+BD=$(ls -d $O/maps12/synth/synth-*)
+$BK verify --build $BD > $O/s3.out 2>&1; echo "  step 3 exit $?: $(cat $O/s3.out)"
+R=$BD/regions/r.3.4.synx
+perl -e 'open(my $f,"+<",$ARGV[0]) or die; binmode $f; seek($f,100000,0); read($f,my $b,1); seek($f,100000,0); print $f chr(ord($b)^0xFF); close $f' $R
+$BK verify --build $BD > $O/s4.out 2>&1; echo "  step 4 changed exit $?: $(cat $O/s4.out)"
+perl -e 'open(my $f,"+<",$ARGV[0]) or die; binmode $f; seek($f,100000,0); read($f,my $b,1); seek($f,100000,0); print $f chr(ord($b)^0xFF); close $f' $R
+$BK verify --build $BD > $O/s4b.out 2>&1; echo "  step 4 restored exit $?: $(cat $O/s4b.out)"
+$BK bake --map-id synth --source generator:synthetic:7 --out $O/maps12 --logs $O/logs12 > $O/s5.out 2> $O/s5.err; echo "  step 5 exit $?: $(cat $O/s5.err | head -2)"
+ls -a $O/maps12/synth | tr '\n' ' ' | sed 's/^/  ls: /'; echo; tail -1 $O/logs12/* | sed 's/^/  last event: /'
+rm -rf $O
+
+echo; log "=== TC-WORLD-030 steps 1-3 and TC-WORLD-033 steps 1-2 (Anvil fixture)"
+grep '^## ' docs/MAP-SOURCE.md | sed 's/^/  /'
+WD=$W/baker/src/test/resources/io/github/bearisbug/synaxis/baker/anvil/world
+O=$(mktemp -d ${TMPDIR%/}/m3g-run064-w030.XXXXXX); rmdir $O
+env JAVA_TOOL_OPTIONS="$PROXY" ./gradlew :baker:run --args="bake --map-id fixture --source anvil:$WD --bounds 0,0,0,0 --out $O --logs $O-logs --threads 8" --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts > $T/out/w030-2.log 2>&1; echo "  030 step 2 exit $?"
+/usr/bin/grep -E '^baker:|BUILD' $T/out/w030-2.log | sed 's/^/  /'; ls $O/fixture | sed 's/^/  dir: /'; /usr/bin/grep map_build_finished $O-logs/* | sed 's/^/  event: /'
+FD=$(ls -d $O/fixture/fixture-*)
+env JAVA_TOOL_OPTIONS="$PROXY" ./gradlew :baker:run --args="verify --build $FD" --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts > $T/out/w030-3.log 2>&1; echo "  030 step 3 exit $?"
+/usr/bin/grep -E '^baker:|BUILD' $T/out/w030-3.log | sed 's/^/  /'
+env JAVA_TOOL_OPTIONS="$PROXY" ./gradlew :baker:run --args="bake --map-id fixture --source anvil:$WD --bounds 0,0,0,0 --out $O --logs $O-logs --threads 8" --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts > $T/out/w033-2.log 2>&1; echo "  033 step 2 exit $?"
+/usr/bin/grep -E '^baker:|BUILD|non-zero exit value' $T/out/w033-2.log | sed 's/^/  /'; ls $O/fixture | sed 's/^/  dir: /'
+rm -rf $O $O-logs
+log "batch 2 done; changed outside docs: [$(git status --short | /usr/bin/grep -v ' docs/' | tr '\n' ' ')]"
+
+=== containers.zsh
+#!/bin/zsh
+# RUN-064 container regression on the merge of origin/main: baked fixture, container A (V1 and the library, cancel,
+# unload and tier modes), then bin/server-shard without a url root and container B (none)
+T=/var/folders/cg/30kkblns6599cnrbhx__l4jw0000gn/T/m3g-run064.wGxzYH
+source $T/common.zsh
+STAGE=m3g-run064-containers TASK="RUN-064: baked fixture, container A dh v1..tiers, server-shard + container B none, on the merge of origin/main"
+source $T/lock.zsh
+L=$(mktemp -d ${TMPDIR%/}/m3g-run064-c.XXXXXX)
+E=$T/evidence; mkdir -p $E
+FX=0; SS=0
+cleanup() {
+  [[ $SS != 0 ]] && kill -0 $SS 2>/dev/null && { kill $SS; sleep 5; kill -0 $SS 2>/dev/null && kill -9 $SS; log "server-shard $SS stopped"; }
+  [[ $FX != 0 ]] && kill -0 $FX 2>/dev/null && { kill $FX; sleep 3; kill -0 $FX 2>/dev/null && kill -9 $FX; log "fixture $FX stopped"; }
+}
+trap 'cleanup; rm -rf /tmp/synaxis-heavy.lock; echo "$(date "+%F %T") lock released"' EXIT
+mem() { memory_pressure | sed -n 's/.*free percentage: \([0-9]*\)%.*/\1/p'; }
+log "HEAD $(git rev-parse --short=10 HEAD); changed outside docs: [$(git status --short | /usr/bin/grep -v ' docs/' | tr '\n' ' ')]; L=$L"
+m=$(mem); log "gate: memory free ${m}% load1 $(sysctl -n vm.loadavg | awk '{print $2}'); $(sysctl -n vm.swapusage)"
+(( m >= 30 )) || { log "memory gate not met, stopping"; exit 3; }
+t0=$(date +%s); env JAVA_TOOL_OPTIONS="$PROXY" ./gradlew :protocol:publishToMavenLocal :server-app:farviewFixtureArgs :server-app:installDist $G > $T/out/c-gradle.log 2>&1
+log "gradle publish + fixture args + installDist exit $? in $(( $(date +%s) - t0 )) s"; gist $T/out/c-gradle.log
+java -version 2>&1 | head -1 | sed 's/^/  java: /'
+java @server-app/build/farview-fixture.args -Xms1G -Xmx1G -Dsynaxis.app.auth=offline -Dsynaxis.connection-gate.trusted-networks=127.0.0.0/8 \
+  io.github.bearisbug.synaxis.app.shard.FarViewShardFixture 25750 25751 $L/work baked > $L/fixture.log 2>&1 &
+FX=$!; t0=$(date +%s); maxrss=0
+until /usr/bin/grep -q 'farview fixture ready' $L/fixture.log; do
+  kill -0 $FX 2>/dev/null || { log "fixture died"; tail -30 $L/fixture.log; exit 4; }
+  r=$(ps -o rss= -p $FX 2>/dev/null | tr -d ' '); [[ -n $r ]] && (( r > maxrss )) && maxrss=$r
+  (( $(date +%s) - t0 > 1200 )) && { log "fixture not ready in 20 min"; exit 4; }
+  sleep 5
+done
+log "fixture pid $FX ready after $(( $(date +%s) - t0 )) s, max RSS while starting $(( maxrss / 1024 )) MiB"
+/usr/bin/grep -E '^farview fixture' $L/fixture.log | sed 's/^/  /'
+cp $L/fixture.log $E/fixture.log
+BUILD=$(sed -nE 's/.*build_id=([^ ]+).*/\1/p' $L/fixture.log | head -1)
+cat $L/work/maps/logs/* 2>/dev/null | /usr/bin/grep -E 'map_build_(started|finished)' | sed 's/^/  /'
+du -sk $L/work/maps 2>/dev/null | sed 's/^/  maps on disk (KiB): /'
+
+container() {
+  local name=$1 server=$2 mods=$3 modes=$4
+  local m=$(mem)
+  log "container $name: server $server mods=${mods:-none} modes=$modes; memory free ${m}% load1 $(sysctl -n vm.loadavg | awk '{print $2}')"
+  local t=$(date +%s)
+  SYNAXIS_FARVIEW_SERVER=$server SYNAXIS_FARVIEW_HTTP=http://host.docker.internal:25751 SYNAXIS_FARVIEW_MODE=$modes \
+    SYNAXIS_FARVIEW_MODS=$mods OUT=$L/out-$name client-fabric/gametest-env/run.sh > $L/container-$name.log 2>&1
+  log "container $name exit $? after $(( $(date +%s) - t )) s; fixture alive: $(kill -0 $FX 2>/dev/null && echo yes || echo no)"
+  mkdir -p $E/$name
+  cp $L/out-$name/synaxis-gametest/farview-report.txt $E/$name/ 2>/dev/null
+  /usr/bin/grep -h '\[synaxis/farview\]' $L/out-$name/logs/latest.log > $E/$name/farview-log.txt 2>/dev/null
+  cp $L/out-$name/farview/files.txt $E/$name/ 2>/dev/null; cp $L/out-$name/farview/*.json $E/$name/ 2>/dev/null
+  curl -s http://127.0.0.1:25751/access.log > $E/$name/access-log.txt
+  sed 's/^/  /' $E/$name/farview-report.txt 2>/dev/null || { echo "  no report"; tail -40 $L/container-$name.log; }
+}
+
+container A host.docker.internal:25750 dh v1,v1-noparent,v1-writable,v1-coarse-only,marker,cancel,late-cancel,stale-unload,tiers
+
+mkdir -p $L/shard
+(cd $L/shard && SERVER_APP_OPTS="-Xms1G -Xmx1G -XX:-AlwaysPreTouch -Dsynaxis.app.port=25752 -Dsynaxis.app.metrics.bind=127.0.0.1:25753 -Dsynaxis.app.auth=offline -Dsynaxis.connection-gate.trusted-networks=127.0.0.0/8 -Dsynaxis.map.root=$L/work/maps/farview3x3 -Dsynaxis.map.build=$BUILD" \
+  $W/server-app/build/install/server-app/bin/server-shard > $L/shard.log 2>&1) &
+SS=$!; t0=$(date +%s)
+until /usr/bin/grep -q 'listening on' $L/shard.log; do
+  kill -0 $SS 2>/dev/null || { log "server-shard exited"; tail -30 $L/shard.log; break; }
+  (( $(date +%s) - t0 > 300 )) && { log "server-shard not listening in 5 min"; break; }
+  sleep 3
+done
+SSJ=$(pgrep -f "synaxis.app.port=25752" | head -1)
+log "server-shard (script pid $SS, java pid ${SSJ:-?}) after $(( $(date +%s) - t0 )) s"
+/usr/bin/grep -E 'Far view|listening on|Refusing|Map mode' $L/shard.log | sed 's/^/  /'
+cp $L/shard.log $E/server-shard.log
+if /usr/bin/grep -q 'listening on' $L/shard.log; then
+  container B host.docker.internal:25752 dh none
+fi
+[[ -n $SSJ ]] && kill $SSJ 2>/dev/null; sleep 5; [[ -n $SSJ ]] && kill -0 $SSJ 2>/dev/null && kill -9 $SSJ
+log "server-shard stopped: $(pgrep -f 'synaxis.app.port=25752' | wc -l | tr -d ' ') left"
+cleanup; FX=0; SS=0
+rm -rf $L
+log "done; $L removed; containers left: $(docker ps -q | wc -l | tr -d ' ')"
+
+=== batch3.zsh
+#!/bin/zsh
+# RUN-064 batch 3 on the merge commit: TC-WORLD-116 step 3 (a non-class DH resource in the mod jar), then verifyModJar clean
+T=/var/folders/cg/30kkblns6599cnrbhx__l4jw0000gn/T/m3g-run064.wGxzYH
+source $T/common.zsh
+STAGE=m3g-run064-batch3 TASK="RUN-064: verifyModJar counter-proof (TC-WORLD-116 step 3) on the merge of origin/main"
+source $T/lock.zsh
+log "HEAD $(git rev-parse --short=10 HEAD); changed outside docs: [$(git status --short | /usr/bin/grep -v ' docs/' | tr '\n' ' ')]"
+gc() { local tag=$1; shift; local t0=$(date +%s); (cd client-fabric && env JAVA_TOOL_OPTIONS="$PROXY" ./gradlew "$@" --continue --no-daemon --init-script gametest-env/mirror.init.gradle.kts --max-workers=4 > $T/out/$tag.log 2>&1); local rc=$?; log "gradle [$tag] exit $rc in $(( $(date +%s) - t0 )) s"; gist $T/out/$tag.log; }
+log "=== TC-WORLD-116 step 3: a text file under com/seibel/ in the main resources"
+R=client-fabric/src/main/resources/com/seibel/distanthorizons/README.txt
+mkdir -p ${R:h} && echo "counter-proof of verifyModJar" > $R && echo "  created $R"
+gc C-c verifyModJar
+/usr/bin/grep -E 'Distant Horizons|mod jar:|What went wrong|verifyModJar' $T/out/C-c.log | head -6 | sed 's/^/  /'
+rm -r client-fabric/src/main/resources/com && echo "  removed client-fabric/src/main/resources/com"
+log "=== verifyModJar again"
+gc C-d verifyModJar
+/usr/bin/grep -E 'mod jar:' $T/out/C-d.log | sed 's/^/  /'
+log "batch 3 done; changed outside docs: [$(git status --short | /usr/bin/grep -v ' docs/' | tr '\n' ' ')]"

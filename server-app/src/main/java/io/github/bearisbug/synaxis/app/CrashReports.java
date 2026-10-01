@@ -17,13 +17,16 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.StandardOpenOption;
+import java.nio.file.attribute.FileAttribute;
+import java.nio.file.attribute.PosixFilePermission;
+import java.nio.file.attribute.PosixFilePermissions;
 import java.time.Clock;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Properties;
+import java.util.Set;
 import java.util.TreeMap;
 import java.util.function.Supplier;
 import java.util.regex.Pattern;
@@ -32,7 +35,8 @@ import java.util.regex.Pattern;
  * The crash report writer of {@code docs/DESIGN-PROD.md} {@code API-PROD-013}: one text file per
  * fatal event in {@code crash-reports/<yyyyMMdd-HHmmss>-<shard_id>.txt}, carrying the trigger, the
  * thread dump, the effective configuration with its secrets reduced to {@value #SECRET_MARK}, the
- * plugins with their versions and the git head the build came from.
+ * plugins with their versions and the git head the build came from. Whatever the umask, a report is
+ * created 0600 and the directory, when the writer is the one creating it, 0700.
  * <p>
  * Every caller is already on a failing path — a fatal error here, the tick watchdog of
  * {@code REQ-PROD-014} later — so {@link #write} never throws: each section is taken on its own and a
@@ -54,6 +58,11 @@ final class CrashReports {
     private static final Pattern SECRET_KEY = Pattern.compile("(?i).*(password|secret|token|credential).*");
 
     private static final DateTimeFormatter FILE_TIME = DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss");
+
+    private static final FileAttribute<Set<PosixFilePermission>> OWNER_ONLY =
+            PosixFilePermissions.asFileAttribute(PosixFilePermissions.fromString("rw-------"));
+    private static final FileAttribute<Set<PosixFilePermission>> OWNER_ONLY_DIRECTORY =
+            PosixFilePermissions.asFileAttribute(PosixFilePermissions.fromString("rwx------"));
 
     /** Written by the build (server-app/build.gradle.kts), absent when running from an IDE. */
     private static final String BUILD_INFO = "/synaxis-build.properties";
@@ -94,14 +103,13 @@ final class CrashReports {
         final String report = render(reason, cause);
         final String stamp = FILE_TIME.format(clock.instant().atZone(clock.getZone()));
         try {
-            Files.createDirectories(directory);
+            Files.createDirectories(directory, OWNER_ONLY_DIRECTORY);
             // Two reports inside one second get a suffix instead of overwriting the first one
             for (int attempt = 1; ; attempt++) {
                 final String suffix = attempt == 1 ? "" : "-" + attempt;
                 final Path file = directory.resolve(stamp + "-" + shardId + suffix + ".txt");
                 try {
-                    Files.writeString(file, report, StandardCharsets.UTF_8, StandardOpenOption.CREATE_NEW,
-                            StandardOpenOption.WRITE);
+                    Files.writeString(Files.createFile(file, OWNER_ONLY), report, StandardCharsets.UTF_8);
                     return file;
                 } catch (FileAlreadyExistsException _) {
                     // try the next suffix

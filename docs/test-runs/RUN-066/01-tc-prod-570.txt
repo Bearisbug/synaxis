@@ -1,0 +1,36 @@
+HEAD 4a40af2835 (+ uncommitted docs only; git status: 4 files, none under src)
+== 2026-10-01 19:51:59 step 1: ShardGatesTest
+exit=0
+BUILD SUCCESSFUL in 8s
+xml tests=7 skipped=0 failures=0 errors=0
+step 2 edit: 1 line changed
+== 2026-10-01 19:52:09 step 2: three new results not written
+exit=1
+    org.opentest4j.AssertionFailedError at ShardGatesTest.java:218
+7 tests completed, 1 failed
+BUILD FAILED in 7s
+xml tests=7 skipped=0 failures=1 errors=0
+== 2026-10-01 19:52:17 step 3: NOT_ONLINE left out
+exit=1
+    org.opentest4j.AssertionFailedError at ShardGatesTest.java:218
+7 tests completed, 1 failed
+BUILD FAILED in 4s
+xml tests=7 skipped=0 failures=1 errors=0
+== 2026-10-01 19:52:21 step 4: SAVE_FAILED left out
+exit=1
+    org.opentest4j.AssertionFailedError at ShardGatesTest.java:218
+7 tests completed, 1 failed
+BUILD FAILED in 4s
+xml tests=7 skipped=0 failures=1 errors=0
+== 2026-10-01 19:52:25 step 5: SENT written too
+exit=1
+    org.opentest4j.AssertionFailedError at ShardGatesTest.java:218
+7 tests completed, 1 failed
+BUILD FAILED in 4s
+xml tests=7 skipped=0 failures=1 errors=0
+== 2026-10-01 19:52:30 step 6: step 1 again
+exit=0
+BUILD SUCCESSFUL in 4s
+xml tests=7 skipped=0 failures=0 errors=0
+git status src: 0
+== 2026-10-01 19:52:34 done

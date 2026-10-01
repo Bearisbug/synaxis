@@ -14,7 +14,7 @@
 | A-02 | 玩家入口 | L3 席位在认证前的 `LoginStart` 就占、挂到 30 s 登录超时；按网段封禁在认证之后才判，挡不住占位 | medium → medium | confirmed | 已修：`sec/login-path`（席位挪到认证之后，`ADR-PROD-015`），TC-PROD-580～582 |
 | A-03 | 玩家入口 | 未认证对端能持续驱动 `hasJoined`，没有速率上限，429 还重试一次 | low → low | plausible | 已修：`sec/login-path`（429 按 `Retry-After` 停发、不重试），TC-PROD-583 |
 | A-04 | 玩家入口 | 即时包（ping、keep-alive、cookie）不经入站速率闸；复核改判只有 play 态成立，要正版账号 | low → low | plausible | 已修：`sec/login-path`，TC-PROD-584 |
-| B-01 | 转服与持久化 | 源分片签票后从不断开：不照 `Transfer` 走的客户端留下 `in_transit` 幽灵，占席位、跨分片多开、`not_online` 台账能一直写 | medium → medium | confirmed | 已修：`sec/transfer-ghost`（10 s 后断开），TC-PROD-590～593；`ShardGates#moved` 加固交光照会话 |
+| B-01 | 转服与持久化 | 源分片签票后从不断开：不照 `Transfer` 走的客户端留下 `in_transit` 幽灵，占席位、跨分片多开、`not_online` 台账能一直写 | medium → medium | confirmed | 已修：`sec/transfer-ghost`（10 s 后断开），TC-PROD-590～593；`ShardGates#moved` 加固由光照会话做（`docs/DESIGN-M3.md` v0.31） |
 | B-02 | 转服与持久化 | 数据段大小的契约口径（紧凑编码 ≤ 65,536 B）与库约束口径（jsonb 文本）不一致；超限被当成数据库不可用，整名角色存不进且不冻结 | low → low | confirmed | 登记：DESIGN-PROD §28.2（用户拍板不修） |
 | B-V01 | 转服与持久化 | 数据段含 U+0000 或 NaN / Infinity 时 jsonb 拒收，同样整名角色存不进、无限重试、不冻结 | — → low | 复核新增 | 登记：DESIGN-PROD §28.2（用户拍板不修） |
 | C-01 | 管理与运维 | 管理接口握手不查 `Origin`：反代注入令牌的部署下，浏览器里的网页能拿到管理权限（CSWSH） | medium → low | plausible | 已修：`sec/ops-ports`（带 `Origin` 一律拒），TC-PROD-600 |
@@ -130,7 +130,7 @@
 
 | 事项 | 来源 | 内容 |
 | --- | --- | --- |
-| `ShardGates#moved` 加固 | B-01（transfer 组） | 合入后在 `underWay.add(player)` 之前判 `PlayerStore#isOnline(Player)`，不在 online 就返回，不读心跳、不写台账；建议构造器加 `Predicate<Player>`，在 `Main` 建 `ShardGates` 处传 `store::isOnline`；补一条 `ShardGatesTest`：非 online 的玩家进出门框 100 次，`ShardService#transfer` 0 次、`transfer_refused` 0 行（修前各 100）。做完把 §28.2 `transfer_refused` 风险行里「由光照会话在 v0.9.40 合入后做」改成已做，按 `docs/TEST.md` §5 加跑 TC-PROD-593 与 TC-PROD-570～573；改用别的判定时告知生产就绪会话，删掉 `isOnline` |
+| `ShardGates#moved` 加固（已做：`docs/DESIGN-M3.md` v0.31，`072d45b790`，RUN-065） | B-01（transfer 组） | 合入后在 `underWay.add(player)` 之前判 `PlayerStore#isOnline(Player)`，不在 online 就返回，不读心跳、不写台账；建议构造器加 `Predicate<Player>`，在 `Main` 建 `ShardGates` 处传 `store::isOnline`；补一条 `ShardGatesTest`：非 online 的玩家进出门框 100 次，`ShardService#transfer` 0 次、`transfer_refused` 0 行（修前各 100）。做完把 §28.2 `transfer_refused` 风险行里「由光照会话在 v0.9.40 合入后做」改成已做，按 `docs/TEST.md` §5 加跑 TC-PROD-593 与 TC-PROD-570～573；改用别的判定时告知生产就绪会话，删掉 `isOnline` |
 | M3 侧安全审查 | §5 第 1～3 行 | 分片移动与方块权威；地图与 `shards.json` 的文件信任；`grid` 下 `ShardGates` 与跨格拾取 |
 | `docs/DESIGN-M3.md` 同步 `ADR-PROD-015` | login 组 | `LoginStart` 只判有没有空位，席位在认证之后、读 Cookie 与用 nonce 之前占，两处拒绝都是 `shard-full`。涉及 `REQ-M3-016`、`REQ-M3-017`，`API-M3-010` 的选频道条（v0.30 第 812 行，原文引 `ConnectionGate#takeSeat` 处理 `LoginStart`）与其后的顺序行（第 876 行），§12 时序图里「LoginStart 时闸门 L3 判席位」一行（第 1319 行），§9 `shard_heartbeat.online`，§12 转服时序，§14 首段，§16「先到 `LoginStart` 先占席位」一行。`ShardHeartbeat` 写的 `gate.seats()` 不再含认证中的连接，代码不用改 |
 | `API-M3-010` 签发 ④ 的线程一条（可选） | transfer 组 | v0.30 第 867 行只写了 `in_transit` 冻结，可补一句 v0.9.40 的 10 s 断开 |

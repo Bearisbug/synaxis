@@ -1,0 +1,81 @@
+RUN-062 / ops  2026-10-01  安全修复 ops 组（运维端口加固与起服退出），分支 sec/ops-ports
+=========================================================================================
+
+执行轮次 RUN-062 由集成轮登记，本组只留证据。
+
+对象：main 23982267e9 加本分支的提交
+  d32d1a8096 server-app：拒带 Origin 的升级请求，握手未完成的管理连接与指标端点的连接各限 64 条，
+             游戏端口绑不上时先跑停机任务再拒启；三个新测试类
+  之后的提交只改文档（DESIGN-PROD v0.9.41、TEST.md TC-PROD-600～607）、.env.example 与本目录。
+finding：C-01、C-05、C-03 有代码与反证；C-V01 只改文档与 .env.example，没有代码，不需要反证。
+
+全部 Gradle 带 --max-workers=4 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts，JDK 25.0.4.1。
+每批在重活锁 /tmp/synaxis-heavy.lock 下跑，批末由 trap 释放。
+
+一、修前红（10-red-before-fix.txt，10:06:51～10:07:45）
+  代码是 23982267e9，只加了三个新测试类（未提交）。三个类的上限写成测试里的常量 64，改动前也能编译。
+  ./gradlew :server-app:test --rerun --tests <三个新类>
+  BUILD FAILED，6 tests completed, 6 failed：
+    ManagementPortGuardsIntegrationTest.java:106  Origin: https://evil.example ==> array lengths differ,
+        expected: <200> but was: <212>                                          （C-01，带 Origin 也升级成 101）
+    ManagementPortGuardsIntegrationTest.java:188  still open after 2 s（经 :124，原因 :186 SocketTimeoutException）
+                                                                                 （C-05，第 65 条握手未完成的连接不关）
+    MetricsEndpointGuardsTest.java:56             still open after 2 s（原因 :54）（C-05，指标第 65 条连接不关）
+    OpsPortsLaunchTest.java:89                    expected: <2> but was: <0>     （C-05，通配地址没有 WARN）
+    OpsPortsLaunchTest.java:48                    the JVM exits（ConfigFileLaunchTest.java:316），30.036 s；
+        子 JVM 日志：Metrics endpoint listening on …，HostExceptionHandler 两行 ERROR（BindException、
+        RuntimeException），没有 Refusing to start                              （C-03）
+    MetricsEndpointGuardsTest.java:78             the dispatcher keeps no JVM alive ==> expected: <true> but was: <false>
+                                                                                 （C-03，HTTP-Dispatcher 不是 daemon）
+
+二、修后绿（11-green-after-fix.txt，10:13:17～10:13:41，修复还没提交，代码与随后的 d32d1a8096 相同）
+  同三个类加 ClientDrivenLogArchitectureTest：BUILD SUCCESSFUL，8 个 0 失败
+  （ManagementPortGuardsIntegrationTest 2，7.447 s；MetricsEndpointGuardsTest 2，0.198 s；
+   OpsPortsLaunchTest 2，2.304 s；ClientDrivenLogArchitectureTest 2）。
+
+三、反证（20-proofs.txt，d32d1a8096 上，10:20:49 起约 2 分 40 秒，带数据库变量）
+  每步临时改一行、只跑相关的类、再 git checkout HEAD -- server-app/src/main/java；每步之后 git status 为空。
+  P1  ManagementServer.java:199 不看 Origin          2 completed, 1 failed  红在 ManagementPortGuardsIntegrationTest.java:106
+  P2  ManagementServer.java:379 不设握手上限          2 completed, 1 failed  红在 :188 still open after 2 s
+  P3  HostMetrics.java:329 不写 maxConnections        2 completed, 1 failed  红在 MetricsEndpointGuardsTest.java:56
+  P4  HostMetrics.java:347 起端点的线程不是 daemon    2 completed, 1 failed  红在 MetricsEndpointGuardsTest.java:78
+  P5  Main.java:343 不接绑定失败                      2 completed, 1 failed  红在 OpsPortsLaunchTest.java:50
+      （子 JVM 照样以 1 退出：HTTP-Dispatcher 已是 daemon；只是没有 Refusing to start）
+  P6  Main.java:610 不判通配                          2 completed, 1 failed  红在 OpsPortsLaunchTest.java:89
+  P7  P4 + P5 一起（改动前的完整症状）               4 completed, 2 failed  OpsPortsLaunchTest.java:48（30.032 s，
+      子 JVM 不退出）与 MetricsEndpointGuardsTest.java:78
+  本组改了行号的旧用例：
+  P8  TC-PROD-395 第 2 步   2 completed, 1 failed，红在 (ManagementServer.java:277)（原写 :267）
+  P9  TC-PROD-521 第 4 步   Main.java:750（原写 :720）  3 completed, 2 failed，:91 与 :113，消息与原写相同
+  P10 TC-PROD-528 第 2 步   Main.java:704（原写 :674）  3 completed, 1 failed，:132，消息与原写相同
+  P11 TC-PROD-533 第 3 步   Main.java:748（原写 :718）  3 completed, 1 failed，:113，消息与原写相同
+  还原后复跑五个类：BUILD SUCCESSFUL，11 个 0 失败。
+  21-greps.txt：TC-PROD-498 第 3 步 buildShutdownTask 9 行（:322…:337），TC-PROD-573 第 3 步 518，
+  TC-PROD-521 第 3 步 264；TC-PROD-600 第 3 步 六个管理客户端里 0 行含 origin。
+
+四、真进程（30-real-process.txt，10:55:40～10:55:48，测试运行时类路径 + 产品 logback.xml）
+  M1 占住 0.0.0.0:<端口> 再起 Main：退出码 1，0.9 s；ERROR 行依次是 HostExceptionHandler 的 BindException、
+     Main 的 Refusing to start: synaxis.app.port=<端口> cannot be bound: Address already in use。
+  M2 指标 0.0.0.0:0、管理接口 [::]:0：两行 WARN（… is the wildcard address: …）；对指标端口开 64 条空连接后
+     第 65 条 1 ms 内被关；关掉 64 条后 GET /metrics 回 200，14,514 B。
+
+五、全量（40-full-default.txt、41-full-grid.txt，11:05:17～11:14:43，带 PG 5440 / Valkey 6440 数据库变量）
+  40 默认   ./gradlew :server-app:check :server-app:test --rerun :architecture-tests:test --rerun
+            BUILD SUCCESSFUL in 4m 42s；server-app 102 个类 tests=528 skipped=0 failures=0 errors=0；
+            architecture-tests 7 个类 tests=20 0 失败
+  41 严格 grid  ./gradlew :server-app:test --rerun -Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true
+            -Dsynaxis.thread-provider=grid
+            BUILD SUCCESSFUL in 4m 42s；server-app 102 个类 tests=528 skipped=0 failures=0 errors=0
+
+六、文档
+  bash ~/.claude/skills/design-doc/check.sh docs/DESIGN-PROD.md：lint 无警告
+  bash ~/.claude/skills/test-doc/check.sh docs/TEST.md：只剩已知的 RUN-031 两行缺证据引用
+
+七、评审意见的处理（50-review-fixes.txt，11:38:38～11:41，代码没有改动，只改文档）
+  TC-PROD-533 第 2 步 sed -n 718,720p → 748,750p：HEAD 上 748～750 与基线 718～720 逐字相同（原写的 718～720 在 HEAD 上是
+  `}`、`try {`、`Migrations.validate(…)`）。TC-PROD-383 第 2 步引的构造调用改为 (handshakeDeadline, backlogs, crowded)，
+  P12 按新写法重跑：13 tests completed, 1 failed，红在 ManagementIntegrationTest.java:525（:546 still open after 5 s），
+  还原后 13 个 0 失败。TC-PROD-606 第 1 步的循环在本机假目录上试过，.env.example 被跳过。
+  两份 lint 同第六节。全量没有重跑：d32d1a8096 之后的提交只改文档、.env.example 与本目录，代码仍是 d32d1a8096 的。
+
+没有跑：根构建 :test 全量（引擎 src/main 本组没改）、client-fabric、TC-PROD-606（人工，要 Linux 部署主机）。

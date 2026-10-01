@@ -9,6 +9,7 @@ import io.github.bearisbug.synaxis.instance.block.Block;
 import io.github.bearisbug.synaxis.instance.block.BlockHandler;
 import io.github.bearisbug.synaxis.instance.generator.Generator;
 import io.github.bearisbug.synaxis.instance.light.LightEngine;
+import io.github.bearisbug.synaxis.registry.RegistryKey;
 import io.github.bearisbug.synaxis.synx.SynxDigests;
 import io.github.bearisbug.synaxis.synx.SynxManifest;
 import org.jetbrains.annotations.Nullable;
@@ -261,6 +262,83 @@ public class FarViewBakeTest {
         assertEquals(Baker.EXIT_VERIFY, changedDigest.exitCode());
         assertTrue(changedDigest.err().contains("farview/t.0.0.hfp: the coarse prefix does not match the manifest's coarse_sha256"),
                 changedDigest.err());
+    }
+
+    private static void rewrite(Path build, int bakerVersion, List<SynxManifest.FarView> farview) throws Exception {
+        final SynxManifest manifest = manifest(build);
+        Files.writeString(build.resolve(SynxManifest.FILE_NAME), new SynxManifest(manifest.mapId(), manifest.buildId(),
+                manifest.contentHash(), manifest.mcVersion(), manifest.protocolVersion(), manifest.registryDigest(),
+                manifest.lightEngineVersion(), bakerVersion, manifest.world(), manifest.bounds(), manifest.regions(), farview,
+                manifest.source(), manifest.bake(), manifest.verify()).toJson());
+    }
+
+    /**
+     * A build of a baker before M3-G has no far view packs and an empty {@code farview[]}, and a shard mounts it
+     * with the far view off ({@code API-M3-002}), so {@code verify} passes it; the same build with baker_version
+     * 2 is refused for the packs it lacks. The earlier build is a fresh one without its packs, baker_version 1 in
+     * its manifest and in the header of its region.
+     */
+    @Test
+    public void verifyPassesABuildOfAnEarlierBakerWithoutPacks() throws Exception {
+        final Baker.Result result = Baker.bake(request("earlier", source(unit -> unit.modifier().fillHeight(0, 40, Block.STONE),
+                new SynxManifest.Bounds(0, 0, 1, 1)), temp, 1));
+        assertEquals(Baker.EXIT_PUBLISHED, result.exitCode(), result.message());
+        final Path build = result.directory();
+        Baker.deleteTree(build.resolve("farview"));
+
+        rewrite(build, 2, List.of());
+        final Run current = verify(build);
+        assertEquals(Baker.EXIT_VERIFY, current.exitCode());
+        assertTrue(current.err().contains("farview[] lists the tiles [], the bounds meet [0,0]"), current.err());
+
+        for (Path region : list(build.resolve("regions"))) {
+            final byte[] bytes = Files.readAllBytes(region);
+            ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN).putShort(162, (short) 1);
+            Files.write(region, bytes);
+        }
+        rewrite(build, 1, List.of());
+        assertEquals(new Run(Baker.EXIT_PUBLISHED, ""), verify(build));
+    }
+
+    /** A chunk's fine samples as its pack holds them, each biome turned back into its registry id. */
+    private static List<Sample> packed(Path build, int chunkX, int chunkZ) throws Exception {
+        final int tileX = FarViewPack.tile(chunkX), tileZ = FarViewPack.tile(chunkZ);
+        final FarViewPack.Reader reader = pack(build, tileX, tileZ);
+        final int x = (chunkX - (tileX << 8)) * 4, z = (chunkZ - (tileZ << 8)) * 4;
+        for (FarViewPack.Block block : reader.blocks(Layer.FINE)) {
+            if (block.bx() != x / 64 || block.bz() != z / 64) continue;
+            final List<Sample> samples = reader.samples(block);
+            final List<Sample> fine = new ArrayList<>();
+            for (int sz = 0; sz < 4; sz++) {
+                for (int sx = 0; sx < 4; sx++) {
+                    final Sample sample = samples.get((z % 64 + sz) * 64 + x % 64 + sx);
+                    fine.add(new Sample(sample.groundState(), sample.fluidState(), sample.groundY(), sample.fluidBottom(),
+                            sample.fluidTop(), REGISTRIES.biome().getId(RegistryKey.unsafeOf(reader.biomes().get(sample.biome())))));
+                }
+            }
+            return fine;
+        }
+        throw new AssertionError("no fine block for chunk " + chunkX + "," + chunkZ);
+    }
+
+    /**
+     * The sampled half of {@code verify} holds the pack and the inflated blocks of one tile at a time, so what it
+     * holds does not grow with the map: after a chunk of tile 0,-1 and then one of tile 1,0 it holds tile 1,0
+     * and the fine and the coarse block of that chunk.
+     */
+    @Test
+    public void theSampledCheckHoldsOneTileAtATime() throws Exception {
+        final Baker.Result result = Baker.bake(request("held", synthetic(FOUR_TILES), temp, 2));
+        assertEquals(Baker.EXIT_PUBLISHED, result.exitCode(), result.message());
+        final Path build = result.directory();
+        final SynxManifest manifest = manifest(build);
+        final Baker.SampledFarView check = new Baker.SampledFarView(build, manifest, new FarViewAssembler(FOUR_TILES, 0,
+                SyntheticTerrain.HEIGHT, manifest.protocolVersion(), List.of(), REGISTRIES.biome()), List.of());
+        for (int[] chunk : List.of(new int[]{255, -1}, new int[]{256, 0})) {
+            final String name = "chunk " + chunk[0] + "," + chunk[1];
+            assertTrue(check.matches(chunk[0], chunk[1], packed(build, chunk[0], chunk[1])), name);
+            assertEquals(List.of(1, 2), List.of(check.tilesHeld(), check.blocksHeld()), "tiles and blocks held after " + name);
+        }
     }
 
     /**

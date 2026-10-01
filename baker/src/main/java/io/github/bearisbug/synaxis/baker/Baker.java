@@ -3,6 +3,7 @@ package io.github.bearisbug.synaxis.baker;
 import com.google.gson.JsonObject;
 import io.github.bearisbug.synaxis.MinecraftServer;
 import io.github.bearisbug.synaxis.baker.anvil.AnvilSourceException;
+import io.github.bearisbug.synaxis.baker.anvil.HiddenArea;
 import io.github.bearisbug.synaxis.game.protocol.FarViewPack;
 import io.github.bearisbug.synaxis.instance.block.Block;
 import io.github.bearisbug.synaxis.instance.block.BlockHandler;
@@ -45,6 +46,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.function.Function;
+import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 /**
@@ -60,6 +62,8 @@ import java.util.stream.Stream;
 public final class Baker {
     /** {@code baker_version}: raised by every change to what the baker writes for the same input. */
     public static final int VERSION = 2;
+    /** The first {@code baker_version} that writes far view packs; the builds of earlier ones have none. */
+    static final int FAR_VIEW_SINCE = 2;
     public static final int COMPRESSION_THRESHOLD = 256;
     public static final int COMPRESSION_LEVEL = -1;
 
@@ -416,10 +420,20 @@ public final class Baker {
         int diffs = 0;
         try {
             final List<Future<ChunkEncoder.Encoded>> again = executor.invokeAll(samples);
-            final SampledFarView packs = new SampledFarView(buildDir, manifest);
-            for (int i = 0; i < again.size(); i++) {
+            final SampledFarView packs = new SampledFarView(buildDir, manifest, new FarViewAssembler(manifest.bounds(),
+                    source.minY(), source.height(), settings.protocolVersion(), source.hiddenAreas(),
+                    request.registries().biome()), source.hiddenAreas());
+            // Tile by tile, so that the far view check reads each pack once and holds one at a time
+            final List<Integer> byTile = IntStream.range(0, again.size()).boxed()
+                    .sorted(Comparator.comparingInt((Integer i) -> FarViewPack.tile(written.get(i).chunkX()))
+                            .thenComparingInt(i -> FarViewPack.tile(written.get(i).chunkZ())))
+                    .toList();
+            for (int i : byTile) {
                 final ChunkEncoder.Encoded encoded = again.get(i).get();
-                if (!encoded.record().equals(written.get(i)) || !packs.matches(encoded)) diffs++;
+                final SynxChunkRecord record = encoded.record();
+                if (!record.equals(written.get(i)) || !packs.matches(record.chunkX(), record.chunkZ(), encoded.farView())) {
+                    diffs++;
+                }
             }
         } catch (ExecutionException e) {
             return new Verification(samples.size(), diffs, "a sample failed to bake again: " + e.getCause());
@@ -436,11 +450,14 @@ public final class Baker {
      * The digest part of {@code verify} for the far view packs (API-M3-003): {@code farview[]} lists exactly the
      * tiles meeting the bounds; each pack has the size and SHA-256 of its entry; its coarse prefix is
      * {@code coarse_bytes} long, which is its {@code fine_offset}, and has the entry's {@code coarse_sha256}; its
-     * header agrees with the entry, the manifest and this process; and every block of both layers reads.
+     * header agrees with the entry, the manifest and this process; and every block of both layers reads. A build
+     * of a baker_version before {@link #FAR_VIEW_SINCE} has no packs and nothing to check: a shard mounts it with
+     * the far view off (API-M3-002).
      *
      * @return what does not match, null when everything does
      */
     static @Nullable String checkFarView(Path buildDir, SynxManifest manifest) throws IOException {
+        if (manifest.bakerVersion() < FAR_VIEW_SINCE) return null;
         final List<String> tiles = FarViewAssembler.tiles(manifest.bounds()).stream().map(t -> t[0] + "," + t[1]).toList();
         final List<String> listed = manifest.farview().stream().map(p -> p.tileX() + "," + p.tileZ()).toList();
         if (!listed.equals(tiles)) return "farview[] lists the tiles " + listed + ", the bounds meet " + tiles;
@@ -494,12 +511,18 @@ public final class Baker {
      * again, and the coarse sample {@link FarViewPack#coarsen} takes from them, against those in the packs. A
      * sample a hidden area covers is checked against its replacement instead, whose height is taken again from
      * its ring in the packs.
+     * <p>
+     * It holds the pack of one tile and the blocks it inflated from it, and lets both go when a sample of another
+     * tile is asked for, so what it holds does not grow with the map: one pack and at most the blocks of one tile,
+     * 272 at base_level 2. {@link #verify} asks for the sampled chunks tile by tile, so each pack is read once.
      */
-    private final class SampledFarView {
+    static final class SampledFarView {
         private final Path farview;
         private final SynxManifest manifest;
         private final FarViewAssembler assembler;
-        private final Map<Long, FarViewPack.Reader> readers = new HashMap<>();
+        private long tile;
+        private FarViewPack.@Nullable Reader reader;
+        /** The blocks inflated from the pack of the tile, by layer and block coordinates. */
         private final Map<String, List<FarViewPack.Sample>> blocks = new HashMap<>();
         private final List<FarViewAssembler.Replacement> fineHidden;
         private final List<FarViewAssembler.Replacement> coarseHidden;
@@ -508,20 +531,27 @@ public final class Baker {
         private record Named(FarViewPack.Sample sample, String biome) {
         }
 
-        SampledFarView(Path buildDir, SynxManifest manifest) throws IOException {
+        /**
+         * @param assembler the assembler of the bake, for the hidden sample and the biome names
+         * @param hidden    the hidden areas of the source, corners as min and max
+         */
+        SampledFarView(Path buildDir, SynxManifest manifest, FarViewAssembler assembler, List<HiddenArea> hidden)
+                throws IOException {
             this.farview = buildDir.resolve("farview");
             this.manifest = manifest;
-            this.assembler = new FarViewAssembler(manifest.bounds(), source.minY(), source.height(),
-                    settings.protocolVersion(), source.hiddenAreas(), request.registries().biome());
-            this.fineHidden = FarViewAssembler.hide(source.hiddenAreas(), FarViewAssembler.BASE_LEVEL,
+            this.assembler = assembler;
+            this.fineHidden = FarViewAssembler.hide(hidden, FarViewAssembler.BASE_LEVEL,
                     (x, z) -> Math.max(0, sample(FarViewPack.Layer.FINE, x, z).sample().top()));
-            this.coarseHidden = FarViewAssembler.hide(source.hiddenAreas(), FarViewPack.COARSE_LEVEL,
+            this.coarseHidden = FarViewAssembler.hide(hidden, FarViewPack.COARSE_LEVEL,
                     (x, z) -> Math.max(0, sample(FarViewPack.Layer.COARSE, x, z).sample().top()));
         }
 
-        boolean matches(ChunkEncoder.Encoded encoded) throws IOException {
-            final int chunkX = encoded.record().chunkX(), chunkZ = encoded.record().chunkZ();
-            final List<FarViewPack.Sample> fine = encoded.farView();
+        /**
+         * Whether a chunk's fine samples baked again, and the coarse sample taken from them, are those of the packs.
+         *
+         * @param fine the chunk's fine samples by z and then x, each biome a registry id
+         */
+        boolean matches(int chunkX, int chunkZ, List<FarViewPack.Sample> fine) throws IOException {
             for (int i = 0; i < fine.size(); i++) {
                 final int x = chunkX * FarViewAssembler.CHUNK_SAMPLES + i % FarViewAssembler.CHUNK_SAMPLES;
                 final int z = chunkZ * FarViewAssembler.CHUNK_SAMPLES + i / FarViewAssembler.CHUNK_SAMPLES;
@@ -559,27 +589,39 @@ public final class Baker {
             final int side = FarViewPack.TILE_BLOCKS >> level;
             final int localX = x - tileX * side, localZ = z - tileZ * side;
             try {
-                FarViewPack.Reader reader = readers.get(key(tileX, tileZ));
-                if (reader == null) {
+                if (reader == null || tile != key(tileX, tileZ)) {
+                    reader = null;
+                    blocks.clear();
                     reader = FarViewPack.Reader.read(Files.readAllBytes(farview.resolve(FarViewAssembler.fileName(tileX, tileZ))));
-                    readers.put(key(tileX, tileZ), reader);
+                    tile = key(tileX, tileZ);
                 }
-                for (FarViewPack.Block block : reader.blocks(layer)) {
+                final FarViewPack.Reader pack = reader;
+                for (FarViewPack.Block block : pack.blocks(layer)) {
                     if (block.bx() != localX / FarViewPack.BLOCK_SIDE || block.bz() != localZ / FarViewPack.BLOCK_SIDE) continue;
-                    final String cached = tileX + " " + tileZ + " " + layer + " " + block.bx() + " " + block.bz();
+                    final String cached = layer + " " + block.bx() + " " + block.bz();
                     List<FarViewPack.Sample> samples = blocks.get(cached);
                     if (samples == null) {
-                        samples = reader.samples(block);
+                        samples = pack.samples(block);
                         blocks.put(cached, samples);
                     }
                     final FarViewPack.Sample sample = samples.get((localZ % FarViewPack.BLOCK_SIDE) * FarViewPack.BLOCK_SIDE
                             + localX % FarViewPack.BLOCK_SIDE);
-                    return new Named(sample, reader.biomes().get(sample.biome()));
+                    return new Named(sample, pack.biomes().get(sample.biome()));
                 }
                 return new Named(FarViewPack.Sample.EMPTY, "");
             } catch (FarViewPack.Invalid e) {
                 throw new IOException("tile " + tileX + "," + tileZ + ": " + e.getMessage(), e);
             }
+        }
+
+        /** For the tests: the tiles whose pack this holds. */
+        int tilesHeld() {
+            return reader == null ? 0 : 1;
+        }
+
+        /** For the tests: the blocks this holds inflated. */
+        int blocksHeld() {
+            return blocks.size();
         }
 
         private static long key(int x, int z) {

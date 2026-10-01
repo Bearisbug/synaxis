@@ -50,11 +50,12 @@ public class FarViewSamplingTest {
         unit.modifier().fillHeight(0, 10, Block.STONE);
         final int chunkX = unit.absoluteStart().chunkX(), chunkZ = unit.absoluteStart().chunkZ();
         if (chunkX == 0 && chunkZ == 0) {
-            // Sample 0, 0: a poppy on grass at y 20, under a biome of its own at the grass
-            for (int y = 10; y < 20; y++) unit.modifier().setBlock(1, y, 1, Block.STONE);
-            unit.modifier().setBlock(1, 20, 1, Block.GRASS_BLOCK);
-            unit.modifier().setBlock(1, 21, 1, Block.POPPY);
-            unit.modifier().setBiome(1, 20, 1, Biome.FOREST);
+            // Sample 0, 0: a poppy on grass at y 19; only the biome cell of the grass, y 16 to 19, is forest, the
+            // cell of the poppy above it plains
+            for (int y = 10; y < 19; y++) unit.modifier().setBlock(1, y, 1, Block.STONE);
+            unit.modifier().setBlock(1, 19, 1, Block.GRASS_BLOCK);
+            unit.modifier().setBlock(1, 20, 1, Block.POPPY);
+            unit.modifier().setBiome(1, 19, 1, Biome.FOREST);
             // Sample 1, 0: one layer of snow on grass at y 20
             for (int y = 10; y < 20; y++) unit.modifier().setBlock(5, y, 1, Block.STONE);
             unit.modifier().setBlock(5, 20, 1, Block.GRASS_BLOCK);
@@ -124,8 +125,8 @@ public class FarViewSamplingTest {
     /** §19 「远景采样规则」: a flower and one layer of snow are not ground, the grass under them is. */
     @Test
     public void aFlowerAndALayerOfSnowStandOnTheirGround() {
-        assertEquals(new Sample(Block.GRASS_BLOCK.stateId(), 0, 20, 0, 0, fine(0, 0).biome()), fine(0, 0));
-        assertEquals("minecraft:forest", biome(fine(0, 0)), "the biome of the top's cell");
+        assertEquals(new Sample(Block.GRASS_BLOCK.stateId(), 0, 19, 0, 0, fine(0, 0).biome()), fine(0, 0));
+        assertEquals("minecraft:forest", biome(fine(0, 0)), "the biome of the top's cell, not of the poppy's above it");
         assertEquals(new Sample(Block.GRASS_BLOCK.stateId(), 0, 20, 0, 0, fine(1, 0).biome()), fine(1, 0));
         assertEquals("minecraft:plains", biome(fine(1, 0)));
     }

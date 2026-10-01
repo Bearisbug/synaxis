@@ -6,10 +6,12 @@
 	"environment": "client",
 	"entrypoints": {
 		"client": [
-			"io.github.bearisbug.synaxis.game.client.gametest.light.LightProbe"
+			"io.github.bearisbug.synaxis.game.client.gametest.light.LightProbe",
+			"io.github.bearisbug.synaxis.game.client.gametest.farview.DhUpdaterOff"
 		],
 		"fabric-client-gametest": [
 			"io.github.bearisbug.synaxis.game.client.gametest.light.LightClientGameTest",
+			"io.github.bearisbug.synaxis.game.client.gametest.farview.FarViewClientGameTest",
 			"io.github.bearisbug.synaxis.game.client.gametest.RegressionClientGameTest",
 			"io.github.bearisbug.synaxis.game.client.gametest.SpikeClientGameTest",
 			"io.github.bearisbug.synaxis.game.client.gametest.TransferRoundTripClientGameTest"

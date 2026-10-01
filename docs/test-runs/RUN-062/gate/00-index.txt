@@ -1,0 +1,33 @@
+RUN-062 / gate: the full gates before the merge of prod/integrate-062 into main, on 45f4133080 (code of 5e0977797e, docs/DESIGN-PROD.md
+v0.9.43). git fetch: origin/main is still c820bc65f2, the base of the branch, so nothing was merged. While the gates ran, docs/TEST.md
+had the uncommitted count edits and this directory was being written; no test reads docs/. JDK 25.0.4.1, Gradle with --max-workers=4
+--no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts. Database variables (SYNAXIS_TEST_PG_URL, SYNAXIS_TEST_PG_PASSWORD,
+SYNAXIS_TEST_REDIS_URL, shared containers synaxis-pg 5440 / synaxis-valkey 6440) set for 01 and 02, unset for 03. Every step was one
+script that took /tmp/synaxis-heavy.lock at its top level and released it from an EXIT trap set there:
+  14:18:29-14:24:28  01  root check --continue --rerun-tasks, default mode
+  14:25:35-14:30:57  02  root test --continue --rerun, strict grid (-Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true
+                         -Dsynaxis.thread-provider=grid)
+  14:32:18-14:35:28  03  :server-app:test --rerun without the database variables, default mode (TC-PROD-575 step 3 counts)
+  14:37:12-14:38:04  04  TC-PROD-548, real processes (one directory mode shard, one bot, a second process not in the directory mode)
+Counts are from the JUnit XML each run wrote (files older than the run's start ignored).
+
+00-index.txt                     this file
+01-check.txt                     BUILD SUCCESSFUL in 5m 58s, 95 tasks executed. 598 classes 4,145 tests 0 failures 15 skipped:
+                                 root 428 / 3,162 (15 skipped: TestMojangUtils 9, PlayerSkinTest 2, TranslationIntegrationTest 3,
+                                 TagNbtTest 1), server-app 109 / 552, synx 17 / 142, protocol 4 / 78, game-rts 13 / 87, baker 4 / 53,
+                                 loadtest 5 / 25, architecture-tests 7 / 20, plugin-api 3 / 15, testing 8 / 11
+02-grid.txt                      BUILD SUCCESSFUL in 5m 21s; the same 598 classes 4,145 tests 0 failures 15 skipped, module by module;
+                                 EnvDispatcherThreadsIntegrationTest XML of :testing has 'env dispatcher threads: 4' and
+                                 'env thread provider: grid'; no result XML mentions AcquirableOwnershipException
+03-server-app-no-database.txt    BUILD SUCCESSFUL; server-app 109 classes 552 tests 0 failures 132 skipped (the 125 of RUN-061 plus
+                                 TransferNotFollowedIntegrationTest 4 and RoleHandOutIntegrationTest 3); management package 15 / 45
+04-tc-prod-548.txt               the eight steps of TC-PROD-548 as written, each result as the case expects; the script, the management
+                                 client and the three process logs
+
+Not run: client-fabric (no file under client-fabric/ differs from c820bc65f2); TC-PROD-606 (manual, on a Linux deployment host).
+Count edits these runs back (docs/TEST.md): TC-PROD-486 step 3, 505 step 3, 510 step 2, 529 step 4, 549 step 2: server-app 522 -> 552;
+505 step 3: root :test 3,146 -> 3,162; 513 step 4: network.* 866 -> 878; 549 step 3: 19 classes 63 -> 22 classes 69 (the v0.9.38
+ManagementWriteRecheckIntegrationTest was not counted there before); 567 step 1: app.metrics.* 8 -> 10; 569 step 4: 25 classes 80 ->
+27 classes 84; 575 step 3: management.* 14 / 43 -> 15 / 45 and the full run without the database 522 (125 skipped) -> 552 (132 skipped);
+the group regressions 585, 596, 607, 618 now give the merged 3,162 and 552. Per class, the 30 server-app and 16 root tests added in
+v0.9.39 to v0.9.43 are listed in TC-PROD-505 step 3.

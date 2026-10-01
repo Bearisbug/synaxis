@@ -16,6 +16,7 @@ import org.slf4j.LoggerFactory;
 
 import java.sql.SQLException;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -180,6 +181,20 @@ public final class HostPermissions implements Permissions {
     }
 
     /**
+     * Grants a role on a player's behalf, for no longer than the player's own grants run
+     * ({@link RoleStore#handOut}), then tells every shard and reads the account again here.
+     *
+     * @param account   the account
+     * @param role      the role id
+     * @param expiresAt the earliest expiry among the player's own grants, null if none of them expires
+     * @return how it ended
+     * @throws SQLException if the database failed
+     */
+    RoleStore.Change handOut(UUID account, String role, @Nullable Instant expiresAt) throws SQLException {
+        return announced(account, requireRoles().handOut(account, role, expiresAt));
+    }
+
+    /**
      * Takes a role back, then tells every shard and reads the account again here.
      *
      * @param account the account
@@ -192,21 +207,33 @@ public final class HostPermissions implements Permissions {
     }
 
     /**
-     * Whether a player may grant or take back a role: every node the role grants is covered by the
-     * nodes its own roles grant now. A role that does not exist is left to the grant or the
-     * revocation to report.
+     * What a player's grants in force give it, read from the database when it asks rather than
+     * taken from what this shard read last: a grant that expired or was taken back since then must
+     * not let it hand out roles (§28.2).
      *
-     * @param sender the player running the command
-     * @param role   the role id
-     * @return true if the role is not above the sender
+     * @param player the player running the role command
+     * @return its grants in force now
      * @throws SQLException if the database failed
      */
-    boolean mayHandOut(Player sender, String role) throws SQLException {
+    RoleStore.Grants grantsOf(Player player) throws SQLException {
+        return requireRoles().load(List.of(player.getUuid())).getOrDefault(player.getUuid(), RoleStore.Grants.NONE);
+    }
+
+    /**
+     * Whether a player may grant or take back a role: its grants in force cover {@value RoleCommand#NODE}
+     * and every node the role grants. A role that does not exist is left to the grant or the
+     * revocation to report.
+     *
+     * @param own  the player's grants, {@link #grantsOf}
+     * @param role the role id
+     * @return true if the role is not above the player
+     * @throws SQLException if the database failed
+     */
+    boolean mayHandOut(RoleStore.Grants own, String role) throws SQLException {
+        if (!PermissionNodes.covers(own.nodes(), RoleCommand.NODE)) return false;
         final Set<String> nodes = requireRoles().nodesOf(role);
         if (nodes == null) return true;
-        final Entry entry = loaded.get(sender);
-        final Set<String> held = entry == null ? Set.of() : entry.grants().nodes();
-        for (String node : nodes) if (!PermissionNodes.includes(held, node)) return false;
+        for (String node : nodes) if (!PermissionNodes.includes(own.nodes(), node)) return false;
         return true;
     }
 

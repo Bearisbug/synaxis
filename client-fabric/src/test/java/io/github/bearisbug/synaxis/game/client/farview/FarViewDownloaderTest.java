@@ -359,6 +359,36 @@ class FarViewDownloaderTest {
     }
 
     @Test
+    void aServerThatSendsNoResponseFailsOnTheIdleClockAndItsLateAnswersAreDropped() throws IOException, InterruptedException {
+        final FarViewCache cache = new FarViewCache(dir);
+        final byte[] whole = vector("pack-small.hfp");
+        final AtomicInteger late = new AtomicInteger();
+        answer = (_, _, object, out) -> {
+            try {
+                Thread.sleep(1500);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+            late.incrementAndGet();
+            out.whole(object);
+        };
+        final Tile tile = serve("whole", whole, FarViewAnnouncement.LAYER_FULL);
+        final FarViewDownloader downloader = new FarViewDownloader(cache, HttpClient.newBuilder()
+                .connectTimeout(Duration.ofSeconds(5)).version(HttpClient.Version.HTTP_1_1).build(),
+                List.of(Duration.ofMillis(10), Duration.ofMillis(20)), Duration.ofMillis(700));
+        final FarViewDownloader.Result result = downloader.download(List.of(tile), new AtomicBoolean(), _ -> {
+        });
+        assertFalse(result.success());
+        assertTrue(result.reason().startsWith("no byte for"), "waiting for the response is waiting for a byte: " + result.reason());
+        assertEquals(3, requests.size());
+        final long until = System.nanoTime() + Duration.ofSeconds(5).toNanos();
+        while (late.get() < 3 && System.nanoTime() < until) Thread.sleep(50);
+        Thread.sleep(300);
+        assertFalse(Files.exists(cache.part(FarViewConnection.hex(tile))), "an attempt given up on writes nothing later");
+        assertFalse(Files.exists(cache.pack(FarViewConnection.hex(tile))));
+    }
+
+    @Test
     void aCancelStopsAndKeepsThePart() throws IOException, InterruptedException {
         final FarViewCache cache = new FarViewCache(dir);
         final byte[] whole = vector("pack-small.hfp");

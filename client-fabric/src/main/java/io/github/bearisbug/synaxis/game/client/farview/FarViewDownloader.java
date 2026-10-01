@@ -234,8 +234,8 @@ public final class FarViewDownloader {
         }
         progress.accept(have);
         if (have == tile.bytes()) return;
-        final HttpRequest.Builder request = HttpRequest.newBuilder(URI.create(tile.url())).timeout(idleTimeout)
-                .header("User-Agent", "synaxis-farview").GET();
+        final HttpRequest.Builder request = HttpRequest.newBuilder(URI.create(tile.url())).header("User-Agent", "synaxis-farview")
+                .GET();
         if (have > 0) request.header("Range", "bytes=" + have + "-");
         final PartWriter writer = new PartWriter(part, have, tile.bytes(), progress);
         final CompletableFuture<HttpResponse<Void>> response;
@@ -275,6 +275,8 @@ public final class FarViewDownloader {
                 }
             }
         } finally {
+            // An attempt given up on before its response came ends its exchange; a late answer would open the .part again
+            response.cancel(true);
             writer.close();
         }
         final long size = Files.size(part);
@@ -337,6 +339,7 @@ public final class FarViewDownloader {
         private Flow.@Nullable Subscription subscription;
         private final CompletableFuture<Void> done = new CompletableFuture<>();
         private long written;
+        private boolean closed;
 
         PartWriter(Path part, long have, long size, LongConsumer progress) {
             this.part = part;
@@ -364,6 +367,7 @@ public final class FarViewDownloader {
             }
             try {
                 synchronized (lock) {
+                    if (closed) return refuse("the attempt was given up on", false);
                     final FileChannel opened = FileChannel.open(part, StandardOpenOption.CREATE, StandardOpenOption.WRITE);
                     opened.truncate(from);
                     opened.position(from);
@@ -445,6 +449,7 @@ public final class FarViewDownloader {
 
         void close() throws IOException {
             synchronized (lock) {
+                closed = true;
                 if (channel != null) channel.close();
                 channel = null;
             }

@@ -18,7 +18,8 @@ import java.util.concurrent.TimeUnit;
  * The inbound packet limits of a process ({@code docs/DESIGN-PROD.md} {@code API-PROD-012}), read
  * once from its configuration; {@link #newLimiter()} gives each connection its own counters.
  * <p>
- * Three limits look at the packets a connection hands to its player's queue: every packet counts
+ * Three limits look at the packets a connection hands to its player's queue, and in the play state
+ * at the ones it handles right away (ping, keep alive, cookie response): every packet counts
  * towards {@code synaxis.packet-limit.max-packets} in a sliding window of
  * {@code synaxis.packet-limit.window-ms}, the types named in {@code synaxis.packet-limit.overrides}
  * also count towards a limit of their own in the same window, and tab completions over
@@ -128,7 +129,7 @@ public final class InboundPacketLimits {
         }
 
         /**
-         * Counts a packet on its way to the player's queue.
+         * Counts a packet on its way to the player's queue, or in the play state to its listener.
          *
          * @param packet the packet
          * @param now    {@link System#nanoTime()}

@@ -5,7 +5,10 @@ import io.github.bearisbug.synaxis.ServerConfig;
 import io.github.bearisbug.synaxis.ServerProcess;
 import io.github.bearisbug.synaxis.crypto.KeyUtils;
 import io.github.bearisbug.synaxis.event.player.AsyncPlayerPreLoginEvent;
+import io.github.bearisbug.synaxis.network.packet.client.handshake.ClientHandshakePacket;
 import io.github.bearisbug.synaxis.network.packet.client.login.ClientLoginAcknowledgedPacket;
+import io.github.bearisbug.synaxis.network.packet.client.login.ClientLoginStartPacket;
+import io.github.bearisbug.synaxis.network.packet.server.ServerPacket;
 import io.github.bearisbug.synaxis.network.packet.server.login.EncryptionRequestPacket;
 import io.github.bearisbug.synaxis.network.packet.server.login.LoginSuccessPacket;
 import io.github.bearisbug.synaxis.network.player.GameProfile;
@@ -113,6 +116,56 @@ public class OnlineLoginSocketTest {
             client.answer(client.readEncryptionRequest());
             assertEquals("synaxis:auth-unavailable", EncryptedLoginClient.loginDisconnectKey(client.readLoginOutcome()));
             assertEquals(2, sessions.queries().size(), "retried exactly once");
+        }
+    }
+
+    /**
+     * A 429 is the session server asking to wait: it is not retried, and until its
+     * {@code Retry-After} is over no login asks again ({@code docs/TEST.md} TC-PROD-583).
+     */
+    @Test
+    public void aTooManyRequestsAnswerIsNotRetried() throws Exception {
+        try (TestSessionServer sessions = new TestSessionServer();
+             Rig rig = Rig.online(sessions, GENEROUS, 32);
+             EncryptedLoginClient client = rig.client()) {
+            sessions.script(TestSessionServer.Answer.tooManyRequests(null));
+
+            client.handshakeAndStart("Throttled");
+            client.answer(client.readEncryptionRequest());
+            final ServerPacket outcome = client.readLoginOutcome();
+            assertEquals(1, sessions.queries().size(), "a 429 was asked again");
+            assertEquals("synaxis:auth-unavailable", EncryptedLoginClient.loginDisconnectKey(outcome));
+        }
+    }
+
+    @Test
+    public void noLoginAsksTheSessionServerBeforeTheRetryAfterIsOver() throws Exception {
+        try (TestSessionServer sessions = new TestSessionServer();
+             Rig rig = Rig.online(sessions, GENEROUS, 32)) {
+            sessions.script(TestSessionServer.Answer.tooManyRequests("2"));
+            final ServerPacket first, second;
+            try (EncryptedLoginClient client = rig.client()) {
+                client.handshakeAndStart("First");
+                client.answer(client.readEncryptionRequest());
+                first = client.readLoginOutcome();
+            }
+            final long answered = System.nanoTime();
+            try (EncryptedLoginClient client = rig.client()) {
+                client.handshakeAndStart("Second");
+                client.answer(client.readEncryptionRequest());
+                second = client.readLoginOutcome();
+            }
+            assertTrue(System.nanoTime() - answered < TimeUnit.SECONDS.toNanos(2), "the second login took too long to tell");
+            assertEquals(List.of("First"), sessions.queries().stream().map(TestSessionServer.Query::username).toList(),
+                    "a login within the Retry-After asked the session server");
+            assertEquals("synaxis:auth-unavailable", EncryptedLoginClient.loginDisconnectKey(first));
+            assertEquals("synaxis:auth-unavailable", EncryptedLoginClient.loginDisconnectKey(second));
+
+            Thread.sleep(Math.max(0, TimeUnit.SECONDS.toMillis(2) - TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - answered)) + 100);
+            try (EncryptedLoginClient third = rig.client()) {
+                third.login("Third");
+            }
+            assertEquals(2, sessions.queries().size(), "the login after the Retry-After asks");
         }
     }
 
@@ -302,6 +355,74 @@ public class OnlineLoginSocketTest {
         }
     }
 
+    /**
+     * L3 seats go to authenticated logins ({@code docs/TEST.md} TC-PROD-580): two logins that stop
+     * at the encryption request hold none of the two seats, and a third one that answers it gets in.
+     */
+    @Test
+    public void loginsThatStopAtTheEncryptionRequestHoldNoSeat() throws Exception {
+        try (TestSessionServer sessions = new TestSessionServer();
+             Rig rig = Rig.start(new Auth.Online(sessions.sessionServer(GENEROUS, 32)), base().maxPlayers(2));
+             EncryptedLoginClient first = rig.client();
+             EncryptedLoginClient second = rig.client();
+             EncryptedLoginClient third = rig.client()) {
+            first.handshakeAndStart("Squatter0");
+            first.readEncryptionRequest();
+            second.handshakeAndStart("Squatter1");
+            second.readEncryptionRequest();
+
+            assertInstanceOf(LoginSuccessPacket.class, third.login("Player"));
+            assertEquals(1, rig.gate().seats(), "only the authenticated login holds a seat");
+        }
+    }
+
+    /**
+     * A login that finds every seat taken once it is authenticated is refused there, before the
+     * login event, with a {@code synaxis:shard-full} it reads through the cipher; a transfer the
+     * same as a login ({@code docs/TEST.md} TC-PROD-581).
+     */
+    @Test
+    public void anAuthenticatedTransferThatFindsTheSeatsTakenIsRefusedEncrypted() throws Exception {
+        final AtomicInteger preLogins = new AtomicInteger();
+        try (TestSessionServer sessions = new TestSessionServer();
+             Rig rig = Rig.start(new Auth.Online(sessions.sessionServer(GENEROUS, 32)),
+                     base().maxPlayers(1).acceptTransfers(true));
+             EncryptedLoginClient late = rig.client();
+             EncryptedLoginClient seated = rig.client()) {
+            rig.process().eventHandler().addListener(AsyncPlayerPreLoginEvent.class, _ -> preLogins.incrementAndGet());
+            late.handshake(rig.port(), ClientHandshakePacket.Intent.TRANSFER);
+            late.send(ConnectionState.LOGIN, new ClientLoginStartPacket("Late", UUID.randomUUID()));
+            final EncryptionRequestPacket request = late.readEncryptionRequest();
+
+            assertInstanceOf(LoginSuccessPacket.class, seated.login("Seated"), "the seat the transfer did not hold");
+            late.answer(request);
+            assertEquals("synaxis:shard-full", EncryptedLoginClient.loginDisconnectKey(late.readLoginOutcome()));
+            assertFalse(contains(late.rawIncoming(), "synaxis:shard-full"), "the refusal was sent in plaintext");
+            assertTrue(late.closedWithoutAnotherPacket());
+            assertEquals(2, sessions.queries().size(), "both were verified");
+            assertEquals(1, preLogins.get(), "the login event ran for the refused transfer");
+            assertEquals(1, rig.gate().seats());
+            assertEquals(1, rig.gate().rejected(ConnectionGate.Reason.FULL));
+        }
+    }
+
+    /** Encrypted offline mode takes the seat once the key is in ({@code docs/TEST.md} TC-PROD-582). */
+    @Test
+    public void anEncryptedOfflineLoginTakesItsSeatOnceItsKeyIsIn() throws Exception {
+        try (Rig rig = Rig.start(new Auth.Offline(true), base().maxPlayers(1));
+             EncryptedLoginClient waiting = rig.client();
+             EncryptedLoginClient keyed = rig.client()) {
+            waiting.handshakeAndStart("Waiting");
+            final EncryptionRequestPacket request = waiting.readEncryptionRequest();
+            assertEquals(0, rig.gate().seats(), "a login waiting for its key holds a seat");
+
+            assertInstanceOf(LoginSuccessPacket.class, keyed.login("Keyed"));
+            assertEquals(1, rig.gate().seats());
+            waiting.answer(request);
+            assertEquals("synaxis:shard-full", EncryptedLoginClient.loginDisconnectKey(waiting.readLoginOutcome()));
+        }
+    }
+
     @Test
     public void encryptedOfflineModeEncryptsWithoutAskingForASession() throws Exception {
         try (Rig rig = Rig.start(new Auth.Offline(true));
@@ -369,6 +490,11 @@ public class OnlineLoginSocketTest {
         return false;
     }
 
+    /** L1 and L2 of the gate are not under test here: one address opens every connection. */
+    private static ServerConfig.Builder base() {
+        return ServerConfig.builder().insideTest(true).connectionGateTrustedNetworks("127.0.0.0/8");
+    }
+
     private static void awaitUntil(BooleanSupplier condition, String what) throws InterruptedException {
         for (int i = 0; i < 400 && !condition.getAsBoolean(); i++) Thread.sleep(25);
         assertTrue(condition.getAsBoolean(), what);
@@ -382,9 +508,11 @@ public class OnlineLoginSocketTest {
         }
 
         static Rig start(Auth auth) throws IOException {
-            // The gate is not under test here: one address opens every connection
-            final ServerProcess process = ServerProcess.of(auth, ServerConfig.builder().insideTest(true)
-                    .connectionGateTrustedNetworks("127.0.0.0/8").build());
+            return start(auth, base());
+        }
+
+        static Rig start(Auth auth, ServerConfig.Builder config) throws IOException {
+            final ServerProcess process = ServerProcess.of(auth, config.build());
             final Server server = process.server();
             server.init(new InetSocketAddress(InetAddress.getLoopbackAddress(), 0));
             server.start();
@@ -393,6 +521,10 @@ public class OnlineLoginSocketTest {
 
         int port() {
             return process.server().getPort();
+        }
+
+        ConnectionGate gate() {
+            return process.connection().gate();
         }
 
         EncryptedLoginClient client() throws IOException {

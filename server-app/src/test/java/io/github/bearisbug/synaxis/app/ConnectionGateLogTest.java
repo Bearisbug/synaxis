@@ -4,16 +4,21 @@ import ch.qos.logback.classic.Level;
 import io.github.bearisbug.synaxis.MinecraftServer;
 import io.github.bearisbug.synaxis.ServerConfig;
 import io.github.bearisbug.synaxis.ServerProcess;
+import io.github.bearisbug.synaxis.exception.ExceptionManager;
+import io.github.bearisbug.synaxis.listener.preplay.LoginListener;
 import io.github.bearisbug.synaxis.network.ConnectionGate;
 import io.github.bearisbug.synaxis.network.ConnectionState;
 import io.github.bearisbug.synaxis.network.NetworkBuffer;
 import io.github.bearisbug.synaxis.network.packet.PacketWriting;
 import io.github.bearisbug.synaxis.network.packet.client.handshake.ClientHandshakePacket;
 import io.github.bearisbug.synaxis.network.packet.client.handshake.ClientHandshakePacket.Intent;
+import io.github.bearisbug.synaxis.network.packet.client.login.ClientLoginPluginResponsePacket;
 import io.github.bearisbug.synaxis.network.player.PlayerConnection;
 import io.github.bearisbug.synaxis.network.socket.Server;
 import org.junit.jupiter.api.Test;
 
+import java.io.IOException;
+import java.io.InputStream;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
@@ -102,6 +107,85 @@ public class ConnectionGateLogTest {
             assertEquals(1, closed.size(), "only the connection the gate let through: " + closed);
         } finally {
             process.stop();
+        }
+    }
+
+    /**
+     * An oversized server address does not take a connection past the gate to the login listener:
+     * twenty such handshakes from one address, each with a login plugin response nobody asked for
+     * behind it, get at most the three of the login bucket that far ({@code docs/TEST.md}
+     * TC-PROD-579).
+     */
+    @Test
+    public void oversizedServerAddressesDoNotReachTheLoginListener() throws Exception {
+        final ServerProcess process = ServerProcess.of(ServerConfig.builder().insideTest(true)
+                .handshakeTimeout(60_000).build());
+        try (LogCapture log = LogCapture.of(LoginListener.class)) {
+            sendTwenty(process, "a".repeat(256));
+            final List<String> errors = log.messagesAt(Level.ERROR).stream()
+                    .filter(line -> line.equals("Error handling Login Plugin Response")).toList();
+            assertTrue(errors.size() <= 3, "lines of the login listener: " + errors.size());
+        } finally {
+            process.stop();
+        }
+    }
+
+    /**
+     * A login plugin response nobody asked for is reported to the exception handler, whose lines
+     * are bounded, and gets no line of the login listener's own: the peer is not authenticated and
+     * decides how many connections send one ({@code docs/TEST.md} TC-PROD-579).
+     */
+    @Test
+    public void aLoginPluginResponseNobodyAskedForIsReportedByTheExceptionHandlerAlone() throws Exception {
+        final ServerProcess process = ServerProcess.of(ServerConfig.builder().insideTest(true)
+                .handshakeTimeout(60_000).connectionGateTrustedNetworks("127.0.0.0/8").build());
+        try (LogCapture listener = LogCapture.of(LoginListener.class);
+             LogCapture handler = LogCapture.of(ExceptionManager.class)) {
+            sendTwenty(process, "localhost");
+            assertEquals(List.of(), listener.messagesAt(Level.ERROR), "the login listener wrote lines of its own");
+            assertTrue(handler.messagesAt(Level.ERROR).size() <= 1,
+                    "the exception handler writes one line per 10 s: " + handler.messagesAt(Level.ERROR));
+        } finally {
+            process.stop();
+        }
+    }
+
+    /**
+     * Opens twenty connections that each send a login handshake with {@code serverAddress} and a
+     * login plugin response nobody asked for, and waits until the server closed every one.
+     */
+    private static void sendTwenty(ServerProcess process, String serverAddress) throws Exception {
+        final Server server = process.server();
+        server.init(new InetSocketAddress(InetAddress.getLoopbackAddress(), 0));
+        server.start();
+        final List<SocketChannel> peers = new ArrayList<>();
+        try {
+            for (int i = 0; i < 20; i++) {
+                final SocketChannel peer = SocketChannel.open(new InetSocketAddress(InetAddress.getLoopbackAddress(), server.getPort()));
+                peers.add(peer);
+                for (NetworkBuffer frame : List.of(
+                        PacketWriting.allocateTrimmedPacket(ConnectionState.HANDSHAKE, new ClientHandshakePacket(
+                                MinecraftServer.PROTOCOL_VERSION, serverAddress, server.getPort(), Intent.LOGIN), null, 0),
+                        PacketWriting.allocateTrimmedPacket(ConnectionState.LOGIN,
+                                new ClientLoginPluginResponsePacket(0, null), null, 0))) {
+                    while (!frame.writeChannel(peer)) {
+                        // A blocking channel writes everything, the loop only documents the contract
+                    }
+                }
+            }
+            for (SocketChannel peer : peers) {
+                peer.socket().setSoTimeout(10_000);
+                final InputStream in = peer.socket().getInputStream();
+                try {
+                    while (in.read() >= 0) {
+                        // Whatever the server answers, until it closes
+                    }
+                } catch (IOException _) {
+                    // Reset by the server, as good as closed
+                }
+            }
+        } finally {
+            for (SocketChannel peer : peers) peer.close();
         }
     }
 

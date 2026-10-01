@@ -8,10 +8,13 @@ import io.github.bearisbug.synaxis.network.NetworkBuffer;
 import io.github.bearisbug.synaxis.network.packet.PacketVanilla;
 import io.github.bearisbug.synaxis.network.packet.PacketWriting;
 import io.github.bearisbug.synaxis.network.packet.client.ClientPacket;
+import io.github.bearisbug.synaxis.network.packet.client.common.ClientPingRequestPacket;
 import io.github.bearisbug.synaxis.network.packet.client.common.ClientPluginMessagePacket;
 import io.github.bearisbug.synaxis.network.packet.client.play.ClientTabCompletePacket;
 import io.github.bearisbug.synaxis.network.packet.client.play.ClientTickEndPacket;
+import io.github.bearisbug.synaxis.network.packet.server.ServerPacket;
 import io.github.bearisbug.synaxis.network.packet.server.common.DisconnectPacket;
+import io.github.bearisbug.synaxis.network.packet.server.common.PingResponsePacket;
 import io.github.bearisbug.synaxis.testing.Env;
 import io.github.bearisbug.synaxis.testing.EnvTest;
 import net.kyori.adventure.text.TranslatableComponent;
@@ -65,6 +68,40 @@ public class InboundPacketLimitIntegrationTest {
         }
     }
 
+    /**
+     * A ping in the play state is answered right away, not queued, and still counts towards the
+     * limit: a peer cannot get a pong per packet past it ({@code docs/TEST.md} TC-PROD-584).
+     */
+    @Test
+    public void pingsInPlayCountTowardsTheLimit(Env env) throws IOException {
+        try (Harness harness = new Harness(env, false)) {
+            harness.send(pings(1_000), 0);
+
+            assertFalse(harness.connection.isOnline(), "1,000 pings at once are over 750 in 7 s");
+            assertEquals("synaxis:protocol-error", harness.disconnectKey());
+            assertEquals(750, harness.sent(PingResponsePacket.class), "pongs");
+        }
+    }
+
+    /**
+     * With {@code synaxis.packet-limit.action=DROP} a ping over the limit is thrown away before
+     * its listener, like a queued packet: no pong, and the connection stays
+     * ({@code docs/TEST.md} TC-PROD-584).
+     */
+    @Test
+    public void pingsOverADropLimitAreNotAnswered() throws IOException {
+        final Env env = Env.create(settings -> settings.packetLimitAction(PacketLimitAction.DROP));
+        try (Harness harness = new Harness(env, false)) {
+            harness.send(pings(1_000), 0);
+            harness.connection.flushSync();
+
+            assertTrue(harness.connection.isOnline(), "a dropped ping does not kick");
+            assertEquals(750, harness.sent(PingResponsePacket.class), "pongs");
+        } finally {
+            env.process().stop();
+        }
+    }
+
     @Test
     public void inflatingMoreThanFourMebibytesInOneSecondKicks(Env env) throws IOException {
         try (Harness harness = new Harness(env, true)) {
@@ -98,6 +135,12 @@ public class InboundPacketLimitIntegrationTest {
         }
     }
 
+    private static List<ClientPacket> pings(int count) {
+        final List<ClientPacket> packets = new ArrayList<>();
+        for (int i = 0; i < count; i++) packets.add(new ClientPingRequestPacket(i));
+        return packets;
+    }
+
     private static List<ClientPacket> pluginMessages(int count) {
         final List<ClientPacket> packets = new ArrayList<>();
         for (int i = 0; i < count; i++) packets.add(new ClientPluginMessagePacket("synaxis:inflate", new byte[30_000]));
@@ -112,7 +155,7 @@ public class InboundPacketLimitIntegrationTest {
         private final SocketChannel accepted;
         final PlayerSocketConnection connection;
         private final Player player;
-        private final List<DisconnectPacket> disconnects = new ArrayList<>();
+        private final List<ServerPacket> sent = new ArrayList<>();
 
         Harness(Env env, boolean compressed) throws IOException {
             this.env = env;
@@ -132,9 +175,7 @@ public class InboundPacketLimitIntegrationTest {
             connection.setServerState(ConnectionState.PLAY);
             this.player = new Player(connection, new GameProfile(UUID.randomUUID(), "Flooder"));
             connection.setPlayer(player);
-            env.process().eventHandler().addListener(PlayerPacketOutEvent.class, event -> {
-                if (event.getPacket() instanceof DisconnectPacket disconnect) disconnects.add(disconnect);
-            });
+            env.process().eventHandler().addListener(PlayerPacketOutEvent.class, event -> sent.add(event.getPacket()));
         }
 
         /** Writes the frames, closes the peer's output and reads until the end of the stream. */
@@ -166,8 +207,15 @@ public class InboundPacketLimitIntegrationTest {
 
         String disconnectKey() throws IOException {
             connection.flushSync();
+            final List<DisconnectPacket> disconnects = sent.stream()
+                    .filter(DisconnectPacket.class::isInstance).map(DisconnectPacket.class::cast).toList();
             assertEquals(1, disconnects.size(), "one disconnect packet");
             return assertInstanceOf(TranslatableComponent.class, disconnects.getFirst().message()).key();
+        }
+
+        /** How many packets of a type were written to the peer so far. */
+        long sent(Class<? extends ServerPacket> type) {
+            return sent.stream().filter(type::isInstance).count();
         }
 
         @Override

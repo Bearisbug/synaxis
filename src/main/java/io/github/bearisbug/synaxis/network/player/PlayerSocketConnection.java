@@ -261,26 +261,25 @@ public class PlayerSocketConnection extends PlayerConnection {
                     try {
                         final boolean processImmediately = IMMEDIATE_PROCESS_PACKETS.contains(packet.getClass());
                         if (processImmediately) {
-                            // Interpret the packet using the connection state we received it.
-                            process().packetListener().processClientPacket(packet, this);
+                            // Interpret the packet using the connection state we received it. In the
+                            // play state a ping, a keep alive or a cookie counts towards the inbound
+                            // limits like any other packet, it only skips the queue.
+                            if (getClientState() != ConnectionState.PLAY || admitted(packet))
+                                process().packetListener().processClientPacket(packet, this);
                         } else {
                             // To be processed during the next player tick, if the limits let it through
                             final Player player = getPlayer();
                             assert player != null;
-                            switch (inboundLimiter.admit(packet, System.nanoTime())) {
-                                case ACCEPT -> player.addPacketToQueue(packet);
-                                case DROP -> {
-                                    // Thrown away before any listener sees it
-                                }
-                                case KICK -> kickOverInboundLimit();
-                            }
+                            if (admitted(packet)) player.addPacketToQueue(packet);
                         }
                     } catch (Throwable e) {
                         rethrowFatal(e);
                         if (startingState.ordinal() > process().config().suppressMisusedPacketErrorLevel())
                             process().exception().handleException(e, connectionId());
-                        // Packets already in the queue are unaffected.
-                        if (process().config().rejectMisusedPacket()) disconnect();
+                        // Packets already in the queue are unaffected. Before the configuration state
+                        // a listener that throws has left the login half done, so the connection goes.
+                        if (startingState.ordinal() < ConnectionState.CONFIGURATION.ordinal()
+                                || process().config().rejectMisusedPacket()) disconnect();
                     }
                 }
                 // Compact in case of incomplete read
@@ -390,6 +389,23 @@ public class PlayerSocketConnection extends PlayerConnection {
             if (player == null || player.getGameMode() != GameMode.CREATIVE) return null;
         }
         return packetInfo.serializer().read(buffer);
+    }
+
+    /**
+     * Counts a packet against the inbound limits ({@code docs/DESIGN-PROD.md} {@code API-PROD-012}).
+     *
+     * @return true to handle it; false if it is dropped before any listener sees it, or if the
+     * connection was kicked for it
+     */
+    private boolean admitted(ClientPacket packet) {
+        return switch (inboundLimiter.admit(packet, System.nanoTime())) {
+            case ACCEPT -> true;
+            case DROP -> false;
+            case KICK -> {
+                kickOverInboundLimit();
+                yield false;
+            }
+        };
     }
 
     /** One line per connection, next to the disconnect it explains ({@code docs/ENGINE.md} §8). */

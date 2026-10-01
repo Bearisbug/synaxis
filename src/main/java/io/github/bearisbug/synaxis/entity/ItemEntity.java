@@ -103,7 +103,7 @@ public class ItemEntity extends Entity {
                         EntityItemMergeEvent entityItemMergeEvent = new EntityItemMergeEvent(this, itemEntity, result);
                         callCancellableEvent(entityItemMergeEvent, () -> {
                             setItemStack(entityItemMergeEvent.getResult());
-                            itemEntity.remove();
+                            itemEntity.removeConsumed();
                         });
                         // This entity survives the merge, the absorbed one stays claimed for good
                         releaseClaim();
@@ -181,6 +181,18 @@ public class ItemEntity extends Entity {
     @ApiStatus.Internal
     public void releaseClaim() {
         this.claimed.set(false);
+    }
+
+    /**
+     * Removes this item for whoever consumed it under {@link #claim()}, at once on a thread that owns it.
+     * A pickup or a merge may run on the tick thread of a neighbouring grid cell: the removal then goes to
+     * this item's own scheduler and runs on the thread that owns it, at its next tick
+     * ({@code docs/DESIGN-PROD.md} {@code API-PROD-016}). The claim keeps every other picker and merger off
+     * it until then.
+     */
+    void removeConsumed() {
+        if (acquirable().isOwned()) remove();
+        else scheduleNextTick(Entity::remove);
     }
 
     /**

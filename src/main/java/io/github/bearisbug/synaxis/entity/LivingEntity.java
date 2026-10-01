@@ -239,7 +239,7 @@ public class LivingEntity extends Entity implements EquipmentHandler {
                         callCancellableEvent(pickupItemEvent, () -> {
                             final ItemStack item = itemEntity.getItemStack();
                             sendPacketToViewersAndSelf(new CollectItemPacket(itemEntity.getEntityId(), getEntityId(), item.amount()));
-                            itemEntity.remove();
+                            itemEntity.removeConsumed();
                         });
                         if (pickupItemEvent.isCancelled()) itemEntity.releaseClaim();
                     });

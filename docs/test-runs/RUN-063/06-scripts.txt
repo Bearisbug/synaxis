@@ -1,0 +1,392 @@
+# The scripts of RUN-063 as run (all under <L> = mktemp -d under $TMPDIR, run063.XXXXXX, deleted at the end). job.zsh is the one job,
+# started with nohup in the background; it takes the heavy-work lock with mkdir and sets the EXIT trap that releases it at the top level
+# of the script (not in a function), builds, bakes, sets up the two databases, runs the shared gate window and the two tiers, writes the
+# analysis, waits for the go-cleanup flag (set after the evidence was copied out of <L>), cleans up, and exits, which releases the lock.
+# env.sh sets JAVA_HOME to Homebrew openjdk@25 and unsets JAVA_OPTS JAVA_TOOL_OPTIONS LOADTEST_OPTS _JAVA_OPTIONS JDK_JAVA_OPTIONS
+# SERVER_APP_OPTS; gradle.sh sets the proxy JAVA_TOOL_OPTIONS for Gradle only. pgpass holds the password of synaxis-pg read from
+# docker inspect (never printed). Before the run, the lock and EXIT trap part of job.zsh was tried on a lock path under <L>: the
+# directory stayed after a function returned and was removed when the script exited.
+
+=== <L>/env.sh
+# JDK 25 for the start scripts; no JVM option variable for the servers, bots, sampler and baker
+export JAVA_HOME=/opt/homebrew/opt/openjdk@25/libexec/openjdk.jdk/Contents/Home
+export PATH=$JAVA_HOME/bin:$PATH
+unset JAVA_OPTS JAVA_TOOL_OPTIONS LOADTEST_OPTS _JAVA_OPTIONS JDK_JAVA_OPTIONS SERVER_APP_OPTS
+export L=<L>
+export R=/Users/bug/Documents/Projects/Minecraft/synaxis-wt/run-063
+export B=synth-09b42ebb5dc6-p776
+
+=== <L>/gradle.sh
+#!/bin/zsh
+# usage: gradle.sh <label> <gradle args...>: Gradle in the worktree with the proxy only for Gradle, output to $L/gradle-<label>.log
+source ${0:A:h}/env.sh
+label=$1; shift
+cd $R
+export JAVA_TOOL_OPTIONS="-Dhttps.proxyHost=127.0.0.1 -Dhttps.proxyPort=7897 -Dhttp.proxyHost=127.0.0.1 -Dhttp.proxyPort=7897 -Dhttp.nonProxyHosts=maven.aliyun.com|*.aliyun.com"
+start=$(date +%s)
+echo "# $label start $(date '+%F %T') ./gradlew --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts --max-workers=4 $*" > $L/gradle-$label.log
+./gradlew --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts --max-workers=4 "$@" >> $L/gradle-$label.log 2>&1
+rc=$?
+echo "# $label exit $rc after $(( $(date +%s) - start )) s" >> $L/gradle-$label.log
+exit $rc
+
+=== <L>/gate.sh
+#!/bin/zsh
+# usage: gate.sh <label> <min free %> [own pids...]
+# One reading of the start gate (docs/TEST.md TC-WORLD-081 precondition with the 35% of TC-WORLD-082/083):
+# memory_pressure free % >= min; every java process from pgrep -fl java other than the round's own averages <= 5% CPU over 30 s
+# (ps -o %cpu= -p <pid>, 3 samples 15 s apart); /tmp/synaxis-heavy.lock held by this round; df -m /System/Volumes/Data >= 5,120 MB;
+# both shared containers up. vm.swapusage, load1 and the top 5 processes are recorded only.
+source ${0:A:h}/env.sh
+label=$1; minfree=$2; shift 2; own=" $* "
+now=$(date '+%Y-%m-%d %H:%M:%S')
+freepct=$(memory_pressure | sed -nE 's/System-wide memory free percentage: ([0-9]+)%/\1/p')
+swap=$(sysctl -n vm.swapusage | sed -E 's/total = ([0-9.]+)M +used = ([0-9.]+)M +free = ([0-9.]+)M.*/total=\1MB used=\2MB free=\3MB/')
+load=$(sysctl -n vm.loadavg | awk '{print $2}')
+disk=$(df -m /System/Volumes/Data | awk 'NR==2{print $4}')
+ctr=$(docker ps --format '{{.Names}}' | /usr/bin/grep -cE '^synaxis-(pg|valkey)$')
+lockok=no
+/usr/bin/grep -q '^owner=Synaxis光照/run063 pid=39601 ' /tmp/synaxis-heavy.lock/owner 2>/dev/null && lockok=yes
+toprss=$(ps -axo rss=,comm= | sort -n -r | head -5 | awk '{n=$2; sub(".*/","",n); printf "%s=%dMB ", n, $1/1024}')
+topcpu=$(ps -Ao pcpu=,comm= -r | head -5 | awk '{n=$2; sub(".*/","",n); printf "%s=%s%% ", n, $1}')
+# java processes listed by pgrep -fl java (the executable is java), the round's own left out
+cands=()
+for p in $(pgrep -f java); do
+  case "$own" in *" $p "*) continue;; esac
+  comm=$(ps -o comm= -p $p 2>/dev/null) || continue
+  case "${comm:t}" in java) cands+=$p;; esac
+done
+typeset -A c1 c2 c3
+for p in $cands; do c1[$p]=$(ps -o %cpu= -p $p 2>/dev/null | tr -d ' '); done
+(( ${#cands} > 0 )) && sleep 15
+for p in $cands; do c2[$p]=$(ps -o %cpu= -p $p 2>/dev/null | tr -d ' '); done
+(( ${#cands} > 0 )) && sleep 15
+for p in $cands; do c3[$p]=$(ps -o %cpu= -p $p 2>/dev/null | tr -d ' '); done
+javaok=yes; jdetail=""
+for p in $cands; do
+  a=${c1[$p]:-0}; b=${c2[$p]:-0}; c=${c3[$p]:-0}
+  mean=$(echo "$a $b $c" | awk '{printf "%.2f", ($1+$2+$3)/3}')
+  ok=$(echo "$mean" | awk '{print ($1 <= 5.0) ? "yes" : "no"}')
+  [ $ok = yes ] || javaok=no
+  cwd=$(lsof -a -d cwd -p $p -Fn 2>/dev/null | /usr/bin/grep ^n | cut -c2-)
+  args=$(ps -o args= -p $p 2>/dev/null | sed -E 's/ -(cp|classpath) [^ ]+//' | cut -c1-160)
+  jdetail="$jdetail
+    java pid=$p cwd=$cwd cpu%=[$a $b $c] mean=$mean (<= 5) ok=$ok args: $args"
+done
+met=yes
+(( freepct >= minfree )) || met=no
+[ $javaok = yes ] || met=no
+[ $lockok = yes ] || met=no
+(( disk >= 5120 )) || met=no
+(( ctr == 2 )) || met=no
+echo "$now [$label] mem_free=${freepct}% (>= ${minfree}%) swap: $swap load1=$load disk_free=${disk}MB (>= 5120) containers=$ctr lock_held=$lockok other_java=${#cands} java_cpu_ok=$javaok top5_rss: $toprss top5_cpu: $topcpu met=$met$jdetail"
+[ $met = yes ]
+
+=== <L>/monitor.sh
+#!/bin/zsh
+# usage: monitor.sh <out> <every s>: time, memory free %, swap free, load1, top 5 by RSS and by CPU, until killed
+out=$1; every=$2
+while true; do
+  now=$(date '+%H:%M:%S')
+  freepct=$(memory_pressure | sed -nE 's/System-wide memory free percentage: ([0-9]+)%/\1/p')
+  swapfree=$(sysctl -n vm.swapusage | sed -E 's/.*free = ([0-9.]+)M.*/\1/')
+  load=$(sysctl -n vm.loadavg | awk '{print $2}')
+  top=$(ps -axo rss=,comm= | sort -n -r | head -5 | awk '{n=$2; sub(".*/","",n); printf "%s=%dMB ", n, $1/1024}')
+  cpu=$(ps -Ao pcpu=,comm= -r | head -5 | awk '{n=$2; sub(".*/","",n); printf "%s=%s%% ", n, $1}')
+  echo "$now mem_free=${freepct}% swap_free=${swapfree}MB load1=$load rss_top5: $top cpu_top5: $cpu" >> $out
+  sleep $every
+done
+
+=== <L>/setup_tier.sh
+#!/bin/zsh
+# usage: setup_tier.sh <tier> <shards.json path>: map root <L>/roots/<tier> (shards.json + link to the release), database run063_<tier>
+# migrated to V1..V6 with bin/server-app --migrate-only --auth-mode=offline, <L>/<tier>.env (password and HMAC key never printed)
+set -e
+source ${0:A:h}/env.sh
+tier=$1; dir=$2
+root=$L/roots/$tier; mkdir -p $root; cp $dir $root/shards.json
+[ -e $root/$B ] || ln -s $L/maps/synth/$B $root/$B
+docker exec synaxis-pg psql -U postgres -qc "CREATE DATABASE run063_$tier"
+umask 077
+{
+  echo "export SYNAXIS_STATE_DB_URL=jdbc:postgresql://127.0.0.1:5440/run063_$tier"
+  echo "export SYNAXIS_STATE_DB_USER=postgres"
+  echo "export SYNAXIS_STATE_DB_PASSWORD=\"\$(cat $L/pgpass)\""
+  echo "export SYNAXIS_REDIS_URL=redis://127.0.0.1:6440"
+  echo "export SYNAXIS_TRANSFER_HMAC_KEYS=1:$(openssl rand -base64 32)"
+} > $L/$tier.env
+source $L/$tier.env
+mkdir -p $L/$tier; cd $L/$tier
+rc=0; $R/server-app/build/install/server-app/bin/server-app --migrate-only --auth-mode=offline > migrate.log 2>&1 || rc=$?; echo "migrate exit=$rc" >> migrate.log
+docker exec synaxis-pg psql -U postgres -d run063_$tier -tAc "select version, success from flyway_schema_history order by installed_rank" | tr '\n' ' ' >> migrate.log
+echo >> migrate.log
+
+=== <L>/shards-t082.json
+{
+  "format_version": 1,
+  "map_id": "synth",
+  "regions": [
+    {"region_id": "r0", "bounds": {"min_x": 0, "min_z": 0, "max_x": 255, "max_z": 255}, "gates": []}
+  ],
+  "channels": [
+    {"shard_id": "r0-c1", "region_id": "r0", "channel": 1, "host": "127.0.0.1", "port": 25621, "capacity": 500}
+  ]
+}
+
+=== <L>/shards-t083.json
+{
+  "format_version": 1,
+  "map_id": "synth",
+  "regions": [
+    {"region_id": "town", "bounds": {"min_x": 0, "min_z": 0, "max_x": 239, "max_z": 239}, "gates": []}
+  ],
+  "channels": [
+    {"shard_id": "town-c1", "region_id": "town", "channel": 1, "host": "127.0.0.1", "port": 25621, "capacity": 500}
+  ]
+}
+
+=== <L>/run_m3e.sh
+#!/bin/zsh
+# usage: run_m3e.sh <tier> <shard_id> <port> <metrics port> <bots> <profile> <duration s>
+# The shard runs with the defaults of bin/server-shard (no JAVA_OPTS); SERVER_APP_OPTS goes to the shard's process only;
+# the sampler and the bots run with the defaults of the loadtest start script (no JVM option variable set).
+source ${0:A:h}/env.sh
+tier=$1; id=$2; port=$3; mport=$4; bots=$5; profile=$6; dur=$7
+source $L/$tier.env
+LT=$R/loadtest/build/install/loadtest/bin/loadtest
+D=$L/$tier; mkdir -p $D; cd $D
+log=$D/run.txt
+echo "# $tier start $(date '+%F %T') shard=$id profile=$profile bots=$bots duration=${dur}s load $(sysctl -n vm.loadavg) $(sysctl vm.swapusage)" >> $log
+${0:A:h}/monitor.sh $D/monitor.txt 30 &
+mon=$!
+SOPTS="-Dsynaxis.app.port=$port -Dsynaxis.app.auth=offline -Dsynaxis.app.metrics.bind=127.0.0.1:$mport -Dsynaxis.connection-gate.trusted-networks=127.0.0.0/8 -Dsynaxis.app.log=stdout -Dsynaxis.map.root=$L/roots/$tier -Dsynaxis.map.build=$B -Dsynaxis.app.store=postgres -Dsynaxis.app.shard-id=$id"
+echo "# server env: JAVA_OPTS unset SERVER_APP_OPTS=$SOPTS SYNAXIS_STATE_DB_URL=$SYNAXIS_STATE_DB_URL SYNAXIS_REDIS_URL=$SYNAXIS_REDIS_URL SYNAXIS_TRANSFER_HMAC_KEYS=<one random 32-byte key, key_id 1>; sampler and bots: no JVM option variable set" >> $log
+SERVER_APP_OPTS="$SOPTS" $R/server-app/build/install/server-app/bin/server-shard > $D/shard.log 2>&1 &
+spid=$!
+echo "$spid" > $D/pids.txt; echo "$mon" >> $D/pids.txt
+echo "# server pid $spid monitor pid $mon" >> $log
+for i in {1..240}; do /usr/bin/grep -q "listening on 0.0.0.0:$port" $D/shard.log && break; kill -0 $spid 2>/dev/null || break; sleep 0.5; done
+if ! /usr/bin/grep -q "listening on 0.0.0.0:$port" $D/shard.log; then
+  echo "# no listening line $(date '+%F %T')" >> $log
+  kill -TERM $spid 2>/dev/null; kill $mon 2>/dev/null; exit 1
+fi
+echo "# server listening $(date '+%F %T')" >> $log
+jcmd $spid VM.command_line > $D/jvm-server.txt 2>&1
+( while kill -0 $spid 2>/dev/null; do echo "$(date '+%H:%M:%S') $(docker exec synaxis-pg psql -U postgres -d run063_$tier -tAc "select shard_id||' online='||online||' capacity='||capacity||' accepting='||accepting||' age_s='||round(extract(epoch from now()-updated_at)::numeric,2) from shard_heartbeat order by 1" | tr '\n' ' ')" >> $D/heartbeat.txt; sleep 30; done ) &
+hb=$!
+echo "$hb" >> $D/pids.txt
+$LT sample --pid $spid --duration $((dur + 20))s --metrics http://127.0.0.1:$mport/metrics --out server.json > $D/sample.log 2>&1 &
+smp=$!
+echo "$smp" >> $D/pids.txt
+sleep 5
+jcmd $smp VM.command_line > $D/jvm-sampler.txt 2>&1
+$LT run --host 127.0.0.1 --port $port --bots $bots --profile $profile --encryption off --duration ${dur}s --out bots-0.json > $D/bots.log 2>&1 &
+bpid=$!
+echo "$bpid" >> $D/pids.txt
+echo "# sampler pid $smp bots pid $bpid heartbeat loop pid $hb; bots started $(date '+%F %T')" >> $log
+sleep 5
+jcmd $bpid VM.command_line > $D/jvm-bots.txt 2>&1
+wait $bpid; echo "# run exit $? $(date '+%F %T')" >> $log
+wait $smp; echo "# sample exit $? $(date '+%F %T')" >> $log
+curl -s --noproxy '*' http://127.0.0.1:$mport/metrics > $D/metrics-end.txt
+kill -TERM $spid
+for i in {1..120}; do kill -0 $spid 2>/dev/null || break; sleep 0.5; done
+if kill -0 $spid 2>/dev/null; then echo "# server still alive 60 s after SIGTERM, SIGKILL" >> $log; kill -KILL $spid; fi
+echo "# server stopped $(date '+%F %T')" >> $log
+kill $hb 2>/dev/null
+$LT merge bots-0.json server.json --out summary.json > $D/merge.log 2>&1
+echo "# merge exit $?" >> $log
+kill $mon 2>/dev/null
+echo "# $tier end $(date '+%F %T') load $(sysctl -n vm.loadavg) $(sysctl vm.swapusage)" >> $log
+
+=== <L>/analyze_m3e.sh
+#!/bin/zsh
+# usage: analyze_m3e.sh <tier>: JVM command lines, shard log, ledger, heartbeat, summary figures with the five readings of
+# DESIGN-M3 §15 (formal tier), the readings for the inbound and outbound limits, and the machine during the tier
+source ${0:A:h}/env.sh
+tier=$1; D=$L/$tier; S=summary.json; cd $D
+echo "## run.txt"
+cat run.txt | sed "s|$L|<L>|g"
+echo "## shards.json (<L>/roots/$tier/shards.json, next to a symbolic link to <L>/maps/synth/$B)"
+cat $L/roots/$tier/shards.json
+echo "## migration: $(cat migrate.log | /usr/bin/grep -E '^migrate exit|\|t' | tr '\n' ' ')"
+echo "## JVM command lines (jcmd <pid> VM.command_line)"
+for f in jvm-server.txt jvm-sampler.txt jvm-bots.txt; do echo "### $f"; /usr/bin/grep -E '^[0-9]+:|^jvm_args|^java_command' $f | sed "s|$L|<L>|g" | cut -c1-900; done
+echo "## shard log"
+/usr/bin/grep -E "Effective ServerConfig|Effective store|verified in|Map mounted|Map mode|listening on|Stopping|Overlay final flush|Relight drain" shard.log | cut -c1-320 | sed "s|$L|<L>|g"
+echo "spawn in the Map mounted line: $(/usr/bin/grep 'Map mounted' shard.log | /usr/bin/grep -oE 'spawn=Pos\[x=[^,]*, y=[^,]*, z=[^,]*' | head -1)"
+echo "Effective ServerConfig fields: $(/usr/bin/grep -o 'maxPlayers=[^,]*\|acceptTransfers=[^,]*\|dispatcherThreads=[^,]*\|threadProvider=[^,]*\|threadGridExponent=[^,]*\|chunkViewDistance=[^,]*\|packetLimitMaxPackets=[^,]*\|packetLimitWindow=[^,]*\|packetLimitAction=[^,]*\|maxOutboundBacklogBytes=[^,]*\|maxVisibleEntitiesPerPlayer=[^,]*' shard.log | sort -u | tr '\n' ' ')"
+echo "WARN/ERROR lines: $(/usr/bin/grep -c 'WARN\|ERROR' shard.log)"
+/usr/bin/grep 'WARN\|ERROR' shard.log | cut -c1-300 | sed "s|$L|<L>|g" | sort | uniq -c | sort -rn | head -10
+echo "log lines with kick or disconnect other than the config line: $(/usr/bin/grep -i 'kick\|disconnect' shard.log | /usr/bin/grep -vc 'Effective ServerConfig')"
+/usr/bin/grep -i 'kick\|disconnect' shard.log | /usr/bin/grep -v 'Effective ServerConfig' | cut -c1-300 | head -5
+echo "## ledger (logs/events-*.jsonl)"
+echo "events by type: $(cat logs/events-*.jsonl | jq -r .event | sort | uniq -c | awk '{printf "%s %s, ", $2, $1}')"
+cat logs/events-*.jsonl | jq -c 'select(.event=="shard_started")'
+echo "chunk_stream_stats over its $(cat logs/events-*.jsonl | jq -s '[.[]|select(.event=="chunk_stream_stats")]|length') records: $(cat logs/events-*.jsonl | jq -s -c '[.[] | select(.event=="chunk_stream_stats")] | {overlay_sent_max: (map(.overlay_sent)|max), handle_sent_sum: (map(.handle_sent)|add), failed_max: (map(.failed)|max), evict_failed_max: (map(.evict_failed)|max), write_phase_ms_max: (map(.write_phase_ms_max)|max), section_cache_bytes_max: (map(.section_cache_bytes)|max)}')"
+echo "## heartbeat (psql every 30 s)"
+echo "readings $(wc -l < heartbeat.txt | tr -d ' '), largest age_s $(/usr/bin/grep -o 'age_s=[0-9.]*' heartbeat.txt | sed 's/age_s=//' | sort -n | tail -1)"
+cat heartbeat.txt
+echo "## $S"
+echo "merge verdict: $(jq -c .verdict $S)"
+echo "bots: $(jq -c .bots $S) kicks_by_reason: $(jq -c .kicks_by_reason $S) login_latency_ms: $(jq -c .login_latency_ms $S)"
+echo "### the five readings of DESIGN-M3 §15 (tick budget, formal tier)"
+echo "1 tick P99 / 2 ticks over 50 ms: count $(jq .ticks.count $S) overall $(jq -c .ticks.overall $S)"
+echo "3 ticks.acquire_ms (summary.json): $(jq -c .ticks.acquire_ms $S)"
+echo "  ticks.acquire_ms (server.json): $(jq -c .ticks.acquire_ms server.json)"
+echo "4 dispatcher_busy_ratio: $(jq -c .dispatcher_busy_ratio $S)"
+echo "5 per player egress: server bytes_out_per_s / $(jq .bots.requested $S) = $(jq '(.traffic.bytes_out_per_s / .bots.requested * 10 | round) / 10' $S) B/s; bots receive inbound.bytes_per_s_per_bot $(jq .inbound.bytes_per_s_per_bot $S) B/s"
+echo "ticks per minute (P99 ms / over 50 ms): $(jq -r '.ticks.per_minute | to_entries[] | "\(.key):\(.value.p99_ms)/\(.value.over_50ms)"' $S | tr '\n' ' ')"
+echo "gc: $(jq -c .gc $S)"
+echo "heap: $(jq -c .heap $S)"
+echo "traffic: $(jq -c .traffic $S)"
+echo "inbound.chunks: $(jq -c .inbound.chunks $S)"
+jq -r '.inbound.chunks | to_entries[] | "\(.key): steady KB/s per bot (1,000 B) \((.value.steady_wire_bytes / .value.steady_connection_seconds / 1000 * 1000 | round) / 1000); B per chunk \((.value.steady_wire_bytes / .value.steady_packets * 10 | round) / 10); per_bot_packets min \(.value.per_bot_packets.min)"' $S
+echo "transfers: $(jq -c .transfers $S)"
+echo "## readings for the inbound packet limit and the outbound limits"
+echo "c2s: $(jq -c '.c2s | {packets, packets_per_s_per_bot, per_bot_per_1s, per_bot_per_7s}' $S)"
+echo "visible_entities: $(jq -c .visible_entities $S)"
+echo "metrics-end.txt: $(/usr/bin/grep -E '^synaxis_(outbound_backlog_kicks_total|ledger_dropped_total|watchdog_warnings_total|players_online)' metrics-end.txt | tr '\n' ';') gate rejections: $(/usr/bin/grep -E '^synaxis_gate_rejections_total' metrics-end.txt | sed 's/synaxis_gate_rejections_total//' | tr '\n' ' ')"
+echo "## load"
+echo "summary load1 $(jq -c .load1 $S); harness $(jq -c '[.harness[]? | {cpu_seconds, cpu_percent_mean}]' $S)"
+echo "monitor ($(wc -l < monitor.txt | tr -d ' ') readings every 30 s): memory free $(awk '{print $2}' monitor.txt | sed 's/mem_free=//;s/%//' | sort -n | sed -n '1p;$p' | tr '\n' '~' | sed 's/~$//')%, swap free $(awk '{print $3}' monitor.txt | sed 's/swap_free=//;s/MB//' | sort -n | sed -n '1p;$p' | tr '\n' '~' | sed 's/~$//') MB, load1 $(awk '{print $4}' monitor.txt | sed 's/load1=//' | sort -n | sed -n '1p;$p' | tr '\n' '~' | sed 's/~$//')"
+
+=== <L>/job.zsh
+#!/bin/zsh
+# RUN-063 job: heavy-work lock (taken once, released by the EXIT trap at the top level of this script after the cleanup),
+# build, bake, the two databases, one shared 90 min gate window for TC-WORLD-082 then TC-WORLD-083, the analysis, then (after
+# the go-cleanup flag or 60 min) the cleanup. Output: stdout, redirected by the launcher.
+source ${0:A:h}/env.sh
+LOCK=/tmp/synaxis-heavy.lock
+G=$L/gates.txt
+say() { echo "$(date '+%F %T') $*"; }
+
+say "job start, pid $$; waiting for the lock $LOCK"
+while ! mkdir $LOCK 2>/dev/null; do
+  owner=$(cat $LOCK/owner 2>/dev/null)
+  opid=$(echo "$owner" | sed -nE 's/.* pid=([0-9]+).*/\1/p')
+  say "lock held by another session: owner file [$owner]"
+  if [ -n "$opid" ] && ! kill -0 $opid 2>/dev/null; then
+    say "the owner pid $opid is gone: stale lock, owner recorded above, removing it"
+    rm -rf $LOCK
+    continue
+  fi
+  sleep 60
+done
+trap 'if /usr/bin/grep -q "^owner=Synaxis光照/run063 pid=39601 " /tmp/synaxis-heavy.lock/owner 2>/dev/null; then rm -rf /tmp/synaxis-heavy.lock; echo "$(date "+%F %T") lock released by the EXIT trap; /tmp/synaxis-heavy.lock exists afterwards: $([ -e /tmp/synaxis-heavy.lock ] && echo yes || echo no)"; else echo "$(date "+%F %T") EXIT trap: the lock is not this round'"'"'s, left alone"; fi' EXIT
+trap 'exit 143' TERM
+trap 'exit 130' INT
+since=$(date '+%Y-%m-%dT%H:%M:%S%z')
+echo "owner=Synaxis光照/run063 pid=39601 since=$since task=RUN-063: TC-WORLD-082/083 500-bot tiers" > $LOCK/owner
+say "lock taken (mkdir succeeded)"
+sleep 1
+if [ -d $LOCK ] && [ "$(cat $LOCK/owner)" = "owner=Synaxis光照/run063 pid=39601 since=$since task=RUN-063: TC-WORLD-082/083 500-bot tiers" ] && [ $(wc -l < $LOCK/owner) -eq 1 ]; then
+  say "lock self-check ok: the directory is there and owner is this round's one line: $(cat $LOCK/owner)"
+else
+  say "lock self-check FAILED: $(ls -ld $LOCK 2>&1) owner [$(cat $LOCK/owner 2>&1)]"; exit 1
+fi
+
+# baselines for the cleanup
+ls -1 $TMPDIR > $L/tmpdir-before.txt
+ls -1 /tmp > $L/slash-tmp-before.txt
+ls -1 "$HOME/Library/Application Support/kotlin/daemon" > $L/kotlin-daemon-before.txt 2>/dev/null
+say "baseline: df -m /System/Volumes/Data available $(df -m /System/Volumes/Data | awk 'NR==2{print $4}') MB; databases: $(docker exec synaxis-pg psql -U postgres -tAc 'select datname from pg_database order by 1' | tr '\n' ' ')"
+
+# build
+say "build: installDist of server-app, loadtest, baker"
+$L/gradle.sh install :server-app:installDist :loadtest:installDist :baker:installDist || { say "build failed, see $L/gradle-install.log"; tail -30 $L/gradle-install.log; exit 1; }
+say "build done: $(/usr/bin/grep -E 'BUILD|actionable|exit' $L/gradle-install.log | tr '\n' ' ')"
+
+# bake the 4k test map
+say "bake start"
+cd $L
+/usr/bin/time -l $R/baker/build/install/baker/bin/baker bake --map-id synth --source generator:synthetic:7 --out $L/maps --logs $L/bakelogs --threads 4 > $L/bake.log 2>&1
+rc=$?
+say "bake exit $rc"
+[ $rc -eq 0 ] || { tail -30 $L/bake.log; exit 1; }
+[ -d $L/maps/synth/$B ] || { say "no release $L/maps/synth/$B"; ls -la $L/maps/synth; exit 1; }
+
+# the password of synaxis-pg (never printed) and the two tiers' databases
+umask 077
+docker inspect synaxis-pg --format '{{range .Config.Env}}{{println .}}{{end}}' | sed -n 's/^POSTGRES_PASSWORD=//p' > $L/pgpass
+umask 022
+[ -s $L/pgpass ] || { say "no password read from docker inspect"; exit 1; }
+for t in t082 t083; do
+  $L/setup_tier.sh $t $L/shards-$t.json || { say "setup $t failed"; cat $L/$t/migrate.log 2>/dev/null | tail -20; exit 1; }
+  say "setup $t: $(cat $L/$t/migrate.log | /usr/bin/grep -E '^migrate exit|\|t' | tr '\n' ' ')"
+done
+
+# one shared gate window: a reading, then every 5 min until met or until the next reading would be past 90 min
+wstart=$(date +%s); deadline=$((wstart + 90 * 60))
+echo "# window $(date -r $wstart '+%F %T') to $(date -r $deadline '+%F %T'); gate: memory free >= 35%, every other java process <= 5% CPU averaged over 30 s, lock held by this round, data disk >= 5,120 MB, both shared containers" >> $G
+wait_gate() { # label
+  local t0
+  while true; do
+    t0=$(date +%s)
+    $L/gate.sh "$1" 35 >> $G && return 0
+    (( t0 + 300 > deadline )) && { echo "# $1: gate not met by the end of the window $(date '+%F %T'), blocked" >> $G; return 1; }
+    sleep $(( t0 + 300 - $(date +%s) ))
+  done
+}
+ran082=no; ran083=no
+if wait_gate "082 start"; then
+  say "082 start"
+  $L/run_m3e.sh t082 r0-c1 25621 19621 500 walk 600
+  echo "# t082 runner exit $? $(date '+%F %T')" >> $G
+  ran082=yes
+  say "082 done; left processes of 082: $(for p in $(cat $L/t082/pids.txt); do kill -0 $p 2>/dev/null && echo -n "$p "; done)"
+  if wait_gate "083 start (after 082)"; then
+    say "083 start"
+    $L/run_m3e.sh t083 town-c1 25621 19621 500 town 600
+    echo "# t083 runner exit $? $(date '+%F %T')" >> $G
+    ran083=yes
+    say "083 done; left processes of 083: $(for p in $(cat $L/t083/pids.txt); do kill -0 $p 2>/dev/null && echo -n "$p "; done)"
+  fi
+fi
+echo "# window done $(date '+%F %T') ran082=$ran082 ran083=$ran083" >> $G
+say "gate window done: ran082=$ran082 ran083=$ran083"
+
+# analysis
+mkdir -p $L/evidence
+[ $ran082 = yes ] && $L/analyze_m3e.sh t082 > $L/evidence/082.txt 2>&1
+[ $ran083 = yes ] && $L/analyze_m3e.sh t083 > $L/evidence/083.txt 2>&1
+say "analysis written; waiting for $L/go-cleanup (at most 60 min)"
+touch $L/analysis.done
+w=0
+while [ ! -e $L/go-cleanup ] && (( w < 3600 )); do sleep 10; w=$((w + 10)); done
+say "cleanup start (go flag: $([ -e $L/go-cleanup ] && echo yes || echo 'no, 60 min passed'))"
+
+# cleanup: processes, ports, databases, new temp entries, <L>; the lock goes last (EXIT trap)
+for t in t082 t083; do
+  [ -f $L/$t/pids.txt ] || continue
+  for p in $(cat $L/$t/pids.txt); do
+    if kill -0 $p 2>/dev/null; then say "$t pid $p still alive: $(ps -o comm= -p $p), SIGTERM"; kill -TERM $p; sleep 2; kill -0 $p 2>/dev/null && kill -KILL $p; fi
+  done
+  say "$t pids $(cat $L/$t/pids.txt | tr '\n' ' '): alive now: $(for p in $(cat $L/$t/pids.txt); do kill -0 $p 2>/dev/null && echo -n "$p "; done)"
+done
+say "processes whose command line names <L>: $(pgrep -f "$L" | tr '\n' ' ')"
+say "listeners on 25621 and 19621: $(lsof -nP -iTCP:25621 -iTCP:19621 -sTCP:LISTEN 2>/dev/null | tail -n +2 | wc -l | tr -d ' ')"
+for t in t082 t083; do docker exec synaxis-pg psql -U postgres -qc "DROP DATABASE IF EXISTS run063_$t"; done
+say "databases after the drop: $(docker exec synaxis-pg psql -U postgres -tAc 'select datname from pg_database order by 1' | tr '\n' ' ')"
+ls -1 $TMPDIR > $L/tmpdir-after.txt
+ls -1 /tmp > $L/slash-tmp-after.txt
+ls -1 "$HOME/Library/Application Support/kotlin/daemon" > $L/kotlin-daemon-after.txt 2>/dev/null
+newtmp=$(comm -13 <(sort $L/tmpdir-before.txt) <(sort $L/tmpdir-after.txt))
+say "new entries in \$TMPDIR since the round started: $(echo $newtmp | tr '\n' ' ')"
+for e in ${(f)newtmp}; do say "  $e: $(stat -f '%SB %N' -t '%F %T' $TMPDIR/$e)"; done
+say "new entries in /tmp: $(comm -13 <(sort $L/slash-tmp-before.txt) <(sort $L/slash-tmp-after.txt) | tr '\n' ' ')"
+say "new entries in kotlin/daemon: $(comm -13 <(sort $L/kotlin-daemon-before.txt) <(sort $L/kotlin-daemon-after.txt) | tr '\n' ' ')"
+for e in ${(f)newtmp}; do
+  case "$e" in
+    kotlin-daemon.*.log|synaxis-loadtest-*.jfr|junit-*)
+      if /usr/bin/grep -qs "synaxis-wt/run-063\|run063" $TMPDIR/$e 2>/dev/null || [[ $e == synaxis-loadtest-*.jfr ]]; then say "  deleting $e (this round's)"; rm -rf $TMPDIR/$e; else say "  leaving $e (does not name this round)"; fi;;
+  esac
+done
+before=$(df -m /System/Volumes/Data | awk 'NR==2{print $4}')
+say "df -m available before deleting <L>: $before MB; <L> size $(du -sm $L | cut -f1) MB"
+cd /
+rm -rf $L
+after=$(df -m /System/Volumes/Data | awk 'NR==2{print $4}')
+say "df -m available after deleting <L>: $after MB (difference $((after - before)) MB); <L> exists: $([ -e $L ] && echo yes || echo no)"
+say "job end"
+exit 0

@@ -1,0 +1,28 @@
+# Start gate of TC-WORLD-082 and TC-WORLD-083 (docs/TEST.md TC-WORLD-081 precondition, which 082 and 083 take with the 35% threshold;
+# docs/DESIGN-M3.md §15 'the machine premise and registration', same-machine tier): memory_pressure 'System-wide memory free percentage'
+# >= 35%; every java process listed by pgrep -fl java other than this round's own averages <= 5% CPU over 30 s (ps -o %cpu= -p <pid>,
+# 3 samples 15 s apart; an idle daemon passes); /tmp/synaxis-heavy.lock held by this round; df -m /System/Volumes/Data available
+# >= 5,120 MB; both shared containers up (docker ps); vm.swapusage recorded only. Rechecked every 5 minutes; 082 and 083 share one
+# 90 min window (from the first reading, 12:11:20 to 13:41:20); each tier is read once right before it starts. Script: gate.sh in
+# 06-scripts.txt. Every reading below found no java process other than this round's (other_java=0), so there were no %cpu samples
+# to take. top5_rss and top5_cpu are the five processes using the most memory and CPU at the reading.
+#
+# Heavy-work lock (job.zsh, the lock part at the top level of the script, the EXIT trap at the top level too):
+#   12:10:38 mkdir /tmp/synaxis-heavy.lock succeeded at the first try (no other session held it; no wait, no stale lock removed)
+#   owner (one line): owner=Synaxis光照/run063 pid=39601 since=2026-10-02T12:10:38+0800 task=RUN-063: TC-WORLD-082/083 500-bot tiers
+#   12:10:39 self-check: the directory is there and owner is this round's one line
+#   held through the build, the bake, the two databases, the window, both tiers and the cleanup (00-index.txt);
+#   12:39:17 released by the EXIT trap after the cleanup; /tmp/synaxis-heavy.lock does not exist afterwards (checked by the trap and
+#   again with ls right after the job ended)
+#
+# The readings (gates.txt of the round):
+# window 2026-10-02 12:11:20 to 2026-10-02 13:41:20; gate: memory free >= 35%, every other java process <= 5% CPU averaged over 30 s, lock held by this round, data disk >= 5,120 MB, both shared containers
+2026-10-02 12:11:21 [082 start] mem_free=34% (>= 35%) swap: total=17408.00MB used=15967.81MB free=1440.19MB load1=4.99 disk_free=85894MB (>= 5120) containers=2 lock_held=yes other_java=0 java_cpu_ok=yes top5_rss: com.apple.Virtualization.VirtualMachine=710MB claude=375MB Microsoft=309MB claude=283MB claude=235MB  top5_cpu: coreduetd=74.1% com.apple.Virtualization.VirtualMachine=25.4% WindowServer=22.9% com.docker.backend=18.1% Microsoft=11.2%  met=no
+2026-10-02 12:16:20 [082 start] mem_free=35% (>= 35%) swap: total=16384.00MB used=15380.75MB free=1003.25MB load1=4.87 disk_free=86896MB (>= 5120) containers=2 lock_held=yes other_java=0 java_cpu_ok=yes top5_rss: com.apple.Virtualization.VirtualMachine=568MB claude=508MB Microsoft=403MB claude=366MB qemu-system-aarch64-headless=346MB  top5_cpu: claude=17.0% WindowServer=12.3% claude=10.1% Microsoft=9.5% qemu-system-aarch64-headless=8.5%  met=yes
+# t082 runner exit 0 2026-10-02 12:26:48
+2026-10-02 12:26:48 [083 start (after 082)] mem_free=38% (>= 35%) swap: total=17408.00MB used=16377.56MB free=1030.44MB load1=5.41 disk_free=86045MB (>= 5120) containers=2 lock_held=yes other_java=0 java_cpu_ok=yes top5_rss: com.apple.Virtualization.VirtualMachine=693MB Microsoft=416MB Codex=339MB claude=269MB Microsoft=246MB  top5_cpu: WeChat=20.1% WindowServer=8.9% qemu-system-aarch64-headless=8.7% Microsoft=8.5% coreaudiod=8.2%  met=yes
+# t083 runner exit 0 2026-10-02 12:37:14
+# window done 2026-10-02 12:37:14 ran082=yes ran083=yes
+#
+# Result: 082 started after the second reading (12:16:20, 35%); 083 started right after 082 (12:26:48, 38%). The first reading
+# (12:11:21) missed by one point of memory free (34%), so the round waited one 5-minute recheck. No tier was blocked.

@@ -1,0 +1,27 @@
+# Build and bake for the two tiers (inside the lock, before the gate window; no Gradle of this round ran during a tier)
+# <L> = mktemp -d under $TMPDIR (run063.XXXXXX); deleted at the end of the round
+./gradlew --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts --max-workers=4 :server-app:installDist :loadtest:installDist :baker:installDist
+  (JAVA_HOME Homebrew openjdk@25; JAVA_TOOL_OPTIONS = the proxy settings of the task, for this Gradle run only)
+  BUILD SUCCESSFUL in 6s 47 actionable tasks: 24 executed, 23 from cache; install exit 0 after 7 s; code at 928ebec453 (main)
+baker/build/install/baker/bin/baker bake --map-id synth --source generator:synthetic:7 --out <L>/maps --logs <L>/bakelogs --threads 4
+  (under /usr/bin/time -l; no JVM option variable set)
+  exit 0; baker: published <L>/maps/synth/synth-09b42ebb5dc6-p776, 213319659 bytes; 1 far view pack(s), 596465 bytes, assembled in 844 ms
+  content_hash 09b42ebb5dc678b265f1c7b3f7e4d5ae7b475b6b7aca9180e14b0981e191e273 (the same as TC-WORLD-023, RUN-041, RUN-057 and RUN-060)
+  bake.wall_ms 27038, bake.cpu_ms 98995, threads 4, jdk 25.0.4.1; verify samples 256, diffs 0
+  /usr/bin/time -l: 28.21 s real, 94.67 s user, 6.21 s sys, maximum resident set size 2066956288 B
+The two tiers mount the same release through <L>/roots/<tier>/ (their shards.json next to a symbolic link to the release directory).
+
+Databases (setup_tier.sh): CREATE DATABASE run063_t082 and run063_t083 in synaxis-pg; bin/server-app --migrate-only --auth-mode=offline
+(the start script's defaults, no JAVA_OPTS) with SYNAXIS_STATE_DB_URL / _USER / _PASSWORD pointing at the new database:
+  t082: migrate exit=0, flyway_schema_history 1|t 2|t 3|t 4|t 5|t 6|t (versions 1 to 6, all success)
+  t083: migrate exit=0, flyway_schema_history 1|t 2|t 3|t 4|t 5|t 6|t (versions 1 to 6, all success)
+The password of synaxis-pg was read from docker inspect into <L>/pgpass (umask 077) and never printed; each tier's env file holds one
+random 32-byte HMAC key (key_id 1), never printed.
+
+Job log of the build, bake and setup:
+2026-10-02 12:10:39 build: installDist of server-app, loadtest, baker
+2026-10-02 12:10:48 build done: BUILD SUCCESSFUL in 6s 47 actionable tasks: 24 executed, 23 from cache # install exit 0 after 7 s 
+2026-10-02 12:10:48 bake start
+2026-10-02 12:11:16 bake exit 0
+2026-10-02 12:11:19 setup t082: migrate exit=0 1|t 2|t 3|t 4|t 5|t 6|t  
+2026-10-02 12:11:20 setup t083: migrate exit=0 1|t 2|t 3|t 4|t 5|t 6|t  

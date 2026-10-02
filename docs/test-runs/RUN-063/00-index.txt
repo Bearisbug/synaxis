@@ -1,0 +1,53 @@
+# RUN-063 evidence: TC-WORLD-082 (500 bots spread, 600 s) and TC-WORLD-083 (500 bots in one cell, 600 s) rerun as written now that
+# :loadtest sample writes ticks.acquire_ms (audit P3-3, in main since c46578d24f); RUN-057 lacked that reading and RUN-060 was blocked
+# at the start gate. 2026-10-02 12:10:38~12:39:17 (the lock span).
+# Code: branch m3/run-063 at 928ebec453, the head of main (this round changes documents only). git fetch before the registration:
+# origin/main is 928ebec453 and registers up to RUN-066 (RUN-063 left out for this session by agreement; no RUN-067 there yet).
+#
+# 01-gates.txt          the heavy-work lock (taken at the first try, owner line, self-check, release) and the three start gate readings
+# 02-build-and-bake.txt installDist of server-app, loadtest and baker; the 4k test map baked into <L> (content_hash as RUN-057); the two
+#                       databases migrated to V1..V6
+# 03-082.txt            TC-WORLD-082: the five readings and the comparison with RUN-057 first, then run.txt, shards.json, the jcmd command
+#                       lines of the shard, sampler and bots, shard log, ledger, 21 heartbeat readings, summary.json figures, limits readings
+# 04-083.txt            TC-WORLD-083: the same, with the Map mounted line spawn=Pos[x=1912.5, y=77.0, z=1912.5]
+# 05-load-during.txt    the machine every 30 s while each tier ran (memory free, swap free, load1, top 5 by memory and by CPU)
+# 06-scripts.txt        the scripts of the round: the job with the lock, gate, monitor, setup, tier runner, analysis
+# Not kept (deleted with <L>): summary.json, bots-0.json, server.json, shard logs, ledgers, heartbeat and monitor output, the map; the
+# lines in 03 to 05 are copied out of them. <L> is a mktemp -d directory under $TMPDIR.
+#
+# Machine: Apple M4 Pro, 12 cores, 24 GiB, macOS, Homebrew JDK 25.0.4.1; server, bots, PostgreSQL 16 and Valkey 8 (the shared containers
+# synaxis-pg and synaxis-valkey in the Docker VM) on this one machine over loopback (the same-machine tier of DESIGN-M3 §15).
+#
+# JVM: the shard ran with the defaults of bin/server-shard (-XX:+UseG1GC -Xms4G -Xmx4G -XX:+AlwaysPreTouch -XX:MaxGCPauseMillis=50
+#   -XX:+HeapDumpOnOutOfMemoryError -XX:+ExitOnOutOfMemoryError; JAVA_OPTS unset, the -D keys in SERVER_APP_OPTS); the sampler and the
+#   bots with the loadtest start script's -Xmx2G (JAVA_OPTS, LOADTEST_OPTS and the other option variables unset). jcmd VM.command_line of
+#   all three processes of each tier is in 03 and 04.
+# Deviation from the case text and from RUN-057: TC-WORLD-082/083 take the precondition of TC-WORLD-081, whose last clause is "其余按两
+#   进程夹具"; that fixture gives the shard JAVA_OPTS="-Xms512m -Xmx512m", which RUN-057 used. This round followed the session's
+#   instruction to run the shard with the bin/server-shard defaults (4 GiB heap, the premise of the 35% gate in DESIGN-M3 §15, as in
+#   TC-WORLD-099) and not to override them. The five readings do not depend on the heap being there, but the tick figures, GC and RSS
+#   are not like for like with RUN-057; 03 and 04 say so where they compare. dispatcher-threads was not set, as in RUN-057 (shard host
+#   default: 10 tick threads on 12 cores).
+#
+# Results (docs/TEST.md RUN-063):
+#   TC-WORLD-082  pass (recorded): tick P99 18.223 ms, 12 ticks over 50 ms, ticks.acquire_ms present (12,416 values, all 0.0 at the
+#                 0.001 ms step), dispatcher_busy_ratio 0.002~0.067 and scheduler 0.085, egress per player 50,766.1 B/s
+#   TC-WORLD-083  pass (recorded): spawn x, z 1,912.5; tick P99 45.826 ms, 75 ticks over 50 ms, ticks.acquire_ms present (12,410 values,
+#                 all 0.0), Syn-Tick-8 0.199 and the other nine 0.0, scheduler 0.205, egress per player 57,199.2 B/s
+#   Both: 500/500 logged in, 0 lost, no kick; merge exit 2 with only ticks_over_50ms red (recorded only on the same machine).
+#
+# Cleanup at the end of the round (job.zsh, inside the lock, 12:39:16~12:39:17):
+#   processes: the shard, sampler, bots, monitor and heartbeat loop of both tiers (pids 19607 19606 19787 19789 19912 and 49450 49449
+#     49512 49514 49544) were all gone already (each runner stopped its shard with SIGTERM and waited; none needed SIGKILL); pgrep -f <L>
+#     found one pid, 54465, gone right after (pgrep -fl run063 after the job found nothing, so most likely a subshell of job.zsh
+#     itself); no listener on 25621 or 19621.
+#   databases: run063_t082 and run063_t083 dropped; left: lcv_verify, postgres, template0, template1, w3a_bd96776464534f04 (as before).
+#   <L> (map, roots, work dirs, ledgers, scripts, pgpass, the two env files) deleted: df -m /System/Volumes/Data available 86,615 ->
+#     86,821 MB (+206 MB; <L> was 206 MB by du).
+#   $TMPDIR: no entry created during the round besides <L> (listing diff: none; no junit-* directory, no kotlin-daemon log, no
+#     synaxis-loadtest-*.jfr left by the sampler); ~/Library/Application Support/kotlin/daemon: nothing new; /tmp: three new entries
+#     (5910-ba80-5dbf-b1b1 owned by root, dy_probe.png, m3g-review) that are other sessions' and were left alone.
+#   lock: released by the EXIT trap at 12:39:17 after the cleanup; the directory is gone.
+# Before the lock (12:06): gate.sh was tried twice outside the window to check its output; the second try started a 32 MiB java process
+#   (Thread.sleep from a one-line S.java under <L>/t) to exercise the java branch and stopped it with pkill on its command line, not by
+#   pid; <L>/t and a lock-trap trial under <L> were deleted before the job started.

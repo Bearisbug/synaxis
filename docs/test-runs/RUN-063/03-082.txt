@@ -1,0 +1,129 @@
+# TC-WORLD-082: directory mode, 500 bots walk 600 s spread (r0 0,0,255,255, r0-c1 capacity 500), same-machine tier
+# Started 12:16:20 after the gate reading of 01-gates.txt; the shard ran with the defaults of bin/server-shard (G1, -Xms4G -Xmx4G,
+# +AlwaysPreTouch, MaxGCPauseMillis=50; JAVA_OPTS unset), the sampler and the bots with the loadtest start script's -Xmx2G (no JVM option
+# variable set); the three command lines are read back with jcmd below.
+#
+# The five readings of docs/DESIGN-M3.md §15 (tick budget, formal tier), from summary.json (merge of bots-0.json and server.json):
+#   1 tick P99                         18.223 ms (12,416 ticks)
+#   2 ticks over 50 ms                 12 (longest 110.751 ms)
+#   3 ticks.acquire_ms                 count 12,416, mean / p50 / p99 / max all 0.0 ms, over_50ms 0 (the same in server.json): every
+#                                      tick's acquisition wait rounds to 0 at the sampler's 0.001 ms step, so each is below 0.0005 ms
+#   4 dispatcher_busy_ratio            Syn-Tick-0..9: 0.006 0.057 0.035 0.007 0.003 0.007 0.004 0.002 0.067 0.045 (0.002 to 0.067);
+#                                      Syn-TickScheduler 0.085
+#   5 egress per player                server bytes_out_per_s 25,383,042.1 / 500 = 50,766.1 B/s (the bots receive 49,834.9 B/s each)
+# The case's expected result is that the product gives these five; they are all there, so TC-WORLD-082 passes (recorded). On the same
+# machine tick figures and RSS are recorded only (DESIGN-M3 §15): merge exits 2 because ticks_over_50ms (12 <= 0) is red; tick_p99_ms
+# (18.223 < 50) and the rest are green. 500 of 500 logged in, 0 lost, kicks_by_reason empty.
+#
+# Against RUN-057 (docs/test-runs/RUN-057/07-082.txt; same map, same shards.json, code 5c7874ed5c; shard heap 512 MiB from the
+# two-process fixture's JAVA_OPTS, load1 4.4 to 52.4 during the tier):
+#   tick P99 57.183 -> 18.223 ms; ticks over 50 ms 163 (longest 732.8) -> 12 (longest 110.8); ticks.acquire_ms null -> the reading above;
+#   dispatcher_busy_ratio of the tick threads 0.002~0.090 -> 0.002~0.067, scheduler 0.140 -> 0.085; egress per player 50,743 -> 50,766.1 B/s.
+#   Also: ticks 12,377 -> 12,416; GC pauses 183 (longest 309.6 ms, 19 over 50 ms) -> 50 (longest 66.4 ms, 7 over 50 ms); RSS max
+#   572.8 -> 1,174.5 MiB; load1 during the tier (sampler) 4.4~52.4 -> 4.8~13.1. Two things changed at once (the heap 512 MiB -> 4 GiB and
+#   the other sessions' load), so the drop in slow ticks is not put down to either one.
+#
+# Kept: the lines below, copied out of the files of <L>/t082 (deleted with <L>): run.txt, the shard log, the ledger, heartbeat.txt,
+# jvm-*.txt, summary.json, server.json, metrics-end.txt, monitor.txt (the machine during the tier is in 05-load-during.txt).
+
+## run.txt
+# t082 start 2026-10-02 12:16:21 shard=r0-c1 profile=walk bots=500 duration=600s load { 4.87 4.57 5.50 } vm.swapusage: total = 16384.00M  used = 15380.75M  free = 1003.25M  (encrypted)
+# server env: JAVA_OPTS unset SERVER_APP_OPTS=-Dsynaxis.app.port=25621 -Dsynaxis.app.auth=offline -Dsynaxis.app.metrics.bind=127.0.0.1:19621 -Dsynaxis.connection-gate.trusted-networks=127.0.0.0/8 -Dsynaxis.app.log=stdout -Dsynaxis.map.root=<L>/roots/t082 -Dsynaxis.map.build=synth-09b42ebb5dc6-p776 -Dsynaxis.app.store=postgres -Dsynaxis.app.shard-id=r0-c1 SYNAXIS_STATE_DB_URL=jdbc:postgresql://127.0.0.1:5440/run063_t082 SYNAXIS_REDIS_URL=redis://127.0.0.1:6440 SYNAXIS_TRANSFER_HMAC_KEYS=<one random 32-byte key, key_id 1>; sampler and bots: no JVM option variable set
+# server pid 19607 monitor pid 19606
+# server listening 2026-10-02 12:16:25
+# sampler pid 19789 bots pid 19912 heartbeat loop pid 19787; bots started 2026-10-02 12:16:31
+# run exit 0 2026-10-02 12:26:30
+# sample exit 0 2026-10-02 12:26:48
+# server stopped 2026-10-02 12:26:48
+# merge exit 2
+# t082 end 2026-10-02 12:26:48 load { 5.41 7.40 6.86 } vm.swapusage: total = 17408.00M  used = 16377.56M  free = 1030.44M  (encrypted)
+## shards.json (<L>/roots/t082/shards.json, next to a symbolic link to <L>/maps/synth/synth-09b42ebb5dc6-p776)
+{
+  "format_version": 1,
+  "map_id": "synth",
+  "regions": [
+    {"region_id": "r0", "bounds": {"min_x": 0, "min_z": 0, "max_x": 255, "max_z": 255}, "gates": []}
+  ],
+  "channels": [
+    {"shard_id": "r0-c1", "region_id": "r0", "channel": 1, "host": "127.0.0.1", "port": 25621, "capacity": 500}
+  ]
+}
+## migration: migrate exit=0 1|t 2|t 3|t 4|t 5|t 6|t  
+## JVM command lines (jcmd <pid> VM.command_line)
+### jvm-server.txt
+19607:
+jvm_args: -XX:+UseG1GC -Xms4G -Xmx4G -XX:+AlwaysPreTouch -XX:MaxGCPauseMillis=50 -XX:+HeapDumpOnOutOfMemoryError -XX:+ExitOnOutOfMemoryError -Dsynaxis.app.port=25621 -Dsynaxis.app.auth=offline -Dsynaxis.app.metrics.bind=127.0.0.1:19621 -Dsynaxis.connection-gate.trusted-networks=127.0.0.0/8 -Dsynaxis.app.log=stdout -Dsynaxis.map.root=<L>/roots/t082 -Dsynaxis.map.build=synth-09b42ebb5dc6-p776 -Dsynaxis.app.store=postgres -Dsynaxis.app.shard-id=r0-c1 
+java_command: io.github.bearisbug.synaxis.app.ShardMain
+### jvm-sampler.txt
+19789:
+jvm_args: -Xmx2G 
+java_command: io.github.bearisbug.synaxis.loadtest.LoadTest sample --pid 19607 --duration 620s --metrics http://127.0.0.1:19621/metrics --out server.json
+### jvm-bots.txt
+19912:
+jvm_args: -Xmx2G 
+java_command: io.github.bearisbug.synaxis.loadtest.LoadTest run --host 127.0.0.1 --port 25621 --bots 500 --profile walk --encryption off --duration 600s --out bots-0.json
+## shard log
+12:16:24.362 [main] INFO  i.github.bearisbug.synaxis.app.Main - Effective ServerConfig[shutdownOnSignal=true, maxTickCatchUp=5, chunkViewDistance=12, entityViewDistance=8, entitySynchronizationTicks=20, dispatcherThreads=10, threadProvider=GRID, threadGridExponent=4, sendLightAfterBlockPlacementDelay=100, loginTimeout=
+12:16:24.814 [main] INFO  i.g.b.synaxis.app.shard.ShardWorld - Map release synth-09b42ebb5dc6-p776 verified in 433 ms: bounds=Bounds[minX=0, minZ=0, maxX=255, maxZ=255] world=World[minY=0, height=256]
+12:16:25.160 [main] INFO  i.github.bearisbug.synaxis.app.Main - Effective store: mode=postgres auth_mode=offline StoreSettings[jdbcUrl=jdbc:postgresql://127.0.0.1:5440/run063_t082, user=postgres, password=<set>, redis=<set>]
+12:16:25.216 [main] INFO  i.g.b.s.app.metrics.HostMetrics - Metrics endpoint listening on http://127.0.0.1:19621/metrics
+12:16:25.254 [main] INFO  i.g.b.synaxis.app.shard.ShardWorld - Map mounted: build_id=synth-09b42ebb5dc6-p776 simulation_distance=4 chunk_unload_grace_ticks=100 spawn=Pos[x=2040.5, y=74.0, z=2040.5, yaw=0.0, pitch=0.0] overlay=overlay/synth-09b42ebb5dc6-p776
+12:16:25.256 [main] INFO  i.github.bearisbug.synaxis.app.Main - Map mode (synaxis.app.core-mode=on): the host serves the map instance, no plugin is loaded, spawn=Pos[x=2040.5, y=74.0, z=2040.5, yaw=0.0, pitch=0.0]
+12:16:25.258 [main] INFO  i.github.bearisbug.synaxis.app.Main - synaxis server-app listening on 0.0.0.0:25621
+12:26:48.149 [Thread-3] INFO  i.g.b.synaxis.ServerProcessImpl - Stopping synaxis server.
+12:26:48.150 [Thread-3] INFO  i.g.b.synaxis.synx.SynxRelight - Relight drain: 0 ms, left=0
+12:26:48.155 [Syn-TickScheduler] INFO  i.g.b.synaxis.synx.OverlayStore - Overlay final flush: chunks=0 bytes=0 fsync_ms=0 left=0 by=tick
+spawn in the Map mounted line: spawn=Pos[x=2040.5, y=74.0, z=2040.5
+Effective ServerConfig fields: acceptTransfers=true chunkViewDistance=12 dispatcherThreads=10 maxOutboundBacklogBytes=4194304 maxPlayers=500 maxVisibleEntitiesPerPlayer=100 packetLimitAction=KICK packetLimitMaxPackets=750 packetLimitWindow=7000 threadGridExponent=4 threadProvider=GRID 
+WARN/ERROR lines: 0
+log lines with kick or disconnect other than the config line: 0
+## ledger (logs/events-*.jsonl)
+events by type: chunk_stream_stats 10, session_entered_configuration 500, shard_started 1, shutdown_saved 1, 
+{"ts":"2026-10-02T04:16:25.258279Z","event":"shard_started","build_id":"synth-09b42ebb5dc6-p776","verify_ms":433,"regions":64,"bytes_mapped":213319659,"overlay_records":0,"flags_replayed":0,"flags_ms":3,"region_id":"r0","capacity":500,"farview_tiles":0}
+chunk_stream_stats over its 10 records: {"overlay_sent_max":0,"handle_sent_sum":3017900,"failed_max":0,"evict_failed_max":0,"write_phase_ms_max":1.554042,"section_cache_bytes_max":12884160}
+## heartbeat (psql every 30 s)
+readings 21, largest age_s 4.20
+12:16:25 r0-c1 online=0 capacity=500 accepting=true age_s=0.70 
+12:16:55 r0-c1 online=478 capacity=500 accepting=true age_s=0.88 
+12:17:26 r0-c1 online=500 capacity=500 accepting=true age_s=1.08 
+12:17:56 r0-c1 online=500 capacity=500 accepting=true age_s=1.26 
+12:18:26 r0-c1 online=500 capacity=500 accepting=true age_s=1.43 
+12:18:56 r0-c1 online=500 capacity=500 accepting=true age_s=1.57 
+12:19:26 r0-c1 online=500 capacity=500 accepting=true age_s=1.75 
+12:19:57 r0-c1 online=500 capacity=500 accepting=true age_s=1.93 
+12:20:27 r0-c1 online=500 capacity=500 accepting=true age_s=2.11 
+12:20:57 r0-c1 online=500 capacity=500 accepting=true age_s=2.27 
+12:21:27 r0-c1 online=500 capacity=500 accepting=true age_s=2.41 
+12:21:57 r0-c1 online=500 capacity=500 accepting=true age_s=2.59 
+12:22:27 r0-c1 online=500 capacity=500 accepting=true age_s=2.79 
+12:22:58 r0-c1 online=500 capacity=500 accepting=true age_s=2.96 
+12:23:28 r0-c1 online=500 capacity=500 accepting=true age_s=3.13 
+12:23:58 r0-c1 online=500 capacity=500 accepting=true age_s=3.31 
+12:24:28 r0-c1 online=500 capacity=500 accepting=true age_s=3.49 
+12:24:58 r0-c1 online=500 capacity=500 accepting=true age_s=3.67 
+12:25:28 r0-c1 online=500 capacity=500 accepting=true age_s=3.85 
+12:25:59 r0-c1 online=500 capacity=500 accepting=true age_s=4.01 
+12:26:29 r0-c1 online=500 capacity=500 accepting=true age_s=4.20 
+## summary.json
+merge verdict: {"bots":{"pass":true,"detail":"500 of 500 logged in, 0 lost"},"chunks_per_bot_min":{"pass":true,"detail":"5694 > 9"},"tick_p99_ms":{"pass":true,"detail":"18.223 < 50.0"},"ticks_over_50ms":{"pass":false,"detail":"12 <= 0"},"rss_mib_max":{"pass":true,"detail":"1174.453 < 4096.0"},"pass":false}
+bots: {"requested":500,"logged_in":500,"lost":0,"login_failures":{}} kicks_by_reason: {} login_latency_ms: {"off":{"count":500,"mean_ms":27.679,"p50_ms":27.5,"p99_ms":31.5,"max_ms":54.6,"over_50ms":1}}
+### the five readings of DESIGN-M3 §15 (tick budget, formal tier)
+1 tick P99 / 2 ticks over 50 ms: count 12416 overall {"count":12416,"mean_ms":4.262,"p50_ms":2.699,"p99_ms":18.223,"max_ms":110.751,"over_50ms":12}
+3 ticks.acquire_ms (summary.json): {"count":12416,"mean_ms":0.0,"p50_ms":0.0,"p99_ms":0.0,"max_ms":0.0,"over_50ms":0}
+  ticks.acquire_ms (server.json): {"count":12416,"mean_ms":0.0,"p50_ms":0.0,"p99_ms":0.0,"max_ms":0.0,"over_50ms":0}
+4 dispatcher_busy_ratio: {"Syn-Tick-0":0.006,"Syn-Tick-1":0.057,"Syn-Tick-2":0.035,"Syn-Tick-3":0.007,"Syn-Tick-4":0.003,"Syn-Tick-5":0.007,"Syn-Tick-6":0.004,"Syn-Tick-7":0.002,"Syn-Tick-8":0.067,"Syn-Tick-9":0.045,"Syn-TickScheduler":0.085}
+5 per player egress: server bytes_out_per_s / 500 = 50766.1 B/s; bots receive inbound.bytes_per_s_per_bot 49834.928 B/s
+ticks per minute (P99 ms / over 50 ms): 0:18.091/0 1:13.251/1 2:16.875/0 3:20.263/1 4:20.512/2 5:17.846/1 6:19.067/2 7:14.84/1 8:15.164/2 9:18.479/1 10:13.574/1 
+gc: {"count":50,"mean_ms":34.131,"p50_ms":34.161,"p99_ms":66.388,"max_ms":66.388,"over_50ms":7}
+heap: {"rss_mib_max":1174.453,"heap_used_mib_max":1012.091}
+traffic: {"packets_in_per_s":20236.751,"packets_out_per_s":910731.527,"bytes_in_per_s":302649.666,"bytes_out_per_s":25383042.142}
+inbound.chunks: {"walk":{"packets":3039233,"wire_bytes":4494880326,"connection_seconds":293228.414,"kb_per_s_per_bot":14.97,"packets_per_s_per_bot":10.365,"steady_packets":2431372,"steady_wire_bytes":3600963230,"steady_connection_seconds":263228.414,"steady_kb_per_s_per_bot":13.359,"steady_packets_per_s_per_bot":9.237,"per_bot_packets":{"count":500,"mean":6078.466,"p50":6078.0,"p99":6358.0,"max":6438.0,"min":5694.0}}}
+walk: steady KB/s per bot (1,000 B) 13.68; B per chunk 1481; per_bot_packets min 5694.0
+transfers: {"count":0,"completed":0,"failed_by_reason":{},"transfer_ms":{"count":0}}
+## readings for the inbound packet limit and the outbound limits
+c2s: {"packets":12546892,"packets_per_s_per_bot":42.789,"per_bot_per_1s":{"count":292950,"mean":42.764,"p50":40.0,"p99":60.0,"max":60.0},"per_bot_per_7s":{"count":289950,"mean":298.733,"p50":295.0,"p99":359.0,"max":420.0}}
+visible_entities: {"count":293450,"mean":89.359,"p50":100.0,"p99":100.0,"max":100.0}
+metrics-end.txt: synaxis_ledger_dropped_total 0.0;synaxis_outbound_backlog_kicks_total 0.0;synaxis_players_online 0.0;synaxis_watchdog_warnings_total 0.0; gate rejections: {reason="closed_at_accept"} 0.0 {reason="full"} 0.0 {reason="handshake_timeout"} 0.0 {reason="throttled"} 0.0 {reason="too_many"} 0.0 
+## load
+summary load1 {"min":4.835,"max":13.123}; harness [{"cpu_seconds":801.227,"cpu_percent_mean":133.753}]
+monitor (21 readings every 30 s): memory free 31~36%, swap free 525.06~1259.44 MB, load1 4.87~11.38

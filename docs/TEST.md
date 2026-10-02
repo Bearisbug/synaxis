@@ -7006,7 +7006,7 @@ for (var request : System.getenv("MGMT_CALLS").split("\n")) {
 
 对应 `REQ-PROD-033`（G30，`API-PROD-023`）与 `REQ-PROD-038`（G35，`API-PROD-020` 压缩一条），§19 三条场景，§24 配置键门禁。实现：
 
-- `server-app` 新类 `ConfigFile`：键表 `KEYS`（6C 时 105 个，M3-C 加 8 个后 113 个，M3-D 加 2 个后 115 个）、`apply`（命令行没给的键设成系统属性，被拒时一个都不设）、`read`（按 UTF-8 读 `java.util.Properties`，同一键写两次即拒）、`nearest`（编辑距离最近的已知键）。`Main` 的第一个静态字段 `CONFIG_FILE` 在类初始化时读文件，排在 `LOGGER` 之前；`Main#main` 第一件事是报被拒的文件；`ShardMain#main` 先调 `Main.configFile()` 再写分片默认值。
+- `server-app` 新类 `ConfigFile`：键表 `KEYS`（6C 时 105 个，M3-C 加 8 个后 113 个，M3-D 加 2 个后 115 个，M3-G 加 1 个后 116 个）、`apply`（命令行没给的键设成系统属性，被拒时一个都不设）、`read`（按 UTF-8 读 `java.util.Properties`，同一键写两次即拒）、`nearest`（编辑距离最近的已知键）。`Main` 的第一个静态字段 `CONFIG_FILE` 在类初始化时读文件，排在 `LOGGER` 之前；`Main#main` 第一件事是报被拒的文件；`ShardMain#main` 先调 `Main.configFile()` 再写分片默认值。
 - 引擎：`ServerConfig` 加 `compressionThreshold`（`synaxis.compression-threshold`，默认 256，负数拒绝），`ServerProcessImpl` 以它作阈值初值；`JvmFlags` 加 `COMPRESSION_LEVEL`（`synaxis.compression-level`，默认 6，取 0～9），`NetworkBufferImpl` 的 `Deflater` 池按它建。
 - 门禁：`:architecture-tests` 的 `ConfigKeyGateTest`，一条测试。
 - 测试：`:server-app` 的 `ConfigFileTest`（11 条，写进一张属性表而不是 JVM 属性）与 `ConfigFileLaunchTest`（2 条，各自另起 JVM）；引擎的 `CompressionSocketTest`（3 条，真 socket）与 `ServerConfigTest`（加 1 条、改 2 条，共 7 条）。
@@ -8532,7 +8532,7 @@ for (var request : System.getenv("MGMT_CALLS").split("\n")) {
 | --- | --- | --- |
 | 1 | 跑 `io.github.bearisbug.synaxis.app.ClientDrivenLogArchitectureTest` | 2 个 0 失败：通配地址的 WARN 写在 `Main`（豁免名单里，每进程一行），握手上限的 WARN 经 `LogBudget`，`management/` 与 `metrics/` 没有直接的 WARN / ERROR 行 |
 | 2 | 默认模式与严格 grid 各跑一次 `:server-app:test` 全量 | 两次都 `BUILD SUCCESSFUL`（本组的用时见 `docs/test-runs/RUN-062/ops/40-full-default.txt`、`41-full-grid.txt`）；`:server-app:test` 113 个类 577 个，0 失败 0 跳过（带数据库变量；M3-G 加 `ShardWorldFarViewTest` 9、`FarViewShardFixtureTest` 9、`FarViewLaunchTest` 4，`ShardSettingsTest` 6 → 8；在此之前 553 个，M3 v0.31 加 `ShardGatesOnlineTest` 1 个；在此之前 552 个，其中本节 3 个新类 6 个，同轮合入的另三组与集成轮的见 `TC-PROD-505` 第 3 步）。默认那一次是 `:server-app:check :server-app:test --rerun :architecture-tests:test --rerun`，另过了 Error Prone 与测试命名门禁，`:architecture-tests` 7 个类 20 个 0 失败 |
-| 3 | 本组改了行号或所引代码的旧用例按新写法重跑：`TC-PROD-383` 第 2 步、`TC-PROD-395` 第 2 步、`TC-PROD-521` 第 4 步、`TC-PROD-528` 第 2 步、`TC-PROD-533` 第 3 步（后三步要数据库前置）；`TC-PROD-498` 第 3 步、`TC-PROD-573` 第 3 步与 `TC-PROD-521` 第 3 步的 `grep -n`；`TC-PROD-533` 第 2 步的 `sed -n 748,750p` | 反证五步与各自写的相同：`13 tests completed, 1 failed`（`:525`）；`(ManagementServer.java:277)`；`3 tests completed, 2 failed`（`:91`、`:113`）；`3 tests completed, 1 failed`（`:132`）；`3 tests completed, 1 failed`（`:113`）；每次还原后复绿。`grep` 三步分别得 `:322`、`:324`、`:326`、`:329`、`:330`、`:335` 等 9 行，`518`，`264`；`sed` 得 `TC-PROD-533` 第 2 步写的那三行 |
+| 3 | 本组改了行号或所引代码的旧用例按新写法重跑：`TC-PROD-383` 第 2 步、`TC-PROD-395` 第 2 步、`TC-PROD-521` 第 4 步、`TC-PROD-528` 第 2 步、`TC-PROD-533` 第 3 步（后三步要数据库前置）；`TC-PROD-498` 第 3 步、`TC-PROD-573` 第 3 步与 `TC-PROD-521` 第 3 步的 `grep -n`；`TC-PROD-533` 第 2 步的 `sed -n 748,750p`（本步的行号都按 `d32d1a8096` 取，现行写法见各用例） | 反证五步与各自写的相同：`13 tests completed, 1 failed`（`:525`）；`(ManagementServer.java:277)`；`3 tests completed, 2 failed`（`:91`、`:113`）；`3 tests completed, 1 failed`（`:132`）；`3 tests completed, 1 failed`（`:113`）；每次还原后复绿。`grep` 三步分别得 `:322`、`:324`、`:326`、`:329`、`:330`、`:335` 等 9 行，`518`，`264`；`sed` 得 `TC-PROD-533` 第 2 步写的那三行 |
 
 后置：`git status --short` 无输出。
 

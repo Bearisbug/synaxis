@@ -12,7 +12,8 @@ Counts are summed from the JUnit XML of each module after each run.
 
 First attempt, 06:46:25 (aborted): the lock helper set its EXIT trap inside a zsh function, so the lock was released as soon as the
 function returned, at 06:46:25, and the script went on to start Gradle without holding it. The wrapper and the Gradle JVM were
-stopped by pid about 20 s later (06:46:45), before any test task ran; no other session held or took the lock in between (the lock
+stopped by pid about 20 s later (06:46:45). Test tasks had already started: FarViewBakeTest (:baker:test) began its @BeforeAll bake and logged
+map_build_started at 06:46:40; the two @TempDir directories it left (created 06:46:32 and 06:46:40) were deleted afterwards; no other session held or took the lock in between (the lock
 directory was absent when checked). The trap was moved to the top level of the job scripts, a lock self test confirmed the lock is
 held after the helper returns, and the gates below ran under the lock from the start. The aborted output:
 2026-10-02 06:46:25 lock taken: owner=Synaxis光照/m3g-run064-gates pid=39601 since=2026-10-02T06:46:25+0800 task=RUN-064: check and two strict modes (test --rerun) and client-fabric check on the merge of origin/main

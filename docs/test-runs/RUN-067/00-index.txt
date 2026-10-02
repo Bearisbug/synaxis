@@ -1,0 +1,49 @@
+RUN-067  2026-10-02  Sync with DESIGN-M3 v0.32 after the M3-G merge (DESIGN-PROD v0.9.45): server-app without the database
+=====================================================================================================================
+variables, the config and translation key gates as written, the Main.java line numbers on the merged code
+
+Round number: git fetch before the round, origin/main was 494605595a with RUN-066 the highest; RUN-063 belongs to the light
+session's rerun of TC-WORLD-082/083. A second fetch after the runs found origin/main at 928ebec453, one commit that only
+changes docs/DESIGN-M2.md and docs/DESIGN-M3.md (no code, no RUN), so the numbering stands.
+
+Code under test: branch prod/m3g-sync = main 494605595a (the M3-G merge 24d3b318a9 plus docs). While the runs went on, the
+work tree also had the uncommitted edits of docs/DESIGN-PROD.md, docs/ENGINE.md, docs/TEST.md and this directory; no test
+reads docs/. JDK 25 (openjdk@25), Gradle with --max-workers=4 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts,
+no SYNAXIS_TEST_* variable in the environment (no database run this round). Every counter-proof was restored with
+git checkout -- <file>; git status after each batch lists only the docs.
+
+Heavy lock /tmp/synaxis-heavy.lock (owner 生产就绪会话/m3g-sync): 11:50:31 to 11:59:52 for 01 and 02, 12:01:03 to 12:02:18
+for 04; taken at the top level of each script, released by its EXIT trap; nobody else held it when the scripts started.
+
+00-index.txt   this file
+01-server-app-no-database.txt
+               TC-PROD-575 step 3, the two full runs: ./gradlew :server-app:test --rerun --continue, default mode and strict grid
+               (-Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true -Dsynaxis.thread-provider=grid), without the
+               database variables. Both: 113 classes, 577 tests, 0 failures, 132 skipped (the 28 classes that skip are listed;
+               the same 132 as RUN-062 gate/03 before M3-G, the four M3-G classes do not use the database); management.* 15
+               classes 45 tests 2 skipped; ShardWorldFarViewTest + FarViewShardFixtureTest + ShardSettingsTest 26 tests (9, 9
+               and 8 by their sources), FarViewLaunchTest 4; no result file mentions AcquirableOwnershipException.
+02-gates.txt   The gate steps as written (with --rerun so a test task never comes from the cache):
+               TC-PROD-430 steps 1-4: 60 keys / 15 identifiers; dry-run lists :architecture-tests:test and :check;
+                 the probe key: 2 tests completed, 1 failed, red at TranslationKeyGateTest.java:91 (was :90), 61 keys.
+               TC-PROD-441 steps 1-5: 116 keys read, 116 in ConfigFile.KEYS, 21 meter names; the three counter-proofs
+                 red at ConfigKeyGateTest.java:74 with 116/115, 116/117 and 116/116 and the messages of the case.
+               TC-PROD-547 step 1: 3 tests, 0 failures, both gate lines.
+               TC-PROD-569 step 4: root 19 classes 67 tests, server-app metrics 5 / 10, loadtest Sample* 2 / 6, the config key
+                 gate 1 / 1 (27 classes 84 tests, 0 failures, 0 skipped); :architecture-tests:test in full 7 classes 20 tests.
+03-main-lines.txt
+               TC-PROD-533 step 2 (sed -n 756,758p, no lock); the greps of TC-PROD-521 step 3, TC-PROD-573 step 3 and
+               TC-PROD-498 step 3; every Main.java line number this round changes, old line -> new line and the text at HEAD;
+               the grep of TC-PROD-432 step 1 with farview in the pattern (0 and 0); TranslationKeyGateTest.java 89-92;
+               the two addAfterPlayers lines of ShardWorld.java (:302-303 -> :437-438, docs/DESIGN-PROD.md API-PROD-007).
+04-translation-gate-counter-proofs.txt
+               The TC-PROD counter-proofs of the translation key gate whose red line moved with the synaxis:farview entry
+               of NOT_TEXT, as written: 068 step 2, 105 step 2, 162 step 2, 210 steps 2 and 3, 233 step 2, 250 step 2,
+               295 step 4, 396 step 2, 431 step 1, 432 steps 2 and 3, 433 step 2, 547 step 2; then the gate green again.
+               Red lines :91 (one key gone), :90 and :101 (432 step 2, a NOT_TEXT line gone), :92 (432 step 3, one added),
+               the fixture test of 068 at :102. Two messages differ from the cases beyond the line: 162 step 2 lists
+               TicketIssuer among the sources (v0.9.40), 547 step 2 completes 3 tests (both gate classes run).
+05-scripts.txt the two job scripts and count.py.
+
+Not run: the cases with the database variables (the full-run counts 577 / 4,237 come from RUN-064 main-merge/01, on the
+same code); TC-PROD-430 step 5 (client-fabric build).

@@ -1,0 +1,203 @@
+2026-10-02 12:01:03 lock taken; HEAD 494605595a
+--- TC-PROD-068 step 2
+deleted the synaxis:shard-full line of client-fabric/src/main/resources/assets/synaxis/lang/zh_cn.json
+2026-10-02 12:01:03 068-2: ./gradlew :architecture-tests:test --rerun --tests 'io.github.bearisbug.synaxis.architecture.TranslationKeyGateTest' --max-workers=4 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts
+2026-10-02 12:01:08 068-2 exit 1
+  2 tests completed, 2 failed
+  BUILD FAILED in 4s
+TEST-io.github.bearisbug.synaxis.architecture.TranslationKeyGateTest.xml: tests=2 failures=2 errors=0 skipped=0
+  red: theGateReportsAKeyOfAClassAndOfAPluginButNotAChannel() at TranslationKeyGateTest.java:102
+    org.opentest4j.AssertionFailedError: expected: <[en_us.json has no text for fixture:declared-without-text (from plugin fixture), en_us.json has no text for synaxis:fixture-without-text (from io.github.bearisbug.synaxis.game.fixture.GameClassNamingAKeyWithoutText), zh_cn.json has no text for fixture:declared-without-text (from plugin fixture), zh_cn.json has no text for synaxis:fixture-without-text (from io.github.bearisbug.synaxis.game.fixture.GameClassNamingAKeyWithoutText)]> but was: <[en_us.json has no text for fixture:declared-without-text (from plugin fixture), en_us.json has no text for synaxis:fixture-without-text (from io.github.bearisbug.synaxis.game.fixture.GameClassNamingAKeyWithoutText), zh_cn.json has no text for fixture:declared-without-text (from plugin fixture), zh_cn.json has no text for synaxis:fixture-without-text (from io.github.bearisbug.synaxis.game.fixture.GameClassNamingAKeyWithoutText), zh_cn.json has no text for synaxis:shard-full (from io.github.bearisbug.synaxis.game.fixture.GameClassNamingAKeyWithoutText)]>
+  red: everyKeyTheServerCanSendHasTextInBothLanguageFiles() at TranslationKeyGateTest.java:91
+    org.opentest4j.AssertionFailedError: Problems of the translation key gate (1):
+    zh_cn.json has no text for synaxis:shard-full (from io.github.bearisbug.synaxis.network.DisconnectReasons)
+     ==> expected: <true> but was: <false>
+  system-out: translation key gate: 60 keys checked against [en_us.json, zh_cn.json], 15 identifiers left out
+2026-10-02 12:01:08 restored client-fabric/src/main/resources/assets/synaxis/lang/zh_cn.json; git status: 0 changed paths under client-fabric/, architecture-tests/, game-rts/
+--- TC-PROD-105 step 2
+deleted the synaxis:auth-failed line of client-fabric/src/main/resources/assets/synaxis/lang/zh_cn.json
+2026-10-02 12:01:08 105-2: ./gradlew :architecture-tests:test --rerun --tests 'io.github.bearisbug.synaxis.architecture.TranslationKeyGateTest' --max-workers=4 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts
+2026-10-02 12:01:13 105-2 exit 1
+  2 tests completed, 1 failed
+  BUILD FAILED in 4s
+TEST-io.github.bearisbug.synaxis.architecture.TranslationKeyGateTest.xml: tests=2 failures=1 errors=0 skipped=0
+  red: everyKeyTheServerCanSendHasTextInBothLanguageFiles() at TranslationKeyGateTest.java:91
+    org.opentest4j.AssertionFailedError: Problems of the translation key gate (1):
+    zh_cn.json has no text for synaxis:auth-failed (from io.github.bearisbug.synaxis.network.DisconnectReasons)
+     ==> expected: <true> but was: <false>
+  system-out: translation key gate: 60 keys checked against [en_us.json, zh_cn.json], 15 identifiers left out
+2026-10-02 12:01:13 restored client-fabric/src/main/resources/assets/synaxis/lang/zh_cn.json; git status: 0 changed paths under client-fabric/, architecture-tests/, game-rts/
+--- TC-PROD-162 step 2
+deleted the synaxis:transfer-rejected line of client-fabric/src/main/resources/assets/synaxis/lang/zh_cn.json
+2026-10-02 12:01:13 162-2: ./gradlew :architecture-tests:test --rerun --tests 'io.github.bearisbug.synaxis.architecture.TranslationKeyGateTest' --max-workers=4 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts
+2026-10-02 12:01:17 162-2 exit 1
+  2 tests completed, 1 failed
+  BUILD FAILED in 4s
+TEST-io.github.bearisbug.synaxis.architecture.TranslationKeyGateTest.xml: tests=2 failures=1 errors=0 skipped=0
+  red: everyKeyTheServerCanSendHasTextInBothLanguageFiles() at TranslationKeyGateTest.java:91
+    org.opentest4j.AssertionFailedError: Problems of the translation key gate (1):
+    zh_cn.json has no text for synaxis:transfer-rejected (from io.github.bearisbug.synaxis.app.transfer.TicketIssuer, io.github.bearisbug.synaxis.app.transfer.TicketVerifier$Reason, io.github.bearisbug.synaxis.plugin.DisconnectKeys)
+     ==> expected: <true> but was: <false>
+  system-out: translation key gate: 60 keys checked against [en_us.json, zh_cn.json], 15 identifiers left out
+2026-10-02 12:01:17 restored client-fabric/src/main/resources/assets/synaxis/lang/zh_cn.json; git status: 0 changed paths under client-fabric/, architecture-tests/, game-rts/
+--- TC-PROD-210 step 2
+deleted the synaxis:role-no-target line of client-fabric/src/main/resources/assets/synaxis/lang/zh_cn.json
+2026-10-02 12:01:17 210-2: ./gradlew :architecture-tests:test --rerun --tests 'io.github.bearisbug.synaxis.architecture.TranslationKeyGateTest' --max-workers=4 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts
+2026-10-02 12:01:22 210-2 exit 1
+  2 tests completed, 1 failed
+  BUILD FAILED in 4s
+TEST-io.github.bearisbug.synaxis.architecture.TranslationKeyGateTest.xml: tests=2 failures=1 errors=0 skipped=0
+  red: everyKeyTheServerCanSendHasTextInBothLanguageFiles() at TranslationKeyGateTest.java:91
+    org.opentest4j.AssertionFailedError: Problems of the translation key gate (1):
+    zh_cn.json has no text for synaxis:role-no-target (from io.github.bearisbug.synaxis.app.permission.RoleCommand)
+     ==> expected: <true> but was: <false>
+  system-out: translation key gate: 60 keys checked against [en_us.json, zh_cn.json], 15 identifiers left out
+2026-10-02 12:01:22 restored client-fabric/src/main/resources/assets/synaxis/lang/zh_cn.json; git status: 0 changed paths under client-fabric/, architecture-tests/, game-rts/
+--- TC-PROD-210 step 3
+deleted the synaxis:role-above-sender line of client-fabric/src/main/resources/assets/synaxis/lang/en_us.json
+2026-10-02 12:01:22 210-3: ./gradlew :architecture-tests:test --rerun --tests 'io.github.bearisbug.synaxis.architecture.TranslationKeyGateTest' --max-workers=4 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts
+2026-10-02 12:01:27 210-3 exit 1
+  2 tests completed, 1 failed
+  BUILD FAILED in 4s
+TEST-io.github.bearisbug.synaxis.architecture.TranslationKeyGateTest.xml: tests=2 failures=1 errors=0 skipped=0
+  red: everyKeyTheServerCanSendHasTextInBothLanguageFiles() at TranslationKeyGateTest.java:91
+    org.opentest4j.AssertionFailedError: Problems of the translation key gate (1):
+    en_us.json has no text for synaxis:role-above-sender (from io.github.bearisbug.synaxis.app.permission.RoleCommand)
+     ==> expected: <true> but was: <false>
+  system-out: translation key gate: 60 keys checked against [en_us.json, zh_cn.json], 15 identifiers left out
+2026-10-02 12:01:27 restored client-fabric/src/main/resources/assets/synaxis/lang/en_us.json; git status: 0 changed paths under client-fabric/, architecture-tests/, game-rts/
+--- TC-PROD-233 step 2
+deleted the synaxis:banned-until line of client-fabric/src/main/resources/assets/synaxis/lang/zh_cn.json
+2026-10-02 12:01:27 233-2: ./gradlew :architecture-tests:test --rerun --tests 'io.github.bearisbug.synaxis.architecture.TranslationKeyGateTest' --max-workers=4 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts
+2026-10-02 12:01:31 233-2 exit 1
+  2 tests completed, 1 failed
+  BUILD FAILED in 4s
+TEST-io.github.bearisbug.synaxis.architecture.TranslationKeyGateTest.xml: tests=2 failures=1 errors=0 skipped=0
+  red: everyKeyTheServerCanSendHasTextInBothLanguageFiles() at TranslationKeyGateTest.java:91
+    org.opentest4j.AssertionFailedError: Problems of the translation key gate (1):
+    zh_cn.json has no text for synaxis:banned-until (from io.github.bearisbug.synaxis.app.moderation.HostModeration)
+     ==> expected: <true> but was: <false>
+  system-out: translation key gate: 60 keys checked against [en_us.json, zh_cn.json], 15 identifiers left out
+2026-10-02 12:01:31 restored client-fabric/src/main/resources/assets/synaxis/lang/zh_cn.json; git status: 0 changed paths under client-fabric/, architecture-tests/, game-rts/
+--- TC-PROD-250 step 2
+deleted the synaxis:command-stop-usage line of client-fabric/src/main/resources/assets/synaxis/lang/zh_cn.json
+2026-10-02 12:01:31 250-2: ./gradlew :architecture-tests:test --rerun --tests 'io.github.bearisbug.synaxis.architecture.TranslationKeyGateTest' --max-workers=4 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts
+2026-10-02 12:01:36 250-2 exit 1
+  2 tests completed, 1 failed
+  BUILD FAILED in 4s
+TEST-io.github.bearisbug.synaxis.architecture.TranslationKeyGateTest.xml: tests=2 failures=1 errors=0 skipped=0
+  red: everyKeyTheServerCanSendHasTextInBothLanguageFiles() at TranslationKeyGateTest.java:91
+    org.opentest4j.AssertionFailedError: Problems of the translation key gate (1):
+    zh_cn.json has no text for synaxis:command-stop-usage (from io.github.bearisbug.synaxis.app.command.HostCommands)
+     ==> expected: <true> but was: <false>
+  system-out: translation key gate: 60 keys checked against [en_us.json, zh_cn.json], 15 identifiers left out
+2026-10-02 12:01:36 restored client-fabric/src/main/resources/assets/synaxis/lang/zh_cn.json; git status: 0 changed paths under client-fabric/, architecture-tests/, game-rts/
+--- TC-PROD-295 step 4
+deleted the synaxis:outbound-backlog line of client-fabric/src/main/resources/assets/synaxis/lang/zh_cn.json
+2026-10-02 12:01:36 295-4: ./gradlew :architecture-tests:test --rerun --tests 'io.github.bearisbug.synaxis.architecture.TranslationKeyGateTest' --max-workers=4 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts
+2026-10-02 12:01:40 295-4 exit 1
+  2 tests completed, 1 failed
+  BUILD FAILED in 4s
+TEST-io.github.bearisbug.synaxis.architecture.TranslationKeyGateTest.xml: tests=2 failures=1 errors=0 skipped=0
+  red: everyKeyTheServerCanSendHasTextInBothLanguageFiles() at TranslationKeyGateTest.java:91
+    org.opentest4j.AssertionFailedError: Problems of the translation key gate (1):
+    zh_cn.json has no text for synaxis:outbound-backlog (from io.github.bearisbug.synaxis.network.DisconnectReasons)
+     ==> expected: <true> but was: <false>
+  system-out: translation key gate: 60 keys checked against [en_us.json, zh_cn.json], 15 identifiers left out
+2026-10-02 12:01:40 restored client-fabric/src/main/resources/assets/synaxis/lang/zh_cn.json; git status: 0 changed paths under client-fabric/, architecture-tests/, game-rts/
+--- TC-PROD-396 step 2
+deleted the synaxis:command-profile-busy line of client-fabric/src/main/resources/assets/synaxis/lang/zh_cn.json
+2026-10-02 12:01:40 396-2: ./gradlew :architecture-tests:test --rerun --tests 'io.github.bearisbug.synaxis.architecture.TranslationKeyGateTest' --max-workers=4 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts
+2026-10-02 12:01:45 396-2 exit 1
+  2 tests completed, 1 failed
+  BUILD FAILED in 4s
+TEST-io.github.bearisbug.synaxis.architecture.TranslationKeyGateTest.xml: tests=2 failures=1 errors=0 skipped=0
+  red: everyKeyTheServerCanSendHasTextInBothLanguageFiles() at TranslationKeyGateTest.java:91
+    org.opentest4j.AssertionFailedError: Problems of the translation key gate (1):
+    zh_cn.json has no text for synaxis:command-profile-busy (from io.github.bearisbug.synaxis.app.command.HostCommands)
+     ==> expected: <true> but was: <false>
+  system-out: translation key gate: 60 keys checked against [en_us.json, zh_cn.json], 15 identifiers left out
+2026-10-02 12:01:45 restored client-fabric/src/main/resources/assets/synaxis/lang/zh_cn.json; git status: 0 changed paths under client-fabric/, architecture-tests/, game-rts/
+--- TC-PROD-431 step 1
+deleted the synaxis:command-tps line of client-fabric/src/main/resources/assets/synaxis/lang/en_us.json
+2026-10-02 12:01:45 431-1: ./gradlew :architecture-tests:test --rerun --tests 'io.github.bearisbug.synaxis.architecture.TranslationKeyGateTest' --max-workers=4 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts
+2026-10-02 12:01:50 431-1 exit 1
+  2 tests completed, 1 failed
+  BUILD FAILED in 4s
+TEST-io.github.bearisbug.synaxis.architecture.TranslationKeyGateTest.xml: tests=2 failures=1 errors=0 skipped=0
+  red: everyKeyTheServerCanSendHasTextInBothLanguageFiles() at TranslationKeyGateTest.java:91
+    org.opentest4j.AssertionFailedError: Problems of the translation key gate (1):
+    en_us.json has no text for synaxis:command-tps (from io.github.bearisbug.synaxis.app.command.HostCommands)
+     ==> expected: <true> but was: <false>
+  system-out: translation key gate: 60 keys checked against [en_us.json, zh_cn.json], 15 identifiers left out
+2026-10-02 12:01:50 restored client-fabric/src/main/resources/assets/synaxis/lang/en_us.json; git status: 0 changed paths under client-fabric/, architecture-tests/, game-rts/
+--- TC-PROD-432 step 2
+edited architecture-tests/src/test/java/io/github/bearisbug/synaxis/architecture/TranslationKeyGateTest.java
+2026-10-02 12:01:50 432-2: ./gradlew :architecture-tests:test --rerun --tests 'io.github.bearisbug.synaxis.architecture.TranslationKeyGateTest' --max-workers=4 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts
+2026-10-02 12:01:56 432-2 exit 1
+  2 tests completed, 2 failed
+  BUILD FAILED in 5s
+TEST-io.github.bearisbug.synaxis.architecture.TranslationKeyGateTest.xml: tests=2 failures=2 errors=0 skipped=0
+  red: theGateReportsAKeyOfAClassAndOfAPluginButNotAChannel() at TranslationKeyGateTest.java:101
+    org.opentest4j.AssertionFailedError: expected: <[en_us.json has no text for fixture:declared-without-text (from plugin fixture), en_us.json has no text for synaxis:fixture-without-text (from io.github.bearisbug.synaxis.game.fixture.GameClassNamingAKeyWithoutText), zh_cn.json has no text for fixture:declared-without-text (from plugin fixture), zh_cn.json has no text for synaxis:fixture-without-text (from io.github.bearisbug.synaxis.game.fixture.GameClassNamingAKeyWithoutText)]> but was: <[en_us.json has no text for fixture:declared-without-text (from plugin fixture), en_us.json has no text for synaxis:fixture-without-text (from io.github.bearisbug.synaxis.game.fixture.GameClassNamingAKeyWithoutText), en_us.json has no text for synaxis:handshake (from io.github.bearisbug.synaxis.game.fixture.GameClassNamingAKeyWithoutText), zh_cn.json has no text for fixture:declared-without-text (from plugin fixture), zh_cn.json has no text for synaxis:fixture-without-text (from io.github.bearisbug.synaxis.game.fixture.GameClassNamingAKeyWithoutText), zh_cn.json has no text for synaxis:handshake (from io.github.bearisbug.synaxis.game.fixture.GameClassNamingAKeyWithoutText)]>
+  red: everyKeyTheServerCanSendHasTextInBothLanguageFiles() at TranslationKeyGateTest.java:90
+    org.opentest4j.AssertionFailedError: Problems of the translation key gate (2):
+    en_us.json has no text for synaxis:handshake (from io.github.bearisbug.synaxis.app.HandshakeGate, io.github.bearisbug.synaxis.app.Main, io.github.bearisbug.synaxis.app.PluginHost)
+    zh_cn.json has no text for synaxis:handshake (from io.github.bearisbug.synaxis.app.HandshakeGate, io.github.bearisbug.synaxis.app.Main, io.github.bearisbug.synaxis.app.PluginHost)
+     ==> expected: <true> but was: <false>
+  system-out: translation key gate: 61 keys checked against [en_us.json, zh_cn.json], 14 identifiers left out
+2026-10-02 12:01:56 restored architecture-tests/src/test/java/io/github/bearisbug/synaxis/architecture/TranslationKeyGateTest.java; git status: 0 changed paths under client-fabric/, architecture-tests/, game-rts/
+--- TC-PROD-432 step 3
+edited architecture-tests/src/test/java/io/github/bearisbug/synaxis/architecture/TranslationKeyGateTest.java
+2026-10-02 12:01:56 432-3: ./gradlew :architecture-tests:test --rerun --tests 'io.github.bearisbug.synaxis.architecture.TranslationKeyGateTest' --max-workers=4 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts
+2026-10-02 12:02:01 432-3 exit 1
+  2 tests completed, 1 failed
+  BUILD FAILED in 5s
+TEST-io.github.bearisbug.synaxis.architecture.TranslationKeyGateTest.xml: tests=2 failures=1 errors=0 skipped=0
+  red: everyKeyTheServerCanSendHasTextInBothLanguageFiles() at TranslationKeyGateTest.java:92
+    org.opentest4j.AssertionFailedError: Problems of the translation key gate (1):
+    synaxis:gone is listed as no text in NOT_TEXT, but no class names it any more
+     ==> expected: <true> but was: <false>
+  system-out: translation key gate: 60 keys checked against [en_us.json, zh_cn.json], 16 identifiers left out
+2026-10-02 12:02:01 restored architecture-tests/src/test/java/io/github/bearisbug/synaxis/architecture/TranslationKeyGateTest.java; git status: 0 changed paths under client-fabric/, architecture-tests/, game-rts/
+--- TC-PROD-433 step 2
+edited game-rts/src/main/java/io/github/bearisbug/synaxis/game/rts/RtsPlugin.java
+edited game-rts/src/main/java/io/github/bearisbug/synaxis/game/rts/RtsPlugin.java
+2026-10-02 12:02:01 433-2: ./gradlew :architecture-tests:test --rerun --tests 'io.github.bearisbug.synaxis.architecture.TranslationKeyGateTest' --max-workers=4 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts
+2026-10-02 12:02:08 433-2 exit 1
+  2 tests completed, 1 failed
+  BUILD FAILED in 6s
+TEST-io.github.bearisbug.synaxis.architecture.TranslationKeyGateTest.xml: tests=2 failures=1 errors=0 skipped=0
+  red: everyKeyTheServerCanSendHasTextInBothLanguageFiles() at TranslationKeyGateTest.java:91
+    org.opentest4j.AssertionFailedError: Problems of the translation key gate (2):
+    en_us.json has no text for rts:victory (from plugin rts)
+    zh_cn.json has no text for rts:victory (from plugin rts)
+     ==> expected: <true> but was: <false>
+  system-out: translation key gate: 61 keys checked against [en_us.json, zh_cn.json], 15 identifiers left out
+2026-10-02 12:02:08 restored game-rts/src/main/java/io/github/bearisbug/synaxis/game/rts/RtsPlugin.java; git status: 0 changed paths under client-fabric/, architecture-tests/, game-rts/
+--- TC-PROD-547 step 2 (the gates of step 1)
+deleted the synaxis:command-transfer-error line of client-fabric/src/main/resources/assets/synaxis/lang/zh_cn.json
+2026-10-02 12:02:08 547-2: ./gradlew :architecture-tests:test --rerun --tests '*TranslationKeyGateTest' --tests '*ConfigKeyGateTest' --max-workers=4 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts
+2026-10-02 12:02:13 547-2 exit 1
+  3 tests completed, 1 failed
+  BUILD FAILED in 5s
+TEST-io.github.bearisbug.synaxis.architecture.TranslationKeyGateTest.xml: tests=2 failures=1 errors=0 skipped=0
+  red: everyKeyTheServerCanSendHasTextInBothLanguageFiles() at TranslationKeyGateTest.java:91
+    org.opentest4j.AssertionFailedError: Problems of the translation key gate (1):
+    zh_cn.json has no text for synaxis:command-transfer-error (from io.github.bearisbug.synaxis.app.command.TransferCommand)
+     ==> expected: <true> but was: <false>
+  system-out: translation key gate: 60 keys checked against [en_us.json, zh_cn.json], 15 identifiers left out
+TEST-io.github.bearisbug.synaxis.architecture.ConfigKeyGateTest.xml: tests=1 failures=0 errors=0 skipped=0
+  system-out: config key gate: 116 keys read, 116 in ConfigFile.KEYS, 21 meter names left out
+2026-10-02 12:02:13 restored client-fabric/src/main/resources/assets/synaxis/lang/zh_cn.json; git status: 0 changed paths under client-fabric/, architecture-tests/, game-rts/
+--- all restored: the gate again
+2026-10-02 12:02:13 green: ./gradlew :architecture-tests:test --rerun --tests 'io.github.bearisbug.synaxis.architecture.TranslationKeyGateTest' --max-workers=4 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts
+2026-10-02 12:02:18 green exit 0
+  BUILD SUCCESSFUL in 4s
+TEST-io.github.bearisbug.synaxis.architecture.TranslationKeyGateTest.xml: tests=2 failures=0 errors=0 skipped=0
+  system-out: translation key gate: 60 keys checked against [en_us.json, zh_cn.json], 15 identifiers left out
+2026-10-02 12:02:18 done; git status --porcelain:
+   M docs/DESIGN-PROD.md
+   M docs/ENGINE.md
+   M docs/TEST.md
+  ?? docs/test-runs/RUN-067/

@@ -1,0 +1,73 @@
+2026-10-02 11:50:32 lock taken; HEAD 494605595a; git status: 1 changed paths
+2026-10-02 11:50:32 SYNAXIS_TEST_* variables in the environment: 0
+2026-10-02 11:50:32 default: ./gradlew :server-app:test --rerun --continue --max-workers=4 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts
+2026-10-02 11:54:21 default exit 0
+  BUILD SUCCESSFUL in 3m 48s
+server-app/build/test-results/test: classes=113 tests=577 failures=0 errors=0 skipped=132 (stale files ignored: 0)
+== ^io\.github\.bearisbug\.synaxis\.app\.management\.: 15 classes, 45 tests, 0 failed, 2 skipped
+== ^io\.github\.bearisbug\.synaxis\.app\.shard\.(ShardWorldFarViewTest|FarViewShardFixtureTest|ShardSettingsTest)$: 3 classes, 26 tests, 0 failed, 0 skipped
+== ^io\.github\.bearisbug\.synaxis\.app\.FarViewLaunchTest$: 1 classes, 4 tests, 0 failed, 0 skipped
+classes with skipped tests:
+  CommandRolesIntegrationTest skipped=1
+  FullChannelTransferSocketTest skipped=2
+  MainStoreIntegrationTest skipped=6
+  ModerationIntegrationTest skipped=12
+  PermissionsIntegrationTest skipped=8
+  RoleEscalationIntegrationTest skipped=1
+  RoleHandOutIntegrationTest skipped=3
+  TransferCooldownTableIntegrationTest skipped=2
+  management.ManagementBansIntegrationTest skipped=2
+  shard.ShardHeartbeatDbTest skipped=6
+  shard.ShardServiceHeartbeatDbTest skipped=1
+  shard.WorldFlagStoreDbTest skipped=4
+  shard.WorldFlagsReplayTest skipped=11
+  shard.WorldFlagsSyncTest skipped=2
+  store.CrossShardHandoverIntegrationTest skipped=6
+  store.DatabaseHangIntegrationTest skipped=2
+  store.MigrationsDbTest skipped=5
+  store.PlayerStoreIntegrationTest skipped=23
+  store.ShardSessionDbTest skipped=4
+  store.ShutdownLoginIntegrationTest skipped=5
+  store.ShutdownSaveBeforeSpawnIntegrationTest skipped=3
+  store.ShutdownSaveIntegrationTest skipped=4
+  store.ShutdownSaveOutsideTheWorldIntegrationTest skipped=3
+  store.ShutdownSaveRaceIntegrationTest skipped=1
+  store.StoreHousekeepingDbTest skipped=3
+  store.StoreMetricsIntegrationTest skipped=1
+  store.TransferNotFollowedIntegrationTest skipped=4
+  store.TransferTicketsIntegrationTest skipped=7
+2026-10-02 11:54:21 grid: ./gradlew :server-app:test --rerun --continue -Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true -Dsynaxis.thread-provider=grid --max-workers=4 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts
+2026-10-02 11:58:04 grid exit 0
+  BUILD SUCCESSFUL in 3m 43s
+server-app/build/test-results/test: classes=113 tests=577 failures=0 errors=0 skipped=132 (stale files ignored: 0)
+== ^io\.github\.bearisbug\.synaxis\.app\.management\.: 15 classes, 45 tests, 0 failed, 2 skipped
+classes with skipped tests:
+  CommandRolesIntegrationTest skipped=1
+  FullChannelTransferSocketTest skipped=2
+  MainStoreIntegrationTest skipped=6
+  ModerationIntegrationTest skipped=12
+  PermissionsIntegrationTest skipped=8
+  RoleEscalationIntegrationTest skipped=1
+  RoleHandOutIntegrationTest skipped=3
+  TransferCooldownTableIntegrationTest skipped=2
+  management.ManagementBansIntegrationTest skipped=2
+  shard.ShardHeartbeatDbTest skipped=6
+  shard.ShardServiceHeartbeatDbTest skipped=1
+  shard.WorldFlagStoreDbTest skipped=4
+  shard.WorldFlagsReplayTest skipped=11
+  shard.WorldFlagsSyncTest skipped=2
+  store.CrossShardHandoverIntegrationTest skipped=6
+  store.DatabaseHangIntegrationTest skipped=2
+  store.MigrationsDbTest skipped=5
+  store.PlayerStoreIntegrationTest skipped=23
+  store.ShardSessionDbTest skipped=4
+  store.ShutdownLoginIntegrationTest skipped=5
+  store.ShutdownSaveBeforeSpawnIntegrationTest skipped=3
+  store.ShutdownSaveIntegrationTest skipped=4
+  store.ShutdownSaveOutsideTheWorldIntegrationTest skipped=3
+  store.ShutdownSaveRaceIntegrationTest skipped=1
+  store.StoreHousekeepingDbTest skipped=3
+  store.StoreMetricsIntegrationTest skipped=1
+  store.TransferNotFollowedIntegrationTest skipped=4
+  store.TransferTicketsIntegrationTest skipped=7
+  result files mentioning AcquirableOwnershipException: 0

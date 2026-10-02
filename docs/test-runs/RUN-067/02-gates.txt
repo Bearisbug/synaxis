@@ -1,0 +1,110 @@
+2026-10-02 11:58:04 HEAD 494605595a
+--- TC-PROD-430 step 1
+2026-10-02 11:58:04 430-1: ./gradlew :architecture-tests:test --rerun --tests io.github.bearisbug.synaxis.architecture.TranslationKeyGateTest --max-workers=4 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts
+2026-10-02 11:58:12 430-1 exit 0
+  BUILD SUCCESSFUL in 6s
+TEST-io.github.bearisbug.synaxis.architecture.TranslationKeyGateTest.xml: tests=2 failures=0 errors=0 skipped=0
+  system-out: translation key gate: 60 keys checked against [en_us.json, zh_cn.json], 15 identifiers left out
+--- TC-PROD-430 step 2
+2026-10-02 11:58:12 ./gradlew check --dry-run --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts | grep -E '^:architecture-tests:(test|check) '
+  :architecture-tests:test SKIPPED
+  :architecture-tests:check SKIPPED
+--- TC-PROD-430 step 3
+edited src/main/java/io/github/bearisbug/synaxis/network/DisconnectReasons.java
+edited client-fabric/src/main/resources/assets/synaxis/lang/en_us.json
+2026-10-02 11:58:16 430-3: ./gradlew :architecture-tests:test --rerun --tests io.github.bearisbug.synaxis.architecture.TranslationKeyGateTest --max-workers=4 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts
+2026-10-02 11:58:25 430-3 exit 1
+  2 tests completed, 1 failed
+  BUILD FAILED in 9s
+TEST-io.github.bearisbug.synaxis.architecture.TranslationKeyGateTest.xml: tests=2 failures=1 errors=0 skipped=0
+  red: everyKeyTheServerCanSendHasTextInBothLanguageFiles() at TranslationKeyGateTest.java:91
+    org.opentest4j.AssertionFailedError: Problems of the translation key gate (1):
+    zh_cn.json has no text for synaxis:gate-probe (from io.github.bearisbug.synaxis.network.DisconnectReasons)
+     ==> expected: <true> but was: <false>
+  system-out: translation key gate: 61 keys checked against [en_us.json, zh_cn.json], 15 identifiers left out
+2026-10-02 11:58:25 restored; git status: 0 changed paths under src/ and client-fabric/
+--- TC-PROD-430 step 4
+2026-10-02 11:58:25 430-4: ./gradlew :architecture-tests:test --rerun --tests io.github.bearisbug.synaxis.architecture.TranslationKeyGateTest --max-workers=4 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts
+2026-10-02 11:58:31 430-4 exit 0
+  BUILD SUCCESSFUL in 5s
+TEST-io.github.bearisbug.synaxis.architecture.TranslationKeyGateTest.xml: tests=2 failures=0 errors=0 skipped=0
+  system-out: translation key gate: 60 keys checked against [en_us.json, zh_cn.json], 15 identifiers left out
+--- TC-PROD-441 step 1
+2026-10-02 11:58:31 441-1: ./gradlew :architecture-tests:test --rerun --tests io.github.bearisbug.synaxis.architecture.ConfigKeyGateTest --max-workers=4 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts
+2026-10-02 11:58:37 441-1 exit 0
+  BUILD SUCCESSFUL in 6s
+TEST-io.github.bearisbug.synaxis.architecture.ConfigKeyGateTest.xml: tests=1 failures=0 errors=0 skipped=0
+  system-out: config key gate: 116 keys read, 116 in ConfigFile.KEYS, 21 meter names left out
+2026-10-02 11:58:37 ./gradlew check --dry-run --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts | grep -E '^:architecture-tests:test '
+  :architecture-tests:test SKIPPED
+--- TC-PROD-441 step 2
+edited server-app/src/main/java/io/github/bearisbug/synaxis/app/ConfigFile.java
+2026-10-02 11:58:39 441-2: ./gradlew :architecture-tests:test --rerun --tests io.github.bearisbug.synaxis.architecture.ConfigKeyGateTest --max-workers=4 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts
+2026-10-02 11:58:46 441-2 exit 1
+  BUILD FAILED in 6s
+TEST-io.github.bearisbug.synaxis.architecture.ConfigKeyGateTest.xml: tests=1 failures=1 errors=0 skipped=0
+  red: theTableOfTheConfigFileIsEveryKeyTheCodeReads() at ConfigKeyGateTest.java:74
+    org.opentest4j.AssertionFailedError: Problems of the config key gate (1):
+    synaxis.compression-level is read (io.github.bearisbug.synaxis.JvmFlags) but not in ConfigFile.KEYS, so the config file refuses it
+     ==> expected: <true> but was: <false>
+  system-out: config key gate: 116 keys read, 115 in ConfigFile.KEYS, 21 meter names left out
+2026-10-02 11:58:46 restored
+--- TC-PROD-441 step 3
+edited server-app/src/main/java/io/github/bearisbug/synaxis/app/ConfigFile.java
+2026-10-02 11:58:46 441-3: ./gradlew :architecture-tests:test --rerun --tests io.github.bearisbug.synaxis.architecture.ConfigKeyGateTest --max-workers=4 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts
+2026-10-02 11:58:53 441-3 exit 1
+  BUILD FAILED in 6s
+TEST-io.github.bearisbug.synaxis.architecture.ConfigKeyGateTest.xml: tests=1 failures=1 errors=0 skipped=0
+  red: theTableOfTheConfigFileIsEveryKeyTheCodeReads() at ConfigKeyGateTest.java:74
+    org.opentest4j.AssertionFailedError: Problems of the config key gate (1):
+    synaxis.gone is in ConfigFile.KEYS, but no class reads it any more
+     ==> expected: <true> but was: <false>
+  system-out: config key gate: 116 keys read, 117 in ConfigFile.KEYS, 21 meter names left out
+2026-10-02 11:58:53 restored
+--- TC-PROD-441 step 4
+edited server-app/src/main/resources/logback.xml
+2026-10-02 11:58:53 441-4: ./gradlew :architecture-tests:test --rerun --tests io.github.bearisbug.synaxis.architecture.ConfigKeyGateTest --max-workers=4 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts
+2026-10-02 11:58:58 441-4 exit 1
+  BUILD FAILED in 4s
+TEST-io.github.bearisbug.synaxis.architecture.ConfigKeyGateTest.xml: tests=1 failures=1 errors=0 skipped=0
+  red: theTableOfTheConfigFileIsEveryKeyTheCodeReads() at ConfigKeyGateTest.java:74
+    org.opentest4j.AssertionFailedError: Problems of the config key gate (2):
+    synaxis.app.logs is read (logback.xml) but not in ConfigFile.KEYS, so the config file refuses it
+    synaxis.app.log is in ConfigFile.KEYS, but no class reads it any more
+     ==> expected: <true> but was: <false>
+  system-out: config key gate: 116 keys read, 116 in ConfigFile.KEYS, 21 meter names left out
+2026-10-02 11:58:58 restored
+--- TC-PROD-441 step 5
+2026-10-02 11:58:58 441-5: ./gradlew :architecture-tests:test --rerun --tests io.github.bearisbug.synaxis.architecture.ConfigKeyGateTest --max-workers=4 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts
+2026-10-02 11:59:02 441-5 exit 0
+  BUILD SUCCESSFUL in 4s
+TEST-io.github.bearisbug.synaxis.architecture.ConfigKeyGateTest.xml: tests=1 failures=0 errors=0 skipped=0
+  system-out: config key gate: 116 keys read, 116 in ConfigFile.KEYS, 21 meter names left out
+--- TC-PROD-547 step 1
+2026-10-02 11:59:02 547-1: ./gradlew :architecture-tests:test --rerun --tests *TranslationKeyGateTest --tests *ConfigKeyGateTest --max-workers=4 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts
+2026-10-02 11:59:11 547-1 exit 0
+  BUILD SUCCESSFUL in 8s
+TEST-io.github.bearisbug.synaxis.architecture.TranslationKeyGateTest.xml: tests=2 failures=0 errors=0 skipped=0
+  system-out: translation key gate: 60 keys checked against [en_us.json, zh_cn.json], 15 identifiers left out
+TEST-io.github.bearisbug.synaxis.architecture.ConfigKeyGateTest.xml: tests=1 failures=0 errors=0 skipped=0
+  system-out: config key gate: 116 keys read, 116 in ConfigFile.KEYS, 21 meter names left out
+--- TC-PROD-569 step 4 (default mode)
+2026-10-02 11:59:11 569-4: ./gradlew :test --rerun --continue --tests io.github.bearisbug.synaxis.thread.* --tests io.github.bearisbug.synaxis.ServerProcess* --tests io.github.bearisbug.synaxis.WatchdogTest --tests io.github.bearisbug.synaxis.entity.*Concurrency* --tests io.github.bearisbug.synaxis.entity.AcquirableStrictIntegrationTest :server-app:test --rerun --continue --tests io.github.bearisbug.synaxis.app.metrics.* :loadtest:test --rerun --continue --tests io.github.bearisbug.synaxis.loadtest.Sample* :architecture-tests:test --rerun --continue --tests io.github.bearisbug.synaxis.architecture.ConfigKeyGateTest --max-workers=4 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts
+2026-10-02 11:59:41 569-4 exit 0
+  BUILD SUCCESSFUL in 29s
+build/test-results/test: classes=19 tests=67 failures=0 errors=0 skipped=0 (stale files ignored: 0)
+server-app/build/test-results/test: classes=5 tests=10 failures=0 errors=0 skipped=0 (stale files ignored: 0)
+loadtest/build/test-results/test: classes=2 tests=6 failures=0 errors=0 skipped=0 (stale files ignored: 0)
+architecture-tests/build/test-results/test: classes=1 tests=1 failures=0 errors=0 skipped=0 (stale files ignored: 0)
+TEST-io.github.bearisbug.synaxis.architecture.ConfigKeyGateTest.xml: tests=1 failures=0 errors=0 skipped=0
+  system-out: config key gate: 116 keys read, 116 in ConfigFile.KEYS, 21 meter names left out
+--- TC-PROD-569 step 4, :architecture-tests:test in full
+2026-10-02 11:59:41 569-4-arch: ./gradlew :architecture-tests:test --rerun --max-workers=4 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts
+2026-10-02 11:59:52 569-4-arch exit 0
+  BUILD SUCCESSFUL in 11s
+architecture-tests/build/test-results/test: classes=7 tests=20 failures=0 errors=0 skipped=0 (stale files ignored: 0)
+2026-10-02 11:59:52 done; git status --porcelain:
+   M docs/DESIGN-PROD.md
+   M docs/ENGINE.md
+   M docs/TEST.md
+  ?? docs/test-runs/RUN-067/

@@ -1,0 +1,296 @@
+RUN-067 / 05: the scripts of this round, as run. run067.zsh wrote 01 and 02, run067b.zsh wrote 04; count.py reads the JUnit XML
+(files older than the run's start are not counted). Each zsh script takes /tmp/synaxis-heavy.lock at its top level and
+releases it from the EXIT trap set there.
+
+===== run067.zsh
+#!/bin/zsh
+# RUN-067: the heavy part (docs/TEST.md TC-PROD-575 step 3 without the database variables, the gate steps of
+# TC-PROD-430, TC-PROD-441, TC-PROD-547 and TC-PROD-569 step 4). The lock is taken here, at the top level of the
+# script, so the EXIT trap fires when the script ends and not when a function returns.
+until mkdir /tmp/synaxis-heavy.lock 2>/dev/null; do sleep 60; done
+trap 'rm -rf /tmp/synaxis-heavy.lock' EXIT
+echo "owner=生产就绪会话/m3g-sync pid=39873 since=$(date '+%F %T') task=RUN-067: server-app test without database variables (default, strict grid) and the gate steps of TC-PROD-430/441/547/569" > /tmp/synaxis-heavy.lock/owner
+
+R=/Users/bug/Documents/Projects/Minecraft/synaxis-wt/m3g-sync
+E=$R/docs/test-runs/RUN-067
+PY=/Users/bug/Documents/Projects/Minecraft/synaxis/.venv/bin/python
+C=/tmp/m3g-sync/count.py
+O=/tmp/m3g-sync/out
+export JAVA_HOME=/opt/homebrew/opt/openjdk@25/libexec/openjdk.jdk/Contents/Home
+unset SYNAXIS_TEST_PG_URL SYNAXIS_TEST_PG_USER SYNAXIS_TEST_PG_PASSWORD SYNAXIS_TEST_REDIS_URL
+mkdir -p $E $O
+cd $R
+COMMON=(--max-workers=4 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts)
+AT=architecture-tests/build/test-results/test
+TK=$AT/TEST-io.github.bearisbug.synaxis.architecture.TranslationKeyGateTest.xml
+CK=$AT/TEST-io.github.bearisbug.synaxis.architecture.ConfigKeyGateTest.xml
+CF=server-app/src/main/java/io/github/bearisbug/synaxis/app/ConfigFile.java
+DR=src/main/java/io/github/bearisbug/synaxis/network/DisconnectReasons.java
+EN=client-fabric/src/main/resources/assets/synaxis/lang/en_us.json
+LB=server-app/src/main/resources/logback.xml
+
+log() { print -r -- "$(date '+%F %T') $*" }
+# replace <file> <old> <new>: exactly one occurrence, or the step is not run as written
+replace() { $PY - "$@" <<'EOF'
+import sys
+path, old, new = sys.argv[1], sys.argv[2].replace('\\t', '\t').replace('\\n', '\n'), sys.argv[3].replace('\\t', '\t').replace('\\n', '\n')
+text = open(path, encoding='utf-8').read()
+n = text.count(old)
+if n != 1:
+    sys.exit(f"{path}: {n} occurrences of the anchor, expected 1")
+open(path, 'w', encoding='utf-8').write(text.replace(old, new))
+print(f"edited {path}")
+EOF
+}
+# gradle <name> <args...>: runs it, logs the exit code and the result lines of the output
+gradle() {
+  local name=$1; shift
+  log "$name: ./gradlew $*"
+  ./gradlew "$@" > $O/$name.out 2>&1
+  local rc=$?
+  log "$name exit $rc"
+  grep -E '^BUILD (SUCCESSFUL|FAILED)|tests completed|^:architecture-tests:' $O/$name.out | sed 's/^/  /'
+  return 0
+}
+
+{
+  log "lock taken; HEAD $(git rev-parse --short=10 HEAD); git status: $(git status --porcelain | wc -l | tr -d ' ') changed paths"
+  log "SYNAXIS_TEST_* variables in the environment: $(env | cut -d= -f1 | grep -c '^SYNAXIS_TEST_')"
+  S=$(date +%s)
+  gradle default :server-app:test --rerun --continue $COMMON
+  $PY $C summary server-app/build/test-results/test $S '^io\.github\.bearisbug\.synaxis\.app\.management\.' '^io\.github\.bearisbug\.synaxis\.app\.shard\.(ShardWorldFarViewTest|FarViewShardFixtureTest|ShardSettingsTest)$' '^io\.github\.bearisbug\.synaxis\.app\.FarViewLaunchTest$'
+  S=$(date +%s)
+  gradle grid :server-app:test --rerun --continue -Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true -Dsynaxis.thread-provider=grid $COMMON
+  $PY $C summary server-app/build/test-results/test $S '^io\.github\.bearisbug\.synaxis\.app\.management\.'
+  grep -l 'AcquirableOwnershipException' server-app/build/test-results/test/*.xml 2>/dev/null | wc -l | sed 's/^ */  result files mentioning AcquirableOwnershipException: /'
+} > $E/01-server-app-no-database.txt 2>&1
+
+{
+  log "HEAD $(git rev-parse --short=10 HEAD)"
+  print -- "--- TC-PROD-430 step 1"
+  S=$(date +%s); gradle 430-1 :architecture-tests:test --rerun --tests 'io.github.bearisbug.synaxis.architecture.TranslationKeyGateTest' $COMMON; $PY $C gate $TK $S
+  print -- "--- TC-PROD-430 step 2"
+  log "./gradlew check --dry-run --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts | grep -E '^:architecture-tests:(test|check) '"
+  ./gradlew check --dry-run --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts 2>&1 | grep -E '^:architecture-tests:(test|check) ' | sed 's/^/  /'
+  print -- "--- TC-PROD-430 step 3"
+  replace $DR '    private DisconnectReasons() {' '    public static final TranslatableComponent GATE_PROBE = Component.translatable("synaxis:gate-probe");\n    private DisconnectReasons() {'
+  replace $EN '\t"synaxis:shard-full": "This channel is full.",\n' '\t"synaxis:shard-full": "This channel is full.",\n\t"synaxis:gate-probe": "probe",\n'
+  S=$(date +%s); gradle 430-3 :architecture-tests:test --rerun --tests 'io.github.bearisbug.synaxis.architecture.TranslationKeyGateTest' $COMMON; $PY $C gate $TK $S
+  git checkout -- $DR $EN; log "restored; git status: $(git status --porcelain -- src client-fabric | wc -l | tr -d ' ') changed paths under src/ and client-fabric/"
+  print -- "--- TC-PROD-430 step 4"
+  S=$(date +%s); gradle 430-4 :architecture-tests:test --rerun --tests 'io.github.bearisbug.synaxis.architecture.TranslationKeyGateTest' $COMMON; $PY $C gate $TK $S
+
+  print -- "--- TC-PROD-441 step 1"
+  S=$(date +%s); gradle 441-1 :architecture-tests:test --rerun --tests 'io.github.bearisbug.synaxis.architecture.ConfigKeyGateTest' $COMMON; $PY $C gate $CK $S
+  log "./gradlew check --dry-run --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts | grep -E '^:architecture-tests:test '"
+  ./gradlew check --dry-run --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts 2>&1 | grep -E '^:architecture-tests:test ' | sed 's/^/  /'
+  print -- "--- TC-PROD-441 step 2"
+  replace $CF '            "synaxis.compression-level",\n' ''
+  S=$(date +%s); gradle 441-2 :architecture-tests:test --rerun --tests 'io.github.bearisbug.synaxis.architecture.ConfigKeyGateTest' $COMMON; $PY $C gate $CK $S
+  git checkout -- $CF; log "restored"
+  print -- "--- TC-PROD-441 step 3"
+  replace $CF '"synaxis.app.units")));' '"synaxis.app.units", "synaxis.gone")));'
+  S=$(date +%s); gradle 441-3 :architecture-tests:test --rerun --tests 'io.github.bearisbug.synaxis.architecture.ConfigKeyGateTest' $COMMON; $PY $C gate $CK $S
+  git checkout -- $CF; log "restored"
+  print -- "--- TC-PROD-441 step 4"
+  replace $LB '${synaxis.app.log:-file}' '${synaxis.app.logs:-file}'
+  S=$(date +%s); gradle 441-4 :architecture-tests:test --rerun --tests 'io.github.bearisbug.synaxis.architecture.ConfigKeyGateTest' $COMMON; $PY $C gate $CK $S
+  git checkout -- $LB; log "restored"
+  print -- "--- TC-PROD-441 step 5"
+  S=$(date +%s); gradle 441-5 :architecture-tests:test --rerun --tests 'io.github.bearisbug.synaxis.architecture.ConfigKeyGateTest' $COMMON; $PY $C gate $CK $S
+
+  print -- "--- TC-PROD-547 step 1"
+  S=$(date +%s); gradle 547-1 :architecture-tests:test --rerun --tests '*TranslationKeyGateTest' --tests '*ConfigKeyGateTest' --max-workers=4 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts
+  $PY $C gate $TK $S; $PY $C gate $CK $S
+
+  print -- "--- TC-PROD-569 step 4 (default mode)"
+  S=$(date +%s)
+  gradle 569-4 :test --rerun --continue --tests 'io.github.bearisbug.synaxis.thread.*' --tests 'io.github.bearisbug.synaxis.ServerProcess*' --tests 'io.github.bearisbug.synaxis.WatchdogTest' --tests 'io.github.bearisbug.synaxis.entity.*Concurrency*' --tests 'io.github.bearisbug.synaxis.entity.AcquirableStrictIntegrationTest' \
+    :server-app:test --rerun --continue --tests 'io.github.bearisbug.synaxis.app.metrics.*' \
+    :loadtest:test --rerun --continue --tests 'io.github.bearisbug.synaxis.loadtest.Sample*' \
+    :architecture-tests:test --rerun --continue --tests 'io.github.bearisbug.synaxis.architecture.ConfigKeyGateTest' $COMMON
+  $PY $C summary build/test-results/test $S
+  $PY $C summary server-app/build/test-results/test $S
+  $PY $C summary loadtest/build/test-results/test $S
+  $PY $C summary $AT $S
+  $PY $C gate $CK $S
+  print -- "--- TC-PROD-569 step 4, :architecture-tests:test in full"
+  S=$(date +%s); gradle 569-4-arch :architecture-tests:test --rerun $COMMON
+  $PY $C summary $AT $S
+  log "done; git status --porcelain:"
+  git status --porcelain | sed 's/^/  /'
+} > $E/02-gates.txt 2>&1
+
+===== run067b.zsh
+#!/bin/zsh
+# RUN-067 second batch: the translation key gate counter-proofs of the TC-PROD cases whose red line moved when
+# M3-G added synaxis:farview to NOT_TEXT. Lock taken at the top level, released by the EXIT trap.
+until mkdir /tmp/synaxis-heavy.lock 2>/dev/null; do sleep 60; done
+trap 'rm -rf /tmp/synaxis-heavy.lock' EXIT
+echo "owner=生产就绪会话/m3g-sync pid=39873 since=$(date '+%F %T') task=RUN-067: translation key gate counter-proofs of TC-PROD-068/105/162/210/233/250/295/396/431/432/433/547" > /tmp/synaxis-heavy.lock/owner
+
+R=/Users/bug/Documents/Projects/Minecraft/synaxis-wt/m3g-sync
+E=$R/docs/test-runs/RUN-067
+PY=/Users/bug/Documents/Projects/Minecraft/synaxis/.venv/bin/python
+C=/tmp/m3g-sync/count.py
+O=/tmp/m3g-sync/out
+export JAVA_HOME=/opt/homebrew/opt/openjdk@25/libexec/openjdk.jdk/Contents/Home
+unset SYNAXIS_TEST_PG_URL SYNAXIS_TEST_PG_USER SYNAXIS_TEST_PG_PASSWORD SYNAXIS_TEST_REDIS_URL
+mkdir -p $E $O
+cd $R
+COMMON=(--max-workers=4 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts)
+AT=architecture-tests/build/test-results/test
+TK=$AT/TEST-io.github.bearisbug.synaxis.architecture.TranslationKeyGateTest.xml
+CK=$AT/TEST-io.github.bearisbug.synaxis.architecture.ConfigKeyGateTest.xml
+ZH=client-fabric/src/main/resources/assets/synaxis/lang/zh_cn.json
+EN=client-fabric/src/main/resources/assets/synaxis/lang/en_us.json
+TKS=architecture-tests/src/test/java/io/github/bearisbug/synaxis/architecture/TranslationKeyGateTest.java
+RTS=game-rts/src/main/java/io/github/bearisbug/synaxis/game/rts/RtsPlugin.java
+
+log() { print -r -- "$(date '+%F %T') $*" }
+replace() { $PY - "$@" <<'EOF'
+import sys
+path, old, new = sys.argv[1], sys.argv[2].replace('\\t', '\t').replace('\\n', '\n'), sys.argv[3].replace('\\t', '\t').replace('\\n', '\n')
+text = open(path, encoding='utf-8').read()
+n = text.count(old)
+if n != 1:
+    sys.exit(f"{path}: {n} occurrences of the anchor, expected 1")
+open(path, 'w', encoding='utf-8').write(text.replace(old, new))
+print(f"edited {path}")
+EOF
+}
+# dropline <file> <key>: deletes the one line of that key
+dropline() { $PY - "$@" <<'EOF'
+import sys
+path, key = sys.argv[1], sys.argv[2]
+lines = open(path, encoding='utf-8').read().split('\n')
+hit = [i for i, l in enumerate(lines) if l.lstrip().startswith('"' + key + '":')]
+if len(hit) != 1:
+    sys.exit(f"{path}: {len(hit)} lines of {key}")
+del lines[hit[0]]
+open(path, 'w', encoding='utf-8').write('\n'.join(lines))
+print(f"deleted the {key} line of {path}")
+EOF
+}
+gate() {
+  local name=$1
+  local S=$(date +%s)
+  log "$name: ./gradlew :architecture-tests:test --rerun --tests 'io.github.bearisbug.synaxis.architecture.TranslationKeyGateTest' ${COMMON[*]}"
+  ./gradlew :architecture-tests:test --rerun --tests 'io.github.bearisbug.synaxis.architecture.TranslationKeyGateTest' $COMMON > $O/$name.out 2>&1
+  log "$name exit $?"
+  grep -E '^BUILD (SUCCESSFUL|FAILED)|tests completed' $O/$name.out | sed 's/^/  /'
+  $PY $C gate $TK $S
+}
+restore() { git checkout -- "$@"; log "restored $*; git status: $(git status --porcelain -- client-fabric architecture-tests game-rts | wc -l | tr -d ' ') changed paths under client-fabric/, architecture-tests/, game-rts/" }
+
+{
+  log "lock taken; HEAD $(git rev-parse --short=10 HEAD)"
+  print -- "--- TC-PROD-068 step 2"; dropline $ZH synaxis:shard-full; gate 068-2; restore $ZH
+  print -- "--- TC-PROD-105 step 2"; dropline $ZH synaxis:auth-failed; gate 105-2; restore $ZH
+  print -- "--- TC-PROD-162 step 2"; dropline $ZH synaxis:transfer-rejected; gate 162-2; restore $ZH
+  print -- "--- TC-PROD-210 step 2"; dropline $ZH synaxis:role-no-target; gate 210-2; restore $ZH
+  print -- "--- TC-PROD-210 step 3"; dropline $EN synaxis:role-above-sender; gate 210-3; restore $EN
+  print -- "--- TC-PROD-233 step 2"; dropline $ZH synaxis:banned-until; gate 233-2; restore $ZH
+  print -- "--- TC-PROD-250 step 2"; dropline $ZH synaxis:command-stop-usage; gate 250-2; restore $ZH
+  print -- "--- TC-PROD-295 step 4"; dropline $ZH synaxis:outbound-backlog; gate 295-4; restore $ZH
+  print -- "--- TC-PROD-396 step 2"; dropline $ZH synaxis:command-profile-busy; gate 396-2; restore $ZH
+  print -- "--- TC-PROD-431 step 1"; dropline $EN synaxis:command-tps; gate 431-1; restore $EN
+  print -- "--- TC-PROD-432 step 2"
+  replace $TKS '            Map.entry("synaxis:handshake", "plugin message channel of the handshake (API-M2-002)"),\n' ''
+  gate 432-2; restore $TKS
+  print -- "--- TC-PROD-432 step 3"
+  replace $TKS '            Map.entry("synaxis:handshake", "plugin message channel of the handshake (API-M2-002)"),\n' '            Map.entry("synaxis:handshake", "plugin message channel of the handshake (API-M2-002)"),\n            Map.entry("synaxis:gone", "a channel that was removed"),\n'
+  gate 432-3; restore $TKS
+  print -- "--- TC-PROD-433 step 2"
+  replace $RTS 'import java.util.Objects;\n' 'import java.util.Objects;\nimport java.util.Set;\n'
+  replace $RTS 'public final class RtsPlugin implements SynaxisPlugin {\n' 'public final class RtsPlugin implements SynaxisPlugin {\n    @Override public Set<String> translationKeys() { return Set.of("rts:victory"); }\n'
+  gate 433-2; restore $RTS
+  print -- "--- TC-PROD-547 step 2 (the gates of step 1)"
+  dropline $ZH synaxis:command-transfer-error
+  S=$(date +%s)
+  log "547-2: ./gradlew :architecture-tests:test --rerun --tests '*TranslationKeyGateTest' --tests '*ConfigKeyGateTest' --max-workers=4 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts"
+  ./gradlew :architecture-tests:test --rerun --tests '*TranslationKeyGateTest' --tests '*ConfigKeyGateTest' --max-workers=4 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts > $O/547-2.out 2>&1
+  log "547-2 exit $?"
+  grep -E '^BUILD (SUCCESSFUL|FAILED)|tests completed' $O/547-2.out | sed 's/^/  /'
+  $PY $C gate $TK $S; $PY $C gate $CK $S
+  restore $ZH
+  print -- "--- all restored: the gate again"
+  gate green
+  log "done; git status --porcelain:"
+  git status --porcelain | sed 's/^/  /'
+} > $E/04-translation-gate-counter-proofs.txt 2>&1
+
+===== count.py
+"""Counts JUnit XML results. Usage:
+  count.py summary <results-dir> <since-epoch> [prefix-regex ...]
+  count.py gate <xml-file> <since-epoch>
+Files older than <since-epoch> are ignored (a stale XML from an earlier run is not counted)."""
+import os
+import re
+import sys
+import xml.etree.ElementTree as ET
+
+
+def fresh(path, since):
+    return os.path.getmtime(path) >= since
+
+
+def summary(d, since, prefixes):
+    rows = []
+    for name in sorted(os.listdir(d)):
+        if not name.endswith('.xml'):
+            continue
+        p = os.path.join(d, name)
+        if not fresh(p, since):
+            continue
+        r = ET.parse(p).getroot()
+        rows.append((r.get('name'), int(r.get('tests')), int(r.get('failures')), int(r.get('errors')),
+                     int(r.get('skipped'))))
+    stale = [n for n in os.listdir(d) if n.endswith('.xml') and not fresh(os.path.join(d, n), since)]
+    t = sum(x[1] for x in rows)
+    f = sum(x[2] for x in rows)
+    e = sum(x[3] for x in rows)
+    s = sum(x[4] for x in rows)
+    print(f"{d}: classes={len(rows)} tests={t} failures={f} errors={e} skipped={s} (stale files ignored: {len(stale)})")
+    for pre in prefixes:
+        sub = [x for x in rows if re.match(pre, x[0])]
+        print(f"== {pre}: {len(sub)} classes, {sum(x[1] for x in sub)} tests, "
+              f"{sum(x[2] + x[3] for x in sub)} failed, {sum(x[4] for x in sub)} skipped")
+    sk = [x for x in rows if x[4]]
+    if sk:
+        print("classes with skipped tests:")
+        for x in sk:
+            print(f"  {x[0].replace('io.github.bearisbug.synaxis.app.', '')} skipped={x[4]}")
+    bad = [x for x in rows if x[2] or x[3]]
+    for x in bad:
+        print(f"  FAILED {x[0]} failures={x[2]} errors={x[3]}")
+
+
+def gate(p, since):
+    if not os.path.exists(p) or not fresh(p, since):
+        print(f"{os.path.basename(p)}: no fresh result")
+        return
+    r = ET.parse(p).getroot()
+    print(f"{os.path.basename(p)}: tests={r.get('tests')} failures={r.get('failures')} errors={r.get('errors')} "
+          f"skipped={r.get('skipped')}")
+    for tc in r.iter('testcase'):
+        for fl in list(tc.iter('failure')) + list(tc.iter('error')):
+            text = fl.text or ''
+            red = re.findall(r'\((\w+\.java:\d+)\)', text)
+            own = [x for x in red if 'GateTest' in x]
+            print(f"  red: {tc.get('name')} at {own[0] if own else (red[0] if red else '?')}")
+            for line in (fl.get('message') or '').splitlines():
+                if line.strip():
+                    print(f"    {line}")
+    so = r.find('system-out')
+    if so is not None and so.text:
+        for line in so.text.splitlines():
+            if 'gate:' in line:
+                print(f"  system-out: {line.strip()}")
+
+
+if __name__ == '__main__':
+    if sys.argv[1] == 'summary':
+        summary(sys.argv[2], float(sys.argv[3]), sys.argv[4:])
+    else:
+        gate(sys.argv[2], float(sys.argv[3]))

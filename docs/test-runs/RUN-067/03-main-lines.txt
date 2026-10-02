@@ -1,0 +1,74 @@
+RUN-067 / 03: TC-PROD-533 step 2 as written after the line numbers moved, on HEAD 494605595a (no lock: sed only), 2026-10-02 11:50:57
+$ sed -n 756,758p server-app/src/main/java/io/github/bearisbug/synaxis/app/Main.java
+                    new TicketVerifier(database.pool(), session::sessionId, shardId, keys, cooldowns, ledger::record,
+                            onClaimed),
+                    permissions, moderation, session, redis, cooldowns);
+
+leading blanks stripped:
+new TicketVerifier(database.pool(), session::sessionId, shardId, keys, cooldowns, ledger::record,
+onClaimed),
+permissions, moderation, session, redis, cooldowns);
+
+$ grep -n "store.cooldowns()" server-app/src/main/java/io/github/bearisbug/synaxis/app/Main.java   (TC-PROD-521 step 3)
+265:                store.permissions(), store.moderation(), store.cooldowns());
+
+$ grep -n "new ShardGates(" server-app/src/main/java/io/github/bearisbug/synaxis/app/Main.java   (TC-PROD-573 step 3)
+526:            new ShardGates(directoryMode.directory(), directoryMode.service(), ledger::record, store::isOnline).attach(world.instance());
+
+$ grep -n "buildShutdownTask" server-app/src/main/java/io/github/bearisbug/synaxis/app/Main.java   (TC-PROD-498 step 3)
+323:        process.scheduler().buildShutdownTask(host::disableAll);
+325:        process.scheduler().buildShutdownTask(commands::awaitStopAnswers);
+327:        process.scheduler().buildShutdownTask(ledger::close);
+330:            process.scheduler().buildShutdownTask(directoryMode.flags()::close);
+331:            process.scheduler().buildShutdownTask(directoryMode.heartbeat()::close);
+334:        process.scheduler().buildShutdownTask(store::close);
+335:        process.scheduler().buildShutdownTask(metrics::close);
+336:        process.scheduler().buildShutdownTask(management::close);
+338:        process.scheduler().buildShutdownTask(watchdog::stop);
+
+Every Main.java line number this round changes in docs/DESIGN-PROD.md and docs/TEST.md, old (4bb76eec7f, the code before the
+M3-G merge) and new (HEAD 494605595a). The merge adds one import at line 50 (+1 from there on) and seven lines in
+Main#serveMap's listener (+8 after the old :513). Format: old -> new: the line at HEAD.
+:106 -> :107: private static final ConfigFile.Outcome CONFIG_FILE = ConfigFile.applyToSystemProperties();
+:139 -> :140: * The process wide half of the view range contract of {@code docs/DESIGN-M2.md} §15: the RTS
+:143 -> :144: * read once while the process is created — so they are applied here, before anything else.
+:252 -> :253: final StoreRuntime store = openStore(storeMode, process, auth, shardId, ledger,
+:253 -> :254: arrivals == null ? (_, _) -> {} : arrivals::claimed, System.getenv());
+:262 -> :263: process.setShutdownParticipant(shutdown);
+:264 -> :265: store.permissions(), store.moderation(), store.cooldowns());
+:268 -> :269: final @Nullable ShardService shardService = directoryMode == null ? null : directoryMode.service();
+:269 -> :270: process.command().register(new TransferCommand(process, store.permissions(), shardService, ledger::record));
+:284 -> :285: store.moderation(), store.session(), shardService, shardId, ledger::record);
+:322 -> :323: process.scheduler().buildShutdownTask(host::disableAll);
+:324 -> :325: process.scheduler().buildShutdownTask(commands::awaitStopAnswers);
+:326 -> :327: process.scheduler().buildShutdownTask(ledger::close);
+:329 -> :330: process.scheduler().buildShutdownTask(directoryMode.flags()::close);
+:330 -> :331: process.scheduler().buildShutdownTask(directoryMode.heartbeat()::close);
+:335 -> :336: process.scheduler().buildShutdownTask(management::close);
+:343 -> :344: if (!(e.getCause() instanceof IOException cause)) throw e;
+:359 -> :360: LOGGER.info("synaxis server-app listening on {}:{}", BIND_ADDRESS, port);
+:493 -> :494: return new DirectoryMode(directory, arrivals, heartbeat, new ShardServiceImpl(directory, heartbeat, issuer),
+:518 -> :526: new ShardGates(directoryMode.directory(), directoryMode.service(), ledger::record, store::isOnline).attach(world.instance());
+:610 -> :618: if (bind.getAddress() != null && bind.getAddress().isAnyLocalAddress())
+:704 -> :712: TransferCooldowns.fromSystemProperties());
+:747 -> :755: new TicketIssuer(store, keys, cooldowns, shardId, ledger::record),
+:748 -> :756: new TicketVerifier(database.pool(), session::sessionId, shardId, keys, cooldowns, ledger::record,
+:749 -> :757: onClaimed),
+:750 -> :758: permissions, moderation, session, redis, cooldowns);
+:896 -> :904: case "offline" -> new Auth.Offline(false);
+:978 -> :986: static void readConsole(ServerProcess process, BufferedReader console) {
+
+TC-PROD-432 step 1 (the grep half; the gate half is 02's TC-PROD-430 step 1), with farview added to the pattern:
+$ grep -c -E '"synaxis:(handshake|main|permission|moderation|transfer|match|map|farview|hidden|door|loot|shard/drain|shard/status|broadcast|profile)"' <en_us.json> <zh_cn.json>
+client-fabric/src/main/resources/assets/synaxis/lang/en_us.json:0
+client-fabric/src/main/resources/assets/synaxis/lang/zh_cn.json:0
+
+TranslationKeyGateTest.java lines 89-92 at HEAD (the assertion of the gate moved from :90 to :91 with the synaxis:farview entry):
+  89          System.out.println("translation key gate: " + keys.size() + " keys checked against " + LANGUAGE_FILES
+  90                  + ", " + NOT_TEXT.size() + " identifiers left out");
+  91          assertTrue(problems.isEmpty(), () -> "Problems of the translation key gate (" + problems.size() + "):\n"
+  92                  + String.join("\n", problems) + "\n");
+
+ShardWorld.java (docs/DESIGN-PROD.md API-PROD-007, the two shutdown steps of a map shard), 4bb76eec7f :302-303 -> HEAD:
+:437: shutdown.addAfterPlayers("relight", relightStep::drain);
+:438: shutdown.addAfterPlayers("overlay", overlay::finalFlush);

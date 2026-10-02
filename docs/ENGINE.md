@@ -341,7 +341,7 @@ cp protocol/build/libs/protocol-*.jar .abi-baseline/protocol.jar
 2026-09-18 的压测实测：一条「每个客户端包写一行」的 WARN 在 15 分钟里写了 662,803 行 / 84 MiB。这不是日志级别的问题，是**这条日志写多少次由对端说了算**。所以加日志之前先问一句「这一行的频率由谁决定」：
 
 - **由启动、注册表数据、配置或停机决定** —— 进程生命周期内次数固定，随便写。
-- **由连接数决定** —— 每连接至多一行，且必须与一次断开在同一分支上（`PlayerSocketConnection` 的协议错误、`LoginListener` 的登录插件应答就是这个形状）。**「断开」要真的把活停下来才算数**：一次读上来的是一整批包，`PlayerSocketConnection#processPackets` 每派发一个包前先看连接还在不在，不在就 `break`，否则排在这次 kick 后面的几千个帧照样一个个交给监听器，「每连接一行」就变成「每包一行」（实测一批 4,000 帧，见 `docs/TEST.md` TC-035）。
+- **由连接数决定** —— 每连接至多一行，且必须与一次断开在同一分支上（`PlayerSocketConnection` 的协议错误就是这个形状；`LoginListener` 收到陌生的登录插件应答时不写自己的行，每连接一次的报告只交 `handleException`、与踢人在同一分支，宿主的异常处理器再按异常类经 `LogBudget` 限量）。**「断开」要真的把活停下来才算数**：一次读上来的是一整批包，`PlayerSocketConnection#processPackets` 每派发一个包前先看连接还在不在，不在就 `break`，否则排在这次 kick 后面的几千个帧照样一个个交给监听器，「每连接一行」就变成「每包一行」（实测一批 4,000 帧，见 `docs/TEST.md` TC-035）。
 - **由客户端发了什么、发了多少决定** —— 必须有界，三选一：
   1. **按时间限流**，样板是 `EntityTrackerImpl#reportUnregisteredMove` 与 `PacketReading#reportUnreadBytes`：一个 `AtomicLong` 记区间内累计次数、一个 `AtomicLong` 记上次输出时刻，CAS 抢到的那一次才写，并把累计次数带进那一行（**量被压掉了，但量还看得见**）。计数器只在「本来就要写日志」的那条分支上碰，解码热路径不为它付钱。宿主与游戏侧同一形状打包成了 `plugin-api` 的 `LogBudget`（标 `@ApiStatus.Internal`，不进 ABI 门；住在稳定面模块是因为宿主与插件坐在同一条客户端可控路径上，而插件不能依赖宿主）（同样是 10 秒 + 行内计数），带栈的报告也走它：一个区间里只有第一条留栈，其余次数进计数、由下一次触发写出的那一行报出来（洪水停在区间中途时积压的计数就等下一次触发），**预算按宿主注册过什么切**（每个频道注册一份、每个事件监听器一份），客户端能相乘的那一维（它自己编的 channel id）共用一份，事件台账那处整份文件共用一份。
   2. **按类型去重**，样板是 `PacketListenerManager` 的 `missingListenerWarnings`：客户端加不了包类型，所以一种一次就封顶了。
@@ -355,7 +355,7 @@ cp protocol/build/libs/protocol-*.jar .abi-baseline/protocol.jar
 2. **包清单只到 `network..` / `listener..`，PLAY 态的包不在这两棵树里派发** —— `PlayerSocketConnection` 只内联派发 `IMMEDIATE_PROCESS_PACKETS` 那 11 个握手 / 登录 / 配置期的包，其余一律进 `Player#addPacketToQueue`，由 `entity` 包的 `Player#interpretPacketQueue` 每 tick 取 `playerPacketPerTick` 个（默认 50）交给监听器。`entity..` 不在清单里，实测在 `Player#addPacketToQueue`（每个客户端包调用一次）插一行 `LOGGER.warn`，`clientDrivenPathsDoNotWriteALinePerPacket` 仍然是绿的。**在 `Player`、`Entity` 里加逐包日志，门禁看不见，靠评审。**
 3. **`command` 包不在清单里** —— `CommandParserImpl` 执行命令抛异常时每次一行带栈的 ERROR。
 4. **`:plugin-api` 没有门禁** —— 三条规则守的是引擎根模块、`:server-app` 与 `:game-rts`，而 `LogBudget` 自己住在 `:plugin-api`（宿主与插件要用同一个上界，插件又不能依赖宿主）。该模块今天只有它这一个写日志的类，而它本身就是那个上界，所以没有可守的对象；往这个模块里再加一个写 WARN 的类，三条规则都看不见。真要给它加一份，只能靠 `docs/DESIGN-M2.md` §28 登记的那个「把所有模块当 `testImplementation` 的聚合项目」，M2 不做。
-5. **「监听器抛了异常」每包一次 `handleException` 有两处，都敞着** —— `PlayerSocketConnection#processPackets`（豁免名单里的那一个）与 `Player#interpretPacketQueue`（包清单外的那一个，管的是主路径），两处代码相同，都只有 `rejectMisusedPacket`（默认关）才会在同一分支断开。
+5. **「监听器抛了异常」每包一次 `handleException` 有两处，登录前已封，configuration 与 play 态仍敞着** —— `PlayerSocketConnection#processBatch`（豁免名单里的那一个）在一批包的起始状态早于 configuration 时，监听器一抛异常就断开，不看 `rejectMisusedPacket`；从 configuration 起，它与 `Player#interpretPacketQueue`（包清单外的那一个，管 play 态的主路径）一样，只有 `rejectMisusedPacket`（默认关）才会在同一分支断开。
 6. **三条规则都只认 `Logger#warn` / `Logger#error` 这两个方法名** —— SLF4J 的流式写法 `LOGGER.atWarn().log(…)` 绕得过去：`atWarn` 名字不匹配，`log` 的宿主类型是 `LoggingEventBuilder` 而不是 `Logger`（实测：在不在豁免名单里的 `PluginChannelRouter#route` 插一行 `LOGGER.atWarn().log(…)`，宿主门禁仍然是绿的）。
 7. **宿主那条规则的 import 与包谓词都只到 `io.github.bearisbug.synaxis.app..`** —— 今天 `:server-app` 的主源码全在这棵树里，所以没有实际漏扫；将来在该模块下新开一个平级顶层包（例如 `io.github.bearisbug.synaxis.hosting`），既不会被 import 也不在谓词里，会静默失明。
 

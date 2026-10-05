@@ -1,0 +1,198 @@
+# Probe for finding 6 at the radius of a shard host (view distance 12, ring radius r = 13, 729 chunks). Temporary test class
+# ChunkQueueGrowthProbeTest, copied into src/test/java/io/github/bearisbug/synaxis/entity/player for these two runs and deleted
+# right after (never committed); its source is at the end of this file. Same machine and Gradle flags as 00-index.txt, default mode.
+# before: Player.java of 14437d0b78 (the code before the fix); after: Player.java of 5a084b973e (the fix), 2026-10-06 05:09-05:10.
+#
+# walk64:    one position packet of 64 blocks a tick (4 chunks, what finding 1's fix still lets through), 50 packets, no receipt
+# jump-edge: one position packet a tick to the edge of the ring (13 chunks, 208 blocks: before finding 1's fix), 20 packets, no receipt
+#            every chunk on the way is loaded up front in an empty instance, so the chunks entering the ring are queued at once
+# drain:     n chunks far out of the ring put into the queue under its lock (the state a client that walked on leaves), then a receipt
+#            of 64 chunks a tick each tick until the queue is empty; tick_ms is the wall time of env.tick() for each of those ticks
+# queue_bytes: 8 x length of the two backing arrays (LongArrayPriorityQueue.array, LongOpenHashSet.key), read by reflection;
+# heap_delta_bytes: used heap after three System.gc() at the end minus the same at the start of the walk; it is not attributable to
+# the queue alone (the ticket maps of the instance grow with the chunks the ring passed over), the array bytes are.
+#
+# Reading the totals: walk64 travels 200 chunks, 720 -> 6,120 is +5,400 = 200 x 27 (2r + 1 per chunk travelled, 108 per packet);
+# jump-edge travels 260 chunks, 720 -> 7,740 is +7,020 = 260 x 27 (351 per packet). queued_first is read after the first tick and
+# is 720 in both before-runs, so that tick took no move there (the probe does not record which tick took which packet; the final
+# position is asserted). The totals do not depend on it; the per_step column divides by steps - 1 and overstates the rate, use 108
+# and 351. After the fix 720 is also what is left after any move: the 729 chunks of the ring less the 9 of the first batch.
+
+## probe-before: tests=3 failures=0 errors=0 time=10.641s
+PROBE walk64 r=13 ring=729 blocks_per_packet=64 steps=50 queued_first=720 queued_last=6120 per_step=110 queue_bytes=130280 heap_delta_bytes=1612960
+PROBE drain n=10000 queue_bytes=228184 ticks=12 max_tick_ms=96 tick_ms=[14, 5, 3, 3, 3, 2, 2, 3]...
+PROBE drain n=20000 queue_bytes=480632 ticks=1 max_tick_ms=387 tick_ms=[387]
+PROBE drain n=40000 queue_bytes=852016 ticks=1 max_tick_ms=1592 tick_ms=[1592]
+PROBE drain n=80000 queue_bytes=1785944 ticks=1 max_tick_ms=6643 tick_ms=[6643]
+PROBE jump-edge r=13 ring=729 blocks_per_packet=208 steps=20 queued_first=720 queued_last=7740 per_step=369 queue_bytes=195816 heap_delta_bytes=2009528
+
+## probe-after: tests=3 failures=0 errors=0 time=1.969s
+PROBE walk64 r=13 ring=729 blocks_per_packet=64 steps=50 queued_first=720 queued_last=729 per_step=0 queue_bytes=24920 heap_delta_bytes=1499240
+PROBE drain n=10000 queue_bytes=228184 ticks=12 max_tick_ms=8 tick_ms=[8, 3, 2, 2, 1, 1, 1, 1]...
+PROBE drain n=20000 queue_bytes=480632 ticks=1 max_tick_ms=1 tick_ms=[1]
+PROBE drain n=40000 queue_bytes=852016 ticks=1 max_tick_ms=0 tick_ms=[0]
+PROBE drain n=80000 queue_bytes=1785944 ticks=1 max_tick_ms=1 tick_ms=[1]
+PROBE jump-edge r=13 ring=729 blocks_per_packet=208 steps=20 queued_first=720 queued_last=729 per_step=0 queue_bytes=29184 heap_delta_bytes=1792248
+
+## the probe source (deleted after the runs)
+package io.github.bearisbug.synaxis.entity.player;
+
+import io.github.bearisbug.synaxis.coordinate.ChunkRange;
+import io.github.bearisbug.synaxis.coordinate.CoordConversion;
+import io.github.bearisbug.synaxis.coordinate.Pos;
+import io.github.bearisbug.synaxis.coordinate.Vec;
+import io.github.bearisbug.synaxis.entity.Player;
+import io.github.bearisbug.synaxis.event.player.AsyncPlayerConfigurationEvent;
+import io.github.bearisbug.synaxis.instance.Instance;
+import io.github.bearisbug.synaxis.network.packet.client.play.ClientChunkBatchReceivedPacket;
+import io.github.bearisbug.synaxis.network.packet.client.play.ClientPlayerPositionPacket;
+import io.github.bearisbug.synaxis.network.packet.client.play.ClientTeleportConfirmPacket;
+import io.github.bearisbug.synaxis.network.player.ClientSettings;
+import io.github.bearisbug.synaxis.testing.Env;
+import io.github.bearisbug.synaxis.testing.EnvTest;
+import it.unimi.dsi.fastutil.longs.LongPriorityQueue;
+import it.unimi.dsi.fastutil.longs.LongSet;
+import org.junit.jupiter.api.Test;
+
+import java.lang.management.ManagementFactory;
+import java.lang.reflect.Field;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.locks.ReentrantLock;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
+/** Temporary probe for the evidence of the chunk queue finding, not committed. */
+@EnvTest
+public class ChunkQueueGrowthProbeTest {
+
+    private static final int VIEW = 12;
+    private static final int R = VIEW + 1;
+
+    /** After ①: 64 blocks a packet, one packet a tick, never acknowledging. */
+    @Test
+    public void walk64(Env env) throws Exception {
+        walk(env, "walk64", 64, 50);
+    }
+
+    /** Before ①: a jump to the edge of the ring, 13 chunks, one packet a tick, never acknowledging. */
+    @Test
+    public void jumpToTheEdge(Env env) throws Exception {
+        walk(env, "jump-edge", R * 16, 20);
+    }
+
+    /** The tick that drains n queued chunks out of the ring once the client acknowledges. */
+    @Test
+    public void drainStall(Env env) throws Exception {
+        final Instance instance = env.createEmptyInstance();
+        instance.viewDistance(VIEW);
+        preload(instance, -R, R, -R, R);
+        final Player player = join(env, instance);
+        for (int n : new int[]{10_000, 20_000, 40_000, 80_000}) {
+            fill(player, n);
+            final long bytes = bytes(player);
+            final List<Long> millis = new ArrayList<>();
+            int ticks = 0;
+            while (queued(player) > 0 && ticks < 200) {
+                player.addPacketToQueue(new ClientChunkBatchReceivedPacket(64f));
+                final long start = System.nanoTime();
+                env.tick();
+                millis.add((System.nanoTime() - start) / 1_000_000);
+                ticks++;
+            }
+            System.out.println("PROBE drain n=" + n + " queue_bytes=" + bytes + " ticks=" + ticks
+                    + " max_tick_ms=" + millis.stream().mapToLong(Long::longValue).max().orElse(0)
+                    + " tick_ms=" + (millis.size() > 8 ? millis.subList(0, 8) + "..." : millis));
+        }
+    }
+
+    private static void walk(Env env, String name, int blocks, int steps) throws Exception {
+        final Instance instance = env.createEmptyInstance();
+        instance.viewDistance(VIEW);
+        final int chunksPerStep = blocks / 16;
+        preload(instance, -R, steps * chunksPerStep + R, -R, R);
+        final Player player = join(env, instance);
+        final int ring = ChunkRange.chunksCount(player.effectiveViewDistance());
+        final long heapBefore = heap();
+        final List<Integer> queued = new ArrayList<>();
+        for (int step = 1; step <= steps; step++) {
+            player.addPacketToQueue(new ClientPlayerPositionPacket(new Vec(8.5 + (double) blocks * step, 40, 8.5), true, false));
+            env.tick();
+            queued.add(queued(player));
+        }
+        assertEquals(steps * chunksPerStep, player.getPosition().chunkX(), "every move is taken");
+        final long heapAfter = heap();
+        System.out.println("PROBE " + name + " r=" + R + " ring=" + ring + " blocks_per_packet=" + blocks + " steps=" + steps
+                + " queued_first=" + queued.getFirst() + " queued_last=" + queued.getLast()
+                + " per_step=" + (queued.getLast() - queued.getFirst()) / Math.max(1, steps - 1)
+                + " queue_bytes=" + bytes(player) + " heap_delta_bytes=" + (heapAfter - heapBefore));
+    }
+
+    private static Player join(Env env, Instance instance) {
+        env.process().connection().setPlayerProvider(Player::new);
+        env.process().eventHandler().addListener(AsyncPlayerConfigurationEvent.class,
+                event -> event.getPlayer().refreshSettings(ClientSettings.defaultSettings(VIEW)));
+        final Player player = env.createConnection().connect(instance, new Pos(8.5, 40, 8.5));
+        assertEquals(R, player.effectiveViewDistance());
+        player.addPacketToQueue(new ClientTeleportConfirmPacket(player.getLastSentTeleportId()));
+        return player;
+    }
+
+    private static void preload(Instance instance, int minX, int maxX, int minZ, int maxZ) {
+        final List<CompletableFuture<?>> loads = new ArrayList<>();
+        for (int x = minX; x <= maxX; x++) {
+            for (int z = minZ; z <= maxZ; z++) loads.add(instance.loadChunk(x, z));
+        }
+        CompletableFuture.allOf(loads.toArray(CompletableFuture[]::new)).join();
+    }
+
+    /** Queues n chunks far out of the ring, the state a client that walked on without acknowledging leaves. */
+    private static void fill(Player player, int n) throws Exception {
+        final ReentrantLock lock = (ReentrantLock) field(Player.class, "chunkQueueLock").get(player);
+        lock.lock();
+        try {
+            final LongPriorityQueue queue = (LongPriorityQueue) field(Player.class, "chunkQueue").get(player);
+            final LongSet index = (LongSet) field(Player.class, "queuedChunks").get(player);
+            for (int i = 0; i < n; i++) {
+                final long chunk = CoordConversion.chunkIndex(1_000 + i % 1_000, 1_000 + i / 1_000);
+                if (index.add(chunk)) queue.enqueue(chunk);
+            }
+        } finally {
+            lock.unlock();
+        }
+    }
+
+    private static int queued(Player player) throws Exception {
+        final ReentrantLock lock = (ReentrantLock) field(Player.class, "chunkQueueLock").get(player);
+        lock.lock();
+        try {
+            return ((LongPriorityQueue) field(Player.class, "chunkQueue").get(player)).size();
+        } finally {
+            lock.unlock();
+        }
+    }
+
+    /** The bytes of the two backing arrays: the queue's and its index's. */
+    private static long bytes(Player player) throws Exception {
+        final Object queue = field(Player.class, "chunkQueue").get(player);
+        final Object index = field(Player.class, "queuedChunks").get(player);
+        final long[] array = (long[]) field(queue.getClass(), "array").get(queue);
+        final long[] key = (long[]) field(index.getClass(), "key").get(index);
+        return 8L * array.length + 8L * key.length;
+    }
+
+    private static Field field(Class<?> type, String name) throws NoSuchFieldException {
+        final Field field = type.getDeclaredField(name);
+        field.setAccessible(true);
+        return field;
+    }
+
+    private static long heap() throws InterruptedException {
+        for (int i = 0; i < 3; i++) {
+            System.gc();
+            Thread.sleep(50);
+        }
+        return ManagementFactory.getMemoryMXBean().getHeapMemoryUsage().getUsed();
+    }
+}

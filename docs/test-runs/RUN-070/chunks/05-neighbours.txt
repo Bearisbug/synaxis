@@ -1,0 +1,57 @@
+# Neighbours of the change on the fix (5a084b973e unless said otherwise). Common header: see 00-index.txt.
+# entity.player package: ./gradlew :test --rerun --tests 'io.github.bearisbug.synaxis.entity.player.*' [STRICT] <flags>
+# Lock hold 05:43:19-05:46:31 (UTC+8).
+
+## entity.player, default (pkg2-default 05:44:31)
+  io.github.bearisbug.synaxis.entity.player.ChunkQueueBoundIntegrationTest    tests=4   failures=0 errors=0 skipped=0 time=2.628s
+  io.github.bearisbug.synaxis.entity.player.ChunkSendCapTest                  tests=2   failures=0 errors=0 skipped=0 time=1.814s
+  io.github.bearisbug.synaxis.entity.player.PlayerBlockPlacementIntegrationTest tests=7   failures=0 errors=0 skipped=0 time=3.817s
+  io.github.bearisbug.synaxis.entity.player.PlayerChunkQueueIntegrationTest   tests=7   failures=0 errors=0 skipped=0 time=3.278s
+  io.github.bearisbug.synaxis.entity.player.PlayerIntegrationTest             tests=16  failures=0 errors=0 skipped=0 time=4.804s
+  io.github.bearisbug.synaxis.entity.player.PlayerMaxViewDistanceIntegrationTest tests=8   failures=0 errors=0 skipped=0 time=4.022s
+  io.github.bearisbug.synaxis.entity.player.PlayerMovementIntegrationTest     tests=12  failures=0 errors=0 skipped=0 time=4.912s
+  io.github.bearisbug.synaxis.entity.player.PlayerPacketQueueIntegrationTest  tests=1   failures=0 errors=0 skipped=0 time=1.576s
+  io.github.bearisbug.synaxis.entity.player.PlayerReconfigurationIntegrationTest tests=1   failures=0 errors=0 skipped=0 time=2.003s
+  io.github.bearisbug.synaxis.entity.player.PlayerRemoveIntegrationTest       tests=4   failures=0 errors=0 skipped=0 time=1.749s
+  io.github.bearisbug.synaxis.entity.player.PlayerResourcePackIntegrationTest tests=5   failures=0 errors=0 skipped=0 time=3.315s
+  io.github.bearisbug.synaxis.entity.player.PlayerRespawnChunkIntegrationTest tests=4   failures=0 errors=0 skipped=0 time=2.222s
+  io.github.bearisbug.synaxis.entity.player.PlayerSwimmingPoseIntegrationTest tests=3   failures=0 errors=0 skipped=0 time=1.795s
+  io.github.bearisbug.synaxis.entity.player.PlayerTransferOutIntegrationTest  tests=3   failures=0 errors=0 skipped=0 time=1.977s
+  io.github.bearisbug.synaxis.entity.player.TabListIntegrationTest            tests=3   failures=0 errors=0 skipped=0 time=3.099s
+  gradle: BUILD SUCCESSFUL in 9s
+  total: classes=15 tests=80 failures=0 errors=0 skipped=0
+
+## entity.player, strict grid (pkg2-grid 05:44:41)
+  io.github.bearisbug.synaxis.entity.player.ChunkQueueBoundIntegrationTest    tests=4   failures=0 errors=0 skipped=0 time=2.521s
+  io.github.bearisbug.synaxis.entity.player.ChunkSendCapTest                  tests=2   failures=0 errors=0 skipped=0 time=2.165s
+  io.github.bearisbug.synaxis.entity.player.PlayerBlockPlacementIntegrationTest tests=7   failures=0 errors=0 skipped=0 time=4.537s
+  io.github.bearisbug.synaxis.entity.player.PlayerChunkQueueIntegrationTest   tests=7   failures=0 errors=0 skipped=0 time=4.061s
+  io.github.bearisbug.synaxis.entity.player.PlayerIntegrationTest             tests=16  failures=0 errors=0 skipped=0 time=5.331s
+  io.github.bearisbug.synaxis.entity.player.PlayerMaxViewDistanceIntegrationTest tests=8   failures=0 errors=0 skipped=0 time=4.57s
+  io.github.bearisbug.synaxis.entity.player.PlayerMovementIntegrationTest     tests=12  failures=0 errors=0 skipped=0 time=5.498s
+  io.github.bearisbug.synaxis.entity.player.PlayerPacketQueueIntegrationTest  tests=1   failures=0 errors=0 skipped=0 time=2.063s
+  io.github.bearisbug.synaxis.entity.player.PlayerReconfigurationIntegrationTest tests=1   failures=0 errors=0 skipped=0 time=2.064s
+  io.github.bearisbug.synaxis.entity.player.PlayerRemoveIntegrationTest       tests=4   failures=0 errors=0 skipped=0 time=1.635s
+  io.github.bearisbug.synaxis.entity.player.PlayerResourcePackIntegrationTest tests=5   failures=0 errors=0 skipped=0 time=3.772s
+  io.github.bearisbug.synaxis.entity.player.PlayerRespawnChunkIntegrationTest tests=4   failures=0 errors=0 skipped=0 time=2.558s
+  io.github.bearisbug.synaxis.entity.player.PlayerSwimmingPoseIntegrationTest tests=3   failures=0 errors=0 skipped=0 time=2.477s
+  io.github.bearisbug.synaxis.entity.player.PlayerTransferOutIntegrationTest  tests=3   failures=0 errors=0 skipped=0 time=2.406s
+  io.github.bearisbug.synaxis.entity.player.TabListIntegrationTest            tests=3   failures=0 errors=0 skipped=0 time=3.599s
+  gradle: BUILD SUCCESSFUL in 10s
+  total: classes=15 tests=80 failures=0 errors=0 skipped=0
+
+## :loadtest BotSocketTest, default, lock hold 05:09:25-05:14:26 (UTC+8), on the fix applied in the working tree (Player.java identical
+## to 5a084b973e: cmp against the copy taken right after applying it), with the earlier version of the new test class, which this module does not use
+# ./gradlew :loadtest:test --rerun --tests 'io.github.bearisbug.synaxis.loadtest.BotSocketTest' <flags>
+  io.github.bearisbug.synaxis.loadtest.BotSocketTest tests=8 failures=0 errors=0 skipped=0 time=92.499s
+    aBotTheServerKicksCountsAsLostWithTheReason(Path)                                          11.851s passed
+    aGateBotInConfigurationAtTheFrameTimesItsTryFromTheFirstPositionItSends()                   8.054s passed
+    aGateBotFollowsTransfersBackAndForthWithTheCookieItWasGiven(Path)                          14.092s passed
+    aGateBotWhoseTransferIsRefusedCountsItByReasonAndLogsInAgain(Path)                          7.067s passed
+    aGateBotThatGetsNoTransferCountsItAndWalksOutAndInAgain()                                   7.205s passed
+    botsAnswerTheEncryptionRequestOfAnEncryptingServer(Path)                                   11.085s passed
+    botsCountTheEntitiesTheServerShowsThem(Path)                                                22.07s passed
+    walkingBotsAcknowledgeChunkBatchesAndGetMoreThanTheFirstNine(Path)                         11.053s passed
+  gradle: BUILD SUCCESSFUL in 1m 38s
+  Real sockets on loopback: walking bots answer every ChunkBatchFinished with a ChunkBatchReceived and each gets more than the
+  first 9 chunks; gate bots transferred back and forth between two servers get their first batch on every arrival.

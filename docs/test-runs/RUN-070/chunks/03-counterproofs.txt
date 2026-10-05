@@ -1,0 +1,145 @@
+# Counter proofs on the fix (5a084b973e): one edit of Player.java at a time, run, git checkout HEAD -- Player.java. Lock hold 05:43:19-05:46:31.
+# Common header: see 00-index.txt. Class io.github.bearisbug.synaxis.entity.player.ChunkQueueBoundIntegrationTest, one Gradle run each:
+# ./gradlew :test --rerun --tests '<class>' --max-workers=4 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts [STRICT]
+# STRICT = -Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true -Dsynaxis.thread-provider=grid
+
+# cp1 no trim: the call kept behind a property nobody sets (deleting the line fails compilation: Error Prone UnusedMethod on trimChunkQueue)
+    @@ -927 +927 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
+    -        trimChunkQueue();
+    +        if (Boolean.getBoolean("proof.never")) trimChunkQueue();
+## cp1, default: tests=4 failures=3 errors=0 skipped=0 time=1.407s timestamp=2026-10-05T21:44:01.544Z (UTC)
+aClientThatAcknowledgesStillGetsEveryChunkOfItsRing(Env)                          1.023s  passed
+chunksLoadedAfterTheRingMovedOnAreTrimmedAndLeaveNoHole(Env)                      0.046s  FAILED
+    message: org.opentest4j.AssertionFailedError: chunks queued after the tick that follows the late loads, for a ring of 121: 178 ==> expected: <true> but was: <false>
+    at io.github.bearisbug.synaxis.entity.player.ChunkQueueBoundIntegrationTest.chunksLoadedAfterTheRingMovedOnAreTrimmedAndLeaveNoHole(ChunkQueueBoundIntegrationTest.java:168)
+aWalkingClientThatNeverAcknowledgesQueuesNoMoreThanItsRing(Env)                   0.163s  FAILED
+    message: org.opentest4j.AssertionFailedError: chunks queued after each tick, for a ring of 121: [145, 178, 211, 244, 277, 310, 343, 376, 409, 442, 475, 508, 541, 574, 607, 640, 673, 706, 739, 772, 805, 838, 871, 904, 937, 970, 1003, 1036, 1069, 1102] ==> expected: <true> but was: <false>
+    at io.github.bearisbug.synaxis.entity.player.ChunkQueueBoundIntegrationTest.aWalkingClientThatNeverAcknowledgesQueuesNoMoreThanItsRing(ChunkQueueBoundIntegrationTest.java:92)
+aRacingClientThatAcknowledgesAtTheMinimumRateIsTrimmedToItsRingEveryTick(Env)     0.166s  FAILED
+    message: org.opentest4j.AssertionFailedError: chunks queued / chunks of the ring after each tick: [244/49, 372/121, 504/49, 632/121, 764/49, 892/121, 1024/49, 1152/121] ==> expected: <false> but was: <true>
+    at io.github.bearisbug.synaxis.entity.player.ChunkQueueBoundIntegrationTest.aRacingClientThatAcknowledgesAtTheMinimumRateIsTrimmedToItsRingEveryTick(ChunkQueueBoundIntegrationTest.java:125)
+    stdout: Acknowledged walk: largest queue 457
+    stdout: Late loads: queued 145 before, 178 once they completed, 178 after the next tick, ring 121
+    stdout: Unacknowledged walk: ring 121, chunks sent 9, queued after each tick [145, 178, 211, 244, 277, 310, 343, 376, 409, 442, 475, 508, 541, 574, 607, 640, 673, 706, 739, 772, 805, 838, 871, 904, 937, 970, 1003, 1036, 1069, 1102]
+    stdout: Race at the minimum rate: queued/ring after each tick [244/49, 372/121, 504/49, 632/121, 764/49, 892/121, 1024/49, 1152/121]
+
+    gradle: ChunkQueueBoundIntegrationTest > chunksLoadedAfterTheRingMovedOnAreTrimmedAndLeaveNoHole(Env) FAILED
+    gradle: ChunkQueueBoundIntegrationTest > aWalkingClientThatNeverAcknowledgesQueuesNoMoreThanItsRing(Env) FAILED
+    gradle: ChunkQueueBoundIntegrationTest > aRacingClientThatAcknowledgesAtTheMinimumRateIsTrimmedToItsRingEveryTick(Env) FAILED
+    gradle: 4 tests completed, 3 failed
+    gradle: BUILD FAILED in 17s
+
+# cp2 trim before the new view distance is applied: the call moved from sendPendingChunks to right after `if (isRemoved()) return;` in update()
+    @@ -477,0 +478 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
+    +        trimChunkQueue();
+    @@ -927 +927,0 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
+    -        trimChunkQueue();
+## cp2, default: tests=4 failures=1 errors=0 skipped=0 time=1.303s timestamp=2026-10-05T21:44:06.678Z (UTC)
+aClientThatAcknowledgesStillGetsEveryChunkOfItsRing(Env)                          0.939s  passed
+chunksLoadedAfterTheRingMovedOnAreTrimmedAndLeaveNoHole(Env)                      0.044s  passed
+aWalkingClientThatNeverAcknowledgesQueuesNoMoreThanItsRing(Env)                   0.153s  passed
+aRacingClientThatAcknowledgesAtTheMinimumRateIsTrimmedToItsRingEveryTick(Env)     0.158s  FAILED
+    message: org.opentest4j.AssertionFailedError: chunks queued / chunks of the ring after each tick: [121/49, 121/121, 121/49, 121/121, 121/49, 121/121, 121/49, 121/121] ==> expected: <false> but was: <true>
+    at io.github.bearisbug.synaxis.entity.player.ChunkQueueBoundIntegrationTest.aRacingClientThatAcknowledgesAtTheMinimumRateIsTrimmedToItsRingEveryTick(ChunkQueueBoundIntegrationTest.java:125)
+    stdout: Acknowledged walk: largest queue 114
+    stdout: Late loads: queued 112 before, 145 once they completed, 112 after the next tick, ring 121
+    stdout: Unacknowledged walk: ring 121, chunks sent 9, queued after each tick [112, 119, 121, 121, 121, 121, 121, 121, 121, 121, 121, 121, 121, 121, 121, 121, 121, 121, 121, 121, 121, 121, 121, 121, 121, 121, 121, 121, 121, 121]
+    stdout: Race at the minimum rate: queued/ring after each tick [121/49, 121/121, 121/49, 121/121, 121/49, 121/121, 121/49, 121/121]
+
+    gradle: ChunkQueueBoundIntegrationTest > aRacingClientThatAcknowledgesAtTheMinimumRateIsTrimmedToItsRingEveryTick(Env) FAILED
+    gradle: 4 tests completed, 1 failed
+    gradle: BUILD FAILED in 4s
+
+# cp3 trim where a chunk is queued: the call moved from sendPendingChunks to the end of sendChunk, after its finally block
+    @@ -923,0 +924 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
+    +        trimChunkQueue();
+    @@ -927 +927,0 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
+    -        trimChunkQueue();
+## cp3, default: tests=4 failures=3 errors=0 skipped=0 time=1.339s timestamp=2026-10-05T21:44:11.633Z (UTC)
+aClientThatAcknowledgesStillGetsEveryChunkOfItsRing(Env)                          0.948s  FAILED
+    message: org.opentest4j.AssertionFailedError: the client after the walk misses 43 chunks of the ring [31,5, 31,4, 31,-5, 31,3, 31,-4, 31,2, 31,-3, 31,1, 31,-2, 31,0, 31,-1, 32,0, 34,-3, 33,1, 33,-2, 32,-1, 33,0, 33,-1, 34,-4, 32,1, 32,-2, 34,0, 34,-1, 33,3, 33,-4, 32,2, 32,-3, 34,1, 34,-2, 33,2, 33,-3, 39,-5, 32,-4, 39,-4, 32,-5, 33,5, 39,-3, 33,-5, 33,4, 34,-5, 39,-2, 39,-1, 39,0] and holds 0 outside it [] ==> expected: <true> but was: <false>
+    at io.github.bearisbug.synaxis.entity.player.ChunkQueueBoundIntegrationTest.assertHolds(ChunkQueueBoundIntegrationTest.java:310)
+    at io.github.bearisbug.synaxis.entity.player.ChunkQueueBoundIntegrationTest.aClientThatAcknowledgesStillGetsEveryChunkOfItsRing(ChunkQueueBoundIntegrationTest.java:204)
+chunksLoadedAfterTheRingMovedOnAreTrimmedAndLeaveNoHole(Env)                      0.046s  FAILED
+    message: org.opentest4j.AssertionFailedError: the client misses 53 chunks of the ring [-4,-4, -5,-5, -4,3, -5,4, -6,5, -4,2, -6,4, -5,5, -4,-3, -6,-5, -4,-2, -4,1, -7,4, -8,5, -7,-5, -4,-1, -4,0, -7,5, -8,4, -8,-5, -7,-3, -5,0, -5,-1, -6,1, -6,-2, -8,-4, -7,2, -8,3, -7,-4, -5,1, -5,-2, -6,0, -6,-1, -8,-3, -7,3, -8,2, -5,2, -5,-3, -6,3, -6,-4, -7,0, -8,1, -7,-1, -8,-2, -5,3, -6,2, -6,-3, -5,-4, -7,1, -8,0, -7,-2, -8,-1, -4,-5] and holds 0 outside it [] ==> expected: <true> but was: <false>
+    at io.github.bearisbug.synaxis.entity.player.ChunkQueueBoundIntegrationTest.assertHolds(ChunkQueueBoundIntegrationTest.java:310)
+    at io.github.bearisbug.synaxis.entity.player.ChunkQueueBoundIntegrationTest.chunksLoadedAfterTheRingMovedOnAreTrimmedAndLeaveNoHole(ChunkQueueBoundIntegrationTest.java:173)
+aWalkingClientThatNeverAcknowledgesQueuesNoMoreThanItsRing(Env)                   0.159s  passed
+aRacingClientThatAcknowledgesAtTheMinimumRateIsTrimmedToItsRingEveryTick(Env)     0.176s  FAILED
+    message: org.opentest4j.AssertionFailedError: chunks queued / chunks of the ring after each tick: [82/49, 90/121, 92/49, 105/121, 85/49, 106/121, 111/49, 107/121] ==> expected: <false> but was: <true>
+    at io.github.bearisbug.synaxis.entity.player.ChunkQueueBoundIntegrationTest.aRacingClientThatAcknowledgesAtTheMinimumRateIsTrimmedToItsRingEveryTick(ChunkQueueBoundIntegrationTest.java:125)
+    stdout: Acknowledged walk: largest queue 116
+    stdout: Late loads: queued 92 before, 62 once they completed, 62 after the next tick, ring 121
+    stdout: Unacknowledged walk: ring 121, chunks sent 9, queued after each tick [115, 108, 101, 82, 115, 112, 113, 118, 97, 79, 112, 88, 121, 104, 100, 88, 121, 98, 100, 96, 81, 114, 85, 118, 103, 99, 84, 117, 90, 86]
+    stdout: Race at the minimum rate: queued/ring after each tick [82/49, 90/121, 92/49, 105/121, 85/49, 106/121, 111/49, 107/121]
+
+    gradle: ChunkQueueBoundIntegrationTest > aClientThatAcknowledgesStillGetsEveryChunkOfItsRing(Env) FAILED
+    gradle: ChunkQueueBoundIntegrationTest > chunksLoadedAfterTheRingMovedOnAreTrimmedAndLeaveNoHole(Env) FAILED
+    gradle: ChunkQueueBoundIntegrationTest > aRacingClientThatAcknowledgesAtTheMinimumRateIsTrimmedToItsRingEveryTick(Env) FAILED
+    gradle: 4 tests completed, 3 failed
+    gradle: BUILD FAILED in 4s
+
+## cp3, strict grid: tests=4 failures=3 errors=0 skipped=0 time=1.251s timestamp=2026-10-05T21:44:17.868Z (UTC)
+aClientThatAcknowledgesStillGetsEveryChunkOfItsRing(Env)                          0.964s  FAILED
+    message: org.opentest4j.AssertionFailedError: the client after the walk misses 43 chunks of the ring [31,5, 31,4, 31,-5, 31,3, 31,-4, 31,2, 31,-3, 31,1, 31,-2, 31,0, 31,-1, 32,0, 34,-3, 33,1, 33,-2, 32,-1, 33,0, 33,-1, 34,-4, 32,1, 32,-2, 34,0, 34,-1, 33,3, 33,-4, 32,2, 32,-3, 34,1, 34,-2, 33,2, 33,-3, 39,-5, 32,-4, 39,-4, 32,-5, 33,5, 39,-3, 33,-5, 33,4, 34,-5, 39,-2, 39,-1, 39,0] and holds 0 outside it [] ==> expected: <true> but was: <false>
+    at io.github.bearisbug.synaxis.entity.player.ChunkQueueBoundIntegrationTest.assertHolds(ChunkQueueBoundIntegrationTest.java:310)
+    at io.github.bearisbug.synaxis.entity.player.ChunkQueueBoundIntegrationTest.aClientThatAcknowledgesStillGetsEveryChunkOfItsRing(ChunkQueueBoundIntegrationTest.java:204)
+chunksLoadedAfterTheRingMovedOnAreTrimmedAndLeaveNoHole(Env)                      0.043s  FAILED
+    message: org.opentest4j.AssertionFailedError: the client misses 53 chunks of the ring [-4,-4, -5,-5, -4,3, -5,4, -6,5, -4,2, -6,4, -5,5, -4,-3, -6,-5, -4,-2, -4,1, -7,4, -8,5, -7,-5, -4,-1, -4,0, -7,5, -8,4, -8,-5, -7,-3, -5,0, -5,-1, -6,1, -6,-2, -8,-4, -7,2, -8,3, -7,-4, -5,1, -5,-2, -6,0, -6,-1, -8,-3, -7,3, -8,2, -5,2, -5,-3, -6,3, -6,-4, -7,0, -8,1, -7,-1, -8,-2, -5,3, -6,2, -6,-3, -5,-4, -7,1, -8,0, -7,-2, -8,-1, -4,-5] and holds 0 outside it [] ==> expected: <true> but was: <false>
+    at io.github.bearisbug.synaxis.entity.player.ChunkQueueBoundIntegrationTest.assertHolds(ChunkQueueBoundIntegrationTest.java:310)
+    at io.github.bearisbug.synaxis.entity.player.ChunkQueueBoundIntegrationTest.chunksLoadedAfterTheRingMovedOnAreTrimmedAndLeaveNoHole(ChunkQueueBoundIntegrationTest.java:173)
+aWalkingClientThatNeverAcknowledgesQueuesNoMoreThanItsRing(Env)                   0.121s  passed
+aRacingClientThatAcknowledgesAtTheMinimumRateIsTrimmedToItsRingEveryTick(Env)     0.114s  FAILED
+    message: org.opentest4j.AssertionFailedError: chunks queued / chunks of the ring after each tick: [82/49, 90/121, 92/49, 105/121, 85/49, 106/121, 111/49, 107/121] ==> expected: <false> but was: <true>
+    at io.github.bearisbug.synaxis.entity.player.ChunkQueueBoundIntegrationTest.aRacingClientThatAcknowledgesAtTheMinimumRateIsTrimmedToItsRingEveryTick(ChunkQueueBoundIntegrationTest.java:125)
+    stdout: Acknowledged walk: largest queue 116
+    stdout: Late loads: queued 92 before, 62 once they completed, 62 after the next tick, ring 121
+    stdout: Unacknowledged walk: ring 121, chunks sent 9, queued after each tick [115, 108, 101, 82, 115, 112, 113, 118, 97, 79, 112, 88, 121, 104, 100, 88, 121, 98, 100, 96, 81, 114, 85, 118, 103, 99, 84, 117, 90, 86]
+    stdout: Race at the minimum rate: queued/ring after each tick [82/49, 90/121, 92/49, 105/121, 85/49, 106/121, 111/49, 107/121]
+
+    gradle: ChunkQueueBoundIntegrationTest > aClientThatAcknowledgesStillGetsEveryChunkOfItsRing(Env) FAILED
+    gradle: ChunkQueueBoundIntegrationTest > chunksLoadedAfterTheRingMovedOnAreTrimmedAndLeaveNoHole(Env) FAILED
+    gradle: ChunkQueueBoundIntegrationTest > aRacingClientThatAcknowledgesAtTheMinimumRateIsTrimmedToItsRingEveryTick(Env) FAILED
+    gradle: 4 tests completed, 3 failed
+    gradle: BUILD FAILED in 6s
+
+# cp4 the trim drops the chunks of the ring too: queuedChunks.clear() right after chunkQueue.clear() in trimChunkQueue
+    @@ -991,0 +992 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
+    +            queuedChunks.clear();
+## cp4, default: tests=4 failures=2 errors=0 skipped=0 time=1.346s timestamp=2026-10-05T21:44:25.238Z (UTC)
+aClientThatAcknowledgesStillGetsEveryChunkOfItsRing(Env)                          0.993s  FAILED
+    message: org.opentest4j.AssertionFailedError: the client after the walk misses 22 chunks of the ring [31,5, 31,4, 31,-5, 31,3, 31,-4, 31,2, 31,-3, 31,1, 31,-2, 31,0, 31,-1, 32,0, 32,-1, 32,1, 32,-2, 32,2, 32,-3, 32,3, 32,-4, 32,-5, 32,4, 32,5] and holds 0 outside it [] ==> expected: <true> but was: <false>
+    at io.github.bearisbug.synaxis.entity.player.ChunkQueueBoundIntegrationTest.assertHolds(ChunkQueueBoundIntegrationTest.java:310)
+    at io.github.bearisbug.synaxis.entity.player.ChunkQueueBoundIntegrationTest.aClientThatAcknowledgesStillGetsEveryChunkOfItsRing(ChunkQueueBoundIntegrationTest.java:204)
+chunksLoadedAfterTheRingMovedOnAreTrimmedAndLeaveNoHole(Env)                      0.041s  FAILED
+    message: org.opentest4j.AssertionFailedError: the client misses 112 chunks of the ring [-2,-2, -2,1, -1,-1, -3,2, -3,-3, -4,-4, 1,-2, -5,-5, 2,-3, 1,1, 2,2, -4,3, -5,4, -6,5, -2,-1, -1,-2, -1,1, -4,2, -6,4, -5,5, -4,-3, 1,-1, -6,-5, 2,-4, -3,-4, 2,3, -3,3, -4,-2, -3,0, -3,-1, -2,-4, -4,1, -7,4, -8,5, -1,2, -1,-3, 0,-3, 1,-4, -7,-5, 2,-1, 1,3, -2,3, -4,-1, -3,1, -4,0, -7,5, -8,4, -3,-2, -2,2, -2,-3, 0,3, 1,2, 2,1, -1,3, 0,-4, 1,-3, 2,-2, -8,-5, -1,-4, -7,-3, -5,0, -5,-1, -6,1, -6,-2, 0,4, 1,5, -1,4, -2,5, 0,-5, -8,-4, -7,2, -8,3, -1,-5, -7,-4, -5,1, -5,-2, -6,0, -6,-1, 1,4, -2,4, 1,-5, -8,-3, -1,5, -7,3, -8,2, -2,-5, 0,5, 2,-5, -5,2, -5,-3, -6,3, -6,-4, -3,4, -4,5, -7,0, -8,1, -7,-1, -8,-2, -3,-5, 2,4, -3,5, -5,3, -6,2, -6,-3, -5,-4, -4,4, -7,1, -8,0, -7,-2, -8,-1, -4,-5, 2,5] and holds 0 outside it [] ==> expected: <true> but was: <false>
+    at io.github.bearisbug.synaxis.entity.player.ChunkQueueBoundIntegrationTest.assertHolds(ChunkQueueBoundIntegrationTest.java:310)
+    at io.github.bearisbug.synaxis.entity.player.ChunkQueueBoundIntegrationTest.chunksLoadedAfterTheRingMovedOnAreTrimmedAndLeaveNoHole(ChunkQueueBoundIntegrationTest.java:173)
+aWalkingClientThatNeverAcknowledgesQueuesNoMoreThanItsRing(Env)                   0.151s  passed
+aRacingClientThatAcknowledgesAtTheMinimumRateIsTrimmedToItsRingEveryTick(Env)     0.151s  passed
+    stdout: Acknowledged walk: largest queue 89
+    stdout: Late loads: queued 0 before, 33 once they completed, 33 after the next tick, ring 121
+    stdout: Unacknowledged walk: ring 121, chunks sent 9, queued after each tick [0, 33, 66, 99, 0, 33, 66, 99, 0, 33, 66, 99, 0, 33, 66, 99, 0, 33, 66, 99, 0, 33, 66, 99, 0, 33, 66, 99, 0, 33]
+    stdout: Race at the minimum rate: queued/ring after each tick [0/49, 0/121, 0/49, 0/121, 0/49, 0/121, 0/49, 0/121]
+
+    gradle: ChunkQueueBoundIntegrationTest > aClientThatAcknowledgesStillGetsEveryChunkOfItsRing(Env) FAILED
+    gradle: ChunkQueueBoundIntegrationTest > chunksLoadedAfterTheRingMovedOnAreTrimmedAndLeaveNoHole(Env) FAILED
+    gradle: 4 tests completed, 2 failed
+    gradle: BUILD FAILED in 7s
+
+# restored (git checkout HEAD -- Player.java)
+## restored, default: tests=4 failures=0 errors=0 skipped=0 time=1.244s timestamp=2026-10-05T21:44:30.466Z (UTC)
+aClientThatAcknowledgesStillGetsEveryChunkOfItsRing(Env)                          0.946s  passed
+chunksLoadedAfterTheRingMovedOnAreTrimmedAndLeaveNoHole(Env)                      0.039s  passed
+aWalkingClientThatNeverAcknowledgesQueuesNoMoreThanItsRing(Env)                   0.124s  passed
+aRacingClientThatAcknowledgesAtTheMinimumRateIsTrimmedToItsRingEveryTick(Env)     0.126s  passed
+    stdout: Acknowledged walk: largest queue 114
+    stdout: Late loads: queued 112 before, 145 once they completed, 112 after the next tick, ring 121
+    stdout: Unacknowledged walk: ring 121, chunks sent 9, queued after each tick [112, 119, 121, 121, 121, 121, 121, 121, 121, 121, 121, 121, 121, 121, 121, 121, 121, 121, 121, 121, 121, 121, 121, 121, 121, 121, 121, 121, 121, 121]
+    stdout: Race at the minimum rate: queued/ring after each tick [49/49, 121/121, 49/49, 121/121, 49/49, 121/121, 49/49, 121/121]
+
+    gradle: BUILD SUCCESSFUL in 4s
+
+# The first lock hold ran the same four edits on the fix with the earlier late-load test: cp1 did not compile (UnusedMethod, the call
+# had been deleted), cp2 red only in the racing test at the same line, cp3 red in three tests but the late-load one at its wait
+# (`125 chunks queued, not within PT10S: 62`), cp4 red in the same two tests; that is why the late-load test now counts the hand-overs.

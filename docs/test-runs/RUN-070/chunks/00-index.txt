@@ -1,0 +1,59 @@
+# Group chunks of the production-readiness session (branch prod/m3fix-chunks, worktree synaxis-wt/m3fix-chunks), finding 6 of the
+# lighting session's M3 side security review: the chunk send queue of a client that does not answer ChunkBatchReceived, for the
+# integrate round to register as RUN-070. Code under test: 5a084b973e (main 14437d0b78 + the fix and its test class); the docs commit on
+# top changes docs and this directory only. 2026-10-06 04:00 to 06:00 (UTC+8). Machine: Apple M4 Pro, 12 cores, 24 GiB, macOS 15.3.2,
+# Homebrew JDK 25.0.4.1. Every Gradle and Docker command ran inside a hold of the shared heavy lock (/tmp/synaxis-heavy.lock), released
+# at the end of its batch; other groups ran between the holds (05:09:25-05:14:26, 05:43:19-05:46:31, 05:49:27-05:49:39).
+# Gradle: --max-workers=4 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts. Database variables were set for the full
+# runs only (06); the other runs do not touch a database. Raw Gradle logs and JUnit XML stayed in /tmp/m3fix-chunks, deleted after the
+# round; the lines in these files are copied out of them.
+00-index.txt              this file
+01-red-before-fix.txt     the new test class on Player.java before the fix: 3 of 4 red, default and strict grid; the first red run too
+02-green-after-fix.txt    the same class on the fix: 4 of 4, default and strict grid
+03-counterproofs.txt      four edits of the fix, one at a time (cp1-cp4; cp3 also in strict grid), and the restored run
+04-probe.txt              temporary probe at the shard host's ring (r = 13): queue growth per packet, array bytes, the tick that drains
+                          n out-of-ring entries after a receipt; before and after the fix; the probe source (never committed)
+05-neighbours.txt         the entity.player package in both modes (15 classes, 80 tests) and :loadtest BotSocketTest (8 tests, real sockets)
+06-full-runs.txt          root :test default and strict grid, database variables set: 429 classes, 3,166 tests, 0 failures, 15 skipped
+                          each; forbiddenImportsCheck, testNamingCheck and javadoc of the root module
+07-docs.txt               design-doc and test-doc lint (only the known warnings) and the Player.java line references in the docs
+
+# What the code did before the fix (src/main/java/io/github/bearisbug/synaxis/entity/Player.java of 14437d0b78)
+- The queue is two structures under chunkQueueLock: chunkQueue, a LongArrayPriorityQueue ordered by Manhattan distance to the center
+  the client was last sent (every dequeue scans the whole array and shifts it), and queuedChunks, a LongOpenHashSet that keeps a chunk
+  from being queued twice. sendChunk enqueues; the chunk adder calls it once the ring's load completes: on the tick thread when the
+  chunk was loaded already, otherwise on the virtual thread that completed the load.
+- sendPendingChunks (every player tick) returns at once while chunkBatchLead >= maxChunkBatchLead. Each batch adds one to the lead,
+  each ChunkBatchReceived (ChunkBatchListener -> onChunkBatchReceived) takes one off and sets the rate, clamped to 0.01..max-per-tick;
+  maxChunkBatchLead is 1 until the first receipt, 10 after. So a client that never answers gets the first batch (9 chunks with the
+  engine default, 4 on a shard host) and nothing more: measured, 9 chunk packets in 30 ticks of walking (01, 02).
+- Out-of-ring entries were dropped only when dequeued (isOutOfClientRange). With nothing dequeued, every chunk the ring passes over
+  stays: 2r + 1 entries per chunk travelled, all of them out of the ring once the player is r + 1 chunks further.
+- After a later receipt the first send dequeues the closest chunks first and, once the ring is sent, every remaining out-of-ring entry
+  in that same tick, each dequeue scanning the queue: 387 ms for 20,000 entries, 1,592 ms for 40,000, 6,643 ms for 80,000 (04).
+- How large it gets depends only on where the player can go: before finding 1's fix a move is not checked against the world border or
+  a per packet distance, so there is no bound; with that fix (64 blocks a packet, no crossing of the border outwards) a 4k x 4k block
+  region (256 x 256 chunks) allows (256 + 2r)^2 = 79,524 entries at r = 13 (computed, not run), and the engine's default border
+  (59,999,968 blocks wide) none. A tick handles at most 50 packets (synaxis.packet-per-tick); a 64 block packet adds 4 x 27 = 108 at
+  r = 13 (04: 50 packets, 720 -> 6,120 entries, 130,280 bytes in the two arrays).
+
+# The fix (5a084b973e): Player#sendPendingChunks first calls trimChunkQueue, which drops the out-of-ring entries once the queue holds more
+# than (2r + 1)^2. It runs on the player's tick thread only, after the ring has moved; the queue is then within the ring before every send.
+
+# Results (5 new cases, 5 pass)
+TC-PROD-650  pass  walking client, never a receipt: 9 chunks sent, queue after each tick [112, 119, 121, ...] <= 121 (02); red before the
+                   fix and with cp1 at ChunkQueueBoundIntegrationTest.java:92, [145, 178, ..., 1102] (01, 03)
+TC-PROD-651  pass  receipts at the minimum rate, 4 packets a tick, view distance 2 <-> 4: [49/49, 121/121, ...] (02); red before the fix
+                   and with cp1 at :125, [244/49, ..., 1152/121]; cp2 (trim before the new view distance) red there alone, [121/49, ...]
+TC-PROD-652  pass  33 chunks held by the generator finish after the ring left them: 112 -> 145 -> 112 after the next tick, then the client
+                   holds exactly its ring (02); red before the fix and with cp1 at :168 (178); cp3 (trim in sendChunk, default and strict
+                   grid) red at :310 via :173, 53 chunks of the ring missing
+TC-PROD-653  pass  receipts at 4 a tick while walking 3 chunks a tick, view distance 2 and back, instance change: whole ring, each chunk
+                   once after the change; largest queue 114 (457 before the fix, still green there); cp4 (trim drops the ring too) red at
+                   :310 via :204, 22 missing; cp3 red there too, 43 missing
+TC-PROD-654  pass  entity.player 15 classes 80 tests in both modes; BotSocketTest 8 of 8; root :test 3,166 in both modes, 0 failures (05, 06)
+
+# Not verified here
+- The real client regression (TC-PROD-040 / TC-PROD-130, client-gametest.yml): it runs the client in a container and this round may not
+  start containers. A vanilla client answers every batch, which is the case TC-PROD-653 and BotSocketTest cover; CI runs it on the PR.
+- The 79,524 entries of a 4k x 4k region and its drain time are computed from the measured rate (2r + 1 per chunk) and the 80,000 probe.

@@ -1,0 +1,88 @@
+# The new test class on the code before the fix: Player.java of 5a084b973e^ (= main 14437d0b78) with the test class of 5a084b973e.
+# Common header: see 00-index.txt. Class io.github.bearisbug.synaxis.entity.player.ChunkQueueBoundIntegrationTest, one Gradle run each:
+# ./gradlew :test --rerun --tests '<class>' --max-workers=4 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts [STRICT]
+# STRICT = -Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true -Dsynaxis.thread-provider=grid
+
+# Final run (lock hold 05:43:19-05:46:31, 2026-10-06 UTC+8): git show 5a084b973e^:src/main/.../Player.java > Player.java, run, restore.
+
+## default: tests=4 failures=3 errors=0 skipped=0 time=1.235s timestamp=2026-10-05T21:43:24.717Z (UTC)
+aClientThatAcknowledgesStillGetsEveryChunkOfItsRing(Env)                          0.953s  passed
+chunksLoadedAfterTheRingMovedOnAreTrimmedAndLeaveNoHole(Env)                      0.037s  FAILED
+    message: org.opentest4j.AssertionFailedError: chunks queued after the tick that follows the late loads, for a ring of 121: 178 ==> expected: <true> but was: <false>
+    at io.github.bearisbug.synaxis.entity.player.ChunkQueueBoundIntegrationTest.chunksLoadedAfterTheRingMovedOnAreTrimmedAndLeaveNoHole(ChunkQueueBoundIntegrationTest.java:168)
+aWalkingClientThatNeverAcknowledgesQueuesNoMoreThanItsRing(Env)                   0.121s  FAILED
+    message: org.opentest4j.AssertionFailedError: chunks queued after each tick, for a ring of 121: [145, 178, 211, 244, 277, 310, 343, 376, 409, 442, 475, 508, 541, 574, 607, 640, 673, 706, 739, 772, 805, 838, 871, 904, 937, 970, 1003, 1036, 1069, 1102] ==> expected: <true> but was: <false>
+    at io.github.bearisbug.synaxis.entity.player.ChunkQueueBoundIntegrationTest.aWalkingClientThatNeverAcknowledgesQueuesNoMoreThanItsRing(ChunkQueueBoundIntegrationTest.java:92)
+aRacingClientThatAcknowledgesAtTheMinimumRateIsTrimmedToItsRingEveryTick(Env)     0.115s  FAILED
+    message: org.opentest4j.AssertionFailedError: chunks queued / chunks of the ring after each tick: [244/49, 372/121, 504/49, 632/121, 764/49, 892/121, 1024/49, 1152/121] ==> expected: <false> but was: <true>
+    at io.github.bearisbug.synaxis.entity.player.ChunkQueueBoundIntegrationTest.aRacingClientThatAcknowledgesAtTheMinimumRateIsTrimmedToItsRingEveryTick(ChunkQueueBoundIntegrationTest.java:125)
+    stdout: Acknowledged walk: largest queue 457
+    stdout: Late loads: queued 145 before, 178 once they completed, 178 after the next tick, ring 121
+    stdout: Unacknowledged walk: ring 121, chunks sent 9, queued after each tick [145, 178, 211, 244, 277, 310, 343, 376, 409, 442, 475, 508, 541, 574, 607, 640, 673, 706, 739, 772, 805, 838, 871, 904, 937, 970, 1003, 1036, 1069, 1102]
+    stdout: Race at the minimum rate: queued/ring after each tick [244/49, 372/121, 504/49, 632/121, 764/49, 892/121, 1024/49, 1152/121]
+
+    gradle: ChunkQueueBoundIntegrationTest > chunksLoadedAfterTheRingMovedOnAreTrimmedAndLeaveNoHole(Env) FAILED
+    gradle: ChunkQueueBoundIntegrationTest > aWalkingClientThatNeverAcknowledgesQueuesNoMoreThanItsRing(Env) FAILED
+    gradle: ChunkQueueBoundIntegrationTest > aRacingClientThatAcknowledgesAtTheMinimumRateIsTrimmedToItsRingEveryTick(Env) FAILED
+    gradle: 4 tests completed, 3 failed
+    gradle: BUILD FAILED in 6s
+
+## strict grid: tests=4 failures=3 errors=0 skipped=0 time=1.209s timestamp=2026-10-05T21:43:30.904Z (UTC)
+aClientThatAcknowledgesStillGetsEveryChunkOfItsRing(Env)                          0.915s  passed
+chunksLoadedAfterTheRingMovedOnAreTrimmedAndLeaveNoHole(Env)                      0.038s  FAILED
+    message: org.opentest4j.AssertionFailedError: chunks queued after the tick that follows the late loads, for a ring of 121: 178 ==> expected: <true> but was: <false>
+    at io.github.bearisbug.synaxis.entity.player.ChunkQueueBoundIntegrationTest.chunksLoadedAfterTheRingMovedOnAreTrimmedAndLeaveNoHole(ChunkQueueBoundIntegrationTest.java:168)
+aWalkingClientThatNeverAcknowledgesQueuesNoMoreThanItsRing(Env)                   0.125s  FAILED
+    message: org.opentest4j.AssertionFailedError: chunks queued after each tick, for a ring of 121: [145, 178, 211, 244, 277, 310, 343, 376, 409, 442, 475, 508, 541, 574, 607, 640, 673, 706, 739, 772, 805, 838, 871, 904, 937, 970, 1003, 1036, 1069, 1102] ==> expected: <true> but was: <false>
+    at io.github.bearisbug.synaxis.entity.player.ChunkQueueBoundIntegrationTest.aWalkingClientThatNeverAcknowledgesQueuesNoMoreThanItsRing(ChunkQueueBoundIntegrationTest.java:92)
+aRacingClientThatAcknowledgesAtTheMinimumRateIsTrimmedToItsRingEveryTick(Env)     0.122s  FAILED
+    message: org.opentest4j.AssertionFailedError: chunks queued / chunks of the ring after each tick: [244/49, 372/121, 504/49, 632/121, 764/49, 892/121, 1024/49, 1152/121] ==> expected: <false> but was: <true>
+    at io.github.bearisbug.synaxis.entity.player.ChunkQueueBoundIntegrationTest.aRacingClientThatAcknowledgesAtTheMinimumRateIsTrimmedToItsRingEveryTick(ChunkQueueBoundIntegrationTest.java:125)
+    stdout: Acknowledged walk: largest queue 457
+    stdout: Late loads: queued 145 before, 178 once they completed, 178 after the next tick, ring 121
+    stdout: Unacknowledged walk: ring 121, chunks sent 9, queued after each tick [145, 178, 211, 244, 277, 310, 343, 376, 409, 442, 475, 508, 541, 574, 607, 640, 673, 706, 739, 772, 805, 838, 871, 904, 937, 970, 1003, 1036, 1069, 1102]
+    stdout: Race at the minimum rate: queued/ring after each tick [244/49, 372/121, 504/49, 632/121, 764/49, 892/121, 1024/49, 1152/121]
+
+    gradle: ChunkQueueBoundIntegrationTest > chunksLoadedAfterTheRingMovedOnAreTrimmedAndLeaveNoHole(Env) FAILED
+    gradle: ChunkQueueBoundIntegrationTest > aWalkingClientThatNeverAcknowledgesQueuesNoMoreThanItsRing(Env) FAILED
+    gradle: ChunkQueueBoundIntegrationTest > aRacingClientThatAcknowledgesAtTheMinimumRateIsTrimmedToItsRingEveryTick(Env) FAILED
+    gradle: 4 tests completed, 3 failed
+    gradle: BUILD FAILED in 6s
+
+# First red run (lock hold 05:09:25-05:14:26, before the fix was applied in the working tree): the same three tests red with the same
+# messages, at :90, :123 and :159. That version of the late-load test waited for the queue to grow by 33 instead of counting the 33
+# hand-overs in sendChunk; it was changed because counter proof cp3 trims inside sendChunk and the wait then timed out instead of
+# reaching the hole check (see 03). The numbers below are from that run.
+
+## first run, default: tests=4 failures=3 errors=0 skipped=0 time=1.463s timestamp=2026-10-05T21:09:39.496Z (UTC)
+aClientThatAcknowledgesStillGetsEveryChunkOfItsRing(Env)                          1.158s  passed
+chunksLoadedAfterTheRingMovedOnAreTrimmedAndLeaveNoHole(Env)                      0.038s  FAILED
+    message: org.opentest4j.AssertionFailedError: chunks queued after the tick that follows the late loads, for a ring of 121: 178 ==> expected: <true> but was: <false>
+    at io.github.bearisbug.synaxis.entity.player.ChunkQueueBoundIntegrationTest.chunksLoadedAfterTheRingMovedOnAreTrimmedAndLeaveNoHole(ChunkQueueBoundIntegrationTest.java:159)
+aWalkingClientThatNeverAcknowledgesQueuesNoMoreThanItsRing(Env)                   0.128s  FAILED
+    message: org.opentest4j.AssertionFailedError: chunks queued after each tick, for a ring of 121: [145, 178, 211, 244, 277, 310, 343, 376, 409, 442, 475, 508, 541, 574, 607, 640, 673, 706, 739, 772, 805, 838, 871, 904, 937, 970, 1003, 1036, 1069, 1102] ==> expected: <true> but was: <false>
+    at io.github.bearisbug.synaxis.entity.player.ChunkQueueBoundIntegrationTest.aWalkingClientThatNeverAcknowledgesQueuesNoMoreThanItsRing(ChunkQueueBoundIntegrationTest.java:90)
+aRacingClientThatAcknowledgesAtTheMinimumRateIsTrimmedToItsRingEveryTick(Env)     0.129s  FAILED
+    message: org.opentest4j.AssertionFailedError: chunks queued / chunks of the ring after each tick: [244/49, 372/121, 504/49, 632/121, 764/49, 892/121, 1024/49, 1152/121] ==> expected: <false> but was: <true>
+    at io.github.bearisbug.synaxis.entity.player.ChunkQueueBoundIntegrationTest.aRacingClientThatAcknowledgesAtTheMinimumRateIsTrimmedToItsRingEveryTick(ChunkQueueBoundIntegrationTest.java:123)
+    stdout: Acknowledged walk: largest queue 457
+    stdout: Late loads: queued 145 before, 178 once they completed, 178 after the next tick, ring 121
+    stdout: Unacknowledged walk: ring 121, chunks sent 9, queued after each tick [145, 178, 211, 244, 277, 310, 343, 376, 409, 442, 475, 508, 541, 574, 607, 640, 673, 706, 739, 772, 805, 838, 871, 904, 937, 970, 1003, 1036, 1069, 1102]
+    stdout: Race at the minimum rate: queued/ring after each tick [244/49, 372/121, 504/49, 632/121, 764/49, 892/121, 1024/49, 1152/121]
+
+## first run, strict grid: tests=4 failures=3 errors=0 skipped=0 time=1.396s timestamp=2026-10-05T21:09:46.857Z (UTC)
+aClientThatAcknowledgesStillGetsEveryChunkOfItsRing(Env)                          1.064s  passed
+chunksLoadedAfterTheRingMovedOnAreTrimmedAndLeaveNoHole(Env)                      0.043s  FAILED
+    message: org.opentest4j.AssertionFailedError: chunks queued after the tick that follows the late loads, for a ring of 121: 178 ==> expected: <true> but was: <false>
+    at io.github.bearisbug.synaxis.entity.player.ChunkQueueBoundIntegrationTest.chunksLoadedAfterTheRingMovedOnAreTrimmedAndLeaveNoHole(ChunkQueueBoundIntegrationTest.java:159)
+aWalkingClientThatNeverAcknowledgesQueuesNoMoreThanItsRing(Env)                   0.144s  FAILED
+    message: org.opentest4j.AssertionFailedError: chunks queued after each tick, for a ring of 121: [145, 178, 211, 244, 277, 310, 343, 376, 409, 442, 475, 508, 541, 574, 607, 640, 673, 706, 739, 772, 805, 838, 871, 904, 937, 970, 1003, 1036, 1069, 1102] ==> expected: <true> but was: <false>
+    at io.github.bearisbug.synaxis.entity.player.ChunkQueueBoundIntegrationTest.aWalkingClientThatNeverAcknowledgesQueuesNoMoreThanItsRing(ChunkQueueBoundIntegrationTest.java:90)
+aRacingClientThatAcknowledgesAtTheMinimumRateIsTrimmedToItsRingEveryTick(Env)     0.136s  FAILED
+    message: org.opentest4j.AssertionFailedError: chunks queued / chunks of the ring after each tick: [244/49, 372/121, 504/49, 632/121, 764/49, 892/121, 1024/49, 1152/121] ==> expected: <false> but was: <true>
+    at io.github.bearisbug.synaxis.entity.player.ChunkQueueBoundIntegrationTest.aRacingClientThatAcknowledgesAtTheMinimumRateIsTrimmedToItsRingEveryTick(ChunkQueueBoundIntegrationTest.java:123)
+    stdout: Acknowledged walk: largest queue 457
+    stdout: Late loads: queued 145 before, 178 once they completed, 178 after the next tick, ring 121
+    stdout: Unacknowledged walk: ring 121, chunks sent 9, queued after each tick [145, 178, 211, 244, 277, 310, 343, 376, 409, 442, 475, 508, 541, 574, 607, 640, 673, 706, 739, 772, 805, 838, 871, 904, 937, 970, 1003, 1036, 1069, 1102]
+    stdout: Race at the minimum rate: queued/ring after each tick [244/49, 372/121, 504/49, 632/121, 764/49, 892/121, 1024/49, 1152/121]
+

@@ -8,12 +8,13 @@
 | Owner | Bearisbug |
 | 关联设计文档 | `docs/DESIGN.md`（引擎域 M1 / M1.5）、`docs/DESIGN-M2.md`（游戏域 M2 分册）、`docs/DESIGN-M3.md`（大世界域 M3 分册）与 `docs/DESIGN-PROD.md`（生产就绪分册）；各文档的 REQ 各自编号，M2 侧写作 `REQ-M2-*`、M3 侧写作 `REQ-M3-*`，生产就绪侧写作 `REQ-PROD-*`，对应用例写作 `TC-PROD-*` |
 | 被测系统 | 仓库 `Bearisbug/synaxis`，分支 `main` |
-| 最后更新 | 2026-10-02 |
+| 最后更新 | 2026-10-06 |
 
 变更记录（登用例增改，不登执行轮次）：
 
 | 日期 | 改动 | 作者 |
 | --- | --- | --- |
+| 2026-10-06 | 分支 `prod/m3fix-chunks`（代码提交 `5a084b973e`，基线 `main` `14437d0b78`），跟进 `docs/DESIGN-PROD.md` v0.9.49（光照会话 M3 侧安全审查 ⑥：客户端不回 `ChunkBatchReceived` 时区块待发队列一直增长），不登执行轮次，由集成轮登记 RUN-070；本组证据在 `docs/test-runs/RUN-070/chunks/`。**新增 §4「生产就绪 · M3 侧安全审查修复：chunks（区块批次回执与待发队列）」五条 `TC-PROD-650`～`TC-PROD-654`**，新类 `ChunkQueueBoundIntegrationTest` 4 条；改动前的代码上 650～652 红、653 绿，默认与严格 grid 相同；四个反证（不修剪、在应用新视距之前修剪、在入队处修剪、修剪时连环里的条目一起丢掉）都实跑过，各自红在用例写的那一行。根项目 `:test` 多 1 个类 4 个测试，`TC-PROD-486` 第 3 步等写死的全量条数本组不改，由集成轮统一改。**§5** 加一行 | Bearisbug |
 | 2026-10-02 | 合入 `main` `494605595a`（M3-G 合入，`docs/DESIGN-M3.md` v0.32，RUN-064）后按该分册 §28.2「M3 v0.30」「M3 v0.31」「M3 v0.32」三行交给本会话的部分同步，跟进 `docs/DESIGN-PROD.md` v0.9.45，登记 RUN-067（证据 `docs/test-runs/RUN-067/`）。**条数**：`:server-app:test` 553 → 577、类 110 → 113（M3-G 加 `ShardWorldFarViewTest` 9、`FarViewShardFixtureTest` 9、`FarViewLaunchTest` 4，`ShardSettingsTest` 6 → 8，按 RUN-064 `main-merge/01-gates.txt`），改 `TC-PROD-486` 第 3 步、`505` 第 3 步、`510` 第 2 步、`529` 第 4 步、`549` 第 2 步、`575` 第 3 步、`585` 第 1、2 步、`596` 第 2 步、`607` 第 2 步、`618` 第 1、2 步，根构建 `:test` 3,162 不变；`575` 第 3 步不带数据库变量的两次（默认、严格 grid）在 RUN-067 实跑，各 577 个、132 个跳过。**两道门禁**：配置键 115 → 116（`TC-PROD-441` 标题与第 1～3 步、`TC-PROD-547` 第 1 步、`TC-PROD-569` 第 4 步），`441` 的三个反证照字面实跑，读数 116 / 115、116 / 117、116 / 116；翻译键 14 → 15 个标识、60 个键（`TC-PROD-430` 标题与第 1 步、6F 一节开头、`TC-PROD-432` 第 1 步的 `grep` 加 `farview`、`TC-PROD-547` 第 1 步）。`NOT_TEXT` 多一行让门禁的断言由 `TranslationKeyGateTest.java:90` 移到 `:91`，交接行没有列，按 RUN-067 实跑改：`TC-PROD-068`、`105`、`162`、`210`（两步）、`233`、`250`、`295`、`396`、`430`、`431`、`433`、`547` 的反证红行改为 `:91`，`068` 夹具那条 `:101` → `:102`，`432` 第 2 步 `:89` → `:90`、`:100` → `:101`、读数 `61 keys …, 14 identifiers`，第 3 步 `:91` → `:92`、`60 keys …, 16 identifiers`，`430` 第 3 步与 `433` 第 2 步的键数 57 → 61。同轮实跑另有两处与用例不同、与 M3-G 无关，一并改：`162` 第 2 步的来源多了 `TicketIssuer`（v0.9.40 起断开签票后不走的连接用这个键），`547` 第 2 步跑两个门禁类，是 `3 tests completed, 1 failed`。**`Main.java` 行号**（多一行导入、`serveMap` 的监听多 7 行，原 `:513` 以后 +8，逐个在合入后的代码上核过）：`TC-PROD-498` 第 3 步九行里的 `:322`～`:335` 各加 1，`TC-PROD-521` 第 3 步 `264` → `265`、第 4 步 `:750` → `:758`，`TC-PROD-528` 第 2 步 `:704` → `:712`，`TC-PROD-533` 第 2 步 `sed -n 748,750p` → `756,758p`（RUN-067 照字面跑过）、第 3 步 `:748` → `:756`，6A 其余部分一节开头 `:268`～`:269`、`:284` → `:269`～`:270`、`:285`（交接行把这两处记在 `TC-PROD-533` 名下），`TC-PROD-548` 第 7 步 `:268` → `:269`，`TC-PROD-573` 第 3 步 518 → 526（交接行没有列），ops 一节 `TC-PROD-603` 第 2 步 `<MN>:610` → `:618`、`TC-PROD-604` 第 2 步 `<MN>:343` → `:344`（节首写明 `<MN>` 的行号按合入后的代码），§7 端口竞态一条的就绪行 `:359` → `:360`。**`TC-PROD-550` 第 3 步**：烘焙器发布行多了远景包一段 | Bearisbug |
 | 2026-10-02 | 分支 `m3g/integrate`（M3-G 合并验收，合入 `main` `4bb76eec7f` 之后是 `24d3b318a9`），跟进 `docs/DESIGN-M3.md` v0.32，登记 RUN-064（证据 `docs/test-runs/RUN-064/`）。**新增「M3 · 远景（M3-G）」一节 `TC-WORLD-102`～`TC-WORLD-124`**（排在 M3-D 一节之后，编号接 `main` 上最大的 `TC-WORLD-101`）：服务端与烘焙器 102～109（编解码与远景向量、烘焙产出、采样与粗层、隐藏区域、校验、导出、分片宣告、命令行与夹具），客户端 JUnit 110～116，无头容器 117～122（121 只登记读数），真机 123、124（执行者人工）；JUnit 用例的反证都按本节字面在 `24d3b318a9` 上实跑过，容器用例 117、118 带反证，119、120 没有（§7）。§2 `REQ-M3-024`、`REQ-M3-025` 两行由「未实现」改为这些用例，`REQ-M3-002`、`REQ-M3-003`、`REQ-M3-022` 三行加对应用例；§3 加「远景（M3-G）」一条（重活锁的 `EXIT` trap 要写在脚本顶层、容器门槛、夹具与容器的命令、端口）；§5 加 M3-G 一行；§7 加四条。**改既有用例**（M3-G 让预期变了，RUN-064 按新的字面实跑）：`TC-WORLD-023` 第 1、2 步（发布行多了 `; 1 far view pack(s), 596465 bytes, assembled in <n> ms`，事件 `farview_bytes` 0 → 596465，`farview/t.0.0.hfp` 1 线程与多线程逐字节相同）；`TC-WORLD-030` 第 2 步与 `TC-WORLD-033` 第 1 步（发布行同样多一段，夹具版本多了 `farview/t.0.0.hfp`）；`TC-WORLD-032` 第 1～3 步（`60 keys …, 15 identifiers left out`，`NOT_TEXT` 多 `synaxis:farview`，反证红行 `:89` → `:90`、输出 `61 keys …, 14 identifiers`）；`TC-WORLD-041` 第 1、2、4 步（`ShardSettingsTest` 6 → 8 条，门禁 `116 keys read, 116 in ConfigFile.KEYS, 21 meter names left out`，21 是生产就绪第 6 波之后的值，反证 `116 keys read, 114 in ConfigFile.KEYS`）；`TC-WORLD-098` 第 2 步（同一门禁输出）；`TC-WORLD-100` 与 `TC-WORLD-101` 第 2 步（`Main.java:518` → `:526`、`:304` → `:305`：合入后 `Main` 多了远景宣告的导入与监听体）。**不改**：`TC-PROD-*`。合入后它们要跟着改的条数与行号列在 `docs/DESIGN-M3.md` §28.2「交给生产就绪会话的改动（M3 v0.32）」：`TC-PROD-550` 第 3 步的发布行、`:server-app:test` 553 → 577、两道门禁 116 与 15、`Main.java` 行号 | Bearisbug |
 | 2026-10-01 | 合入 `main` `4a40af2835`（`docs/DESIGN-M3.md` v0.31，RUN-065）后按该分册 §28.2「M3 v0.31」一行同步，跟进 `docs/DESIGN-PROD.md` v0.9.44。**`TC-PROD-570` 第 2 步改写**：原写法 `git checkout 0e919cce6a -- <GT>` 取出的旧 `ShardGates` 只有三个参数的构造器，M3 v0.31 起 `Main` 与测试都传四个，照写编不过（RUN-065 判失败）；改为原地把 `case COOLDOWN, NOT_ONLINE, SAVE_FAILED -> refused(player, gate, result);` 换成空块，红行与消息不变，在 RUN-066 按字面重跑 1～6 步。**条数**：`:server-app:test` 552 → 553（M3 v0.31 的 `ShardGatesOnlineTest` 1 个），改 `TC-PROD-486` 第 3 步、`505` 第 3 步、`510` 第 2 步、`529` 第 4 步、`549` 第 2 步、`575` 第 3 步、`585` 第 1、2 步、`596` 第 2 步、`607` 第 2 步、`618` 第 1、2 步，类数随之 109 → 110；根构建 `:test` 3,162 不变 | Bearisbug |
@@ -8733,6 +8734,76 @@ for (var request : System.getenv("MGMT_CALLS").split("\n")) {
 
 后置：`git status --short` 无输出。
 
+### 生产就绪 · M3 侧安全审查修复：chunks（区块批次回执与待发队列）
+
+对应 `REQ-PROD-026`（`docs/DESIGN-PROD.md` v0.9.49：`API-PROD-020`「区块待发队列」一条，§15「区块待发队列」行，§16「区块待发队列的修剪与入队」一行，§19「不回执的客户端发完首批即停，待发队列不超过区块环」场景，§28.2 对应的已决行）。起因是光照会话 M3 侧安全审查的 ⑥（`docs/research/security-review-2026-10/README.md` §5 第 11 行）：服务端每发一批区块记一批在途，在途达到上限（首次回执之前 1 批，之后 10 批）就不发，所以从不回 `ChunkBatchReceived` 的客户端只收到首批；但区块环扫过的区块照样入队，出环的只在出队时丢弃，停发时不出队，队列随移动一直增长。改动：`Player#sendPendingChunks` 开头调新方法 `trimChunkQueue`，队列条目多于区块环的块数 (2r + 1)² 时丢掉已出环的条目（判据与出队时的 `isOutOfClientRange` 相同），只在玩家所属 tick 线程上的这一处做。
+
+测试：根项目新类 `io.github.bearisbug.synaxis.entity.player.ChunkQueueBoundIntegrationTest`（4 条，`@EnvTest`）。玩家是普通 `Player`（测试玩家一入队就发，没有待发队列），视距 4，区块环半径 r = 5、121 块，在区块 (0, 0) 出生并确认最后一次传送；每个移动包 48 格，即 3 个区块，在安全审查 ① 的单包 64 格之内。除 `TC-PROD-652` 按住的 33 块外，要用的区块都先加载好，区块环移动时进环的区块当场在 tick 线程上入队。队列长度经反射在 `chunkQueueLock` 下读 `chunkQueue` 与 `queuedChunks`，两者不等即失败。「跑 `<类>`」即 `./gradlew :test --rerun --tests '<类全名>' --max-workers=4 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts`，「严格 grid」是再加 `-Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true -Dsynaxis.thread-provider=grid`，结果看 `build/test-results/test/TEST-<类全名>.xml`。`<PL>` 是 `src/main/java/io/github/bearisbug/synaxis/entity/Player.java`，`<CQ>` 是 `ChunkQueueBoundIntegrationTest.java`。反证一律是临时改 `<PL>`、跑、看红、`git checkout HEAD -- <PL>`、重跑复绿；行号按提交 `5a084b973e`。「改动前的代码」指 `git show 5a084b973e^:<PL> > <PL>`，只换回实现、测试类留着。本节不需要数据库前置。证据 `docs/test-runs/RUN-070/chunks/`。
+
+#### `TC-PROD-650` 从不回执、每 tick 一个 48 格移动包的客户端：只收到首批 9 块，每个 tick 之后待发队列 ≤ 121 — 对应 `REQ-PROD-026` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `ChunkQueueBoundIntegrationTest`，看 `aWalkingClientThatNeverAcknowledgesQueuesNoMoreThanItsRing` | `tests="4"` 0 失败。30 个包、每 tick 一个、从不回执：玩家最后停在区块 90（断言 `every move is taken`）；客户端一共收到 9 个区块包（首批）；每个 tick 之后的待发队列是 `[112, 119, 121, 121, …, 121]`，最大 121。标准输出一行 `Unacknowledged walk: ring 121, chunks sent 9, queued after each tick [...]` |
+| 2 | 严格 grid 跑同一个类 | 与第 1 步相同 |
+| 3 | 反证有齿（不修剪）：`<PL>:927` 的 `trimChunkQueue();` 改为 `if (Boolean.getBoolean("proof.never")) trimChunkQueue();`（直接删掉这一行，Error Prone 报 `UnusedMethod`，编译不过），跑第 1 步的类，再还原 | `4 tests completed, 3 failed`：本条红在 `<CQ>:92`，`chunks queued after each tick, for a ring of 121: [145, 178, 211, …, 1069, 1102] ==> expected: <true> but was: <false>`，每包多 33 条，即 3 个区块 × 11；`TC-PROD-651`、`TC-PROD-652` 同时红（见各条第 2 步）；`aClientThatAcknowledgesStillGetsEveryChunkOfItsRing` 绿。改动前的代码上默认与严格 grid 各跑一次，结果与此相同 |
+| 4 | 还原后重跑第 1 步 | 与第 1 步相同 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PROD-651` 每 tick 按最低速率回执、4 个移动包、视距在 2 与 4 之间来回改：每个 tick 之后待发队列 ≤ 当时区块环的块数 — 对应 `REQ-PROD-026` · 级别: 边缘 · 执行者: AI
+
+前置：本节开头。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | `TC-PROD-650` 第 1、2 步的两次运行，看 `aRacingClientThatAcknowledgesAtTheMinimumRateIsTrimmedToItsRingEveryTick` | 两次都通过。8 个 tick，每 tick 先一个 `ChunkBatchReceived(0)`（回报夹到最低 0.01 块/tick），再 4 个 48 格的移动包，再改视距（奇数 tick 改 2，偶数 tick 改回 4）：玩家最后停在区块 96；每个 tick 之后「队列 / 区块环」是 `[49/49, 121/121, 49/49, 121/121, …]`。标准输出一行 `Race at the minimum rate: queued/ring after each tick [...]` |
+| 2 | 不修剪（`TC-PROD-650` 第 3 步的改法，或改动前的代码） | 本条红在 `<CQ>:125`，`chunks queued / chunks of the ring after each tick: [244/49, 372/121, 504/49, 632/121, 764/49, 892/121, 1024/49, 1152/121] ==> expected: <false> but was: <true>` |
+| 3 | 反证有齿（在应用新视距之前修剪）：删掉 `<PL>:927` 的 `trimChunkQueue();`，在 `<PL>:477` 的 `if (isRemoved()) return;` 之后加一行 `trimChunkQueue();`，跑第 1 步的类，再还原 | `4 tests completed, 1 failed`：只有本条红在 `<CQ>:125`，`[121/49, 121/121, 121/49, 121/121, …]`：修剪按缩小之前的区块环做，缩到 49 块的那些 tick 末仍留 121 条；另三条绿 |
+| 4 | 还原后重跑第 1 步 | 与第 1 步相同 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PROD-652` 注入延迟：区块环离开之后才加载完成的区块下一个 tick 修掉；随后回执，客户端手里恰是区块环、没有洞 — 对应 `REQ-PROD-026` · 级别: 边缘 · 执行者: AI
+
+前置：本节开头。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | `TC-PROD-650` 第 1、2 步的两次运行，看 `chunksLoadedAfterTheRingMovedOnAreTrimmedAndLeaveNoHole` | 两次都通过。实例的生成器遇到 x > 5 的区块就等测试放行。玩家走到区块 3（区块环请求 x = 6～8 的 33 块，生成被按住），走回区块 0（区块更新限流器记得它，区块环不动），再走到区块 −3（x = 6～8 已出环）：队列 112 条。放行之后这 33 块在各自的虚拟线程上加载完成，经 `sendChunk` 入队（测试覆写的 `sendChunk` 数满 33 次才往下走），队列 145 条；下一个 tick 之后 112 条，≤ 121。之后每 tick 回执 64 块直到队列为空，按收到的区块包与卸载包推算，客户端手里恰是以区块 (−3, 0) 为中心的 121 块。标准输出一行 `Late loads: queued 112 before, 145 once they completed, 112 after the next tick, ring 121` |
+| 2 | 不修剪（`TC-PROD-650` 第 3 步的改法，或改动前的代码） | 本条红在 `<CQ>:168`，`chunks queued after the tick that follows the late loads, for a ring of 121: 178 ==> expected: <true> but was: <false>`：走到区块 −3 时已是 145 条，晚到的 33 块入队后也留着 |
+| 3 | 反证有齿（在入队处修剪：区块环移动时进环的区块入队在先、中心移动在后，加载线程上读到的中心可能过时）：删掉 `<PL>:927` 的 `trimChunkQueue();`，在 `sendChunk` 的 `finally` 块之后（`<PL>:923` 的 `}` 与 `:924` 之间）加一行 `trimChunkQueue();`，跑第 1 步的类，严格 grid 再跑一次，再还原 | 两次都是 `4 tests completed, 3 failed`：本条红在 `<CQ>:310`（经 `:173`），`the client misses 53 chunks of the ring [-4,-4, -5,-5, …] and holds 0 outside it []`（标准输出 `Late loads: queued 92 before, 62 once they completed, …`：走到区块 −3 那一步，入队处的修剪按还没移动的中心把这次进环的区块当作出环丢了，之后不会再入队）；`aClientThatAcknowledgesStillGetsEveryChunkOfItsRing` 红在 `<CQ>:310`（经 `:204`），`the client after the walk misses 43 chunks of the ring [31,5, 31,4, …] and holds 0 outside it []`；`TC-PROD-651` 红在 `<CQ>:125`。修剪必须在区块环与中心一致的地方做 |
+| 4 | 还原后重跑第 1 步 | 与第 1 步相同 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PROD-653` 正常回执的客户端不受影响：边走边按 4 块/tick 回执、视距改小再改回、换实例 — 对应 `REQ-PROD-026` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | `TC-PROD-650` 第 1、2 步的两次运行，看 `aClientThatAcknowledgesStillGetsEveryChunkOfItsRing` | 两次都通过。12 步，每步一个 `ChunkBatchReceived(4)`（分片宿主的上限）与一个 48 格的移动包，第 4 步视距改 2、第 8 步改回 4：队列最大 114 条；走完回执到队列为空，客户端手里恰是以区块 (36, 0) 为中心的 121 块。再经 `acquirable().sync` 换到另一个实例的区块 (0, 0)：此后发来的区块包恰是新区块环的 121 块，各一次。标准输出一行 `Acknowledged walk: largest queue 114` |
+| 2 | 改动前的代码上跑第 1 步的类 | 本条绿，队列最大 457 条（`Acknowledged walk: largest queue 457`）：按 4 块/tick 回执、每 tick 走 3 个区块的客户端，出环的条目同样堆着，修剪在它身上也会发生；最后拿到的区块与改动后相同 |
+| 3 | 反证有齿（修剪把环里的条目也丢掉）：`<PL>:991` 的 `chunkQueue.clear();` 之后加一行 `queuedChunks.clear();`，跑第 1 步的类，再还原 | `4 tests completed, 2 failed`：本条红在 `<CQ>:310`（经 `:204`），`the client after the walk misses 22 chunks of the ring [31,5, 31,4, …, 32,5] and holds 0 outside it []`；`TC-PROD-652` 红在 `<CQ>:310`（经 `:173`），缺 112 块；`TC-PROD-650`、`TC-PROD-651` 绿，它们只看队列长度 |
+| 4 | 还原后重跑第 1 步 | 与第 1 步相同 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PROD-654` 回归：`entity.player` 包、`:loadtest` 回执机器人与根项目全量 — 对应 `REQ-PROD-026`、`REQ-PROD-029` · 级别: 回归 · 执行者: AI
+
+前置：本节开头；第 3 步带数据库变量（`SYNAXIS_TEST_PG_URL`、`SYNAXIS_TEST_PG_PASSWORD`、`SYNAXIS_TEST_REDIS_URL`）。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `io.github.bearisbug.synaxis.entity.player.*`（`--tests` 给这个通配），默认模式与严格 grid 各一次 | 两次都 `BUILD SUCCESSFUL`，15 个类 80 个 0 失败，其中区块下发相关的是本节新类 4 个、`PlayerChunkQueueIntegrationTest` 7 个（视距来回改不重复入队、缩小视距丢掉待发的环外区块）、`ChunkSendCapTest` 2 个（`TC-PROD-296`）、`PlayerMaxViewDistanceIntegrationTest` 8 个、`PlayerRespawnChunkIntegrationTest` 4 个 |
+| 2 | `./gradlew :loadtest:test --rerun --tests 'io.github.bearisbug.synaxis.loadtest.BotSocketTest' --max-workers=4 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts` | `tests="8"` 0 失败：走路的机器人回执每一批、每个都拿到多于首批 9 块（`walkingBotsAcknowledgeChunkBatchesAndGetMoreThanTheFirstNine`），两分片之间来回转服的门框机器人每次到达都照常收到首批（`aGateBotFollowsTransfersBackAndForthWithTheCookieItWasGiven`） |
+| 3 | 根项目 `:test` 全量（`--rerun --continue`），默认模式与严格 grid 各一次 | 两次都 `BUILD SUCCESSFUL`，429 个类 3,166 个，0 失败、15 个跳过（本节新类 4 个；带数据库变量）。写死全量条数的用例（`TC-PROD-486` 等）由集成轮统一改 |
+
+后置：`git status --short` 无输出。
+
 ## 5. 回归策略
 
 - **全量轮**（全部用例）：首次成稿、每个阶段 gate（引擎域阶段 0、2、3；游戏域 `docs/DESIGN-M2.md` §26 的阶段 1～6b；大世界域 `docs/DESIGN-M3.md` §26 的 M3-A～M3-G）、跨功能域改动、地基变更（JDK、Gradle、镜像、协议版本、模块拆分、启动入口）。
@@ -8793,6 +8864,7 @@ for (var request : System.getenv("MGMT_CALLS").split("\n")) {
   - 生产就绪域（`docs/DESIGN-PROD.md`）：安全修复 ops 组，运维端口加固与起服退出（`REQ-PROD-032`、`REQ-PROD-018`、`REQ-PROD-036`，v0.9.41）→ TC-PROD-600～TC-PROD-607；动了 `ManagementServer.Endpoint#onWebsocketHandshakeReceivedAsServer` 就跑 TC-PROD-600 与 6B 一节的 TC-PROD-381；动了 `GuardedFactory`、`GuardedSocket#setChannel` 或 `MAX_UNFINISHED_HANDSHAKES` 就跑 TC-PROD-601 与 TC-PROD-383、TC-PROD-575 第 3 步，其中动了 `GuardedSocket#setChannel` 的再加跑 TC-PROD-575 第 1、2 步（v0.9.38 一行的规则）；动了 `HostMetrics#serve` 或 `startOnADaemon` 就跑 TC-PROD-602、TC-PROD-605 与 TC-PROD-501；动了 `Main` 步骤 (4) 的两处 WARN 或 `warnOfTheWildcard` 就跑 TC-PROD-603；动了 `Main` 步骤 (6) 的接住与拒启或 `Main#main` 的拒启路径，就跑 TC-PROD-604 与 TC-PROD-489、TC-PROD-397（真进程）；改了部署单元、`.env.example` 的管理令牌一段或开管理接口的主机，跑 TC-PROD-606（人工）。升 JDK 时重跑 TC-PROD-602、TC-PROD-605：`jdk.httpserver.maxConnections` 与 `HTTP-Dispatcher` 随起它的线程定 daemon，都是 JDK 实现里的行为，不在公开 API 里。
   - 生产就绪域（`docs/DESIGN-PROD.md`）：安全修复 secrets 组，机密进日志与落盘权限（`REQ-PROD-005`、`007`、`015`、`017`、`033`、`034`、`036`，v0.9.42）→ TC-PROD-610～TC-PROD-619。动了 `StoreSettings#toString` → TC-PROD-610；动了 `RedisLink#connect` 的解析 → TC-PROD-611；动了 `SessionServer#isMojang` → TC-PROD-612；动了 `ConfigFile#apply` 或它的权限检查 → TC-PROD-613；动了 `Profiler` 的 `LEFT_OUT`、`handedOver` 或建文件 → TC-PROD-614、TC-PROD-615，再加 TC-PROD-392 第 6、7 步与 TC-PROD-471；动了 `ConfigFile#isSecret` → TC-PROD-615 与 TC-PROD-002；动了 `EventLedger` 建目录、建文件或压缩，或 `CrashReports#write` → TC-PROD-616；改 `.env.example` 开头 → TC-PROD-616 第 6 步；升 Java-WebSocket 或动了 `ManagementServer.BoundedDraft#processFrame` → TC-PROD-617（另见 TC-PROD-382、TC-PROD-472）；动了 `ConfigFileTest.write`，或新增建 `synaxis.properties` 的测试 → TC-PROD-619。这些都改完后跑 TC-PROD-618。
   - 生产就绪域（`docs/DESIGN-PROD.md`）：安全修复 · 跨格拾取（`REQ-PROD-019`、`REQ-PROD-020`，v0.9.43）→ TC-PROD-620～TC-PROD-623；动了 `LivingEntity#update` 的拾取、`ItemEntity#update` 的合并、`ItemEntity#removeConsumed` 或 `claim` / `releaseClaim` 就跑 TC-PROD-620～TC-PROD-622；动了 `ThreadProvider#grid` 的分格或 `AcquirableImpl#isOwned` / `assertOwnership` 再加 TC-PROD-623。
+  - 生产就绪域（`docs/DESIGN-PROD.md`）：M3 侧安全审查修复 chunks 组，区块批次回执与待发队列（`REQ-PROD-026`，v0.9.49）→ TC-PROD-650～TC-PROD-654；动了 `Player` 的 `sendPendingChunks`、`trimChunkQueue`、`sendChunk`、`isOutOfClientRange`、`onChunkBatchReceived`，或 `sendChunkUpdates`、`updateViewDistance`、`respawn`、`spawnPlayer` 里区块环的增删，就跑 TC-PROD-650～TC-PROD-653（一个类约 1.5 s，默认与严格 grid 各一次）与 5B 一节的 TC-PROD-296，再动了区块待发队列的数据结构加 TC-PROD-654 第 1 步；动了 `PlayerPositionListener` 的移动判定（安全审查 ①）跑 TC-PROD-650 第 1 步，这一类断言玩家走到了终点，48 格的移动被拒时它先红；动了 `:loadtest` 的 `Bot` 回执跑 TC-PROD-654 第 2 步。
   - 影响面不确定时升级为全量轮。
 - **复测轮**（上轮失败用例 + 全部冒烟级）：修复失败项之后。
 - **人工收口轮**（仅上轮「待人工」用例）：AI 轮之后由人工补测 TC-016、TC-030、TC-GAME-020、TC-GAME-038、TC-GAME-046、TC-GAME-047，不要求冒烟级。

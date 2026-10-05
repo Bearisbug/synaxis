@@ -1,0 +1,145 @@
+package io.github.bearisbug.synaxis.app;
+
+import io.github.bearisbug.synaxis.app.store.PlayerStore;
+import io.github.bearisbug.synaxis.coordinate.Pos;
+import io.github.bearisbug.synaxis.entity.ItemEntity;
+import io.github.bearisbug.synaxis.entity.Player;
+import io.github.bearisbug.synaxis.event.EventListener;
+import io.github.bearisbug.synaxis.event.item.ItemDropEvent;
+import io.github.bearisbug.synaxis.event.item.PickupItemEvent;
+import io.github.bearisbug.synaxis.instance.Instance;
+import io.github.bearisbug.synaxis.item.ItemStack;
+import io.github.bearisbug.synaxis.item.Material;
+import io.github.bearisbug.synaxis.plugin.PluginApi;
+import io.github.bearisbug.synaxis.plugin.PluginContext;
+import io.github.bearisbug.synaxis.plugin.PluginDescriptor;
+import io.github.bearisbug.synaxis.plugin.PluginEvents;
+import io.github.bearisbug.synaxis.plugin.PluginEvents.EventPriority;
+import io.github.bearisbug.synaxis.plugin.SynaxisPlugin;
+import io.github.bearisbug.synaxis.testing.Env;
+import io.github.bearisbug.synaxis.testing.EnvTest;
+import org.jetbrains.annotations.Nullable;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
+
+import java.nio.file.Path;
+import java.time.Duration;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Locale;
+import java.util.Set;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.function.Consumer;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+/**
+ * A frozen player's pickup and drop reach every plugin listener already cancelled, in every scope
+ * ({@code docs/DESIGN-PROD.md} {@code API-PROD-005}; security review 2026-10 S3-V01, the probe of commit
+ * {@code 7062cfecd2}). A listener that honours cancels and runs before the freeze would hand the stack over, and
+ * the freeze would then cancel the pickup: the item stays on the ground and the next save takes the copy.
+ * <p>
+ * One plugin listens at every priority in the global scope and in the instance scope, on the player's own node
+ * (the entity scope, reached through the engine) and on the root node itself, all of them with
+ * {@code ignoreCancelled} false, and records whether the event was cancelled when it got there.
+ */
+@EnvTest
+class FreezeBeforePluginListenersIntegrationTest {
+
+    @TempDir
+    Path workingDirectory;
+
+    private @Nullable EventLedger ledger;
+
+    @AfterEach
+    void closeLedger() {
+        if (ledger != null) ledger.close();
+    }
+
+    private record Plugin(String id, Consumer<PluginContext> onEnable) implements SynaxisPlugin {
+        @Override
+        public PluginDescriptor descriptor() {
+            return new PluginDescriptor(id, "1.0.0", PluginApi.API_VERSION);
+        }
+
+        @Override
+        public void onEnable(PluginContext ctx) {
+            onEnable.accept(ctx);
+        }
+    }
+
+    @Test
+    void everyPluginListenerSeesAFrozenPickupAndDropCancelled(Env env) {
+        final Instance instance = env.createFlatInstance();
+        final Player player = env.createPlayer(instance, new Pos(0, 41, 0));
+        final List<String> seen = new CopyOnWriteArrayList<>();
+        final List<String> where = new ArrayList<>(List.of("root", "entity"));
+        final Plugin plugin = new Plugin("grant", ctx -> {
+            for (EventPriority priority : EventPriority.values()) {
+                final String name = priority.name().toLowerCase(Locale.ROOT);
+                listen(ctx.events(), "global:" + name, priority, seen);
+                listen(ctx.events().forInstance(instance), "instance:" + name, priority, seen);
+                where.add("global:" + name);
+                where.add("instance:" + name);
+            }
+            // Through the engine rather than PluginEvents: both are dispatched before the host node
+            player.eventNode().addListener(pickup("entity", seen)).addListener(drop("entity", seen));
+            ctx.process().eventHandler().addListener(pickup("root", seen)).addListener(drop("root", seen));
+        });
+        final PlayerStore store = PlayerStore.inMemory(env.process(), (_, _) -> {
+        });
+        ledger = new EventLedger(workingDirectory.resolve("logs"), "test", EventLedger.DEFAULT_MAX_BYTES_PER_DAY);
+        ledger.start();
+        final PluginHost host = new PluginHost(env.process(), workingDirectory.resolve("plugins"), ledger, store);
+        host.enable(List.of(plugin), Set.of());
+
+        pickUpAndDrop(env, player);
+        assertEquals(expected(where, false), seen.stream().sorted().toList(), "every listener, before the freeze");
+
+        seen.clear();
+        // The shutdown save phase freezes every player, as a transfer or a degraded session freezes one
+        store.saveAll(Duration.ofSeconds(1), true).join();
+        assertTrue(store.forPlugin("grant").isFrozen(player), "frozen");
+        final boolean cancelled = pickUpAndDrop(env, player);
+
+        assertEquals(List.of(), seen.stream().filter(line -> line.endsWith("=false")).sorted().toList(),
+                "listeners that saw a frozen pickup or drop allowed");
+        assertEquals(expected(where, true), seen.stream().sorted().toList(), "every listener, frozen");
+        assertTrue(cancelled, "the pickup and the drop end cancelled");
+        host.disableAll();
+    }
+
+    /** Dispatches a pickup and a drop of the player, and tells whether both ended cancelled. */
+    private static boolean pickUpAndDrop(Env env, Player player) {
+        final PickupItemEvent pickup = new PickupItemEvent(player, new ItemEntity(ItemStack.of(Material.DIAMOND)));
+        env.process().eventHandler().call(pickup);
+        final ItemDropEvent drop = new ItemDropEvent(player, ItemStack.of(Material.DIAMOND));
+        env.process().eventHandler().call(drop);
+        return pickup.isCancelled() && drop.isCancelled();
+    }
+
+    private static void listen(PluginEvents events, String where, EventPriority priority, List<String> seen) {
+        events.addListener(PickupItemEvent.class, priority, false,
+                event -> seen.add(where + ":pickup cancelled=" + event.isCancelled()));
+        events.addListener(ItemDropEvent.class, priority, false,
+                event -> seen.add(where + ":drop cancelled=" + event.isCancelled()));
+    }
+
+    private static EventListener<PickupItemEvent> pickup(String where, List<String> seen) {
+        return EventListener.builder(PickupItemEvent.class).ignoreCancelled(false)
+                .handler(event -> seen.add(where + ":pickup cancelled=" + event.isCancelled())).build();
+    }
+
+    private static EventListener<ItemDropEvent> drop(String where, List<String> seen) {
+        return EventListener.builder(ItemDropEvent.class).ignoreCancelled(false)
+                .handler(event -> seen.add(where + ":drop cancelled=" + event.isCancelled())).build();
+    }
+
+    private static List<String> expected(List<String> where, boolean cancelled) {
+        return where.stream()
+                .flatMap(at -> List.of(at + ":pickup cancelled=" + cancelled, at + ":drop cancelled=" + cancelled).stream())
+                .sorted().toList();
+    }
+}

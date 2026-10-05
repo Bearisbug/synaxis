@@ -239,16 +239,23 @@ public final class PlayerStore implements ShutdownParticipant {
      */
     public void attach(EventNode<Event> hostNode) {
         hostNode.addListener(PlayerDisconnectEvent.class, event -> loggedOut(event.getPlayer()));
-        // At 3, after the plugin priorities LOWEST..HIGHEST (-2..2) and before MONITOR (4), see
-        // PluginEventsImpl#tier: a frozen player's pickup or drop is cancelled whatever a plugin made
-        // of it, and MONITOR sees it cancelled (API-PROD-005)
-        final EventNode<Event> freeze = EventNode.all("synaxis-store-freeze").setPriority(3);
-        freeze.addListener(PickupItemEvent.class, event -> {
+        // A frozen player's pickup or drop is cancelled twice (API-PROD-005)
+        final Consumer<PickupItemEvent> pickups = event -> {
             if (event.getLivingEntity() instanceof Player player && isFrozen(player)) event.setCancelled(true);
-        });
-        freeze.addListener(ItemDropEvent.class, event -> {
+        };
+        final Consumer<ItemDropEvent> drops = event -> {
             if (isFrozen(event.getPlayer())) event.setCancelled(true);
-        });
+        };
+        // First on the root node itself, before the host enables any plugin: the root runs its own
+        // listeners in the order they were added, then its mapped nodes (the instance and entity
+        // scoped listeners), then its children (the host node), so a plugin listener of any scope
+        // gets the pickup already cancelled and one that honours cancels hands nothing over
+        process.eventHandler().addListener(PickupItemEvent.class, pickups).addListener(ItemDropEvent.class, drops);
+        // Again at 3, after the plugin priorities LOWEST..HIGHEST (-2..2) and before MONITOR (4), see
+        // PluginEventsImpl#tier: cancelled whatever a plugin made of it, and MONITOR sees it cancelled
+        final EventNode<Event> freeze = EventNode.all("synaxis-store-freeze").setPriority(3);
+        freeze.addListener(PickupItemEvent.class, pickups);
+        freeze.addListener(ItemDropEvent.class, drops);
         hostNode.addChild(freeze);
         process.scheduler().scheduleTask(() -> {
             autosaveTick();

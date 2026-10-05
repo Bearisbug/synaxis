@@ -1,0 +1,23 @@
+# RUN-068 evidence: the root module's test task in full on the fix, default and strict grid, one hold of the shared heavy lock (96 s),
+# 2026-10-06 05:01-05:03 (UTC+8). Code: b7fd2ee575 (main 14437d0b78 + the test commit), docs/TEST.md edited in the working tree.
+# Command: ./gradlew :test --rerun [GRID] --max-workers=4 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts, the results
+# directory build/test-results/test removed before each run and its XML copied out after it.
+# GRID = -Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true -Dsynaxis.thread-provider=grid; the root project applies the
+# synaxis.java-library convention, which hands these three properties to the test JVM (build-src synaxis.java-library.gradle.kts), and
+# Gradle recomputed the task graph for the second run because synaxis.dispatcher-threads had changed (line copied below).
+# No database variables: only server-app reads SYNAXIS_TEST_PG_* and SYNAXIS_TEST_REDIS_URL, and this change does not touch server-app.
+
+2026-10-06 05:01:01 default start: ./gradlew :test --rerun  --max-workers=4 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts; head b7fd2ee575; status:  M docs/TEST.md ; diff sha1 3bbec73cf8e4; System-wide memory free percentage: 47%; load 6.12 11.95 14.97
+2026-10-06 05:01:48 default end: exit=0 BUILD SUCCESSFUL in 46s 
+2026-10-06 05:01:48 grid start: ./gradlew :test --rerun -Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true -Dsynaxis.thread-provider=grid --max-workers=4 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts; head b7fd2ee575; status:  M docs/TEST.md ; diff sha1 3bbec73cf8e4; System-wide memory free percentage: 39%; load 20.59 15.12 15.98
+2026-10-06 05:02:37 grid end: exit=0 BUILD SUCCESSFUL in 48s 
+2026-10-06 05:02:37 done; lock held 96 s; load 24.83 17.57 16.86
+  grid.log: Calculating task graph as configuration cache cannot be reused because system property 'synaxis.dispatcher-threads' has changed.
+
+## Sum of the JUnit XML of each run
+default: build/test-results/test classes=428 tests=3162 failures=0 errors=0 skipped=15
+  OnlineDuplicateLoginSocketTest tests=2 failures=0 errors=0 time=3.876 s, aSecondOnlineLoginOfTheSameAccountReplacesTheFirst() 1.749 s, aLoginReplacingASessionThatIsStillSpawningWaitsForItToLeave() 2.125 s
+grid: build/test-results/test classes=428 tests=3162 failures=0 errors=0 skipped=15
+  OnlineDuplicateLoginSocketTest tests=2 failures=0 errors=0 time=3.522 s, aSecondOnlineLoginOfTheSameAccountReplacesTheFirst() 1.497 s, aLoginReplacingASessionThatIsStillSpawningWaitsForItToLeave() 2.023 s
+  default: first class started 21:01:07Z, last ended 21:01:47Z, 39.5 s wall, 434.2 s summed over the classes (they run concurrently)
+  grid: first class started 21:01:55Z, last ended 21:02:36Z, 40.5 s wall, 416.5 s summed over the classes (they run concurrently)

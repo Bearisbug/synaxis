@@ -1,0 +1,415 @@
+# RUN-068 evidence: the window between Entity#setInstance setting the instance and the entity tracker registering the entity, widened
+# on purpose; the test as on main against the fixed test; the two counter proofs that the fixed test still catches the defects it is for.
+# Branch prod/dup-login-flake on main 14437d0b78 (worktree synaxis-wt/dup-login), 2026-10-06 04:09-04:18 (UTC+8), one hold of the shared
+# heavy lock (/tmp/synaxis-heavy.lock, 523 s). Machine: Apple M4 Pro, 12 cores, 24 GB, macOS 15.3.2, Homebrew JDK 25.0.4.1, Gradle 9.7.1;
+# other sessions ran their own work on it, load averages 10 to 34 (each start line below).
+# Every run: ./gradlew :test --tests io.github.bearisbug.synaxis.network.OnlineDuplicateLoginSocketTest --rerun [MODE] --max-workers=4
+#            --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts, the JUnit XML removed before and copied after it.
+# MODE: default = no flag; strict = -Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true; grid = strict plus
+#       -Dsynaxis.thread-provider=grid.
+# The patches were applied with git apply and taken back with git apply -R; none is committed. After step 5 git status lists only
+# the test file of the fix.
+
+## The temporary patches
+# widen.patch: a player whose view distance is all loaded when Player#setInstance runs (the sync branch, Player.java:745; in this class
+# only the newcomer, the old player always waits for its chunks) parks 60 ms between Entity.java:1180 (this.instance = instance) and
+# :1194 (the tracker registers it), and says so on stderr.
+diff --git a/src/main/java/io/github/bearisbug/synaxis/entity/Entity.java b/src/main/java/io/github/bearisbug/synaxis/entity/Entity.java
+index 9a55035eda..50453ec3c7 100644
+--- a/src/main/java/io/github/bearisbug/synaxis/entity/Entity.java
++++ b/src/main/java/io/github/bearisbug/synaxis/entity/Entity.java
+@@ -114,6 +114,7 @@ import java.util.concurrent.CompletionException;
+ import java.util.concurrent.CopyOnWriteArrayList;
+ import java.util.concurrent.CopyOnWriteArraySet;
+ import java.util.concurrent.atomic.AtomicInteger;
++import java.util.concurrent.locks.LockSupport;
+ import java.util.function.Consumer;
+ import java.util.function.Predicate;
+ import java.util.function.UnaryOperator;
+@@ -157,6 +158,7 @@ public class Entity implements Viewable, Tickable, Schedulable, EventHandler<Ent
+     private final CachedPacket destroyPacketCache = new CachedPacket(() -> new DestroyEntitiesPacket(getEntityId()));
+ 
+     protected @Nullable Instance instance;
++    boolean dupLoginProbe;
+     protected Chunk currentChunk;
+     protected Pos position; // Should be updated by setPositionInternal only.
+     protected float headRotation;
+@@ -1191,6 +1193,12 @@ public class Entity implements Viewable, Tickable, Schedulable, EventHandler<Ent
+                     player.sendPacket(instance.createTimePacket());
+                     player.sendPackets(instance.getWeather().createWeatherPackets());
+                 }
++                if (dupLoginProbe) {
++                    dupLoginProbe = false;
++                    System.err.println("widen: " + getUuid() + " has its instance, parks 60 ms before register on " + Thread.currentThread().getName() + " at " + System.nanoTime());
++                    LockSupport.parkNanos(60_000_000L);
++                    System.err.println("widen: " + getUuid() + " registers at " + System.nanoTime());
++                }
+                 instance.getEntityTracker().register(this, position, trackingTarget, trackingUpdate);
+                 spawn();
+                 callEvent(new EntitySpawnEvent(this, instance));
+diff --git a/src/main/java/io/github/bearisbug/synaxis/entity/Player.java b/src/main/java/io/github/bearisbug/synaxis/entity/Player.java
+index 1229ad1e07..0c29faed7f 100644
+--- a/src/main/java/io/github/bearisbug/synaxis/entity/Player.java
++++ b/src/main/java/io/github/bearisbug/synaxis/entity/Player.java
+@@ -742,6 +742,7 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
+         if (futures.isEmpty()) {
+             // All chunks are already loaded
+             try {
++                dupLoginProbe = true;
+                 runnable.accept(instance);
+             } catch (RuntimeException e) {
+                 // The caller decides what to do with a failed spawn, throwing here would instead
+# skip.patch: the same player never registers (the newcomer is in its instance but no other player can see it).
+diff --git a/src/main/java/io/github/bearisbug/synaxis/entity/Entity.java b/src/main/java/io/github/bearisbug/synaxis/entity/Entity.java
+index 9a55035eda..25f4895901 100644
+--- a/src/main/java/io/github/bearisbug/synaxis/entity/Entity.java
++++ b/src/main/java/io/github/bearisbug/synaxis/entity/Entity.java
+@@ -157,6 +157,7 @@ public class Entity implements Viewable, Tickable, Schedulable, EventHandler<Ent
+     private final CachedPacket destroyPacketCache = new CachedPacket(() -> new DestroyEntitiesPacket(getEntityId()));
+ 
+     protected @Nullable Instance instance;
++    boolean dupLoginProbe;
+     protected Chunk currentChunk;
+     protected Pos position; // Should be updated by setPositionInternal only.
+     protected float headRotation;
+@@ -1191,6 +1192,10 @@ public class Entity implements Viewable, Tickable, Schedulable, EventHandler<Ent
+                     player.sendPacket(instance.createTimePacket());
+                     player.sendPackets(instance.getWeather().createWeatherPackets());
+                 }
++                if (dupLoginProbe) {
++                    dupLoginProbe = false;
++                    System.err.println("skip: " + getUuid() + " has its instance and never registers, on " + Thread.currentThread().getName());
++                } else
+                 instance.getEntityTracker().register(this, position, trackingTarget, trackingUpdate);
+                 spawn();
+                 callEvent(new EntitySpawnEvent(this, instance));
+diff --git a/src/main/java/io/github/bearisbug/synaxis/entity/Player.java b/src/main/java/io/github/bearisbug/synaxis/entity/Player.java
+index 1229ad1e07..0c29faed7f 100644
+--- a/src/main/java/io/github/bearisbug/synaxis/entity/Player.java
++++ b/src/main/java/io/github/bearisbug/synaxis/entity/Player.java
+@@ -742,6 +742,7 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
+         if (futures.isEmpty()) {
+             // All chunks are already loaded
+             try {
++                dupLoginProbe = true;
+                 runnable.accept(instance);
+             } catch (RuntimeException e) {
+                 // The caller decides what to do with a failed spawn, throwing here would instead
+# spawning.patch: TC-PROD-350 step 2, a player that is still spawning no longer counts as in the world.
+diff --git a/src/main/java/io/github/bearisbug/synaxis/network/ConnectionManager.java b/src/main/java/io/github/bearisbug/synaxis/network/ConnectionManager.java
+index ab482d23be..94aa18e676 100644
+--- a/src/main/java/io/github/bearisbug/synaxis/network/ConnectionManager.java
++++ b/src/main/java/io/github/bearisbug/synaxis/network/ConnectionManager.java
+@@ -730,7 +730,6 @@ public final class ConnectionManager {
+                 keepAlivePlayers.add(player);
+                 // Under the same lock as #removePlayer: a connection dropped after this point finds
+                 // the player spawning, one dropped before it never gets here
+-                spawningPlayers.add(player);
+             })) return;
+ 
+             // This fixes a bug with Geyser. They do not reply to keep alive during config, meaning that
+# fix.patch: the change under test, committed afterwards as b7fd2ee575 (git diff b7fd2ee575~1 b7fd2ee575 -- src has the same sha1, cf6c55adf671).
+diff --git a/src/test/java/io/github/bearisbug/synaxis/network/OnlineDuplicateLoginSocketTest.java b/src/test/java/io/github/bearisbug/synaxis/network/OnlineDuplicateLoginSocketTest.java
+index 9d34bcc29b..673166fd0e 100644
+--- a/src/test/java/io/github/bearisbug/synaxis/network/OnlineDuplicateLoginSocketTest.java
++++ b/src/test/java/io/github/bearisbug/synaxis/network/OnlineDuplicateLoginSocketTest.java
+@@ -62,9 +62,9 @@ public class OnlineDuplicateLoginSocketTest {
+                 assertEquals("synaxis:logged-in-elsewhere", firstKicked.get(10, TimeUnit.SECONDS),
+                         "the older session is told why it was dropped");
+                 final Player replacement = awaitPlayer(process, account, old);
+-                awaitUntil(() -> replacement.getInstance() == instance, "the newcomer spawns");
+-                assertSame(replacement, instance.getEntityTracker().getEntityByUuid(account),
++                awaitUntil(() -> instance.getEntityTracker().getEntityByUuid(account) == replacement,
+                         "the entity tracker holds the newcomer, so other players see it");
++                assertSame(instance, replacement.getInstance(), "the newcomer spawns");
+                 assertEquals(List.of(replacement), List.copyOf(process.connection().getOnlinePlayers()));
+                 assertTrue(old.isRemoved(), "the old player left the world");
+                 assertFalse(secondKicked.isDone(), "the newcomer stays online");
+@@ -133,9 +133,9 @@ public class OnlineDuplicateLoginSocketTest {
+                 final CompletableFuture<@Nullable String> secondKicked = playInBackground(second);
+ 
+                 final Player replacement = awaitPlayer(process, account, old);
+-                awaitUntil(() -> replacement.getInstance() == instance, "the newcomer spawns");
+-                assertSame(replacement, instance.getEntityTracker().getEntityByUuid(account),
++                awaitUntil(() -> instance.getEntityTracker().getEntityByUuid(account) == replacement,
+                         "the entity tracker holds the newcomer, so other players see it");
++                assertSame(instance, replacement.getInstance(), "the newcomer spawns");
+                 assertTrue(old.isRemoved(), "the old player left the world");
+                 assertFalse(secondKicked.isDone(), "the newcomer stays online");
+             } finally {
+
+## The batch, as it ran (start line: load averages)
+2026-10-06 04:09:31 head 14437d0b78; System-wide memory free percentage: 33%; load 25.81 27.82 39.14
+2026-10-06 04:09:31 applied widen.patch; status:  M src/main/java/io/github/bearisbug/synaxis/entity/Entity.java  M src/main/java/io/github/bearisbug/synaxis/entity/Player.java 
+2026-10-06 04:10:34 compiled widen
+2026-10-06 04:10:34 start 01-pre-widen-default-1: ./gradlew :test --tests io.github.bearisbug.synaxis.network.OnlineDuplicateLoginSocketTest --rerun  | load 26.50 28.31 38.53
+2026-10-06 04:10:47 end   01-pre-widen-default-1: exit=1 2 tests completed, 2 failed BUILD FAILED in 12s 
+2026-10-06 04:10:47 start 02-pre-widen-default-2: ./gradlew :test --tests io.github.bearisbug.synaxis.network.OnlineDuplicateLoginSocketTest --rerun  | load 25.15 27.95 38.28
+2026-10-06 04:11:13 end   02-pre-widen-default-2: exit=1 2 tests completed, 2 failed BUILD FAILED in 25s 
+2026-10-06 04:11:13 start 03-pre-widen-default-3: ./gradlew :test --tests io.github.bearisbug.synaxis.network.OnlineDuplicateLoginSocketTest --rerun  | load 31.62 29.29 38.47
+2026-10-06 04:11:31 end   03-pre-widen-default-3: exit=1 2 tests completed, 2 failed BUILD FAILED in 17s 
+2026-10-06 04:11:31 start 04-pre-widen-strict-1: ./gradlew :test --tests io.github.bearisbug.synaxis.network.OnlineDuplicateLoginSocketTest --rerun -Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true | load 34.42 30.07 38.53
+2026-10-06 04:11:42 end   04-pre-widen-strict-1: exit=1 2 tests completed, 2 failed BUILD FAILED in 10s 
+2026-10-06 04:11:42 start 05-pre-widen-strict-2: ./gradlew :test --tests io.github.bearisbug.synaxis.network.OnlineDuplicateLoginSocketTest --rerun -Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true | load 30.89 29.46 38.22
+2026-10-06 04:11:51 end   05-pre-widen-strict-2: exit=1 2 tests completed, 2 failed BUILD FAILED in 8s 
+2026-10-06 04:11:51 start 06-pre-widen-strict-3: ./gradlew :test --tests io.github.bearisbug.synaxis.network.OnlineDuplicateLoginSocketTest --rerun -Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true | load 30.34 29.36 38.08
+2026-10-06 04:12:05 end   06-pre-widen-strict-3: exit=1 2 tests completed, 2 failed BUILD FAILED in 13s 
+2026-10-06 04:12:05 start 07-pre-widen-grid-1: ./gradlew :test --tests io.github.bearisbug.synaxis.network.OnlineDuplicateLoginSocketTest --rerun -Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true -Dsynaxis.thread-provider=grid | load 30.61 29.47 37.97
+2026-10-06 04:12:28 end   07-pre-widen-grid-1: exit=1 2 tests completed, 2 failed BUILD FAILED in 22s 
+2026-10-06 04:12:28 start 08-pre-widen-grid-2: ./gradlew :test --tests io.github.bearisbug.synaxis.network.OnlineDuplicateLoginSocketTest --rerun -Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true -Dsynaxis.thread-provider=grid | load 30.23 29.45 37.76
+2026-10-06 04:12:48 end   08-pre-widen-grid-2: exit=1 2 tests completed, 2 failed BUILD FAILED in 19s 
+2026-10-06 04:12:48 start 09-pre-widen-grid-3: ./gradlew :test --tests io.github.bearisbug.synaxis.network.OnlineDuplicateLoginSocketTest --rerun -Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true -Dsynaxis.thread-provider=grid | load 29.50 29.31 37.51
+2026-10-06 04:13:09 end   09-pre-widen-grid-3: exit=1 2 tests completed, 2 failed BUILD FAILED in 20s 
+2026-10-06 04:13:09 applied fix.patch; status:  M src/main/java/io/github/bearisbug/synaxis/entity/Entity.java  M src/main/java/io/github/bearisbug/synaxis/entity/Player.java  M src/test/java/io/github/bearisbug/synaxis/network/OnlineDuplicateLoginSocketTest.java 
+2026-10-06 04:13:09 start 10-post-widen-default-1: ./gradlew :test --tests io.github.bearisbug.synaxis.network.OnlineDuplicateLoginSocketTest --rerun  | load 32.31 30.01 37.53
+2026-10-06 04:13:42 end   10-post-widen-default-1: exit=0 BUILD SUCCESSFUL in 33s 
+2026-10-06 04:13:42 start 11-post-widen-default-2: ./gradlew :test --tests io.github.bearisbug.synaxis.network.OnlineDuplicateLoginSocketTest --rerun  | load 33.38 30.50 37.45
+2026-10-06 04:13:57 end   11-post-widen-default-2: exit=0 BUILD SUCCESSFUL in 14s 
+2026-10-06 04:13:57 start 12-post-widen-default-3: ./gradlew :test --tests io.github.bearisbug.synaxis.network.OnlineDuplicateLoginSocketTest --rerun  | load 33.10 30.59 37.36
+2026-10-06 04:14:12 end   12-post-widen-default-3: exit=0 BUILD SUCCESSFUL in 14s 
+2026-10-06 04:14:12 start 13-post-widen-strict-1: ./gradlew :test --tests io.github.bearisbug.synaxis.network.OnlineDuplicateLoginSocketTest --rerun -Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true | load 33.66 30.85 37.33
+2026-10-06 04:14:22 end   13-post-widen-strict-1: exit=0 BUILD SUCCESSFUL in 10s 
+2026-10-06 04:14:22 start 14-post-widen-strict-2: ./gradlew :test --tests io.github.bearisbug.synaxis.network.OnlineDuplicateLoginSocketTest --rerun -Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true | load 29.77 30.11 36.99
+2026-10-06 04:14:30 end   14-post-widen-strict-2: exit=0 BUILD SUCCESSFUL in 7s 
+2026-10-06 04:14:30 start 15-post-widen-strict-3: ./gradlew :test --tests io.github.bearisbug.synaxis.network.OnlineDuplicateLoginSocketTest --rerun -Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true | load 26.24 29.35 36.64
+2026-10-06 04:14:36 end   15-post-widen-strict-3: exit=0 BUILD SUCCESSFUL in 6s 
+2026-10-06 04:14:36 start 16-post-widen-grid-1: ./gradlew :test --tests io.github.bearisbug.synaxis.network.OnlineDuplicateLoginSocketTest --rerun -Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true -Dsynaxis.thread-provider=grid | load 24.14 28.86 36.43
+2026-10-06 04:14:45 end   16-post-widen-grid-1: exit=0 BUILD SUCCESSFUL in 8s 
+2026-10-06 04:14:45 start 17-post-widen-grid-2: ./gradlew :test --tests io.github.bearisbug.synaxis.network.OnlineDuplicateLoginSocketTest --rerun -Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true -Dsynaxis.thread-provider=grid | load 20.73 27.98 36.03
+2026-10-06 04:14:52 end   17-post-widen-grid-2: exit=0 BUILD SUCCESSFUL in 6s 
+2026-10-06 04:14:52 start 18-post-widen-grid-3: ./gradlew :test --tests io.github.bearisbug.synaxis.network.OnlineDuplicateLoginSocketTest --rerun -Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true -Dsynaxis.thread-provider=grid | load 19.87 27.68 35.87
+2026-10-06 04:14:59 end   18-post-widen-grid-3: exit=0 BUILD SUCCESSFUL in 6s 
+2026-10-06 04:14:59 applied skip.patch; status:  M src/main/java/io/github/bearisbug/synaxis/entity/Entity.java  M src/main/java/io/github/bearisbug/synaxis/entity/Player.java  M src/test/java/io/github/bearisbug/synaxis/network/OnlineDuplicateLoginSocketTest.java 
+2026-10-06 04:15:13 compiled skip
+2026-10-06 04:15:13 start 19-post-skip-default: ./gradlew :test --tests io.github.bearisbug.synaxis.network.OnlineDuplicateLoginSocketTest --rerun  | load 15.22 26.11 35.12
+2026-10-06 04:15:45 end   19-post-skip-default: exit=1 2 tests completed, 2 failed BUILD FAILED in 31s 
+2026-10-06 04:15:45 start 20-post-skip-strict: ./gradlew :test --tests io.github.bearisbug.synaxis.network.OnlineDuplicateLoginSocketTest --rerun -Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true | load 10.24 23.69 33.88
+2026-10-06 04:16:17 end   20-post-skip-strict: exit=1 2 tests completed, 2 failed BUILD FAILED in 31s 
+2026-10-06 04:16:17 applied spawning.patch; status:  M src/main/java/io/github/bearisbug/synaxis/network/ConnectionManager.java  M src/test/java/io/github/bearisbug/synaxis/network/OnlineDuplicateLoginSocketTest.java 
+2026-10-06 04:16:55 compiled spawning
+2026-10-06 04:16:55 start 21-post-350s2-strict-1: ./gradlew :test --tests io.github.bearisbug.synaxis.network.OnlineDuplicateLoginSocketTest --rerun -Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true | load 22.06 23.55 32.96
+2026-10-06 04:17:20 end   21-post-350s2-strict-1: exit=1 2 tests completed, 1 failed BUILD FAILED in 24s 
+2026-10-06 04:17:20 start 22-post-350s2-strict-2: ./gradlew :test --tests io.github.bearisbug.synaxis.network.OnlineDuplicateLoginSocketTest --rerun -Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true | load 22.64 23.60 32.71
+2026-10-06 04:17:46 end   22-post-350s2-strict-2: exit=1 2 tests completed, 1 failed BUILD FAILED in 26s 
+2026-10-06 04:17:46 restored src/main; status:  M src/test/java/io/github/bearisbug/synaxis/network/OnlineDuplicateLoginSocketTest.java 
+2026-10-06 04:17:46 start 23-post-plain-default: ./gradlew :test --tests io.github.bearisbug.synaxis.network.OnlineDuplicateLoginSocketTest --rerun  | load 21.57 23.37 32.37
+2026-10-06 04:17:56 end   23-post-plain-default: exit=0 BUILD SUCCESSFUL in 9s 
+2026-10-06 04:17:56 start 24-post-plain-strict: ./gradlew :test --tests io.github.bearisbug.synaxis.network.OnlineDuplicateLoginSocketTest --rerun -Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true | load 18.79 22.71 32.03
+2026-10-06 04:18:05 end   24-post-plain-strict: exit=0 BUILD SUCCESSFUL in 8s 
+2026-10-06 04:18:05 start 25-post-plain-grid: ./gradlew :test --tests io.github.bearisbug.synaxis.network.OnlineDuplicateLoginSocketTest --rerun -Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true -Dsynaxis.thread-provider=grid | load 16.29 22.05 31.68
+2026-10-06 04:18:14 end   25-post-plain-grid: exit=0 BUILD SUCCESSFUL in 8s 
+2026-10-06 04:18:14 done; lock held 523 s; load 15.56 21.70 31.45
+
+## What each run's JUnit XML says (failure message, the lines of the test class in its stack, the stderr lines of the patches)
+# 01-09: the test as on main, window widened: 9 runs, 18 of 18 tests red, at :66 and :137, the message of the two CI failures;
+#        the 18 newcomers had their instance 61.4-78.3 ms before they registered (stderr nanoTime pairs).
+# 10-18: the fixed test, same window: 9 runs, 18 of 18 green; the 18 newcomers had their instance 60.5-74.8 ms before they registered.
+# 19-20: the fixed test, newcomer never registered: 2 of 2 red in both modes at :65 and :136 (through :174), after the 10 s wait.
+# 21-22: the fixed test with TC-PROD-350 step 2: 2 tests completed, 1 failed, at :135 (through :168), no player of <uuid> reached the
+#        play state, as TEST.md records for that step; aSecondOnlineLoginOfTheSameAccountReplacesTheFirst green.
+# 23-25: the fixed test, engine as on main: green in all three modes.
+01-pre-widen-default-1: tests=2 failures=2 errors=0 skipped=0 time=4.941 s
+  FAIL aSecondOnlineLoginOfTheSameAccountReplacesTheFirst() 2.827 s
+    org.opentest4j.AssertionFailedError: the entity tracker holds the newcomer, so other players see it ==> expected: <io.github.bearisbug.synaxis.entity.Player@801a2db> but was: <null>
+    at io.github.bearisbug.synaxis.network.OnlineDuplicateLoginSocketTest.aSecondOnlineLoginOfTheSameAccountReplacesTheFirst(OnlineDuplicateLoginSocketTest.java:66)
+  FAIL aLoginReplacingASessionThatIsStillSpawningWaitsForItToLeave() 2.089 s
+    org.opentest4j.AssertionFailedError: the entity tracker holds the newcomer, so other players see it ==> expected: <io.github.bearisbug.synaxis.entity.Player@387cb07b> but was: <null>
+    at io.github.bearisbug.synaxis.network.OnlineDuplicateLoginSocketTest.aLoginReplacingASessionThatIsStillSpawningWaitsForItToLeave(OnlineDuplicateLoginSocketTest.java:137)
+  system-err: widen: 706959fa-c213-4aaf-bd48-4b60234c225c has its instance, parks 60 ms before register on Syn-TickScheduler at 1799482745997625
+  system-err: widen: 706959fa-c213-4aaf-bd48-4b60234c225c registers at 1799482811867625
+  system-err: widen: e2e91f98-6cfc-4f2f-9def-01c95e39a6b2 has its instance, parks 60 ms before register on Syn-TickScheduler at 1799484840478041
+  system-err: widen: e2e91f98-6cfc-4f2f-9def-01c95e39a6b2 registers at 1799484905778666
+02-pre-widen-default-2: tests=2 failures=2 errors=0 skipped=0 time=10.095 s
+  FAIL aSecondOnlineLoginOfTheSameAccountReplacesTheFirst() 7.768 s
+    org.opentest4j.AssertionFailedError: the entity tracker holds the newcomer, so other players see it ==> expected: <io.github.bearisbug.synaxis.entity.Player@66401cde> but was: <null>
+    at io.github.bearisbug.synaxis.network.OnlineDuplicateLoginSocketTest.aSecondOnlineLoginOfTheSameAccountReplacesTheFirst(OnlineDuplicateLoginSocketTest.java:66)
+  FAIL aLoginReplacingASessionThatIsStillSpawningWaitsForItToLeave() 2.252 s
+    org.opentest4j.AssertionFailedError: the entity tracker holds the newcomer, so other players see it ==> expected: <io.github.bearisbug.synaxis.entity.Player@2eef6f48> but was: <null>
+    at io.github.bearisbug.synaxis.network.OnlineDuplicateLoginSocketTest.aLoginReplacingASessionThatIsStillSpawningWaitsForItToLeave(OnlineDuplicateLoginSocketTest.java:137)
+  system-err: widen: e02e5096-9c66-4894-9fde-ece33d54be90 has its instance, parks 60 ms before register on Syn-TickScheduler at 1799508053334750
+  system-err: widen: e02e5096-9c66-4894-9fde-ece33d54be90 registers at 1799508116603625
+  system-err: widen: ff3b4cec-faae-47e2-ab10-916eaad6412a has its instance, parks 60 ms before register on Syn-TickScheduler at 1799510318433250
+  system-err: widen: ff3b4cec-faae-47e2-ab10-916eaad6412a registers at 1799510381804291
+03-pre-widen-default-3: tests=2 failures=2 errors=0 skipped=0 time=6.704 s
+  FAIL aSecondOnlineLoginOfTheSameAccountReplacesTheFirst() 4.552 s
+    org.opentest4j.AssertionFailedError: the entity tracker holds the newcomer, so other players see it ==> expected: <io.github.bearisbug.synaxis.entity.Player@56f642c6> but was: <null>
+    at io.github.bearisbug.synaxis.network.OnlineDuplicateLoginSocketTest.aSecondOnlineLoginOfTheSameAccountReplacesTheFirst(OnlineDuplicateLoginSocketTest.java:66)
+  FAIL aLoginReplacingASessionThatIsStillSpawningWaitsForItToLeave() 2.13 s
+    org.opentest4j.AssertionFailedError: the entity tracker holds the newcomer, so other players see it ==> expected: <io.github.bearisbug.synaxis.entity.Player@1200ef23> but was: <null>
+    at io.github.bearisbug.synaxis.network.OnlineDuplicateLoginSocketTest.aLoginReplacingASessionThatIsStillSpawningWaitsForItToLeave(OnlineDuplicateLoginSocketTest.java:137)
+  system-err: widen: 383a693e-081f-42d4-a5c1-b6c686ba77ad has its instance, parks 60 ms before register on Syn-TickScheduler at 1799526484592750
+  system-err: widen: 383a693e-081f-42d4-a5c1-b6c686ba77ad registers at 1799526549552625
+  system-err: widen: a93fe751-c027-4b0a-bfc8-088761e77808 has its instance, parks 60 ms before register on Syn-TickScheduler at 1799528635908375
+  system-err: widen: a93fe751-c027-4b0a-bfc8-088761e77808 registers at 1799528700315416
+04-pre-widen-strict-1: tests=2 failures=2 errors=0 skipped=0 time=3.767 s
+  FAIL aSecondOnlineLoginOfTheSameAccountReplacesTheFirst() 1.73 s
+    org.opentest4j.AssertionFailedError: the entity tracker holds the newcomer, so other players see it ==> expected: <io.github.bearisbug.synaxis.entity.Player@68bd8880> but was: <null>
+    at io.github.bearisbug.synaxis.network.OnlineDuplicateLoginSocketTest.aSecondOnlineLoginOfTheSameAccountReplacesTheFirst(OnlineDuplicateLoginSocketTest.java:66)
+  FAIL aLoginReplacingASessionThatIsStillSpawningWaitsForItToLeave() 2.029 s
+    org.opentest4j.AssertionFailedError: the entity tracker holds the newcomer, so other players see it ==> expected: <io.github.bearisbug.synaxis.entity.Player@f23cf3b> but was: <null>
+    at io.github.bearisbug.synaxis.network.OnlineDuplicateLoginSocketTest.aLoginReplacingASessionThatIsStillSpawningWaitsForItToLeave(OnlineDuplicateLoginSocketTest.java:137)
+  system-err: widen: 418ef70a-691f-490a-b416-89a5f87f4daf has its instance, parks 60 ms before register on Syn-TickScheduler at 1799537847827041
+  system-err: widen: 418ef70a-691f-490a-b416-89a5f87f4daf registers at 1799537913202875
+  system-err: widen: 0037b0e9-75ff-4b1f-a7b7-01670b25494a has its instance, parks 60 ms before register on Syn-TickScheduler at 1799539882582583
+  system-err: widen: 0037b0e9-75ff-4b1f-a7b7-01670b25494a registers at 1799539947746083
+05-pre-widen-strict-2: tests=2 failures=2 errors=0 skipped=0 time=4.941 s
+  FAIL aSecondOnlineLoginOfTheSameAccountReplacesTheFirst() 2.865 s
+    org.opentest4j.AssertionFailedError: the entity tracker holds the newcomer, so other players see it ==> expected: <io.github.bearisbug.synaxis.entity.Player@56acbf85> but was: <null>
+    at io.github.bearisbug.synaxis.network.OnlineDuplicateLoginSocketTest.aSecondOnlineLoginOfTheSameAccountReplacesTheFirst(OnlineDuplicateLoginSocketTest.java:66)
+  FAIL aLoginReplacingASessionThatIsStillSpawningWaitsForItToLeave() 2.057 s
+    org.opentest4j.AssertionFailedError: the entity tracker holds the newcomer, so other players see it ==> expected: <io.github.bearisbug.synaxis.entity.Player@7b7f6b44> but was: <null>
+    at io.github.bearisbug.synaxis.network.OnlineDuplicateLoginSocketTest.aLoginReplacingASessionThatIsStillSpawningWaitsForItToLeave(OnlineDuplicateLoginSocketTest.java:137)
+  system-err: widen: 79922f05-dec3-464d-b172-ee62c22e7138 has its instance, parks 60 ms before register on Syn-TickScheduler at 1799546722113958
+  system-err: widen: 79922f05-dec3-464d-b172-ee62c22e7138 registers at 1799546783469791
+  system-err: widen: 82685ffa-20d2-45e6-a322-6c21c2768c2f has its instance, parks 60 ms before register on Syn-TickScheduler at 1799548790476458
+  system-err: widen: 82685ffa-20d2-45e6-a322-6c21c2768c2f registers at 1799548855918666
+06-pre-widen-strict-3: tests=2 failures=2 errors=0 skipped=0 time=5.613 s
+  FAIL aSecondOnlineLoginOfTheSameAccountReplacesTheFirst() 3.44 s
+    org.opentest4j.AssertionFailedError: the entity tracker holds the newcomer, so other players see it ==> expected: <io.github.bearisbug.synaxis.entity.Player@466645ec> but was: <null>
+    at io.github.bearisbug.synaxis.network.OnlineDuplicateLoginSocketTest.aSecondOnlineLoginOfTheSameAccountReplacesTheFirst(OnlineDuplicateLoginSocketTest.java:66)
+  FAIL aLoginReplacingASessionThatIsStillSpawningWaitsForItToLeave() 2.151 s
+    org.opentest4j.AssertionFailedError: the entity tracker holds the newcomer, so other players see it ==> expected: <io.github.bearisbug.synaxis.entity.Player@3f65e3a7> but was: <null>
+    at io.github.bearisbug.synaxis.network.OnlineDuplicateLoginSocketTest.aLoginReplacingASessionThatIsStillSpawningWaitsForItToLeave(OnlineDuplicateLoginSocketTest.java:137)
+  system-err: widen: 8c981dee-a5ad-476b-af3b-2111c5c7a83c has its instance, parks 60 ms before register on Syn-TickScheduler at 1799560391451041
+  system-err: widen: 8c981dee-a5ad-476b-af3b-2111c5c7a83c registers at 1799560458359083
+  system-err: widen: 43df6626-1ec2-4033-935e-f6dcc9da49f4 has its instance, parks 60 ms before register on Syn-TickScheduler at 1799562453245833
+  system-err: widen: 43df6626-1ec2-4033-935e-f6dcc9da49f4 registers at 1799562516450166
+07-pre-widen-grid-1: tests=2 failures=2 errors=0 skipped=0 time=6.015 s
+  FAIL aSecondOnlineLoginOfTheSameAccountReplacesTheFirst() 3.837 s
+    org.opentest4j.AssertionFailedError: the entity tracker holds the newcomer, so other players see it ==> expected: <io.github.bearisbug.synaxis.entity.Player@4612c763> but was: <null>
+    at io.github.bearisbug.synaxis.network.OnlineDuplicateLoginSocketTest.aSecondOnlineLoginOfTheSameAccountReplacesTheFirst(OnlineDuplicateLoginSocketTest.java:66)
+  FAIL aLoginReplacingASessionThatIsStillSpawningWaitsForItToLeave() 2.158 s
+    org.opentest4j.AssertionFailedError: the entity tracker holds the newcomer, so other players see it ==> expected: <io.github.bearisbug.synaxis.entity.Player@59b5b2f8> but was: <null>
+    at io.github.bearisbug.synaxis.network.OnlineDuplicateLoginSocketTest.aLoginReplacingASessionThatIsStillSpawningWaitsForItToLeave(OnlineDuplicateLoginSocketTest.java:137)
+  system-err: widen: 4b983b1a-fc15-44ed-8153-d0d5bb5a885b has its instance, parks 60 ms before register on Syn-TickScheduler at 1799583274299083
+  system-err: widen: 4b983b1a-fc15-44ed-8153-d0d5bb5a885b registers at 1799583341189833
+  system-err: widen: 8a1199d4-d1e8-4503-8290-00c2e4f157f0 has its instance, parks 60 ms before register on Syn-TickScheduler at 1799585441200291
+  system-err: widen: 8a1199d4-d1e8-4503-8290-00c2e4f157f0 registers at 1799585507150000
+08-pre-widen-grid-2: tests=2 failures=2 errors=0 skipped=0 time=7.485 s
+  FAIL aSecondOnlineLoginOfTheSameAccountReplacesTheFirst() 5.282 s
+    org.opentest4j.AssertionFailedError: the entity tracker holds the newcomer, so other players see it ==> expected: <io.github.bearisbug.synaxis.entity.Player@59b24699> but was: <null>
+    at io.github.bearisbug.synaxis.network.OnlineDuplicateLoginSocketTest.aSecondOnlineLoginOfTheSameAccountReplacesTheFirst(OnlineDuplicateLoginSocketTest.java:66)
+  FAIL aLoginReplacingASessionThatIsStillSpawningWaitsForItToLeave() 2.178 s
+    org.opentest4j.AssertionFailedError: the entity tracker holds the newcomer, so other players see it ==> expected: <io.github.bearisbug.synaxis.entity.Player@618853b4> but was: <null>
+    at io.github.bearisbug.synaxis.network.OnlineDuplicateLoginSocketTest.aLoginReplacingASessionThatIsStillSpawningWaitsForItToLeave(OnlineDuplicateLoginSocketTest.java:137)
+  system-err: widen: 94dfed46-8319-4840-920e-6992061f8cf3 has its instance, parks 60 ms before register on Syn-TickScheduler at 1799602670986833
+  system-err: widen: 94dfed46-8319-4840-920e-6992061f8cf3 registers at 1799602735500625
+  system-err: widen: ce8dbe65-5fff-48fa-96fa-0ab239812536 has its instance, parks 60 ms before register on Syn-TickScheduler at 1799604790284291
+  system-err: widen: ce8dbe65-5fff-48fa-96fa-0ab239812536 registers at 1799604856030875
+09-pre-widen-grid-3: tests=2 failures=2 errors=0 skipped=0 time=8.133 s
+  FAIL aSecondOnlineLoginOfTheSameAccountReplacesTheFirst() 5.861 s
+    org.opentest4j.AssertionFailedError: the entity tracker holds the newcomer, so other players see it ==> expected: <io.github.bearisbug.synaxis.entity.Player@6de9488e> but was: <null>
+    at io.github.bearisbug.synaxis.network.OnlineDuplicateLoginSocketTest.aSecondOnlineLoginOfTheSameAccountReplacesTheFirst(OnlineDuplicateLoginSocketTest.java:66)
+  FAIL aLoginReplacingASessionThatIsStillSpawningWaitsForItToLeave() 2.255 s
+    org.opentest4j.AssertionFailedError: the entity tracker holds the newcomer, so other players see it ==> expected: <io.github.bearisbug.synaxis.entity.Player@633cb300> but was: <null>
+    at io.github.bearisbug.synaxis.network.OnlineDuplicateLoginSocketTest.aLoginReplacingASessionThatIsStillSpawningWaitsForItToLeave(OnlineDuplicateLoginSocketTest.java:137)
+  system-err: widen: 80e6d3cc-358f-47f3-8877-fb4cdbdcc64d has its instance, parks 60 ms before register on Syn-TickScheduler at 1799623670155041
+  system-err: widen: 80e6d3cc-358f-47f3-8877-fb4cdbdcc64d registers at 1799623734946666
+  system-err: widen: 01c3a97f-1335-4f97-b2df-b8a4d36fee30 has its instance, parks 60 ms before register on Syn-TickScheduler at 1799625915796750
+  system-err: widen: 01c3a97f-1335-4f97-b2df-b8a4d36fee30 registers at 1799625994135333
+10-post-widen-default-1: tests=2 failures=0 errors=0 skipped=0 time=5.998 s
+  pass aSecondOnlineLoginOfTheSameAccountReplacesTheFirst() 3.886 s
+  pass aLoginReplacingASessionThatIsStillSpawningWaitsForItToLeave() 2.09 s
+  system-err: widen: 4056ce5d-79a1-4453-9e8f-daa1a5f12936 has its instance, parks 60 ms before register on Syn-TickScheduler at 1799657648406791
+  system-err: widen: 4056ce5d-79a1-4453-9e8f-daa1a5f12936 registers at 1799657723176833
+  system-err: widen: c163476a-f981-43c6-a986-244a1fb5f1d4 has its instance, parks 60 ms before register on Syn-TickScheduler at 1799659839894875
+  system-err: widen: c163476a-f981-43c6-a986-244a1fb5f1d4 registers at 1799659906797166
+11-post-widen-default-2: tests=2 failures=0 errors=0 skipped=0 time=5.739 s
+  pass aSecondOnlineLoginOfTheSameAccountReplacesTheFirst() 3.46 s
+  pass aLoginReplacingASessionThatIsStillSpawningWaitsForItToLeave() 2.263 s
+  system-err: widen: cb062eef-ffda-4799-922c-ba32e30d9c09 has its instance, parks 60 ms before register on Syn-TickScheduler at 1799672745711500
+  system-err: widen: cb062eef-ffda-4799-922c-ba32e30d9c09 registers at 1799672809146125
+  system-err: widen: c0181aaa-fad8-4b2b-a5f9-66ba0175fc5d has its instance, parks 60 ms before register on Syn-TickScheduler at 1799674970132416
+  system-err: widen: c0181aaa-fad8-4b2b-a5f9-66ba0175fc5d registers at 1799675038010666
+12-post-widen-default-3: tests=2 failures=0 errors=0 skipped=0 time=5.597 s
+  pass aSecondOnlineLoginOfTheSameAccountReplacesTheFirst() 3.384 s
+  pass aLoginReplacingASessionThatIsStillSpawningWaitsForItToLeave() 2.191 s
+  system-err: widen: 6b70b6e1-ee21-42a9-9628-2ebfa13a0546 has its instance, parks 60 ms before register on Syn-TickScheduler at 1799687117399791
+  system-err: widen: 6b70b6e1-ee21-42a9-9628-2ebfa13a0546 registers at 1799687185406291
+  system-err: widen: 23ff8f58-2040-43c5-bfb0-2768f8acafbb has its instance, parks 60 ms before register on Syn-TickScheduler at 1799689361055375
+  system-err: widen: 23ff8f58-2040-43c5-bfb0-2768f8acafbb registers at 1799689423552250
+13-post-widen-strict-1: tests=2 failures=0 errors=0 skipped=0 time=3.593 s
+  pass aSecondOnlineLoginOfTheSameAccountReplacesTheFirst() 1.538 s
+  pass aLoginReplacingASessionThatIsStillSpawningWaitsForItToLeave() 2.045 s
+  system-err: widen: 7016db7d-1f11-4527-90c6-13758445a230 has its instance, parks 60 ms before register on Syn-TickScheduler at 1799697964451041
+  system-err: widen: 7016db7d-1f11-4527-90c6-13758445a230 registers at 1799698030210500
+  system-err: widen: 3a26c0cd-e67a-4de6-ace7-c9eaf7b3f501 has its instance, parks 60 ms before register on Syn-TickScheduler at 1799700064899083
+  system-err: widen: 3a26c0cd-e67a-4de6-ace7-c9eaf7b3f501 registers at 1799700130095458
+14-post-widen-strict-2: tests=2 failures=0 errors=0 skipped=0 time=3.895 s
+  pass aSecondOnlineLoginOfTheSameAccountReplacesTheFirst() 1.733 s
+  pass aLoginReplacingASessionThatIsStillSpawningWaitsForItToLeave() 2.149 s
+  system-err: widen: 23c42481-0593-4129-a5de-1a8344d97354 has its instance, parks 60 ms before register on Syn-TickScheduler at 1799705270958208
+  system-err: widen: 23c42481-0593-4129-a5de-1a8344d97354 registers at 1799705336780041
+  system-err: widen: 9b84b519-7adb-47fa-9f0c-9b799f95d297 has its instance, parks 60 ms before register on Syn-TickScheduler at 1799707483730166
+  system-err: widen: 9b84b519-7adb-47fa-9f0c-9b799f95d297 registers at 1799707549479958
+15-post-widen-strict-3: tests=2 failures=0 errors=0 skipped=0 time=3.503 s
+  pass aSecondOnlineLoginOfTheSameAccountReplacesTheFirst() 1.443 s
+  pass aLoginReplacingASessionThatIsStillSpawningWaitsForItToLeave() 2.051 s
+  system-err: widen: 43f03f71-e823-4429-9535-5ab5685ce19a has its instance, parks 60 ms before register on Syn-TickScheduler at 1799711973138166
+  system-err: widen: 43f03f71-e823-4429-9535-5ab5685ce19a registers at 1799712034783458
+  system-err: widen: f9ddc63f-6253-4bc0-a18e-9bbe2d3eb77a has its instance, parks 60 ms before register on Syn-TickScheduler at 1799714036647916
+  system-err: widen: f9ddc63f-6253-4bc0-a18e-9bbe2d3eb77a registers at 1799714102015125
+16-post-widen-grid-1: tests=2 failures=0 errors=0 skipped=0 time=3.678 s
+  pass aSecondOnlineLoginOfTheSameAccountReplacesTheFirst() 1.601 s
+  pass aLoginReplacingASessionThatIsStillSpawningWaitsForItToLeave() 2.069 s
+  system-err: widen: e2da1b72-167f-4ac2-aeac-5c025dbe5cd2 has its instance, parks 60 ms before register on Syn-TickScheduler at 1799720908225125
+  system-err: widen: e2da1b72-167f-4ac2-aeac-5c025dbe5cd2 registers at 1799720974040125
+  system-err: widen: e2ec1941-48bf-4128-b5f6-f72dd186db5f has its instance, parks 60 ms before register on Syn-TickScheduler at 1799722883490000
+  system-err: widen: e2ec1941-48bf-4128-b5f6-f72dd186db5f registers at 1799722945709583
+17-post-widen-grid-2: tests=2 failures=0 errors=0 skipped=0 time=3.495 s
+  pass aSecondOnlineLoginOfTheSameAccountReplacesTheFirst() 1.461 s
+  pass aLoginReplacingASessionThatIsStillSpawningWaitsForItToLeave() 2.023 s
+  system-err: widen: 2c0f567a-d23b-47b9-9605-6dec7c060668 has its instance, parks 60 ms before register on Syn-TickScheduler at 1799727778002916
+  system-err: widen: 2c0f567a-d23b-47b9-9605-6dec7c060668 registers at 1799727838985500
+  system-err: widen: 2ff5b332-e76c-4468-bbca-77769c0f7bb3 has its instance, parks 60 ms before register on Syn-TickScheduler at 1799729804468458
+  system-err: widen: 2ff5b332-e76c-4468-bbca-77769c0f7bb3 registers at 1799729868404416
+18-post-widen-grid-3: tests=2 failures=0 errors=0 skipped=0 time=3.618 s
+  pass aSecondOnlineLoginOfTheSameAccountReplacesTheFirst() 1.53 s
+  pass aLoginReplacingASessionThatIsStillSpawningWaitsForItToLeave() 2.078 s
+  system-err: widen: 0060dae2-6549-48b4-8890-7aea7e9095cf has its instance, parks 60 ms before register on Syn-TickScheduler at 1799734566878250
+  system-err: widen: 0060dae2-6549-48b4-8890-7aea7e9095cf registers at 1799734632066166
+  system-err: widen: 1ab956fb-7df9-48ec-8b94-96398576f161 has its instance, parks 60 ms before register on Syn-TickScheduler at 1799736699428416
+  system-err: widen: 1ab956fb-7df9-48ec-8b94-96398576f161 registers at 1799736759967083
+19-post-skip-default: tests=2 failures=2 errors=0 skipped=0 time=26.328 s
+  FAIL aSecondOnlineLoginOfTheSameAccountReplacesTheFirst() 12.829 s
+    org.opentest4j.AssertionFailedError: the entity tracker holds the newcomer, so other players see it ==> expected: <true> but was: <false>
+    at io.github.bearisbug.synaxis.network.OnlineDuplicateLoginSocketTest.awaitUntil(OnlineDuplicateLoginSocketTest.java:174)
+    at io.github.bearisbug.synaxis.network.OnlineDuplicateLoginSocketTest.aSecondOnlineLoginOfTheSameAccountReplacesTheFirst(OnlineDuplicateLoginSocketTest.java:65)
+  FAIL aLoginReplacingASessionThatIsStillSpawningWaitsForItToLeave() 13.491 s
+    org.opentest4j.AssertionFailedError: the entity tracker holds the newcomer, so other players see it ==> expected: <true> but was: <false>
+    at io.github.bearisbug.synaxis.network.OnlineDuplicateLoginSocketTest.awaitUntil(OnlineDuplicateLoginSocketTest.java:174)
+    at io.github.bearisbug.synaxis.network.OnlineDuplicateLoginSocketTest.aLoginReplacingASessionThatIsStillSpawningWaitsForItToLeave(OnlineDuplicateLoginSocketTest.java:136)
+  system-err: skip: 6b46bfdd-597b-40e9-943d-e5b3dab7d333 has its instance and never registers, on Syn-TickScheduler
+  system-err: skip: f47caffd-feba-4951-ad6c-158854efe7f0 has its instance and never registers, on Syn-TickScheduler
+20-post-skip-strict: tests=2 failures=2 errors=0 skipped=0 time=26.483 s
+  FAIL aSecondOnlineLoginOfTheSameAccountReplacesTheFirst() 12.991 s
+    org.opentest4j.AssertionFailedError: the entity tracker holds the newcomer, so other players see it ==> expected: <true> but was: <false>
+    at io.github.bearisbug.synaxis.network.OnlineDuplicateLoginSocketTest.awaitUntil(OnlineDuplicateLoginSocketTest.java:174)
+    at io.github.bearisbug.synaxis.network.OnlineDuplicateLoginSocketTest.aSecondOnlineLoginOfTheSameAccountReplacesTheFirst(OnlineDuplicateLoginSocketTest.java:65)
+  FAIL aLoginReplacingASessionThatIsStillSpawningWaitsForItToLeave() 13.484 s
+    org.opentest4j.AssertionFailedError: the entity tracker holds the newcomer, so other players see it ==> expected: <true> but was: <false>
+    at io.github.bearisbug.synaxis.network.OnlineDuplicateLoginSocketTest.awaitUntil(OnlineDuplicateLoginSocketTest.java:174)
+    at io.github.bearisbug.synaxis.network.OnlineDuplicateLoginSocketTest.aLoginReplacingASessionThatIsStillSpawningWaitsForItToLeave(OnlineDuplicateLoginSocketTest.java:136)
+  system-err: skip: 78eb6693-c782-40b7-b3a8-cb3f9a966333 has its instance and never registers, on Syn-TickScheduler
+  system-err: skip: 9daad47e-ace9-4b28-a070-cab6591d0bf1 has its instance and never registers, on Syn-TickScheduler
+21-post-350s2-strict-1: tests=2 failures=1 errors=0 skipped=0 time=16.278 s
+  pass aSecondOnlineLoginOfTheSameAccountReplacesTheFirst() 3.139 s
+  FAIL aLoginReplacingASessionThatIsStillSpawningWaitsForItToLeave() 13.051 s
+    org.opentest4j.AssertionFailedError: no player of cfb17d97-2f3c-4053-8f59-470acb2aa2a9 reached the play state ==> expected: not <null>
+    at io.github.bearisbug.synaxis.network.OnlineDuplicateLoginSocketTest.awaitPlayer(OnlineDuplicateLoginSocketTest.java:168)
+    at io.github.bearisbug.synaxis.network.OnlineDuplicateLoginSocketTest.aLoginReplacingASessionThatIsStillSpawningWaitsForItToLeave(OnlineDuplicateLoginSocketTest.java:135)
+22-post-350s2-strict-2: tests=2 failures=1 errors=0 skipped=0 time=17.981 s
+  pass aSecondOnlineLoginOfTheSameAccountReplacesTheFirst() 4.719 s
+  FAIL aLoginReplacingASessionThatIsStillSpawningWaitsForItToLeave() 13.242 s
+    org.opentest4j.AssertionFailedError: no player of 3aded017-aa58-42f0-b9ac-3d80b23592e2 reached the play state ==> expected: not <null>
+    at io.github.bearisbug.synaxis.network.OnlineDuplicateLoginSocketTest.awaitPlayer(OnlineDuplicateLoginSocketTest.java:168)
+    at io.github.bearisbug.synaxis.network.OnlineDuplicateLoginSocketTest.aLoginReplacingASessionThatIsStillSpawningWaitsForItToLeave(OnlineDuplicateLoginSocketTest.java:135)
+23-post-plain-default: tests=2 failures=0 errors=0 skipped=0 time=3.39 s
+  pass aSecondOnlineLoginOfTheSameAccountReplacesTheFirst() 1.36 s
+  pass aLoginReplacingASessionThatIsStillSpawningWaitsForItToLeave() 2.022 s
+24-post-plain-strict: tests=2 failures=0 errors=0 skipped=0 time=3.49 s
+  pass aSecondOnlineLoginOfTheSameAccountReplacesTheFirst() 1.342 s
+  pass aLoginReplacingASessionThatIsStillSpawningWaitsForItToLeave() 2.14 s
+25-post-plain-grid: tests=2 failures=0 errors=0 skipped=0 time=3.477 s
+  pass aSecondOnlineLoginOfTheSameAccountReplacesTheFirst() 1.375 s
+  pass aLoginReplacingASessionThatIsStillSpawningWaitsForItToLeave() 2.095 s

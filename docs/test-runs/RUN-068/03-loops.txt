@@ -1,0 +1,30 @@
+# RUN-068 evidence: the fixed OnlineDuplicateLoginSocketTest run 50 times in a row in each of the three modes, each run its own Gradle
+# invocation and test JVM, no patch applied. 2026-10-06 (UTC+8), three holds of the shared heavy lock, one per mode, released in between
+# (other groups of the session held it between the batches).
+# Command: ./gradlew :test --tests io.github.bearisbug.synaxis.network.OnlineDuplicateLoginSocketTest --rerun [MODE] --max-workers=4
+#          --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts; MODE as in 02-counter-proofs.txt.
+# Code: main 14437d0b78 plus the test fix, uncommitted then and committed as b7fd2ee575 afterwards: sha1 of git diff -- src is cf6c55adf671
+# in all three batches, the same as git diff b7fd2ee575~1 b7fd2ee575 -- src. The whole-tree sha1 on the strict and grid lines differs
+# because docs/TEST.md was being edited by then.
+# A run whose exit is not 0 would have its Gradle log kept and a line below; there is none.
+
+2026-10-06 04:19:14 default: runs 1..50; head 14437d0b78; status:  M src/test/java/io/github/bearisbug/synaxis/network/OnlineDuplicateLoginSocketTest.java ; diff sha1 cf6c55adf671; System-wide memory free percentage: 49%; load 12.31 19.50 29.95
+2026-10-06 04:19:14 default: command ./gradlew :test --tests io.github.bearisbug.synaxis.network.OnlineDuplicateLoginSocketTest --rerun  --max-workers=4 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts
+2026-10-06 04:24:56 default: 50 runs, 0 with a non-zero exit; lock held 342 s; load 13.92 13.52 23.44
+2026-10-06 04:28:12 strict: runs 1..50; head 14437d0b78; status:  M docs/TEST.md  M src/test/java/io/github/bearisbug/synaxis/network/OnlineDuplicateLoginSocketTest.java ; diff sha1 1dec196762d9; System-wide memory free percentage: 44%; load 10.16 11.90 20.71
+2026-10-06 04:28:12 strict: command ./gradlew :test --tests io.github.bearisbug.synaxis.network.OnlineDuplicateLoginSocketTest --rerun -Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true --max-workers=4 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts
+2026-10-06 04:34:02 strict: 50 runs, 0 with a non-zero exit; lock held 350 s; load 9.01 9.37 16.40
+2026-10-06 04:38:17 grid: runs 1..50; head 14437d0b78; status:  M docs/TEST.md  M src/test/java/io/github/bearisbug/synaxis/network/OnlineDuplicateLoginSocketTest.java ; diff sha1 1dec196762d9; System-wide memory free percentage: 38%; load 19.75 13.04 16.02
+2026-10-06 04:38:17 grid: command ./gradlew :test --tests io.github.bearisbug.synaxis.network.OnlineDuplicateLoginSocketTest --rerun -Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true -Dsynaxis.thread-provider=grid --max-workers=4 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts
+2026-10-06 04:44:41 grid: 50 runs, 0 with a non-zero exit; lock held 384 s; load 8.27 10.84 13.89
+
+## Sum of the JUnit XML (each run's XML copied out right after it)
+default: 50 runs (XML files default-01.xml .. default-50.xml), tests=100 failures=0 errors=0 skipped=0
+  aSecondOnlineLoginOfTheSameAccountReplacesTheFirst(): 50 times, 1.274 / 1.442 / 1.946 s (min / median / max)
+  aLoginReplacingASessionThatIsStillSpawningWaitsForItToLeave(): 50 times, 1.974 / 2.080 / 2.140 s (min / median / max)
+strict: 50 runs (XML files strict-01.xml .. strict-50.xml), tests=100 failures=0 errors=0 skipped=0
+  aSecondOnlineLoginOfTheSameAccountReplacesTheFirst(): 50 times, 1.273 / 1.448 / 1.971 s (min / median / max)
+  aLoginReplacingASessionThatIsStillSpawningWaitsForItToLeave(): 50 times, 1.992 / 2.082 / 2.144 s (min / median / max)
+grid: 50 runs (XML files grid-01.xml .. grid-50.xml), tests=100 failures=0 errors=0 skipped=0
+  aSecondOnlineLoginOfTheSameAccountReplacesTheFirst(): 50 times, 1.467 / 1.630 / 3.124 s (min / median / max)
+  aLoginReplacingASessionThatIsStillSpawningWaitsForItToLeave(): 50 times, 1.974 / 2.079 / 2.178 s (min / median / max)

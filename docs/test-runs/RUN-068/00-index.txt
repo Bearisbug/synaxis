@@ -1,0 +1,36 @@
+# RUN-068 evidence (the production-readiness session registers RUN-068 before the merge): OnlineDuplicateLoginSocketTest red twice on CI
+# with "the entity tracker holds the newcomer ... but was: <null>", a test defect, fixed on branch prod/dup-login-flake.
+# 2026-10-06 04:00 to 05:04 (UTC+8). Base: main 14437d0b78. Code under test: b7fd2ee575 = main 14437d0b78 + one test commit (the two
+# waits of OnlineDuplicateLoginSocketTest); 02 and 03 ran on a working tree with the same src content (sha1 of git diff -- src cf6c55adf671),
+# committed right after them, 04 ran on b7fd2ee575 itself with docs/TEST.md edited in the working tree.
+# Machine: Apple M4 Pro, 12 cores, 24 GB, macOS 15.3.2, Homebrew JDK 25.0.4.1, Gradle 9.7.1; other sessions ran their own work on it.
+# Every Gradle run took the shared heavy lock (/tmp/synaxis-heavy.lock) for its batch and released it when the batch ended; other groups of
+# the session ran between the batches. Gradle: --max-workers=4 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts, no
+# database variables (neither the class nor the root module reads them). Raw Gradle logs, JUnit XML, the CI downloads and the scripts stayed
+# in /tmp/dup-login, deleted after the round; the lines in these files are copied out of them.
+00-index.txt              this file
+01-ci-failures.txt        the two CI failures (runs 36967361297 and 36969350270): job log lines, the JUnit XML of the class, the classes
+                          that ran alongside it in the same test JVM
+02-counter-proofs.txt     window between the instance and the tracker widened to 60 ms: the test as on main red at :66 and :137 in 9 of 9
+                          runs (default, strict, strict grid, 3 each), the fixed test green in 9 of 9; the newcomer never registered: the
+                          fixed test red at :65 and :136 (through :174); TC-PROD-350 step 2 on the fixed test: red at :135 as recorded
+03-loops.txt              the fixed class 50 times in a row in each mode, one Gradle run each: 150 runs, 300 tests, 0 failures
+04-full-runs.txt          root :test in full, default and strict grid: 428 classes, 3,162 tests, 15 skipped, 0 failures each
+05-docs-lint.txt          design-doc lint of docs/DESIGN-PROD.md (not changed) and test-doc lint of docs/TEST.md (only the known warnings)
+
+# Root cause, a test defect (code at main 14437d0b78): both tests waited for replacement.getInstance() == instance, polling every 25 ms,
+# then read the entity tracker once (OnlineDuplicateLoginSocketTest.java:65-67 and :136-138). Entity#setInstance writes the instance at
+# Entity.java:1180 and registers the entity in the tracker at :1194 (EntityTrackerImpl.java:68 puts the uuid), in the chunk continuation.
+# The newcomer's view distance is loaded by then (the old player loaded it), so Player#setInstance takes its sync branch (Player.java:745)
+# and the continuation runs right away on the tick thread: chunk refresh, world border, time and weather packets, then the registration.
+# A poll that falls between the two sees the instance and no uuid in the tracker. The engine promises only "tracked => instance set";
+# no listener runs on the tick thread in between, other players see the newcomer through the visibility update of the registration, and
+# ConnectionManager#leftTheWorld relies on "no instance => not tracked", which holds. Neither the product code nor a design document changes.
+# The order is upstream's (the instance line blames to 2019); the waits come from ed00212af4 (2026-09-23) and 5550ff1ff6 (2026-09-24), not
+# from the security fix of 2026-10-01: Entity.java, Player.java and EntityTrackerImpl.java are the same at 23982267e9 and main.
+
+# Results
+TC-PROD-100  pass   step 1: the fixed class green in every mode (02 runs 23-25, 03, 04); step 2 judged on the full runs of 04; steps 3 and 4
+                    not rerun: step 3 turns red at second.configure() (:59), before the changed lines, step 4 runs another class
+TC-PROD-350  pass   step 1: as above; step 2 rerun on the fixed class (02 runs 21-22): 2 tests completed, 1 failed, red at :135,
+                    no player of <uuid> reached the play state, aSecondOnlineLoginOfTheSameAccountReplacesTheFirst green

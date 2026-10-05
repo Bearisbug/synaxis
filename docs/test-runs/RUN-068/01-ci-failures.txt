@@ -1,0 +1,76 @@
+# RUN-068 evidence: the two CI failures of OnlineDuplicateLoginSocketTest on main, copied from the job logs (gh run view --log) and the
+# JUnit XML of the uploaded test reports (gh api .../actions/artifacts/<id>/zip), fetched 2026-10-06; the downloads were deleted after the round.
+# Both commits change docs only: git diff --stat c69548be70 14437d0b78 -- src/ is empty, and the CI workflow was green on that code six
+# times before them (runs 36836887629, 36852829003, 36858269604, 36960689069, 36962541058, 36966591922, all attempt 1, all three jobs).
+# ubuntu-latest runners (the repository is private: 2 vCPU).
+
+## 1. run 36967361297, main e96dcc42f4, attempt 1: job 110713898119 "Check" failed, "Test with 4 tick threads (strict)" and "(strict, grid)" green
+# step: ./gradlew check jacocoTestReport -Dsynaxis.synx.require-frozen-zlib=true (counter tick threads, engine defaults)
+2026-10-02T05:08:41.2041928Z OnlineDuplicateLoginSocketTest > aSecondOnlineLoginOfTheSameAccountReplacesTheFirst() FAILED
+2026-10-02T05:08:41.2102795Z     org.opentest4j.AssertionFailedError at OnlineDuplicateLoginSocketTest.java:66
+2026-10-02T05:10:06.7841283Z 3162 tests completed, 1 failed, 21 skipped
+# artifact test-reports (id 11210527194), TEST-io.github.bearisbug.synaxis.network.OnlineDuplicateLoginSocketTest.xml:
+<testsuite name="io.github.bearisbug.synaxis.network.OnlineDuplicateLoginSocketTest" tests="2" skipped="0" failures="1" errors="0" timestamp="2026-10-02T05:08:39.832Z" hostname="runnervm8df0l" time="4.048">
+  <testcase name="aSecondOnlineLoginOfTheSameAccountReplacesTheFirst()" classname="io.github.bearisbug.synaxis.network.OnlineDuplicateLoginSocketTest" time="1.226">
+    <failure message="org.opentest4j.AssertionFailedError: the entity tracker holds the newcomer, so other players see it ==> expected: <io.github.bearisbug.synaxis.entity.Player@7460a559> but was: <null>" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: the entity tracker holds the newcomer, so other players see it ==> expected: <io.github.bearisbug.synaxis.entity.Player@7460a559> but was: <null>
+	at org.junit.jupiter.api.Assertions.assertSame(Assertions.java:2975)
+	at io.github.bearisbug.synaxis.network.OnlineDuplicateLoginSocketTest.aSecondOnlineLoginOfTheSameAccountReplacesTheFirst(OnlineDuplicateLoginSocketTest.java:66)
+  <testcase name="aLoginReplacingASessionThatIsStillSpawningWaitsForItToLeave()" classname="io.github.bearisbug.synaxis.network.OnlineDuplicateLoginSocketTest" time="2.822"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+# classes of the same test JVM whose run overlapped it, from the timestamps of the 428 XML files:
+  overlaps: ProfileSkinIntegrationTest 05:08:26.803 .. 05:08:40.256 (13.453 s)
+  overlaps: PlayerIntegrationTest 05:08:34.909 .. 05:08:41.661 (6.752 s)
+  overlaps: PlayerMovementIntegrationTest 05:08:39.750 .. 05:08:53.617 (13.867 s)
+  overlaps: PlayerPacketQueueIntegrationTest 05:08:40.256 .. 05:08:40.658 (0.402 s)
+  overlaps: PlayerReconfigurationIntegrationTest 05:08:40.659 .. 05:08:41.103 (0.444 s)
+  overlaps: PlayerRemoveIntegrationTest 05:08:41.104 .. 05:08:41.737 (0.633 s)
+  overlaps: PlayerResourcePackIntegrationTest 05:08:41.664 .. 05:08:43.418 (1.754 s)
+  overlaps: PlayerRespawnChunkIntegrationTest 05:08:41.738 .. 05:08:43.358 (1.62 s)
+  overlaps: PlayerSwimmingPoseIntegrationTest 05:08:42.876 .. 05:08:46.262 (3.386 s)
+  overlaps: PlayerTransferOutIntegrationTest 05:08:42.966 .. 05:08:46.434 (3.468 s)
+  overlaps: TabListIntegrationTest 05:08:43.359 .. 05:08:48.515 (5.156 s)
+  overlaps: EventBindingFilteredTest 05:08:43.418 .. 05:08:43.440 (0.022 s)
+  overlaps: EventFilterConstantsTest 05:08:43.440 .. 05:08:43.494 (0.054 s)
+  overlaps: EventFilterCustomTest 05:08:43.494 .. 05:08:43.519 (0.025 s)
+  overlaps: EventListenerCancelPolicyTest 05:08:43.519 .. 05:08:43.555 (0.036 s)
+  overlaps: EventListenerExpirationTest 05:08:43.555 .. 05:08:43.565 (0.01 s)
+  overlaps: EventListenerFilterTest 05:08:43.565 .. 05:08:43.591 (0.026 s)
+  overlaps: EventListenerOfTest 05:08:43.592 .. 05:08:43.606 (0.014 s)
+  overlaps: EventNodeAddChildTest 05:08:43.606 .. 05:08:43.657 (0.051 s)
+  overlaps: EventNodeAsyncEventTest 05:08:43.657 .. 05:08:43.669 (0.012 s)
+  overlaps: EventNodeBindingLifecycleTest 05:08:43.669 .. 05:08:43.688 (0.019 s)
+  overlaps: EventNodeBindingTest 05:08:43.688 .. 05:08:43.698 (0.01 s)
+  overlaps: EventNodeCallCancellableTest 05:08:43.698 .. 05:08:43.710 (0.012 s)
+  overlaps: EventNodeChildConcurrencyTest 05:08:43.711 .. 05:08:43.857 (0.146 s)
+  overlaps: EventNodeChildInvalidationTest 05:08:43.857 .. 05:08:43.869 (0.012 s)
+  overlaps: EventNodeChildPriorityTest 05:08:43.870 .. 05:08:43.888 (0.018 s)
+
+## 2. run 36969350270, main 14437d0b78, attempt 1: job 110719861910 "Test with 4 tick threads (strict)" failed, "Check" and "(strict, grid)" green
+# step: ./gradlew test -Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true (counter tick threads)
+2026-10-02T05:35:38.6539147Z OnlineDuplicateLoginSocketTest > aLoginReplacingASessionThatIsStillSpawningWaitsForItToLeave() FAILED
+2026-10-02T05:35:38.6558498Z     org.opentest4j.AssertionFailedError at OnlineDuplicateLoginSocketTest.java:137
+2026-10-02T05:36:28.7498218Z 3162 tests completed, 1 failed, 21 skipped
+# artifact test-reports-multithreaded (id 11210892825), TEST-io.github.bearisbug.synaxis.network.OnlineDuplicateLoginSocketTest.xml:
+<testsuite name="io.github.bearisbug.synaxis.network.OnlineDuplicateLoginSocketTest" tests="2" skipped="0" failures="1" errors="0" timestamp="2026-10-02T05:35:34.079Z" hostname="runnervm8df0l" time="4.437">
+  <testcase name="aSecondOnlineLoginOfTheSameAccountReplacesTheFirst()" classname="io.github.bearisbug.synaxis.network.OnlineDuplicateLoginSocketTest" time="1.431"/>
+  <testcase name="aLoginReplacingASessionThatIsStillSpawningWaitsForItToLeave()" classname="io.github.bearisbug.synaxis.network.OnlineDuplicateLoginSocketTest" time="3.001">
+    <failure message="org.opentest4j.AssertionFailedError: the entity tracker holds the newcomer, so other players see it ==> expected: <io.github.bearisbug.synaxis.entity.Player@734b81ef> but was: <null>" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: the entity tracker holds the newcomer, so other players see it ==> expected: <io.github.bearisbug.synaxis.entity.Player@734b81ef> but was: <null>
+	at org.junit.jupiter.api.Assertions.assertSame(Assertions.java:2975)
+	at io.github.bearisbug.synaxis.network.OnlineDuplicateLoginSocketTest.aLoginReplacingASessionThatIsStillSpawningWaitsForItToLeave(OnlineDuplicateLoginSocketTest.java:137)
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+# classes of the same test JVM whose run overlapped it:
+  overlaps: BlockLightMergeIntegrationTest 05:35:24.457 .. 05:35:41.003 (16.546 s)
+  overlaps: ChunkPacketDeterminismTest 05:35:25.853 .. 05:36:26.942 (61.089 s)
+  overlaps: ChunkUnloadIntegrationTest 05:35:26.712 .. 05:35:39.210 (12.498 s)
+  overlaps: SimulationDistanceTest 05:35:32.320 .. 05:35:41.227 (8.907 s)
+  overlaps: TargetedBlockUpdateIntegrationTest 05:35:33.908 .. 05:35:34.273 (0.365 s)
+  overlaps: TickableBlockIntegrationTest 05:35:34.279 .. 05:35:34.362 (0.083 s)
+  overlaps: UnloadChunkIntegrationTest 05:35:34.362 .. 05:35:36.627 (2.265 s)
+  overlaps: WeatherIntegrationTest 05:35:36.627 .. 05:35:37.194 (0.567 s)
+  overlaps: WorldBorderIntegrationTest 05:35:37.194 .. 05:35:37.627 (0.433 s)
+  overlaps: BlockBreakCalculationIntegrationTest 05:35:37.627 .. 05:35:41.120 (3.493 s)
+
+# system-out and system-err of both XML files are empty (as in the local runs of this round): no engine log line of the two logins to
+# line up with the failure.

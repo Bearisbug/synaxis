@@ -8,12 +8,13 @@
 | Owner | Bearisbug |
 | 关联设计文档 | `docs/DESIGN.md`（引擎域 M1 / M1.5）、`docs/DESIGN-M2.md`（游戏域 M2 分册）、`docs/DESIGN-M3.md`（大世界域 M3 分册）与 `docs/DESIGN-PROD.md`（生产就绪分册）；各文档的 REQ 各自编号，M2 侧写作 `REQ-M2-*`、M3 侧写作 `REQ-M3-*`，生产就绪侧写作 `REQ-PROD-*`，对应用例写作 `TC-PROD-*` |
 | 被测系统 | 仓库 `Bearisbug/synaxis`，分支 `main` |
-| 最后更新 | 2026-10-02 |
+| 最后更新 | 2026-10-06 |
 
 变更记录（登用例增改，不登执行轮次）：
 
 | 日期 | 改动 | 作者 |
 | --- | --- | --- |
+| 2026-10-06 | 分支 `prod/m3fix-chores`（基线 `main` `14437d0b78`），跟进 `docs/DESIGN-PROD.md` v0.9.50（光照会话 M3 侧安全审查里归生产就绪的 ⑦⑧ 与本会话之前登记的文档滞后），不登执行轮次，证据在 `docs/test-runs/RUN-070/chores/`。**新增 §4「生产就绪 · M3 侧安全审查修复：chores（文档与工作流、规则代码的口径）」三条 `TC-PROD-655`～`TC-PROD-657`**，都只读文件比对，修前在 `14437d0b78` 上各红过一次，反证都实跑过：两份设计文档里压测机器的规格只剩 ≥ 8 核 / 16 GiB 一种（655，修前红一行 `docs/DESIGN-PROD.md:1572`）；`docs/ENGINE.md` §7 列出四个工作流与七个 job（656，修前少 `client-gametest.yml`，七个 job 都没写名字，`multithreaded`、`multithreaded-grid` 与 `client-gametest.yml` 的两个 job 连内容也没有）；`docs/ENGINE.md` §8 的三份豁免名单与规则代码逐个相同（657，修前引擎一份缺 `ConnectionGate`、`SessionClient`，多写已移出的 `HandshakeListener`，宿主一份缺 7 个类）。**改写 `TC-PROD-430` 第 5 步**：模组测试 7 个类 90 个 → 15 个类 184 个（M3-G 轨道 C 加的 8 个类 74 个，`FrozenVectorTest` 20 → 40），在 `14437d0b78` 上实跑。`TC-016` 核对过不用改：它只照 `docs/ENGINE.md` §1～§3 构建与启动。§5 加一行回归映射。`TC-GAME-066` 第 3 步写着同样过时的 90 条，归光照会话改（`docs/DESIGN-PROD.md` §28.3） | Bearisbug |
 | 2026-10-02 | 合入 `main` `494605595a`（M3-G 合入，`docs/DESIGN-M3.md` v0.32，RUN-064）后按该分册 §28.2「M3 v0.30」「M3 v0.31」「M3 v0.32」三行交给本会话的部分同步，跟进 `docs/DESIGN-PROD.md` v0.9.45，登记 RUN-067（证据 `docs/test-runs/RUN-067/`）。**条数**：`:server-app:test` 553 → 577、类 110 → 113（M3-G 加 `ShardWorldFarViewTest` 9、`FarViewShardFixtureTest` 9、`FarViewLaunchTest` 4，`ShardSettingsTest` 6 → 8，按 RUN-064 `main-merge/01-gates.txt`），改 `TC-PROD-486` 第 3 步、`505` 第 3 步、`510` 第 2 步、`529` 第 4 步、`549` 第 2 步、`575` 第 3 步、`585` 第 1、2 步、`596` 第 2 步、`607` 第 2 步、`618` 第 1、2 步，根构建 `:test` 3,162 不变；`575` 第 3 步不带数据库变量的两次（默认、严格 grid）在 RUN-067 实跑，各 577 个、132 个跳过。**两道门禁**：配置键 115 → 116（`TC-PROD-441` 标题与第 1～3 步、`TC-PROD-547` 第 1 步、`TC-PROD-569` 第 4 步），`441` 的三个反证照字面实跑，读数 116 / 115、116 / 117、116 / 116；翻译键 14 → 15 个标识、60 个键（`TC-PROD-430` 标题与第 1 步、6F 一节开头、`TC-PROD-432` 第 1 步的 `grep` 加 `farview`、`TC-PROD-547` 第 1 步）。`NOT_TEXT` 多一行让门禁的断言由 `TranslationKeyGateTest.java:90` 移到 `:91`，交接行没有列，按 RUN-067 实跑改：`TC-PROD-068`、`105`、`162`、`210`（两步）、`233`、`250`、`295`、`396`、`430`、`431`、`433`、`547` 的反证红行改为 `:91`，`068` 夹具那条 `:101` → `:102`，`432` 第 2 步 `:89` → `:90`、`:100` → `:101`、读数 `61 keys …, 14 identifiers`，第 3 步 `:91` → `:92`、`60 keys …, 16 identifiers`，`430` 第 3 步与 `433` 第 2 步的键数 57 → 61。同轮实跑另有两处与用例不同、与 M3-G 无关，一并改：`162` 第 2 步的来源多了 `TicketIssuer`（v0.9.40 起断开签票后不走的连接用这个键），`547` 第 2 步跑两个门禁类，是 `3 tests completed, 1 failed`。**`Main.java` 行号**（多一行导入、`serveMap` 的监听多 7 行，原 `:513` 以后 +8，逐个在合入后的代码上核过）：`TC-PROD-498` 第 3 步九行里的 `:322`～`:335` 各加 1，`TC-PROD-521` 第 3 步 `264` → `265`、第 4 步 `:750` → `:758`，`TC-PROD-528` 第 2 步 `:704` → `:712`，`TC-PROD-533` 第 2 步 `sed -n 748,750p` → `756,758p`（RUN-067 照字面跑过）、第 3 步 `:748` → `:756`，6A 其余部分一节开头 `:268`～`:269`、`:284` → `:269`～`:270`、`:285`（交接行把这两处记在 `TC-PROD-533` 名下），`TC-PROD-548` 第 7 步 `:268` → `:269`，`TC-PROD-573` 第 3 步 518 → 526（交接行没有列），ops 一节 `TC-PROD-603` 第 2 步 `<MN>:610` → `:618`、`TC-PROD-604` 第 2 步 `<MN>:343` → `:344`（节首写明 `<MN>` 的行号按合入后的代码），§7 端口竞态一条的就绪行 `:359` → `:360`。**`TC-PROD-550` 第 3 步**：烘焙器发布行多了远景包一段 | Bearisbug |
 | 2026-10-02 | 分支 `m3g/integrate`（M3-G 合并验收，合入 `main` `4bb76eec7f` 之后是 `24d3b318a9`），跟进 `docs/DESIGN-M3.md` v0.32，登记 RUN-064（证据 `docs/test-runs/RUN-064/`）。**新增「M3 · 远景（M3-G）」一节 `TC-WORLD-102`～`TC-WORLD-124`**（排在 M3-D 一节之后，编号接 `main` 上最大的 `TC-WORLD-101`）：服务端与烘焙器 102～109（编解码与远景向量、烘焙产出、采样与粗层、隐藏区域、校验、导出、分片宣告、命令行与夹具），客户端 JUnit 110～116，无头容器 117～122（121 只登记读数），真机 123、124（执行者人工）；JUnit 用例的反证都按本节字面在 `24d3b318a9` 上实跑过，容器用例 117、118 带反证，119、120 没有（§7）。§2 `REQ-M3-024`、`REQ-M3-025` 两行由「未实现」改为这些用例，`REQ-M3-002`、`REQ-M3-003`、`REQ-M3-022` 三行加对应用例；§3 加「远景（M3-G）」一条（重活锁的 `EXIT` trap 要写在脚本顶层、容器门槛、夹具与容器的命令、端口）；§5 加 M3-G 一行；§7 加四条。**改既有用例**（M3-G 让预期变了，RUN-064 按新的字面实跑）：`TC-WORLD-023` 第 1、2 步（发布行多了 `; 1 far view pack(s), 596465 bytes, assembled in <n> ms`，事件 `farview_bytes` 0 → 596465，`farview/t.0.0.hfp` 1 线程与多线程逐字节相同）；`TC-WORLD-030` 第 2 步与 `TC-WORLD-033` 第 1 步（发布行同样多一段，夹具版本多了 `farview/t.0.0.hfp`）；`TC-WORLD-032` 第 1～3 步（`60 keys …, 15 identifiers left out`，`NOT_TEXT` 多 `synaxis:farview`，反证红行 `:89` → `:90`、输出 `61 keys …, 14 identifiers`）；`TC-WORLD-041` 第 1、2、4 步（`ShardSettingsTest` 6 → 8 条，门禁 `116 keys read, 116 in ConfigFile.KEYS, 21 meter names left out`，21 是生产就绪第 6 波之后的值，反证 `116 keys read, 114 in ConfigFile.KEYS`）；`TC-WORLD-098` 第 2 步（同一门禁输出）；`TC-WORLD-100` 与 `TC-WORLD-101` 第 2 步（`Main.java:518` → `:526`、`:304` → `:305`：合入后 `Main` 多了远景宣告的导入与监听体）。**不改**：`TC-PROD-*`。合入后它们要跟着改的条数与行号列在 `docs/DESIGN-M3.md` §28.2「交给生产就绪会话的改动（M3 v0.32）」：`TC-PROD-550` 第 3 步的发布行、`:server-app:test` 553 → 577、两道门禁 116 与 15、`Main.java` 行号 | Bearisbug |
 | 2026-10-01 | 合入 `main` `4a40af2835`（`docs/DESIGN-M3.md` v0.31，RUN-065）后按该分册 §28.2「M3 v0.31」一行同步，跟进 `docs/DESIGN-PROD.md` v0.9.44。**`TC-PROD-570` 第 2 步改写**：原写法 `git checkout 0e919cce6a -- <GT>` 取出的旧 `ShardGates` 只有三个参数的构造器，M3 v0.31 起 `Main` 与测试都传四个，照写编不过（RUN-065 判失败）；改为原地把 `case COOLDOWN, NOT_ONLINE, SAVE_FAILED -> refused(player, gate, result);` 换成空块，红行与消息不变，在 RUN-066 按字面重跑 1～6 步。**条数**：`:server-app:test` 552 → 553（M3 v0.31 的 `ShardGatesOnlineTest` 1 个），改 `TC-PROD-486` 第 3 步、`505` 第 3 步、`510` 第 2 步、`529` 第 4 步、`549` 第 2 步、`575` 第 3 步、`585` 第 1、2 步、`596` 第 2 步、`607` 第 2 步、`618` 第 1、2 步，类数随之 109 → 110；根构建 `:test` 3,162 不变 | Bearisbug |
@@ -6705,7 +6706,7 @@ jcmd "$pid" VM.flags | tr ' ' '\n' | grep -cxE -- '-XX:\+UseG1GC|-XX:InitialHeap
 | 2 | `./gradlew check --dry-run --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts \| grep -E '^:architecture-tests:(test\|check) '` | 两行：`:architecture-tests:test SKIPPED`、`:architecture-tests:check SKIPPED`（CI `check` job 的 `./gradlew check` 带着门禁） |
 | 3 | 反证（§19 场景）：`src/main/java/io/github/bearisbug/synaxis/network/DisconnectReasons.java` 在私有构造器前加 `public static final TranslatableComponent GATE_PROBE = Component.translatable("synaxis:gate-probe");`，`client-fabric/src/main/resources/assets/synaxis/lang/en_us.json` 在 `synaxis:shard-full` 一行后加 `"synaxis:gate-probe": "probe",`，跑门禁，再 `git checkout --` 这两个文件 | `2 tests completed, 1 failed`：`everyKeyTheServerCanSendHasTextInBothLanguageFiles` 红在 `:91`，`Problems of the translation key gate (1):` 下一行 `zh_cn.json has no text for synaxis:gate-probe (from io.github.bearisbug.synaxis.network.DisconnectReasons)`；`<system-out>` 的键数为 61 |
 | 4 | 还原后重跑第 1 步 | 与第 1 步相同 |
-| 5 | 在仓库根跑 `./gradlew :protocol:publishToMavenLocal --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts`，再 `cd client-fabric && ./gradlew build --no-daemon`（JVM 带代理，不带镜像脚本：`client-fabric` 要 `maven.fabricmc.net`）；然后 `grep -rl 'has no text for' client-fabric/src/test` | `BUILD SUCCESSFUL`，模组 7 个测试类共 90 个测试 0 失败（`ClientHandshakeTest` 11）；`grep` 无输出，模组测试里不再有服务端键的清单 |
+| 5 | 在仓库根跑 `./gradlew :protocol:publishToMavenLocal --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts`，再 `cd client-fabric && ./gradlew build --no-daemon`（JVM 带代理，不带镜像脚本：`client-fabric` 要 `maven.fabricmc.net`）；然后 `grep -rl 'has no text for' client-fabric/src/test` | `BUILD SUCCESSFUL`，模组 15 个测试类共 184 个测试 0 失败（`ClientHandshakeTest` 11；M3-G 轨道 C 加了 `farview` 与 `farview.dh` 两个包的 8 个类 74 个，`FrozenVectorTest` 多了远景的 20 个向量用例，20 → 40；RUN-070 在 `14437d0b78` 上实跑）；`grep` 无输出，模组测试里不再有服务端键的清单 |
 
 后置：`git status --short` 无输出。
 
@@ -8733,6 +8734,76 @@ for (var request : System.getenv("MGMT_CALLS").split("\n")) {
 
 后置：`git status --short` 无输出。
 
+### 生产就绪 · M3 侧安全审查修复：chores（文档与工作流、规则代码的口径）
+
+对应 `REQ-PROD-029`、`REQ-PROD-019`、`REQ-PROD-020`、`REQ-PROD-030`、`REQ-PROD-015` 与引擎的 `REQ-012`（`docs/DESIGN-PROD.md` v0.9.50）。起因是光照会话 M3 侧安全审查里归生产就绪的 ⑦⑧ 与本会话之前登记的文档滞后，本节三条守其中能机械比对的三处：⑦-1 `docs/DESIGN-PROD.md` §15 写的压测机器人机规格与 §28.1 Q11、`docs/DESIGN-M3.md` §15 分机档不一致（`TC-PROD-655`）；⑧-1 `docs/ENGINE.md` §7 的 CI 清单漏了 `client-gametest.yml` 与 `ci.yml` 的两个 4 线程严格 job（`TC-PROD-656`）；`docs/ENGINE.md` §8 的两份日志豁免名单（引擎写七个类、宿主写四个类）与 ArchUnit 规则代码不符（`TC-PROD-657`）。三条都只读文件，不跑 Gradle、不起进程，在仓库根执行；反证一律是临时改一个文件、跑检查、看输出、`git checkout HEAD -- <文件>` 还原、重跑复绿。三条检查在改动前的 `14437d0b78` 上都红过，输出见 `docs/test-runs/RUN-070/chores/01-red-baseline.txt`。同批的其余几处没有可机械比对的口径，不另立用例：`TC-PROD-430` 第 5 步的模组测试条数按实跑改写；`TC-016` 照 `docs/ENGINE.md` 操作，但它只用到 §1～§3 的环境、构建与启动命令，§7、§8 的改动不影响它，用例不改。
+
+下文 `MACHINES` 指这条命令（只看两份设计文档）：
+
+```bash
+grep -nEo '≥ ?[0-9]+ 核 / [0-9]+ GiB' docs/DESIGN-PROD.md docs/DESIGN-M3.md | grep -v '≥ 8 核 / 16 GiB$'
+```
+
+`CI_LIST` 指这段（§7 是 `## 7. CI` 到 `### 7.1` 之间；job 是 `jobs:` 下缩进两格的键）：
+
+```bash
+s=$(sed -n '/^## 7\. CI/,/^### 7\.1/p' docs/ENGINE.md)
+for w in .github/workflows/*.yml; do
+  f=${w##*/}; grep -qF "\`$f\`" <<<"$s" || echo "missing workflow $f"
+  for j in $(sed -n '/^jobs:/,$p' "$w" | grep -E '^  [a-z0-9-]+:$' | tr -d ' :'); do
+    grep -qF "job \`$j\`" <<<"$s" || echo "missing job $f $j"
+  done
+done
+```
+
+`EXEMPT` 指这段（三条日志门禁 `boundedReporters()` 里的类对 `docs/ENGINE.md` §8 写的名单；diff 里 `<` 是只在代码里的类，`>` 是只在手册里的类）：
+
+```bash
+code() { sed -n '/boundedReporters() {/,/^    }/p' "$1" | grep -oE 'name\([A-Za-z]+\.class' | sed -E 's/name\(|\.class//g' | sort; }
+doc() { sed -n '/^## 8\./,$p' docs/ENGINE.md | grep -oE "$1[^）。，]*" | head -1 | grep -oE '`[A-Za-z]+`' | tr -d '`' | sort; }
+diff <(code src/test/java/io/github/bearisbug/synaxis/ArchitectureTest.java) <(doc '[^的]豁免名单是') && echo 'engine: same'
+diff <(code server-app/src/test/java/io/github/bearisbug/synaxis/app/ClientDrivenLogArchitectureTest.java) <(doc '宿主那条的豁免名单是') && echo 'host: same'
+diff <(code game-rts/src/test/java/io/github/bearisbug/synaxis/game/rts/ArchitectureTest.java) <(doc '游戏侧那条的豁免名单只有') && echo 'game: same'
+```
+
+#### `TC-PROD-655` 两份设计文档里压测机器的规格只有一种：服务端与机器人各一台 ≥ 8 核 / 16 GiB（§28.1 Q11） — 对应 `REQ-PROD-029` · 级别: 回归 · 执行者: AI
+
+前置：本节开头；工作副本干净。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `MACHINES` | 无输出，退出码 1：`docs/DESIGN-PROD.md` §2 机器行、§15「`capacity` 建议值」一段（服务端与机器人两台）、§19 一条 Given、§28.1 Q11，`docs/DESIGN-M3.md` §15 分机档（两台）与 §28.1 一行，写的都是 ≥ 8 核 / 16 GiB。改动前的 `14437d0b78` 上输出一行 `docs/DESIGN-PROD.md:1572:≥ 4 核 / 8 GiB`，退出码 0 |
+| 2 | 反证有齿：`docs/DESIGN-PROD.md` §15「`capacity` 建议值」一段的「机器人另一台 ≥ 8 核 / 16 GiB」改为「机器人另一台 ≥ 4 核 / 8 GiB」（改动前的写法），跑 `MACHINES`，再还原 | 一行 `docs/DESIGN-PROD.md:<那一段的行号>:≥ 4 核 / 8 GiB`，退出码 0 |
+| 3 | 还原后重跑第 1 步 | 与第 1 步相同 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PROD-656` `docs/ENGINE.md` §7 列出 `.github/workflows/` 的每个工作流与每个 job — 对应 `REQ-012`、`REQ-PROD-019`、`REQ-PROD-020`、`REQ-PROD-030` · 级别: 回归 · 执行者: AI
+
+前置：本节开头；工作副本干净。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `CI_LIST` | 无输出：四个工作流与七个 job（`ci.yml` 的 `check`、`multithreaded`、`multithreaded-grid`，`concurrency.yml` 的 `jcstress`，`client-mod.yml` 的 `mod`，`client-gametest.yml` 的 `gametest`、`p10`）在 §7 里都以 `` `<文件名>` `` 与「job `<id>`」出现。改动前的 `14437d0b78` 上输出 8 行：`missing workflow client-gametest.yml` 与七个 `missing job …`（那时 §7 不写 job 名，`multithreaded`、`multithreaded-grid` 与 `client-gametest.yml` 的两个 job 连内容也没有） |
+| 2 | 反证有齿（手册漏写一个 job）：删掉 `docs/ENGINE.md` §7 里 job `multithreaded-grid` 那一条，跑 `CI_LIST`，再还原 | 一行 `missing job ci.yml multithreaded-grid` |
+| 3 | 反证有齿（工作流加了 job 而手册没跟）：`.github/workflows/concurrency.yml` 末尾加一个 job（`  extra:`、`    runs-on: ubuntu-latest`、`    steps:`、`      - run: "true"` 四行），跑 `CI_LIST`，再还原 | 一行 `missing job concurrency.yml extra` |
+| 4 | 还原后重跑第 1 步 | 与第 1 步相同 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PROD-657` `docs/ENGINE.md` §8 的三份日志豁免名单与 ArchUnit 规则代码逐个相同 — 对应 `REQ-012`、`REQ-PROD-015` · 级别: 回归 · 执行者: AI
+
+前置：本节开头；工作副本干净。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `EXEMPT`；再 `grep -c '引擎那八个类、宿主那十一个类、游戏侧那一个类' docs/ENGINE.md` | 三行 `engine: same`、`host: same`、`game: same`，没有 diff 行（引擎八个类、宿主十一个类、游戏侧只有 `Match`）；`grep` 输出 `1`（盲点 1 的个数与名单一致）。改动前的 `14437d0b78` 上引擎一段 diff 出 `< ConnectionGate`、`< SessionClient`、`> HandshakeListener`，宿主一段 diff 出 `< CrashReports`、`< PlayerStore`、`< ShardHeartbeat`、`< ShardSession`、`< ShardWorld`、`< ShutdownSequence`、`< TicketVerifier`，只有 `game: same` |
+| 2 | 反证有齿（规则加了类而手册没跟）：`server-app/src/test/java/io/github/bearisbug/synaxis/app/ClientDrivenLogArchitectureTest.java` 的 `boundedReporters()` 里，`.or(name(ShardHeartbeat.class.getName()));` 前加一行 `.or(name(EventLedger.class.getName()))`，跑 `EXEMPT`，再还原（只比对文本，不编译） | 宿主一段 diff 出 `< EventLedger`，`host: same` 不出现；`engine: same`、`game: same` 照旧 |
+| 3 | 反证有齿（手册写了规则里没有的类）：`docs/ENGINE.md` §8 引擎那份名单里 `` `LoginListener` `` 之前加 `` `HandshakeListener`、 ``，跑 `EXEMPT`，再还原 | 引擎一段 diff 出 `> HandshakeListener`，`engine: same` 不出现；另两行照旧 |
+| 4 | 还原后重跑第 1 步 | 与第 1 步相同 |
+
+后置：`git status --short` 无输出。
+
 ## 5. 回归策略
 
 - **全量轮**（全部用例）：首次成稿、每个阶段 gate（引擎域阶段 0、2、3；游戏域 `docs/DESIGN-M2.md` §26 的阶段 1～6b；大世界域 `docs/DESIGN-M3.md` §26 的 M3-A～M3-G）、跨功能域改动、地基变更（JDK、Gradle、镜像、协议版本、模块拆分、启动入口）。
@@ -8793,6 +8864,7 @@ for (var request : System.getenv("MGMT_CALLS").split("\n")) {
   - 生产就绪域（`docs/DESIGN-PROD.md`）：安全修复 ops 组，运维端口加固与起服退出（`REQ-PROD-032`、`REQ-PROD-018`、`REQ-PROD-036`，v0.9.41）→ TC-PROD-600～TC-PROD-607；动了 `ManagementServer.Endpoint#onWebsocketHandshakeReceivedAsServer` 就跑 TC-PROD-600 与 6B 一节的 TC-PROD-381；动了 `GuardedFactory`、`GuardedSocket#setChannel` 或 `MAX_UNFINISHED_HANDSHAKES` 就跑 TC-PROD-601 与 TC-PROD-383、TC-PROD-575 第 3 步，其中动了 `GuardedSocket#setChannel` 的再加跑 TC-PROD-575 第 1、2 步（v0.9.38 一行的规则）；动了 `HostMetrics#serve` 或 `startOnADaemon` 就跑 TC-PROD-602、TC-PROD-605 与 TC-PROD-501；动了 `Main` 步骤 (4) 的两处 WARN 或 `warnOfTheWildcard` 就跑 TC-PROD-603；动了 `Main` 步骤 (6) 的接住与拒启或 `Main#main` 的拒启路径，就跑 TC-PROD-604 与 TC-PROD-489、TC-PROD-397（真进程）；改了部署单元、`.env.example` 的管理令牌一段或开管理接口的主机，跑 TC-PROD-606（人工）。升 JDK 时重跑 TC-PROD-602、TC-PROD-605：`jdk.httpserver.maxConnections` 与 `HTTP-Dispatcher` 随起它的线程定 daemon，都是 JDK 实现里的行为，不在公开 API 里。
   - 生产就绪域（`docs/DESIGN-PROD.md`）：安全修复 secrets 组，机密进日志与落盘权限（`REQ-PROD-005`、`007`、`015`、`017`、`033`、`034`、`036`，v0.9.42）→ TC-PROD-610～TC-PROD-619。动了 `StoreSettings#toString` → TC-PROD-610；动了 `RedisLink#connect` 的解析 → TC-PROD-611；动了 `SessionServer#isMojang` → TC-PROD-612；动了 `ConfigFile#apply` 或它的权限检查 → TC-PROD-613；动了 `Profiler` 的 `LEFT_OUT`、`handedOver` 或建文件 → TC-PROD-614、TC-PROD-615，再加 TC-PROD-392 第 6、7 步与 TC-PROD-471；动了 `ConfigFile#isSecret` → TC-PROD-615 与 TC-PROD-002；动了 `EventLedger` 建目录、建文件或压缩，或 `CrashReports#write` → TC-PROD-616；改 `.env.example` 开头 → TC-PROD-616 第 6 步；升 Java-WebSocket 或动了 `ManagementServer.BoundedDraft#processFrame` → TC-PROD-617（另见 TC-PROD-382、TC-PROD-472）；动了 `ConfigFileTest.write`，或新增建 `synaxis.properties` 的测试 → TC-PROD-619。这些都改完后跑 TC-PROD-618。
   - 生产就绪域（`docs/DESIGN-PROD.md`）：安全修复 · 跨格拾取（`REQ-PROD-019`、`REQ-PROD-020`，v0.9.43）→ TC-PROD-620～TC-PROD-623；动了 `LivingEntity#update` 的拾取、`ItemEntity#update` 的合并、`ItemEntity#removeConsumed` 或 `claim` / `releaseClaim` 就跑 TC-PROD-620～TC-PROD-622；动了 `ThreadProvider#grid` 的分格或 `AcquirableImpl#isOwned` / `assertOwnership` 再加 TC-PROD-623。
+  - 生产就绪域（`docs/DESIGN-PROD.md`）：M3 侧安全审查修复 chores 组，文档与工作流、规则代码的口径（`REQ-PROD-029`、`REQ-PROD-019`、`REQ-PROD-020`、`REQ-PROD-030`、`REQ-PROD-015`、`REQ-012`，v0.9.50）→ TC-PROD-655～TC-PROD-657，都只读文件、几秒跑完。改了 `docs/DESIGN-PROD.md` 或 `docs/DESIGN-M3.md` 里压测机器的规格 → TC-PROD-655；在 `.github/workflows/` 加减工作流或 job、改了 job 名，或改了 `docs/ENGINE.md` §7 → TC-PROD-656；改了引擎 `ArchitectureTest`、宿主 `ClientDrivenLogArchitectureTest` 或 `game-rts` 的 `ArchitectureTest` 里的 `boundedReporters()`，或改了 `docs/ENGINE.md` §8 的名单与盲点 1 → TC-PROD-657。改了 `client-fabric/src/test` 的类或条数时重跑 TC-PROD-430 第 5 步并改它的条数。
   - 影响面不确定时升级为全量轮。
 - **复测轮**（上轮失败用例 + 全部冒烟级）：修复失败项之后。
 - **人工收口轮**（仅上轮「待人工」用例）：AI 轮之后由人工补测 TC-016、TC-030、TC-GAME-020、TC-GAME-038、TC-GAME-046、TC-GAME-047，不要求冒烟级。

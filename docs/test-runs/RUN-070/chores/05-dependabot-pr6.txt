@@ -1,0 +1,111 @@
+# Dependabot PR #6 "chore: bump the non-breaking group across 1 directory with 8 updates" (finding 8-3), 2026-10-06.
+# The only action taken on GitHub: one PR comment "@dependabot rebase" (2026-10-05T19:57:38Z,
+# https://github.com/Bearisbug/synaxis/pull/6#issuecomment-6001935868). Not approved, not merged, not edited,
+# no workflow re-run. Everything else below is read-only (gh pr view / gh run view / artifact download,
+# release notes on the web, the jars and sources of Maven Central in a temp directory, deleted afterwards).
+
+## 1. The PR before and after the rebase
+
+before  845675d8a9 on 28a6e1bcf6 (2026-09-30): gradle-wrapper 9.7.1 -> 9.8.0, org.slf4j:slf4j-api 2.0.19 -> 2.0.20,
+        com.tngtech.archunit:archunit-junit5 1.5.0 -> 1.5.1, ch.qos.logback:logback-core / logback-classic 1.6.3 -> 1.6.4,
+        org.flywaydb:flyway-core / flyway-database-postgresql 13.7.0 -> 13.8.0, org.graalvm.buildtools.native 1.1.8 -> 1.1.14
+        checks of that head, all success: CI run 36655959721 (Check 16m36s, Test with 4 tick threads (strict) 13m40s,
+        Test with 4 tick threads (strict, grid) 16m49s), Concurrency run 36655959730 (jcstress 4m20s),
+        Client mod run 36655959771 (Build the Fabric mod 3m28s)
+after   69343db1a9 by dependabot[bot], 2026-10-05T20:09:57Z, parent 14437d0b78 (= origin/main). Dependabot re-resolved
+        two of the eight while rebasing: logback 1.6.3 -> 1.6.5 (not 1.6.4), Flyway 13.7.0 -> 13.9.0 (not 13.8.0); the rest
+        as before. Files: gradle/libs.versions.toml (5 versions), gradle/wrapper/gradle-wrapper.jar,
+        gradle/wrapper/gradle-wrapper.properties (distributionUrl gradle-9.8.0-bin.zip), gradlew.bat.
+
+## 2. Checks of the rebased head (gh pr checks 6, read 2026-10-05T20:46Z)
+
+Test with 4 tick threads (strict)         pass, run 37368038394, job 111957911736, 20:20:44Z -> 20:42:41Z
+  artifact test-reports-multithreaded (read from the zip): 609 classes, 4,237 tests, 0 failures, 0 errors, 21 skipped
+  (all skipped in the root module); root 428 / 3,162, server-app 113 / 577 (0 skipped: the database ran), synx 17 / 142,
+  protocol 7 / 122, game-rts 13 / 87, baker 8 / 76, loadtest 5 / 25, architecture-tests 7 / 20, plugin-api 3 / 15,
+  testing 8 / 11; EnvDispatcherThreadsIntegrationTest: 'env dispatcher threads: 4', 'env thread provider: counter';
+  no result mentions AcquirableOwnershipException
+Check                                      cancelled (shown as fail), run 37368038394, 20:10:04Z -> 20:25:07Z, no runner
+Test with 4 tick threads (strict, grid)    cancelled (shown as fail), run 37368038394, 20:10:04Z -> 20:25:06Z, no runner
+jcstress                                   cancelled (shown as fail), run 37368038402, 20:10:03Z -> 20:25:06Z, no runner
+Build the Fabric mod                       cancelled (shown as fail), run 37368038451, 20:10:04Z -> 20:25:06Z, no runner
+  annotation on each: "The job was not acquired by Runner of type hosted even after multiple attempts" (GitHub's hosted
+  runner pool, not the code). Re-running them is a repository action left to the user:
+  gh run rerun 37368038394 --failed; gh run rerun 37368038402 --failed; gh run rerun 37368038451 --failed
+client-gametest.yml did not run on the PR either time: its pull_request paths do not include gradle/** (it will run on the
+push to main after a merge).
+For reference, main's own CI on 14437d0b78 (run 36969350270): Check success, strict (counter) failure, strict grid success.
+
+## 3. The Gradle wrapper
+
+gradle-wrapper.jar of 69343db1a9: sha256 238e777fcddd7e34f9708186085def2abd6e08e658505b38718d79d74c21abd5
+  = https://services.gradle.org/distributions/gradle-9.8.0-wrapper.jar.sha256 (same value)
+the 9.7.1 jar on main and in client-fabric: 7a9ce74cff467ca1bf60a4fcd9f05185acceda4d0f382434d393e17864262c5d
+  = gradle-9.7.1-wrapper.jar.sha256 (same value)
+gradle-9.8.0-bin.zip sha256 (published): bafd5ce9cfaea0fbccfdc8439a1ac42fbd4cd9c89dc9a988228d8a2639a58e6c;
+  the PR adds no distributionSha256Sum (neither wrapper has one, DESIGN-PROD §28.2 D-04)
+client-fabric/gradle/wrapper stays at 9.7.1: .github/dependabot.yml watches directory "/" only.
+Gradle 9.7.1 is a frozen version of docs/DESIGN.md REQ-001 ("Minecraft 26.2, JDK 25, Gradle 9.7.1 钉死", P0) and is
+also written in docs/DESIGN.md §6 (diagram) and §17, docs/DESIGN-M2.md §17 (Loom + Gradle 9.7.1), docs/ENGINE.md §1.1
+and §5, README.md line 22.
+
+## 4. Change notes, one dependency at a time (what applies to this repository)
+
+gradle-wrapper 9.7.1 -> 9.8.0 (release notes https://docs.gradle.org/9.8.0/release-notes.html, upgrade guide
+https://docs.gradle.org/current/userguide/upgrading_version_9.html):
+  highlights Java 27 support, reuse of Maven mirror settings, linked problem locations. Potential breaking changes from
+  9.7: embedded Kotlin 2.4.0 -> 2.4.10, ASM 9.9 -> 9.10.1, Groovy 4.0.33, JaCoCo default toolVersion 0.8.15 (this build
+  sets none, so ci.yml's jacocoTestReport moves to 0.8.15), task output listeners kept in the configuration cache,
+  Kotlin object singletons in the configuration cache, toolchain path warnings, lazy Copy/Sync destinationDirectory.
+  Deprecations: org.gradle.parallel implying parallel Tooling API model building (gradle.properties sets
+  org.gradle.parallel=true; IDE sync only), external processes at configuration time (the one in this build is
+  providers.exec in server-app/build.gradle.kts:74, which is allowed), build cache from the start parameter, Signature
+  APIs, non-Named attribute types, macOS Intel. Security: Gradle's blog (2026-08-31, blog.gradle.org/gradle-security-
+  subscription) says free security fixes go to the latest minor of the current and previous major only, and lists
+  9.3.0 and later with no known advisory. The 2026-09-30 run of this PR already built and tested everything on 9.8.0.
+org.slf4j:slf4j-api 2.0.19 -> 2.0.20 (2026-09-22, https://www.slf4j.org/news.html): the Marker add/remove methods are
+  deprecated ahead of immutable Markers. No code here uses org.slf4j.Marker (rg), so -Xlint:all -Werror has nothing to
+  flag; the strict job compiled every module.
+com.tngtech.archunit:archunit-junit5 1.5.0 -> 1.5.1 (release notes in the PR): java.lang.IO counts as a standard stream
+  access; caught exception types now count as type dependencies (#1725), which can add edges to the layering and module
+  rules. The strict job ran all ArchUnit rules (root ArchitectureTest, :architecture-tests 20, the host and game log
+  rules) on 14437d0b78's code: green, so no new edge breaks a rule today.
+ch.qos.logback:logback-core / logback-classic 1.6.3 -> 1.6.5 (https://logback.qos.ch/news.html, GitHub releases v_1.6.4,
+  v_1.6.5): 1.6.4 (2026-09-24) restores variable substitution in the scan attribute (logback.xml has none), handles
+  stateful encoders and fixes races in OutputStreamAppender / FileAppender (the RollingFileAppender behind the
+  AsyncAppender of logback-file.xml), fixes the LoggerContext logger count race, rolls AM/PM patterns twice a day (the
+  pattern here is %d{yyyy-MM-dd}), warns when Jansi is missing (no JansiConsoleAppender here), removes the unused
+  LogbackMDCAdapterSimple (LogbackConfigurationTest uses LogbackMDCAdapter). 1.6.5 (2026-09-30): fixes CVE-2026-104721
+  (path traversal through MDCBasedDiscriminator values of a SiftingAppender, affects up to 1.6.4); nothing here uses
+  SiftingAppender or MDCBasedDiscriminator (rg), so the shards were not exposed; Time / SizeAndTimeBasedRollingPolicy now
+  delete old files that were never compressed when compression is on (logback-file.xml compresses to .gz with
+  maxHistory 14, totalSizeCap 10GB: archives a crash left uncompressed are now cleaned up too); SimpleInvocationGate is
+  marked for removal (not used here).
+org.flywaydb:flyway-core / flyway-database-postgresql 13.7.0 -> 13.9.0 (https://documentation.red-gate.com/fd/release-
+  notes-for-flyway-engine-179732572.html): 13.8.0 (2026-09-24) renames the application name to Redgate_Flyway, publishes
+  drift results, and sets the pgjdbc properties ApplicationName and assumeMinServerVersion=9.1 on PostgreSQL connections;
+  in the 13.8.0 sources that is PostgreSQLDatabaseType#setDefaultConnectionProps, called only from DriverDataSource:225,
+  i.e. when Flyway builds its own connections from a URL. Migrations here hands Flyway the Hikari pool
+  (server-app Migrations.java:114 .dataSource(dataSource)), whose connections carry ApplicationName=synaxis
+  (Database.java:102), so neither property reaches this store. 13.8.1 (2026-09-29): a Cassandra fix. 13.9.0 (2026-10-01):
+  FLYWAY_USE_SYSTEM_PROXIES defaults to false and Flyway Report is on by default (both command line; flyway-core 13.9.0's
+  default model still sets reportEnabled false, FlywayModel.java:96, and its plugin list has no report generator), init
+  no longer writes redgateCompare.filterFile (command line), rollback reporting and Oracle parser fixes. No change to
+  migrate / validate / info semantics is listed; flyway-core's direct dependencies in the POM are the same three as in
+  13.7.0. No 2026 advisory against flyway-core's own code turned up (the Jackson ones reported in 2026 come through
+  flyway-commandline). The strict job ran server-app's 577 tests with the database (MigrationsDbTest and the store
+  classes, 0 skipped) on 13.9.0: green.
+org.graalvm.buildtools.native 1.1.8 -> 1.1.14 (GitHub releases, changelog): reachability metadata 1.0.11 -> 1.0.15,
+  named Native Image layers (1.1.9), launcher discovery (1.1.12), Maven fixes. The root build applies it only for the
+  agent and metadataCopy settings; no CI job builds a native image. Configuration with the configuration cache and
+  isolated projects worked in both runs.
+
+## 5. Recommendation (also in the chores group's return value)
+
+Merge after the RUN-070 integration is on main, on its own, once the four cancelled jobs pass on a re-run. The seven
+library and plugin updates carry nothing that changes how this repository builds, logs or migrates (above, item by
+item). Gradle 9.8.0 is the one that needs a decision: it moves the version docs/DESIGN.md REQ-001 freezes. Default:
+take it, in the same batch as the docs (REQ-001, DESIGN.md §6 and §17, DESIGN-M2 §17, ENGINE.md §1.1 and §5, README)
+and a manual bump of client-fabric's wrapper to the same 9.8.0 jar, because 9.7.x no longer gets Gradle's free security
+fixes now that 9.8.0 is out. If the user keeps Gradle 9.7.1 frozen, comment "@dependabot ignore gradle-wrapper minor
+version" on #6 (it closes the PR; the next weekly run opens the group without the wrapper) and merge that one instead.

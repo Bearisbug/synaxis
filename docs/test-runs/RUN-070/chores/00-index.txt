@@ -1,0 +1,33 @@
+RUN-070 / chores: the production readiness session's chores group for the lighting session's M3-side security review
+(findings 7 and 8 that belong to production readiness) and the doc lags this session had registered. Branch
+prod/m3fix-chores from main 14437d0b78, worktree synaxis-wt/m3fix-chores; docs/DESIGN-PROD.md v0.9.50. Only documents
+changed: docs/DESIGN-PROD.md, docs/ENGINE.md, docs/TEST.md, docs/research/security-review-2026-10/README.md. No source
+file and no module changed, so there is no module full run; no test reads docs/ (rg over *.java, *.kts, *.py, *.sh).
+The round is registered by the integration round (RUN-070), not here.
+
+Heavy lock: one hold, 2026-10-06 04:08:22-04:09:10 (job script with the lock and the EXIT trap at its top level, owner
+"生产就绪会话/chores pid=29280"), for 03 only. Everything else reads files or GitHub and took no lock.
+
+00-index.txt                this file
+01-red-baseline.txt         before the fix, on 14437d0b78 with a clean tree: the three checks of TC-PROD-655..657 red
+                            (MACHINES: docs/DESIGN-PROD.md:1572 >= 4 cores / 8 GiB; CI_LIST: 8 lines, client-gametest.yml
+                            missing and no job named; EXEMPT: engine list lacks ConnectionGate and SessionClient and has
+                            HandshakeListener, host list lacks 7 classes), blind spot 1 with seven and four, the README
+                            B-01 line, the DESIGN-PROD §28.3 ticks.acquire_ms row still "M3 会话", API-PROD-015 without the
+                            rounding, TC-PROD-430 step 5 with 7 classes / 90 tests
+02-cases.txt                TC-PROD-655..657 by the letter on 25594588f5: each step 1 green, each counter-proof red where
+                            the case says (DESIGN-PROD.md:1573 back to the old spec; job multithreaded-grid deleted from
+                            ENGINE.md §7; a job 'extra' in concurrency.yml; EventLedger added to the host boundedReporters();
+                            HandshakeListener added to the engine list of ENGINE.md §8), each restore back to green, clean tree
+03-client-fabric.txt        TC-PROD-430 step 5 under the lock on 14437d0b78: :protocol:publishToMavenLocal, then client-fabric
+                            ./gradlew build (BUILD SUCCESSFUL in 31s); 15 classes 184 tests 0 failures, ClientHandshakeTest 11,
+                            FrozenVectorTest 40, the 8 farview classes 74; grep 'has no text for' finds nothing
+04-p10-runs.txt             finding 8-2: the two p10 runs on main after the B-01 fix (36836899026 workflow_dispatch on
+                            c69548be70, 37238375047 schedule on 14437d0b78), both success with the 8 ok lines and
+                            "P10: all checks passed"; join gaps 5.135-5.807 s and arrivals 0.6-1.1 s from the artifact of
+                            36836899026; the TC-PROD-548 lines of RUN-062
+05-dependabot-pr6.txt       finding 8-3: the rebase comment, the PR before and after (logback 1.6.5 and Flyway 13.9.0 after
+                            the rebase), checks (strict pass with 4,237 tests; four jobs cancelled by GitHub, runner not
+                            acquired), the wrapper checksums, the change notes per dependency and the recommendation
+06-lint.txt                 design-doc lint of DESIGN-PROD (no warning) and test-doc lint of TEST.md (only the known three:
+                            §3 environment table, §6 environment column, RUN-031 two rows without evidence)

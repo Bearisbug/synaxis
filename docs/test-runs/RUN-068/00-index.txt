@@ -17,6 +17,9 @@
 03-loops.txt              the fixed class 50 times in a row in each mode, one Gradle run each: 150 runs, 300 tests, 0 failures
 04-full-runs.txt          root :test in full, default and strict grid: 428 classes, 3,162 tests, 15 skipped, 0 failures each
 05-docs-lint.txt          design-doc lint of docs/DESIGN-PROD.md (not changed) and test-doc lint of docs/TEST.md (only the known warnings)
+06-review-reruns.txt      the review's own reruns: its own widening patch (park on the second spawn of a uuid), the test as on main red
+                          at :66 and :137 in all modes, the fixed test green at 60, 500 and 3000 ms; concurrent and in-window replacement
+                          variants green; TC-PROD-350 step 2 red at :135; 16 related classes green in three modes; root :test strict counter
 
 # Root cause, a test defect (code at main 14437d0b78): both tests waited for replacement.getInstance() == instance, polling every 25 ms,
 # then read the entity tracker once (OnlineDuplicateLoginSocketTest.java:65-67 and :136-138). Entity#setInstance writes the instance at

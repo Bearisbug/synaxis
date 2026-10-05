@@ -1,0 +1,41 @@
+# RUN-068 review reruns: the adversarial review of branch prod/dup-login-flake at 1d6cbaaa69, two batches under the heavy lock
+# (05:35:34 to 05:38:29 and 05:40:17 to 05:43:18, 2026-10-06 UTC+8). Copied from the review report; raw logs were deleted with /tmp.
+
+分支 prod/dup-login-flake（worktree /Users/bug/Documents/Projects/Minecraft/synaxis-wt/dup-login，HEAD 1d6cbaaa69）。复跑分两批，都在重活锁下：批 1 为 05:35:34～05:38:29（175 s），批 2 为 05:40:17～05:43:18（181 s）。每批结束时，顶层 trap 还原文件并放锁。Gradle 参数：`:test --rerun --max-workers=4 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts`，不带数据库变量。
+
+拉宽窗口的补丁是我自己写的，没有沿用修复者「走同步分支」的判据：在 Entity#setInstance 续体里 register 之前，同一 UUID 第二次及以后进世界的 Player 按环境变量 DUPREVIEW_PARK_MS 睡眠，并往 stderr 记时间戳。这个类里只有新玩家会命中。
+
+1. 修前测试（origin/main 的文件）+ 停 60 ms：默认、4 线程严格、严格 grid 各跑 1 次，6 条用例全红，红在 :66 与 :137。消息与 CI 逐字相同：`the entity tracker holds the newcomer, so other players see it ==> expected: <…Player@…> but was: <null>`。实测停顿 63.2～70.9 ms。同一补丁下不设停顿，修前测试 2/2 绿，说明补丁本身不改行为。
+
+2. 修后测试，停 60 ms（三种模式）、500 ms（默认、grid）、3000 ms（默认、grid）：共 7 次 14 条，全绿。停 3 s 时两条用例耗时 4.6 s、5.1 s，比停 60 ms 时多出约 3 s。也就是说测试等的是登记本身，不靠轮询间隔碰巧够；上限仍是该类统一的 10 s。
+
+3. 并发顶号变体（临时类）：第一个客户端在线后，第二、三个同时登录，用修后的写法等最终在线的那个玩家进追踪器。停 60 ms 默认、停 60 ms 严格 grid、停 500 ms 严格、不停，各重复 3 次，12/12 绿。这组里输的一方都在 configuration 阶段就被顶掉，没有落进窗口，所以另做了第 4 项。
+
+4. 窗口内再顶号变体（临时类）：第二个新玩家停在「有实例、未登记」之间（停 1500 ms，测试断言此时追踪器里确实还没有它），这时第三个客户端登录。默认、严格 grid 各重复 2 次，4/4 绿。第二个客户端收到 `synaxis:logged-in-elsewhere` 并被移除，第三个进了追踪器且没被踢，没有出现追踪器因重复 UUID 拒绝的情况。
+
+5. TC-PROD-350 第 2 步（删掉 `spawningPlayers.add(player);`），在修后的类上用 4 线程严格模式跑：`2 tests completed, 1 failed`，红在 :135（经 :168），消息 `no player of <uuid> reached the play state`；aSecondOnline… 绿。与 TEST.md 的记录一致。
+
+6. 回归，不打补丁，16 个相关类：
+   - 在线顶号：OnlineDuplicateLoginSocketTest、SessionHandoverIntegrationTest
+   - 在线、离线登录与 TRANSFER 握手：OnlineLoginSocketTest
+   - 离线同 UUID：DuplicateUuidLoginIntegrationTest
+   - 席位：ConnectionGateSocketTest、ConnectionGateTest
+   - 断线清理：ConnectionManagerIntegrationTest、LoginAfterConnectionShutdownIntegrationTest、DisconnectReasonsIntegrationTest、PlayerConnectionKickIntegrationTest、PlayerRemoveIntegrationTest
+   - 其他：JoinsPerTickTest、PreAuthConnectionIntegrationTest、PlayerTransferOutIntegrationTest、FailedSpawnRegistrationIntegrationTest、EntityTrackerUuidConflictTest
+   
+   默认、4 线程严格、严格 grid 三种模式下各 87 条，0 失败。根模块 :test 全量又在 4 线程严格模式下跑了 1 次（CI 第二次红就是这个模式，修复者没在这个模式下跑过全量）：428 个类、3,162 条、0 失败、15 跳过。server-app（包括分片转入）没跑：本分支不改 server-app，也不改任何 src/main。
+
+静态核对：
+- Entity.java:1180 写实例、:1194 登记；EntityTrackerImpl.java:68 是 ConcurrentHashMap#putIfAbsent，所以测试线程读到登记，就一定看得到实例。Player.java:745 是同步分支。
+- blame 与 §7 一致（:1180 为 2019 年上游代码，:65-67 来自 ed00212af4，:136-138 来自 5550ff1ff6）。
+- 23982267e9 与 main 之间这三个文件没有差异；c69548be70..14437d0b78 的 src/ 为空。
+- 用 rg 扫过其他测试，没有「等到有实例后只读一次追踪器」的同类写法。
+- TEST.md 里该类的红行引用（TC-PROD-350 第 2 步的 :135、RUN-031 的 :168）在修后的文件上仍然对得上。
+- 分支只改了 docs/TEST.md、docs/test-runs/RUN-068/ 和这个测试文件，没碰禁改文件；两条提交信息都没有署名或 trailer。
+
+收尾：
+- 临时补丁已用 `git checkout HEAD --` 还原，两个临时测试类已删除。
+- 本轮的构建产物已用 `git clean -fdX` 清掉，/tmp/dup-login 已删除。
+- worktree 的 `git status --short` 为空，HEAD 仍是 1d6cbaaa69。
+- 主仓 main 与 origin/main 仍在 14437d0b78，工作区干净。
+- 锁已放，目前由「生产就绪会话/chunks」持有，我没有动它；dup-login worktree 下没有残留进程。

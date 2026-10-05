@@ -62,9 +62,9 @@ public class OnlineDuplicateLoginSocketTest {
                 assertEquals("synaxis:logged-in-elsewhere", firstKicked.get(10, TimeUnit.SECONDS),
                         "the older session is told why it was dropped");
                 final Player replacement = awaitPlayer(process, account, old);
-                awaitUntil(() -> replacement.getInstance() == instance, "the newcomer spawns");
-                assertSame(replacement, instance.getEntityTracker().getEntityByUuid(account),
+                awaitUntil(() -> instance.getEntityTracker().getEntityByUuid(account) == replacement,
                         "the entity tracker holds the newcomer, so other players see it");
+                assertSame(instance, replacement.getInstance(), "the newcomer spawns");
                 assertEquals(List.of(replacement), List.copyOf(process.connection().getOnlinePlayers()));
                 assertTrue(old.isRemoved(), "the old player left the world");
                 assertFalse(secondKicked.isDone(), "the newcomer stays online");
@@ -133,9 +133,9 @@ public class OnlineDuplicateLoginSocketTest {
                 final CompletableFuture<@Nullable String> secondKicked = playInBackground(second);
 
                 final Player replacement = awaitPlayer(process, account, old);
-                awaitUntil(() -> replacement.getInstance() == instance, "the newcomer spawns");
-                assertSame(replacement, instance.getEntityTracker().getEntityByUuid(account),
+                awaitUntil(() -> instance.getEntityTracker().getEntityByUuid(account) == replacement,
                         "the entity tracker holds the newcomer, so other players see it");
+                assertSame(instance, replacement.getInstance(), "the newcomer spawns");
                 assertTrue(old.isRemoved(), "the old player left the world");
                 assertFalse(secondKicked.isDone(), "the newcomer stays online");
             } finally {

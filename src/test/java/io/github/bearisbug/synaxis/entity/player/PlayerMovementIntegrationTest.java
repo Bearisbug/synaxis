@@ -115,7 +115,7 @@ public class PlayerMovementIntegrationTest {
 
         // Move to next chunk
         chunkDataPacketCollector = connection.trackIncoming(ChunkDataPacket.class);
-        // Abuse the fact that there is no delta check
+        // One packet may move the player up to 64 blocks: one chunk on both axes at once
         player.addPacketToQueue(new ClientPlayerPositionPacket(new Vec(16.5, 40, -16.5), true, false));
         player.interpretPacketQueue();
         chunkDataPacketCollector.assertCount(viewDiameter * 2 - 1);

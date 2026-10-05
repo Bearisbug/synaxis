@@ -52,10 +52,10 @@ public class BlockPlacementListener {
         final ItemStack usedItem = player.getItemInHand(hand);
         final Block interactedBlock = instance.getBlock(blockPosition);
 
-        // Any use of a block outside the world border is rejected before interaction handling.
-        // The resulting placement position is intentionally not checked as placing outward across
-        // the border by clicking a block inside of it is allowed.
-        if (!instance.getWorldBorder().inBounds(blockPosition)) {
+        // Any use of a block outside the world border or out of the player's reach is rejected before
+        // interaction handling. The resulting placement position is intentionally not checked as placing
+        // outward across the border by clicking a block inside of it is allowed.
+        if (!instance.getWorldBorder().inBounds(blockPosition) || PlayerActionListener.outOfReach(player, blockPosition)) {
             final Point relative = blockPosition.relative(blockFace);
             if (ChunkUtils.isLoaded(instance.getChunkAt(relative))) {
                 player.sendPacket(new BlockChangePacket(relative, instance.getBlock(relative)));

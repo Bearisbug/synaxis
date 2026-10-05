@@ -115,11 +115,13 @@ public class PlayerBlockPlacementIntegrationTest {
     @Test
     public void placeIntoUnloadedChunkIsIgnored(Env env) {
         var instance = env.createFlatInstance();
-        var connection = env.createConnection();
-        var player = connection.connect(instance, new Pos(8, 42, 8));
-        // Chunk (100, 0) is loaded explicitly, its east neighbor is not.
+        // Chunk (100, 0) is loaded explicitly, its east neighbor is not: the instance loads no chunk itself.
+        instance.enableAutoChunkLoad(false);
         instance.loadChunk(100, 0).join();
         instance.setBlock(1615, 41, 5, Block.STONE);
+        var connection = env.createConnection();
+        // Within reach of the clicked block, which a block use out of reach never gets to
+        var player = connection.connect(instance, new Pos(1612.5, 42, 5.5));
         player.setItemInMainHand(ItemStack.of(Material.WHITE_WOOL));
 
         var acks = connection.trackIncoming(AcknowledgeBlockChangePacket.class);

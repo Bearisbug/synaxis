@@ -6,6 +6,7 @@ import io.github.bearisbug.synaxis.coordinate.Point;
 import io.github.bearisbug.synaxis.coordinate.Pos;
 import io.github.bearisbug.synaxis.entity.Player;
 import io.github.bearisbug.synaxis.entity.PlayerHand;
+import io.github.bearisbug.synaxis.entity.attribute.Attribute;
 import io.github.bearisbug.synaxis.entity.metadata.LivingEntityMeta;
 import io.github.bearisbug.synaxis.event.item.PlayerCancelItemUseEvent;
 import io.github.bearisbug.synaxis.event.player.PlayerCancelDiggingEvent;
@@ -71,8 +72,8 @@ public final class PlayerActionListener {
     private static DiggingResult startDigging(Player player, Instance instance, Point blockPosition, BlockFace blockFace) {
         final Block block = instance.getBlock(blockPosition);
 
-        // Prevent spectators and check players in adventure mode
-        if (shouldPreventBreaking(player, block)) {
+        // Prevent spectators, check players in adventure mode and the reach
+        if (shouldPreventBreaking(player, blockPosition, block)) {
             return new DiggingResult(block, false);
         }
 
@@ -98,7 +99,7 @@ public final class PlayerActionListener {
     private static DiggingResult finishDigging(Player player, Instance instance, Point blockPosition, BlockFace blockFace) {
         final Block block = instance.getBlock(blockPosition);
 
-        if (shouldPreventBreaking(player, block)) {
+        if (shouldPreventBreaking(player, blockPosition, block)) {
             return new DiggingResult(block, false);
         }
 
@@ -119,7 +120,9 @@ public final class PlayerActionListener {
         return breakBlock(instance, player, blockPosition, playerFinishDiggingEvent.getBlock(), blockFace);
     }
 
-    private static boolean shouldPreventBreaking(Player player, Block block) {
+    private static boolean shouldPreventBreaking(Player player, Point blockPosition, Block block) {
+        // Out of reach the vanilla server only acknowledges, on which the client rolls its prediction back
+        if (outOfReach(player, blockPosition)) return true;
         final ItemStack itemInMainHand = player.getItemInMainHand();
 
         return switch (player.getGameMode()) {
@@ -136,6 +139,23 @@ public final class PlayerActionListener {
             }
             default -> false;
         };
+    }
+
+    /**
+     * Whether the block at {@code blockPosition} is out of the player's reach, by the vanilla
+     * server's rule for digging and using a block: the cube of the block is at least the player's
+     * {@link Attribute#BLOCK_INTERACTION_RANGE} plus one block from its eyes. The client picks blocks
+     * as far as the same attribute, which the engine sends it.
+     */
+    static boolean outOfReach(Player player, Point blockPosition) {
+        final Pos position = player.getPosition();
+        final double eyeY = position.y() + player.getEyeHeight();
+        final int x = blockPosition.blockX(), y = blockPosition.blockY(), z = blockPosition.blockZ();
+        final double dx = position.x() - Math.clamp(position.x(), x, x + 1);
+        final double dy = eyeY - Math.clamp(eyeY, y, y + 1);
+        final double dz = position.z() - Math.clamp(position.z(), z, z + 1);
+        final double reach = player.getAttributeValue(Attribute.BLOCK_INTERACTION_RANGE) + 1;
+        return dx * dx + dy * dy + dz * dz >= reach * reach;
     }
 
     private static void dropStack(Player player) {

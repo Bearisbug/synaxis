@@ -76,8 +76,14 @@ public class PlayerPositionListener {
         if (player.getLastSentTeleportId() != player.getLastReceivedTeleportId()) {
             return;
         }
-        // Try to move in an unloaded chunk, prevent it
-        if (!currentPosition.sameChunk(packetPosition) && !ChunkUtils.isLoaded(instance, packetPosition)) {
+        // Turned back where the player is, loading no chunk: a move into a chunk that is not loaded, a
+        // move of more than 64 blocks in one packet (4 chunks: the client teleporting itself) and a move
+        // out across the world border. A player already outside the border, put there by the server,
+        // still moves; only crossing it outwards is turned back
+        final var border = instance.getWorldBorder();
+        if ((!currentPosition.sameChunk(packetPosition) && !ChunkUtils.isLoaded(instance, packetPosition))
+                || currentPosition.distanceSquared(packetPosition) > 64 * 64
+                || (border.inBounds(currentPosition) && !border.inBounds(packetPosition))) {
             var _ = player.teleport(currentPosition);
             return;
         }

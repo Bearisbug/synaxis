@@ -85,6 +85,21 @@ FLOOR_Y = 40.0
 #: Walking speed of a vanilla player, blocks per second: the circles are walked, not teleported.
 WALK_SPEED = 4.3
 
+#: The farthest one position packet goes from where the server has the player. The server turns back a
+#: packet more than 64 blocks away (docs/DESIGN-PROD.md API-PROD-030), so a point farther than this, the
+#: first one on a circle or an anchor across the map, is walked to in steps of this length.
+STEP_LIMIT = 32.0
+
+
+def toward(position: tuple[float, float, float], x: float, y: float, z: float) -> tuple[float, float, float]:
+    """The point on the way from position to (x, y, z) at most STEP_LIMIT blocks from position."""
+    dx, dy, dz = x - position[0], y - position[1], z - position[2]
+    distance = math.sqrt(dx * dx + dy * dy + dz * dz)
+    if distance <= STEP_LIMIT:
+        return x, y, z
+    scale = STEP_LIMIT / distance
+    return position[0] + dx * scale, position[1] + dy * scale, position[2] + dz * scale
+
 ECHO_CHANNEL = "synaxis:main"
 
 
@@ -213,11 +228,11 @@ class LoadClient:
         if move_interval and now >= self.next_move:
             self.next_move = now + move_interval
             angle = self.phase + (now - started) * WALK_SPEED / self.radius
-            x = 0.5 + self.radius * math.cos(angle)
-            z = 0.5 + self.radius * math.sin(angle)
+            x, y, z = toward(self.position, 0.5 + self.radius * math.cos(angle), FLOOR_Y,
+                             0.5 + self.radius * math.sin(angle))
             yaw = math.degrees(angle) % 360.0 - 180.0
             payload = (probe.Writer()
-                       .raw(struct.pack(">ddd", x, FLOOR_Y, z))
+                       .raw(struct.pack(">ddd", x, y, z))
                        .raw(struct.pack(">ff", yaw, 0.0))
                        .raw(b"\x01")  # on ground
                        .bytes())
@@ -226,7 +241,7 @@ class LoadClient:
             except OSError as error:
                 self.close(f"send: {error}")
                 return
-            self.position = (x, FLOOR_Y, z)
+            self.position = (x, y, z)
             with metrics.lock:
                 metrics.moves += 1
         if echo_interval and now >= self.next_echo:
@@ -847,7 +862,8 @@ class PlayClient(LoadClient):
     """One player of the RTS slice: camera reports, orders and selections, and the inbound ledger.
 
     The camera anchor wanders over the whole map on a Lissajous figure, and the player entity is
-    walked to the anchor with a position packet on every report: the server side of REQ-M2-018
+    walked to the anchor with a position packet on every report, STEP_LIMIT blocks at most: the
+    first anchor can be across the map from the spawn. The server side of REQ-M2-018
     (teleporting the player to the anchor) is not in place yet, so without that packet nothing
     would stream chunks or change the interest set.
     """
@@ -1049,12 +1065,13 @@ class PlayClient(LoadClient):
                 self.send("ClientPluginMessagePacket", probe.plugin_message_payload(
                     probe.GAME_CHANNEL, probe.camera_body(x, z, self.zoom, 0.0)))
                 self.camera_reports += 1
+                position = toward(self.position, x, GROUND_Y, z)
                 self.send("ClientPlayerPositionAndRotationPacket", (probe.Writer()
-                          .raw(struct.pack(">ddd", x, GROUND_Y, z))
+                          .raw(struct.pack(">ddd", *position))
                           .raw(struct.pack(">ff", 0.0, 0.0))
                           .raw(b"\x01")
                           .bytes()))
-                self.position = (x, GROUND_Y, z)
+                self.position = position
                 with metrics.lock:
                     metrics.moves += 1
             if order_interval and now >= self.next_order and self.commandable:

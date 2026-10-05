@@ -65,8 +65,14 @@ public final class TerrainSpike {
         context.runOnClient(client -> {
             client.player.getAbilities().mayfly = true;
             client.player.getAbilities().flying = true;
-            client.player.setPos(edgeFeet);
         });
+        // 32 blocks a tick: the server turns back a position packet more than 64 blocks from the last one
+        final int steps = (int) Math.ceil(feet.distanceTo(edgeFeet) / 32);
+        for (int step = 1; step <= steps; step++) {
+            final Vec3 at = feet.lerp(edgeFeet, (double) step / steps);
+            context.runOnClient(client -> client.player.setPos(at));
+            context.waitTick();
+        }
         final int edgeChunkX = SectionPos.blockToSectionCoord(MAP_EDGE_X - 1);
         final int edgeChunkZ = SectionPos.blockToSectionCoord(feet.z);
         context.waitFor(client -> client.level.getChunkSource().hasChunk(edgeChunkX, edgeChunkZ), 20 * 30);

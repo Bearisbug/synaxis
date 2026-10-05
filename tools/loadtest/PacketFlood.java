@@ -92,6 +92,12 @@ public final class PacketFlood {
     private static final double FLOOR_Y = 40.0;
     /** Blocks per second each connection walks along its circle, the same figure soak.py uses. */
     private static final double WALK_SPEED = 4.0;
+    /**
+     * The farthest one position packet goes from where the server has the player. The server turns
+     * back a packet more than 64 blocks away ({@code docs/DESIGN-PROD.md} {@code API-PROD-030}), so
+     * the first point of a circle, up to 72 blocks from the spawn, is walked to in steps of this length.
+     */
+    private static final double STEP_LIMIT = 32.0;
 
     private PacketFlood() {
     }
@@ -368,6 +374,8 @@ public final class PacketFlood {
         private volatile long pendingEchoNanos = -1;
         private final double radius;
         private final double phase;
+        /** Where the server has the player: the last position sent, or the one a teleport put it at. */
+        private volatile double[] at = {0.5, FLOOR_Y, 0.5};
 
         Connection(Options options, Metrics metrics, int index) {
             this.options = options;
@@ -592,8 +600,10 @@ public final class PacketFlood {
                             metrics.keepAlives.increment();
                         }
                         case "PlayerPositionAndLookPacket" -> {
+                            final int teleportId = reader.varInt();
+                            at = new double[]{reader.f64(), reader.f64(), reader.f64()};
                             write("CLIENT_PLAY", "ClientTeleportConfirmPacket",
-                                    new Writer().varInt(reader.varInt()).bytes());
+                                    new Writer().varInt(teleportId).bytes());
                             metrics.teleportConfirms.increment();
                         }
                         case "PluginMessagePacket" -> {
@@ -633,10 +643,12 @@ public final class PacketFlood {
                     if (wait > 0) LockSupport.parkNanos(wait);
                     if (!running.get() || closed) return;
                     final double angle = phase + (System.nanoTime() - startNanos) / 1e9 * WALK_SPEED / radius;
+                    final double[] next = toward(at, 0.5 + radius * Math.cos(angle), FLOOR_Y, 0.5 + radius * Math.sin(angle));
+                    at = next;
                     write("CLIENT_PLAY", "ClientPlayerPositionAndRotationPacket", new Writer()
-                            .f64(0.5 + radius * Math.cos(angle))
-                            .f64(FLOOR_Y)
-                            .f64(0.5 + radius * Math.sin(angle))
+                            .f64(next[0])
+                            .f64(next[1])
+                            .f64(next[2])
                             .f32((float) (Math.toDegrees(angle) % 360.0 - 180.0))
                             .f32(0.0f)
                             .u8(1)
@@ -653,6 +665,15 @@ public final class PacketFlood {
             } catch (IOException error) {
                 close(error.getClass().getSimpleName() + ": " + error.getMessage());
             }
+        }
+
+        /** The point on the way from {@code from} to (x, y, z) at most {@link #STEP_LIMIT} blocks from it. */
+        private static double[] toward(double[] from, double x, double y, double z) {
+            final double dx = x - from[0], dy = y - from[1], dz = z - from[2];
+            final double distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
+            if (distance <= STEP_LIMIT) return new double[]{x, y, z};
+            final double scale = STEP_LIMIT / distance;
+            return new double[]{from[0] + dx * scale, from[1] + dy * scale, from[2] + dz * scale};
         }
 
         private String disconnectReason(Reader reader) {

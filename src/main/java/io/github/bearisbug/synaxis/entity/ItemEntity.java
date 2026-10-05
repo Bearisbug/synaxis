@@ -99,6 +99,14 @@ public class ItemEntity extends Entity {
                             lowest.releaseClaim();
                             return;
                         }
+                        // Read before the claims, the neighbour's stack may be stale: on its own tick thread it may
+                        // have absorbed an item and let its claim go since. Under both claims neither stack changes
+                        // any more, so a stale read gives this merge up until the next check
+                        if (itemEntity.getItemStack() != itemStackEntity) {
+                            lowest.releaseClaim();
+                            highest.releaseClaim();
+                            return;
+                        }
                         final ItemStack result = itemStack.withAmount(totalAmount);
                         EntityItemMergeEvent entityItemMergeEvent = new EntityItemMergeEvent(this, itemEntity, result);
                         callCancellableEvent(entityItemMergeEvent, () -> {

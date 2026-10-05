@@ -1,0 +1,15 @@
+# RUN-070 / items: full :test, :server-app:test and :plugin-api:test on 34d3fd8855, default mode, with the database variables
+# (SYNAXIS_TEST_PG_URL, _USER, _PASSWORD (set, never printed) and SYNAXIS_TEST_REDIS_URL pointing at synaxis-pg and synaxis-valkey).
+# Counts read from the JUnit XML written by this run only (files older than its start are ignored).
+
+[2026-10-06 05:14:34] lock taken; HEAD 34d3fd8855; git status --short: 3 paths; SYNAXIS_TEST_PG_URL=jdbc:postgresql://127.0.0.1:5440/postgres SYNAXIS_TEST_PG_USER=postgres SYNAXIS_TEST_REDIS_URL=redis://127.0.0.1:6440 SYNAXIS_TEST_PG_PASSWORD set: yes (value not printed)
+[2026-10-06 05:14:34] full default: ./gradlew :test --rerun :server-app:test --rerun :plugin-api:test --rerun --continue --max-workers=4 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts
+  BUILD SUCCESSFUL in 6m 7s
+[2026-10-06 05:20:42] full default: rc=0 (368 s)
+TOTAL build/test-results/test *: classes=429 tests=3164 failures=0 errors=0 skipped=15
+  skipped by class in build/test-results/test: ['PlayerSkinTest 2', 'TagNbtTest 1', 'TestMojangUtils 9', 'TranslationIntegrationTest 3']
+TOTAL server-app/build/test-results/test *: classes=115 tests=580 failures=0 errors=0 skipped=0
+  skipped by class in server-app/build/test-results/test: []
+TOTAL plugin-api/build/test-results/test *: classes=3 tests=15 failures=0 errors=0 skipped=0
+  skipped by class in plugin-api/build/test-results/test: []
+[2026-10-06 05:20:42] lock releasing

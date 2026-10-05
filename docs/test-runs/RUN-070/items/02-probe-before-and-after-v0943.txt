@@ -1,0 +1,44 @@
+# S3-01 and v0.9.43: the probe GridItemRaceProbeTest of 7219ce342d, unchanged, on the code before and after v0.9.43.
+# fa5cad4055 is the integrate branch just before 5c0bad47bc (v0.9.43, ItemEntity#removeConsumed): there the merge and
+# the pickup call itemEntity.remove() on the consumer's thread. 14437d0b78 is main, the base of prod/m3fix-items,
+# unfixed. fa5cad4055 ran in a temporary detached worktree under /tmp/m3fix-items (removed afterwards); on 14437d0b78
+# the probe was copied into prod/m3fix-items for the batch only and deleted after it.
+# 'without -ea' runs the test JVM with Test.enableAssertions = false through an init script
+# (gradle.lifecycle.beforeProject { tasks.withType<Test>().configureEach { enableAssertions = false } }), as production
+# runs: AcquirableImpl#assertOwnership is a no-op without -ea and without synaxis.acquirable-strict.
+# A first attempt at the 'without -ea' runs (04:18:57, 04:19:10) used allprojects {}, which isolated projects refuse:
+# it failed at configuration and ran no test, so it is left out; the runs below are the second attempt.
+# Each run is 20 repetitions of each of the two methods; failures grouped by test line, throw site and message.
+
+== fa5cad4055 default (-ea)  [2026-10-06 04:18:32, gradle rc=1, 18 s]
+   ./gradlew :test --rerun --tests io.github.bearisbug.synaxis.entity.GridItemRaceProbeTest --max-workers=4 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts
+   io.github.bearisbug.synaxis.entity.GridItemRaceProbeTest: tests=40 failures=30 errors=0 skipped=0 time=1.699 timestamp=2026-10-05T20:18:48.806Z
+   20 x aMergeAcrossACellBorderKeepsEveryItem (GridItemRaceProbeTest.java:139), thrown under ItemEntity.java:106: org.opentest4j.AssertionFailedError: Server threw exception
+   10 x twoPickersOnTwoTickThreadsPickAnItemUpOnce (GridItemRaceProbeTest.java:165), thrown under LivingEntity.java:242: org.opentest4j.AssertionFailedError: Server threw exception
+
+== fa5cad4055 strict grid (-ea)  [2026-10-06 04:18:50, gradle rc=1, 7 s]
+   ./gradlew :test --rerun --tests io.github.bearisbug.synaxis.entity.GridItemRaceProbeTest -Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true -Dsynaxis.thread-provider=grid --max-workers=4 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts
+   io.github.bearisbug.synaxis.entity.GridItemRaceProbeTest: tests=40 failures=28 errors=0 skipped=0 time=1.177 timestamp=2026-10-05T20:18:56.224Z
+   20 x aMergeAcrossACellBorderKeepsEveryItem (GridItemRaceProbeTest.java:139), thrown under ItemEntity.java:106: org.opentest4j.AssertionFailedError: Server threw exception
+    8 x twoPickersOnTwoTickThreadsPickAnItemUpOnce (GridItemRaceProbeTest.java:165), thrown under LivingEntity.java:242: org.opentest4j.AssertionFailedError: Server threw exception
+
+== 14437d0b78 default (-ea)  [2026-10-06 04:19:01, gradle rc=1, 9 s]
+   ./gradlew :test --rerun --tests io.github.bearisbug.synaxis.entity.GridItemRaceProbeTest --max-workers=4 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts
+   io.github.bearisbug.synaxis.entity.GridItemRaceProbeTest: tests=40 failures=20 errors=0 skipped=0 time=1.263 timestamp=2026-10-05T20:19:09.209Z
+   20 x aMergeAcrossACellBorderKeepsEveryItem (GridItemRaceProbeTest.java:146): org.opentest4j.AssertionFailedError: diamonds on the ground after the merges (interleaving orchestrated: true, merger holds 50) ==> expected: <70> but was: <50>
+
+== fa5cad4055 default without -ea (as production runs)  [2026-10-06 04:25:24, gradle rc=1, 9 s]
+   ./gradlew :test --rerun --tests io.github.bearisbug.synaxis.entity.GridItemRaceProbeTest --max-workers=4 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts --init-script /tmp/m3fix-items/no-ea.init.gradle.kts
+   io.github.bearisbug.synaxis.entity.GridItemRaceProbeTest: tests=40 failures=26 errors=0 skipped=0 time=1.216 timestamp=2026-10-05T20:25:32.254Z
+   20 x aMergeAcrossACellBorderKeepsEveryItem (GridItemRaceProbeTest.java:146): org.opentest4j.AssertionFailedError: diamonds on the ground after the merges (interleaving orchestrated: true, merger holds 50) ==> expected: <70> but was: <50>
+    6 x twoPickersOnTwoTickThreadsPickAnItemUpOnce (GridItemRaceProbeTest.java:170): org.opentest4j.AssertionFailedError: an item was removed on a thread that does not own it ==> expected: <[]> but was: <[Syn-Tick-0]>
+
+== 14437d0b78 default without -ea (as production runs)  [2026-10-06 04:25:33, gradle rc=1, 6 s]
+   ./gradlew :test --rerun --tests io.github.bearisbug.synaxis.entity.GridItemRaceProbeTest --max-workers=4 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts --init-script /tmp/m3fix-items/no-ea.init.gradle.kts
+   io.github.bearisbug.synaxis.entity.GridItemRaceProbeTest: tests=40 failures=20 errors=0 skipped=0 time=1.216 timestamp=2026-10-05T20:25:38.308Z
+   20 x aMergeAcrossACellBorderKeepsEveryItem (GridItemRaceProbeTest.java:146): org.opentest4j.AssertionFailedError: diamonds on the ground after the merges (interleaving orchestrated: true, merger holds 50) ==> expected: <70> but was: <50>
+
+# Reading: the merge window is there before v0.9.43. With -ea the merger's cross-thread remove() of the neighbour throws
+# (ItemEntity.java:106 of fa5cad4055) inside the success callback of the merge that used the stale read; without -ea the
+# same 20 diamonds are lost as on 14437d0b78. The pickup failures on fa5cad4055 are the cross-thread removal that
+# v0.9.43 fixed (LivingEntity.java:242), not this finding.

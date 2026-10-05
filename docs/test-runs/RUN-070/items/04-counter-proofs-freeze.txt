@@ -1,0 +1,102 @@
+# RUN-070 / items: counter proofs of the freeze on 34d3fd8855 (TC-PROD-640 steps 3 to 6, TC-PROD-641 step 3, TC-PROD-642 step 2).
+# Each edits one line of PlayerStore.java, runs, and restores it with git checkout HEAD --; the edit is printed above each run.
+
+[2026-10-06 05:03:23] lock taken; HEAD 34d3fd8855; git status --short: 3 paths
+== TC-PROD-640 step 3 / TC-PROD-641 step 3: no cancel on the root node (the code before the fix)
+  edit server-app/src/main/java/io/github/bearisbug/synaxis/app/store/PlayerStore.java:253 deleted: process.eventHandler().addListener(PickupItemEvent.class, pickups).addListener(ItemDropEvent.class, drops);
+[2026-10-06 05:03:43] cp 640-3: ./gradlew :server-app:test --rerun --tests io.github.bearisbug.synaxis.app.FreezeBeforePluginListenersIntegrationTest --tests io.github.bearisbug.synaxis.app.store.GateFreezeEarlyGrantTest --max-workers=4 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts
+  FreezeBeforePluginListenersIntegrationTest > everyPluginListenerSeesAFrozenPickupAndDropCancelled(Env) FAILED
+  GateFreezeEarlyGrantTest > anInstanceScopedMonitorGrantOfAGateWalkInCopiesNothing() FAILED
+  GateFreezeEarlyGrantTest > aGlobalNormalGrantOfAGateWalkInCopiesNothing() FAILED
+  3 tests completed, 3 failed
+  > Task :server-app:test FAILED
+  BUILD FAILED in 15s
+[2026-10-06 05:03:59] cp 640-3: rc=1 (16 s)
+io.github.bearisbug.synaxis.app.FreezeBeforePluginListenersIntegrationTest: tests=1 failures=1 errors=0 skipped=0 time=1.262 timestamp=2026-10-05T21:03:56.720Z
+  failure: everyPluginListenerSeesAFrozenPickupAndDropCancelled(Env) time=1.253
+    message: org.opentest4j.AssertionFailedError: listeners that saw a frozen pickup or drop allowed ==> expected: <[]> but was: <[entity:drop cancelled=false, entity:pickup cancelled=false, global:high:drop cancelled=false, global:high:pickup cancelled=false, global:highest:drop cancelled=false, global:highest:pickup cancelled=false, global:low:drop cancelled=false, global:low:pickup cancelled=false, global:lowest:drop cancelled=false, global:lowest:pickup cancelled=false, global:normal:drop cancelled=false, global:normal:pickup cancelled=false, instance:high:drop cancelled=false, instance:high:pickup cancelled=false, instance:highest:drop cancelled=false, instance:highest:pickup cancelled=false, instance:low:drop cancelled=false, instance:low:pickup cancelled=false, instance:lowest:drop cancelled=false, instance:lowest:pickup cancelled=false, instance:monitor:drop cancelled=false, instance:monitor:pickup cancelled=false, instance:normal:drop cancelled=false, instance:normal:pickup cancelled=false, root:drop cancelled=false, root:pickup cancelled=false]>
+    type: org.opentest4j.AssertionFailedError: listeners that saw a frozen pickup or drop allowed ==> expected: <[]> but was: <[entity:drop cancelled=false, entity:pickup cancelled=false, global:high:drop cancelled=false, global:high:pickup cancelled=false, global:highest:drop cancelled=false, global:highest:
+    at io.github.bearisbug.synaxis.app.FreezeBeforePluginListenersIntegrationTest.everyPluginListenerSeesAFrozenPickupAndDropCancelled(FreezeBeforePluginListenersIntegrationTest.java:107)
+io.github.bearisbug.synaxis.app.store.GateFreezeEarlyGrantTest: tests=2 failures=2 errors=0 skipped=0 time=0.789 timestamp=2026-10-05T21:03:57.983Z
+  failure: anInstanceScopedMonitorGrantOfAGateWalkInCopiesNothing() time=0.413
+    message: org.opentest4j.AssertionFailedError: diamonds after the walk in (written with the transfer 5, on the ground 5): [instance:monitor granted 5 frozen=true, global:monitor cancelled=true] ==> expected: <5> but was: <10>
+    type: org.opentest4j.AssertionFailedError: diamonds after the walk in (written with the transfer 5, on the ground 5): [instance:monitor granted 5 frozen=true, global:monitor cancelled=true] ==> expected: <5> but was: <10>
+    at io.github.bearisbug.synaxis.app.store.GateFreezeEarlyGrantTest.walkOntoTheItemThroughTheGate(GateFreezeEarlyGrantTest.java:173)
+    at io.github.bearisbug.synaxis.app.store.GateFreezeEarlyGrantTest.anInstanceScopedMonitorGrantOfAGateWalkInCopiesNothing(GateFreezeEarlyGrantTest.java:127)
+  failure: aGlobalNormalGrantOfAGateWalkInCopiesNothing() time=0.373
+    message: org.opentest4j.AssertionFailedError: diamonds after the walk in (written with the transfer 5, on the ground 5): [global:normal granted 5 frozen=true, global:monitor cancelled=true] ==> expected: <5> but was: <10>
+    type: org.opentest4j.AssertionFailedError: diamonds after the walk in (written with the transfer 5, on the ground 5): [global:normal granted 5 frozen=true, global:monitor cancelled=true] ==> expected: <5> but was: <10>
+    at io.github.bearisbug.synaxis.app.store.GateFreezeEarlyGrantTest.walkOntoTheItemThroughTheGate(GateFreezeEarlyGrantTest.java:173)
+    at io.github.bearisbug.synaxis.app.store.GateFreezeEarlyGrantTest.aGlobalNormalGrantOfAGateWalkInCopiesNothing(GateFreezeEarlyGrantTest.java:136)
+TOTAL server-app/build/test-results/test io.github.bearisbug.synaxis.app.FreezeBeforePluginListenersIntegrationTest io.github.bearisbug.synaxis.app.store.GateFreezeEarlyGrantTest: classes=2 tests=3 failures=3 errors=0 skipped=0
+== TC-PROD-640 step 4: the first cancel on the host node itself instead of the root node
+  edit server-app/src/main/java/io/github/bearisbug/synaxis/app/store/PlayerStore.java:253: process.eventHandler().addListener(PickupItemEvent.class, pickups).addListener(ItemDropEvent.class, drops);  ->  hostNode.addListener(PickupItemEvent.class, pickups).addListener(ItemDropEvent.class, drops);
+[2026-10-06 05:03:59] cp 640-4: ./gradlew :server-app:test --rerun --tests io.github.bearisbug.synaxis.app.FreezeBeforePluginListenersIntegrationTest --max-workers=4 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts
+  FreezeBeforePluginListenersIntegrationTest > everyPluginListenerSeesAFrozenPickupAndDropCancelled(Env) FAILED
+  > Task :server-app:test FAILED
+  BUILD FAILED in 9s
+[2026-10-06 05:04:08] cp 640-4: rc=1 (10 s)
+io.github.bearisbug.synaxis.app.FreezeBeforePluginListenersIntegrationTest: tests=1 failures=1 errors=0 skipped=0 time=1.236 timestamp=2026-10-05T21:04:07.276Z
+  failure: everyPluginListenerSeesAFrozenPickupAndDropCancelled(Env) time=1.228
+    message: org.opentest4j.AssertionFailedError: listeners that saw a frozen pickup or drop allowed ==> expected: <[]> but was: <[entity:drop cancelled=false, entity:pickup cancelled=false, instance:high:drop cancelled=false, instance:high:pickup cancelled=false, instance:highest:drop cancelled=false, instance:highest:pickup cancelled=false, instance:low:drop cancelled=false, instance:low:pickup cancelled=false, instance:lowest:drop cancelled=false, instance:lowest:pickup cancelled=false, instance:monitor:drop cancelled=false, instance:monitor:pickup cancelled=false, instance:normal:drop cancelled=false, instance:normal:pickup cancelled=false, root:drop cancelled=false, root:pickup cancelled=false]>
+    type: org.opentest4j.AssertionFailedError: listeners that saw a frozen pickup or drop allowed ==> expected: <[]> but was: <[entity:drop cancelled=false, entity:pickup cancelled=false, instance:high:drop cancelled=false, instance:high:pickup cancelled=false, instance:highest:drop cancelled=false, instance:
+    at io.github.bearisbug.synaxis.app.FreezeBeforePluginListenersIntegrationTest.everyPluginListenerSeesAFrozenPickupAndDropCancelled(FreezeBeforePluginListenersIntegrationTest.java:107)
+TOTAL server-app/build/test-results/test io.github.bearisbug.synaxis.app.FreezeBeforePluginListenersIntegrationTest: classes=1 tests=1 failures=1 errors=0 skipped=0
+== TC-PROD-640 step 5: only the root node, no priority 3 node
+  edit server-app/src/main/java/io/github/bearisbug/synaxis/app/store/PlayerStore.java:259 deleted: hostNode.addChild(freeze);
+[2026-10-06 05:04:08] cp 640-5: ./gradlew :server-app:test --rerun --tests io.github.bearisbug.synaxis.app.FreezeBeforePluginListenersIntegrationTest --tests io.github.bearisbug.synaxis.app.PluginEventsIntegrationTest --max-workers=4 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts
+  PluginEventsIntegrationTest > theStoreFreezeOverridesHighestAndMonitorSeesItsOutcome(Env) FAILED
+  10 tests completed, 1 failed
+  > Task :server-app:test FAILED
+  BUILD FAILED in 10s
+[2026-10-06 05:04:19] cp 640-5: rc=1 (10 s)
+io.github.bearisbug.synaxis.app.FreezeBeforePluginListenersIntegrationTest: tests=1 failures=0 errors=0 skipped=0 time=1.201 timestamp=2026-10-05T21:04:16.748Z
+io.github.bearisbug.synaxis.app.PluginEventsIntegrationTest: tests=9 failures=1 errors=0 skipped=0 time=0.873 timestamp=2026-10-05T21:04:17.951Z
+  failure: theStoreFreezeOverridesHighestAndMonitorSeesItsOutcome(Env) time=0.14
+    message: org.opentest4j.AssertionFailedError: expected: <[pickup:cancelled=true, drop:cancelled=true]> but was: <[pickup:cancelled=false, drop:cancelled=false]>
+    type: org.opentest4j.AssertionFailedError: expected: <[pickup:cancelled=true, drop:cancelled=true]> but was: <[pickup:cancelled=false, drop:cancelled=false]>
+    at io.github.bearisbug.synaxis.app.PluginEventsIntegrationTest.theStoreFreezeOverridesHighestAndMonitorSeesItsOutcome(PluginEventsIntegrationTest.java:335)
+TOTAL server-app/build/test-results/test io.github.bearisbug.synaxis.app.FreezeBeforePluginListenersIntegrationTest io.github.bearisbug.synaxis.app.PluginEventsIntegrationTest: classes=2 tests=10 failures=1 errors=0 skipped=0
+== TC-PROD-642 step 2 (TC-PROD-189 step 2): the freeze node at 5
+  edit server-app/src/main/java/io/github/bearisbug/synaxis/app/store/PlayerStore.java:256: final EventNode<Event> freeze = EventNode.all("synaxis-store-freeze").setPriority(3);  ->  final EventNode<Event> freeze = EventNode.all("synaxis-store-freeze").setPriority(5);
+[2026-10-06 05:04:19] cp 642-2a: ./gradlew :server-app:test --rerun --tests io.github.bearisbug.synaxis.app.PluginEventsIntegrationTest --max-workers=4 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts
+  PluginEventsIntegrationTest > theStoreFreezeOverridesHighestAndMonitorSeesItsOutcome(Env) FAILED
+  9 tests completed, 1 failed
+  > Task :server-app:test FAILED
+  BUILD FAILED in 9s
+[2026-10-06 05:04:29] cp 642-2a: rc=1 (10 s)
+io.github.bearisbug.synaxis.app.PluginEventsIntegrationTest: tests=9 failures=1 errors=0 skipped=0 time=1.832 timestamp=2026-10-05T21:04:27.206Z
+  failure: theStoreFreezeOverridesHighestAndMonitorSeesItsOutcome(Env) time=1.099
+    message: org.opentest4j.AssertionFailedError: expected: <[pickup:cancelled=true, drop:cancelled=true]> but was: <[pickup:cancelled=false, drop:cancelled=false]>
+    type: org.opentest4j.AssertionFailedError: expected: <[pickup:cancelled=true, drop:cancelled=true]> but was: <[pickup:cancelled=false, drop:cancelled=false]>
+    at io.github.bearisbug.synaxis.app.PluginEventsIntegrationTest.theStoreFreezeOverridesHighestAndMonitorSeesItsOutcome(PluginEventsIntegrationTest.java:335)
+TOTAL server-app/build/test-results/test io.github.bearisbug.synaxis.app.PluginEventsIntegrationTest: classes=1 tests=9 failures=1 errors=0 skipped=0
+== TC-PROD-642 step 2 (TC-PROD-189 step 3): the freeze node at 1
+  edit server-app/src/main/java/io/github/bearisbug/synaxis/app/store/PlayerStore.java:256: final EventNode<Event> freeze = EventNode.all("synaxis-store-freeze").setPriority(3);  ->  final EventNode<Event> freeze = EventNode.all("synaxis-store-freeze").setPriority(1);
+[2026-10-06 05:04:29] cp 642-2b: ./gradlew :server-app:test --rerun --tests io.github.bearisbug.synaxis.app.PluginEventsIntegrationTest --max-workers=4 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts
+  PluginEventsIntegrationTest > theStoreFreezeOverridesHighestAndMonitorSeesItsOutcome(Env) FAILED
+  9 tests completed, 1 failed
+  > Task :server-app:test FAILED
+  BUILD FAILED in 7s
+[2026-10-06 05:04:36] cp 642-2b: rc=1 (8 s)
+io.github.bearisbug.synaxis.app.PluginEventsIntegrationTest: tests=9 failures=1 errors=0 skipped=0 time=1.853 timestamp=2026-10-05T21:04:34.754Z
+  failure: theStoreFreezeOverridesHighestAndMonitorSeesItsOutcome(Env) time=1.121
+    message: org.opentest4j.AssertionFailedError: expected: <[pickup:cancelled=true, drop:cancelled=true]> but was: <[pickup:cancelled=false, drop:cancelled=false]>
+    type: org.opentest4j.AssertionFailedError: expected: <[pickup:cancelled=true, drop:cancelled=true]> but was: <[pickup:cancelled=false, drop:cancelled=false]>
+    at io.github.bearisbug.synaxis.app.PluginEventsIntegrationTest.theStoreFreezeOverridesHighestAndMonitorSeesItsOutcome(PluginEventsIntegrationTest.java:335)
+TOTAL server-app/build/test-results/test io.github.bearisbug.synaxis.app.PluginEventsIntegrationTest: classes=1 tests=9 failures=1 errors=0 skipped=0
+== restored: 0 changed paths in PlayerStore.java; rerun default and strict grid
+[2026-10-06 05:04:36] restored default: ./gradlew :server-app:test --rerun --tests io.github.bearisbug.synaxis.app.FreezeBeforePluginListenersIntegrationTest --tests io.github.bearisbug.synaxis.app.store.GateFreezeEarlyGrantTest --tests io.github.bearisbug.synaxis.app.PluginEventsIntegrationTest --max-workers=4 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts
+  BUILD SUCCESSFUL in 7s
+[2026-10-06 05:04:44] restored default: rc=0 (8 s)
+io.github.bearisbug.synaxis.app.FreezeBeforePluginListenersIntegrationTest: tests=1 failures=0 errors=0 skipped=0 time=0.121 timestamp=2026-10-05T21:04:43.756Z
+io.github.bearisbug.synaxis.app.PluginEventsIntegrationTest: tests=9 failures=0 errors=0 skipped=0 time=1.759 timestamp=2026-10-05T21:04:41.996Z
+io.github.bearisbug.synaxis.app.store.GateFreezeEarlyGrantTest: tests=2 failures=0 errors=0 skipped=0 time=0.831 timestamp=2026-10-05T21:04:43.877Z
+TOTAL server-app/build/test-results/test io.github.bearisbug.synaxis.app.FreezeBeforePluginListenersIntegrationTest io.github.bearisbug.synaxis.app.store.GateFreezeEarlyGrantTest io.github.bearisbug.synaxis.app.PluginEventsIntegrationTest: classes=3 tests=12 failures=0 errors=0 skipped=0
+[2026-10-06 05:04:45] restored strict grid: ./gradlew :server-app:test --rerun --tests io.github.bearisbug.synaxis.app.FreezeBeforePluginListenersIntegrationTest --tests io.github.bearisbug.synaxis.app.store.GateFreezeEarlyGrantTest --tests io.github.bearisbug.synaxis.app.PluginEventsIntegrationTest -Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true -Dsynaxis.thread-provider=grid --max-workers=4 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts
+  BUILD SUCCESSFUL in 7s
+[2026-10-06 05:04:52] restored strict grid: rc=0 (8 s)
+io.github.bearisbug.synaxis.app.FreezeBeforePluginListenersIntegrationTest: tests=1 failures=0 errors=0 skipped=0 time=1.048 timestamp=2026-10-05T21:04:49.876Z
+io.github.bearisbug.synaxis.app.PluginEventsIntegrationTest: tests=9 failures=0 errors=0 skipped=0 time=0.882 timestamp=2026-10-05T21:04:50.925Z
+io.github.bearisbug.synaxis.app.store.GateFreezeEarlyGrantTest: tests=2 failures=0 errors=0 skipped=0 time=0.8 timestamp=2026-10-05T21:04:51.808Z
+TOTAL server-app/build/test-results/test io.github.bearisbug.synaxis.app.FreezeBeforePluginListenersIntegrationTest io.github.bearisbug.synaxis.app.store.GateFreezeEarlyGrantTest io.github.bearisbug.synaxis.app.PluginEventsIntegrationTest: classes=3 tests=12 failures=0 errors=0 skipped=0

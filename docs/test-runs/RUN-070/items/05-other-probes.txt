@@ -1,0 +1,17 @@
+# RUN-070 / items: the other probes of the M3 side review commit 7219ce342d, unchanged, copied into prod/m3fix-items at 34d3fd8855
+# for this batch only and deleted after it; strict grid as in that commit. None of them is kept in the repository.
+
+== the other probes of 7219ce342d, copied in for this batch only, strict grid as in their commit
+[2026-10-06 05:04:52] other probes: ./gradlew :server-app:test --rerun --tests io.github.bearisbug.synaxis.app.store.PickupFreezeRaceProbeTest --tests io.github.bearisbug.synaxis.app.store.ShardGatesRaceProbeTest :synx:test --rerun --tests io.github.bearisbug.synaxis.synx.OverlayCrossCellWritersProbeTest -Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true -Dsynaxis.thread-provider=grid --continue --max-workers=4 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts
+  BUILD SUCCESSFUL in 2m 44s
+[2026-10-06 05:07:38] other probes: rc=0 (165 s)
+io.github.bearisbug.synaxis.app.store.PickupFreezeRaceProbeTest: tests=20 failures=0 errors=0 skipped=0 time=12.588 timestamp=2026-10-05T21:04:59.582Z
+io.github.bearisbug.synaxis.app.store.ShardGatesRaceProbeTest: tests=60 failures=0 errors=0 skipped=0 time=145.493 timestamp=2026-10-05T21:05:12.176Z
+TOTAL server-app/build/test-results/test io.github.bearisbug.synaxis.app.store.PickupFreezeRaceProbeTest io.github.bearisbug.synaxis.app.store.ShardGatesRaceProbeTest: classes=2 tests=80 failures=0 errors=0 skipped=0
+io.github.bearisbug.synaxis.synx.OverlayCrossCellWritersProbeTest: tests=20 failures=0 errors=0 skipped=0 time=7.776 timestamp=2026-10-05T21:04:57.709Z
+TOTAL synx/build/test-results/test io.github.bearisbug.synaxis.synx.OverlayCrossCellWritersProbeTest: classes=1 tests=20 failures=0 errors=0 skipped=0
+[2026-10-06 05:07:38] probes removed; git status --short:
+   M docs/DESIGN-PROD.md
+   M docs/TEST.md
+   M docs/research/security-review-2026-10/README.md
+[2026-10-06 05:07:38] lock releasing

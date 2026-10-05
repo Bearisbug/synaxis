@@ -8,12 +8,13 @@
 | Owner | Bearisbug |
 | 关联设计文档 | `docs/DESIGN.md`（引擎域 M1 / M1.5）、`docs/DESIGN-M2.md`（游戏域 M2 分册）、`docs/DESIGN-M3.md`（大世界域 M3 分册）与 `docs/DESIGN-PROD.md`（生产就绪分册）；各文档的 REQ 各自编号，M2 侧写作 `REQ-M2-*`、M3 侧写作 `REQ-M3-*`，生产就绪侧写作 `REQ-PROD-*`，对应用例写作 `TC-PROD-*` |
 | 被测系统 | 仓库 `Bearisbug/synaxis`，分支 `main` |
-| 最后更新 | 2026-10-02 |
+| 最后更新 | 2026-10-06 |
 
 变更记录（登用例增改，不登执行轮次）：
 
 | 日期 | 改动 | 作者 |
 | --- | --- | --- |
+| 2026-10-06 | 分支 `prod/m3fix-items`（基于 `main` `14437d0b78`），跟进 `docs/DESIGN-PROD.md` v0.9.48（「Synaxis 光照」会话 M3 侧安全审查面 3 的 S3-V01 冻结顺序与 S3-01 跨格合并），不登执行轮次，由集成轮登记 RUN-070；本组证据在 `docs/test-runs/RUN-070/items/`。**新增 §4「生产就绪 · M3 侧安全审查修复：items（冻结顺序与跨格合并）」六条 `TC-PROD-640`～`TC-PROD-645`**：三个新类由光照会话的探针改写成回归测试（`server-app` 的 `FreezeBeforePluginListenersIntegrationTest`、`GateFreezeEarlyGrantTest`，根项目的 `GridItemRaceTest`），修复前的红（`main` 上跑一次，再在本分支只回退实现、保留测试跑一次）与每条反证都实跑过。**红行**：`TC-PROD-621` 第 2 步的 `<IE>:106` 与红行 `ItemEntity.java:106` → `:114`（本组在合并里加了 8 行），已在本分支按新行号重跑，红法不变；该节首注明 `<IE>` 合并一段的行号随之改。**条数**：本组 `:server-app:test` 加 2 个类 3 个，根项目 `:test` 加 1 个类 2 个，`TC-PROD-623` 的 `entity` 包由 74 个类 284 个变为 75 个类 286 个；这些与 `TC-PROD-486`、`505`、`510`、`529`、`549` 等写死的条数都不改，由集成轮统一改。§5 加一行 | Bearisbug |
 | 2026-10-02 | 合入 `main` `494605595a`（M3-G 合入，`docs/DESIGN-M3.md` v0.32，RUN-064）后按该分册 §28.2「M3 v0.30」「M3 v0.31」「M3 v0.32」三行交给本会话的部分同步，跟进 `docs/DESIGN-PROD.md` v0.9.45，登记 RUN-067（证据 `docs/test-runs/RUN-067/`）。**条数**：`:server-app:test` 553 → 577、类 110 → 113（M3-G 加 `ShardWorldFarViewTest` 9、`FarViewShardFixtureTest` 9、`FarViewLaunchTest` 4，`ShardSettingsTest` 6 → 8，按 RUN-064 `main-merge/01-gates.txt`），改 `TC-PROD-486` 第 3 步、`505` 第 3 步、`510` 第 2 步、`529` 第 4 步、`549` 第 2 步、`575` 第 3 步、`585` 第 1、2 步、`596` 第 2 步、`607` 第 2 步、`618` 第 1、2 步，根构建 `:test` 3,162 不变；`575` 第 3 步不带数据库变量的两次（默认、严格 grid）在 RUN-067 实跑，各 577 个、132 个跳过。**两道门禁**：配置键 115 → 116（`TC-PROD-441` 标题与第 1～3 步、`TC-PROD-547` 第 1 步、`TC-PROD-569` 第 4 步），`441` 的三个反证照字面实跑，读数 116 / 115、116 / 117、116 / 116；翻译键 14 → 15 个标识、60 个键（`TC-PROD-430` 标题与第 1 步、6F 一节开头、`TC-PROD-432` 第 1 步的 `grep` 加 `farview`、`TC-PROD-547` 第 1 步）。`NOT_TEXT` 多一行让门禁的断言由 `TranslationKeyGateTest.java:90` 移到 `:91`，交接行没有列，按 RUN-067 实跑改：`TC-PROD-068`、`105`、`162`、`210`（两步）、`233`、`250`、`295`、`396`、`430`、`431`、`433`、`547` 的反证红行改为 `:91`，`068` 夹具那条 `:101` → `:102`，`432` 第 2 步 `:89` → `:90`、`:100` → `:101`、读数 `61 keys …, 14 identifiers`，第 3 步 `:91` → `:92`、`60 keys …, 16 identifiers`，`430` 第 3 步与 `433` 第 2 步的键数 57 → 61。同轮实跑另有两处与用例不同、与 M3-G 无关，一并改：`162` 第 2 步的来源多了 `TicketIssuer`（v0.9.40 起断开签票后不走的连接用这个键），`547` 第 2 步跑两个门禁类，是 `3 tests completed, 1 failed`。**`Main.java` 行号**（多一行导入、`serveMap` 的监听多 7 行，原 `:513` 以后 +8，逐个在合入后的代码上核过）：`TC-PROD-498` 第 3 步九行里的 `:322`～`:335` 各加 1，`TC-PROD-521` 第 3 步 `264` → `265`、第 4 步 `:750` → `:758`，`TC-PROD-528` 第 2 步 `:704` → `:712`，`TC-PROD-533` 第 2 步 `sed -n 748,750p` → `756,758p`（RUN-067 照字面跑过）、第 3 步 `:748` → `:756`，6A 其余部分一节开头 `:268`～`:269`、`:284` → `:269`～`:270`、`:285`（交接行把这两处记在 `TC-PROD-533` 名下），`TC-PROD-548` 第 7 步 `:268` → `:269`，`TC-PROD-573` 第 3 步 518 → 526（交接行没有列），ops 一节 `TC-PROD-603` 第 2 步 `<MN>:610` → `:618`、`TC-PROD-604` 第 2 步 `<MN>:343` → `:344`（节首写明 `<MN>` 的行号按合入后的代码），§7 端口竞态一条的就绪行 `:359` → `:360`。**`TC-PROD-550` 第 3 步**：烘焙器发布行多了远景包一段 | Bearisbug |
 | 2026-10-02 | 分支 `m3g/integrate`（M3-G 合并验收，合入 `main` `4bb76eec7f` 之后是 `24d3b318a9`），跟进 `docs/DESIGN-M3.md` v0.32，登记 RUN-064（证据 `docs/test-runs/RUN-064/`）。**新增「M3 · 远景（M3-G）」一节 `TC-WORLD-102`～`TC-WORLD-124`**（排在 M3-D 一节之后，编号接 `main` 上最大的 `TC-WORLD-101`）：服务端与烘焙器 102～109（编解码与远景向量、烘焙产出、采样与粗层、隐藏区域、校验、导出、分片宣告、命令行与夹具），客户端 JUnit 110～116，无头容器 117～122（121 只登记读数），真机 123、124（执行者人工）；JUnit 用例的反证都按本节字面在 `24d3b318a9` 上实跑过，容器用例 117、118 带反证，119、120 没有（§7）。§2 `REQ-M3-024`、`REQ-M3-025` 两行由「未实现」改为这些用例，`REQ-M3-002`、`REQ-M3-003`、`REQ-M3-022` 三行加对应用例；§3 加「远景（M3-G）」一条（重活锁的 `EXIT` trap 要写在脚本顶层、容器门槛、夹具与容器的命令、端口）；§5 加 M3-G 一行；§7 加四条。**改既有用例**（M3-G 让预期变了，RUN-064 按新的字面实跑）：`TC-WORLD-023` 第 1、2 步（发布行多了 `; 1 far view pack(s), 596465 bytes, assembled in <n> ms`，事件 `farview_bytes` 0 → 596465，`farview/t.0.0.hfp` 1 线程与多线程逐字节相同）；`TC-WORLD-030` 第 2 步与 `TC-WORLD-033` 第 1 步（发布行同样多一段，夹具版本多了 `farview/t.0.0.hfp`）；`TC-WORLD-032` 第 1～3 步（`60 keys …, 15 identifiers left out`，`NOT_TEXT` 多 `synaxis:farview`，反证红行 `:89` → `:90`、输出 `61 keys …, 14 identifiers`）；`TC-WORLD-041` 第 1、2、4 步（`ShardSettingsTest` 6 → 8 条，门禁 `116 keys read, 116 in ConfigFile.KEYS, 21 meter names left out`，21 是生产就绪第 6 波之后的值，反证 `116 keys read, 114 in ConfigFile.KEYS`）；`TC-WORLD-098` 第 2 步（同一门禁输出）；`TC-WORLD-100` 与 `TC-WORLD-101` 第 2 步（`Main.java:518` → `:526`、`:304` → `:305`：合入后 `Main` 多了远景宣告的导入与监听体）。**不改**：`TC-PROD-*`。合入后它们要跟着改的条数与行号列在 `docs/DESIGN-M3.md` §28.2「交给生产就绪会话的改动（M3 v0.32）」：`TC-PROD-550` 第 3 步的发布行、`:server-app:test` 553 → 577、两道门禁 116 与 15、`Main.java` 行号 | Bearisbug |
 | 2026-10-01 | 合入 `main` `4a40af2835`（`docs/DESIGN-M3.md` v0.31，RUN-065）后按该分册 §28.2「M3 v0.31」一行同步，跟进 `docs/DESIGN-PROD.md` v0.9.44。**`TC-PROD-570` 第 2 步改写**：原写法 `git checkout 0e919cce6a -- <GT>` 取出的旧 `ShardGates` 只有三个参数的构造器，M3 v0.31 起 `Main` 与测试都传四个，照写编不过（RUN-065 判失败）；改为原地把 `case COOLDOWN, NOT_ONLINE, SAVE_FAILED -> refused(player, gate, result);` 换成空块，红行与消息不变，在 RUN-066 按字面重跑 1～6 步。**条数**：`:server-app:test` 552 → 553（M3 v0.31 的 `ShardGatesOnlineTest` 1 个），改 `TC-PROD-486` 第 3 步、`505` 第 3 步、`510` 第 2 步、`529` 第 4 步、`549` 第 2 步、`575` 第 3 步、`585` 第 1、2 步、`596` 第 2 步、`607` 第 2 步、`618` 第 1、2 步，类数随之 109 → 110；根构建 `:test` 3,162 不变 | Bearisbug |
@@ -8683,7 +8684,7 @@ for (var request : System.getenv("MGMT_CALLS").split("\n")) {
 
 对应 `REQ-PROD-019`、`REQ-PROD-020`（`docs/DESIGN-PROD.md` v0.9.43：`API-PROD-016` 线程契约「跨格影响投递到目标实体的调度器」，§16「跨格交互」一行，§28.2「`grid` 下跨格拾取与合并在别的 tick 线程上移除掉落物」已决行）。起因是安全修复 transfer 组的只读核查（GAP-grid，探针见 `docs/test-runs/RUN-062/transfer/05-gap-grid-probe.txt`）：拾取者在 `LivingEntity#update` 里、合并的一方在 `ItemEntity#update` 里，事件放行后直接调别的 tick 线程的掉落物的 `remove()`，开断言或严格模式时 `Entity#remove` 的 `assertOwnership` 抛 `AcquirableOwnershipException`，掉落物留在世界里、claim 不释放，再也拾不起来；不开断言时是一次跨线程的移除。改动：两处都改调包内方法 `ItemEntity#removeConsumed`，当前线程拥有掉落物时当场移除，否则经掉落物自己的调度器（`scheduleNextTick`）在它所属的线程上移除。
 
-测试：根项目新类 `io.github.bearisbug.synaxis.entity.ItemEntityCrossCellConcurrencyTest`（2 条，不是 `@EnvTest`：每条自己建 4 线程 `grid`、2×2 区块一格的进程，x = 32 是格 (0, 0) 与格 (1, 0) 的边界，x = 31.7 的拾取者或掉落物归 `Syn-Tick-0`，x = 32.3 的掉落物归 `Syn-Tick-3`；默认模式与严格 grid 下都是这个布局，测试 JVM 开着断言）；既有的 `ItemEntityClaimIntegrationTest`（5 条，同一格、在测试线程上调 `update`）不改。「跑 `<类>`」即 `./gradlew :test --rerun --tests '<类全名>' --max-workers=4 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts`，「严格 grid」是再加 `-Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true -Dsynaxis.thread-provider=grid`，结果看 `build/test-results/test/TEST-<类全名>.xml`。`<LE>` 是 `src/main/java/io/github/bearisbug/synaxis/entity/LivingEntity.java`，`<IE>` 是同目录的 `ItemEntity.java`。反证一律是临时改一处、跑、看红、`git checkout HEAD -- <文件>`、重跑复绿；行号按提交 `5c0bad47bc`。本节不需要数据库前置。证据 `docs/test-runs/RUN-062/integrate/01-gap-grid-red-before-fix.txt`（改动前在新测试上的红，默认与严格 grid 各一次）与 `02-gap-grid-green-and-proofs.txt`。
+测试：根项目新类 `io.github.bearisbug.synaxis.entity.ItemEntityCrossCellConcurrencyTest`（2 条，不是 `@EnvTest`：每条自己建 4 线程 `grid`、2×2 区块一格的进程，x = 32 是格 (0, 0) 与格 (1, 0) 的边界，x = 31.7 的拾取者或掉落物归 `Syn-Tick-0`，x = 32.3 的掉落物归 `Syn-Tick-3`；默认模式与严格 grid 下都是这个布局，测试 JVM 开着断言）；既有的 `ItemEntityClaimIntegrationTest`（5 条，同一格、在测试线程上调 `update`）不改。「跑 `<类>`」即 `./gradlew :test --rerun --tests '<类全名>' --max-workers=4 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts`，「严格 grid」是再加 `-Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true -Dsynaxis.thread-provider=grid`，结果看 `build/test-results/test/TEST-<类全名>.xml`。`<LE>` 是 `src/main/java/io/github/bearisbug/synaxis/entity/LivingEntity.java`，`<IE>` 是同目录的 `ItemEntity.java`。反证一律是临时改一处、跑、看红、`git checkout HEAD -- <文件>`、重跑复绿；行号按提交 `5c0bad47bc`，`<IE>` 合并一段 v0.9.48 加了 8 行，`TC-PROD-621` 第 2 步按加行之后的行号写（之前是 `:106`）。本节不需要数据库前置。证据 `docs/test-runs/RUN-062/integrate/01-gap-grid-red-before-fix.txt`（改动前在新测试上的红，默认与严格 grid 各一次）与 `02-gap-grid-green-and-proofs.txt`。
 
 #### `TC-PROD-620` 跨格拾取：拾取事件派发一次，掉落物在它自己的 tick 线程上移除，默认与严格 grid 都不抛 — 对应 `REQ-PROD-019`、`REQ-PROD-020` · 级别: 回归 · 执行者: AI
 
@@ -8705,7 +8706,7 @@ for (var request : System.getenv("MGMT_CALLS").split("\n")) {
 | # | 操作 | 预期 |
 | --- | --- | --- |
 | 1 | 同 `TC-PROD-620` 第 1、2 步的两次运行，看 `anItemMergedAcrossACellBorderIsRemovedOnItsOwnThread` | 两次都通过。两个各 1 颗钻石的掉落物在 x = 31.7 与 x = 32.3（距离 0.6，在合并范围 1 之内），两边各在自己的 tick 线程上扫邻居，按实体 ID 的固定顺序 claim，只有一方合并成：`EntityItemMergeEvent` 恰 1 次，派发时被并掉的一方 `isOwned()` 为 false；恰一方已移除，留下的一方数量为 2；移除都在被移除者自己的线程上 |
-| 2 | 反证有齿（合并直接移除，即改动前的合并）：`<IE>:106` 的 `itemEntity.removeConsumed();` 改为 `itemEntity.remove();`，跑 `ItemEntityCrossCellConcurrencyTest`，再还原 | `2 tests completed, 1 failed`：红在 `ItemEntityCrossCellConcurrencyTest.java:87`（经 `:67`），`Server threw exception`，原因 `AcquirableOwnershipException`，抛在 `Entity.java:1915` ← `ItemEntity.java:106`；拾取那条仍绿 |
+| 2 | 反证有齿（合并直接移除，即改动前的合并）：`<IE>:114` 的 `itemEntity.removeConsumed();` 改为 `itemEntity.remove();`，跑 `ItemEntityCrossCellConcurrencyTest`，再还原 | `2 tests completed, 1 failed`：红在 `ItemEntityCrossCellConcurrencyTest.java:87`（经 `:67`），`Server threw exception`，原因 `AcquirableOwnershipException`，抛在 `Entity.java:1915` ← `ItemEntity.java:114`；拾取那条仍绿 |
 | 3 | 还原后重跑第 1 步 | 与第 1 步相同 |
 
 后置：`git status --short` 无输出。
@@ -8730,6 +8731,89 @@ for (var request : System.getenv("MGMT_CALLS").split("\n")) {
 | # | 操作 | 预期 |
 | --- | --- | --- |
 | 1 | 跑 `io.github.bearisbug.synaxis.entity.*`（`--tests` 给这个通配），默认模式与严格 grid 各一次 | 两次都 `BUILD SUCCESSFUL`，74 个类 284 个，0 失败、2 个跳过（跳过的两个是 `PlayerSkinTest` 里标着 `@Disabled` 的两条）。根项目与 `server-app` 的全量由集成轮的全量回归覆盖 |
+
+后置：`git status --short` 无输出。
+
+### 生产就绪 · M3 侧安全审查修复：items（冻结顺序与跨格合并）
+
+对应 `REQ-PROD-005`、`REQ-PROD-006`、`REQ-PROD-022` 与 `REQ-PROD-019`、`REQ-PROD-020`（`docs/DESIGN-PROD.md` v0.9.48：`API-PROD-005` 冻结一条、`API-PROD-018` 先后规则 ①、§16「跨格合并与邻居的吞并」一行、§19「冻结玩家的拾取与丢弃在每个作用域都已先被取消」「跨格合并不吞物品」两个场景、§28.2 新增的已决行与风险行）。起因是「Synaxis 光照」会话 M3 侧安全审查面 3 的两条，用户 2026-10-06 批准由本会话修。S3-V01（low，潜伏）：冻结原先只在宿主节点下优先级 3 取消拾取与丢弃，根节点先派发映射节点、后派发子节点，实例作用域任一档与全局 `LOWEST`～`HIGHEST` 的插件监听器先于它执行、看到放行，插件在那里发放就能复制。S3-01（info，潜伏）：`ItemEntity#update` 的合并先读邻居的物品数、后占两把 claim，其间邻居在自己的 tick 线程上并掉第三堆、放开 claim，合并按旧数写入，第三堆的物品丢了。改动：`server-app` 的 `PlayerStore#attach` 先在根节点自身挂一份冻结取消，优先级 3 的冻结节点保留；引擎 `ItemEntity#update` 占到两把 claim 之后再读一次邻居的物品，与先读的不是同一个 `ItemStack` 就放开两把、等下一次检查；`plugin-api` 的 `PluginEvents`、`PlayerDataStore` 只改 Javadoc。
+
+测试：三个新类由光照会话的探针改写成断言正确行为的回归测试，都不连数据库。`server-app` 的 `io.github.bearisbug.synaxis.app.FreezeBeforePluginListenersIntegrationTest`（1 条，`@EnvTest`，来自 `7062cfecd2` 的 `FreezeBeforePluginListenersProbeTest`）用真 `PluginHost` 与内存存储：一个插件在全局作用域与 `forInstance` 的六档、玩家自己的事件节点（`Player#eventNode()`，插件经引擎拿得到）与根节点上，各挂拾取、丢弃两个 `ignoreCancelled=false` 的监听器，记下事件到达时是否已取消；冻结来自 `saveAll`。`io.github.bearisbug.synaxis.app.store.GateFreezeEarlyGrantTest`（2 条，来自同一提交的 `GateFreezeEarlyGrantProbeTest`）自建 4 线程 `grid` 的进程，照 `PluginEventsImpl` 的节点结构搭一个实例作用域 `MONITOR` 或全局 `NORMAL` 的发放监听器（发放进 `StoreFixture.PURSE`），玩家一个位置包走进关卡门框、踩上 5 颗钻石：关卡门在包处理里冻结它，同一次 `update` 里拾取。根项目的 `io.github.bearisbug.synaxis.entity.GridItemRaceTest`（2 条，来自 `7219ce342d` 的 `GridItemRaceProbeTest`）自建 4 线程 `grid`、2×2 区块一格的进程，x = 32 是两格的边界。探针原是 `@RepeatedTest(20)`；三个类的交错由闩锁或同一次 `update` 定死，改为每条跑一次。「跑 `<类>`」即 `./gradlew :test --rerun --tests '<类全名>' --max-workers=4 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts`（`server-app` 的类用 `:server-app:test`），「严格 grid」是再加 `-Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true -Dsynaxis.thread-provider=grid`，结果看 `build/test-results/test/` 或 `server-app/build/test-results/test/` 下的 `TEST-<类全名>.xml`。`<PS>` 是 `server-app/src/main/java/io/github/bearisbug/synaxis/app/store/PlayerStore.java`，`<IE>` 是 `src/main/java/io/github/bearisbug/synaxis/entity/ItemEntity.java`。反证一律是临时改一处、跑、看红、`git checkout HEAD -- <文件>`、重跑复绿；行号按本分支的代码提交 `68689972bc`（冻结）与 `34d3fd8855`（合并）。本节不需要数据库前置。
+
+修复前的红（只回退实现、保留测试：`git checkout 14437d0b78 -- <PS>` 或 `-- <IE>`，跑完 `git checkout HEAD --` 还原；默认与严格 grid 各一次，两种模式结果相同；本组最先在 `main` 上加三个新类跑过一次，红法相同）：`FreezeBeforePluginListenersIntegrationTest.java:107`，26 个插件监听器看到被冻结玩家的拾取与丢弃是放行，只有全局 `MONITOR` 的两个看到已取消；`GateFreezeEarlyGrantTest.java:173`（经 `:127`、`:136`），`expected: <5> but was: <10>`：随转服写入 5 颗，地上还剩 5 颗；`GridItemRaceTest.java:148`，`expected: <70> but was: <50>`。S3-01 与 v0.9.43 的关系：在 v0.9.43 之前的 `fa5cad4055`（合并放行后直接调 `itemEntity.remove()`）上跑原探针 `GridItemRaceProbeTest`，测试 JVM 开着断言时合并用例 20 次都在 `env.tick()` 报 `Server threw exception`，原因是 `ItemEntity.java:106`（当时的行号）跨线程 `remove()` 抛的 `AcquirableOwnershipException`，按旧读数的那次合并已经派发并放行；用初始化脚本关掉断言（生产的样子）再跑，合并用例 20 次都是 70 剩 50，与 `main` `14437d0b78` 上同一探针开不开断言的结果相同。窗口在合并先读后占 claim，v0.9.43 只改了被并掉的一方怎么移除。同一审查的另三个探针拷进本分支（修后）跑一次，`@RepeatedTest(20)`、严格 grid：`PickupFreezeRaceProbeTest` 20 次全绿（12.6 s），`ShardGatesRaceProbeTest` 三个方法各 20 次全绿（145.5 s），`OverlayCrossCellWritersProbeTest` 20 次全绿（7.8 s），与它们提交说明里的结论相同；它们不进本仓库（`ShardGatesRaceProbeTest` 测关卡门，属 `app/shard` 的行为；`OverlayCrossCellWritersProbeTest` 属 `synx`；`PickupFreezeRaceProbeTest` 随 `m3/sec-r3` 由光照会话定）。证据 `docs/test-runs/RUN-070/items/`，`00-index.txt` 列出各文件。
+
+#### `TC-PROD-640` 冻结玩家的拾取与丢弃到达每个作用域、每一档的插件监听器时都已取消 — 对应 `REQ-PROD-006`、`REQ-PROD-022` · 级别: 边缘 · 执行者: AI
+
+前置：本节开头。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `FreezeBeforePluginListenersIntegrationTest` | `tests="1"` 0 失败。插件 `grant` 的监听器在 14 处：`root`、`entity`、`global:<档>` 六个、`instance:<档>` 六个，每处拾取、丢弃各一个，共 28 个。冻结之前对该玩家各派发一次拾取与丢弃，28 个都记下 `cancelled=false`；`saveAll(1 s, true)` 之后 `isFrozen` 为 true，再派发一次，28 个都记下 `cancelled=true`，两个事件派发完仍是取消 |
+| 2 | 严格 grid 跑同一个类 | 与第 1 步相同 |
+| 3 | 反证有齿（根节点上不取消，即改动前的冻结）：删掉 `<PS>:253` 整行（`process.eventHandler().addListener(PickupItemEvent.class, pickups).addListener(ItemDropEvent.class, drops);`），跑第 1 步的类，再还原 | `1 test completed, 1 failed`：红在 `FreezeBeforePluginListenersIntegrationTest.java:107`，`listeners that saw a frozen pickup or drop allowed ==> expected: <[]> but was: <[entity:drop cancelled=false, entity:pickup cancelled=false, global:high:drop cancelled=false, …, root:pickup cancelled=false]>`，共 26 个：`entity`、`root`、实例作用域六档与全局 `LOWEST`～`HIGHEST` 五档，各拾取与丢弃；只有全局 `MONITOR` 的两个排在优先级 3 之后、看到已取消。与修复前的红相同 |
+| 4 | 反证有齿（第一次取消挂在宿主节点自身，而不是根节点）：`<PS>:253` 的 `process.eventHandler().addListener(` 改为 `hostNode.addListener(`，跑第 1 步的类，再还原 | `1 test completed, 1 failed`：红在 `:107`，看到放行的是 `entity`、`root` 与实例作用域六档，各拾取与丢弃，共 16 个；全局作用域六档都看到已取消。根节点先跑自身的监听器、再派发映射节点、最后才派发宿主节点，挂在宿主节点自身赶不上实例与实体作用域，也赶不上插件直接加在根节点上的监听器 |
+| 5 | 反证（只留根节点那一份、不要优先级 3）：删掉 `<PS>:259` 整行（`hostNode.addChild(freeze);`），跑第 1 步的类与 `io.github.bearisbug.synaxis.app.PluginEventsIntegrationTest`，再还原 | `10 tests completed, 1 failed`：本类仍绿（没有监听器撤销取消）；红的是 `PluginEventsIntegrationTest` 的 `theStoreFreezeOverridesHighestAndMonitorSeesItsOutcome`，在 `PluginEventsIntegrationTest.java:335`，`expected: <[pickup:cancelled=true, drop:cancelled=true]> but was: <[pickup:cancelled=false, drop:cancelled=false]>`：`HIGHEST` 的撤销赢了。根节点那一份让撤销之前的监听器都看到已取消，优先级 3 那一份挡住撤销，两份缺一不可 |
+| 6 | 还原后重跑第 1、2 步 | 与第 1 步相同 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PROD-641` 一个位置包走进门框踩上掉落物：实例作用域 `MONITOR` 或全局 `NORMAL` 的发放都不再复制（4 线程 grid） — 对应 `REQ-PROD-005`、`REQ-PROD-006` · 级别: 边缘 · 执行者: AI
+
+前置：本节开头。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `GateFreezeEarlyGrantTest` | `tests="2"` 0 失败。两条各自：玩家载入、准入、进世界，分到一条 tick 线程；5 颗钻石放在门框里 x = 6.5、玩家拾取范围之外，3 个 tick 后没有拾取；等 300 ms 让拾取冷却到期，一个 `ClientPlayerPositionPacket` 走到钻石上，关卡门在包处理里经 `ShardService#transfer` 冻结玩家（台账出现 `transfer_issued`），同一次 `update` 的拾取到达全局 `MONITOR` 时已取消（`global:monitor cancelled=true`）；发放监听器一次都没发，`probe:purse` 没有改动，转服只写脏段、不写它（测试按 0 枚记），地上还是 5 颗。标准输出两行 `written with the transfer: coins=0, on the ground: 5, [global:monitor cancelled=true]` |
+| 2 | 严格 grid 跑同一个类 | 与第 1 步相同 |
+| 3 | 反证有齿：照 `TC-PROD-640` 第 3 步删掉 `<PS>:253`，跑第 1 步的类，再还原 | `2 tests completed, 2 failed`：都红在 `GateFreezeEarlyGrantTest.java:173`（分别经 `:127` 与 `:136`），`diamonds after the walk in (written with the transfer 5, on the ground 5): [instance:monitor granted 5 frozen=true, global:monitor cancelled=true] ==> expected: <5> but was: <10>`，另一条是 `global:normal granted 5 frozen=true`。与修复前的红相同 |
+| 4 | 还原后重跑第 1 步 | 与第 1 步相同 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PROD-642` 两处取消下 3B 一节的冻结用例不变 — 对应 `REQ-PROD-006`、`REQ-PROD-022` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `PluginEventsIntegrationTest`，默认与严格 grid 各一次 | 两次都是 9 个 0 失败，`TC-PROD-189` 第 1 步那条照旧：`HIGHEST` 撤销取消，`MONITOR` 读到已取消 |
+| 2 | 照 `TC-PROD-189` 第 2、3 步各做一次反证（`<PS>:256` 的 `setPriority(3)` 改为 `setPriority(5)`、`setPriority(1)`），再还原 | 两次都是 `9 tests completed, 1 failed`，红在 `PluginEventsIntegrationTest.java:335`，`expected: <[pickup:cancelled=true, drop:cancelled=true]> but was: <[pickup:cancelled=false, drop:cancelled=false]>`，与 `TC-PROD-189` 写的相同：根节点先取消、`HIGHEST` 撤销，冻结节点排到 `MONITOR` 之后（5）或 `HIGHEST` 之前（1）都挡不住这次撤销 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PROD-643` 跨格合并：邻居在合并方读物品数与占 claim 之间并掉第三堆，这次合并作罢，70 颗一颗不少 — 对应 `REQ-PROD-019`、`REQ-PROD-020` · 级别: 边缘 · 执行者: AI
+
+前置：本节开头。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `GridItemRaceTest`，看 `aMergeAcrossACellBorderKeepsEveryItem` | `tests="2"` 0 失败。合并方 A（40 颗钻石）在 x = 31.7，邻居 B（10 颗）与第三堆 C（20 颗）在 x = 32.3、32.9，A 与 B、C 分属两条 tick 线程，A 与 C 相距 1.2 格、不在合并范围内；合并事件只放行 B 并 C 与 A 并 B，别的取消。B 覆写 `getItemStack`：A 的线程第一次读它时停住，直到 B 在自己的线程上并掉 C、放开 claim。测试先断言这个交错确实发生，再数地上的钻石：70 颗（A 40、B 30），A 占到两把 claim 后再读 B，读到的不是先前那个 `ItemStack`，这次合并作罢；之后 40 + 30 超过一组，不再合并；被移除的 C 在它自己的线程上移除 |
+| 2 | 严格 grid 跑同一个类 | 与第 1 步相同 |
+| 3 | 反证有齿（占到 claim 之后不再读，即改动前的合并）：删掉 `<IE>:102-109`（注释三行与 `if (itemEntity.getItemStack() != itemStackEntity) { … }` 五行），默认与严格 grid 各跑一次第 1 步的类，再还原 | 两次都是 `2 tests completed, 1 failed`：红在 `GridItemRaceTest.java:148`，`diamonds on the ground after the merges (merger holds 50) ==> expected: <70> but was: <50>`；`:143` 判交错的断言通过，窗口确实打开了。与修复前的红相同 |
+| 4 | 还原后重跑第 1、2 步 | 与第 1 步相同 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PROD-644` 两条 tick 线程上的两个拾取者，同一个掉落物只被拾取一次 — 对应 `REQ-PROD-019`、`REQ-PROD-020` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 同 `TC-PROD-643` 第 1、2 步的两次运行，看 `twoPickersOnTwoTickThreadsPickAnItemUpOnce` | 两次都通过：能拾取的僵尸在 x = 31.7 与 32.9，1 颗钻石在 x = 32.3；拾取事件里赢得 claim 的一方停住，直到另一方也试过 claim（至多 2 s）；claim 至少试了 2 次，`PickupItemEvent` 恰 1 次，掉落物已移除，移除都在掉落物自己的线程上 |
+| 2 | 反证有齿（claim 谁都拿得到）：`<IE>:183` 的 `return claimed.compareAndSet(false, true);` 改为 `claimed.set(true); return true;`，跑第 1 步的类，再还原 | `2 tests completed, 1 failed`：红在 `GridItemRaceTest.java:170`，`pickups of one item: [east on Syn-Tick-3, west on Syn-Tick-0] ==> expected: <1> but was: <2>`：两条 tick 线程上的拾取者都拿到 claim，各派发一次拾取 |
+| 3 | 还原后重跑第 1 步 | 与第 1 步相同 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PROD-645` 回归：跨格拾取一节的反证在新行号上照旧红；`entity` 包在默认与严格 grid 下 — 对应 `REQ-PROD-019`、`REQ-PROD-020` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 照 `TC-PROD-621` 第 2 步（`<IE>:114` 的 `itemEntity.removeConsumed();` 改为 `itemEntity.remove();`，本组之前是 `:106`）跑 `io.github.bearisbug.synaxis.entity.ItemEntityCrossCellConcurrencyTest`，再还原 | `2 tests completed, 1 failed`：红在 `ItemEntityCrossCellConcurrencyTest.java:87`（经 `:67`），`Server threw exception`，原因 `AcquirableOwnershipException`，抛在 `AcquirableImpl.java:131` ← `Entity.java:1915` ← `ItemEntity.java:114`；拾取那条仍绿。与改写后的 `TC-PROD-621` 第 2 步相同 |
+| 2 | 还原后跑 `ItemEntityCrossCellConcurrencyTest`、`ItemEntityClaimIntegrationTest` 与 `GridItemRaceTest`；再跑 `io.github.bearisbug.synaxis.entity.*`（`--tests` 给这个通配），默认模式与严格 grid 各一次 | 三个类 9 个 0 失败；`entity.*` 两次都 `BUILD SUCCESSFUL`，75 个类 286 个，0 失败、2 个跳过（v0.9.43 的 74 个类 284 个加本节的 `GridItemRaceTest` 2 个；跳过的两个是 `PlayerSkinTest` 标着 `@Disabled` 的两条） |
 
 后置：`git status --short` 无输出。
 
@@ -8793,6 +8877,7 @@ for (var request : System.getenv("MGMT_CALLS").split("\n")) {
   - 生产就绪域（`docs/DESIGN-PROD.md`）：安全修复 ops 组，运维端口加固与起服退出（`REQ-PROD-032`、`REQ-PROD-018`、`REQ-PROD-036`，v0.9.41）→ TC-PROD-600～TC-PROD-607；动了 `ManagementServer.Endpoint#onWebsocketHandshakeReceivedAsServer` 就跑 TC-PROD-600 与 6B 一节的 TC-PROD-381；动了 `GuardedFactory`、`GuardedSocket#setChannel` 或 `MAX_UNFINISHED_HANDSHAKES` 就跑 TC-PROD-601 与 TC-PROD-383、TC-PROD-575 第 3 步，其中动了 `GuardedSocket#setChannel` 的再加跑 TC-PROD-575 第 1、2 步（v0.9.38 一行的规则）；动了 `HostMetrics#serve` 或 `startOnADaemon` 就跑 TC-PROD-602、TC-PROD-605 与 TC-PROD-501；动了 `Main` 步骤 (4) 的两处 WARN 或 `warnOfTheWildcard` 就跑 TC-PROD-603；动了 `Main` 步骤 (6) 的接住与拒启或 `Main#main` 的拒启路径，就跑 TC-PROD-604 与 TC-PROD-489、TC-PROD-397（真进程）；改了部署单元、`.env.example` 的管理令牌一段或开管理接口的主机，跑 TC-PROD-606（人工）。升 JDK 时重跑 TC-PROD-602、TC-PROD-605：`jdk.httpserver.maxConnections` 与 `HTTP-Dispatcher` 随起它的线程定 daemon，都是 JDK 实现里的行为，不在公开 API 里。
   - 生产就绪域（`docs/DESIGN-PROD.md`）：安全修复 secrets 组，机密进日志与落盘权限（`REQ-PROD-005`、`007`、`015`、`017`、`033`、`034`、`036`，v0.9.42）→ TC-PROD-610～TC-PROD-619。动了 `StoreSettings#toString` → TC-PROD-610；动了 `RedisLink#connect` 的解析 → TC-PROD-611；动了 `SessionServer#isMojang` → TC-PROD-612；动了 `ConfigFile#apply` 或它的权限检查 → TC-PROD-613；动了 `Profiler` 的 `LEFT_OUT`、`handedOver` 或建文件 → TC-PROD-614、TC-PROD-615，再加 TC-PROD-392 第 6、7 步与 TC-PROD-471；动了 `ConfigFile#isSecret` → TC-PROD-615 与 TC-PROD-002；动了 `EventLedger` 建目录、建文件或压缩，或 `CrashReports#write` → TC-PROD-616；改 `.env.example` 开头 → TC-PROD-616 第 6 步；升 Java-WebSocket 或动了 `ManagementServer.BoundedDraft#processFrame` → TC-PROD-617（另见 TC-PROD-382、TC-PROD-472）；动了 `ConfigFileTest.write`，或新增建 `synaxis.properties` 的测试 → TC-PROD-619。这些都改完后跑 TC-PROD-618。
   - 生产就绪域（`docs/DESIGN-PROD.md`）：安全修复 · 跨格拾取（`REQ-PROD-019`、`REQ-PROD-020`，v0.9.43）→ TC-PROD-620～TC-PROD-623；动了 `LivingEntity#update` 的拾取、`ItemEntity#update` 的合并、`ItemEntity#removeConsumed` 或 `claim` / `releaseClaim` 就跑 TC-PROD-620～TC-PROD-622；动了 `ThreadProvider#grid` 的分格或 `AcquirableImpl#isOwned` / `assertOwnership` 再加 TC-PROD-623。
+  - 生产就绪域（`docs/DESIGN-PROD.md`）：M3 侧安全审查修复 items 组，冻结顺序与跨格合并（`REQ-PROD-005`、`REQ-PROD-006`、`REQ-PROD-022`、`REQ-PROD-019`、`REQ-PROD-020`，v0.9.48）→ TC-PROD-640～TC-PROD-645；动了 `PlayerStore#attach` 的冻结、`PluginHost` 构造器里 `store.attach` 与启用插件的先后、`PluginEventsImpl` 建档位节点的一处，或引擎 `EventNodeImpl.Handle#createConsumer` 的派发次序（自身的监听器、映射节点、子节点），就跑 TC-PROD-640～TC-PROD-642 与 3B 一节的 TC-PROD-189；动了 `ItemEntity#update` 的合并、`claim` / `releaseClaim` 或 `LivingEntity#update` 的拾取，就跑 TC-PROD-643～TC-PROD-645 与 TC-PROD-620～TC-PROD-622。
   - 影响面不确定时升级为全量轮。
 - **复测轮**（上轮失败用例 + 全部冒烟级）：修复失败项之后。
 - **人工收口轮**（仅上轮「待人工」用例）：AI 轮之后由人工补测 TC-016、TC-030、TC-GAME-020、TC-GAME-038、TC-GAME-046、TC-GAME-047，不要求冒烟级。

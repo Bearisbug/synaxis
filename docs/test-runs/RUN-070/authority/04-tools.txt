@@ -1,0 +1,52 @@
+RUN-070 authority · 04 the tools that send position packets, on real processes of the fixed engine (lock run 3, part B)
+
+server-app/build/install (./gradlew :server-app:installDist), each server in its own working directory under the run dir:
+  JAVA_OPTS="-Xms1G -Xmx1G" SERVER_APP_OPTS="-Dsynaxis.app.port=<port> -Dsynaxis.app.auth=offline -Dsynaxis.app.metrics.bind=127.0.0.1:0
+  -Dsynaxis.connection-gate.trusted-networks=127.0.0.0/8 <extra>" bin/server-app < /dev/null, stopped by SIGTERM to its pid.
+  core: port 25681, extra -Dsynaxis.app.core-mode=on -Dsynaxis.app.shard-id=authority-core (the flat core world, spawn 0.5 40 0.5)
+  rts:  port 25682, extra -Dsynaxis.app.shard-id=authority-rts (gameplay mode, the rts plugin, map rts-512, spawn near 256 256)
+old = the tool as on 14437d0b78 (git show 14437d0b78:tools/loadtest/<file>), new = this branch.
+
+== PacketFlood --port 25681 --connections 50 --hz 100 --seconds 30 (the command of TC-GAME-060 step 5)
+old {'connections_logged_in': 50, 'window_seconds': 30.0, 'packets_sent_in_window': 136958, 'achieved_packets_per_second': 4564.7, 'connections_at_end': 44, 'connections_lost': 6, 'disconnect_reasons': {'synaxis:protocol-error': 6}, 'teleport_confirms': 829}
+new {'connections_logged_in': 50, 'window_seconds': 30.0, 'packets_sent_in_window': 150500, 'achieved_packets_per_second': 5015.0, 'connections_at_end': 50, 'connections_lost': 0, 'disconnect_reasons': {}, 'teleport_confirms': 100}
+core server log (both runs), the kicks:
+   1 Inbound packet limit exceeded: identifier=flood0007 limit=packets 751 > 750 in 7000 ms
+   1 Inbound packet limit exceeded: identifier=flood0015 limit=packets 751 > 750 in 7000 ms
+   1 Inbound packet limit exceeded: identifier=flood0023 limit=packets 751 > 750 in 7000 ms
+   1 Inbound packet limit exceeded: identifier=flood0031 limit=packets 751 > 750 in 7000 ms
+   1 Inbound packet limit exceeded: identifier=flood0039 limit=packets 751 > 750 in 7000 ms
+   1 Inbound packet limit exceeded: identifier=flood0047 limit=packets 751 > 750 in 7000 ms
+   1 Kicking identifier=flood0007 reason=synaxis:protocol-error
+   1 Kicking identifier=flood0015 reason=synaxis:protocol-error
+   1 Kicking identifier=flood0023 reason=synaxis:protocol-error
+   1 Kicking identifier=flood0031 reason=synaxis:protocol-error
+   1 Kicking identifier=flood0039 reason=synaxis:protocol-error
+   1 Kicking identifier=flood0047 reason=synaxis:protocol-error
+  the six are the connections with index 7 mod 8, whose circle has radius 16 + 7 x 8 = 72 blocks: the old tool's first
+  packet lands 72 blocks from the spawn, is turned back, and so is every packet after it on that circle; each turn back
+  brings one more teleport confirm (829 against 100), 751 packets in 7 s. The new tool walks there 32, 32, 8 blocks.
+2026-10-06 04:59:58 core: stopped; kicks 6, inbound limit lines 6, WARN/ERROR 0
+
+== soak.py play --port 25682 --connections 5 --duration 20 --no-jfr --gc-probe-interval 0 --settle 2 --server-log <rts>/server.log
+   --events-dir <rts>/logs (inbound.engine_by_packet of summary.json)
+old {'connections_lost': 0, 'disconnects': {}, 'position_packets': 490, 'PlayerPositionAndLookPacket': {'count': 432, 'wire_bytes': 29376}, 'ChunkDataPacket': {'count': 45, 'wire_bytes': 7475}, 'other': {'count': 75, 'wire_bytes': 915}}
+new {'connections_lost': 0, 'disconnects': {}, 'position_packets': 490, 'PlayerPositionAndLookPacket': {'count': 10, 'wire_bytes': 680}, 'ChunkDataPacket': {'count': 45, 'wire_bytes': 7475}, 'other': {'count': 50, 'wire_bytes': 700}}
+  the old tool puts the player on the first camera anchor, up to 350 blocks from the spawn on rts-512, and every report
+  after: each is turned back (432 PlayerPositionAndLook for 490 position packets). The new one walks there 32 blocks a
+  packet; 10 = the spawn and the first chunk batch's position sync of each of the 5 players. ChunkDataPacket is 45 both
+  times: soak.py does not acknowledge chunk batches, every player gets its first batch of 9 only (ADR-PROD-013).
+2026-10-06 05:00:52 rts: stopped; kicks 0, inbound limit lines 0, WARN/ERROR 0
+
+== soak.py's step function on its own (.venv Python, tools/loadtest, PYTHONDONTWRITEBYTECODE=1, import soak):
+run client index 7 radius 72.0: step lengths [32.0, 32.0, 8.013, 0.43, 0.43], on the circle after: 72.0
+run client index 6 radius 64.0: step lengths [32.0, 32.0, 0.43, 0.43, 0.43], on the circle after: 64.0
+play client 0: first anchor 248.0 blocks from the center, reached in 8 packets
+play client 1: first anchor 322.5 blocks from the center, reached in 11 packets
+play client 2: first anchor 203.7 blocks from the center, reached in 7 packets
+play client 3: first anchor 149.3 blocks from the center, reached in 5 packets
+play client 4: first anchor 250.7 blocks from the center, reached in 8 packets
+
+Not run: soak.py run (the core client) on a real process; it shares the step function above and the teleport handling
+that already set its position. The :loadtest Bot was not changed: its profiles start on the spawn and move 0.2 to 1.5
+blocks a tick (walk 4.317, ride 10, fly 30 blocks/s, gate 10).

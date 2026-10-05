@@ -1,0 +1,86 @@
+RUN-070 authority · 01 red, green and counter proofs of the two new classes
+
+Commands: ./gradlew :test --rerun --tests '<class>' --max-workers=4 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts
+          strict grid adds -Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true -Dsynaxis.thread-provider=grid
+Red = the three listeners as they are on 14437d0b78 (git checkout HEAD -- src/main/java/io/github/bearisbug/synaxis/listener/),
+the tests of this branch. Counter proofs = one judgment switched off behind Boolean.getBoolean("proof.never") && (variant.py in 06),
+restored with git checkout and the fix patch after each. Lines are the committed ones.
+
+== PlayerBlockReachIntegrationTest, PlayerBlockPlacementIntegrationTest, PlayerMovementIntegrationTest (lock run 1, 04:26:35-04:27:46)
+   (PlayerMovementAuthorityIntegrationTest of this run is superseded by the run below: its respawn step moved into a chunk
+    the test had not loaded, so it went red on the fix too at :172 in the default run and passed in strict grid; the step now
+    stays in the respawn chunk, which is the committed test. The lines of that class are left out below, so "green exit=1"
+    and the two movement proofs of this run show no lines: the exit code 1 was that class)
+red exit=1
+io.github.bearisbug.synaxis.entity.player.PlayerBlockPlacementIntegrationTest: tests=7 failures=0 errors=0 skipped=0 time=1.854
+io.github.bearisbug.synaxis.entity.player.PlayerMovementIntegrationTest: tests=12 failures=0 errors=0 skipped=0 time=2.461
+io.github.bearisbug.synaxis.listener.PlayerBlockReachIntegrationTest: tests=4 failures=4 errors=0 skipped=0 time=1.591
+  FAILURE theReachIsTheBlockInteractionRangePlusOneBlock(Env) at PlayerBlockReachIntegrationTest.java:88: org.opentest4j.AssertionFailedError: 5.51 blocks away, range 4.5 ==> expected: <minecraft:stone{properties={}, nbt=null, handler=null}> but was: <minecraft:air{properties={}, nbt=null, handler=null}>
+  FAILURE aCreativeInstantBreakOutOfReachBreaksNothing(Env) at PlayerBlockReachIntegrationTest.java:104: org.opentest4j.AssertionFailedError: 11.5 blocks from the eyes ==> expected: <minecraft:stone{properties={}, nbt=null, handler=null}> but was: <minecraft:air{properties={}, nbt=null, handler=null}>
+  FAILURE aBlockUseOutOfReachIsRefused(Env) at PlayerBlockReachIntegrationTest.java:127: org.opentest4j.AssertionFailedError: placed 11.5 blocks from the eyes ==> expected: <minecraft:air{properties={}, nbt=null, handler=null}> but was: <minecraft:stone{properties={}, nbt=null, handler=null}>
+  FAILURE aFinishedDiggingOutOfReachBreaksNothing(Env) at PlayerBlockReachIntegrationTest.java:70: org.opentest4j.AssertionFailedError: dug 293.45 blocks from the eyes ==> expected: <minecraft:stone{properties={}, nbt=null, handler=null}> but was: <minecraft:air{properties={}, nbt=null, handler=null}>
+
+green exit=1
+io.github.bearisbug.synaxis.entity.player.PlayerBlockPlacementIntegrationTest: tests=7 failures=0 errors=0 skipped=0 time=1.919
+io.github.bearisbug.synaxis.entity.player.PlayerMovementIntegrationTest: tests=12 failures=0 errors=0 skipped=0 time=2.511
+io.github.bearisbug.synaxis.listener.PlayerBlockReachIntegrationTest: tests=4 failures=0 errors=0 skipped=0 time=1.515
+
+variant border: PlayerPositionListener.java
+proof-border exit=1
+
+variant cap: PlayerPositionListener.java
+proof-cap exit=1
+
+variant dig: PlayerActionListener.java
+proof-dig exit=1
+io.github.bearisbug.synaxis.listener.PlayerBlockReachIntegrationTest: tests=4 failures=3 errors=0 skipped=0 time=1.121
+  FAILURE theReachIsTheBlockInteractionRangePlusOneBlock(Env) at PlayerBlockReachIntegrationTest.java:88: org.opentest4j.AssertionFailedError: 5.51 blocks away, range 4.5 ==> expected: <minecraft:stone{properties={}, nbt=null, handler=null}> but was: <minecraft:air{properties={}, nbt=null, handler=null}>
+  FAILURE aCreativeInstantBreakOutOfReachBreaksNothing(Env) at PlayerBlockReachIntegrationTest.java:104: org.opentest4j.AssertionFailedError: 11.5 blocks from the eyes ==> expected: <minecraft:stone{properties={}, nbt=null, handler=null}> but was: <minecraft:air{properties={}, nbt=null, handler=null}>
+  FAILURE aFinishedDiggingOutOfReachBreaksNothing(Env) at PlayerBlockReachIntegrationTest.java:70: org.opentest4j.AssertionFailedError: dug 293.45 blocks from the eyes ==> expected: <minecraft:stone{properties={}, nbt=null, handler=null}> but was: <minecraft:air{properties={}, nbt=null, handler=null}>
+
+variant place: BlockPlacementListener.java
+proof-place exit=1
+io.github.bearisbug.synaxis.listener.PlayerBlockReachIntegrationTest: tests=4 failures=1 errors=0 skipped=0 time=1.197
+  FAILURE aBlockUseOutOfReachIsRefused(Env) at PlayerBlockReachIntegrationTest.java:127: org.opentest4j.AssertionFailedError: placed 11.5 blocks from the eyes ==> expected: <minecraft:air{properties={}, nbt=null, handler=null}> but was: <minecraft:stone{properties={}, nbt=null, handler=null}>
+
+ .../synaxis/listener/BlockPlacementListener.java   |  8 +++----
+ .../synaxis/listener/PlayerActionListener.java     | 28 ++++++++++++++++++----
+ .../synaxis/listener/PlayerPositionListener.java   | 10 ++++++--
+ 3 files changed, 36 insertions(+), 10 deletions(-)
+green-strict exit=0
+io.github.bearisbug.synaxis.entity.player.PlayerBlockPlacementIntegrationTest: tests=7 failures=0 errors=0 skipped=0 time=1.842
+io.github.bearisbug.synaxis.entity.player.PlayerMovementIntegrationTest: tests=12 failures=0 errors=0 skipped=0 time=2.43
+io.github.bearisbug.synaxis.listener.PlayerBlockReachIntegrationTest: tests=4 failures=0 errors=0 skipped=0 time=1.464
+
+done 2026-10-06 04:27:46
+
+== PlayerMovementAuthorityIntegrationTest (lock run 2b, 04:35:15-04:35:53)
+move-red exit=1 04:35:25
+io.github.bearisbug.synaxis.listener.PlayerMovementAuthorityIntegrationTest: tests=5 failures=4 errors=0 skipped=0 time=1.309
+  FAILURE aMoveOfMoreThanSixtyFourBlocksIsTurnedBack(Env) at PlayerMovementAuthorityIntegrationTest.java:111: org.opentest4j.AssertionFailedError: 65 blocks east in one packet ==> expected: <Pos[x=0.5, y=40.0, z=0.5, yaw=0.0, pitch=0.0]> but was: <Pos[x=65.5, y=40.0, z=0.5, yaw=0.0, pitch=0.0]>
+  FAILURE aPlayerOutsideTheBorderStillMovesAndWalksBackIn(Env) at PlayerMovementAuthorityIntegrationTest.java:139: org.opentest4j.AssertionFailedError: out again across the border ==> expected: <Pos[x=31.5, y=40.0, z=0.5, yaw=0.0, pitch=0.0]> but was: <Pos[x=32.5, y=40.0, z=0.5, yaw=0.0, pitch=0.0]>
+  FAILURE repeatedJumpsStopAtTheBorder(Env) at PlayerMovementAuthorityIntegrationTest.java:96: org.opentest4j.AssertionFailedError: the last jump inside the border, at x 120.5 ==> expected: <Pos[x=120.5, y=40.0, z=0.5, yaw=0.0, pitch=0.0]> but was: <Pos[x=480.5, y=40.0, z=0.5, yaw=0.0, pitch=0.0]>
+  FAILURE aMoveOutAcrossTheWorldBorderIsTurnedBackAndLoadsNoChunk(Env) at PlayerMovementAuthorityIntegrationTest.java:71: org.opentest4j.AssertionFailedError: a move to x 40.5 across the border at x 32 ==> expected: <Pos[x=0.5, y=40.0, z=0.5, yaw=0.0, pitch=0.0]> but was: <Pos[x=40.5, y=40.0, z=0.5, yaw=0.0, pitch=0.0]>
+
+move-green exit=0 04:35:32
+io.github.bearisbug.synaxis.listener.PlayerMovementAuthorityIntegrationTest: tests=5 failures=0 errors=0 skipped=0 time=1.091
+
+move-green-strict exit=0 04:35:39
+io.github.bearisbug.synaxis.listener.PlayerMovementAuthorityIntegrationTest: tests=5 failures=0 errors=0 skipped=0 time=1.121
+
+variant border: PlayerPositionListener.java
+move-proof-border exit=1 04:35:48
+io.github.bearisbug.synaxis.listener.PlayerMovementAuthorityIntegrationTest: tests=5 failures=3 errors=0 skipped=0 time=1.163
+  FAILURE aPlayerOutsideTheBorderStillMovesAndWalksBackIn(Env) at PlayerMovementAuthorityIntegrationTest.java:139: org.opentest4j.AssertionFailedError: out again across the border ==> expected: <Pos[x=31.5, y=40.0, z=0.5, yaw=0.0, pitch=0.0]> but was: <Pos[x=32.5, y=40.0, z=0.5, yaw=0.0, pitch=0.0]>
+  FAILURE repeatedJumpsStopAtTheBorder(Env) at PlayerMovementAuthorityIntegrationTest.java:96: org.opentest4j.AssertionFailedError: the last jump inside the border, at x 120.5 ==> expected: <Pos[x=120.5, y=40.0, z=0.5, yaw=0.0, pitch=0.0]> but was: <Pos[x=480.5, y=40.0, z=0.5, yaw=0.0, pitch=0.0]>
+  FAILURE aMoveOutAcrossTheWorldBorderIsTurnedBackAndLoadsNoChunk(Env) at PlayerMovementAuthorityIntegrationTest.java:71: org.opentest4j.AssertionFailedError: a move to x 40.5 across the border at x 32 ==> expected: <Pos[x=0.5, y=40.0, z=0.5, yaw=0.0, pitch=0.0]> but was: <Pos[x=40.5, y=40.0, z=0.5, yaw=0.0, pitch=0.0]>
+
+variant cap: PlayerPositionListener.java
+move-proof-cap exit=1 04:35:53
+io.github.bearisbug.synaxis.listener.PlayerMovementAuthorityIntegrationTest: tests=5 failures=1 errors=0 skipped=0 time=1.136
+  FAILURE aMoveOfMoreThanSixtyFourBlocksIsTurnedBack(Env) at PlayerMovementAuthorityIntegrationTest.java:111: org.opentest4j.AssertionFailedError: 65 blocks east in one packet ==> expected: <Pos[x=0.5, y=40.0, z=0.5, yaw=0.0, pitch=0.0]> but was: <Pos[x=65.5, y=40.0, z=0.5, yaw=0.0, pitch=0.0]>
+
+ .../synaxis/listener/BlockPlacementListener.java   |  8 +++----
+ .../synaxis/listener/PlayerActionListener.java     | 28 ++++++++++++++++++----
+ .../synaxis/listener/PlayerPositionListener.java   | 10 ++++++--
+ 3 files changed, 36 insertions(+), 10 deletions(-)

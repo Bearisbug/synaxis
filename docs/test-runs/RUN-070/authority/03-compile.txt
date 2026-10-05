@@ -1,0 +1,25 @@
+RUN-070 authority · 03 what was compiled and not run: the client gametest source set, PacketFlood, soak.py
+
+Lock run 2, 04:34:04-04:34:48 (its Gradle test steps had a script error, $project:test read as a zsh :t modifier, and were
+rerun as lock run 2b, see 01 and 02; the steps below do not depend on them).
+  client-fabric/build/dh/DistantHorizons-3.3.2-26.2-fabric-neoforge.jar copied from the m3fix-chores worktree's build dir,
+  so that fetchDistantHorizons finds its pinned SHA-1 and fetches nothing.
+  env -u CI ./gradlew :protocol:publishToMavenLocal --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts
+  (cd client-fabric && ./gradlew compileGametestJava --no-daemon --init-script gametest-env/mirror.init.gradle.kts)
+  $JAVA_HOME/bin/javac -d <tmp> tools/loadtest/PacketFlood.java
+  .venv/bin/python -m py_compile tools/loadtest/soak.py (its __pycache__ removed after)
+
+publishToMavenLocal exit=0 04:34:39
+client-fabric compileGametestJava exit=0 04:34:47
+> Task :classes
+> Task :compileGametestJava
+
+BUILD SUCCESSFUL in 7s
+4 actionable tasks: 4 executed
+javac PacketFlood exit=0
+py_compile soak.py exit=0
+
+Not run: the real client. The gametests need a display; RegressionClientGameTest (R1-R8) and
+TransferRoundTripClientGameTest (P10) send no setPos, dig nothing and place nothing. S5 (TerrainSpike) set the player
+216 blocks away in one packet, which the fix turns back (read from the code, not run); it now walks there 32 blocks
+a tick. S5 runs with the daily schedule of client-gametest.yml (SYNAXIS_SPIKES=all).

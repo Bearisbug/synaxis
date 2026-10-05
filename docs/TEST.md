@@ -8,12 +8,13 @@
 | Owner | Bearisbug |
 | 关联设计文档 | `docs/DESIGN.md`（引擎域 M1 / M1.5）、`docs/DESIGN-M2.md`（游戏域 M2 分册）、`docs/DESIGN-M3.md`（大世界域 M3 分册）与 `docs/DESIGN-PROD.md`（生产就绪分册）；各文档的 REQ 各自编号，M2 侧写作 `REQ-M2-*`、M3 侧写作 `REQ-M3-*`，生产就绪侧写作 `REQ-PROD-*`，对应用例写作 `TC-PROD-*` |
 | 被测系统 | 仓库 `Bearisbug/synaxis`，分支 `main` |
-| 最后更新 | 2026-10-02 |
+| 最后更新 | 2026-10-06 |
 
 变更记录（登用例增改，不登执行轮次）：
 
 | 日期 | 改动 | 作者 |
 | --- | --- | --- |
+| 2026-10-06 | 分支 `prod/m3fix-authority`，跟进 `docs/DESIGN-PROD.md` v0.9.47（光照会话 M3 侧安全审查里归生产就绪的 S1-V01、S1-02、S1-01），不登执行轮次（集成轮登记 RUN-070，本组证据 `docs/test-runs/RUN-070/authority/`）。**新增 §4「生产就绪 · M3 侧安全审查修复：authority」一节 `TC-PROD-630`～`TC-PROD-636`**：由内向外越过世界边界的位置包（630）、单包 64 格（631）、挖掘的距离（632）、使用方块的距离（633）、误伤核对（634：服务端自己的出生、传送、重生与换实例，真客户端 gametest 源集编译，光照会话的复现测试 `MapShardPlayerAuthorityTest` 修后三条变红）、压测工具的走法（635：改前的 `PacketFlood` 与 `soak.py play` 在修后的服务端上的表现，改后的对照）、全量回归（636）；每条反证都实跑过。根项目的 `PlayerBlockPlacementIntegrationTest#placeIntoUnloadedChunkIsIgnored` 改了前置（记在 `TC-PROD-633` 第 3 步）。**条数**：根项目 `:test` 多两个类 9 条；`TC-PROD-486`、`505`、`510`、`529`、`549` 写死的全量条数留给集成轮统一改。§5 加一行 | Bearisbug |
 | 2026-10-02 | 合入 `main` `494605595a`（M3-G 合入，`docs/DESIGN-M3.md` v0.32，RUN-064）后按该分册 §28.2「M3 v0.30」「M3 v0.31」「M3 v0.32」三行交给本会话的部分同步，跟进 `docs/DESIGN-PROD.md` v0.9.45，登记 RUN-067（证据 `docs/test-runs/RUN-067/`）。**条数**：`:server-app:test` 553 → 577、类 110 → 113（M3-G 加 `ShardWorldFarViewTest` 9、`FarViewShardFixtureTest` 9、`FarViewLaunchTest` 4，`ShardSettingsTest` 6 → 8，按 RUN-064 `main-merge/01-gates.txt`），改 `TC-PROD-486` 第 3 步、`505` 第 3 步、`510` 第 2 步、`529` 第 4 步、`549` 第 2 步、`575` 第 3 步、`585` 第 1、2 步、`596` 第 2 步、`607` 第 2 步、`618` 第 1、2 步，根构建 `:test` 3,162 不变；`575` 第 3 步不带数据库变量的两次（默认、严格 grid）在 RUN-067 实跑，各 577 个、132 个跳过。**两道门禁**：配置键 115 → 116（`TC-PROD-441` 标题与第 1～3 步、`TC-PROD-547` 第 1 步、`TC-PROD-569` 第 4 步），`441` 的三个反证照字面实跑，读数 116 / 115、116 / 117、116 / 116；翻译键 14 → 15 个标识、60 个键（`TC-PROD-430` 标题与第 1 步、6F 一节开头、`TC-PROD-432` 第 1 步的 `grep` 加 `farview`、`TC-PROD-547` 第 1 步）。`NOT_TEXT` 多一行让门禁的断言由 `TranslationKeyGateTest.java:90` 移到 `:91`，交接行没有列，按 RUN-067 实跑改：`TC-PROD-068`、`105`、`162`、`210`（两步）、`233`、`250`、`295`、`396`、`430`、`431`、`433`、`547` 的反证红行改为 `:91`，`068` 夹具那条 `:101` → `:102`，`432` 第 2 步 `:89` → `:90`、`:100` → `:101`、读数 `61 keys …, 14 identifiers`，第 3 步 `:91` → `:92`、`60 keys …, 16 identifiers`，`430` 第 3 步与 `433` 第 2 步的键数 57 → 61。同轮实跑另有两处与用例不同、与 M3-G 无关，一并改：`162` 第 2 步的来源多了 `TicketIssuer`（v0.9.40 起断开签票后不走的连接用这个键），`547` 第 2 步跑两个门禁类，是 `3 tests completed, 1 failed`。**`Main.java` 行号**（多一行导入、`serveMap` 的监听多 7 行，原 `:513` 以后 +8，逐个在合入后的代码上核过）：`TC-PROD-498` 第 3 步九行里的 `:322`～`:335` 各加 1，`TC-PROD-521` 第 3 步 `264` → `265`、第 4 步 `:750` → `:758`，`TC-PROD-528` 第 2 步 `:704` → `:712`，`TC-PROD-533` 第 2 步 `sed -n 748,750p` → `756,758p`（RUN-067 照字面跑过）、第 3 步 `:748` → `:756`，6A 其余部分一节开头 `:268`～`:269`、`:284` → `:269`～`:270`、`:285`（交接行把这两处记在 `TC-PROD-533` 名下），`TC-PROD-548` 第 7 步 `:268` → `:269`，`TC-PROD-573` 第 3 步 518 → 526（交接行没有列），ops 一节 `TC-PROD-603` 第 2 步 `<MN>:610` → `:618`、`TC-PROD-604` 第 2 步 `<MN>:343` → `:344`（节首写明 `<MN>` 的行号按合入后的代码），§7 端口竞态一条的就绪行 `:359` → `:360`。**`TC-PROD-550` 第 3 步**：烘焙器发布行多了远景包一段 | Bearisbug |
 | 2026-10-02 | 分支 `m3g/integrate`（M3-G 合并验收，合入 `main` `4bb76eec7f` 之后是 `24d3b318a9`），跟进 `docs/DESIGN-M3.md` v0.32，登记 RUN-064（证据 `docs/test-runs/RUN-064/`）。**新增「M3 · 远景（M3-G）」一节 `TC-WORLD-102`～`TC-WORLD-124`**（排在 M3-D 一节之后，编号接 `main` 上最大的 `TC-WORLD-101`）：服务端与烘焙器 102～109（编解码与远景向量、烘焙产出、采样与粗层、隐藏区域、校验、导出、分片宣告、命令行与夹具），客户端 JUnit 110～116，无头容器 117～122（121 只登记读数），真机 123、124（执行者人工）；JUnit 用例的反证都按本节字面在 `24d3b318a9` 上实跑过，容器用例 117、118 带反证，119、120 没有（§7）。§2 `REQ-M3-024`、`REQ-M3-025` 两行由「未实现」改为这些用例，`REQ-M3-002`、`REQ-M3-003`、`REQ-M3-022` 三行加对应用例；§3 加「远景（M3-G）」一条（重活锁的 `EXIT` trap 要写在脚本顶层、容器门槛、夹具与容器的命令、端口）；§5 加 M3-G 一行；§7 加四条。**改既有用例**（M3-G 让预期变了，RUN-064 按新的字面实跑）：`TC-WORLD-023` 第 1、2 步（发布行多了 `; 1 far view pack(s), 596465 bytes, assembled in <n> ms`，事件 `farview_bytes` 0 → 596465，`farview/t.0.0.hfp` 1 线程与多线程逐字节相同）；`TC-WORLD-030` 第 2 步与 `TC-WORLD-033` 第 1 步（发布行同样多一段，夹具版本多了 `farview/t.0.0.hfp`）；`TC-WORLD-032` 第 1～3 步（`60 keys …, 15 identifiers left out`，`NOT_TEXT` 多 `synaxis:farview`，反证红行 `:89` → `:90`、输出 `61 keys …, 14 identifiers`）；`TC-WORLD-041` 第 1、2、4 步（`ShardSettingsTest` 6 → 8 条，门禁 `116 keys read, 116 in ConfigFile.KEYS, 21 meter names left out`，21 是生产就绪第 6 波之后的值，反证 `116 keys read, 114 in ConfigFile.KEYS`）；`TC-WORLD-098` 第 2 步（同一门禁输出）；`TC-WORLD-100` 与 `TC-WORLD-101` 第 2 步（`Main.java:518` → `:526`、`:304` → `:305`：合入后 `Main` 多了远景宣告的导入与监听体）。**不改**：`TC-PROD-*`。合入后它们要跟着改的条数与行号列在 `docs/DESIGN-M3.md` §28.2「交给生产就绪会话的改动（M3 v0.32）」：`TC-PROD-550` 第 3 步的发布行、`:server-app:test` 553 → 577、两道门禁 116 与 15、`Main.java` 行号 | Bearisbug |
 | 2026-10-01 | 合入 `main` `4a40af2835`（`docs/DESIGN-M3.md` v0.31，RUN-065）后按该分册 §28.2「M3 v0.31」一行同步，跟进 `docs/DESIGN-PROD.md` v0.9.44。**`TC-PROD-570` 第 2 步改写**：原写法 `git checkout 0e919cce6a -- <GT>` 取出的旧 `ShardGates` 只有三个参数的构造器，M3 v0.31 起 `Main` 与测试都传四个，照写编不过（RUN-065 判失败）；改为原地把 `case COOLDOWN, NOT_ONLINE, SAVE_FAILED -> refused(player, gate, result);` 换成空块，红行与消息不变，在 RUN-066 按字面重跑 1～6 步。**条数**：`:server-app:test` 552 → 553（M3 v0.31 的 `ShardGatesOnlineTest` 1 个），改 `TC-PROD-486` 第 3 步、`505` 第 3 步、`510` 第 2 步、`529` 第 4 步、`549` 第 2 步、`575` 第 3 步、`585` 第 1、2 步、`596` 第 2 步、`607` 第 2 步、`618` 第 1、2 步，类数随之 109 → 110；根构建 `:test` 3,162 不变 | Bearisbug |
@@ -8733,6 +8734,104 @@ for (var request : System.getenv("MGMT_CALLS").split("\n")) {
 
 后置：`git status --short` 无输出。
 
+### 生产就绪 · M3 侧安全审查修复：authority
+
+对应 `REQ-PROD-013`（`docs/DESIGN-PROD.md` v0.9.47：`API-PROD-030` 全条，`ADR-PROD-016`，§10 权限矩阵与行级可见性各一行，§15「位置与方块操作」一行，§19 三个场景，§28.2 三行）。起因是光照会话 M3 侧安全审查（2026-10）里归生产就绪的引擎监听器三条，复现测试在 `m3/sec-r1` `de82c5720a` 的 `MapShardPlayerAuthorityTest`：S1-V01 位置包不判世界边界，挂地图的分片上每 tick 往 x 方向跳 13 个区块共 200 次，玩家到 x = 41,720.5（边界在 x = 256），持有的区块 729 → 45,073；S1-02 一个位置包把玩家带过 13 个区块（208 格）进门框；S1-01 生存模式空手、不发 `STARTED_DIGGING`，一包 `FINISHED_DIGGING` 挖掉眼睛 293.45 格外的方块。改动：`PlayerPositionListener#processMovement` 在「目标区块未载入」之外，单包位移超过 64 格、由内向外越过世界边界的位置包同样 `teleport(当前位置)` 拉回；`PlayerActionListener#shouldPreventBreaking` 先判包内新方法 `outOfReach`（眼睛到方块立方体的距离平方 ≥ (`BLOCK_INTERACTION_RANGE` + 1)²），`STARTED_DIGGING` 与 `FINISHED_DIGGING` 都经它；`BlockPlacementListener` 把同一判定并进世界边界外那条拒绝。发位置包的压测工具 `tools/loadtest/PacketFlood.java`、`tools/loadtest/soak.py` 与真客户端 S5 spike `TerrainSpike` 改为每包至多走 32 格。
+
+测试：根项目两个新类 `io.github.bearisbug.synaxis.listener.PlayerMovementAuthorityIntegrationTest`（5 条）与 `io.github.bearisbug.synaxis.listener.PlayerBlockReachIntegrationTest`（4 条），都是 `@EnvTest`，玩家不 tick：测试线程用 `addPacketToQueue` 加 `interpretPacketQueue` 把包交给玩家，一次移动要用的区块事先载好、每次移动不离开已载入的区块；既有的 `PlayerBlockPlacementIntegrationTest#placeIntoUnloadedChunkIsIgnored` 改了前置（见 `TC-PROD-633` 第 3 步）。「跑 `<类>`」即 `./gradlew :test --rerun --tests '<类全名>' --max-workers=4 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts`（`server-app` 的类换成 `:server-app:test`），「严格 grid」是再加 `-Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true -Dsynaxis.thread-provider=grid`，结果看 `build/test-results/test/TEST-<类全名>.xml`（`server-app` 的在 `server-app/build/test-results/test/`）。路径简写：`<PPL>` = `src/main/java/io/github/bearisbug/synaxis/listener/PlayerPositionListener.java`，`<PAL>` = 同目录的 `PlayerActionListener.java`，`<BPL>` = 同目录的 `BlockPlacementListener.java`。「整组改前」指 `git checkout 14437d0b78 -- src/main/java/io/github/bearisbug/synaxis/listener/`（`14437d0b78` 是本组的基线 `main`；两个新类在改前也编得过），还原用 `git checkout HEAD -- src/main/java/io/github/bearisbug/synaxis/listener/`。反证一律是临时改一处、跑、看红、`git checkout HEAD -- <文件>`、重跑复绿；「改为 `… proof.never …`」都是在原条件前加 `Boolean.getBoolean("proof.never") &&`，让这一条判定不起作用而代码照样编得过；行号按本组的代码提交 `6458e32874`。除 `TC-PROD-636` 外不需要数据库前置。证据 `docs/test-runs/RUN-070/authority/`。
+
+#### `TC-PROD-630` 由内向外越过世界边界的位置包被拉回、不载入区块；服务端放到边界外的玩家照样能动（§19 场景） — 对应 `REQ-PROD-013` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `PlayerMovementAuthorityIntegrationTest`，看 `aMoveOutAcrossTheWorldBorderIsTurnedBackAndLoadsNoChunk`、`repeatedJumpsStopAtTheBorder`、`aPlayerOutsideTheBorderStillMovesAndWalksBackIn` | `tests="5"` 0 失败。第一条：世界边界以原点为中心、边长 64（x、z 在 [−32, 32) 内），实例视距 2，玩家的区块环（半径 3）事先载好，玩家在 (0.5, 40, 0.5)、已确认出生的传送；一个到 (40.5, 40, 0.5) 的位置包之后位置不变，客户端恰收到 1 个 `PlayerPositionAndLook`，位置 (0.5, 40, 0.5)，实例持有的区块数不变。第二条：边长 256，每次往 x 方向跳 40 格（目标区块事先载好），跳完确认再跳，12 次后停在 (120.5, 40, 0.5)：前 3 次被采信，第 4 次起目标都在 x = 128 之外。第三条：服务端 `teleport` 到边界外的 (40.5, 40, 0.5) 之后，走到 41.5（边界外照样能动）、走回 31.5（回到边界内）都被采信，再走到 32.5 被拉回、停在 31.5 |
+| 2 | 严格 grid 跑同一个类 | 与第 1 步相同 |
+| 3 | 反证有齿（不判世界边界）：`<PPL>:86` 的 `\|\| (border.inBounds(currentPosition) && !border.inBounds(packetPosition))` 改为 `\|\| (Boolean.getBoolean("proof.never") && border.inBounds(currentPosition) && !border.inBounds(packetPosition))`，跑同一个类，再还原 | `5 tests completed, 3 failed`：红在 `PlayerMovementAuthorityIntegrationTest.java:71`（`a move to x 40.5 across the border at x 32 ==> expected: <Pos[x=0.5, y=40.0, z=0.5, yaw=0.0, pitch=0.0]> but was: <Pos[x=40.5, y=40.0, z=0.5, yaw=0.0, pitch=0.0]>`）、`:96`（`the last jump inside the border, at x 120.5 ==> … but was: <Pos[x=480.5, …]>`）、`:139`（`out again across the border ==> expected: <Pos[x=31.5, …]> but was: <Pos[x=32.5, …]>`）；单包位移与服务端移动两条绿 |
+| 4 | 还原后重跑第 1 步 | 与第 1 步相同 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PROD-631` 一个位置包至多走 64 格，竖直方向同样算（§19 场景） — 对应 `REQ-PROD-013` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `PlayerMovementAuthorityIntegrationTest`，看 `aMoveOfMoreThanSixtyFourBlocksIsTurnedBack` | 通过。实例视距 2，65 格外的区块 (4, 0) 在区块环之外、事先载好（这一包只会因为长度被拉回）：到 (65.5, 40, 0.5) 的包被拉回；确认后到 (0.5, 105, 0.5)（同一区块，竖直 65 格）的包被拉回；两次共收到 2 个 `PlayerPositionAndLook`；确认后到 (64.5, 40, 0.5)（恰 64 格）的包被采信 |
+| 2 | 严格 grid 跑同一个类 | `tests="5"` 0 失败 |
+| 3 | 反证有齿（不判单包位移）：`<PPL>:85` 的 `\|\| currentPosition.distanceSquared(packetPosition) > 64 * 64` 改为 `\|\| (Boolean.getBoolean("proof.never") && currentPosition.distanceSquared(packetPosition) > 64 * 64)`，跑同一个类，再还原 | `5 tests completed, 1 failed`：红在 `PlayerMovementAuthorityIntegrationTest.java:111`，`65 blocks east in one packet ==> expected: <Pos[x=0.5, y=40.0, z=0.5, yaw=0.0, pitch=0.0]> but was: <Pos[x=65.5, y=40.0, z=0.5, yaw=0.0, pitch=0.0]>`；边界三条与服务端移动一条绿 |
+| 4 | 整组改前，跑同一个类，再还原 | `5 tests completed, 4 failed`：红在 `:71`、`:96`、`:111`、`:139`，消息与 `TC-PROD-630` 第 3 步、本用例第 3 步相同；`theServersOwnMovesAreFollowed` 改前也绿（它防的是误伤，见 `TC-PROD-634`） |
+| 5 | 还原后重跑第 1 步 | 与第 1 步相同 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PROD-632` 挖掘：眼睛到方块不小于方块交互距离 + 1 格的挖不掉，只回 ack（§19 场景） — 对应 `REQ-PROD-013` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `PlayerBlockReachIntegrationTest` | `tests="4"` 0 失败。`aFinishedDiggingOutOfReachBreaksNothing`：生存模式、空手的玩家在 (8.5, 40, 8.5)，只发一包序号 7 的 `FINISHED_DIGGING` 挖 (216, 39, 216) 的石头（区块 (13, 13) 事先载好，眼睛到方块立方体 293.45 格）：石头还在，没有 `PlayerBlockBreakEvent`，恰 1 个序号 7 的 `AcknowledgeBlockChange`。`theReachIsTheBlockInteractionRangePlusOneBlock`：玩家在 (0.51, 40, 0.5)，眼睛高度上 x = 6 的石头离眼睛 5.49 格挖得掉，x = −6 的 5.51 格挖不掉，x = 10 的 9.49 格挖不掉；`BLOCK_INTERACTION_RANGE` 的基础值改成 10 之后 x = 10 的挖得掉。`aCreativeInstantBreakOutOfReachBreaksNothing`：创造模式只发 `STARTED_DIGGING`，(20, 39, 8)（11.5 格）的石头还在，(10, 39, 8)（2.2 格）的挖掉 |
+| 2 | 严格 grid 跑同一个类 | 与第 1 步相同 |
+| 3 | 反证有齿（挖掘不判距离）：`<PAL>:125` 的 `if (outOfReach(player, blockPosition)) return true;` 改为 `if (Boolean.getBoolean("proof.never") && outOfReach(player, blockPosition)) return true;`，跑同一个类，再还原 | `4 tests completed, 3 failed`：红在 `PlayerBlockReachIntegrationTest.java:70`（`dug 293.45 blocks from the eyes ==> expected: <minecraft:stone{properties={}, nbt=null, handler=null}> but was: <minecraft:air{properties={}, nbt=null, handler=null}>`）、`:88`（`5.51 blocks away, range 4.5 ==> …`，同样是期望石头、得到空气）、`:104`（`11.5 blocks from the eyes ==> …`，同上）；使用方块那条绿 |
+| 4 | 整组改前，跑同一个类，再还原 | `4 tests completed, 4 failed`：红在 `:70`、`:88`、`:104` 与 `:127`（`placed 11.5 blocks from the eyes ==> expected: <minecraft:air{…}> but was: <minecraft:stone{…}>`） |
+| 5 | 还原后重跑第 1 步 | 与第 1 步相同 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PROD-633` 使用方块：够不着的方块在交互之前被拒，回写两格与 ack；未载入的放置区块照旧只回 ack（§19 场景） — 对应 `REQ-PROD-013` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `PlayerBlockReachIntegrationTest`，看 `aBlockUseOutOfReachIsRefused` | 通过。玩家在 (8.5, 40, 8.5)、主手 64 块石头，对 (20, 39, 8) 的顶面放（序号 3，眼睛到方块 11.5 格）：(20, 40, 8) 仍是空气，没有 `PlayerBlockInteractEvent`，恰 2 个 `BlockChange`（点击的格与顶面外的格）、1 个序号 3 的 ack；再对 (10, 39, 8) 的顶面放（2.2 格），(10, 40, 8) 成了石头 |
+| 2 | 反证有齿（使用方块不判距离）：`<BPL>:58` 的 `\|\| PlayerActionListener.outOfReach(player, blockPosition)) {` 改为 `\|\| (Boolean.getBoolean("proof.never") && PlayerActionListener.outOfReach(player, blockPosition))) {`，跑 `PlayerBlockReachIntegrationTest`，再还原 | `4 tests completed, 1 failed`：红在 `PlayerBlockReachIntegrationTest.java:127`，`placed 11.5 blocks from the eyes ==> expected: <minecraft:air{properties={}, nbt=null, handler=null}> but was: <minecraft:stone{properties={}, nbt=null, handler=null}>`；挖掘三条绿 |
+| 3 | 跑 `io.github.bearisbug.synaxis.entity.player.PlayerBlockPlacementIntegrationTest` | `tests="7"` 0 失败。`placeIntoUnloadedChunkIsIgnored` 的前置改为：实例关了自动载入，只载区块 (100, 0)，玩家在 (1612.5, 42, 5.5)，点击 (1615, 41, 5) 的东面（眼睛到方块 2.98 格），放置格 (1616, 41, 5) 在未载入的区块 (101, 0)，只回 1 个 ack。原写法玩家在 (8, 42, 8)、离点击的方块约 1,607 格，修后先被距离判定拒掉，测不到「放置格所在区块未载入」那一支 |
+| 4 | 还原后重跑第 1 步 | 与第 1 步相同 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PROD-634` 误伤核对：服务端自己的出生、传送、重生与换实例照常；真客户端 gametest 编得过；光照会话的复现测试按预期变红 — 对应 `REQ-PROD-013` · 级别: 回归 · 执行者: AI
+
+前置：本节开头；第 3 步另要 `client-fabric/build/dh/` 里有 DH 3.3.2 的 jar（没有时首次构建按 SHA-1 去取）。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `PlayerMovementAuthorityIntegrationTest`，看 `theServersOwnMovesAreFollowed`；严格 grid 再跑一次 | 两次都通过。出生在 (300.5, 40, 300.5)（离原点 424 格），确认之后走 1 格被采信；`Player#teleport` 到 (−200.5, 40, 300.5)（502 格），确认之前客户端发来的旧位置被丢弃，确认之后走 1 格被采信；`kill` 再 `respawn` 到 (−200.5, 40, −400.5)（701 格），确认之后走 1 格被采信；`setInstance` 到另一个实例的 (1000.5, 40, 0.5)，确认之后走 1 格被采信 |
+| 2 | 跑 `io.github.bearisbug.synaxis.entity.player.PlayerMovementIntegrationTest` | `tests="12"` 0 失败：其中 `chunkUpdateDebounceTest` 一包斜走 22.6 格（x、z 各跨一个区块），`testClientViewDistanceSettings` 由服务端传送 248.2 格、确认之后再走，都照旧 |
+| 3 | 仓库根 `./gradlew :protocol:publishToMavenLocal --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts`，再在 `client-fabric/` 里 `./gradlew compileGametestJava --no-daemon --init-script gametest-env/mirror.init.gradle.kts` | 两条都 `BUILD SUCCESSFUL`。改了的只有 S5 spike `TerrainSpike`：原先一包 `setPos` 到 216 格外的地图边缘，按代码推断修后这一包被拉回、`waitFor` 等不到边缘的区块（未实跑）；改为每 tick 32 格走过去（RTS 对局整图预载，每步落在已载入的区块）。R1～R8 的 `RegressionClientGameTest` 与 P10 的 `TransferRoundTripClientGameTest` 不发 `setPos`、不挖不放，不受影响。真客户端没有在本机跑（要显示环境），S5 随 `client-gametest.yml` 的每日定时跑 |
+| 4 | 光照会话的复现测试：`git show de82c5720a:server-app/src/test/java/io/github/bearisbug/synaxis/app/shard/MapShardPlayerAuthorityTest.java` 写到同一路径，跑这个类；整组改前再跑一次，还原监听器后删掉这个文件 | 修后 `4 tests completed, 3 failed`：红在 `MapShardPlayerAuthorityTest.java:162`（`broken from 293.4510180592325 blocks ==> expected: <minecraft:air{…}> but was: <minecraft:stone{…}>`）、`:246`（`moved 208.0 blocks in one packet ==> expected: <2040.5> but was: <1832.5>`）、`:279`（`jump 0 is taken ==> expected: <20> but was: <7>`）；只用 `Instance#breakBlock` 的那条（覆盖层记录随破坏的格数变大）绿。改前 4 条全绿。这个类按「漏洞成立时为绿」写，由光照会话翻转（`docs/DESIGN-PROD.md` §28.3） |
+
+后置：`git status --short` 无输出（第 4 步拷进来的类已删）。
+
+#### `TC-PROD-635` 压测工具每包至多走 32 格：改前的 `PacketFlood` 在修后的服务端上掉连接，改后不掉；`soak.py play` 不再被逐包拉回 — 对应 `REQ-PROD-013` · 级别: 回归 · 执行者: AI
+
+前置：`./gradlew :server-app:installDist --max-workers=4 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts`；端口 25681、25682 空闲；空的临时目录 `<W>`；改前的工具取自基线：`git show 14437d0b78:tools/loadtest/PacketFlood.java` 与 `git show 14437d0b78:tools/loadtest/soak.py` 写到 `<W>/old/tools/loadtest/` 下，`<W>/old/tools/protocol-probe` 链到仓库的 `tools/protocol-probe`（`soak.py` 从上一级目录找探针）；两份 `PacketFlood.java` 各 `javac` 到自己的目录。服务端都在各自的工作目录里以 `JAVA_OPTS="-Xms1G -Xmx1G"`、`SERVER_APP_OPTS="-Dsynaxis.app.port=<端口> -Dsynaxis.app.auth=offline -Dsynaxis.app.metrics.bind=127.0.0.1:0 -Dsynaxis.connection-gate.trusted-networks=127.0.0.0/8 <下表另给的键>"` 跑 `server-app/build/install/server-app/bin/server-app < /dev/null`，等日志出现 `server-app listening`，用完按 pid 发 SIGTERM。Python 用 `.venv`。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 核心模式起服（端口 25681，另给 `-Dsynaxis.app.core-mode=on -Dsynaxis.app.shard-id=<任意>`）；跑改前的 `PacketFlood --port 25681 --connections 50 --hz 100 --seconds 30 --out <W>/flood-old`（即 `TC-GAME-060` 第 5 步的命令） | 退出码 0，`flood.json`：50 条全部登录，`connections_lost` 6、`disconnect_reasons` 为 `{"synaxis:protocol-error": 6}`，`teleport_confirms` 829，`achieved_packets_per_second` 4,564.7。服务端日志 6 行 `Inbound packet limit exceeded: … limit=packets 751 > 750 in 7000 ms` 与 6 行 `Kicking … reason=synaxis:protocol-error`，被踢的是 `flood0007`、`0015`、`0023`、`0031`、`0039`、`0047`，即序号除以 8 余 7、圆半径 16 + 7 × 8 = 72 格的那 6 条：第一个包离出生点 72 格被拉回，圆上之后的每个包同样被拉回，每次多回一个传送确认 |
+| 2 | 同一服务端上跑改后的 `PacketFlood`，参数相同，`--out <W>/flood-new` | 退出码 0：50 条全部登录、`connections_lost` 0、`disconnect_reasons` 为空，`teleport_confirms` 100（每条 2 个：出生与第一批区块后的位置同步），`achieved_packets_per_second` 5,015.0。停服后日志里两次合计的踢人行恰是第 1 步的 6 行，WARN / ERROR 0 行 |
+| 3 | 停掉核心模式服务端；玩法模式起服（端口 25682，不给 `core-mode`，宿主加载 rts 插件，地图 `rts-512`，出生点在 (256, 256) 附近）；跑改前的 `soak.py play --port 25682 --connections 5 --duration 20 --no-jfr --gc-probe-interval 0 --settle 2 --server-log <工作目录>/server.log --events-dir <工作目录>/logs --out <W>/play-old` | 退出码 0，`connections_lost` 0；`uplink.position_packets` 490，`inbound.engine_by_packet` 里 `PlayerPositionAndLookPacket` 432 个：这 5 名玩家的第一个锚点离地图中心 149.3～322.5 格（第 5 步），玩家一放上去就被拉回，之后每次报告都离服务端的位置一百多格以上、每次都被拉回 |
+| 4 | 同一服务端上跑改后的 `soak.py play`，参数相同，`--out <W>/play-new` | 退出码 0，`connections_lost` 0，`position_packets` 490，`PlayerPositionAndLookPacket` 10（每名玩家 2 个，同第 2 步）。两次的 `ChunkDataPacket` 都是 45：`soak.py` 不回区块批次回执，每名玩家只收到第一批 9 个（`ADR-PROD-013`），这一项看不出玩家走没走。停服后服务端日志踢人 0 行、WARN / ERROR 0 行 |
+| 5 | `.venv` 的 Python 在 `tools/loadtest` 下 `import soak`（`PYTHONDONTWRITEBYTECODE=1`），用 `soak.toward` 从出生点走 `run` 客户端半径 72 与 64 格的圆（每 0.1 s 一包，即 `--move-hz` 默认 10），再从 (256, 40, 256) 走 `play` 五个连接的第一个锚点（`--map-size 512`） | 半径 72：每包 32、32、8.013 格，之后 0.43 格，到了圆上；半径 64：32、32 格到圆上；五个锚点离中心 248.0、322.5、203.7、149.3、250.7 格，分别 8、11、7、5、8 包走到。`soak.py run` 没有在真进程上跑：它与 `play` 用同一个 `toward`，位置同样由服务端的传送更新 |
+
+后置：两个服务端按 pid 停掉（25681、25682 无监听），删 `<W>`。
+
+#### `TC-PROD-636` 回归：全部模块的 `test` 在默认与严格 grid 下各跑一次，带数据库变量 — 对应 `REQ-PROD-013` · 级别: 回归 · 执行者: AI
+
+前置：本节开头；数据库前置同 3A 一节（`SYNAXIS_TEST_PG_URL`、`SYNAXIS_TEST_PG_USER`、`SYNAXIS_TEST_PG_PASSWORD`、`SYNAXIS_TEST_REDIS_URL` 指向 `synaxis-pg` 与 `synaxis-valkey`）。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 带数据库变量，`./gradlew test --continue --rerun --max-workers=4 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts`，按各模块的 `build/test-results/test` 计数 | `BUILD SUCCESSFUL`：611 个类 4,246 个，0 失败，15 个跳过（全在根项目）。根项目 430 个类 3,171 个（加了本节两个新类共 9 个），`server-app` 113 个类 577 个、0 个跳过，`synx` 17 / 142，`game-rts` 13 / 87，`protocol` 7 / 122，`baker` 8 / 76，`loadtest` 5 / 25，`architecture-tests` 7 / 20，`plugin-api` 3 / 15，`testing` 8 / 11；本机 7 分 30 秒 |
+| 2 | 同上，加严格 grid | 与第 1 步同样的类数、条数、0 失败、15 个跳过；没有哪个结果文件出现 `AcquirableOwnershipException`；本机 6 分 26 秒 |
+
+后置：`git status --short` 无输出。
+
 ## 5. 回归策略
 
 - **全量轮**（全部用例）：首次成稿、每个阶段 gate（引擎域阶段 0、2、3；游戏域 `docs/DESIGN-M2.md` §26 的阶段 1～6b；大世界域 `docs/DESIGN-M3.md` §26 的 M3-A～M3-G）、跨功能域改动、地基变更（JDK、Gradle、镜像、协议版本、模块拆分、启动入口）。
@@ -8793,6 +8892,7 @@ for (var request : System.getenv("MGMT_CALLS").split("\n")) {
   - 生产就绪域（`docs/DESIGN-PROD.md`）：安全修复 ops 组，运维端口加固与起服退出（`REQ-PROD-032`、`REQ-PROD-018`、`REQ-PROD-036`，v0.9.41）→ TC-PROD-600～TC-PROD-607；动了 `ManagementServer.Endpoint#onWebsocketHandshakeReceivedAsServer` 就跑 TC-PROD-600 与 6B 一节的 TC-PROD-381；动了 `GuardedFactory`、`GuardedSocket#setChannel` 或 `MAX_UNFINISHED_HANDSHAKES` 就跑 TC-PROD-601 与 TC-PROD-383、TC-PROD-575 第 3 步，其中动了 `GuardedSocket#setChannel` 的再加跑 TC-PROD-575 第 1、2 步（v0.9.38 一行的规则）；动了 `HostMetrics#serve` 或 `startOnADaemon` 就跑 TC-PROD-602、TC-PROD-605 与 TC-PROD-501；动了 `Main` 步骤 (4) 的两处 WARN 或 `warnOfTheWildcard` 就跑 TC-PROD-603；动了 `Main` 步骤 (6) 的接住与拒启或 `Main#main` 的拒启路径，就跑 TC-PROD-604 与 TC-PROD-489、TC-PROD-397（真进程）；改了部署单元、`.env.example` 的管理令牌一段或开管理接口的主机，跑 TC-PROD-606（人工）。升 JDK 时重跑 TC-PROD-602、TC-PROD-605：`jdk.httpserver.maxConnections` 与 `HTTP-Dispatcher` 随起它的线程定 daemon，都是 JDK 实现里的行为，不在公开 API 里。
   - 生产就绪域（`docs/DESIGN-PROD.md`）：安全修复 secrets 组，机密进日志与落盘权限（`REQ-PROD-005`、`007`、`015`、`017`、`033`、`034`、`036`，v0.9.42）→ TC-PROD-610～TC-PROD-619。动了 `StoreSettings#toString` → TC-PROD-610；动了 `RedisLink#connect` 的解析 → TC-PROD-611；动了 `SessionServer#isMojang` → TC-PROD-612；动了 `ConfigFile#apply` 或它的权限检查 → TC-PROD-613；动了 `Profiler` 的 `LEFT_OUT`、`handedOver` 或建文件 → TC-PROD-614、TC-PROD-615，再加 TC-PROD-392 第 6、7 步与 TC-PROD-471；动了 `ConfigFile#isSecret` → TC-PROD-615 与 TC-PROD-002；动了 `EventLedger` 建目录、建文件或压缩，或 `CrashReports#write` → TC-PROD-616；改 `.env.example` 开头 → TC-PROD-616 第 6 步；升 Java-WebSocket 或动了 `ManagementServer.BoundedDraft#processFrame` → TC-PROD-617（另见 TC-PROD-382、TC-PROD-472）；动了 `ConfigFileTest.write`，或新增建 `synaxis.properties` 的测试 → TC-PROD-619。这些都改完后跑 TC-PROD-618。
   - 生产就绪域（`docs/DESIGN-PROD.md`）：安全修复 · 跨格拾取（`REQ-PROD-019`、`REQ-PROD-020`，v0.9.43）→ TC-PROD-620～TC-PROD-623；动了 `LivingEntity#update` 的拾取、`ItemEntity#update` 的合并、`ItemEntity#removeConsumed` 或 `claim` / `releaseClaim` 就跑 TC-PROD-620～TC-PROD-622；动了 `ThreadProvider#grid` 的分格或 `AcquirableImpl#isOwned` / `assertOwnership` 再加 TC-PROD-623。
+  - 生产就绪域（`docs/DESIGN-PROD.md`）：M3 侧安全审查修复 authority 组，位置包与方块操作的服务端判定（`REQ-PROD-013`，v0.9.47）→ TC-PROD-630～TC-PROD-636；动了 `PlayerPositionListener#processMovement` 就跑 TC-PROD-630、TC-PROD-631 与 TC-PROD-634 第 1、2 步；动了 `PlayerActionListener` 的 `shouldPreventBreaking` 或 `outOfReach` 就跑 TC-PROD-632；动了 `BlockPlacementListener` 世界边界与距离的那一支就跑 TC-PROD-633；改了 `tools/loadtest/PacketFlood.java`、`soak.py` 的走法或 `TerrainSpike` 就跑 TC-PROD-635 与 TC-PROD-634 第 3 步；光照会话翻转 `MapShardPlayerAuthorityTest` 之前，动了这三个监听器再按 TC-PROD-634 第 4 步核对它的红行。
   - 影响面不确定时升级为全量轮。
 - **复测轮**（上轮失败用例 + 全部冒烟级）：修复失败项之后。
 - **人工收口轮**（仅上轮「待人工」用例）：AI 轮之后由人工补测 TC-016、TC-030、TC-GAME-020、TC-GAME-038、TC-GAME-046、TC-GAME-047，不要求冒烟级。

@@ -1,0 +1,44 @@
+RUN-070 authority: the production readiness fix of the lighting session's M3 security review findings S1-V01 (position packets
+not judged against the world border), S1-02 (one position packet carrying the player 208 blocks) and S1-01 (digging not judged
+by distance), on branch prod/m3fix-authority. docs/DESIGN-PROD.md v0.9.47 (API-PROD-030, ADR-PROD-016), docs/TEST.md
+TC-PROD-630 to TC-PROD-636. The integration round registers RUN-070; this directory is this group's part of it.
+
+Code under test: 6458e32874 (main 14437d0b78 + the listeners, the tests and the tools of this group). Every run below ran on the
+working tree that became that commit; the first movement test of lock run 1 had a test bug and was superseded (01). JDK 25.0.4.1
+(Homebrew openjdk@25), Gradle --max-workers=4 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts, macOS,
+the machine shared with other sessions.
+
+Heavy lock /tmp/synaxis-heavy.lock, taken at the top level of each script with its EXIT trap (06), owner line
+"生产就绪会话/authority pid=29280":
+  lock run 1   04:26:35-04:27:46  red on 14437d0b78's listeners, green, the four counter proofs, strict grid
+  lock run 2   04:34:04-04:34:48  client-fabric gametest compile, PacketFlood javac, soak.py py_compile (its Gradle test steps
+                                  had a script error and were rerun as 2b)
+  lock run 2b  04:35:15-04:36:25  the movement class after its test fix: red, green, strict grid, border and cap counter
+                                  proofs; the lighting session's MapShardPlayerAuthorityTest before and after the fix
+  lock run 3   04:44:43-05:00:52  the test task of every module, default and strict grid, with the database variables;
+                                  PacketFlood and soak.py play, as on 14437d0b78 and as now, on real server processes
+
+00-index.txt               this file
+01-red-green-proofs.txt    PlayerMovementAuthorityIntegrationTest: red on 14437d0b78 at :71, :96, :111, :139 (4 of 5, the fifth
+                           guards the server's own moves and is green before and after); green default and strict grid; border
+                           proof red at :71, :96, :139; cap proof red at :111. PlayerBlockReachIntegrationTest: red at :70, :88,
+                           :104, :127 (4 of 4); green default and strict grid; dig proof red at :70, :88, :104; place proof red at
+                           :127. PlayerBlockPlacementIntegrationTest 7 and PlayerMovementIntegrationTest 12 green before and after
+02-lighting-probe.txt      MapShardPlayerAuthorityTest (m3/sec-r1 de82c5720a, copied in and deleted after): 4 of 4 green on
+                           14437d0b78's listeners, 3 of 4 red on the fix at :162, :246, :279 (the overlay growth one stays green)
+03-compile.txt             client-fabric compileGametestJava (TerrainSpike) BUILD SUCCESSFUL, PacketFlood javac and soak.py
+                           py_compile clean; what was not run
+04-tools.txt               on the fixed engine: PacketFlood as on 14437d0b78 loses the 6 connections of radius 72 to the inbound
+                           limit (751 > 750 in 7 s, 829 teleport confirms), as now loses none (100 confirms, 5,015.0 pkt/s);
+                           soak.py play as on 14437d0b78 is turned back 432 times in 20 s, as now 10; soak.py's step function
+05-full-test.txt           all modules' test task: 611 classes, 4,246 tests, 0 failures, 15 skipped, default (7m 30s) and strict
+                           grid (6m 26s); root 430 / 3,171 (two new classes, 9 tests), server-app 113 / 577 with 0 skipped
+06-scripts.txt             the four scripts and the helpers (variant.py, summarize.py, aggregate.py)
+
+Not run: the real client (no display here; S5 runs with the daily schedule of client-gametest.yml), soak.py run on a real
+process, the lighting session's gametests (LightClientGameTest L7 and FarViewClientGameTest#walk, read from the code: they need
+the lighting session's changes listed in docs/DESIGN-PROD.md §28.3).
+Cleanup: both servers stopped by pid (25681 and 25682 not listening after), the temp dir /tmp/m3fix-authority (scripts, logs,
+JUnit copies, the javac output, the old tools, the extracted vanilla classes the javap checks of API-PROD-030 read) deleted at
+the end of the session; no container, image or emulator was created. The Distant Horizons jar copied into this worktree's
+client-fabric/build/dh/ is under build/ and gitignored.

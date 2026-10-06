@@ -1,6 +1,8 @@
 # TC-PROD-655..657 as written in docs/TEST.md, on 25594588f5 (branch prod/m3fix-chores); 2026-10-06 04:21:23 CST
 # MACHINES, CI_LIST and EXEMPT are the commands of the section intro, run with zsh from the repository root.
 # No Gradle, no process, no lock: the three cases only read files.
+# The cases as they read from 31197a7492 on (ENGINE.md §7 and §8 without counts, TC-PROD-657 step 1 without the
+# blind spot 1 grep) were run again under the lock: 07-cases-rerun.txt.
 
 ## TC-PROD-655 step 1: MACHINES
 exit 1
@@ -66,6 +68,10 @@ restored: 0 changed files
 engine: same
 host: same
 game: same
+# the blind spot 1 grep of step 1, which the 04:21 run of step 4 did not print; run 2026-10-06 10:25:38 CST on the
+# docs/ENGINE.md of 25594588f5 (git show; the restore of step 3 returns the file to it, 0bfcb61cd4 has the same file):
+# grep -c '引擎那八个类、宿主那十一个类、游戏侧那一个类' docs/ENGINE.md
+1
 
 # after: git status --short
 (end of git status)

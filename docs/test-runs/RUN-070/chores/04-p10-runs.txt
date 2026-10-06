@@ -2,10 +2,12 @@
 # Read-only: gh run view, gh run view --log, gh run download of the artifact client-gametest-p10 (kept in a temp dir, deleted).
 
 ## the B-01 fix is in both commits the two p10 runs built
-  6d8ddb99d5 (sec/transfer-ghost head / integrate-062 head) is an ancestor of c69548be70
-  45f4133080 (sec/transfer-ghost head / integrate-062 head) is an ancestor of c69548be70
-  6d8ddb99d5 (sec/transfer-ghost head / integrate-062 head) is an ancestor of 14437d0b78
-  45f4133080 (sec/transfer-ghost head / integrate-062 head) is an ancestor of 14437d0b78
+# 6d8ddb99d5 is the head of sec/transfer-ghost (the second parent of 5abd985035 "Merge branch 'sec/transfer-ghost' into
+# prod/integrate-062"); 45f4133080 is the head of prod/integrate-062 that RUN-062 ran on (docs/TEST.md, the RUN-062 row)
+  6d8ddb99d5 (sec/transfer-ghost head) is an ancestor of c69548be70
+  45f4133080 (prod/integrate-062 head) is an ancestor of c69548be70
+  6d8ddb99d5 (sec/transfer-ghost head) is an ancestor of 14437d0b78
+  45f4133080 (prod/integrate-062 head) is an ancestor of 14437d0b78
 
 ## run 36836899026
   workflow: Client gametest; event: workflow_dispatch; branch: main; head: c69548be70; created: 2026-10-01T08:32:01Z; conclusion: success

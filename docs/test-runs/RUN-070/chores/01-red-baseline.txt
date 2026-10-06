@@ -1,7 +1,10 @@
 # baseline (red) on 14437d0b78, worktree clean: 0 changed files; 2026-10-06 04:07:50 CST
 
-## MACHINES: machine specs other than >= 8 cores / 16 GiB
-$ grep -nEo "≥ ?[0-9]+ 核 / [0-9]+ GiB" docs/DESIGN-PROD.md docs/DESIGN-M3.md docs/TEST.md | grep -v "≥ 8 核 / 16 GiB$"
+## MACHINES: machine specs other than >= 8 cores / 16 GiB, the command of TC-PROD-655 (the two design docs only)
+# run 2026-10-06 10:25:47 CST on docs/DESIGN-PROD.md and docs/DESIGN-M3.md of 14437d0b78 (git archive into a temp dir).
+# The 04:07:50 run of this file also passed docs/TEST.md; its four matches at 14437d0b78 are all ≥ 8 核 / 16 GiB,
+# so that run printed the same single line.
+$ grep -nEo '≥ ?[0-9]+ 核 / [0-9]+ GiB' docs/DESIGN-PROD.md docs/DESIGN-M3.md | grep -v '≥ 8 核 / 16 GiB$'
 docs/DESIGN-PROD.md:1572:≥ 4 核 / 8 GiB
 exit 0
 

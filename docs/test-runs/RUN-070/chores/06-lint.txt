@@ -1,4 +1,4 @@
-# doc lint on the final tree of prod/m3fix-chores (docs as committed, evidence included); 2026-10-06 04:49:24 CST
+# doc lint on the final tree of prod/m3fix-chores (docs as committed in 31197a7492, evidence included); 2026-10-06 10:52:53 CST
 # bash ~/.claude/skills/design-doc/check.sh docs/DESIGN-PROD.md
 lint: docs/DESIGN-PROD.md
 ℹ️ 以下 ID 只被引用、未在本文档定义,§1 关联已声明兄弟分册(docs/DESIGN-M2.md docs/DESIGN-M3.md docs/DESIGN.md ),按跨分册引用处理,人工核一次: REQ-005 REQ-013 REQ-014 REQ-M3-014 REQ-M3-015 REQ-M3-016 REQ-M3-017 REQ-M3-018 API-001 API-003 API-M2-002 API-M2-007 API-M2-008 API-M2-010 API-M2-011 API-M3-003 API-M3-005 API-M3-006 API-M3-007 API-M3-009 API-M3-010 API-M3-011 API-M3-012 API-M3-013 API-M3-015 RB-002 RB-M3-001 RB-M3-005

@@ -1,8 +1,11 @@
 # Dependabot PR #6 "chore: bump the non-breaking group across 1 directory with 8 updates" (finding 8-3), 2026-10-06.
-# The only action taken on GitHub: one PR comment "@dependabot rebase" (2026-10-05T19:57:38Z,
-# https://github.com/Bearisbug/synaxis/pull/6#issuecomment-6001935868). Not approved, not merged, not edited,
-# no workflow re-run. Everything else below is read-only (gh pr view / gh run view / artifact download,
-# release notes on the web, the jars and sources of Maven Central in a temp directory, deleted afterwards).
+# The chores group's only action on GitHub: one PR comment "@dependabot rebase" (2026-10-05T19:57:38Z,
+# https://github.com/Bearisbug/synaxis/pull/6#issuecomment-6001935868). Not approved, not merged, not edited.
+# The production readiness session later re-ran the jobs GitHub had cancelled (gh run rerun --failed on runs
+# 37368038394, 37368038402 and 37368038451; attempt 2 started 2026-10-06T02:13:41Z, triggering actor Bearisbug);
+# the results are in section 2a. Everything else below is read-only (gh pr view / gh pr checks / gh run view,
+# job logs and artifacts through gh api, release notes on the web, the jars and sources of Maven Central and the
+# wrapper scripts of gradle/gradle in a temp directory, deleted afterwards).
 
 ## 1. The PR before and after the rebase
 
@@ -30,11 +33,45 @@ Test with 4 tick threads (strict, grid)    cancelled (shown as fail), run 373680
 jcstress                                   cancelled (shown as fail), run 37368038402, 20:10:03Z -> 20:25:06Z, no runner
 Build the Fabric mod                       cancelled (shown as fail), run 37368038451, 20:10:04Z -> 20:25:06Z, no runner
   annotation on each: "The job was not acquired by Runner of type hosted even after multiple attempts" (GitHub's hosted
-  runner pool, not the code). Re-running them is a repository action left to the user:
+  runner pool, not the code). Re-running them was left to the user (done 2026-10-06, section 2a):
   gh run rerun 37368038394 --failed; gh run rerun 37368038402 --failed; gh run rerun 37368038451 --failed
 client-gametest.yml did not run on the PR either time: its pull_request paths do not include gradle/** (it will run on the
 push to main after a merge).
 For reference, main's own CI on 14437d0b78 (run 36969350270): Check success, strict (counter) failure, strict grid success.
+
+## 2a. The re-run of the cancelled jobs (attempt 2 of the same runs, same head 69343db1a9; read 2026-10-06T02:37Z)
+
+gh pr checks 6 (exit status 1, one check failing):
+Build the Fabric mod                       pass, run 37368038451 attempt 2, job 112074513245, 02:13:53Z -> 02:17:11Z
+jcstress                                   pass, run 37368038402 attempt 2, job 112074498812, 02:13:50Z -> 02:19:01Z
+Test with 4 tick threads (strict, grid)    pass, run 37368038394 attempt 2, job 112074483297, 02:13:46Z -> 02:35:06Z
+  steps "Run the tests with 4 tick threads on the grid" and "Check that the tests ran with 4 tick threads on the grid"
+  both success; artifact test-reports-multithreaded-grid (id 11386179797): 609 classes, 4,237 tests, 0 failures,
+  0 errors, 21 skipped (all in the root module), the same per-module counts as the strict job in section 2, server-app
+  113 / 577 with 0 skipped (the database ran); EnvDispatcherThreadsIntegrationTest: 'env dispatcher threads: 4',
+  'env thread provider: grid'; no result mentions AcquirableOwnershipException
+Test with 4 tick threads (strict)          pass, carried into attempt 2 from attempt 1: listed as job 112074484153 with
+                                           the times of job 111957911736 in section 2 (2026-10-05 20:20:44Z -> 20:42:41Z)
+Check                                      fail, run 37368038394 attempt 2, job 112074483479, 02:13:47Z -> 02:27:41Z
+  step "Run checks and coverage report" failed in the root module's :test (job log):
+    OnlineDuplicateLoginSocketTest > aLoginReplacingASessionThatIsStillSpawningWaitsForItToLeave() FAILED
+        org.opentest4j.AssertionFailedError at OnlineDuplicateLoginSocketTest.java:137
+    3162 tests completed, 1 failed, 21 skipped
+  artifact test-reports (id 11385904039), TEST-io.github.bearisbug.synaxis.network.OnlineDuplicateLoginSocketTest.xml:
+    tests="2" failures="1", message "the entity tracker holds the newcomer, so other players see it ==> expected:
+    <io.github.bearisbug.synaxis.entity.Player@7aeb8485> but was: <null>"
+  The build stopped at that task: the artifact has results of root, protocol, baker and architecture-tests only
+  (450 classes, 3,380 tests); the store skipped="0" step, the ABI gate and diff-cover were skipped.
+  This is the OnlineDuplicateLoginSocketTest flake that RUN-068 closed: the same assertion at the same line failed in
+  main's run 36969350270 on 14437d0b78 (strict job). Entity#setInstance sets the instance before the chunk continuation
+  registers the entity in the tracker, and the test read the tracker once right after it saw the instance. main fixed
+  the test in b7fd2ee575 (main is d123627b18); the PR's base 14437d0b78 predates the fix, and the PR touches no test
+  and no engine code. It does not come from the dependency updates.
+PR #6 afterwards: OPEN, head 69343db1a9, mergeable, no review, the one comment (the rebase), last updated
+  2026-10-05T20:09:59Z.
+Still not seen green on a head with all eight updates: Check, that is the ABI gate, the store database step,
+  jacocoTestReport with -Dsynaxis.synx.require-frozen-zlib=true, diff-cover, and the tests of server-app, synx, game-rts,
+  loadtest, plugin-api and testing with the engine defaults (the strict jobs ran them with 4 tick threads).
 
 ## 3. The Gradle wrapper
 
@@ -44,6 +81,24 @@ the 9.7.1 jar on main and in client-fabric: 7a9ce74cff467ca1bf60a4fcd9f05185acce
   = gradle-9.7.1-wrapper.jar.sha256 (same value)
 gradle-9.8.0-bin.zip sha256 (published): bafd5ce9cfaea0fbccfdc8439a1ac42fbd4cd9c89dc9a988228d8a2639a58e6c;
   the PR adds no distributionSha256Sum (neither wrapper has one, DESIGN-PROD §28.2 D-04)
+The two scripts, compared 2026-10-06 against gradle/gradle at tag v9.8.0 (commit a927be5e08; gradlew and gradlew.bat of
+  that repository's root through gh api .../contents?ref=v9.8.0). gradlew.bat of 69343db1a9 (+41/-11 against 14437d0b78:
+  the "goto afterSafetyNet" block with 20 lines of colons, "1>&2 echo" for the error lines, "goto exitWithErrorLevel"
+  after each exit) is stored with CRLF here and LF there; with the CRs stripped, diff gives one line:
+    66c66
+    < set DEFAULT_JVM_OPTS="-Xmx64m" "-Xms64m"
+    ---
+    > set DEFAULT_JVM_OPTS=-Dfile.encoding=UTF-8 "-Xmx64m" "-Xms64m"
+  gradlew (the PR leaves it as it is on 14437d0b78) against the same tag, also one line:
+    203c203
+    < DEFAULT_JVM_OPTS='"-Xmx64m" "-Xms64m"'
+    ---
+    > DEFAULT_JVM_OPTS='-Dfile.encoding=UTF-8 "-Xmx64m" "-Xms64m"'
+  The -Dfile.encoding=UTF-8 is gradle/gradle's own addition, not something this repository took out: that repository's
+  build-logic/build-update-utils/src/main/kotlin/gradlebuild.wrapper.gradle.kts (lines 10-15 at v9.8.0) writes it into
+  DEFAULT_JVM_OPTS of its scripts after the wrapper task, whose default is "-Xmx64m", "-Xms64m"
+  (platforms/software/build-init/.../wrapper/internal/WrapperGenerator.java:143 at v9.8.0). Both scripts of the PR are
+  therefore the stock scripts of the Gradle 9.8.0 wrapper task.
 client-fabric/gradle/wrapper stays at 9.7.1: .github/dependabot.yml watches directory "/" only.
 Gradle 9.7.1 is a frozen version of docs/DESIGN.md REQ-001 ("Minecraft 26.2, JDK 25, Gradle 9.7.1 钉死", P0) and is
 also written in docs/DESIGN.md §6 (diagram) and §17, docs/DESIGN-M2.md §17 (Loom + Gradle 9.7.1), docs/ENGINE.md §1.1
@@ -102,7 +157,12 @@ org.graalvm.buildtools.native 1.1.8 -> 1.1.14 (GitHub releases, changelog): reac
 
 ## 5. Recommendation (also in the chores group's return value)
 
-Merge after the RUN-070 integration is on main, on its own, once the four cancelled jobs pass on a re-run. The seven
+Merge after the RUN-070 integration is on main, on its own, once all five jobs are green on one head. The re-run of
+2026-10-06 (section 2a) turned three of the four cancelled jobs green and Check red on the RUN-068 flake, whose fix
+(b7fd2ee575) is on main but not in the PR's base 14437d0b78. Default next step, taken by the user or the production
+readiness session once RUN-070 is on main: comment "@dependabot rebase" on #6, so the new head sits on a main with the
+fix, and read the five checks again. Re-running Check once more on 69343db1a9 would only retry a flake main has already
+fixed. Neither was done here. The seven
 library and plugin updates carry nothing that changes how this repository builds, logs or migrates (above, item by
 item). Gradle 9.8.0 is the one that needs a decision: it moves the version docs/DESIGN.md REQ-001 freezes. Default:
 take it, in the same batch as the docs (REQ-001, DESIGN.md §6 and §17, DESIGN-M2 §17, ENGINE.md §1.1 and §5, README)

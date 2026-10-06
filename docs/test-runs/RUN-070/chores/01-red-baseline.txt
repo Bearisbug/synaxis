@@ -1,0 +1,54 @@
+# baseline (red) on 14437d0b78, worktree clean: 0 changed files; 2026-10-06 04:07:50 CST
+
+## MACHINES: machine specs other than >= 8 cores / 16 GiB, the command of TC-PROD-655 (the two design docs only)
+# run 2026-10-06 10:25:47 CST on docs/DESIGN-PROD.md and docs/DESIGN-M3.md of 14437d0b78 (git archive into a temp dir).
+# The 04:07:50 run of this file also passed docs/TEST.md; its four matches at 14437d0b78 are all ≥ 8 核 / 16 GiB,
+# so that run printed the same single line.
+$ grep -nEo '≥ ?[0-9]+ 核 / [0-9]+ GiB' docs/DESIGN-PROD.md docs/DESIGN-M3.md | grep -v '≥ 8 核 / 16 GiB$'
+docs/DESIGN-PROD.md:1572:≥ 4 核 / 8 GiB
+exit 0
+
+## CI_LIST: workflows and jobs not named in docs/ENGINE.md §7
+missing job ci.yml check
+missing job ci.yml multithreaded
+missing job ci.yml multithreaded-grid
+missing workflow client-gametest.yml
+missing job client-gametest.yml gametest
+missing job client-gametest.yml p10
+missing job client-mod.yml mod
+missing job concurrency.yml jcstress
+lines: 8
+
+## EXEMPT: ArchUnit exemption lists (<) against docs/ENGINE.md §8 (>)
+1d0
+< ConnectionGate
+2a2
+> HandshakeListener
+8d7
+< SessionClient
+2d1
+< CrashReports
+4d2
+< PlayerStore
+7,11d4
+< ShardHeartbeat
+< ShardSession
+< ShardWorld
+< ShutdownSequence
+< TicketVerifier
+game: same
+
+## blind spot 1 of docs/ENGINE.md §8
+354:1. **三条规则的豁免都是按类不按调用点** —— 引擎那七个类、宿主那四个类、游戏侧那一个类里再加一条无界的行都不会红；只有经 `LogBudget` 写、因而不进名单的那些类（宿主的三个、游戏侧的 `GameChannel`）躲开了这一条（见上）。
+
+## security review README §8, the B-01 line
+143:- B-01 不误踢原版与 Fabric 客户端，只按读代码判断（它们收到 `Transfer` 当场断开）；TC-PROD-548 与 CI 的 P10 job 没跑，合入 `main` 后看下一次 job p10。
+
+## DESIGN-PROD §28.3, the row handed to the M3 session for ticks.acquire_ms (last column)
+3037:  |  M3 会话 
+
+## DESIGN-PROD API-PROD-015: does it say how ticks.acquire_ms is rounded?
+0
+
+## TEST.md TC-PROD-430 step 5 (expected column, line 6708 of 14437d0b78)
+6708: ...| `BUILD SUCCESSFUL`，模组 7 个测试类共 90 个测试 0 失败（`ClientHandshakeTest` 11）；...

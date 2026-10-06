@@ -1,0 +1,79 @@
+# lock taken 2026-10-06 04:08:22 CST; HEAD 14437d0b78; java: openjdk version "25.0.4.1" 2026-08-18
+# owner: owner=生产就绪会话/chores pid=29280 since=2026-10-06 04:08:22 task=chores: client-fabric build for the TC-PROD-430 step 5 counts
+## [04:08:22] ./gradlew :protocol:publishToMavenLocal --max-workers=4 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts
+> Task :protocol:signMavenPublication SKIPPED
+> Task :protocol:publishMavenPublicationToMavenLocal
+> Task :protocol:publishToMavenLocal
+
+[Incubating] Problems report is available at: file:///Users/bug/Documents/Projects/Minecraft/synaxis-wt/m3fix-chores/build/reports/problems/problems-report.html
+
+Deprecated Gradle features were used in this build, making it incompatible with Gradle 10.
+
+You can use '--warning-mode all' to show the individual deprecation warnings and determine if they come from your own scripts or plugins.
+
+For more on this, please refer to https://docs.gradle.org/9.7.1/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.
+
+BUILD SUCCESSFUL in 14s
+26 actionable tasks: 9 executed, 17 from cache
+Configuration cache entry stored.
+exit 0
+## [04:08:37] cd client-fabric && ./gradlew build --no-daemon --max-workers=4 (JAVA_TOOL_OPTIONS: the local proxy, aliyun excluded)
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/9.7.1/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build 
+
+> Configure project :
+Fabric Loom: 1.17.21
+
+> Task :fetchDistantHorizons
+fetchDistantHorizons: 27702766 B into /Users/bug/Documents/Projects/Minecraft/synaxis-wt/m3fix-chores/client-fabric/build/dh/DistantHorizons-3.3.2-26.2-fabric-neoforge.jar
+Caught exception: Could not start the FSEvents stream: /Users/bug/Documents/Projects/Minecraft/synaxis-wt/m3fix-chores/client-fabric
+
+> Task :compileJava
+> Task :processResources
+> Task :classes
+> Task :jar
+
+> Task :processIncludeJars
+(dev) is not valid semver for dependency io.github.bearisbug.synaxis:protocol:dev
+
+> Task :compileTestJava
+> Task :processTestResources NO-SOURCE
+> Task :testClasses
+> Task :remapJar
+
+> Task :test
+
+> Task :remapSourcesJar SKIPPED
+> Task :assemble
+> Task :validateAccessWidener NO-SOURCE
+
+> Task :verifyModJar
+mod jar: minecraft=26.2, 75 entries, ships META-INF/jars/protocol-dev.jar
+
+> Task :check
+> Task :build
+
+BUILD SUCCESSFUL in 31s
+9 actionable tasks: 9 executed
+exit 0
+## [04:09:09] JUnit XML of client-fabric (build/test-results/test)
+<testsuite name="io.github.bearisbug.synaxis.game.client.ClientHandshakeTest" tests="11" skipped="0" failures="0" errors="0"
+<testsuite name="io.github.bearisbug.synaxis.game.client.FrozenVectorTest" tests="40" skipped="0" failures="0" errors="0"
+<testsuite name="io.github.bearisbug.synaxis.game.client.GamePayloadTest" tests="5" skipped="0" failures="0" errors="0"
+<testsuite name="io.github.bearisbug.synaxis.game.client.OrderFeedbackTest" tests="3" skipped="0" failures="0" errors="0"
+<testsuite name="io.github.bearisbug.synaxis.game.client.RtsClientTest" tests="23" skipped="0" failures="0" errors="0"
+<testsuite name="io.github.bearisbug.synaxis.game.client.UnitBindingsTest" tests="13" skipped="0" failures="0" errors="0"
+<testsuite name="io.github.bearisbug.synaxis.game.client.UnitPickerTest" tests="15" skipped="0" failures="0" errors="0"
+<testsuite name="io.github.bearisbug.synaxis.game.client.farview.FarViewAvailabilityTest" tests="8" skipped="0" failures="0" errors="0"
+<testsuite name="io.github.bearisbug.synaxis.game.client.farview.FarViewCacheTest" tests="14" skipped="0" failures="0" errors="0"
+<testsuite name="io.github.bearisbug.synaxis.game.client.farview.FarViewColumnsTest" tests="13" skipped="0" failures="0" errors="0"
+<testsuite name="io.github.bearisbug.synaxis.game.client.farview.FarViewConnectionTest" tests="5" skipped="0" failures="0" errors="0"
+<testsuite name="io.github.bearisbug.synaxis.game.client.farview.FarViewDownloaderTest" tests="15" skipped="0" failures="0" errors="0"
+<testsuite name="io.github.bearisbug.synaxis.game.client.farview.FarViewPayloadTest" tests="12" skipped="0" failures="0" errors="0"
+<testsuite name="io.github.bearisbug.synaxis.game.client.farview.dh.DhPackageBoundaryTest" tests="2" skipped="0" failures="0" errors="0"
+<testsuite name="io.github.bearisbug.synaxis.game.client.farview.dh.DhSurfaceTest" tests="5" skipped="0" failures="0" errors="0"
+classes: 15
+tests: 184
+## [04:09:10] grep -rl 'has no text for' client-fabric/src/test
+grep exit 1
+# done 2026-10-06 04:09:10 CST, lock released by the EXIT trap

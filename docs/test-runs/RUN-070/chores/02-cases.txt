@@ -1,0 +1,77 @@
+# TC-PROD-655..657 as written in docs/TEST.md, on 25594588f5 (branch prod/m3fix-chores); 2026-10-06 04:21:23 CST
+# MACHINES, CI_LIST and EXEMPT are the commands of the section intro, run with zsh from the repository root.
+# No Gradle, no process, no lock: the three cases only read files.
+# The cases as they read from 31197a7492 on (ENGINE.md §7 and §8 without counts, TC-PROD-657 step 1 without the
+# blind spot 1 grep) were run again under the lock: 07-cases-rerun.txt.
+
+## TC-PROD-655 step 1: MACHINES
+exit 1
+
+## TC-PROD-655 step 2: the bot machine of DESIGN-PROD §15 'capacity 建议值' back to the old spec, MACHINES, restore
+edited line: 1573
+docs/DESIGN-PROD.md:1573:≥ 4 核 / 8 GiB
+exit 0
+restored: 0 changed files
+
+## TC-PROD-655 step 3: step 1 again
+exit 1
+
+## TC-PROD-656 step 1: CI_LIST
+exit 0 (lines: 0)
+
+## TC-PROD-656 step 2: delete the job multithreaded-grid item of ENGINE.md §7, CI_LIST, restore
+deleted line: 294
+missing job ci.yml multithreaded-grid
+exit 0
+restored: 0 changed files
+
+## TC-PROD-656 step 3: a job 'extra' appended to concurrency.yml, CI_LIST, restore
+          retention-days: 14
+  extra:
+    runs-on: ubuntu-latest
+    steps:
+      - run: "true"
+missing job concurrency.yml extra
+exit 0
+restored: 0 changed files
+
+## TC-PROD-656 step 4: step 1 again
+exit 0 (lines: 0)
+
+## TC-PROD-657 step 1: EXEMPT, then the blind spot 1 grep
+engine: same
+host: same
+game: same
+1
+
+## TC-PROD-657 step 2: EventLedger added to the host boundedReporters() (text only, not compiled), EXEMPT, restore
+inserted before line: 123
+                .or(name(ShardWorld.class.getName()))
+                .or(name(EventLedger.class.getName()))
+                .or(name(ShardHeartbeat.class.getName()));
+engine: same
+3d2
+< EventLedger
+game: same
+restored: 0 changed files
+
+## TC-PROD-657 step 3: HandshakeListener added before LoginListener in the engine list of ENGINE.md §8, EXEMPT, restore
+ docs/ENGINE.md | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+2a3
+> HandshakeListener
+host: same
+game: same
+restored: 0 changed files
+
+## TC-PROD-657 step 4: step 1 again
+engine: same
+host: same
+game: same
+# the blind spot 1 grep of step 1, which the 04:21 run of step 4 did not print; run 2026-10-06 10:25:38 CST on the
+# docs/ENGINE.md of 25594588f5 (git show; the restore of step 3 returns the file to it, 0bfcb61cd4 has the same file):
+# grep -c '引擎那八个类、宿主那十一个类、游戏侧那一个类' docs/ENGINE.md
+1
+
+# after: git status --short
+(end of git status)

@@ -1,0 +1,105 @@
+# TC-PROD-655..657 as written in docs/TEST.md at 31197a7492 (docs/ENGINE.md §7 and §8 list the workflows, jobs and exempted
+# classes by name only; TC-PROD-657 step 1 is EXEMPT alone), run by the letter on 31197a7492 with a clean tree.
+# Script with the heavy lock and its EXIT trap at the top level; it waited in the lock loop while others held the lock.
+# lock taken 2026-10-06 10:50:34 CST; HEAD 31197a7492; changed files at start: 0
+# owner=生产就绪会话/fu-chores pid=29280 since=2026-10-06 10:50:34 task=fu-chores: TC-PROD-655..657 by the letter after ENGINE.md §7/§8 list names without counts
+# MACHINES, CI_LIST and EXEMPT are the three bash blocks of the section intro in docs/TEST.md, extracted verbatim;
+# each step runs them with zsh -f from the repository root, steps 1 and 4 again with bash.
+## block1.sh (1 lines)
+grep -nEo '≥ ?[0-9]+ 核 / [0-9]+ GiB' docs/DESIGN-PROD.md docs/DESIGN-M3.md | grep -v '≥ 8 核 / 16 GiB$'
+## block2.sh (7 lines)
+s=$(sed -n '/^## 7\. CI/,/^### 7\.1/p' docs/ENGINE.md)
+for w in .github/workflows/*.yml; do
+  f=${w##*/}; grep -qF "\`$f\`" <<<"$s" || echo "missing workflow $f"
+  for j in $(sed -n '/^jobs:/,$p' "$w" | grep -E '^  [a-z0-9-]+:$' | tr -d ' :'); do
+    grep -qF "job \`$j\`" <<<"$s" || echo "missing job $f $j"
+  done
+done
+## block3.sh (5 lines)
+code() { sed -n '/boundedReporters() {/,/^    }/p' "$1" | grep -oE 'name\([A-Za-z]+\.class' | sed -E 's/name\(|\.class//g' | sort; }
+doc() { sed -n '/^## 8\./,$p' docs/ENGINE.md | grep -oE "$1[^）。，]*" | head -1 | grep -oE '`[A-Za-z]+`' | tr -d '`' | sort; }
+diff <(code src/test/java/io/github/bearisbug/synaxis/ArchitectureTest.java) <(doc '[^的]豁免名单是') && echo 'engine: same'
+diff <(code server-app/src/test/java/io/github/bearisbug/synaxis/app/ClientDrivenLogArchitectureTest.java) <(doc '宿主那条的豁免名单是') && echo 'host: same'
+diff <(code game-rts/src/test/java/io/github/bearisbug/synaxis/game/rts/ArchitectureTest.java) <(doc '游戏侧那条的豁免名单只有') && echo 'game: same'
+
+## TC-PROD-655 step 1: MACHINES
+exit 1 (zsh)
+exit 1 (bash)
+
+## TC-PROD-655 step 2: the bot machine of DESIGN-PROD §15 'capacity 建议值' back to the old spec, MACHINES, restore
+edited line: 1573
+docs/DESIGN-PROD.md:1573:≥ 4 核 / 8 GiB
+exit 0
+restored: 0 changed files
+
+## TC-PROD-655 step 3: step 1 again
+exit 1
+
+## TC-PROD-656 step 1: CI_LIST
+
+lines: 0
+
+(bash) lines: 0
+
+## TC-PROD-656 step 2: delete the job multithreaded-grid item of ENGINE.md §7, CI_LIST, restore
+deleted line: 294
+missing job ci.yml multithreaded-grid
+restored: 0 changed files
+
+## TC-PROD-656 step 3: a job 'extra' appended to concurrency.yml, CI_LIST, restore
+          retention-days: 14
+  extra:
+    runs-on: ubuntu-latest
+    steps:
+      - run: "true"
+missing job concurrency.yml extra
+restored: 0 changed files
+
+## TC-PROD-656 step 4: step 1 again
+
+lines: 0
+
+(bash) lines: 0
+
+## TC-PROD-657 step 1: EXEMPT
+engine: same
+host: same
+game: same
+(bash:)
+engine: same
+host: same
+game: same
+
+## TC-PROD-657 step 2: EventLedger added to the host boundedReporters() (text only, not compiled), EXEMPT, restore
+inserted before line: 123
+                .or(name(ShardWorld.class.getName()))
+                .or(name(EventLedger.class.getName()))
+                .or(name(ShardHeartbeat.class.getName()));
+engine: same
+3d2
+< EventLedger
+game: same
+restored: 0 changed files
+
+## TC-PROD-657 step 3: HandshakeListener added before LoginListener in the engine list of ENGINE.md §8, EXEMPT, restore
+ docs/ENGINE.md | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+`PacketListenerManager`、`HandshakeListener`、`LoginListener`，
+2a3
+> HandshakeListener
+host: same
+game: same
+restored: 0 changed files
+
+## TC-PROD-657 step 4: step 1 again
+engine: same
+host: same
+game: same
+(bash:)
+engine: same
+host: same
+game: same
+
+# after: git status --short
+(end of git status)
+# done 2026-10-06 10:50:34 CST, the lock is released by the EXIT trap

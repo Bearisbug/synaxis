@@ -1,0 +1,112 @@
+RUN-070 gate: the full gate of the integration branch prod/integrate-070 at 2442f4d7e2 (main d123627b18 with
+prod/m3fix-authority ab6374a22d, prod/m3fix-items 853b33aa76, prod/m3fix-chunks d1ce85f0ab and prod/m3fix-chores 2f0d803598
+merged in that order with --no-ff, then the docs commit 2442f4d7e2; docs/DESIGN-PROD.md v0.9.47 to v0.9.51), run on GitHub
+Actions for draft PR #7. The four groups' own cases, red runs and counter proofs are in ../authority, ../items, ../chunks and
+../chores.
+
+本轮全量门禁在 GitHub Actions 上跑，本机因 2026-10-06 过载重启改为只跑单个测试类。
+On this machine: no Gradle, no tests, no containers; only gh, git and the counting below.
+
+Runs (all on 2442f4d7e2, event pull_request unless noted; times UTC 2026-10-06)
+  CI 37419616421                              success  05:39:25-05:59:01
+    Check                                     success  05:39:28-05:54:04  ./gradlew check jacocoTestReport
+                                                                          -Dsynaxis.synx.require-frozen-zlib=true, database
+                                                                          variables set (PostgreSQL and Valkey services);
+                                                                          the store suites checked skipped="0"; ABI gate;
+                                                                          diff-cover of new lines
+    Test with 4 tick threads (strict)         success  05:39:29-05:59:00  ./gradlew test -Dsynaxis.dispatcher-threads=4
+                                                                          -Dsynaxis.acquirable-strict=true, database set
+    Test with 4 tick threads (strict, grid)   success  05:39:29-05:55:56  the same plus -Dsynaxis.thread-provider=grid
+  Concurrency 37419616349                     success  05:39:25-05:42:39
+    jcstress                                  success
+  Client mod 37419616435                      success  05:39:25-05:40:40
+    Build the Fabric mod                      success                     client-test-reports: 15 classes 184 tests,
+                                                                          0 failures 0 errors 0 skipped
+  Client gametest 37419616383                 success  05:39:25-05:43:46
+    Run the client gametests                  success
+    Two shards, 100 round trips (P10)         skipped (only on workflow_dispatch with p10=true)
+  Client gametest 37419649886 (workflow_dispatch, client-gametest.yml, p10=true, ref prod/integrate-070)
+                                              success  05:39:49-06:03:37
+    Two shards, 100 round trips (P10)         success  05:39:54-06:03:36
+    Run the client gametests                  skipped
+
+P10 judge step ("Judge P10 by the driver's record, the ledgers and the client's report"), its output:
+  ok   the driver ran to the end
+  ok   200 of 200 transfers answered sent, expected 200 of 200
+  ok   200 transfers arrived on their target shard, expected 200
+  ok   character.version read 201 times, expected 201, larger after every transfer: True ([0] .. [200])
+  ok   transfer_issued {'r0-c1': 100, 'r0-c2': 100}, 200 in all, expected 200
+  ok   the client joined 201 worlds, expected 201
+  ok   the client's joins alternate between two shards: ['25611', '25612']
+  ok   the client's report ends with ['end done']
+  P10: all checks passed
+  The last line of the step is "P10: all checks passed".
+
+Counts: artifacts test-reports (Check), test-reports-multithreaded (strict) and test-reports-multithreaded-grid (strict
+grid) of run 37419616421, fetched with gh api .../actions/artifacts/<id>/zip (gh run download stops on the report HTML
+files testValidUUIDWorks().html and testValidUuidWorks().html, one name on this case-insensitive file system), only the */build/test-results/ entries extracted. One row per
+module directory that holds build/test-results (":" is the root project); classes = TEST-*.xml testsuites; tests, fail,
+err, skip = sums of the testsuite attributes.
+
+  [test-reports]
+  module                 classes  tests  fail  err  skip
+  :                          432   3182     0    0    21
+  :architecture-tests          7     20     0    0     0
+  :baker                       8     76     0    0     0
+  :game-rts                   13     87     0    0     0
+  :loadtest                    6     26     0    0     0
+  :plugin-api                  3     15     0    0     0
+  :protocol                    7    122     0    0     0
+  :server-app                115    586     0    0     0
+  :synx                       17    142     0    0     0
+  :testing                     8     11     0    0     0
+  TOTAL                      616   4267     0    0    21
+
+  [test-reports-multithreaded]
+  module                 classes  tests  fail  err  skip
+  :                          432   3182     0    0    21
+  :architecture-tests          7     20     0    0     0
+  :baker                       8     76     0    0     0
+  :game-rts                   13     87     0    0     0
+  :loadtest                    6     26     0    0     0
+  :plugin-api                  3     15     0    0     0
+  :protocol                    7    122     0    0     0
+  :server-app                115    586     0    0     0
+  :synx                       17    142     0    0     0
+  :testing                     8     11     0    0     0
+  TOTAL                      616   4267     0    0    21
+
+  [test-reports-multithreaded-grid]
+  module                 classes  tests  fail  err  skip
+  :                          432   3182     0    0    21
+  :architecture-tests          7     20     0    0     0
+  :baker                       8     76     0    0     0
+  :game-rts                   13     87     0    0     0
+  :loadtest                    6     26     0    0     0
+  :plugin-api                  3     15     0    0     0
+  :protocol                    7    122     0    0     0
+  :server-app                115    586     0    0     0
+  :synx                       17    142     0    0     0
+  :testing                     8     11     0    0     0
+  TOTAL                      616   4267     0    0    21
+
+  The three modes have the same counts. Against RUN-064 (4,237: root 3,162, server-app 577, loadtest 25) 30 more, all new
+  classes of the four groups:
+    root        PlayerMovementAuthorityIntegrationTest 7, PlayerBlockReachIntegrationTest 5 (authority),
+                GridItemRaceTest 2 (items), ChunkQueueBoundIntegrationTest 6 (chunks)
+    server-app  FreezeBeforePluginListenersIntegrationTest 4, GateFreezeEarlyGrantTest 5 (items)
+    loadtest    BotStallTest 1 (authority)
+  These are the test classes git diff origin/main --stat adds; the changed ones (PlayerBlockPlacementIntegrationTest 7,
+  PlayerMovementIntegrationTest 12, BotSocketTest 8) keep their counts.
+  The 21 skipped of the root project are the 15 of a local run (TestMojangUtils 9, TranslationIntegrationTest 3,
+  PlayerSkinTest 2, TagNbtTest 1) and ServerProcessTest 3 and ServerAddressTest 3, which assumeTrue(GITHUB_ACTIONS == null).
+  By package (root, the same in all three modes): entity.* 76 classes 292 tests 2 skipped, entity.player.* 15 / 82,
+  network.* 66 / 878 (3 skipped, ServerAddressTest).
+
+EnvDispatcherThreadsIntegrationTest (testing module) output in each artifact:
+  test-reports                     env dispatcher threads: 1, env thread provider: counter
+  test-reports-multithreaded       env dispatcher threads: 4, env thread provider: counter
+  test-reports-multithreaded-grid  env dispatcher threads: 4, env thread provider: grid
+
+Not run: TC-PROD-575 step 3, the two full :server-app:test runs without the database variables (every CI job sets them).
+Cleanup: /tmp/run070 (artifact zips, extracted XML, the P10 log, the counting scripts) deleted at the end.

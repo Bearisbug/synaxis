@@ -95,6 +95,9 @@ class RosterTest {
         assertEquals(spacing, Roster.spacing(MAP, 997));
         final int columns = 32;
         final int origin = 8;
+        assertTrue(GRID.isWalkable(origin, origin), "the first grid point of " + MAP.id() + " is open ground");
+        assertEquals(origin + 0.5, stands.getFirst().x(), "unit 1 stands on the first grid point: " + stands.getFirst());
+        assertEquals(origin + 0.5, stands.getFirst().z(), "unit 1 stands on the first grid point: " + stands.getFirst());
         final Set<Long> columnsTaken = new HashSet<>();
         for (int unit = 0; unit < stands.size(); unit++) {
             final Pos stand = stands.get(unit);

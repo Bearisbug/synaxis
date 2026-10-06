@@ -19,10 +19,13 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.attribute.PosixFilePermissions;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Stream;
 
 import static io.github.bearisbug.synaxis.baker.BakeTesting.REGISTRIES;
 import static io.github.bearisbug.synaxis.baker.BakeTesting.events;
@@ -53,6 +56,26 @@ public class GeneratorBakeTest {
 
     private static GeneratorSource source(Generator generator, SynxManifest.Bounds bounds) {
         return new GeneratorSource(new GeneratorPreset(generator, 0, 64, bounds), REGISTRIES);
+    }
+
+    /**
+     * §19 「组或他人可写的地图文件拒启」, the baker part (M3-S, {@code API-M3-002} 文件信任): the map directory it
+     * makes and every directory of the release are 0755, every file 0644, whatever the umask of the baker;
+     * a shard refuses a release group or others may write.
+     */
+    @Test
+    public void theReleaseIsReadableByAllAndWrittenByItsOwnerAlone() throws Exception {
+        final Baker.Result result = Baker.bake(request("test", synthetic(FOUR_REGIONS), temp, 1));
+        assertEquals(Baker.EXIT_PUBLISHED, result.exitCode(), result.message());
+        final Path mapDir = temp.resolve("maps").resolve("test");
+        final List<String> modes = new ArrayList<>();
+        try (Stream<Path> paths = Files.walk(mapDir)) {
+            for (Path path : paths.sorted().toList()) {
+                final String mode = PosixFilePermissions.toString(Files.getPosixFilePermissions(path));
+                if (!mode.equals(Files.isDirectory(path) ? "rwxr-xr-x" : "rw-r--r--")) modes.add(mapDir.relativize(path) + " " + mode);
+            }
+        }
+        assertEquals(List.of(), modes, "what is not 0755 or 0644");
     }
 
     @Test

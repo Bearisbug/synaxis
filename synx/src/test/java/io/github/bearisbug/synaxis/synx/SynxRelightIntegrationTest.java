@@ -95,8 +95,8 @@ public class SynxRelightIntegrationTest {
 
         final RelightTestMap map = RelightTestMap.get();
         final OverlayStore reopened = OverlayStore.open(dir, map.manifest, map.settings(), new OverlayOptions(16, 10));
-        final SynxChunkLoader loader = new SynxChunkLoader(map.buildDir, map.manifest, RelightTestMap.BOUNDS,
-                RelightWorld.options(false), reopened, reopened);
+        final SynxChunkLoader loader = new SynxChunkLoader(SynxWorlds.mapped(map.buildDir, map.manifest, RelightTestMap.BOUNDS),
+                RelightTestMap.BOUNDS, RelightWorld.options(false), reopened, reopened);
         final var instance = env.process().instance().createInstanceContainer(RelightWorld.dimension(env.process()), loader);
         for (int x = 1; x <= 5; x++) {
             for (int z = 1; z <= 5; z++) instance.loadChunk(x, z).join();

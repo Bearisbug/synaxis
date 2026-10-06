@@ -11,6 +11,8 @@ import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
 import java.nio.file.Path;
+import java.nio.file.attribute.FileAttribute;
+import java.nio.file.attribute.PosixFilePermissions;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -230,7 +232,7 @@ public final class OverlayStore implements OverlayIndex, OverlayTracker {
 
     static OverlayStore open(Path overlayRoot, SynxManifest manifest, SynxSettings settings, OverlayOptions options,
                              OverlayTuning tuning) throws IOException, SynxException {
-        Files.createDirectories(overlayRoot);
+        Files.createDirectories(overlayRoot, ownerOnly(overlayRoot));
         final List<Path> stale = new ArrayList<>();
         try (DirectoryStream<Path> entries = Files.newDirectoryStream(overlayRoot)) {
             for (Path entry : entries) {
@@ -244,12 +246,27 @@ public final class OverlayStore implements OverlayIndex, OverlayTracker {
             deleteTree(directory);
             LOGGER.info("Overlay of {} deleted: the shard runs {} now", directory.getFileName(), manifest.buildId());
         }
-        final OverlayStore store = new OverlayStore(Files.createDirectories(overlayRoot.resolve(manifest.buildId())),
+        final Path own = overlayRoot.resolve(manifest.buildId());
+        final OverlayStore store = new OverlayStore(Files.createDirectories(own, ownerOnly(own)),
                 manifest, settings, options, tuning);
         store.load(new SynxExpectations(settings.protocolVersion(), settings.registryDigest(),
                 settings.compressionThreshold(), settings.minY(), settings.height(), settings.lightEngineVersion()),
                 manifest.contentHash());
         return store;
+    }
+
+    /**
+     * What the directories of the store are made with: 0700 where the file system has POSIX permissions
+     * (M3-S, {@code API-M3-002} 覆盖层), so that nobody but the service user writes what the shard sends
+     * to the players; the shard host checks the ones that are there before it opens the store.
+     */
+    private static FileAttribute<?>[] ownerOnly(Path path) {
+        return posix(path) ? new FileAttribute<?>[]{PosixFilePermissions.asFileAttribute(PosixFilePermissions.fromString("rwx------"))}
+                : new FileAttribute<?>[0];
+    }
+
+    static boolean posix(Path path) {
+        return path.getFileSystem().supportedFileAttributeViews().contains("posix");
     }
 
     private static void deleteTree(Path directory) throws IOException {

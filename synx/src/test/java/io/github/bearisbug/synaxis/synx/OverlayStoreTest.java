@@ -11,6 +11,7 @@ import java.nio.channels.FileChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
+import java.nio.file.attribute.PosixFilePermissions;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
@@ -112,6 +113,26 @@ public class OverlayStoreTest {
 
     private static long minOffset(OverlayStore store, List<FakeChunk> chunks) {
         return chunks.stream().mapToLong(c -> store.find(c.chunkX(), c.chunkZ()).offset()).min().orElseThrow();
+    }
+
+    /**
+     * §19 「覆盖目录组可写时拒启，新建的覆盖目录是 0700」, the store part (M3-S): the two directories it makes
+     * are 0700 and its segment files 0600, whatever the umask.
+     */
+    @Test
+    public void theDirectoriesAndSegmentsTheStoreMakesAreTheServiceUsersAlone() throws Exception {
+        final Path overlay = root.resolve("overlay");
+        final OverlayStore store = OverlayStore.open(overlay, manifest, OverlayFixture.settings(), new OverlayOptions(16, 10),
+                OverlayFixture.tuning(1, clock, disk));
+        final FakeChunk chunk = OverlayFixture.chunks(store, 0, 1).getFirst();
+        chunk.change();
+        clock.advance(Duration.ofSeconds(10));
+        store.tickEnd();
+        assertFalse(chunk.dirty(), "written");
+        final Path own = overlay.resolve(manifest.buildId());
+        assertEquals("rwx------", PosixFilePermissions.toString(Files.getPosixFilePermissions(overlay)));
+        assertEquals("rwx------", PosixFilePermissions.toString(Files.getPosixFilePermissions(own)));
+        assertEquals("rw-------", PosixFilePermissions.toString(Files.getPosixFilePermissions(own.resolve("seg.0.synx"))));
     }
 
     /**

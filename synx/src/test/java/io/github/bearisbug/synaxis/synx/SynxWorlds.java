@@ -10,9 +10,13 @@ import io.github.bearisbug.synaxis.world.DimensionType;
 import net.kyori.adventure.key.Key;
 
 import java.io.IOException;
+import java.lang.foreign.Arena;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.BooleanSupplier;
 
@@ -42,11 +46,29 @@ final class SynxWorlds {
 
     static SynxChunkLoader loader(Path buildDir, SynxManifest.Bounds bounds,
                                   SynxOptions options, MemoryOverlay overlay) {
+        return new SynxChunkLoader(mapped(buildDir, SynxTestMap.get().manifest, bounds), bounds, options, overlay, overlay);
+    }
+
+    /**
+     * The region files a loader of {@code bounds} reads, mapped as they are: nothing is checked, so that a
+     * test can damage a record first. The shard maps them through {@link SynxBuildVerifier#open}.
+     */
+    static VerifiedBuild mapped(Path buildDir, SynxManifest manifest, SynxManifest.Bounds bounds) {
+        final int margin = SynxChunkLoader.VIEW_MARGIN;
+        final SynxManifest.Bounds view = new SynxManifest.Bounds(bounds.minX() - margin, bounds.minZ() - margin,
+                bounds.maxX() + margin, bounds.maxZ() + margin);
+        final Map<Long, SynxRegion> regions = new HashMap<>();
+        final Arena arena = Arena.ofShared();
         try {
-            return new SynxChunkLoader(buildDir, SynxTestMap.get().manifest, bounds, options, overlay, overlay);
+            for (Path file : SynxBuildVerifier.regionFiles(buildDir, manifest, view)) {
+                if (!Files.isRegularFile(file)) continue;
+                final SynxRegion region = SynxRegion.open(file, arena);
+                regions.put(VerifiedBuild.key(region.header().regionX(), region.header().regionZ()), region);
+            }
         } catch (IOException | SynxException e) {
             throw new AssertionError(e);
         }
+        return new VerifiedBuild(manifest, regions);
     }
 
     static Instance instance(ServerProcess process, SynxChunkLoader loader) {

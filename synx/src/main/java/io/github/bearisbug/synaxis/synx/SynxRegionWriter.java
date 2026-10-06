@@ -9,6 +9,7 @@ import java.nio.channels.FileChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
+import java.nio.file.attribute.PosixFilePermissions;
 import java.security.MessageDigest;
 import java.util.zip.CRC32C;
 
@@ -56,7 +57,10 @@ public final class SynxRegionWriter {
      * go to the file one at a time, so the region is never held in memory a second time; the
      * header and the index follow in {@link Encoded#write}, once the map wide
      * {@code content_hash} is known. {@code staging} is created or overwritten, and has to be on
-     * the file system of the region file it becomes. It is deleted if encoding fails.
+     * the file system of the region file it becomes. It is made 0644 where the file system has POSIX
+     * permissions, before a byte is written: the region file is a hard link to it, and a release is read
+     * by every shard and written by its owner alone (M3-S, {@code API-M3-002} 文件信任). It is deleted
+     * if encoding fails.
      *
      * @throws IllegalArgumentException if a segment ① is not a well formed frame
      */
@@ -68,6 +72,7 @@ public final class SynxRegionWriter {
         int chunks = 0;
         try (OutputStream output = new BufferedOutputStream(Files.newOutputStream(staging,
                 StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.WRITE))) {
+            readableByAll(staging);
             output.write(new byte[SynxFormat.RECORDS_START]);
             for (int i = 0; i < SynxFormat.INDEX_ENTRIES; i++) {
                 final SynxChunkRecord record = records[i];
@@ -102,6 +107,12 @@ public final class SynxRegionWriter {
         }
         return new Encoded(regionX, regionZ, settings, staging, index.array(), position, content.digest(),
                 payload.digest(), chunks);
+    }
+
+    private static void readableByAll(Path file) throws IOException {
+        if (file.getFileSystem().supportedFileAttributeViews().contains("posix")) {
+            Files.setPosixFilePermissions(file, PosixFilePermissions.fromString("rw-r--r--"));
+        }
     }
 
     /**

@@ -1,6 +1,7 @@
 package io.github.bearisbug.synaxis.app.shard;
 
 import io.github.bearisbug.synaxis.ServerProcess;
+import io.github.bearisbug.synaxis.app.FileTrust;
 import io.github.bearisbug.synaxis.app.ShutdownSequence;
 import io.github.bearisbug.synaxis.coordinate.Pos;
 import io.github.bearisbug.synaxis.game.protocol.FarViewAnnouncement;
@@ -30,6 +31,7 @@ import io.github.bearisbug.synaxis.synx.SynxRelight;
 import io.github.bearisbug.synaxis.synx.SynxSettings;
 import io.github.bearisbug.synaxis.synx.SynxSlot;
 import io.github.bearisbug.synaxis.synx.SynxStreamStats;
+import io.github.bearisbug.synaxis.synx.VerifiedBuild;
 import io.github.bearisbug.synaxis.timer.ExecutionType;
 import io.github.bearisbug.synaxis.timer.TaskSchedule;
 import io.github.bearisbug.synaxis.world.DimensionType;
@@ -39,14 +41,20 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.lang.foreign.Arena;
 import java.lang.foreign.ValueLayout;
+import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.nio.channels.FileChannel;
+import java.nio.channels.SeekableByteChannel;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.time.Duration;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -79,6 +87,12 @@ public final class ShardWorld {
     private static final int SPAWN_COLUMN = 8 * 16 + 8;
     /** {@code API-M3-015}: the coarse prefixes of the tiles up to 256 chunks, 4,096 blocks, past the bounds are announced. */
     static final int COARSE_REACH = 256;
+    /** {@code API-M3-002} 只读一次: the largest manifest read, 16 MiB. */
+    static final int MAX_MANIFEST_BYTES = 16 << 20;
+    /** The block a far view pack is read in while its digests are computed. */
+    private static final int DIGEST_BLOCK = 1 << 20;
+    /** How {@link FileTrust} ends the refusal of an overlay directory or segment group or others may write. */
+    private static final String OVERLAY_WRITER = "only the service user may write it";
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ShardWorld.class);
 
@@ -86,6 +100,7 @@ public final class ShardWorld {
     private final ShardSettings settings;
     private final SynxOptions synxOptions;
     private final OverlayOptions overlayOptions;
+    private final VerifiedBuild verified;
     private final SynxManifest manifest;
     private final RegistryKey<DimensionType> dimensionType;
     private final long verifyMillis;
@@ -156,7 +171,10 @@ public final class ShardWorld {
      * {@code API-M3-015} 远景宣告, computed once when the shard starts: the tiles of {@link #announcedTiles},
      * each pack held to the manifest first, its size and SHA-256, and for a tile announced by its coarse
      * prefix also {@code coarse_bytes} against the {@code fine_offset} of its header and
-     * {@code coarse_sha256} against its first {@code coarse_bytes} bytes. Nothing is announced without a
+     * {@code coarse_sha256} against its first {@code coarse_bytes} bytes. Who may have written the packs
+     * was checked in step (3) ({@code API-M3-002} 文件信任). A url root of plain http to another host than
+     * this one is announced all the same, with a WARN: it lets anyone on the way see which tiles a player
+     * loads. Nothing is announced without a
      * url root, without a tile meeting the bounds, when one pack does not match, or when the tiles make
      * no announcement (over 64 of them, a url over 1,024 bytes); one line of the log says which, a WARN
      * for the last two. None of it refuses the start: the far view is optional.
@@ -177,7 +195,7 @@ public final class ShardWorld {
         final SynxManifest.FarView first = tiles.getFirst().pack();
         for (AnnouncedTile tile : tiles) {
             final SynxManifest.FarView pack = tile.pack();
-            final String file = "farview/t." + pack.tileX() + "." + pack.tileZ() + ".hfp";
+            final String file = packFile(pack);
             final String mismatch = pack.baseLevel() != first.baseLevel() || pack.coarseLevel() != first.coarseLevel()
                     ? "has the levels " + pack.baseLevel() + "/" + pack.coarseLevel() + " in the manifest, another tile "
                     + first.baseLevel() + "/" + first.coarseLevel()
@@ -206,43 +224,109 @@ public final class ShardWorld {
         }
         final long coarse = tiles.stream().filter(tile -> tile.layer() == FarViewAnnouncement.LAYER_COARSE).count();
         LOGGER.info("Far view: {} tile(s), {} coarse, from {}", tiles.size() - coarse, coarse, urlRoot);
+        final String host = plainHttpHost(urlRoot);
+        if (host != null && !loopback(host)) {
+            LOGGER.warn("Far view packs go over plain http to {}: which tiles a player loads can be seen on the way, use https",
+                    host);
+        }
         return announcement;
+    }
+
+    /** The path of the pack of a tile under the release directory, {@code farview/t.<tx>.<tz>.hfp}. */
+    static String packFile(SynxManifest.FarView pack) {
+        return "farview/t." + pack.tileX() + "." + pack.tileZ() + ".hfp";
     }
 
     /** How the pack in {@code file} differs from its manifest entry, empty when it does not. */
     private static String mismatch(Path file, SynxManifest.FarView pack, int layer) {
-        final byte[] bytes;
-        try {
-            bytes = Files.readAllBytes(file);
+        try (FileChannel channel = FileChannel.open(file, StandardOpenOption.READ)) {
+            return mismatch(channel, pack, layer);
         } catch (IOException e) {
             return "cannot be read: " + e;
         }
-        if (bytes.length != pack.bytes()) return "is " + bytes.length + " bytes, the manifest says " + pack.bytes();
-        if (!Arrays.equals(SynxDigests.sha256(bytes), pack.sha256())) return "does not match the sha256 of the manifest";
-        if (layer == FarViewAnnouncement.LAYER_FULL) return "";
-        final long fineOffset;
-        try {
-            fineOffset = FarViewPack.Reader.read(bytes).header().fineOffset();
-        } catch (FarViewPack.Invalid e) {
-            return "is not a far view pack: " + e.getMessage();
+    }
+
+    /**
+     * {@link #mismatch(Path, SynxManifest.FarView, int)} on a channel of the pack (M3-S, {@code API-M3-015}
+     * 宣告条): its size first, held to the manifest and to {@link FarViewAnnouncement#MAX_OBJECT_BYTES}
+     * before a byte is read; then its SHA-256, and that of its first {@code coarse_bytes} bytes for a tile
+     * announced by its coarse prefix, computed {@value #DIGEST_BLOCK} bytes at a time on the same channel.
+     */
+    static String mismatch(SeekableByteChannel channel, SynxManifest.FarView pack, int layer) throws IOException {
+        final long size = channel.size();
+        if (size != pack.bytes()) return "is " + size + " bytes, the manifest says " + pack.bytes();
+        if (size > FarViewAnnouncement.MAX_OBJECT_BYTES) {
+            return "is " + size + " bytes, over the " + FarViewAnnouncement.MAX_OBJECT_BYTES + " bytes a far view object may have";
         }
+        final boolean coarse = layer == FarViewAnnouncement.LAYER_COARSE;
+        final MessageDigest whole = sha256();
+        final MessageDigest prefix = sha256();
+        final ByteBuffer header = ByteBuffer.allocate(FarViewPack.HEADER_BYTES).order(ByteOrder.LITTLE_ENDIAN);
+        final ByteBuffer block = ByteBuffer.allocate(DIGEST_BLOCK);
+        long read = 0;
+        while (channel.read(block.clear()) >= 0) {
+            block.flip();
+            if (header.hasRemaining()) header.put(block.duplicate().limit(Math.min(block.limit(), header.remaining())));
+            if (coarse && read < pack.coarseBytes()) {
+                prefix.update(block.duplicate().limit((int) Math.min(block.limit(), pack.coarseBytes() - read)));
+            }
+            read += block.remaining();
+            whole.update(block);
+        }
+        if (read != size) return "is " + read + " bytes read, " + size + " bytes long";
+        if (!MessageDigest.isEqual(whole.digest(), pack.sha256())) return "does not match the sha256 of the manifest";
+        if (!coarse) return "";
+        if (header.hasRemaining()) return "is not a far view pack: shorter than its " + FarViewPack.HEADER_BYTES + " byte header";
+        final long fineOffset = Integer.toUnsignedLong(header.getInt(32));
         if (fineOffset != pack.coarseBytes()) {
             return "has its coarse prefix in " + fineOffset + " bytes, the manifest says coarse_bytes " + pack.coarseBytes();
         }
-        if (!Arrays.equals(SynxDigests.sha256(Arrays.copyOf(bytes, (int) fineOffset)), pack.coarseSha256())) {
+        if (!MessageDigest.isEqual(prefix.digest(), pack.coarseSha256())) {
             return "has a coarse prefix that does not match the coarse_sha256 of the manifest";
         }
         return "";
     }
 
+    private static MessageDigest sha256() {
+        try {
+            return MessageDigest.getInstance("SHA-256");
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException("every JDK has SHA-256", e);
+        }
+    }
+
+    /** The host of a url root of plain http, null for https. */
+    static @Nullable String plainHttpHost(String urlRoot) {
+        final String scheme = "http://";
+        if (!urlRoot.regionMatches(true, 0, scheme, 0, scheme.length())) return null;
+        String authority = urlRoot.substring(scheme.length());
+        final int path = authority.indexOf('/');
+        if (path >= 0) authority = authority.substring(0, path);
+        authority = authority.substring(authority.lastIndexOf('@') + 1);
+        if (authority.startsWith("[")) {
+            final int end = authority.indexOf(']');
+            return end < 0 ? authority : authority.substring(0, end + 1);
+        }
+        final int port = authority.indexOf(':');
+        return port < 0 ? authority : authority.substring(0, port);
+    }
+
+    /** Whether a host names this machine without a lookup: {@code localhost}, 127.0.0.0/8 or ::1. */
+    static boolean loopback(String host) {
+        final String bare = host.startsWith("[") && host.endsWith("]") ? host.substring(1, host.length() - 1) : host;
+        return bare.equalsIgnoreCase("localhost") || bare.equals("::1") || bare.equals("0:0:0:0:0:0:0:1")
+                || bare.matches("127\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}");
+    }
+
     private ShardWorld(ServerProcess process, ShardSettings settings, SynxOptions synxOptions,
-                       OverlayOptions overlayOptions, SynxManifest manifest, RegistryKey<DimensionType> dimensionType,
+                       OverlayOptions overlayOptions, VerifiedBuild verified, RegistryKey<DimensionType> dimensionType,
                        long verifyMillis, @Nullable ShardDirectory directory) {
         this.process = process;
         this.settings = settings;
         this.synxOptions = synxOptions;
         this.overlayOptions = overlayOptions;
-        this.manifest = manifest;
+        this.verified = verified;
+        this.manifest = verified.manifest();
         this.dimensionType = dimensionType;
         this.verifyMillis = verifyMillis;
         this.directory = directory;
@@ -250,9 +334,10 @@ public final class ShardWorld {
 
     /**
      * Step (3) of {@code Main}, after the match dimension type, while the registries still take new
-     * entries: checks the view and simulation distances, runs the start-up check of
-     * {@code API-M3-002} on the release, registers the map dimension type from the manifest's world,
-     * and the block handlers the baker registered. In the directory mode it also checks the shard
+     * entries: checks the view and simulation distances, checks who may have written the files of the
+     * release before reading them ({@link MapFileTrust}), reads the manifest once, runs the start-up check
+     * of {@code API-M3-002} on the region files it maps for good, registers the map dimension type from
+     * the manifest's world, and the block handlers the baker registered. In the directory mode it also checks the shard
      * directory against the release and the spawn column of the region against its gates, and the
      * start-up check covers the view of the region instead of the whole release. Writes nothing.
      *
@@ -268,6 +353,12 @@ public final class ShardWorld {
      */
     public static ShardWorld prepare(ServerProcess process, ShardSettings settings, SynxOptions synxOptions,
                                      OverlayOptions overlayOptions, @Nullable ShardDirectory directory) {
+        return prepare(process, settings, synxOptions, overlayOptions, directory, MapFileTrust::unixUid);
+    }
+
+    /** {@link #prepare(ServerProcess, ShardSettings, SynxOptions, OverlayOptions, ShardDirectory)} with the owners of the files read by {@code owners}, for the tests. */
+    static ShardWorld prepare(ServerProcess process, ShardSettings settings, SynxOptions synxOptions,
+                              OverlayOptions overlayOptions, @Nullable ShardDirectory directory, MapFileTrust.Owners owners) {
         final int viewDistance = process.config().chunkViewDistance();
         if (viewDistance > MAX_VIEW_DISTANCE) {
             throw new IllegalArgumentException("synaxis.chunk-view-distance=" + viewDistance + " is above "
@@ -280,47 +371,89 @@ public final class ShardWorld {
                     + " is not from 1 to the chunk view distance " + viewDistance
                     + ": the simulation distance cannot exceed the view distance");
         }
-        final Path buildDir = settings.buildDir();
         final long started = System.nanoTime();
-        final SynxManifest manifest;
+        final MapFileTrust trust = new MapFileTrust(Objects.requireNonNull(settings.mapRoot(), "no map is mounted"), owners);
+        final VerifiedBuild verified;
         try {
-            manifest = verify(process, settings, directory);
+            verified = verify(process, settings, directory, trust);
         } catch (SynxException e) {
             throw new IllegalArgumentException(e.getMessage(), e);
-        } catch (IOException e) {
-            throw new IllegalArgumentException(SynxError.MANIFEST.code() + ": " + buildDir + ": " + e.getMessage(), e);
         }
+        final SynxManifest manifest = verified.manifest();
         final long verifyMillis = Duration.ofNanos(System.nanoTime() - started).toMillis();
         final SynxManifest.World world = manifest.world();
         final RegistryKey<DimensionType> dimensionType = process.dimensionType().register(Key.key(DIMENSION_TYPE),
                 DimensionType.builder().minY(world.minY()).height(world.height()).logicalHeight(world.height()).build());
         SynxHandlers.registerAll(process.block());
-        LOGGER.info("Map release {} verified in {} ms: bounds={} world={}", manifest.buildId(), verifyMillis,
-                manifest.bounds(), world);
-        return new ShardWorld(process, settings, synxOptions, overlayOptions, manifest, dimensionType, verifyMillis,
+        LOGGER.info("Map release {} verified in {} ms: bounds={} world={}{}", manifest.buildId(), verifyMillis,
+                manifest.bounds(), world, trust.checked() ? "" : " permissions=unchecked (the file system has no POSIX permissions)");
+        return new ShardWorld(process, settings, synxOptions, overlayOptions, verified, dimensionType, verifyMillis,
                 directory);
     }
 
     /**
-     * The start-up check, on the expectations of this process: its registries and compression
-     * threshold, the light engine version, and the world the manifest declares, which the map
-     * dimension type is then built on. The scope is the {@code view_bounds} of the bounds the shard
-     * serves, its region in the directory mode. A shard directory is checked against the declared
-     * manifest first.
+     * The start-up check, in the order of {@code API-M3-002} 文件信任: who may have written the shard
+     * directory, the release directory and the manifest before the manifest is read, once, on one
+     * channel; who may have written the region files the shard maps and the far view packs it
+     * announces before a byte of them is read; then the start-up check on the expectations of this
+     * process (its registries and compression threshold, the light engine version, and the world the
+     * manifest declares, which the map dimension type is then built on) over the mappings the shard
+     * keeps. The scope is the {@code view_bounds} of the bounds the shard serves, its region in the
+     * directory mode. A shard directory is checked against the manifest right after it is read.
      */
-    private static SynxManifest verify(ServerProcess process, ShardSettings settings, @Nullable ShardDirectory directory)
-            throws IOException, SynxException {
+    private static VerifiedBuild verify(ServerProcess process, ShardSettings settings, @Nullable ShardDirectory directory,
+                                        MapFileTrust trust) throws SynxException {
         final Path buildDir = settings.buildDir();
         final Path manifestFile = buildDir.resolve(SynxManifest.FILE_NAME);
+        if (directory != null) {
+            trust.check(Objects.requireNonNull(settings.mapRoot(), "no map is mounted").resolve(ShardDirectory.FILE_NAME));
+        }
+        trust.check(buildDir);
+        trust.check(manifestFile);
         if (!Files.isRegularFile(manifestFile)) {
             throw new SynxException(SynxError.MANIFEST, SynxManifest.FILE_NAME, "missing in " + buildDir);
         }
-        final SynxManifest declared = SynxManifest.fromJson(Files.readString(manifestFile));
+        final SynxManifest declared;
+        try (FileChannel channel = FileChannel.open(manifestFile, StandardOpenOption.READ)) {
+            declared = readManifest(channel);
+        } catch (IOException e) {
+            throw new IllegalArgumentException(SynxError.MANIFEST.code() + ": " + buildDir + ": " + e.getMessage(), e);
+        }
         if (directory != null) checkDirectory(directory, declared, settings);
+        final SynxManifest.Bounds bounds = bounds(declared, directory);
+        final SynxManifest.Bounds scope = viewBounds(bounds);
+        for (Path region : SynxBuildVerifier.regionFiles(buildDir, declared, scope)) trust.check(region);
+        if (!settings.farviewUrlRoot().isEmpty()) {
+            for (AnnouncedTile tile : announcedTiles(declared.farview(), bounds)) {
+                trust.check(buildDir.resolve(packFile(tile.pack())));
+            }
+        }
         final SynxManifest.World world = declared.world();
         final SynxExpectations expectations = SynxExpectations.of(process.registries(), process.compressionThreshold(),
                 world.minY(), world.height(), LightEngine.VERSION);
-        return SynxBuildVerifier.verify(buildDir, expectations, viewBounds(bounds(declared, directory)));
+        try {
+            return SynxBuildVerifier.open(buildDir, declared, expectations, scope);
+        } catch (IOException e) {
+            throw new IllegalArgumentException("the map release " + declared.buildId() + " cannot be opened: "
+                    + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * The manifest from a channel of {@code manifest.json} ({@code API-M3-002} 只读一次): at most
+     * {@value #MAX_MANIFEST_BYTES} bytes, its size compared before a byte is read, the rest as
+     * {@link SynxManifest#fromJson} reads it.
+     *
+     * @throws SynxException {@link SynxError#MANIFEST} for a larger file or a manifest that does not read
+     * @throws IOException   if the channel cannot be read, or the file is not UTF-8
+     */
+    static SynxManifest readManifest(SeekableByteChannel channel) throws IOException, SynxException {
+        final byte[] bytes = BoundedRead.readAtMost(channel, MAX_MANIFEST_BYTES);
+        if (bytes == null) {
+            throw new SynxException(SynxError.MANIFEST, SynxManifest.FILE_NAME, channel.size() + " bytes, over "
+                    + MAX_MANIFEST_BYTES);
+        }
+        return SynxManifest.fromJson(StandardCharsets.UTF_8.newDecoder().decode(ByteBuffer.wrap(bytes)).toString());
     }
 
     /**
@@ -422,6 +555,8 @@ public final class ShardWorld {
         if (flags != null) flags.load();
         final SynxSettings overlaySettings = overlaySettings(manifest, process.compressionThreshold());
         final Path overlayDirectory = overlayRoot.resolve(manifest.buildId());
+        // Before the store opens and scans them: the overlay is read back as the map is (API-M3-002 覆盖层)
+        checkOverlay(overlayRoot, overlayDirectory);
         final OverlayStore overlay;
         try {
             overlay = OverlayStore.open(overlayRoot, manifest, overlaySettings, overlayOptions);
@@ -437,15 +572,7 @@ public final class ShardWorld {
         shutdown.addAfterPlayers("relight", relightStep::drain);
         shutdown.addAfterPlayers("overlay", overlay::finalFlush);
         final SynxManifest.Bounds bounds = bounds(manifest, directory);
-        final SynxChunkLoader loader;
-        try {
-            loader = new SynxChunkLoader(settings.buildDir(), manifest, bounds, synxOptions, overlay, overlay);
-        } catch (SynxException e) {
-            throw new IllegalArgumentException(e.getMessage(), e);
-        } catch (IOException e) {
-            throw new IllegalArgumentException("the map release " + manifest.buildId() + " cannot be opened: "
-                    + e.getMessage(), e);
-        }
+        final SynxChunkLoader loader = new SynxChunkLoader(verified, bounds, synxOptions, overlay, overlay);
         this.overlay = overlay;
         this.loader = loader;
         this.flags = flags;
@@ -464,7 +591,7 @@ public final class ShardWorld {
             LOGGER.warn("The bounds {} of {} are not square: the world border covers the long side, a player can walk "
                     + "into the read only chunks past the short one", bounds, manifest.buildId());
         }
-        final Pos spawn = spawn(settings.buildDir(), manifest, bounds);
+        final Pos spawn = spawn(verified, bounds);
 
         // One task at the end of the tick: the light first, whose installs make chunks dirty, then the write phase
         scheduleWritePhase(process, () -> {
@@ -630,28 +757,56 @@ public final class ShardWorld {
 
     /**
      * §28.1 the spawn point: the column at the center of the center chunk of the bounds, standing on
-     * its {@code surface_y} of segment ②. A center chunk without a readable record puts the spawn at
-     * the top of the world.
+     * its {@code surface_y} of segment ②, read from the mapping the start-up check made. A center chunk
+     * without a readable record puts the spawn at the top of the world.
      */
-    static Pos spawn(Path buildDir, SynxManifest manifest, SynxManifest.Bounds bounds) {
+    static Pos spawn(VerifiedBuild verified, SynxManifest.Bounds bounds) {
+        final SynxManifest manifest = verified.manifest();
         final int chunkX = centerChunk(bounds.minX(), bounds.maxX());
         final int chunkZ = centerChunk(bounds.minZ(), bounds.maxZ());
         final double x = chunkX * 16 + 8.5, z = chunkZ * 16 + 8.5;
-        final Path file = buildDir.resolve("regions").resolve(SynxFormat.regionFileName(SynxFormat.region(chunkX),
-                SynxFormat.region(chunkZ)));
-        String missing = "no record";
-        try (Arena arena = Arena.ofConfined()) {
-            if (Files.isRegularFile(file) && SynxRegion.open(file, arena).slot(chunkX, chunkZ) instanceof SynxSlot.Present present) {
-                final short surfaceY = present.navigation().get(
-                        ValueLayout.JAVA_SHORT_UNALIGNED.withOrder(ByteOrder.LITTLE_ENDIAN), 32 + SPAWN_COLUMN * 2L);
-                return new Pos(x, surfaceY, z);
-            }
-        } catch (IOException | SynxException e) {
-            missing = e.getMessage();
+        final SynxRegion region = verified.region(SynxFormat.region(chunkX), SynxFormat.region(chunkZ));
+        if (region != null && region.slot(chunkX, chunkZ) instanceof SynxSlot.Present present) {
+            final short surfaceY = present.navigation().get(
+                    ValueLayout.JAVA_SHORT_UNALIGNED.withOrder(ByteOrder.LITTLE_ENDIAN), 32 + SPAWN_COLUMN * 2L);
+            return new Pos(x, surfaceY, z);
         }
         final int top = manifest.world().minY() + manifest.world().height();
         LOGGER.warn("The center chunk {},{} of {} has no readable record ({}), players spawn at the top of the world, y {}",
-                chunkX, chunkZ, manifest.buildId(), missing, top);
+                chunkX, chunkZ, manifest.buildId(), region == null ? "no region file" : "no record", top);
         return new Pos(x, top, z);
+    }
+
+    /**
+     * {@code API-M3-002} 覆盖层: the overlay store, written by the shard itself, is read back and sent to
+     * the players as the map is. So {@code overlay/}, {@code overlay/<build_id>/} and its segment files,
+     * those that are there, go through {@link FileTrust} by their real paths before the store opens: a
+     * file group or others may write, or a directory they may write without the sticky bit, refuses the
+     * start. The owner is not looked at: the working directory is the service user's alone
+     * ({@code docs/DESIGN-PROD.md} §23). A file system without the {@code unix} attribute view is not
+     * checked.
+     *
+     * @throws IllegalArgumentException for a refused start, which starts with the real path
+     */
+    static void checkOverlay(Path overlayRoot, Path overlayDirectory) {
+        try {
+            checkOverlayPath(overlayRoot);
+            checkOverlayPath(overlayDirectory);
+            if (!Files.isDirectory(overlayDirectory)) return;
+            try (DirectoryStream<Path> segments = Files.newDirectoryStream(overlayDirectory, "seg.*.synx")) {
+                for (Path segment : segments) checkOverlayPath(segment);
+            }
+        } catch (IOException e) {
+            throw new IllegalArgumentException("the overlay store " + overlayDirectory + " cannot be opened: "
+                    + e.getMessage(), e);
+        }
+    }
+
+    private static void checkOverlayPath(Path path) throws IOException {
+        if (!Files.exists(path)) return;
+        final Path real = path.toRealPath();
+        if (!real.getFileSystem().supportedFileAttributeViews().contains("unix")) return;
+        final String writable = FileTrust.writableByOthers(real, OVERLAY_WRITER);
+        if (writable != null) throw new IllegalArgumentException(real + ": " + writable);
     }
 }

@@ -9,9 +9,13 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.util.Arrays;
+import java.util.List;
 
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -142,5 +146,30 @@ public class SynxBuildVerifierTest {
                 SynxVectors.expectations(), new SynxManifest.Bounds(-16, -16, 47, 47))).error());
         // A shard whose view stays inside region (0,0) never opens it
         SynxBuildVerifier.verify(build, SynxVectors.expectations(), new SynxManifest.Bounds(0, 0, 31, 31));
+    }
+
+    /**
+     * §19 「校验与载入用同一份映射」, the {@code :synx} half (M3-S): {@link SynxBuildVerifier#open} maps each
+     * region of the scope once, holds the length of that mapping to the manifest and checks on it, and
+     * hands the mapping on. Another file renamed over a checked one afterwards changes nothing it reads.
+     */
+    @Test
+    public void openChecksOnTheMappingItHandsOnAndAFileRenamedOverItChangesNothing() throws Exception {
+        assertEquals(List.of(region(-1, -1), region(0, -1), region(-1, 0), region(0, 0)),
+                SynxBuildVerifier.regionFiles(build, manifest, manifest.bounds()));
+        final VerifiedBuild verified = SynxBuildVerifier.open(build, manifest, SynxVectors.expectations(), manifest.bounds());
+        assertEquals(4, verified.regionCount());
+        assertEquals(manifest.regions().stream().mapToLong(SynxManifest.Region::bytes).sum(), verified.bytesMapped());
+        final byte[] checked = assertInstanceOf(SynxSlot.Present.class, verified.region(0, 0).slot(5, 7)).record().packet();
+
+        // Another region of the release written next to region 0,0 and renamed over it
+        final Path next = region(0, 0).resolveSibling("r.0.0.synx.next");
+        Files.copy(region(-1, 0), next);
+        Files.move(next, region(0, 0), StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+        assertEquals(0, verified.region(0, 0).header().regionX(), "the mapping is the file that was checked");
+        assertArrayEquals(checked, assertInstanceOf(SynxSlot.Present.class, verified.region(0, 0).slot(5, 7)).record()
+                .packet());
+        assertThrows(SynxException.class, () -> SynxBuildVerifier.open(build, manifest, SynxVectors.expectations(),
+                manifest.bounds()), "the file at the path now is another one");
     }
 }

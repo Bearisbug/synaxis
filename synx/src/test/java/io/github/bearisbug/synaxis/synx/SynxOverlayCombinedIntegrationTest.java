@@ -57,8 +57,8 @@ public class SynxOverlayCombinedIntegrationTest {
             final SynxTestMap map = SynxTestMap.get();
             this.store = OverlayStore.open(root, map.manifest, map.settings(), options,
                     OverlayFixture.tuning(encodeThreads, segmentRecords, clock, disk));
-            this.loader = new SynxChunkLoader(map.buildDir, map.manifest, SynxTestMap.REGION, SynxWorlds.WRITABLE, store,
-                    store);
+            this.loader = new SynxChunkLoader(SynxWorlds.mapped(map.buildDir, map.manifest, SynxTestMap.REGION),
+                    SynxTestMap.REGION, SynxWorlds.WRITABLE, store, store);
             this.instance = SynxWorlds.instance(env.process(), loader);
         }
 

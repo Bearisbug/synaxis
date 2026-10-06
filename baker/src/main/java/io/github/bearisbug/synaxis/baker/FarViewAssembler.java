@@ -280,7 +280,7 @@ final class FarViewAssembler {
         final List<Replacement> coarseHidden = hide(hidden, FarViewPack.COARSE_LEVEL, (x, z) -> inBounds(x, z)
                 ? hiddenTop(coarse[(z - bounds.minZ()) * width + x - bounds.minX()]) : 0);
 
-        Files.createDirectories(farview);
+        Baker.publishedDirectory(Files.createDirectories(farview));
         final List<SynxManifest.FarView> entries = new ArrayList<>();
         for (int[] tile : tiles(bounds)) {
             entries.add(tile(parts, tile[0], tile[1], coarse, fineHidden, coarseHidden, tamper, farview));
@@ -389,7 +389,8 @@ final class FarViewAssembler {
         final byte[] whole = writer.write();
         final Path staging = parts.resolve(fileName(tileX, tileZ) + ".staging");
         try {
-            Files.write(staging, whole);
+            // 0644 before the link: the pack in the release is the same file (API-M3-002 文件信任)
+            Baker.publishedFile(Files.write(staging, whole));
             try (FileChannel channel = FileChannel.open(staging, StandardOpenOption.WRITE)) {
                 channel.force(true);
             }

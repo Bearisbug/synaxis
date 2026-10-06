@@ -16,7 +16,6 @@ import io.github.bearisbug.synaxis.testing.Env;
 import io.github.bearisbug.synaxis.testing.EnvTest;
 import org.junit.jupiter.api.Test;
 
-import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -111,13 +110,8 @@ public class PlayerInventoryIntegrationTest {
             }
         });
 
-        // Make sure EntityEquipmentPacket is empty
-        equipmentTracker.assertSingle(entityEquipmentPacket -> {
-            assertEquals(EquipmentSlot.values().length, entityEquipmentPacket.equipments().size());
-            for (Map.Entry<EquipmentSlot, ItemStack> entry : entityEquipmentPacket.equipments().entrySet()) {
-                assertEquals(ItemStack.AIR, entry.getValue());
-            }
-        });
+        // Make sure no EntityEquipmentPacket is sent (nothing was equipped)
+        equipmentTracker.assertEmpty();
     }
 
     @Test
@@ -146,6 +140,33 @@ public class PlayerInventoryIntegrationTest {
         equipmentTracker = connectionViewer.trackIncoming(EntityEquipmentPacket.class);
         playerArmored.setEquipment(EquipmentSlot.HELMET, ItemStack.AIR);
         equipmentTracker.assertSingle(entityEquipmentPacket -> assertEquals(ItemStack.AIR, entityEquipmentPacket.equipments().get(EquipmentSlot.HELMET)));
+    }
+
+    @Test
+    public void clearInventoryClearsEquipmentForViewersTest(Env env) {
+        var instance = env.createFlatInstance();
+        var connectionArmored = env.createConnection();
+        var playerArmored = connectionArmored.connect(instance, new Pos(0, 42, 0));
+        var connectionViewer = env.createConnection();
+        connectionViewer.connect(instance, new Pos(0, 42, 0));
+
+        playerArmored.setEquipment(EquipmentSlot.HELMET, MAGIC_STACK);
+
+        // Make sure clearing the inventory clears the equipped slot for viewers, once
+        var equipmentTracker = connectionViewer.trackIncoming(EntityEquipmentPacket.class);
+        playerArmored.getInventory().clear();
+        equipmentTracker.assertSingle(entityEquipmentPacket -> assertEquals(ItemStack.AIR, entityEquipmentPacket.equipments().get(EquipmentSlot.HELMET)));
+    }
+
+    @Test
+    public void playerWithNothingEquippedSendsNoEquipmentToANewViewerTest(Env env) {
+        var instance = env.createFlatInstance();
+        var connectionViewer = env.createConnection();
+        connectionViewer.connect(instance, new Pos(0, 42, 0));
+
+        var equipmentTracker = connectionViewer.trackIncoming(EntityEquipmentPacket.class);
+        env.createConnection().connect(instance, new Pos(0, 42, 0));
+        equipmentTracker.assertEmpty();
     }
 
     @Test

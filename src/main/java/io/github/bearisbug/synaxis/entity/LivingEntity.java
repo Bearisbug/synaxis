@@ -586,7 +586,8 @@ public class LivingEntity extends Entity implements EquipmentHandler {
         // set_equipment and the attributes are only valid for living entity types, sending them for a
         // LivingEntity carrying a non-living type is a protocol error on the client
         if (shouldSendAttributes()) {
-            player.sendPacket(this.getEquipmentsPacket());
+            final var equipmentsPacket = this.getEquipmentsPacket();
+            if (equipmentsPacket != null) player.sendPacket(equipmentsPacket);
             player.sendPacket(this.getPropertiesPacket());
         }
     }

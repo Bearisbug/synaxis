@@ -1,11 +1,16 @@
 package io.github.bearisbug.synaxis.entity;
 
 import io.github.bearisbug.synaxis.coordinate.Pos;
+import io.github.bearisbug.synaxis.item.ItemStack;
+import io.github.bearisbug.synaxis.item.Material;
 import io.github.bearisbug.synaxis.network.packet.server.play.EntityEquipmentPacket;
 import io.github.bearisbug.synaxis.testing.Env;
 import io.github.bearisbug.synaxis.testing.EnvTest;
 import org.junit.jupiter.api.Test;
 
+import java.util.Map;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @EnvTest
@@ -34,9 +39,26 @@ public class NonLivingEquipmentIntegrationTest {
 
         var zombie = new LivingEntity(EntityType.ZOMBIE);
         zombie.setInstance(instance, new Pos(0, 42, 5000)).join();
+        var helmet = ItemStack.of(Material.IRON_HELMET);
+        zombie.setEquipment(EquipmentSlot.HELMET, helmet);
 
         var tracker = connection.trackIncoming(EntityEquipmentPacket.class);
         assertTrue(zombie.addViewer(viewer));
-        tracker.assertAny();
+        // Like vanilla, only the slots holding an item
+        tracker.assertSingle(packet -> assertEquals(Map.of(EquipmentSlot.HELMET, helmet), packet.equipments()));
+    }
+
+    @Test
+    public void livingEntityWithNothingEquippedSendsNoEquipment(Env env) {
+        var instance = env.createFlatInstance();
+        var connection = env.createConnection();
+        var viewer = connection.connect(instance, new Pos(0, 42, 0));
+
+        var zombie = new LivingEntity(EntityType.ZOMBIE);
+        zombie.setInstance(instance, new Pos(0, 42, 5000)).join();
+
+        var tracker = connection.trackIncoming(EntityEquipmentPacket.class);
+        assertTrue(zombie.addViewer(viewer));
+        tracker.assertEmpty();
     }
 }

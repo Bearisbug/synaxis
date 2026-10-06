@@ -1,0 +1,59 @@
+# RUN-070 / items: the three freeze classes after the second change of the freeze, strict grid and default
+# (TC-PROD-640, 641, 646 to 649 steps 1 and 2, TC-PROD-642 step 1, and the green runs after the counter proofs).
+# First hold (10:30): the change uncommitted on 0814d98acd; it was committed unchanged as 706479af1a right after.
+# Second (10:35-10:36, the hold of 12): 706479af1a, after the counter proofs were put back.
+
+[2026-10-06 10:30:10] lock taken (owner 生产就绪会话/fu-items); HEAD 0814d98acd with the change uncommitted
+  status:  M plugin-api/src/main/java/io/github/bearisbug/synaxis/plugin/PlayerDataStore.java
+  status:  M plugin-api/src/main/java/io/github/bearisbug/synaxis/plugin/PluginEvents.java
+  status:  M server-app/src/main/java/io/github/bearisbug/synaxis/app/store/PlayerStore.java
+  status:  M server-app/src/test/java/io/github/bearisbug/synaxis/app/FreezeBeforePluginListenersIntegrationTest.java
+  status:  M server-app/src/test/java/io/github/bearisbug/synaxis/app/store/GateFreezeEarlyGrantTest.java
+[2026-10-06 10:30:11] green-grid: ./gradlew :server-app:test --rerun --tests io.github.bearisbug.synaxis.app.FreezeBeforePluginListenersIntegrationTest --tests io.github.bearisbug.synaxis.app.store.GateFreezeEarlyGrantTest --tests io.github.bearisbug.synaxis.app.PluginEventsIntegrationTest -Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true -Dsynaxis.thread-provider=grid --max-workers=4 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts
+  BUILD SUCCESSFUL in 21s
+[2026-10-06 10:30:32] green-grid: rc=0 (21 s)
+io.github.bearisbug.synaxis.app.FreezeBeforePluginListenersIntegrationTest: tests=4 failures=0 errors=0 skipped=0 time=1.888 timestamp=2026-10-06T02:30:28.479Z
+io.github.bearisbug.synaxis.app.store.GateFreezeEarlyGrantTest: tests=5 failures=0 errors=0 skipped=0 time=1.336 timestamp=2026-10-06T02:30:30.368Z
+  stdout: written with the transfer: coins=0, on the ground: 5, [global:monitor cancelled=true]
+  stdout: written with the transfer: coins=0, on the ground: 5, [global:monitor cancelled=true]
+  stdout: after the walk in: in hand 0, spawned 5, [global:normal dropped 5 frozen=true, global:monitor cancelled=false]
+  stdout: written with the transfer: coins=5, on the ground: 0, [global:normal granted 5 frozen=true, global:monitor cancelled=false]
+  stdout: after the walk in: in hand 5, spawned 0, [instance:lowest cancelled=true, global:monitor cancelled=true]
+io.github.bearisbug.synaxis.app.PluginEventsIntegrationTest: tests=9 failures=0 errors=0 skipped=0 time=0.809 timestamp=2026-10-06T02:30:31.704Z
+[2026-10-06 10:30:32] green-default: ./gradlew :server-app:test --rerun --tests io.github.bearisbug.synaxis.app.FreezeBeforePluginListenersIntegrationTest --tests io.github.bearisbug.synaxis.app.store.GateFreezeEarlyGrantTest --tests io.github.bearisbug.synaxis.app.PluginEventsIntegrationTest --max-workers=4 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts
+  BUILD SUCCESSFUL in 12s
+[2026-10-06 10:30:45] green-default: rc=0 (13 s)
+io.github.bearisbug.synaxis.app.FreezeBeforePluginListenersIntegrationTest: tests=4 failures=0 errors=0 skipped=0 time=2.756 timestamp=2026-10-06T02:30:40.359Z
+io.github.bearisbug.synaxis.app.store.GateFreezeEarlyGrantTest: tests=5 failures=0 errors=0 skipped=0 time=1.319 timestamp=2026-10-06T02:30:43.936Z
+  stdout: written with the transfer: coins=0, on the ground: 5, [global:monitor cancelled=true]
+  stdout: written with the transfer: coins=0, on the ground: 5, [global:monitor cancelled=true]
+  stdout: after the walk in: in hand 0, spawned 5, [global:normal dropped 5 frozen=true, global:monitor cancelled=false]
+  stdout: written with the transfer: coins=5, on the ground: 0, [global:normal granted 5 frozen=true, global:monitor cancelled=false]
+  stdout: after the walk in: in hand 5, spawned 0, [instance:lowest cancelled=true, global:monitor cancelled=true]
+io.github.bearisbug.synaxis.app.PluginEventsIntegrationTest: tests=9 failures=0 errors=0 skipped=0 time=0.818 timestamp=2026-10-06T02:30:43.117Z
+[2026-10-06 10:30:45] lock released
+
+## put back: the green runs on 706479af1a
+[2026-10-06 10:35:49] green-grid: ./gradlew :server-app:test --rerun --tests io.github.bearisbug.synaxis.app.FreezeBeforePluginListenersIntegrationTest --tests io.github.bearisbug.synaxis.app.store.GateFreezeEarlyGrantTest --tests io.github.bearisbug.synaxis.app.PluginEventsIntegrationTest -Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true -Dsynaxis.thread-provider=grid --max-workers=4 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts
+  BUILD SUCCESSFUL in 6s
+[2026-10-06 10:35:56] green-grid: rc=0 (6 s)
+io.github.bearisbug.synaxis.app.FreezeBeforePluginListenersIntegrationTest: tests=4 failures=0 errors=0 skipped=0 time=1.41 timestamp=2026-10-06T02:35:52.395Z
+io.github.bearisbug.synaxis.app.store.GateFreezeEarlyGrantTest: tests=5 failures=0 errors=0 skipped=0 time=1.33 timestamp=2026-10-06T02:35:54.649Z
+  stdout: written with the transfer: coins=0, on the ground: 5, [global:monitor cancelled=true]
+  stdout: written with the transfer: coins=0, on the ground: 5, [global:monitor cancelled=true]
+  stdout: after the walk in: in hand 0, spawned 5, [global:normal dropped 5 frozen=true, global:monitor cancelled=false]
+  stdout: written with the transfer: coins=5, on the ground: 0, [global:normal granted 5 frozen=true, global:monitor cancelled=false]
+  stdout: after the walk in: in hand 5, spawned 0, [instance:lowest cancelled=true, global:monitor cancelled=true]
+io.github.bearisbug.synaxis.app.PluginEventsIntegrationTest: tests=9 failures=0 errors=0 skipped=0 time=0.842 timestamp=2026-10-06T02:35:53.806Z
+[2026-10-06 10:35:56] green-default: ./gradlew :server-app:test --rerun --tests io.github.bearisbug.synaxis.app.FreezeBeforePluginListenersIntegrationTest --tests io.github.bearisbug.synaxis.app.store.GateFreezeEarlyGrantTest --tests io.github.bearisbug.synaxis.app.PluginEventsIntegrationTest --max-workers=4 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts
+  BUILD SUCCESSFUL in 8s
+[2026-10-06 10:36:04] green-default: rc=0 (8 s)
+io.github.bearisbug.synaxis.app.FreezeBeforePluginListenersIntegrationTest: tests=4 failures=0 errors=0 skipped=0 time=1.413 timestamp=2026-10-06T02:36:01.011Z
+io.github.bearisbug.synaxis.app.store.GateFreezeEarlyGrantTest: tests=5 failures=0 errors=0 skipped=0 time=1.328 timestamp=2026-10-06T02:36:03.256Z
+  stdout: written with the transfer: coins=0, on the ground: 5, [global:monitor cancelled=true]
+  stdout: written with the transfer: coins=0, on the ground: 5, [global:monitor cancelled=true]
+  stdout: after the walk in: in hand 0, spawned 5, [global:normal dropped 5 frozen=true, global:monitor cancelled=false]
+  stdout: written with the transfer: coins=5, on the ground: 0, [global:normal granted 5 frozen=true, global:monitor cancelled=false]
+  stdout: after the walk in: in hand 5, spawned 0, [instance:lowest cancelled=true, global:monitor cancelled=true]
+io.github.bearisbug.synaxis.app.PluginEventsIntegrationTest: tests=9 failures=0 errors=0 skipped=0 time=0.831 timestamp=2026-10-06T02:36:02.425Z
+[2026-10-06 10:36:04] lock released

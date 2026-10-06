@@ -1,6 +1,6 @@
 RUN-070 / items (production readiness session, group items): the M3 side security review of 2026-10-02, surface 3, findings
 S3-V01 (a frozen player's pickup and drop reached plugin listeners before the freeze) and S3-01 (a cross-cell merge wrote a
-stale read of its neighbour). docs/DESIGN-PROD.md v0.9.48, docs/TEST.md TC-PROD-640 to TC-PROD-647.
+stale read of its neighbour). docs/DESIGN-PROD.md v0.9.48, docs/TEST.md TC-PROD-640 to TC-PROD-649.
 
 Branch prod/m3fix-items (worktree synaxis-wt/m3fix-items), base main 14437d0b78.
   68689972bc  the freeze on the root node; FreezeBeforePluginListenersIntegrationTest, GateFreezeEarlyGrantTest (from the probes
@@ -10,11 +10,18 @@ Branch prod/m3fix-items (worktree synaxis-wt/m3fix-items), base main 14437d0b78.
   1ad4db8579  the freeze decided once per event on the root node, the freeze node at priority 3 cancelling only what the root
               cancelled; the two gate cases where the freeze lands in the middle of a pickup or a drop, the drop dispatched
               inside a frozen pickup; Javadoc of PluginEvents and PlayerDataStore, comment of PluginEventsImpl#tier
+  0814d98acd  docs
+  706479af1a  the root listener of the freeze built with ignoreCancelled(false), frozenAtRoot with weak keys; three cases (a
+              pickup and drop that come in cancelled, a pickup cut short by a root listener that throws, a drop in the
+              batch of a gate walk in); Javadoc of PluginEvents and PlayerDataStore#isFrozen
   the docs commit that brings this directory to its present state
-The freeze code, its tests and every S3-V01 run here are those of 1ad4db8579; the S3-01 code and tests are unchanged since
-34d3fd8855, the code the S3-01 runs of 01, 03 and 06 were made on (02 ran the unchanged probe on fa5cad4055 and on main).
+The S3-V01 runs of 01, 03, 04, 05, 07, 08 and 09 were made on 1ad4db8579 and cite its line numbers; 10 to 13 were made with
+the freeze code and tests of 706479af1a, whose lines docs/TEST.md cites now (10 ran those tests on the code before it). The
+S3-01 code and tests are unchanged since 34d3fd8855, the code the S3-01 runs of 01, 03 and 06 were made on (02 ran the
+unchanged probe on fa5cad4055 and on main).
 Not a registered round: the integration round registers RUN-070 in docs/TEST.md section 6.
-Every Gradle run held /tmp/synaxis-heavy.lock (owner 生产就绪会话/items), taken at the top level of a zsh script with an EXIT trap,
+Every Gradle run held /tmp/synaxis-heavy.lock (owner 生产就绪会话/items, for 10 to 13 生产就绪会话/fu-items), taken at the top level
+of a zsh script with an EXIT trap,
 one batch per hold (times in each file). JDK 25 (Homebrew openjdk@25), ./gradlew ... --max-workers=4 --no-daemon
 --init-script gradle/init/aliyun-mirror.init.gradle.kts; "strict grid" adds -Dsynaxis.dispatcher-threads=4
 -Dsynaxis.acquirable-strict=true -Dsynaxis.thread-provider=grid.
@@ -35,9 +42,21 @@ Files
   08-full-grid.txt                   the same in strict grid
   09-gates-and-lint.txt              errorproneCheck, forbiddenImportsCheck, testNamingCheck (--rerun), :architecture-tests:test,
                                      :plugin-api:javadoc, checkBinaryCompatibility (skipped without -PbaselineJarDir), the two doc lints
+  10-red-before-root-and-set-fix.txt the freeze tests of 706479af1a on the code before it (PlayerStore.java of 1ad4db8579) and
+                                     with PlayerStore.java put back to main, strict grid and default
+  11-green-after-root-and-set-fix.txt  the three freeze classes on the change (uncommitted, then 706479af1a), strict grid and
+                                     default
+  12-counter-proofs-freeze-706479af1a.txt  TC-PROD-640 steps 3 to 5, TC-PROD-641 steps 3 and 4, TC-PROD-642 step 2,
+                                     TC-PROD-646 step 3, TC-PROD-647 step 3, TC-PROD-648 step 3, TC-PROD-649 step 3 on the lines
+                                     of 706479af1a, each a temporary edit of PlayerStore.java
+  13-full-default-and-gates-706479af1a.txt  full :test, :server-app:test, :plugin-api:test on 706479af1a, default, with the
+                                     database variables; errorproneCheck, forbiddenImportsCheck, testNamingCheck (--rerun),
+                                     :architecture-tests:test, :plugin-api:javadoc; the two doc lints on the final docs; every
+                                     app.store test class and the two app freeze classes in strict grid, with the database
 
 Results
-  S3-V01  before (PlayerStore.java of main): FreezeBeforePluginListenersIntegrationTest.java:107, 26 of the 28 plugin listeners
+  S3-V01  (01 to 09, line numbers of 1ad4db8579)
+          before (PlayerStore.java of main): FreezeBeforePluginListenersIntegrationTest.java:107, 26 of the 28 plugin listeners
           (root, entity, the six instance scoped priorities, global LOWEST to HIGHEST, pickup and drop each) saw the frozen
           pickup or drop allowed; GateFreezeEarlyGrantTest all four red, expected <5> but was <10>: :248 (via :151, :160) for
           the grants after a freeze that came first, :173 for the pickup and :212 for the drop where the freeze lands in the
@@ -52,6 +71,19 @@ Results
           grant copies; no priority 3 node -> the nested case at :146 and PluginEventsIntegrationTest.java:335 (HIGHEST
           un-cancels); priority 3 reading the freeze again -> :173 and :212, 5 become 10, both modes; only the latest event
           kept -> :146, the pickup un-cancelled; the freeze node at 5 or 1 -> :335 as TC-PROD-189 steps 2 and 3 say.
+  S3-V01, the root listener and the set (10 to 13, line numbers of 706479af1a)
+          before (PlayerStore.java of 1ad4db8579), both modes, 18 tests 2 failed: :186, a pickup and drop that came in
+          cancelled and were un-cancelled at HIGHEST reach MONITOR allowed; :217 via TestUtils.java:41, a pickup whose dispatch
+          a root listener cut short is not collected. The new gate drop case is green there; with PlayerStore.java of main it
+          is red at :196 (instance:lowest cancelled=false, in hand 5 and 5 spawned), together with :109, :287 (via :152,
+          :161), :212, :251 and :234 (via :214, no cancel on the root at all), 18 tests 7 failed in both modes.
+          after: the three freeze classes 18 tests 0 failures in both modes; the drop in the batch of the walk in leaves 5 in
+          hand and 0 spawned, [instance:lowest cancelled=true, global:monitor cancelled=true].
+          counter proofs: only priority 3 decides -> 7 failed, as main; the decision on the host node -> :109 (16
+          listeners), :234, :287 via :152, :196; no priority 3 node -> :148, :186, PluginEventsIntegrationTest.java:335;
+          the freeze node at 5 or 1 -> :335; priority 3 reading the freeze again -> :212 and :251, both modes; only the
+          latest event kept -> :148; the root listener by the two argument addListener -> :186, both modes; frozenAtRoot on
+          an IdentityHashMap -> :217, both modes.
   S3-01   before: GridItemRaceTest.java:148, expected <70> but was <50> (merger holds 50), both modes; the same on fa5cad4055
           without -ea; with -ea fa5cad4055 throws AcquirableOwnershipException at its ItemEntity.java:106 instead.
           after: green in both modes, 70 on the ground (40 + 30).
@@ -59,19 +91,23 @@ Results
           ItemEntity.java:114 -> ItemEntityCrossCellConcurrencyTest.java:87 via :67, thrown at ItemEntity.java:114.
   other probes of 7219ce342d: PickupFreezeRaceProbeTest 20/20, ShardGatesRaceProbeTest 60/60, OverlayCrossCellWritersProbeTest
           20/20 green on 1ad4db8579.
-  full    default and strict grid, both: root :test 429 classes 3164 tests 0 failures 15 skipped (PlayerSkinTest 2, TagNbtTest 1,
-          TestMojangUtils 9, TranslationIntegrationTest 3); :server-app:test 115 classes 583 tests 0 failures 0 skipped;
-          :plugin-api:test 3 classes 15 tests 0 failures.
-  gates   BUILD SUCCESSFUL; architecture-tests 7 classes 20 tests 0 failures; DESIGN-PROD lint without warnings; TEST.md lint
+  full    on 1ad4db8579, default and strict grid, both: root :test 429 classes 3164 tests 0 failures 15 skipped
+          (PlayerSkinTest 2, TagNbtTest 1, TestMojangUtils 9, TranslationIntegrationTest 3); :server-app:test 115 classes
+          583 tests 0 failures 0 skipped; :plugin-api:test 3 classes 15 tests 0 failures.
+          on 706479af1a, default: root :test the same; :server-app:test 115 classes 586 tests 0 failures 0 skipped (the three
+          new cases); :plugin-api:test the same. Strict grid with the database: app.store.* with FreezeBeforePluginListeners-
+          IntegrationTest and PluginEventsIntegrationTest, 20 classes 97 tests 0 failures 0 skipped.
+  gates   BUILD SUCCESSFUL on both; architecture-tests 7 classes 20 tests 0 failures; DESIGN-PROD lint without warnings; TEST.md lint
           only the three known warnings (section 3 environment table, section 6 environment column, two RUN-031 rows).
 
 Not covered
   GateFreezeEarlyGrantTest writes to MemoryBackend, as the probe did; PostgreSQL is not in that path. The degraded session
   (database unreachable, everybody frozen, set by the session's watchdog thread) is not exercised: it goes through the same
-  isFrozen, read once on the root node, as the gate transfers tested. A drop is tested through a real DROP_ITEM_STACK packet
-  only with the freeze landing in the middle of its dispatch; a drop after the freeze is tested with a synthetic event.
-  Undoing the freeze's cancel is documented as not supported and not tested (DESIGN-PROD 28.2 risk row). The per-thread set
-  keeps an event the root cancelled until the freeze node removes it; a dispatch cut short by an exception between the two
-  (only a listener outside the plugin wrapper can throw there) leaves it in the set, which no test looks at.
+  isFrozen, read once on the root node, as the gate transfers tested. A real DROP_ITEM_STACK packet is tested after the
+  freeze (in the batch of the walk in) and with the freeze landing in the middle of its dispatch. Undoing the freeze's cancel
+  is documented as not supported and not tested (DESIGN-PROD 28.2 risk row). The weak keys of the per-thread set are checked
+  through the garbage collector (TestUtils.waitUntilCleared, up to 100 System.gc() calls 10 ms apart); the full strict grid
+  runs of 08 were not repeated on 706479af1a: in strict grid only the store tests and the freeze classes ran there.
 
-Temporary files: /tmp/m3fix-items (scripts, raw logs, saved JUnit XML) were removed at the end.
+Temporary files: /tmp/m3fix-items (scripts, raw logs, saved JUnit XML) and, for 10 to 13, /tmp/m3fix-int/fu-items (scripts,
+raw logs) were removed at the end.

@@ -87,7 +87,7 @@ java -Dsynaxis.app.auth=offline \
 | 能力 | 用途 | 禁用时宿主怎么收回 |
 | --- | --- | --- |
 | `process()` | 引擎进程本体。**唯一不作兼容承诺的一项**，用它自担风险 | 不收回（不是宿主发的） |
-| `events()` | `addListener(事件类, 监听器)`（`NORMAL`，已取消的事件照样收到）；`addListener(事件类, 优先级, ignoreCancelled, 监听器)`，六档 `LOWEST` → `MONITOR` 依次执行，所有插件同档的排在一起，`MONITOR` 只读不改（约定，不拦截）；`forInstance(实例)` 只收该实例的事件，在实例所属 tick 线程上执行，且先于全局作用域的全部插件监听器；`PlayerPluginMessageEvent`、`PlayerCustomClickEvent`、`PlayerDisconnectEvent`、`PlayerPacketEvent` 及其超类型在玩家没有实例时也可能派发，不能按实例监听，注册即抛 `IllegalArgumentException`。监听器挂在宿主按插件、按档建的子节点上 | 该插件的全部子节点（含实例下的）`removeChild` |
+| `events()` | `addListener(事件类, 监听器)`（`NORMAL`，已取消的事件照样收到）；`addListener(事件类, 优先级, ignoreCancelled, 监听器)`，六档 `LOWEST` → `MONITOR` 依次执行，所有插件同档的排在一起，`MONITOR` 只读不改（约定，不拦截）；`forInstance(实例)` 只收该实例的事件，在实例所属 tick 线程上执行，且先于全局作用域的全部插件监听器；`PlayerPluginMessageEvent`、`PlayerCustomClickEvent`、`PlayerDisconnectEvent`、`PlayerPacketEvent` 及其超类型在玩家没有实例时也可能派发，不能按实例监听，注册即抛 `IllegalArgumentException`。冻结的玩家（`PlayerDataStore#isFrozen`）的 `PickupItemEvent` 与 `ItemDropEvent`：宿主每个事件只判定一次冻结，读到冻结就取消两次：一次在根节点上、先于任何插件监听器，一次在宿主节点下的优先级 3、全局 `HIGHEST` 之后与 `MONITOR` 之前；冻结在一次派发中途落地时，这一次照判定放行到底。发放物品的监听器跳过已取消的事件，以是否已取消为准，不另查 `isFrozen`；撤销这次取消（`setCancelled(false)`）不受支持，撤销之后、第二次取消之前执行的监听器看到的是放行。监听器挂在宿主按插件、按档建的子节点上 | 该插件的全部子节点（含实例下的）`removeChild` |
 | `scheduler()` | `scheduleTask(任务, 延迟, 重复)` | 逐个 `cancel()` |
 | `channels()` | `register(名字, handler)` / `send(玩家, 名字, 字节)` | 注销该插件的全部通道 |
 | `admission()` | `register(准入回调)`，决定连接进哪个对局实例、属哪个队伍 | 注销该回调 |
@@ -124,6 +124,8 @@ python3 tools/protocol-probe/probe.py echo --channel hello:echo --payload hi
 | 服务器列表事件 `ServerListPingEvent` | 发请求那条连接的读线程（虚拟线程） | 只改事件本身（MOTD、人数、样本、图标，`docs/DESIGN-PROD.md` `API-PROD-024`）；不碰实体与实例 |
 
 对另一个实体的影响（攻击、交易）不要在自己的线程上直接改对方：对方可能在另一条线程上，用 `scheduler().runOn(对方, 任务, TaskSchedule.immediate())` 投递，任务在对方下一次 tick 时在对方的线程上执行。只有必须在同一 tick 读到对方状态时才用 `对方.acquirable().sync(…)`，所有跨线程的 `sync` 都排同一把进程级的锁，用多了就退化成单线程。
+
+消费掉落物（吸取、自动拾取这类插件自己交出 `ItemEntity` 的物品再移除它）的约定还没定。引擎的拾取与合并都先经 `ItemEntity#claim` 的 CAS 才消费，同一个掉落物至多被消费一次；`claim()` 与 `releaseClaim()` 标着 `@ApiStatus.Internal`，不在插件的稳定面里。插件只按上表用 `runOn` 在掉落物自己的线程上处理、不经 claim 时，邻格线程上的合并或拾取照样能占到它，同一个掉落物会被消费两次，物品复制。这一条登记在 `docs/DESIGN-PROD.md` §28.2 待办「插件消费掉落物没有 claim 约定」，属于插件 API 的决定，第一个生成或消费掉落物的插件接入之前定下：默认做法是去掉这两个方法的 Internal 标注，约定先 `claim()`，拿不到就不消费，在掉落物自己的线程上消费完再 `remove()`。
 
 ## 11. 发给玩家的文字
 

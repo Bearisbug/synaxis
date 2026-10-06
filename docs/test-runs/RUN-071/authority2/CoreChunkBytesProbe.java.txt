@@ -1,0 +1,68 @@
+package io.github.bearisbug.synaxis.app;
+
+import io.github.bearisbug.synaxis.instance.Chunk;
+import io.github.bearisbug.synaxis.instance.InstanceContainer;
+import io.github.bearisbug.synaxis.network.ConnectionState;
+import io.github.bearisbug.synaxis.network.packet.server.CachedPacket;
+import io.github.bearisbug.synaxis.testing.Env;
+import io.github.bearisbug.synaxis.testing.EnvTest;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
+
+import java.lang.management.ManagementFactory;
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
+
+/**
+ * Probe, not a test: the heap one chunk of the core world holds, the chunk alone and with the
+ * framed packet a player's ring makes it cache. Run with --tests, read the stdout lines.
+ */
+@EnvTest
+class CoreChunkBytesProbe {
+
+    @TempDir
+    Path workingDirectory;
+
+    private static long live() throws InterruptedException {
+        for (int i = 0; i < 3; i++) {
+            System.gc();
+            Thread.sleep(200);
+        }
+        return ManagementFactory.getMemoryMXBean().getHeapMemoryUsage().getUsed();
+    }
+
+    @Test
+    void measure(Env env) throws Exception {
+        final PluginHost host = new PluginHost(env.process(), workingDirectory.resolve("plugins"),
+                new EventLedger(workingDirectory.resolve("logs"), "test", EventLedger.DEFAULT_MAX_BYTES_PER_DAY));
+        final InstanceContainer world = CoreMode.start(env.process(), host, Main.registerMatchDimensionType(env.process()),
+                CoreMode.Setting.AUTO);
+        // Warm up: classes, palettes, the packet path
+        final Chunk warm = world.loadChunk(-10, -10).join();
+        ((CachedPacket) warm.getFullDataPacket()).body(ConnectionState.PLAY, env.process().registries(),
+                env.process().compressionThreshold());
+        final List<Chunk> held = new ArrayList<>();
+        int loaded = 0;
+        for (int side : new int[]{32, 64}) {
+            final long base = live();
+            final List<Chunk> batch = new ArrayList<>();
+            for (int x = 0; x < side; x++)
+                for (int z = 0; z < side; z++)
+                    batch.add(world.loadChunk(1000 * side + x, z).join());
+            held.addAll(batch);
+            final long afterLoad = live();
+            for (Chunk chunk : batch)
+                ((CachedPacket) chunk.getFullDataPacket()).body(ConnectionState.PLAY, env.process().registries(),
+                        env.process().compressionThreshold());
+            final long afterPackets = live();
+            loaded += batch.size();
+            int cached = 0;
+            for (Chunk chunk : batch) if (((CachedPacket) chunk.getFullDataPacket()).isValid()) cached++;
+            System.out.printf("PROBE chunks=%d chunk_bytes=%d packet_bytes=%d total_bytes=%d cached=%d instance_chunks=%d%n",
+                    batch.size(), (afterLoad - base) / batch.size(), (afterPackets - afterLoad) / batch.size(),
+                    (afterPackets - base) / batch.size(), cached, world.getChunks().size());
+        }
+        System.out.printf("PROBE held=%d loaded=%d max_heap=%d%n", held.size(), loaded, Runtime.getRuntime().maxMemory());
+    }
+}

@@ -1,0 +1,23 @@
+A vehicle move into a chunk that is not loaded, within 64 blocks and inside the border: what PlayerVehicleListener still
+does not judge (DESIGN-PROD §28.2 risk row of v0.9.53). Root test source set, VehicleUnloadedChunkProbe (source next to this
+file), copied in and deleted after, on 7e0052928e. Instance view distance 2, the spawn's ring of radius 3 loaded, a horse
+with the player riding at (0.5, 40, 0.5); one vehicle move to (64.4, 40, 0.5), chunk (4, 0) not loaded; 20 ticks after.
+Lock run G (twice: the second prints the cause of the exception the test environment recorded).
+
+    PROBE chunk 4 loaded before: false
+    PROBE no exception out of interpretPacketQueue
+    PROBE online=true vehicle=Pos[x=64.4, y=40.0, z=0.5, yaw=0.0, pitch=0.0] vehicle_chunk=DynamicChunk[0:0] player=Pos[x=64.4, y=40.84375002384186, z=0.5, yaw=0.0, pitch=0.0] player_chunk=DynamicChunk[0:0] chunks=49
+    PROBE tick 0 thrown org.opentest4j.AssertionFailedError: Server threw exception cause java.lang.NullPointerException: The entity 1 tried to move in an unloaded chunk at Pos[x=64.4, y=40.84375002384186, z=0.5, yaw=0.0, pitch=0.0]
+    PROBE   at io.github.bearisbug.synaxis.utils.validate.Check.notNull(Check.java:29)
+    PROBE   at io.github.bearisbug.synaxis.entity.Entity.refreshCoordinate(Entity.java:1780)
+    PROBE   at io.github.bearisbug.synaxis.entity.Entity.updatePassengerPosition(Entity.java:1747)
+    PROBE   at io.github.bearisbug.synaxis.entity.Entity.refreshCoordinate(Entity.java:1766)
+    PROBE   at io.github.bearisbug.synaxis.entity.Entity.refreshPosition(Entity.java:1687)
+    PROBE   at io.github.bearisbug.synaxis.entity.Entity.refreshPosition(Entity.java:1728)
+    PROBE   at io.github.bearisbug.synaxis.entity.Entity.refreshPosition(Entity.java:1733)
+    PROBE   at io.github.bearisbug.synaxis.listener.PlayerVehicleListener.vehicleMoveListener(PlayerVehicleListener.java:38)
+BUILD SUCCESSFUL in 5s
+
+Reading: the exception leaves PacketListenerManager to the exception handler (the test environment records it and reports
+it at the next tick); the player stays online; the vehicle and the rider hold x = 64.4 while their current chunk stays
+(0, 0); no chunk is loaded (49 before and after 20 ticks, chunk (4, 0) still not loaded).

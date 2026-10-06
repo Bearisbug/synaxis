@@ -1,0 +1,140 @@
+RUN-071 authority2, rework after review (the gate tests and the older cases on ShardMainTest and ShardLaunchTest).
+
+Code under test: d61c2b2725 = the product code of 7e0052928e; the tests of ShardMain#gateDefaults in ShardMainGateTest (3), the
+launches in ShardGateLaunchTest (2: the one of 7e0052928e and the directory mode one), ShardMainTest and ShardLaunchTest byte for
+byte as on main 8b18922130 (git diff 8b18922130 d61c2b2725 -- ShardMainTest.java ShardLaunchTest.java is empty).
+Same toolchain and Gradle flags as 00-index.txt. Heavy lock /tmp/synaxis-heavy.lock taken at the top level of each script with its
+EXIT trap (10-rework-scripts.txt), owner line "生产就绪会话/rework-authority2 pid=33941":
+  lock run RA  18:29:14-18:29:53  memory_pressure free 62%, load1 11.61   pre-fix reds of the new classes; mutation M; green
+  lock run RB  18:30:38-18:32:48  memory_pressure free 44%, load1 20.72   greens default and strict grid; gate counter-proofs
+  lock run RC  18:33:17-18:35:00  memory_pressure free 68%, load1 22.86   counter-proofs of TC-PROD-333, TC-WORLD-010/047/048/055
+
+Gradle lines (label, its "tests completed" and BUILD lines):
+  a1-prefix: 5 tests completed, 5 failed BUILD FAILED in 13s 
+  a2-m-before-directory: 2 tests completed, 1 failed BUILD FAILED in 17s 
+  a3-green: BUILD SUCCESSFUL in 7s 
+  b1-root-default: BUILD SUCCESSFUL in 12s 
+  b2-root-grid: BUILD SUCCESSFUL in 7s 
+  b3-app-default: BUILD SUCCESSFUL in 30s 
+  b4-app-grid: BUILD SUCCESSFUL in 39s 
+  b5-sm-nothing: 3 tests completed, 3 failed BUILD FAILED in 8s 
+  b6-sm-zero: 3 tests completed, 1 failed BUILD FAILED in 4s 
+  b7-main-nowire: 2 tests completed, 2 failed BUILD FAILED in 8s 
+  b8-main-everywhere: 2 tests completed, 1 failed BUILD FAILED in 6s 
+  b9-m-before-directory-grid: 2 tests completed, 1 failed BUILD FAILED in 9s 
+  c1-tc333-s2: 10 tests completed, 3 failed BUILD FAILED in 5s 
+  c2-w010-s2: 10 tests completed, 1 failed BUILD FAILED in 5s 
+  c3-w010-s3: 10 tests completed, 1 failed BUILD FAILED in 5s 
+  c4-w010-s4: 10 tests completed, 1 failed BUILD FAILED in 5s 
+  c5-w047-s2: 10 tests completed, 1 failed BUILD FAILED in 4s 
+  c6-w048-s2: 29 tests completed, 2 failed BUILD FAILED in 17s 
+  c7-w055-s2: 29 tests completed, 2 failed BUILD FAILED in 43s 
+  c8-green: BUILD SUCCESSFUL in 14s 
+
+Edits (file: old -> new), each reverted with git checkout and checked clean:
+  a1  Main.java and ShardMain.java of 8b18922130, ShardMain with "static Map<String, String> gateDefaults(UnaryOperator<String>
+      properties) { return Map.of(); }" appended (stub.py): the code before the fix
+  a2  Main.java step (1): the two lines "// After the directory, ..." and "if (shard) ShardMain.gateDefaults(...)" moved in front of
+      "// Before the engine reads synaxis.max-players, ..." and "final @Nullable ShardDirectory directory = ..." (reorder.py): mutation M
+  b5  ShardMain.java:123  'return defaults;' -> 'return Boolean.getBoolean("proof.never") ? defaults : Map.of();'   (TC-PROD-669 step 4)
+  b6  ShardMain.java:117  'if (seats > 0)' -> 'if (seats >= 0)'                                                   (TC-PROD-669 step 5)
+  b7  Main.java:220       'if (shard) ShardMain.gateDefaults' -> 'if (Boolean.getBoolean("proof.never") && shard) ...' (TC-PROD-670 step 4)
+  b8  Main.java:220       'if (shard) ShardMain.gateDefaults' -> 'if (!Boolean.getBoolean("proof.never") || shard) ...' (TC-PROD-670 step 5)
+  b9  mutation M again, strict grid                                                                                (TC-PROD-672 step 4)
+  c1  ShardMain.java      'Math.max(1, cores - 2)' -> 'Math.max(1, cores)'                                         (TC-PROD-333 step 2)
+  c2  ShardMain.java      'store == null || !Main.STORE_POSTGRES.equals(store.strip())' -> 'Main.STORE_POSTGRES.equals(store + "x")' (TC-WORLD-010 step 2)
+  c3  ShardMain.java      'properties.apply(ACCEPT_TRANSFERS) != null || ' removed                                  (TC-WORLD-010 step 3)
+  c4  ShardMain.java      'if (properties.apply(MAX_VISIBLE_ENTITIES) == null) ' removed                           (TC-WORLD-010 step 4)
+  c5  ShardMain.java      '\n                || properties.apply(CoreMode.PROPERTY) != null' removed                (TC-WORLD-047 step 2)
+  c6  ShardWorld.java     'if (simulationDistance < 1 || simulationDistance > viewDistance) {' -> 'if (simulationDistance < 1) {' (TC-WORLD-048 step 2)
+  c7  ShardWorld.java     'SynxHandlers.registerAll(process.block());' and its import removed                     (TC-WORLD-055 step 2)
+
+JUnit XML (class, counts, each failure with its first test frame and message):
+a1-prefix: ShardGateLaunchTest tests=2 failures=2 errors=0 skipped=0
+   aShardHoldsThreeSocketsASeatAndTakesFiveJoinsATick(Path) @ ['ShardGateLaunchTest.java:38'] | org.opentest4j.AssertionFailedError: 18:29:26.965 [main] INFO  i.github.bearisbug.synaxis.app.Main - Effective config file: none, /private/var/folders …  started successfully. 18:29:27.102 [main] INFO  i.github.bearisbug.synaxis.app.Main - synaxis server-app listening on 0.0.0.0:51272 ==> expected: <true> but was: <false>
+   aShardInTheDirectoryModeHoldsThreeSocketsASeatOfItsChannel(Path) @ ['ShardGateLaunchTest.java:66'] | org.opentest4j.AssertionFailedError: 18:29:27.948 [main] INFO  i.github.bearisbug.synaxis.app.Main - Effective config file: none, /private/var/folders … (ShardWorld.java:316) 	at io.github.bearisbug.synaxis.app.shard.ShardWorld.prepare(ShardWorld.java:287) 	... 3 common frames omitted ==> expected: <true> but was: <false>
+a1-prefix: ShardMainGateTest tests=3 failures=3 errors=0 skipped=0
+   theCommandLineWinsForTheGate() @ ['ShardMainGateTest.java:37'] | org.opentest4j.AssertionFailedError: expected: <{synaxis.max-joins-per-tick=5}> but was: <{}>
+   aShardWithoutACapacityKeepsTheEngineSocketCap() @ ['ShardMainGateTest.java:28'] | org.opentest4j.AssertionFailedError: expected: <{synaxis.max-joins-per-tick=5}> but was: <{}>
+   aShardHoldsThreeSocketsASeatAndTakesFiveJoinsATick() @ ['ShardMainGateTest.java:19'] | org.opentest4j.AssertionFailedError: expected: <{synaxis.max-joins-per-tick=5, synaxis.max-connections=1500}> but was: <{}>
+a2-m-before-directory: ShardGateLaunchTest tests=2 failures=1 errors=0 skipped=0
+   aShardInTheDirectoryModeHoldsThreeSocketsASeatOfItsChannel(Path) @ ['ShardGateLaunchTest.java:66'] | org.opentest4j.AssertionFailedError: 18:29:45.491 [main] INFO  i.github.bearisbug.synaxis.app.Main - Effective config file: none, /private/var/folders … (ShardWorld.java:316) 	at io.github.bearisbug.synaxis.app.shard.ShardWorld.prepare(ShardWorld.java:287) 	... 3 common frames omitted ==> expected: <true> but was: <false>
+a3-green: ShardGateLaunchTest tests=2 failures=0 errors=0 skipped=0
+a3-green: ShardMainGateTest tests=3 failures=0 errors=0 skipped=0
+b1-root-default: PlayerMovementAuthorityIntegrationTest tests=7 failures=0 errors=0 skipped=0
+b1-root-default: PlayerVehicleMoveAuthorityIntegrationTest tests=3 failures=0 errors=0 skipped=0
+b1-root-default: PlayerVehicleMoveValidationIntegrationTest tests=1 failures=0 errors=0 skipped=0
+b2-root-grid: PlayerMovementAuthorityIntegrationTest tests=7 failures=0 errors=0 skipped=0
+b2-root-grid: PlayerVehicleMoveAuthorityIntegrationTest tests=3 failures=0 errors=0 skipped=0
+b2-root-grid: PlayerVehicleMoveValidationIntegrationTest tests=1 failures=0 errors=0 skipped=0
+b3-app-default: CoreModeIntegrationTest tests=4 failures=0 errors=0 skipped=0
+b3-app-default: MainDirectoryModeTest tests=8 failures=0 errors=0 skipped=0
+b3-app-default: MainTest tests=15 failures=0 errors=0 skipped=0
+b3-app-default: ShardGateLaunchTest tests=2 failures=0 errors=0 skipped=0
+b3-app-default: ShardLaunchTest tests=11 failures=0 errors=0 skipped=0
+b3-app-default: ShardMainGateTest tests=3 failures=0 errors=0 skipped=0
+b3-app-default: ShardMainTest tests=10 failures=0 errors=0 skipped=0
+b4-app-grid: CoreModeIntegrationTest tests=4 failures=0 errors=0 skipped=0
+b4-app-grid: MainDirectoryModeTest tests=8 failures=0 errors=0 skipped=0
+b4-app-grid: MainTest tests=15 failures=0 errors=0 skipped=0
+b4-app-grid: ShardGateLaunchTest tests=2 failures=0 errors=0 skipped=0
+b4-app-grid: ShardLaunchTest tests=11 failures=0 errors=0 skipped=0
+b4-app-grid: ShardMainGateTest tests=3 failures=0 errors=0 skipped=0
+b4-app-grid: ShardMainTest tests=10 failures=0 errors=0 skipped=0
+b5-sm-nothing: ShardMainGateTest tests=3 failures=3 errors=0 skipped=0
+   theCommandLineWinsForTheGate() @ ['ShardMainGateTest.java:37'] | org.opentest4j.AssertionFailedError: expected: <{synaxis.max-joins-per-tick=5}> but was: <{}>
+   aShardWithoutACapacityKeepsTheEngineSocketCap() @ ['ShardMainGateTest.java:28'] | org.opentest4j.AssertionFailedError: expected: <{synaxis.max-joins-per-tick=5}> but was: <{}>
+   aShardHoldsThreeSocketsASeatAndTakesFiveJoinsATick() @ ['ShardMainGateTest.java:19'] | org.opentest4j.AssertionFailedError: expected: <{synaxis.max-connections=1500, synaxis.max-joins-per-tick=5}> but was: <{}>
+b6-sm-zero: ShardMainGateTest tests=3 failures=1 errors=0 skipped=0
+   aShardWithoutACapacityKeepsTheEngineSocketCap() @ ['ShardMainGateTest.java:29'] | org.opentest4j.AssertionFailedError: expected: <{synaxis.max-joins-per-tick=5}> but was: <{synaxis.max-connections=0, synaxis.max-joins-per-tick=5}>
+b7-main-nowire: ShardGateLaunchTest tests=2 failures=2 errors=0 skipped=0
+   aShardHoldsThreeSocketsASeatAndTakesFiveJoinsATick(Path) @ ['ShardGateLaunchTest.java:38'] | org.opentest4j.AssertionFailedError: 18:32:29.285 [main] INFO  i.github.bearisbug.synaxis.app.Main - Effective config file: none, /private/var/folders … en=unset 18:32:29.579 [main] INFO  i.g.bearisbug.synaxis.app.PluginHost - Registered channel: plugin_id=synaxis channel=synaxis:main ==> expected: <true> but was: <false>
+   aShardInTheDirectoryModeHoldsThreeSocketsASeatOfItsChannel(Path) @ ['ShardGateLaunchTest.java:66'] | org.opentest4j.AssertionFailedError: 18:32:30.971 [main] INFO  i.github.bearisbug.synaxis.app.Main - Effective config file: none, /private/var/folders … (ShardWorld.java:316) 	at io.github.bearisbug.synaxis.app.shard.ShardWorld.prepare(ShardWorld.java:287) 	... 3 common frames omitted ==> expected: <true> but was: <false>
+b8-main-everywhere: ShardGateLaunchTest tests=2 failures=1 errors=0 skipped=0
+   aShardHoldsThreeSocketsASeatAndTakesFiveJoinsATick(Path) @ ['ShardGateLaunchTest.java:44'] | org.opentest4j.AssertionFailedError: 18:32:37.282 [main] INFO  i.github.bearisbug.synaxis.app.Main - Effective config file: none, /private/var/folders … etrics 18:32:37.392 [main] INFO  i.g.b.s.a.m.ManagementServer - Effective management: enabled=false bind=127.0.0.1:25585 token=unset ==> expected: <true> but was: <false>
+b9-m-before-directory-grid: ShardGateLaunchTest tests=2 failures=1 errors=0 skipped=0
+   aShardInTheDirectoryModeHoldsThreeSocketsASeatOfItsChannel(Path) @ ['ShardGateLaunchTest.java:66'] | org.opentest4j.AssertionFailedError: 18:32:48.013 [main] INFO  i.github.bearisbug.synaxis.app.Main - Effective config file: none, /private/var/folders … (ShardWorld.java:316) 	at io.github.bearisbug.synaxis.app.shard.ShardWorld.prepare(ShardWorld.java:287) 	... 3 common frames omitted ==> expected: <true> but was: <false>
+c1-tc333-s2: ShardMainTest tests=10 failures=3 errors=0 skipped=0
+   aSmallMachineKeepsOneThread() @ ['ShardMainTest.java:34'] | org.opentest4j.AssertionFailedError: expected: <1> but was: <2>
+   theCommandLineWins() @ ['ShardMainTest.java:28'] | org.opentest4j.AssertionFailedError: expected: <{synaxis.dispatcher-threads=6}> but was: <{synaxis.dispatcher-threads=8}>
+   anEightCoreShardRunsTheGridOnSixThreads() @ ['ShardMainTest.java:20'] | org.opentest4j.AssertionFailedError: expected: <{synaxis.dispatcher-threads=6, synaxis.thread-provider=grid}> but was: <{synaxis.thread-provider=grid, synaxis.dispatcher-threads=8}>
+c2-w010-s2: ShardMainTest tests=10 failures=1 errors=0 skipped=0
+   aMemoryShardTakesNoTransfers() @ ['ShardMainTest.java:57'] | org.opentest4j.AssertionFailedError: expected: <{}> but was: <{synaxis.accept-transfers=true}>
+c3-w010-s3: ShardMainTest tests=10 failures=1 errors=0 skipped=0
+   theCommandLineWinsForTransfers() @ ['ShardMainTest.java:84'] | org.opentest4j.AssertionFailedError: expected: <{}> but was: <{synaxis.accept-transfers=true}>
+c4-w010-s4: ShardMainTest tests=10 failures=1 errors=0 skipped=0
+   theCommandLineWinsForTheViewSettings() @ ['ShardMainTest.java:51'] | org.opentest4j.AssertionFailedError: expected: <{synaxis.chunk-queue.max-per-tick=4, synaxis.chunk-view-distance=12}> but was: <{synaxis.chunk-view-distance=12, synaxis.chunk-queue.max-per-tick=4, synaxis.max-visible-entities-per-player=100}>
+c5-w047-s2: ShardMainTest tests=10 failures=1 errors=0 skipped=0
+   aShardWithoutAMapOrWithACoreModeKeepsItsCoreMode() @ ['ShardMainTest.java:78'] | org.opentest4j.AssertionFailedError: expected: <{}> but was: <{synaxis.app.core-mode=on}>
+c6-w048-s2: ShardLaunchTest tests=11 failures=1 errors=0 skipped=0
+   theSimulationDistanceDoesNotExceedTheViewDistance(Path) @ ['ShardLaunchTest.java:50'] | org.opentest4j.AssertionFailedError: 18:33:54.045 [main] INFO  i.github.bearisbug.synaxis.app.Main - Effective config file: none, /private/var/folders … (ShardWorld.java:316) 	at io.github.bearisbug.synaxis.app.shard.ShardWorld.prepare(ShardWorld.java:287) 	... 3 common frames omitted ==> expected: <true> but was: <false>
+c6-w048-s2: ShardWorldTest tests=18 failures=1 errors=0 skipped=0
+   aSimulationDistanceAboveTheViewDistanceIsRefused() @ ['ShardWorldTest.java:66'] | org.opentest4j.AssertionFailedError: Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown.
+c7-w055-s2: ShardLaunchTest tests=11 failures=1 errors=0 skipped=0
+   twoHandlersWithOneKeyRefuseTheShard(Path) @ ['ConfigFileLaunchTest.java:316'] | org.opentest4j.AssertionFailedError: the JVM exits: 18:34:13.847 [main] INFO  i.github.bearisbug.synaxis.app.Main - Effective config file: none, /priv …  started successfully. 18:34:14.022 [main] INFO  i.github.bearisbug.synaxis.app.Main - synaxis server-app listening on 0.0.0.0:54177 ==> expected: <true> but was: <false>
+c7-w055-s2: ShardWorldTest tests=18 failures=1 errors=0 skipped=0
+   theShardRegistersTheHandlersOfTheBaker() @ ['ShardWorldTest.java:102'] | org.opentest4j.AssertionFailedError: synaxis:door is registered ==> expected: not <null>
+c8-green: ShardLaunchTest tests=11 failures=0 errors=0 skipped=0
+c8-green: ShardMainTest tests=10 failures=0 errors=0 skipped=0
+c8-green: ShardWorldTest tests=18 failures=0 errors=0 skipped=0
+
+The effective settings of the child JVMs in the failure messages of ShardGateLaunchTest (and the refusal line of the directory one):
+  a1-prefix: aShardHoldsThreeSocketsASeatAndTakesFiveJoinsATick(Path): maxConnections=1024 maxPlayers=200 maxJoinsPerTick=0
+  a1-prefix: aShardInTheDirectoryModeHoldsThreeSocketsASeatOfItsChannel(Path): maxConnections=1024 maxPlayers=200 maxJoinsPerTick=0 | Refusing to start: synx-manifest: manifest.json: missing in maps/fixture/fixture-0123456789ab-p776
+  a2-m-before-directory: aShardInTheDirectoryModeHoldsThreeSocketsASeatOfItsChannel(Path): maxConnections=1024 maxPlayers=200 maxJoinsPerTick=5 | Refusing to start: synx-manifest: manifest.json: missing in maps/fixture/fixture-0123456789ab-p776
+  b7-main-nowire: aShardHoldsThreeSocketsASeatAndTakesFiveJoinsATick(Path): maxConnections=1024 maxPlayers=200 maxJoinsPerTick=0
+  b7-main-nowire: aShardInTheDirectoryModeHoldsThreeSocketsASeatOfItsChannel(Path): maxConnections=1024 maxPlayers=200 maxJoinsPerTick=0 | Refusing to start: synx-manifest: manifest.json: missing in maps/fixture/fixture-0123456789ab-p776
+  b8-main-everywhere: aShardHoldsThreeSocketsASeatAndTakesFiveJoinsATick(Path): maxConnections=600 maxPlayers=200 maxJoinsPerTick=5
+  b9-m-before-directory-grid: aShardInTheDirectoryModeHoldsThreeSocketsASeatOfItsChannel(Path): maxConnections=1024 maxPlayers=200 maxJoinsPerTick=5 | Refusing to start: synx-manifest: manifest.json: missing in maps/fixture/fixture-0123456789ab-p776
+
+Stack frames in the test classes of the two ShardWorld proofs (c6, c7), first frames that are test classes:
+  c6-w048-s2: theSimulationDistanceDoesNotExceedTheViewDistance(Path): ['ShardLaunchTest.java:50', 'ShardLaunchTest.java:94']
+  c6-w048-s2: aSimulationDistanceAboveTheViewDistanceIsRefused(): ['ShardWorldTest.java:66', 'ShardWorldTest.java:126']
+  c7-w055-s2: twoHandlersWithOneKeyRefuseTheShard(Path): ['ConfigFileLaunchTest.java:316', 'ShardLaunchTest.java:145']
+  c7-w055-s2: theShardRegistersTheHandlersOfTheBaker(): ['ShardWorldTest.java:102']
+
+Reading: ShardMainTest and ShardLaunchTest are as on main, so TC-PROD-333 (10 tests, red at :20, :28, :34), TC-WORLD-010 (:57, :84,
+:51), TC-WORLD-047 (:78), TC-WORLD-048 (ShardLaunchTest.java:50 via :94; 29 tests, 2 failed) and TC-WORLD-055 (ShardLaunchTest.java:145
+via ConfigFileLaunchTest.java:316; 29 tests, 2 failed) read as those cases say. The ShardWorldTest lines of TC-WORLD-048 step 2
+(":65", call site ":125") and TC-WORLD-055 step 2 (":101") are :66 (:126) and :102: ShardWorldTest is the same on 8b18922130 and
+d61c2b2725, so the offset is on main already, not from this group (handed to the lighting session, DESIGN-PROD §28.3).

@@ -1,0 +1,51 @@
+The changed classes on 7e0052928e, default and strict grid (-Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true
+-Dsynaxis.thread-provider=grid). Lock run C right after the fixes, lock run H once every counter proof was reverted
+(git status clean between them; H is the 'green again' of every proof). TC-PROD-671 steps 1 and 2.
+
+c1-root-default: BUILD SUCCESSFUL in 10s
+c2-root-grid: BUILD SUCCESSFUL in 6s
+c3-app-default: BUILD SUCCESSFUL in 21s
+c4-app-grid: BUILD SUCCESSFUL in 16s
+h1-root-default: BUILD SUCCESSFUL in 8s
+h2-root-grid: BUILD SUCCESSFUL in 6s
+h3-app-default: BUILD SUCCESSFUL in 17s
+h4-app-grid: BUILD SUCCESSFUL in 19s
+
+c1-root-default: PlayerMovementAuthorityIntegrationTest tests=7 failures=0 errors=0 skipped=0
+c1-root-default: PlayerVehicleMoveAuthorityIntegrationTest tests=3 failures=0 errors=0 skipped=0
+c1-root-default: PlayerVehicleMoveValidationIntegrationTest tests=1 failures=0 errors=0 skipped=0
+c2-root-grid: PlayerMovementAuthorityIntegrationTest tests=7 failures=0 errors=0 skipped=0
+c2-root-grid: PlayerVehicleMoveAuthorityIntegrationTest tests=3 failures=0 errors=0 skipped=0
+c2-root-grid: PlayerVehicleMoveValidationIntegrationTest tests=1 failures=0 errors=0 skipped=0
+c3-app-default: CoreModeIntegrationTest tests=4 failures=0 errors=0 skipped=0
+c3-app-default: MainDirectoryModeTest tests=8 failures=0 errors=0 skipped=0
+c3-app-default: MainTest tests=15 failures=0 errors=0 skipped=0
+c3-app-default: ShardLaunchTest tests=12 failures=0 errors=0 skipped=0
+c3-app-default: ShardMainTest tests=13 failures=0 errors=0 skipped=0
+c4-app-grid: CoreModeIntegrationTest tests=4 failures=0 errors=0 skipped=0
+c4-app-grid: MainDirectoryModeTest tests=8 failures=0 errors=0 skipped=0
+c4-app-grid: MainTest tests=15 failures=0 errors=0 skipped=0
+c4-app-grid: ShardLaunchTest tests=12 failures=0 errors=0 skipped=0
+c4-app-grid: ShardMainTest tests=13 failures=0 errors=0 skipped=0
+h1-root-default: PlayerMovementAuthorityIntegrationTest tests=7 failures=0 errors=0 skipped=0
+h1-root-default: PlayerVehicleMoveAuthorityIntegrationTest tests=3 failures=0 errors=0 skipped=0
+h1-root-default: PlayerVehicleMoveValidationIntegrationTest tests=1 failures=0 errors=0 skipped=0
+h2-root-grid: PlayerMovementAuthorityIntegrationTest tests=7 failures=0 errors=0 skipped=0
+h2-root-grid: PlayerVehicleMoveAuthorityIntegrationTest tests=3 failures=0 errors=0 skipped=0
+h2-root-grid: PlayerVehicleMoveValidationIntegrationTest tests=1 failures=0 errors=0 skipped=0
+h3-app-default: CoreModeIntegrationTest tests=4 failures=0 errors=0 skipped=0
+h3-app-default: MainDirectoryModeTest tests=8 failures=0 errors=0 skipped=0
+h3-app-default: MainTest tests=15 failures=0 errors=0 skipped=0
+h3-app-default: ShardLaunchTest tests=12 failures=0 errors=0 skipped=0
+h3-app-default: ShardMainTest tests=13 failures=0 errors=0 skipped=0
+h4-app-grid: CoreModeIntegrationTest tests=4 failures=0 errors=0 skipped=0
+h4-app-grid: MainDirectoryModeTest tests=8 failures=0 errors=0 skipped=0
+h4-app-grid: MainTest tests=15 failures=0 errors=0 skipped=0
+h4-app-grid: ShardLaunchTest tests=12 failures=0 errors=0 skipped=0
+h4-app-grid: ShardMainTest tests=13 failures=0 errors=0 skipped=0
+
+ShardLaunchTest#aShardHoldsThreeSocketsASeatAndTakesFiveJoinsATick times:
+testcase name="aShardHoldsThreeSocketsASeatAndTakesFiveJoinsATick(Path)" time="1.799"
+testcase name="aShardHoldsThreeSocketsASeatAndTakesFiveJoinsATick(Path)" time="1.706"
+c3-app-default ShardLaunchTest class time="8.385"
+c4-app-grid ShardLaunchTest class time="9.327"

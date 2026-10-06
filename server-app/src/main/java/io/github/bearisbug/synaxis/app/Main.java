@@ -216,6 +216,8 @@ public final class Main {
         final @Nullable MapMount map = mapMount(shard, coreMode);
         // Before the engine reads synaxis.max-players, which the directory sets
         final @Nullable ShardDirectory directory = map == null ? null : shardDirectory(map.settings(), storeMode, shardId);
+        // After the directory, which writes the capacity the socket cap of a shard follows
+        if (shard) ShardMain.gateDefaults(System::getProperty).forEach(System::setProperty);
         applyViewRangeDefaults();
 
         // (2) The engine facade, not a bare ServerProcess: MinecraftServer#start is the only public

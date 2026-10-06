@@ -16,7 +16,8 @@ import java.util.function.UnaryOperator;
  * in memory does not, as {@link Main} refuses to take them there. The RTS process is launched
  * through {@link Main} and keeps the engine defaults, the counter and one tick thread. A shard given
  * {@code synaxis.map.root} and {@code synaxis.map.build} mounts that map release and loads no plugin,
- * which only this launcher does.
+ * which only this launcher does. The connection gate of a shard holds 3 sockets a seat of its
+ * capacity and lets 5 players into the game a tick ({@code API-PROD-003}).
  * <p>
  * A value the operator passed on the command line wins, {@code -Dsynaxis.thread-provider=counter}
  * takes a shard back to the engine provider.
@@ -29,6 +30,9 @@ public final class ShardMain {
     static final String MAX_CHUNKS_PER_TICK = "synaxis.chunk-queue.max-per-tick";
     static final String MAX_VISIBLE_ENTITIES = "synaxis.max-visible-entities-per-player";
     static final String ACCEPT_TRANSFERS = "synaxis.accept-transfers";
+    static final String MAX_PLAYERS = "synaxis.max-players";
+    static final String MAX_CONNECTIONS = "synaxis.max-connections";
+    static final String MAX_JOINS_PER_TICK = "synaxis.max-joins-per-tick";
     static final String MAP_ROOT = ShardSettings.MAP_ROOT;
     static final String MAP_BUILD = ShardSettings.MAP_BUILD;
 
@@ -91,6 +95,32 @@ public final class ShardMain {
         if (properties.apply(ACCEPT_TRANSFERS) != null || store == null || !Main.STORE_POSTGRES.equals(store.strip()))
             return Map.of();
         return Map.of(ACCEPT_TRANSFERS, "true");
+    }
+
+    /**
+     * Returns the socket cap and the cap on joins a tick of the connection gate to set, the ones the
+     * command line left out ({@code docs/DESIGN-PROD.md} {@code API-PROD-003}): 3 sockets a seat of
+     * {@code synaxis.max-players}, the capacity of the shard, and 5 joins a tick. Without a capacity,
+     * or with one that is not a positive integer, the socket cap stays the engine's; {@code ServerConfig}
+     * refuses one that is not an integer. Called by {@link Main} once the shard directory has written
+     * the capacity of its channel, not before it like the others.
+     *
+     * @param properties the system properties already set
+     * @return the properties and their values
+     */
+    static Map<String, String> gateDefaults(UnaryOperator<String> properties) {
+        final Map<String, String> defaults = new LinkedHashMap<>();
+        final String capacity = properties.apply(MAX_PLAYERS);
+        if (properties.apply(MAX_CONNECTIONS) == null && capacity != null) {
+            try {
+                final int seats = Integer.parseInt(capacity);
+                if (seats > 0) defaults.put(MAX_CONNECTIONS, Long.toString(Math.min(Integer.MAX_VALUE, 3L * seats)));
+            } catch (NumberFormatException _) {
+                // ServerConfig refuses it with its own message
+            }
+        }
+        if (properties.apply(MAX_JOINS_PER_TICK) == null) defaults.put(MAX_JOINS_PER_TICK, "5");
+        return defaults;
     }
 
     /**

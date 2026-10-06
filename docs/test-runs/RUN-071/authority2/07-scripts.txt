@@ -1,0 +1,215 @@
+===== common.zsh
+export JAVA_HOME=/opt/homebrew/opt/openjdk@25/libexec/openjdk.jdk/Contents/Home
+WT=/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r071-authority
+OUT=/tmp/run071/authority2
+GRID=(-Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true -Dsynaxis.thread-provider=grid)
+# gt <label> <task> [extra args...]: runs one gradle test task in the worktree, output to $OUT/<label>.txt
+gt() {
+  local label=$1 task=$2; shift 2
+  (cd $WT && ./gradlew $task --rerun "$@" --max-workers=2 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts > $OUT/$label.txt 2>&1)
+  local rc=$?
+  echo "$label exit=$rc $(grep -E 'tests completed|BUILD (SUCCESSFUL|FAILED)' $OUT/$label.txt | tr '\n' ' ')"
+}
+# keep <label> <module-results-dir> <class...>: copies the JUnit XML of the classes
+keep() {
+  local label=$1 dir=$2; shift 2
+  mkdir -p $OUT/xml/$label
+  for c in "$@"; do cp $WT/$dir/TEST-$c.xml $OUT/xml/$label/ 2>/dev/null; done
+}
+PY=/Users/bug/Documents/Projects/Minecraft/synaxis/.venv/bin/python
+# proof <label> <file> <old> <new> <task> <class> <results-dir> [extra gradle args]: edit, run, keep XML, revert, check clean
+proof() {
+  local label=$1 file=$2 old=$3 new=$4 task=$5 cls=$6 dir=$7; shift 7
+  $PY $OUT/edit.py $WT/$file "$old" "$new" || { echo "$label EDIT FAILED"; return 1; }
+  gt $label $task --tests $cls "$@"
+  keep $label $dir $cls
+  (cd $WT && git checkout HEAD -- $file && git status --short --untracked-files=no | grep -q . && echo "$label NOT CLEAN")
+}
+# lproof <label> <file> <line> <old> <new> <task> <results-dir> <class...> -- [extra gradle args]: line-based edit, run, keep, revert
+lproof() {
+  local label=$1 file=$2 line=$3 old=$4 new=$5 task=$6 dir=$7; shift 7
+  local classes=() extra=()
+  while [[ $# -gt 0 && $1 != -- ]]; do classes+=($1); shift; done
+  [[ $1 == -- ]] && shift
+  extra=("$@")
+  $PY $OUT/editline.py $WT/$file $line "$old" "$new" || { echo "$label EDIT FAILED"; return 1; }
+  local t=(); for c in $classes; do t+=(--tests $c); done
+  gt $label $task $t $extra
+  keep $label $dir $classes
+  (cd $WT && git checkout HEAD -- $file && git status --short --untracked-files=no | grep -q . && echo "$label NOT CLEAN")
+}
+
+===== edit.py
+import sys
+path, old, new = sys.argv[1], sys.argv[2], sys.argv[3]
+s = open(path).read()
+n = s.count(old)
+if n != 1:
+    sys.exit(f"{path}: {n} occurrences of {old!r}")
+open(path, 'w').write(s.replace(old, new))
+
+===== editline.py
+import sys
+path, line, old, new = sys.argv[1], int(sys.argv[2]), sys.argv[3], sys.argv[4]
+lines = open(path).read().split('\n')
+if lines[line - 1].count(old) != 1:
+    sys.exit(f"{path}:{line}: {lines[line - 1]!r} does not hold {old!r} once")
+lines[line - 1] = lines[line - 1].replace(old, new)
+open(path, 'w').write('\n'.join(lines))
+
+===== run-a.zsh
+#!/bin/zsh
+# Batch A: chunk bytes probe and the reds before the fixes
+until mkdir /tmp/synaxis-heavy.lock 2>/dev/null; do sleep 60; done
+trap 'rm -rf /tmp/synaxis-heavy.lock' EXIT
+echo "owner=生产就绪会话/authority2 pid=<session pid> since=$(date '+%F %T') task=RUN-071 authority2 probe and pre-fix reds" > /tmp/synaxis-heavy.lock/owner
+export JAVA_HOME=/opt/homebrew/opt/openjdk@25/libexec/openjdk.jdk/Contents/Home
+cd /Users/bug/Documents/Projects/Minecraft/synaxis-wt/r071-authority
+OUT=/tmp/run071/authority2
+date '+start %F %T'
+./gradlew :server-app:test --rerun --tests 'io.github.bearisbug.synaxis.app.CoreChunkBytesProbe' -i --max-workers=2 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts > $OUT/a1-probe.txt 2>&1; echo "probe exit $?"
+./gradlew :test --rerun --tests 'io.github.bearisbug.synaxis.listener.PlayerVehicleMoveAuthorityIntegrationTest' --max-workers=2 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts > $OUT/a2-vehicle-red.txt 2>&1; echo "vehicle exit $?"
+cp build/test-results/test/TEST-io.github.bearisbug.synaxis.listener.PlayerVehicleMoveAuthorityIntegrationTest.xml $OUT/a2-vehicle-red.xml 2>/dev/null
+./gradlew :server-app:test --rerun --tests 'io.github.bearisbug.synaxis.app.ShardMainTest' --tests 'io.github.bearisbug.synaxis.app.ShardLaunchTest.aShardHoldsThreeSocketsASeatAndTakesFiveJoinsATick' --max-workers=2 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts > $OUT/a3-shard-red.txt 2>&1; echo "shard exit $?"
+cp server-app/build/test-results/test/TEST-io.github.bearisbug.synaxis.app.ShardMainTest.xml server-app/build/test-results/test/TEST-io.github.bearisbug.synaxis.app.ShardLaunchTest.xml $OUT/ 2>/dev/null
+date '+end %F %T'
+
+===== run-b.zsh
+#!/bin/zsh
+# Batch B: the core mode red before the fix
+until mkdir /tmp/synaxis-heavy.lock 2>/dev/null; do sleep 60; done
+trap 'rm -rf /tmp/synaxis-heavy.lock' EXIT
+echo "owner=生产就绪会话/authority2 pid=<session pid> since=$(date '+%F %T') task=RUN-071 authority2 core mode pre-fix red" > /tmp/synaxis-heavy.lock/owner
+export JAVA_HOME=/opt/homebrew/opt/openjdk@25/libexec/openjdk.jdk/Contents/Home
+cd /Users/bug/Documents/Projects/Minecraft/synaxis-wt/r071-authority
+OUT=/tmp/run071/authority2
+date '+start %F %T'
+./gradlew :server-app:test --rerun --tests 'io.github.bearisbug.synaxis.app.CoreModeIntegrationTest' --max-workers=2 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts > $OUT/b1-core-red.txt 2>&1; echo "core exit $?"
+cp server-app/build/test-results/test/TEST-io.github.bearisbug.synaxis.app.CoreModeIntegrationTest.xml $OUT/pre/ 2>/dev/null
+date '+end %F %T'
+
+===== run-c.zsh
+#!/bin/zsh
+# Batch C: the changed classes after the fixes, default and strict grid
+until mkdir /tmp/synaxis-heavy.lock 2>/dev/null; do sleep 60; done
+trap 'rm -rf /tmp/synaxis-heavy.lock' EXIT
+echo "owner=生产就绪会话/authority2 pid=<session pid> since=$(date '+%F %T') task=RUN-071 authority2 greens default and strict grid" > /tmp/synaxis-heavy.lock/owner
+source /tmp/run071/authority2/common.zsh
+date '+start %F %T'
+P=io.github.bearisbug.synaxis
+ROOT=($P.listener.PlayerVehicleMoveAuthorityIntegrationTest $P.listener.PlayerVehicleMoveValidationIntegrationTest $P.listener.PlayerMovementAuthorityIntegrationTest)
+APP=($P.app.CoreModeIntegrationTest $P.app.ShardMainTest $P.app.ShardLaunchTest $P.app.MainDirectoryModeTest $P.app.MainTest)
+rt=(); for c in $ROOT; do rt+=(--tests $c); done
+at=(); for c in $APP; do at+=(--tests $c); done
+gt c1-root-default :test $rt; keep c1-root-default build/test-results/test $ROOT
+gt c2-root-grid :test $rt $GRID; keep c2-root-grid build/test-results/test $ROOT
+gt c3-app-default :server-app:test $at; keep c3-app-default server-app/build/test-results/test $APP
+gt c4-app-grid :server-app:test $at $GRID; keep c4-app-grid server-app/build/test-results/test $APP
+date '+end %F %T'
+
+===== run-d.zsh
+#!/bin/zsh
+# Batch D: counter-proofs of the vehicle, core mode and shard gate changes
+until mkdir /tmp/synaxis-heavy.lock 2>/dev/null; do sleep 60; done
+trap 'rm -rf /tmp/synaxis-heavy.lock' EXIT
+echo "owner=生产就绪会话/authority2 pid=<session pid> since=$(date '+%F %T') task=RUN-071 authority2 counter-proofs" > /tmp/synaxis-heavy.lock/owner
+source /tmp/run071/authority2/common.zsh
+date '+start %F %T'
+P=io.github.bearisbug.synaxis
+VL=src/main/java/io/github/bearisbug/synaxis/listener/PlayerVehicleListener.java
+VT=$P.listener.PlayerVehicleMoveAuthorityIntegrationTest
+RD=build/test-results/test
+proof d1-v-no64 $VL 'if (current.distanceSquared(position) > 64 * 64' 'if ((Boolean.getBoolean("proof.never") && current.distanceSquared(position) > 64 * 64)' :test $VT $RD
+proof d2-v-noborder $VL '|| PlayerPositionListener.outwards(vehicle.getInstance(), current, position)) {' '|| (Boolean.getBoolean("proof.never") && PlayerPositionListener.outwards(vehicle.getInstance(), current, position))) {' :test $VT $RD
+proof d3-v-64back $VL 'current.distanceSquared(position) > 64 * 64' 'current.distanceSquared(position) >= 64 * 64' :test $VT $RD
+proof d4-v-peraxis $VL 'current.distanceSquared(position) > 64 * 64' 'Math.max(Math.abs(position.x() - current.x()), Math.max(Math.abs(position.y() - current.y()), Math.abs(position.z() - current.z()))) > 64' :test $VT $RD
+proof d5-v-nopacket $VL '            player.sendPacket(new VehicleMovePacket(current));' '            if (Boolean.getBoolean("proof.never")) player.sendPacket(new VehicleMovePacket(current));' :test $VT $RD
+proof d6-v-grid-no64 $VL 'if (current.distanceSquared(position) > 64 * 64' 'if ((Boolean.getBoolean("proof.never") && current.distanceSquared(position) > 64 * 64)' :test $VT $RD $GRID
+AD=server-app/build/test-results/test
+CM=server-app/src/main/java/io/github/bearisbug/synaxis/app/CoreMode.java
+proof d7-core-noborder $CM '        world.setWorldBorder(WorldBorder.defaultBorder().withDiameter(BORDER_DIAMETER));' '        if (Boolean.getBoolean("proof.never")) world.setWorldBorder(WorldBorder.defaultBorder().withDiameter(BORDER_DIAMETER));' :server-app:test $P.app.CoreModeIntegrationTest $AD
+MN=server-app/src/main/java/io/github/bearisbug/synaxis/app/Main.java
+SM=server-app/src/main/java/io/github/bearisbug/synaxis/app/ShardMain.java
+proof d8-main-nowire $MN '        if (shard) ShardMain.gateDefaults' '        if (Boolean.getBoolean("proof.never") && shard) ShardMain.gateDefaults' :server-app:test $P.app.ShardLaunchTest $AD
+proof d9-main-everywhere $MN '        if (shard) ShardMain.gateDefaults' '        if (!Boolean.getBoolean("proof.never") || shard) ShardMain.gateDefaults' :server-app:test $P.app.ShardLaunchTest $AD
+proof d10-sm-nothing $SM '        if (properties.apply(MAX_JOINS_PER_TICK) == null) defaults.put(MAX_JOINS_PER_TICK, "5");
+        return defaults;' '        if (properties.apply(MAX_JOINS_PER_TICK) == null) defaults.put(MAX_JOINS_PER_TICK, "5");
+        return Boolean.getBoolean("proof.never") ? defaults : Map.of();' :server-app:test $P.app.ShardMainTest $AD
+proof d11-sm-zero $SM 'if (seats > 0)' 'if (seats >= 0)' :server-app:test $P.app.ShardMainTest $AD
+date '+end %F %T'
+
+===== run-e.zsh
+#!/bin/zsh
+# Batch E: the counter-proofs whose Main.java lines moved by two
+until mkdir /tmp/synaxis-heavy.lock 2>/dev/null; do sleep 60; done
+trap 'rm -rf /tmp/synaxis-heavy.lock' EXIT
+echo "owner=生产就绪会话/authority2 pid=<session pid> since=$(date '+%F %T') task=RUN-071 authority2 Main.java line shift proofs" > /tmp/synaxis-heavy.lock/owner
+source /tmp/run071/authority2/common.zsh
+if docker inspect synaxis-pg >/dev/null 2>&1; then
+  export SYNAXIS_TEST_PG_URL=jdbc:postgresql://127.0.0.1:5440/postgres
+  export SYNAXIS_TEST_REDIS_URL=redis://127.0.0.1:6440
+  export SYNAXIS_TEST_PG_PASSWORD="$(docker inspect synaxis-pg --format '{{range .Config.Env}}{{println .}}{{end}}' | sed -n 's/^POSTGRES_PASSWORD=//p')"
+fi
+date '+start %F %T'
+P=io.github.bearisbug.synaxis
+AD=server-app/build/test-results/test
+MN=server-app/src/main/java/io/github/bearisbug/synaxis/app/Main.java
+HM=server-app/src/main/java/io/github/bearisbug/synaxis/app/metrics/HostMetrics.java
+TC=$P.app.TransferCooldownTableIntegrationTest
+OPS=$P.app.OpsPortsLaunchTest
+MEG=$P.app.metrics.MetricsEndpointGuardsTest
+gt e0-cooldown-green :server-app:test --tests $TC; keep e0-cooldown-green $AD $TC
+lproof e1-tc521-s4 $MN 760 'redis, cooldowns);' 'redis, TransferCooldowns.fromSystemProperties());' :server-app:test $AD $TC
+lproof e2-tc528-s2 $MN 714 'TransferCooldowns.fromSystemProperties()' 'new TransferCooldowns(5_000, System::currentTimeMillis)' :server-app:test $AD $TC
+lproof e3-tc533-s3 $MN 758 'keys, cooldowns, ledger::record' 'keys, TransferCooldowns.fromSystemProperties(), ledger::record' :server-app:test $AD $TC
+gt e4-ops-green :server-app:test --tests $OPS --tests $MEG; keep e4-ops-green $AD $OPS $MEG
+lproof e5-tc603-s2 $MN 620 'if (bind.getAddress() != null' 'if (Boolean.getBoolean("proof.never") && bind.getAddress() != null' :server-app:test $AD $OPS
+lproof e6-tc604-s2 $MN 346 'if (!(e.getCause() instanceof IOException cause)) throw e;' 'if (!Boolean.getBoolean("proof.never") || !(e.getCause() instanceof IOException cause)) throw e;' :server-app:test $AD $OPS
+# TC-PROD-604 step 3: step 2 together with TC-PROD-605 step 2
+$PY $OUT/editline.py $WT/$HM 347 '.daemon().start(server::start)' '.daemon(Boolean.getBoolean("proof.never")).start(server::start)' || echo "e7 HM EDIT FAILED"
+lproof e7-tc604-s3 $MN 346 'if (!(e.getCause() instanceof IOException cause)) throw e;' 'if (!Boolean.getBoolean("proof.never") || !(e.getCause() instanceof IOException cause)) throw e;' :server-app:test $AD $OPS $MEG
+(cd $WT && git checkout HEAD -- $HM && git status --short --untracked-files=no | grep -q . && echo "e7 NOT CLEAN")
+gt e8-ops-green-grid :server-app:test --tests $OPS --tests $MEG --tests $TC $GRID; keep e8-ops-green-grid $AD $OPS $MEG $TC
+date '+end %F %T'
+
+===== run-g.zsh
+#!/bin/zsh
+# Batch G: probe of a vehicle move into a chunk that is not loaded
+until mkdir /tmp/synaxis-heavy.lock 2>/dev/null; do sleep 60; done
+trap 'rm -rf /tmp/synaxis-heavy.lock' EXIT
+echo "owner=生产就绪会话/authority2 pid=<session pid> since=$(date '+%F %T') task=RUN-071 authority2 vehicle unloaded chunk probe" > /tmp/synaxis-heavy.lock/owner
+source /tmp/run071/authority2/common.zsh
+gt g1-vehicle-unloaded-probe :test --tests io.github.bearisbug.synaxis.listener.VehicleUnloadedChunkProbe -i
+
+===== run-h.zsh
+#!/bin/zsh
+# Batch H: the changed classes once every proof is reverted, default and strict grid
+until mkdir /tmp/synaxis-heavy.lock 2>/dev/null; do sleep 60; done
+trap 'rm -rf /tmp/synaxis-heavy.lock' EXIT
+echo "owner=生产就绪会话/authority2 pid=<session pid> since=$(date '+%F %T') task=RUN-071 authority2 final greens after the proofs" > /tmp/synaxis-heavy.lock/owner
+source /tmp/run071/authority2/common.zsh
+date '+start %F %T'
+P=io.github.bearisbug.synaxis
+ROOT=($P.listener.PlayerVehicleMoveAuthorityIntegrationTest $P.listener.PlayerVehicleMoveValidationIntegrationTest $P.listener.PlayerMovementAuthorityIntegrationTest)
+APP=($P.app.CoreModeIntegrationTest $P.app.ShardMainTest $P.app.ShardLaunchTest $P.app.MainDirectoryModeTest $P.app.MainTest)
+rt=(); for c in $ROOT; do rt+=(--tests $c); done
+at=(); for c in $APP; do at+=(--tests $c); done
+gt h1-root-default :test $rt; keep h1-root-default build/test-results/test $ROOT
+gt h2-root-grid :test $rt $GRID; keep h2-root-grid build/test-results/test $ROOT
+gt h3-app-default :server-app:test $at; keep h3-app-default server-app/build/test-results/test $APP
+gt h4-app-grid :server-app:test $at $GRID; keep h4-app-grid server-app/build/test-results/test $APP
+date '+end %F %T'
+
+===== summarize.py
+import sys, glob, os, re, xml.etree.ElementTree as ET
+for d in sys.argv[1:]:
+    for f in sorted(glob.glob(f"xml/{d}/*.xml")):
+        r = ET.parse(f).getroot()
+        print(f"{d}: {r.get('name').split('.')[-1]} tests={r.get('tests')} failures={r.get('failures')} errors={r.get('errors')} skipped={r.get('skipped')}")
+        for tc in r.iter('testcase'):
+            for fl in list(tc.findall('failure')) + list(tc.findall('error')):
+                msg = (fl.get('message') or '').replace('\n', ' ')
+                if len(msg) > 330: msg = msg[:150] + ' … ' + msg[-170:]
+                lines = re.findall(r'\((\w+Test\.java:\d+)\)', fl.text or '')
+                print(f"   {tc.get('name')} @ {lines[:1]} | {msg}")
+

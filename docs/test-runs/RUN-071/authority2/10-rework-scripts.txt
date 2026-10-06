@@ -1,0 +1,168 @@
+===== common.zsh
+export JAVA_HOME=/opt/homebrew/opt/openjdk@25/libexec/openjdk.jdk/Contents/Home
+WT=/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r071-authority
+OUT=/tmp/run071/rework-authority2
+GRID=(-Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true -Dsynaxis.thread-provider=grid)
+PY=/Users/bug/Documents/Projects/Minecraft/synaxis/.venv/bin/python
+# gt <label> <task> [extra args...]: runs one gradle test task in the worktree, output to $OUT/<label>.txt
+gt() {
+  local label=$1 task=$2; shift 2
+  (cd $WT && ./gradlew $task --rerun "$@" --max-workers=2 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts > $OUT/$label.txt 2>&1)
+  local rc=$?
+  echo "$label exit=$rc $(/usr/bin/grep -E 'tests completed|BUILD (SUCCESSFUL|FAILED)' $OUT/$label.txt | tr '\n' ' ')"
+}
+# keep <label> <module-results-dir> <class...>: copies the JUnit XML of the classes
+keep() {
+  local label=$1 dir=$2; shift 2
+  mkdir -p $OUT/xml/$label
+  for c in "$@"; do cp $WT/$dir/TEST-$c.xml $OUT/xml/$label/ 2>/dev/null; done
+}
+# proof <label> <file> <old> <new> <task> <results-dir> <class...> -- [extra gradle args]: edit, run, keep XML, revert, check
+proof() {
+  local label=$1 file=$2 old=$3 new=$4 task=$5 dir=$6; shift 6
+  local classes=() extra=()
+  while [[ $# -gt 0 && $1 != -- ]]; do classes+=($1); shift; done
+  [[ $1 == -- ]] && shift
+  extra=("$@")
+  $PY $OUT/edit.py $WT/$file "$old" "$new" || { echo "$label EDIT FAILED"; return 1; }
+  local t=(); for c in $classes; do t+=(--tests $c); done
+  gt $label $task $t $extra
+  keep $label $dir $classes
+  (cd $WT && git checkout -- $file && git diff --quiet -- $file || echo "$label NOT RESTORED")
+}
+
+===== edit.py
+import sys
+path, old, new = sys.argv[1], sys.argv[2], sys.argv[3]
+s = open(path).read()
+n = s.count(old)
+if n != 1:
+    sys.exit(f"{path}: {n} occurrences of {old!r}")
+open(path, 'w').write(s.replace(old, new))
+
+===== stub.py
+# Appends to the base ShardMain a gateDefaults that writes nothing: "ShardMain does not write the two keys"
+import sys
+path = sys.argv[1]
+s = open(path).read()
+assert s.rstrip().endswith('}') and 'gateDefaults' not in s
+i = s.rstrip().rfind('}')
+s = s[:i] + '\n    static Map<String, String> gateDefaults(UnaryOperator<String> properties) {\n        return Map.of();\n    }\n}\n'
+open(path, 'w').write(s)
+
+===== reorder.py
+# Mutation M: Main writes the gate defaults before the shard directory has written the capacity
+import sys
+path = sys.argv[1]
+A = "        // Before the engine reads synaxis.max-players, which the directory sets\n"
+B = "        final @Nullable ShardDirectory directory = map == null ? null : shardDirectory(map.settings(), storeMode, shardId);\n"
+C = "        // After the directory, which writes the capacity the socket cap of a shard follows\n"
+D = "        if (shard) ShardMain.gateDefaults(System::getProperty).forEach(System::setProperty);\n"
+s = open(path).read()
+assert s.count(A + B + C + D) == 1
+open(path, 'w').write(s.replace(A + B + C + D, C + D + A + B))
+
+===== run-a.zsh
+#!/bin/zsh
+# Batch A: the gate test classes before the fix, and mutation M (the gate written before the shard directory)
+until mkdir /tmp/synaxis-heavy.lock 2>/dev/null; do sleep 60; done
+trap 'rm -rf /tmp/synaxis-heavy.lock' EXIT
+echo "owner=生产就绪会话/rework-authority2 pid=33941 since=$(date '+%F %T') task=RUN-071 authority2 rework: pre-fix reds of the gate tests and mutation M" > /tmp/synaxis-heavy.lock/owner
+source /tmp/run071/rework-authority2/common.zsh
+date '+start %F %T'
+P=io.github.bearisbug.synaxis
+AD=server-app/build/test-results/test
+MN=server-app/src/main/java/io/github/bearisbug/synaxis/app/Main.java
+SM=server-app/src/main/java/io/github/bearisbug/synaxis/app/ShardMain.java
+G1=$P.app.ShardMainGateTest
+G2=$P.app.ShardGateLaunchTest
+# Before the fix: Main and ShardMain of the base 8b18922130, ShardMain with the stub
+(cd $WT && git show 8b18922130:$MN > $MN && git show 8b18922130:$SM > $SM)
+$PY $OUT/stub.py $WT/$SM || echo "a1 STUB FAILED"
+gt a1-prefix :server-app:test --tests $G1 --tests $G2; keep a1-prefix $AD $G1 $G2
+(cd $WT && git checkout -- $MN $SM && git diff --quiet -- $MN $SM || echo "a1 NOT RESTORED")
+# M: the gate defaults written before the shard directory
+$PY $OUT/reorder.py $WT/$MN || echo "a2 EDIT FAILED"
+gt a2-m-before-directory :server-app:test --tests $G2; keep a2-m-before-directory $AD $G2
+(cd $WT && git checkout -- $MN && git diff --quiet -- $MN || echo "a2 NOT RESTORED")
+# After the fix
+gt a3-green :server-app:test --tests $G1 --tests $G2; keep a3-green $AD $G1 $G2
+date '+end %F %T'
+
+===== run-b.zsh
+#!/bin/zsh
+# Batch B: the changed classes, default and strict grid; counter-proofs of TC-PROD-669, 670 and 672
+until mkdir /tmp/synaxis-heavy.lock 2>/dev/null; do sleep 60; done
+trap 'rm -rf /tmp/synaxis-heavy.lock' EXIT
+echo "owner=生产就绪会话/rework-authority2 pid=33941 since=$(date '+%F %T') task=RUN-071 authority2 rework: greens and gate counter-proofs" > /tmp/synaxis-heavy.lock/owner
+source /tmp/run071/rework-authority2/common.zsh
+date '+start %F %T'
+P=io.github.bearisbug.synaxis
+RD=build/test-results/test
+AD=server-app/build/test-results/test
+ROOT=($P.listener.PlayerVehicleMoveAuthorityIntegrationTest $P.listener.PlayerVehicleMoveValidationIntegrationTest $P.listener.PlayerMovementAuthorityIntegrationTest)
+APP=($P.app.CoreModeIntegrationTest $P.app.ShardMainTest $P.app.ShardMainGateTest $P.app.ShardLaunchTest $P.app.ShardGateLaunchTest $P.app.MainDirectoryModeTest $P.app.MainTest)
+rt=(); for c in $ROOT; do rt+=(--tests $c); done
+at=(); for c in $APP; do at+=(--tests $c); done
+gt b1-root-default :test $rt; keep b1-root-default $RD $ROOT
+gt b2-root-grid :test $rt $GRID; keep b2-root-grid $RD $ROOT
+gt b3-app-default :server-app:test $at; keep b3-app-default $AD $APP
+gt b4-app-grid :server-app:test $at $GRID; keep b4-app-grid $AD $APP
+MN=server-app/src/main/java/io/github/bearisbug/synaxis/app/Main.java
+SM=server-app/src/main/java/io/github/bearisbug/synaxis/app/ShardMain.java
+G1=$P.app.ShardMainGateTest
+G2=$P.app.ShardGateLaunchTest
+proof b5-sm-nothing $SM '        if (properties.apply(MAX_JOINS_PER_TICK) == null) defaults.put(MAX_JOINS_PER_TICK, "5");
+        return defaults;' '        if (properties.apply(MAX_JOINS_PER_TICK) == null) defaults.put(MAX_JOINS_PER_TICK, "5");
+        return Boolean.getBoolean("proof.never") ? defaults : Map.of();' :server-app:test $AD $G1
+proof b6-sm-zero $SM 'if (seats > 0)' 'if (seats >= 0)' :server-app:test $AD $G1
+proof b7-main-nowire $MN '        if (shard) ShardMain.gateDefaults' '        if (Boolean.getBoolean("proof.never") && shard) ShardMain.gateDefaults' :server-app:test $AD $G2
+proof b8-main-everywhere $MN '        if (shard) ShardMain.gateDefaults' '        if (!Boolean.getBoolean("proof.never") || shard) ShardMain.gateDefaults' :server-app:test $AD $G2
+# M again, under strict grid
+$PY $OUT/reorder.py $WT/$MN || echo "b9 EDIT FAILED"
+gt b9-m-before-directory-grid :server-app:test --tests $G2 $GRID; keep b9-m-before-directory-grid $AD $G2
+(cd $WT && git checkout -- $MN && git diff --quiet -- $MN || echo "b9 NOT RESTORED")
+date '+end %F %T'
+
+===== run-c.zsh
+#!/bin/zsh
+# Batch C: counter-proofs of the older cases on ShardMainTest and ShardLaunchTest (TC-PROD-333, TC-WORLD-010/047/048/055)
+until mkdir /tmp/synaxis-heavy.lock 2>/dev/null; do sleep 60; done
+trap 'rm -rf /tmp/synaxis-heavy.lock' EXIT
+echo "owner=生产就绪会话/rework-authority2 pid=33941 since=$(date '+%F %T') task=RUN-071 authority2 rework: counter-proofs of the older ShardMainTest and ShardLaunchTest cases" > /tmp/synaxis-heavy.lock/owner
+source /tmp/run071/rework-authority2/common.zsh
+date '+start %F %T'
+P=io.github.bearisbug.synaxis
+AD=server-app/build/test-results/test
+SM=server-app/src/main/java/io/github/bearisbug/synaxis/app/ShardMain.java
+SW=server-app/src/main/java/io/github/bearisbug/synaxis/app/shard/ShardWorld.java
+SMT=$P.app.ShardMainTest
+SLT=$P.app.ShardLaunchTest
+SWT=$P.app.shard.ShardWorldTest
+proof c1-tc333-s2 $SM 'Math.max(1, cores - 2)' 'Math.max(1, cores)' :server-app:test $AD $SMT
+proof c2-w010-s2 $SM 'store == null || !Main.STORE_POSTGRES.equals(store.strip())' 'Main.STORE_POSTGRES.equals(store + "x")' :server-app:test $AD $SMT
+proof c3-w010-s3 $SM 'properties.apply(ACCEPT_TRANSFERS) != null || ' '' :server-app:test $AD $SMT
+proof c4-w010-s4 $SM 'if (properties.apply(MAX_VISIBLE_ENTITIES) == null) ' '' :server-app:test $AD $SMT
+proof c5-w047-s2 $SM $'\n                || properties.apply(CoreMode.PROPERTY) != null' '' :server-app:test $AD $SMT
+proof c6-w048-s2 $SW 'if (simulationDistance < 1 || simulationDistance > viewDistance) {' 'if (simulationDistance < 1) {' :server-app:test $AD $SWT $SLT
+# TC-WORLD-055 step 2: two lines out of ShardWorld
+$PY $OUT/edit.py $WT/$SW $'        SynxHandlers.registerAll(process.block());\n' '' || echo "c7 EDIT FAILED"
+$PY $OUT/edit.py $WT/$SW $'import io.github.bearisbug.synaxis.synx.SynxHandlers;\n' '' || echo "c7 EDIT FAILED"
+gt c7-w055-s2 :server-app:test --tests $SWT --tests $SLT; keep c7-w055-s2 $AD $SWT $SLT
+(cd $WT && git checkout -- $SW && git diff --quiet -- $SW || echo "c7 NOT RESTORED")
+gt c8-green :server-app:test --tests $SMT --tests $SWT --tests $SLT; keep c8-green $AD $SMT $SWT $SLT
+date '+end %F %T'
+
+===== summarize.py
+import sys, glob, re, xml.etree.ElementTree as ET
+for d in sys.argv[1:]:
+    for f in sorted(glob.glob(f"xml/{d}/*.xml")):
+        r = ET.parse(f).getroot()
+        print(f"{d}: {r.get('name').split('.')[-1]} tests={r.get('tests')} failures={r.get('failures')} errors={r.get('errors')} skipped={r.get('skipped')}")
+        for tc in r.iter('testcase'):
+            for fl in list(tc.findall('failure')) + list(tc.findall('error')):
+                msg = (fl.get('message') or '').replace('\n', ' ')
+                if len(msg) > 330: msg = msg[:150] + ' … ' + msg[-170:]
+                lines = re.findall(r'\((\w+Test\.java:\d+)\)', fl.text or '')
+                print(f"   {tc.get('name')} @ {lines[:1]} | {msg}")
+

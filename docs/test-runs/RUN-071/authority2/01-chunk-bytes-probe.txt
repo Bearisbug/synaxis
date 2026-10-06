@@ -1,0 +1,23 @@
+Chunk bytes probe of the core world (TC-PROD-666). server-app test source set, CoreChunkBytesProbe (source next to this file),
+copied in for the run and deleted after; tree at 8b18922130 plus this group's tests, CoreMode not yet changed (the probe
+builds the world through CoreMode.start, which only gained the border later and loads the same chunks either way).
+Test JVM max heap 1 GiB, the probe the only class of the run. Lock run A.
+
+$ ./gradlew :server-app:test --rerun --tests 'io.github.bearisbug.synaxis.app.CoreChunkBytesProbe' -i --max-workers=2 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts
+    PROBE chunks=1024 chunk_bytes=5452 packet_bytes=3560 total_bytes=9013 cached=1024 instance_chunks=1025
+    PROBE chunks=4096 chunk_bytes=5402 packet_bytes=3475 total_bytes=8878 cached=4096 instance_chunks=5121
+    PROBE held=5120 loaded=5120 max_heap=1073741824
+BUILD SUCCESSFUL in 22s
+
+Per chunk: the chunk itself 5,452 B / 5,402 B, its cached chunk packet 3,560 B / 3,475 B, together 9,013 B / 8,878 B
+(batches of 1,024 and 4,096 chunks; instance_chunks counts the warm-up chunk and the earlier batch).
+
+Border width from the larger figure: (D / 16)^2 x 9,013 B <= 25% of 4 GiB = 1,073,741,824 B  ->  D <= 5,522.5
+CoreMode takes D = 4,096 (256 chunks). With the chunk ring reaching past the border by view distance + 1 chunks:
+  view 10 (Main):      (256 + 22)^2 = 77,284 chunks x 9,013 B = 696,560,692 B = 16.2% of 4 GiB, 21.6% of 3 GiB
+  view 12 (ShardMain): (256 + 26)^2 = 79,524 chunks x 9,013 B = 716,749,812 B = 16.7% of 4 GiB
+  border only:          256^2      = 65,536 chunks x 9,013 B = 590,675,968 B = 13.8% of 4 GiB
+
+Idle unloading instead of a border, for comparison (not run, from the constants): InstanceContainer unloads at most
+MAX_UNLOADS_PER_TICK = 256 chunks a tick; one connection at the inbound gate's 750 packets / 7 s, each 64 blocks along
+one axis entering 4 columns of the 23 chunk wide ring (view 10) = 92 chunks, loads 750 / 7 x 92 / 20 = 493 chunks a tick.

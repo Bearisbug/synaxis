@@ -128,7 +128,7 @@ public class PlayerPositionListener {
      * the round trip time, and a player walking against the wall is turned back now and then (worked
      * out from the code, not run; no deployment shrinks its border over time).
      */
-    private static boolean outwards(Instance instance, Pos from, Pos to) {
+    static boolean outwards(Instance instance, Pos from, Pos to) {
         final var border = instance.getWorldBorder();
         final double radius = border.diameter() / 2;
         final double minX = Math.floor(border.centerX() - radius), maxX = Math.ceil(border.centerX() + radius);

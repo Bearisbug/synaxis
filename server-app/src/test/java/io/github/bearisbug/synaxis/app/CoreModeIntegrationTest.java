@@ -1,10 +1,15 @@
 package io.github.bearisbug.synaxis.app;
 
 import ch.qos.logback.classic.Level;
+import io.github.bearisbug.synaxis.coordinate.Pos;
+import io.github.bearisbug.synaxis.coordinate.Vec;
 import io.github.bearisbug.synaxis.entity.Player;
 import io.github.bearisbug.synaxis.event.player.PlayerPluginMessageEvent;
 import io.github.bearisbug.synaxis.instance.InstanceContainer;
+import io.github.bearisbug.synaxis.instance.WorldBorder;
 import io.github.bearisbug.synaxis.instance.block.Block;
+import io.github.bearisbug.synaxis.network.packet.client.play.ClientPlayerPositionPacket;
+import io.github.bearisbug.synaxis.network.packet.client.play.ClientTeleportConfirmPacket;
 import io.github.bearisbug.synaxis.network.packet.server.common.PluginMessagePacket;
 import io.github.bearisbug.synaxis.plugin.Admission;
 import io.github.bearisbug.synaxis.plugin.AdmissionProvider;
@@ -58,6 +63,31 @@ class CoreModeIntegrationTest {
         world.loadChunk(0, 0).join();
         assertEquals(Block.STONE, world.getBlock(0, (int) CoreMode.SPAWN.y() - 1, 0));
         assertEquals(Block.AIR, world.getBlock(0, (int) CoreMode.SPAWN.y(), 0));
+    }
+
+    /**
+     * The core world ends at a world border 4,096 blocks across, centred on the origin: a client cannot
+     * walk its chunk ring out of it, so the chunks it makes the world hold are bounded
+     * ({@code docs/DESIGN-PROD.md} {@code API-PROD-030}, {@code docs/DESIGN-M2.md} §28.2 G3). A move out
+     * across the wall at x 2,048 is turned back, one up to it is taken.
+     */
+    @Test
+    void theCoreWorldEndsAtAWorldBorder(Env env) {
+        final InstanceContainer world = core(env, host(env));
+        assertEquals(new WorldBorder(4096, 0, 0, 5, 15), world.getWorldBorder());
+
+        // The chunk past the wall loaded, so that the move into it is turned back for the border alone
+        world.loadChunk(128, 0).join();
+        final Pos edge = new Pos(2040.5, CoreMode.SPAWN.y(), 0.5);
+        final Player player = env.createPlayer(world, edge);
+        player.addPacketToQueue(new ClientTeleportConfirmPacket(player.getLastSentTeleportId()));
+        player.addPacketToQueue(new ClientPlayerPositionPacket(new Vec(2050.5, edge.y(), 0.5), true, false));
+        player.interpretPacketQueue();
+        assertEquals(edge, player.getPosition(), "a move to x 2,050.5 across the border at x 2,048");
+        player.addPacketToQueue(new ClientTeleportConfirmPacket(player.getLastSentTeleportId()));
+        player.addPacketToQueue(new ClientPlayerPositionPacket(new Vec(2047.5, edge.y(), 0.5), true, false));
+        player.interpretPacketQueue();
+        assertEquals(new Pos(2047.5, edge.y(), 0.5), player.getPosition(), "a move to x 2,047.5, inside the border");
     }
 
     @Test

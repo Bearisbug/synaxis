@@ -4,6 +4,7 @@ import io.github.bearisbug.synaxis.ServerProcess;
 import io.github.bearisbug.synaxis.coordinate.Pos;
 import io.github.bearisbug.synaxis.event.player.AsyncPlayerConfigurationEvent;
 import io.github.bearisbug.synaxis.instance.InstanceContainer;
+import io.github.bearisbug.synaxis.instance.WorldBorder;
 import io.github.bearisbug.synaxis.instance.block.Block;
 import io.github.bearisbug.synaxis.plugin.Admission;
 import io.github.bearisbug.synaxis.registry.RegistryKey;
@@ -52,6 +53,16 @@ final class CoreMode {
      * everybody spawns in the same column.
      */
     static final Pos SPAWN = new Pos(0.5, FLOOR_HEIGHT, 0.5);
+
+    /**
+     * The width of the core world in blocks, its world border centred on the origin. The world never
+     * unloads a chunk, so the border is what bounds the chunks a client walking away makes it hold
+     * ({@code docs/DESIGN-PROD.md} {@code API-PROD-030}): 256 chunks across, and 278 with the chunk
+     * rings of view distance 10 reaching 11 chunks past it, at 9,013 B a chunk with its cached packet
+     * is 16% of the 4 GiB default heap. The circles of the load test bots stay within 1,536 blocks of
+     * the spawn.
+     */
+    private static final int BORDER_DIAMETER = 4096;
 
     /**
      * §9: team 0 is the neutral team, and the core mode has no sides.
@@ -137,8 +148,9 @@ final class CoreMode {
                                    RegistryKey<DimensionType> dimensionType, Setting setting) {
         final InstanceContainer world = process.instance().createInstanceContainer(dimensionType);
         world.setGenerator(unit -> unit.modifier().fillHeight(0, FLOOR_HEIGHT, Block.STONE));
-        // Automatic chunk loading stays on, unlike a match: the core world is a flat plane with no
-        // edge to walk off, so a column is generated whenever somebody gets close enough to it.
+        world.setWorldBorder(WorldBorder.defaultBorder().withDiameter(BORDER_DIAMETER));
+        // Automatic chunk loading stays on, unlike a match: within the border the core world is a flat
+        // plane, so a column is generated whenever somebody gets close enough to it.
         process.eventHandler().addListener(AsyncPlayerConfigurationEvent.class,
                 event -> event.getPlayer().setRespawnPoint(SPAWN));
         host.registerHostAdmission(_ -> new Admission.Accept(world, TEAM));

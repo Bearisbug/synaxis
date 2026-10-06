@@ -1,0 +1,33 @@
+Reds before the fixes. Every test file as committed in 7e0052928e (same line numbers); the product code as at 8b18922130,
+except ShardMain.java, which held a stub 'static Map<String, String> gateDefaults(UnaryOperator<String> properties)
+{ return Map.of(); }' so that ShardMainTest compiles (ShardMain writing nothing, the behaviour before the fix).
+Lock run A (vehicle, ShardMainTest, ShardLaunchTest method) and lock run B (CoreModeIntegrationTest).
+
+$ ./gradlew :test --rerun --tests 'io.github.bearisbug.synaxis.listener.PlayerVehicleMoveAuthorityIntegrationTest' ...
+3 tests completed, 3 failed
+BUILD FAILED in 25s
+$ ./gradlew :server-app:test --rerun --tests '...ShardMainTest' --tests '...ShardLaunchTest.aShardHoldsThreeSocketsASeatAndTakesFiveJoinsATick' ...
+14 tests completed, 4 failed
+BUILD FAILED in 7s
+$ ./gradlew :server-app:test --rerun --tests 'io.github.bearisbug.synaxis.app.CoreModeIntegrationTest' ...
+4 tests completed, 1 failed
+BUILD FAILED in 10s
+
+JUnit XML, per class (test name @ first test frame | message, long messages cut in the middle):
+a-pre: CoreModeIntegrationTest tests=4 failures=1 errors=0 skipped=0
+   theCoreWorldEndsAtAWorldBorder(Env) @ ['CoreModeIntegrationTest.java:77'] | org.opentest4j.AssertionFailedError: expected: <WorldBorder[diameter=4096.0, centerX=0.0, centerZ=0.0, warningDistance=5, warningTime=15, dimensionTeleportBoundary=29999984]> but was: <WorldBorder[diameter=5.9999968E7, centerX=0.0, centerZ=0.0, warningDistance=5, warningTime=15, dimensionTeleportBoundary=29999984]>
+a-pre: ShardLaunchTest tests=1 failures=1 errors=0 skipped=0
+   aShardHoldsThreeSocketsASeatAndTakesFiveJoinsATick(Path) @ ['ShardLaunchTest.java:179'] | org.opentest4j.AssertionFailedError: 17:26:37.262 [main] INFO  i.github.bearisbug.synaxis.app.Main - Effective config file: none, /private/var/folders … etrics 17:26:37.379 [main] INFO  i.g.b.s.a.m.ManagementServer - Effective management: enabled=false bind=127.0.0.1:25585 token=unset ==> expected: <true> but was: <false>
+a-pre: ShardMainTest tests=13 failures=3 errors=0 skipped=0
+   theCommandLineWinsForTheGate() @ ['ShardMainTest.java:107'] | org.opentest4j.AssertionFailedError: expected: <{synaxis.max-joins-per-tick=5}> but was: <{}>
+   aShardWithoutACapacityKeepsTheEngineSocketCap() @ ['ShardMainTest.java:98'] | org.opentest4j.AssertionFailedError: expected: <{synaxis.max-joins-per-tick=5}> but was: <{}>
+   aShardHoldsThreeSocketsASeatAndTakesFiveJoinsATick() @ ['ShardMainTest.java:89'] | org.opentest4j.AssertionFailedError: expected: <{synaxis.max-joins-per-tick=5, synaxis.max-connections=1500}> but was: <{}>
+a-pre: PlayerVehicleMoveAuthorityIntegrationTest tests=3 failures=3 errors=0 skipped=0
+   aVehicleOutsideTheBorderGetsNoFartherOut(Env) @ ['PlayerVehicleMoveAuthorityIntegrationTest.java:119'] | org.opentest4j.AssertionFailedError: 5 blocks farther out, from 10 blocks outside the border ==> expected: <Pos[x=42.0, y=40.0, z=0.5, yaw=0.0, pitch=0.0]> but was: <Pos[x=47.0, y=40.0, z=0.5, yaw=0.0, pitch=0.0]>
+   aVehicleMoveOutAcrossTheWorldBorderIsTurnedBack(Env) @ ['PlayerVehicleMoveAuthorityIntegrationTest.java:76'] | org.opentest4j.AssertionFailedError: a vehicle move to x 40.5 across the border at x 32 ==> expected: <Pos[x=0.5, y=40.0, z=0.5, yaw=0.0, pitch=0.0]> but was: <Pos[x=40.5, y=40.0, z=0.5, yaw=0.0, pitch=0.0]>
+   aVehicleMoveOfMoreThanSixtyFourBlocksIsTurnedBack(Env) @ ['PlayerVehicleMoveAuthorityIntegrationTest.java:95'] | org.opentest4j.AssertionFailedError: 65 blocks east in one packet ==> expected: <Pos[x=0.5, y=40.0, z=0.5, yaw=0.0, pitch=0.0]> but was: <Pos[x=65.5, y=40.0, z=0.5, yaw=0.0, pitch=0.0]>
+
+Effective settings in the shard child JVM's log of the ShardLaunchTest red (both log copies in the XML):
+   2 maxConnections=1024
+   2 maxJoinsPerTick=0
+   2 maxPlayers=200

@@ -92,6 +92,7 @@ module io.github.bearisbug.synaxis {
     exports io.github.bearisbug.synaxis.inventory.type;
     exports io.github.bearisbug.synaxis.item;
     exports io.github.bearisbug.synaxis.item.component;
+    exports io.github.bearisbug.synaxis.item.predicate;
     exports io.github.bearisbug.synaxis.listener;
     exports io.github.bearisbug.synaxis.listener.common;
     exports io.github.bearisbug.synaxis.listener.manager;

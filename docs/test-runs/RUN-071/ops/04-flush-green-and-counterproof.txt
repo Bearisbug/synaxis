@@ -1,0 +1,64 @@
+# DisconnectFlushSocketTest and the four neighbouring classes on the fix, default and strict grid; the counter-proof in strict grid
+# (docs/TEST.md TC-PROD-661, TC-PROD-662). Code: 766f09a0bf (8b18922130 + the fix and its tests; the default run
+# was on the working tree just before it was committed, the same files). Each Gradle command ran inside a hold
+# of /tmp/synaxis-heavy.lock, released at the end of its batch: about 15:26:40-15:27:25 (default), 15:32:34 to about 15:34:00 (counter-proof and
+# strict grid). The lighting session held the lock between them. No database variables: none of the classes touches a database.
+# Classes: io.github.bearisbug.synaxis.network.socket.DisconnectFlushSocketTest,
+#          io.github.bearisbug.synaxis.network.player.SlowReaderIntegrationTest,
+#          io.github.bearisbug.synaxis.network.player.PlayerConnectionKickIntegrationTest,
+#          io.github.bearisbug.synaxis.network.player.OutboundBacklogIntegrationTest,
+#          io.github.bearisbug.synaxis.network.DisconnectReasonsIntegrationTest
+# Strict grid = -Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true -Dsynaxis.thread-provider=grid (forwarded to the test
+# JVM by build-src synaxis.java-library).
+
+## 1. default mode, five classes (./gradlew :test --rerun --tests <five classes> --max-workers=2 --no-daemon --init-script ...)
+   BUILD SUCCESSFUL in 42s
+   31 actionable tasks: 6 executed, 25 up-to-date
+   Configuration cache entry stored.
+   exit=0 seconds=43
+   network.DisconnectReasonsIntegrationTest tests=7 skipped=0 failures=0 errors=0
+   network.player.OutboundBacklogIntegrationTest tests=2 skipped=0 failures=0 errors=0
+   network.player.PlayerConnectionKickIntegrationTest tests=1 skipped=0 failures=0 errors=0
+   network.player.SlowReaderIntegrationTest tests=1 skipped=0 failures=0 errors=0
+   network.socket.DisconnectFlushSocketTest tests=1 skipped=0 failures=0 errors=0
+
+## 2. counter-proof, strict grid: Server.java line 268 back to flushSync() (the code before the fix), DisconnectFlushSocketTest only
+   diff --git a/src/main/java/io/github/bearisbug/synaxis/network/socket/Server.java b/src/main/java/io/github/bearisbug/synaxis/network/socket/Server.java
+   index 0de99003e6..1e2bbc2d87 100644
+   --- a/src/main/java/io/github/bearisbug/synaxis/network/socket/Server.java
+   +++ b/src/main/java/io/github/bearisbug/synaxis/network/socket/Server.java
+   @@ -265,7 +265,7 @@ public final class Server {
+                    }
+                    if (!connection.isOnline()) {
+                        try {
+   -                        connection.flushRemaining();
+   +                        connection.flushSync();
+                        } catch (IOException _) {
+                            // Ignore IO errors
+                        } finally {
+   > Task :test
+   
+   DisconnectFlushSocketTest > theDisconnectPacketIsWrittenBehindMoreThanOneFlushOfQueuedPackets() FAILED
+       org.opentest4j.AssertionFailedError at DisconnectFlushSocketTest.java:95
+   
+   1 test completed, 1 failed
+   Configuration cache entry stored.
+   exit=1 seconds=57
+   failure message="org.opentest4j.AssertionFailedError: the peer read 9 of the 1574 packets queued before the kick, then the end of the stream ==> Unexpected type, expected: <io.github.bearisbug.synaxis.network.packet.server.login.LoginDisconnectPacket> but was: <io.github.bearisbug.synaxis.network.packet.server.login.LoginPluginRequestPacket>"
+   restored with git checkout HEAD -- Server.java; git status --short afterwards (the docs were being edited meanwhile):
+      M docs/DESIGN-M2.md
+      M docs/DESIGN-PROD.md
+
+## 3. strict grid, five classes, on the restored fix
+   BUILD SUCCESSFUL in 22s
+   31 actionable tasks: 2 executed, 1 from cache, 28 up-to-date
+   Configuration cache entry stored.
+   exit=0 seconds=23
+   network.DisconnectReasonsIntegrationTest tests=7 skipped=0 failures=0 errors=0
+   network.player.OutboundBacklogIntegrationTest tests=2 skipped=0 failures=0 errors=0
+   network.player.PlayerConnectionKickIntegrationTest tests=1 skipped=0 failures=0 errors=0
+   network.player.SlowReaderIntegrationTest tests=1 skipped=0 failures=0 errors=0
+   network.socket.DisconnectFlushSocketTest tests=1 skipped=0 failures=0 errors=0
+
+   5 classes, 12 tests, 0 failures in both modes. SlowReaderIntegrationTest (peer never reads, write thread blocked in a write) stays
+   green: flushRemaining ends with the IOException of the channel the closer thread closes after 1 s.

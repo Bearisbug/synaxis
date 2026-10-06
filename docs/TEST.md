@@ -14,6 +14,7 @@
 
 | 日期 | 改动 | 作者 |
 | --- | --- | --- |
+| 2026-10-06 | 分支 `prod/r071-ops`（基线 `main` `8b18922130`，代码提交 `766f09a0bf`），跟进 `docs/DESIGN-PROD.md` v0.9.52（RUN-071 ops 组：断开时的出站冲刷、P10 夹具权限、光照会话交接行 M3 v0.38 的 ⑫⑬⑮⑯⑱）与 `docs/DESIGN-M2.md` v0.57，不登执行轮次，由集成轮登记 RUN-071；本组证据在 `docs/test-runs/RUN-071/ops/`。**新增 §4「生产就绪 · RUN-071：ops（断开时的出站冲刷、P10 夹具权限与文档收口）」五条 `TC-PROD-660`～`TC-PROD-664`**，反证都实跑过：660 `p10.py shards` 写出 0644（新文件 `client-fabric/gametest-env/test_p10.py`；反证不设权限，umask 002 与 077 两个子用例红在 `test_p10.py:32`）；661 断线包前面排着多于两个写缓冲的包（新类 `DisconnectFlushSocketTest`；反证把 `Server.java:268` 改回 `flushSync()`，严格 grid 下红在 `DisconnectFlushSocketTest.java:95` `the peer read 9 of the 1574 packets queued before the kick`，改动前的代码上默认模式同一句）；662 断开相关四个类的回归；663 R8 偶发红的签名核对（只读）；664 文档收口的代码行与状态核对（只读，反证挪动 `ChatMessageListener` 的行号）。**§7 登记未结案** R8 偶发红（run `37423439285` 第 1 次尝试，`R8 FAIL screen: Connection Lost. Disconnected`，出现 1 次、重跑通过）。§5 加一行。不改写死的全量条数：根构建 `:test` 多 1 个类 1 条（`DisconnectFlushSocketTest`），由集成轮按 CI 的实数改 | Bearisbug |
 | 2026-10-06 | 集成分支 `prod/integrate-070` 的全量门禁在 GitHub Actions 上跑完（草稿 PR #7，提交 `2442f4d7e2`），登记 RUN-070（证据 `docs/test-runs/RUN-070/gate/`）。**条数**（按 CI run `37419616421`「Check」的 JUnit XML，带数据库变量；4 线程严格与严格 grid 两份条数相同）：`:server-app:test` 577 → 586、类 113 → 115（items 组 `FreezeBeforePluginListenersIntegrationTest` 4、`GateFreezeEarlyGrantTest` 5），改 `TC-PROD-486` 第 3 步、`505` 第 3 步、`510` 第 2 步、`529` 第 4 步、`549` 第 2 步、`585` 第 1、2 步、`596` 第 2 步、`607` 第 2 步、`618` 第 1、2 步、`636` 第 1 步；根项目 `:test` 3,162 → 3,182、类 428 → 432（authority 组 `PlayerMovementAuthorityIntegrationTest` 7、`PlayerBlockReachIntegrationTest` 5，items 组 `GridItemRaceTest` 2，chunks 组 `ChunkQueueBoundIntegrationTest` 6），改 `TC-PROD-505` 第 3 步、`585` 第 1、2 步、`618` 第 1、2 步，`636` 第 1 步（authority 组分支上的 430 个类 3,174 个）与 `654` 第 3 步（chunks 组分支上的 429 个类 3,168 个）同改为 432 个类 3,182 个；`entity` 包 → 76 个类 292 个（`TC-PROD-623` 第 1 步原写 74 个类 284 个，`645` 第 2 步原写 75 个类 286 个）；全部模块 612 个类 4,250 个 → 616 个类 4,267 个（`TC-PROD-636` 第 1 步）；`TC-PROD-549` 第 1 步的 `:loadtest:test` 全量 23 → 26（补上此前漏记的 v0.9.36 `SampleAcquireTest` 2 个与 authority 组的 `BotStallTest` 1 个）。跳过数仍写本机的 15：CI 上根项目 21 个跳过，多出的是 `ServerProcessTest`、`ServerAddressTest` 各 3 条，这两个类设了 `GITHUB_ACTIONS` 就 `assumeTrue` 跳过。`TC-PROD-575` 第 3 步不带数据库变量的两次全量本轮没跑，保留 RUN-067 的 577 与 132，注明未重测。核过、不用改的：`TC-PROD-513` 第 4 步 `network.*` 66 个类 878 条，`TC-PROD-529` 第 4 步 `:plugin-api` 15、`:game-rts` 87、`:architecture-tests` 20，`TC-PROD-549` 第 3 步 22 个类 69 个，`TC-PROD-567` 第 1 步 10 个，`TC-PROD-569` 第 4 步 27 个类 84 个，`TC-PROD-575` 第 3 步管理包 15 个类 45 个，`TC-PROD-637` 第 6 步 6 个类 26 条，`TC-PROD-654` 第 1 步 15 个类 82 个，`TC-PROD-430` 第 5 步模组 15 个类 184 个（Client mod run `37419616435` 的 `client-test-reports`）。TC-WORLD、TC-GAME 不改 | Bearisbug |
 | 2026-10-06 | 集成分支 `prod/integrate-070`（基于 `main` `d123627b18`，依次合入 `prod/m3fix-authority`、`prod/m3fix-items`、`prod/m3fix-chunks`、`prod/m3fix-chores`），跟进 `docs/DESIGN-PROD.md` v0.9.51。不改用例，不改写死的全量条数，不登执行轮次：RUN-070 的全量门禁在 GitHub Actions 的草稿 PR 上跑，跑完统一改条数并登记 RUN-070。**合并**：四组的 §4 新节按合并顺序排在 §4 末尾（authority `TC-PROD-630`～`TC-PROD-638`，items `TC-PROD-640`～`TC-PROD-649`，chunks `TC-PROD-650`～`TC-PROD-654`、`TC-PROD-658`、`TC-PROD-659`，chores `TC-PROD-655`～`TC-PROD-657`），§5 映射行与四组的变更记录行都留；各组对既有用例的改动（items 的 `TC-PROD-621` 第 2 步与节首行号，chores 的 `TC-PROD-430` 第 5 步）没有冲突，照原样合入 | Bearisbug |
 | 2026-10-06 | 分支 `prod/m3fix-chores`（基线 `main` `14437d0b78`），跟进 `docs/DESIGN-PROD.md` v0.9.50（光照会话 M3 侧安全审查里归生产就绪的 ⑦⑧ 与本会话之前登记的文档滞后），不登执行轮次，证据在 `docs/test-runs/RUN-070/chores/`。**新增 §4「生产就绪 · M3 侧安全审查修复：chores（文档与工作流、规则代码的口径）」三条 `TC-PROD-655`～`TC-PROD-657`**，都只读文件比对，修前在 `14437d0b78` 上各红过一次，反证都实跑过：两份设计文档里压测机器的规格只剩 ≥ 8 核 / 16 GiB 一种（655，修前红一行 `docs/DESIGN-PROD.md:1572`）；`docs/ENGINE.md` §7 列出四个工作流与七个 job（656，修前少 `client-gametest.yml`，七个 job 都没写名字，`multithreaded`、`multithreaded-grid` 与 `client-gametest.yml` 的两个 job 连内容也没有）；`docs/ENGINE.md` §8 的三份豁免名单与规则代码逐个相同（657，修前引擎一份缺 `ConnectionGate`、`SessionClient`，多写已移出的 `HandshakeListener`，宿主一份缺 7 个类）。**改写 `TC-PROD-430` 第 5 步**：模组测试 7 个类 90 个 → 15 个类 184 个（M3-G 轨道 C 加的 8 个类 74 个，`FrozenVectorTest` 20 → 40），在 `14437d0b78` 上实跑。`TC-016` 核对过不用改：它只照 `docs/ENGINE.md` §1～§3 构建与启动。§5 加一行回归映射。`TC-GAME-066` 第 3 步写着同样过时的 90 条，`TC-GAME-017` 第 4 步写着 `FrozenVectorTest` 20 条（实跑 40 条），都归光照会话改（`docs/DESIGN-PROD.md` §28.3） | Bearisbug |
@@ -9173,6 +9174,102 @@ diff <(code game-rts/src/test/java/io/github/bearisbug/synaxis/game/rts/Architec
 
 后置：`git status --short` 无输出。
 
+### 生产就绪 · RUN-071：ops（断开时的出站冲刷、P10 夹具权限与文档收口）
+
+对应 `REQ-PROD-030`、`REQ-PROD-031`、`REQ-PROD-009`（`docs/DESIGN-PROD.md` v0.9.52：§16「断开与出站队列」一行、`API-PROD-026` P10 夹具一条、§23 R2、§28.3 三行；`docs/DESIGN-M2.md` v0.57）。起因有两处：真客户端回归 R8 在 CI run `37423439285` 第 1 次尝试偶发红（§7 未结案一条），排查时查实写线程在连接下线后只再冲刷一次、一次至多写一个写缓冲，断线包排得更后时对端只读到连接关闭；光照会话 `docs/DESIGN-M3.md` §28.2 交接行 M3 v0.38 交来 ⑫⑬⑮⑯⑱（该交接行随 M3-S 进 `main`）。改动：引擎 `Server#playerWriteLoop` 的下线分支改调新增的 `PlayerSocketConnection#flushRemaining`，把出站队列与没写完的缓冲写空再关 channel；`client-fabric/gametest-env/p10.py` 的 `shards` 写完 `shards.json` 设 0644；其余是文档。
+
+测试：新类 `io.github.bearisbug.synaxis.network.socket.DisconnectFlushSocketTest`（1 条；真 `Server` 与回环上的真 socket 客户端，不用 `Env`）；新文件 `client-fabric/gametest-env/test_p10.py`（标准库 `unittest`，1 条，三个 umask 子用例）。「跑 `<类>`」即 `./gradlew :test --rerun --tests '<类>' --max-workers=2 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts`，「严格 grid」是再加 `-Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true -Dsynaxis.thread-provider=grid`，结果看 `build/test-results/test/TEST-<类>.xml`。「跑 p10 单测」即 `.venv/bin/python -m unittest discover -s client-fabric/gametest-env -p 'test_*.py' -v`（CI 的 runner 用自带的 `python3`，同样只要标准库；CI 现在不跑这个文件），跑完删掉生成的 `client-fabric/gametest-env/__pycache__/`。`<SV>` 是 `src/main/java/io/github/bearisbug/synaxis/network/socket/Server.java`，`<P10>` 是 `client-fabric/gametest-env/p10.py`。反证一律是临时改文件、跑、看红、`git checkout HEAD -- <文件>`、重跑复绿；行号是分支 `prod/r071-ops` 提交时的。本节不需要数据库前置。
+
+下文 `CLOSE_OUT` 指这段（只读，在仓库根执行；前半核对文档引的代码行，后半读四处文档的状态）：
+
+```bash
+chk() { sed -n "$2p" "$1" | grep -qF -- "$3" && echo "ok       ${1##*/}:$2" || echo "MISMATCH ${1##*/}:$2 wants $3"; }
+J=src/main/java/io/github/bearisbug/synaxis; A=server-app/src/main/java/io/github/bearisbug/synaxis/app
+chk $J/listener/ChatMessageListener.java 40 'chatRateLimiter().tryAcquire'
+chk $J/listener/ChatMessageListener.java 50 'new PlayerChatEvent(player, List.of(), message)'
+chk $J/listener/ChatMessageListener.java 56 'if (!recipients.isEmpty())'
+chk $J/ServerConfig.java 262 '"synaxis.chat-rate-per-second"'
+chk $J/ServerConfig.java 263 '"synaxis.chat-burst"'
+chk $J/ServerConfig.java 433 'chatRatePerSecond = 1;'
+chk $J/ServerConfig.java 434 'chatBurst = 3;'
+chk $A/ConfigFile.java 86 '"synaxis.chat-rate-per-second"'
+chk $A/ConfigFile.java 87 '"synaxis.chat-burst"'
+chk $J/entity/Player.java 396 'true, false);'
+chk $J/message/Messenger.java 46 'new SystemChatPacket(message, false)'
+chk client-fabric/src/main/java/io/github/bearisbug/synaxis/game/client/mixin/ClientPacketListenerMixin.java 22 'skipUnsecureServerToast'
+chk $A/transfer/TicketIssuer.java 38 'public static final String TRANSFER_FAILED'
+chk $A/shard/ShardGates.java 119 'TicketIssuer.TRANSFER_FAILED'
+chk $J/network/player/PlayerSocketConnection.java 206 'private void processPackets('
+chk $J/network/player/PlayerSocketConnection.java 221 'private boolean processBatch('
+chk $J/network/player/PlayerSocketConnection.java 282 'rejectMisusedPacket()) disconnect();'
+git merge-base --is-ancestor cf1a359794 HEAD && echo 'ok       cf1a359794 is in HEAD'
+git show 8babd09aa1:docs/DESIGN.md | grep -q '一批包的起始状态早于 configuration 时监听器抛异常一律断开' && echo 'ok       DESIGN.md v0.43 (8babd09aa1) rewrote ①'
+grep -o '^| [^|]* | \*\*原版聊天是一进 N 出的放大面\*\*' docs/DESIGN-M2.md
+grep -F '监听器抛了异常就每包交一次' docs/DESIGN-PROD.md | grep -o '| [^|]*|$' | cut -c1-30
+grep -F '| `docs/DESIGN-M3.md` | §28.2「交给生产就绪会话的改动」一行的末栏' docs/DESIGN-PROD.md | grep -o '；⑳ 未到时点[；，]㉑ [^：（。]*'
+grep -c '| R2 封闭内测 |.*M3-S 已合入 `main`.*①②③⑥ 已在引擎落地并合入 `main`' docs/DESIGN-PROD.md
+```
+
+#### `TC-PROD-660` `p10.py shards` 写出的 `shards.json` 是 0644，与 umask 无关（`API-PROD-026` P10 夹具） — 对应 `REQ-PROD-031` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 p10 单测 | `Ran 1 test`、`OK`：`test_the_shard_directory_is_0644_whatever_the_umask` 在 umask 002、022、077 下各起一次 `p10.py shards --host 127.0.0.1 --ports 25611,25612 --out <临时目录>/shards.json`，文件权限都是 `0o644`，两个频道依次是 `r0-c1` 25611、`r0-c2` 25612 |
+| 2 | 反证有齿（不设权限，即改动前）：`<P10>` 第 83 行 `out.chmod(0o644)` 改为 `pass`，重跑第 1 步，再还原 | `FAILED (failures=2)`：两个子用例红在 `test_p10.py:32`，umask 002 那个是 `AssertionError: '0o664' != '0o644'`，umask 077 那个是 `'0o600' != '0o644'`；umask 022 本来就得出 0644，照绿。改动前的 `<P10>`（`8b18922130`）上跑，结果相同 |
+| 3 | 还原后重跑第 1 步 | 与第 1 步相同 |
+
+后置：`git status --short` 无输出（`__pycache__/` 已删）。
+
+#### `TC-PROD-661` 踢人时断线包前面排着多于两个写缓冲的包，对端照样读到断线包，再读到连接关闭（§16「断开与出站队列」） — 对应 `REQ-PROD-030` · 级别: 边缘 · 执行者: AI
+
+前置：本节开头。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 严格 grid 跑 `DisconnectFlushSocketTest` | `tests="1"` 0 失败，用时约 2 s。进程的压缩阈值是 0；对端握手、发 `LoginStart`，登录停在 `AsyncPlayerPreLoginEvent` 里；测试先排一个 `CachedPacket`，它的 supplier 在写线程上等测试放行，写线程就停在一次冲刷当中；再排 1,573 个各带 4,000 B 的 `LoginPluginRequestPacket`（合计超过 3 × `synaxis.max-packet-size`，所以与池里的缓冲被别的测试扩到多大无关），以 `bye` 踢人，放行。对端一直读到连接关闭，收到 1,574 个登录插件请求，最后一个包是 `LoginDisconnect`，文字 `bye` |
+| 2 | 反证有齿（下线后只再冲刷一次，即改动前）：`<SV>` 第 268 行 `connection.flushRemaining();` 改为 `connection.flushSync();`，严格 grid 重跑第 1 步，再还原 | `1 test completed, 1 failed`：红在 `DisconnectFlushSocketTest.java:95`，`the peer read 9 of the 1574 packets queued before the kick, then the end of the stream ==> Unexpected type, expected: <…LoginDisconnectPacket> but was: <…LoginPluginRequestPacket>`。9 个是停住的那一个，加上两个写缓冲各 4 个（16,383 B 的缓冲装得下 4 个约 4,020 B 的帧）；池里的缓冲被同一 JVM 里别的测试扩过时这个数会变大，但到不了 1,574。改动前的代码（`8b18922130`）上默认模式跑，同一行同一句 |
+| 3 | 还原后严格 grid 重跑第 1 步，再默认模式跑一次 | 两次都与第 1 步相同 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PROD-662` 回归：断开与写线程相关的四个类在默认与严格 grid 下照绿 — 对应 `REQ-PROD-030` · 级别: 回归 · 执行者: AI
+
+前置：本节开头。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 一条命令跑五个类：`DisconnectFlushSocketTest`、`io.github.bearisbug.synaxis.network.player.SlowReaderIntegrationTest`、`io.github.bearisbug.synaxis.network.player.PlayerConnectionKickIntegrationTest`、`io.github.bearisbug.synaxis.network.player.OutboundBacklogIntegrationTest`、`io.github.bearisbug.synaxis.network.DisconnectReasonsIntegrationTest`（五个 `--tests`） | 5 个类 12 个 0 失败：依次 1、1、1、2、7。`SlowReaderIntegrationTest` 那条（对端不读、写线程停在写里，断开后由关闭线程在 1 s 后关 channel）照绿：`flushRemaining` 在 channel 被关时抛出 IO 异常，写线程照旧关 channel 退出 |
+| 2 | 严格 grid 再跑第 1 步 | 同上 |
+
+后置：`git status --short` 无输出。
+
+#### `TC-PROD-663` R8 偶发红的签名：断线屏写 `Disconnected` 是原版客户端没有断开原因时的默认文案，断线包没到与客户端自己的竞态都得出它（只读） — 对应 `REQ-PROD-030` · 级别: 边缘 · 执行者: AI
+
+前置：`gh` 已登录、能读 `Bearisbug/synaxis` 的 Actions（artifact 保留 14 天，到 2026-10-20）；本机有 Loom 缓存的 `~/.gradle/caches/fabric-loom/26.2/minecraft-merged.jar`（`client-fabric` 构建过一次就有）；JDK 25 的 `javap`；在一个临时目录里做，做完删掉。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | `gh api repos/Bearisbug/synaxis/actions/runs/37423439285/artifacts` 列出两份 `client-gametest-configuration`，取 `created_at` 为 06:29:20Z 的那份（第 1 次尝试，id `11394003760`），`gh api repos/Bearisbug/synaxis/actions/artifacts/11394003760/zip > a1.zip` 后解压，读 `client-fabric/build/run/clientGameTest/synaxis-gametest/report.txt`、同一运行目录的 `logs/latest.log`、`server.log` 与 `logs/events-local-20261006.jsonl` | 报告 R1～R7 PASS、`R8 FAIL screen: Connection Lost. Disconnected`；客户端日志 06:28:34 `Client disconnected with reason: Disconnected`；服务端 06:28:34.150 `Refusing a game payload … reason=synaxis:protocol-error cause=msg_id=0x84 is an answer of ours, not a request`，.151 `Kicking … reason=synaxis:protocol-error`，.153 `Connection closed`；同一份 artifact 里 `productionClientGameTest` 的报告 R8 PASS（`The server rejected a message from this connection as malformed.`）。产物里没有出站队列深度、也没有客户端收包的记录 |
+| 2 | 从 jar 里取 `net/minecraft/network/Connection.class`、`net/minecraft/client/multiplayer/ClientCommonPacketListenerImpl.class` 与 `assets/minecraft/lang/en_us.json`，对两个类 `javap -p -c` | `Connection#disconnect(DisconnectionDetails)` 在 `channel.close().awaitUninterruptibly()` 之后才写 `disconnectionDetails`；`channelInactive` 调 `disconnect(Component)`，那时 channel 已关，什么都不写；`handleDisconnection` 读到 null 时用 `multiplayer.disconnect.generic`，`en_us.json` 里它是 `Disconnected`；渲染线程上的 `Connection#tick` 见 channel 已关、还没处理过断开就调 `handleDisconnection`；`ClientCommonPacketListenerImpl#handleDisconnect` 不切线程，在网络线程上调 `connection.disconnect(reason)` |
+
+结论：这句断线屏有两条来路，一是断线包没到（服务端关连接时它还在队列里，`TC-PROD-661` 修掉的是其中一条确定的路径），二是断线包到了，网络线程关掉 channel、还没写下原因时渲染线程先读到 channel 已关（客户端侧的竞态，服务端改不了）。
+
+后置：临时目录已删。
+
+#### `TC-PROD-664` 文档收口：§28.3 两行、§23 R2 的门槛与 `docs/DESIGN-M2.md` 聊天一行按代码与提交核对（只读） — 对应 `REQ-PROD-009`、`REQ-PROD-031` · 级别: 回归 · 执行者: AI
+
+前置：本节开头；工作副本干净。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 1 | 跑 `CLOSE_OUT` | 前 19 行都是 `ok`：17 处代码行与 `cf1a359794 is in HEAD`、`DESIGN.md v0.43 (8babd09aa1) rewrote ①`，没有 `MISMATCH`。后四行依次是：`docs/DESIGN-M2.md` 聊天一行的类型列「已决」；§28.3 监听器异常一行的末栏以「已完成：」开头；§28.3 ㉑ 那一行读出「；⑳ 未到时点；㉑ 已决」；R2 一行计数 `1`。改动前的 `8b18922130` 上前 19 行相同，后四行依次是「风险」、末栏开头「`docs/ENGINE.md` 部分已完成」、「；⑳ 未到时点，㉑ 仍待 M3 会话改 `TicketIssuer.java`」、`0` |
+| 2 | 反证有齿（文档引的行号随代码移动而没跟）：`src/main/java/io/github/bearisbug/synaxis/listener/ChatMessageListener.java` 第 1 行之前加一个空行，跑 `CLOSE_OUT`，再还原 | 三行 `MISMATCH`：`ChatMessageListener.java:40`、`:50`、`:56`，其余不变 |
+| 3 | 还原后重跑第 1 步 | 与第 1 步相同 |
+
+后置：`git status --short` 无输出。
+
 ## 5. 回归策略
 
 - **全量轮**（全部用例）：首次成稿、每个阶段 gate（引擎域阶段 0、2、3；游戏域 `docs/DESIGN-M2.md` §26 的阶段 1～6b；大世界域 `docs/DESIGN-M3.md` §26 的 M3-A～M3-G）、跨功能域改动、地基变更（JDK、Gradle、镜像、协议版本、模块拆分、启动入口）。
@@ -9237,6 +9334,7 @@ diff <(code game-rts/src/test/java/io/github/bearisbug/synaxis/game/rts/Architec
   - 生产就绪域（`docs/DESIGN-PROD.md`）：M3 侧安全审查修复 items 组，冻结顺序与跨格合并（`REQ-PROD-005`、`REQ-PROD-006`、`REQ-PROD-022`、`REQ-PROD-019`、`REQ-PROD-020`，v0.9.48）→ TC-PROD-640～TC-PROD-649；动了 `PlayerStore#attach` 的冻结（根节点的判定及其 `ignoreCancelled`、按身份记下的弱键集合、优先级 3 的再取消）、`PluginHost` 构造器里 `store.attach` 与启用插件的先后、`PluginEventsImpl` 建档位节点的一处，或引擎 `EventNodeImpl.Handle#createConsumer` 的派发次序（自身的监听器、映射节点、子节点），就跑 TC-PROD-640～TC-PROD-642、TC-PROD-646～TC-PROD-649 与 3B 一节的 TC-PROD-189；动了 `PlayerStore#transferOut` 置冻结的时机或转服签发的线程，就跑 TC-PROD-641 与 TC-PROD-646；动了 `ItemEntity#update` 的合并、`claim` / `releaseClaim` 或 `LivingEntity#update` 的拾取，就跑 TC-PROD-643～TC-PROD-645 与 TC-PROD-620～TC-PROD-622。
   - 生产就绪域（`docs/DESIGN-PROD.md`）：M3 侧安全审查修复 chunks 组，区块批次回执与发送队列（`REQ-PROD-026`，v0.9.49）→ TC-PROD-650～TC-PROD-654、TC-PROD-658、TC-PROD-659；动了 `Player` 的 `sendPendingChunks`、`trimChunkQueue`、`sendChunk`、`isOutOfClientRange`、`effectiveViewDistance`、`onChunkBatchReceived`，或 `sendChunkUpdates`、`updateViewDistance`、`respawn`、`spawnPlayer` 里区块环的增删，就跑 TC-PROD-650～TC-PROD-653、TC-PROD-658、TC-PROD-659（一个类约 1.5 s，默认与严格 grid 各一次）与 5B 一节的 TC-PROD-296，再动了区块待发队列的数据结构加 TC-PROD-654 第 1 步；动了 `Instance#viewDistance(int)` 或 `synaxis.chunk-view-distance` 的取值检查跑 TC-PROD-658；动了 `PlayerPositionListener` 的移动判定（安全审查 ①）跑 TC-PROD-650 第 1 步，这一类断言玩家走到了终点，48 格的移动被拒时它先红；动了 `:loadtest` 的 `Bot` 回执跑 TC-PROD-654 第 2 步。
   - 生产就绪域（`docs/DESIGN-PROD.md`）：M3 侧安全审查修复 chores 组，文档与工作流、规则代码的口径（`REQ-PROD-029`、`REQ-PROD-019`、`REQ-PROD-020`、`REQ-PROD-030`、`REQ-PROD-015`、`REQ-012`，v0.9.50）→ TC-PROD-655～TC-PROD-657，都只读文件、几秒跑完。改了 `docs/DESIGN-PROD.md` 或 `docs/DESIGN-M3.md` 里压测机器的规格 → TC-PROD-655；在 `.github/workflows/` 加减工作流或 job、改了 job 名，或改了 `docs/ENGINE.md` §7 → TC-PROD-656；改了引擎 `ArchitectureTest`、宿主 `ClientDrivenLogArchitectureTest` 或 `game-rts` 的 `ArchitectureTest` 里的 `boundedReporters()`，或改了 `docs/ENGINE.md` §8 的名单 → TC-PROD-657。改了 `client-fabric/src/test` 的类或条数时重跑 TC-PROD-430 第 5 步并改它的条数。
+  - 生产就绪域（`docs/DESIGN-PROD.md`）：RUN-071 ops 组，断开时的出站冲刷、P10 夹具权限与文档收口（`REQ-PROD-030`、`REQ-PROD-031`、`REQ-PROD-009`，v0.9.52）→ TC-PROD-660～TC-PROD-664；动了 `Server#playerWriteLoop` 的下线分支，`PlayerSocketConnection` 的 `flushRemaining`、`flushSync` 或 `closeOnceFlushed`，或 `PacketWriting#writeQueue` 一次写多少，就跑 TC-PROD-661、TC-PROD-662；动了 `p10.py` 的 `shards` 就跑 TC-PROD-660，再按 P10 一行跑 TC-PROD-550；改动挪了 `CLOSE_OUT` 引的代码行（`ChatMessageListener`、`ServerConfig` 的聊天键、`ConfigFile` 键表、`Player` 发的 `JoinGamePacket`、`Messenger`、`ClientPacketListenerMixin`、`TicketIssuer`、`ShardGates`、`PlayerSocketConnection#processPackets` 与 `processBatch`），就跑 TC-PROD-664，按新行号改 `docs/DESIGN-M2.md` 聊天一行、`docs/DESIGN-PROD.md` §28.3 两行与 `CLOSE_OUT`；R8 再红时先按 TC-PROD-663 读产物，再对 §7 那一条下结论。
   - 影响面不确定时升级为全量轮。
 - **复测轮**（上轮失败用例 + 全部冒烟级）：修复失败项之后。
 - **人工收口轮**（仅上轮「待人工」用例）：AI 轮之后由人工补测 TC-016、TC-030、TC-GAME-020、TC-GAME-038、TC-GAME-046、TC-GAME-047，不要求冒烟级。
@@ -9622,6 +9720,7 @@ RUN-003 证据：`docs/test-runs/RUN-003/tc-001.txt`、`docs/test-runs/RUN-003/t
 
 ## 7. 遗留问题
 
+- **真客户端回归 R8 偶发红 `R8 FAIL screen: Connection Lost. Disconnected`（未结案，2026-10-06 RUN-071 ops 组登记）**：GitHub Actions「Client gametest」run `37423439285`（`main` `8b18922130`，push）第 1 次尝试，`clientGameTest`（dev，两次启动里的第一次，第二次是 `productionClientGameTest`）的报告 R1～R7 PASS、`R8 FAIL screen: Connection Lost. Disconnected`；同一 job 的判定其余各项都过，含服务端台账 `protocol-error kicks 2, expected 2`，`productionClientGameTest` 的 R8 PASS。第 2 次尝试与同一提交的 PR 运行 `37423434251` 都绿。这个工作流自 2026-09-23 起 83 次运行，R8 只红过这一次（出现 1 次，重跑通过）。**证据**（`docs/test-runs/RUN-071/ops/01-r8-ci-artifacts.txt`、`02-r8-vanilla-client.txt`，读法见 `TC-PROD-663`）：服务端 06:28:34.150 拒掉 `msg_id=0x84`，.151 `Kicking … reason=synaxis:protocol-error`，.153 `Connection closed`；客户端 06:28:34 `Client disconnected with reason: Disconnected`。`Disconnected` 是原版客户端 `Connection#handleDisconnection` 读到的断开原因为 null 时的默认文案（`multiplayer.disconnect.generic`）：服务端关了连接而断线包没到时，`channelInactive` 来时 channel 已关，原因留空。**两条假设，产物分不出**：① 断线包没写出去：写线程看到连接下线后只再冲刷一次，一次至多写一个写缓冲（默认 16,383 B），断线包前面的积压多于这个量时 channel 先关；2 核 runner 上 llvmpipe 渲染占满 CPU、客户端读得慢时，积压就留在服务端的出站队列里。这一条查实是缺陷，`TC-PROD-661` 能确定地复现（修前对端读到 9 个包就是连接关闭），已在 `prod/r071-ops` 修（`docs/DESIGN-PROD.md` v0.9.52 §16「断开与出站队列」）。② 客户端自己的竞态：`ClientCommonPacketListenerImpl#handleDisconnect` 在网络线程上调 `Connection#disconnect`，后者先关 channel、等关完才写下原因，渲染线程上的 `Connection#tick` 恰在这两步之间看到 channel 已关，就以 null 原因断开，同样显示 `Disconnected`；服务端改不了，窗口只有关 channel 的那几步。产物里没有出站队列深度，也没有客户端收到断线包的记录。**判别与下一步**：修复合入 `main` 后 R8 再出现同一签名，① 只剩「对端 1 s 内没读完断线包前面的积压、关闭线程先关了 channel」这一种可能，其余就是 ②；要分清这两者，在 `PlayerSocketConnection#closeOnceFlushed` 等满 1 s、写线程还没结束时记一行（要过 `docs/ENGINE.md` §8 的日志门禁），或让客户端模组记下收到的断线包，下一次同签名的红就按这条记录判；只凭修后不再红不能结案（这个工作流 83 次运行只红过这 1 次）。关联：`TC-PROD-661`、`TC-PROD-663`、`TC-PROD-040`。
 - ~~`OnlineDuplicateLoginSocketTest` 两条用例在 CI 偶发红 `the entity tracker holds the newcomer … but was: <null>`~~ **已结案（2026-10-06）**：两次都在只改文档的提交上：根模块 `src/` 自 `c69548be70` 起没有改动，CI 在这份代码上先绿了 6 次。run `36967361297`（`main` `e96dcc42f4`）的「Check」红 `aSecondOnlineLoginOfTheSameAccountReplacesTheFirst`（`OnlineDuplicateLoginSocketTest.java:66`，用例 1.226 s）；run `36969350270`（`main` `14437d0b78`）的「Test with 4 tick threads (strict)」红 `aLoginReplacingASessionThatIsStillSpawningWaitsForItToLeave`（`:137`，3.001 s）。消息都是 `the entity tracker holds the newcomer, so other players see it ==> expected: <…Player@…> but was: <null>`，同一 run 的另两个 job 都绿；JUnit XML 的 system-out、system-err 为空，没有可对时的引擎日志。**根因在测试**：两条用例先等 `replacement.getInstance() == instance`（每 25 ms 查一次），成立后只读一次追踪器。引擎在 `Entity#setInstance` 里先写实例（`Entity.java:1180`），出生区块的续体里才登记追踪器（`:1194`，`EntityTrackerImpl.java:68` 放入 UUID）。新玩家进世界时视距内的区块已由旧玩家加载好，`Player#setInstance` 走同步分支（`Player.java:745`），续体在 tick 线程上紧接着跑：刷新所在区块，发世界边界、时间、天气三个包，然后登记。测试的某次轮询落在这两步之间，就看到实例已设、追踪器里还没有这个 UUID。引擎只保证「在追踪器里 ⇒ 实例已设」，反过来不成立；这段时间里 tick 线程不调用任何监听器，其他玩家要等登记之后的可见性更新才看得到新玩家，`ConnectionManager#leftTheWorld` 依赖的「实例为 null ⇒ 不在追踪器里」成立，所以产品代码与设计文档都不改。先设实例、后登记是分叉前上游就有的顺序（`this.instance = instance` 一行 blame 到 2019 年）；等待写法来自 `ed00212af4`（2026-09-23，第一条）与 `5550ff1ff6`（2026-09-24，第二条照搬），与 2026-10-01 的安全修复无关：`Entity.java`、`Player.java`、`EntityTrackerImpl.java` 在安全修复前的 `23982267e9` 与 `main` 之间没有改动。调查时插桩量得（原始数据未入库）：这段空档均值从 37 µs（本机 load 15～150）到 327 µs（压到效率核再加 8 条忙线程），各变体的 p99 最大 11.1 ms；本机自然连跑 `main` 536 次、`23982267e9` 120 次都没读到 null。**复现**：临时补丁让视距内区块已全部加载的玩家（这个类里只有新玩家）在登记前停 60 ms、往 stderr 记一行；原用例在默认、4 线程严格、严格 grid 下各跑 3 次，9 次都是两条全红，红在 `:66` 与 `:137`，消息与 CI 逐字相同，新玩家有实例到登记相隔 61.4～78.3 ms。**修法**：两条用例改为等测试真正要断言的条件 `awaitUntil(() -> instance.getEntityTracker().getEntityByUuid(account) == replacement, …)`，再断言新玩家的实例是 `instance`；其余断言不变，行号不变（`awaitPlayer` 仍在 `:64`、`:135`，等待在 `:65`、`:136`）。**修后**：同样停 60 ms，三种模式各 3 次全绿。反证有齿：(1) 新玩家跳过登记，修后的类在默认、严格模式下两条全红，红在 `:65`、`:136`（经 `awaitUntil` 的 `:174`，等满 10 s），`expected: <true> but was: <false>`；(2) `TC-PROD-350` 第 2 步（删掉 `spawningPlayers.add(player);`）在严格模式下跑 2 次，都是 `2 tests completed, 1 failed`，红在 `:135` `no player of <uuid> reached the play state`，与该步的记录一致。不打补丁时，修后的类在默认、严格、严格 grid 下各连跑 50 次（每次一个新的 Gradle 与测试 JVM）都 0 失败；根模块 `:test` 默认与严格 grid 全量各跑 1 次，都是 428 个类 3,162 条、0 失败（跳过 15 条）。2026-09-24 那条结案里自然复现的 2 次 `… but was: <null>` 与本条签名相同，可能撞的也是这段空档，当时的日志没留，未核实；那条修复以 `TC-PROD-350` 的确定性复现为准，不受影响。**未核实的两点**：① 频率变化：`5550ff1ff6` 之后、`c69548be70` 之前 `main` 上 40 次 CI 这个类一次没红，之后 8 次红了 2 次（每次 3 个 job、每个 job 2 条，按同一概率落进后 48 次执行的概率约 0.03）；空档所在的三个文件在 `23982267e9` 与 `main` 之间相同，拉宽窗口在修前、修后的代码上都能复现，机制与安全修复无关，频率为什么变了没有核实。② 调查轮把测试压到效率核并加 8 条忙线程时出现过另一类红（`firstKicked` 等满 10 s、`state-unavailable`、`Broken pipe`，严格约 4/60、默认约 2/55），属线程饿死的超时，签名与 CI 不同，没有复现到 CI 的条件下，不另登偶发红。证据 `docs/test-runs/RUN-068/`（`06-review-reruns.txt` 是评审自己的复跑：另写的拉宽补丁、停 60 / 500 / 3,000 ms、并发顶号与窗口内再顶号两个临时变体、16 个相关类三种模式、根模块 4 线程严格全量）。关联：`TC-PROD-100`、`TC-PROD-350`、`REQ-PROD-004`。
 - **`TC-WORLD-119`、`TC-WORLD-120` 没有反证（未结案，2026-10-02 RUN-064 登记）**：档位、不宣告、DH 缺席、坏包与续传这五个容器场景只跑正例。每条反证都要改客户端代码、再起一次容器（一次约 5～10 min），M3-G 合并验收没有排。可行的改法：档位不按 `farview.radius` 设 `chunkRenderDistance`（F15 红）；`DhSaveFolder` 对没有远景的 Synaxis 连接返回 null（F16 的库不是 `dh/off`）；下载器不核对 SHA-256（F18 只请求 1 次、包留在缓存）；下载器不带 `Range`（F19 第二次是 200）。DH 缺席（F17）的反证要让模组在没有 DH 时去加载 DH 的类，等于造一个崩溃，不做。
 - **真机 V2b、V3b、V6b、V8b 待人工（`TC-WORLD-123`、`TC-WORLD-124`，2026-10-02 RUN-064 登记）**：要用户的 RTX 3060 级 Windows 与 Apple Silicon Mac；30 s 判据只由 V2b 定。容器里同一测法的 `visible_ms` 中位数是 70,065 ms（llvmpipe），瓶颈在父层传播，真机超时的话先看这一段（`docs/DESIGN-M3.md` §28.2 写库预算行）。V6b 的正午与太阳高度角 40° 两张现在拍不了：夹具不能设时间（同上 §28.2）。

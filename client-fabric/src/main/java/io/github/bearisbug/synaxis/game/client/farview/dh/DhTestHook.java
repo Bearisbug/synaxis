@@ -3,6 +3,7 @@ package io.github.bearisbug.synaxis.game.client.farview.dh;
 import com.seibel.distanthorizons.api.DhApi;
 import com.seibel.distanthorizons.api.interfaces.config.IDhApiConfigValue;
 import com.seibel.distanthorizons.api.interfaces.config.client.IDhApiGraphicsConfig;
+import com.seibel.distanthorizons.api.interfaces.config.client.IDhApiMultiThreadingConfig;
 import com.seibel.distanthorizons.api.interfaces.world.IDhApiLevelWrapper;
 import com.seibel.distanthorizons.api.objects.data.DhApiTerrainDataPoint;
 import com.seibel.distanthorizons.core.api.internal.SharedApi;
@@ -183,6 +184,22 @@ public final class DhTestHook {
 
     private static String describe(IDhApiConfigValue<?> value) {
         return "api=" + value.getApiValue() + " value=" + value.getValue() + " overridable=" + value.getCanBeOverrodeByApi();
+    }
+
+    /**
+     * Overrides DH's worker threads ({@code multiThreading.threadCount} and {@code threadRuntimeRatio}) for a machine
+     * whose few cores the software renderer takes most of: the 2 core runner of {@code farview-gametest.yml}, where DH's
+     * default share, one thread on two cores, left a bake writing for 18 minutes. Call on the client thread.
+     *
+     * @param count        the threads
+     * @param runtimeRatio the share of the time they run, 1 for all of it
+     * @return both settings as DH has them afterwards
+     */
+    public static String threads(int count, double runtimeRatio) {
+        final IDhApiMultiThreadingConfig threading = DhApi.Delayed.configs.multiThreading();
+        threading.threadCount().setValue(count, DhSession.API_USER);
+        threading.threadRuntimeRatio().setValue(runtimeRatio, DhSession.API_USER);
+        return "threadCount " + describe(threading.threadCount()) + ", threadRuntimeRatio " + describe(threading.threadRuntimeRatio());
     }
 
     /**

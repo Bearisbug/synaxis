@@ -22,7 +22,8 @@
 # program arguments, Gradle's --args: the gametest renders at that size, 854x480 without it.
 # SYNAXIS_FARVIEW_SUN_ELEVATION (the sun elevation rts-shots expects of a fixture that stopped its clock), SYNAXIS_SHADER_PACK
 # (the shader pack by the start of its file name, with SYNAXIS_FARVIEW_MODS=dh-iris-photon: photon), SYNAXIS_LIGHT_RENDER_DISTANCE
-# and SYNAXIS_LIGHT_RING (the light-frames mode of LightClientGameTest) pass through (docs/DESIGN-M3.md §26 M3-S).
+# and SYNAXIS_LIGHT_RING (the light-frames mode of LightClientGameTest) and SYNAXIS_DH_THREADS (DH's worker threads) pass through
+# (docs/DESIGN-M3.md §26 M3-S).
 set -euo pipefail
 REPO=$(cd "$(dirname "$0")/../.." && pwd)
 OUT=${OUT:-/tmp/synaxis-gametest}
@@ -46,7 +47,7 @@ docker run --rm --name "${CONTAINER:-synaxis-mc-client}" \
   -e SYNAXIS_P10_SERVER -e SYNAXIS_P10_DONE \
   -e SYNAXIS_LIGHT_SERVER -e SYNAXIS_LIGHT_MODE -e SYNAXIS_LIGHT_MARKER=/out/light-ready \
   -e SYNAXIS_FARVIEW_SERVER -e SYNAXIS_FARVIEW_HTTP -e SYNAXIS_FARVIEW_MODE -e SYNAXIS_FARVIEW_MODS -e SYNAXIS_GAMETEST_ARGS \
-  -e SYNAXIS_FARVIEW_SUN_ELEVATION -e SYNAXIS_SHADER_PACK -e SYNAXIS_LIGHT_RENDER_DISTANCE -e SYNAXIS_LIGHT_RING \
+  -e SYNAXIS_FARVIEW_SUN_ELEVATION -e SYNAXIS_SHADER_PACK -e SYNAXIS_LIGHT_RENDER_DISTANCE -e SYNAXIS_LIGHT_RING -e SYNAXIS_DH_THREADS \
   -e SYNAXIS_DH_SHADERPACKS=/dh/shaderpacks \
   -e JAVA_TOOL_OPTIONS="-Dhttps.proxyHost=${PROXY%:*} -Dhttps.proxyPort=${PROXY#*:} -Dhttp.proxyHost=${PROXY%:*} -Dhttp.proxyPort=${PROXY#*:} -Dhttp.nonProxyHosts=maven.aliyun.com|*.aliyun.com|host.docker.internal -Dfabric.noGui=true${SYNAXIS_FARVIEW_MODS:+ -Dfabric.addMods=/dh/mods}" \
   synaxis-mc-client:dev bash -c '

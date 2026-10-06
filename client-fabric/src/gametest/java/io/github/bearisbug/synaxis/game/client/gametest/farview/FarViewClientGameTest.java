@@ -78,7 +78,8 @@ import org.jspecify.annotations.Nullable;
  * {@code FarViewTestHook} off, each writing its line as {@code F<n> FAIL counter-proof <mode>: …}; {@code fill-time}
  * (P1③, F30) and {@code bench-low} (P1⑦, F31) are real machine modes. {@code SYNAXIS_FARVIEW_SUN_ELEVATION} is the sun
  * elevation in degrees {@code rts-shots} expects (F25) of a fixture that stopped the clock; {@code SYNAXIS_SHADER_PACK}
- * picks the shader pack by the start of its file name, Complementary unless given.
+ * picks the shader pack by the start of its file name, Complementary unless given; {@code SYNAXIS_DH_THREADS} gives DH's
+ * workers that many threads all the time, for a machine with few cores ({@code farview-gametest.yml}'s 2 core runner).
  */
 public final class FarViewClientGameTest implements FabricClientGameTest {
 
@@ -101,6 +102,12 @@ public final class FarViewClientGameTest implements FabricClientGameTest {
         final Run run = new Run(context, server, env("SYNAXIS_FARVIEW_HTTP", ""));
         try {
             context.waitForScreen(TitleScreen.class);
+            // SYNAXIS_DH_THREADS=<n>: DH's workers get n threads all the time (farview-gametest.yml on its 2 core runner)
+            final String threads = env("SYNAXIS_DH_THREADS", "");
+            if (!threads.isEmpty() && FabricLoader.getInstance().isModLoaded(FarViewClient.DH_MOD_ID)) {
+                run.note("Distant Horizons threads set to " + threads + ", run time ratio 1.0: "
+                        + context.computeOnClient(_ -> DhTestHook.threads(Integer.parseInt(threads), 1.0)));
+            }
             for (String mode : env("SYNAXIS_FARVIEW_MODE", "v1").split(",")) {
                 final String name = mode.trim();
                 if (name.isEmpty()) continue;
@@ -519,7 +526,7 @@ public final class FarViewClientGameTest implements FabricClientGameTest {
             climb(from.x, from.y, 180, from.z);
             for (int step = 2; step <= blocks; step += 2) {
                 final double x = from.x + step;
-                context.runOnClient(client -> client.player.setPos(x, 180, from.z));
+                context.runOnClient(client -> fly(client, x, 180, from.z));
                 context.waitTick();
             }
             context.waitTicks(20);
@@ -531,7 +538,7 @@ public final class FarViewClientGameTest implements FabricClientGameTest {
             note(detail + " from " + from);
             for (int step = blocks - 2; step >= 0; step -= 2) {
                 final double x = from.x + step;
-                context.runOnClient(client -> client.player.setPos(x, 180, from.z));
+                context.runOnClient(client -> fly(client, x, 180, from.z));
                 context.waitTick();
             }
             climb(from.x, 180, from.y, from.z);
@@ -544,9 +551,20 @@ public final class FarViewClientGameTest implements FabricClientGameTest {
             final int steps = Math.max(1, (int) Math.ceil(Math.abs(y1 - y0) / WALK_STEP));
             for (int i = 1; i <= steps; i++) {
                 final double y = y0 + (y1 - y0) * i / steps;
-                context.runOnClient(client -> client.player.setPos(x, y, z));
+                context.runOnClient(client -> fly(client, x, y, z));
                 context.waitTick();
             }
+        }
+
+        /**
+         * Puts the player at x, y, z flying and still. A player standing on the ground stops flying
+         * ({@code LocalPlayer#aiStep}), and {@code setPos} keeps the speed of a fall: without this the 20 ticks at the
+         * far end are a fall at full speed, some 75 blocks.
+         */
+        private static void fly(Minecraft client, double x, double y, double z) {
+            client.player.getAbilities().flying = true;
+            client.player.setDeltaMovement(Vec3.ZERO);
+            client.player.setPos(x, y, z);
         }
 
         // ---- What the packs say
@@ -1493,44 +1511,48 @@ public final class FarViewClientGameTest implements FabricClientGameTest {
          * angle from the {@code minecraft:day} timeline of the dimension type. With a fixture that stopped its clock
          * ({@code day_time} in {@code /expect.json}) the line judges it (§19 「夹具定住日间时间」): the default clock is
          * that time once in the world and 600 ticks later, and the sun is within 1° of {@code SYNAXIS_FARVIEW_SUN_ELEVATION}
-         * when given; without it the line only records.
+         * when given; without it the line only records. The sun is read while the bake runs and needs no far view;
+         * the shots wait for a ready one and are left out without it, which the line notes.
          */
         void realRtsShots() {
             clearCache();
             radius(FarViewSettings.DEFAULT_RADIUS);
             final Map.Entry<Path, Long> held = heldBake("v6b");
-            if (held == null || !ready()) {
-                line("F25", false, "no ready far view");
+            if (held == null) {
+                line("F25", false, "not in the world");
                 return;
             }
             final Sky first = sky();
             context.waitTicks(600);
             final Sky later = sky();
-            drawn("v6b-lod", lodView(), held.getKey(), 2400);
-            // V6b judges fog, water and shadows with the shader pack on, P1⑧ the culling of Sodium and Iris on it
-            if (iris) {
-                installShaderPack();
-                setShaders(true);
-                context.waitTicks(300);
-            }
+            final boolean ready = ready();
             final List<String> taken = new ArrayList<>();
-            final int ground = groundAt((int) spawn.x, (int) spawn.z);
-            for (int height : new int[]{64, 100}) {
-                taken.add(stable("v6b-h" + height, at(spawn.x, ground + height, spawn.z - 60, 0f, 55f), 800).getFileName().toString());
+            if (ready) {
+                drawn("v6b-lod", lodView(), held.getKey(), 2400);
+                // V6b judges fog, water and shadows with the shader pack on, P1⑧ the culling of Sodium and Iris on it
+                if (iris) {
+                    installShaderPack();
+                    setShaders(true);
+                    context.waitTicks(300);
+                }
+                final int ground = groundAt((int) spawn.x, (int) spawn.z);
+                for (int height : new int[]{64, 100}) {
+                    taken.add(stable("v6b-h" + height, at(spawn.x, ground + height, spawn.z - 60, 0f, 55f), 800).getFileName().toString());
+                }
+                context.runOnClient(_ -> SpikeCamera.set(new SpikeCamera.Settings(SpikeCamera.Mode.ORTHO,
+                        new Vec3(spawn.x, ground, spawn.z), -90f, 60f, 64f, 96f)));
+                context.waitTicks(100);
+                taken.add(context.takeScreenshot(TestScreenshotOptions.of("farview-v6b-ortho").withSize(SHOT_WIDTH, SHOT_HEIGHT))
+                        .getFileName().toString());
             }
-            context.runOnClient(_ -> SpikeCamera.set(new SpikeCamera.Settings(SpikeCamera.Mode.ORTHO,
-                    new Vec3(spawn.x, ground, spawn.z), -90f, 60f, 64f, 96f)));
-            context.waitTicks(100);
-            taken.add(context.takeScreenshot(TestScreenshotOptions.of("farview-v6b-ortho").withSize(SHOT_WIDTH, SHOT_HEIGHT))
-                    .getFileName().toString());
             final JsonElement given = expect().get("day_time");
             final String target = env("SYNAXIS_FARVIEW_SUN_ELEVATION", "");
             final boolean stopped = given == null || first.dayTime() == given.getAsLong() && later.dayTime() == given.getAsLong()
                     && (target.isEmpty() || Math.abs(later.elevation() - Double.parseDouble(target)) <= 1);
             line("F25", stopped, String.format(Locale.ROOT, "day time %d, %d after %d ticks (game time), overworld clock %d; sun angle "
-                            + "%.3f°, elevation %.3f°; fixture day_time %s, expected elevation %s; shots %s", first.dayTime(),
+                            + "%.3f°, elevation %.3f°; fixture day_time %s, expected elevation %s; far view ready %s, shots %s", first.dayTime(),
                     later.dayTime(), later.gameTime() - first.gameTime(), later.overworld(), later.angle(), later.elevation(),
-                    given == null ? "none (recorded only)" : given.getAsString(), target.isEmpty() ? "none" : target + "°", taken));
+                    given == null ? "none (recorded only)" : given.getAsString(), target.isEmpty() ? "none" : target + "°", ready, taken));
         }
 
         /**

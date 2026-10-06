@@ -120,7 +120,13 @@ public class PlayerPositionListener {
      * it, gets farther out on the x or the z axis; turning, walking along the border and walking back
      * in do not. The border ends at the wall the vanilla client collides with, its minimum rounded
      * down and its maximum up (26.2 {@code WorldBorder$StaticBorderExtent#updateBox}), so that a
-     * client against the wall of a border off the block grid, or of one changing its size, is inside.
+     * client against the wall of a border off the block grid is inside.
+     * <p>
+     * While a border shrinks over time ({@code Instance#setWorldBorder(border, transitionTime)}), the
+     * server moves its edges every tick from the call on and the client only once the packet reached
+     * it, so the edge judged here runs ahead of the client's wall by about the speed of the edge times
+     * the round trip time, and a player walking against the wall is turned back now and then (worked
+     * out from the code, not run; no deployment shrinks its border over time).
      */
     private static boolean outwards(Instance instance, Pos from, Pos to) {
         final var border = instance.getWorldBorder();

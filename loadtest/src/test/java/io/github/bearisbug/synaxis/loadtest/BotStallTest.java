@@ -1,6 +1,7 @@
 package io.github.bearisbug.synaxis.loadtest;
 
 import io.github.bearisbug.synaxis.ServerConfig;
+import io.github.bearisbug.synaxis.coordinate.Point;
 import io.github.bearisbug.synaxis.coordinate.Pos;
 import io.github.bearisbug.synaxis.entity.Player;
 import io.github.bearisbug.synaxis.event.player.PlayerPacketEvent;
@@ -11,6 +12,7 @@ import org.junit.jupiter.api.Timeout;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -32,7 +34,8 @@ public class BotStallTest {
      * then 129.5 blocks further along its circle. Every position the server judges after it (not
      * those it drops while a teleport waits for its confirmation) is at most 32 blocks from where the
      * server has the player, and 3 s on the server has the player more than 64 blocks from where the
-     * stall left it.
+     * stall left it. The server then teleports the player back there: the first position it judges
+     * after that is at most 32 blocks from it, the bot walking on from where the teleport put it.
      */
     @Test
     @Timeout(60)
@@ -40,6 +43,10 @@ public class BotStallTest {
         final AtomicLong stall = new AtomicLong();
         final List<Double> afterTheStall = new CopyOnWriteArrayList<>();
         final AtomicReference<Pos> held = new AtomicReference<>();
+        final AtomicReference<Player> joined = new AtomicReference<>();
+        // The last teleport id before the server takes the player back, -1 until then
+        final AtomicInteger pullBack = new AtomicInteger(-1);
+        final AtomicReference<Point> afterThePullBack = new AtomicReference<>();
         final ServerConfig jvm = ServerConfig.fromSystemProperties();
         try (BotSocketTest.Server server = new BotSocketTest.Server("server", ServerConfig.builder()
                 .dispatcherThreads(jvm.dispatcherThreads()).threadProvider(jvm.threadProvider())
@@ -48,6 +55,12 @@ public class BotStallTest {
                 final Player player = event.getPlayer();
                 if (!(event.getPacket() instanceof ClientPlayerPositionPacket packet)
                         || player.getLastSentTeleportId() != player.getLastReceivedTeleportId()) return;
+                joined.set(player);
+                final int before = pullBack.get();
+                if (before >= 0 && player.getLastReceivedTeleportId() > before) {
+                    afterThePullBack.compareAndSet(null, packet.position());
+                    return;
+                }
                 if (stall.get() != 0) afterTheStall.add(packet.position().distance(player.getPosition()));
                 held.set(player.getPosition());
             });
@@ -62,6 +75,12 @@ public class BotStallTest {
             stall.set(TimeUnit.SECONDS.toNanos(30));
             Thread.sleep(3_000);
             final Pos reached = held.get();
+            final Player player = joined.get();
+            player.scheduleNextTick(_ -> {
+                pullBack.set(player.getLastSentTeleportId());
+                var _ = player.teleport(stalled);
+            });
+            Thread.sleep(1_000);
             bot.close();
             thread.join(10_000);
 
@@ -72,6 +91,10 @@ public class BotStallTest {
                     + " blocks from where it had the player");
             assertTrue(reached.distance(stalled) > 64, "3 s after the stall the server has the player "
                     + reached.distance(stalled) + " blocks from where the stall left it");
+            final Point first = afterThePullBack.get();
+            assertNotNull(first, "the server judged a position after it took the player back");
+            assertTrue(first.distance(stalled) <= 32 + 1e-9, "the first position the server judged after it took the "
+                    + "player back was " + first.distance(stalled) + " blocks from where it put the player");
         }
     }
 }

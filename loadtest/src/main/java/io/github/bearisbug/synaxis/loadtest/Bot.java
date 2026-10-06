@@ -481,8 +481,12 @@ final class Bot {
             } else if (id == BATCH_START) {
                 batchStarted = System.nanoTime();
             } else if (id == START_CONFIGURATION) {
-                send(ConnectionState.PLAY, new ClientConfigurationAckPacket());
-                state = ConnectionState.CONFIGURATION;
+                synchronized (writeLock) {
+                    // The ack and the state under one lock: a position the moving thread sent between them would
+                    // reach the server in configuration, which drops the connection for it
+                    send(ConnectionState.PLAY, new ClientConfigurationAckPacket());
+                    state = ConnectionState.CONFIGURATION;
+                }
             } else if (id == SPAWN_ENTITY || id == DESTROY_ENTITIES) {
                 track(Protocol.decode(ConnectionState.PLAY, id, frame.body(), frame.payloadOffset()));
             } else if (id == TRANSFER) {

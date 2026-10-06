@@ -208,8 +208,8 @@ public class PlayerMovementAuthorityIntegrationTest {
 
     /**
      * The border ends at the wall the vanilla client collides with, its edges rounded outwards to whole
-     * blocks: with a border 63 blocks across, [-31.5, 31.5) on both axes, the wall stands at x -32 and
-     * x 32, and a client against it is not turned back. A move past the wall is.
+     * blocks: with a border 63 blocks across, [-31.5, 31.5) on both axes, the walls stand at -32 and 32
+     * on x and on z, and a client against them is not turned back. A move past a wall is.
      */
     @Test
     public void theBorderEndsAtTheWallOfTheVanillaClient(Env env) {
@@ -229,6 +229,20 @@ public class PlayerMovementAuthorityIntegrationTest {
         assertEquals(new Pos(-31.6, 40, 0.5), player.getPosition(), "x -31.6, past the border at -31.5, short of the wall at -32");
         move(player, -32.1, 40, 0.5);
         assertEquals(new Pos(-31.6, 40, 0.5), player.getPosition(), "x -32.1, past the wall at -32");
+
+        player.teleport(new Pos(0.5, 40, 31)).join();
+        confirm(player);
+        move(player, 0.5, 40, 31.6);
+        assertEquals(new Pos(0.5, 40, 31.6), player.getPosition(), "z 31.6, past the border at 31.5, short of the wall at 32");
+        move(player, 0.5, 40, 32.1);
+        assertEquals(new Pos(0.5, 40, 31.6), player.getPosition(), "z 32.1, past the wall at 32");
+
+        player.teleport(new Pos(0.5, 40, -31)).join();
+        confirm(player);
+        move(player, 0.5, 40, -31.6);
+        assertEquals(new Pos(0.5, 40, -31.6), player.getPosition(), "z -31.6, past the border at -31.5, short of the wall at -32");
+        move(player, 0.5, 40, -32.1);
+        assertEquals(new Pos(0.5, 40, -31.6), player.getPosition(), "z -32.1, past the wall at -32");
     }
 
     /**

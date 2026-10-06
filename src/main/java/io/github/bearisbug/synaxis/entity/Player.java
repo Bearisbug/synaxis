@@ -178,6 +178,8 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
     // The view distances a client can ask for, see ClientSettings
     private static final int MIN_VIEW_DISTANCE = 2;
     private static final int MAX_VIEW_DISTANCE = 32;
+    // How long a chunk batch waits for the write-locks of its chunks, all of them together, see #sendPendingChunks()
+    private static final Duration CHUNK_LOCK_WAIT = Duration.ofMillis(1);
 
     private long lastKeepAlive;
     private boolean answerKeepAlive;
@@ -932,11 +934,13 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
         pendingChunkCount = Math.min(pendingChunkCount + targetChunksPerTick, process().config().maxChunksPerTick());
         if (pendingChunkCount < 1) return; // Cant send anything
 
+        final LongArrayList deferred = new LongArrayList();
         chunkQueueLock.lock();
         try {
             int batchSize = 0;
+            long lockWait = CHUNK_LOCK_WAIT.toNanos();
             sendPacket(new ChunkBatchStartPacket());
-            while (!chunkQueue.isEmpty() && pendingChunkCount >= 1f) {
+            while (!chunkQueue.isEmpty() && pendingChunkCount - deferred.size() >= 1f) {
                 long chunkIndex = chunkQueue.dequeueLong();
                 queuedChunks.remove(chunkIndex);
                 int chunkX = CoordConversion.chunkIndexGetX(chunkIndex), chunkZ = CoordConversion.chunkIndexGetZ(chunkIndex);
@@ -947,7 +951,26 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
                 var chunk = instance.getChunk(chunkX, chunkZ);
                 if (chunk == null || !chunk.isLoaded()) continue;
 
-                sendPacket(chunk.getFullDataPacket());
+                // The packet is taken and handed to the connection under the write-lock of the chunk, where its blocks
+                // change and InstanceContainer#setBlock sends the change to the viewers, this player among them: a
+                // change is in the packet or reaches the connection after it. A change in between would reach the
+                // client ahead of the chunk, which drops it, then the chunk without it, for good. The lock is only
+                // waited for briefly, the queue lock held: a thread holding it may be queuing chunks for this player
+                // (Chunk#sendChunk). The waits of a batch share CHUNK_LOCK_WAIT. A chunk whose lock is not free in time
+                // is deferred to the next tick, the batch goes on with the chunks behind it; it takes the place of a
+                // chunk sent, so a batch tries at most as many chunks as it may send
+                final long waitStart = System.nanoTime();
+                final boolean locked = chunk.tryLockWriteLock(Duration.ofNanos(lockWait));
+                lockWait -= System.nanoTime() - waitStart;
+                if (!locked) {
+                    deferred.add(chunkIndex);
+                    continue;
+                }
+                try {
+                    sendPacket(chunk.getFullDataPacket());
+                } finally {
+                    chunk.unlockWriteLock();
+                }
                 process().eventHandler().call(new PlayerChunkLoadEvent(this, chunkX, chunkZ));
 
                 pendingChunkCount -= 1f;
@@ -960,12 +983,20 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
             // After sending the first chunk we always send a synchronize position to the client. This is to prevent
             // cases where the client falls through the floor slightly while loading the first chunk.
             // In the vanilla server they have an anticheat which teleports the client back if they enter the floor,
-            // but since the engine does not have an anticheat this provides a similar effect.
-            if (needsChunkPositionSync) {
+            // but since the engine does not have an anticheat this provides a similar effect. A batch that sent no
+            // chunk leaves it to the next one.
+            if (needsChunkPositionSync && batchSize > 0) {
                 synchronizePositionAfterTeleport(getPosition(), Vec.ZERO, RelativeFlags.NONE, true);
                 needsChunkPositionSync = false;
             }
         } finally {
+            // Back in the queue once the batch is done, or has thrown: closest to the center, a deferred chunk would be
+            // dequeued again. Once: a PlayerChunkLoadEvent listener may have queued it again (#sendChunk(Chunk)), and the
+            // batch then deferred it a second time
+            for (int i = 0; i < deferred.size(); i++) {
+                final long chunkIndex = deferred.getLong(i);
+                if (queuedChunks.add(chunkIndex)) chunkQueue.enqueue(chunkIndex);
+            }
             chunkQueueLock.unlock();
         }
     }
@@ -1043,6 +1074,21 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
             }
         }
         return chunks.toLongArray();
+    }
+
+    /**
+     * Whether the chunk is in the ring of chunks this player is sent: the ring of {@link #effectiveViewDistance()}
+     * around the chunk the client was last told to center on ({@code UpdateViewPosition}), which the chunk update
+     * limiter can hold a few chunks behind the chunk of the position. The viewers of a chunk
+     * ({@link Chunk#getViewers()}) are the players whose ring has it.
+     *
+     * @param chunkX the chunk X
+     * @param chunkZ the chunk Z
+     * @return true if the chunk is in the ring
+     */
+    @ApiStatus.Internal
+    public boolean isChunkInRing(int chunkX, int chunkZ) {
+        return !isOutOfClientRange(chunkX, chunkZ);
     }
 
     private boolean isOutOfClientRange(int chunkX, int chunkZ) {

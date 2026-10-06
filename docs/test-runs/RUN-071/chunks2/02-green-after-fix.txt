@@ -1,0 +1,20 @@
+# ChunkSendBlockChangeIntegrationTest on the fix (a6155af745). Common header: see 00-index.txt. Same command as 01.
+
+## fixed, default: tests=3 failures=0 errors=0 skipped=0 time=0.996s timestamp=2026-10-06T11:45:37.046Z (UTC)
+aChunkTheClientHoldsGetsItsBlockChangesWhileTheChunkUpdateLimiterHoldsTheCenterBack(Env)   0.922s  passed
+aBlockChangedRightAfterTheChunkPacketWasTakenReachesTheClient(Env)                         0.032s  passed
+aThreadQueuingChunksUnderTheLockOfTheNextChunkToSendIsNotDeadlocked(Env)                   0.031s  passed
+    stdout: Center told to the client 1,0, the client sees minecraft:gold_block in chunk 4,0
+    stdout: Chunk -1,-1: the setter waited for the chunk lock, the client sees minecraft:gold_block, the server has minecraft:gold_block
+    stdout: Column 4 locked by another thread after its first chunk: the holder waited 1248 µs for the queue lock and took it true, chunks sent {4,-1=1, 4,-2=1, 4,-3=1, 4,0=1, 4,1=1, 4,2=1, 4,3=1}
+    gradle: BUILD SUCCESSFUL in 16s
+
+## fixed, strict grid: tests=3 failures=0 errors=0 skipped=0 time=1.19s timestamp=2026-10-06T11:45:44.036Z (UTC)
+aChunkTheClientHoldsGetsItsBlockChangesWhileTheChunkUpdateLimiterHoldsTheCenterBack(Env)   1.102s  passed
+aBlockChangedRightAfterTheChunkPacketWasTakenReachesTheClient(Env)                         0.039s  passed
+aThreadQueuingChunksUnderTheLockOfTheNextChunkToSendIsNotDeadlocked(Env)                   0.035s  passed
+    stdout: Center told to the client 1,0, the client sees minecraft:gold_block in chunk 4,0
+    stdout: Chunk -1,-1: the setter waited for the chunk lock, the client sees minecraft:gold_block, the server has minecraft:gold_block
+    stdout: Column 4 locked by another thread after its first chunk: the holder waited 1217 µs for the queue lock and took it true, chunks sent {4,-1=1, 4,-2=1, 4,-3=1, 4,0=1, 4,1=1, 4,2=1, 4,3=1}
+    gradle: BUILD SUCCESSFUL in 7s
+

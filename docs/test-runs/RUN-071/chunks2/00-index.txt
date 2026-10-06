@@ -1,0 +1,195 @@
+# Group chunks2 of the production-readiness session (branch prod/r071-chunks, worktree synaxis-wt/r071-chunks, base main
+# 8b18922130), the lighting session's follow-up item on the chunk send window, for the integration round to register as RUN-071.
+# Code under test: a6155af745 (base + Player.java, EntityTrackerImpl.java and the new test class); the docs commit on top changes docs
+# and this directory only. 2026-10-06 19:19 to 20:05 (UTC+8). Machine: Apple M4 Pro, 12 cores, 24 GiB, macOS 15.3.2, Homebrew JDK
+# 25.0.4.1, Gradle 9.7.1. Every Gradle command ran inside a hold of the shared heavy lock (/tmp/synaxis-heavy.lock), released at the
+# end of its batch: 19:22:11-19:22:32, 19:22:59-19:23:28, 19:24:30-19:25:13, 19:27:32-19:27:57, 19:29:25-19:30:12,
+# about 19:31:40-19:34:05, 19:34:27-19:35:54, 19:36:41-19:39:10, about 19:44:47-19:47:09 (the start lines of two holds were not
+# kept). Before each hold: memory_pressure free >= 30 % and the 1-minute load <= 24, or a 2-minute wait (once, at 19:19, load 24.39).
+# Gradle: --max-workers=2 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts. No database variables: no class run
+# here reads them. No Docker, no client, no server process (the loopback sockets of BotSocketTest only). Raw Gradle logs and JUnit
+# XML stayed in /tmp/run071/chunks2, deleted after the round; the lines in these files are copied out of them.
+00-index.txt              this file
+01-red-before-fix.txt     the new test class on Player.java and EntityTrackerImpl.java of 8b18922130: 3 of 3 red, default and
+                          strict grid; the first red run and the attempts before it
+02-green-after-fix.txt    the same class on a6155af745: 3 of 3, default and strict grid
+03-counterproofs.txt      five edits of the fix, one at a time (cp1, cp2 also in strict grid), and the restored runs
+04-neighbours.txt         5 root classes (18 tests) and 2 :synx classes (26 tests) in both modes, :loadtest BotSocketTest (8 tests)
+05-docs.txt               design-doc and test-doc lint, the line references of the docs to the two changed files
+06-rework-red-green.txt   review rework: the test class of c193a22479 on the fix, on the send of a6155af745 and on the code of
+                          8b18922130, default and strict grid
+07-rework-counterproofs.txt  review rework: nine edits of c193a22479, one at a time (cp1, cp2 also in strict grid), and the
+                          restored runs
+08-rework-neighbours.txt  review rework: 5 root classes (20 tests) and 2 :synx classes (26 tests) in both modes, :loadtest
+                          BotSocketTest (8 tests)
+09-rework-docs.txt        review rework: design-doc and test-doc lint, the line references of the docs to the changed files
+10-requeue-red-green.txt  second review rework: the test class of 68d6b07ea2 on the fix, on the send of c193a22479, of a6155af745
+                          and on the code of 8b18922130, default and strict grid
+11-requeue-counterproofs.txt  second review rework: eleven edits of 68d6b07ea2, one at a time (cp1, cp2, cp10, cp11 also in
+                          strict grid), and the restored runs
+12-requeue-neighbours.txt second review rework: 5 root classes (22 tests) in both modes
+13-requeue-docs.txt       second review rework: design-doc and test-doc lint, the line references of the docs to the changed files
+
+# What the code did before the fix (8b18922130), read from the code
+- Who gets a block change: InstanceContainer#UNSAFE_setBlock holds the instance monitor and the chunk write-lock, changes the
+  palette (DynamicChunk#setBlock invalidates the chunk packet cache inside that lock), then, still under the lock, sends the
+  BlockChangePacket to the chunk's viewers (Chunk#sendPacketToViewers). The viewers come from EntityTrackerImpl.ChunkView#references:
+  every player of the instance whose position is within effectiveViewDistance() chunks of the chunk (Chebyshev distance). There is no
+  per-player set of sent chunks behind it. The client drops a block change for a chunk it does not hold (as the lighting session's
+  docs/DESIGN-M3.md section 28.2 row on the window states; not checked against the 26.2 jar in this round); the test models the
+  client that way.
+- When a player starts to get the block changes of a chunk: as soon as its position is in reach. On spawn the player is in the
+  tracker before its ring is queued (super.setInstance, then the ring); on a move the position and the ring change in the same
+  refreshCoordinate. So the player gets the changes of a chunk before the chunk is sent, the client drops them, and the chunk packet
+  has to carry every change made before it reaches the connection.
+- When the content of a chunk packet is fixed: DynamicChunk and LightingChunk hand out their CachedPacket; PlayerSocketConnection
+  serializes it on the write thread when it reaches the head of the queue (CachedPacket#computeCache under the chunk locks), after it
+  was queued: no window. SynxChunk overlay mode takes a snapshot under its own write-lock in getFullDataPacket and returns it; handle
+  mode returns segment 1 after reading the mode without a lock: the content is fixed when getFullDataPacket returns, before
+  sendPacket queues it. A world flag (WorldFlagsImpl on the tick scheduler thread) or any setBlock between the two queues its
+  BlockChange ahead of the chunk; the client drops it, then gets the old chunk, and keeps it while the chunk stays in its ring. The
+  test connection (TestConnection) extracts the packet inside sendPacket, so it has the same window in tests.
+- Lock order: sendPendingChunks holds chunkQueueLock for the whole batch; SynxChunk#getFullDataPacket, and createChunkPacket when a
+  test connection serializes, take the chunk write-lock inside it, without a bound. A thread that holds a chunk lock and queues chunks
+  for that player (Chunk#sendChunk takes chunkQueueLock) waits for the send while the send waits for it (TC-PROD-676 on the code before
+  the fix: until the test's holder gives up after 5 s).
+- The chunk update limiter (synaxis.player.chunk-update-limiter-history-size, default 5) keeps the ring center when the player enters
+  one of its last 5 chunks; updateViewDistance already measures from the center (REQ-M2-014), ChunkView measured from the position. A
+  chunk on the far side of the ring is then held by the client but out of reach of the position: its block changes are not sent to
+  that player, and nothing resends them (TC-PROD-677 on the code before the fix).
+
+# The fix (a6155af745)
+- Player#sendPendingChunks takes the packet and hands it to the connection under the chunk write-lock (tryLockWriteLock, at most 1 ms,
+  constant CHUNK_LOCK_WAIT); a chunk whose lock is not free goes back to the queue and the batch ends, the next tick tries again.
+  PlayerChunkLoadEvent is dispatched after the lock is released. The order stays chunkQueueLock outside, chunk write-lock inside.
+- EntityTrackerImpl.ChunkView#references: the viewers are the players whose ring has the chunk (new Player#isChunkInRing, the same
+  test as isOutOfClientRange: center chunksLoadedByClient, radius effectiveViewDistance()).
+
+# Effect on the chunk cap of wave 5 and on cost
+- synaxis.chunk-queue.max-per-tick (engine 64, shard host 4) is unchanged: the credit of a chunk not sent stays in pendingChunkCount,
+  which the next tick clamps to the cap again, so no burst above it. The chunk put back was taken from the queue a moment before and is
+  in the ring (checked before the lock), so the bound of RUN-070, queue <= (2r + 1)^2 before every send, holds.
+- One write-lock acquire and release per chunk sent. On a socket connection the locked section holds getFullDataPacket (a field read
+  for DynamicChunk; the snapshot SynxChunk already took under the same lock) and the queue offer, no serialization.
+- What the send can wait for: threads holding the chunk's read- or write-lock: block lookups (Instance#getBlock takes the read-lock
+  on every call, physics and collision use it), the chunk tick's snapshot of its ticking handlers, a write thread serializing the
+  chunk packet the first time after a change, the relight snapshot (SynxRelight), the overlay encode (SynxChunk#encodeOverlay holds the
+  write-lock while it encodes; docs/DESIGN-M3.md estimates about 0.5 ms). Each chunk of a batch waits up to 1 ms on its own, and
+  only the wait it does not win ends the batch: the waits of one player in one tick add up to about (chunks of the batch + 1) x 1 ms,
+  about 65 ms at the engine default of 64 chunks a tick and about 5 ms at the 4 of the shard host, and the players of one tick thread
+  add up. The chunk put back is the closest to the center and comes out first the next tick: a chunk whose lock is held at every try
+  holds back every chunk of that player behind it. (An earlier version of this file said at most one wait of 1 ms per player and
+  tick, which the code did not do; the review found it, see "Review rework".) Measured in TC-PROD-676: the other thread got the queue
+  lock after 1,196 to 1,382 us over 16 runs (02, 03, 04 and the earlier holds).
+- Not measured: how often a send waits or defers under load (no load test or JMH in this round).
+
+# Results (4 new cases, 4 pass)
+TC-PROD-675  pass  the setter waits for the chunk lock, the client sees minecraft:gold_block (02); red before the fix at
+                   ChunkSendBlockChangeIntegrationTest.java:122, the client sees minecraft:air (01); cp1 (no lock) red at :122, cp4
+                   (event under the lock) red at :123, 49 dispatches under the lock (03)
+TC-PROD-676  pass  the holder of the column's locks gets the queue lock after about 1.3 ms, each chunk of column 4 sent once (02);
+                   red before the fix at :183, the holder waited 5003 / 5005 ms (01); cp1 and cp2 (unbounded lock) red at :183, cp3
+                   (chunk dropped instead of put back) red at :185, 6 chunks of 7 (03)
+TC-PROD-677  pass  center 1,0, the client sees minecraft:gold_block in chunk 4,0 (02); red before the fix and with cp5 (viewers by
+                   position) at :220, minecraft:air (01, 03)
+TC-PROD-678  pass  root 5 classes 18 tests, :synx 2 classes 26 tests, both modes; BotSocketTest 8 tests (04)
+
+# Not verified here
+- Full module runs (root :test, :synx:test, :server-app:test) and the real client regression: the integration round runs them on
+  GitHub Actions; this round runs single test classes only.
+- A SynxChunk on a real shard with a world flag: the engine test models the overlay snapshot with TakenChunk; the two :synx classes
+  of 04 send real SynxChunk packets through the Player queue, without a concurrent change.
+- How often the 1 ms bound defers a chunk under load.
+
+# Review rework (c193a22479), 2026-10-06 22:09 to 22:45 (UTC+8)
+The review of the docs commit 883f222f25 found the bound above stated wrong and the starvation understated, and four smaller points.
+Chosen: change the code (not only the docs), because the per-chunk wait let one player hold its tick thread for about 65 ms at the
+engine default, and the head-of-line block left a player without every chunk behind one busy chunk.
+- Player#sendPendingChunks: the waits of a batch share CHUNK_LOCK_WAIT (each tryLockWriteLock waits for what is left of it, a try
+  without a wait once it is spent); a chunk not locked in time is deferred, the batch goes on with the chunks behind it and puts the
+  deferred ones back in the queue once it is done; a deferral takes the place of a chunk sent, so a batch tries at most as many
+  chunks as it may send; the position sync after the first chunks needs a batch that sent a chunk (batchSize > 0). The order of the
+  locks (queue lock outside, chunk write-lock inside), the bound of the queue (trimChunkQueue) and the per-tick cap are unchanged;
+  no wait is unbounded.
+- Bound now: the waits of one player in one tick add up to at most 1 ms plus the scheduling of one timed wait, whatever the batch
+  size; N players of one tick thread at most N ms. A chunk whose lock is held at every try keeps being deferred, one place of the
+  batch and at most 1 ms a tick, without holding back the chunks behind it.
+- Test class (5 tests): TC-PROD-675 also checks that each ChunkDataPacket is handed to the connection under its chunk write-lock
+  (CheckedPlayer, a Player subclass that watches sendPacket); TC-PROD-679 adds the head-of-line case (6 of 7 chunks of a column held
+  by another thread for the batch only: the 7th is sent, the sending thread queues for one lock only) and the empty first batch (the
+  13 chunks within 2 of the spawn chunk held while joining: no position sync before the first chunk).
+- Lock holds, each after memory_pressure free >= 30 % and the 1-minute load <= 24 (free 38 to 57 %, load 3.94 to 14.80):
+  22:09:18-22:09:43 (the runner script built the task name wrong, nothing ran), 22:10:26-22:11:56 and 22:14:47-22:15:17 (earlier
+  versions of the two new tests, see below), 22:13:51-22:14:33 (Error Prone refused a lambda constant, did not compile),
+  22:16:36-22:22:31 (counter proofs on the second version), 22:22:49-22:25:07 (neighbours on the second version), 22:27:16-22:32:02
+  (06 and 07), 22:32:22-22:34:44 (08). Raw logs and XML in /tmp/rework-chunks2, deleted after the round.
+- Earlier versions of the new tests, not kept as evidence: the first held the column's locks through the whole tick of the move;
+  DynamicChunk#tick takes the read-lock of each chunk, so the tick blocked on them and the head-of-line test went red on the send of
+  a6155af745 for that reason, not for the head-of-line block. The second held them for the batch only and asserted the batch took
+  under 5 ms: the counter proofs went red as in 07, but in the neighbour run of 22:22:49, five classes in one JVM, a batch of the fix
+  took 20,113 us and failed. The final version asserts how many held locks the sending thread queued for (at most one) and only
+  prints the duration.
+
+# Results of the rework (5 cases, 5 pass)
+TC-PROD-675  pass  the setter waits for the chunk lock, the client sees gold, 49 chunk packets handed under the lock (06); red before
+                   the fix at ChunkSendBlockChangeIntegrationTest.java:133, 49 handed outside the lock (06); cp1 red at :133, cp4 at
+                   :134, cp6 (taken under the lock, handed after it) at :135 only, :133 green in that run (07)
+TC-PROD-676  pass  the holder gets the queue lock after 1,296 to 1,413 us over 6 runs (06, 07, 08); red before the fix at :196, 5007 /
+                   5005 ms (06); cp1 and cp2 red at :196, cp3 (deferred chunks dropped) at :198, 1 chunk of 7 (07)
+TC-PROD-677  pass  (06); red before the fix and with cp5 at :233 (06, 07)
+TC-PROD-678  pass  root 5 classes 20 tests, :synx 2 classes 26 tests, both modes; BotSocketTest 8 tests (08)
+TC-PROD-679  pass  only 4,-3 sent in the tick of the move, the sending thread queued for the lock of 4,0 only, the batch 1,179 to 2,101
+                   us over 6 runs; the empty first batch is followed by a batch of 49 and then the position sync (06, 07, 08); red
+                   on the send of a6155af745 at :281 (nothing sent in the tick of the move) and :326 (position sync before any
+                   chunk) (06); red before the fix at :281 and :324 after a 10 s hold each (06); cp7 (break) at :281, cp8 (1 ms per
+                   chunk) at :282, 6 locks queued for and 6,832 us, cp9 (empty batch uses the sync) at :326 (07)
+
+# Not verified in the rework
+- The same as above: full module runs and the real client are the integration round's; a SynxChunk with a world flag on a real shard.
+- How often a chunk is deferred under load (no load test); the head-of-line case is shown with locks held by a test thread only.
+
+# Second review rework (68d6b07ea2), 2026-10-06 23:05 to 23:40 (UTC+8)
+The review of c193a22479 found two faults in the put-back of the deferred chunks and three points in the docs.
+- A PlayerChunkLoadEvent listener runs on the sending thread under the reentrant queue lock. One that calls sendChunk for a chunk the
+  batch has deferred queues it again; the batch dequeues it again and defers it again, and the loop after the batch put both copies
+  back without a check: chunkQueue one entry more than queuedChunks (trimChunkQueue only counts queuedChunks), the chunk sent twice.
+- The put-back ran after the loop, inside the try block: an exception from getFullDataPacket or sendPacket left the batch before it
+  and lost the chunks deferred so far.
+- Fix: Player#sendPendingChunks declares the deferred list before it takes the queue lock and puts the deferred chunks back in the
+  finally block that releases it, each one only if queuedChunks does not hold it yet (the check sendChunk makes). The chunk whose
+  packet threw is not put back, as before: one that throws every time would be dequeued and throw again every tick
+  (docs/DESIGN-PROD.md section 28.2, residual 5).
+- Docs: DESIGN-PROD API-PROD-020 (the premise for chunks whose packet content is fixed when taken: the invalidation under the chunk
+  write-lock too; the put-back once and in the finally block), section 15, section 28.2 residual 5, section 28.3 (:974, :979),
+  change log; PLUGINS.md section 10 (a deferred chunk is sent in the tick its lock is free, maybe more than one tick later); TEST.md
+  TC-PROD-679 steps 9 to 14, step 1 on what the count of the holder can miss, the line numbers and counts of the section.
+- Test class (7 tests): two tests added after line 327, line 76 of the class comment changed in place, so the earlier <SB>:N
+  references hold.
+- Lock holds, each after memory_pressure free >= 30 % and the 1-minute load <= 24 (free 39 to 54 %, load 8.60 to 11.88):
+  23:12:16-23:13:03 (an earlier version of the second new test, see below), 23:14:50-23:15:35 (c193 and fix of 10),
+  23:16:52-23:26:31 (a6155 and before of 10, all of 11, 12). Raw logs, XML and the counter proof diffs in /tmp/chunks2-requeue,
+  deleted after the round.
+- Earlier version of the second new test, not kept as evidence: the holder of chunk 4,0 let go only after the tick of the move. The
+  batch ends on the exception without ChunkBatchFinished, so the hook that lets go at the end of a batch never ran, and the tick of
+  chunk 4,0 waited for its read-lock until the holder gave up after 10 s. Red at :370 and :419 on c193a22479 all the same; the final
+  version lets go in the injecting hook before it throws, and at the end of a batch.
+- Only the classes the session allowed were run: ChunkSendBlockChangeIntegrationTest and the four root neighbours of TC-PROD-678
+  step 1. TC-PROD-678 steps 2 (:synx) and 3 (:loadtest BotSocketTest) were not rerun.
+
+# Results of the second rework (TC-PROD-675 to 679 rerun on 68d6b07ea2)
+TC-PROD-679  pass  steps 9 and 10 (10, 12): the listener queues 4,0 again while it is deferred, the queue holds 1 entry for [4,0]
+                   after the batch, each chunk of column 4 sent once; taking the packet of 4,1 throws once, 4,0 is still queued
+                   after the failed batch (6 entries, 6 chunks) and is sent once afterwards, 4,1 is not sent again. Red on the send
+                   of c193a22479 at :370 (2 entries for [4,0], 4,0 sent twice) and :423 (4,0 not queued, never sent) (10); cp10
+                   (put back without the check) at :370 only, cp11 (put back outside the finally block) at :423 only, both modes
+                   (11). On a6155af745, 8b18922130, cp1, cp2 and cp7 nothing is deferred and the two tests stop at their premise
+                   (:369, :422 or :423). cp8 (1 ms per chunk) red at :282 with 6 locks queued for, 7,914 us (11).
+TC-PROD-675  pass  7 tests (10, 11, 12); red lines as before: :133 (before, cp1), :134 (cp4), :135 (cp6)
+TC-PROD-676  pass  red at :196 (before, cp1, cp2); cp3 (deferred chunks dropped) at :198, with :283 of TC-PROD-679 step 1
+                   and :372, :423 of its steps 9 and 10 (11)
+TC-PROD-677  pass  red at :233 (before, cp5)
+TC-PROD-678  pass  step 1 only: root 5 classes 22 tests, both modes (12)
+
+# Not verified in the second rework
+- The same as above, and TC-PROD-678 steps 2 and 3.
+- A real PlayerChunkLoadEvent listener of a plugin or the host re-queuing chunks; the listener here is the test's.

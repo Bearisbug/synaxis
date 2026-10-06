@@ -1,0 +1,218 @@
+# Second review rework (68d6b07ea2): ChunkSendBlockChangeIntegrationTest of 68d6b07ea2 (7 tests) on four versions of the send.
+# Common header: see 00-index.txt, section "Second review rework". Command: ./gradlew :test --rerun --tests
+# 'io.github.bearisbug.synaxis.entity.player.ChunkSendBlockChangeIntegrationTest' --max-workers=2 --no-daemon --init-script
+# gradle/init/aliyun-mirror.init.gradle.kts, strict grid adds -Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true
+# -Dsynaxis.thread-provider=grid. <PL> = src/main/java/.../entity/Player.java.
+#   fix      Player.java of 68d6b07ea2 (lock hold 23:14:50-23:15:35, run after c193)
+#   c193     git show c193a22479:<PL> > <PL>: the deferred chunks put back after the loop, each one unconditionally
+#            (same hold, run first)
+#   a6155    git show a6155af745:<PL> > <PL>: each chunk waits up to 1 ms, the first one not locked in time ends the batch
+#            (lock hold 23:16:52-23:26:31, with 11 and 12)
+#   before   git show 8b18922130 of <PL> and EntityTrackerImpl.java: no chunk lock in the send, viewers by position (same hold)
+# The two new tests are aDeferredChunkQueuedAgainByAChunkLoadListenerIsSentOnce (A) and
+# aDeferredChunkStaysQueuedWhenTakingAChunkPacketThrows (B). On a6155 and before nothing is deferred: A and B stop at their
+# premise (A: the listener never sees chunk 4,0 waiting, :369; B on a6155: no exception in the tick of the move, :422; B on
+# before: chunk 4,0 was sent before the exception, so it is not queued, :423).
+
+## fix-default: tests=7 failures=0 errors=0 skipped=0 time=1.342s timestamp=2026-10-06T15:15:26.396Z (UTC)
+aDeferredChunkQueuedAgainByAChunkLoadListenerIsSentOnce(Env)                                   1.14s  passed
+theChunksBehindAChunkWhoseLockIsHeldAreSentAndTheBatchWaitsOnce(Env)                          0.055s  passed
+thePositionSyncOfTheFirstChunksFollowsAChunkWhenTheFirstBatchIsEmpty(Env)                     0.035s  passed
+aChunkTheClientHoldsGetsItsBlockChangesWhileTheChunkUpdateLimiterHoldsTheCenterBack(Env)      0.028s  passed
+aBlockChangedRightAfterTheChunkPacketWasTakenReachesTheClient(Env)                            0.024s  passed
+aDeferredChunkStaysQueuedWhenTakingAChunkPacketThrows(Env)                                    0.023s  passed
+aThreadQueuingChunksUnderTheLockOfTheNextChunkToSendIsNotDeadlocked(Env)                      0.022s  passed
+    stdout: Chunk 4,0 deferred and queued again by a PlayerChunkLoadEvent listener: queued again, after the batch the queue has 1 entries for the chunks [4,0], chunks sent {4,-1=1, 4,-2=1, 4,-3=1, 4,0=1, 4,1=1, 4,2=1, 4,3=1}
+    stdout: Column 4 but its chunk 4,-3 locked by another thread: sent in the tick of the move [4,-3], the batch waited for the locks of [4,0] and took 1479 µs, chunks sent {4,-1=1, 4,-2=1, 4,-3=1, 4,0=1, 4,1=1, 4,2=1, 4,3=1}
+    stdout: Chunks within 2 of the spawn chunk locked by another thread while joining: batches [0, 49], the first chunk packet at 29, position syncs at [23, 79]
+    stdout: Center told to the client 1,0, the client sees minecraft:gold_block in chunk 4,0
+    stdout: Chunk -1,-1: the setter waited for the chunk lock, the client sees minecraft:gold_block, the server has minecraft:gold_block; 49 chunk packets handed to the connection, 0 outside the chunk write-lock
+    stdout: Chunk 4,0 deferred, then taking the packet of chunk 4,1 threw: 1 exceptions reported in the tick of the move, after it the queue has 6 entries for the chunks [4,-1, 4,-2, 4,-3, 4,0, 4,2, 4,3], chunks sent {4,-1=1, 4,-2=1, 4,-3=1, 4,0=1, 4,2=1, 4,3=1}
+    stdout: Column 4 locked by another thread after its first chunk: the holder waited 1406 µs for the queue lock and took it true, chunks sent {4,-1=1, 4,-2=1, 4,-3=1, 4,0=1, 4,1=1, 4,2=1, 4,3=1}
+    gradle: BUILD SUCCESSFUL in 20s
+
+## fix-strict: tests=7 failures=0 errors=0 skipped=0 time=1.202s timestamp=2026-10-06T15:15:33.937Z (UTC)
+aDeferredChunkQueuedAgainByAChunkLoadListenerIsSentOnce(Env)                                  1.023s  passed
+theChunksBehindAChunkWhoseLockIsHeldAreSentAndTheBatchWaitsOnce(Env)                          0.039s  passed
+thePositionSyncOfTheFirstChunksFollowsAChunkWhenTheFirstBatchIsEmpty(Env)                      0.03s  passed
+aChunkTheClientHoldsGetsItsBlockChangesWhileTheChunkUpdateLimiterHoldsTheCenterBack(Env)      0.031s  passed
+aBlockChangedRightAfterTheChunkPacketWasTakenReachesTheClient(Env)                            0.021s  passed
+aDeferredChunkStaysQueuedWhenTakingAChunkPacketThrows(Env)                                    0.022s  passed
+aThreadQueuingChunksUnderTheLockOfTheNextChunkToSendIsNotDeadlocked(Env)                      0.021s  passed
+    stdout: Chunk 4,0 deferred and queued again by a PlayerChunkLoadEvent listener: queued again, after the batch the queue has 1 entries for the chunks [4,0], chunks sent {4,-1=1, 4,-2=1, 4,-3=1, 4,0=1, 4,1=1, 4,2=1, 4,3=1}
+    stdout: Column 4 but its chunk 4,-3 locked by another thread: sent in the tick of the move [4,-3], the batch waited for the locks of [4,0] and took 1446 µs, chunks sent {4,-1=1, 4,-2=1, 4,-3=1, 4,0=1, 4,1=1, 4,2=1, 4,3=1}
+    stdout: Chunks within 2 of the spawn chunk locked by another thread while joining: batches [0, 49], the first chunk packet at 29, position syncs at [23, 79]
+    stdout: Center told to the client 1,0, the client sees minecraft:gold_block in chunk 4,0
+    stdout: Chunk -1,-1: the setter waited for the chunk lock, the client sees minecraft:gold_block, the server has minecraft:gold_block; 49 chunk packets handed to the connection, 0 outside the chunk write-lock
+    stdout: Chunk 4,0 deferred, then taking the packet of chunk 4,1 threw: 1 exceptions reported in the tick of the move, after it the queue has 6 entries for the chunks [4,-1, 4,-2, 4,-3, 4,0, 4,2, 4,3], chunks sent {4,-1=1, 4,-2=1, 4,-3=1, 4,0=1, 4,2=1, 4,3=1}
+    stdout: Column 4 locked by another thread after its first chunk: the holder waited 1076 µs for the queue lock and took it true, chunks sent {4,-1=1, 4,-2=1, 4,-3=1, 4,0=1, 4,1=1, 4,2=1, 4,3=1}
+    gradle: BUILD SUCCESSFUL in 7s
+
+## c193-default: tests=7 failures=2 errors=0 skipped=0 time=1.232s timestamp=2026-10-06T15:14:59.070Z (UTC)
+aDeferredChunkQueuedAgainByAChunkLoadListenerIsSentOnce(Env)                                  1.067s  FAILED
+    message: org.opentest4j.AssertionFailedError: the entries of the queue for the chunks [4,0] after the batch of the move ==> expected: <1> but was: <2>
+    at io.github.bearisbug.synaxis.entity.player.ChunkSendBlockChangeIntegrationTest.aDeferredChunkQueuedAgainByAChunkLoadListenerIsSentOnce(ChunkSendBlockChangeIntegrationTest.java:370)
+theChunksBehindAChunkWhoseLockIsHeldAreSentAndTheBatchWaitsOnce(Env)                          0.038s  passed
+thePositionSyncOfTheFirstChunksFollowsAChunkWhenTheFirstBatchIsEmpty(Env)                     0.025s  passed
+aChunkTheClientHoldsGetsItsBlockChangesWhileTheChunkUpdateLimiterHoldsTheCenterBack(Env)      0.027s  passed
+aBlockChangedRightAfterTheChunkPacketWasTakenReachesTheClient(Env)                            0.023s  passed
+aDeferredChunkStaysQueuedWhenTakingAChunkPacketThrows(Env)                                     0.02s  FAILED
+    message: org.opentest4j.AssertionFailedError: chunk 4,0, deferred ahead of the failure, is queued after the failed batch: queued [4,-1, 4,-2, 4,-3, 4,2, 4,3] ==> expected: <true> but was: <false>
+    at io.github.bearisbug.synaxis.entity.player.ChunkSendBlockChangeIntegrationTest.aDeferredChunkStaysQueuedWhenTakingAChunkPacketThrows(ChunkSendBlockChangeIntegrationTest.java:423)
+aThreadQueuingChunksUnderTheLockOfTheNextChunkToSendIsNotDeadlocked(Env)                       0.02s  passed
+    stdout: Chunk 4,0 deferred and queued again by a PlayerChunkLoadEvent listener: queued again, after the batch the queue has 2 entries for the chunks [4,0], chunks sent {4,-1=1, 4,-2=1, 4,-3=1, 4,0=2, 4,1=1, 4,2=1, 4,3=1}
+    stdout: Column 4 but its chunk 4,-3 locked by another thread: sent in the tick of the move [4,-3], the batch waited for the locks of [4,0] and took 1177 µs, chunks sent {4,-1=1, 4,-2=1, 4,-3=1, 4,0=1, 4,1=1, 4,2=1, 4,3=1}
+    stdout: Chunks within 2 of the spawn chunk locked by another thread while joining: batches [0, 49], the first chunk packet at 29, position syncs at [23, 79]
+    stdout: Center told to the client 1,0, the client sees minecraft:gold_block in chunk 4,0
+    stdout: Chunk -1,-1: the setter waited for the chunk lock, the client sees minecraft:gold_block, the server has minecraft:gold_block; 49 chunk packets handed to the connection, 0 outside the chunk write-lock
+    stdout: Chunk 4,0 deferred, then taking the packet of chunk 4,1 threw: 1 exceptions reported in the tick of the move, after it the queue has 5 entries for the chunks [4,-1, 4,-2, 4,-3, 4,2, 4,3], chunks sent {4,-1=1, 4,-2=1, 4,-3=1, 4,2=1, 4,3=1}
+    stdout: Column 4 locked by another thread after its first chunk: the holder waited 1142 µs for the queue lock and took it true, chunks sent {4,-1=1, 4,-2=1, 4,-3=1, 4,0=1, 4,1=1, 4,2=1, 4,3=1}
+    gradle: 7 tests completed, 2 failed
+    gradle: BUILD FAILED in 10s
+
+## c193-strict: tests=7 failures=2 errors=0 skipped=0 time=1.224s timestamp=2026-10-06T15:15:06.121Z (UTC)
+aDeferredChunkQueuedAgainByAChunkLoadListenerIsSentOnce(Env)                                  1.053s  FAILED
+    message: org.opentest4j.AssertionFailedError: the entries of the queue for the chunks [4,0] after the batch of the move ==> expected: <1> but was: <2>
+    at io.github.bearisbug.synaxis.entity.player.ChunkSendBlockChangeIntegrationTest.aDeferredChunkQueuedAgainByAChunkLoadListenerIsSentOnce(ChunkSendBlockChangeIntegrationTest.java:370)
+theChunksBehindAChunkWhoseLockIsHeldAreSentAndTheBatchWaitsOnce(Env)                          0.042s  passed
+thePositionSyncOfTheFirstChunksFollowsAChunkWhenTheFirstBatchIsEmpty(Env)                     0.029s  passed
+aChunkTheClientHoldsGetsItsBlockChangesWhileTheChunkUpdateLimiterHoldsTheCenterBack(Env)      0.026s  passed
+aBlockChangedRightAfterTheChunkPacketWasTakenReachesTheClient(Env)                            0.022s  passed
+aDeferredChunkStaysQueuedWhenTakingAChunkPacketThrows(Env)                                    0.021s  FAILED
+    message: org.opentest4j.AssertionFailedError: chunk 4,0, deferred ahead of the failure, is queued after the failed batch: queued [4,-1, 4,-2, 4,-3, 4,2, 4,3] ==> expected: <true> but was: <false>
+    at io.github.bearisbug.synaxis.entity.player.ChunkSendBlockChangeIntegrationTest.aDeferredChunkStaysQueuedWhenTakingAChunkPacketThrows(ChunkSendBlockChangeIntegrationTest.java:423)
+aThreadQueuingChunksUnderTheLockOfTheNextChunkToSendIsNotDeadlocked(Env)                      0.019s  passed
+    stdout: Chunk 4,0 deferred and queued again by a PlayerChunkLoadEvent listener: queued again, after the batch the queue has 2 entries for the chunks [4,0], chunks sent {4,-1=1, 4,-2=1, 4,-3=1, 4,0=2, 4,1=1, 4,2=1, 4,3=1}
+    stdout: Column 4 but its chunk 4,-3 locked by another thread: sent in the tick of the move [4,-3], the batch waited for the locks of [4,0] and took 1435 µs, chunks sent {4,-1=1, 4,-2=1, 4,-3=1, 4,0=1, 4,1=1, 4,2=1, 4,3=1}
+    stdout: Chunks within 2 of the spawn chunk locked by another thread while joining: batches [0, 49], the first chunk packet at 29, position syncs at [23, 79]
+    stdout: Center told to the client 1,0, the client sees minecraft:gold_block in chunk 4,0
+    stdout: Chunk -1,-1: the setter waited for the chunk lock, the client sees minecraft:gold_block, the server has minecraft:gold_block; 49 chunk packets handed to the connection, 0 outside the chunk write-lock
+    stdout: Chunk 4,0 deferred, then taking the packet of chunk 4,1 threw: 1 exceptions reported in the tick of the move, after it the queue has 5 entries for the chunks [4,-1, 4,-2, 4,-3, 4,2, 4,3], chunks sent {4,-1=1, 4,-2=1, 4,-3=1, 4,2=1, 4,3=1}
+    stdout: Column 4 locked by another thread after its first chunk: the holder waited 1291 µs for the queue lock and took it true, chunks sent {4,-1=1, 4,-2=1, 4,-3=1, 4,0=1, 4,1=1, 4,2=1, 4,3=1}
+    gradle: 7 tests completed, 2 failed
+    gradle: BUILD FAILED in 6s
+
+## a6155-default: tests=7 failures=4 errors=0 skipped=0 time=1.252s timestamp=2026-10-06T15:16:59.807Z (UTC)
+aDeferredChunkQueuedAgainByAChunkLoadListenerIsSentOnce(Env)                                  1.063s  FAILED
+    message: org.opentest4j.AssertionFailedError: the listener queues chunk 4,0 again before it is sent ==> expected: <true> but was: <false>
+    at io.github.bearisbug.synaxis.entity.player.ChunkSendBlockChangeIntegrationTest.aDeferredChunkQueuedAgainByAChunkLoadListenerIsSentOnce(ChunkSendBlockChangeIntegrationTest.java:369)
+theChunksBehindAChunkWhoseLockIsHeldAreSentAndTheBatchWaitsOnce(Env)                          0.049s  FAILED
+    message: org.opentest4j.AssertionFailedError: the chunks of column 4 sent in the tick of the move ==> expected: <[4,-3]> but was: <[]>
+    at io.github.bearisbug.synaxis.entity.player.ChunkSendBlockChangeIntegrationTest.theChunksBehindAChunkWhoseLockIsHeldAreSentAndTheBatchWaitsOnce(ChunkSendBlockChangeIntegrationTest.java:281)
+thePositionSyncOfTheFirstChunksFollowsAChunkWhenTheFirstBatchIsEmpty(Env)                     0.029s  FAILED
+    message: org.opentest4j.AssertionFailedError: a position sync after the first chunk packet, at 30: position syncs at [23, 24] ==> expected: <true> but was: <false>
+    at io.github.bearisbug.synaxis.entity.player.ChunkSendBlockChangeIntegrationTest.thePositionSyncOfTheFirstChunksFollowsAChunkWhenTheFirstBatchIsEmpty(ChunkSendBlockChangeIntegrationTest.java:326)
+aChunkTheClientHoldsGetsItsBlockChangesWhileTheChunkUpdateLimiterHoldsTheCenterBack(Env)      0.029s  passed
+aBlockChangedRightAfterTheChunkPacketWasTakenReachesTheClient(Env)                            0.021s  passed
+aDeferredChunkStaysQueuedWhenTakingAChunkPacketThrows(Env)                                    0.023s  FAILED
+    message: org.opentest4j.AssertionFailedError: exceptions reported in the tick of the move: [] ==> expected: <1> but was: <0>
+    at io.github.bearisbug.synaxis.entity.player.ChunkSendBlockChangeIntegrationTest.aDeferredChunkStaysQueuedWhenTakingAChunkPacketThrows(ChunkSendBlockChangeIntegrationTest.java:422)
+aThreadQueuingChunksUnderTheLockOfTheNextChunkToSendIsNotDeadlocked(Env)                      0.024s  passed
+    stdout: Chunk 4,0 deferred and queued again by a PlayerChunkLoadEvent listener: not queued again, after the batch the queue has 7 entries for the chunks [4,-1, 4,-2, 4,-3, 4,0, 4,1, 4,2, 4,3], chunks sent {4,-1=1, 4,-2=1, 4,-3=1, 4,0=1, 4,1=1, 4,2=1, 4,3=1}
+    stdout: Column 4 but its chunk 4,-3 locked by another thread: sent in the tick of the move [], the batch waited for the locks of [4,0] and took 1251 µs, chunks sent {4,-1=1, 4,-2=1, 4,-3=1, 4,0=1, 4,1=1, 4,2=1, 4,3=1}
+    stdout: Chunks within 2 of the spawn chunk locked by another thread while joining: batches [0, 49], the first chunk packet at 30, position syncs at [23, 24]
+    stdout: Center told to the client 1,0, the client sees minecraft:gold_block in chunk 4,0
+    stdout: Chunk -1,-1: the setter waited for the chunk lock, the client sees minecraft:gold_block, the server has minecraft:gold_block; 49 chunk packets handed to the connection, 0 outside the chunk write-lock
+    stdout: Chunk 4,0 deferred, then taking the packet of chunk 4,1 threw: 0 exceptions reported in the tick of the move, after it the queue has 7 entries for the chunks [4,-1, 4,-2, 4,-3, 4,0, 4,1, 4,2, 4,3], chunks sent {4,-1=1, 4,-2=1, 4,-3=1, 4,0=1, 4,2=1, 4,3=1}
+    stdout: Column 4 locked by another thread after its first chunk: the holder waited 1370 µs for the queue lock and took it true, chunks sent {4,-1=1, 4,-2=1, 4,-3=1, 4,0=1, 4,1=1, 4,2=1, 4,3=1}
+    gradle: 7 tests completed, 4 failed
+    gradle: BUILD FAILED in 8s
+
+## a6155-strict: tests=7 failures=4 errors=0 skipped=0 time=1.167s timestamp=2026-10-06T15:17:07.225Z (UTC)
+aDeferredChunkQueuedAgainByAChunkLoadListenerIsSentOnce(Env)                                  0.988s  FAILED
+    message: org.opentest4j.AssertionFailedError: the listener queues chunk 4,0 again before it is sent ==> expected: <true> but was: <false>
+    at io.github.bearisbug.synaxis.entity.player.ChunkSendBlockChangeIntegrationTest.aDeferredChunkQueuedAgainByAChunkLoadListenerIsSentOnce(ChunkSendBlockChangeIntegrationTest.java:369)
+theChunksBehindAChunkWhoseLockIsHeldAreSentAndTheBatchWaitsOnce(Env)                          0.041s  FAILED
+    message: org.opentest4j.AssertionFailedError: the chunks of column 4 sent in the tick of the move ==> expected: <[4,-3]> but was: <[]>
+    at io.github.bearisbug.synaxis.entity.player.ChunkSendBlockChangeIntegrationTest.theChunksBehindAChunkWhoseLockIsHeldAreSentAndTheBatchWaitsOnce(ChunkSendBlockChangeIntegrationTest.java:281)
+thePositionSyncOfTheFirstChunksFollowsAChunkWhenTheFirstBatchIsEmpty(Env)                     0.027s  FAILED
+    message: org.opentest4j.AssertionFailedError: a position sync after the first chunk packet, at 30: position syncs at [23, 24] ==> expected: <true> but was: <false>
+    at io.github.bearisbug.synaxis.entity.player.ChunkSendBlockChangeIntegrationTest.thePositionSyncOfTheFirstChunksFollowsAChunkWhenTheFirstBatchIsEmpty(ChunkSendBlockChangeIntegrationTest.java:326)
+aChunkTheClientHoldsGetsItsBlockChangesWhileTheChunkUpdateLimiterHoldsTheCenterBack(Env)       0.03s  passed
+aBlockChangedRightAfterTheChunkPacketWasTakenReachesTheClient(Env)                            0.024s  passed
+aDeferredChunkStaysQueuedWhenTakingAChunkPacketThrows(Env)                                    0.021s  FAILED
+    message: org.opentest4j.AssertionFailedError: exceptions reported in the tick of the move: [] ==> expected: <1> but was: <0>
+    at io.github.bearisbug.synaxis.entity.player.ChunkSendBlockChangeIntegrationTest.aDeferredChunkStaysQueuedWhenTakingAChunkPacketThrows(ChunkSendBlockChangeIntegrationTest.java:422)
+aThreadQueuingChunksUnderTheLockOfTheNextChunkToSendIsNotDeadlocked(Env)                      0.022s  passed
+    stdout: Chunk 4,0 deferred and queued again by a PlayerChunkLoadEvent listener: not queued again, after the batch the queue has 7 entries for the chunks [4,-1, 4,-2, 4,-3, 4,0, 4,1, 4,2, 4,3], chunks sent {4,-1=1, 4,-2=1, 4,-3=1, 4,0=1, 4,1=1, 4,2=1, 4,3=1}
+    stdout: Column 4 but its chunk 4,-3 locked by another thread: sent in the tick of the move [], the batch waited for the locks of [4,0] and took 1192 µs, chunks sent {4,-1=1, 4,-2=1, 4,-3=1, 4,0=1, 4,1=1, 4,2=1, 4,3=1}
+    stdout: Chunks within 2 of the spawn chunk locked by another thread while joining: batches [0, 49], the first chunk packet at 30, position syncs at [23, 24]
+    stdout: Center told to the client 1,0, the client sees minecraft:gold_block in chunk 4,0
+    stdout: Chunk -1,-1: the setter waited for the chunk lock, the client sees minecraft:gold_block, the server has minecraft:gold_block; 49 chunk packets handed to the connection, 0 outside the chunk write-lock
+    stdout: Chunk 4,0 deferred, then taking the packet of chunk 4,1 threw: 0 exceptions reported in the tick of the move, after it the queue has 7 entries for the chunks [4,-1, 4,-2, 4,-3, 4,0, 4,1, 4,2, 4,3], chunks sent {4,-1=1, 4,-2=1, 4,-3=1, 4,0=1, 4,2=1, 4,3=1}
+    stdout: Column 4 locked by another thread after its first chunk: the holder waited 1307 µs for the queue lock and took it true, chunks sent {4,-1=1, 4,-2=1, 4,-3=1, 4,0=1, 4,1=1, 4,2=1, 4,3=1}
+    gradle: 7 tests completed, 4 failed
+    gradle: BUILD FAILED in 6s
+
+## before-default: tests=7 failures=7 errors=0 skipped=0 time=46.403s timestamp=2026-10-06T15:17:24.671Z (UTC)
+aDeferredChunkQueuedAgainByAChunkLoadListenerIsSentOnce(Env)                                 11.189s  FAILED
+    message: org.opentest4j.AssertionFailedError: the listener queues chunk 4,0 again before it is sent ==> expected: <true> but was: <false>
+    at io.github.bearisbug.synaxis.entity.player.ChunkSendBlockChangeIntegrationTest.aDeferredChunkQueuedAgainByAChunkLoadListenerIsSentOnce(ChunkSendBlockChangeIntegrationTest.java:369)
+theChunksBehindAChunkWhoseLockIsHeldAreSentAndTheBatchWaitsOnce(Env)                         10.053s  FAILED
+    message: org.opentest4j.AssertionFailedError: the chunks of column 4 sent in the tick of the move ==> expected: <[4,-3]> but was: <[4,0, 4,1, 4,-1, 4,2, 4,-2, 4,3, 4,-3]>
+    at io.github.bearisbug.synaxis.entity.player.ChunkSendBlockChangeIntegrationTest.theChunksBehindAChunkWhoseLockIsHeldAreSentAndTheBatchWaitsOnce(ChunkSendBlockChangeIntegrationTest.java:281)
+thePositionSyncOfTheFirstChunksFollowsAChunkWhenTheFirstBatchIsEmpty(Env)                    10.035s  FAILED
+    message: org.opentest4j.AssertionFailedError: the size of the first batch, its chunks locked by another thread ==> expected: <0> but was: <9>
+    at io.github.bearisbug.synaxis.entity.player.ChunkSendBlockChangeIntegrationTest.thePositionSyncOfTheFirstChunksFollowsAChunkWhenTheFirstBatchIsEmpty(ChunkSendBlockChangeIntegrationTest.java:324)
+aChunkTheClientHoldsGetsItsBlockChangesWhileTheChunkUpdateLimiterHoldsTheCenterBack(Env)      0.038s  FAILED
+    message: org.opentest4j.AssertionFailedError: the block at 65,45,1 the client sees ==> expected: <minecraft:gold_block> but was: <minecraft:air>
+    at io.github.bearisbug.synaxis.entity.player.ChunkSendBlockChangeIntegrationTest.aChunkTheClientHoldsGetsItsBlockChangesWhileTheChunkUpdateLimiterHoldsTheCenterBack(ChunkSendBlockChangeIntegrationTest.java:233)
+aBlockChangedRightAfterTheChunkPacketWasTakenReachesTheClient(Env)                            0.024s  FAILED
+    message: org.opentest4j.AssertionFailedError: the block at -15,45,-15 the client sees ==> expected: <minecraft:gold_block> but was: <minecraft:air>
+    at io.github.bearisbug.synaxis.entity.player.ChunkSendBlockChangeIntegrationTest.aBlockChangedRightAfterTheChunkPacketWasTakenReachesTheClient(ChunkSendBlockChangeIntegrationTest.java:133)
+aDeferredChunkStaysQueuedWhenTakingAChunkPacketThrows(Env)                                   10.024s  FAILED
+    message: org.opentest4j.AssertionFailedError: chunk 4,0, deferred ahead of the failure, is queued after the failed batch: queued [4,-1, 4,-2, 4,-3, 4,2, 4,3] ==> expected: <true> but was: <false>
+    at io.github.bearisbug.synaxis.entity.player.ChunkSendBlockChangeIntegrationTest.aDeferredChunkStaysQueuedWhenTakingAChunkPacketThrows(ChunkSendBlockChangeIntegrationTest.java:423)
+aThreadQueuingChunksUnderTheLockOfTheNextChunkToSendIsNotDeadlocked(Env)                       5.03s  FAILED
+    message: org.opentest4j.AssertionFailedError: the thread holding the write-locks of column 4 waited 5001 ms for the queue lock of the player sending it: a deadlock ==> expected: <true> but was: <false>
+    at io.github.bearisbug.synaxis.entity.player.ChunkSendBlockChangeIntegrationTest.aThreadQueuingChunksUnderTheLockOfTheNextChunkToSendIsNotDeadlocked(ChunkSendBlockChangeIntegrationTest.java:196)
+    stdout: The holder lets go after PT10S
+    stdout: Chunk 4,0 deferred and queued again by a PlayerChunkLoadEvent listener: not queued again, after the batch the queue has 0 entries for the chunks [], chunks sent {4,-1=1, 4,-2=1, 4,-3=1, 4,0=1, 4,1=1, 4,2=1, 4,3=1}
+    stdout: The holder lets go after PT10S
+    stdout: Column 4 but its chunk 4,-3 locked by another thread: sent in the tick of the move [4,0, 4,1, 4,-1, 4,2, 4,-2, 4,3, 4,-3], the batch waited for the locks of [4,0] and took 10001154 µs, chunks sent {4,-1=1, 4,-2=1, 4,-3=1, 4,0=1, 4,1=1, 4,2=1, 4,3=1}
+    stdout: The holder lets go after PT10S
+    stdout: Chunks within 2 of the spawn chunk locked by another thread while joining: batches [9, 40], the first chunk packet at 22, position syncs at [32, 33]
+    stdout: Center told to the client 1,0, the client sees minecraft:air in chunk 4,0
+    stdout: Chunk -1,-1: the setter changed the block before the packet was queued, the client sees minecraft:air, the server has minecraft:gold_block; 49 chunk packets handed to the connection, 49 outside the chunk write-lock
+    stdout: The holder lets go after PT10S
+    stdout: Chunk 4,0 deferred, then taking the packet of chunk 4,1 threw: 1 exceptions reported in the tick of the move, after it the queue has 5 entries for the chunks [4,-1, 4,-2, 4,-3, 4,2, 4,3], chunks sent {4,-1=1, 4,-2=1, 4,-3=1, 4,0=1, 4,2=1, 4,3=1}
+    stdout: Column 4 locked by another thread after its first chunk: the holder waited 5001367 µs for the queue lock and took it false, chunks sent {4,-1=1, 4,-2=1, 4,-3=1, 4,0=1, 4,1=1, 4,2=1, 4,3=1}
+    gradle: 7 tests completed, 7 failed
+    gradle: BUILD FAILED in 1m 2s
+
+## before-strict: tests=7 failures=7 errors=0 skipped=0 time=46.185s timestamp=2026-10-06T15:18:17.423Z (UTC)
+aDeferredChunkQueuedAgainByAChunkLoadListenerIsSentOnce(Env)                                 10.956s  FAILED
+    message: org.opentest4j.AssertionFailedError: the listener queues chunk 4,0 again before it is sent ==> expected: <true> but was: <false>
+    at io.github.bearisbug.synaxis.entity.player.ChunkSendBlockChangeIntegrationTest.aDeferredChunkQueuedAgainByAChunkLoadListenerIsSentOnce(ChunkSendBlockChangeIntegrationTest.java:369)
+theChunksBehindAChunkWhoseLockIsHeldAreSentAndTheBatchWaitsOnce(Env)                         10.058s  FAILED
+    message: org.opentest4j.AssertionFailedError: the chunks of column 4 sent in the tick of the move ==> expected: <[4,-3]> but was: <[4,0, 4,1, 4,-1, 4,2, 4,-2, 4,3, 4,-3]>
+    at io.github.bearisbug.synaxis.entity.player.ChunkSendBlockChangeIntegrationTest.theChunksBehindAChunkWhoseLockIsHeldAreSentAndTheBatchWaitsOnce(ChunkSendBlockChangeIntegrationTest.java:281)
+thePositionSyncOfTheFirstChunksFollowsAChunkWhenTheFirstBatchIsEmpty(Env)                    10.038s  FAILED
+    message: org.opentest4j.AssertionFailedError: the size of the first batch, its chunks locked by another thread ==> expected: <0> but was: <9>
+    at io.github.bearisbug.synaxis.entity.player.ChunkSendBlockChangeIntegrationTest.thePositionSyncOfTheFirstChunksFollowsAChunkWhenTheFirstBatchIsEmpty(ChunkSendBlockChangeIntegrationTest.java:324)
+aChunkTheClientHoldsGetsItsBlockChangesWhileTheChunkUpdateLimiterHoldsTheCenterBack(Env)      0.042s  FAILED
+    message: org.opentest4j.AssertionFailedError: the block at 65,45,1 the client sees ==> expected: <minecraft:gold_block> but was: <minecraft:air>
+    at io.github.bearisbug.synaxis.entity.player.ChunkSendBlockChangeIntegrationTest.aChunkTheClientHoldsGetsItsBlockChangesWhileTheChunkUpdateLimiterHoldsTheCenterBack(ChunkSendBlockChangeIntegrationTest.java:233)
+aBlockChangedRightAfterTheChunkPacketWasTakenReachesTheClient(Env)                            0.025s  FAILED
+    message: org.opentest4j.AssertionFailedError: the block at -15,45,-15 the client sees ==> expected: <minecraft:gold_block> but was: <minecraft:air>
+    at io.github.bearisbug.synaxis.entity.player.ChunkSendBlockChangeIntegrationTest.aBlockChangedRightAfterTheChunkPacketWasTakenReachesTheClient(ChunkSendBlockChangeIntegrationTest.java:133)
+aDeferredChunkStaysQueuedWhenTakingAChunkPacketThrows(Env)                                   10.023s  FAILED
+    message: org.opentest4j.AssertionFailedError: chunk 4,0, deferred ahead of the failure, is queued after the failed batch: queued [4,-1, 4,-2, 4,-3, 4,2, 4,3] ==> expected: <true> but was: <false>
+    at io.github.bearisbug.synaxis.entity.player.ChunkSendBlockChangeIntegrationTest.aDeferredChunkStaysQueuedWhenTakingAChunkPacketThrows(ChunkSendBlockChangeIntegrationTest.java:423)
+aThreadQueuingChunksUnderTheLockOfTheNextChunkToSendIsNotDeadlocked(Env)                      5.028s  FAILED
+    message: org.opentest4j.AssertionFailedError: the thread holding the write-locks of column 4 waited 5003 ms for the queue lock of the player sending it: a deadlock ==> expected: <true> but was: <false>
+    at io.github.bearisbug.synaxis.entity.player.ChunkSendBlockChangeIntegrationTest.aThreadQueuingChunksUnderTheLockOfTheNextChunkToSendIsNotDeadlocked(ChunkSendBlockChangeIntegrationTest.java:196)
+    stdout: The holder lets go after PT10S
+    stdout: Chunk 4,0 deferred and queued again by a PlayerChunkLoadEvent listener: not queued again, after the batch the queue has 0 entries for the chunks [], chunks sent {4,-1=1, 4,-2=1, 4,-3=1, 4,0=1, 4,1=1, 4,2=1, 4,3=1}
+    stdout: The holder lets go after PT10S
+    stdout: Column 4 but its chunk 4,-3 locked by another thread: sent in the tick of the move [4,0, 4,1, 4,-1, 4,2, 4,-2, 4,3, 4,-3], the batch waited for the locks of [4,0] and took 10001499 µs, chunks sent {4,-1=1, 4,-2=1, 4,-3=1, 4,0=1, 4,1=1, 4,2=1, 4,3=1}
+    stdout: The holder lets go after PT10S
+    stdout: Chunks within 2 of the spawn chunk locked by another thread while joining: batches [9, 40], the first chunk packet at 22, position syncs at [32, 33]
+    stdout: Center told to the client 1,0, the client sees minecraft:air in chunk 4,0
+    stdout: Chunk -1,-1: the setter changed the block before the packet was queued, the client sees minecraft:air, the server has minecraft:gold_block; 49 chunk packets handed to the connection, 49 outside the chunk write-lock
+    stdout: The holder lets go after PT10S
+    stdout: Chunk 4,0 deferred, then taking the packet of chunk 4,1 threw: 1 exceptions reported in the tick of the move, after it the queue has 5 entries for the chunks [4,-1, 4,-2, 4,-3, 4,2, 4,3], chunks sent {4,-1=1, 4,-2=1, 4,-3=1, 4,0=1, 4,2=1, 4,3=1}
+    stdout: Column 4 locked by another thread after its first chunk: the holder waited 5003617 µs for the queue lock and took it false, chunks sent {4,-1=1, 4,-2=1, 4,-3=1, 4,0=1, 4,1=1, 4,2=1, 4,3=1}
+    gradle: 7 tests completed, 7 failed
+    gradle: BUILD FAILED in 52s
+

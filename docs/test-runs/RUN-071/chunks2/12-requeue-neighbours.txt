@@ -1,0 +1,34 @@
+# Second review rework: neighbouring classes on 68d6b07ea2. Common header: see 00-index.txt. Lock hold 23:16:52-23:26:31 (after 11).
+# Command: TC-PROD-678 step 1 in docs/TEST.md (root five classes, default and strict grid). The :synx classes and :loadtest
+# BotSocketTest of TC-PROD-678 steps 2 and 3 were not run in this rework (see 00-index.txt). The classes of one Gradle run share one
+# JVM and run concurrently (junit-platform.properties): a stdout line of ChunkSendBlockChangeIntegrationTest can sit in the XML of
+# another class, so they are collected from all five XMLs of the run, sorted. In the strict run the line of
+# aDeferredChunkStaysQueuedWhenTakingAChunkPacketThrows is in none of the five XMLs; the test passed (7 of 7).
+
+## nb-default ChunkQueueBoundIntegrationTest: tests=6 failures=0 errors=0 skipped=0 time=3.363s timestamp=2026-10-06T15:26:13.053Z (UTC)
+## nb-default ChunkSendBlockChangeIntegrationTest: tests=7 failures=0 errors=0 skipped=0 time=2.791s timestamp=2026-10-06T15:26:13.053Z (UTC)
+## nb-default ChunkSendCapTest: tests=2 failures=0 errors=0 skipped=0 time=2.663s timestamp=2026-10-06T15:26:13.053Z (UTC)
+## nb-default ChunkViewerIntegrationTest: tests=4 failures=0 errors=0 skipped=0 time=3.228s timestamp=2026-10-06T15:26:13.053Z (UTC)
+## nb-default EntityTrackerIntegrationTest: tests=3 failures=0 errors=0 skipped=0 time=3.228s timestamp=2026-10-06T15:26:13.052Z (UTC)
+    stdout (ChunkSendBlockChangeIntegrationTest): Center told to the client 1,0, the client sees minecraft:gold_block in chunk 4,0
+    stdout (ChunkSendBlockChangeIntegrationTest): Chunk -1,-1: the setter waited for the chunk lock, the client sees minecraft:gold_block, the server has minecraft:gold_block; 49 chunk packets handed to the connection, 0 outside the chunk write-lock
+    stdout (ChunkSendBlockChangeIntegrationTest): Chunk 4,0 deferred and queued again by a PlayerChunkLoadEvent listener: queued again, after the batch the queue has 1 entries for the chunks [4,0], chunks sent {4,-1=1, 4,-2=1, 4,-3=1, 4,0=1, 4,1=1, 4,2=1, 4,3=1}
+    stdout (ChunkSendBlockChangeIntegrationTest): Chunk 4,0 deferred, then taking the packet of chunk 4,1 threw: 1 exceptions reported in the tick of the move, after it the queue has 6 entries for the chunks [4,-1, 4,-2, 4,-3, 4,0, 4,2, 4,3], chunks sent {4,-1=1, 4,-2=1, 4,-3=1, 4,0=1, 4,2=1, 4,3=1}
+    stdout (ChunkSendBlockChangeIntegrationTest): Chunks within 2 of the spawn chunk locked by another thread while joining: batches [0, 49], the first chunk packet at 29, position syncs at [23, 79]
+    stdout (ChunkSendBlockChangeIntegrationTest): Column 4 but its chunk 4,-3 locked by another thread: sent in the tick of the move [4,-3], the batch waited for the locks of [4,0] and took 2502 µs, chunks sent {4,-1=1, 4,-2=1, 4,-3=1, 4,0=1, 4,1=1, 4,2=1, 4,3=1}
+    stdout (ChunkSendBlockChangeIntegrationTest): Column 4 locked by another thread after its first chunk: the holder waited 2476 µs for the queue lock and took it true, chunks sent {4,-1=1, 4,-2=1, 4,-3=1, 4,0=1, 4,1=1, 4,2=1, 4,3=1}
+    gradle: BUILD SUCCESSFUL in 15s
+
+## nb-strict ChunkQueueBoundIntegrationTest: tests=6 failures=0 errors=0 skipped=0 time=3.032s timestamp=2026-10-06T15:26:27.645Z (UTC)
+## nb-strict ChunkSendBlockChangeIntegrationTest: tests=7 failures=0 errors=0 skipped=0 time=2.843s timestamp=2026-10-06T15:26:27.645Z (UTC)
+## nb-strict ChunkSendCapTest: tests=2 failures=0 errors=0 skipped=0 time=2.372s timestamp=2026-10-06T15:26:27.645Z (UTC)
+## nb-strict ChunkViewerIntegrationTest: tests=4 failures=0 errors=0 skipped=0 time=2.774s timestamp=2026-10-06T15:26:27.645Z (UTC)
+## nb-strict EntityTrackerIntegrationTest: tests=3 failures=0 errors=0 skipped=0 time=3.107s timestamp=2026-10-06T15:26:27.645Z (UTC)
+    stdout (ChunkSendBlockChangeIntegrationTest): Center told to the client 1,0, the client sees minecraft:gold_block in chunk 4,0
+    stdout (ChunkSendBlockChangeIntegrationTest): Chunk -1,-1: the setter waited for the chunk lock, the client sees minecraft:gold_block, the server has minecraft:gold_block; 49 chunk packets handed to the connection, 0 outside the chunk write-lock
+    stdout (ChunkSendBlockChangeIntegrationTest): Chunk 4,0 deferred and queued again by a PlayerChunkLoadEvent listener: queued again, after the batch the queue has 1 entries for the chunks [4,0], chunks sent {4,-1=1, 4,-2=1, 4,-3=1, 4,0=1, 4,1=1, 4,2=1, 4,3=1}
+    stdout (ChunkSendBlockChangeIntegrationTest): Chunks within 2 of the spawn chunk locked by another thread while joining: batches [0, 49], the first chunk packet at 29, position syncs at [23, 79]
+    stdout (ChunkSendBlockChangeIntegrationTest): Column 4 but its chunk 4,-3 locked by another thread: sent in the tick of the move [4,-3], the batch waited for the locks of [4,0] and took 1388 µs, chunks sent {4,-1=1, 4,-2=1, 4,-3=1, 4,0=1, 4,1=1, 4,2=1, 4,3=1}
+    stdout (ChunkSendBlockChangeIntegrationTest): Column 4 locked by another thread after its first chunk: the holder waited 1762 µs for the queue lock and took it true, chunks sent {4,-1=1, 4,-2=1, 4,-3=1, 4,0=1, 4,1=1, 4,2=1, 4,3=1}
+    gradle: BUILD SUCCESSFUL in 13s
+

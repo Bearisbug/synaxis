@@ -1,0 +1,101 @@
+RUN-071 gate: the full gate of the integration branch prod/integrate-071 at d9dd575019 (main 8b18922130 with
+prod/r071-ops 2912b966d7, prod/r071-authority 0ade4fefc7, prod/r071-chunks 13e300e3ba and prod/r071-upstream be85b7d947
+merged in that order with --no-ff as dcf16b9694, d33fac8b12, a50c65ea48 and 0af3a1e3d2, then the docs commit d9dd575019;
+docs/DESIGN-PROD.md v0.9.52 to v0.9.56), run on GitHub Actions for draft PR #9. The four groups' own cases, red runs and
+counter proofs are in ../ops, ../authority2, ../chunks2 and ../upstream.
+
+本机只跑单个测试类，全量在 GitHub Actions。
+On this machine for the gate: one compile of every module (compileJava, compileTestJava, under the shared heavy lock, BUILD
+SUCCESSFUL in 32 s), no tests, no containers, no server process; otherwise only gh, git and the counting below.
+
+Runs (all on d9dd575019, event pull_request unless noted; times UTC 2026-10-06)
+  CI 37490737766                              success  15:49:30-16:11:19
+    Check                                     success  15:49:34-16:11:18  ./gradlew check jacocoTestReport (ci.yml, unchanged by
+                                                                          the four groups), database variables set (PostgreSQL and
+                                                                          Valkey services); "Check that the player store tests ran
+                                                                          against the database" success, server-app skipped="0";
+                                                                          ABI gate of the stable surface success; diff-cover of
+                                                                          newly added lines success
+    Test with 4 tick threads (strict)         success  15:49:34-16:09:59  4 tick threads, acquirable strict, database set
+    Test with 4 tick threads (strict, grid)   success  15:49:34-16:07:09  the same plus the grid thread provider
+  Concurrency 37490737630                     success  15:49:30-15:53:40
+    jcstress                                  success
+  Client mod 37490737577                      success  15:49:30-15:51:34
+    Build the Fabric mod                      success                     client-test-reports: 15 classes 184 tests,
+                                                                          0 failures 0 errors 0 skipped
+  Client gametest 37490737591                 success  15:49:30-15:56:04
+    Run the client gametests                  success  15:49:33-15:56:03  R1-R8 PASS; R8 "screen: Connection Lost. The server
+                                                                          rejected a message from this connection as ..."
+    Two shards, 100 round trips (P10)         skipped (only on workflow_dispatch with p10=true)
+  Client gametest 37490756251 (workflow_dispatch, client-gametest.yml, p10=true, ref prod/integrate-071)
+                                              success  15:49:38-16:15:02
+    Two shards, 100 round trips (P10)         success  15:49:43-16:15:02
+    Run the client gametests                  skipped
+  No job was rerun; no attempt 2.
+
+P10 judge step ("Judge P10 by the driver's record, the ledgers and the client's report"), its output:
+  ok   the driver ran to the end
+  ok   200 of 200 transfers answered sent, expected 200 of 200
+  ok   200 transfers arrived on their target shard, expected 200
+  ok   character.version read 201 times, expected 201, larger after every transfer: True ([0] .. [200])
+  ok   transfer_issued {'r0-c1': 100, 'r0-c2': 100}, 200 in all, expected 200
+  ok   the client joined 201 worlds, expected 201
+  ok   the client's joins alternate between two shards: ['25611', '25612']
+  ok   the client's report ends with ['end done']
+  P10: all checks passed
+  The last line of the step is "P10: all checks passed". The shard directory came from "p10.py shards ... --out
+  maps/p10/shards.json" of this branch (the 0644 of TC-PROD-660).
+
+Counts: artifacts test-reports (Check, id 11425769893), test-reports-multithreaded (strict, 11426616006) and
+test-reports-multithreaded-grid (strict grid, 11426925268) of run 37490737766, fetched with gh api .../actions/artifacts/<id>/zip
+(gh run download stops on two report HTML files whose names differ only in case on this file system), only the
+*build/test-results/ entries extracted. One row per module directory that holds build/test-results (":" is the root project);
+classes = TEST-*.xml testsuites; tests, fail, err, skip = sums of the testsuite attributes.
+
+  [test-reports]
+  module                 classes  tests  fail  err  skip
+  :                          438   3213     0    0    21
+  :architecture-tests          7     20     0    0     0
+  :baker                       8     76     0    0     0
+  :game-rts                   13     87     0    0     0
+  :loadtest                    6     26     0    0     0
+  :plugin-api                  3     15     0    0     0
+  :protocol                    7    122     0    0     0
+  :server-app                117    592     0    0     0
+  :synx                       17    142     0    0     0
+  :testing                     8     11     0    0     0
+  TOTAL                      624   4304     0    0    21
+
+  [test-reports-multithreaded] and [test-reports-multithreaded-grid]: every row the same as [test-reports].
+
+  Against RUN-070 (test-reports of run 37419616421: 616 classes 4,267; root 432 / 3,182, server-app 115 / 586) 8 classes and
+  37 tests more, per class from the two sets of XML:
+    root        new  DisconnectFlushSocketTest 2 (ops), PlayerVehicleMoveAuthorityIntegrationTest 3 (authority2),
+                     ChunkSendBlockChangeIntegrationTest 7 (chunks), PacketVanillaLayoutTest 6,
+                     ComponentHoverItemRegistriesTest 5, ModuleExportsTest 1 (upstream)
+                changed (upstream)  PlayerInventoryIntegrationTest 7 -> 9, ArchitectureTest 7 -> 8,
+                     TestNbtComponentSerializer 2 -> 3, NonLivingEquipmentIntegrationTest 2 -> 3,
+                     WorldBorderIntegrationTest 5 -> 6, PacketWriteReadRegistriesTest 469 -> 470
+    server-app  new  ShardMainGateTest 3, ShardGateLaunchTest 2; changed CoreModeIntegrationTest 3 -> 4 (authority2)
+  These are the test classes git diff origin/main --stat adds and changes; InventoryIntegrationTest (changed by upstream) keeps
+  its 16. client-fabric/gametest-env/test_p10.py (ops) is a Python unittest the Gradle runs do not hold.
+  The 21 skipped of the root project are the 15 of a local run (TestMojangUtils 9, TranslationIntegrationTest 3,
+  PlayerSkinTest 2, TagNbtTest 1) and ServerProcessTest 3 and ServerAddressTest 3, which assumeTrue(GITHUB_ACTIONS == null).
+  By package (root, the same in all three modes): entity.* 77 classes 300 tests 2 skipped, entity.player.* 16 / 89,
+  network.* 69 / 892 (3 skipped, ServerAddressTest).
+
+EnvDispatcherThreadsIntegrationTest (testing module) output in each artifact:
+  test-reports                     env dispatcher threads: 1, env thread provider: counter
+  test-reports-multithreaded       env dispatcher threads: 4, env thread provider: counter
+  test-reports-multithreaded-grid  env dispatcher threads: 4, env thread provider: grid
+
+Read only on the merged tree: the CLOSE_OUT of TC-PROD-664 (grep and sed, no Gradle) prints ok for its 17 code lines, Player.java:398
+among them, and for the three commits, then "已决", "已完成：…", "已决（`docs/DESIGN-M3.md` §28.2" and 1.
+
+Not run: TC-PROD-575 step 3, the two full :server-app:test runs without the database variables (every CI job sets them);
+TC-PROD-548 step 7 (Main.java:271 after authority2's two lines), which needs two shard server processes and the database.
+The chunks group's residual (DESIGN-PROD §28.2: TestConnection serialises under the chunk write-lock, a full run could hang)
+did not show: the three test jobs took 17.6 (strict grid), 20.4 (strict) and 21.7 (Check) minutes; RUN-070's took 16.5, 19.5
+and 14.6.
+Cleanup: /tmp/run071 (artifact zips, extracted XML, the P10 and gametest logs, the counting scripts) and /tmp/integrate-071
+(merge scratch files, the compile log) deleted at the end.

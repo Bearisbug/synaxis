@@ -22,4 +22,13 @@ public interface OverlayTracker {
      * monitor, on any thread, and not the chunk's lock.
      */
     void unloaded(OverlayChunk chunk);
+
+    /**
+     * Whether the store has written as many bytes as it may ({@code docs/DESIGN-M3.md} {@code API-M3-007}
+     * 磁盘上限, M3-S): while it has, every chunk is read only to players and plugins, the world state
+     * flags still apply. Any thread.
+     */
+    default boolean full() {
+        return false;
+    }
 }

@@ -12,7 +12,9 @@ package io.github.bearisbug.synaxis.synx;
  * @param flushLagSMax     the longest a dirty chunk waited to be written, since the last call; reading clears it
  * @param writePhaseMsMax  the longest write phase, since the last call; reading clears it
  * @param records          records in the index, current
+ * @param writtenBytes     {@code overlay_bytes}: what the segment files hold written, current (M3-S)
+ * @param full             {@code overlay_full}: {@code writtenBytes} reached {@code synaxis.overlay.max-bytes}, current
  */
 public record OverlayStats(int resident, long evicted, long evictFailed, long flushAppended, long flushFsyncs,
-                           double flushLagSMax, double writePhaseMsMax, long records) {
+                           double flushLagSMax, double writePhaseMsMax, long records, long writtenBytes, boolean full) {
 }

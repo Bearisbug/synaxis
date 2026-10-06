@@ -361,4 +361,51 @@ public class SynxOverlayCombinedIntegrationTest {
             assertEquals(Block.GOLD_BLOCK.stateId(), stateIn(hit, blockX(x), Y, blockZ(cz)));
         }
     }
+
+    /**
+     * §19 「覆盖层写到磁盘上限后改方块被拒、标志照常」 (M3-S, {@code API-M3-007} 磁盘上限): once the segment
+     * files hold {@code synaxis.overlay.max-bytes}, here 65,536, a change to a handle chunk and one to an
+     * overlay chunk are left out, nothing changed and nothing dirty; a world state flag changes a third
+     * chunk, which is written as before. One ERROR when the store turns full.
+     */
+    @Test
+    public void aFullStoreRefusesChangesButNotTheWorldStateFlags(Env env, @TempDir Path dir) throws Exception {
+        final World world = new World(env, dir, new OverlayOptions(16_384, 10, 65_536));
+        final int z = 12;
+        try (LogCapture logs = LogCapture.of(OverlayStore.class)) {
+            // Chunks of rows 12, 14 and 16 written one after the other until the store is full; row 13 is left for the rest
+            SynxChunk last = null;
+            for (int i = 0; i < 90 && !world.store.full(); i++) {
+                final int x = 1 + i % 30, row = z + 2 * (i / 30);
+                last = world.load(x, row);
+                world.instance.setBlock(blockX(x), Y, blockZ(row), Block.GOLD_BLOCK);
+                world.flushAll(List.of(last));
+            }
+            assertNotNull(last);
+            final SynxChunk handle = world.load(5, z + 1);
+            final SynxChunk overlay = last;
+            final long generation = overlay.generation();
+            world.instance.setBlock(blockX(5), Y, blockZ(z + 1), Block.DIAMOND_BLOCK);
+            world.instance.setBlock(blockX(overlay.chunkX()) + 1, Y, blockZ(overlay.chunkZ()), Block.DIAMOND_BLOCK);
+            assertEquals(SynxChunk.Mode.HANDLE, handle.mode(), "the handle chunk did not change");
+            assertNotEquals(Block.DIAMOND_BLOCK, world.instance.getBlock(blockX(5), Y, blockZ(z + 1)));
+            assertNotEquals(Block.DIAMOND_BLOCK, world.instance.getBlock(blockX(overlay.chunkX()) + 1, Y, blockZ(overlay.chunkZ())));
+            assertEquals(generation, overlay.generation(), "the overlay chunk did not change");
+            assertTrue(!handle.dirty() && !overlay.dirty(), "nothing to write");
+
+            final OverlayStats full = world.store.stats();
+            assertTrue(full.full() && full.writtenBytes() >= 65_536, full.toString());
+            final SynxChunk flagged = world.load(6, z + 1);
+            SynxChunk.asWorldFlag(() -> world.instance.setBlock(blockX(6), Y, blockZ(z + 1), Block.EMERALD_BLOCK));
+            assertEquals(Block.EMERALD_BLOCK, world.instance.getBlock(blockX(6), Y, blockZ(z + 1)), "the flag applies");
+            assertTrue(flagged.dirty());
+            world.flushAll(List.of(flagged));
+            final OverlayHit written = world.store.find(6, z + 1);
+            assertNotNull(written, "the flag's chunk is written");
+            assertEquals(flagged.generation(), written.generation());
+            assertTrue(world.store.stats().writtenBytes() > full.writtenBytes(), "the bytes written still grow");
+            assertEquals(1, logs.messagesAt(Level.ERROR).stream().filter(line -> line.startsWith("Overlay store full: "))
+                    .count(), logs.messagesAt(Level.ERROR).toString());
+        }
+    }
 }

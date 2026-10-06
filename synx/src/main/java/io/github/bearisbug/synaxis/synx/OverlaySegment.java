@@ -146,6 +146,8 @@ final class OverlaySegment {
             sink.record(segment, offset, mapping.get(LONG, offset + 8), segment.present(offset));
             offset = align(offset + RECORD_HEADER_BYTES + length);
         }
+        // Sealed: what counts is where its records end, not the length of the sparse file
+        segment.position = offset;
         return segment;
     }
 
@@ -170,6 +172,14 @@ final class OverlaySegment {
 
     private static long align(long offset) {
         return (offset + SynxFormat.RECORD_ALIGNMENT - 1) & -SynxFormat.RECORD_ALIGNMENT;
+    }
+
+    /**
+     * Where the segment is written to: the end of its last record, 8 byte aligned, the header counted;
+     * for the segment taking records the position the next one goes to ({@code overlay_bytes}, M3-S).
+     */
+    long written() {
+        return position;
     }
 
     /** Whether a record of {@code length} bytes still fits behind the last one. */

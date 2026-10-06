@@ -66,8 +66,24 @@ public class ShardMainTest {
 
     @Test
     void aShardMountingAMapServesTheCoreMode() {
-        assertEquals(Map.of("synaxis.app.core-mode", "on"),
+        assertEquals(Map.of("synaxis.app.core-mode", "on", "synaxis.world-writable", "false"),
                 ShardMain.mapDefaults(Map.of("synaxis.map.root", "maps", "synaxis.map.build", "b")::get));
+    }
+
+    /**
+     * §19 「挂地图分片默认不能改地形」 (M3-S, {@code REQ-M3-029}): a map shard does not take the players'
+     * changes to its terrain unless the command line says it does; the two defaults are judged each on its own.
+     */
+    @Test
+    void aShardMountingAMapIsNotWritableUnlessTheCommandLineSaysSo() {
+        final Map<String, String> map = Map.of("synaxis.map.root", "maps", "synaxis.map.build", "b");
+        assertEquals(Map.of("synaxis.app.core-mode", "on", "synaxis.world-writable", "false"),
+                ShardMain.mapDefaults(map::get));
+        assertEquals(Map.of("synaxis.app.core-mode", "on"), ShardMain.mapDefaults(Map.of("synaxis.map.root", "maps",
+                "synaxis.map.build", "b", "synaxis.world-writable", "true")::get), "the command line wins");
+        assertEquals(Map.of("synaxis.world-writable", "false"), ShardMain.mapDefaults(Map.of("synaxis.map.root", "maps",
+                "synaxis.map.build", "b", "synaxis.app.core-mode", "on")::get), "a core mode given leaves the terrain");
+        assertEquals(Map.of(), ShardMain.mapDefaults(Map.<String, String>of()::get), "no map");
     }
 
     /** Without both map keys nothing is written; a core mode on the command line wins, and Main refuses it. */
@@ -75,8 +91,8 @@ public class ShardMainTest {
     void aShardWithoutAMapOrWithACoreModeKeepsItsCoreMode() {
         assertEquals(Map.of(), ShardMain.mapDefaults(Map.<String, String>of()::get));
         assertEquals(Map.of(), ShardMain.mapDefaults(Map.of("synaxis.map.build", "b")::get));
-        assertEquals(Map.of(), ShardMain.mapDefaults(Map.of("synaxis.map.root", "maps", "synaxis.map.build", "b",
-                "synaxis.app.core-mode", "auto")::get));
+        assertEquals(Map.of("synaxis.world-writable", "false"), ShardMain.mapDefaults(Map.of("synaxis.map.root", "maps",
+                "synaxis.map.build", "b", "synaxis.app.core-mode", "auto")::get));
     }
 
     @Test

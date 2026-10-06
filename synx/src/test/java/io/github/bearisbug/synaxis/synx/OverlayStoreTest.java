@@ -862,4 +862,76 @@ public class OverlayStoreTest {
         if (failure.get() != null) throw new AssertionError(failure.get());
         assertEquals(200, generation(store, chunk));
     }
+
+    // ---- The disk cap (M3-S, API-M3-007 磁盘上限): records of FakeChunk are 600 bytes with their header
+
+    private static final int RECORD = 600;
+    private static final int HEADER = SynxFormat.HEADER_BYTES;
+
+    private OverlayStore openCapped(long maxBytes, int segmentRecords) throws Exception {
+        return OverlayStore.open(root, manifest, OverlayFixture.settings(), new OverlayOptions(16_384, 10, maxBytes),
+                OverlayFixture.tuning(1, segmentRecords, clock, disk));
+    }
+
+    /** The chunks changed and due, then one write phase. */
+    private void writeOnce(OverlayStore store, List<FakeChunk> chunks) {
+        chunks.forEach(FakeChunk::change);
+        clock.advance(Duration.ofSeconds(10));
+        store.tickEnd();
+    }
+
+    /**
+     * {@code overlay_bytes} are what the segment files hold written, the header and the records, not the
+     * length of the sparse file a segment is made at.
+     */
+    @Test
+    public void theBytesWrittenAreWhatTheSegmentsHoldNotTheirSparseLength() throws Exception {
+        final OverlayStore store = openCapped(1L << 30, 4);
+        assertEquals(0, store.stats().writtenBytes(), "no segment yet");
+        writeOnce(store, OverlayFixture.chunks(store, 0, 4));
+        final OverlayStats stats = store.stats();
+        assertEquals(HEADER + 4L * RECORD, stats.writtenBytes());
+        assertFalse(stats.full());
+        assertEquals(1L << 20, Files.size(OverlayFixture.segment(root, manifest, 0)), "the file at its made length, sparse");
+    }
+
+    /** §19 「整理之后降回上限以下即恢复可写」. */
+    @Test
+    public void compactionBelowTheCapMakesTheStoreWritableAgain() throws Exception {
+        final long cap = 2L * HEADER + 7L * RECORD;
+        final OverlayStore store = openCapped(cap, 4);
+        final List<FakeChunk> chunks = OverlayFixture.chunks(store, 0, 4);
+        try (LogCapture log = LogCapture.of(OverlayStore.class)) {
+            writeOnce(store, chunks);
+            assertFalse(store.full(), "segment 0 sealed with four records");
+            writeOnce(store, chunks.subList(0, 3));
+            assertTrue(store.full(), "three of them again in segment 1: the cap");
+            assertEquals(cap, store.stats().writtenBytes());
+            store.tickEnd();
+            assertFalse(Files.exists(OverlayFixture.segment(root, manifest, 0)), "the fourth copied, segment 0 unlinked");
+            assertEquals(HEADER + 4L * RECORD, store.stats().writtenBytes());
+            assertFalse(store.full(), "below the cap again");
+            assertEquals(List.of("Overlay store no longer full: " + (HEADER + 4L * RECORD) + " of " + cap + " bytes written for "
+                    + manifest.buildId() + ", changes to the map are taken again"), log.messagesAt(Level.INFO).stream()
+                    .filter(line -> line.startsWith("Overlay store no longer full")).toList());
+            assertEquals(1, log.messagesAt(Level.ERROR).size(), log.messagesAt(Level.ERROR).toString());
+        }
+    }
+
+    /** §19 「起服时覆盖层已超上限」: about 80 KiB of records under a cap of 65,536 bytes. */
+    @Test
+    public void aStoreOverItsCapAtStartUpOpensFull() throws Exception {
+        final OverlayStore first = openCapped(1L << 30, OverlayTuning.SEGMENT_RECORDS);
+        writeOnce(first, OverlayFixture.chunks(first, 0, 136));
+        first.finalFlush(Duration.ofSeconds(2), false).get(5, TimeUnit.SECONDS);
+        final long written = HEADER + 136L * RECORD;
+        try (LogCapture log = LogCapture.of(OverlayStore.class)) {
+            final OverlayStore reopened = openCapped(65_536, OverlayTuning.SEGMENT_RECORDS);
+            assertEquals(136, reopened.stats().records(), "the index is rebuilt as ever");
+            assertTrue(reopened.full(), "full from the start, not refused");
+            assertEquals(written, reopened.stats().writtenBytes());
+            assertEquals(List.of("Overlay store full: " + written + " of 65536 bytes written for " + manifest.buildId()
+                    + ", changes to the map are refused"), log.messagesAt(Level.ERROR));
+        }
+    }
 }

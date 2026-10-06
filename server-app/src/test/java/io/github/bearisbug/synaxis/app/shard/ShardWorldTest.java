@@ -306,14 +306,15 @@ public class ShardWorldTest {
         final Map<String, Object> event = ShardWorld.streamStats(
                 new SynxStreamStats(10, 1, 1_000, 0, 50, 5, 100, 2, 4_000),
                 new SynxStreamStats(25, 3, 2_500, 1, 70, 9, 300, 2, 4_000),
-                new OverlayStats(3, 1, 0, 10, 4, 1.5, 2.0, 7),
-                new OverlayStats(5, 2, 1, 16, 6, 3.5, 4.0, 11),
-                new RelightStats(0, 0, 0, 0, 0, 0, 0, 0, 0), new RelightStats(0, 0, 0, 0, 0, 0, 0, 0, 0));
+                new OverlayStats(3, 1, 0, 10, 4, 1.5, 2.0, 7, 40_000, false),
+                new OverlayStats(5, 2, 1, 16, 6, 3.5, 4.0, 11, 70_000, true),
+                new RelightStats(0, 0, 0, 0, 0, 0, 0, 0, 0), new RelightStats(0, 0, 0, 0, 0, 0, 0, 0, 0), 3);
         assertEquals(List.of("handle_sent", "overlay_sent", "bytes_sent", "failed", "loaded", "overlay_resident",
                 "overlay_evicted", "evict_failed", "flush_appended", "flush_fsyncs", "flush_lag_s_max",
                 "write_phase_ms_max", "relight_queue_p99_ms", "relight_ms_p99", "relights", "relight_skipped",
                 "light_materialized", "light_packets", "light_sections", "relight_install_ms_max", "relight_pending",
-                "unloaded", "section_cache_bytes", "flag_conflicts"), List.copyOf(event.keySet()));
+                "unloaded", "section_cache_bytes", "flag_conflicts", "void_chunks", "overlay_bytes", "overlay_full"),
+                List.copyOf(event.keySet()));
         assertEquals(15L, event.get("handle_sent"));
         assertEquals(2L, event.get("overlay_sent"));
         assertEquals(1_500L, event.get("bytes_sent"));
@@ -329,6 +330,9 @@ public class ShardWorldTest {
         assertEquals(4L, event.get("unloaded"));
         assertEquals(300L, event.get("section_cache_bytes"));
         assertEquals(0, event.get("flag_conflicts"));
+        assertEquals(3L, event.get("void_chunks"), "the difference the statistics task hands in");
+        assertEquals(70_000L, event.get("overlay_bytes"), "the bytes written as read");
+        assertEquals(true, event.get("overlay_full"));
     }
 
     /**

@@ -116,6 +116,8 @@ public final class ShardWorld {
     private @Nullable RelightStats lastRelight;
     private @Nullable SynxRelight relight;
     private long lastFlagConflicts;
+    private @Nullable ShardInstance instance;
+    private long lastVoidChunks;
 
     /**
      * The map instance and where a player spawns in it.
@@ -577,7 +579,10 @@ public final class ShardWorld {
         this.loader = loader;
         this.flags = flags;
 
-        final InstanceContainer instance = process.instance().createInstanceContainer(dimensionType, loader);
+        // Built as createInstanceContainer builds one, counting the chunks asked for outside view_bounds (M3-S)
+        final ShardInstance instance = new ShardInstance(process, dimensionType, loader, viewBounds(bounds));
+        process.instance().registerInstance(instance);
+        this.instance = instance;
         instance.setSimulationDistance(settings.simulationDistance());
         instance.setChunkUnloadGraceTicks(settings.chunkUnloadGraceTicks());
         final SynxRelight relight = relightExecutor == null ? loader.startRelight(instance)
@@ -588,10 +593,14 @@ public final class ShardWorld {
         if (flags != null) flags.replay(instance);
         instance.setWorldBorder(worldBorder(bounds));
         if (bounds.maxX() - bounds.minX() != bounds.maxZ() - bounds.minZ()) {
-            LOGGER.warn("The bounds {} of {} are not square: the world border covers the long side, a player can walk "
-                    + "into the read only chunks past the short one", bounds, manifest.buildId());
+            LOGGER.warn("The bounds {} of {} are not square: the world border covers the long side, players walk past the "
+                    + "short one until the border turns them back", bounds, manifest.buildId());
         }
         final Pos spawn = spawn(verified, bounds);
+        if (synxOptions.worldWritable()) {
+            LOGGER.warn("Map {} is writable ({}=true): players' digging and placing go into the overlay", manifest.buildId(),
+                    SynxOptions.WORLD_WRITABLE);
+        }
 
         // One task at the end of the tick: the light first, whose installs make chunks dirty, then the write phase
         scheduleWritePhase(process, () -> {
@@ -606,6 +615,7 @@ public final class ShardWorld {
         this.lastOverlay = overlay.stats();
         this.lastRelight = relight.stats();
         this.lastFlagConflicts = flags == null ? 0 : flags.stats().conflicts();
+        this.lastVoidChunks = instance.voidChunks();
         process.scheduler().buildTask(() -> recordStreamStats(events))
                 .delay(STATS_INTERVAL).repeat(STATS_INTERVAL).schedule();
         LOGGER.info("Map mounted: build_id={} simulation_distance={} chunk_unload_grace_ticks={} spawn={} overlay={}",
@@ -670,6 +680,7 @@ public final class ShardWorld {
         attributes.put("region_id", channel == null ? null : channel.regionId());
         attributes.put("capacity", channel == null ? null : channel.capacity());
         attributes.put("farview_tiles", farViewTiles);
+        attributes.put("world_writable", synxOptions.worldWritable());
         return attributes;
     }
 
@@ -680,16 +691,19 @@ public final class ShardWorld {
         final OverlayStats lastOverlay = this.lastOverlay;
         final SynxRelight relight = this.relight;
         final RelightStats lastRelight = this.lastRelight;
+        final ShardInstance instance = this.instance;
         if (loader == null || overlay == null || lastStream == null || lastOverlay == null || relight == null
-                || lastRelight == null) return;
+                || lastRelight == null || instance == null) return;
         final SynxStreamStats stream = loader.stats();
         final OverlayStats overlayStats = overlay.stats();
         final RelightStats relightStats = relight.stats();
         this.lastStream = stream;
         this.lastOverlay = overlayStats;
         this.lastRelight = relightStats;
+        final long voidChunks = instance.voidChunks();
         final Map<String, Object> attributes = streamStats(lastStream, stream, lastOverlay, overlayStats, lastRelight,
-                relightStats);
+                relightStats, voidChunks - lastVoidChunks);
+        this.lastVoidChunks = voidChunks;
         final WorldFlagsImpl flags = this.flags;
         if (flags != null) {
             final long conflicts = flags.stats().conflicts();
@@ -702,9 +716,12 @@ public final class ShardWorld {
     /**
      * {@code EVT:chunk_stream_stats} ({@code docs/DESIGN-M3.md} §20): the counters as the difference
      * of two readings, the current values and the window maxima as read.
+     *
+     * @param voidChunks the requests for a chunk outside {@code view_bounds} between the two readings (M3-S)
      */
     static Map<String, Object> streamStats(SynxStreamStats before, SynxStreamStats now, OverlayStats overlayBefore,
-                                           OverlayStats overlayNow, RelightStats relightBefore, RelightStats relightNow) {
+                                           OverlayStats overlayNow, RelightStats relightBefore, RelightStats relightNow,
+                                           long voidChunks) {
         final Map<String, Object> attributes = new LinkedHashMap<>();
         attributes.put("handle_sent", now.handleSent() - before.handleSent());
         attributes.put("overlay_sent", now.overlaySent() - before.overlaySent());
@@ -731,6 +748,9 @@ public final class ShardWorld {
         attributes.put("section_cache_bytes", now.sectionCacheBytes());
         // Without world state flags; the statistics task puts the difference of theirs in its place
         attributes.put("flag_conflicts", 0);
+        attributes.put("void_chunks", voidChunks);
+        attributes.put("overlay_bytes", overlayNow.writtenBytes());
+        attributes.put("overlay_full", overlayNow.full());
         return attributes;
     }
 

@@ -1,0 +1,122 @@
+RUN-070 authority · 11 the review's second round of non-blocking points: red, green and counter proofs of the Bot, BotStallTest
+and the movement test
+
+Lock run 4, 13:13:18-13:18:41 (run1.zsh in 12), owner "生产就绪会话/authority-nits pid=33941"; resources before taking it: memory
+free 45%, load1 17.14 (12 cores).
+Commands: ./gradlew <project>:test --rerun --tests '<class or case>' --max-workers=2 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts
+          strict grid adds -Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true -Dsynaxis.thread-provider=grid
+Code under test: the working tree that became 2c0dd32cee (on c0499f898c); after the run the four changed files were compared with
+the commit byte for byte (equal), so the line numbers below are those of 2c0dd32cee.
+pre/<file>   = the file of c0499f898c (Bot.java, BotStallTest.java, PlayerMovementAuthorityIntegrationTest.java)
+fix/<file>   = the file of 2c0dd32cee, put back after each variant
+variant      = one change made by variant.py in 12; the line printed is where it went:
+  pause      = " LockSupport.parkNanos(TimeUnit.MILLISECONDS.toNanos(200));" appended to the line that sends the
+               ClientConfigurationAckPacket: on the Bot of c0499f898c between the ack and the switch of state, on the fix
+               inside the synchronized (writeLock) block
+  reset      = the line "serverPosition = new double[]{teleport.position().x(), ...};" of Bot#answer deleted
+  bot        = TC-PROD-637 step 3: the Bot sends where its profile has it, no step limit
+  rounding   = TC-PROD-630 step 4 (1): no rounding of minX and maxX
+  rounding-z = TC-PROD-630 step 4 (2): no rounding of minZ and maxZ
+  floor-z    = TC-PROD-630 step 4 (3): no rounding of minZ, maxZ still rounded up
+  outside    = TC-PROD-630 step 5: a player outside the border may go anywhere
+Labels:
+  race-before-pause  item 1 red: pre/Bot.java + pause, the BotSocketTest gate case alone (TC-PROD-638 step 3)
+  race-after-pause   item 1 green: fix + pause inside the lock, the same case (TC-PROD-638 step 4)
+  stall-gap          item 2 gap: pre/BotStallTest.java on the fix with the reset deleted, green: the test of c0499f898c could not
+                     see that line
+  proof-reset        item 2 red: the new BotStallTest with the reset deleted (TC-PROD-637 step 4)
+  proof-bot          TC-PROD-637 step 3 at its new line, red at the new BotStallTest line
+  loadtest-after(*)  BotSocketTest (8 cases, the gate case among them, no pause) and BotStallTest on the fix, default and
+                     strict grid (TC-PROD-638 steps 1 and 2, TC-PROD-637 steps 1 and 2)
+  move-gap           item 3 gap: pre/PlayerMovementAuthorityIntegrationTest.java on the fix with rounding-z, green
+  proof-*            item 3 red (rounding-z, floor-z) and TC-PROD-630 step 4 (1) and step 5 at their new lines
+  move-after(*)      PlayerMovementAuthorityIntegrationTest on the fix, default and strict grid (TC-PROD-630 steps 1, 2, 7)
+
+---- summary.txt as written by the run
+start 2026-10-06 13:13:18 HEAD c0499f898c; load 16.40 12.23 12.12; changed paths:  M loadtest/src/main/java/io/github/bearisbug/synaxis/loadtest/Bot.java  M loadtest/src/test/java/io/github/bearisbug/synaxis/loadtest/BotStallTest.java  M src/main/java/io/github/bearisbug/synaxis/listener/PlayerPositionListener.java  M src/test/java/io/github/bearisbug/synaxis/listener/PlayerMovementAuthorityIntegrationTest.java 
+variant pause: Bot.java:484
+race-before-pause exit=1 13:13:28
+io.github.bearisbug.synaxis.loadtest.BotSocketTest: tests=1 failures=1 errors=0 skipped=0 time=1.624
+  FAILURE aGateBotInConfigurationAtTheFrameTimesItsTryFromTheFirstPositionItSends() at BotSocketTest.java:302: org.opentest4j.AssertionFailedError: the bot was taken back to configuration ==> expected: <true> but was: <false>
+
+variant pause: Bot.java:487
+race-after-pause exit=0 13:13:42
+io.github.bearisbug.synaxis.loadtest.BotSocketTest: tests=1 failures=0 errors=0 skipped=0 time=8.845
+
+variant reset: Bot.java:537
+stall-gap exit=0 13:13:52
+io.github.bearisbug.synaxis.loadtest.BotStallTest: tests=1 failures=0 errors=0 skipped=0 time=5.168
+
+variant reset: Bot.java:537
+proof-reset exit=1 13:14:02
+io.github.bearisbug.synaxis.loadtest.BotStallTest: tests=1 failures=1 errors=0 skipped=0 time=6.272
+  FAILURE afterAStallEveryPositionIsAtMost32BlocksFromWhereTheServerHasThePlayer() at BotStallTest.java:96: org.opentest4j.AssertionFailedError: the first position the server judged after it took the player back was 115.10139201266466 blocks from where it put the player ==> expected: <true> but was: <false>
+
+variant bot: Bot.java:667
+proof-bot exit=1 13:14:15
+io.github.bearisbug.synaxis.loadtest.BotStallTest: tests=1 failures=1 errors=0 skipped=0 time=6.282
+  FAILURE afterAStallEveryPositionIsAtMost32BlocksFromWhereTheServerHasThePlayer() at BotStallTest.java:90: org.opentest4j.AssertionFailedError: a position the server judged after the stall was 114.81118032133647 blocks from where it had the player ==> expected: <true> but was: <false>
+
+loadtest-after exit=0 13:16:01
+io.github.bearisbug.synaxis.loadtest.BotSocketTest: tests=8 failures=0 errors=0 skipped=0 time=92.307
+io.github.bearisbug.synaxis.loadtest.BotStallTest: tests=1 failures=0 errors=0 skipped=0 time=5.226
+
+loadtest-after-strict exit=0 13:17:45
+io.github.bearisbug.synaxis.loadtest.BotSocketTest: tests=8 failures=0 errors=0 skipped=0 time=92.357
+io.github.bearisbug.synaxis.loadtest.BotStallTest: tests=1 failures=0 errors=0 skipped=0 time=5.241
+
+variant rounding-z: PlayerPositionListener.java:135
+move-gap exit=0 13:17:55
+io.github.bearisbug.synaxis.listener.PlayerMovementAuthorityIntegrationTest: tests=7 failures=0 errors=0 skipped=0 time=1.481
+
+variant rounding-z: PlayerPositionListener.java:135
+proof-rounding-z exit=1 13:18:01
+io.github.bearisbug.synaxis.listener.PlayerMovementAuthorityIntegrationTest: tests=7 failures=1 errors=0 skipped=0 time=1.276
+  FAILURE theBorderEndsAtTheWallOfTheVanillaClient(Env) at PlayerMovementAuthorityIntegrationTest.java:236: org.opentest4j.AssertionFailedError: z 31.6, past the border at 31.5, short of the wall at 32 ==> expected: <Pos[x=0.5, y=40.0, z=31.6, yaw=0.0, pitch=0.0]> but was: <Pos[x=0.5, y=40.0, z=31.0, yaw=0.0, pitch=0.0]>
+
+variant floor-z: PlayerPositionListener.java:135
+proof-floor-z exit=1 13:18:09
+io.github.bearisbug.synaxis.listener.PlayerMovementAuthorityIntegrationTest: tests=7 failures=1 errors=0 skipped=0 time=1.179
+  FAILURE theBorderEndsAtTheWallOfTheVanillaClient(Env) at PlayerMovementAuthorityIntegrationTest.java:243: org.opentest4j.AssertionFailedError: z -31.6, past the border at -31.5, short of the wall at -32 ==> expected: <Pos[x=0.5, y=40.0, z=-31.6, yaw=0.0, pitch=0.0]> but was: <Pos[x=0.5, y=40.0, z=-31.0, yaw=0.0, pitch=0.0]>
+
+variant rounding: PlayerPositionListener.java:134
+proof-rounding exit=1 13:18:17
+io.github.bearisbug.synaxis.listener.PlayerMovementAuthorityIntegrationTest: tests=7 failures=1 errors=0 skipped=0 time=1.189
+  FAILURE theBorderEndsAtTheWallOfTheVanillaClient(Env) at PlayerMovementAuthorityIntegrationTest.java:222: org.opentest4j.AssertionFailedError: x 31.6, past the border at 31.5, short of the wall at 32 ==> expected: <Pos[x=31.6, y=40.0, z=0.5, yaw=0.0, pitch=0.0]> but was: <Pos[x=31.0, y=40.0, z=0.5, yaw=0.0, pitch=0.0]>
+
+variant outside: PlayerPositionListener.java:139
+proof-outside exit=1 13:18:25
+io.github.bearisbug.synaxis.listener.PlayerMovementAuthorityIntegrationTest: tests=7 failures=1 errors=0 skipped=0 time=1.215
+  FAILURE aPlayerOutsideTheBorderGetsNoFartherOut(Env) at PlayerMovementAuthorityIntegrationTest.java:192: org.opentest4j.AssertionFailedError: 5 blocks farther out, from 10 blocks outside the border ==> expected: <Pos[x=42.0, y=40.0, z=0.5, yaw=0.0, pitch=0.0]> but was: <Pos[x=47.0, y=40.0, z=0.5, yaw=0.0, pitch=0.0]>
+
+move-after exit=0 13:18:31
+io.github.bearisbug.synaxis.listener.PlayerMovementAuthorityIntegrationTest: tests=7 failures=0 errors=0 skipped=0 time=1.105
+
+move-after-strict exit=0 13:18:41
+io.github.bearisbug.synaxis.listener.PlayerMovementAuthorityIntegrationTest: tests=7 failures=0 errors=0 skipped=0 time=1.114
+
+Bot.java = fix
+BotStallTest.java = fix
+PlayerPositionListener.java = fix
+PlayerMovementAuthorityIntegrationTest.java = fix
+changed paths at the end:  M docs/DESIGN-PROD.md  M loadtest/src/main/java/io/github/bearisbug/synaxis/loadtest/Bot.java  M loadtest/src/test/java/io/github/bearisbug/synaxis/loadtest/BotStallTest.java  M src/main/java/io/github/bearisbug/synaxis/listener/PlayerPositionListener.java  M src/test/java/io/github/bearisbug/synaxis/listener/PlayerMovementAuthorityIntegrationTest.java 
+done 2026-10-06 13:18:41 load 11.18 10.01 10.94
+
+---- reading
+Item 1: on the Bot of c0499f898c the 200 ms pause between the ack and the switch of state turns the gate case red in 1.6 s at
+BotSocketTest.java:302 ("the bot was taken back to configuration"): the bot's run ended 1.6 s in, before the 2.5 s hold of the
+configuration could, so its connection broke. The test logs nothing (NOP logger); that the moving thread sent a position in the
+pause and the server, in configuration by then, dropped the connection for it is read from the code. With the same pause inside
+the synchronized block of the fix the case is green (8.8 s). Without the pause BotSocketTest is 8 of 8 green in default and
+strict grid. The race needs a stall of the reading thread between the two steps, which the machine gave it at load1 ~300 (08).
+Item 2: with the reset of serverPosition deleted the BotStallTest of c0499f898c stays green (read from the code: the spawn at
+(0.5, 40, 0.5) is 40 blocks from the bot's initial {0, 0, 0}, the first step is capped at 32 and taken, and nothing teleports it
+after); the new test is red at BotStallTest.java:96, the first position judged after the server teleported the player back being
+115.10 blocks from where it put it. The step proof is red at :90 (114.81 blocks; 114.72 and 114.82 in 07).
+Item 3: without the z rounding the movement test of c0499f898c stays green; the new one is red at :236 (z 31.6 turned back), and
+with only the rounding of minZ taken out at :243 (z -31.6 turned back). The x rounding and the outside rule are red at the same
+test lines as in 07 (:222, :192), from their new listener lines :134 and :139.
+Not run here: the loadtest test task as a whole (TC-PROD-637 step 6; MergeTest, ProfileTest, SampleTest and SampleAcquireTest
+start no bot that plays: ProfileTest's one RunCommand runs with --bots 0), the root test task, the lighting session's probe (the
+listeners' code is unchanged, only a Javadoc comment of PlayerPositionListener moved its lines from 120 on),
+PlayerBlockReachIntegrationTest (PlayerActionListener unchanged).

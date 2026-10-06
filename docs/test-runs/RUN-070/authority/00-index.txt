@@ -81,3 +81,31 @@ untouched), TC-PROD-636 step 2 (strict grid for every module; the changed classe
 Cleanup: the temp dir /tmp/m3fix-int/fu-authority (scripts, logs, JUnit copies, the copies the counter proofs restored from)
 deleted at the end; no separate server process, container, image or emulator was created (BotStallTest and BotSocketTest
 start their servers inside the test JVM).
+
+Review follow-up 2 (the second review's five non-blocking points): code commit 2c0dd32cee on top of c0499f898c. The load test
+Bot sends its configuration ack and switches its state to configuration under one write lock (TC-PROD-638, new); BotStallTest
+has the server teleport the player back once the clock has jumped and checks the first position judged after it (TC-PROD-637
+step 4, new); the wall test of the movement class covers the z axis, both ends (TC-PROD-630 step 4); the Javadoc of
+PlayerPositionListener#outwards and DESIGN-PROD API-PROD-030 say what a border shrinking over time does; DESIGN-PROD §28.2 has a
+risk row for the other dig refusals that still send block entity data to every viewer. Same JDK and machine, Gradle
+--max-workers=2. Heavy lock taken at the top level of the script with its EXIT trap (12, run1.zsh), owner line
+"生产就绪会话/authority-nits pid=33941":
+  lock run 4   13:13:18-13:18:41  the Bot's race with a 200 ms pause before and after the fix; BotStallTest of c0499f898c and
+                                  of now without the reset of serverPosition, the step proof; BotSocketTest and BotStallTest
+                                  default and strict grid; the movement class of c0499f898c and of now without the z rounding,
+                                  the floor-z, x rounding and outside proofs; the movement class default and strict grid
+
+11-red-green-proofs-3.txt  race: red at BotSocketTest.java:302 on c0499f898c's Bot with the pause (1.6 s), green with the pause
+                           inside the lock; BotStallTest of c0499f898c green without the reset, the new one red at
+                           BotStallTest.java:96 (115.10 blocks), step proof red at :90 (114.81); BotSocketTest 8 and
+                           BotStallTest 1 green, default and strict grid; movement test of c0499f898c green without the z
+                           rounding, the new one red at :236, floor-z red at :243, x rounding :222, outside :192; movement
+                           class 7 green, default and strict grid
+12-scripts-3.txt           run1.zsh (lock run 4), variant.py, summarize.py
+
+Lint after follow-up 2: design-doc check.sh on DESIGN-PROD.md without warnings; test-doc check.sh on TEST.md only the three
+known items. Not run in follow-up 2: the test task of any module as a whole (TC-PROD-636, TC-PROD-637 step 6), the lighting
+session's probe (TC-PROD-634 step 4; no listener code changed), PlayerBlockReachIntegrationTest (PlayerActionListener unchanged).
+Cleanup: the temp dir /tmp/authority-nits (scripts, logs, JUnit copies, the copies the variants restored from) deleted at the
+end; no server process, container, image or emulator was created (the two loadtest classes start their servers inside the
+test JVM).

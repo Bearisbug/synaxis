@@ -1,0 +1,167 @@
+RUN-070 authority · 12 the script of lock run 4 (the review's second round of non-blocking points) and its helpers, as run
+
+==================== run1.zsh
+#!/bin/zsh
+# authority-nits lock run 1. Loadtest: the BotSocketTest gate case with a 200 ms pause between the configuration ack and
+# the switch of state, on the Bot of c0499f898c and on the fix; BotStallTest of c0499f898c and of now without the reset of
+# serverPosition at a teleport, and the step counter proof; BotSocketTest and BotStallTest default and strict grid.
+# Root: PlayerMovementAuthorityIntegrationTest of c0499f898c and of now without the z rounding, the rounding and outside
+# counter proofs at their new lines; the class default and strict grid.
+until mkdir /tmp/synaxis-heavy.lock 2>/dev/null; do sleep 60; done
+trap 'rm -rf /tmp/synaxis-heavy.lock' EXIT
+echo "owner=生产就绪会话/authority-nits pid=33941 since=$(date '+%F %T') task=authority-nits: red, green and counter proofs of Bot, BotStallTest and the movement test" > /tmp/synaxis-heavy.lock/owner
+
+export JAVA_HOME=/opt/homebrew/opt/openjdk@25/libexec/openjdk.jdk/Contents/Home
+WT=/Users/bug/Documents/Projects/Minecraft/synaxis-wt/m3fix-authority
+W=/tmp/authority-nits
+OUT=$W/run1
+PY=/Users/bug/Documents/Projects/Minecraft/synaxis/.venv/bin/python
+SOCKET=io.github.bearisbug.synaxis.loadtest.BotSocketTest
+CASE=$SOCKET.aGateBotInConfigurationAtTheFrameTimesItsTryFromTheFirstPositionItSends
+STALL=io.github.bearisbug.synaxis.loadtest.BotStallTest
+MOVE=io.github.bearisbug.synaxis.listener.PlayerMovementAuthorityIntegrationTest
+BOT_FILE=loadtest/src/main/java/io/github/bearisbug/synaxis/loadtest/Bot.java
+STALL_FILE=loadtest/src/test/java/io/github/bearisbug/synaxis/loadtest/BotStallTest.java
+PPL_FILE=src/main/java/io/github/bearisbug/synaxis/listener/PlayerPositionListener.java
+MOVE_FILE=src/test/java/io/github/bearisbug/synaxis/listener/PlayerMovementAuthorityIntegrationTest.java
+G=(--max-workers=2 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts)
+STRICT=(-Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true -Dsynaxis.thread-provider=grid)
+rm -rf $OUT; mkdir -p $OUT
+cd $WT
+log() { echo "$*" >> $OUT/summary.txt; }
+log "start $(date '+%F %T') HEAD $(git rev-parse --short=10 HEAD); $(uptime | sed 's/.*load averages*: /load /'); changed paths: $(git status --short | tr '\n' ' ')"
+
+gradle_run() {  # <label> <project> <extra args...> -- <tests...>
+  local label=$1 project=$2; shift 2
+  local -a extra tests
+  while [[ $1 != -- ]]; do extra+=$1; shift; done; shift
+  for t in "$@"; do tests+=(--tests $t); done
+  local results=build/test-results/test
+  [[ $project == :loadtest ]] && results=loadtest/build/test-results/test
+  rm -rf $results
+  ./gradlew ${project}:test --rerun $tests $G $extra > $OUT/$label.log 2>&1
+  log "$label exit=$? $(date '+%T')"
+  mkdir -p $OUT/$label
+  cp $results/TEST-*.xml $OUT/$label/ 2>/dev/null
+  $PY $W/summarize.py $OUT/$label/TEST-*.xml >> $OUT/summary.txt 2>&1
+  log ""
+}
+restore() {
+  cp $W/fix/Bot.java $BOT_FILE
+  cp $W/fix/BotStallTest.java $STALL_FILE
+  cp $W/fix/PlayerPositionListener.java $PPL_FILE
+  cp $W/fix/PlayerMovementAuthorityIntegrationTest.java $MOVE_FILE
+}
+
+# 1. Item 1: the gate case with the pause, on the Bot of c0499f898c, then on the fix
+cp $W/pre/Bot.java $BOT_FILE
+$PY $W/variant.py pause >> $OUT/summary.txt
+gradle_run race-before-pause :loadtest -- $CASE
+restore
+$PY $W/variant.py pause >> $OUT/summary.txt
+gradle_run race-after-pause :loadtest -- $CASE
+restore
+
+# 2. Item 2: BotStallTest of c0499f898c without the reset (the gap), then the new one without it, then the step proof
+cp $W/pre/BotStallTest.java $STALL_FILE
+$PY $W/variant.py reset >> $OUT/summary.txt
+gradle_run stall-gap :loadtest -- $STALL
+restore
+$PY $W/variant.py reset >> $OUT/summary.txt
+gradle_run proof-reset :loadtest -- $STALL
+restore
+$PY $W/variant.py bot >> $OUT/summary.txt
+gradle_run proof-bot :loadtest -- $STALL
+restore
+
+# 3. The two loadtest classes on the fix, default and strict grid
+gradle_run loadtest-after :loadtest -- $SOCKET $STALL
+gradle_run loadtest-after-strict :loadtest $STRICT -- $SOCKET $STALL
+
+# 4. Item 3: the movement test of c0499f898c without the z rounding (the gap), then the new one, then the other proofs
+cp $W/pre/PlayerMovementAuthorityIntegrationTest.java $MOVE_FILE
+$PY $W/variant.py rounding-z >> $OUT/summary.txt
+gradle_run move-gap "" -- $MOVE
+restore
+for v in rounding-z floor-z rounding outside; do
+  $PY $W/variant.py $v >> $OUT/summary.txt
+  gradle_run proof-$v "" -- $MOVE
+  restore
+done
+
+# 5. The movement class on the fix, default and strict grid
+gradle_run move-after "" -- $MOVE
+gradle_run move-after-strict "" $STRICT -- $MOVE
+
+for f in Bot.java BotStallTest.java PlayerPositionListener.java PlayerMovementAuthorityIntegrationTest.java; do
+  found=$(find loadtest/src src -name $f -not -path '*/build/*' | head -1)
+  cmp -s $W/fix/$f $found && log "$f = fix" || log "$f DIFFERS"
+done
+log "changed paths at the end: $(git status --short | tr '\n' ' ')"
+log "done $(date '+%F %T') $(uptime | sed 's/.*load averages*: /load /')"
+
+==================== variant.py
+"""Applies one counter proof variant to the working tree: a pause put in, a line taken out or one judgment switched off."""
+import sys
+from pathlib import Path
+
+WT = Path("/Users/bug/Documents/Projects/Minecraft/synaxis-wt/m3fix-authority")
+BOT = WT / "loadtest/src/main/java/io/github/bearisbug/synaxis/loadtest/Bot.java"
+PPL = WT / "src/main/java/io/github/bearisbug/synaxis/listener/PlayerPositionListener.java"
+VARIANTS = {
+    # 200 ms between the configuration ack and the switch of state, where the moving thread can send
+    "pause": (BOT,
+              "send(ConnectionState.PLAY, new ClientConfigurationAckPacket());",
+              "send(ConnectionState.PLAY, new ClientConfigurationAckPacket());"
+              " LockSupport.parkNanos(TimeUnit.MILLISECONDS.toNanos(200));"),
+    # the teleport no longer resets where the bot takes the server to have it
+    "reset": (BOT,
+              "                    serverPosition = new double[]{teleport.position().x(), teleport.position().y(), teleport.position().z()};\n",
+              ""),
+    "bot": (BOT,
+            "            final double[] next = toward(serverPosition, at);",
+            "            final double[] next = Boolean.getBoolean(\"proof.never\") ? toward(serverPosition, at) : at;"),
+    "rounding": (PPL,
+                 "        final double minX = Math.floor(border.centerX() - radius), maxX = Math.ceil(border.centerX() + radius);",
+                 "        final double minX = border.centerX() - radius, maxX = border.centerX() + radius;"),
+    "rounding-z": (PPL,
+                   "        final double minZ = Math.floor(border.centerZ() - radius), maxZ = Math.ceil(border.centerZ() + radius);",
+                   "        final double minZ = border.centerZ() - radius, maxZ = border.centerZ() + radius;"),
+    "floor-z": (PPL,
+                "        final double minZ = Math.floor(border.centerZ() - radius), maxZ = Math.ceil(border.centerZ() + radius);",
+                "        final double minZ = border.centerZ() - radius, maxZ = Math.ceil(border.centerZ() + radius);"),
+    "outside": (PPL,
+                "        return beyond(to.x(), minX, maxX) > beyond(from.x(), minX, maxX)",
+                "        if (!Boolean.getBoolean(\"proof.never\")) return false;\n"
+                "        return beyond(to.x(), minX, maxX) > beyond(from.x(), minX, maxX)"),
+}
+
+path, old, new = VARIANTS[sys.argv[1]]
+text = path.read_text()
+assert text.count(old) == 1, (path.name, old)
+line = text[:text.index(old)].count("\n") + 1
+path.write_text(text.replace(old, new))
+print(f"variant {sys.argv[1]}: {path.name}:{line}")
+
+==================== summarize.py
+"""Prints, for JUnit XML reports, the counts and every failure with its message and the test line it came from."""
+import re
+import sys
+import xml.etree.ElementTree as ET
+
+for path in sys.argv[1:]:
+    root = ET.parse(path).getroot()
+    name = root.get("name")
+    print(f"{name}: tests={root.get('tests')} failures={root.get('failures')} errors={root.get('errors')} "
+          f"skipped={root.get('skipped')} time={root.get('time')}")
+    simple = name.rsplit(".", 1)[-1]
+    for case in root.findall("testcase"):
+        for kind in ("failure", "error"):
+            node = case.find(kind)
+            if node is None:
+                continue
+            message = (node.get("message") or "").splitlines()[0] if node.get("message") else ""
+            text = node.text or ""
+            line = re.search(re.escape(simple) + r"\.java:(\d+)", text)
+            print(f"  {kind.upper()} {case.get('name')} at {simple}.java:{line.group(1) if line else '?'}: {message}")
+

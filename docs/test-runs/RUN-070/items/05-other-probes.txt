@@ -1,0 +1,25 @@
+# RUN-070 / items: the other probes of the M3 side review commit 7219ce342d, unchanged, copied into prod/m3fix-items at
+# 1ad4db8579 for this batch only and deleted after it (also by the EXIT trap); strict grid as in that commit. None of them
+# is kept in the repository.
+
+[2026-10-06 09:27:18] lock taken (owner 生产就绪会话/items); HEAD 1ad4db8579; git status --short:
+  M docs/DESIGN-PROD.md
+  M docs/TEST.md
+  M docs/research/security-review-2026-10/README.md
+  ?? server-app/src/test/java/io/github/bearisbug/synaxis/app/store/PickupFreezeRaceProbeTest.java
+  ?? server-app/src/test/java/io/github/bearisbug/synaxis/app/store/ShardGatesRaceProbeTest.java
+  ?? synx/src/test/java/io/github/bearisbug/synaxis/synx/OverlayCrossCellWritersProbeTest.java
+[2026-10-06 09:27:18] other probes: ./gradlew :server-app:test --rerun --tests io.github.bearisbug.synaxis.app.store.PickupFreezeRaceProbeTest --tests io.github.bearisbug.synaxis.app.store.ShardGatesRaceProbeTest :synx:test --rerun --tests io.github.bearisbug.synaxis.synx.OverlayCrossCellWritersProbeTest --continue -Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true -Dsynaxis.thread-provider=grid --max-workers=4 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts
+  BUILD SUCCESSFUL in 2m 43s
+[2026-10-06 09:30:01] other probes: rc=0 (163 s)
+io.github.bearisbug.synaxis.app.store.PickupFreezeRaceProbeTest: tests=20 failures=0 errors=0 skipped=0 time=12.551 timestamp=2026-10-06T01:27:24.352Z
+io.github.bearisbug.synaxis.app.store.ShardGatesRaceProbeTest: tests=60 failures=0 errors=0 skipped=0 time=144.62 timestamp=2026-10-06T01:27:36.905Z
+io.github.bearisbug.synaxis.synx.OverlayCrossCellWritersProbeTest: tests=20 failures=0 errors=0 skipped=0 time=8.188 timestamp=2026-10-06T01:27:20.954Z
+[2026-10-06 09:30:01] probes removed; git status --short:
+  M docs/DESIGN-PROD.md
+  M docs/TEST.md
+  M docs/research/security-review-2026-10/README.md
+  M docs/test-runs/RUN-070/items/01-red-before-fix.txt
+  M docs/test-runs/RUN-070/items/03-green-after-fix.txt
+  M docs/test-runs/RUN-070/items/04-counter-proofs-freeze.txt
+[2026-10-06 09:30:06] lock released after checkBinaryCompatibility (see 09)

@@ -1,0 +1,110 @@
+# RUN-070 / items: counter proofs of the merge on 34d3fd8855 (TC-PROD-643 step 3, TC-PROD-644 step 2, TC-PROD-645 step 1 = TC-PROD-621
+# step 2 on the new line), the restored runs and the entity package in both modes (TC-PROD-645 step 2).
+
+[2026-10-06 05:07:38] lock taken; HEAD 34d3fd8855; git status --short: 3 paths
+== TC-PROD-643 step 3: no second read under the claims (the merge before the fix)
+  edit src/main/java/io/github/bearisbug/synaxis/entity/ItemEntity.java: deleted lines 102-109:
+    -                         // Read before the claims, the neighbour's stack may be stale: on its own tick thread it may
+    -                         // have absorbed an item and let its claim go since. Under both claims neither stack changes
+    -                         // any more, so a stale read gives this merge up until the next check
+    -                         if (itemEntity.getItemStack() != itemStackEntity) {
+    -                             lowest.releaseClaim();
+    -                             highest.releaseClaim();
+    -                             return;
+    -                         }
+[2026-10-06 05:07:58] cp 643-3 default: ./gradlew :test --rerun --tests io.github.bearisbug.synaxis.entity.GridItemRaceTest --max-workers=4 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts
+  > Task :test FAILED
+  GridItemRaceTest > aMergeAcrossACellBorderKeepsEveryItem() FAILED
+  2 tests completed, 1 failed
+  BUILD FAILED in 6s
+[2026-10-06 05:08:05] cp 643-3 default: rc=1 (6 s)
+io.github.bearisbug.synaxis.entity.GridItemRaceTest: tests=2 failures=1 errors=0 skipped=0 time=0.831 timestamp=2026-10-05T21:08:04.242Z
+  failure: aMergeAcrossACellBorderKeepsEveryItem() time=0.021
+    message: org.opentest4j.AssertionFailedError: diamonds on the ground after the merges (merger holds 50) ==> expected: <70> but was: <50>
+    type: org.opentest4j.AssertionFailedError: diamonds on the ground after the merges (merger holds 50) ==> expected: <70> but was: <50>
+    at io.github.bearisbug.synaxis.entity.GridItemRaceTest.aMergeAcrossACellBorderKeepsEveryItem(GridItemRaceTest.java:148)
+TOTAL build/test-results/test io.github.bearisbug.synaxis.entity.GridItemRaceTest: classes=1 tests=2 failures=1 errors=0 skipped=0
+[2026-10-06 05:08:05] cp 643-3 strict grid: ./gradlew :test --rerun --tests io.github.bearisbug.synaxis.entity.GridItemRaceTest -Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true -Dsynaxis.thread-provider=grid --max-workers=4 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts
+  > Task :test FAILED
+  GridItemRaceTest > aMergeAcrossACellBorderKeepsEveryItem() FAILED
+  2 tests completed, 1 failed
+  BUILD FAILED in 5s
+[2026-10-06 05:08:10] cp 643-3 strict grid: rc=1 (6 s)
+io.github.bearisbug.synaxis.entity.GridItemRaceTest: tests=2 failures=1 errors=0 skipped=0 time=0.814 timestamp=2026-10-05T21:08:09.878Z
+  failure: aMergeAcrossACellBorderKeepsEveryItem() time=0.023
+    message: org.opentest4j.AssertionFailedError: diamonds on the ground after the merges (merger holds 50) ==> expected: <70> but was: <50>
+    type: org.opentest4j.AssertionFailedError: diamonds on the ground after the merges (merger holds 50) ==> expected: <70> but was: <50>
+    at io.github.bearisbug.synaxis.entity.GridItemRaceTest.aMergeAcrossACellBorderKeepsEveryItem(GridItemRaceTest.java:148)
+TOTAL build/test-results/test io.github.bearisbug.synaxis.entity.GridItemRaceTest: classes=1 tests=2 failures=1 errors=0 skipped=0
+== TC-PROD-644 step 2: a claim that every caller gets
+  edit src/main/java/io/github/bearisbug/synaxis/entity/ItemEntity.java:183: return claimed.compareAndSet(false, true);  ->  claimed.set(true); return true;
+[2026-10-06 05:08:10] cp 644-2: ./gradlew :test --rerun --tests io.github.bearisbug.synaxis.entity.GridItemRaceTest --max-workers=4 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts
+  > Task :test FAILED
+  GridItemRaceTest > twoPickersOnTwoTickThreadsPickAnItemUpOnce() FAILED
+  2 tests completed, 1 failed
+  BUILD FAILED in 16s
+[2026-10-06 05:08:28] cp 644-2: rc=1 (17 s)
+io.github.bearisbug.synaxis.entity.GridItemRaceTest: tests=2 failures=1 errors=0 skipped=0 time=0.86 timestamp=2026-10-05T21:08:27.034Z
+  failure: twoPickersOnTwoTickThreadsPickAnItemUpOnce() time=0.83
+    message: org.opentest4j.AssertionFailedError: pickups of one item: [east on Syn-Tick-3, west on Syn-Tick-0] ==> expected: <1> but was: <2>
+    type: org.opentest4j.AssertionFailedError: pickups of one item: [east on Syn-Tick-3, west on Syn-Tick-0] ==> expected: <1> but was: <2>
+    at io.github.bearisbug.synaxis.entity.GridItemRaceTest.twoPickersOnTwoTickThreadsPickAnItemUpOnce(GridItemRaceTest.java:170)
+TOTAL build/test-results/test io.github.bearisbug.synaxis.entity.GridItemRaceTest: classes=1 tests=2 failures=1 errors=0 skipped=0
+== TC-PROD-645 step 1 (TC-PROD-621 step 2 on the new line): the merge removes the neighbour at once
+  edit src/main/java/io/github/bearisbug/synaxis/entity/ItemEntity.java:114: itemEntity.removeConsumed();  ->  itemEntity.remove();
+[2026-10-06 05:08:28] cp 645-1: ./gradlew :test --rerun --tests io.github.bearisbug.synaxis.entity.ItemEntityCrossCellConcurrencyTest --max-workers=4 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts
+  > Task :test FAILED
+  ItemEntityCrossCellConcurrencyTest > anItemMergedAcrossACellBorderIsRemovedOnItsOwnThread() FAILED
+  2 tests completed, 1 failed
+  BUILD FAILED in 17s
+[2026-10-06 05:08:45] cp 645-1: rc=1 (17 s)
+io.github.bearisbug.synaxis.entity.ItemEntityCrossCellConcurrencyTest: tests=2 failures=1 errors=0 skipped=0 time=0.813 timestamp=2026-10-05T21:08:44.395Z
+  failure: anItemMergedAcrossACellBorderIsRemovedOnItsOwnThread() time=0.023
+    message: org.opentest4j.AssertionFailedError: Server threw exception
+    type: org.opentest4j.AssertionFailedError: Server threw exception
+    at io.github.bearisbug.synaxis.testing.EnvImpl.reportCaughtException(EnvImpl.java:46)
+    at io.github.bearisbug.synaxis.testing.EnvImpl.tick(EnvImpl.java:57)
+    at io.github.bearisbug.synaxis.entity.ItemEntityCrossCellConcurrencyTest.tickUntil(ItemEntityCrossCellConcurrencyTest.java:87)
+    at io.github.bearisbug.synaxis.entity.ItemEntityCrossCellConcurrencyTest.anItemMergedAcrossACellBorderIsRemovedOnItsOwnThread(ItemEntityCrossCellConcurrencyTest.java:67)
+    at io.github.bearisbug.synaxis.thread.AcquirableImpl.assertOwnership(AcquirableImpl.java:131)
+    at io.github.bearisbug.synaxis.entity.Entity.remove(Entity.java:1915)
+    at io.github.bearisbug.synaxis.entity.Entity.remove(Entity.java:1911)
+    at io.github.bearisbug.synaxis.entity.ItemEntity.lambda$update$1(ItemEntity.java:114)
+    at io.github.bearisbug.synaxis.event.EventNode.callCancellable(EventNode.java:216)
+    at io.github.bearisbug.synaxis.entity.Entity.callCancellableEvent(Entity.java:2119)
+    at io.github.bearisbug.synaxis.entity.ItemEntity.lambda$update$0(ItemEntity.java:112)
+    at io.github.bearisbug.synaxis.instance.EntityTrackerImpl.lambda$nearbyEntities$2(EntityTrackerImpl.java:236)
+    at io.github.bearisbug.synaxis.instance.EntityTrackerImpl.lambda$nearbyEntities$1(EntityTrackerImpl.java:232)
+    at io.github.bearisbug.synaxis.coordinate.ChunkRange.chunksInRange(ChunkRange.java:66)
+    at io.github.bearisbug.synaxis.coordinate.ChunkRange.chunksInRange(ChunkRange.java:75)
+    at io.github.bearisbug.synaxis.instance.EntityTrackerImpl.nearbyEntities(EntityTrackerImpl.java:229)
+    at io.github.bearisbug.synaxis.entity.ItemEntity.update(ItemEntity.java:82)
+    at io.github.bearisbug.synaxis.entity.Entity.tick(Entity.java:843)
+    at io.github.bearisbug.synaxis.thread.TickThread.tick(TickThread.java:96)
+    at io.github.bearisbug.synaxis.thread.TickThread.run(TickThread.java:65)
+    Caused by: io.github.bearisbug.synaxis.thread.AcquirableOwnershipException: Thread ownership assertion failed for io.github.bearisbug.synaxis.entity.ItemEntity@79d3c7bb:
+TOTAL build/test-results/test io.github.bearisbug.synaxis.entity.ItemEntityCrossCellConcurrencyTest: classes=1 tests=2 failures=1 errors=0 skipped=0
+== restored: 0 changed paths in ItemEntity.java
+[2026-10-06 05:08:45] restored default: ./gradlew :test --rerun --tests io.github.bearisbug.synaxis.entity.GridItemRaceTest --tests io.github.bearisbug.synaxis.entity.ItemEntityCrossCellConcurrencyTest --tests io.github.bearisbug.synaxis.entity.ItemEntityClaimIntegrationTest --max-workers=4 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts
+  BUILD SUCCESSFUL in 6s
+[2026-10-06 05:08:51] restored default: rc=0 (7 s)
+io.github.bearisbug.synaxis.entity.GridItemRaceTest: tests=2 failures=0 errors=0 skipped=0 time=0.841 timestamp=2026-10-05T21:08:50.766Z
+io.github.bearisbug.synaxis.entity.ItemEntityClaimIntegrationTest: tests=5 failures=0 errors=0 skipped=0 time=0.857 timestamp=2026-10-05T21:08:50.766Z
+io.github.bearisbug.synaxis.entity.ItemEntityCrossCellConcurrencyTest: tests=2 failures=0 errors=0 skipped=0 time=0.836 timestamp=2026-10-05T21:08:50.766Z
+TOTAL build/test-results/test io.github.bearisbug.synaxis.entity.GridItemRaceTest io.github.bearisbug.synaxis.entity.ItemEntityCrossCellConcurrencyTest io.github.bearisbug.synaxis.entity.ItemEntityClaimIntegrationTest: classes=3 tests=9 failures=0 errors=0 skipped=0
+== TC-PROD-645 step 2: the entity package, default and strict grid
+[2026-10-06 05:08:51] entity default: ./gradlew :test --rerun --tests io.github.bearisbug.synaxis.entity.* --max-workers=4 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts
+  BUILD SUCCESSFUL in 16s
+[2026-10-06 05:09:08] entity default: rc=0 (16 s)
+io.github.bearisbug.synaxis.entity.player.TabListIntegrationTest: tests=3 failures=0 errors=0 skipped=0 time=4.847 timestamp=2026-10-05T21:08:56.503Z
+TOTAL build/test-results/test io.github.bearisbug.synaxis.entity.*: classes=75 tests=286 failures=0 errors=0 skipped=2
+[2026-10-06 05:09:08] entity strict grid: ./gradlew :test --rerun --tests io.github.bearisbug.synaxis.entity.* -Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true -Dsynaxis.thread-provider=grid --max-workers=4 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts
+  BUILD SUCCESSFUL in 14s
+[2026-10-06 05:09:23] entity strict grid: rc=0 (15 s)
+io.github.bearisbug.synaxis.entity.player.TabListIntegrationTest: tests=3 failures=0 errors=0 skipped=0 time=4.546 timestamp=2026-10-05T21:09:13.047Z
+TOTAL build/test-results/test io.github.bearisbug.synaxis.entity.*: classes=75 tests=286 failures=0 errors=0 skipped=2
+[2026-10-06 05:09:23] git status --short:
+   M docs/DESIGN-PROD.md
+   M docs/TEST.md
+   M docs/research/security-review-2026-10/README.md
+[2026-10-06 05:09:23] lock releasing

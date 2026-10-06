@@ -24,6 +24,19 @@ import java.util.function.Consumer;
  * during the configuration phase, where the player has no instance and the mapped branch asserts.
  * {@link #forInstance} refuses it for that reason.
  * <p>
+ * The pickups and drops of a player frozen when they are dispatched
+ * ({@link PlayerDataStore#isFrozen}) reach every listener already cancelled, in every scope: the
+ * host cancels them before any plugin listener runs, and again between
+ * {@link EventPriority#HIGHEST} and {@link EventPriority#MONITOR} of the global scope. The host
+ * reads the freeze once per event, before any plugin listener: when a player is frozen from another
+ * thread in the middle of a dispatch (a transfer, a degraded session), that pickup or drop goes
+ * through as allowed and the next ones are cancelled. A listener that hands items over must skip
+ * cancelled events ({@code ignoreCancelled} true, or a check of {@code isCancelled()}) and go by
+ * that alone, not by {@code isFrozen}: a pickup or drop the freeze landed in the middle of goes
+ * through while {@code isFrozen} is already true, and a listener that refuses it loses the stack.
+ * Undoing that cancel is not supported: the listeners that run after the undo and before the second
+ * cancel, the instance scoped ones included, see the pickup or drop as allowed.
+ * <p>
  * Only the host implements this interface: a plugin is handed one and calls it.
  */
 @ApiStatus.NonExtendable
@@ -42,9 +55,11 @@ public interface PluginEvents {
         HIGH,
         HIGHEST,
         /**
-         * Runs after every other priority and sees the final state of the event. A listener here
-         * must not modify the event, cancelling included. This is a convention: engine events are
-         * mutable objects with setters, so the host cannot enforce it.
+         * Runs after every other priority of its scope. In the global scope it sees the final state
+         * of the event; an instance scoped one runs before every global scope listener
+         * ({@link PluginEvents#forInstance}), which may still change the event after it. A listener
+         * here must not modify the event, cancelling included. This is a convention: engine events
+         * are mutable objects with setters, so the host cannot enforce it.
          */
         MONITOR
     }

@@ -6,10 +6,12 @@ import io.github.bearisbug.synaxis.ServerProcess;
 import io.github.bearisbug.synaxis.ShutdownParticipant;
 import io.github.bearisbug.synaxis.entity.Player;
 import io.github.bearisbug.synaxis.event.Event;
+import io.github.bearisbug.synaxis.event.EventListener;
 import io.github.bearisbug.synaxis.event.EventNode;
 import io.github.bearisbug.synaxis.event.item.ItemDropEvent;
 import io.github.bearisbug.synaxis.event.item.PickupItemEvent;
 import io.github.bearisbug.synaxis.event.player.PlayerDisconnectEvent;
+import io.github.bearisbug.synaxis.event.trait.CancellableEvent;
 import io.github.bearisbug.synaxis.network.ConnectionState;
 import io.github.bearisbug.synaxis.network.DisconnectReasons;
 import io.github.bearisbug.synaxis.plugin.DataSection;
@@ -27,6 +29,7 @@ import java.sql.SQLException;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -36,6 +39,7 @@ import java.util.Map;
 import java.util.Queue;
 import java.util.Set;
 import java.util.UUID;
+import java.util.WeakHashMap;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -154,6 +158,14 @@ public final class PlayerStore implements ShutdownParticipant {
     private final Queue<Record> autosaveOrder = new ConcurrentLinkedQueue<>();
     private final Map<Record, CompletableFuture<SaveResult>> shutdownSaves = new ConcurrentHashMap<>();
     private final AtomicBoolean directSnapshotWarned = new AtomicBoolean();
+    // The pickups and drops the root node cancelled for a frozen player, until the freeze node
+    // cancels them again (attach): a dispatch runs on one thread, and by identity, since a listener
+    // may dispatch another pickup or drop in the middle of one. Weak keys: a dispatch an exception
+    // cuts short between the two never reaches the freeze node, and the store sees no end of the
+    // dispatch to clear it at. They compare by identity all the same, since only the two event
+    // classes themselves reach these listeners and neither overrides equals or hashCode
+    private final ThreadLocal<Set<CancellableEvent>> frozenAtRoot =
+            ThreadLocal.withInitial(() -> Collections.newSetFromMap(new WeakHashMap<>()));
     // Only touched by the autosave task: online players summed per tick, one save per period
     private long autosaveCredit;
     private volatile @Nullable ShardSession session;
@@ -239,16 +251,34 @@ public final class PlayerStore implements ShutdownParticipant {
      */
     public void attach(EventNode<Event> hostNode) {
         hostNode.addListener(PlayerDisconnectEvent.class, event -> loggedOut(event.getPlayer()));
-        // At 3, after the plugin priorities LOWEST..HIGHEST (-2..2) and before MONITOR (4), see
-        // PluginEventsImpl#tier: a frozen player's pickup or drop is cancelled whatever a plugin made
-        // of it, and MONITOR sees it cancelled (API-PROD-005)
+        // A frozen player's pickup or drop is cancelled twice, on one reading of the freeze (API-PROD-005)
+        final Consumer<PickupItemEvent> pickups = event -> {
+            if (event.getLivingEntity() instanceof Player player && isFrozen(player)) cancelAtRoot(event);
+        };
+        final Consumer<ItemDropEvent> drops = event -> {
+            if (isFrozen(event.getPlayer())) cancelAtRoot(event);
+        };
+        // First on the root node itself, before the host enables any plugin: the root runs its own
+        // listeners in the order they were added, then its mapped nodes (the instance and entity
+        // scoped listeners), then its children (the host node), so a plugin listener of any scope
+        // gets the pickup already cancelled and one that honours cancels hands nothing over. Built to
+        // run on cancelled events too, which the two argument addListener skips: a pickup that comes
+        // in cancelled is decided all the same, or a plugin un-cancelling it would find no second cancel
+        final EventNode<Event> root = process.eventHandler();
+        root.addListener(EventListener.builder(PickupItemEvent.class).ignoreCancelled(false).handler(pickups).build());
+        root.addListener(EventListener.builder(ItemDropEvent.class).ignoreCancelled(false).handler(drops).build());
+        // Again at 3, after the plugin priorities LOWEST..HIGHEST (-2..2) and before MONITOR (4), see
+        // PluginEventsImpl#tier: cancelled whatever a plugin made of it, and MONITOR sees it cancelled.
+        // Only the events the root node cancelled, never on a second reading of the freeze: a transfer
+        // or a degraded session freezes a player from another thread, and a freeze landing in between
+        // would cancel a pickup the listeners before saw allowed and handed over. Left allowed, the
+        // pickup ends on this thread before the snapshot the freeze queues there. Built to run on
+        // cancelled events too, which the two argument addListener skips: each one leaves frozenAtRoot
         final EventNode<Event> freeze = EventNode.all("synaxis-store-freeze").setPriority(3);
-        freeze.addListener(PickupItemEvent.class, event -> {
-            if (event.getLivingEntity() instanceof Player player && isFrozen(player)) event.setCancelled(true);
-        });
-        freeze.addListener(ItemDropEvent.class, event -> {
-            if (isFrozen(event.getPlayer())) event.setCancelled(true);
-        });
+        freeze.addListener(EventListener.builder(PickupItemEvent.class).ignoreCancelled(false)
+                .handler(this::cancelAgain).build());
+        freeze.addListener(EventListener.builder(ItemDropEvent.class).ignoreCancelled(false)
+                .handler(this::cancelAgain).build());
         hostNode.addChild(freeze);
         process.scheduler().scheduleTask(() -> {
             autosaveTick();
@@ -261,6 +291,15 @@ public final class PlayerStore implements ShutdownParticipant {
             return TaskSchedule.seconds(10);
         }, TaskSchedule.seconds(10));
         redis.listen(this::kickRequested);
+    }
+
+    private void cancelAtRoot(CancellableEvent event) {
+        event.setCancelled(true);
+        frozenAtRoot.get().add(event);
+    }
+
+    private void cancelAgain(CancellableEvent event) {
+        if (frozenAtRoot.get().remove(event)) event.setCancelled(true);
     }
 
     // ---- sections and hooks ----

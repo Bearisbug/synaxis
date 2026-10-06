@@ -121,8 +121,11 @@ import java.util.stream.Stream;
  * edge of tiles (-1, 0) and (0, 0), so the coarse layer has a replacement too. {@code /expect.json} adds three
  * hidden points (fine over the peak, fine and coarse across the edge) at what the hidden rule of
  * {@code API-M3-014} makes of them: stone of plains at the lowest top of the ring of their area.</li>
- * <li>{@code counter-hidden}: {@code baked}'s release, whose packs hide nothing, with the {@code /expect.json} of
- * {@code baked-hidden}: the three hidden points read back the terrain, the counter-proof.</li>
+ * <li>{@code counter-hidden}: {@code baked}'s release, whose packs hide nothing, with the three hidden points of
+ * {@code baked-hidden}'s {@code /expect.json} (their rings are never hidden, so both releases give the same
+ * points): they read back the terrain, the counter-proof. Its peak, water and mountain are picked from its own
+ * packs as in {@code baked}, so its peak is {@code baked}'s, the column the hidden peak covers, where
+ * {@code baked-hidden}'s is the highest sample left outside the hidden areas.</li>
  * <li>{@code serve-only}: no game port. {@code baked}'s release exported as {@code farview-export} lays it out
  * (every tile's whole pack and coarse prefix under {@code /<map_id>/farview/<sha256>.hfp}) for a
  * {@code bin/server-shard} of the same release, in the memory store, whose {@code synaxis.farview.url-root} is
@@ -968,8 +971,9 @@ final class FarViewShardFixture {
      * of the tile around), and the camera spots ({@link Synthetic#views} and EDGE_VIEW 100 above the spawn,
      * {@link Baked#views} on the 3 × 3 tiles). On the 3 × 3 tiles the points are the highest fine sample
      * of tile (0, 0), its first sample with fluid and the highest sample of tile (-1, 0), coarse where it is
-     * announced by its coarse prefix and fine in {@code serve-only}; a generator source hides nothing, so only
-     * {@code baked-hidden} and {@code counter-hidden} have the hidden points ({@link #hiddenPoint}). With
+     * announced by its coarse prefix and fine in {@code serve-only}, each picked from the mode's own packs; a
+     * generator source hides nothing, so only {@code baked-hidden} and {@code counter-hidden} have the hidden points
+     * ({@link #hiddenPoint}), the same in both. With
      * {@code dayTime} 0 or more, {@code day_time} is it.
      */
     static String expectJson(String mode, Content content, Pos spawn, long dayTime) {

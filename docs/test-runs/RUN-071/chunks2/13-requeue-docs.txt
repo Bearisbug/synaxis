@@ -1,0 +1,161 @@
+# Second review rework: docs checks (2026-10-06, after the docs edits of the rework). Common header: see 00-index.txt.
+
+## bash ~/.claude/skills/design-doc/check.sh docs/DESIGN-PROD.md
+    lint: /Users/bug/Documents/Projects/Minecraft/synaxis-wt/r071-chunks/docs/DESIGN-PROD.md
+    ℹ️ 以下 ID 只被引用、未在本文档定义,§1 关联已声明兄弟分册(docs/DESIGN-M2.md docs/DESIGN-M3.md docs/DESIGN.md ),按跨分册引用处理,人工核一次: REQ-005 REQ-013 REQ-014 REQ-M3-014 REQ-M3-015 REQ-M3-016 REQ-M3-017 REQ-M3-018 API-001 API-003 API-M2-002 API-M2-007 API-M2-008 API-M2-010 API-M2-011 API-M3-003 API-M3-005 API-M3-006 API-M3-00
+    ℹ️ 请核对以下 API-* 是否都在 §10 权限矩阵出现或有显式免列说明(读/列表/回调端点最易漏标):API-PROD-001 API-PROD-002 API-PROD-003 API-PROD-004 API-PROD-005 API-PROD-006 API-PROD-007 API-PROD-008 API-PROD-009 API-PROD-010 API-PROD-011 API-PROD-012 API-PROD-013 API-PROD-014 API-PROD-015 API-PROD-016 API-PROD-017 API-PROD-018 API-PROD
+    ✓ 状态图带事件转移 ↔ 迁移表行数一致(按机分段: 10 11 12 21 25)
+    ℹ️ 已画 5 台状态机;请核对:数据字典每个 ≥2 态 status/生命周期枚举实体,已建机或按三类出口(纯派生/投影态、状态由他机翻转、极简运营态)显式免建——见 CHECKLIST C1
+    ✅ lint 无警告
+
+## bash ~/.claude/skills/test-doc/check.sh docs/TEST.md (the known warnings only: section 3 environment table, section 6 environment column, the two RUN-031 rows)
+    lint: /Users/bug/Documents/Projects/Minecraft/synaxis-wt/r071-chunks/docs/TEST.md
+    ⚠️ §3 缺环境表(TEMPLATE §3:| 环境 | 入口 | 就绪判定 | 测试账号 | 种子与重置 | 外部副作用 |);跑线上轮前先补表,再逐条判定冒烟用例能否标「线上可跑」(SKILL.md 执行流程第 2 条)
+    ℹ️ 没有用例标「线上可跑」——跑线上冒烟轮前先按 TEMPLATE 头部判据逐条判定冒烟用例(SKILL.md 执行流程第 2 条)
+    ⚠️ 轮次汇总表头缺「环境」列(TEMPLATE §6:本地 / 预发 / 线上)
+    ⚠️ 执行记录明细行不合格:
+      失败项缺证据引用:| RUN-031 | TC-PROD-271 | 失败 | 5A 200 人 walk 30 min 基线只差「超 50 ms 的 tick 为 0」一项：实测 18 个；服务端与机器人同机，本机另有会话在跑，swap 约 29 GiB | 分机档（DESIGN-PROD §28.1 Q11）重跑 |
+      失败项缺证据引用:| RUN-031 | TC-PROD-360 | 失败 | 集成后 200 人 walk 30 min 同样只差这一项：6 个；同一档可见实体有 302 个采样超过上限 100（最大 102），登记为 DESIGN-PROD v0.8.2 §28.2 缺陷 | 分机档重跑；可见上限的竞态第 6 波开始前修 |
+    ℹ️ 联检设计文档自动解析自元信息:/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r071-chunks/docs/../docs/DESIGN.md
+    ℹ️ 联检设计文档自动解析自元信息:/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r071-chunks/docs/../docs/DESIGN-M2.md
+    ℹ️ 联检设计文档自动解析自元信息:/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r071-chunks/docs/../docs/DESIGN-M3.md
+    ℹ️ 联检设计文档自动解析自元信息:/Users/bug/Documents/Projects/Minecraft/synaxis-wt/r071-chunks/docs/../docs/DESIGN-PROD.md
+    ✓ REQ 已双向联检(TEST→设计 悬空 + 设计→TEST 覆盖;设计文档 4 份)
+    ℹ️ 用例 654 条(冒烟 57)· 轮次 68;覆盖与执行完整性按 references/CHECKLIST.md 核对
+    (以上为机械提示;REQ/Gherkin 覆盖、冷启动实测等语义项按 references/CHECKLIST.md 逐条过)
+
+## Line references: rg -n -o 'Player\.java:[0-9]+(-[0-9]+)?|EntityTrackerImpl\.java:[0-9]+|ChunkSendBlockChangeIntegrationTest\.java:[0-9]+' docs/*.md
+# Every reference, change-log rows included:
+    docs/DESIGN-M3.md:886:Player.java:950
+    docs/DESIGN-M3.md:886:Player.java:955
+    docs/DESIGN-PROD.md:55:Player.java:349
+    docs/DESIGN-PROD.md:71:Player.java:355-357
+    docs/DESIGN-PROD.md:71:Player.java:365-367
+    docs/DESIGN-PROD.md:77:Player.java:378-381
+    docs/DESIGN-PROD.md:101:Player.java:950
+    docs/DESIGN-PROD.md:103:Player.java:950
+    docs/DESIGN-PROD.md:104:Player.java:385-388
+    docs/DESIGN-PROD.md:558:Player.java:395-397
+    docs/DESIGN-PROD.md:677:Player.java:387-390
+    docs/DESIGN-PROD.md:2868:Player.java:355
+    docs/DESIGN-PROD.md:2873:Player.java:355
+    docs/DESIGN-PROD.md:3065:Player.java:505-506
+    docs/DESIGN-PROD.md:3065:Player.java:507
+    docs/DESIGN-PROD.md:3065:Player.java:508
+    docs/DESIGN-PROD.md:3153:Player.java:950
+    docs/DESIGN-PROD.md:3153:Player.java:955
+    docs/DESIGN-PROD.md:3153:Player.java:974
+    docs/DESIGN-PROD.md:3153:Player.java:979
+    docs/TEST.md:19:Player.java:745
+    docs/TEST.md:9713:EntityTrackerImpl.java:68
+    docs/TEST.md:9713:Player.java:747
+# 68d6b07ea2 changes Player.java from line 937 on: the deferred list moves above the queue lock (+1 at 937, -1 at old 940, so
+# lines 941-978 stay where they were), the put-back loop leaves its place after the loop (old 979-984) for the finally block (now
+# 993-999). So ChunkBatchFinished moves from :985 to :979 and the position sync condition from :994 to :988; :974
+# (PlayerChunkLoadEvent) does not move. DESIGN-PROD.md:3153 (section 28.3, the two lines the lighting session writes into
+# DESIGN-M3.md API-M3-010) now says :974 and :979; DESIGN-M3.md:886 is the lighting session's line and stays until it takes that
+# row; DESIGN-PROD.md:101 and :103 are change-log rows of their time. Every other reference is below line 937 and points where it
+# did. EntityTrackerImpl.java is not changed.
+# The test class gains two tests after line 327 and changes line 76 in place, so the references <SB>:133 to <SB>:326 of
+# docs/TEST.md section "RUN-071: chunk send window" point where they did; the new ones are :369 :370 :372 :422 :423.
+# <PL>:N of that section, by the lines of 68d6b07ea2:
+    Player.java:181-182
+                // How long a chunk batch waits for the write-locks of its chunks, all of them together, see #sendPendingChunks()
+                private static final Duration CHUNK_LOCK_WAIT = Duration.ofMillis(1);
+    Player.java:876
+                    synchronizePositionAfterTeleport(spawnPosition, Vec.ZERO, RelativeFlags.NONE, true); // So the player doesn't get stuck
+    Player.java:941
+                        long lockWait = CHUNK_LOCK_WAIT.toNanos();
+    Player.java:962-964
+                            final long waitStart = System.nanoTime();
+                            final boolean locked = chunk.tryLockWriteLock(Duration.ofNanos(lockWait));
+                            lockWait -= System.nanoTime() - waitStart;
+    Player.java:962-968
+                            final long waitStart = System.nanoTime();
+                            final boolean locked = chunk.tryLockWriteLock(Duration.ofNanos(lockWait));
+                            lockWait -= System.nanoTime() - waitStart;
+                            if (!locked) {
+                                deferred.add(chunkIndex);
+                                continue;
+                            }
+    Player.java:962-973
+                            final long waitStart = System.nanoTime();
+                            final boolean locked = chunk.tryLockWriteLock(Duration.ofNanos(lockWait));
+                            lockWait -= System.nanoTime() - waitStart;
+                            if (!locked) {
+                                deferred.add(chunkIndex);
+                                continue;
+                            }
+                            try {
+                                sendPacket(chunk.getFullDataPacket());
+                            } finally {
+                                chunk.unlockWriteLock();
+                            }
+    Player.java:963
+                            final boolean locked = chunk.tryLockWriteLock(Duration.ofNanos(lockWait));
+    Player.java:967
+                                continue;
+    Player.java:969-973
+                            try {
+                                sendPacket(chunk.getFullDataPacket());
+                            } finally {
+                                chunk.unlockWriteLock();
+                            }
+    Player.java:970
+                                sendPacket(chunk.getFullDataPacket());
+    Player.java:974
+                            process().eventHandler().call(new PlayerChunkLoadEvent(this, chunkX, chunkZ));
+    Player.java:979
+                        sendPacket(new ChunkBatchFinishedPacket(batchSize));
+    Player.java:988
+                        if (needsChunkPositionSync && batchSize > 0) {
+    Player.java:993-999
+                        // Back in the queue once the batch is done, or has thrown: closest to the center, a deferred chunk would be
+                        // dequeued again. Once: a PlayerChunkLoadEvent listener may have queued it again (#sendChunk(Chunk)), and the
+                        // batch then deferred it a second time
+                        for (int i = 0; i < deferred.size(); i++) {
+                            final long chunkIndex = deferred.getLong(i);
+                            if (queuedChunks.add(chunkIndex)) chunkQueue.enqueue(chunkIndex);
+                        }
+    Player.java:996-999
+                        for (int i = 0; i < deferred.size(); i++) {
+                            final long chunkIndex = deferred.getLong(i);
+                            if (queuedChunks.add(chunkIndex)) chunkQueue.enqueue(chunkIndex);
+                        }
+    Player.java:998
+                            if (queuedChunks.add(chunkIndex)) chunkQueue.enqueue(chunkIndex);
+    EntityTrackerImpl.java:379
+                            if (player.isChunkInRing(chunkX, chunkZ)) entityMap.putIfAbsent(player.getEntityId(), player);
+# <SB>:N of that section, by the lines of 68d6b07ea2:
+    ChunkSendBlockChangeIntegrationTest.java:133
+                    assertEquals(server.name(), client.name(), "the block at " + x + "," + CHANGED_Y + "," + z + " the client sees");
+    ChunkSendBlockChangeIntegrationTest.java:134
+                    assertTrue(underTheLock.isEmpty(), "PlayerChunkLoadEvent dispatched under the chunk write-lock for " + underTheLock);
+    ChunkSendBlockChangeIntegrationTest.java:135
+                    assertTrue(player.handedOutsideTheLock.isEmpty(), "chunk packets handed to the connection outside the chunk write-lock for "
+    ChunkSendBlockChangeIntegrationTest.java:196
+                    assertTrue(queueLockTaken.get(), "the thread holding the write-locks of column " + column + " waited "
+    ChunkSendBlockChangeIntegrationTest.java:198
+                    assertEquals(2 * RADIUS + 1, times.size(), "chunks of column " + column + " sent " + times);
+    ChunkSendBlockChangeIntegrationTest.java:233
+                    assertEquals(Block.GOLD_BLOCK.name(), client.name(), "the block at " + x + "," + CHANGED_Y + "," + z + " the client sees");
+    ChunkSendBlockChangeIntegrationTest.java:281
+                    assertEquals(List.of(column + "," + -RADIUS), sentInTheMove, "the chunks of column " + column + " sent in the tick of the move");
+    ChunkSendBlockChangeIntegrationTest.java:282
+                    assertTrue(waitedFor.size() <= 1, "the batch waited for the locks of " + waitedFor + ", " + held.size() + " held by another thread");
+    ChunkSendBlockChangeIntegrationTest.java:283
+                    assertEquals(2 * RADIUS + 1, times.size(), "chunks of column " + column + " sent " + times);
+    ChunkSendBlockChangeIntegrationTest.java:324
+                    assertEquals(0, batches.getFirst(), "the size of the first batch, its chunks locked by another thread");
+    ChunkSendBlockChangeIntegrationTest.java:326
+                    assertTrue(first >= 0 && syncs.stream().anyMatch(sync -> sync > first),
+    ChunkSendBlockChangeIntegrationTest.java:369
+                    assertTrue(queuedAgain.get(), "the listener queues chunk " + deferredAt + " again before it is sent");
+    ChunkSendBlockChangeIntegrationTest.java:370
+                    assertEquals(afterTheMove.chunks().size(), afterTheMove.entries(), "the entries of the queue for the chunks "
+    ChunkSendBlockChangeIntegrationTest.java:372
+                    assertEquals(2 * RADIUS + 1, times.size(), "chunks of column " + column + " sent " + times);
+    ChunkSendBlockChangeIntegrationTest.java:422
+                    assertEquals(1, inTheMove.size(), "exceptions reported in the tick of the move: " + inTheMove);
+    ChunkSendBlockChangeIntegrationTest.java:423
+                    assertTrue(afterTheMove.chunks().contains(deferredAt), "chunk " + deferredAt + ", deferred ahead of the failure, is queued"

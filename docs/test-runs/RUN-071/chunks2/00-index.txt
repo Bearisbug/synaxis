@@ -23,6 +23,12 @@
 08-rework-neighbours.txt  review rework: 5 root classes (20 tests) and 2 :synx classes (26 tests) in both modes, :loadtest
                           BotSocketTest (8 tests)
 09-rework-docs.txt        review rework: design-doc and test-doc lint, the line references of the docs to the changed files
+10-requeue-red-green.txt  second review rework: the test class of 68d6b07ea2 on the fix, on the send of c193a22479, of a6155af745
+                          and on the code of 8b18922130, default and strict grid
+11-requeue-counterproofs.txt  second review rework: eleven edits of 68d6b07ea2, one at a time (cp1, cp2, cp10, cp11 also in
+                          strict grid), and the restored runs
+12-requeue-neighbours.txt second review rework: 5 root classes (22 tests) in both modes
+13-requeue-docs.txt       second review rework: design-doc and test-doc lint, the line references of the docs to the changed files
 
 # What the code did before the fix (8b18922130), read from the code
 - Who gets a block change: InstanceContainer#UNSAFE_setBlock holds the instance monitor and the chunk write-lock, changes the
@@ -141,3 +147,49 @@ TC-PROD-679  pass  only 4,-3 sent in the tick of the move, the sending thread qu
 # Not verified in the rework
 - The same as above: full module runs and the real client are the integration round's; a SynxChunk with a world flag on a real shard.
 - How often a chunk is deferred under load (no load test); the head-of-line case is shown with locks held by a test thread only.
+
+# Second review rework (68d6b07ea2), 2026-10-06 23:05 to 23:40 (UTC+8)
+The review of c193a22479 found two faults in the put-back of the deferred chunks and three points in the docs.
+- A PlayerChunkLoadEvent listener runs on the sending thread under the reentrant queue lock. One that calls sendChunk for a chunk the
+  batch has deferred queues it again; the batch dequeues it again and defers it again, and the loop after the batch put both copies
+  back without a check: chunkQueue one entry more than queuedChunks (trimChunkQueue only counts queuedChunks), the chunk sent twice.
+- The put-back ran after the loop, inside the try block: an exception from getFullDataPacket or sendPacket left the batch before it
+  and lost the chunks deferred so far.
+- Fix: Player#sendPendingChunks declares the deferred list before it takes the queue lock and puts the deferred chunks back in the
+  finally block that releases it, each one only if queuedChunks does not hold it yet (the check sendChunk makes). The chunk whose
+  packet threw is not put back, as before: one that throws every time would be dequeued and throw again every tick
+  (docs/DESIGN-PROD.md section 28.2, residual 5).
+- Docs: DESIGN-PROD API-PROD-020 (the premise for chunks whose packet content is fixed when taken: the invalidation under the chunk
+  write-lock too; the put-back once and in the finally block), section 15, section 28.2 residual 5, section 28.3 (:974, :979),
+  change log; PLUGINS.md section 10 (a deferred chunk is sent in the tick its lock is free, maybe more than one tick later); TEST.md
+  TC-PROD-679 steps 9 to 14, step 1 on what the count of the holder can miss, the line numbers and counts of the section.
+- Test class (7 tests): two tests added after line 327, line 76 of the class comment changed in place, so the earlier <SB>:N
+  references hold.
+- Lock holds, each after memory_pressure free >= 30 % and the 1-minute load <= 24 (free 39 to 54 %, load 8.60 to 11.88):
+  23:12:16-23:13:03 (an earlier version of the second new test, see below), 23:14:50-23:15:35 (c193 and fix of 10),
+  23:16:52-23:26:31 (a6155 and before of 10, all of 11, 12). Raw logs, XML and the counter proof diffs in /tmp/chunks2-requeue,
+  deleted after the round.
+- Earlier version of the second new test, not kept as evidence: the holder of chunk 4,0 let go only after the tick of the move. The
+  batch ends on the exception without ChunkBatchFinished, so the hook that lets go at the end of a batch never ran, and the tick of
+  chunk 4,0 waited for its read-lock until the holder gave up after 10 s. Red at :370 and :419 on c193a22479 all the same; the final
+  version lets go in the injecting hook before it throws, and at the end of a batch.
+- Only the classes the session allowed were run: ChunkSendBlockChangeIntegrationTest and the four root neighbours of TC-PROD-678
+  step 1. TC-PROD-678 steps 2 (:synx) and 3 (:loadtest BotSocketTest) were not rerun.
+
+# Results of the second rework (TC-PROD-675 to 679 rerun on 68d6b07ea2)
+TC-PROD-679  pass  steps 9 and 10 (10, 12): the listener queues 4,0 again while it is deferred, the queue holds 1 entry for [4,0]
+                   after the batch, each chunk of column 4 sent once; taking the packet of 4,1 throws once, 4,0 is still queued
+                   after the failed batch (6 entries, 6 chunks) and is sent once afterwards, 4,1 is not sent again. Red on the send
+                   of c193a22479 at :370 (2 entries for [4,0], 4,0 sent twice) and :423 (4,0 not queued, never sent) (10); cp10
+                   (put back without the check) at :370 only, cp11 (put back outside the finally block) at :423 only, both modes
+                   (11). On a6155af745, 8b18922130, cp1, cp2 and cp7 nothing is deferred and the two tests stop at their premise
+                   (:369, :422 or :423). cp8 (1 ms per chunk) red at :282 with 6 locks queued for, 7,914 us (11).
+TC-PROD-675  pass  7 tests (10, 11, 12); red lines as before: :133 (before, cp1), :134 (cp4), :135 (cp6)
+TC-PROD-676  pass  red at :196 (before, cp1, cp2); cp3 (deferred chunks dropped) at :198, with :283 of TC-PROD-679 step 1
+                   and :372, :423 of its steps 9 and 10 (11)
+TC-PROD-677  pass  red at :233 (before, cp5)
+TC-PROD-678  pass  step 1 only: root 5 classes 22 tests, both modes (12)
+
+# Not verified in the second rework
+- The same as above, and TC-PROD-678 steps 2 and 3.
+- A real PlayerChunkLoadEvent listener of a plugin or the host re-queuing chunks; the listener here is the test's.

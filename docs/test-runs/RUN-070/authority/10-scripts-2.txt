@@ -1,0 +1,336 @@
+RUN-070 authority · 10 the scripts of the review follow-up's lock runs and their helpers, as run
+
+==================== run0.zsh
+#!/bin/zsh
+# fu-authority lock run 0: compile the root and loadtest test source sets, nothing run.
+until mkdir /tmp/synaxis-heavy.lock 2>/dev/null; do sleep 60; done
+trap 'rm -rf /tmp/synaxis-heavy.lock' EXIT
+echo "owner=生产就绪会话/fu-authority pid=29280 since=$(date '+%F %T') task=fu-authority: compile the root and loadtest tests" > /tmp/synaxis-heavy.lock/owner
+
+export JAVA_HOME=/opt/homebrew/opt/openjdk@25/libexec/openjdk.jdk/Contents/Home
+WT=/Users/bug/Documents/Projects/Minecraft/synaxis-wt/m3fix-authority
+OUT=/tmp/m3fix-int/fu-authority/run0
+rm -rf $OUT; mkdir -p $OUT
+cd $WT
+echo "start $(date '+%F %T') HEAD $(git rev-parse --short=10 HEAD)" >> $OUT/summary.txt
+./gradlew :compileTestJava :loadtest:compileTestJava --max-workers=4 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts > $OUT/compile.log 2>&1
+echo "compile exit=$? $(date '+%T')" >> $OUT/summary.txt
+echo "done $(date '+%F %T')" >> $OUT/summary.txt
+
+==================== run1.zsh
+#!/bin/zsh
+# fu-authority lock run 1. Root: the movement, reach and placement classes on the listeners of c99fccc82b (before the
+# follow-up) and on the follow-up in default and strict grid, the counter proofs, the listeners of 14437d0b78 (the whole
+# group undone). Loadtest: BotStallTest on the Bot of c99fccc82b with the clock only, on the follow-up in default and
+# strict grid, its counter proof; then the loadtest test task in default and strict grid.
+until mkdir /tmp/synaxis-heavy.lock 2>/dev/null; do sleep 60; done
+trap 'rm -rf /tmp/synaxis-heavy.lock' EXIT
+echo "owner=生产就绪会话/fu-authority pid=29280 since=$(date '+%F %T') task=fu-authority: red, green and counter proofs, loadtest tests" > /tmp/synaxis-heavy.lock/owner
+
+export JAVA_HOME=/opt/homebrew/opt/openjdk@25/libexec/openjdk.jdk/Contents/Home
+WT=/Users/bug/Documents/Projects/Minecraft/synaxis-wt/m3fix-authority
+W=/tmp/m3fix-int/fu-authority
+OUT=$W/run1
+PY=/Users/bug/Documents/Projects/Minecraft/synaxis/.venv/bin/python
+LP=io.github.bearisbug.synaxis.listener
+MOVE=$LP.PlayerMovementAuthorityIntegrationTest
+REACH=$LP.PlayerBlockReachIntegrationTest
+PLACE=io.github.bearisbug.synaxis.entity.player.PlayerBlockPlacementIntegrationTest
+OLDMOVE=io.github.bearisbug.synaxis.entity.player.PlayerMovementIntegrationTest
+STALL=io.github.bearisbug.synaxis.loadtest.BotStallTest
+LISTENERS=src/main/java/io/github/bearisbug/synaxis/listener
+PLACE_FILE=src/test/java/io/github/bearisbug/synaxis/entity/player/PlayerBlockPlacementIntegrationTest.java
+BOT_FILE=loadtest/src/main/java/io/github/bearisbug/synaxis/loadtest/Bot.java
+G=(--max-workers=4 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts)
+STRICT=(-Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true -Dsynaxis.thread-provider=grid)
+rm -rf $OUT; mkdir -p $OUT
+cd $WT
+log() { echo "$*" >> $OUT/summary.txt; }
+log "start $(date '+%F %T') HEAD $(git rev-parse --short=10 HEAD); changed paths: $(git status --short | tr '\n' ' ')"
+
+gradle_run() {  # <label> <project> <extra args...> -- <tests...>
+  local label=$1 project=$2; shift 2
+  local -a extra tests
+  while [[ $1 != -- ]]; do extra+=$1; shift; done; shift
+  for t in "$@"; do tests+=(--tests $t); done
+  local results=build/test-results/test
+  [[ $project == :loadtest ]] && results=loadtest/build/test-results/test
+  rm -rf $results
+  ./gradlew ${project}:test --rerun $tests $G $extra > $OUT/$label.log 2>&1
+  log "$label exit=$? $(date '+%T')"
+  mkdir -p $OUT/$label
+  cp $results/TEST-*.xml $OUT/$label/ 2>/dev/null
+  $PY $W/summarize.py $OUT/$label/TEST-*.xml >> $OUT/summary.txt 2>&1
+  log ""
+}
+restore() {
+  cp $W/fix/PlayerPositionListener.java $W/fix/PlayerActionListener.java $LISTENERS/
+  git checkout HEAD -- $LISTENERS/BlockPlacementListener.java
+  cp $W/fix/PlayerBlockPlacementIntegrationTest.java $PLACE_FILE
+  cp $W/fix/Bot.java $BOT_FILE
+}
+
+# 1. Before the follow-up: the listeners of c99fccc82b, the tests of now
+git checkout HEAD -- $LISTENERS
+log "before: listeners of HEAD, $(git status --short -- $LISTENERS | wc -l | tr -d ' ') changed"
+gradle_run before "" -- $MOVE $REACH $PLACE $OLDMOVE
+# 2. The follow-up, default and strict grid
+restore
+gradle_run after "" -- $MOVE $REACH $PLACE $OLDMOVE
+gradle_run after-strict "" $STRICT -- $MOVE $REACH $PLACE $OLDMOVE
+# 3. Counter proofs
+for v in border rounding outside cap; do
+  $PY $W/variant.py $v >> $OUT/summary.txt
+  gradle_run proof-$v "" -- $MOVE
+  restore
+done
+for v in dig place; do
+  $PY $W/variant.py $v >> $OUT/summary.txt
+  gradle_run proof-$v "" -- $REACH
+  restore
+done
+$PY $W/variant.py unloaded-far >> $OUT/summary.txt
+gradle_run proof-unloaded-far "" -- $PLACE
+restore
+# 4. The whole group undone: the listeners of 14437d0b78
+git checkout 14437d0b78 -- $LISTENERS
+gradle_run base "" -- $MOVE $REACH
+git checkout HEAD -- $LISTENERS
+restore
+
+# 5. BotStallTest: the Bot of c99fccc82b with the clock only, then the follow-up, then its counter proof
+cp $W/pre/Bot.java $BOT_FILE
+log "bot before: $(git diff --stat -- $BOT_FILE | tail -1)"
+gradle_run stall-before :loadtest -- $STALL
+restore
+gradle_run stall-after :loadtest -- $STALL
+gradle_run stall-after-strict :loadtest $STRICT -- $STALL
+$PY $W/variant.py bot >> $OUT/summary.txt
+gradle_run proof-bot :loadtest -- $STALL
+restore
+
+# 6. The loadtest test task, default and strict grid
+for mode in default strict-grid; do
+  extra=()
+  [[ $mode == strict-grid ]] && extra=($STRICT)
+  rm -rf loadtest/build/test-results/test
+  ./gradlew :loadtest:test --rerun $G $extra > $OUT/loadtest-$mode.log 2>&1
+  log "loadtest-$mode exit=$? $(date '+%T')"
+  /usr/bin/grep -E 'BUILD (SUCCESSFUL|FAILED) in' $OUT/loadtest-$mode.log >> $OUT/summary.txt
+  mkdir -p $OUT/loadtest-$mode/loadtest
+  cp loadtest/build/test-results/test/TEST-*.xml $OUT/loadtest-$mode/loadtest/ 2>/dev/null
+  $PY $W/aggregate.py $OUT/loadtest-$mode >> $OUT/summary.txt 2>&1
+  log ""
+done
+
+for f in PlayerPositionListener.java PlayerActionListener.java; do cmp -s $W/fix/$f $LISTENERS/$f && log "$f = follow-up" || log "$f DIFFERS"; done
+cmp -s $W/fix/Bot.java $BOT_FILE && log "Bot.java = follow-up" || log "Bot.java DIFFERS"
+cmp -s $W/fix/PlayerBlockPlacementIntegrationTest.java $PLACE_FILE && log "PlayerBlockPlacementIntegrationTest.java = follow-up" || log "PlayerBlockPlacementIntegrationTest.java DIFFERS"
+log "changed paths at the end: $(git status --short | tr '\n' ' ')"
+log "done $(date '+%F %T')"
+
+==================== run2.zsh
+#!/bin/zsh
+# fu-authority lock run 2. TC-PROD-634 step 4: the lighting session's MapShardPlayerAuthorityTest (m3/sec-r1 de82c5720a,
+# copied in, deleted after) on the follow-up and on the listeners of 14437d0b78. Then the test task of every module in
+# default mode with the database variables (TC-PROD-636 step 1).
+until mkdir /tmp/synaxis-heavy.lock 2>/dev/null; do sleep 60; done
+trap 'rm -rf /tmp/synaxis-heavy.lock' EXIT
+echo "owner=生产就绪会话/fu-authority pid=29280 since=$(date '+%F %T') task=fu-authority: lighting probe and the full test task" > /tmp/synaxis-heavy.lock/owner
+
+export JAVA_HOME=/opt/homebrew/opt/openjdk@25/libexec/openjdk.jdk/Contents/Home
+WT=/Users/bug/Documents/Projects/Minecraft/synaxis-wt/m3fix-authority
+W=/tmp/m3fix-int/fu-authority
+OUT=$W/run2
+PY=/Users/bug/Documents/Projects/Minecraft/synaxis/.venv/bin/python
+LIGHT=io.github.bearisbug.synaxis.app.shard.MapShardPlayerAuthorityTest
+LIGHT_FILE=server-app/src/test/java/io/github/bearisbug/synaxis/app/shard/MapShardPlayerAuthorityTest.java
+LISTENERS=src/main/java/io/github/bearisbug/synaxis/listener
+G=(--max-workers=4 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts)
+rm -rf $OUT; mkdir -p $OUT
+cd $WT
+log() { echo "$(date '+%F %T') $*" >> $OUT/summary.txt; }
+log "lock taken; HEAD $(git rev-parse --short=10 HEAD); changed paths: $(git status --short | tr '\n' ' ')"
+
+light_run() {  # <label>
+  local label=$1
+  rm -rf server-app/build/test-results/test
+  ./gradlew :server-app:test --rerun --tests $LIGHT $G > $OUT/$label.log 2>&1
+  log "$label exit=$?"
+  mkdir -p $OUT/$label
+  cp server-app/build/test-results/test/TEST-*.xml $OUT/$label/ 2>/dev/null
+  $PY $W/summarize.py $OUT/$label/TEST-*.xml >> $OUT/summary.txt 2>&1
+}
+
+# 1. The lighting session's probe on the follow-up, then on the listeners of 14437d0b78
+git show de82c5720a:$LIGHT_FILE > $LIGHT_FILE
+light_run light-after
+git checkout 14437d0b78 -- $LISTENERS
+light_run light-base
+git checkout HEAD -- $LISTENERS
+cp $W/fix/PlayerPositionListener.java $W/fix/PlayerActionListener.java $LISTENERS/
+rm -f $LIGHT_FILE
+for f in PlayerPositionListener.java PlayerActionListener.java; do cmp -s $W/fix/$f $LISTENERS/$f && log "$f = follow-up" || log "$f DIFFERS"; done
+log "after the probe: $(git status --short | tr '\n' ' ')"
+
+# 2. The test task of every module, default, with the database variables
+export SYNAXIS_TEST_PG_URL=jdbc:postgresql://127.0.0.1:5440/postgres
+export SYNAXIS_TEST_PG_USER=postgres
+export SYNAXIS_TEST_REDIS_URL=redis://127.0.0.1:6440
+export SYNAXIS_TEST_PG_PASSWORD="$(docker inspect synaxis-pg --format '{{range .Config.Env}}{{println .}}{{end}}' | sed -n 's/^POSTGRES_PASSWORD=//p')"
+log "database variables: $(env | /usr/bin/grep -c '^SYNAXIS_TEST_') set, password $([[ -n $SYNAXIS_TEST_PG_PASSWORD ]] && echo non-empty || echo EMPTY)"
+find . -path ./client-fabric -prune -o -type d -path '*/build/test-results/test' -prune -exec rm -rf {} +
+log "default: ./gradlew test --continue --rerun ${G[*]}"
+./gradlew test --continue --rerun $G > $OUT/test-default.log 2>&1
+log "default exit $?"
+/usr/bin/grep -E 'BUILD (SUCCESSFUL|FAILED) in' $OUT/test-default.log >> $OUT/summary.txt
+mkdir -p $OUT/default
+for d in $(find . -path ./client-fabric -prune -o -type d -path '*/build/test-results/test' -print); do
+  module=${${d#./}%%/build/test-results/test}
+  [[ $module == build/test-results/test ]] && module=root
+  mkdir -p $OUT/default/$module
+  cp $d/TEST-*.xml $OUT/default/$module/ 2>/dev/null
+done
+$PY $W/aggregate.py $OUT/default >> $OUT/summary.txt 2>&1
+/usr/bin/grep -l "AcquirableOwnershipException" $OUT/default/*/TEST-*.xml > $OUT/ownership.txt 2>/dev/null
+log "result files with AcquirableOwnershipException: $(wc -l < $OUT/ownership.txt | tr -d ' ')"
+log "changed paths at the end: $(git status --short | tr '\n' ' ')"
+log "done"
+
+==================== run3.zsh
+#!/bin/zsh
+# fu-authority lock run 3. The BotSocketTest case that failed in the full run of lock run 2 (load1 up to ~300), five times
+# alone; then the test task of the root project and of loadtest, default, with the database variables.
+until mkdir /tmp/synaxis-heavy.lock 2>/dev/null; do sleep 60; done
+trap 'rm -rf /tmp/synaxis-heavy.lock' EXIT
+echo "owner=生产就绪会话/fu-authority pid=29280 since=$(date '+%F %T') task=fu-authority: BotSocketTest case reruns, root and loadtest test tasks" > /tmp/synaxis-heavy.lock/owner
+
+export JAVA_HOME=/opt/homebrew/opt/openjdk@25/libexec/openjdk.jdk/Contents/Home
+WT=/Users/bug/Documents/Projects/Minecraft/synaxis-wt/m3fix-authority
+W=/tmp/m3fix-int/fu-authority
+OUT=$W/run3
+PY=/Users/bug/Documents/Projects/Minecraft/synaxis/.venv/bin/python
+CASE='io.github.bearisbug.synaxis.loadtest.BotSocketTest.aGateBotInConfigurationAtTheFrameTimesItsTryFromTheFirstPositionItSends'
+G=(--max-workers=4 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts)
+rm -rf $OUT; mkdir -p $OUT
+cd $WT
+log() { echo "$(date '+%F %T') $*" >> $OUT/summary.txt; }
+log "lock taken; HEAD $(git rev-parse --short=10 HEAD); $(uptime | sed 's/.*load averages*: /load /')"
+
+# 1. The case alone, five times
+for i in 1 2 3 4 5; do
+  rm -rf loadtest/build/test-results/test
+  ./gradlew :loadtest:test --rerun --tests $CASE $G > $OUT/case-$i.log 2>&1
+  log "case run $i exit=$? $(uptime | sed 's/.*load averages*: /load /')"
+  mkdir -p $OUT/case-$i
+  cp loadtest/build/test-results/test/TEST-*.xml $OUT/case-$i/ 2>/dev/null
+  $PY $W/summarize.py $OUT/case-$i/TEST-*.xml >> $OUT/summary.txt 2>&1
+done
+
+# 2. Root and loadtest test tasks, default, with the database variables
+export SYNAXIS_TEST_PG_URL=jdbc:postgresql://127.0.0.1:5440/postgres
+export SYNAXIS_TEST_PG_USER=postgres
+export SYNAXIS_TEST_REDIS_URL=redis://127.0.0.1:6440
+export SYNAXIS_TEST_PG_PASSWORD="$(docker inspect synaxis-pg --format '{{range .Config.Env}}{{println .}}{{end}}' | sed -n 's/^POSTGRES_PASSWORD=//p')"
+log "database variables: $(env | /usr/bin/grep -c '^SYNAXIS_TEST_') set, password $([[ -n $SYNAXIS_TEST_PG_PASSWORD ]] && echo non-empty || echo EMPTY)"
+rm -rf build/test-results/test loadtest/build/test-results/test
+log "./gradlew :test :loadtest:test --continue --rerun ${G[*]}"
+./gradlew :test :loadtest:test --continue --rerun $G > $OUT/test-root-loadtest.log 2>&1
+log "root and loadtest exit $? $(uptime | sed 's/.*load averages*: /load /')"
+/usr/bin/grep -E 'BUILD (SUCCESSFUL|FAILED) in' $OUT/test-root-loadtest.log >> $OUT/summary.txt
+mkdir -p $OUT/default/root $OUT/default/loadtest
+cp build/test-results/test/TEST-*.xml $OUT/default/root/ 2>/dev/null
+cp loadtest/build/test-results/test/TEST-*.xml $OUT/default/loadtest/ 2>/dev/null
+$PY $W/aggregate.py $OUT/default >> $OUT/summary.txt 2>&1
+log "changed paths at the end: $(git status --short | tr '\n' ' ')"
+log "done"
+
+==================== variant.py
+"""Applies one counter proof variant to the fixed tree: one judgment switched off, or a test put back as it was."""
+import sys
+from pathlib import Path
+
+WT = Path("/Users/bug/Documents/Projects/Minecraft/synaxis-wt/m3fix-authority")
+LISTENER = WT / "src/main/java/io/github/bearisbug/synaxis/listener"
+VARIANTS = {
+    "border": (LISTENER / "PlayerPositionListener.java",
+               "                || outwards(instance, currentPosition, packetPosition)) {",
+               "                || (Boolean.getBoolean(\"proof.never\") && outwards(instance, currentPosition, packetPosition))) {"),
+    "rounding": (LISTENER / "PlayerPositionListener.java",
+                 "        final double minX = Math.floor(border.centerX() - radius), maxX = Math.ceil(border.centerX() + radius);",
+                 "        final double minX = border.centerX() - radius, maxX = border.centerX() + radius;"),
+    "outside": (LISTENER / "PlayerPositionListener.java",
+                "        return beyond(to.x(), minX, maxX) > beyond(from.x(), minX, maxX)",
+                "        if (!Boolean.getBoolean(\"proof.never\")) return false;\n"
+                "        return beyond(to.x(), minX, maxX) > beyond(from.x(), minX, maxX)"),
+    "cap": (LISTENER / "PlayerPositionListener.java",
+            "                || currentPosition.distanceSquared(packetPosition) > 64 * 64",
+            "                || (Boolean.getBoolean(\"proof.never\") && currentPosition.distanceSquared(packetPosition) > 64 * 64)"),
+    "dig": (LISTENER / "PlayerActionListener.java",
+            "        if (dig && instance.isChunkLoaded(blockPosition) && outOfReach(player, blockPosition)) {",
+            "        if (Boolean.getBoolean(\"proof.never\") && dig && instance.isChunkLoaded(blockPosition) && outOfReach(player, blockPosition)) {"),
+    "place": (LISTENER / "BlockPlacementListener.java",
+              "|| PlayerActionListener.outOfReach(player, blockPosition)) {",
+              "|| (Boolean.getBoolean(\"proof.never\") && PlayerActionListener.outOfReach(player, blockPosition))) {"),
+    "unloaded-far": (WT / "src/test/java/io/github/bearisbug/synaxis/entity/player/PlayerBlockPlacementIntegrationTest.java",
+                     "        var player = connection.connect(instance, new Pos(1612.5, 42, 5.5));",
+                     "        var player = connection.connect(instance, new Pos(8, 42, 8));"),
+    "bot": (WT / "loadtest/src/main/java/io/github/bearisbug/synaxis/loadtest/Bot.java",
+            "            final double[] next = toward(serverPosition, at);",
+            "            final double[] next = Boolean.getBoolean(\"proof.never\") ? toward(serverPosition, at) : at;"),
+}
+
+path, old, new = VARIANTS[sys.argv[1]]
+text = path.read_text()
+assert text.count(old) == 1, (path.name, old)
+line = text[:text.index(old)].count("\n") + 1
+path.write_text(text.replace(old, new))
+print(f"variant {sys.argv[1]}: {path.name}:{line}")
+
+==================== summarize.py
+"""Prints, for JUnit XML reports, the counts and every failure with its message and the test line it came from."""
+import re
+import sys
+import xml.etree.ElementTree as ET
+
+for path in sys.argv[1:]:
+    root = ET.parse(path).getroot()
+    name = root.get("name")
+    print(f"{name}: tests={root.get('tests')} failures={root.get('failures')} errors={root.get('errors')} "
+          f"skipped={root.get('skipped')} time={root.get('time')}")
+    simple = name.rsplit(".", 1)[-1]
+    for case in root.findall("testcase"):
+        for kind in ("failure", "error"):
+            node = case.find(kind)
+            if node is None:
+                continue
+            message = (node.get("message") or "").splitlines()[0] if node.get("message") else ""
+            text = node.text or ""
+            line = re.search(re.escape(simple) + r"\.java:(\d+)", text)
+            print(f"  {kind.upper()} {case.get('name')} at {simple}.java:{line.group(1) if line else '?'}: {message}")
+
+==================== aggregate.py
+"""Per module counts of a directory of JUnit XML reports (<dir>/<module>/TEST-*.xml), and every failing case."""
+import sys
+import xml.etree.ElementTree as ET
+from pathlib import Path
+
+base = Path(sys.argv[1])
+total = [0, 0, 0, 0, 0]
+for module in sorted(p for p in base.iterdir() if p.is_dir()):
+    counts = [0, 0, 0, 0, 0]
+    failed = []
+    for report in sorted(module.glob("TEST-*.xml")):
+        root = ET.parse(report).getroot()
+        counts[0] += 1
+        for i, key in enumerate(("tests", "failures", "errors", "skipped"), start=1):
+            counts[i] += int(root.get(key, 0))
+        for case in root.findall("testcase"):
+            if case.find("failure") is not None or case.find("error") is not None:
+                failed.append(f"{root.get('name')}.{case.get('name')}")
+    total = [a + b for a, b in zip(total, counts)]
+    print(f"  {base.name} {module.name}: classes={counts[0]} tests={counts[1]} failures={counts[2]} "
+          f"errors={counts[3]} skipped={counts[4]}")
+    for name in failed:
+        print(f"    FAILED {name}")
+print(f"  {base.name} all: classes={total[0]} tests={total[1]} failures={total[2]} errors={total[3]} skipped={total[4]}")

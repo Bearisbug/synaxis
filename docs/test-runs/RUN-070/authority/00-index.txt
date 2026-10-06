@@ -42,3 +42,42 @@ Cleanup: both servers stopped by pid (25681 and 25682 not listening after), the 
 JUnit copies, the javac output, the old tools, the extracted vanilla classes the javap checks of API-PROD-030 read) deleted at
 the end of the session; no container, image or emulator was created. The Distant Horizons jar copied into this worktree's
 client-fabric/build/dh/ is under build/ and gitignored.
+
+Review follow-up (the two reviews' non-blocking points the round took up): code commit f88332598f on top of c99fccc82b. Out of
+reach digs answer with the acknowledgement alone, no block entity data; the world border ends at the vanilla client's wall
+(minimum rounded down, maximum up) and a player outside it gets no farther out on either axis; the turned-back move's chunk count
+is read once the player's ring has loaded, against a move whose chunks the same ticks load; placeIntoUnloadedChunkIsIgnored
+asserts no BlockChange; the :loadtest Bot walks at most 32 blocks a packet from where the server has it (BotStallTest).
+Same JDK, Gradle options and machine. Heavy lock taken at the top level of each script with its EXIT trap (10), owner line
+"生产就绪会话/fu-authority pid=29280":
+  lock run 0   10:49:31-10:49:39  compile the root and loadtest test source sets
+  lock run 1   10:50:42-10:56:07  red before the follow-up, green default and strict grid, the counter proofs, the listeners of
+                                  14437d0b78; BotStallTest red, green, strict grid, counter proof; loadtest test task default and
+                                  strict grid
+  lock run 2   11:02:11-11:18:10  the lighting session's probe after and before; the test task of every module, default, with the
+                                  database variables (one BotSocketTest case red at load1 up to ~300, see 08)
+  lock run 3   11:32:41-11:38:40  that BotSocketTest case alone five times (5 of 5 green); the root and loadtest test
+                                  tasks again (436 classes, 3,200 tests, 0 failures, 15 skipped)
+
+07-red-green-proofs-2.txt  the changed classes before the follow-up (red at PlayerMovementAuthorityIntegrationTest.java:192 and
+                           :222, PlayerBlockReachIntegrationTest.java:102), after it in default and strict grid (7, 5, 7 and 12
+                           tests green), the counter proofs (border off: red at :100, :120 the chunk count, :151, :192, :224;
+                           rounding off: :222; the outside rule off: :192; the 64 block cap off: :166; reach off for digs:
+                           :73, :103, :125, :141; for block uses: :164; the placement test's player back out of reach:
+                           PlayerBlockPlacementIntegrationTest.java:139), the listeners of 14437d0b78 (6 of 7 and 5 of 5 red);
+                           BotStallTest red on the Bot without the step (114.72 blocks at BotStallTest.java:71), green default and
+                           strict grid, counter proof red (114.82); loadtest test task 6 classes 26 tests green, default and
+                           strict grid
+08-full-test-2.txt         the lighting session's MapShardPlayerAuthorityTest 3 of 4 red after (the same :162, :246, :279), 4 of 4
+                           green on 14437d0b78's listeners; every module's test task; the reruns of lock run 3
+09-small-map-simulation.txt the walk profile on the two-process fixture's r0 before and after the Bot's 32 block step, the model
+                           DESIGN-PROD §28.3 item 6 quotes
+10-scripts-2.txt           the scripts of lock runs 0 to 3 and their helpers
+
+Lint after the follow-up: design-doc check.sh on DESIGN-PROD.md and DESIGN-M2.md without warnings; test-doc check.sh on
+TEST.md only the three known items (no §3 environment table, no environment column in §6, two RUN-031 rows without evidence).
+Not run in the follow-up: TC-PROD-634 step 3 (TerrainSpike and client-fabric untouched), TC-PROD-635 (PacketFlood and soak.py
+untouched), TC-PROD-636 step 2 (strict grid for every module; the changed classes and the loadtest test task ran in strict grid).
+Cleanup: the temp dir /tmp/m3fix-int/fu-authority (scripts, logs, JUnit copies, the copies the counter proofs restored from)
+deleted at the end; no separate server process, container, image or emulator was created (BotStallTest and BotSocketTest
+start their servers inside the test JVM).

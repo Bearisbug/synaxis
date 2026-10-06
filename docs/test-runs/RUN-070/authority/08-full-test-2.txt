@@ -1,0 +1,73 @@
+RUN-070 authority · 08 the review follow-up: the lighting session's probe, the test task of every module, the reruns
+
+Lock run 2, 11:02:11-11:18:10 (run2.zsh in 10), on the working tree that became f88332598f (committed after this run; it
+differs only in the wording of two Javadoc comments of the tests, with the same line counts).
+1. TC-PROD-634 step 4: MapShardPlayerAuthorityTest of m3/sec-r1 de82c5720a copied into server-app's tests: after the follow-up 3 of 4
+   red at the same lines and messages as before the follow-up (:162, :246, :279), on the listeners of 14437d0b78 4 of 4 green;
+   the file deleted after.
+2. TC-PROD-636 step 1: every module's test task, default, with the four SYNAXIS_TEST_* variables (the password only through the
+   environment, from docker inspect): 612 classes, 4,250 tests, 15 skipped (all in the root project), 1 failure:
+   BotSocketTest.aGateBotInConfigurationAtTheFrameTimesItsTryFromTheFirstPositionItSends at BotSocketTest.java:302 ("the bot was
+   taken back to configuration"), the case lasting 0.672 s: the bot ended before the server's 2.5 s hold in configuration was over.
+   The run took 15 min 41 s instead of about 7 min 30 s: processes of other projects on the machine (load1 in the run file of the
+   suite climbs from 22 to 298 over its tests). The same case passed in lock run 1 (loadtest test task, default and strict grid),
+   five times alone in lock run 3 at load1 62 to 160, and in the root and loadtest test tasks of lock run 3.
+   Not established why the bot ended. One way it can, read from the code and not reproduced: Bot#play sends the
+   ConfigurationAck and only then sets the state to CONFIGURATION, outside the write lock, so that the moving thread, which
+   checks the state under that lock, can send one more play state position packet after the acknowledgement; the follow-up
+   does not touch either path.
+
+2026-10-06 11:02:11 lock taken; HEAD c99fccc82b; changed paths:  M docs/DESIGN-M2.md  M docs/DESIGN-PROD.md  M loadtest/src/main/java/io/github/bearisbug/synaxis/loadtest/Bot.java  M loadtest/src/test/java/io/github/bearisbug/synaxis/loadtest/BotSocketTest.java  M src/main/java/io/github/bearisbug/synaxis/listener/PlayerActionListener.java  M src/main/java/io/github/bearisbug/synaxis/listener/PlayerPositionListener.java  M src/test/java/io/github/bearisbug/synaxis/entity/player/PlayerBlockPlacementIntegrationTest.java  M src/test/java/io/github/bearisbug/synaxis/listener/PlayerBlockReachIntegrationTest.java  M src/test/java/io/github/bearisbug/synaxis/listener/PlayerMovementAuthorityIntegrationTest.java ?? loadtest/src/test/java/io/github/bearisbug/synaxis/loadtest/BotStallTest.java 
+2026-10-06 11:02:17 light-after exit=1
+io.github.bearisbug.synaxis.app.shard.MapShardPlayerAuthorityTest: tests=4 failures=3 errors=0 skipped=0 time=1.987
+  FAILURE onePositionPacketCarriesThePlayerThirteenChunksIntoAGate() at MapShardPlayerAuthorityTest.java:246: org.opentest4j.AssertionFailedError: moved 208.0 blocks in one packet ==> expected: <2040.5> but was: <1832.5>
+  FAILURE jumpsPastTheBoundsLoadChunksFasterThanTheUnloadTakesThem() at MapShardPlayerAuthorityTest.java:279: org.opentest4j.AssertionFailedError: jump 0 is taken ==> expected: <20> but was: <7>
+  FAILURE aSurvivalPlayerBreaksABlockThirteenChunksAwayAndTheOverlayKeepsIt() at MapShardPlayerAuthorityTest.java:162: org.opentest4j.AssertionFailedError: broken from 293.4510180592325 blocks ==> expected: <minecraft:air{properties={}, nbt=null, handler=null}> but was: <minecraft:stone{properties={}, nbt=null, handler=null}>
+2026-10-06 11:02:26 light-base exit=0
+io.github.bearisbug.synaxis.app.shard.MapShardPlayerAuthorityTest: tests=4 failures=0 errors=0 skipped=0 time=5.549
+2026-10-06 11:02:26 PlayerPositionListener.java = follow-up
+2026-10-06 11:02:26 PlayerActionListener.java = follow-up
+2026-10-06 11:02:26 after the probe:  M docs/DESIGN-M2.md  M docs/DESIGN-PROD.md  M loadtest/src/main/java/io/github/bearisbug/synaxis/loadtest/Bot.java  M loadtest/src/test/java/io/github/bearisbug/synaxis/loadtest/BotSocketTest.java  M src/main/java/io/github/bearisbug/synaxis/listener/PlayerActionListener.java  M src/main/java/io/github/bearisbug/synaxis/listener/PlayerPositionListener.java  M src/test/java/io/github/bearisbug/synaxis/entity/player/PlayerBlockPlacementIntegrationTest.java  M src/test/java/io/github/bearisbug/synaxis/listener/PlayerBlockReachIntegrationTest.java  M src/test/java/io/github/bearisbug/synaxis/listener/PlayerMovementAuthorityIntegrationTest.java ?? loadtest/src/test/java/io/github/bearisbug/synaxis/loadtest/BotStallTest.java 
+2026-10-06 11:02:27 database variables: 4 set, password non-empty
+2026-10-06 11:02:27 default: ./gradlew test --continue --rerun --max-workers=4 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts
+2026-10-06 11:18:08 default exit 1
+BUILD FAILED in 15m 41s
+  default architecture-tests: classes=7 tests=20 failures=0 errors=0 skipped=0
+  default baker: classes=8 tests=76 failures=0 errors=0 skipped=0
+  default game-rts: classes=13 tests=87 failures=0 errors=0 skipped=0
+  default loadtest: classes=6 tests=26 failures=1 errors=0 skipped=0
+    FAILED io.github.bearisbug.synaxis.loadtest.BotSocketTest.aGateBotInConfigurationAtTheFrameTimesItsTryFromTheFirstPositionItSends()
+  default plugin-api: classes=3 tests=15 failures=0 errors=0 skipped=0
+  default protocol: classes=7 tests=122 failures=0 errors=0 skipped=0
+  default root: classes=430 tests=3174 failures=0 errors=0 skipped=15
+  default server-app: classes=113 tests=577 failures=0 errors=0 skipped=0
+  default synx: classes=17 tests=142 failures=0 errors=0 skipped=0
+  default testing: classes=8 tests=11 failures=0 errors=0 skipped=0
+  default all: classes=612 tests=4250 failures=1 errors=0 skipped=15
+2026-10-06 11:18:10 result files with AcquirableOwnershipException: 0
+2026-10-06 11:18:10 changed paths at the end:  M docs/DESIGN-M2.md  M docs/DESIGN-PROD.md  M loadtest/src/main/java/io/github/bearisbug/synaxis/loadtest/Bot.java  M loadtest/src/test/java/io/github/bearisbug/synaxis/loadtest/BotSocketTest.java  M src/main/java/io/github/bearisbug/synaxis/listener/PlayerActionListener.java  M src/main/java/io/github/bearisbug/synaxis/listener/PlayerPositionListener.java  M src/test/java/io/github/bearisbug/synaxis/entity/player/PlayerBlockPlacementIntegrationTest.java  M src/test/java/io/github/bearisbug/synaxis/listener/PlayerBlockReachIntegrationTest.java  M src/test/java/io/github/bearisbug/synaxis/listener/PlayerMovementAuthorityIntegrationTest.java ?? docs/test-runs/RUN-070/authority/09-small-map-simulation.txt ?? docs/test-runs/RUN-070/authority/10-scripts-2.txt ?? loadtest/src/test/java/io/github/bearisbug/synaxis/loadtest/BotStallTest.java 
+2026-10-06 11:18:10 done
+
+Lock run 3, 11:32:41-11:38:40 (run3.zsh in 10), HEAD f88332598f: the case alone five times, then the root and loadtest test
+tasks, default, with the database variables.
+
+2026-10-06 11:32:41 lock taken; HEAD f88332598f; load 336.29 158.97 102.15
+2026-10-06 11:33:49 case run 1 exit=0 load 160.09 145.18 101.59
+io.github.bearisbug.synaxis.loadtest.BotSocketTest: tests=1 failures=0 errors=0 skipped=0 time=18.251
+2026-10-06 11:34:38 case run 2 exit=0 load 108.55 133.79 99.65
+io.github.bearisbug.synaxis.loadtest.BotSocketTest: tests=1 failures=0 errors=0 skipped=0 time=12.925
+2026-10-06 11:34:59 case run 3 exit=0 load 82.94 125.74 97.74
+io.github.bearisbug.synaxis.loadtest.BotSocketTest: tests=1 failures=0 errors=0 skipped=0 time=9.914
+2026-10-06 11:35:30 case run 4 exit=0 load 70.18 118.60 96.12
+io.github.bearisbug.synaxis.loadtest.BotSocketTest: tests=1 failures=0 errors=0 skipped=0 time=13.235
+2026-10-06 11:36:00 case run 5 exit=0 load 61.89 112.04 94.52
+io.github.bearisbug.synaxis.loadtest.BotSocketTest: tests=1 failures=0 errors=0 skipped=0 time=14.523
+2026-10-06 11:36:00 database variables: 4 set, password non-empty
+2026-10-06 11:36:00 ./gradlew :test :loadtest:test --continue --rerun --max-workers=4 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts
+2026-10-06 11:38:39 root and loadtest exit 0 load 54.07 88.98 88.07
+BUILD SUCCESSFUL in 2m 38s
+  default loadtest: classes=6 tests=26 failures=0 errors=0 skipped=0
+  default root: classes=430 tests=3174 failures=0 errors=0 skipped=15
+  default all: classes=436 tests=3200 failures=0 errors=0 skipped=15
+2026-10-06 11:38:40 changed paths at the end:  M docs/DESIGN-M2.md  M docs/DESIGN-PROD.md  M docs/TEST.md  M docs/research/security-review-2026-10/README.md  M docs/test-runs/RUN-070/authority/00-index.txt ?? docs/test-runs/RUN-070/authority/07-red-green-proofs-2.txt ?? docs/test-runs/RUN-070/authority/09-small-map-simulation.txt ?? docs/test-runs/RUN-070/authority/10-scripts-2.txt 
+2026-10-06 11:38:40 done

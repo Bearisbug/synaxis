@@ -72,7 +72,7 @@ class FarViewVectorTest {
                     .forEach(present::add);
         }
         assertEquals(present, listed, "every vector file is listed in manifest.txt and nothing else");
-        assertEquals(21, listed.size(), "six regular vectors and fifteen edge vectors");
+        assertEquals(22, listed.size(), "six regular vectors and sixteen edge vectors");
     }
 
     static List<String> announcements() {
@@ -258,7 +258,8 @@ class FarViewVectorTest {
                 new String[]{"announce-url-too-long.bin", "string length 1025"},
                 new String[]{"announce-duplicate-tile.bin", "^tile 0,0 is announced twice$"},
                 new String[]{"announce-layer-2.bin", "layer 2"},
-                new String[]{"announce-no-full-tile.bin", "layer 0"});
+                new String[]{"announce-no-full-tile.bin", "layer 0"},
+                new String[]{"announce-object-over-40mib.bin", "^tile 0,0: bytes 41943041 is over the cap of 41943040$"});
     }
 
     @ParameterizedTest(name = "{0}")

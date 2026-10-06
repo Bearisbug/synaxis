@@ -205,7 +205,7 @@ class FrozenVectorTest {
                     parts[1] + " is not the file frozen in farview-vectors/manifest.txt");
             files++;
         }
-        assertEquals(21, files, "six regular vectors and fifteen edge vectors");
+        assertEquals(22, files, "six regular vectors and sixteen edge vectors");
     }
 
     static List<String> farviewAnnouncements() {

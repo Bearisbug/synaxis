@@ -108,10 +108,14 @@ class FarViewAnnouncementTest {
     }
 
     private static void rawTile(MsgBuf buf, int x, int z, int layer, String url) {
+        rawTile(buf, x, z, layer, 1000, url);
+    }
+
+    private static void rawTile(MsgBuf buf, int x, int z, int layer, long bytes, String url) {
         buf.writeVarInt(x);
         buf.writeVarInt(z);
         buf.writeUnsignedByte(layer);
-        buf.writeVarLong(1000);
+        buf.writeVarLong(bytes);
         buf.writeBytes(digest(1));
         buf.writeString(url);
     }
@@ -145,6 +149,21 @@ class FarViewAnnouncementTest {
         assertMalformed(raw(1, 1, buf -> rawTile(buf, 0, 0, 0, "u".repeat(1025))));
         assertMalformed(raw(1, 5, buf -> rawTile(buf, 0, 0, 0, "u")));
         assertMalformed(Arrays.copyOf(good, good.length - 1));
+    }
+
+    /** An object is at most 40 MiB where a tile is built and where it is read. */
+    @Test
+    void anObjectIsAtMost40MiB() {
+        final Tile atCap = new Tile(0, 0, 0, 41_943_040L, digest(0), "u");
+        final FarViewAnnouncement announcement = new FarViewAnnouncement("b", 2, 4, 0, 256, List.of(atCap));
+        assertEquals(announcement, FarViewAnnouncement.read(MsgBuf.reading(encode(announcement))));
+        assertEquals(41_943_040L, FarViewAnnouncement.read(MsgBuf.reading(raw(1, 1,
+                buf -> rawTile(buf, 0, 0, 0, 41_943_040L, "u")))).tiles().getFirst().bytes());
+        assertThrows(MalformedMessageException.class, () -> new Tile(0, 0, 0, 41_943_041L, digest(0), "u"), "built");
+        final byte[] over = raw(1, 1, buf -> rawTile(buf, 0, 0, 0, 41_943_041L, "u"));
+        final MalformedMessageException thrown =
+                assertThrows(MalformedMessageException.class, () -> FarViewAnnouncement.read(MsgBuf.reading(over)), "read");
+        assertEquals("tile 0,0: bytes 41943041 is over the cap of 41943040", thrown.getMessage());
     }
 
     @Test

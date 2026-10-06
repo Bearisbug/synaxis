@@ -39,6 +39,8 @@ public record FarViewAnnouncement(String buildId, int baseLevel, int coarseLevel
     public static final int MAX_TILES = 64;
     /** The cap on an encoded {@code url}. */
     public static final int MAX_URL_BYTES = 1024;
+    /** The cap on {@code bytes} of a tile, 40 MiB: no baker writes a pack over 34,176,304 bytes. */
+    public static final long MAX_OBJECT_BYTES = 41_943_040;
     /** The length of a SHA-256. */
     public static final int SHA256_BYTES = 32;
     /** {@code layer} of a tile that meets the bounds of the shard: the whole pack. */
@@ -52,7 +54,7 @@ public record FarViewAnnouncement(String buildId, int baseLevel, int coarseLevel
      * @param tileX  the tile
      * @param tileZ  the tile
      * @param layer  {@link #LAYER_FULL} or {@link #LAYER_COARSE}
-     * @param bytes  the size of the object, at least 1
+     * @param bytes  the size of the object, at least 1 and at most {@value #MAX_OBJECT_BYTES}
      * @param sha256 the SHA-256 of the object, which names it
      * @param url    where to get it, at most {@value #MAX_URL_BYTES} bytes
      */
@@ -66,6 +68,10 @@ public record FarViewAnnouncement(String buildId, int baseLevel, int coarseLevel
                 throw new MalformedMessageException("tile " + tileX + "," + tileZ + ": layer " + layer + " is neither 0 nor 1");
             }
             if (bytes < 1) throw new MalformedMessageException("tile " + tileX + "," + tileZ + ": bytes " + bytes + " is below 1");
+            if (bytes > MAX_OBJECT_BYTES) {
+                throw new MalformedMessageException("tile " + tileX + "," + tileZ + ": bytes " + bytes
+                        + " is over the cap of " + MAX_OBJECT_BYTES);
+            }
             if (sha256.length != SHA256_BYTES) {
                 throw new MalformedMessageException("tile " + tileX + "," + tileZ + ": sha256 is " + sha256.length + " bytes");
             }

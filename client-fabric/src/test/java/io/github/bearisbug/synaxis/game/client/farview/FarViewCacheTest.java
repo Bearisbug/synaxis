@@ -8,8 +8,11 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.attribute.FileTime;
+import java.nio.file.attribute.PosixFilePermissions;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HexFormat;
@@ -23,6 +26,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assumptions.assumeFalse;
 
 /**
  * The far view cache of {@code docs/DESIGN-M3.md} {@code API-M3-015} (缓存条): the view key, the
@@ -248,5 +252,64 @@ class FarViewCacheTest {
         final FarViewCache.Cleaned cleaned = cache.clean(10, key);
         assertEquals(List.of(), cleaned.libraries());
         assertEquals(List.of(), cleaned.packs(), "an object the library in use names stays");
+    }
+
+    // ---- M3-S (REQ-M3-032): the .part files
+
+    private static void part(FarViewCache cache, String sha256, long modifiedAt) throws IOException {
+        Files.createDirectories(cache.part(sha256).getParent());
+        Files.write(cache.part(sha256), new byte[100]);
+        Files.setLastModifiedTime(cache.part(sha256), FileTime.fromMillis(modifiedAt));
+    }
+
+    @Test
+    void atStartOnlyPartsOlderThanADayGo() throws IOException {
+        final FarViewCache cache = new FarViewCache(dir);
+        final long now = System.currentTimeMillis();
+        part(cache, "a".repeat(64), now - Duration.ofHours(25).toMillis());
+        part(cache, "b".repeat(64), now - Duration.ofHours(1).toMillis());
+        part(cache, "c".repeat(64), now - Duration.ofHours(23).toMillis());
+
+        assertEquals(List.of("a".repeat(64)), cache.dropStaleParts(null, now));
+        assertFalse(Files.exists(cache.part("a".repeat(64))));
+        assertTrue(Files.exists(cache.part("b".repeat(64))));
+        assertTrue(Files.exists(cache.part("c".repeat(64))));
+    }
+
+    @Test
+    void aPartThatCannotBeDeletedIsLoggedAndSkipped() throws IOException {
+        assumeFalse("root".equals(System.getProperty("user.name")), "root deletes in a read only directory");
+        final FarViewCache cache = new FarViewCache(dir);
+        final long now = System.currentTimeMillis();
+        part(cache, "a".repeat(64), now - Duration.ofHours(25).toMillis());
+        part(cache, "b".repeat(64), now - Duration.ofHours(1).toMillis());
+        final Path packs = cache.part("a".repeat(64)).getParent();
+        Files.setPosixFilePermissions(packs, PosixFilePermissions.fromString("r-xr-xr-x"));
+        try (LogLines log = new LogLines()) {
+            assertEquals(List.of(), cache.dropStaleParts(null, now));
+            assertTrue(Files.exists(cache.part("a".repeat(64))), "still there");
+            assertTrue(Files.exists(cache.part("b".repeat(64))));
+            assertEquals(1, log.warnings().size(), log.warnings().toString());
+            assertTrue(log.warnings().getFirst().contains("Far view cache " + "a".repeat(64) + ".hfp.part cannot be deleted: "),
+                    log.warnings().toString());
+        } finally {
+            Files.setPosixFilePermissions(packs, PosixFilePermissions.fromString("rwxr-xr-x"));
+        }
+    }
+
+    @Test
+    void cleaningTakesEveryPart() throws IOException {
+        final FarViewCache cache = new FarViewCache(dir);
+        final long now = System.currentTimeMillis();
+        part(cache, "a".repeat(64), now);
+        part(cache, "b".repeat(64), now);
+        Files.write(cache.pack("c".repeat(64)), new byte[100]);
+
+        final FarViewCache.Cleaned cleaned = cache.clean(FarViewCache.LIMIT_BYTES, "none");
+
+        assertEquals(List.of("a".repeat(64), "b".repeat(64)), cleaned.parts());
+        assertFalse(Files.exists(cache.part("a".repeat(64))));
+        assertFalse(Files.exists(cache.part("b".repeat(64))));
+        assertTrue(Files.exists(cache.pack("c".repeat(64))), "under the limit, an object stays");
     }
 }

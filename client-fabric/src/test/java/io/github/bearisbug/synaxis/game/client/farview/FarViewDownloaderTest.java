@@ -18,9 +18,15 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.Random;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
@@ -36,6 +42,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
 
 /**
  * The downloads of {@code docs/DESIGN-M3.md} {@code API-M3-015} (下载条) against an HTTP server of the
@@ -85,6 +92,8 @@ class FarViewDownloaderTest {
 
     private final Map<String, byte[]> objects = new ConcurrentHashMap<>();
     private final Map<String, AtomicInteger> counts = new ConcurrentHashMap<>();
+    /** Lets a held answer go when the test ends. */
+    private final CountDownLatch release = new CountDownLatch(1);
 
     @BeforeEach
     void start() throws IOException {
@@ -120,6 +129,7 @@ class FarViewDownloaderTest {
 
     @AfterEach
     void stop() {
+        release.countDown();
         server.stop(0);
     }
 
@@ -415,5 +425,170 @@ class FarViewDownloaderTest {
         assertTrue(Duration.ofNanos(System.nanoTime() - started).toMillis() < 2500, "it stopped before the server finished");
         assertTrue(Files.exists(cache.part(FarViewConnection.hex(tile))), "the .part stays for the next connection");
         assertEquals(1, requests.size());
+    }
+
+    // ---- M3-S (REQ-M3-032): bad URLs, redirects, the time limit and the digest taken while writing
+
+    @Test
+    void aBadUrlAndARedirectFailOnTheirFirstAttemptAndTheRedirectIsNotFollowed() throws IOException {
+        final FarViewCache cache = new FarViewCache(dir);
+        final byte[] whole = vector("pack-small.hfp");
+        final List<String> elsewhereAsked = Collections.synchronizedList(new ArrayList<>());
+        final HttpServer elsewhere = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+        elsewhere.createContext("/", exchange -> {
+            try (exchange) {
+                elsewhereAsked.add(exchange.getRequestURI().getPath());
+                exchange.sendResponseHeaders(200, whole.length);
+                exchange.getResponseBody().write(whole);
+            }
+        });
+        elsewhere.start();
+        try {
+            answer = (_, _, _, out) -> {
+                out.exchange().getResponseHeaders().set("Location", "http://127.0.0.1:" + elsewhere.getAddress().getPort()
+                        + "/m/farview/whole");
+                out.exchange().sendResponseHeaders(302, -1);
+            };
+            objects.put("/m/farview/moved", whole);
+            final String root = "http://127.0.0.1:" + server.getAddress().getPort();
+            final FarViewDownloader downloader = new FarViewDownloader(cache,
+                    FarViewDownloader.http().proxy(HttpClient.Builder.NO_PROXY).build(),
+                    List.of(Duration.ofMillis(10), Duration.ofMillis(20)), Duration.ofSeconds(5));
+            for (String url : List.of("ftp://127.0.0.1:" + server.getAddress().getPort() + "/m/farview/moved",
+                    root + "/m/farview/a b.hfp", root + "/m/farview/moved")) {
+                final Tile tile = new Tile(0, 0, FarViewAnnouncement.LAYER_FULL, whole.length, sha256(whole), url);
+                final FarViewDownloader.Result result = downloader.download(List.of(tile), new AtomicBoolean(), _ -> {
+                });
+                assertFalse(result.success(), url);
+                assertEquals(FarViewConnection.hex(tile), result.failed(), url);
+                assertEquals(1, result.attempts(), url + ": " + result);
+                if (url.endsWith("/moved") && url.startsWith("http")) {
+                    assertEquals("HTTP 302", result.reason());
+                } else {
+                    assertTrue(result.reason().startsWith("the url cannot be requested: "), result.reason());
+                }
+                assertFalse(Files.exists(cache.part(FarViewConnection.hex(tile))), url);
+            }
+            assertEquals(List.of("/m/farview/moved -"), requests, "the redirect was asked for once");
+            assertEquals(List.of(), elsewhereAsked, "and not followed");
+        } finally {
+            elsewhere.stop(0);
+        }
+    }
+
+    @Test
+    void aDownloadPastItsTimeLimitStopsAndKeepsThePart() throws Exception {
+        final FarViewCache cache = new FarViewCache(dir);
+        final byte[] whole = vector("pack-small.hfp");
+        answer = (_, _, object, out) -> {
+            // One byte, then nothing for 20 s: never idle for the 30 s that end an attempt
+            out.exchange().sendResponseHeaders(200, object.length);
+            out.exchange().getResponseBody().write(object, 0, 1);
+            out.exchange().getResponseBody().flush();
+            try {
+                release.await(20, TimeUnit.SECONDS);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+        };
+        final Tile tile = serve("slow", whole, FarViewAnnouncement.LAYER_FULL);
+        final FarViewDownloader downloader = new FarViewDownloader(cache, HttpClient.newBuilder().version(HttpClient.Version.HTTP_1_1)
+                .build(), List.of(Duration.ofMillis(10), Duration.ofMillis(20)), FarViewDownloader.IDLE_TIMEOUT, Duration.ofSeconds(2));
+        final AtomicBoolean cancel = new AtomicBoolean();
+        final long started = System.nanoTime();
+        final CompletableFuture<FarViewDownloader.Result> running = CompletableFuture.supplyAsync(
+                () -> downloader.download(List.of(tile), cancel, _ -> {
+                }));
+        final FarViewDownloader.Result result;
+        try {
+            result = running.get(5, TimeUnit.SECONDS);
+        } catch (TimeoutException e) {
+            cancel.set(true);
+            fail("no result within 5 s");
+            return;
+        }
+        final long millis = Duration.ofNanos(System.nanoTime() - started).toMillis();
+        assertTrue(millis >= 2000 && millis < 5000, "stopped after " + millis + " ms");
+        assertFalse(result.success());
+        assertNull(result.failed());
+        assertEquals("the download took over 2 s", result.reason());
+        assertTrue(Files.exists(cache.part(FarViewConnection.hex(tile))), "the .part stays");
+        assertEquals(1, requests.size());
+    }
+
+    @Test
+    void aResumedObjectIsDigestedAsItArrives() throws IOException {
+        final FarViewCache cache = new FarViewCache(dir);
+        final byte[] big = bigPack();
+        answer = (_, from, object, out) -> {
+            if (from != null) out.from(object, from);
+            else out.whole(object);
+        };
+        final Tile tile = serve("big", big, FarViewAnnouncement.LAYER_FULL);
+        Files.createDirectories(cache.part(FarViewConnection.hex(tile)).getParent());
+        Files.write(cache.part(FarViewConnection.hex(tile)), Arrays.copyOf(big, TEN_MIB));
+
+        final FarViewDownloader.Result result = download(cache, List.of(tile));
+
+        assertTrue(result.success(), result.toString());
+        assertEquals(List.of("/m/farview/big bytes=" + TEN_MIB + "-"), requests, "one request for the rest");
+        assertArrayEquals(sha256(big), sha256(Files.readAllBytes(cache.pack(FarViewConnection.hex(tile)))));
+    }
+
+    @Test
+    void aByteChangedOnTheWayFailsTheDigestAndDropsThePart() throws IOException {
+        final FarViewCache cache = new FarViewCache(dir);
+        final byte[] big = bigPack();
+        final byte[] changed = big.clone();
+        changed[big.length - 100] ^= 0x01;
+        answer = (_, from, object, out) -> {
+            if (from != null) out.from(object, from);
+            else out.whole(object);
+        };
+        final Tile tile = serve("big", changed, FarViewAnnouncement.LAYER_FULL, big.length, big);
+        Files.createDirectories(cache.part(FarViewConnection.hex(tile)).getParent());
+        Files.write(cache.part(FarViewConnection.hex(tile)), Arrays.copyOf(big, TEN_MIB));
+
+        final FarViewDownloader.Result result = download(cache, List.of(tile));
+
+        assertFalse(result.success());
+        assertTrue(result.reason().contains("SHA-256"), result.reason());
+        assertEquals(List.of("/m/farview/big bytes=" + TEN_MIB + "-", "/m/farview/big -", "/m/farview/big -"), requests,
+                "the part is dropped after the first attempt, the next ones start over");
+        assertFalse(Files.exists(cache.part(FarViewConnection.hex(tile))));
+        assertFalse(Files.exists(cache.pack(FarViewConnection.hex(tile))));
+    }
+
+    private static final int TEN_MIB = 10 << 20;
+    private static byte[] bigPackBytes;
+
+    /**
+     * A whole pack of tile (-1, 0) of about 30 MiB at base level 1: every block of both layers, samples of random
+     * states, heights and biomes, which deflate leaves near their 32 KiB.
+     */
+    private static synchronized byte[] bigPack() {
+        if (bigPackBytes != null) return bigPackBytes;
+        final List<String> biomes = new ArrayList<>();
+        for (int i = 0; i < FarViewPack.MAX_BIOMES; i++) biomes.add(String.format(Locale.ROOT, "minecraft:b%03d", i));
+        final FarViewPack.Writer writer = new FarViewPack.Writer(1, -1, 0, 0, 256, 32366, 776, biomes);
+        final Random random = new Random(30);
+        for (FarViewPack.Layer layer : FarViewPack.Layer.values()) {
+            final int side = FarViewPack.blocksPerSide(layer == FarViewPack.Layer.COARSE ? FarViewPack.COARSE_LEVEL : 1);
+            for (int bz = 0; bz < side; bz++) {
+                for (int bx = 0; bx < side; bx++) {
+                    final List<FarViewPack.Sample> samples = new ArrayList<>(FarViewPack.BLOCK_SAMPLES);
+                    for (int i = 0; i < FarViewPack.BLOCK_SAMPLES; i++) {
+                        final int ground = random.nextInt(200);
+                        samples.add(new FarViewPack.Sample(1 + random.nextInt(32_365), 1 + random.nextInt(32_365), ground,
+                                ground + 1, ground + 1 + random.nextInt(55), random.nextInt(FarViewPack.MAX_BIOMES)));
+                    }
+                    writer.block(layer, bx, bz, samples);
+                }
+            }
+        }
+        bigPackBytes = writer.write();
+        assertTrue(bigPackBytes.length > 3 * TEN_MIB - (2 << 20) && bigPackBytes.length <= FarViewAnnouncement.MAX_OBJECT_BYTES,
+                "about 30 MiB: " + bigPackBytes.length);
+        return bigPackBytes;
     }
 }

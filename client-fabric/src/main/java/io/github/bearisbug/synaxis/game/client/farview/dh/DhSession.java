@@ -6,6 +6,7 @@ import com.seibel.distanthorizons.api.interfaces.config.IDhApiConfigValue;
 import com.seibel.distanthorizons.api.interfaces.config.client.IDhApiGraphicsConfig;
 import io.github.bearisbug.synaxis.game.client.farview.FarViewClient;
 import io.github.bearisbug.synaxis.game.client.farview.FarViewConnection;
+import io.github.bearisbug.synaxis.game.client.farview.FarViewTestHook;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 import net.minecraft.client.Minecraft;
@@ -52,7 +53,9 @@ final class DhSession {
     private static void apply(@Nullable FarViewConnection connection) {
         if (connection == null || !connection.available()) return;
         final IDhApiGraphicsConfig graphics = DhApi.Delayed.configs.graphics();
-        set("chunkRenderDistance", graphics.chunkRenderDistance(), connection.settings().chunkRenderDistance());
+        if (FarViewTestHook.radius) {
+            set("chunkRenderDistance", graphics.chunkRenderDistance(), connection.settings().chunkRenderDistance());
+        }
         set("maxHorizontalResolution", graphics.maxHorizontalResolution(), connection.announcement().baseLevel() == 1
                 ? EDhApiMaxHorizontalResolution.TWO_BLOCKS : EDhApiMaxHorizontalResolution.FOUR_BLOCKS);
     }

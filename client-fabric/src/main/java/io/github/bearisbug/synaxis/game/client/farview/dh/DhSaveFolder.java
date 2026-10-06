@@ -3,6 +3,7 @@ package io.github.bearisbug.synaxis.game.client.farview.dh;
 import com.seibel.distanthorizons.api.interfaces.override.levelHandling.IDhApiSaveStructure;
 import com.seibel.distanthorizons.api.interfaces.world.IDhApiLevelWrapper;
 import io.github.bearisbug.synaxis.game.client.farview.FarViewClient;
+import io.github.bearisbug.synaxis.game.client.farview.FarViewTestHook;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -25,6 +26,7 @@ final class DhSaveFolder implements IDhApiSaveStructure {
     public @Nullable File overrideFilePath(File defaultFolder, IDhApiLevelWrapper level) {
         final Path library = FarViewClient.libraryDirectory();
         if (library == null) return null;
+        if (!FarViewTestHook.pinOff && library.getFileName().toString().equals(FarViewClient.NO_FAR_VIEW)) return null;
         try {
             Files.createDirectories(library);
         } catch (IOException e) {

@@ -924,6 +924,7 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
     }
 
     private void sendPendingChunks() {
+        trimChunkQueue();
         // If we have nothing to send or have sent the max # of batches without reply, do nothing
         if (chunkQueue.isEmpty() || chunkBatchLead >= maxChunkBatchLead) return;
 
@@ -963,6 +964,42 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
             if (needsChunkPositionSync) {
                 synchronizePositionAfterTeleport(getPosition(), Vec.ZERO, RelativeFlags.NONE, true);
                 needsChunkPositionSync = false;
+            }
+        } finally {
+            chunkQueueLock.unlock();
+        }
+    }
+
+    /**
+     * Drops the queued chunks that are out of the client's ring once the queue holds more chunks than the
+     * ring has, (2r + 1)² for the radius r of {@link #effectiveViewDistance()}: what is left is in the ring
+     * and queued once, so at most that many ({@code docs/DESIGN-PROD.md} {@code API-PROD-020}). Nothing is
+     * dequeued while the client leaves its batches unacknowledged, and {@link #sendPendingChunks()} only drops
+     * what it dequeues: a client that stops acknowledging and keeps moving would grow the queue by every chunk
+     * its ring passes over, and the first batch after its next acknowledgement would dequeue them all in one
+     * tick, each dequeue a scan of the whole queue.
+     * <p>
+     * Only here, on the thread holding the player, where the ring and its center agree: the chunk adder queues
+     * the chunks entering the ring before the center moves, and a load completing on another thread may see a
+     * center the ring has left, so trimming from {@link #sendChunk(Chunk)} would drop chunks of the ring.
+     */
+    private void trimChunkQueue() {
+        final int radius = effectiveViewDistance();
+        // Nothing refuses an instance view distance below -1: the radius is then negative, which ChunkRange#chunksCount refuses
+        if (radius < 0) return;
+        final int ringChunks = ChunkRange.chunksCount(radius);
+        chunkQueueLock.lock();
+        try {
+            if (queuedChunks.size() <= ringChunks) return;
+            chunkQueue.clear();
+            final var chunks = queuedChunks.iterator();
+            while (chunks.hasNext()) {
+                final long chunkIndex = chunks.nextLong();
+                if (isOutOfClientRange(CoordConversion.chunkIndexGetX(chunkIndex), CoordConversion.chunkIndexGetZ(chunkIndex))) {
+                    chunks.remove();
+                } else {
+                    chunkQueue.enqueue(chunkIndex);
+                }
             }
         } finally {
             chunkQueueLock.unlock();

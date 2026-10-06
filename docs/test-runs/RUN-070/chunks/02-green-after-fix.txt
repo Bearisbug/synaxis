@@ -1,0 +1,29 @@
+# The new test class on the fix (5a084b973e), lock hold 05:43:19-05:46:31, 2026-10-06 (UTC+8).
+# Common header: see 00-index.txt. Class io.github.bearisbug.synaxis.entity.player.ChunkQueueBoundIntegrationTest, one Gradle run each:
+# ./gradlew :test --rerun --tests '<class>' --max-workers=4 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts [STRICT]
+# STRICT = -Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true -Dsynaxis.thread-provider=grid
+
+## default: tests=4 failures=0 errors=0 skipped=0 time=1.355s timestamp=2026-10-05T21:43:37.555Z (UTC)
+aClientThatAcknowledgesStillGetsEveryChunkOfItsRing(Env)                          0.962s  passed
+chunksLoadedAfterTheRingMovedOnAreTrimmedAndLeaveNoHole(Env)                      0.047s  passed
+aWalkingClientThatNeverAcknowledgesQueuesNoMoreThanItsRing(Env)                    0.17s  passed
+aRacingClientThatAcknowledgesAtTheMinimumRateIsTrimmedToItsRingEveryTick(Env)     0.166s  passed
+    stdout: Acknowledged walk: largest queue 114
+    stdout: Late loads: queued 112 before, 145 once they completed, 112 after the next tick, ring 121
+    stdout: Unacknowledged walk: ring 121, chunks sent 9, queued after each tick [112, 119, 121, 121, 121, 121, 121, 121, 121, 121, 121, 121, 121, 121, 121, 121, 121, 121, 121, 121, 121, 121, 121, 121, 121, 121, 121, 121, 121, 121]
+    stdout: Race at the minimum rate: queued/ring after each tick [49/49, 121/121, 49/49, 121/121, 49/49, 121/121, 49/49, 121/121]
+
+    gradle: BUILD SUCCESSFUL in 6s
+
+## strict grid: tests=4 failures=0 errors=0 skipped=0 time=1.246s timestamp=2026-10-05T21:43:43.979Z (UTC)
+aClientThatAcknowledgesStillGetsEveryChunkOfItsRing(Env)                          0.946s  passed
+chunksLoadedAfterTheRingMovedOnAreTrimmedAndLeaveNoHole(Env)                       0.04s  passed
+aWalkingClientThatNeverAcknowledgesQueuesNoMoreThanItsRing(Env)                    0.13s  passed
+aRacingClientThatAcknowledgesAtTheMinimumRateIsTrimmedToItsRingEveryTick(Env)     0.118s  passed
+    stdout: Acknowledged walk: largest queue 114
+    stdout: Late loads: queued 112 before, 145 once they completed, 112 after the next tick, ring 121
+    stdout: Unacknowledged walk: ring 121, chunks sent 9, queued after each tick [112, 119, 121, 121, 121, 121, 121, 121, 121, 121, 121, 121, 121, 121, 121, 121, 121, 121, 121, 121, 121, 121, 121, 121, 121, 121, 121, 121, 121, 121]
+    stdout: Race at the minimum rate: queued/ring after each tick [49/49, 121/121, 49/49, 121/121, 49/49, 121/121, 49/49, 121/121]
+
+    gradle: BUILD SUCCESSFUL in 6s
+

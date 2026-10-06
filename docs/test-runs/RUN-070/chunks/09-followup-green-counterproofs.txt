@@ -1,0 +1,429 @@
+# Follow-up of group chunks (fu-chunks): ChunkQueueBoundIntegrationTest on the fix 7ac36afb6e (Player#trimChunkQueue returns for a
+# negative radius; two new cases) and every counter proof of the section, one edit of Player.java (<PL>) at a time, restored with
+# git checkout HEAD -- <PL> and checked with git diff --quiet before the next. Commands as in 08. Line numbers are those of 7ac36afb6e.
+# Two holds of the heavy lock (UTC+8): 10:36:08-10:36:55 on the working tree that became 7ac36afb6e (green and a first cp5, restored from
+# a copy), 10:39:25-10:43:21 on 7ac36afb6e itself. Between the holds the only change to the worktree was that commit.
+#
+# Summary
+#   green (b2a, r0 before the counter proofs, r1 after them)  6 of 6 in both modes; 658 prints 0 exceptions, alive ticks +20, queued 112;
+#                                                              659 prints "the other thread waited for the trim true, queued 121, indexed 121"
+#   cp5  no queue lock in the trim (8 runs: 4 default, 4 strict grid)  6 completed, 1 failed every time, the same message every time:
+#        659 red at :310, 8 chunks queued twice and 8 others indexed but not queued (5 of them in the ring); "waited ... false, 124/124"
+#   cp6  no check of a negative radius (default, strict grid)  6 completed, 1 failed: 658 red at :234, 20 exceptions, alive ticks +0
+#   cp1  no trim (default, strict grid) and the code before the fix (5a084b973e^, default, strict grid)  6 completed, 4 failed: 650 at
+#        :95, 651 at :128, 652 at :171, 659 at :270 ("the trim walks the queued chunks"); 653 (largest queue 457) and 658 green
+#   cp2  trim before the new view distance applies (default)  6 completed, 1 failed: 651 at :128, [121/49, 121/121, ...]
+#   cp3  trim where chunks are queued (default, strict grid)  6 completed, 4 failed: 652 at :424 via :176 (53 missing), 653 at :424 via
+#        :207 (43 missing), 651 at :128, 659 at :424 via :316 (33 missing, the columns x = 6 to 8 entering the ring)
+#   cp4  the trim drops the ring too (default)  6 completed, 3 failed: 653 at :424 via :207 (22 missing), 652 at :424 via :176 (112
+#        missing), 659 at :270 (the index is emptied first, the trim has no queued chunk to ask about)
+
+## Hold 1 (10:36:08-10:36:55), working tree of 7ac36afb6e before the commit
+
+[b2a-default] 2026-10-06T02:36:24.274Z  tests=6 failures=0 errors=0 skipped=0  BUILD SUCCESSFUL in 17s / exit 0 at 10:36:25
+  pass  650 walk
+  pass  651 race
+  pass  652 late loads
+  pass  653 acknowledged
+  pass  658 negative view distance
+  pass  659 trim and a concurrent sendChunk
+  out   Negative view distance: 0 exceptions in 20 ticks, alive ticks +20, queued 112
+  out   Acknowledged walk: largest queue 114
+  out   Trim and a concurrent sendChunk: the other thread waited for the trim true, queued 121, indexed 121
+  out   Late loads: queued 112 before, 145 once they completed, 112 after the next tick, ring 121
+  out   Unacknowledged walk: ring 121, chunks sent 9, queued after each tick [112, 119, 121, ..., 121, 121]
+  out   Race at the minimum rate: queued/ring after each tick [49/49, 121/121, 49/49, 121/121, 49/49, 121/121, 49/49, 121/121]
+
+[b2a-strict] 2026-10-06T02:36:30.544Z  tests=6 failures=0 errors=0 skipped=0  BUILD SUCCESSFUL in 6s / exit 0 at 10:36:32
+  pass  650 walk
+  pass  651 race
+  pass  652 late loads
+  pass  653 acknowledged
+  pass  658 negative view distance
+  pass  659 trim and a concurrent sendChunk
+  out   Negative view distance: 0 exceptions in 20 ticks, alive ticks +20, queued 112
+  out   Acknowledged walk: largest queue 114
+  out   Trim and a concurrent sendChunk: the other thread waited for the trim true, queued 121, indexed 121
+  out   Late loads: queued 112 before, 145 once they completed, 112 after the next tick, ring 121
+  out   Unacknowledged walk: ring 121, chunks sent 9, queued after each tick [112, 119, 121, ..., 121, 121]
+  out   Race at the minimum rate: queued/ring after each tick [49/49, 121/121, 49/49, 121/121, 49/49, 121/121, 49/49, 121/121]
+
+cp5 on the working tree: deleted <PL>:1005 'chunkQueueLock.unlock();' and <PL>:991 'chunkQueueLock.lock();'
+
+[b2a-cp5-default] 2026-10-06T02:36:47.915Z  tests=6 failures=1 errors=0 skipped=0  6 tests completed, 1 failed / BUILD FAILED in 17s / exit 1 at 10:36:49
+  pass  650 walk
+  pass  651 race
+  pass  652 late loads
+  pass  653 acknowledged
+  pass  658 negative view distance
+  FAIL  659 trim and a concurrent sendChunk at ChunkQueueBoundIntegrationTest.java:310
+        queued twice [2,0, 1,0, 0,-1, 0,1, -1,0, 0,-2, 0,2, -2,0], indexed but not queued [3,3, -3,2, -4,-3, -3,-4, 2,-2, 5,-4, 2,4, 6,-2], queued but not indexed [], queued again meanwhile and lost [] ==> expected: <true> but was: <false>
+  out   Negative view distance: 0 exceptions in 20 ticks, alive ticks +20, queued 112
+  out   Acknowledged walk: largest queue 114
+  out   Trim and a concurrent sendChunk: the other thread waited for the trim false, queued 124, indexed 124
+  out   Late loads: queued 112 before, 145 once they completed, 112 after the next tick, ring 121
+  out   Unacknowledged walk: ring 121, chunks sent 9, queued after each tick [112, 119, 121, ..., 121, 121]
+  out   Race at the minimum rate: queued/ring after each tick [49/49, 121/121, 49/49, 121/121, 49/49, 121/121, 49/49, 121/121]
+
+[b2a-cp5-strict] 2026-10-06T02:36:54.249Z  tests=6 failures=1 errors=0 skipped=0  6 tests completed, 1 failed / BUILD FAILED in 6s / exit 1 at 10:36:55
+  pass  650 walk
+  pass  651 race
+  pass  652 late loads
+  pass  653 acknowledged
+  pass  658 negative view distance
+  FAIL  659 trim and a concurrent sendChunk at ChunkQueueBoundIntegrationTest.java:310
+        queued twice [2,0, 1,0, 0,-1, 0,1, -1,0, 0,-2, 0,2, -2,0], indexed but not queued [3,3, -3,2, -4,-3, -3,-4, 2,-2, 5,-4, 2,4, 6,-2], queued but not indexed [], queued again meanwhile and lost [] ==> expected: <true> but was: <false>
+  out   Negative view distance: 0 exceptions in 20 ticks, alive ticks +20, queued 112
+  out   Acknowledged walk: largest queue 114
+  out   Trim and a concurrent sendChunk: the other thread waited for the trim false, queued 124, indexed 124
+  out   Late loads: queued 112 before, 145 once they completed, 112 after the next tick, ring 121
+  out   Unacknowledged walk: ring 121, chunks sent 9, queued after each tick [112, 119, 121, ..., 121, 121]
+  out   Race at the minimum rate: queued/ring after each tick [49/49, 121/121, 49/49, 121/121, 49/49, 121/121, 49/49, 121/121]
+
+## Hold 2 (10:39:25-10:43:21), HEAD 7ac36afb6e
+
+[r0-default] 2026-10-06T02:39:31.267Z  tests=6 failures=0 errors=0 skipped=0  BUILD SUCCESSFUL in 7s / exit 0 at 10:39:32
+  pass  650 walk
+  pass  651 race
+  pass  652 late loads
+  pass  653 acknowledged
+  pass  658 negative view distance
+  pass  659 trim and a concurrent sendChunk
+  out   Negative view distance: 0 exceptions in 20 ticks, alive ticks +20, queued 112
+  out   Acknowledged walk: largest queue 114
+  out   Trim and a concurrent sendChunk: the other thread waited for the trim true, queued 121, indexed 121
+  out   Late loads: queued 112 before, 145 once they completed, 112 after the next tick, ring 121
+  out   Unacknowledged walk: ring 121, chunks sent 9, queued after each tick [112, 119, 121, ..., 121, 121]
+  out   Race at the minimum rate: queued/ring after each tick [49/49, 121/121, 49/49, 121/121, 49/49, 121/121, 49/49, 121/121]
+
+[r0-strict] 2026-10-06T02:39:37.572Z  tests=6 failures=0 errors=0 skipped=0  BUILD SUCCESSFUL in 6s / exit 0 at 10:39:39
+  pass  650 walk
+  pass  651 race
+  pass  652 late loads
+  pass  653 acknowledged
+  pass  658 negative view distance
+  pass  659 trim and a concurrent sendChunk
+  out   Negative view distance: 0 exceptions in 20 ticks, alive ticks +20, queued 112
+  out   Acknowledged walk: largest queue 114
+  out   Trim and a concurrent sendChunk: the other thread waited for the trim true, queued 121, indexed 121
+  out   Late loads: queued 112 before, 145 once they completed, 112 after the next tick, ring 121
+  out   Unacknowledged walk: ring 121, chunks sent 9, queued after each tick [112, 119, 121, ..., 121, 121]
+  out   Race at the minimum rate: queued/ring after each tick [49/49, 121/121, 49/49, 121/121, 49/49, 121/121, 49/49, 121/121]
+
+### cp5: no queue lock in trimChunkQueue (the try/finally stays)
+  @@ -991 +990,0 @@
+  -        chunkQueueLock.lock();
+  @@ -1005 +1003,0 @@
+  -            chunkQueueLock.unlock();
+
+[cp5-default-1] 2026-10-06T02:39:44.725Z  tests=6 failures=1 errors=0 skipped=0  6 tests completed, 1 failed / BUILD FAILED in 6s / exit 1 at 10:39:46
+  pass  650 walk
+  pass  651 race
+  pass  652 late loads
+  pass  653 acknowledged
+  pass  658 negative view distance
+  FAIL  659 trim and a concurrent sendChunk at ChunkQueueBoundIntegrationTest.java:310
+        queued twice [2,0, 1,0, 0,-1, 0,1, -1,0, 0,-2, 0,2, -2,0], indexed but not queued [3,3, -3,2, -4,-3, -3,-4, 2,-2, 5,-4, 2,4, 6,-2], queued but not indexed [], queued again meanwhile and lost [] ==> expected: <true> but was: <false>
+  out   Negative view distance: 0 exceptions in 20 ticks, alive ticks +20, queued 112
+  out   Acknowledged walk: largest queue 114
+  out   Trim and a concurrent sendChunk: the other thread waited for the trim false, queued 124, indexed 124
+  out   Late loads: queued 112 before, 145 once they completed, 112 after the next tick, ring 121
+  out   Unacknowledged walk: ring 121, chunks sent 9, queued after each tick [112, 119, 121, ..., 121, 121]
+  out   Race at the minimum rate: queued/ring after each tick [49/49, 121/121, 49/49, 121/121, 49/49, 121/121, 49/49, 121/121]
+
+[cp5-default-2] 2026-10-06T02:39:49.204Z  tests=6 failures=1 errors=0 skipped=0  6 tests completed, 1 failed / BUILD FAILED in 4s / exit 1 at 10:39:50
+  pass  650 walk
+  pass  651 race
+  pass  652 late loads
+  pass  653 acknowledged
+  pass  658 negative view distance
+  FAIL  659 trim and a concurrent sendChunk at ChunkQueueBoundIntegrationTest.java:310
+        queued twice [2,0, 1,0, 0,-1, 0,1, -1,0, 0,-2, 0,2, -2,0], indexed but not queued [3,3, -3,2, -4,-3, -3,-4, 2,-2, 5,-4, 2,4, 6,-2], queued but not indexed [], queued again meanwhile and lost [] ==> expected: <true> but was: <false>
+  out   Negative view distance: 0 exceptions in 20 ticks, alive ticks +20, queued 112
+  out   Acknowledged walk: largest queue 114
+  out   Trim and a concurrent sendChunk: the other thread waited for the trim false, queued 124, indexed 124
+  out   Late loads: queued 112 before, 145 once they completed, 112 after the next tick, ring 121
+  out   Unacknowledged walk: ring 121, chunks sent 9, queued after each tick [112, 119, 121, ..., 121, 121]
+  out   Race at the minimum rate: queued/ring after each tick [49/49, 121/121, 49/49, 121/121, 49/49, 121/121, 49/49, 121/121]
+
+[cp5-default-3] 2026-10-06T02:39:53.573Z  tests=6 failures=1 errors=0 skipped=0  6 tests completed, 1 failed / BUILD FAILED in 4s / exit 1 at 10:39:55
+  pass  650 walk
+  pass  651 race
+  pass  652 late loads
+  pass  653 acknowledged
+  pass  658 negative view distance
+  FAIL  659 trim and a concurrent sendChunk at ChunkQueueBoundIntegrationTest.java:310
+        queued twice [2,0, 1,0, 0,-1, 0,1, -1,0, 0,-2, 0,2, -2,0], indexed but not queued [3,3, -3,2, -4,-3, -3,-4, 2,-2, 5,-4, 2,4, 6,-2], queued but not indexed [], queued again meanwhile and lost [] ==> expected: <true> but was: <false>
+  out   Negative view distance: 0 exceptions in 20 ticks, alive ticks +20, queued 112
+  out   Acknowledged walk: largest queue 114
+  out   Trim and a concurrent sendChunk: the other thread waited for the trim false, queued 124, indexed 124
+  out   Late loads: queued 112 before, 145 once they completed, 112 after the next tick, ring 121
+  out   Unacknowledged walk: ring 121, chunks sent 9, queued after each tick [112, 119, 121, ..., 121, 121]
+  out   Race at the minimum rate: queued/ring after each tick [49/49, 121/121, 49/49, 121/121, 49/49, 121/121, 49/49, 121/121]
+
+[cp5-strict-1] 2026-10-06T02:40:00.128Z  tests=6 failures=1 errors=0 skipped=0  6 tests completed, 1 failed / BUILD FAILED in 6s / exit 1 at 10:40:01
+  pass  650 walk
+  pass  651 race
+  pass  652 late loads
+  pass  653 acknowledged
+  pass  658 negative view distance
+  FAIL  659 trim and a concurrent sendChunk at ChunkQueueBoundIntegrationTest.java:310
+        queued twice [2,0, 1,0, 0,-1, 0,1, -1,0, 0,-2, 0,2, -2,0], indexed but not queued [3,3, -3,2, -4,-3, -3,-4, 2,-2, 5,-4, 2,4, 6,-2], queued but not indexed [], queued again meanwhile and lost [] ==> expected: <true> but was: <false>
+  out   Negative view distance: 0 exceptions in 20 ticks, alive ticks +20, queued 112
+  out   Acknowledged walk: largest queue 114
+  out   Trim and a concurrent sendChunk: the other thread waited for the trim false, queued 124, indexed 124
+  out   Late loads: queued 112 before, 145 once they completed, 112 after the next tick, ring 121
+  out   Unacknowledged walk: ring 121, chunks sent 9, queued after each tick [112, 119, 121, ..., 121, 121]
+  out   Race at the minimum rate: queued/ring after each tick [49/49, 121/121, 49/49, 121/121, 49/49, 121/121, 49/49, 121/121]
+
+[cp5-strict-2] 2026-10-06T02:40:04.363Z  tests=6 failures=1 errors=0 skipped=0  6 tests completed, 1 failed / BUILD FAILED in 4s / exit 1 at 10:40:05
+  pass  650 walk
+  pass  651 race
+  pass  652 late loads
+  pass  653 acknowledged
+  pass  658 negative view distance
+  FAIL  659 trim and a concurrent sendChunk at ChunkQueueBoundIntegrationTest.java:310
+        queued twice [2,0, 1,0, 0,-1, 0,1, -1,0, 0,-2, 0,2, -2,0], indexed but not queued [3,3, -3,2, -4,-3, -3,-4, 2,-2, 5,-4, 2,4, 6,-2], queued but not indexed [], queued again meanwhile and lost [] ==> expected: <true> but was: <false>
+  out   Negative view distance: 0 exceptions in 20 ticks, alive ticks +20, queued 112
+  out   Acknowledged walk: largest queue 114
+  out   Trim and a concurrent sendChunk: the other thread waited for the trim false, queued 124, indexed 124
+  out   Late loads: queued 112 before, 145 once they completed, 112 after the next tick, ring 121
+  out   Unacknowledged walk: ring 121, chunks sent 9, queued after each tick [112, 119, 121, ..., 121, 121]
+  out   Race at the minimum rate: queued/ring after each tick [49/49, 121/121, 49/49, 121/121, 49/49, 121/121, 49/49, 121/121]
+
+[cp5-strict-3] 2026-10-06T02:40:08.438Z  tests=6 failures=1 errors=0 skipped=0  6 tests completed, 1 failed / BUILD FAILED in 4s / exit 1 at 10:40:10
+  pass  650 walk
+  pass  651 race
+  pass  652 late loads
+  pass  653 acknowledged
+  pass  658 negative view distance
+  FAIL  659 trim and a concurrent sendChunk at ChunkQueueBoundIntegrationTest.java:310
+        queued twice [2,0, 1,0, 0,-1, 0,1, -1,0, 0,-2, 0,2, -2,0], indexed but not queued [3,3, -3,2, -4,-3, -3,-4, 2,-2, 5,-4, 2,4, 6,-2], queued but not indexed [], queued again meanwhile and lost [] ==> expected: <true> but was: <false>
+  out   Negative view distance: 0 exceptions in 20 ticks, alive ticks +20, queued 112
+  out   Acknowledged walk: largest queue 114
+  out   Trim and a concurrent sendChunk: the other thread waited for the trim false, queued 124, indexed 124
+  out   Late loads: queued 112 before, 145 once they completed, 112 after the next tick, ring 121
+  out   Unacknowledged walk: ring 121, chunks sent 9, queued after each tick [112, 119, 121, ..., 121, 121]
+  out   Race at the minimum rate: queued/ring after each tick [49/49, 121/121, 49/49, 121/121, 49/49, 121/121, 49/49, 121/121]
+
+### cp6: no check of a negative radius
+  @@ -989 +988,0 @@
+  -        if (radius < 0) return;
+
+[cp6-default] 2026-10-06T02:40:26.796Z  tests=6 failures=1 errors=0 skipped=0  6 tests completed, 1 failed / BUILD FAILED in 18s / exit 1 at 10:40:28
+  pass  650 walk
+  pass  651 race
+  pass  652 late loads
+  pass  653 acknowledged
+  FAIL  658 negative view distance at ChunkQueueBoundIntegrationTest.java:234
+        exceptions reported in 20 ticks, the first java.lang.IllegalArgumentException: Range cannot be negative ==> expected: <0> but was: <20>
+  pass  659 trim and a concurrent sendChunk
+  out   Negative view distance: 20 exceptions in 20 ticks, alive ticks +0, queued 112
+  out   Acknowledged walk: largest queue 114
+  out   Trim and a concurrent sendChunk: the other thread waited for the trim true, queued 121, indexed 121
+  out   Late loads: queued 112 before, 145 once they completed, 112 after the next tick, ring 121
+  out   Unacknowledged walk: ring 121, chunks sent 9, queued after each tick [112, 119, 121, ..., 121, 121]
+  out   Race at the minimum rate: queued/ring after each tick [49/49, 121/121, 49/49, 121/121, 49/49, 121/121, 49/49, 121/121]
+
+[cp6-strict] 2026-10-06T02:40:33.704Z  tests=6 failures=1 errors=0 skipped=0  6 tests completed, 1 failed / BUILD FAILED in 6s / exit 1 at 10:40:35
+  pass  650 walk
+  pass  651 race
+  pass  652 late loads
+  pass  653 acknowledged
+  FAIL  658 negative view distance at ChunkQueueBoundIntegrationTest.java:234
+        exceptions reported in 20 ticks, the first java.lang.IllegalArgumentException: Range cannot be negative ==> expected: <0> but was: <20>
+  pass  659 trim and a concurrent sendChunk
+  out   Negative view distance: 20 exceptions in 20 ticks, alive ticks +0, queued 112
+  out   Acknowledged walk: largest queue 114
+  out   Trim and a concurrent sendChunk: the other thread waited for the trim true, queued 121, indexed 121
+  out   Late loads: queued 112 before, 145 once they completed, 112 after the next tick, ring 121
+  out   Unacknowledged walk: ring 121, chunks sent 9, queued after each tick [112, 119, 121, ..., 121, 121]
+  out   Race at the minimum rate: queued/ring after each tick [49/49, 121/121, 49/49, 121/121, 49/49, 121/121, 49/49, 121/121]
+
+### cp1: no trim (deleting the call instead leaves trimChunkQueue unused, which Error Prone refuses)
+  @@ -927 +927 @@
+  -        trimChunkQueue();
+  +        if (Boolean.getBoolean("proof.never")) trimChunkQueue();
+
+[cp1-default] 2026-10-06T02:40:51.516Z  tests=6 failures=4 errors=0 skipped=0  6 tests completed, 4 failed / BUILD FAILED in 27s / exit 1 at 10:41:03
+  FAIL  650 walk at ChunkQueueBoundIntegrationTest.java:95
+        chunks queued after each tick, for a ring of 121: [145, 178, 211, 244, 277, 310, 343, 376, 409, 442, 475, 508, 541, 574, 607, 640, 673, 706, 739, 772, 805, 838, 871, 904, 937, 970, 1003, 1036, 1069, 1102] ==> expected: <true> but was: <false>
+  FAIL  651 race at ChunkQueueBoundIntegrationTest.java:128
+        chunks queued / chunks of the ring after each tick: [244/49, 372/121, 504/49, 632/121, 764/49, 892/121, 1024/49, 1152/121] ==> expected: <false> but was: <true>
+  FAIL  652 late loads at ChunkQueueBoundIntegrationTest.java:171
+        chunks queued after the tick that follows the late loads, for a ring of 121: 178 ==> expected: <true> but was: <false>
+  pass  653 acknowledged
+  pass  658 negative view distance
+  FAIL  659 trim and a concurrent sendChunk at ChunkQueueBoundIntegrationTest.java:270
+        the trim walks the queued chunks ==> expected: <true> but was: <false>
+  out   Negative view distance: 0 exceptions in 20 ticks, alive ticks +20, queued 112
+  out   Acknowledged walk: largest queue 457
+  out   Late loads: queued 145 before, 178 once they completed, 178 after the next tick, ring 121
+  out   Unacknowledged walk: ring 121, chunks sent 9, queued after each tick [145, 178, 211, ..., 1069, 1102]
+  out   Race at the minimum rate: queued/ring after each tick [244/49, 372/121, 504/49, 632/121, 764/49, 892/121, 1024/49, 1152/121]
+
+[cp1-strict] 2026-10-06T02:41:07.846Z  tests=6 failures=4 errors=0 skipped=0  6 tests completed, 4 failed / BUILD FAILED in 16s / exit 1 at 10:41:19
+  FAIL  650 walk at ChunkQueueBoundIntegrationTest.java:95
+        chunks queued after each tick, for a ring of 121: [145, 178, 211, 244, 277, 310, 343, 376, 409, 442, 475, 508, 541, 574, 607, 640, 673, 706, 739, 772, 805, 838, 871, 904, 937, 970, 1003, 1036, 1069, 1102] ==> expected: <true> but was: <false>
+  FAIL  651 race at ChunkQueueBoundIntegrationTest.java:128
+        chunks queued / chunks of the ring after each tick: [244/49, 372/121, 504/49, 632/121, 764/49, 892/121, 1024/49, 1152/121] ==> expected: <false> but was: <true>
+  FAIL  652 late loads at ChunkQueueBoundIntegrationTest.java:171
+        chunks queued after the tick that follows the late loads, for a ring of 121: 178 ==> expected: <true> but was: <false>
+  pass  653 acknowledged
+  pass  658 negative view distance
+  FAIL  659 trim and a concurrent sendChunk at ChunkQueueBoundIntegrationTest.java:270
+        the trim walks the queued chunks ==> expected: <true> but was: <false>
+  out   Negative view distance: 0 exceptions in 20 ticks, alive ticks +20, queued 112
+  out   Acknowledged walk: largest queue 457
+  out   Late loads: queued 145 before, 178 once they completed, 178 after the next tick, ring 121
+  out   Unacknowledged walk: ring 121, chunks sent 9, queued after each tick [145, 178, 211, ..., 1069, 1102]
+  out   Race at the minimum rate: queued/ring after each tick [244/49, 372/121, 504/49, 632/121, 764/49, 892/121, 1024/49, 1152/121]
+
+### the code before the fix: git show 5a084b973e^:<PL> > <PL> (1 file changed, 37 deletions)
+
+[prefix-default] 2026-10-06T02:41:25.238Z  tests=6 failures=4 errors=0 skipped=0  6 tests completed, 4 failed / BUILD FAILED in 17s / exit 1 at 10:41:36
+  FAIL  650 walk at ChunkQueueBoundIntegrationTest.java:95
+        chunks queued after each tick, for a ring of 121: [145, 178, 211, 244, 277, 310, 343, 376, 409, 442, 475, 508, 541, 574, 607, 640, 673, 706, 739, 772, 805, 838, 871, 904, 937, 970, 1003, 1036, 1069, 1102] ==> expected: <true> but was: <false>
+  FAIL  651 race at ChunkQueueBoundIntegrationTest.java:128
+        chunks queued / chunks of the ring after each tick: [244/49, 372/121, 504/49, 632/121, 764/49, 892/121, 1024/49, 1152/121] ==> expected: <false> but was: <true>
+  FAIL  652 late loads at ChunkQueueBoundIntegrationTest.java:171
+        chunks queued after the tick that follows the late loads, for a ring of 121: 178 ==> expected: <true> but was: <false>
+  pass  653 acknowledged
+  pass  658 negative view distance
+  FAIL  659 trim and a concurrent sendChunk at ChunkQueueBoundIntegrationTest.java:270
+        the trim walks the queued chunks ==> expected: <true> but was: <false>
+  out   Negative view distance: 0 exceptions in 20 ticks, alive ticks +20, queued 112
+  out   Acknowledged walk: largest queue 457
+  out   Late loads: queued 145 before, 178 once they completed, 178 after the next tick, ring 121
+  out   Unacknowledged walk: ring 121, chunks sent 9, queued after each tick [145, 178, 211, ..., 1069, 1102]
+  out   Race at the minimum rate: queued/ring after each tick [244/49, 372/121, 504/49, 632/121, 764/49, 892/121, 1024/49, 1152/121]
+
+[prefix-strict] 2026-10-06T02:41:41.969Z  tests=6 failures=4 errors=0 skipped=0  6 tests completed, 4 failed / BUILD FAILED in 16s / exit 1 at 10:41:53
+  FAIL  650 walk at ChunkQueueBoundIntegrationTest.java:95
+        chunks queued after each tick, for a ring of 121: [145, 178, 211, 244, 277, 310, 343, 376, 409, 442, 475, 508, 541, 574, 607, 640, 673, 706, 739, 772, 805, 838, 871, 904, 937, 970, 1003, 1036, 1069, 1102] ==> expected: <true> but was: <false>
+  FAIL  651 race at ChunkQueueBoundIntegrationTest.java:128
+        chunks queued / chunks of the ring after each tick: [244/49, 372/121, 504/49, 632/121, 764/49, 892/121, 1024/49, 1152/121] ==> expected: <false> but was: <true>
+  FAIL  652 late loads at ChunkQueueBoundIntegrationTest.java:171
+        chunks queued after the tick that follows the late loads, for a ring of 121: 178 ==> expected: <true> but was: <false>
+  pass  653 acknowledged
+  pass  658 negative view distance
+  FAIL  659 trim and a concurrent sendChunk at ChunkQueueBoundIntegrationTest.java:270
+        the trim walks the queued chunks ==> expected: <true> but was: <false>
+  out   Negative view distance: 0 exceptions in 20 ticks, alive ticks +20, queued 112
+  out   Acknowledged walk: largest queue 457
+  out   Late loads: queued 145 before, 178 once they completed, 178 after the next tick, ring 121
+  out   Unacknowledged walk: ring 121, chunks sent 9, queued after each tick [145, 178, 211, ..., 1069, 1102]
+  out   Race at the minimum rate: queued/ring after each tick [244/49, 372/121, 504/49, 632/121, 764/49, 892/121, 1024/49, 1152/121]
+
+### cp2: trim before the new view distance applies
+  @@ -477,0 +478 @@
+  +        trimChunkQueue();
+  @@ -927 +927,0 @@
+  -        trimChunkQueue();
+
+[cp2-default] 2026-10-06T02:42:10.080Z  tests=6 failures=1 errors=0 skipped=0  6 tests completed, 1 failed / BUILD FAILED in 17s / exit 1 at 10:42:11
+  pass  650 walk
+  FAIL  651 race at ChunkQueueBoundIntegrationTest.java:128
+        chunks queued / chunks of the ring after each tick: [121/49, 121/121, 121/49, 121/121, 121/49, 121/121, 121/49, 121/121] ==> expected: <false> but was: <true>
+  pass  652 late loads
+  pass  653 acknowledged
+  pass  658 negative view distance
+  pass  659 trim and a concurrent sendChunk
+  out   Negative view distance: 0 exceptions in 20 ticks, alive ticks +20, queued 112
+  out   Acknowledged walk: largest queue 114
+  out   Trim and a concurrent sendChunk: the other thread waited for the trim true, queued 121, indexed 121
+  out   Late loads: queued 112 before, 145 once they completed, 112 after the next tick, ring 121
+  out   Unacknowledged walk: ring 121, chunks sent 9, queued after each tick [112, 119, 121, ..., 121, 121]
+  out   Race at the minimum rate: queued/ring after each tick [121/49, 121/121, 121/49, 121/121, 121/49, 121/121, 121/49, 121/121]
+
+### cp3: trim where chunks are queued (after the finally block of sendChunk)
+  @@ -923,0 +924 @@
+  +        trimChunkQueue();
+  @@ -927 +927,0 @@
+  -        trimChunkQueue();
+
+[cp3-default] 2026-10-06T02:42:28.958Z  tests=6 failures=4 errors=0 skipped=0  6 tests completed, 4 failed / BUILD FAILED in 18s / exit 1 at 10:42:30
+  pass  650 walk
+  FAIL  651 race at ChunkQueueBoundIntegrationTest.java:128
+        chunks queued / chunks of the ring after each tick: [82/49, 90/121, 92/49, 105/121, 85/49, 106/121, 111/49, 107/121] ==> expected: <false> but was: <true>
+  FAIL  652 late loads at ChunkQueueBoundIntegrationTest.java:424 via :176
+        the client misses 53 chunks of the ring [-4,-4, -5,-5, -4,3, -5,4, -6,5, -4,2, -6,4, -5,5, -4,-3, -6,-5, -4,-2, -4,1, -7,4, -8,5, -7,-5, -4,-1, -4,0, -7,5, -8,4, -8,-5, -7,-3, -5,0, -5,-1, -6,1, -6,-2, -8,-4, -7,2, -8,3, -7,-4, -5,1, -5,-2, -6,0, -6,-1, -8,-3, -7,3, -8,2, -5,2, -5,-3, -6,3, -6,-4, -7,0, -8,1, -7,-1, -8,-2, -5,3, -6,2, -6,-3, -5,-4, -7,1, -8,0, -7,-2, -8,-1, -4,-5] and holds 0 outside it [] ==> expected: <true> but was: <false>
+  FAIL  653 acknowledged at ChunkQueueBoundIntegrationTest.java:424 via :207
+        the client after the walk misses 43 chunks of the ring [31,5, 31,4, 31,-5, 31,3, 31,-4, 31,2, 31,-3, 31,1, 31,-2, 31,0, 31,-1, 32,0, 34,-3, 33,1, 33,-2, 32,-1, 33,0, 33,-1, 34,-4, 32,1, 32,-2, 34,0, 34,-1, 33,3, 33,-4, 32,2, 32,-3, 34,1, 34,-2, 33,2, 33,-3, 39,-5, 32,-4, 39,-4, 32,-5, 33,5, 39,-3, 33,-5, 33,4, 34,-5, 39,-2, 39,-1, 39,0] and holds 0 outside it [] ==> expected: <true> but was: <false>
+  pass  658 negative view distance
+  FAIL  659 trim and a concurrent sendChunk at ChunkQueueBoundIntegrationTest.java:424 via :316
+        the client misses 33 chunks of the ring [6,-5, 6,4, 7,5, 7,-5, 7,4, 6,5, 7,-4, 6,-3, 6,2, 7,3, 7,-3, 6,3, 6,-4, 7,2, 6,-1, 6,0, 7,-2, 7,1, 6,-2, 6,1, 7,-1, 7,0, 8,-1, 8,0, 8,-2, 8,1, 8,-3, 8,2, 8,-4, 8,3, 8,-5, 8,4, 8,5] and holds 0 outside it [] ==> expected: <true> but was: <false>
+  out   Negative view distance: 0 exceptions in 20 ticks, alive ticks +20, queued 112
+  out   Acknowledged walk: largest queue 116
+  out   Trim and a concurrent sendChunk: the other thread waited for the trim true, queued 121, indexed 121
+  out   Late loads: queued 92 before, 62 once they completed, 62 after the next tick, ring 121
+  out   Unacknowledged walk: ring 121, chunks sent 9, queued after each tick [115, 108, 101, 82, 115, 112, 113, 118, 97, 79, 112, 88, 121, 104, 100, 88, 121, 98, 100, 96, 81, 114, 85, 118, 103, 99, 84, 117, 90, 86]
+  out   Race at the minimum rate: queued/ring after each tick [82/49, 90/121, 92/49, 105/121, 85/49, 106/121, 111/49, 107/121]
+
+[cp3-strict] 2026-10-06T02:42:37.510Z  tests=6 failures=4 errors=0 skipped=0  6 tests completed, 4 failed / BUILD FAILED in 8s / exit 1 at 10:42:39
+  pass  650 walk
+  FAIL  651 race at ChunkQueueBoundIntegrationTest.java:128
+        chunks queued / chunks of the ring after each tick: [82/49, 90/121, 92/49, 105/121, 85/49, 106/121, 111/49, 107/121] ==> expected: <false> but was: <true>
+  FAIL  652 late loads at ChunkQueueBoundIntegrationTest.java:424 via :176
+        the client misses 53 chunks of the ring [-4,-4, -5,-5, -4,3, -5,4, -6,5, -4,2, -6,4, -5,5, -4,-3, -6,-5, -4,-2, -4,1, -7,4, -8,5, -7,-5, -4,-1, -4,0, -7,5, -8,4, -8,-5, -7,-3, -5,0, -5,-1, -6,1, -6,-2, -8,-4, -7,2, -8,3, -7,-4, -5,1, -5,-2, -6,0, -6,-1, -8,-3, -7,3, -8,2, -5,2, -5,-3, -6,3, -6,-4, -7,0, -8,1, -7,-1, -8,-2, -5,3, -6,2, -6,-3, -5,-4, -7,1, -8,0, -7,-2, -8,-1, -4,-5] and holds 0 outside it [] ==> expected: <true> but was: <false>
+  FAIL  653 acknowledged at ChunkQueueBoundIntegrationTest.java:424 via :207
+        the client after the walk misses 43 chunks of the ring [31,5, 31,4, 31,-5, 31,3, 31,-4, 31,2, 31,-3, 31,1, 31,-2, 31,0, 31,-1, 32,0, 34,-3, 33,1, 33,-2, 32,-1, 33,0, 33,-1, 34,-4, 32,1, 32,-2, 34,0, 34,-1, 33,3, 33,-4, 32,2, 32,-3, 34,1, 34,-2, 33,2, 33,-3, 39,-5, 32,-4, 39,-4, 32,-5, 33,5, 39,-3, 33,-5, 33,4, 34,-5, 39,-2, 39,-1, 39,0] and holds 0 outside it [] ==> expected: <true> but was: <false>
+  pass  658 negative view distance
+  FAIL  659 trim and a concurrent sendChunk at ChunkQueueBoundIntegrationTest.java:424 via :316
+        the client misses 33 chunks of the ring [6,-5, 6,4, 7,5, 7,-5, 7,4, 6,5, 7,-4, 6,-3, 6,2, 7,3, 7,-3, 6,3, 6,-4, 7,2, 6,-1, 6,0, 7,-2, 7,1, 6,-2, 6,1, 7,-1, 7,0, 8,-1, 8,0, 8,-2, 8,1, 8,-3, 8,2, 8,-4, 8,3, 8,-5, 8,4, 8,5] and holds 0 outside it [] ==> expected: <true> but was: <false>
+  out   Negative view distance: 0 exceptions in 20 ticks, alive ticks +20, queued 112
+  out   Acknowledged walk: largest queue 116
+  out   Trim and a concurrent sendChunk: the other thread waited for the trim true, queued 121, indexed 121
+  out   Late loads: queued 92 before, 62 once they completed, 62 after the next tick, ring 121
+  out   Unacknowledged walk: ring 121, chunks sent 9, queued after each tick [115, 108, 101, 82, 115, 112, 113, 118, 97, 79, 112, 88, 121, 104, 100, 88, 121, 98, 100, 96, 81, 114, 85, 118, 103, 99, 84, 117, 90, 86]
+  out   Race at the minimum rate: queued/ring after each tick [82/49, 90/121, 92/49, 105/121, 85/49, 106/121, 111/49, 107/121]
+
+### cp4: the trim drops the chunks of the ring too
+  @@ -994,0 +995 @@
+  +            queuedChunks.clear();
+
+[cp4-default] 2026-10-06T02:42:58.031Z  tests=6 failures=3 errors=0 skipped=0  6 tests completed, 3 failed / BUILD FAILED in 30s / exit 1 at 10:43:09
+  pass  650 walk
+  pass  651 race
+  FAIL  652 late loads at ChunkQueueBoundIntegrationTest.java:424 via :176
+        the client misses 112 chunks of the ring [-2,-2, -2,1, -1,-1, -3,2, -3,-3, -4,-4, 1,-2, -5,-5, 2,-3, 1,1, 2,2, -4,3, -5,4, -6,5, -2,-1, -1,-2, -1,1, -4,2, -6,4, -5,5, -4,-3, 1,-1, -6,-5, 2,-4, -3,-4, 2,3, -3,3, -4,-2, -3,0, -3,-1, -2,-4, -4,1, -7,4, -8,5, -1,2, -1,-3, 0,-3, 1,-4, -7,-5, 2,-1, 1,3, -2,3, -4,-1, -3,1, -4,0, -7,5, -8,4, -3,-2, -2,2, -2,-3, 0,3, 1,2, 2,1, -1,3, 0,-4, 1,-3, 2,-2, -8,-5, -1,-4, -7,-3, -5,0, -5,-1, -6,1, -6,-2, 0,4, 1,5, -1,4, -2,5, 0,-5, -8,-4, -7,2, -8,3, -1,-5, -7,-4, -5,1, -5,-2, -6,0, -6,-1, 1,4, -2,4, 1,-5, -8,-3, -1,5, -7,3, -8,2, -2,-5, 0,5, 2,-5, -5,2, -5,-3, -6,3, -6,-4, -3,4, -4,5, -7,0, -8,1, -7,-1, -8,-2, -3,-5, 2,4, -3,5, -5,3, -6,2, -6,-3, -5,-4, -4,4, -7,1, -8,0, -7,-2, -8,-1, -4,-5, 2,5] and holds 0 outside it [] ==> expected: <true> but was: <false>
+  FAIL  653 acknowledged at ChunkQueueBoundIntegrationTest.java:424 via :207
+        the client after the walk misses 22 chunks of the ring [31,5, 31,4, 31,-5, 31,3, 31,-4, 31,2, 31,-3, 31,1, 31,-2, 31,0, 31,-1, 32,0, 32,-1, 32,1, 32,-2, 32,2, 32,-3, 32,3, 32,-4, 32,-5, 32,4, 32,5] and holds 0 outside it [] ==> expected: <true> but was: <false>
+  pass  658 negative view distance
+  FAIL  659 trim and a concurrent sendChunk at ChunkQueueBoundIntegrationTest.java:270
+        the trim walks the queued chunks ==> expected: <true> but was: <false>
+  out   Negative view distance: 0 exceptions in 20 ticks, alive ticks +20, queued 112
+  out   Acknowledged walk: largest queue 89
+  out   Late loads: queued 0 before, 33 once they completed, 33 after the next tick, ring 121
+  out   Unacknowledged walk: ring 121, chunks sent 9, queued after each tick [0, 33, 66, 99, 0, 33, 66, 99, 0, 33, 66, 99, 0, 33, 66, 99, 0, 33, 66, 99, 0, 33, 66, 99, 0, 33, 66, 99, 0, 33]
+  out   Race at the minimum rate: queued/ring after each tick [0/49, 0/121, 0/49, 0/121, 0/49, 0/121, 0/49, 0/121]
+
+### restored
+
+[r1-default] 2026-10-06T02:43:13.235Z  tests=6 failures=0 errors=0 skipped=0  BUILD SUCCESSFUL in 4s / exit 0 at 10:43:14
+  pass  650 walk
+  pass  651 race
+  pass  652 late loads
+  pass  653 acknowledged
+  pass  658 negative view distance
+  pass  659 trim and a concurrent sendChunk
+  out   Negative view distance: 0 exceptions in 20 ticks, alive ticks +20, queued 112
+  out   Acknowledged walk: largest queue 114
+  out   Trim and a concurrent sendChunk: the other thread waited for the trim true, queued 121, indexed 121
+  out   Late loads: queued 112 before, 145 once they completed, 112 after the next tick, ring 121
+  out   Unacknowledged walk: ring 121, chunks sent 9, queued after each tick [112, 119, 121, ..., 121, 121]
+  out   Race at the minimum rate: queued/ring after each tick [49/49, 121/121, 49/49, 121/121, 49/49, 121/121, 49/49, 121/121]
+
+[r1-strict] 2026-10-06T02:43:19.697Z  tests=6 failures=0 errors=0 skipped=0  BUILD SUCCESSFUL in 6s / exit 0 at 10:43:21
+  pass  650 walk
+  pass  651 race
+  pass  652 late loads
+  pass  653 acknowledged
+  pass  658 negative view distance
+  pass  659 trim and a concurrent sendChunk
+  out   Negative view distance: 0 exceptions in 20 ticks, alive ticks +20, queued 112
+  out   Acknowledged walk: largest queue 114
+  out   Trim and a concurrent sendChunk: the other thread waited for the trim true, queued 121, indexed 121
+  out   Late loads: queued 112 before, 145 once they completed, 112 after the next tick, ring 121
+  out   Unacknowledged walk: ring 121, chunks sent 9, queued after each tick [112, 119, 121, ..., 121, 121]
+  out   Race at the minimum rate: queued/ring after each tick [49/49, 121/121, 49/49, 121/121, 49/49, 121/121, 49/49, 121/121]

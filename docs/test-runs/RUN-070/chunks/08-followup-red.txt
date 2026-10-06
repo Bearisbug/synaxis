@@ -1,0 +1,39 @@
+# Follow-up of group chunks (fu-chunks), red run before the code change: the two new cases of ChunkQueueBoundIntegrationTest on the
+# Player.java of 5a084b973e (the tree was 5e41126dfe plus the new test class; 5e41126dfe changes docs only). One hold of the heavy lock,
+# 2026-10-06 10:32:22-10:32:43 (UTC+8). Command: ./gradlew :test --rerun --tests io.github.bearisbug.synaxis.entity.player.ChunkQueueBoundIntegrationTest
+# --max-workers=4 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts; strict grid adds -Dsynaxis.dispatcher-threads=4
+# -Dsynaxis.acquirable-strict=true -Dsynaxis.thread-provider=grid. Each block: the JUnit XML of the run (timestamp in UTC), the Gradle
+# result line, then every case and the lines the class prints.
+#
+# Expected and seen: TC-PROD-658 red, 20 IllegalArgumentException in 20 ticks and the player's alive ticks not moving (the rest of
+# Entity#tick after Player#update is skipped every tick); TC-PROD-659 already green, the queue lock is in the trim since 5a084b973e.
+
+[b1-default] 2026-10-06T02:32:35.285Z  tests=6 failures=1 errors=0 skipped=0  6 tests completed, 1 failed / BUILD FAILED in 13s / exit 1 at 10:32:37
+  pass  650 walk
+  pass  651 race
+  pass  652 late loads
+  pass  653 acknowledged
+  FAIL  658 negative view distance at ChunkQueueBoundIntegrationTest.java:234
+        exceptions reported in 20 ticks, the first java.lang.IllegalArgumentException: Range cannot be negative ==> expected: <0> but was: <20>
+  pass  659 trim and a concurrent sendChunk
+  out   Negative view distance: 20 exceptions in 20 ticks, alive ticks +0, queued 112
+  out   Acknowledged walk: largest queue 114
+  out   Trim and a concurrent sendChunk: the other thread waited for the trim true, queued 121, indexed 121
+  out   Late loads: queued 112 before, 145 once they completed, 112 after the next tick, ring 121
+  out   Unacknowledged walk: ring 121, chunks sent 9, queued after each tick [112, 119, 121, ..., 121, 121]
+  out   Race at the minimum rate: queued/ring after each tick [49/49, 121/121, 49/49, 121/121, 49/49, 121/121, 49/49, 121/121]
+
+[b1-strict] 2026-10-06T02:32:41.979Z  tests=6 failures=1 errors=0 skipped=0  6 tests completed, 1 failed / BUILD FAILED in 6s / exit 1 at 10:32:43
+  pass  650 walk
+  pass  651 race
+  pass  652 late loads
+  pass  653 acknowledged
+  FAIL  658 negative view distance at ChunkQueueBoundIntegrationTest.java:234
+        exceptions reported in 20 ticks, the first java.lang.IllegalArgumentException: Range cannot be negative ==> expected: <0> but was: <20>
+  pass  659 trim and a concurrent sendChunk
+  out   Negative view distance: 20 exceptions in 20 ticks, alive ticks +0, queued 112
+  out   Acknowledged walk: largest queue 114
+  out   Trim and a concurrent sendChunk: the other thread waited for the trim true, queued 121, indexed 121
+  out   Late loads: queued 112 before, 145 once they completed, 112 after the next tick, ring 121
+  out   Unacknowledged walk: ring 121, chunks sent 9, queued after each tick [112, 119, 121, ..., 121, 121]
+  out   Race at the minimum rate: queued/ring after each tick [49/49, 121/121, 49/49, 121/121, 49/49, 121/121, 49/49, 121/121]

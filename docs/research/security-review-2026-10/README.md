@@ -95,7 +95,7 @@
 | 8 | 看门狗与优雅停机（`REQ-PROD-014`、`REQ-PROD-008`） | `Watchdog` 发现 tick 卡住 60 s 就 `Runtime.halt`，任何能让 tick 卡住的玩家输入都会放大成分片重启，没人找过这类输入；玩家能否拖延停机、或借停机回滚存档没人看 | 生产就绪 | 待排期 |
 | 9 | 服务器列表 ping（`REQ-PROD-037`） | `synaxis.hide-online-players` 默认 false，未认证对端每次 ping 拿到至多 12 个在线用户名；插件经 `ServerListPingEvent` 改写的 MOTD 与样本原样发出；`StatusResponse` 与 `Favicon` 的构造成本没人看；结论多半是 info | 生产就绪 | 待排期 |
 | 10 | 日志内容与保留（`REQ-PROD-016`） | 每条连接的 `Login success`、`Kicking`、`Connection closed` 与 `Login timeout` 行带 IP 与用户名，保留 14 天；STDOUT 同步输出、没有上限，进容器日志管道后谁能读没人整理 | 生产就绪 | 文件权限由 §23 的 `UMask=0077` 覆盖（secrets 组）；个人信息与保留期待排期 |
-| 11 | 第 5 波的逐玩家成本上限（`REQ-PROD-023`～`027`、`039`、`040`） | 可见实体上限、追踪范围、休眠、区块下发（4 块/tick）、视距上限、Tab 列表批量只有压测证据；反复改视距、伪造 `ChunkBatchReceived` 回执、快速跨区块移动能否绕过上限，没人看 | 生产就绪 | 待排期 |
+| 11 | 第 5 波的逐玩家成本上限（`REQ-PROD-023`～`027`、`039`、`040`） | 可见实体上限、追踪范围、休眠、区块下发（4 块/tick）、视距上限、Tab 列表批量只有压测证据；反复改视距、伪造 `ChunkBatchReceived` 回执、快速跨区块移动能否绕过上限，没人看 | 生产就绪 | 已处理（2026-10-06）：区块下发由光照会话 M3 侧安全审查 ⑥ 查实，由生产就绪 chunks 组修复（`docs/DESIGN-PROD.md` v0.9.49，`docs/TEST.md` `TC-PROD-650`～`TC-PROD-654`、`TC-PROD-658`、`TC-PROD-659`）。不回执时服务端发完首批就停发，但区块环扫过的区块照样进待发队列、不出队，队列随移动一直增长，之后一次回执的发送在一个 tick 里逐条出队（8 万条 6,643 ms）；现在发送之前先修剪到区块环以内：不回执、按最低速率回执、一个 tick 多个移动包、反复改视距，每个 tick 发送之前的队列都不越过 (2r + 1)²（tick 之内可暂时越过，下一次发送之前修回）。可见实体上限、追踪范围、休眠、视距上限与 Tab 列表这次没有复核 |
 | 12 | 数据库账号的实际权限（DESIGN-PROD D11：分片账号只有 DML） | 仓库与 `ops/postgres` 里都没有 GRANT 语句；只有 DML 时口令泄露的后果是改 `account_role`、`character_section`、`store_meta`，给了属主或超级用户时还能 `COPY ... PROGRAM` 在库主机上执行命令（链 ⑤） | 生产就绪 | 待排期 |
 
 ## 6. 残余风险

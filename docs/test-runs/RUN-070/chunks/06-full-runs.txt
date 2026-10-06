@@ -1,0 +1,36 @@
+# Full run of the root module (the only module this group changed), default and strict grid, database variables set
+# (SYNAXIS_TEST_PG_URL=jdbc:postgresql://127.0.0.1:5440/postgres, SYNAXIS_TEST_REDIS_URL=redis://127.0.0.1:6440, SYNAXIS_TEST_PG_PASSWORD
+# read inside the lock hold from the environment of container synaxis-pg into the variable, never printed), 2026-10-06 (UTC+8).
+# Command: ./gradlew :test --rerun --continue [STRICT] --max-workers=4 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts
+# Counts summed from the JUnit XML right after each run (the next run clears the results directory). Working tree: 5a084b973e with
+# docs only modified (status printed on each start line).
+
+synaxis-valkey Up 6 days
+synaxis-pg Up 6 days
+database password variable set
+### full-default start 05:44:52 head 5a084b973e status:  M docs/DESIGN-PROD.md  M docs/TEST.md  M docs/research/security-review-2026-10/README.md ?? docs/test-runs/RUN-070/ 
+full-default exit 0
+BUILD SUCCESSFUL in 46s
+build/test-results/test: classes=429 tests=3166 failures=0 errors=0 skipped=15
+### full-grid start 05:45:39 head 5a084b973e status:  M docs/DESIGN-PROD.md  M docs/TEST.md  M docs/research/security-review-2026-10/README.md ?? docs/test-runs/RUN-070/ 
+full-grid exit 0
+BUILD SUCCESSFUL in 51s
+build/test-results/test: classes=429 tests=3166 failures=0 errors=0 skipped=15
+### end start 05:46:31 head 5a084b973e status:  M docs/DESIGN-PROD.md  M docs/TEST.md  M docs/research/security-review-2026-10/README.md ?? docs/test-runs/RUN-070/ 
+lock released 2026-10-06 05:46:31
+
+## from the strict grid run, the classes on the chunk path
+  grid ChunkQueueBoundIntegrationTest           tests=4 failures=0 errors=0 skipped=0 time=3.474s
+  grid PlayerChunkQueueIntegrationTest          tests=7 failures=0 errors=0 skipped=0 time=6.203s
+  grid ChunkSendCapTest                         tests=2 failures=0 errors=0 skipped=0 time=2.156s
+  grid PlayerMaxViewDistanceIntegrationTest     tests=8 failures=0 errors=0 skipped=0 time=10.899s
+  grid PlayerRespawnChunkIntegrationTest        tests=4 failures=0 errors=0 skipped=0 time=6.241s
+
+## style checks and javadoc of the root module (same commit, docs only modified; lock hold 05:49:27-05:49:39, 2026-10-06 UTC+8)
+./gradlew :forbiddenImportsCheck :testNamingCheck :javadoc --continue <flags>
+> Task :testNamingCheck
+> Task :forbiddenImportsCheck
+> Task :javadoc
+BUILD SUCCESSFUL in 11s
+javadoc: 101 warnings, all in other files (missing @param on record components and the like), none in Player.java
+Error Prone (-Werror) runs inside every compile above; the test class compiles clean, cp1 shows it flags an unused trimChunkQueue (03).

@@ -1,0 +1,36 @@
+# Follow-up of group chunks (fu-chunks): root :test in full on 7ac36afb6e, default mode, with the database variables, then the
+# root module's source checks. One hold of the heavy lock, 2026-10-06 10:58:34-10:59:48 (UTC+8); synaxis-pg and synaxis-valkey were
+# up (docker ps), SYNAXIS_TEST_PG_URL=jdbc:postgresql://127.0.0.1:5440/postgres, SYNAXIS_TEST_REDIS_URL=redis://127.0.0.1:6440, the
+# password read from docker inspect synaxis-pg into SYNAXIS_TEST_PG_PASSWORD inside the hold and never printed. The strict grid full
+# run and the separate entity.player package runs of TC-PROD-654 step 1 were not repeated in the follow-up; the package figures below
+# come from this default full run.
+
+./gradlew :test --rerun --continue --max-workers=4 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts
+  BUILD SUCCESSFUL in 53s
+  exit 0 at 10:59:27
+  JUnit XML: 429 classes, 3,168 tests, 0 failures, 0 errors, 15 skipped
+  skipped: PlayerSkinTest 2, TagNbtTest 1, TestMojangUtils 9, TranslationIntegrationTest 3
+  entity.player package: 15 classes, 82 tests, 0 failures, 0 errors, 0 skipped
+    ChunkQueueBoundIntegrationTest               tests=6 failures=0 errors=0 skipped=0
+    ChunkSendCapTest                             tests=2 failures=0 errors=0 skipped=0
+    PlayerBlockPlacementIntegrationTest          tests=7 failures=0 errors=0 skipped=0
+    PlayerChunkQueueIntegrationTest              tests=7 failures=0 errors=0 skipped=0
+    PlayerIntegrationTest                        tests=16 failures=0 errors=0 skipped=0
+    PlayerMaxViewDistanceIntegrationTest         tests=8 failures=0 errors=0 skipped=0
+    PlayerMovementIntegrationTest                tests=12 failures=0 errors=0 skipped=0
+    PlayerPacketQueueIntegrationTest             tests=1 failures=0 errors=0 skipped=0
+    PlayerReconfigurationIntegrationTest         tests=1 failures=0 errors=0 skipped=0
+    PlayerRemoveIntegrationTest                  tests=4 failures=0 errors=0 skipped=0
+    PlayerResourcePackIntegrationTest            tests=5 failures=0 errors=0 skipped=0
+    PlayerRespawnChunkIntegrationTest            tests=4 failures=0 errors=0 skipped=0
+    PlayerSwimmingPoseIntegrationTest            tests=3 failures=0 errors=0 skipped=0
+    PlayerTransferOutIntegrationTest             tests=3 failures=0 errors=0 skipped=0
+    TabListIntegrationTest                       tests=3 failures=0 errors=0 skipped=0
+
+./gradlew :forbiddenImportsCheck :testNamingCheck :javadoc --max-workers=4 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts
+  > Task :testNamingCheck
+  > Task :forbiddenImportsCheck
+  > Task :javadoc
+  BUILD SUCCESSFUL in 20s
+  exit 0 at 10:59:48
+  javadoc and compiler warnings in the log: 0

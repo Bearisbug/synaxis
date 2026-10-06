@@ -14,6 +14,7 @@
 
 | 日期 | 改动 | 作者 |
 | --- | --- | --- |
+| 2026-10-06 | 集成分支 `prod/integrate-071`（基于 `main` `8b18922130`，依次合入 `prod/r071-ops`、`prod/r071-authority`、`prod/r071-chunks`、`prod/r071-upstream`），跟进 `docs/DESIGN-PROD.md` v0.9.56。不登执行轮次，不改写死的全量条数：RUN-071 的全量门禁在 GitHub Actions 的草稿 PR 上跑，跑完统一改条数并登记 RUN-071。**合并**：四组的 §4 新节按合并顺序整节取自各组分支，排在 §4 末尾（ops `TC-PROD-660`～`TC-PROD-664`，authority2 `TC-PROD-665`～`TC-PROD-672`，chunks `TC-PROD-675`～`TC-PROD-679`，upstream `TC-PROD-680`～`TC-PROD-687`），§5 映射行、§7 的条目（ops 新登一条，authority2 与 chunks 各改一条既有条目）与四组的变更记录行都留；各组对既有用例的改动没有冲突，照原样合入。两处随合并改：authority2 节首引的 `docs/DESIGN-M2.md` v0.57 改为 v0.58（ops 组先合、占了 v0.57）；`TC-PROD-664` 的 `CLOSE_OUT` 引的 `Player.java` 第 396 行改为第 398 行（chunks 组在它前面加了两行），第 1 步「改动前」一句随之改，`CLOSE_OUT` 在集成分支上前 20 行都是 `ok` | Bearisbug |
 | 2026-10-06 | 分支 `prod/r071-upstream`，跟进 `docs/DESIGN-PROD.md` v0.9.55（上游 Minestom 移植五条），不登执行轮次（集成轮登记 RUN-071）。**新增 §4「生产就绪 · RUN-071：上游 Minestom 移植」八条** `TC-PROD-680`～`TC-PROD-687`（`REQ-017`，`TC-PROD-680` 另对应 `REQ-PROD-013`），反证都实跑过，证据 `docs/test-runs/RUN-071/upstream/`。**新类** `PacketVanillaLayoutTest` 6 条、`ComponentHoverItemRegistriesTest` 5 条、`ModuleExportsTest` 1 条；**改动的类** `WorldBorderIntegrationTest` 5 → 6、`ArchitectureTest` 7 → 8、`NonLivingEquipmentIntegrationTest` 2 → 3（`livingEntityStillSendsEquipment` 改为先装备再断言只带那一格）、`PlayerInventoryIntegrationTest` 7 → 9（`clearInventoryTest` 改为不发装备包）、`TestNbtComponentSerializer` 2 → 3、`PacketWriteReadRegistriesTest` 469 → 470，`InventoryIntegrationTest` 16 条不变（`clearingPlayerInventoryClearsCursorTest` 改为不发装备包）。**条数**：`TC-PROD-121` 第 1、2 步的 `ArchitectureTest` 7 → 8，第 2 步的反证在本分支重跑，仍红在 `HandshakeListener.java:32`。根项目 `:test` 的全量条数（本组加 19 条）不改，由集成轮按 CI 实数改。§5 加一行 | Bearisbug |
 | 2026-10-06 | 分支 `prod/r071-chunks` 按第二轮评审返工（代码提交 `68d6b07ea2`），跟进 `docs/DESIGN-PROD.md` v0.9.54 变更记录的第二轮一句：推后的区块改在放开队列锁的 `finally` 里放回，已在队列里的跳过。§4「生产就绪 · RUN-071：区块交包窗口」：`TC-PROD-679` 加第 9～14 步（新类加两个方法：`PlayerChunkLoadEvent` 的监听器把推后的区块重新排进队列时它只放回一次、只发一次；取包抛异常时已推后的区块仍在队列里、之后发出；`c193a22479` 的发送上两个都红，两个反证：放回不查是否已在队列里、放回不在 `finally` 里），标题补这两点；第 1 步写明 `holder` 的排队计数只会少计，负载很高时第 6 步可能假绿，对修复后的代码这条断言确定成立；本节 `<PL>` 行号按 `68d6b07ea2`（`:979-984` → `:993-999`、`:980-984` → `:996-999`、`:994` → `:988`，其余不动），675～679 各步条数 `5 tests` → `7 tests` 并重跑，`a6155af745` 的发送、改动前的代码与各反证上两个新方法红在哪一行写进对应步骤；`TC-PROD-678` 第 1 步 20 个 → 22 个（第 2、3 步本轮没有重跑）。根项目 `:test` 比 RUN-070 多 1 个类 7 个测试，写死的全量条数仍由集成轮统一改 | Bearisbug |
 | 2026-10-06 | 分支 `prod/r071-chunks` 按评审返工（代码提交 `c193a22479`），跟进 `docs/DESIGN-PROD.md` v0.9.54 变更记录的返工一句：发送一批共用 1 ms 等锁预算，等不到的区块推到下一个 tick、不挡同批后面的区块，首批一个区块都没发出时不提前用掉位置同步。§4「生产就绪 · RUN-071：区块交包窗口」：**新增 `TC-PROD-679`**（新类加两个方法：6 块被别的线程持锁时第 7 块照发、整批只排一把锁；首批全被推后时位置同步排在第一批区块之后；`a6155af745` 的发送上两个都红，三个反证：等不到就结束这一批、每块各等 1 ms、空批也用掉位置同步）；`TC-PROD-675` 第 1 步加「区块包在区块写锁里交给连接」的断言、新增第 6 步反证（锁里取包、放锁后才交给连接，只红在这条新断言）；675～677 各步的红行、`<PL>` 行号与条数按 `c193a22479` 重写并重跑（`3 tests` → `5 tests`），`TC-PROD-676` 第 1 步按新发法改写，第 4 步反证改为删掉批末放回；`TC-PROD-678` 第 1 步 18 个 → 20 个。**§5** 那一行改为 675～679。根项目 `:test` 比 RUN-070 多 1 个类 5 个测试，写死的全量条数仍由集成轮统一改 | Bearisbug |
@@ -9199,7 +9200,7 @@ chk $J/ServerConfig.java 433 'chatRatePerSecond = 1;'
 chk $J/ServerConfig.java 434 'chatBurst = 3;'
 chk $A/ConfigFile.java 86 '"synaxis.chat-rate-per-second"'
 chk $A/ConfigFile.java 87 '"synaxis.chat-burst"'
-chk $J/entity/Player.java 396 'true, false);'
+chk $J/entity/Player.java 398 'true, false);'
 chk $J/message/Messenger.java 46 'new SystemChatPacket(message, false)'
 chk client-fabric/src/main/java/io/github/bearisbug/synaxis/game/client/mixin/ClientPacketListenerMixin.java 22 'skipUnsecureServerToast'
 chk $A/transfer/TicketIssuer.java 38 'public static final String TRANSFER_FAILED'
@@ -9274,7 +9275,7 @@ CI 上的读法：第 1 步第一条在 CI 上红成第 2 步那句、而这几�
 
 | # | 操作 | 预期 |
 | --- | --- | --- |
-| 1 | 跑 `CLOSE_OUT` | 前 20 行都是 `ok`：17 处代码行与 `cf1a359794 is in HEAD`、`DESIGN.md v0.43 (8babd09aa1) rewrote ①`、`DESIGN-M3 v0.38 (0b554bb0ed) records ⑬⑯⑰⑱⑲ and ⑮`，没有 `MISMATCH`。后四行依次是：`docs/DESIGN-M2.md` 聊天一行的类型列「已决」；§28.3 监听器异常一行的末栏以「已完成：」开头；§28.3 ㉑ 那一行的末栏以「已决（`docs/DESIGN-M3.md` §28.2」开头；R2 一行计数 `1`。改动前的 `8b18922130` 上前 20 行相同，后四行依次是「风险」、末栏开头「`docs/ENGINE.md` 部分已完成」、末栏「M3 会话」、`0` |
+| 1 | 跑 `CLOSE_OUT` | 前 20 行都是 `ok`：17 处代码行与 `cf1a359794 is in HEAD`、`DESIGN.md v0.43 (8babd09aa1) rewrote ①`、`DESIGN-M3 v0.38 (0b554bb0ed) records ⑬⑯⑰⑱⑲ and ⑮`，没有 `MISMATCH`。后四行依次是：`docs/DESIGN-M2.md` 聊天一行的类型列「已决」；§28.3 监听器异常一行的末栏以「已完成：」开头；§28.3 ㉑ 那一行的末栏以「已决（`docs/DESIGN-M3.md` §28.2」开头；R2 一行计数 `1`。改动前的 `8b18922130` 上前 20 行除 `MISMATCH Player.java:398 wants true, false);` 一行外相同（那里这一句在第 396 行，chunks 组在它前面加了两行），后四行依次是「风险」、末栏开头「`docs/ENGINE.md` 部分已完成」、末栏「M3 会话」、`0` |
 | 2 | 反证有齿（文档引的行号随代码移动而没跟）：`src/main/java/io/github/bearisbug/synaxis/listener/ChatMessageListener.java` 第 1 行之前加一个空行，跑 `CLOSE_OUT`，再还原 | 三行 `MISMATCH`：`ChatMessageListener.java:40`、`:50`、`:56`，其余不变 |
 | 3 | 还原后重跑第 1 步 | 与第 1 步相同 |
 

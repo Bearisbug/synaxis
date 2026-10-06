@@ -178,7 +178,7 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
     // The view distances a client can ask for, see ClientSettings
     private static final int MIN_VIEW_DISTANCE = 2;
     private static final int MAX_VIEW_DISTANCE = 32;
-    // How long a chunk send waits for the write-lock of the chunk, see #sendPendingChunks()
+    // How long a chunk batch waits for the write-locks of its chunks, all of them together, see #sendPendingChunks()
     private static final Duration CHUNK_LOCK_WAIT = Duration.ofMillis(1);
 
     private long lastKeepAlive;
@@ -937,8 +937,10 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
         chunkQueueLock.lock();
         try {
             int batchSize = 0;
+            final LongArrayList deferred = new LongArrayList();
+            long lockWait = CHUNK_LOCK_WAIT.toNanos();
             sendPacket(new ChunkBatchStartPacket());
-            while (!chunkQueue.isEmpty() && pendingChunkCount >= 1f) {
+            while (!chunkQueue.isEmpty() && pendingChunkCount - deferred.size() >= 1f) {
                 long chunkIndex = chunkQueue.dequeueLong();
                 queuedChunks.remove(chunkIndex);
                 int chunkX = CoordConversion.chunkIndexGetX(chunkIndex), chunkZ = CoordConversion.chunkIndexGetZ(chunkIndex);
@@ -954,11 +956,15 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
                 // change is in the packet or reaches the connection after it. A change in between would reach the
                 // client ahead of the chunk, which drops it, then the chunk without it, for good. The lock is only
                 // waited for briefly, the queue lock held: a thread holding it may be queuing chunks for this player
-                // (Chunk#sendChunk). The chunk goes back to the queue and the batch ends, the next tick tries again
-                if (!chunk.tryLockWriteLock(CHUNK_LOCK_WAIT)) {
-                    queuedChunks.add(chunkIndex);
-                    chunkQueue.enqueue(chunkIndex);
-                    break;
+                // (Chunk#sendChunk). The waits of a batch share CHUNK_LOCK_WAIT. A chunk whose lock is not free in time
+                // is deferred to the next tick, the batch goes on with the chunks behind it; it takes the place of a
+                // chunk sent, so a batch tries at most as many chunks as it may send
+                final long waitStart = System.nanoTime();
+                final boolean locked = chunk.tryLockWriteLock(Duration.ofNanos(lockWait));
+                lockWait -= System.nanoTime() - waitStart;
+                if (!locked) {
+                    deferred.add(chunkIndex);
+                    continue;
                 }
                 try {
                     sendPacket(chunk.getFullDataPacket());
@@ -970,6 +976,12 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
                 pendingChunkCount -= 1f;
                 batchSize += 1;
             }
+            // Back in the queue once the batch is done: closest to the center, a deferred chunk would be dequeued again
+            for (int i = 0; i < deferred.size(); i++) {
+                final long chunkIndex = deferred.getLong(i);
+                queuedChunks.add(chunkIndex);
+                chunkQueue.enqueue(chunkIndex);
+            }
             sendPacket(new ChunkBatchFinishedPacket(batchSize));
             chunkBatchLead += 1;
 //            logger.debug("chunk batch sent player={} chunks={} lead={}", username, batchSize, chunkBatchLead);
@@ -977,8 +989,9 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
             // After sending the first chunk we always send a synchronize position to the client. This is to prevent
             // cases where the client falls through the floor slightly while loading the first chunk.
             // In the vanilla server they have an anticheat which teleports the client back if they enter the floor,
-            // but since the engine does not have an anticheat this provides a similar effect.
-            if (needsChunkPositionSync) {
+            // but since the engine does not have an anticheat this provides a similar effect. A batch that sent no
+            // chunk leaves it to the next one.
+            if (needsChunkPositionSync && batchSize > 0) {
                 synchronizePositionAfterTeleport(getPosition(), Vec.ZERO, RelativeFlags.NONE, true);
                 needsChunkPositionSync = false;
             }

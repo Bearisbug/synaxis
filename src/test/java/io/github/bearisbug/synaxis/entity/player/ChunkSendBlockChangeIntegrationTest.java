@@ -19,16 +19,22 @@ import io.github.bearisbug.synaxis.network.packet.server.CachedPacket;
 import io.github.bearisbug.synaxis.network.packet.server.SendablePacket;
 import io.github.bearisbug.synaxis.network.packet.server.ServerPacket;
 import io.github.bearisbug.synaxis.network.packet.server.play.BlockChangePacket;
+import io.github.bearisbug.synaxis.network.packet.server.play.ChunkBatchFinishedPacket;
+import io.github.bearisbug.synaxis.network.packet.server.play.ChunkBatchStartPacket;
 import io.github.bearisbug.synaxis.network.packet.server.play.ChunkDataPacket;
+import io.github.bearisbug.synaxis.network.packet.server.play.PlayerPositionAndLookPacket;
 import io.github.bearisbug.synaxis.network.packet.server.play.UnloadChunkPacket;
 import io.github.bearisbug.synaxis.network.packet.server.play.UpdateViewPositionPacket;
 import io.github.bearisbug.synaxis.network.packet.server.play.data.ChunkData;
 import io.github.bearisbug.synaxis.network.player.ClientSettings;
+import io.github.bearisbug.synaxis.network.player.GameProfile;
+import io.github.bearisbug.synaxis.network.player.PlayerConnection;
 import io.github.bearisbug.synaxis.testing.Collector;
 import io.github.bearisbug.synaxis.testing.Env;
 import io.github.bearisbug.synaxis.testing.EnvTest;
 import io.github.bearisbug.synaxis.testing.TestConnection;
 import it.unimi.dsi.fastutil.longs.LongPriorityQueue;
+import org.jetbrains.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 
 import java.lang.reflect.Field;
@@ -38,8 +44,10 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.TreeMap;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -64,10 +72,12 @@ import static org.junit.jupiter.api.Assertions.fail;
  * of a chunk it does not hold: a change made after the chunk packet was taken and sent to the client before
  * that packet is lost for good, the client keeps the chunk as the packet had it. The same goes for a change
  * sent to the viewers of a chunk the client holds while the player is not one of them. The send takes the
- * lock of the chunk for this, under the queue lock of the player, and must not wait for it without a bound.
+ * lock of the chunk for this, under the queue lock of the player, and must not wait for it without a bound, nor
+ * let a chunk whose lock is held hold back the rest of the batch.
  * <p>
- * The players are plain ones, whose chunks wait in the send queue, at view distance 2: a ring of radius 3.
- * The client is modelled from the packets it was sent, in the order they were handed to its connection.
+ * The players are engine players, whose chunks wait in the send queue, at view distance 2: a ring of radius 3. They
+ * only watch what is handed to their connection ({@link CheckedPlayer}). The client is modelled from the packets it was
+ * sent, in the order they were handed to its connection.
  */
 @EnvTest
 public class ChunkSendBlockChangeIntegrationTest {
@@ -93,7 +103,7 @@ public class ChunkSendBlockChangeIntegrationTest {
             final Chunk chunk = instance.getChunk(event.getChunkX(), event.getChunkZ());
             if (chunk != null && chunk.holdsWriteLock()) underTheLock.add(event.getChunkX() + "," + event.getChunkZ());
         });
-        final Player player = join(env, connection, instance);
+        final CheckedPlayer player = join(env, connection, instance);
 
         // The first batch is out. The next chunk packet taken stops its thread right after the chunk let go of its
         // own write-lock, as a SynxChunk overlay does, until another thread has changed a block of that chunk or
@@ -117,10 +127,13 @@ public class ChunkSendBlockChangeIntegrationTest {
         final Block client = clientBlock(received.collect(), chunk, x, CHANGED_Y, z);
         System.out.println("Chunk " + chunk.getChunkX() + "," + chunk.getChunkZ() + ": the setter "
                 + (window.setterWaited.get() ? "waited for the chunk lock" : "changed the block before the packet was queued")
-                + ", the client sees " + client.name() + ", the server has " + server.name());
+                + ", the client sees " + client.name() + ", the server has " + server.name() + "; " + player.chunksHanded.size()
+                + " chunk packets handed to the connection, " + player.handedOutsideTheLock.size() + " outside the chunk write-lock");
         assertEquals(Block.GOLD_BLOCK, server);
         assertEquals(server.name(), client.name(), "the block at " + x + "," + CHANGED_Y + "," + z + " the client sees");
         assertTrue(underTheLock.isEmpty(), "PlayerChunkLoadEvent dispatched under the chunk write-lock for " + underTheLock);
+        assertTrue(player.handedOutsideTheLock.isEmpty(), "chunk packets handed to the connection outside the chunk write-lock for "
+                + player.handedOutsideTheLock);
     }
 
     @Test
@@ -220,6 +233,100 @@ public class ChunkSendBlockChangeIntegrationTest {
         assertEquals(Block.GOLD_BLOCK.name(), client.name(), "the block at " + x + "," + CHANGED_Y + "," + z + " the client sees");
     }
 
+    @Test
+    public void theChunksBehindAChunkWhoseLockIsHeldAreSentAndTheBatchWaitsOnce(Env env) {
+        final InstanceContainer instance = takenChunkInstance(env, _ -> {
+        });
+        preload(instance, -RADIUS, RADIUS + 1, -RADIUS, RADIUS);
+        final TestConnection connection = env.createConnection();
+        final CheckedPlayer player = join(env, connection, instance);
+        drain(env, player);
+
+        // Moving one chunk east queues the column at x 4, the closest to the new center first: (4, 0), (4, ±1), (4, ±2),
+        // (4, ±3). Another thread holds the write-locks of all of them but (4, -3) through the batch of the move, from its
+        // start to its end: the tick of a chunk takes its read-lock. Their packets are taken once before, so the batch
+        // only hands them over. The holder notes the locks the sending thread waits for: a try without a wait does not
+        // queue for the lock, a wait does. How long the batch takes is printed, not checked: the scheduling of the test
+        // threads, run beside other test classes, adds to it
+        final int column = 1 + RADIUS;
+        final List<Chunk> held = new ArrayList<>();
+        for (int z = -RADIUS; z <= RADIUS; z++) {
+            final Chunk chunk = Objects.requireNonNull(instance.getChunk(column, z));
+            chunk.getFullDataPacket();
+            if (z != -RADIUS) held.add(chunk);
+        }
+        final AtomicReference<Holder> holder = new AtomicReference<>();
+        player.onBatchStart = () -> holder.set(new Holder(held, Thread.currentThread()));
+        player.onBatchEnd = () -> holder.get().letGo();
+        final Collector<ChunkDataPacket> inTheMove = connection.trackIncoming(ChunkDataPacket.class);
+        moveTo(env, player, 8.5 + 16);
+        player.onBatchStart = () -> {
+        };
+        player.onBatchEnd = () -> {
+        };
+        final long batch = player.lastBatchNanos;
+        final List<String> sentInTheMove = names(inTheMove.collect());
+        assertNotNull(holder.get(), "a batch in the tick of the move");
+        assertFalse(holder.get().thread.isAlive(), "the thread holding the chunk locks ends with the batch");
+        final Collector<ChunkDataPacket> afterTheMove = connection.trackIncoming(ChunkDataPacket.class);
+        drain(env, player);
+
+        final Map<String, Long> times = new TreeMap<>();
+        for (String chunk : sentInTheMove) times.merge(chunk, 1L, Long::sum);
+        for (String chunk : names(afterTheMove.collect())) times.merge(chunk, 1L, Long::sum);
+        final Set<String> waitedFor = holder.get().waitedFor;
+        System.out.println("Column " + column + " but its chunk " + column + "," + -RADIUS + " locked by another thread: sent in the tick of"
+                + " the move " + sentInTheMove + ", the batch waited for the locks of " + waitedFor + " and took "
+                + TimeUnit.NANOSECONDS.toMicros(batch) + " µs, chunks sent " + times);
+        assertEquals(List.of(column + "," + -RADIUS), sentInTheMove, "the chunks of column " + column + " sent in the tick of the move");
+        assertTrue(waitedFor.size() <= 1, "the batch waited for the locks of " + waitedFor + ", " + held.size() + " held by another thread");
+        assertEquals(2 * RADIUS + 1, times.size(), "chunks of column " + column + " sent " + times);
+        assertTrue(times.values().stream().allMatch(count -> count == 1), "each chunk sent once: " + times);
+    }
+
+    @Test
+    public void thePositionSyncOfTheFirstChunksFollowsAChunkWhenTheFirstBatchIsEmpty(Env env) {
+        final InstanceContainer instance = takenChunkInstance(env, _ -> {
+        });
+        preload(instance, -RADIUS, RADIUS, -RADIUS, RADIUS);
+        // Another thread holds the write-locks of the chunks at most 2 from the spawn chunk, x and z distances added as the
+        // queue orders them, while the player joins: the 9 chunks the first batch may send are among them
+        final List<Chunk> held = new ArrayList<>();
+        for (int x = -2; x <= 2; x++) {
+            for (int z = -2; z <= 2; z++) {
+                if (Math.abs(x) + Math.abs(z) <= 2) held.add(Objects.requireNonNull(instance.getChunk(x, z)));
+            }
+        }
+        final Holder holder = new Holder(held, null);
+        final TestConnection connection = env.createConnection();
+        final Collector<ServerPacket> received = connection.trackIncoming();
+        final Player player = join(env, connection, instance);
+        holder.letGo();
+        assertFalse(holder.thread.isAlive(), "the thread holding the chunk locks ends");
+        drain(env, player);
+
+        final List<ServerPacket> packets = received.collect();
+        final List<Integer> batches = new ArrayList<>(), syncs = new ArrayList<>();
+        int firstChunk = -1;
+        for (int i = 0; i < packets.size(); i++) {
+            switch (packets.get(i)) {
+                case ChunkBatchFinishedPacket finished -> batches.add(finished.batchSize());
+                case PlayerPositionAndLookPacket _ -> syncs.add(i);
+                case ChunkDataPacket _ -> {
+                    if (firstChunk < 0) firstChunk = i;
+                }
+                default -> {
+                }
+            }
+        }
+        System.out.println("Chunks within 2 of the spawn chunk locked by another thread while joining: batches " + batches
+                + ", the first chunk packet at " + firstChunk + ", position syncs at " + syncs);
+        assertEquals(0, batches.getFirst(), "the size of the first batch, its chunks locked by another thread");
+        final int first = firstChunk;
+        assertTrue(first >= 0 && syncs.stream().anyMatch(sync -> sync > first),
+                "a position sync after the first chunk packet, at " + first + ": position syncs at " + syncs);
+    }
+
     /** A flat instance of {@link TakenChunk}s that call {@code taken} once they took their packet. */
     private static InstanceContainer takenChunkInstance(Env env, Consumer<Chunk> taken) {
         final InstanceContainer instance = env.process().instance().createInstanceContainer();
@@ -285,6 +392,48 @@ public class ChunkSendBlockChangeIntegrationTest {
     }
 
     /**
+     * An engine player that watches what is handed to its connection: whether a {@code ChunkDataPacket}, which a
+     * {@link TakenChunk} hands out as it is, is handed under the write-lock of its chunk, and how long the last chunk
+     * batch took from its start to its end. Runs {@link #onBatchStart} and {@link #onBatchEnd} on the sending thread,
+     * the start before the batch is timed.
+     */
+    private static final class CheckedPlayer extends Player {
+        final List<String> chunksHanded = new CopyOnWriteArrayList<>(), handedOutsideTheLock = new CopyOnWriteArrayList<>();
+        volatile Runnable onBatchStart = () -> {
+        }, onBatchEnd = () -> {
+        };
+        volatile long lastBatchNanos = -1;
+        private volatile long batchStart;
+
+        CheckedPlayer(PlayerConnection connection, GameProfile profile) {
+            super(connection, profile);
+        }
+
+        @Override
+        public void sendPacket(SendablePacket packet) {
+            switch (packet) {
+                case ChunkBatchStartPacket _ -> {
+                    onBatchStart.run();
+                    batchStart = System.nanoTime();
+                }
+                case ChunkBatchFinishedPacket _ -> {
+                    lastBatchNanos = System.nanoTime() - batchStart;
+                    onBatchEnd.run();
+                }
+                case ChunkDataPacket data -> {
+                    final String at = data.chunkX() + "," + data.chunkZ();
+                    chunksHanded.add(at);
+                    final Chunk chunk = getInstance().getChunk(data.chunkX(), data.chunkZ());
+                    if (chunk == null || !chunk.holdsWriteLock()) handedOutsideTheLock.add(at);
+                }
+                default -> {
+                }
+            }
+            super.sendPacket(packet);
+        }
+    }
+
+    /**
      * The block the client sees at (x, y, z) of {@code chunk} after the packets it was sent: a chunk is held from its
      * data to its unload, and a block change of a chunk the client does not hold is dropped, as the client drops it.
      */
@@ -328,12 +477,12 @@ public class ChunkSendBlockChangeIntegrationTest {
         return Objects.requireNonNull(Block.fromStateId(section.blockStates().get(x & 15, y & 15, z & 15)));
     }
 
-    /** Joins a plain player at view distance 2 in chunk (0, 0), its last teleport confirmed. */
-    private static Player join(Env env, TestConnection connection, Instance instance) {
-        env.process().connection().setPlayerProvider(Player::new);
+    /** Joins a {@link CheckedPlayer} at view distance 2 in chunk (0, 0), its last teleport confirmed. */
+    private static CheckedPlayer join(Env env, TestConnection connection, Instance instance) {
+        env.process().connection().setPlayerProvider(CheckedPlayer::new);
         env.process().eventHandler().addListener(AsyncPlayerConfigurationEvent.class,
                 event -> event.getPlayer().refreshSettings(ClientSettings.defaultSettings(VIEW_DISTANCE)));
-        final Player player = connection.connect(instance, new Pos(8.5, Y, 8.5));
+        final CheckedPlayer player = (CheckedPlayer) connection.connect(instance, new Pos(8.5, Y, 8.5));
         assertEquals(RADIUS, player.effectiveViewDistance());
         player.addPacketToQueue(new ClientTeleportConfirmPacket(player.getLastSentTeleportId()));
         return player;
@@ -382,6 +531,55 @@ public class ChunkSendBlockChangeIntegrationTest {
         final Field field = Player.class.getDeclaredField(name);
         field.setAccessible(true);
         return field;
+    }
+
+    /**
+     * Another thread that takes the write-locks of some chunks once constructed and holds them until {@link #letGo()}, at
+     * most {@link #WAIT}. Meanwhile it notes the chunks whose lock {@code watched} is queued for: a thread waiting for a
+     * lock is, a thread only trying it is not ({@code ReentrantReadWriteLock#hasQueuedThread}).
+     */
+    private static final class Holder {
+        final Set<String> waitedFor = ConcurrentHashMap.newKeySet();
+        final Thread thread;
+        private final CountDownLatch release = new CountDownLatch(1);
+
+        Holder(List<Chunk> chunks, @Nullable Thread watched) {
+            final CountDownLatch locked = new CountDownLatch(1);
+            this.thread = Thread.ofPlatform().name("holder").start(() -> {
+                chunks.forEach(Chunk::lockWriteLock);
+                try {
+                    locked.countDown();
+                    final long deadline = System.nanoTime() + WAIT.toNanos();
+                    while (release.getCount() > 0 && System.nanoTime() - deadline < 0) {
+                        if (watched != null) {
+                            for (Chunk chunk : chunks) {
+                                if (chunkLock(chunk).hasQueuedThread(watched)) waitedFor.add(chunk.getChunkX() + "," + chunk.getChunkZ());
+                            }
+                        }
+                        LockSupport.parkNanos(10_000);
+                    }
+                    if (release.getCount() > 0) System.out.println("The holder lets go after " + WAIT);
+                } finally {
+                    chunks.forEach(Chunk::unlockWriteLock);
+                }
+            });
+            await(locked);
+        }
+
+        /** Lets go of the locks and waits for the thread to end, at most {@link #WAIT}. */
+        void letGo() {
+            release.countDown();
+            try {
+                thread.join(WAIT.toMillis());
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                throw new IllegalStateException(e);
+            }
+        }
+    }
+
+    private static List<String> names(List<ChunkDataPacket> chunks) {
+        return chunks.stream().map(chunk -> chunk.chunkX() + "," + chunk.chunkZ()).toList();
     }
 
     private static void await(CountDownLatch latch) {

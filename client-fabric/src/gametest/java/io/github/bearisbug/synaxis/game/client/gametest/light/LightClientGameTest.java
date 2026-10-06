@@ -1,5 +1,6 @@
 package io.github.bearisbug.synaxis.game.client.gametest.light;
 
+import io.github.bearisbug.synaxis.game.client.gametest.farview.FrameTimes;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
@@ -10,6 +11,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.TreeMap;
@@ -48,7 +50,14 @@ import org.jspecify.annotations.Nullable;
  * the server what the fixture computes over its blocks right now ({@code truth}). Every case writes
  * one line {@code L<n> PASS|FAIL <evidence>} to {@code synaxis-gametest/light-report.txt}; the samples
  * per tick go to {@code light-samples.csv}. The player places and breaks through
- * {@code MultiPlayerGameMode} called on the client thread, never through synthetic input.
+ * {@code MultiPlayerGameMode} called on the client thread, never through synthetic input; a block the player works on
+ * from further than 5.5 blocks away is reached by moving the player next to it first, as the engine turns down a
+ * dig or a placement out of reach ({@code docs/DESIGN-PROD.md} {@code API-PROD-030}).
+ * <p>
+ * Mode {@code light-frames} is P1① of the real machines ({@code docs/DESIGN-M3.md} §26 M3-S, 真机六项): the frame times
+ * from the connection to 10 s after the last chunk of the ring came, then while nine torches are placed beside the
+ * player and broken again, to {@code light-frames.csv}. {@code SYNAXIS_LIGHT_RENDER_DISTANCE} (default 12) is the
+ * client's render distance and {@code SYNAXIS_LIGHT_RING} (default 729) the chunks the ring is complete with.
  */
 public final class LightClientGameTest implements FabricClientGameTest {
     private static final int CONNECT_TIMEOUT_TICKS = 20 * 120;
@@ -66,7 +75,9 @@ public final class LightClientGameTest implements FabricClientGameTest {
         final Run run = new Run(context, mode);
         try {
             context.waitForScreen(TitleScreen.class);
-            context.runOnClient(client -> client.options.renderDistance().set(12));
+            final int renderDistance = Integer.parseInt(Objects.requireNonNullElse(System.getenv("SYNAXIS_LIGHT_RENDER_DISTANCE"), "12"));
+            context.runOnClient(client -> client.options.renderDistance().set(renderDistance));
+            if (mode.equals("light-frames")) FrameTimes.start();
             context.runOnClient(client -> ConnectScreen.startConnecting(new TitleScreen(), client,
                     ServerAddress.parseString(server), new ServerData("light", server, ServerData.Type.OTHER), false, null));
             final boolean inWorld = run.waitUntil(client -> inWorld(client) || client.gui.screen() instanceof DisconnectedScreen,
@@ -76,6 +87,7 @@ public final class LightClientGameTest implements FabricClientGameTest {
                 return;
             }
             if (mode.equals("real")) run.real();
+            else if (mode.equals("light-frames")) run.frames(Integer.parseInt(Objects.requireNonNullElse(System.getenv("SYNAXIS_LIGHT_RING"), "729")));
             else run.fixture(mode.equals("resend"));
         } catch (Throwable t) {
             run.line("L0", false, "aborted: " + t);
@@ -430,6 +442,10 @@ public final class LightClientGameTest implements FabricClientGameTest {
             final List<BlockPos> points = nineteen(pos);
             final Map<String, Truth> before = truthsAround(pos);
             final Map<String, Integer> clientBefore = clientPackets(), sentBefore = sent();
+            // L7's block is 8.43 blocks from the eye at the spawn: the player stands next to it for the case
+            final Vec3 home = context.computeOnClient(client -> client.player.position());
+            final boolean moved = byClient && within(pos.below(), home) > REACH;
+            if (moved) moveTo(new Vec3(pos.getX() + 2.5, home.y, pos.getZ() + 2.5));
             if (byClient) {
                 context.runOnClient(client -> {
                     client.player.getInventory().setSelectedSlot(0);
@@ -512,8 +528,103 @@ public final class LightClientGameTest implements FabricClientGameTest {
                 why += " light packets: client " + clientDelta + " fixture " + sentDelta;
             }
             final Parity parity = parityAround(site, pos, all, changes);
-            line(id, pass, site + " " + pos.toShortString() + " " + why + " client_packets=" + clientDelta
-                    + " fixture_sent=" + sentDelta + " 3x3 " + parity);
+            final String reach = byClient ? String.format(Locale.ROOT, " eye to block %.2f", within(pos.below(),
+                    context.computeOnClient(client -> client.player.position()))) : "";
+            if (moved) moveTo(home);
+            line(id, pass, site + " " + pos.toShortString() + " " + why + reach + (moved ? " (stood next to it)" : "")
+                    + " client_packets=" + clientDelta + " fixture_sent=" + sentDelta + " 3x3 " + parity);
+        }
+
+        /** The engine's reach for a dig or a placement: 4.5 and 1, from the eye to the nearest point of the block. */
+        static final double REACH = 5.5;
+
+        /** From the eye of a player standing at {@code feet} to the nearest point of block {@code pos}. */
+        static double within(BlockPos pos, Vec3 feet) {
+            final Vec3 eye = feet.add(0, 1.62, 0);
+            final double dx = Math.max(0, Math.max(pos.getX() - eye.x, eye.x - (pos.getX() + 1)));
+            final double dy = Math.max(0, Math.max(pos.getY() - eye.y, eye.y - (pos.getY() + 1)));
+            final double dz = Math.max(0, Math.max(pos.getZ() - eye.z, eye.z - (pos.getZ() + 1)));
+            return Math.sqrt(dx * dx + dy * dy + dz * dz);
+        }
+
+        /** Moves the player in one step (the server takes up to 64 blocks a packet) and gives it 5 ticks. */
+        void moveTo(Vec3 to) {
+            context.runOnClient(client -> client.player.setPos(to.x, to.y, to.z));
+            context.waitTicks(5);
+        }
+
+        /**
+         * P1① frame times: the ring complete ({@code ring} chunks, at most 180 s), 10 s standing still, then nine torches
+         * placed on the floor 2 to 4 blocks east of the player and broken again. The frames from the connection to the
+         * end of the 10 s are the entry window, the 10 s alone its baseline, and those from the first torch to the last
+         * break the torch window; all to {@code light-frames.csv}. Only recorded.
+         */
+        void frames(int ring) {
+            final long ringFrom = System.nanoTime();
+            final boolean complete = waitUntil(client -> client.level.getChunkSource().getLoadedChunksCount() >= ring, 20 * 180);
+            final int chunks = context.computeOnClient(client -> client.level.getChunkSource().getLoadedChunksCount());
+            final List<Long> arriving = FrameTimes.stop();
+            FrameTimes.start();
+            sleep(TimeUnit.SECONDS.toMillis(10));
+            final List<Long> still = FrameTimes.stop();
+            final BlockPos feet = context.computeOnClient(client -> client.player.blockPosition());
+            final List<BlockPos> torches = new ArrayList<>();
+            for (int dx = 2; dx <= 4; dx++) {
+                for (int dz = -1; dz <= 1; dz++) torches.add(feet.offset(dx, 0, dz));
+            }
+            FrameTimes.start();
+            for (BlockPos torch : torches) {
+                context.runOnClient(client -> {
+                    client.player.getInventory().setSelectedSlot(0);
+                    client.gameMode.useItemOn(client.player, InteractionHand.MAIN_HAND,
+                            new BlockHitResult(Vec3.atCenterOf(torch.below()).add(0, 0.5, 0), Direction.UP, torch.below(), false));
+                });
+                context.waitTicks(10);
+            }
+            context.waitTicks(40);
+            final long placed = torches.stream().filter(torch -> context.computeOnClient(client -> client.level.getBlockState(torch)
+                    .is(Blocks.TORCH))).count();
+            for (BlockPos torch : torches) {
+                context.runOnClient(client -> client.gameMode.startDestroyBlock(torch, Direction.UP));
+                context.waitTicks(10);
+            }
+            context.waitTicks(40);
+            final List<Long> torchFrames = FrameTimes.stop();
+            final List<Long> entry = new ArrayList<>(arriving);
+            entry.addAll(still);
+            final List<String> csv = new ArrayList<>();
+            csv.add("window,frame,ms");
+            for (int i = 0; i < arriving.size(); i++) csv.add("arriving," + i + "," + arriving.get(i) / 1e6);
+            for (int i = 0; i < still.size(); i++) csv.add("still," + i + "," + still.get(i) / 1e6);
+            for (int i = 0; i < torchFrames.size(); i++) csv.add("torches," + i + "," + torchFrames.get(i) / 1e6);
+            try {
+                final Path dir = FabricLoader.getInstance().getGameDir().resolve("synaxis-gametest");
+                Files.createDirectories(dir);
+                Files.write(dir.resolve("light-frames.csv"), csv, StandardCharsets.UTF_8);
+            } catch (IOException e) {
+                line("L12", false, "could not write light-frames.csv: " + e);
+                return;
+            }
+            line("L12", complete && placed == torches.size(), String.format(Locale.ROOT,
+                    "ring %d of %d chunks after %d ms; entry window %s; standing still 10 s median %.2f ms; torches %d of %d placed, "
+                            + "window %s", chunks, ring, TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - ringFrom), frameStats(entry),
+                    median(still), placed, torches.size(), frameStats(torchFrames)));
+        }
+
+        static String frameStats(List<Long> times) {
+            if (times.isEmpty()) return "no frames";
+            final List<Long> sorted = new ArrayList<>(times);
+            sorted.sort(Long::compare);
+            final double p99 = sorted.get((int) Math.floor(0.99 * (sorted.size() - 1))) / 1e6;
+            return String.format(Locale.ROOT, "%d frames, mean %.2f ms, worst %.2f ms, p99 %.2f ms, P1%% %.1f FPS", times.size(),
+                    times.stream().mapToLong(Long::longValue).average().orElse(0) / 1e6, sorted.getLast() / 1e6, p99, 1000 / p99);
+        }
+
+        static double median(List<Long> times) {
+            if (times.isEmpty()) return 0;
+            final List<Long> sorted = new ArrayList<>(times);
+            sorted.sort(Long::compare);
+            return sorted.get(sorted.size() / 2) / 1e6;
         }
 
         static String describe(List<BlockPos> points, int[][] got, int[][] expected) {

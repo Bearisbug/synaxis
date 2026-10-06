@@ -84,8 +84,8 @@ public final class DhTestHook {
      * @param x         the block column
      * @param z         the block column
      * @param baseLevel the level the column was written at
-     * @return {@code state}, {@code block}, {@code bottom}, {@code top} (exclusive), {@code sky}, {@code light}
-     *         and {@code points} of that point; empty when the column holds only air; null without a level
+     * @return {@code state}, {@code block}, {@code bottom}, {@code top} (exclusive), {@code sky}, {@code light},
+     *         {@code biome} (DH's serial string) and {@code points} of that point; empty when the column holds only air; null without a level
      */
     public static @Nullable Map<String, Object> topPoint(int x, int z, int baseLevel) {
         final IDhApiLevelWrapper level = DhFarView.level();
@@ -110,6 +110,7 @@ public final class DhTestHook {
             found.put("top", top.topYBlockPos);
             found.put("sky", top.skyLightLevel);
             found.put("light", top.blockLightLevel);
+            found.put("biome", top.biomeWrapper == null ? null : top.biomeWrapper.getSerialString());
             found.put("points", column.size());
             return found;
         } finally {

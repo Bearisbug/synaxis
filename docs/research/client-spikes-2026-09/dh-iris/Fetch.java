@@ -13,7 +13,7 @@ import java.util.List;
 
 /**
  * Downloads the third-party jars and the shader pack of the DH / Iris spike inside the container:
- * {@code java Fetch.java <dh|iris|dh-iris> <dir>} writes {@code <dir>/mods} (handed to Fabric Loader
+ * {@code java Fetch.java <dh|iris|dh-iris|dh-iris-photon> <dir>} writes {@code <dir>/mods} (handed to Fabric Loader
  * through {@code -Dfabric.addMods}) and {@code <dir>/shaderpacks} (copied into the game directory by
  * the spike itself). Loom clears the gametest run directory before each run, so nothing can be put
  * there beforehand. Every file is pinned by SHA-1; none of them is ever committed.
@@ -34,7 +34,11 @@ public class Fetch {
                     "bd0b24731a94b8fe164531e6345718d30ab08ed2"),
             new Item("iris", "shaderpacks", "ComplementaryReimagined_r5.9.3.zip",
                     "https://cdn.modrinth.com/data/HVnmMxH1/versions/Bqen1mJX/ComplementaryReimagined_r5.9.3.zip",
-                    "838139b54cddb56b2e83cd260d8efd960ac536d6"));
+                    "838139b54cddb56b2e83cd260d8efd960ac536d6"),
+            // P1⑧ of docs/DESIGN-M3.md §26 M3-S (真机六项): the second shader pack, fetched only with the set photon
+            new Item("photon", "shaderpacks", "photon_v1.3b.zip",
+                    "https://cdn.modrinth.com/data/lLqFfGNs/versions/gUv7fBPN/photon_v1.3b.zip",
+                    "d975d25c9686de5f10e8b86c8518613cdf3f040a"));
 
     public static void main(String[] args) throws Exception {
         final List<String> sets = List.of(args[0].split("-"));

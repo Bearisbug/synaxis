@@ -979,12 +979,15 @@ public class Player extends LivingEntity implements CommandSender, HoverEventSou
      * its ring passes over, and the first batch after its next acknowledgement would dequeue them all in one
      * tick, each dequeue a scan of the whole queue.
      * <p>
-     * Only here, on the tick thread of the player, where the ring and its center agree: the chunk adder queues
+     * Only here, on the thread holding the player, where the ring and its center agree: the chunk adder queues
      * the chunks entering the ring before the center moves, and a load completing on another thread may see a
      * center the ring has left, so trimming from {@link #sendChunk(Chunk)} would drop chunks of the ring.
      */
     private void trimChunkQueue() {
-        final int ringChunks = ChunkRange.chunksCount(effectiveViewDistance());
+        final int radius = effectiveViewDistance();
+        // Nothing refuses an instance view distance below -1: the radius is then negative, which ChunkRange#chunksCount refuses
+        if (radius < 0) return;
+        final int ringChunks = ChunkRange.chunksCount(radius);
         chunkQueueLock.lock();
         try {
             if (queuedChunks.size() <= ringChunks) return;

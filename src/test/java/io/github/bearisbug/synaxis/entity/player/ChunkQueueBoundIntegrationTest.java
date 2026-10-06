@@ -35,8 +35,11 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.locks.LockSupport;
 import java.util.concurrent.locks.ReentrantLock;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -212,6 +215,111 @@ public class ChunkQueueBoundIntegrationTest {
         assertHolds(ringAround(0, 0), new HashSet<>(chunks), "the chunks sent after the instance change");
     }
 
+    @Test
+    public void aNegativeInstanceViewDistanceLeavesThePlayerTicking(Env env) {
+        final Instance instance = env.createFlatInstance();
+        preload(instance, -RADIUS, RADIUS, -RADIUS, RADIUS);
+        final Player player = join(env, env.createConnection(), instance);
+        final List<Throwable> reported = new CopyOnWriteArrayList<>();
+        env.process().exception().setExceptionHandler(reported::add);
+
+        // Nothing refuses a view distance below -1 for an instance, which leaves the ring a negative radius
+        instance.viewDistance(-2);
+        assertEquals(-1, player.effectiveViewDistance());
+        final long aliveTicks = player.getAliveTicks();
+        for (int tick = 0; tick < 20; tick++) env.tick();
+
+        System.out.println("Negative view distance: " + reported.size() + " exceptions in 20 ticks, alive ticks +"
+                + (player.getAliveTicks() - aliveTicks) + ", queued " + queued(player));
+        assertEquals(0, reported.size(), () -> "exceptions reported in 20 ticks, the first " + reported.getFirst());
+        assertEquals(aliveTicks + 20, player.getAliveTicks(), "the player ticks to the end every tick");
+    }
+
+    @Test
+    public void aChunkQueuedFromAnotherThreadWhileTheQueueIsTrimmedIsKept(Env env)
+            throws InterruptedException, ReflectiveOperationException {
+        final Instance instance = env.createFlatInstance();
+        preload(instance, -RADIUS, 3 + RADIUS, -RADIUS, RADIUS);
+        final TestConnection connection = env.createConnection();
+        final Collector<ServerPacket> received = connection.trackIncoming();
+        final Collector<ChunkDataPacket> firstBatch = connection.trackIncoming(ChunkDataPacket.class);
+        final AtomicBoolean armed = new AtomicBoolean();
+        final CountDownLatch trimming = new CountDownLatch(1), resume = new CountDownLatch(1);
+        // Once the trim has emptied the queue it asks for the radius for every queued chunk it checks, refilling
+        // the queue with the chunks of the ring: the first of these calls holds it there until the test resumes it
+        final Player player = join(env, connection, instance, (playerConnection, profile) -> new Player(playerConnection, profile) {
+            @Override
+            public int effectiveViewDistance() {
+                if (armed.get() && askedByTheTrimForAQueuedChunk() && armed.compareAndSet(true, false)) {
+                    trimming.countDown();
+                    await(resume);
+                }
+                return super.effectiveViewDistance();
+            }
+        });
+        final List<Chunk> resent = firstBatch.collect().stream()
+                .map(chunk -> instance.getChunk(chunk.chunkX(), chunk.chunkZ())).toList();
+        assertEquals(9, resent.size(), "the first batch");
+        final ReentrantLock lock = (ReentrantLock) field("chunkQueueLock").get(player);
+
+        try {
+            // Three chunks east and no receipt: 145 chunks queued for a ring of 121, the tick trims them
+            player.addPacketToQueue(new ClientPlayerPositionPacket(new Vec(8.5 + STEP, Y, 8.5), true, false));
+            armed.set(true);
+            final Thread ticker = Thread.ofPlatform().name("ticker").start(env::tick);
+            assertTrue(trimming.await(WAIT.toMillis(), TimeUnit.MILLISECONDS), "the trim walks the queued chunks");
+
+            // Meanwhile another thread queues the chunks of the first batch again, Player#sendChunk may be called
+            // from any thread: under the queue lock it waits for the trim to finish, without it it goes through
+            final Thread adder = Thread.ofPlatform().name("adder").start(() -> resent.forEach(player::sendChunk));
+            final long deadline = System.nanoTime() + WAIT.toNanos();
+            while (!lock.hasQueuedThread(adder) && adder.isAlive()) {
+                if (System.nanoTime() - deadline > 0) fail("the other thread neither waits for the queue lock nor ends");
+                LockSupport.parkNanos(100_000);
+            }
+            final boolean waited = adder.isAlive();
+            resume.countDown();
+            ticker.join(WAIT.toMillis());
+            adder.join(WAIT.toMillis());
+            assertFalse(ticker.isAlive() || adder.isAlive(), "the tick and the other thread end");
+
+            // Every chunk of the index is in the queue once, the chunks queued meanwhile included
+            final List<Long> queue = new ArrayList<>();
+            final Set<Long> index = new HashSet<>();
+            lock.lock();
+            try {
+                final LongPriorityQueue chunkQueue = (LongPriorityQueue) field("chunkQueue").get(player);
+                while (!chunkQueue.isEmpty()) queue.add(chunkQueue.dequeueLong());
+                for (long chunk : queue) chunkQueue.enqueue(chunk);
+                for (long chunk : ((LongSet) field("queuedChunks").get(player)).toLongArray()) index.add(chunk);
+            } finally {
+                lock.unlock();
+            }
+            final Set<Long> distinct = new HashSet<>();
+            final List<String> twice = new ArrayList<>(), indexOnly = new ArrayList<>();
+            final List<String> queueOnly = new ArrayList<>(), lost = new ArrayList<>();
+            for (long chunk : queue) if (!distinct.add(chunk)) twice.add(name(chunk));
+            for (long chunk : index) if (!distinct.contains(chunk)) indexOnly.add(name(chunk));
+            for (long chunk : distinct) if (!index.contains(chunk)) queueOnly.add(name(chunk));
+            for (Chunk chunk : resent) {
+                if (!distinct.contains(CoordConversion.chunkIndex(chunk.getChunkX(), chunk.getChunkZ())))
+                    lost.add(chunk.getChunkX() + "," + chunk.getChunkZ());
+            }
+            System.out.println("Trim and a concurrent sendChunk: the other thread waited for the trim " + waited
+                    + ", queued " + queue.size() + ", indexed " + index.size());
+            assertTrue(twice.isEmpty() && indexOnly.isEmpty() && queueOnly.isEmpty() && lost.isEmpty(),
+                    "queued twice " + twice + ", indexed but not queued " + indexOnly + ", queued but not indexed "
+                            + queueOnly + ", queued again meanwhile and lost " + lost);
+
+            // From now on the client acknowledges: it ends up holding its whole ring and nothing else
+            drain(env, player);
+            assertHolds(ringAround(3, 0), held(received.collect()), "the client");
+        } finally {
+            armed.set(false);
+            resume.countDown();
+        }
+    }
+
     private static Player join(Env env, TestConnection connection, Instance instance) {
         return join(env, connection, instance, Player::new);
     }
@@ -272,6 +380,12 @@ public class ChunkQueueBoundIntegrationTest {
         final Field field = Player.class.getDeclaredField(name);
         field.setAccessible(true);
         return field;
+    }
+
+    /** Whether {@code Player#trimChunkQueue} asks for the radius, to check whether a queued chunk is in the ring. */
+    private static boolean askedByTheTrimForAQueuedChunk() {
+        return StackWalker.getInstance().walk(frames -> frames.limit(4).map(StackWalker.StackFrame::getMethodName).toList())
+                .containsAll(List.of("isOutOfClientRange", "trimChunkQueue"));
     }
 
     private static void await(CountDownLatch latch) {

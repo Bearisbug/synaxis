@@ -1,8 +1,10 @@
 package io.github.bearisbug.synaxis.listener;
 
+import io.github.bearisbug.synaxis.coordinate.Pos;
 import io.github.bearisbug.synaxis.entity.Entity;
 import io.github.bearisbug.synaxis.entity.Player;
 import io.github.bearisbug.synaxis.network.packet.client.play.ClientVehicleMovePacket;
+import io.github.bearisbug.synaxis.network.packet.server.play.VehicleMovePacket;
 
 public class PlayerVehicleListener {
 
@@ -20,6 +22,16 @@ public class PlayerVehicleListener {
                 Math.abs(position.y()) > Entity.MAX_COORDINATE ||
                 Math.abs(position.z()) > Entity.MAX_COORDINATE) {
             player.kick(PlayerPositionListener.KICK_MESSAGE);
+            return;
+        }
+
+        // Turned back where the vehicle is, as a player's own move is: a move of more than 64 blocks in
+        // one packet and a move out across the world border, or farther out for a vehicle the server put
+        // outside it. The vanilla server corrects a vehicle the same way, the client snaps it back.
+        final Pos current = vehicle.getPosition();
+        if (current.distanceSquared(position) > 64 * 64
+                || PlayerPositionListener.outwards(vehicle.getInstance(), current, position)) {
+            player.sendPacket(new VehicleMovePacket(current));
             return;
         }
 

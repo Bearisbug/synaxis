@@ -745,6 +745,11 @@ public final class SynxRelight {
         return values[(int) Math.ceil(values.length * 0.99) - 1];
     }
 
+    /** The target entries waiting for the install now, which the recomputation threads hold under {@value #INSTALL_BACKLOG} plus what one task adds each. */
+    int installBacklog() {
+        return waiting.get();
+    }
+
     /** {@code relight_pending} of a chunk position. */
     int pending(int chunkX, int chunkZ) {
         return pending.getOrDefault(key(chunkX, chunkZ), 0);

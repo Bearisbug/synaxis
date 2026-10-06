@@ -41,9 +41,8 @@ jobs:
     name: Far view cases (${{ matrix.group }})
     if: github.event_name == 'workflow_dispatch' || github.event.label.name == 'farview-gametest'
     runs-on: ubuntu-latest
-    # On these 2 cores the fixture bakes a 3 × 3 tile map in about 24 minutes (baked and hidden, each its own map, kept
-    # in the Actions cache afterwards); a bake of the client takes 10 to 20 minutes, a client run 5 to 45; synthetic has
-    # four client runs, baked six
+    # On these 2 cores the fixture bakes a 3 × 3 tile map in about 24 minutes (baked and hidden, each its own map); a
+    # bake of the client takes 10 to 20 minutes, a client run 5 to 45; synthetic has four client runs, baked six
     timeout-minutes: ${{ matrix.group == 'hidden' && 90 || matrix.group == 'synthetic' && 150 || 180 }}
     strategy:
       fail-fast: false
@@ -93,18 +92,10 @@ jobs:
       - name: Fetch Distant Horizons
         run: java docs/research/client-spikes-2026-09/dh-iris/Fetch.java dh "$RUNNER_TEMP/dh"
 
-      # The 3 × 3 tile map of baked and of hidden: FarViewShardFixture reuses a release it finds under maps/, so a run
-      # whose engine, baker, synx, protocol and fixture are those of a run before skips the bake
-      - name: Restore the fixture's map
-        id: maps
-        if: matrix.group == 'baked' || matrix.group == 'hidden'
-        uses: actions/cache/restore@v6
-        with:
-          path: ${{ runner.temp }}/farview-work/maps
-          key: farview-maps-${{ matrix.group }}-${{ hashFiles('src/main/**', 'baker/src/main/**', 'synx/src/main/**', 'protocol/src/main/**', 'gradle/libs.versions.toml', 'server-app/src/test/java/io/github/bearisbug/synaxis/app/shard/FarViewShardFixture.java') }}
-
+      # The 3 × 3 tile map of baked and of hidden, baked before the cases: FarViewShardFixture reuses a release it finds
+      # under maps/, so the first case's fixture gets ready in seconds rather than at the edge of its 30 minutes
       - name: Bake the fixture's map
-        if: (matrix.group == 'baked' || matrix.group == 'hidden') && steps.maps.outputs.cache-hit != 'true'
+        if: matrix.group == 'baked' || matrix.group == 'hidden'
         env:
           MODE: ${{ matrix.group == 'hidden' && 'baked-hidden' || 'baked' }}
         run: |
@@ -121,13 +112,6 @@ jobs:
           kill "$pid" 2>/dev/null || true
           wait "$pid" || true
           grep 'farview fixture: baked' "$LOG" || { tail -n 40 "$LOG"; exit 1; }
-
-      - name: Save the fixture's map
-        if: (matrix.group == 'baked' || matrix.group == 'hidden') && steps.maps.outputs.cache-hit != 'true'
-        uses: actions/cache/save@v6
-        with:
-          path: ${{ runner.temp }}/farview-work/maps
-          key: ${{ steps.maps.outputs.cache-primary-key }}
 
       - name: Run the cases
         env:
@@ -243,10 +227,23 @@ jobs:
             if "$@"; then echo "$name: $what"; else echo "::error::$name: not $what"; FAILED+=("$name"); fi
           }
 
-          # <case> <F id>...: lines this runner records and does not judge (docs/DESIGN-M3.md §26 M3-S 轨道 C): on its
-          # 2 cores DH's propagation to the parent levels does not finish within the bake's 120 s, so the bake line (F3),
-          # the row counts (F4) and the reconnect's ready library (F7, F19) are left to the real machine (V2b); the
-          # judge above takes what of those lines does not depend on it
+          # On these 2 cores DH's propagation to the parent levels does not finish within the bake's 120 s (docs/DESIGN-M3.md
+          # §26 M3-S 轨道 C), so what waits on it is left to the real machine (V2b): the bake line (F3), F4's rows against
+          # the sources and its ApplyToParent rows, the ready line and the bake of F7's reconnect, F19's ready. The rest
+          # of F4 and F7 is judged: no child propagation, some rows at level 4, every point read back; the announcement
+          # before the save folder, nothing asked for on the reconnect, the LOD shown within 200 ticks
+          F4_ROWS='^F4 (PASS|FAIL) DetailLevel=2 [0-9]+ of -?[0-9]+, ApplyToParent=1 [0-9]+, ApplyToChildren=1 0, DetailLevel=4 [1-9][0-9]*; '
+          F7_RECONNECT='^F7 (PASS|FAIL) announcement at log line [0-9]+, save folder at [0-9]+; reconnect: access\.log 9 -> 9 lines, ready line (true|false), baked in (true|false), FAR_VIEW shows LOD after [0-9]+ ticks \([0-9]+ ms\)$'
+
+          # <case>: F7's announcement came before DH's save folder
+          announced_first() {
+            local a='' s=''
+            read -r a s < <(sed -nE 's/^F7 (PASS|FAIL) announcement at log line ([0-9]+), save folder at ([0-9]+);.*/\2 \3/p' \
+              "$OUT/$1/synaxis-gametest/farview-report.txt" 2>/dev/null)
+            [ -n "$a" ] && [ -n "$s" ] && [ "$s" -gt "$a" ]
+          }
+
+          # <case> <F id>...: the lines above, recorded as notices
           record() {
             local name=$1 id
             shift
@@ -270,8 +267,11 @@ jobs:
             # TC-WORLD-117 (V1 and the walk, F5 and F9) and the tiers of TC-WORLD-119 with the counter-proof counter-radius
             start_fixture a1-synthetic synthetic "http://127.0.0.1:$HTTP_PORT" && {
               run_client a1-synthetic "$FIXTURE_PORT" v1,v1-writable,tiers,counter-radius
-              judge a1-synthetic '^F1 PASS' '^F2 PASS' '^F3 ' '^F4 ' '^F5 PASS .*walked to x \+ 200' \
-                '^F6 PASS' '^F7 ' '^F9 PASS .*walked to x \+ 200' '^F15 PASS' '^F15 FAIL counter-proof counter-radius'
+              judge a1-synthetic '^F1 PASS' '^F2 PASS' '^F3 ' \
+                "${F4_ROWS}peak@[^;]* ok; water@[^;]* ok; hidden@[^;]* ok; mountain@[^;]* ok\$" \
+                '^F5 PASS .*walked to x \+ 200' '^F6 PASS' "$F7_RECONNECT" '^F9 PASS .*walked to x \+ 200' '^F15 PASS' \
+                '^F15 FAIL counter-proof counter-radius'
+              check a1-synthetic "the announcement before the save folder" announced_first a1-synthetic
               record a1-synthetic F3 F4 F7
             }
             stop_all
@@ -289,11 +289,12 @@ jobs:
               judge a3-break-sha '^F18 PASS' '^F18 FAIL counter-proof counter-sha'
             }
             stop_all
-            # TC-WORLD-120 step 2 and counter-range: a cut, then a Range answered 206; without Range no 206
+            # TC-WORLD-120 step 2 and counter-range: a cut, then the second request a Range answered 206; without Range
+            # the second request is answered 200
             start_fixture a4-half half "http://127.0.0.1:$HTTP_PORT" && {
               run_client a4-half "$FIXTURE_PORT" half,counter-range
-              judge a4-half '^F19 (PASS|FAIL) cut GET [^;]* cut; resumed GET [^;]* bytes=[0-9]+-[0-9]* 206; ready' \
-                '^F19 FAIL counter-proof counter-range: cut GET [^;]* cut; resumed null'
+              judge a4-half '^F19 (PASS|FAIL) cut GET [^ ;]+ - 200 cut; second GET [^ ;]+ bytes=[0-9]+-[0-9]* 206; ready (true|false)$' \
+                '^F19 FAIL counter-proof counter-range: cut GET [^ ;]+ - 200 cut; second GET [^ ;]+ - 200; ready (true|false)$'
               record a4-half F19
             }
             stop_all
@@ -303,8 +304,9 @@ jobs:
             start_fixture b4-serve-only serve-only && \
               start_shard b4-serve-only "$WORK/maps/farview3x3" "$(baked_build)" "http://$HOST_IP:$HTTP_PORT" && {
                 run_client b4-serve-only "$SHARD_PORT" v1
-                judge b4-serve-only '^F1 PASS' '^F2 PASS' '^F3 ' '^F4 ' '^F5 PASS .*walked to x \+ 200' '^F6 PASS' \
-                  '^F7 .*reconnect: access\.log 9 -> 9 lines'
+                judge b4-serve-only '^F1 PASS' '^F2 PASS' '^F3 ' "${F4_ROWS}peak@[^;]* ok; water@[^;]* ok; mountain@[^;]* ok\$" \
+                  '^F5 PASS .*walked to x \+ 200' '^F6 PASS' "$F7_RECONNECT"
+                check b4-serve-only "the announcement before the save folder" announced_first b4-serve-only
                 record b4-serve-only F3 F4 F7
                 check b4-serve-only "nine GET in access.log" test "$(grep -c '^GET ' "$OUT/b4-serve-only/access.log")" = 9
                 check b4-serve-only "announcing nine whole tiles" grep -q "Far view: 9 tile(s), 0 coarse, from http://$HOST_IP:$HTTP_PORT" "$OUT/b4-serve-only/shard.log"
@@ -320,12 +322,14 @@ jobs:
               }
             stop_all
             # counter-hidden: the hidden points of baked-hidden against packs that hide nothing read back the terrain,
-            # while the three points outside the hidden areas read back as expected
+            # while peak, water and mountain, picked from these packs (the peak is where hidden-peak is), read back as
+            # expected
             start_fixture b6-counter-hidden counter-hidden "http://127.0.0.1:$HTTP_PORT" && {
               run_client b6-counter-hidden "$FIXTURE_PORT" v1
               judge b6-counter-hidden '^F1 PASS' '^F2 PASS' '^F3 ' \
-                '^F4 FAIL .*peak@[^;]* ok; water@[^;]* ok; mountain@[^;]* ok; hidden-peak@[^;]* got \{state=[^;]* WRONG; hidden-edge-fine@[^;]* got \{state=[^;]* WRONG; hidden-edge-coarse@[^;]* got \{state=[^;]* WRONG' \
-                '^F5 PASS' '^F6 PASS' '^F7 '
+                "${F4_ROWS}peak@[^;]* ok; water@[^;]* ok; mountain@[^;]* ok; hidden-peak@[^;]* got \{state=[^;]* WRONG; hidden-edge-fine@[^;]* got \{state=[^;]* WRONG; hidden-edge-coarse@[^;]* got \{state=[^;]* WRONG\$" \
+                '^F5 PASS' '^F6 PASS' "$F7_RECONNECT"
+              check b6-counter-hidden "the announcement before the save folder" announced_first b6-counter-hidden
               record b6-counter-hidden F3 F4 F7
             }
             stop_all
@@ -352,8 +356,9 @@ jobs:
             start_fixture c1-baked-hidden baked-hidden "http://127.0.0.1:$HTTP_PORT" && {
               run_client c1-baked-hidden "$FIXTURE_PORT" v1
               judge c1-baked-hidden '^F1 PASS' '^F2 PASS' '^F3 ' \
-                '^F4 .*peak@[^;]* ok; water@[^;]* ok; mountain@[^;]* ok; hidden-peak@[^;]* ok; hidden-edge-fine@[^;]* ok; hidden-edge-coarse@[^;]* ok' \
-                '^F5 PASS .*walked to x \+ 200' '^F6 PASS' '^F7 '
+                "${F4_ROWS}peak@[^;]* ok; water@[^;]* ok; mountain@[^;]* ok; hidden-peak@[^;]* ok; hidden-edge-fine@[^;]* ok; hidden-edge-coarse@[^;]* ok\$" \
+                '^F5 PASS .*walked to x \+ 200' '^F6 PASS' "$F7_RECONNECT"
+              check c1-baked-hidden "the announcement before the save folder" announced_first c1-baked-hidden
               record c1-baked-hidden F3 F4 F7
             }
             stop_all

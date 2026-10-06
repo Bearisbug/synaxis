@@ -1131,7 +1131,10 @@ public final class FarViewClientGameTest implements FabricClientGameTest {
                             + "; in the world without a screen " + playing);
         }
 
-        /** The fixture's half: the first response cut in half, the second asked for the rest with Range. */
+        /**
+         * The fixture's half: the first response cut in half, the second request for that object asks for the rest
+         * with Range and is answered 206. The line names the second request whatever it was.
+         */
         void half() {
             clearCache();
             // A second run against the same fixture (half, then counter-range) gets a cut of its own
@@ -1140,11 +1143,18 @@ public final class FarViewClientGameTest implements FabricClientGameTest {
             final boolean in = connect();
             final boolean ready = in && ready();
             final List<String> requests = accessLog().subList(access, accessLog().size());
-            final String cut = requests.stream().filter(line -> line.endsWith(" cut")).findFirst().orElse(null);
+            int cutAt = -1;
+            for (int i = 0; i < requests.size() && cutAt < 0; i++) {
+                if (requests.get(i).endsWith(" cut")) cutAt = i;
+            }
+            final String cut = cutAt < 0 ? null : requests.get(cutAt);
             final String path = cut == null ? "" : cut.split(" ")[1];
-            final String resumed = requests.stream().filter(line -> line.contains(path) && line.contains(" bytes=")
-                    && line.contains(" 206")).findFirst().orElse(null);
-            line("F19", ready && cut != null && resumed != null, "cut " + cut + "; resumed " + resumed + "; ready " + ready);
+            // access.log: method, path, Range header (- without), status[, cut]
+            final String second = cut == null ? null : requests.subList(cutAt + 1, requests.size()).stream()
+                    .filter(line -> line.split(" ")[1].equals(path)).findFirst().orElse(null);
+            final String[] fields = second == null ? new String[0] : second.split(" ");
+            final boolean resumed = fields.length >= 4 && fields[2].startsWith("bytes=") && fields[3].equals("206");
+            line("F19", ready && resumed, "cut " + cut + "; second " + second + "; ready " + ready);
         }
 
         // ---- V2a, V3a, V6a, V8a: readings, recorded

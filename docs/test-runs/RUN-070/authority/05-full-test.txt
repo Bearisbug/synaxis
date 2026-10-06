@@ -1,0 +1,42 @@
+RUN-070 authority · 05 the test task of every module, default and strict grid, with the database variables (lock run 3, part A)
+
+Lock /tmp/synaxis-heavy.lock taken 04:44:43, released 05:00:52 by the EXIT trap of run3.zsh (06).
+SYNAXIS_TEST_PG_URL=jdbc:postgresql://127.0.0.1:5440/postgres, SYNAXIS_TEST_PG_USER=postgres, SYNAXIS_TEST_REDIS_URL=redis://127.0.0.1:6440,
+SYNAXIS_TEST_PG_PASSWORD read from docker inspect synaxis-pg into the variable only (never printed, never on a command line).
+Code under test: the working tree that was committed right after as 6458e32874 (14437d0b78 plus the code of this group);
+docs were being edited at the same time, no test reads docs/.
+Counts from the JUnit XML of each module's build/test-results/test (aggregate.py in 06); client-fabric is a build of its own, see 03.
+
+2026-10-06 04:44:44 default: ./gradlew test --continue --rerun --max-workers=4 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts 
+2026-10-06 04:52:15 default exit 0
+BUILD SUCCESSFUL in 7m 30s
+  default architecture-tests: classes=7 tests=20 failures=0 errors=0 skipped=0
+  default baker: classes=8 tests=76 failures=0 errors=0 skipped=0
+  default game-rts: classes=13 tests=87 failures=0 errors=0 skipped=0
+  default loadtest: classes=5 tests=25 failures=0 errors=0 skipped=0
+  default plugin-api: classes=3 tests=15 failures=0 errors=0 skipped=0
+  default protocol: classes=7 tests=122 failures=0 errors=0 skipped=0
+  default root: classes=430 tests=3171 failures=0 errors=0 skipped=15
+  default server-app: classes=113 tests=577 failures=0 errors=0 skipped=0
+  default synx: classes=17 tests=142 failures=0 errors=0 skipped=0
+  default testing: classes=8 tests=11 failures=0 errors=0 skipped=0
+  default all: classes=611 tests=4246 failures=0 errors=0 skipped=15
+2026-10-06 04:52:16 strict-grid: ./gradlew test --continue --rerun --max-workers=4 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts -Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true -Dsynaxis.thread-provider=grid
+2026-10-06 04:58:42 strict-grid exit 0
+BUILD SUCCESSFUL in 6m 26s
+  strict-grid architecture-tests: classes=7 tests=20 failures=0 errors=0 skipped=0
+  strict-grid baker: classes=8 tests=76 failures=0 errors=0 skipped=0
+  strict-grid game-rts: classes=13 tests=87 failures=0 errors=0 skipped=0
+  strict-grid loadtest: classes=5 tests=25 failures=0 errors=0 skipped=0
+  strict-grid plugin-api: classes=3 tests=15 failures=0 errors=0 skipped=0
+  strict-grid protocol: classes=7 tests=122 failures=0 errors=0 skipped=0
+  strict-grid root: classes=430 tests=3171 failures=0 errors=0 skipped=15
+  strict-grid server-app: classes=113 tests=577 failures=0 errors=0 skipped=0
+  strict-grid synx: classes=17 tests=142 failures=0 errors=0 skipped=0
+  strict-grid testing: classes=8 tests=11 failures=0 errors=0 skipped=0
+  strict-grid all: classes=611 tests=4246 failures=0 errors=0 skipped=15
+
+Against RUN-062 / RUN-067 (main before this branch): root 428 classes / 3,162 tests -> 430 / 3,171, the two new classes
+(PlayerMovementAuthorityIntegrationTest 5, PlayerBlockReachIntegrationTest 4); server-app 113 / 577 unchanged, 0 skipped with the
+database variables set; no result file of the strict grid run names AcquirableOwnershipException:
+  files naming it: 0

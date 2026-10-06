@@ -1,0 +1,100 @@
+RUN-070 authority · 09 the :loadtest walk profile on the small map of the two-process fixture, before and after the Bot's 32 block step
+
+What docs/DESIGN-PROD.md §28.3 (the row for the lighting session, item 6) quotes. A model, not a run: the positions Profile.WALK
+gives 50 bots over 600 s on r0 of the two-process fixture (docs/TEST.md, bounds 0,0,15,15: border [0, 256), spawn (120.5, 120.5)),
+judged by the rules of API-PROD-030 (turned back leaving the border from inside, or more than 64 blocks from where the server has
+the player); chunk loads are not modelled, and a turned-back position's confirmation is taken to be back before the next position.
+Run with the .venv Python of the main checkout, standard library only, no lock needed (no Gradle, no process, no container).
+
+==================== output
+before (the profile's position): {'positions': 600000, 'profile_outside_pct': 52.8, 'turned_back_pct': 76.2, 'profile_inside_turned_back_pct': 49.5, 'bots_with_over_half_of_inside_positions_turned_back': 43, 'back_inside': 145, 'ticks_to_catch_up_mean': 903.4, 'ticks_to_catch_up_max': 1414}
+after (32 blocks at most):       {'positions': 600000, 'profile_outside_pct': 52.8, 'turned_back_pct': 52.7, 'profile_inside_turned_back_pct': 0.0, 'bots_with_over_half_of_inside_positions_turned_back': 0, 'back_inside': 163, 'ticks_to_catch_up_mean': 2.7, 'ticks_to_catch_up_max': 7}
+
+Read: profile_outside_pct is the share of positions whose profile point is outside the border; turned_back_pct the share the server
+turns back; profile_inside_turned_back_pct the share of the positions aimed inside that are turned back anyway; back_inside the times
+a bot's profile came back inside and the server then took the profile's position, ticks_to_catch_up how many positions that took
+(before: until the profile was back within 64 blocks of where the bot was stopped; after: the 32 block steps).
+
+==================== walk_small_map.py
+"""The :loadtest walk profile on r0 of the two-process fixture of docs/TEST.md (bounds 0,0,15,15: border [0, 256) on
+x and z, spawn (120.5, 120.5)): 50 bots (index 0 to 49), 600 s, one position every 50 ms, judged by the rules of
+docs/DESIGN-PROD.md API-PROD-030: turned back when it leaves the border from inside or is more than 64 blocks from
+where the server has the player. Chunk loads are not modelled, and a turned-back position's confirmation is taken to
+be back before the next position goes out. Before: the bot sends where Profile.WALK has it. After: at most 32 blocks
+from where the server has it, toward that point."""
+import math
+
+SPEED, RMIN, RMAX = 4.317, 64, 192
+LO, HI = 0.0, 256.0
+SX, SZ = 120.5, 120.5
+BOTS, SECONDS, HZ = 50, 600, 20
+
+
+def profile(i, t):
+    direction = i * 2.399963229728653
+    radius = RMIN + (RMAX - RMIN) * ((i * 0.6180339887498949) % 1.0)
+    cx, cz = SX + radius * math.cos(direction), SZ + radius * math.sin(direction)
+    angle = direction + math.pi + t * SPEED / radius
+    return cx + radius * math.cos(angle), cz + radius * math.sin(angle)
+
+
+def inside(x, z):
+    return LO <= x < HI and LO <= z < HI
+
+
+def toward(fx, fz, x, z, limit=32.0):
+    dx, dz = x - fx, z - fz
+    d = math.hypot(dx, dz)
+    if d <= limit:
+        return x, z
+    return fx + dx * limit / d, fz + dz * limit / d
+
+
+def run(capped):
+    total = goal_outside = turned = goal_inside = inside_turned = 0
+    bots_mostly_turned = 0
+    catch_up = []  # ticks from the profile coming back inside to the server taking the profile's position
+    for i in range(BOTS):
+        sx, sz = SX, SZ
+        b_inside = b_inside_turned = 0
+        was_inside = True
+        back_in = None
+        for k in range(1, SECONDS * HZ + 1):
+            gx, gz = profile(i, k / HZ)
+            px, pz = toward(sx, sz, gx, gz) if capped else (gx, gz)
+            taken = math.hypot(px - sx, pz - sz) <= 64 and not (inside(sx, sz) and not inside(px, pz))
+            total += 1
+            g_in = inside(gx, gz)
+            if g_in:
+                goal_inside += 1
+                b_inside += 1
+                if not was_inside:
+                    back_in = k
+            else:
+                goal_outside += 1
+                back_in = None
+            was_inside = g_in
+            if taken:
+                sx, sz = px, pz
+                if back_in is not None and (px, pz) == (gx, gz):
+                    catch_up.append(k - back_in)
+                    back_in = None
+            else:
+                turned += 1
+                if g_in:
+                    inside_turned += 1
+                    b_inside_turned += 1
+        if b_inside_turned * 2 > b_inside:
+            bots_mostly_turned += 1
+    return dict(positions=total, profile_outside_pct=round(goal_outside / total * 100, 1),
+                turned_back_pct=round(turned / total * 100, 1),
+                profile_inside_turned_back_pct=round(inside_turned / goal_inside * 100, 1),
+                bots_with_over_half_of_inside_positions_turned_back=bots_mostly_turned,
+                back_inside=len(catch_up),
+                ticks_to_catch_up_mean=round(sum(catch_up) / len(catch_up), 1) if catch_up else None,
+                ticks_to_catch_up_max=max(catch_up) if catch_up else None)
+
+
+if __name__ == "__main__":
+    print("before (the profile's position):", run(False))
+    print("after (32 blocks at most):      ", run(True))

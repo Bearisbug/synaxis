@@ -435,7 +435,7 @@ public class BotSocketTest {
     }
 
     /** A really ticking server on loopback: flat stone up to y 40, every player spawning at (0.5, 40, 0.5) unless told otherwise. */
-    private static final class Server implements AutoCloseable {
+    static final class Server implements AutoCloseable {
         final ServerProcess process;
         final String name;
         final Pos spawn;

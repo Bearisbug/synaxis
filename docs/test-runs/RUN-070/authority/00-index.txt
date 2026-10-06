@@ -1,0 +1,111 @@
+RUN-070 authority: the production readiness fix of the lighting session's M3 security review findings S1-V01 (position packets
+not judged against the world border), S1-02 (one position packet carrying the player 208 blocks) and S1-01 (digging not judged
+by distance), on branch prod/m3fix-authority. docs/DESIGN-PROD.md v0.9.47 (API-PROD-030, ADR-PROD-016), docs/TEST.md
+TC-PROD-630 to TC-PROD-636. The integration round registers RUN-070; this directory is this group's part of it.
+
+Code under test: 6458e32874 (main 14437d0b78 + the listeners, the tests and the tools of this group). Every run below ran on the
+working tree that became that commit; the first movement test of lock run 1 had a test bug and was superseded (01). JDK 25.0.4.1
+(Homebrew openjdk@25), Gradle --max-workers=4 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts, macOS,
+the machine shared with other sessions.
+
+Heavy lock /tmp/synaxis-heavy.lock, taken at the top level of each script with its EXIT trap (06), owner line
+"生产就绪会话/authority pid=29280":
+  lock run 1   04:26:35-04:27:46  red on 14437d0b78's listeners, green, the four counter proofs, strict grid
+  lock run 2   04:34:04-04:34:48  client-fabric gametest compile, PacketFlood javac, soak.py py_compile (its Gradle test steps
+                                  had a script error and were rerun as 2b)
+  lock run 2b  04:35:15-04:36:25  the movement class after its test fix: red, green, strict grid, border and cap counter
+                                  proofs; the lighting session's MapShardPlayerAuthorityTest before and after the fix
+  lock run 3   04:44:43-05:00:52  the test task of every module, default and strict grid, with the database variables;
+                                  PacketFlood and soak.py play, as on 14437d0b78 and as now, on real server processes
+
+00-index.txt               this file
+01-red-green-proofs.txt    PlayerMovementAuthorityIntegrationTest: red on 14437d0b78 at :71, :96, :111, :139 (4 of 5, the fifth
+                           guards the server's own moves and is green before and after); green default and strict grid; border
+                           proof red at :71, :96, :139; cap proof red at :111. PlayerBlockReachIntegrationTest: red at :70, :88,
+                           :104, :127 (4 of 4); green default and strict grid; dig proof red at :70, :88, :104; place proof red at
+                           :127. PlayerBlockPlacementIntegrationTest 7 and PlayerMovementIntegrationTest 12 green before and after
+02-lighting-probe.txt      MapShardPlayerAuthorityTest (m3/sec-r1 de82c5720a, copied in and deleted after): 4 of 4 green on
+                           14437d0b78's listeners, 3 of 4 red on the fix at :162, :246, :279 (the overlay growth one stays green)
+03-compile.txt             client-fabric compileGametestJava (TerrainSpike) BUILD SUCCESSFUL, PacketFlood javac and soak.py
+                           py_compile clean; what was not run
+04-tools.txt               on the fixed engine: PacketFlood as on 14437d0b78 loses the 6 connections of radius 72 to the inbound
+                           limit (751 > 750 in 7 s, 829 teleport confirms), as now loses none (100 confirms, 5,015.0 pkt/s);
+                           soak.py play as on 14437d0b78 is turned back 432 times in 20 s, as now 10; soak.py's step function
+05-full-test.txt           all modules' test task: 611 classes, 4,246 tests, 0 failures, 15 skipped, default (7m 30s) and strict
+                           grid (6m 26s); root 430 / 3,171 (two new classes, 9 tests), server-app 113 / 577 with 0 skipped
+06-scripts.txt             the four scripts and the helpers (variant.py, summarize.py, aggregate.py)
+
+Not run: the real client (no display here; S5 runs with the daily schedule of client-gametest.yml), soak.py run on a real
+process, the lighting session's gametests (LightClientGameTest L7 and FarViewClientGameTest#walk, read from the code: they need
+the lighting session's changes listed in docs/DESIGN-PROD.md §28.3).
+Cleanup: both servers stopped by pid (25681 and 25682 not listening after), the temp dir /tmp/m3fix-authority (scripts, logs,
+JUnit copies, the javac output, the old tools, the extracted vanilla classes the javap checks of API-PROD-030 read) deleted at
+the end of the session; no container, image or emulator was created. The Distant Horizons jar copied into this worktree's
+client-fabric/build/dh/ is under build/ and gitignored.
+
+Review follow-up (the two reviews' non-blocking points the round took up): code commit f88332598f on top of c99fccc82b. Out of
+reach digs answer with the acknowledgement alone, no block entity data; the world border ends at the vanilla client's wall
+(minimum rounded down, maximum up) and a player outside it gets no farther out on either axis; the turned-back move's chunk count
+is read once the player's ring has loaded, against a move whose chunks the same ticks load; placeIntoUnloadedChunkIsIgnored
+asserts no BlockChange; the :loadtest Bot walks at most 32 blocks a packet from where the server has it (BotStallTest).
+Same JDK, Gradle options and machine. Heavy lock taken at the top level of each script with its EXIT trap (10), owner line
+"生产就绪会话/fu-authority pid=29280":
+  lock run 0   10:49:31-10:49:39  compile the root and loadtest test source sets
+  lock run 1   10:50:42-10:56:07  red before the follow-up, green default and strict grid, the counter proofs, the listeners of
+                                  14437d0b78; BotStallTest red, green, strict grid, counter proof; loadtest test task default and
+                                  strict grid
+  lock run 2   11:02:11-11:18:10  the lighting session's probe after and before; the test task of every module, default, with the
+                                  database variables (one BotSocketTest case red at load1 up to ~300, see 08)
+  lock run 3   11:32:41-11:38:40  that BotSocketTest case alone five times (5 of 5 green); the root and loadtest test
+                                  tasks again (436 classes, 3,200 tests, 0 failures, 15 skipped)
+
+07-red-green-proofs-2.txt  the changed classes before the follow-up (red at PlayerMovementAuthorityIntegrationTest.java:192 and
+                           :222, PlayerBlockReachIntegrationTest.java:102), after it in default and strict grid (7, 5, 7 and 12
+                           tests green), the counter proofs (border off: red at :100, :120 the chunk count, :151, :192, :224;
+                           rounding off: :222; the outside rule off: :192; the 64 block cap off: :166; reach off for digs:
+                           :73, :103, :125, :141; for block uses: :164; the placement test's player back out of reach:
+                           PlayerBlockPlacementIntegrationTest.java:139), the listeners of 14437d0b78 (6 of 7 and 5 of 5 red);
+                           BotStallTest red on the Bot without the step (114.72 blocks at BotStallTest.java:71), green default and
+                           strict grid, counter proof red (114.82); loadtest test task 6 classes 26 tests green, default and
+                           strict grid
+08-full-test-2.txt         the lighting session's MapShardPlayerAuthorityTest 3 of 4 red after (the same :162, :246, :279), 4 of 4
+                           green on 14437d0b78's listeners; every module's test task; the reruns of lock run 3
+09-small-map-simulation.txt the walk profile on the two-process fixture's r0 before and after the Bot's 32 block step, the model
+                           DESIGN-PROD §28.3 item 6 quotes
+10-scripts-2.txt           the scripts of lock runs 0 to 3 and their helpers
+
+Lint after the follow-up: design-doc check.sh on DESIGN-PROD.md and DESIGN-M2.md without warnings; test-doc check.sh on
+TEST.md only the three known items (no §3 environment table, no environment column in §6, two RUN-031 rows without evidence).
+Not run in the follow-up: TC-PROD-634 step 3 (TerrainSpike and client-fabric untouched), TC-PROD-635 (PacketFlood and soak.py
+untouched), TC-PROD-636 step 2 (strict grid for every module; the changed classes and the loadtest test task ran in strict grid).
+Cleanup: the temp dir /tmp/m3fix-int/fu-authority (scripts, logs, JUnit copies, the copies the counter proofs restored from)
+deleted at the end; no separate server process, container, image or emulator was created (BotStallTest and BotSocketTest
+start their servers inside the test JVM).
+
+Review follow-up 2 (the second review's five non-blocking points): code commit 2c0dd32cee on top of c0499f898c. The load test
+Bot sends its configuration ack and switches its state to configuration under one write lock (TC-PROD-638, new); BotStallTest
+has the server teleport the player back once the clock has jumped and checks the first position judged after it (TC-PROD-637
+step 4, new); the wall test of the movement class covers the z axis, both ends (TC-PROD-630 step 4); the Javadoc of
+PlayerPositionListener#outwards and DESIGN-PROD API-PROD-030 say what a border shrinking over time does; DESIGN-PROD §28.2 has a
+risk row for the other dig refusals that still send block entity data to every viewer. Same JDK and machine, Gradle
+--max-workers=2. Heavy lock taken at the top level of the script with its EXIT trap (12, run1.zsh), owner line
+"生产就绪会话/authority-nits pid=33941":
+  lock run 4   13:13:18-13:18:41  the Bot's race with a 200 ms pause before and after the fix; BotStallTest of c0499f898c and
+                                  of now without the reset of serverPosition, the step proof; BotSocketTest and BotStallTest
+                                  default and strict grid; the movement class of c0499f898c and of now without the z rounding,
+                                  the floor-z, x rounding and outside proofs; the movement class default and strict grid
+
+11-red-green-proofs-3.txt  race: red at BotSocketTest.java:302 on c0499f898c's Bot with the pause (1.6 s), green with the pause
+                           inside the lock; BotStallTest of c0499f898c green without the reset, the new one red at
+                           BotStallTest.java:96 (115.10 blocks), step proof red at :90 (114.81); BotSocketTest 8 and
+                           BotStallTest 1 green, default and strict grid; movement test of c0499f898c green without the z
+                           rounding, the new one red at :236, floor-z red at :243, x rounding :222, outside :192; movement
+                           class 7 green, default and strict grid
+12-scripts-3.txt           run1.zsh (lock run 4), variant.py, summarize.py
+
+Lint after follow-up 2: design-doc check.sh on DESIGN-PROD.md without warnings; test-doc check.sh on TEST.md only the three
+known items. Not run in follow-up 2: the test task of any module as a whole (TC-PROD-636, TC-PROD-637 step 6), the lighting
+session's probe (TC-PROD-634 step 4; no listener code changed), PlayerBlockReachIntegrationTest (PlayerActionListener unchanged).
+Cleanup: the temp dir /tmp/authority-nits (scripts, logs, JUnit copies, the copies the variants restored from) deleted at the
+end; no server process, container, image or emulator was created (the two loadtest classes start their servers inside the
+test JVM).

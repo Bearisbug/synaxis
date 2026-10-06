@@ -1,0 +1,386 @@
+RUN-070 authority · 06 the scripts of the four lock runs and their helpers, as run
+
+==================== run1.zsh
+#!/bin/zsh
+# Red on the unfixed listeners, green on the fixed ones, the four counter proofs, then strict grid.
+until mkdir /tmp/synaxis-heavy.lock 2>/dev/null; do sleep 60; done
+trap 'rm -rf /tmp/synaxis-heavy.lock' EXIT
+echo "owner=生产就绪会话/authority pid=29280 since=$(date '+%F %T') task=authority: red, green and counter proofs of the movement and reach tests" > /tmp/synaxis-heavy.lock/owner
+
+export JAVA_HOME=/opt/homebrew/opt/openjdk@25/libexec/openjdk.jdk/Contents/Home
+WT=/Users/bug/Documents/Projects/Minecraft/synaxis-wt/m3fix-authority
+OUT=/tmp/m3fix-authority/run1
+PY=/Users/bug/Documents/Projects/Minecraft/synaxis/.venv/bin/python
+LP=io.github.bearisbug.synaxis.listener
+MOVE=$LP.PlayerMovementAuthorityIntegrationTest
+REACH=$LP.PlayerBlockReachIntegrationTest
+PLACE=io.github.bearisbug.synaxis.entity.player.PlayerBlockPlacementIntegrationTest
+OLDMOVE=io.github.bearisbug.synaxis.entity.player.PlayerMovementIntegrationTest
+rm -rf $OUT; mkdir -p $OUT
+cd $WT
+LISTENERS=src/main/java/io/github/bearisbug/synaxis/listener
+
+gradle_run() {  # <label> <extra args...> -- <tests...>
+  local label=$1; shift
+  local -a extra tests
+  while [[ $1 != -- ]]; do extra+=$1; shift; done; shift
+  for t in "$@"; do tests+=(--tests $t); done
+  rm -rf build/test-results/test
+  ./gradlew :test --rerun $tests --max-workers=4 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts $extra > $OUT/$label.log 2>&1
+  echo "$label exit=$?" >> $OUT/summary.txt
+  mkdir -p $OUT/$label
+  cp build/test-results/test/TEST-*.xml $OUT/$label/ 2>/dev/null
+  $PY /tmp/m3fix-authority/summarize.py $OUT/$label/TEST-*.xml >> $OUT/summary.txt 2>&1
+  echo >> $OUT/summary.txt
+}
+
+STRICT=(-Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true -Dsynaxis.thread-provider=grid)
+
+# 1. Red: the listeners as they are on 14437d0b78
+git checkout HEAD -- $LISTENERS
+git diff --stat >> $OUT/summary.txt
+gradle_run red -- $MOVE $REACH $PLACE $OLDMOVE
+# 2. Green: the fix
+git apply /tmp/m3fix-authority/fix.patch
+gradle_run green -- $MOVE $REACH $PLACE $OLDMOVE
+# 3. Counter proofs, one judgment off each
+for v in border cap; do
+  $PY /tmp/m3fix-authority/variant.py $v >> $OUT/summary.txt
+  gradle_run proof-$v -- $MOVE
+  git checkout HEAD -- $LISTENERS; git apply /tmp/m3fix-authority/fix.patch
+done
+for v in dig place; do
+  $PY /tmp/m3fix-authority/variant.py $v >> $OUT/summary.txt
+  gradle_run proof-$v -- $REACH
+  git checkout HEAD -- $LISTENERS; git apply /tmp/m3fix-authority/fix.patch
+done
+git diff --stat -- $LISTENERS >> $OUT/summary.txt
+# 4. Strict grid on the fix
+gradle_run green-strict $STRICT -- $MOVE $REACH $PLACE $OLDMOVE
+echo "done $(date '+%F %T')" >> $OUT/summary.txt
+
+==================== run2.zsh
+#!/bin/zsh
+# The movement test after its respawn step stayed in its chunk: red, green, strict, the two movement counter proofs;
+# the lighting session's MapShardPlayerAuthorityTest before and after the fix (copied in, deleted after);
+# the gametest source set of client-fabric, PacketFlood and soak.py compiled.
+until mkdir /tmp/synaxis-heavy.lock 2>/dev/null; do sleep 60; done
+trap 'rm -rf /tmp/synaxis-heavy.lock' EXIT
+echo "owner=生产就绪会话/authority pid=29280 since=$(date '+%F %T') task=authority: movement test rerun, lighting probe run, client-fabric gametest compile" > /tmp/synaxis-heavy.lock/owner
+
+export JAVA_HOME=/opt/homebrew/opt/openjdk@25/libexec/openjdk.jdk/Contents/Home
+WT=/Users/bug/Documents/Projects/Minecraft/synaxis-wt/m3fix-authority
+MAIN=/Users/bug/Documents/Projects/Minecraft/synaxis
+OUT=/tmp/m3fix-authority/run2
+PY=$MAIN/.venv/bin/python
+LP=io.github.bearisbug.synaxis.listener
+MOVE=$LP.PlayerMovementAuthorityIntegrationTest
+LIGHT=io.github.bearisbug.synaxis.app.shard.MapShardPlayerAuthorityTest
+LIGHT_FILE=server-app/src/test/java/io/github/bearisbug/synaxis/app/shard/MapShardPlayerAuthorityTest.java
+LISTENERS=src/main/java/io/github/bearisbug/synaxis/listener
+STRICT=(-Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true -Dsynaxis.thread-provider=grid)
+rm -rf $OUT; mkdir -p $OUT
+cd $WT
+echo "start $(date '+%F %T') HEAD $(git rev-parse --short=10 HEAD)" >> $OUT/summary.txt
+
+gradle_run() {  # <label> <project> <extra args...> -- <tests...>
+  local label=$1 project=$2; shift 2
+  local -a extra tests
+  while [[ $1 != -- ]]; do extra+=$1; shift; done; shift
+  for t in "$@"; do tests+=(--tests $t); done
+  local results=build/test-results/test
+  [[ $project == :server-app ]] && results=server-app/build/test-results/test
+  rm -rf $results
+  ./gradlew $project:test --rerun $tests --max-workers=4 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts $extra > $OUT/$label.log 2>&1
+  echo "$label exit=$? $(date '+%T')" >> $OUT/summary.txt
+  mkdir -p $OUT/$label
+  cp $results/TEST-*.xml $OUT/$label/ 2>/dev/null
+  $PY /tmp/m3fix-authority/summarize.py $OUT/$label/TEST-*.xml >> $OUT/summary.txt 2>&1
+  echo >> $OUT/summary.txt
+}
+
+# 1. The movement test: red on 14437d0b78's listeners, then the fix, strict grid, the border and cap counter proofs
+git checkout HEAD -- $LISTENERS
+gradle_run move-red "" -- $MOVE
+git apply /tmp/m3fix-authority/fix.patch
+gradle_run move-green "" -- $MOVE
+gradle_run move-green-strict "" $STRICT -- $MOVE
+for v in border cap; do
+  $PY /tmp/m3fix-authority/variant.py $v >> $OUT/summary.txt
+  gradle_run move-proof-$v "" -- $MOVE
+  git checkout HEAD -- $LISTENERS; git apply /tmp/m3fix-authority/fix.patch
+done
+git diff --stat -- $LISTENERS >> $OUT/summary.txt
+
+# 2. The lighting session's probe, read only from m3/sec-r1 de82c5720a, after and before the fix
+git -C $MAIN show de82c5720a:$LIGHT_FILE > $LIGHT_FILE
+gradle_run light-after :server-app -- $LIGHT
+git checkout HEAD -- $LISTENERS
+gradle_run light-before :server-app -- $LIGHT
+git apply /tmp/m3fix-authority/fix.patch
+rm -f $LIGHT_FILE
+git status --short >> $OUT/summary.txt
+
+# 3. client-fabric's gametest source set (TerrainSpike), PacketFlood and soak.py
+mkdir -p client-fabric/build/dh
+cp $WT/../m3fix-chores/client-fabric/build/dh/DistantHorizons-3.3.2-26.2-fabric-neoforge.jar client-fabric/build/dh/
+env -u CI ./gradlew :protocol:publishToMavenLocal --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts > $OUT/publish.log 2>&1
+echo "publishToMavenLocal exit=$? $(date '+%T')" >> $OUT/summary.txt
+(cd client-fabric && ./gradlew compileGametestJava --no-daemon --init-script gametest-env/mirror.init.gradle.kts > $OUT/client-fabric.log 2>&1)
+echo "client-fabric compileGametestJava exit=$? $(date '+%T')" >> $OUT/summary.txt
+tail -5 $OUT/client-fabric.log >> $OUT/summary.txt
+mkdir -p $OUT/javac
+$JAVA_HOME/bin/javac -d $OUT/javac tools/loadtest/PacketFlood.java > $OUT/javac.log 2>&1
+echo "javac PacketFlood exit=$?" >> $OUT/summary.txt
+$PY -m py_compile tools/loadtest/soak.py > $OUT/pycompile.log 2>&1
+echo "py_compile soak.py exit=$?" >> $OUT/summary.txt
+find tools/loadtest -name '__pycache__' -type d -exec rm -rf {} + 2>/dev/null
+git status --short >> $OUT/summary.txt
+echo "done $(date '+%F %T')" >> $OUT/summary.txt
+
+==================== run2b.zsh
+#!/bin/zsh
+# The movement test after its respawn step stayed in its chunk: red, green, strict, the two movement counter proofs;
+# the lighting session's MapShardPlayerAuthorityTest before and after the fix (copied in, deleted after);
+# the gametest source set of client-fabric, PacketFlood and soak.py compiled.
+until mkdir /tmp/synaxis-heavy.lock 2>/dev/null; do sleep 60; done
+trap 'rm -rf /tmp/synaxis-heavy.lock' EXIT
+echo "owner=生产就绪会话/authority pid=29280 since=$(date '+%F %T') task=authority: movement test rerun and the lighting probe before and after the fix" > /tmp/synaxis-heavy.lock/owner
+
+export JAVA_HOME=/opt/homebrew/opt/openjdk@25/libexec/openjdk.jdk/Contents/Home
+WT=/Users/bug/Documents/Projects/Minecraft/synaxis-wt/m3fix-authority
+MAIN=/Users/bug/Documents/Projects/Minecraft/synaxis
+OUT=/tmp/m3fix-authority/run2b
+PY=$MAIN/.venv/bin/python
+LP=io.github.bearisbug.synaxis.listener
+MOVE=$LP.PlayerMovementAuthorityIntegrationTest
+LIGHT=io.github.bearisbug.synaxis.app.shard.MapShardPlayerAuthorityTest
+LIGHT_FILE=server-app/src/test/java/io/github/bearisbug/synaxis/app/shard/MapShardPlayerAuthorityTest.java
+LISTENERS=src/main/java/io/github/bearisbug/synaxis/listener
+STRICT=(-Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true -Dsynaxis.thread-provider=grid)
+rm -rf $OUT; mkdir -p $OUT
+cd $WT
+echo "start $(date '+%F %T') HEAD $(git rev-parse --short=10 HEAD)" >> $OUT/summary.txt
+
+gradle_run() {  # <label> <project> <extra args...> -- <tests...>
+  local label=$1 project=$2; shift 2
+  local -a extra tests
+  while [[ $1 != -- ]]; do extra+=$1; shift; done; shift
+  for t in "$@"; do tests+=(--tests $t); done
+  local results=build/test-results/test
+  [[ $project == :server-app ]] && results=server-app/build/test-results/test
+  rm -rf $results
+  ./gradlew ${project}:test --rerun $tests --max-workers=4 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts $extra > $OUT/$label.log 2>&1
+  echo "$label exit=$? $(date '+%T')" >> $OUT/summary.txt
+  mkdir -p $OUT/$label
+  cp $results/TEST-*.xml $OUT/$label/ 2>/dev/null
+  $PY /tmp/m3fix-authority/summarize.py $OUT/$label/TEST-*.xml >> $OUT/summary.txt 2>&1
+  echo >> $OUT/summary.txt
+}
+
+# 1. The movement test: red on 14437d0b78's listeners, then the fix, strict grid, the border and cap counter proofs
+git checkout HEAD -- $LISTENERS
+gradle_run move-red "" -- $MOVE
+git apply /tmp/m3fix-authority/fix.patch
+gradle_run move-green "" -- $MOVE
+gradle_run move-green-strict "" $STRICT -- $MOVE
+for v in border cap; do
+  $PY /tmp/m3fix-authority/variant.py $v >> $OUT/summary.txt
+  gradle_run move-proof-$v "" -- $MOVE
+  git checkout HEAD -- $LISTENERS; git apply /tmp/m3fix-authority/fix.patch
+done
+git diff --stat -- $LISTENERS >> $OUT/summary.txt
+
+# 2. The lighting session's probe, read only from m3/sec-r1 de82c5720a, after and before the fix
+git -C $MAIN show de82c5720a:$LIGHT_FILE > $LIGHT_FILE
+gradle_run light-after :server-app -- $LIGHT
+git checkout HEAD -- $LISTENERS
+gradle_run light-before :server-app -- $LIGHT
+git apply /tmp/m3fix-authority/fix.patch
+rm -f $LIGHT_FILE
+git status --short >> $OUT/summary.txt
+
+echo "done $(date '+%F %T')" >> $OUT/summary.txt
+
+==================== run3.zsh
+#!/bin/zsh
+# Full test task of every module, default then strict grid, with the database variables; then the tools on real
+# processes of the fixed engine: PacketFlood as it was and as it is now on a core server, soak.py play as it was and
+# as it is now on an RTS server.
+until mkdir /tmp/synaxis-heavy.lock 2>/dev/null; do sleep 60; done
+trap 'rm -rf /tmp/synaxis-heavy.lock' EXIT
+echo "owner=生产就绪会话/authority pid=29280 since=$(date '+%F %T') task=authority: full test default and strict grid, PacketFlood and soak.py on real processes" > /tmp/synaxis-heavy.lock/owner
+
+export JAVA_HOME=/opt/homebrew/opt/openjdk@25/libexec/openjdk.jdk/Contents/Home
+WT=/Users/bug/Documents/Projects/Minecraft/synaxis-wt/m3fix-authority
+MAIN=/Users/bug/Documents/Projects/Minecraft/synaxis
+OUT=/tmp/m3fix-authority/run3
+PY=$MAIN/.venv/bin/python
+G=(--max-workers=4 --no-daemon --init-script gradle/init/aliyun-mirror.init.gradle.kts)
+STRICT=(-Dsynaxis.dispatcher-threads=4 -Dsynaxis.acquirable-strict=true -Dsynaxis.thread-provider=grid)
+rm -rf $OUT; mkdir -p $OUT
+cd $WT
+log() { echo "$(date '+%F %T') $*" >> $OUT/summary.txt; }
+log "lock taken; HEAD $(git rev-parse --short=10 HEAD); changed paths $(git status --short | wc -l | tr -d ' ')"
+
+export SYNAXIS_TEST_PG_URL=jdbc:postgresql://127.0.0.1:5440/postgres
+export SYNAXIS_TEST_PG_USER=postgres
+export SYNAXIS_TEST_REDIS_URL=redis://127.0.0.1:6440
+export SYNAXIS_TEST_PG_PASSWORD="$(docker inspect synaxis-pg --format '{{range .Config.Env}}{{println .}}{{end}}' | sed -n 's/^POSTGRES_PASSWORD=//p')"
+log "database variables: $(env | /usr/bin/grep -c '^SYNAXIS_TEST_') set, password $([[ -n $SYNAXIS_TEST_PG_PASSWORD ]] && echo non-empty || echo EMPTY)"
+
+collect() {  # <label>
+  local label=$1
+  mkdir -p $OUT/$label
+  for d in $(find . -path ./client-fabric -prune -o -type d -path '*/build/test-results/test' -print); do
+    local module=${${d#./}%%/build/test-results/test}
+    [[ $module == build/test-results/test ]] && module=root
+    mkdir -p $OUT/$label/$module
+    cp $d/TEST-*.xml $OUT/$label/$module/ 2>/dev/null
+  done
+  $PY /tmp/m3fix-authority/aggregate.py $OUT/$label >> $OUT/summary.txt 2>&1
+}
+
+# A. The test task of every module, twice
+for mode in default strict-grid; do
+  find . -path ./client-fabric -prune -o -type d -path '*/build/test-results/test' -prune -exec rm -rf {} +
+  extra=()
+  [[ $mode == strict-grid ]] && extra=($STRICT)
+  log "$mode: ./gradlew test --continue --rerun ${G[*]} ${extra[*]}"
+  ./gradlew test --continue --rerun $G $extra > $OUT/test-$mode.log 2>&1
+  log "$mode exit $?"
+  /usr/bin/grep -E 'BUILD (SUCCESSFUL|FAILED) in' $OUT/test-$mode.log >> $OUT/summary.txt
+  collect $mode
+done
+
+# B. The tools on real processes
+./gradlew :server-app:installDist $G > $OUT/installDist.log 2>&1
+log "installDist exit $?"
+OLD=$OUT/old; mkdir -p $OLD/tools/loadtest $OLD/classes $OUT/new-classes
+git show HEAD:tools/loadtest/PacketFlood.java > $OLD/tools/loadtest/PacketFlood.java
+git show HEAD:tools/loadtest/soak.py > $OLD/tools/loadtest/soak.py
+ln -s $WT/tools/protocol-probe $OLD/tools/protocol-probe
+$JAVA_HOME/bin/javac -d $OLD/classes $OLD/tools/loadtest/PacketFlood.java
+$JAVA_HOME/bin/javac -d $OUT/new-classes tools/loadtest/PacketFlood.java
+log "javac old and new PacketFlood done"
+
+start_server() {  # <name> <port> <extra -D...>; sets SERVER_PID
+  local name=$1 port=$2; shift 2
+  local work=$OUT/$name; mkdir -p $work
+  (cd $work && JAVA_OPTS="-Xms1G -Xmx1G" SERVER_APP_OPTS="-Dsynaxis.app.port=$port -Dsynaxis.app.auth=offline -Dsynaxis.app.metrics.bind=127.0.0.1:0 -Dsynaxis.connection-gate.trusted-networks=127.0.0.0/8 $*" \
+    exec $WT/server-app/build/install/server-app/bin/server-app < /dev/null > server.log 2>&1) &
+  SERVER_PID=$!
+  for i in {1..120}; do /usr/bin/grep -q 'server-app listening' $work/server.log && break; sleep 1; done
+  log "$name: pid $SERVER_PID $(/usr/bin/grep -o 'server-app listening on .*' $work/server.log)"
+}
+stop_server() {  # <name>
+  kill $SERVER_PID 2>/dev/null
+  for i in {1..60}; do kill -0 $SERVER_PID 2>/dev/null || break; sleep 1; done
+  kill -0 $SERVER_PID 2>/dev/null && { kill -9 $SERVER_PID; log "$1: killed -9"; }
+  log "$1: stopped; kicks $(/usr/bin/grep -c 'Kicking connection_id' $OUT/$1/server.log), inbound limit lines $(/usr/bin/grep -c 'Inbound packet limit exceeded' $OUT/$1/server.log), WARN/ERROR $(/usr/bin/grep -cE ' (WARN|ERROR) ' $OUT/$1/server.log)"
+}
+
+start_server core 25681 -Dsynaxis.app.core-mode=on -Dsynaxis.app.shard-id=authority-core
+for v in old new; do
+  cp_dir=$OLD/classes; [[ $v == new ]] && cp_dir=$OUT/new-classes
+  $JAVA_HOME/bin/java -cp $cp_dir PacketFlood --port 25681 --connections 50 --hz 100 --seconds 30 --out $OUT/flood-$v > $OUT/flood-$v.log 2>&1
+  log "PacketFlood $v exit $?"
+  $PY -c "import json,sys; s=json.load(open('$OUT/flood-$v/flood.json')); print({k: s.get(k) for k in ('connections_logged_in','connections_lost','disconnect_reasons','achieved_packets_per_second','teleport_confirms')})" >> $OUT/summary.txt 2>&1
+  sleep 3
+done
+stop_server core
+
+start_server rts 25682 -Dsynaxis.app.shard-id=authority-rts
+for v in old new; do
+  script=$OLD/tools/loadtest/soak.py; [[ $v == new ]] && script=$WT/tools/loadtest/soak.py
+  $PY $script play --port 25682 --connections 5 --duration 20 --no-jfr --gc-probe-interval 0 --settle 2 \
+    --server-log $OUT/rts/server.log --events-dir $OUT/rts/logs --out $OUT/play-$v > $OUT/play-$v.log 2>&1
+  log "soak.py play $v exit $?"
+  $PY -c "
+import json
+s = json.load(open('$OUT/play-$v/summary.json'))
+e = s['inbound']['engine_by_packet']
+print({'connections_lost': s.get('connections_lost'), 'disconnects': s.get('disconnect_reasons'), 'position_packets': s['uplink']['position_packets'],
+       'PlayerPositionAndLookPacket': e.get('PlayerPositionAndLookPacket'), 'ChunkDataPacket': e.get('ChunkDataPacket'), 'other': e.get('other')})" >> $OUT/summary.txt 2>&1
+  sleep 3
+done
+stop_server rts
+find tools -name '__pycache__' -type d -prune -exec rm -rf {} +
+log "git status: $(git status --short | wc -l | tr -d ' ') changed paths"
+log "done"
+
+==================== variant.py
+"""Applies one counter proof variant to the fixed listeners: one judgment switched off behind proof.never."""
+import sys
+from pathlib import Path
+
+ROOT = Path("/Users/bug/Documents/Projects/Minecraft/synaxis-wt/m3fix-authority/src/main/java/io/github/bearisbug/synaxis/listener")
+VARIANTS = {
+    "border": ("PlayerPositionListener.java",
+               "|| (border.inBounds(currentPosition) && !border.inBounds(packetPosition))",
+               "|| (Boolean.getBoolean(\"proof.never\") && border.inBounds(currentPosition) && !border.inBounds(packetPosition))"),
+    "cap": ("PlayerPositionListener.java",
+            "|| currentPosition.distanceSquared(packetPosition) > 64 * 64",
+            "|| (Boolean.getBoolean(\"proof.never\") && currentPosition.distanceSquared(packetPosition) > 64 * 64)"),
+    "dig": ("PlayerActionListener.java",
+            "if (outOfReach(player, blockPosition)) return true;",
+            "if (Boolean.getBoolean(\"proof.never\") && outOfReach(player, blockPosition)) return true;"),
+    "place": ("BlockPlacementListener.java",
+              "|| PlayerActionListener.outOfReach(player, blockPosition)) {",
+              "|| (Boolean.getBoolean(\"proof.never\") && PlayerActionListener.outOfReach(player, blockPosition))) {"),
+}
+
+file, old, new = VARIANTS[sys.argv[1]]
+path = ROOT / file
+text = path.read_text()
+assert text.count(old) == 1, (file, old)
+path.write_text(text.replace(old, new))
+print(f"variant {sys.argv[1]}: {file}")
+
+==================== summarize.py
+"""Prints, for JUnit XML reports, the counts and every failure with its message and the test line it came from."""
+import re
+import sys
+import xml.etree.ElementTree as ET
+
+for path in sys.argv[1:]:
+    root = ET.parse(path).getroot()
+    name = root.get("name")
+    print(f"{name}: tests={root.get('tests')} failures={root.get('failures')} errors={root.get('errors')} "
+          f"skipped={root.get('skipped')} time={root.get('time')}")
+    simple = name.rsplit(".", 1)[-1]
+    for case in root.findall("testcase"):
+        for kind in ("failure", "error"):
+            node = case.find(kind)
+            if node is None:
+                continue
+            message = (node.get("message") or "").splitlines()[0] if node.get("message") else ""
+            text = node.text or ""
+            line = re.search(re.escape(simple) + r"\.java:(\d+)", text)
+            print(f"  {kind.upper()} {case.get('name')} at {simple}.java:{line.group(1) if line else '?'}: {message}")
+
+==================== aggregate.py
+"""Per module counts of a directory of JUnit XML reports (<dir>/<module>/TEST-*.xml), and every failing case."""
+import sys
+import xml.etree.ElementTree as ET
+from pathlib import Path
+
+base = Path(sys.argv[1])
+total = [0, 0, 0, 0, 0]
+for module in sorted(p for p in base.iterdir() if p.is_dir()):
+    counts = [0, 0, 0, 0, 0]
+    failed = []
+    for report in sorted(module.glob("TEST-*.xml")):
+        root = ET.parse(report).getroot()
+        counts[0] += 1
+        for i, key in enumerate(("tests", "failures", "errors", "skipped"), start=1):
+            counts[i] += int(root.get(key, 0))
+        for case in root.findall("testcase"):
+            if case.find("failure") is not None or case.find("error") is not None:
+                failed.append(f"{root.get('name')}.{case.get('name')}")
+    total = [a + b for a, b in zip(total, counts)]
+    print(f"  {base.name} {module.name}: classes={counts[0]} tests={counts[1]} failures={counts[2]} "
+          f"errors={counts[3]} skipped={counts[4]}")
+    for name in failed:
+        print(f"    FAILED {name}")
+print(f"  {base.name} all: classes={total[0]} tests={total[1]} failures={total[2]} errors={total[3]} skipped={total[4]}")

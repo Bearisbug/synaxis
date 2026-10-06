@@ -6,6 +6,7 @@ import io.github.bearisbug.synaxis.coordinate.Point;
 import io.github.bearisbug.synaxis.coordinate.Pos;
 import io.github.bearisbug.synaxis.entity.Player;
 import io.github.bearisbug.synaxis.entity.PlayerHand;
+import io.github.bearisbug.synaxis.entity.attribute.Attribute;
 import io.github.bearisbug.synaxis.entity.metadata.LivingEntityMeta;
 import io.github.bearisbug.synaxis.event.item.PlayerCancelItemUseEvent;
 import io.github.bearisbug.synaxis.event.player.PlayerCancelDiggingEvent;
@@ -32,6 +33,15 @@ public final class PlayerActionListener {
         final Point blockPosition = packet.blockPosition();
         final Instance instance = player.getInstance();
         if (instance == null) return;
+
+        final boolean dig = status == ClientPlayerActionPacket.Status.STARTED_DIGGING
+                || status == ClientPlayerActionPacket.Status.FINISHED_DIGGING;
+        if (dig && instance.isChunkLoaded(blockPosition) && outOfReach(player, blockPosition)) {
+            // Out of reach the vanilla server only acknowledges, on which the client rolls its prediction
+            // back; the data of a block entity is not sent again, to the player or to its viewers
+            player.sendPacket(new AcknowledgeBlockChangePacket(packet.sequence()));
+            return;
+        }
 
         DiggingResult diggingResult = null;
         if (status == ClientPlayerActionPacket.Status.STARTED_DIGGING) {
@@ -136,6 +146,23 @@ public final class PlayerActionListener {
             }
             default -> false;
         };
+    }
+
+    /**
+     * Whether the block at {@code blockPosition} is out of the player's reach, by the vanilla
+     * server's rule for digging and using a block: the cube of the block is at least the player's
+     * {@link Attribute#BLOCK_INTERACTION_RANGE} plus one block from its eyes. The client picks blocks
+     * as far as the same attribute, which the engine sends it.
+     */
+    static boolean outOfReach(Player player, Point blockPosition) {
+        final Pos position = player.getPosition();
+        final double eyeY = position.y() + player.getEyeHeight();
+        final int x = blockPosition.blockX(), y = blockPosition.blockY(), z = blockPosition.blockZ();
+        final double dx = position.x() - Math.clamp(position.x(), x, x + 1);
+        final double dy = eyeY - Math.clamp(eyeY, y, y + 1);
+        final double dz = position.z() - Math.clamp(position.z(), z, z + 1);
+        final double reach = player.getAttributeValue(Attribute.BLOCK_INTERACTION_RANGE) + 1;
+        return dx * dx + dy * dy + dz * dz >= reach * reach;
     }
 
     private static void dropStack(Player player) {

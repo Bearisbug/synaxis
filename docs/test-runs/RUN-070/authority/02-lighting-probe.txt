@@ -1,0 +1,17 @@
+RUN-070 authority · 02 the lighting session's reproduction test on this branch
+
+MapShardPlayerAuthorityTest is read only from m3/sec-r1 de82c5720a (its base is main 14437d0b78, the base of this branch):
+  git -C <main repo> show de82c5720a:server-app/src/test/java/io/github/bearisbug/synaxis/app/shard/MapShardPlayerAuthorityTest.java
+written to the same path in this worktree, run with ./gradlew :server-app:test --rerun --tests 'io.github.bearisbug.synaxis.app.shard.MapShardPlayerAuthorityTest'
+(default mode, no database), once on the fix and once on 14437d0b78's listeners, then deleted: it is not committed.
+It is written to be green while the findings hold ("what one modified survival client gets past the engine listeners").
+
+light-after exit=1 04:36:14
+io.github.bearisbug.synaxis.app.shard.MapShardPlayerAuthorityTest: tests=4 failures=3 errors=0 skipped=0 time=1.891
+  FAILURE onePositionPacketCarriesThePlayerThirteenChunksIntoAGate() at MapShardPlayerAuthorityTest.java:246: org.opentest4j.AssertionFailedError: moved 208.0 blocks in one packet ==> expected: <2040.5> but was: <1832.5>
+  FAILURE jumpsPastTheBoundsLoadChunksFasterThanTheUnloadTakesThem() at MapShardPlayerAuthorityTest.java:279: org.opentest4j.AssertionFailedError: jump 0 is taken ==> expected: <20> but was: <7>
+  FAILURE aSurvivalPlayerBreaksABlockThirteenChunksAwayAndTheOverlayKeepsIt() at MapShardPlayerAuthorityTest.java:162: org.opentest4j.AssertionFailedError: broken from 293.4510180592325 blocks ==> expected: <minecraft:air{properties={}, nbt=null, handler=null}> but was: <minecraft:stone{properties={}, nbt=null, handler=null}>
+
+light-before exit=0 04:36:25
+io.github.bearisbug.synaxis.app.shard.MapShardPlayerAuthorityTest: tests=4 failures=0 errors=0 skipped=0 time=6.646
+

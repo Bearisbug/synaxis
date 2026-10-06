@@ -444,8 +444,11 @@ public final class LightClientGameTest implements FabricClientGameTest {
             final Map<String, Integer> clientBefore = clientPackets(), sentBefore = sent();
             // L7's block is 8.43 blocks from the eye at the spawn: the player stands next to it for the case
             final Vec3 home = context.computeOnClient(client -> client.player.position());
-            final boolean moved = byClient && within(pos.below(), home) > REACH;
+            final boolean moved = byClient && within(pos.below(), home) >= REACH;
             if (moved) moveTo(new Vec3(pos.getX() + 2.5, home.y, pos.getZ() + 2.5));
+            // Where the server left the player: a move it turned down has pulled the client back by now
+            final Vec3 stand = context.computeOnClient(client -> client.player.position());
+            final double reach = within(pos.below(), stand);
             if (byClient) {
                 context.runOnClient(client -> {
                     client.player.getInventory().setSelectedSlot(0);
@@ -527,11 +530,14 @@ public final class LightClientGameTest implements FabricClientGameTest {
                 pass = false;
                 why += " light packets: client " + clientDelta + " fixture " + sentDelta;
             }
+            if (byClient && reach >= REACH) {
+                pass = false;
+                why += String.format(Locale.ROOT, " the player stood at %.1f %.1f %.1f, out of reach", stand.x, stand.y, stand.z);
+            }
             final Parity parity = parityAround(site, pos, all, changes);
-            final String reach = byClient ? String.format(Locale.ROOT, " eye to block %.2f", within(pos.below(),
-                    context.computeOnClient(client -> client.player.position()))) : "";
             if (moved) moveTo(home);
-            line(id, pass, site + " " + pos.toShortString() + " " + why + reach + (moved ? " (stood next to it)" : "")
+            line(id, pass, site + " " + pos.toShortString() + " " + why
+                    + (byClient ? String.format(Locale.ROOT, " eye to block %.2f", reach) : "") + (moved ? " (stood next to it)" : "")
                     + " client_packets=" + clientDelta + " fixture_sent=" + sentDelta + " 3x3 " + parity);
         }
 
@@ -547,10 +553,13 @@ public final class LightClientGameTest implements FabricClientGameTest {
             return Math.sqrt(dx * dx + dy * dy + dz * dz);
         }
 
-        /** Moves the player in one step (the server takes up to 64 blocks a packet) and gives it 5 ticks. */
+        /**
+         * Moves the player in one step (the server takes up to 64 blocks a packet) and waits 20 ticks, by when the
+         * server has pulled the client back if it turned the move down.
+         */
         void moveTo(Vec3 to) {
             context.runOnClient(client -> client.player.setPos(to.x, to.y, to.z));
-            context.waitTicks(5);
+            context.waitTicks(20);
         }
 
         /**

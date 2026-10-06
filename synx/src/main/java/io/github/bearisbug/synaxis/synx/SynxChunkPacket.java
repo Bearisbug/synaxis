@@ -26,6 +26,11 @@ import java.util.zip.Inflater;
  * palette form it arrived in ({@code REQ-M3-003}).
  */
 public final class SynxChunkPacket {
+    /** The longest frame a 3 byte VarInt states, all the vanilla client's {@code Varint21FrameDecoder} takes. */
+    public static final int MAX_FRAME_BYTES = 2_097_151;
+    /** The largest uncompressed packet the vanilla client's {@code CompressionDecoder} takes, 8 MiB. */
+    public static final int MAX_UNCOMPRESSED_BYTES = 8_388_608;
+
     private SynxChunkPacket() {
     }
 
@@ -54,16 +59,12 @@ public final class SynxChunkPacket {
      * The uncompressed packet body of a framed segment ①: packet id VarInt followed by the packet.
      * This is what {@code region_content_hash} is computed over.
      *
-     * @throws IllegalArgumentException if the frame is cut short, too long, or not a zlib stream of the stated length
+     * @throws IllegalArgumentException if the frame is cut short, too long, out of the bounds of
+     *                                  {@link #checkFrame}, or not a zlib stream of the stated length
      */
     public static byte[] body(MemorySegment framed) {
         final long[] position = {0};
-        final int frameLength = readVarInt(framed, position);
-        if (frameLength != framed.byteSize() - position[0]) {
-            throw new IllegalArgumentException("frame length " + frameLength + ", "
-                    + (framed.byteSize() - position[0]) + " bytes follow");
-        }
-        final int dataLength = readVarInt(framed, position);
+        final int dataLength = frame(framed, position);
         final MemorySegment data = framed.asSlice(position[0]);
         if (dataLength == 0) return data.toArray(ValueLayout.JAVA_BYTE);
         return inflate(data.asByteBuffer(), dataLength);
@@ -71,6 +72,36 @@ public final class SynxChunkPacket {
 
     public static byte[] body(byte[] framed) {
         return body(MemorySegment.ofArray(framed));
+    }
+
+    /**
+     * Holds the two VarInts of a framed segment ① to their bounds before anything is allocated for it
+     * (M3-S, {@code API-M3-001} 长度上限): the frame length is the number of bytes after it and at most
+     * {@value #MAX_FRAME_BYTES}, the uncompressed length from 0 to {@value #MAX_UNCOMPRESSED_BYTES}. A
+     * shard writes the frame to the socket as it is, and the vanilla client takes no more.
+     *
+     * @throws IllegalArgumentException if the frame is out of these bounds
+     */
+    public static void checkFrame(MemorySegment framed) {
+        frame(framed, new long[]{0});
+    }
+
+    /** {@link #checkFrame}, leaving {@code position} at the data and returning the uncompressed length. */
+    private static int frame(MemorySegment framed, long[] position) {
+        final int frameLength = readVarInt(framed, position);
+        if (frameLength != framed.byteSize() - position[0]) {
+            throw new IllegalArgumentException("frame length " + frameLength + ", "
+                    + (framed.byteSize() - position[0]) + " bytes follow");
+        }
+        if (frameLength > MAX_FRAME_BYTES) {
+            throw new IllegalArgumentException("frame length " + frameLength + " is over " + MAX_FRAME_BYTES);
+        }
+        final int dataLength = readVarInt(framed, position);
+        if (dataLength < 0 || dataLength > MAX_UNCOMPRESSED_BYTES) {
+            throw new IllegalArgumentException("uncompressed length " + dataLength + " is not from 0 to "
+                    + MAX_UNCOMPRESSED_BYTES);
+        }
+        return dataLength;
     }
 
     /**

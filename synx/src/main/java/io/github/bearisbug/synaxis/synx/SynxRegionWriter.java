@@ -84,7 +84,7 @@ public final class SynxRegionWriter {
                 position = aligned;
 
                 // Segment ③ once, uncompressed for the content hash and compressed for the record
-                final byte[] entities = SynxEntities.encode(record.blockEntities(), record.staticEntities());
+                final byte[] entities = record.entities();
                 final byte[] bytes = record.encode(entities, settings.compressionLevel());
                 final CRC32C crc = new CRC32C();
                 crc.update(bytes);

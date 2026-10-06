@@ -102,24 +102,48 @@ public final class SynxChunkLoader implements ChunkLoader {
         if (inRegion) {
             final OverlayHit hit = overlay.find(chunkX, chunkZ);
             if (hit != null) {
-                return handle(instance, chunkX, chunkZ, true, hit.record(), new SectionCache.Key(hit.segment(), hit.offset()),
-                        hit.generation());
+                try {
+                    return handle(instance, chunkX, chunkZ, true, hit.record(), new SectionCache.Key(hit.segment(), hit.offset()),
+                            hit.generation());
+                } catch (InternalError _) {
+                    return faulted(instance, chunkX, chunkZ, true, "the overlay segment " + OverlaySegment.fileName(hit.segment()));
+                }
             }
         }
-        final SynxRegion region = verified.region(SynxFormat.region(chunkX), SynxFormat.region(chunkZ));
-        final SynxSlot slot = region != null ? region.slot(chunkX, chunkZ) : new SynxSlot.Absent();
-        return switch (slot) {
-            case SynxSlot.Present present -> handle(instance, chunkX, chunkZ, inRegion, present,
-                    SectionCache.Key.regionFile(chunkX, chunkZ), 0);
-            case SynxSlot.Failed broken -> failed(instance, chunkX, chunkZ, inRegion, broken.fault() + " " + broken.detail());
-            case SynxSlot.Absent _ -> inRegion
-                    ? failed(instance, chunkX, chunkZ, true, region != null ? "no record" : "no region file")
-                    : null;
-        };
+        final int regionX = SynxFormat.region(chunkX), regionZ = SynxFormat.region(chunkZ);
+        final SynxRegion region = verified.region(regionX, regionZ);
+        try {
+            final SynxSlot slot = region != null ? region.slot(chunkX, chunkZ) : new SynxSlot.Absent();
+            return switch (slot) {
+                case SynxSlot.Present present -> handle(instance, chunkX, chunkZ, inRegion, present,
+                        SectionCache.Key.regionFile(chunkX, chunkZ), 0);
+                case SynxSlot.Failed broken -> failed(instance, chunkX, chunkZ, inRegion, broken.fault() + " " + broken.detail());
+                case SynxSlot.Absent _ -> inRegion
+                        ? failed(instance, chunkX, chunkZ, true, region != null ? "no record" : "no region file")
+                        : null;
+            };
+        } catch (InternalError _) {
+            return faulted(instance, chunkX, chunkZ, inRegion, "the region file " + SynxFormat.regionFileName(regionX, regionZ));
+        }
+    }
+
+    /**
+     * A mapping that faulted while the chunk loaded from it ({@code API-M3-005} 映射读取出错): the file was
+     * cut short under the shard, which the start-up check cannot stop. The chunk loads as failed, the
+     * process goes on.
+     */
+    private SynxChunk faulted(Instance instance, int chunkX, int chunkZ, boolean inRegion, String file) {
+        return failed(instance, chunkX, chunkZ, inRegion, file + " faulted on read");
     }
 
     private SynxChunk handle(Instance instance, int chunkX, int chunkZ, boolean inRegion, SynxSlot.Present record,
                              SectionCache.Key key, long generation) {
+        try {
+            // The two VarInts of the frame, before anything reads the packet (M3-S, API-M3-001 长度上限)
+            SynxChunkPacket.checkFrame(record.packet());
+        } catch (IllegalArgumentException e) {
+            return failed(instance, chunkX, chunkZ, inRegion, "segment ①: " + e.getMessage());
+        }
         final SynxChunk.Source source;
         try {
             source = source(record, key, instance.process().block());

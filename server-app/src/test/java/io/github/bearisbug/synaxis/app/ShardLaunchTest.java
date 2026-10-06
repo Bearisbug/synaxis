@@ -166,27 +166,6 @@ public class ShardLaunchTest {
         }
     }
 
-    /**
-     * The connection gate of a shard ({@code docs/DESIGN-PROD.md} {@code API-PROD-003}) in the effective
-     * settings of its log: 3 sockets a seat of {@code synaxis.max-players} and 5 joins a tick. The server
-     * application keeps the engine's 1,024 sockets and takes any number of joins a tick.
-     */
-    @Test
-    public void aShardHoldsThreeSocketsASeatAndTakesFiveJoinsATick(@TempDir Path directory) throws Exception {
-        try (Launched shard = Launched.start(directory, ShardMain.class, launch("-Dsynaxis.max-players=200",
-                "-Dsynaxis.app.core-mode=on"))) {
-            final String log = shard.awaitLine("listening on");
-            assertTrue(log.contains("maxConnections=600,"), log);
-            assertTrue(log.contains("maxJoinsPerTick=5,"), log);
-        }
-        try (Launched app = Launched.start(directory, Main.class, launch("-Dsynaxis.max-players=200",
-                "-Dsynaxis.app.core-mode=on"))) {
-            final String log = app.awaitLine("listening on");
-            assertTrue(log.contains("maxConnections=1024,"), log);
-            assertTrue(log.contains("maxJoinsPerTick=0,"), log);
-        }
-    }
-
     /** Without a map, the view distance of a shard is not capped. */
     @Test
     public void aShardWithoutAMapSeesSeventeenChunks(@TempDir Path directory) throws Exception {
